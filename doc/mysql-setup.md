@@ -69,7 +69,7 @@ docker run --rm -it \
 docker run \
    --rm -it \
    mysql/mysql-server \
-   mysql -h 192.168.1.3 -p 3306 -uroot -p
+   mysql -h 192.168.1.3 -P 3306 -uroot -p
 ```
 
 - the `-h` option tells the client where the server is running on.  In this example, the given IP is the one of the host where I ran the MySQL server container.
