@@ -75,3 +75,35 @@ docker run \
 - the `-h` option tells the client where the server is running on.  In this example, the given IP is the one of the host where I ran the MySQL server container.
 
 Please be aware that the above command works only if the server allows remote connections.
+
+## Run Python Client in a Container
+
+To write a Python client, we need to install the Python package `mysql-connector-python`.
+
+```Dockerfile
+FROM python:2.7
+RUN pip install mysql-connector-python
+```
+
+Please be aware that some [documents](https://www.w3schools.com/python/python_mysql_getstarted.asp) says that we need to install `mysql-connector`.  I tried; but the `mysql.connector.connect` call failed with the error `mysql.connector.errors.NotSupportedError: Authentication plugin 'caching_sha2_password' is not supported`.
+
+Build the Docker image:
+
+```bash
+docker build -t sqlflow .
+```
+
+Run the image:
+
+```bash
+docker run --rm -it sqlflow bash
+```
+
+and we can start Python and run the following Python code snippet
+
+```
+>>> import mysql.connector
+>>> db = mysql.connector.connect(user='root', passwd='root', host='192.168.1.3')
+>>> print(db)
+<mysql.connector.connection_cext.CMySQLConnection object at 0x7fbab9f3fed0>
+```
