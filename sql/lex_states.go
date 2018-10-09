@@ -65,6 +65,7 @@ func lexIdentOrKeyword(l *lexer) lexState {
 }
 
 var (
+	// Regexp stolen from https://www.regular-expressions.info/floatingpoint.html.
 	regexpNumber = regexp.MustCompile("[-+]?[0-9]*.?[0-9]+([eE][-+]?[0-9]+)?")
 )
 

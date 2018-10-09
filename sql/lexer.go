@@ -1,3 +1,4 @@
+// The lexer in this package is a copy of https://talks.golang.org/2011/lex.slide#1.
 package sql
 
 import (
