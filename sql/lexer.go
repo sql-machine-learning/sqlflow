@@ -68,7 +68,7 @@ func (l *lexer) next() (r rune) {
 	return r
 }
 
-func (l *lexer) ignoe() {
+func (l *lexer) ignore() {
 	l.start = l.pos
 }
 
@@ -84,7 +84,9 @@ func (l *lexer) peek() rune {
 
 func (l *lexer) accept(predicate func(rune) bool) bool {
 	r := predicate(l.next())
-	l.backup()
+	if !r {
+		l.backup()
+	}
 	return r
 }
 

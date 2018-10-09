@@ -13,6 +13,7 @@ const (
 	itemIdent
 	itemSelect
 	itemFrom
+	itemWhere
 
 	itemNumber
 
@@ -23,6 +24,12 @@ const (
 	itemPower
 	itemLeftParen
 	itemRightParen
+	itemGreater
+	itemLess
+	itemGreaterEqual
+	itemLessEqual
+	itemEqual
+
 	itemSemiColon
 )
 
@@ -42,7 +49,7 @@ func lexToken(l *lexer) lexState {
 		} else {
 			return lexOperator(l)
 		}
-	case unicode.IsPunct(r):
+	case unicode.IsPunct(r) || r == '<' || r == '>':
 		return lexOperator(l)
 	}
 	return nil // including the case of eof.
@@ -51,13 +58,17 @@ func lexToken(l *lexer) lexState {
 func lexIdentOrKeyword(l *lexer) lexState {
 	r := l.next()
 	for unicode.IsLetter(r) || unicode.IsNumber(r) || r == '_' {
+		r = l.next()
 	}
+	l.backup()
 
 	switch strings.ToUpper(l.input[l.start:l.pos]) {
 	case "SELECT":
 		l.emit(itemSelect)
 	case "FROM":
 		l.emit(itemFrom)
+	case "WHERE":
+		l.emit(itemWhere)
 	default:
 		l.emit(itemIdent)
 	}
@@ -99,6 +110,22 @@ func lexOperator(l *lexer) lexState {
 		l.emit(itemLeftParen)
 	case ')':
 		l.emit(itemRightParen)
+	case '=':
+		l.emit(itemEqual)
+	case '<':
+		if l.peek() == '=' {
+			l.next()
+			l.emit(itemLessEqual)
+		} else {
+			l.emit(itemLess)
+		}
+	case '>':
+		if l.peek() == '=' {
+			l.next()
+			l.emit(itemGreaterEqual)
+		} else {
+			l.emit(itemGreater)
+		}
 	case ';':
 		l.emit(itemSemiColon)
 		return nil // ; marks the end of a statement

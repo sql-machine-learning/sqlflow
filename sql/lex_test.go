@@ -1,19 +1,11 @@
 package sql
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
-
-func TestNewLexer(t *testing.T) {
-	_, ch := newLexer(" 123;", func(l *lexer) lexState { return nil })
-	n := 0
-	for range ch {
-		n++
-	}
-	assert.Equal(t, n, 0)
-}
 
 func TestCanStop(t *testing.T) {
 	_, ch := newLexer(";", lexOperator)
@@ -41,32 +33,44 @@ func TestLexNumber(t *testing.T) {
 }
 
 func TestLexOperator(t *testing.T) {
-	_, ch := newLexer("+-***/()", lexOperator)
+	_, ch := newLexer("+-***/()<<==", lexOperator)
+
+	typs := []itemType{
+		itemPlus, itemMinus, itemPower, itemTimes, itemDivides,
+		itemLeftParen, itemRightParen, itemLess, itemLessEqual,
+		itemEqual}
+
+	vals := []string{
+		"+", "-", "**", "*", "/", "(", ")", "<", "<=", "="}
+
+	i := 0
+	for v := range ch {
+		assert.Equal(t, typs[i], v.typ)
+		assert.Equal(t, vals[i], v.val)
+		i++
+	}
+}
+
+func TestLexIdentOrKeyword(t *testing.T) {
+	_, ch := newLexer("a12b", lexIdentOrKeyword)
 	v := <-ch
-	assert.Equal(t, itemPlus, v.typ)
-	assert.Equal(t, v.val, "+")
+	assert.Equal(t, itemIdent, v.typ)
+	assert.Equal(t, "a12b", v.val)
 
+	_, ch = newLexer("Select", lexIdentOrKeyword)
 	v = <-ch
-	assert.Equal(t, itemMinus, v.typ)
-	assert.Equal(t, "-", v.val)
+	assert.Equal(t, itemSelect, v.typ)
+	assert.Equal(t, "Select", v.val)
 
+	_, ch = newLexer("froM", lexIdentOrKeyword)
 	v = <-ch
-	assert.Equal(t, itemPower, v.typ)
-	assert.Equal(t, "**", v.val)
+	assert.Equal(t, itemFrom, v.typ)
+	assert.Equal(t, "froM", v.val)
+}
 
-	v = <-ch
-	assert.Equal(t, itemTimes, v.typ)
-	assert.Equal(t, "*", v.val)
-
-	v = <-ch
-	assert.Equal(t, itemDivides, v.typ)
-	assert.Equal(t, "/", v.val)
-
-	v = <-ch
-	assert.Equal(t, itemLeftParen, v.typ)
-	assert.Equal(t, "(", v.val)
-
-	v = <-ch
-	assert.Equal(t, itemRightParen, v.typ)
-	assert.Equal(t, ")", v.val)
+func TestLexToken(t *testing.T) {
+	_, ch := newLexer("  Select * from a_table where col > 100;", lexToken)
+	for v := range ch {
+		fmt.Println(v)
+	}
 }
