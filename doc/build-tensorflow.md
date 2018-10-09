@@ -4,6 +4,8 @@ To contribute to TensorFlow, we need to build TensorFlow from source code.  The 
 
 ----
 
+## Build the Pip Package in TensorFlow Development Container
+
 On either Mac or Linux, or any other OS, we don't have to install and configure the building tools; instead, we can use a Docker image where all tools have been installed and properly configured.
 
 1. Get the Docker image containing all the building tools:
@@ -82,6 +84,8 @@ On either Mac or Linux, or any other OS, we don't have to install and configure 
    chown $HOST_PERMS /mnt/tensorflow-*.whl
    ```
 
+# Install the Pip Pacakge in TensorFlow Development Container
+
 1. Let's now try the new pip package. First, we need to uninstall the current tensorflow pip package, then we install the newly built one:
 
    ```bash
@@ -104,3 +108,28 @@ On either Mac or Linux, or any other OS, we don't have to install and configure 
    ```
 
 1. Now, let us quit from Python and from the Docker container.  We should see the `tensorflow-*.whl` file on the host in the current directory.
+
+
+## Install the Pip Package in a Clean Python Package
+
+After we quit from the development container, we should see the wheel file in the TensorFlow source directory on the host.  Now, we can start a Python container and install the Pip package in it.
+
+1. Start the Python container
+
+   ```bash
+   docker run --rm -it -v $PWD:/tensorflow python:2.7 bash
+   ```
+   
+1. Install the pip pacakge in the container
+
+   ```bash
+   pip install /tensorflow/tensorflow*.whl
+   ```
+   
+1. Try TensorFlow by starting Python in the container
+
+   ```bash
+   python
+   >>> import tensorflow as tf
+   >>> print(tf.__version__)
+   ```
