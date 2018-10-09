@@ -58,3 +58,13 @@ func TestAcceptSpaces(t *testing.T) {
 	l.acceptSpaces()
 	assert.Equal(t, 'b', l.next())
 }
+
+func TestSkipSpaces(t *testing.T) {
+	l := lexer{input: "ab"}
+	l.skipSpaces()
+	assert.Equal(t, 'a', rune(l.input[l.start]))
+	assert.Equal(t, 'a', l.next())
+	l.skipSpaces()
+	assert.Equal(t, 'b', rune(l.input[l.start]))
+	assert.Equal(t, 'b', l.next())
+}

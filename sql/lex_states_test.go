@@ -1,7 +1,6 @@
 package sql
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -69,8 +68,24 @@ func TestLexIdentOrKeyword(t *testing.T) {
 }
 
 func TestLexToken(t *testing.T) {
+	_, ch := newLexer(";", lexToken)
+	v := <-ch
+	assert.Equal(t, itemSemiColon, v.typ)
+	assert.Equal(t, ";", v.val)
+}
+
+func TestLexSQL(t *testing.T) {
 	_, ch := newLexer("  Select * from a_table where col > 100;", lexToken)
+	typs := []itemType{
+		itemSelect, itemTimes, itemFrom, itemIdent, itemWhere,
+		itemIdent, itemGreater, itemNumber, itemSemiColon}
+	vals := []string{
+		"Select", "*", "from", "a_table", "where", "col", ">",
+		"100", ";"}
+	i := 0
 	for v := range ch {
-		fmt.Println(v)
+		assert.Equal(t, typs[i], v.typ)
+		assert.Equal(t, vals[i], v.val)
+		i++
 	}
 }

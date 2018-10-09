@@ -105,3 +105,8 @@ func (l *lexer) acceptSpaces() {
 	for l.accept(unicode.IsSpace) {
 	}
 }
+
+func (l *lexer) skipSpaces() {
+	l.acceptSpaces()
+	l.start = l.pos
+}

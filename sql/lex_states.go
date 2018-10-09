@@ -34,7 +34,7 @@ const (
 )
 
 func lexToken(l *lexer) lexState {
-	l.acceptSpaces()
+	l.skipSpaces()
 	r := l.peek()
 	switch {
 	case unicode.IsLetter(r):
@@ -49,7 +49,7 @@ func lexToken(l *lexer) lexState {
 		} else {
 			return lexOperator(l)
 		}
-	case unicode.IsPunct(r) || r == '<' || r == '>':
+	case strings.IndexRune("*/<>=();", r) >= 0:
 		return lexOperator(l)
 	}
 	return nil // including the case of eof.
