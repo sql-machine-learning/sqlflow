@@ -14,6 +14,7 @@ const (
 	itemSelect
 	itemFrom
 	itemWhere
+	itemLimit
 
 	itemNumber
 
@@ -70,6 +71,8 @@ func lexIdentOrKeyword(l *lexer) lexState {
 		l.emit(itemFrom)
 	case "WHERE":
 		l.emit(itemWhere)
+	case "LIMIT":
+		l.emit(itemLimit)
 	default:
 		l.emit(itemIdent)
 	}

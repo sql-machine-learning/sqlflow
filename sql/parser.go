@@ -2,6 +2,7 @@ package sql
 
 import (
 	"log"
+	"strconv"
 )
 
 type parser struct {
@@ -9,12 +10,13 @@ type parser struct {
 	sel *selectStmt
 }
 
-type parseState func(p *parser, it *item) (parseState, *item)
+type parseState func(p *parser) parseState
 
 type selectStmt struct {
 	fields []string // empty denotes SELECT *
 	from   []string
 	where  *expr
+	limit  int
 }
 
 type expr struct {
@@ -27,20 +29,19 @@ func newParser(l chan item) *parser {
 }
 
 func (p *parser) parse() {
-	var it *item
 	for state := parseSelect; state != nil; {
-		state, it = state(p, it)
+		state = state(p)
 	}
 }
 
-func parseSelect(p *parser, it *item) (parseState, *item) {
+func parseSelect(p *parser) parseState {
 	expectItemType(itemSelect, <-p.l)
 
 	n := <-p.l
 	switch n.typ {
 	case itemTimes:
 		n = <-p.l
-		return parseClause(n), &n
+		return selectClause(n)
 	case itemIdent:
 		for n.typ == itemIdent {
 			p.sel.fields = append(p.sel.fields, n.val)
@@ -49,19 +50,21 @@ func parseSelect(p *parser, it *item) (parseState, *item) {
 				n = <-p.l
 			}
 		}
-		return parseClause(n), &n
+		return selectClause(n)
 	default:
 		log.Panicf("Unexpected token %q", n)
 	}
-	return nil, nil
+	return nil // stop parsing.
 }
 
-func parseClause(n item) parseState {
+func selectClause(n item) parseState {
 	switch n.typ {
 	case itemFrom:
 		return parseFrom
 	case itemWhere:
 		return parseWhere
+	case itemLimit:
+		return parseLimit
 	case itemSemiColon:
 		return nil
 	default:
@@ -70,22 +73,33 @@ func parseClause(n item) parseState {
 	return nil
 }
 
-func parseFrom(p *parser, it *item) (parseState, *item) {
-	expectItemType(itemFrom, *it)
-
+func parseFrom(p *parser) parseState {
 	for {
 		n := <-p.l
 		expectItemType(itemIdent, n)
 		p.sel.from = append(p.sel.from, n.val)
 		n = <-p.l
 		if n.typ != itemComma {
-			return parseClause(n), &n
+			return selectClause(n)
 		}
 	}
 }
 
-func parseWhere(p *parser, it *item) (parseState, *item) {
-	return nil, nil
+func parseWhere(p *parser) parseState {
+	return nil
+}
+
+func parseLimit(p *parser) parseState {
+	n := <-p.l
+	expectItemType(itemNumber, n)
+	if limit, e := strconv.Atoi(n.val); e != nil {
+		log.Panicf("parseLimit: Cannot convert limit (%s) into int: %s", n.val, e)
+	} else {
+		p.sel.limit = limit
+	}
+
+	n = <-p.l
+	return selectClause(n)
 }
 
 func expectItemType(expect itemType, real item) {
