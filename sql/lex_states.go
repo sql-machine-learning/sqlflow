@@ -18,7 +18,7 @@ const (
 	itemWhere
 	itemLimit
 	itemTrain  // e.g., TRAIN DNNClassifier
-	itemColumn // e.g., COLUMN image, tab, label, cross(image, tab)
+	itemColumn // e.g., COLUMN image, tab, label, image*tab
 
 	itemPlus
 	itemMinus

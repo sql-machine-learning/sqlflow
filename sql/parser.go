@@ -13,10 +13,12 @@ type parser struct {
 type parseState func(p *parser) parseState
 
 type selectStmt struct {
-	fields []string // empty denotes SELECT *
-	from   []string
-	where  *expr
-	limit  int
+	fields    []string // empty denotes SELECT *
+	from      []string
+	where     *expr
+	limit     int
+	estimator string
+	column    *expr
 }
 
 type expr struct {
@@ -65,6 +67,10 @@ func selectClause(n item) parseState {
 		return parseWhere
 	case itemLimit:
 		return parseLimit
+	case itemTrain:
+		return parseTrain
+	case itemColumn:
+		return parseColumn
 	case itemSemiColon:
 		return nil
 	default:
@@ -86,6 +92,7 @@ func parseFrom(p *parser) parseState {
 }
 
 func parseWhere(p *parser) parseState {
+	log.Panicf("parseWhere to be implemented")
 	return nil
 }
 
@@ -100,6 +107,20 @@ func parseLimit(p *parser) parseState {
 
 	n = <-p.l
 	return selectClause(n)
+}
+
+func parseTrain(p *parser) parseState {
+	n := <-p.l
+	expectItemType(itemIdent, n)
+	p.sel.estimator = n.val
+
+	n = <-p.l
+	return selectClause(n)
+}
+
+func parseColumn(p *parser) parseState {
+	log.Panicf("parseColumn to be implemented")
+	return nil
 }
 
 func expectItemType(expect itemType, real item) {
