@@ -76,13 +76,13 @@ func TestLexToken(t *testing.T) {
 }
 
 func TestLexSQL(t *testing.T) {
-	_, ch := newLexer("  Select * from a_table where col > 100;", lexToken)
+	_, ch := newLexer("  Select * from a_table where a_table.col_1 > 100;", lexToken)
 	typs := []itemType{
 		itemSelect, itemTimes, itemFrom, itemIdent, itemWhere,
 		itemIdent, itemGreater, itemNumber, itemSemiColon}
 	vals := []string{
-		"Select", "*", "from", "a_table", "where", "col", ">",
-		"100", ";"}
+		"Select", "*", "from", "a_table", "where",
+		"a_table.col_1", ">", "100", ";"}
 	i := 0
 	for v := range ch {
 		assert.Equal(t, typs[i], v.typ)

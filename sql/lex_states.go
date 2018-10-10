@@ -58,9 +58,16 @@ func lexToken(l *lexer) lexState {
 }
 
 func lexIdentOrKeyword(l *lexer) lexState {
+	// lexToken ensured that the first rune is a letter.
 	r := l.next()
 	for unicode.IsLetter(r) || unicode.IsNumber(r) || r == '_' {
 		r = l.next()
+	}
+	if r == '.' { // SQL identification can contain a dot.
+		r = l.next()
+		for unicode.IsLetter(r) || unicode.IsNumber(r) || r == '_' {
+			r = l.next()
+		}
 	}
 	l.backup()
 
@@ -80,12 +87,12 @@ func lexIdentOrKeyword(l *lexer) lexState {
 }
 
 var (
-	// Regexp stolen from https://www.regular-expressions.info/floatingpoint.html.
-	regexpNumber = regexp.MustCompile("[-+]?[0-9]*.?[0-9]+([eE][-+]?[0-9]+)?")
+	// Stolen https://www.regular-expressions.info/floatingpoint.html.
+	reNumber = regexp.MustCompile("[-+]?[0-9]*.?[0-9]+([eE][-+]?[0-9]+)?")
 )
 
 func lexNumber(l *lexer) lexState {
-	m := regexpNumber.FindStringIndex(l.input[l.pos:])
+	m := reNumber.FindStringIndex(l.input[l.pos:])
 	if m == nil || m[0] != 0 {
 		l.emitError("Expecting a number, but see %.10q", l.input[l.pos:])
 		return nil // stop lexing.
