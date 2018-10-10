@@ -1,5 +1,7 @@
 # SQLFlow
 
+![](https://travis-ci.com/wangkuiyi/sqlflow.svg?token=RA1TUtuBzgTZC3xSQF9x&branch=develop)
+
 ## What is SQLFlow
 
 SQLFlow is a small program that connects a SQL engine, e.g., MySQL, Hive, SparkSQL, to a TensorFlow engine.  SQLFlow provides an extended SQL syntax, which can train a model from the result data from a SELECT statement, and does inference with the data.
