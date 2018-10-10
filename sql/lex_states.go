@@ -11,12 +11,14 @@ const (
 	itemError itemType = iota
 
 	itemIdent
+	itemNumber
+
 	itemSelect
 	itemFrom
 	itemWhere
 	itemLimit
-
-	itemNumber
+	itemTrain  // e.g., TRAIN DNNClassifier
+	itemColumn // e.g., COLUMN image, tab, label, cross(image, tab)
 
 	itemPlus
 	itemMinus
@@ -84,6 +86,10 @@ func lexIdentOrKeyword(l *lexer) lexState {
 		l.emit(itemWhere)
 	case "LIMIT":
 		l.emit(itemLimit)
+	case "TRAIN":
+		l.emit(itemTrain)
+	case "COLUMN":
+		l.emit(itemColumn)
 	default:
 		l.emit(itemIdent)
 	}

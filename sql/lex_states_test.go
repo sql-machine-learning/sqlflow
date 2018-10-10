@@ -54,20 +54,14 @@ func TestLexOperator(t *testing.T) {
 }
 
 func TestLexIdentOrKeyword(t *testing.T) {
-	_, ch := newLexer("a12b", lexIdentOrKeyword)
-	v := <-ch
-	assert.Equal(t, itemIdent, v.typ)
-	assert.Equal(t, "a12b", v.val)
-
-	_, ch = newLexer("Select", lexIdentOrKeyword)
-	v = <-ch
-	assert.Equal(t, itemSelect, v.typ)
-	assert.Equal(t, "Select", v.val)
-
-	_, ch = newLexer("froM", lexIdentOrKeyword)
-	v = <-ch
-	assert.Equal(t, itemFrom, v.typ)
-	assert.Equal(t, "froM", v.val)
+	vals := []string{"a1_2b", "Select", "froM", "where", "tRain", "colUmn"}
+	typs := []itemType{itemIdent, itemSelect, itemFrom, itemWhere, itemTrain, itemColumn}
+	for i, it := range vals {
+		_, ch := newLexer(it, lexIdentOrKeyword)
+		v := <-ch
+		assert.Equal(t, typs[i], v.typ)
+		assert.Equal(t, it, v.val)
+	}
 }
 
 func TestLexToken(t *testing.T) {
