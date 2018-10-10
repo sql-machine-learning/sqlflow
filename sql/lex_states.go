@@ -25,6 +25,10 @@ const (
 	itemPower
 	itemLeftParen
 	itemRightParen
+	itemLeftSquare
+	itemRightSquare
+	itemLeftCurly
+	itemRightCurly
 	itemGreater
 	itemLess
 	itemGreaterEqual
@@ -121,6 +125,14 @@ func lexOperator(l *lexer) lexState {
 		l.emit(itemLeftParen)
 	case ')':
 		l.emit(itemRightParen)
+	case '[':
+		l.emit(itemLeftSquare)
+	case ']':
+		l.emit(itemRightSquare)
+	case '{':
+		l.emit(itemLeftCurly)
+	case '}':
+		l.emit(itemRightCurly)
 	case '=':
 		l.emit(itemEqual)
 	case '<':
