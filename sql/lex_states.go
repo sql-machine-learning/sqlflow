@@ -29,6 +29,7 @@ const (
 	itemGreaterEqual
 	itemLessEqual
 	itemEqual
+	itemComma
 
 	itemSemiColon
 )
@@ -49,7 +50,7 @@ func lexToken(l *lexer) lexState {
 		} else {
 			return lexOperator(l)
 		}
-	case strings.IndexRune("*/<>=();", r) >= 0:
+	case strings.IndexRune("*/<>=(),;", r) >= 0:
 		return lexOperator(l)
 	}
 	return nil // including the case of eof.
@@ -126,6 +127,8 @@ func lexOperator(l *lexer) lexState {
 		} else {
 			l.emit(itemGreater)
 		}
+	case ',':
+		l.emit(itemComma)
 	case ';':
 		l.emit(itemSemiColon)
 		return nil // ; marks the end of a statement

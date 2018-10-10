@@ -32,15 +32,16 @@ func TestLexNumber(t *testing.T) {
 }
 
 func TestLexOperator(t *testing.T) {
-	_, ch := newLexer("+-***/()<<==", lexOperator)
+	_, ch := newLexer("+-***/()<<==,;", lexOperator)
 
 	typs := []itemType{
 		itemPlus, itemMinus, itemPower, itemTimes, itemDivides,
 		itemLeftParen, itemRightParen, itemLess, itemLessEqual,
-		itemEqual}
+		itemEqual, itemComma, itemSemiColon}
 
 	vals := []string{
-		"+", "-", "**", "*", "/", "(", ")", "<", "<=", "="}
+		"+", "-", "**", "*", "/", "(", ")", "<", "<=", "=",
+		",", ";"}
 
 	i := 0
 	for v := range ch {
