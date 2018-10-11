@@ -123,6 +123,10 @@ func parseColumn(p *parser) parseState {
 	return nil
 }
 
+func parseExpr(p *parser) parseState {
+
+}
+
 func expectItemType(expect itemType, real item) {
 	if expect != real.typ {
 		log.Panicf("Expecting itemType %q, got %q", expect, real)
