@@ -2,32 +2,32 @@
 
 package sql
 
-type selec struct {
-  fields []string
-  tables []string
-  where *expr
-  limit int
-}
-
 type expression struct {
   optr int
-  oprd []*expr  /* valid if optr >= 0; */
+  oprd []*expression  /* valid if optr >= 0; */
   val string    /* valid if optr < 0 */
+}
+
+type selectStmt struct {
+  fields []string
+  tables []string
+  where *expression
+  limit int
 }
 
 %}
 
 %union {
-  val string  /* both NUMBER and IDENT have value as string. */
+  val string  /* NUMBER, IDENT, STRING, and keywords */
   expr *expression
-  sel selec
+  sel selectStmt
 }
 
 
-%token  <sel>           SELECT FROM
-%token  <expr>          WHERE
+%token  <sel>           SELECT FROM WHERE LIMIT TRAIN COLUMN
 %token  <str>           IDENT NUMBER
 
+%left '>' '<' '=' GE LE POWER
 %left '+' '-'
 %left '*' '/' '%'
 %left UMINUS
