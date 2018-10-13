@@ -30,7 +30,7 @@ func newLexer(input string) *lexer {
 }
 
 func (l *lexer) Error(e string) {
-	log.Panic(e)
+	log.Panicf("start=%d, pos=%d : %s\n%.10q\n", l.start, l.pos, e, l.input[l.start:])
 }
 
 func (l *lexer) emit(lval *sqlSymType, typ int) int {
@@ -78,8 +78,8 @@ func (l *lexer) Lex(lval *sqlSymType) int {
 		return l.lexIdentOrKeyword(lval)
 	case unicode.IsDigit(r):
 		return l.lexNumber(lval)
-	case strings.IndexRune("+-*/%<>=()[],;", r) >= 0:
-		return l.emit(lval, int(r))
+	case strings.IndexRune("+-*/%<>=()[]{},;", r) >= 0:
+		return l.lexOperator(lval)
 	case r == eof:
 		return 0 // indicate the end of lexing.
 	}
@@ -144,12 +144,12 @@ func (l *lexer) lexOperator(lval *sqlSymType) int {
 	case '<':
 		if l.peek() == '=' {
 			l.next()
-			l.emit(lval, LE)
+			return l.emit(lval, LE)
 		}
 	case '>':
 		if l.peek() == '=' {
 			l.next()
-			l.emit(lval, GE)
+			return l.emit(lval, GE)
 		}
 	}
 	return l.emit(lval, int(r))

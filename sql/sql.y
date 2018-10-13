@@ -1,31 +1,39 @@
 %{
 
-package sql
+  package sql
 
-type expression struct {
-  optr int
-  oprd []*expression  /* valid if optr >= 0; */
-  val string    /* valid if optr < 0 */
-}
+  import "fmt"
 
-type selectStmt struct {
-  fields []string
-  tables []string
-  where *expression
-  limit int
-}
+  type expr struct {
+    typ int             /* NUMBER, IDENT, STRING, or operator */
+    oprd []expr  /* if typ is an operator */
+    val string          /* if typ is not an operator */
+  }
+    
+  type selectStmt struct {
+    fields []string
+    tables []string
+    where expr
+    limit string
+  }
 
 %}
 
 %union {
   val string  /* NUMBER, IDENT, STRING, and keywords */
-  expr *expression
-  sel selectStmt
+  flds []string
+  tbls []string
+  expr expr
+  slct selectStmt
 }
 
+%type  <slct> select select_stmt
+%type  <flds> fields
+%type  <tbls> tables
+%type  <expr> expr
 
-%token  <sel>           SELECT FROM WHERE LIMIT TRAIN COLUMN
-%token  <str>           IDENT NUMBER
+%token <val> SELECT FROM WHERE LIMIT TRAIN COLUMN
+%token <val> IDENT NUMBER
 
 %left '>' '<' '=' GE LE POWER
 %left '+' '-'
@@ -34,23 +42,41 @@ type selectStmt struct {
 
 %%
 
-select : SELECT fields FROM tables ';'
-        |       SELECT fields FROM tables WHERE expr ';'
+select_stmt
+: select ';' { fmt.Printf("%q\n", $1) }
+      
+select
+: SELECT fields       { $$.fields = $2 }
+| select FROM tables  { $$.tables = $3 }
+| select LIMIT NUMBER { $$.limit = $3 }
+| select WHERE expr   { $$.where = $3 }
 ;
 
-fields : '*'
-        |       IDENT
-        |       fields ',' IDENT
+fields
+: '*'              { $$ = $$[:0] }
+| IDENT            { $$ = append($$, $1) }
+| fields ',' IDENT { $$ = append($$, $3) }
 ;
 
-tables : IDENT
-        |       tables ',' IDENT
+tables
+: IDENT            { $$ = append($$, $1) }
+| tables ',' IDENT { $$ = append($$, $3) }
 ;
 
-expr : NUMBER
-        |       IDENT
-        |       expr '+' expr
-        |       expr '-' expr
-        |       '-' expr %prec UMINUS
+expr
+: NUMBER         { $$ = expr{typ : NUMBER, val : $1} }
+| IDENT          { $$ = expr{typ : IDENT,  val : $1} }
+| '(' expr ')'   { $$ = $2 }
+| expr '+' expr  { $$ = expr{typ : '+', oprd : []expr{$1, $3}} }
+| expr '-' expr  { $$ = expr{typ : '-', oprd : []expr{$1, $3}} }
+| expr '*' expr  { $$ = expr{typ : '*', oprd : []expr{$1, $3}} }
+| expr '/' expr  { $$ = expr{typ : '/', oprd : []expr{$1, $3}} }
+| expr '%' expr  { $$ = expr{typ : '%', oprd : []expr{$1, $3}} }
+| expr '=' expr  { $$ = expr{typ : '=', oprd : []expr{$1, $3}} }
+| expr '<' expr  { $$ = expr{typ : '<', oprd : []expr{$1, $3}} }
+| expr '>' expr  { $$ = expr{typ : '>', oprd : []expr{$1, $3}} }
+| expr LE  expr  { $$ = expr{typ : LE,  oprd : []expr{$1, $3}} }
+| expr GE  expr  { $$ = expr{typ : GE,  oprd : []expr{$1, $3}} }
+| '-' expr %prec UMINUS { $$ = expr{typ : '-', oprd : []expr{$2}} }
 ;
 %%
