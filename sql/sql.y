@@ -33,11 +33,13 @@
 %type  <expr> expr
 
 %token <val> SELECT FROM WHERE LIMIT TRAIN COLUMN
-%token <val> IDENT NUMBER
+%token <val> IDENT NUMBER STRING
 
+%left AND OR
 %left '>' '<' '=' GE LE POWER
 %left '+' '-'
 %left '*' '/' '%'
+%left NOT
 %left UMINUS
 
 %%
@@ -66,6 +68,7 @@ tables
 expr
 : NUMBER         { $$ = expr{typ : NUMBER, val : $1} }
 | IDENT          { $$ = expr{typ : IDENT,  val : $1} }
+| STRING         { $$ = expr{typ : STRING, val : $1} }
 | '(' expr ')'   { $$ = $2 }
 | expr '+' expr  { $$ = expr{typ : '+', oprd : []expr{$1, $3}} }
 | expr '-' expr  { $$ = expr{typ : '-', oprd : []expr{$1, $3}} }
@@ -77,6 +80,9 @@ expr
 | expr '>' expr  { $$ = expr{typ : '>', oprd : []expr{$1, $3}} }
 | expr LE  expr  { $$ = expr{typ : LE,  oprd : []expr{$1, $3}} }
 | expr GE  expr  { $$ = expr{typ : GE,  oprd : []expr{$1, $3}} }
+| expr AND expr  { $$ = expr{typ : AND, oprd : []expr{$1, $3}} }
+| expr OR  expr  { $$ = expr{typ : OR,  oprd : []expr{$1, $3}} }
+| NOT expr %prec NOT    { $$ = expr{typ : NOT, oprd : []expr{$2}} }
 | '-' expr %prec UMINUS { $$ = expr{typ : '-', oprd : []expr{$2}} }
 ;
 %%

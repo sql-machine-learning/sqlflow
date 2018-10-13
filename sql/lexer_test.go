@@ -42,6 +42,13 @@ func TestLexNumber(t *testing.T) {
 	assert.Equal(t, "123.4", n.val)
 }
 
+func TestLexString(t *testing.T) {
+	l := newLexer(`  "\""  `)
+	var n sqlSymType
+	assert.Equal(t, STRING, l.Lex(&n))
+	assert.Equal(t, `"\""`, n.val)
+}
+
 func TestLexOperator(t *testing.T) {
 	l := newLexer("+-***/%()[]{}<<==,;")
 
@@ -61,8 +68,10 @@ func TestLexOperator(t *testing.T) {
 }
 
 func TestLexIdentOrKeyword(t *testing.T) {
-	vals := []string{"a1_2b", "Select", "froM", "where", "tRain", "colUmn"}
-	typs := []int{IDENT, SELECT, FROM, WHERE, TRAIN, COLUMN}
+	vals := []string{"a1_2b", "Select", "froM", "where", "tRain", "colUmn",
+		"and", "or", "not"}
+	typs := []int{IDENT, SELECT, FROM, WHERE, TRAIN, COLUMN,
+		AND, OR, NOT}
 	var n sqlSymType
 	for i, it := range vals {
 		l := newLexer(it)

@@ -30,7 +30,7 @@ func newLexer(input string) *lexer {
 }
 
 func (l *lexer) Error(e string) {
-	log.Panicf("start=%d, pos=%d : %s\n%.10q\n", l.start, l.pos, e, l.input[l.start:])
+	log.Panicf("start=%d, pos=%d : %s near %.10q\n", l.start, l.pos, e, l.input[l.start:])
 }
 
 func (l *lexer) emit(lval *sqlSymType, typ int) int {
@@ -78,6 +78,8 @@ func (l *lexer) Lex(lval *sqlSymType) int {
 		return l.lexIdentOrKeyword(lval)
 	case unicode.IsDigit(r):
 		return l.lexNumber(lval)
+	case r == '"':
+		return l.lexString(lval)
 	case strings.IndexRune("+-*/%<>=()[]{},;", r) >= 0:
 		return l.lexOperator(lval)
 	case r == eof:
@@ -112,6 +114,9 @@ func (l *lexer) emitIdentOrKeyword(lval *sqlSymType) int {
 		"LIMIT":  LIMIT,
 		"TRAIN":  TRAIN,
 		"COLUMN": COLUMN,
+		"AND":    AND,
+		"OR":     OR,
+		"NOT":    NOT,
 	}
 	if typ, ok := keywds[strings.ToUpper(l.input[l.start:l.pos])]; ok {
 		return l.emit(lval, typ)
@@ -148,4 +153,14 @@ func (l *lexer) lexOperator(lval *sqlSymType) int {
 		return l.emit(lval, GE)
 	}
 	return l.emit(lval, int(r))
+}
+
+func (l *lexer) lexString(lval *sqlSymType) int {
+	l.next() // the left quote
+	for r := l.next(); r != '"'; r = l.next() {
+		if r == '\\' {
+			l.next()
+		}
+	}
+	return l.emit(lval, STRING)
 }

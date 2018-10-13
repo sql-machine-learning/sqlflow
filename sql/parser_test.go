@@ -8,10 +8,13 @@ import (
 
 func TestParser(t *testing.T) {
 	sel := `
-SELECT employee.age, salary 
+SELECT employee.age, last_name, salary 
 FROM   employee
 LIMIT  100
-WHERE  employee.age % 10 < (salary / 10000)
+WHERE  
+  employee.age % 10 < (salary / 10000) 
+  AND 
+  last_name = "Wang"
 ;
 `
 	assert.NotPanics(t, func() {
