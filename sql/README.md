@@ -31,3 +31,17 @@ Therefore, I wrote the lexer and parser both following Rob Pike's idea. After fe
 1. it is technically intractable to write a SQL lexer/parser manually.
 
 So, I switched to write a lexer manually, and to generate the parser using goyacc.  During my work, I referred to [this example](https://github.com/golang-samples/yacc/blob/master/simple/calc.y) and the official [`yacc` manual](https://www.epaperpress.com/lexandyacc/download/yacc.pdf) for details about operator association and precedence.
+
+## Build
+
+To build the parser using `goyacc` and run all unit tests, use the following command:
+
+```bash
+goyacc -p sql -o parser.go sql.y && go test -v
+```
+
+To install `goyacc` and other useful tools:
+
+```bash
+go get -u golang.org/x/tools/cmd/...
+```
