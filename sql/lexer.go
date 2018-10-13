@@ -135,22 +135,17 @@ func (l *lexer) lexNumber(lval *sqlSymType) int {
 
 func (l *lexer) lexOperator(lval *sqlSymType) int {
 	r := l.next()
-	switch r {
-	case '*':
-		if l.peek() == '*' {
-			l.next()
-			return l.emit(lval, POWER)
-		}
-	case '<':
-		if l.peek() == '=' {
-			l.next()
-			return l.emit(lval, LE)
-		}
-	case '>':
-		if l.peek() == '=' {
-			l.next()
-			return l.emit(lval, GE)
-		}
+	if r == '*' && l.peek() == '*' {
+		l.next()
+		return l.emit(lval, POWER)
+	}
+	if r == '<' && l.peek() == '=' {
+		l.next()
+		return l.emit(lval, LE)
+	}
+	if r == '>' && l.peek() == '=' {
+		l.next()
+		return l.emit(lval, GE)
 	}
 	return l.emit(lval, int(r))
 }
