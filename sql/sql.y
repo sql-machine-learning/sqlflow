@@ -2,11 +2,9 @@
 
   package sql
 
-  import "fmt"
-
   type expr struct {
     typ int             /* NUMBER, IDENT, STRING, or operator */
-    oprd []expr  /* if typ is an operator */
+    oprd []expr         /* if typ is an operator */
     val string          /* if typ is not an operator */
   }
     
@@ -17,6 +15,7 @@
     limit string
   }
 
+  var parseResult selectStmt
 %}
 
 %union {
@@ -45,7 +44,7 @@
 %%
 
 select_stmt
-: select ';' { fmt.Printf("%q\n", $1) }
+: select ';' { parseResult = $1 }
       
 select
 : SELECT fields       { $$.fields = $2 }

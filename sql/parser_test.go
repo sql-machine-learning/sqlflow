@@ -20,4 +20,11 @@ WHERE
 	assert.NotPanics(t, func() {
 		sqlParse(newLexer(sel))
 	})
+	assert.Equal(t, []string{"employee.age", "last_name", "salary"},
+		parseResult.fields)
+	assert.Equal(t, []string{"employee"}, parseResult.tables)
+	assert.Equal(t, "100", parseResult.limit)
+	assert.Equal(t, AND, parseResult.where.typ)
+	assert.Equal(t, '<', rune(parseResult.where.oprd[0].typ))
+	assert.Equal(t, '=', rune(parseResult.where.oprd[1].typ))
 }

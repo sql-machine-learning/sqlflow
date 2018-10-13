@@ -1,4 +1,7 @@
-// The lexer in this package is a copy of https://talks.golang.org/2011/lex.slide#1.
+// The lexer in this package is inspired by Rob Pike's 2011 talk on
+// writing lexers manually https://talks.golang.org/2011/lex.slide#1.
+// It makes a significant simplification of the idea and doesn't use
+// goroutines and channels.
 package sql
 
 import (
@@ -143,12 +146,10 @@ func (l *lexer) lexOperator(lval *sqlSymType) int {
 	if r == '*' && l.peek() == '*' {
 		l.next()
 		return l.emit(lval, POWER)
-	}
-	if r == '<' && l.peek() == '=' {
+	} else if r == '<' && l.peek() == '=' {
 		l.next()
 		return l.emit(lval, LE)
-	}
-	if r == '>' && l.peek() == '=' {
+	} else if r == '>' && l.peek() == '=' {
 		l.next()
 		return l.emit(lval, GE)
 	}

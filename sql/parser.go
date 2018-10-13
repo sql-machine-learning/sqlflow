@@ -4,8 +4,6 @@ package sql
 import __yyfmt__ "fmt"
 
 //line sql.y:3
-import "fmt"
-
 type expr struct {
 	typ  int    /* NUMBER, IDENT, STRING, or operator */
 	oprd []expr /* if typ is an operator */
@@ -19,7 +17,9 @@ type selectStmt struct {
 	limit  string
 }
 
-//line sql.y:22
+var parseResult selectStmt
+
+//line sql.y:21
 type sqlSymType struct {
 	yys  int
 	val  string /* NUMBER, IDENT, STRING, and keywords */
@@ -85,7 +85,7 @@ const sqlEofCode = 1
 const sqlErrCode = 2
 const sqlInitialStackSize = 16
 
-//line sql.y:88
+//line sql.y:87
 
 //line yacctab:1
 var sqlExca = [...]int{
@@ -512,169 +512,169 @@ sqldefault:
 
 	case 1:
 		sqlDollar = sqlS[sqlpt-2 : sqlpt+1]
-		//line sql.y:48
+		//line sql.y:47
 		{
-			fmt.Printf("%q\n", sqlDollar[1].slct)
+			parseResult = sqlDollar[1].slct
 		}
 	case 2:
 		sqlDollar = sqlS[sqlpt-2 : sqlpt+1]
-		//line sql.y:51
+		//line sql.y:50
 		{
 			sqlVAL.slct.fields = sqlDollar[2].flds
 		}
 	case 3:
 		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
-		//line sql.y:52
+		//line sql.y:51
 		{
 			sqlVAL.slct.tables = sqlDollar[3].tbls
 		}
 	case 4:
 		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
-		//line sql.y:53
+		//line sql.y:52
 		{
 			sqlVAL.slct.limit = sqlDollar[3].val
 		}
 	case 5:
 		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
-		//line sql.y:54
+		//line sql.y:53
 		{
 			sqlVAL.slct.where = sqlDollar[3].expr
 		}
 	case 6:
 		sqlDollar = sqlS[sqlpt-1 : sqlpt+1]
-		//line sql.y:58
+		//line sql.y:57
 		{
 			sqlVAL.flds = sqlVAL.flds[:0]
 		}
 	case 7:
 		sqlDollar = sqlS[sqlpt-1 : sqlpt+1]
-		//line sql.y:59
+		//line sql.y:58
 		{
 			sqlVAL.flds = append(sqlVAL.flds, sqlDollar[1].val)
 		}
 	case 8:
 		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
-		//line sql.y:60
+		//line sql.y:59
 		{
 			sqlVAL.flds = append(sqlVAL.flds, sqlDollar[3].val)
 		}
 	case 9:
 		sqlDollar = sqlS[sqlpt-1 : sqlpt+1]
-		//line sql.y:64
+		//line sql.y:63
 		{
 			sqlVAL.tbls = append(sqlVAL.tbls, sqlDollar[1].val)
 		}
 	case 10:
 		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
-		//line sql.y:65
+		//line sql.y:64
 		{
 			sqlVAL.tbls = append(sqlVAL.tbls, sqlDollar[3].val)
 		}
 	case 11:
 		sqlDollar = sqlS[sqlpt-1 : sqlpt+1]
-		//line sql.y:69
+		//line sql.y:68
 		{
 			sqlVAL.expr = expr{typ: NUMBER, val: sqlDollar[1].val}
 		}
 	case 12:
 		sqlDollar = sqlS[sqlpt-1 : sqlpt+1]
-		//line sql.y:70
+		//line sql.y:69
 		{
 			sqlVAL.expr = expr{typ: IDENT, val: sqlDollar[1].val}
 		}
 	case 13:
 		sqlDollar = sqlS[sqlpt-1 : sqlpt+1]
-		//line sql.y:71
+		//line sql.y:70
 		{
 			sqlVAL.expr = expr{typ: STRING, val: sqlDollar[1].val}
 		}
 	case 14:
 		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
-		//line sql.y:72
+		//line sql.y:71
 		{
 			sqlVAL.expr = sqlDollar[2].expr
 		}
 	case 15:
 		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
-		//line sql.y:73
+		//line sql.y:72
 		{
 			sqlVAL.expr = expr{typ: '+', oprd: []expr{sqlDollar[1].expr, sqlDollar[3].expr}}
 		}
 	case 16:
 		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
-		//line sql.y:74
+		//line sql.y:73
 		{
 			sqlVAL.expr = expr{typ: '-', oprd: []expr{sqlDollar[1].expr, sqlDollar[3].expr}}
 		}
 	case 17:
 		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
-		//line sql.y:75
+		//line sql.y:74
 		{
 			sqlVAL.expr = expr{typ: '*', oprd: []expr{sqlDollar[1].expr, sqlDollar[3].expr}}
 		}
 	case 18:
 		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
-		//line sql.y:76
+		//line sql.y:75
 		{
 			sqlVAL.expr = expr{typ: '/', oprd: []expr{sqlDollar[1].expr, sqlDollar[3].expr}}
 		}
 	case 19:
 		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
-		//line sql.y:77
+		//line sql.y:76
 		{
 			sqlVAL.expr = expr{typ: '%', oprd: []expr{sqlDollar[1].expr, sqlDollar[3].expr}}
 		}
 	case 20:
 		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
-		//line sql.y:78
+		//line sql.y:77
 		{
 			sqlVAL.expr = expr{typ: '=', oprd: []expr{sqlDollar[1].expr, sqlDollar[3].expr}}
 		}
 	case 21:
 		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
-		//line sql.y:79
+		//line sql.y:78
 		{
 			sqlVAL.expr = expr{typ: '<', oprd: []expr{sqlDollar[1].expr, sqlDollar[3].expr}}
 		}
 	case 22:
 		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
-		//line sql.y:80
+		//line sql.y:79
 		{
 			sqlVAL.expr = expr{typ: '>', oprd: []expr{sqlDollar[1].expr, sqlDollar[3].expr}}
 		}
 	case 23:
 		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
-		//line sql.y:81
+		//line sql.y:80
 		{
 			sqlVAL.expr = expr{typ: LE, oprd: []expr{sqlDollar[1].expr, sqlDollar[3].expr}}
 		}
 	case 24:
 		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
-		//line sql.y:82
+		//line sql.y:81
 		{
 			sqlVAL.expr = expr{typ: GE, oprd: []expr{sqlDollar[1].expr, sqlDollar[3].expr}}
 		}
 	case 25:
 		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
-		//line sql.y:83
+		//line sql.y:82
 		{
 			sqlVAL.expr = expr{typ: AND, oprd: []expr{sqlDollar[1].expr, sqlDollar[3].expr}}
 		}
 	case 26:
 		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
-		//line sql.y:84
+		//line sql.y:83
 		{
 			sqlVAL.expr = expr{typ: OR, oprd: []expr{sqlDollar[1].expr, sqlDollar[3].expr}}
 		}
 	case 27:
 		sqlDollar = sqlS[sqlpt-2 : sqlpt+1]
-		//line sql.y:85
+		//line sql.y:84
 		{
 			sqlVAL.expr = expr{typ: NOT, oprd: []expr{sqlDollar[2].expr}}
 		}
 	case 28:
 		sqlDollar = sqlS[sqlpt-2 : sqlpt+1]
-		//line sql.y:86
+		//line sql.y:85
 		{
 			sqlVAL.expr = expr{typ: '-', oprd: []expr{sqlDollar[2].expr}}
 		}
