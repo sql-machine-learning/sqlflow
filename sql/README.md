@@ -20,6 +20,14 @@ Some documents, including [this one](https://hackthology.com/writing-a-lexer-in-
 
 GoAcademy always provides high-=quality tech blog posts.  [This one](https://blog.gopheracademy.com/advent-2014/parsers-lexers/) is from the author of [InfluxDB](https://github.com/influxdata/influxdb).  However, I stopped at where it explains wrapping a SQL statement as a string by an `io.Reader`, because it is obvious that we should keep the string as a string so that that token strings could refer to the same memory storage of the SQL statement.
 
-Following a link in the above GoAcademy post, I found Rob Pike's excellent talk on how to write a lexer in Go in 2011.  Many works after that change Rob's implementation somehow but always lead to longer and less comprehensible codebases.  
+Following a link in the above GoAcademy post, I found Rob Pike's excellent talk on how to write a lexer in Go in 2011.  Many works after that change Rob's implementation somehow but always lead to longer and less comprehensible codebases.
 
-Therefore, I wrote this implementation, which is very loyal to Rob Pike's implementation. More inspiringly, I wrote the parser followed the way Rob Pike wrote the lexer.
+### The Choice
+
+Therefore, I wrote the lexer and parser both following Rob Pike's idea. After few days work, I realized that:
+
+1. I should borrow the idea from Rob to represent SQL statements as strings, but not `io.Reader` as other work do,
+1. but no need to use channels and goroutines at all, and 
+1. it is technically intractable to write a SQL lexer/parser manually.
+
+So, I switched to write a lexer manually, and to generate the parser using goyacc.  During my work, I referred to [this example](https://github.com/golang-samples/yacc/blob/master/simple/calc.y) and the official [`yacc` manual](https://www.epaperpress.com/lexandyacc/download/yacc.pdf) for details about operator association and precedence.

@@ -18,7 +18,6 @@ WHERE
 ;
 `
 	assert.NotPanics(t, func() {
-		p := sqlNewParser()
-		p.Parse(newLexer(sel))
+		sqlParse(newLexer(sel))
 	})
 }
