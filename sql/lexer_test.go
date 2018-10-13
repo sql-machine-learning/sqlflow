@@ -7,16 +7,13 @@ import (
 )
 
 func TestNewLexer(t *testing.T) {
-	_, ch := newLexer("", func(l *lexer) lexState { return nil })
-	n := 0
-	for range ch {
-		n++
-	}
-	assert.Equal(t, n, 0)
+	l := newLexer("")
+	var n sqlSymType
+	assert.Equal(t, 0, l.Lex(&n))
 }
 
 func TestNextAndBackup(t *testing.T) {
-	l := lexer{input: "ab"}
+	l := newLexer("ab")
 	assert.Equal(t, 'a', l.next())
 	l.backup()
 	assert.Equal(t, 'a', l.next())
@@ -25,46 +22,65 @@ func TestNextAndBackup(t *testing.T) {
 	assert.Equal(t, eof, l.next())
 	l.backup()
 	assert.Equal(t, eof, l.next())
-}
-
-func TestAccept(t *testing.T) {
-	l := lexer{input: "abc"}
-	l.accept(func(rune) bool { return false })
-	assert.Equal(t, 'a', l.next())
-	l.accept(func(rune) bool { return true })
-	assert.Equal(t, 'c', l.next())
-}
-
-func TestAcceptOne(t *testing.T) {
-	l := lexer{input: "abc"}
-	l.acceptOne("abc")
-	assert.Equal(t, 'b', l.next())
-	l.acceptOne("")
-	assert.Equal(t, 'c', l.next())
-}
-
-func TestAcceptRun(t *testing.T) {
-	l := lexer{input: " \t ab"}
-	l.acceptRun(" \t")
-	assert.Equal(t, 'a', l.next())
-	l.acceptRun(" ")
-	assert.Equal(t, 'b', l.next())
-}
-
-func TestAcceptSpaces(t *testing.T) {
-	l := lexer{input: " \t ab"}
-	l.acceptSpaces()
-	assert.Equal(t, 'a', l.next())
-	l.acceptSpaces()
-	assert.Equal(t, 'b', l.next())
 }
 
 func TestSkipSpaces(t *testing.T) {
-	l := lexer{input: "ab"}
+	l := newLexer("ab")
 	l.skipSpaces()
 	assert.Equal(t, 'a', rune(l.input[l.start]))
 	assert.Equal(t, 'a', l.next())
 	l.skipSpaces()
 	assert.Equal(t, 'b', rune(l.input[l.start]))
 	assert.Equal(t, 'b', l.next())
+}
+
+func TestLexNumber(t *testing.T) {
+	l := newLexer("123.4")
+	var n sqlSymType
+
+	assert.Equal(t, NUMBER, l.Lex(&n))
+	assert.Equal(t, "123.4", n.val)
+}
+
+func TestLexOperator(t *testing.T) {
+	l := newLexer("+-***/%()[]{}<<==,;")
+
+	typs := []int{
+		'+', '-', POWER, '*', '/', '%', '(', ')', '[', ']', '{', '}',
+		'<', LE, '=', ',', ';'}
+	vals := []string{
+		"+", "-", "**", "*", "/", "%", "(", ")", "[", "]",
+		"{", "}", "<", "<=", "=", ",", ";"}
+	i := 0
+	var n sqlSymType
+	for typ := l.Lex(&n); typ != 0; typ = l.Lex(&n) {
+		assert.Equal(t, typs[i], typ)
+		assert.Equal(t, vals[i], n.val)
+		i++
+	}
+}
+
+func TestLexIdentOrKeyword(t *testing.T) {
+	vals := []string{"a1_2b", "Select", "froM", "where", "tRain", "colUmn"}
+	typs := []int{IDENT, SELECT, FROM, WHERE, TRAIN, COLUMN}
+	var n sqlSymType
+	for i, it := range vals {
+		l := newLexer(it)
+		assert.Equal(t, typs[i], l.Lex(&n))
+		assert.Equal(t, vals[i], n.val)
+	}
+}
+
+func TestLexSQL(t *testing.T) {
+	l := newLexer("  Select * from a_table where a_table.col_1 > 100;")
+	typs := []int{
+		SELECT, '*', FROM, IDENT, WHERE, IDENT, '>', NUMBER, ';'}
+	vals := []string{
+		"Select", "*", "from", "a_table", "where",
+		"a_table.col_1", ">", "100", ";"}
+	var n sqlSymType
+	for i := range typs {
+		assert.Equal(t, typs[i], l.Lex(&n))
+		assert.Equal(t, vals[i], n.val)
+	}
 }

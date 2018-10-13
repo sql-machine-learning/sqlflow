@@ -1,0 +1,82 @@
+%{
+
+  package sql
+
+  import "fmt"
+
+  type expr struct {
+    typ int             /* NUMBER, IDENT, STRING, or operator */
+    oprd []expr  /* if typ is an operator */
+    val string          /* if typ is not an operator */
+  }
+    
+  type selectStmt struct {
+    fields []string
+    tables []string
+    where expr
+    limit string
+  }
+
+%}
+
+%union {
+  val string  /* NUMBER, IDENT, STRING, and keywords */
+  flds []string
+  tbls []string
+  expr expr
+  slct selectStmt
+}
+
+%type  <slct> select select_stmt
+%type  <flds> fields
+%type  <tbls> tables
+%type  <expr> expr
+
+%token <val> SELECT FROM WHERE LIMIT TRAIN COLUMN
+%token <val> IDENT NUMBER
+
+%left '>' '<' '=' GE LE POWER
+%left '+' '-'
+%left '*' '/' '%'
+%left UMINUS
+
+%%
+
+select_stmt
+: select ';' { fmt.Printf("%q\n", $1) }
+      
+select
+: SELECT fields       { $$.fields = $2 }
+| select FROM tables  { $$.tables = $3 }
+| select LIMIT NUMBER { $$.limit = $3 }
+| select WHERE expr   { $$.where = $3 }
+;
+
+fields
+: '*'              { $$ = $$[:0] }
+| IDENT            { $$ = append($$, $1) }
+| fields ',' IDENT { $$ = append($$, $3) }
+;
+
+tables
+: IDENT            { $$ = append($$, $1) }
+| tables ',' IDENT { $$ = append($$, $3) }
+;
+
+expr
+: NUMBER         { $$ = expr{typ : NUMBER, val : $1} }
+| IDENT          { $$ = expr{typ : IDENT,  val : $1} }
+| '(' expr ')'   { $$ = $2 }
+| expr '+' expr  { $$ = expr{typ : '+', oprd : []expr{$1, $3}} }
+| expr '-' expr  { $$ = expr{typ : '-', oprd : []expr{$1, $3}} }
+| expr '*' expr  { $$ = expr{typ : '*', oprd : []expr{$1, $3}} }
+| expr '/' expr  { $$ = expr{typ : '/', oprd : []expr{$1, $3}} }
+| expr '%' expr  { $$ = expr{typ : '%', oprd : []expr{$1, $3}} }
+| expr '=' expr  { $$ = expr{typ : '=', oprd : []expr{$1, $3}} }
+| expr '<' expr  { $$ = expr{typ : '<', oprd : []expr{$1, $3}} }
+| expr '>' expr  { $$ = expr{typ : '>', oprd : []expr{$1, $3}} }
+| expr LE  expr  { $$ = expr{typ : LE,  oprd : []expr{$1, $3}} }
+| expr GE  expr  { $$ = expr{typ : GE,  oprd : []expr{$1, $3}} }
+| '-' expr %prec UMINUS { $$ = expr{typ : '-', oprd : []expr{$2}} }
+;
+%%
