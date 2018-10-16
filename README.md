@@ -31,7 +31,7 @@ END;
 
 This extended syntax requires SQL programmers to be capable of programming machine learning algorithms in R or Python.
 
-Teradata extends its SQL engine by providing a RESTful service callable from the extended SQL SELECT syntax.
+[Teradata extends its SQL engine](https://www.linkedin.com/pulse/sql-deep-learning-sql-dl-omri-shiv) by providing a RESTful service callable from the extended SQL SELECT syntax.
 
 ```sql
 SELECT * FROM deep_learning_scorer(
@@ -46,11 +46,11 @@ SELECT * FROM deep_learning_scorer(
 
 The above syntax couples the deployment of the service (the URL in the above SQL statement) with the algorithm.
 
-Google BigQuery enables machine learning in extended SQL by providing the `CREATE MODEL` statement.
+[Google BigQuery](https://cloud.google.com/bigquery/docs/bigqueryml-intro) enables machine learning in extended SQL by providing the `CREATE MODEL` statement.
 
 ```sql
 CREATE MODEL dataset.model_name
-  OPTIONS(model_type=’linear_reg’, input_label_cols=[‘input_label’])
+  OPTIONS(model_type='linear_reg', input_label_cols=['input_label'])
 AS SELECT * FROM input_table; 
 ```
 
@@ -72,7 +72,7 @@ We understand that a key to address the above challenges is the syntax of the SQ
 
 ## Design Decisions
 
-As the beginning of the iteration, we propose an extension to the SQL SELECT statement.  We are not going a new statement way like that BigQuery provides `CREATE MODEL`, because we want to maintain a loose couple between our system and the underlying SQL engine, and we cannot create the new data type for the SQL engine, like `CREATE MODEL` requires.
+As the beginning of the iteration, we propose an extension to the SQL SELECT statement. We are not going a new statement way like that BigQuery provides `CREATE MODEL`, because we want to maintain a loose couple between our system and the underlying SQL engine, and we cannot create the new data type for the SQL engine, like `CREATE MODEL` requires.
 
 We highly appreciate the work of [TensorFlow Estimator](https://www.tensorflow.org/guide/estimators), a high-level API for deep learning. The basic idea behind Estimator is to implement each deep learning model, and related training/testing/evaluating algorithms as a Python class derived from `tf.estimator.Estimator`.  As we want to keep our SQL syntax simple, we would make the system extensible by calling estimators contributed by machine learning experts and written in Python.
 
