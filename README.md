@@ -4,15 +4,17 @@
 
 ## What is SQLFlow
 
-SQLFlow is a small program that connects a SQL engine, e.g., MySQL, Hive, SparkSQL, to a TensorFlow engine.  SQLFlow provides an extended SQL syntax, which can train a model from the result data from a SELECT statement, and makes inference with the data.
+SQLFlow is a bridge that connects a SQL engine, for example, MySQL, Hive, SparkSQL, Oracle, or SQL Server, and TensorFlow and other machine learning toolkits.  SQLFlow extends the SQL syntax to enable model training and inference.
 
 ## Related Work
 
-We could write simple machine learning prediction (or scoring) algorithms with SQL using operators like [`DOT_PRODUCT`](https://thenewstack.io/sql-fans-can-now-develop-ml-applications/).  However, this requires copy-n-pasting model parameters learned by another program.
+We could write simple machine learning prediction (or scoring) algorithms in SQL using operators like [`DOT_PRODUCT`](https://thenewstack.io/sql-fans-can-now-develop-ml-applications/).  However, this requires copy-n-pasting model parameters from the training program into SQL statements.
 
 Some proprietary SQL engines provide extensions to support machine learning.
 
-Microsoft SQL Server has its [machine learning service](https://docs.microsoft.com/en-us/sql/advanced-analytics/tutorials/rtsql-create-a-predictive-model-r?view=sql-server-2017) that runs machine learning programs in R or Python as an external script:
+### Microsoft SQL Server
+
+Microsoft SQL Server has the [machine learning service](https://docs.microsoft.com/en-us/sql/advanced-analytics/tutorials/rtsql-create-a-predictive-model-r?view=sql-server-2017) that runs machine learning programs in R or Python as an external script:
 
 ```sql
 CREATE PROCEDURE generate_linear_model
@@ -29,9 +31,11 @@ BEGIN
 END;
 ```
 
-This extended syntax requires SQL programmers to be capable of programming machine learning algorithms in R or Python.
+A challenge to the users is that they need to know not only SQL but also R or Python, and they must be capable of writing machine learning programs in R or Python.
 
-Teradata extends its SQL engine by providing a RESTful service callable from the extended SQL SELECT syntax.
+### Teradata SQL for DL
+
+Teradata also provides a RESTful service, which is callable from the extended SQL SELECT syntax.
 
 ```sql
 SELECT * FROM deep_learning_scorer(
@@ -46,7 +50,9 @@ SELECT * FROM deep_learning_scorer(
 
 The above syntax couples the deployment of the service (the URL in the above SQL statement) with the algorithm.
 
-Google BigQuery enables machine learning in extended SQL by providing the `CREATE MODEL` statement.
+### Google BigQuery
+
+Google BigQuery enables machine learning in SQL by introducing the `CREATE MODEL` statement.
 
 ```sql
 CREATE MODEL dataset.model_name
@@ -60,13 +66,13 @@ Currently, BigQuery only supports two simple models: linear regression and logis
 
 None of the above meets our requirement.
 
-We want the system extensible to many SQL engines, e.g., MySQL, SparkSQL, Oracle, SQL Server, Hive.  Therefore, we don't want to build our syntax extension on top of user-defined functions (UDF), which are supposed to write again and again for each SQL engine.
+First of all, we want to build an open source software.  Also, we want it to be extensible:
 
-We want the system extensible to sophisticated models, including deep learning and boosting trees.
+- We want it extensible to many SQL engines, instead of targeting any one of them.  Therefore, we don't want to build our syntax extension on top of user-defined functions (UDFs); otherwise, we'd have to implement them for each SQL engine.
 
-We want the system able to describe algorithms with top efficiencies, like those winner approaches published on Kaggle.  So, our system should provide enough flexibility like describing [crossed feature columns](https://www.tensorflow.org/api_docs/python/tf/feature_column/crossed_column).
+- We want the system extensible to support sophisticated machine learning models and toolkits, including TensorFlow for deep learning and [xgboost](https://github.com/dmlc/xgboost) for trees.
 
-We want to keep a flat learning curve for our users, which implies that no Python or R coding embedded in the SQL statements.
+Another challenge is that we want SQLFlow to be flexible enough to configure and run cutting-edge algorithms, including specifying [feature crosses](https://www.tensorflow.org/api_docs/python/tf/feature_column/crossed_column). At the same time, we want SQLFlow easy to learn -- at least, no Python or R code embedded in the SQL statements, and integrate hyperparameter estimation.
 
 We understand that a key to address the above challenges is the syntax of the SQL extension. To craft a highly-effective and easy-to-learn syntax, we need user feedback and fast iteration.  Therefore, we'd start from a prototype that supports only MySQL and TensorFlow.  We plan to support more SQL engines and machine learning toolkits later.
 
@@ -78,7 +84,15 @@ We highly appreciate the work of [TensorFlow Estimator](https://www.tensorflow.o
 
 The SQL syntax must allow users to set Estimator attributes (parameters of the Python class' constructor, and those of `train`, `evaluate`, or `predict`).  Users can choose to use default values.  We have a plan to integrate our hyperparameter estimation research into the system to optimize the default values.
 
-Though the `tf.estimator.Estimator` utilizes TensorFlow graphs to run the algorithm; our system doesn't restrict the underlying machine learning toolkit to be TensorFlow.  Indeed, as long as an estimator provides methods of `train`, `evaluate`, and `predict`, we don't care if they call TensorFlow or xgboost. The flexibility means that we can use other machine learning toolkits.
+Though estimators derived from `tf.estimator.Estimator` run algorithms as TensorFlow graphs; SQLFlow doesn't restrict that the underlying machine learning toolkit has to be TensorFlow.  Indeed, as long as an estimator provides methods of `train`, `evaluate`, and `predict`, SQLFlow doesn't care if it calls TensorFlow or xgboost. Precisely, what SQLFlow expect is an interface like the following:
+
+```python
+class AnEstimatorClass:
+  __init__(self, **kwargs)
+  train(self, **kwargs)
+  evaluate(self, **kwargs)
+  predict(self, **kwargs)
+```
 
 We also want to reuse the [feature columns API](https://www.tensorflow.org/guide/feature_columns) from Estimator, which allows users to columns of tables in a SQL engine to features to the model.
 
@@ -91,7 +105,7 @@ Again, just as the beginning of the iteration, we propose the syntax for trainin
 SELECT * FROM kaggle_credit_fraud_training_data
 LIMIT 1000
 TRAIN DNNClassifier       /* a pre-defined TensorFlow estimator, tf.estimator.DNNClassifier */
-WITH layers=[100, 200]    /* a parameter of the Estimator class constructor */
+WITH layers=[100, 200],   /* a parameter of the Estimator class constructor */
      train.batch_size = 8 /* a parameter of the Estimator.train method */
 COLUMN *,                 /* all columns as raw features */
        cross(v1, v9, v28) /* plus a derived (crossed) column */
@@ -107,7 +121,7 @@ SELECT *                  /* raw features or the label? */
 FROM kaggle_credit_fraud_training_data
 ```
 
-Please be aware that we save the trained models into tables, instead of a variable maintained by the underlying SQL engine.  To invent a new variable type to hold trained models, we'd make our system tighly integrated with the SQL engine, and harms the extensibility to other engines.
+Please be aware that we save the trained models into tables, instead of a variable maintained by the underlying SQL engine.  To invent a new variable type to hold trained models, we'd make our system tightly integrated with the SQL engine, and harms the extensibility to other engines.
 
 The result table should include the following information:
 
@@ -133,9 +147,9 @@ SQL statement -> our SQL parser --standard SQL-> MySQL
                                 \-extended SQL-> code generator -> execution engine
 ```
 
-In the prototype, the code generator generates a Python program that trains or predicts.  In either case, it
+In the prototype, the code generator generates a Python program that trains or predicts.  In either case,
 
-1. retrieves the data from MySQL via [MySQL Connector Python API](https://dev.mysql.com/downloads/connector/python/),
+1. it retrieves the data from MySQL via [MySQL Connector Python API](https://dev.mysql.com/downloads/connector/python/),
 1. optionally, retrieves the model from MySQL,
 1. trains the model or predicts using the trained model by calling the user specified  TensorFlow estimator,
 1. and writes the trained model or prediction results into a table.
