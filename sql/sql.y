@@ -52,9 +52,20 @@
     where expr
     limit string
     estimator string
+    attrs map[string]expr
   }
 
   var parseResult selectStmt
+
+  func attrsUnion(as1, as2 map[string]expr) map[string]expr {
+      for k, v := range as2 {
+          if _, ok := as1[k]; ok {
+              log.Panicf("attr %q already specified", as2)
+          }
+          as1[k] = v
+      }
+      return as1
+  }
 %}
 
 %union {
@@ -63,6 +74,7 @@
   tbls []string
   expr expr
   expl []expr
+  atrs map[string]expr
   slct selectStmt
 }
 
@@ -71,6 +83,8 @@
 %type  <tbls> tables
 %type  <expr> expr funcall
 %type  <expl> exprlist
+%type  <atrs> attr
+%type  <atrs> attrs
 
 %token <val> SELECT FROM WHERE LIMIT TRAIN WITH COLUMN
 %token <val> IDENT NUMBER STRING
@@ -93,6 +107,7 @@ select
 | select LIMIT NUMBER { $$.limit = $3 }
 | select WHERE expr   { $$.where = $3 }
 | select TRAIN IDENT  { $$.estimator = $3 }
+| select WITH attrs   { $$.attrs = $3 }
 ;
 
 fields
@@ -109,6 +124,15 @@ tables
 funcall
 : IDENT '(' ')'          { $$ = funcall($1, nil) }
 | IDENT '(' exprlist ')' { $$ = funcall($1, $3) }
+;
+
+attr
+: IDENT '=' expr    { $$ = map[string]expr{$1 : $3} }
+;
+
+attrs
+: attr              { $$ = $1 }
+| attrs ',' attr    { $$ = attrsUnion($1, $3) }
 ;
       
 exprlist

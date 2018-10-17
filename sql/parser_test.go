@@ -2,6 +2,7 @@ package sql
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -17,6 +18,8 @@ WHERE
   AND 
   strings.Upper(last_name) = "WANG"
 TRAIN DNNClassifier
+WITH 
+  n_classes = 3
 ;
 `
 	assert.NotPanics(t, func() {
@@ -36,4 +39,8 @@ TRAIN DNNClassifier
 	assert.Equal(t,
 		`employee.age % 10 < (salary / 10000) AND strings.Upper(last_name) = "WANG"`,
 		buf.String())
+
+	for k, v := range parseResult.attrs {
+		fmt.Printf("%q = %q\n", k, v)
+	}
 }
