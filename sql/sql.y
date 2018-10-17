@@ -2,8 +2,9 @@
   package sql
 
   import (
-    "io"
     "fmt"
+    "io"
+    "log"
   )
 
   /* expr defines an expression as a Lisp list.  If len(val)>0,
@@ -24,10 +25,6 @@
     }
   }
 
-  func operator(typ int) expr {
-    return atomic(typ, "")
-  }
-    
   /* construct a funcall expr */
   func funcall(name string, oprd []expr) expr {
     return expr{
@@ -35,20 +32,20 @@
     }
   }
 
-  /* construct a binary expr */
-  func binary(typ int, od1, od2 expr) expr {
-    return expr{
-      sexp : append([]expr{operator(typ)}, od1, od2),
-    }
-  }
-
   /* construct a unary expr */
-  func unary(typ int, od1 expr) expr {
+  func unary(typ int, op string, od1 expr) expr {
     return expr{
-      sexp : append([]expr{operator(typ)}, od1),
+      sexp : append([]expr{atomic(typ, op)}, od1),
     }
   }
     
+  /* construct a binary expr */
+  func binary(typ int, od1 expr, op string, od2 expr) expr {
+    return expr{
+      sexp : append([]expr{atomic(typ, op)}, od1, od2),
+    }
+  }
+
   type selectStmt struct {
     fields []string
     tables []string
@@ -78,12 +75,12 @@
 %token <val> SELECT FROM WHERE LIMIT TRAIN WITH COLUMN
 %token <val> IDENT NUMBER STRING
 
-%left AND OR
-%left '>' '<' '=' GE LE POWER
-%left '+' '-'
-%left '*' '/' '%'
-%left NOT
-%left UMINUS
+%left <val> AND OR
+%left <val> '>' '<' '=' GE LE POWER
+%left <val> '+' '-'
+%left <val> '*' '/' '%'
+%left <val> NOT
+%left <val> UMINUS
 
 %%
 
@@ -123,37 +120,65 @@ expr
 : NUMBER         { $$ = atomic(NUMBER, $1) }
 | IDENT          { $$ = atomic(IDENT, $1) }
 | STRING         { $$ = atomic(STRING, $1) }
-| '(' expr ')'   { $$ = $2 }
+| '(' expr ')'   { $$ = unary('(', "paren", $2) } /* take '(' as the operator */
 | funcall        { $$ = $1 }
-| expr '+' expr  { $$ = binary('+', $1, $3) }
-| expr '-' expr  { $$ = binary('-', $1, $3) }
-| expr '*' expr  { $$ = binary('*', $1, $3) }
-| expr '/' expr  { $$ = binary('/', $1, $3) }
-| expr '%' expr  { $$ = binary('%', $1, $3) }
-| expr '=' expr  { $$ = binary('=', $1, $3) }
-| expr '<' expr  { $$ = binary('<', $1, $3) }
-| expr '>' expr  { $$ = binary('>', $1, $3) }
-| expr LE  expr  { $$ = binary(LE,  $1, $3) }
-| expr GE  expr  { $$ = binary(GE,  $1, $3) }
-| expr AND expr  { $$ = binary(AND, $1, $3) }
-| expr OR  expr  { $$ = binary(OR,  $1, $3) }
-| NOT expr %prec NOT    { $$ = unary(NOT, $2) }
-| '-' expr %prec UMINUS { $$ = unary('-', $2) }
+| expr '+' expr  { $$ = binary('+', $1, $2, $3) }
+| expr '-' expr  { $$ = binary('-', $1, $2, $3) }
+| expr '*' expr  { $$ = binary('*', $1, $2, $3) }
+| expr '/' expr  { $$ = binary('/', $1, $2, $3) }
+| expr '%' expr  { $$ = binary('%', $1, $2, $3) }
+| expr '=' expr  { $$ = binary('=', $1, $2, $3) }
+| expr '<' expr  { $$ = binary('<', $1, $2, $3) }
+| expr '>' expr  { $$ = binary('>', $1, $2, $3) }
+| expr LE  expr  { $$ = binary(LE,  $1, $2, $3) }
+| expr GE  expr  { $$ = binary(GE,  $1, $2, $3) }
+| expr AND expr  { $$ = binary(AND, $1, $2, $3) }
+| expr OR  expr  { $$ = binary(OR,  $1, $2, $3) }
+| NOT expr %prec NOT    { $$ = unary(NOT, $1, $2) }
+| '-' expr %prec UMINUS { $$ = unary('-', $1, $2) }
 ;
 
 %%
 
-func indent(w io.Writer, indentLevel int) {
-    for i := 0; i < indentLevel; i++ {
-        fmt.Fprintf(w, " ")
-    }
-}    
- 
-func (e expr) printf(w io.Writer, indentLevel int) {
-    indent(w, indentLevel)
-
-    if e.typ == 0 /* atomic expr */ {
+func (e expr) print(w io.Writer) {
+    if e.typ == 0 { /* a compound expression */ 
+        switch e.sexp[0].typ {
+        case '+', '*', '/', '%', '=', '<', '>', LE, GE, AND, OR:
+            if len(e.sexp) != 3 {
+		log.Panicf("Expecting binary expression, got %.10q", e.sexp)
+	    }
+	    e.sexp[1].print(w)
+	    fmt.Fprintf(w, " %s ", e.sexp[0].val)
+	    e.sexp[2].print(w)
+        case '-':
+	    switch len(e.sexp) {
+	    case 2:
+	        fmt.Fprintf(w, " -")
+		e.sexp[1].print(w)
+	    case 3:
+	        e.sexp[1].print(w)
+	        fmt.Fprintf(w, " - ")
+	        e.sexp[2].print(w)
+	    default:
+	        log.Panicf("Expecting either unary or binary -, got %.10q", e.sexp)
+	    }
+	case '(':
+	    if len(e.sexp) != 2 {
+		log.Panicf("Expecting ( ) as unary operator, got %.10q", e.sexp)
+	    }
+	    fmt.Fprintf(w, " (")
+	    e.sexp[1].print(w)
+	    fmt.Fprintf(w, ") ")
+	case NOT:
+	    fmt.Fprintf(w, " NOT ")
+	    e.sexp[1].print(w)
+	case IDENT: /* function call */
+	    fmt.Fprintf(w, " %s(", e.sexp[0].val)
+	    for i := 1; i < len(e.sexp); i++ {
+	      e.sexp[i].print(w)
+	    }
+	}
+    } else {
         fmt.Fprintf(w, "%s", e.val)
-    }
-    /* try to finish */
+    } 
 }

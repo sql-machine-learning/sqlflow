@@ -1,6 +1,7 @@
 package sql
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -29,4 +30,10 @@ TRAIN DNNClassifier
 	assert.Equal(t, '<', rune(parseResult.where.sexp[1].sexp[0].typ))
 	assert.Equal(t, '=', rune(parseResult.where.sexp[2].sexp[0].typ))
 	assert.Equal(t, "DNNClassifier", parseResult.estimator)
+
+	var buf bytes.Buffer
+	parseResult.where.print(&buf)
+	assert.Equal(t,
+		`employee.age % 10 <  (salary / 10000)  AND last_name = "Wang"`,
+		buf.String())
 }
