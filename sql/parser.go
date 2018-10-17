@@ -156,17 +156,18 @@ func (e expr) print(w io.Writer) {
 			if len(e.sexp) != 2 {
 				log.Panicf("Expecting ( ) as unary operator, got %.10q", e.sexp)
 			}
-			fmt.Fprintf(w, " (")
+			fmt.Fprintf(w, "(")
 			e.sexp[1].print(w)
-			fmt.Fprintf(w, ") ")
+			fmt.Fprintf(w, ")")
 		case NOT:
-			fmt.Fprintf(w, " NOT ")
+			fmt.Fprintf(w, "NOT ")
 			e.sexp[1].print(w)
 		case IDENT: /* function call */
-			fmt.Fprintf(w, " %s(", e.sexp[0].val)
+			fmt.Fprintf(w, "%s(", e.sexp[0].val)
 			for i := 1; i < len(e.sexp); i++ {
 				e.sexp[i].print(w)
 			}
+			fmt.Fprintf(w, ")")
 		}
 	} else {
 		fmt.Fprintf(w, "%s", e.val)

@@ -15,7 +15,7 @@ LIMIT  100
 WHERE  
   employee.age % 10 < (salary / 10000) 
   AND 
-  last_name = "Wang"
+  strings.Upper(last_name) = "WANG"
 TRAIN DNNClassifier
 ;
 `
@@ -34,6 +34,6 @@ TRAIN DNNClassifier
 	var buf bytes.Buffer
 	parseResult.where.print(&buf)
 	assert.Equal(t,
-		`employee.age % 10 <  (salary / 10000)  AND last_name = "Wang"`,
+		`employee.age % 10 < (salary / 10000) AND strings.Upper(last_name) = "WANG"`,
 		buf.String())
 }
