@@ -1,11 +1,52 @@
 %{
-
   package sql
 
+  import (
+    "io"
+    "fmt"
+  )
+
+  /* expr defines an expression as a Lisp list.  If len(val)>0,
+     it is an atomic expression, in particular, NUMBER, IDENT, 
+     or STRING, defined by typ and val; otherwise, it is a 
+     Lisp S-expression. */
   type expr struct {
-    typ int             /* NUMBER, IDENT, STRING, or operator */
-    oprd []expr         /* if typ is an operator */
-    val string          /* if typ is not an operator */
+    typ int
+    val string    
+    sexp []expr   
+  }
+
+  /* construct an atomic expr */
+  func atomic(typ int, val string) expr {
+    return expr{
+      typ : typ,
+      val : val,
+    }
+  }
+
+  func operator(typ int) expr {
+    return atomic(typ, "")
+  }
+    
+  /* construct a funcall expr */
+  func funcall(name string, oprd []expr) expr {
+    return expr{
+      sexp : append([]expr{atomic(IDENT, name)}, oprd...),
+    }
+  }
+
+  /* construct a binary expr */
+  func binary(typ int, od1, od2 expr) expr {
+    return expr{
+      sexp : append([]expr{operator(typ)}, od1, od2),
+    }
+  }
+
+  /* construct a unary expr */
+  func unary(typ int, od1 expr) expr {
+    return expr{
+      sexp : append([]expr{operator(typ)}, od1),
+    }
   }
     
   type selectStmt struct {
@@ -13,6 +54,7 @@
     tables []string
     where expr
     limit string
+    estimator string
   }
 
   var parseResult selectStmt
@@ -23,15 +65,17 @@
   flds []string
   tbls []string
   expr expr
+  expl []expr
   slct selectStmt
 }
 
 %type  <slct> select select_stmt
 %type  <flds> fields
 %type  <tbls> tables
-%type  <expr> expr
+%type  <expr> expr funcall
+%type  <expl> exprlist
 
-%token <val> SELECT FROM WHERE LIMIT TRAIN COLUMN
+%token <val> SELECT FROM WHERE LIMIT TRAIN WITH COLUMN
 %token <val> IDENT NUMBER STRING
 
 %left AND OR
@@ -51,6 +95,7 @@ select
 | select FROM tables  { $$.tables = $3 }
 | select LIMIT NUMBER { $$.limit = $3 }
 | select WHERE expr   { $$.where = $3 }
+| select TRAIN IDENT  { $$.estimator = $3 }
 ;
 
 fields
@@ -60,28 +105,55 @@ fields
 ;
 
 tables
-: IDENT            { $$ = append($$, $1) }
-| tables ',' IDENT { $$ = append($$, $3) }
+: IDENT            { $$ = []string{$1} }
+| tables ',' IDENT { $$ = append($1, $3) }
+;
+
+funcall
+: IDENT '(' ')'          { $$ = funcall($1, nil) }
+| IDENT '(' exprlist ')' { $$ = funcall($1, $3) }
+;
+      
+exprlist
+: expr              { $$ = []expr{$1} }
+| exprlist ',' expr { $$ = append($1, $3) }
 ;
 
 expr
-: NUMBER         { $$ = expr{typ : NUMBER, val : $1} }
-| IDENT          { $$ = expr{typ : IDENT,  val : $1} }
-| STRING         { $$ = expr{typ : STRING, val : $1} }
+: NUMBER         { $$ = atomic(NUMBER, $1) }
+| IDENT          { $$ = atomic(IDENT, $1) }
+| STRING         { $$ = atomic(STRING, $1) }
 | '(' expr ')'   { $$ = $2 }
-| expr '+' expr  { $$ = expr{typ : '+', oprd : []expr{$1, $3}} }
-| expr '-' expr  { $$ = expr{typ : '-', oprd : []expr{$1, $3}} }
-| expr '*' expr  { $$ = expr{typ : '*', oprd : []expr{$1, $3}} }
-| expr '/' expr  { $$ = expr{typ : '/', oprd : []expr{$1, $3}} }
-| expr '%' expr  { $$ = expr{typ : '%', oprd : []expr{$1, $3}} }
-| expr '=' expr  { $$ = expr{typ : '=', oprd : []expr{$1, $3}} }
-| expr '<' expr  { $$ = expr{typ : '<', oprd : []expr{$1, $3}} }
-| expr '>' expr  { $$ = expr{typ : '>', oprd : []expr{$1, $3}} }
-| expr LE  expr  { $$ = expr{typ : LE,  oprd : []expr{$1, $3}} }
-| expr GE  expr  { $$ = expr{typ : GE,  oprd : []expr{$1, $3}} }
-| expr AND expr  { $$ = expr{typ : AND, oprd : []expr{$1, $3}} }
-| expr OR  expr  { $$ = expr{typ : OR,  oprd : []expr{$1, $3}} }
-| NOT expr %prec NOT    { $$ = expr{typ : NOT, oprd : []expr{$2}} }
-| '-' expr %prec UMINUS { $$ = expr{typ : '-', oprd : []expr{$2}} }
+| funcall        { $$ = $1 }
+| expr '+' expr  { $$ = binary('+', $1, $3) }
+| expr '-' expr  { $$ = binary('-', $1, $3) }
+| expr '*' expr  { $$ = binary('*', $1, $3) }
+| expr '/' expr  { $$ = binary('/', $1, $3) }
+| expr '%' expr  { $$ = binary('%', $1, $3) }
+| expr '=' expr  { $$ = binary('=', $1, $3) }
+| expr '<' expr  { $$ = binary('<', $1, $3) }
+| expr '>' expr  { $$ = binary('>', $1, $3) }
+| expr LE  expr  { $$ = binary(LE,  $1, $3) }
+| expr GE  expr  { $$ = binary(GE,  $1, $3) }
+| expr AND expr  { $$ = binary(AND, $1, $3) }
+| expr OR  expr  { $$ = binary(OR,  $1, $3) }
+| NOT expr %prec NOT    { $$ = unary(NOT, $2) }
+| '-' expr %prec UMINUS { $$ = unary('-', $2) }
 ;
+
 %%
+
+func indent(w io.Writer, indentLevel int) {
+    for i := 0; i < indentLevel; i++ {
+        fmt.Fprintf(w, " ")
+    }
+}    
+ 
+func (e expr) printf(w io.Writer, indentLevel int) {
+    indent(w, indentLevel)
+
+    if e.typ == 0 /* atomic expr */ {
+        fmt.Fprintf(w, "%s", e.val)
+    }
+    /* try to finish */
+}
