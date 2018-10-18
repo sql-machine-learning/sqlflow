@@ -60,6 +60,7 @@
     limit string
     estimator string
     attrs map[string]expr
+    columns []expr
   }
 
   var parseResult selectStmt
@@ -88,8 +89,8 @@
 %type  <slct> select select_stmt
 %type  <flds> fields
 %type  <tbls> tables
-%type  <expr> expr funcall
-%type  <expl> exprlist pythonlist
+%type  <expr> expr funcall column
+%type  <expl> exprlist pythonlist columns
 %type  <atrs> attr
 %type  <atrs> attrs
 
@@ -109,12 +110,13 @@ select_stmt
 : select ';' { parseResult = $1 }
       
 select
-: SELECT fields       { $$.fields = $2 }
-| select FROM tables  { $$.tables = $3 }
-| select LIMIT NUMBER { $$.limit = $3 }
-| select WHERE expr   { $$.where = $3 }
-| select TRAIN IDENT  { $$.estimator = $3 }
-| select WITH attrs   { $$.attrs = $3 }
+: SELECT fields         { $$.fields = $2 }
+| select FROM tables    { $$.tables = $3 }
+| select LIMIT NUMBER   { $$.limit = $3 }
+| select WHERE expr     { $$.where = $3 }
+| select TRAIN IDENT    { $$.estimator = $3 }
+| select WITH attrs     { $$.attrs = $3 }
+| select COLUMN columns { $$.columns = $3 }
 ;
 
 fields
@@ -123,6 +125,17 @@ fields
 | fields ',' IDENT { $$ = append($$, $3) }
 ;
 
+column
+: '*'     { $$ = atomic(IDENT, "*") }
+| IDENT   { $$ = atomic(IDENT, $1)  }
+| funcall { $$ = $1 }
+;
+
+columns
+: column             { $$ = []expr{$1}     }
+| columns ',' column { $$ = append($1, $3) }
+;
+      
 tables
 : IDENT            { $$ = []string{$1} }
 | tables ',' IDENT { $$ = append($1, $3) }
