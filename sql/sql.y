@@ -99,11 +99,12 @@
 %token <val> IDENT NUMBER STRING
 
 %left <val> AND OR
-%left <val> '>' '<' '=' GE LE POWER
+%left <val> '>' '<' '=' GE LE 
 %left <val> '+' '-'
 %left <val> '*' '/' '%'
 %left <val> NOT
-%left <val> UMINUS
+%left <val> POWER  /* think about the example "NOT base ** -3" */
+%left <val> UMINUS 
 
 %%
 
