@@ -2,8 +2,8 @@
   package sql
 
   import (
+    "bytes"
     "fmt"
-    "io"
     "log"
   )
 
@@ -46,6 +46,13 @@
     }
   }
 
+  /* construct a variadic expr */
+  func variadic(typ int, op string, ods []expr) expr {
+    return expr{
+      sexp : append([]expr{atomic(typ, op)}, ods...),
+    }
+  }
+    
   type selectStmt struct {
     fields []string
     tables []string
@@ -82,7 +89,7 @@
 %type  <flds> fields
 %type  <tbls> tables
 %type  <expr> expr funcall
-%type  <expl> exprlist
+%type  <expl> exprlist pythonlist
 %type  <atrs> attr
 %type  <atrs> attrs
 
@@ -121,11 +128,6 @@ tables
 | tables ',' IDENT { $$ = append($1, $3) }
 ;
 
-funcall
-: IDENT '(' ')'          { $$ = funcall($1, nil) }
-| IDENT '(' exprlist ')' { $$ = funcall($1, $3) }
-;
-
 attr
 : IDENT '=' expr    { $$ = map[string]expr{$1 : $3} }
 ;
@@ -135,15 +137,26 @@ attrs
 | attrs ',' attr    { $$ = attrsUnion($1, $3) }
 ;
       
+funcall
+: IDENT '(' ')'          { $$ = funcall($1, nil) }
+| IDENT '(' exprlist ')' { $$ = funcall($1, $3)  }
+;
+
 exprlist
-: expr              { $$ = []expr{$1} }
+: expr              { $$ = []expr{$1}     }
 | exprlist ',' expr { $$ = append($1, $3) }
+;
+
+pythonlist
+: '[' ']'           { $$ = nil }
+| '[' exprlist ']'  { $$ = $2  }
 ;
 
 expr
 : NUMBER         { $$ = atomic(NUMBER, $1) }
-| IDENT          { $$ = atomic(IDENT, $1) }
+| IDENT          { $$ = atomic(IDENT, $1)  }
 | STRING         { $$ = atomic(STRING, $1) }
+| pythonlist     { $$ = variadic('[', "square", $1) }
 | '(' expr ')'   { $$ = unary('(', "paren", $2) } /* take '(' as the operator */
 | funcall        { $$ = $1 }
 | expr '+' expr  { $$ = binary('+', $1, $2, $3) }
@@ -164,25 +177,22 @@ expr
 
 %%
 
-func (e expr) print(w io.Writer) {
+func (e expr) String() string {
+    var w bytes.Buffer
+
     if e.typ == 0 { /* a compound expression */ 
         switch e.sexp[0].typ {
         case '+', '*', '/', '%', '=', '<', '>', LE, GE, AND, OR:
             if len(e.sexp) != 3 {
 		log.Panicf("Expecting binary expression, got %.10q", e.sexp)
 	    }
-	    e.sexp[1].print(w)
-	    fmt.Fprintf(w, " %s ", e.sexp[0].val)
-	    e.sexp[2].print(w)
+	    return fmt.Sprintf("%s %s %s", e.sexp[1], e.sexp[0].val, e.sexp[2])
         case '-':
 	    switch len(e.sexp) {
 	    case 2:
-	        fmt.Fprintf(w, " -")
-		e.sexp[1].print(w)
+	        return fmt.Sprintf(" -%s", e.sexp[1])
 	    case 3:
-	        e.sexp[1].print(w)
-	        fmt.Fprintf(w, " - ")
-	        e.sexp[2].print(w)
+	        return fmt.Sprintf("%s - %s", e.sexp[1], e.sexp[2])
 	    default:
 	        log.Panicf("Expecting either unary or binary -, got %.10q", e.sexp)
 	    }
@@ -190,20 +200,34 @@ func (e expr) print(w io.Writer) {
 	    if len(e.sexp) != 2 {
 		log.Panicf("Expecting ( ) as unary operator, got %.10q", e.sexp)
 	    }
-	    fmt.Fprintf(w, "(")
-	    e.sexp[1].print(w)
-	    fmt.Fprintf(w, ")")
-	case NOT:
-	    fmt.Fprintf(w, "NOT ")
-	    e.sexp[1].print(w)
-	case IDENT: /* function call */
-	    fmt.Fprintf(w, "%s(", e.sexp[0].val)
+	    return fmt.Sprintf("(%s)", e.sexp[1])
+	case '[':
+	    fmt.Fprintf(&w, "[")
 	    for i := 1; i < len(e.sexp); i++ {
-	      e.sexp[i].print(w)
+	        fmt.Fprintf(&w, "%s", e.sexp[i])
+	        if i < len(e.sexp) -1 {
+		    fmt.Fprintf(&w, ", ")
+		}
 	    }
-   	    fmt.Fprintf(w, ")")
+            fmt.Fprintf(&w, "]")
+	    return w.String()
+	case NOT:
+	    return fmt.Sprintf("NOT %s", e.sexp[1])
+	case IDENT: /* function call */
+	    fmt.Fprintf(&w, "%s(", e.sexp[0].val)
+	    for i := 1; i < len(e.sexp); i++ {
+	        fmt.Fprintf(&w, "%s", e.sexp[i])
+		if i < len(e.sexp) -1 {
+		    fmt.Fprintf(&w, ", ")
+		}
+	    }
+   	    fmt.Fprintf(&w, ")")
+	    return w.String()
 	}
     } else {
-        fmt.Fprintf(w, "%s", e.val)
-    } 
+        return fmt.Sprintf("%s", e.val)
+    }
+
+    log.Panicf("Cannot print an unknown expression")
+    return ""
 }

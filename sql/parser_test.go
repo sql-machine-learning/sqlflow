@@ -1,8 +1,6 @@
 package sql
 
 import (
-	"bytes"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -19,7 +17,8 @@ WHERE
   strings.Upper(last_name) = "WANG"
 TRAIN DNNClassifier
 WITH 
-  n_classes = 3
+  n_classes = 3,
+  hidden_units = [10, 20]
 ;
 `
 	assert.NotPanics(t, func() {
@@ -34,13 +33,10 @@ WITH
 	assert.Equal(t, '=', rune(parseResult.where.sexp[2].sexp[0].typ))
 	assert.Equal(t, "DNNClassifier", parseResult.estimator)
 
-	var buf bytes.Buffer
-	parseResult.where.print(&buf)
 	assert.Equal(t,
 		`employee.age % 10 < (salary / 10000) AND strings.Upper(last_name) = "WANG"`,
-		buf.String())
+		parseResult.where.String())
 
-	for k, v := range parseResult.attrs {
-		fmt.Printf("%q = %q\n", k, v)
-	}
+	assert.Equal(t, "[10, 20]", parseResult.attrs["hidden_units"].String())
+	assert.Equal(t, "3", parseResult.attrs["n_classes"].String())
 }
