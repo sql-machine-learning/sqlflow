@@ -118,6 +118,7 @@ func (l *lexer) emitIdentOrKeyword(lval *sqlSymType) int {
 		"TRAIN":  TRAIN,
 		"WITH":   WITH,
 		"COLUMN": COLUMN,
+		"INTO":   INTO,
 		"AND":    AND,
 		"OR":     OR,
 		"NOT":    NOT,

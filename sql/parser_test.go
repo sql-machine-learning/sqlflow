@@ -25,6 +25,8 @@ COLUMN
   employee.name,
   bucketize(last_name, 1000), 
   cross(embedding(emplyoee.name), bucketize(last_name, 1000))
+INTO
+  my_dnn_model
 ;
 `
 	assert.NotPanics(func() {
@@ -53,4 +55,6 @@ COLUMN
 	assert.Equal(
 		`cross(embedding(emplyoee.name), bucketize(last_name, 1000))`,
 		parseResult.columns[2].String())
+
+	assert.Equal("my_dnn_model", parseResult.into)
 }

@@ -61,6 +61,7 @@
     estimator string
     attrs map[string]expr
     columns []expr
+    into string
   }
 
   var parseResult selectStmt
@@ -94,7 +95,7 @@
 %type  <atrs> attr
 %type  <atrs> attrs
 
-%token <val> SELECT FROM WHERE LIMIT TRAIN WITH COLUMN
+%token <val> SELECT FROM WHERE LIMIT TRAIN WITH COLUMN INTO
 %token <val> IDENT NUMBER STRING
 
 %left <val> AND OR
@@ -117,6 +118,7 @@ select
 | select TRAIN IDENT    { $$.estimator = $3 }
 | select WITH attrs     { $$.attrs = $3 }
 | select COLUMN columns { $$.columns = $3 }
+| select INTO IDENT     { $$.into = $3 }
 ;
 
 fields
