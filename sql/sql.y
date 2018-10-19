@@ -2,7 +2,7 @@
   package sql
 
   import (
-    "bytes"
+    "strings"
     "fmt"
     "log"
   )
@@ -193,9 +193,15 @@ expr
 
 %%
 
-func (e expr) String() string {
-    var w bytes.Buffer
+/* Like Lisp's builtin function cdr. */
+func (e expr) cdr() (r []string) {
+    for i := 1; i < len(e.sexp); i++ {
+        r = append(r, e.sexp[i].String())
+    }
+    return r
+}
 
+func (e expr) String() string {
     if e.typ == 0 { /* a compound expression */ 
         switch e.sexp[0].typ {
         case '+', '*', '/', '%', '=', '<', '>', LE, GE, AND, OR:
@@ -218,27 +224,11 @@ func (e expr) String() string {
 	    }
 	    return fmt.Sprintf("(%s)", e.sexp[1])
 	case '[':
-	    fmt.Fprintf(&w, "[")
-	    for i := 1; i < len(e.sexp); i++ {
-	        fmt.Fprintf(&w, "%s", e.sexp[i])
-	        if i < len(e.sexp) -1 {
-		    fmt.Fprintf(&w, ", ")
-		}
-	    }
-            fmt.Fprintf(&w, "]")
-	    return w.String()
+	    return "[" + strings.Join(e.cdr(), ", ") + "]"
 	case NOT:
 	    return fmt.Sprintf("NOT %s", e.sexp[1])
 	case IDENT: /* function call */
-	    fmt.Fprintf(&w, "%s(", e.sexp[0].val)
-	    for i := 1; i < len(e.sexp); i++ {
-	        fmt.Fprintf(&w, "%s", e.sexp[i])
-		if i < len(e.sexp) -1 {
-		    fmt.Fprintf(&w, ", ")
-		}
-	    }
-   	    fmt.Fprintf(&w, ")")
-	    return w.String()
+	    return e.sexp[0].val + "(" + strings.Join(e.cdr(), ", ") + ")"
 	}
     } else {
         return fmt.Sprintf("%s", e.val)
