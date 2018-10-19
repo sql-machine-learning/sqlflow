@@ -2,8 +2,8 @@
   package sql
 
   import (
+    "strings"
     "fmt"
-    "io"
     "log"
   )
 
@@ -46,15 +46,35 @@
     }
   }
 
+  /* construct a variadic expr */
+  func variadic(typ int, op string, ods []expr) expr {
+    return expr{
+      sexp : append([]expr{atomic(typ, op)}, ods...),
+    }
+  }
+    
   type selectStmt struct {
     fields []string
     tables []string
     where expr
     limit string
     estimator string
+    attrs map[string]expr
+    columns []expr
+    into string
   }
 
   var parseResult selectStmt
+
+  func attrsUnion(as1, as2 map[string]expr) map[string]expr {
+      for k, v := range as2 {
+          if _, ok := as1[k]; ok {
+              log.Panicf("attr %q already specified", as2)
+          }
+          as1[k] = v
+      }
+      return as1
+  }
 %}
 
 %union {
@@ -63,24 +83,28 @@
   tbls []string
   expr expr
   expl []expr
+  atrs map[string]expr
   slct selectStmt
 }
 
 %type  <slct> select select_stmt
 %type  <flds> fields
 %type  <tbls> tables
-%type  <expr> expr funcall
-%type  <expl> exprlist
+%type  <expr> expr funcall column
+%type  <expl> exprlist pythonlist columns
+%type  <atrs> attr
+%type  <atrs> attrs
 
-%token <val> SELECT FROM WHERE LIMIT TRAIN WITH COLUMN
+%token <val> SELECT FROM WHERE LIMIT TRAIN WITH COLUMN INTO
 %token <val> IDENT NUMBER STRING
 
 %left <val> AND OR
-%left <val> '>' '<' '=' GE LE POWER
+%left <val> '>' '<' '=' GE LE 
 %left <val> '+' '-'
 %left <val> '*' '/' '%'
 %left <val> NOT
-%left <val> UMINUS
+%left <val> POWER  /* think about the example "NOT base ** -3" */
+%left <val> UMINUS 
 
 %%
 
@@ -88,11 +112,14 @@ select_stmt
 : select ';' { parseResult = $1 }
       
 select
-: SELECT fields       { $$.fields = $2 }
-| select FROM tables  { $$.tables = $3 }
-| select LIMIT NUMBER { $$.limit = $3 }
-| select WHERE expr   { $$.where = $3 }
-| select TRAIN IDENT  { $$.estimator = $3 }
+: SELECT fields         { $$.fields = $2 }
+| select FROM tables    { $$.tables = $3 }
+| select LIMIT NUMBER   { $$.limit = $3 }
+| select WHERE expr     { $$.where = $3 }
+| select TRAIN IDENT    { $$.estimator = $3 }
+| select WITH attrs     { $$.attrs = $3 }
+| select COLUMN columns { $$.columns = $3 }
+| select INTO IDENT     { $$.into = $3 }
 ;
 
 fields
@@ -101,25 +128,51 @@ fields
 | fields ',' IDENT { $$ = append($$, $3) }
 ;
 
+column
+: '*'     { $$ = atomic(IDENT, "*") }
+| IDENT   { $$ = atomic(IDENT, $1)  }
+| funcall { $$ = $1 }
+;
+
+columns
+: column             { $$ = []expr{$1}     }
+| columns ',' column { $$ = append($1, $3) }
+;
+      
 tables
 : IDENT            { $$ = []string{$1} }
 | tables ',' IDENT { $$ = append($1, $3) }
 ;
 
-funcall
-: IDENT '(' ')'          { $$ = funcall($1, nil) }
-| IDENT '(' exprlist ')' { $$ = funcall($1, $3) }
+attr
+: IDENT '=' expr    { $$ = map[string]expr{$1 : $3} }
+;
+
+attrs
+: attr              { $$ = $1 }
+| attrs ',' attr    { $$ = attrsUnion($1, $3) }
 ;
       
+funcall
+: IDENT '(' ')'          { $$ = funcall($1, nil) }
+| IDENT '(' exprlist ')' { $$ = funcall($1, $3)  }
+;
+
 exprlist
-: expr              { $$ = []expr{$1} }
+: expr              { $$ = []expr{$1}     }
 | exprlist ',' expr { $$ = append($1, $3) }
+;
+
+pythonlist
+: '[' ']'           { $$ = nil }
+| '[' exprlist ']'  { $$ = $2  }
 ;
 
 expr
 : NUMBER         { $$ = atomic(NUMBER, $1) }
-| IDENT          { $$ = atomic(IDENT, $1) }
+| IDENT          { $$ = atomic(IDENT, $1)  }
 | STRING         { $$ = atomic(STRING, $1) }
+| pythonlist     { $$ = variadic('[', "square", $1) }
 | '(' expr ')'   { $$ = unary('(', "paren", $2) } /* take '(' as the operator */
 | funcall        { $$ = $1 }
 | expr '+' expr  { $$ = binary('+', $1, $2, $3) }
@@ -140,25 +193,28 @@ expr
 
 %%
 
-func (e expr) print(w io.Writer) {
+/* Like Lisp's builtin function cdr. */
+func (e expr) cdr() (r []string) {
+    for i := 1; i < len(e.sexp); i++ {
+        r = append(r, e.sexp[i].String())
+    }
+    return r
+}
+
+func (e expr) String() string {
     if e.typ == 0 { /* a compound expression */ 
         switch e.sexp[0].typ {
         case '+', '*', '/', '%', '=', '<', '>', LE, GE, AND, OR:
             if len(e.sexp) != 3 {
 		log.Panicf("Expecting binary expression, got %.10q", e.sexp)
 	    }
-	    e.sexp[1].print(w)
-	    fmt.Fprintf(w, " %s ", e.sexp[0].val)
-	    e.sexp[2].print(w)
+	    return fmt.Sprintf("%s %s %s", e.sexp[1], e.sexp[0].val, e.sexp[2])
         case '-':
 	    switch len(e.sexp) {
 	    case 2:
-	        fmt.Fprintf(w, " -")
-		e.sexp[1].print(w)
+	        return fmt.Sprintf(" -%s", e.sexp[1])
 	    case 3:
-	        e.sexp[1].print(w)
-	        fmt.Fprintf(w, " - ")
-	        e.sexp[2].print(w)
+	        return fmt.Sprintf("%s - %s", e.sexp[1], e.sexp[2])
 	    default:
 	        log.Panicf("Expecting either unary or binary -, got %.10q", e.sexp)
 	    }
@@ -166,19 +222,18 @@ func (e expr) print(w io.Writer) {
 	    if len(e.sexp) != 2 {
 		log.Panicf("Expecting ( ) as unary operator, got %.10q", e.sexp)
 	    }
-	    fmt.Fprintf(w, " (")
-	    e.sexp[1].print(w)
-	    fmt.Fprintf(w, ") ")
+	    return fmt.Sprintf("(%s)", e.sexp[1])
+	case '[':
+	    return "[" + strings.Join(e.cdr(), ", ") + "]"
 	case NOT:
-	    fmt.Fprintf(w, " NOT ")
-	    e.sexp[1].print(w)
+	    return fmt.Sprintf("NOT %s", e.sexp[1])
 	case IDENT: /* function call */
-	    fmt.Fprintf(w, " %s(", e.sexp[0].val)
-	    for i := 1; i < len(e.sexp); i++ {
-	      e.sexp[i].print(w)
-	    }
+	    return e.sexp[0].val + "(" + strings.Join(e.cdr(), ", ") + ")"
 	}
     } else {
-        fmt.Fprintf(w, "%s", e.val)
-    } 
+        return fmt.Sprintf("%s", e.val)
+    }
+
+    log.Panicf("Cannot print an unknown expression")
+    return ""
 }
