@@ -52,19 +52,34 @@
       sexp : append([]expr{atomic(typ, op)}, ods...),
     }
   }
+
+  type extendedSelect struct {
+    extended bool
+    train    bool
+    standardSelect
+    trainClause
+    inferClause
+  }
     
-  type selectStmt struct {
+  type standardSelect struct {
     fields []string
     tables []string
     where expr
     limit string
-    estimator string
-    attrs map[string]expr
-    columns []expr
-    into string
   }
 
-  var parseResult selectStmt
+  type trainClause struct {
+    estimator string
+    attrs     map[string]expr
+    columns   []expr
+    save      string
+  }
+
+  type inferClause struct {
+    model  string
+  }
+
+  var parseResult extendedSelect
 
   func attrsUnion(as1, as2 map[string]expr) map[string]expr {
       for k, v := range as2 {
@@ -84,10 +99,16 @@
   expr expr
   expl []expr
   atrs map[string]expr
-  slct selectStmt
+  eslt extendedSelect
+  slct standardSelect
+  tran trainClause
+  infr inferClause
 }
 
-%type  <slct> select select_stmt
+%type  <eslt> select_stmt
+%type  <slct> select
+%type  <tran> train_clause
+%type  <infr> infer_clause
 %type  <flds> fields
 %type  <tbls> tables
 %type  <expr> expr funcall column
@@ -95,7 +116,7 @@
 %type  <atrs> attr
 %type  <atrs> attrs
 
-%token <val> SELECT FROM WHERE LIMIT TRAIN WITH COLUMN INTO
+%token <val> SELECT FROM WHERE LIMIT TRAIN INFER WITH COLUMN INTO
 %token <val> IDENT NUMBER STRING
 
 %left <val> AND OR
@@ -109,17 +130,42 @@
 %%
 
 select_stmt
-: select ';' { parseResult = $1 }
+: select ';' {
+    parseResult.extended = false
+    parseResult.standardSelect = $1
+  }
+| select train_clause ';' {
+    parseResult.extended = true
+    parseResult.train = true
+    parseResult.standardSelect = $1
+    parseResult.trainClause = $2
+  }
+| select infer_clause ';' {
+    parseResult.extended = true
+    parseResult.train = false
+    parseResult.standardSelect = $1
+    parseResult.inferClause = $2
+  }
+;
       
 select
 : SELECT fields         { $$.fields = $2 }
 | select FROM tables    { $$.tables = $3 }
 | select LIMIT NUMBER   { $$.limit = $3 }
 | select WHERE expr     { $$.where = $3 }
-| select TRAIN IDENT    { $$.estimator = $3 }
-| select WITH attrs     { $$.attrs = $3 }
-| select COLUMN columns { $$.columns = $3 }
-| select INTO IDENT     { $$.into = $3 }
+;
+
+train_clause
+: TRAIN IDENT WITH attrs COLUMN columns INTO IDENT {
+    $$.estimator = $2
+    $$.attrs = $4
+    $$.columns = $6
+    $$.save = $8
+  }
+;
+
+infer_clause
+: INFER IDENT      { $$.model = $2 }
 ;
 
 fields
