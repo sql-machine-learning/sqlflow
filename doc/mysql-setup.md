@@ -6,7 +6,7 @@ The document explains how to setup MySQL in our development environment.
 
 ```bash
 docker run --rm \
-   -v/tmp/test1:/var/lib/mysql \
+   -v /tmp/test1:/var/lib/mysql \
    --name mysql01 \
    -e MYSQL_ROOT_PASSWORD=root \
    -e MYSQL_ROOT_HOST='%' \
