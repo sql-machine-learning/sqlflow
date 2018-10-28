@@ -51,7 +51,7 @@ This command executes the command `mysql`, which is the command line tool of MyS
 ```bash
 docker run --rm -it \
    -v /tmp/test1:/var/lib/mysql \
-   mysql/mysql-server \
+   mysql/mysql-server:8.0 \
    mysql -uroot -p
 ```
 
@@ -62,7 +62,7 @@ docker run --rm -it \
 ```bash
 docker run \
    --rm -it \
-   mysql/mysql-server \
+   mysql/mysql-server:8.0 \
    mysql -h 192.168.1.3 -P 3306 -uroot -p
 ```
 
