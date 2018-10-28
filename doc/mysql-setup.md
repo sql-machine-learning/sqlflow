@@ -12,7 +12,7 @@ docker run --rm \
    -e MYSQL_ROOT_HOST='%' \
    -p 3306:3306 \
    -d \
-   mysql/mysql-server
+   mysql/mysql-server:8.0
 ```
 
 - the `-v` option ensures that the database is saved on the host.  The default directory where MySQL saves the database is `/var/lib/mysql`. This directory can be configured in `/etc/mysql/my.cnf`, as explained in [this post](https://www.mkyong.com/mysql/where-does-mysql-stored-the-data-in-my-harddisk/).  By overlaying the directory `/tmp/test1` on the host to `/var/lib/mysql`, we "cheat" MySQL to save databases on the host.  So, we can kill the container and restart it, and the database is still there.
@@ -21,13 +21,7 @@ docker run --rm \
 
 - the `-e` option sets the root password of MySQL to "root".  Feel free to set it to any password you like.
 
-- the second `-e` options sets `MYSQL_ROOT_HOST` to a wildcard so that clients running on any host could connect to the server as the user "root".  This [trick](https://github.com/docker-library/mysql/issues/241#issuecomment-263011059) is supposed to work; however, it doesn't work with me. I had to follow this [trick](https://stackoverflow.com/a/50385828) to connect to the MySQL server from a client running inside the server container, or another container on the same host, to enable remote TCP/IP connections:
-
-  ```sql
-  CREATE USER 'root'@'%' IDENTIFIED BY 'root';
-  GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;
-  FLUSH PRIVILEGES;
-  ```
+- the second `-e` options sets `MYSQL_ROOT_HOST` to a [wildcard](https://github.com/docker-library/mysql/issues/241#issuecomment-263011059) so to allow clients connecting to the server via TCP/IP as the user "root".  This trick works with MySQL 5.7 and 8.0, but not the most recent under-development version.
 
 - the `--name` option names the container to `mysql01`, which can be used to refer to this container.
 
