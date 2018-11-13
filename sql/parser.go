@@ -20,42 +20,42 @@ import (
 type expr struct {
 	typ  int
 	val  string
-	sexp []expr
+	sexp []*expr
 }
 
 /* construct an atomic expr */
-func atomic(typ int, val string) expr {
-	return expr{
+func atomic(typ int, val string) *expr {
+	return &expr{
 		typ: typ,
 		val: val,
 	}
 }
 
 /* construct a funcall expr */
-func funcall(name string, oprd []expr) expr {
-	return expr{
-		sexp: append([]expr{atomic(IDENT, name)}, oprd...),
+func funcall(name string, oprd []*expr) *expr {
+	return &expr{
+		sexp: append([]*expr{atomic(IDENT, name)}, oprd...),
 	}
 }
 
 /* construct a unary expr */
-func unary(typ int, op string, od1 expr) expr {
-	return expr{
-		sexp: append([]expr{atomic(typ, op)}, od1),
+func unary(typ int, op string, od1 *expr) *expr {
+	return &expr{
+		sexp: append([]*expr{atomic(typ, op)}, od1),
 	}
 }
 
 /* construct a binary expr */
-func binary(typ int, od1 expr, op string, od2 expr) expr {
-	return expr{
-		sexp: append([]expr{atomic(typ, op)}, od1, od2),
+func binary(typ int, od1 *expr, op string, od2 *expr) *expr {
+	return &expr{
+		sexp: append([]*expr{atomic(typ, op)}, od1, od2),
 	}
 }
 
 /* construct a variadic expr */
-func variadic(typ int, op string, ods []expr) expr {
-	return expr{
-		sexp: append([]expr{atomic(typ, op)}, ods...),
+func variadic(typ int, op string, ods []*expr) *expr {
+	return &expr{
+		sexp: append([]*expr{atomic(typ, op)}, ods...),
 	}
 }
 
@@ -70,14 +70,14 @@ type extendedSelect struct {
 type standardSelect struct {
 	fields []string
 	tables []string
-	where  expr
+	where  *expr
 	limit  string
 }
 
 type trainClause struct {
 	estimator string
-	attrs     map[string]expr
-	columns   []expr
+	attrs     map[string]*expr
+	columns   []*expr
 	save      string
 }
 
@@ -87,7 +87,7 @@ type inferClause struct {
 
 var parseResult extendedSelect
 
-func attrsUnion(as1, as2 map[string]expr) map[string]expr {
+func attrsUnion(as1, as2 map[string]*expr) map[string]*expr {
 	for k, v := range as2 {
 		if _, ok := as1[k]; ok {
 			log.Panicf("attr %q already specified", as2)
@@ -103,9 +103,9 @@ type sqlSymType struct {
 	val  string /* NUMBER, IDENT, STRING, and keywords */
 	flds []string
 	tbls []string
-	expr expr
-	expl []expr
-	atrs map[string]expr
+	expr *expr
+	expl []*expr
+	atrs map[string]*expr
 	eslt extendedSelect
 	slct standardSelect
 	tran trainClause
@@ -179,14 +179,14 @@ const sqlInitialStackSize = 16
 //line sql.y:240
 
 /* Like Lisp's builtin function cdr. */
-func (e expr) cdr() (r []string) {
+func (e *expr) cdr() (r []string) {
 	for i := 1; i < len(e.sexp); i++ {
 		r = append(r, e.sexp[i].String())
 	}
 	return r
 }
 
-func (e expr) String() string {
+func (e *expr) String() string {
 	if e.typ == 0 { /* a compound expression */
 		switch e.sexp[0].typ {
 		case '+', '*', '/', '%', '=', '<', '>', LE, GE, AND, OR:
@@ -785,7 +785,7 @@ sqldefault:
 		sqlDollar = sqlS[sqlpt-1 : sqlpt+1]
 //line sql.y:184
 		{
-			sqlVAL.expl = []expr{sqlDollar[1].expr}
+			sqlVAL.expl = []*expr{sqlDollar[1].expr}
 		}
 	case 17:
 		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
@@ -809,7 +809,7 @@ sqldefault:
 		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
 //line sql.y:194
 		{
-			sqlVAL.atrs = map[string]expr{sqlDollar[1].val: sqlDollar[3].expr}
+			sqlVAL.atrs = map[string]*expr{sqlDollar[1].val: sqlDollar[3].expr}
 		}
 	case 21:
 		sqlDollar = sqlS[sqlpt-1 : sqlpt+1]
@@ -839,7 +839,7 @@ sqldefault:
 		sqlDollar = sqlS[sqlpt-1 : sqlpt+1]
 //line sql.y:208
 		{
-			sqlVAL.expl = []expr{sqlDollar[1].expr}
+			sqlVAL.expl = []*expr{sqlDollar[1].expr}
 		}
 	case 26:
 		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]

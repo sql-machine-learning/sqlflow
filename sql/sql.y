@@ -14,42 +14,42 @@
 	type expr struct {
 		typ int
 		val string
-		sexp []expr
+		sexp []*expr
 	}
 
 	/* construct an atomic expr */
-	func atomic(typ int, val string) expr {
-		return expr{
+	func atomic(typ int, val string) *expr {
+		return &expr{
 			typ : typ,
 			val : val,
 		}
 	}
 
 	/* construct a funcall expr */
-	func funcall(name string, oprd []expr) expr {
-		return expr{
-			sexp : append([]expr{atomic(IDENT, name)}, oprd...),
+	func funcall(name string, oprd []*expr) *expr {
+		return &expr{
+			sexp : append([]*expr{atomic(IDENT, name)}, oprd...),
 		}
 	}
 
 	/* construct a unary expr */
-	func unary(typ int, op string, od1 expr) expr {
-		return expr{
-			sexp : append([]expr{atomic(typ, op)}, od1),
+	func unary(typ int, op string, od1 *expr) *expr {
+		return &expr{
+			sexp : append([]*expr{atomic(typ, op)}, od1),
 		}
 	}
 
 	/* construct a binary expr */
-	func binary(typ int, od1 expr, op string, od2 expr) expr {
-		return expr{
-			sexp : append([]expr{atomic(typ, op)}, od1, od2),
+	func binary(typ int, od1 *expr, op string, od2 *expr) *expr {
+		return &expr{
+			sexp : append([]*expr{atomic(typ, op)}, od1, od2),
 		}
 	}
 
 	/* construct a variadic expr */
-	func variadic(typ int, op string, ods []expr) expr {
-		return expr{
-			sexp : append([]expr{atomic(typ, op)}, ods...),
+	func variadic(typ int, op string, ods []*expr) *expr {
+		return &expr{
+			sexp : append([]*expr{atomic(typ, op)}, ods...),
 		}
 	}
 
@@ -64,14 +64,14 @@
 	type standardSelect struct {
 		fields []string
 		tables []string
-		where expr
+		where *expr
 		limit string
 	}
 
 	type trainClause struct {
 		estimator string
-		attrs     map[string]expr
-		columns   []expr
+		attrs     map[string]*expr
+		columns   []*expr
 		save      string
 	}
 
@@ -81,7 +81,7 @@
 
 	var parseResult extendedSelect
 
-	func attrsUnion(as1, as2 map[string]expr) map[string]expr {
+	func attrsUnion(as1, as2 map[string]*expr) map[string]*expr {
 		for k, v := range as2 {
 			if _, ok := as1[k]; ok {
 				log.Panicf("attr %q already specified", as2)
@@ -96,9 +96,9 @@
   val string  /* NUMBER, IDENT, STRING, and keywords */
   flds []string
   tbls []string
-  expr expr
-  expl []expr
-  atrs map[string]expr
+  expr *expr
+  expl []*expr
+  atrs map[string]*expr
   eslt extendedSelect
   slct standardSelect
   tran trainClause
@@ -181,7 +181,7 @@ column
 ;
 
 columns
-: column             { $$ = []expr{$1}     }
+: column             { $$ = []*expr{$1}     }
 | columns ',' column { $$ = append($1, $3) }
 ;
 
@@ -191,7 +191,7 @@ tables
 ;
 
 attr
-: IDENT '=' expr    { $$ = map[string]expr{$1 : $3} }
+: IDENT '=' expr    { $$ = map[string]*expr{$1 : $3} }
 ;
 
 attrs
@@ -205,7 +205,7 @@ funcall
 ;
 
 exprlist
-: expr              { $$ = []expr{$1}     }
+: expr              { $$ = []*expr{$1}     }
 | exprlist ',' expr { $$ = append($1, $3) }
 ;
 
@@ -240,14 +240,14 @@ expr
 %%
 
 /* Like Lisp's builtin function cdr. */
-func (e expr) cdr() (r []string) {
+func (e *expr) cdr() (r []string) {
 	for i := 1; i < len(e.sexp); i++ {
 		r = append(r, e.sexp[i].String())
 	}
 	return r
 }
 
-func (e expr) String() string {
+func (e *expr) String() string {
 	if e.typ == 0 { /* a compound expression */
 		switch e.sexp[0].typ {
 		case '+', '*', '/', '%', '=', '<', '>', LE, GE, AND, OR:
