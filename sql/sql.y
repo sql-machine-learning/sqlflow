@@ -322,19 +322,49 @@ func (el exprlist) JSON() string {
 	return strings.Join(ks, ",\n")
 }
 
-func (s trainClause) MarshalJSON() ([]byte, error) {
-/*
-		estimator string
-		attrs     attrs
-		columns   exprlist
-		save      string
-*/
+func (s trainClause) JSON() string {
 	fmter := `{
 "estimator": "%s",
 "attrs": %s,
 "columns": %s,
 "save": %s
 }`
-	return []byte(fmt.Sprintf(fmter,
-		s.estimator, s.attrs.JSON(), s.columns.JSON(), s.save)), nil
+	return fmt.Sprintf(fmter, s.estimator, s.attrs.JSON(), s.columns.JSON(), s.save)
+}
+
+func (s extendedSelect) JSON() string {
+/*
+		extended bool
+		train    bool
+		standardSelect
+		trainClause
+		inferClause
+*/
+	bf := `{
+"extended": %s,
+"train": %s,
+"standardSelect": %s,
+}`
+	tf := `{
+"extended": %s,
+"train": %s,
+"standardSelect": %s,
+"trainClause": %s,
+}`
+	nf := `{
+"extended": %s,
+"train": %s,
+"standardSelect": %s,
+"inferClause": %s
+}`
+	if s.extended {
+		if s.train {
+			return fmt.Sprintf(tf, s.extended, s.train, s.standardSelect,
+				s.trainClause.JSON())
+		} else {
+			return fmt.Sprintf(nf, s.extended, s.train, s.standardSelect,
+				s.inferClause.JSON())
+		}
+	}
+	return fmt.Sprintf(bf, s.extended, s.train, s.standardSelect)
 }
