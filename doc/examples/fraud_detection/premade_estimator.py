@@ -44,9 +44,9 @@ def main(argv):
     # Build 2 hidden layer DNN with 100, 100 units respectively.
     classifier = tf.estimator.DNNClassifier(
         feature_columns=my_feature_columns,
-        # Two hidden layers of 10 nodes each.
+        # Two hidden layers of 100 nodes each.
         hidden_units=[100, 100],
-        # The model must choose between 3 classes.
+        # The model must choose between 2 classes.
         n_classes=2)
 
     # Train the Model.
