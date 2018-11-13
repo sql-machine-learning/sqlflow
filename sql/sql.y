@@ -301,6 +301,14 @@ func (s standardSelect) String() string {
 	return r + ";"
 }
 
+func jsonString(s string) string {
+	return strings.Replace(
+		strings.Replace(
+			strings.Replace(s, "\n", "\\n", -1),
+			"\r", "\\r", -1),
+		"\"", "\\\"", -1)
+}
+
 func (ats attrs) JSON() string {
 	ks := []string{}
 	for k := range ats {
@@ -309,7 +317,7 @@ func (ats attrs) JSON() string {
 	sort.Strings(ks) /* Remove the randomness of map traversal. */
 
 	for i, k := range ks {
-		ks[i] = fmt.Sprintf(`"%s": \"%s\"`, k, ats[k])
+		ks[i] = fmt.Sprintf(`"%s": "%s"`, k, jsonString(ats[k].String()))
 	}
 	return "{\n" + strings.Join(ks, ",\n") + "\n}"
 }
@@ -317,9 +325,9 @@ func (ats attrs) JSON() string {
 func (el exprlist) JSON() string {
 	ks := []string{}
 	for _, e := range el {
-		ks = append(ks, e.String())
+		ks = append(ks, jsonString(e.String()))
 	}
-	return strings.Join(ks, ",\n")
+	return "[\n" + strings.Join(ks, ",\n") + "\n]"
 }
 
 func (s trainClause) JSON() string {
@@ -332,39 +340,50 @@ func (s trainClause) JSON() string {
 	return fmt.Sprintf(fmter, s.estimator, s.attrs.JSON(), s.columns.JSON(), s.save)
 }
 
+func (s inferClause) JSON() string {
+	fmter := `{
+"model":%s
+}`
+	return fmt.Sprintf(fmter, s.model)
+}
+
 func (s extendedSelect) JSON() string {
-/*
-		extended bool
-		train    bool
-		standardSelect
-		trainClause
-		inferClause
-*/
 	bf := `{
-"extended": %s,
-"train": %s,
-"standardSelect": %s,
+"extended": %t,
+"train": %t,
+"standardSelect": "%s"
 }`
 	tf := `{
-"extended": %s,
-"train": %s,
-"standardSelect": %s,
-"trainClause": %s,
+"extended": %t,
+"train": %t,
+"standardSelect": "%s",
+"trainClause": %s
 }`
 	nf := `{
-"extended": %s,
-"train": %s,
-"standardSelect": %s,
+"extended": %t,
+"train": %t,
+"standardSelect": "%s",
 "inferClause": %s
 }`
 	if s.extended {
 		if s.train {
-			return fmt.Sprintf(tf, s.extended, s.train, s.standardSelect,
-				s.trainClause.JSON())
+			return fmt.Sprintf(tf, s.extended, s.train,
+				jsonString(s.standardSelect.String()), s.trainClause.JSON())
 		} else {
-			return fmt.Sprintf(nf, s.extended, s.train, s.standardSelect,
-				s.inferClause.JSON())
+			return fmt.Sprintf(nf, s.extended, s.train,
+				jsonString(s.standardSelect.String()), s.inferClause.JSON())
 		}
 	}
-	return fmt.Sprintf(bf, s.extended, s.train, s.standardSelect)
+	return fmt.Sprintf(bf, s.extended, s.train, jsonString(s.standardSelect.String()))
+}
+
+func Parse(s string) string {
+	defer func() {
+		if e := recover(); e != nil {
+			log.Fatal(e)
+		}
+	}()
+
+	sqlParse(newLexer(s))
+	return parseResult.JSON()
 }
