@@ -2,9 +2,10 @@
 	package sql
 
 	import (
-		"strings"
 		"fmt"
 		"log"
+		"sort"
+		"strings"
 	)
 
 	/* expr defines an expression as a Lisp list.  If len(val)>0,
@@ -14,8 +15,10 @@
 	type expr struct {
 		typ int
 		val string
-		sexp []*expr
+		sexp exprlist
 	}
+
+	type exprlist []*expr
 
 	/* construct an atomic expr */
 	func atomic(typ int, val string) *expr {
@@ -26,30 +29,30 @@
 	}
 
 	/* construct a funcall expr */
-	func funcall(name string, oprd []*expr) *expr {
+	func funcall(name string, oprd exprlist) *expr {
 		return &expr{
-			sexp : append([]*expr{atomic(IDENT, name)}, oprd...),
+			sexp : append(exprlist{atomic(IDENT, name)}, oprd...),
 		}
 	}
 
 	/* construct a unary expr */
 	func unary(typ int, op string, od1 *expr) *expr {
 		return &expr{
-			sexp : append([]*expr{atomic(typ, op)}, od1),
+			sexp : append(exprlist{atomic(typ, op)}, od1),
 		}
 	}
 
 	/* construct a binary expr */
 	func binary(typ int, od1 *expr, op string, od2 *expr) *expr {
 		return &expr{
-			sexp : append([]*expr{atomic(typ, op)}, od1, od2),
+			sexp : append(exprlist{atomic(typ, op)}, od1, od2),
 		}
 	}
 
 	/* construct a variadic expr */
-	func variadic(typ int, op string, ods []*expr) *expr {
+	func variadic(typ int, op string, ods exprlist) *expr {
 		return &expr{
-			sexp : append([]*expr{atomic(typ, op)}, ods...),
+			sexp : append(exprlist{atomic(typ, op)}, ods...),
 		}
 	}
 
@@ -70,10 +73,12 @@
 
 	type trainClause struct {
 		estimator string
-		attrs     map[string]*expr
-		columns   []*expr
+		attrs     attrs
+		columns   exprlist
 		save      string
 	}
+
+	type attrs map[string]*expr
 
 	type inferClause struct {
 		model  string
@@ -81,7 +86,7 @@
 
 	var parseResult extendedSelect
 
-	func attrsUnion(as1, as2 map[string]*expr) map[string]*expr {
+	func attrsUnion(as1, as2 attrs) attrs {
 		for k, v := range as2 {
 			if _, ok := as1[k]; ok {
 				log.Panicf("attr %q already specified", as2)
@@ -97,8 +102,8 @@
   flds []string
   tbls []string
   expr *expr
-  expl []*expr
-  atrs map[string]*expr
+  expl exprlist
+  atrs attrs
   eslt extendedSelect
   slct standardSelect
   tran trainClause
@@ -181,7 +186,7 @@ column
 ;
 
 columns
-: column             { $$ = []*expr{$1}     }
+: column             { $$ = exprlist{$1}     }
 | columns ',' column { $$ = append($1, $3) }
 ;
 
@@ -191,7 +196,7 @@ tables
 ;
 
 attr
-: IDENT '=' expr    { $$ = map[string]*expr{$1 : $3} }
+: IDENT '=' expr    { $$ = attrs{$1 : $3} }
 ;
 
 attrs
@@ -205,7 +210,7 @@ funcall
 ;
 
 exprlist
-: expr              { $$ = []*expr{$1}     }
+: expr              { $$ = exprlist{$1}     }
 | exprlist ',' expr { $$ = append($1, $3) }
 ;
 
@@ -285,9 +290,51 @@ func (e *expr) String() string {
 }
 
 func (s standardSelect) String() string {
-	return "SELECT " + strings.Join(s.fields, ", ") +
-		"\n FROM" + strings.Join(s.tables, ", ") +
-		"\n WHERE " + s.where.String() +
-		"\n LIMIT"
+	r := "SELECT " + strings.Join(s.fields, ", ") +
+		"\n FROM" + strings.Join(s.tables, ", ")
+	if s.where != nil {
+		r += fmt.Sprintf("\n WHERE %s", s.where)
+	}
+	if len(s.limit) > 0 {
+		r += fmt.Sprintf("\n LIMIT %s", s.limit)
+	}
+	return r + ";"
+}
 
+func (ats attrs) JSON() string {
+	ks := []string{}
+	for k := range ats {
+		ks = append(ks, k)
+	}
+	sort.Strings(ks) /* Remove the randomness of map traversal. */
+
+	for i, k := range ks {
+		ks[i] = fmt.Sprintf(`"%s": \"%s\"`, k, ats[k])
+	}
+	return "{\n" + strings.Join(ks, ",\n") + "\n}"
+}
+
+func (el exprlist) JSON() string {
+	ks := []string{}
+	for _, e := range el {
+		ks = append(ks, e.String())
+	}
+	return strings.Join(ks, ",\n")
+}
+
+func (s trainClause) MarshalJSON() ([]byte, error) {
+/*
+		estimator string
+		attrs     attrs
+		columns   exprlist
+		save      string
+*/
+	fmter := `{
+"estimator": "%s",
+"attrs": %s,
+"columns": %s,
+"save": %s
+}`
+	return []byte(fmt.Sprintf(fmter,
+		s.estimator, s.attrs.JSON(), s.columns.JSON(), s.save)), nil
 }
