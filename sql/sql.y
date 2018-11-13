@@ -1,95 +1,95 @@
 %{
-  package sql
+	package sql
 
-  import (
-    "strings"
-    "fmt"
-    "log"
-  )
+	import (
+		"strings"
+		"fmt"
+		"log"
+	)
 
-  /* expr defines an expression as a Lisp list.  If len(val)>0,
-     it is an atomic expression, in particular, NUMBER, IDENT, 
-     or STRING, defined by typ and val; otherwise, it is a 
-     Lisp S-expression. */
-  type expr struct {
-    typ int
-    val string    
-    sexp []expr   
-  }
+	/* expr defines an expression as a Lisp list.  If len(val)>0,
+           it is an atomic expression, in particular, NUMBER, IDENT,
+           or STRING, defined by typ and val; otherwise, it is a
+           Lisp S-expression. */
+	type expr struct {
+		typ int
+		val string
+		sexp []expr
+	}
 
-  /* construct an atomic expr */
-  func atomic(typ int, val string) expr {
-    return expr{
-      typ : typ,
-      val : val,
-    }
-  }
+	/* construct an atomic expr */
+	func atomic(typ int, val string) expr {
+		return expr{
+			typ : typ,
+			val : val,
+		}
+	}
 
-  /* construct a funcall expr */
-  func funcall(name string, oprd []expr) expr {
-    return expr{
-      sexp : append([]expr{atomic(IDENT, name)}, oprd...),
-    }
-  }
+	/* construct a funcall expr */
+	func funcall(name string, oprd []expr) expr {
+		return expr{
+			sexp : append([]expr{atomic(IDENT, name)}, oprd...),
+		}
+	}
 
-  /* construct a unary expr */
-  func unary(typ int, op string, od1 expr) expr {
-    return expr{
-      sexp : append([]expr{atomic(typ, op)}, od1),
-    }
-  }
-    
-  /* construct a binary expr */
-  func binary(typ int, od1 expr, op string, od2 expr) expr {
-    return expr{
-      sexp : append([]expr{atomic(typ, op)}, od1, od2),
-    }
-  }
+	/* construct a unary expr */
+	func unary(typ int, op string, od1 expr) expr {
+		return expr{
+			sexp : append([]expr{atomic(typ, op)}, od1),
+		}
+	}
 
-  /* construct a variadic expr */
-  func variadic(typ int, op string, ods []expr) expr {
-    return expr{
-      sexp : append([]expr{atomic(typ, op)}, ods...),
-    }
-  }
+	/* construct a binary expr */
+	func binary(typ int, od1 expr, op string, od2 expr) expr {
+		return expr{
+			sexp : append([]expr{atomic(typ, op)}, od1, od2),
+		}
+	}
 
-  type extendedSelect struct {
-    extended bool
-    train    bool
-    standardSelect
-    trainClause
-    inferClause
-  }
-    
-  type standardSelect struct {
-    fields []string
-    tables []string
-    where expr
-    limit string
-  }
+	/* construct a variadic expr */
+	func variadic(typ int, op string, ods []expr) expr {
+		return expr{
+			sexp : append([]expr{atomic(typ, op)}, ods...),
+		}
+	}
 
-  type trainClause struct {
-    estimator string
-    attrs     map[string]expr
-    columns   []expr
-    save      string
-  }
+	type extendedSelect struct {
+		extended bool
+		train    bool
+		standardSelect
+		trainClause
+		inferClause
+	}
 
-  type inferClause struct {
-    model  string
-  }
+	type standardSelect struct {
+		fields []string
+		tables []string
+		where expr
+		limit string
+	}
 
-  var parseResult extendedSelect
+	type trainClause struct {
+		estimator string
+		attrs     map[string]expr
+		columns   []expr
+		save      string
+	}
 
-  func attrsUnion(as1, as2 map[string]expr) map[string]expr {
-      for k, v := range as2 {
-          if _, ok := as1[k]; ok {
-              log.Panicf("attr %q already specified", as2)
-          }
-          as1[k] = v
-      }
-      return as1
-  }
+	type inferClause struct {
+		model  string
+	}
+
+	var parseResult extendedSelect
+
+	func attrsUnion(as1, as2 map[string]expr) map[string]expr {
+		for k, v := range as2 {
+			if _, ok := as1[k]; ok {
+				log.Panicf("attr %q already specified", as2)
+			}
+			as1[k] = v
+		}
+		return as1
+	}
 %}
 
 %union {
@@ -120,12 +120,12 @@
 %token <val> IDENT NUMBER STRING
 
 %left <val> AND OR
-%left <val> '>' '<' '=' GE LE 
+%left <val> '>' '<' '=' GE LE
 %left <val> '+' '-'
 %left <val> '*' '/' '%'
 %left <val> NOT
 %left <val> POWER  /* think about the example "NOT base ** -3" */
-%left <val> UMINUS 
+%left <val> UMINUS
 
 %%
 
@@ -147,7 +147,7 @@ select_stmt
     parseResult.inferClause = $2
   }
 ;
-      
+
 select
 : SELECT fields         { $$.fields = $2 }
 | select FROM tables    { $$.tables = $3 }
@@ -184,7 +184,7 @@ columns
 : column             { $$ = []expr{$1}     }
 | columns ',' column { $$ = append($1, $3) }
 ;
-      
+
 tables
 : IDENT            { $$ = []string{$1} }
 | tables ',' IDENT { $$ = append($1, $3) }
@@ -198,7 +198,7 @@ attrs
 : attr              { $$ = $1 }
 | attrs ',' attr    { $$ = attrsUnion($1, $3) }
 ;
-      
+
 funcall
 : IDENT '(' ')'          { $$ = funcall($1, nil) }
 | IDENT '(' exprlist ')' { $$ = funcall($1, $3)  }
@@ -241,45 +241,53 @@ expr
 
 /* Like Lisp's builtin function cdr. */
 func (e expr) cdr() (r []string) {
-    for i := 1; i < len(e.sexp); i++ {
-        r = append(r, e.sexp[i].String())
-    }
-    return r
+	for i := 1; i < len(e.sexp); i++ {
+		r = append(r, e.sexp[i].String())
+	}
+	return r
 }
 
 func (e expr) String() string {
-    if e.typ == 0 { /* a compound expression */ 
-        switch e.sexp[0].typ {
-        case '+', '*', '/', '%', '=', '<', '>', LE, GE, AND, OR:
-            if len(e.sexp) != 3 {
-		log.Panicf("Expecting binary expression, got %.10q", e.sexp)
-	    }
-	    return fmt.Sprintf("%s %s %s", e.sexp[1], e.sexp[0].val, e.sexp[2])
-        case '-':
-	    switch len(e.sexp) {
-	    case 2:
-	        return fmt.Sprintf(" -%s", e.sexp[1])
-	    case 3:
-	        return fmt.Sprintf("%s - %s", e.sexp[1], e.sexp[2])
-	    default:
-	        log.Panicf("Expecting either unary or binary -, got %.10q", e.sexp)
-	    }
-	case '(':
-	    if len(e.sexp) != 2 {
-		log.Panicf("Expecting ( ) as unary operator, got %.10q", e.sexp)
-	    }
-	    return fmt.Sprintf("(%s)", e.sexp[1])
-	case '[':
-	    return "[" + strings.Join(e.cdr(), ", ") + "]"
-	case NOT:
-	    return fmt.Sprintf("NOT %s", e.sexp[1])
-	case IDENT: /* function call */
-	    return e.sexp[0].val + "(" + strings.Join(e.cdr(), ", ") + ")"
+	if e.typ == 0 { /* a compound expression */
+		switch e.sexp[0].typ {
+		case '+', '*', '/', '%', '=', '<', '>', LE, GE, AND, OR:
+			if len(e.sexp) != 3 {
+				log.Panicf("Expecting binary expression, got %.10q", e.sexp)
+			}
+			return fmt.Sprintf("%s %s %s", e.sexp[1], e.sexp[0].val, e.sexp[2])
+		case '-':
+			switch len(e.sexp) {
+			case 2:
+				return fmt.Sprintf(" -%s", e.sexp[1])
+			case 3:
+				return fmt.Sprintf("%s - %s", e.sexp[1], e.sexp[2])
+			default:
+				log.Panicf("Expecting either unary or binary -, got %.10q", e.sexp)
+			}
+		case '(':
+			if len(e.sexp) != 2 {
+				log.Panicf("Expecting ( ) as unary operator, got %.10q", e.sexp)
+			}
+			return fmt.Sprintf("(%s)", e.sexp[1])
+		case '[':
+			return "[" + strings.Join(e.cdr(), ", ") + "]"
+		case NOT:
+			return fmt.Sprintf("NOT %s", e.sexp[1])
+		case IDENT: /* function call */
+			return e.sexp[0].val + "(" + strings.Join(e.cdr(), ", ") + ")"
+		}
+	} else {
+		return fmt.Sprintf("%s", e.val)
 	}
-    } else {
-        return fmt.Sprintf("%s", e.val)
-    }
 
-    log.Panicf("Cannot print an unknown expression")
-    return ""
+	log.Panicf("Cannot print an unknown expression")
+	return ""
+}
+
+func (s standardSelect) String() string {
+	return "SELECT " + strings.Join(s.fields, ", ") +
+		"\n FROM" + strings.Join(s.tables, ", ") +
+		"\n WHERE " + s.where.String() +
+		"\n LIMIT"
+
 }
