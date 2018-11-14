@@ -9,7 +9,7 @@
 //
 // To run this program:
 //
-//    cat train_test.sql | $GOPATH/bin/sqlparser
+//    cat testdata/train_test.sql | $GOPATH/bin/sqlparser
 //
 package main
 

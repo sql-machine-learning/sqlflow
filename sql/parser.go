@@ -274,7 +274,7 @@ func (s trainClause) JSON() string {
 "estimator": "%s",
 "attrs": %s,
 "columns": %s,
-"save": %s
+"save": "%s"
 }`
 	return fmt.Sprintf(fmter, s.estimator, s.attrs.JSON(), s.columns.JSON(), s.save)
 }
@@ -283,7 +283,7 @@ func (s inferClause) JSON() string {
 	fmter := `{
 "model":%s
 }`
-	return fmt.Sprintf(fmter, s.model)
+	return fmt.Sprintf(fmter, "\""+s.model+"\"")
 }
 
 func (s extendedSelect) JSON() string {
