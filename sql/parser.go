@@ -264,7 +264,7 @@ func (ats attrs) JSON() string {
 func (el exprlist) JSON() string {
 	ks := []string{}
 	for _, e := range el {
-		ks = append(ks, jsonString(e.String()))
+		ks = append(ks, "\""+jsonString(e.String())+"\"")
 	}
 	return "[\n" + strings.Join(ks, ",\n") + "\n]"
 }
