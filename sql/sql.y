@@ -342,7 +342,7 @@ func (s trainClause) JSON() string {
 
 func (s inferClause) JSON() string {
 	fmter := `{
-"model":%s
+"model":"%s"
 }`
 	return fmt.Sprintf(fmter, s.model)
 }
