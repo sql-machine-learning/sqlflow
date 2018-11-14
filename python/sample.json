@@ -1,0 +1,14 @@
+{
+    "extended": true,
+    "train": true,
+    "standardSelect": "SELECT * FROM irisis",
+    "trainClause": {
+        "estimator": "DNNClassifier",
+        "attrs": {
+            "hidden_units": "[10, 20]",
+            "n_classes": "3"
+        },
+        "save": "/tmp/my_dnn_model"
+    }
+}
+
