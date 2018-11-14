@@ -1,0 +1,18 @@
+{
+"extended": true,
+"train": true,
+"standardSelect": "SELECT employee.age, last_name, salary\n FROMemployee\n WHERE employee.age % 10 < (salary / 10000) AND strings.Upper(last_name) = \"WANG\"\n LIMIT 100;",
+"trainClause": {
+"estimator": "DNNClassifier",
+"attrs": {
+"hidden_units": "[10, 20]",
+"n_classes": "3"
+},
+"columns": [
+"employee.name",
+"bucketize(last_name, 1000)",
+"cross(embedding(emplyoee.name), bucketize(last_name, 1000))"
+],
+"save": "my_dnn_model"
+}
+}
