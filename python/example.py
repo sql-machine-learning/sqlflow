@@ -20,45 +20,59 @@ TABLE = "irisis"
 #         ("species", [0, 1, 2])]
 # database.create_table(USER, PASSWORD, HOST, DATABASE, TABLE, DATA)
 
-def parse_job_desc(json_input):
-    data = json.load(sys.stdin)
-    assert(data["extended"])
-    assert(data["train"])
+desc = json.load(sys.stdin)
 
-    sql_command = data["standardSelect"]
-    model_type = data["trainClause"]["estimator"]
-    hyperparam = { x : eval(data["trainClause"]["attrs"][x]) for x in data["trainClause"]["attrs"] }
-    model_dir = os.path.join(data["trainClause"]["save"])
+def get_standard_sql(desc):
+    assert(desc["extended"])
+
+    return desc["standardSelect"]
+
+def get_model(desc, feature_columns):
+    assert(desc["extended"])
+
+    model_type = desc["trainClause"]["estimator"]
+    hyperparam = { x : eval(desc["trainClause"]["attrs"][x]) for x in desc["trainClause"]["attrs"] }
+    model_dir = os.path.join(desc["trainClause"]["save"])
 
     assert(model_type == "DNNClassifier")
     assert(isinstance(hyperparam["n_classes"], int))
     assert(isinstance(hyperparam["hidden_units"], list))
-    return sql_command, model_type, hyperparam, model_dir
 
-SQL_COMMAND, MODEL_TYPE, HYPERPARAM, MODEL_DIR = parse_job_desc(sys.stdin)
+    classifier = tf.estimator.DNNClassifier(
+            feature_columns=feature_columns,
+            model_dir=model_dir,
+            **hyperparam)
 
-field_names, columns = database.load_data(USER, PASSWORD, HOST, DATABASE, SQL_COMMAND)
-
-my_feature_columns = [tf.feature_column.numeric_column(key=key) for key in field_names[:-1]]
-classifier = tf.estimator.DNNClassifier(
-        feature_columns=my_feature_columns,
-        model_dir=MODEL_DIR,
-        **HYPERPARAM)
-
-train_x = {field_names[i]: columns[i] for i in range(len(field_names) - 1)}
-train_y = columns[-1]
-batch_size, steps = BATCHSIZE, STEP
+    return classifier
 
 def train_input_fn(features, labels, batch_size):
     dataset = tf.data.Dataset.from_tensor_slices((dict(features), labels))
     dataset = dataset.shuffle(1000).repeat().batch(batch_size)
     return dataset
 
-classifier.train(
-        input_fn=lambda:train_input_fn(train_x, train_y, batch_size),
-        steps=steps)
+def infer_input_fn(features, batch_size):
+    dataset = tf.data.Dataset.from_tensor_slices(features)
+    dataset = dataset.batch(batch_size)
+    return dataset
 
-eval_result = classifier.evaluate(
-        input_fn=lambda:train_input_fn(train_x, train_y, batch_size),
-        steps=steps)
-print("\nTest set accuracy: {accuracy:0.5f}\n".format(**eval_result))
+field_names, columns = database.load_data(USER, PASSWORD, HOST, DATABASE, get_standard_sql(desc))
+
+if desc['train']:
+    feature_columns = [tf.feature_column.numeric_column(key=key) for key in field_names[:-1]]
+    classifier = get_model(desc, feature_columns)
+
+    X = {field_names[i]: columns[i] for i in range(len(field_names) - 1)}
+    Y = columns[-1]
+    classifier.train(
+            input_fn=lambda:train_input_fn(X, Y, BATCHSIZE),
+            steps=STEP)
+    print("Done training\n")
+else:
+    feature_columns = [tf.feature_column.numeric_column(key=key) for key in field_names]
+    classifier = get_model(desc, feature_columns)
+    X = {field_names[i]: columns[i] for i in range(len(field_names))}
+    eval_result = classifier.evaluate(
+            input_fn=lambda:infer_input_fn(X, batch_size),
+            steps=steps)
+    print("\nTest set accuracy: {accuracy:0.5f}\n".format(**eval_result))
+
