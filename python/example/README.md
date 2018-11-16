@@ -1,6 +1,8 @@
 ## Demo
 
-Start a MySQL Server as documented [here](https://github.com/wangkuiyi/sqlflow/blob/develop/doc/mysql-setup.md)
+Quick demo on scheduler: given json, produces trained model.
+
+1. Start a MySQL Server as documented [here](https://github.com/wangkuiyi/sqlflow/blob/develop/doc/mysql-setup.md)
 
 ```bash
 docker run --rm \
@@ -13,13 +15,13 @@ docker run --rm \
    mysql/mysql-server:8.0
 ```
 
-Build sqlflow docker image
+2. Build sqlflow docker image
 
 ```bash
 docker build -t sqlflow ../..
 ```
 
-Import data
+3. Import data
 ```bash
 docker run --rm \
     --network="host" \
@@ -28,7 +30,7 @@ docker run --rm \
     /bin/bash -c "cd /sqlflow/example && python load_data.py"
 ```
 
-Train model
+4. Train model
 ```bash
 docker run --rm \
     --network="host" \
@@ -40,7 +42,7 @@ docker run --rm \
 
 You should find the trained model at `/tmp/my_dnn_model`.
 
-Evaluate model
+5. Evaluate model
 ```bash
 docker run --rm \
     --network="host" \
