@@ -1,7 +1,7 @@
 {
     "extended": true,
     "train": false,
-    "standardSelect": "select sepal_length,sepal_width,petal_length,petal_width from irisis",
+    "standardSelect": "SELECT * FROM irisis",
     "inferClause": {
         "model": "/tmp/my_dnn_model"
     }

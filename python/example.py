@@ -2,6 +2,8 @@ import tensorflow as tf
 import database
 import sys, json, os
 
+MATADATA_FILE = 'train.json'
+
 # TODO(tonyyang-svail): Add make sql recognize the following
 BATCHSIZE = 1
 STEP = 1000
@@ -50,8 +52,8 @@ def train_input_fn(features, labels, batch_size):
     dataset = dataset.shuffle(1000).repeat().batch(batch_size)
     return dataset
 
-def infer_input_fn(features, batch_size):
-    dataset = tf.data.Dataset.from_tensor_slices(features)
+def evail_input_fn(features, labels, batch_size):
+    dataset = tf.data.Dataset.from_tensor_slices((dict(features), labels))
     dataset = dataset.batch(batch_size)
     return dataset
 
@@ -66,13 +68,22 @@ if desc['train']:
     classifier.train(
             input_fn=lambda:train_input_fn(X, Y, BATCHSIZE),
             steps=STEP)
-    print("Done training\n")
+
+    print("Dumping train model metadata...")
+    with open(os.path.join(desc['trainClause']['save'], MATADATA_FILE), 'w') as f:
+        f.write(json.dumps(desc))
+    print("Done training")
 else:
-    feature_columns = [tf.feature_column.numeric_column(key=key) for key in field_names]
+    with open(os.path.join(desc['inferClause']['model'], MATADATA_FILE)) as f:
+        desc = json.load(f)
+
+    feature_columns = [tf.feature_column.numeric_column(key=key) for key in field_names[:-1]]
     classifier = get_model(desc, feature_columns)
-    X = {field_names[i]: columns[i] for i in range(len(field_names))}
+
+    X = {field_names[i]: columns[i] for i in range(len(field_names) - 1)}
+    Y = columns[-1]
     eval_result = classifier.evaluate(
-            input_fn=lambda:infer_input_fn(X, batch_size),
-            steps=steps)
+            input_fn=lambda:train_input_fn(X, Y, BATCHSIZE),
+            steps=STEP)
     print("\nTest set accuracy: {accuracy:0.5f}\n".format(**eval_result))
 
