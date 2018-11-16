@@ -8,21 +8,22 @@ MATADATA_FILE = 'train.json'
 BATCHSIZE = 1
 STEP = 1000
 
-# TODO(tonyyang-svail): 
+# TODO(tonyyang-svail): hard-coded user, passwd, etc
 USER = "root"
 PASSWORD = "root"
 HOST = "localhost"
 DATABASE = "yang"
 TABLE = "irisis"
 
-# DATA = [("sepal_length", [5.1, 5.0, 6.4]),
-#         ("sepal_width", [3.3, 2.3, 2.8]),
-#         ("petal_length", [1.7, 3.3, 5.6]),
-#         ("petal_width", [0.5, 1.0, 2.2]),
-#         ("species", [0, 1, 2])]
-# database.create_table(USER, PASSWORD, HOST, DATABASE, TABLE, DATA)
-
 desc = json.load(sys.stdin)
+
+if desc['train']:
+    DATA = [("sepal_length", [5.1, 5.0, 6.4]),
+            ("sepal_width", [3.3, 2.3, 2.8]),
+            ("petal_length", [1.7, 3.3, 5.6]),
+            ("petal_width", [0.5, 1.0, 2.2]),
+            ("species", [0, 1, 2])]
+    database.create_table(USER, PASSWORD, HOST, DATABASE, TABLE, DATA)
 
 def get_standard_sql(desc):
     assert(desc["extended"])
