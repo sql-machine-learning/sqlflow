@@ -9,6 +9,26 @@ This package implements a job scheduler in Python, which is used to parse the `j
 1. Training the model or predicts using the trained model by calling the user specified TensorFlow estimator.
 1. Writing the trained model or prediction results into a table.
 
-## Example
+## Demo
+
+Build scheduler docker image
+
+```
+docker build -t sqlflow ..
+```
+
+Start a MySQL Server as documented [here](https://github.com/wangkuiyi/sqlflow/blob/develop/doc/mysql-setup.md)
+
+```bash
+docker run --rm \
+   -v /tmp/test1:/var/lib/mysql \
+   --name mysql01 \
+   -e MYSQL_ROOT_PASSWORD=root \
+   -e MYSQL_ROOT_HOST='%' \
+   -p 3306:3306 \
+   -d \
+   mysql/mysql-server:8.0
+```
+
 
 cat sample.json | python scheduler.py
