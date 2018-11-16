@@ -30,6 +30,8 @@ docker run --rm \
     /bin/bash -c "cd /sqlflow/example && python load_data.py"
 ```
 
+`--network="host"` allows the connection to MySQL database.
+
 4. Train model
 ```bash
 docker run --rm \
