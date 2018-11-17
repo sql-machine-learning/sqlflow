@@ -57,36 +57,36 @@
 	}
 
 	type extendedSelect struct {
-		extended bool
-		train    bool
-		standardSelect
-		trainClause
-		inferClause
+		Extended bool
+		Train    bool
+		StandardSelect
+		TrainClause
+		InferClause
 	}
 
-	type standardSelect struct {
+	type StandardSelect struct {
 		fields []string
 		tables []string
 		where *expr
 		limit string
 	}
 
-	type trainClause struct {
-		estimator string
-		attrs     attrs
+	type TrainClause struct {
+		Estimator string
+		Attrs     Attrs
 		columns   exprlist
-		save      string
+		Save      string
 	}
 
-	type attrs map[string]*expr
+	type Attrs map[string]*expr
 
-	type inferClause struct {
-		model  string
+	type InferClause struct {
+		Model  string
 	}
 
 	var parseResult extendedSelect
 
-	func attrsUnion(as1, as2 attrs) attrs {
+	func attrsUnion(as1, as2 Attrs) Attrs {
 		for k, v := range as2 {
 			if _, ok := as1[k]; ok {
 				log.Panicf("attr %q already specified", as2)
@@ -103,11 +103,11 @@
   tbls []string
   expr *expr
   expl exprlist
-  atrs attrs
+  atrs Attrs
   eslt extendedSelect
-  slct standardSelect
-  tran trainClause
-  infr inferClause
+  slct StandardSelect
+  tran TrainClause
+  infr InferClause
 }
 
 %type  <eslt> select_stmt
@@ -119,7 +119,7 @@
 %type  <expr> expr funcall column
 %type  <expl> exprlist pythonlist columns
 %type  <atrs> attr
-%type  <atrs> attrs
+%type  <atrs> Attrs
 
 %token <val> SELECT FROM WHERE LIMIT TRAIN INFER WITH COLUMN INTO
 %token <val> IDENT NUMBER STRING
@@ -136,20 +136,20 @@
 
 select_stmt
 : select ';' {
-    parseResult.extended = false
-    parseResult.standardSelect = $1
+    parseResult.Extended = false
+    parseResult.StandardSelect = $1
   }
 | select train_clause ';' {
-    parseResult.extended = true
-    parseResult.train = true
-    parseResult.standardSelect = $1
-    parseResult.trainClause = $2
+    parseResult.Extended = true
+    parseResult.Train = true
+    parseResult.StandardSelect = $1
+    parseResult.TrainClause = $2
   }
 | select infer_clause ';' {
-    parseResult.extended = true
-    parseResult.train = false
-    parseResult.standardSelect = $1
-    parseResult.inferClause = $2
+    parseResult.Extended = true
+    parseResult.Train = false
+    parseResult.StandardSelect = $1
+    parseResult.InferClause = $2
   }
 ;
 
@@ -161,16 +161,16 @@ select
 ;
 
 train_clause
-: TRAIN IDENT WITH attrs COLUMN columns INTO IDENT {
-    $$.estimator = $2
-    $$.attrs = $4
+: TRAIN IDENT WITH Attrs COLUMN columns INTO IDENT {
+    $$.Estimator = $2
+    $$.Attrs = $4
     $$.columns = $6
-    $$.save = $8
+    $$.Save = $8
   }
 ;
 
 infer_clause
-: INFER IDENT      { $$.model = $2 }
+: INFER IDENT      { $$.Model = $2 }
 ;
 
 fields
@@ -196,12 +196,12 @@ tables
 ;
 
 attr
-: IDENT '=' expr    { $$ = attrs{$1 : $3} }
+: IDENT '=' expr    { $$ = Attrs{$1 : $3} }
 ;
 
-attrs
+Attrs
 : attr              { $$ = $1 }
-| attrs ',' attr    { $$ = attrsUnion($1, $3) }
+| Attrs ',' attr    { $$ = attrsUnion($1, $3) }
 ;
 
 funcall
@@ -289,14 +289,14 @@ func (e *expr) String() string {
 	return ""
 }
 
-func (s standardSelect) String() string {
+func (s StandardSelect) String() string {
 	r := "SELECT " + strings.Join(s.fields, ", ") +
-		"\n FROM" + strings.Join(s.tables, ", ")
+		" FROM " + strings.Join(s.tables, ", ")
 	if s.where != nil {
-		r += fmt.Sprintf("\n WHERE %s", s.where)
+		r += fmt.Sprintf(" WHERE %s", s.where)
 	}
 	if len(s.limit) > 0 {
-		r += fmt.Sprintf("\n LIMIT %s", s.limit)
+		r += fmt.Sprintf(" LIMIT %s", s.limit)
 	}
 	return r + ";"
 }
@@ -309,7 +309,7 @@ func jsonString(s string) string {
 		"\"", "\\\"", -1)
 }
 
-func (ats attrs) JSON() string {
+func (ats Attrs) JSON() string {
 	ks := []string{}
 	for k := range ats {
 		ks = append(ks, k)
@@ -330,60 +330,59 @@ func (el exprlist) JSON() string {
 	return "[\n" + strings.Join(ks, ",\n") + "\n]"
 }
 
-func (s trainClause) JSON() string {
+func (s TrainClause) JSON() string {
 	fmter := `{
-"estimator": "%s",
-"attrs": %s,
+"Estimator": "%s",
+"Attrs": %s,
 "columns": %s,
-"save": "%s"
+"Save": "%s"
 }`
-	return fmt.Sprintf(fmter, s.estimator, s.attrs.JSON(), s.columns.JSON(), s.save)
+	return fmt.Sprintf(fmter, s.Estimator, s.Attrs.JSON(), s.columns.JSON(), s.Save)
 }
 
-func (s inferClause) JSON() string {
+func (s InferClause) JSON() string {
 	fmter := `{
-"model":"%s"
+"Model":"%s"
 }`
-	return fmt.Sprintf(fmter, "\"" + s.model + "\"")
+	return fmt.Sprintf(fmter, "\"" + s.Model + "\"")
 }
 
 func (s extendedSelect) JSON() string {
 	bf := `{
-"extended": %t,
-"train": %t,
-"standardSelect": "%s"
+"Extended": %t,
+"Train": %t,
+"StandardSelect": "%s"
 }`
 	tf := `{
-"extended": %t,
-"train": %t,
-"standardSelect": "%s",
-"trainClause": %s
+"Extended": %t,
+"Train": %t,
+"StandardSelect": "%s",
+"TrainClause": %s
 }`
 	nf := `{
-"extended": %t,
-"train": %t,
-"standardSelect": "%s",
-"inferClause": %s
+"Extended": %t,
+"Train": %t,
+"StandardSelect": "%s",
+"InferClause": %s
 }`
-	if s.extended {
-		if s.train {
-			return fmt.Sprintf(tf, s.extended, s.train,
-				jsonString(s.standardSelect.String()), s.trainClause.JSON())
+	if s.Extended {
+		if s.Train {
+			return fmt.Sprintf(tf, s.Extended, s.Train,
+				jsonString(s.StandardSelect.String()), s.TrainClause.JSON())
 		} else {
-			return fmt.Sprintf(nf, s.extended, s.train,
-				jsonString(s.standardSelect.String()), s.inferClause.JSON())
+			return fmt.Sprintf(nf, s.Extended, s.Train,
+				jsonString(s.StandardSelect.String()), s.InferClause.JSON())
 		}
 	}
-	return fmt.Sprintf(bf, s.extended, s.train, jsonString(s.standardSelect.String()))
+	return fmt.Sprintf(bf, s.Extended, s.Train, jsonString(s.StandardSelect.String()))
 }
 
-func Parse(s string) string {
+func Parse(s string) extendedSelect {
 	defer func() {
 		if e := recover(); e != nil {
 			log.Fatal(e)
 		}
 	}()
-
 	sqlParse(newLexer(s))
-	return parseResult.JSON()
+    return parseResult
 }

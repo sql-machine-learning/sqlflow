@@ -2,7 +2,7 @@ import tensorflow as tf
 import database
 import sys, json, os
 
-MATADATA_FILE = 'train.json'
+SQL_PARSING_RESULT_FILE = 'train.json'
 
 # TODO(tonyyang-svail): Add make sql recognize the following
 BATCHSIZE = 1
@@ -62,11 +62,11 @@ if desc['train']:
             steps=STEP)
 
     print("Dumping train model metadata...")
-    with open(os.path.join(desc['trainClause']['save'], MATADATA_FILE), 'w') as f:
+    with open(os.path.join(desc['trainClause']['save'], SQL_PARSING_RESULT_FILE), 'w') as f:
         f.write(json.dumps(desc))
     print("Done training")
 else:
-    with open(os.path.join(desc['inferClause']['model'], MATADATA_FILE)) as f:
+    with open(os.path.join(desc['inferClause']['model'], SQL_PARSING_RESULT_FILE)) as f:
         desc = json.load(f)
 
     feature_columns = [tf.feature_column.numeric_column(key=key) for key in field_names[:-1]]

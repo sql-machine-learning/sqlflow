@@ -36,7 +36,7 @@ func TestStandardSelect(t *testing.T) {
 	assert.NotPanics(func() {
 		sqlParse(newLexer(testStandardSelectStmt + ";"))
 	})
-	assert.False(parseResult.extended)
+	assert.False(parseResult.Extended)
 	assert.Equal([]string{"employee.age", "last_name", "salary"},
 		parseResult.fields)
 	assert.Equal([]string{"employee"}, parseResult.tables)
@@ -54,11 +54,11 @@ func TestTrainParser(t *testing.T) {
 	assert.NotPanics(func() {
 		sqlParse(newLexer(trainSelect))
 	})
-	assert.True(parseResult.extended)
-	assert.True(parseResult.train)
-	assert.Equal("DNNClassifier", parseResult.estimator)
-	assert.Equal("[10, 20]", parseResult.attrs["hidden_units"].String())
-	assert.Equal("3", parseResult.attrs["n_classes"].String())
+	assert.True(parseResult.Extended)
+	assert.True(parseResult.Train)
+	assert.Equal("DNNClassifier", parseResult.Estimator)
+	assert.Equal("[10, 20]", parseResult.Attrs["hidden_units"].String())
+	assert.Equal("3", parseResult.Attrs["n_classes"].String())
 	assert.Equal(`employee.name`,
 		parseResult.columns[0].String())
 	assert.Equal(`bucketize(last_name, 1000)`,
@@ -66,7 +66,7 @@ func TestTrainParser(t *testing.T) {
 	assert.Equal(
 		`cross(embedding(emplyoee.name), bucketize(last_name, 1000))`,
 		parseResult.columns[2].String())
-	assert.Equal("my_dnn_model", parseResult.save)
+	assert.Equal("my_dnn_model", parseResult.Save)
 }
 
 func TestInferParser(t *testing.T) {
@@ -74,7 +74,7 @@ func TestInferParser(t *testing.T) {
 	assert.NotPanics(func() {
 		sqlParse(newLexer(inferSelect))
 	})
-	assert.True(parseResult.extended)
-	assert.False(parseResult.train)
-	assert.Equal("my_dnn_model", parseResult.model)
+	assert.True(parseResult.Extended)
+	assert.False(parseResult.Train)
+	assert.Equal("my_dnn_model", parseResult.Model)
 }

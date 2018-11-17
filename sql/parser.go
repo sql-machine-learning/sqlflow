@@ -63,36 +63,36 @@ func variadic(typ int, op string, ods exprlist) *expr {
 }
 
 type extendedSelect struct {
-	extended bool
-	train    bool
-	standardSelect
-	trainClause
-	inferClause
+	Extended bool
+	Train    bool
+	StandardSelect
+	TrainClause
+	InferClause
 }
 
-type standardSelect struct {
+type StandardSelect struct {
 	fields []string
 	tables []string
 	where  *expr
 	limit  string
 }
 
-type trainClause struct {
-	estimator string
-	attrs     attrs
+type TrainClause struct {
+	Estimator string
+	Attrs     Attrs
 	columns   exprlist
-	save      string
+	Save      string
 }
 
-type attrs map[string]*expr
+type Attrs map[string]*expr
 
-type inferClause struct {
-	model string
+type InferClause struct {
+	Model string
 }
 
 var parseResult extendedSelect
 
-func attrsUnion(as1, as2 attrs) attrs {
+func attrsUnion(as1, as2 Attrs) Attrs {
 	for k, v := range as2 {
 		if _, ok := as1[k]; ok {
 			log.Panicf("attr %q already specified", as2)
@@ -110,11 +110,11 @@ type sqlSymType struct {
 	tbls []string
 	expr *expr
 	expl exprlist
-	atrs attrs
+	atrs Attrs
 	eslt extendedSelect
-	slct standardSelect
-	tran trainClause
-	infr inferClause
+	slct StandardSelect
+	tran TrainClause
+	infr InferClause
 }
 
 const SELECT = 57346
@@ -228,14 +228,14 @@ func (e *expr) String() string {
 	return ""
 }
 
-func (s standardSelect) String() string {
+func (s StandardSelect) String() string {
 	r := "SELECT " + strings.Join(s.fields, ", ") +
-		"\n FROM" + strings.Join(s.tables, ", ")
+		" FROM " + strings.Join(s.tables, ", ")
 	if s.where != nil {
-		r += fmt.Sprintf("\n WHERE %s", s.where)
+		r += fmt.Sprintf(" WHERE %s", s.where)
 	}
 	if len(s.limit) > 0 {
-		r += fmt.Sprintf("\n LIMIT %s", s.limit)
+		r += fmt.Sprintf(" LIMIT %s", s.limit)
 	}
 	return r + ";"
 }
@@ -248,7 +248,7 @@ func jsonString(s string) string {
 		"\"", "\\\"", -1)
 }
 
-func (ats attrs) JSON() string {
+func (ats Attrs) JSON() string {
 	ks := []string{}
 	for k := range ats {
 		ks = append(ks, k)
@@ -269,62 +269,61 @@ func (el exprlist) JSON() string {
 	return "[\n" + strings.Join(ks, ",\n") + "\n]"
 }
 
-func (s trainClause) JSON() string {
+func (s TrainClause) JSON() string {
 	fmter := `{
-"estimator": "%s",
-"attrs": %s,
+"Estimator": "%s",
+"Attrs": %s,
 "columns": %s,
-"save": "%s"
+"Save": "%s"
 }`
-	return fmt.Sprintf(fmter, s.estimator, s.attrs.JSON(), s.columns.JSON(), s.save)
+	return fmt.Sprintf(fmter, s.Estimator, s.Attrs.JSON(), s.columns.JSON(), s.Save)
 }
 
-func (s inferClause) JSON() string {
+func (s InferClause) JSON() string {
 	fmter := `{
-"model":%s
+"Model":"%s"
 }`
-	return fmt.Sprintf(fmter, "\""+s.model+"\"")
+	return fmt.Sprintf(fmter, "\""+s.Model+"\"")
 }
 
 func (s extendedSelect) JSON() string {
 	bf := `{
-"extended": %t,
-"train": %t,
-"standardSelect": "%s"
+"Extended": %t,
+"Train": %t,
+"StandardSelect": "%s"
 }`
 	tf := `{
-"extended": %t,
-"train": %t,
-"standardSelect": "%s",
-"trainClause": %s
+"Extended": %t,
+"Train": %t,
+"StandardSelect": "%s",
+"TrainClause": %s
 }`
 	nf := `{
-"extended": %t,
-"train": %t,
-"standardSelect": "%s",
-"inferClause": %s
+"Extended": %t,
+"Train": %t,
+"StandardSelect": "%s",
+"InferClause": %s
 }`
-	if s.extended {
-		if s.train {
-			return fmt.Sprintf(tf, s.extended, s.train,
-				jsonString(s.standardSelect.String()), s.trainClause.JSON())
+	if s.Extended {
+		if s.Train {
+			return fmt.Sprintf(tf, s.Extended, s.Train,
+				jsonString(s.StandardSelect.String()), s.TrainClause.JSON())
 		} else {
-			return fmt.Sprintf(nf, s.extended, s.train,
-				jsonString(s.standardSelect.String()), s.inferClause.JSON())
+			return fmt.Sprintf(nf, s.Extended, s.Train,
+				jsonString(s.StandardSelect.String()), s.InferClause.JSON())
 		}
 	}
-	return fmt.Sprintf(bf, s.extended, s.train, jsonString(s.standardSelect.String()))
+	return fmt.Sprintf(bf, s.Extended, s.Train, jsonString(s.StandardSelect.String()))
 }
 
-func Parse(s string) string {
+func Parse(s string) extendedSelect {
 	defer func() {
 		if e := recover(); e != nil {
 			log.Fatal(e)
 		}
 	}()
-
 	sqlParse(newLexer(s))
-	return parseResult.JSON()
+	return parseResult
 }
 
 //line yacctab:1
@@ -781,26 +780,26 @@ sqldefault:
 		sqlDollar = sqlS[sqlpt-2 : sqlpt+1]
 //line sql.y:138
 		{
-			parseResult.extended = false
-			parseResult.standardSelect = sqlDollar[1].slct
+			parseResult.Extended = false
+			parseResult.StandardSelect = sqlDollar[1].slct
 		}
 	case 2:
 		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
 //line sql.y:142
 		{
-			parseResult.extended = true
-			parseResult.train = true
-			parseResult.standardSelect = sqlDollar[1].slct
-			parseResult.trainClause = sqlDollar[2].tran
+			parseResult.Extended = true
+			parseResult.Train = true
+			parseResult.StandardSelect = sqlDollar[1].slct
+			parseResult.TrainClause = sqlDollar[2].tran
 		}
 	case 3:
 		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
 //line sql.y:148
 		{
-			parseResult.extended = true
-			parseResult.train = false
-			parseResult.standardSelect = sqlDollar[1].slct
-			parseResult.inferClause = sqlDollar[2].infr
+			parseResult.Extended = true
+			parseResult.Train = false
+			parseResult.StandardSelect = sqlDollar[1].slct
+			parseResult.InferClause = sqlDollar[2].infr
 		}
 	case 4:
 		sqlDollar = sqlS[sqlpt-2 : sqlpt+1]
@@ -830,16 +829,16 @@ sqldefault:
 		sqlDollar = sqlS[sqlpt-8 : sqlpt+1]
 //line sql.y:164
 		{
-			sqlVAL.tran.estimator = sqlDollar[2].val
-			sqlVAL.tran.attrs = sqlDollar[4].atrs
+			sqlVAL.tran.Estimator = sqlDollar[2].val
+			sqlVAL.tran.Attrs = sqlDollar[4].atrs
 			sqlVAL.tran.columns = sqlDollar[6].expl
-			sqlVAL.tran.save = sqlDollar[8].val
+			sqlVAL.tran.Save = sqlDollar[8].val
 		}
 	case 9:
 		sqlDollar = sqlS[sqlpt-2 : sqlpt+1]
 //line sql.y:173
 		{
-			sqlVAL.infr.model = sqlDollar[2].val
+			sqlVAL.infr.Model = sqlDollar[2].val
 		}
 	case 10:
 		sqlDollar = sqlS[sqlpt-1 : sqlpt+1]
@@ -905,7 +904,7 @@ sqldefault:
 		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
 //line sql.y:199
 		{
-			sqlVAL.atrs = attrs{sqlDollar[1].val: sqlDollar[3].expr}
+			sqlVAL.atrs = Attrs{sqlDollar[1].val: sqlDollar[3].expr}
 		}
 	case 21:
 		sqlDollar = sqlS[sqlpt-1 : sqlpt+1]
