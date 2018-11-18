@@ -78,3 +78,12 @@ func TestInferParser(t *testing.T) {
 	assert.False(parseResult.train)
 	assert.Equal("my_dnn_model", parseResult.model)
 }
+
+func TestSelectStar(t *testing.T) {
+	assert := assert.New(t)
+	assert.NotPanics(func() {
+		sqlParse(newLexer(`SELECT * FROM   employee;`))
+	})
+	assert.False(parseResult.extended)
+	assert.False(parseResult.train)
+}
