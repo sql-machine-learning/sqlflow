@@ -1,8 +1,0 @@
-{
-    "extended": true,
-    "train": false,
-    "standardSelect": "SELECT * FROM irisis",
-    "inferClause": {
-        "model": "/tmp/my_dnn_model"
-    }
-}
