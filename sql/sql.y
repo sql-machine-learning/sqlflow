@@ -383,6 +383,7 @@ func Parse(s string) extendedSelect {
 			log.Fatal(e)
 		}
 	}()
+
 	sqlParse(newLexer(s))
-    return parseResult
+	return parseResult
 }
