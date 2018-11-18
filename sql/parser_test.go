@@ -84,6 +84,7 @@ func TestSelectStar(t *testing.T) {
 	assert.NotPanics(func() {
 		sqlParse(newLexer(`SELECT * FROM   employee;`))
 	})
+	assert.Equal(0, len(parseResult.fields))
 	assert.False(parseResult.extended)
 	assert.False(parseResult.train)
 }
