@@ -9,13 +9,13 @@ import tensorflow as tf
 import sys, json, os
 import mysql.connector
 ` +
-// TODO(tonyyang-svail): remove hard coded WORKSPACE, SQL_PARSING_RESULT_FILE
-`
+	// TODO(tonyyang-svail): remove hard coded WORKSPACE, SQL_PARSING_RESULT_FILE
+	`
 WORKSPACE = "/tmp/"
 SQL_PARSING_RESULT_FILE = "sqlflow.json"
 ` +
-// TODO(tonyyang-svail): remove hard coded user, password, etc
-`
+	// TODO(tonyyang-svail): remove hard coded user, password, etc
+	`
 BATCHSIZE = 1
 STEP = 1000
 USER = "root"
@@ -63,8 +63,8 @@ def eval_input_fn(features, labels, batch_size):
     dataset = dataset.batch(batch_size)
     return dataset
 ` +
-// TODO(tonyyang-svail): remove hard coded DNNClassifier
-`
+	// TODO(tonyyang-svail): remove hard coded DNNClassifier
+	`
 classifier = tf.estimator.DNNClassifier(
         feature_columns=feature_columns,
         hidden_units=eval(desc["TrainClause"]["Attrs"]["hidden_units"]),

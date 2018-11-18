@@ -1,19 +1,19 @@
 package sql
 
 import (
-    "testing"
-    "bytes"
-    "log"
+	"bytes"
+	"log"
+	"testing"
 
-    "github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 const (
-    simpleSelect = `
+	simpleSelect = `
 SELECT sepal_length, sepal_width, petal_length, petal_width, species
 FROM irisis
 `
-    simpleTrainSelect = simpleSelect + `
+	simpleTrainSelect = simpleSelect + `
 TRAIN DNNClassifier
 WITH 
   n_classes = 3,
@@ -23,22 +23,22 @@ INTO
   my_dnn_model
 ;
 `
-    simpleInferSelect = simpleSelect + `INFER my_dnn_model;`
+	simpleInferSelect = simpleSelect + `INFER my_dnn_model;`
 )
 
 func TestCodeGenTrain(t *testing.T) {
-    assert := assert.New(t)
+	assert := assert.New(t)
 	assert.NotPanics(func() {
-        sqlParse(newLexer(simpleTrainSelect))
-    })
+		sqlParse(newLexer(simpleTrainSelect))
+	})
 
-    var tpl bytes.Buffer
-    err := codegen_template.Execute(&tpl, parseResult)
-    if err != nil {
-        log.Println("executing template:", err)
-    }
+	var tpl bytes.Buffer
+	err := codegen_template.Execute(&tpl, parseResult)
+	if err != nil {
+		log.Println("executing template:", err)
+	}
 
-    assert.Equal(tpl.String(), `
+	assert.Equal(tpl.String(), `
 import tensorflow as tf
 import sys, json, os
 import mysql.connector
@@ -103,17 +103,17 @@ print("Done training")
 }
 
 func TestCodeGenInfer(t *testing.T) {
-    assert := assert.New(t)
+	assert := assert.New(t)
 	assert.NotPanics(func() {
-        sqlParse(newLexer(simpleInferSelect))
-    })
+		sqlParse(newLexer(simpleInferSelect))
+	})
 
-    var tpl bytes.Buffer
-    err := codegen_template.Execute(&tpl, parseResult)
-    if err != nil {
-        log.Println("executing template:", err)
-    }
-    assert.Equal(tpl.String(),`
+	var tpl bytes.Buffer
+	err := codegen_template.Execute(&tpl, parseResult)
+	if err != nil {
+		log.Println("executing template:", err)
+	}
+	assert.Equal(tpl.String(), `
 import tensorflow as tf
 import sys, json, os
 import mysql.connector
