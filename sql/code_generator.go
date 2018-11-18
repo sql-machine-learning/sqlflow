@@ -8,11 +8,14 @@ const codegen_template_text = `
 import tensorflow as tf
 import sys, json, os
 import mysql.connector
-
+` +
+// TODO(tonyyang-svail): remove hard coded WORKSPACE, SQL_PARSING_RESULT_FILE
+`
 WORKSPACE = "/tmp/"
 SQL_PARSING_RESULT_FILE = "sqlflow.json"
-
-# TODO(tonyyang-svail): Add make sql recognize the following
+` +
+// TODO(tonyyang-svail): remove hard coded user, password, etc
+`
 BATCHSIZE = 1
 STEP = 1000
 USER = "root"
@@ -59,8 +62,10 @@ def eval_input_fn(features, labels, batch_size):
     dataset = tf.data.Dataset.from_tensor_slices((dict(features), labels))
     dataset = dataset.batch(batch_size)
     return dataset
-
-classifier = tf.estimator.{{.TrainClause.Estimator}}(
+` +
+// TODO(tonyyang-svail): remove hard coded DNNClassifier
+`
+classifier = tf.estimator.DNNClassifier(
         feature_columns=feature_columns,
         hidden_units=eval(desc["TrainClause"]["Attrs"]["hidden_units"]),
         n_classes=eval(desc["TrainClause"]["Attrs"]["n_classes"]),
