@@ -101,3 +101,41 @@ and we can start Python and run the following Python code snippet
 >>> print(db)
 <mysql.connector.connection_cext.CMySQLConnection object at 0x7fbab9f3fed0>
 ```
+
+## Run a Golang client on the local host
+
+In order to connect to a database, you need to import the database's driver first.
+
+```
+export GOPATH=$HOME/go
+go get -u github.com/go-sql-driver/mysql
+```
+
+We are using `gorm` to connect to MySQL
+
+```
+go get -u github.com/jinzhu/gorm
+```
+
+`go run` the following file
+
+```go
+package main
+
+import (
+	"fmt"
+
+	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/mysql"
+)
+
+func main() {
+	db, err := gorm.Open("mysql", "root:root@tcp(localhost:3306)/information_schema?charset=utf8&parseTime=True&loc=Local")
+	if err == nil {
+		fmt.Println("Successfully connected to MySQL database")
+	}
+	defer db.Close()
+}
+```
+
+You should be able to see `Successfully connected to MySQL database`.
