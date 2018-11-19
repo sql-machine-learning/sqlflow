@@ -75,6 +75,7 @@
 		estimator string
 		attrs     attrs
 		columns   exprlist
+                label     string
 		save      string
 	}
 
@@ -121,7 +122,7 @@
 %type  <atrs> attr
 %type  <atrs> attrs
 
-%token <val> SELECT FROM WHERE LIMIT TRAIN INFER WITH COLUMN INTO
+%token <val> SELECT FROM WHERE LIMIT TRAIN INFER WITH COLUMN LABEL INTO
 %token <val> IDENT NUMBER STRING
 
 %left <val> AND OR
@@ -161,11 +162,12 @@ select
 ;
 
 train_clause
-: TRAIN IDENT WITH attrs COLUMN columns INTO IDENT {
+: TRAIN IDENT WITH attrs COLUMN columns LABEL IDENT INTO IDENT {
     $$.estimator = $2
     $$.attrs = $4
     $$.columns = $6
-    $$.save = $8
+    $$.label = $8
+    $$.save = $10
   }
 ;
 
@@ -290,13 +292,18 @@ func (e *expr) String() string {
 }
 
 func (s standardSelect) String() string {
-	r := "SELECT " + strings.Join(s.fields, ", ") +
-		"\n FROM" + strings.Join(s.tables, ", ")
+	r := "SELECT "
+	if len(s.fields) == 0 {
+		r += "*"
+	} else {
+		r += strings.Join(s.fields, ", ")
+	}
+	r += "\nFROM " + strings.Join(s.tables, ", ")
 	if s.where != nil {
-		r += fmt.Sprintf("\n WHERE %s", s.where)
+		r += fmt.Sprintf("\nWHERE %s", s.where)
 	}
 	if len(s.limit) > 0 {
-		r += fmt.Sprintf("\n LIMIT %s", s.limit)
+		r += fmt.Sprintf("\nLIMIT %s", s.limit)
 	}
 	return r + ";"
 }
