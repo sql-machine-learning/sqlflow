@@ -119,6 +119,7 @@ func (l *lexer) emitIdentOrKeyword(lval *sqlSymType) int {
 		"INFER":  INFER,
 		"WITH":   WITH,
 		"COLUMN": COLUMN,
+		"LABEL":  LABEL,
 		"INTO":   INTO,
 		"AND":    AND,
 		"OR":     OR,
