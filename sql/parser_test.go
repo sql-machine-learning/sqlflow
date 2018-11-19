@@ -24,6 +24,7 @@ COLUMN
   employee.name,
   bucketize(last_name, 1000),
   cross(embedding(emplyoee.name), bucketize(last_name, 1000))
+LABEL employee.salary
 INTO
   my_dnn_model
 ;
@@ -66,6 +67,7 @@ func TestTrainParser(t *testing.T) {
 	assert.Equal(
 		`cross(embedding(emplyoee.name), bucketize(last_name, 1000))`,
 		parseResult.columns[2].String())
+	assert.Equal("employee.salary", parseResult.label)
 	assert.Equal("my_dnn_model", parseResult.save)
 }
 
