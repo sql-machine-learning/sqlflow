@@ -290,13 +290,18 @@ func (e *expr) String() string {
 }
 
 func (s standardSelect) String() string {
-	r := "SELECT " + strings.Join(s.fields, ", ") +
-		"\n FROM" + strings.Join(s.tables, ", ")
+	r := "SELECT "
+	if len(s.fields) == 0 {
+		r += "*"
+	} else {
+		r += strings.Join(s.fields, ", ")
+	}
+	r += "\nFROM " + strings.Join(s.tables, ", ")
 	if s.where != nil {
-		r += fmt.Sprintf("\n WHERE %s", s.where)
+		r += fmt.Sprintf("\nWHERE %s", s.where)
 	}
 	if len(s.limit) > 0 {
-		r += fmt.Sprintf("\n LIMIT %s", s.limit)
+		r += fmt.Sprintf("\nLIMIT %s", s.limit)
 	}
 	return r + ";"
 }

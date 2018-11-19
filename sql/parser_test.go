@@ -8,21 +8,21 @@ import (
 
 const (
 	testStandardSelectStmt = `
-SELECT employee.age, last_name, salary 
+SELECT employee.age, last_name, salary
 FROM   employee
 LIMIT  100
-WHERE  
-  employee.age % 10 < (salary / 10000) 
-  AND 
+WHERE
+  employee.age % 10 < (salary / 10000)
+  AND
   strings.Upper(last_name) = "WANG"
 `
 	trainSelect = testStandardSelectStmt + `TRAIN DNNClassifier
-WITH 
+WITH
   n_classes = 3,
   hidden_units = [10, 20]
 COLUMN
   employee.name,
-  bucketize(last_name, 1000), 
+  bucketize(last_name, 1000),
   cross(embedding(emplyoee.name), bucketize(last_name, 1000))
 INTO
   my_dnn_model
@@ -77,4 +77,12 @@ func TestInferParser(t *testing.T) {
 	assert.True(parseResult.extended)
 	assert.False(parseResult.train)
 	assert.Equal("my_dnn_model", parseResult.model)
+}
+
+func TestStandardSelectPrint(t *testing.T) {
+	assert := assert.New(t)
+	assert.NotPanics(func() {
+		sqlParse(newLexer(`SELECT * FROM a LIMIT 10;`))
+	})
+	assert.Equal("SELECT *\nFROM a\nLIMIT 10;", parseResult.standardSelect.String())
 }
