@@ -8,22 +8,23 @@ import (
 
 const (
 	testStandardSelectStmt = `
-SELECT employee.age, last_name, salary 
+SELECT employee.age, last_name, salary
 FROM   employee
 LIMIT  100
-WHERE  
-  employee.age % 10 < (salary / 10000) 
-  AND 
+WHERE
+  employee.age % 10 < (salary / 10000)
+  AND
   strings.Upper(last_name) = "WANG"
 `
 	trainSelect = testStandardSelectStmt + `TRAIN DNNClassifier
-WITH 
+WITH
   n_classes = 3,
   hidden_units = [10, 20]
 COLUMN
   employee.name,
-  bucketize(last_name, 1000), 
+  bucketize(last_name, 1000),
   cross(embedding(emplyoee.name), bucketize(last_name, 1000))
+LABEL employee.salary
 INTO
   my_dnn_model
 ;
@@ -66,6 +67,7 @@ func TestTrainParser(t *testing.T) {
 	assert.Equal(
 		`cross(embedding(emplyoee.name), bucketize(last_name, 1000))`,
 		parseResult.columns[2].String())
+	assert.Equal("employee.salary", parseResult.label)
 	assert.Equal("my_dnn_model", parseResult.save)
 }
 
@@ -77,4 +79,15 @@ func TestInferParser(t *testing.T) {
 	assert.True(parseResult.extended)
 	assert.False(parseResult.train)
 	assert.Equal("my_dnn_model", parseResult.model)
+}
+
+func TestSelectStarAndPrint(t *testing.T) {
+	assert := assert.New(t)
+	assert.NotPanics(func() {
+		sqlParse(newLexer(`SELECT * FROM a LIMIT 10;`))
+	})
+	assert.Equal(0, len(parseResult.fields))
+	assert.False(parseResult.extended)
+	assert.False(parseResult.train)
+	assert.Equal("SELECT *\nFROM a\nLIMIT 10;", parseResult.standardSelect.String())
 }
