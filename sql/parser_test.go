@@ -86,7 +86,8 @@ func TestSelectStarAndPrint(t *testing.T) {
 	assert.NotPanics(func() {
 		sqlParse(newLexer(`SELECT * FROM a LIMIT 10;`))
 	})
-	assert.Equal(0, len(parseResult.fields))
+	assert.Equal(1, len(parseResult.fields))
+	assert.Equal("*", parseResult.fields[0])
 	assert.False(parseResult.extended)
 	assert.False(parseResult.train)
 	assert.Equal("SELECT *\nFROM a\nLIMIT 10;", parseResult.standardSelect.String())
