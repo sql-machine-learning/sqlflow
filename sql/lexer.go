@@ -95,12 +95,13 @@ func (l *lexer) Lex(lval *sqlSymType) int {
 func (l *lexer) lexIdentOrKeyword(lval *sqlSymType) int {
 	// lexToken ensures that the first rune is a letter.
 	r := l.next()
-	for unicode.IsLetter(r) || unicode.IsNumber(r) || r == '_' {
-		r = l.next()
-	}
-	if r == '.' { // SQL identification can contain a dot.
-		r = l.next()
+	for {
 		for unicode.IsLetter(r) || unicode.IsNumber(r) || r == '_' {
+			r = l.next()
+		}
+		if r != '.' { // The dot cannot be the last rune.
+			break
+		} else {
 			r = l.next()
 		}
 	}
