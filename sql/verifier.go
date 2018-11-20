@@ -3,10 +3,10 @@ package sql
 import (
 	"database/sql"
 	"fmt"
+	"log"
+	"strings"
 
 	"github.com/go-sql-driver/mysql"
-	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/mysql"
 )
 
 type columnTypes map[string]string
@@ -33,35 +33,59 @@ func sanityCheck(slct *extendedSelect, cfg *mysql.Config) error {
 
 	slct.standardSelect.limit = "1"
 	stmt := slct.standardSelect.String()
-	if _, e := db.Exec(stmt); e != nil {
+	if _, e := db.Query(stmt); e != nil {
 		return fmt.Errorf("sanityCheck failed executing %s: %q", stmt, e)
 	}
 	return nil
 }
 
-// According to https://stackoverflow.com/a/41263640/724872, we need
-// gorm to run the DESCRIBE table command.
+type fieldTypes map[string]map[string]string
+
+func (ft fieldTypes) add(fld, tbl, typ string) {
+	if m, ok := ft[fld]; !ok {
+		ft[fld] = map[string]string{tbl: typ}
+	} else {
+		m[tbl] = typ
+	}
+}
+
+func (ft fieldTypes) get(fld string) string {
+	tbl := ""
+	if splt := strings.Split(fld, "."); len(splt) > 1 {
+		if len(splt) != 2 {
+			log.Panicf("fieldTypes.get(fld=%s): more than one dots", fld)
+		}
+		tbl = splt[0]
+		fld = splt[1]
+	}
+}
+
 func describeTables(slct *extendedSelect, cfg *mysql.Config) (columnTypes, error) {
-	db, e := gorm.Open("mysql", cfg.FormatDSN())
+	db, e := sql.Open("mysql", cfg.FormatDSN())
 	if e != nil {
 		return nil, e
 	}
 	defer db.Close()
 
-	type Result struct {
+	var (
 		Field   string
 		Type    string
 		Null    string
 		Key     string
 		Default string
 		Extra   string
-	}
+	)
 
 	ft := make(map[string]string)
-	var dr Result
 	for _, tn := range slct.tables {
-		db.Raw("DESCRIBE " + tn + ";").Scan(&dr)
-		ft[tn] = dr.Field
+		rows, e := db.Query("DESCRIBE " + tn)
+		if e != nil {
+			return nil, e
+		}
+		for rows.Next() {
+			rows.Scan(&Field, &Type, &Null, &Key, &Default, &Extra)
+			fmt.Println(Field, Type, Null, Key, Default, Extra)
+		}
 	}
 
 	fmt.Println(ft) //debug
