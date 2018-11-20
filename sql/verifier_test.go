@@ -93,6 +93,17 @@ func TestVerify(t *testing.T) {
 	assert.Nil(e,
 		"Make sure you are running the MySQL server in example/churn.")
 	assert.Equal(2, len(fts))
-	assert.Equal("varchar(255)", fts["Churn"]["churn.churn"])
-	assert.Equal("varchar(255)", fts["Partner"]["churn.churn"])
+	typ, ok := fts.get("Churn")
+	assert.Equal(true, ok)
+	assert.Equal("varchar(255)", typ)
+
+	typ, ok = fts.get("churn.churn.Partner")
+	assert.Equal(true, ok)
+	assert.Equal("varchar(255)", typ)
+
+	typ, ok = fts.get("churn.churn.gender")
+	assert.Equal(false, ok)
+
+	typ, ok = fts.get("gender")
+	assert.Equal(false, ok)
 }

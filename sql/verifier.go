@@ -8,6 +8,8 @@ import (
 	"github.com/go-sql-driver/mysql"
 )
 
+// fieldTypes[field][table]type.  For more information, please check
+// verifier_test.go.
 type fieldTypes map[string]map[string]string
 
 // verify checks the following:
@@ -52,11 +54,13 @@ func (ft fieldTypes) get(ident string) (string, bool) {
 	if !ok {
 		return "", false
 	}
-	typ, ok := tbls[tbl]
-	if !ok {
-		return "", false
+	if len(tbl) == 0 && len(tbls) == 1 {
+		for _, typ := range tbls {
+			return typ, true
+		}
 	}
-	return typ, true
+	typ, ok := tbls[tbl]
+	return typ, ok
 }
 
 // decomp returns the table name and field name in the given
