@@ -11,18 +11,26 @@ import (
 
 type columnTypes map[string]string
 
+// verify checks the following:
+//
+// 1. The standard SELECT part is syntactically and logically legal.
+//
+// 2. The COLUMN clause refers to only fields in the SELECT clause.
+//    Please be aware that both SELECT and COLUMN might have star '*'.
+//
+// It returns a map[string][string] from fields in COLUMN clause to SQL types.
 func verify(slct *extendedSelect, cfg *mysql.Config) (columnTypes, error) {
-	if e := sanityCheck(slct, cfg); e != nil {
+	if e := checkSelect(slct, cfg); e != nil {
 		return nil, e
 	}
 	// return describeTables(slct, db)
 	return nil, nil
 }
 
-func sanityCheck(slct *extendedSelect, cfg *mysql.Config) error {
+func checkSelect(slct *extendedSelect, cfg *mysql.Config) error {
 	db, e := sql.Open("mysql", cfg.FormatDSN())
 	if e != nil {
-		return fmt.Errorf("sanityCheck cannot connect to MySQL: %q", e)
+		return fmt.Errorf("checkSelect cannot connect to MySQL: %q", e)
 	}
 	defer db.Close()
 
@@ -34,7 +42,7 @@ func sanityCheck(slct *extendedSelect, cfg *mysql.Config) error {
 	slct.standardSelect.limit = "1"
 	stmt := slct.standardSelect.String()
 	if _, e := db.Query(stmt); e != nil {
-		return fmt.Errorf("sanityCheck failed executing %s: %q", stmt, e)
+		return fmt.Errorf("checkSelect failed executing %s: %q", stmt, e)
 	}
 	return nil
 }
@@ -49,18 +57,31 @@ func (ft fieldTypes) add(fld, tbl, typ string) {
 	}
 }
 
-func (ft fieldTypes) get(fld string) string {
-	tbl := ""
-	if splt := strings.Split(fld, "."); len(splt) > 1 {
+func (ft fieldTypes) get(ident string) (string, bool) {
+	var tbl, fld string
+	if splt := strings.Split(ident, "."); len(splt) > 1 {
 		if len(splt) != 2 {
 			log.Panicf("fieldTypes.get(fld=%s): more than one dots", fld)
 		}
-		tbl = splt[0]
-		fld = splt[1]
+		tbl = strings.Join(splt[0:len(splt)-1], ".")
+		fld = splt[len(splt)-1]
+	} else {
+		tbl = ""
+		fld = ident
 	}
+
+	tbls, ok := ft[fld]
+	if !ok {
+		return "", false
+	}
+	typ, ok := tbls[tbl]
+	if !ok {
+		return "", false
+	}
+	return typ, true
 }
 
-func describeTables(slct *extendedSelect, cfg *mysql.Config) (columnTypes, error) {
+func describeTables(slct *extendedSelect, cfg *mysql.Config) (fieldTypes, error) {
 	db, e := sql.Open("mysql", cfg.FormatDSN())
 	if e != nil {
 		return nil, e
@@ -68,26 +89,23 @@ func describeTables(slct *extendedSelect, cfg *mysql.Config) (columnTypes, error
 	defer db.Close()
 
 	var (
-		Field   string
-		Type    string
-		Null    string
-		Key     string
-		Default string
-		Extra   string
+		field string
+		typ   string
+		null  string
+		key   string
+		deflt string
+		extra string
 	)
-
-	ft := make(map[string]string)
+	ft := make(fieldTypes)
 	for _, tn := range slct.tables {
 		rows, e := db.Query("DESCRIBE " + tn)
 		if e != nil {
 			return nil, e
 		}
 		for rows.Next() {
-			rows.Scan(&Field, &Type, &Null, &Key, &Default, &Extra)
-			fmt.Println(Field, Type, Null, Key, Default, Extra)
+			rows.Scan(&field, &typ, &null, &key, &deflt, &extra)
+			ft.add(field, tn, typ)
 		}
 	}
-
-	fmt.Println(ft) //debug
-	return nil, nil
+	return ft, nil
 }
