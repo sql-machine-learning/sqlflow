@@ -84,11 +84,11 @@ func TestInferParser(t *testing.T) {
 func TestSelectStarAndPrint(t *testing.T) {
 	assert := assert.New(t)
 	assert.NotPanics(func() {
-		sqlParse(newLexer(`SELECT * FROM a LIMIT 10;`))
+		sqlParse(newLexer(`SELECT *, b FROM a LIMIT 10;`))
 	})
-	assert.Equal(1, len(parseResult.fields))
+	assert.Equal(2, len(parseResult.fields))
 	assert.Equal("*", parseResult.fields[0])
 	assert.False(parseResult.extended)
 	assert.False(parseResult.train)
-	assert.Equal("SELECT *\nFROM a\nLIMIT 10;", parseResult.standardSelect.String())
+	assert.Equal("SELECT *, b\nFROM a\nLIMIT 10;", parseResult.standardSelect.String())
 }
