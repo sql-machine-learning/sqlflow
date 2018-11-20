@@ -4,14 +4,14 @@ import (
 	"text/template"
 )
 
-type ColumnType struct {
+type columnType struct {
 	Name string
 	Type string
 }
 
 type columnTypes struct {
-	Column ColumnType[]
-	Label ColumnType
+	Column []columnType
+	Label columnType
 }
 
 type connectionConfig struct {
@@ -27,23 +27,22 @@ type TemplateFiller struct {
 	StandardSelect string
 	Estimator      string
 	Attrs          map[string]string
-	Label          string
 	Save           string
+	columnTypes
 	connectionConfig
 }
 
-// func NewTemplateFiller(pr *extendedSelect, ct columnTypes, cfg connectionConfig) *TemplateFiller {
-func NewTemplateFiller(pr *extendedSelect, cfg connectionConfig) *TemplateFiller {
+func NewTemplateFiller(pr *extendedSelect, ct columnTypes, cfg connectionConfig) *TemplateFiller {
 	r := &TemplateFiller{
 		Train:          pr.train,
 		StandardSelect: pr.standardSelect.String(),
 		Estimator:      pr.estimator,
 		Attrs:          make(map[string]string),
-		Label:          pr.label,
 		Save:           pr.save}
 	for k, v := range pr.attrs {
 		r.Attrs[k] = v.String()
 	}
+	r.columnTypes = ct
 	r.connectionConfig = cfg
 	return r
 }
@@ -59,7 +58,6 @@ BATCHSIZE = 1
 STEP = 1000
 
 WORK_DIR = "{{.WorkDir}}"
-SQL_PARSING_RESULT_FILE = "sqlflow.json"
 USER = "{{.User}}"
 PASSWORD = "{{.Password}}"
 HOST = "{{.Host}}"
@@ -71,9 +69,13 @@ cursor.execute("""{{.StandardSelect}}""")
 field_names = [i[0] for i in cursor.description]
 columns = map(list, zip(*cursor.fetchall()))
 
-feature_columns = [tf.feature_column.numeric_column(key=key) for key in field_names[:-1]]
-X = {field_names[i]: columns[i] for i in range(len(field_names) - 1)}
-Y = columns[-1]
+feature_columns = [{{range .Column}}tf.feature_column.{{.Type}}(key="{{.Name}}"),
+    {{end}}]
+feature_column_names = [{{range .Column}}"{{.Name}}",
+    {{end}}]
+
+X = {name: columns[field_names.index(name)] for name in feature_column_names}
+Y = columns[field_names.index("{{.Label.Name}}")]
 
 {{if .Train}}
 classifier = tf.estimator.{{.Estimator}}(

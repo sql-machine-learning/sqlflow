@@ -35,13 +35,21 @@ var cfg = connectionConfig{
 	Database: "yang",
 	WorkDir:  "/tmp/"}
 
+var cts = columnTypes{
+	Column:   []columnType{
+			{Name: "sepal_length", Type: "numeric_column"},
+			{Name: "sepal_width", Type: "numeric_column"},
+			{Name: "petal_length", Type: "numeric_column"},
+			{Name: "petal_width", Type: "numeric_column"}},
+	Label:	columnType{Name: "species", Type: "numeric_column"}}
+
 func TestCodeGenTrain(t *testing.T) {
 	assert := assert.New(t)
 	assert.NotPanics(func() {
 		sqlParse(newLexer(simpleTrainSelect))
 	})
 
-	tpl := NewTemplateFiller(&parseResult, cfg)
+	tpl := NewTemplateFiller(&parseResult, cts, cfg)
 	var text bytes.Buffer
 	err := codegen_template.Execute(&text, tpl)
 	if err != nil {
@@ -49,7 +57,6 @@ func TestCodeGenTrain(t *testing.T) {
 	}
 	assert.Equal(err, nil)
 	fmt.Println(text.String())
-	// assert.Equal(text.String(), ``)
 }
 
 // func TestCodeGenInfer(t *testing.T) {
