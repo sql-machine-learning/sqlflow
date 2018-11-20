@@ -111,31 +111,27 @@ export GOPATH=$HOME/go
 go get -u github.com/go-sql-driver/mysql
 ```
 
-We are using `gorm` to connect to MySQL
-
-```
-go get -u github.com/jinzhu/gorm
-```
-
 `go run` the following file
 
 ```go
 package main
 
 import (
-	"fmt"
-
-	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/mysql"
+	"database/sql"
+	"github.com/go-sql-driver/mysql"
+	"log"
 )
 
 func main() {
-	db, err := gorm.Open("mysql", "root:root@tcp(localhost:3306)/information_schema?charset=utf8&parseTime=True&loc=Local")
-	if err == nil {
-		fmt.Println("Successfully connected to MySQL database")
+	testConfig := &mysql.Config{
+		User:   "root",
+		Passwd: "root",
+		Addr:   "localhost:3306",
+	}
+	db, e := sql.Open("mysql", testConfig.FormatDSN())
+	if e != nil {
+		log.Fatal(e)
 	}
 	defer db.Close()
 }
 ```
-
-You should be able to see `Successfully connected to MySQL database`.
