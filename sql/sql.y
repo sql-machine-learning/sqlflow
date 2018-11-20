@@ -176,7 +176,7 @@ infer_clause
 ;
 
 fields
-: '*'              { $$ = $$[:0] }
+: '*'              { $$ = append($$, $1) }
 | IDENT            { $$ = append($$, $1) }
 | fields ',' IDENT { $$ = append($$, $3) }
 ;

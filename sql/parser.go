@@ -851,7 +851,7 @@ sqldefault:
 		sqlDollar = sqlS[sqlpt-1 : sqlpt+1]
 		//line sql.y:179
 		{
-			sqlVAL.flds = sqlVAL.flds[:0]
+			sqlVAL.flds = append(sqlVAL.flds, sqlDollar[1].val)
 		}
 	case 11:
 		sqlDollar = sqlS[sqlpt-1 : sqlpt+1]
