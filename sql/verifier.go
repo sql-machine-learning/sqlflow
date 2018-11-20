@@ -3,8 +3,6 @@ package sql
 import (
 	"database/sql"
 	"fmt"
-	"log"
-	"strings"
 
 	"github.com/go-sql-driver/mysql"
 )
@@ -39,6 +37,7 @@ func sanityCheck(slct *extendedSelect, cfg *mysql.Config) error {
 	return nil
 }
 
+/*
 type fieldTypes map[string]map[string]string
 
 func (ft fieldTypes) add(fld, tbl, typ string) {
@@ -58,8 +57,9 @@ func (ft fieldTypes) get(fld string) string {
 		tbl = splt[0]
 		fld = splt[1]
 	}
+	return ""
 }
-
+*/
 func describeTables(slct *extendedSelect, cfg *mysql.Config) (columnTypes, error) {
 	db, e := sql.Open("mysql", cfg.FormatDSN())
 	if e != nil {
