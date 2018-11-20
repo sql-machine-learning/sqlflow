@@ -68,9 +68,9 @@ func TestLexOperator(t *testing.T) {
 }
 
 func TestLexIdentOrKeyword(t *testing.T) {
-	vals := []string{"a1_2b", "Select", "froM", "where", "tRain", "colUmn",
+	vals := []string{"a1_2b", "x.y", "x.y.z", "Select", "froM", "where", "tRain", "colUmn",
 		"and", "or", "not"}
-	typs := []int{IDENT, SELECT, FROM, WHERE, TRAIN, COLUMN,
+	typs := []int{IDENT, IDENT, IDENT, SELECT, FROM, WHERE, TRAIN, COLUMN,
 		AND, OR, NOT}
 	var n sqlSymType
 	for i, it := range vals {
