@@ -5,7 +5,7 @@ This image contains MySQL Server and a [small dataset](https://www.kaggle.com/bl
 ## Build
 
 ```bash
-docker built -t sqlflowtest .
+docker build -t sqlflowtest .
 ```
 
 ## Run
@@ -42,6 +42,6 @@ should print the number of rows as the following
 
 ```
 count(*)
-7032
+92
 ```
 
