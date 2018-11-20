@@ -1,5 +1,7 @@
 # The MySQL Server Container for Testing
 
+This image contains MySQL Server and a [small dataset](https://www.kaggle.com/blastchar/telco-customer-churn). We can run a container of it for unit testing -- unit tests could connect to the MySQL Server service running locally.
+
 ## Build
 
 ```bash
