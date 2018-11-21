@@ -1,31 +1,10 @@
 package sql
 
 import (
-	"database/sql"
-	"log"
 	"testing"
 
-	"github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"
 )
-
-var (
-	testCfg *mysql.Config
-	testDB  *sql.DB
-)
-
-func init() {
-	testCfg = &mysql.Config{
-		User:   "root",
-		Passwd: "root",
-		Addr:   "localhost:3306",
-	}
-	db, e := sql.Open("mysql", testCfg.FormatDSN())
-	if e != nil {
-		log.Panicf("verify cannot connect to MySQL: %q", e)
-	}
-	testDB = db
-}
 
 func TestDryRunSelect(t *testing.T) {
 	assert := assert.New(t)

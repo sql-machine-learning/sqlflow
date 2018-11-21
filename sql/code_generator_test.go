@@ -2,27 +2,11 @@ package sql
 
 import (
 	"bytes"
-	"database/sql"
-	"fmt"
-	"github.com/go-sql-driver/mysql"
 	"log"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
-
-func init() {
-	testCfg = &mysql.Config{
-		User:   "root",
-		Passwd: "root",
-		Addr:   "localhost:3306",
-	}
-	db, e := sql.Open("mysql", testCfg.FormatDSN())
-	if e != nil {
-		log.Panicf("verify cannot connect to MySQL: %q", e)
-	}
-	testDB = db
-}
 
 const (
 	simpleSelect = `
@@ -59,7 +43,6 @@ func TestCodeGenTrain(t *testing.T) {
 	fts, e := verify(&parseResult, testCfg)
 	assert.Nil(e,
 		"Make sure you are running the MySQL server in example/churn.")
-	fmt.Println(fts)
 
 	tpl, ok := NewTemplateFiller(&parseResult, fts, cfg)
 	assert.Equal(true, ok)
