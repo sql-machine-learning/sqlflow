@@ -35,8 +35,7 @@ func TestCodeGenTrain(t *testing.T) {
 	})
 
 	fts, e := verify(&parseResult, testCfg)
-	assert.Nil(e,
-		"Make sure you are running the MySQL server in example/churn.")
+	assert.Nil(e)
 
 	tpl, ok := NewTemplateFiller(&parseResult, fts, testCfg)
 	assert.Equal(true, ok)
