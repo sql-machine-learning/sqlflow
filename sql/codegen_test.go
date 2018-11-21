@@ -2,7 +2,6 @@ package sql
 
 import (
 	"bytes"
-	"fmt"
 	"log"
 	"testing"
 
@@ -46,7 +45,6 @@ func TestCodeGenTrain(t *testing.T) {
 		log.Println("executing template:", err)
 	}
 	assert.Equal(err, nil)
-	fmt.Println(text.String())
 }
 
 // func TestCodeGenInfer(t *testing.T) {
