@@ -1,7 +1,9 @@
 package sql
 
 import (
+	"github.com/go-sql-driver/mysql"
 	"text/template"
+	"strings"
 )
 
 var fieldTypeFeatureType = map[string]string{"float": "numeric_column"}
@@ -15,6 +17,7 @@ type connectionConfig struct {
 	User     string
 	Password string
 	Host     string
+	Port     string
 	Database string
 	WorkDir  string
 }
@@ -33,7 +36,7 @@ type TemplateFiller struct {
 	connectionConfig
 }
 
-func NewTemplateFiller(pr *extendedSelect, fts fieldTypes, cfg connectionConfig) (*TemplateFiller, bool) {
+func NewTemplateFiller(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) (*TemplateFiller, bool) {
 	r := &TemplateFiller{
 		Train:          pr.train,
 		StandardSelect: pr.standardSelect.String(),
@@ -56,7 +59,10 @@ func NewTemplateFiller(pr *extendedSelect, fts fieldTypes, cfg connectionConfig)
 		return nil, ok
 	}
 	r.Y = columnType{Name: pr.label, Type: fieldTypeFeatureType[typ]}
-	r.connectionConfig = cfg
+	r.User = cfg.User
+	r.Password = cfg.Passwd
+	r.Host = strings.Split(cfg.Addr, ":")[0]
+	r.Port = strings.Split(cfg.Addr, ":")[1]
 	return r, true
 }
 
@@ -71,12 +77,11 @@ BATCHSIZE = 1
 STEP = 1000
 
 WORK_DIR = "{{.WorkDir}}"
-USER = "{{.User}}"
-PASSWORD = "{{.Password}}"
-HOST = "{{.Host}}"
-DATABASE = "{{.Database}}"
 
-db = mysql.connector.connect(user=USER, passwd=PASSWORD, host=HOST, database=DATABASE)
+db = mysql.connector.connect(user="{{.User}}",
+                             passwd="{{.Password}}",
+                             host="{{.Host}}",
+                             port={{.Port}}{{if eq .Database ""}}{{- else}}, database="{{.DATABASE}}"{{end}})
 cursor = db.cursor()
 cursor.execute("""{{.StandardSelect}}""")
 field_names = [i[0] for i in cursor.description]

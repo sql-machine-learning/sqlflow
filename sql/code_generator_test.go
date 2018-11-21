@@ -2,53 +2,31 @@ package sql
 
 import (
 	"bytes"
-	"database/sql"
 	"fmt"
-	"github.com/go-sql-driver/mysql"
 	"log"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func init() {
-	testCfg = &mysql.Config{
-		User:   "root",
-		Passwd: "root",
-		Addr:   "localhost:3306",
-	}
-	db, e := sql.Open("mysql", testCfg.FormatDSN())
-	if e != nil {
-		log.Panicf("verify cannot connect to MySQL: %q", e)
-	}
-	testDB = db
-}
-
 const (
 	simpleSelect = `
-SELECT MonthlyCharges, TotalCharges
+SELECT MonthlyCharges, TotalCharges, tenure
 FROM churn.churn
 `
 	simpleTrainSelect = simpleSelect + `
 TRAIN DNNClassifier
 WITH 
-  n_classes = 3,
+  n_classes = 73,
   hidden_units = [10, 20]
-COLUMN MonthlyCharges
-LABEL TotalCharges
+COLUMN MonthlyCharges, TotalCharges
+LABEL tenure
 INTO
   my_dnn_model
 ;
 `
 	simpleInferSelect = simpleSelect + `INFER my_dnn_model;`
 )
-
-var cfg = connectionConfig{
-	User:     "root",
-	Password: "root",
-	Host:     "localhost",
-	Database: "yang",
-	WorkDir:  "/tmp/"}
 
 func TestCodeGenTrain(t *testing.T) {
 	assert := assert.New(t)
@@ -59,9 +37,8 @@ func TestCodeGenTrain(t *testing.T) {
 	fts, e := verify(&parseResult, testCfg)
 	assert.Nil(e,
 		"Make sure you are running the MySQL server in example/churn.")
-	fmt.Println(fts)
 
-	tpl, ok := NewTemplateFiller(&parseResult, fts, cfg)
+	tpl, ok := NewTemplateFiller(&parseResult, fts, testCfg)
 	assert.Equal(true, ok)
 
 	var text bytes.Buffer
@@ -70,6 +47,7 @@ func TestCodeGenTrain(t *testing.T) {
 		log.Println("executing template:", err)
 	}
 	assert.Equal(err, nil)
+	fmt.Println(text.String())
 }
 
 // func TestCodeGenInfer(t *testing.T) {
