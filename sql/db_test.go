@@ -22,7 +22,7 @@ func TestMain(m *testing.M) {
 	}
 	db, e := sql.Open("mysql", testCfg.FormatDSN())
 	if e != nil {
-		log.Panicf("verify cannot connect to MySQL: %q", e)
+		log.Panicf("TestMain cannot connect to MySQL: %q. Please make sure you are running the MySQL server as in example/churn/README.md.", e)
 	}
 	testDB = db
 
