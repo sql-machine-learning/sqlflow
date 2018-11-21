@@ -2,8 +2,8 @@ package sql
 
 import (
 	"github.com/go-sql-driver/mysql"
-	"text/template"
 	"strings"
+	"text/template"
 )
 
 var fieldTypeFeatureType = map[string]string{"float": "numeric_column"}
@@ -34,7 +34,7 @@ type TemplateFiller struct {
 	// Connection Config
 	connectionConfig
 	// Working directory
-	WorkDir  string
+	WorkDir string
 }
 
 func NewTemplateFiller(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) (*TemplateFiller, bool) {
