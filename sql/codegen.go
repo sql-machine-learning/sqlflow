@@ -19,7 +19,6 @@ type connectionConfig struct {
 	Host     string
 	Port     string
 	Database string
-	WorkDir  string
 }
 
 type TemplateFiller struct {
@@ -34,6 +33,8 @@ type TemplateFiller struct {
 	Y columnType
 	// Connection Config
 	connectionConfig
+	// Working directory
+	WorkDir  string
 }
 
 func NewTemplateFiller(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) (*TemplateFiller, bool) {
