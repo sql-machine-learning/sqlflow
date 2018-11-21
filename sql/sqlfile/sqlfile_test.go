@@ -3,9 +3,11 @@ package sqlfile
 import (
 	"database/sql"
 	"fmt"
+	"io"
 	"log"
 	"math/rand"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/go-sql-driver/mysql"
@@ -17,10 +19,85 @@ var (
 	testDB  *sql.DB
 )
 
-func TestCreateAndDropTable(t *testing.T) {
-	fn := fmt.Sprintf("sqlfile.unitest-%d", rand.Int())
-	assert.NotNil(t, createTable(testDB, fn))
-	assert.NotNil(t, dropTable, fn)
+func TestCreateHasDropTable(t *testing.T) {
+	assert := assert.New(t)
+
+	fn := fmt.Sprintf("sqlfile.unitest%d", rand.Int())
+	assert.NoError(createTable(testDB, fn))
+	has, e := hasTable(testDB, fn)
+	assert.NoError(e)
+	assert.True(has)
+	assert.NoError(dropTable(testDB, fn))
+}
+
+func TestWriterCreate(t *testing.T) {
+	assert := assert.New(t)
+
+	fn := fmt.Sprintf("sqlfile.unitest%d", rand.Int())
+	w, e := Create(testDB, fn)
+	assert.NoError(e)
+	assert.NotNil(w)
+	defer w.Close()
+
+	has, e1 := hasTable(testDB, fn)
+	assert.NoError(e1)
+	assert.True(has)
+
+	assert.NoError(dropTable(testDB, fn))
+}
+
+func TestWriteAndRead(t *testing.T) {
+	assert := assert.New(t)
+
+	fn := fmt.Sprintf("sqlfile.unitest%d", rand.Int())
+
+	w, e := Create(testDB, fn)
+	assert.NoError(e)
+	assert.NotNil(w)
+
+	// A small output.
+	buf := []byte("\n\n\n")
+	n, e := w.Write(buf)
+	assert.NoError(e)
+	assert.Equal(len(buf), n)
+
+	// A big output.
+	buf = make([]byte, kBufSize+1)
+	for i := range buf {
+		buf[i] = 'x'
+	}
+	n, e = w.Write(buf)
+	assert.NoError(e)
+	assert.Equal(len(buf), n)
+
+	assert.NoError(w.Close())
+
+	r, e := Open(testDB, fn)
+	assert.NoError(e)
+	assert.NotNil(r)
+
+	// A small read
+	buf = make([]byte, 2)
+	n, e = r.Read(buf)
+	assert.NoError(e)
+	assert.Equal(2, n)
+	assert.Equal(2, strings.Count(string(buf), "\n"))
+
+	// A big read of rest
+	buf = make([]byte, kBufSize*2)
+	n, e = r.Read(buf)
+	assert.Equal(io.EOF, e)
+	assert.Equal(kBufSize+2, n)
+	assert.Equal(1, strings.Count(string(buf), "\n"))
+	assert.Equal(kBufSize+1, strings.Count(string(buf), "x"))
+
+	// Another big read
+	n, e = r.Read(buf)
+	assert.Equal(io.EOF, e)
+	assert.Equal(0, n)
+	assert.NoError(r.Close())
+
+	assert.NoError(dropTable(testDB, fn))
 }
 
 func TestMain(m *testing.M) {

@@ -3,6 +3,7 @@ package sqlfile
 import (
 	"database/sql"
 	"fmt"
+	"io"
 
 	"github.com/go-sql-driver/mysql"
 )
@@ -27,7 +28,7 @@ func Open(db *sql.DB, table string) (*Reader, error) {
 	r := &Reader{
 		db:    db,
 		table: table,
-		buf:   make([]byte, 0, kMaxRowSize),
+		buf:   make([]byte, 0, kBufSize),
 		rows:  nil}
 
 	r.rows, e = r.db.Query(fmt.Sprintf("SELECT block FROM %s", table))
@@ -38,6 +39,9 @@ func Open(db *sql.DB, table string) (*Reader, error) {
 }
 
 func (r *Reader) Read(p []byte) (n int, e error) {
+	if r.db == nil {
+		return 0, fmt.Errorf("Read from a closed reader")
+	}
 	n = 0
 	for n < len(p) {
 		m := copy(p[n:], r.buf)
@@ -45,14 +49,17 @@ func (r *Reader) Read(p []byte) (n int, e error) {
 		r.buf = r.buf[m:]
 		if len(r.buf) <= 0 {
 			if r.rows.Next() {
-				e := r.rows.Scan(&r.buf)
+				e = r.rows.Scan(&r.buf)
 				if e != nil {
-					return n, e
+					break
 				}
+			} else {
+				e = io.EOF
+				break
 			}
 		}
 	}
-	return n, nil
+	return n, e
 }
 
 func (r *Reader) Close() error {
