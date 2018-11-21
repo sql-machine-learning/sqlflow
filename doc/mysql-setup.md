@@ -102,7 +102,7 @@ and we can start Python and run the following Python code snippet
 <mysql.connector.connection_cext.CMySQLConnection object at 0x7fbab9f3fed0>
 ```
 
-## Run a Golang client on the local host
+## Run a Go Client
 
 In order to connect to a database, you need to import the database's driver first.
 
