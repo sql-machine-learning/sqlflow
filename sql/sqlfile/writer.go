@@ -16,15 +16,19 @@ type Writer struct {
 	insert *sql.Stmt
 }
 
+// Create creates a new table or truncates an existing table and
+// returns a writer.
 func Create(db *sql.DB, table string) (*Writer, error) {
-	if e := dropTable(db, table); e != nil {
+	if e := DropTable(db, table); e != nil {
 		return nil, fmt.Errorf("Create: %v", e)
 	}
 	return Append(db, table)
 }
 
+// Append returns a writer to append to an existing table.  It creates
+// the table if it doesn't exist.
 func Append(db *sql.DB, table string) (*Writer, error) {
-	if e := createTable(db, table); e != nil {
+	if e := CreateTable(db, table); e != nil {
 		return nil, fmt.Errorf("Create: %v", e)
 	}
 	return &Writer{db, table, make([]byte, 0, kBufSize), nil}, nil
@@ -80,9 +84,10 @@ func (w *Writer) flush() error {
 	return nil
 }
 
-// createTable creates the table, and if necessary, the database.  We
-// took https://bit.ly/2FtkQps as a reference.
-func createTable(db *sql.DB, table string) error {
+// CreateTable creates a table, if it doesn't exist.  If the table
+// name includes the database name, e.g., "db.tbl", it creates the
+// database if necessary.
+func CreateTable(db *sql.DB, table string) error {
 	if ss := strings.Split(table, "."); len(ss) > 1 {
 		stmt := fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s;",
 			strings.Join(ss[:len(ss)-1], "."))
@@ -97,10 +102,10 @@ func createTable(db *sql.DB, table string) error {
 		return fmt.Errorf("createTable cannot create table %s: %v", table, e)
 	}
 
-	// NOTE: a double-check of hasTable is necessary. For example,
+	// NOTE: a double-check of HasTable is necessary. For example,
 	// MySQL doesn't allow '-' in table names; however, if there
 	// is, the db.Exec wouldn't return any error.
-	has, e1 := hasTable(db, table)
+	has, e1 := HasTable(db, table)
 	if e1 != nil {
 		return fmt.Errorf("createTable cannot verify the creation: %v", e1)
 	}
@@ -110,7 +115,10 @@ func createTable(db *sql.DB, table string) error {
 	return nil
 }
 
-func dropTable(db *sql.DB, table string) error {
+// DropTable removes a table if it exists.  If the table name includes
+// the database name, e.g., "db.tbl", it doesn't try to remove the
+// database.
+func DropTable(db *sql.DB, table string) error {
 	stmt := fmt.Sprintf("DROP TABLE IF EXISTS %s", table)
 	if _, e := db.Exec(stmt); e != nil {
 		return fmt.Errorf("dropTable %s: %v", table, e)

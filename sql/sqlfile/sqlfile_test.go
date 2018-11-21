@@ -23,11 +23,11 @@ func TestCreateHasDropTable(t *testing.T) {
 	assert := assert.New(t)
 
 	fn := fmt.Sprintf("sqlfile.unitest%d", rand.Int())
-	assert.NoError(createTable(testDB, fn))
-	has, e := hasTable(testDB, fn)
+	assert.NoError(CreateTable(testDB, fn))
+	has, e := HasTable(testDB, fn)
 	assert.NoError(e)
 	assert.True(has)
-	assert.NoError(dropTable(testDB, fn))
+	assert.NoError(DropTable(testDB, fn))
 }
 
 func TestWriterCreate(t *testing.T) {
@@ -39,11 +39,11 @@ func TestWriterCreate(t *testing.T) {
 	assert.NotNil(w)
 	defer w.Close()
 
-	has, e1 := hasTable(testDB, fn)
+	has, e1 := HasTable(testDB, fn)
 	assert.NoError(e1)
 	assert.True(has)
 
-	assert.NoError(dropTable(testDB, fn))
+	assert.NoError(DropTable(testDB, fn))
 }
 
 func TestWriteAndRead(t *testing.T) {
@@ -97,7 +97,7 @@ func TestWriteAndRead(t *testing.T) {
 	assert.Equal(0, n)
 	assert.NoError(r.Close())
 
-	assert.NoError(dropTable(testDB, fn))
+	assert.NoError(DropTable(testDB, fn))
 }
 
 func TestMain(m *testing.M) {

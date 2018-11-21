@@ -16,13 +16,14 @@ type Reader struct {
 	rows  *sql.Rows
 }
 
+// Open returns a reader to read from the given table in db.
 func Open(db *sql.DB, table string) (*Reader, error) {
-	has, e := hasTable(db, table)
+	has, e := HasTable(db, table)
 	if !has {
 		return nil, fmt.Errorf("Open: table %s doesn't exist", table)
 	}
 	if e != nil {
-		return nil, fmt.Errorf("Open: hasTable failed with %v", e)
+		return nil, fmt.Errorf("Open: HasTable failed with %v", e)
 	}
 
 	r := &Reader{
@@ -73,15 +74,14 @@ func (r *Reader) Close() error {
 	return nil
 }
 
-// hasTable checks if a table exists.  We took https://bit.ly/2DvCIO1
-// as a reference.
-func hasTable(db *sql.DB, table string) (bool, error) {
+// HasTable checks if a table exists.
+func HasTable(db *sql.DB, table string) (bool, error) {
 	if _, e := db.Exec("DESCRIBE " + table); e != nil {
 		// MySQL error 1146 is "table does not exist"
 		if mErr, ok := e.(*mysql.MySQLError); ok && mErr.Number == 1146 {
 			return false, nil
 		}
-		return false, fmt.Errorf("hasTable DESCRIBE %s failed: %v", table, e)
+		return false, fmt.Errorf("HasTable DESCRIBE %s failed: %v", table, e)
 	}
 	return true, nil
 }
