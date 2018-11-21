@@ -4,14 +4,11 @@ import (
 	"text/template"
 )
 
+var fieldTypeFeatureType = map[string]string{"float": "numeric_column"}
+
 type columnType struct {
 	Name string
 	Type string
-}
-
-type columnTypes struct {
-	Column []columnType
-	Label columnType
 }
 
 type connectionConfig struct {
@@ -23,16 +20,20 @@ type connectionConfig struct {
 }
 
 type TemplateFiller struct {
-	Train          bool
+	Train bool
+	// Model Config
 	StandardSelect string
 	Estimator      string
 	Attrs          map[string]string
 	Save           string
-	columnTypes
+	// Data Config
+	X []columnType
+	Y columnType
+	// Connection Config
 	connectionConfig
 }
 
-func NewTemplateFiller(pr *extendedSelect, ct columnTypes, cfg connectionConfig) *TemplateFiller {
+func NewTemplateFiller(pr *extendedSelect, fts fieldTypes, cfg connectionConfig) (*TemplateFiller, bool) {
 	r := &TemplateFiller{
 		Train:          pr.train,
 		StandardSelect: pr.standardSelect.String(),
@@ -42,9 +43,21 @@ func NewTemplateFiller(pr *extendedSelect, ct columnTypes, cfg connectionConfig)
 	for k, v := range pr.attrs {
 		r.Attrs[k] = v.String()
 	}
-	r.columnTypes = ct
+	for _, c := range pr.columns {
+		typ, ok := fts.get(c.val)
+		if !ok {
+			return nil, ok
+		}
+		ct := columnType{Name: c.val, Type: fieldTypeFeatureType[typ]}
+		r.X = append(r.X, ct)
+	}
+	typ, ok := fts.get(pr.label)
+	if !ok {
+		return nil, ok
+	}
+	r.Y = columnType{Name: pr.label, Type: fieldTypeFeatureType[typ]}
 	r.connectionConfig = cfg
-	return r
+	return r, true
 }
 
 const codegen_template_text = `
@@ -69,13 +82,13 @@ cursor.execute("""{{.StandardSelect}}""")
 field_names = [i[0] for i in cursor.description]
 columns = map(list, zip(*cursor.fetchall()))
 
-feature_columns = [{{range .Column}}tf.feature_column.{{.Type}}(key="{{.Name}}"),
+feature_columns = [{{range .X}}tf.feature_column.{{.Type}}(key="{{.Name}}"),
     {{end}}]
-feature_column_names = [{{range .Column}}"{{.Name}}",
+feature_column_names = [{{range .X}}"{{.Name}}",
     {{end}}]
 
 X = {name: columns[field_names.index(name)] for name in feature_column_names}
-Y = columns[field_names.index("{{.Label.Name}}")]
+Y = columns[field_names.index("{{.Y.Name}}")]
 
 {{if .Train}}
 classifier = tf.estimator.{{.Estimator}}(

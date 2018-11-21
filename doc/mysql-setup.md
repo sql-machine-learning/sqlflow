@@ -101,3 +101,37 @@ and we can start Python and run the following Python code snippet
 >>> print(db)
 <mysql.connector.connection_cext.CMySQLConnection object at 0x7fbab9f3fed0>
 ```
+
+## Run a Go Client
+
+In order to connect to a database, you need to import the database's driver first.
+
+```
+export GOPATH=$HOME/go
+go get -u github.com/go-sql-driver/mysql
+```
+
+`go run` the following file
+
+```go
+package main
+
+import (
+	"database/sql"
+	"github.com/go-sql-driver/mysql"
+	"log"
+)
+
+func main() {
+	testConfig := &mysql.Config{
+		User:   "root",
+		Passwd: "root",
+		Addr:   "localhost:3306",
+	}
+	db, e := sql.Open("mysql", testConfig.FormatDSN())
+	if e != nil {
+		log.Fatal(e)
+	}
+	defer db.Close()
+}
+```
