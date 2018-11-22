@@ -10,7 +10,7 @@ To create a table named "hello" in a database "mydb" for writing, we can call `C
 
 ```go
 f, e := sqlfile.Create(db, "mydb.hello")
-f.Write([]byte("hello world!\n")
+f.Write([]byte("hello world!\n"))
 f.Close()
 ```
 
