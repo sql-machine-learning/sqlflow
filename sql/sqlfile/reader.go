@@ -29,7 +29,7 @@ func Open(db *sql.DB, table string) (*Reader, error) {
 	r := &Reader{
 		db:    db,
 		table: table,
-		buf:   make([]byte, 0, kBufSize),
+		buf:   nil,
 		rows:  nil}
 
 	r.rows, e = r.db.Query(fmt.Sprintf("SELECT block FROM %s", table))
