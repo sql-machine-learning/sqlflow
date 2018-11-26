@@ -28,36 +28,21 @@ INTO
 )
 
 func TestCodeGenTrain(t *testing.T) {
-	assert := assert.New(t)
-	assert.NotPanics(func() {
+	a := assert.New(t)
+	a.NotPanics(func() {
 		sqlParse(newLexer(simpleTrainSelect))
 	})
 
 	fts, e := verify(&parseResult, testCfg)
-	assert.Nil(e)
+	a.NoError(e)
 
 	tpl, ok := NewTemplateFiller(&parseResult, fts, testCfg)
-	assert.Equal(true, ok)
+	a.Equal(true, ok)
 
 	var text bytes.Buffer
 	err := codegen_template.Execute(&text, tpl)
 	if err != nil {
 		log.Println("executing template:", err)
 	}
-	assert.Equal(err, nil)
+	a.Equal(err, nil)
 }
-
-// func TestCodeGenInfer(t *testing.T) {
-// 	assert := assert.New(t)
-// 	assert.NotPanics(func() {
-// 		sqlParse(newLexer(simpleInferSelect))
-// 	})
-//
-// 	// tpl = NewTemplateFiller(
-// 	var text bytes.Buffer
-// 	err := codegen_template.Execute(&text, parseResult)
-// 	if err != nil {
-// 		log.Println("executing template:", err)
-// 	}
-// 	assert.Equal(text.String(), ``)
-// }

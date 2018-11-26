@@ -1,7 +1,3 @@
-// The lexer in this package is inspired by Rob Pike's 2011 talk on
-// writing lexers manually https://talks.golang.org/2011/lex.slide#1.
-// It makes a significant simplification of the idea and doesn't use
-// goroutines and channels.
 package sql
 
 import (
@@ -16,11 +12,10 @@ const (
 	eof rune = 0 // a special rune
 )
 
-type item struct {
-	typ int
-	sym sqlSymType // sqlSymType is defined in sql.y
-}
-
+// The lexer in this package is inspired by Rob Pike's 2011 talk on
+// writing lexers manually https://talks.golang.org/2011/lex.slide#1.
+// It makes a significant simplification of the idea and doesn't use
+// goroutines and channels.
 type lexer struct {
 	input string // the string being scanned
 	start int    // start position of this item
@@ -50,10 +45,6 @@ func (l *lexer) next() (r rune) {
 	r, l.width = utf8.DecodeRuneInString(l.input[l.pos:])
 	l.pos += l.width
 	return r
-}
-
-func (l *lexer) ignore() {
-	l.start = l.pos
 }
 
 func (l *lexer) backup() {
