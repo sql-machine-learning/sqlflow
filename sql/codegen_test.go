@@ -3,6 +3,8 @@ package sql
 import (
 	"bytes"
 	"log"
+	"os/exec"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -45,6 +47,14 @@ func TestCodeGenTrain(t *testing.T) {
 		log.Println("executing template:", err)
 	}
 	assert.Equal(err, nil)
+
+	cmd := exec.Command("docker", "run", "--rm", "--network=host", "-i", "sqlflow", "python")
+	cmd.Stdin = bytes.NewReader(text.Bytes())
+	o, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Println(err)
+	}
+	assert.True(strings.ContainsAny(string(o), "Done training"))
 }
 
 // func TestCodeGenInfer(t *testing.T) {
