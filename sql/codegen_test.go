@@ -30,23 +30,23 @@ INTO
 )
 
 func TestCodeGenTrain(t *testing.T) {
-	assert := assert.New(t)
-	assert.NotPanics(func() {
+	a := assert.New(t)
+	a.NotPanics(func() {
 		sqlParse(newLexer(simpleTrainSelect))
 	})
 
 	fts, e := verify(&parseResult, testCfg)
-	assert.Nil(e)
+	a.NoError(e)
 
 	tpl, ok := NewTemplateFiller(&parseResult, fts, testCfg)
-	assert.Equal(true, ok)
+	a.Equal(true, ok)
 
 	var text bytes.Buffer
 	err := codegen_template.Execute(&text, tpl)
 	if err != nil {
 		log.Println("executing template:", err)
 	}
-	assert.Equal(err, nil)
+	a.Equal(err, nil)
 
 	cmd := exec.Command("docker", "run", "--rm", "--network=host", "-i", "sqlflow", "python")
 	cmd.Stdin = bytes.NewReader(text.Bytes())
@@ -54,20 +54,5 @@ func TestCodeGenTrain(t *testing.T) {
 	if err != nil {
 		log.Println(err)
 	}
-	assert.True(strings.ContainsAny(string(o), "Done training"))
+	a.True(strings.ContainsAny(string(o), "Done training"))
 }
-
-// func TestCodeGenInfer(t *testing.T) {
-// 	assert := assert.New(t)
-// 	assert.NotPanics(func() {
-// 		sqlParse(newLexer(simpleInferSelect))
-// 	})
-//
-// 	// tpl = NewTemplateFiller(
-// 	var text bytes.Buffer
-// 	err := codegen_template.Execute(&text, parseResult)
-// 	if err != nil {
-// 		log.Println("executing template:", err)
-// 	}
-// 	assert.Equal(text.String(), ``)
-// }

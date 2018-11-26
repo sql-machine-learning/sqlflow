@@ -21,12 +21,12 @@ type fieldTypes map[string]map[string]string
 //    star '*'.
 //
 // It returns a fieldTypes describing types of fields in SELECT.
-func verify(slct *extendedSelect, cfg *mysql.Config) (fieldTypes, error) {
+func verify(slct *extendedSelect, cfg *mysql.Config) (ft fieldTypes, e error) {
 	db, e := sql.Open("mysql", cfg.FormatDSN())
 	if e != nil {
 		return nil, fmt.Errorf("verify cannot connect to MySQL: %q", e)
 	}
-	defer db.Close()
+	defer func() { e = db.Close() }()
 
 	if e := dryRunSelect(slct, db); e != nil {
 		return nil, e
@@ -71,25 +71,29 @@ func decomp(ident string) (tbl string, fld string) {
 }
 
 // Retrieve the type of fields mentioned in SELECT.
-func describeTables(slct *extendedSelect, db *sql.DB) (fieldTypes, error) {
-	fields := indexSelectFields(slct)
-	hasStar := len(fields) == 0
+func describeTables(slct *extendedSelect, db *sql.DB) (ft fieldTypes, e error) {
+	ft = indexSelectFields(slct)
+	hasStar := len(ft) == 0
 	for _, tn := range slct.tables {
 		rows, e := db.Query("DESCRIBE " + tn)
 		if e != nil {
 			return nil, e
 		}
 		for rows.Next() {
-			var fld, typ, null, key, deflt, extra string
-			rows.Scan(&fld, &typ, &null, &key, &deflt, &extra)
+			var fld, typ, null, key, extra string
+			var deflt sql.NullString
+			e = rows.Scan(&fld, &typ, &null, &key, &deflt, &extra)
+			if e != nil {
+				return nil, e
+			}
 
 			if hasStar {
-				if _, ok := fields[fld]; !ok {
-					fields[fld] = make(map[string]string)
+				if _, ok := ft[fld]; !ok {
+					ft[fld] = make(map[string]string)
 				}
-				fields[fld][tn] = typ
+				ft[fld][tn] = typ
 			} else {
-				if tbls, ok := fields[fld]; ok {
+				if tbls, ok := ft[fld]; ok {
 					if len(tbls) == 0 {
 						tbls[tn] = typ
 					} else if _, ok := tbls[tn]; ok {
@@ -99,25 +103,25 @@ func describeTables(slct *extendedSelect, db *sql.DB) (fieldTypes, error) {
 			}
 		}
 	}
-	return fields, nil
+	return ft, nil
 }
 
 // Index fields in the SELECT clause.  For `SELECT f`, returns {f:{}}.
 // For `SELECT t.f`, returns {f:{t:1}}.  For `SELECT t1.f, t2.f`,
 // returns {f:{t1:1,t2:1}}.  For `SELECT ... * ...`, returns {}.
-func indexSelectFields(slct *extendedSelect) fieldTypes {
-	fields := make(fieldTypes)
+func indexSelectFields(slct *extendedSelect) (ft fieldTypes) {
+	ft = make(fieldTypes)
 	for _, f := range slct.fields {
 		if f == "*" {
 			return fieldTypes{}
 		}
 		tbl, fld := decomp(f)
-		if _, ok := fields[fld]; !ok {
-			fields[fld] = make(map[string]string)
+		if _, ok := ft[fld]; !ok {
+			ft[fld] = make(map[string]string)
 		}
 		if len(tbl) > 0 {
-			fields[fld][tbl] = ""
+			ft[fld][tbl] = ""
 		}
 	}
-	return fields
+	return ft
 }
