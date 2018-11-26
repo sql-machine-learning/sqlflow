@@ -140,6 +140,8 @@ INTO kaggle_credit_fraud_development_data.class
 
 ## System Architecture
 
+### A Conceptual Overview
+
 In the prototype, we use the following architecture:
 
 ```
@@ -153,3 +155,9 @@ In the prototype, the code generator generates a Python program that trains or p
 1. optionally, retrieves the model from MySQL,
 1. trains the model or predicts using the trained model by calling the user specified  TensorFlow estimator,
 1. and writes the trained model or prediction results into a table.
+
+### Working with Jupyter Notebook and Kubernetes
+
+The following figures shows the system components and their runtime environment.  The left part shows how to run the system on a PC/laptop, the right part shows how to run it on a Kubernetes cluster.
+
+![](doc/figures/sqlflow-arch.png)
