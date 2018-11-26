@@ -55,7 +55,7 @@ func TestLexString(t *testing.T) {
 
 func TestLexOperator(t *testing.T) {
 	a := assert.New(t)
-	l := newLexer("+-***/%()[]{}<<==,;")
+	l := newLexer(`+-***/%()[]{}<<==,;`)
 
 	typs := []int{
 		'+', '-', POWER, '*', '/', '%', '(', ')', '[', ']', '{', '}',
