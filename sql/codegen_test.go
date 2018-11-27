@@ -26,7 +26,6 @@ INTO
   my_dnn_model
 ;
 `
-	simpleInferSelect = simpleSelect + `INFER my_dnn_model;`
 )
 
 func TestCodeGenTrain(t *testing.T) {
@@ -38,18 +37,11 @@ func TestCodeGenTrain(t *testing.T) {
 	fts, e := verify(&parseResult, testCfg)
 	a.NoError(e)
 
-	tpl, ok := NewTemplateFiller(&parseResult, fts, testCfg)
-	a.Equal(true, ok)
-
-	var text bytes.Buffer
-	err := codegen_template.Execute(&text, tpl)
-	if err != nil {
-		log.Println("executing template:", err)
-	}
-	a.Equal(err, nil)
+	var program bytes.Buffer
+	a.NoError(generateTFProgram(&program, &parseResult, fts, testCfg))
 
 	cmd := exec.Command("docker", "run", "--rm", "--network=host", "-i", "tensorflow/tensorflow:1.12.0", "python")
-	cmd.Stdin = bytes.NewReader(text.Bytes())
+	cmd.Stdin = bytes.NewReader(program.Bytes())
 	o, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Println(err)
