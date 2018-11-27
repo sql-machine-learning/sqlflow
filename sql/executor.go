@@ -67,6 +67,8 @@ func executeTrain(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) error {
 				return fmt.Errorf("Writing %s expect %d, got %d\n", f.Name(), len(dat), n)
 			}
 			if err != nil { return err }
+
+			fmt.Println("Successfully store", tn)
 		}
 	}
 
