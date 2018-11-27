@@ -3,6 +3,8 @@ package sql
 import (
 	"bytes"
 	"log"
+	"os/exec"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -45,4 +47,12 @@ func TestCodeGenTrain(t *testing.T) {
 		log.Println("executing template:", err)
 	}
 	a.Equal(err, nil)
+
+	cmd := exec.Command("docker", "run", "--rm", "--network=host", "-i", "tensorflow/tensorflow:1.12.0", "python")
+	cmd.Stdin = bytes.NewReader(text.Bytes())
+	o, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Println(err)
+	}
+	a.True(strings.ContainsAny(string(o), "Done training"))
 }
