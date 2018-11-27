@@ -1,13 +1,17 @@
 package sql
 
 import (
-	"bytes"
 	"fmt"
-	"github.com/go-sql-driver/mysql"
+	"io"
 	"strings"
 	"text/template"
+
+	"github.com/go-sql-driver/mysql"
 )
 
+// TODO(tonyyang): This is currently a quick hack to map from SQL
+// field types to feature types.  We will enhance it to support more
+// complex cases like cross features.
 var fieldTypeFeatureType = map[string]string{"float": "numeric_column"}
 
 type columnType struct {
@@ -23,7 +27,7 @@ type connectionConfig struct {
 	Database string
 }
 
-type templateFiller struct {
+type filler struct {
 	Train bool
 	// Model Config
 	StandardSelect string
@@ -39,8 +43,9 @@ type templateFiller struct {
 	WorkDir string
 }
 
-func newTemplateFiller(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) (*templateFiller, error) {
-	r := &templateFiller{
+func generateTFProgram(w io.Writer, pr *extendedSelect, fts fieldTypes,
+	cfg *mysql.Config) error {
+	r := &filler{
 		Train:          pr.train,
 		StandardSelect: pr.standardSelect.String(),
 		Estimator:      pr.estimator,
@@ -52,34 +57,25 @@ func newTemplateFiller(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) (*
 	for _, c := range pr.columns {
 		typ, ok := fts.get(c.val)
 		if !ok {
-			return nil, fmt.Errorf("codgen: can't find column field %s", c.val)
+			return fmt.Errorf("generateTFProgram: Cannot find type of field %s", c.val)
 		}
 		ct := columnType{Name: c.val, Type: fieldTypeFeatureType[typ]}
 		r.X = append(r.X, ct)
 	}
 	typ, ok := fts.get(pr.label)
 	if !ok {
-		return nil, fmt.Errorf("codegen: can't find label field %s", pr.label)
+		return fmt.Errorf("generateTFProgram: Cannot find type of field: %s", pr.label)
 	}
 	r.Y = columnType{Name: pr.label, Type: fieldTypeFeatureType[typ]}
 	r.User = cfg.User
 	r.Password = cfg.Passwd
 	r.Host = strings.Split(cfg.Addr, ":")[0]
 	r.Port = strings.Split(cfg.Addr, ":")[1]
-	return r, nil
-}
 
-func codeGen(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) (*bytes.Buffer, error) {
-	tpl, err := newTemplateFiller(pr, fts, cfg)
-	if err != nil {
-		return nil, err
+	if e := codegenTemplate.Execute(w, r); e != nil {
+		return fmt.Errorf("generateTFProgram: failed executing template: %v", e)
 	}
-	var text bytes.Buffer
-	err = codegenTemplate.Execute(&text, tpl)
-	if err != nil {
-		return nil, err
-	}
-	return &text, nil
+	return nil
 }
 
 const codegenTemplateText = `
@@ -159,4 +155,4 @@ print("\nTest set accuracy: {accuracy:0.5f}\n".format(**eval_result))
 {{- end}}
 `
 
-var codegenTemplate *template.Template = template.Must(template.New("codegen").Parse(codegenTemplateText))
+var codegenTemplate = template.Must(template.New("codegen").Parse(codegenTemplateText))
