@@ -1,6 +1,11 @@
 # The MySQL Server Container for Testing
 
-This image contains MySQL Server and a [small dataset](https://www.kaggle.com/blastchar/telco-customer-churn). We can run a container of it for unit testing -- unit tests could connect to the MySQL Server service running locally.
+This directory contains a Dockerfile that builds a Docker image derived the MySQL Server 8.0 image, and includes SQL programs that popularize the following datasets:
+
+1. [Churn from Kaggle](https://www.kaggle.com/blastchar/telco-customer-churn)
+1. [Irises classfication from TensorFlow](https://www.tensorflow.org/guide/premade_estimators#classifying_irises_an_overview)
+
+We can run a Docker container of it for unit testing.
 
 ## Build
 
@@ -18,19 +23,27 @@ docker run --rm -d --name sqlflowtest \
    sqlflowtest
 ```
 
-Manually popularize the database and table:
+## Popularize Datasets
+
+We need to manually popularize the databases and tables:
 
 ```bash
 docker exec -it sqlflowtest bash
 ```
 
-In the container, run
+To popularize the Churn dataset into `churn.churn`:
 
 ```bash
-cat /popularize_table.sql | mysql -uroot -proot
+cat /popularize_churn.sql | mysql -uroot -proot
 ```
 
-## Check
+To popularize the Irises dataset into `iris.iris`:
+
+```bash
+cat /popularize_iris.sql | mysql -uroot -proot
+```
+
+## Query
 
 In the container, run
 
@@ -44,4 +57,3 @@ should print the number of rows as the following
 count(*)
 92
 ```
-
