@@ -6,7 +6,6 @@ import (
 	"testing"
 )
 
-
 func check(e error) {
 	if e != nil {
 		log.Fatal(e)
@@ -21,4 +20,3 @@ func TestExecutorTrain(t *testing.T) {
 	})
 
 }
-
