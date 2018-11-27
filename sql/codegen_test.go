@@ -48,7 +48,7 @@ func TestCodeGenTrain(t *testing.T) {
 	}
 	a.Equal(err, nil)
 
-	cmd := exec.Command("docker", "run", "--rm", "--network=host", "-i", "sqlflow", "python")
+	cmd := exec.Command("docker", "run", "--rm", "--network=host", "-i", "tensorflow/tensorflow:1.12.0", "python")
 	cmd.Stdin = bytes.NewReader(text.Bytes())
 	o, err := cmd.CombinedOutput()
 	if err != nil {
