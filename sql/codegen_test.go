@@ -26,7 +26,6 @@ INTO
   my_dnn_model
 ;
 `
-	simpleInferSelect = simpleSelect + `INFER my_dnn_model;`
 )
 
 func TestCodeGenTrain(t *testing.T) {
@@ -38,13 +37,12 @@ func TestCodeGenTrain(t *testing.T) {
 	fts, e := verify(&parseResult, testCfg)
 	a.NoError(e)
 
-	text, err := codeGen(&parseResult, fts, testCfg)
-	if err != nil {
-		log.Println(err)
-	}
+	var program bytes.Buffer
+	a.NoError(generateTFProgram(&program, &parseResult, fts, testCfg))
 
 	cmd := exec.Command("docker", "run", "--rm", "--network=host", "-i", "sqlflow", "python")
-	cmd.Stdin = bytes.NewReader(text.Bytes())
+	cmd.Stdin = bytes.NewReader(program.Bytes())
+
 	o, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Println(err)

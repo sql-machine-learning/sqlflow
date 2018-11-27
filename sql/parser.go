@@ -109,7 +109,6 @@ type sqlSymType struct {
 	expr *expr
 	expl exprlist
 	atrs attrs
-	eslt extendedSelect
 	slct standardSelect
 	tran trainClause
 	infr inferClause
