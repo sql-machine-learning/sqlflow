@@ -1,6 +1,8 @@
 package sql
 
 import (
+	"bytes"
+	"fmt"
 	"github.com/go-sql-driver/mysql"
 	"strings"
 	"text/template"
@@ -21,7 +23,7 @@ type connectionConfig struct {
 	Database string
 }
 
-type TemplateFiller struct {
+type templateFiller struct {
 	Train bool
 	// Model Config
 	StandardSelect string
@@ -37,8 +39,8 @@ type TemplateFiller struct {
 	WorkDir string
 }
 
-func NewTemplateFiller(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) (*TemplateFiller, bool) {
-	r := &TemplateFiller{
+func newTemplateFiller(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) (*templateFiller, error) {
+	r := &templateFiller{
 		Train:          pr.train,
 		StandardSelect: pr.standardSelect.String(),
 		Estimator:      pr.estimator,
@@ -50,24 +52,37 @@ func NewTemplateFiller(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) (*
 	for _, c := range pr.columns {
 		typ, ok := fts.get(c.val)
 		if !ok {
-			return nil, ok
+			return nil, fmt.Errorf("codgen: can't find column field %s", c.val)
 		}
 		ct := columnType{Name: c.val, Type: fieldTypeFeatureType[typ]}
 		r.X = append(r.X, ct)
 	}
 	typ, ok := fts.get(pr.label)
 	if !ok {
-		return nil, ok
+		return nil, fmt.Errorf("codegen: can't find label field %s", pr.label)
 	}
 	r.Y = columnType{Name: pr.label, Type: fieldTypeFeatureType[typ]}
 	r.User = cfg.User
 	r.Password = cfg.Passwd
 	r.Host = strings.Split(cfg.Addr, ":")[0]
 	r.Port = strings.Split(cfg.Addr, ":")[1]
-	return r, true
+	return r, nil
 }
 
-const codegen_template_text = `
+func codeGen(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) (*bytes.Buffer, error) {
+	tpl, err := newTemplateFiller(pr, fts, cfg)
+	if err != nil {
+		return nil, err
+	}
+	var text bytes.Buffer
+	err = codegenTemplate.Execute(&text, tpl)
+	if err != nil {
+		return nil, err
+	}
+	return &text, nil
+}
+
+const codegenTemplateText = `
 import tensorflow as tf
 import sys, json, os
 import mysql.connector
@@ -144,4 +159,4 @@ print("\nTest set accuracy: {accuracy:0.5f}\n".format(**eval_result))
 {{- end}}
 `
 
-var codegen_template *template.Template = template.Must(template.New("codegen").Parse(codegen_template_text))
+var codegenTemplate *template.Template = template.Must(template.New("codegen").Parse(codegenTemplateText))

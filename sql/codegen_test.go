@@ -38,21 +38,17 @@ func TestCodeGenTrain(t *testing.T) {
 	fts, e := verify(&parseResult, testCfg)
 	a.NoError(e)
 
-	tpl, ok := NewTemplateFiller(&parseResult, fts, testCfg)
-	a.Equal(true, ok)
-
-	var text bytes.Buffer
-	err := codegen_template.Execute(&text, tpl)
+	text, err := codeGen(&parseResult, fts, testCfg)
 	if err != nil {
-		log.Println("executing template:", err)
+		log.Println(err)
 	}
-	a.Equal(err, nil)
 
-	cmd := exec.Command("docker", "run", "--rm", "--network=host", "-i", "tensorflow/tensorflow:1.12.0", "python")
+	cmd := exec.Command("docker", "run", "--rm", "--network=host", "-i", "sqlflow", "python")
 	cmd.Stdin = bytes.NewReader(text.Bytes())
 	o, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Println(err)
 	}
-	a.True(strings.ContainsAny(string(o), "Done training"))
+	log.Println(string(o))
+	a.True(strings.Contains(string(o), "Done training"))
 }
