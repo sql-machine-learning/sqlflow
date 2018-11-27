@@ -54,7 +54,7 @@ func TestCodeGenTrain(t *testing.T) {
 	if err != nil {
 		log.Println(err)
 	}
-	a.True(strings.ContainsAny(string(o), "Done training"))
+	a.True(strings.Contains(string(o), "Done training"))
 }
 
 func tryRun(cmd string, args ...string) bool {
@@ -72,6 +72,10 @@ func hasTensorFlow() bool {
 	return tryRun("python", "-c", "import tensorflow")
 }
 
+func hasMySQLConnector() bool {
+	return tryRun("python", "-c", "import mysql.connector")
+}
+
 func hasDocker() bool {
 	return tryRun("docker", "version")
 }
@@ -85,10 +89,10 @@ func hasDockerImage(image string) bool {
 }
 
 func tensorflowCmd() (cmd *exec.Cmd) {
-	if hasPython() && hasTensorFlow() {
+	if hasPython() && hasTensorFlow() && hasMySQLConnector() {
 		cmd = exec.Command("python")
 	} else if hasDocker() {
-		const tfImg = "tensorflow/tensorflow:1.12.0"
+		const tfImg = "sqlflow/sqlflow"
 		if !hasDockerImage(tfImg) {
 			log.Printf("No local Docker image %s.  It will take a long time to pull.", tfImg)
 		}
