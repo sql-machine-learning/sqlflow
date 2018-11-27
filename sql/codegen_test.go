@@ -1,7 +1,7 @@
 package sql
 
 import (
-	"bytes"
+	"io"
 	"log"
 	"os/exec"
 	"strings"
@@ -37,14 +37,14 @@ func TestCodeGenTrain(t *testing.T) {
 	fts, e := verify(&parseResult, testCfg)
 	a.NoError(e)
 
-	var program bytes.Buffer
-	a.NoError(generateTFProgram(&program, &parseResult, fts, testCfg))
-
-	cmd := exec.Command("docker", "run", "--rm", "--network=host", "-i", "sqlflow", "python")
-	cmd.Stdin = bytes.NewReader(program.Bytes())
+	pr, pw := io.Pipe()
+	go func() {
+		a.NoError(generateTFProgram(pw, &parseResult, fts, testCfg))
+		pw.Close()
+	}()
 
 	cmd := tensorflowCmd()
-	cmd.Stdin = bytes.NewReader(text.Bytes())
+	cmd.Stdin = pr
 	o, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Println(err)
@@ -86,8 +86,10 @@ func hasDockerImage(image string) bool {
 
 func tensorflowCmd() (cmd *exec.Cmd) {
 	if hasPython() && hasTensorFlow() && hasMySQLConnector() {
+		log.Printf("tensorflowCmd: run locally")
 		cmd = exec.Command("python")
 	} else if hasDocker() {
+		log.Printf("tensorflowCmd: run in Docker container")
 		const tfImg = "sqlflow/sqlflow"
 		if !hasDockerImage(tfImg) {
 			log.Printf("No local Docker image %s.  It will take a long time to pull.", tfImg)
