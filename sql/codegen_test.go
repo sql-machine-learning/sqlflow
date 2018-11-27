@@ -1,7 +1,7 @@
 package sql
 
 import (
-	"bytes"
+	"io"
 	"log"
 	"os/exec"
 	"strings"
@@ -26,7 +26,6 @@ INTO
   my_dnn_model
 ;
 `
-	simpleInferSelect = simpleSelect + `INFER my_dnn_model;`
 )
 
 func TestCodeGenTrain(t *testing.T) {
@@ -38,21 +37,66 @@ func TestCodeGenTrain(t *testing.T) {
 	fts, e := verify(&parseResult, testCfg)
 	a.NoError(e)
 
-	tpl, ok := NewTemplateFiller(&parseResult, fts, testCfg)
-	a.Equal(true, ok)
+	pr, pw := io.Pipe()
+	go func() {
+		a.NoError(generateTFProgram(pw, &parseResult, fts, testCfg))
+		pw.Close()
+	}()
 
-	var text bytes.Buffer
-	err := codegen_template.Execute(&text, tpl)
-	if err != nil {
-		log.Println("executing template:", err)
-	}
-	a.Equal(err, nil)
-
-	cmd := exec.Command("docker", "run", "--rm", "--network=host", "-i", "tensorflow/tensorflow:1.12.0", "python")
-	cmd.Stdin = bytes.NewReader(text.Bytes())
+	cmd := tensorflowCmd()
+	cmd.Stdin = pr
 	o, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Println(err)
 	}
-	a.True(strings.ContainsAny(string(o), "Done training"))
+
+	a.True(strings.Contains(string(o), "Done training"))
+}
+
+func tryRun(cmd string, args ...string) bool {
+	if exec.Command(cmd, args...).Run() != nil {
+		return false
+	}
+	return true
+}
+
+func hasPython() bool {
+	return tryRun("python", "-V")
+}
+
+func hasTensorFlow() bool {
+	return tryRun("python", "-c", "import tensorflow")
+}
+
+func hasMySQLConnector() bool {
+	return tryRun("python", "-c", "import mysql.connector")
+}
+
+func hasDocker() bool {
+	return tryRun("docker", "version")
+}
+
+func hasDockerImage(image string) bool {
+	b, e := exec.Command("docker", "images", "-q", image).Output()
+	if e != nil || len(b) == 0 {
+		return false
+	}
+	return true
+}
+
+func tensorflowCmd() (cmd *exec.Cmd) {
+	if hasPython() && hasTensorFlow() && hasMySQLConnector() {
+		log.Printf("tensorflowCmd: run locally")
+		cmd = exec.Command("python")
+	} else if hasDocker() {
+		log.Printf("tensorflowCmd: run in Docker container")
+		const tfImg = "sqlflow/sqlflow"
+		if !hasDockerImage(tfImg) {
+			log.Printf("No local Docker image %s.  It will take a long time to pull.", tfImg)
+		}
+		cmd = exec.Command("docker", "run", "--rm", "--network=host", "-i", tfImg, "python")
+	} else {
+		log.Fatalf("No local TensorFlow or Docker.  No way to run TensorFlow programs")
+	}
+	return cmd
 }
