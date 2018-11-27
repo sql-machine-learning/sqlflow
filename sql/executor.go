@@ -3,7 +3,6 @@ package sql
 import (
 	"bytes"
 	"database/sql"
-	"encoding/gob"
 	"fmt"
 	"github.com/go-sql-driver/mysql"
 	"github.com/wangkuiyi/sqlflow/sql/sqlfile"
@@ -19,7 +18,8 @@ const (
 )
 
 func executeTrain(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) error {
-	text, err := codeGen(&parseResult, fts, cfg)
+	var program bytes.Buffer
+	err := generateTFProgram(&program, pr, fts, cfg)
 	if err != nil { return err }
 
 	cmd := exec.Command("docker", "run",
@@ -27,7 +27,7 @@ func executeTrain(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) error {
 		"-v", workDir + ":/work",
 		"-w", "/work",
 		"sqlflow", "python")
-	cmd.Stdin = bytes.NewReader(text.Bytes())
+	cmd.Stdin = bytes.NewReader(program.Bytes())
 	o, err := cmd.CombinedOutput()
 	if err != nil { return err }
 	if !strings.Contains(string(o), "Done training") {
@@ -70,13 +70,13 @@ func executeTrain(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) error {
 		}
 	}
 
-	// store train model template
-	trainTemplate, err := newTemplateFiller(pr, fts, cfg)
-	if err != nil { return err }
-	w, err := sqlfile.Create(db, modelName+"."+"trainTemplate")
-	enc := gob.NewEncoder(w)
-	enc.Encode(trainTemplate)
-	if err != nil { return err }
+	// TODO(tonyyang-svail): store train model template
+	// trainTemplate, err := newTemplateFiller(pr, fts, cfg)
+	// if err != nil { return err }
+	// w, err := sqlfile.Create(db, modelName+"."+"trainTemplate")
+	// enc := gob.NewEncoder(w)
+	// enc.Encode(trainTemplate)
+	// if err != nil { return err }
 
 	return nil
 }
