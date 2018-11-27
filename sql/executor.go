@@ -26,7 +26,7 @@ func executeTrain(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) error {
 		"--rm", "--network=host", "-i",
 		"-v", workDir + ":/work",
 		"-w", "/work",
-		"sqlflow", "python")
+		"sqlflow/sqlflow", "python")
 	cmd.Stdin = bytes.NewReader(program.Bytes())
 	o, err := cmd.CombinedOutput()
 	if err != nil { return err }
