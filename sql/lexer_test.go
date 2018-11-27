@@ -7,50 +7,55 @@ import (
 )
 
 func TestNewLexer(t *testing.T) {
+	a := assert.New(t)
 	l := newLexer("")
 	var n sqlSymType
-	assert.Equal(t, 0, l.Lex(&n))
+	a.Equal(0, l.Lex(&n))
 }
 
 func TestNextAndBackup(t *testing.T) {
+	a := assert.New(t)
 	l := newLexer("ab")
-	assert.Equal(t, 'a', l.next())
+	a.Equal('a', l.next())
 	l.backup()
-	assert.Equal(t, 'a', l.next())
-	assert.Equal(t, 'b', l.next())
-	assert.Equal(t, eof, l.next())
-	assert.Equal(t, eof, l.next())
+	a.Equal('a', l.next())
+	a.Equal('b', l.next())
+	a.Equal(eof, l.next())
+	a.Equal(eof, l.next())
 	l.backup()
-	assert.Equal(t, eof, l.next())
+	a.Equal(eof, l.next())
 }
 
 func TestSkipSpaces(t *testing.T) {
+	a := assert.New(t)
 	l := newLexer("ab")
 	l.skipSpaces()
-	assert.Equal(t, 'a', rune(l.input[l.start]))
-	assert.Equal(t, 'a', l.next())
+	a.Equal('a', rune(l.input[l.start]))
+	a.Equal('a', l.next())
 	l.skipSpaces()
-	assert.Equal(t, 'b', rune(l.input[l.start]))
-	assert.Equal(t, 'b', l.next())
+	a.Equal('b', rune(l.input[l.start]))
+	a.Equal('b', l.next())
 }
 
 func TestLexNumber(t *testing.T) {
+	a := assert.New(t)
 	l := newLexer("123.4")
 	var n sqlSymType
-
-	assert.Equal(t, NUMBER, l.Lex(&n))
-	assert.Equal(t, "123.4", n.val)
+	a.Equal(NUMBER, l.Lex(&n))
+	a.Equal("123.4", n.val)
 }
 
 func TestLexString(t *testing.T) {
+	a := assert.New(t)
 	l := newLexer(`  "\""  `)
 	var n sqlSymType
-	assert.Equal(t, STRING, l.Lex(&n))
-	assert.Equal(t, `"\""`, n.val)
+	a.Equal(STRING, l.Lex(&n))
+	a.Equal(`"\""`, n.val)
 }
 
 func TestLexOperator(t *testing.T) {
-	l := newLexer("+-***/%()[]{}<<==,;")
+	a := assert.New(t)
+	l := newLexer(`+-***/%()[]{}<<==,;`)
 
 	typs := []int{
 		'+', '-', POWER, '*', '/', '%', '(', ')', '[', ']', '{', '}',
@@ -61,13 +66,14 @@ func TestLexOperator(t *testing.T) {
 	i := 0
 	var n sqlSymType
 	for typ := l.Lex(&n); typ != 0; typ = l.Lex(&n) {
-		assert.Equal(t, typs[i], typ)
-		assert.Equal(t, vals[i], n.val)
+		a.Equal(typs[i], typ)
+		a.Equal(vals[i], n.val)
 		i++
 	}
 }
 
 func TestLexIdentOrKeyword(t *testing.T) {
+	a := assert.New(t)
 	vals := []string{"a1_2b", "x.y", "x.y.z", "Select", "froM", "where", "tRain", "colUmn",
 		"and", "or", "not"}
 	typs := []int{IDENT, IDENT, IDENT, SELECT, FROM, WHERE, TRAIN, COLUMN,
@@ -75,12 +81,13 @@ func TestLexIdentOrKeyword(t *testing.T) {
 	var n sqlSymType
 	for i, it := range vals {
 		l := newLexer(it)
-		assert.Equal(t, typs[i], l.Lex(&n))
-		assert.Equal(t, vals[i], n.val)
+		a.Equal(typs[i], l.Lex(&n))
+		a.Equal(vals[i], n.val)
 	}
 }
 
 func TestLexSQL(t *testing.T) {
+	a := assert.New(t)
 	l := newLexer("  Select * from a_table where a_table.col_1 > 100;")
 	typs := []int{
 		SELECT, '*', FROM, IDENT, WHERE, IDENT, '>', NUMBER, ';'}
@@ -89,7 +96,7 @@ func TestLexSQL(t *testing.T) {
 		"a_table.col_1", ">", "100", ";"}
 	var n sqlSymType
 	for i := range typs {
-		assert.Equal(t, typs[i], l.Lex(&n))
-		assert.Equal(t, vals[i], n.val)
+		a.Equal(typs[i], l.Lex(&n))
+		a.Equal(vals[i], n.val)
 	}
 }
