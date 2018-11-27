@@ -16,13 +16,9 @@ func check(e error) {
 func TestExecutorTrain(t *testing.T) {
 	a := assert.New(t)
 	a.NotPanics(func() {
-		sqlParse(newLexer(simpleTrainSelect))
+		e := Execute(simpleTrainSelect, testCfg)
+		a.NoError(e)
 	})
 
-	fts, e := verify(&parseResult, testCfg)
-	a.NoError(e)
-
-	e = executeTrain(&parseResult, fts, testCfg)
-	a.NoError(e)
 }
 

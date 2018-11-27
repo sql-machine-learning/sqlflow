@@ -7,7 +7,6 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"github.com/wangkuiyi/sqlflow/sql/sqlfile"
 	"io/ioutil"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -17,24 +16,40 @@ const (
 	workDir = `/tmp`
 )
 
+func Execute(slctStmt string, cfg *mysql.Config) error {
+	sqlParse(newLexer(slctStmt))
+
+	fts, err := verify(&parseResult, cfg)
+
+	if parseResult.train {
+		err = executeTrain(&parseResult, fts, cfg)
+		if err != nil { return err }
+	} else {
+		return fmt.Errorf("Eval/Inference not implemented")
+	}
+	return nil
+}
+
 func executeTrain(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) error {
 	var program bytes.Buffer
 	err := generateTFProgram(&program, pr, fts, cfg)
 	if err != nil { return err }
 
-	cmd := exec.Command("docker", "run",
-		"--rm", "--network=host", "-i",
-		"-v", workDir + ":/work",
-		"-w", "/work",
-		"sqlflow/sqlflow", "python")
+	cmd := tensorflowCmd()
 	cmd.Stdin = bytes.NewReader(program.Bytes())
 	o, err := cmd.CombinedOutput()
 	if err != nil { return err }
 	if !strings.Contains(string(o), "Done training") {
-		return fmt.Errorf(string(o) + "\n Does contain Done training")
+		return fmt.Errorf(string(o) + "\nTraining failed")
 	}
 
-	modelName := pr.save
+	err = saveModel(pr.save, cfg)
+	if err != nil { return err }
+
+	return nil
+}
+
+func saveModel(modelName string, cfg *mysql.Config) error {
 	modelDir := filepath.Join(workDir, modelName)
 	dat, err := ioutil.ReadFile(filepath.Join(modelDir, `checkpoint`))
 	if err != nil { return err }
@@ -45,7 +60,7 @@ func executeTrain(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) error {
 	if err != nil { return err }
 
 	db, err := sql.Open("mysql", cfg.FormatDSN())
-	defer func() { db.Close() }()
+	// defer func() { db.Close() }()
 	if err != nil { return err }
 
 	// store model files, model.ckpt*
@@ -73,12 +88,6 @@ func executeTrain(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) error {
 	}
 
 	// TODO(tonyyang-svail): store train model template
-	// trainTemplate, err := newTemplateFiller(pr, fts, cfg)
-	// if err != nil { return err }
-	// w, err := sqlfile.Create(db, modelName+"."+"trainTemplate")
-	// enc := gob.NewEncoder(w)
-	// enc.Encode(trainTemplate)
-	// if err != nil { return err }
 
 	return nil
 }
