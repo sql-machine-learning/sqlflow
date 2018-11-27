@@ -1,11 +1,17 @@
 package sql
 
 import (
-	"github.com/go-sql-driver/mysql"
+	"fmt"
+	"io"
 	"strings"
 	"text/template"
+
+	"github.com/go-sql-driver/mysql"
 )
 
+// TODO(tonyyang): This is currently a quick hack to map from SQL
+// field types to feature types.  We will enhance it to support more
+// complex cases like cross features.
 var fieldTypeFeatureType = map[string]string{"float": "numeric_column"}
 
 type columnType struct {
@@ -21,7 +27,7 @@ type connectionConfig struct {
 	Database string
 }
 
-type TemplateFiller struct {
+type filler struct {
 	Train bool
 	// Model Config
 	StandardSelect string
@@ -37,8 +43,9 @@ type TemplateFiller struct {
 	WorkDir string
 }
 
-func NewTemplateFiller(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) (*TemplateFiller, bool) {
-	r := &TemplateFiller{
+func generateTFProgram(w io.Writer, pr *extendedSelect, fts fieldTypes,
+	cfg *mysql.Config) error {
+	r := &filler{
 		Train:          pr.train,
 		StandardSelect: pr.standardSelect.String(),
 		Estimator:      pr.estimator,
@@ -50,24 +57,28 @@ func NewTemplateFiller(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) (*
 	for _, c := range pr.columns {
 		typ, ok := fts.get(c.val)
 		if !ok {
-			return nil, ok
+			return fmt.Errorf("generateTFProgram: Cannot find type of field %s", c.val)
 		}
 		ct := columnType{Name: c.val, Type: fieldTypeFeatureType[typ]}
 		r.X = append(r.X, ct)
 	}
 	typ, ok := fts.get(pr.label)
 	if !ok {
-		return nil, ok
+		return fmt.Errorf("generateTFProgram: Cannot find type of field: %s", pr.label)
 	}
 	r.Y = columnType{Name: pr.label, Type: fieldTypeFeatureType[typ]}
 	r.User = cfg.User
 	r.Password = cfg.Passwd
 	r.Host = strings.Split(cfg.Addr, ":")[0]
 	r.Port = strings.Split(cfg.Addr, ":")[1]
-	return r, true
+
+	if e := codegenTemplate.Execute(w, r); e != nil {
+		return fmt.Errorf("generateTFProgram: failed executing template: %v", e)
+	}
+	return nil
 }
 
-const codegen_template_text = `
+const codegenTemplateText = `
 import tensorflow as tf
 import sys, json, os
 import mysql.connector
@@ -144,4 +155,4 @@ print("\nTest set accuracy: {accuracy:0.5f}\n".format(**eval_result))
 {{- end}}
 `
 
-var codegen_template *template.Template = template.Must(template.New("codegen").Parse(codegen_template_text))
+var codegenTemplate = template.Must(template.New("codegen").Parse(codegenTemplateText))
