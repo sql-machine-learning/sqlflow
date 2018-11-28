@@ -7,7 +7,9 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"github.com/wangkuiyi/sqlflow/sql/sqlfile"
 	"gopkg.in/yaml.v2"
+	"io"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 )
@@ -99,10 +101,10 @@ func saveModel(modelName string, cfg *mysql.Config) error {
 	modelFileNames, err := listModelFileNames(modelDir)
 
 	db, err := sql.Open("mysql", cfg.FormatDSN())
-	defer db.Close()
 	if err != nil {
 		return err
 	}
+	defer db.Close()
 
 	// store model files, model.ckpt*
 	for _, fileName := range modelFileNames {
@@ -111,16 +113,15 @@ func saveModel(modelName string, cfg *mysql.Config) error {
 		if err != nil {
 			return err
 		}
+		defer w.Close()
 
-		dat, err := ioutil.ReadFile(filepath.Join(modelDir, fileName))
+		src, err := os.Open(filepath.Join(modelDir, fileName))
 		if err != nil {
 			return err
 		}
+		defer src.Close()
 
-		n, err := w.Write(dat)
-		if n != len(dat) {
-			return fmt.Errorf("Writing %s expect %d, got %d\n", fileName, len(dat), n)
-		}
+		_, err = io.Copy(w, src)
 		if err != nil {
 			return err
 		}
