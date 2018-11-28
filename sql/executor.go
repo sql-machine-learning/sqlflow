@@ -18,27 +18,25 @@ const (
 	workDir = `/tmp`
 )
 
-func run(slctStmt string, cfg *mysql.Config) error {
-	sqlParse(newLexer(slctStmt))
-
-	fts, err := verify(&parseResult, cfg)
-
-	if parseResult.train {
-		err = train(&parseResult, fts, cfg)
-		if err != nil {
-			return err
-		}
-	} else {
-		return fmt.Errorf("Inference not implemented.\n")
+func run(slct string, cfg *mysql.Config) error {
+	sqlParse(newLexer(slct))
+	fts, e := verify(&parseResult, cfg)
+	if e != nil {
+		return e
 	}
-	return nil
+	
+	if parseResult.train {
+		if e := train(&parseResult, fts, cfg); e != nil {
+			return e
+		}
+	} 
+	return fmt.Errorf("Inference not implemented.\n")
 }
 
 func train(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) error {
 	var program bytes.Buffer
-	err := generateTFProgram(&program, pr, fts, cfg)
-	if err != nil {
-		return err
+	if e := generateTFProgram(&program, pr, fts, cfg); e != nil {
+		return e
 	}
 
 	cmd := tensorflowCmd()
@@ -51,12 +49,7 @@ func train(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) error {
 		return fmt.Errorf(string(o) + "\nTraining failed")
 	}
 
-	err = saveModel(pr.save, cfg)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return saveModel(pr.save, cfg)
 }
 
 func getModelFilePrefix(modelDir string) (prefix string, e error) {
@@ -67,8 +60,7 @@ func getModelFilePrefix(modelDir string) (prefix string, e error) {
 	defer func() { e = f.Close() }()
 
 	m := map[string]string{}
-	e = yaml.NewDecoder(f).Decode(m)
-	if e != nil {
+	if e = yaml.NewDecoder(f).Decode(m); e != nil {
 		return "", fmt.Errorf("Yaml Unmarshal: %v", e)
 	}
 	return m["model_checkpoint_path"], nil
