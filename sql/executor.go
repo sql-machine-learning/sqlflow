@@ -4,15 +4,14 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/go-sql-driver/mysql"
-	"github.com/go-yaml/yaml"
 	"github.com/wangkuiyi/sqlfs"
+	tar "github.com/wangkuiyi/tar"
+	yaml "gopkg.in/yaml.v2"
 )
 
 const (
@@ -60,78 +59,41 @@ func train(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) error {
 	return nil
 }
 
-func listModelFileNames(modelDir string) ([]string, error) {
-	dat, err := ioutil.ReadFile(filepath.Join(modelDir, `checkpoint`))
-	if err != nil {
-		return nil, err
+func getModelFilePrefix(modelDir string) (prefix string, e error) {
+	f, e := os.Open(filepath.Join(modelDir, `checkpoint`))
+	if e != nil {
+		return "", e
 	}
+	defer func() { e = f.Close() }()
 
 	m := map[string]string{}
-	err = yaml.Unmarshal(dat, m)
-	if err != nil {
-		return nil, fmt.Errorf("Yaml Unmarshal: %v", err)
+	e = yaml.NewDecoder(f).Decode(m)
+	if e != nil {
+		return "", fmt.Errorf("Yaml Unmarshal: %v", e)
 	}
-	modelFilePrefix := m["model_checkpoint_path"]
-
-	files, err := ioutil.ReadDir(modelDir)
-	if err != nil {
-		return nil, err
-	}
-
-	rval := []string{}
-	for _, f := range files {
-		if strings.HasPrefix(f.Name(), modelFilePrefix) {
-			rval = append(rval, f.Name())
-		}
-	}
-
-	return rval, nil
+	return m["model_checkpoint_path"], nil
 }
 
-// A model file is of name model.ckpt-16000.data-00000-of-00002
-// The "." and "-" are special characters in SQL
-// So we rename the table name from model.ckpt-16000.data-00000-of-00002
-// to data_00000_of_00002
-// This filename rewrite rule is actually reversible.
-func encodeFileNameToTableName(fileName string) string {
-	return strings.Replace(strings.Split(fileName, ".")[2], "-", "_", -1)
-}
-
-func saveModel(modelName string, cfg *mysql.Config) error {
-	modelDir := filepath.Join(workDir, modelName)
-	modelFileNames, err := listModelFileNames(modelDir)
-
-	db, err := sql.Open("mysql", cfg.FormatDSN())
-	if err != nil {
-		return err
+func saveModel(modelName string, cfg *mysql.Config) (e error) {
+	db, e := sql.Open("mysql", cfg.FormatDSN())
+	if e != nil {
+		return e
 	}
 	defer db.Close()
 
-	// store model files, model.ckpt*
-	for _, fileName := range modelFileNames {
-		tableName := encodeFileNameToTableName(fileName)
-		w, err := sqlfs.Create(db, modelName+"."+tableName)
-		if err != nil {
-			return err
-		}
-
-		src, err := os.Open(filepath.Join(modelDir, fileName))
-		if err != nil {
-			return err
-		}
-
-		_, err = io.Copy(w, src)
-		if err != nil {
-			return err
-		}
-
-		fmt.Println("Successfully store", tableName)
-
-		w.Close()
-		src.Close()
+	dir := filepath.Join(workDir, modelName)
+	prefix, e := getModelFilePrefix(dir)
+	if e != nil {
+		return e
 	}
 
-	// TODO(tonyyang-svail): store train model template
+	sqlfn := fmt.Sprintf("sqlflow_models.%s", modelName)
+	sqlf, e := sqlfs.Create(db, sqlfn)
+	if e != nil {
+		return fmt.Errorf("Cannot create sqlfs file %s: %v", sqlfn, e)
+	}
+	defer func() { e = sqlf.Close() }()
 
-	return nil
+	inc := func(dir string, fi os.FileInfo) bool { return strings.HasPrefix(fi.Name(), prefix) }
+	return tar.Tar(sqlf, dir, inc, true)
 }
