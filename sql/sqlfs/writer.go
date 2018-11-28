@@ -1,4 +1,4 @@
-package sqlfile
+package sqlfs
 
 import (
 	"database/sql"
