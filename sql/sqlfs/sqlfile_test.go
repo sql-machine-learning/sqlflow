@@ -1,4 +1,4 @@
-package sqlfile
+package sqlfs
 
 import (
 	"database/sql"
@@ -22,7 +22,7 @@ var (
 func TestCreateHasDropTable(t *testing.T) {
 	assert := assert.New(t)
 
-	fn := fmt.Sprintf("sqlfile.unitest%d", rand.Int())
+	fn := fmt.Sprintf("sqlfs.unitest%d", rand.Int())
 	assert.NoError(createTable(testDB, fn))
 	has, e := HasTable(testDB, fn)
 	assert.NoError(e)
@@ -33,7 +33,7 @@ func TestCreateHasDropTable(t *testing.T) {
 func TestWriterCreate(t *testing.T) {
 	assert := assert.New(t)
 
-	fn := fmt.Sprintf("sqlfile.unitest%d", rand.Int())
+	fn := fmt.Sprintf("sqlfs.unitest%d", rand.Int())
 	w, e := Create(testDB, fn)
 	assert.NoError(e)
 	assert.NotNil(w)
@@ -49,7 +49,7 @@ func TestWriterCreate(t *testing.T) {
 func TestWriteAndRead(t *testing.T) {
 	assert := assert.New(t)
 
-	fn := fmt.Sprintf("sqlfile.unitest%d", rand.Int())
+	fn := fmt.Sprintf("sqlfs.unitest%d", rand.Int())
 
 	w, e := Create(testDB, fn)
 	assert.NoError(e)
