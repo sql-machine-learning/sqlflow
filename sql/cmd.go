@@ -46,7 +46,7 @@ func tensorflowCmd() (cmd *exec.Cmd) {
 		if !hasDockerImage(tfImg) {
 			log.Printf("No local Docker image %s.  It will take a long time to pull.", tfImg)
 		}
-		cmd = exec.Command("docker", "run", "--rm", "--network=host", "-i", tfImg, "python")
+		cmd = exec.Command("docker", "run", "--rm", "-v/tmp:/work", "-w/work", "--network=host", "-i", tfImg, "python")
 	} else {
 		log.Fatalf("No local TensorFlow or Docker.  No way to run TensorFlow programs")
 	}
