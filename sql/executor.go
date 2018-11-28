@@ -29,8 +29,11 @@ func run(slct string, cfg *mysql.Config) error {
 		if e := train(&parseResult, fts, cfg); e != nil {
 			return e
 		}
-	} 
-	return fmt.Errorf("Inference not implemented.\n")
+	} else {
+		return fmt.Errorf("Inference not implemented.\n")
+	}
+
+	return nil
 }
 
 func train(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) error {
