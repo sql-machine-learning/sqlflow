@@ -15,7 +15,7 @@ func check(e error) {
 func TestExecutorTrain(t *testing.T) {
 	a := assert.New(t)
 	a.NotPanics(func() {
-		e := Execute(simpleTrainSelect, testCfg)
+		e := run(simpleTrainSelect, testCfg)
 		a.NoError(e)
 	})
 

@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"github.com/go-sql-driver/mysql"
 	"github.com/wangkuiyi/sqlflow/sql/sqlfile"
+	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"path/filepath"
-	"regexp"
 	"strings"
 )
 
@@ -16,23 +16,23 @@ const (
 	workDir = `/tmp`
 )
 
-func Execute(slctStmt string, cfg *mysql.Config) error {
+func run(slctStmt string, cfg *mysql.Config) error {
 	sqlParse(newLexer(slctStmt))
 
 	fts, err := verify(&parseResult, cfg)
 
 	if parseResult.train {
-		err = executeTrain(&parseResult, fts, cfg)
+		err = train(&parseResult, fts, cfg)
 		if err != nil {
 			return err
 		}
 	} else {
-		return fmt.Errorf("Eval/Inference not implemented")
+		return fmt.Errorf("Inference not implemented.\n")
 	}
 	return nil
 }
 
-func executeTrain(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) error {
+func train(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) error {
 	var program bytes.Buffer
 	err := generateTFProgram(&program, pr, fts, cfg)
 	if err != nil {
@@ -57,57 +57,79 @@ func executeTrain(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) error {
 	return nil
 }
 
-func saveModel(modelName string, cfg *mysql.Config) error {
-	modelDir := filepath.Join(workDir, modelName)
+func listModelFileNames(modelDir string) ([]string, error) {
 	dat, err := ioutil.ReadFile(filepath.Join(modelDir, `checkpoint`))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	regex, _ := regexp.Compile(`model_checkpoint_path: \"([a-z]+.[a-z]+.\d+)\"`)
-	modelFilePrefix := regex.FindStringSubmatch(string(dat))[1]
+	m := map[string]string{}
+	err = yaml.Unmarshal(dat, m)
+	if err != nil {
+		return nil, fmt.Errorf("Yaml Unmarshal: %v", err)
+	}
+	modelFilePrefix := m["model_checkpoint_path"]
+
 	files, err := ioutil.ReadDir(modelDir)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
+	rval := []string{}
+	for _, f := range files {
+		if strings.HasPrefix(f.Name(), modelFilePrefix) {
+			rval = append(rval, f.Name())
+		}
+	}
+
+	return rval, nil
+}
+
+// A model file is of name model.ckpt-16000.data-00000-of-00002
+// The "." and "-" are special characters in SQL
+// So we rename the table name from model.ckpt-16000.data-00000-of-00002
+// to data_00000_of_00002
+// This filename rewrite rule is actually reversible.
+func encodeFileNameToTableName(fileName string) string {
+	return strings.Replace(strings.Split(fileName, ".")[2], "-", "_", -1)
+}
+
+func saveModel(modelName string, cfg *mysql.Config) error {
+	modelDir := filepath.Join(workDir, modelName)
+	modelFileNames, err := listModelFileNames(modelDir)
+
 	db, err := sql.Open("mysql", cfg.FormatDSN())
-	defer func() { db.Close() }()
+	defer db.Close()
 	if err != nil {
 		return err
 	}
 
 	// store model files, model.ckpt*
-	for _, f := range files {
-		if strings.HasPrefix(f.Name(), modelFilePrefix) {
-			// A model file is of name model.ckpt-16000.data-00000-of-00002
-			// The "." and "-" are special characters in SQL
-			// So we rename the table name from model.ckpt-16000.data-00000-of-00002
-			// to data_00000_of_00002
-			tn := strings.Replace(strings.Split(f.Name(), ".")[2], "-", "_", -1)
-			w, err := sqlfile.Create(db, modelName+"."+tn)
-			if err != nil {
-				return err
-			}
-
-			dat, err = ioutil.ReadFile(filepath.Join(modelDir, f.Name()))
-			if err != nil {
-				return err
-			}
-
-			n, err := w.Write(dat)
-			if n != len(dat) {
-				return fmt.Errorf("Writing %s expect %d, got %d\n", f.Name(), len(dat), n)
-			}
-			if err != nil {
-				return err
-			}
-
-			fmt.Println("Successfully store", tn)
+	for _, fileName := range modelFileNames {
+		tableName := encodeFileNameToTableName(fileName)
+		w, err := sqlfile.Create(db, modelName+"."+tableName)
+		if err != nil {
+			return err
 		}
+
+		dat, err := ioutil.ReadFile(filepath.Join(modelDir, fileName))
+		if err != nil {
+			return err
+		}
+
+		n, err := w.Write(dat)
+		if n != len(dat) {
+			return fmt.Errorf("Writing %s expect %d, got %d\n", fileName, len(dat), n)
+		}
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("Successfully store", tableName)
 	}
 
 	// TODO(tonyyang-svail): store train model template
+
 
 	return nil
 }
