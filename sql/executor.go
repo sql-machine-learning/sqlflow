@@ -113,13 +113,11 @@ func saveModel(modelName string, cfg *mysql.Config) error {
 		if err != nil {
 			return err
 		}
-		defer w.Close()
 
 		src, err := os.Open(filepath.Join(modelDir, fileName))
 		if err != nil {
 			return err
 		}
-		defer src.Close()
 
 		_, err = io.Copy(w, src)
 		if err != nil {
@@ -127,6 +125,9 @@ func saveModel(modelName string, cfg *mysql.Config) error {
 		}
 
 		fmt.Println("Successfully store", tableName)
+
+		w.Close()
+		src.Close()
 	}
 
 	// TODO(tonyyang-svail): store train model template
