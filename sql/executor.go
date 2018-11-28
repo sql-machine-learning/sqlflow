@@ -4,14 +4,12 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
-	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/wangkuiyi/sqlfs"
-	tar "github.com/wangkuiyi/tar"
-	yaml "gopkg.in/yaml.v2"
 )
 
 const (
@@ -55,19 +53,6 @@ func train(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) error {
 	return saveModel(pr.save, cfg)
 }
 
-func getModelFilePrefix(modelDir string) (prefix string, e error) {
-	f, e := os.Open(filepath.Join(modelDir, `checkpoint`))
-	if e != nil {
-		return "", e
-	}
-	defer func() { e = f.Close() }()
-
-	m := map[string]string{}
-	if e = yaml.NewDecoder(f).Decode(m); e != nil {
-		return "", fmt.Errorf("Yaml Unmarshal: %v", e)
-	}
-	return m["model_checkpoint_path"], nil
-}
 
 func saveModel(modelName string, cfg *mysql.Config) (e error) {
 	db, e := sql.Open("mysql", cfg.FormatDSN())
@@ -76,12 +61,6 @@ func saveModel(modelName string, cfg *mysql.Config) (e error) {
 	}
 	defer db.Close()
 
-	dir := filepath.Join(workDir, modelName)
-	prefix, e := getModelFilePrefix(dir)
-	if e != nil {
-		return e
-	}
-
 	sqlfn := fmt.Sprintf("sqlflow_models.%s", modelName)
 	sqlf, e := sqlfs.Create(db, sqlfn)
 	if e != nil {
@@ -89,6 +68,9 @@ func saveModel(modelName string, cfg *mysql.Config) (e error) {
 	}
 	defer func() { e = sqlf.Close() }()
 
-	inc := func(dir string, fi os.FileInfo) bool { return strings.HasPrefix(fi.Name(), prefix) }
-	return tar.Tar(sqlf, dir, inc, true)
+	dir := filepath.Join(workDir, modelName)
+	cmd := exec.Command("tar", "Pczf", "-", dir)
+	cmd.Stdout = sqlf
+
+	return cmd.Run()
 }
