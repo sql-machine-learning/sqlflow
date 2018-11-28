@@ -4,14 +4,15 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
-	"github.com/go-sql-driver/mysql"
-	"github.com/wangkuiyi/sqlflow/sql/sqlfile"
-	"gopkg.in/yaml.v2"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/go-sql-driver/mysql"
+	"github.com/go-yaml/yaml"
+	"github.com/wangkuiyi/sqlfs"
 )
 
 const (
@@ -109,7 +110,7 @@ func saveModel(modelName string, cfg *mysql.Config) error {
 	// store model files, model.ckpt*
 	for _, fileName := range modelFileNames {
 		tableName := encodeFileNameToTableName(fileName)
-		w, err := sqlfile.Create(db, modelName+"."+tableName)
+		w, err := sqlfs.Create(db, modelName+"."+tableName)
 		if err != nil {
 			return err
 		}
@@ -131,7 +132,6 @@ func saveModel(modelName string, cfg *mysql.Config) error {
 	}
 
 	// TODO(tonyyang-svail): store train model template
-
 
 	return nil
 }
