@@ -29,7 +29,8 @@ INTO
   my_dnn_model
 ;
 `
-	inferSelect = testStandardSelectStmt + `INFER my_dnn_model;`
+	predictSelect = testStandardSelectStmt + `PREDICT db.table.field 
+USING my_dnn_model;`
 )
 
 func TestStandardSelect(t *testing.T) {
@@ -71,14 +72,15 @@ func TestTrainParser(t *testing.T) {
 	a.Equal("my_dnn_model", parseResult.save)
 }
 
-func TestInferParser(t *testing.T) {
+func TestPredictParser(t *testing.T) {
 	a := assert.New(t)
 	a.NotPanics(func() {
-		sqlParse(newLexer(inferSelect))
+		sqlParse(newLexer(predictSelect))
 	})
 	a.True(parseResult.extended)
 	a.False(parseResult.train)
 	a.Equal("my_dnn_model", parseResult.model)
+	a.Equal("db.table.field", parseResult.into)
 }
 
 func TestSelectStarAndPrint(t *testing.T) {

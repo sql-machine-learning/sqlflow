@@ -103,19 +103,20 @@ func (l *lexer) lexIdentOrKeyword(lval *sqlSymType) int {
 
 func (l *lexer) emitIdentOrKeyword(lval *sqlSymType) int {
 	keywds := map[string]int{
-		"SELECT": SELECT,
-		"FROM":   FROM,
-		"WHERE":  WHERE,
-		"LIMIT":  LIMIT,
-		"TRAIN":  TRAIN,
-		"INFER":  INFER,
-		"WITH":   WITH,
-		"COLUMN": COLUMN,
-		"LABEL":  LABEL,
-		"INTO":   INTO,
-		"AND":    AND,
-		"OR":     OR,
-		"NOT":    NOT,
+		"SELECT":  SELECT,
+		"FROM":    FROM,
+		"WHERE":   WHERE,
+		"LIMIT":   LIMIT,
+		"TRAIN":   TRAIN,
+		"PREDICT": PREDICT,
+		"USING":   USING,
+		"WITH":    WITH,
+		"COLUMN":  COLUMN,
+		"LABEL":   LABEL,
+		"INTO":    INTO,
+		"AND":     AND,
+		"OR":      OR,
+		"NOT":     NOT,
 	}
 	if typ, ok := keywds[strings.ToUpper(l.input[l.start:l.pos])]; ok {
 		return l.emit(lval, typ)
