@@ -25,6 +25,10 @@ INTO
   my_dnn_model
 ;
 `
+	simplePredictSelect = simpleSelect + `
+PREDICT churn.predict.tenure
+USING my_dnn_model;
+`
 )
 
 func TestCodeGenTrain(t *testing.T) {
@@ -50,4 +54,12 @@ func TestCodeGenTrain(t *testing.T) {
 	}
 
 	a.True(strings.Contains(string(o), "Done training"))
+}
+
+func TestCodeGenPredict(t *testing.T) {
+	a := assert.New(t)
+	a.NotPanics(func() {
+		sqlParse(newLexer(simplePredictSelect))
+	})
+
 }
