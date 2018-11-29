@@ -4,14 +4,11 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
-	"io"
-	"io/ioutil"
-	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
 	"github.com/go-sql-driver/mysql"
-	"github.com/go-yaml/yaml"
 	"github.com/wangkuiyi/sqlfs"
 )
 
@@ -19,27 +16,28 @@ const (
 	workDir = `/tmp`
 )
 
-func run(slctStmt string, cfg *mysql.Config) error {
-	sqlParse(newLexer(slctStmt))
-
-	fts, err := verify(&parseResult, cfg)
-
+func run(slct string, cfg *mysql.Config) error {
+	sqlParse(newLexer(slct))
+	fts, e := verify(&parseResult, cfg)
+	if e != nil {
+		return e
+	}
+	
 	if parseResult.train {
-		err = train(&parseResult, fts, cfg)
-		if err != nil {
-			return err
+		if e := train(&parseResult, fts, cfg); e != nil {
+			return e
 		}
 	} else {
 		return fmt.Errorf("Inference not implemented.\n")
 	}
+
 	return nil
 }
 
 func train(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) error {
 	var program bytes.Buffer
-	err := generateTFProgram(&program, pr, fts, cfg)
-	if err != nil {
-		return err
+	if e := generateTFProgram(&program, pr, fts, cfg); e != nil {
+		return e
 	}
 
 	cmd := tensorflowCmd()
@@ -52,86 +50,27 @@ func train(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) error {
 		return fmt.Errorf(string(o) + "\nTraining failed")
 	}
 
-	err = saveModel(pr.save, cfg)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return saveModel(pr.save, cfg)
 }
 
-func listModelFileNames(modelDir string) ([]string, error) {
-	dat, err := ioutil.ReadFile(filepath.Join(modelDir, `checkpoint`))
-	if err != nil {
-		return nil, err
-	}
 
-	m := map[string]string{}
-	err = yaml.Unmarshal(dat, m)
-	if err != nil {
-		return nil, fmt.Errorf("Yaml Unmarshal: %v", err)
-	}
-	modelFilePrefix := m["model_checkpoint_path"]
-
-	files, err := ioutil.ReadDir(modelDir)
-	if err != nil {
-		return nil, err
-	}
-
-	rval := []string{}
-	for _, f := range files {
-		if strings.HasPrefix(f.Name(), modelFilePrefix) {
-			rval = append(rval, f.Name())
-		}
-	}
-
-	return rval, nil
-}
-
-// A model file is of name model.ckpt-16000.data-00000-of-00002
-// The "." and "-" are special characters in SQL
-// So we rename the table name from model.ckpt-16000.data-00000-of-00002
-// to data_00000_of_00002
-// This filename rewrite rule is actually reversible.
-func encodeFileNameToTableName(fileName string) string {
-	return strings.Replace(strings.Split(fileName, ".")[2], "-", "_", -1)
-}
-
-func saveModel(modelName string, cfg *mysql.Config) error {
-	modelDir := filepath.Join(workDir, modelName)
-	modelFileNames, err := listModelFileNames(modelDir)
-
-	db, err := sql.Open("mysql", cfg.FormatDSN())
-	if err != nil {
-		return err
+func saveModel(modelName string, cfg *mysql.Config) (e error) {
+	db, e := sql.Open("mysql", cfg.FormatDSN())
+	if e != nil {
+		return e
 	}
 	defer db.Close()
 
-	// store model files, model.ckpt*
-	for _, fileName := range modelFileNames {
-		tableName := encodeFileNameToTableName(fileName)
-		w, err := sqlfs.Create(db, modelName+"."+tableName)
-		if err != nil {
-			return err
-		}
-
-		src, err := os.Open(filepath.Join(modelDir, fileName))
-		if err != nil {
-			return err
-		}
-
-		_, err = io.Copy(w, src)
-		if err != nil {
-			return err
-		}
-
-		fmt.Println("Successfully store", tableName)
-
-		w.Close()
-		src.Close()
+	sqlfn := fmt.Sprintf("sqlflow_models.%s", modelName)
+	sqlf, e := sqlfs.Create(db, sqlfn)
+	if e != nil {
+		return fmt.Errorf("Cannot create sqlfs file %s: %v", sqlfn, e)
 	}
+	defer func() { e = sqlf.Close() }()
 
-	// TODO(tonyyang-svail): store train model template
+	dir := filepath.Join(workDir, modelName)
+	cmd := exec.Command("tar", "Pczf", "-", dir)
+	cmd.Stdout = sqlf
 
-	return nil
+	return cmd.Run()
 }
