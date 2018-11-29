@@ -52,8 +52,7 @@ func train(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) error {
 		return fmt.Errorf(string(o) + "\nTraining failed")
 	}
 
-	err = saveModelConfig(pr)
-	if err != nil {
+	if err = saveModelConfig(pr); err != nil {
 		return err
 	}
 
@@ -68,11 +67,12 @@ func saveModelConfig(pr *extendedSelect) error {
 	for k, v := range pr.attrs {
 		r.Attrs[k] = v.String()
 	}
-	dir := filepath.Join(workDir, r.Save, "trainSelect.gob")
-	file, err := os.Create(dir)
+	fn := filepath.Join(workDir, r.Save, "trainSelect.gob")
+	file, err := os.Create(fn)
 	if err != nil {
 		return err
 	}
+	defer file.Close()
 
 	encoder := gob.NewEncoder(file)
 	return encoder.Encode(r)
