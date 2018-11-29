@@ -122,6 +122,16 @@ def train_input_fn(features, labels, batch_size):
 classifier.train(
     input_fn=lambda:train_input_fn(X, Y, BATCHSIZE),
     steps=STEP)
+
+def eval_input_fn(features, labels, batch_size):
+    dataset = tf.data.Dataset.from_tensor_slices((dict(features), labels))
+    dataset = dataset.batch(batch_size)
+    return dataset
+
+eval_result = classifier.evaluate(
+        input_fn=lambda:eval_input_fn(X, Y, BATCHSIZE),
+        steps=STEP)
+print("\nTraining set accuracy: {accuracy:0.5f}\n".format(**eval_result))
 ` +
 	// TODO(tonyyang-svail): avoid JSON
 	// print("Dumping sql parsed data ...")
