@@ -49,12 +49,12 @@ type filler struct {
 func generateTFProgram(w io.Writer, pr *extendedSelect, fts fieldTypes,
 	cfg *mysql.Config) error {
 	r := &filler{
-		Train: pr.train,
+		Train:          pr.train,
 		StandardSelect: pr.standardSelect.String(),
 		modelConfig: modelConfig{
 			Estimator: pr.estimator,
-			Attrs: make(map[string]string),
-			Save: pr.save}}
+			Attrs:     make(map[string]string),
+			Save:      pr.save}}
 	for k, v := range pr.attrs {
 		r.Attrs[k] = v.String()
 	}
