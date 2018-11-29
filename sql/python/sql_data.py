@@ -1,4 +1,17 @@
 import tensorflow as tf
+import mysql.connector
+
+
+def connect(user, passwd, host, port):
+    """connect is a convenient shortcut to mysql.connector.connect. Also,
+    it makes it reaonable to import mysql.connector in this file, so
+    to make it self-complete as a template.
+
+    """
+    return mysql.connector.connect(user=user,
+                                   passwd=passwd,
+                                   host=host,
+                                   port=port)
 
 
 def load(db, slct, label, features):

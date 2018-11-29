@@ -1,4 +1,3 @@
-import mysql.connector
 import sql_data
 import unittest
 
@@ -6,10 +5,7 @@ import unittest
 class TestSQLData(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         super(TestSQLData, self).__init__(*args, **kwargs)
-        self.db = mysql.connector.connect(user='root',
-                                          passwd='root',
-                                          host='localhost',
-                                          port=3306)
+        self.db = sql_data.connect('root', 'root', 'localhost', 3306)
         self.assertIsNotNone(self.db)
 
     def test_load(self):
