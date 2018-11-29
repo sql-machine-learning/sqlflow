@@ -61,7 +61,7 @@
 		train    bool
 		standardSelect
 		trainClause
-		inferClause
+		predictClause
 	}
 
 	type standardSelect struct {
@@ -81,8 +81,9 @@
 
 	type attrs map[string]*expr
 
-	type inferClause struct {
+	type predictClause struct {
 		model  string
+		into   string
 	}
 
 	var parseResult extendedSelect
@@ -108,13 +109,13 @@
   eslt extendedSelect
   slct standardSelect
   tran trainClause
-  infr inferClause
+  infr predictClause
 }
 
 %type  <eslt> select_stmt
 %type  <slct> select
 %type  <tran> train_clause
-%type  <infr> infer_clause
+%type  <infr> predict_clause
 %type  <flds> fields
 %type  <tbls> tables
 %type  <expr> expr funcall column
@@ -122,7 +123,7 @@
 %type  <atrs> attr
 %type  <atrs> attrs
 
-%token <val> SELECT FROM WHERE LIMIT TRAIN INFER WITH COLUMN LABEL INTO
+%token <val> SELECT FROM WHERE LIMIT TRAIN PREDICT WITH COLUMN LABEL USING INTO
 %token <val> IDENT NUMBER STRING
 
 %left <val> AND OR
@@ -146,11 +147,11 @@ select_stmt
     parseResult.standardSelect = $1
     parseResult.trainClause = $2
   }
-| select infer_clause ';' {
+| select predict_clause ';' {
     parseResult.extended = true
     parseResult.train = false
     parseResult.standardSelect = $1
-    parseResult.inferClause = $2
+    parseResult.predictClause = $2
   }
 ;
 
@@ -171,8 +172,11 @@ train_clause
   }
 ;
 
-infer_clause
-: INFER IDENT      { $$.model = $2 }
+predict_clause
+: PREDICT IDENT USING IDENT {
+	$$.into = $2
+	$$.model = $4
+}
 ;
 
 fields
@@ -347,7 +351,7 @@ func (s trainClause) JSON() string {
 	return fmt.Sprintf(fmter, s.estimator, s.attrs.JSON(), s.columns.JSON(), s.save)
 }
 
-func (s inferClause) JSON() string {
+func (s predictClause) JSON() string {
 	fmter := `{
 "model":"%s"
 }`
@@ -370,7 +374,7 @@ func (s extendedSelect) JSON() string {
 "extended": %t,
 "train": %t,
 "standardSelect": "%s",
-"inferClause": %s
+"predictClause": %s
 }`
 	if s.extended {
 		if s.train {
@@ -378,7 +382,7 @@ func (s extendedSelect) JSON() string {
 				jsonString(s.standardSelect.String()), s.trainClause.JSON())
 		} else {
 			return fmt.Sprintf(nf, s.extended, s.train,
-				jsonString(s.standardSelect.String()), s.inferClause.JSON())
+				jsonString(s.standardSelect.String()), s.predictClause.JSON())
 		}
 	}
 	return fmt.Sprintf(bf, s.extended, s.train, jsonString(s.standardSelect.String()))
