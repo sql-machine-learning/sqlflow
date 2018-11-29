@@ -27,13 +27,16 @@ type connectionConfig struct {
 	Database string
 }
 
+type modelConfig struct {
+	Estimator string
+	Attrs     map[string]string
+	Save      string
+}
+
 type filler struct {
-	Train bool
-	// Model Config
+	Train          bool
 	StandardSelect string
-	Estimator      string
-	Attrs          map[string]string
-	Save           string
+	modelConfig
 	// Data Config
 	X []columnType
 	Y columnType
@@ -48,9 +51,10 @@ func generateTFProgram(w io.Writer, pr *extendedSelect, fts fieldTypes,
 	r := &filler{
 		Train:          pr.train,
 		StandardSelect: pr.standardSelect.String(),
-		Estimator:      pr.estimator,
-		Attrs:          make(map[string]string),
-		Save:           pr.save}
+		modelConfig: modelConfig{
+			Estimator: pr.estimator,
+			Attrs:     make(map[string]string),
+			Save:      pr.save}}
 	for k, v := range pr.attrs {
 		r.Attrs[k] = v.String()
 	}
@@ -132,19 +136,9 @@ eval_result = classifier.evaluate(
         input_fn=lambda:eval_input_fn(X, Y, BATCHSIZE),
         steps=STEP)
 print("\nTraining set accuracy: {accuracy:0.5f}\n".format(**eval_result))
-` +
-	// TODO(tonyyang-svail): avoid JSON
-	// print("Dumping sql parsed data ...")
-	// with open(os.path.join(WORK_DIR, "{{.Save}}", SQL_PARSING_RESULT_FILE), "w") as f:
-	//     f.write("""{{.JSON}}""")
-	`
+
 print("Done training")
 {{- else}}
-` +
-	// TODO(tonyyang-svail): avoid JSON
-	// with open(os.path.join(WORK_DIR, "{{.InferClause.Model}}", SQL_PARSING_RESULT_FILE)) as f:
-	//     desc = json.load(f)
-	`
 def eval_input_fn(features, labels, batch_size):
     dataset = tf.data.Dataset.from_tensor_slices((dict(features), labels))
     dataset = dataset.batch(batch_size)
