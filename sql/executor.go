@@ -3,7 +3,9 @@ package sql
 import (
 	"bytes"
 	"database/sql"
+	"encoding/gob"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -22,7 +24,7 @@ func run(slct string, cfg *mysql.Config) error {
 	if e != nil {
 		return e
 	}
-	
+
 	if parseResult.train {
 		if e := train(&parseResult, fts, cfg); e != nil {
 			return e
@@ -50,11 +52,33 @@ func train(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) error {
 		return fmt.Errorf(string(o) + "\nTraining failed")
 	}
 
-	return saveModel(pr.save, cfg)
+	err = saveModelConfig(pr)
+	if err != nil {
+		return err
+	}
+
+	return saveModelToDB(pr.save, cfg)
 }
 
+func saveModelConfig(pr *extendedSelect) error {
+	r := modelConfig{
+		Estimator: pr.estimator,
+		Attrs:     make(map[string]string),
+		Save:      pr.save}
+	for k, v := range pr.attrs {
+		r.Attrs[k] = v.String()
+	}
+	dir := filepath.Join(workDir, r.Save, "trainSelect.gob")
+	file, err := os.Create(dir)
+	if err != nil {
+		return err
+	}
 
-func saveModel(modelName string, cfg *mysql.Config) (e error) {
+	encoder := gob.NewEncoder(file)
+	return encoder.Encode(r)
+}
+
+func saveModelToDB(modelName string, cfg *mysql.Config) (e error) {
 	db, e := sql.Open("mysql", cfg.FormatDSN())
 	if e != nil {
 		return e

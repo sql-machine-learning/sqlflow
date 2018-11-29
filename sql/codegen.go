@@ -27,13 +27,16 @@ type connectionConfig struct {
 	Database string
 }
 
+type modelConfig struct {
+	Estimator string
+	Attrs     map[string]string
+	Save      string
+}
+
 type filler struct {
-	Train bool
-	// Model Config
+	Train          bool
 	StandardSelect string
-	Estimator      string
-	Attrs          map[string]string
-	Save           string
+	modelConfig
 	// Data Config
 	X []columnType
 	Y columnType
@@ -45,12 +48,12 @@ type filler struct {
 
 func generateTFProgram(w io.Writer, pr *extendedSelect, fts fieldTypes,
 	cfg *mysql.Config) error {
-	r := &filler{
-		Train:          pr.train,
-		StandardSelect: pr.standardSelect.String(),
-		Estimator:      pr.estimator,
-		Attrs:          make(map[string]string),
-		Save:           pr.save}
+	r := &filler{}
+	r.Train = pr.train
+	r.StandardSelect = pr.standardSelect.String()
+	r.Estimator = pr.estimator
+	r.Attrs = make(map[string]string)
+	r.Save = pr.save
 	for k, v := range pr.attrs {
 		r.Attrs[k] = v.String()
 	}
