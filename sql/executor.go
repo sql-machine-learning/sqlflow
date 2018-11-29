@@ -52,22 +52,19 @@ func train(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) error {
 		return fmt.Errorf(string(o) + "\nTraining failed")
 	}
 
-	if err = saveModelConfig(pr); err != nil {
+	if err = saveTemplateFiller(pr, fts, cfg); err != nil {
 		return err
 	}
 
 	return saveModelToDB(pr.save, cfg)
 }
 
-func saveModelConfig(pr *extendedSelect) error {
-	r := modelConfig{
-		Estimator: pr.estimator,
-		Attrs:     make(map[string]string),
-		Save:      pr.save}
-	for k, v := range pr.attrs {
-		r.Attrs[k] = v.String()
+func saveTemplateFiller(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) error {
+	r, err := generateTemplate(pr, fts, cfg)
+	if err != nil {
+		return err
 	}
-	fn := filepath.Join(workDir, r.Save, "trainSelect.gob")
+	fn := filepath.Join(workDir, r.Save, "trainTemplateFiller.gob")
 	file, err := os.Create(fn)
 	if err != nil {
 		return err

@@ -46,8 +46,7 @@ type filler struct {
 	WorkDir string
 }
 
-func generateTFProgram(w io.Writer, pr *extendedSelect, fts fieldTypes,
-	cfg *mysql.Config) error {
+func generateTemplate(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) (*filler, error) {
 	r := &filler{
 		Train:          pr.train,
 		StandardSelect: pr.standardSelect.String(),
@@ -62,7 +61,7 @@ func generateTFProgram(w io.Writer, pr *extendedSelect, fts fieldTypes,
 	for _, c := range pr.columns {
 		typ, ok := fts.get(c.val)
 		if !ok {
-			return fmt.Errorf("generateTFProgram: Cannot find type of column %s", c.val)
+			return nil, fmt.Errorf("generateTFProgram: Cannot find type of field %s", c.val)
 		}
 		ct := columnType{Name: c.val, Type: fieldTypeFeatureType[typ]}
 		r.X = append(r.X, ct)
@@ -70,7 +69,7 @@ func generateTFProgram(w io.Writer, pr *extendedSelect, fts fieldTypes,
 	if pr.train {
 		typ, ok := fts.get(pr.label)
 		if !ok {
-			return fmt.Errorf("generateTFProgram: Cannot find type of label %s", pr.label)
+			return nil, fmt.Errorf("generateTFProgram: Cannot find type of label %s", pr.label)
 		}
 		r.Y = columnType{Name: pr.label, Type: fieldTypeFeatureType[typ]}
 	}
@@ -80,7 +79,15 @@ func generateTFProgram(w io.Writer, pr *extendedSelect, fts fieldTypes,
 	r.Host = strings.Split(cfg.Addr, ":")[0]
 	r.Port = strings.Split(cfg.Addr, ":")[1]
 
-	if e := codegenTemplate.Execute(w, r); e != nil {
+	return r, nil
+}
+
+func generateTFProgram(w io.Writer, pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) error {
+	r, e := generateTemplate(pr, fts, cfg)
+	if e != nil {
+		return e
+	}
+	if e = codegenTemplate.Execute(w, r); e != nil {
 		return fmt.Errorf("generateTFProgram: failed executing template: %v", e)
 	}
 	return nil
