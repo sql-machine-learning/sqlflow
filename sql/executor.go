@@ -30,7 +30,7 @@ func run(slct string, cfg *mysql.Config) error {
 			return e
 		}
 	} else {
-		return fmt.Errorf("Inference not implemented.\n")
+		return fmt.Errorf("inference not implemented")
 	}
 
 	return nil
