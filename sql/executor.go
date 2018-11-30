@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -22,13 +23,19 @@ func run(slct string, cfg *mysql.Config) error {
 	if e != nil {
 		return e
 	}
-	
+
 	if parseResult.train {
 		if e := train(&parseResult, fts, cfg); e != nil {
 			return e
 		}
+		if e := saveTrainStatement(parseResult.save, slct); e != nil {
+			return e
+		}
+		if e := saveModelToDB(parseResult.save, cfg); e != nil {
+			return e
+		}
 	} else {
-		return fmt.Errorf("Inference not implemented.\n")
+		return fmt.Errorf("inference not implemented")
 	}
 
 	return nil
@@ -50,11 +57,22 @@ func train(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) error {
 		return fmt.Errorf(string(o) + "\nTraining failed")
 	}
 
-	return saveModel(pr.save, cfg)
+	return nil
 }
 
+func saveTrainStatement(modelName string, slct string) error {
+	fn := filepath.Join(workDir, modelName, "train_statement.txt")
+	f, err := os.Create(fn)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
 
-func saveModel(modelName string, cfg *mysql.Config) (e error) {
+	_, err = f.WriteString(slct)
+	return err
+}
+
+func saveModelToDB(modelName string, cfg *mysql.Config) (e error) {
 	db, e := sql.Open("mysql", cfg.FormatDSN())
 	if e != nil {
 		return e

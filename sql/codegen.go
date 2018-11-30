@@ -27,13 +27,16 @@ type connectionConfig struct {
 	Database string
 }
 
+type modelConfig struct {
+	Estimator string
+	Attrs     map[string]string
+	Save      string
+}
+
 type filler struct {
-	Train bool
-	// Model Config
+	Train          bool
 	StandardSelect string
-	Estimator      string
-	Attrs          map[string]string
-	Save           string
+	modelConfig
 	// Data Config
 	X []columnType
 	Y columnType
@@ -43,28 +46,28 @@ type filler struct {
 	WorkDir string
 }
 
-func generateTFProgram(w io.Writer, pr *extendedSelect, fts fieldTypes,
-	cfg *mysql.Config) error {
+func generateTemplate(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) (*filler, error) {
 	r := &filler{
 		Train:          pr.train,
 		StandardSelect: pr.standardSelect.String(),
-		Estimator:      pr.estimator,
-		Attrs:          make(map[string]string),
-		Save:           pr.save}
+		modelConfig: modelConfig{
+			Estimator: pr.estimator,
+			Attrs:     make(map[string]string),
+			Save:      pr.save}}
 	for k, v := range pr.attrs {
 		r.Attrs[k] = v.String()
 	}
 	for _, c := range pr.columns {
 		typ, ok := fts.get(c.val)
 		if !ok {
-			return fmt.Errorf("generateTFProgram: Cannot find type of field %s", c.val)
+			return nil, fmt.Errorf("generateTFProgram: Cannot find type of field %s", c.val)
 		}
 		ct := columnType{Name: c.val, Type: fieldTypeFeatureType[typ]}
 		r.X = append(r.X, ct)
 	}
 	typ, ok := fts.get(pr.label)
 	if !ok {
-		return fmt.Errorf("generateTFProgram: Cannot find type of field: %s", pr.label)
+		return nil, fmt.Errorf("generateTFProgram: Cannot find type of field: %s", pr.label)
 	}
 	r.Y = columnType{Name: pr.label, Type: fieldTypeFeatureType[typ]}
 	r.User = cfg.User
@@ -72,7 +75,15 @@ func generateTFProgram(w io.Writer, pr *extendedSelect, fts fieldTypes,
 	r.Host = strings.Split(cfg.Addr, ":")[0]
 	r.Port = strings.Split(cfg.Addr, ":")[1]
 
-	if e := codegenTemplate.Execute(w, r); e != nil {
+	return r, nil
+}
+
+func generateTFProgram(w io.Writer, pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) error {
+	r, e := generateTemplate(pr, fts, cfg)
+	if e != nil {
+		return e
+	}
+	if e = codegenTemplate.Execute(w, r); e != nil {
 		return fmt.Errorf("generateTFProgram: failed executing template: %v", e)
 	}
 	return nil
@@ -132,19 +143,9 @@ eval_result = classifier.evaluate(
         input_fn=lambda:eval_input_fn(X, Y, BATCHSIZE),
         steps=STEP)
 print("\nTraining set accuracy: {accuracy:0.5f}\n".format(**eval_result))
-` +
-	// TODO(tonyyang-svail): avoid JSON
-	// print("Dumping sql parsed data ...")
-	// with open(os.path.join(WORK_DIR, "{{.Save}}", SQL_PARSING_RESULT_FILE), "w") as f:
-	//     f.write("""{{.JSON}}""")
-	`
+
 print("Done training")
 {{- else}}
-` +
-	// TODO(tonyyang-svail): avoid JSON
-	// with open(os.path.join(WORK_DIR, "{{.InferClause.Model}}", SQL_PARSING_RESULT_FILE)) as f:
-	//     desc = json.load(f)
-	`
 def eval_input_fn(features, labels, batch_size):
     dataset = tf.data.Dataset.from_tensor_slices((dict(features), labels))
     dataset = dataset.batch(batch_size)
