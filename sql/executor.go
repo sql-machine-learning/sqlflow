@@ -25,10 +25,13 @@ func run(slct string, cfg *mysql.Config) error {
 	}
 
 	if parseResult.train {
-		if e := saveTrainStatement(&parseResult, slct); e != nil {
+		if e := train(&parseResult, fts, cfg); e != nil {
 			return e
 		}
-		if e := train(&parseResult, fts, cfg); e != nil {
+		if e := saveTrainStatement(parseResult.save, slct); e != nil {
+			return e
+		}
+		if e := saveModelToDB(parseResult.save, cfg); e != nil {
 			return e
 		}
 	} else {
@@ -54,11 +57,11 @@ func train(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) error {
 		return fmt.Errorf(string(o) + "\nTraining failed")
 	}
 
-	return saveModelToDB(pr.save, cfg)
+	return nil
 }
 
-func saveTrainStatement(pr *extendedSelect, slct string) error {
-	fn := filepath.Join(workDir, pr.save, "train_statement.txt")
+func saveTrainStatement(modelName string, slct string) error {
+	fn := filepath.Join(workDir, modelName, "train_statement.txt")
 	f, err := os.Create(fn)
 	if err != nil {
 		return err
