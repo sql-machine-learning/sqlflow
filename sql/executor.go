@@ -3,7 +3,6 @@ package sql
 import (
 	"bytes"
 	"database/sql"
-	"encoding/gob"
 	"fmt"
 	"os"
 	"os/exec"
@@ -26,6 +25,9 @@ func run(slct string, cfg *mysql.Config) error {
 	}
 
 	if parseResult.train {
+		if e := saveTrainStatement(&parseResult, slct); e != nil {
+			return e
+		}
 		if e := train(&parseResult, fts, cfg); e != nil {
 			return e
 		}
@@ -52,27 +54,19 @@ func train(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) error {
 		return fmt.Errorf(string(o) + "\nTraining failed")
 	}
 
-	if err = saveTemplateFiller(pr, fts, cfg); err != nil {
-		return err
-	}
-
 	return saveModelToDB(pr.save, cfg)
 }
 
-func saveTemplateFiller(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) error {
-	r, err := generateTemplate(pr, fts, cfg)
+func saveTrainStatement(pr *extendedSelect, slct string) error {
+	fn := filepath.Join(workDir, pr.save, "train_statement.txt")
+	f, err := os.Create(fn)
 	if err != nil {
 		return err
 	}
-	fn := filepath.Join(workDir, r.Save, "trainTemplateFiller.gob")
-	file, err := os.Create(fn)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
+	defer f.Close()
 
-	encoder := gob.NewEncoder(file)
-	return encoder.Encode(r)
+	_, err = f.WriteString(slct)
+	return err
 }
 
 func saveModelToDB(modelName string, cfg *mysql.Config) (e error) {
