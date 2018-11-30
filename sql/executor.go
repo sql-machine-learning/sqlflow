@@ -77,13 +77,10 @@ func (m *model) save(cfg *mysql.Config) (e error) {
 	}
 	defer func() { e = sqlf.Close() }()
 
-	// gob-encode the model.
 	if e := gob.NewEncoder(sqlf).Encode(m); e != nil {
 		return fmt.Errorf("model.save: gob-encoding model failed: %v", e)
 	}
 
-	// NOTE: This quick-and-hacky implementation simply tars the
-	// TensorFlow Estimator model directory into the sqlfs file.
 	dir := filepath.Join(workDir, m.parseResult.save)
 	cmd := exec.Command("tar", "Pczf", "-", dir)
 	cmd.Stdout = sqlf
