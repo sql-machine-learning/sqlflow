@@ -68,7 +68,6 @@ func TestCodeGenPredict(t *testing.T) {
 	})
 	parseResult.trainClause = tc
 
-	log.Printf("%#v\n", tc.attrs["n_classes"])
 	fts, e := verify(&parseResult, testCfg)
 	a.NoError(e)
 
@@ -84,6 +83,5 @@ func TestCodeGenPredict(t *testing.T) {
 	if err != nil {
 		log.Println(err)
 	}
-	log.Println(string(o))
 	a.True(strings.Contains(string(o), "Done predicting"))
 }
