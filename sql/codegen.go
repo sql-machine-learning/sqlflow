@@ -160,16 +160,9 @@ def eval_input_fn(features, batch_size):
 predictions = classifier.predict(
         input_fn=lambda:eval_input_fn(X, BATCHSIZE))
 
-# Writing back to MySQL
-db = mysql.connector.connect(user="{{.User}}",
-                             passwd="{{.Password}}",
-                             host="{{.Host}}",
-                             port={{.Port}}{{if eq .Database ""}}{{- else}},
-                             database="{{.DATABASE}}"{{end}})
-
-cursor = db.cursor()
-for p in predictions:
-    print(p["class_ids"])
+# TODO(tonyyang-svail): Writing back to MySQL
+# for p in predictions:
+#     print(p["class_ids"])
 
 print("Done predicting")
 {{- end}}
