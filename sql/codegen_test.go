@@ -11,22 +11,21 @@ import (
 
 const (
 	simpleSelect = `
-SELECT MonthlyCharges, TotalCharges, tenure
-FROM churn.churn
+SELECT *
+FROM iris.iris
 `
 	simpleTrainSelect = simpleSelect + `
 TRAIN DNNClassifier
 WITH 
-  n_classes = 73,
+  n_classes = 3,
   hidden_units = [10, 20]
-COLUMN MonthlyCharges, TotalCharges
-LABEL tenure
-INTO
-  my_dnn_model
+COLUMN sepal_length, sepal_width, petal_length, petal_width
+LABEL class
+INTO my_dnn_model
 ;
 `
 	simplePredictSelect = simpleSelect + `
-PREDICT churn.predict.tenure
+PREDICT iris.predict.class
 USING my_dnn_model;
 `
 )
@@ -85,5 +84,6 @@ func TestCodeGenPredict(t *testing.T) {
 	if err != nil {
 		log.Println(err)
 	}
+	log.Println(string(o))
 	a.True(strings.Contains(string(o), "Done predicting"))
 }
