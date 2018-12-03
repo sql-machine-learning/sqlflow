@@ -3,8 +3,8 @@ package sql
 import (
 	"bytes"
 	"database/sql"
+	"encoding/gob"
 	"fmt"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -28,10 +28,8 @@ func run(slct string, cfg *mysql.Config) error {
 		if e := train(&parseResult, fts, cfg); e != nil {
 			return e
 		}
-		if e := saveTrainStatement(parseResult.save, slct); e != nil {
-			return e
-		}
-		if e := saveModelToDB(parseResult.save, cfg); e != nil {
+		m := &model{&parseResult, slct}
+		if e := m.save(cfg); e != nil {
 			return e
 		}
 	} else {
@@ -60,35 +58,31 @@ func train(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) error {
 	return nil
 }
 
-func saveTrainStatement(modelName string, slct string) error {
-	fn := filepath.Join(workDir, modelName, "train_statement.txt")
-	f, err := os.Create(fn)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	_, err = f.WriteString(slct)
-	return err
+type model struct {
+	parseResult *extendedSelect // private member will not be gob-encoded.
+	Slct        string
 }
 
-func saveModelToDB(modelName string, cfg *mysql.Config) (e error) {
+func (m *model) save(cfg *mysql.Config) (e error) {
 	db, e := sql.Open("mysql", cfg.FormatDSN())
 	if e != nil {
 		return e
 	}
 	defer db.Close()
 
-	sqlfn := fmt.Sprintf("sqlflow_models.%s", modelName)
+	sqlfn := fmt.Sprintf("sqlflow_models.%s", m.parseResult.save)
 	sqlf, e := sqlfs.Create(db, sqlfn)
 	if e != nil {
 		return fmt.Errorf("Cannot create sqlfs file %s: %v", sqlfn, e)
 	}
 	defer func() { e = sqlf.Close() }()
 
-	dir := filepath.Join(workDir, modelName)
+	if e := gob.NewEncoder(sqlf).Encode(m); e != nil {
+		return fmt.Errorf("model.save: gob-encoding model failed: %v", e)
+	}
+
+	dir := filepath.Join(workDir, m.parseResult.save)
 	cmd := exec.Command("tar", "Pczf", "-", dir)
 	cmd.Stdout = sqlf
-
 	return cmd.Run()
 }

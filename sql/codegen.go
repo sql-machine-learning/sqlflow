@@ -46,7 +46,7 @@ type filler struct {
 	WorkDir string
 }
 
-func generateTemplate(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) (*filler, error) {
+func newFiller(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) (*filler, error) {
 	r := &filler{
 		Train:          pr.train,
 		StandardSelect: pr.standardSelect.String(),
@@ -83,7 +83,7 @@ func generateTemplate(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) (*f
 }
 
 func generateTFProgram(w io.Writer, pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) error {
-	r, e := generateTemplate(pr, fts, cfg)
+	r, e := newFiller(pr, fts, cfg)
 	if e != nil {
 		return e
 	}
