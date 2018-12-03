@@ -152,17 +152,15 @@ print("\nTraining set accuracy: {accuracy:0.5f}\n".format(**eval_result))
 
 print("Done training")
 {{- else}}
-def eval_input_fn(features, labels, batch_size):
-    dataset = tf.data.Dataset.from_tensor_slices((dict(features), labels))
+def eval_input_fn(features, batch_size):
+    dataset = tf.data.Dataset.from_tensor_slices(dict(features))
     dataset = dataset.batch(batch_size)
     return dataset
 
-eval_result = classifier.evaluate(
-        input_fn=lambda:eval_input_fn(X, Y, BATCHSIZE),
-        steps=STEP)
-print("\nTest set accuracy: {accuracy:0.5f}\n".format(**eval_result))
+eval_result = classifier.predict(
+        input_fn=lambda:eval_input_fn(X, BATCHSIZE))
 
-print("Done Predicting")
+print("Done predicting")
 {{- end}}
 `
 
