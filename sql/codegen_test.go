@@ -53,7 +53,6 @@ func TestCodeGenTrain(t *testing.T) {
 	}
 
 	a.True(strings.Contains(string(o), "Done training"))
-	fmt.Println(string(o))
 }
 
 func TestCodeGenPredict(t *testing.T) {
