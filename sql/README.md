@@ -27,18 +27,28 @@ Following a link in the above GoAcademy post, I found Rob Pike's excellent talk 
 Therefore, I wrote the lexer and parser both following Rob Pike's idea. After few days work, I realized that:
 
 1. I should borrow the idea from Rob to represent SQL statements as strings, but not `io.Reader` as other work do,
-1. but no need to use channels and goroutines at all, and 
+1. but no need to use channels and goroutines at all, and
 1. it is technically intractable to write a SQL lexer/parser manually.
 
 So, I switched to write a lexer manually, and to generate the parser using goyacc.  During my work, I referred to [this example](https://github.com/golang-samples/yacc/blob/master/simple/calc.y) and the official [`yacc` manual](https://www.epaperpress.com/lexandyacc/download/yacc.pdf) for details about operator association and precedence.
 
-## Build
+## Build, Run, Test
+
+Before running the unit tests, we need to build and run a Docker container that hosts a MySQL database following [this guide](../example/datasets/README.md).
+
+Also, we need to build a Docker image `sqlflow/sqlflow` that contains TensorFlow and MySQL's Python client package.  Our unit tests might invoke this image to run the generated Python code:
+
+```bash
+cd .. # move to the root directory of this project
+docker build -t sqlflow/sqlflow .
+```
 
 To build the parser using `goyacc` and run all unit tests, use the following command:
 
 ```bash
 goyacc -p sql -o parser.go sql.y && go test -v
 ```
+
 
 To install `goyacc` and other useful tools:
 
