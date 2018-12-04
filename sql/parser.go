@@ -328,17 +328,21 @@ func (s extendedSelect) JSON() string {
 }
 
 func parseSQL(s string) extendedSelect {
-	defer func() {
-		if e := recover(); e != nil {
-			log.Fatal(e)
-		}
-	}()
-
 	sqlParse(newLexer(s))
 	r := parseResult
 	parseResult = extendedSelect{}
 
 	return r
+}
+
+func Parse(s string) string {
+	defer func() {
+		if e := recover(); e != nil {
+			log.Fatal(e)
+		}
+	}()
+	sqlParse(newLexer(s))
+	return parseResult.JSON()
 }
 
 //line yacctab:1

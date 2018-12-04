@@ -389,12 +389,6 @@ func (s extendedSelect) JSON() string {
 }
 
 func parseSQL(s string) extendedSelect {
-	defer func() {
-		if e := recover(); e != nil {
-			log.Fatal(e)
-		}
-	}()
-
 	sqlParse(newLexer(s))
 	r := parseResult
 	parseResult = extendedSelect{}
