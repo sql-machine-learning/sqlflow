@@ -38,6 +38,12 @@ Before running the unit tests, we need to build and run a Docker container that 
 
 Also, we need to build a Docker image `sqlflow/sqlflow` that contains TensorFlow and MySQL's Python client package.  Our unit tests might invoke this image to run the generated Python code:
 
+And, please remove TensorFlow checkpoints left by previous local runs of unit tests:
+
+```bash
+rm -rf /tmp/my_dnn_model
+```
+
 ```bash
 cd .. # move to the root directory of this project
 docker build -t sqlflow/sqlflow .
