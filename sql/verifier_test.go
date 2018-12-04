@@ -8,26 +8,22 @@ import (
 
 func TestDryRunSelect(t *testing.T) {
 	a := assert.New(t)
-	a.NotPanics(func() {
-		sqlParse(newLexer(`SELECT * FROM churn.churn LIMIT 10;`))
-	})
-	a.Nil(dryRunSelect(&parseResult, testDB))
+	r, e := newParser().Parse(`SELECT * FROM churn.churn LIMIT 10;`)
+	a.NoError(e)
+	a.Nil(dryRunSelect(r, testDB))
 }
 
 func TestDescribeTables(t *testing.T) {
 	a := assert.New(t)
-
-	a.NotPanics(func() {
-		sqlParse(newLexer(`SELECT * FROM churn.churn LIMIT 10;`))
-	})
-	fts, e := describeTables(&parseResult, testDB)
+	r, e := newParser().Parse(`SELECT * FROM churn.churn LIMIT 10;`)
+	a.NoError(e)
+	fts, e := describeTables(r, testDB)
 	a.NoError(e)
 	a.Equal(21, len(fts))
 
-	a.NotPanics(func() {
-		sqlParse(newLexer(`SELECT Churn, churn.churn.Partner FROM churn.churn LIMIT 10;`))
-	})
-	fts, e = describeTables(&parseResult, testDB)
+	r, e = newParser().Parse(`SELECT Churn, churn.churn.Partner FROM churn.churn LIMIT 10;`)
+	a.NoError(e)
+	fts, e = describeTables(r, testDB)
 	a.NoError(e)
 	a.Equal(2, len(fts))
 	a.Equal("varchar(255)", fts["Churn"]["churn.churn"])
@@ -36,24 +32,20 @@ func TestDescribeTables(t *testing.T) {
 
 func TestIndexSelectFields(t *testing.T) {
 	a := assert.New(t)
-
-	a.NotPanics(func() {
-		sqlParse(newLexer(`SELECT * FROM churn.churn LIMIT 10;`))
-	})
-	f := indexSelectFields(&parseResult)
+	r, e := newParser().Parse(`SELECT * FROM churn.churn LIMIT 10;`)
+	a.NoError(e)
+	f := indexSelectFields(r)
 	a.Equal(0, len(f))
 
-	a.NotPanics(func() {
-		sqlParse(newLexer(`SELECT f FROM churn.churn LIMIT 10;`))
-	})
-	f = indexSelectFields(&parseResult)
+	r, e = newParser().Parse(`SELECT f FROM churn.churn LIMIT 10;`)
+	a.NoError(e)
+	f = indexSelectFields(r)
 	a.Equal(1, len(f))
 	a.Equal(map[string]string{}, f["f"])
 
-	a.NotPanics(func() {
-		sqlParse(newLexer(`SELECT t1.f, t2.f, g FROM churn.churn LIMIT 10;`))
-	})
-	f = indexSelectFields(&parseResult)
+	r, e = newParser().Parse(`SELECT t1.f, t2.f, g FROM churn.churn LIMIT 10;`)
+	a.NoError(e)
+	f = indexSelectFields(r)
 	a.Equal(2, len(f))
 	a.Equal(map[string]string{}, f["g"])
 	a.Equal("", f["f"]["t1"])
@@ -62,10 +54,9 @@ func TestIndexSelectFields(t *testing.T) {
 
 func TestVerify(t *testing.T) {
 	a := assert.New(t)
-	a.NotPanics(func() {
-		sqlParse(newLexer(`SELECT Churn, churn.churn.Partner FROM churn.churn LIMIT 10;`))
-	})
-	fts, e := verify(&parseResult, testCfg)
+	r, e := newParser().Parse(`SELECT Churn, churn.churn.Partner FROM churn.churn LIMIT 10;`)
+	a.NoError(e)
+	fts, e := verify(r, testCfg)
 	a.NoError(e)
 	a.Equal(2, len(fts))
 	typ, ok := fts.get("Churn")

@@ -1,14 +1,15 @@
 package sql
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestExecutorTrain(t *testing.T) {
 	a := assert.New(t)
 	a.NotPanics(func() {
-		e := run(simpleTrainSelect, testCfg)
+		e := run(testTrainSelectChurn, testCfg)
 		a.NoError(e)
 	})
 
