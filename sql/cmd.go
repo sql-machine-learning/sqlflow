@@ -1,6 +1,7 @@
 package sql
 
 import (
+	"fmt"
 	"log"
 	"os/exec"
 )
@@ -36,7 +37,7 @@ func hasDockerImage(image string) bool {
 	return true
 }
 
-func tensorflowCmd() (cmd *exec.Cmd) {
+func tensorflowCmd(cwd string) (cmd *exec.Cmd) {
 	if hasPython() && hasTensorFlow() && hasMySQLConnector() {
 		log.Printf("tensorflowCmd: run locally")
 		cmd = exec.Command("python")
@@ -46,7 +47,9 @@ func tensorflowCmd() (cmd *exec.Cmd) {
 		if !hasDockerImage(tfImg) {
 			log.Printf("No local Docker image %s.  It will take a long time to pull.", tfImg)
 		}
-		cmd = exec.Command("docker", "run", "--rm", "-v/tmp:/work", "-w/work", "--network=host", "-i", tfImg, "python")
+		cmd = exec.Command("docker", "run", "--rm",
+			fmt.Sprintf("-v%s:/work", cwd),
+			"-w/work", "--network=host", "-i", tfImg, "python")
 	} else {
 		log.Fatalf("No local TensorFlow or Docker.  No way to run TensorFlow programs")
 	}
