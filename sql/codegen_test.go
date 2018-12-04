@@ -1,6 +1,7 @@
 package sql
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"strings"
@@ -10,19 +11,21 @@ import (
 )
 
 const (
-	testTrainSelectChurn = `
-SELECT MonthlyCharges, TotalCharges, tenure
-FROM churn.churn
+	testSelectChurn = `
+SELECT *
+FROM iris.iris
+`
+	testTrainSelectChurn = testSelectChurn + `
 TRAIN DNNClassifier
 WITH
-  n_classes = 73,
+  n_classes = 3,
   hidden_units = [10, 20]
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO my_dnn_model
 ;
 `
-	simplePredictSelect = simpleSelect + `
+	testPredictSelectChurn = testSelectChurn + `
 PREDICT iris.predict.class
 USING my_dnn_model;
 `
@@ -50,27 +53,26 @@ func TestCodeGenTrain(t *testing.T) {
 	}
 
 	a.True(strings.Contains(string(o), "Done training"))
+	fmt.Println(string(o))
 }
 
 func TestCodeGenPredict(t *testing.T) {
 	a := assert.New(t)
-	a.NotPanics(func() {
-		sqlParse(newLexer(simpleTrainSelect))
-	})
+	r, e := newParser().Parse(testTrainSelectChurn)
+	a.NoError(e)
 	var tc trainClause
-	tc = parseResult.trainClause
+	tc = r.trainClause
 
-	a.NotPanics(func() {
-		sqlParse(newLexer(simplePredictSelect))
-	})
-	parseResult.trainClause = tc
+	r, e = newParser().Parse(testPredictSelectChurn)
+	a.NoError(e)
+	r.trainClause = tc
 
-	fts, e := verify(&parseResult, testCfg)
+	fts, e := verify(r, testCfg)
 	a.NoError(e)
 
 	pr, pw := io.Pipe()
 	go func() {
-		a.NoError(generateTFProgram(pw, &parseResult, fts, testCfg))
+		a.NoError(generateTFProgram(pw, r, fts, testCfg))
 		pw.Close()
 	}()
 
