@@ -401,3 +401,13 @@ func parseSQL(s string) extendedSelect {
 
 	return r
 }
+
+func Parse(s string) string {
+	defer func() {
+		if e := recover(); e != nil {
+			log.Fatal(e)
+		}
+	}()
+	sqlParse(newLexer(s))
+	return parseResult.JSON()
+}
