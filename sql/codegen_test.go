@@ -12,11 +12,11 @@ import (
 )
 
 const (
-	testSelectChurn = `
+	testSelectIris = `
 SELECT *
 FROM iris.iris
 `
-	testTrainSelectChurn = testSelectChurn + `
+	testTrainSelectIris = testSelectIris + `
 TRAIN DNNClassifier
 WITH
   n_classes = 3,
@@ -26,7 +26,7 @@ LABEL class
 INTO my_dnn_model
 ;
 `
-	testPredictSelectChurn = testSelectChurn + `
+	testPredictSelectIris = testSelectIris + `
 PREDICT iris.predict.class
 USING my_dnn_model;
 `
@@ -34,7 +34,7 @@ USING my_dnn_model;
 
 func TestCodeGenTrain(t *testing.T) {
 	a := assert.New(t)
-	r, e := newParser().Parse(testTrainSelectChurn)
+	r, e := newParser().Parse(testTrainSelectIris)
 	a.NoError(e)
 
 	fts, e := verify(r, testCfg)
@@ -69,12 +69,12 @@ func TestCodeGenTrain(t *testing.T) {
 
 func TestCodeGenPredict(t *testing.T) {
 	a := assert.New(t)
-	r, e := newParser().Parse(testTrainSelectChurn)
+	r, e := newParser().Parse(testTrainSelectIris)
 	a.NoError(e)
 	var tc trainClause
 	tc = r.trainClause
 
-	r, e = newParser().Parse(testPredictSelectChurn)
+	r, e = newParser().Parse(testPredictSelectIris)
 	a.NoError(e)
 	r.trainClause = tc
 
