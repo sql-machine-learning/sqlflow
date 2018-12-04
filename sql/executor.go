@@ -18,17 +18,17 @@ const (
 )
 
 func run(slct string, cfg *mysql.Config) error {
-	sqlParse(newLexer(slct))
-	fts, e := verify(&parseResult, cfg)
+	pr := Parse(slct)
+	fts, e := verify(&pr, cfg)
 	if e != nil {
 		return e
 	}
 
-	if parseResult.train {
-		if e := train(&parseResult, fts, cfg); e != nil {
+	if pr.train {
+		if e := train(&pr, fts, cfg); e != nil {
 			return e
 		}
-		m := &model{&parseResult, slct}
+		m := &model{&pr, slct}
 		if e := m.save(cfg); e != nil {
 			return e
 		}

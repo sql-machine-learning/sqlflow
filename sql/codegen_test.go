@@ -29,16 +29,17 @@ INTO
 
 func TestCodeGenTrain(t *testing.T) {
 	a := assert.New(t)
+	var pResult extendedSelect
 	a.NotPanics(func() {
-		sqlParse(newLexer(simpleTrainSelect))
+		pResult = Parse(simpleTrainSelect)
 	})
 
-	fts, e := verify(&parseResult, testCfg)
+	fts, e := verify(&pResult, testCfg)
 	a.NoError(e)
 
 	pr, pw := io.Pipe()
 	go func() {
-		a.NoError(generateTFProgram(pw, &parseResult, fts, testCfg))
+		a.NoError(generateTFProgram(pw, &pResult, fts, testCfg))
 		pw.Close()
 	}()
 

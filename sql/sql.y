@@ -388,7 +388,7 @@ func (s extendedSelect) JSON() string {
 	return fmt.Sprintf(bf, s.extended, s.train, jsonString(s.standardSelect.String()))
 }
 
-func Parse(s string) string {
+func Parse(s string) extendedSelect {
 	defer func() {
 		if e := recover(); e != nil {
 			log.Fatal(e)
@@ -396,5 +396,8 @@ func Parse(s string) string {
 	}()
 
 	sqlParse(newLexer(s))
-	return parseResult.JSON()
+	r := parseResult
+	parseResult = extendedSelect{}
+
+	return r
 }
