@@ -1,7 +1,6 @@
 package sql
 
 import (
-	"fmt"
 	"io"
 	"log"
 	"strings"
