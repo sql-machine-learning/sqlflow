@@ -10,14 +10,12 @@ import (
 )
 
 const (
-	simpleSelect = `
-SELECT *
-FROM iris.iris
-`
-	simpleTrainSelect = simpleSelect + `
+	testTrainSelectChurn = `
+SELECT MonthlyCharges, TotalCharges, tenure
+FROM churn.churn
 TRAIN DNNClassifier
-WITH 
-  n_classes = 3,
+WITH
+  n_classes = 73,
   hidden_units = [10, 20]
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
@@ -32,16 +30,15 @@ USING my_dnn_model;
 
 func TestCodeGenTrain(t *testing.T) {
 	a := assert.New(t)
-	a.NotPanics(func() {
-		sqlParse(newLexer(simpleTrainSelect))
-	})
+	r, e := newParser().Parse(testTrainSelectChurn)
+	a.NoError(e)
 
-	fts, e := verify(&parseResult, testCfg)
+	fts, e := verify(r, testCfg)
 	a.NoError(e)
 
 	pr, pw := io.Pipe()
 	go func() {
-		a.NoError(generateTFProgram(pw, &parseResult, fts, testCfg))
+		a.NoError(generateTFProgram(pw, r, fts, testCfg))
 		pw.Close()
 	}()
 

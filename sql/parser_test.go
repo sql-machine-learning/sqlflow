@@ -16,7 +16,7 @@ WHERE
   AND
   strings.Upper(last_name) = "WANG"
 `
-	trainSelect = testStandardSelectStmt + `TRAIN DNNClassifier
+	testTrainSelect = testStandardSelectStmt + `TRAIN DNNClassifier
 WITH
   n_classes = 3,
   hidden_units = [10, 20]
@@ -29,68 +29,64 @@ INTO
   my_dnn_model
 ;
 `
-	predictSelect = testStandardSelectStmt + `PREDICT db.table.field 
+	testPredictSelect = testStandardSelectStmt + `PREDICT db.table.field
 USING my_dnn_model;`
 )
 
 func TestStandardSelect(t *testing.T) {
 	a := assert.New(t)
-	a.NotPanics(func() {
-		sqlParse(newLexer(testStandardSelectStmt + ";"))
-	})
-	a.False(parseResult.extended)
+	r, e := newParser().Parse(testStandardSelectStmt + ";")
+	a.NoError(e)
+	a.False(r.extended)
 	a.Equal([]string{"employee.age", "last_name", "salary"},
-		parseResult.fields)
-	a.Equal([]string{"employee"}, parseResult.tables)
-	a.Equal("100", parseResult.limit)
-	a.Equal(AND, parseResult.where.sexp[0].typ)
-	a.Equal('<', rune(parseResult.where.sexp[1].sexp[0].typ))
-	a.Equal('=', rune(parseResult.where.sexp[2].sexp[0].typ))
+		r.fields)
+	a.Equal([]string{"employee"}, r.tables)
+	a.Equal("100", r.limit)
+	a.Equal(AND, r.where.sexp[0].typ)
+	a.Equal('<', rune(r.where.sexp[1].sexp[0].typ))
+	a.Equal('=', rune(r.where.sexp[2].sexp[0].typ))
 	a.Equal(`employee.age % 10 < (salary / 10000) AND `+
 		`strings.Upper(last_name) = "WANG"`,
-		parseResult.where.String())
+		r.where.String())
 }
 
 func TestTrainParser(t *testing.T) {
 	a := assert.New(t)
-	a.NotPanics(func() {
-		sqlParse(newLexer(trainSelect))
-	})
-	a.True(parseResult.extended)
-	a.True(parseResult.train)
-	a.Equal("DNNClassifier", parseResult.estimator)
-	a.Equal("[10, 20]", parseResult.attrs["hidden_units"].String())
-	a.Equal("3", parseResult.attrs["n_classes"].String())
+	r, e := newParser().Parse(testTrainSelect)
+	a.NoError(e)
+	a.True(r.extended)
+	a.True(r.train)
+	a.Equal("DNNClassifier", r.estimator)
+	a.Equal("[10, 20]", r.attrs["hidden_units"].String())
+	a.Equal("3", r.attrs["n_classes"].String())
 	a.Equal(`employee.name`,
-		parseResult.columns[0].String())
+		r.columns[0].String())
 	a.Equal(`bucketize(last_name, 1000)`,
-		parseResult.columns[1].String())
+		r.columns[1].String())
 	a.Equal(
 		`cross(embedding(emplyoee.name), bucketize(last_name, 1000))`,
-		parseResult.columns[2].String())
-	a.Equal("employee.salary", parseResult.label)
-	a.Equal("my_dnn_model", parseResult.save)
+		r.columns[2].String())
+	a.Equal("employee.salary", r.label)
+	a.Equal("my_dnn_model", r.save)
 }
 
 func TestPredictParser(t *testing.T) {
 	a := assert.New(t)
-	a.NotPanics(func() {
-		sqlParse(newLexer(predictSelect))
-	})
-	a.True(parseResult.extended)
-	a.False(parseResult.train)
-	a.Equal("my_dnn_model", parseResult.model)
-	a.Equal("db.table.field", parseResult.into)
+	r, e := newParser().Parse(testPredictSelect)
+	a.NoError(e)
+	a.True(r.extended)
+	a.False(r.train)
+	a.Equal("my_dnn_model", r.model)
+	a.Equal("db.table.field", r.into)
 }
 
 func TestSelectStarAndPrint(t *testing.T) {
 	a := assert.New(t)
-	a.NotPanics(func() {
-		sqlParse(newLexer(`SELECT *, b FROM a LIMIT 10;`))
-	})
-	a.Equal(2, len(parseResult.fields))
-	a.Equal("*", parseResult.fields[0])
-	a.False(parseResult.extended)
-	a.False(parseResult.train)
-	a.Equal("SELECT *, b\nFROM a\nLIMIT 10;", parseResult.standardSelect.String())
+	r, e := newParser().Parse(`SELECT *, b FROM a LIMIT 10;`)
+	a.NoError(e)
+	a.Equal(2, len(r.fields))
+	a.Equal("*", r.fields[0])
+	a.False(r.extended)
+	a.False(r.train)
+	a.Equal("SELECT *, b\nFROM a\nLIMIT 10;", r.standardSelect.String())
 }
