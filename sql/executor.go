@@ -20,17 +20,17 @@ func run(slct string, cfg *mysql.Config) error {
 	if e != nil {
 		return e
 	}
-	fts, e := verify(r, cfg)
-	if e != nil {
-		return e
-	}
-
 	if r.train {
 		cwd, e := ioutil.TempDir("/tmp", "sqlflow-training")
 		if e != nil {
 			return e
 		}
 		defer os.RemoveAll(cwd)
+
+		fts, e := verify(r, cfg)
+		if e != nil {
+			return e
+		}
 
 		if e := train(r, fts, cfg, cwd); e != nil {
 			return e
@@ -40,13 +40,42 @@ func run(slct string, cfg *mysql.Config) error {
 			return e
 		}
 	} else {
-		return fmt.Errorf("inference not implemented")
+		inferParsed := r
+
+		cwd, e := ioutil.TempDir("/tmp", "sqlflow-predicting")
+		if e != nil {
+			return e
+		}
+		defer os.RemoveAll(cwd)
+
+		m := &model{parseResult: inferParsed}
+		if e := m.load(cfg, cwd); e != nil {
+			return e
+		}
+
+		trainParsed, e := newParser().Parse(m.trainSelect)
+		if e != nil {
+			return e
+		}
+
+		fts, e := verifyColumnTypes(trainParsed, inferParsed);
+		if e != nil {
+			return e
+		}
+
+		if e := preparePredictionTable(inferParsed, cfg); e != nil {
+			return e
+		}
+
+		if e := infer(trainParsed, inferParsed, fts, cfg, cwd); e != nil {
+			return e
+		}
 	}
 
 	return nil
 }
 
-func train(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config, cwd string) error {
+func train(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config, cwd string) (e error) {
 	var program bytes.Buffer
 	if e := generateTFProgram(&program, pr, fts, cfg); e != nil {
 		return e
@@ -54,9 +83,9 @@ func train(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config, cwd string) er
 
 	cmd := tensorflowCmd(cwd)
 	cmd.Stdin = bytes.NewReader(program.Bytes())
-	o, err := cmd.CombinedOutput()
-	if err != nil {
-		return err
+	o, e := cmd.CombinedOutput()
+	if e != nil {
+		return e
 	}
 	if !strings.Contains(string(o), "Done training") {
 		return fmt.Errorf(string(o) + "\nTraining failed")
@@ -67,7 +96,7 @@ func train(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config, cwd string) er
 
 type model struct {
 	parseResult *extendedSelect // private member will not be gob-encoded.
-	Slct        string
+	trainSelect string
 }
 
 func (m *model) save(cfg *mysql.Config, cwd string) (e error) {
@@ -92,4 +121,20 @@ func (m *model) save(cfg *mysql.Config, cwd string) (e error) {
 	cmd := exec.Command("tar", "Pczf", "-", dir)
 	cmd.Stdout = sqlf
 	return cmd.Run()
+}
+
+func (m *model) load(cfg *mysql.Config, cwd string) (e error) {
+	return fmt.Errorf("model.load not implemented")
+}
+
+func verifyColumnTypes(trainParsed, inferParsed *extendedSelect) (fts fieldTypes, e error) {
+	return fieldTypes{}, fmt.Errorf("verifyColumnTypes not implemented")
+}
+
+func preparePredictionTable(pr *extendedSelect, cfg *mysql.Config) (e error) {
+	return fmt.Errorf("preparePredictionTable not implemented")
+}
+
+func infer(trainParsed, inferParsed *extendedSelect, fts fieldTypes, cfg *mysql.Config, cwd string) (e error) {
+	return fmt.Errorf("model.load not implemented")
 }
