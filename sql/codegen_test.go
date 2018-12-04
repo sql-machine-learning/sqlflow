@@ -10,13 +10,11 @@ import (
 )
 
 const (
-	simpleSelect = `
+	testTrainSelectChurn = `
 SELECT MonthlyCharges, TotalCharges, tenure
 FROM churn.churn
-`
-	simpleTrainSelect = simpleSelect + `
 TRAIN DNNClassifier
-WITH 
+WITH
   n_classes = 73,
   hidden_units = [10, 20]
 COLUMN MonthlyCharges, TotalCharges
@@ -29,16 +27,15 @@ INTO
 
 func TestCodeGenTrain(t *testing.T) {
 	a := assert.New(t)
-	a.NotPanics(func() {
-		sqlParse(newLexer(simpleTrainSelect))
-	})
+	r, e := newParser().Parse(testTrainSelectChurn)
+	a.NoError(e)
 
-	fts, e := verify(&parseResult, testCfg)
+	fts, e := verify(r, testCfg)
 	a.NoError(e)
 
 	pr, pw := io.Pipe()
 	go func() {
-		a.NoError(generateTFProgram(pw, &parseResult, fts, testCfg))
+		a.NoError(generateTFProgram(pw, r, fts, testCfg))
 		pw.Close()
 	}()
 
