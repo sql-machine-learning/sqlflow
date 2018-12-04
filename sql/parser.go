@@ -332,12 +332,13 @@ func (s extendedSelect) JSON() string {
 // global variable parseResult to return the result, reentrant.
 type sqlSyncParser struct {
 	pr sqlParser
-	mu *sync.Mutex
 }
 
 func newParser() *sqlSyncParser {
-	return &sqlSyncParser{sqlNewParser(), new(sync.Mutex)}
+	return &sqlSyncParser{sqlNewParser()}
 }
+
+var mu sync.Mutex
 
 func (p *sqlSyncParser) Parse(s string) (r *extendedSelect, e error) {
 	defer func() {
@@ -346,8 +347,8 @@ func (p *sqlSyncParser) Parse(s string) (r *extendedSelect, e error) {
 		}
 	}()
 
-	p.mu.Lock()
-	defer p.mu.Unlock()
+	mu.Lock()
+	defer mu.Unlock()
 
 	p.pr.Parse(newLexer(s))
 	return parseResult, nil
