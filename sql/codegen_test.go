@@ -1,9 +1,10 @@
 package sql
 
 import (
-	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
+	"os"
 	"strings"
 	"testing"
 
@@ -45,7 +46,18 @@ func TestCodeGenTrain(t *testing.T) {
 		pw.Close()
 	}()
 
-	cmd := tensorflowCmd()
+	// NOTE: the temporary directory must be in a host directory
+	// which can be mounted to Docker containers.  If I don't
+	// specify the "/tmp" prefix, ioutil.TempDir would by default
+	// generate a directory in /private/tmp for macOS, which
+	// cannot be mounted by Docker into the container.  For more
+	// detailed, please refer to
+	// https://docs.docker.com/docker-for-mac/osxfs/#namespaces.
+	cwd, e := ioutil.TempDir("/tmp", "sqlflow-codegen_test")
+	a.NoError(e)
+	defer os.RemoveAll(cwd)
+
+	cmd := tensorflowCmd(cwd)
 	cmd.Stdin = pr
 	o, err := cmd.CombinedOutput()
 	if err != nil {
@@ -53,7 +65,6 @@ func TestCodeGenTrain(t *testing.T) {
 	}
 
 	a.True(strings.Contains(string(o), "Done training"))
-	fmt.Println(string(o))
 }
 
 func TestCodeGenPredict(t *testing.T) {
@@ -76,7 +87,11 @@ func TestCodeGenPredict(t *testing.T) {
 		pw.Close()
 	}()
 
-	cmd := tensorflowCmd()
+	cwd, e := ioutil.TempDir("/tmp", "sqlflow-codegen_test")
+	a.NoError(e)
+	defer os.RemoveAll(cwd)
+
+	cmd := tensorflowCmd(cwd)
 	cmd.Stdin = pr
 	o, err := cmd.CombinedOutput()
 	if err != nil {
