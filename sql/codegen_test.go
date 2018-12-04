@@ -31,7 +31,7 @@ func TestCodeGenTrain(t *testing.T) {
 	a := assert.New(t)
 	var pResult extendedSelect
 	a.NotPanics(func() {
-		pResult = Parse(simpleTrainSelect)
+		pResult = parseSQL(simpleTrainSelect)
 	})
 
 	fts, e := verify(&pResult, testCfg)

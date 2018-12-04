@@ -37,7 +37,7 @@ func TestStandardSelect(t *testing.T) {
 	a := assert.New(t)
 	var pr extendedSelect
 	a.NotPanics(func() {
-		pr = Parse(testStandardSelectStmt + ";")
+		pr = parseSQL(testStandardSelectStmt + ";")
 	})
 	a.False(pr.extended)
 	a.Equal([]string{"employee.age", "last_name", "salary"},
@@ -56,7 +56,7 @@ func TestTrainParser(t *testing.T) {
 	a := assert.New(t)
 	var pr extendedSelect
 	a.NotPanics(func() {
-		pr = Parse(trainSelect)
+		pr = parseSQL(trainSelect)
 	})
 	a.True(pr.extended)
 	a.True(pr.train)
@@ -78,7 +78,7 @@ func TestPredictParser(t *testing.T) {
 	a := assert.New(t)
 	var pr extendedSelect
 	a.NotPanics(func() {
-		pr = Parse(predictSelect)
+		pr = parseSQL(predictSelect)
 	})
 	a.True(pr.extended)
 	a.False(pr.train)
@@ -90,7 +90,7 @@ func TestSelectStarAndPrint(t *testing.T) {
 	a := assert.New(t)
 	var pr extendedSelect
 	a.NotPanics(func() {
-		pr = Parse(`SELECT *, b FROM a LIMIT 10;`)
+		pr = parseSQL(`SELECT *, b FROM a LIMIT 10;`)
 	})
 	a.Equal(2, len(pr.fields))
 	a.Equal("*", pr.fields[0])

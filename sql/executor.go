@@ -18,7 +18,7 @@ const (
 )
 
 func run(slct string, cfg *mysql.Config) error {
-	pr := Parse(slct)
+	pr := parseSQL(slct)
 	fts, e := verify(&pr, cfg)
 	if e != nil {
 		return e

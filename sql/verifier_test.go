@@ -10,7 +10,7 @@ func TestDryRunSelect(t *testing.T) {
 	a := assert.New(t)
 	var pr extendedSelect
 	a.NotPanics(func() {
-		pr = Parse(`SELECT * FROM churn.churn LIMIT 10;`)
+		pr = parseSQL(`SELECT * FROM churn.churn LIMIT 10;`)
 	})
 	a.Nil(dryRunSelect(&pr, testDB))
 }
@@ -20,14 +20,14 @@ func TestDescribeTables(t *testing.T) {
 
 	var pr extendedSelect
 	a.NotPanics(func() {
-		pr = Parse(`SELECT * FROM churn.churn LIMIT 10;`)
+		pr = parseSQL(`SELECT * FROM churn.churn LIMIT 10;`)
 	})
 	fts, e := describeTables(&pr, testDB)
 	a.NoError(e)
 	a.Equal(21, len(fts))
 
 	a.NotPanics(func() {
-		pr = Parse(`SELECT Churn, churn.churn.Partner FROM churn.churn LIMIT 10;`)
+		pr = parseSQL(`SELECT Churn, churn.churn.Partner FROM churn.churn LIMIT 10;`)
 	})
 	fts, e = describeTables(&pr, testDB)
 	a.NoError(e)
@@ -41,20 +41,20 @@ func TestIndexSelectFields(t *testing.T) {
 
 	var pr extendedSelect
 	a.NotPanics(func() {
-		pr = Parse(`SELECT * FROM churn.churn LIMIT 10;`)
+		pr = parseSQL(`SELECT * FROM churn.churn LIMIT 10;`)
 	})
 	f := indexSelectFields(&pr)
 	a.Equal(0, len(f))
 
 	a.NotPanics(func() {
-		pr = Parse(`SELECT f FROM churn.churn LIMIT 10;`)
+		pr = parseSQL(`SELECT f FROM churn.churn LIMIT 10;`)
 	})
 	f = indexSelectFields(&pr)
 	a.Equal(1, len(f))
 	a.Equal(map[string]string{}, f["f"])
 
 	a.NotPanics(func() {
-		pr = Parse(`SELECT t1.f, t2.f, g FROM churn.churn LIMIT 10;`)
+		pr = parseSQL(`SELECT t1.f, t2.f, g FROM churn.churn LIMIT 10;`)
 	})
 	f = indexSelectFields(&pr)
 	a.Equal(2, len(f))
@@ -67,7 +67,7 @@ func TestVerify(t *testing.T) {
 	a := assert.New(t)
 	var pr extendedSelect
 	a.NotPanics(func() {
-		pr = Parse(`SELECT Churn, churn.churn.Partner FROM churn.churn LIMIT 10;`)
+		pr = parseSQL(`SELECT Churn, churn.churn.Partner FROM churn.churn LIMIT 10;`)
 	})
 	fts, e := verify(&pr, testCfg)
 	a.NoError(e)
