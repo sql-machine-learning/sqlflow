@@ -15,6 +15,7 @@ import (
 )
 
 func run(slct string, cfg *mysql.Config) error {
+	// TODO(tonyyang-svail): change DB handler from mysql.Config to *sql.DB to avoid multiple connection establishment
 	r, e := newParser().Parse(slct)
 	if e != nil {
 		return e
@@ -168,6 +169,7 @@ func createPredictionTable(trainParsed, inferParsed *extendedSelect, cfg *mysql.
 	}
 	defer db.Close()
 
+	// TODO(tonyyang-svail): reuse createTable and dropTable at sqlfs
 	dropStmt := fmt.Sprintf("drop table if exists %s;", tableName)
 	if _, e := db.Query(dropStmt); e != nil {
 		return fmt.Errorf("failed executing %s: %q", dropStmt, e)
