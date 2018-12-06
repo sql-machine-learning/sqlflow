@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/go-sql-driver/mysql"
-	"github.com/wangkuiyi/sqlfs"
+	"github.com/wangkuiyi/sqlflow/sqlfs"
 )
 
 func run(slct string, cfg *mysql.Config) error {
