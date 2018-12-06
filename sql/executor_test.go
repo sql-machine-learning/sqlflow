@@ -18,6 +18,6 @@ func TestExecutorInfer(t *testing.T) {
 	a := assert.New(t)
 	a.NotPanics(func() {
 		e := run(testPredictSelectIris, testCfg)
-		a.NoError(e)
+		a.Error(e) // infer not implemented.
 	})
 }
