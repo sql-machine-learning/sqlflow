@@ -3,7 +3,6 @@ package sqlfs
 import (
 	"database/sql"
 	"fmt"
-	"strings"
 )
 
 var kBufSize = 4 * 1024
@@ -28,7 +27,7 @@ func Create(db *sql.DB, table string) (*Writer, error) {
 // Append returns a writer to append to an existing table.  It creates
 // the table if it doesn't exist.
 func Append(db *sql.DB, table string) (*Writer, error) {
-	if e := createTable(db, table); e != nil {
+	if e := CreateTable(db, table); e != nil {
 		return nil, fmt.Errorf("Create: %v", e)
 	}
 	return &Writer{db, table, make([]byte, 0, kBufSize), nil}, nil
@@ -81,47 +80,5 @@ func (w *Writer) flush() error {
 		return fmt.Errorf("flush failed to execute insert: %v", e)
 	}
 	w.buf = w.buf[:0]
-	return nil
-}
-
-// createTable creates a table, if it doesn't exist.  If the table
-// name includes the database name, e.g., "db.tbl", it creates the
-// database if necessary.
-func createTable(db *sql.DB, table string) error {
-	if ss := strings.Split(table, "."); len(ss) > 1 {
-		stmt := fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s;",
-			strings.Join(ss[:len(ss)-1], "."))
-
-		if _, e := db.Exec(stmt); e != nil {
-			return fmt.Errorf("createTable %s: %v", stmt, e)
-		}
-	}
-
-	stmt := fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (block BLOB)", table)
-	if _, e := db.Exec(stmt); e != nil {
-		return fmt.Errorf("createTable cannot create table %s: %v", table, e)
-	}
-
-	// NOTE: a double-check of HasTable is necessary. For example,
-	// MySQL doesn't allow '-' in table names; however, if there
-	// is, the db.Exec wouldn't return any error.
-	has, e1 := HasTable(db, table)
-	if e1 != nil {
-		return fmt.Errorf("createTable cannot verify the creation: %v", e1)
-	}
-	if !has {
-		return fmt.Errorf("createTable verified table not created")
-	}
-	return nil
-}
-
-// DropTable removes a table if it exists.  If the table name includes
-// the database name, e.g., "db.tbl", it doesn't try to remove the
-// database.
-func DropTable(db *sql.DB, table string) error {
-	stmt := fmt.Sprintf("DROP TABLE IF EXISTS %s", table)
-	if _, e := db.Exec(stmt); e != nil {
-		return fmt.Errorf("dropTable %s: %v", table, e)
-	}
 	return nil
 }
