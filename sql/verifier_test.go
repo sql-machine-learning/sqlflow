@@ -73,3 +73,32 @@ func TestVerify(t *testing.T) {
 	_, ok = fts.get("gender")
 	a.Equal(false, ok)
 }
+
+func TestVerifyColumnNameAndType(t *testing.T) {
+	a := assert.New(t)
+	trainParse, e := newParser().Parse(`SELECT gender, tenure, TotalCharges
+FROM churn.churn LIMIT 10
+TRAIN DNNClassifier
+WITH
+  n_classes = 3,
+  hidden_units = [10, 20]
+COLUMN gender, tenure, TotalCharges
+LABEL class
+INTO my_dnn_model;`)
+	a.NoError(e)
+
+	inferParse, e := newParser().Parse(`SELECT gender, tenure, TotalCharges
+FROM churn.churn LIMIT 10
+PREDICT iris.predict.class
+USING my_dnn_model;`)
+	a.NoError(e)
+	a.NoError(verifyColumnNameAndType(trainParse, inferParse, testCfg))
+
+	inferParse, e = newParser().Parse(`SELECT gender, tenure
+FROM churn.churn LIMIT 10
+PREDICT iris.predict.class
+USING my_dnn_model;`)
+	a.NoError(e)
+	a.EqualError(verifyColumnNameAndType(trainParse, inferParse, testCfg),
+		"inferFields doesn't contain column TotalCharges")
+}

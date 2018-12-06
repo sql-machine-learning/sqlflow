@@ -52,15 +52,12 @@ func run(slct string, cfg *mysql.Config) error {
 			return e
 		}
 
-		return fmt.Errorf("not implemented")
-
 		trainParsed, e := newParser().Parse(m.TrainSelect)
 		if e != nil {
 			return e
 		}
 
-		fts, e := verifyColumnTypes(trainParsed, inferParsed);
-		if e != nil {
+		if e := verifyColumnNameAndType(trainParsed, inferParsed, cfg); e != nil {
 			return e
 		}
 
@@ -68,7 +65,7 @@ func run(slct string, cfg *mysql.Config) error {
 			return e
 		}
 
-		if e := infer(trainParsed, inferParsed, fts, cfg, cwd); e != nil {
+		if e := infer(trainParsed, inferParsed, cfg, cwd); e != nil {
 			return e
 		}
 	}
@@ -156,14 +153,10 @@ func (m *model) load(cfg *mysql.Config, cwd string) (e error) {
 	return cmd.Run()
 }
 
-func verifyColumnTypes(trainParsed, inferParsed *extendedSelect) (fts fieldTypes, e error) {
-	return fieldTypes{}, fmt.Errorf("verifyColumnTypes not implemented")
-}
-
 func preparePredictionTable(pr *extendedSelect, cfg *mysql.Config) (e error) {
 	return fmt.Errorf("preparePredictionTable not implemented")
 }
 
-func infer(trainParsed, inferParsed *extendedSelect, fts fieldTypes, cfg *mysql.Config, cwd string) (e error) {
+func infer(trainParsed, inferParsed *extendedSelect, cfg *mysql.Config, cwd string) (e error) {
 	return fmt.Errorf("model.load not implemented")
 }
