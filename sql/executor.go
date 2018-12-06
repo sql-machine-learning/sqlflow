@@ -61,7 +61,7 @@ func run(slct string, cfg *mysql.Config) error {
 			return e
 		}
 
-		if e := preparePredictionTable(inferParsed, cfg); e != nil {
+		if e := createPredictionTable(trainParsed, inferParsed, cfg); e != nil {
 			return e
 		}
 
@@ -153,10 +153,40 @@ func (m *model) load(cfg *mysql.Config, cwd string) (e error) {
 	return cmd.Run()
 }
 
-func preparePredictionTable(pr *extendedSelect, cfg *mysql.Config) (e error) {
-	return fmt.Errorf("preparePredictionTable not implemented")
+// Create prediction table with appropriate column type.
+// If prediction table already exists, it will be overwritten.
+func createPredictionTable(trainParsed, inferParsed *extendedSelect, cfg *mysql.Config) (e error) {
+	if len(strings.Split(inferParsed.into, ".")) != 3 {
+		return fmt.Errorf("invalid inferParsed.into %s. should be DBName.TableName.ColumnName", inferParsed.into)
+	}
+	tableName := strings.Join(strings.Split(inferParsed.into, ".")[:2], ".")
+	columnName := strings.Split(inferParsed.into, ".")[2]
+
+	db, e := sql.Open("mysql", cfg.FormatDSN())
+	if e != nil {
+		return fmt.Errorf("verify cannot connect to MySQL: %q", e)
+	}
+	defer db.Close()
+
+	dropStmt := fmt.Sprintf("drop table if exists %s;", tableName)
+	if _, e := db.Query(dropStmt); e != nil {
+		return fmt.Errorf("failed executing %s: %q", dropStmt, e)
+	}
+
+	fts, e := verify(trainParsed, cfg)
+	if e != nil {
+		return e
+	}
+	tpy, _ := fts.get(trainParsed.label)
+
+	createStmt := fmt.Sprintf("create table %s (%s %s);", tableName, columnName, tpy)
+	if _, e := db.Query(createStmt); e != nil {
+		return fmt.Errorf("failed executing %s: %q", createStmt, e)
+	}
+
+	return nil
 }
 
 func infer(trainParsed, inferParsed *extendedSelect, cfg *mysql.Config, cwd string) (e error) {
-	return fmt.Errorf("model.load not implemented")
+	return fmt.Errorf("infer not implemented")
 }
