@@ -157,7 +157,7 @@ func (m *model) load(cfg *mysql.Config, cwd string) (e error) {
 // If prediction table already exists, it will be overwritten.
 func createPredictionTable(trainParsed, inferParsed *extendedSelect, cfg *mysql.Config) (e error) {
 	if len(strings.Split(inferParsed.into, ".")) != 3 {
-		return fmt.Errorf("invalid inpferParsed.into %s. should be DBName.TableName.ColumnName", inferParsed.into)
+		return fmt.Errorf("invalid inferParsed.into %s. should be DBName.TableName.ColumnName", inferParsed.into)
 	}
 	tableName := strings.Join(strings.Split(inferParsed.into, ".")[:2], ".")
 	columnName := strings.Split(inferParsed.into, ".")[2]
