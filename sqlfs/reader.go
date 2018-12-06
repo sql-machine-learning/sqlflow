@@ -4,8 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"io"
-
-	"github.com/go-sql-driver/mysql"
 )
 
 // Reader implements io.ReadCloser
@@ -72,16 +70,4 @@ func (r *Reader) Close() error {
 	}
 	r.db = nil // Mark closed.
 	return nil
-}
-
-// HasTable checks if a table exists.
-func HasTable(db *sql.DB, table string) (bool, error) {
-	if _, e := db.Exec("DESCRIBE " + table); e != nil {
-		// MySQL error 1146 is "table does not exist"
-		if mErr, ok := e.(*mysql.MySQLError); ok && mErr.Number == 1146 {
-			return false, nil
-		}
-		return false, fmt.Errorf("HasTable DESCRIBE %s failed: %v", table, e)
-	}
-	return true, nil
 }

@@ -23,7 +23,7 @@ func TestCreateHasDropTable(t *testing.T) {
 	assert := assert.New(t)
 
 	fn := fmt.Sprintf("sqlfs.unitest%d", rand.Int())
-	assert.NoError(createTable(testDB, fn))
+	assert.NoError(CreateTable(testDB, fn))
 	has, e := HasTable(testDB, fn)
 	assert.NoError(e)
 	assert.True(has)
