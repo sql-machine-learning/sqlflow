@@ -140,11 +140,10 @@ func (m *model) load(cfg *mysql.Config, cwd string) (e error) {
 	// then decode from there. More details at
 	// https://github.com/wangkuiyi/sqlflow/issues/122
 	var buf bytes.Buffer
-	bs, e := ioutil.ReadAll(sqlf)
+	_, e = buf.ReadFrom(sqlf)
 	if e != nil {
 		return e
 	}
-	buf.Write(bs)
 	if e := gob.NewDecoder(&buf).Decode(m); e != nil {
 		return fmt.Errorf("model.load: gob-decoding model failed: %v", e)
 	}
