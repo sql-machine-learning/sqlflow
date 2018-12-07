@@ -6,6 +6,7 @@ import (
 	"encoding/gob"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"strings"
@@ -190,5 +191,22 @@ func createPredictionTable(trainParsed, inferParsed *extendedSelect, cfg *mysql.
 }
 
 func infer(trainParsed, inferParsed *extendedSelect, cfg *mysql.Config, cwd string) (e error) {
+	inferParsed.trainClause = trainParsed.trainClause
+	fts, e := verify(inferParsed, cfg)
+
+	var buf bytes.Buffer
+	if e := generateTFProgram(&buf, inferParsed, fts, cfg); e != nil {
+		return e
+	}
+
+	// log.Println(string(buf.Bytes()))
+	cmd := tensorflowCmd(cwd)
+	cmd.Stdin = &buf
+	o, err := cmd.CombinedOutput()
+	if err != nil {
+		return err
+	}
+	log.Println(string(o))
+
 	return fmt.Errorf("infer not implemented")
 }

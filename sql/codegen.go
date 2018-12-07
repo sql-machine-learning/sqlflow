@@ -161,8 +161,9 @@ predictions = classifier.predict(
         input_fn=lambda:eval_input_fn(X, BATCHSIZE))
 
 # TODO(tonyyang-svail): Writing back to MySQL
-# for p in predictions:
-#     print(p["class_ids"])
+print(type(predictions))
+for p in predictions:
+	print(p['class_ids'][0])
 
 print("Done predicting")
 {{- end}}
