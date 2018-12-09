@@ -168,7 +168,6 @@ func createPredictionTable(trainParsed, inferParsed *extendedSelect, cfg *mysql.
 	}
 	defer db.Close()
 
-	// TODO(tonyyang-svail): reuse createTable and dropTable at sqlfs
 	dropStmt := fmt.Sprintf("drop table if exists %s;", tableName)
 	if _, e := db.Query(dropStmt); e != nil {
 		return fmt.Errorf("failed executing %s: %q", dropStmt, e)
