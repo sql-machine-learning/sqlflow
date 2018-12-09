@@ -3,4 +3,6 @@
 /Gopkg.lock
 /Gopkg.toml
 /vendor/
+*.swp
+.idea/
 

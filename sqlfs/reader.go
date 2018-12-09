@@ -30,7 +30,7 @@ func Open(db *sql.DB, table string) (*Reader, error) {
 		buf:   nil,
 		rows:  nil}
 
-	r.rows, e = r.db.Query(fmt.Sprintf("SELECT block FROM %s", table))
+	r.rows, e = r.db.Query(fmt.Sprintf("SELECT block FROM %s ORDER BY id", table))
 	if e != nil {
 		return nil, fmt.Errorf("Open: failed to query: %v", e)
 	}

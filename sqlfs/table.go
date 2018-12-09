@@ -21,7 +21,7 @@ func CreateTable(db *sql.DB, table string) error {
 		}
 	}
 
-	stmt := fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (block BLOB)", table)
+	stmt := fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (id INT AUTO_INCREMENT, block BLOB, PRIMARY KEY (id))", table)
 	if _, e := db.Exec(stmt); e != nil {
 		return fmt.Errorf("createTable cannot create table %s: %v", table, e)
 	}
