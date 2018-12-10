@@ -141,11 +141,10 @@ func (m *model) load(cfg *mysql.Config, cwd string) (e error) {
 	// then decode from there. More details at
 	// https://github.com/wangkuiyi/sqlflow/issues/122
 	var buf bytes.Buffer
-	bs, e := ioutil.ReadAll(sqlf)
+	_, e = buf.ReadFrom(sqlf)
 	if e != nil {
 		return e
 	}
-	buf.Write(bs)
 	if e := gob.NewDecoder(&buf).Decode(m); e != nil {
 		return fmt.Errorf("model.load: gob-decoding model failed: %v", e)
 	}
@@ -170,7 +169,6 @@ func createPredictionTable(trainParsed, inferParsed *extendedSelect, cfg *mysql.
 	}
 	defer db.Close()
 
-	// TODO(tonyyang-svail): reuse createTable and dropTable at sqlfs
 	dropStmt := fmt.Sprintf("drop table if exists %s;", tableName)
 	if _, e := db.Query(dropStmt); e != nil {
 		return fmt.Errorf("failed executing %s: %q", dropStmt, e)
