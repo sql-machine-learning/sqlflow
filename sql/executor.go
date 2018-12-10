@@ -166,7 +166,7 @@ func createPredictionTable(trainParsed, inferParsed *extendedSelect, cfg *mysql.
 
 	db, e := sql.Open("mysql", cfg.FormatDSN())
 	if e != nil {
-		return fmt.Errorf("verify cannot connect to MySQL: %q", e)
+		return fmt.Errorf("createPredictionTable cannot connect to MySQL: %q", e)
 	}
 	defer db.Close()
 
