@@ -57,6 +57,7 @@ func newFiller(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) (*filler, 
 	for k, v := range pr.attrs {
 		r.Attrs[k] = v.String()
 	}
+
 	for _, c := range pr.columns {
 		typ, ok := fts.get(c.val)
 		if !ok {
@@ -65,11 +66,14 @@ func newFiller(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) (*filler, 
 		ct := columnType{Name: c.val, Type: fieldTypeFeatureType[typ]}
 		r.X = append(r.X, ct)
 	}
-	typ, ok := fts.get(pr.label)
-	if !ok {
-		return nil, fmt.Errorf("generateTFProgram: Cannot find type of field: %s", pr.label)
+	if pr.train {
+		typ, ok := fts.get(pr.label)
+		if !ok {
+			return nil, fmt.Errorf("generateTFProgram: Cannot find type of label %s", pr.label)
+		}
+		r.Y = columnType{Name: pr.label, Type: fieldTypeFeatureType[typ]}
 	}
-	r.Y = columnType{Name: pr.label, Type: fieldTypeFeatureType[typ]}
+
 	r.User = cfg.User
 	r.Password = cfg.Passwd
 	r.Host = strings.Split(cfg.Addr, ":")[0]
@@ -116,15 +120,17 @@ feature_column_names = [{{range .X}}"{{.Name}}",
     {{end}}]
 
 X = {name: columns[field_names.index(name)] for name in feature_column_names}
-Y = columns[field_names.index("{{.Y.Name}}")]
-
 {{if .Train}}
+Y = columns[field_names.index("{{.Y.Name}}")]
+{{- end}}
+
 classifier = tf.estimator.{{.Estimator}}(
     feature_columns=feature_columns,
     hidden_units={{index .Attrs "hidden_units"}},
     n_classes={{index .Attrs "n_classes"}},
     model_dir=os.path.join(WORK_DIR, "{{.Save}}"))
 
+{{if .Train}}
 def train_input_fn(features, labels, batch_size):
     dataset = tf.data.Dataset.from_tensor_slices((dict(features), labels))
     dataset = dataset.shuffle(1000).repeat().batch(batch_size)
@@ -146,23 +152,19 @@ print("\nTraining set accuracy: {accuracy:0.5f}\n".format(**eval_result))
 
 print("Done training")
 {{- else}}
-def eval_input_fn(features, labels, batch_size):
-    dataset = tf.data.Dataset.from_tensor_slices((dict(features), labels))
+def eval_input_fn(features, batch_size):
+    dataset = tf.data.Dataset.from_tensor_slices(dict(features))
     dataset = dataset.batch(batch_size)
     return dataset
-` +
-	// TODO(tonyyang-svail): remove hard coded DNNClassifier
-	`
-classifier = tf.estimator.DNNClassifier(
-        feature_columns=feature_columns,
-        hidden_units=eval(desc["TrainClause"]["Attrs"]["hidden_units"]),
-        n_classes=eval(desc["TrainClause"]["Attrs"]["n_classes"]),
-        model_dir=os.path.join(WORK_DIR, "{{.InferClause.Model}}"))
 
-eval_result = classifier.evaluate(
-        input_fn=lambda:eval_input_fn(X, Y, BATCHSIZE),
-        steps=STEP)
-print("\nTest set accuracy: {accuracy:0.5f}\n".format(**eval_result))
+predictions = classifier.predict(
+        input_fn=lambda:eval_input_fn(X, BATCHSIZE))
+
+# TODO(tonyyang-svail): Writing back to MySQL
+# for p in predictions:
+#     print(p["class_ids"])
+
+print("Done predicting")
 {{- end}}
 `
 
