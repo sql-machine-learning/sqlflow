@@ -4,8 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
-
-	"github.com/go-sql-driver/mysql"
 )
 
 // fieldTypes[field][table]type.  For more information, please check
@@ -21,13 +19,7 @@ type fieldTypes map[string]map[string]string
 //    star '*'.
 //
 // It returns a fieldTypes describing types of fields in SELECT.
-func verify(slct *extendedSelect, cfg *mysql.Config) (ft fieldTypes, e error) {
-	db, e := sql.Open("mysql", cfg.FormatDSN())
-	if e != nil {
-		return nil, fmt.Errorf("verify cannot connect to MySQL: %q", e)
-	}
-	defer func() { e = db.Close() }()
-
+func verify(slct *extendedSelect, db *sql.DB) (ft fieldTypes, e error) {
 	if e := dryRunSelect(slct, db); e != nil {
 		return nil, e
 	}
@@ -128,9 +120,17 @@ func indexSelectFields(slct *extendedSelect) (ft fieldTypes) {
 
 // Check train and infer clause uses has the same feature columns
 // 1. every column field in the training clause is selected in the infer clause, and they are of the same type
-func verifyColumnNameAndType(trainParsed, inferParsed *extendedSelect, cfg *mysql.Config) (e error) {
-	trainFields, e := verify(trainParsed, cfg)
-	inferFields, e := verify(inferParsed, cfg)
+func verifyColumnNameAndType(trainParsed, inferParsed *extendedSelect, db *sql.DB) error {
+	trainFields, e := verify(trainParsed, db)
+	if e != nil {
+		return e
+	}
+
+	inferFields, e := verify(inferParsed, db)
+	if e != nil {
+		return e
+	}
+
 	for _, c := range trainParsed.columns {
 		it, ok := inferFields.get(c.val)
 		if !ok {

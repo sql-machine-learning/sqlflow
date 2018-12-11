@@ -56,7 +56,7 @@ func TestVerify(t *testing.T) {
 	a := assert.New(t)
 	r, e := newParser().Parse(`SELECT Churn, churn.churn.Partner FROM churn.churn LIMIT 10;`)
 	a.NoError(e)
-	fts, e := verify(r, testCfg)
+	fts, e := verify(r, testDB)
 	a.NoError(e)
 	a.Equal(2, len(fts))
 	typ, ok := fts.get("Churn")
@@ -92,13 +92,13 @@ FROM churn.churn LIMIT 10
 PREDICT iris.predict.class
 USING my_dnn_model;`)
 	a.NoError(e)
-	a.NoError(verifyColumnNameAndType(trainParse, inferParse, testCfg))
+	a.NoError(verifyColumnNameAndType(trainParse, inferParse, testDB))
 
 	inferParse, e = newParser().Parse(`SELECT gender, tenure
 FROM churn.churn LIMIT 10
 PREDICT iris.predict.class
 USING my_dnn_model;`)
 	a.NoError(e)
-	a.EqualError(verifyColumnNameAndType(trainParse, inferParse, testCfg),
+	a.EqualError(verifyColumnNameAndType(trainParse, inferParse, testDB),
 		"inferFields doesn't contain column TotalCharges")
 }

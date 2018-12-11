@@ -3,184 +3,92 @@ package sql
 import (
 	"bytes"
 	"database/sql"
-	"encoding/gob"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
-	"os/exec"
 	"strings"
 
 	"github.com/go-sql-driver/mysql"
-	"github.com/wangkuiyi/sqlflow/sqlfs"
 )
 
 func run(slct string, cfg *mysql.Config) error {
-	// TODO(tonyyang-svail): change DB handler from mysql.Config to *sql.DB to avoid multiple connection establishment
-	r, e := newParser().Parse(slct)
+	pr, e := newParser().Parse(slct)
 	if e != nil {
 		return e
 	}
-	if r.train {
-		cwd, e := ioutil.TempDir("/tmp", "sqlflow-training")
-		if e != nil {
-			return e
-		}
-		defer os.RemoveAll(cwd)
 
-		fts, e := verify(r, cfg)
-		if e != nil {
-			return e
-		}
-
-		if e := train(r, fts, cfg, cwd); e != nil {
-			return e
-		}
-		m := &model{r, slct}
-		if e := m.save(cfg, cwd); e != nil {
-			return e
-		}
-	} else {
-		inferParsed := r
-
-		cwd, e := ioutil.TempDir("/tmp", "sqlflow-predicting")
-		if e != nil {
-			return e
-		}
-		defer os.RemoveAll(cwd)
-
-		m := &model{parseResult: inferParsed}
-		if e := m.load(cfg, cwd); e != nil {
-			return e
-		}
-
-		trainParsed, e := newParser().Parse(m.TrainSelect)
-		if e != nil {
-			return e
-		}
-
-		if e := verifyColumnNameAndType(trainParsed, inferParsed, cfg); e != nil {
-			return e
-		}
-
-		if e := createPredictionTable(trainParsed, inferParsed, cfg); e != nil {
-			return e
-		}
-
-		if e := infer(trainParsed, inferParsed, cfg, cwd); e != nil {
-			return e
-		}
+	db, e := sql.Open("mysql", cfg.FormatDSN())
+	if e != nil {
+		return e
 	}
+	defer db.Close()
 
-	return nil
+	cwd, e := ioutil.TempDir("/tmp", "sqlflow")
+	if e != nil {
+		return e
+	}
+	defer os.RemoveAll(cwd)
+
+	if pr.train {
+		return train(pr, slct, db, cfg, cwd)
+	}
+	return infer(pr, db, cwd)
 }
 
-func train(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config, cwd string) (e error) {
+func train(pr *extendedSelect, slct string, db *sql.DB, cfg *mysql.Config, cwd string) error {
+	fts, e := verify(pr, db)
+	if e != nil {
+		return e
+	}
+
 	var program bytes.Buffer
-	if e := generateTFProgram(&program, pr, fts, cfg); e != nil {
+	if e := genTF(&program, pr, fts, cfg); e != nil {
 		return e
 	}
 
 	cmd := tensorflowCmd(cwd)
-	cmd.Stdin = bytes.NewReader(program.Bytes())
+	cmd.Stdin = &program
 	o, e := cmd.CombinedOutput()
-	if e != nil {
-		return e
-	}
-	if !strings.Contains(string(o), "Done training") {
-		return fmt.Errorf(string(o) + "\nTraining failed")
+	if e != nil || !strings.Contains(string(o), "Done training") {
+		return fmt.Errorf("Training failed %v: \n%s", e, o)
 	}
 
-	return nil
-}
-
-type model struct {
-	parseResult *extendedSelect // private member will not be gob-encoded.
-	TrainSelect string
-}
-
-func (m *model) save(cfg *mysql.Config, cwd string) (e error) {
-	db, e := sql.Open("mysql", cfg.FormatDSN())
-	if e != nil {
-		return e
-	}
-	defer db.Close()
-
-	sqlfn := fmt.Sprintf("sqlflow_models.%s", m.parseResult.save)
-	sqlf, e := sqlfs.Create(db, sqlfn)
-	if e != nil {
-		return fmt.Errorf("Cannot create sqlfs file %s: %v", sqlfn, e)
-	}
-	defer func() { sqlf.Close() }()
-
-	if e := gob.NewEncoder(sqlf).Encode(m); e != nil {
-		return fmt.Errorf("model.save: gob-encoding model failed: %v", e)
-	}
-
-	cmd := exec.Command("tar", "czf", "-", "-C", cwd, ".")
-	cmd.Stdout = sqlf
-	return cmd.Run()
-}
-
-func (m *model) load(cfg *mysql.Config, cwd string) (e error) {
-	db, e := sql.Open("mysql", cfg.FormatDSN())
-	if e != nil {
-		return e
-	}
-	defer db.Close()
-
-	sqlfn := fmt.Sprintf("sqlflow_models.%s", m.parseResult.model)
-	sqlf, e := sqlfs.Open(db, sqlfn)
-	if e != nil {
-		return fmt.Errorf("Cannot open sqlfs file %s: %v", sqlfn, e)
-	}
-	defer func() { sqlf.Close() }()
-
-	// FIXME(tonyyang-svail): directly decoding from sqlf will cause out of bond
-	// error, but it works fine if we loaded the whole chunk to the bytes.Buffer
-	// then decode from there. More details at
-	// https://github.com/wangkuiyi/sqlflow/issues/122
-	var buf bytes.Buffer
-	_, e = buf.ReadFrom(sqlf)
-	if e != nil {
-		return e
-	}
-	if e := gob.NewDecoder(&buf).Decode(m); e != nil {
-		return fmt.Errorf("model.load: gob-decoding model failed: %v", e)
-	}
-
-	cmd := exec.Command("tar", "xzf", "-", "-C", cwd)
-	cmd.Stdin = &buf
-	return cmd.Run()
+	return save(db, pr.save, cwd, slct)
 }
 
 // Create prediction table with appropriate column type.
 // If prediction table already exists, it will be overwritten.
-func createPredictionTable(trainParsed, inferParsed *extendedSelect, cfg *mysql.Config) (e error) {
+func createPredictionTable(trainParsed, inferParsed *extendedSelect, db *sql.DB) error {
 	if len(strings.Split(inferParsed.into, ".")) != 3 {
 		return fmt.Errorf("invalid inferParsed.into %s. should be DBName.TableName.ColumnName", inferParsed.into)
 	}
 	tableName := strings.Join(strings.Split(inferParsed.into, ".")[:2], ".")
 	columnName := strings.Split(inferParsed.into, ".")[2]
 
-	db, e := sql.Open("mysql", cfg.FormatDSN())
-	if e != nil {
-		return fmt.Errorf("createPredictionTable cannot connect to MySQL: %q", e)
-	}
-	defer db.Close()
-
 	dropStmt := fmt.Sprintf("drop table if exists %s;", tableName)
 	if _, e := db.Query(dropStmt); e != nil {
 		return fmt.Errorf("failed executing %s: %q", dropStmt, e)
 	}
 
-	fts, e := verify(trainParsed, cfg)
+	fts, e := verify(trainParsed, db)
 	if e != nil {
 		return e
 	}
-	tpy, _ := fts.get(trainParsed.label)
 
-	createStmt := fmt.Sprintf("create table %s (%s %s);", tableName, columnName, tpy)
+	var b bytes.Buffer
+	fmt.Fprintf(&b, "create table %s (", tableName)
+	for _, c := range trainParsed.columns {
+		typ, ok := fts.get(c.val)
+		if !ok {
+			return fmt.Errorf("createPredictionTable: Cannot find type of field %s", c.val)
+		}
+		fmt.Fprintf(&b, "%s %s, ", c.val, typ)
+	}
+	tpy, _ := fts.get(trainParsed.label)
+	fmt.Fprintf(&b, "%s %s);", columnName, tpy)
+
+	createStmt := b.String()
 	if _, e := db.Query(createStmt); e != nil {
 		return fmt.Errorf("failed executing %s: %q", createStmt, e)
 	}
@@ -188,7 +96,27 @@ func createPredictionTable(trainParsed, inferParsed *extendedSelect, cfg *mysql.
 	return nil
 }
 
-func infer(trainParsed, inferParsed *extendedSelect, cfg *mysql.Config, cwd string) (e error) {
+func infer(pr *extendedSelect, db *sql.DB, cwd string) (e error) {
+	trainSlct, e := load(db, pr.model, cwd)
+	if e != nil {
+		return e
+	}
+
+	// Parse the training SELECT statement used to train
+	// the model for the prediction.
+	tr, e := newParser().Parse(trainSlct)
+	if e != nil {
+		return e
+	}
+
+	if e := verifyColumnNameAndType(tr, pr, db); e != nil {
+		return e
+	}
+
+	if e := createPredictionTable(tr, pr, db); e != nil {
+		return e
+	}
+
 	inferParsed.trainClause = trainParsed.trainClause
 	fts, e := verify(inferParsed, cfg)
 
@@ -206,5 +134,5 @@ func infer(trainParsed, inferParsed *extendedSelect, cfg *mysql.Config, cwd stri
 	}
 	log.Println(string(o))
 
-	return fmt.Errorf("infer not implemented")
+	return fmt.Errorf("infer still under construction")
 }

@@ -7,10 +7,7 @@ import (
 )
 
 func tryRun(cmd string, args ...string) bool {
-	if exec.Command(cmd, args...).Run() != nil {
-		return false
-	}
-	return true
+	return exec.Command(cmd, args...).Run() == nil
 }
 
 func hasPython() bool {

@@ -61,7 +61,7 @@ func newFiller(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) (*filler, 
 	for _, c := range pr.columns {
 		typ, ok := fts.get(c.val)
 		if !ok {
-			return nil, fmt.Errorf("generateTFProgram: Cannot find type of field %s", c.val)
+			return nil, fmt.Errorf("genTF: Cannot find type of field %s", c.val)
 		}
 		ct := columnType{Name: c.val, Type: fieldTypeFeatureType[typ]}
 		r.X = append(r.X, ct)
@@ -69,7 +69,7 @@ func newFiller(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) (*filler, 
 	if pr.train {
 		typ, ok := fts.get(pr.label)
 		if !ok {
-			return nil, fmt.Errorf("generateTFProgram: Cannot find type of label %s", pr.label)
+			return nil, fmt.Errorf("genTF: Cannot find type of label %s", pr.label)
 		}
 		r.Y = columnType{Name: pr.label, Type: fieldTypeFeatureType[typ]}
 	}
@@ -82,13 +82,13 @@ func newFiller(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) (*filler, 
 	return r, nil
 }
 
-func generateTFProgram(w io.Writer, pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) error {
+func genTF(w io.Writer, pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) error {
 	r, e := newFiller(pr, fts, cfg)
 	if e != nil {
 		return e
 	}
 	if e = codegenTemplate.Execute(w, r); e != nil {
-		return fmt.Errorf("generateTFProgram: failed executing template: %v", e)
+		return fmt.Errorf("genTF: failed executing template: %v", e)
 	}
 	return nil
 }

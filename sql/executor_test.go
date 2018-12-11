@@ -18,6 +18,15 @@ func TestExecutorInfer(t *testing.T) {
 	a := assert.New(t)
 	a.NotPanics(func() {
 		e := run(testPredictSelectIris, testCfg)
-		a.EqualError(e, "infer not implemented")
+		a.EqualError(e, "infer still under construction")
 	})
+}
+
+func TestCreatePredictionTable(t *testing.T) {
+	a := assert.New(t)
+	trainParsed, e := newParser().Parse(testTrainSelectIris)
+	a.NoError(e)
+	inferParsed, e := newParser().Parse(testPredictSelectIris)
+	a.NoError(e)
+	a.NoError(createPredictionTable(trainParsed, inferParsed, testDB))
 }

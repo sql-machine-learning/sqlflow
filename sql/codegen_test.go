@@ -37,12 +37,12 @@ func TestCodeGenTrain(t *testing.T) {
 	r, e := newParser().Parse(testTrainSelectIris)
 	a.NoError(e)
 
-	fts, e := verify(r, testCfg)
+	fts, e := verify(r, testDB)
 	a.NoError(e)
 
 	pr, pw := io.Pipe()
 	go func() {
-		a.NoError(generateTFProgram(pw, r, fts, testCfg))
+		a.NoError(genTF(pw, r, fts, testCfg))
 		pw.Close()
 	}()
 
@@ -71,19 +71,18 @@ func TestCodeGenPredict(t *testing.T) {
 	a := assert.New(t)
 	r, e := newParser().Parse(testTrainSelectIris)
 	a.NoError(e)
-	var tc trainClause
-	tc = r.trainClause
+	tc := r.trainClause
 
 	r, e = newParser().Parse(testPredictSelectIris)
 	a.NoError(e)
 	r.trainClause = tc
 
-	fts, e := verify(r, testCfg)
+	fts, e := verify(r, testDB)
 	a.NoError(e)
 
 	pr, pw := io.Pipe()
 	go func() {
-		a.NoError(generateTFProgram(pw, r, fts, testCfg))
+		a.NoError(genTF(pw, r, fts, testCfg))
 		pw.Close()
 	}()
 
