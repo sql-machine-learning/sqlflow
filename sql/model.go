@@ -40,7 +40,7 @@ func load(db *sql.DB, table, cwd string) (trainSlct string, e error) {
 	if e != nil {
 		return "", fmt.Errorf("Cannot open sqlfs file %s: %v", sqlfn, e)
 	}
-	defer func() { sqlf.Close() }()
+	defer sqlf.Close()
 
 	// FIXME(tonyyang-svail): directly decoding from sqlf will cause out of bond
 	// error, but it works fine if we loaded the whole chunk to the bytes.Buffer
