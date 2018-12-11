@@ -15,11 +15,17 @@ import (
 )
 
 func run(slct string, cfg *mysql.Config) error {
-	// TODO(tonyyang-svail): change DB handler from mysql.Config to *sql.DB to avoid multiple connection establishment
+	db, e := sql.Open("mysql", cfg.FormatDSN())
+	if e != nil {
+		return e
+	}
+	defer db.Close()
+
 	r, e := newParser().Parse(slct)
 	if e != nil {
 		return e
 	}
+
 	if r.train {
 		cwd, e := ioutil.TempDir("/tmp", "sqlflow-training")
 		if e != nil {
@@ -27,7 +33,7 @@ func run(slct string, cfg *mysql.Config) error {
 		}
 		defer os.RemoveAll(cwd)
 
-		fts, e := verify(r, cfg)
+		fts, e := verify(r, db)
 		if e != nil {
 			return e
 		}
@@ -36,7 +42,7 @@ func run(slct string, cfg *mysql.Config) error {
 			return e
 		}
 		m := &model{r, slct}
-		if e := m.save(cfg, cwd); e != nil {
+		if e := m.save(db, cwd); e != nil {
 			return e
 		}
 	} else {
@@ -49,7 +55,7 @@ func run(slct string, cfg *mysql.Config) error {
 		defer os.RemoveAll(cwd)
 
 		m := &model{parseResult: inferParsed}
-		if e := m.load(cfg, cwd); e != nil {
+		if e := m.load(db, cwd); e != nil {
 			return e
 		}
 
@@ -58,11 +64,11 @@ func run(slct string, cfg *mysql.Config) error {
 			return e
 		}
 
-		if e := verifyColumnNameAndType(trainParsed, inferParsed, cfg); e != nil {
+		if e := verifyColumnNameAndType(trainParsed, inferParsed, db); e != nil {
 			return e
 		}
 
-		if e := createPredictionTable(trainParsed, inferParsed, cfg); e != nil {
+		if e := createPredictionTable(trainParsed, inferParsed, db); e != nil {
 			return e
 		}
 
@@ -98,13 +104,7 @@ type model struct {
 	TrainSelect string
 }
 
-func (m *model) save(cfg *mysql.Config, cwd string) (e error) {
-	db, e := sql.Open("mysql", cfg.FormatDSN())
-	if e != nil {
-		return e
-	}
-	defer db.Close()
-
+func (m *model) save(db *sql.DB, cwd string) (e error) {
 	sqlfn := fmt.Sprintf("sqlflow_models.%s", m.parseResult.save)
 	sqlf, e := sqlfs.Create(db, sqlfn)
 	if e != nil {
@@ -121,13 +121,7 @@ func (m *model) save(cfg *mysql.Config, cwd string) (e error) {
 	return cmd.Run()
 }
 
-func (m *model) load(cfg *mysql.Config, cwd string) (e error) {
-	db, e := sql.Open("mysql", cfg.FormatDSN())
-	if e != nil {
-		return e
-	}
-	defer db.Close()
-
+func (m *model) load(db *sql.DB, cwd string) (e error) {
 	sqlfn := fmt.Sprintf("sqlflow_models.%s", m.parseResult.model)
 	sqlf, e := sqlfs.Open(db, sqlfn)
 	if e != nil {
@@ -155,25 +149,19 @@ func (m *model) load(cfg *mysql.Config, cwd string) (e error) {
 
 // Create prediction table with appropriate column type.
 // If prediction table already exists, it will be overwritten.
-func createPredictionTable(trainParsed, inferParsed *extendedSelect, cfg *mysql.Config) (e error) {
+func createPredictionTable(trainParsed, inferParsed *extendedSelect, db *sql.DB) (e error) {
 	if len(strings.Split(inferParsed.into, ".")) != 3 {
 		return fmt.Errorf("invalid inferParsed.into %s. should be DBName.TableName.ColumnName", inferParsed.into)
 	}
 	tableName := strings.Join(strings.Split(inferParsed.into, ".")[:2], ".")
 	columnName := strings.Split(inferParsed.into, ".")[2]
 
-	db, e := sql.Open("mysql", cfg.FormatDSN())
-	if e != nil {
-		return fmt.Errorf("createPredictionTable cannot connect to MySQL: %q", e)
-	}
-	defer db.Close()
-
 	dropStmt := fmt.Sprintf("drop table if exists %s;", tableName)
 	if _, e := db.Query(dropStmt); e != nil {
 		return fmt.Errorf("failed executing %s: %q", dropStmt, e)
 	}
 
-	fts, e := verify(trainParsed, cfg)
+	fts, e := verify(trainParsed, db)
 	if e != nil {
 		return e
 	}

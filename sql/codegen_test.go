@@ -37,7 +37,7 @@ func TestCodeGenTrain(t *testing.T) {
 	r, e := newParser().Parse(testTrainSelectIris)
 	a.NoError(e)
 
-	fts, e := verify(r, testCfg)
+	fts, e := verify(r, testDB)
 	a.NoError(e)
 
 	pr, pw := io.Pipe()
@@ -78,7 +78,7 @@ func TestCodeGenPredict(t *testing.T) {
 	a.NoError(e)
 	r.trainClause = tc
 
-	fts, e := verify(r, testCfg)
+	fts, e := verify(r, testDB)
 	a.NoError(e)
 
 	pr, pw := io.Pipe()
