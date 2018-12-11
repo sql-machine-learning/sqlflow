@@ -42,7 +42,7 @@ func TestCodeGenTrain(t *testing.T) {
 
 	pr, pw := io.Pipe()
 	go func() {
-		a.NoError(generateTFProgram(pw, r, fts, testCfg))
+		a.NoError(genTF(pw, r, fts, testCfg))
 		pw.Close()
 	}()
 
@@ -83,7 +83,7 @@ func TestCodeGenPredict(t *testing.T) {
 
 	pr, pw := io.Pipe()
 	go func() {
-		a.NoError(generateTFProgram(pw, r, fts, testCfg))
+		a.NoError(genTF(pw, r, fts, testCfg))
 		pw.Close()
 	}()
 
