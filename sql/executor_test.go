@@ -1,7 +1,6 @@
 package sql
 
 import (
-	"log"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -28,7 +27,6 @@ func TestCreatePredictionTable(t *testing.T) {
 	trainParsed, e := newParser().Parse(testTrainSelectIris)
 	a.NoError(e)
 	inferParsed, e := newParser().Parse(testPredictSelectIris)
-	log.Println(inferParsed.into)
 	a.NoError(e)
 	a.NoError(createPredictionTable(trainParsed, inferParsed, testCfg))
 }
