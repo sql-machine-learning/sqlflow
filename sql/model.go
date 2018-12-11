@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"os/exec"
 
-	"github.com/wangkuiyi/sqlfs"
+	"github.com/wangkuiyi/sqlflow/sqlfs"
 )
 
 // save creates a sqlfs table if it doesn't yet exist, and writes the

@@ -33,7 +33,7 @@ func run(slct string, cfg *mysql.Config) error {
 	if pr.train {
 		return train(pr, slct, db, cfg, cwd)
 	}
-	return infer(pr, db, cwd)
+	return infer(pr, db, cfg, cwd)
 }
 
 func train(pr *extendedSelect, slct string, db *sql.DB, cfg *mysql.Config, cwd string) error {
@@ -96,8 +96,8 @@ func createPredictionTable(trainParsed, inferParsed *extendedSelect, db *sql.DB)
 	return nil
 }
 
-func infer(pr *extendedSelect, db *sql.DB, cwd string) (e error) {
-	trainSlct, e := load(db, pr.model, cwd)
+func infer(ir *extendedSelect, db *sql.DB, cfg *mysql.Config, cwd string) (e error) {
+	trainSlct, e := load(db, ir.model, cwd)
 	if e != nil {
 		return e
 	}
@@ -109,19 +109,19 @@ func infer(pr *extendedSelect, db *sql.DB, cwd string) (e error) {
 		return e
 	}
 
-	if e := verifyColumnNameAndType(tr, pr, db); e != nil {
+	if e := verifyColumnNameAndType(tr, ir, db); e != nil {
 		return e
 	}
 
-	if e := createPredictionTable(tr, pr, db); e != nil {
+	if e := createPredictionTable(tr, ir, db); e != nil {
 		return e
 	}
 
-	inferParsed.trainClause = trainParsed.trainClause
-	fts, e := verify(inferParsed, cfg)
+	ir.trainClause = tr.trainClause
+	fts, e := verify(ir, db)
 
 	var buf bytes.Buffer
-	if e := generateTFProgram(&buf, inferParsed, fts, cfg); e != nil {
+	if e := genTF(&buf, ir, fts, cfg); e != nil {
 		return e
 	}
 
