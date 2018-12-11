@@ -179,16 +179,16 @@ func createPredictionTable(trainParsed, inferParsed *extendedSelect, cfg *mysql.
 	}
 
 	var b bytes.Buffer
-	b.WriteString(fmt.Sprintf("create table %s (", tableName))
+	fmt.Fprintf(&b, "create table %s (", tableName)
 	for _, c := range trainParsed.columns {
 		typ, ok := fts.get(c.val)
 		if !ok {
 			return fmt.Errorf("createPredictionTable: Cannot find type of field %s", c.val)
 		}
-		b.WriteString(fmt.Sprintf("%s %s, ", c.val, typ))
+		fmt.Fprintf(&b, "%s %s, ", c.val, typ)
 	}
 	tpy, _ := fts.get(trainParsed.label)
-	b.WriteString(fmt.Sprintf("%s %s);", columnName, tpy))
+	fmt.Fprintf(&b, "%s %s);", columnName, tpy)
 
 	createStmt := b.String()
 	if _, e := db.Query(createStmt); e != nil {
