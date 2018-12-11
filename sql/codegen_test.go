@@ -71,8 +71,7 @@ func TestCodeGenPredict(t *testing.T) {
 	a := assert.New(t)
 	r, e := newParser().Parse(testTrainSelectIris)
 	a.NoError(e)
-	var tc trainClause
-	tc = r.trainClause
+	tc := r.trainClause
 
 	r, e = newParser().Parse(testPredictSelectIris)
 	a.NoError(e)

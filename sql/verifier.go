@@ -120,9 +120,17 @@ func indexSelectFields(slct *extendedSelect) (ft fieldTypes) {
 
 // Check train and infer clause uses has the same feature columns
 // 1. every column field in the training clause is selected in the infer clause, and they are of the same type
-func verifyColumnNameAndType(trainParsed, inferParsed *extendedSelect, db *sql.DB) (e error) {
+func verifyColumnNameAndType(trainParsed, inferParsed *extendedSelect, db *sql.DB) error {
 	trainFields, e := verify(trainParsed, db)
+	if e != nil {
+		return e
+	}
+
 	inferFields, e := verify(inferParsed, db)
+	if e != nil {
+		return e
+	}
+
 	for _, c := range trainParsed.columns {
 		it, ok := inferFields.get(c.val)
 		if !ok {
