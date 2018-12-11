@@ -81,7 +81,7 @@ func train(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config, cwd string) (e
 	}
 
 	cmd := tensorflowCmd(cwd)
-	cmd.Stdin = bytes.NewReader(program.Bytes())
+	cmd.Stdin = &program
 	o, e := cmd.CombinedOutput()
 	if e != nil {
 		return e
