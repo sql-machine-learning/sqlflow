@@ -164,7 +164,7 @@ func createPredictionTable(trainParsed, inferParsed *extendedSelect, cfg *mysql.
 
 	db, e := sql.Open("mysql", cfg.FormatDSN())
 	if e != nil {
-		return fmt.Errorf("verify cannot connect to MySQL: %q", e)
+		return fmt.Errorf("createPredictionTable cannot connect to MySQL: %q", e)
 	}
 	defer db.Close()
 
@@ -177,9 +177,20 @@ func createPredictionTable(trainParsed, inferParsed *extendedSelect, cfg *mysql.
 	if e != nil {
 		return e
 	}
-	tpy, _ := fts.get(trainParsed.label)
 
-	createStmt := fmt.Sprintf("create table %s (%s %s);", tableName, columnName, tpy)
+	var b bytes.Buffer
+	b.WriteString(fmt.Sprintf("create table %s (", tableName))
+	for _, c := range trainParsed.columns {
+		typ, ok := fts.get(c.val)
+		if !ok {
+			return fmt.Errorf("createPredictionTable: Cannot find type of field %s", c.val)
+		}
+		b.WriteString(fmt.Sprintf("%s %s, ", c.val, typ))
+	}
+	tpy, _ := fts.get(trainParsed.label)
+	b.WriteString(fmt.Sprintf("%s %s);", columnName, tpy))
+
+	createStmt := b.String()
 	if _, e := db.Query(createStmt); e != nil {
 		return fmt.Errorf("failed executing %s: %q", createStmt, e)
 	}
