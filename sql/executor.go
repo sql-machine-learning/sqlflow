@@ -35,7 +35,7 @@ func run(slct string, cfg *mysql.Config) error {
 	return infer(pr, db, cwd)
 }
 
-func train(pr *extendedSelect, slct string, db *sql.DB, cfg *mysql.Config, cwd string) (e error) {
+func train(pr *extendedSelect, slct string, db *sql.DB, cfg *mysql.Config, cwd string) error {
 	fts, e := verify(pr, db)
 	if e != nil {
 		return e
@@ -58,7 +58,7 @@ func train(pr *extendedSelect, slct string, db *sql.DB, cfg *mysql.Config, cwd s
 
 // Create prediction table with appropriate column type.
 // If prediction table already exists, it will be overwritten.
-func createPredictionTable(trainParsed, inferParsed *extendedSelect, db *sql.DB) (e error) {
+func createPredictionTable(trainParsed, inferParsed *extendedSelect, db *sql.DB) error {
 	if len(strings.Split(inferParsed.into, ".")) != 3 {
 		return fmt.Errorf("invalid inferParsed.into %s. should be DBName.TableName.ColumnName", inferParsed.into)
 	}
