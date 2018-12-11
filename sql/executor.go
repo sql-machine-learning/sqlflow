@@ -39,8 +39,7 @@ func run(slct string, cfg *mysql.Config) error {
 			return e
 		}
 
-		m := &model{r, slct}
-		if e := m.save(db, cwd); e != nil {
+		if e := save(db, r.save, cwd, slct); e != nil {
 			return e
 		}
 	} else {
@@ -52,12 +51,12 @@ func run(slct string, cfg *mysql.Config) error {
 		}
 		defer os.RemoveAll(cwd)
 
-		m, e := load(inferParsed.model, db, cwd)
+		trainSlct, e := load(db, inferParsed.model, cwd)
 		if e != nil {
 			return e
 		}
 
-		trainParsed, e := newParser().Parse(m.TrainSelect)
+		trainParsed, e := newParser().Parse(trainSlct)
 		if e != nil {
 			return e
 		}

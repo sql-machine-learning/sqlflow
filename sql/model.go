@@ -10,20 +10,19 @@ import (
 	"github.com/wangkuiyi/sqlfs"
 )
 
-type model struct {
-	parseResult *extendedSelect // private member will not be gob-encoded.
-	TrainSelect string
-}
-
-func (m *model) save(db *sql.DB, cwd string) (e error) {
-	sqlfn := fmt.Sprintf("sqlflow_models.%s", m.parseResult.save)
+// save creates a sqlfs table if it doesn't yet exist, and writes the
+// train select statement into the table, followed by the tar-gzipped
+// SQLFlow working directory, which contains the TensorFlow working
+// directory and the trained TenosrFlow model.
+func save(db *sql.DB, table, cwd, trainSlct string) (e error) {
+	sqlfn := fmt.Sprintf("sqlflow_models.%s", table)
 	sqlf, e := sqlfs.Create(db, sqlfn)
 	if e != nil {
 		return fmt.Errorf("Cannot create sqlfs file %s: %v", sqlfn, e)
 	}
-	defer func() { sqlf.Close() }()
+	defer sqlf.Close()
 
-	if e := gob.NewEncoder(sqlf).Encode(m); e != nil {
+	if e := gob.NewEncoder(sqlf).Encode(trainSlct); e != nil {
 		return fmt.Errorf("model.save: gob-encoding model failed: %v", e)
 	}
 
@@ -32,11 +31,14 @@ func (m *model) save(db *sql.DB, cwd string) (e error) {
 	return cmd.Run()
 }
 
-func load(model_name string, db *sql.DB, cwd string) (m *model, e error) {
-	sqlfn := fmt.Sprintf("sqlflow_models.%s", model_name)
+// load reads from the given sqlfs table for the train select
+// statement, and untar the SQLFlow working directory, which contains
+// the TenosrFlow model, into directory cwd.
+func load(db *sql.DB, table, cwd string) (trainSlct string, e error) {
+	sqlfn := fmt.Sprintf("sqlflow_models.%s", table)
 	sqlf, e := sqlfs.Open(db, sqlfn)
 	if e != nil {
-		return nil, fmt.Errorf("Cannot open sqlfs file %s: %v", sqlfn, e)
+		return "", fmt.Errorf("Cannot open sqlfs file %s: %v", sqlfn, e)
 	}
 	defer func() { sqlf.Close() }()
 
@@ -47,15 +49,14 @@ func load(model_name string, db *sql.DB, cwd string) (m *model, e error) {
 	var buf bytes.Buffer
 	_, e = buf.ReadFrom(sqlf)
 	if e != nil {
-		return nil, e
+		return "", e
 	}
 
-	m = &model{}
-	if e := gob.NewDecoder(&buf).Decode(m); e != nil {
-		return nil, fmt.Errorf("model.load: gob-decoding model failed: %v", e)
+	if e := gob.NewDecoder(&buf).Decode(&trainSlct); e != nil {
+		return "", fmt.Errorf("gob-decoding train select failed: %v", e)
 	}
 
 	cmd := exec.Command("tar", "xzf", "-", "-C", cwd)
 	cmd.Stdin = &buf
-	return m, cmd.Run()
+	return trainSlct, cmd.Run()
 }
