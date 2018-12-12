@@ -11,8 +11,8 @@ import (
 )
 
 type model struct {
-	workDir   string // We don't expose and gob workDir; instead we tar it.
-	TrainSlct string
+	workDir     string // We don't expose and gob workDir; instead we tar it.
+	TrainSelect string
 }
 
 // save creates a sqlfs table if it doesn't yet exist, and writes the
