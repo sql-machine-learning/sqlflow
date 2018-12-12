@@ -96,9 +96,8 @@ func createPredictionTable(trainParsed, inferParsed *extendedSelect, db *sql.DB)
 	return nil
 }
 
-
-func infer(pr *extendedSelect, db *sql.DB, cwd string) (e error) {
-	m, e := load(db, pr.model, cwd)
+func infer(ir *extendedSelect, db *sql.DB, cfg *mysql.Config, cwd string) error {
+	m, e := load(db, ir.model, cwd)
 	if e != nil {
 		return e
 	}
@@ -133,5 +132,5 @@ func infer(pr *extendedSelect, db *sql.DB, cwd string) (e error) {
 		return fmt.Errorf("Prediction failed %v: \n%s", e, o)
 	}
 
-	return
+	return nil
 }
