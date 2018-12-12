@@ -37,12 +37,10 @@ type filler struct {
 	Train          bool
 	StandardSelect string
 	modelConfig
-	// Data Config
-	X []columnType
-	Y columnType
-	// Connection Config
+	X         []columnType
+	Y         columnType
+	TableName string
 	connectionConfig
-	// Working directory
 	WorkDir string
 }
 
@@ -66,12 +64,14 @@ func newFiller(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) (*filler, 
 		ct := columnType{Name: c.val, Type: fieldTypeFeatureType[typ]}
 		r.X = append(r.X, ct)
 	}
-	if pr.train {
-		typ, ok := fts.get(pr.label)
-		if !ok {
-			return nil, fmt.Errorf("genTF: Cannot find type of label %s", pr.label)
-		}
-		r.Y = columnType{Name: pr.label, Type: fieldTypeFeatureType[typ]}
+	typ, ok := fts.get(pr.label)
+	if !ok {
+		return nil, fmt.Errorf("genTF: Cannot find type of label %s", pr.label)
+	}
+	r.Y = columnType{Name: pr.label, Type: fieldTypeFeatureType[typ]}
+
+	if !pr.train {
+		r.TableName = strings.Join(strings.Split(pr.into, ".")[:2], ".")
 	}
 
 	r.User = cfg.User
@@ -160,9 +160,24 @@ def eval_input_fn(features, batch_size):
 predictions = classifier.predict(
         input_fn=lambda:eval_input_fn(X, BATCHSIZE))
 
-# TODO(tonyyang-svail): Writing back to MySQL
-# for p in predictions:
-#     print(p["class_ids"])
+X["{{.Y.Name}}"] = [p['class_ids'][0] for p in predictions]
+
+def insert(table_name, X, db):
+    length = [len(X[key]) for key in X]
+    assert(len(set(length)) == 1, "All the fields should have the same length")
+
+    field_names = [key for key in X]
+    sql = "INSERT INTO {} ({}) VALUES ({})".format(
+            table_name, ",".join(field_names), ",".join(["%s" for _ in field_names]))
+    val = []
+    for i in range(length[0]):
+        val.append(tuple([X[f][i] for f in field_names]))
+
+    cursor = db.cursor()
+    cursor.executemany(sql, val)
+    db.commit()
+
+insert("{{.TableName}}", X, db)
 
 print("Done predicting")
 {{- end}}
