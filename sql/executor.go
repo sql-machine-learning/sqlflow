@@ -53,7 +53,8 @@ func train(pr *extendedSelect, slct string, db *sql.DB, cfg *mysql.Config, cwd s
 		return fmt.Errorf("Training failed %v: \n%s", e, o)
 	}
 
-	return save(db, pr.save, cwd, slct)
+	m := model{workDir: cwd, TrainSlct: slct}
+	return m.save(db, pr.save)
 }
 
 // Create prediction table with appropriate column type.
@@ -96,14 +97,14 @@ func createPredictionTable(trainParsed, inferParsed *extendedSelect, db *sql.DB)
 }
 
 func infer(pr *extendedSelect, db *sql.DB, cwd string) (e error) {
-	trainSlct, e := load(db, pr.model, cwd)
+	m, e := load(db, pr.model, cwd)
 	if e != nil {
 		return e
 	}
 
 	// Parse the training SELECT statement used to train
 	// the model for the prediction.
-	tr, e := newParser().Parse(trainSlct)
+	tr, e := newParser().Parse(m.TrainSlct)
 	if e != nil {
 		return e
 	}
