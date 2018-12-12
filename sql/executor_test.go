@@ -18,7 +18,7 @@ func TestExecutorInfer(t *testing.T) {
 	a := assert.New(t)
 	a.NotPanics(func() {
 		e := run(testPredictSelectIris, testCfg)
-		a.EqualError(e, "infer still under construction")
+		a.NoError(e)
 	})
 }
 

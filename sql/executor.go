@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"strings"
 
@@ -125,14 +124,12 @@ func infer(ir *extendedSelect, db *sql.DB, cfg *mysql.Config, cwd string) (e err
 		return e
 	}
 
-	// log.Println(string(buf.Bytes()))
 	cmd := tensorflowCmd(cwd)
 	cmd.Stdin = &buf
-	o, err := cmd.CombinedOutput()
-	if err != nil {
-		return err
+	o, e := cmd.CombinedOutput()
+	if e != nil || !strings.Contains(string(o), "Done predicting") {
+		return fmt.Errorf("Prediction failed %v: \n%s", e, o)
 	}
-	log.Println(string(o))
 
-	return fmt.Errorf("infer still under construction")
+	return
 }

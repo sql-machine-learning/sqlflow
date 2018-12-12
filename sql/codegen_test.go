@@ -96,6 +96,5 @@ func TestCodeGenPredict(t *testing.T) {
 	if err != nil {
 		log.Println(err)
 	}
-	log.Println(string(o))
 	a.True(strings.Contains(string(o), "Done predicting"))
 }
