@@ -26,7 +26,7 @@ func TestCreatePredictionTable(t *testing.T) {
 	a := assert.New(t)
 	trainParsed, e := newParser().Parse(testTrainSelectIris)
 	a.NoError(e)
-	inferParsed, e := newParser().Parse(testPredictSelectIris)
+	predParsed, e := newParser().Parse(testPredictSelectIris)
 	a.NoError(e)
-	a.NoError(createPredictionTable(trainParsed, inferParsed, testDB))
+	a.NoError(createPredictionTable(trainParsed, predParsed, testDB))
 }

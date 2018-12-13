@@ -87,18 +87,18 @@ LABEL class
 INTO my_dnn_model;`)
 	a.NoError(e)
 
-	inferParse, e := newParser().Parse(`SELECT gender, tenure, TotalCharges
+	predParse, e := newParser().Parse(`SELECT gender, tenure, TotalCharges
 FROM churn.churn LIMIT 10
 PREDICT iris.predict.class
 USING my_dnn_model;`)
 	a.NoError(e)
-	a.NoError(verifyColumnNameAndType(trainParse, inferParse, testDB))
+	a.NoError(verifyColumnNameAndType(trainParse, predParse, testDB))
 
-	inferParse, e = newParser().Parse(`SELECT gender, tenure
+	predParse, e = newParser().Parse(`SELECT gender, tenure
 FROM churn.churn LIMIT 10
 PREDICT iris.predict.class
 USING my_dnn_model;`)
 	a.NoError(e)
-	a.EqualError(verifyColumnNameAndType(trainParse, inferParse, testDB),
-		"inferFields doesn't contain column TotalCharges")
+	a.EqualError(verifyColumnNameAndType(trainParse, predParse, testDB),
+		"predFields doesn't contain column TotalCharges")
 }

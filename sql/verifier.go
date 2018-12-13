@@ -118,27 +118,27 @@ func indexSelectFields(slct *extendedSelect) (ft fieldTypes) {
 	return ft
 }
 
-// Check train and infer clause uses has the same feature columns
-// 1. every column field in the training clause is selected in the infer clause, and they are of the same type
-func verifyColumnNameAndType(trainParsed, inferParsed *extendedSelect, db *sql.DB) error {
+// Check train and pred clause uses has the same feature columns
+// 1. every column field in the training clause is selected in the pred clause, and they are of the same type
+func verifyColumnNameAndType(trainParsed, predParsed *extendedSelect, db *sql.DB) error {
 	trainFields, e := verify(trainParsed, db)
 	if e != nil {
 		return e
 	}
 
-	inferFields, e := verify(inferParsed, db)
+	predFields, e := verify(predParsed, db)
 	if e != nil {
 		return e
 	}
 
 	for _, c := range trainParsed.columns {
-		it, ok := inferFields.get(c.val)
+		it, ok := predFields.get(c.val)
 		if !ok {
-			return fmt.Errorf("inferFields doesn't contain column %s", c.val)
+			return fmt.Errorf("predFields doesn't contain column %s", c.val)
 		}
 		tt, _ := trainFields.get(c.val)
 		if it != tt {
-			return fmt.Errorf("field %s type dismatch %s(infer) vs %s(train)", c.val, it, tt)
+			return fmt.Errorf("field %s type dismatch %s(pred) vs %s(train)", c.val, it, tt)
 		}
 	}
 	return nil
