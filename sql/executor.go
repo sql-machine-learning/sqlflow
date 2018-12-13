@@ -32,17 +32,17 @@ func run(slct string, cfg *mysql.Config) error {
 	if pr.train {
 		return train(pr, slct, db, cfg, cwd)
 	}
-	return infer(pr, db, cfg, cwd)
+	return pred(pr, db, cfg, cwd)
 }
 
-func train(pr *extendedSelect, slct string, db *sql.DB, cfg *mysql.Config, cwd string) error {
-	fts, e := verify(pr, db)
+func train(tr *extendedSelect, slct string, db *sql.DB, cfg *mysql.Config, cwd string) error {
+	fts, e := verify(tr, db)
 	if e != nil {
 		return e
 	}
 
 	var program bytes.Buffer
-	if e := genTF(&program, pr, fts, cfg); e != nil {
+	if e := genTF(&program, tr, fts, cfg); e != nil {
 		return e
 	}
 
@@ -54,17 +54,17 @@ func train(pr *extendedSelect, slct string, db *sql.DB, cfg *mysql.Config, cwd s
 	}
 
 	m := model{workDir: cwd, TrainSelect: slct}
-	return m.save(db, pr.save)
+	return m.save(db, tr.save)
 }
 
 // Create prediction table with appropriate column type.
 // If prediction table already exists, it will be overwritten.
-func createPredictionTable(trainParsed, inferParsed *extendedSelect, db *sql.DB) error {
-	if len(strings.Split(inferParsed.into, ".")) != 3 {
-		return fmt.Errorf("invalid inferParsed.into %s. should be DBName.TableName.ColumnName", inferParsed.into)
+func createPredictionTable(trainParsed, predParsed *extendedSelect, db *sql.DB) error {
+	if len(strings.Split(predParsed.into, ".")) != 3 {
+		return fmt.Errorf("invalid predParsed.into %s. should be DBName.TableName.ColumnName", predParsed.into)
 	}
-	tableName := strings.Join(strings.Split(inferParsed.into, ".")[:2], ".")
-	columnName := strings.Split(inferParsed.into, ".")[2]
+	tableName := strings.Join(strings.Split(predParsed.into, ".")[:2], ".")
+	columnName := strings.Split(predParsed.into, ".")[2]
 
 	dropStmt := fmt.Sprintf("drop table if exists %s;", tableName)
 	if _, e := db.Query(dropStmt); e != nil {
@@ -96,8 +96,8 @@ func createPredictionTable(trainParsed, inferParsed *extendedSelect, db *sql.DB)
 	return nil
 }
 
-func infer(ir *extendedSelect, db *sql.DB, cfg *mysql.Config, cwd string) error {
-	m, e := load(db, ir.model, cwd)
+func pred(pr *extendedSelect, db *sql.DB, cfg *mysql.Config, cwd string) error {
+	m, e := load(db, pr.model, cwd)
 	if e != nil {
 		return e
 	}
@@ -109,19 +109,19 @@ func infer(ir *extendedSelect, db *sql.DB, cfg *mysql.Config, cwd string) error 
 		return e
 	}
 
-	if e := verifyColumnNameAndType(tr, ir, db); e != nil {
+	if e := verifyColumnNameAndType(tr, pr, db); e != nil {
 		return e
 	}
 
-	if e := createPredictionTable(tr, ir, db); e != nil {
+	if e := createPredictionTable(tr, pr, db); e != nil {
 		return e
 	}
 
-	ir.trainClause = tr.trainClause
-	fts, e := verify(ir, db)
+	pr.trainClause = tr.trainClause
+	fts, e := verify(pr, db)
 
 	var buf bytes.Buffer
-	if e := genTF(&buf, ir, fts, cfg); e != nil {
+	if e := genTF(&buf, pr, fts, cfg); e != nil {
 		return e
 	}
 
