@@ -343,7 +343,7 @@ var mu sync.Mutex
 func (p *sqlSyncParser) Parse(s string) (r *extendedSelect, e error) {
 	defer func() {
 		if err := recover(); err != nil {
-			e = err.(error)
+			e = fmt.Errorf(err.(string))
 		}
 	}()
 
