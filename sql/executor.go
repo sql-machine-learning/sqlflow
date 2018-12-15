@@ -11,7 +11,7 @@ import (
 	"github.com/go-sql-driver/mysql"
 )
 
-func run(slct string, cfg *mysql.Config) error {
+func Run(slct string, cfg *mysql.Config) error {
 	pr, e := newParser().Parse(slct)
 	if e != nil {
 		return e
