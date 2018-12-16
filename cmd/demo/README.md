@@ -1,4 +1,4 @@
-#SQLFlow Demo
+# SQLFlow Demo
 
 Before you start, you need to set up test MySQL server as described [here](https://github.com/wangkuiyi/sqlflow/tree/develop/example/datasets)
 
@@ -7,7 +7,7 @@ Start SQLFlow as
 go get -d ./... && go run main.go
 ```
 
-You can perform regular SQL statements as
+#### Regular SQL Statements
 
 ```sql
 sqlflow> SHOW DATABASES;
@@ -31,7 +31,7 @@ sqlflow> SELECT * FROM iris.iris LIMIT 1;
 +--------------+-------------+--------------+-------------+-------+
 ```
 
-You can train a model `my_dnn_model`
+#### Train
 
 ```sql
 sqlflow> SELECT *
@@ -48,7 +48,7 @@ INTO my_dnn_model;
 Job success
 ```
 
-You can predict using trained model `my_dnn_model`
+#### Predict
 
 ```sql
 sqlflow> SELECT *
@@ -60,7 +60,7 @@ USING my_dnn_model;
 Job success
 ```
 
-Now you can look up the prediction as
+The prediction is stored at `iris.predict`, you can look them up at
 
 ```sql
 sqlflow> SELECT * FROM iris.predict LIMIT 10;

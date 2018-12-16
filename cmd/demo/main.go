@@ -28,8 +28,6 @@ func run(slct string) (string, error) {
 	return runStandardSQL(slct, testCfg)
 }
 
-const template = `docker exec -it sqlflowtest mysql -uroot -proot -e "select * from iris.iris;"`
-
 func runStandardSQL(slct string, cfg *mysql.Config) (string, error) {
 	cmd := exec.Command("docker", "exec", "-t",
 		// set password as envirnment variable to surpress warnings
