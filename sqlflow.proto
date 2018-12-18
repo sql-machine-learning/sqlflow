@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+service SQLFlow {
+  rpc Run(RunRequest) returns (RunReply) {}
+}
+
+message RunRequest {
+  string sql = 1;		// The SQL statement to be executed.
+}
+
+message RunReply {
+  string error = 1;	 // An empty string indicates no error.
+  Table table  = 2;	 // `show databases` and `select` return data.
+}
+
+// Table represents the schema and rows of a RDBMA table.  It
+// represents the reply from SQL statements that return data.  Due to
+// the limit of protobuf message size
+// (https://stackoverflow.com/a/34186672/724872), it might represent
+// only a "page" of the data.  Anyway, we decide to include the schema
+// information in each page so to make it easy for the client to
+// convert a Table into a pandas.DataFrame.
+message Table {
+  map<string, FieldType> schema = 1;
+  map<string, Column> columns = 2;
+
+  // Due to https://github.com/protocolbuffers/protobuf/issues/2388,
+  // we cannot write map<string, repeated string>; instead, we need to
+  // define repeated string as Column.
+  message Column {
+    repeated string data = 1;
+  }
+
+  // We take https://dev.mysql.com/doc/refman/8.0/en/data-types.html
+  // as the reference.  Because the real data is in text format as
+  // defined in message Column, we simplify type indicators here: INT
+  // represents all types of integer values in MySQL 8.0: TINYINT,
+  // INT, etc; FLOAT represent both fixed-point and floating-point and
+  // both 4-byte and 8-byte real values in MySQL 8.0.  DATE represents
+  // DATE, DATETIME, and TIMESTAMP.  STRING represents CHAR, VARCHAR,
+  // BINARY, VARBINARY, BLOB, TEXT.  More enum for other types like
+  // JSON and spatial in the future.
+  enum FieldType {
+    INT = 0; 
+    FLOAT = 1; 
+    DATE = 2; 
+    STRING = 3; 
+  }
+}
