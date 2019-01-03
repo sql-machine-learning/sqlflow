@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"os"
 	"strings"
 
 	pb "github.com/wangkuiyi/sqlflowserver"
@@ -15,8 +14,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
-
-var mylog = log.New(os.Stderr, "app: ", log.LstdFlags|log.Lshortfile)
 
 const (
 	port = ":50051"
@@ -48,9 +45,15 @@ func runStandardSQL(slct string, stream pb.SQLFlow_RunServer) error {
 		content["X"] = &pb.Columns_Column{}
 		content["Y"] = &pb.Columns_Column{}
 		for j := 0; j < 4; j++ {
-			x, _ := ptypes.MarshalAny(&wrappers.Int64Value{Value: int64(i)})
+			x, err := ptypes.MarshalAny(&wrappers.Int64Value{Value: int64(i)})
+			if err != nil {
+				return err
+			}
 			content["X"].Data = append(content["X"].Data, x)
-			y, _ := ptypes.MarshalAny(&wrappers.Int64Value{Value: int64(i)})
+			y, err := ptypes.MarshalAny(&wrappers.Int64Value{Value: int64(i)})
+			if err != nil {
+				return err
+			}
 			content["Y"].Data = append(content["Y"].Data, y)
 		}
 		res := &pb.RunResponse{
