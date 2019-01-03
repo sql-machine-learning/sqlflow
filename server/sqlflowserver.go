@@ -2,17 +2,21 @@ package main
 
 import (
 	"fmt"
-	"github.com/golang/protobuf/ptypes"
-	"github.com/golang/protobuf/ptypes/wrappers"
 	"log"
 	"net"
+	"os"
 	"strings"
 
-	"google.golang.org/grpc/reflection"
-
 	pb "github.com/wangkuiyi/sqlflowserver"
+
+	"github.com/golang/protobuf/ptypes"
+	"github.com/golang/protobuf/ptypes/wrappers"
+
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 )
+
+var mylog = log.New(os.Stderr, "app: ", log.LstdFlags|log.Lshortfile)
 
 const (
 	port = ":50051"
@@ -28,23 +32,25 @@ func (*server) Run(req *pb.RunRequest, stream pb.SQLFlow_RunServer) error {
 		return runExtendedSQL(slct, stream)
 	}
 
-	return runRegularSQL(slct, stream)
+	return runStandardSQL(slct, stream)
 }
 
-// run RegularSQL sends
+// runStandardSQL sends
 // 	{"X": {0, 0, 0, 0}, "Y": {0, 0, 0, 0}}
 // 	{"X": {1, 1, 1, 1}, "Y": {1, 1, 1, 1}}
 // 	{"X": {2, 2, 2, 2}, "Y": {2, 2, 2, 2}}
 //	...
 // 	{"X": {N, N, N, N}, "Y": {N, N, N, N}}
-func runRegularSQL(slct string, stream pb.SQLFlow_RunServer) error {
+func runStandardSQL(slct string, stream pb.SQLFlow_RunServer) error {
 	numSends := len(slct)
 	for i := 0; i < numSends; i++ {
-		var content map[string]*pb.Columns_Column
+		content := make(map[string]*pb.Columns_Column)
+		content["X"] = &pb.Columns_Column{}
+		content["Y"] = &pb.Columns_Column{}
 		for j := 0; j < 4; j++ {
-			x, _ := ptypes.MarshalAny(&wrappers.Int64Value{Value:int64(i)})
+			x, _ := ptypes.MarshalAny(&wrappers.Int64Value{Value: int64(i)})
 			content["X"].Data = append(content["X"].Data, x)
-			y, _ := ptypes.MarshalAny(&wrappers.Int64Value{Value:int64(i)})
+			y, _ := ptypes.MarshalAny(&wrappers.Int64Value{Value: int64(i)})
 			content["Y"].Data = append(content["Y"].Data, y)
 		}
 		res := &pb.RunResponse{
@@ -79,7 +85,6 @@ func runExtendedSQL(slct string, stream pb.SQLFlow_RunServer) error {
 	}
 	return nil
 }
-
 
 func main() {
 	lis, err := net.Listen("tcp", port)
