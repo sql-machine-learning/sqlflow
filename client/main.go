@@ -1,3 +1,6 @@
+// To run this program:
+//	go generate .. && go run main.go
+//
 package main
 
 import (

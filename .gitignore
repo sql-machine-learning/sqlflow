@@ -1,2 +1,4 @@
 *~
 .idea/
+sqlflow.pb.go
+*.vim

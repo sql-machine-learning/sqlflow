@@ -1,12 +1,16 @@
 # sqlflowserver
 The gRPC proxy server of SQL engines
 
-## Build
+## Prerequisite
 
-We have included the precompiled protobuf.
+Please follow the installation guide at
 
-In case you need to rebuild after modify the `sqlflow.proto`, run
+- [Golang](https://grpc.io/docs/quickstart/go.html#go-version)
+- [grpc](https://grpc.io/docs/quickstart/go.html#install-grpc)
+- [Protobuf](https://grpc.io/docs/quickstart/go.html#install-protocol-buffers-v3)
+
+## Running
 
 ```bash
-protoc sqlflow.proto --go_out=plugins=grpc:. -I $PROTO_INCLUDE --proto_path=.
+cd server && go generate .. && go run main.go
 ```
