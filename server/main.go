@@ -26,6 +26,7 @@ func main() {
 	sqlflowserver.RegisterSQLFlowServer(s, &sqlflowserver.Server{})
 	// Register reflection service on gRPC server.
 	reflection.Register(s)
+	log.Println("Server Started")
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
