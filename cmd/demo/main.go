@@ -17,7 +17,7 @@ func run(slct string) (string, error) {
 		Addr:   "localhost:3306",
 	}
 
-	return "", sql.Run(slct, testCfg)
+	return sql.Run(slct, testCfg)
 }
 
 func main() {
