@@ -6,17 +6,43 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/go-sql-driver/mysql"
 )
 
-func Run(slct string, cfg *mysql.Config) error {
+func Run(slct string, cfg *mysql.Config) (string, error) {
 	pr, e := newParser().Parse(slct)
 	if e != nil {
-		return e
+		return "Invalid SQL", e
 	}
 
+	if pr.extended {
+		if err := runExtendedSQL(slct, cfg, pr); err != nil {
+			return "", err
+		}
+		return "Job success", nil
+	}
+	return runStandardSQL(slct, cfg)
+}
+
+func runStandardSQL(slct string, cfg *mysql.Config) (string, error) {
+	cmd := exec.Command("docker", "exec", "-t",
+		// set password as envirnment variable to surpress warnings
+		// https://stackoverflow.com/a/24188878/6794675
+		"-e", fmt.Sprintf("MYSQL_PWD=%s", cfg.Passwd),
+		"sqlflowtest",
+		"mysql", fmt.Sprintf("-u%s", cfg.User),
+		"-e", fmt.Sprintf("%s", slct))
+	o, e := cmd.CombinedOutput()
+	if e != nil {
+		return "", fmt.Errorf("runStandardSQL failed %v: \n%s", e, o)
+	}
+	return string(o), nil
+}
+
+func runExtendedSQL(slct string, cfg *mysql.Config, pr *extendedSelect) error {
 	db, e := sql.Open("mysql", cfg.FormatDSN())
 	if e != nil {
 		return e

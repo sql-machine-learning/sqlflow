@@ -22,6 +22,14 @@ func TestExecutorInfer(t *testing.T) {
 	})
 }
 
+func TestExecutorStandard(t *testing.T) {
+	a := assert.New(t)
+	a.NotPanics(func() {
+		e := Run("show databases;", testCfg)
+		a.NoError(e)
+	})
+}
+
 func TestCreatePredictionTable(t *testing.T) {
 	a := assert.New(t)
 	trainParsed, e := newParser().Parse(testTrainSelectIris)
