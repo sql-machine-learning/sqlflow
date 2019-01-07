@@ -27,7 +27,7 @@ INTO my_dnn_model
 ;
 `
 	testPredictSelectIris = testSelectIris + `
-PREDICT iris.predict.class
+predict iris.predict.class
 USING my_dnn_model;
 `
 )
