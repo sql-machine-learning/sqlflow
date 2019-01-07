@@ -14,11 +14,7 @@ import (
 
 func Run(slct string, cfg *mysql.Config) (string, error) {
 	pr, e := newParser().Parse(slct)
-	if e != nil {
-		return "Invalid SQL", e
-	}
-
-	if pr.extended {
+	if e == nil && pr.extended {
 		if err := runExtendedSQL(slct, cfg, pr); err != nil {
 			return "", err
 		}
