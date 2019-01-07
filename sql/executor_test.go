@@ -9,7 +9,7 @@ import (
 func TestExecutorTrain(t *testing.T) {
 	a := assert.New(t)
 	a.NotPanics(func() {
-		e := Run(testTrainSelectIris, testCfg)
+		_, e := Run(testTrainSelectIris, testCfg)
 		a.NoError(e)
 	})
 }
@@ -17,7 +17,15 @@ func TestExecutorTrain(t *testing.T) {
 func TestExecutorInfer(t *testing.T) {
 	a := assert.New(t)
 	a.NotPanics(func() {
-		e := Run(testPredictSelectIris, testCfg)
+		_, e := Run(testPredictSelectIris, testCfg)
+		a.NoError(e)
+	})
+}
+
+func TestExecutorStandard(t *testing.T) {
+	a := assert.New(t)
+	a.NotPanics(func() {
+		_, e := Run(testSelectIris, testCfg)
 		a.NoError(e)
 	})
 }

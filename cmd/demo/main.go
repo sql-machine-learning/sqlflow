@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"os/exec"
 	"strings"
 
 	"github.com/go-sql-driver/mysql"
@@ -18,29 +17,7 @@ func run(slct string) (string, error) {
 		Addr:   "localhost:3306",
 	}
 
-	if strings.Contains(slct, "TRAIN") || strings.Contains(slct, "PREDICT") {
-		if err := sql.Run(slct, testCfg); err != nil {
-			return "", err
-		}
-		return "Job success", nil
-	}
-
-	return runStandardSQL(slct, testCfg)
-}
-
-func runStandardSQL(slct string, cfg *mysql.Config) (string, error) {
-	cmd := exec.Command("docker", "exec", "-t",
-		// set password as envirnment variable to surpress warnings
-		// https://stackoverflow.com/a/24188878/6794675
-		"-e", fmt.Sprintf("MYSQL_PWD=%s", cfg.Passwd),
-		"sqlflowtest",
-		"mysql", fmt.Sprintf("-u%s", cfg.User),
-		"-e", fmt.Sprintf("%s", slct))
-	o, e := cmd.CombinedOutput()
-	if e != nil {
-		return "", fmt.Errorf("runStandardSQL failed %v: \n%s", e, o)
-	}
-	return string(o), nil
+	return sql.Run(slct, testCfg)
 }
 
 func main() {
