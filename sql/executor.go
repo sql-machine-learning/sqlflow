@@ -13,12 +13,15 @@ import (
 )
 
 func Run(slct string, cfg *mysql.Config) (string, error) {
-	pr, e := newParser().Parse(slct)
-	if e == nil && pr.extended {
-		if err := runExtendedSQL(slct, cfg, pr); err != nil {
-			return "", err
+	slctUpper := strings.ToUpper(slct)
+	if strings.Contains(slctUpper, "TRAIN") || strings.Contains(slctUpper, "PREDICT") {
+		pr, e := newParser().Parse(slct)
+		if e == nil && pr.extended {
+			if err := runExtendedSQL(slct, cfg, pr); err != nil {
+				return "", err
+			}
+			return "Job success", nil
 		}
-		return "Job success", nil
 	}
 	return runStandardSQL(slct, cfg)
 }
