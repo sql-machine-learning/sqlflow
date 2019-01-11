@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/sirupsen/logrus"
@@ -16,14 +17,19 @@ import (
 var log *logrus.Entry
 
 func init() {
-	f, err := os.OpenFile("sqlflow.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
+	f, err := os.OpenFile("./sqlflow.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
 	if err != nil {
-		fmt.Errorf("open log file failed")
+		fmt.Printf("opern log file failed|err:%v\n", err)
 	} else {
 		contextLog := logrus.New()
 		contextLog.SetOutput(f)
-		contextLog.SetLevel(logrus.InfoLevel)                   // TODO read from command args
-		log = contextLog.WithFields(logrus.Fields{"id": "sql"}) // package name
+		contextLog.SetLevel(logrus.InfoLevel) // TODO read from command args
+		// - If you want to add caller, such as func name line number,
+		// set SetReportCaller with true
+		// - Set package name as identity by WithFields
+		log = contextLog.WithFields(logrus.Fields{
+			"id": "sql",
+		})
 	}
 }
 
@@ -43,6 +49,8 @@ func Run(slct string, cfg *mysql.Config) (string, error) {
 }
 
 func runStandardSQL(slct string, cfg *mysql.Config) (string, error) {
+	startAt := time.Now()
+	log.Infof("Starting runStanrardSQL:%s", slct)
 	cmd := exec.Command("docker", "exec", "-t",
 		// set password as envirnment variable to surpress warnings
 		// https://stackoverflow.com/a/24188878/6794675
@@ -52,20 +60,25 @@ func runStandardSQL(slct string, cfg *mysql.Config) (string, error) {
 		"-e", fmt.Sprintf("%s", slct))
 	o, e := cmd.CombinedOutput()
 	if e != nil {
+		log.Errorf("runStandardSQL failed|error:%v", e)
 		return "", fmt.Errorf("runStandardSQL failed %v: \n%s", e, o)
 	}
+	log.Infof("runStandardSQL finished, elapsed:%v", time.Now().Sub(startAt))
 	return string(o), nil
 }
 
 func runExtendedSQL(slct string, cfg *mysql.Config, pr *extendedSelect) error {
+	log.Infof("Starting runExtendedSQL:%s", slct)
 	db, e := sql.Open("mysql", cfg.FormatDSN())
 	if e != nil {
+		log.Errorf("open sql failed|error:%v", e)
 		return e
 	}
 	defer db.Close()
 
 	cwd, e := ioutil.TempDir("/tmp", "sqlflow")
 	if e != nil {
+		log.Errorf("create TempDir failed|error:%v", e)
 		return e
 	}
 	defer os.RemoveAll(cwd)
@@ -77,13 +90,16 @@ func runExtendedSQL(slct string, cfg *mysql.Config, pr *extendedSelect) error {
 }
 
 func train(tr *extendedSelect, slct string, db *sql.DB, cfg *mysql.Config, cwd string) error {
+	startAt := time.Now()
 	fts, e := verify(tr, db)
 	if e != nil {
+		log.Errorf("verify failed|error:%v", e)
 		return e
 	}
 
 	var program bytes.Buffer
 	if e := genTF(&program, tr, fts, cfg); e != nil {
+		log.Errorf("gentTF failed|error:%v", e)
 		return e
 	}
 
@@ -91,11 +107,14 @@ func train(tr *extendedSelect, slct string, db *sql.DB, cfg *mysql.Config, cwd s
 	cmd.Stdin = &program
 	o, e := cmd.CombinedOutput()
 	if e != nil || !strings.Contains(string(o), "Done training") {
+		log.Errorf("training failed|error:%v", e)
 		return fmt.Errorf("Training failed %v: \n%s", e, o)
 	}
 
 	m := model{workDir: cwd, TrainSelect: slct}
-	return m.save(db, tr.save)
+	err := m.save(db, tr.save)
+	log.Infof("train finished, elapsed:%v", time.Now().Sub(startAt))
+	return err
 }
 
 // Create prediction table with appropriate column type.
@@ -138,8 +157,10 @@ func createPredictionTable(trainParsed, predParsed *extendedSelect, db *sql.DB) 
 }
 
 func pred(pr *extendedSelect, db *sql.DB, cfg *mysql.Config, cwd string) error {
+	startAt := time.Now()
 	m, e := load(db, pr.model, cwd)
 	if e != nil {
+		log.Errorf("load sqlflow models failed|error:%v", e)
 		return e
 	}
 
@@ -147,14 +168,17 @@ func pred(pr *extendedSelect, db *sql.DB, cfg *mysql.Config, cwd string) error {
 	// the model for the prediction.
 	tr, e := newParser().Parse(m.TrainSelect)
 	if e != nil {
+		log.Errorf("parse the training stmt failed|error:%v", e)
 		return e
 	}
 
 	if e := verifyColumnNameAndType(tr, pr, db); e != nil {
+		log.Errorf("verify columns failed|error:%v", e)
 		return e
 	}
 
 	if e := createPredictionTable(tr, pr, db); e != nil {
+		log.Errorf("createPredictionTable failed|error:%v", e)
 		return e
 	}
 
@@ -163,6 +187,7 @@ func pred(pr *extendedSelect, db *sql.DB, cfg *mysql.Config, cwd string) error {
 
 	var buf bytes.Buffer
 	if e := genTF(&buf, pr, fts, cfg); e != nil {
+		log.Errorf("gentTF failed|error:%v", e)
 		return e
 	}
 
@@ -170,8 +195,10 @@ func pred(pr *extendedSelect, db *sql.DB, cfg *mysql.Config, cwd string) error {
 	cmd.Stdin = &buf
 	o, e := cmd.CombinedOutput()
 	if e != nil || !strings.Contains(string(o), "Done predicting") {
+		log.Errorf("predicting failed|error:%v", e)
 		return fmt.Errorf("Prediction failed %v: \n%s", e, o)
 	}
 
+	log.Infof("pred finished, elapsed:%v", time.Now().Sub(startAt))
 	return nil
 }
