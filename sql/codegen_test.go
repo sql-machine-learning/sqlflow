@@ -3,7 +3,6 @@ package sql
 import (
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"strings"
 	"testing"

@@ -10,8 +10,24 @@ import (
 	"strings"
 
 	"github.com/go-sql-driver/mysql"
+	"github.com/sirupsen/logrus"
 )
 
+var log *logrus.Entry
+
+func init() {
+	f, err := os.OpenFile("sqlflow.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
+	if err != nil {
+		fmt.Errorf("open log file failed")
+	} else {
+		contextLog := logrus.New()
+		contextLog.SetOutput(f)
+		contextLog.SetLevel(logrus.InfoLevel)                   // TODO read from command args
+		log = contextLog.WithFields(logrus.Fields{"id": "sql"}) // package name
+	}
+}
+
+// Run extendSQL or standardSQL
 func Run(slct string, cfg *mysql.Config) (string, error) {
 	slctUpper := strings.ToUpper(slct)
 	if strings.Contains(slctUpper, "TRAIN") || strings.Contains(slctUpper, "PREDICT") {

@@ -2,7 +2,6 @@ package sql
 
 import (
 	"database/sql"
-	"log"
 	"os"
 	"testing"
 
