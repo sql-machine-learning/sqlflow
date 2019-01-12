@@ -1,0 +1,40 @@
+SQLFlow
+
+* Overview
+SQLFlow is a bridge that connects a SQL engine
+
+- MySQL, ODPS, Hive, SparkSQL, Oracle, SQL Server, ...
+
+with a Machine Learning toolkits
+
+- TensorFlow, PyTorch, XGboost, ...
+
+It extends the SQL syntax to enable model training and inference.
+
+* Syntax: Regular SQL
+.code regular.sql
+
+* Syntax: Train
+.code train.sql
+
+* Syntax: Prediction
+.code pred.sql
+
+* Demo
+
+* Next Step: More DB
+- ODPS
+- Upon request
+
+* Next Step: More Models
+- Currently only supports TF Estimator: `DNNClassifier`, `DNNRegressor`
+- More TF models to come: `BoostedTreesClassifier`, `BoostedTreesRegressor`
+- Upon request
+
+* Next Step: Data Preprocessing
+Introduce proprocessing pipeline such as `norm`, `bucket`, `hash`. Also upon request.
+.code preprocess.sql
+
+* Next Step: AutoML
+.code automl.sql
+
