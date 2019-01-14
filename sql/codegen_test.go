@@ -58,11 +58,8 @@ func TestCodeGenTrain(t *testing.T) {
 
 	cmd := tensorflowCmd(cwd)
 	cmd.Stdin = pr
-	o, err := cmd.CombinedOutput()
-	if err != nil {
-		log.Println(err)
-	}
-
+	o, e := cmd.CombinedOutput()
+	a.NoError(e)
 	a.True(strings.Contains(string(o), "Done training"))
 }
 
@@ -91,9 +88,7 @@ func TestCodeGenPredict(t *testing.T) {
 
 	cmd := tensorflowCmd(cwd)
 	cmd.Stdin = pr
-	o, err := cmd.CombinedOutput()
-	if err != nil {
-		log.Println(err)
-	}
+	o, e := cmd.CombinedOutput()
+	a.NoError(e)
 	a.True(strings.Contains(string(o), "Done predicting"))
 }
