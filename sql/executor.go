@@ -3,6 +3,7 @@ package sql
 import (
 	"bytes"
 	"database/sql"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -15,26 +16,44 @@ import (
 )
 
 const (
-	logfile = "./sqlflow.log"
+	logDirDefault = "logs"
+	logfile       = "sqlflow.log"
 )
 
 var log *logrus.Entry
 
-func init() {
-	f, err := os.OpenFile(logfile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
-	if err != nil {
-		fmt.Printf("opern log file failed|err:%v\n", err)
-	} else {
-		contextLog := logrus.New()
-		contextLog.SetOutput(f)
-		contextLog.SetLevel(logrus.InfoLevel) // TODO read from command args
-		// - If you want to add caller, such as func name line number,
-		// set SetReportCaller with true
-		// - Set package name as identity by WithFields
-		log = contextLog.WithFields(logrus.Fields{
-			"id": "sql",
-		})
+func initLog() {
+	logDir := flag.String("logdir", logDirDefault, "log directory")
+	strlogLevel := flag.String("loglevel", "info", "log level")
+	flag.Parse()
+
+	logLevel, eLev := logrus.ParseLevel(*strlogLevel)
+	if eLev != nil {
+		logLevel = logrus.InfoLevel
+		log.Warnf("invalid loglevel, set to InfoLevel")
 	}
+
+	eMk := os.MkdirAll(*logDir, 0744)
+	if eMk != nil {
+		log.Panicf("create log directory failed:%v", eMk)
+	}
+	f, err := os.OpenFile(*logDir+"/"+logfile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
+	if err != nil {
+		log.Panicf("open log file failed:%v", err)
+	}
+	contextLog := logrus.New()
+	contextLog.SetOutput(f)
+	contextLog.SetLevel(logLevel)
+	// - If you want to add caller, such as func name line number,
+	// set SetReportCaller with true
+	// - Set package name as identity by WithFields
+	log = contextLog.WithFields(logrus.Fields{
+		"id": "sql",
+	})
+}
+
+func init() {
+	initLog()
 }
 
 // Run extendSQL or standardSQL
