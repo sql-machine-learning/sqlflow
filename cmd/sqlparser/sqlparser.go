@@ -23,6 +23,11 @@ import (
 
 func main() {
 	if s, e := ioutil.ReadAll(os.Stdin); e == nil {
-		fmt.Println(sql.Parse(string(s)))
+		jsonStr, e := sql.ParseToJSON(s)
+		if e != nil {
+			fmt.Println(e)
+		} else {
+			fmt.Println(jsonStr)
+		}
 	}
 }

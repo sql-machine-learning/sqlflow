@@ -12,6 +12,21 @@ import (
 	"github.com/go-sql-driver/mysql"
 )
 
+func ParseToJSON(slct string) (json string, e error) {
+	defer func() {
+		if err := recover(); err != nil {
+			e = fmt.Errorf(err.(string))
+		}
+	}()
+
+	pr, e := newParser().Parse(slct)
+	if e != nil {
+		return "", e
+	}
+
+	return pr.JSON(), nil
+}
+
 func Run(slct string, cfg *mysql.Config) (string, error) {
 	slctUpper := strings.ToUpper(slct)
 	if strings.Contains(slctUpper, "TRAIN") || strings.Contains(slctUpper, "PREDICT") {
