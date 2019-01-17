@@ -27,15 +27,15 @@ func initLog() {
 	strlogLevel := flag.String("loglevel", "info", "log level")
 	flag.Parse()
 
-	logLevel, eLev := logrus.ParseLevel(*strlogLevel)
-	if eLev != nil {
+	logLevel, e := logrus.ParseLevel(*strlogLevel)
+	if e != nil {
 		logLevel = logrus.InfoLevel
 		log.Warnf("invalid loglevel, set to InfoLevel")
 	}
 
-	eMk := os.MkdirAll(*logDir, 0744)
-	if eMk != nil {
-		log.Panicf("create log directory failed:%v", eMk)
+	e = os.MkdirAll(*logDir, 0744)
+	if e != nil {
+		log.Panicf("create log directory failed:%v", e)
 	}
 	f, err := os.OpenFile(*logDir+"/"+logfile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
 	if err != nil {
