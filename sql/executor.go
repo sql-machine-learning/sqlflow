@@ -48,6 +48,13 @@ func runExtendedSQL(slct string, cfg *mysql.Config, pr *extendedSelect) error {
 	}
 	defer db.Close()
 
+	// NOTE: the temporary directory must be in a host directory
+	// which can be mounted to Docker containers.  If I don't
+	// specify the "/tmp" prefix, ioutil.TempDir would by default
+	// generate a directory in /private/tmp for macOS, which
+	// cannot be mounted by Docker into the container.  For more
+	// detailed, please refer to
+	// https://docs.docker.com/docker-for-mac/osxfs/#namespaces.
 	cwd, e := ioutil.TempDir("/tmp", "sqlflow")
 	if e != nil {
 		return e

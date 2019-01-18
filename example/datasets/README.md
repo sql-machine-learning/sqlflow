@@ -57,3 +57,12 @@ should print the number of rows as the following
 count(*)
 92
 ```
+
+## Trouble shooting:
+
+1. It usually takes about 15 seconds to bring up the MySQL Server. If you try to connect it
+before that, you may see the following error
+
+```
+ERROR 1045 (28000): Access denied for user 'root'@'localhost' (using password: YES)
+```

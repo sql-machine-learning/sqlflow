@@ -1,10 +1,7 @@
 package sql
 
 import (
-	"io"
 	"io/ioutil"
-	"os"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -39,28 +36,7 @@ func TestCodeGenTrain(t *testing.T) {
 	fts, e := verify(r, testDB)
 	a.NoError(e)
 
-	pr, pw := io.Pipe()
-	go func() {
-		a.NoError(genTF(pw, r, fts, testCfg))
-		pw.Close()
-	}()
-
-	// NOTE: the temporary directory must be in a host directory
-	// which can be mounted to Docker containers.  If I don't
-	// specify the "/tmp" prefix, ioutil.TempDir would by default
-	// generate a directory in /private/tmp for macOS, which
-	// cannot be mounted by Docker into the container.  For more
-	// detailed, please refer to
-	// https://docs.docker.com/docker-for-mac/osxfs/#namespaces.
-	cwd, e := ioutil.TempDir("/tmp", "sqlflow-codegen_test")
-	a.NoError(e)
-	defer os.RemoveAll(cwd)
-
-	cmd := tensorflowCmd(cwd)
-	cmd.Stdin = pr
-	o, e := cmd.CombinedOutput()
-	a.NoError(e)
-	a.True(strings.Contains(string(o), "Done training"))
+	a.NoError(genTF(ioutil.Discard, r, fts, testCfg))
 }
 
 func TestCodeGenPredict(t *testing.T) {
@@ -76,19 +52,5 @@ func TestCodeGenPredict(t *testing.T) {
 	fts, e := verify(r, testDB)
 	a.NoError(e)
 
-	pr, pw := io.Pipe()
-	go func() {
-		a.NoError(genTF(pw, r, fts, testCfg))
-		pw.Close()
-	}()
-
-	cwd, e := ioutil.TempDir("/tmp", "sqlflow-codegen_test")
-	a.NoError(e)
-	defer os.RemoveAll(cwd)
-
-	cmd := tensorflowCmd(cwd)
-	cmd.Stdin = pr
-	o, e := cmd.CombinedOutput()
-	a.NoError(e)
-	a.True(strings.Contains(string(o), "Done predicting"))
+	a.NoError(genTF(ioutil.Discard, r, fts, testCfg))
 }
