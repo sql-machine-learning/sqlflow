@@ -12,6 +12,12 @@ import (
 	"github.com/go-sql-driver/mysql"
 )
 
+// Run executes a SQLFlow statements, either standard or extended
+// - Standard SQL statements like `USE database` returns a success message.
+// - Standard SQL statements like `SELECT ...` returns a table in addition
+// to the status, and the table might be big.
+// - Extended SQL statement like `SELECT ... TRAIN/PREDICT ...` messages
+// which indicate the training/predicting progress
 func Run(slct string, cfg *mysql.Config) (string, error) {
 	slctUpper := strings.ToUpper(slct)
 	if strings.Contains(slctUpper, "TRAIN") || strings.Contains(slctUpper, "PREDICT") {
