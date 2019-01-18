@@ -3,7 +3,6 @@ package sql
 import (
 	"bytes"
 	"database/sql"
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -12,49 +11,7 @@ import (
 	"time"
 
 	"github.com/go-sql-driver/mysql"
-	"github.com/sirupsen/logrus"
 )
-
-const (
-	logDirDefault = "logs"
-	logfile       = "sqlflow.log"
-)
-
-var log *logrus.Entry
-
-func initLog() {
-	logDir := flag.String("logdir", logDirDefault, "log directory")
-	strlogLevel := flag.String("loglevel", "info", "log level")
-	flag.Parse()
-
-	logLevel, e := logrus.ParseLevel(*strlogLevel)
-	if e != nil {
-		logLevel = logrus.InfoLevel
-		log.Warnf("invalid loglevel, set to InfoLevel")
-	}
-
-	e = os.MkdirAll(*logDir, 0744)
-	if e != nil {
-		log.Panicf("create log directory failed:%v", e)
-	}
-	f, err := os.OpenFile(*logDir+"/"+logfile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
-	if err != nil {
-		log.Panicf("open log file failed:%v", err)
-	}
-	contextLog := logrus.New()
-	contextLog.SetOutput(f)
-	contextLog.SetLevel(logLevel)
-	// - If you want to add caller, such as func name line number,
-	// set SetReportCaller with true
-	// - Set package name as identity by WithFields
-	log = contextLog.WithFields(logrus.Fields{
-		"id": "sql",
-	})
-}
-
-func init() {
-	initLog()
-}
 
 // Run extendSQL or standardSQL
 func Run(slct string, cfg *mysql.Config) (string, error) {
