@@ -6,18 +6,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestExecutorTrain(t *testing.T) {
+func TestExecutorTrainAndPredict(t *testing.T) {
 	a := assert.New(t)
 	a.NotPanics(func() {
 		_, e := Run(testTrainSelectIris, testCfg)
 		a.NoError(e)
-	})
-}
-
-func TestExecutorInfer(t *testing.T) {
-	a := assert.New(t)
-	a.NotPanics(func() {
-		_, e := Run(testPredictSelectIris, testCfg)
+		_, e = Run(testPredictSelectIris, testCfg)
 		a.NoError(e)
 	})
 }
