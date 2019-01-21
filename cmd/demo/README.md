@@ -4,7 +4,7 @@ Before you start, you need to set up test MySQL server as described [here](https
 
 Start SQLFlow as
 ```golang
-go get -d ./... && go run main.go
+go get -d ./... && go run main.go -logdir="/path/to/logs/" -loglevel="info"
 ```
 
 #### Regular SQL Statements
