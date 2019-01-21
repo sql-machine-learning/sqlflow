@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/go-sql-driver/mysql"
 )
@@ -23,8 +24,9 @@ func Run(slct string, cfg *mysql.Config) (string, error) {
 	if strings.Contains(slctUpper, "TRAIN") || strings.Contains(slctUpper, "PREDICT") {
 		pr, e := newParser().Parse(slct)
 		if e == nil && pr.extended {
-			if err := runExtendedSQL(slct, cfg, pr); err != nil {
-				return "", err
+			if e = runExtendedSQL(slct, cfg, pr); e != nil {
+				log.Errorf("runExtendedSQL error:%v", e)
+				return "", e
 			}
 			return "Job success", nil
 		}
@@ -33,6 +35,8 @@ func Run(slct string, cfg *mysql.Config) (string, error) {
 }
 
 func runStandardSQL(slct string, cfg *mysql.Config) (string, error) {
+	startAt := time.Now()
+	log.Infof("Starting runStanrardSQL:%s", slct)
 	cmd := exec.Command("docker", "exec", "-t",
 		// set password as envirnment variable to surpress warnings
 		// https://stackoverflow.com/a/24188878/6794675
@@ -44,10 +48,13 @@ func runStandardSQL(slct string, cfg *mysql.Config) (string, error) {
 	if e != nil {
 		return "", fmt.Errorf("runStandardSQL failed %v: \n%s", e, o)
 	}
+	log.Infof("runStandardSQL finished, elapsed:%v", time.Now().Sub(startAt))
 	return string(o), nil
 }
 
 func runExtendedSQL(slct string, cfg *mysql.Config, pr *extendedSelect) error {
+	startAt := time.Now()
+	log.Infof("Starting runExtendedSQL:%s", slct)
 	db, e := sql.Open("mysql", cfg.FormatDSN())
 	if e != nil {
 		return e
@@ -68,9 +75,12 @@ func runExtendedSQL(slct string, cfg *mysql.Config, pr *extendedSelect) error {
 	defer os.RemoveAll(cwd)
 
 	if pr.train {
-		return train(pr, slct, db, cfg, cwd)
+		e = train(pr, slct, db, cfg, cwd)
+	} else {
+		e = pred(pr, db, cfg, cwd)
 	}
-	return pred(pr, db, cfg, cwd)
+	log.Infof("runExtendedSQL finished, elapsed:%v", time.Now().Sub(startAt))
+	return e
 }
 
 func train(tr *extendedSelect, slct string, db *sql.DB, cfg *mysql.Config, cwd string) error {
@@ -130,7 +140,6 @@ func createPredictionTable(trainParsed, predParsed *extendedSelect, db *sql.DB) 
 	if _, e := db.Query(createStmt); e != nil {
 		return fmt.Errorf("failed executing %s: %q", createStmt, e)
 	}
-
 	return nil
 }
 
@@ -169,6 +178,5 @@ func pred(pr *extendedSelect, db *sql.DB, cfg *mysql.Config, cwd string) error {
 	if e != nil || !strings.Contains(string(o), "Done predicting") {
 		return fmt.Errorf("Prediction failed %v: \n%s", e, o)
 	}
-
 	return nil
 }
