@@ -1,0 +1,13 @@
+- repo: git://github.com/dnephin/pre-commit-golang
+  sha: HEAD
+  hooks:
+    - id: go-fmt
+    - id: go-vet
+    - id: go-lint
+    - id: validate-toml
+    - id: no-go-testing
+    - id: gometalinter
+    - id: golangci-lint
+    - id: go-critic
+    - id: go-unit-tests
+    - id: go-build
