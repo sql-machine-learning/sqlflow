@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"strings"
 	"time"
 
@@ -19,47 +18,74 @@ import (
 // to the status, and the table might be big.
 // - Extended SQL statement like `SELECT ... TRAIN/PREDICT ...` messages
 // which indicate the training/predicting progress
-func Run(slct string, cfg *mysql.Config) (string, error) {
+func Run(slct string, db *sql.DB, cfg *mysql.Config) (string, error) {
 	slctUpper := strings.ToUpper(slct)
 	if strings.Contains(slctUpper, "TRAIN") || strings.Contains(slctUpper, "PREDICT") {
 		pr, e := newParser().Parse(slct)
 		if e == nil && pr.extended {
-			if e = runExtendedSQL(slct, cfg, pr); e != nil {
+			if e = runExtendedSQL(slct, db, cfg, pr); e != nil {
 				log.Errorf("runExtendedSQL error:%v", e)
 				return "", e
 			}
 			return "Job success", nil
 		}
 	}
-	return runStandardSQL(slct, cfg)
+	return runStandardSQL(slct, db)
 }
 
-func runStandardSQL(slct string, cfg *mysql.Config) (string, error) {
+// FIXME(tony): how to deal with large tables?
+// TODO(tony): test on null table elements
+func runStandardSQL(slct string, db *sql.DB) (string, error) {
 	startAt := time.Now()
 	log.Infof("Starting runStanrardSQL:%s", slct)
-	cmd := exec.Command("docker", "exec", "-t",
-		// set password as envirnment variable to surpress warnings
-		// https://stackoverflow.com/a/24188878/6794675
-		"-e", fmt.Sprintf("MYSQL_PWD=%s", cfg.Passwd),
-		"sqlflowtest",
-		"mysql", fmt.Sprintf("-u%s", cfg.User),
-		"-e", fmt.Sprintf("%s", slct))
-	o, e := cmd.CombinedOutput()
-	if e != nil {
-		return "", fmt.Errorf("runStandardSQL failed %v: \n%s", e, o)
+
+	rows, err := db.Query(slct)
+	defer rows.Close()
+	if err != nil {
+		return "", fmt.Errorf("runStandardSQL failed: %v\n", err)
 	}
-	log.Infof("runStandardSQL finished, elapsed:%v", time.Now().Sub(startAt))
-	return string(o), nil
+
+	cols, err := rows.Columns()
+	if err != nil {
+		return "", fmt.Errorf("failed to get columns: %v", err)
+	}
+
+	// Since we don't know the table schema in advance, need to
+	// follow the trick at https://stackoverflow.com/a/17885636/6794675
+	// by creating 2 slices, one for the values,
+	// and one that holds pointers in parallel to the values slice.
+	count := len(cols)
+	values := make([]interface{}, count)
+	valuePointers := make([]interface{}, count)
+	for i, _ := range cols {
+		valuePointers[i] = &values[i]
+	}
+
+	var buf bytes.Buffer
+	for rows.Next() {
+		rows.Scan(valuePointers...)
+
+		for _, val := range values {
+			var v interface{}
+
+			b, ok := val.([]byte)
+			if ok {
+				v = string(b)
+			} else {
+				v = val
+			}
+			fmt.Fprint(&buf, v, ",")
+		}
+		fmt.Fprint(&buf, "\n")
+	}
+
+	log.Infof("runStandardSQL finished, elapsed: %v", time.Now().Sub(startAt))
+	return string(buf.Bytes()), nil
 }
 
-func runExtendedSQL(slct string, cfg *mysql.Config, pr *extendedSelect) error {
+func runExtendedSQL(slct string, db *sql.DB, cfg *mysql.Config, pr *extendedSelect) error {
 	startAt := time.Now()
 	log.Infof("Starting runExtendedSQL:%s", slct)
-	db, e := sql.Open("mysql", cfg.FormatDSN())
-	if e != nil {
-		return e
-	}
-	defer db.Close()
 
 	// NOTE: the temporary directory must be in a host directory
 	// which can be mounted to Docker containers.  If I don't
