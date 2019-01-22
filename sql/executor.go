@@ -42,7 +42,7 @@ func runStandardSQL(slct string, db *sql.DB) (string, error) {
 	rows, err := db.Query(slct)
 	defer rows.Close()
 	if err != nil {
-		return "", fmt.Errorf("runStandardSQL failed: %v\n", err)
+		return "", fmt.Errorf("runStandardSQL failed: %v", err)
 	}
 
 	cols, err := rows.Columns()
@@ -57,7 +57,7 @@ func runStandardSQL(slct string, db *sql.DB) (string, error) {
 	count := len(cols)
 	values := make([]interface{}, count)
 	valuePointers := make([]interface{}, count)
-	for i, _ := range cols {
+	for i := range cols {
 		valuePointers[i] = &values[i]
 	}
 
