@@ -34,7 +34,7 @@ message RunRequest {
 message RunResponse {
   oneof response {
     Messages messages = 1;
-    Columns columns = 2;
+    Table table = 2;
   }
 }
 
@@ -42,11 +42,12 @@ message Messages {
   repeated string messages = 1;
 }
 
-message Columns {
-  map<string, Column> columns = 1;
+message Table {
+  repeated string column_names = 1;
+  repeated Row rows = 2;
 
-  // A data column of any type
-  message Column {
+  // A row of data. Data can be any type
+  message Row {
       repeated google.protobuf.Any data = 1;
   }
 }
