@@ -13,6 +13,9 @@ go:
 git:
   depth: 1
 
+services:
+- docker
+
 # Skip the install step. Don't `go get` dependencies. Only build with the code
 # in vendor/
 install: true
@@ -31,4 +34,5 @@ before_script:
 # .golangci.yml file at the top level of your repo.
 script:
 - golangci-lint run       # run a bunch of code checkers/linters in parallel
+- go generate             # generate proto files
 - go test -v -race ./...  # Run all the tests with the race detector enabled
