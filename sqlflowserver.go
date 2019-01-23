@@ -26,34 +26,45 @@ func (*Server) Run(req *RunRequest, stream SQLFlow_RunServer) error {
 	return runStandardSQL(slct, stream)
 }
 
+func wrapRow(row []interface{}) (*Table_Row, error) {
+	wrappedRow := &Table_Row{}
+	for _, element := range row {
+		switch e := element.(type) {
+		case int64:
+			x, err := ptypes.MarshalAny(&wrappers.Int64Value{Value: e})
+			if err != nil {
+				return nil, err
+			}
+			wrappedRow.Data = append(wrappedRow.Data, x)
+		default:
+			return nil, fmt.Errorf("can convert type %#v to protobuf.Any", element)
+		}
+	}
+
+	return wrappedRow, nil
+}
+
 // runStandardSQL sends
-// 	{"X": {0, 0, 0, 0}, "Y": {0, 0, 0, 0}}
-// 	{"X": {1, 1, 1, 1}, "Y": {1, 1, 1, 1}}
-// 	{"X": {2, 2, 2, 2}, "Y": {2, 2, 2, 2}}
-//	...
-// 	{"X": {N, N, N, N}, "Y": {N, N, N, N}}
+// | X  | Y  |
+// |----|----|
+// | 42 | 42 |
+// | 42 | 42 |
+// ...
 func runStandardSQL(slct string, stream SQLFlow_RunServer) error {
 	numSends := len(slct)
 	for i := 0; i < numSends; i++ {
-		content := make(map[string]*Columns_Column)
-		content["X"] = &Columns_Column{}
-		content["Y"] = &Columns_Column{}
-		for j := 0; j < 4; j++ {
-			x, err := ptypes.MarshalAny(&wrappers.Int64Value{Value: int64(i)})
+		table := &Table{}
+		table.ColumnNames = []string{"X", "Y"}
+		for i := 0; i < 2; i++ {
+			row, err := wrapRow([]interface{}{interface{}(int64(42)), interface{}(int64(42))})
 			if err != nil {
 				return err
 			}
-			content["X"].Data = append(content["X"].Data, x)
-			y, err := ptypes.MarshalAny(&wrappers.Int64Value{Value: int64(i)})
-			if err != nil {
-				return err
-			}
-			content["Y"].Data = append(content["Y"].Data, y)
+			table.Rows = append(table.Rows, row)
 		}
 		res := &RunResponse{
-			Response: &RunResponse_Columns{
-				Columns: &Columns{
-					Columns: content}}}
+			Response: &RunResponse_Table{
+				Table: table}}
 		if err := stream.Send(res); err != nil {
 			return err
 		}
