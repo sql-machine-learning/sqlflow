@@ -29,10 +29,8 @@ notifications:
 before_script:
 - curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(go env GOPATH)/bin
 
-# script always runs to completion (set +e). If we have linter issues AND a
-# failing test, we want to see both. Configure golangci-lint with a
-# .golangci.yml file at the top level of your repo.
+# script always runs to completion (set +e).
 script:
 - go generate             # generate proto files
-- golangci-lint run       # run a bunch of code checkers/linters in parallel
 - go test -v -race ./...  # Run all the tests with the race detector enabled
+- golangci-lint run       # run a bunch of code checkers/linters in parallel
