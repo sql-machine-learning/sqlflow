@@ -4,6 +4,7 @@ package sqlflowserver
 
 import (
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/golang/protobuf/ptypes"
@@ -15,7 +16,9 @@ type Server struct{}
 // streaming RPC server
 func (*Server) Run(req *RunRequest, stream SQLFlow_RunServer) error {
 	slct := req.Sql
+	log.Printf("Received %s\n", slct)
 
+	// TODO(tony): use a more robust criteria
 	if strings.Contains(slct, "TRAIN") || strings.Contains(slct, "PREDICT") {
 		return runExtendedSQL(slct, stream)
 	}
