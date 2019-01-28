@@ -1,20 +1,31 @@
 # 支持流式响应
-用户在 Jupyter notebook 提交任务之后，希望能实时感知其执行状态。所以，基于 gRPC 实现的 sqlflowserver 需要作流式响应。    
 
-## 响应消息的内容
-包括  
-1. 任务的准备步骤   
-  如：sql语句解析；verifying结果；提交执行。
-2. 执行引擎的内部信息
->- standard SQL   
-按对应SQL引擎返回信息，不作改动
->- extended SQL   
-执行步骤，如：`epoch 0, train_loss = ...`   
-3. extended SQL 结束信息  
-执行结果(save model into ...)、耗时  
+用户在client端提交任务之后，希望能实时查看任务执行状态。所以，server端需要实现流式响应。
 
-## 如何支持流式
-原 sqlflow 的执行函数`run()`将结果一次性返回，无法满足流式需求。因此需要一种机制能在`run()`之外获取到`run()`之内的信息。按[Tony的建议](https://github.com/wangkuiyi/sqlflowserver/issues/18#issuecomment-457790587)，这里使用[channel](https://tour.golang.org/concurrency/2)为通信载体。
+## 响应消息的内容
+
+如果任务是standard SQL，server端按对应SQL引擎返回table，不作改动。
+
+如果任务是extended SQL，server端会依次返回如下信息：
+
+1. 任务的准备：
+    1. `Done pasrsing`
+    1. `Done verifying`
+    1. `Done code generation`
+    1. `...`
+1. 任务的执行：
+    1. `Start training`
+    1. `epoch 0, train_loss = ...`
+    1. `epoch 1, train_loss = ...`
+    1. `...`
+    1. `Done training`
+    1. `Saving model into ...`
+1. 任务的结束
+    1. `Job finished. Time elapsed ...`
+
+## 如何支持流式
+
+原sqlflow的执行函数`run()`将结果一次性返回，无法满足流式需求。因此需要一种机制能在`run()`之外获取到`run()`之内的信息。按[Tony的建议](https://github.com/wangkuiyi/sqlflowserver/issues/18#issuecomment-457790587)，这里使用[channel](https://tour.golang.org/concurrency/2)为通信载体。
 
 ###  extended SQL
 - sqlflowserver   
