@@ -9,9 +9,9 @@ import (
 func TestExecutorTrainAndPredict(t *testing.T) {
 	a := assert.New(t)
 	a.NotPanics(func() {
-		_, e := Run(testTrainSelectIris, testCfg)
+		_, e := Run(testTrainSelectIris, testDB, testCfg)
 		a.NoError(e)
-		_, e = Run(testPredictSelectIris, testCfg)
+		_, e = Run(testPredictSelectIris, testDB, testCfg)
 		a.NoError(e)
 	})
 }
@@ -19,7 +19,7 @@ func TestExecutorTrainAndPredict(t *testing.T) {
 func TestExecutorStandard(t *testing.T) {
 	a := assert.New(t)
 	a.NotPanics(func() {
-		_, e := Run(testSelectIris, testCfg)
+		_, e := Run(testSelectIris, testDB, testCfg)
 		a.NoError(e)
 	})
 }
