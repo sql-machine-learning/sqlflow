@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"reflect"
 	"strings"
 	"time"
 
@@ -56,20 +57,37 @@ func runStandardSQL(slct string, db *sql.DB) (string, error) {
 	// and one that holds pointers in parallel to the values slice.
 	count := len(cols)
 	values := make([]interface{}, count)
-	valuePointers := make([]interface{}, count)
-	for i := range cols {
-		valuePointers[i] = &values[i]
+	//valuePointers := make([]interface{}, count)
+	//for i := range cols {
+	//	valuePointers[i] = &values[i]
+	//}
+
+	columnTypes, _ := rows.ColumnTypes()
+	for i, ct := range columnTypes {
+		switch ct.ScanType() {
+		case reflect.TypeOf(sql.NullFloat64{}):
+			values[i] = &sql.NullFloat64{}
+		case reflect.TypeOf(sql.NullInt64{}):
+			values[i] = &sql.NullInt64{}
+		default:
+			return "", fmt.Errorf("unrecognized column scan type %v", ct.ScanType())
+		}
 	}
+	fmt.Printf("%#v\n", values)
 
 	var buf bytes.Buffer
 	for rows.Next() {
-		rows.Scan(valuePointers...)
+		err = rows.Scan(values...)
+		if err != nil {
+			return "", err
+		}
 
 		for _, val := range values {
 			var v interface{}
 
 			b, ok := val.([]byte)
 			if ok {
+				fmt.Println("here")
 				v = string(b)
 			} else {
 				v = val
@@ -80,6 +98,7 @@ func runStandardSQL(slct string, db *sql.DB) (string, error) {
 	}
 
 	log.Infof("runStandardSQL finished, elapsed: %v", time.Now().Sub(startAt))
+	fmt.Println(string(buf.Bytes()))
 	return string(buf.Bytes()), nil
 }
 
