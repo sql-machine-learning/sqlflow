@@ -51,9 +51,11 @@ func runStandardSQL(slct string, ...) chan Row {}
 func runExtendedSQL(slct string, ...) chan Log {}
 ```
 
-这样在sqlflowserver端，只需要
+这样在sqlflowserver，只需要
 
 ```go
+package sqlflowserver
+
 import "sqlflow"
 
 func runExtendedSQL(slct, stream) error {
@@ -64,25 +66,35 @@ func runExtendedSQL(slct, stream) error {
 }
 ```
 
-### extended SQL
-- sqlflowserver   
-```go
-func runExtendedSQL(slct) {
-    
-}
-```
+### 实现
 
-- sqlflow
 ```go
-func train(..., logChan chan FlowLog) error {
+package sqlflow
+
+func runExtendedSQL(slct string, ...) chan Log {
+    chanLog := make(chan Log)
+    go func() {
+        // Parse
+        // Open database
+        // Create Temp dir
+        if pr.train {
+            train(..., logChan chan Log)
+        } else {
+            infer(..., logChan chan Log)
+        }
+    }()
+    return chanLog
+}
+
+func train(..., logChan chan Log) {
   fts, e := verify(tr, db)
-  logChan <- &FlowLog{msg: "verify done"}
+  logChan <- &Log{log: "verify done"}
   
   var program bytes.Buffer
   if e := genTF(&program, tr, fts, cfg); e != nil {
     return e
   }
-  logChan <- &FlowLog{msg: "codegen done"}
+  logChan <- &Log{log: "codegen done"}
   cmd := tensorflowCmd(cwd)
   cmd.Stdin = &program
   // TODO: redirect output to logChan
@@ -92,7 +104,7 @@ func train(..., logChan chan FlowLog) error {
     return fmt.Errorf("Training failed %v: \n%s", e, o)
   }
   
-  logChan <- &FlowLog{msg: "model save done"}
+  logChan <- &Log{log: "model save done"}
   m := model{workDir: cwd, TrainSelect: slct}
   return m.save(db, tr.save)
 }
@@ -102,19 +114,16 @@ Q: 为什么需要 FlowLog，而不是 string?
 `表达 stdout & stderr`
 
 ### standard SQL
-*TODO*
+*TODO*
 
 ## 涉及改造的点
 按重要程度排列，
 
-1. 生成tensorflow的python代码，重定向其输出。   
-`实现方式不确定，打算先做示例跑通。需要考虑当 channel 中的对象是 FlowLog 时`
-2. sqlflow 与 sqlflowserver 集成（以 pysqlflow 为客户端做测试），需要：  
-2.1. sqlflowserver 从 channel 中读取信息  
-2.1. 按流程，sqlflow 构造写入 channel 的信息。也包括异常
-
-3. standard SQL 的结果并非总是table，在构造返回消息体时，如何判断消息类型？    
-`存疑`
-4. 异常信息返回给用户端，是否需要做区分？即 [A gRPC server should be able to return errors to the client](https://github.com/wangkuiyi/sqlflowserver/issues/19)
-5. 控制单条消息的 max size  
-`只要控制返回的 table 大小即可。简单地可通过 limit 约束`
+1. sqlflow 与 sqlflowserver 集成（以 pysqlflow 为客户端做测试），需要：  
+    1. sqlflowserver 从 channel 中读取信息  
+    1. 按流程，sqlflow 构造写入 channel 的信息。也包括error
+1. 生成tensorflow的python代码，重定向其输出: 实现方式不确定，打算先做示例跑通。需要考虑当channel中的对象是FlowLog时
+1. Standard SQL 的返回结果并非总是table，在构造返回消息体时，如何判断消息类型？
+    1. 初步想法：可以通过empty interface作为返回值。然后select type来做
+1. 异常信息返回给用户端，是否需要做区分？即 [A gRPC server should be able to return errors to the client](https://github.com/wangkuiyi/sqlflowserver/issues/19)
+1. 控制单条消息的 max size：只要控制返回的 table 大小即可。简单地可通过 limit 约束。
