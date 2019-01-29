@@ -124,6 +124,6 @@ Q: 为什么需要 FlowLog，而不是 string?
     1. 按流程，sqlflow 构造写入 channel 的信息。也包括error
 1. 生成tensorflow的python代码，重定向其输出: 实现方式不确定，打算先做示例跑通。需要考虑当channel中的对象是FlowLog时
 1. Standard SQL 的返回结果并非总是table，在构造返回消息体时，如何判断消息类型？
-    1. 初步想法：可以通过empty interface作为返回值。然后select type来做
+1. 如何判断table中row的类型？初步想法：可以通过empty interface作为返回值。然后select type来做
 1. 异常信息返回给用户端，是否需要做区分？即 [A gRPC server should be able to return errors to the client](https://github.com/wangkuiyi/sqlflowserver/issues/19)
 1. 控制单条消息的 max size：只要控制返回的 table 大小即可。简单地可通过 limit 约束。
