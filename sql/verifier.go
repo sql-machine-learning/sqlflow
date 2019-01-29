@@ -34,10 +34,13 @@ func dryRunSelect(slct *extendedSelect, db *sql.DB) error {
 
 	slct.standardSelect.limit = "1"
 	stmt := slct.standardSelect.String()
-	if _, e := db.Query(stmt); e != nil {
+	rows, e := db.Query(stmt)
+	defer rows.Close()
+	if e != nil {
 		return fmt.Errorf("dryRunSelect failed executing %s: %q", stmt, e)
 	}
-	return nil
+
+	return rows.Err()
 }
 
 func (ft fieldTypes) get(ident string) (string, bool) {
@@ -71,14 +74,16 @@ func describeTables(slct *extendedSelect, db *sql.DB) (ft fieldTypes, e error) {
 		if e != nil {
 			return nil, e
 		}
+		defer rows.Close()
+
 		for rows.Next() {
 			var fld, typ, null, key, extra string
 			var deflt sql.NullString
+			// FIXME(tony): the schema might be MySQL specific
 			e = rows.Scan(&fld, &typ, &null, &key, &deflt, &extra)
 			if e != nil {
 				return nil, e
 			}
-
 			if hasStar {
 				if _, ok := ft[fld]; !ok {
 					ft[fld] = make(map[string]string)
@@ -93,6 +98,10 @@ func describeTables(slct *extendedSelect, db *sql.DB) (ft fieldTypes, e error) {
 					}
 				}
 			}
+		}
+
+		if rows.Err() != nil {
+			return nil, e
 		}
 	}
 	return ft, nil

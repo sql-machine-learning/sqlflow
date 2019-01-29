@@ -6,3 +6,4 @@
     - id: go-lint
     - id: validate-toml
     - id: no-go-testing
+    - id: no-go-testing
