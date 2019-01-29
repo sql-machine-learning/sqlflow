@@ -13,6 +13,12 @@ import (
 	"github.com/go-sql-driver/mysql"
 )
 
+// Row contains a database row and an error, if not nil, in retrieving the row
+type Row struct {
+	row []interface{}
+	err error
+}
+
 // Run executes a SQLFlow statements, either standard or extended
 // - Standard SQL statements like `USE database` returns a success message.
 // - Standard SQL statements like `SELECT ...` returns a table in addition
@@ -31,76 +37,99 @@ func Run(slct string, db *sql.DB, cfg *mysql.Config) (string, error) {
 			return "Job success", nil
 		}
 	}
-	return runStandardSQL(slct, db)
+
+	var buf bytes.Buffer
+	c := runStandardSQL(slct, db)
+	for r := range c {
+		if r.err != nil {
+			return "", r.err
+		}
+		fmt.Fprintf(&buf, "%v\n", r.row)
+	}
+	return string(buf.Bytes()), nil
 }
 
 // FIXME(tony): how to deal with large tables?
 // TODO(tony): test on null table elements
-func runStandardSQL(slct string, db *sql.DB) (string, error) {
-	startAt := time.Now()
-	log.Infof("Starting runStanrardSQL:%s", slct)
+func runStandardSQL(slct string, db *sql.DB) chan Row {
+	c := make(chan Row)
 
-	rows, err := db.Query(slct)
-	defer rows.Close()
-	if err != nil {
-		return "", fmt.Errorf("runStandardSQL failed: %v", err)
-	}
+	go func() {
+		defer close(c)
 
-	cols, err := rows.Columns()
-	if err != nil {
-		return "", fmt.Errorf("failed to get columns: %v", err)
-	}
+		err := func() error {
+			startAt := time.Now()
+			log.Infof("Starting runStanrardSQL:%s", slct)
 
-	// Since we don't know the table schema in advance, need to
-	// create an slice of empty interface and adds column type
-	// at runtime
-	count := len(cols)
-	values := make([]interface{}, count)
-	columnTypes, err := rows.ColumnTypes()
-	if err != nil {
-		return "", fmt.Errorf("failed to get columnTypes: %v", err)
-	}
-	for i, ct := range columnTypes {
-		switch ct.ScanType() {
-		case reflect.TypeOf(sql.NullBool{}):
-			values[i] = new(bool)
-		case reflect.TypeOf(sql.NullInt64{}):
-			values[i] = new(int64)
-		case reflect.TypeOf(sql.NullFloat64{}):
-			values[i] = new(float64)
-		case reflect.TypeOf(sql.NullString{}):
-			values[i] = new(string)
-		default:
-			return "", fmt.Errorf("unrecognized column scan type %v", ct.ScanType())
-		}
-	}
-
-	var buf bytes.Buffer
-	for rows.Next() {
-		err = rows.Scan(values...)
-		if err != nil {
-			return "", err
-		}
-
-		for _, val := range values {
-			switch v := val.(type) {
-			case *bool:
-				fmt.Fprintf(&buf, "%v,", *v)
-			case *int64:
-				fmt.Fprintf(&buf, "%v,", *v)
-			case *float64:
-				fmt.Fprintf(&buf, "%v,", *v)
-			case *string:
-				fmt.Fprintf(&buf, "%v,", *v)
-			default:
-				return "", fmt.Errorf("unrecogized type %v", v)
+			rows, err := db.Query(slct)
+			defer rows.Close()
+			if err != nil {
+				return fmt.Errorf("runStandardSQL failed: %v", err)
 			}
-		}
-		fmt.Fprint(&buf, "\n")
-	}
 
-	log.Infof("runStandardSQL finished, elapsed: %v", time.Now().Sub(startAt))
-	return string(buf.Bytes()), nil
+			cols, err := rows.Columns()
+			if err != nil {
+				return fmt.Errorf("failed to get columns: %v", err)
+			}
+
+			// Since we don't know the table schema in advance, need to
+			// create an slice of empty interface and adds column type
+			// at runtime
+			count := len(cols)
+			values := make([]interface{}, count)
+			columnTypes, err := rows.ColumnTypes()
+			if err != nil {
+				return fmt.Errorf("failed to get columnTypes: %v", err)
+			}
+			for i, ct := range columnTypes {
+				switch ct.ScanType() {
+				case reflect.TypeOf(sql.NullBool{}):
+					values[i] = new(bool)
+				case reflect.TypeOf(sql.NullInt64{}):
+					values[i] = new(int64)
+				case reflect.TypeOf(sql.NullFloat64{}):
+					values[i] = new(float64)
+				case reflect.TypeOf(sql.NullString{}):
+					values[i] = new(string)
+				default:
+					return fmt.Errorf("unrecognized column scan type %v", ct.ScanType())
+				}
+			}
+
+			for rows.Next() {
+				err = rows.Scan(values...)
+				if err != nil {
+					return err
+				}
+
+				row := make([]interface{}, count)
+				for i, val := range values {
+					switch v := val.(type) {
+					case *bool:
+						row[i] = *v
+					case *int64:
+						row[i] = *v
+					case *float64:
+						row[i] = *v
+					case *string:
+						row[i] = *v
+					default:
+						return fmt.Errorf("unrecogized type %v", v)
+					}
+				}
+				c <- Row{row, nil}
+			}
+
+			log.Infof("runStandardSQL finished, elapsed: %v", time.Now().Sub(startAt))
+			return nil
+		}()
+
+		if err != nil {
+			c <- Row{nil, err}
+		}
+	}()
+
+	return c
 }
 
 func runExtendedSQL(slct string, db *sql.DB, cfg *mysql.Config, pr *extendedSelect) error {
