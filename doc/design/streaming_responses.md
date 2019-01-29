@@ -4,7 +4,7 @@
 
 ## 响应消息的内容
 
-如果任务是standard SQL，sqlflow按对应SQL引擎返回table，不作改动。
+如果任务是standard SQL，sqlflow 按对应 SQL 引擎返回，不作改动。
 
 如果任务是extended SQL，sqlflow会依次返回如下信息：
 
@@ -38,6 +38,9 @@ func runExtendedSQL(slct string, ...) (string, error) {}
 这无法满足流式需求。在Golang，流一般是通过goroutine和channel来实现的。我们可以将function signature改成
 
 ```go
+// Row 需要区分 sql 的 select type：query | execute
+// - execute 如 "delete","insert","update", "use"等返回的是string类型
+// - query 如 select 返回了table。
 struct Row {
     Row []interface{}
 }
@@ -67,7 +70,6 @@ func runExtendedSQL(slct, stream) error {
 ```
 
 ### 实现
-
 ```go
 package sqlflow
 
@@ -110,12 +112,6 @@ func train(..., logChan chan Log) {
 }
 ```
 
-Q: 为什么需要 FlowLog，而不是 string?    
-`表达 stdout & stderr`
-
-### standard SQL
-*TODO*
-
 ## 涉及改造的点
 按重要程度排列，
 
@@ -127,3 +123,4 @@ Q: 为什么需要 FlowLog，而不是 string?
 1. 如何判断table中row的类型？初步想法：可以通过empty interface作为返回值。然后select type来做
 1. 异常信息返回给用户端，是否需要做区分？即 [A gRPC server should be able to return errors to the client](https://github.com/wangkuiyi/sqlflowserver/issues/19)
 1. 控制单条消息的 max size：只要控制返回的 table 大小即可。简单地可通过 limit 约束。
+1. 异常处理：error，timeout...
