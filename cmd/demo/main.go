@@ -21,6 +21,7 @@ func run(slct string) (string, error) {
 	if e != nil {
 		return "open mysql failed", e
 	}
+	defer db.Close()
 	return sqlflow.Run(slct, db, testCfg)
 }
 
