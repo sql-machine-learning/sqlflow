@@ -19,7 +19,7 @@ docker build -t sqlflowtest .
 docker run --rm -d --name sqlflowtest \
    -p 3306:3306 \
    -e MYSQL_ROOT_PASSWORD=root \
-   -e MYSQL_ROOT_HOST='%' \
+   -e MYSQL_ROOT_HOST=% \
    sqlflowtest
 ```
 
