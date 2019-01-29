@@ -1,12 +1,12 @@
 # 支持流式响应
 
-用户在client端提交任务之后，希望能实时查看任务执行状态。所以，server端需要实现流式响应。
+用户在提交任务之后，希望能实时查看任务执行状态。所以，sqlflow需要实现流式响应。
 
 ## 响应消息的内容
 
-如果任务是standard SQL，server端按对应SQL引擎返回table，不作改动。
+如果任务是standard SQL，sqlflow按对应SQL引擎返回table，不作改动。
 
-如果任务是extended SQL，server端会依次返回如下信息：
+如果任务是extended SQL，sqlflow会依次返回如下信息：
 
 1. 任务的准备：
     1. `Done pasrsing`
@@ -25,20 +25,50 @@
 
 ## 如何支持流式
 
-原sqlflow的执行函数`run()`将结果一次性返回，无法满足流式需求。因此需要一种机制能在`run()`之外获取到`run()`之内的信息。按[Tony的建议](https://github.com/wangkuiyi/sqlflowserver/issues/18#issuecomment-457790587)，这里使用[channel](https://tour.golang.org/concurrency/2)为通信载体。
+### Function signature
 
-###  extended SQL
+目前sqlflow的`runStandardSQL`和`runExtendedSQL`都会将结果一次性返回
+
+```go
+func runStandardSQL(slct string, ...) (string, error) {}
+
+func runExtendedSQL(slct string, ...) (string, error) {}
+```
+
+这无法满足流式需求。在Golang，流一般是通过goroutine和channel来实现的。我们可以将function signature改成
+
+```go
+struct Row {
+    Row []interface{}
+}
+
+struct Log {
+    log string
+}
+
+func runStandardSQL(slct string, ...) chan Row {}
+
+func runExtendedSQL(slct string, ...) chan Log {}
+```
+
+这样在sqlflowserver端，只需要
+
+```go
+import "sqlflow"
+
+func runExtendedSQL(slct, stream) error {
+    logChan := sqlflow.runExtendedSQL(slct)
+    for log := range logChan {
+        stream.Send(&RunResponse{log})
+    }
+}
+```
+
+### extended SQL
 - sqlflowserver   
 ```go
-func runExtendedSQL(slct, stream) {
-  logChan := make(chan FlowLog)
-  go sqlflow.runExtendedSQL(slct, logChan)
-  for log := range logChan {
-    response := &RunResponse {
-      // TODO: log response
-    }
-    stream.Send(rsp)
-  }
+func runExtendedSQL(slct) {
+    
 }
 ```
 
