@@ -2,7 +2,7 @@ syntax = "proto3";
 
 import "google/protobuf/any.proto";
 
-package sqlflowserver;
+package server;
 
 service SQLFlow {
   // Run runs a SQL statement and returns a stream of RunResponse.

@@ -1,4 +1,4 @@
-package sqlflowserver
+package server
 
 import (
 	"context"

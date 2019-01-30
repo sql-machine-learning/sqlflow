@@ -1,6 +1,5 @@
 //go:generate docker run --rm -v $PWD:/work -w /work grpc/go:1.0 protoc sqlflow.proto --go_out=plugins=grpc:.
-
-package sqlflowserver
+package server
 
 import (
 	"fmt"
