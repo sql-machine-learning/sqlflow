@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"reflect"
 	"strings"
 	"time"
 
@@ -51,30 +52,49 @@ func runStandardSQL(slct string, db *sql.DB) (string, error) {
 	}
 
 	// Since we don't know the table schema in advance, need to
-	// follow the trick at https://stackoverflow.com/a/17885636/6794675
-	// by creating 2 slices, one for the values,
-	// and one that holds pointers in parallel to the values slice.
+	// create an slice of empty interface and adds column type
+	// at runtime
 	count := len(cols)
 	values := make([]interface{}, count)
-	valuePointers := make([]interface{}, count)
-	for i := range cols {
-		valuePointers[i] = &values[i]
+	columnTypes, err := rows.ColumnTypes()
+	if err != nil {
+		return "", fmt.Errorf("failed to get columnTypes: %v", err)
+	}
+	for i, ct := range columnTypes {
+		switch ct.ScanType() {
+		case reflect.TypeOf(sql.NullBool{}):
+			values[i] = new(bool)
+		case reflect.TypeOf(sql.NullInt64{}):
+			values[i] = new(int64)
+		case reflect.TypeOf(sql.NullFloat64{}):
+			values[i] = new(float64)
+		case reflect.TypeOf(sql.NullString{}):
+			values[i] = new(string)
+		default:
+			return "", fmt.Errorf("unrecognized column scan type %v", ct.ScanType())
+		}
 	}
 
 	var buf bytes.Buffer
 	for rows.Next() {
-		rows.Scan(valuePointers...)
+		err = rows.Scan(values...)
+		if err != nil {
+			return "", err
+		}
 
 		for _, val := range values {
-			var v interface{}
-
-			b, ok := val.([]byte)
-			if ok {
-				v = string(b)
-			} else {
-				v = val
+			switch v := val.(type) {
+			case *bool:
+				fmt.Fprintf(&buf, "%v,", *v)
+			case *int64:
+				fmt.Fprintf(&buf, "%v,", *v)
+			case *float64:
+				fmt.Fprintf(&buf, "%v,", *v)
+			case *string:
+				fmt.Fprintf(&buf, "%v,", *v)
+			default:
+				return "", fmt.Errorf("unrecogized type %v", v)
 			}
-			fmt.Fprint(&buf, v, ",")
 		}
 		fmt.Fprint(&buf, "\n")
 	}
