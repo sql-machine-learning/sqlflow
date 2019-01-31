@@ -81,6 +81,7 @@ func runStandardSQL(slct string, db *sql.DB) chan Row {
 			if err != nil {
 				return fmt.Errorf("failed to get columnTypes: %v", err)
 			}
+			// FIXME(tony): support more column types: https://golang.org/pkg/database/sql/#Rows.Scan
 			for i, ct := range columnTypes {
 				switch ct.ScanType() {
 				case reflect.TypeOf(sql.NullBool{}):
