@@ -164,7 +164,7 @@ X["{{.Y.Name}}"] = [p['class_ids'][0] for p in predictions]
 
 def insert(table_name, X, db):
     length = [len(X[key]) for key in X]
-    assert(len(set(length)) == 1, "All the fields should have the same length")
+    assert len(set(length)) == 1, "All the fields should have the same length"
 
     field_names = [key for key in X]
     sql = "INSERT INTO {} ({}) VALUES ({})".format(
