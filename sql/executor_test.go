@@ -32,3 +32,27 @@ func TestCreatePredictionTable(t *testing.T) {
 	a.NoError(e)
 	a.NoError(createPredictionTable(trainParsed, predParsed, testDB))
 }
+
+func TestLogChanWriter_Write(t *testing.T) {
+	a := assert.New(t)
+
+	c := make(chan Log)
+
+	go func() {
+		defer close(c)
+		cw := &logChanWriter{c: c}
+		cw.Write([]byte("hello\n世界"))
+		cw.Write([]byte("hello\n世界"))
+		cw.Write([]byte("\n"))
+		cw.Write([]byte("世界\n世界\n世界\n"))
+	}()
+
+	a.Equal("hello\n", (<-c).log)
+	a.Equal("世界hello\n", (<-c).log)
+	a.Equal("世界\n", (<-c).log)
+	a.Equal("世界\n", (<-c).log)
+	a.Equal("世界\n", (<-c).log)
+	a.Equal("世界\n", (<-c).log)
+	_, more := <-c
+	a.False(more)
+}

@@ -8,6 +8,7 @@ import (
 	"os"
 	"reflect"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-sql-driver/mysql"
@@ -31,6 +32,7 @@ func Run(slct string, db *sql.DB, cfg *mysql.Config) (string, error) {
 		pr, e := newParser().Parse(slct)
 		if e == nil && pr.extended {
 			for l := range runExtendedSQL(slct, db, cfg, pr) {
+				fmt.Print(l.log)
 				if l.err != nil {
 					log.Errorf("runExtendedSQL error:%v", e)
 					return "", e
@@ -154,6 +156,42 @@ func runExtendedSQL(slct string, db *sql.DB, cfg *mysql.Config, pr *extendedSele
 	return c
 }
 
+type logChanWriter struct {
+	c chan Log
+
+	m    sync.Mutex
+	buf  bytes.Buffer
+	prev string
+}
+
+func (cw *logChanWriter) Write(p []byte) (n int, err error) {
+	// Both cmd.Stdout and cmd.Stderr are writing to cw
+	cw.m.Lock()
+	defer cw.m.Unlock()
+	//fmt.Printf("Received %v\n", string(p))
+
+	n, err = cw.buf.Write(p)
+	if err != nil {
+		return n, err
+	}
+
+	for {
+		line, err := cw.buf.ReadString('\n')
+		cw.prev = cw.prev + line
+
+		// ReadString returns err != nil if and only if the returned data
+		// does not end in delim.
+		if err != nil {
+			break
+		}
+
+		cw.c <- Log{cw.prev, nil}
+		cw.prev = ""
+	}
+
+	return n, nil
+}
+
 func train(tr *extendedSelect, slct string, db *sql.DB, cfg *mysql.Config, cwd string) chan Log {
 	c := make(chan Log)
 
@@ -171,12 +209,13 @@ func train(tr *extendedSelect, slct string, db *sql.DB, cfg *mysql.Config, cwd s
 				return e
 			}
 
-			// TODO(tony): redirect cmd.Stdout and cmd.Stderr to c
+			cw := &logChanWriter{c: c}
 			cmd := tensorflowCmd(cwd)
 			cmd.Stdin = &program
-			o, e := cmd.CombinedOutput()
-			if e != nil || !strings.Contains(string(o), "Done training") {
-				return fmt.Errorf("Training failed %v: \n%s", e, o)
+			cmd.Stdout = cw
+			cmd.Stderr = cw
+			if e := cmd.Run(); e != nil {
+				return fmt.Errorf("training failed %v", e)
 			}
 
 			m := model{workDir: cwd, TrainSelect: slct}
@@ -226,14 +265,13 @@ func pred(pr *extendedSelect, db *sql.DB, cfg *mysql.Config, cwd string) chan Lo
 				return e
 			}
 
-			// TODO(tony): redirect cmd.Stdout and cmd.Stderr to c
+			cw := &logChanWriter{c: c}
 			cmd := tensorflowCmd(cwd)
 			cmd.Stdin = &buf
-			o, e := cmd.CombinedOutput()
-			if e != nil || !strings.Contains(string(o), "Done predicting") {
-				return fmt.Errorf("Prediction failed %v: \n%s", e, o)
-			}
-			return nil
+			cmd.Stdout = cw
+			cmd.Stderr = cw
+
+			return cmd.Run()
 		}()
 
 		if err != nil {
