@@ -6,6 +6,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// TODO(weiguoz): test Run() about stream response
+
 func TestExecutorTrainAndPredict(t *testing.T) {
 	a := assert.New(t)
 	a.NotPanics(func() {

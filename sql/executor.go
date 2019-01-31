@@ -14,6 +14,15 @@ import (
 	"github.com/go-sql-driver/mysql"
 )
 
+// Response for Run return,
+// contains a message(by std out&err) or a database row(by data)
+type Response struct {
+	stderr chan string
+	stdout chan string
+	data   chan interface{}
+	err    chan error // fatal errors, other than error messages in stderr.
+}
+
 // Row contains a database row and an error, if not nil, in retrieving the row
 type Row struct {
 	row []interface{}
@@ -32,39 +41,29 @@ type Log struct {
 // to the status, and the table might be big.
 // - Extended SQL statement like `SELECT ... TRAIN/PREDICT ...` messages
 // which indicate the training/predicting progress
-func Run(slct string, db *sql.DB, cfg *mysql.Config) (string, error) {
+func Run(slct string, db *sql.DB, cfg *mysql.Config) (Response, error) {
 	slctUpper := strings.ToUpper(slct)
 	if strings.Contains(slctUpper, "TRAIN") || strings.Contains(slctUpper, "PREDICT") {
 		pr, e := newParser().Parse(slct)
 		if e == nil && pr.extended {
-			for l := range runExtendedSQL(slct, db, cfg, pr) {
-				if l.err != nil {
-					log.Errorf("runExtendedSQL error:%v", e)
-					return "", e
-				}
+			rsp, e := runExtendedSQL(slct, db, cfg, pr)
+			if e != nil {
+				log.Errorf("runExtendedSQL error:%v", e)
 			}
-			return "Job success", nil
+			return rsp, e
 		}
 	}
-
-	var buf bytes.Buffer
-	c := runStandardSQL(slct, db)
-	for r := range c {
-		if r.err != nil {
-			return "", r.err
-		}
-		fmt.Fprintf(&buf, "%v\n", r.row)
-	}
-	return string(buf.Bytes()), nil
+	return runStandardSQL(slct, db)
 }
 
 // FIXME(tony): how to deal with large tables?
 // TODO(tony): test on null table elements
-func runStandardSQL(slct string, db *sql.DB) chan Row {
-	c := make(chan Row)
+func runStandardSQL(slct string, db *sql.DB) (Response, error) {
+	rsp := Response{data: make(chan interface{}), err: make(chan error)}
 
 	go func() {
-		defer close(c)
+		defer close(rsp.data)
+		defer close(rsp.err)
 
 		err := func() error {
 			startAt := time.Now()
@@ -127,7 +126,7 @@ func runStandardSQL(slct string, db *sql.DB) chan Row {
 						return fmt.Errorf("unrecogized type %v", v)
 					}
 				}
-				c <- Row{row, nil}
+				rsp.data <- row
 			}
 
 			log.Infof("runStandardSQL finished, elapsed: %v", time.Now().Sub(startAt))
@@ -135,18 +134,21 @@ func runStandardSQL(slct string, db *sql.DB) chan Row {
 		}()
 
 		if err != nil {
-			c <- Row{nil, err}
+			rsp.err <- err
 		}
 	}()
 
-	return c
+	return rsp, nil
 }
 
-func runExtendedSQL(slct string, db *sql.DB, cfg *mysql.Config, pr *extendedSelect) chan Log {
-	c := make(chan Log)
+func runExtendedSQL(slct string, db *sql.DB, cfg *mysql.Config, pr *extendedSelect) (Response, error) {
+	rsp := Response{stderr: make(chan string), stdout: make(chan string), err: make(chan error)}
 
 	go func() {
-		defer close(c)
+		defer close(rsp.stderr)
+		defer close(rsp.stdout)
+		defer close(rsp.err)
+
 		err := func() error {
 			startAt := time.Now()
 			log.Infof("Starting runExtendedSQL:%s", slct)
@@ -160,17 +162,20 @@ func runExtendedSQL(slct string, db *sql.DB, cfg *mysql.Config, pr *extendedSele
 			// https://docs.docker.com/docker-for-mac/osxfs/#namespaces.
 			cwd, e := ioutil.TempDir("/tmp", "sqlflow")
 			if e != nil {
+				rsp.err <- e
 				return e
 			}
 			defer os.RemoveAll(cwd)
 
 			if pr.train {
 				for l := range train(pr, slct, db, cfg, cwd) {
-					c <- l
+					rsp.stdout <- l.log
+					rsp.err <- l.err
 				}
 			} else {
 				for l := range pred(pr, db, cfg, cwd) {
-					c <- l
+					rsp.stdout <- l.log
+					rsp.err <- l.err
 				}
 			}
 			log.Infof("runExtendedSQL finished, elapsed:%v", time.Now().Sub(startAt))
@@ -178,11 +183,11 @@ func runExtendedSQL(slct string, db *sql.DB, cfg *mysql.Config, pr *extendedSele
 		}()
 
 		if err != nil {
-			c <- Log{"", err}
+			rsp.err <- err
 		}
 	}()
 
-	return c
+	return rsp, nil
 }
 
 type logChanWriter struct {
