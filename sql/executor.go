@@ -167,7 +167,6 @@ func (cw *logChanWriter) Write(p []byte) (n int, err error) {
 	// Both cmd.Stdout and cmd.Stderr are writing to cw
 	cw.m.Lock()
 	defer cw.m.Unlock()
-	//fmt.Printf("Received %v\n", string(p))
 
 	n, err = cw.buf.Write(p)
 	if err != nil {
