@@ -32,7 +32,6 @@ func Run(slct string, db *sql.DB, cfg *mysql.Config) (string, error) {
 		pr, e := newParser().Parse(slct)
 		if e == nil && pr.extended {
 			for l := range runExtendedSQL(slct, db, cfg, pr) {
-				fmt.Print(l.log)
 				if l.err != nil {
 					log.Errorf("runExtendedSQL error:%v", e)
 					return "", e
