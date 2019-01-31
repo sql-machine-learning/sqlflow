@@ -35,7 +35,7 @@ func runStandardSQL(slct string, ...) (string, error) {}
 func runExtendedSQL(slct string, ...) (string, error) {}
 ```
 
-这无法满足流式需求。在Golang，流一般是通过goroutine和channel来实现的。我们可以将function signature改成
+这无法满足流式需求。Go语言中，流一般是通过goroutine和channel来实现的。我们可以将function signature改成
 
 ```go
 // Row 需要区分 sql 的 select type：query | execute
