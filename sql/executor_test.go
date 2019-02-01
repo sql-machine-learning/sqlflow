@@ -38,7 +38,7 @@ func TestCreatePredictionTable(t *testing.T) {
 func TestLogChanWriter_Write(t *testing.T) {
 	a := assert.New(t)
 
-	c := make(chan Log)
+	c := make(chan Response)
 
 	go func() {
 		defer close(c)
@@ -49,12 +49,12 @@ func TestLogChanWriter_Write(t *testing.T) {
 		cw.Write([]byte("世界\n世界\n世界\n"))
 	}()
 
-	a.Equal("hello\n", (<-c).log)
-	a.Equal("世界hello\n", (<-c).log)
-	a.Equal("世界\n", (<-c).log)
-	a.Equal("世界\n", (<-c).log)
-	a.Equal("世界\n", (<-c).log)
-	a.Equal("世界\n", (<-c).log)
+	a.Equal("hello\n", (<-c).data)
+	a.Equal("世界hello\n", (<-c).data)
+	a.Equal("世界\n", (<-c).data)
+	a.Equal("世界\n", (<-c).data)
+	a.Equal("世界\n", (<-c).data)
+	a.Equal("世界\n", (<-c).data)
 	_, more := <-c
 	a.False(more)
 }
