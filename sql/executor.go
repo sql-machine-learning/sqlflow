@@ -151,7 +151,6 @@ func runExtendedSQL(slct string, db *sql.DB, cfg *mysql.Config, pr *extendedSele
 			// https://docs.docker.com/docker-for-mac/osxfs/#namespaces.
 			cwd, e := ioutil.TempDir("/tmp", "sqlflow")
 			if e != nil {
-				rsp.err <- e
 				return e
 			}
 			defer os.RemoveAll(cwd)
