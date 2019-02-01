@@ -56,10 +56,10 @@ func runStandardSQL(slct string, db *sql.DB) (chan Response, error) {
 			log.Infof("Starting runStanrardSQL:%s", slct)
 
 			rows, err := db.Query(slct)
-			defer rows.Close()
 			if err != nil {
 				return fmt.Errorf("runStandardSQL failed: %v", err)
 			}
+			defer rows.Close()
 
 			cols, err := rows.Columns()
 			if err != nil {
@@ -120,7 +120,7 @@ func runStandardSQL(slct string, db *sql.DB) (chan Response, error) {
 		}()
 
 		if err != nil {
-			rsp <- Response{err: err}
+			rsp <- Response{data: err.Error(), err: err}
 		}
 	}()
 
