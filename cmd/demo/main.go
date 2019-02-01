@@ -11,7 +11,20 @@ import (
 	sqlflow "github.com/wangkuiyi/sqlflow/sql"
 )
 
-func run(slct string) (chan sqlflow.Response, error) {
+func readStmt(scn *(bufio.Scanner)) string {
+	var lines []string
+	for scn.Scan() {
+		line := scn.Text()
+		if strings.Contains(line, ";") {
+			lines = append(lines, line)
+			break
+		}
+		lines = append(lines, line)
+	}
+	return strings.Join(lines, "\n")
+}
+
+func main() {
 	testCfg := &mysql.Config{
 		User:   "root",
 		Passwd: "root",
@@ -19,29 +32,17 @@ func run(slct string) (chan sqlflow.Response, error) {
 	}
 	db, e := sql.Open("mysql", testCfg.FormatDSN())
 	if e != nil {
-		return nil, e
+		return
 	}
 	defer db.Close()
-	return sqlflow.Run(slct, db, testCfg)
-}
 
-func main() {
 	scn := bufio.NewScanner(os.Stdin)
 	for {
 		fmt.Print("sqlflow> ")
-		var lines []string
-		for scn.Scan() {
-			line := scn.Text()
-			if strings.Contains(line, ";") {
-				lines = append(lines, line)
-				break
-			}
-			lines = append(lines, line)
-		}
+		slct := readStmt(scn)
 		fmt.Println("-----------------------------")
-		slct := strings.Join(lines, "\n")
 
-		rsp, e := run(slct)
+		rsp, e := sqlflow.Run(slct, db, testCfg)
 		if e != nil {
 			fmt.Println(e.Error())
 		} else {
