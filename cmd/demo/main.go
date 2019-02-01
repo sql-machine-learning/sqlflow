@@ -11,7 +11,7 @@ import (
 	sqlflow "github.com/wangkuiyi/sqlflow/sql"
 )
 
-func run(slct string) (sqlflow.Response, error) {
+func run(slct string) (chan sqlflow.Response, error) {
 	testCfg := &mysql.Config{
 		User:   "root",
 		Passwd: "root",
@@ -19,7 +19,7 @@ func run(slct string) (sqlflow.Response, error) {
 	}
 	db, e := sql.Open("mysql", testCfg.FormatDSN())
 	if e != nil {
-		return sqlflow.Response{}, e
+		return nil, e
 	}
 	defer db.Close()
 	return sqlflow.Run(slct, db, testCfg)
@@ -45,8 +45,9 @@ func main() {
 		if e != nil {
 			fmt.Println(e.Error())
 		} else {
-			// TODO(weiguoz) use select to print response
-			fmt.Println(rsp)
+			for r := range rsp {
+				fmt.Println(r)
+			}
 		}
 	}
 }
