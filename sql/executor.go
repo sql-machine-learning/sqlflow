@@ -22,11 +22,6 @@ type Response struct {
 	err  error
 }
 
-type Log struct {
-	log string
-	err error
-}
-
 // Run executes a SQLFlow statements, either standard or extended
 // - Standard SQL statements like `USE database` returns a success message.
 // - Standard SQL statements like `SELECT ...` returns a table in addition
@@ -157,11 +152,11 @@ func runExtendedSQL(slct string, db *sql.DB, cfg *mysql.Config, pr *extendedSele
 
 			if pr.train {
 				for l := range train(pr, slct, db, cfg, cwd) {
-					rsp <- Response{data: l.log, err: l.err}
+					rsp <- Response{data: l.data, err: l.err}
 				}
 			} else {
 				for l := range pred(pr, db, cfg, cwd) {
-					rsp <- Response{data: l.log, err: l.err}
+					rsp <- Response{data: l.data, err: l.err}
 				}
 			}
 			log.Infof("runExtendedSQL finished, elapsed:%v", time.Now().Sub(startAt))
@@ -177,7 +172,7 @@ func runExtendedSQL(slct string, db *sql.DB, cfg *mysql.Config, pr *extendedSele
 }
 
 type logChanWriter struct {
-	c chan Log
+	c chan Response
 
 	m    sync.Mutex
 	buf  bytes.Buffer
@@ -204,15 +199,15 @@ func (cw *logChanWriter) Write(p []byte) (n int, err error) {
 			break
 		}
 
-		cw.c <- Log{cw.prev, nil}
+		cw.c <- Response{cw.prev, nil}
 		cw.prev = ""
 	}
 
 	return n, nil
 }
 
-func train(tr *extendedSelect, slct string, db *sql.DB, cfg *mysql.Config, cwd string) chan Log {
-	c := make(chan Log)
+func train(tr *extendedSelect, slct string, db *sql.DB, cfg *mysql.Config, cwd string) chan Response {
+	c := make(chan Response)
 
 	go func() {
 		defer close(c)
@@ -242,15 +237,15 @@ func train(tr *extendedSelect, slct string, db *sql.DB, cfg *mysql.Config, cwd s
 		}()
 
 		if err != nil {
-			c <- Log{"", err}
+			c <- Response{"", err}
 		}
 	}()
 
 	return c
 }
 
-func pred(pr *extendedSelect, db *sql.DB, cfg *mysql.Config, cwd string) chan Log {
-	c := make(chan Log)
+func pred(pr *extendedSelect, db *sql.DB, cfg *mysql.Config, cwd string) chan Response {
+	c := make(chan Response)
 
 	go func() {
 		defer close(c)
@@ -294,7 +289,7 @@ func pred(pr *extendedSelect, db *sql.DB, cfg *mysql.Config, cwd string) chan Lo
 		}()
 
 		if err != nil {
-			c <- Log{"", err}
+			c <- Response{"", err}
 		}
 	}()
 
