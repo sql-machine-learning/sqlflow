@@ -6,23 +6,30 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TODO(weiguoz): test Run() about stream response
+func goodStream(stream chan Response) bool {
+	for rsp := range stream {
+		if rsp.err != nil {
+			return false
+		}
+	}
+	return true
+}
 
 func TestExecutorTrainAndPredict(t *testing.T) {
 	a := assert.New(t)
 	a.NotPanics(func() {
-		_, e := Run(testTrainSelectIris, testDB, testCfg)
-		a.NoError(e)
-		_, e = Run(testPredictSelectIris, testDB, testCfg)
-		a.NoError(e)
+		stream := Run(testTrainSelectIris, testDB, testCfg)
+		a.True(goodStream(stream))
+		stream = Run(testPredictSelectIris, testDB, testCfg)
+		a.True(goodStream(stream))
 	})
 }
 
 func TestExecutorStandard(t *testing.T) {
 	a := assert.New(t)
 	a.NotPanics(func() {
-		_, e := Run(testSelectIris, testDB, testCfg)
-		a.NoError(e)
+		stream := Run(testSelectIris, testDB, testCfg)
+		a.True(goodStream(stream))
 	})
 }
 

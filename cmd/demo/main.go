@@ -42,9 +42,9 @@ func main() {
 		slct := readStmt(scn)
 		fmt.Println("-----------------------------")
 
-		rsp := sqlflow.Run(slct, db, testCfg)
-		for r := range rsp {
-			fmt.Println(r)
+		stream := sqlflow.Run(slct, db, testCfg)
+		for rsp := range stream {
+			fmt.Println(rsp)
 		}
 	}
 }
