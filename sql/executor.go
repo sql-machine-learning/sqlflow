@@ -28,16 +28,12 @@ type Response struct {
 // to the status, and the table might be big.
 // - Extended SQL statement like `SELECT ... TRAIN/PREDICT ...` messages
 // which indicate the training/predicting progress
-func Run(slct string, db *sql.DB, cfg *mysql.Config) (chan Response, error) {
+func Run(slct string, db *sql.DB, cfg *mysql.Config) chan Response {
 	slctUpper := strings.ToUpper(slct)
 	if strings.Contains(slctUpper, "TRAIN") || strings.Contains(slctUpper, "PREDICT") {
 		pr, e := newParser().Parse(slct)
 		if e == nil && pr.extended {
-			rsp, e := runExtendedSQL(slct, db, cfg, pr)
-			if e != nil {
-				log.Errorf("runExtendedSQL error:%v", e)
-			}
-			return rsp, e
+			return runExtendedSQL(slct, db, cfg, pr)
 		}
 	}
 	return runStandardSQL(slct, db)
@@ -45,7 +41,7 @@ func Run(slct string, db *sql.DB, cfg *mysql.Config) (chan Response, error) {
 
 // FIXME(tony): how to deal with large tables?
 // TODO(tony): test on null table elements
-func runStandardSQL(slct string, db *sql.DB) (chan Response, error) {
+func runStandardSQL(slct string, db *sql.DB) chan Response {
 	rsp := make(chan Response)
 
 	go func() {
@@ -124,10 +120,10 @@ func runStandardSQL(slct string, db *sql.DB) (chan Response, error) {
 		}
 	}()
 
-	return rsp, nil
+	return rsp
 }
 
-func runExtendedSQL(slct string, db *sql.DB, cfg *mysql.Config, pr *extendedSelect) (chan Response, error) {
+func runExtendedSQL(slct string, db *sql.DB, cfg *mysql.Config, pr *extendedSelect) chan Response {
 	rsp := make(chan Response)
 
 	go func() {
@@ -164,11 +160,12 @@ func runExtendedSQL(slct string, db *sql.DB, cfg *mysql.Config, pr *extendedSele
 		}()
 
 		if err != nil {
+			log.Errorf("runExtendedSQL error:%v", err)
 			rsp <- Response{err: err}
 		}
 	}()
 
-	return rsp, nil
+	return rsp
 }
 
 type logChanWriter struct {
