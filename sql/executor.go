@@ -14,22 +14,14 @@ import (
 	"github.com/go-sql-driver/mysql"
 )
 
-// Response for Run return,
-// contains a message(by std out&err) or a database row(by data)
+// Response for Run return, contains:
+// - data: string or database row
+// - err
 type Response struct {
-	stderr chan string
-	stdout chan string
-	data   chan interface{}
-	err    chan error // fatal errors, other than error messages in stderr.
+	data interface{}
+	err  error
 }
 
-// Row contains a database row and an error, if not nil, in retrieving the row
-type Row struct {
-	row []interface{}
-	err error
-}
-
-// Log contains a log string and an error, if not nil, during the execution of runExtendedSQL
 type Log struct {
 	log string
 	err error
@@ -41,7 +33,7 @@ type Log struct {
 // to the status, and the table might be big.
 // - Extended SQL statement like `SELECT ... TRAIN/PREDICT ...` messages
 // which indicate the training/predicting progress
-func Run(slct string, db *sql.DB, cfg *mysql.Config) (Response, error) {
+func Run(slct string, db *sql.DB, cfg *mysql.Config) (chan Response, error) {
 	slctUpper := strings.ToUpper(slct)
 	if strings.Contains(slctUpper, "TRAIN") || strings.Contains(slctUpper, "PREDICT") {
 		pr, e := newParser().Parse(slct)
@@ -58,12 +50,11 @@ func Run(slct string, db *sql.DB, cfg *mysql.Config) (Response, error) {
 
 // FIXME(tony): how to deal with large tables?
 // TODO(tony): test on null table elements
-func runStandardSQL(slct string, db *sql.DB) (Response, error) {
-	rsp := Response{data: make(chan interface{}), err: make(chan error)}
+func runStandardSQL(slct string, db *sql.DB) (chan Response, error) {
+	rsp := make(chan Response)
 
 	go func() {
-		defer close(rsp.data)
-		defer close(rsp.err)
+		defer close(rsp)
 
 		err := func() error {
 			startAt := time.Now()
@@ -126,7 +117,7 @@ func runStandardSQL(slct string, db *sql.DB) (Response, error) {
 						return fmt.Errorf("unrecogized type %v", v)
 					}
 				}
-				rsp.data <- row
+				rsp <- Response{data: row}
 			}
 
 			log.Infof("runStandardSQL finished, elapsed: %v", time.Now().Sub(startAt))
@@ -134,20 +125,18 @@ func runStandardSQL(slct string, db *sql.DB) (Response, error) {
 		}()
 
 		if err != nil {
-			rsp.err <- err
+			rsp <- Response{err: err}
 		}
 	}()
 
 	return rsp, nil
 }
 
-func runExtendedSQL(slct string, db *sql.DB, cfg *mysql.Config, pr *extendedSelect) (Response, error) {
-	rsp := Response{stderr: make(chan string), stdout: make(chan string), err: make(chan error)}
+func runExtendedSQL(slct string, db *sql.DB, cfg *mysql.Config, pr *extendedSelect) (chan Response, error) {
+	rsp := make(chan Response)
 
 	go func() {
-		defer close(rsp.stderr)
-		defer close(rsp.stdout)
-		defer close(rsp.err)
+		defer close(rsp)
 
 		err := func() error {
 			startAt := time.Now()
@@ -169,13 +158,11 @@ func runExtendedSQL(slct string, db *sql.DB, cfg *mysql.Config, pr *extendedSele
 
 			if pr.train {
 				for l := range train(pr, slct, db, cfg, cwd) {
-					rsp.stdout <- l.log
-					rsp.err <- l.err
+					rsp <- Response{data: l.log, err: l.err}
 				}
 			} else {
 				for l := range pred(pr, db, cfg, cwd) {
-					rsp.stdout <- l.log
-					rsp.err <- l.err
+					rsp <- Response{data: l.log, err: l.err}
 				}
 			}
 			log.Infof("runExtendedSQL finished, elapsed:%v", time.Now().Sub(startAt))
@@ -183,7 +170,7 @@ func runExtendedSQL(slct string, db *sql.DB, cfg *mysql.Config, pr *extendedSele
 		}()
 
 		if err != nil {
-			rsp.err <- err
+			rsp <- Response{err: err}
 		}
 	}()
 
