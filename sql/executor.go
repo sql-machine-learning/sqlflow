@@ -116,7 +116,7 @@ func runStandardSQL(slct string, db *sql.DB) chan Response {
 		}()
 
 		if err != nil {
-			rsp <- Response{data: err.Error(), err: err}
+			rsp <- Response{err: err}
 		}
 	}()
 
@@ -148,11 +148,11 @@ func runExtendedSQL(slct string, db *sql.DB, cfg *mysql.Config, pr *extendedSele
 
 			if pr.train {
 				for l := range train(pr, slct, db, cfg, cwd) {
-					rsp <- Response{data: l.data, err: l.err}
+					rsp <- l
 				}
 			} else {
 				for l := range pred(pr, db, cfg, cwd) {
-					rsp <- Response{data: l.data, err: l.err}
+					rsp <- l
 				}
 			}
 			log.Infof("runExtendedSQL finished, elapsed:%v", time.Now().Sub(startAt))
