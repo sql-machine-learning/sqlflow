@@ -11,7 +11,20 @@ import (
 	sqlflow "github.com/wangkuiyi/sqlflow/sql"
 )
 
-func run(slct string) (string, error) {
+func readStmt(scn *(bufio.Scanner)) string {
+	var lines []string
+	for scn.Scan() {
+		line := scn.Text()
+		if strings.Contains(line, ";") {
+			lines = append(lines, line)
+			break
+		}
+		lines = append(lines, line)
+	}
+	return strings.Join(lines, "\n")
+}
+
+func main() {
 	testCfg := &mysql.Config{
 		User:   "root",
 		Passwd: "root",
@@ -19,33 +32,19 @@ func run(slct string) (string, error) {
 	}
 	db, e := sql.Open("mysql", testCfg.FormatDSN())
 	if e != nil {
-		return "open mysql failed", e
+		return
 	}
 	defer db.Close()
-	return sqlflow.Run(slct, db, testCfg)
-}
 
-func main() {
 	scn := bufio.NewScanner(os.Stdin)
 	for {
 		fmt.Print("sqlflow> ")
-		var lines []string
-		for scn.Scan() {
-			line := scn.Text()
-			if strings.Contains(line, ";") {
-				lines = append(lines, line)
-				break
-			}
-			lines = append(lines, line)
-		}
+		slct := readStmt(scn)
 		fmt.Println("-----------------------------")
-		slct := strings.Join(lines, "\n")
 
-		s, e := run(slct)
-		if e != nil {
-			fmt.Println(e.Error())
-		} else {
-			fmt.Println(s)
+		stream := sqlflow.Run(slct, db, testCfg)
+		for rsp := range stream {
+			fmt.Println(rsp)
 		}
 	}
 }
