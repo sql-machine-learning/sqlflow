@@ -39,7 +39,7 @@ func NewExecutor(cfg *mysql.Config) (*executor, error) {
 // Query executes a SQL query and returns a stream of rowset
 // example SQL statements: `SELECT ...`, `DESCRIBE ...`
 func (exe *executor) Query(slct string) chan Response {
-	return runExecuteSQL(slct, exe.db)
+	return runQuery(slct, exe.db)
 }
 
 // Execute executes a SQL statement and returns a stream of messages, for example
@@ -53,12 +53,12 @@ func (exe *executor) Execute(slct string) chan Response {
 			return runExtendedSQL(slct, exe.db, exe.cfg, pr)
 		}
 	}
-	return runExecuteSQL(slct, exe.db)
+	return runExec(slct, exe.db)
 }
 
 // FIXME(tony): how to deal with large tables?
 // TODO(tony): test on null table elements
-func runStandardSQL(slct string, db *sql.DB) chan Response {
+func runQuery(slct string, db *sql.DB) chan Response {
 	rsp := make(chan Response)
 
 	go func() {
@@ -70,7 +70,7 @@ func runStandardSQL(slct string, db *sql.DB) chan Response {
 
 			rows, err := db.Query(slct)
 			if err != nil {
-				return fmt.Errorf("runStandardSQL failed: %v", err)
+				return fmt.Errorf("runQuery failed: %v", err)
 			}
 			defer rows.Close()
 
@@ -128,7 +128,7 @@ func runStandardSQL(slct string, db *sql.DB) chan Response {
 				rsp <- Response{Data: row}
 			}
 
-			log.Infof("runStandardSQL finished, elapsed: %v", time.Now().Sub(startAt))
+			log.Infof("runQuery finished, elapsed: %v", time.Now().Sub(startAt))
 			return nil
 		}()
 
@@ -141,12 +141,12 @@ func runStandardSQL(slct string, db *sql.DB) chan Response {
 
 }
 
-func runExecuteSQL(slct string, db *sql.DB) chan Response {
+func runExec(slct string, db *sql.DB) chan Response {
 	rsp := make(chan Response)
 
 	go func() {
 		defer close(rsp)
-		rsp <- Response{Err: fmt.Errorf("runExecuteSQL not implemented")}
+		rsp <- Response{Err: fmt.Errorf("runExec not implemented")}
 	}()
 
 	return rsp

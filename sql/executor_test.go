@@ -33,7 +33,7 @@ func TestExecutorTrainAndPredict(t *testing.T) {
 func TestExecutorStandard(t *testing.T) {
 	a := assert.New(t)
 	a.NotPanics(func() {
-		stream := runStandardSQL(testSelectIris, testDB)
+		stream := runQuery(testSelectIris, testDB)
 		a.True(goodStream(stream))
 	})
 }
