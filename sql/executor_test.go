@@ -8,7 +8,7 @@ import (
 
 func goodStream(stream chan Response) bool {
 	for rsp := range stream {
-		if rsp.err != nil {
+		if rsp.Err != nil {
 			return false
 		}
 	}
@@ -18,9 +18,14 @@ func goodStream(stream chan Response) bool {
 func TestExecutorTrainAndPredict(t *testing.T) {
 	a := assert.New(t)
 	a.NotPanics(func() {
-		stream := Run(testTrainSelectIris, testDB, testCfg)
+		pr, e := newParser().Parse(testTrainSelectIris)
+		a.NoError(e)
+		stream := runExtendedSQL(testTrainSelectIris, testDB, testCfg, pr)
 		a.True(goodStream(stream))
-		stream = Run(testPredictSelectIris, testDB, testCfg)
+
+		pr, e = newParser().Parse(testPredictSelectIris)
+		a.NoError(e)
+		stream = runExtendedSQL(testPredictSelectIris, testDB, testCfg, pr)
 		a.True(goodStream(stream))
 	})
 }
@@ -28,7 +33,7 @@ func TestExecutorTrainAndPredict(t *testing.T) {
 func TestExecutorStandard(t *testing.T) {
 	a := assert.New(t)
 	a.NotPanics(func() {
-		stream := Run(testSelectIris, testDB, testCfg)
+		stream := runStandardSQL(testSelectIris, testDB)
 		a.True(goodStream(stream))
 	})
 }
@@ -56,12 +61,12 @@ func TestLogChanWriter_Write(t *testing.T) {
 		cw.Write([]byte("世界\n世界\n世界\n"))
 	}()
 
-	a.Equal("hello\n", (<-c).data)
-	a.Equal("世界hello\n", (<-c).data)
-	a.Equal("世界\n", (<-c).data)
-	a.Equal("世界\n", (<-c).data)
-	a.Equal("世界\n", (<-c).data)
-	a.Equal("世界\n", (<-c).data)
+	a.Equal("hello\n", (<-c).Data)
+	a.Equal("世界hello\n", (<-c).Data)
+	a.Equal("世界\n", (<-c).Data)
+	a.Equal("世界\n", (<-c).Data)
+	a.Equal("世界\n", (<-c).Data)
+	a.Equal("世界\n", (<-c).Data)
 	_, more := <-c
 	a.False(more)
 }
