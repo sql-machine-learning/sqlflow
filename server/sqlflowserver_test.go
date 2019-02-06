@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"os"
@@ -15,7 +16,8 @@ import (
 )
 
 const (
-	testStandardSQL = "SELECT ..."
+	testQuerySQL    = "SELECT ..."
+	testExecuteSQL  = "INSERT ..."
 	testExtendedSQL = "SELECT ... TRAIN ..."
 )
 
@@ -34,11 +36,27 @@ func TestSQL(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	_, err = c.Run(ctx, &RunRequest{Sql: testStandardSQL})
+	queryStream, err := c.Query(ctx, &Request{Sql: testQuerySQL})
 	a.NoError(err)
+	for {
+		_, err := queryStream.Recv()
+		if err == io.EOF {
+			break
+		}
+		a.NoError(err)
+	}
 
-	_, err = c.Run(ctx, &RunRequest{Sql: testExtendedSQL})
-	a.NoError(err)
+	for _, sql := range []string{testExecuteSQL, testExtendedSQL} {
+		executeStream, err := c.Execute(ctx, &Request{Sql: sql})
+		a.NoError(err)
+		for {
+			_, err := executeStream.Recv()
+			if err == io.EOF {
+				break
+			}
+			a.NoError(err)
+		}
+	}
 }
 
 func startServer(done chan bool) {
