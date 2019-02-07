@@ -78,7 +78,7 @@ func startServer(done chan bool) {
 }
 
 func TestMain(m *testing.M) {
-	done := make(chan bool, 1)
+	done := make(chan bool)
 	go startServer(done)
 	<-done
 
