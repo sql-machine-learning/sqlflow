@@ -15,33 +15,50 @@ import (
 )
 
 // Response for Run return, contains:
-// - data: string or database row
-// - err
+// - Data: string or database row
+// - Err
 type Response struct {
-	data interface{}
-	err  error
+	Data interface{}
+	Err  error
 }
 
-// Run executes a SQLFlow statements, either standard or extended
-// - Standard SQL statements like `USE database` returns a success message.
-// - Standard SQL statements like `SELECT ...` returns a table in addition
-// to the status, and the table might be big.
-// - Extended SQL statement like `SELECT ... TRAIN/PREDICT ...` messages
-// which indicate the training/predicting progress
-func Run(slct string, db *sql.DB, cfg *mysql.Config) chan Response {
+type executor struct {
+	db  *sql.DB
+	cfg *mysql.Config
+}
+
+// NewExecutor creates a executor instance
+func NewExecutor(cfg *mysql.Config) (*executor, error) {
+	db, e := sql.Open("mysql", cfg.FormatDSN())
+	if e != nil {
+		return nil, e
+	}
+	return &executor{db, cfg}, nil
+}
+
+// Query executes a SQL query and returns a stream of rowset
+// example SQL statements: `SELECT ...`, `DESCRIBE ...`
+func (exe *executor) Query(slct string) chan Response {
+	return runQuery(slct, exe.db)
+}
+
+// Execute executes a SQL statement and returns a stream of messages, for example
+// - `USE database` returns a success message.
+// - `SELECT ... TRAIN/PREDICT ...` returns a stream of logs
+func (exe *executor) Execute(slct string) chan Response {
 	slctUpper := strings.ToUpper(slct)
 	if strings.Contains(slctUpper, "TRAIN") || strings.Contains(slctUpper, "PREDICT") {
 		pr, e := newParser().Parse(slct)
 		if e == nil && pr.extended {
-			return runExtendedSQL(slct, db, cfg, pr)
+			return runExtendedSQL(slct, exe.db, exe.cfg, pr)
 		}
 	}
-	return runStandardSQL(slct, db)
+	return runExec(slct, exe.db)
 }
 
 // FIXME(tony): how to deal with large tables?
 // TODO(tony): test on null table elements
-func runStandardSQL(slct string, db *sql.DB) chan Response {
+func runQuery(slct string, db *sql.DB) chan Response {
 	rsp := make(chan Response)
 
 	go func() {
@@ -53,7 +70,7 @@ func runStandardSQL(slct string, db *sql.DB) chan Response {
 
 			rows, err := db.Query(slct)
 			if err != nil {
-				return fmt.Errorf("runStandardSQL failed: %v", err)
+				return fmt.Errorf("runQuery failed: %v", err)
 			}
 			defer rows.Close()
 
@@ -108,16 +125,28 @@ func runStandardSQL(slct string, db *sql.DB) chan Response {
 						return fmt.Errorf("unrecogized type %v", v)
 					}
 				}
-				rsp <- Response{data: row}
+				rsp <- Response{Data: row}
 			}
 
-			log.Infof("runStandardSQL finished, elapsed: %v", time.Now().Sub(startAt))
+			log.Infof("runQuery finished, elapsed: %v", time.Now().Sub(startAt))
 			return nil
 		}()
 
 		if err != nil {
-			rsp <- Response{err: err}
+			rsp <- Response{Err: err}
 		}
+	}()
+
+	return rsp
+
+}
+
+func runExec(slct string, db *sql.DB) chan Response {
+	rsp := make(chan Response)
+
+	go func() {
+		defer close(rsp)
+		rsp <- Response{Err: fmt.Errorf("runExec not implemented")}
 	}()
 
 	return rsp
@@ -161,7 +190,7 @@ func runExtendedSQL(slct string, db *sql.DB, cfg *mysql.Config, pr *extendedSele
 
 		if err != nil {
 			log.Errorf("runExtendedSQL error:%v", err)
-			rsp <- Response{err: err}
+			rsp <- Response{Err: err}
 		}
 	}()
 
@@ -190,7 +219,7 @@ func (cw *logChanWriter) Write(p []byte) (n int, err error) {
 		line, err := cw.buf.ReadString('\n')
 		cw.prev = cw.prev + line
 
-		// ReadString returns err != nil if and only if the returned data
+		// ReadString returns err != nil if and only if the returned Data
 		// does not end in delim.
 		if err != nil {
 			break
