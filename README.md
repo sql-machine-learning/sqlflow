@@ -4,3 +4,4 @@
 
 - [Design Doc](doc/design.md)
 - [Extended SQL Syntax](doc/sql_parser.md)
+- [How to Build](doc/build.md)
