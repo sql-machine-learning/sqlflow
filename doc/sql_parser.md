@@ -1,7 +1,7 @@
-# ExtendedSQL Parser Design
+# Extended SQL Parser Design
 
-This documentation explains the technical decision made in building a SQL 
-parser in Go. It is used to parsed the extendedSELECT syntax of SQL that 
+This documentation explains the technical decision made in building a SQL
+parser in Go. It is used to parsed the extended SELECT syntax of SQL that
 integrates TensorFlow Estimators.
 
 ## Related Work
