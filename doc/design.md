@@ -1,6 +1,4 @@
-# SQLFlow
-
-![](https://travis-ci.com/wangkuiyi/sqlflow.svg?token=RA1TUtuBzgTZC3xSQF9x&branch=develop)
+# SQLFlow: Design Doc
 
 ## What is SQLFlow
 
@@ -57,7 +55,7 @@ Google [BigQuery](https://cloud.google.com/bigquery/docs/bigqueryml-intro) enabl
 ```sql
 CREATE MODEL dataset.model_name
   OPTIONS(model_type='linear_reg', input_label_cols=['input_label'])
-AS SELECT * FROM input_table; 
+AS SELECT * FROM input_table;
 ```
 
 Currently, BigQuery only supports two simple models: linear regression and logistic regression.
