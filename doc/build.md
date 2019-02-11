@@ -51,13 +51,13 @@ docker run --rm -it -v $GOPATH:/go \
 Now, in the container, we can compile the `sqlflow.proto` in this repo into the Go source code:
 
 ```bash
-protoc -I proto server/sqlflow.proto --go_out=plugin=grpc:proto
+protoc -I server/proto server/proto/sqlflow.proto --go_out=plugin=grpc:server/proto
 ```
 
 Similarly, we can compile it into Python:
 
 ```bash
-python -m grpc_tools.protoc -I server --python_out=. --grpc_python_out=. sqlflow.proto
+python -m grpc_tools.protoc -I server/proto --python_out=. --grpc_python_out=. sqlflow.proto
 ```
 
 Please be aware that the Go toolchain requires that the generated Go source files in the same directory as the `.proto` file, which is a separate directory than the server source code, whereas the Python convention is to put generated files with the client source code.
