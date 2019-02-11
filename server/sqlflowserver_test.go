@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	pb "gitlab.alipay-inc.com/Arc/sqlflow/server/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
@@ -31,12 +32,12 @@ func TestSQL(t *testing.T) {
 		log.Fatalf("did not connect: %v", err)
 	}
 	defer conn.Close()
-	c := NewSQLFlowClient(conn)
+	c := pb.NewSQLFlowClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	queryStream, err := c.Query(ctx, &Request{Sql: testQuerySQL})
+	queryStream, err := c.Query(ctx, &pb.Request{Sql: testQuerySQL})
 	a.NoError(err)
 	for {
 		_, err := queryStream.Recv()
@@ -47,7 +48,7 @@ func TestSQL(t *testing.T) {
 	}
 
 	for _, sql := range []string{testExecuteSQL, testExtendedSQL} {
-		executeStream, err := c.Execute(ctx, &Request{Sql: sql})
+		executeStream, err := c.Execute(ctx, &pb.Request{Sql: sql})
 		a.NoError(err)
 		for {
 			_, err := executeStream.Recv()
@@ -69,8 +70,7 @@ func startServer(done chan bool) {
 
 	s := grpc.NewServer()
 	s.GetServiceInfo()
-	RegisterSQLFlowServer(s, &Server{})
-	// Register reflection service on gRPC server.
+	pb.RegisterSQLFlowServer(s, &Server{})
 	reflection.Register(s)
 	if err := s.Serve(listener); err != nil {
 		log.Fatalf("failed to serve: %v", err)
