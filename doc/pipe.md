@@ -48,20 +48,15 @@ SQLFlow jobs
 In the above figure, from the SQLFlow magic command to the bottom layer are our work.
 
 
-##  Streams in the Pipe
+##  Streaming
 
-### Multiple Streams
+We have two alternative ideas: multiple streams and a multiplexing stream.
 
 The above figure shows that there are multiple streams between the Jupyter Notebook server and Jupyter kernels.  According to the [document](https://jupyter-client.readthedocs.io/en/stable/messaging.html), there are five: Shell, IOPub, stdin, Control, and Heartbeat.  These streams are ZeroMQ streams.  We don't use ZeroMQ, but we can take the idea of having multiple parallel streams in the pipe.
 
-### Multiplexing Stream
+Another idea is multiplexing all streams into one.  For example, we can have only one ZeroMQ stream, where each element is a polymorphic type -- could be a text string or a data row.
 
-Another idea is multiplexing all streams as one.  For example, we can have only one ZeroMQ stream, where each element is a polymorphic type -- could be a text string or a data row.  To be precise, multiplexing is not an alternative idea to multi-streams, but an addition -- in cases where we could have only one stream, we might have to multiplex information.  In this document, we don't have that constraint.
-
-
-## gRPC
-
-Let us start from the gRPC between SQLFlow magic command and SQLFlow server.  gRPC supports [server streaming](https://grpc.io/docs/guides/concepts.html#server-streaming-rpc).  So we could design the SQLFlow gRPC service as
+We decided to use a multiplexing stream because we had a unsuccessful trial with the multiple streams idea: we make the job writes to various Go channels and forward each Go channel to a streaming gRPC call, as the following:
 
 ```protobuf
 service SQLFlow {
@@ -74,40 +69,22 @@ service SQLFlow {
 }
 ```
 
-Please be aware that to make the design doc concise, I slightly broke the syntax of protobuf gRPC definition, without lossing the expressiveness hopefully.
-
-The `File` call launches a job and returns a job ID, given which, the magic command could read various streams via the `Read...` calls.
+However, we realized that if the user doesn't call any one of the `SQLFlow.Read...` call, there would be no forwarding from the Go channel to Jupyter, thus the job would block forever at writing.
 
 
-## Job Management
+## A Multiplexing Stream
 
-To maintain the job ID, we need a Go type `jobRegistry` for the SQLFlow server:
+```protobuf
+service SQLFlow {
+    rpc Run(string sql) returns (stream Response) {}
+}
 
-```go
-type jobRegistry map[uint64]*job
-```
-
-where the job definition consists of its interfaces as three streams:
-
-```
-type job struct {
-   stderr chan string
-   stdout chan string
-   data chan Row
-   status chan int
+// Only one of the following fields should be set.
+message Response {
+    oneof response {
+        repeated string head = 1;             // Column names.
+        repeated google.protobuf.Any row = 2; // Cells in a row.
+        string log = 3;			              // A line from stderr or stdout.
+	}
 }
 ```
-
-The implementation of `SQLFlow.File` should launch a job, creates a `job` variable, and registers it into the registry, so that the implementations of `SQLFlow.Read...` could read from the Go channels and forward to gRPC streams.
-
-
-## Job with Details
-
-A job is indeed a goroutine.  We have two functions that can run as goroutines:
-
-1. `runStadnardSQL`, which forwards the SQL statement to the SQL engine (e.g., MySQL), writing status into the `job.status` channel,  and iterates the rows enumerator and writes data into the `job.data` channel.
-
-1. `runExtendedSQL`, which translates the SQL statement into Python and runs the Python.  It relies on Go's standard library APIs like https://golang.org/pkg/os/exec/#Cmd.StderrPipe to capture the stderro and stdout of the subprocess and writes the text into `job.stderr` and `job.stdout` channels.
-
-The above functions creates a `job` of channles, launches a goroutine to do the work, and returns the `job` immediately after the launching of the goroutine.
-
