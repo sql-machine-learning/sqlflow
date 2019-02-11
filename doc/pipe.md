@@ -81,7 +81,7 @@ service SQLFlow {
 
 // Only one of the following fields should be set.
 message Response {
-    oneof response {
+    oneof record {
         repeated string head = 1;             // Column names.
         repeated google.protobuf.Any row = 2; // Cells in a row.
         string log = 3;			              // A line from stderr or stdout.
