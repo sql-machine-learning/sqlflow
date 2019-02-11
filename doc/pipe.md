@@ -51,28 +51,29 @@ In the above figure, from the SQLFlow magic command to the bottom layer are our 
 ##  Streaming
 
 We have two alternative ideas: multiple streams and a multiplexing stream.
+We decided to use a multiplexing stream because we had a unsuccessful trial with the multiple streams idea: we make the job writes to various Go channels and forward each Go channel to a streaming gRPC call, as the following:
+
+### Multiple streams
 
 The above figure shows that there are multiple streams between the Jupyter Notebook server and Jupyter kernels.  According to the [document](https://jupyter-client.readthedocs.io/en/stable/messaging.html), there are five: Shell, IOPub, stdin, Control, and Heartbeat.  These streams are ZeroMQ streams.  We don't use ZeroMQ, but we can take the idea of having multiple parallel streams in the pipe.
 
-Another idea is multiplexing all streams into one.  For example, we can have only one ZeroMQ stream, where each element is a polymorphic type -- could be a text string or a data row.
-
-We decided to use a multiplexing stream because we had a unsuccessful trial with the multiple streams idea: we make the job writes to various Go channels and forward each Go channel to a streaming gRPC call, as the following:
 
 ```protobuf
 service SQLFlow {
     rpc File(string sql) returns (int id) {}
 
     rpc ReadStdout(int id) returns (stream string) {}
-	rpc ReadStderr(int id) returns (stream string) {}
-	rpc ReadData(int id) returns (stream Row) {}
+    rpc ReadStderr(int id) returns (stream string) {}
+    rpc ReadData(int id) returns (stream Row) {}
     rpc ReadStatus(int id) returns (stream int) {}
 }
 ```
 
 However, we realized that if the user doesn't call any one of the `SQLFlow.Read...` call, there would be no forwarding from the Go channel to Jupyter, thus the job would block forever at writing.
 
-
 ## A Multiplexing Stream
+
+Another idea is multiplexing all streams into one. For example, we can have only one ZeroMQ stream, where each element is a polymorphic type -- could be a text string or a data row.
 
 ```protobuf
 service SQLFlow {
@@ -84,7 +85,7 @@ message Response {
     oneof record {
         repeated string head = 1;             // Column names.
         repeated google.protobuf.Any row = 2; // Cells in a row.
-        string log = 3;			              // A line from stderr or stdout.
-	}
+        string log = 3;                       // A line from stderr or stdout.
+    }
 }
 ```
