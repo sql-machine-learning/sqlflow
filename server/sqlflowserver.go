@@ -1,7 +1,5 @@
-// Package server implements a gRPC proxy server of SQLFlow engines
+//go:generate protoc -I proto proto/sqlflow.proto --go_out=plugins=grpc:proto
 package server
-
-//go:generate docker run --rm -v $PWD:/work -w /work grpc/go:1.0 protoc sqlflow.proto --go_out=plugins=grpc:.
 
 import (
 	"fmt"
@@ -10,6 +8,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/wrappers"
+	pb "gitlab.alipay-inc.com/Arc/sqlflow/server/proto"
 )
 
 // Server instance
@@ -20,7 +19,7 @@ type Server struct{}
 // SQL statements like `SELECT ...`, `DESCRIBE ...` returns a rowset.
 // The rowset might be big. In such cases, Query returns a stream
 // of RunResponse
-func (*Server) Query(req *Request, stream SQLFlow_QueryServer) error {
+func (*Server) Query(req *pb.Request, stream pb.SQLFlow_QueryServer) error {
 	slct := req.Sql
 	log.Printf("Received %s\n", slct)
 
@@ -34,7 +33,7 @@ func (*Server) Query(req *Request, stream SQLFlow_QueryServer) error {
 //
 // SQL statement like `SELECT ... TRAIN/PREDICT ...` returns a stream of
 // messages which indicates the training/predicting progress
-func (*Server) Execute(req *Request, stream SQLFlow_ExecuteServer) error {
+func (*Server) Execute(req *pb.Request, stream pb.SQLFlow_ExecuteServer) error {
 	slct := req.Sql
 	log.Printf("Received %s\n", slct)
 
@@ -44,7 +43,7 @@ func (*Server) Execute(req *Request, stream SQLFlow_ExecuteServer) error {
 	}
 
 	// SQL such as INSERT, DELETE, CREATE
-	return stream.Send(&Messages{Messages: []string{"Query OK, 0 rows affected (0.06 sec)"}})
+	return stream.Send(&pb.Messages{Messages: []string{"Query OK, 0 rows affected (0.06 sec)"}})
 }
 
 // runStandardSQL sends
@@ -53,10 +52,10 @@ func (*Server) Execute(req *Request, stream SQLFlow_ExecuteServer) error {
 // | 42 | 42 |
 // | 42 | 42 |
 // ...
-func runStandardSQL(slct string, stream SQLFlow_QueryServer) error {
+func runStandardSQL(slct string, stream pb.SQLFlow_QueryServer) error {
 	numSends := len(slct)
 	for i := 0; i < numSends; i++ {
-		rowset := &RowSet{}
+		rowset := &pb.RowSet{}
 		rowset.ColumnNames = []string{"X", "Y"}
 		for i := 0; i < 2; i++ {
 			row, err := wrapRow([]interface{}{interface{}(int64(42)), interface{}(int64(42))})
@@ -73,8 +72,8 @@ func runStandardSQL(slct string, stream SQLFlow_QueryServer) error {
 	return nil
 }
 
-func wrapRow(row []interface{}) (*RowSet_Row, error) {
-	wrappedRow := &RowSet_Row{}
+func wrapRow(row []interface{}) (*pb.RowSet_Row, error) {
+	wrappedRow := &pb.RowSet_Row{}
 	for _, element := range row {
 		switch e := element.(type) {
 		case int64:
@@ -97,11 +96,11 @@ func wrapRow(row []interface{}) (*RowSet_Row, error) {
 //	log 2
 //	...
 //	log N
-func runExtendedSQL(slct string, stream SQLFlow_ExecuteServer) error {
+func runExtendedSQL(slct string, stream pb.SQLFlow_ExecuteServer) error {
 	numSends := len(slct)
 	for i := 0; i < numSends; i++ {
 		content := []string{fmt.Sprintf("log %v", i)}
-		res := &Messages{Messages: content}
+		res := &pb.Messages{Messages: content}
 		if err := stream.Send(res); err != nil {
 			return err
 		}
