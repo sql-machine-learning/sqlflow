@@ -2,69 +2,44 @@
 package server
 
 import (
+	"database/sql"
 	"fmt"
-	"log"
-	"strings"
-
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	pb "gitlab.alipay-inc.com/Arc/sqlflow/server/proto"
 )
 
-// Server instance
-type Server struct{}
-
-// Query executes a SQL statement
-//
-// SQL statements like `SELECT ...`, `DESCRIBE ...` returns a rowset.
-// The rowset might be big. In such cases, Query returns a stream
-// of RunResponse
-func (*Server) Query(req *pb.Request, stream pb.SQLFlow_QueryServer) error {
-	slct := req.Sql
-	log.Printf("Received %s\n", slct)
-
-	return runStandardSQL(slct, stream)
+// NewServer returns a server instance
+func NewServer(run func(string, *sql.DB) chan interface{}, db *sql.DB) *server {
+	return &server{run: run, db: db}
 }
 
-// Execute executes a SQL statement
-//
-// SQL statements like `USE database`, `DELETE` returns only a success
-// message.
-//
-// SQL statement like `SELECT ... TRAIN/PREDICT ...` returns a stream of
-// messages which indicates the training/predicting progress
-func (*Server) Execute(req *pb.Request, stream pb.SQLFlow_ExecuteServer) error {
-	slct := req.Sql
-	log.Printf("Received %s\n", slct)
-
-	// ExtendedSQL such as SELECT ... TRAIN/PREDICT
-	if strings.Contains(slct, "TRAIN") || strings.Contains(slct, "PREDICT") {
-		return runExtendedSQL(slct, stream)
-	}
-
-	// SQL such as INSERT, DELETE, CREATE
-	return stream.Send(&pb.Messages{Messages: []string{"Query OK, 0 rows affected (0.06 sec)"}})
+type server struct {
+	run func(sql string, db *sql.DB) chan interface{}
+	db  *sql.DB
 }
 
-// runStandardSQL sends
-// | X  | Y  |
-// |----|----|
-// | 42 | 42 |
-// | 42 | 42 |
-// ...
-func runStandardSQL(slct string, stream pb.SQLFlow_QueryServer) error {
-	numSends := len(slct)
-	for i := 0; i < numSends; i++ {
-		rowset := &pb.RowSet{}
-		rowset.ColumnNames = []string{"X", "Y"}
-		for i := 0; i < 2; i++ {
-			row, err := wrapRow([]interface{}{interface{}(int64(42)), interface{}(int64(42))})
-			if err != nil {
-				return err
-			}
-			rowset.Rows = append(rowset.Rows, row)
+// Run implements `rpc Run (Request) returns (stream Response)`
+func (s *server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
+	c := s.run(req.Sql, s.db)
+
+	for r := range c {
+		var res *pb.Response
+		var err error
+		switch s := r.(type) {
+		case map[string]interface{}:
+			res, err = encodeHead(s)
+		case []interface{}:
+			res, err = encodeRow(s)
+		case string:
+			res, err = encodeMessage(s)
+		default:
+			return fmt.Errorf("unrecognize run channel return type %#v", s)
 		}
-		if err := stream.Send(rowset); err != nil {
+		if err != nil {
+			return err
+		}
+		if err := stream.Send(res); err != nil {
 			return err
 		}
 	}
@@ -72,38 +47,37 @@ func runStandardSQL(slct string, stream pb.SQLFlow_QueryServer) error {
 	return nil
 }
 
-func wrapRow(row []interface{}) (*pb.RowSet_Row, error) {
-	wrappedRow := &pb.RowSet_Row{}
+func encodeHead(head map[string]interface{}) (*pb.Response, error) {
+	cn, ok := head["columnNames"]
+	if !ok {
+		return nil, fmt.Errorf("can't find field columnNames in head")
+	}
+	columnNames, ok := cn.([]string)
+	if !ok {
+		return nil, fmt.Errorf("head[\"columnNames\"] is of type %T, expected []string", cn)
+	}
+	return &pb.Response{Response: &pb.Response_Head{Head: &pb.Head{ColumnNames: columnNames}}}, nil
+}
+
+func encodeRow(row []interface{}) (*pb.Response, error) {
+	encodedRow := &pb.Row{}
 	for _, element := range row {
 		switch e := element.(type) {
+		// TODO(tony): support more types
 		case int64:
 			x, err := ptypes.MarshalAny(&wrappers.Int64Value{Value: e})
 			if err != nil {
 				return nil, err
 			}
-			wrappedRow.Data = append(wrappedRow.Data, x)
+			encodedRow.Data = append(encodedRow.Data, x)
 		default:
-			return nil, fmt.Errorf("can convert type %#v to protobuf.Any", element)
+			return nil, fmt.Errorf("can convert %#v to protobuf.Any", element)
 		}
 	}
 
-	return wrappedRow, nil
+	return &pb.Response{Response: &pb.Response_Row{Row: encodedRow}}, nil
 }
 
-// runExtendedSQL sends
-//	log 0
-//	log 1
-//	log 2
-//	...
-//	log N
-func runExtendedSQL(slct string, stream pb.SQLFlow_ExecuteServer) error {
-	numSends := len(slct)
-	for i := 0; i < numSends; i++ {
-		content := []string{fmt.Sprintf("log %v", i)}
-		res := &pb.Messages{Messages: content}
-		if err := stream.Send(res); err != nil {
-			return err
-		}
-	}
-	return nil
+func encodeMessage(s string) (*pb.Response, error) {
+	return &pb.Response{Response: &pb.Response_Message{Message: &pb.Message{Message: s}}}, nil
 }
