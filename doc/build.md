@@ -30,7 +30,7 @@ You could have your `$GOPATH` pointing to any directory you like.
 Given `$GOPATH$` set, we could git clone the source code of our project and all its dependencies, including `google.golang.org/grpc`, by running:
 
 ```bash
-go get gitlab.alipay-inc.com/Arc/sqlflow
+go get -insecure gitlab.alipay-inc.com/Arc/sqlflow
 ```
 
 To build this demo, we need the protobuf compiler, Go compiler, Python interpreter, gRPC extension to the protobuf compiler.  To ease the installation and configuration of these tools, I provide a Dockerfile to install them into a Docker image. To build the Docker image:
