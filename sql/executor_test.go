@@ -6,9 +6,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func goodStream(stream chan Response) bool {
+func goodStream(stream chan interface{}) bool {
 	for rsp := range stream {
-		if rsp.Err != nil {
+		switch rsp.(type) {
+		case error:
 			return false
 		}
 	}
@@ -30,10 +31,10 @@ func TestExecutorTrainAndPredict(t *testing.T) {
 	})
 }
 
-func TestExecutorStandard(t *testing.T) {
+func TestStandardSQL(t *testing.T) {
 	a := assert.New(t)
 	a.NotPanics(func() {
-		stream := runQuery(testSelectIris, testDB)
+		stream := runStandardSQL(testSelectIris, testDB)
 		a.True(goodStream(stream))
 	})
 }
@@ -50,7 +51,7 @@ func TestCreatePredictionTable(t *testing.T) {
 func TestLogChanWriter_Write(t *testing.T) {
 	a := assert.New(t)
 
-	c := make(chan Response)
+	c := make(chan interface{})
 
 	go func() {
 		defer close(c)
@@ -61,12 +62,12 @@ func TestLogChanWriter_Write(t *testing.T) {
 		cw.Write([]byte("世界\n世界\n世界\n"))
 	}()
 
-	a.Equal("hello\n", (<-c).Data)
-	a.Equal("世界hello\n", (<-c).Data)
-	a.Equal("世界\n", (<-c).Data)
-	a.Equal("世界\n", (<-c).Data)
-	a.Equal("世界\n", (<-c).Data)
-	a.Equal("世界\n", (<-c).Data)
+	a.Equal("hello\n", <-c)
+	a.Equal("世界hello\n", <-c)
+	a.Equal("世界\n", <-c)
+	a.Equal("世界\n", <-c)
+	a.Equal("世界\n", <-c)
+	a.Equal("世界\n", <-c)
 	_, more := <-c
 	a.False(more)
 }
