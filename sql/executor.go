@@ -14,52 +14,37 @@ import (
 	"github.com/go-sql-driver/mysql"
 )
 
-// Response for Run return, contains:
-// - Data: string or database row
-// - Err
-type Response struct {
-	Data interface{}
-	Err  error
-}
-
-type executor struct {
-	db  *sql.DB
-	cfg *mysql.Config
-}
-
-// NewExecutor creates a executor instance
-func NewExecutor(cfg *mysql.Config) (*executor, error) {
-	db, e := sql.Open("mysql", cfg.FormatDSN())
-	if e != nil {
-		return nil, e
-	}
-	return &executor{db, cfg}, nil
-}
-
-// Query executes a SQL query and returns a stream of rowset
-// example SQL statements: `SELECT ...`, `DESCRIBE ...`
-func (exe *executor) Query(slct string) chan Response {
-	return runQuery(slct, exe.db)
-}
-
-// Execute executes a SQL statement and returns a stream of messages, for example
-// - `USE database` returns a success message.
-// - `SELECT ... TRAIN/PREDICT ...` returns a stream of logs
-func (exe *executor) Execute(slct string) chan Response {
+// Run executes a SQL query and returns a stream of row or message
+func Run(slct string, db *sql.DB) chan interface{} {
 	slctUpper := strings.ToUpper(slct)
 	if strings.Contains(slctUpper, "TRAIN") || strings.Contains(slctUpper, "PREDICT") {
 		pr, e := newParser().Parse(slct)
 		if e == nil && pr.extended {
-			return runExtendedSQL(slct, exe.db, exe.cfg, pr)
+			// TODO(weiguo)
+			dbCfg := &mysql.Config{
+				User:   "root",
+				Passwd: "root",
+				Addr:   "localhost:3306",
+			}
+			return runExtendedSQL(slct, db, dbCfg, pr)
 		}
 	}
-	return runExec(slct, exe.db)
+	return runStandardSQL(slct, db)
+}
+
+func runStandardSQL(slct string, db *sql.DB) chan interface{} {
+	// TODO(weiguo): test if a slct is a query statment
+	slctUpper := strings.ToUpper(slct)
+	if strings.Contains(slctUpper, "SELECT") {
+		return runQuery(slct, db)
+	}
+	return runExec(slct, db)
 }
 
 // FIXME(tony): how to deal with large tables?
 // TODO(tony): test on null table elements
-func runQuery(slct string, db *sql.DB) chan Response {
-	rsp := make(chan Response)
+func runQuery(slct string, db *sql.DB) chan interface{} {
+	rsp := make(chan interface{})
 
 	go func() {
 		defer close(rsp)
@@ -125,7 +110,7 @@ func runQuery(slct string, db *sql.DB) chan Response {
 						return fmt.Errorf("unrecogized type %v", v)
 					}
 				}
-				rsp <- Response{Data: row}
+				rsp <- row
 			}
 
 			log.Infof("runQuery finished, elapsed: %v", time.Now().Sub(startAt))
@@ -133,27 +118,26 @@ func runQuery(slct string, db *sql.DB) chan Response {
 		}()
 
 		if err != nil {
-			rsp <- Response{Err: err}
+			rsp <- err
 		}
 	}()
 
 	return rsp
-
 }
 
-func runExec(slct string, db *sql.DB) chan Response {
-	rsp := make(chan Response)
+func runExec(slct string, db *sql.DB) chan interface{} {
+	rsp := make(chan interface{})
 
 	go func() {
 		defer close(rsp)
-		rsp <- Response{Err: fmt.Errorf("runExec not implemented")}
+		rsp <- fmt.Errorf("runExec not implemented")
 	}()
 
 	return rsp
 }
 
-func runExtendedSQL(slct string, db *sql.DB, cfg *mysql.Config, pr *extendedSelect) chan Response {
-	rsp := make(chan Response)
+func runExtendedSQL(slct string, db *sql.DB, cfg *mysql.Config, pr *extendedSelect) chan interface{} {
+	rsp := make(chan interface{})
 
 	go func() {
 		defer close(rsp)
@@ -190,7 +174,7 @@ func runExtendedSQL(slct string, db *sql.DB, cfg *mysql.Config, pr *extendedSele
 
 		if err != nil {
 			log.Errorf("runExtendedSQL error:%v", err)
-			rsp <- Response{Err: err}
+			rsp <- err
 		}
 	}()
 
@@ -198,7 +182,7 @@ func runExtendedSQL(slct string, db *sql.DB, cfg *mysql.Config, pr *extendedSele
 }
 
 type logChanWriter struct {
-	c chan Response
+	c chan interface{}
 
 	m    sync.Mutex
 	buf  bytes.Buffer
@@ -225,15 +209,15 @@ func (cw *logChanWriter) Write(p []byte) (n int, err error) {
 			break
 		}
 
-		cw.c <- Response{cw.prev, nil}
+		cw.c <- cw.prev
 		cw.prev = ""
 	}
 
 	return n, nil
 }
 
-func train(tr *extendedSelect, slct string, db *sql.DB, cfg *mysql.Config, cwd string) chan Response {
-	c := make(chan Response)
+func train(tr *extendedSelect, slct string, db *sql.DB, cfg *mysql.Config, cwd string) chan interface{} {
+	c := make(chan interface{})
 
 	go func() {
 		defer close(c)
@@ -263,15 +247,15 @@ func train(tr *extendedSelect, slct string, db *sql.DB, cfg *mysql.Config, cwd s
 		}()
 
 		if err != nil {
-			c <- Response{"", err}
+			c <- err
 		}
 	}()
 
 	return c
 }
 
-func pred(pr *extendedSelect, db *sql.DB, cfg *mysql.Config, cwd string) chan Response {
-	c := make(chan Response)
+func pred(pr *extendedSelect, db *sql.DB, cfg *mysql.Config, cwd string) chan interface{} {
+	c := make(chan interface{})
 
 	go func() {
 		defer close(c)
@@ -315,7 +299,7 @@ func pred(pr *extendedSelect, db *sql.DB, cfg *mysql.Config, cwd string) chan Re
 		}()
 
 		if err != nil {
-			c <- Response{"", err}
+			c <- err
 		}
 	}()
 
