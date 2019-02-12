@@ -5,8 +5,18 @@ import "google/protobuf/any.proto";
 package proto;
 
 service SQLFlow {
-  rpc Query (Request) returns (stream RowSet);
-  rpc Execute (Request) returns (stream Messages);
+    // Run executes a sql statement
+    //
+    // SQL statements like `SELECT ...`, `DESCRIBE ...` returns a rowset.
+    // The rowset might be big. In such cases, Query returns a stream
+    // of RunResponse
+    //
+    // SQL statements like `USE database`, `DELETE` returns only a success
+    // message.
+    //
+    // SQL statement like `SELECT ... TRAIN/PREDICT ...` returns a stream of
+    // messages which indicates the training/predicting progress
+    rpc Run (Request) returns (stream Response);
 }
 
 // SQL statements to run
@@ -15,20 +25,24 @@ service SQLFlow {
 //      2. `USE ...`, `DELETE ...`
 //      3. `SELECT ... TRAIN/PREDICT ...`
 message Request {
-  string sql = 1;		// The SQL statement to be executed.
+    string sql = 1;		// The SQL statement to be executed.
 }
 
-// SQL statements like `SELECT ...`, `DESCRIBE ...` returns a rowset.
-// The rowset might be big. In such cases, Query returns a stream
-// of RunResponse
-message RowSet {
-  repeated string column_names = 1;
-  repeated Row rows = 2;
+message Response {
+    oneof response {
+        Head head = 1;
+        Row row = 2;
+        Message message = 3;
+    }
+}
 
-  // A row of data. Data can be any type
-  message Row {
+// SQL statements like `SELECT ...`, `DESCRIBE ...` returns a Head
+// and a sequence of Rows
+message Head {
+    repeated string column_names = 1;
+}
+message Row {
     repeated google.protobuf.Any data = 1;
-  }
 }
 
 // SQL statements like `USE database`, `DELETE` returns only a success
@@ -36,6 +50,6 @@ message RowSet {
 //
 // SQL statement like `SELECT ... TRAIN/PREDICT ...` returns a stream of
 // messages which indicates the training/predicting progress
-message Messages {
-  repeated string messages = 1;
+message Message {
+  string message = 1;
 }
