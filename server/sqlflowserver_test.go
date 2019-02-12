@@ -14,10 +14,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	pb "gitlab.alipay-inc.com/Arc/sqlflow/server/proto"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/reflection"
+	"google.golang.org/grpc/status"
 )
 
 const (
+	testErrorSQL    = "ERROR ..."
 	testQuerySQL    = "SELECT ..."
 	testExecuteSQL  = "INSERT ..."
 	testExtendedSQL = "SELECT ... TRAIN ..."
@@ -38,6 +41,11 @@ func TestSQL(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
+	stream, err := c.Run(ctx, &pb.Request{Sql: testErrorSQL})
+	a.NoError(err)
+	_, err = stream.Recv()
+	a.Equal(status.Error(codes.Unknown, fmt.Sprintf("run error: %v", testErrorSQL)), err)
+
 	for _, s := range []string{testQuerySQL, testExecuteSQL, testExtendedSQL} {
 		stream, err := c.Run(ctx, &pb.Request{Sql: s})
 		a.NoError(err)
@@ -57,10 +65,16 @@ func mockRun(sql string, db *sql.DB) chan interface{} {
 	go func() {
 		defer close(c)
 		switch sql {
+		case testErrorSQL:
+			c <- fmt.Errorf("run error: %v", testErrorSQL)
 		case testQuerySQL:
 			m := make(map[string]interface{})
 			m["columnNames"] = []string{"X", "Y"}
 			c <- m
+			c <- []interface{}{int64(1), int64(1)}
+			c <- []interface{}{int64(2), int64(2)}
+			c <- []interface{}{int64(3), int64(3)}
+			c <- []interface{}{int64(4), int64(4)}
 		case testExecuteSQL:
 			c <- "success; 0 rows affected"
 		case testExtendedSQL:

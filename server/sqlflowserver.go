@@ -27,6 +27,8 @@ func (s *server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 		var res *pb.Response
 		var err error
 		switch s := r.(type) {
+		case error:
+			return s
 		case map[string]interface{}:
 			res, err = encodeHead(s)
 		case []interface{}:
