@@ -4,13 +4,17 @@
 package main
 
 import (
+	"database/sql"
 	"log"
 	"net"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
-	"github.com/wangkuiyi/sqlflow/server"
+	"github.com/go-sql-driver/mysql"
+	"gitlab.alipay-inc.com/Arc/sqlflow/server"
+	pb "gitlab.alipay-inc.com/Arc/sqlflow/server/proto"
+	sqlflow "gitlab.alipay-inc.com/Arc/sqlflow/sql"
 )
 
 const (
@@ -21,9 +25,22 @@ func main() {
 	lis, err := net.Listen("tcp", port)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
+		return
 	}
+	myCfg := &mysql.Config{
+		User:   "root",
+		Passwd: "root",
+		Addr:   "localhost:3306",
+	}
+	db, err := sql.Open("mysql", myCfg.FormatDSN())
+	if err != nil {
+		log.Fatalf("failed to open database: %v", err)
+		return
+	}
+	defer db.Close()
+
 	s := grpc.NewServer()
-	server.RegisterSQLFlowServer(s, &server.Server{})
+	pb.RegisterSQLFlowServer(s, server.NewServer(sqlflow.Run, db))
 	// Register reflection service on gRPC server.
 	reflection.Register(s)
 	log.Println("Server Started at", port)
