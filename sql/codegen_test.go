@@ -8,7 +8,8 @@ import (
 )
 
 const (
-	testSelectIris = `
+	testStandardExec = `USE iris;`
+	testSelectIris   = `
 SELECT *
 FROM iris.iris
 `

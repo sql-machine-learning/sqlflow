@@ -20,7 +20,7 @@ func Run(slct string, db *sql.DB) chan interface{} {
 	if strings.Contains(slctUpper, "TRAIN") || strings.Contains(slctUpper, "PREDICT") {
 		pr, e := newParser().Parse(slct)
 		if e == nil && pr.extended {
-			// TODO(weiguo)
+			// TODO(weiguo): mentioned in issue(abstract mysql specific code in sqlflow)
 			dbCfg := &mysql.Config{
 				User:   "root",
 				Passwd: "root",
@@ -113,7 +113,7 @@ func runQuery(slct string, db *sql.DB) chan interface{} {
 				rsp <- row
 			}
 
-			log.Infof("runQuery finished, elapsed: %v", time.Now().Sub(startAt))
+			log.Infof("runQuery finished, elapsed: %v", time.Since(startAt))
 			return nil
 		}()
 
@@ -130,9 +130,33 @@ func runExec(slct string, db *sql.DB) chan interface{} {
 
 	go func() {
 		defer close(rsp)
-		rsp <- fmt.Errorf("runExec not implemented")
-	}()
+		err := func() error {
+			startAt := time.Now()
+			log.Infof("Starting runStanrardSQL1:%s", slct)
 
+			res, e := db.Exec(slct)
+			log.Infof("res: %v", res)
+			if e != nil {
+				return fmt.Errorf("runExec failed: %v", e)
+			}
+			affected, e := res.RowsAffected()
+			if e != nil {
+				return fmt.Errorf("failed to get affected row number: %v", e)
+			}
+			if affected > 1 {
+				rsp <- fmt.Sprintf("%d rows affected", affected)
+			} else {
+				rsp <- fmt.Sprintf("%d row affected", affected)
+			}
+
+			log.Infof("runExec finished, elapsed: %v", time.Since(startAt))
+			return nil
+		}()
+
+		if err != nil {
+			rsp <- err
+		}
+	}()
 	return rsp
 }
 
@@ -168,7 +192,7 @@ func runExtendedSQL(slct string, db *sql.DB, cfg *mysql.Config, pr *extendedSele
 					rsp <- l
 				}
 			}
-			log.Infof("runExtendedSQL finished, elapsed:%v", time.Now().Sub(startAt))
+			log.Infof("runExtendedSQL finished, elapsed:%v", time.Since(startAt))
 			return e
 		}()
 
