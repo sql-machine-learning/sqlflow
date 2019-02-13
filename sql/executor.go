@@ -32,10 +32,20 @@ func Run(slct string, db *sql.DB) chan interface{} {
 	return runStandardSQL(slct, db)
 }
 
+func isQuery(slct string) bool {
+	s := strings.ToUpper(slct)
+	has := strings.Contains
+	if has(s, "SELECT") && !has(s, "INTO") {
+		return true
+	}
+	if has(s, "SHOW") && (has(s, "DATABASES") || has(s, "TABLES")) {
+		return true
+	}
+	return false
+}
+
 func runStandardSQL(slct string, db *sql.DB) chan interface{} {
-	// TODO(weiguo): test if a slct is a query statment
-	slctUpper := strings.ToUpper(slct)
-	if strings.Contains(slctUpper, "SELECT") {
+	if isQuery(slct) {
 		return runQuery(slct, db)
 	}
 	return runExec(slct, db)
@@ -135,7 +145,6 @@ func runExec(slct string, db *sql.DB) chan interface{} {
 			log.Infof("Starting runStanrardSQL1:%s", slct)
 
 			res, e := db.Exec(slct)
-			log.Infof("res: %v", res)
 			if e != nil {
 				return fmt.Errorf("runExec failed: %v", e)
 			}
