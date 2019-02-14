@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 	"testing"
 	"time"
 
@@ -19,6 +20,7 @@ func TestRun(t *testing.T) {
 	}
 
 	go main()
+	// FIXME(weiguo): We may need to expand sleep time
 	time.Sleep(2 * time.Second)
 
 	conn, err := grpc.Dial("localhost"+port, grpc.WithInsecure())
@@ -31,6 +33,8 @@ func TestRun(t *testing.T) {
 
 	for _, tc := range tests {
 		_, err := cli.Run(ctx, &pb.Request{Sql: tc})
-		a.NoError(err)
+		if err != nil {
+			log.Fatalf("Check if the server started successfully. %v", err)
+		}
 	}
 }
