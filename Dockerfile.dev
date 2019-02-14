@@ -23,10 +23,10 @@ ENV GOPATH /go
 RUN go get github.com/golang/protobuf/protoc-gen-go
 RUN mv /go/bin/protoc-gen-go /usr/local/bin/
 
+RUN apt-get install -y sqlite3 libsqlite3-dev
+
 RUN echo "#!/bin/bash" > /build.sh
 RUN echo "go generate -v ./..." >> /build.sh
 RUN echo "go install -v ./..." >> /build.sh
 RUN chmod +x /build.sh
 CMD ["/build.sh"]
-
-
