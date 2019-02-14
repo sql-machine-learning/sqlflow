@@ -32,6 +32,9 @@ func Run(slct string, db *sql.DB) chan interface{} {
 	return runStandardSQL(slct, db)
 }
 
+// TODO(weiguo): isQuery is a hacky way to decide which API to call:
+// https://golang.org/pkg/database/sql/#DB.Exec .
+// We will need to extend our parser to be a full SQL parser in the future.
 func isQuery(slct string) bool {
 	s := strings.ToUpper(slct)
 	has := strings.Contains

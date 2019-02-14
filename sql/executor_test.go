@@ -38,7 +38,7 @@ func TestStandardSQL(t *testing.T) {
 		a.True(goodStream(stream))
 	})
 	a.NotPanics(func() {
-		stream := runStandardSQL(testStandardExec, testDB)
+		stream := runStandardSQL(testStandardExecutiveSQLStatement, testDB)
 		a.True(goodStream(stream))
 	})
 }
