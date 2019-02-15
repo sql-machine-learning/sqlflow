@@ -8,7 +8,8 @@ import (
 )
 
 const (
-	testSelectIris = `
+	testStandardExecutiveSQLStatement = `USE iris;`
+	testSelectIris                    = `
 SELECT *
 FROM iris.iris
 `

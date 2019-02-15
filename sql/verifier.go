@@ -35,10 +35,10 @@ func dryRunSelect(slct *extendedSelect, db *sql.DB) error {
 	slct.standardSelect.limit = "1"
 	stmt := slct.standardSelect.String()
 	rows, e := db.Query(stmt)
-	defer rows.Close()
 	if e != nil {
 		return fmt.Errorf("dryRunSelect failed executing %s: %q", stmt, e)
 	}
+	defer rows.Close()
 
 	return rows.Err()
 }

@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/go-sql-driver/mysql"
-	sqlflow "github.com/wangkuiyi/sqlflow/sql"
+	sqlflow "gitlab.alipay-inc.com/Arc/sqlflow/sql"
 )
 
 func readStmt(scn *(bufio.Scanner)) string {
@@ -42,7 +42,7 @@ func main() {
 		slct := readStmt(scn)
 		fmt.Println("-----------------------------")
 
-		stream := sqlflow.Run(slct, db, testCfg)
+		stream := sqlflow.Run(slct, db)
 		for rsp := range stream {
 			fmt.Println(rsp)
 		}

@@ -37,6 +37,10 @@ func TestStandardSQL(t *testing.T) {
 		stream := runStandardSQL(testSelectIris, testDB)
 		a.True(goodStream(stream))
 	})
+	a.NotPanics(func() {
+		stream := runStandardSQL(testStandardExecutiveSQLStatement, testDB)
+		a.True(goodStream(stream))
+	})
 }
 
 func TestCreatePredictionTable(t *testing.T) {
