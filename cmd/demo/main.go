@@ -4,6 +4,7 @@ import (
 	"bufio"
 	sql "database/sql"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 
@@ -11,17 +12,18 @@ import (
 	sqlflow "gitlab.alipay-inc.com/Arc/sqlflow/sql"
 )
 
-func readStmt(scn *(bufio.Scanner)) string {
-	var lines []string
+// readStmt reads a SQL statement from the scanner.  A statement could
+// have multiple lines and ends at a semicolon at theend of the last
+// line.
+func readStmt(scn *bufio.Scanner) string {
+	stmt := ""
 	for scn.Scan() {
-		line := scn.Text()
-		if strings.Contains(line, ";") {
-			lines = append(lines, line)
+		stmt += strings.TrimSpace(scn.Text())
+		if strings.HasSuffix(stmt, ";") {
 			break
 		}
-		lines = append(lines, line)
 	}
-	return strings.Join(lines, "\n")
+	return stmt
 }
 
 func main() {
@@ -32,7 +34,7 @@ func main() {
 	}
 	db, e := sql.Open("mysql", testCfg.FormatDSN())
 	if e != nil {
-		return
+		log.Fatalf("This demo cannot connect to a MySQl server listening on port 3306")
 	}
 	defer db.Close()
 
