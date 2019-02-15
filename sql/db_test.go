@@ -1,8 +1,8 @@
 package sql
 
 import (
+	"bufio"
 	"database/sql"
-	"flag"
 	"fmt"
 	"os"
 	"testing"
@@ -15,6 +15,26 @@ var (
 	testCfg *mysql.Config
 	testDB  *sql.DB
 )
+
+func TestMain(m *testing.M) {
+	fmt.Println(os.Getenv("SQLFLOW_TEST_DB"))
+	switch os.Getenv("SQLFLOW_TEST_DB") {
+	case "sqlite3":
+		testDB, testCfg = openSQLite3()
+		fmt.Println("opened sqlite3")
+		defer testDB.Close()
+	case "mysql":
+		testDB, testCfg = openMySQL()
+		defer testDB.Close()
+	default:
+		log.Fatalf("Unrecognized environment variable value SQLFLOW_TEST_DB==%s", os.Getenv("SQLFLOW_TEST_DB"))
+	}
+	fmt.Println("opened db")
+	popularize(testDB, "testdata/iris.sql")
+	popularize(testDB, "testdata/churn.sql")
+	fmt.Println("popularized")
+	os.Exit(m.Run())
+}
 
 func openSQLite3() (*sql.DB, *mysql.Config) {
 	n := fmt.Sprintf("%d%d", time.Now().Unix(), os.Getpid())
@@ -39,19 +59,32 @@ func openMySQL() (*sql.DB, *mysql.Config) {
 	return db, cfg
 }
 
-func TestMain(m *testing.M) {
-	dbms := flag.String("testdb", "mysql", "Choose the DBMS used for unit testing: sqlite3 or mysql")
-	flag.Parse()
-
-	switch *dbms {
-	case "sqlite3":
-		testDB, testCfg = openSQLite3()
-	case "mysql":
-		testDB, testCfg = openMySQL()
-	default:
-		log.Fatalf("Unrecognized commnad option value testdb=%s", *dbms)
+// popularize reads SQL statements from the file named sqlfile in the
+// ./testdata directory, and runs each SQL statement with db.
+func popularize(db *sql.DB, sqlfile string) error {
+	f, e := os.Open(sqlfile)
+	if e != nil {
+		return e
 	}
-	defer testDB.Close()
+	defer f.Close()
 
-	os.Exit(m.Run())
+	onSemicolon := func(data []byte, atEOF bool) (advance int, token []byte, err error) {
+		for i := 0; i < len(data); i++ {
+			if data[i] == ';' {
+				return i + 1, data[:i], nil
+			}
+		}
+		return 0, nil, nil
+	}
+
+	scanner := bufio.NewScanner(f)
+	scanner.Split(onSemicolon)
+
+	for scanner.Scan() {
+		_, e := db.Exec(scanner.Text())
+		if e != nil {
+			return e
+		}
+	}
+	return scanner.Err()
 }
