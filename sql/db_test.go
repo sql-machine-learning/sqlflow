@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/go-sql-driver/mysql"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 var (
@@ -17,46 +18,53 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	fmt.Println(os.Getenv("SQLFLOW_TEST_DB"))
-	switch os.Getenv("SQLFLOW_TEST_DB") {
+	dbms := os.Getenv("SQLFLOW_TEST_DB")
+	if dbms == "" {
+		dbms = "sqlite3"
+	}
+
+	var e error
+	switch dbms {
 	case "sqlite3":
-		testDB, testCfg = openSQLite3()
-		fmt.Println("opened sqlite3")
+		testDB, testCfg, e = openSQLite3()
 		defer testDB.Close()
 	case "mysql":
-		testDB, testCfg = openMySQL()
+		testDB, testCfg, e = openMySQL()
 		defer testDB.Close()
 	default:
-		log.Fatalf("Unrecognized environment variable value SQLFLOW_TEST_DB==%s", os.Getenv("SQLFLOW_TEST_DB"))
+		e = fmt.Errorf("Unrecognized environment variable SQLFLOW_TEST_DB %s\n", dbms)
 	}
-	fmt.Println("opened db")
-	popularize(testDB, "testdata/iris.sql")
-	popularize(testDB, "testdata/churn.sql")
-	fmt.Println("popularized")
+	assertNoErr(e)
+
+	assertNoErr(popularize(testDB, "testdata/iris.sql"))
+	assertNoErr(popularize(testDB, "testdata/churn.sql"))
+
 	os.Exit(m.Run())
 }
 
-func openSQLite3() (*sql.DB, *mysql.Config) {
-	n := fmt.Sprintf("%d%d", time.Now().Unix(), os.Getpid())
-	db, e := sql.Open("sqlite3", n)
+// assertNoError prints the error if there is any in TestMain, which
+// log doesn't work.
+func assertNoErr(e error) {
 	if e != nil {
-		log.Fatalf("TestMain cannot connect to SQLite3: %q.", e)
+		fmt.Println(e)
+		os.Exit(-1)
 	}
-	return db, nil
 }
 
-func openMySQL() (*sql.DB, *mysql.Config) {
+func openSQLite3() (*sql.DB, *mysql.Config, error) {
+	n := fmt.Sprintf("%d%d", time.Now().Unix(), os.Getpid())
+	db, e := sql.Open("sqlite3", n)
+	return db, nil, e
+}
+
+func openMySQL() (*sql.DB, *mysql.Config, error) {
 	cfg := &mysql.Config{
 		User:   "root",
 		Passwd: "root",
 		Addr:   "localhost:3306",
 	}
 	db, e := sql.Open("mysql", cfg.FormatDSN())
-	if e != nil {
-		log.Fatalf("TestMain cannot connect to MySQL: %q.\n"+
-			"Please run MySQL server as in example/datasets/README.md.", e)
-	}
-	return db, cfg
+	return db, cfg, e
 }
 
 // popularize reads SQL statements from the file named sqlfile in the
