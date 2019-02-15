@@ -1,6 +1,16 @@
 # Canonical Development Environment
 
-Referring to [this example](https://github.com/wangkuiyi/canonicalize-go-python-grpc-dev-env), we create a canonical development environment for Go and Python programmers using Docker.
+Referring to [this example](https://github.com/wangkuiyi/canonicalize-go-python-grpc-dev-env),
+we create a canonical development environment for Go and Python programmers using Docker.
+
+### Editing on Host
+
+When we use this Docker image for daily development work, the source code relies
+on the host computer instead of the container. The source code includes this repo
+and all its dependencies, for example, the Go package `google.golang.org/grpc`.
+Code-on-the-host allows us to run our favorite editors (Emacs, VIM, Eclipse, and more)
+on the host.  Please free to rely on editors add-ons to analyze the source code
+for auto-completion.
 
 ### Building in Container
 
@@ -12,14 +22,8 @@ We build a Docker image that contains development tools:
 1. The protobuf to Go compiler extension
 1. The protobuf to Python compiler extension
 
-### Editing on Host
-
-When we use this Docker image for daily development work, the source code relies on the host computer instead of the container.  The source code includes this repo and all its dependencies, for example, the Go package `google.golang.org/grpc`.  Code-on-the-host allows us to run our favorite editors (Emacs, VIM, Eclipse, and more) on the host.  Please free to rely on editors add-ons to analyze the source code for auto-completion.
-
-
-## How to Build
-
-Because this repo contains Go code, please make sure that you have the directory structure required by Go.  On my laptop computer, I have
+Because this repo contains Go code, please make sure that you have the directory
+structure required by Go. On my laptop computer, I have
 
 ```bash
 export GOPATH=$HOME/go
@@ -27,55 +31,69 @@ export GOPATH=$HOME/go
 
 You could have your `$GOPATH` pointing to any directory you like.
 
-Given `$GOPATH$` set, we could git clone the source code of our project and all its dependencies, including `google.golang.org/grpc`, by running:
+Given `$GOPATH$` set, we could git clone the source code of our project by running:
 
 ```bash
 go get -insecure gitlab.alipay-inc.com/Arc/sqlflow
 ```
 
-To build this demo, we need the protobuf compiler, Go compiler, Python interpreter, gRPC extension to the protobuf compiler.  To ease the installation and configuration of these tools, I provide a Dockerfile to install them into a Docker image. To build the Docker image:
+Change the directory to our project root, and we can use `go get` to retrieve
+and update Go dependencies.
 
 ```bash
 cd $GOPATH/src/gitlab.alipay-inc.com/Arc/sqlflow
-docker build -t grpc -f Dockerfile.dev .
+go get -u -insecure -t ./...
 ```
 
-To run the container, we need to map the `$GOPATH` directory on the host into the `/go` directory in the container, because the Dockerfile configures `/go` as the `$GOPATH` in the container:
+Note the `-insecure` is needed since `gitlab.alipay-inc.com` is under `http` instead
+of `https`. `-t` instructs get to also download the packages required to build
+the tests for the specified packages.
+
+As all Git users would do, we run `git pull` from time to time to sync up with
+others' work. If somebody added new dependencies, we might need to run `go -u ./...`
+after `git pull` to update dependencies.
+
+To build this project, we need the protobuf compiler, Go compiler, Python interpreter,
+gRPC extension to the protobuf compiler. To ease the installation and configuration
+of these tools, we provided a Dockerfile to install them into a Docker image.
+To build the Docker image:
+
+```bash
+docker build -t sqlflow:dev -f Dockerfile.dev .
+```
+
+## How to Build and Test
+
+### Prerequisite
+
+To test the whole package, you will need a standalone MySQL server, please follow
+[this guide](example/datasests/README.md).
+
+### Build and Test
+
+We build and test the project inside the docker container.
+
+To run the container, we need to map the `$GOPATH` directory on the host into the
+`/go` directory in the container, because the Dockerfile configures `/go` as
+the `$GOPATH` in the container:
 
 ```bash
 docker run --rm -it -v $GOPATH:/go \
     -w /go/src/gitlab.alipay-inc.com/Arc/sqlflow \
-    grpc bash
+    --net=host \
+    sqlflow:dev bash
 ```
 
-Now, in the container, we can compile the `sqlflow.proto` in this repo into the Go source code:
+Please be aware of the `--net=host` option, which allows programs running in the
+container to connect to TCP/IP ports running on our host computer. This is necessary
+because some of our unit tests require a MySQL server running on our host.
 
-```bash
-protoc -I server/proto server/proto/sqlflow.proto --go_out=plugin=grpc:server/proto
+Inside the Docker container, run all the tests as
+
+```
+go generate ./...
+go test -v ./...
 ```
 
-Similarly, we can compile it into Python:
-
-```bash
-python -m grpc_tools.protoc -I server/proto --python_out=. --grpc_python_out=. sqlflow.proto
-```
-
-Please be aware that the Go toolchain requires that the generated Go source files in the same directory as the `.proto` file, which is a separate directory than the server source code, whereas the Python convention is to put generated files with the client source code.
-
-To build the Go server:
-
-```bash
-cd server
-go get -u ./...
-go generate
-go install
-go test
-```
-
-where the `go get -u ./...` retrieves and updates Go dependencies of our server, `go generate` invokes the `protoc` command to translate `server/sqlflow.proto` into `server/sqlflow.pb.go`, `go install` builds the server into `$GOPATH/bin/server`, and `go test` builds and run unit tests, which runs the gRPC server in a goroutine and the client in another goroutine.
-
-To run the Go server:
-
-```bash
-$GOPATH/bin/server &
-```
+where `go generate` invokes the `protoc` command to translate `server/sqlflow.proto`
+into `server/sqlflow.pb.go` and `go test -v` builds and run unit tests.
