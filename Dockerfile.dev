@@ -27,6 +27,6 @@ RUN echo "#!/bin/bash" > /build.sh
 RUN echo "go generate -v ./..." >> /build.sh
 RUN echo "go install -v ./..." >> /build.sh
 RUN chmod +x /build.sh
-ENTRYPOINT ["/build.sh"]
+CMD ["/build.sh"]
 
 
