@@ -37,17 +37,39 @@ Given `$GOPATH$` set, we could git clone the source code of our project by runni
 go get -insecure gitlab.alipay-inc.com/Arc/sqlflow
 ```
 
+Change the directory to our project root, and we can use `go get` to retrieve
+and update Go dependencies.
+
+```bash
+cd $GOPATH/src/gitlab.alipay-inc.com/Arc/sqlflow
+go get -u -insecure -t ./...
+```
+
+Note the `-insecure` is needed since `gitlab.alipay-inc.com` is under `http` instead
+of `https`. `-t` instructs get to also download the packages required to build
+the tests for the specified packages.
+
+As all Git users would do, we run `git pull` from time to time to sync up with
+others' work. If somebody added new dependencies, we might need to run `go -u ./...`
+after `git pull` to update dependencies.
+
 To build this project, we need the protobuf compiler, Go compiler, Python interpreter,
 gRPC extension to the protobuf compiler. To ease the installation and configuration
 of these tools, we provided a Dockerfile to install them into a Docker image.
 To build the Docker image:
 
 ```bash
-cd $GOPATH/src/gitlab.alipay-inc.com/Arc/sqlflow
-docker build -t grpc -f Dockerfile.dev .
+docker build -t sqlflow:dev -f Dockerfile.dev .
 ```
 
 ## How to Build and Test
+
+### Prerequisite
+
+To test the whole package, you will need a standalone MySQL server, please follow
+[this guide](example/datasests/README.md).
+
+### Build and Test
 
 We build and test the project inside the docker container.
 
@@ -58,51 +80,20 @@ the `$GOPATH` in the container:
 ```bash
 docker run --rm -it -v $GOPATH:/go \
     -w /go/src/gitlab.alipay-inc.com/Arc/sqlflow \
-    --net=host
-    grpc bash
+    --net=host \
+    sqlflow:dev bash
 ```
 
-### server
+Please be aware of the `--net=host` option, which allows programs running in the
+container to connect to TCP/IP ports running on our host computer. This is necessary
+because some of our unit tests require a MySQL server running on our host.
 
-To test the `./server`:
+Inside the docker container, run all the tests as
 
-```bash
-cd server
-go get -u ./...
-go generate
-go test -v
+```
+go generate ./...
+go test -v ./...
 ```
 
-where the `go get -u ./...` retrieves and updates Go dependencies of our server,
-`go generate` invokes the `protoc` command to translate `server/sqlflow.proto` into
-`server/sqlflow.pb.go`, `go install` builds the server into `$GOPATH/bin/server`,
-and `go test -v` builds and run unit tests, which runs the gRPC server in a goroutine
-and the client in another goroutine.
-
-### sqlflow
-
-To test the `./sql`:
- 
-On a seperate terminal, follow the [guide](example/datasests/README.md) to start a mysql server.
-
-In the develop docker container
-
-```bash
-cd sql
-go get -u ./...
-go test -v
-```
-
-### sqlfs
-
-To test the `./sqlfs`:
- 
-On a seperate terminal, follow the [guide](example/datasests/README.md) to start a mysql server.
-
-In the develop docker container
-
-```bash
-cd sqlfs
-go get -u ./...
-go test -v
-```
+where `go generate` invokes the `protoc` command to translate `server/sqlflow.proto`
+into `server/sqlflow.pb.go` and `go test -v` builds and run unit tests.
