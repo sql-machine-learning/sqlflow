@@ -1,6 +1,6 @@
 # Quickstart
 
-SQLFlow is currently under active development. For those are interested in trying
+SQLFlow is currently under active prototyping. For those are interested in trying
 it out, we have provided a prompt demo.
 
 1. Install Go: https://golang.org/doc/install#install
