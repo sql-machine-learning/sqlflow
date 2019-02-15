@@ -112,7 +112,7 @@ db = mysql.connector.connect(user="{{.User}}",
 cursor = db.cursor()
 cursor.execute("""{{.StandardSelect}}""")
 field_names = [i[0] for i in cursor.description]
-columns = map(list, zip(*cursor.fetchall()))
+columns = list(map(list, zip(*cursor.fetchall())))
 
 feature_columns = [{{range .X}}tf.feature_column.{{.Type}}(key="{{.Name}}"),
     {{end}}]
@@ -171,7 +171,7 @@ def insert(table_name, X, db):
             table_name, ",".join(field_names), ",".join(["%s" for _ in field_names]))
     val = []
     for i in range(length[0]):
-        val.append(tuple([X[f][i] for f in field_names]))
+        val.append(tuple([str(X[f][i]) for f in field_names]))
 
     cursor = db.cursor()
     cursor.executemany(sql, val)
