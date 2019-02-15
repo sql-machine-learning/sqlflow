@@ -20,7 +20,7 @@ var (
 func TestMain(m *testing.M) {
 	dbms := os.Getenv("SQLFLOW_TEST_DB")
 	if dbms == "" {
-		dbms = "sqlite3"
+		dbms = "mysql"
 	}
 
 	var e error
