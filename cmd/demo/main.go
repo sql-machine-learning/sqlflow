@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	sql "database/sql"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -27,14 +28,18 @@ func readStmt(scn *bufio.Scanner) string {
 }
 
 func main() {
-	testCfg := &mysql.Config{
-		User:   "root",
-		Passwd: "root",
-		Addr:   "localhost:3306",
-	}
-	db, e := sql.Open("mysql", testCfg.FormatDSN())
+	addr := flag.String("addr", "localhost:3306", "MySQL server network adress")
+	user := flag.String("user", "root", "Username of MySQL server")
+	passwd := flag.String("passwd", "root", "Password of MySQL server")
+	flag.Parse()
+
+	cfg := &mysql.Config{
+		User:   *user,
+		Passwd: *passwd,
+		Addr:   *addr}
+	db, e := sql.Open("mysql", cfg.FormatDSN())
 	if e != nil {
-		log.Fatalf("This demo cannot connect to a MySQl server listening on port 3306")
+		log.Fatalf("Cannot connect to a MySQL server %v", cfg)
 	}
 	defer db.Close()
 
