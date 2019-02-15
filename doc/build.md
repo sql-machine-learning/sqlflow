@@ -88,7 +88,7 @@ Please be aware of the `--net=host` option, which allows programs running in the
 container to connect to TCP/IP ports running on our host computer. This is necessary
 because some of our unit tests require a MySQL server running on our host.
 
-Inside the docker container, run all the tests as
+Inside the Docker container, run all the tests as
 
 ```
 go generate ./...
