@@ -108,3 +108,11 @@ please run
 ```bash
 docker build -t sqlflow -f ./Dockerfile $GOPATH/bin
 ```
+
+This demo requires a MySQL server instance. If we don't, we could
+follow example/datasets/README.md to start one.  Then, we could run
+the demo
+
+```bash
+docker run --rm -it --net=host sqlflow
+```
