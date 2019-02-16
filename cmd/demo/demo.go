@@ -19,8 +19,8 @@ import (
 func readStmt(scn *bufio.Scanner) string {
 	stmt := ""
 	for scn.Scan() {
-		stmt += strings.TrimSpace(scn.Text())
-		if strings.HasSuffix(stmt, ";") {
+		stmt += scn.Text() + "\n"
+		if strings.HasSuffix(strings.TrimSpace(scn.Text()), ";") {
 			break
 		}
 	}
