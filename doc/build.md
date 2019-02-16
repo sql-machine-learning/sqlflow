@@ -92,8 +92,28 @@ Inside the Docker container, run all the tests as
 
 ```
 go generate ./...
+go install ./...
 go test -v ./...
 ```
 
 where `go generate` invokes the `protoc` command to translate `server/sqlflow.proto`
 into `server/sqlflow.pb.go` and `go test -v` builds and run unit tests.
+
+
+### Build a Release Image
+
+The above build process currently generates two binary files in
+`$GOPATH/bin` on the host.  To package them into a Docker image,
+please run
+
+```bash
+docker build -t sqlflow -f ./Dockerfile $GOPATH/bin
+```
+
+This demo requires a MySQL server instance. If we don't, we could
+follow example/datasets/README.md to start one.  Then, we could run
+the demo
+
+```bash
+docker run --rm -it --net=host sqlflow
+```
