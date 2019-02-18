@@ -1,5 +1,5 @@
 CREATE DATABASE IF NOT EXISTS churn;
-CREATE TABLE churn.churn(
+CREATE TABLE IF NOT EXISTS churn.churn (
 	customerID VARCHAR(255),
 	gender VARCHAR(255),
 	SeniorCitizen TINYINT,

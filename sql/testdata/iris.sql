@@ -1,5 +1,5 @@
 CREATE DATABASE IF NOT EXISTS iris;
-CREATE TABLE iris.iris(
+CREATE TABLE IF NOT EXISTS iris.iris (
        sepal_length float,
        sepal_width  float,
        petal_length float,
