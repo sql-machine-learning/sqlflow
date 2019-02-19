@@ -36,12 +36,18 @@ func Run(slct string, db *sql.DB) chan interface{} {
 // https://golang.org/pkg/database/sql/#DB.Exec .
 // We will need to extend our parser to be a full SQL parser in the future.
 func isQuery(slct string) bool {
-	s := strings.ToUpper(slct)
+	s := strings.ToUpper(strings.TrimSpace(slct))
 	has := strings.Contains
-	if has(s, "SELECT") && !has(s, "INTO") {
+	if strings.HasPrefix(s, "SELECT") && !has(s, "INTO") {
 		return true
 	}
-	if has(s, "SHOW") && (has(s, "DATABASES") || has(s, "TABLES")) {
+	if strings.HasPrefix(s, "SHOW") && (has(s, "CREATE") || has(s, "DATABASES") || has(s, "TABLES")) {
+		return true
+	}
+	if strings.HasPrefix(s, "USE") {
+		return true
+	}
+	if strings.HasPrefix(s, "DESCRIBE") {
 		return true
 	}
 	return false
@@ -86,7 +92,7 @@ func runQuery(slct string, db *sql.DB) chan interface{} {
 			if err != nil {
 				return fmt.Errorf("failed to get columnTypes: %v", err)
 			}
-			// FIXME(tony): support more column types: https://golang.org/pkg/database/sql/#Rows.Scan
+			// Column types: https://golang.org/pkg/database/sql/#Rows.Scan
 			for i, ct := range columnTypes {
 				switch ct.ScanType() {
 				case reflect.TypeOf(sql.NullBool{}):
@@ -95,7 +101,7 @@ func runQuery(slct string, db *sql.DB) chan interface{} {
 					values[i] = new(int64)
 				case reflect.TypeOf(sql.NullFloat64{}):
 					values[i] = new(float64)
-				case reflect.TypeOf(sql.NullString{}):
+				case reflect.TypeOf(sql.NullString{}), reflect.TypeOf(sql.RawBytes{}):
 					values[i] = new(string)
 				default:
 					return fmt.Errorf("unrecognized column scan type %v", ct.ScanType())
@@ -103,24 +109,27 @@ func runQuery(slct string, db *sql.DB) chan interface{} {
 			}
 
 			for rows.Next() {
-				err = rows.Scan(values...)
-				if err != nil {
+				if err := rows.Scan(values...); err != nil {
 					return err
 				}
 
 				row := make([]interface{}, count)
 				for i, val := range values {
-					switch v := val.(type) {
-					case *bool:
-						row[i] = *v
-					case *int64:
-						row[i] = *v
-					case *float64:
-						row[i] = *v
-					case *string:
-						row[i] = *v
-					default:
-						return fmt.Errorf("unrecogized type %v", v)
+					if val == nil {
+						row[i] = nil
+					} else {
+						switch v := val.(type) {
+						case *bool:
+							row[i] = *v
+						case *int64:
+							row[i] = *v
+						case *float64:
+							row[i] = *v
+						case *string:
+							row[i] = *v
+						default:
+							return fmt.Errorf("unrecogized type %v", v)
+						}
 					}
 				}
 				rsp <- row
