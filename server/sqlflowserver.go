@@ -42,6 +42,7 @@ func (s *server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 			return err
 		}
 		if err := stream.Send(res); err != nil {
+			// FIXME(tony): notify and exit sqlflow.Run
 			return err
 		}
 	}

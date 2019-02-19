@@ -1,12 +1,18 @@
-# Avoid leaking goroutine
+# Closing the producer goroutine from the consumer
 
-This design doc discussed how to gracefully stop the running goroutines that are no longer needed.
+The producer-and-consumer pattern is well used in Go concurrent programming. When
+the consumer stops, we want to gracefully stop the producer as well.
 
 ## Problem
 
-When a gRPC server receives a streaming request,  it usually calls a [function that returns a channel](https://talks.golang.org/2012/concurrency.slide#25),  reads the result from that channel and send the result to the client one by one.
+When a gRPC server receives a streaming request,  it usually calls a
+[function that returns a channel](https://talks.golang.org/2012/concurrency.slide#25),
+reads the result from that channel and send the result to the client one by one.
 
-Take the following code for instance: upon receiving a request, the main goroutine `Service` calls `launchJob`. `launchJob` starts a separate goroutine as an anonymous function call and returns a channel. In the anonymous function, items will be sent to channel. And `Service` on the otherside of the channel will reads from it.
+Take the following code for instance: upon receiving a request, the main goroutine
+`Service` calls `launchJob`. `launchJob` starts a separate goroutine as an anonymous
+function call and returns a channel. In the anonymous function, items will be sent to
+channel. And `Service` on the otherside of the channel will reads from it.
 
 ```go
 func Service(req *Request, stream *StreamResponse) error {
@@ -38,13 +44,16 @@ func launchJob(content string) chan Item {
 }
 ```
 
-There is a major problem in this implementation. As pointed out by the comment, if the `Send` in `Service` returns an error, the `Service` function will return, leaving the anonymous function being blocked on `c <- Item{}` forever.
+There is a major problem in this implementation. As pointed out by the comment,
+if the `Send` in `Service` returns an error, the `Service` function will return,
+leaving the anonymous function being blocked on `c <- Item{}` forever.
 
-This problem is important because the leaking goroutine usually owns scarce system resources such as network connection and memory.
+This problem is important because the leaking goroutine usually owns scarce system
+resources such as network connection and memory.
 
 ## Solution
 
-The proposed solution contains a new data structure `Subscription`
+The proposed solution contains a new data structure `Subscription`.
 
 ```go
 struct Subscription {
@@ -85,7 +94,7 @@ func Service(req *Request, stream *StreamResponse) error {
 
 func launchJob(content string) *Subscription {
   s := &Subscription{updates: make(chan interface{}),
-                     closing: make(chan error, 1)}
+                     closing: make(chan bool, 1)}
   
   go func() error  {
     defer close(s.updates)
