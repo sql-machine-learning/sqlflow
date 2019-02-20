@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"reflect"
 	"strings"
 	"sync"
 	"time"
@@ -42,9 +41,6 @@ func isQuery(slct string) bool {
 		return true
 	}
 	if strings.HasPrefix(s, "SHOW") && (has(s, "CREATE") || has(s, "DATABASES") || has(s, "TABLES")) {
-		return true
-	}
-	if strings.HasPrefix(s, "USE") {
 		return true
 	}
 	if strings.HasPrefix(s, "DESCRIBE") {
@@ -92,45 +88,27 @@ func runQuery(slct string, db *sql.DB) chan interface{} {
 			if err != nil {
 				return fmt.Errorf("failed to get columnTypes: %v", err)
 			}
-			// Column types: https://golang.org/pkg/database/sql/#Rows.Scan
 			for i, ct := range columnTypes {
-				switch ct.ScanType() {
-				case reflect.TypeOf(sql.NullBool{}):
-					values[i] = new(bool)
-				case reflect.TypeOf(sql.NullInt64{}):
-					values[i] = new(int64)
-				case reflect.TypeOf(sql.NullFloat64{}):
-					values[i] = new(float64)
-				case reflect.TypeOf(sql.NullString{}), reflect.TypeOf(sql.RawBytes{}):
-					values[i] = new(string)
-				default:
-					return fmt.Errorf("unrecognized column scan type %v", ct.ScanType())
+				v, e := mmallocByType(ct.ScanType())
+				if e != nil {
+					return e
 				}
+				values[i] = v
 			}
 
 			for rows.Next() {
 				if err := rows.Scan(values...); err != nil {
+					log.Errorf("weiguo %v", err)
 					return err
 				}
 
 				row := make([]interface{}, count)
 				for i, val := range values {
-					if val == nil {
-						row[i] = nil
-					} else {
-						switch v := val.(type) {
-						case *bool:
-							row[i] = *v
-						case *int64:
-							row[i] = *v
-						case *float64:
-							row[i] = *v
-						case *string:
-							row[i] = *v
-						default:
-							return fmt.Errorf("unrecogized type %v", v)
-						}
+					v, e := parseVal(val)
+					if e != nil {
+						return e
 					}
+					row[i] = v
 				}
 				rsp <- row
 			}
