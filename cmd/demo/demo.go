@@ -27,6 +27,41 @@ func readStmt(scn *bufio.Scanner) string {
 	return stmt
 }
 
+func displayHead(head map[string]interface{}) {
+	cn, ok := head["columnNames"]
+	if !ok {
+		fmt.Print("ERROR: can't find field columnNames in head")
+	}
+	cols, ok := cn.([]string)
+	if !ok {
+		fmt.Print("ERROR: invalid header type")
+	}
+	for _, ele := range cols {
+		fmt.Printf("%15s", ele)
+	}
+	fmt.Println()
+}
+
+func displayRow(row []interface{}) {
+	for _, ele := range row {
+		fmt.Printf("%15v", ele)
+	}
+	fmt.Println()
+}
+
+func display(rsp interface{}) {
+	switch s := rsp.(type) {
+	case map[string]interface{}:
+		displayHead(s)
+	case []interface{}:
+		displayRow(s)
+	case error:
+		fmt.Printf("ERROR: %v\n", s)
+	default:
+		fmt.Println(s)
+	}
+}
+
 func main() {
 	addr := flag.String("addr", "localhost:3306", "MySQL server network adress")
 	user := flag.String("user", "root", "Username of MySQL server")
@@ -51,7 +86,7 @@ func main() {
 
 		stream := sqlflow.Run(slct, db)
 		for rsp := range stream {
-			fmt.Println(rsp)
+			display(rsp)
 		}
 	}
 }
