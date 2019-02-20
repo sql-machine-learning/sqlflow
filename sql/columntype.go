@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"fmt"
 	"reflect"
+
+	"github.com/go-sql-driver/mysql"
 )
 
 var (
@@ -13,6 +15,7 @@ var (
 	sqlNullFloat64 = reflect.TypeOf(sql.NullFloat64{})
 	sqlRawBytes    = reflect.TypeOf(sql.RawBytes{})
 	sqlNullString  = reflect.TypeOf(sql.NullString{})
+	mysqlNullTime  = reflect.TypeOf(mysql.NullTime{})
 	// builtin type supports sql like `select 1;` or  `select count(*) from ...`
 	builtIntBytes  = reflect.TypeOf([]byte(""))
 	builtinInt     = reflect.TypeOf(int(0))
@@ -41,6 +44,8 @@ func mmallocByType(rt reflect.Type) (interface{}, error) {
 		return new(sql.RawBytes), nil
 	case sqlNullString:
 		return new(sql.NullString), nil
+	case mysqlNullTime:
+		return new(mysql.NullTime), nil
 	case builtIntBytes:
 		return new([]byte), nil
 	case builtinInt:
@@ -97,6 +102,11 @@ func parseVal(val interface{}) (interface{}, error) {
 	case *sql.NullString:
 		if (*v).Valid {
 			return (*v).String, nil
+		}
+		return nil, nil
+	case *mysql.NullTime:
+		if (*v).Valid {
+			return (*v).Time, nil
 		}
 		return nil, nil
 	case *([]byte):
