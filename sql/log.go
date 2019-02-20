@@ -1,7 +1,6 @@
 package sql
 
 import (
-	"flag"
 	"fmt"
 	"os"
 	"path"
@@ -11,22 +10,29 @@ import (
 
 var log *logrus.Entry
 
-func init() {
-	logDir := flag.String("logdir", "logs", "log directory")
-	logLevel := flag.String("loglevel", "info", "log level")
-	flag.Parse()
+func getEnv(key, fallback string) string {
+	value := os.Getenv(key)
+	if len(value) == 0 {
+		return fallback
+	}
+	return value
+}
 
-	ll, e := logrus.ParseLevel(*logLevel)
+func init() {
+	logDir := getEnv("SQLFLOW_log_dir", "logs")
+	logLevel := getEnv("SQLFLOW_log_level", "info")
+
+	ll, e := logrus.ParseLevel(logLevel)
 	if e != nil {
 		ll = logrus.InfoLevel
 	}
 
-	e = os.MkdirAll(*logDir, 0744)
+	e = os.MkdirAll(logDir, 0744)
 	if e != nil {
 		log.Panicf("create log directory failed: %v", e)
 	}
 
-	f, e := os.Create(path.Join(*logDir, fmt.Sprintf("sqlflow-%d.log", os.Getpid())))
+	f, e := os.Create(path.Join(logDir, fmt.Sprintf("sqlflow-%d.log", os.Getpid())))
 	if e != nil {
 		log.Panicf("open log file failed: %v", e)
 	}
