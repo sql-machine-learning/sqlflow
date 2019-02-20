@@ -77,6 +77,10 @@ func runQuery(slct string, db *sql.DB) chan interface{} {
 				return fmt.Errorf("failed to get columns: %v", err)
 			}
 
+			header := make(map[string]interface{})
+			header["columnNames"] = cols
+			rsp <- header
+
 			// Since we don't know the table schema in advance, need to
 			// create an slice of empty interface and adds column type
 			// at runtime
