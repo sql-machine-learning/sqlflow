@@ -98,7 +98,6 @@ func runQuery(slct string, db *sql.DB) chan interface{} {
 
 			for rows.Next() {
 				if err := rows.Scan(values...); err != nil {
-					log.Errorf("weiguo %v", err)
 					return err
 				}
 

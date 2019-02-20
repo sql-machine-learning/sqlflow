@@ -9,10 +9,11 @@ import (
 var (
 	// Column types: https://golang.org/pkg/database/sql/#Rows.Scan
 	sqlNullBool    = reflect.TypeOf(sql.NullBool{})
-	sqlNullString  = reflect.TypeOf(sql.NullString{})
-	sqlRawBytes    = reflect.TypeOf(sql.RawBytes{})
 	sqlNullInt64   = reflect.TypeOf(sql.NullInt64{})
 	sqlNullFloat64 = reflect.TypeOf(sql.NullFloat64{})
+	sqlRawBytes    = reflect.TypeOf(sql.RawBytes{})
+	sqlNullString  = reflect.TypeOf(sql.NullString{})
+	// builtin type supports sql like `select 1;` or  `select count(*) from ...`
 	builtIntBytes  = reflect.TypeOf([]byte(""))
 	builtinInt     = reflect.TypeOf(int(0))
 	builtinInt8    = reflect.TypeOf(int8(0))
@@ -31,11 +32,15 @@ var (
 func mmallocByType(rt reflect.Type) (interface{}, error) {
 	switch rt {
 	case sqlNullBool:
-		return new(bool), nil
-	case sqlNullString:
-		return new(string), nil
+		return new(sql.NullBool), nil
+	case sqlNullInt64:
+		return new(sql.NullInt64), nil
+	case sqlNullFloat64:
+		return new(sql.NullFloat64), nil
 	case sqlRawBytes:
 		return new(sql.RawBytes), nil
+	case sqlNullString:
+		return new(sql.NullString), nil
 	case builtIntBytes:
 		return new([]byte), nil
 	case builtinInt:
@@ -46,7 +51,7 @@ func mmallocByType(rt reflect.Type) (interface{}, error) {
 		return new(int16), nil
 	case builtinInt32:
 		return new(int32), nil
-	case sqlNullInt64, builtinInt64:
+	case builtinInt64:
 		return new(int64), nil
 	case builtinUint:
 		return new(uint), nil
@@ -60,7 +65,7 @@ func mmallocByType(rt reflect.Type) (interface{}, error) {
 		return new(uint64), nil
 	case builtinFloat32:
 		return new(float32), nil
-	case sqlNullFloat64, builtinFloat64:
+	case builtinFloat64:
 		return new(float64), nil
 	default:
 		return nil, fmt.Errorf("unrecognized column scan type %v", rt)
@@ -69,16 +74,39 @@ func mmallocByType(rt reflect.Type) (interface{}, error) {
 
 func parseVal(val interface{}) (interface{}, error) {
 	switch v := val.(type) {
-	case nil:
+	case *sql.NullBool:
+		if (*v).Valid {
+			return (*v).Bool, nil
+		}
 		return nil, nil
-	case *bool:
-		return *v, nil
-	case *string:
-		return *v, nil
+	case *sql.NullInt64:
+		if (*v).Valid {
+			return (*v).Int64, nil
+		}
+		return nil, nil
+	case *sql.NullFloat64:
+		if (*v).Valid {
+			return (*v).Float64, nil
+		}
+		return nil, nil
+	case *sql.RawBytes:
+		if *v == nil {
+			return nil, nil
+		}
+		return string(*v), nil
+	case *sql.NullString:
+		if (*v).Valid {
+			return (*v).String, nil
+		}
+		return nil, nil
 	case *([]byte):
 		if *v == nil {
 			return nil, nil
 		}
+		return *v, nil
+	case *bool:
+		return *v, nil
+	case *string:
 		return *v, nil
 	case *int:
 		return *v, nil
@@ -104,11 +132,6 @@ func parseVal(val interface{}) (interface{}, error) {
 		return *v, nil
 	case *float64:
 		return *v, nil
-	case *sql.RawBytes:
-		if *v == nil {
-			return nil, nil
-		}
-		return string(*v), nil
 	default:
 		return nil, fmt.Errorf("unrecogized type %v", v)
 	}
