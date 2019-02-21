@@ -4,12 +4,10 @@ import (
 	"bufio"
 	"database/sql"
 	"fmt"
-	"os"
-	"testing"
-	"time"
-
 	"github.com/go-sql-driver/mysql"
 	_ "github.com/mattn/go-sqlite3"
+	"os"
+	"testing"
 )
 
 var (
@@ -27,12 +25,20 @@ func TestMain(m *testing.M) {
 	switch dbms {
 	case "sqlite3":
 		testDB, testCfg, e = openSQLite3()
+		_, e = testDB.Exec("ATTACH DATABASE ':memory:' AS iris;")
+		assertNoErr(e)
+		_, e = testDB.Exec("ATTACH DATABASE ':memory:' AS churn;")
+		assertNoErr(e)
 		defer testDB.Close()
 	case "mysql":
 		testDB, testCfg, e = openMySQL()
+		_, e = testDB.Exec("CREATE DATABASE IF NOT EXISTS iris;")
+		assertNoErr(e)
+		_, e = testDB.Exec("CREATE DATABASE IF NOT EXISTS churn;")
+		assertNoErr(e)
 		defer testDB.Close()
 	default:
-		e = fmt.Errorf("Unrecognized environment variable SQLFLOW_TEST_DB %s\n", dbms)
+		e = fmt.Errorf("unrecognized environment variable SQLFLOW_TEST_DB %s", dbms)
 	}
 	assertNoErr(e)
 
@@ -52,8 +58,7 @@ func assertNoErr(e error) {
 }
 
 func openSQLite3() (*sql.DB, *mysql.Config, error) {
-	n := fmt.Sprintf("%d%d", time.Now().Unix(), os.Getpid())
-	db, e := sql.Open("sqlite3", n)
+	db, e := sql.Open("sqlite3", ":memory:")
 	return db, nil, e
 }
 
