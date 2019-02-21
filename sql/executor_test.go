@@ -52,6 +52,21 @@ func TestCreatePredictionTable(t *testing.T) {
 	a.NoError(createPredictionTable(trainParsed, predParsed, testDB))
 }
 
+func TestIsQuery(t *testing.T) {
+	a := assert.New(t)
+	a.True(isQuery("select * from iris.iris"))
+	a.True(isQuery("show create table iris.iris"))
+	a.True(isQuery("show databases"))
+	a.True(isQuery("show tables"))
+	a.True(isQuery("describe iris.iris"))
+
+	a.False(isQuery("select * from iris.iris limit 10 into iris.tmp"))
+	a.False(isQuery("insert into iris.iris values ..."))
+	a.False(isQuery("delete from iris.iris where ..."))
+	a.False(isQuery("update iris.iris where ..."))
+	a.False(isQuery("drop table"))
+}
+
 func TestLogChanWriter_Write(t *testing.T) {
 	a := assert.New(t)
 
