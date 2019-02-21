@@ -89,7 +89,7 @@ func runQuery(slct string, db *sql.DB) chan interface{} {
 				return fmt.Errorf("failed to get columnTypes: %v", err)
 			}
 			for i, ct := range columnTypes {
-				v, e := mmallocByType(ct.ScanType())
+				v, e := createByType(ct.ScanType())
 				if e != nil {
 					return e
 				}

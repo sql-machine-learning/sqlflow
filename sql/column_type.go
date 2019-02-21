@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"reflect"
+	"time"
 
 	"github.com/go-sql-driver/mysql"
 )
@@ -30,9 +31,10 @@ var (
 	builtinUint64  = reflect.TypeOf(uint64(0))
 	builtinFloat32 = reflect.TypeOf(float32(0))
 	builtinFloat64 = reflect.TypeOf(float64(0))
+	builtinTime    = reflect.TypeOf(time.Time{})
 )
 
-func mmallocByType(rt reflect.Type) (interface{}, error) {
+func createByType(rt reflect.Type) (interface{}, error) {
 	switch rt {
 	case sqlNullBool:
 		return new(sql.NullBool), nil
@@ -46,6 +48,8 @@ func mmallocByType(rt reflect.Type) (interface{}, error) {
 		return new(sql.NullString), nil
 	case mysqlNullTime:
 		return new(mysql.NullTime), nil
+	case builtinTime:
+		return new(time.Time), nil
 	case builtIntBytes:
 		return new([]byte), nil
 	case builtinInt:
@@ -109,6 +113,8 @@ func parseVal(val interface{}) (interface{}, error) {
 			return (*v).Time, nil
 		}
 		return nil, nil
+	case *(time.Time):
+		return *v, nil
 	case *([]byte):
 		if *v == nil {
 			return nil, nil
