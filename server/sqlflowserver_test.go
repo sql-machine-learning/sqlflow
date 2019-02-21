@@ -50,8 +50,7 @@ func TestSQL(t *testing.T) {
 		stream, err := c.Run(ctx, &pb.Request{Sql: s})
 		a.NoError(err)
 		for {
-			rsp, err := stream.Recv()
-			log.Fatalf("999999999999999\nrsp:%v\nerr:%v\n", rsp, err)
+			_, err := stream.Recv()
 			if err == io.EOF {
 				break
 			}
