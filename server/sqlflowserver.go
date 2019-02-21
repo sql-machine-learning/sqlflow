@@ -4,8 +4,13 @@ package server
 import (
 	"database/sql"
 	"fmt"
+	"time"
+
+	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
+	pyts "github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/golang/protobuf/ptypes/wrappers"
+
 	pb "gitlab.alipay-inc.com/Arc/sqlflow/server/proto"
 )
 
@@ -65,22 +70,64 @@ func encodeHead(head map[string]interface{}) (*pb.Response, error) {
 func encodeRow(row []interface{}) (*pb.Response, error) {
 	encodedRow := &pb.Row{}
 	for _, element := range row {
-		switch e := element.(type) {
-		// TODO(tony): support more types
-		case int64:
-			x, err := ptypes.MarshalAny(&wrappers.Int64Value{Value: e})
+		pm, err := parse2Any(element)
+		if err != nil {
+			return nil, err
+		}
+		if pm == nil {
+			encodedRow.Data = append(encodedRow.Data, nil)
+		} else {
+			any, err := ptypes.MarshalAny(pm)
 			if err != nil {
 				return nil, err
 			}
-			encodedRow.Data = append(encodedRow.Data, x)
-		default:
-			return nil, fmt.Errorf("can convert %#v to protobuf.Any", element)
+			encodedRow.Data = append(encodedRow.Data, any)
 		}
 	}
-
 	return &pb.Response{Response: &pb.Response_Row{Row: encodedRow}}, nil
 }
 
 func encodeMessage(s string) (*pb.Response, error) {
 	return &pb.Response{Response: &pb.Response_Message{Message: &pb.Message{Message: s}}}, nil
+}
+
+func parse2Any(val interface{}) (proto.Message, error) {
+	switch v := val.(type) {
+	case nil:
+		return nil, nil
+	case bool:
+		return &wrappers.BoolValue{Value: v}, nil
+	case int8, int16:
+		cv, _ := v.(int32)
+		return &wrappers.Int32Value{Value: cv}, nil
+	case int32:
+		return &wrappers.Int32Value{Value: v}, nil
+	case int:
+		return &wrappers.Int64Value{Value: int64(v)}, nil
+	case int64:
+		return &wrappers.Int64Value{Value: v}, nil
+	case uint8, uint16:
+		cv, _ := v.(uint32)
+		return &wrappers.UInt32Value{Value: cv}, nil
+	case uint32:
+		return &wrappers.UInt32Value{Value: v}, nil
+	case uint:
+		return &wrappers.UInt64Value{Value: uint64(v)}, nil
+	case uint64:
+		return &wrappers.UInt64Value{Value: v}, nil
+	case float32:
+		return &wrappers.FloatValue{Value: v}, nil
+	case float64:
+		return &wrappers.DoubleValue{Value: v}, nil
+	case string:
+		return &wrappers.StringValue{Value: v}, nil
+	case []byte:
+		return &wrappers.BytesValue{Value: v}, nil
+	case time.Time:
+		return &pyts.Timestamp{
+			Seconds: int64(v.Second()),
+			Nanos:   int32(v.Nanosecond())}, nil
+	default:
+		return nil, fmt.Errorf("can't convert %#v to protobuf.Any", val)
+	}
 }

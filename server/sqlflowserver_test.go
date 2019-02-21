@@ -50,7 +50,8 @@ func TestSQL(t *testing.T) {
 		stream, err := c.Run(ctx, &pb.Request{Sql: s})
 		a.NoError(err)
 		for {
-			_, err := stream.Recv()
+			rsp, err := stream.Recv()
+			log.Fatalf("999999999999999\nrsp:%v\nerr:%v\n", rsp, err)
 			if err == io.EOF {
 				break
 			}
@@ -71,10 +72,11 @@ func mockRun(sql string, db *sql.DB) chan interface{} {
 			m := make(map[string]interface{})
 			m["columnNames"] = []string{"X", "Y"}
 			c <- m
-			c <- []interface{}{int64(1), int64(1)}
-			c <- []interface{}{int64(2), int64(2)}
-			c <- []interface{}{int64(3), int64(3)}
-			c <- []interface{}{int64(4), int64(4)}
+			c <- []interface{}{true, false, "hello", []byte("world")}
+			c <- []interface{}{int8(1), int16(1), int32(1), int(1), int64(1)}
+			c <- []interface{}{uint8(1), uint16(1), uint32(1), uint(1), uint64(1)}
+			c <- []interface{}{float32(1), float64(1), time.Now()}
+			// FIXME(weiguo): c <- []interface{}{nil}
 		case testExecuteSQL:
 			c <- "success; 0 rows affected"
 		case testExtendedSQL:
@@ -84,7 +86,6 @@ func mockRun(sql string, db *sql.DB) chan interface{} {
 			c <- "log 3"
 		}
 	}()
-
 	return c
 }
 
