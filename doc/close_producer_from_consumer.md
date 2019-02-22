@@ -51,7 +51,7 @@ leaving the anonymous function being blocked on `c <- Item{}` forever.
 This problem is important because the leaking goroutine usually owns scarce system
 resources such as network connection and memory.
 
-## Solution
+## Solution: subscrption
 
 The proposed solution contains a new data structure `Subscription`.
 
@@ -115,9 +115,59 @@ func launchJob(content string) *Subscription {
 }
 ```
 
+## Solution: pipeline explicit cancellation
+
+Inspired by this [blog post](https://blog.golang.org/pipelines) section
+*Explicit cancellation*, we can signal the cancellation via closing on a separate
+channel.
+
+```go
+func Service(req *Request, stream *StreamResponse) error {
+  c, done := launchJob(req.Content)
+  defer close(done) // signal cancellation with service is finished
+  for r := range c {
+    if e := stream.Send(result); e != nil {
+      return e
+    }
+  }
+  return nil
+}
+
+func sendWithCheck(done chan bool, out chan interface{}, item interface{}) {
+  select {
+  // a receive operation on a closed channel can always proceed immediately,
+  // yielding the element type's zero value.
+  case <-done:
+    return fmt.Errorf("service canceled")
+  case out <- item:
+    return nil
+  }
+}
+
+func launchJob(content string) chan interface{}, chan bool {
+  out := make(chan interface{})
+  done := make(chan bool, 1)
+
+  go func() error  {
+    defer close(out)
+
+    acquireScarceResources()
+    defer releaseScarceResources()
+
+    if err := sendWithCheck(done, out, Item{}); err != nil {
+      return err
+    }
+    ...
+  }()
+
+  return out, done
+}
+```
+
 ## Further Reading
 
 1. [Google Form: Channel send timeout](https://groups.google.com/forum/#!topic/golang-nuts/Oth9CmJPoqo)
 2. [Go by Example: Timeouts](https://gobyexample.com/timeouts)
 3. [Google I/O 2013 - Advanced Go Concurrency Patterns](https://www.youtube.com/watch?v=QDDwwePbDtw&t=111s)
-4. [Go Concurrency Patterns](https://talks.golang.org/2012/concurrency.slide)
+4. [Go Concurrency Patterns Talk](https://talks.golang.org/2012/concurrency.slide)
+5. [Go Concurrency Patterns: Pipelines and cancellation](https://blog.golang.org/pipelines)
