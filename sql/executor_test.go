@@ -22,12 +22,12 @@ func TestExecutorTrainAndPredict(t *testing.T) {
 		pr, e := newParser().Parse(testTrainSelectIris)
 		a.NoError(e)
 		stream := runExtendedSQL(testTrainSelectIris, testDB, testCfg, pr)
-		a.True(goodStream(stream))
+		a.True(goodStream(stream.Read()))
 
 		pr, e = newParser().Parse(testPredictSelectIris)
 		a.NoError(e)
 		stream = runExtendedSQL(testPredictSelectIris, testDB, testCfg, pr)
-		a.True(goodStream(stream))
+		a.True(goodStream(stream.Read()))
 	})
 }
 
@@ -35,11 +35,11 @@ func TestStandardSQL(t *testing.T) {
 	a := assert.New(t)
 	a.NotPanics(func() {
 		stream := runStandardSQL(testSelectIris, testDB)
-		a.True(goodStream(stream))
+		a.True(goodStream(stream.Read()))
 	})
 	a.NotPanics(func() {
 		stream := runStandardSQL(testStandardExecutiveSQLStatement, testDB)
-		a.True(goodStream(stream))
+		a.True(goodStream(stream.Read()))
 	})
 }
 

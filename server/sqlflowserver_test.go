@@ -12,11 +12,13 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	pb "gitlab.alipay-inc.com/Arc/sqlflow/server/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
+
+	pb "gitlab.alipay-inc.com/Arc/sqlflow/server/proto"
+	sf "gitlab.alipay-inc.com/Arc/sqlflow/sql"
 )
 
 const (
@@ -59,33 +61,31 @@ func TestSQL(t *testing.T) {
 	}
 }
 
-func mockRun(sql string, db *sql.DB) chan interface{} {
-	c := make(chan interface{})
-
+func mockRun(sql string, db *sql.DB) *sf.ExecutorChan {
+	rsp := sf.NewExecutorChan()
 	go func() {
-		defer close(c)
+		defer rsp.Destroy()
+
 		switch sql {
 		case testErrorSQL:
-			c <- fmt.Errorf("run error: %v", testErrorSQL)
+			rsp.Write(fmt.Errorf("run error: %v", testErrorSQL))
 		case testQuerySQL:
 			m := make(map[string]interface{})
 			m["columnNames"] = []string{"X", "Y"}
-			c <- m
-			c <- []interface{}{true, false, "hello", []byte("world")}
-			c <- []interface{}{int8(1), int16(1), int32(1), int(1), int64(1)}
-			c <- []interface{}{uint8(1), uint16(1), uint32(1), uint(1), uint64(1)}
-			c <- []interface{}{float32(1), float64(1)}
-			c <- []interface{}{time.Now(), nil}
+			rsp.Write(m)
+			rsp.Write([]interface{}{true, false, "hello", []byte("world")})
+			rsp.Write([]interface{}{int8(1), int16(1), int32(1), int(1), int64(1)})
+			rsp.Write([]interface{}{uint8(1), uint16(1), uint32(1), uint(1), uint64(1)})
+			rsp.Write([]interface{}{float32(1), float64(1)})
+			rsp.Write([]interface{}{time.Now(), nil})
 		case testExecuteSQL:
-			c <- "success; 0 rows affected"
+			rsp.Write("success; 0 rows affected")
 		case testExtendedSQL:
-			c <- "log 0"
-			c <- "log 1"
-			c <- "log 2"
-			c <- "log 3"
+			rsp.Write("log 0")
+			rsp.Write("log 1")
 		}
 	}()
-	return c
+	return rsp
 }
 
 func startServer(done chan bool) {
