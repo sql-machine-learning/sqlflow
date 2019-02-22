@@ -74,15 +74,11 @@ func encodeRow(row []interface{}) (*pb.Response, error) {
 		if err != nil {
 			return nil, err
 		}
-		if pm == nil {
-			encodedRow.Data = append(encodedRow.Data, nil)
-		} else {
-			any, err := ptypes.MarshalAny(pm)
-			if err != nil {
-				return nil, err
-			}
-			encodedRow.Data = append(encodedRow.Data, any)
+		any, err := ptypes.MarshalAny(pm)
+		if err != nil {
+			return nil, err
 		}
+		encodedRow.Data = append(encodedRow.Data, any)
 	}
 	return &pb.Response{Response: &pb.Response_Row{Row: encodedRow}}, nil
 }
@@ -94,7 +90,7 @@ func encodeMessage(s string) (*pb.Response, error) {
 func parse2Any(val interface{}) (proto.Message, error) {
 	switch v := val.(type) {
 	case nil:
-		return nil, nil
+		return &pb.Row_Null{}, nil
 	case bool:
 		return &wrappers.BoolValue{Value: v}, nil
 	case int8, int16:

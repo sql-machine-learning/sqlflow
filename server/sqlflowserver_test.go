@@ -74,8 +74,8 @@ func mockRun(sql string, db *sql.DB) chan interface{} {
 			c <- []interface{}{true, false, "hello", []byte("world")}
 			c <- []interface{}{int8(1), int16(1), int32(1), int(1), int64(1)}
 			c <- []interface{}{uint8(1), uint16(1), uint32(1), uint(1), uint64(1)}
-			c <- []interface{}{float32(1), float64(1), time.Now()}
-			// FIXME(weiguo): c <- []interface{}{nil}
+			c <- []interface{}{float32(1), float64(1)}
+			c <- []interface{}{time.Now(), nil}
 		case testExecuteSQL:
 			c <- "success; 0 rows affected"
 		case testExtendedSQL:
