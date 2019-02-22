@@ -14,7 +14,7 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"gitlab.alipay-inc.com/Arc/sqlflow/server"
 	pb "gitlab.alipay-inc.com/Arc/sqlflow/server/proto"
-	sqlflow "gitlab.alipay-inc.com/Arc/sqlflow/sql"
+	sf "gitlab.alipay-inc.com/Arc/sqlflow/sql"
 )
 
 const (
@@ -38,7 +38,7 @@ func main() {
 	defer db.Close()
 
 	s := grpc.NewServer()
-	pb.RegisterSQLFlowServer(s, server.NewServer(sqlflow.Run, db))
+	pb.RegisterSQLFlowServer(s, server.NewServer(sf.Run, db))
 	// Register reflection service on gRPC server.
 	reflection.Register(s)
 	log.Println("Server Started at", port)

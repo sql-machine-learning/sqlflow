@@ -14,7 +14,7 @@ import (
 )
 
 // Run executes a SQL query and returns a stream of row or message
-func Run(slct string, db *sql.DB) chan interface{} {
+func Run(slct string, db *sql.DB) *ExecutorChan {
 	slctUpper := strings.ToUpper(slct)
 	if strings.Contains(slctUpper, "TRAIN") || strings.Contains(slctUpper, "PREDICT") {
 		pr, e := newParser().Parse(slct)
@@ -49,7 +49,7 @@ func isQuery(slct string) bool {
 	return false
 }
 
-func runStandardSQL(slct string, db *sql.DB) chan interface{} {
+func runStandardSQL(slct string, db *sql.DB) *ExecutorChan {
 	if isQuery(slct) {
 		return runQuery(slct, db)
 	}
@@ -58,30 +58,31 @@ func runStandardSQL(slct string, db *sql.DB) chan interface{} {
 
 // FIXME(tony): how to deal with large tables?
 // TODO(tony): test on null table elements
-func runQuery(slct string, db *sql.DB) chan interface{} {
-	rsp := make(chan interface{})
-
+func runQuery(slct string, db *sql.DB) *ExecutorChan {
+	rsp := NewExecutorChan()
 	go func() {
-		defer close(rsp)
+		defer rsp.Destroy()
 
-		err := func() error {
+		re, se := func() (error, error) {
 			startAt := time.Now()
 			log.Infof("Starting runStanrardSQL:%s", slct)
 
 			rows, err := db.Query(slct)
 			if err != nil {
-				return fmt.Errorf("runQuery failed: %v", err)
+				return fmt.Errorf("runQuery failed: %v", err), nil
 			}
 			defer rows.Close()
 
 			cols, err := rows.Columns()
 			if err != nil {
-				return fmt.Errorf("failed to get columns: %v", err)
+				return fmt.Errorf("failed to get columns: %v", err), nil
 			}
 
 			header := make(map[string]interface{})
 			header["columnNames"] = cols
-			rsp <- header
+			if e := rsp.Write(header); e != nil {
+				return nil, e
+			}
 
 			// Since we don't know the table schema in advance, need to
 			// create an slice of empty interface and adds column type
@@ -90,85 +91,93 @@ func runQuery(slct string, db *sql.DB) chan interface{} {
 			values := make([]interface{}, count)
 			columnTypes, err := rows.ColumnTypes()
 			if err != nil {
-				return fmt.Errorf("failed to get columnTypes: %v", err)
+				return fmt.Errorf("failed to get columnTypes: %v", err), nil
 			}
 			for i, ct := range columnTypes {
 				v, e := createByType(ct.ScanType())
 				if e != nil {
-					return e
+					return e, nil
 				}
 				values[i] = v
 			}
 
 			for rows.Next() {
 				if err := rows.Scan(values...); err != nil {
-					return err
+					return err, nil
 				}
 
 				row := make([]interface{}, count)
 				for i, val := range values {
 					v, e := parseVal(val)
 					if e != nil {
-						return e
+						return e, nil
 					}
 					row[i] = v
 				}
-				rsp <- row
+				if e := rsp.Write(row); e != nil {
+					return nil, e
+				}
 			}
-
 			log.Infof("runQuery finished, elapsed: %v", time.Since(startAt))
-			return nil
+			return nil, nil
 		}()
-
-		if err != nil {
-			rsp <- err
+		if re != nil {
+			log.Errorf("runQuery error:%v", re)
+			se = rsp.Write(re)
+		}
+		if se != nil {
+			log.Errorf("runQuery error:%v", se)
 		}
 	}()
-
 	return rsp
 }
 
-func runExec(slct string, db *sql.DB) chan interface{} {
-	rsp := make(chan interface{})
-
+func runExec(slct string, db *sql.DB) *ExecutorChan {
+	rsp := NewExecutorChan()
 	go func() {
-		defer close(rsp)
-		err := func() error {
+		defer rsp.Destroy()
+
+		re, se := func() (error, error) {
 			startAt := time.Now()
 			log.Infof("Starting runStanrardSQL1:%s", slct)
 
 			res, e := db.Exec(slct)
 			if e != nil {
-				return fmt.Errorf("runExec failed: %v", e)
+				return fmt.Errorf("runExec failed: %v", e), nil
 			}
 			affected, e := res.RowsAffected()
 			if e != nil {
-				return fmt.Errorf("failed to get affected row number: %v", e)
+				return fmt.Errorf("failed to get affected row number: %v", e), nil
 			}
+			var msg string
 			if affected > 1 {
-				rsp <- fmt.Sprintf("%d rows affected", affected)
+				msg = fmt.Sprintf("%d rows affected", affected)
 			} else {
-				rsp <- fmt.Sprintf("%d row affected", affected)
+				msg = fmt.Sprintf("%d row affected", affected)
 			}
-
+			if e := rsp.Write(msg); e != nil {
+				return nil, e
+			}
 			log.Infof("runExec finished, elapsed: %v", time.Since(startAt))
-			return nil
+			return nil, nil
 		}()
-
-		if err != nil {
-			rsp <- err
+		if re != nil {
+			log.Errorf("runExec error:%v", re)
+			se = rsp.Write(re)
+		}
+		if se != nil {
+			log.Errorf("runExec error:%v", se)
 		}
 	}()
 	return rsp
 }
 
-func runExtendedSQL(slct string, db *sql.DB, cfg *mysql.Config, pr *extendedSelect) chan interface{} {
-	rsp := make(chan interface{})
-
+func runExtendedSQL(slct string, db *sql.DB, cfg *mysql.Config, pr *extendedSelect) *ExecutorChan {
+	rsp := NewExecutorChan()
 	go func() {
-		defer close(rsp)
+		defer rsp.Destroy()
 
-		err := func() error {
+		re, se := func() (error, error) {
 			startAt := time.Now()
 			log.Infof("Starting runExtendedSQL:%s", slct)
 
@@ -181,29 +190,35 @@ func runExtendedSQL(slct string, db *sql.DB, cfg *mysql.Config, pr *extendedSele
 			// https://docs.docker.com/docker-for-mac/osxfs/#namespaces.
 			cwd, e := ioutil.TempDir("/tmp", "sqlflow")
 			if e != nil {
-				return e
+				return e, nil
 			}
 			defer os.RemoveAll(cwd)
 
 			if pr.train {
 				for l := range train(pr, slct, db, cfg, cwd) {
-					rsp <- l
+					if e := rsp.Write(l); e != nil {
+						return nil, e
+					}
 				}
 			} else {
 				for l := range pred(pr, db, cfg, cwd) {
-					rsp <- l
+					if e := rsp.Write(l); e != nil {
+						return nil, e
+					}
 				}
 			}
 			log.Infof("runExtendedSQL finished, elapsed:%v", time.Since(startAt))
-			return e
+			return nil, nil
 		}()
 
-		if err != nil {
-			log.Errorf("runExtendedSQL error:%v", err)
-			rsp <- err
+		if re != nil {
+			log.Errorf("runExtendedSQL error:%v", re)
+			se = rsp.Write(re)
+		}
+		if se != nil {
+			log.Errorf("runExtendedSQL error:%v", se)
 		}
 	}()
-
 	return rsp
 }
 

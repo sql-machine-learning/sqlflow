@@ -12,23 +12,24 @@ import (
 	"github.com/golang/protobuf/ptypes/wrappers"
 
 	pb "gitlab.alipay-inc.com/Arc/sqlflow/server/proto"
+	sf "gitlab.alipay-inc.com/Arc/sqlflow/sql"
 )
 
 // NewServer returns a server instance
-func NewServer(run func(string, *sql.DB) chan interface{}, db *sql.DB) *server {
+func NewServer(run func(string, *sql.DB) *sf.ExecutorChan, db *sql.DB) *server {
 	return &server{run: run, db: db}
 }
 
 type server struct {
-	run func(sql string, db *sql.DB) chan interface{}
+	run func(sql string, db *sql.DB) *sf.ExecutorChan
 	db  *sql.DB
 }
 
 // Run implements `rpc Run (Request) returns (stream Response)`
 func (s *server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
-	c := s.run(req.Sql, s.db)
+	ec := s.run(req.Sql, s.db)
 
-	for r := range c {
+	for r := range ec.Read() {
 		var res *pb.Response
 		var err error
 		switch s := r.(type) {
@@ -47,7 +48,7 @@ func (s *server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 			return err
 		}
 		if err := stream.Send(res); err != nil {
-			// FIXME(tony): notify and exit sqlflow.Run
+			ec.Close()
 			return err
 		}
 	}
