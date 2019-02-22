@@ -124,7 +124,7 @@ channel.
 ```go
 func Service(req *Request, stream *StreamResponse) error {
   c, done := launchJob(req.Content)
-  defer close(done) // signal cancellation with service is finished
+  defer close(done) // signal cancellation when service returns
   for r := range c {
     if e := stream.Send(result); e != nil {
       return e
@@ -133,7 +133,7 @@ func Service(req *Request, stream *StreamResponse) error {
   return nil
 }
 
-func sendWithCheck(done chan bool, out chan interface{}, item interface{}) {
+func sendWithCheck(done chan bool, out chan interface{}, item interface{}) error {
   select {
   // a receive operation on a closed channel can always proceed immediately,
   // yielding the element type's zero value.
