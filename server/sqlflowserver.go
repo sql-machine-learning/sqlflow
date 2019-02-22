@@ -93,18 +93,20 @@ func parse2Any(val interface{}) (proto.Message, error) {
 		return &pb.Row_Null{}, nil
 	case bool:
 		return &wrappers.BoolValue{Value: v}, nil
-	case int8, int16:
-		cv, _ := v.(int32)
-		return &wrappers.Int32Value{Value: cv}, nil
+	case int8:
+		return &wrappers.Int32Value{Value: int32(v)}, nil
+	case int16:
+		return &wrappers.Int32Value{Value: int32(v)}, nil
 	case int32:
 		return &wrappers.Int32Value{Value: v}, nil
 	case int:
 		return &wrappers.Int64Value{Value: int64(v)}, nil
 	case int64:
 		return &wrappers.Int64Value{Value: v}, nil
-	case uint8, uint16:
-		cv, _ := v.(uint32)
-		return &wrappers.UInt32Value{Value: cv}, nil
+	case uint8:
+		return &wrappers.UInt32Value{Value: uint32(v)}, nil
+	case uint16:
+		return &wrappers.UInt32Value{Value: uint32(v)}, nil
 	case uint32:
 		return &wrappers.UInt32Value{Value: v}, nil
 	case uint:
