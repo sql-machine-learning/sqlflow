@@ -144,9 +144,9 @@ func sendWithCheck(done chan bool, out chan interface{}, item interface{}) error
   }
 }
 
-func launchJob(content string) chan interface{}, chan bool {
+func launchJob(content string) (chan interface{}, chan bool) {
   out := make(chan interface{})
-  done := make(chan bool, 1)
+  done := make(chan bool)
 
   go func() error  {
     defer close(out)
