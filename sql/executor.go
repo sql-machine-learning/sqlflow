@@ -14,7 +14,7 @@ import (
 )
 
 // Run executes a SQL query and returns a stream of row or message
-func Run(slct string, db *sql.DB) *ExecutorChan {
+func Run(slct string, db *sql.DB) *PipeReader {
 	slctUpper := strings.ToUpper(slct)
 	if strings.Contains(slctUpper, "TRAIN") || strings.Contains(slctUpper, "PREDICT") {
 		pr, e := newParser().Parse(slct)
@@ -49,7 +49,7 @@ func isQuery(slct string) bool {
 	return false
 }
 
-func runStandardSQL(slct string, db *sql.DB) *ExecutorChan {
+func runStandardSQL(slct string, db *sql.DB) *PipeReader {
 	if isQuery(slct) {
 		return runQuery(slct, db)
 	}
@@ -58,10 +58,10 @@ func runStandardSQL(slct string, db *sql.DB) *ExecutorChan {
 
 // FIXME(tony): how to deal with large tables?
 // TODO(tony): test on null table elements
-func runQuery(slct string, db *sql.DB) *ExecutorChan {
-	rsp := NewExecutorChan()
+func runQuery(slct string, db *sql.DB) *PipeReader {
+	rd, wr := Pipe()
 	go func() {
-		defer rsp.Destroy()
+		defer wr.Close()
 
 		re, se := func() (error, error) {
 			startAt := time.Now()
@@ -80,7 +80,7 @@ func runQuery(slct string, db *sql.DB) *ExecutorChan {
 
 			header := make(map[string]interface{})
 			header["columnNames"] = cols
-			if e := rsp.Write(header); e != nil {
+			if e := wr.Write(header); e != nil {
 				return nil, e
 			}
 
@@ -114,7 +114,7 @@ func runQuery(slct string, db *sql.DB) *ExecutorChan {
 					}
 					row[i] = v
 				}
-				if e := rsp.Write(row); e != nil {
+				if e := wr.Write(row); e != nil {
 					return nil, e
 				}
 			}
@@ -123,19 +123,19 @@ func runQuery(slct string, db *sql.DB) *ExecutorChan {
 		}()
 		if re != nil {
 			log.Errorf("runQuery error:%v", re)
-			se = rsp.Write(re)
+			se = wr.Write(re)
 		}
 		if se != nil {
 			log.Errorf("runQuery error:%v", se)
 		}
 	}()
-	return rsp
+	return rd
 }
 
-func runExec(slct string, db *sql.DB) *ExecutorChan {
-	rsp := NewExecutorChan()
+func runExec(slct string, db *sql.DB) *PipeReader {
+	rd, wr := Pipe()
 	go func() {
-		defer rsp.Destroy()
+		defer wr.Close()
 
 		re, se := func() (error, error) {
 			startAt := time.Now()
@@ -155,7 +155,7 @@ func runExec(slct string, db *sql.DB) *ExecutorChan {
 			} else {
 				msg = fmt.Sprintf("%d row affected", affected)
 			}
-			if e := rsp.Write(msg); e != nil {
+			if e := wr.Write(msg); e != nil {
 				return nil, e
 			}
 			log.Infof("runExec finished, elapsed: %v", time.Since(startAt))
@@ -163,19 +163,19 @@ func runExec(slct string, db *sql.DB) *ExecutorChan {
 		}()
 		if re != nil {
 			log.Errorf("runExec error:%v", re)
-			se = rsp.Write(re)
+			se = wr.Write(re)
 		}
 		if se != nil {
 			log.Errorf("runExec error:%v", se)
 		}
 	}()
-	return rsp
+	return rd
 }
 
-func runExtendedSQL(slct string, db *sql.DB, cfg *mysql.Config, pr *extendedSelect) *ExecutorChan {
-	rsp := NewExecutorChan()
+func runExtendedSQL(slct string, db *sql.DB, cfg *mysql.Config, pr *extendedSelect) *PipeReader {
+	rd, wr := Pipe()
 	go func() {
-		defer rsp.Destroy()
+		defer wr.Close()
 
 		re, se := func() (error, error) {
 			startAt := time.Now()
@@ -196,13 +196,13 @@ func runExtendedSQL(slct string, db *sql.DB, cfg *mysql.Config, pr *extendedSele
 
 			if pr.train {
 				for l := range train(pr, slct, db, cfg, cwd) {
-					if e := rsp.Write(l); e != nil {
+					if e := wr.Write(l); e != nil {
 						return nil, e
 					}
 				}
 			} else {
 				for l := range pred(pr, db, cfg, cwd) {
-					if e := rsp.Write(l); e != nil {
+					if e := wr.Write(l); e != nil {
 						return nil, e
 					}
 				}
@@ -213,13 +213,13 @@ func runExtendedSQL(slct string, db *sql.DB, cfg *mysql.Config, pr *extendedSele
 
 		if re != nil {
 			log.Errorf("runExtendedSQL error:%v", re)
-			se = rsp.Write(re)
+			se = wr.Write(re)
 		}
 		if se != nil {
 			log.Errorf("runExtendedSQL error:%v", se)
 		}
 	}()
-	return rsp
+	return rd
 }
 
 type logChanWriter struct {

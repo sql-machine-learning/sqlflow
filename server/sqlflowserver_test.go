@@ -61,31 +61,31 @@ func TestSQL(t *testing.T) {
 	}
 }
 
-func mockRun(sql string, db *sql.DB) *sf.ExecutorChan {
-	rsp := sf.NewExecutorChan()
+func mockRun(sql string, db *sql.DB) *sf.PipeReader {
+	rd, wr := sf.Pipe()
 	go func() {
-		defer rsp.Destroy()
+		defer wr.Close()
 
 		switch sql {
 		case testErrorSQL:
-			rsp.Write(fmt.Errorf("run error: %v", testErrorSQL))
+			wr.Write(fmt.Errorf("run error: %v", testErrorSQL))
 		case testQuerySQL:
 			m := make(map[string]interface{})
 			m["columnNames"] = []string{"X", "Y"}
-			rsp.Write(m)
-			rsp.Write([]interface{}{true, false, "hello", []byte("world")})
-			rsp.Write([]interface{}{int8(1), int16(1), int32(1), int(1), int64(1)})
-			rsp.Write([]interface{}{uint8(1), uint16(1), uint32(1), uint(1), uint64(1)})
-			rsp.Write([]interface{}{float32(1), float64(1)})
-			rsp.Write([]interface{}{time.Now(), nil})
+			wr.Write(m)
+			wr.Write([]interface{}{true, false, "hello", []byte("world")})
+			wr.Write([]interface{}{int8(1), int16(1), int32(1), int(1), int64(1)})
+			wr.Write([]interface{}{uint8(1), uint16(1), uint32(1), uint(1), uint64(1)})
+			wr.Write([]interface{}{float32(1), float64(1)})
+			wr.Write([]interface{}{time.Now(), nil})
 		case testExecuteSQL:
-			rsp.Write("success; 0 rows affected")
+			wr.Write("success; 0 rows affected")
 		case testExtendedSQL:
-			rsp.Write("log 0")
-			rsp.Write("log 1")
+			wr.Write("log 0")
+			wr.Write("log 1")
 		}
 	}()
-	return rsp
+	return rd
 }
 
 func startServer(done chan bool) {

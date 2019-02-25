@@ -85,7 +85,7 @@ func main() {
 		fmt.Println("-----------------------------")
 
 		stream := sqlflow.Run(slct, db)
-		for rsp := range stream.Read() {
+		for rsp := range stream.ReadAll() {
 			display(rsp)
 		}
 	}

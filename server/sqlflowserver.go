@@ -16,20 +16,21 @@ import (
 )
 
 // NewServer returns a server instance
-func NewServer(run func(string, *sql.DB) *sf.ExecutorChan, db *sql.DB) *server {
+func NewServer(run func(string, *sql.DB) *sf.PipeReader, db *sql.DB) *server {
 	return &server{run: run, db: db}
 }
 
 type server struct {
-	run func(sql string, db *sql.DB) *sf.ExecutorChan
+	run func(sql string, db *sql.DB) *sf.PipeReader
 	db  *sql.DB
 }
 
 // Run implements `rpc Run (Request) returns (stream Response)`
 func (s *server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
-	ec := s.run(req.Sql, s.db)
+	pr := s.run(req.Sql, s.db)
+	defer pr.Close()
 
-	for r := range ec.Read() {
+	for r := range pr.ReadAll() {
 		var res *pb.Response
 		var err error
 		switch s := r.(type) {
@@ -48,11 +49,9 @@ func (s *server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 			return err
 		}
 		if err := stream.Send(res); err != nil {
-			ec.Close()
 			return err
 		}
 	}
-
 	return nil
 }
 
