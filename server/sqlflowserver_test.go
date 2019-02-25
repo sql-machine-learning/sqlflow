@@ -4,18 +4,14 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"io"
 	"log"
 	"net"
-	"os"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/fortytw2/leaktest"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/reflection"
-	"google.golang.org/grpc/status"
 
 	pb "gitlab.alipay-inc.com/Arc/sqlflow/server/proto"
 	sf "gitlab.alipay-inc.com/Arc/sqlflow/sql"
@@ -29,37 +25,6 @@ const (
 )
 
 var testServerAddress string
-
-func TestSQL(t *testing.T) {
-	a := assert.New(t)
-	// Set up a connection to the server.
-	conn, err := grpc.Dial(testServerAddress, grpc.WithInsecure())
-	if err != nil {
-		log.Fatalf("did not connect: %v", err)
-	}
-	defer conn.Close()
-	c := pb.NewSQLFlowClient(conn)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	stream, err := c.Run(ctx, &pb.Request{Sql: testErrorSQL})
-	a.NoError(err)
-	_, err = stream.Recv()
-	a.Equal(status.Error(codes.Unknown, fmt.Sprintf("run error: %v", testErrorSQL)), err)
-
-	for _, s := range []string{testQuerySQL, testExecuteSQL, testExtendedSQL} {
-		stream, err := c.Run(ctx, &pb.Request{Sql: s})
-		a.NoError(err)
-		for {
-			_, err := stream.Recv()
-			if err == io.EOF {
-				break
-			}
-			a.NoError(err)
-		}
-	}
-}
 
 func mockRun(sql string, db *sql.DB) *sf.PipeReader {
 	rd, wr := sf.Pipe()
@@ -105,10 +70,32 @@ func startServer(done chan bool) {
 	}
 }
 
-func TestMain(m *testing.M) {
+func createRudeClients(n int) {
+	for i := 0; i < n; i++ {
+		go func() {
+			conn, _ := grpc.Dial(testServerAddress, grpc.WithInsecure())
+			c := pb.NewSQLFlowClient(conn)
+			time.Sleep(time.Second)
+
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			stream, err := c.Run(ctx, &pb.Request{Sql: testQuerySQL})
+			if err != nil {
+				log.Fatalf("Run encounts err:%v", err)
+			}
+			if _, err := stream.Recv(); err != nil {
+				log.Fatalf("stream received err:%v", err)
+			}
+			conn.Close()
+		}()
+	}
+}
+
+func TestPoolContext(t *testing.T) {
 	done := make(chan bool)
 	go startServer(done)
 	<-done
 
-	os.Exit(m.Run())
+	defer leaktest.CheckTimeout(t, 10*time.Second)()
+	createRudeClients(50)
 }
