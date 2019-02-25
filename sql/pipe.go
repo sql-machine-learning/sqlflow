@@ -7,14 +7,17 @@ type pipe struct {
 	done chan bool
 }
 
+// PipeReader reads real data
 type PipeReader struct {
 	p *pipe
 }
+
+// PipeWriter writes real data
 type PipeWriter struct {
 	p *pipe
 }
 
-// Pipe: Creates a pipe
+// Pipe creates a pipe
 // - wrCh: chan for storing data
 // - done: Reader closes pipe if error happens, then Writer encounters an error
 func Pipe() (*PipeReader, *PipeWriter) {
@@ -24,22 +27,22 @@ func Pipe() (*PipeReader, *PipeWriter) {
 	return &PipeReader{p}, &PipeWriter{p}
 }
 
-// Close: then no more data could be written
+// Close then no more data could be written
 func (r *PipeReader) Close() {
 	r.p.done <- true
 }
 
-// ReadAll: returns the data chan
+// ReadAll returns the data chan
 func (r *PipeReader) ReadAll() chan interface{} {
 	return r.p.wrCh
 }
 
-// Close: ends the writer
+// Close ends the writer
 func (w *PipeWriter) Close() {
 	close(w.p.wrCh)
 }
 
-// Write: returns an error after close writer
+// Write returns an error after close writer
 func (w *PipeWriter) Write(item interface{}) error {
 	select {
 	case w.p.wrCh <- item:
