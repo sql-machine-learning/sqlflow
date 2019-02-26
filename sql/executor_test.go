@@ -69,17 +69,17 @@ func TestIsQuery(t *testing.T) {
 
 func TestLogChanWriter_Write(t *testing.T) {
 	a := assert.New(t)
-
-	c := make(chan interface{})
-
+	rd, wr := Pipe()
 	go func() {
-		defer close(c)
-		cw := &logChanWriter{c: c}
+		defer wr.Close()
+		cw := &logChanWriter{wr: wr}
 		cw.Write([]byte("hello\n世界"))
 		cw.Write([]byte("hello\n世界"))
 		cw.Write([]byte("\n"))
 		cw.Write([]byte("世界\n世界\n世界\n"))
 	}()
+
+	c := rd.ReadAll()
 
 	a.Equal("hello\n", <-c)
 	a.Equal("世界hello\n", <-c)

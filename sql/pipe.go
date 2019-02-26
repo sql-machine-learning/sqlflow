@@ -1,10 +1,17 @@
 package sql
 
-import "fmt"
+import (
+	"errors"
+)
 
+var ErrClosedPipe = errors.New("pipe: write on closed pipe")
+
+// pipe follows the design at https://blog.golang.org/pipelines
+// - wrCh: chan for piping data
+// - done: chan for signaling Close from Reader to Writer
 type pipe struct {
 	wrCh chan interface{}
-	done chan bool
+	done chan struct{}
 }
 
 // PipeReader reads real data
@@ -17,37 +24,42 @@ type PipeWriter struct {
 	p *pipe
 }
 
-// Pipe creates a pipe
-// - wrCh: chan for storing data
-// - done: Reader closes pipe if error happens, then Writer encounters an error
+// Pipe creates a synchronous in-memory pipe.
+//
+// It is safe to call Read and Write in parallel with each other or with Close.
+// Parallel calls to Read and parallel calls to Write are also safe:
+// the individual calls will be gated sequentially.
 func Pipe() (*PipeReader, *PipeWriter) {
 	p := &pipe{
 		wrCh: make(chan interface{}),
-		done: make(chan bool, 1)}
+		done: make(chan struct{})}
 	return &PipeReader{p}, &PipeWriter{p}
 }
 
-// Close then no more data could be written
+// Close closes the reader; subsequent writes to the
 func (r *PipeReader) Close() {
-	r.p.done <- true
+	close(r.p.done)
 }
 
-// ReadAll returns the data chan
+// ReadAll returns the data chan. The caller should
+// use it as `for r := range pr.ReadAll()`
 func (r *PipeReader) ReadAll() chan interface{} {
 	return r.p.wrCh
 }
 
-// Close ends the writer
+// Close closes the writer; subsequent ReadAll from the
+// read half of the pipe will return a closed channel.
 func (w *PipeWriter) Close() {
 	close(w.p.wrCh)
 }
 
-// Write returns an error after close writer
+// Write writes the item to the underlying data stream.
+// It returns ErrClosedPipe when the data stream is closed.
 func (w *PipeWriter) Write(item interface{}) error {
 	select {
 	case w.p.wrCh <- item:
 		return nil
 	case <-w.p.done:
-		return fmt.Errorf("pipe closed already")
+		return ErrClosedPipe
 	}
 }

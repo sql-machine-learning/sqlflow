@@ -63,25 +63,25 @@ func runQuery(slct string, db *sql.DB) *PipeReader {
 	go func() {
 		defer wr.Close()
 
-		re, se := func() (error, error) {
+		err := func() error {
 			startAt := time.Now()
 			log.Infof("Starting runStanrardSQL:%s", slct)
 
 			rows, err := db.Query(slct)
 			if err != nil {
-				return fmt.Errorf("runQuery failed: %v", err), nil
+				return fmt.Errorf("runQuery failed: %v", err)
 			}
 			defer rows.Close()
 
 			cols, err := rows.Columns()
 			if err != nil {
-				return fmt.Errorf("failed to get columns: %v", err), nil
+				return fmt.Errorf("failed to get columns: %v", err)
 			}
 
 			header := make(map[string]interface{})
 			header["columnNames"] = cols
 			if e := wr.Write(header); e != nil {
-				return nil, e
+				return e
 			}
 
 			// Since we don't know the table schema in advance, need to
@@ -91,42 +91,44 @@ func runQuery(slct string, db *sql.DB) *PipeReader {
 			values := make([]interface{}, count)
 			columnTypes, err := rows.ColumnTypes()
 			if err != nil {
-				return fmt.Errorf("failed to get columnTypes: %v", err), nil
+				return fmt.Errorf("failed to get columnTypes: %v", err)
 			}
 			for i, ct := range columnTypes {
 				v, e := createByType(ct.ScanType())
 				if e != nil {
-					return e, nil
+					return e
 				}
 				values[i] = v
 			}
 
 			for rows.Next() {
 				if err := rows.Scan(values...); err != nil {
-					return err, nil
+					return err
 				}
 
 				row := make([]interface{}, count)
 				for i, val := range values {
 					v, e := parseVal(val)
 					if e != nil {
-						return e, nil
+						return e
 					}
 					row[i] = v
 				}
 				if e := wr.Write(row); e != nil {
-					return nil, e
+					return e
 				}
 			}
 			log.Infof("runQuery finished, elapsed: %v", time.Since(startAt))
-			return nil, nil
+			return nil
 		}()
-		if re != nil {
-			log.Errorf("runQuery error:%v", re)
-			se = wr.Write(re)
-		}
-		if se != nil {
-			log.Errorf("runQuery error:%v", se)
+
+		if err != nil {
+			log.Errorf("runQuery error:%v", err)
+			if err != ErrClosedPipe {
+				if err := wr.Write(err); err != nil {
+					log.Errorf("runQuery error(piping):%v", err)
+				}
+			}
 		}
 	}()
 	return rd
@@ -137,17 +139,17 @@ func runExec(slct string, db *sql.DB) *PipeReader {
 	go func() {
 		defer wr.Close()
 
-		re, se := func() (error, error) {
+		err := func() error {
 			startAt := time.Now()
 			log.Infof("Starting runStanrardSQL1:%s", slct)
 
 			res, e := db.Exec(slct)
 			if e != nil {
-				return fmt.Errorf("runExec failed: %v", e), nil
+				return fmt.Errorf("runExec failed: %v", e)
 			}
 			affected, e := res.RowsAffected()
 			if e != nil {
-				return fmt.Errorf("failed to get affected row number: %v", e), nil
+				return fmt.Errorf("failed to get affected row number: %v", e)
 			}
 			var msg string
 			if affected > 1 {
@@ -156,17 +158,18 @@ func runExec(slct string, db *sql.DB) *PipeReader {
 				msg = fmt.Sprintf("%d row affected", affected)
 			}
 			if e := wr.Write(msg); e != nil {
-				return nil, e
+				return e
 			}
 			log.Infof("runExec finished, elapsed: %v", time.Since(startAt))
-			return nil, nil
+			return nil
 		}()
-		if re != nil {
-			log.Errorf("runExec error:%v", re)
-			se = wr.Write(re)
-		}
-		if se != nil {
-			log.Errorf("runExec error:%v", se)
+		if err != nil {
+			log.Errorf("runExec error:%v", err)
+			if err != ErrClosedPipe {
+				if err := wr.Write(err); err != nil {
+					log.Errorf("runExec error(piping):%v", err)
+				}
+			}
 		}
 	}()
 	return rd
@@ -177,7 +180,7 @@ func runExtendedSQL(slct string, db *sql.DB, cfg *mysql.Config, pr *extendedSele
 	go func() {
 		defer wr.Close()
 
-		re, se := func() (error, error) {
+		err := func() error {
 			startAt := time.Now()
 			log.Infof("Starting runExtendedSQL:%s", slct)
 
@@ -190,40 +193,33 @@ func runExtendedSQL(slct string, db *sql.DB, cfg *mysql.Config, pr *extendedSele
 			// https://docs.docker.com/docker-for-mac/osxfs/#namespaces.
 			cwd, e := ioutil.TempDir("/tmp", "sqlflow")
 			if e != nil {
-				return e, nil
+				return e
 			}
 			defer os.RemoveAll(cwd)
 
 			if pr.train {
-				for l := range train(pr, slct, db, cfg, cwd) {
-					if e := wr.Write(l); e != nil {
-						return nil, e
-					}
-				}
+				e = train(pr, slct, db, cfg, cwd, wr)
 			} else {
-				for l := range pred(pr, db, cfg, cwd) {
-					if e := wr.Write(l); e != nil {
-						return nil, e
-					}
-				}
+				e = pred(pr, db, cfg, cwd, wr)
 			}
 			log.Infof("runExtendedSQL finished, elapsed:%v", time.Since(startAt))
-			return nil, nil
+			return e
 		}()
 
-		if re != nil {
-			log.Errorf("runExtendedSQL error:%v", re)
-			se = wr.Write(re)
-		}
-		if se != nil {
-			log.Errorf("runExtendedSQL error:%v", se)
+		if err != nil {
+			log.Errorf("runExtendedSQL error:%v", err)
+			if err != ErrClosedPipe {
+				if err := wr.Write(err); err != nil {
+					log.Errorf("runExtendedSQL error(piping):%v", err)
+				}
+			}
 		}
 	}()
 	return rd
 }
 
 type logChanWriter struct {
-	c chan interface{}
+	wr *PipeWriter
 
 	m    sync.Mutex
 	buf  bytes.Buffer
@@ -243,108 +239,79 @@ func (cw *logChanWriter) Write(p []byte) (n int, err error) {
 	for {
 		line, err := cw.buf.ReadString('\n')
 		cw.prev = cw.prev + line
-
 		// ReadString returns err != nil if and only if the returned Data
 		// does not end in delim.
 		if err != nil {
 			break
 		}
 
-		cw.c <- cw.prev
+		if err := cw.wr.Write(cw.prev); err != nil {
+			return len(cw.prev), err
+		}
 		cw.prev = ""
 	}
-
 	return n, nil
 }
 
-func train(tr *extendedSelect, slct string, db *sql.DB, cfg *mysql.Config, cwd string) chan interface{} {
-	c := make(chan interface{})
+func train(tr *extendedSelect, slct string, db *sql.DB, cfg *mysql.Config, cwd string, wr *PipeWriter) error {
+	fts, e := verify(tr, db)
+	if e != nil {
+		return e
+	}
 
-	go func() {
-		defer close(c)
+	var program bytes.Buffer
+	if e := genTF(&program, tr, fts, cfg); e != nil {
+		return e
+	}
 
-		err := func() error {
-			fts, e := verify(tr, db)
-			if e != nil {
-				return e
-			}
+	cw := &logChanWriter{wr: wr}
+	cmd := tensorflowCmd(cwd)
+	cmd.Stdin = &program
+	cmd.Stdout = cw
+	cmd.Stderr = cw
+	if e := cmd.Run(); e != nil {
+		return fmt.Errorf("training failed %v", e)
+	}
 
-			var program bytes.Buffer
-			if e := genTF(&program, tr, fts, cfg); e != nil {
-				return e
-			}
-
-			cw := &logChanWriter{c: c}
-			cmd := tensorflowCmd(cwd)
-			cmd.Stdin = &program
-			cmd.Stdout = cw
-			cmd.Stderr = cw
-			if e := cmd.Run(); e != nil {
-				return fmt.Errorf("training failed %v", e)
-			}
-
-			m := model{workDir: cwd, TrainSelect: slct}
-			return m.save(db, tr.save)
-		}()
-
-		if err != nil {
-			c <- err
-		}
-	}()
-
-	return c
+	m := model{workDir: cwd, TrainSelect: slct}
+	return m.save(db, tr.save)
 }
 
-func pred(pr *extendedSelect, db *sql.DB, cfg *mysql.Config, cwd string) chan interface{} {
-	c := make(chan interface{})
+func pred(pr *extendedSelect, db *sql.DB, cfg *mysql.Config, cwd string, wr *PipeWriter) error {
+	m, e := load(db, pr.model, cwd)
+	if e != nil {
+		return e
+	}
 
-	go func() {
-		defer close(c)
+	// Parse the training SELECT statement used to train
+	// the model for the prediction.
+	tr, e := newParser().Parse(m.TrainSelect)
+	if e != nil {
+		return e
+	}
 
-		err := func() error {
-			m, e := load(db, pr.model, cwd)
-			if e != nil {
-				return e
-			}
+	if e := verifyColumnNameAndType(tr, pr, db); e != nil {
+		return e
+	}
 
-			// Parse the training SELECT statement used to train
-			// the model for the prediction.
-			tr, e := newParser().Parse(m.TrainSelect)
-			if e != nil {
-				return e
-			}
+	if e := createPredictionTable(tr, pr, db); e != nil {
+		return e
+	}
 
-			if e := verifyColumnNameAndType(tr, pr, db); e != nil {
-				return e
-			}
+	pr.trainClause = tr.trainClause
+	fts, e := verify(pr, db)
 
-			if e := createPredictionTable(tr, pr, db); e != nil {
-				return e
-			}
+	var buf bytes.Buffer
+	if e := genTF(&buf, pr, fts, cfg); e != nil {
+		return e
+	}
 
-			pr.trainClause = tr.trainClause
-			fts, e := verify(pr, db)
-
-			var buf bytes.Buffer
-			if e := genTF(&buf, pr, fts, cfg); e != nil {
-				return e
-			}
-
-			cw := &logChanWriter{c: c}
-			cmd := tensorflowCmd(cwd)
-			cmd.Stdin = &buf
-			cmd.Stdout = cw
-			cmd.Stderr = cw
-
-			return cmd.Run()
-		}()
-
-		if err != nil {
-			c <- err
-		}
-	}()
-
-	return c
+	cw := &logChanWriter{wr: wr}
+	cmd := tensorflowCmd(cwd)
+	cmd.Stdin = &buf
+	cmd.Stdout = cw
+	cmd.Stderr = cw
+	return cmd.Run()
 }
 
 // Create prediction table with appropriate column type.
