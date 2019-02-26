@@ -100,7 +100,7 @@ where `go generate` invokes the `protoc` command to translate `server/sqlflow.pr
 into `server/sqlflow.pb.go` and `go test -v` builds and run unit tests.
 
 
-### Build a Release Image
+### Build&Publish a Release Image
 
 The above build process currently generates two binary files in
 `$GOPATH/bin` on the host.  To package them into a Docker image,
@@ -116,4 +116,10 @@ the demo
 
 ```bash
 docker run --rm -it --net=host sqlflow
+```
+
+To publish the released Docker image to our official DockerHub
+```bash
+docker tag sqlflow sqlflow/sqlflow:latest
+docker push sqlflow/sqlflow:latest
 ```
