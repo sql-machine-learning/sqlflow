@@ -22,12 +22,12 @@ func TestExecutorTrainAndPredict(t *testing.T) {
 		pr, e := newParser().Parse(testTrainSelectIris)
 		a.NoError(e)
 		stream := runExtendedSQL(testTrainSelectIris, testDB, testCfg, pr)
-		a.True(goodStream(stream))
+		a.True(goodStream(stream.ReadAll()))
 
 		pr, e = newParser().Parse(testPredictSelectIris)
 		a.NoError(e)
 		stream = runExtendedSQL(testPredictSelectIris, testDB, testCfg, pr)
-		a.True(goodStream(stream))
+		a.True(goodStream(stream.ReadAll()))
 	})
 }
 
@@ -35,11 +35,11 @@ func TestStandardSQL(t *testing.T) {
 	a := assert.New(t)
 	a.NotPanics(func() {
 		stream := runStandardSQL(testSelectIris, testDB)
-		a.True(goodStream(stream))
+		a.True(goodStream(stream.ReadAll()))
 	})
 	a.NotPanics(func() {
 		stream := runStandardSQL(testStandardExecutiveSQLStatement, testDB)
-		a.True(goodStream(stream))
+		a.True(goodStream(stream.ReadAll()))
 	})
 }
 
@@ -69,17 +69,17 @@ func TestIsQuery(t *testing.T) {
 
 func TestLogChanWriter_Write(t *testing.T) {
 	a := assert.New(t)
-
-	c := make(chan interface{})
-
+	rd, wr := Pipe()
 	go func() {
-		defer close(c)
-		cw := &logChanWriter{c: c}
+		defer wr.Close()
+		cw := &logChanWriter{wr: wr}
 		cw.Write([]byte("hello\n世界"))
 		cw.Write([]byte("hello\n世界"))
 		cw.Write([]byte("\n"))
 		cw.Write([]byte("世界\n世界\n世界\n"))
 	}()
+
+	c := rd.ReadAll()
 
 	a.Equal("hello\n", <-c)
 	a.Equal("世界hello\n", <-c)
