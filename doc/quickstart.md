@@ -11,12 +11,32 @@ issue are welcomed. :)
 1. Install Docker
 1. Set up a MySQL server defined at `example/datasets`
 1. Pull SQLFlow Docker image: `docker pull sqlflow/sqlflow:latest`
-1. Start the demo: `docker run -it --rm --net=host sqlflow/sqlflow:latest demo`
+
+#### Run command line demo
+1. `docker run -it --rm --net=host sqlflow/sqlflow:latest demo`
 
 You should be able to see the following prompt
 
 ```
 sqlflow>
+```
+
+#### Run Jupyter Notebook demo
+
+```
+docker run --rm -it -p 8888:8888 -v $PWD/example/jupyter:/tmp sqlflow/sqlflow:latest \
+    bash -c "sqlflowserver --port 50051 --db_user root --db_password root --db_address localhost:3306 &
+    SQLFLOW_SERVER=localhost:50051 jupyter notebook --ip=0.0.0.0 --port=8888 --allow-root"
+```
+
+Open a Web browser and direct to `localhost:8888` and input the token. Then you
+can create notebooks. In a cell, you should be able to type
+
+```
+%%sqlflow
+select *
+from iris.iris
+limit 1
 ```
 
 ### For developers
