@@ -2,15 +2,13 @@ package main
 
 import (
 	"bufio"
-	sql "database/sql"
 	"flag"
 	"fmt"
 	"log"
 	"os"
 	"strings"
 
-	"github.com/go-sql-driver/mysql"
-	sqlflow "gitlab.alipay-inc.com/Arc/sqlflow/sql"
+	sf "gitlab.alipay-inc.com/Arc/sqlflow/sql"
 )
 
 // readStmt reads a SQL statement from the scanner.  A statement could
@@ -63,18 +61,19 @@ func display(rsp interface{}) {
 }
 
 func main() {
-	addr := flag.String("addr", "localhost:3306", "MySQL server network adress")
-	user := flag.String("user", "root", "Username of MySQL server")
-	passwd := flag.String("passwd", "root", "Password of MySQL server")
+	user := flag.String("db_user", "", "database user name")
+	pswd := flag.String("db_password", "", "database user password")
+	addr := flag.String("db_address", "", "database address, such as: localhost:3306")
 	flag.Parse()
 
-	cfg := &mysql.Config{
-		User:   *user,
-		Passwd: *passwd,
-		Addr:   *addr}
-	db, e := sql.Open("mysql", cfg.FormatDSN())
-	if e != nil {
-		log.Fatalf("Cannot connect to a MySQL server %v", cfg)
+	db := &sf.Database{
+		User:       *user,
+		Password:   *pswd,
+		Addr:       *addr,
+		DriverName: "mysql",
+	}
+	if err := db.Open(); err != nil {
+		log.Fatalf("failed to open database: %v", err)
 	}
 	defer db.Close()
 
@@ -84,7 +83,7 @@ func main() {
 		slct := readStmt(scn)
 		fmt.Println("-----------------------------")
 
-		stream := sqlflow.Run(slct, db)
+		stream := sf.Run(slct, db)
 		for rsp := range stream.ReadAll() {
 			display(rsp)
 		}

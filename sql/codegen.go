@@ -5,8 +5,6 @@ import (
 	"io"
 	"strings"
 	"text/template"
-
-	"github.com/go-sql-driver/mysql"
 )
 
 // TODO(tonyyang): This is currently a quick hack to map from SQL
@@ -44,7 +42,7 @@ type filler struct {
 	WorkDir string
 }
 
-func newFiller(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) (*filler, error) {
+func newFiller(pr *extendedSelect, fts fieldTypes, db *Database) (*filler, error) {
 	r := &filler{
 		Train:          pr.train,
 		StandardSelect: pr.standardSelect.String(),
@@ -74,16 +72,16 @@ func newFiller(pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) (*filler, 
 		r.TableName = strings.Join(strings.Split(pr.into, ".")[:2], ".")
 	}
 
-	r.User = cfg.User
-	r.Password = cfg.Passwd
-	r.Host = strings.Split(cfg.Addr, ":")[0]
-	r.Port = strings.Split(cfg.Addr, ":")[1]
+	r.User = db.User
+	r.Password = db.Password
+	r.Host = strings.Split(db.Addr, ":")[0]
+	r.Port = strings.Split(db.Addr, ":")[1]
 
 	return r, nil
 }
 
-func genTF(w io.Writer, pr *extendedSelect, fts fieldTypes, cfg *mysql.Config) error {
-	r, e := newFiller(pr, fts, cfg)
+func genTF(w io.Writer, pr *extendedSelect, fts fieldTypes, db *Database) error {
+	r, e := newFiller(pr, fts, db)
 	if e != nil {
 		return e
 	}

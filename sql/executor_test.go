@@ -21,12 +21,12 @@ func TestExecutorTrainAndPredict(t *testing.T) {
 	a.NotPanics(func() {
 		pr, e := newParser().Parse(testTrainSelectIris)
 		a.NoError(e)
-		stream := runExtendedSQL(testTrainSelectIris, testDB, testCfg, pr)
+		stream := runExtendedSQL(testTrainSelectIris, testDB, pr)
 		a.True(goodStream(stream.ReadAll()))
 
 		pr, e = newParser().Parse(testPredictSelectIris)
 		a.NoError(e)
-		stream = runExtendedSQL(testPredictSelectIris, testDB, testCfg, pr)
+		stream = runExtendedSQL(testPredictSelectIris, testDB, pr)
 		a.True(goodStream(stream.ReadAll()))
 	})
 }
@@ -49,7 +49,7 @@ func TestCreatePredictionTable(t *testing.T) {
 	a.NoError(e)
 	predParsed, e := newParser().Parse(testPredictSelectIris)
 	a.NoError(e)
-	a.NoError(createPredictionTable(trainParsed, predParsed, testDB))
+	a.NoError(createPredictionTable(trainParsed, predParsed, testDB.Conn))
 }
 
 func TestIsQuery(t *testing.T) {

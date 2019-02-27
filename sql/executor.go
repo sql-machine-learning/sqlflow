@@ -9,23 +9,15 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/go-sql-driver/mysql"
 )
 
 // Run executes a SQL query and returns a stream of row or message
-func Run(slct string, db *sql.DB) *PipeReader {
+func Run(slct string, db *Database) *PipeReader {
 	slctUpper := strings.ToUpper(slct)
 	if strings.Contains(slctUpper, "TRAIN") || strings.Contains(slctUpper, "PREDICT") {
 		pr, e := newParser().Parse(slct)
 		if e == nil && pr.extended {
-			// TODO(weiguo): mentioned in issue(abstract mysql specific code in sqlflow)
-			dbCfg := &mysql.Config{
-				User:   "root",
-				Passwd: "root",
-				Addr:   "localhost:3306",
-			}
-			return runExtendedSQL(slct, db, dbCfg, pr)
+			return runExtendedSQL(slct, db, pr)
 		}
 	}
 	return runStandardSQL(slct, db)
@@ -49,11 +41,11 @@ func isQuery(slct string) bool {
 	return false
 }
 
-func runStandardSQL(slct string, db *sql.DB) *PipeReader {
+func runStandardSQL(slct string, db *Database) *PipeReader {
 	if isQuery(slct) {
-		return runQuery(slct, db)
+		return runQuery(slct, db.Conn)
 	}
-	return runExec(slct, db)
+	return runExec(slct, db.Conn)
 }
 
 // FIXME(tony): how to deal with large tables?
@@ -175,7 +167,7 @@ func runExec(slct string, db *sql.DB) *PipeReader {
 	return rd
 }
 
-func runExtendedSQL(slct string, db *sql.DB, cfg *mysql.Config, pr *extendedSelect) *PipeReader {
+func runExtendedSQL(slct string, db *Database, pr *extendedSelect) *PipeReader {
 	rd, wr := Pipe()
 	go func() {
 		defer wr.Close()
@@ -198,9 +190,9 @@ func runExtendedSQL(slct string, db *sql.DB, cfg *mysql.Config, pr *extendedSele
 			defer os.RemoveAll(cwd)
 
 			if pr.train {
-				e = train(pr, slct, db, cfg, cwd, wr)
+				e = train(pr, slct, db, cwd, wr)
 			} else {
-				e = pred(pr, db, cfg, cwd, wr)
+				e = pred(pr, db, cwd, wr)
 			}
 			log.Infof("runExtendedSQL finished, elapsed:%v", time.Since(startAt))
 			return e
@@ -253,14 +245,14 @@ func (cw *logChanWriter) Write(p []byte) (n int, err error) {
 	return n, nil
 }
 
-func train(tr *extendedSelect, slct string, db *sql.DB, cfg *mysql.Config, cwd string, wr *PipeWriter) error {
-	fts, e := verify(tr, db)
+func train(tr *extendedSelect, slct string, db *Database, cwd string, wr *PipeWriter) error {
+	fts, e := verify(tr, db.Conn)
 	if e != nil {
 		return e
 	}
 
 	var program bytes.Buffer
-	if e := genTF(&program, tr, fts, cfg); e != nil {
+	if e := genTF(&program, tr, fts, db); e != nil {
 		return e
 	}
 
@@ -274,11 +266,11 @@ func train(tr *extendedSelect, slct string, db *sql.DB, cfg *mysql.Config, cwd s
 	}
 
 	m := model{workDir: cwd, TrainSelect: slct}
-	return m.save(db, tr.save)
+	return m.save(db.Conn, tr.save)
 }
 
-func pred(pr *extendedSelect, db *sql.DB, cfg *mysql.Config, cwd string, wr *PipeWriter) error {
-	m, e := load(db, pr.model, cwd)
+func pred(pr *extendedSelect, db *Database, cwd string, wr *PipeWriter) error {
+	m, e := load(db.Conn, pr.model, cwd)
 	if e != nil {
 		return e
 	}
@@ -290,19 +282,19 @@ func pred(pr *extendedSelect, db *sql.DB, cfg *mysql.Config, cwd string, wr *Pip
 		return e
 	}
 
-	if e := verifyColumnNameAndType(tr, pr, db); e != nil {
+	if e := verifyColumnNameAndType(tr, pr, db.Conn); e != nil {
 		return e
 	}
 
-	if e := createPredictionTable(tr, pr, db); e != nil {
+	if e := createPredictionTable(tr, pr, db.Conn); e != nil {
 		return e
 	}
 
 	pr.trainClause = tr.trainClause
-	fts, e := verify(pr, db)
+	fts, e := verify(pr, db.Conn)
 
 	var buf bytes.Buffer
-	if e := genTF(&buf, pr, fts, cfg); e != nil {
+	if e := genTF(&buf, pr, fts, db); e != nil {
 		return e
 	}
 

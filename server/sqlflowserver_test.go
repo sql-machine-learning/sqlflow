@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"io"
 	"log"
@@ -31,7 +30,7 @@ const (
 
 var testServerAddress string
 
-func mockRun(sql string, db *sql.DB) *sf.PipeReader {
+func mockRun(sql string, db *sf.Database) *sf.PipeReader {
 	rd, wr := sf.Pipe()
 	go func() {
 		defer wr.Close()

@@ -7,14 +7,10 @@ import (
 	"os"
 	"testing"
 	"time"
-
-	"github.com/go-sql-driver/mysql"
-	_ "github.com/mattn/go-sqlite3"
 )
 
 var (
-	testCfg *mysql.Config
-	testDB  *sql.DB
+	testDB *Database
 )
 
 func TestMain(m *testing.M) {
@@ -26,18 +22,27 @@ func TestMain(m *testing.M) {
 	var e error
 	switch dbms {
 	case "sqlite3":
-		testDB, testCfg, e = openSQLite3()
+		testDB = &Database{
+			DataSource: fmt.Sprintf("%d%d", time.Now().Unix(), os.Getpid()),
+		}
+		e = testDB.Open()
 		defer testDB.Close()
 	case "mysql":
-		testDB, testCfg, e = openMySQL()
+		testDB = &Database{
+			User:       "root",
+			Password:   "root",
+			Addr:       "localhost:3306",
+			DriverName: "mysql",
+		}
+		e = testDB.Open()
 		defer testDB.Close()
 	default:
 		e = fmt.Errorf("Unrecognized environment variable SQLFLOW_TEST_DB %s\n", dbms)
 	}
 	assertNoErr(e)
 
-	assertNoErr(popularize(testDB, "testdata/iris.sql"))
-	assertNoErr(popularize(testDB, "testdata/churn.sql"))
+	assertNoErr(popularize(testDB.Conn, "testdata/iris.sql"))
+	assertNoErr(popularize(testDB.Conn, "testdata/churn.sql"))
 
 	os.Exit(m.Run())
 }
@@ -49,22 +54,6 @@ func assertNoErr(e error) {
 		fmt.Println(e)
 		os.Exit(-1)
 	}
-}
-
-func openSQLite3() (*sql.DB, *mysql.Config, error) {
-	n := fmt.Sprintf("%d%d", time.Now().Unix(), os.Getpid())
-	db, e := sql.Open("sqlite3", n)
-	return db, nil, e
-}
-
-func openMySQL() (*sql.DB, *mysql.Config, error) {
-	cfg := &mysql.Config{
-		User:   "root",
-		Passwd: "root",
-		Addr:   "localhost:3306",
-	}
-	db, e := sql.Open("mysql", cfg.FormatDSN())
-	return db, cfg, e
 }
 
 // popularize reads SQL statements from the file named sqlfile in the

@@ -4,14 +4,13 @@
 package main
 
 import (
-	"database/sql"
+	"flag"
 	"log"
 	"net"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
-	"github.com/go-sql-driver/mysql"
 	"gitlab.alipay-inc.com/Arc/sqlflow/server"
 	pb "gitlab.alipay-inc.com/Arc/sqlflow/server/proto"
 	sf "gitlab.alipay-inc.com/Arc/sqlflow/sql"
@@ -22,20 +21,26 @@ const (
 )
 
 func main() {
+	user := flag.String("db_user", "", "database user name")
+	pswd := flag.String("db_password", "", "database user password")
+	addr := flag.String("db_address", "", "database address, such as: localhost:3306")
+	flag.Parse()
+
+	db := &sf.Database{
+		User:       *user,
+		Password:   *pswd,
+		Addr:       *addr,
+		DriverName: "mysql",
+	}
+	if err := db.Open(); err != nil {
+		log.Fatalf("failed to open database: %v", err)
+	}
+	defer db.Close()
+
 	lis, err := net.Listen("tcp", port)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
-	myCfg := &mysql.Config{
-		User:   "root",
-		Passwd: "root",
-		Addr:   "localhost:3306",
-	}
-	db, err := sql.Open("mysql", myCfg.FormatDSN())
-	if err != nil {
-		log.Fatalf("failed to open database: %v", err)
-	}
-	defer db.Close()
 
 	s := grpc.NewServer()
 	pb.RegisterSQLFlowServer(s, server.NewServer(sf.Run, db))
