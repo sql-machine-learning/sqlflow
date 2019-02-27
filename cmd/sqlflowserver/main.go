@@ -5,6 +5,7 @@ package main
 
 import (
 	"database/sql"
+	"flag"
 	"log"
 	"net"
 
@@ -17,12 +18,12 @@ import (
 	sqlflow "gitlab.alipay-inc.com/Arc/sqlflow/sql"
 )
 
-const (
-	port = ":50051"
-)
+const defaultPort = "50051"
 
 func main() {
-	lis, err := net.Listen("tcp", port)
+	port := flag.String("port", defaultPort, "port")
+	flag.Parse()
+	lis, err := net.Listen("tcp", "localhost:"+*port)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
@@ -41,7 +42,7 @@ func main() {
 	pb.RegisterSQLFlowServer(s, server.NewServer(sqlflow.Run, db))
 	// Register reflection service on gRPC server.
 	reflection.Register(s)
-	log.Println("Server Started at", port)
+	log.Println("Server Started at", *port)
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}

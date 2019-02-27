@@ -23,7 +23,7 @@ func TestRun(t *testing.T) {
 	// FIXME(weiguo): We may need to expand sleep time
 	time.Sleep(2 * time.Second)
 
-	conn, err := grpc.Dial("localhost"+port, grpc.WithInsecure())
+	conn, err := grpc.Dial("localhost:"+defaultPort, grpc.WithInsecure())
 	a.NoError(err)
 	defer conn.Close()
 	cli := pb.NewSQLFlowClient(conn)
