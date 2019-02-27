@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestPipeWriteRead(t *testing.T) {
+func TestPipeWriteAndRead(t *testing.T) {
 	a := assert.New(t)
 	rd, wr := Pipe()
 	loop := 10
@@ -32,19 +32,28 @@ func TestPipeWriteRead(t *testing.T) {
 	rd.Close()
 }
 
-func TestPipeClose(t *testing.T) {
+func TestPipeReaderClose(t *testing.T) {
 	a := assert.New(t)
 	rd, wr := Pipe()
 
+	writeReturns := make(chan bool)
 	// writer
-	go func(n int) {
+	go func() {
 		defer wr.Close()
-		for i := 0; i < n; i++ {
-			e := wr.Write(i)
-			a.NoError(e)
-			time.Sleep(100 * time.Millisecond)
+		defer func() {
+			writeReturns <- true
+		}()
+		for {
+			if e := wr.Write(1); e != nil {
+				return
+			}
 		}
-	}(5)
+	}()
 
 	rd.Close()
+	select {
+	case <-writeReturns:
+	case <-time.After(time.Second):
+		a.True(false, "time out on writer return")
+	}
 }

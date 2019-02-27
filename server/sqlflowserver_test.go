@@ -87,10 +87,7 @@ func createRudeClient() {
 		log.Fatalf("Run encounts err:%v", err)
 	}
 
-	// Without any stream.Recv(), act as rude client
-	// if _, err := stream.Recv(); err != nil {
-	//	log.Fatalf("stream received err:%v", err)
-	//}
+	// conn closed without *any* stream.Recv(), act as rude client
 	conn.Close()
 }
 
@@ -126,10 +123,6 @@ func TestSQL(t *testing.T) {
 }
 
 func TestGoroutineLeaky(t *testing.T) {
-	done := make(chan bool)
-	go startServer(done)
-	<-done
-
 	defer leaktest.CheckTimeout(t, 10*time.Second)()
 	for i := 0; i < 50; i++ {
 		go func() {
@@ -142,5 +135,6 @@ func TestMain(m *testing.M) {
 	done := make(chan bool)
 	go startServer(done)
 	<-done
+
 	os.Exit(m.Run())
 }
