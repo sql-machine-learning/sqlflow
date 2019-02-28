@@ -25,7 +25,7 @@ sqlflow>
 
 ```
 docker run --rm -it -p 8888:8888 -v $PWD/example/jupyter:/tmp sqlflow/sqlflow:latest \
-    bash -c "sqlflowserver --port 50051 --db_user root --db_password root --db_address localhost:3306 &
+    bash -c "sqlflowserver --db_user root --db_password root --db_address host.docker.internal:3306 &
     SQLFLOW_SERVER=localhost:50051 jupyter notebook --ip=0.0.0.0 --port=8888 --allow-root"
 ```
 
