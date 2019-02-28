@@ -38,6 +38,9 @@ func main() {
 		log.Fatalf("failed to open database: %v", err)
 	}
 	defer db.Close()
+	if err := db.Ping(); err != nil {
+		log.Fatalf("failed to ping database: %v", err)
+	}
 
 	lis, err := net.Listen("tcp", port)
 	if err != nil {
