@@ -30,6 +30,7 @@ func main() {
 	cfg := &mysql.Config{
 		User:   *user,
 		Passwd: *pswd,
+		Net:    "tcp",
 		Addr:   *addr,
 	}
 	db, err := sf.Open("mysql", cfg.FormatDSN())

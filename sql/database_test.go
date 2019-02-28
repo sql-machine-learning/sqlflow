@@ -12,6 +12,7 @@ func TestDatabaseOpenMysql(t *testing.T) {
 	cfg := &mysql.Config{
 		User:   "root",
 		Passwd: "root",
+		Net:    "tcp",
 		Addr:   "localhost:3306",
 	}
 	db, e := Open("mysql", cfg.FormatDSN())

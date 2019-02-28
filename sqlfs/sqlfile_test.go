@@ -104,6 +104,7 @@ func TestMain(m *testing.M) {
 	testCfg = &mysql.Config{
 		User:   "root",
 		Passwd: "root",
+		Net:    "tcp",
 		Addr:   "localhost:3306",
 	}
 	db, e := sql.Open("mysql", testCfg.FormatDSN())
