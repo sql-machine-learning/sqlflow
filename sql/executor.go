@@ -2,30 +2,21 @@ package sql
 
 import (
 	"bytes"
-	"database/sql"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/go-sql-driver/mysql"
 )
 
 // Run executes a SQL query and returns a stream of row or message
-func Run(slct string, db *sql.DB) *PipeReader {
+func Run(slct string, db *DB) *PipeReader {
 	slctUpper := strings.ToUpper(slct)
 	if strings.Contains(slctUpper, "TRAIN") || strings.Contains(slctUpper, "PREDICT") {
 		pr, e := newParser().Parse(slct)
 		if e == nil && pr.extended {
-			// TODO(weiguo): mentioned in issue(abstract mysql specific code in sqlflow)
-			dbCfg := &mysql.Config{
-				User:   "root",
-				Passwd: "root",
-				Addr:   "localhost:3306",
-			}
-			return runExtendedSQL(slct, db, dbCfg, pr)
+			return runExtendedSQL(slct, db, pr)
 		}
 	}
 	return runStandardSQL(slct, db)
@@ -49,7 +40,7 @@ func isQuery(slct string) bool {
 	return false
 }
 
-func runStandardSQL(slct string, db *sql.DB) *PipeReader {
+func runStandardSQL(slct string, db *DB) *PipeReader {
 	if isQuery(slct) {
 		return runQuery(slct, db)
 	}
@@ -58,7 +49,7 @@ func runStandardSQL(slct string, db *sql.DB) *PipeReader {
 
 // FIXME(tony): how to deal with large tables?
 // TODO(tony): test on null table elements
-func runQuery(slct string, db *sql.DB) *PipeReader {
+func runQuery(slct string, db *DB) *PipeReader {
 	rd, wr := Pipe()
 	go func() {
 		defer wr.Close()
@@ -134,7 +125,7 @@ func runQuery(slct string, db *sql.DB) *PipeReader {
 	return rd
 }
 
-func runExec(slct string, db *sql.DB) *PipeReader {
+func runExec(slct string, db *DB) *PipeReader {
 	rd, wr := Pipe()
 	go func() {
 		defer wr.Close()
@@ -175,7 +166,7 @@ func runExec(slct string, db *sql.DB) *PipeReader {
 	return rd
 }
 
-func runExtendedSQL(slct string, db *sql.DB, cfg *mysql.Config, pr *extendedSelect) *PipeReader {
+func runExtendedSQL(slct string, db *DB, pr *extendedSelect) *PipeReader {
 	rd, wr := Pipe()
 	go func() {
 		defer wr.Close()
@@ -198,9 +189,9 @@ func runExtendedSQL(slct string, db *sql.DB, cfg *mysql.Config, pr *extendedSele
 			defer os.RemoveAll(cwd)
 
 			if pr.train {
-				e = train(pr, slct, db, cfg, cwd, wr)
+				e = train(pr, slct, db, cwd, wr)
 			} else {
-				e = pred(pr, db, cfg, cwd, wr)
+				e = pred(pr, db, cwd, wr)
 			}
 			log.Infof("runExtendedSQL finished, elapsed:%v", time.Since(startAt))
 			return e
@@ -253,14 +244,14 @@ func (cw *logChanWriter) Write(p []byte) (n int, err error) {
 	return n, nil
 }
 
-func train(tr *extendedSelect, slct string, db *sql.DB, cfg *mysql.Config, cwd string, wr *PipeWriter) error {
+func train(tr *extendedSelect, slct string, db *DB, cwd string, wr *PipeWriter) error {
 	fts, e := verify(tr, db)
 	if e != nil {
 		return e
 	}
 
 	var program bytes.Buffer
-	if e := genTF(&program, tr, fts, cfg); e != nil {
+	if e := genTF(&program, tr, fts, db); e != nil {
 		return e
 	}
 
@@ -277,7 +268,7 @@ func train(tr *extendedSelect, slct string, db *sql.DB, cfg *mysql.Config, cwd s
 	return m.save(db, tr.save)
 }
 
-func pred(pr *extendedSelect, db *sql.DB, cfg *mysql.Config, cwd string, wr *PipeWriter) error {
+func pred(pr *extendedSelect, db *DB, cwd string, wr *PipeWriter) error {
 	m, e := load(db, pr.model, cwd)
 	if e != nil {
 		return e
@@ -302,7 +293,7 @@ func pred(pr *extendedSelect, db *sql.DB, cfg *mysql.Config, cwd string, wr *Pip
 	fts, e := verify(pr, db)
 
 	var buf bytes.Buffer
-	if e := genTF(&buf, pr, fts, cfg); e != nil {
+	if e := genTF(&buf, pr, fts, db); e != nil {
 		return e
 	}
 
@@ -316,7 +307,7 @@ func pred(pr *extendedSelect, db *sql.DB, cfg *mysql.Config, cwd string, wr *Pip
 
 // Create prediction table with appropriate column type.
 // If prediction table already exists, it will be overwritten.
-func createPredictionTable(trainParsed, predParsed *extendedSelect, db *sql.DB) error {
+func createPredictionTable(trainParsed, predParsed *extendedSelect, db *DB) error {
 	if len(strings.Split(predParsed.into, ".")) != 3 {
 		return fmt.Errorf("invalid predParsed.into %s. should be DBName.TableName.ColumnName", predParsed.into)
 	}

@@ -21,12 +21,12 @@ func TestExecutorTrainAndPredict(t *testing.T) {
 	a.NotPanics(func() {
 		pr, e := newParser().Parse(testTrainSelectIris)
 		a.NoError(e)
-		stream := runExtendedSQL(testTrainSelectIris, testDB, testCfg, pr)
+		stream := runExtendedSQL(testTrainSelectIris, testDB, pr)
 		a.True(goodStream(stream.ReadAll()))
 
 		pr, e = newParser().Parse(testPredictSelectIris)
 		a.NoError(e)
-		stream = runExtendedSQL(testPredictSelectIris, testDB, testCfg, pr)
+		stream = runExtendedSQL(testPredictSelectIris, testDB, pr)
 		a.True(goodStream(stream.ReadAll()))
 	})
 }
