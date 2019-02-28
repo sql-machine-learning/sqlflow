@@ -19,14 +19,14 @@ type fieldTypes map[string]map[string]string
 //    star '*'.
 //
 // It returns a fieldTypes describing types of fields in SELECT.
-func verify(slct *extendedSelect, db *sql.DB) (ft fieldTypes, e error) {
+func verify(slct *extendedSelect, db *DB) (ft fieldTypes, e error) {
 	if e := dryRunSelect(slct, db); e != nil {
 		return nil, e
 	}
 	return describeTables(slct, db)
 }
 
-func dryRunSelect(slct *extendedSelect, db *sql.DB) error {
+func dryRunSelect(slct *extendedSelect, db *DB) error {
 	oldLimit := slct.standardSelect.limit
 	defer func() {
 		slct.standardSelect.limit = oldLimit
@@ -66,7 +66,7 @@ func decomp(ident string) (tbl string, fld string) {
 }
 
 // Retrieve the type of fields mentioned in SELECT.
-func describeTables(slct *extendedSelect, db *sql.DB) (ft fieldTypes, e error) {
+func describeTables(slct *extendedSelect, db *DB) (ft fieldTypes, e error) {
 	ft = indexSelectFields(slct)
 	hasStar := len(ft) == 0
 	for _, tn := range slct.tables {
@@ -129,7 +129,7 @@ func indexSelectFields(slct *extendedSelect) (ft fieldTypes) {
 
 // Check train and pred clause uses has the same feature columns
 // 1. every column field in the training clause is selected in the pred clause, and they are of the same type
-func verifyColumnNameAndType(trainParsed, predParsed *extendedSelect, db *sql.DB) error {
+func verifyColumnNameAndType(trainParsed, predParsed *extendedSelect, db *DB) error {
 	trainFields, e := verify(trainParsed, db)
 	if e != nil {
 		return e

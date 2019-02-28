@@ -2,7 +2,6 @@ package sql
 
 import (
 	"bytes"
-	"database/sql"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -12,7 +11,7 @@ import (
 )
 
 // Run executes a SQL query and returns a stream of row or message
-func Run(slct string, db *Database) *PipeReader {
+func Run(slct string, db *DB) *PipeReader {
 	slctUpper := strings.ToUpper(slct)
 	if strings.Contains(slctUpper, "TRAIN") || strings.Contains(slctUpper, "PREDICT") {
 		pr, e := newParser().Parse(slct)
@@ -41,16 +40,16 @@ func isQuery(slct string) bool {
 	return false
 }
 
-func runStandardSQL(slct string, db *Database) *PipeReader {
+func runStandardSQL(slct string, db *DB) *PipeReader {
 	if isQuery(slct) {
-		return runQuery(slct, db.Conn)
+		return runQuery(slct, db)
 	}
-	return runExec(slct, db.Conn)
+	return runExec(slct, db)
 }
 
 // FIXME(tony): how to deal with large tables?
 // TODO(tony): test on null table elements
-func runQuery(slct string, db *sql.DB) *PipeReader {
+func runQuery(slct string, db *DB) *PipeReader {
 	rd, wr := Pipe()
 	go func() {
 		defer wr.Close()
@@ -126,7 +125,7 @@ func runQuery(slct string, db *sql.DB) *PipeReader {
 	return rd
 }
 
-func runExec(slct string, db *sql.DB) *PipeReader {
+func runExec(slct string, db *DB) *PipeReader {
 	rd, wr := Pipe()
 	go func() {
 		defer wr.Close()
@@ -167,7 +166,7 @@ func runExec(slct string, db *sql.DB) *PipeReader {
 	return rd
 }
 
-func runExtendedSQL(slct string, db *Database, pr *extendedSelect) *PipeReader {
+func runExtendedSQL(slct string, db *DB, pr *extendedSelect) *PipeReader {
 	rd, wr := Pipe()
 	go func() {
 		defer wr.Close()
@@ -245,8 +244,8 @@ func (cw *logChanWriter) Write(p []byte) (n int, err error) {
 	return n, nil
 }
 
-func train(tr *extendedSelect, slct string, db *Database, cwd string, wr *PipeWriter) error {
-	fts, e := verify(tr, db.Conn)
+func train(tr *extendedSelect, slct string, db *DB, cwd string, wr *PipeWriter) error {
+	fts, e := verify(tr, db)
 	if e != nil {
 		return e
 	}
@@ -266,11 +265,11 @@ func train(tr *extendedSelect, slct string, db *Database, cwd string, wr *PipeWr
 	}
 
 	m := model{workDir: cwd, TrainSelect: slct}
-	return m.save(db.Conn, tr.save)
+	return m.save(db, tr.save)
 }
 
-func pred(pr *extendedSelect, db *Database, cwd string, wr *PipeWriter) error {
-	m, e := load(db.Conn, pr.model, cwd)
+func pred(pr *extendedSelect, db *DB, cwd string, wr *PipeWriter) error {
+	m, e := load(db, pr.model, cwd)
 	if e != nil {
 		return e
 	}
@@ -282,16 +281,16 @@ func pred(pr *extendedSelect, db *Database, cwd string, wr *PipeWriter) error {
 		return e
 	}
 
-	if e := verifyColumnNameAndType(tr, pr, db.Conn); e != nil {
+	if e := verifyColumnNameAndType(tr, pr, db); e != nil {
 		return e
 	}
 
-	if e := createPredictionTable(tr, pr, db.Conn); e != nil {
+	if e := createPredictionTable(tr, pr, db); e != nil {
 		return e
 	}
 
 	pr.trainClause = tr.trainClause
-	fts, e := verify(pr, db.Conn)
+	fts, e := verify(pr, db)
 
 	var buf bytes.Buffer
 	if e := genTF(&buf, pr, fts, db); e != nil {
@@ -308,7 +307,7 @@ func pred(pr *extendedSelect, db *Database, cwd string, wr *PipeWriter) error {
 
 // Create prediction table with appropriate column type.
 // If prediction table already exists, it will be overwritten.
-func createPredictionTable(trainParsed, predParsed *extendedSelect, db *sql.DB) error {
+func createPredictionTable(trainParsed, predParsed *extendedSelect, db *DB) error {
 	if len(strings.Split(predParsed.into, ".")) != 3 {
 		return fmt.Errorf("invalid predParsed.into %s. should be DBName.TableName.ColumnName", predParsed.into)
 	}

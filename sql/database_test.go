@@ -3,32 +3,28 @@ package sql
 import (
 	"testing"
 
+	"github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestDatabaseOpenMysql(t *testing.T) {
 	a := assert.New(t)
-	db := &Database{
-		User:       "root",
-		Password:   "root",
-		Addr:       "localhost:3306",
-		DriverName: "mysql",
+	cfg := &mysql.Config{
+		User:   "root",
+		Passwd: "root",
+		Addr:   "localhost:3306",
 	}
-	e := db.Open()
+	db, e := Open("mysql", cfg.FormatDSN())
 	a.NoError(e)
 	defer db.Close()
 
-	_, e = db.Conn.Exec("show databases")
+	_, e = db.Exec("show databases")
 	a.NoError(e)
 }
 
 func TestDatabaseOpenSQLite3(t *testing.T) {
 	a := assert.New(t)
-	db := &Database{
-		DataSource: "test",
-		DriverName: "sqlite3",
-	}
-	e := db.Open()
+	db, e := Open("sqlite3", "test")
 	a.NoError(e)
 	defer db.Close()
 	// TODO: need more tests

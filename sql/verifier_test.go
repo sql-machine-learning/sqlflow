@@ -10,20 +10,20 @@ func TestDryRunSelect(t *testing.T) {
 	a := assert.New(t)
 	r, e := newParser().Parse(`SELECT * FROM churn.churn LIMIT 10;`)
 	a.NoError(e)
-	a.Nil(dryRunSelect(r, testDB.Conn))
+	a.Nil(dryRunSelect(r, testDB))
 }
 
 func TestDescribeTables(t *testing.T) {
 	a := assert.New(t)
 	r, e := newParser().Parse(`SELECT * FROM churn.churn LIMIT 10;`)
 	a.NoError(e)
-	fts, e := describeTables(r, testDB.Conn)
+	fts, e := describeTables(r, testDB)
 	a.NoError(e)
 	a.Equal(21, len(fts))
 
 	r, e = newParser().Parse(`SELECT Churn, churn.churn.Partner FROM churn.churn LIMIT 10;`)
 	a.NoError(e)
-	fts, e = describeTables(r, testDB.Conn)
+	fts, e = describeTables(r, testDB)
 	a.NoError(e)
 	a.Equal(2, len(fts))
 	a.Equal("varchar(255)", fts["Churn"]["churn.churn"])
@@ -56,7 +56,7 @@ func TestVerify(t *testing.T) {
 	a := assert.New(t)
 	r, e := newParser().Parse(`SELECT Churn, churn.churn.Partner FROM churn.churn LIMIT 10;`)
 	a.NoError(e)
-	fts, e := verify(r, testDB.Conn)
+	fts, e := verify(r, testDB)
 	a.NoError(e)
 	a.Equal(2, len(fts))
 	typ, ok := fts.get("Churn")
@@ -92,13 +92,13 @@ FROM churn.churn LIMIT 10
 PREDICT iris.predict.class
 USING my_dnn_model;`)
 	a.NoError(e)
-	a.NoError(verifyColumnNameAndType(trainParse, predParse, testDB.Conn))
+	a.NoError(verifyColumnNameAndType(trainParse, predParse, testDB))
 
 	predParse, e = newParser().Parse(`SELECT gender, tenure
 FROM churn.churn LIMIT 10
 PREDICT iris.predict.class
 USING my_dnn_model;`)
 	a.NoError(e)
-	a.EqualError(verifyColumnNameAndType(trainParse, predParse, testDB.Conn),
+	a.EqualError(verifyColumnNameAndType(trainParse, predParse, testDB),
 		"predFields doesn't contain column TotalCharges")
 }

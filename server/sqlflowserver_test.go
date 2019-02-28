@@ -30,7 +30,7 @@ const (
 
 var testServerAddress string
 
-func mockRun(sql string, db *sf.Database) *sf.PipeReader {
+func mockRun(sql string, db *sf.DB) *sf.PipeReader {
 	rd, wr := sf.Pipe()
 	go func() {
 		defer wr.Close()

@@ -2,15 +2,16 @@ package sql
 
 import (
 	"bufio"
-	"database/sql"
 	"fmt"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/go-sql-driver/mysql"
 )
 
 var (
-	testDB *Database
+	testDB *DB
 )
 
 func TestMain(m *testing.M) {
@@ -22,27 +23,24 @@ func TestMain(m *testing.M) {
 	var e error
 	switch dbms {
 	case "sqlite3":
-		testDB = &Database{
-			DataSource: fmt.Sprintf("%d%d", time.Now().Unix(), os.Getpid()),
-		}
-		e = testDB.Open()
+		ds := fmt.Sprintf("%d%d", time.Now().Unix(), os.Getpid())
+		testDB, e = Open("sqlite3", ds)
 		defer testDB.Close()
 	case "mysql":
-		testDB = &Database{
-			User:       "root",
-			Password:   "root",
-			Addr:       "localhost:3306",
-			DriverName: "mysql",
+		cfg := &mysql.Config{
+			User:   "root",
+			Passwd: "root",
+			Addr:   "localhost:3306",
 		}
-		e = testDB.Open()
+		testDB, e = Open("mysql", cfg.FormatDSN())
 		defer testDB.Close()
 	default:
 		e = fmt.Errorf("Unrecognized environment variable SQLFLOW_TEST_DB %s\n", dbms)
 	}
 	assertNoErr(e)
 
-	assertNoErr(popularize(testDB.Conn, "testdata/iris.sql"))
-	assertNoErr(popularize(testDB.Conn, "testdata/churn.sql"))
+	assertNoErr(popularize(testDB, "testdata/iris.sql"))
+	assertNoErr(popularize(testDB, "testdata/churn.sql"))
 
 	os.Exit(m.Run())
 }
@@ -58,7 +56,7 @@ func assertNoErr(e error) {
 
 // popularize reads SQL statements from the file named sqlfile in the
 // ./testdata directory, and runs each SQL statement with db.
-func popularize(db *sql.DB, sqlfile string) error {
+func popularize(db *DB, sqlfile string) error {
 	f, e := os.Open(sqlfile)
 	if e != nil {
 		return e

@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 
+	"github.com/go-sql-driver/mysql"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
@@ -26,13 +27,13 @@ func main() {
 	addr := flag.String("db_address", "", "database address, such as: localhost:3306")
 	flag.Parse()
 
-	db := &sf.Database{
-		User:       *user,
-		Password:   *pswd,
-		Addr:       *addr,
-		DriverName: "mysql",
+	cfg := &mysql.Config{
+		User:   *user,
+		Passwd: *pswd,
+		Addr:   *addr,
 	}
-	if err := db.Open(); err != nil {
+	db, err := sf.Open("mysql", cfg.FormatDSN())
+	if err != nil {
 		log.Fatalf("failed to open database: %v", err)
 	}
 	defer db.Close()

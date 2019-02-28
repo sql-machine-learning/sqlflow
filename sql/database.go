@@ -3,52 +3,34 @@ package sql
 import (
 	"database/sql"
 	"fmt"
-	"strings"
 
-	"github.com/go-sql-driver/mysql"
+	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/mattn/go-sqlite3"
 )
 
-// Database holds configuration like  mysql, sqlite...
-type Database struct {
-	DriverName string
-	User       string
-	Password   string
-	Addr       string
-	DataSource string
-	Conn       *sql.DB
+// DB extends sql.DB
+type DB struct {
+	driverName     string
+	dataSourceName string
+	*sql.DB
 }
 
-func (db *Database) Open() error {
-	driver := strings.ToUpper(db.DriverName)
+// Open opens a database specified by its database driver name and a
+// driver-specific data source name, usually consisting of at least a
+// database name and connection information.
+//
+// In addition to sql.Open, it also does the book keeping on driverName and
+// dataSourceName
+func Open(driverName, dataSourceName string) (*DB, error) {
+	db := &DB{driverName: driverName, dataSourceName: dataSourceName}
+
 	var err error
-	switch driver {
-	case "MYSQL":
-		db.Conn, err = db.openMysql()
-	case "SQLITE3":
-		db.Conn, err = db.openSQLite3()
+	switch driverName {
+	case "sqlite3", "mysql":
+		db.DB, err = sql.Open(driverName, dataSourceName)
 	default:
-		db.Conn, err = nil, fmt.Errorf("Not implemented yet")
+		db.DB, err = nil, fmt.Errorf("sqlfow currently doesn't support DB %v", driverName)
 	}
-	return err
-}
 
-func (db *Database) Close() {
-	if db.Conn != nil {
-		db.Conn.Close()
-	}
-	db.Conn = nil
-}
-
-func (db *Database) openMysql() (*sql.DB, error) {
-	myCfg := &mysql.Config{
-		User:   db.User,
-		Passwd: db.Password,
-		Addr:   db.Addr,
-	}
-	return sql.Open("mysql", myCfg.FormatDSN())
-}
-
-func (db *Database) openSQLite3() (*sql.DB, error) {
-	return sql.Open("sqlite3", db.DataSource)
+	return db, err
 }
