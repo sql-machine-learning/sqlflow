@@ -77,6 +77,9 @@ func main() {
 		log.Fatalf("failed to open database: %v", err)
 	}
 	defer db.Close()
+	if err := db.Ping(); err != nil {
+		log.Fatalf("failed to ping database: %v", err)
+	}
 
 	scn := bufio.NewScanner(os.Stdin)
 	for {
