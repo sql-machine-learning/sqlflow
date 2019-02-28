@@ -22,8 +22,8 @@ const (
 )
 
 func main() {
-	user := flag.String("db_user", "", "database user name")
-	pswd := flag.String("db_password", "", "database user password")
+	user := flag.String("db_user", "root", "database user name")
+	pswd := flag.String("db_password", "root", "database user password")
 	addr := flag.String("db_address", "", "database address, such as: localhost:3306")
 	flag.Parse()
 
