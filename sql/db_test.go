@@ -30,12 +30,13 @@ func TestMain(m *testing.M) {
 		cfg := &mysql.Config{
 			User:   "root",
 			Passwd: "root",
+			Net:    "tcp",
 			Addr:   "localhost:3306",
 		}
 		testDB, e = Open("mysql", cfg.FormatDSN())
 		defer testDB.Close()
 	default:
-		e = fmt.Errorf("Unrecognized environment variable SQLFLOW_TEST_DB %s\n", dbms)
+		e = fmt.Errorf("unrecognized environment variable SQLFLOW_TEST_DB %s", dbms)
 	}
 	assertNoErr(e)
 
