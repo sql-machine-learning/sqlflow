@@ -2,7 +2,6 @@
 package server
 
 import (
-	"database/sql"
 	"fmt"
 	"time"
 
@@ -16,13 +15,13 @@ import (
 )
 
 // NewServer returns a server instance
-func NewServer(run func(string, *sql.DB) *sf.PipeReader, db *sql.DB) *server {
+func NewServer(run func(string, *sf.DB) *sf.PipeReader, db *sf.DB) *server {
 	return &server{run: run, db: db}
 }
 
 type server struct {
-	run func(sql string, db *sql.DB) *sf.PipeReader
-	db  *sql.DB
+	run func(sql string, db *sf.DB) *sf.PipeReader
+	db  *sf.DB
 }
 
 // Run implements `rpc Run (Request) returns (stream Response)`
