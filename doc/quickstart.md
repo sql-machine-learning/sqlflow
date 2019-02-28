@@ -1,7 +1,7 @@
 # Quick start
 
 SQLFlow is currently under active development. For those are interested in trying
-it out, we have provided a prompt demo. Play around with it. Any bug report and
+it out, we have provided several demos. Play around with it. Any bug report and
 issue are welcomed. :)
 
 ## Setup
@@ -23,21 +23,29 @@ sqlflow>
 
 #### Run Jupyter Notebook demo
 
-```
-docker run --rm -it -p 8888:8888 -v $PWD/example/jupyter:/tmp sqlflow/sqlflow:latest \
-    bash -c "sqlflowserver --db_user root --db_password root --db_address host.docker.internal:3306 &
-    SQLFLOW_SERVER=localhost:50051 jupyter notebook --ip=0.0.0.0 --port=8888 --allow-root"
-```
+1. Start a Docker container that runs sqlflowserver and jupyter notebook
+   ```
+   docker run --rm -it -p 8888:8888 sqlflow/sqlflow:latest \
+   bash -c "sqlflowserver --db_user root --db_password root --db_address host.docker.internal:3306 &
+   SQLFLOW_SERVER=localhost:50051 jupyter notebook --ip=0.0.0.0 --port=8888 --allow-root"
+   ```
 
-Open a Web browser and direct to `localhost:8888` and input the token. Then you
+   If you are running MySQL on the localhost and you are using Docker for Mac, please
+   be aware the option `--db_address host.docker.internal:3306` where
+   `host.docker.internal` translates to the host ip address as recommended [here](https://docs.docker.com/docker-for-mac/networking/).
+
+   If you are running MySQL on remote, please be aware that MySQL only allows connections
+   from localhost by default. Fix can be found [here](https://stackoverflow.com/questions/14779104/how-to-allow-remote-connection-to-mysql).
+
+1. Open a Web browser and direct to `localhost:8888` and input the token. Then you
 can create notebooks. In a cell, you should be able to type
 
-```
-%%sqlflow
-select *
-from iris.iris
-limit 1
-```
+   ```
+   %%sqlflow
+   select 1
+   ```
+
+1. Explore more examples at `example/jupyter`
 
 ### For developers
 
