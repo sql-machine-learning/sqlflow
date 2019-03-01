@@ -9,9 +9,16 @@ RUN pip install --upgrade pip
 RUN pip install tensorflow
 RUN pip install mysql-connector-python
 
-# TODO(yi): Currently, SQLFlow demo doesn't call SQLFlow server, but
-# calls SQLFlow core library locally.  We should make it call SQLFlow
-# server ASAP.
+# sqlflow provides a python client and ipython magic command
+RUN pip3 install jupyter
+RUN pip3 install sqlflow
+# load %%sqlflow by default
+# https://stackoverflow.com/a/32683001
+ENV IPYTHON_STARTUP /root/.ipython/profile_default/startup/
+RUN mkdir -p $IPYTHON_STARTUP
+RUN echo 'get_ipython().magic(u"%reload_ext sqlflow.magic")' >> $IPYTHON_STARTUP/00-first.py
+RUN echo 'get_ipython().magic(u"%autoreload 2")' >> $IPYTHON_STARTUP/00-first.py
+
 ADD demo /usr/bin/demo
 ADD sqlflowserver /usr/bin/sqlflowserver
 
