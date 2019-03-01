@@ -1,7 +1,6 @@
 package sql
 
 import (
-	lg "log"
 	"regexp"
 	"strings"
 	"unicode"
@@ -28,7 +27,7 @@ func newLexer(input string) *lexer {
 }
 
 func (l *lexer) Error(e string) {
-	lg.Panicf("start=%d, pos=%d : %s near %.10q\n", l.start, l.pos, e, l.input[l.start:])
+	log.Panicf("start=%d, pos=%d : %s near %.10q\n", l.start, l.pos, e, l.input[l.start:])
 }
 
 func (l *lexer) emit(lval *sqlSymType, typ int) int {
@@ -79,7 +78,7 @@ func (l *lexer) Lex(lval *sqlSymType) int {
 	case r == eof:
 		return 0 // indicate the end of lexing.
 	}
-	lg.Panicf("Lex: Unknown problem %s", l.input[l.start:])
+	log.Panicf("Lex: Unknown problem %s", l.input[l.start:])
 	return -1 // indicate an error
 }
 
@@ -132,7 +131,7 @@ var (
 func (l *lexer) lexNumber(lval *sqlSymType) int {
 	m := reNumber.FindStringIndex(l.input[l.pos:])
 	if m == nil || m[0] != 0 {
-		lg.Panicf("Expecting a number, but see %.10q", l.input[l.pos:])
+		log.Panicf("Expecting a number, but see %.10q", l.input[l.pos:])
 	}
 	l.pos += m[1]
 	return l.emit(lval, NUMBER)
