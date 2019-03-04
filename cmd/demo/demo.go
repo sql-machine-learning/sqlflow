@@ -72,6 +72,8 @@ func main() {
 		Passwd: *pswd,
 		Net:    "tcp",
 		Addr:   *addr,
+		// Allow the usage of the mysql native password method
+		AllowNativePasswords: true,
 	}
 	db, err := sf.Open("mysql", cfg.FormatDSN())
 	if err != nil {
