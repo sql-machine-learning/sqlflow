@@ -2,17 +2,16 @@ package sql
 
 import (
 	"bufio"
-	"database/sql"
 	"fmt"
-	"github.com/go-sql-driver/mysql"
-	_ "github.com/mattn/go-sqlite3"
 	"os"
 	"testing"
+
+	"github.com/go-sql-driver/mysql"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 var (
-	testCfg *mysql.Config
-	testDB  *sql.DB
+	testDB *DB
 )
 
 func TestMain(m *testing.M) {
@@ -24,14 +23,23 @@ func TestMain(m *testing.M) {
 	var e error
 	switch dbms {
 	case "sqlite3":
-		testDB, testCfg, e = openSQLite3()
-		_, e = testDB.Exec("ATTACH DATABASE ':memory:' AS iris;")
+		testDB, e = Open("sqlite3", ":memory:")
 		assertNoErr(e)
-		_, e = testDB.Exec("ATTACH DATABASE ':memory:' AS churn;")
-		assertNoErr(e)
+		// attach an In-Memory Database in SQLite
+		for _, name := range []string{"iris", "churn"} {
+			_, e = testDB.Exec(fmt.Sprintf("ATTACH DATABASE ':memory:' AS %s;", name))
+			assertNoErr(e)
+		}
 		defer testDB.Close()
 	case "mysql":
-		testDB, testCfg, e = openMySQL()
+		cfg := &mysql.Config{
+			User:   "root",
+			Passwd: "root",
+			Net:    "tcp",
+			Addr:   "localhost:3306",
+		}
+		testDB, e = Open("mysql", cfg.FormatDSN())
+		assertNoErr(e)
 		_, e = testDB.Exec("CREATE DATABASE IF NOT EXISTS iris;")
 		assertNoErr(e)
 		_, e = testDB.Exec("CREATE DATABASE IF NOT EXISTS churn;")
@@ -57,24 +65,9 @@ func assertNoErr(e error) {
 	}
 }
 
-func openSQLite3() (*sql.DB, *mysql.Config, error) {
-	db, e := sql.Open("sqlite3", ":memory:")
-	return db, nil, e
-}
-
-func openMySQL() (*sql.DB, *mysql.Config, error) {
-	cfg := &mysql.Config{
-		User:   "root",
-		Passwd: "root",
-		Addr:   "localhost:3306",
-	}
-	db, e := sql.Open("mysql", cfg.FormatDSN())
-	return db, cfg, e
-}
-
 // popularize reads SQL statements from the file named sqlfile in the
 // ./testdata directory, and runs each SQL statement with db.
-func popularize(db *sql.DB, sqlfile string) error {
+func popularize(db *DB, sqlfile string) error {
 	f, e := os.Open(sqlfile)
 	if e != nil {
 		return e
