@@ -1,4 +1,3 @@
-CREATE DATABASE IF NOT EXISTS iris;
 DROP TABLE IF EXISTS iris.iris;
 CREATE TABLE iris.iris (
        sepal_length float,
