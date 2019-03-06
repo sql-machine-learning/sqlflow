@@ -69,11 +69,10 @@ func main() {
 	flag.Parse()
 
 	cfg := &mysql.Config{
-		User:   *user,
-		Passwd: *pswd,
-		Net:    "tcp",
-		Addr:   *addr,
-		// Allow the usage of the mysql native password method
+		User:                 *user,
+		Passwd:               *pswd,
+		Net:                  "tcp",
+		Addr:                 *addr,
 		AllowNativePasswords: true,
 	}
 	db, err := sf.Open("mysql", cfg.FormatDSN())

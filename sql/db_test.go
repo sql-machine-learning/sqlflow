@@ -33,10 +33,11 @@ func TestMain(m *testing.M) {
 		defer testDB.Close()
 	case "mysql":
 		cfg := &mysql.Config{
-			User:   "root",
-			Passwd: "root",
-			Net:    "tcp",
-			Addr:   "localhost:3306",
+			User:                 "root",
+			Passwd:               "root",
+			Net:                  "tcp",
+			Addr:                 "localhost:3306",
+			AllowNativePasswords: true,
 		}
 		testDB, e = Open("mysql", cfg.FormatDSN())
 		assertNoErr(e)
