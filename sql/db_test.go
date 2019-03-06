@@ -41,6 +41,7 @@ func TestMain(m *testing.M) {
 			Passwd: "root",
 			Net:    "tcp",
 			Addr:   addr,
+			AllowNativePasswords: true,
 		}
 		testDB, e = Open("mysql", cfg.FormatDSN())
 		assertNoErr(e)

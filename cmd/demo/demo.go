@@ -9,8 +9,11 @@ import (
 	"strings"
 
 	"github.com/go-sql-driver/mysql"
+	tablewriter "github.com/olekukonko/tablewriter"
 	sf "gitlab.alipay-inc.com/Arc/sqlflow/sql"
 )
+
+const TABLE_PAGE_SIZE = 1000
 
 // readStmt reads a SQL statement from the scanner.  A statement could
 // have multiple lines and ends at a semicolon at theend of the last
@@ -26,34 +29,32 @@ func readStmt(scn *bufio.Scanner) string {
 	return stmt
 }
 
-func displayHead(head map[string]interface{}) {
+func header(head map[string]interface{}) ([]string, error) {
 	cn, ok := head["columnNames"]
 	if !ok {
-		fmt.Print("ERROR: can't find field columnNames in head")
+		return nil, fmt.Errorf("can't find field columnNames in head")
 	}
 	cols, ok := cn.([]string)
 	if !ok {
-		fmt.Print("ERROR: invalid header type")
+		return nil, fmt.Errorf("invalid header type")
 	}
-	for _, ele := range cols {
-		fmt.Printf("%15s", ele)
-	}
-	fmt.Println()
+	return cols, nil
 }
 
-func displayRow(row []interface{}) {
-	for _, ele := range row {
-		fmt.Printf("%15v", ele)
-	}
-	fmt.Println()
-}
-
-func display(rsp interface{}) {
+func render(rsp interface{}, isTable *bool, table *tablewriter.Table) {
 	switch s := rsp.(type) {
-	case map[string]interface{}:
-		displayHead(s)
-	case []interface{}:
-		displayRow(s)
+	case map[string]interface{}: // table header
+		*isTable = true
+		cols, e := header(s)
+		if e == nil {
+			table.SetHeader(cols)
+		}
+	case []interface{}: // row
+		row := make([]string, len(s))
+		for i, v := range s {
+			row[i] = fmt.Sprint(v)
+		}
+		table.Append(row)
 	case error:
 		fmt.Printf("ERROR: %v\n", s)
 	default:
@@ -68,11 +69,10 @@ func main() {
 	flag.Parse()
 
 	cfg := &mysql.Config{
-		User:   *user,
-		Passwd: *pswd,
-		Net:    "tcp",
-		Addr:   *addr,
-		// Allow the usage of the mysql native password method
+		User:                 *user,
+		Passwd:               *pswd,
+		Net:                  "tcp",
+		Addr:                 *addr,
 		AllowNativePasswords: true,
 	}
 	db, err := sf.Open("mysql", cfg.FormatDSN())
@@ -90,9 +90,23 @@ func main() {
 		slct := readStmt(scn)
 		fmt.Println("-----------------------------")
 
+		isTable := false
+		tableReadered := false
+		table := tablewriter.NewWriter(os.Stdout)
+
 		stream := sf.Run(slct, db)
 		for rsp := range stream.ReadAll() {
-			display(rsp)
+			render(rsp, &isTable, table)
+
+			// pagination. avoid exceed memory
+			if isTable && table.NumLines() == TABLE_PAGE_SIZE {
+				table.Render()
+				tableReadered = true
+				table.ClearRows()
+			}
+		}
+		if isTable && (table.NumLines() > 0 || !tableReadered) {
+			table.Render()
 		}
 	}
 }

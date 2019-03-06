@@ -75,24 +75,26 @@ func runQuery(slct string, db *DB) *PipeReader {
 				return e
 			}
 
-			// Since we don't know the table schema in advance, need to
-			// create an slice of empty interface and adds column type
-			// at runtime
-			count := len(cols)
-			values := make([]interface{}, count)
-			columnTypes, err := rows.ColumnTypes()
-			if err != nil {
-				return fmt.Errorf("failed to get columnTypes: %v", err)
-			}
-			for i, ct := range columnTypes {
-				v, e := createByType(ct.ScanType())
-				if e != nil {
-					return e
-				}
-				values[i] = v
-			}
-
 			for rows.Next() {
+				// Since we don't know the table schema in advance, need to
+				// create an slice of empty interface and adds column type
+				// at runtime. Some databases support dynamic types between
+				// rows, such as sqlite's affinity. So we move columnTypes inside
+				// the row.Next() loop.
+				count := len(cols)
+				values := make([]interface{}, count)
+				columnTypes, err := rows.ColumnTypes()
+				if err != nil {
+					return fmt.Errorf("failed to get columnTypes: %v", err)
+				}
+				for i, ct := range columnTypes {
+					v, e := createByType(ct.ScanType())
+					if e != nil {
+						return e
+					}
+					values[i] = v
+				}
+
 				if err := rows.Scan(values...); err != nil {
 					return err
 				}
