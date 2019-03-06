@@ -102,10 +102,11 @@ func TestWriteAndRead(t *testing.T) {
 
 func TestMain(m *testing.M) {
 	testCfg = &mysql.Config{
-		User:   "root",
-		Passwd: "root",
-		Net:    "tcp",
-		Addr:   "localhost:3306",
+		User:                 "root",
+		Passwd:               "root",
+		Net:                  "tcp",
+		Addr:                 "localhost:3306",
+		AllowNativePasswords: true,
 	}
 	db, e := sql.Open("mysql", testCfg.FormatDSN())
 	if e != nil {
