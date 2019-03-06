@@ -62,11 +62,11 @@ func TestVerify(t *testing.T) {
 	a.Equal(2, len(fts))
 	typ, ok := fts.get("Churn")
 	a.Equal(true, ok)
-	a.Contains("VARCHAR(255)", typ)
+	a.Equal("VARCHAR(255)", typ)
 
 	typ, ok = fts.get("churn.churn.Partner")
 	a.Equal(true, ok)
-	a.Contains("VARCHAR(255)", typ)
+	a.Equal("VARCHAR(255)", typ)
 
 	_, ok = fts.get("churn.churn.gender")
 	a.Equal(false, ok)
