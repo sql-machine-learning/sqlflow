@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	testStandardExecutiveSQLStatement = `USE iris;`
+	testStandardExecutiveSQLStatement = `DELETE FROM iris.iris WHERE class = 4;`
 	testSelectIris                    = `
 SELECT *
 FROM iris.iris
