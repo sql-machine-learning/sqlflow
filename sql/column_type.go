@@ -19,6 +19,7 @@ var (
 	mysqlNullTime  = reflect.TypeOf(mysql.NullTime{})
 	// builtin type supports sql like `select 1;` or  `select count(*) from ...`
 	builtIntBytes  = reflect.TypeOf([]byte(""))
+	builtinString  = reflect.TypeOf(string(""))
 	builtinInt     = reflect.TypeOf(int(0))
 	builtinInt8    = reflect.TypeOf(int8(0))
 	builtinInt16   = reflect.TypeOf(int16(0))
@@ -33,6 +34,58 @@ var (
 	builtinFloat64 = reflect.TypeOf(float64(0))
 	builtinTime    = reflect.TypeOf(time.Time{})
 )
+
+
+func getTypeName(rt reflect.Type) (string, error) {
+	// From dataType to sqlColumnType.
+	// The sqlColumnType will be used for feature column type and predict table column type.
+	switch rt {
+	case sqlNullBool:
+		return "bool", nil
+	case sqlNullInt64:
+		return "int", nil
+	case sqlNullFloat64:
+		return "float", nil
+	case sqlRawBytes:
+		return "VARCHAR(255)", nil // TODO better way for string and VARCHAR
+	case sqlNullString:
+		return "VARCHAR(255)", nil
+	case mysqlNullTime:
+		return "TIMESTAMP", nil
+	case builtinTime:
+		return "TIMESTAMP", nil
+	case builtIntBytes:
+		return "VARCHAR(255)", nil
+	case builtinString:
+		return "VARCHAR(255)", nil
+	case builtinInt:
+		return "int", nil
+	case builtinInt8:
+		return "int", nil
+	case builtinInt16:
+		return "int", nil
+	case builtinInt32:
+		return "int", nil
+	case builtinInt64:
+		return "int", nil
+	case builtinUint:
+		return "int", nil
+	case builtinUint8:
+		return "int", nil
+	case builtinUint16:
+		return "int", nil
+	case builtinUint32:
+		return "int", nil
+	case builtinUint64:
+		return "int", nil
+	case builtinFloat32:
+		return "float", nil
+	case builtinFloat64:
+		return "float", nil
+	default:
+		return "", fmt.Errorf("unrecognized column scan type %v", rt)
+	}
+}
 
 func createByType(rt reflect.Type) (interface{}, error) {
 	switch rt {
@@ -52,6 +105,8 @@ func createByType(rt reflect.Type) (interface{}, error) {
 		return new(time.Time), nil
 	case builtIntBytes:
 		return new([]byte), nil
+	case builtinString:
+		return new(string), nil
 	case builtinInt:
 		return new(int), nil
 	case builtinInt8:

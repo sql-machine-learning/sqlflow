@@ -1,13 +1,9 @@
 package sql
 
 import (
-	"database/sql"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-
 )
 
 func TestDryRunSelect(t *testing.T) {
@@ -15,34 +11,6 @@ func TestDryRunSelect(t *testing.T) {
 	r, e := newParser().Parse(`SELECT * FROM churn.churn LIMIT 10;`)
 	a.NoError(e)
 	a.Nil(dryRunSelect(r, testDB))
-}
-
-func TestTMP(t *testing.T) {
-
-	a := assert.New(t)
-	r, e := newParser().Parse(`SELECT * FROM churn.churn LIMIT 1;`)
-	a.NoError(e)
-	for _, tn := range r.tables {
-		rows, e := testDB.Query("DESCRIBE " + tn)
-		if e != nil {
-			fmt.Println(e)
-			return
-		}
-		fmt.Println(*rows)
-		for rows.Next() {
-			var fld, typ, null, key, extra string
-			var deflt sql.NullString
-			// FIXME(tony): the schema might be MySQL specific
-			e = rows.Scan(&fld, &typ, &null, &key, &deflt, &extra)
-			fmt.Println("fld " + fld)
-			fmt.Println("typ " + typ)
-		}
-
-		pr := Run("SELECT * from " + tn + " limit 1", testDB)
-		for r := range pr.ReadAll() {
-			fmt.Println(r)
-		}
-	}
 }
 
 func TestDescribeTables(t *testing.T) {
@@ -53,13 +21,14 @@ func TestDescribeTables(t *testing.T) {
 	a.NoError(e)
 	a.Equal(21, len(fts))
 
-	r, e = newParser().Parse(`SELECT Churn, churn.churn.Partner FROM churn.churn LIMIT 10;`)
+	r, e = newParser().Parse(`SELECT Churn, churn.churn.Partner,TotalCharges FROM churn.churn LIMIT 10;`)
 	a.NoError(e)
 	fts, e = describeTables(r, testDB)
 	a.NoError(e)
-	a.Equal(2, len(fts))
-	a.Equal("varchar(255)", fts["Churn"]["churn.churn"])
-	a.Equal("varchar(255)", fts["Partner"]["churn.churn"])
+	a.Equal(3, len(fts))
+	a.Equal("VARCHAR(255)", fts["Churn"]["churn.churn"])
+	a.Equal("VARCHAR(255)", fts["Partner"]["churn.churn"])
+	a.Equal("float", fts["TotalCharges"]["churn.churn"])
 }
 
 func TestIndexSelectFields(t *testing.T) {
@@ -93,11 +62,11 @@ func TestVerify(t *testing.T) {
 	a.Equal(2, len(fts))
 	typ, ok := fts.get("Churn")
 	a.Equal(true, ok)
-	a.Equal("varchar(255)", typ)
+	a.Contains("VARCHAR(255)", typ)
 
 	typ, ok = fts.get("churn.churn.Partner")
 	a.Equal(true, ok)
-	a.Equal("varchar(255)", typ)
+	a.Contains("VARCHAR(255)", typ)
 
 	_, ok = fts.get("churn.churn.gender")
 	a.Equal(false, ok)
