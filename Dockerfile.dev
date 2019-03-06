@@ -38,6 +38,7 @@ RUN echo "go generate -v ./..." >> /build.sh
 RUN echo "go install -v ./..." >> /build.sh
 RUN chmod +x /build.sh
 
+# Make python3 callable through python
 RUN ln -s /usr/bin/python3 /usr/bin/python
 RUN chmod +x /usr/bin/python
 
