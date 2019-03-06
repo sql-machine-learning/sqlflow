@@ -32,11 +32,15 @@ func TestMain(m *testing.M) {
 		}
 		defer testDB.Close()
 	case "mysql":
+		addr := os.Getenv("SQLFLOW_TEST_DB_MYSQL_ADDR")
+		if addr == "" {
+			addr = "127.0.0.1:3306"
+		}
 		cfg := &mysql.Config{
 			User:   "root",
 			Passwd: "root",
 			Net:    "tcp",
-			Addr:   "localhost:3306",
+			Addr:   addr,
 		}
 		testDB, e = Open("mysql", cfg.FormatDSN())
 		assertNoErr(e)

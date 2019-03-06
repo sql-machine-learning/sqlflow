@@ -1,9 +1,13 @@
 package sql
 
 import (
+	"database/sql"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+
 )
 
 func TestDryRunSelect(t *testing.T) {
@@ -11,6 +15,34 @@ func TestDryRunSelect(t *testing.T) {
 	r, e := newParser().Parse(`SELECT * FROM churn.churn LIMIT 10;`)
 	a.NoError(e)
 	a.Nil(dryRunSelect(r, testDB))
+}
+
+func TestTMP(t *testing.T) {
+
+	a := assert.New(t)
+	r, e := newParser().Parse(`SELECT * FROM churn.churn LIMIT 1;`)
+	a.NoError(e)
+	for _, tn := range r.tables {
+		rows, e := testDB.Query("DESCRIBE " + tn)
+		if e != nil {
+			fmt.Println(e)
+			return
+		}
+		fmt.Println(*rows)
+		for rows.Next() {
+			var fld, typ, null, key, extra string
+			var deflt sql.NullString
+			// FIXME(tony): the schema might be MySQL specific
+			e = rows.Scan(&fld, &typ, &null, &key, &deflt, &extra)
+			fmt.Println("fld " + fld)
+			fmt.Println("typ " + typ)
+		}
+
+		pr := Run("SELECT * from " + tn + " limit 1", testDB)
+		for r := range pr.ReadAll() {
+			fmt.Println(r)
+		}
+	}
 }
 
 func TestDescribeTables(t *testing.T) {
