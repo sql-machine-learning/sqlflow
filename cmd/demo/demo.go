@@ -9,11 +9,11 @@ import (
 	"strings"
 
 	"github.com/go-sql-driver/mysql"
-	tablewriter "github.com/olekukonko/tablewriter"
-	sf "gitlab.alipay-inc.com/Arc/sqlflow/sql"
+	"github.com/olekukonko/tablewriter"
+	"gitlab.alipay-inc.com/Arc/sqlflow/sql"
 )
 
-const TABLE_PAGE_SIZE = 1000
+const tablePageSize = 1000
 
 // readStmt reads a SQL statement from the scanner.  A statement could
 // have multiple lines and ends at a semicolon at theend of the last
@@ -75,7 +75,7 @@ func main() {
 		Addr:                 *addr,
 		AllowNativePasswords: true,
 	}
-	db, err := sf.Open("mysql", cfg.FormatDSN())
+	db, err := sql.Open("mysql", cfg.FormatDSN())
 	if err != nil {
 		log.Fatalf("failed to open database: %v", err)
 	}
@@ -94,12 +94,12 @@ func main() {
 		tableReadered := false
 		table := tablewriter.NewWriter(os.Stdout)
 
-		stream := sf.Run(slct, db)
+		stream := sql.Run(slct, db)
 		for rsp := range stream.ReadAll() {
 			render(rsp, &isTable, table)
 
 			// pagination. avoid exceed memory
-			if isTable && table.NumLines() == TABLE_PAGE_SIZE {
+			if isTable && table.NumLines() == tablePageSize {
 				table.Render()
 				tableReadered = true
 				table.ClearRows()
