@@ -66,9 +66,6 @@ docker build -t sqlflow:dev -f Dockerfile.dev .
 
 ### Prerequisite
 
-To test the whole package, you will need a standalone MySQL server, please follow
-[this guide](example/datasests/README.md).
-
 ### Build and Test
 
 We build and test the project inside the docker container.
@@ -80,15 +77,16 @@ the `$GOPATH` in the container:
 ```bash
 docker run --rm -it -v $GOPATH:/go \
     -w /go/src/gitlab.alipay-inc.com/Arc/sqlflow \
-    --net=host \
     sqlflow:dev bash
 ```
 
-Please be aware of the `--net=host` option, which allows programs running in the
-container to connect to TCP/IP ports running on our host computer. This is necessary
-because some of our unit tests require a MySQL server running on our host.
+Inside the Docker container, start a MySQL server in the background
 
-Inside the Docker container, run all the tests as
+```
+service mysql start&
+```
+
+run all the tests as
 
 ```
 go generate ./...
