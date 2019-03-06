@@ -114,7 +114,7 @@ func describeTables(slct *extendedSelect, db *DB) (ft fieldTypes, e error) {
 		}
 
 		if tableEmpty {
-			return nil, fmt.Errorf("table is Empty. table Name: %s", tn)
+			return nil, fmt.Errorf("table is Empty. table name: %s", tn)
 		}
 		if rows.Err() != nil {
 			return nil, e

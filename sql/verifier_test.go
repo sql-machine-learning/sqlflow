@@ -103,3 +103,11 @@ USING my_dnn_model;`)
 	a.EqualError(verifyColumnNameAndType(trainParse, predParse, testDB),
 		"predFields doesn't contain column TotalCharges")
 }
+
+func TestDescribeEmptyTables(t *testing.T) {
+	a := assert.New(t)
+	r, e := newParser().Parse(`SELECT * FROM iris.iris_empty LIMIT 10;`)
+	a.NoError(e)
+	_, e = describeTables(r, testDB)
+	a.EqualError(e, "table is Empty. table name: iris.iris_empty")
+}
