@@ -1,3 +1,5 @@
+# Reference:  https://github.com/tensorflow/models/blob/master/samples/core/get_started/iris_data.py
+# which released under the Apache License 2.0
 import pandas as pd
 import tensorflow as tf
 
@@ -5,6 +7,7 @@ TRAIN_DATA_FILE = './creditcard.csv.train'
 TEST_DATA_FILE = './creditcard.csv.test'
 
 CSV_COLUMN_NAMES = ["Time"] + ["V"+str(i) for i in range(1,29)] + ["Amount", "Class"]
+
 
 def load_data(y_name='Class'):
     """Returns the iris dataset as (train_x, train_y), (test_x, test_y)."""

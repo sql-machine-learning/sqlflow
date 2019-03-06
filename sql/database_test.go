@@ -10,10 +10,11 @@ import (
 func TestDatabaseOpenMysql(t *testing.T) {
 	a := assert.New(t)
 	cfg := &mysql.Config{
-		User:   "root",
-		Passwd: "root",
-		Net:    "tcp",
-		Addr:   "localhost:3306",
+		User:                 "root",
+		Passwd:               "root",
+		Net:                  "tcp",
+		Addr:                 "localhost:3306",
+		AllowNativePasswords: true,
 	}
 	db, e := Open("mysql", cfg.FormatDSN())
 	a.NoError(e)
