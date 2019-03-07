@@ -81,41 +81,38 @@ func describeTables(slct *extendedSelect, db *DB) (ft fieldTypes, e error) {
 			return nil, err
 		}
 
-		tableEmpty := true
-		for rows.Next() {
-			tableEmpty = false
+		if !rows.Next() {
+			return nil, fmt.Errorf("table is Empty. table name: %s", tn)
+		}
 
-			columnTypes, err := rows.ColumnTypes()
-			if err != nil {
-				return nil, err
-			}
-			for i, ct := range columnTypes {
-				fld := cols[i]
-				typeName := ct.DatabaseTypeName()
+		if rows.Err() != nil {
+			return nil, e
+		}
 
-				if hasStar {
-					if _, ok := ft[fld]; !ok {
-						ft[fld] = make(map[string]string)
-					}
-					ft[fld][tn] = typeName
-				} else {
-					if tbls, ok := ft[fld]; ok {
-						if len(tbls) == 0 {
-							tbls[tn] = typeName
-						} else if _, ok := tbls[tn]; ok {
-							tbls[tn] = typeName
-						}
+		columnTypes, err := rows.ColumnTypes()
+		if err != nil {
+			return nil, err
+		}
+		for i, ct := range columnTypes {
+			fld := cols[i]
+			typeName := ct.DatabaseTypeName()
+
+			if hasStar {
+				if _, ok := ft[fld]; !ok {
+					ft[fld] = make(map[string]string)
+				}
+				ft[fld][tn] = typeName
+			} else {
+				if tbls, ok := ft[fld]; ok {
+					if len(tbls) == 0 {
+						tbls[tn] = typeName
+					} else if _, ok := tbls[tn]; ok {
+						tbls[tn] = typeName
 					}
 				}
 			}
 		}
 
-		if tableEmpty {
-			return nil, fmt.Errorf("table is Empty. table name: %s", tn)
-		}
-		if rows.Err() != nil {
-			return nil, e
-		}
 	}
 	return ft, nil
 }
