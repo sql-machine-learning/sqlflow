@@ -91,10 +91,7 @@ func describeTables(slct *extendedSelect, db *DB) (ft fieldTypes, e error) {
 			}
 			for i, ct := range columnTypes {
 				fld := cols[i]
-				typeName, err := getTypeName(ct.ScanType())
-				if err != nil {
-					return nil, err
-				}
+				typeName := ct.DatabaseTypeName()
 
 				if hasStar {
 					if _, ok := ft[fld]; !ok {

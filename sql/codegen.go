@@ -12,7 +12,7 @@ import (
 // TODO(tonyyang): This is currently a quick hack to map from SQL
 // field types to feature types.  We will enhance it to support more
 // complex cases like cross features.
-var fieldTypeFeatureType = map[string]string{"float": "numeric_column"}
+var fieldTypeFeatureType = map[string]string{"FLOAT": "numeric_column"}
 
 type columnType struct {
 	Name string
