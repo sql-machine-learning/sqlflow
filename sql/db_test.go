@@ -26,17 +26,21 @@ func TestMain(m *testing.M) {
 		testDB, e = Open("sqlite3", ":memory:")
 		assertNoErr(e)
 		// attach an In-Memory Database in SQLite
-		for _, name := range []string{"iris", "churn"} {
+		for _, name := range []string{"iris", "churn", "iris_empty"} {
 			_, e = testDB.Exec(fmt.Sprintf("ATTACH DATABASE ':memory:' AS %s;", name))
 			assertNoErr(e)
 		}
 		defer testDB.Close()
 	case "mysql":
+		addr := os.Getenv("SQLFLOW_TEST_DB_MYSQL_ADDR")
+		if addr == "" {
+			addr = "127.0.0.1:3306"
+		}
 		cfg := &mysql.Config{
 			User:                 "root",
 			Passwd:               "root",
 			Net:                  "tcp",
-			Addr:                 "localhost:3306",
+			Addr:                 addr,
 			AllowNativePasswords: true,
 		}
 		testDB, e = Open("mysql", cfg.FormatDSN())
@@ -53,6 +57,7 @@ func TestMain(m *testing.M) {
 
 	assertNoErr(popularize(testDB, "testdata/iris.sql"))
 	assertNoErr(popularize(testDB, "testdata/churn.sql"))
+	assertNoErr(popularize(testDB, "testdata/iris_empty.sql"))
 
 	os.Exit(m.Run())
 }

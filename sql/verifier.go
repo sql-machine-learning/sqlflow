@@ -1,7 +1,6 @@
 package sql
 
 import (
-	"database/sql"
 	"fmt"
 	"strings"
 )
@@ -70,36 +69,50 @@ func describeTables(slct *extendedSelect, db *DB) (ft fieldTypes, e error) {
 	ft = indexSelectFields(slct)
 	hasStar := len(ft) == 0
 	for _, tn := range slct.tables {
-		rows, e := db.Query("DESCRIBE " + tn)
-		if e != nil {
-			return nil, e
+		slct := "SELECT * from " + tn + " limit 1"
+		rows, err := db.Query(slct)
+		if err != nil {
+			return nil, err
 		}
 		defer rows.Close()
 
+		cols, err := rows.Columns()
+		if err != nil {
+			return nil, err
+		}
+
+		tableEmpty := true
 		for rows.Next() {
-			var fld, typ, null, key, extra string
-			var deflt sql.NullString
-			// FIXME(tony): the schema might be MySQL specific
-			e = rows.Scan(&fld, &typ, &null, &key, &deflt, &extra)
-			if e != nil {
-				return nil, e
+			tableEmpty = false
+
+			columnTypes, err := rows.ColumnTypes()
+			if err != nil {
+				return nil, err
 			}
-			if hasStar {
-				if _, ok := ft[fld]; !ok {
-					ft[fld] = make(map[string]string)
-				}
-				ft[fld][tn] = typ
-			} else {
-				if tbls, ok := ft[fld]; ok {
-					if len(tbls) == 0 {
-						tbls[tn] = typ
-					} else if _, ok := tbls[tn]; ok {
-						tbls[tn] = typ
+			for i, ct := range columnTypes {
+				fld := cols[i]
+				typeName := ct.DatabaseTypeName()
+
+				if hasStar {
+					if _, ok := ft[fld]; !ok {
+						ft[fld] = make(map[string]string)
+					}
+					ft[fld][tn] = typeName
+				} else {
+					if tbls, ok := ft[fld]; ok {
+						if len(tbls) == 0 {
+							tbls[tn] = typeName
+						} else if _, ok := tbls[tn]; ok {
+							tbls[tn] = typeName
+						}
 					}
 				}
 			}
 		}
 
+		if tableEmpty {
+			return nil, fmt.Errorf("table is Empty. table name: %s", tn)
+		}
 		if rows.Err() != nil {
 			return nil, e
 		}

@@ -19,6 +19,7 @@ var (
 	mysqlNullTime  = reflect.TypeOf(mysql.NullTime{})
 	// builtin type supports sql like `select 1;` or  `select count(*) from ...`
 	builtIntBytes  = reflect.TypeOf([]byte(""))
+	builtinString  = reflect.TypeOf(string(""))
 	builtinInt     = reflect.TypeOf(int(0))
 	builtinInt8    = reflect.TypeOf(int8(0))
 	builtinInt16   = reflect.TypeOf(int16(0))
@@ -52,6 +53,8 @@ func createByType(rt reflect.Type) (interface{}, error) {
 		return new(time.Time), nil
 	case builtIntBytes:
 		return new([]byte), nil
+	case builtinString:
+		return new(string), nil
 	case builtinInt:
 		return new(int), nil
 	case builtinInt8:

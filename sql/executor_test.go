@@ -41,6 +41,10 @@ func TestStandardSQL(t *testing.T) {
 		stream := runStandardSQL(testStandardExecutiveSQLStatement, testDB)
 		a.True(goodStream(stream.ReadAll()))
 	})
+	a.NotPanics(func() {
+		stream := runStandardSQL("SELECT * FROM iris.iris_empty LIMIT 10;", testDB)
+		a.True(goodStream(stream.ReadAll()))
+	})
 }
 
 func TestCreatePredictionTable(t *testing.T) {

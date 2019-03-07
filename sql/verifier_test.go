@@ -21,13 +21,14 @@ func TestDescribeTables(t *testing.T) {
 	a.NoError(e)
 	a.Equal(21, len(fts))
 
-	r, e = newParser().Parse(`SELECT Churn, churn.churn.Partner FROM churn.churn LIMIT 10;`)
+	r, e = newParser().Parse(`SELECT Churn, churn.churn.Partner,TotalCharges FROM churn.churn LIMIT 10;`)
 	a.NoError(e)
 	fts, e = describeTables(r, testDB)
 	a.NoError(e)
-	a.Equal(2, len(fts))
-	a.Equal("varchar(255)", fts["Churn"]["churn.churn"])
-	a.Equal("varchar(255)", fts["Partner"]["churn.churn"])
+	a.Equal(3, len(fts))
+	a.Contains([]string{"VARCHAR(255)", "VARCHAR"}, fts["Churn"]["churn.churn"])
+	a.Contains([]string{"VARCHAR(255)", "VARCHAR"}, fts["Partner"]["churn.churn"])
+	a.Equal("FLOAT", fts["TotalCharges"]["churn.churn"])
 }
 
 func TestIndexSelectFields(t *testing.T) {
@@ -61,11 +62,11 @@ func TestVerify(t *testing.T) {
 	a.Equal(2, len(fts))
 	typ, ok := fts.get("Churn")
 	a.Equal(true, ok)
-	a.Equal("varchar(255)", typ)
+	a.Contains([]string{"VARCHAR(255)", "VARCHAR"}, typ)
 
 	typ, ok = fts.get("churn.churn.Partner")
 	a.Equal(true, ok)
-	a.Equal("varchar(255)", typ)
+	a.Contains([]string{"VARCHAR(255)", "VARCHAR"}, typ)
 
 	_, ok = fts.get("churn.churn.gender")
 	a.Equal(false, ok)
@@ -101,4 +102,12 @@ USING my_dnn_model;`)
 	a.NoError(e)
 	a.EqualError(verifyColumnNameAndType(trainParse, predParse, testDB),
 		"predFields doesn't contain column TotalCharges")
+}
+
+func TestDescribeEmptyTables(t *testing.T) {
+	a := assert.New(t)
+	r, e := newParser().Parse(`SELECT * FROM iris.iris_empty LIMIT 10;`)
+	a.NoError(e)
+	_, e = describeTables(r, testDB)
+	a.EqualError(e, "table is Empty. table name: iris.iris_empty")
 }
