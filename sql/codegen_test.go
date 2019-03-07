@@ -8,10 +8,10 @@ import (
 )
 
 const (
-	testStandardExecutiveSQLStatement = `DELETE FROM iris.iris WHERE class = 4;`
+	testStandardExecutiveSQLStatement = `DELETE FROM iris.train WHERE class = 4;`
 	testSelectIris                    = `
 SELECT *
-FROM iris.iris
+FROM iris.train
 `
 	testTrainSelectIris = testSelectIris + `
 TRAIN DNNClassifier
@@ -23,7 +23,9 @@ LABEL class
 INTO my_dnn_model
 ;
 `
-	testPredictSelectIris = testSelectIris + `
+	testPredictSelectIris = `
+SELECT *
+FROM iris.test
 predict iris.predict.class
 USING my_dnn_model;
 `
