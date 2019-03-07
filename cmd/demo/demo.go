@@ -18,13 +18,18 @@ const tablePageSize = 1000
 // readStmt reads a SQL statement from the scanner.  A statement could
 // have multiple lines and ends at a semicolon at theend of the last
 // line.
-func readStmt(scn *bufio.Scanner) string {
+func readStmt() string {
+	scn := bufio.NewScanner(os.Stdin)
+
 	stmt := ""
 	for scn.Scan() {
 		stmt += scn.Text() + "\n"
 		if strings.HasSuffix(strings.TrimSpace(scn.Text()), ";") {
 			break
 		}
+	}
+	if err := scn.Err(); err != nil {
+		return ""
 	}
 	return stmt
 }
@@ -41,25 +46,28 @@ func header(head map[string]interface{}) ([]string, error) {
 	return cols, nil
 }
 
-func render(rsp interface{}, isTable *bool, table *tablewriter.Table) {
+func render(rsp interface{}, table *tablewriter.Table) bool {
+	isTable := false
 	switch s := rsp.(type) {
 	case map[string]interface{}: // table header
-		*isTable = true
 		cols, e := header(s)
 		if e == nil {
 			table.SetHeader(cols)
 		}
+		isTable = true
 	case []interface{}: // row
 		row := make([]string, len(s))
 		for i, v := range s {
 			row[i] = fmt.Sprint(v)
 		}
 		table.Append(row)
+		isTable = true
 	case error:
 		fmt.Printf("ERROR: %v\n", s)
 	default:
 		fmt.Println(s)
 	}
+	return isTable
 }
 
 func main() {
@@ -84,28 +92,26 @@ func main() {
 		log.Fatalf("failed to ping database: %v", err)
 	}
 
-	scn := bufio.NewScanner(os.Stdin)
 	for {
 		fmt.Print("sqlflow> ")
-		slct := readStmt(scn)
+		slct := readStmt()
 		fmt.Println("-----------------------------")
 
-		isTable := false
-		tableReadered := false
+		isTable, tableRendered := false, false
 		table := tablewriter.NewWriter(os.Stdout)
 
 		stream := sql.Run(slct, db)
 		for rsp := range stream.ReadAll() {
-			render(rsp, &isTable, table)
+			isTable = render(rsp, table)
 
 			// pagination. avoid exceed memory
 			if isTable && table.NumLines() == tablePageSize {
 				table.Render()
-				tableReadered = true
+				tableRendered = true
 				table.ClearRows()
 			}
 		}
-		if isTable && (table.NumLines() > 0 || !tableReadered) {
+		if isTable && (table.NumLines() > 0 || !tableRendered) {
 			table.Render()
 		}
 	}
