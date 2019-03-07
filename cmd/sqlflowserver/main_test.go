@@ -16,7 +16,7 @@ func TestRun(t *testing.T) {
 	a := assert.New(t)
 	tests := []string{
 		"show databases;",
-		"select * from iris.iris limit 2;",
+		"select * from iris.train limit 2;",
 	}
 
 	go main()

@@ -1,5 +1,5 @@
 sqlflow> SELECT *
-FROM iris.iris
+FROM iris.train
 TRAIN DNNClassifier
 WITH
   n_classes = 3,
