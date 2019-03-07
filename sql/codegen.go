@@ -189,7 +189,7 @@ def insert(table_name, X, db):
 
 insert("{{.TableName}}", X, db)
 
-print("Done predicting")
+print("Done predicting. Predict Table : {{.TableName}}")
 {{- end}}
 `
 

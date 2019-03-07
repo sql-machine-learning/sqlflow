@@ -35,7 +35,6 @@ var (
 	builtinTime    = reflect.TypeOf(time.Time{})
 )
 
-
 func getTypeName(rt reflect.Type) (string, error) {
 	// From dataType to sqlColumnType.
 	// The sqlColumnType will be used for feature column type and predict table column type.

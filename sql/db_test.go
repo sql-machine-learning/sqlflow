@@ -37,10 +37,10 @@ func TestMain(m *testing.M) {
 			addr = "127.0.0.1:3306"
 		}
 		cfg := &mysql.Config{
-			User:   "root",
-			Passwd: "root",
-			Net:    "tcp",
-			Addr:   addr,
+			User:                 "root",
+			Passwd:               "root",
+			Net:                  "tcp",
+			Addr:                 addr,
 			AllowNativePasswords: true,
 		}
 		testDB, e = Open("mysql", cfg.FormatDSN())
