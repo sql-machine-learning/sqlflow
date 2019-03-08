@@ -43,7 +43,7 @@ digraph G {
     }
   }
 
-  subgraph cluster_2 { 
+  subgraph cluster_2 {
     label = "database"
     style=filled;
     graph[style=dotted];
@@ -59,7 +59,7 @@ digraph G {
     compute_cluster [label="AutoML Spark..",shape=box];
   }
 
-  parser -> console [ltail=cluster_1, lhead=cluster_6, color=blue, dir="both", label="SQL | table or training info"]
+  parser -> {python_client} [ltail=cluster_1, lhead=cluster_6, color=blue, dir="both", label="SQL | table or training info"]
   parser -> database [dir="both", label="SQL | table"];
   verifier -> database [dir="both", label="SQL | table schema"];
   submitter -> compute_cluster [dir="both", label="job description | training info"]
