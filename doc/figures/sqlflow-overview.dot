@@ -1,52 +1,69 @@
 digraph G {
-	subgraph cluster_0 {
-		node [style=filled,color=grey,shape=box];
-		client [label = "client"]
-	}
-	subgraph cluster_1 {
-		label = "SQLFlow Server";
-		node [style=filled,color=grey,shape=box];
-		parser [label="extendedSQL parser"]
-		verifier [label="syntax and semantics verifier"]
-		parser -> verifier;
-		verifier -> {codegen submit}
+  graph [compound=true];
+  subgraph cluster_6 {
+    label = "SQLFlow Client"
 
-		subgraph cluster_10 {
-			label = "run locally";
-			node [style=filled, shape=box];
-			graph[style=dotted];
-			codegen -> executor [label="TF/Pytorch code"];
-		}
+    subgraph cluster_0 {
+      label = "Web Browser";
+      subgraph cluster_4 {
+        label = "Jupyter Notebook";
+        node [style=filled,color=grey,shape=box];
+        python_client [label = "Python Client"]
+      }
+    }
 
-		subgraph cluster_11 {
-			label = "submit to cluster";
-			node [style=filled, shape=box];
-			graph[style=dotted];
-			submit;
-		}
-	}
+    subgraph cluster_5 {
+      label = "";
+      node [style=filled,color=grey,shape=box];
+      console [label = "console"]
+    }
+  }
 
-	subgraph cluster_2 { 
-		label = "database"
-		style=filled;
-		graph[style=dotted];
-		color=blue;
-		database [label="MySQL, Hive, SparkSQL, ODPS...",shape=box];
-	}
 
-	subgraph cluster_3 {
-		label = "computing cluster"
-		style=filled;
-		graph[style=dotted];
-		color=blue;
-		compute_cluster [label="ElasticDL, AutoML, Spark",shape=box];
-	}
+  subgraph cluster_1 {
+    label = "SQLFlow Server";
+    node [style=filled,color=grey,shape=box];
+    parser [label="extendedSQL parser"]
+    verifier [label="syntax and semantics verifier"]
+    parser -> verifier;
+    verifier -> {codegen submitter}
 
-	client -> parser [color=blue, dir="both", label="SQL | table or training info"]
-	parser -> database [dir="both", label="SQL | table"];
-	verifier -> database [dir="both", label="SQL | table schema"];
-	submit -> compute_cluster [dir="both", label="job description | training info"]
+    subgraph cluster_10 {
+      label = "run locally";
+      node [style=filled, shape=box];
+      graph[style=dotted];
+      codegen -> executor [label="TF/Pytorch code"];
+    }
 
-	database -> compute_cluster [color=red, style=bold, dir="both", label="load data | save model"]
-	database -> executor [color=red, style=bold, dir="both", label="load data | save model"]
+    subgraph cluster_11 {
+      label = "submit to cluster";
+      node [style=filled, shape=box];
+      graph[style=dotted];
+      submitter;
+    }
+  }
+
+  subgraph cluster_2 { 
+    label = "database"
+    style=filled;
+    graph[style=dotted];
+    color=blue;
+    database [label="MySQL, Hive, SparkSQL, ODPS...",shape=box];
+  }
+
+  subgraph cluster_3 {
+    label = "computing cluster"
+    style=filled;
+    graph[style=dotted];
+    color=blue;
+    compute_cluster [label="AutoML Spark..",shape=box];
+  }
+
+  parser -> console [ltail=cluster_1, lhead=cluster_6, color=blue, dir="both", label="SQL | table or training info"]
+  parser -> database [dir="both", label="SQL | table"];
+  verifier -> database [dir="both", label="SQL | table schema"];
+  submitter -> compute_cluster [dir="both", label="job description | training info"]
+
+  database -> compute_cluster [color=red, style=bold, dir="both", label="load data | save model"]
+  database -> executor [color=red, style=bold, dir="both", label="load data | save model"]
 }
