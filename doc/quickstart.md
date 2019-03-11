@@ -120,3 +120,7 @@ FROM iris.test
 predict iris.predict.class
 USING my_dnn_model;
 ```
+- Checkout prediction result
+```sql
+sqlflow> select * from iris.predict limit 10;
+```
