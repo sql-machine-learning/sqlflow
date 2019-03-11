@@ -10,7 +10,7 @@ import (
 
 var log *logrus.Entry
 
-func getEnvWithFallback(key, fallback string) string {
+func getEnv(key, fallback string) string {
 	value := os.Getenv(key)
 	if len(value) == 0 {
 		return fallback
@@ -19,8 +19,8 @@ func getEnvWithFallback(key, fallback string) string {
 }
 
 func init() {
-	logDir := getEnvWithFallback("SQLFLOW_log_dir", "logs")
-	logLevel := getEnvWithFallback("SQLFLOW_log_level", "info")
+	logDir := getEnv("SQLFLOW_log_dir", "logs")
+	logLevel := getEnv("SQLFLOW_log_level", "info")
 
 	ll, e := logrus.ParseLevel(logLevel)
 	if e != nil {
