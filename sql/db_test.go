@@ -30,6 +30,7 @@ func TestMain(m *testing.M) {
 		defer testDB.Close()
 	case "mysql":
 		cfg := &mysql.Config{
+			User:                 getEnv("SQLFLOW_TEST_DB_MYSQL_USER", "root"),
 			Passwd:               getEnv("SQLFLOW_TEST_DB_MYSQL_PASSWD", "root"),
 			Net:                  getEnv("SQLFLOW_TEST_DB_MYSQL_NET", "tcp"),
 			Addr:                 getEnv("SQLFLOW_TEST_DB_MYSQL_ADDR", "127.0.0.1:3306"),
