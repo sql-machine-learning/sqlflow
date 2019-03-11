@@ -89,16 +89,20 @@ sqlflow>
 ## Example
 
 - Select data
-```
-sqlflow> select * from iris.iris limit 2;
+```sql
+sqlflow> select * from iris.train limit 2;
 -----------------------------
-[6.4 2.8 5.6 2.2 2]
-[5 2.3 3.3 1 1]
++--------------+-------------+--------------+-------------+-------+
+| SEPAL LENGTH | SEPAL WIDTH | PETAL LENGTH | PETAL WIDTH | CLASS |
++--------------+-------------+--------------+-------------+-------+
+|          6.4 |         2.8 |          5.6 |         2.2 |     2 |
+|            5 |         2.3 |          3.3 |           1 |     1 |
++--------------+-------------+--------------+-------------+-------+
 ```
 - Train a Tensorflow [DNNClassifier](https://www.tensorflow.org/api_docs/python/tf/estimator/DNNClassifier)
-```
+```sql
 sqlflow> SELECT *
-FROM iris.iris
+FROM iris.train
 TRAIN DNNClassifier
 WITH n_classes = 3, hidden_units = [10, 20]
 COLUMN sepal_length, sepal_width, petal_length, petal_width
@@ -110,9 +114,13 @@ Training set accuracy: 0.96721
 Done training
 ```
 - Prediction using a trained model
-```
+```sql
 sqlflow> SELECT *
-FROM iris.iris
+FROM iris.test
 predict iris.predict.class
 USING my_dnn_model;
+```
+- Checkout prediction result
+```sql
+sqlflow> select * from iris.predict limit 10;
 ```

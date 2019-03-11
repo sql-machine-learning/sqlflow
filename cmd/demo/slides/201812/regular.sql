@@ -11,7 +11,7 @@ sqlflow> SHOW DATABASES;
 | sqlfs              |
 | sys                |
 +--------------------+
-sqlflow> SELECT * FROM iris.iris LIMIT 1;
+sqlflow> SELECT * FROM iris.train LIMIT 1;
 +--------------+-------------+--------------+-------------+-------+
 | sepal_length | sepal_width | petal_length | petal_width | class |
 +--------------+-------------+--------------+-------------+-------+

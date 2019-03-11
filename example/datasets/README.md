@@ -32,13 +32,13 @@ We need to manually popularize the databases and tables:
 docker exec -it sqlflowdata bash
 ```
 
-To popularize the Churn dataset into `churn.churn`:
+To popularize the Churn dataset into `churn`:
 
 ```bash
 cat /popularize_churn.sql | mysql -uroot -proot
 ```
 
-To popularize the Irises dataset into `iris.iris`:
+To popularize the Irises dataset into `iris`:
 
 ```bash
 cat /popularize_iris.sql | mysql -uroot -proot
@@ -49,14 +49,14 @@ cat /popularize_iris.sql | mysql -uroot -proot
 In the container, run
 
 ```bash
-echo "select count(*) from churn.churn;" | mysql -uroot -proot
+echo "select count(*) from churn.test;" | mysql -uroot -proot
 ```
 
 should print the number of rows as the following
 
 ```
 count(*)
-92
+10
 ```
 
 ## Trouble shooting:

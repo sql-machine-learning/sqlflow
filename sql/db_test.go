@@ -26,7 +26,7 @@ func TestMain(m *testing.M) {
 		testDB, e = Open("sqlite3", ":memory:")
 		assertNoErr(e)
 		// attach an In-Memory Database in SQLite
-		for _, name := range []string{"iris", "churn", "iris_empty"} {
+		for _, name := range []string{"iris", "churn"} {
 			_, e = testDB.Exec(fmt.Sprintf("ATTACH DATABASE ':memory:' AS %s;", name))
 			assertNoErr(e)
 		}
@@ -57,7 +57,6 @@ func TestMain(m *testing.M) {
 
 	assertNoErr(popularize(testDB, "testdata/iris.sql"))
 	assertNoErr(popularize(testDB, "testdata/churn.sql"))
-	assertNoErr(popularize(testDB, "testdata/iris_empty.sql"))
 
 	os.Exit(m.Run())
 }

@@ -8,43 +8,43 @@ import (
 
 func TestDryRunSelect(t *testing.T) {
 	a := assert.New(t)
-	r, e := newParser().Parse(`SELECT * FROM churn.churn LIMIT 10;`)
+	r, e := newParser().Parse(`SELECT * FROM churn.train LIMIT 10;`)
 	a.NoError(e)
 	a.Nil(dryRunSelect(r, testDB))
 }
 
 func TestDescribeTables(t *testing.T) {
 	a := assert.New(t)
-	r, e := newParser().Parse(`SELECT * FROM churn.churn LIMIT 10;`)
+	r, e := newParser().Parse(`SELECT * FROM churn.train LIMIT 10;`)
 	a.NoError(e)
 	fts, e := describeTables(r, testDB)
 	a.NoError(e)
 	a.Equal(21, len(fts))
 
-	r, e = newParser().Parse(`SELECT Churn, churn.churn.Partner,TotalCharges FROM churn.churn LIMIT 10;`)
+	r, e = newParser().Parse(`SELECT Churn, churn.train.Partner,TotalCharges FROM churn.train LIMIT 10;`)
 	a.NoError(e)
 	fts, e = describeTables(r, testDB)
 	a.NoError(e)
 	a.Equal(3, len(fts))
-	a.Contains([]string{"VARCHAR(255)", "VARCHAR"}, fts["Churn"]["churn.churn"])
-	a.Contains([]string{"VARCHAR(255)", "VARCHAR"}, fts["Partner"]["churn.churn"])
-	a.Equal("FLOAT", fts["TotalCharges"]["churn.churn"])
+	a.Contains([]string{"VARCHAR(255)", "VARCHAR"}, fts["Churn"]["churn.train"])
+	a.Contains([]string{"VARCHAR(255)", "VARCHAR"}, fts["Partner"]["churn.train"])
+	a.Equal("FLOAT", fts["TotalCharges"]["churn.train"])
 }
 
 func TestIndexSelectFields(t *testing.T) {
 	a := assert.New(t)
-	r, e := newParser().Parse(`SELECT * FROM churn.churn LIMIT 10;`)
+	r, e := newParser().Parse(`SELECT * FROM churn.train LIMIT 10;`)
 	a.NoError(e)
 	f := indexSelectFields(r)
 	a.Equal(0, len(f))
 
-	r, e = newParser().Parse(`SELECT f FROM churn.churn LIMIT 10;`)
+	r, e = newParser().Parse(`SELECT f FROM churn.train LIMIT 10;`)
 	a.NoError(e)
 	f = indexSelectFields(r)
 	a.Equal(1, len(f))
 	a.Equal(map[string]string{}, f["f"])
 
-	r, e = newParser().Parse(`SELECT t1.f, t2.f, g FROM churn.churn LIMIT 10;`)
+	r, e = newParser().Parse(`SELECT t1.f, t2.f, g FROM churn.train LIMIT 10;`)
 	a.NoError(e)
 	f = indexSelectFields(r)
 	a.Equal(2, len(f))
@@ -55,7 +55,7 @@ func TestIndexSelectFields(t *testing.T) {
 
 func TestVerify(t *testing.T) {
 	a := assert.New(t)
-	r, e := newParser().Parse(`SELECT Churn, churn.churn.Partner FROM churn.churn LIMIT 10;`)
+	r, e := newParser().Parse(`SELECT Churn, churn.train.Partner FROM churn.train LIMIT 10;`)
 	a.NoError(e)
 	fts, e := verify(r, testDB)
 	a.NoError(e)
@@ -64,11 +64,11 @@ func TestVerify(t *testing.T) {
 	a.Equal(true, ok)
 	a.Contains([]string{"VARCHAR(255)", "VARCHAR"}, typ)
 
-	typ, ok = fts.get("churn.churn.Partner")
+	typ, ok = fts.get("churn.train.Partner")
 	a.Equal(true, ok)
 	a.Contains([]string{"VARCHAR(255)", "VARCHAR"}, typ)
 
-	_, ok = fts.get("churn.churn.gender")
+	_, ok = fts.get("churn.train.gender")
 	a.Equal(false, ok)
 
 	_, ok = fts.get("gender")
@@ -78,7 +78,7 @@ func TestVerify(t *testing.T) {
 func TestVerifyColumnNameAndType(t *testing.T) {
 	a := assert.New(t)
 	trainParse, e := newParser().Parse(`SELECT gender, tenure, TotalCharges
-FROM churn.churn LIMIT 10
+FROM churn.train LIMIT 10
 TRAIN DNNClassifier
 WITH
   n_classes = 3,
@@ -89,14 +89,14 @@ INTO my_dnn_model;`)
 	a.NoError(e)
 
 	predParse, e := newParser().Parse(`SELECT gender, tenure, TotalCharges
-FROM churn.churn LIMIT 10
+FROM churn.train LIMIT 10
 PREDICT iris.predict.class
 USING my_dnn_model;`)
 	a.NoError(e)
 	a.NoError(verifyColumnNameAndType(trainParse, predParse, testDB))
 
 	predParse, e = newParser().Parse(`SELECT gender, tenure
-FROM churn.churn LIMIT 10
+FROM churn.train LIMIT 10
 PREDICT iris.predict.class
 USING my_dnn_model;`)
 	a.NoError(e)

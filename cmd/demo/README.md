@@ -23,7 +23,7 @@ sqlflow> SHOW DATABASES;
 | sqlfs              |
 | sys                |
 +--------------------+
-sqlflow> SELECT * FROM iris.iris LIMIT 1;
+sqlflow> SELECT * FROM iris.train LIMIT 1;
 +--------------+-------------+--------------+-------------+-------+
 | sepal_length | sepal_width | petal_length | petal_width | class |
 +--------------+-------------+--------------+-------------+-------+
@@ -35,7 +35,7 @@ sqlflow> SELECT * FROM iris.iris LIMIT 1;
 
 ```sql
 sqlflow> SELECT *
-FROM iris.iris
+FROM iris.train
 TRAIN DNNClassifier
 WITH
   n_classes = 3,
@@ -52,7 +52,7 @@ Job success
 
 ```sql
 sqlflow> SELECT *
-FROM iris.iris
+FROM iris.test
 PREDICT iris.predict.class
 USING my_dnn_model;
 -----------------------------
