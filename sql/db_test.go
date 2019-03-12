@@ -15,10 +15,7 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	dbms := os.Getenv("SQLFLOW_TEST_DB")
-	if dbms == "" {
-		dbms = "mysql"
-	}
+	dbms := getEnv("SQLFLOW_TEST_DB", "mysql")
 
 	var e error
 	switch dbms {
@@ -32,15 +29,11 @@ func TestMain(m *testing.M) {
 		}
 		defer testDB.Close()
 	case "mysql":
-		addr := os.Getenv("SQLFLOW_TEST_DB_MYSQL_ADDR")
-		if addr == "" {
-			addr = "127.0.0.1:3306"
-		}
 		cfg := &mysql.Config{
-			User:                 "root",
-			Passwd:               "root",
-			Net:                  "tcp",
-			Addr:                 addr,
+			User:                 getEnv("SQLFLOW_TEST_DB_MYSQL_USER", "root"),
+			Passwd:               getEnv("SQLFLOW_TEST_DB_MYSQL_PASSWD", "root"),
+			Net:                  getEnv("SQLFLOW_TEST_DB_MYSQL_NET", "tcp"),
+			Addr:                 getEnv("SQLFLOW_TEST_DB_MYSQL_ADDR", "127.0.0.1:3306"),
 			AllowNativePasswords: true,
 		}
 		testDB, e = Open("mysql", cfg.FormatDSN())
