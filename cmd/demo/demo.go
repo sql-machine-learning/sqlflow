@@ -83,6 +83,8 @@ func main() {
 		Addr:                 *addr,
 		AllowNativePasswords: true,
 	}
+	log.Println("Connecting to db with:")
+	log.Printf("%+#v\n", *cfg)
 	db, err := sql.Open("mysql", cfg.FormatDSN())
 	if err != nil {
 		log.Fatalf("failed to open database: %v", err)
