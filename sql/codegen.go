@@ -35,6 +35,7 @@ type modelConfig struct {
 
 type filler struct {
 	Train          bool
+	Driver         string
 	StandardSelect string
 	modelConfig
 	X         []columnType
@@ -80,11 +81,14 @@ func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
 		if err != nil {
 			return nil, err
 		}
+		r.Driver = "mysql"
 		r.User = cfg.User
 		r.Password = cfg.Passwd
 		r.Host = strings.Split(cfg.Addr, ":")[0]
 		r.Port = strings.Split(cfg.Addr, ":")[1]
-		// TODO(weiguo): support more driver;
+	case "sqlite3":
+		r.Driver = "sqlite3"
+		r.Database = db.dataSourceName
 	default:
 		return nil, fmt.Errorf("sqlfow currently doesn't support DB %v", db.driverName)
 	}
@@ -115,10 +119,19 @@ STEP = 1000
 
 WORK_DIR = "{{.WorkDir}}"
 
+{{if eq .Driver "mysql"}}
 db = mysql.connector.connect(user="{{.User}}",
                              passwd="{{.Password}}",
                              host="{{.Host}}",
                              port={{.Port}}{{if eq .Database ""}}{{- else}}, database="{{.DATABASE}}"{{end}})
+{{else}}
+{{if eq .Driver "sqlite3"}}
+db = sqlite3.connect({{.Database}})
+{{else}}
+raise ValueError("unrecognized database driver: {{.Driver}}")
+{{end}}
+{{end}}
+
 cursor = db.cursor()
 cursor.execute("""{{.StandardSelect}}""")
 field_names = [i[0] for i in cursor.description]
