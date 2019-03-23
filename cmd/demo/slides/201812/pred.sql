@@ -1,5 +1,5 @@
 sqlflow> SELECT *
-FROM iris.iris
+FROM iris.test
 PREDICT iris.predict.class
 USING my_dnn_model;
 -----------------------------

@@ -1,7 +1,6 @@
 package sql
 
 import (
-	"database/sql"
 	"fmt"
 	"strings"
 )
@@ -19,14 +18,14 @@ type fieldTypes map[string]map[string]string
 //    star '*'.
 //
 // It returns a fieldTypes describing types of fields in SELECT.
-func verify(slct *extendedSelect, db *sql.DB) (ft fieldTypes, e error) {
+func verify(slct *extendedSelect, db *DB) (ft fieldTypes, e error) {
 	if e := dryRunSelect(slct, db); e != nil {
 		return nil, e
 	}
 	return describeTables(slct, db)
 }
 
-func dryRunSelect(slct *extendedSelect, db *sql.DB) error {
+func dryRunSelect(slct *extendedSelect, db *DB) error {
 	oldLimit := slct.standardSelect.limit
 	defer func() {
 		slct.standardSelect.limit = oldLimit
@@ -35,10 +34,10 @@ func dryRunSelect(slct *extendedSelect, db *sql.DB) error {
 	slct.standardSelect.limit = "1"
 	stmt := slct.standardSelect.String()
 	rows, e := db.Query(stmt)
-	defer rows.Close()
 	if e != nil {
 		return fmt.Errorf("dryRunSelect failed executing %s: %q", stmt, e)
 	}
+	defer rows.Close()
 
 	return rows.Err()
 }
@@ -66,43 +65,54 @@ func decomp(ident string) (tbl string, fld string) {
 }
 
 // Retrieve the type of fields mentioned in SELECT.
-func describeTables(slct *extendedSelect, db *sql.DB) (ft fieldTypes, e error) {
+func describeTables(slct *extendedSelect, db *DB) (ft fieldTypes, e error) {
 	ft = indexSelectFields(slct)
 	hasStar := len(ft) == 0
 	for _, tn := range slct.tables {
-		rows, e := db.Query("DESCRIBE " + tn)
-		if e != nil {
-			return nil, e
+		slct := "SELECT * from " + tn + " limit 1"
+		rows, err := db.Query(slct)
+		if err != nil {
+			return nil, err
 		}
 		defer rows.Close()
 
-		for rows.Next() {
-			var fld, typ, null, key, extra string
-			var deflt sql.NullString
-			// FIXME(tony): the schema might be MySQL specific
-			e = rows.Scan(&fld, &typ, &null, &key, &deflt, &extra)
-			if e != nil {
-				return nil, e
-			}
-			if hasStar {
-				if _, ok := ft[fld]; !ok {
-					ft[fld] = make(map[string]string)
-				}
-				ft[fld][tn] = typ
-			} else {
-				if tbls, ok := ft[fld]; ok {
-					if len(tbls) == 0 {
-						tbls[tn] = typ
-					} else if _, ok := tbls[tn]; ok {
-						tbls[tn] = typ
-					}
-				}
-			}
+		cols, err := rows.Columns()
+		if err != nil {
+			return nil, err
+		}
+
+		if !rows.Next() {
+			return nil, fmt.Errorf("table is Empty. table name: %s", tn)
 		}
 
 		if rows.Err() != nil {
 			return nil, e
 		}
+
+		columnTypes, err := rows.ColumnTypes()
+		if err != nil {
+			return nil, err
+		}
+		for i, ct := range columnTypes {
+			fld := cols[i]
+			typeName := ct.DatabaseTypeName()
+
+			if hasStar {
+				if _, ok := ft[fld]; !ok {
+					ft[fld] = make(map[string]string)
+				}
+				ft[fld][tn] = typeName
+			} else {
+				if tbls, ok := ft[fld]; ok {
+					if len(tbls) == 0 {
+						tbls[tn] = typeName
+					} else if _, ok := tbls[tn]; ok {
+						tbls[tn] = typeName
+					}
+				}
+			}
+		}
+
 	}
 	return ft, nil
 }
@@ -129,7 +139,7 @@ func indexSelectFields(slct *extendedSelect) (ft fieldTypes) {
 
 // Check train and pred clause uses has the same feature columns
 // 1. every column field in the training clause is selected in the pred clause, and they are of the same type
-func verifyColumnNameAndType(trainParsed, predParsed *extendedSelect, db *sql.DB) error {
+func verifyColumnNameAndType(trainParsed, predParsed *extendedSelect, db *DB) error {
 	trainFields, e := verify(trainParsed, db)
 	if e != nil {
 		return e

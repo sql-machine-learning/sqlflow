@@ -2,50 +2,57 @@ package sql
 
 import (
 	"bytes"
-	"database/sql"
 	"fmt"
 	"io/ioutil"
 	"os"
-	"reflect"
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/go-sql-driver/mysql"
 )
 
-// Response for Run return, contains:
-// - data: string or database row
-// - err
-type Response struct {
-	data interface{}
-	err  error
-}
-
-// Run executes a SQLFlow statements, either standard or extended
-// - Standard SQL statements like `USE database` returns a success message.
-// - Standard SQL statements like `SELECT ...` returns a table in addition
-// to the status, and the table might be big.
-// - Extended SQL statement like `SELECT ... TRAIN/PREDICT ...` messages
-// which indicate the training/predicting progress
-func Run(slct string, db *sql.DB, cfg *mysql.Config) chan Response {
+// Run executes a SQL query and returns a stream of row or message
+func Run(slct string, db *DB) *PipeReader {
 	slctUpper := strings.ToUpper(slct)
 	if strings.Contains(slctUpper, "TRAIN") || strings.Contains(slctUpper, "PREDICT") {
 		pr, e := newParser().Parse(slct)
 		if e == nil && pr.extended {
-			return runExtendedSQL(slct, db, cfg, pr)
+			return runExtendedSQL(slct, db, pr)
 		}
 	}
 	return runStandardSQL(slct, db)
 }
 
+// TODO(weiguo): isQuery is a hacky way to decide which API to call:
+// https://golang.org/pkg/database/sql/#DB.Exec .
+// We will need to extend our parser to be a full SQL parser in the future.
+func isQuery(slct string) bool {
+	s := strings.ToUpper(strings.TrimSpace(slct))
+	has := strings.Contains
+	if strings.HasPrefix(s, "SELECT") && !has(s, "INTO") {
+		return true
+	}
+	if strings.HasPrefix(s, "SHOW") && (has(s, "CREATE") || has(s, "DATABASES") || has(s, "TABLES")) {
+		return true
+	}
+	if strings.HasPrefix(s, "DESCRIBE") {
+		return true
+	}
+	return false
+}
+
+func runStandardSQL(slct string, db *DB) *PipeReader {
+	if isQuery(slct) {
+		return runQuery(slct, db)
+	}
+	return runExec(slct, db)
+}
+
 // FIXME(tony): how to deal with large tables?
 // TODO(tony): test on null table elements
-func runStandardSQL(slct string, db *sql.DB) chan Response {
-	rsp := make(chan Response)
-
+func runQuery(slct string, db *DB) *PipeReader {
+	rd, wr := Pipe()
 	go func() {
-		defer close(rsp)
+		defer wr.Close()
 
 		err := func() error {
 			startAt := time.Now()
@@ -53,7 +60,7 @@ func runStandardSQL(slct string, db *sql.DB) chan Response {
 
 			rows, err := db.Query(slct)
 			if err != nil {
-				return fmt.Errorf("runStandardSQL failed: %v", err)
+				return fmt.Errorf("runQuery failed: %v", err)
 			}
 			defer rows.Close()
 
@@ -62,72 +69,109 @@ func runStandardSQL(slct string, db *sql.DB) chan Response {
 				return fmt.Errorf("failed to get columns: %v", err)
 			}
 
-			// Since we don't know the table schema in advance, need to
-			// create an slice of empty interface and adds column type
-			// at runtime
-			count := len(cols)
-			values := make([]interface{}, count)
-			columnTypes, err := rows.ColumnTypes()
-			if err != nil {
-				return fmt.Errorf("failed to get columnTypes: %v", err)
-			}
-			// FIXME(tony): support more column types: https://golang.org/pkg/database/sql/#Rows.Scan
-			for i, ct := range columnTypes {
-				switch ct.ScanType() {
-				case reflect.TypeOf(sql.NullBool{}):
-					values[i] = new(bool)
-				case reflect.TypeOf(sql.NullInt64{}):
-					values[i] = new(int64)
-				case reflect.TypeOf(sql.NullFloat64{}):
-					values[i] = new(float64)
-				case reflect.TypeOf(sql.NullString{}):
-					values[i] = new(string)
-				default:
-					return fmt.Errorf("unrecognized column scan type %v", ct.ScanType())
-				}
+			header := make(map[string]interface{})
+			header["columnNames"] = cols
+			if e := wr.Write(header); e != nil {
+				return e
 			}
 
 			for rows.Next() {
-				err = rows.Scan(values...)
+				// Since we don't know the table schema in advance, need to
+				// create an slice of empty interface and adds column type
+				// at runtime. Some databases support dynamic types between
+				// rows, such as sqlite's affinity. So we move columnTypes inside
+				// the row.Next() loop.
+				count := len(cols)
+				values := make([]interface{}, count)
+				columnTypes, err := rows.ColumnTypes()
 				if err != nil {
+					return fmt.Errorf("failed to get columnTypes: %v", err)
+				}
+				for i, ct := range columnTypes {
+					v, e := createByType(ct.ScanType())
+					if e != nil {
+						return e
+					}
+					values[i] = v
+				}
+
+				if err := rows.Scan(values...); err != nil {
 					return err
 				}
 
 				row := make([]interface{}, count)
 				for i, val := range values {
-					switch v := val.(type) {
-					case *bool:
-						row[i] = *v
-					case *int64:
-						row[i] = *v
-					case *float64:
-						row[i] = *v
-					case *string:
-						row[i] = *v
-					default:
-						return fmt.Errorf("unrecogized type %v", v)
+					v, e := parseVal(val)
+					if e != nil {
+						return e
 					}
+					row[i] = v
 				}
-				rsp <- Response{data: row}
+				if e := wr.Write(row); e != nil {
+					return e
+				}
 			}
-
-			log.Infof("runStandardSQL finished, elapsed: %v", time.Now().Sub(startAt))
+			log.Infof("runQuery finished, elapsed: %v", time.Since(startAt))
 			return nil
 		}()
 
 		if err != nil {
-			rsp <- Response{err: err}
+			log.Errorf("runQuery error:%v", err)
+			if err != ErrClosedPipe {
+				if err := wr.Write(err); err != nil {
+					log.Errorf("runQuery error(piping):%v", err)
+				}
+			}
 		}
 	}()
-
-	return rsp
+	return rd
 }
 
-func runExtendedSQL(slct string, db *sql.DB, cfg *mysql.Config, pr *extendedSelect) chan Response {
-	rsp := make(chan Response)
-
+func runExec(slct string, db *DB) *PipeReader {
+	rd, wr := Pipe()
 	go func() {
-		defer close(rsp)
+		defer wr.Close()
+
+		err := func() error {
+			startAt := time.Now()
+			log.Infof("Starting runStanrardSQL1:%s", slct)
+
+			res, e := db.Exec(slct)
+			if e != nil {
+				return fmt.Errorf("runExec failed: %v", e)
+			}
+			affected, e := res.RowsAffected()
+			if e != nil {
+				return fmt.Errorf("failed to get affected row number: %v", e)
+			}
+			var msg string
+			if affected > 1 {
+				msg = fmt.Sprintf("%d rows affected", affected)
+			} else {
+				msg = fmt.Sprintf("%d row affected", affected)
+			}
+			if e := wr.Write(msg); e != nil {
+				return e
+			}
+			log.Infof("runExec finished, elapsed: %v", time.Since(startAt))
+			return nil
+		}()
+		if err != nil {
+			log.Errorf("runExec error:%v", err)
+			if err != ErrClosedPipe {
+				if err := wr.Write(err); err != nil {
+					log.Errorf("runExec error(piping):%v", err)
+				}
+			}
+		}
+	}()
+	return rd
+}
+
+func runExtendedSQL(slct string, db *DB, pr *extendedSelect) *PipeReader {
+	rd, wr := Pipe()
+	go func() {
+		defer wr.Close()
 
 		err := func() error {
 			startAt := time.Now()
@@ -147,29 +191,28 @@ func runExtendedSQL(slct string, db *sql.DB, cfg *mysql.Config, pr *extendedSele
 			defer os.RemoveAll(cwd)
 
 			if pr.train {
-				for l := range train(pr, slct, db, cfg, cwd) {
-					rsp <- l
-				}
+				e = train(pr, slct, db, cwd, wr)
 			} else {
-				for l := range pred(pr, db, cfg, cwd) {
-					rsp <- l
-				}
+				e = pred(pr, db, cwd, wr)
 			}
-			log.Infof("runExtendedSQL finished, elapsed:%v", time.Now().Sub(startAt))
+			log.Infof("runExtendedSQL finished, elapsed:%v", time.Since(startAt))
 			return e
 		}()
 
 		if err != nil {
 			log.Errorf("runExtendedSQL error:%v", err)
-			rsp <- Response{err: err}
+			if err != ErrClosedPipe {
+				if err := wr.Write(err); err != nil {
+					log.Errorf("runExtendedSQL error(piping):%v", err)
+				}
+			}
 		}
 	}()
-
-	return rsp
+	return rd
 }
 
 type logChanWriter struct {
-	c chan Response
+	wr *PipeWriter
 
 	m    sync.Mutex
 	buf  bytes.Buffer
@@ -189,113 +232,84 @@ func (cw *logChanWriter) Write(p []byte) (n int, err error) {
 	for {
 		line, err := cw.buf.ReadString('\n')
 		cw.prev = cw.prev + line
-
-		// ReadString returns err != nil if and only if the returned data
+		// ReadString returns err != nil if and only if the returned Data
 		// does not end in delim.
 		if err != nil {
 			break
 		}
 
-		cw.c <- Response{cw.prev, nil}
+		if err := cw.wr.Write(cw.prev); err != nil {
+			return len(cw.prev), err
+		}
 		cw.prev = ""
 	}
-
 	return n, nil
 }
 
-func train(tr *extendedSelect, slct string, db *sql.DB, cfg *mysql.Config, cwd string) chan Response {
-	c := make(chan Response)
+func train(tr *extendedSelect, slct string, db *DB, cwd string, wr *PipeWriter) error {
+	fts, e := verify(tr, db)
+	if e != nil {
+		return e
+	}
 
-	go func() {
-		defer close(c)
+	var program bytes.Buffer
+	if e := genTF(&program, tr, fts, db); e != nil {
+		return e
+	}
 
-		err := func() error {
-			fts, e := verify(tr, db)
-			if e != nil {
-				return e
-			}
+	cw := &logChanWriter{wr: wr}
+	cmd := tensorflowCmd(cwd)
+	cmd.Stdin = &program
+	cmd.Stdout = cw
+	cmd.Stderr = cw
+	if e := cmd.Run(); e != nil {
+		return fmt.Errorf("training failed %v", e)
+	}
 
-			var program bytes.Buffer
-			if e := genTF(&program, tr, fts, cfg); e != nil {
-				return e
-			}
-
-			cw := &logChanWriter{c: c}
-			cmd := tensorflowCmd(cwd)
-			cmd.Stdin = &program
-			cmd.Stdout = cw
-			cmd.Stderr = cw
-			if e := cmd.Run(); e != nil {
-				return fmt.Errorf("training failed %v", e)
-			}
-
-			m := model{workDir: cwd, TrainSelect: slct}
-			return m.save(db, tr.save)
-		}()
-
-		if err != nil {
-			c <- Response{"", err}
-		}
-	}()
-
-	return c
+	m := model{workDir: cwd, TrainSelect: slct}
+	return m.save(db, tr.save)
 }
 
-func pred(pr *extendedSelect, db *sql.DB, cfg *mysql.Config, cwd string) chan Response {
-	c := make(chan Response)
+func pred(pr *extendedSelect, db *DB, cwd string, wr *PipeWriter) error {
+	m, e := load(db, pr.model, cwd)
+	if e != nil {
+		return e
+	}
 
-	go func() {
-		defer close(c)
+	// Parse the training SELECT statement used to train
+	// the model for the prediction.
+	tr, e := newParser().Parse(m.TrainSelect)
+	if e != nil {
+		return e
+	}
 
-		err := func() error {
-			m, e := load(db, pr.model, cwd)
-			if e != nil {
-				return e
-			}
+	if e := verifyColumnNameAndType(tr, pr, db); e != nil {
+		return e
+	}
 
-			// Parse the training SELECT statement used to train
-			// the model for the prediction.
-			tr, e := newParser().Parse(m.TrainSelect)
-			if e != nil {
-				return e
-			}
+	if e := createPredictionTable(tr, pr, db); e != nil {
+		return e
+	}
 
-			if e := verifyColumnNameAndType(tr, pr, db); e != nil {
-				return e
-			}
+	pr.trainClause = tr.trainClause
+	fts, e := verify(pr, db)
 
-			if e := createPredictionTable(tr, pr, db); e != nil {
-				return e
-			}
+	var buf bytes.Buffer
+	if e := genTF(&buf, pr, fts, db); e != nil {
+		return e
+	}
 
-			pr.trainClause = tr.trainClause
-			fts, e := verify(pr, db)
-
-			var buf bytes.Buffer
-			if e := genTF(&buf, pr, fts, cfg); e != nil {
-				return e
-			}
-
-			cw := &logChanWriter{c: c}
-			cmd := tensorflowCmd(cwd)
-			cmd.Stdin = &buf
-			cmd.Stdout = cw
-			cmd.Stderr = cw
-
-			return cmd.Run()
-		}()
-
-		if err != nil {
-			c <- Response{"", err}
-		}
-	}()
-
-	return c
+	cw := &logChanWriter{wr: wr}
+	cmd := tensorflowCmd(cwd)
+	cmd.Stdin = &buf
+	cmd.Stdout = cw
+	cmd.Stderr = cw
+	return cmd.Run()
 }
 
 // Create prediction table with appropriate column type.
 // If prediction table already exists, it will be overwritten.
-func createPredictionTable(trainParsed, predParsed *extendedSelect, db *sql.DB) error {
+func createPredictionTable(trainParsed, predParsed *extendedSelect, db *DB) error {
 	if len(strings.Split(predParsed.into, ".")) != 3 {
 		return fmt.Errorf("invalid predParsed.into %s. should be DBName.TableName.ColumnName", predParsed.into)
 	}

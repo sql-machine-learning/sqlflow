@@ -2,12 +2,11 @@ package sql
 
 import (
 	"bytes"
-	"database/sql"
 	"encoding/gob"
 	"fmt"
 	"os/exec"
 
-	"github.com/wangkuiyi/sqlflow/sqlfs"
+	"gitlab.alipay-inc.com/Arc/sqlflow/sqlfs"
 )
 
 type model struct {
@@ -19,9 +18,9 @@ type model struct {
 // train select statement into the table, followed by the tar-gzipped
 // SQLFlow working directory, which contains the TensorFlow working
 // directory and the trained TenosrFlow model.
-func (m *model) save(db *sql.DB, table string) (e error) {
+func (m *model) save(db *DB, table string) (e error) {
 	sqlfn := fmt.Sprintf("sqlflow_models.%s", table)
-	sqlf, e := sqlfs.Create(db, sqlfn)
+	sqlf, e := sqlfs.Create(db.DB, sqlfn)
 	if e != nil {
 		return fmt.Errorf("Cannot create sqlfs file %s: %v", sqlfn, e)
 	}
@@ -45,9 +44,9 @@ func (m *model) save(db *sql.DB, table string) (e error) {
 // load reads from the given sqlfs table for the train select
 // statement, and untar the SQLFlow working directory, which contains
 // the TenosrFlow model, into directory cwd.
-func load(db *sql.DB, table, cwd string) (m *model, e error) {
+func load(db *DB, table, cwd string) (m *model, e error) {
 	sqlfn := fmt.Sprintf("sqlflow_models.%s", table)
-	sqlf, e := sqlfs.Open(db, sqlfn)
+	sqlf, e := sqlfs.Open(db.DB, sqlfn)
 	if e != nil {
 		return nil, fmt.Errorf("Cannot open sqlfs file %s: %v", sqlfn, e)
 	}

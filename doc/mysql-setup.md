@@ -126,6 +126,7 @@ func main() {
 	testConfig := &mysql.Config{
 		User:   "root",
 		Passwd: "root",
+		Net:    "tcp",
 		Addr:   "localhost:3306",
 	}
 	db, e := sql.Open("mysql", testConfig.FormatDSN())

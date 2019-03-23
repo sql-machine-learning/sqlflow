@@ -1,4 +1,3 @@
-CREATE DATABASE IF NOT EXISTS churn;
 DROP TABLE IF EXISTS churn.train;
 CREATE TABLE  churn.train (
 	customerID VARCHAR(255),

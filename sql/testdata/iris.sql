@@ -1,4 +1,3 @@
-CREATE DATABASE IF NOT EXISTS iris;
 DROP TABLE IF EXISTS iris.train;
 CREATE TABLE iris.train (
        sepal_length float,
@@ -134,3 +133,11 @@ INSERT INTO iris.test VALUES(5.7,3.0,4.2,1.2,1);
 INSERT INTO iris.test VALUES(4.4,2.9,1.4,0.2,0);
 INSERT INTO iris.test VALUES(4.8,3.0,1.4,0.1,0);
 INSERT INTO iris.test VALUES(5.5,2.4,3.7,1.0,1);
+
+DROP TABLE IF EXISTS iris.iris_empty;
+CREATE TABLE iris.iris_empty (
+       sepal_length float,
+       sepal_width  float,
+       petal_length float,
+       petal_width  float,
+       class int);

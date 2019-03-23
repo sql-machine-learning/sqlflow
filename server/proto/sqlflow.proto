@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+import "google/protobuf/any.proto";
+
+package proto;
+
+service SQLFlow {
+    // Run executes a sql statement
+    //
+    // SQL statements like `SELECT ...`, `DESCRIBE ...` returns a rowset.
+    // The rowset might be big. In such cases, Query returns a stream
+    // of RunResponse
+    //
+    // SQL statements like `USE database`, `DELETE` returns only a success
+    // message.
+    //
+    // SQL statement like `SELECT ... TRAIN/PREDICT ...` returns a stream of
+    // messages which indicates the training/predicting progress
+    rpc Run (Request) returns (stream Response);
+}
+
+// SQL statements to run
+// e.g.
+//      1. `SELECT ...`
+//      2. `USE ...`, `DELETE ...`
+//      3. `SELECT ... TRAIN/PREDICT ...`
+message Request {
+    string sql = 1;		// The SQL statement to be executed.
+}
+
+message Response {
+    oneof response {
+        Head head = 1;
+        Row row = 2;
+        Message message = 3;
+    }
+}
+
+// SQL statements like `SELECT ...`, `DESCRIBE ...` returns a Head
+// and a sequence of Rows
+message Head {
+    repeated string column_names = 1;
+}
+message Row {
+    // Null is a special marker used in Structured Query Language to indicate
+    // that a data value does not exist in the database.
+    // We encoded this marker as message Null, and it is one possible type of
+    // google.protobuf.Any in the field data
+    message Null {}
+    repeated google.protobuf.Any data = 1;
+}
+
+// SQL statements like `USE database`, `DELETE` returns only a success
+// message.
+//
+// SQL statement like `SELECT ... TRAIN/PREDICT ...` returns a stream of
+// messages which indicates the training/predicting progress
+message Message {
+  string message = 1;
+}

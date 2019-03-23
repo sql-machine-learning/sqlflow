@@ -10,17 +10,18 @@ We can run a Docker container of it for unit testing.
 ## Build
 
 ```bash
-docker build -t sqlflowtest .
+cd example/datasets
+docker build -t sqlflow:data .
 ```
 
 ## Run
 
 ```bash
-docker run --rm -d --name sqlflowtest \
+docker run --rm -d --name sqlflowdata \
    -p 3306:3306 \
    -e MYSQL_ROOT_PASSWORD=root \
    -e MYSQL_ROOT_HOST=% \
-   sqlflowtest
+   sqlflow:data
 ```
 
 ## Popularize Datasets
@@ -28,16 +29,16 @@ docker run --rm -d --name sqlflowtest \
 We need to manually popularize the databases and tables:
 
 ```bash
-docker exec -it sqlflowtest bash
+docker exec -it sqlflowdata bash
 ```
 
-To popularize the Churn dataset into `churn.churn`:
+To popularize the Churn dataset into `churn`:
 
 ```bash
 cat /popularize_churn.sql | mysql -uroot -proot
 ```
 
-To popularize the Irises dataset into `iris.iris`:
+To popularize the Irises dataset into `iris`:
 
 ```bash
 cat /popularize_iris.sql | mysql -uroot -proot
@@ -48,14 +49,14 @@ cat /popularize_iris.sql | mysql -uroot -proot
 In the container, run
 
 ```bash
-echo "select count(*) from churn.churn;" | mysql -uroot -proot
+echo "select count(*) from churn.test;" | mysql -uroot -proot
 ```
 
 should print the number of rows as the following
 
 ```
 count(*)
-92
+10
 ```
 
 ## Trouble shooting:

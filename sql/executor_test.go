@@ -6,9 +6,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func goodStream(stream chan Response) bool {
+func goodStream(stream chan interface{}) bool {
 	for rsp := range stream {
-		if rsp.err != nil {
+		switch rsp.(type) {
+		case error:
 			return false
 		}
 	}
@@ -18,18 +19,31 @@ func goodStream(stream chan Response) bool {
 func TestExecutorTrainAndPredict(t *testing.T) {
 	a := assert.New(t)
 	a.NotPanics(func() {
-		stream := Run(testTrainSelectIris, testDB, testCfg)
-		a.True(goodStream(stream))
-		stream = Run(testPredictSelectIris, testDB, testCfg)
-		a.True(goodStream(stream))
+		pr, e := newParser().Parse(testTrainSelectIris)
+		a.NoError(e)
+		stream := runExtendedSQL(testTrainSelectIris, testDB, pr)
+		a.True(goodStream(stream.ReadAll()))
+
+		pr, e = newParser().Parse(testPredictSelectIris)
+		a.NoError(e)
+		stream = runExtendedSQL(testPredictSelectIris, testDB, pr)
+		a.True(goodStream(stream.ReadAll()))
 	})
 }
 
-func TestExecutorStandard(t *testing.T) {
+func TestStandardSQL(t *testing.T) {
 	a := assert.New(t)
 	a.NotPanics(func() {
-		stream := Run(testSelectIris, testDB, testCfg)
-		a.True(goodStream(stream))
+		stream := runStandardSQL(testSelectIris, testDB)
+		a.True(goodStream(stream.ReadAll()))
+	})
+	a.NotPanics(func() {
+		stream := runStandardSQL(testStandardExecutiveSQLStatement, testDB)
+		a.True(goodStream(stream.ReadAll()))
+	})
+	a.NotPanics(func() {
+		stream := runStandardSQL("SELECT * FROM iris.iris_empty LIMIT 10;", testDB)
+		a.True(goodStream(stream.ReadAll()))
 	})
 }
 
@@ -42,26 +56,41 @@ func TestCreatePredictionTable(t *testing.T) {
 	a.NoError(createPredictionTable(trainParsed, predParsed, testDB))
 }
 
+func TestIsQuery(t *testing.T) {
+	a := assert.New(t)
+	a.True(isQuery("select * from iris.iris"))
+	a.True(isQuery("show create table iris.iris"))
+	a.True(isQuery("show databases"))
+	a.True(isQuery("show tables"))
+	a.True(isQuery("describe iris.iris"))
+
+	a.False(isQuery("select * from iris.iris limit 10 into iris.tmp"))
+	a.False(isQuery("insert into iris.iris values ..."))
+	a.False(isQuery("delete from iris.iris where ..."))
+	a.False(isQuery("update iris.iris where ..."))
+	a.False(isQuery("drop table"))
+}
+
 func TestLogChanWriter_Write(t *testing.T) {
 	a := assert.New(t)
-
-	c := make(chan Response)
-
+	rd, wr := Pipe()
 	go func() {
-		defer close(c)
-		cw := &logChanWriter{c: c}
+		defer wr.Close()
+		cw := &logChanWriter{wr: wr}
 		cw.Write([]byte("hello\n世界"))
 		cw.Write([]byte("hello\n世界"))
 		cw.Write([]byte("\n"))
 		cw.Write([]byte("世界\n世界\n世界\n"))
 	}()
 
-	a.Equal("hello\n", (<-c).data)
-	a.Equal("世界hello\n", (<-c).data)
-	a.Equal("世界\n", (<-c).data)
-	a.Equal("世界\n", (<-c).data)
-	a.Equal("世界\n", (<-c).data)
-	a.Equal("世界\n", (<-c).data)
+	c := rd.ReadAll()
+
+	a.Equal("hello\n", <-c)
+	a.Equal("世界hello\n", <-c)
+	a.Equal("世界\n", <-c)
+	a.Equal("世界\n", <-c)
+	a.Equal("世界\n", <-c)
+	a.Equal("世界\n", <-c)
 	_, more := <-c
 	a.False(more)
 }
