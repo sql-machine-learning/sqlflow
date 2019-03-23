@@ -4,13 +4,14 @@ import (
 	"database/sql"
 	"fmt"
 	"io"
-	"log"
 	"math/rand"
 	"os"
 	"strings"
 	"testing"
 
 	"github.com/go-sql-driver/mysql"
+	_ "github.com/mattn/go-sqlite3"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -19,47 +20,49 @@ var (
 	testDB  *sql.DB
 )
 
-func TestCreateHasDropTable(t *testing.T) {
-	assert := assert.New(t)
+const testDatabaseName = `sqlfs_test`
 
-	fn := fmt.Sprintf("sqlfs.unitest%d", rand.Int())
-	assert.NoError(CreateTable(testDB, fn))
-	has, e := HasTable(testDB, fn)
-	assert.NoError(e)
-	assert.True(has)
-	assert.NoError(DropTable(testDB, fn))
+func TestCreateHasDropTable(t *testing.T) {
+	a := assert.New(t)
+
+	fn := fmt.Sprintf("%s.unitest%d", testDatabaseName, rand.Int())
+	a.NoError(createTable(testDB, fn))
+	has, e := hasTable(testDB, fn)
+	a.NoError(e)
+	a.True(has)
+	a.NoError(dropTable(testDB, fn))
 }
 
 func TestWriterCreate(t *testing.T) {
-	assert := assert.New(t)
+	a := assert.New(t)
 
-	fn := fmt.Sprintf("sqlfs.unitest%d", rand.Int())
+	fn := fmt.Sprintf("%s.unitest%d", testDatabaseName, rand.Int())
 	w, e := Create(testDB, fn)
-	assert.NoError(e)
-	assert.NotNil(w)
+	a.NoError(e)
+	a.NotNil(w)
 	defer w.Close()
 
-	has, e1 := HasTable(testDB, fn)
-	assert.NoError(e1)
-	assert.True(has)
+	has, e1 := hasTable(testDB, fn)
+	a.NoError(e1)
+	a.True(has)
 
-	assert.NoError(DropTable(testDB, fn))
+	a.NoError(dropTable(testDB, fn))
 }
 
 func TestWriteAndRead(t *testing.T) {
-	assert := assert.New(t)
+	a := assert.New(t)
 
-	fn := fmt.Sprintf("sqlfs.unitest%d", rand.Int())
+	fn := fmt.Sprintf("%s.unitest%d", testDatabaseName, rand.Int())
 
 	w, e := Create(testDB, fn)
-	assert.NoError(e)
-	assert.NotNil(w)
+	a.NoError(e)
+	a.NotNil(w)
 
 	// A small output.
 	buf := []byte("\n\n\n")
 	n, e := w.Write(buf)
-	assert.NoError(e)
-	assert.Equal(len(buf), n)
+	a.NoError(e)
+	a.Equal(len(buf), n)
 
 	// A big output.
 	buf = make([]byte, kBufSize+1)
@@ -67,54 +70,82 @@ func TestWriteAndRead(t *testing.T) {
 		buf[i] = 'x'
 	}
 	n, e = w.Write(buf)
-	assert.NoError(e)
-	assert.Equal(len(buf), n)
+	a.NoError(e)
+	a.Equal(len(buf), n)
 
-	assert.NoError(w.Close())
+	a.NoError(w.Close())
 
 	r, e := Open(testDB, fn)
-	assert.NoError(e)
-	assert.NotNil(r)
+	a.NoError(e)
+	a.NotNil(r)
 
 	// A small read
 	buf = make([]byte, 2)
 	n, e = r.Read(buf)
-	assert.NoError(e)
-	assert.Equal(2, n)
-	assert.Equal(2, strings.Count(string(buf), "\n"))
+	a.NoError(e)
+	a.Equal(2, n)
+	a.Equal(2, strings.Count(string(buf), "\n"))
 
 	// A big read of rest
 	buf = make([]byte, kBufSize*2)
 	n, e = r.Read(buf)
-	assert.Equal(io.EOF, e)
-	assert.Equal(kBufSize+2, n)
-	assert.Equal(1, strings.Count(string(buf), "\n"))
-	assert.Equal(kBufSize+1, strings.Count(string(buf), "x"))
+	a.Equal(io.EOF, e)
+	a.Equal(kBufSize+2, n)
+	a.Equal(1, strings.Count(string(buf), "\n"))
+	a.Equal(kBufSize+1, strings.Count(string(buf), "x"))
 
 	// Another big read
 	n, e = r.Read(buf)
-	assert.Equal(io.EOF, e)
-	assert.Equal(0, n)
-	assert.NoError(r.Close())
+	a.Equal(io.EOF, e)
+	a.Equal(0, n)
+	a.NoError(r.Close())
 
-	assert.NoError(DropTable(testDB, fn))
+	a.NoError(dropTable(testDB, fn))
+}
+
+// assertNoError prints the error if there is any in TestMain, which
+// log doesn't work.
+func assertNoErr(e error) {
+	if e != nil {
+		fmt.Println(e)
+		os.Exit(-1)
+	}
+}
+
+func getEnv(key, fallback string) string {
+	value := os.Getenv(key)
+	if len(value) == 0 {
+		return fallback
+	}
+	return value
 }
 
 func TestMain(m *testing.M) {
-	testCfg = &mysql.Config{
-		User:                 "root",
-		Passwd:               "root",
-		Net:                  "tcp",
-		Addr:                 "localhost:3306",
-		AllowNativePasswords: true,
-	}
-	db, e := sql.Open("mysql", testCfg.FormatDSN())
-	if e != nil {
-		log.Panicf("TestMain cannot connect to MySQL: %q.\n"+
-			"Please run MySQL server as in example/churn/README.md.", e)
-	}
-	testDB = db
+	dbms := getEnv("SQLFLOW_TEST_DB", "mysql")
 
-	defer testDB.Close()
+	var e error
+	switch dbms {
+	case "sqlite3":
+		testDB, e = sql.Open("sqlite3", ":memory:")
+		assertNoErr(e)
+		_, e = testDB.Exec(fmt.Sprintf("ATTACH DATABASE ':memory:' AS %s;", testDatabaseName))
+		assertNoErr(e)
+		defer testDB.Close()
+	case "mysql":
+		cfg := &mysql.Config{
+			User:                 getEnv("SQLFLOW_TEST_DB_MYSQL_USER", "root"),
+			Passwd:               getEnv("SQLFLOW_TEST_DB_MYSQL_PASSWD", "root"),
+			Net:                  getEnv("SQLFLOW_TEST_DB_MYSQL_NET", "tcp"),
+			Addr:                 getEnv("SQLFLOW_TEST_DB_MYSQL_ADDR", "127.0.0.1:3306"),
+			AllowNativePasswords: true,
+		}
+		testDB, e = sql.Open("mysql", cfg.FormatDSN())
+		assertNoErr(e)
+		_, e = testDB.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s;", testDatabaseName))
+		assertNoErr(e)
+		defer testDB.Close()
+	default:
+		assertNoErr(fmt.Errorf("unrecognized environment variable SQLFLOW_TEST_DB %s", dbms))
+	}
 	os.Exit(m.Run())
 }
