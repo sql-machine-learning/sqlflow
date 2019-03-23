@@ -16,12 +16,12 @@ type Reader struct {
 
 // Open returns a reader to read from the given table in db.
 func Open(db *sql.DB, table string) (*Reader, error) {
-	has, e := HasTable(db, table)
+	has, e := hasTable(db, table)
 	if !has {
-		return nil, fmt.Errorf("Open: table %s doesn't exist", table)
+		return nil, fmt.Errorf("open: table %s doesn't exist", table)
 	}
 	if e != nil {
-		return nil, fmt.Errorf("Open: HasTable failed with %v", e)
+		return nil, fmt.Errorf("open: hasTable failed with %v", e)
 	}
 
 	r := &Reader{
@@ -32,14 +32,14 @@ func Open(db *sql.DB, table string) (*Reader, error) {
 
 	r.rows, e = r.db.Query(fmt.Sprintf("SELECT block FROM %s ORDER BY id", table))
 	if e != nil {
-		return nil, fmt.Errorf("Open: failed to query: %v", e)
+		return nil, fmt.Errorf("open: failed to query: %v", e)
 	}
 	return r, nil
 }
 
 func (r *Reader) Read(p []byte) (n int, e error) {
 	if r.db == nil {
-		return 0, fmt.Errorf("Read from a closed reader")
+		return 0, fmt.Errorf("read from a closed reader")
 	}
 	n = 0
 	for n < len(p) {

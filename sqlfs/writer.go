@@ -18,8 +18,8 @@ type Writer struct {
 // Create creates a new table or truncates an existing table and
 // returns a writer.
 func Create(db *sql.DB, table string) (*Writer, error) {
-	if e := DropTable(db, table); e != nil {
-		return nil, fmt.Errorf("Create: %v", e)
+	if e := dropTable(db, table); e != nil {
+		return nil, fmt.Errorf("create: %v", e)
 	}
 	return Append(db, table)
 }
@@ -27,8 +27,8 @@ func Create(db *sql.DB, table string) (*Writer, error) {
 // Append returns a writer to append to an existing table.  It creates
 // the table if it doesn't exist.
 func Append(db *sql.DB, table string) (*Writer, error) {
-	if e := CreateTable(db, table); e != nil {
-		return nil, fmt.Errorf("Create: %v", e)
+	if e := createTable(db, table); e != nil {
+		return nil, fmt.Errorf("create: %v", e)
 	}
 	return &Writer{db, table, make([]byte, 0, kBufSize), nil}, nil
 }
@@ -45,7 +45,7 @@ func (w *Writer) Write(p []byte) (n int, e error) {
 		n += fill
 		if len(w.buf) >= kBufSize {
 			if e = w.flush(); e != nil {
-				return n, fmt.Errorf("Writer flush failed: %v", e)
+				return n, fmt.Errorf("writer flush failed: %v", e)
 			}
 		}
 	}
@@ -54,7 +54,7 @@ func (w *Writer) Write(p []byte) (n int, e error) {
 
 func (w *Writer) Close() error {
 	if e := w.flush(); e != nil {
-		return fmt.Errorf("Writer flush failed: %v", e)
+		return fmt.Errorf("writer flush failed: %v", e)
 	}
 	if w.insert != nil {
 		if e := w.insert.Close(); e != nil {

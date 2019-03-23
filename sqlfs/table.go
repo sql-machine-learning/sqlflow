@@ -3,33 +3,21 @@ package sqlfs
 import (
 	"database/sql"
 	"fmt"
-	"strings"
-
-	"github.com/go-sql-driver/mysql"
 )
 
 // createTable creates a table, if it doesn't exist.  If the table
 // name includes the database name, e.g., "db.tbl", it creates the
 // database if necessary.
-func CreateTable(db *sql.DB, table string) error {
-	if ss := strings.Split(table, "."); len(ss) > 1 {
-		stmt := fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s;",
-			strings.Join(ss[:len(ss)-1], "."))
-
-		if _, e := db.Exec(stmt); e != nil {
-			return fmt.Errorf("createTable %s: %v", stmt, e)
-		}
-	}
-
+func createTable(db *sql.DB, table string) error {
 	stmt := fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (id INT AUTO_INCREMENT, block BLOB, PRIMARY KEY (id))", table)
 	if _, e := db.Exec(stmt); e != nil {
 		return fmt.Errorf("createTable cannot create table %s: %v", table, e)
 	}
 
-	// NOTE: a double-check of HasTable is necessary. For example,
+	// NOTE: a double-check of hasTable is necessary. For example,
 	// MySQL doesn't allow '-' in table names; however, if there
 	// is, the db.Exec wouldn't return any error.
-	has, e1 := HasTable(db, table)
+	has, e1 := hasTable(db, table)
 	if e1 != nil {
 		return fmt.Errorf("createTable cannot verify the creation: %v", e1)
 	}
@@ -39,10 +27,10 @@ func CreateTable(db *sql.DB, table string) error {
 	return nil
 }
 
-// DropTable removes a table if it exists.  If the table name includes
+// dropTable removes a table if it exists.  If the table name includes
 // the database name, e.g., "db.tbl", it doesn't try to remove the
 // database.
-func DropTable(db *sql.DB, table string) error {
+func dropTable(db *sql.DB, table string) error {
 	stmt := fmt.Sprintf("DROP TABLE IF EXISTS %s", table)
 	if _, e := db.Exec(stmt); e != nil {
 		return fmt.Errorf("dropTable %s: %v", table, e)
@@ -50,14 +38,10 @@ func DropTable(db *sql.DB, table string) error {
 	return nil
 }
 
-// HasTable checks if a table exists.
-func HasTable(db *sql.DB, table string) (bool, error) {
-	if _, e := db.Exec("DESCRIBE " + table); e != nil {
-		// MySQL error 1146 is "table does not exist"
-		if mErr, ok := e.(*mysql.MySQLError); ok && mErr.Number == 1146 {
-			return false, nil
-		}
-		return false, fmt.Errorf("HasTable DESCRIBE %s failed: %v", table, e)
+// hasTable checks if a table exists.
+func hasTable(db *sql.DB, table string) (bool, error) {
+	if _, e := db.Exec(fmt.Sprintf("SELECT 1 FROM %s LIMIT 1;", table)); e != nil {
+		return false, fmt.Errorf("hasTable %s failed: %v", table, e)
 	}
 	return true, nil
 }
