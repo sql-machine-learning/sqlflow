@@ -2,27 +2,21 @@
 
 [![Build Status](https://travis-ci.org/sql-machine-learning/sqlflow.svg?branch=develop)](https://travis-ci.org/sql-machine-learning/sqlflow) [![GoDoc](https://godoc.org/github.com/sql-machine-learning/sqlflow?status.svg)](https://godoc.org/github.com/sql-machine-learning/sqlflow) [![Release](https://img.shields.io/github/release/sql-machine-learning/sqlflow.svg)](https://github.com/sql-machine-learning/sqlflow/releases) [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](LICENSE)
 
-SQLFlow is a bridge that connects a SQL engine, for example, MySQL, Hive, or ODPS, and a machine learning toolkits, for example TensorFlow, PyTorch or XGBoost. SQLFlow extends the SQL syntax to enable model training and inference.
+SQLFlow enriches SQL systems, e.g., MySQL, Hive, SparkSQL, with the capability of machine learning, using TensorFlow.  We slightly extend the syntax of the SELECT statement of SQL to support model training and prediction.  
 
+## How to Use
 
+- [Quick start](doc/quickstart.md)
+- [Extended SQL syntax](doc/design.md)
 
-**Add AN EXAMPLE GIF HERE**
+## How to Contribute
 
+- [Build from source code](doc/build.md).
+- [The choice of parser generator](doc/sql_parser.md)
 
+## Questions and Feedback
 
-## To start using SQLFlow
-
-Checkout our documentation at [Quick Start](doc/quickstart.md).
-
-More detailed documentation can be find at [sqlflow.dev/docs](sqlfow.dev/docs).
-
-## To start developing SQLFlow
-
-Checkout our documentation at [How to Build](doc/build.md).
-
-## Ask Questions
-
-Please let us know how can we help by submitting questions and bug reports as [Github Issues](godoc.org/github.com/sql-machine-learning/sqlflow/issues).
+Your feedback is our motivation to move on. Please let us know your questions, concerns, and issues by filing Github Issues.
 
 ## License
 
