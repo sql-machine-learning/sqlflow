@@ -1,22 +1,24 @@
 # Database abstraction layer
 
-One major challenge of implementing SQLFlow is achieving compatibility across various database backend. While both [Go's  `database/sql`](https://golang.org/pkg/database/sql/) and [Python's Database API](https://www.python.org/dev/peps/pep-0249/) have provided good database abstraction layers, there are still several inconsistencies among different databases requires special care.
+One major challenge of implementing SQLFlow is achieving compatibility across various SQL engine backends. While both [Go's  `database/sql`](https://golang.org/pkg/database/sql/) and [Python's Database API](https://www.python.org/dev/peps/pep-0249/) provide good database abstraction layers, there are still several inconsistencies among different SQL engines requires special care.
 
-The documentation exams all interactions between SQLFlow and Databases, and explains how SQLFlow forms a relatively unified interface across different databases.
+The documentation examines all interactions between SQLFlow and the SQL engine and explains how SQLFlow works with different SQL engines.
 
 ## Standard SQL
+
+Each SQLFlow service deployment works with only one SQL engine. In the rest of this document, we refer statements that the SQL engine recognizes to *standard-syntax SQL statements*.
 
 SQLFlow supports execution of all standard SQL statements. For example, if you want to join two tables, you may want to write:
 
 - MySQL: `SELECT pet.name, comment FROM pet, event WHERE pet.name =event.name;` with keyword `WHERE` .
 - Hive: `SELECT pet.name, comment FROM pet JOIN event ON (pet.name =event.name)` with keyword `JOIN` and `ON`.
-- ODPS and SQLite uses either `INNER JOIN` or `OUTER JOIN`.
+- ODPS and SQLite use either `INNER JOIN` or `OUTER JOIN`.
 
 SQLFlow forwards the statement and lets the underlying database driver handle the SQL complications.
 
 ## Extended SQL
 
-#### Describe Table
+### Describe Table
 
 Different databases support different build-in statements to get a table schema. For example
 
@@ -27,20 +29,20 @@ Different databases support different build-in statements to get a table schema.
 
 Their result formats are very different from each other. SQFlow avoids dealing with each database separately by running  `SELECT * FROM my_table LIMIT 1;` and inferring columnType through [DatabaseTypeName](https://golang.org/pkg/database/sql/#ColumnType.DatabaseTypeName) provided by the underlying driver.
 
-#### Prepare prediction table
+### Prepare Prediction Table
 
 1. Drop previous prediction table `DROP TABLE IF EXISTS my_table;`
 2. Create table with schema `CREATE TABLE my_table (name1, type1, name2 type2);`
 
 Most databases support both statements.
 
-#### Generate Python Program
+### Generate Python Program
 
-##### Translate columnType to tensorflow feature column type
+#### Translate columnType to TensorFlow feature column type
 
 After retrieving columnType through [DatabaseTypeName](https://golang.org/pkg/database/sql/#ColumnType.DatabaseTypeName), tensorflow feature column type can be derived via a mapping such as `{"FLOAT", "DOUBLE"} -> tf.numeric_column`.
 
-##### Load data from database
+#### Load data from database
 
 Thanks to the Python database API, loading data from different databases follows a similar API.
 
@@ -55,7 +57,7 @@ cursor = conn.cursor()
 cursor.execute('select * from my_table;')
 ```
 
-##### Insert prediction result into the prediction table
+#### Insert prediction result into the prediction table
 
 Python database API provides `execute_many(sql, value)`  to insert multiple values at once. So one can prepare the following insertion statement.
 
@@ -66,7 +68,7 @@ INSERT INTO table_name VALUES (value1, value2, value3, ...);
 INSERT INTO TABLE table_name VALUES (value1, value2, value3, ...);
 ```
 
-#### Save Model
+### Save Model
 
 SQLFlow saves trained ML model by dumping the serialized the model directory into a table. It first creates a table by `CREATE TABLE IF NOT EXISTS %s (id INT AUTO_INCREMENT, block BLOB, PRIMARY KEY (id))` and insert blobs by `INSERT INTO %s (block) VALUES(?)`.
 
@@ -74,7 +76,7 @@ Note that Hive and ODPS doesn't have `BLOB` type, we need to use `BINARY` (docs 
 
 Also, note that Hive and ODPS doesn't support `AUTO_INCREMENT`, we need to implemented auto increment logic in `sqlfs`.
 
-#### Load Model
+### Load Model
 
 SQLFlow loads trained ML model by reading rows in a table and deserializing the blob to a model directory.
 
