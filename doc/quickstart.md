@@ -1,18 +1,18 @@
 # Quick start
 
-SQLFlow is currently under active development. For those are interested in trying
+SQLFlow is currently under active development. For those who are interested in trying
 it out, we have provided several demos. Play around with it. Any bug report and
 issue are welcomed. :)
 
 ## Setup
 
-1. Install Docker
-1. Set up a MySQL server defined at `example/datasets`
-1. Pull SQLFlow Docker image: `docker pull sqlflow/sqlflow:latest`
+1. Install [Docker](https://docs.docker.com/install/).
+1. Set up a MySQL server following [example/datasets/README.md](/example/datasets/README.md).
+1. Pull the latest SQLFlow Docker image: `docker pull sqlflow/sqlflow:latest`.
 
 ## Demo 1: Jupyter Notebook
 
-1. Start a Docker container that runs sqlflowserver and jupyter notebook
+1. Start a Docker container that runs sqlflowserver and Jupyter Notebook
    ```
    docker run --rm -it -p 8888:8888 sqlflow/sqlflow:latest \
    bash -c "sqlflowserver --db_user root --db_password root --db_address host.docker.internal:3306 &
@@ -23,8 +23,8 @@ issue are welcomed. :)
    be aware the option `--db_address host.docker.internal:3306` where
    `host.docker.internal` translates to the host ip address as recommended [here](https://docs.docker.com/docker-for-mac/networking/).
 
-   If you are running MySQL on remote, please be aware that MySQL only allows connections
-   from localhost by default. Fix can be found [here](https://stackoverflow.com/questions/14779104/how-to-allow-remote-connection-to-mysql).
+   If you are running MySQL on remote, please be aware that MySQL only allows connections from localhost
+   by default. Fix can be found [here](https://stackoverflow.com/questions/14779104/how-to-allow-remote-connection-to-mysql).
 
 1. Open a Web browser and direct to `localhost:8888` and input the token. Then you
 can create notebooks. In a cell, you should be able to type
@@ -38,14 +38,14 @@ can create notebooks. In a cell, you should be able to type
 
 ## Demo 2: Command Line Prompt
 
-1. Start a Docker container that runs sqlflow command line prompt
+1. Start a Docker container that runs SQLFlow command line prompt.
 
 ```
 docker run -it --rm --net=host sqlflow/sqlflow:latest demo \
 --db_user root --db_password root --db_address host.docker.internal:3306
 ```
 
-You should be able to see the following prompt
+You should be able to see the following prompt.
 
 ```
 sqlflow>
