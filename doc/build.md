@@ -124,6 +124,6 @@ go run cmd/demo/demo.go --db_user root --db_password root --db_address host.dock
 
 You should be able to see the following prompt
 
-```bash
+```
 sqlflow>
 ```
