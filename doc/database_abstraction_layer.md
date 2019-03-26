@@ -2,7 +2,7 @@
 
 One major challenge of implementing SQLFlow is achieving compatibility across various database backend. While both [Go's  `database/sql`](https://golang.org/pkg/database/sql/) and [Python's Database API](https://www.python.org/dev/peps/pep-0249/) have provided good database abstraction layers, there are still several inconsistencies among different databases requires special care.
 
-This design documentation exam all interactions between SQLFlow and Databases, and explains how SQLFlow forms a relatively unified interface across different databases.
+The documentation exams all interactions between SQLFlow and Databases, and explains how SQLFlow forms a relatively unified interface across different databases.
 
 ## Standard SQL
 
@@ -34,7 +34,7 @@ Their result formats are very different from each other. SQFlow avoids dealing w
 
 Most databases support both statements.
 
-#### Gerate Python Program
+#### Generate Python Program
 
 ##### Translate columnType to tensorflow feature column type
 
@@ -42,7 +42,7 @@ After retrieving columnType through [DatabaseTypeName](https://golang.org/pkg/da
 
 ##### Load data from database
 
-Thanks to the Python database API, loading data from databases follows a similar API.
+Thanks to the Python database API, loading data from different databases follows a similar API.
 
 ```python
 conn = mysql.connector.connect(user='scott', password='password',
