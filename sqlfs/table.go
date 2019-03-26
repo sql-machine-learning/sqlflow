@@ -9,6 +9,8 @@ import (
 // name includes the database name, e.g., "db.tbl", it creates the
 // database if necessary.
 func createTable(db *sql.DB, table string) error {
+	// FIXME(tony): HIVE and ODPS don't support AUTO_INCREMENT
+	// FIXME(tony): Hive and ODPS don't support BLOB, use BINARY instead
 	stmt := fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (id INT AUTO_INCREMENT, block BLOB, PRIMARY KEY (id))", table)
 	if _, e := db.Exec(stmt); e != nil {
 		return fmt.Errorf("createTable cannot create table %s: %v", table, e)
