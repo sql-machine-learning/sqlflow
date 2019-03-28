@@ -33,20 +33,18 @@ To do that, SQLFlow needs to query the field names from the SQL engine.  However
 
 The returned data format varies too. Our solution to avoid such differences is not-to-use-them; instead, SQLFlow retrieves the table schema by running a query like `SELECT * FROM employee LIMIT 1;` and inferring field types using the mechanism called [DatabaseTypeName](https://golang.org/pkg/database/sql/#ColumnType.DatabaseTypeName) provided by SQL engines drivers beneath the Go's standard database API.
 
-### Prepare Prediction Table
+## Save Prediction Result
 
 1. Drop previous prediction table `DROP TABLE IF EXISTS my_table;`
 2. Create table with schema `CREATE TABLE my_table (name1, type1, name2 type2);`
 
-Most databases support both statements.
+Most SQL engines, including MySQL, Hive, ODPS, SQLite, support both statements.
 
-### Generate Python Program
+## Translate Database Column Type to TensorFlow Feature Column Type
 
-#### Translate columnType to TensorFlow feature column type
+After retrieving database column type name through [DatabaseTypeName](https://golang.org/pkg/database/sql/#ColumnType.DatabaseTypeName), TensorFlow's [feature column](https://www.tensorflow.org/guide/feature_columns) type can be derived via a mapping such as `{"FLOAT", "DOUBLE"} -> tf.numeric_column`.
 
-After retrieving columnType through [DatabaseTypeName](https://golang.org/pkg/database/sql/#ColumnType.DatabaseTypeName), tensorflow feature column type can be derived via a mapping such as `{"FLOAT", "DOUBLE"} -> tf.numeric_column`.
-
-#### Load data from database
+## Create Python Database Connector
 
 Thanks to the Python database API, loading data from different databases follows a similar API.
 
@@ -61,9 +59,9 @@ cursor = conn.cursor()
 cursor.execute('select * from my_table;')
 ```
 
-#### Insert prediction result into the prediction table
+## Insert Prediction Result into Prediction Table
 
-Python database API provides `execute_many(sql, value)`  to insert multiple values at once. So one can prepare the following insertion statement.
+Python database API provides `execute_many(sql, value)`  to insert multiple values at once. So one can prepare the following insertion statement. Please be aware that MySQL and SQLite use `INSERT INTO` to insert rows while Hive and ODPS use `INSERT INTO TABLE`.
 
 ```sql
 -- MySQL, SQLite
@@ -72,7 +70,7 @@ INSERT INTO table_name VALUES (value1, value2, value3, ...);
 INSERT INTO TABLE table_name VALUES (value1, value2, value3, ...);
 ```
 
-### Save Model
+## Save Model
 
 SQLFlow saves trained ML model by dumping the serialized the model directory into a table. It first creates a table by `CREATE TABLE IF NOT EXISTS %s (id INT AUTO_INCREMENT, block BLOB, PRIMARY KEY (id))` and insert blobs by `INSERT INTO %s (block) VALUES(?)`.
 
@@ -80,7 +78,7 @@ Note that Hive and ODPS doesn't have `BLOB` type, we need to use `BINARY` (docs 
 
 Also, note that Hive and ODPS doesn't support `AUTO_INCREMENT`, we need to implemented auto increment logic in `sqlfs`.
 
-### Load Model
+## Load Model
 
 SQLFlow loads trained ML model by reading rows in a table and deserializing the blob to a model directory.
 
