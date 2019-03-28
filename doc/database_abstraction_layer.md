@@ -6,19 +6,19 @@ SQLFlow calls Go's [standard database API](https://golang.org/pkg/database/sql/)
 
 ## Data Retrieval
 
-The basic idea of SQLFlow is to extend the SELECT statement of SQL to have the TRAIN and PREDICT clauses.  For more discussion, please refer to the [syntax design](/doc/syntax.md).  SQLFlow translates such "extended SQL statements" into submitter programs, which forward the part from SELECT to TRAIN or PREDICT, which we call the "standard part", to the SQL engine.  SQLFlow also accpets the SELECT statement without TRAIN or PREDICt clauses and would forward such "standard statements" to the engine simply.  It is noticible that the "standard part" or "standard statements" are not standardized.  For example, various engines use different syntax for joining. 
+The basic idea of SQLFlow is to extend the SELECT statement of SQL to have the TRAIN and PREDICT clauses.  For more discussion, please refer to the [syntax design](/doc/syntax.md).  SQLFlow translates such "extended SQL statements" into submitter programs, which forward the part from SELECT to TRAIN or PREDICT, which we call the "standard part", to the SQL engine.  SQLFlow also accepts the SELECT statement without TRAIN or PREDICt clauses and would forward such "standard statements" to the engine.  It is noticeable that the "standard part" or "standard statements" are not standardized.  For example, various engines use different syntax for joining.
 
 - MySQL: `SELECT pet.name, comment FROM pet, event WHERE pet.name =event.name;` with keyword `WHERE` .
 - Hive: `SELECT pet.name, comment FROM pet JOIN event ON (pet.name =event.name)` with keyword `JOIN` and `ON`.
 - ODPS and SQLite use either `INNER JOIN` or `OUTER JOIN`.
  
-Fortunately, as SQLFlow simply forwards the above parts to the engine,  it doesn't have to care much about the above differences.
+Fortunately, as SQLFlow forwards the above parts to the engine,  it doesn't have to care much about the differences above.
 
 ## Metadata Retrieval
 
-To verify the semantics of users' inputs, SQLFlow needs to retrieve the schema of tables.  For example, an input might be
+To verify the semantics of users' inputs, SQLFlow needs to retrieve the schema of tables.  For example, the input might be
 
-```sql
+```SQL
 SELECT name, age, income FROM employee TRAIN DNNRegressor WITH hidden_layers=[10,50,10] COLUMN name, agee LABEL income;
 ```
 
