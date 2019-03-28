@@ -190,6 +190,7 @@ def insert(table_name, X, db):
     assert len(set(length)) == 1, "All the fields should have the same length"
 
     field_names = [key for key in X]
+    # FIXME(tony): HIVE and ODPS use INSERT INTO TABLE ...
     sql = "INSERT INTO {} ({}) VALUES ({})".format(
             table_name, ",".join(field_names), ",".join(["%s" for _ in field_names]))
     val = []
