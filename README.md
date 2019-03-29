@@ -12,6 +12,7 @@ SQLFlow enriches SQL systems, e.g., MySQL, Hive, SparkSQL, with the capability o
 ## How to Contribute
 
 - [Build from source code](doc/build.md).
+- [The walkthrough of the source code](doc/walkthrough.md)
 - [The choice of parser generator](doc/sql_parser.md)
 
 ## Questions and Feedback
