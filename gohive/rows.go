@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"time"
         "database/sql/driver"
-        "./service-rpc/gen-go/tcliservice"
+        "github.com/wangkuiyi/sqlflow/gohive/service-rpc/gen-go/tcliservice"
 )
 
 type rowSet struct {
