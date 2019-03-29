@@ -23,5 +23,4 @@ docker run -h localhost --rm -it --net=host \
     -e REAL_GRP=${GRP_NAME} \
     -e REAL_UID=${USER_ID} \
     -e REAL_USER=${USER_NAME} \
-    -e EDL_ON_K8S=1 \
     gohive /bin/bash 
