@@ -3,7 +3,7 @@
 Referring to [this example](https://github.com/wangkuiyi/canonicalize-go-python-grpc-dev-env),
 we create a canonical development environment for Go and Python programmers using Docker.
 
-### Editing on Host
+## Editing on Host
 
 When we use this Docker image for daily development work, the source code relies
 on the host computer instead of the container. The source code includes this repo
@@ -12,7 +12,7 @@ Code-on-the-host allows us to run our favorite editors (Emacs, VIM, Eclipse, and
 on the host.  Please free to rely on editors add-ons to analyze the source code
 for auto-completion.
 
-### Building in Container
+## Building in Container
 
 We build a Docker image that contains development tools:
 
@@ -64,8 +64,6 @@ docker build -t sqlflow:dev -f Dockerfile.dev .
 
 ## How to Build and Test
 
-### Prerequisite
-
 ### Build and Test
 
 We build and test the project inside the docker container.
@@ -108,16 +106,24 @@ please run
 docker build -t sqlflow -f ./Dockerfile $GOPATH/bin
 ```
 
-This demo requires a MySQL server instance. If we don't, we could
-follow example/datasets/README.md to start one.  Then, we could run
-the demo
-
-```bash
-docker run --rm -it --net=host sqlflow
-```
-
 To publish the released Docker image to our official DockerHub
 ```bash
 docker tag sqlflow sqlflow/sqlflow:latest
 docker push sqlflow/sqlflow:latest
+```
+
+## Demo: Command line Prompt
+
+The demo requires a MySQL server instance with populated data. If we don't, we could
+follow [example/datasets/README.md](/example/datasets/README.md) to start one on the host.
+After setting up MySQL, run the following inside the Docker container
+
+```bash
+go run cmd/demo/demo.go --db_user root --db_password root --db_address host.docker.internal:3306
+```
+
+You should be able to see the following prompt
+
+```
+sqlflow>
 ```
