@@ -1,0 +1,30 @@
+FROM ubuntu:16.04
+
+RUN apt-get update
+RUN apt-get install -y git
+RUN apt-get install -y wget curl
+RUN apt-get install -y python3-pip
+
+RUN pip3 install --upgrade pip
+
+RUN wget https://dl.google.com/go/go1.11.5.linux-amd64.tar.gz
+RUN tar -C /usr/local -xzf go1.11.5.linux-amd64.tar.gz
+RUN rm go1.11.5.linux-amd64.tar.gz
+ENV PATH $PATH:/usr/local/go/bin
+
+RUN mkdir -p /go
+ENV GOPATH /go
+
+# Make python3 callable through python
+RUN ln -s /usr/bin/python3 /usr/bin/python
+RUN chmod +x /usr/bin/python
+
+RUN apt-get install -y vim 
+
+RUN go get git.apache.org/thrift.git/lib/go/thrift
+WORKDIR /go/src/git.apache.org/thrift.git
+RUN git checkout 0.9.3
+
+WORKDIR /
+
+CMD ["/build.sh"]
