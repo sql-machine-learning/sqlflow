@@ -5,7 +5,7 @@ import (
 	"database/sql/driver"
         "errors"
         "git.apache.org/thrift.git/lib/go/thrift"
-        "./service-rpc/gen-go/tcliservice"
+        "github.com/wangkuiyi/sqlflow/gohive/service-rpc/gen-go/tcliservice"
 )
 
 type HiveDriver struct{}

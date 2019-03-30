@@ -1,0 +1,12 @@
+{
+	"ImportPath": "gitlab.alipay-inc.com/steven.cheng/gohive",
+	"GoVersion": "go1.11",
+	"GodepVersion": "v80",
+	"Deps": [
+		{
+			"ImportPath": "git.apache.org/thrift.git/lib/go/thrift",
+			"Comment": "0.9.3",
+			"Rev": "53dd39833a08ce33582e5ff31fa18bb4735d6731"
+		}
+	]
+}

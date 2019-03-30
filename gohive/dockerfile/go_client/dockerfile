@@ -21,10 +21,6 @@ RUN chmod +x /usr/bin/python
 
 RUN apt-get install -y vim 
 
-RUN go get git.apache.org/thrift.git/lib/go/thrift
-WORKDIR /go/src/git.apache.org/thrift.git
-RUN git checkout 0.9.3
-
 WORKDIR /
 
 CMD ["/build.sh"]

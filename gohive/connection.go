@@ -4,7 +4,7 @@ import (
         "context"
 	"database/sql/driver"
 	"fmt"
-        "./service-rpc/gen-go/tcliservice"
+        "github.com/wangkuiyi/sqlflow/gohive/service-rpc/gen-go/tcliservice"
 )
 
 // Options for opened Hive sessions.
