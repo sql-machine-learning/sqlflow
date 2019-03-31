@@ -2,9 +2,9 @@
 
 GoHive is a Hive driver for Go's database API.  To build and test it, we need not only the building tools but also Hive.  For the convenience of contributors, we install all tools into a Docker image so could we run and test in a Docker container.
 
-The general usage is that we checkout the source code on the host computer, then we start a Docker container and run building tools in the container.  The key point is that we map the source code directory into the container.  Feel free to use any of your favorite editor, Emacs, Vim, Eclipse, installed and running on the host.
+The general usage is that we check out the source code on the host computer, then we start a Docker container and run building tools in the container.  The critical point is that we map the source code directory into the container.  Feel free to use any of your favorite editor, Emacs, Vim, Eclipse, installed and running on the host.
 
-## Checkout the Source Code
+## Check out the Source Code
 
 The following command
 
@@ -16,7 +16,7 @@ clones GoHive to `$GOPATH/src/github.com/wangkuiyi/sqlflow/gohive`.
 
 ## Build the Docker Image
 
-Running the following command 
+The following command 
 
 ```bash
 docker build -t gohive:dev dockerfile/all_in_one
@@ -31,7 +31,7 @@ The following command starts a container and maps the `$GOPATH` directory on the
 ```bash
 docker run --rm -it -v $GOPATH:/go \
     -w /go/src/github.com/wangkuiyi/sqlflow/gohive
-    gohive bash
+    gohive:dev bash
 ```
 
 After the container prints many lines of logs showing that the Hive server is starting, we can build and run tests:
