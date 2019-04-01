@@ -160,6 +160,7 @@ ENV PATH $PATH:/usr/local/go/bin
 
 RUN mkdir -p /go
 ENV GOPATH /go
+RUN go get -u github.com/golang/dep/cmd/dep
 
 # Make python3 callable through python
 RUN ln -s /usr/bin/python3 /usr/bin/python

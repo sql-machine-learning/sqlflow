@@ -1,0 +1,7 @@
+[[constraint]]
+  name = "git.apache.org/thrift.git"
+  version = "0.9.3"
+
+[prune]
+  go-tests = true
+  unused-packages = true
