@@ -12,4 +12,4 @@ docker run --rm -it -v $PWD:/work -w /work thrift:0.9.3 thrift -r --gen go if/TC
 
 The above command generates Go source code in the subdirectory `./gen-go/tcliservice`.
 
-It doesn't look very probable for the Hive team to upgrade the Thrift version or the `TCLIService.thrift` file, so we don't expect that you might need to run the above command, and we include the generate Go source files in this Git repo.
+It doesn't look very probable for the Hive team to upgrade the Thrift version or the `TCLIService.thrift` file, so we don't expect that you might need to run the above command, and we include the generated Go source files in this Git repo.
