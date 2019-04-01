@@ -8,10 +8,14 @@ docker build -t gohive dockerfile/all_in_one
 ```
 sh dockerfile/all_in_one/dev.sh
 ```
-## 3. compile and run the gohive
+## 3. download gohive source code
 ```
-# download the gohive project firstly and then exec the commands below:
-cd gohive
+env GIT_TERMINAL_PROMPT=1 go get github.com/wangkuiyi/sqlflow
+cd /go/src/github.com/wangkuiyi/sqlflow/gohive
+/go/bin/dep ensure
+```
+## 4. compile and run the gohive
+```
 go build
 go test
 ```
@@ -50,11 +54,14 @@ sh dockerfile/go_client/dev.sh
 ```
 go version
 ```
-
-## 7. compile and run the gohive
+## 7. download gohive source code
 ```
-# download the gohive project firstly and then exec the commands below:
-cd gohive
+env GIT_TERMINAL_PROMPT=1 go get github.com/wangkuiyi/sqlflow
+cd /go/src/github.com/wangkuiyi/sqlflow/gohive
+/go/bin/dep ensure
+```
+## 8. compile and run the gohive
+```
 go build
 go test
 ```
