@@ -9,9 +9,9 @@ import (
 	"github.com/wangkuiyi/sqlflow/gohive/service-rpc/gen-go/tcliservice"
 )
 
-type HiveDriver struct{}
+type drv struct{}
 
-func (d HiveDriver) Open(dsn string) (driver.Conn, error) {
+func (d drv) Open(dsn string) (driver.Conn, error) {
 	cfg, err := parseDSN(dsn)
 	if err != nil {
 		return nil, err
@@ -50,5 +50,5 @@ func (d HiveDriver) Open(dsn string) (driver.Conn, error) {
 }
 
 func init() {
-	sql.Register("hive", &HiveDriver{})
+	sql.Register("hive", &drv{})
 }
