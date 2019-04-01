@@ -19,7 +19,7 @@ clones GoHive to `$GOPATH/src/github.com/wangkuiyi/sqlflow/gohive`.
 The following command 
 
 ```bash
-docker build -t gohive:dev dockerfile/all_in_one
+docker build -t gohive:dev dockerfile
 ```
 
 in the Dockerfile directory creates the Docker image `gohive:dev`.
