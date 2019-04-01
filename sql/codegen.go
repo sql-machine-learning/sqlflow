@@ -42,7 +42,6 @@ type filler struct {
 	Y         columnType
 	TableName string
 	connectionConfig
-	WorkDir string
 }
 
 func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
@@ -117,8 +116,6 @@ import mysql.connector
 BATCHSIZE = 1
 STEP = 1000
 
-WORK_DIR = "{{.WorkDir}}"
-
 {{if eq .Driver "mysql"}}
 db = mysql.connector.connect(user="{{.User}}",
                              passwd="{{.Password}}",
@@ -150,7 +147,7 @@ Y = columns[field_names.index("{{.Y.Name}}")]
 classifier = tf.estimator.{{.Estimator}}(
     feature_columns=feature_columns,{{range $key, $value := .Attrs}}
     {{$key}} = {{$value}},{{end}}
-    model_dir=os.path.join(WORK_DIR, "{{.Save}}"))
+    model_dir= "{{.Save}}")
 
 {{if .Train}}
 def train_input_fn(features, labels, batch_size):

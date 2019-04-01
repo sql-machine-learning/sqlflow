@@ -37,6 +37,7 @@ func tensorflowCmd(cwd string) (cmd *exec.Cmd) {
 	if hasPython() && hasTensorFlow() && hasMySQLConnector() {
 		log.Printf("tensorflowCmd: run locally")
 		cmd = exec.Command("python")
+		cmd.Dir = cwd
 	} else if hasDocker() {
 		log.Printf("tensorflowCmd: run in Docker container")
 		const tfImg = "sqlflow/sqlflow"
