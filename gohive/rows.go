@@ -11,6 +11,7 @@ import (
 	"github.com/wangkuiyi/sqlflow/gohive/service-rpc/gen-go/tcliservice"
 )
 
+// rowSet implements the interface database/sql/driver.Rows.
 type rowSet struct {
 	thrift    *tcliservice.TCLIServiceClient
 	operation *tcliservice.TOperationHandle
@@ -25,13 +26,6 @@ type rowSet struct {
 	resultSet [][]interface{}
 	nextRow   []interface{}
 	status    *Status
-}
-
-type RowSet interface {
-	Columns() []string
-	Next(dest []driver.Value) error
-	Scan(dest ...interface{}) error
-	Close() (err error)
 }
 
 type Status struct {
@@ -258,7 +252,7 @@ func (s Status) IsFinished() bool {
 
 func newRowSet(thrift *tcliservice.TCLIServiceClient,
 	operation *tcliservice.TOperationHandle,
-	options Options) RowSet {
+	options Options) driver.Rows {
 	return &rowSet{thrift, operation, options, nil, nil,
 		0, nil, true, nil, nil, nil}
 }
