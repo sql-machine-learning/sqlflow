@@ -158,15 +158,8 @@ RUN rm go1.11.5.linux-amd64.tar.gz
 RUN apt-get install -y --no-install-recommends build-essential
 ENV PATH $PATH:/usr/local/go/bin
 
-RUN mkdir -p /go
+RUN mkdir -p /go/bin
 ENV GOPATH /go
 ENV PATH $PATH:$GOPATH/bin
-RUN go get -u github.com/golang/dep/cmd/dep
+RUN curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
 
-# Make python3 callable through python
-RUN ln -s /usr/bin/python3 /usr/bin/python
-RUN chmod +x /usr/bin/python
-
-WORKDIR /
-
-CMD ["/build.sh"]
