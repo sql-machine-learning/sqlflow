@@ -1,56 +1,28 @@
-# Why needs a go hive driver?
-Hadoop and hive have become one of the standard solutions for most Internet companies. Based on warehouse, sqlflow aims to provide more convenient AI solutions. Therefore, it is necessary to get through the path between sqlflow and data in hive. Technically, we need to obtain structured data in hive through remote rpc call launched by sqlflow's sql statements, and then we can put the  returned data into AI model to complete training or prediction tasks. In Go, the standard SQL, or SQL-like, database access interfaces is defined in [database/sql package](http://go-database-sql.org/) and a named driver indicates a specific database you want to use, while the remote RPC call provided by hive is implemented by thrift, so a go hive driver using hive thrift go client is needed.
-# The architecture of gohive
-<img src="images/arch.png" width = 50% height = 50% />
-# What APIs need to be implemented for a go hive driver？
-* driver.go
-      1. func ***Open***: return a driver.Conn.
-      2. func ***init***: register the driver itself.
-* connection.go
-      1. func ***Exec***: execute a specific sql command.
-      2. func ***Query***: execute a specific sql query and return a driver.Rows.
-* rows.go
-      1. func ***Columns***: return a []string contains all the column names of a query resultset.
-      2. func ***Next***: return a []driver.Value contains the values of a single row.
-* client.go (make thrift rpc call)
+# GoHive:  A Hive Driver for Go
 
-# HiveServer's thrift APIs
-All the RPC APIs provided by hive server is defined in file:
-```
-https://github.com/apache/hive/blob/master/service-rpc/if/TCLIService.thrift 
-```
+Go programmers usually call the standard package `database/sql` to access databases. `database/sql` relies on [database drivers](https://golang.org/src/database/sql/doc.txt) to work with database management systems.  A growing list of drivers is at https://github.com/golang/go/wiki/SQLDrivers, where we cannot find one for Apache Hive at the moment we wrote this package.
 
-And the service definition is as below:
+## Walkthrough the Code
 
-```
-service TCLIService {
-  TOpenSessionResp OpenSession(1:TOpenSessionReq req);
-  TCloseSessionResp CloseSession(1:TCloseSessionReq req);
-  TGetInfoResp GetInfo(1:TGetInfoReq req);
-  TExecuteStatementResp ExecuteStatement(1:TExecuteStatementReq req);
-  TGetTypeInfoResp GetTypeInfo(1:TGetTypeInfoReq req);
-  TGetCatalogsResp GetCatalogs(1:TGetCatalogsReq req);
-  TGetSchemasResp GetSchemas(1:TGetSchemasReq req);
-  TGetTablesResp GetTables(1:TGetTablesReq req);
-  TGetTableTypesResp GetTableTypes(1:TGetTableTypesReq req);
-  TGetColumnsResp GetColumns(1:TGetColumnsReq req);
-  TGetFunctionsResp GetFunctions(1:TGetFunctionsReq req);
-  TGetPrimaryKeysResp GetPrimaryKeys(1:TGetPrimaryKeysReq req);
-  TGetCrossReferenceResp GetCrossReference(1:TGetCrossReferenceReq req);
-  TGetOperationStatusResp GetOperationStatus(1:TGetOperationStatusReq req);
-  TCancelOperationResp CancelOperation(1:TCancelOperationReq req);
-  TCloseOperationResp CloseOperation(1:TCloseOperationReq req);
-  TGetResultSetMetadataResp GetResultSetMetadata(1:TGetResultSetMetadataReq req);
-  TFetchResultsResp FetchResults(1:TFetchResultsReq req);
-  TGetDelegationTokenResp GetDelegationToken(1:TGetDelegationTokenReq req);
-  TCancelDelegationTokenResp CancelDelegationToken(1:TCancelDelegationTokenReq req);
-  TRenewDelegationTokenResp RenewDelegationToken(1:TRenewDelegationTokenReq req);
-  TGetQueryIdResp GetQueryId(1:TGetQueryIdReq req);
-  TSetClientInfoResp SetClientInfo(1:TSetClientInfoReq req);
-}
-```
-# TODO list
-+ build a hive docker image that contains all the components hive needs to  depend on.
-+ generate hive go thrift client.
-+ implement go driver APIs using the thrift client above.
-+ execute sql query through sqlflow to test the go hive driver.
+- `driver.go`
+
+  As required by `database/sql`, `driver.go` defines type `gohive.Driver` that implements the `database/sql/driver.Driver` interface, which has a method `Open`.  The `init()` method [registers](https://golang.org/pkg/database/sql/#Register) the type `gohive.Driver`.
+
+- `connection.go`
+
+  The `Open` method of `database/sql/driver.Driver` is supposed to return a connection, which is a type that implements the [`database/sql/driver.Conn`](https://golang.org/pkg/database/sql/driver/#Conn) interface.  `connection.go` defines the type `gohive.Driver` that implements `database/sql/driver.Conn`.
+
+  `gohive.Driver` also implements [`database/sql/driver.QueryerContext`](https://golang.org/pkg/database/sql/driver/#QueryerContext) by defining method `QueryContext` to run queries and to return rows.
+
+- `rows.go`
+
+  `rows.go` defines type `gohive.Rows` that implements the interface [`database/sql/driver.Rows`](https://golang.org/pkg/database/sql/driver/#Rows).
+
+
+## Access Hive through Thrift
+
+For contributors who are curious how this driver talks to Hive via its Thrift interface, [here](https://github.com/apache/hive/blob/master/service-rpc/if/TCLIService.thrift) is Hive's Thrift service definition.
+
+## Running Hive in Containers
+
+For the convenience of the development of this package, we provide [Dockerfiles](dockerfile) that install and run Hive in Docker containers.
