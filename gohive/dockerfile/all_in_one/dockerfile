@@ -1,7 +1,7 @@
 FROM ubuntu:16.04
   
 RUN apt-get update && apt-get install -y --no-install-recommends \
-  curl \
+  curl wget \
   python3.5 \
   python3-pip \
   git \
@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   openjdk-8-jdk \
   net-tools
 
+# Install Hadoop.
 ENV JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/
 ENV HADOOP_VERSION 3.2.0 
 ENV HADOOP_URL https://archive.apache.org/dist/hadoop/common/stable/hadoop-$HADOOP_VERSION.tar.gz
@@ -17,18 +18,14 @@ RUN set -x \
     && tar -xvf /tmp/hadoop.tar.gz -C /opt/ \
     && rm /tmp/hadoop.tar.gz*
 
+# Configure Hadoop
 RUN ln -s /opt/hadoop-$HADOOP_VERSION/etc/hadoop /etc/hadoop
 RUN mkdir /opt/hadoop-$HADOOP_VERSION/logs
-
 RUN mkdir /hadoop-data
-
 ENV HADOOP_PREFIX=/opt/hadoop-$HADOOP_VERSION
 ENV HADOOP_CONF_DIR=/etc/hadoop
 ENV MULTIHOMED_NETWORK=1
-
-ENV USER=root
 ENV PATH $HADOOP_PREFIX/bin/:$PATH
-
 
 ENV HIVE_SITE_CONF_javax_jdo_option_ConnectionURL=jdbc:mysql://localhost:3306/hive?createDatabaseIfNotExist=true
 ENV HIVE_SITE_CONF_javax_jdo_option_ConnectionDriverName=com.mysql.jdbc.Driver
@@ -67,7 +64,7 @@ ENV YARN_CONF_yarn_resourcemanager_scheduler_address=resourcemanager:8030
 ENV YARN_CONF_yarn_resourcemanager_resource__tracker_address=resourcemanager:8031
 
 
-ADD entrypoint.sh /entrypoint.sh
+COPY entrypoint.sh /entrypoint.sh
 RUN chmod a+x /entrypoint.sh
 
 ENTRYPOINT ["/entrypoint.sh"]
@@ -79,7 +76,7 @@ HEALTHCHECK CMD curl -f http://localhost:50070/ || exit 1
 ENV HDFS_CONF_dfs_namenode_name_dir=file:///hadoop/dfs/name
 RUN mkdir -p /hadoop/dfs/name
 VOLUME /hadoop/dfs/name
-ADD cmd/start_namenode.sh /cmd/start_namenode.sh
+COPY cmd/start_namenode.sh /cmd/start_namenode.sh
 RUN chmod a+x /cmd/start_namenode.sh
 
 
@@ -88,19 +85,19 @@ HEALTHCHECK CMD curl -f http://localhost:50075/ || exit 1
 ENV HDFS_CONF_dfs_datanode_data_dir=file:///hadoop/dfs/data
 RUN mkdir -p /hadoop/dfs/data
 VOLUME /hadoop/dfs/data
-ADD cmd/start_datanode.sh /cmd/start_datanode.sh
+COPY cmd/start_datanode.sh /cmd/start_datanode.sh
 RUN chmod a+x /cmd/start_datanode.sh
 
 
 # For ResourceManager
 HEALTHCHECK CMD curl -f http://localhost:8088/ || exit 1
-ADD cmd/start_resourcemanager.sh /cmd/start_resourcemanager.sh
+COPY cmd/start_resourcemanager.sh /cmd/start_resourcemanager.sh
 RUN chmod a+x /cmd/start_resourcemanager.sh
 
 
 # For NodeManager
 HEALTHCHECK CMD curl -f http://localhost:8042/ || exit 1
-ADD cmd/start_nodemanager.sh /cmd/start_nodemanager.sh
+COPY cmd/start_nodemanager.sh /cmd/start_nodemanager.sh
 RUN chmod a+x /cmd/start_nodemanager.sh
 
 
@@ -114,25 +111,21 @@ ENV HADOOP_HOME /opt/hadoop-$HADOOP_VERSION
 RUN apt-get install -y wget procps
 
 WORKDIR /opt
-RUN wget http://archive.apache.org/dist/hive/hive-$HIVE_VERSION/apache-hive-$HIVE_VERSION-bin.tar.gz
+RUN wget --quiet http://archive.apache.org/dist/hive/hive-$HIVE_VERSION/apache-hive-$HIVE_VERSION-bin.tar.gz
 RUN tar -xzvf apache-hive-$HIVE_VERSION-bin.tar.gz && \
 	mv apache-hive-$HIVE_VERSION-bin hive && \
 	rm apache-hive-$HIVE_VERSION-bin.tar.gz && \
 	apt-get clean && \
 	rm -rf /var/lib/apt/lists/*
 
-ADD conf/hive-site.xml $HIVE_HOME/conf
-ADD conf/beeline-log4j2.properties $HIVE_HOME/conf
-ADD conf/hive-env.sh $HIVE_HOME/conf
-ADD conf/hive-exec-log4j2.properties $HIVE_HOME/conf
-ADD conf/hive-log4j2.properties $HIVE_HOME/conf
-ADD conf/ivysettings.xml $HIVE_HOME/conf
-ADD conf/llap-daemon-log4j2.properties $HIVE_HOME/conf
+COPY conf/ $HIVE_HOME/conf
 
-ADD cmd/start_hiveserver2.sh /cmd/start_hiveserver2.sh
+COPY cmd/start_hiveserver2.sh /cmd/start_hiveserver2.sh
+RUN chmod +x /cmd/start_hiveserver2.sh
 
 # Start all hadoop components
-ADD cmd/start_all.sh /cmd/start_all.sh
+COPY cmd/start_all.sh /cmd/start_all.sh
+RUN chmod +x /cmd/start_all.sh
 
 # install mysql without a password prompt
 RUN ["/bin/bash", "-c", "debconf-set-selections <<< 'mysql-server mysql-server/root_password password root'"]
@@ -141,28 +134,32 @@ RUN apt-get update && apt-get install -y --no-install-recommends mysql-server
 VOLUME /var/lib/mysql
 
 WORKDIR /tmp
-RUN wget https://dev.mysql.com/get/Downloads/Connector-J/mysql-connector-java-5.1.47.tar.gz
+RUN wget --quiet https://dev.mysql.com/get/Downloads/Connector-J/mysql-connector-java-5.1.47.tar.gz
 RUN tar -xf mysql-connector-java-5.1.47.tar.gz
 RUN cp mysql-connector-java-5.1.47/mysql-connector-java-5.1.47.jar /opt/hive/lib/ 
 RUN rm -rf /tmp/mysql-connector-java-5.1.47.tar.gz
 RUN rm -rf /tmp/mysql-connector-java-5.1.47
 
 RUN mkdir /dataset
-ADD dataset/popularize_churn.sql /dataset/popularize_churn.sql
-ADD dataset/popularize_iris.sql /dataset/popularize_iris.sql
+COPY dataset/popularize_churn.sql /dataset/popularize_churn.sql
+COPY dataset/popularize_iris.sql /dataset/popularize_iris.sql
 
-# For go client
-RUN wget https://dl.google.com/go/go1.11.5.linux-amd64.tar.gz
+# Install the Go compiler.
+RUN wget --quiet https://dl.google.com/go/go1.11.5.linux-amd64.tar.gz
 RUN tar -C /usr/local -xzf go1.11.5.linux-amd64.tar.gz
 RUN rm go1.11.5.linux-amd64.tar.gz
 RUN apt-get install -y --no-install-recommends build-essential
 ENV PATH $PATH:/usr/local/go/bin
 
+# Setup Go source workspace.
 RUN mkdir -p /go
 ENV GOPATH /go
-RUN go get -u github.com/golang/dep/cmd/dep
 
-# Make python3 callable through python
+# Install Go's dependency management tool.
+RUN go get -u github.com/golang/dep/cmd/dep
+ENV PATH $PATH:$GOPATH/bin
+
+# Make Python 3 the default Python interpreter.
 RUN ln -s /usr/bin/python3 /usr/bin/python
 RUN chmod +x /usr/bin/python
 
