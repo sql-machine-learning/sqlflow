@@ -1,13 +1,14 @@
 package gohive
 
 import (
-        "io"
+	"database/sql/driver"
 	"errors"
 	"fmt"
+	"io"
 	"reflect"
 	"time"
-        "database/sql/driver"
-        "github.com/wangkuiyi/sqlflow/gohive/service-rpc/gen-go/tcliservice"
+
+	"github.com/wangkuiyi/sqlflow/gohive/service-rpc/gen-go/tcliservice"
 )
 
 type rowSet struct {
@@ -18,19 +19,19 @@ type rowSet struct {
 	columns    []*tcliservice.TColumnDesc
 	columnStrs []string
 
-	offset     int
-	rowSet     *tcliservice.TRowSet
-	hasMore    bool
-	resultSet  [][]interface{}
-	nextRow    []interface{}
-	status     *Status
+	offset    int
+	rowSet    *tcliservice.TRowSet
+	hasMore   bool
+	resultSet [][]interface{}
+	nextRow   []interface{}
+	status    *Status
 }
 
 type RowSet interface {
 	Columns() []string
 	Next(dest []driver.Value) error
 	Scan(dest ...interface{}) error
-        Close() (err error)
+	Close() (err error)
 }
 
 type Status struct {
@@ -39,21 +40,21 @@ type Status struct {
 
 func (r *rowSet) Next(dest []driver.Value) error {
 	if r.status == nil || !r.status.IsStopped() {
-	        err := r.wait()
+		err := r.wait()
 		if err != nil {
-                        return nil
-                }
-        }
+			return nil
+		}
+	}
 	if r.status == nil {
 		return fmt.Errorf("could not get job status.")
 	}
 	if !r.status.IsFinished() {
-                return fmt.Errorf("job failed.")
+		return fmt.Errorf("job failed.")
 	}
 	if r.resultSet == nil || r.offset >= len(r.resultSet[0]) {
 		if r.hasMore {
-		        r.batchFetch()
-	        } else {
+			r.batchFetch()
+		} else {
 			return io.EOF
 		}
 	}
@@ -63,7 +64,7 @@ func (r *rowSet) Next(dest []driver.Value) error {
 	r.nextRow = make([]interface{}, 0)
 	for i, v := range r.resultSet {
 		r.nextRow = append(r.nextRow, v[r.offset])
-                dest[i] = v[r.offset]
+		dest[i] = v[r.offset]
 	}
 	r.offset++
 	return nil
@@ -74,8 +75,8 @@ func (r *rowSet) Scan(dest ...interface{}) error {
 		return errors.New("No row to scan! Did you call Next() first?")
 	}
 	if len(dest) != len(r.nextRow) {
-		return fmt.Errorf("Can't scan into %d arguments with input of " +
-                                  "length %d", len(dest), len(r.nextRow))
+		return fmt.Errorf("Can't scan into %d arguments with input of "+
+			"length %d", len(dest), len(r.nextRow))
 	}
 	for i, val := range r.nextRow {
 		d := dest[i]
@@ -113,14 +114,14 @@ func (r *rowSet) Scan(dest ...interface{}) error {
 func (r *rowSet) Columns() []string {
 	if r.columnStrs == nil {
 		if r.status == nil || !r.status.IsStopped() {
-                        err := r.wait()
-                        if err != nil {
-                                return nil
-                        }
-                }
-                if r.status == nil || !r.status.IsFinished() {
+			err := r.wait()
+			if err != nil {
+				return nil
+			}
+		}
+		if r.status == nil || !r.status.IsFinished() {
 			return nil
-                }
+		}
 		ret := make([]string, len(r.columns))
 		for i, col := range r.columns {
 			ret[i] = col.ColumnName
@@ -132,7 +133,7 @@ func (r *rowSet) Columns() []string {
 }
 
 func (r *rowSet) Close() (err error) {
-        return nil
+	return nil
 }
 
 // Issue a thrift call to check for the job's current status.
@@ -170,21 +171,21 @@ func (r *rowSet) wait() error {
 					return err
 				}
 				if !isSuccessStatus(metadataResp.Status) {
-					return fmt.Errorf("GetResultSetMetadata failed: %s", 
-                                                               metadataResp.Status.String())
+					return fmt.Errorf("GetResultSetMetadata failed: %s",
+						metadataResp.Status.String())
 				}
 				r.columns = metadataResp.Schema.Columns
 				return nil
 			} else {
-			        return fmt.Errorf("Query failed execution: %s", r.status.state.String()) 
-		        }
+				return fmt.Errorf("Query failed execution: %s", r.status.state.String())
+			}
 		}
 		time.Sleep(time.Duration(r.options.PollIntervalSeconds) * time.Second)
 	}
 }
 
 func (r *rowSet) batchFetch() error {
-        r.offset = 0
+	r.offset = 0
 	fetchReq := tcliservice.NewTFetchResultsReq()
 	fetchReq.OperationHandle = r.operation
 	fetchReq.Orientation = tcliservice.TFetchOrientation_FETCH_NEXT
@@ -192,10 +193,10 @@ func (r *rowSet) batchFetch() error {
 
 	resp, err := r.thrift.FetchResults(fetchReq)
 	if err != nil {
-		return err 
+		return err
 	}
 	if !isSuccessStatus(resp.Status) {
-	        return fmt.Errorf("FetchResults failed: %s\n", resp.Status.String())	
+		return fmt.Errorf("FetchResults failed: %s\n", resp.Status.String())
 	}
 	r.offset = 0
 	r.rowSet = resp.GetResults()
@@ -215,7 +216,7 @@ func (r *rowSet) batchFetch() error {
 		}
 		r.resultSet[i] = c
 	}
-	return nil 
+	return nil
 }
 
 func convertColumn(col *tcliservice.TColumn) (colValues interface{}, length int) {
@@ -258,8 +259,8 @@ func (s Status) IsFinished() bool {
 }
 
 func newRowSet(thrift *tcliservice.TCLIServiceClient,
-               operation *tcliservice.TOperationHandle,
-               options Options) RowSet {
-        return &rowSet{thrift, operation, options, nil, nil,
-                       0, nil, true, nil, nil, nil}
+	operation *tcliservice.TOperationHandle,
+	options Options) RowSet {
+	return &rowSet{thrift, operation, options, nil, nil,
+		0, nil, true, nil, nil, nil}
 }
