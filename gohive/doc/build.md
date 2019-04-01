@@ -1,63 +1,40 @@
-# Canonical Development Environment
+# Build and Test in Docker Containers
 
-Referring to [this example](https://github.com/wangkuiyi/canonicalize-go-python-grpc-dev-env),
-we create a canonical development environment for Go programmers using Docker.
+GoHive is a Hive driver for Go's database API.  To build and test it, we need not only the building tools but also Hive.  For the convenience of contributors, we install all tools into a Docker image so could we run and test in a Docker container.
 
-### Editing on Host
+The general usage is that we check out the source code on the host computer, then we start a Docker container and run building tools in the container.  The critical point is that we map the source code directory into the container.  Feel free to use any of your favorite editor, Emacs, Vim, Eclipse, installed and running on the host.
 
-When we use this Docker image for daily development work, the source code relies
-on the host computer instead of the container. The source code includes this repo
-and all its dependencies, for example, the Go package `google.golang.org/grpc`.
-Code-on-the-host allows us to run our favorite editors (Emacs, VIM, Eclipse, and more)
-on the host.  Please free to rely on editors add-ons to analyze the source code
-for auto-completion.
+## Check out the Source Code
 
-### Building in Container
-
-We build a Docker image that contains development tools:
-
-1. The Go compiler
-1. The standalone Hive server
-
-Because this repo contains Go code, please make sure that you have the directory
-structure required by Go. On my laptop computer, I have
-
-```bash
-export GOPATH=$HOME/go
-```
-
-You could have your `$GOPATH` pointing to any directory you like.
-
-Given `$GOPATH` set, we could git clone the source code of our project by running:
+The following command
 
 ```bash
 go get github.com/wangkuiyi/sqlflow/gohive
 ```
 
-Change the directory to our project root and build the Docker image:
+clones GoHive to `$GOPATH/src/github.com/wangkuiyi/sqlflow/gohive`.
+
+## Build the Docker Image
+
+The following command 
 
 ```bash
-cd $GOPATH/src/github.com/wangkuiyi/sqlflow/gohive
-docker build -t gohive dockerfile/all_in_one
+docker build -t gohive:dev dockerfile/all_in_one
 ```
 
-## How to Build and Test
+in the Dockerfile directory creates the Docker image `gohive:dev`.
 
-We build and test the project inside the docker container.
+## Build and Test in a Container
 
-To run the container, we need to map the `$GOPATH` directory on the host into the
-`/go` directory in the container, because the Dockerfile configures `/go` as
-the `$GOPATH` in the container:
+The following command starts a container and maps the `$GOPATH` directory on the host to the `/go` directory in the container.  Please be aware that the Dockerfile configures `/go` as the `$GOPATH` in the container.
 
 ```bash
 docker run --rm -it -v $GOPATH:/go \
     -w /go/src/github.com/wangkuiyi/sqlflow/gohive
-    gohive bash
+    gohive:dev bash
 ```
 
-You should be able to see a series of logs because the gohive image is starting a Hive server.
-
-Then build and run all the tests as
+After the container prints many lines of logs showing that the Hive server is starting, we can build and run tests:
 
 ```
 go build
