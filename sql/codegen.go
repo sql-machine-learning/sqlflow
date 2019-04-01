@@ -148,9 +148,8 @@ Y = columns[field_names.index("{{.Y.Name}}")]
 {{- end}}
 
 classifier = tf.estimator.{{.Estimator}}(
-    feature_columns=feature_columns,
-    hidden_units={{index .Attrs "hidden_units"}},
-    n_classes={{index .Attrs "n_classes"}},
+    feature_columns=feature_columns,{{range $key, $value := .Attrs}}
+    {{$key}} = {{$value}},{{end}}
     model_dir=os.path.join(WORK_DIR, "{{.Save}}"))
 
 {{if .Train}}
