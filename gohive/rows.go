@@ -201,8 +201,6 @@ func (r *rowSet) batchFetch() error {
 	r.offset = 0
 	r.rowSet = resp.GetResults()
 	r.hasMore = *resp.HasMoreRows
-	fmt.Print(*resp.HasMoreRows)
-	fmt.Print("\n")
 
 	rs := r.rowSet.Columns
 	colLen := len(rs)
