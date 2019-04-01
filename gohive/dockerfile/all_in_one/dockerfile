@@ -152,17 +152,10 @@ RUN apt-get install -y --no-install-recommends build-essential
 ENV PATH $PATH:/usr/local/go/bin
 
 # Setup Go source workspace.
-RUN mkdir -p /go
+RUN mkdir -p /go/bin
 ENV GOPATH /go
-
-# Install Go's dependency management tool.
-RUN go get -u github.com/golang/dep/cmd/dep
 ENV PATH $PATH:$GOPATH/bin
 
-# Make Python 3 the default Python interpreter.
-RUN ln -s /usr/bin/python3 /usr/bin/python
-RUN chmod +x /usr/bin/python
+# Install Go's dependency management tool.
+RUN curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
 
-WORKDIR /
-
-CMD ["/build.sh"]
