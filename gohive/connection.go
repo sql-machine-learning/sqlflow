@@ -1,22 +1,23 @@
 package gohive
 
 import (
-        "context"
+	"context"
 	"database/sql/driver"
 	"fmt"
-        "github.com/wangkuiyi/sqlflow/gohive/service-rpc/gen-go/tcliservice"
+
+	"github.com/wangkuiyi/sqlflow/gohive/service-rpc/gen-go/tcliservice"
 )
 
 // Options for opened Hive sessions.
 type Options struct {
-        PollIntervalSeconds int64
-        BatchSize           int64
+	PollIntervalSeconds int64
+	BatchSize           int64
 }
 
 type Connection struct {
 	thrift  *tcliservice.TCLIServiceClient
 	session *tcliservice.TSessionHandle
-        options Options
+	options Options
 }
 
 func (c *Connection) Begin() (driver.Tx, error) {
@@ -24,7 +25,7 @@ func (c *Connection) Begin() (driver.Tx, error) {
 }
 
 func (c *Connection) Prepare(query string) (driver.Stmt, error) {
-        return nil, nil
+	return nil, nil
 }
 
 func (c *Connection) isOpen() bool {
@@ -46,20 +47,20 @@ func (c *Connection) Close() error {
 }
 
 func (c *Connection) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
-        executeReq := tcliservice.NewTExecuteStatementReq()
-        executeReq.SessionHandle = c.session
-        executeReq.Statement = query
+	executeReq := tcliservice.NewTExecuteStatementReq()
+	executeReq.SessionHandle = c.session
+	executeReq.Statement = query
 
-        resp, err := c.thrift.ExecuteStatement(executeReq)
-        if err != nil {
-                return nil, fmt.Errorf("Error in ExecuteStatement: %+v, %v", resp, err)
-        }
+	resp, err := c.thrift.ExecuteStatement(executeReq)
+	if err != nil {
+		return nil, fmt.Errorf("Error in ExecuteStatement: %+v, %v", resp, err)
+	}
 
-        if !isSuccessStatus(resp.Status) {
-                return nil, fmt.Errorf("Error from server: %s", resp.Status.String())
-        }
+	if !isSuccessStatus(resp.Status) {
+		return nil, fmt.Errorf("Error from server: %s", resp.Status.String())
+	}
 
-        return newRowSet(c.thrift, resp.OperationHandle, c.options), nil
+	return newRowSet(c.thrift, resp.OperationHandle, c.options), nil
 }
 
 func isSuccessStatus(p *tcliservice.TStatus) bool {
