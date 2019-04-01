@@ -1,50 +1,37 @@
 package gohive
 
-import "errors"
+import (
+	"fmt"
+	"regexp"
+)
 
-type Config struct {
-	User             string
-	Passwd           string
-	Addr             string
-        DBName           string
+type config struct {
+	User   string
+	Passwd string
+	Addr   string
+	DBName string
 }
 
-// standard dsn format: [user[:password]@]addr/dbname
-func ParseDSN(dsn string) (config *Config, err error) {
-	var cfg *Config = &Config{} 
+var (
+	// Regexp syntax: https://github.com/google/re2/wiki/Syntax
+	reDSN        = regexp.MustCompile(`(.+@)?([^@/]+)/([^/]+)`)
+	reUserPasswd = regexp.MustCompile(`([^:@]+)(:[^:@]+)?@`)
+)
 
-	// Find the last '/'
-	foundSlash := false
-	for i := len(dsn) - 1; i >= 0; i-- {
-		if dsn[i] == '/' {
-			foundSlash = true
-			var j, k int
+// parseDSN requires DSN names in the format [user[:password]@]addr/dbname.
+func parseDSN(dsn string) (*config, error) {
+	// Please read https://play.golang.org/p/_CSLvl1AxOX before code review.
+	sub := reDSN.FindStringSubmatch(dsn)
+	if len(sub) != 4 {
+		return nil, fmt.Errorf("The DSN %s doesn't match [user[:password]@]addr/dbname", dsn)
+	}
 
-			// parse [user[:password]@]addr
-			if i > 0 {
-				// [user[:password]
-				for j = i; j >= 0; j-- {
-					if dsn[j] == '@' {
-						for k = 0; k < j; k++ {
-							if dsn[k] == ':' {
-								cfg.Passwd = dsn[k+1 : j]
-								break
-							}
-						}
-						cfg.User = dsn[:k]
-						break
-					}
-				}
-				// addr
-				cfg.Addr = dsn[j+1 : i]
-			}
-			// parse dbname
-			cfg.DBName = dsn[i+1 : len(dsn)]
-			break
+	up := reUserPasswd.FindStringSubmatch(sub[1])
+	if len(up) == 3 {
+		if len(up[2]) > 0 {
+			return &config{User: up[1], Passwd: up[2][1:], Addr: sub[2], DBName: sub[3]}, nil
 		}
+		return &config{User: up[1], Addr: sub[2], DBName: sub[3]}, nil
 	}
-	if !foundSlash && len(dsn) > 0 {
-		return nil, errors.New("valid dsn format is: [user[:password]@]addr/dbname") 
-	}
-	return cfg, nil
+	return &config{Addr: sub[2], DBName: sub[3]}, nil
 }
