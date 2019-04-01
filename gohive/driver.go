@@ -2,16 +2,15 @@ package gohive
 
 import (
 	"database/sql"
-	"database/sql/driver"
 	"errors"
 
 	"git.apache.org/thrift.git/lib/go/thrift"
 	"github.com/wangkuiyi/sqlflow/gohive/service-rpc/gen-go/tcliservice"
 )
 
-type HiveDriver struct{}
+type driver struct{}
 
-func (d HiveDriver) Open(dsn string) (driver.Conn, error) {
+func (d driver) Open(dsn string) (driver.Conn, error) {
 	cfg, err := parseDSN(dsn)
 	if err != nil {
 		return nil, err
@@ -50,5 +49,5 @@ func (d HiveDriver) Open(dsn string) (driver.Conn, error) {
 }
 
 func init() {
-	sql.Register("hive", &HiveDriver{})
+	sql.Register("hive", &driver{})
 }
