@@ -60,7 +60,7 @@ func (c *Connection) QueryContext(ctx context.Context, query string, args []driv
 		return nil, fmt.Errorf("Error from server: %s", resp.Status.String())
 	}
 
-	return newRowSet(c.thrift, resp.OperationHandle, c.options), nil
+	return newRows(c.thrift, resp.OperationHandle, c.options), nil
 }
 
 func isSuccessStatus(p *tcliservice.TStatus) bool {

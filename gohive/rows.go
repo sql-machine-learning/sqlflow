@@ -24,7 +24,6 @@ type rowSet struct {
 	rowSet    *tcliservice.TRowSet
 	hasMore   bool
 	resultSet [][]interface{}
-	nextRow   []interface{}
 	status    *Status
 }
 
@@ -33,7 +32,7 @@ type Status struct {
 }
 
 func (r *rowSet) Next(dest []driver.Value) error {
-	if r.status == nil || !r.status.IsStopped() {
+	if r.status == nil || !r.status.isStopped() {
 		err := r.wait()
 		if err != nil {
 			return nil
@@ -42,7 +41,7 @@ func (r *rowSet) Next(dest []driver.Value) error {
 	if r.status == nil {
 		return fmt.Errorf("could not get job status.")
 	}
-	if !r.status.IsFinished() {
+	if !r.status.isFinished() {
 		return fmt.Errorf("job failed.")
 	}
 	if r.resultSet == nil || r.offset >= len(r.resultSet[0]) {
@@ -55,51 +54,10 @@ func (r *rowSet) Next(dest []driver.Value) error {
 	if len(r.resultSet) <= 0 {
 		return fmt.Errorf("the length of resultSet is not greater than zero.")
 	}
-	r.nextRow = make([]interface{}, 0)
 	for i, v := range r.resultSet {
-		r.nextRow = append(r.nextRow, v[r.offset])
 		dest[i] = v[r.offset]
 	}
 	r.offset++
-	return nil
-}
-
-func (r *rowSet) Scan(dest ...interface{}) error {
-	if r.nextRow == nil {
-		return errors.New("No row to scan! Did you call Next() first?")
-	}
-	if len(dest) != len(r.nextRow) {
-		return fmt.Errorf("Can't scan into %d arguments with input of "+
-			"length %d", len(dest), len(r.nextRow))
-	}
-	for i, val := range r.nextRow {
-		d := dest[i]
-		switch dt := d.(type) {
-		case *string:
-			switch st := val.(type) {
-			case string:
-				*dt = st
-			default:
-				*dt = fmt.Sprintf("%v", val)
-			}
-		case *[]byte:
-			*dt = []byte(val.(string))
-		case *int:
-			*dt = int(val.(int32))
-		case *int64:
-			*dt = val.(int64)
-		case *int32:
-			*dt = val.(int32)
-		case *int16:
-			*dt = val.(int16)
-		case *float64:
-			*dt = val.(float64)
-		case *bool:
-			*dt = val.(bool)
-		default:
-			return fmt.Errorf("Can't scan value of type %T with value %v", dt, val)
-		}
-	}
 	return nil
 }
 
@@ -107,13 +65,13 @@ func (r *rowSet) Scan(dest ...interface{}) error {
 // blocking if necessary until the information is available.
 func (r *rowSet) Columns() []string {
 	if r.columnStrs == nil {
-		if r.status == nil || !r.status.IsStopped() {
+		if r.status == nil || !r.status.isStopped() {
 			err := r.wait()
 			if err != nil {
 				return nil
 			}
 		}
-		if r.status == nil || !r.status.IsFinished() {
+		if r.status == nil || !r.status.isFinished() {
 			return nil
 		}
 		ret := make([]string, len(r.columns))
@@ -155,8 +113,8 @@ func (r *rowSet) wait() error {
 		if err != nil {
 			return err
 		}
-		if r.status.IsStopped() {
-			if r.status.IsFinished() {
+		if r.status.isStopped() {
+			if r.status.isFinished() {
 				metadataReq := tcliservice.NewTGetResultSetMetadataReq()
 				metadataReq.OperationHandle = r.operation
 
@@ -232,7 +190,7 @@ func convertColumn(col *tcliservice.TColumn) (colValues interface{}, length int)
 	}
 }
 
-func (s Status) IsStopped() bool {
+func (s Status) isStopped() bool {
 	if s.state == nil {
 		return false
 	}
@@ -246,13 +204,13 @@ func (s Status) IsStopped() bool {
 	return false
 }
 
-func (s Status) IsFinished() bool {
+func (s Status) isFinished() bool {
 	return s.state != nil && *s.state == tcliservice.TOperationState_FINISHED_STATE
 }
 
-func newRowSet(thrift *tcliservice.TCLIServiceClient,
+func newRows(thrift *tcliservice.TCLIServiceClient,
 	operation *tcliservice.TOperationHandle,
 	options Options) driver.Rows {
 	return &rowSet{thrift, operation, options, nil, nil,
-		0, nil, true, nil, nil, nil}
+		0, nil, true, nil, nil}
 }
