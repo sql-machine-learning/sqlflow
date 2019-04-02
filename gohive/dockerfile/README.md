@@ -30,7 +30,7 @@ The following command starts a container and maps the `$GOPATH` directory on the
 
 ```bash
 docker run --rm -it -v $GOPATH:/go \
-    -w /go/src/github.com/wangkuiyi/sqlflow/gohive
+    -w /go/src/github.com/wangkuiyi/sqlflow/gohive \
     gohive:dev bash
 ```
 
