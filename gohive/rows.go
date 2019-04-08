@@ -88,6 +88,10 @@ func (r *rowSet) Close() (err error) {
 	return nil
 }
 
+func (r *rowSet) ColumnTypeDatabaseTypeName(i int) string {
+        return r.columns[i].TypeDesc.Types[0].PrimitiveEntry.Type.String()
+}
+
 // Issue a thrift call to check for the job's current status.
 func (r *rowSet) poll() error {
 	req := tcliservice.NewTGetOperationStatusReq()
