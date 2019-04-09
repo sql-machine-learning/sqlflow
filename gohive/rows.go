@@ -20,9 +20,10 @@ type rowSet struct {
 	columns    []*tcliservice.TColumnDesc
 	columnStrs []string
 
-	offset    int
+        offset    int
 	rowSet    *tcliservice.TRowSet
-	hasMore   bool
+
+        // resultSet is column-oriented storage format
 	resultSet [][]interface{}
 	status    *Status
 }
@@ -44,20 +45,24 @@ func (r *rowSet) Next(dest []driver.Value) error {
 	if !r.status.isFinished() {
 		return fmt.Errorf("job failed.")
 	}
-	if r.resultSet == nil || r.offset >= len(r.resultSet[0]) {
-		if r.hasMore {
-			r.batchFetch()
-		} else {
-			return io.EOF
-		}
-	}
+        // First execution or reach the end of the current result set.
+        if r.resultSet == nil || r.offset >= len(r.resultSet[0]) {
+                r.offset = 0
+	        r.batchFetch()
+        }
+
 	if len(r.resultSet) <= 0 {
 		return fmt.Errorf("the length of resultSet is not greater than zero.")
 	}
-	for i, v := range r.resultSet {
-		dest[i] = v[r.offset]
+        // Fill in dest with one single row data.
+	for colIndex, values := range r.resultSet {
+                // Reach to the end of the last result set.
+                if len(values) == 0 {
+                        return io.EOF
+                }
+		dest[colIndex] = values[r.offset]
 	}
-	r.offset++
+        r.offset++
 	return nil
 }
 
@@ -78,7 +83,6 @@ func (r *rowSet) Columns() []string {
 		for i, col := range r.columns {
 			ret[i] = col.ColumnName
 		}
-
 		r.columnStrs = ret
 	}
 	return r.columnStrs
@@ -141,7 +145,6 @@ func (r *rowSet) wait() error {
 }
 
 func (r *rowSet) batchFetch() error {
-	r.offset = 0
 	fetchReq := tcliservice.NewTFetchResultsReq()
 	fetchReq.OperationHandle = r.operation
 	fetchReq.Orientation = tcliservice.TFetchOrientation_FETCH_NEXT
@@ -154,9 +157,7 @@ func (r *rowSet) batchFetch() error {
 	if !isSuccessStatus(resp.Status) {
 		return fmt.Errorf("FetchResults failed: %s\n", resp.Status.String())
 	}
-	r.offset = 0
 	r.rowSet = resp.GetResults()
-	r.hasMore = *resp.HasMoreRows
 
 	rs := r.rowSet.Columns
 	colLen := len(rs)
@@ -216,5 +217,5 @@ func newRows(thrift *tcliservice.TCLIServiceClient,
 	operation *tcliservice.TOperationHandle,
 	options Options) driver.Rows {
 	return &rowSet{thrift, operation, options, nil, nil,
-		0, nil, true, nil, nil}
+		0, nil, nil, nil}
 }
