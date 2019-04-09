@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os/exec"
 
-	"gitlab.alipay-inc.com/Arc/sqlflow/sqlfs"
+	"github.com/wangkuiyi/sqlflow/sqlfs"
 )
 
 type model struct {

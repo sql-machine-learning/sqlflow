@@ -12,9 +12,9 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
-	"gitlab.alipay-inc.com/Arc/sqlflow/server"
-	pb "gitlab.alipay-inc.com/Arc/sqlflow/server/proto"
-	sf "gitlab.alipay-inc.com/Arc/sqlflow/sql"
+	"github.com/wangkuiyi/sqlflow/server"
+	pb "github.com/wangkuiyi/sqlflow/server/proto"
+	sf "github.com/wangkuiyi/sqlflow/sql"
 )
 
 const (
