@@ -34,19 +34,18 @@ You could have your `$GOPATH` pointing to any directory you like.
 Given `$GOPATH$` set, we could git clone the source code of our project by running:
 
 ```bash
-go get -insecure gitlab.alipay-inc.com/Arc/sqlflow
+go get github.com/wangkuiyi/sqlflow
 ```
 
 Change the directory to our project root, and we can use `go get` to retrieve
 and update Go dependencies.
 
 ```bash
-cd $GOPATH/src/gitlab.alipay-inc.com/Arc/sqlflow
-go get -u -insecure -t ./...
+cd $GOPATH/src/github.com/wangkuiyi/sqlflow
+go get -u -t ./...
 ```
 
-Note the `-insecure` is needed since `gitlab.alipay-inc.com` is under `http` instead
-of `https`. `-t` instructs get to also download the packages required to build
+Note `-t` instructs get to also download the packages required to build
 the tests for the specified packages.
 
 As all Git users would do, we run `git pull` from time to time to sync up with
@@ -74,7 +73,7 @@ the `$GOPATH` in the container:
 
 ```bash
 docker run --rm -it -v $GOPATH:/go \
-    -w /go/src/gitlab.alipay-inc.com/Arc/sqlflow \
+    -w /go/src/github.com/wangkuiyi/sqlflow \
     sqlflow:dev bash
 ```
 

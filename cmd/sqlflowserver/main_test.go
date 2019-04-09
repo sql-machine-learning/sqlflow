@@ -9,7 +9,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/stretchr/testify/assert"
-	pb "gitlab.alipay-inc.com/Arc/sqlflow/server/proto"
+	pb "github.com/wangkuiyi/sqlflow/server/proto"
 )
 
 func TestRun(t *testing.T) {

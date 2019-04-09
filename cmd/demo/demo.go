@@ -10,7 +10,7 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/olekukonko/tablewriter"
-	"gitlab.alipay-inc.com/Arc/sqlflow/sql"
+	"github.com/wangkuiyi/sqlflow/sql"
 )
 
 const tablePageSize = 1000
