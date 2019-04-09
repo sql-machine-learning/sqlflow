@@ -1,6 +1,6 @@
 # SQLFlow Demo
 
-Before you start, you need to set up test MySQL server as described [here](https://github.com/wangkuiyi/sqlflow/tree/develop/example/datasets)
+Before you start, you need to set up test MySQL server as described [here](../../example/datasets)
 
 Start SQLFlow as
 ```golang
@@ -80,4 +80,3 @@ sqlflow> SELECT * FROM iris.predict LIMIT 10;
 |          5.1 |         3.7 |          1.5 |         0.4 |     0 |
 +--------------+-------------+--------------+-------------+-------+
 ```
-

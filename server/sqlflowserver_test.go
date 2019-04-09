@@ -17,8 +17,8 @@ import (
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 
-	pb "github.com/wangkuiyi/sqlflow/server/proto"
-	sf "github.com/wangkuiyi/sqlflow/sql"
+	pb "github.com/sql-machine-learning/sqlflow/server/proto"
+	sf "github.com/sql-machine-learning/sqlflow/sql"
 )
 
 const (
