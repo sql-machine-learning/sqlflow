@@ -1,6 +1,6 @@
 # Canonical Development Environment
 
-Referring to [this example](https://github.com/wangkuiyi/canonicalize-go-python-grpc-dev-env),
+Referring to [this example](https://github.com/sql-machine-learning/canonicalize-go-python-grpc-dev-env),
 we create a canonical development environment for Go and Python programmers using Docker.
 
 ## Editing on Host
@@ -34,14 +34,14 @@ You could have your `$GOPATH` pointing to any directory you like.
 Given `$GOPATH$` set, we could git clone the source code of our project by running:
 
 ```bash
-go get github.com/wangkuiyi/sqlflow
+go get github.com/sql-machine-learning/sqlflow
 ```
 
 Change the directory to our project root, and we can use `go get` to retrieve
 and update Go dependencies.
 
 ```bash
-cd $GOPATH/src/github.com/wangkuiyi/sqlflow
+cd $GOPATH/src/github.com/sql-machine-learning/sqlflow
 go get -u -t ./...
 ```
 
@@ -61,7 +61,7 @@ To build the Docker image:
 docker build -t sqlflow:dev -f Dockerfile.dev .
 ```
 
-## How to Build and Test
+## Development
 
 ### Build and Test
 
@@ -73,7 +73,7 @@ the `$GOPATH` in the container:
 
 ```bash
 docker run --rm -it -v $GOPATH:/go \
-    -w /go/src/github.com/wangkuiyi/sqlflow \
+    -w /go/src/github.com/sql-machine-learning/sqlflow \
     sqlflow:dev bash
 ```
 
@@ -95,7 +95,7 @@ where `go generate` invokes the `protoc` command to translate `server/sqlflow.pr
 into `server/sqlflow.pb.go` and `go test -v` builds and run unit tests.
 
 
-### Build&Publish a Release Image
+### Release
 
 The above build process currently generates two binary files in
 `$GOPATH/bin` on the host.  To package them into a Docker image,

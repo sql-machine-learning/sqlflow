@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/wangkuiyi/sqlflow/gohive/service-rpc/gen-go/tcliservice"
+	"github.com/sql-machine-learning/sqlflow/gohive/service-rpc/gen-go/tcliservice"
 )
 
 // rowSet implements the interface database/sql/driver.Rows.
@@ -89,7 +89,7 @@ func (r *rowSet) Close() (err error) {
 }
 
 func (r *rowSet) ColumnTypeDatabaseTypeName(i int) string {
-        return r.columns[i].TypeDesc.Types[0].PrimitiveEntry.Type.String()
+	return r.columns[i].TypeDesc.Types[0].PrimitiveEntry.Type.String()
 }
 
 // Issue a thrift call to check for the job's current status.

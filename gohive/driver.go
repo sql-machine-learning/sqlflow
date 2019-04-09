@@ -6,7 +6,7 @@ import (
 	"errors"
 
 	"git.apache.org/thrift.git/lib/go/thrift"
-	"github.com/wangkuiyi/sqlflow/gohive/service-rpc/gen-go/tcliservice"
+	"github.com/sql-machine-learning/sqlflow/gohive/service-rpc/gen-go/tcliservice"
 )
 
 type drv struct{}

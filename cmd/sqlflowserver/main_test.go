@@ -8,8 +8,8 @@ import (
 
 	"google.golang.org/grpc"
 
+	pb "github.com/sql-machine-learning/sqlflow/server/proto"
 	"github.com/stretchr/testify/assert"
-	pb "github.com/wangkuiyi/sqlflow/server/proto"
 )
 
 func TestRun(t *testing.T) {
