@@ -16,14 +16,14 @@ WITH
   n_batches_per_layer = 20
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
-INTO my_boosted_tree_model;
+INTO sqlflow_models.my_boosted_tree_model;
 `
 	testPredBoostedTreeOnIris = `
 SELECT *
 FROM iris.test
 WHERE class = 0 OR class = 1
 predict iris.predict.class
-USING my_boosted_tree_model;
+USING sqlflow_models.my_boosted_tree_model;
 `
 )
 
