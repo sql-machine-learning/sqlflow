@@ -15,4 +15,4 @@ before_install:
 
 script:
   - ls -lah
-  - docker run --rm -v $GOPATH:/go -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:dev go test -v ./...
+  - docker run --rm -v $GOPATH:/go -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:dev go test -v
