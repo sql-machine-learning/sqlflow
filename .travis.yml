@@ -4,3 +4,12 @@ branches:
   only:
   - gh-pages
   - /.*/
+
+service:
+  - docker
+
+before_install:
+  - docker build -t sqlflow:dev -f Dockerfile.dev .
+
+script:
+  - docker run --rm -v $GOPATH:/go -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:dev bash go test
