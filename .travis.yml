@@ -1,1 +1,33 @@
 language: go
+
+branches:
+  only:
+  - gh-pages
+  - /.*/
+
+service:
+  - docker
+
+install:
+  # Note(tony): TravisCI's native `go get ${gobuild_args} ./...` failed with
+  # `/usr/bin/ld: final link failed: Bad value`, the cause is the system linker
+  # being not up to date: https://github.com/golang/go/issues/15038
+  # So I decided to skip install, and go get inside sqlflow:dev image
+  # Ref build: https://travis-ci.com/sql-machine-learning/sqlflow/builds/107870583
+  - echo "skip install"
+
+script:
+  - ls -lah
+  - docker build -t sqlflow:dev -f Dockerfile.dev .
+  - docker run --rm -v $GOPATH:/go -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:dev bash -c "service mysql start && go generate ./... && go get -v -t ./... && go install ./... && go test -v ./..."
+
+deploy:
+  skip_cleanup: true
+  provider: script
+  script:
+    - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+    - docker build -t sqlflow:nightly -f ./Dockerfile $GOPATH/bin
+    - docker tag sqlflow:nightly sqlflow/sqlflow:nightly
+    - docker push sqlflow/sqlflow:nightly
+  on:
+    branch: develop
