@@ -16,4 +16,4 @@ install:
 
 script:
   - ls -lah
-  - docker run --rm -v $GOPATH:/go -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:dev bash -c "service mysql start && go generate ./... && go get -v -t ./... && test -v ./..."
+  - docker run --rm -v $GOPATH:/go -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:dev bash -c "service mysql start && go generate ./... && go get -v -t ./... && go test -v ./..."
