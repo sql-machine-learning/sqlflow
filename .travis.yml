@@ -1,3 +1,5 @@
+language: go
+
 branches:
   only:
   - gh-pages
