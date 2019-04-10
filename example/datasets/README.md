@@ -44,6 +44,12 @@ To popularize the Irises dataset into `iris`:
 cat /popularize_iris.sql | mysql -uroot -proot
 ```
 
+To prepare database for storing machine learning models:
+
+```bash
+echo "CREATE DATABASE IF NOT EXISTS sqlflow_models;" | mysql -uroot -proot
+```
+
 ## Query
 
 In the container, run

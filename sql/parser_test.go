@@ -25,12 +25,10 @@ COLUMN
   bucketize(last_name, 1000),
   cross(embedding(emplyoee.name), bucketize(last_name, 1000))
 LABEL employee.salary
-INTO
-  my_dnn_model
-;
+INTO sqlflow_models.my_dnn_model;
 `
 	testPredictSelect = testStandardSelectStmt + `PREDICT db.table.field
-USING my_dnn_model;`
+USING sqlflow_models.my_dnn_model;`
 )
 
 func TestStandardSelect(t *testing.T) {
@@ -67,7 +65,7 @@ func TestTrainParser(t *testing.T) {
 		`cross(embedding(emplyoee.name), bucketize(last_name, 1000))`,
 		r.columns[2].String())
 	a.Equal("employee.salary", r.label)
-	a.Equal("my_dnn_model", r.save)
+	a.Equal("sqlflow_models.my_dnn_model", r.save)
 }
 
 func TestPredictParser(t *testing.T) {
@@ -76,7 +74,7 @@ func TestPredictParser(t *testing.T) {
 	a.NoError(e)
 	a.True(r.extended)
 	a.False(r.train)
-	a.Equal("my_dnn_model", r.model)
+	a.Equal("sqlflow_models.my_dnn_model", r.model)
 	a.Equal("db.table.field", r.into)
 }
 

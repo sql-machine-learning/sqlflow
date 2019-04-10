@@ -85,20 +85,20 @@ WITH
   hidden_units = [10, 20]
 COLUMN gender, tenure, TotalCharges
 LABEL class
-INTO my_dnn_model;`)
+INTO sqlflow_models.my_dnn_model;`)
 	a.NoError(e)
 
 	predParse, e := newParser().Parse(`SELECT gender, tenure, TotalCharges
 FROM churn.train LIMIT 10
 PREDICT iris.predict.class
-USING my_dnn_model;`)
+USING sqlflow_models.my_dnn_model;`)
 	a.NoError(e)
 	a.NoError(verifyColumnNameAndType(trainParse, predParse, testDB))
 
 	predParse, e = newParser().Parse(`SELECT gender, tenure
 FROM churn.train LIMIT 10
 PREDICT iris.predict.class
-USING my_dnn_model;`)
+USING sqlflow_models.my_dnn_model;`)
 	a.NoError(e)
 	a.EqualError(verifyColumnNameAndType(trainParse, predParse, testDB),
 		"predFields doesn't contain column TotalCharges")

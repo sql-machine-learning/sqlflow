@@ -108,7 +108,7 @@ WITH layers=[100, 200],   /* a parameter of the Estimator class constructor */
 COLUMN *,                 /* all columns as raw features */
        cross(v1, v9, v28) /* plus a derived (crossed) column */
 LABEL class
-INTO my_model_table;      /* saves trained model parameters and features into a table */
+INTO sqlflow_models.my_model_table;      /* saves trained model parameters and features into a table */
 ```
 
 We see the redundancy of `*` in two clauses: `SELECT` and `COLUMN`.  The following alternative can avoid the redundancy, but cannot specify the label.
@@ -132,7 +132,7 @@ Similarly, to infer the class (fraud or regular), we could
 ```sql
 SELECT * FROM kaggle_credit_fraud_development_data
 PREDICT kaggle_credit_fraud_development_data.class
-USING my_model_table;
+USING sqlflow_models.my_model_table;
 ```
 
 ## System Architecture
