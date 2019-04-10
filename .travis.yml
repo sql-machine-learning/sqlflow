@@ -8,11 +8,18 @@ branches:
 service:
   - docker
 
-before_install:
+stages:
+  - codegen
+  - test
+  - deploy
+
+codegen:
   - ls -lah
   - docker build -t sqlflow:dev -f Dockerfile.dev .
   - docker run --rm -v $GOPATH:/go -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:dev go generate ./...
 
-script:
-  - ls -lah
+test:
   - docker run --rm -v $GOPATH:/go -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:dev go test -v
+
+deploy:
+  - echo "TODO(tony): push nightly release to DockerHub"
