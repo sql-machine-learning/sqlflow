@@ -42,7 +42,7 @@ WITH
   hidden_units = [10, 20]
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
-INTO my_dnn_model;
+INTO sqlflow_models.my_dnn_model;
 -----------------------------
 2018/12/16 15:03:54 tensorflowCmd: run in Docker container
 Job success
@@ -54,7 +54,7 @@ Job success
 sqlflow> SELECT *
 FROM iris.test
 PREDICT iris.predict.class
-USING my_dnn_model;
+USING sqlflow_models.my_dnn_model;
 -----------------------------
 2018/12/16 15:05:58 tensorflowCmd: run in Docker container
 Job success

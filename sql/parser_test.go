@@ -25,12 +25,10 @@ COLUMN
   bucketize(last_name, 1000),
   cross(embedding(emplyoee.name), bucketize(last_name, 1000))
 LABEL employee.salary
-INTO
-  my_dnn_model
-;
+INTO sqlflow_models.my_dnn_model;
 `
 	testPredictSelect = testStandardSelectStmt + `PREDICT db.table.field
-USING my_dnn_model;`
+USING sqlflow_models.my_dnn_model;`
 )
 
 func TestStandardSelect(t *testing.T) {
