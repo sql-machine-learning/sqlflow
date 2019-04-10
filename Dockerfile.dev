@@ -33,13 +33,13 @@ RUN ["/bin/bash", "-c", "debconf-set-selections <<< 'mysql-server mysql-server/r
 RUN apt-get -y install mysql-server
 VOLUME /var/lib/mysql
 
+# Make python3 callable through python
+RUN ln -s /usr/bin/python3 /usr/bin/python
+RUN chmod +x /usr/bin/python
+
 RUN echo "#!/bin/bash" > /build.sh
 RUN echo "go generate -v ./..." >> /build.sh
 RUN echo "go install -v ./..." >> /build.sh
 RUN chmod +x /build.sh
-
-# Make python3 callable through python
-RUN ln -s /usr/bin/python3 /usr/bin/python
-RUN chmod +x /usr/bin/python
 
 CMD ["/build.sh"]
