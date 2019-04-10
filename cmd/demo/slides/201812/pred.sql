@@ -1,7 +1,7 @@
 sqlflow> SELECT *
 FROM iris.test
 PREDICT iris.predict.class
-USING my_dnn_model;
+USING sqlflow_models.my_dnn_model;
 -----------------------------
 2018/12/16 15:05:58 tensorflowCmd: run in Docker container
 Job success

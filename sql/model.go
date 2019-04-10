@@ -19,10 +19,9 @@ type model struct {
 // SQLFlow working directory, which contains the TensorFlow working
 // directory and the trained TenosrFlow model.
 func (m *model) save(db *DB, table string) (e error) {
-	sqlfn := fmt.Sprintf("sqlflow_models.%s", table)
-	sqlf, e := sqlfs.Create(db.DB, sqlfn)
+	sqlf, e := sqlfs.Create(db.DB, table)
 	if e != nil {
-		return fmt.Errorf("Cannot create sqlfs file %s: %v", sqlfn, e)
+		return fmt.Errorf("Cannot create sqlfs file %s: %v", table, e)
 	}
 	defer sqlf.Close()
 
@@ -45,10 +44,9 @@ func (m *model) save(db *DB, table string) (e error) {
 // statement, and untar the SQLFlow working directory, which contains
 // the TenosrFlow model, into directory cwd.
 func load(db *DB, table, cwd string) (m *model, e error) {
-	sqlfn := fmt.Sprintf("sqlflow_models.%s", table)
-	sqlf, e := sqlfs.Open(db.DB, sqlfn)
+	sqlf, e := sqlfs.Open(db.DB, table)
 	if e != nil {
-		return nil, fmt.Errorf("Cannot open sqlfs file %s: %v", sqlfn, e)
+		return nil, fmt.Errorf("Cannot open sqlfs file %s: %v", table, e)
 	}
 	defer sqlf.Close()
 
