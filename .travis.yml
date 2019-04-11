@@ -32,6 +32,6 @@ script:
 deploy:
   skip_cleanup: true
   provider: script
-  script: bash -c scripts/deploy.sh
+  script: bash scripts/deploy.sh
   on:
     branch: develop
