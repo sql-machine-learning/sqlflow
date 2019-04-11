@@ -28,11 +28,11 @@ script:
   - ls -lah
   - docker build -t sqlflow:dev -f Dockerfile.dev .
   - docker run --rm -v $GOPATH:/go -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:dev bash scripts/test.sh
-  - if [ $TRAVIS_EVENT_TYPE == "cron" ]; then bash scripts/deploy_nightly.sh else bash scripts/deploy_latest.sh fi
+  - if [ $TRAVIS_EVENT_TYPE == "cron" ]; then bash scripts/deploy_nightly.sh; else bash scripts/deploy_latest.sh; fi
 
 deploy:
   skip_cleanup: true
   provider: script
-  script: if [ $TRAVIS_EVENT_TYPE == "cron" ]; then bash scripts/deploy_nightly.sh else bash scripts/deploy_latest.sh fi
+  script: if [ $TRAVIS_EVENT_TYPE == "cron" ]; then bash scripts/deploy_nightly.sh; else bash scripts/deploy_latest.sh; fi
   on:
     branch: develop
