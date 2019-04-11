@@ -8,6 +8,13 @@ branches:
 service:
   - docker
 
+# Update to newer version of Docker to allow
+# Dockerfile outside of the context directory
+addons:
+  apt:
+    packages:
+      - docker-ce
+
 install:
   # Note(tony): TravisCI's native `go get ${gobuild_args} ./...` failed with
   # `/usr/bin/ld: final link failed: Bad value`, the cause is the system linker
