@@ -9,7 +9,8 @@ service:
   - docker
 
 # Update to newer version of Docker to allow
-# Dockerfile outside of the context directory
+# Dockerfile being outside of the context directory
+# https://github.com/docker/compose/issues/4926#issuecomment-370501452
 addons:
   apt:
     packages:
