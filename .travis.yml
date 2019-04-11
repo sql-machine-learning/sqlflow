@@ -32,6 +32,6 @@ script:
 deploy:
   skip_cleanup: true
   provider: script
-  script: if [ $TRAVIS_EVENT_TYPE == "cron" ]; then bash scripts/deploy_nightly.sh; else bash scripts/deploy_latest.sh; fi
+  script: if [[ $TRAVIS_EVENT_TYPE == "cron" ]]; then bash scripts/deploy_nightly.sh; else bash scripts/deploy_latest.sh; fi
   on:
     branch: develop
