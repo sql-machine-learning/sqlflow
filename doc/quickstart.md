@@ -47,7 +47,6 @@ docker run -it --rm --net=host sqlflow/sqlflow:latest demo \
 --db_user root --db_password root --db_address host.docker.internal:3306
 ```
 
-
 You should be able to see the following prompt.
 
 ```
