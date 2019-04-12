@@ -12,15 +12,16 @@ issue are welcomed. :)
 
 ## Demo 1: Jupyter Notebook
 
-1. Start a Docker container that runs sqlflowserver and Jupyter Notebook
+1. Start a Docker container that runs sqlflowserver and Jupyter Notebook. If you are
+   using Docker for Linux, please change `host.docker.internal:3306` to `localhost:3306`.
+
    ```
    docker run --rm -it -p 8888:8888 sqlflow/sqlflow:latest \
    bash -c "sqlflowserver --db_user root --db_password root --db_address host.docker.internal:3306 &
    SQLFLOW_SERVER=localhost:50051 jupyter notebook --ip=0.0.0.0 --port=8888 --allow-root"
    ```
 
-   If you are running MySQL on the localhost and you are using Docker for Mac, please
-   be aware the option `--db_address host.docker.internal:3306` where
+   If you are using Docker for Mac, please be aware the option `--db_address host.docker.internal:3306` where
    `host.docker.internal` translates to the host ip address as recommended [here](https://docs.docker.com/docker-for-mac/networking/).
 
    If you are running MySQL on remote, please be aware that MySQL only allows connections from localhost
@@ -38,7 +39,8 @@ can create notebooks. In a cell, you should be able to type
 
 ## Demo 2: Command Line Prompt
 
-1. Start a Docker container that runs SQLFlow command line prompt.
+Start a Docker container that runs SQLFlow command line prompt. If you are using
+Docker for Linux, please change `host.docker.internal:3306` to `localhost:3306`.
 
 ```
 docker run -it --rm --net=host sqlflow/sqlflow:latest demo \
