@@ -107,9 +107,16 @@ func genTF(w io.Writer, pr *extendedSelect, fts fieldTypes, db *DB) error {
 }
 
 const codegenTemplateText = `
+import os
+# Disable Tensorflow INFO and WARNING logs
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
+import sys, json
 import tensorflow as tf
-import sys, json, os
 import mysql.connector
+
+# Disable Tensorflow INFO and WARNING logs
+tf.logging.set_verbosity(tf.logging.ERROR)
 ` +
 	// TODO(tonyyang-svail): remove hard coded BATCHSIZE, STEP
 	`
