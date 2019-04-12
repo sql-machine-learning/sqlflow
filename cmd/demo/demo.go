@@ -97,7 +97,7 @@ func main() {
 	for {
 		fmt.Print("sqlflow> ")
 		slct := readStmt()
-		fmt.Println("-----------------------------")
+		fmt.Println("\n")
 
 		isTable, tableRendered := false, false
 		table := tablewriter.NewWriter(os.Stdout)
