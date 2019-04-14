@@ -56,22 +56,22 @@ public class CalciteParserServer {
         CalciteParserProto.CalciteParserRequest request,
         StreamObserver<CalciteParserProto.CalciteParserReply> responseObserver) {
 
-	String q = request.getQuery();
-	Pair<Integer, SqlParseException> r = calcite(q);
-	if (r.getValue() == null) {
-	    int i = r.getKey();
-	    responseObserver.onNext(CalciteParserProto.CalciteParserReply.
-				    newBuilder().
-				    setSql(q.substring(0, i)).
-				    setExtension(q.substring(i)).
-				    build());
-	} else {
-	    responseObserver.onNext(CalciteParserProto.CalciteParserReply.
-				    newBuilder().
-				    setError(r.getValue().getCause().getMessage()).
-				    build());
-	}
-	responseObserver.onCompleted();
+      String q = request.getQuery();
+      Pair<Integer, SqlParseException> r = calcite(q);
+      if (r.getValue() == null) {
+        int i = r.getKey();
+        responseObserver.onNext(
+            CalciteParserProto.CalciteParserReply.newBuilder()
+                .setSql(q.substring(0, i))
+                .setExtension(q.substring(i))
+                .build());
+      } else {
+        responseObserver.onNext(
+            CalciteParserProto.CalciteParserReply.newBuilder()
+                .setError(r.getValue().getCause().getMessage())
+                .build());
+      }
+      responseObserver.onCompleted();
     }
 
     private static int PosToIndex(String query, SqlParserPos pos) {
