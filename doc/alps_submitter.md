@@ -1,14 +1,18 @@
-# ALPS Submitter
+# Proof of Concept: ALPS Submitter
+
+ALPS (Ant Learning and Prediction Suite) provides a common algorithm-driven framework in Ant Financial, focusing on providing users with an efficient and easy-to-use machine learning programming framework and a financial learning machine learning algorithm solution.
+
+This module is used to submit ALPS machine learning training tasks in SQLFlow.
 
 ## Precondition
-1. Custom estimator is not supported.
-1. Train with evaluate is not supported.
-1. Inputs needs to set the type of the dense/sparse, shape, etc.
+1. For machine learning models, we only consider [TensorFlow premade estimator](https://www.tensorflow.org/guide/premade_estimators).
+1. To simplify the design, we only execute `train` without `evaluation` in estimator.
+1. If a table cell is encoded, we assume the user always provides enough decoding information such as dense/sparse, shape via expression such as DENSE, SPARSE, IDENTITY_SPARSE..
 
 ## Data Pipeline        
 Standard Select -> Train Input Table -> Parser -> Input Fn and TrainSpec
 
-Parser is implemented in `COLUMN`, using expr like `DENSE`, `SPARSE`, `IDENTITY_SPARSE`.
+We declare parsing type such as expr like `DENSE`, `SPARSE`, `IDENTITY_SPARSE`.
 
 Data Example
 1. numeric feature：float
@@ -26,9 +30,9 @@ WITH
   train_spec.max_step = 100
   ...
 COLUMN
-  DENSE(c1, shape=[5], dtype=float)
-  SPARSE(c2, hash_bucket_size=10, dtype=float)
-  IDENTITY_SPARSE(c3, shape=[2000], dtype=float)
+  DENSE(c1, shape=[5], dtype=float, delimiter=',')
+  SPARSE(c2, hash_bucket_size=10, dtype=float, delimiter=',', kv_delimiter=':')
+  IDENTITY_SPARSE(c3, shape=[2000], dtype=float, delimiter=',')
 LABEL class
 ...
 ```
@@ -101,6 +105,9 @@ COLUMN
 ```
 
 ### Feature Columns Code Generation
+
+We transform feature columns expr to python code and wrap it as a `CustomFCBuilder` which extends from `alps.feature.FeatureColumnsBuilder`.
+
 ```python
 from alps.feature import FeatureColumnsBuilder
 
@@ -110,7 +117,7 @@ class CustomFCBuilder(FeatureColumnsBuilder):
     return feature_columns_dict
 ```
 
-### Estimator Args
+### Parameters of the Estimator constructor method
 ```sql
 select 
     c1, c2, c3, c4, c5 as class
