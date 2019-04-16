@@ -8,15 +8,19 @@ import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.parser.SqlParseException;
 import org.apache.calcite.sql.parser.SqlParser;
 import org.apache.calcite.sql.parser.SqlParserPos;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.OptionBuilder;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
 
 public class CalciteParserServer {
   private static final Logger logger = Logger.getLogger(CalciteParserServer.class.getName());
 
   private Server server;
 
-  private void start() throws IOException {
-    /* The port on which the server should run */
-    int port = 50051;
+  private void start(int port) throws IOException {
     server = ServerBuilder.forPort(port).addService(new CalciteParserImpl()).build().start();
     logger.info("Server started, listening on " + port);
     Runtime.getRuntime()
@@ -45,8 +49,28 @@ public class CalciteParserServer {
 
   public static void main(String[] args) throws IOException, InterruptedException {
     final CalciteParserServer s = new CalciteParserServer();
-    s.start();
+    s.start(parsePort(args));
     s.blockUntilShutdown();
+  }
+
+  private static int parsePort(String[] args) {
+    try {
+      CommandLineParser parser = new DefaultParser();
+      Options options = new Options();
+      options.addOption(
+          OptionBuilder.withArgName("port")
+              .hasArg()
+              .withDescription("the port to listen on")
+              .create("port"));
+      CommandLine line = parser.parse(options, args);
+      if (line.hasOption("port")) {
+        return Integer.parseInt(line.getOptionValue("port"));
+      }
+    } catch (ParseException e) {
+      System.err.println("Command line options error:" + e.getMessage() +
+          "Use default port 50051");
+    }
+    return 50051; // the default port.
   }
 
   static class CalciteParserImpl extends CalciteParserGrpc.CalciteParserImplBase {
