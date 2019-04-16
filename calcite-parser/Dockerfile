@@ -72,6 +72,3 @@ RUN wget -q -P /deps http://central.maven.org/maven2/io/opencensus/opencensus-im
 RUN wget -q -P /deps http://central.maven.org/maven2/io/opencensus/opencensus-contrib-monitored-resource-util/0.20.0/opencensus-contrib-monitored-resource-util-0.20.0.jar
 RUN wget -q -P /deps http://central.maven.org/maven2/commons-cli/commons-cli/1.4/commons-cli-1.4.jar
 
-# The build and test script.
-COPY build_and_test.bash /build_and_test.bash
-RUN chmod +x /build_and_test.bash
