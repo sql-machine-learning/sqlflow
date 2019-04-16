@@ -6,4 +6,4 @@ protoc --java_out=. CalciteParser.proto
 protoc --grpc-java_out=. CalciteParser.proto
 javac *.java
 java CalciteParserServer &
-java CalciteParserClient
+java CalciteParserTest

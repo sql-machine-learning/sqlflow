@@ -5,20 +5,20 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class CalciteParserClient {
-  private static final Logger logger = Logger.getLogger(CalciteParserClient.class.getName());
+public class CalciteParserTest {
+  private static final Logger logger = Logger.getLogger(CalciteParserTest.class.getName());
 
   private final ManagedChannel channel;
   private final CalciteParserGrpc.CalciteParserBlockingStub blockingStub;
 
-  public CalciteParserClient(String host, int port) {
+  public CalciteParserTest(String host, int port) {
     this(
         ManagedChannelBuilder.forAddress(host, port)
             .usePlaintext() // No TLS.
             .build());
   }
 
-  CalciteParserClient(ManagedChannel channel) {
+  CalciteParserTest(ManagedChannel channel) {
     this.channel = channel;
     blockingStub = CalciteParserGrpc.newBlockingStub(channel);
   }
@@ -43,15 +43,15 @@ public class CalciteParserClient {
   }
 
   public static void main(String[] args) throws Exception {
-    CalciteParserClient client = new CalciteParserClient("localhost", 50051);
+    CalciteParserTest t = new CalciteParserTest("localhost", 50051);
     try {
       String q = "SELECT pn FROM p WHERE pId IN (SELECT pId FROM orders WHERE Quantity > 100)";
       if (args.length > 0) {
         q = args[0];
       }
-      client.parse(q);
+      t.parse(q);
     } finally {
-      client.shutdown();
+      t.shutdown();
     }
   }
 }
