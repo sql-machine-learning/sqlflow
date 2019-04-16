@@ -33,13 +33,12 @@ public class CalciteParserTest {
       rpl =
           blockingStub.parse(
               CalciteParserProto.CalciteParserRequest.newBuilder().setQuery(query).build());
+      if (rpl.getError() != "") {
+        logger.log(Level.WARNING, "Unexpected parsing error: {0}", rpl.getError());
+        System.exit(-1);
+      }
     } catch (StatusRuntimeException e) {
-      logger.log(Level.ERROR, "RPC failed: {0}", e.getStatus());
-      System.exit(-1);
-    }
-
-    if (rpl.getError() != "") {
-      logger.log(Level.ERROR, "Unexpected parsing error", e.getError());
+      logger.log(Level.WARNING, "RPC failed: {0}", e.getStatus());
       System.exit(-1);
     }
   }
@@ -47,11 +46,12 @@ public class CalciteParserTest {
   public static void main(String[] args) throws Exception {
     CalciteParserTest t = new CalciteParserTest("localhost", 50051);
     try {
-      String q = "SELECT pn FROM p WHERE pId IN (SELECT pId FROM orders WHERE Quantity > 100)";
       if (args.length > 0) {
-        q = args[0];
+        t.parse(args[0]);
+      } else {
+        System.err.println("Need a command line argment of a SQL statement");
+        return;
       }
-      t.parse(q);
     } finally {
       t.shutdown();
     }
