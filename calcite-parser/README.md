@@ -10,6 +10,13 @@ Build the development Docker image:
 docker build -t calcite:dev .
 ```
 
+Or, if it takes too long time for you to build the image, please feel free to use mine:
+
+```bash
+docker pull cxwangyi/calcite:dev
+docker tag cxwangyi/calcite:dev calcite:dev
+```
+
 Generate Java source code from protobuf messages:
 
 ```bash
@@ -27,5 +34,5 @@ docker run --rm -it -v $PWD:/work -w /work calcite:dev javac *.java
 All, actually, we can do all above in a single command:
 
 ```bash
-docker run --rm -it -v $PWD:/work -w /work calcite:dev /build_and_test.bash
+docker run --rm -it -v $PWD:/work -w /work calcite:dev bash ./build_and_test.bash
 ```

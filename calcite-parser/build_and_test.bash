@@ -28,3 +28,8 @@ if [[ $? -eq 0 ]]; then
     echo "Expected parsing error, but got none";
 fi
 
+java CalciteParserTest "SELECTED pn FROM p" 2> /dev/null
+if [[ $? -eq 0 ]]; then
+    echo "Expected parsing error, but got none";
+fi
+
