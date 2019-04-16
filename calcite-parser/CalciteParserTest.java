@@ -28,18 +28,20 @@ public class CalciteParserTest {
   }
 
   public void parse(String query) {
-    logger.info("Will try to parse " + query + " ...");
     CalciteParserProto.CalciteParserReply rpl;
     try {
       rpl =
           blockingStub.parse(
               CalciteParserProto.CalciteParserRequest.newBuilder().setQuery(query).build());
     } catch (StatusRuntimeException e) {
-      logger.log(Level.WARNING, "RPC failed: {0}", e.getStatus());
-      return;
+      logger.log(Level.ERROR, "RPC failed: {0}", e.getStatus());
+      System.exit(-1);
     }
-    logger.info(
-        "Parse result: " + rpl.getSql() + ", " + rpl.getExtension() + ", " + rpl.getError());
+
+    if (rpl.getError() != "") {
+      logger.log(Level.ERROR, "Unexpected parsing error", e.getError());
+      System.exit(-1);
+    }
   }
 
   public static void main(String[] args) throws Exception {
