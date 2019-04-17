@@ -21,6 +21,13 @@ const (
 		COLUMN 
 			BUCKET(NUMERIC(c1, 10) + 10, [1, 10])
 		LABEL c3 INTO model_table;`
+
+	badSQLStatement = `select c1, c2, c3 from kaggle_credit_fraud_training_data 
+		TRAIN DNNClassifier 
+		WITH n_classes = 3 
+		COLUMN 
+			BUCKET(NUMERIC(c1, 10) + 10, [1, 10])
+		LABEL c3 INTO model_table;`
 )
 
 func getFeatureColumnType(i interface{}) string {
@@ -71,6 +78,16 @@ func TestColumnResolve(t *testing.T) {
 
 	a.Equal("c5", getFeatureColumnType(cl.Keys[2]))
 
+}
+
+func TestColumnResolveFailed(t *testing.T) {
+	a := assert.New(t)
+	r, e := newParser().Parse(badSQLStatement)
+	a.NoError(e)
+
+	_, err := resolveTrainColumns(&r.columns)
+
+	a.EqualError(err, "not supported expr in ALPS submitter: +")
 }
 
 func TestColumnResolveFailed(t *testing.T) {
