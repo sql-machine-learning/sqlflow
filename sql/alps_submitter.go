@@ -84,8 +84,12 @@ func resolveExprList(el *exprlist) (interface{}, error) {
 			if err != nil {
 				return nil, err
 			}
+			key, subEl := resolveExpr((*el)[1])
+			if subEl != nil {
+				return nil, fmt.Errorf("key of NUMERIC must be string")
+			}
 			return &NumericColumn{
-				Key:   (*el)[1].val,
+				Key:   key,
 				Shape: shape}, nil
 		case "BUCKET":
 			sourceExprList := (*el)[1].sexp
