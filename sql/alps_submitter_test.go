@@ -21,13 +21,6 @@ const (
 		COLUMN 
 			BUCKET(NUMERIC(c1, 10) + 10, [1, 10])
 		LABEL c3 INTO model_table;`
-
-	badSQLStatement = `select c1, c2, c3 from kaggle_credit_fraud_training_data 
-		TRAIN DNNClassifier 
-		WITH n_classes = 3 
-		COLUMN 
-			BUCKET(NUMERIC(c1, 10) + 10, [1, 10])
-		LABEL c3 INTO model_table;`
 )
 
 func getFeatureColumnType(i interface{}) string {
