@@ -11,6 +11,7 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"github.com/olekukonko/tablewriter"
 	"github.com/sql-machine-learning/sqlflow/sql"
+	"sqlflow.org/gohive"
 )
 
 const tablePageSize = 1000
@@ -19,19 +20,20 @@ const tablePageSize = 1000
 // have multiple lines and ends at a semicolon at theend of the last
 // line.
 func readStmt() string {
-	scn := bufio.NewScanner(os.Stdin)
-
 	stmt := ""
+	scn := bufio.NewScanner(os.Stdin)
 	for scn.Scan() {
-		stmt += scn.Text() + "\n"
+		stmt += scn.Text()
 		if strings.HasSuffix(strings.TrimSpace(scn.Text()), ";") {
 			break
 		}
+		stmt += "\n"
 	}
-	if err := scn.Err(); err != nil {
+	if scn.Err() != nil {
 		return ""
 	}
-	return stmt
+	stmt = strings.TrimSpace(stmt)
+	return stmt[0 : len(stmt)-1] // remove semicolon
 }
 
 func header(head map[string]interface{}) ([]string, error) {
@@ -70,22 +72,41 @@ func render(rsp interface{}, table *tablewriter.Table) bool {
 	return isTable
 }
 
-func main() {
+func datasource() (string, string) {
+	dbtype := flag.String("db_type", "", "database type, such as: mysql, hive, odps")
 	user := flag.String("db_user", "", "database user name")
 	pswd := flag.String("db_password", "", "database user password")
 	addr := flag.String("db_address", "", "database address, such as: localhost:3306")
 	flag.Parse()
 
-	cfg := &mysql.Config{
-		User:                 *user,
-		Passwd:               *pswd,
-		Net:                  "tcp",
-		Addr:                 *addr,
-		AllowNativePasswords: true,
+	ds := ""
+	if *dbtype == "mysql" {
+		cfg := &mysql.Config{
+			User:                 *user,
+			Passwd:               *pswd,
+			Net:                  "tcp",
+			Addr:                 *addr,
+			AllowNativePasswords: true,
+		}
+		ds = cfg.FormatDSN()
+	} else if *dbtype == "hive" {
+		cfg := &gohive.Config{
+			User:   *user,
+			Passwd: *pswd,
+			Addr:   *addr,
+		}
+		ds = cfg.FormatDSN()
 	}
-	log.Println("Connecting to db with:")
-	log.Printf("%+#v\n", *cfg)
-	db, err := sql.Open("mysql", cfg.FormatDSN())
+	return *dbtype, ds
+}
+
+func main() {
+	dbtype, ds := datasource()
+	if ds == "" {
+		log.Fatalf("please specify database")
+	}
+	log.Println("connecting to " + dbtype + " with:" + ds)
+	db, err := sql.Open(dbtype, ds)
 	if err != nil {
 		log.Fatalf("failed to open database: %v", err)
 	}
