@@ -89,13 +89,3 @@ func TestColumnResolveFailed(t *testing.T) {
 
 	a.EqualError(err, "not supported expr in ALPS submitter: +")
 }
-
-func TestColumnResolveFailed(t *testing.T) {
-	a := assert.New(t)
-	r, e := newParser().Parse(badSQLStatement)
-	a.NoError(e)
-
-	_, err := resolveTrainColumns(&r.columns)
-
-	a.EqualError(err, "not supported expr in ALPS submitter: +")
-}
