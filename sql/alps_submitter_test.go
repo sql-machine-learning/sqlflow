@@ -31,8 +31,10 @@ func getFeatureColumnType(i interface{}) string {
 		return "NumericColumn"
 	case *BucketColumn:
 		return "BucketColumn"
-	case *FeatureSpec:
-		return "FeatureSpec"
+	case *featureSpec:
+		return "featureSpec"
+	case string:
+		return i.(string)
 	}
 	return "UNKNOWN"
 }
@@ -45,10 +47,30 @@ func TestColumnResolve(t *testing.T) {
 	result, err := resolveTrainColumns(&r.columns)
 
 	a.NoError(err)
-	a.Equal("FeatureSpec", getFeatureColumnType(result[0]))
+
+	a.Equal("featureSpec", getFeatureColumnType(result[0]))
+	a.Equal("c2", result[0].(*featureSpec).FeatureName)
+	a.Equal(5, result[0].(*featureSpec).Shape[0])
+	a.Equal("comma", result[0].(*featureSpec).Delimiter)
+
 	a.Equal("CrossColumn", getFeatureColumnType(result[1]))
-	a.Equal("BucketColumn", getFeatureColumnType(result[1].(*CrossColumn).Keys[0]))
-	a.Equal("NumericColumn", getFeatureColumnType(result[1].(*CrossColumn).Keys[1]))
+	cl := result[1].(*CrossColumn)
+	a.Equal(20, cl.HashBucketSize)
+
+	a.Equal("BucketColumn", getFeatureColumnType(cl.Keys[0]))
+	bl := cl.Keys[0].(*BucketColumn)
+	nl2 := bl.SourceColumn
+	a.Equal("c1", nl2.Key)
+	a.Equal(10, nl2.Shape)
+	a.Equal([]int{1, 10}, bl.Boundaries)
+
+	a.Equal("NumericColumn", getFeatureColumnType(cl.Keys[1]))
+	nl := cl.Keys[1].(*NumericColumn)
+	a.Equal("c4", nl.Key)
+	a.Equal(9, nl.Shape)
+
+	a.Equal("c5", getFeatureColumnType(cl.Keys[2]))
+
 }
 
 func TestColumnResolveFailed(t *testing.T) {
