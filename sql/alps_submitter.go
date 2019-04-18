@@ -4,15 +4,16 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"strings"
 )
 
 const (
-	SPARSE  = "SPARSE"
-	NUMERIC = "NUMERIC"
-	CROSS   = "CROSS"
-	BUCKET  = "BUCKET"
-	SQUARE  = "square"
-	DENSE   = "DENSE"
+	sparse  = "SPARSE"
+	numeric = "NUMERIC"
+	cross   = "CROSS"
+	bucket  = "BUCKET"
+	square  = "SQUARE"
+	dense   = "DENSE"
 )
 
 type graphConfig struct {
@@ -47,7 +48,7 @@ type CrossColumn struct {
 
 func resolveFeatureSpec(el *exprlist) (*featureSpec, error) {
 	headExpr := (*el)[0].val
-	if headExpr == DENSE {
+	if strings.EqualFold(headExpr, dense) {
 		if len(*el) != 4 {
 			return nil, fmt.Errorf("bad DENSE expression format: %s", *el)
 		}
@@ -66,7 +67,7 @@ func resolveFeatureSpec(el *exprlist) (*featureSpec, error) {
 			DType:       "double",
 			Delimiter:   (*el)[3].val}, nil
 	}
-	if headExpr == SPARSE {
+	if strings.EqualFold(headExpr, sparse) {
 		if len(*el) != 4 {
 			return nil, fmt.Errorf("bad SPARSE expression format: %s", *el)
 		}
@@ -102,12 +103,14 @@ func resolveExprList(el *exprlist) (interface{}, error) {
 		return resolveExprList(headExprList)
 	}
 
+	headName = strings.ToUpper(headName)
+
 	switch headName {
-	case DENSE:
+	case dense:
 		return resolveFeatureSpec(el)
-	case SPARSE:
+	case sparse:
 		return resolveFeatureSpec(el)
-	case NUMERIC:
+	case numeric:
 		if len(*el) != 3 {
 			return nil, fmt.Errorf("bad NUMERIC expression format: %s", *el)
 		}
@@ -121,7 +124,7 @@ func resolveExprList(el *exprlist) (interface{}, error) {
 		return &NumericColumn{
 			Key:   (*el)[1].val,
 			Shape: shape}, nil
-	case BUCKET:
+	case bucket:
 		if len(*el) != 3 {
 			return nil, fmt.Errorf("bad BUCKET expression format: %s", *el)
 		}
@@ -142,7 +145,7 @@ func resolveExprList(el *exprlist) (interface{}, error) {
 		return &BucketColumn{
 			SourceColumn: *source.(*NumericColumn),
 			Boundaries:   b}, nil
-	case CROSS:
+	case cross:
 		if len(*el) != 3 {
 			return nil, fmt.Errorf("bad CROSS expression format: %s", *el)
 		}
@@ -158,7 +161,7 @@ func resolveExprList(el *exprlist) (interface{}, error) {
 		return &CrossColumn{
 			Keys:           keys.([]interface{}),
 			HashBucketSize: bucketSize}, nil
-	case SQUARE:
+	case square:
 		var list []interface{}
 		for idx, expr := range *el {
 			if idx > 0 {
@@ -190,10 +193,9 @@ func resolveExprList(el *exprlist) (interface{}, error) {
 func transformToIntList(list []interface{}) ([]int, error) {
 	var b = make([]int, len(list))
 	for idx, item := range list {
-		switch item.(type) {
-		case int:
-			b[idx] = item.(int)
-		default:
+		if intVal, ok := item.(int); ok {
+			b[idx] = intVal
+		} else {
 			return nil, fmt.Errorf("type is not int: %s", item)
 		}
 	}

@@ -12,7 +12,7 @@ const (
 		WITH n_classes = 3 
 		COLUMN 
 			DENSE(c2, 5, comma), 
-			CROSS([BUCKET(NUMERIC(c1, 10), [1, 10]), NUMERIC(c4, 9), c5], 20) 
+			cross([BUCKET(NUMERIC(c1, 10), [1, 10]), NUMERIC(c4, 9), c5], 20) 
 		LABEL c3 INTO model_table;`
 
 	badSQLStatement = `select c1, c2, c3 from kaggle_credit_fraud_training_data 
