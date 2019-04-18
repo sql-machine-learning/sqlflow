@@ -1,13 +1,13 @@
-# Quick start
+# Quick Start
 
 SQLFlow is currently under active development. For those who are interested in trying
 it out, we have provided several demos. Play around with it. Any bug report and
 issue are welcomed. :)
 
-## Setup
+## Environment Setup
 
-1. Install [Docker](https://docs.docker.com/install/).
-1. Set up a MySQL server following [example/datasets/README.md](/example/datasets/README.md).
+1. Install [Docker Community Edition](https://docs.docker.com/install/).
+1. Set up a containerized MySQL server (8.0) following [example/datasets/README.md](/example/datasets/README.md). Note that there is no need to install MySQL locally. 
 1. Pull the latest SQLFlow Docker image: `docker pull sqlflow/sqlflow:latest`.
 
 ## Demo 1: Jupyter Notebook
