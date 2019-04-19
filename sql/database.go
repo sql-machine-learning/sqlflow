@@ -6,6 +6,7 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/mattn/go-sqlite3"
+	_ "sqlflow.org/gohive"
 )
 
 // DB extends sql.DB
@@ -26,11 +27,10 @@ func Open(driverName, dataSourceName string) (*DB, error) {
 
 	var err error
 	switch driverName {
-	case "sqlite3", "mysql":
+	case "sqlite3", "mysql", "hive":
 		db.DB, err = sql.Open(driverName, dataSourceName)
 	default:
 		db.DB, err = nil, fmt.Errorf("sqlfow currently doesn't support DB %v", driverName)
 	}
-
 	return db, err
 }
