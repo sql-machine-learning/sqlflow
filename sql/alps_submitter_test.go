@@ -12,7 +12,7 @@ const (
 		WITH n_classes = 3 
 		COLUMN 
 			DENSE(c2, 5, comma), 
-			cross([BUCKET(NUMERIC(c1, 10), [1, 10]), NUMERIC(c4, 9), c5], 20) 
+			cross([BUCKET(NUMERIC(c1, 10), [1, 10]), c5], 20) 
 		LABEL c3 INTO model_table;`
 
 	badSQLStatement = `select c1, c2, c3 from kaggle_credit_fraud_training_data 
@@ -21,6 +21,8 @@ const (
 		COLUMN 
 			BUCKET(NUMERIC(c1, 10) + 10, [1, 10])
 		LABEL c3 INTO model_table;`
+
+	featureColumnCode = `tf.feature_column.crossed_column([tf.feature_column.bucketized_column(tf.feature_column.numeric_column("c1", shape=(10,)), boundaries=[1,10]),"c5"], hash_bucket_size=20)`
 )
 
 func getFeatureColumnType(i interface{}) string {
@@ -64,13 +66,7 @@ func TestColumnResolve(t *testing.T) {
 	a.Equal(10, nl2.Shape)
 	a.Equal([]int{1, 10}, bl.Boundaries)
 
-	a.Equal("NumericColumn", getFeatureColumnType(cl.Keys[1]))
-	nl := cl.Keys[1].(*NumericColumn)
-	a.Equal("c4", nl.Key)
-	a.Equal(9, nl.Shape)
-
-	a.Equal("c5", getFeatureColumnType(cl.Keys[2]))
-
+	a.Equal("c5", getFeatureColumnType(cl.Keys[1]))
 }
 
 func TestColumnResolveFailed(t *testing.T) {
@@ -81,4 +77,18 @@ func TestColumnResolveFailed(t *testing.T) {
 	_, err := resolveTrainColumns(&r.columns)
 
 	a.EqualError(err, "not supported expr in ALPS submitter: +")
+}
+
+func TestCodeGenerate(t *testing.T) {
+	a := assert.New(t)
+	r, e := newParser().Parse(testSQLStatement)
+	a.NoError(e)
+
+	result, err := resolveTrainColumns(&r.columns)
+	a.NoError(err)
+
+	code, err := generateFeatureColumnCode(result[1])
+	a.NoError(err)
+
+	a.Equal(featureColumnCode, code)
 }

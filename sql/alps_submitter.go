@@ -5,6 +5,7 @@ import (
 	"io"
 	"strconv"
 	"strings"
+	"text/template"
 )
 
 const (
@@ -31,6 +32,10 @@ type featureSpec struct {
 	Delimiter   string
 }
 
+type FeatureColumn interface {
+	GenerateCode() string
+}
+
 type NumericColumn struct {
 	Key   string
 	Shape int
@@ -44,6 +49,32 @@ type BucketColumn struct {
 type CrossColumn struct {
 	Keys           []interface{}
 	HashBucketSize int
+}
+
+func (nc *NumericColumn) GenerateCode() string {
+	return fmt.Sprintf("tf.feature_column.numeric_column(\"%s\", shape=(%d,))", nc.Key, nc.Shape)
+}
+
+func (bc *BucketColumn) GenerateCode() string {
+	return fmt.Sprintf(
+		"tf.feature_column.bucketized_column(%s, boundaries=%s)",
+		bc.SourceColumn.GenerateCode(),
+		strings.Join(strings.Split(fmt.Sprint(bc.Boundaries), " "), ","))
+}
+
+func (cc *CrossColumn) GenerateCode() string {
+	var keysGenerated = make([]string, len(cc.Keys))
+	for idx, key := range cc.Keys {
+		if c, ok := key.(FeatureColumn); ok {
+			keysGenerated[idx] = c.GenerateCode()
+		}
+		if str, ok := key.(string); ok {
+			keysGenerated[idx] = fmt.Sprintf("\"%s\"", str)
+		}
+	}
+	return fmt.Sprintf(
+		"tf.feature_column.crossed_column([%s], hash_bucket_size=%d)",
+		strings.Join(keysGenerated, ","), cc.HashBucketSize)
 }
 
 func resolveFeatureSpec(el *exprlist) (*featureSpec, error) {
@@ -214,7 +245,33 @@ func resolveTrainColumns(el *exprlist) ([]interface{}, error) {
 	return list, nil
 }
 
+func generateFeatureColumnCode(fc interface{}) (string, error) {
+	if fc, ok := fc.(FeatureColumn); ok {
+		return fc.GenerateCode(), nil
+	} else {
+		return "", fmt.Errorf("input is not FeatureColumn interface")
+	}
+}
+
 func genALPS(w io.Writer, pr *extendedSelect, fts fieldTypes, db *DB) error {
 	// TODO
 	return nil
 }
+
+const alpsTemplateText = `
+# coding: utf-8
+
+import tensorflow as tf
+
+from alps.feature import FeatureColumnsBuilder
+
+
+class SQLFlowFCBuilder(FeatureColumnsBuilder):
+	def build_feature_columns():
+		return {{.FeatureColumnsCode}}
+
+# TODO(uuleon) needs FeatureSpecs and ALPS client
+
+`
+
+var alpsTemplate = template.Must(template.New("feature_column").Parse(alpsTemplateText))
