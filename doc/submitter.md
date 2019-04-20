@@ -28,9 +28,9 @@ type ColumnType struct {
 type TrainDescription struct {
     StandardSelect string       // e.g. SELECT * FROM iris.train
     Estimator      string       // e.g. DNNClassifier
-    Attrs          map[string]string // e.g. {{"n_classes", "3"}, {"hidden_units", "[10, 20]"}}
-    X              []ColumnType // e.g. {{"sepal_length", "FLOAT"}, ...}
-    Y              ColumnType   // e.g. {"class", "INT"}
+    Attrs          map[string]string // e.g. "n_classes": "3", "hidden_units": "[10, 20]"
+    X              []ColumnType // e.g. "sepal_length": "FLOAT", ...
+    Y              ColumnType   // e.g. "class": "INT"
     ModelName      string       // e.g. my_dnn_model
 }
 
