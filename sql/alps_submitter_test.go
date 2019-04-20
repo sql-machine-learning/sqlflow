@@ -9,7 +9,8 @@ import (
 const (
 	testSQLStatement = `select c1, c2, c3 from kaggle_credit_fraud_training_data 
 		TRAIN DNNClassifier 
-		WITH n_classes = 3 
+		WITH 
+			estimator.hidden_units = [10, 20]
 		COLUMN 
 			DENSE(c2, 5, comma), 
 			cross([BUCKET(NUMERIC(c1, 10), [1, 10]), c5], 20) 
@@ -23,6 +24,8 @@ const (
 		LABEL c3 INTO model_table;`
 
 	featureColumnCode = `tf.feature_column.crossed_column([tf.feature_column.bucketized_column(tf.feature_column.numeric_column("c1", shape=(10,)), boundaries=[1,10]),"c5"], hash_bucket_size=20)`
+
+	estimatorCode = `tf.estimator.DNNClassifier(hidden_units=[10,20])`
 )
 
 func getFeatureColumnType(i interface{}) string {
@@ -41,7 +44,7 @@ func getFeatureColumnType(i interface{}) string {
 	return "UNKNOWN"
 }
 
-func TestColumnResolve(t *testing.T) {
+func TestAlpsColumnResolve(t *testing.T) {
 	a := assert.New(t)
 	r, e := newParser().Parse(testSQLStatement)
 	a.NoError(e)
@@ -69,7 +72,7 @@ func TestColumnResolve(t *testing.T) {
 	a.Equal("c5", getFeatureColumnType(cl.Keys[1]))
 }
 
-func TestColumnResolveFailed(t *testing.T) {
+func TestAlpsColumnResolveFailed(t *testing.T) {
 	a := assert.New(t)
 	r, e := newParser().Parse(badSQLStatement)
 	a.NoError(e)
@@ -79,7 +82,7 @@ func TestColumnResolveFailed(t *testing.T) {
 	a.EqualError(err, "not supported expr in ALPS submitter: +")
 }
 
-func TestCodeGenerate(t *testing.T) {
+func TestAlpsFeatureColumnCodeGenerate(t *testing.T) {
 	a := assert.New(t)
 	r, e := newParser().Parse(testSQLStatement)
 	a.NoError(e)
@@ -91,4 +94,17 @@ func TestCodeGenerate(t *testing.T) {
 	a.NoError(err)
 
 	a.Equal(featureColumnCode, code)
+}
+
+func TestAlpsEstimatorCodeGenerate(t *testing.T) {
+	a := assert.New(t)
+	r, e := newParser().Parse(testSQLStatement)
+	a.NoError(e)
+
+	attrs, err := resolveTrainAttribute(&r.attrs)
+	a.NoError(err)
+
+	code, err := generateEstimatorCreator(r.estimator, filter(attrs, estimator))
+
+	a.Equal(estimatorCode, code)
 }
