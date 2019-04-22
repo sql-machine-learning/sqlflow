@@ -1,12 +1,12 @@
 # Customized Model
 
-SQLFlow supports training and predicting using customized models. This documentation explains the  design choice and provides a concrete example of adding a new model.
+SQLFlow supports training and predicting using customized models. This documentation explains the design choice and provides a concrete example of adding a new model.
 
 ## Keras over Estimator
 
 We choose Keras over Estimator for the following reasons:
 
-1. TensorFlow is closely intergrated with Keras in its 2.x release. [ref](https://www.youtube.com/watch?v=k5c-vg4rjBw)
+1. TensorFlow 2.x will closely integrate with Keras. [ref](https://www.youtube.com/watch?v=k5c-vg4rjBw)
 
 2. Keras provides more documentation in writing customized models than estimators. For customized estimators, I've only found two examples:
 
@@ -15,7 +15,7 @@ We choose Keras over Estimator for the following reasons:
 
    None of these is suitable for long term development.
 
-3. There are plenty of the shelf model repos written in Keras. To name a few: [ResNet](https://github.com/raghakot/keras-resnet), [Transformer](https://github.com/Lsdefine/attention-is-all-you-need-keras), [Mask  R-CNN](https://github.com/matterport/Mask_RCNN).
+3. There are plenty off-the-shelf model repositories written in Keras. To name a few: [ResNet](https://github.com/raghakot/keras-resnet), [Transformer](https://github.com/Lsdefine/attention-is-all-you-need-keras), [Mask  R-CNN](https://github.com/matterport/Mask_RCNN).
 
 ## Keras Model API
 
@@ -49,7 +49,7 @@ Keras provides three major ways to define models:
   ```python
   x = tf.feature_column.input_layer(shape=(5,))
   for n in hidden_units:
-  	x = tf.keras.layers.Dense(n, activation='relu')(x)
+      x = tf.keras.layers.Dense(n, activation='relu')(x)
   pred = tf.keras.layers.Dense(n_classes, activation='softmax')(x)
   model = tf.keras.models.Model(inputs=feature_columns, outputs=pred)
   ```
@@ -66,9 +66,9 @@ Keras provides three major ways to define models:
   model.add(tf.keras.layers.Dense(n_classes, activation='softmax'))
   ```
 
-  Please be aware that  `tf.keras.Sequential()` only covers a small variety of models. Just to name a few models that are not covered: ResNet, Transforms, WideAndDeep.
+  Please be aware that  `tf.keras.Sequential()` only covers a small variety of models. To name a few models that are not covered: ResNet, Transforms, WideAndDeep.
 
-The following table summarizes the pros and cons between these three methods.
+The following table summarizes the pros and cons of these three methods.
 
 | Keras Model Mode          | Feature Column as Input | Save/Load Model                                 | Model Coverage |
 | ------------------------- | ----------------------- | ----------------------------------------------- | -------------- |
@@ -76,11 +76,11 @@ The following table summarizes the pros and cons between these three methods.
 | Functional API            | ❌                       | ☑️                                               | High           |
 | Sequential Model          | ☑️                       | ☑️                                               | Low            |
 
-We chose the method of subclassing `tf.keras.Model` due to its fueature column support and high coverage of models.
+We chose the method of subclassing `tf.keras.Model` due to its feature column support and high coverage of models.
 
 ## Creating customized models
 
-A model is a Python class derived from `tf.keras.Model`. For example, if we want to define a `DNNClassifier` that contains several hidden layers, we can write the following
+A model is a Python class derived from `tf.keras.Model`. For example, if we want to define a `DNNClassifier` that contains several hidden layers, we can write the following.
 
 ```python
 class DNNClassifier(tf.keras.Model):
