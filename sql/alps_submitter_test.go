@@ -30,12 +30,12 @@ const (
 
 func getFeatureColumnType(i interface{}) string {
 	switch i.(type) {
-	case *CrossColumn:
-		return "CrossColumn"
-	case *NumericColumn:
-		return "NumericColumn"
-	case *BucketColumn:
-		return "BucketColumn"
+	case *crossColumn:
+		return "crossColumn"
+	case *numericColumn:
+		return "numericColumn"
+	case *bucketColumn:
+		return "bucketColumn"
 	case *featureSpec:
 		return "featureSpec"
 	case string:
@@ -58,12 +58,12 @@ func TestAlpsColumnResolve(t *testing.T) {
 	a.Equal(5, result[0].(*featureSpec).Shape[0])
 	a.Equal("comma", result[0].(*featureSpec).Delimiter)
 
-	a.Equal("CrossColumn", getFeatureColumnType(result[1]))
-	cl := result[1].(*CrossColumn)
+	a.Equal("crossColumn", getFeatureColumnType(result[1]))
+	cl := result[1].(*crossColumn)
 	a.Equal(20, cl.HashBucketSize)
 
-	a.Equal("BucketColumn", getFeatureColumnType(cl.Keys[0]))
-	bl := cl.Keys[0].(*BucketColumn)
+	a.Equal("bucketColumn", getFeatureColumnType(cl.Keys[0]))
+	bl := cl.Keys[0].(*bucketColumn)
 	nl2 := bl.SourceColumn
 	a.Equal("c1", nl2.Key)
 	a.Equal(10, nl2.Shape)
