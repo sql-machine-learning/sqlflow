@@ -1,21 +1,21 @@
-# Design Doc: Define Deep Learning Models for SQLFlow
+# Design Doc: Define Models for SQLFlow
 
-SQLFlow was designed to call deep learning models in a model base and defined in Python from SQL. This document is about how to define models callable by SQLFlow in Python.
+SQLFlow enables SQL programs to call deep learning models defined in Python. This document is about how to define models for SQLFlow.
 
 ## Keras v.s. Estimator
 
-Modellers could define models callable by SQLFlow using the Keras API or as an Estimator derived class.
+Many deep leareners define models using Keras API or as an Estimator derived class.
 We prefer [Keras](https://keras.io/) over [Estimator](https://www.tensorflow.org/guide/estimators) for some reasons:
 
-1. TensorFlow team announced in the [2019 Submit](https://www.youtube.com/watch?v=k5c-vg4rjBw) that TensorFlow 2.x will closely integrate with Keras.
+1. [TensorFlow Submit 2019](https://www.youtube.com/watch?v=k5c-vg4rjBw) announced that TensorFlow 2.x will closely integrate with Keras.
 
-2. There are more documents about Keras than Estimator at the time of the writing of this document.
+2. We found more documents about Keras than Estimator.
 
-3. There are more models defined using Keras than Estimator.
+3. We found more models defined using Keras than Estimator.
 
-## Keras Model API
+## Keras APIs
 
-Keras provides three major ways to define models:
+Keras provides three approaches to define models.
 
 ### 1. Subclassing `tf.keras.Model`
 
@@ -38,7 +38,7 @@ Keras provides three major ways to define models:
   model = DNNClassifier(feature_columns, hidden_units, n_classes)
   ```
 
-  Please be aware that `tf.keras.Model` has methods `save_weights` and `load_weights`, which save/load model parameters but no the topology, as expalined in [this guidence](https://stackoverflow.com/questions/51806852/cant-save-custom-subclassed-model) and [the examples](https://stackoverflow.com/questions/52826134/keras-model-subclassing-examples).
+  Please be aware that `tf.keras.Model` has methods `save_weights` and `load_weights`, which save/load model parameters but no the topology, as expalined in [this guidence](https://stackoverflow.com/questions/51806852/cant-save-custom-subclassed-model) and [this example list](https://stackoverflow.com/questions/52826134/keras-model-subclassing-examples).
 
 ### 2. Functional API
 
@@ -64,6 +64,8 @@ Keras provides three major ways to define models:
 
   Please be aware that  `tf.keras.Sequential()` only covers a small variety of models.  It doesn't cover many well-known models including ResNet, Transforms, and WideAndDeep.
 
+### The Choice
+
 We chose the approach of subclassing `tf.keras.Model` according to the following table.
 
 | Keras APIs         | Work with feature column API | Save/load models           | Model coverage |
@@ -73,9 +75,9 @@ We chose the approach of subclassing `tf.keras.Model` according to the following
 | Sequential Model   | ☑️                            | ☑️                          | Low            |
 
 
-## Define Models
+## An Example
 
-A model is a Python class derived from `tf.keras.Model`. For example, if we want to define a `DNNClassifier` that contains several hidden layers, we can write the following.
+Here is an example `DNNClassifier` of multiple hidden layers as a Python class derived from `tf.keras.Model`. To run it, please use TensorFlow 2.0 alpha or newer versions.
 
 ```python
 class DNNClassifier(tf.keras.Model):
