@@ -1,27 +1,23 @@
-# Customized Model
+# Design Doc: Define Deep Learning Models for SQLFlow
 
-SQLFlow supports training and predicting using customized models. This documentation explains the design choice and provides a concrete example of adding a new model.
+SQLFlow was designed to call deep learning models in a model base and defined in Python from SQL. This document is about how to define models callable by SQLFlow in Python.
 
-## Keras over Estimator
+## Keras v.s. Estimator
 
-We choose Keras over Estimator for the following reasons:
+Modellers could define models callable by SQLFlow using the Keras API or as an Estimator derived class.
+We prefer [Keras](https://keras.io/) over [Estimator](https://www.tensorflow.org/guide/estimators) for some reasons:
 
-1. TensorFlow 2.x will closely integrate with Keras. [ref](https://www.youtube.com/watch?v=k5c-vg4rjBw)
+1. TensorFlow team announced in the [2019 Submit](https://www.youtube.com/watch?v=k5c-vg4rjBw) that TensorFlow 2.x will closely integrate with Keras.
 
-2. Keras provides more documentation in writing customized models than estimators. For customized estimators, I've only found two examples:
+2. There are more documents about Keras than Estimator at the time of the writing of this document.
 
-   1. `DNNClassifier` that uses `core_layers.Dense`. [ref](<https://github.com/tensorflow/estimator/blob/master/tensorflow_estimator/python/estimator/canned/dnn.py#L200-L226>)
-   2. `DNNClassifier` that uses `tf.layers.dense`. [ref](https://github.com/tensorflow/models/blob/master/samples/core/get_started/custom_estimator.py#L29)
-
-   None of these is suitable for long term development.
-
-3. There are plenty off-the-shelf models written in Keras. To name a few: [ResNet](https://github.com/raghakot/keras-resnet), [Transformer](https://github.com/Lsdefine/attention-is-all-you-need-keras), [Mask  R-CNN](https://github.com/matterport/Mask_RCNN).
+3. There are more models defined using Keras than Estimator.
 
 ## Keras Model API
 
 Keras provides three major ways to define models:
 
-- Subclassing `tf.keras.Model`
+### 1. Subclassing `tf.keras.Model`
 
   ```python
   class DNNClassifier(tf.keras.Model):
@@ -42,9 +38,9 @@ Keras provides three major ways to define models:
   model = DNNClassifier(feature_columns, hidden_units, n_classes)
   ```
 
-  Please be aware that models subclassing from `tf.keras.Model` only supports `save_weights` and `load_weights`. [ref1](https://stackoverflow.com/questions/51806852/cant-save-custom-subclassed-model), [ref2](https://stackoverflow.com/questions/52826134/keras-model-subclassing-examples).
+  Please be aware that `tf.keras.Model` has methods `save_weights` and `load_weights`, which save/load model parameters but no the topology, as expalined in [this guidence](https://stackoverflow.com/questions/51806852/cant-save-custom-subclassed-model) and [the examples](https://stackoverflow.com/questions/52826134/keras-model-subclassing-examples).
 
-- Functional API
+### 2. Functional API
 
   ```python
   x = tf.feature_column.input_layer(shape=(5,))
@@ -54,9 +50,9 @@ Keras provides three major ways to define models:
   model = tf.keras.models.Model(inputs=feature_columns, outputs=pred)
   ```
 
-  Please be aware that functional API doesn't support feature column as input, not even densed tensors generated from `tf.keras.layers.DenseFeatures(feature_columns)`. [ref1](https://github.com/tensorflow/tensorflow/issues/27416), [ref2](https://stackoverflow.com/questions/54375298/how-to-use-tensorflow-feature-columns-as-input-to-a-keras-model).
+  Please be aware that functional API doesn't work with feature column API, as reported [here](https://github.com/tensorflow/tensorflow/issues/27416). However, the approach of deriving classes from `keras.Model` works with the feature column API.
 
-- Sequential
+### 3. `keras.Sequential`
 
   ```python
   model = tf.keras.Sequential()
@@ -66,19 +62,18 @@ Keras provides three major ways to define models:
   model.add(tf.keras.layers.Dense(n_classes, activation='softmax'))
   ```
 
-  Please be aware that  `tf.keras.Sequential()` only covers a small variety of models. To name a few models that are not covered: ResNet, Transforms, WideAndDeep.
+  Please be aware that  `tf.keras.Sequential()` only covers a small variety of models.  It doesn't cover many well-known models including ResNet, Transforms, and WideAndDeep.
 
-The following table summarizes the pros and cons of these three methods.
+We chose the approach of subclassing `tf.keras.Model` according to the following table.
 
-| Keras Model Mode          | Feature Column as Input | Save/Load Model                                 | Model Coverage |
-| ------------------------- | ----------------------- | ----------------------------------------------- | -------------- |
-| SubClass `tf.keras.Model` | ☑️                       | only supports `save_weights` adn `load_weights` | High           |
-| Functional API            | ❌                       | ☑️                                               | High           |
-| Sequential Model          | ☑️                       | ☑️                                               | Low            |
+| Keras APIs         | Work with feature column API | Save/load models           | Model coverage |
+| ------------------ | ---------------------------- | -------------------------- | -------------- |
+| `tf.keras.Model`   | ☑️                            | weights-only, no topology  | High           |
+| Functional API     | ❌                           | ☑️                          | High           |
+| Sequential Model   | ☑️                            | ☑️                          | Low            |
 
-We chose the method of subclassing `tf.keras.Model` due to its feature column support and high coverage of models.
 
-## Creating customized models
+## Define Models
 
 A model is a Python class derived from `tf.keras.Model`. For example, if we want to define a `DNNClassifier` that contains several hidden layers, we can write the following.
 
@@ -127,4 +122,4 @@ class DNNClassifier(tf.keras.Model):
 
 ## Further Reading
 
-1. Understanding Keras source code: [model.py](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/python/keras/models.py), [network.py](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/python/keras/engine/network.py), [training.py](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/python/keras/engine/training.py).
+We read the following Keras source code files: [model.py](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/python/keras/models.py), [network.py](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/python/keras/engine/network.py), and [training.py](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/python/keras/engine/training.py).
