@@ -15,7 +15,7 @@ We choose Keras over Estimator for the following reasons:
 
    None of these is suitable for long term development.
 
-3. There are plenty off-the-shelf model repositories written in Keras. To name a few: [ResNet](https://github.com/raghakot/keras-resnet), [Transformer](https://github.com/Lsdefine/attention-is-all-you-need-keras), [Mask  R-CNN](https://github.com/matterport/Mask_RCNN).
+3. There are plenty off-the-shelf models written in Keras. To name a few: [ResNet](https://github.com/raghakot/keras-resnet), [Transformer](https://github.com/Lsdefine/attention-is-all-you-need-keras), [Mask  R-CNN](https://github.com/matterport/Mask_RCNN).
 
 ## Keras Model API
 
@@ -42,7 +42,7 @@ Keras provides three major ways to define models:
   model = DNNClassifier(feature_columns, hidden_units, n_classes)
   ```
 
-  Please be aware that models subclassing from `tf.keras.Model` , only `save_weights` and `load_weights` are supported. [ref1](https://stackoverflow.com/questions/51806852/cant-save-custom-subclassed-model), [ref2](https://stackoverflow.com/questions/52826134/keras-model-subclassing-examples).
+  Please be aware that models subclassing from `tf.keras.Model` only supports `save_weights` and `load_weights`. [ref1](https://stackoverflow.com/questions/51806852/cant-save-custom-subclassed-model), [ref2](https://stackoverflow.com/questions/52826134/keras-model-subclassing-examples).
 
 - Functional API
 
