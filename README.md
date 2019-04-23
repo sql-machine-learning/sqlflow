@@ -16,9 +16,9 @@ There are already some work in progress in the industry. We can write simple mac
  - [Google BigQuery](https://cloud.google.com/bigquery/docs/bigqueryml-intro): Google BigQuery enables machine learning in SQL by introducing the `CREATE MODEL` statement.
 
 None of the existing solution solves our pain point, instead we want it to be fully extensible. 
-1. The solution should be compatible to many SQL engines, instead of a specific version or type.
-1. It should also support sophisticated machine learning models, including TensorFlow for deep learning and [xgboost](https://github.com/dmlc/xgboost) for trees.
-1. We also want to add the flexibilies to configure and run cutting-edge algorithms including specifying [feature crosses](https://www.tensorflow.org/api_docs/python/tf/feature_column/crossed_column), at least, no Python or R code embedded in the SQL statements, and integrate hyperparameter estimation.
+1. This solution should be compatible to many SQL engines, instead of a specific version or type.
+1. It should support sophisticated machine learning models, including TensorFlow for deep learning and [xgboost](https://github.com/dmlc/xgboost) for trees.
+1. We also want the flexibility to configure and run cutting-edge ML algorithms including specifying [feature crosses](https://www.tensorflow.org/api_docs/python/tf/feature_column/crossed_column), at least, no Python or R code embedded in the SQL statements, and fully integrated with hyperparameter estimation.
 
 ## How to use SQLFlow
 
