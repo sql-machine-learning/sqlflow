@@ -5,7 +5,7 @@ it out, we have provided the instructions and demo. Play around with it. Any bug
 issue is welcome. :)
 
 
-## Environment Preparation
+## Preparation
 
 1. Install [Docker Community Edition](https://docs.docker.com/install/) on your Macbook.
 1. Build and run a dockerized MySQL server (In this example, called sqlflowdata) following [example/datasets/README.md](/example/datasets/README.md). Note that there is no need to install a local MySQL server, in which case you will have a port conflict in 3306. 
