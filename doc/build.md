@@ -61,6 +61,9 @@ To build the Docker image:
 docker build -t sqlflow:dev -f Dockerfile.dev .
 ```
 
+You can also pull the latest dev image from our official Docker Hub repository via
+`docker pull sqlflow/sqlflow:dev`. Then, rename it via `docker tag sqlflow/sqlflow:dev sqlflow:dev`.
+
 ## Development
 
 ### Build and Test
