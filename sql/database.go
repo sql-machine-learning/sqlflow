@@ -3,6 +3,7 @@ package sql
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/mattn/go-sqlite3"
@@ -16,21 +17,27 @@ type DB struct {
 	*sql.DB
 }
 
-// Open opens a database specified by its database driver name and a
-// driver-specific data source name, usually consisting of at least a
-// database name and connection information.
+// Open pases a datasource string into driver name and datasource name,
+// then opens a database specified by the driver name and a driver-specific
+// data source name, usually consisting of at least a database name and
+// connection information.
 //
 // In addition to sql.Open, it also does the book keeping on driverName and
 // dataSourceName
-func Open(driverName, dataSourceName string) (*DB, error) {
-	db := &DB{driverName: driverName, dataSourceName: dataSourceName}
+func Open(datasource string) (*DB, error) {
+	log.Infof("OpEn: %s", datasource)
+	dses := strings.Split(datasource, "://")
+	if len(dses) != 2 {
+		return nil, fmt.Errorf("bad datasource")
+	}
+	db := &DB{driverName: dses[0], dataSourceName: dses[1]}
 
 	var err error
-	switch driverName {
+	switch db.driverName {
 	case "sqlite3", "mysql", "hive":
-		db.DB, err = sql.Open(driverName, dataSourceName)
+		db.DB, err = sql.Open(db.driverName, db.dataSourceName)
 	default:
-		db.DB, err = nil, fmt.Errorf("sqlfow currently doesn't support DB %v", driverName)
+		return nil, fmt.Errorf("sqlfow currently doesn't support DB %v", db.driverName)
 	}
 	return db, err
 }
