@@ -15,7 +15,7 @@ sqlflow>
 
 ### Training a DNNClassifier and run prediction
 
-- Step one: Let's see training data from Iris database:
+- Step One: Let's see some training data from Iris database
 ```sql
 sqlflow> select * from iris.train limit 2;
 -----------------------------
@@ -27,7 +27,7 @@ sqlflow> select * from iris.train limit 2;
 +--------------+-------------+--------------+-------------+-------+
 ```
 
-- Step Two: Train a Tensorflow [DNNClassifier](https://www.tensorflow.org/api_docs/python/tf/estimator/DNNClassifier) from train table:
+- Step Two: Train a Tensorflow [DNNClassifier](https://www.tensorflow.org/api_docs/python/tf/estimator/DNNClassifier)
 ```sql
 sqlflow> SELECT *
 FROM iris.train
@@ -42,16 +42,16 @@ Training set accuracy: 0.96721
 Done training
 ```
 
-- Step Three: Run prediction from a trained model:
+- Step Three: Run prediction using the trained model produced from step two. Note my_dnn_model is not a table, therefore it's not visually displayable from Select statement.
 ```sql
 sqlflow> SELECT *
 FROM iris.test
-predict iris.predict.class
+PREDICT iris.predict.class
 USING sqlflow_models.my_dnn_model;
 ```
 
-- Step Four: Checkout the prediction result:
+- Step Four: Checkout the prediction result
 ```sql
 sqlflow> select * from iris.predict limit 10;
 ```
-Now you have successfully run a demo in SQLFlow to train the model using DNNClassifier and make a simple prediction. More demos are on the road, please stay tuned.
+Congratulations! Now you have successfully completed a demo using SQLFlow syntax to train model using DNNClassifier and make a quick prediction. More demos are on the road, please stay tuned.

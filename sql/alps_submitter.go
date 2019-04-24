@@ -33,37 +33,37 @@ type featureSpec struct {
 	Delimiter   string
 }
 
-type FeatureColumn interface {
+type featureColumn interface {
 	GenerateCode() (string, error)
 }
 
-type NumericColumn struct {
+type numericColumn struct {
 	Key   string
 	Shape int
 }
 
-type BucketColumn struct {
-	SourceColumn *NumericColumn
+type bucketColumn struct {
+	SourceColumn *numericColumn
 	Boundaries   []int
 }
 
-type CrossColumn struct {
+type crossColumn struct {
 	Keys           []interface{}
 	HashBucketSize int
 }
 
-type Attribute struct {
+type attribute struct {
 	FullName string
 	Prefix   string
 	Name     string
 	Value    interface{}
 }
 
-func (nc *NumericColumn) GenerateCode() (string, error) {
+func (nc *numericColumn) GenerateCode() (string, error) {
 	return fmt.Sprintf("tf.feature_column.numeric_column(\"%s\", shape=(%d,))", nc.Key, nc.Shape), nil
 }
 
-func (bc *BucketColumn) GenerateCode() (string, error) {
+func (bc *bucketColumn) GenerateCode() (string, error) {
 	sourceCode, _ := bc.SourceColumn.GenerateCode()
 	return fmt.Sprintf(
 		"tf.feature_column.bucketized_column(%s, boundaries=%s)",
@@ -71,10 +71,10 @@ func (bc *BucketColumn) GenerateCode() (string, error) {
 		strings.Join(strings.Split(fmt.Sprint(bc.Boundaries), " "), ",")), nil
 }
 
-func (cc *CrossColumn) GenerateCode() (string, error) {
+func (cc *crossColumn) GenerateCode() (string, error) {
 	var keysGenerated = make([]string, len(cc.Keys))
 	for idx, key := range cc.Keys {
-		if c, ok := key.(FeatureColumn); ok {
+		if c, ok := key.(featureColumn); ok {
 			code, err := c.GenerateCode()
 			if err != nil {
 				return "", err
@@ -93,7 +93,7 @@ func (cc *CrossColumn) GenerateCode() (string, error) {
 		strings.Join(keysGenerated, ","), cc.HashBucketSize), nil
 }
 
-func (a *Attribute) GenerateCode() (string, error) {
+func (a *attribute) GenerateCode() (string, error) {
 	if val, ok := a.Value.(string); ok {
 		return fmt.Sprintf("%s=\"%s\"", a.Name, val), nil
 	}
@@ -105,7 +105,7 @@ func (a *Attribute) GenerateCode() (string, error) {
 		return fmt.Sprintf("%s=%s", a.Name,
 			strings.Join(strings.Split(fmt.Sprint(intList), " "), ",")), nil
 	}
-	return "", fmt.Errorf("value of Attribute must be string or list of int, given %s", a.Value)
+	return "", fmt.Errorf("value of attribute must be string or list of int, given %s", a.Value)
 }
 
 func resolveFeatureSpec(el *exprlist, isSparse bool) (*featureSpec, error) {
@@ -171,7 +171,7 @@ func resolveExpression(e interface{}) (interface{}, error) {
 		if err != nil {
 			return nil, fmt.Errorf("bad NUMERIC shape: %s, err: %s", (*el)[2].val, err)
 		}
-		return &NumericColumn{
+		return &numericColumn{
 			Key:   key,
 			Shape: shape}, nil
 	case bucket:
@@ -184,7 +184,7 @@ func resolveExpression(e interface{}) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		if _, ok := source.(*NumericColumn); !ok {
+		if _, ok := source.(*numericColumn); !ok {
 			return nil, fmt.Errorf("key of BUCKET must be NUMERIC, which is %s", source)
 		}
 		boundaries, err := resolveExpression(&boundariesExprList)
@@ -195,8 +195,8 @@ func resolveExpression(e interface{}) (interface{}, error) {
 		if err != nil {
 			return nil, fmt.Errorf("bad BUCKET boundaries: %s", err)
 		}
-		return &BucketColumn{
-			SourceColumn: source.(*NumericColumn),
+		return &bucketColumn{
+			SourceColumn: source.(*numericColumn),
 			Boundaries:   b}, nil
 	case cross:
 		if len(*el) != 3 {
@@ -211,7 +211,7 @@ func resolveExpression(e interface{}) (interface{}, error) {
 		if err != nil {
 			return nil, fmt.Errorf("bad CROSS bucketSize: %s, err: %s", (*el)[2].val, err)
 		}
-		return &CrossColumn{
+		return &crossColumn{
 			Keys:           keys.([]interface{}),
 			HashBucketSize: bucketSize}, nil
 	case square:
@@ -266,8 +266,8 @@ func expression2string(e interface{}) (string, error) {
 	}
 }
 
-func filter(attrs []*Attribute, prefix string) []*Attribute {
-	ret := make([]*Attribute, 0)
+func filter(attrs []*attribute, prefix string) []*attribute {
+	ret := make([]*attribute, 0)
 	for _, a := range attrs {
 		if strings.EqualFold(a.Prefix, prefix) {
 			ret = append(ret, a)
@@ -288,8 +288,8 @@ func resolveTrainColumns(columns *exprlist) ([]interface{}, error) {
 	return list, nil
 }
 
-func resolveTrainAttribute(attrs *attrs) ([]*Attribute, error) {
-	var ret []*Attribute
+func resolveTrainAttribute(attrs *attrs) ([]*attribute, error) {
+	var ret []*attribute
 	for k, v := range *attrs {
 		subs := strings.SplitN(k, ".", 2)
 		name := subs[len(subs)-1]
@@ -301,7 +301,7 @@ func resolveTrainAttribute(attrs *attrs) ([]*Attribute, error) {
 		if err != nil {
 			return nil, err
 		}
-		ret = append(ret, &Attribute{
+		ret = append(ret, &attribute{
 			FullName: k,
 			Prefix:   prefix,
 			Name:     name,
@@ -311,14 +311,14 @@ func resolveTrainAttribute(attrs *attrs) ([]*Attribute, error) {
 }
 
 func generateFeatureColumnCode(fc interface{}) (string, error) {
-	if fc, ok := fc.(FeatureColumn); ok {
+	if fc, ok := fc.(featureColumn); ok {
 		return fc.GenerateCode()
 	} else {
-		return "", fmt.Errorf("input is not FeatureColumn interface")
+		return "", fmt.Errorf("input is not featureColumn interface")
 	}
 }
 
-func generateEstimatorCreator(estimator string, attrs []*Attribute) (string, error) {
+func generateEstimatorCreator(estimator string, attrs []*attribute) (string, error) {
 	cl := make([]string, len(attrs))
 	for idx, a := range attrs {
 		code, err := a.GenerateCode()
