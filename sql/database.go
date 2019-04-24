@@ -25,7 +25,6 @@ type DB struct {
 // In addition to sql.Open, it also does the book keeping on driverName and
 // dataSourceName
 func Open(datasource string) (*DB, error) {
-	log.Infof("OpEn: %s", datasource)
 	dses := strings.Split(datasource, "://")
 	if len(dses) != 2 {
 		return nil, fmt.Errorf("bad datasource")
