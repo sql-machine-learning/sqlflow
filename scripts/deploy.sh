@@ -11,3 +11,6 @@ fi
 
 docker build -t sqlflow/sqlflow:$DOCKER_TAG -f ./Dockerfile $GOPATH/bin
 docker push sqlflow/sqlflow:$DOCKER_TAG
+
+docker tag sqlflow:dev sqlflow/sqlflow:dev
+docker push sqlflow/sqlflow:dev
