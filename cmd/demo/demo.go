@@ -14,9 +14,8 @@ import (
 
 const tablePageSize = 1000
 
-// readStmt reads a SQL statement from the scanner.  A statement could
-// have multiple lines and ends at a semicolon at theend of the last
-// line.
+// readStmt reads a SQL statement from the scanner.  A statement could have
+// multiple lines and ends at a semicolon at theend of the last line.
 func readStmt() string {
 	stmt := ""
 	scn := bufio.NewScanner(os.Stdin)
@@ -30,8 +29,7 @@ func readStmt() string {
 	if scn.Err() != nil {
 		return ""
 	}
-	stmt = strings.TrimSpace(stmt)
-	return stmt[0 : len(stmt)-1] // remove semicolon
+	return strings.TrimSpace(stmt)
 }
 
 func header(head map[string]interface{}) ([]string, error) {
