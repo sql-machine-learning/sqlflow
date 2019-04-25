@@ -121,7 +121,7 @@ follow [example/datasets/README.md](/example/datasets/README.md) to start one on
 After setting up MySQL, run the following inside the Docker container
 
 ```bash
-go run cmd/demo/demo.go --db_user root --db_password root --db_address host.docker.internal:3306
+go run cmd/demo/demo.go --datasource="mysql://root:root@tcp(host.docker.internal:3306)/?maxAllowedPacket=0"
 ```
 
 You should be able to see the following prompt
