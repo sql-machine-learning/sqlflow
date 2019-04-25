@@ -118,7 +118,14 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 import sys, json
 import tensorflow as tf
+
+{{if eq .Driver "mysql"}}
 import mysql.connector
+{{else if eq .Driver "sqlite3"}}
+import sqlite3
+{{else if eq .Driver "hive"}}
+from pyhive import hive
+{{end}}
 
 # Disable Tensorflow INFO and WARNING logs
 tf.logging.set_verbosity(tf.logging.ERROR)
@@ -133,12 +140,14 @@ db = mysql.connector.connect(user="{{.User}}",
                              passwd="{{.Password}}",
                              host="{{.Host}}",
                              port={{.Port}}{{if eq .Database ""}}{{- else}}, database="{{.DATABASE}}"{{end}})
-{{else}}
-{{if eq .Driver "sqlite3"}}
+{{else if eq .Driver "sqlite3"}}
 db = sqlite3.connect({{.Database}})
+{{else if eq .Driver "hive"}}
+hive.connect(host="{{.Host}}", 
+			port={{.Port}},
+			auth='NOSASL')
 {{else}}
 raise ValueError("unrecognized database driver: {{.Driver}}")
-{{end}}
 {{end}}
 
 cursor = db.cursor()
