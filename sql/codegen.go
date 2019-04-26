@@ -26,6 +26,7 @@ type connectionConfig struct {
 	Host     string
 	Port     string
 	Database string
+	Auth     string
 }
 
 type modelConfig struct {
@@ -83,7 +84,8 @@ func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
 			return nil, err
 		}
 		sa := strings.Split(cfg.Addr, ":")
-		r.User, r.Password, r.Host, r.Port = cfg.User, cfg.Passwd, sa[0], sa[1]
+		r.Host, r.Port, r.Database = sa[0], sa[1], cfg.DBName
+		r.User, r.Password = cfg.User, cfg.Passwd
 	case "sqlite3":
 		r.Database = db.dataSourceName
 	case "hive":
@@ -92,7 +94,9 @@ func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
 			return nil, err
 		}
 		sa := strings.Split(cfg.Addr, ":")
-		r.User, r.Password, r.Host, r.Port = cfg.User, cfg.Passwd, sa[0], sa[1]
+		r.Host, r.Port, r.Database = sa[0], sa[1], cfg.DBName
+		// FIXME(weiguo): make gohive support Auth
+		r.User, r.Password, r.Auth = cfg.User, cfg.Passwd, "NOSALS"
 	default:
 		return nil, fmt.Errorf("sqlfow currently doesn't support DB %v", db.driverName)
 	}
@@ -138,14 +142,18 @@ STEP = 1000
 {{if eq .Driver "mysql"}}
 db = mysql.connector.connect(user="{{.User}}",
                              passwd="{{.Password}}",
+                             {{if ne .Database ""}}database="{{.Database}}",{{end}}
                              host="{{.Host}}",
-                             port={{.Port}}{{if eq .Database ""}}{{- else}}, database="{{.DATABASE}}"{{end}})
+                             port={{.Port}})
 {{else if eq .Driver "sqlite3"}}
 db = sqlite3.connect({{.Database}})
 {{else if eq .Driver "hive"}}
-hive.connect(host="{{.Host}}", 
-			port={{.Port}},
-			auth='NOSASL')
+hive.connect(username="{{.User}}",
+			 password="{{.Password}}",
+			 {{if ne .Database ""}}database="{{.Database}}",{{end}}
+			 auth="{{.Auth}}",
+			 host="{{.Host}}",
+			 port={{.Port}})
 {{else}}
 raise ValueError("unrecognized database driver: {{.Driver}}")
 {{end}}
@@ -156,9 +164,9 @@ field_names = [i[0] for i in cursor.description]
 columns = list(map(list, zip(*cursor.fetchall())))
 
 feature_columns = [{{range .X}}tf.feature_column.{{.Type}}(key="{{.Name}}"),
-    {{end}}]
+{{end}}]
 feature_column_names = [{{range .X}}"{{.Name}}",
-    {{end}}]
+{{end}}]
 
 X = {name: columns[field_names.index(name)] for name in feature_column_names}
 {{if .Train}}
@@ -168,7 +176,7 @@ Y = columns[field_names.index("{{.Y.Name}}")]
 classifier = tf.estimator.{{.Estimator}}(
     feature_columns=feature_columns,{{range $key, $value := .Attrs}}
     {{$key}} = {{$value}},{{end}}
-    model_dir= "{{.Save}}")
+    model_dir = "{{.Save}}")
 
 {{if .Train}}
 def train_input_fn(features, labels, batch_size):
@@ -186,8 +194,7 @@ def eval_input_fn(features, labels, batch_size):
     return dataset
 
 eval_result = classifier.evaluate(
-        input_fn=lambda:eval_input_fn(X, Y, BATCHSIZE),
-        steps=STEP)
+    input_fn=lambda:eval_input_fn(X, Y, BATCHSIZE), steps=STEP)
 print("\nTraining set accuracy: {accuracy:0.5f}\n".format(**eval_result))
 
 print("Done training")
@@ -208,8 +215,8 @@ def insert(table_name, X, db):
 
     field_names = [key for key in X]
     # FIXME(tony): HIVE and ODPS use INSERT INTO TABLE ...
-    sql = "INSERT INTO {} ({}) VALUES ({})".format(
-            table_name, ",".join(field_names), ",".join(["%s" for _ in field_names]))
+    sql = "INSERT INTO {} ({}) VALUES ({})".format(table_name,
+        ",".join(field_names), ",".join(["%s" for _ in field_names]))
     val = []
     for i in range(length[0]):
         val.append(tuple([str(X[f][i]) for f in field_names]))
