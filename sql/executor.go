@@ -190,6 +190,11 @@ func runExtendedSQL(slct string, db *DB, pr *extendedSelect) *PipeReader {
 			}
 			defer os.RemoveAll(cwd)
 
+			// FIXME(tony): temporary branch to alps
+			if os.Getenv("SQLFLOW_submitter") == "alps" {
+				return submitALPS(wr, pr, db)
+			}
+
 			if pr.train {
 				e = train(pr, slct, db, cwd, wr)
 			} else {

@@ -239,7 +239,6 @@ func resolveExpression(e interface{}) (interface{}, error) {
 	default:
 		return nil, fmt.Errorf("not supported expr in ALPS submitter: %s", headName)
 	}
-	return nil, nil
 }
 
 func transformToIntList(list []interface{}) ([]int, error) {
@@ -331,7 +330,12 @@ func generateEstimatorCreator(estimator string, attrs []*attribute) (string, err
 }
 
 func genALPS(w io.Writer, pr *extendedSelect, fts fieldTypes, db *DB) error {
-	// TODO
+	// TODO(uuleon): codegen alps
+	return nil
+}
+
+func submitALPS(w *PipeWriter, pr *extendedSelect, db *DB) error {
+	// TODO(uuleon): codegen & exec alps
 	return nil
 }
 
