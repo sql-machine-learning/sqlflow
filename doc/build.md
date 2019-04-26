@@ -1,6 +1,6 @@
 # Canonical Development Environment
 
-Referring to [this example](https://github.com/sql-machine-learning/canonicalize-go-python-grpc-dev-env),
+Referring to [this example](https://github.com/wangkuiyi/canonicalize-go-python-grpc-dev-env),
 we create a canonical development environment for Go and Python programmers using Docker.
 
 ## Editing on Host
