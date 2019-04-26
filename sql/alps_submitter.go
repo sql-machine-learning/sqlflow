@@ -16,13 +16,18 @@ const (
 	square    = "SQUARE"
 	dense     = "DENSE"
 	estimator = "ESTIMATOR"
+	comma     = "COMMA"
 )
 
-type graphConfig struct {
-	TableName string
-	Fields    []string
-	X         []featureSpec
-	Y         featureSpec
+type alpsFiller struct {
+	TableName            string
+	Fields               string
+	X                    []string
+	Y                    string
+	OdpsConf             map[string]string
+	TrainSpec            map[string]string
+	FeatureColumnCode    string
+	EstimatorCreatorCode string
 }
 
 type featureSpec struct {
@@ -108,6 +113,22 @@ func (a *attribute) GenerateCode() (string, error) {
 	return "", fmt.Errorf("value of attribute must be string or list of int, given %s", a.Value)
 }
 
+func (fs *featureSpec) ToString() string {
+	if fs.IsSparse {
+		return fmt.Sprintf("SparseColumn(name=\"%s\", shape=%s, dtype=\"%s\", separator=\"%s\")",
+			fs.FeatureName,
+			strings.Join(strings.Split(fmt.Sprint(fs.Shape), " "), ","),
+			fs.DType,
+			fs.Delimiter)
+	} else {
+		return fmt.Sprintf("DenseColumn(name=\"%s\", shape=%s, dtype=\"%s\", separator=\"%s\")",
+			fs.FeatureName,
+			strings.Join(strings.Split(fmt.Sprint(fs.Shape), " "), ","),
+			fs.DType,
+			fs.Delimiter)
+	}
+}
+
 func resolveFeatureSpec(el *exprlist, isSparse bool) (*featureSpec, error) {
 	if len(*el) != 4 {
 		return nil, fmt.Errorf("bad FeatureSpec expression format: %s", *el)
@@ -120,9 +141,14 @@ func resolveFeatureSpec(el *exprlist, isSparse bool) (*featureSpec, error) {
 	if err != nil {
 		return nil, fmt.Errorf("bad FeatureSpec shape: %s, err: %s", (*el)[2].val, err)
 	}
-	delimiter, err := expression2string((*el)[3])
+	unresolvedDelimiter, err := expression2string((*el)[3])
 	if err != nil {
 		return nil, fmt.Errorf("bad FeatureSpec delimiter: %s, err: %s", (*el)[1], err)
+	}
+
+	delimiter, err := resolveDelimiter(unresolvedDelimiter)
+	if err != nil {
+		return nil, err
 	}
 	// TODO(uuleon): hard coded dtype(double) should be removed
 	return &featureSpec{
@@ -275,16 +301,28 @@ func filter(attrs []*attribute, prefix string) []*attribute {
 	return ret
 }
 
-func resolveTrainColumns(columns *exprlist) ([]interface{}, error) {
-	var list []interface{}
+func resolveTrainColumns(columns *exprlist) ([]*featureSpec, interface{}, error) {
+	var fss []*featureSpec
+	var fc featureColumn
 	for _, expr := range *columns {
 		result, err := resolveExpression(expr)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		list = append(list, result)
+		if fs, ok := result.(*featureSpec); ok {
+			fss = append(fss, fs)
+			continue
+		}
+		if c, ok := result.(featureColumn); ok {
+			if fc != nil {
+				return nil, nil, fmt.Errorf("multiple featureColumn found")
+			}
+			fc = c
+		} else {
+			return nil, nil, fmt.Errorf("not recgonized type: %s", result)
+		}
 	}
-	return list, nil
+	return fss, fc, nil
 }
 
 func resolveTrainAttribute(attrs *attrs) ([]*attribute, error) {
@@ -309,6 +347,13 @@ func resolveTrainAttribute(attrs *attrs) ([]*attribute, error) {
 	return ret, nil
 }
 
+func resolveDelimiter(delimiter string) (string, error) {
+	if strings.EqualFold(delimiter, comma) {
+		return ",", nil
+	}
+	return "", fmt.Errorf("unsolved delimiter: %s", delimiter)
+}
+
 func generateFeatureColumnCode(fc interface{}) (string, error) {
 	if fc, ok := fc.(featureColumn); ok {
 		return fc.GenerateCode()
@@ -329,8 +374,82 @@ func generateEstimatorCreator(estimator string, attrs []*attribute) (string, err
 	return fmt.Sprintf("tf.estimator.%s(%s)", estimator, strings.Join(cl, ",")), nil
 }
 
+func newAlpsFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*alpsFiller, error) {
+	fss, fc, err := resolveTrainColumns(&pr.columns)
+	if err != nil {
+		return nil, err
+	}
+
+	fssCode := make([]string, len(fss))
+	for idx, fs := range fss {
+		fssCode[idx] = fs.ToString()
+	}
+
+	fcCode, err := generateFeatureColumnCode(fc)
+	if err != nil {
+		return nil, err
+	}
+
+	attrs, err := resolveTrainAttribute(&pr.attrs)
+	if err != nil {
+		return nil, err
+	}
+
+	odpsAttrs := filter(attrs, "odps")
+	odpsMap := make(map[string]string, len(odpsAttrs))
+	for _, a := range odpsAttrs {
+		odpsMap[a.Name] = a.Value.(string)
+	}
+
+	trainSpecAttrs := filter(attrs, "train_spec")
+	trainMap := make(map[string]string, len(trainSpecAttrs))
+	for _, a := range trainSpecAttrs {
+		trainMap[a.Name] = a.Value.(string)
+	}
+
+	estimatorAttrs := filter(attrs, "estimator")
+
+	estimatorCode, err := generateEstimatorCreator(pr.estimator, estimatorAttrs)
+	if err != nil {
+		return nil, err
+	}
+
+	estimatorCode = strings.Replace(estimatorCode, "\"FC\"", "feature_columns", 1)
+
+	tableName := pr.tables[0]
+
+	fields := make([]string, len(pr.fields))
+	for idx, f := range pr.fields {
+		fields[idx] = fmt.Sprintf("\"%s\"", f)
+	}
+	f := fmt.Sprintf("[%s]", strings.Join(fields, ","))
+
+	y := &featureSpec{
+		FeatureName: pr.label,
+		IsSparse:    false,
+		Shape:       []int{1},
+		DType:       "int",
+		Delimiter:   ","}
+
+	return &alpsFiller{
+		TableName:            tableName,
+		Fields:               f,
+		X:                    fssCode,
+		Y:                    y.ToString(),
+		OdpsConf:             odpsMap,
+		TrainSpec:            trainMap,
+		FeatureColumnCode:    fcCode,
+		EstimatorCreatorCode: estimatorCode}, nil
+}
+
 func genALPS(w io.Writer, pr *extendedSelect, fts fieldTypes, db *DB) error {
-	// TODO(uuleon): codegen alps
+	r, e := newAlpsFiller(pr, fts, db)
+	if e != nil {
+		return e
+	}
+	if e = alpsTemplate.Execute(w, r); e != nil {
+		return fmt.Errorf("genALPS: failed executing template: %v", e)
+	}
 	return nil
 }
 
@@ -341,18 +460,73 @@ func submitALPS(w *PipeWriter, pr *extendedSelect, db *DB) error {
 
 const alpsTemplateText = `
 # coding: utf-8
+# Copyright (c) Antfin, Inc. All rights reserved.
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+import os
 
 import tensorflow as tf
 
-from alps.feature import FeatureColumnsBuilder
+from alps.client.base import submit_experiment, run_experiment
+from alps.conf.engine import LocalEngine
+from alps.estimator.column import SparseColumn, DenseColumn
+from alps.estimator.experiment import Experiment, TrainConf, EvalConf, EstimatorBuilder
+from alps.estimator.feature_column import embedding_column
+from alps.io.alps_dataset import AlpsDataset
+from alps.io.odps_io import OdpsConf
+from alps.io.reader.odps_reader import OdpsReader
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'    # for debug usage.
+tf.logging.set_verbosity(tf.logging.INFO)
 
 
-class SQLFlowFCBuilder(FeatureColumnsBuilder):
-	def build_feature_columns():
-		return {{.FeatureColumnsCode}}
+class SQLFlowEstimatorBuilder(EstimatorBuilder):
+    def build(self, experiment):
+        feature_columns = []
+        for feature in experiment.train.input.reader.features:
+            if feature.is_sparse:
+                feature_columns.append(embedding_column(feature, dimension=8))
+		{{if .FeatureColumnCode}}
+        feature_columns.extend({{.FeatureColumnCode}})
+		{{end}}
 
-# TODO(uuleon) needs FeatureSpecs and ALPS client
+        return {{.EstimatorCreatorCode}}
+
+
+if __name__ == "__main__":	
+
+    ds = AlpsDataset(
+        num_epochs=1,
+        reader=OdpsReader(
+            odps=OdpsConf(
+				accessid="{{.OdpsConf.accessid}}",
+				accesskey="{{.OdpsConf.accesskey}}",
+				endpoint="{{.OdpsConf.endpoint}}"
+			),
+            project="ant_p13n_dev",
+            table="{{.TableName}}",
+            field_names={{.Fields}},
+            features={{.X}},
+            labels=[{{.Y}}]
+        )
+    )
+
+    experiment = Experiment(
+        user="sqlflow",
+		engine=LocalEngine(),
+		{{if .TrainSpec.max_steps}}
+        train=TrainConf(input=ds, max_steps={{.TrainSpec.max_steps}}),
+		{{else}}
+		train=TrainConf(input=ds),
+		{{end}}
+        scratch_dir="./scratch",
+        estimator=SQLFlowEstimatorBuilder())
+
+    run_experiment(experiment)
 
 `
 
-var alpsTemplate = template.Must(template.New("feature_column").Parse(alpsTemplateText))
+var alpsTemplate = template.Must(template.New("alps").Parse(alpsTemplateText))

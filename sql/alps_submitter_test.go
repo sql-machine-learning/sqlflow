@@ -49,17 +49,17 @@ func TestAlpsColumnResolve(t *testing.T) {
 	r, e := newParser().Parse(testSQLStatement)
 	a.NoError(e)
 
-	result, err := resolveTrainColumns(&r.columns)
+	fss, fc, err := resolveTrainColumns(&r.columns)
 
 	a.NoError(err)
 
-	a.Equal("featureSpec", getFeatureColumnType(result[0]))
-	a.Equal("c2", result[0].(*featureSpec).FeatureName)
-	a.Equal(5, result[0].(*featureSpec).Shape[0])
-	a.Equal("comma", result[0].(*featureSpec).Delimiter)
+	a.Equal("featureSpec", getFeatureColumnType(fss[0]))
+	a.Equal("c2", fss[0].FeatureName)
+	a.Equal(5, fss[0].Shape[0])
+	a.Equal(",", fss[0].Delimiter)
 
-	a.Equal("crossColumn", getFeatureColumnType(result[1]))
-	cl := result[1].(*crossColumn)
+	a.Equal("crossColumn", getFeatureColumnType(fc))
+	cl := fc.(*crossColumn)
 	a.Equal(20, cl.HashBucketSize)
 
 	a.Equal("bucketColumn", getFeatureColumnType(cl.Keys[0]))
@@ -77,7 +77,7 @@ func TestAlpsColumnResolveFailed(t *testing.T) {
 	r, e := newParser().Parse(badSQLStatement)
 	a.NoError(e)
 
-	_, err := resolveTrainColumns(&r.columns)
+	_, _, err := resolveTrainColumns(&r.columns)
 
 	a.EqualError(err, "not supported expr in ALPS submitter: +")
 }
@@ -87,10 +87,10 @@ func TestAlpsFeatureColumnCodeGenerate(t *testing.T) {
 	r, e := newParser().Parse(testSQLStatement)
 	a.NoError(e)
 
-	result, err := resolveTrainColumns(&r.columns)
+	_, fc, err := resolveTrainColumns(&r.columns)
 	a.NoError(err)
 
-	code, err := generateFeatureColumnCode(result[1])
+	code, err := generateFeatureColumnCode(fc)
 	a.NoError(err)
 
 	a.Equal(featureColumnCode, code)
