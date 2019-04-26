@@ -5,7 +5,6 @@ RUN apt-get install -y git
 RUN apt-get install -y wget curl
 RUN apt-get install -y python3-pip
 
-ENV PIP_INDEX_URL="http://pypi.douban.com/simple/" PIP_TRUSTED_HOST="pypi.douban.com"
 RUN pip3 install --upgrade pip
 RUN pip3 install grpcio-tools
 RUN pip3 install tensorflow
