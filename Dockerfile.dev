@@ -5,10 +5,12 @@ RUN apt-get install -y git
 RUN apt-get install -y wget curl
 RUN apt-get install -y python3-pip
 
+ENV PIP_INDEX_URL="http://pypi.douban.com/simple/" PIP_TRUSTED_HOST="pypi.douban.com"
 RUN pip3 install --upgrade pip
 RUN pip3 install grpcio-tools
 RUN pip3 install tensorflow
 RUN pip3 install mysql-connector-python
+RUN pip3 install pyhive
 
 RUN wget --quiet https://dl.google.com/go/go1.11.5.linux-amd64.tar.gz
 RUN tar -C /usr/local -xzf go1.11.5.linux-amd64.tar.gz
