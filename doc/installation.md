@@ -24,8 +24,7 @@ After data is popularized in MySQL, let's test the installation from running a q
    SQLFLOW_SERVER=localhost:50051 jupyter notebook --ip=0.0.0.0 --port=8888 --allow-root"
    ```
 
-   If you are using Docker for Mac, please be aware the option `--db_address host.docker.internal:3306` where
-   `host.docker.internal` translates to the host ip address as recommended [here](https://docs.docker.com/docker-for-mac/networking/).
+   If you are using Docker for Mac, please be aware the option `--database` where `host.docker.internal` translates to the host ip address as recommended [here](https://docs.docker.com/docker-for-mac/networking/).
 
    If you are running MySQL on remote, please be aware that MySQL only allows connections from localhost
    by default. Fix can be found [here](https://stackoverflow.com/questions/14779104/how-to-allow-remote-connection-to-mysql).
