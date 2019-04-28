@@ -25,7 +25,7 @@ If a SQL statement is of the standard syntax, SQLFlow throws it to the SQL engin
 
 ### SQLFlow as a gRPC Server
 
-SQLFlow is a gRPC server, which can connect with multiple clients.  A typical client is [pysqlflow](https://github.com/sql-machine-learning/pysqlflow), the SQLFlow plugin for Jupyter Notebook server.  Another once is a text-based client [/cmd/sqlflowserver/main.go](/cmd/sqlflowserver/main.go).
+SQLFlow is a gRPC server, which can connect with multiple clients.  A typical client is [pysqlflow](https://sqlflow.org/pysqlflow), the SQLFlow plugin for Jupyter Notebook server.  Another once is a text-based client [/cmd/sqlflowserver/main.go](/cmd/sqlflowserver/main.go).
 
 ```
 Jupyter Notebook          ---(SQL statements)-->       SQLFlow gRPC server

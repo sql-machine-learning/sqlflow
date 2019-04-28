@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os/exec"
 
-	"github.com/sql-machine-learning/sqlflow/sqlfs"
+	"sqlflow.org/sqlflow/sqlfs"
 )
 
 type model struct {

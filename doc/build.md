@@ -34,14 +34,14 @@ You could have your `$GOPATH` pointing to any directory you like.
 Given `$GOPATH$` set, we could git clone the source code of our project by running:
 
 ```bash
-go get github.com/sql-machine-learning/sqlflow
+go get sqlflow.org/sqlflow
 ```
 
 Change the directory to our project root, and we can use `go get` to retrieve
 and update Go dependencies.
 
 ```bash
-cd $GOPATH/src/github.com/sql-machine-learning/sqlflow
+cd $GOPATH/src/sqlflow.org/sqlflow
 go get -u -t ./...
 ```
 
@@ -76,7 +76,7 @@ the `$GOPATH` in the container:
 
 ```bash
 docker run --rm -it -v $GOPATH:/go \
-    -w /go/src/github.com/sql-machine-learning/sqlflow \
+    -w /go/src/sqlflow.org/sqlflow \
     sqlflow:dev bash
 ```
 
