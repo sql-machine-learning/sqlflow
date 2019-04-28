@@ -7,6 +7,7 @@ import (
 	"text/template"
 
 	"github.com/go-sql-driver/mysql"
+	"sqlflow.org/gohive"
 )
 
 // TODO(tonyyang): This is currently a quick hack to map from SQL
@@ -25,6 +26,7 @@ type connectionConfig struct {
 	Host     string
 	Port     string
 	Database string
+	Auth     string
 }
 
 type modelConfig struct {
@@ -74,20 +76,27 @@ func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
 		r.TableName = strings.Join(strings.Split(pr.into, ".")[:2], ".")
 	}
 
+	r.Driver = db.driverName
 	switch db.driverName {
 	case "mysql":
 		cfg, err := mysql.ParseDSN(db.dataSourceName)
 		if err != nil {
 			return nil, err
 		}
-		r.Driver = "mysql"
-		r.User = cfg.User
-		r.Password = cfg.Passwd
-		r.Host = strings.Split(cfg.Addr, ":")[0]
-		r.Port = strings.Split(cfg.Addr, ":")[1]
+		sa := strings.Split(cfg.Addr, ":")
+		r.Host, r.Port, r.Database = sa[0], sa[1], cfg.DBName
+		r.User, r.Password = cfg.User, cfg.Passwd
 	case "sqlite3":
-		r.Driver = "sqlite3"
 		r.Database = db.dataSourceName
+	case "hive":
+		cfg, err := gohive.ParseDSN(db.dataSourceName)
+		if err != nil {
+			return nil, err
+		}
+		sa := strings.Split(cfg.Addr, ":")
+		r.Host, r.Port, r.Database = sa[0], sa[1], cfg.DBName
+		// FIXME(weiguo): make gohive support Auth
+		r.User, r.Password, r.Auth = cfg.User, cfg.Passwd, "NOSALS"
 	default:
 		return nil, fmt.Errorf("sqlfow currently doesn't support DB %v", db.driverName)
 	}
@@ -113,7 +122,14 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 import sys, json
 import tensorflow as tf
+
+{{if eq .Driver "mysql"}}
 import mysql.connector
+{{else if eq .Driver "sqlite3"}}
+import sqlite3
+{{else if eq .Driver "hive"}}
+from pyhive import hive
+{{end}}
 
 # Disable Tensorflow INFO and WARNING logs
 tf.logging.set_verbosity(tf.logging.ERROR)
@@ -126,14 +142,20 @@ STEP = 1000
 {{if eq .Driver "mysql"}}
 db = mysql.connector.connect(user="{{.User}}",
                              passwd="{{.Password}}",
+                             {{if ne .Database ""}}database="{{.Database}}",{{end}}
                              host="{{.Host}}",
-                             port={{.Port}}{{if eq .Database ""}}{{- else}}, database="{{.DATABASE}}"{{end}})
-{{else}}
-{{if eq .Driver "sqlite3"}}
+                             port={{.Port}})
+{{else if eq .Driver "sqlite3"}}
 db = sqlite3.connect({{.Database}})
+{{else if eq .Driver "hive"}}
+hive.connect(username="{{.User}}",
+			 password="{{.Password}}",
+			 {{if ne .Database ""}}database="{{.Database}}",{{end}}
+			 auth="{{.Auth}}",
+			 host="{{.Host}}",
+			 port={{.Port}})
 {{else}}
 raise ValueError("unrecognized database driver: {{.Driver}}")
-{{end}}
 {{end}}
 
 cursor = db.cursor()
@@ -142,9 +164,9 @@ field_names = [i[0] for i in cursor.description]
 columns = list(map(list, zip(*cursor.fetchall())))
 
 feature_columns = [{{range .X}}tf.feature_column.{{.Type}}(key="{{.Name}}"),
-    {{end}}]
+{{end}}]
 feature_column_names = [{{range .X}}"{{.Name}}",
-    {{end}}]
+{{end}}]
 
 X = {name: columns[field_names.index(name)] for name in feature_column_names}
 {{if .Train}}
@@ -154,7 +176,7 @@ Y = columns[field_names.index("{{.Y.Name}}")]
 classifier = tf.estimator.{{.Estimator}}(
     feature_columns=feature_columns,{{range $key, $value := .Attrs}}
     {{$key}} = {{$value}},{{end}}
-    model_dir= "{{.Save}}")
+    model_dir = "{{.Save}}")
 
 {{if .Train}}
 def train_input_fn(features, labels, batch_size):
@@ -172,10 +194,8 @@ def eval_input_fn(features, labels, batch_size):
     return dataset
 
 eval_result = classifier.evaluate(
-        input_fn=lambda:eval_input_fn(X, Y, BATCHSIZE),
-        steps=STEP)
-print("\nTraining set accuracy: {accuracy:0.5f}\n".format(**eval_result))
-
+    input_fn=lambda:eval_input_fn(X, Y, BATCHSIZE), steps=STEP)
+print("Training set accuracy: {accuracy:0.5f}".format(**eval_result))
 print("Done training")
 {{- else}}
 def eval_input_fn(features, batch_size):
@@ -194,8 +214,8 @@ def insert(table_name, X, db):
 
     field_names = [key for key in X]
     # FIXME(tony): HIVE and ODPS use INSERT INTO TABLE ...
-    sql = "INSERT INTO {} ({}) VALUES ({})".format(
-            table_name, ",".join(field_names), ",".join(["%s" for _ in field_names]))
+    sql = "INSERT INTO {} ({}) VALUES ({})".format(table_name,
+        ",".join(field_names), ",".join(["%s" for _ in field_names]))
     val = []
     for i in range(length[0]):
         val.append(tuple([str(X[f][i]) for f in field_names]))
@@ -206,7 +226,7 @@ def insert(table_name, X, db):
 
 insert("{{.TableName}}", X, db)
 
-print("Done predicting. Predict Table : {{.TableName}}")
+print("Done predicting. Predict table : {{.TableName}}")
 {{- end}}
 `
 
