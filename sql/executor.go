@@ -176,6 +176,7 @@ func runExtendedSQL(slct string, db *DB, pr *extendedSelect) *PipeReader {
 		err := func() error {
 			startAt := time.Now()
 			log.Infof("Starting runExtendedSQL:%s", slct)
+			defer log.Infof("runExtendedSQL finished, elapsed:%v", time.Since(startAt))
 
 			// NOTE: the temporary directory must be in a host directory
 			// which can be mounted to Docker containers.  If I don't
@@ -190,13 +191,15 @@ func runExtendedSQL(slct string, db *DB, pr *extendedSelect) *PipeReader {
 			}
 			defer os.RemoveAll(cwd)
 
-			if pr.train {
-				e = train(pr, slct, db, cwd, wr)
-			} else {
-				e = pred(pr, db, cwd, wr)
+			// FIXME(tony): temporary branch to alps
+			if os.Getenv("SQLFLOW_submitter") == "alps" {
+				return submitALPS(wr, pr, db)
 			}
-			log.Infof("runExtendedSQL finished, elapsed:%v", time.Since(startAt))
-			return e
+
+			if pr.train {
+				return train(pr, slct, db, cwd, wr)
+			}
+			return pred(pr, db, cwd, wr)
 		}()
 
 		if err != nil {
