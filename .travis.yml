@@ -27,7 +27,7 @@ install:
 script:
   - ls -lah
   - docker build -t sqlflow:dev -f Dockerfile.dev .
-  - docker run --rm -v $GOPATH:/go -w /go/src/sqlflow.org/sqlflow sqlflow:dev bash scripts/test.sh
+  - docker run --rm -v $GOPATH:/go -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:dev bash scripts/test.sh
 
 deploy:
   skip_cleanup: true
