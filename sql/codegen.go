@@ -98,12 +98,22 @@ func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
 		sa := strings.Split(cfg.Addr, ":")
 		r.Host, r.Port, r.Database = sa[0], sa[1], cfg.DBName
 		// FIXME(weiguo): make gohive support Auth
-		r.User, r.Password, r.Auth = cfg.User, cfg.Passwd, "NOSALS"
+		r.User, r.Password, r.Auth = cfg.User, "", "NOSASL"
+		// FIXME(weiguo): remove tail semicolon
+		r.StandardSelect = removeLastSemicolon(r.StandardSelect)
 	default:
 		return nil, fmt.Errorf("sqlfow currently doesn't support DB %v", db.driverName)
 	}
 
 	return r, nil
+}
+
+func removeLastSemicolon(s string) string {
+	n := len(s)
+	if n > 0 && s[n-1] == ';' {
+		return s[0 : n-1]
+	}
+	return s
 }
 
 func genTF(w io.Writer, pr *extendedSelect, fts fieldTypes, db *DB) error {
@@ -150,8 +160,8 @@ db = mysql.connector.connect(user="{{.User}}",
 {{else if eq .Driver "sqlite3"}}
 db = sqlite3.connect({{.Database}})
 {{else if eq .Driver "hive"}}
-hive.connect(username="{{.User}}",
-			 password="{{.Password}}",
+db = hive.connect(username="{{.User}}",
+			 # password="{{.Password}}",
 			 {{if ne .Database ""}}database="{{.Database}}",{{end}}
 			 auth="{{.Auth}}",
 			 host="{{.Host}}",

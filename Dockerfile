@@ -4,7 +4,7 @@ RUN apt-get update
 RUN apt-get install -y python3-pip
 
 RUN pip3 install --upgrade pip
-RUN pip3 install tensorflow mysql-connector-python pyhive jupyter sqlflow
+RUN pip3 install tensorflow mysql-connector-python thrift pyhive jupyter sqlflow
 # Fix jupyter server "connecting to kernel" problem
 # https://github.com/jupyter/notebook/issues/2664#issuecomment-468954423
 RUN pip3 install tornado==4.5.3

@@ -261,7 +261,7 @@ func train(tr *extendedSelect, slct string, db *DB, cwd string, wr *PipeWriter) 
 	}
 
 	cw := &logChanWriter{wr: wr}
-	cmd := tensorflowCmd(cwd)
+	cmd := tensorflowCmd(cwd, db.driverName)
 	cmd.Stdin = &program
 	cmd.Stdout = cw
 	cmd.Stderr = cw
@@ -303,7 +303,7 @@ func pred(pr *extendedSelect, db *DB, cwd string, wr *PipeWriter) error {
 	}
 
 	cw := &logChanWriter{wr: wr}
-	cmd := tensorflowCmd(cwd)
+	cmd := tensorflowCmd(cwd, db.driverName)
 	cmd.Stdin = &buf
 	cmd.Stdout = cw
 	cmd.Stderr = cw
