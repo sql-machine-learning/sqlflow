@@ -45,24 +45,30 @@ func dryRunSelect(slct *extendedSelect, db *DB) error {
 func (ft fieldTypes) get(ident string) (string, bool) {
 	tbl, fld := decomp(ident)
 	tbls, ok := ft[fld]
+	log.Infof("w7u|verify.go|get1|ft:{%v}|tbl:%s|fld:%s|ok:%v", ft, tbl, fld, ok)
 	if !ok {
 		return "", false
 	}
 	if len(tbl) == 0 && len(tbls) == 1 {
+		log.Info("w7u|verify.go|get2|entry")
 		for _, typ := range tbls {
+			log.Infof("w7u|verify.go|get2|type:%s", typ)
 			return typ, true
 		}
 	}
 	typ, ok := tbls[tbl]
+	log.Infof("w7u|verify.go|get3|type:%s|ok:%v", typ, ok)
 	return typ, ok
 }
 
 // decomp returns the table name and field name in the given
 // identifier: t.f=>(t,f), db.t.f=>(db.t,f), f=>("",f).
 func decomp(ident string) (tbl string, fld string) {
-	s := strings.Split(ident, ".")
-	n := len(s)
-	return strings.Join(s[:n-1], "."), s[n-1]
+	idx := strings.LastIndex(ident, ".")
+	if idx == -1 {
+		return "", ident
+	}
+	return ident[0:idx], ident[idx+1:]
 }
 
 // Retrieve the type of fields mentioned in SELECT.
@@ -70,20 +76,15 @@ func describeTables(slct *extendedSelect, db *DB) (ft fieldTypes, e error) {
 	ft = indexSelectFields(slct)
 	hasStar := len(ft) == 0
 	for _, tn := range slct.tables {
-		slct := "SELECT * from " + tn + " limit 1"
-		rows, err := db.Query(slct)
+		q := "SELECT * FROM " + tn + " LIMIT 1"
+		rows, err := db.Query(q)
 		if err != nil {
 			return nil, err
 		}
 		defer rows.Close()
 
-		cols, err := rows.Columns()
-		if err != nil {
-			return nil, err
-		}
-
 		if !rows.Next() {
-			return nil, fmt.Errorf("table is Empty. table name: %s", tn)
+			return nil, fmt.Errorf("table[%s] is empty", tn)
 		}
 
 		if rows.Err() != nil {
@@ -94,10 +95,9 @@ func describeTables(slct *extendedSelect, db *DB) (ft fieldTypes, e error) {
 		if err != nil {
 			return nil, err
 		}
-		for i, ct := range columnTypes {
-			fld := cols[i]
+		for _, ct := range columnTypes {
+			_, fld := decomp(ct.Name())
 			typeName := ct.DatabaseTypeName()
-
 			if hasStar {
 				if _, ok := ft[fld]; !ok {
 					ft[fld] = make(map[string]string)
