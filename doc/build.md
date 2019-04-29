@@ -1,4 +1,4 @@
-# Canonical Development Environment Setup
+# Build from Source in a Docker Container
 
 Referring to [this example](https://github.com/wangkuiyi/canonicalize-go-python-grpc-dev-env),
 we create a canonical dev environment for Go and Python developers using Docker images.
