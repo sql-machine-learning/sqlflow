@@ -11,7 +11,9 @@ issue is welcome. :)
 1. Build and run a dockerized MySQL server (In this example, called sqlflowdata) following [example/datasets/README.md](/example/datasets/README.md). Note that there is no need to install a local MySQL server, in which case you will have a port conflict in 3306. 
 1. Pull the latest SQLFlow Docker image: 
 
-   ```docker pull sqlflow/sqlflow:latest```
+   ```
+   docker pull sqlflow/sqlflow:latest
+   ```
 
 ## Running your first SQLFlow query
 
