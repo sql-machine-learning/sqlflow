@@ -7,7 +7,7 @@ import (
 
 // fieldTypes[field][table]type.  For more information, please check
 // verifier_test.go.
-type fieldTypes map[string]map[string]string
+type fieldTypes map[string]map[string](*columnType)
 
 // verify checks the following:
 //
@@ -42,22 +42,18 @@ func dryRunSelect(slct *extendedSelect, db *DB) error {
 	return rows.Err()
 }
 
-func (ft fieldTypes) get(ident string) (string, bool) {
+func (ft fieldTypes) get(ident string) (*columnType, bool) {
 	tbl, fld := decomp(ident)
 	tbls, ok := ft[fld]
-	log.Infof("w7u|verify.go|get1|ft:{%v}|tbl:%s|fld:%s|ok:%v", ft, tbl, fld, ok)
 	if !ok {
-		return "", false
+		return nil, false
 	}
 	if len(tbl) == 0 && len(tbls) == 1 {
-		log.Info("w7u|verify.go|get2|entry")
 		for _, typ := range tbls {
-			log.Infof("w7u|verify.go|get2|type:%s", typ)
 			return typ, true
 		}
 	}
 	typ, ok := tbls[tbl]
-	log.Infof("w7u|verify.go|get3|type:%s|ok:%v", typ, ok)
 	return typ, ok
 }
 
@@ -100,15 +96,15 @@ func describeTables(slct *extendedSelect, db *DB) (ft fieldTypes, e error) {
 			typeName := ct.DatabaseTypeName()
 			if hasStar {
 				if _, ok := ft[fld]; !ok {
-					ft[fld] = make(map[string]string)
+					ft[fld] = make(map[string](*columnType))
 				}
-				ft[fld][tn] = typeName
+				ft[fld][tn] = newColumnType(ct.Name(), typeName)
 			} else {
 				if tbls, ok := ft[fld]; ok {
 					if len(tbls) == 0 {
-						tbls[tn] = typeName
+						tbls[tn] = newColumnType(ct.Name(), typeName)
 					} else if _, ok := tbls[tn]; ok {
-						tbls[tn] = typeName
+						tbls[tn] = newColumnType(ct.Name(), typeName)
 					}
 				}
 			}
@@ -128,10 +124,10 @@ func indexSelectFields(slct *extendedSelect) (ft fieldTypes) {
 		}
 		tbl, fld := decomp(f)
 		if _, ok := ft[fld]; !ok {
-			ft[fld] = make(map[string]string)
+			ft[fld] = make(map[string]*columnType)
 		}
 		if len(tbl) > 0 {
-			ft[fld][tbl] = ""
+			ft[fld][tbl] = nil
 		}
 	}
 	return ft
@@ -156,7 +152,7 @@ func verifyColumnNameAndType(trainParsed, predParsed *extendedSelect, db *DB) er
 			return fmt.Errorf("predFields doesn't contain column %s", c.val)
 		}
 		tt, _ := trainFields.get(c.val)
-		if it != tt {
+		if it.Name != tt.Name || it.Type != tt.Type {
 			return fmt.Errorf("field %s type dismatch %s(pred) vs %s(train)", c.val, it, tt)
 		}
 	}

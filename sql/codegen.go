@@ -10,13 +10,6 @@ import (
 	"sqlflow.org/gohive"
 )
 
-// TODO(tonyyang): This is currently a quick hack to map from SQL
-// field types to feature types.  We will enhance it to support more
-// complex cases like cross features.
-var fieldTypeFeatureType = map[string]string{
-	"FLOAT":      "numeric_column",
-	"FLOAT_TYPE": "numeric_column"}
-
 type columnType struct {
 	Name string
 	Type string
@@ -48,6 +41,21 @@ type filler struct {
 	connectionConfig
 }
 
+// TODO(tonyyang): This is currently a quick hack to map from SQL
+// field types to feature types.  We will enhance it to support more
+// complex cases like cross features.
+func newColumnType(n, t string) *columnType {
+	return &columnType{n, t}
+}
+
+func translateColumnType(ct *columnType) columnType {
+	var featureType string
+	if ct.Type == "FLOAT" || ct.Type == "FLOAT_TYPE" {
+		featureType = "numeric_column"
+	}
+	return columnType{ct.Name, featureType}
+}
+
 func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
 	r := &filler{
 		Train:          pr.train,
@@ -61,18 +69,17 @@ func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
 	}
 
 	for _, c := range pr.columns {
-		typ, ok := fts.get(c.val)
+		ct, ok := fts.get(c.val)
 		if !ok {
 			return nil, fmt.Errorf("genTF: Cannot find type of field %s", c.val)
 		}
-		ct := columnType{Name: c.val, Type: fieldTypeFeatureType[typ]}
-		r.X = append(r.X, ct)
+		r.X = append(r.X, translateColumnType(ct))
 	}
-	typ, ok := fts.get(pr.label)
+	ct, ok := fts.get(pr.label)
 	if !ok {
 		return nil, fmt.Errorf("genTF: Cannot find type of label %s", pr.label)
 	}
-	r.Y = columnType{Name: pr.label, Type: fieldTypeFeatureType[typ]}
+	r.Y = translateColumnType(ct)
 
 	if !pr.train {
 		r.TableName = strings.Join(strings.Split(pr.into, ".")[:2], ".")
@@ -97,9 +104,8 @@ func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
 		}
 		sa := strings.Split(cfg.Addr, ":")
 		r.Host, r.Port, r.Database = sa[0], sa[1], cfg.DBName
-		// FIXME(weiguo): make gohive support Auth
+		// FIXME(weiguo): 1 make gohive support Auth; 2 remove tail semicolon
 		r.User, r.Password, r.Auth = cfg.User, "", "NOSASL"
-		// FIXME(weiguo): remove tail semicolon
 		r.StandardSelect = removeLastSemicolon(r.StandardSelect)
 	default:
 		return nil, fmt.Errorf("sqlfow currently doesn't support DB %v", db.driverName)

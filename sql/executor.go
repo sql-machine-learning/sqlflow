@@ -336,10 +336,10 @@ func createPredictionTable(trainParsed, predParsed *extendedSelect, db *DB) erro
 		if !ok {
 			return fmt.Errorf("createPredictionTable: Cannot find type of field %s", c.val)
 		}
-		fmt.Fprintf(&b, "%s %s, ", c.val, typ)
+		fmt.Fprintf(&b, "%s %s, ", c.val, typ.Type)
 	}
 	tpy, _ := fts.get(trainParsed.label)
-	fmt.Fprintf(&b, "%s %s);", columnName, tpy)
+	fmt.Fprintf(&b, "%s %s);", columnName, tpy.Type)
 
 	createStmt := b.String()
 	if _, e := db.Query(createStmt); e != nil {
