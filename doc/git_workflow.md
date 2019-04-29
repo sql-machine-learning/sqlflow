@@ -1,4 +1,4 @@
-#Git Workflow for SQLFlow project
+# Git Workflow for SQLFlow project
 This doc is mainly written for new contributors in this project, those who are experienced open source developers can skip the doc. Please read carefully and leave comments as it needs and helps us improve as more people from the community are joing force. 
 
 ## Fetch Upstream
