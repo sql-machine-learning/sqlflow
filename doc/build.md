@@ -14,8 +14,7 @@ for auto-completion.
 
 ## Building in Container
 
-We build a Docker image that contains development tools below. Because this repo contains Go code, please make sure that you have the directory
-structure required by Go. 
+We build a Docker image that contains development tools below.
 
 1. Python Interpreter
 1. Go compiler
@@ -23,7 +22,7 @@ structure required by Go.
 1. Protobuf to Go compiler extension
 1. Protobuf to Python compiler extension
 
-On my computer, I have below setup. You can have your `$GOPATH` pointing to any directory you like.
+Because this repo contains Go code, please make sure that you have the directory structure required by Go. On my computer, I have GOPATH set to $Home/go, you can have your `$GOPATH` pointing to any directory as you like.
 
 ```bash
 export GOPATH=$HOME/go
