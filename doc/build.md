@@ -75,7 +75,7 @@ docker run --rm -it -v $GOPATH:/go \
 Inside the Docker container, start a MySQL server in the background
 
 ```
-service mysql start&
+service mysql start
 ```
 
 run all the tests as
