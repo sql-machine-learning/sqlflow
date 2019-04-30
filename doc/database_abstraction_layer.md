@@ -21,7 +21,8 @@ Fortunately, as SQLFlow forwards the above parts to the engine,  it doesn't have
 To verify the semantics of users' inputs, SQLFlow needs to retrieve the schema of tables.  For example, the input might be
 
 ```SQL
-SELECT name, age, income FROM employee TRAIN DNNRegressor WITH hidden_layers=[10,50,10] COLUMN name, agee LABEL income;\
+SELECT name, age, income FROM employee TRAIN DNNRegressor WITH hidden_layers=[10,50,10] COLUMN name, agee LABEL income;
+
 ```
 
 In the above example, the user misspelled the field name `age` in the COLUMN clause as "agee". SQLFlow must be able to find that out.
