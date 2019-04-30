@@ -22,6 +22,7 @@ To verify the semantics of users' inputs, SQLFlow needs to retrieve the schema o
 
 ```SQL
 SELECT name, age, income FROM employee TRAIN DNNRegressor WITH hidden_layers=[10,50,10] COLUMN name, agee LABEL income;
+
 ```
 
 In the above example, the user misspelled the field name `age` in the COLUMN clause as "agee". SQLFlow must be able to find that out.
