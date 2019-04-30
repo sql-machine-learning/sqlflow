@@ -23,7 +23,7 @@ To verify the semantics of users' inputs, SQLFlow needs to retrieve the schema o
 ```SQL
 SELECT 
 name,
- age,
+age,
 income 
 FROM employee TRAIN DNNRegressor 
 WITH hidden_layers=[10,50,10] 
