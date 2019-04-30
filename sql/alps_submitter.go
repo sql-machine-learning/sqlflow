@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"strconv"
 	"strings"
 	"text/template"
@@ -30,6 +31,7 @@ type alpsFiller struct {
 	DatasetConf          map[string]string
 	FeatureColumnCode    string
 	EstimatorCreatorCode string
+	ScratchDir           string
 }
 
 type featureSpec struct {
@@ -381,7 +383,7 @@ func generateEstimatorCreator(estimator string, attrs []*attribute) (string, err
 	return fmt.Sprintf("tf.estimator.%s(%s)", estimator, strings.Join(cl, ",")), nil
 }
 
-func newAlpsFiller(pr *extendedSelect) (*alpsFiller, error) {
+func newALPSTrainFiller(pr *extendedSelect) (*alpsFiller, error) {
 	fcList, fsMap, err := resolveTrainColumns(&pr.columns)
 	if err != nil {
 		return nil, err
@@ -443,6 +445,11 @@ func newAlpsFiller(pr *extendedSelect) (*alpsFiller, error) {
 		DType:       "int",
 		Delimiter:   ","}
 
+	dir, err := ioutil.TempDir("/tmp", "alps_scratch_dir")
+	if err != nil {
+		return nil, err
+	}
+
 	return &alpsFiller{
 		TableName:            tableName,
 		Fields:               fmt.Sprintf("[%s]", strings.Join(fields, ",")),
@@ -452,23 +459,24 @@ func newAlpsFiller(pr *extendedSelect) (*alpsFiller, error) {
 		TrainSpec:            trainMap,
 		DatasetConf:          datasetMap,
 		FeatureColumnCode:    fcCode,
-		EstimatorCreatorCode: estimatorCode}, nil
+		EstimatorCreatorCode: estimatorCode,
+		ScratchDir:           dir}, nil
 }
 
-func genALPS(w io.Writer, pr *extendedSelect) error {
-	r, e := newAlpsFiller(pr)
+func genALPSTrain(w io.Writer, pr *extendedSelect) error {
+	r, e := newALPSTrainFiller(pr)
 	if e != nil {
 		return e
 	}
 	if e = alpsTemplate.Execute(w, r); e != nil {
-		return fmt.Errorf("genALPS: failed executing template: %v", e)
+		return fmt.Errorf("genALPSTrain: failed executing template: %v", e)
 	}
 	return nil
 }
 
 func trainALPS(wr *PipeWriter, pr *extendedSelect, cwd string) error {
 	var program bytes.Buffer
-	if e := genALPS(&program, pr); e != nil {
+	if e := genALPSTrain(&program, pr); e != nil {
 		return e
 	}
 
@@ -555,7 +563,7 @@ if __name__ == "__main__":
 		{{else}}
 		train=TrainConf(input=ds),
 		{{end}}
-        scratch_dir="./scratch",
+        scratch_dir="{{.ScratchDir}}",
         estimator=SQLFlowEstimatorBuilder())
 
     run_experiment(experiment)
