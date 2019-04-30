@@ -82,29 +82,11 @@ run all the tests as
 
 ```
 go generate ./...
-go install ./...
 go test -v ./...
 ```
 
 where `go generate` invokes the `protoc` command to translate `server/sqlflow.proto`
 into `server/sqlflow.pb.go` and `go test -v` builds and run unit tests.
-
-
-### Release
-
-The above build process currently generates two binary files in
-`$GOPATH/bin` on the host.  To package them into a Docker image,
-please run
-
-```bash
-docker build -t sqlflow -f ./Dockerfile $GOPATH/bin
-```
-
-To publish the released Docker image to our official DockerHub
-```bash
-docker tag sqlflow sqlflow/sqlflow:latest
-docker push sqlflow/sqlflow:latest
-```
 
 ## Demo: Command line Prompt
 
