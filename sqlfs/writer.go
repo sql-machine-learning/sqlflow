@@ -17,17 +17,17 @@ type Writer struct {
 
 // Create creates a new table or truncates an existing table and
 // returns a writer.
-func Create(db *sql.DB, table string) (*Writer, error) {
+func Create(db *sql.DB, driver, table string) (*Writer, error) {
 	if e := dropTable(db, table); e != nil {
 		return nil, fmt.Errorf("create: %v", e)
 	}
-	return Append(db, table)
+	return Append(db, driver, table)
 }
 
 // Append returns a writer to append to an existing table.  It creates
 // the table if it doesn't exist.
-func Append(db *sql.DB, table string) (*Writer, error) {
-	if e := createTable(db, table); e != nil {
+func Append(db *sql.DB, driver, table string) (*Writer, error) {
+	if e := createTable(db, driver, table); e != nil {
 		return nil, fmt.Errorf("create: %v", e)
 	}
 	return &Writer{db, table, make([]byte, 0, kBufSize), nil}, nil

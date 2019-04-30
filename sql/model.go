@@ -19,7 +19,7 @@ type model struct {
 // SQLFlow working directory, which contains the TensorFlow working
 // directory and the trained TenosrFlow model.
 func (m *model) save(db *DB, table string) (e error) {
-	sqlf, e := sqlfs.Create(db.DB, table)
+	sqlf, e := sqlfs.Create(db.DB, db.driverName, table)
 	if e != nil {
 		return fmt.Errorf("Cannot create sqlfs file %s: %v", table, e)
 	}

@@ -8,12 +8,19 @@ import (
 // createTable creates a table, if it doesn't exist.  If the table
 // name includes the database name, e.g., "db.tbl", it creates the
 // database if necessary.
-func createTable(db *sql.DB, table string) error {
-	// FIXME(tony): HIVE and ODPS don't support AUTO_INCREMENT
-	// FIXME(tony): Hive and ODPS don't support BLOB, use BINARY instead
-	stmt := fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (id INT AUTO_INCREMENT, block BLOB, PRIMARY KEY (id))", table)
+func createTable(db *sql.DB, driver, table string) error {
+	// HIVE and ODPS don't support AUTO_INCREMENT
+	// Hive and ODPS don't support BLOB, use BINARY instead
+	var stmt string
+	if driver == "mysql" || driver == "sqlite3" {
+		stmt = fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (id INT AUTO_INCREMENT, block BLOB, PRIMARY KEY (id))", table)
+	} else if driver == "hive" {
+		stmt = fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (id INT, block BINARY)", table)
+	} else {
+		return fmt.Errorf("createTable not supported for %s", driver)
+	}
 	if _, e := db.Exec(stmt); e != nil {
-		return fmt.Errorf("createTable cannot create table %s: %v", table, e)
+		return fmt.Errorf("exec:[%s] failed: %v", stmt, e)
 	}
 
 	// NOTE: a double-check of hasTable is necessary. For example,
@@ -42,7 +49,7 @@ func dropTable(db *sql.DB, table string) error {
 
 // hasTable checks if a table exists.
 func hasTable(db *sql.DB, table string) (bool, error) {
-	if _, e := db.Exec(fmt.Sprintf("SELECT 1 FROM %s LIMIT 1;", table)); e != nil {
+	if _, e := db.Exec(fmt.Sprintf("SELECT 1 FROM %s LIMIT 1", table)); e != nil {
 		return false, fmt.Errorf("hasTable %s failed: %v", table, e)
 	}
 	return true, nil
