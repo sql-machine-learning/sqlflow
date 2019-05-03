@@ -20,6 +20,34 @@ None of the existing solution solves our pain point, instead we want it to be fu
 1. It should support sophisticated machine learning models, including TensorFlow for deep learning and [xgboost](https://github.com/dmlc/xgboost) for trees.
 1. We also want the flexibility to configure and run cutting-edge ML algorithms including specifying [feature crosses](https://www.tensorflow.org/api_docs/python/tf/feature_column/crossed_column), at least, no Python or R code embedded in the SQL statements, and fully integrated with hyperparameter estimation.
 
+## Quick Overview
+
+Here are examples for training a Tensorflow [DNNClassifer](https://www.tensorflow.org/api_docs/python/tf/estimator/DNNClassifier) model using sample data Iris.train, and running prediction using the trained model. You can see how cool it is to write some elegant ML code using SQL:
+
+```sql
+sqlflow> SELECT *
+FROM iris.train
+TRAIN DNNClassifier
+WITH n_classes = 3, hidden_units = [10, 20]
+COLUMN sepal_length, sepal_width, petal_length, petal_width
+LABEL class
+INTO sqlflow_models.my_dnn_model;
+
+...
+Training set accuracy: 0.96721
+Done training
+```
+
+```sql
+sqlflow> SELECT *
+FROM iris.test
+PREDICT iris.predict.class
+USING sqlflow_models.my_dnn_model;
+
+...
+Done predicting. Predict table : iris.predict
+```
+
 ## How to use SQLFlow
 
 - [Installation](doc/installation.md)
