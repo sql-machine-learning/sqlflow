@@ -9,7 +9,9 @@ RUN apt-get install -y python3-pip
 RUN ln -s /usr/bin/python3 /usr/bin/python
 RUN chmod +x /usr/bin/python
 
-RUN python -m pip install --upgrade pip
+# Upgrade pip using the bootstrapping method
+# https://github.com/pypa/pip/issues/5255#issuecomment-381702613
+RUN curl https://bootstrap.pypa.io/get-pip.py | python
 RUN python -m pip install grpcio-tools
 RUN python -m pip install tensorflow==2.0.0-alpha0
 RUN python -m pip install mysql-connector-python

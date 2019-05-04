@@ -1,13 +1,15 @@
 FROM ubuntu:16.04
 
 RUN apt-get update
-RUN apt-get install -y python3-pip
+RUN apt-get install -y wget curl python3-pip
 
 # Make python3 as default Python interpreter
 RUN ln -s /usr/bin/python3 /usr/bin/python
 RUN chmod +x /usr/bin/python
 
-RUN python -m pip install --upgrade pip
+# Upgrade pip using the bootstrapping method
+# https://github.com/pypa/pip/issues/5255#issuecomment-381702613
+RUN curl https://bootstrap.pypa.io/get-pip.py | python
 RUN python -m pip install tensorflow==2.0.0-alpha0 mysql-connector-python pyhive jupyter sqlflow
 # Fix jupyter server "connecting to kernel" problem
 # https://github.com/jupyter/notebook/issues/2664#issuecomment-468954423
