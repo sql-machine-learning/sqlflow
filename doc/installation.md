@@ -40,4 +40,4 @@ After data is popularized in MySQL, let's test the installation from running a q
    select * from iris.train limit 5;
    ```
 
-1. Now you've successfully tested SQLFlow installation and written some SQL from Jupyter Notebook. Just as shown in the Quick Overview, you can continue your SQLFlow journey [here](doc/demo.md) in the command line setting. Also feel free to check out more [SQLFlow exmaples](/example/jupyter/example.ipynb) if you are new to Jupyter Notebook.
+1. Now you've successfully tested SQLFlow installation and written some SQL from Jupyter Notebook. Just as shown in the Quick Overview, you can continue your [SQLFlow journey](demo.md) in the command line setting. Also feel free to check out more [SQLFlow exmaples](/example/jupyter/example.ipynb) if you are new to Jupyter Notebook.
