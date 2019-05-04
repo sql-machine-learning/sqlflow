@@ -5,11 +5,15 @@ RUN apt-get install -y git
 RUN apt-get install -y wget curl
 RUN apt-get install -y python3-pip
 
-RUN pip3 install --upgrade pip
-RUN pip3 install grpcio-tools
-RUN pip3 install tensorflow==2.0.0-alpha0
-RUN pip3 install mysql-connector-python
-RUN pip3 install pyhive
+# Make python3 as default Python interpreter
+RUN ln -s /usr/bin/python3 /usr/bin/python
+RUN chmod +x /usr/bin/python
+
+RUN python -m pip install --upgrade pip
+RUN python -m pip install grpcio-tools
+RUN python -m pip install tensorflow==2.0.0-alpha0
+RUN python -m pip install mysql-connector-python
+RUN python -m pip install pyhive
 
 RUN wget --quiet https://dl.google.com/go/go1.11.5.linux-amd64.tar.gz
 RUN tar -C /usr/local -xzf go1.11.5.linux-amd64.tar.gz
@@ -33,10 +37,6 @@ RUN ["/bin/bash", "-c", "debconf-set-selections <<< 'mysql-server mysql-server/r
 RUN ["/bin/bash", "-c", "debconf-set-selections <<< 'mysql-server mysql-server/root_password_again password root'"]
 RUN apt-get -y install mysql-server
 VOLUME /var/lib/mysql
-
-# Make python3 callable through python
-RUN ln -s /usr/bin/python3 /usr/bin/python
-RUN chmod +x /usr/bin/python
 
 RUN echo "#!/bin/bash" > /build.sh
 RUN echo "go generate -v ./..." >> /build.sh
