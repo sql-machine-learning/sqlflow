@@ -33,11 +33,11 @@ After data is popularized in MySQL, let's test the installation from running a q
    If you are running MySQL on remote, please be aware that MySQL only allows connections from localhost
    by default. Fix can be found [here](https://stackoverflow.com/questions/14779104/how-to-allow-remote-connection-to-mysql).
 
-1. Open a web browser, go to `localhost:8888` and paste the token output from Notebook command above. In a Notebook cell, you should be able to test a select statement to fetch 5 records from train table in Iris database. 
+1. Open a web browser, go to `localhost:8888` and paste the token output from Notebook command above. In a Notebook cell, you should be able to test a SELECT statement to fetch 5 records from train table in Iris database. 
 
    ```
    %%sqlflow
    select * from iris.train limit 5;
    ```
 
-1. Feel free to explore more examples at [example.ipynb](/example/jupyter/example.ipynb) if you are new to Jupyter Notebook.
+1. Now you've successfully tested SQLFlow installation and written some SQL from Jupyter Notebook. Just as shown in the Quick Overview, you can continue your SQLFlow journey [here](doc/demo.md) in the command line setting. Also feel free to check out more [SQLFlow exmaples](/example/jupyter/example.ipynb) if you are new to Jupyter Notebook.
