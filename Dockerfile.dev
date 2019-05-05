@@ -48,6 +48,10 @@ RUN ["/bin/bash", "-c", "debconf-set-selections <<< 'mysql-server mysql-server/r
 RUN apt-get -y install mysql-server
 VOLUME /var/lib/mysql
 
+COPY scripts/entrypoint.sh /entrypoint.sh
+RUN chmod a+x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
+
 RUN echo "#!/bin/bash" > /build.sh
 RUN echo "go generate -v ./..." >> /build.sh
 RUN echo "go install -v ./..." >> /build.sh
