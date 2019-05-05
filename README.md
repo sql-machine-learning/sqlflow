@@ -2,6 +2,7 @@
 
 [![Build Status](https://travis-ci.org/sql-machine-learning/sqlflow.svg?branch=develop)](https://travis-ci.org/sql-machine-learning/sqlflow) [![GoDoc](https://godoc.org/github.com/sql-machine-learning/sqlflow?status.svg)](https://godoc.org/github.com/sql-machine-learning/sqlflow) [![Release](https://img.shields.io/github/release/sql-machine-learning/sqlflow.svg)](https://github.com/sql-machine-learning/sqlflow/releases) [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](LICENSE)
 
+
 ## What is SQLFlow?
 
 SQLFlow is a bridge that connects a SQL engine, e.g. MySQL, Hive, SparkSQL or SQL Server, with TensorFlow and other machine learning toolkits.  SQLFlow extends the SQL language to enable model training, prediction and inference.
