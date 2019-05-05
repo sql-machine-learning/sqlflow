@@ -29,13 +29,16 @@ USING sqlflow_models.my_boosted_tree_model;
 )
 
 func goodStream(stream chan interface{}) bool {
+	fmt.Println("goodStream: begin")
 	for rsp := range stream {
 		fmt.Printf("%v", rsp)
 		switch rsp.(type) {
 		case error:
+			fmt.Println("goodStream: return false")
 			return false
 		}
 	}
+	fmt.Println("goodStream: return true")
 	return true
 }
 
