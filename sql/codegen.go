@@ -105,6 +105,8 @@ func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
 }
 
 func genTF(w io.Writer, pr *extendedSelect, fts fieldTypes, db *DB) error {
+	fmt.Println("genTF: begin")
+	defer fmt.Println("genTF: end")
 	r, e := newFiller(pr, fts, db)
 	if e != nil {
 		return e

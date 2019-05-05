@@ -176,7 +176,9 @@ func runExtendedSQL(slct string, db *DB, pr *extendedSelect) *PipeReader {
 		err := func() error {
 			startAt := time.Now()
 			log.Infof("Starting runExtendedSQL:%s", slct)
-			defer log.Infof("runExtendedSQL finished, elapsed:%v", time.Since(startAt))
+			defer func() {
+				log.Infof("runExtendedSQL finished, elapsed:%v", time.Since(startAt))
+			}()
 
 			// NOTE: the temporary directory must be in a host directory
 			// which can be mounted to Docker containers.  If I don't
@@ -250,6 +252,8 @@ func (cw *logChanWriter) Write(p []byte) (n int, err error) {
 }
 
 func train(tr *extendedSelect, slct string, db *DB, cwd string, wr *PipeWriter) error {
+	fmt.Println("train: begin")
+	defer fmt.Println("train: end")
 	fts, e := verify(tr, db)
 	if e != nil {
 		return e
