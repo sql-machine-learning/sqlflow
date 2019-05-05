@@ -34,6 +34,9 @@ func hasDockerImage(image string) bool {
 }
 
 func tensorflowCmd(cwd string) (cmd *exec.Cmd) {
+	fmt.Println("hasPython()", hasPython())
+	fmt.Println("hasTensorFlow()", hasTensorFlow())
+	fmt.Println("hasMySQLConnector()", hasMySQLConnector())
 	if hasPython() && hasTensorFlow() && hasMySQLConnector() {
 		log.Printf("tensorflowCmd: run locally")
 		cmd = exec.Command("python")
