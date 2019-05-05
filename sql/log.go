@@ -1,8 +1,11 @@
 package sql
 
 import (
-	"github.com/sirupsen/logrus"
+	"fmt"
 	"os"
+	"path"
+
+	"github.com/sirupsen/logrus"
 )
 
 var log *logrus.Entry
@@ -29,8 +32,13 @@ func init() {
 		log.Panicf("create log directory failed: %v", e)
 	}
 
+	f, e := os.Create(path.Join(logDir, fmt.Sprintf("sqlflow-%d.log", os.Getpid())))
+	if e != nil {
+		log.Panicf("open log file failed: %v", e)
+	}
+
 	lg := logrus.New()
-	lg.SetOutput(os.Stdout)
+	lg.SetOutput(f)
 	lg.SetLevel(ll)
 	log = lg.WithFields(logrus.Fields{"package": "sql"})
 }

@@ -1,7 +1,6 @@
 package sql
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -29,16 +28,12 @@ USING sqlflow_models.my_boosted_tree_model;
 )
 
 func goodStream(stream chan interface{}) bool {
-	fmt.Println("goodStream: begin")
 	for rsp := range stream {
-		fmt.Printf("%v", rsp)
 		switch rsp.(type) {
 		case error:
-			fmt.Println("goodStream: return false")
 			return false
 		}
 	}
-	fmt.Println("goodStream: return true")
 	return true
 }
 
@@ -47,20 +42,13 @@ func TestExecutorTrainAndPredictDNN(t *testing.T) {
 	a.NotPanics(func() {
 		pr, e := newParser().Parse(testTrainSelectIris)
 		a.NoError(e)
-		fmt.Println("test ci 1 ----------------")
 		stream := runExtendedSQL(testTrainSelectIris, testDB, pr)
-		fmt.Println("test ci 2 ----------------")
 		a.True(goodStream(stream.ReadAll()))
-		fmt.Println("test ci 3 ----------------")
 
 		pr, e = newParser().Parse(testPredictSelectIris)
-		fmt.Println("test ci 4 ----------------")
 		a.NoError(e)
-		fmt.Println("test ci 5 ----------------")
 		stream = runExtendedSQL(testPredictSelectIris, testDB, pr)
-		fmt.Println("test ci 6 ----------------")
 		a.True(goodStream(stream.ReadAll()))
-		fmt.Println("test ci 7 ----------------")
 	})
 }
 

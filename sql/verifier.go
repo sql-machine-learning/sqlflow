@@ -19,8 +19,6 @@ type fieldTypes map[string]map[string]string
 //
 // It returns a fieldTypes describing types of fields in SELECT.
 func verify(slct *extendedSelect, db *DB) (ft fieldTypes, e error) {
-	fmt.Println("verify: begin")
-	defer fmt.Println("verify: end")
 	if e := dryRunSelect(slct, db); e != nil {
 		return nil, e
 	}
