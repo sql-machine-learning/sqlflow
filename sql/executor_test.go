@@ -1,6 +1,7 @@
 package sql
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -29,8 +30,11 @@ USING sqlflow_models.my_boosted_tree_model;
 
 func goodStream(stream chan interface{}) bool {
 	for rsp := range stream {
-		switch rsp.(type) {
+		switch s := rsp.(type) {
+		case string:
+			fmt.Printf("%v", s)
 		case error:
+			fmt.Printf("%v", s)
 			return false
 		}
 	}
