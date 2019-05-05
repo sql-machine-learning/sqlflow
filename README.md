@@ -62,7 +62,7 @@ Done predicting. Predict table : iris.predict
 
 ## Feedback
 
-Your feedback is our motivation to move on. Please let us know your questions, concerns, and issues by filing Github Issues.
+Your feedback is our motivation to move on. Please let us know your questions, concerns, and issues by [filing Github Issues](https://github.com/sql-machine-learning/sqlflow/issues).
 
 ## License
 
