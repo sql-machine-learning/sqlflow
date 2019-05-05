@@ -19,7 +19,7 @@ func TestRun(t *testing.T) {
 		"select * from iris.train limit 2;",
 	}
 
-	go main()
+	go start("mysql://root:root@tcp/?maxAllowedPacket=0")
 	// FIXME(weiguo): We may need to expand sleep time
 	time.Sleep(2 * time.Second)
 

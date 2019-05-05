@@ -8,6 +8,14 @@ branches:
 service:
   - docker
 
+# Update to newer version of Docker to allow
+# Dockerfile being outside of the context directory
+# https://github.com/docker/compose/issues/4926#issuecomment-370501452
+addons:
+  apt:
+    packages:
+      - docker-ce
+
 install:
   # Note(tony): TravisCI's native `go get ${gobuild_args} ./...` failed with
   # `/usr/bin/ld: final link failed: Bad value`, the cause is the system linker
@@ -19,15 +27,11 @@ install:
 script:
   - ls -lah
   - docker build -t sqlflow:dev -f Dockerfile.dev .
-  - docker run --rm -v $GOPATH:/go -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:dev bash -c "service mysql start && go generate ./... && go get -v -t ./... && go install ./... && go test -v ./..."
+  - docker run --rm -v $GOPATH:/go -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:dev bash scripts/test.sh
 
 deploy:
   skip_cleanup: true
   provider: script
-  script:
-    - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-    - docker build -t sqlflow:nightly -f ./Dockerfile $GOPATH/bin
-    - docker tag sqlflow:nightly sqlflow/sqlflow:nightly
-    - docker push sqlflow/sqlflow:nightly
+  script: bash scripts/deploy.sh
   on:
     branch: develop

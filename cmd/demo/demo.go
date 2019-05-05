@@ -8,30 +8,28 @@ import (
 	"os"
 	"strings"
 
-	"github.com/go-sql-driver/mysql"
 	"github.com/olekukonko/tablewriter"
 	"github.com/sql-machine-learning/sqlflow/sql"
 )
 
 const tablePageSize = 1000
 
-// readStmt reads a SQL statement from the scanner.  A statement could
-// have multiple lines and ends at a semicolon at theend of the last
-// line.
+// readStmt reads a SQL statement from the scanner.  A statement could have
+// multiple lines and ends at a semicolon at theend of the last line.
 func readStmt() string {
-	scn := bufio.NewScanner(os.Stdin)
-
 	stmt := ""
+	scn := bufio.NewScanner(os.Stdin)
 	for scn.Scan() {
-		stmt += scn.Text() + "\n"
+		stmt += scn.Text()
 		if strings.HasSuffix(strings.TrimSpace(scn.Text()), ";") {
 			break
 		}
+		stmt += "\n"
 	}
-	if err := scn.Err(); err != nil {
+	if scn.Err() != nil {
 		return ""
 	}
-	return stmt
+	return strings.TrimSpace(stmt)
 }
 
 func header(head map[string]interface{}) ([]string, error) {
@@ -71,21 +69,9 @@ func render(rsp interface{}, table *tablewriter.Table) bool {
 }
 
 func main() {
-	user := flag.String("db_user", "", "database user name")
-	pswd := flag.String("db_password", "", "database user password")
-	addr := flag.String("db_address", "", "database address, such as: localhost:3306")
+	ds := flag.String("datasource", "", "database connect string")
 	flag.Parse()
-
-	cfg := &mysql.Config{
-		User:                 *user,
-		Passwd:               *pswd,
-		Net:                  "tcp",
-		Addr:                 *addr,
-		AllowNativePasswords: true,
-	}
-	log.Println("Connecting to db with:")
-	log.Printf("%+#v\n", *cfg)
-	db, err := sql.Open("mysql", cfg.FormatDSN())
+	db, err := sql.Open(*ds)
 	if err != nil {
 		log.Fatalf("failed to open database: %v", err)
 	}
@@ -97,7 +83,7 @@ func main() {
 	for {
 		fmt.Print("sqlflow> ")
 		slct := readStmt()
-		fmt.Println("-----------------------------")
+		fmt.Println("")
 
 		isTable, tableRendered := false, false
 		table := tablewriter.NewWriter(os.Stdout)
@@ -116,5 +102,6 @@ func main() {
 		if isTable && (table.NumLines() > 0 || !tableRendered) {
 			table.Render()
 		}
+		fmt.Println("")
 	}
 }

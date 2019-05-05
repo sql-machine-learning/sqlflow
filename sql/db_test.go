@@ -20,7 +20,7 @@ func TestMain(m *testing.M) {
 	var e error
 	switch dbms {
 	case "sqlite3":
-		testDB, e = Open("sqlite3", ":memory:")
+		testDB, e = Open("sqlite3://:memory:")
 		assertNoErr(e)
 		// attach an In-Memory Database in SQLite
 		for _, name := range []string{"iris", "churn"} {
@@ -36,7 +36,7 @@ func TestMain(m *testing.M) {
 			Addr:                 getEnv("SQLFLOW_TEST_DB_MYSQL_ADDR", "127.0.0.1:3306"),
 			AllowNativePasswords: true,
 		}
-		testDB, e = Open("mysql", cfg.FormatDSN())
+		testDB, e = Open(fmt.Sprintf("mysql://%s", cfg.FormatDSN()))
 		assertNoErr(e)
 		_, e = testDB.Exec("CREATE DATABASE IF NOT EXISTS iris;")
 		assertNoErr(e)

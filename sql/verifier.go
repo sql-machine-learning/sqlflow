@@ -61,7 +61,8 @@ func (ft fieldTypes) get(ident string) (string, bool) {
 // identifier: t.f=>(t,f), db.t.f=>(db.t,f), f=>("",f).
 func decomp(ident string) (tbl string, fld string) {
 	s := strings.Split(ident, ".")
-	return strings.Join(s[:len(s)-1], "."), s[len(s)-1]
+	n := len(s)
+	return strings.Join(s[:n-1], "."), s[n-1]
 }
 
 // Retrieve the type of fields mentioned in SELECT.
@@ -112,7 +113,6 @@ func describeTables(slct *extendedSelect, db *DB) (ft fieldTypes, e error) {
 				}
 			}
 		}
-
 	}
 	return ft, nil
 }
