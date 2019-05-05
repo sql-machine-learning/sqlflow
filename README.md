@@ -66,4 +66,4 @@ Your feedback is our motivation to move on. Please let us know your questions, c
 
 ## License
 
-[Apache License 2.0](https://github.com/sql-machine-learning/sqlflow/LICENSE)
+[Apache License 2.0](https://github.com/sql-machine-learning/sqlflow/blob/develop/LICENSE)
