@@ -1,7 +1,7 @@
 FROM ubuntu:16.04
 
 RUN apt-get update
-RUN apt-get install -y wget curl bzip2 build-essential
+RUN apt-get install -y git wget curl bzip2 build-essential
 
 # Miniconda - Python 3.6, 64-bit, x86, latest
 ARG CONDA_OS=Linux
