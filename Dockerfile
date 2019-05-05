@@ -39,3 +39,14 @@ ADD demo /usr/bin/demo
 ADD sqlflowserver /usr/bin/sqlflowserver
 
 CMD ["/usr/bin/demo"]
+
+RUN echo "#!/bin/bash" > /entrypoint.sh
+RUN echo "" >> /entrypoint.sh
+RUN echo "# Enable Python virtual environment for non-interactive bash" >> entrypoint.sh
+RUN echo ". /miniconda/etc/profile.d/conda.sh" >> /entrypoint.sh
+RUN echo "source activate sqlflow-dev" >> /entrypoint.sh
+RUN echo "" >> /entrypoint.sh
+RUN echo "exec $@" >> /entrypoint.sh
+
+RUN chmod a+x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]

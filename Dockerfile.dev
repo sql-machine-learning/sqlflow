@@ -48,13 +48,20 @@ RUN ["/bin/bash", "-c", "debconf-set-selections <<< 'mysql-server mysql-server/r
 RUN apt-get -y install mysql-server
 VOLUME /var/lib/mysql
 
-COPY scripts/entrypoint.sh /entrypoint.sh
-RUN chmod a+x /entrypoint.sh
-ENTRYPOINT ["/entrypoint.sh"]
-
 RUN echo "#!/bin/bash" > /build.sh
 RUN echo "go generate -v ./..." >> /build.sh
 RUN echo "go install -v ./..." >> /build.sh
 RUN chmod +x /build.sh
 
 CMD ["/build.sh"]
+
+RUN echo "#!/bin/bash" > /entrypoint.sh
+RUN echo "" >> /entrypoint.sh
+RUN echo "# Enable Python virtual environment for non-interactive bash" >> entrypoint.sh
+RUN echo ". /miniconda/etc/profile.d/conda.sh" >> /entrypoint.sh
+RUN echo "source activate sqlflow-dev" >> /entrypoint.sh
+RUN echo "" >> /entrypoint.sh
+RUN echo "exec $@" >> /entrypoint.sh
+
+RUN chmod a+x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
