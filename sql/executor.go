@@ -263,6 +263,7 @@ func train(tr *extendedSelect, slct string, db *DB, cwd string, wr *PipeWriter) 
 	if e := genTF(&program, tr, fts, db); e != nil {
 		return e
 	}
+	fmt.Println(program.String())
 
 	cw := &logChanWriter{wr: wr}
 	cmd := tensorflowCmd(cwd)
