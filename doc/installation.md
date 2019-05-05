@@ -33,7 +33,7 @@ After data is popularized in MySQL, let's test the installation from running a q
    If you are running MySQL on remote, please be aware that MySQL only allows connections from localhost
    by default. Fix can be found [here](https://stackoverflow.com/questions/14779104/how-to-allow-remote-connection-to-mysql).
 
-1. Open a web browser, go to `localhost:8888` and paste the token output from Notebook command above. In a Notebook cell, you should be able to test a SELECT statement to fetch 5 records from train table in Iris database. 
+1. Open a web browser, go to `localhost:8888` and paste the token output from Notebook command above.  At top right-hand corner, click the 'New' selector button, click the 'Python 3' open a new Notebook cell.  In a Notebook cell, you should be able to test a SELECT statement to fetch 5 records from train table in Iris database. 
 
    ```
    %%sqlflow
