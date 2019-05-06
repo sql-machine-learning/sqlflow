@@ -26,9 +26,9 @@ func createTable(db *sql.DB, driver, table string) error {
 	// NOTE: a double-check of hasTable is necessary. For example,
 	// MySQL doesn't allow '-' in table names; however, if there
 	// is, the db.Exec wouldn't return any error.
-	has, e1 := hasTable(db, table)
-	if e1 != nil {
-		return fmt.Errorf("createTable cannot verify the creation: %v", e1)
+	has, e := hasTable(db, table)
+	if e != nil {
+		return fmt.Errorf("createTable cannot verify the creation: %v", e)
 	}
 	if !has {
 		return fmt.Errorf("createTable verified table not created")
