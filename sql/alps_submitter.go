@@ -367,7 +367,7 @@ func generateFeatureColumnCode(fcs []interface{}) (string, error) {
 	return fmt.Sprintf("[%s]", strings.Join(codes, ",")), nil
 }
 
-func generateEstimatorCreator(estimator string, attrs []*attribute) (string, error) {
+func generateEstimatorCreator(estimator string, attrs []*attribute, args []string) (string, error) {
 	cl := make([]string, len(attrs))
 	for idx, a := range attrs {
 		code, err := a.GenerateCode()
@@ -376,10 +376,20 @@ func generateEstimatorCreator(estimator string, attrs []*attribute) (string, err
 		}
 		cl[idx] = code
 	}
+	if args != nil {
+		for _, arg := range args {
+			cl = append(cl, arg)
+		}
+	}
 	return fmt.Sprintf("tf.estimator.%s(%s)", estimator, strings.Join(cl, ",")), nil
 }
 
 func newALPSTrainFiller(pr *extendedSelect) (*alpsFiller, error) {
+	scratchDir, err := ioutil.TempDir("/tmp", "alps_scratch_dir_")
+	if err != nil {
+		return nil, err
+	}
+
 	fcList, fsMap, err := resolveTrainColumns(&pr.columns)
 	if err != nil {
 		return nil, err
@@ -420,7 +430,9 @@ func newALPSTrainFiller(pr *extendedSelect) (*alpsFiller, error) {
 
 	estimatorAttrs := filter(attrs, "estimator")
 
-	estimatorCode, err := generateEstimatorCreator(pr.estimator, estimatorAttrs)
+	args := make([]string, 0)
+	args = append(args, fmt.Sprintf("model_dir=\"%s\"", scratchDir))
+	estimatorCode, err := generateEstimatorCreator(pr.estimator, estimatorAttrs, args)
 	if err != nil {
 		return nil, err
 	}
@@ -441,11 +453,6 @@ func newALPSTrainFiller(pr *extendedSelect) (*alpsFiller, error) {
 		DType:       "int",
 		Delimiter:   ","}
 
-	dir, err := ioutil.TempDir("/tmp", "alps_scratch_dir")
-	if err != nil {
-		return nil, err
-	}
-
 	return &alpsFiller{
 		TableName:            tableName,
 		Fields:               fmt.Sprintf("[%s]", strings.Join(fields, ",")),
@@ -456,7 +463,7 @@ func newALPSTrainFiller(pr *extendedSelect) (*alpsFiller, error) {
 		DatasetConf:          datasetMap,
 		FeatureColumnCode:    fcCode,
 		EstimatorCreatorCode: estimatorCode,
-		ScratchDir:           dir}, nil
+		ScratchDir:           scratchDir}, nil
 }
 
 func genALPSTrain(w io.Writer, pr *extendedSelect) error {
