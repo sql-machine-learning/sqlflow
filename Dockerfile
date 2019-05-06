@@ -40,13 +40,6 @@ ADD sqlflowserver /usr/bin/sqlflowserver
 
 CMD ["/usr/bin/demo"]
 
-RUN echo "#!/bin/bash" > /entrypoint.sh
-RUN echo "" >> /entrypoint.sh
-RUN echo "# Enable Python virtual environment for non-interactive bash" >> entrypoint.sh
-RUN echo ". /miniconda/etc/profile.d/conda.sh" >> /entrypoint.sh
-RUN echo "source activate sqlflow-dev" >> /entrypoint.sh
-RUN echo "" >> /entrypoint.sh
-RUN echo "exec $@" >> /entrypoint.sh
+# Make sqlflow-dev pyenv the default Python environment
+ENV PATH=/miniconda/envs/sqlflow-dev/bin:$PATH
 
-RUN chmod a+x /entrypoint.sh
-ENTRYPOINT ["/entrypoint.sh"]
