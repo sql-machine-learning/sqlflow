@@ -193,7 +193,7 @@ func runExtendedSQL(slct string, db *DB, pr *extendedSelect) *PipeReader {
 
 			// FIXME(tony): temporary branch to alps
 			if os.Getenv("SQLFLOW_submitter") == "alps" {
-				return submitALPS(wr, pr, db)
+				return submitALPS(wr, pr, db, cwd)
 			}
 
 			if pr.train {
