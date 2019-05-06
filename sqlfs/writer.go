@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-var kBufSize = 4 * 1024
+const kBufSize = 4 * 1024
 
 // Writer implements io.WriteCloser.
 type Writer struct {
@@ -21,12 +21,6 @@ func Create(db *sql.DB, driver, table string) (*Writer, error) {
 	if e := dropTable(db, table); e != nil {
 		return nil, fmt.Errorf("create: %v", e)
 	}
-	return Append(db, driver, table)
-}
-
-// Append returns a writer to append to an existing table.  It creates
-// the table if it doesn't exist.
-func Append(db *sql.DB, driver, table string) (*Writer, error) {
 	if e := createTable(db, driver, table); e != nil {
 		return nil, fmt.Errorf("create: %v", e)
 	}
@@ -35,10 +29,10 @@ func Append(db *sql.DB, driver, table string) (*Writer, error) {
 
 func (w *Writer) Write(p []byte) (n int, e error) {
 	n = 0
-	for len(p) > 0 {
+	for np := len(p); np > 0; np = len(p) {
 		fill := kBufSize - len(w.buf)
-		if fill > len(p) {
-			fill = len(p)
+		if fill > np {
+			fill = np
 		}
 		w.buf = append(w.buf, p[:fill]...)
 		p = p[fill:]
