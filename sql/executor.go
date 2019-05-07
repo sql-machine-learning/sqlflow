@@ -55,11 +55,9 @@ func runQuery(slct string, db *DB) *PipeReader {
 		defer wr.Close()
 
 		err := func() error {
-			startAt := time.Now()
-			log.Infof("Starting runStanrardSQL:%s", slct)
-			defer func() {
-				log.Infof("runQuery finished, elapsed: %v", time.Since(startAt))
-			}()
+			defer func(startAt time.Time) {
+				log.Debugf("runQuery finished, elapsed:%v", time.Since(startAt))
+			}(time.Now())
 
 			rows, err := db.Query(slct)
 			if err != nil {
@@ -135,11 +133,9 @@ func runExec(slct string, db *DB) *PipeReader {
 		defer wr.Close()
 
 		err := func() error {
-			startAt := time.Now()
-			log.Infof("Starting runExec:%s", slct)
-			defer func() {
-				log.Infof("runExec finished, elapsed: %v", time.Since(startAt))
-			}()
+			defer func(startAt time.Time) {
+				log.Debugf("runEexc finished, elapsed:%v", time.Since(startAt))
+			}(time.Now())
 
 			res, e := db.Exec(slct)
 			if e != nil {
@@ -172,11 +168,9 @@ func runExtendedSQL(slct string, db *DB, pr *extendedSelect) *PipeReader {
 		defer wr.Close()
 
 		err := func() error {
-			startAt := time.Now()
-			log.Infof("Starting runExtendedSQL:%s", slct)
-			defer func() {
-				log.Infof("runExtendedSQL finished, elapsed:%v", time.Since(startAt))
-			}()
+			defer func(startAt time.Time) {
+				log.Debugf("runExtendedSQL finished, elapsed:%v", time.Since(startAt))
+			}(time.Now())
 
 			// NOTE: the temporary directory must be in a host directory
 			// which can be mounted to Docker containers.  If I don't
