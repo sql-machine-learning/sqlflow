@@ -56,7 +56,7 @@ func runQuery(slct string, db *DB) *PipeReader {
 
 		err := func() error {
 			defer func(startAt time.Time) {
-				log.Debugf("runQuery finished, elapsed:%v", time.Since(startAt))
+				log.Debugf("runQuery %v finished, elapsed:%v", slct, time.Since(startAt))
 			}(time.Now())
 
 			rows, err := db.Query(slct)
@@ -134,7 +134,7 @@ func runExec(slct string, db *DB) *PipeReader {
 
 		err := func() error {
 			defer func(startAt time.Time) {
-				log.Debugf("runEexc finished, elapsed:%v", time.Since(startAt))
+				log.Debugf("runEexc %v finished, elapsed:%v", slct, time.Since(startAt))
 			}(time.Now())
 
 			res, e := db.Exec(slct)
@@ -169,7 +169,7 @@ func runExtendedSQL(slct string, db *DB, pr *extendedSelect) *PipeReader {
 
 		err := func() error {
 			defer func(startAt time.Time) {
-				log.Debugf("runExtendedSQL finished, elapsed:%v", time.Since(startAt))
+				log.Debugf("runExtendedSQL %v finished, elapsed:%v", slct, time.Since(startAt))
 			}(time.Now())
 
 			// NOTE: the temporary directory must be in a host directory
