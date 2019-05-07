@@ -55,8 +55,9 @@ func runQuery(slct string, db *DB) *PipeReader {
 		defer wr.Close()
 
 		err := func() error {
-			startAt := time.Now()
-			log.Infof("Starting runStanrardSQL:%s", slct)
+			defer func(startAt time.Time) {
+				log.Debugf("runQuery %v finished, elapsed:%v", slct, time.Since(startAt))
+			}(time.Now())
 
 			rows, err := db.Query(slct)
 			if err != nil {
@@ -111,7 +112,6 @@ func runQuery(slct string, db *DB) *PipeReader {
 					return e
 				}
 			}
-			log.Infof("runQuery finished, elapsed: %v", time.Since(startAt))
 			return nil
 		}()
 
@@ -133,8 +133,9 @@ func runExec(slct string, db *DB) *PipeReader {
 		defer wr.Close()
 
 		err := func() error {
-			startAt := time.Now()
-			log.Infof("Starting runStanrardSQL1:%s", slct)
+			defer func(startAt time.Time) {
+				log.Debugf("runEexc %v finished, elapsed:%v", slct, time.Since(startAt))
+			}(time.Now())
 
 			res, e := db.Exec(slct)
 			if e != nil {
@@ -144,17 +145,10 @@ func runExec(slct string, db *DB) *PipeReader {
 			if e != nil {
 				return fmt.Errorf("failed to get affected row number: %v", e)
 			}
-			var msg string
 			if affected > 1 {
-				msg = fmt.Sprintf("%d rows affected", affected)
-			} else {
-				msg = fmt.Sprintf("%d row affected", affected)
+				return wr.Write(fmt.Sprintf("%d rows affected", affected))
 			}
-			if e := wr.Write(msg); e != nil {
-				return e
-			}
-			log.Infof("runExec finished, elapsed: %v", time.Since(startAt))
-			return nil
+			return wr.Write(fmt.Sprintf("%d row affected", affected))
 		}()
 		if err != nil {
 			log.Errorf("runExec error:%v", err)
@@ -174,9 +168,9 @@ func runExtendedSQL(slct string, db *DB, pr *extendedSelect) *PipeReader {
 		defer wr.Close()
 
 		err := func() error {
-			startAt := time.Now()
-			log.Infof("Starting runExtendedSQL:%s", slct)
-			defer log.Infof("runExtendedSQL finished, elapsed:%v", time.Since(startAt))
+			defer func(startAt time.Time) {
+				log.Debugf("runExtendedSQL %v finished, elapsed:%v", slct, time.Since(startAt))
+			}(time.Now())
 
 			// NOTE: the temporary directory must be in a host directory
 			// which can be mounted to Docker containers.  If I don't
