@@ -34,6 +34,7 @@ ENV IPYTHON_STARTUP /root/.ipython/profile_default/startup/
 RUN mkdir -p $IPYTHON_STARTUP
 RUN echo 'get_ipython().magic(u"%reload_ext sqlflow.magic")' >> $IPYTHON_STARTUP/00-first.py
 RUN echo 'get_ipython().magic(u"%autoreload 2")' >> $IPYTHON_STARTUP/00-first.py
+RUN curl https://raw.githubusercontent.com/sql-machine-learning/sqlflow/develop/example/jupyter/example.ipynb --output /example.ipynb
 
 ADD demo /usr/bin/demo
 ADD sqlflowserver /usr/bin/sqlflowserver
