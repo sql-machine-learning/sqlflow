@@ -60,6 +60,10 @@ Done predicting. Predict table : iris.predict
 - [The walkthrough of the source code](doc/walkthrough.md)
 - [The choice of parser generator](doc/sql_parser.md)
 
+## Roadmap
+
+Various data sources and ML frameworks support is a on going process. Please refer to our [roadmap](https://github.com/sql-machine-learning/sqlflow/issues/327) for specific timelines. Please let us know your interests so that we can prioritize our work.
+
 ## Feedback
 
 Your feedback is our motivation to move on. Please let us know your questions, concerns, and issues by [filing Github Issues](https://github.com/sql-machine-learning/sqlflow/issues).
