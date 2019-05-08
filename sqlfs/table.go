@@ -13,9 +13,9 @@ func createTable(db *sql.DB, driver, table string) error {
 	// Hive and ODPS don't support BLOB, use BINARY instead
 	var stmt string
 	if driver == "mysql" || driver == "sqlite3" {
-		stmt = fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (id INT AUTO_INCREMENT, block BLOB, PRIMARY KEY (id))", table)
+		stmt = fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (id INT, block TEXT, PRIMARY KEY (id))", table)
 	} else if driver == "hive" {
-		stmt = fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (id INT, block BINARY)", table)
+		stmt = fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (id INT, block STRING)", table)
 	} else {
 		return fmt.Errorf("createTable not supported for %s", driver)
 	}

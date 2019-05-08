@@ -152,7 +152,7 @@ func verifyColumnNameAndType(trainParsed, predParsed *extendedSelect, db *DB) er
 			return fmt.Errorf("predFields doesn't contain column %s", c.val)
 		}
 		tt, _ := trainFields.get(c.val)
-		if it.Name != tt.Name || it.Type != tt.Type {
+		if it.Type != tt.Type {
 			return fmt.Errorf("field %s type dismatch %v(pred) vs %v(train)", c.val, it, tt)
 		}
 	}

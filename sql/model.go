@@ -21,7 +21,7 @@ type model struct {
 func (m *model) save(db *DB, table string) (e error) {
 	sqlf, e := sqlfs.Create(db.DB, db.driverName, table)
 	if e != nil {
-		return fmt.Errorf("Cannot create sqlfs file %s: %v", table, e)
+		return fmt.Errorf("cannot create sqlfs file %s: %v", table, e)
 	}
 	defer sqlf.Close()
 
@@ -46,7 +46,7 @@ func (m *model) save(db *DB, table string) (e error) {
 func load(db *DB, table, cwd string) (m *model, e error) {
 	sqlf, e := sqlfs.Open(db.DB, table)
 	if e != nil {
-		return nil, fmt.Errorf("Cannot open sqlfs file %s: %v", table, e)
+		return nil, fmt.Errorf("cannot open sqlfs file %s: %v", table, e)
 	}
 	defer sqlf.Close()
 

@@ -2,6 +2,7 @@ package sqlfs
 
 import (
 	"database/sql"
+	"encoding/base64"
 	"fmt"
 )
 
@@ -9,9 +10,10 @@ const kBufSize = 4 * 1024
 
 // Writer implements io.WriteCloser.
 type Writer struct {
-	db    *sql.DB
-	table string
-	buf   []byte
+	db      *sql.DB
+	table   string
+	buf     []byte
+	flushID int
 }
 
 // Create creates a new table or truncates an existing table and
@@ -23,15 +25,15 @@ func Create(db *sql.DB, driver, table string) (*Writer, error) {
 	if e := createTable(db, driver, table); e != nil {
 		return nil, fmt.Errorf("create: %v", e)
 	}
-	return &Writer{db, table, make([]byte, 0, kBufSize)}, nil
+	return &Writer{db, table, make([]byte, 0, kBufSize), 0}, nil
 }
 
 func (w *Writer) Write(p []byte) (n int, e error) {
 	n = 0
-	for np := len(p); np > 0; np = len(p) {
+	for nBytes := len(p); nBytes > 0; nBytes = len(p) {
 		fill := kBufSize - len(w.buf)
-		if fill > np {
-			fill = np
+		if fill > nBytes {
+			fill = nBytes
 		}
 		w.buf = append(w.buf, p[:fill]...)
 		p = p[fill:]
@@ -45,6 +47,7 @@ func (w *Writer) Write(p []byte) (n int, e error) {
 	return n, nil
 }
 
+// Close flushes buffer
 func (w *Writer) Close() error {
 	if e := w.flush(); e != nil {
 		return fmt.Errorf("close failed: %v", e)
@@ -59,11 +62,14 @@ func (w *Writer) flush() error {
 	}
 
 	if len(w.buf) > 0 {
-		query := fmt.Sprintf("INSERT INTO %s (block) VALUES(?)", w.table)
-		if _, e := w.db.Exec(query, w.buf); e != nil {
-			return fmt.Errorf("flush to database exec:%v, error:%v", query, e)
+		block := base64.StdEncoding.EncodeToString(w.buf)
+		query := fmt.Sprintf("INSERT INTO %s (id, block) VALUES(%d, '%s')",
+			w.table, w.flushID, block)
+		if _, e := w.db.Exec(query); e != nil {
+			return fmt.Errorf("flush to %s, error:%v", w.table, e)
 		}
 		w.buf = w.buf[:0]
+		w.flushID++
 	}
 	return nil
 }
