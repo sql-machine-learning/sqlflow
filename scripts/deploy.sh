@@ -15,8 +15,5 @@ docker push sqlflow/sqlflow:$DOCKER_TAG
 docker tag sqlflow:dev sqlflow/sqlflow:dev
 docker push sqlflow/sqlflow:dev
 
-# NOTE: this script should be called by .travis.yml
-pushd ./example/
-docker build -t sqlflow/quickstart:$DOCKER_TAG
-docker push sqlflow/quickstart:$DOCKER_TAG
-popd
+docker build -t sqlflow/sqlflow:quickstart -f ./Dockerfile.quickstart .
+docker push sqlflow/sqlflow:quickstart
