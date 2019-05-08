@@ -38,7 +38,7 @@ Keras provides three approaches to define models.
   model = DNNClassifier(feature_columns, hidden_units, n_classes)
   ```
 
-  Please be aware that `tf.keras.Model` has methods `save_weights` and `load_weights`, which save/load model parameters but no the topology, as expalined in [this guidence](https://stackoverflow.com/questions/51806852/cant-save-custom-subclassed-model) and [this example list](https://stackoverflow.com/questions/52826134/keras-model-subclassing-examples).
+  Please be aware that `tf.keras.Model` has methods `save_weights` and `load_weights`, which save/load model parameters but no the topology, as explained in [this guidance](https://stackoverflow.com/questions/51806852/cant-save-custom-subclassed-model) and [this example list](https://stackoverflow.com/questions/52826134/keras-model-subclassing-examples).
 
 ### 2. Functional API
 
