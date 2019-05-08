@@ -62,7 +62,7 @@ Done predicting. Predict table : iris.predict
 
 ## Roadmap
 
-Various data sources and ML frameworks support is a on going process. Please refer to our [roadmap](https://github.com/sql-machine-learning/sqlflow/issues/327) for specific timelines. Please let us know your interests so that we can prioritize our work.
+Various data sources and ML frameworks support is a work in progress. Please refer to our [roadmap](https://github.com/sql-machine-learning/sqlflow/issues/327) for specific timelines. Also, let us know your interests so that we can prioritize our work.
 
 ## Feedback
 
