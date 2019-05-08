@@ -62,7 +62,7 @@ Done predicting. Predict table : iris.predict
 
 ## Roadmap
 
-Various data sources and ML frameworks support is a work in progress. Please refer to our [roadmap](https://github.com/sql-machine-learning/sqlflow/issues/327) for specific timelines. Also, let us know your interests so that we can prioritize our work.
+SQLFlow will love to support as many mainstream ML frameworks and data sources as possible, but we feel like the expansion would be hard to be done merely on our own, so we would love to hear your options on what ML frameworks and data sources you are currently using and build upon. Please refer to our [roadmap](https://github.com/sql-machine-learning/sqlflow/issues/327) for specific timelines, also let us know your current scenarios and interests around SQLFlow project so we can prioritize based on the feedback from the community.
 
 ## Feedback
 
