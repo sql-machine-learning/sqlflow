@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log"
 	"net"
@@ -10,6 +11,9 @@ import (
 
 	"google.golang.org/grpc"
 
+	proto "github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes"
+	"github.com/golang/protobuf/ptypes/any"
 	pb "github.com/sql-machine-learning/sqlflow/server/proto"
 	"github.com/stretchr/testify/assert"
 )
@@ -31,8 +35,8 @@ func WaitPortReady(addr string, timeout time.Duration) {
 	}
 }
 
-func ParseRow(stream pb.SQLFlow_RunClient) ([]string, []string) {
-	var resp []string
+func ParseRow(stream pb.SQLFlow_RunClient) ([]string, [][]*any.Any) {
+	var rows [][]*any.Any
 	var columns []string
 	counter := 0
 	for {
@@ -47,29 +51,25 @@ func ParseRow(stream pb.SQLFlow_RunClient) ([]string, []string) {
 			head := iter.GetHead()
 			columns = head.GetColumnNames()
 		} else {
-			row := iter.GetRow()
-			for i := 0; i < len(row.Data); i++ {
-				resp = append(resp, string(row.Data[i].Value))
-			}
+			onerow := iter.GetRow()
+			rows = append(rows, onerow.Data)
 		}
 		counter++
 	}
-	return columns, resp
+	return columns, rows
 }
 
 func TestEnd2EndFlow(t *testing.T) {
 	go start("mysql://root:root@tcp/?maxAllowedPacket=0")
 	WaitPortReady("localhost"+port, 0)
-	t.Run("TestStandardSQL", CaseStandardSQL)
+	t.Run("TestShowDatabases", CaseShowDatabases)
+	t.Run("TestSelect", CaseSelect)
 	t.Run("TestTrainSQL", CaseTrainSQL)
 }
 
-func CaseStandardSQL(t *testing.T) {
+func CaseShowDatabases(t *testing.T) {
 	a := assert.New(t)
-	// tests := []string{
-	// 	"show databases;",
-	// 	"select * from iris.train limit 2;",
-	// }
+	cmd := "show databases;"
 
 	conn, err := grpc.Dial("localhost"+port, grpc.WithInsecure())
 	a.NoError(err)
@@ -79,12 +79,13 @@ func CaseStandardSQL(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	stream, err := cli.Run(ctx, &pb.Request{Sql: "show databases;"})
+	stream, err := cli.Run(ctx, &pb.Request{Sql: cmd})
 	if err != nil {
 		a.Fail("Check if the server started successfully. %v", err)
 	}
 	head, resp := ParseRow(stream)
 	a.Equal("Database", head[0])
+
 	expectedDBs := []string{
 		"information_schema",
 		"churn",
@@ -96,9 +97,45 @@ func CaseStandardSQL(t *testing.T) {
 		"sys",
 	}
 	for i := 0; i < len(resp); i++ {
-		// fmt.Println(string(resp[i]))
-		a.Equal(expectedDBs[i], string(resp[i][2:]))
+		a.Equal(expectedDBs[i], string(resp[i][0].Value[2:]))
 	}
+}
+
+func CaseSelect(t *testing.T) {
+	a := assert.New(t)
+	cmd := "select * from iris.train limit 2;"
+
+	conn, err := grpc.Dial("localhost"+port, grpc.WithInsecure())
+	a.NoError(err)
+	defer conn.Close()
+	cli := pb.NewSQLFlowClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	stream, err := cli.Run(ctx, &pb.Request{Sql: cmd})
+	if err != nil {
+		a.Fail("Check if the server started successfully. %v", err)
+	}
+	head, rows := ParseRow(stream)
+	expectedHeads := []string{
+		"sepal_length",
+		"sepal_width",
+		"petal_length",
+		"petal_width",
+		"class",
+	}
+	for i := 0; i < len(head); i++ {
+		a.Equal(expectedHeads[i], head[i])
+	}
+	for i := 0; i < len(rows); i++ {
+		for j := 0; j < len(rows[i]); j++ {
+			var pb proto.Message
+			ptypes.UnmarshalAny(rows[i][j], pb)
+			fmt.Println(pb)
+		}
+	}
+
 }
 
 func CaseTrainSQL(t *testing.T) {
