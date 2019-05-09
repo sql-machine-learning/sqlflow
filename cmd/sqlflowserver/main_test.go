@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"log"
 	"net"
@@ -86,8 +85,19 @@ func CaseStandardSQL(t *testing.T) {
 	}
 	head, resp := ParseRow(stream)
 	a.Equal("Database", head[0])
+	expectedDBs := []string{
+		"information_schema",
+		"churn",
+		"iris",
+		"mysql",
+		"performance_schema",
+		"sqlflow_models",
+		"sqlfs_test",
+		"sys",
+	}
 	for i := 0; i < len(resp); i++ {
-		fmt.Println(string(resp[i]))
+		// fmt.Println(string(resp[i]))
+		a.Equal(expectedDBs[i], string(resp[i][2:]))
 	}
 }
 
