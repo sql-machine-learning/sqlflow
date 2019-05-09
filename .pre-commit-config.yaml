@@ -2,7 +2,6 @@
   rev: v0.3.3
   hooks:
     - id: go-fmt
-    - id: go-vet
     - id: go-lint
     - id: validate-toml
     - id: no-go-testing
