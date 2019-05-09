@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log"
 	"net"
@@ -31,6 +32,32 @@ func WaitPortReady(addr string, timeout time.Duration) {
 	}
 }
 
+func ParseRow(stream pb.SQLFlow_RunClient) ([]string, []string) {
+	var resp []string
+	var columns []string
+	counter := 0
+	for {
+		iter, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			log.Fatalf("stream read err: %v", err)
+		}
+		if counter == 0 {
+			head := iter.GetHead()
+			columns = head.GetColumnNames()
+		} else {
+			row := iter.GetRow()
+			for i := 0; i < len(row.Data); i++ {
+				resp = append(resp, string(row.Data[i].Value))
+			}
+		}
+		counter++
+	}
+	return columns, resp
+}
+
 func TestEnd2EndFlow(t *testing.T) {
 	go start("mysql://root:root@tcp/?maxAllowedPacket=0")
 	WaitPortReady("localhost"+port, 0)
@@ -40,10 +67,10 @@ func TestEnd2EndFlow(t *testing.T) {
 
 func CaseStandardSQL(t *testing.T) {
 	a := assert.New(t)
-	tests := []string{
-		"show databases;",
-		"select * from iris.train limit 2;",
-	}
+	// tests := []string{
+	// 	"show databases;",
+	// 	"select * from iris.train limit 2;",
+	// }
 
 	conn, err := grpc.Dial("localhost"+port, grpc.WithInsecure())
 	a.NoError(err)
@@ -53,33 +80,14 @@ func CaseStandardSQL(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	for _, tc := range tests {
-		stream, err := cli.Run(ctx, &pb.Request{Sql: tc})
-		if err != nil {
-			a.Fail("Check if the server started successfully. %v", err)
-		}
-		for {
-			iter, err := stream.Recv()
-			if err == io.EOF {
-				break
-			}
-			if err != nil {
-				log.Fatalf("stream read err: %v", err)
-			}
-
-			switch x := iter.Response.(type) {
-			case *pb.Response_Head:
-				log.Println(x.Head)
-			case *pb.Response_Message:
-				log.Println(x.Message)
-			case *pb.Response_Row:
-				row := x.Row
-				log.Println(row.Data)
-			default:
-				log.Printf("Response have unexpected type: %T", x)
-			}
-
-		}
+	stream, err := cli.Run(ctx, &pb.Request{Sql: "show databases;"})
+	if err != nil {
+		a.Fail("Check if the server started successfully. %v", err)
+	}
+	head, resp := ParseRow(stream)
+	a.Equal("Database", head[0])
+	for i := 0; i < len(resp); i++ {
+		fmt.Println(string(resp[i]))
 	}
 }
 
