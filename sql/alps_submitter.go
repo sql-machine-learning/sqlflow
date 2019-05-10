@@ -479,7 +479,7 @@ func trainALPS(wr *PipeWriter, pr *extendedSelect, cwd string) error {
 	code := program.String()
 
 	cw := &logChanWriter{wr: wr}
-	cmd := tensorflowCmd(cwd)
+	cmd := tensorflowCmd(cwd, "maxCompute")
 	cmd.Stdin = &program
 	cmd.Stdout = cw
 	cmd.Stderr = cw
