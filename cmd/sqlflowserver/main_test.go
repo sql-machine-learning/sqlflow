@@ -56,6 +56,17 @@ func AssertEqualAny(a *assert.Assertions, expected interface{}, actual *any.Any)
 	}
 }
 
+func AssertContainsAny(a *assert.Assertions, all map[string]string, actual *any.Any) {
+	switch actual.TypeUrl {
+	case "type.googleapis.com/google.protobuf.StringValue":
+		b := wrappers.StringValue{}
+		ptypes.UnmarshalAny(actual, &b)
+		if _, ok := all[b.Value]; !ok {
+			a.Fail("string value %s not exist")
+		}
+	}
+}
+
 func ParseRow(stream pb.SQLFlow_RunClient) ([]string, [][]*any.Any) {
 	var rows [][]*any.Any
 	var columns []string
@@ -107,18 +118,18 @@ func CaseShowDatabases(t *testing.T) {
 	head, resp := ParseRow(stream)
 	a.Equal("Database", head[0])
 
-	expectedDBs := []string{
-		"information_schema",
-		"churn",
-		"iris",
-		"mysql",
-		"performance_schema",
-		"sqlflow_models",
-		"sqlfs_test",
-		"sys",
+	expectedDBs := map[string]string{
+		"information_schema": "",
+		"churn":              "",
+		"iris":               "",
+		"mysql":              "",
+		"performance_schema": "",
+		"sqlflow_models":     "",
+		"sqlfs_test":         "",
+		"sys":                "",
 	}
 	for i := 0; i < len(resp); i++ {
-		AssertEqualAny(a, expectedDBs[i], resp[i][0])
+		AssertContainsAny(a, expectedDBs, resp[i][0])
 	}
 }
 
