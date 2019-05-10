@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-var kBufSize = 4 * 1024
+var bufSize = 4 * 1024
 
 // Writer implements io.WriteCloser.
 type Writer struct {
@@ -30,20 +30,21 @@ func Append(db *sql.DB, table string) (*Writer, error) {
 	if e := createTable(db, table); e != nil {
 		return nil, fmt.Errorf("create: %v", e)
 	}
-	return &Writer{db, table, make([]byte, 0, kBufSize), nil}, nil
+	return &Writer{db, table, make([]byte, 0, bufSize), nil}, nil
 }
 
+// Write write bytes to sqlfs and returns (num_bytes, error)
 func (w *Writer) Write(p []byte) (n int, e error) {
 	n = 0
 	for len(p) > 0 {
-		fill := kBufSize - len(w.buf)
+		fill := bufSize - len(w.buf)
 		if fill > len(p) {
 			fill = len(p)
 		}
 		w.buf = append(w.buf, p[:fill]...)
 		p = p[fill:]
 		n += fill
-		if len(w.buf) >= kBufSize {
+		if len(w.buf) >= bufSize {
 			if e = w.flush(); e != nil {
 				return n, fmt.Errorf("writer flush failed: %v", e)
 			}
@@ -52,6 +53,7 @@ func (w *Writer) Write(p []byte) (n int, e error) {
 	return n, nil
 }
 
+// Close the connection of the sqlfs
 func (w *Writer) Close() error {
 	if e := w.flush(); e != nil {
 		return fmt.Errorf("writer flush failed: %v", e)
