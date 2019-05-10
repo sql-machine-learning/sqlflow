@@ -1,38 +1,29 @@
 language: go
-
 branches:
   only:
   - gh-pages
-  - /.*/
-
+  - "/.*/"
 service:
-  - docker
-
-# Update to newer version of Docker to allow
-# Dockerfile being outside of the context directory
-# https://github.com/docker/compose/issues/4926#issuecomment-370501452
+- docker
 addons:
   apt:
     packages:
-      - docker-ce
-
+    - docker-ce
 install:
-  # Note(tony): TravisCI's native `go get ${gobuild_args} ./...` failed with
-  # `/usr/bin/ld: final link failed: Bad value`, the cause is the system linker
-  # being not up to date: https://github.com/golang/go/issues/15038
-  # So I decided to skip install, and go get inside sqlflow:dev image
-  # Ref build: https://travis-ci.com/sql-machine-learning/sqlflow/builds/107870583
-  - echo "skip install"
-
+- echo "skip install"
 script:
-  - ls -lah
-  - docker build -t sqlflow:dev -f Dockerfile.dev .
-  - docker run --rm -v $GOPATH/src:/go/src -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:dev pre-commit run -a
-  - docker run --rm -v $GOPATH/src:/go/src -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:dev bash scripts/test.sh
-
+- ls -lah
+- docker build -t sqlflow:dev -f Dockerfile.dev .
+- docker run --rm -v $GOPATH/src:/go/src -w /go/src/github.com/sql-machine-learning/sqlflow
+  sqlflow:dev pre-commit run -a
+- docker run --rm -v $GOPATH/src:/go/src -w /go/src/github.com/sql-machine-learning/sqlflow
+  sqlflow:dev bash scripts/test.sh
 deploy:
   skip_cleanup: true
   provider: script
   script: bash scripts/deploy.sh
   on:
     branch: develop
+env:
+  global:
+    secure: HbrAt7fBwVC+1W+jbJ03MU3xSefeeQL9BrPFH8xDKkOjA4DfvrfHNhvszyiacxZnW9MhSHTk3KEJgSAB/wOHSNmSwvTvUx+ywewqW1FR6R8Wib0QmryQnC5mHKwro0sXwKbrjd05Qob/0noFwVXZ+9M86lUAsh5tE31quywVi0JDycBXBFwCA4qJHJXTmAJYCXv95JmMZf3OCr541o1oK/kRfpZD24M2gvcBf2f08e+mCBje09HhjDyvBA3Z+6dylMRius/wDU53wBOgyyZo5dFjCWGIvgUQ2PfxzNuy6mOgnUD72W+MAjHLh54AvK2I5qzJBxGMVocXMbTLEcuf5KYchEWSyUTjdfrRAa15kesVzO89YkaF/+ZnRGN4Sl9Ko4Wn2K0l/2ST8JflN9Y+1K4aSnSl3TTGaWHBP5PVVuy+tjuuJD7BPbzbwB2KmL/QbFaFgIchjJIeIh4u544WhRb5XMriw3O4s5t4LESbZlMpBwPAJ+rcfPy+QzRADq4zNMVLGTjS+CnUtw6RxwWWfdczIqM1Waam9FIRUnPYu6xNp6lFLuq4d/qwhsl/WCyjCMbsJ//9mT24teGObThSRm48EBB1iF58tqSC24xPXnlt6LofMSBD2C5p2TgpohVltL1bsRfYtEuqS8SA7wch12NOt9B0kh87I3IP2qds0Zc=
