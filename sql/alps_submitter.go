@@ -285,10 +285,10 @@ func expression2string(e interface{}) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if str, ok := resolved.(string); !ok {
-		return "", fmt.Errorf("expression expected to be string, actual: %s", resolved)
+	if str, ok := resolved.(string); ok {
+		return str, nil
 	}
-	return str, nil
+	return "", fmt.Errorf("expression expected to be string, actual: %s", resolved)
 }
 
 func filter(attrs []*attribute, prefix string) []*attribute {
