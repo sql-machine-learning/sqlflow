@@ -1,0 +1,32 @@
+# NOTE: This Dockerfile combines all quick start components in a
+# single docker image to reduce steps to try out sqlflow examples.
+# It's **NOT** intended for production use.
+
+# To build this image, just run: 
+# cd example/
+# docker build -t sqlflow/quickstart .
+
+FROM sqlflow/sqlflow
+
+# install mysql server
+RUN apt-get update && \
+echo 'mysql-server mysql-server/root_password password root' | debconf-set-selections && \
+echo 'mysql-server mysql-server/root_password_again password root' | debconf-set-selections && \
+apt-get install -y mysql-server wget gosu
+
+# Prepare sample datasets
+RUN mkdir -p /docker-entrypoint-initdb.d
+COPY example/datasets/popularize_churn.sql /docker-entrypoint-initdb.d/popularize_churn.sql
+COPY example/datasets/popularize_iris.sql /docker-entrypoint-initdb.d/popularize_iris.sql
+COPY example/datasets/create_model_db.sql /docker-entrypoint-initdb.d/create_model_db.sql
+
+RUN chown mysql:mysql /docker-entrypoint-initdb.d && \
+mkdir -p /var/run/mysqld && \
+mkdir -p /var/lib/mysql && \
+chown mysql:mysql /var/run/mysqld && \
+wget -q https://raw.githubusercontent.com/docker-library/mysql/master/5.7/docker-entrypoint.sh && \
+chmod +x docker-entrypoint.sh && \
+mv docker-entrypoint.sh /usr/bin
+
+ADD scripts/startall.sh /
+CMD ["bash", "/startall.sh"]

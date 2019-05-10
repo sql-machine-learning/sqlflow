@@ -155,8 +155,9 @@ from sqlite3 import connect
 from impala.dbapi import connect 
 {{end}}
 
-# Disable Tensorflow INFO and WARNING logs
-tf.logging.set_verbosity(tf.logging.ERROR)
+# Disable Tensorflow INFO and WARNING
+import logging
+tf.get_logger().setLevel(logging.ERROR)
 ` +
 	// TODO(tonyyang-svail): remove hard coded BATCHSIZE, STEP
 	`

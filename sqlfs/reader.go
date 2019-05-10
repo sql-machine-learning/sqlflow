@@ -63,6 +63,7 @@ func (r *Reader) Read(p []byte) (n int, e error) {
 	return n, e
 }
 
+// Close the reader connection to sqlfs
 func (r *Reader) Close() error {
 	if r.rows != nil {
 		if e := r.rows.Close(); e != nil {

@@ -2,6 +2,7 @@ package sql
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path"
 
@@ -19,22 +20,27 @@ func getEnv(key, fallback string) string {
 }
 
 func init() {
-	logDir := getEnv("SQLFLOW_log_dir", "logs")
+	// Default log to stdout also make SQLFlow a cloud-native service
+	logDir := getEnv("SQLFLOW_log_dir", "")
 	logLevel := getEnv("SQLFLOW_log_level", "info")
 
 	ll, e := logrus.ParseLevel(logLevel)
 	if e != nil {
 		ll = logrus.InfoLevel
 	}
+	var f io.Writer
+	if logDir != "" {
+		e = os.MkdirAll(logDir, 0744)
+		if e != nil {
+			log.Panicf("create log directory failed: %v", e)
+		}
 
-	e = os.MkdirAll(logDir, 0744)
-	if e != nil {
-		log.Panicf("create log directory failed: %v", e)
-	}
-
-	f, e := os.Create(path.Join(logDir, fmt.Sprintf("sqlflow-%d.log", os.Getpid())))
-	if e != nil {
-		log.Panicf("open log file failed: %v", e)
+		f, e = os.Create(path.Join(logDir, fmt.Sprintf("sqlflow-%d.log", os.Getpid())))
+		if e != nil {
+			log.Panicf("open log file failed: %v", e)
+		}
+	} else {
+		f = os.Stdout
 	}
 
 	lg := logrus.New()

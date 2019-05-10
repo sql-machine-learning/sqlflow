@@ -1,4 +1,4 @@
-# Building and running MySQL server 8.0
+# Running a MySQL Server Container with Test Data
 
 This directory contains a Dockerfile that builds a Docker image derived the MySQL Server 8.0 image. It includes SQL programs that popularize the following datasets:
 
@@ -7,14 +7,14 @@ This directory contains a Dockerfile that builds a Docker image derived the MySQ
 
 We can run a Docker container of it for unit testing.
 
-## Build SQLFlow image
+## Build the SQLFlow Data Image
 
 ```bash
 cd example/datasets
 docker build -t sqlflow:data .
 ```
 
-## Run SQLFlow docker image
+## Run a SQLFlow Data Container
 
 ```bash
 docker run --rm -d --name sqlflowdata \
@@ -24,7 +24,7 @@ docker run --rm -d --name sqlflowdata \
    sqlflow:data
 ```
 
-## Popularize Datasets to MySQL
+## Popularize Datasets
 
 Popularize the databases and tables with commands below:
 
@@ -50,7 +50,7 @@ To prepare database for storing machine learning models:
 echo "CREATE DATABASE IF NOT EXISTS sqlflow_models;" | mysql -uroot -proot
 ```
 
-## Try your first Query in the container
+## Test a Query
 
 In the container, run below command to test if tables exist. 
 
@@ -64,7 +64,7 @@ It should print the number of rows as the following:
 count(*)
 10
 ```
-## Trouble Shooting
+## Troubleshooting
 
 1. It usually takes about 15 seconds to bring up the MySQL Server. If you try to connect it
 before that, you may see the following error

@@ -17,7 +17,7 @@ sqlflow>
 
 - Step One: Let's see some training data from Iris database
 ```sql
-sqlflow> select * from iris.train limit 2;
+sqlflow> SELECT * from iris.train limit 2;
 -----------------------------
 +--------------+-------------+--------------+-------------+-------+
 | SEPAL LENGTH | SEPAL WIDTH | PETAL LENGTH | PETAL WIDTH | CLASS |
@@ -36,7 +36,7 @@ WITH n_classes = 3, hidden_units = [10, 20]
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.my_dnn_model;
------------------------------
+
 ...
 Training set accuracy: 0.96721
 Done training
@@ -48,13 +48,24 @@ sqlflow> SELECT *
 FROM iris.test
 PREDICT iris.predict.class
 USING sqlflow_models.my_dnn_model;
+
+...
+Done predicting. Predict table : iris.predict
 ```
 
 - Step Four: Checkout the prediction result
 ```sql
-sqlflow> select * from iris.predict limit 10;
+sqlflow>
+SELECT * from iris.predict limit 3;
+
+...
++--------------+-------------+--------------+-------------+-------+
+| SEPAL LENGTH | SEPAL WIDTH | PETAL LENGTH | PETAL WIDTH | CLASS |
++--------------+-------------+--------------+-------------+-------+
+|          6.3 |         2.7 |          4.9 |         1.8 |     2 |
+|          5.7 |         2.8 |          4.1 |         1.3 |     1 |
+|            5 |           3 |          1.6 |         0.2 |     0 |
++--------------+-------------+--------------+-------------+-------+
 ```
 
-
 Congratulations! Now you have successfully completed a demo using SQLFlow syntax to train model using DNNClassifier and make a quick prediction. More demos are on the road, please stay tuned.
-

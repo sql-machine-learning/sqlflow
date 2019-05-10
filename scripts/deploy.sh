@@ -14,3 +14,6 @@ docker push sqlflow/sqlflow:$DOCKER_TAG
 
 docker tag sqlflow:dev sqlflow/sqlflow:dev
 docker push sqlflow/sqlflow:dev
+
+docker build -t sqlflow/sqlflow:quickstart -f ./Dockerfile.quickstart .
+docker push sqlflow/sqlflow:quickstart
