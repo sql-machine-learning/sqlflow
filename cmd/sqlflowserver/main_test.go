@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"log"
 	"net"
@@ -11,9 +10,9 @@ import (
 
 	"google.golang.org/grpc"
 
-	proto "github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
+	"github.com/golang/protobuf/ptypes/wrappers"
 	pb "github.com/sql-machine-learning/sqlflow/server/proto"
 	"github.com/stretchr/testify/assert"
 )
@@ -32,6 +31,28 @@ func WaitPortReady(addr string, timeout time.Duration) {
 			err = conn.Close()
 			break
 		}
+		time.Sleep(1 * time.Second)
+	}
+}
+
+func AssertEqualAny(a *assert.Assertions, expected interface{}, actual *any.Any) {
+	switch actual.TypeUrl {
+	case "type.googleapis.com/google.protobuf.StringValue":
+		b := wrappers.StringValue{}
+		ptypes.UnmarshalAny(actual, &b)
+		a.Equal(expected, b.Value)
+	case "type.googleapis.com/google.protobuf.FloatValue":
+		b := wrappers.FloatValue{}
+		ptypes.UnmarshalAny(actual, &b)
+		a.Equal(expected, b.Value)
+	case "type.googleapis.com/google.protobuf.DoubleValue":
+		b := wrappers.DoubleValue{}
+		ptypes.UnmarshalAny(actual, &b)
+		a.Equal(expected, b.Value)
+	case "type.googleapis.com/google.protobuf.Int64Value":
+		b := wrappers.Int64Value{}
+		ptypes.UnmarshalAny(actual, &b)
+		a.Equal(expected, b.Value)
 	}
 }
 
@@ -51,8 +72,8 @@ func ParseRow(stream pb.SQLFlow_RunClient) ([]string, [][]*any.Any) {
 			head := iter.GetHead()
 			columns = head.GetColumnNames()
 		} else {
-			onerow := iter.GetRow()
-			rows = append(rows, onerow.Data)
+			onerow := iter.GetRow().GetData()
+			rows = append(rows, onerow)
 		}
 		counter++
 	}
@@ -97,7 +118,7 @@ func CaseShowDatabases(t *testing.T) {
 		"sys",
 	}
 	for i := 0; i < len(resp); i++ {
-		a.Equal(expectedDBs[i], string(resp[i][0].Value[2:]))
+		AssertEqualAny(a, expectedDBs[i], resp[i][0])
 	}
 }
 
@@ -125,22 +146,24 @@ func CaseSelect(t *testing.T) {
 		"petal_width",
 		"class",
 	}
-	for i := 0; i < len(head); i++ {
-		a.Equal(expectedHeads[i], head[i])
+	for idx, headCell := range head {
+		a.Equal(expectedHeads[idx], headCell)
 	}
-	for i := 0; i < len(rows); i++ {
-		for j := 0; j < len(rows[i]); j++ {
-			var pb proto.Message
-			ptypes.UnmarshalAny(rows[i][j], pb)
-			fmt.Println(pb)
+	expectedRows := [][]interface{}{
+		{6.4, 2.8, 5.6, 2.2, int64(2)},
+		{5.0, 2.3, 3.3, 1.0, int64(1)},
+	}
+	for rowIdx, row := range rows {
+		for colIdx, rowCell := range row {
+			AssertEqualAny(a, expectedRows[rowIdx][colIdx], rowCell)
 		}
 	}
-
 }
 
+// CaseTrainSQL is a simple End-to-End testing for case training and predicting
 func CaseTrainSQL(t *testing.T) {
 	a := assert.New(t)
-	sql := `SELECT *
+	trainSQL := `SELECT *
 FROM iris.train
 TRAIN DNNClassifier
 WITH n_classes = 3, hidden_units = [10, 20]
@@ -153,11 +176,39 @@ INTO sqlflow_models.my_dnn_model;`
 	defer conn.Close()
 	cli := pb.NewSQLFlowClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
-	_, err = cli.Run(ctx, &pb.Request{Sql: sql})
+	stream, err := cli.Run(ctx, &pb.Request{Sql: trainSQL})
 	if err != nil {
 		a.Fail("Check if the server started successfully. %v", err)
+	}
+	// call ParseRow only to wait train finish
+	ParseRow(stream)
+
+	predSQL := `SELECT *
+FROM iris.test
+PREDICT iris.predict.class
+USING sqlflow_models.my_dnn_model;`
+
+	stream, err = cli.Run(ctx, &pb.Request{Sql: predSQL})
+	if err != nil {
+		a.Fail("Check if the server started successfully. %v", err)
+	}
+	// call ParseRow only to wait predict finish
+	ParseRow(stream)
+
+	showPred := `SELECT *
+FROM iris.predict LIMIT 5;`
+
+	stream, err = cli.Run(ctx, &pb.Request{Sql: showPred})
+	if err != nil {
+		a.Fail("Check if the server started successfully. %v", err)
+	}
+	_, rows := ParseRow(stream)
+
+	expectedPredClasses := []int64{2, 1, 0, 2, 0}
+	for rowIdx, row := range rows {
+		AssertEqualAny(a, expectedPredClasses[rowIdx], row[4])
 	}
 }
