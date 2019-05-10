@@ -1,4 +1,8 @@
-//go:generate protoc -I proto proto/sqlflow.proto --go_out=plugins=grpc:proto
+// Package server is the SQLFlow grpc server which connects to database and
+// parse, submit or execute the training and predicting codes.
+//
+// To generate grpc protobuf code, run the below command:
+// go:generate protoc -I proto proto/sqlflow.proto --go_out=plugins=grpc:proto
 package server
 
 import (
@@ -15,17 +19,18 @@ import (
 )
 
 // NewServer returns a server instance
-func NewServer(run func(string, *sf.DB) *sf.PipeReader, db *sf.DB) *server {
-	return &server{run: run, db: db}
+func NewServer(run func(string, *sf.DB) *sf.PipeReader, db *sf.DB) *Server {
+	return &Server{run: run, db: db}
 }
 
-type server struct {
+// Server is the instance will be used to connect to DB and execute training
+type Server struct {
 	run func(sql string, db *sf.DB) *sf.PipeReader
 	db  *sf.DB
 }
 
 // Run implements `rpc Run (Request) returns (stream Response)`
-func (s *server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
+func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 	pr := s.run(req.Sql, s.db)
 	defer pr.Close()
 
