@@ -37,7 +37,10 @@ RUN rm protoc-3.6.1-linux-x86_64.zip
 
 RUN mkdir -p /go
 ENV GOPATH /go
-RUN go get github.com/golang/protobuf/protoc-gen-go
+RUN go get github.com/golang/protobuf/protoc-gen-go && \
+go get golang.org/x/tools/cmd/cover && \
+go get github.com/mattn/goveralls
+
 RUN mv /go/bin/protoc-gen-go /usr/local/bin/
 
 RUN apt-get install -y sqlite3 libsqlite3-dev
