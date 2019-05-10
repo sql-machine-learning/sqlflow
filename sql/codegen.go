@@ -21,7 +21,6 @@ type connectionConfig struct {
 	Host     string
 	Port     string
 	Database string
-	Auth     string
 }
 
 type modelConfig struct {
@@ -48,14 +47,23 @@ func newColumnType(n, t string) *columnType {
 	return &columnType{n, t}
 }
 
-func translateColumnType(ct *columnType) columnType {
-	var featureType string
-	if ct.Type == "FLOAT" || ct.Type == "FLOAT_TYPE" {
-		featureType = "numeric_column"
+func translateColumnToFeature(fts *fieldTypes, driverName, ident string) (*columnType, error) {
+	ct, ok := fts.get(ident)
+	if !ok {
+		return nil, fmt.Errorf("genTF: Cannot find type of field %s", ident)
 	}
-	return columnType{ct.Name, featureType}
+	ctype, e := universalizeColumnType(driverName, ct.Type)
+	if e != nil {
+		return nil, e
+	}
+
+	if ctype == "FLOAT" {
+		return &columnType{ident, "numeric_column"}, nil
+	}
+	return &columnType{ident, ""}, nil
 }
 
+// TODO(weiguo): fts -> pointer
 func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
 	r := &filler{
 		Train:          pr.train,
@@ -69,17 +77,17 @@ func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
 	}
 
 	for _, c := range pr.columns {
-		ct, ok := fts.get(c.val)
-		if !ok {
-			return nil, fmt.Errorf("genTF: Cannot find type of field %s", c.val)
+		cf, e := translateColumnToFeature(&fts, db.driverName, c.val)
+		if e != nil {
+			return nil, e
 		}
-		r.X = append(r.X, translateColumnType(ct))
+		r.X = append(r.X, *cf)
 	}
-	ct, ok := fts.get(pr.label)
-	if !ok {
-		return nil, fmt.Errorf("genTF: Cannot find type of label %s", pr.label)
+	cf, e := translateColumnToFeature(&fts, db.driverName, pr.label)
+	if e != nil {
+		return nil, e
 	}
-	r.Y = translateColumnType(ct)
+	r.Y = *cf
 
 	if !pr.train {
 		r.TableName = strings.Join(strings.Split(pr.into, ".")[:2], ".")
@@ -104,13 +112,11 @@ func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
 		}
 		sa := strings.Split(cfg.Addr, ":")
 		r.Host, r.Port, r.Database = sa[0], sa[1], cfg.DBName
-		// FIXME(weiguo): 1 make gohive support Auth; 2 remove tail semicolon
-		r.User, r.Password, r.Auth = cfg.User, "", "NOSASL"
+		r.User, r.Password = cfg.User, cfg.Passwd
 		r.StandardSelect = removeLastSemicolon(r.StandardSelect)
 	default:
 		return nil, fmt.Errorf("sqlfow currently doesn't support DB %v", db.driverName)
 	}
-
 	return r, nil
 }
 
@@ -142,11 +148,11 @@ import sys, json
 import tensorflow as tf
 
 {{if eq .Driver "mysql"}}
-import mysql.connector
+from mysql.connector import connect
 {{else if eq .Driver "sqlite3"}}
-import sqlite3
+from sqlite3 import connect
 {{else if eq .Driver "hive"}}
-from pyhive import hive
+from impala.dbapi import connect 
 {{end}}
 
 # Disable Tensorflow INFO and WARNING logs
@@ -158,27 +164,30 @@ BATCHSIZE = 1
 STEP = 1000
 
 {{if eq .Driver "mysql"}}
-db = mysql.connector.connect(user="{{.User}}",
-                             passwd="{{.Password}}",
-                             {{if ne .Database ""}}database="{{.Database}}",{{end}}
-                             host="{{.Host}}",
-                             port={{.Port}})
+db = connect(user="{{.User}}",
+            passwd="{{.Password}}",
+            {{if ne .Database ""}}database="{{.Database}}",{{end}}
+            host="{{.Host}}",
+            port={{.Port}})
 {{else if eq .Driver "sqlite3"}}
-db = sqlite3.connect({{.Database}})
+db = connect({{.Database}})
 {{else if eq .Driver "hive"}}
-db = hive.connect(username="{{.User}}",
-			 # password="{{.Password}}",
-			 {{if ne .Database ""}}database="{{.Database}}",{{end}}
-			 auth="{{.Auth}}",
-			 host="{{.Host}}",
-			 port={{.Port}})
+db = connect(user="{{.User}}",
+            password="{{.Password}}",
+            {{if ne .Database ""}}database="{{.Database}}",{{end}}
+            host="{{.Host}}",
+            port={{.Port}})
 {{else}}
 raise ValueError("unrecognized database driver: {{.Driver}}")
 {{end}}
 
 cursor = db.cursor()
 cursor.execute("""{{.StandardSelect}}""")
+{{if eq .Driver "hive"}}
+field_names = [i[0][i[0].find('.')+1:] for i in cursor.description]
+{{else}}
 field_names = [i[0] for i in cursor.description]
+{{end}}
 columns = list(map(list, zip(*cursor.fetchall())))
 
 feature_columns = [{{range .X}}tf.feature_column.{{.Type}}(key="{{.Name}}"),
@@ -221,8 +230,7 @@ def eval_input_fn(features, batch_size):
     dataset = dataset.batch(batch_size)
     return dataset
 
-predictions = classifier.predict(
-        input_fn=lambda:eval_input_fn(X, BATCHSIZE))
+predictions = classifier.predict(input_fn=lambda:eval_input_fn(X, BATCHSIZE))
 
 X["{{.Y.Name}}"] = [p['class_ids'][0] for p in predictions]
 
@@ -231,9 +239,14 @@ def insert(table_name, X, db):
     assert len(set(length)) == 1, "All the fields should have the same length"
 
     field_names = [key for key in X]
-    # FIXME(tony): HIVE and ODPS use INSERT INTO TABLE ...
+    {{if eq .Driver "hive"}}
+    sql = "INSERT INTO TABLE {} ({}) VALUES ({})".format(table_name,
+        ",".join(field_names), ",".join(["%s" for _ in field_names]))
+    {{else}}
     sql = "INSERT INTO {} ({}) VALUES ({})".format(table_name,
         ",".join(field_names), ",".join(["%s" for _ in field_names]))
+    {{end}}
+
     val = []
     for i in range(length[0]):
         val.append(tuple([str(X[f][i]) for f in field_names]))
