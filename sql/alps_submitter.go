@@ -124,13 +124,12 @@ func (fs *featureSpec) ToString() string {
 			strings.Join(strings.Split(fmt.Sprint(fs.Shape), " "), ","),
 			fs.DType,
 			fs.Delimiter)
-	} else {
-		return fmt.Sprintf("DenseColumn(name=\"%s\", shape=%s, dtype=\"%s\", separator=\"%s\")",
-			fs.FeatureName,
-			strings.Join(strings.Split(fmt.Sprint(fs.Shape), " "), ","),
-			fs.DType,
-			fs.Delimiter)
 	}
+	return fmt.Sprintf("DenseColumn(name=\"%s\", shape=%s, dtype=\"%s\", separator=\"%s\")",
+		fs.FeatureName,
+		strings.Join(strings.Split(fmt.Sprint(fs.Shape), " "), ","),
+		fs.DType,
+		fs.Delimiter)
 }
 
 func resolveFeatureSpec(el *exprlist, isSparse bool) (*featureSpec, error) {
@@ -167,9 +166,8 @@ func resolveExpression(e interface{}) (interface{}, error) {
 	if expr, ok := e.(*expr); ok {
 		if expr.val != "" {
 			return expr.val, nil
-		} else {
-			return resolveExpression(&expr.sexp)
 		}
+		return resolveExpression(&expr.sexp)
 	}
 
 	el, ok := e.(*exprlist)
@@ -259,9 +257,8 @@ func resolveExpression(e interface{}) (interface{}, error) {
 					value, err := resolveExpression(&expr.sexp)
 					if err != nil {
 						return nil, err
-					} else {
-						list = append(list, value)
 					}
+					list = append(list, value)
 				}
 			}
 		}
@@ -288,11 +285,10 @@ func expression2string(e interface{}) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if str, ok := resolved.(string); !ok {
-		return "", fmt.Errorf("expression expected to be string, actual: %s", resolved)
-	} else {
+	if str, ok := resolved.(string); ok {
 		return str, nil
 	}
+	return "", fmt.Errorf("expression expected to be string, actual: %s", resolved)
 }
 
 func filter(attrs []*attribute, prefix string) []*attribute {
@@ -496,9 +492,8 @@ func trainALPS(wr *PipeWriter, pr *extendedSelect, cwd string) error {
 func submitALPS(w *PipeWriter, pr *extendedSelect, db *DB, cwd string) error {
 	if pr.train {
 		return trainALPS(w, pr, cwd)
-	} else {
-		return fmt.Errorf("inference not supported yet in ALPS")
 	}
+	return fmt.Errorf("inference not supported yet in ALPS")
 }
 
 const alpsTemplateText = `
