@@ -65,7 +65,7 @@ func TestWriteAndRead(t *testing.T) {
 	a.Equal(len(buf), n)
 
 	// A big output.
-	buf = make([]byte, kBufSize+1)
+	buf = make([]byte, bufSize+1)
 	for i := range buf {
 		buf[i] = 'x'
 	}
@@ -87,12 +87,12 @@ func TestWriteAndRead(t *testing.T) {
 	a.Equal(2, strings.Count(string(buf), "\n"))
 
 	// A big read of rest
-	buf = make([]byte, kBufSize*2)
+	buf = make([]byte, bufSize*2)
 	n, e = r.Read(buf)
 	a.Equal(io.EOF, e)
-	a.Equal(kBufSize+2, n)
+	a.Equal(bufSize+2, n)
 	a.Equal(1, strings.Count(string(buf), "\n"))
-	a.Equal(kBufSize+1, strings.Count(string(buf), "x"))
+	a.Equal(bufSize+1, strings.Count(string(buf), "x"))
 
 	// Another big read
 	n, e = r.Read(buf)

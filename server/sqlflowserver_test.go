@@ -67,7 +67,7 @@ func startServer(done chan bool) {
 
 	s := grpc.NewServer()
 	s.GetServiceInfo()
-	pb.RegisterSQLFlowServer(s, &server{run: mockRun, db: nil})
+	pb.RegisterSQLFlowServer(s, &Server{run: mockRun, db: nil})
 	reflection.Register(s)
 	if err := s.Serve(listener); err != nil {
 		log.Fatalf("failed to serve: %v", err)
