@@ -24,8 +24,14 @@ install:
   # Ref build: https://travis-ci.com/sql-machine-learning/sqlflow/builds/107870583
   - echo "skip install"
 
+# NOTE: mount all $GOPATH into container, then after build and test,
+# $GOPATH/bin will have expected binaries.
 script:
-  - bash scripts/test_runner.sh
+  - set -e
+  - ls -lah
+  - docker build -t sqlflow:dev -f Dockerfile.dev .
+  - docker run --rm -v $GOPATH/src:/go/src -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:dev pre-commit run -a
+  - docker run --rm -v $GOPATH:/go -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:dev bash scripts/test.sh
 
 deploy:
   skip_cleanup: true
