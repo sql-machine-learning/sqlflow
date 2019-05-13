@@ -511,9 +511,8 @@ func newALPSPredictFiller(pr *extendedSelect) (*alpsFiller, error) {
 func genALPSFiller(w io.Writer, pr *extendedSelect) (*alpsFiller, error) {
 	if pr.train {
 		return newALPSTrainFiller(pr)
-	} else {
-		return newALPSPredictFiller(pr)
 	}
+	return newALPSPredictFiller(pr)
 }
 
 func submitALPS(w *PipeWriter, pr *extendedSelect, db *DB, cwd string) error {
