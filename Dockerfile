@@ -20,7 +20,7 @@ ARG PIP_ADD_PACKAGES=""
 RUN /bin/bash -c "source activate sqlflow-dev && python -m pip install \
     tensorflow==2.0.0-alpha0 \
     mysql-connector-python \
-    pyhive \
+    impyla \
     jupyter \
     sqlflow \
     ${PIP_ADD_PACKAGES} \
