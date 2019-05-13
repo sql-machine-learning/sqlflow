@@ -14,8 +14,6 @@ type model struct {
 	TrainSelect string
 }
 
-func ThisIsAnExportedFunctionWithoutAnyComment() {}
-
 // save creates a sqlfs table if it doesn't yet exist, and writes the
 // train select statement into the table, followed by the tar-gzipped
 // SQLFlow working directory, which contains the TensorFlow working
