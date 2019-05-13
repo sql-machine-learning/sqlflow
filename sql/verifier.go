@@ -7,7 +7,7 @@ import (
 
 // fieldTypes[field][table]type.  For more information, please check
 // verifier_test.go.
-type fieldTypes map[string]map[string](*columnType)
+type fieldTypes map[string]map[string]string
 
 // verify checks the following:
 //
@@ -42,11 +42,11 @@ func dryRunSelect(slct *extendedSelect, db *DB) error {
 	return rows.Err()
 }
 
-func (ft fieldTypes) get(ident string) (*columnType, bool) {
+func (ft fieldTypes) get(ident string) (string, bool) {
 	tbl, fld := decomp(ident)
 	tbls, ok := ft[fld]
 	if !ok {
-		return nil, false
+		return "", false
 	}
 	if len(tbl) == 0 && len(tbls) == 1 {
 		for _, typ := range tbls {
@@ -96,15 +96,15 @@ func describeTables(slct *extendedSelect, db *DB) (ft fieldTypes, e error) {
 			typeName := ct.DatabaseTypeName()
 			if hasStar {
 				if _, ok := ft[fld]; !ok {
-					ft[fld] = make(map[string](*columnType))
+					ft[fld] = make(map[string]string)
 				}
-				ft[fld][tn] = newColumnType(ct.Name(), typeName)
+				ft[fld][tn] = typeName
 			} else {
 				if tbls, ok := ft[fld]; ok {
 					if len(tbls) == 0 {
-						tbls[tn] = newColumnType(ct.Name(), typeName)
+						tbls[tn] = typeName
 					} else if _, ok := tbls[tn]; ok {
-						tbls[tn] = newColumnType(ct.Name(), typeName)
+						tbls[tn] = typeName
 					}
 				}
 			}
@@ -124,10 +124,10 @@ func indexSelectFields(slct *extendedSelect) (ft fieldTypes) {
 		}
 		tbl, fld := decomp(f)
 		if _, ok := ft[fld]; !ok {
-			ft[fld] = make(map[string]*columnType)
+			ft[fld] = make(map[string]string)
 		}
 		if len(tbl) > 0 {
-			ft[fld][tbl] = nil
+			ft[fld][tbl] = ""
 		}
 	}
 	return ft
@@ -152,7 +152,7 @@ func verifyColumnNameAndType(trainParsed, predParsed *extendedSelect, db *DB) er
 			return fmt.Errorf("predFields doesn't contain column %s", c.val)
 		}
 		tt, _ := trainFields.get(c.val)
-		if it.Type != tt.Type {
+		if it != tt {
 			return fmt.Errorf("field %s type dismatch %v(pred) vs %v(train)", c.val, it, tt)
 		}
 	}

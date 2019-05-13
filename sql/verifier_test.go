@@ -26,9 +26,9 @@ func TestDescribeTables(t *testing.T) {
 	fts, e = describeTables(r, testDB)
 	a.NoError(e)
 	a.Equal(3, len(fts))
-	a.Contains([]string{"VARCHAR(255)", "VARCHAR"}, fts["Churn"]["churn.train"].Type)
-	a.Contains([]string{"VARCHAR(255)", "VARCHAR"}, fts["Partner"]["churn.train"].Type)
-	a.Equal("FLOAT", fts["TotalCharges"]["churn.train"].Type)
+	a.Contains([]string{"VARCHAR(255)", "VARCHAR"}, fts["Churn"]["churn.train"])
+	a.Contains([]string{"VARCHAR(255)", "VARCHAR"}, fts["Partner"]["churn.train"])
+	a.Equal("FLOAT", fts["TotalCharges"]["churn.train"])
 }
 
 func TestIndexSelectFields(t *testing.T) {
@@ -42,15 +42,15 @@ func TestIndexSelectFields(t *testing.T) {
 	a.NoError(e)
 	f = indexSelectFields(r)
 	a.Equal(1, len(f))
-	a.Equal(map[string]*columnType{}, f["f"])
+	a.Equal(map[string]string{}, f["f"])
 
 	r, e = newParser().Parse(`SELECT t1.f, t2.f, g FROM churn.train LIMIT 10;`)
 	a.NoError(e)
 	f = indexSelectFields(r)
 	a.Equal(2, len(f))
-	a.Equal(map[string]*columnType{}, f["g"])
-	a.Nil(f["f"]["t1"])
-	a.Nil(f["f"]["t2"])
+	a.Equal(map[string]string{}, f["g"])
+	a.Equal(f["f"]["t1"], "")
+	a.Equal(f["f"]["t2"], "")
 }
 
 func TestVerify(t *testing.T) {
@@ -62,11 +62,11 @@ func TestVerify(t *testing.T) {
 	a.Equal(2, len(fts))
 	typ, ok := fts.get("Churn")
 	a.Equal(true, ok)
-	a.Contains([]string{"VARCHAR(255)", "VARCHAR"}, typ.Type)
+	a.Contains([]string{"VARCHAR(255)", "VARCHAR"}, typ)
 
 	typ, ok = fts.get("churn.train.Partner")
 	a.Equal(true, ok)
-	a.Contains([]string{"VARCHAR(255)", "VARCHAR"}, typ.Type)
+	a.Contains([]string{"VARCHAR(255)", "VARCHAR"}, typ)
 
 	_, ok = fts.get("churn.train.gender")
 	a.Equal(false, ok)

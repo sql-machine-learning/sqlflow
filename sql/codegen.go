@@ -40,19 +40,12 @@ type filler struct {
 	connectionConfig
 }
 
-// TODO(tonyyang): This is currently a quick hack to map from SQL
-// field types to feature types.  We will enhance it to support more
-// complex cases like cross features.
-func newColumnType(n, t string) *columnType {
-	return &columnType{n, t}
-}
-
 func translateColumnToFeature(fts *fieldTypes, driverName, ident string) (*columnType, error) {
 	ct, ok := fts.get(ident)
 	if !ok {
 		return nil, fmt.Errorf("genTF: Cannot find type of field %s", ident)
 	}
-	ctype, e := universalizeColumnType(driverName, ct.Type)
+	ctype, e := universalizeColumnType(driverName, ct)
 	if e != nil {
 		return nil, e
 	}

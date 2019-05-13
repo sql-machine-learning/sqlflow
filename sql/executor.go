@@ -330,14 +330,14 @@ func createPredictionTable(trainParsed, predParsed *extendedSelect, db *DB) erro
 		if !ok {
 			return fmt.Errorf("createPredictionTable: Cannot find type of field %s", c.val)
 		}
-		stype, e := universalizeColumnType(db.driverName, typ.Type)
+		stype, e := universalizeColumnType(db.driverName, typ)
 		if e != nil {
 			return e
 		}
 		fmt.Fprintf(&b, "%s %s, ", c.val, stype)
 	}
 	typ, _ := fts.get(trainParsed.label)
-	stype, e := universalizeColumnType(db.driverName, typ.Type)
+	stype, e := universalizeColumnType(db.driverName, typ)
 	if e != nil {
 		return e
 	}
