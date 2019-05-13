@@ -31,17 +31,17 @@ func Create(db *sql.DB, driver, table string) (*Writer, error) {
 // Write write bytes to sqlfs and returns (num_bytes, error)
 func (w *Writer) Write(p []byte) (n int, e error) {
 	n = 0
-	for nBytes := len(p); nBytes > 0; nBytes = len(p) {
+	for len(p) > 0 {
 		fill := bufSize - len(w.buf)
-		if fill > nBytes {
-			fill = nBytes
+		if fill > len(p) {
+			fill = len(p)
 		}
 		w.buf = append(w.buf, p[:fill]...)
 		p = p[fill:]
 		n += fill
 		if len(w.buf) >= bufSize {
 			if e = w.flush(); e != nil {
-				return n, fmt.Errorf("writer failed: %v", e)
+				return n, fmt.Errorf("writer flush failed: %v", e)
 			}
 		}
 	}
