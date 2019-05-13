@@ -2,35 +2,30 @@ package sqlfs
 
 import (
 	"database/sql"
+	"encoding/base64"
 	"fmt"
 )
 
-var bufSize = 4 * 1024
+const bufSize = 4 * 1024
 
 // Writer implements io.WriteCloser.
 type Writer struct {
-	db     *sql.DB
-	table  string
-	buf    []byte
-	insert *sql.Stmt
+	db      *sql.DB
+	table   string
+	buf     []byte
+	flushID int
 }
 
 // Create creates a new table or truncates an existing table and
 // returns a writer.
-func Create(db *sql.DB, table string) (*Writer, error) {
+func Create(db *sql.DB, driver, table string) (*Writer, error) {
 	if e := dropTable(db, table); e != nil {
 		return nil, fmt.Errorf("create: %v", e)
 	}
-	return Append(db, table)
-}
-
-// Append returns a writer to append to an existing table.  It creates
-// the table if it doesn't exist.
-func Append(db *sql.DB, table string) (*Writer, error) {
-	if e := createTable(db, table); e != nil {
+	if e := createTable(db, driver, table); e != nil {
 		return nil, fmt.Errorf("create: %v", e)
 	}
-	return &Writer{db, table, make([]byte, 0, bufSize), nil}, nil
+	return &Writer{db, table, make([]byte, 0, bufSize), 0}, nil
 }
 
 // Write write bytes to sqlfs and returns (num_bytes, error)
@@ -56,31 +51,26 @@ func (w *Writer) Write(p []byte) (n int, e error) {
 // Close the connection of the sqlfs
 func (w *Writer) Close() error {
 	if e := w.flush(); e != nil {
-		return fmt.Errorf("writer flush failed: %v", e)
+		return fmt.Errorf("close failed: %v", e)
 	}
-	if w.insert != nil {
-		if e := w.insert.Close(); e != nil {
-			return e
-		}
-		w.insert = nil // Mark closed.
-	}
-	w.db = nil // Mark closed.
+	w.db = nil // mark closed
 	return nil
 }
 
 func (w *Writer) flush() error {
-	var e error
-	if w.insert == nil {
-		w.insert, e = w.db.Prepare(
-			fmt.Sprintf("INSERT INTO %s (block) VALUES(?)", w.table))
-		if e != nil {
-			return fmt.Errorf("flush failed to prepare insert %s: %v", w.table, e)
+	if w.db == nil {
+		return fmt.Errorf("bad database connection")
+	}
+
+	if len(w.buf) > 0 {
+		block := base64.StdEncoding.EncodeToString(w.buf)
+		query := fmt.Sprintf("INSERT INTO %s (id, block) VALUES(%d, '%s')",
+			w.table, w.flushID, block)
+		if _, e := w.db.Exec(query); e != nil {
+			return fmt.Errorf("flush to %s, error:%v", w.table, e)
 		}
+		w.buf = w.buf[:0]
+		w.flushID++
 	}
-	_, e = w.insert.Exec(w.buf)
-	if e != nil {
-		return fmt.Errorf("flush failed to execute insert: %v", e)
-	}
-	w.buf = w.buf[:0]
 	return nil
 }
