@@ -21,7 +21,6 @@ RUN /bin/bash -c "source activate sqlflow-dev && python -m pip install \
     tensorflow==2.0.0-alpha0 \
     mysql-connector-python \
     impyla \
-    thrift \
     jupyter \
     sqlflow \
     ${PIP_ADD_PACKAGES} \
