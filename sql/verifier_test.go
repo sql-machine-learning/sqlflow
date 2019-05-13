@@ -49,8 +49,8 @@ func TestIndexSelectFields(t *testing.T) {
 	f = indexSelectFields(r)
 	a.Equal(2, len(f))
 	a.Equal(map[string]string{}, f["g"])
-	a.Equal("", f["f"]["t1"])
-	a.Equal("", f["f"]["t2"])
+	a.Equal(f["f"]["t1"], "")
+	a.Equal(f["f"]["t2"], "")
 }
 
 func TestVerify(t *testing.T) {
@@ -109,5 +109,5 @@ func TestDescribeEmptyTables(t *testing.T) {
 	r, e := newParser().Parse(`SELECT * FROM iris.iris_empty LIMIT 10;`)
 	a.NoError(e)
 	_, e = describeTables(r, testDB)
-	a.EqualError(e, "table is Empty. table name: iris.iris_empty")
+	a.EqualError(e, "table[iris.iris_empty] is empty")
 }
