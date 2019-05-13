@@ -50,10 +50,10 @@ func translateColumnToFeature(fts *fieldTypes, driverName, ident string) (*colum
 		return nil, e
 	}
 
-	if ctype == "FLOAT" {
+	if ctype == "FLOAT" || ctype == "INT" || ctype == "DOUBLE" {
 		return &columnType{ident, "numeric_column"}, nil
 	}
-	return &columnType{ident, ""}, nil
+	return nil, fmt.Errorf("unsupported field type [%s]", ctype)
 }
 
 // TODO(weiguo): fts -> pointer
