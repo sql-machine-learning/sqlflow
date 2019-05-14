@@ -31,7 +31,7 @@ script:
   - docker build -t sqlflow:dev -f Dockerfile.dev .
   - docker run --rm -v $GOPATH/src:/go/src -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:dev pre-commit run -a
   - docker run --rm -v $GOPATH:/go -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:dev bash scripts/test.sh
-  - docker run --rm -v $GOPATH:/go -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow/gohive:dev scripts/test_hive.sh
+  - docker run --rm -v $GOPATH:/go -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow/gohive:dev bash scripts/test_hive.sh
 
 deploy:
   skip_cleanup: true

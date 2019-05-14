@@ -27,7 +27,9 @@ func Open(db *sql.DB, table string) (*Reader, error) {
 
 	r := &Reader{db, table, nil, nil}
 	// hive need select the id for `order by`
-	stmt := fmt.Sprintf("SELECT id,block FROM %s ORDER BY id", table)
+	// FIXME(typhoonzero): hive query with orderby, should add the below line back
+	// stmt := fmt.Sprintf("SELECT id,block FROM %s ORDER BY id", table)
+	stmt := fmt.Sprintf("SELECT id,block FROM %s;", table)
 	r.rows, e = r.db.Query(stmt)
 	if e != nil {
 		return nil, fmt.Errorf("open: db query [%s] failed: %v", stmt, e)

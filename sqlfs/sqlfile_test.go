@@ -151,6 +151,9 @@ func TestMain(m *testing.M) {
 		assertNoErr(e)
 		_, e = testDB.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s;", testDatabaseName))
 		assertNoErr(e)
+		fmt.Println("testing query")
+		_, e = testDB.Query("SELECT id,block FROM sqlfs_test.unitest6129484611666145821;", "sqlfs_test")
+		assertNoErr(e)
 		defer testDB.Close()
 	default:
 		assertNoErr(fmt.Errorf("unrecognized environment variable SQLFLOW_TEST_DB %s", testDriver))
