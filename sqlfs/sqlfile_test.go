@@ -55,6 +55,7 @@ func TestWriteAndRead(t *testing.T) {
 
 	fn := fmt.Sprintf("%s.unitest%d", testDatabaseName, rand.Int())
 
+	fmt.Printf("db: %v, driver: %v\n", testDB, testDriver)
 	w, e := Create(testDB, testDriver, fn)
 	a.NoError(e)
 	a.NotNil(w)
