@@ -53,10 +53,10 @@ Done predicting. Predict table : iris.predict
 - [Installation](doc/installation.md)
 - [Running a Demo](doc/demo.md)
 - [Extended SQL Syntax](doc/syntax.md)
+- [Build from source code](doc/build.md)
 
 ## Contributions
 
-- [Build from source code](doc/build.md).
 - [The walkthrough of the source code](doc/walkthrough.md)
 - [The choice of parser generator](doc/sql_parser.md)
 
