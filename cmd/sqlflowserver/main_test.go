@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"log"
 	"net"
@@ -227,9 +226,7 @@ INTO sqlflow_models.my_dnn_model;`
 		a.Fail("Check if the server started successfully. %v", err)
 	}
 	// call ParseRow only to wait train finish
-	fmt.Println("start getting train result...")
 	ParseRow(stream)
-	fmt.Println("start getting train result...OK")
 
 	// FIXME(typhoonzero): Fix PREDICT tests using hive
 	if os.Getenv("SQLFLOW_TEST_DB") == "hive" {
@@ -246,9 +243,7 @@ USING sqlflow_models.my_dnn_model;`
 		a.Fail("Check if the server started successfully. %v", err)
 	}
 	// call ParseRow only to wait predict finish
-	fmt.Println("start getting predict result...")
 	ParseRow(stream)
-	fmt.Println("start getting predict result...OK")
 
 	showPred := `SELECT *
 FROM iris.predict LIMIT 5;`
@@ -257,9 +252,7 @@ FROM iris.predict LIMIT 5;`
 	if err != nil {
 		a.Fail("Check if the server started successfully. %v", err)
 	}
-	fmt.Println("start getting predict select result...")
 	_, rows := ParseRow(stream)
-	fmt.Println("start getting predict select result...OK")
 
 	expectedPredClasses := []int64{2, 1, 0, 2, 0}
 	for rowIdx, row := range rows {
