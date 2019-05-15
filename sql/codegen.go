@@ -196,13 +196,13 @@ columns = list(map(list, zip(*cursor.fetchall())))
 feature_columns = []
 column_name_to_type = dict()
 {{range .X}}
+column_name_to_type["{{.Name}}"] = "{{.Type}}"
 {{if eq .Type "categorical_column_with_identity"}}
 feature_columns.append(tf.feature_column.embedding_column(
 	tf.feature_column.categorical_column_with_identity(
 	key="{{.Name}}",
 	num_buckets=160000),
 dimension=128))
-column_name_to_type["{{.Name}}"] = "{{.Type}}"
 {{else}}
 feature_columns.append(tf.feature_column.{{.Type}}(key="{{.Name}}"))
 {{end}}
