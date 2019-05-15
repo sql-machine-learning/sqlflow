@@ -1,5 +1,5 @@
 ---
-name: Bug Report
+name: Bug report
 about: Create a report to help us improve
 title: ''
 labels: ''
@@ -7,20 +7,22 @@ assignees: ''
 
 ---
 
-**Description**
-A clear description of the bug
+**Describe the bug**
+A clear and concise description of what the bug is.
 
-**Reproduction Steps**
-Detailed steps to reproduce
+**To Reproduce**
+Steps to reproduce the behavior.
 
-**Expected Behavior**
-What you expected to happen.
+**Expected behavior**
+A clear and concise description of what you expected to happen.
 
 **Screenshots**
+If applicable, add screenshots to help explain your problem.
 
-**Environment (Please complete the following information):**
- - OS:
- - Browser:
- - Version:
+**Environment (please complete the following information):**
+ - OS: [e.g. iOS]
+ - Browser [e.g. chrome, safari]
+ - Version [e.g. 22]
 
-**Additional Notes**
+**Additional context**
+Add any other context about the problem here.

@@ -1,7 +1,8 @@
 # Installation
 
 SQLFlow is currently under active development. For those who are interested in trying
-it out, we have provided the instructions and demo. Play around with it. Any bug report and issue is welcome. :)
+it out, we have provided the instructions and demo. Play around with it. Any bug report and
+issue is welcome. :)
 
 
 ## Preparation
@@ -36,9 +37,14 @@ it out, we have provided the instructions and demo. Play around with it. Any bug
 If you have your own database setup, below steps enables running a seperated container
 that runs SQLFlow server and Jupyter Notebook, which connects to your own database.
 
-1. Follow steps in [example/datasets](https://github.com/sql-machine-learning/sqlflow/blob/develop/example/datasets) to import sample data.
+1. Follow steps in
+[example/datasets](https://github.com/sql-machine-learning/sqlflow/blob/develop/example/datasets)
+to import sample data.
 
-1. After data is popularized in MySQL, let's test the installation by running a query in Jupyter Notebook. If you are using Docker for Linux, please change `host.docker.internal:3306` to `localhost:3306`. If you are connecting to a remote database, please make sure to change `host.docker.internal:3306` to the remote address.
+1. After data is popularized in MySQL, let's test the installation from running a query in Jupyter
+   Notebook. If you are using Docker for Linux, please change `host.docker.internal:3306` to
+   `localhost:3306`. If you are connecting to a remote database, please make sure to change
+   `host.docker.internal:3306` to the remote address.
 
    ```
    docker run -it -p 8888:8888 sqlflow/sqlflow:latest \
@@ -46,6 +52,7 @@ that runs SQLFlow server and Jupyter Notebook, which connects to your own databa
    SQLFLOW_SERVER=localhost:50051 jupyter notebook --ip=0.0.0.0 --port=8888 --allow-root"
    ```
 
-If you are using Docker for Mac, please be aware the option `--database` where `host.docker.internal` translates to the host IP address as recommended [here](https://docs.docker.com/docker-for-mac/networking/).
+   If you are using Docker for Mac, please be aware the option `--database` where `host.docker.internal` translates to the host IP address as recommended [here](https://docs.docker.com/docker-for-mac/networking/).
 
-If you are running MySQL on remote, please be aware that MySQL only allows connections from localhost by default. Fix can be found [here](https://stackoverflow.com/questions/14779104/how-to-allow-remote-connection-to-mysql).
+   If you are running MySQL on remote, please be aware that MySQL only allows connections from localhost
+   by default. Fix can be found [here](https://stackoverflow.com/questions/14779104/how-to-allow-remote-connection-to-mysql).
