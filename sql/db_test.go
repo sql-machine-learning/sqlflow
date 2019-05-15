@@ -45,6 +45,10 @@ func TestMain(m *testing.M) {
 		_, e = testDB.Exec("CREATE DATABASE IF NOT EXISTS sqlflow_models;")
 		assertNoErr(e)
 		defer testDB.Close()
+	case "hive":
+		// NOTE: sample dataset is written in
+		// https://github.com/sql-machine-learning/gohive/blob/develop/docker/entrypoint.sh#L123
+		os.Exit(0)
 	default:
 		e = fmt.Errorf("unrecognized environment variable SQLFLOW_TEST_DB %s", dbms)
 	}

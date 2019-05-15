@@ -153,6 +153,8 @@ func CaseShowDatabases(t *testing.T) {
 		"sqlflow_models":     "",
 		"sqlfs_test":         "",
 		"sys":                "",
+		"hive":               "", // if current mysql is also used for hive
+		"default":            "", // if fetching default hive databases
 	}
 	for i := 0; i < len(resp); i++ {
 		AssertContainsAny(a, expectedDBs, resp[i][0])
