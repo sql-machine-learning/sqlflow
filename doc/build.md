@@ -105,7 +105,6 @@ into `server/sqlflow.pb.go` and `go test -v` builds and run unit tests.
 * `git push origin your_branch` push to your github repo
 * create merge request in github from your repo
 
-
 ## Demo: Command line Prompt
 
 The demo requires a MySQL server instance with populated data. If we don't, we could
