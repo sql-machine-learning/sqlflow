@@ -88,7 +88,7 @@ go test -v ./...
 where `go generate` invokes the `protoc` command to translate `server/sqlflow.proto`
 into `server/sqlflow.pb.go` and `go test -v` builds and run unit tests.
 
-### setup git env for contribution
+### Setup git env for contribution
 * Github fork into your own repo [example](https://github.com/jq/sqlflow/)
 * Git clone your own repo into `${GOPATH}/src/github.com/sql-machine-learning`
 ```sh
@@ -96,7 +96,7 @@ into `server/sqlflow.pb.go` and `go test -v` builds and run unit tests.
     cd $GOPATH/src/github.com/sql-machine-learning
     git clone https://github.com/${GITHUB_USER}/sqlflow.git
 ```
-* cd into the path and `git remote add upstream git@github.com:kubeflow/mpi-operator.git`
+* cd into the path and `git remote add upstream git@github.com:sql-machine-learning/sqlflow.git`
 * get upstream `git fetch upstream`
 ```
 	git checkout -t upstream/develop -b your_branch
