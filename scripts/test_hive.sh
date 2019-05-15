@@ -1,5 +1,7 @@
 #!/bin/bash
 set -e
+. /miniconda/etc/profile.d/conda.sh
+source activate sqlflow-dev
 
 go generate ./...
 go get -v -t ./...
