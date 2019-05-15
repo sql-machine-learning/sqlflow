@@ -88,6 +88,24 @@ go test -v ./...
 where `go generate` invokes the `protoc` command to translate `server/sqlflow.proto`
 into `server/sqlflow.pb.go` and `go test -v` builds and run unit tests.
 
+### setup git env for contribution
+* Github fork into your own repo [example](https://github.com/jq/sqlflow/)
+* Git clone your own repo into `${GOPATH}/src/github.com/sql-machine-learning`
+```sh
+    mkdir -p $GOPATH/src/github.com/sql-machine-learning
+    cd $GOPATH/src/github.com/sql-machine-learning
+    git clone https://github.com/${GITHUB_USER}/sqlflow.git
+```
+* cd into the path and `git remote add upstream git@github.com:kubeflow/mpi-operator.git`
+* get upstream `git fetch upstream`
+```
+	git checkout -t upstream/develop -b your_branch
+```
+* now you only need `git pull --rebase` to sync with upstream and no ugly merge node in the git repo
+* `git push origin your_branch` push to your github repo
+* create merge request in github from your repo
+
+
 ## Demo: Command line Prompt
 
 The demo requires a MySQL server instance with populated data. If we don't, we could
