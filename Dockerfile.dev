@@ -21,7 +21,7 @@ RUN /bin/bash -c "source activate sqlflow-dev && python -m pip install \
     grpcio-tools \
     tensorflow==2.0.0-alpha0 \
     mysql-connector-python \
-    pyhive \
+    impyla \
     pre-commit \
     ${PIP_ADD_PACKAGES} \
     "
@@ -62,4 +62,3 @@ CMD ["/build.sh"]
 
 # Make sqlflow-dev pyenv the default Python environment
 ENV PATH=/miniconda/envs/sqlflow-dev/bin:$PATH
-

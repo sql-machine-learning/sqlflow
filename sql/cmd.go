@@ -17,8 +17,16 @@ func hasTensorFlow() bool {
 	return tryRun("python", "-c", "import tensorflow")
 }
 
-func hasMySQLConnector() bool {
-	return tryRun("python", "-c", "import mysql.connector")
+func hasDatabaseConnector(driverName string) bool {
+	if driverName == "hive" {
+		return tryRun("python", "-c", "from impala.dbapi import connect")
+	} else if driverName == "mysql" {
+		return tryRun("python", "-c", "from mysql.connector import connect")
+	} else if driverName == "sqlite3" {
+		return tryRun("python", "-c", "from sqlite3 import connect")
+	}
+	// TODO(weiguo): need an `else` to support maxCompute ?
+	return false
 }
 
 func hasDocker() bool {
@@ -33,8 +41,8 @@ func hasDockerImage(image string) bool {
 	return true
 }
 
-func tensorflowCmd(cwd string) (cmd *exec.Cmd) {
-	if hasPython() && hasTensorFlow() && hasMySQLConnector() {
+func tensorflowCmd(cwd, driverName string) (cmd *exec.Cmd) {
+	if hasPython() && hasTensorFlow() && hasDatabaseConnector(driverName) {
 		log.Printf("tensorflowCmd: run locally")
 		cmd = exec.Command("python")
 		cmd.Dir = cwd
