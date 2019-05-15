@@ -45,7 +45,7 @@ cd $GOPATH/src/github.com/sql-machine-learning/sqlflow
 go get -u -t ./...
 ```
 
-To build the project, we need protobuf compiler, Go compiler, Python interpreter and gRPC extension to protobuf compiler. To prepare our dev environment with these tools, the easist way is to pull latest image from DockerHub by running command below and give it an alias sqlflow:dev. Alternatively, we provide a Dockerfile where can build image from. Note it will take a while to build from Dockerfile, especially when the network is unpredictable. For China users, use `http://f1361db2.m.daocloud.io` as registry mirrors in case needed.
+To build the project, we need protobuf compiler, Go compiler, Python interpreter and gRPC extension to protobuf compiler. To prepare our dev environment with these tools, the easist way is to pull latest image from DockerHub by running command below and give it an alias sqlflow:dev. Alternatively, we provide a Dockerfile where can build image from. Note it will take a while to build from Dockerfile, especially when the network is unpredictable.
 
 ```bash
 docker pull sqlflow/sqlflow:dev
