@@ -45,7 +45,7 @@ cd $GOPATH/src/github.com/sql-machine-learning/sqlflow
 go get -u -t ./...
 ```
 
-To build the project, we need protobuf compiler, Go compiler, Python interpreter and gRPC extension to protobuf compiler. To prepare our dev environment with these tools, the easist way is to pull latest image from DockerHub by running command below and give it an alias sqlflow:dev. Alternatively, we provide a Dockerfile where can build image from. Note it will take a while to build from Dockerfile, especially when the network is unpredictable. 
+To build the project, we need protobuf compiler, Go compiler, Python interpreter and gRPC extension to protobuf compiler. To prepare our dev environment with these tools, the easist way is to pull latest image from DockerHub by running command below and give it an alias sqlflow:dev. Alternatively, we provide a Dockerfile where can build image from. Note it will take a while to build from Dockerfile, especially when the network is unpredictable. For China users, use `http://f1361db2.m.daocloud.io` as registry mirrors in case needed.
 
 ```bash
 docker pull sqlflow/sqlflow:dev
@@ -90,7 +90,7 @@ into `server/sqlflow.pb.go` and `go test -v` builds and run unit tests.
 
 ## Demo: Command line Prompt
 
-The demo requires a MySQL server instance with populated data. If we don't, we could
+The demo requires a MySQL server instance with populated data. If you don't, please
 follow [example/datasets/README.md](/example/datasets/README.md) to start one on the host.
 After setting up MySQL, run the following inside the Docker container
 
