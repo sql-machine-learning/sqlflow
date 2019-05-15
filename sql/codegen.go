@@ -52,6 +52,13 @@ func translateColumnToFeature(fts *fieldTypes, driverName, ident string) (*colum
 
 	if ctype == "FLOAT" || ctype == "INT" || ctype == "DOUBLE" {
 		return &columnType{ident, "numeric_column"}, nil
+	} else if ctype == "TEXT" || ctype == "VARCHAR" {
+		// FIXME(typhoonzero): only support preprocessed string of int vector
+		// like: "231,291,0,0,9", to support arbitrary string, we need to provide
+		// additional information like how to parse.
+		// TODO(typhoonzero): need to support categorical_column_with_vocabulary_list
+		// which read vocabulary from DB.
+		return &columnType{ident, "categorical_column_with_identity"}, nil
 	}
 	return nil, fmt.Errorf("unsupported type %s of field %s", ctype, ident)
 }
@@ -140,6 +147,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 import sys, json
 import tensorflow as tf
+import numpy as np
 
 {{if eq .Driver "mysql"}}
 from mysql.connector import connect
@@ -185,12 +193,36 @@ field_names = [i[0] for i in cursor.description]
 {{end}}
 columns = list(map(list, zip(*cursor.fetchall())))
 
-feature_columns = [{{range .X}}tf.feature_column.{{.Type}}(key="{{.Name}}"),
-{{end}}]
+feature_columns = []
+column_name_to_type = dict()
+{{range .X}}
+{{if eq .Type "categorical_column_with_identity"}}
+feature_columns.append(tf.feature_column.embedding_column(
+	tf.feature_column.categorical_column_with_identity(
+	key="{{.Name}}",
+	num_buckets=160000),
+dimension=128))
+column_name_to_type["{{.Name}}"] = "{{.Type}}"
+{{else}}
+feature_columns.append(tf.feature_column.{{.Type}}(key="{{.Name}}"))
+{{end}}
+{{end}}
+
 feature_column_names = [{{range .X}}"{{.Name}}",
 {{end}}]
 
-X = {name: columns[field_names.index(name)] for name in feature_column_names}
+X = {}
+for name in feature_column_names:
+	if column_name_to_type[name] == "categorical_column_with_identity":
+		rows = columns[field_names.index(name)]
+		# convert to int tensors
+		tensor_rows = []
+		for row in rows:
+			tensor_rows.append(np.array([int(v) for v in row.split(",")]))
+		X[name] = np.array(tensor_rows)
+	else:
+		X = {name: columns[field_names.index(name)] for name in feature_column_names}
+
 {{if .Train}}
 Y = columns[field_names.index("{{.Y.Name}}")]
 {{- end}}
