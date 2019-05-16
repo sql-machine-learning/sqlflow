@@ -4,10 +4,14 @@ import (
 	"database/sql"
 	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/go-sql-driver/mysql"
 )
+
+// hive column type ends with _TYPE
+const hiveCTypeSuffix = "_TYPE"
 
 var (
 	// Column types: https://golang.org/pkg/database/sql/#Rows.Scan
@@ -154,4 +158,16 @@ func parseVal(val interface{}) (interface{}, error) {
 	default:
 		return nil, fmt.Errorf("unrecogized type %v", v)
 	}
+}
+
+func universalizeColumnType(driverName, dialectType string) (string, error) {
+	if driverName == "mysql" || driverName == "sqlite3" {
+		return dialectType, nil
+	} else if driverName == "hive" {
+		if strings.HasSuffix(dialectType, hiveCTypeSuffix) {
+			return dialectType[:len(dialectType)-len(hiveCTypeSuffix)], nil
+		}
+		return dialectType, nil
+	}
+	return "", fmt.Errorf("not support driver:%s", driverName)
 }

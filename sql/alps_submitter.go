@@ -530,7 +530,7 @@ func submitALPS(w *PipeWriter, pr *extendedSelect, db *DB, cwd string) error {
 	code := program.String()
 
 	cw := &logChanWriter{wr: w}
-	cmd := tensorflowCmd(cwd)
+	cmd := tensorflowCmd(cwd, "maxCompute")
 	cmd.Stdin = &program
 	cmd.Stdout = cw
 	cmd.Stderr = cw

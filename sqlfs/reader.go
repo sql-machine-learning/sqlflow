@@ -2,6 +2,7 @@ package sqlfs
 
 import (
 	"database/sql"
+	"encoding/base64"
 	"fmt"
 	"io"
 )
@@ -24,15 +25,12 @@ func Open(db *sql.DB, table string) (*Reader, error) {
 		return nil, fmt.Errorf("open: hasTable failed with %v", e)
 	}
 
-	r := &Reader{
-		db:    db,
-		table: table,
-		buf:   nil,
-		rows:  nil}
-
-	r.rows, e = r.db.Query(fmt.Sprintf("SELECT block FROM %s ORDER BY id", table))
+	r := &Reader{db, table, nil, nil}
+	// hive need select the id for `order by`
+	stmt := fmt.Sprintf("SELECT id,block FROM %s ORDER BY id", table)
+	r.rows, e = r.db.Query(stmt)
 	if e != nil {
-		return nil, fmt.Errorf("open: failed to query: %v", e)
+		return nil, fmt.Errorf("open: db query [%s] failed: %v", stmt, e)
 	}
 	return r, nil
 }
@@ -48,8 +46,12 @@ func (r *Reader) Read(p []byte) (n int, e error) {
 		r.buf = r.buf[m:]
 		if len(r.buf) <= 0 {
 			if r.rows.Next() {
-				e = r.rows.Scan(&r.buf)
-				if e != nil {
+				var block string
+				var id int
+				if e = r.rows.Scan(&id, &block); e != nil {
+					break
+				}
+				if r.buf, e = base64.StdEncoding.DecodeString(block); e != nil {
 					break
 				}
 			} else {

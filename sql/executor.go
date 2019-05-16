@@ -255,7 +255,7 @@ func train(tr *extendedSelect, slct string, db *DB, cwd string, wr *PipeWriter) 
 	}
 
 	cw := &logChanWriter{wr: wr}
-	cmd := tensorflowCmd(cwd)
+	cmd := tensorflowCmd(cwd, db.driverName)
 	cmd.Stdin = &program
 	cmd.Stdout = cw
 	cmd.Stderr = cw
@@ -297,7 +297,7 @@ func pred(pr *extendedSelect, db *DB, cwd string, wr *PipeWriter) error {
 	}
 
 	cw := &logChanWriter{wr: wr}
-	cmd := tensorflowCmd(cwd)
+	cmd := tensorflowCmd(cwd, db.driverName)
 	cmd.Stdin = &buf
 	cmd.Stdout = cw
 	cmd.Stderr = cw
@@ -330,10 +330,18 @@ func createPredictionTable(trainParsed, predParsed *extendedSelect, db *DB) erro
 		if !ok {
 			return fmt.Errorf("createPredictionTable: Cannot find type of field %s", c.val)
 		}
-		fmt.Fprintf(&b, "%s %s, ", c.val, typ)
+		stype, e := universalizeColumnType(db.driverName, typ)
+		if e != nil {
+			return e
+		}
+		fmt.Fprintf(&b, "%s %s, ", c.val, stype)
 	}
-	tpy, _ := fts.get(trainParsed.label)
-	fmt.Fprintf(&b, "%s %s);", columnName, tpy)
+	typ, _ := fts.get(trainParsed.label)
+	stype, e := universalizeColumnType(db.driverName, typ)
+	if e != nil {
+		return e
+	}
+	fmt.Fprintf(&b, "%s %s);", columnName, stype)
 
 	createStmt := b.String()
 	if _, e := db.Query(createStmt); e != nil {
