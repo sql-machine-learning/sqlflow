@@ -409,6 +409,7 @@ func generateEstimatorCreator(estimator string, attrs []*attribute, args []strin
 }
 
 func newALPSTrainFiller(pr *extendedSelect) (*alpsFiller, error) {
+	//TODO(uuleon): the scratchDir will be deleted after model uploading
 	scratchDir, err := ioutil.TempDir("/tmp", "alps_scratch_dir_")
 	if err != nil {
 		return nil, err
