@@ -557,6 +557,7 @@ import os
 
 import tensorflow as tf
 
+from alps.conf.closure import Closure
 from alps.framework.train.training import build_run_config
 from alps.framework.exporter import ExportStrategy, FileLocation
 from alps.framework.exporter.arks_exporter import ArksExporter
@@ -606,7 +607,7 @@ if __name__ == "__main__":
 
 	evalDs = AlpsDataset(
 		num_epochs=1,
-		batch_size=512,
+		batch_size=64,
 		reader=OdpsReader(
 			odps=OdpsConf(
 				accessid={{.OdpsConf.Get "accessid" "None"}},
@@ -626,12 +627,20 @@ if __name__ == "__main__":
 	experiment = Experiment(
 		user="sqlflow",
 		engine=LocalEngine(),
-		train=TrainConf(input=trainDs, max_steps={{.TrainSpec.Get "max_steps" "1000"}}),
+		train=TrainConf(input=trainDs, 
+						max_steps={{.TrainSpec.Get "max_steps" "1000"}},
+						save_summary_steps={{.TrainSpec.Get "save_summary_steps" "100"}},
+						save_timeline_steps={{.TrainSpec.Get "save_timeline_steps" "100"}},
+						save_checkpoints_steps={{.TrainSpec.Get "save_checkpoints_steps" "100"}},
+						log_step_count_steps={{.TrainSpec.Get "log_step_count_steps" "100"}}
+		),
 		eval=EvalConf(input=evalDs, 
 					  steps={{.TrainSpec.Get "steps" "100"}}, 
 					  start_delay_secs={{.TrainSpec.Get "start_delay_secs" "120"}},
-					  throttle_secs={{.TrainSpec.Get "throttle_secs" "600"}}),
-		exporter=ArksExporter(export_path=export_path, export_strategy=ExportStrategy.BEST, compare_fn=best_auc_fn),
+					  throttle_secs={{.TrainSpec.Get "throttle_secs" "600"}},
+ 					  throttle_steps={{.TrainSpec.Get "throttle_steps" "None"}}
+		),
+		exporter=ArksExporter(export_path=export_path, export_strategy=ExportStrategy.BEST, compare_fn=Closure(best_auc_fn)),
 		model_dir="{{.ScratchDir}}",
 		model_builder=SQLFlowEstimatorBuilder())
 
