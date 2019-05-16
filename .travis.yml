@@ -26,7 +26,6 @@ script:
   - docker run --rm -v $GOPATH/src:/go/src -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:dev pre-commit run -a
   - docker run --rm -v $GOPATH:/go -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:dev bash scripts/test.sh
   - docker run --rm -v $GOPATH:/go -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow/gohive:dev bash scripts/test_hive.sh
-
 deploy:
   skip_cleanup: true
   provider: script
@@ -35,4 +34,4 @@ deploy:
     branch: develop
 env:
   global:
-    secure: JkZb2QeaBBA1PDUQLuLZhBvmC1lqtUhaPNdWKOP22yDwgvuMgR6Ok4ts2ff8FJghmhY+bpl9bAKi+8B6gVCOpx9944xqYwUaZokH1leyaMyvLgLwHNJXXaBm2r7S+ragX1gylQpNXnbpc4a9tiK1u23bqVxoJRl/WV33maBU96+2YswK+lRrlVXx8Qk+ldco45vCxeNVfyNA8cNnVw9VpZkXebOIDP7cXsfLUwaa09WVU3Y09HkQgg1plUU7ZBDc2tOkBq84rHjOgHlxNYwCNkhP9w7ZeglDDZjhIcfhnICG1lQOrLXLTQMqt/U+uQIX7vhVqCuisXRtLnvxIbL097DDoIsh4bDluZcD4NXux5BkQJA14vBF7bpk1289jFkkhRsFn6xoa09O1nj2HCMwUwC0e1EblX0VHVyYd1BKBWpVJWADXSuVvfqGsFs9TgByWxgx2PW8FLLe7m2CzNb9x8pqzYKCJNEdMZfEBEciHXqBF6TXf8p2IUc6uE06v26otsnMLRUFz06lqjWKk/u9KiTWIjMDk9j2xBccu7hb5zqmJAPSvX1aWOX8SCM9gIH75EL+WdT7Nkt0nM94/OxZVekuEo2E/tiL2X45SAy/DNBLdDLIQAMbi7BtP7hcGwtItHFZja7F5CXfkbFCxJ5FH4yUDz4I7Oht9ttKzsWjh2I=
+    secure: f03CHRo2Afl9PD6jLuKtY/6b/MgJkytcfeIhSrAYZFLzUCQTa4MI5yih4pG/VJtTpKVpoQD7NJikj/x0eO/6NOGxegJwaruY8EDg/4LVLeuVqRipmw0V9l3LcZ7AofxPAeJ6RZLpHALR9cYegXEEtvyfjNRw2BhQZsZBvTE8sbbvfzLJOY1UC9CeQnHxDGZYXG3WSMr7b+44ifg4OBweATmEsdIVPD7kgexunJvHw0vzQ25vsf+huYwLorVc7uRghoYY8SoaLMEcmP50Jsl2Mn7AUoFUyM3tl/kOub11BV4/yGrGJC1BysT7l48frSKYqSU1yeT+0xiJjgkOwpV8BcxOmXrgm2s6PDzWDmiXtBRhE6n79iG2IuuTuYLk4n/Rm7uwKYu6EdnooKSnhGV6DW7mLVJ5Rcb655xCB+AoXb79Ilp60YxsMFTqzdhMkf3QpQV/OsEHFrzNhab6+pWcrwOeCq/CXU0MDO0rQuX4YIBwdEyAlDrj2JDvJ868lpdTJTxUUgUovH2j8rFrtCf5Bx0gqg0Cj81s/7cMdhtoV+wbTtHoQ7TLTZkvqYyFAMCkl2d5g00UhZpq+HTjzcPOL5xKc0mZhsuYq03nTVMQWzIJiKkaWbDPoY3eZcLga0cO8VD2HgzsQ5lg300ZTF73AxonZheyzJVWtLQvrpT8dPI=
