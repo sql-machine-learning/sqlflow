@@ -49,9 +49,7 @@ type alpsFiller struct {
 	DatasetConf collection
 }
 
-type collection struct {
-	Dict map[string]string
-}
+type collection map[string]string
 
 type featureSpec struct {
 	FeatureName string
@@ -87,11 +85,11 @@ type attribute struct {
 	Value    interface{}
 }
 
-func (dict collection) Get(key string, defaultValue string) string {
-	if v, ok := dict.Dict[key]; ok {
+func (c collection) Get(key string, fallback string) string {
+	if v, ok := c[key]; ok {
 		return v
 	}
-	return defaultValue
+	return fallback
 }
 
 func (nc *numericColumn) GenerateCode() (string, error) {
@@ -437,7 +435,7 @@ func newALPSTrainFiller(pr *extendedSelect) (*alpsFiller, error) {
 		return nil, err
 	}
 
-	//TODO(uuleon): need removed and parse it from odps datasource
+	//FIXME(uuleon): need removed and parse it from odps datasource
 	odpsAttrs := filter(attrs, "odps")
 	odpsMap := make(map[string]string, len(odpsAttrs))
 	for _, a := range odpsAttrs {
@@ -490,16 +488,16 @@ func newALPSTrainFiller(pr *extendedSelect) (*alpsFiller, error) {
 	return &alpsFiller{
 		IsTraining:           true,
 		TrainInputTable:      tableName,
-		EvalInputTable:       tableName,
+		EvalInputTable:       tableName, //FIXME(uuleon): Train and Eval should use different dataset.
 		ScratchDir:           scratchDir,
 		ModelDir:             modelDir,
 		Fields:               fmt.Sprintf("[%s]", strings.Join(fields, ",")),
 		X:                    fmt.Sprintf("[%s]", strings.Join(fssCode, ",")),
 		Y:                    y.ToString(),
-		OdpsConf:             collection{Dict: odpsMap},
-		TrainSpec:            collection{Dict: trainMap},
-		EvalSpec:             collection{Dict: evalMap},
-		DatasetConf:          collection{Dict: datasetMap},
+		OdpsConf:             odpsMap,
+		TrainSpec:            trainMap,
+		EvalSpec:             evalMap,
+		DatasetConf:          datasetMap,
 		FeatureColumnCode:    fcCode,
 		EstimatorCreatorCode: estimatorCode}, nil
 }
@@ -589,8 +587,12 @@ class SQLFlowEstimatorBuilder(EstimatorBuilder):
 if __name__ == "__main__":
 	
 	trainDs = AlpsDataset(
-		num_epochs={{.DatasetConf.Get "epoch" "1"}},
-		batch_size={{.DatasetConf.Get "batch_size" "512"}},
+{{if .DatasetConf.epoch}}
+		num_epochs={{.DatasetConf.epoch}},
+{{end}}
+{{if .DatasetConf.batch_size}}
+		batch_size={{.DatasetConf.batch_size}},
+{{end}}
 		reader=OdpsReader(
 			odps=OdpsConf(
 				accessid={{.OdpsConf.Get "accessid" "None"}},
@@ -627,18 +629,36 @@ if __name__ == "__main__":
 	experiment = Experiment(
 		user="sqlflow",
 		engine=LocalEngine(),
-		train=TrainConf(input=trainDs, 
-						max_steps={{.TrainSpec.Get "max_steps" "1000"}},
-						save_summary_steps={{.TrainSpec.Get "save_summary_steps" "100"}},
-						save_timeline_steps={{.TrainSpec.Get "save_timeline_steps" "100"}},
-						save_checkpoints_steps={{.TrainSpec.Get "save_checkpoints_steps" "100"}},
-						log_step_count_steps={{.TrainSpec.Get "log_step_count_steps" "100"}}
+		train=TrainConf(input=trainDs,
+{{if .TrainSpec.max_steps}}
+						max_steps={{.TrainSpec.max_steps}},
+{{end}}
+{{if .TrainSpec.save_summary_steps}}
+						save_summary_steps={{.TrainSpec.save_summary_steps}},
+{{end}}
+{{if .TrainSpec.save_timeline_steps}}
+						save_timeline_steps={{.TrainSpec.save_timeline_steps}},
+{{end}}
+{{if .TrainSpec.save_checkpoints_steps}}
+						save_checkpoints_steps={{.TrainSpec.save_checkpoints_steps}},
+{{end}}
+{{if .TrainSpec.log_step_count_steps}}
+						log_step_count_steps={{.TrainSpec.log_step_count_steps}}
+{{end}}
 		),
 		eval=EvalConf(input=evalDs, 
-					  steps={{.TrainSpec.Get "steps" "100"}}, 
-					  start_delay_secs={{.TrainSpec.Get "start_delay_secs" "120"}},
-					  throttle_secs={{.TrainSpec.Get "throttle_secs" "600"}},
- 					  throttle_steps={{.TrainSpec.Get "throttle_steps" "None"}}
+{{if .TrainSpec.steps}}
+					  steps={{.TrainSpec.steps}}, 
+{{end}}
+{{if .TrainSpec.start_delay_secs}}
+					  start_delay_secs={{.TrainSpec.start_delay_secs}},
+{{end}}
+{{if .TrainSpec.throttle_secs}}
+					  throttle_secs={{.TrainSpec.throttle_secs}},
+{{end}}
+{{if .TrainSpec.throttle_steps}}
+ 					  throttle_steps={{.TrainSpec.throttle_steps}}
+{{end}}
 		),
 		exporter=ArksExporter(export_path=export_path, export_strategy=ExportStrategy.BEST, compare_fn=Closure(best_auc_fn)),
 		model_dir="{{.ScratchDir}}",
