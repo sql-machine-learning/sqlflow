@@ -17,4 +17,5 @@ SQLFLOW_log_level=debug go test -v ./...  -covermode=count -coverprofile=coverag
 # into docker container which will overwrite goveralls installed in docker image.
 go get golang.org/x/tools/cmd/cover && \
 go get github.com/mattn/goveralls
+echo "secret token: " $COVERALLS_TOKEN
 /go/bin/goveralls -coverprofile=coverage.out -service=travis-ci -repotoken $COVERALLS_TOKEN
