@@ -1,14 +1,19 @@
 language: go
+
 branches:
   only:
   - gh-pages
   - "/.*/"
 service:
-- docker
+  - docker
+
+# Update to newer version of Docker to allow
+# Dockerfile being outside of the context directory
+# https://github.com/docker/compose/issues/4926#issuecomment-370501452
 addons:
   apt:
     packages:
-    - docker-ce
+      - docker-ce
 install:
   # Note(tony): TravisCI's native `go get ${gobuild_args} ./...` failed with
   # `/usr/bin/ld: final link failed: Bad value`, the cause is the system linker
@@ -26,6 +31,7 @@ script:
   - docker run --rm -v $GOPATH/src:/go/src -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:dev pre-commit run -a
   - docker run --rm -v $GOPATH:/go -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:dev bash scripts/test.sh
   - docker run --rm -v $GOPATH:/go -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow/gohive:dev bash scripts/test_hive.sh
+
 deploy:
   skip_cleanup: true
   provider: script
