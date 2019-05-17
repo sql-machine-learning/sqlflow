@@ -45,17 +45,17 @@ cd $GOPATH/src/github.com/sql-machine-learning/sqlflow
 go get -u -t ./...
 ```
 
-To build the project, we need protobuf compiler, Go compiler, Python interpreter and gRPC extension to protobuf compiler. To prepare our dev environment with these tools, the easist way is to pull latest image from DockerHub by running command below and give it an alias sqlflow:dev. Alternatively, we provide a Dockerfile where can build image from. Note it will take a while to build from Dockerfile, especially when the network is unpredictable.
+To build the project, we need protobuf compiler, Go compiler, Python interpreter and gRPC extension to protobuf compiler. To prepare our dev environment with these tools, the easist way is to pull latest image from DockerHub by running command below and give it an alias sqlflow:latest. Alternatively, we provide a Dockerfile where can build image from. Note it will take a while to build from Dockerfile, especially when the network is unpredictable.
 
 ```bash
-docker pull sqlflow/sqlflow:dev
-docker tag sqlflow/sqlflow:dev sqlflow:dev
+docker pull sqlflow/sqlflow:latest
+docker tag sqlflow/sqlflow:latest sqlflow:latest
 ```
 
 or
 
 ```bash
-docker build -t sqlflow:dev -f Dockerfile.dev .
+docker build -t sqlflow:latest .
 ```
 
 ## Development
@@ -69,7 +69,7 @@ the `$GOPATH` in the container:
 ```bash
 docker run --rm -it -v $GOPATH:/go \
     -w /go/src/github.com/sql-machine-learning/sqlflow \
-    sqlflow:dev bash
+    sqlflow:latest bash
 ```
 
 Inside the Docker container, start a MySQL server in the background
