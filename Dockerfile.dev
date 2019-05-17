@@ -40,9 +40,7 @@ RUN mkdir -p /go
 ENV GOPATH /go
 ENV PATH $PATH:/usr/local/go/bin:/go/bin
 RUN go get github.com/golang/protobuf/protoc-gen-go && \
-go get golang.org/x/lint/golint && \
-go get golang.org/x/tools/cmd/cover && \
-go get github.com/mattn/goveralls
+go get golang.org/x/lint/golint
 
 RUN mv /go/bin/protoc-gen-go /usr/local/bin/
 
