@@ -108,7 +108,7 @@ func TestAlpsEstimatorCodeGenerate(t *testing.T) {
 	attrs, err := resolveTrainAttribute(&r.attrs)
 	a.NoError(err)
 
-	code, err := generateEstimatorCreator(r.estimator, filter(attrs, estimator))
+	code, err := generateEstimatorCreator(r.estimator, filter(attrs, estimator), nil)
 
 	a.Equal(estimatorCode, code)
 }
