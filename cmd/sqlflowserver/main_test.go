@@ -97,6 +97,7 @@ func TestEnd2EndFlow(t *testing.T) {
 	t.Run("TestShowDatabases", CaseShowDatabases)
 	t.Run("TestSelect", CaseSelect)
 	t.Run("TestTrainSQL", CaseTrainSQL)
+	t.Run("TestTextClassification", CaseTrainTextClassification)
 }
 
 func CaseShowDatabases(t *testing.T) {
@@ -127,6 +128,7 @@ func CaseShowDatabases(t *testing.T) {
 		"sqlflow_models":     "",
 		"sqlfs_test":         "",
 		"sys":                "",
+		"toutiao":            "",
 	}
 	for i := 0; i < len(resp); i++ {
 		AssertContainsAny(a, expectedDBs, resp[i][0])
@@ -222,4 +224,32 @@ FROM iris.predict LIMIT 5;`
 	for rowIdx, row := range rows {
 		AssertEqualAny(a, expectedPredClasses[rowIdx], row[4])
 	}
+}
+
+// CaseTrainTextClassification is a simple End-to-End testing for case training
+// text classification models.
+func CaseTrainTextClassification(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := `SELECT *
+FROM toutiao.train_processed
+TRAIN DNNClassifier
+WITH n_classes = 17, hidden_units = [10, 20]
+COLUMN news_title
+LABEL class_id
+INTO sqlflow_models.my_dnn_model;`
+
+	conn, err := grpc.Dial("localhost"+port, grpc.WithInsecure())
+	a.NoError(err)
+	defer conn.Close()
+	cli := pb.NewSQLFlowClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	stream, err := cli.Run(ctx, &pb.Request{Sql: trainSQL})
+	if err != nil {
+		a.Fail("Check if the server started successfully. %v", err)
+	}
+	// call ParseRow only to wait train finish
+	ParseRow(stream)
 }
