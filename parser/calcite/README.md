@@ -17,22 +17,18 @@ docker pull cxwangyi/calcite:dev
 docker tag cxwangyi/calcite:dev calcite:dev
 ```
 
-Generate Java source code from protobuf messages:
-
-```bash
- docker run --rm -it -v $PWD:/work -w /work calcite:dev protoc --java_out=. CalciteParser.proto
- docker run --rm -it -v $PWD:/work -w /work calcite:dev protoc --grpc-java_out=. CalciteParser.proto
- ```
-
-Build and generate `.class` files:
-
-```bash
-docker run --rm -it -v $PWD:/work -w /work calcite:dev javac *.java
-```
-
-
-All, actually, we can do all above in a single command:
+We can build the server program using the Docker image:
 
 ```bash
 docker run --rm -it -v $PWD:/work -w /work calcite:dev bash ./build_and_test.bash
+```
+
+The above command outputs `CalciteParserServer.class`.
+
+## How to Run
+
+We can run the server program using the above Docker image:
+
+```bash
+docker run --rm -d -p 50051:50051 -v $PWD:/work -w /work calcite:dev bash -c "java CalciteParserServer"
 ```
