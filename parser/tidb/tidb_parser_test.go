@@ -9,15 +9,23 @@ import (
 func TestTiDBParser(t *testing.T) {
 	a := assert.New(t)
 
-	e, i := Parse("select * from tbl where id = 1")
+	i, e := Parse("select * frm tbl") // frm->from
 	a.NoError(e)
-	a.Equal(i, -1)
+	a.Equal(9, i)
 
-	e, i = Parse("select * from tbl where id = 1 TRAIN DNNClassifier WITH learning_rate=0.1")
+	i, e = Parse("select * from tbl where id = 1")
 	a.NoError(e)
-	a.Equal(i, 31)
+	a.Equal(-1, i)
 
-	e, i = Parse("select * from tbl where id = 1 predict tbl.predicted using my_model")
+	i, e = Parse("select * from tbl where id = 1 TRAIN DNNClassifier WITH learning_rate=0.1")
 	a.NoError(e)
-	a.Equal(i, 31)
+	a.Equal(31, i)
+
+	i, e = Parse("select * from tbl where id = 1 predict tbl.predicted using my_model")
+	a.NoError(e)
+	a.Equal(31, i)
+
+	i, e = Parse("select * from tbl where id = 1 predict tbl.predicted uses my_model") // uses->using
+	a.NoError(e)
+	a.Equal(31, i)
 }
