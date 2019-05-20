@@ -18,7 +18,7 @@ install:
   # Note(tony): TravisCI's native `go get ${gobuild_args} ./...` failed with
   # `/usr/bin/ld: final link failed: Bad value`, the cause is the system linker
   # being not up to date: https://github.com/golang/go/issues/15038
-  # So I decided to skip install, and go get inside sqlflow:dev image
+  # So I decided to skip install, and go get inside sqlflow:latest image
   # Ref build: https://travis-ci.com/sql-machine-learning/sqlflow/builds/107870583
   - echo "skip install"
 
@@ -27,9 +27,10 @@ install:
 script:
   - set -e
   - ls -lah
-  - docker run --rm -v $GOPATH/src:/go/src -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow/sqlflow:dev pre-commit run -a
-  - docker run --rm -v $GOPATH:/go -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow/sqlflow:dev bash scripts/test.sh
-  - docker run --rm -v $GOPATH:/go -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow/gohive:dev bash scripts/test_hive.sh
+  - docker build -t sqlflow:latest -f Dockerfile .
+  - docker run --rm -v $GOPATH/src:/go/src -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:latest pre-commit run -a
+  - docker run --rm -v $GOPATH:/go -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:latest bash scripts/test.sh
+  - docker run --rm -v $GOPATH:/go -w /go/src/github.com/sql-machine-learning/sqlflow gohive:latest bash scripts/test_hive.sh
 
 deploy:
   skip_cleanup: true

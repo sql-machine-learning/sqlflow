@@ -52,7 +52,8 @@ RUN echo 'mysql-server mysql-server/root_password password root' | debconf-set-s
     mkdir -p /docker-entrypoint-initdb.d
 VOLUME /var/lib/mysql
 
-# Build SQLFlow binaries
+# Build SQLFlow binaries by git clone the latest develop branch.
+# During development, /go will be overridden by -v.
 RUN mkdir -p /go/src/github.com/sql-machine-learning && \
     cd /go/src/github.com/sql-machine-learning && \
     git clone -q https://github.com/sql-machine-learning/sqlflow.git && \
@@ -60,8 +61,6 @@ RUN mkdir -p /go/src/github.com/sql-machine-learning && \
     go generate ./... && \
     go get -v -t ./... && \
     go install -v ./... && \
-    mv /go/bin/demo /usr/bin && \
-    mv /go/bin/sqlflowserver /usr/bin && \
     cd /
 
 # Fix jupyter server "connecting to kernel" problem
@@ -74,10 +73,6 @@ RUN mkdir -p $IPYTHON_STARTUP && \
     echo 'get_ipython().magic(u"%reload_ext sqlflow.magic")' >> $IPYTHON_STARTUP/00-first.py && \
     echo 'get_ipython().magic(u"%autoreload 2")' >> $IPYTHON_STARTUP/00-first.py && \
     curl https://raw.githubusercontent.com/sql-machine-learning/sqlflow/develop/example/jupyter/example.ipynb --output /example.ipynb
-
-# Add built binaries into docker image
-# ADD demo /usr/bin/demo
-# ADD sqlflowserver /usr/bin/sqlflowserver
 
 # Make sqlflow-dev pyenv the default Python environment
 ENV PATH=/miniconda/envs/sqlflow-dev/bin:$PATH
