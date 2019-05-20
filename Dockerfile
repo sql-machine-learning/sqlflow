@@ -20,6 +20,7 @@ RUN curl -sL https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.
     impyla \
     jupyter \
     sqlflow \
+    pre-commit \
     ${PIP_ADD_PACKAGES} \
     "
 ENV PATH="/miniconda/bin:$PATH"
