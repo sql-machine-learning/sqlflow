@@ -162,9 +162,12 @@ import logging
 tf.get_logger().setLevel(logging.ERROR)
 ` +
 	// TODO(tonyyang-svail): remove hard coded BATCHSIZE, STEP
+	// TODO(typhoonzero): get NUM_BUCKETS, EMBEDDING_WIDTH from Extended SQL statements
 	`
 BATCHSIZE = 1
 STEP = 1000
+NUM_BUCKETS=160000
+EMBEDDING_WIDTH=128
 
 {{if eq .Driver "mysql"}}
 db = connect(user="{{.User}}",
@@ -201,8 +204,8 @@ column_name_to_type["{{.Name}}"] = "{{.Type}}"
 feature_columns.append(tf.feature_column.embedding_column(
 	tf.feature_column.categorical_column_with_identity(
 	key="{{.Name}}",
-	num_buckets=160000),
-dimension=128))
+	num_buckets=NUM_BUCKETS),
+dimension=EMBEDDING_WIDTH))
 {{else}}
 feature_columns.append(tf.feature_column.{{.Type}}(key="{{.Name}}"))
 {{end}}
