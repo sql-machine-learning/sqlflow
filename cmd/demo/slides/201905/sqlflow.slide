@@ -1,0 +1,53 @@
+SQLFlow
+Brings SQL and AI together.
+21 May 2019
+
+Yang Yang
+Software Engineer, Ant Financial
+yang.y@antfin.com
+
+* Overview
+SQLFlow is a bridge that connects a SQL engine
+
+- MySQL, Alibaba MaxCompute, Hive, ...
+
+with a ML engine
+
+- TensorFlow, XGboost, ...
+
+It extends the SQL syntax to enable model training and inference.
+
+* Syntax: Regular SQL
+.code regular.sql
+
+* Syntax: Train
+.code train.sql
+
+* Syntax: Prediction
+.code pred.sql
+
+* Demo: SQLFlow on Jupyter Notebook
+
+* Next Step: Column Verifier
+Verify SQL statement. Report error early.
+.code verifer.sql
+
+* Next Step: Complete Parser
+Support arbitrary select statement.
+.code parser.sql
+
+* Next Step: Rich Set of Feature Columns
+.code feature_column.sql
+1. "Tony" has been converted to a 10 dimensional vector (1, 0, ..., 0).
+2. "Male" has been converted to a 3 dimensional vector (1, 0, 0).
+3. 32 has been converted to a 1 dimensional scalar.
+All three are concatenated to a 14 dimensional vector and fed to LogisticRegression.
+
+* Next Step: More Models
+- Currently supports premade TF Estimator: `DNNClassifier`, `DNNRegressor`
+- Welcome to contribute at github.com/sql-machine-learning/models!
+
+* Questions?
+
+* Appendix: Architecture
+.image sqlflow-overview.png 570 _
