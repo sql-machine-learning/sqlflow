@@ -2,13 +2,13 @@
 
 This is a tutorial on how to train a Text Classification Model Using SQLFlow.
 Note that the steps in this tutorial may be changed during the development
-of SQLFlow, we only provide a way that simply works for current version.
+of SQLFlow, we only provide a way that simply works for the current version.
 
 To support custom models like CNN text classification, you may check out the
 current [design](https://github.com/sql-machine-learning/models/pull/5/files)
-for on going development.
+for ongoing development.
 
-In this toturial we use a
+In this tutorial we use a
 [chinese-text-classification-dataset](https://github.com/fate233/toutiao-text-classfication-dataset),
 which is more complicated since we need to consider sentence segments. To adapt
 this tutorial to some English data set could be simple.
@@ -20,9 +20,9 @@ this tutorial to some English data set could be simple.
 1. Download the dataset from https://github.com/fate233/toutiao-text-classfication-dataset and unpack
    `toutiao_cat_data.txt.zip`.
 1. Copy `toutiao_cat_data.txt` to `/var/lib/mysql-files/` on the server your MySQL located on, this is
-   because MySQL may prevent importing data from untrusted location.
+   because MySQL may prevent importing data from an untrusted location.
 1. Login to MySQL command line like `mysql -uroot -p` and create a database and table to load the
-   dataset, note the table must create with `CHARSET=utf8 COLLATE=utf8_unicode_ci` so that the chinese
+   dataset, note the table must create with `CHARSET=utf8 COLLATE=utf8_unicode_ci` so that the Chinese
    texts can be correctly shown.
     ```sql
     CREATE DATABASE toutiao;
@@ -61,11 +61,8 @@ this tutorial to some English data set could be simple.
     LINES TERMINATED by "\n";
     ```
 1. Run [this](https://gist.github.com/typhoonzero/dd3d814f3d4bae4538842df2a659d278)
-   python script to generate a vocabulary, and process the raw
-   news title texts to padded word ids. The max length of the segmented
-   sentence is `92`. Note that this python script also change the `class_id`
-   column's value to `0~17` which originally is `100~117` since we accept
-   label start from `0`.
+   python script to generate a vocabulary, and process the raw news title texts to padded word ids. The max length of the segmented sentence is `92`. Note that this python script also change the `class_id`
+   column's value to `0~17` which originally is `100~117` since we accept label start from `0`.
 1. Split some of the data into a validation table, and remove the validation
    data from train data:
     ```sql
