@@ -155,6 +155,6 @@ In the prototype, the code generator generates a Python program that trains or p
 
 ### Working with Jupyter Notebook and Kubernetes
 
-The following figures shows the system components and their runtime environment.  The left part shows how to run the system on a PC/laptop, the right part shows how to run it on a Kubernetes cluster.
+The following figure shows the system components and their runtime environment.  The left part shows how to run the system on a PC/laptop, and the right part shows how to run it on a Kubernetes cluster.
 
-![](doc/figures/sqlflow-arch.png)
+![](figures/sqlflow-arch.png)
