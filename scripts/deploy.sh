@@ -11,9 +11,3 @@ fi
 
 docker build -t sqlflow/sqlflow:$DOCKER_TAG -f ./Dockerfile .
 docker push sqlflow/sqlflow:$DOCKER_TAG
-
-# install goveralls in here because in travis-ci, we mount $GOPATH directly
-# into docker container which will overwrite goveralls installed in docker image.
-go get golang.org/x/tools/cmd/cover && \
-go get github.com/mattn/goveralls
-/go/bin/goveralls -coverprofile=coverage.out -service=travis-ci -repotoken $COVERALLS_TOKEN
