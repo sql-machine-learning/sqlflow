@@ -504,7 +504,34 @@ func newALPSTrainFiller(pr *extendedSelect) (*alpsFiller, error) {
 }
 
 func newALPSPredictFiller(pr *extendedSelect) (*alpsFiller, error) {
-	return nil, fmt.Errorf("alps predict not supported")
+	modelDir := "/tmp/alps_scratch_dir_212292520/model/deploy/"
+
+	attrs, err := resolveTrainAttribute(&pr.attrs)
+	if err != nil {
+		return nil, err
+	}
+
+	inputTableName := pr.tables[0]
+	outputTableName := pr.predictClause.into
+
+	fields := make([]string, len(pr.fields))
+	for idx, f := range pr.fields {
+		fields[idx] = fmt.Sprintf("\"%s\"", f)
+	}
+
+	//FIXME(uuleon): need removed and parse it from odps datasource
+	odpsAttrs := filter(attrs, "odps")
+	odpsMap := make(map[string]string, len(odpsAttrs))
+	for _, a := range odpsAttrs {
+		odpsMap[a.Name] = a.Value.(string)
+	}
+
+	return &alpsFiller{
+		IsTraining:         false,
+		PredictInputTable:  inputTableName,
+		PredictOutputTable: outputTableName,
+		ModelDir:           modelDir,
+		Fields:             fmt.Sprintf("[%s]", strings.Join(fields, ","))}, nil
 }
 
 func genALPSFiller(w io.Writer, pr *extendedSelect) (*alpsFiller, error) {
@@ -556,8 +583,8 @@ import os
 
 import tensorflow as tf
 
+from alps.conf import Configurable
 from alps.conf.closure import Closure
-from alps.framework.train.training import build_run_config
 from alps.framework.exporter import ExportStrategy, FileLocation
 from alps.framework.exporter.arks_exporter import ArksExporter
 from alps.client.base import run_experiment
@@ -565,18 +592,17 @@ from alps.framework.engine import LocalEngine
 from alps.framework.column.column import DenseColumn
 from alps.framework.exporter.compare_fn import best_auc_fn
 from alps.io.base import OdpsConf
-from alps.framework.experiment import EstimatorBuilder, Experiment, TrainConf, EvalConf
+from alps.framework.experiment import EstimatorBuilder, Experiment, TrainConf, EvalConf, InferConf, RuntimeConf
 from alps.io.alps_dataset import AlpsDataset
 from alps.io.reader.odps_reader import OdpsReader
+from alps.io.writer.odps_writer import OdpsConfigurableWriter
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'    # for debug usage.
 tf.logging.set_verbosity(tf.logging.INFO)
 
 
 class SQLFlowEstimatorBuilder(EstimatorBuilder):
-	def build(self, experiment):
-		run_config = build_run_config(experiment.train, experiment.model_dir)
-
+	def _build(self, experiment, run_config):
 		feature_columns = []
 {{if .FeatureColumnCode}}
 		feature_columns.extend({{.FeatureColumnCode}})
@@ -585,9 +611,10 @@ class SQLFlowEstimatorBuilder(EstimatorBuilder):
 		return {{.EstimatorCreatorCode}}
 
 
-if __name__ == "__main__":
-	
-	trainDs = AlpsDataset(
+{{if .IsTraining}}
+
+def train(model_dir):
+	train_ds = AlpsDataset(
 {{if .DatasetConf.epoch}}
 		num_epochs={{.DatasetConf.epoch}},
 {{end}}
@@ -608,7 +635,7 @@ if __name__ == "__main__":
 		)
 	)
 
-	evalDs = AlpsDataset(
+	eval_ds = AlpsDataset(
 		num_epochs=1,
 		batch_size=64,
 		reader=OdpsReader(
@@ -625,12 +652,12 @@ if __name__ == "__main__":
 		)
 	)
 
-	export_path = FileLocation(path="{{.ModelDir}}")
+	deploy_path = FileLocation(path=os.path.join(model_dir, 'deploy'))
 
 	experiment = Experiment(
 		user="sqlflow",
 		engine=LocalEngine(),
-		train=TrainConf(input=trainDs,
+		train=TrainConf(input=train_ds,
 {{if .TrainSpec.max_steps}}
 						max_steps={{.TrainSpec.max_steps}},
 {{end}}
@@ -647,7 +674,7 @@ if __name__ == "__main__":
 						log_step_count_steps={{.TrainSpec.log_step_count_steps}}
 {{end}}
 		),
-		eval=EvalConf(input=evalDs, 
+		eval=EvalConf(input=eval_ds, 
 {{if .TrainSpec.steps}}
 					  steps={{.TrainSpec.steps}}, 
 {{end}}
@@ -661,12 +688,73 @@ if __name__ == "__main__":
  					  throttle_steps={{.TrainSpec.throttle_steps}}
 {{end}}
 		),
-		exporter=ArksExporter(export_path=export_path, export_strategy=ExportStrategy.BEST, compare_fn=Closure(best_auc_fn)),
-		model_dir="{{.ScratchDir}}",
-		model_builder=SQLFlowEstimatorBuilder())
+		exporter=ArksExporter(deploy_path=deploy_path, strategy=ExportStrategy.BEST, compare_fn=Closure(best_auc_fn)),
+		runtime=RuntimeConf(
+			model_dir=model_dir,
+		),
+		model_builder=SQLFlowEstimatorBuilder()
+	)
 
+	return experiment
 
-	run_experiment(experiment)
+{{else}}
+
+def inference(model_dir):
+	model_dir = os.path.join(model_dir, 'deploy')
+	meta = Configurable.from_file(os.path.join(model_dir, 'alps.meta'), clazz=Experiment)
+
+	infer_ds = AlpsDataset(
+        num_epochs=1,
+        batch_size=64,
+        reader=OdpsReader(
+            odps=OdpsConf(
+				accessid={{.OdpsConf.Get "accessid" "None"}},
+				accesskey={{.OdpsConf.Get "accesskey" "None"}},
+				endpoint={{.OdpsConf.Get "endpoint" "None"}}
+			),
+			project={{.OdpsConf.Get "project" "None"}},
+			table={{.PredictInputTable}},
+			field_names={{.Fields}},
+            features=meta.train.input.reader.features,
+            labels=meta.train.input.reader.labels,
+            return_other_values=True))
+
+	odps_writer = OdpsConfigurableWriter(
+        odps=OdpsConf(
+				accessid={{.OdpsConf.Get "accessid" "None"}},
+				accesskey={{.OdpsConf.Get "accesskey" "None"}},
+				endpoint={{.OdpsConf.Get "endpoint" "None"}}
+			),
+		project={{.OdpsConf.Get "project" "None"}},
+		table={{.PredictOutputTable}},
+        overwrite=False,
+    )
+
+	experiment = Experiment(user="sqlflow",
+                            engine=LocalEngine(),
+                            infer=InferConf(input=inferDs,
+                                            model_dir=model_dir,
+                                            writer=odps_writer,
+                                            signature_key="predict"),
+                            runtime=RuntimeConf(
+                                model_dir=model_dir,
+                            ),
+                            model_builder=None)
+	return experiment
+	
+{{end}}
+
+if __name__ == "__main__":
+	model_dir = "{{.ModelDir}}"
+	from distutils.dir_util import mkpath, remove_tree
+	mkpath(model_dir)
+	remove_tree(model_dir, verbose=0)
+
+{{if .IsTraining}}
+	run_experiment(train(model_dir))
+{{else}}
+	run_experiment(inference(model_dir))
+{{end}}
 
 `
 
