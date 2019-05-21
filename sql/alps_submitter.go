@@ -22,7 +22,7 @@ import (
 	The `train` job clear the `model_dir` at first before training, then the `predict` job restores the output model of last `train` job.
 
 */
-const model_dir = "/tmp/alps_model_dir/"
+const modelDir = "/tmp/alps_model_dir/"
 
 const (
 	sparse    = "SPARSE"
@@ -422,7 +422,7 @@ func generateEstimatorCreator(estimator string, attrs []*attribute, args []strin
 }
 
 func newALPSTrainFiller(pr *extendedSelect) (*alpsFiller, error) {
-	modelDir := model_dir
+	modelDir := modelDir
 
 	fcList, fsMap, err := resolveTrainColumns(&pr.columns)
 	if err != nil {
@@ -511,7 +511,7 @@ func newALPSTrainFiller(pr *extendedSelect) (*alpsFiller, error) {
 }
 
 func newALPSPredictFiller(pr *extendedSelect) (*alpsFiller, error) {
-	modelDir := model_dir
+	modelDir := modelDir
 
 	inputTableName := pr.tables[0]
 	outputTableName := pr.predictClause.into
