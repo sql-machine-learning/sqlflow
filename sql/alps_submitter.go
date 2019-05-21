@@ -4,11 +4,25 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"strconv"
 	"strings"
 	"text/template"
 )
+
+/*
+	FIXME(uuleon)
+
+	Attention:
+
+	In general, the `model_dir` should be a temporary directory for each `train` job who saves the output model to DB, then
+	the `predict` job restores model from DB.
+
+	But, the `maxCompute` type of DB which `ALPS` used is not supported yet, so a fixed `model_dir` is used here.
+
+	The `train` job clear the `model_dir` at first before training, then the `predict` job restores the output model of last `train` job.
+
+*/
+const model_dir = "/tmp/alps_model_dir/"
 
 const (
 	sparse    = "SPARSE"
@@ -30,7 +44,6 @@ type alpsFiller struct {
 	EvalInputTable     string
 	PredictInputTable  string
 	ModelDir           string
-	ScratchDir         string
 	PredictOutputTable string
 
 	// Schema & Decode info
@@ -409,12 +422,7 @@ func generateEstimatorCreator(estimator string, attrs []*attribute, args []strin
 }
 
 func newALPSTrainFiller(pr *extendedSelect) (*alpsFiller, error) {
-	//TODO(uuleon): the scratchDir will be deleted after model uploading
-	scratchDir, err := ioutil.TempDir("/tmp", "alps_scratch_dir_")
-	if err != nil {
-		return nil, err
-	}
-	modelDir := fmt.Sprintf("%s/model/", scratchDir)
+	modelDir := model_dir
 
 	fcList, fsMap, err := resolveTrainColumns(&pr.columns)
 	if err != nil {
@@ -490,7 +498,6 @@ func newALPSTrainFiller(pr *extendedSelect) (*alpsFiller, error) {
 		IsTraining:           true,
 		TrainInputTable:      tableName,
 		EvalInputTable:       tableName, //FIXME(uuleon): Train and Eval should use different dataset.
-		ScratchDir:           scratchDir,
 		ModelDir:             modelDir,
 		Fields:               fmt.Sprintf("[%s]", strings.Join(fields, ",")),
 		X:                    fmt.Sprintf("[%s]", strings.Join(fssCode, ",")),
@@ -504,12 +511,7 @@ func newALPSTrainFiller(pr *extendedSelect) (*alpsFiller, error) {
 }
 
 func newALPSPredictFiller(pr *extendedSelect) (*alpsFiller, error) {
-	modelDir := "/tmp/alps_scratch_dir_212292520/model/deploy/"
-
-	attrs, err := resolveTrainAttribute(&pr.attrs)
-	if err != nil {
-		return nil, err
-	}
+	modelDir := model_dir
 
 	inputTableName := pr.tables[0]
 	outputTableName := pr.predictClause.into
@@ -517,13 +519,6 @@ func newALPSPredictFiller(pr *extendedSelect) (*alpsFiller, error) {
 	fields := make([]string, len(pr.fields))
 	for idx, f := range pr.fields {
 		fields[idx] = fmt.Sprintf("\"%s\"", f)
-	}
-
-	//FIXME(uuleon): need removed and parse it from odps datasource
-	odpsAttrs := filter(attrs, "odps")
-	odpsMap := make(map[string]string, len(odpsAttrs))
-	for _, a := range odpsAttrs {
-		odpsMap[a.Name] = a.Value.(string)
 	}
 
 	return &alpsFiller{
@@ -632,7 +627,8 @@ def train(model_dir):
 			field_names={{.Fields}},
 			features={{.X}},
 			labels={{.Y}}
-		)
+		),
+		drop_remainder=False
 	)
 
 	eval_ds = AlpsDataset(
@@ -649,7 +645,8 @@ def train(model_dir):
 			field_names={{.Fields}},
 			features={{.X}},
 			labels={{.Y}}
-		)
+		),
+		drop_remainder=False
 	)
 
 	deploy_path = FileLocation(path=os.path.join(model_dir, 'deploy'))
@@ -702,37 +699,35 @@ def train(model_dir):
 def inference(model_dir):
 	model_dir = os.path.join(model_dir, 'deploy')
 	meta = Configurable.from_file(os.path.join(model_dir, 'alps.meta'), clazz=Experiment)
+	project = meta.train.input.reader.project
+	odps = meta.train.input.reader.odps
+	features=meta.train.input.reader.features
+	labels=meta.train.input.reader.labels
 
 	infer_ds = AlpsDataset(
         num_epochs=1,
         batch_size=64,
         reader=OdpsReader(
-            odps=OdpsConf(
-				accessid={{.OdpsConf.Get "accessid" "None"}},
-				accesskey={{.OdpsConf.Get "accesskey" "None"}},
-				endpoint={{.OdpsConf.Get "endpoint" "None"}}
-			),
-			project={{.OdpsConf.Get "project" "None"}},
-			table={{.PredictInputTable}},
+            odps=odps,
+			project=project,
+			table="{{.PredictInputTable}}",
 			field_names={{.Fields}},
-            features=meta.train.input.reader.features,
-            labels=meta.train.input.reader.labels,
-            return_other_values=True))
+            features=features,
+            labels=labels,
+            return_other_values=True),
+		drop_remainder=False
+	)
 
 	odps_writer = OdpsConfigurableWriter(
-        odps=OdpsConf(
-				accessid={{.OdpsConf.Get "accessid" "None"}},
-				accesskey={{.OdpsConf.Get "accesskey" "None"}},
-				endpoint={{.OdpsConf.Get "endpoint" "None"}}
-			),
-		project={{.OdpsConf.Get "project" "None"}},
-		table={{.PredictOutputTable}},
-        overwrite=False,
+        odps=odps,
+		project=project,
+		table="{{.PredictOutputTable}}",
+        overwrite=True,
     )
 
 	experiment = Experiment(user="sqlflow",
                             engine=LocalEngine(),
-                            infer=InferConf(input=inferDs,
+                            infer=InferConf(input=infer_ds,
                                             model_dir=model_dir,
                                             writer=odps_writer,
                                             signature_key="predict"),
@@ -746,11 +741,11 @@ def inference(model_dir):
 
 if __name__ == "__main__":
 	model_dir = "{{.ModelDir}}"
+{{if .IsTraining}}
 	from distutils.dir_util import mkpath, remove_tree
 	mkpath(model_dir)
 	remove_tree(model_dir, verbose=0)
 
-{{if .IsTraining}}
 	run_experiment(train(model_dir))
 {{else}}
 	run_experiment(inference(model_dir))
