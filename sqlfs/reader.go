@@ -5,7 +5,13 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"sort"
 )
+
+type fragment struct {
+	id    int
+	block string
+}
 
 // Reader implements io.ReadCloser
 type Reader struct {
@@ -13,6 +19,8 @@ type Reader struct {
 	table string
 	buf   []byte
 	rows  *sql.Rows
+	frams []fragment
+	cur   int
 }
 
 // Open returns a reader to read from the given table in db.
@@ -25,15 +33,29 @@ func Open(db *sql.DB, table string) (*Reader, error) {
 		return nil, fmt.Errorf("open: hasTable failed with %v", e)
 	}
 
-	r := &Reader{db, table, nil, nil}
-	// hive need select the id for `order by`
-	// FIXME(typhoonzero): hive query with orderby, should add the below line back
-	// stmt := fmt.Sprintf("SELECT id,block FROM %s ORDER BY id", table)
+	r := &Reader{db, table, nil, nil, nil, 0}
 	stmt := fmt.Sprintf("SELECT id,block FROM %s;", table)
 	r.rows, e = r.db.Query(stmt)
 	if e != nil {
 		return nil, fmt.Errorf("open: db query [%s] failed: %v", stmt, e)
 	}
+	// Since statement like `SELECT id,block FROM tbl ORDER BY id` causes an
+	// error in hive randomly. We decide to sort results here instead of
+	// by SQL engine.
+	// Probably you would worry about the dataset is too huge to be holded in
+	// memory. It's fine due to we are going to save models to file system
+	// for a long term plan.
+	for r.rows.Next() {
+		var f fragment
+		if e = r.rows.Scan(&f.id, &f.block); e != nil {
+			r.Close()
+			return nil, e
+		}
+		r.frams = append(r.frams, f)
+	}
+	sort.Slice(r.frams, func(i, j int) bool {
+		return r.frams[i].id < r.frams[j].id
+	})
 	return r, nil
 }
 
@@ -47,13 +69,10 @@ func (r *Reader) Read(p []byte) (n int, e error) {
 		n += m
 		r.buf = r.buf[m:]
 		if len(r.buf) <= 0 {
-			if r.rows.Next() {
-				var block string
-				var id int
-				if e = r.rows.Scan(&id, &block); e != nil {
-					break
-				}
-				if r.buf, e = base64.StdEncoding.DecodeString(block); e != nil {
+			if r.cur < len(r.frams) {
+				blk := r.frams[r.cur].block
+				r.cur++
+				if r.buf, e = base64.StdEncoding.DecodeString(blk); e != nil {
 					break
 				}
 			} else {
