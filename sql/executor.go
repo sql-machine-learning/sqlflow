@@ -2,6 +2,7 @@ package sql
 
 import (
 	"bytes"
+	"database/sql"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -47,78 +48,94 @@ func runStandardSQL(slct string, db *DB) *PipeReader {
 	return runExec(slct, db)
 }
 
-// FIXME(tony): how to deal with large tables?
-// TODO(tony): test on null table elements
+// query runs the query slct and write the retrieved rows into wr.
+func query(slct string, db *DB, wr *PipeWriter) error {
+	defer func(startAt time.Time) {
+		log.Debugf("runQuery %v finished, elapsed:%v", slct, time.Since(startAt))
+	}(time.Now())
+
+	rows, err := db.Query(slct)
+	if err != nil {
+		return fmt.Errorf("runQuery failed: %v", err)
+	}
+	defer rows.Close()
+
+	columns, err := rows.Columns()
+	if err != nil {
+		return fmt.Errorf("failed to get columns: %v", err)
+	}
+
+	columnTypes, err := rows.ColumnTypes()
+	if err != nil {
+		return fmt.Errorf("failed to get columnTypes: %v", err)
+	}
+
+	header := make(map[string]interface{})
+	header["columnNames"] = columns
+	if e := wr.Write(header); e != nil {
+		return e
+	}
+
+	for rows.Next() {
+		if e := parseRow(columns, columnTypes, rows, wr); e != nil {
+			return e
+		}
+	}
+	return nil
+}
+
+// parseRow calls rows.Scan to retrieve the current row, and convert
+// each cell value from {}interface to an accurary value.  It then
+// writes the converted row into wr.
+func parseRow(columns []string, columnTypes []*sql.ColumnType, rows *sql.Rows, wr *PipeWriter) error {
+	// Since we don't know the table schema in advance, we create
+	// a slice of empty interface and add column types at
+	// runtime. Some databases support dynamic types between rows,
+	// such as sqlite's affinity. So we move columnTypes inside
+	// the row.Next() loop.
+	count := len(columns)
+	values := make([]interface{}, count)
+	for i, ct := range columnTypes {
+		v, e := createByType(ct.ScanType())
+		if e != nil {
+			return e
+		}
+		values[i] = v
+	}
+
+	if err := rows.Scan(values...); err != nil {
+		return err
+	}
+
+	row := make([]interface{}, count)
+	for i, val := range values {
+		v, e := parseVal(val)
+		if e != nil {
+			return e
+		}
+		row[i] = v
+	}
+	if e := wr.Write(row); e != nil {
+		return e
+	}
+	return nil
+}
+
+// runQeury creates a pipe before starting a goroutine that execute
+// query, which runs slct and writes retrieved rows to a pipe.
+// runQuery returns the read end of the pipe.  The caller doesn't have
+// to close the pipe because the query goroutine will close it after
+// data retrieval.
 func runQuery(slct string, db *DB) *PipeReader {
+	// FIXME(tony): how to deal with large tables?
+	// TODO(tony): test on null table elements
 	rd, wr := Pipe()
 	go func() {
 		defer wr.Close()
-
-		err := func() error {
-			defer func(startAt time.Time) {
-				log.Debugf("runQuery %v finished, elapsed:%v", slct, time.Since(startAt))
-			}(time.Now())
-
-			rows, err := db.Query(slct)
-			if err != nil {
-				return fmt.Errorf("runQuery failed: %v", err)
-			}
-			defer rows.Close()
-
-			cols, err := rows.Columns()
-			if err != nil {
-				return fmt.Errorf("failed to get columns: %v", err)
-			}
-
-			header := make(map[string]interface{})
-			header["columnNames"] = cols
-			if e := wr.Write(header); e != nil {
-				return e
-			}
-
-			for rows.Next() {
-				// Since we don't know the table schema in advance, need to
-				// create an slice of empty interface and adds column type
-				// at runtime. Some databases support dynamic types between
-				// rows, such as sqlite's affinity. So we move columnTypes inside
-				// the row.Next() loop.
-				count := len(cols)
-				values := make([]interface{}, count)
-				columnTypes, err := rows.ColumnTypes()
-				if err != nil {
-					return fmt.Errorf("failed to get columnTypes: %v", err)
-				}
-				for i, ct := range columnTypes {
-					v, e := createByType(ct.ScanType())
-					if e != nil {
-						return e
-					}
-					values[i] = v
-				}
-
-				if err := rows.Scan(values...); err != nil {
-					return err
-				}
-
-				row := make([]interface{}, count)
-				for i, val := range values {
-					v, e := parseVal(val)
-					if e != nil {
-						return e
-					}
-					row[i] = v
-				}
-				if e := wr.Write(row); e != nil {
-					return e
-				}
-			}
-			return nil
-		}()
-
-		if err != nil {
-			log.Errorf("runQuery error:%v", err)
-			if err != ErrClosedPipe {
-				if err := wr.Write(err); err != nil {
+		if e := query(slct, db, wr); e != nil {
+			log.Errorf("runQuery error:%v", e)
+			if e != ErrClosedPipe {
+				if err := wr.Write(e); err != nil {
 					log.Errorf("runQuery error(piping):%v", err)
 				}
 			}
