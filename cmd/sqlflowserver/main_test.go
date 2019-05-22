@@ -273,6 +273,66 @@ FROM iris.predict LIMIT 5;`
 	}
 }
 
+// CaseTrainSQL is a simple End-to-End testing for case training and predicting
+func CaseTrainCustomModel(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := `SELECT *
+FROM iris.train
+TRAIN sqlflow_models.DNNClassifier
+WITH n_classes = 3, hidden_units = [10, 20]
+COLUMN sepal_length, sepal_width, petal_length, petal_width
+LABEL class
+INTO sqlflow_models.my_dnn_model_custom;`
+
+	conn, err := grpc.Dial("localhost"+port, grpc.WithInsecure())
+	a.NoError(err)
+	defer conn.Close()
+	cli := pb.NewSQLFlowClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	defer cancel()
+
+	stream, err := cli.Run(ctx, &pb.Request{Sql: trainSQL})
+	if err != nil {
+		a.Fail("Check if the server started successfully. %v", err)
+	}
+	// call ParseRow only to wait train finish
+	ParseRow(stream)
+
+	// FIXME(typhoonzero): Fix PREDICT tests using hive
+	if os.Getenv("SQLFLOW_TEST_DB") == "hive" {
+		return
+	}
+
+	predSQL := `SELECT *
+FROM iris.test
+PREDICT iris.predict.class
+USING sqlflow_models.my_dnn_model_custom;`
+
+	stream, err = cli.Run(ctx, &pb.Request{Sql: predSQL})
+	if err != nil {
+		a.Fail("Check if the server started successfully. %v", err)
+	}
+	// call ParseRow only to wait predict finish
+	ParseRow(stream)
+
+	showPred := `SELECT *
+FROM iris.predict LIMIT 5;`
+
+	stream, err = cli.Run(ctx, &pb.Request{Sql: showPred})
+	if err != nil {
+		a.Fail("Check if the server started successfully. %v", err)
+	}
+	_, rows := ParseRow(stream)
+
+	for _, row := range rows {
+		// NOTE: predict result maybe random, only check predicted
+		// class >=0, need to change to more flexible checks than
+		// checking expectedPredClasses := []int64{2, 1, 0, 2, 0}
+		AssertGreaterEqualAny(a, row[4], int64(0))
+	}
+}
+
 // CaseTrainTextClassification is a simple End-to-End testing for case training
 // text classification models.
 func CaseTrainTextClassification(t *testing.T) {
