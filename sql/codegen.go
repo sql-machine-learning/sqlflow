@@ -71,7 +71,10 @@ func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
 		modelConfig: modelConfig{
 			Estimator: pr.estimator,
 			Attrs:     make(map[string]string),
-			Save:      pr.save}}
+			Save:      pr.save,
+		},
+	}
+
 	for k, v := range pr.attrs {
 		r.Attrs[k] = v.String()
 	}
@@ -83,6 +86,7 @@ func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
 		}
 		r.X = append(r.X, *cf)
 	}
+
 	cf, e := translateColumnToFeature(&fts, db.driverName, pr.label)
 	if e != nil {
 		return nil, e
@@ -93,6 +97,10 @@ func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
 		r.TableName = strings.Join(strings.Split(pr.into, ".")[:2], ".")
 	}
 
+	return fillDatabaseInfo(r, db)
+}
+
+func fillDatabaseInfo(r *filler, db *DB) (*filler, error) {
 	r.Driver = db.driverName
 	switch db.driverName {
 	case "mysql":
