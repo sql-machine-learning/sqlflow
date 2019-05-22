@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Start mysqld
-docker-entrypoint.sh mysqld &
+service mysql start
 sleep 1
 until mysql -u root -proot  -e ";" ; do
     sleep 1
