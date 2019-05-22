@@ -48,7 +48,7 @@ func runStandardSQL(slct string, db *DB) *PipeReader {
 	return runExec(slct, db)
 }
 
-// query runs the query slct and write the retrieved rows into wr.
+// query runs slct and writes the retrieved rows into pipe wr.
 func query(slct string, db *DB, wr *PipeWriter) error {
 	defer func(startAt time.Time) {
 		log.Debugf("runQuery %v finished, elapsed:%v", slct, time.Since(startAt))
