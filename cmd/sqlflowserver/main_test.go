@@ -116,6 +116,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("TestSelect", CaseSelect)
 	t.Run("TestTrainSQL", CaseTrainSQL)
 	t.Run("TestTextClassification", CaseTrainTextClassification)
+	t.Run("CaseTrainCustomModel", CaseTrainCustomModel)
 }
 
 func TestEnd2EndHive(t *testing.T) {
@@ -273,7 +274,7 @@ FROM iris.predict LIMIT 5;`
 	}
 }
 
-// CaseTrainSQL is a simple End-to-End testing for case training and predicting
+// CaseTrainCustomModel tests using customized models
 func CaseTrainCustomModel(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := `SELECT *
