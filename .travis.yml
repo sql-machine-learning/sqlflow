@@ -24,6 +24,13 @@ install:
 
 # NOTE: mount all $GOPATH into container, then after build and test,
 # $GOPATH/bin will have expected binaries.
+
+# NOTE: When doing tests for hive, we must expose all ports that gohive client
+# may need, like thrift ports, namenode ports, datanode ports etc: 
+# 10000,10002,8040,8042,9864,9866,9867,9870,8020. Then we start a simple http
+# server on port 8899 using python, so that the docker container running SQLFlow
+# test can know when the hive server becomes ready.
+
 script:
   - set -e
   - ls -lah

@@ -5,13 +5,12 @@
 # is ready, see .travis.yml for the details
 while [ 1 ]
 do
-nc -z localhost 8899
 curl http://localhost:8899 2>/dev/null
 if [ $? -eq 0 ]; then
 break
 else
-echo "port not ready"
-sleep 1
+echo "still waiting, hive server is not ready..."
+sleep 5
 fi
 done
 
