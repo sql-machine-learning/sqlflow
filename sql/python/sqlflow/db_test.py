@@ -8,6 +8,7 @@ from sqlflow.db import connect, execute, insert_values
 class TestDB(TestCase):
 
     create_statement = "create table test_db (features text, label int)"
+    hive_create_statement = "create table test_db (features string, label int)"
     select_statement = "select * from test_db"
     drop_statement = "drop table if exists test_db"
 
@@ -42,7 +43,12 @@ class TestDB(TestCase):
         values = [('5,6,1,2', 1)] * 10
 
         execute(driver, conn, self.drop_statement)
-        execute(driver, conn, self.create_statement)
+
+        if driver == "hive":
+            execute(driver, conn, self.hive_create_statement)
+        else:
+            execute(driver, conn, self.create_statement)
+
         insert_values(driver, conn, table_name, table_schema, values)
 
         field_names, data = execute(driver, conn, self.select_statement)
