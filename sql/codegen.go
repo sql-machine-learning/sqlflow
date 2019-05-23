@@ -259,11 +259,6 @@ classifier = {{.Estimator}}(
 	{{$key}} = {{$value}},{{end}}
 	model_dir = "{{.Save}}")
 	{{end}}
-{{if .SelfDefined}}
-classifier.compile(optimizer=classifier.default_optimizer(),
-	loss=classifier.default_loss(),
-	metrics=["accuracy"])
-{{end}}
 
 {{if .Train}}
 def train_input_fn(features, labels, batch_size):
@@ -272,9 +267,13 @@ def train_input_fn(features, labels, batch_size):
     return dataset
 
 {{if .SelfDefined}}
+classifier.compile(optimizer=classifier.default_optimizer(),
+	loss=classifier.default_loss(),
+	metrics=["accuracy"])
 classifier.fit(train_input_fn(X, Y, BATCHSIZE),
 	epochs=classifier.default_training_epochs(),
 	steps_per_epoch=STEP, verbose=0)
+classifier.save_weights("{{.Save}}", save_format="h5")
 {{else}}
 classifier.train(
     input_fn=lambda:train_input_fn(X, Y, BATCHSIZE),
@@ -291,7 +290,8 @@ eval_result = classifier.evaluate(eval_input_fn(X, Y, BATCHSIZE), verbose=0)
 print("Training set accuracy: {accuracy:0.5f}".format(**{"accuracy": eval_result[1]}))
 {{else}}
 eval_result = classifier.evaluate(
-    input_fn=lambda:eval_input_fn(X, Y, BATCHSIZE), steps=STEP)
+	input_fn=lambda:eval_input_fn(X, Y, BATCHSIZE), steps=STEP)
+print(eval_result)
 print("Training set accuracy: {accuracy:0.5f}".format(**eval_result))
 {{end}}
 print("Done training")
@@ -302,7 +302,15 @@ def eval_input_fn(features, batch_size):
     return dataset
 
 {{if .SelfDefined}}
-predictions = classifier.predict(eval_input_fn(X, BATCHSIZE))
+pred_dataset = eval_input_fn(X, BATCHSIZE)
+one_batch = pred_dataset.__iter__().next()
+# NOTE: must run predict one batch to initialize parameters
+# see: https://www.tensorflow.org/alpha/guide/keras/saving_and_serializing#saving_subclassed_models
+classifier.predict_on_batch(one_batch)
+classifier.load_weights("{{.Save}}", by_name=True)
+del pred_dataset
+pred_dataset = eval_input_fn(X, BATCHSIZE)
+predictions = classifier.predict(pred_dataset)
 X["{{.Y.Name}}"] = [p[classifier.prepare_prediction_column(p)] for p in predictions]
 {{else}}
 predictions = classifier.predict(input_fn=lambda:eval_input_fn(X, BATCHSIZE))
