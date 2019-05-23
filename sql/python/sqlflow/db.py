@@ -33,8 +33,11 @@ def execute(driver, conn, statement):
         field_names = None if cursor.description is None \
             else [i[0] for i in cursor.description]
 
-    rows = cursor.fetchall()
-    field_columns = list(map(list, zip(*rows))) if len(rows) > 0 else None
+    try:
+        rows = cursor.fetchall()
+        field_columns = list(map(list, zip(*rows))) if len(rows) > 0 else None
+    except:
+        field_columns = None
 
     return field_names, field_columns
 
