@@ -9,7 +9,7 @@ class TestDB(TestCase):
 
     create_statement = "create table test_db (features text, label int)"
     select_statement = "select * from test_db"
-    drop_statement = "drop table test_db"
+    drop_statement = "drop table if exists test_db"
 
     def test_sqlite3(self):
         driver = os.environ.get('SQLFLOW_TEST_DB') or "sqlite3"
