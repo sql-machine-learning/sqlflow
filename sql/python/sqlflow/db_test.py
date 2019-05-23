@@ -7,8 +7,9 @@ from sqlflow.db import connect, execute, insert_values
 
 class TestDB(TestCase):
 
-    create_statement = "create table test (features text, label int)"
-    select_statement = "select * from test"
+    create_statement = "create table test_db (features text, label int)"
+    select_statement = "select * from test_db"
+    drop_statement = "drop table test_db"
 
     def test_sqlite3(self):
         driver = os.environ.get('SQLFLOW_TEST_DB') or "sqlite3"
@@ -40,6 +41,7 @@ class TestDB(TestCase):
         table_schema = [("features", "text"), ("label", "int")]
         values = [('5,6,1,2', 1)] * 10
 
+        execute(driver, conn, self.drop_statement)
         execute(driver, conn, self.create_statement)
         insert_values(driver, conn, table_name, table_schema, values)
 
