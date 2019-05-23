@@ -24,8 +24,9 @@ func hasDatabaseConnector(driverName string) bool {
 		return tryRun("python", "-c", "from mysql.connector import connect")
 	} else if driverName == "sqlite3" {
 		return tryRun("python", "-c", "from sqlite3 import connect")
+	} else if driverName == "maxcompute" {
+		return true
 	}
-	// TODO(weiguo): need an `else` to support maxCompute ?
 	return false
 }
 
