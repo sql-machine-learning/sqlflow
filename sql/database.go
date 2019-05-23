@@ -11,8 +11,6 @@ import (
 	_ "sqlflow.org/gohive"
 )
 
-const driverSeparator = "://"
-
 // DB extends sql.DB
 type DB struct {
 	driverName     string
@@ -28,14 +26,11 @@ type DB struct {
 // In addition to sql.Open, it also does the book keeping on driverName and
 // dataSourceName
 func Open(datasource string) (*DB, error) {
-	sep := strings.Index(datasource, driverSeparator)
-	if sep == -1 {
-		return nil, fmt.Errorf("bad datasource, driver name is missing")
+	dses := strings.Split(datasource, "://")
+	if len(dses) != 2 {
+		return nil, fmt.Errorf("bad datasource")
 	}
-	db := &DB{
-		driverName:     datasource[:sep],
-		dataSourceName: datasource[sep+len(driverSeparator):],
-	}
+	db := &DB{driverName: dses[0], dataSourceName: dses[1]}
 
 	var err error
 	switch db.driverName {
