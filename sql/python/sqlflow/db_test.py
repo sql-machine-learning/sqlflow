@@ -19,8 +19,8 @@ class TestDB(TestCase):
     def test_mysql(self):
         driver = os.environ.get('SQLFLOW_TEST_DB')
         if driver == "mysql":
-            user = os.environ['SQLFLOW_TEST_DB_MYSQL_USER'] or "root"
-            password = os.environ['SQLFLOW_TEST_DB_MYSQL_PASSWD'] or "root"
+            user = os.environ.get('SQLFLOW_TEST_DB_MYSQL_USER') or "root"
+            password = os.environ.get('SQLFLOW_TEST_DB_MYSQL_PASSWD') or "root"
             host = "127.0.0.1"
             port = "3306"
             database = "iris"
