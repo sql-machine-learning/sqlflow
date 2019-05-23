@@ -14,7 +14,7 @@ def connect(driver, database, user, password, host, port):
     elif driver == "hive":
         from impala.dbapi import connect
         return connect(user=user,
-                       passwd=password,
+                       password=password,
                        database=database,
                        host=host,
                        port=port)
@@ -63,8 +63,6 @@ def insert_values(driver, conn, table_name, table_schema, values):
         )
     else:
         raise ValueError("unrecognized database driver: %s" % driver)
-
-    print('debug statement: %s' % statement)
 
     cursor = conn.cursor()
     cursor.executemany(statement, values)
