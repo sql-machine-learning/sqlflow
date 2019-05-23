@@ -44,7 +44,7 @@ def execute(driver, conn, statement):
 
 def insert_values(driver, conn, table_name, table_schema, values):
     if driver == "mysql":
-        statement = '''insert into {} ({}) values()'''.format(
+        statement = '''insert into {} ({}) values({}})'''.format(
             table_name,
             ", ".join([n for n, t in table_schema]),
             ", ".join(["%s"] * len(table_schema))
@@ -56,7 +56,7 @@ def insert_values(driver, conn, table_name, table_schema, values):
             ", ".join(["?"] * len(table_schema))
         )
     elif driver == "hive":
-        statement = '''insert into table {} ({}) values()'''.format(
+        statement = '''insert into table {} ({}) values({}})'''.format(
             table_name,
             ", ".join([n for n, t in table_schema]),
             ", ".join(["%s"] * len(table_schema))
