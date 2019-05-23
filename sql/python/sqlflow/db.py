@@ -62,4 +62,6 @@ def insert_values(driver, conn, table_name, table_schema, values):
 
     cursor = conn.cursor()
     cursor.executemany(statement, values)
+    conn.commit()
+
     return cursor
