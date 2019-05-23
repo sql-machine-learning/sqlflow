@@ -2,7 +2,7 @@ from unittest import TestCase
 
 import os
 
-from sqlflow.template.db import connect, execute, insert_values
+from sqlflow.db import connect, execute, insert_values
 
 
 class TestDB(TestCase):
