@@ -38,7 +38,7 @@ class TestDB(TestCase):
 
     def _do_test(self, driver, conn):
         table_name = "test"
-        table_schema = [("features", "text"), ("label", "int")]
+        table_schema = ["features", "label"]
         values = [('5,6,1,2', 1)] * 10
 
         execute(driver, conn, self.drop_statement)

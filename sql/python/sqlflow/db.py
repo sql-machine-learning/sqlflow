@@ -46,23 +46,25 @@ def insert_values(driver, conn, table_name, table_schema, values):
     if driver == "mysql":
         statement = '''insert into {} ({}) values({})'''.format(
             table_name,
-            ", ".join(["`%s`" % n for n, t in table_schema]),
+            ", ".join([f for f in table_schema]),
             ", ".join(["%s"] * len(table_schema))
         )
     elif driver == "sqlite3":
         statement = '''insert into {} ({}) values({})'''.format(
             table_name,
-            ", ".join([n for n, t in table_schema]),
+            ", ".join([f for f in table_schema]),
             ", ".join(["?"] * len(table_schema))
         )
     elif driver == "hive":
         statement = '''insert into table {} ({}) values({})'''.format(
             table_name,
-            ", ".join([n for n, t in table_schema]),
+            ", ".join([f for f in table_schema]),
             ", ".join(["%s"] * len(table_schema))
         )
     else:
         raise ValueError("unrecognized database driver: %s" % driver)
+
+    print('debug statement: %s' % statement)
 
     cursor = conn.cursor()
     cursor.executemany(statement, values)
