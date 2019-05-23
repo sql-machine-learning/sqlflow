@@ -17,7 +17,7 @@ def connect(driver, database, user, password, host, port):
                        password=password,
                        database=database,
                        host=host,
-                       port=port)
+                       port=int(port))
 
     raise ValueError("unrecognized database driver: %s" % driver)
 
@@ -46,19 +46,19 @@ def insert_values(driver, conn, table_name, table_schema, values):
     if driver == "mysql":
         statement = '''insert into {} ({}) values({})'''.format(
             table_name,
-            ", ".join([f for f in table_schema]),
+            ", ".join(table_schema),
             ", ".join(["%s"] * len(table_schema))
         )
     elif driver == "sqlite3":
         statement = '''insert into {} ({}) values({})'''.format(
             table_name,
-            ", ".join([f for f in table_schema]),
+            ", ".join(table_schema),
             ", ".join(["?"] * len(table_schema))
         )
     elif driver == "hive":
         statement = '''insert into table {} ({}) values({})'''.format(
             table_name,
-            ", ".join([f for f in table_schema]),
+            ", ".join(table_schema),
             ", ".join(["%s"] * len(table_schema))
         )
     else:
