@@ -67,7 +67,7 @@ RUN mkdir -p /go/src/github.com/sql-machine-learning && \
 # Install latest sqlflow_models for testing custom models, see main_test.go:CaseTrainCustomModel
 RUN git clone https://github.com/sql-machine-learning/models.git && \
     cd models && \
-    python setup.py install && \
+    bash -c "source activate sqlflow-dev && python setup.py install" && \
     cd ..
 
 # Fix jupyter server "connecting to kernel" problem
