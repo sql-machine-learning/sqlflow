@@ -13,10 +13,6 @@ while true; do
   fi
 done
 
-set -e
-. /miniconda/etc/profile.d/conda.sh
-source activate sqlflow-dev
-
 export SQLFLOW_TEST_DB=hive
 
 go generate ./...
