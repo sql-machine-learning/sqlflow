@@ -193,13 +193,7 @@ try:
 except:
 	pass
 
-{{if eq .Driver "mysql"}}
-from mysql.connector import connect
-{{else if eq .Driver "sqlite3"}}
-from sqlite3 import connect
-{{else if eq .Driver "hive"}}
-from impala.dbapi import connect 
-{{end}}
+from sqlflow.db import connect, execute, insert_values
 
 # Disable Tensorflow INFO and WARNING
 import logging
@@ -213,32 +207,15 @@ STEP = 1000
 NUM_BUCKETS=160000
 EMBEDDING_WIDTH=128
 
-{{if eq .Driver "mysql"}}
-db = connect(user="{{.User}}",
-            passwd="{{.Password}}",
-            {{if ne .Database ""}}database="{{.Database}}",{{end}}
-            host="{{.Host}}",
-            port={{.Port}})
-{{else if eq .Driver "sqlite3"}}
-db = connect({{.Database}})
-{{else if eq .Driver "hive"}}
-db = connect(user="{{.User}}",
-            password="{{.Password}}",
-            {{if ne .Database ""}}database="{{.Database}}",{{end}}
-            host="{{.Host}}",
-            port={{.Port}})
+driver="{{.Driver}}"
+{{if ne .Database ""}}
+database="{{.Database}}"
 {{else}}
-raise ValueError("unrecognized database driver: {{.Driver}}")
+database=None
 {{end}}
 
-cursor = db.cursor()
-cursor.execute("""{{.StandardSelect}}""")
-{{if eq .Driver "hive"}}
-field_names = [i[0][i[0].find('.')+1:] for i in cursor.description]
-{{else}}
-field_names = [i[0] for i in cursor.description]
-{{end}}
-columns = list(map(list, zip(*cursor.fetchall())))
+conn = connect(driver, database, user="{{.User}}", password="{{.Password}}", host="{{.Host}}", port={{.Port}})
+field_names, columns = execute(driver, conn, """{{.StandardSelect}}""")
 
 feature_columns = []
 column_name_to_type = dict()
@@ -340,28 +317,19 @@ predictions = classifier.predict(input_fn=lambda:eval_input_fn(X, BATCHSIZE))
 X["{{.Y.Name}}"] = [p['class_ids'][0] for p in predictions]
 {{end}}
 
-def insert(table_name, X, db):
+def insert(table_name, X):
     length = [len(X[key]) for key in X]
     assert len(set(length)) == 1, "All the fields should have the same length"
 
     field_names = [key for key in X]
-    {{if eq .Driver "hive"}}
-    sql = "INSERT INTO TABLE {} ({}) VALUES ({})".format(table_name,
-        ",".join(field_names), ",".join(["%s" for _ in field_names]))
-    {{else}}
-    sql = "INSERT INTO {} ({}) VALUES ({})".format(table_name,
-        ",".join(field_names), ",".join(["%s" for _ in field_names]))
-    {{end}}
 
     val = []
     for i in range(length[0]):
         val.append(tuple([str(X[f][i]) for f in field_names]))
 
-    cursor = db.cursor()
-    cursor.executemany(sql, val)
-    db.commit()
+    insert_values(driver, conn, "{{.TableName}}", field_names, val)
 
-insert("{{.TableName}}", X, db)
+insert("{{.TableName}}", X)
 
 print("Done predicting. Predict table : {{.TableName}}")
 {{- end}}
