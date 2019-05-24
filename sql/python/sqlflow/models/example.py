@@ -82,12 +82,11 @@ is_training = False
 if is_training:
     model.compile(optimizer=model.default_optimizer(), loss=model.default_loss())
     model.fit(train_ds, validation_data=val_ds, epochs=model.default_training_epochs(), verbose=0)
-    #model.save_weights('my_model', save_format="h5")
-    model.save_weights('my_model.h5')
+    model.save_weights('my_model', save_format="h5")
     print("Done training.")
 else:
     model.predict(test_ds)
-    model.load_weights('my_model.h5', by_name=True)
+    model.load_weights('my_model')
     prediction = model.predict(test_ds)
     print(model.prepare_prediction_column(prediction))
     print("Done predictiing.")

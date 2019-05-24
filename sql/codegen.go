@@ -253,10 +253,11 @@ Y = columns[field_names.index("{{.Y.Name}}")]
 {{- end}}
 
 classifier = {{.Estimator}}(
-	feature_columns=feature_columns,{{if .SelfDefined}}{{range $key, $value := .Attrs}}
-	{{$key}} = {{$value}},{{end}})
-	{{else}}{{range $key, $value := .Attrs}}
+	feature_columns=feature_columns,{{range $key, $value := .Attrs}}
 	{{$key}} = {{$value}},{{end}}
+	{{if .SelfDefined}}
+)
+	{{else}}
 	model_dir = "{{.Save}}")
 	{{end}}
 
@@ -307,7 +308,7 @@ one_batch = pred_dataset.__iter__().next()
 # NOTE: must run predict one batch to initialize parameters
 # see: https://www.tensorflow.org/alpha/guide/keras/saving_and_serializing#saving_subclassed_models
 classifier.predict_on_batch(one_batch)
-classifier.load_weights("{{.Save}}", by_name=True)
+classifier.load_weights("{{.Save}}")
 del pred_dataset
 pred_dataset = eval_input_fn(X, BATCHSIZE)
 predictions = classifier.predict(pred_dataset)
