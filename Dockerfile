@@ -64,6 +64,12 @@ RUN mkdir -p /go/src/github.com/sql-machine-learning && \
     go install -v ./... && \
     cd /
 
+# Install latest sqlflow_models for testing custom models, see main_test.go:CaseTrainCustomModel
+RUN git clone https://github.com/sql-machine-learning/models.git && \
+    cd models && \
+    bash -c "source activate sqlflow-dev && python setup.py install" && \
+    cd ..
+
 # Fix jupyter server "connecting to kernel" problem
 # https://github.com/jupyter/notebook/issues/2664#issuecomment-468954423
 RUN /bin/bash -c "source activate sqlflow-dev && python -m pip install tornado==4.5.3"
