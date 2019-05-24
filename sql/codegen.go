@@ -311,7 +311,7 @@ classifier.load_weights("{{.Save}}", by_name=True)
 del pred_dataset
 pred_dataset = eval_input_fn(X, BATCHSIZE)
 predictions = classifier.predict(pred_dataset)
-X["{{.Y.Name}}"] = [p[classifier.prepare_prediction_column(p)] for p in predictions]
+X["{{.Y.Name}}"] = [classifier.prepare_prediction_column(p) for p in predictions]
 {{else}}
 predictions = classifier.predict(input_fn=lambda:eval_input_fn(X, BATCHSIZE))
 X["{{.Y.Name}}"] = [p['class_ids'][0] for p in predictions]
