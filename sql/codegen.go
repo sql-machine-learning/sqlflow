@@ -207,14 +207,14 @@ STEP = 1000
 NUM_BUCKETS=160000
 EMBEDDING_WIDTH=128
 
-driver={{.Driver}}
+driver="{{.Driver}}"
 {{if ne .Database ""}}
 database="{{.Database}}"
 {{else}}
 database=None
 {{end}}
 
-conn = connect(driver, database, user={{.User}}, password={{.Password}}, host="{{.Host}}", port={{.Port}})
+conn = connect(driver, database, user="{{.User}}", password="{{.Password}}", host="{{.Host}}", port={{.Port}})
 field_names, columns = execute(driver, conn, """{{.StandardSelect}}""")
 
 feature_columns = []
@@ -317,7 +317,7 @@ predictions = classifier.predict(input_fn=lambda:eval_input_fn(X, BATCHSIZE))
 X["{{.Y.Name}}"] = [p['class_ids'][0] for p in predictions]
 {{end}}
 
-def insert(table_name, X, db):
+def insert(table_name, X):
     length = [len(X[key]) for key in X]
     assert len(set(length)) == 1, "All the fields should have the same length"
 
@@ -327,9 +327,9 @@ def insert(table_name, X, db):
     for i in range(length[0]):
         val.append(tuple([str(X[f][i]) for f in field_names]))
 
-	insert_values(driver, conn, "{{.TableName}}", field_names, val)
+    insert_values(driver, conn, "{{.TableName}}", field_names, val)
 
-insert("{{.TableName}}", X, db)
+insert("{{.TableName}}", X)
 
 print("Done predicting. Predict table : {{.TableName}}")
 {{- end}}
