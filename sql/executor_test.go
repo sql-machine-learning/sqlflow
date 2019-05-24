@@ -14,6 +14,8 @@
 package sql
 
 import (
+	"container/list"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -40,14 +42,26 @@ USING sqlflow_models.my_boosted_tree_model;
 `
 )
 
-func goodStream(stream chan interface{}) bool {
+func goodStream(stream chan interface{}) (bool, string) {
+	lastResp := list.New()
+	keepSize := 10
+
 	for rsp := range stream {
 		switch rsp.(type) {
 		case error:
-			return false
+			var s []string
+			for e := lastResp.Front(); e != nil; e = e.Next() {
+				s = append(s, e.Value.(string))
+			}
+			return false, strings.Join(s, "\n")
+		}
+		lastResp.PushBack(rsp)
+		if lastResp.Len() > keepSize {
+			e := lastResp.Front()
+			lastResp.Remove(e)
 		}
 	}
-	return true
+	return true, ""
 }
 
 func TestExecutorTrainAndPredictDNN(t *testing.T) {
