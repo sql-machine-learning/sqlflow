@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"log"
 	"net"
@@ -129,7 +128,6 @@ func prepareTestData(dbStr string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("prepare toutiao data")
 	err = sql.Popularize(testDB, "../../sql/testdata/toutiao.sql")
 	return err
 }
