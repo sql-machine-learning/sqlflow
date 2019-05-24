@@ -6,3 +6,11 @@
     - id: validate-toml
     - id: no-go-testing
     - id: no-go-testing
+- repo: local
+  hooks:
+    - id: copyright_checker
+      name: copyright_checker
+      entry: python ./scripts/copyright.py
+      language: system
+      files: \.(go|py|sh)$
+
