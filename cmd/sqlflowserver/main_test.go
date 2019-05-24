@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log"
 	"net"
@@ -15,6 +16,7 @@ import (
 	"github.com/golang/protobuf/ptypes/any"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	pb "github.com/sql-machine-learning/sqlflow/server/proto"
+	"github.com/sql-machine-learning/sqlflow/sql"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -101,6 +103,37 @@ func ParseRow(stream pb.SQLFlow_RunClient) ([]string, [][]*any.Any) {
 	return columns, rows
 }
 
+func prepareTestData(dbStr string) error {
+	// popularize test data
+	testDB, err := sql.Open(dbStr)
+	if err != nil {
+		return err
+	}
+	_, err = testDB.Exec("CREATE DATABASE IF NOT EXISTS iris;")
+	if err != nil {
+		return err
+	}
+	_, err = testDB.Exec("CREATE DATABASE IF NOT EXISTS churn;")
+	if err != nil {
+		return err
+	}
+	_, err = testDB.Exec("CREATE DATABASE IF NOT EXISTS toutiao;")
+	if err != nil {
+		return err
+	}
+	err = sql.Popularize(testDB, "../../sql/testdata/iris.sql")
+	if err != nil {
+		return err
+	}
+	err = sql.Popularize(testDB, "../../sql/testdata/churn.sql")
+	if err != nil {
+		return err
+	}
+	fmt.Println("prepare toutiao data")
+	err = sql.Popularize(testDB, "../../sql/testdata/toutiao.sql")
+	return err
+}
+
 func TestEnd2EndMySQL(t *testing.T) {
 	testDBDriver := os.Getenv("SQLFLOW_TEST_DB")
 	// default run mysql tests
@@ -110,8 +143,14 @@ func TestEnd2EndMySQL(t *testing.T) {
 	if testDBDriver != "mysql" {
 		t.Skip("Skipping mysql tests")
 	}
-	go start("mysql://root:root@tcp/?maxAllowedPacket=0")
+	dbStr := "mysql://root:root@tcp/?maxAllowedPacket=0"
+	go start(dbStr)
 	WaitPortReady("localhost"+port, 0)
+	err := prepareTestData(dbStr)
+	if err != nil {
+		t.Fatalf("prepare test dataset failed: %v", err)
+	}
+
 	t.Run("TestShowDatabases", CaseShowDatabases)
 	t.Run("TestSelect", CaseSelect)
 	t.Run("TestTrainSQL", CaseTrainSQL)
