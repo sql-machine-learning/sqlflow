@@ -50,8 +50,9 @@ func translateColumnToFeature(fts *fieldTypes, driverName, ident string) (*colum
 	if e != nil {
 		return nil, e
 	}
+	ctype = strings.ToUpper(ctype)
 
-	if ctype == "FLOAT" || ctype == "INT" || ctype == "DOUBLE" {
+	if ctype == "FLOAT" || ctype == "INT" || ctype == "DOUBLE" || ctype == "BIGINT" {
 		return &columnType{ident, "numeric_column"}, nil
 	} else if ctype == "TEXT" || ctype == "VARCHAR" {
 		// FIXME(typhoonzero): only support preprocessed string of int vector
