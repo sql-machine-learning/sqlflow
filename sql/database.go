@@ -28,7 +28,7 @@ type DB struct {
 func Open(datasource string) (*DB, error) {
 	dses := strings.Split(datasource, "://")
 	if len(dses) != 2 {
-		return nil, fmt.Errorf("bad datasource")
+		return nil, fmt.Errorf("Expecting but cannot find :// in datasource %v", datasource)
 	}
 	db := &DB{driverName: dses[0], dataSourceName: dses[1]}
 
