@@ -72,7 +72,8 @@ func describeTables(slct *extendedSelect, db *DB) (ft fieldTypes, e error) {
 	ft = indexSelectFields(slct)
 	hasStar := len(ft) == 0
 	for _, tn := range slct.tables {
-		q := "SELECT * FROM " + tn + " LIMIT 1"
+		// MaxCompute's statement ends with a semicolon
+		q := "SELECT * FROM " + tn + " LIMIT 1;"
 		rows, err := db.Query(q)
 		if err != nil {
 			return nil, err

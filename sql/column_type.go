@@ -161,7 +161,7 @@ func parseVal(val interface{}) (interface{}, error) {
 }
 
 func universalizeColumnType(driverName, dialectType string) (string, error) {
-	if driverName == "mysql" || driverName == "sqlite3" {
+	if driverName == "mysql" || driverName == "sqlite3" || driverName == "maxcompute" {
 		return dialectType, nil
 	} else if driverName == "hive" {
 		if strings.HasSuffix(dialectType, hiveCTypeSuffix) {

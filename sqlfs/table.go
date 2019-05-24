@@ -14,7 +14,7 @@ func createTable(db *sql.DB, driver, table string) error {
 	var stmt string
 	if driver == "mysql" || driver == "sqlite3" {
 		stmt = fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (id INT, block TEXT, PRIMARY KEY (id))", table)
-	} else if driver == "hive" {
+	} else if driver == "hive" || driver == "maxcompute" {
 		stmt = fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (id INT, block STRING)", table)
 	} else {
 		return fmt.Errorf("createTable not supported for %s", driver)
