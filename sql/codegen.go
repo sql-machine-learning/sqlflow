@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 	"sqlflow.org/gohive"
+	"sqlflow.org/gomaxcompute"
 )
 
 type columnType struct {
@@ -50,8 +51,9 @@ func translateColumnToFeature(fts *fieldTypes, driverName, ident string) (*colum
 	if e != nil {
 		return nil, e
 	}
+	ctype = strings.ToUpper(ctype)
 
-	if ctype == "FLOAT" || ctype == "INT" || ctype == "DOUBLE" {
+	if ctype == "FLOAT" || ctype == "INT" || ctype == "DOUBLE" || ctype == "BIGINT" {
 		return &columnType{ident, "numeric_column"}, nil
 	} else if ctype == "TEXT" || ctype == "VARCHAR" {
 		// FIXME(typhoonzero): only support preprocessed string of int vector
@@ -133,6 +135,13 @@ func fillDatabaseInfo(r *filler, db *DB) (*filler, error) {
 		r.User, r.Password = cfg.User, cfg.Passwd
 		// remove the last ';' which leads to a ParseException
 		r.StandardSelect = removeLastSemicolon(r.StandardSelect)
+	case "maxcompute":
+		cfg, err := gomaxcompute.ParseDSN(db.dataSourceName)
+		if err != nil {
+			return nil, err
+		}
+		r.Host, r.Database = cfg.Endpoint, cfg.Project
+		r.User, r.Password = cfg.AccessID, cfg.AccessKey
 	default:
 		return nil, fmt.Errorf("sqlfow currently doesn't support DB %v", db.driverName)
 	}
