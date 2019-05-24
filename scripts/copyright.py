@@ -11,10 +11,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import argparse
 import io, re
 import sys, os
@@ -96,6 +92,7 @@ def main(argv=None):
 
     retv = 0
     for filename in args.filenames:
+        print("deal with", filename)
         fd = io.open(filename, encoding="utf-8")
         first_line = fd.readline()
         second_line = fd.readline()
