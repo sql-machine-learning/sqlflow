@@ -53,6 +53,9 @@ RUN echo 'mysql-server mysql-server/root_password password root' | debconf-set-s
     mkdir -p /docker-entrypoint-initdb.d
 VOLUME /var/lib/mysql
 
+# Add the python module of sqlflow to PYTHONPATH
+ENV $PYTHONPATH $PYTHONPATH:$GOPATH/src/github.com/sql-machine-learning/sql/python
+
 # Build SQLFlow binaries by git clone the latest develop branch.
 # During development, /go will be overridden by -v.
 RUN mkdir -p /go/src/github.com/sql-machine-learning && \
