@@ -1,7 +1,7 @@
-//go:generate protoc CalciteParser.proto --go_out=plugins=grpc:.
+// Package calcite is a gRPC client that implements
+// CalciteParser.proto and connects to CalciteParserServer.java.
 //
-// This package is a gRPC client that implements CalciteParser.proto.
-// The server implementation is in CalciteParserServer.java.
+//go:generate protoc CalciteParser.proto --go_out=plugins=grpc:.
 package calcite
 
 import (
