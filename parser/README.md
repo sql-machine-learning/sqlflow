@@ -127,7 +127,7 @@ The parser verifies the syntax of the input.  SQLFlow also needs to check the lo
 
 ```sql
 SELECT a, b FROM t1 TRAIN DNNClassifier COLUMN c LABEL b;
-`"
+```
 
 There is no syntax error in the above example; however, it has a logical mistake -- the column `c` is undefined.
 
