@@ -81,9 +81,9 @@ public class CalciteParserServer {
       }
     } catch (ParseException e) {
       System.err.println("Command line options error:" + e.getMessage() +
-          "Use default port 50051");
+          "Use default port 50052");
     }
-    return 50051; // the default port.
+    return 50052; // the default port.
   }
 
   static class CalciteParserImpl extends CalciteParserGrpc.CalciteParserImplBase {
