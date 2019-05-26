@@ -46,6 +46,8 @@ func Init(addr string) error {
 func Cleanup() {
 	if conn != nil {
 		conn.Close()
+		conn = nil
+		client = nil
 	}
 }
 
