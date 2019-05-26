@@ -1,3 +1,16 @@
+// Copyright 2019 The SQLFlow Authors. All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package main
 
 import (
@@ -116,6 +129,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("TestSelect", CaseSelect)
 	t.Run("TestTrainSQL", CaseTrainSQL)
 	t.Run("TestTextClassification", CaseTrainTextClassification)
+	t.Run("CaseTrainCustomModel", CaseTrainCustomModel)
 }
 
 func TestEnd2EndHive(t *testing.T) {
@@ -168,6 +182,11 @@ func CaseShowDatabases(t *testing.T) {
 	}
 	for i := 0; i < len(resp); i++ {
 		AssertContainsAny(a, expectedDBs, resp[i][0])
+	}
+	// Create database sqlflow_models for later tests to write models;
+	_, err = cli.Run(ctx, &pb.Request{Sql: "CREATE DATABASE IF NOT EXISTS sqlflow_models;"})
+	if err != nil {
+		a.Fail("Create database sqlflow_models failed: %v", err)
 	}
 }
 
@@ -248,6 +267,66 @@ INTO sqlflow_models.my_dnn_model;`
 FROM iris.test
 PREDICT iris.predict.class
 USING sqlflow_models.my_dnn_model;`
+
+	stream, err = cli.Run(ctx, &pb.Request{Sql: predSQL})
+	if err != nil {
+		a.Fail("Check if the server started successfully. %v", err)
+	}
+	// call ParseRow only to wait predict finish
+	ParseRow(stream)
+
+	showPred := `SELECT *
+FROM iris.predict LIMIT 5;`
+
+	stream, err = cli.Run(ctx, &pb.Request{Sql: showPred})
+	if err != nil {
+		a.Fail("Check if the server started successfully. %v", err)
+	}
+	_, rows := ParseRow(stream)
+
+	for _, row := range rows {
+		// NOTE: predict result maybe random, only check predicted
+		// class >=0, need to change to more flexible checks than
+		// checking expectedPredClasses := []int64{2, 1, 0, 2, 0}
+		AssertGreaterEqualAny(a, row[4], int64(0))
+	}
+}
+
+// CaseTrainCustomModel tests using customized models
+func CaseTrainCustomModel(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := `SELECT *
+FROM iris.train
+TRAIN sqlflow_models.DNNClassifier
+WITH n_classes = 3, hidden_units = [10, 20]
+COLUMN sepal_length, sepal_width, petal_length, petal_width
+LABEL class
+INTO sqlflow_models.my_dnn_model_custom;`
+
+	conn, err := grpc.Dial("localhost"+port, grpc.WithInsecure())
+	a.NoError(err)
+	defer conn.Close()
+	cli := pb.NewSQLFlowClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	defer cancel()
+
+	stream, err := cli.Run(ctx, &pb.Request{Sql: trainSQL})
+	if err != nil {
+		a.Fail("Check if the server started successfully. %v", err)
+	}
+	// call ParseRow only to wait train finish
+	ParseRow(stream)
+
+	// FIXME(typhoonzero): Fix PREDICT tests using hive
+	if os.Getenv("SQLFLOW_TEST_DB") == "hive" {
+		return
+	}
+
+	predSQL := `SELECT *
+FROM iris.test
+PREDICT iris.predict.class
+USING sqlflow_models.my_dnn_model_custom;`
 
 	stream, err = cli.Run(ctx, &pb.Request{Sql: predSQL})
 	if err != nil {

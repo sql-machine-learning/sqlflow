@@ -1,3 +1,16 @@
+// Copyright 2019 The SQLFlow Authors. All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package sql
 
 import (
@@ -8,6 +21,7 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 	"sqlflow.org/gohive"
+	"sqlflow.org/gomaxcompute"
 )
 
 type columnType struct {
@@ -24,9 +38,10 @@ type connectionConfig struct {
 }
 
 type modelConfig struct {
-	Estimator string
-	Attrs     map[string]string
-	Save      string
+	Estimator   string
+	Attrs       map[string]string
+	Save        string
+	SelfDefined bool
 }
 
 type filler struct {
@@ -49,8 +64,9 @@ func translateColumnToFeature(fts *fieldTypes, driverName, ident string) (*colum
 	if e != nil {
 		return nil, e
 	}
+	ctype = strings.ToUpper(ctype)
 
-	if ctype == "FLOAT" || ctype == "INT" || ctype == "DOUBLE" {
+	if ctype == "FLOAT" || ctype == "INT" || ctype == "DOUBLE" || ctype == "BIGINT" {
 		return &columnType{ident, "numeric_column"}, nil
 	} else if ctype == "TEXT" || ctype == "VARCHAR" {
 		// FIXME(typhoonzero): only support preprocessed string of int vector
@@ -63,18 +79,27 @@ func translateColumnToFeature(fts *fieldTypes, driverName, ident string) (*colum
 	return nil, fmt.Errorf("unsupported type %s of field %s", ctype, ident)
 }
 
+// parseModelURI returns isSelfDefinedModel, modelClassString
+func parseModelURI(modelString string) (bool, string) {
+	if strings.HasPrefix(modelString, "sqlflow_models.") {
+		return true, modelString
+	}
+	return false, fmt.Sprintf("tf.estimator.%s", modelString)
+}
+
 // TODO(weiguo): fts -> pointer
 func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
+	isSelfDefinedModel, modelClassString := parseModelURI(pr.estimator)
 	r := &filler{
 		Train:          pr.train,
 		StandardSelect: pr.standardSelect.String(),
 		modelConfig: modelConfig{
-			Estimator: pr.estimator,
-			Attrs:     make(map[string]string),
-			Save:      pr.save,
+			Estimator:   modelClassString,
+			Attrs:       make(map[string]string),
+			Save:        pr.save,
+			SelfDefined: isSelfDefinedModel,
 		},
 	}
-
 	for k, v := range pr.attrs {
 		r.Attrs[k] = v.String()
 	}
@@ -123,6 +148,13 @@ func fillDatabaseInfo(r *filler, db *DB) (*filler, error) {
 		r.User, r.Password = cfg.User, cfg.Passwd
 		// remove the last ';' which leads to a ParseException
 		r.StandardSelect = removeLastSemicolon(r.StandardSelect)
+	case "maxcompute":
+		cfg, err := gomaxcompute.ParseDSN(db.dataSourceName)
+		if err != nil {
+			return nil, err
+		}
+		r.Host, r.Database = cfg.Endpoint, cfg.Project
+		r.User, r.Password = cfg.AccessID, cfg.AccessKey
 	default:
 		return nil, fmt.Errorf("sqlfow currently doesn't support DB %v", db.driverName)
 	}
@@ -156,14 +188,12 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import sys, json
 import tensorflow as tf
 import numpy as np
+try:
+	import sqlflow_models
+except:
+	pass
 
-{{if eq .Driver "mysql"}}
-from mysql.connector import connect
-{{else if eq .Driver "sqlite3"}}
-from sqlite3 import connect
-{{else if eq .Driver "hive"}}
-from impala.dbapi import connect 
-{{end}}
+from sqlflow.db import connect, execute, insert_values
 
 # Disable Tensorflow INFO and WARNING
 import logging
@@ -177,32 +207,15 @@ STEP = 1000
 NUM_BUCKETS=160000
 EMBEDDING_WIDTH=128
 
-{{if eq .Driver "mysql"}}
-db = connect(user="{{.User}}",
-            passwd="{{.Password}}",
-            {{if ne .Database ""}}database="{{.Database}}",{{end}}
-            host="{{.Host}}",
-            port={{.Port}})
-{{else if eq .Driver "sqlite3"}}
-db = connect({{.Database}})
-{{else if eq .Driver "hive"}}
-db = connect(user="{{.User}}",
-            password="{{.Password}}",
-            {{if ne .Database ""}}database="{{.Database}}",{{end}}
-            host="{{.Host}}",
-            port={{.Port}})
+driver="{{.Driver}}"
+{{if ne .Database ""}}
+database="{{.Database}}"
 {{else}}
-raise ValueError("unrecognized database driver: {{.Driver}}")
+database=None
 {{end}}
 
-cursor = db.cursor()
-cursor.execute("""{{.StandardSelect}}""")
-{{if eq .Driver "hive"}}
-field_names = [i[0][i[0].find('.')+1:] for i in cursor.description]
-{{else}}
-field_names = [i[0] for i in cursor.description]
-{{end}}
-columns = list(map(list, zip(*cursor.fetchall())))
+conn = connect(driver, database, user="{{.User}}", password="{{.Password}}", host="{{.Host}}", port={{.Port}})
+field_names, columns = execute(driver, conn, """{{.StandardSelect}}""")
 
 feature_columns = []
 column_name_to_type = dict()
@@ -238,10 +251,14 @@ for name in feature_column_names:
 Y = columns[field_names.index("{{.Y.Name}}")]
 {{- end}}
 
-classifier = tf.estimator.{{.Estimator}}(
-    feature_columns=feature_columns,{{range $key, $value := .Attrs}}
-    {{$key}} = {{$value}},{{end}}
-    model_dir = "{{.Save}}")
+classifier = {{.Estimator}}(
+	feature_columns=feature_columns,{{range $key, $value := .Attrs}}
+	{{$key}} = {{$value}},{{end}}
+	{{if .SelfDefined}}
+)
+	{{else}}
+	model_dir = "{{.Save}}")
+	{{end}}
 
 {{if .Train}}
 def train_input_fn(features, labels, batch_size):
@@ -249,18 +266,34 @@ def train_input_fn(features, labels, batch_size):
     dataset = dataset.shuffle(1000).repeat().batch(batch_size)
     return dataset
 
+{{if .SelfDefined}}
+classifier.compile(optimizer=classifier.default_optimizer(),
+	loss=classifier.default_loss(),
+	metrics=["accuracy"])
+classifier.fit(train_input_fn(X, Y, BATCHSIZE),
+	epochs=classifier.default_training_epochs(),
+	steps_per_epoch=STEP, verbose=0)
+classifier.save_weights("{{.Save}}", save_format="h5")
+{{else}}
 classifier.train(
     input_fn=lambda:train_input_fn(X, Y, BATCHSIZE),
     steps=STEP)
+{{end}}
 
 def eval_input_fn(features, labels, batch_size):
     dataset = tf.data.Dataset.from_tensor_slices((dict(features), labels))
     dataset = dataset.batch(batch_size)
     return dataset
 
+{{if .SelfDefined}}
+eval_result = classifier.evaluate(eval_input_fn(X, Y, BATCHSIZE), verbose=0)
+print("Training set accuracy: {accuracy:0.5f}".format(**{"accuracy": eval_result[1]}))
+{{else}}
 eval_result = classifier.evaluate(
-    input_fn=lambda:eval_input_fn(X, Y, BATCHSIZE), steps=STEP)
+	input_fn=lambda:eval_input_fn(X, Y, BATCHSIZE), steps=STEP)
+print(eval_result)
 print("Training set accuracy: {accuracy:0.5f}".format(**eval_result))
+{{end}}
 print("Done training")
 {{- else}}
 def eval_input_fn(features, batch_size):
@@ -268,32 +301,35 @@ def eval_input_fn(features, batch_size):
     dataset = dataset.batch(batch_size)
     return dataset
 
+{{if .SelfDefined}}
+pred_dataset = eval_input_fn(X, BATCHSIZE)
+one_batch = pred_dataset.__iter__().next()
+# NOTE: must run predict one batch to initialize parameters
+# see: https://www.tensorflow.org/alpha/guide/keras/saving_and_serializing#saving_subclassed_models
+classifier.predict_on_batch(one_batch)
+classifier.load_weights("{{.Save}}")
+del pred_dataset
+pred_dataset = eval_input_fn(X, BATCHSIZE)
+predictions = classifier.predict(pred_dataset)
+X["{{.Y.Name}}"] = [classifier.prepare_prediction_column(p) for p in predictions]
+{{else}}
 predictions = classifier.predict(input_fn=lambda:eval_input_fn(X, BATCHSIZE))
-
 X["{{.Y.Name}}"] = [p['class_ids'][0] for p in predictions]
+{{end}}
 
-def insert(table_name, X, db):
+def insert(table_name, X):
     length = [len(X[key]) for key in X]
     assert len(set(length)) == 1, "All the fields should have the same length"
 
     field_names = [key for key in X]
-    {{if eq .Driver "hive"}}
-    sql = "INSERT INTO TABLE {} ({}) VALUES ({})".format(table_name,
-        ",".join(field_names), ",".join(["%s" for _ in field_names]))
-    {{else}}
-    sql = "INSERT INTO {} ({}) VALUES ({})".format(table_name,
-        ",".join(field_names), ",".join(["%s" for _ in field_names]))
-    {{end}}
 
     val = []
     for i in range(length[0]):
         val.append(tuple([str(X[f][i]) for f in field_names]))
 
-    cursor = db.cursor()
-    cursor.executemany(sql, val)
-    db.commit()
+    insert_values(driver, conn, "{{.TableName}}", field_names, val)
 
-insert("{{.TableName}}", X, db)
+insert("{{.TableName}}", X)
 
 print("Done predicting. Predict table : {{.TableName}}")
 {{- end}}

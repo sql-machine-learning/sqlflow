@@ -53,6 +53,9 @@ RUN echo 'mysql-server mysql-server/root_password password root' | debconf-set-s
     mkdir -p /docker-entrypoint-initdb.d
 VOLUME /var/lib/mysql
 
+# Add the python module of sqlflow to PYTHONPATH
+ENV PYTHONPATH $PYTHONPATH:$GOPATH/src/github.com/sql-machine-learning/sqlflow/sql/python
+
 # Build SQLFlow binaries by git clone the latest develop branch.
 # During development, /go will be overridden by -v.
 RUN mkdir -p /go/src/github.com/sql-machine-learning && \
@@ -63,6 +66,12 @@ RUN mkdir -p /go/src/github.com/sql-machine-learning && \
     go get -v -t ./... && \
     go install -v ./... && \
     cd /
+
+# Install latest sqlflow_models for testing custom models, see main_test.go:CaseTrainCustomModel
+RUN git clone https://github.com/sql-machine-learning/models.git && \
+    cd models && \
+    bash -c "source activate sqlflow-dev && python setup.py install" && \
+    cd ..
 
 # Fix jupyter server "connecting to kernel" problem
 # https://github.com/jupyter/notebook/issues/2664#issuecomment-468954423

@@ -1,6 +1,21 @@
+// Copyright 2019 The SQLFlow Authors. All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package sql
 
 import (
+	"container/list"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -27,14 +42,26 @@ USING sqlflow_models.my_boosted_tree_model;
 `
 )
 
-func goodStream(stream chan interface{}) bool {
+func goodStream(stream chan interface{}) (bool, string) {
+	lastResp := list.New()
+	keepSize := 10
+
 	for rsp := range stream {
 		switch rsp.(type) {
 		case error:
-			return false
+			var s []string
+			for e := lastResp.Front(); e != nil; e = e.Next() {
+				s = append(s, e.Value.(string))
+			}
+			return false, strings.Join(s, "\n")
+		}
+		lastResp.PushBack(rsp)
+		if lastResp.Len() > keepSize {
+			e := lastResp.Front()
+			lastResp.Remove(e)
 		}
 	}
-	return true
+	return true, ""
 }
 
 func TestExecutorTrainAndPredictDNN(t *testing.T) {

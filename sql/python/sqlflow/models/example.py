@@ -1,3 +1,16 @@
+# Copyright 2019 The SQLFlow Authors. All rights reserved.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import tensorflow as tf
 import pandas as pd
 from sklearn.model_selection import train_test_split
@@ -78,16 +91,15 @@ class DNNClassifier(tf.keras.Model):
         return prediction.argmax(axis=-1)
 
 model = DNNClassifier(feature_columns=feature_columns, hidden_units=[10, 10], n_classes=3)
-model.compile(optimizer=model.default_optimizer(), loss=model.default_loss())
-
 is_training = False
 if is_training:
+    model.compile(optimizer=model.default_optimizer(), loss=model.default_loss())
     model.fit(train_ds, validation_data=val_ds, epochs=model.default_training_epochs(), verbose=0)
-    model.save_weights('my_model.h5')
+    model.save_weights('my_model', save_format="h5")
     print("Done training.")
 else:
     model.predict(test_ds)
-    model.load_weights('my_model.h5')
+    model.load_weights('my_model')
     prediction = model.predict(test_ds)
     print(model.prepare_prediction_column(prediction))
     print("Done predictiing.")
