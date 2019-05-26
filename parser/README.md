@@ -52,7 +52,7 @@ func Parse(sql string) (acceptable bool, err error) {
     // The left part is a SELECT and the right part is TRAIN or PREDICT.
     return false, nil 
 }
-`"
+```
 
 This procedure has two assumptions: (1) a SQL engine has a parser, denoted by sql_engine.Parse, and (2) the parser reports the position of syntax errors if there is any.  Both assumptions are reasonable. However, a key question here is how to call parsers of various SQL engines. For open source SQL engines, this doesn't seem an issue. Here we list parsers used by some well-known engines:
 
