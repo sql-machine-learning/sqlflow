@@ -15,29 +15,54 @@ package tidb
 
 import (
 	"fmt"
+	"log"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/pingcap/parser"
 	_ "github.com/pingcap/tidb/types/parser_driver" // As required by https://github.com/pingcap/parser/blob/master/parser_example_test.go#L19
 )
+
+var (
+	// Use the global variable to save the time of creating parser.
+	psr *parser.Parser
+	re  *regexp.Regexp
+	mu  sync.Mutex
+)
+
+// Init creates the TiDB parser instance and other resources.
+func Init() {
+	mu.Lock()
+	defer mu.Unlock()
+
+	psr = parser.New()
+	re = regexp.MustCompile(`.* near "([^"]+)".*`)
+}
 
 // Parse calls TiDB's parser to parse a statement sql.  It returns
 // <-1,nil> if TiDB parser accepts the statement, or <pos,nil> if TiDB
 // doesn't accept but returns a `near "..."` in the error message, or
 // <-1,err> if the error messages doens't contain near.
 func Parse(sql string) (idx int, err error) {
-	p := parser.New()
-	_, _, err = p.Parse(sql, "", "")
+	if psr == nil || re == nil {
+		log.Fatalf("Parser must be called after Init")
+	}
 
-	if err != nil {
-		re := regexp.MustCompile(`.* near "([^"]+)".*`)
+	mu.Lock()
+	defer mu.Unlock()
+
+	if _, _, err = psr.Parse(sql, "", ""); err != nil {
 		matched := re.FindAllStringSubmatch(err.Error(), -1)
-
 		if len(matched) != 1 || len(matched[0]) != 2 {
 			return -1, fmt.Errorf("Cannot match near in %q", err)
 		}
-		return strings.Index(sql, matched[0][1]), nil
+		idx = strings.Index(sql, matched[0][1])
+
+		if _, _, e := psr.Parse(sql[:idx], "", ""); e != nil {
+			return idx, fmt.Errorf("Parsing \"%s\" failed: %v", sql[:idx], e)
+		}
+		return idx, nil
 	}
 	return -1, nil
 }
