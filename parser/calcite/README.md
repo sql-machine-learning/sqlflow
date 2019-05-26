@@ -20,7 +20,7 @@ docker tag cxwangyi/calcite:dev calcite:dev
 The following command builds `CalciteParserServer.class` and runs it:
 
 ```bash
-docker run --rm -d -p 50051:50051 -v $PWD:/work -w /work calcite:dev bash ./build_and_run.bash
+docker run --rm -d -p 50052:50052 -v $PWD:/work -w /work calcite:dev bash ./build_and_run.bash
 ```
 
 ## Test
@@ -29,5 +29,5 @@ Given an instance running in Docker container, we can run the following command 
 
 ```bash
 go generate
-SQLFLOW_CALCITE_PARSER=127.0.0.1:50051 go test -v
+SQLFLOW_CALCITE_PARSER=127.0.0.1:50052 go test -v
 ```
