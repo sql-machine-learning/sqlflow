@@ -131,4 +131,4 @@ SELECT a, b FROM t1 TRAIN DNNClassifier COLUMN c LABEL b;
 
 There is no syntax error in the above example; however, it has a logical mistake -- the column `c` is undefined.
 
-In the design of SQLFlow, we do verification after parsing.  The verifier would like to know the field and table named mentioned in the statement, which is supposed to be returned by `external_parser` in addition to `idx`.
+In the design of SQLFlow, we do verification after parsing.  The verifier would like to know the field and table named mentioned in the statement, which is supposed to be returned by `external_parser` in addition to `idx`. Both TiDB parser and Calcite parser return an abstract syntax tree; it seems that we can traverse the tree and find out the field and table names.
