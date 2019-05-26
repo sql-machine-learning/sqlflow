@@ -18,8 +18,8 @@ import (
 	"os"
 )
 
-// Popularize reads SQL statements from the file named sqlfile in the
-// ./testdata directory, and runs each SQL statement with db.
+// Popularize reads SQL statements from the file named *.sql
+// and runs each SQL statement with db.
 func Popularize(db *DB, sqlfile string) error {
 	f, e := os.Open(sqlfile)
 	if e != nil {
@@ -37,6 +37,7 @@ func Popularize(db *DB, sqlfile string) error {
 	}
 
 	scanner := bufio.NewScanner(f)
+	// TODO(typhoonzero): Should consider .sql files like VALUES "a;b;c";
 	scanner.Split(onSemicolon)
 
 	for scanner.Scan() {
