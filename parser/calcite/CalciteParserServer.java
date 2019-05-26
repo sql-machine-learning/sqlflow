@@ -81,24 +81,42 @@ public class CalciteParserServer {
         StreamObserver<CalciteParserProto.CalciteParserReply> responseObserver) {
 
       String q = request.getQuery();
-      Pair<Integer, SqlParseException> r = calcite(q);
-      if (r.getValue() == null) {
-        int i = r.getKey();
-        responseObserver.onNext(
-            CalciteParserProto.CalciteParserReply.newBuilder()
-                .setSql(q.substring(0, i))
-                .setExtension(q.substring(i))
-                .build());
-      } else {
-        responseObserver.onNext(
-            CalciteParserProto.CalciteParserReply.newBuilder()
-                .setError(r.getValue().getCause().getMessage())
-                .build());
-      }
+      Pair<Integer, SqlParseException> r = calciteParse(q);
+      int i = r.getKey();
+      String e = (r.getValue() == null ? "" : r.getValue().getCause().getMessage());
+      responseObserver.onNext(
+          CalciteParserProto.CalciteParserReply.newBuilder()
+          .setIndex(i)
+          .setError(e)
+          .build());
       responseObserver.onCompleted();
     }
 
-    private static int PosToIndex(String query, SqlParserPos pos) {
+    // calciteParse returns <len(query),null> if Calcite parser
+    // accepts query, or returns <pos,null> if a second parsing
+    // accepts the content to the left of the error position from the
+    // first parsing, or <-1,e> if both parsing failed.
+    private static Pair<Integer, SqlParseException> calciteParse(String query) {
+      try {
+        SqlParser parser = SqlParser.create(query);
+        SqlNode sqlNode = parser.parseQuery();
+
+      } catch (SqlParseException e) {
+        int epos = posToIndex(query, e.getPos());
+        try {
+          SqlParser parser = SqlParser.create(query.substring(0, epos));
+          SqlNode sqlNode = parser.parseQuery();
+        } catch (SqlParseException ee) {
+          return new Pair<Integer, SqlParseException>(epos, ee);
+        }
+        return new Pair<Integer, SqlParseException>(epos, null);
+      }
+
+      return new Pair<Integer, SqlParseException>(-1, null);  // Don't use query.length(), use -1.
+    }
+
+    // posToIndex converts line number and column number into string index.
+    private static int posToIndex(String query, SqlParserPos pos) {
       int line = 0, column = 0;
 
       for (int i = 0; i < query.length(); i++) {
@@ -115,25 +133,6 @@ public class CalciteParserServer {
       }
 
       return query.length();
-    }
-
-    private static Pair<Integer, SqlParseException> calcite(String query) {
-      try {
-        SqlParser parser = SqlParser.create(query);
-        SqlNode sqlNode = parser.parseQuery();
-
-      } catch (SqlParseException e) {
-        int epos = PosToIndex(query, e.getPos());
-        try {
-          SqlParser parser = SqlParser.create(query.substring(0, epos));
-          SqlNode sqlNode = parser.parseQuery();
-        } catch (SqlParseException ee) {
-          return new Pair<Integer, SqlParseException>(epos, ee);
-        }
-        return new Pair<Integer, SqlParseException>(epos, null);
-      }
-
-      return new Pair<Integer, SqlParseException>(query.length(), null);
     }
   }
 }

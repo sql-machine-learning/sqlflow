@@ -1,34 +1,32 @@
 # CalciteParser gRPC Server for SQLFlow
 
-## How to Build
+## Develop using Docker
 
-The following build process doesn't require us to install Java SDK, Maven, protobuf-compiler, and any dependencies.  Instead, it installs all such staff into a Docker image and use the Docker image as the build toolchain.  Building in Docker containers standardizes development environments of all contributors, keeps our host computer clean, and works on macOS, Linux, BSD, Windows, and all platforms that have Docker.
-
-Build the development Docker image:
+We provide a Dockerfile that installs all Java tools and dependencies into a Docker image, which eases the build and run.  The following command builds the development Docker image.
 
 ```bash
 docker build -t calcite:dev .
 ```
 
-Or, if it takes too long time for you to build the image, please feel free to use mine:
+If it takes too long time for you to build the image, please feel free to use the pre-built one on DockerHub.com.
 
 ```bash
 docker pull cxwangyi/calcite:dev
 docker tag cxwangyi/calcite:dev calcite:dev
 ```
 
-We can build the server program using the Docker image:
+## Build and Run
+
+The following command builds `CalciteParserServer.class` and runs it:
 
 ```bash
-docker run --rm -it -v $PWD:/work -w /work calcite:dev bash ./build_and_test.bash
+docker run --rm -d -p 50051:50051 -v $PWD:/work -w /work calcite:dev bash ./build_and_run.bash
 ```
 
-The above command outputs `CalciteParserServer.class`.
+## Test
 
-## How to Run
-
-We can run the server program using the above Docker image:
+Given an instance running in Docker container, we can run the following command to test it.
 
 ```bash
-docker run --rm -d -p 50051:50051 -v $PWD:/work -w /work calcite:dev bash -c "java CalciteParserServer"
+SQLFLOW_CALCITE_PARSER=127.0.0.1:50051 go test -v
 ```

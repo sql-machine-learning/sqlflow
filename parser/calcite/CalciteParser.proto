@@ -2,17 +2,18 @@ syntax = "proto3";
 
 option java_multiple_files = false;
 option java_outer_classname = "CalciteParserProto";
-
-package calcite;
+option go_package = "calcite";
 
 message CalciteParserRequest {
   string query = 1;
 }
 
 message CalciteParserReply {
-  string sql = 1;
-  string extension = 2;
-  string error = 3;
+  // The index where we might want to split CalciteParserRequest.query
+  // into a standard SELECT statement and the SQLFlow extension: TRAIN
+  // or PREDICT.
+  int32 index = 1; 
+  string error = 2;
 }
 
 service CalciteParser {
