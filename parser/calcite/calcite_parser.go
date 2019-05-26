@@ -44,7 +44,6 @@ func Cleanup() {
 // We are supposed to call SQLFlow parser with sql[idx:] if Parse
 // returns (idx,nil).
 func Parse(sql string) (idx int, err error) {
-
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	r, err := client.Parse(ctx, &CalciteParserRequest{Query: sql})

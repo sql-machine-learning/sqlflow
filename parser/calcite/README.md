@@ -28,5 +28,6 @@ docker run --rm -d -p 50051:50051 -v $PWD:/work -w /work calcite:dev bash ./buil
 Given an instance running in Docker container, we can run the following command to test it.
 
 ```bash
+go generate
 SQLFLOW_CALCITE_PARSER=127.0.0.1:50051 go test -v
 ```
