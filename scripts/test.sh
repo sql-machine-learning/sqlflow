@@ -26,7 +26,7 @@ export SQLFLOW_TEST_DB=mysql
 
 python -c "import sqlflow_models"
 
-python -c "import sqlflow.db"
+python -c "import sqlflow_submitter.db"
 
 go generate ./...
 go get -v -t ./...
