@@ -13,8 +13,6 @@ In this tutorial we use a
 which is more complicated since we need to consider sentence segments. To adapt
 this tutorial to some English data set could be simple.
 
-**NOTE**: to achieve better accuracy
-
 # Steps to Run
 
 1. Download the dataset from https://github.com/fate233/toutiao-text-classfication-dataset and unpack
@@ -92,4 +90,7 @@ this tutorial to some English data set could be simple.
     PREDICT toutiao.predict.class_id
     USING sqlflow_models.my_text_model;
     ```
-1. Then you can get validation result from table `toutiao.predict`:
+1. Then you can get validation result from table `toutiao.predict`. The
+   above training should finish with accuracy about 74%. You can also
+   check out the content in table `toutiao.predict` to see the result
+   of prediction.

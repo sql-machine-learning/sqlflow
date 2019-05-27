@@ -199,11 +199,12 @@ from sqlflow.db import connect, execute, insert_values
 import logging
 tf.get_logger().setLevel(logging.ERROR)
 ` +
-	// TODO(tonyyang-svail): remove hard coded BATCHSIZE, STEP
+	// TODO(tonyyang-svail): remove hard coded BATCHSIZE, STEP. The current setup is used
+	// in case iris and text classification both to achieve acceptable accuracy.
 	// TODO(typhoonzero): get NUM_BUCKETS, EMBEDDING_WIDTH from Extended SQL statements
 	`
-BATCHSIZE = 1
-STEP = 1000
+BATCHSIZE = 10
+STEP = 50000
 NUM_BUCKETS=160000
 EMBEDDING_WIDTH=128
 
