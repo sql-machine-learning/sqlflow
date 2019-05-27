@@ -29,6 +29,7 @@ import (
 	"github.com/golang/protobuf/ptypes/wrappers"
 	pb "github.com/sql-machine-learning/sqlflow/server/proto"
 	"github.com/sql-machine-learning/sqlflow/sql"
+	"github.com/sql-machine-learning/sqlflow/sql/testdata"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -121,31 +122,19 @@ func prepareTestData(dbStr string) error {
 	if err != nil {
 		return err
 	}
-	_, err = testDB.Exec("CREATE DATABASE IF NOT EXISTS iris;")
-	if err != nil {
-		return err
-	}
-	_, err = testDB.Exec("CREATE DATABASE IF NOT EXISTS churn;")
-	if err != nil {
-		return err
-	}
-	_, err = testDB.Exec("CREATE DATABASE IF NOT EXISTS toutiao;")
-	if err != nil {
-		return err
-	}
 	_, err = testDB.Exec("CREATE DATABASE IF NOT EXISTS sqlflow_models;")
 	if err != nil {
 		return err
 	}
-	err = sql.Popularize(testDB, "../../sql/testdata/iris.sql")
+	err = testdata.Popularize(testDB, testdata.IrisSQL)
 	if err != nil {
 		return err
 	}
-	err = sql.Popularize(testDB, "../../sql/testdata/churn.sql")
+	err = testdata.Popularize(testDB, testdata.ChurnSQL)
 	if err != nil {
 		return err
 	}
-	err = sql.Popularize(testDB, "../../sql/testdata/toutiao.sql")
+	err = testdata.Popularize(testDB, testdata.TextCNSQL)
 	return err
 }
 
@@ -217,7 +206,7 @@ func CaseShowDatabases(t *testing.T) {
 		"sqlflow_models":     "",
 		"sqlfs_test":         "",
 		"sys":                "",
-		"toutiao":            "",
+		"text_cn":            "",
 		"hive":               "", // if current mysql is also used for hive
 		"default":            "", // if fetching default hive databases
 	}
@@ -393,7 +382,7 @@ FROM iris.predict LIMIT 5;`
 func CaseTrainTextClassification(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := `SELECT *
-FROM toutiao.train_processed
+FROM text_cn.train_processed
 TRAIN DNNClassifier
 WITH n_classes = 17, hidden_units = [10, 20]
 COLUMN news_title

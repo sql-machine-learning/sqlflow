@@ -1,4 +1,4 @@
-package sql
+package testdata
 
 // Copyright 2019 The SQLFlow Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,37 +14,25 @@ package sql
 // limitations under the License.
 
 import (
-	"bufio"
-	"os"
+	"strings"
+
+	"github.com/sql-machine-learning/sqlflow/sql"
 )
 
 // Popularize reads SQL statements from the file named *.sql
 // and runs each SQL statement with db.
-func Popularize(db *DB, sqlfile string) error {
-	f, e := os.Open(sqlfile)
-	if e != nil {
-		return e
-	}
-	defer f.Close()
-
-	onSemicolon := func(data []byte, atEOF bool) (advance int, token []byte, err error) {
-		for i := 0; i < len(data); i++ {
-			if data[i] == ';' {
-				return i + 1, data[:i], nil
-			}
-		}
-		return 0, nil, nil
-	}
-
-	scanner := bufio.NewScanner(f)
+func Popularize(db *sql.DB, sqlcontent string) error {
 	// TODO(typhoonzero): Should consider .sql files like VALUES "a;b;c";
-	scanner.Split(onSemicolon)
-
-	for scanner.Scan() {
-		_, e := db.Exec(scanner.Text())
+	sqlQueries := strings.Split(sqlcontent, ";")
+	for _, sql := range sqlQueries {
+		trimedSQL := strings.Trim(sql, " \n")
+		if trimedSQL == "" {
+			continue
+		}
+		_, e := db.Exec(trimedSQL)
 		if e != nil {
 			return e
 		}
 	}
-	return scanner.Err()
+	return nil
 }

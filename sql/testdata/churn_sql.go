@@ -1,3 +1,20 @@
+package testdata
+
+// Copyright 2019 The SQLFlow Authors. All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// ChurnSQL is .sql format data sample of churn dataset.
+var ChurnSQL = `CREATE DATABASE IF NOT EXISTS churn;
 DROP TABLE IF EXISTS churn.train;
 CREATE TABLE  churn.train (
 	customerID VARCHAR(255),
@@ -140,4 +157,4 @@ INSERT INTO churn.test VALUES("1862-QRWPE","Female","0","Yes","Yes","48","Yes","
 INSERT INTO churn.test VALUES("2796-NNUFI","Female","0","Yes","Yes","46","Yes","No","No","No internet service","No internet service","No internet service","No internet service","No internet service","No internet service","Two year","Yes","Mailed check","19.95","927.1","No");
 INSERT INTO churn.test VALUES("3016-KSVCP","Male","0","Yes","No","29","No","No phone service","DSL","No","No","No","No","Yes","No","Month-to-month","No","Mailed check","33.75","1009.25","No");
 INSERT INTO churn.test VALUES("4767-HZZHQ","Male","0","Yes","Yes","30","Yes","No","Fiber optic","No","Yes","Yes","No","No","No","Month-to-month","No","Bank transfer (automatic)","82.05","2570.2","No");
-INSERT INTO churn.test VALUES("2424-WVHPL","Male","1","No","No","1","Yes","No","Fiber optic","No","No","No","Yes","No","No","Month-to-month","No","Electronic check","74.7","74.7","No");
+INSERT INTO churn.test VALUES("2424-WVHPL","Male","1","No","No","1","Yes","No","Fiber optic","No","No","No","Yes","No","No","Month-to-month","No","Electronic check","74.7","74.7","No");`

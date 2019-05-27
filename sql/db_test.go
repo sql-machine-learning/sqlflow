@@ -20,6 +20,7 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/sql-machine-learning/sqlflow/sql/testdata"
 )
 
 var (
@@ -50,10 +51,7 @@ func TestMain(m *testing.M) {
 		}
 		testDB, e = Open(fmt.Sprintf("mysql://%s", cfg.FormatDSN()))
 		assertNoErr(e)
-		_, e = testDB.Exec("CREATE DATABASE IF NOT EXISTS iris;")
-		assertNoErr(e)
-		_, e = testDB.Exec("CREATE DATABASE IF NOT EXISTS churn;")
-		assertNoErr(e)
+		// Test for create database sql execution through DB driver.
 		_, e = testDB.Exec("CREATE DATABASE IF NOT EXISTS sqlflow_models;")
 		assertNoErr(e)
 		defer testDB.Close()
@@ -66,8 +64,8 @@ func TestMain(m *testing.M) {
 	}
 	assertNoErr(e)
 
-	assertNoErr(Popularize(testDB, "testdata/iris.sql"))
-	assertNoErr(Popularize(testDB, "testdata/churn.sql"))
+	assertNoErr(testdata.Popularize(testDB, testdata.IrisSQL))
+	assertNoErr(testdata.Popularize(testDB, testdata.ChurnSQL))
 
 	os.Exit(m.Run())
 }
