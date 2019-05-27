@@ -193,7 +193,7 @@ try:
 except:
 	pass
 
-from sqlflow.db import connect, execute, insert_values
+from sqlflow_submitter.db import connect, execute, insert_values
 
 # Disable Tensorflow INFO and WARNING
 import logging
