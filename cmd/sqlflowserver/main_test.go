@@ -126,15 +126,15 @@ func prepareTestData(dbStr string) error {
 	if err != nil {
 		return err
 	}
-	err = testdata.Popularize(testDB, testdata.IrisSQL)
+	err = testdata.Popularize(testDB.DB, testdata.IrisSQL)
 	if err != nil {
 		return err
 	}
-	err = testdata.Popularize(testDB, testdata.ChurnSQL)
+	err = testdata.Popularize(testDB.DB, testdata.ChurnSQL)
 	if err != nil {
 		return err
 	}
-	err = testdata.Popularize(testDB, testdata.TextCNSQL)
+	err = testdata.Popularize(testDB.DB, testdata.TextCNSQL)
 	return err
 }
 

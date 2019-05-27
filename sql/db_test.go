@@ -64,8 +64,8 @@ func TestMain(m *testing.M) {
 	}
 	assertNoErr(e)
 
-	assertNoErr(testdata.Popularize(testDB, testdata.IrisSQL))
-	assertNoErr(testdata.Popularize(testDB, testdata.ChurnSQL))
+	assertNoErr(testdata.Popularize(testDB.DB, testdata.IrisSQL))
+	assertNoErr(testdata.Popularize(testDB.DB, testdata.ChurnSQL))
 
 	os.Exit(m.Run())
 }
