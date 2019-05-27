@@ -1,4 +1,4 @@
-package sql
+package testdata
 
 // Copyright 2019 The SQLFlow Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +14,13 @@ package sql
 // limitations under the License.
 
 import (
+	"database/sql"
 	"strings"
 )
 
 // Popularize reads SQL statements from the file named *.sql
 // and runs each SQL statement with db.
-func Popularize(db *DB, sqlcontent string) error {
+func Popularize(db *sql.DB, sqlcontent string) error {
 	// TODO(typhoonzero): Should consider .sql files like VALUES "a;b;c";
 	sqlQueries := strings.Split(sqlcontent, ";")
 	for _, sql := range sqlQueries {
