@@ -130,6 +130,8 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("TestTrainSQL", CaseTrainSQL)
 	t.Run("TestTextClassification", CaseTrainTextClassification)
 	t.Run("CaseTrainCustomModel", CaseTrainCustomModel)
+	t.Run("CaseTrainSQLWithHyperParams", CaseTrainSQLWithHyperParams)
+	t.Run("CaseTrainCustomModelWithHyperParams", CaseTrainCustomModelWithHyperParams)
 }
 
 func TestEnd2EndHive(t *testing.T) {
@@ -355,6 +357,7 @@ FROM iris.predict LIMIT 5;`
 // CaseTrainTextClassification is a simple End-to-End testing for case training
 // text classification models.
 func CaseTrainTextClassification(t *testing.T) {
+	t.Skip()
 	a := assert.New(t)
 	trainSQL := `SELECT *
 FROM toutiao.train_processed
@@ -363,6 +366,59 @@ WITH n_classes = 17, hidden_units = [10, 20]
 COLUMN news_title
 LABEL class_id
 INTO sqlflow_models.my_dnn_model;`
+
+	conn, err := grpc.Dial("localhost"+port, grpc.WithInsecure())
+	a.NoError(err)
+	defer conn.Close()
+	cli := pb.NewSQLFlowClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	defer cancel()
+
+	stream, err := cli.Run(ctx, &pb.Request{Sql: trainSQL})
+	if err != nil {
+		a.Fail("Check if the server started successfully. %v", err)
+	}
+	// call ParseRow only to wait train finish
+	ParseRow(stream)
+}
+
+func CaseTrainSQLWithHyperParams(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := `SELECT *
+FROM iris.train
+TRAIN DNNClassifier
+WITH n_classes = 3, hidden_units = [10, 20], BATCH_SIZE = 10, EPOCHS = 2
+COLUMN sepal_length, sepal_width, petal_length, petal_width
+LABEL class
+INTO sqlflow_models.my_dnn_model;`
+
+	conn, err := grpc.Dial("localhost"+port, grpc.WithInsecure())
+	a.NoError(err)
+	defer conn.Close()
+	cli := pb.NewSQLFlowClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	defer cancel()
+
+	stream, err := cli.Run(ctx, &pb.Request{Sql: trainSQL})
+	if err != nil {
+		a.Fail("Check if the server started successfully. %v", err)
+	}
+	// call ParseRow only to wait train finish
+	ParseRow(stream)
+}
+
+// CaseTrainCustomModel tests using customized models
+func CaseTrainCustomModelWithHyperParams(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := `SELECT *
+FROM iris.train
+TRAIN sqlflow_models.DNNClassifier
+WITH n_classes = 3, hidden_units = [10, 20], BATCHSIZE = 10, STEPS=100
+COLUMN sepal_length, sepal_width, petal_length, petal_width
+LABEL class
+INTO sqlflow_models.my_dnn_model_custom;`
 
 	conn, err := grpc.Dial("localhost"+port, grpc.WithInsecure())
 	a.NoError(err)

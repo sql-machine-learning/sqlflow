@@ -200,12 +200,31 @@ import logging
 tf.get_logger().setLevel(logging.ERROR)
 ` +
 	// TODO(tonyyang-svail): remove hard coded BATCHSIZE, STEP
-	// TODO(typhoonzero): get NUM_BUCKETS, EMBEDDING_WIDTH from Extended SQL statements
+	// TODO(typhoonzero): get NUM_BUCKETS, EMBEDDING_WIDTH from Extended SQL statements in
+	// COLUMN sub clause
 	`
 BATCHSIZE = 1
-STEP = 1000
+STEPS = 1000
+EPOCHS = 1
 NUM_BUCKETS=160000
 EMBEDDING_WIDTH=128
+
+train_args = dict()
+{{range $key, $value := .Attrs}}
+{{if eq $key "BATCHSIZE"}}
+BATCHSIZE = {{$value}}
+{{else if eq $key "BATCH_SIZE"}}
+BATCHSIZE = {{$value}}
+{{else if eq $key "EPOCHS"}}
+EPOCHES = {{$value}}
+{{else if eq $key "STEPS"}}
+STEPS = {{$value}}
+{{else if eq $key "STEPS_PER_EPOCH"}}
+STEPS = {{$value}}
+{{else}}
+train_args["{{$key}}"] = {{$value}}
+{{end}}
+{{end}}
 
 driver="{{.Driver}}"
 {{if ne .Database ""}}
@@ -252,8 +271,8 @@ Y = columns[field_names.index("{{.Y.Name}}")]
 {{- end}}
 
 classifier = {{.Estimator}}(
-	feature_columns=feature_columns,{{range $key, $value := .Attrs}}
-	{{$key}} = {{$value}},{{end}}
+	feature_columns=feature_columns,
+	**train_args,
 	{{if .SelfDefined}}
 )
 	{{else}}
@@ -271,13 +290,13 @@ classifier.compile(optimizer=classifier.default_optimizer(),
 	loss=classifier.default_loss(),
 	metrics=["accuracy"])
 classifier.fit(train_input_fn(X, Y, BATCHSIZE),
-	epochs=classifier.default_training_epochs(),
-	steps_per_epoch=STEP, verbose=0)
+	epochs=EPOCHS if EPOCHS != classifier.default_training_epochs() else classifier.default_training_epochs(),
+	steps_per_epoch=STEPS, verbose=0)
 classifier.save_weights("{{.Save}}", save_format="h5")
 {{else}}
 classifier.train(
     input_fn=lambda:train_input_fn(X, Y, BATCHSIZE),
-    steps=STEP)
+    steps=STEPS * EPOCHS)
 {{end}}
 
 def eval_input_fn(features, labels, batch_size):
@@ -290,7 +309,7 @@ eval_result = classifier.evaluate(eval_input_fn(X, Y, BATCHSIZE), verbose=0)
 print("Training set accuracy: {accuracy:0.5f}".format(**{"accuracy": eval_result[1]}))
 {{else}}
 eval_result = classifier.evaluate(
-	input_fn=lambda:eval_input_fn(X, Y, BATCHSIZE), steps=STEP)
+	input_fn=lambda:eval_input_fn(X, Y, BATCHSIZE), steps=STEPS)
 print(eval_result)
 print("Training set accuracy: {accuracy:0.5f}".format(**eval_result))
 {{end}}
