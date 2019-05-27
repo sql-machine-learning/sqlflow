@@ -28,6 +28,8 @@ import (
 	"github.com/golang/protobuf/ptypes/any"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	pb "github.com/sql-machine-learning/sqlflow/server/proto"
+	"github.com/sql-machine-learning/sqlflow/sql"
+	"github.com/sql-machine-learning/sqlflow/sql/testdata"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -114,6 +116,28 @@ func ParseRow(stream pb.SQLFlow_RunClient) ([]string, [][]*any.Any) {
 	return columns, rows
 }
 
+func prepareTestData(dbStr string) error {
+	// popularize test data
+	testDB, err := sql.Open(dbStr)
+	if err != nil {
+		return err
+	}
+	_, err = testDB.Exec("CREATE DATABASE IF NOT EXISTS sqlflow_models;")
+	if err != nil {
+		return err
+	}
+	err = testdata.Popularize(testDB.DB, testdata.IrisSQL)
+	if err != nil {
+		return err
+	}
+	err = testdata.Popularize(testDB.DB, testdata.ChurnSQL)
+	if err != nil {
+		return err
+	}
+	err = testdata.Popularize(testDB.DB, testdata.TextCNSQL)
+	return err
+}
+
 func TestEnd2EndMySQL(t *testing.T) {
 	testDBDriver := os.Getenv("SQLFLOW_TEST_DB")
 	// default run mysql tests
@@ -123,8 +147,14 @@ func TestEnd2EndMySQL(t *testing.T) {
 	if testDBDriver != "mysql" {
 		t.Skip("Skipping mysql tests")
 	}
-	go start("mysql://root:root@tcp/?maxAllowedPacket=0")
+	dbStr := "mysql://root:root@tcp/?maxAllowedPacket=0"
+	go start(dbStr)
 	WaitPortReady("localhost"+port, 0)
+	err := prepareTestData(dbStr)
+	if err != nil {
+		t.Fatalf("prepare test dataset failed: %v", err)
+	}
+
 	t.Run("TestShowDatabases", CaseShowDatabases)
 	t.Run("TestSelect", CaseSelect)
 	t.Run("TestTrainSQL", CaseTrainSQL)
@@ -176,17 +206,12 @@ func CaseShowDatabases(t *testing.T) {
 		"sqlflow_models":     "",
 		"sqlfs_test":         "",
 		"sys":                "",
-		"toutiao":            "",
+		"text_cn":            "",
 		"hive":               "", // if current mysql is also used for hive
 		"default":            "", // if fetching default hive databases
 	}
 	for i := 0; i < len(resp); i++ {
 		AssertContainsAny(a, expectedDBs, resp[i][0])
-	}
-	// Create database sqlflow_models for later tests to write models;
-	_, err = cli.Run(ctx, &pb.Request{Sql: "CREATE DATABASE IF NOT EXISTS sqlflow_models;"})
-	if err != nil {
-		a.Fail("Create database sqlflow_models failed: %v", err)
 	}
 }
 
@@ -357,7 +382,7 @@ FROM iris.predict LIMIT 5;`
 func CaseTrainTextClassification(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := `SELECT *
-FROM toutiao.train_processed
+FROM text_cn.train_processed
 TRAIN DNNClassifier
 WITH n_classes = 17, hidden_units = [10, 20]
 COLUMN news_title
