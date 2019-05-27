@@ -133,6 +133,10 @@ func prepareTestData(dbStr string) error {
 	if err != nil {
 		return err
 	}
+	_, err = testDB.Exec("CREATE DATABASE IF NOT EXISTS sqlflow_models;")
+	if err != nil {
+		return err
+	}
 	err = sql.Popularize(testDB, "../../sql/testdata/iris.sql")
 	if err != nil {
 		return err
@@ -219,11 +223,6 @@ func CaseShowDatabases(t *testing.T) {
 	}
 	for i := 0; i < len(resp); i++ {
 		AssertContainsAny(a, expectedDBs, resp[i][0])
-	}
-	// Create database sqlflow_models for later tests to write models;
-	_, err = cli.Run(ctx, &pb.Request{Sql: "CREATE DATABASE IF NOT EXISTS sqlflow_models;"})
-	if err != nil {
-		a.Fail("Create database sqlflow_models failed: %v", err)
 	}
 }
 
