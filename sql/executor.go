@@ -283,6 +283,7 @@ func train(tr *extendedSelect, slct string, db *DB, cwd string, wr *PipeWriter) 
 	if e := genTF(&program, tr, fts, db); e != nil {
 		return e
 	}
+	fmt.Println(program.String())
 
 	cw := &logChanWriter{wr: wr}
 	cmd := tensorflowCmd(cwd, db.driverName)
@@ -325,6 +326,7 @@ func pred(pr *extendedSelect, db *DB, cwd string, wr *PipeWriter) error {
 	if e := genTF(&buf, pr, fts, db); e != nil {
 		return e
 	}
+	fmt.Println(buf.String())
 
 	cw := &logChanWriter{wr: wr}
 	cmd := tensorflowCmd(cwd, db.driverName)
