@@ -42,9 +42,18 @@ func TestDescribeTables(t *testing.T) {
 	fts, e = describeTables(r, testDB)
 	a.NoError(e)
 	a.Equal(3, len(fts))
-	a.Contains([]string{"VARCHAR(255)", "VARCHAR"}, fts["Churn"]["churn.train"])
-	a.Contains([]string{"VARCHAR(255)", "VARCHAR"}, fts["Partner"]["churn.train"])
-	a.Equal("FLOAT", fts["TotalCharges"]["churn.train"])
+
+	typ, ok := fts.get("churn.train.Churn")
+	a.True(ok)
+	a.Contains([]string{"VARCHAR(255)", "VARCHAR"}, typ)
+
+	typ, ok = fts.get("churn.train.Partner")
+	a.True(ok)
+	a.Contains([]string{"VARCHAR(255)", "VARCHAR"}, typ)
+
+	typ, ok = fts.get("churn.train.TotalCharges")
+	a.True(ok)
+	a.Equal("FLOAT", typ)
 }
 
 func TestIndexSelectFields(t *testing.T) {
