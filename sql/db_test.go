@@ -30,9 +30,10 @@ var (
 func TestMain(m *testing.M) {
 	dbms := getEnv("SQLFLOW_TEST_DB", "mysql")
 
+	var e error
 	switch dbms {
 	case "sqlite3":
-		testDB, e := Open("sqlite3://:memory:")
+		testDB, e = Open("sqlite3://:memory:")
 		assertNoErr(e)
 		// attach an In-Memory Database in SQLite
 		for _, name := range []string{"iris", "churn"} {
@@ -50,7 +51,7 @@ func TestMain(m *testing.M) {
 			Addr:                 getEnv("SQLFLOW_TEST_DB_MYSQL_ADDR", "127.0.0.1:3306"),
 			AllowNativePasswords: true,
 		}
-		testDB, e := Open(fmt.Sprintf("mysql://%s", cfg.FormatDSN()))
+		testDB, e = Open(fmt.Sprintf("mysql://%s", cfg.FormatDSN()))
 		assertNoErr(e)
 		// Test for create database sql execution through DB driver.
 		_, e = testDB.Exec("CREATE DATABASE IF NOT EXISTS sqlflow_models;")
