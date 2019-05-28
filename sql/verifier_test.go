@@ -67,6 +67,9 @@ func TestIndexSelectFields(t *testing.T) {
 }
 
 func TestVerify(t *testing.T) {
+	if getEnv("SQLFLOW_TEST_DB", "mysql") == "hive" {
+		t.Skip("in Hive, db_name.table_name.field_name will raise error, because . operator is only supported on struct or list of struct types")
+	}
 	a := assert.New(t)
 	r, e := newParser().Parse(`SELECT Churn, churn.train.Partner FROM churn.train LIMIT 10;`)
 	a.NoError(e)
