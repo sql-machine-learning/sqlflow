@@ -357,7 +357,6 @@ FROM iris.predict LIMIT 5;`
 // CaseTrainTextClassification is a simple End-to-End testing for case training
 // text classification models.
 func CaseTrainTextClassification(t *testing.T) {
-	t.Skip()
 	a := assert.New(t)
 	trainSQL := `SELECT *
 FROM toutiao.train_processed
@@ -388,7 +387,7 @@ func CaseTrainSQLWithHyperParams(t *testing.T) {
 	trainSQL := `SELECT *
 FROM iris.train
 TRAIN DNNClassifier
-WITH n_classes = 3, hidden_units = [10, 20], BATCH_SIZE = 10, EPOCHS = 2
+WITH n_classes = 3, hidden_units = [10, 20], BATCHSIZE = 10, EPOCHS = 2
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.my_dnn_model;`

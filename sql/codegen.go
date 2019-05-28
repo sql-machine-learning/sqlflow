@@ -205,7 +205,7 @@ tf.get_logger().setLevel(logging.ERROR)
 	`
 BATCHSIZE = 1
 STEPS = 1000
-EPOCHS = 1
+EPOCHS = None
 NUM_BUCKETS=160000
 EMBEDDING_WIDTH=128
 
@@ -213,13 +213,9 @@ train_args = dict()
 {{range $key, $value := .Attrs}}
 {{if eq $key "BATCHSIZE"}}
 BATCHSIZE = {{$value}}
-{{else if eq $key "BATCH_SIZE"}}
-BATCHSIZE = {{$value}}
 {{else if eq $key "EPOCHS"}}
-EPOCHES = {{$value}}
+EPOCHS = {{$value}}
 {{else if eq $key "STEPS"}}
-STEPS = {{$value}}
-{{else if eq $key "STEPS_PER_EPOCH"}}
 STEPS = {{$value}}
 {{else}}
 train_args["{{$key}}"] = {{$value}}
@@ -290,13 +286,13 @@ classifier.compile(optimizer=classifier.default_optimizer(),
 	loss=classifier.default_loss(),
 	metrics=["accuracy"])
 classifier.fit(train_input_fn(X, Y, BATCHSIZE),
-	epochs=EPOCHS if EPOCHS != classifier.default_training_epochs() else classifier.default_training_epochs(),
+	epochs=EPOCHS if EPOCHS else classifier.default_training_epochs(),
 	steps_per_epoch=STEPS, verbose=0)
 classifier.save_weights("{{.Save}}", save_format="h5")
 {{else}}
 classifier.train(
     input_fn=lambda:train_input_fn(X, Y, BATCHSIZE),
-    steps=STEPS * EPOCHS)
+    steps=STEPS * (EPOCHS if EPOCHS else 1))
 {{end}}
 
 def eval_input_fn(features, labels, batch_size):
