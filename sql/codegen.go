@@ -199,12 +199,10 @@ from sqlflow_submitter.db import connect, execute, insert_values, db_generator, 
 import logging
 tf.get_logger().setLevel(logging.ERROR)
 ` +
-	// TODO(tonyyang-svail): remove hard coded BATCHSIZE, STEP
 	// TODO(typhoonzero): get NUM_BUCKETS, EMBEDDING_WIDTH from Extended SQL statements in
 	// COLUMN sub clause
 	`
 BATCHSIZE = 1
-STEPS = 1000
 EPOCHS = None
 NUM_BUCKETS=160000
 EMBEDDING_WIDTH=128
@@ -215,8 +213,6 @@ train_args = dict()
 BATCHSIZE = {{$value}}
 {{else if eq $key "EPOCHS"}}
 EPOCHS = {{$value}}
-{{else if eq $key "STEPS"}}
-STEPS = {{$value}}
 {{else}}
 train_args["{{$key}}"] = {{$value}}
 {{end}}
@@ -271,7 +267,7 @@ def train_input_fn(batch_size):
 	gen = db_generator(driver, conn, """{{.StandardSelect}}""",
 		feature_column_names, "{{.Y.Name}}", column_name_to_type)
 	dataset = tf.data.Dataset.from_generator(gen, (feature_types, tf.int64))
-	dataset = dataset.prefetch(batch_size*10).shuffle(1000).repeat().batch(batch_size)
+	dataset = dataset.prefetch(batch_size*10).shuffle(1000).batch(batch_size)
 	return dataset
 
 {{if .SelfDefined}}
@@ -280,12 +276,11 @@ classifier.compile(optimizer=classifier.default_optimizer(),
 	metrics=["accuracy"])
 classifier.fit(train_input_fn(BATCHSIZE),
 	epochs=EPOCHS if EPOCHS else classifier.default_training_epochs(),
-	steps_per_epoch=STEPS, verbose=0)
+	verbose=0)
 classifier.save_weights("{{.Save}}", save_format="h5")
 {{else}}
 classifier.train(
-    input_fn=lambda:train_input_fn(BATCHSIZE),
-    steps=STEPS * (EPOCHS if EPOCHS else 1))
+    input_fn=lambda:train_input_fn(BATCHSIZE))
 {{end}}
 
 def eval_input_fn(batch_size):
@@ -307,7 +302,7 @@ eval_result = classifier.evaluate(eval_input_fn(BATCHSIZE), verbose=0)
 print("Training set accuracy: {accuracy:0.5f}".format(**{"accuracy": eval_result[1]}))
 {{else}}
 eval_result = classifier.evaluate(
-	input_fn=lambda:eval_input_fn(BATCHSIZE), steps=STEPS)
+	input_fn=lambda:eval_input_fn(BATCHSIZE))
 print(eval_result)
 print("Training set accuracy: {accuracy:0.5f}".format(**eval_result))
 {{end}}
