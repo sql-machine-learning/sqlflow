@@ -94,6 +94,9 @@ func TestStandardSQL(t *testing.T) {
 		a.True(goodStream(stream.ReadAll()))
 	})
 	a.NotPanics(func() {
+		if getEnv("SQLFLOW_TEST_DB", "mysql") == "hive" {
+			t.Skip("hive: skip DELETE statement")
+		}
 		stream := runStandardSQL(testStandardExecutiveSQLStatement, testDB)
 		a.True(goodStream(stream.ReadAll()))
 	})

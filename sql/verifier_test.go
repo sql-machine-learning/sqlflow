@@ -34,6 +34,9 @@ func TestDescribeTables(t *testing.T) {
 	a.NoError(e)
 	a.Equal(21, len(fts))
 
+	if getEnv("SQLFLOW_TEST_DB", "mysql") == "hive" {
+		t.Skip("in Hive, db_name.table_name.field_name will raise error, because . operator is only supported on struct or list of struct types")
+	}
 	r, e = newParser().Parse(`SELECT Churn, churn.train.Partner,TotalCharges FROM churn.train LIMIT 10;`)
 	a.NoError(e)
 	fts, e = describeTables(r, testDB)
