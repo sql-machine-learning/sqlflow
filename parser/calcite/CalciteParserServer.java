@@ -1,3 +1,16 @@
+// Copyright 2019 The SQLFlow Authors. All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.stub.StreamObserver;
@@ -68,9 +81,9 @@ public class CalciteParserServer {
       }
     } catch (ParseException e) {
       System.err.println("Command line options error:" + e.getMessage() +
-          "Use default port 50051");
+          "Use default port 50052");
     }
-    return 50051; // the default port.
+    return 50052; // the default port.
   }
 
   static class CalciteParserImpl extends CalciteParserGrpc.CalciteParserImplBase {
@@ -81,24 +94,42 @@ public class CalciteParserServer {
         StreamObserver<CalciteParserProto.CalciteParserReply> responseObserver) {
 
       String q = request.getQuery();
-      Pair<Integer, SqlParseException> r = calcite(q);
-      if (r.getValue() == null) {
-        int i = r.getKey();
-        responseObserver.onNext(
-            CalciteParserProto.CalciteParserReply.newBuilder()
-                .setSql(q.substring(0, i))
-                .setExtension(q.substring(i))
-                .build());
-      } else {
-        responseObserver.onNext(
-            CalciteParserProto.CalciteParserReply.newBuilder()
-                .setError(r.getValue().getCause().getMessage())
-                .build());
-      }
+      Pair<Integer, SqlParseException> r = calciteParse(q);
+      int i = r.getKey();
+      String e = (r.getValue() == null ? "" : r.getValue().getCause().getMessage());
+      responseObserver.onNext(
+          CalciteParserProto.CalciteParserReply.newBuilder()
+          .setIndex(i)
+          .setError(e)
+          .build());
       responseObserver.onCompleted();
     }
 
-    private static int PosToIndex(String query, SqlParserPos pos) {
+    // calciteParse returns <len(query),null> if Calcite parser
+    // accepts query, or returns <pos,null> if a second parsing
+    // accepts the content to the left of the error position from the
+    // first parsing, or <-1,e> if both parsing failed.
+    private static Pair<Integer, SqlParseException> calciteParse(String query) {
+      try {
+        SqlParser parser = SqlParser.create(query);
+        SqlNode sqlNode = parser.parseQuery();
+
+      } catch (SqlParseException e) {
+        int epos = posToIndex(query, e.getPos());
+        try {
+          SqlParser parser = SqlParser.create(query.substring(0, epos));
+          SqlNode sqlNode = parser.parseQuery();
+        } catch (SqlParseException ee) {
+          return new Pair<Integer, SqlParseException>(epos, ee);
+        }
+        return new Pair<Integer, SqlParseException>(epos, null);
+      }
+
+      return new Pair<Integer, SqlParseException>(-1, null);  // Don't use query.length(), use -1.
+    }
+
+    // posToIndex converts line number and column number into string index.
+    private static int posToIndex(String query, SqlParserPos pos) {
       int line = 0, column = 0;
 
       for (int i = 0; i < query.length(); i++) {
@@ -115,25 +146,6 @@ public class CalciteParserServer {
       }
 
       return query.length();
-    }
-
-    private static Pair<Integer, SqlParseException> calcite(String query) {
-      try {
-        SqlParser parser = SqlParser.create(query);
-        SqlNode sqlNode = parser.parseQuery();
-
-      } catch (SqlParseException e) {
-        int epos = PosToIndex(query, e.getPos());
-        try {
-          SqlParser parser = SqlParser.create(query.substring(0, epos));
-          SqlNode sqlNode = parser.parseQuery();
-        } catch (SqlParseException ee) {
-          return new Pair<Integer, SqlParseException>(epos, ee);
-        }
-        return new Pair<Integer, SqlParseException>(epos, null);
-      }
-
-      return new Pair<Integer, SqlParseException>(query.length(), null);
     }
   }
 }
