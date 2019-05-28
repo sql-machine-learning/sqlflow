@@ -15,6 +15,7 @@ package testdata
 
 import (
 	"database/sql"
+	"fmt"
 	"strings"
 )
 
@@ -28,6 +29,7 @@ func Popularize(db *sql.DB, sqlcontent string) error {
 		if trimedSQL == "" {
 			continue
 		}
+		fmt.Println(sql)
 		_, e := db.Exec(trimedSQL)
 		if e != nil {
 			return e

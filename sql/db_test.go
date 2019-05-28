@@ -66,6 +66,8 @@ func TestMain(m *testing.M) {
 		assertNoErr(e)
 		_, e = testDB.Exec("CREATE DATABASE IF NOT EXISTS sqlflow_models;")
 		assertNoErr(e)
+		assertNoErr(testdata.Popularize(testDB.DB, testdata.IrisHiveSQL))
+		assertNoErr(testdata.Popularize(testDB.DB, testdata.ChurnHiveSQL))
 	default:
 		e := fmt.Errorf("unrecognized environment variable SQLFLOW_TEST_DB %s", dbms)
 		assertNoErr(e)
