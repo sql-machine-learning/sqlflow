@@ -22,6 +22,9 @@ import (
 )
 
 func TestDatabaseOpenMysql(t *testing.T) {
+	if getEnv("SQLFLOW_TEST_DB", "mysql") == "hive" {
+		t.Skip("hive: skip MySQL test")
+	}
 	a := assert.New(t)
 	cfg := &mysql.Config{
 		User:                 "root",

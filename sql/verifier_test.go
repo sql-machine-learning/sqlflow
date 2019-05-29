@@ -34,14 +34,26 @@ func TestDescribeTables(t *testing.T) {
 	a.NoError(e)
 	a.Equal(21, len(fts))
 
+	if getEnv("SQLFLOW_TEST_DB", "mysql") == "hive" {
+		t.Skip("in Hive, db_name.table_name.field_name will raise error, because . operator is only supported on struct or list of struct types")
+	}
 	r, e = newParser().Parse(`SELECT Churn, churn.train.Partner,TotalCharges FROM churn.train LIMIT 10;`)
 	a.NoError(e)
 	fts, e = describeTables(r, testDB)
 	a.NoError(e)
 	a.Equal(3, len(fts))
-	a.Contains([]string{"VARCHAR(255)", "VARCHAR"}, fts["Churn"]["churn.train"])
-	a.Contains([]string{"VARCHAR(255)", "VARCHAR"}, fts["Partner"]["churn.train"])
-	a.Equal("FLOAT", fts["TotalCharges"]["churn.train"])
+
+	typ, ok := fts.get("churn.train.Churn")
+	a.True(ok)
+	a.Contains([]string{"VARCHAR(255)", "VARCHAR"}, typ)
+
+	typ, ok = fts.get("churn.train.Partner")
+	a.True(ok)
+	a.Contains([]string{"VARCHAR(255)", "VARCHAR"}, typ)
+
+	typ, ok = fts.get("churn.train.TotalCharges")
+	a.True(ok)
+	a.Equal("FLOAT", typ)
 }
 
 func TestIndexSelectFields(t *testing.T) {
@@ -67,6 +79,9 @@ func TestIndexSelectFields(t *testing.T) {
 }
 
 func TestVerify(t *testing.T) {
+	if getEnv("SQLFLOW_TEST_DB", "mysql") == "hive" {
+		t.Skip("in Hive, db_name.table_name.field_name will raise error, because . operator is only supported on struct or list of struct types")
+	}
 	a := assert.New(t)
 	r, e := newParser().Parse(`SELECT Churn, churn.train.Partner FROM churn.train LIMIT 10;`)
 	a.NoError(e)

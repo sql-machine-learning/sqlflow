@@ -285,11 +285,6 @@ INTO sqlflow_models.my_dnn_model;`
 	// call ParseRow only to wait train finish
 	ParseRow(stream)
 
-	// FIXME(typhoonzero): Fix PREDICT tests using hive
-	if os.Getenv("SQLFLOW_TEST_DB") == "hive" {
-		return
-	}
-
 	predSQL := `SELECT *
 FROM iris.test
 PREDICT iris.predict.class
@@ -344,11 +339,6 @@ INTO sqlflow_models.my_dnn_model_custom;`
 	}
 	// call ParseRow only to wait train finish
 	ParseRow(stream)
-
-	// FIXME(typhoonzero): Fix PREDICT tests using hive
-	if os.Getenv("SQLFLOW_TEST_DB") == "hive" {
-		return
-	}
 
 	predSQL := `SELECT *
 FROM iris.test

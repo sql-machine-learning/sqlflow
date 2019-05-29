@@ -15,12 +15,12 @@ package sql
 
 import (
 	"fmt"
+	"github.com/sql-machine-learning/sqlflow/sql/testdata"
 	"os"
 	"testing"
 
 	"github.com/go-sql-driver/mysql"
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/sql-machine-learning/sqlflow/sql/testdata"
 )
 
 var (
@@ -41,6 +41,8 @@ func TestMain(m *testing.M) {
 			assertNoErr(e)
 		}
 		defer testDB.Close()
+		assertNoErr(testdata.Popularize(testDB.DB, testdata.IrisSQL))
+		assertNoErr(testdata.Popularize(testDB.DB, testdata.ChurnSQL))
 	case "mysql":
 		cfg := &mysql.Config{
 			User:                 getEnv("SQLFLOW_TEST_DB_MYSQL_USER", "root"),
@@ -51,21 +53,25 @@ func TestMain(m *testing.M) {
 		}
 		testDB, e = Open(fmt.Sprintf("mysql://%s", cfg.FormatDSN()))
 		assertNoErr(e)
-		// Test for create database sql execution through DB driver.
+		defer testDB.Close()
 		_, e = testDB.Exec("CREATE DATABASE IF NOT EXISTS sqlflow_models;")
 		assertNoErr(e)
-		defer testDB.Close()
+		assertNoErr(testdata.Popularize(testDB.DB, testdata.IrisSQL))
+		assertNoErr(testdata.Popularize(testDB.DB, testdata.ChurnSQL))
 	case "hive":
 		// NOTE: sample dataset is written in
 		// https://github.com/sql-machine-learning/gohive/blob/develop/docker/entrypoint.sh#L123
-		os.Exit(0)
+		testDB, e = Open("hive://root:root@localhost:10000/churn")
+		defer testDB.Close()
+		assertNoErr(e)
+		_, e = testDB.Exec("CREATE DATABASE IF NOT EXISTS sqlflow_models;")
+		assertNoErr(e)
+		assertNoErr(testdata.Popularize(testDB.DB, testdata.IrisHiveSQL))
+		assertNoErr(testdata.Popularize(testDB.DB, testdata.ChurnHiveSQL))
 	default:
-		e = fmt.Errorf("unrecognized environment variable SQLFLOW_TEST_DB %s", dbms)
+		e := fmt.Errorf("unrecognized environment variable SQLFLOW_TEST_DB %s", dbms)
+		assertNoErr(e)
 	}
-	assertNoErr(e)
-
-	assertNoErr(testdata.Popularize(testDB.DB, testdata.IrisSQL))
-	assertNoErr(testdata.Popularize(testDB.DB, testdata.ChurnSQL))
 
 	os.Exit(m.Run())
 }
