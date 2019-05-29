@@ -204,6 +204,7 @@ tf.get_logger().setLevel(logging.ERROR)
 	`
 BATCHSIZE = 1
 EPOCHS = None
+STEPS = 1000
 NUM_BUCKETS=160000
 EMBEDDING_WIDTH=128
 
@@ -213,6 +214,8 @@ train_args = dict()
 BATCHSIZE = {{$value}}
 {{else if eq $key "EPOCHS"}}
 EPOCHS = {{$value}}
+{{else if eq $key "STEPS"}}
+STEPS = {{$value}}
 {{else}}
 train_args["{{$key}}"] = {{$value}}
 {{end}}
@@ -258,16 +261,19 @@ classifier = {{.Estimator}}(
 {{if .Train}}
 def train_input_fn(batch_size):
 	feature_types = dict()
+	feature_shapes = dict()
 	for name in feature_column_names:
 		if column_name_to_type[name] == "categorical_column_with_identity":
 			feature_types[name] = tf.int64
+			feature_shapes[name] = tf.TensorShape([None])
 		else:
 			feature_types[name] = tf.float32
+			feature_shapes[name] = tf.TensorShape([])
 
 	gen = db_generator(driver, conn, """{{.StandardSelect}}""",
 		feature_column_names, "{{.Y.Name}}", column_name_to_type)
-	dataset = tf.data.Dataset.from_generator(gen, (feature_types, tf.int64))
-	dataset = dataset.prefetch(batch_size*10).shuffle(1000).batch(batch_size)
+	dataset = tf.data.Dataset.from_generator(gen, (feature_types, tf.int64), (feature_shapes, tf.TensorShape([1])))
+	dataset = dataset.shuffle(1000).repeat().batch(batch_size)
 	return dataset
 
 {{if .SelfDefined}}
@@ -276,24 +282,29 @@ classifier.compile(optimizer=classifier.default_optimizer(),
 	metrics=["accuracy"])
 classifier.fit(train_input_fn(BATCHSIZE),
 	epochs=EPOCHS if EPOCHS else classifier.default_training_epochs(),
-	verbose=0)
+	steps_per_epoch=STEPS, verbose=0)
 classifier.save_weights("{{.Save}}", save_format="h5")
 {{else}}
 classifier.train(
-    input_fn=lambda:train_input_fn(BATCHSIZE))
+	input_fn=lambda:train_input_fn(BATCHSIZE),
+	steps=STEPS * (EPOCHS if EPOCHS else 1))
 {{end}}
 
 def eval_input_fn(batch_size):
 	feature_types = dict()
+	feature_shapes = dict()
 	for name in feature_column_names:
 		if column_name_to_type[name] == "categorical_column_with_identity":
 			feature_types[name] = tf.int64
+			feature_shapes[name] = tf.TensorShape([None])
 		else:
 			feature_types[name] = tf.float32
+			feature_shapes[name] = tf.TensorShape([])
+		
 
 	gen = db_generator(driver, conn, """{{.StandardSelect}}""",
 		feature_column_names, "{{.Y.Name}}", column_name_to_type)
-	dataset = tf.data.Dataset.from_generator(gen, (feature_types, tf.int64))
+	dataset = tf.data.Dataset.from_generator(gen, (feature_types, tf.int64), (feature_shapes, tf.TensorShape([1])))
 	dataset = dataset.batch(batch_size)
 	return dataset
 
@@ -302,7 +313,7 @@ eval_result = classifier.evaluate(eval_input_fn(BATCHSIZE), verbose=0)
 print("Training set accuracy: {accuracy:0.5f}".format(**{"accuracy": eval_result[1]}))
 {{else}}
 eval_result = classifier.evaluate(
-	input_fn=lambda:eval_input_fn(BATCHSIZE))
+	input_fn=lambda:eval_input_fn(BATCHSIZE), steps=STEPS)
 print(eval_result)
 print("Training set accuracy: {accuracy:0.5f}".format(**eval_result))
 {{end}}
@@ -311,15 +322,18 @@ print("Done training")
 
 def eval_input_fn(batch_size):
 	feature_types = dict()
+	feature_shapes = dict()
 	for name in feature_column_names:
 		if column_name_to_type[name] == "categorical_column_with_identity":
 			feature_types[name] = tf.int64
+			feature_shapes[name] = tf.TensorShape([None])
 		else:
 			feature_types[name] = tf.float32
+			feature_shapes[name] = tf.TensorShape([])
 
 	gen = db_generator_predict(driver, conn, """{{.StandardSelect}}""",
 		feature_column_names, column_name_to_type)
-	dataset = tf.data.Dataset.from_generator(gen, feature_types)
+	dataset = tf.data.Dataset.from_generator(gen, feature_types, feature_shapes)
 	dataset = dataset.batch(batch_size)
 	return dataset
 
