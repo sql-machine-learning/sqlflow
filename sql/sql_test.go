@@ -27,7 +27,7 @@ var (
 	testDB *DB
 )
 
-func testMySQLSQL() {
+func testMySQLSQL() *DB {
 	var e error
 	cfg := &mysql.Config{
 		User:                 getEnv("SQLFLOW_TEST_DB_MYSQL_USER", "root"),
@@ -38,14 +38,14 @@ func testMySQLSQL() {
 	}
 	testDB, e = Open(fmt.Sprintf("mysql://%s", cfg.FormatDSN()))
 	assertNoErr(e)
-	defer testDB.Close()
 	_, e = testDB.Exec("CREATE DATABASE IF NOT EXISTS sqlflow_models;")
 	assertNoErr(e)
 	assertNoErr(testdata.Popularize(testDB.DB, testdata.IrisSQL))
 	assertNoErr(testdata.Popularize(testDB.DB, testdata.ChurnSQL))
+	return testDB
 }
 
-func testSQLiteSQL() {
+func testSQLiteSQL() *DB {
 	var e error
 	testDB, e = Open("sqlite3://:memory:")
 	assertNoErr(e)
@@ -54,33 +54,36 @@ func testSQLiteSQL() {
 		_, e = testDB.Exec(fmt.Sprintf("ATTACH DATABASE ':memory:' AS %s;", name))
 		assertNoErr(e)
 	}
-	defer testDB.Close()
 	assertNoErr(testdata.Popularize(testDB.DB, testdata.IrisSQL))
 	assertNoErr(testdata.Popularize(testDB.DB, testdata.ChurnSQL))
+	return testDB
 }
 
-func testHiveSQL() {
-	var e error	
+func testHiveSQL() *DB {
+	var e error
 	// NOTE: sample dataset is written in
 	// https://github.com/sql-machine-learning/gohive/blob/develop/docker/entrypoint.sh#L123
 	testDB, e = Open("hive://root:root@localhost:10000/churn")
-	defer testDB.Close()
 	assertNoErr(e)
 	_, e = testDB.Exec("CREATE DATABASE IF NOT EXISTS sqlflow_models;")
 	assertNoErr(e)
 	assertNoErr(testdata.Popularize(testDB.DB, testdata.IrisHiveSQL))
 	assertNoErr(testdata.Popularize(testDB.DB, testdata.ChurnHiveSQL))
+	return testDB
 }
 
 func TestMain(m *testing.M) {
 	dbms := getEnv("SQLFLOW_TEST_DB", "mysql")
 	switch dbms {
 	case "sqlite3":
-		testSQLiteSQL()
+		testDB := testSQLiteSQL()
+		defer testDB.Close()
 	case "mysql":
-		testMySQLSQL()
+		testDB := testMySQLSQL()
+		defer testDB.Close()
 	case "hive":
-		testHiveSQL()
+		testDB := testHiveSQL()
+		defer testDB.Close()
 	default:
 		e := fmt.Errorf("unrecognized environment variable SQLFLOW_TEST_DB %s", dbms)
 		assertNoErr(e)
