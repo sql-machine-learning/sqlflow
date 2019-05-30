@@ -76,19 +76,18 @@ func TestMain(m *testing.M) {
 	dbms := getEnv("SQLFLOW_TEST_DB", "mysql")
 	switch dbms {
 	case "sqlite3":
-		testDB := testSQLiteSQL()
+		testDB = testSQLiteSQL()
 		defer testDB.Close()
 	case "mysql":
-		testDB := testMySQLSQL()
+		testDB = testMySQLSQL()
 		defer testDB.Close()
 	case "hive":
-		testDB := testHiveSQL()
+		testDB = testHiveSQL()
 		defer testDB.Close()
 	default:
 		e := fmt.Errorf("unrecognized environment variable SQLFLOW_TEST_DB %s", dbms)
 		assertNoErr(e)
 	}
-
 	os.Exit(m.Run())
 }
 
