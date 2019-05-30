@@ -77,7 +77,7 @@ def db_generator(driver, conn, statement,
                 features = dict()
                 for name in feature_column_names:
                     if column_name_to_type[name] == "categorical_column_with_identity":
-                        cell = np.array([int(v) for v in row[field_names.index(name)].split(",")])
+                        cell = np.fromstring(row[field_names.index(name)], dtype=int, sep=",")
                     else:
                         cell = row[field_names.index(name)]
                     features[name] = cell
@@ -105,7 +105,7 @@ def db_generator_predict(driver, conn, statement,
                 features = dict()
                 for name in feature_column_names:
                     if column_name_to_type[name] == "categorical_column_with_identity":
-                        cell = np.array([int(v) for v in row[field_names.index(name)].split(",")])
+                        cell = np.fromstring(row[field_names.index(name)], dtype=int, sep=",")
                     else:
                         cell = row[field_names.index(name)]
                     features[name] = cell
