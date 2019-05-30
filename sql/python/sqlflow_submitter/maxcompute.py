@@ -25,16 +25,21 @@ class MaxCompute:
         inst = conn.execute_sql(statement)
         if not inst.is_successful():
             return None, None
-        reader = inst.open_reader(tunnel=True, compress_option=compress)
-        field_names = [col.name for col in reader._schema.columns]
-        rows = [[v[1] for v in rec ] for rec in reader[0: reader.count]]
-        return field_names, list(map(list, zip(*rows))) if reader.count > 0 else None
+        r = inst.open_reader(tunnel=True, compress_option=compress)
+        field_names = [col.name for col in r._schema.columns]
+        rows = [[v[1] for v in rec ] for rec in r[0: r.count]]
+        return field_names, list(map(list, zip(*rows))) if r.count > 0 else None
 
     @staticmethod
     def insert_values(conn, table_name, table_schema, values):
-        statement = '''insert into {} ({}) values({})'''.format(
-                table_name,
-                ", ".join(table_schema),
-                ', '.join(["%s"] * len(table_schema))
-        )
-        raise ValueError("maxcompute does not support insert_values yet, %s" % table_name)
+        compress = tunnel.CompressOption.CompressAlgorithm.ODPS_ZLIB
+        table = conn.get_table(table_name)
+
+        records = []
+        for val in values:
+            records.append(table.new_record(val))
+        print(records)
+
+        w = table.open_writer(compress_option=compress)
+        w.write(records)
+        w.close()
