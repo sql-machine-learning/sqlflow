@@ -81,36 +81,37 @@ class TestGenerator(TestCase):
     insert_statement = "insert into test_table_float_fea (features,label) values(1.0, 0), (2.0, 1)"
 
     def test_generator(self):
-        driver = "mysql"
-        database = "iris"
-        user = os.environ.get('SQLFLOW_TEST_DB_MYSQL_USER') or "root"
-        password = os.environ.get('SQLFLOW_TEST_DB_MYSQL_PASSWD') or "root"
-        conn = connect(driver, database, user=user, password=password, host="127.0.0.1", port="3306")
-        # prepare test data
-        execute(driver, conn, self.drop_statement)
-        execute(driver, conn, self.create_statement)
-        execute(driver, conn, self.insert_statement)
+        driver = os.environ.get('SQLFLOW_TEST_DB')
+        if driver == "mysql":
+            database = "iris"
+            user = os.environ.get('SQLFLOW_TEST_DB_MYSQL_USER') or "root"
+            password = os.environ.get('SQLFLOW_TEST_DB_MYSQL_PASSWD') or "root"
+            conn = connect(driver, database, user=user, password=password, host="127.0.0.1", port="3306")
+            # prepare test data
+            execute(driver, conn, self.drop_statement)
+            execute(driver, conn, self.create_statement)
+            execute(driver, conn, self.insert_statement)
 
-        column_name_to_type = {"features": tf.float32}
-        gen = db_generator(driver, conn, "SELECT * FROM test_table_float_fea",
-                           ["features"], "label",
-                           column_name_to_type)
-        idx = 0
-        for d in gen():
-            if idx == 0:
-                self.assertEqual(d, ({"features":1.0}, [0]))
-            elif idx == 1:
-                self.assertEqual(d, ({"features":2.0}, [1]))
-            idx += 1
-        self.assertEqual(idx, 2)
+            column_name_to_type = {"features": tf.float32}
+            gen = db_generator(driver, conn, "SELECT * FROM test_table_float_fea",
+                            ["features"], "label",
+                            column_name_to_type)
+            idx = 0
+            for d in gen():
+                if idx == 0:
+                    self.assertEqual(d, ({"features":1.0}, [0]))
+                elif idx == 1:
+                    self.assertEqual(d, ({"features":2.0}, [1]))
+                idx += 1
+            self.assertEqual(idx, 2)
 
-        gen_pred = db_generator_predict(driver, conn, "SELECT * FROM test_table_float_fea",
-                                        ["features"], column_name_to_type)
-        idx = 0
-        for d in gen_pred():
-            if idx == 0:
-                self.assertEqual(d, {"features":1.0})
-            elif idx == 1:
-                self.assertEqual(d, {"features":2.0})
-            idx += 1
-        self.assertEqual(idx, 2)
+            gen_pred = db_generator_predict(driver, conn, "SELECT * FROM test_table_float_fea",
+                                            ["features"], column_name_to_type)
+            idx = 0
+            for d in gen_pred():
+                if idx == 0:
+                    self.assertEqual(d, {"features":1.0})
+                elif idx == 1:
+                    self.assertEqual(d, {"features":2.0})
+                idx += 1
+            self.assertEqual(idx, 2)
