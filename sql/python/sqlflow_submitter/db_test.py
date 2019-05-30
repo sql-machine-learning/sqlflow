@@ -83,7 +83,9 @@ class TestGenerator(TestCase):
     def test_generator(self):
         driver = "mysql"
         database = "iris"
-        conn = connect(driver, database, user="root", password="root", host="127.0.0.1", port="3306")
+        user = os.environ.get('SQLFLOW_TEST_DB_MYSQL_USER') or "root"
+        password = os.environ.get('SQLFLOW_TEST_DB_MYSQL_PASSWD') or "root"
+        conn = connect(driver, database, user=user, password=password, host="127.0.0.1", port="3306")
         # prepare test data
         execute(driver, conn, self.drop_statement)
         execute(driver, conn, self.create_statement)
