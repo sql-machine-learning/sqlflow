@@ -88,6 +88,7 @@ func TestMain(m *testing.M) {
 		e := fmt.Errorf("unrecognized environment variable SQLFLOW_TEST_DB %s", dbms)
 		assertNoErr(e)
 	}
+
 	os.Exit(m.Run())
 }
 
