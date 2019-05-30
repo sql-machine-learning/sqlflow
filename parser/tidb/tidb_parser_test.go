@@ -28,55 +28,23 @@ func TestTiDBParser(t *testing.T) {
 
 	Init()
 
-	i, e = Parse("select * frm t1") // frm->from
-	a.NoError(e)
-	a.Equal(9, i)
+	i, e = Parse("SELECTED a FROM t1") // SELECTED => SELECT
+	a.Equal(0, i)
+	a.NoError(e) // The second parse is on "", for which, TiDB parser doesn't err. But SQLFlow parser will err.
 
-	i, e = Parse("select a frm t1") // frm->from
+	i, e = Parse("SELECT * FROM t1 TO TRAIN DNNClassifier")
+	a.Equal(17, i)
 	a.NoError(e)
-	a.Equal(13, i) // This seems a bug of TiDB parser.  Should be 9.
 
-	i, e = Parse("select a, b from t1")
-	a.NoError(e)
-	a.Equal(-1, i)
-
-	i, e = Parse("select a b from t1")
-	a.NoError(e)
-	a.Equal(-1, i)
-
-	i, e = Parse("select a b c from t1") // Same as Calcite parser -- no more than 2 fields without ','.
-	a.NoError(e)
-	a.Equal(11, i)
-
-	i, e = Parse("select * from t1")
-	a.NoError(e)
-	a.Equal(-1, i)
-
-	i, e = Parse("select * from t1, t2")
-	a.NoError(e)
-	a.Equal(-1, i)
-
-	i, e = Parse("select * from t1 t2")
-	a.NoError(e)
-	a.Equal(-1, i)
-
-	i, e = Parse("select * from t1 t2 t3") // Same as Calcite parser -- no more than 2 tables without ",".
-	a.NoError(e)
+	i, e = Parse("SELECT * FROM t1 t2 TO TRAIN DNNClassifier") // t2 is an alias of t1
 	a.Equal(20, i)
-
-	i, e = Parse("select * from t1 where id in (select * from t2)")
 	a.NoError(e)
-	a.Equal(-1, i)
 
-	i, e = Parse("select * from t1 where id in (select * from t2) TRAIN DNNClassifier WITH learning_rate=0.1")
+	i, e = Parse("SELECT * FROM t1 t2, t3 TO TRAIN DNNClassifier") // t2 is an alias of t1
+	a.Equal(24, i)
 	a.NoError(e)
-	a.Equal(48, i)
 
-	i, e = Parse("select * from tbl where id = 1 predict tbl.predicted using my_model")
+	i, e = Parse("SELECT * FROM t1 t2, t3 t4 TO TRAIN DNNClassifier") // t2 and t4 are aliases.
+	a.Equal(27, i)
 	a.NoError(e)
-	a.Equal(31, i)
-
-	i, e = Parse("select * from tbl where id = 1 predict tbl.predicted uses my_model") // uses->using
-	a.NoError(e)
-	a.Equal(31, i)
 }
