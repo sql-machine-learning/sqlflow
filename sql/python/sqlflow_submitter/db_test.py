@@ -21,10 +21,11 @@ from sqlflow_submitter.db import connect, execute, insert_values, db_generator, 
 
 class TestDB(TestCase):
 
-    create_statement = "create table test_db (features text, label int)"
-    hive_create_statement = "create table test_db (features string, label int)"
-    select_statement = "select * from test_db"
-    drop_statement = "drop table if exists test_db"
+    create_statement = "create table test_table (features text, label int)"
+    hive_create_statement = "create table test_table (features string, label int)"
+    select_statement = "select * from test_table"
+    drop_statement = "drop table if exists test_table"
+    create_database_statement = "create database if not exists pytest_db"
 
     def test_sqlite3(self):
         driver = os.environ.get('SQLFLOW_TEST_DB') or "sqlite3"
@@ -39,8 +40,11 @@ class TestDB(TestCase):
             password = os.environ.get('SQLFLOW_TEST_DB_MYSQL_PASSWD') or "root"
             host = "127.0.0.1"
             port = "3306"
-            database = "iris"
-            conn = connect(driver, database, user=user, password=password, host=host, port=port)
+            # create database if not exist
+            conn = connect(driver, None, user=user, password=password, host=host, port=port)
+            conn.cursor().execute(self.create_database_statement)
+
+            conn = connect(driver, "pytest_db", user=user, password=password, host=host, port=port)
             self._do_test(driver, conn)
 
     def test_hive(self):
@@ -48,11 +52,15 @@ class TestDB(TestCase):
         if driver == "hive":
             host = "127.0.0.1"
             port = "10000"
-            conn = connect(driver, "iris", user="root", password="root", host=host, port=port)
+            # create database if not exist
+            conn = connect(driver, None, user="root", password="root", host=host, port=port)
+            conn.cursor().execute(self.create_database_statement)
+
+            conn = connect(driver, "pytest_db", user="root", password="root", host=host, port=port)
             self._do_test(driver, conn)
 
     def _do_test(self, driver, conn):
-        table_name = "test_db"
+        table_name = "test_table"
         table_schema = ["features", "label"]
         values = [('5,6,1,2', 1)] * 10
 
