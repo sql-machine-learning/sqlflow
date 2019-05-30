@@ -1,13 +1,16 @@
 # Python Code Template
 
-To run a test, say, `test_sql_data.py`, we need to
+To run all the tests with MySQL as data source
 
-1. Start a container that runs MySQL server with populated data following [this guide](https://github.com/sql-machine-learning/sqlflow/blob/develop/example/datasets/README.md).
-
-1. Run the tests in a SQLFlow container that has TensorFlow and `mysql_connector` installed:
-
+1. Start our development environment mentioned in [build.md](/doc/build.md)
    ```bash
-   docker run --rm -it --network="host" -v $PWD:/work -w /work sqlflow/sqlflow python test_sql_data.py
+   docker run --rm -it -v $GOPATH:/go \
+       -w /go/src/github.com/sql-machine-learning/sqlflow/sql/python \
+       sqlflow/sqlflow:latest bash
    ```
 
-   where `--network="host"` allows processes running in the container to access the host's network, where the MySQL server container exposes its port.
+2. In side the container, start MySQL server via `service mysql start`. Then run
+all the tests via
+   ```bash
+   SQLFLOW_TEST_DB=mysql python -m unittest discover -v "*_test.py"
+   ```
