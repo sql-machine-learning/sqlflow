@@ -429,7 +429,7 @@ func CaseTrainCustomModelWithHyperParams(t *testing.T) {
 	trainSQL := `SELECT *
 FROM iris.train
 TRAIN sqlflow_models.DNNClassifier
-WITH n_classes = 3, hidden_units = [10, 20], BATCHSIZE = 10, STEPS=100
+WITH n_classes = 3, hidden_units = [10, 20], BATCHSIZE = 10, EPOCHS=2
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.my_dnn_model_custom;`
