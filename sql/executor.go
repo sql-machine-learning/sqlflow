@@ -178,6 +178,10 @@ func runExec(slct string, db *DB) *PipeReader {
 			if affected > 1 {
 				return wr.Write(fmt.Sprintf("%d rows affected", affected))
 			}
+			// gomaxcompute does not return affected rows number
+			if affected < 0 {
+				return wr.Write("OK")
+			}
 			return wr.Write(fmt.Sprintf("%d row affected", affected))
 		}()
 		if err != nil {
