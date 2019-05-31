@@ -101,6 +101,7 @@ func ParseRow(stream pb.SQLFlow_RunClient) ([]string, [][]*any.Any) {
 		if err == io.EOF {
 			break
 		}
+		log.Println(iter.GetHead(), iter.GetRow(), iter.GetMessage())
 		if err != nil {
 			log.Fatalf("stream read err: %v", err)
 		}
