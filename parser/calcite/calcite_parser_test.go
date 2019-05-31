@@ -43,6 +43,10 @@ func TestCalciteParser(t *testing.T) {
 	a.Equal(17, i)
 	a.NoError(e)
 
+	i, e = Parse("SELECT * FROM t1 TO TO TRAIN DNNClassifier")
+	a.Equal(17, i)
+	a.NoError(e)
+
 	i, e = Parse("SELECT * FROM t1 t2 TO TRAIN DNNClassifier") // t2 is an alias of t1
 	a.Equal(20, i)
 	a.NoError(e)
