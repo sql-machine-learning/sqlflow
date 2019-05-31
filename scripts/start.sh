@@ -15,15 +15,19 @@
 SQLFLOW_MYSQL_HOST=${SQLFLOW_MYSQL_HOST:-127.0.0.1}
 SQLFLOW_MYSQL_PORT=${SQLFLOW_MYSQL_PORT:-3306}
 
+function sleep_until_mysql_is_ready() {
+  until mysql -u root -proot --host ${SQLFLOW_MYSQL_HOST} --port ${SQLFLOW_MYSQL_PORT} -e ";" ; do
+    sleep 1
+    read -p "Can't connect, retrying..."
+  done
+}
+
 function setup_mysql() {
     # Start mysqld
     sed -i "s/.*bind-address.*/bind-address = ${SQLFLOW_MYSQL_HOST}/" /etc/mysql/mysql.conf.d/mysqld.cnf
     service mysql start
     sleep 1
-    until mysql -u root -proot --host ${SQLFLOW_MYSQL_HOST} --port ${SQLFLOW_MYSQL_PORT} -e ";" ; do
-        sleep 1
-        read -p "Can't connect, retrying..."
-    done
+    sleep_until_mysql_is_ready
     # FIXME(typhoonzero): should let docker-entrypoint.sh do this work
     for f in /docker-entrypoint-initdb.d/*; do
         cat $f | mysql -uroot -proot --host ${SQLFLOW_MYSQL_HOST} --port ${SQLFLOW_MYSQL_PORT}
@@ -33,6 +37,8 @@ function setup_mysql() {
 }
 
 function setup_sqlflow() {
+  sleep_until_mysql_is_ready
+
   DS="mysql://root:root@tcp(${SQLFLOW_MYSQL_HOST}:${SQLFLOW_MYSQL_PORT})/?maxAllowedPacket=0"
   echo "Connect to the datasource ${DS}"
   # Start sqlflowserver
