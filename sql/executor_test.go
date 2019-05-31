@@ -21,27 +21,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const (
-	testTrainBoostedTreeOnIris = `
-SELECT *
-FROM iris.train
-WHERE class = 0 OR class = 1
-TRAIN BoostedTreesClassifier
-WITH
-  n_batches_per_layer = 20
-COLUMN sepal_length, sepal_width, petal_length, petal_width
-LABEL class
-INTO sqlflow_models.my_boosted_tree_model;
-`
-	testPredBoostedTreeOnIris = `
-SELECT *
-FROM iris.test
-WHERE class = 0 OR class = 1
-predict iris.predict.class
-USING sqlflow_models.my_boosted_tree_model;
-`
-)
-
 func goodStream(stream chan interface{}) (bool, string) {
 	lastResp := list.New()
 	keepSize := 10
@@ -76,14 +55,6 @@ func TestExecutorTrainAndPredictDNN(t *testing.T) {
 		a.NoError(e)
 		stream = runExtendedSQL(testPredictSelectIris, testDB, pr)
 		a.True(goodStream(stream.ReadAll()))
-	})
-}
-
-func TestExecutorTrainAndPredictBoostedTree(t *testing.T) {
-	a := assert.New(t)
-	a.NotPanics(func() {
-		a.True(goodStream(Run(testTrainBoostedTreeOnIris, testDB).ReadAll()))
-		a.True(goodStream(Run(testPredBoostedTreeOnIris, testDB).ReadAll()))
 	})
 }
 

@@ -204,7 +204,6 @@ tf.get_logger().setLevel(logging.ERROR)
 	`
 BATCHSIZE = 1
 EPOCHS = None
-STEPS = 1000
 NUM_BUCKETS=160000
 EMBEDDING_WIDTH=128
 
@@ -214,8 +213,6 @@ train_args = dict()
 BATCHSIZE = {{$value}}
 {{else if eq $key "EPOCHS"}}
 EPOCHS = {{$value}}
-{{else if eq $key "STEPS"}}
-STEPS = {{$value}}
 {{else}}
 train_args["{{$key}}"] = {{$value}}
 {{end}}
@@ -275,7 +272,11 @@ def input_fn(batch_size, is_train=True):
 	dataset = tf.data.Dataset.from_generator(gen, (feature_types, tf.int64), (feature_shapes, tf.TensorShape([1])))
 	if is_train:
 		# TODO(typhoonzero): add prefetch, cache if needed.
-		dataset = dataset.shuffle(1000).repeat().batch(batch_size)
+		dataset = dataset.shuffle(1000).batch(batch_size)
+		{{if not .SelfDefined}}
+		{{/* estimater.train have no argument epochs, so add in dataset here */}}
+		dataset = dataset.repeat(EPOCHS if EPOCHS else 1)
+		{{end}}
 	else:
 		dataset = dataset.batch(batch_size)
 	return dataset
@@ -286,12 +287,11 @@ classifier.compile(optimizer=classifier.default_optimizer(),
 	metrics=["accuracy"])
 classifier.fit(input_fn(BATCHSIZE, is_train=True),
 	epochs=EPOCHS if EPOCHS else classifier.default_training_epochs(),
-	steps_per_epoch=STEPS, verbose=0)
+	verbose=0)
 classifier.save_weights("{{.Save}}", save_format="h5")
 {{else}}
 classifier.train(
-	input_fn=lambda:input_fn(BATCHSIZE, is_train=True),
-	steps=STEPS * (EPOCHS if EPOCHS else 1))
+	input_fn=lambda:input_fn(BATCHSIZE, is_train=True))
 {{end}}
 
 {{if .SelfDefined}}
@@ -299,7 +299,7 @@ eval_result = classifier.evaluate(input_fn(BATCHSIZE, is_train=False), verbose=0
 print("Training set accuracy: {accuracy:0.5f}".format(**{"accuracy": eval_result[1]}))
 {{else}}
 eval_result = classifier.evaluate(
-	input_fn=lambda:input_fn(BATCHSIZE, is_train=False), steps=STEPS)
+	input_fn=lambda:input_fn(BATCHSIZE, is_train=False))
 print(eval_result)
 print("Training set accuracy: {accuracy:0.5f}".format(**eval_result))
 {{end}}
