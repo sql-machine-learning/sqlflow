@@ -63,7 +63,7 @@ func testHiveDatabase() *DB {
 	// https://github.com/sql-machine-learning/gohive/blob/develop/docker/entrypoint.sh#L123
 	db, e := Open("hive://root:root@localhost:10000/churn")
 	assertNoErr(e)
-	_, e = testDB.Exec("CREATE DATABASE IF NOT EXISTS sqlflow_models;")
+	_, e = db.Exec("CREATE DATABASE IF NOT EXISTS sqlflow_models;")
 	assertNoErr(e)
 	assertNoErr(testdata.Popularize(db.DB, testdata.IrisHiveSQL))
 	assertNoErr(testdata.Popularize(db.DB, testdata.ChurnHiveSQL))
