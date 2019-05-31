@@ -1,8 +1,8 @@
 # Running SQLFlow on Kubernetes
 
-This is a tutorial on how to run SQLFlow on Kubernetes, this tutorial will deploy:
+This is a tutorial on how to run SQLFlow on Kubernetes, and this tutorial will deploy:
 - MySQL server with the SQLFlow example datasets loaded, and
-- SQLFlow components contains the sqlflow-server the Jupyter notebook.
+- SQLFlow components contain the sqlflow-server the Jupyter notebook.
 
 Then you can run the SQLFlow query in the Jupyter notebook on your web browser.
 
@@ -48,7 +48,7 @@ from source](/doc/build.md)
     > minikube ip
     192.168.99.100
     ```
-    **NOTE**: If you are using a **real** cluster, you can find the node domain/IP from the `NODE` colume
+    **NOTE**: If you are using a **real** cluster, you can find the node domain/IP from the `NODE` column
     using`kubectl get pods -o wide`:
     ``` bash
     > kubectl get pods -o wide
