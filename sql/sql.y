@@ -74,9 +74,14 @@
 	type trainClause struct {
 		estimator string
 		attrs     attrs
-		columns   exprlist
+		ccs   	  []columnsClause
                 label     string
 		save      string
+	}
+
+	type columnsClause struct {
+		name 	string
+		columns exprlist
 	}
 
 	type attrs map[string]*expr
@@ -109,12 +114,14 @@
   eslt extendedSelect
   slct standardSelect
   tran trainClause
+  cols columnsClause
   infr predictClause
 }
 
 %type  <eslt> select_stmt
 %type  <slct> select
 %type  <tran> train_clause
+%type  <cols> columns_clause
 %type  <infr> predict_clause
 %type  <flds> fields
 %type  <tbls> tables
@@ -123,7 +130,7 @@
 %type  <atrs> attr
 %type  <atrs> attrs
 
-%token <val> SELECT FROM WHERE LIMIT TRAIN PREDICT WITH COLUMN LABEL USING INTO
+%token <val> SELECT FROM WHERE LIMIT TRAIN PREDICT WITH COLUMN LABEL USING INTO FOR
 %token <val> IDENT NUMBER STRING
 
 %left <val> AND OR
@@ -166,12 +173,16 @@ select
 ;
 
 train_clause
-: TRAIN IDENT WITH attrs COLUMN columns LABEL IDENT INTO IDENT {
+: TRAIN IDENT WITH attrs {
 	$$.estimator = $2
 	$$.attrs = $4
-	$$.columns = $6
-	$$.label = $8
-	$$.save = $10
+  }
+| train_clause COLUMN columns_clause {
+	$$.ccs = append($$.ccs, $3)
+  }
+| train_clause LABEL IDENT INTO IDENT {
+	$$.label = $3
+	$$.save = $5
   }
 ;
 
@@ -180,6 +191,11 @@ predict_clause
 	$$.into = $2
 	$$.model = $4
 }
+;
+
+columns_clause
+: columns			{ $$.columns = $1 }
+| columns_clause FOR IDENT 	{ $$.name = $3 }
 ;
 
 fields
@@ -351,7 +367,21 @@ func (s trainClause) JSON() string {
 "columns": %s,
 "save": "%s"
 }`
-	return fmt.Sprintf(fmter, s.estimator, s.attrs.JSON(), s.columns.JSON(), s.save)
+	ccs := []string{}
+	for _, cc := range s.ccs {
+		ccs = append(ccs, cc.JSON())
+	}
+	columns := "[\n" + strings.Join(ccs, ",\n") + "\n]"
+
+	return fmt.Sprintf(fmter, s.estimator, s.attrs.JSON(), columns, s.save)
+}
+
+func (s columnsClause) JSON() string {
+	fmter := `{
+"name": "%s",
+"columns": %s
+}`
+	return fmt.Sprintf(fmter, s.name, s.columns.JSON())
 }
 
 func (s predictClause) JSON() string {

@@ -40,6 +40,19 @@ COLUMN
 LABEL employee.salary
 INTO sqlflow_models.my_dnn_model;
 `
+	testMultiColumnTrainSelect = testStandardSelectStmt + `TRAIN DNNClassifier
+WITH
+  n_classes = 3,
+  hidden_units = [10, 20]
+COLUMN
+  employee.name,
+  bucketize(last_name, 1000),
+  cross(embedding(emplyoee.name), bucketize(last_name, 1000))
+COLUMN
+  cross(embedding(emplyoee.name), bucketize(last_name, 1000)) FOR C2
+LABEL employee.salary
+INTO sqlflow_models.my_dnn_model;
+`
 	testPredictSelect = testStandardSelectStmt + `PREDICT db.table.field
 USING sqlflow_models.my_dnn_model;`
 )
@@ -71,12 +84,37 @@ func TestTrainParser(t *testing.T) {
 	a.Equal("[10, 20]", r.attrs["hidden_units"].String())
 	a.Equal("3", r.attrs["n_classes"].String())
 	a.Equal(`employee.name`,
-		r.columns[0].String())
+		r.ccs[0].columns[0].String())
 	a.Equal(`bucketize(last_name, 1000)`,
-		r.columns[1].String())
+		r.ccs[0].columns[1].String())
 	a.Equal(
 		`cross(embedding(emplyoee.name), bucketize(last_name, 1000))`,
-		r.columns[2].String())
+		r.ccs[0].columns[2].String())
+	a.Equal("employee.salary", r.label)
+	a.Equal("sqlflow_models.my_dnn_model", r.save)
+}
+
+func TestMultiColumnTrainParser(t *testing.T) {
+	a := assert.New(t)
+	r, e := newParser().Parse(testMultiColumnTrainSelect)
+	a.NoError(e)
+	a.True(r.extended)
+	a.True(r.train)
+	a.Equal("DNNClassifier", r.estimator)
+	a.Equal("[10, 20]", r.attrs["hidden_units"].String())
+	a.Equal("3", r.attrs["n_classes"].String())
+	a.Equal(`employee.name`,
+		r.ccs[0].columns[0].String())
+	a.Equal(`bucketize(last_name, 1000)`,
+		r.ccs[0].columns[1].String())
+	a.Equal(
+		`cross(embedding(emplyoee.name), bucketize(last_name, 1000))`,
+		r.ccs[0].columns[2].String())
+	a.Equal(`C2`,
+		r.ccs[1].name)
+	a.Equal(
+		`cross(embedding(emplyoee.name), bucketize(last_name, 1000))`,
+		r.ccs[1].columns[0].String())
 	a.Equal("employee.salary", r.label)
 	a.Equal("sqlflow_models.my_dnn_model", r.save)
 }
