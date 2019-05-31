@@ -92,5 +92,5 @@ COPY example/datasets/popularize_churn.sql /docker-entrypoint-initdb.d/populariz
 COPY example/datasets/popularize_iris.sql /docker-entrypoint-initdb.d/popularize_iris.sql
 COPY example/datasets/create_model_db.sql /docker-entrypoint-initdb.d/create_model_db.sql
 
-ADD scripts/startall.sh /
-CMD ["bash", "/startall.sh"]
+ADD scripts/start.sh /
+CMD ["bash", "/start.sh"]

@@ -1,0 +1,30 @@
+apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
+kind: Deployment
+metadata:
+  name: sqlflow 
+spec:
+  selector:
+    matchLabels:
+      app: sqlflow
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: sqlflow
+    spec:
+      containers:
+      - image: yancey1989/sqlflow:k8s
+        name: sqlflow
+        env:
+        - name: SQLFLOW_MYSQL_HOST
+          value: $(MYSQL_SERVICE_HOST)
+        - name: SQLFLOW_MYSQL_PORT
+          value: $(MYSQL_SERVICE_PORT)
+        ports:
+        - containerPort: 8888
+          hostPort: 8888
+          name: sqlflow
+        imagePullPolicy: Always
+        command: ["bash"]
+        args: ["start.sh", "sqlflow"]

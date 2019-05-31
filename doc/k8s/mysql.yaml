@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+spec:
+  ports:
+  - port: 3306
+  selector:
+    app: mysql
+  #clusterIP: None
+---
+
+apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
+kind: Deployment
+metadata:
+  name: mysql
+spec:
+  selector:
+    matchLabels:
+      app: mysql
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+      - image: yancey1989/sqlflow:k8s
+        name: mysql
+        env:
+        - name: SQLFLOW_MYSQL_HOST
+          value: "0.0.0.0"
+        - name: SQLFLOW_MYSQL_PORT
+          value: "3306"
+        ports:
+        - containerPort: 3306
+          name: mysql
+        imagePullPolicy: Always
+        command: ["bash"]
+        args: ["start.sh", "mysql"]
