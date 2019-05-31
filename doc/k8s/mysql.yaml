@@ -7,7 +7,6 @@ spec:
   - port: 3306
   selector:
     app: mysql
-  #clusterIP: None
 ---
 
 apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
@@ -26,7 +25,7 @@ spec:
         app: mysql
     spec:
       containers:
-      - image: yancey1989/sqlflow:k8s
+      - image: sqlflow/sqlflow:latest
         name: mysql
         env:
         - name: SQLFLOW_MYSQL_HOST

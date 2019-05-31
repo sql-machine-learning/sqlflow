@@ -14,7 +14,7 @@ spec:
         app: sqlflow
     spec:
       containers:
-      - image: yancey1989/sqlflow:k8s
+      - image: sqlflow/sqlflow:latest
         name: sqlflow
         env:
         - name: SQLFLOW_MYSQL_HOST
