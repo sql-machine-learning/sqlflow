@@ -341,14 +341,13 @@ func pred(pr *extendedSelect, db *DB, cwd string, wr *PipeWriter) error {
 // Create prediction table with appropriate column type.
 // If prediction table already exists, it will be overwritten.
 func createPredictionTable(trainParsed, predParsed *extendedSelect, db *DB) error {
-	if len(strings.Split(predParsed.into, ".")) != 3 {
-		return fmt.Errorf("invalid predParsed.into %s. should be DBName.TableName.ColumnName", predParsed.into)
+	tableName, columnName, e := parseTableColumn(predParsed.into)
+	if e != nil {
+		return fmt.Errorf("invalid predParsed.into, %v", e)
 	}
-	tableName := strings.Join(strings.Split(predParsed.into, ".")[:2], ".")
-	columnName := strings.Split(predParsed.into, ".")[2]
 
 	dropStmt := fmt.Sprintf("drop table if exists %s;", tableName)
-	if _, e := db.Query(dropStmt); e != nil {
+	if _, e := db.Exec(dropStmt); e != nil {
 		return fmt.Errorf("failed executing %s: %q", dropStmt, e)
 	}
 
@@ -382,4 +381,12 @@ func createPredictionTable(trainParsed, predParsed *extendedSelect, db *DB) erro
 		return fmt.Errorf("failed executing %s: %q", createStmt, e)
 	}
 	return nil
+}
+
+func parseTableColumn(s string) (string, string, error) {
+	pos := strings.LastIndex(s, ".")
+	if pos == -1 || pos == len(s)-1 {
+		return "", "", fmt.Errorf("can not separate %s to table and column", s)
+	}
+	return s[:pos], s[pos+1:], nil
 }

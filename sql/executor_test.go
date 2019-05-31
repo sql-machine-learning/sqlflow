@@ -150,3 +150,21 @@ func TestLogChanWriter_Write(t *testing.T) {
 	_, more := <-c
 	a.False(more)
 }
+
+func TestParseTableColumn(tg *testing.T) {
+	a := assert.New(tg)
+	t, c, e := parseTableColumn("a.b.c")
+	a.NoError(e)
+	a.Equal("a.b", t)
+	a.Equal("c", c)
+
+	t, c, e = parseTableColumn("a.b")
+	a.NoError(e)
+	a.Equal("a", t)
+	a.Equal("b", c)
+
+	_, _, e = parseTableColumn("a.")
+	a.Error(e)
+	_, _, e = parseTableColumn("a")
+	a.Error(e)
+}
