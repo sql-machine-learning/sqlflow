@@ -33,6 +33,7 @@ install:
 
 script:
   - set -e
+  - df -h
   - ls -lah
   - docker build -t sqlflow:latest -f Dockerfile .
   - docker run --rm -v $GOPATH/src:/go/src -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:latest pre-commit run -a
