@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
+set -e
 
 # Wait until hive test server is ready, port 8899
 # is a status port indicates the hive server container
