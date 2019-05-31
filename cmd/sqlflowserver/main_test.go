@@ -134,6 +134,10 @@ func prepareTestData(dbStr string) error {
 	if err != nil {
 		return err
 	}
+	err = testdata.Popularize(testDB.DB, testdata.TextENSQL)
+	if err != nil {
+		return err
+	}
 	err = testdata.Popularize(testDB.DB, testdata.TextCNSQL)
 	return err
 }
@@ -159,6 +163,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("TestSelect", CaseSelect)
 	t.Run("TestTrainSQL", CaseTrainSQL)
 	t.Run("TestTextClassification", CaseTrainTextClassification)
+	t.Run("TestTextClassificationEN", CaseTrainTextClassificationEN)
 	t.Run("CaseTrainCustomModel", CaseTrainCustomModel)
 	t.Run("CaseTrainSQLWithHyperParams", CaseTrainSQLWithHyperParams)
 	t.Run("CaseTrainCustomModelWithHyperParams", CaseTrainCustomModelWithHyperParams)
@@ -209,6 +214,7 @@ func CaseShowDatabases(t *testing.T) {
 		"sqlfs_test":         "",
 		"sys":                "",
 		"text_cn":            "",
+		"text_en":            "",
 		"hive":               "", // if current mysql is also used for hive
 		"default":            "", // if fetching default hive databases
 	}
@@ -367,6 +373,34 @@ FROM iris.predict LIMIT 5;`
 		// checking expectedPredClasses := []int64{2, 1, 0, 2, 0}
 		AssertGreaterEqualAny(a, row[4], int64(0))
 	}
+}
+
+// CaseTrainTextClassificationEN is a simple End-to-End testing for case training
+// text classification models.
+func CaseTrainTextClassificationEN(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := `SELECT *
+FROM text_en.train_processed
+TRAIN DNNClassifier
+WITH n_classes = 2, hidden_units = [10, 10]
+COLUMN content
+LABEL class
+INTO sqlflow_models.my_dnn_model_text_en;`
+
+	conn, err := grpc.Dial("localhost"+port, grpc.WithInsecure())
+	a.NoError(err)
+	defer conn.Close()
+	cli := pb.NewSQLFlowClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	defer cancel()
+
+	stream, err := cli.Run(ctx, &pb.Request{Sql: trainSQL})
+	if err != nil {
+		a.Fail("Check if the server started successfully. %v", err)
+	}
+	// call ParseRow only to wait train finish
+	ParseRow(stream)
 }
 
 // CaseTrainTextClassification is a simple End-to-End testing for case training

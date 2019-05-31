@@ -5,15 +5,20 @@ Note that the steps in this tutorial may be changed during the development
 of SQLFlow, we only provide a way that simply works for the current version.
 
 To support custom models like CNN text classification, you may check out the
-current [design](https://github.com/sql-machine-learning/models/pull/5/files)
+current [design](https://github.com/sql-machine-learning/models/blob/develop/doc/customized%2Bmodel.md)
 for ongoing development.
+
+In this tutorial we use two datasets both for english and chinese text classification.
+The case using chinese dataset is more complicated since Chinese sentences can not be
+segmented by spaces. You can download the full dataset from:
+
+1. [IMDB-Movie-Reviews-Dataset](https://www.kaggle.com/iarunava/imdb-movie-reviews-dataset)
+1. [chinese-text-classification-dataset](https://github.com/fate233/toutiao-text-classfication-dataset)
 
 In this tutorial we use a
 [chinese-text-classification-dataset](https://github.com/fate233/toutiao-text-classfication-dataset),
 which is more complicated since we need to consider sentence segments. To adapt
 this tutorial to some English data set could be simple.
-
-**NOTE**: to achieve better accuracy
 
 # Steps to Run
 
