@@ -23,6 +23,7 @@ import (
 func TestCalciteParser(t *testing.T) {
 	if addr := os.Getenv("SQLFLOW_CALCITE_PARSER"); len(addr) > 0 {
 		Init(addr)
+		defer Cleanup()
 	} else {
 		t.Logf("Cannot connect to CalciteParserServer; skip TestCalciteParser")
 		return
@@ -36,53 +37,21 @@ func TestCalciteParser(t *testing.T) {
 
 	i, e = Parse("SELECTED a FROM t1") // SELECTED => SELECT
 	a.Equal(0, i)
-	a.Error(e)
+	a.Error(e) // The second parse is on "", for which, Calcite parser errs.
 
-	i, e = Parse("SELECT a FROM t1") // (i,e)==(-1,nil) indicates legal native SQL syntax.
-	a.Equal(-1, i)
+	i, e = Parse("SELECT * FROM t1 TO TRAIN DNNClassifier")
+	a.Equal(17, i)
 	a.NoError(e)
 
-	i, e = Parse("SELECT a, b FROM t1")
-	a.Equal(-1, i)
-	a.NoError(e)
-
-	i, e = Parse("SELECT a b FROM t1") // Calcite doesn't need ',' between fields.
-	a.Equal(-1, i)
-	a.NoError(e)
-
-	i, e = Parse("SELECT a b c FROM t1") // Calcite doesn't accept three fields without ','.
-	a.Equal(11, i)
-	a.NoError(e)
-
-	i, e = Parse("SELECT * FROM t1")
-	a.Equal(-1, i)
-	a.NoError(e)
-
-	i, e = Parse("SELECT * FROM t1, t2")
-	a.Equal(-1, i)
-	a.NoError(e)
-
-	i, e = Parse("SELECT * FROM t1 t2") // Calcite doesn't need ',' between two tables.
-	a.Equal(-1, i)
-	a.NoError(e)
-
-	i, e = Parse("SELECT * FROM t1 t2 t3") // Calcite doesn't accept three fields without ','.
+	i, e = Parse("SELECT * FROM t1 t2 TO TRAIN DNNClassifier") // t2 is an alias of t1
 	a.Equal(20, i)
 	a.NoError(e)
 
-	i, e = Parse("SELECT a FROM t1 WHERE a IN (SELECT a FROM t2 WHERE Quantity > 100)")
-	a.Equal(-1, i)
+	i, e = Parse("SELECT * FROM t1 t2, t3 TO TRAIN DNNClassifier") // t2 is an alias of t1
+	a.Equal(24, i)
 	a.NoError(e)
 
-	i, e = Parse("SELECT a FROM t1 WHERE a IN (SELECT a FROM t2 WHERE Quantity > 100) TRAIN DNNClassifier")
-	a.Equal(68, i) // before TRAIN
-	a.NoError(e)
-
-	i, e = Parse("SELECT a FROM t1 WHERE a IN (SELECT a FROM t2 WHERE Quantity > 100) Predict DNNClassifier")
-	a.Equal(68, i) // before Predict
-	a.NoError(e)
-
-	i, e = Parse("SELECT a FROM t1 PREDICT DNNClassifier")
-	a.Equal(25, i) // This looks a bug of Calcite parser. See cases ahead.
+	i, e = Parse("SELECT * FROM t1 t2, t3 t4 TO TRAIN DNNClassifier") // t2 and t4 are aliases.
+	a.Equal(27, i)
 	a.NoError(e)
 }
