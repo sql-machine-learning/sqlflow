@@ -22,7 +22,7 @@ it out, we have provided the instructions and demo. Play around with it. Any bug
    docker run -it -p 8888:8888 sqlflow/sqlflow:latest
    ```
 
-1. Open a web browser, go to `localhost:8888` .  Select the "New" drop-down menu on the right side, and open the "Python 3" development environment in a new Notebook cell (also in a new tab). In the new cell, type in below SELECT statement to fetch 5 records from train table in Iris database. 
+1. Open a web browser, go to `localhost:8888`.  Select the "New" drop-down menu on the right side, and open the "Python 3" development environment in a new Notebook cell (also in a new tab). In the new cell, type in below SELECT statement to fetch 5 records from train table in Iris database. 
 
    ```
    %%sqlflow
