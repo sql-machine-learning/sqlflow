@@ -52,4 +52,15 @@ func TestTiDBParser(t *testing.T) {
 	a.Equal(27, i)
 	a.NoError(e)
 
+	i, e = Parse("SELECT * FROM (SELECT * FROM t1)")
+	a.Equal(-1, i)
+	a.Error(e) // TiDB parser and MySQL require an alias name after the nested SELECT.
+
+	i, e = Parse("SELECT * FROM (SELECT * FROM t1) t2")
+	a.Equal(-1, i)
+	a.NoError(e)
+
+	i, e = Parse("SELECT * FROM (SELECT * FROM t1) t2 TO TRAIN DNNClassifier")
+	a.Equal(36, i)
+	a.NoError(e)
 }
