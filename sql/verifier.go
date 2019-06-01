@@ -73,6 +73,9 @@ func (ft fieldTypes) get(ident string) (string, bool) {
 // decomp returns the table name and field name in the given
 // identifier: t.f=>(t,f), db.t.f=>(db.t,f), f=>("",f).
 func decomp(ident string) (tbl string, fld string) {
+	// Note: Hive driver represents field names in lower cases, so we convert all identifier
+	// to lower case
+	ident = strings.ToLower(ident)
 	idx := strings.LastIndex(ident, ".")
 	if idx == -1 {
 		return "", ident

@@ -11,3 +11,4 @@
 sql/my_dnn_model
 .DS_Store
 coverage.out
+.vscode

@@ -65,10 +65,6 @@ func TestWriterCreate(t *testing.T) {
 
 func TestWriteAndRead(t *testing.T) {
 	testDriver = getEnv("SQLFLOW_TEST_DB", "mysql")
-	// TODO(typhoonzero): Add this test back after fix hive sqlfs.
-	if testDriver == "hive" {
-		t.Skip("skip sqlfs TestWriteAndRead for hive.")
-	}
 	a := assert.New(t)
 
 	fn := fmt.Sprintf("%s.unitest%d", testDatabaseName, rand.Int())
@@ -164,7 +160,7 @@ func TestMain(m *testing.M) {
 		assertNoErr(e)
 		defer testDB.Close()
 	case "hive":
-		testDB, e = sql.Open("hive", "hive://root:root@localhost:10000/churn")
+		testDB, e = sql.Open("hive", "root:root@localhost:10000/churn")
 		assertNoErr(e)
 		_, e = testDB.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s;", testDatabaseName))
 		assertNoErr(e)

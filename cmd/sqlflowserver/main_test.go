@@ -285,11 +285,6 @@ INTO sqlflow_models.my_dnn_model;`
 	// call ParseRow only to wait train finish
 	ParseRow(stream)
 
-	// FIXME(typhoonzero): Fix PREDICT tests using hive
-	if os.Getenv("SQLFLOW_TEST_DB") == "hive" {
-		return
-	}
-
 	predSQL := `SELECT *
 FROM iris.test
 PREDICT iris.predict.class
@@ -344,11 +339,6 @@ INTO sqlflow_models.my_dnn_model_custom;`
 	}
 	// call ParseRow only to wait train finish
 	ParseRow(stream)
-
-	// FIXME(typhoonzero): Fix PREDICT tests using hive
-	if os.Getenv("SQLFLOW_TEST_DB") == "hive" {
-		return
-	}
 
 	predSQL := `SELECT *
 FROM iris.test
@@ -439,7 +429,7 @@ func CaseTrainCustomModelWithHyperParams(t *testing.T) {
 	trainSQL := `SELECT *
 FROM iris.train
 TRAIN sqlflow_models.DNNClassifier
-WITH n_classes = 3, hidden_units = [10, 20], BATCHSIZE = 10, STEPS=100
+WITH n_classes = 3, hidden_units = [10, 20], BATCHSIZE = 10, EPOCHS=2
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.my_dnn_model_custom;`

@@ -11,26 +11,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tidb
+package calcite
 
 import (
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func TestTiDBParser(t *testing.T) {
-	a := assert.New(t)
+func TestCalciteParser(t *testing.T) {
+	if addr := os.Getenv("SQLFLOW_CALCITE_PARSER"); len(addr) > 0 {
+		Init(addr)
+		defer Cleanup()
+	} else {
+		t.Logf("Cannot connect to CalciteParserServer; skip TestCalciteParser")
+		return
+	}
+
 	var (
 		i int
 		e error
+		a = assert.New(t)
 	)
-
-	Init()
 
 	i, e = Parse("SELECTED a FROM t1") // SELECTED => SELECT
 	a.Equal(0, i)
-	a.NoError(e) // The second parse is on "", for which, TiDB parser doesn't err. But SQLFlow parser will err.
+	a.Error(e) // The second parse is on "", for which, Calcite parser errs.
 
 	i, e = Parse("SELECT * FROM t1 TO TRAIN DNNClassifier")
 	a.Equal(17, i)
