@@ -59,7 +59,7 @@ func TestCalciteParser(t *testing.T) {
 	a.Equal(27, i)
 	a.NoError(e)
 
-	i, e = Parse("SELECT * FROM (SELECT * FROM t1)")
+	i, e = Parse("SELECT * FROM (SELECT * FROM t1)") // MySQL/TiDB parser would require an alias for the nested SELECT. Calcite parser doesn't.
 	a.Equal(-1, i)
 	a.NoError(e)
 
