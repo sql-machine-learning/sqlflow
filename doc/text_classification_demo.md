@@ -15,15 +15,35 @@ segmented by spaces. You can download the full dataset from:
 1. [IMDB-Movie-Reviews-Dataset](https://www.kaggle.com/iarunava/imdb-movie-reviews-dataset)
 1. [chinese-text-classification-dataset](https://github.com/fate233/toutiao-text-classfication-dataset)
 
-In this tutorial we use a
-[chinese-text-classification-dataset](https://github.com/fate233/toutiao-text-classfication-dataset),
-which is more complicated since we need to consider sentence segments. To adapt
-this tutorial to some English data set could be simple.
+# Steps to Process and Train With IMDB Dataset
 
-# Steps to Run
+1. Download full IMDB dataset from the above link and unzip the content.
+1. Use [this](https://gist.github.com/typhoonzero/45c8097648152adfc4f6aef772a05e0a)
+   script to load data into MySQL database and do preprocess like segmentation,
+   map to word id, and padding. You can also modify the script's MySQL connection
+   address to your own MySQL installation.
+1. Then use the following statements to train and predict using SQLFlow:
+    ```sql
+    SELECT *
+    FROM imdb.train_processed
+    TRAIN DNNClassifier
+    WITH
+    n_classes = 2,
+    hidden_units = [512, 128]
+    COLUMN content
+    LABEL class
+    INTO sqlflow_models.my_text_model_en;
 
-1. Download the dataset from https://github.com/fate233/toutiao-text-classfication-dataset and unpack
-   `toutiao_cat_data.txt.zip`.
+    SELECT *
+    FROM imdb.test_processed
+    PREDICT imdb.predict.class
+    USING sqlflow_models.my_text_model_en;
+    ```
+1. Then you can get predict result from table `imdb.predict`:
+
+# Steps to Run Chinese Text Classification Dataset
+
+1. Download the dataset from the above link and unpack `toutiao_cat_data.txt.zip`.
 1. Copy `toutiao_cat_data.txt` to `/var/lib/mysql-files/` on the server your MySQL located on, this is
    because MySQL may prevent importing data from an untrusted location.
 1. Login to MySQL command line like `mysql -uroot -p` and create a database and table to load the
@@ -97,4 +117,4 @@ this tutorial to some English data set could be simple.
     PREDICT toutiao.predict.class_id
     USING sqlflow_models.my_text_model;
     ```
-1. Then you can get validation result from table `toutiao.predict`:
+1. Then you can get predict result from table `toutiao.predict`:
