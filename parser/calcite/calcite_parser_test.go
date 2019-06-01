@@ -43,6 +43,10 @@ func TestCalciteParser(t *testing.T) {
 	a.Equal(17, i)
 	a.NoError(e)
 
+	i, e = Parse("SELECT * FROM t1 TO TO TRAIN DNNClassifier")
+	a.Equal(17, i)
+	a.NoError(e)
+
 	i, e = Parse("SELECT * FROM t1 t2 TO TRAIN DNNClassifier") // t2 is an alias of t1
 	a.Equal(20, i)
 	a.NoError(e)
@@ -53,5 +57,13 @@ func TestCalciteParser(t *testing.T) {
 
 	i, e = Parse("SELECT * FROM t1 t2, t3 t4 TO TRAIN DNNClassifier") // t2 and t4 are aliases.
 	a.Equal(27, i)
+	a.NoError(e)
+
+	i, e = Parse("SELECT * FROM (SELECT * FROM t1)") // MySQL/TiDB parser would require an alias for the nested SELECT. Calcite parser doesn't.
+	a.Equal(-1, i)
+	a.NoError(e)
+
+	i, e = Parse("SELECT * FROM (SELECT * FROM t1) TO TRAIN DNNClassifier") // MySQL/TiDB parser would require an alias for the nested SELECT. Calcite parser doesn't.
+	a.Equal(33, i)
 	a.NoError(e)
 }
