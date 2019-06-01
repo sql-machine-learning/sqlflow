@@ -64,7 +64,7 @@ def execute(driver, conn, statement):
 def insert_values(driver, conn, table_name, table_schema, values):
     if driver == "maxcompute":
         from sqlflow_submitter.maxcompute import MaxCompute
-        return MaxCompute.insert_values(conn, table_name, table_schema, values)
+        return MaxCompute.insert_values(conn, table_name, values)
     elif driver == "mysql":
         statement = '''insert into {} ({}) values({})'''.format(
             table_name,

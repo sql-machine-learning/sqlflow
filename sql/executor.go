@@ -377,7 +377,7 @@ func createPredictionTable(trainParsed, predParsed *extendedSelect, db *DB) erro
 	fmt.Fprintf(&b, "%s %s);", columnName, stype)
 
 	createStmt := b.String()
-	if _, e := db.Query(createStmt); e != nil {
+	if _, e := db.Exec(createStmt); e != nil {
 		return fmt.Errorf("failed executing %s: %q", createStmt, e)
 	}
 	return nil

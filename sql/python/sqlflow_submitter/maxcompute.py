@@ -17,6 +17,7 @@ from odps import ODPS, tunnel
 class MaxCompute:
     @staticmethod
     def connect(database, user, password, host):
+        print("project=", database)
         return ODPS(user, password, project=database, endpoint=host)
 
     @staticmethod
@@ -27,19 +28,11 @@ class MaxCompute:
             return None, None
         r = inst.open_reader(tunnel=True, compress_option=compress)
         field_names = [col.name for col in r._schema.columns]
-        rows = [[v[1] for v in rec ] for rec in r[0: r.count]]
+        rows = [[v[1] for v in rec] for rec in r[0: r.count]]
         return field_names, list(map(list, zip(*rows))) if r.count > 0 else None
 
     @staticmethod
-    def insert_values(conn, table_name, table_schema, values):
+    def insert_values(conn, table, values):
         compress = tunnel.CompressOption.CompressAlgorithm.ODPS_ZLIB
-        table = conn.get_table(table_name)
+        conn.write_table(table, values, compress_option=compress)
 
-        records = []
-        for val in values:
-            records.append(table.new_record(val))
-        print(records)
-
-        w = table.open_writer(compress_option=compress)
-        w.write(records)
-        w.close()

@@ -119,7 +119,9 @@ func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
 	r.Y = *cf
 
 	if !pr.train {
-		r.TableName = strings.Join(strings.Split(pr.into, ".")[:2], ".")
+		if r.TableName, _, e = parseTableColumn(pr.into); e != nil {
+			return nil, e
+		}
 	}
 
 	return fillDatabaseInfo(r, db)
