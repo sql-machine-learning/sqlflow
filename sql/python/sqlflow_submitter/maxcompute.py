@@ -1,5 +1,3 @@
-from odps import ODPS, tunnel
-
 # Copyright 2019 The SQLFlow Authors. All rights reserved.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,11 +11,13 @@ from odps import ODPS, tunnel
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from odps import ODPS, tunnel
 
+# MaxCompute(odps) does not provide dbapi
+# Here we use the sdk to operate the database
 class MaxCompute:
     @staticmethod
     def connect(database, user, password, host):
-        print("project=", database)
         return ODPS(user, password, project=database, endpoint=host)
 
     @staticmethod
@@ -35,4 +35,3 @@ class MaxCompute:
     def insert_values(conn, table, values):
         compress = tunnel.CompressOption.CompressAlgorithm.ODPS_ZLIB
         conn.write_table(table, values, compress_option=compress)
-
