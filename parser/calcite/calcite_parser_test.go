@@ -63,7 +63,7 @@ func TestCalciteParser(t *testing.T) {
 	a.Equal(-1, i)
 	a.NoError(e)
 
-	i, e = Parse("SELECT * FROM (SELECT * FROM t1) TO TRAIN DNNClassifier")
+	i, e = Parse("SELECT * FROM (SELECT * FROM t1) TO TRAIN DNNClassifier") // MySQL/TiDB parser would require an alias for the nested SELECT. Calcite parser doesn't.
 	a.Equal(33, i)
 	a.NoError(e)
 }
