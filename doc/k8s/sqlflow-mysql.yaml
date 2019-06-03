@@ -18,18 +18,6 @@ spec:
         emptyDir: {}
       containers:
       - image: sqlflow/sqlflow:latest
-        name: sqlflow
-        volumeMounts:
-        - name: shared-data
-          mountPath: /var/run/mysqld/
-        ports:
-        - containerPort: 8888
-          hostPort: 8888
-          name: sqlflow
-        imagePullPolicy: Always
-        command: ["bash"]
-        args: ["start.sh", "sqlflow"]
-      - image: sqlflow/sqlflow:latest
         name: mysql
         imagePullPolicy: Always
         command: ["bash"]
@@ -37,4 +25,21 @@ spec:
         volumeMounts:
         - name: shared-data
           mountPath: /var/run/mysqld/
+      - image: sqlflow/sqlflow:latest
+        name: sqlflow-server
+        volumeMounts:
+        - name: shared-data
+          mountPath: /var/run/mysqld/
+        imagePullPolicy: Always
+        command: ["bash"]
+        args: ["start.sh", "sqlflow-server"]
+      - image: sqlflow/sqlflow:latest
+        name: notebook
+        imagePullPolicy: Always
+        command: ["bash"]
+        args: ["start.sh", "sqlflow-notebook"]
+        ports:
+        - containerPort: 8888
+          hostPort: 8888
+          name: sqlflow
 
