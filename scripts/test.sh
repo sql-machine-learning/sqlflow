@@ -26,6 +26,9 @@ python -c "import sqlflow_submitter.db"
 go generate ./...
 go get -v -t ./...
 go install ./...
-SQLFLOW_log_level=debug go test -v ./...  -covermode=count -coverprofile=coverage.out
+
+# -p 1 is necessary since tests in different packages are sharing the same database
+# ref: https://stackoverflow.com/a/23840896
+SQLFLOW_log_level=debug go test -v -p 1 ./...  -covermode=count -coverprofile=coverage.out
 
 python -m unittest discover -v sql/python "*_test.py"
