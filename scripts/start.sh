@@ -32,8 +32,6 @@ function setup_mysql() {
     for f in /docker-entrypoint-initdb.d/*; do
         cat $f | mysql -uroot -proot --host ${SQLFLOW_MYSQL_HOST} --port ${SQLFLOW_MYSQL_PORT}
     done
-    # Grant all privileges to any remote hosts so that the sqlserver can be scaled into more than one replicas.
-    mysql -uroot -proot -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'' IDENTIFIED BY 'root' WITH GRANT OPTION;"
 }
 
 function setup_sqlflow_server() {
