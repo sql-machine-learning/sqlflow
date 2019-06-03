@@ -32,14 +32,20 @@ def connect(driver, database, user, password, host, port):
                        database=database,
                        host=host,
                        port=int(port))
+    elif driver == "maxcompute":
+        from sqlflow_submitter.maxcompute import MaxCompute
+        return MaxCompute.connect(database, user, password, host)
 
     raise ValueError("unrecognized database driver: %s" % driver)
 
 
 def execute(driver, conn, statement):
+    if driver == "maxcompute":
+        from sqlflow_submitter.maxcompute import MaxCompute
+        return MaxCompute.execute(conn, statement)
+
     cursor = conn.cursor()
     cursor.execute(statement)
-
     if driver == "hive":
         field_names = None if cursor.description is None \
             else [i[0][i[0].find('.') + 1:] for i in cursor.description]
@@ -115,7 +121,10 @@ def db_generator_predict(driver, conn, statement,
     return reader
 
 def insert_values(driver, conn, table_name, table_schema, values):
-    if driver == "mysql":
+    if driver == "maxcompute":
+        from sqlflow_submitter.maxcompute import MaxCompute
+        return MaxCompute.insert_values(conn, table_name, values)
+    elif driver == "mysql":
         statement = '''insert into {} ({}) values({})'''.format(
             table_name,
             ", ".join(table_schema),

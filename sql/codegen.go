@@ -119,7 +119,9 @@ func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
 	r.Y = *cf
 
 	if !pr.train {
-		r.TableName = strings.Join(strings.Split(pr.into, ".")[:2], ".")
+		if r.TableName, _, e = parseTableColumn(pr.into); e != nil {
+			return nil, e
+		}
 	}
 
 	return fillDatabaseInfo(r, db)
@@ -153,7 +155,8 @@ func fillDatabaseInfo(r *filler, db *DB) (*filler, error) {
 		if err != nil {
 			return nil, err
 		}
-		r.Host, r.Database = cfg.Endpoint, cfg.Project
+		// setting r.Port=0 just makes connect() happy
+		r.Host, r.Port, r.Database = cfg.Endpoint, "0", cfg.Project
 		r.User, r.Password = cfg.AccessID, cfg.AccessKey
 	default:
 		return nil, fmt.Errorf("sqlfow currently doesn't support DB %v", db.driverName)

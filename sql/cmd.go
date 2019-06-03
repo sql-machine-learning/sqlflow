@@ -38,7 +38,7 @@ func hasDatabaseConnector(driverName string) bool {
 	} else if driverName == "sqlite3" {
 		return tryRun("python", "-c", "from sqlite3 import connect")
 	} else if driverName == "maxcompute" {
-		return true
+		return tryRun("python", "-c", "from odps import ODPS")
 	}
 	return false
 }
