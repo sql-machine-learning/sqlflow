@@ -16,7 +16,25 @@ from unittest import TestCase
 import os
 
 import tensorflow as tf
-from sqlflow_submitter.db import connect, execute, insert_values, db_generator, db_generator_predict
+from sqlflow_submitter.db import connect, insert_values, db_generator, db_generator_predict
+
+
+def execute(driver, conn, statement):
+    cursor = conn.cursor()
+    cursor.execute(statement)
+    if driver == "hive":
+        field_names = None if cursor.description is None \
+            else [i[0][i[0].find('.') + 1:] for i in cursor.description]
+    else:
+        field_names = None if cursor.description is None \
+            else [i[0] for i in cursor.description]
+
+    try:
+        rows = cursor.fetchall()
+        field_columns = list(map(list, zip(*rows))) if len(rows) > 0 else None
+    except:
+        field_columns = None
+    return field_names, field_columns
 
 
 class TestDB(TestCase):
@@ -94,14 +112,13 @@ class TestGenerator(TestCase):
 
             column_name_to_type = {"features": tf.float32}
             gen = db_generator(driver, conn, "SELECT * FROM test_table_float_fea",
-                            ["features"], "label",
-                            column_name_to_type)
+                               ["features"], "label", column_name_to_type)
             idx = 0
             for d in gen():
                 if idx == 0:
-                    self.assertEqual(d, ({"features":1.0}, [0]))
+                    self.assertEqual(d, ({"features": 1.0}, [0]))
                 elif idx == 1:
-                    self.assertEqual(d, ({"features":2.0}, [1]))
+                    self.assertEqual(d, ({"features": 2.0}, [1]))
                 idx += 1
             self.assertEqual(idx, 2)
 
@@ -110,8 +127,8 @@ class TestGenerator(TestCase):
             idx = 0
             for d in gen_pred():
                 if idx == 0:
-                    self.assertEqual(d, {"features":1.0})
+                    self.assertEqual(d, {"features": 1.0})
                 elif idx == 1:
-                    self.assertEqual(d, {"features":2.0})
+                    self.assertEqual(d, {"features": 2.0})
                 idx += 1
             self.assertEqual(idx, 2)
