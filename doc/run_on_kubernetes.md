@@ -19,19 +19,19 @@ Docker image](/doc/build.md).
 
 ## Deploy the SQLFlow Components
 
-1. Deploy SQLFlow Pod on Kubernetes
+1. Deploy the SQLFlow Pod on Kubernetes
     ``` bash
     > kubectl create -f k8s/sqlflow-mysql.yaml
     ```
     The above command starts a Pod with three containers, they running the `sqlflow/sqlflow:latest` Docker image,
-    but one container runs the MySQL server instance and other two run the SQLFlow gRPC server and the
-    Jupyter Notebook server. You can also use your custom Docker image by editing the `image` file of the yaml
-    file `k8s/sqlflow-mysql.yaml`:
+    one container runs the MySQL server instance and the other two run the SQLFlow gRPC server and the
+    Jupyter Notebook server. You can also use your custom Docker image by editing the `image` fields of the yaml
+    file [k8s/sqlflow-mysql.yaml](/doc/k8s/sqlflow-mysql.yaml):
     ``` yaml
     spec:
         ...
         containers:
-        - image: user-name/sqlflow:latest
+        - image: <your repo name>/sqlflow:latest
     ```
 
 1. Testing your SQLFlow setup
