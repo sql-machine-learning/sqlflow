@@ -1,0 +1,40 @@
+apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
+kind: Deployment
+metadata:
+  name: sqlflow-mysql
+spec:
+  selector:
+    matchLabels:
+      app: sqlflow
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: sqlflow
+    spec:
+      volumes:
+      - name: shared-data
+        emptyDir: {}
+      containers:
+      - image: sqlflow/sqlflow:latest
+        name: sqlflow
+        volumeMounts:
+        - name: shared-data
+          mountPath: /var/run/mysqld/
+        ports:
+        - containerPort: 8888
+          hostPort: 8888
+          name: sqlflow
+        imagePullPolicy: Always
+        command: ["bash"]
+        args: ["start.sh", "sqlflow"]
+      - image: sqlflow/sqlflow:latest
+        name: mysql
+        imagePullPolicy: Always
+        command: ["bash"]
+        args: ["start.sh", "mysql"]
+        volumeMounts:
+        - name: shared-data
+          mountPath: /var/run/mysqld/
+
