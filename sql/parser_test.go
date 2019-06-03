@@ -84,12 +84,12 @@ func TestTrainParser(t *testing.T) {
 	a.Equal("[10, 20]", r.attrs["hidden_units"].String())
 	a.Equal("3", r.attrs["n_classes"].String())
 	a.Equal(`employee.name`,
-		r.ccs[0].columns[0].String())
+		r.cc[""][0].String())
 	a.Equal(`bucketize(last_name, 1000)`,
-		r.ccs[0].columns[1].String())
+		r.cc[""][1].String())
 	a.Equal(
 		`cross(embedding(emplyoee.name), bucketize(last_name, 1000))`,
-		r.ccs[0].columns[2].String())
+		r.cc[""][2].String())
 	a.Equal("employee.salary", r.label)
 	a.Equal("sqlflow_models.my_dnn_model", r.save)
 }
@@ -104,17 +104,15 @@ func TestMultiColumnTrainParser(t *testing.T) {
 	a.Equal("[10, 20]", r.attrs["hidden_units"].String())
 	a.Equal("3", r.attrs["n_classes"].String())
 	a.Equal(`employee.name`,
-		r.ccs[0].columns[0].String())
+		r.cc[""][0].String())
 	a.Equal(`bucketize(last_name, 1000)`,
-		r.ccs[0].columns[1].String())
+		r.cc[""][1].String())
 	a.Equal(
 		`cross(embedding(emplyoee.name), bucketize(last_name, 1000))`,
-		r.ccs[0].columns[2].String())
-	a.Equal(`C2`,
-		r.ccs[1].name)
+		r.cc[""][2].String())
 	a.Equal(
 		`cross(embedding(emplyoee.name), bucketize(last_name, 1000))`,
-		r.ccs[1].columns[0].String())
+		r.cc["C2"][0].String())
 	a.Equal("employee.salary", r.label)
 	a.Equal("sqlflow_models.my_dnn_model", r.save)
 }

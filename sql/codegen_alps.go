@@ -429,7 +429,8 @@ func newALPSTrainFiller(pr *extendedSelect) (*alpsFiller, error) {
 	}
 	modelDir := fmt.Sprintf("%s/model/", scratchDir)
 
-	fcList, fsMap, err := resolveTrainColumns(&pr.ccs[0].columns)
+	cols := pr.cc[""]
+	fcList, fsMap, err := resolveTrainColumns(&cols)
 	if err != nil {
 		return nil, err
 	}
