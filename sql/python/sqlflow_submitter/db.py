@@ -67,12 +67,22 @@ def db_generator(driver, conn, statement,
                 yield (features, [label])
             rows = cursor.fetchmany(fetch_size)
         cursor.close()
+
+    if driver == "maxcompute":
+        from sqlflow_submitter.maxcompute import MaxCompute
+        return MaxCompute.db_generator(conn, statement, feature_column_names,
+                label_column_name, column_name_to_type, fetch_size)
     return reader
 
 def db_generator_predict(driver, conn, statement,
                          feature_column_names,
                          column_name_to_type, fetch_size=128):
     def reader():
+        if driver == "maxcompute":
+            from sqlflow_submitter.maxcompute import MaxCompute
+            return MaxCompute.db_generator_predict(conn, statement, feature_column_names, 
+                    column_name_to_type, fetch_size)
+
         cursor = conn.cursor()
         cursor.execute(statement)
         if driver == "hive":
@@ -95,12 +105,17 @@ def db_generator_predict(driver, conn, statement,
                 yield features
             rows = cursor.fetchmany(fetch_size)
         cursor.close()
+
+    if driver == "maxcompute":
+        from sqlflow_submitter.maxcompute import MaxCompute
+        return MaxCompute.db_generator_predict(conn, statement, 
+                feature_column_names, column_name_to_type, fetch_size)
     return reader
 
 def insert_values(driver, conn, table_name, table_schema, values):
     if driver == "maxcompute":
         from sqlflow_submitter.maxcompute import MaxCompute
-        return MaxCompute.insert_values(conn, table_name, values)
+        return MaxCompute.insert_values(conn, table_name, table_schema, values)
     elif driver == "mysql":
         statement = '''insert into {} ({}) values({})'''.format(
             table_name,
@@ -121,7 +136,7 @@ def insert_values(driver, conn, table_name, table_schema, values):
         )
     else:
         raise ValueError("unrecognized database driver: %s" % driver)
-
+    
     cursor = conn.cursor()
     cursor.executemany(statement, values)
     conn.commit()
