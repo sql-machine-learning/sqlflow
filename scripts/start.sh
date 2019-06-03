@@ -32,26 +32,27 @@ function setup_mysql() {
     for f in /docker-entrypoint-initdb.d/*; do
         cat $f | mysql -uroot -proot --host ${SQLFLOW_MYSQL_HOST} --port ${SQLFLOW_MYSQL_PORT}
     done
-    # Grant all privileges to any remote hosts so that the sqlserver can be scaled into more than one replicas.
-    mysql -uroot -proot -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'' IDENTIFIED BY 'root' WITH GRANT OPTION;"
 }
 
-function setup_sqlflow() {
+function setup_sqlflow_server() {
   sleep_until_mysql_is_ready
 
   DS="mysql://root:root@tcp(${SQLFLOW_MYSQL_HOST}:${SQLFLOW_MYSQL_PORT})/?maxAllowedPacket=0"
   echo "Connect to the datasource ${DS}"
   # Start sqlflowserver
-  sqlflowserver --datasource=${DS} &
-  # Start jupyter notebook
+  sqlflowserver --datasource=${DS}
+}
+
+function setup_sqlflow_notebook() {
   SQLFLOW_SERVER=localhost:50051 jupyter notebook --ip=0.0.0.0 --port=8888 --allow-root --NotebookApp.token=''
 }
 
 function print_usage() {
   echo "Usage: /bin/bash start.sh [OPTION]\n"
   echo "\tmysql: setup the mysql server with the example dataset initialized."
-  echo "\tsqlflow: setup the sqlflow server and the jupyter notebook which port is 8888"
-  echo "\tall(default): setup mysql server and sqlflow server in one container."
+  echo "\tsqlflow_server: setup the sqlflow gRPC server."
+  echo "\tsqlflow}_notebook: setup the Jupyter Notebook server with SQLFlow installd."
+  echo "\tall(default): setup a MySQL server instance, a sqlflow gRPC server and a Jupyter Notebook server sequentially."
 }
 
 function main() {
@@ -61,13 +62,17 @@ function main() {
       setup_mysql
       sleep infinity
       ;;
-    sqlflow)
-      setup_sqlflow
+    sqlflow-server)
+      setup_sqlflow_server
+      ;;
+    sqlflow-notebook)
+      setup_sqlflow_notebook
       ;;
     all)
       echo "setup all-in-one"
       setup_mysql
-      setup_sqlflow 
+      setup_sqlflow_server
+      setup_sqlflow_notebook
       ;;
     *)
       print_usage
