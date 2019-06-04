@@ -405,7 +405,7 @@ func CaseTrainTextClassificationCustomLSTM(t *testing.T) {
 	trainSQL := `SELECT *
 FROM text_cn.train_processed
 TRAIN sqlflow_models.StackedBiLSTMClassifier
-WITH n_classes = 17, stack_units = [16]
+WITH n_classes = 17, stack_units = [16], EPOCHS = 1, BATCHSIZE = 32
 COLUMN news_title
 LABEL class_id
 INTO sqlflow_models.my_bilstm_model;`

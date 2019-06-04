@@ -73,8 +73,8 @@ def db_generator(driver, conn, statement,
 
         rows = cursor.fetchmany(fetch_size)
         while len(rows) > 0:
-            # NOTE: keep the connection while training
-            if not conn.is_connected():
+            # NOTE: keep the connection while training or connection will lost if no activities appear.
+            if driver == "mysql" and not conn.is_connected():
                 conn.ping(True)
             for row in rows:
                 label = row[label_idx]
@@ -105,6 +105,9 @@ def db_generator_predict(driver, conn, statement,
 
         rows = cursor.fetchmany(fetch_size)
         while len(rows) > 0:
+            # NOTE: keep the connection while training or connection will lost if no activities appear.
+            if driver == "mysql" and not conn.is_connected():
+                conn.ping(True)
             for row in rows:
                 features = dict()
                 for name in feature_column_names:
