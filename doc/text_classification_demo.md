@@ -17,25 +17,22 @@ segmented by spaces. You can download the full dataset from:
 
 # Steps to Process and Train With IMDB Dataset
 
-1. Download full IMDB dataset from the above link and unzip the content.
-1. Use [this](https://gist.github.com/typhoonzero/45c8097648152adfc4f6aef772a05e0a)
-   script to load data into MySQL database and do preprocess like segmentation,
-   map to word id, and padding. You can also modify the script's MySQL connection
-   address to your own MySQL installation.
+1. Use [this](https://gist.github.com/typhoonzero/8ba94e204a1a0fb7a3348e7f5cc4c204) script
+   to download, preprocess and insert data into MySQL database.
 1. Then use the following statements to train and predict using SQLFlow:
     ```sql
     SELECT *
-    FROM imdb.train_processed
+    FROM imdb.train
     TRAIN DNNClassifier
     WITH
     n_classes = 2,
-    hidden_units = [512, 128]
+    hidden_units = [128, 64]
     COLUMN content
     LABEL class
     INTO sqlflow_models.my_text_model_en;
 
     SELECT *
-    FROM imdb.test_processed
+    FROM imdb.test
     PREDICT imdb.predict.class
     USING sqlflow_models.my_text_model_en;
     ```
