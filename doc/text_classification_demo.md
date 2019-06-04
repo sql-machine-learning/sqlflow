@@ -5,20 +5,70 @@ Note that the steps in this tutorial may be changed during the development
 of SQLFlow, we only provide a way that simply works for the current version.
 
 To support custom models like CNN text classification, you may check out the
-current [design](https://github.com/sql-machine-learning/models/pull/5/files)
+current [design](https://github.com/sql-machine-learning/models/blob/develop/doc/customized%2Bmodel.md)
 for ongoing development.
 
-In this tutorial we use a
-[chinese-text-classification-dataset](https://github.com/fate233/toutiao-text-classfication-dataset),
-which is more complicated since we need to consider sentence segments. To adapt
-this tutorial to some English data set could be simple.
+In this tutorial we use two datasets both for english and chinese text classification.
+The case using chinese dataset is more complicated since Chinese sentences can not be
+segmented by spaces. You can download the full dataset from:
 
-**NOTE**: to achieve better accuracy
+1. [IMDB-Movie-Reviews-Dataset](https://www.kaggle.com/iarunava/imdb-movie-reviews-dataset)
+1. [chinese-text-classification-dataset](https://github.com/fate233/toutiao-text-classfication-dataset)
 
-# Steps to Run
+# Steps to Process and Train With IMDB Dataset
 
-1. Download the dataset from https://github.com/fate233/toutiao-text-classfication-dataset and unpack
-   `toutiao_cat_data.txt.zip`.
+1. Use [this](https://gist.github.com/typhoonzero/8ba94e204a1a0fb7a3348e7f5cc4c204) script
+   to download, preprocess and insert data into MySQL database.
+1. Then use the following statements to train and predict using SQLFlow:
+    ```sql
+    SELECT *
+    FROM imdb.train
+    TRAIN DNNClassifier
+    WITH
+    n_classes = 2,
+    hidden_units = [128, 64]
+    COLUMN content
+    LABEL class
+    INTO sqlflow_models.my_text_model_en;
+
+    SELECT *
+    FROM imdb.test
+    PREDICT imdb.predict.class
+    USING sqlflow_models.my_text_model_en;
+    ```
+1. Then you can get predict result from table `imdb.predict`.
+
+## Train and Predict Using Custom Keras Model
+
+If you want to train you own custom model written by [keras](https://keras.io/)
+you may need to follow the below steps:
+
+1. Checkout our "models" repo: `git clone https://github.com/sql-machine-learning/models.git`
+1. Put your custom model under `sqlflow_models/` directory and add importing lines
+   in `sqlflow_models/__init__.py`, we only support custom model using keras
+   [subclass model](https://keras.io/models/about-keras-models/#model-subclassing).
+1. Install models repo on your server you wish to run the training: `python setup.py install`.
+1. Modify above SQL statement to use custom model by simply change the model name to
+   `sqlflow_models.YourAwesomeModel` like:
+
+   ```sql
+    SELECT *
+    FROM imdb.train
+    TRAIN sqlflow_models.StackedBiLSTMClassifier
+    WITH
+    n_classes = 2,
+    stack_units = [64,32],
+    hidden_size = 64,
+    EPOCHS = 10,
+    BATCHSIZE = 64
+    COLUMN content
+    LABEL class
+    INTO sqlflow_models.my_custom_model;
+    ```
+
+# Steps to Run Chinese Text Classification Dataset
+
+1. Download the dataset from the above link and unpack `toutiao_cat_data.txt.zip`.
 1. Copy `toutiao_cat_data.txt` to `/var/lib/mysql-files/` on the server your MySQL located on, this is
    because MySQL may prevent importing data from an untrusted location.
 1. Login to MySQL command line like `mysql -uroot -p` and create a database and table to load the
@@ -92,4 +142,4 @@ this tutorial to some English data set could be simple.
     PREDICT toutiao.predict.class_id
     USING sqlflow_models.my_text_model;
     ```
-1. Then you can get validation result from table `toutiao.predict`:
+1. Then you can get predict result from table `toutiao.predict`:

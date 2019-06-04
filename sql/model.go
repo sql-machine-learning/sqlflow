@@ -54,7 +54,13 @@ func (m *model) save(db *DB, table string) (e error) {
 
 	cmd := exec.Command("tar", "czf", "-", "-C", m.workDir, ".")
 	cmd.Stdout = sqlf
-	return cmd.Run()
+	var errBuf bytes.Buffer
+	cmd.Stderr = &errBuf
+
+	if e := cmd.Run(); e != nil {
+		return fmt.Errorf("tar stderr: %v\ntar cmd %v", errBuf.String(), e)
+	}
+	return nil
 }
 
 func (m *model) saveFile(modelDir, saveFn string) (e error) {
@@ -117,7 +123,7 @@ func load(db *DB, table, cwd string) (m *model, e error) {
 
 	var buf bytes.Buffer
 	if _, e := buf.ReadFrom(sqlf); e != nil {
-		return nil, e
+		return nil, fmt.Errorf("buf.ReadFrom %v", e)
 	}
 	m = &model{}
 	if e := gob.NewDecoder(&buf).Decode(m); e != nil {
@@ -126,5 +132,9 @@ func load(db *DB, table, cwd string) (m *model, e error) {
 	fmt.Printf("load model on cwd: %s\n", cwd)
 	cmd := exec.Command("tar", "xzf", "-", "-C", cwd)
 	cmd.Stdin = &buf
-	return m, cmd.Run()
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("tar %v", string(output))
+	}
+	return m, nil
 }

@@ -16,7 +16,7 @@ from unittest import TestCase
 import os
 
 import tensorflow as tf
-from sqlflow_submitter.db import connect, execute, insert_values, db_generator, db_generator_predict
+from sqlflow_submitter.db import connect, execute, insert_values, db_generator
 
 
 class TestDB(TestCase):
@@ -94,24 +94,12 @@ class TestGenerator(TestCase):
 
             column_name_to_type = {"features": tf.float32}
             gen = db_generator(driver, conn, "SELECT * FROM test_table_float_fea",
-                            ["features"], "label",
-                            column_name_to_type)
+                               ["features"], "label", column_name_to_type)
             idx = 0
             for d in gen():
                 if idx == 0:
-                    self.assertEqual(d, ({"features":1.0}, [0]))
+                    self.assertEqual(d, ({"features": 1.0}, [0]))
                 elif idx == 1:
-                    self.assertEqual(d, ({"features":2.0}, [1]))
-                idx += 1
-            self.assertEqual(idx, 2)
-
-            gen_pred = db_generator_predict(driver, conn, "SELECT * FROM test_table_float_fea",
-                                            ["features"], column_name_to_type)
-            idx = 0
-            for d in gen_pred():
-                if idx == 0:
-                    self.assertEqual(d, {"features":1.0})
-                elif idx == 1:
-                    self.assertEqual(d, {"features":2.0})
+                    self.assertEqual(d, ({"features": 2.0}, [1]))
                 idx += 1
             self.assertEqual(idx, 2)

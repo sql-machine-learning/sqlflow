@@ -277,6 +277,13 @@ func (cw *logChanWriter) Write(p []byte) (n int, err error) {
 	return n, nil
 }
 
+func (cw *logChanWriter) Close() {
+	if len(cw.prev) > 0 {
+		cw.wr.Write(cw.prev)
+		cw.prev = ""
+	}
+}
+
 func train(tr *extendedSelect, slct string, db *DB, cwd string, wr *PipeWriter, modelDir string) error {
 	fts, e := verify(tr, db)
 	if e != nil {
@@ -285,10 +292,11 @@ func train(tr *extendedSelect, slct string, db *DB, cwd string, wr *PipeWriter, 
 
 	var program bytes.Buffer
 	if e := genTF(&program, tr, fts, db); e != nil {
-		return e
+		return fmt.Errorf("genTF %v", e)
 	}
 
 	cw := &logChanWriter{wr: wr}
+	defer cw.Close()
 	cmd := tensorflowCmd(cwd, db.driverName)
 	cmd.Stdin = &program
 	cmd.Stdout = cw
@@ -313,34 +321,37 @@ func pred(pr *extendedSelect, db *DB, cwd string, wr *PipeWriter, modelDir strin
 		m, e = load(db, pr.model, cwd)
 	}
 	if e != nil {
-		fmt.Printf("%v", e)
-		return e
+		return fmt.Errorf("load %v", e)
 	}
 
 	// Parse the training SELECT statement used to train
 	// the model for the prediction.
 	tr, e := newParser().Parse(m.TrainSelect)
 	if e != nil {
-		return e
+		return fmt.Errorf("parse: TrainSelect %v raise %v", m.TrainSelect, e)
 	}
 
 	if e := verifyColumnNameAndType(tr, pr, db); e != nil {
-		return e
+		return fmt.Errorf("verifyColumnNameAndType: %v", e)
 	}
 
 	if e := createPredictionTable(tr, pr, db); e != nil {
-		return e
+		return fmt.Errorf("createPredictionTable: %v", e)
 	}
 
 	pr.trainClause = tr.trainClause
 	fts, e := verify(pr, db)
+	if e != nil {
+		return fmt.Errorf("verify: %v", e)
+	}
 
 	var buf bytes.Buffer
 	if e := genTF(&buf, pr, fts, db); e != nil {
-		return e
+		return fmt.Errorf("genTF: %v", e)
 	}
 
 	cw := &logChanWriter{wr: wr}
+	defer cw.Close()
 	cmd := tensorflowCmd(cwd, db.driverName)
 	cmd.Stdin = &buf
 	cmd.Stdout = cw

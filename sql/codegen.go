@@ -74,6 +74,7 @@ func translateColumnToFeature(fts *fieldTypes, driverName, ident string) (*colum
 		// additional information like how to parse.
 		// TODO(typhoonzero): need to support categorical_column_with_vocabulary_list
 		// which read vocabulary from DB.
+		// return &columnType{ident, "categorical_column_with_identity"}, nil
 		return &columnType{ident, "categorical_column_with_identity"}, nil
 	}
 	return nil, fmt.Errorf("unsupported type %s of field %s", ctype, ident)
@@ -196,7 +197,7 @@ try:
 except:
 	pass
 
-from sqlflow_submitter.db import connect, execute, insert_values, db_generator, db_generator_predict
+from sqlflow_submitter.db import connect, insert_values, execute, db_generator
 
 # Disable Tensorflow INFO and WARNING
 import logging
@@ -230,16 +231,30 @@ database=None
 
 conn = connect(driver, database, user="{{.User}}", password="{{.Password}}", host="{{.Host}}", port={{.Port}})
 
+{{$selfdefined := .SelfDefined}}
+
 feature_columns = []
 column_name_to_type = dict()
 {{range .X}}
 column_name_to_type["{{.Name}}"] = "{{.Type}}"
 {{if eq .Type "categorical_column_with_identity"}}
+
+{{/* QUICK HACK: selfdefined models using keras always use sequence_categorical_column_with_identity */}}
+{{/* QUICK HACK: must refine this later */}}
+{{if $selfdefined}}
+feature_columns.append(tf.feature_column.embedding_column(
+	tf.feature_column.sequence_categorical_column_with_identity(
+	key="{{.Name}}",
+	num_buckets=NUM_BUCKETS),
+dimension=EMBEDDING_WIDTH))
+{{else}}
 feature_columns.append(tf.feature_column.embedding_column(
 	tf.feature_column.categorical_column_with_identity(
 	key="{{.Name}}",
 	num_buckets=NUM_BUCKETS),
 dimension=EMBEDDING_WIDTH))
+{{end}}
+
 {{else}}
 feature_columns.append(tf.feature_column.{{.Type}}(key="{{.Name}}"))
 {{end}}
@@ -309,37 +324,36 @@ print("Training set accuracy: {accuracy:0.5f}".format(**eval_result))
 print("Done training")
 {{- else}}
 
-def pred_input_fn(batch_size):
-	feature_types = dict()
-	feature_shapes = dict()
-	for name in feature_column_names:
-		if column_name_to_type[name] == "categorical_column_with_identity":
-			feature_types[name] = tf.int64
-			feature_shapes[name] = tf.TensorShape([None])
-		else:
-			feature_types[name] = tf.float32
-			feature_shapes[name] = tf.TensorShape([])
+def eval_input_fn(features, batch_size):
+	dataset = tf.data.Dataset.from_tensor_slices(dict(features))
+	return dataset.batch(batch_size)
 
-	gen = db_generator_predict(driver, conn, """{{.StandardSelect}}""",
-		feature_column_names, column_name_to_type)
-	dataset = tf.data.Dataset.from_generator(gen, feature_types, feature_shapes)
-	dataset = dataset.batch(batch_size)
-	return dataset
-
+field_names, columns = execute(driver, conn, """{{.StandardSelect}}""")
 X = {}
+for name in feature_column_names:
+	if column_name_to_type[name] == "categorical_column_with_identity":
+		rows = columns[field_names.index(name)]
+		# convert to int tensors
+		tensor_rows = []
+		for row in rows:
+			tensor_rows.append(np.array([int(v) for v in row.split(",")]))
+		X[name] = np.array(tensor_rows)
+	else:
+		X = {name: columns[field_names.index(name)] for name in feature_column_names}
+
 {{if .SelfDefined}}
-pred_dataset = pred_input_fn(BATCHSIZE)
+pred_dataset = eval_input_fn(X, BATCHSIZE)
 one_batch = pred_dataset.__iter__().next()
 # NOTE: must run predict one batch to initialize parameters
 # see: https://www.tensorflow.org/alpha/guide/keras/saving_and_serializing#saving_subclassed_models
 classifier.predict_on_batch(one_batch)
 classifier.load_weights("{{.Save}}")
 del pred_dataset
-pred_dataset = pred_input_fn(BATCHSIZE)
+pred_dataset = eval_input_fn(X, BATCHSIZE)
 predictions = classifier.predict(pred_dataset)
 X["{{.Y.Name}}"] = [classifier.prepare_prediction_column(p) for p in predictions]
 {{else}}
-predictions = classifier.predict(input_fn=lambda:pred_input_fn(BATCHSIZE))
+predictions = classifier.predict(input_fn=lambda:eval_input_fn(X, BATCHSIZE))
 X["{{.Y.Name}}"] = [p['class_ids'][0] for p in predictions]
 {{end}}
 

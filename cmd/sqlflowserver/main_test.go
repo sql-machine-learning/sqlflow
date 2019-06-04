@@ -168,6 +168,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("TestSelect", CaseSelect)
 	t.Run("TestTrainSQL", CaseTrainSQL)
 	t.Run("TestTextClassification", CaseTrainTextClassification)
+	t.Run("CaseTrainTextClassificationCustomLSTM", CaseTrainTextClassificationCustomLSTM)
 	t.Run("CaseTrainCustomModel", CaseTrainCustomModel)
 	t.Run("CaseTrainSQLWithHyperParams", CaseTrainSQLWithHyperParams)
 	t.Run("CaseTrainCustomModelWithHyperParams", CaseTrainCustomModelWithHyperParams)
@@ -325,6 +326,12 @@ FROM iris.predict LIMIT 5;`
 		// class >=0, need to change to more flexible checks than
 		// checking expectedPredClasses := []int64{2, 1, 0, 2, 0}
 		AssertGreaterEqualAny(a, row[4], int64(0))
+
+		// avoiding nil features in predict result
+		nilCount := 0
+		for ; nilCount < 4 && row[nilCount] == nil; nilCount++ {
+		}
+		a.False(nilCount == 4)
 	}
 }
 
@@ -401,6 +408,34 @@ INTO sqlflow_models.my_dnn_model;`
 	cli := pb.NewSQLFlowClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	defer cancel()
+
+	stream, err := cli.Run(ctx, &pb.Request{Sql: trainSQL})
+	if err != nil {
+		a.Fail("Check if the server started successfully. %v", err)
+	}
+	// call ParseRow only to wait train finish
+	ParseRow(stream)
+}
+
+// CaseTrainTextClassificationCustomLSTM is a simple End-to-End testing for case training
+// text classification models.
+func CaseTrainTextClassificationCustomLSTM(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := `SELECT *
+FROM text_cn.train_processed
+TRAIN sqlflow_models.StackedBiLSTMClassifier
+WITH n_classes = 17, stack_units = [16], EPOCHS = 1, BATCHSIZE = 32
+COLUMN news_title
+LABEL class_id
+INTO sqlflow_models.my_bilstm_model;`
+
+	conn, err := grpc.Dial("localhost"+port, grpc.WithInsecure())
+	a.NoError(err)
+	defer conn.Close()
+	cli := pb.NewSQLFlowClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Second)
 	defer cancel()
 
 	stream, err := cli.Run(ctx, &pb.Request{Sql: trainSQL})
