@@ -311,6 +311,12 @@ FROM iris.predict LIMIT 5;`
 		// class >=0, need to change to more flexible checks than
 		// checking expectedPredClasses := []int64{2, 1, 0, 2, 0}
 		AssertGreaterEqualAny(a, row[4], int64(0))
+
+		// avoiding nil features in predict result
+		nilCount := 0
+		for ; nilCount < 4 && row[nilCount] == nil; nilCount++ {
+		}
+		a.False(nilCount == 4)
 	}
 }
 
