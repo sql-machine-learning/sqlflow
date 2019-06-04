@@ -405,7 +405,7 @@ func CaseTrainTextClassificationCustomLSTM(t *testing.T) {
 	trainSQL := `SELECT *
 FROM text_cn.train_processed
 TRAIN sqlflow_models.StackedBiLSTMClassifier
-WITH n_classes = 17, units = 64
+WITH n_classes = 17, stack_units = [16]
 COLUMN news_title
 LABEL class_id
 INTO sqlflow_models.my_bilstm_model;`
@@ -415,7 +415,7 @@ INTO sqlflow_models.my_bilstm_model;`
 	defer conn.Close()
 	cli := pb.NewSQLFlowClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Second)
 	defer cancel()
 
 	stream, err := cli.Run(ctx, &pb.Request{Sql: trainSQL})

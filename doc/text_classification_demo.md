@@ -36,7 +36,35 @@ segmented by spaces. You can download the full dataset from:
     PREDICT imdb.predict.class
     USING sqlflow_models.my_text_model_en;
     ```
-1. Then you can get predict result from table `imdb.predict`:
+1. Then you can get predict result from table `imdb.predict`.
+
+## Train and Predict Using Custom Keras Model
+
+If you want to train you own custom model written by [keras](https://keras.io/)
+you may need to follow the below steps:
+
+1. Checkout our "models" repo: `git clone https://github.com/sql-machine-learning/models.git`
+1. Put your custom model under `sqlflow_models/` directory and add importing lines
+   in `sqlflow_models/__init__.py`, we only support custom model using keras
+   [subclass model](https://keras.io/models/about-keras-models/#model-subclassing).
+1. Install models repo on your server you wish to run the training: `python setup.py install`.
+1. Modify above SQL statement to use custom model by simply change the model name to
+   `sqlflow_models.YourAwesomeModel` like:
+
+   ```sql
+    SELECT *
+    FROM imdb.train
+    TRAIN sqlflow_models.StackedBiLSTMClassifier
+    WITH
+    n_classes = 2,
+    stack_units = [64,32],
+    hidden_size = 64,
+    EPOCHS = 10,
+    BATCHSIZE = 64
+    COLUMN content
+    LABEL class
+    INTO sqlflow_models.my_custom_model;
+    ```
 
 # Steps to Run Chinese Text Classification Dataset
 
