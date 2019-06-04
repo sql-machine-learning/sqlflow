@@ -102,7 +102,6 @@ func ParseRow(stream pb.SQLFlow_RunClient) ([]string, [][]*any.Any) {
 		if err == io.EOF {
 			break
 		}
-		log.Println(iter.GetHead(), iter.GetRow(), iter.GetMessage())
 		if err != nil {
 			log.Fatalf("stream read err: %v", err)
 		}
@@ -129,18 +128,16 @@ func prepareTestData(dbStr string) error {
 		return err
 	}
 
-	if os.Getenv("SQLFLOW_TEST_DB") == "mysql" {
-		err = testdata.Popularize(testDB.DB, testdata.IrisSQL)
-		if err != nil {
+	switch os.Getenv("SQLFLOW_TEST_DB") {
+	case "mysql":
+		if err := testdata.Popularize(testDB.DB, testdata.IrisSQL); err != nil {
 			return err
 		}
-		err = testdata.Popularize(testDB.DB, testdata.ChurnSQL)
-		if err != nil {
+		if err := testdata.Popularize(testDB.DB, testdata.ChurnSQL); err != nil {
 			return err
 		}
 		return testdata.Popularize(testDB.DB, testdata.TextCNSQL)
-	}
-	if os.Getenv("SQLFLOW_TEST_DB") == "hive" {
+	case "hive":
 		if err := testdata.Popularize(testDB.DB, testdata.IrisHiveSQL); err != nil {
 			return err
 		}
