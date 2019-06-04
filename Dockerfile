@@ -18,6 +18,7 @@ RUN curl -sL https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.
     tensorflow==2.0.0-alpha0 \
     mysql-connector-python \
     impyla \
+    pyodps \
     jupyter \
     sqlflow \
     pre-commit \

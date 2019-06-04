@@ -39,7 +39,6 @@ def connect(driver, database, user, password, host, port):
 
     raise ValueError("unrecognized database driver: %s" % driver)
 
-
 def execute(driver, conn, statement):
     if driver == "maxcompute":
         from sqlflow_submitter.maxcompute import MaxCompute
@@ -61,7 +60,6 @@ def execute(driver, conn, statement):
         field_columns = None
 
     return field_names, field_columns
-
 
 def db_generator(driver, conn, statement,
                  feature_column_names, label_column_name,
@@ -94,37 +92,11 @@ def db_generator(driver, conn, statement,
                 yield (features, [label])
             rows = cursor.fetchmany(fetch_size)
         cursor.close()
-    return reader
 
-def db_generator_predict(driver, conn, statement,
-                         feature_column_names,
-                         column_name_to_type, fetch_size=128):
-    def reader():
-        cursor = conn.cursor()
-        cursor.execute(statement)
-        if driver == "hive":
-            field_names = None if cursor.description is None \
-                else [i[0][i[0].find('.') + 1:] for i in cursor.description]
-        else:
-            field_names = None if cursor.description is None \
-                else [i[0] for i in cursor.description]
-
-        rows = cursor.fetchmany(fetch_size)
-        while len(rows) > 0:
-            # NOTE: keep the connection while training or connection will lost if no activities appear.
-            if driver == "mysql" and not conn.is_connected():
-                conn.ping(True)
-            for row in rows:
-                features = dict()
-                for name in feature_column_names:
-                    if column_name_to_type[name] == "categorical_column_with_identity":
-                        cell = np.fromstring(row[field_names.index(name)], dtype=int, sep=",")
-                    else:
-                        cell = row[field_names.index(name)]
-                    features[name] = cell
-                yield features
-            rows = cursor.fetchmany(fetch_size)
-        cursor.close()
+    if driver == "maxcompute":
+        from sqlflow_submitter.maxcompute import MaxCompute
+        return MaxCompute.db_generator(conn, statement, feature_column_names,
+                label_column_name, column_name_to_type, fetch_size)
     return reader
 
 def insert_values(driver, conn, table_name, table_schema, values):
