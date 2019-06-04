@@ -71,7 +71,7 @@ function main() {
     all)
       echo "setup all-in-one"
       setup_mysql
-      setup_sqlflow_server
+      setup_sqlflow_server &
       setup_sqlflow_notebook
       ;;
     *)
