@@ -42,7 +42,7 @@ def execute(driver, conn, statement):
     if driver == "maxcompute":
         from sqlflow_submitter.maxcompute import MaxCompute
         return MaxCompute.execute(conn, statement)
-    
+
     cursor = conn.cursor()
     cursor.execute(statement)
     if driver == "hive":
@@ -51,12 +51,12 @@ def execute(driver, conn, statement):
     else:
         field_names = None if cursor.description is None \
             else [i[0] for i in cursor.description]
-    
+
     try:
         rows = cursor.fetchall()
         field_columns = list(map(list, zip(*rows))) if len(rows) > 0 else None
     except:
-    	field_columns = None
+        field_columns = None
 
     return field_names, field_columns
 
@@ -98,7 +98,7 @@ def db_generator(driver, conn, statement,
 def insert_values(driver, conn, table_name, table_schema, values):
     if driver == "maxcompute":
         from sqlflow_submitter.maxcompute import MaxCompute
-        return MaxCompute.insert_values(conn, table_name, table_schema, values)
+        return MaxCompute.insert_values(conn, table_name, values)
     elif driver == "mysql":
         statement = '''insert into {} ({}) values({})'''.format(
             table_name,

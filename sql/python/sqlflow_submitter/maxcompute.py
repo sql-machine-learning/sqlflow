@@ -64,6 +64,6 @@ class MaxCompute:
         return reader
     
     @staticmethod
-    def insert_values(conn, table, schema, values):
+    def insert_values(conn, table, values):
         compress = tunnel.CompressOption.CompressAlgorithm.ODPS_ZLIB
         conn.write_table(table, values, compress_option=compress)
