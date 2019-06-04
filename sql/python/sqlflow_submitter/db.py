@@ -113,6 +113,8 @@ def db_generator_predict(driver, conn, statement,
     return reader
 
 def insert_values(driver, conn, table_name, table_schema, values):
+    print("insert_table", table_name)
+    print("insert_table", table_schema)
     if driver == "maxcompute":
         from sqlflow_submitter.maxcompute import MaxCompute
         return MaxCompute.insert_values(conn, table_name, table_schema, values)

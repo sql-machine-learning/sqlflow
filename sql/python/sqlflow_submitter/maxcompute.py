@@ -77,7 +77,6 @@ class MaxCompute:
                         features[name] = cell
                     yield features
                 i += expected
-            print("done db_generator_predict")
         return reader
     
     @staticmethod
