@@ -129,7 +129,7 @@ func load(db *DB, table, cwd string) (m *model, e error) {
 	if e := gob.NewDecoder(&buf).Decode(m); e != nil {
 		return nil, fmt.Errorf("gob-decoding train select failed: %v", e)
 	}
-	fmt.Printf("load model on cwd: %s\n", cwd)
+
 	cmd := exec.Command("tar", "xzf", "-", "-C", cwd)
 	cmd.Stdin = &buf
 	output, err := cmd.CombinedOutput()
