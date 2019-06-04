@@ -74,6 +74,7 @@ func translateColumnToFeature(fts *fieldTypes, driverName, ident string) (*colum
 		// additional information like how to parse.
 		// TODO(typhoonzero): need to support categorical_column_with_vocabulary_list
 		// which read vocabulary from DB.
+		// return &columnType{ident, "categorical_column_with_identity"}, nil
 		return &columnType{ident, "categorical_column_with_identity"}, nil
 	}
 	return nil, fmt.Errorf("unsupported type %s of field %s", ctype, ident)
@@ -230,16 +231,30 @@ database=None
 
 conn = connect(driver, database, user="{{.User}}", password="{{.Password}}", host="{{.Host}}", port={{.Port}})
 
+{{$selfdefined := .SelfDefined}}
+
 feature_columns = []
 column_name_to_type = dict()
 {{range .X}}
 column_name_to_type["{{.Name}}"] = "{{.Type}}"
 {{if eq .Type "categorical_column_with_identity"}}
+
+{{/* QUICK HACK: selfdefined models using keras always use sequence_categorical_column_with_identity */}}
+{{/* QUICK HACK: must refine this later */}}
+{{if $selfdefined}}
+feature_columns.append(tf.feature_column.embedding_column(
+	tf.feature_column.sequence_categorical_column_with_identity(
+	key="{{.Name}}",
+	num_buckets=NUM_BUCKETS),
+dimension=EMBEDDING_WIDTH))
+{{else}}
 feature_columns.append(tf.feature_column.embedding_column(
 	tf.feature_column.categorical_column_with_identity(
 	key="{{.Name}}",
 	num_buckets=NUM_BUCKETS),
 dimension=EMBEDDING_WIDTH))
+{{end}}
+
 {{else}}
 feature_columns.append(tf.feature_column.{{.Type}}(key="{{.Name}}"))
 {{end}}

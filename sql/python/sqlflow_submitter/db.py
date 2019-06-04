@@ -21,7 +21,8 @@ def connect(driver, database, user, password, host, port):
                        passwd=password,
                        database=database,
                        host=host,
-                       port=port)
+                       port=port,
+                       connection_timeout=3600)
     elif driver == "sqlite3":
         from sqlite3 import connect
         return connect(database)
@@ -76,6 +77,9 @@ def db_generator(driver, conn, statement,
 
         rows = cursor.fetchmany(fetch_size)
         while len(rows) > 0:
+            # NOTE: keep the connection while training or connection will lost if no activities appear.
+            if driver == "mysql" and not conn.is_connected():
+                conn.ping(True)
             for row in rows:
                 label = row[label_idx]
                 features = dict()

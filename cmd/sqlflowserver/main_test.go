@@ -15,6 +15,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log"
 	"net"
@@ -126,16 +127,24 @@ func prepareTestData(dbStr string) error {
 	if err != nil {
 		return err
 	}
-	err = testdata.Popularize(testDB.DB, testdata.IrisSQL)
-	if err != nil {
-		return err
+
+	switch os.Getenv("SQLFLOW_TEST_DB") {
+	case "mysql":
+		if err := testdata.Popularize(testDB.DB, testdata.IrisSQL); err != nil {
+			return err
+		}
+		if err := testdata.Popularize(testDB.DB, testdata.ChurnSQL); err != nil {
+			return err
+		}
+		return testdata.Popularize(testDB.DB, testdata.TextCNSQL)
+	case "hive":
+		if err := testdata.Popularize(testDB.DB, testdata.IrisHiveSQL); err != nil {
+			return err
+		}
+		return testdata.Popularize(testDB.DB, testdata.ChurnHiveSQL)
 	}
-	err = testdata.Popularize(testDB.DB, testdata.ChurnSQL)
-	if err != nil {
-		return err
-	}
-	err = testdata.Popularize(testDB.DB, testdata.TextCNSQL)
-	return err
+
+	return fmt.Errorf("unrecognized SQLFLOW_TEST_DB %s", os.Getenv("SQLFLOW_TEST_DB"))
 }
 
 func TestEnd2EndMySQL(t *testing.T) {
@@ -159,6 +168,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("TestSelect", CaseSelect)
 	t.Run("TestTrainSQL", CaseTrainSQL)
 	t.Run("TestTextClassification", CaseTrainTextClassification)
+	t.Run("CaseTrainTextClassificationCustomLSTM", CaseTrainTextClassificationCustomLSTM)
 	t.Run("CaseTrainCustomModel", CaseTrainCustomModel)
 	t.Run("CaseTrainSQLWithHyperParams", CaseTrainSQLWithHyperParams)
 	t.Run("CaseTrainCustomModelWithHyperParams", CaseTrainCustomModelWithHyperParams)
@@ -169,8 +179,13 @@ func TestEnd2EndHive(t *testing.T) {
 	if testDBDriver != "hive" {
 		t.Skip("Skipping hive tests")
 	}
-	go start("hive://127.0.0.1:10000/iris")
+	dbStr := "hive://127.0.0.1:10000/iris"
+	go start(dbStr)
 	WaitPortReady("localhost"+port, 0)
+	err := prepareTestData(dbStr)
+	if err != nil {
+		t.Fatalf("prepare test dataset failed: %v", err)
+	}
 	t.Run("TestShowDatabases", CaseShowDatabases)
 	t.Run("TestSelect", CaseSelect)
 	t.Run("TestTrainSQL", CaseTrainSQL)
@@ -393,6 +408,34 @@ INTO sqlflow_models.my_dnn_model;`
 	cli := pb.NewSQLFlowClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	defer cancel()
+
+	stream, err := cli.Run(ctx, &pb.Request{Sql: trainSQL})
+	if err != nil {
+		a.Fail("Check if the server started successfully. %v", err)
+	}
+	// call ParseRow only to wait train finish
+	ParseRow(stream)
+}
+
+// CaseTrainTextClassificationCustomLSTM is a simple End-to-End testing for case training
+// text classification models.
+func CaseTrainTextClassificationCustomLSTM(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := `SELECT *
+FROM text_cn.train_processed
+TRAIN sqlflow_models.StackedBiLSTMClassifier
+WITH n_classes = 17, stack_units = [16], EPOCHS = 1, BATCHSIZE = 32
+COLUMN news_title
+LABEL class_id
+INTO sqlflow_models.my_bilstm_model;`
+
+	conn, err := grpc.Dial("localhost"+port, grpc.WithInsecure())
+	a.NoError(err)
+	defer conn.Close()
+	cli := pb.NewSQLFlowClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Second)
 	defer cancel()
 
 	stream, err := cli.Run(ctx, &pb.Request{Sql: trainSQL})

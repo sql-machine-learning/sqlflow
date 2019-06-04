@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-
 # Wait until hive test server is ready, port 8899
 # is a status port indicates the hive server container
 # is ready, see .travis.yml for the details
@@ -27,11 +25,16 @@ while true; do
   fi
 done
 
+set -e
+
 export SQLFLOW_TEST_DB=hive
 
 go generate ./...
 go get -v -t ./...
 go install ./...
-SQLFLOW_log_level=debug go test -v ./...
+
+# -p 1 is necessary since tests in different packages are sharing the same database
+# ref: https://stackoverflow.com/a/23840896
+SQLFLOW_log_level=debug go test -p 1 -v ./...
 
 python -m unittest discover -v sql/python "db_test.py"
