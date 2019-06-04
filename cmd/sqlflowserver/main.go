@@ -20,6 +20,7 @@ import (
 	"flag"
 	"log"
 	"net"
+	"os"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -33,7 +34,7 @@ const (
 	port = ":50051"
 )
 
-func start(datasource string) {
+func start(datasource, modelDir string) {
 	db, err := sql.Open(datasource)
 	if err != nil {
 		log.Fatalf("failed to open database: %v", err)
@@ -48,8 +49,14 @@ func start(datasource string) {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
+	if modelDir != "" {
+		if _, derr := os.Stat(modelDir); derr != nil {
+			os.Mkdir(modelDir, os.ModePerm)
+		}
+	}
+
 	s := grpc.NewServer()
-	proto.RegisterSQLFlowServer(s, server.NewServer(sql.Run, db))
+	proto.RegisterSQLFlowServer(s, server.NewServer(sql.Run, db, modelDir))
 	// Register reflection service on gRPC server.
 	reflection.Register(s)
 	log.Println("Server Started at", port)
@@ -60,6 +67,7 @@ func start(datasource string) {
 
 func main() {
 	ds := flag.String("datasource", "", "database connect string")
+	modelDir := flag.String("model_dir", "", "model would be saved on the local dir, otherwise upload to the table.")
 	flag.Parse()
-	start(*ds)
+	start(*ds, *modelDir)
 }

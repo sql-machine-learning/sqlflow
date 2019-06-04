@@ -18,9 +18,13 @@ import (
 	"encoding/gob"
 	"fmt"
 	"os/exec"
+	"path/filepath"
 
 	"github.com/sql-machine-learning/sqlflow/sqlfs"
 )
+
+// ExtendFileSuffix expose the extend suffix of the serialized Model object file
+var ExtendFileSuffix = ".sqlf"
 
 type model struct {
 	workDir     string // We don't expose and gob workDir; instead we tar it.
@@ -32,7 +36,7 @@ type model struct {
 // SQLFlow working directory, which contains the TensorFlow working
 // directory and the trained TenosrFlow model.
 func (m *model) save(db *DB, table string) (e error) {
-	sqlf, e := sqlfs.Create(db.DB, db.driverName, table)
+	sqlf, e := sqlfs.CreateTableWriter(db.DB, db.driverName, table)
 	if e != nil {
 		return fmt.Errorf("cannot create sqlfs file %s: %v", table, e)
 	}
@@ -53,11 +57,59 @@ func (m *model) save(db *DB, table string) (e error) {
 	return cmd.Run()
 }
 
+func (m *model) saveFile(modelDir, saveFn string) (e error) {
+	sqlfPath := filepath.Join(m.workDir, saveFn+ExtendFileSuffix)
+	sqlf, e := sqlfs.CreateFileWriter(sqlfPath)
+	if e != nil {
+		return fmt.Errorf("cannot create the sqlfs %s: %v", sqlfPath, e)
+	}
+	var buf bytes.Buffer
+
+	if e := gob.NewEncoder(&buf).Encode(m); e != nil {
+		return fmt.Errorf("model.save: gob-encoding model failed: %v", e)
+	}
+
+	if _, e := buf.WriteTo(sqlf); e != nil {
+		return fmt.Errorf("model.save: write the buffer failed: %v", e)
+	}
+	// should flush the sqlfs before package the
+	sqlf.Close()
+	modelFile := filepath.Join(modelDir, saveFn+".tar.gz")
+	cmd := exec.Command("tar", "czf", modelFile, "-C", m.workDir, ".")
+	return cmd.Run()
+}
+
+func loadFromFile(modelDir, cwd, modelSave string) (m *model, e error) {
+	modelFile := filepath.Join(modelDir, modelSave+".tar.gz")
+	cmd := exec.Command("tar", "xzf", modelFile, "-C", cwd)
+	e = cmd.Run()
+	if e != nil {
+		return nil, fmt.Errorf("load model file %s, %v", modelFile, e)
+	}
+	sqlfPath := filepath.Join(cwd, modelSave+".sqlf")
+	sqlf, e := sqlfs.OpenFile(sqlfPath)
+	if e != nil {
+		return nil, fmt.Errorf("cannot open sqlfs file: %s, %v", sqlfPath, e)
+	}
+	defer sqlf.Close()
+
+	var buf bytes.Buffer
+	if _, e := buf.ReadFrom(sqlf); e != nil {
+		return nil, e
+	}
+
+	m = &model{}
+	if e := gob.NewDecoder(&buf).Decode(m); e != nil {
+		return nil, fmt.Errorf("gob-decoding train select failed: %v", e)
+	}
+	return m, nil
+}
+
 // load reads from the given sqlfs table for the train select
 // statement, and untar the SQLFlow working directory, which contains
 // the TenosrFlow model, into directory cwd.
 func load(db *DB, table, cwd string) (m *model, e error) {
-	sqlf, e := sqlfs.Open(db.DB, table)
+	sqlf, e := sqlfs.OpenTable(db.DB, table)
 	if e != nil {
 		return nil, fmt.Errorf("cannot open sqlfs file %s: %v", table, e)
 	}
@@ -71,7 +123,7 @@ func load(db *DB, table, cwd string) (m *model, e error) {
 	if e := gob.NewDecoder(&buf).Decode(m); e != nil {
 		return nil, fmt.Errorf("gob-decoding train select failed: %v", e)
 	}
-
+	fmt.Printf("load model on cwd: %s\n", cwd)
 	cmd := exec.Command("tar", "xzf", "-", "-C", cwd)
 	cmd.Stdin = &buf
 	return m, cmd.Run()

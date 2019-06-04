@@ -14,11 +14,14 @@
 package sqlfs
 
 import (
+	"bufio"
 	"database/sql"
 	"encoding/base64"
 	"fmt"
 	"io"
+	"os"
 	"sort"
+	"strings"
 )
 
 type fragment struct {
@@ -28,16 +31,47 @@ type fragment struct {
 
 // Reader implements io.ReadCloser
 type Reader struct {
-	db    *sql.DB
-	table string
 	buf   []byte
-	rows  *sql.Rows
 	frams []fragment
 	cur   int
 }
 
-// Open returns a reader to read from the given table in db.
-func Open(db *sql.DB, table string) (*Reader, error) {
+// TableReader implements Reader reads from the given table in db
+type TableReader struct {
+	Reader
+	db    *sql.DB
+	table string
+	rows  *sql.Rows
+}
+
+// FileReader implements Reader reads from the given file
+type FileReader struct {
+	Reader
+	file *os.File
+}
+
+// OpenFile opens a file and returns a reader to read from
+// the give file on the host.
+func OpenFile(fn string) (*FileReader, error) {
+	f, err := os.Open(fn)
+	if err != nil {
+		return nil, fmt.Errorf("reader failed %s, %v", f.Name(), err)
+	}
+	r := &FileReader{Reader{nil, nil, 0}, f}
+	id := 0
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		var f fragment
+		f.id = id
+		id++
+		f.block = strings.Trim(scanner.Text(), "\n")
+		r.frams = append(r.frams, f)
+	}
+	return r, nil
+}
+
+// OpenTable returns a reader to read from the given table in db.
+func OpenTable(db *sql.DB, table string) (*TableReader, error) {
 	has, e := hasTable(db, table)
 	if !has {
 		return nil, fmt.Errorf("open: table %s doesn't exist", table)
@@ -46,7 +80,7 @@ func Open(db *sql.DB, table string) (*Reader, error) {
 		return nil, fmt.Errorf("open: hasTable failed with %v", e)
 	}
 
-	r := &Reader{db, table, nil, nil, nil, 0}
+	r := &TableReader{Reader{nil, nil, 0}, db, table, nil}
 	stmt := fmt.Sprintf("SELECT id,block FROM %s;", table)
 	r.rows, e = r.db.Query(stmt)
 	if e != nil {
@@ -73,9 +107,6 @@ func Open(db *sql.DB, table string) (*Reader, error) {
 }
 
 func (r *Reader) Read(p []byte) (n int, e error) {
-	if r.db == nil {
-		return 0, fmt.Errorf("read from a closed reader")
-	}
 	n = 0
 	for n < len(p) {
 		m := copy(p[n:], r.buf)
@@ -98,7 +129,7 @@ func (r *Reader) Read(p []byte) (n int, e error) {
 }
 
 // Close the reader connection to sqlfs
-func (r *Reader) Close() error {
+func (r *TableReader) Close() error {
 	if r.rows != nil {
 		if e := r.rows.Close(); e != nil {
 			return e
@@ -106,5 +137,12 @@ func (r *Reader) Close() error {
 		r.rows = nil
 	}
 	r.db = nil // Mark closed.
+	return nil
+}
+
+// Close the file handler
+func (r *FileReader) Close() error {
+	r.file.Close()
+	r.file = nil
 	return nil
 }
