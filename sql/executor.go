@@ -277,6 +277,13 @@ func (cw *logChanWriter) Write(p []byte) (n int, err error) {
 	return n, nil
 }
 
+func (cw *logChanWriter) Close() {
+	if len(cw.prev) > 0 {
+		cw.wr.Write(cw.prev)
+		cw.prev = ""
+	}
+}
+
 func train(tr *extendedSelect, slct string, db *DB, cwd string, wr *PipeWriter) error {
 	fts, e := verify(tr, db)
 	if e != nil {
@@ -289,6 +296,7 @@ func train(tr *extendedSelect, slct string, db *DB, cwd string, wr *PipeWriter) 
 	}
 
 	cw := &logChanWriter{wr: wr}
+	defer cw.Close()
 	cmd := tensorflowCmd(cwd, db.driverName)
 	cmd.Stdin = &program
 	cmd.Stdout = cw
@@ -331,6 +339,7 @@ func pred(pr *extendedSelect, db *DB, cwd string, wr *PipeWriter) error {
 	}
 
 	cw := &logChanWriter{wr: wr}
+	defer cw.Close()
 	cmd := tensorflowCmd(cwd, db.driverName)
 	cmd.Stdin = &buf
 	cmd.Stdout = cw
