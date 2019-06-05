@@ -51,7 +51,7 @@ func TestWriterCreate(t *testing.T) {
 	a := assert.New(t)
 
 	fn := fmt.Sprintf("%s.unitest%d", testDatabaseName, rand.Int())
-	w, e := CreateTableWriter(testDB, testDriver, fn)
+	w, e := Create(testDB, testDriver, fn)
 	a.NoError(e)
 	a.NotNil(w)
 	defer w.Close()
@@ -69,7 +69,7 @@ func TestWriteAndRead(t *testing.T) {
 
 	fn := fmt.Sprintf("%s.unitest%d", testDatabaseName, rand.Int())
 
-	w, e := CreateTableWriter(testDB, testDriver, fn)
+	w, e := Create(testDB, testDriver, fn)
 	a.NoError(e)
 	a.NotNil(w)
 
@@ -90,7 +90,7 @@ func TestWriteAndRead(t *testing.T) {
 
 	a.NoError(w.Close())
 
-	r, e := OpenTable(testDB, fn)
+	r, e := Open(testDB, fn)
 	a.NoError(e)
 	a.NotNil(r)
 

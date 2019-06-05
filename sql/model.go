@@ -17,14 +17,12 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 
 	"github.com/sql-machine-learning/sqlflow/sqlfs"
 )
-
-// ExtendFileSuffix expose the extend suffix of the serialized Model object file
-var ExtendFileSuffix = ".sqlf"
 
 type model struct {
 	workDir     string // We don't expose and gob workDir; instead we tar it.
@@ -36,7 +34,7 @@ type model struct {
 // SQLFlow working directory, which contains the TensorFlow working
 // directory and the trained TenosrFlow model.
 func (m *model) save(db *DB, table string) (e error) {
-	sqlf, e := sqlfs.CreateTableWriter(db.DB, db.driverName, table)
+	sqlf, e := sqlfs.Create(db.DB, db.driverName, table)
 	if e != nil {
 		return fmt.Errorf("cannot create sqlfs file %s: %v", table, e)
 	}
@@ -51,7 +49,6 @@ func (m *model) save(db *DB, table string) (e error) {
 	if _, e := buf.WriteTo(sqlf); e != nil {
 		return fmt.Errorf("model.save: write the buffer failed: %v", e)
 	}
-
 	cmd := exec.Command("tar", "czf", "-", "-C", m.workDir, ".")
 	cmd.Stdout = sqlf
 	var errBuf bytes.Buffer
@@ -63,50 +60,26 @@ func (m *model) save(db *DB, table string) (e error) {
 	return nil
 }
 
-func (m *model) saveToFile(modelDir, saveFn string) (e error) {
-	sqlfPath := filepath.Join(m.workDir, saveFn+ExtendFileSuffix)
-	sqlf, e := sqlfs.CreateFileWriter(sqlfPath)
-	if e != nil {
-		return fmt.Errorf("cannot create the sqlfs %s: %v", sqlfPath, e)
+func (m *model) saveTar(modelDir, save string) (e error) {
+	gobFile := filepath.Join(m.workDir, save+".gob")
+	if e := writeGob(gobFile, m); e != nil {
+		return e
 	}
-	var buf bytes.Buffer
-
-	if e := gob.NewEncoder(&buf).Encode(m); e != nil {
-		return fmt.Errorf("model.save: gob-encoding model failed: %v", e)
-	}
-
-	if _, e := buf.WriteTo(sqlf); e != nil {
-		return fmt.Errorf("model.save: write the buffer failed: %v", e)
-	}
-	// should flush the sqlfs before package the
-	sqlf.Close()
-	modelFile := filepath.Join(modelDir, saveFn+".tar.gz")
+	modelFile := filepath.Join(modelDir, save+".tar.gz")
 	cmd := exec.Command("tar", "czf", modelFile, "-C", m.workDir, ".")
 	return cmd.Run()
 }
 
-func loadFromFile(modelDir, cwd, modelSave string) (m *model, e error) {
-	modelFile := filepath.Join(modelDir, modelSave+".tar.gz")
-	cmd := exec.Command("tar", "xzf", modelFile, "-C", cwd)
-	e = cmd.Run()
-	if e != nil {
-		return nil, fmt.Errorf("load model file %s, %v", modelFile, e)
+func loadTar(modelDir, cwd, save string) (m *model, e error) {
+	tarFile := filepath.Join(modelDir, save+".tar.gz")
+	cmd := exec.Command("tar", "zxf", tarFile, "-C", cwd)
+	if e = cmd.Run(); e != nil {
+		return nil, fmt.Errorf("uncompress tar file failed: %v", e)
 	}
-	sqlfPath := filepath.Join(cwd, modelSave+".sqlf")
-	sqlf, e := sqlfs.OpenFile(sqlfPath)
-	if e != nil {
-		return nil, fmt.Errorf("cannot open sqlfs file: %s, %v", sqlfPath, e)
-	}
-	defer sqlf.Close()
-
-	var buf bytes.Buffer
-	if _, e := buf.ReadFrom(sqlf); e != nil {
-		return nil, e
-	}
-
+	gobFile := filepath.Join(cwd, save+".gob")
 	m = &model{}
-	if e := gob.NewDecoder(&buf).Decode(m); e != nil {
-		return nil, fmt.Errorf("gob-decoding train select failed: %v", e)
+	if e = readGob(gobFile, m); e != nil {
+		return nil, e
 	}
 	return m, nil
 }
@@ -115,7 +88,7 @@ func loadFromFile(modelDir, cwd, modelSave string) (m *model, e error) {
 // statement, and untar the SQLFlow working directory, which contains
 // the TenosrFlow model, into directory cwd.
 func load(db *DB, table, cwd string) (m *model, e error) {
-	sqlf, e := sqlfs.OpenTable(db.DB, table)
+	sqlf, e := sqlfs.Open(db.DB, table)
 	if e != nil {
 		return nil, fmt.Errorf("cannot open sqlfs file %s: %v", table, e)
 	}
@@ -137,4 +110,28 @@ func load(db *DB, table, cwd string) (m *model, e error) {
 		return nil, fmt.Errorf("tar %v", string(output))
 	}
 	return m, nil
+}
+
+func writeGob(filePath string, object interface{}) error {
+	file, e := os.Create(filePath)
+	if e != nil {
+		return fmt.Errorf("create gob file :%s, error: %v", filePath, e)
+	}
+	defer file.Close()
+	if e := gob.NewEncoder(file).Encode(object); e != nil {
+		return fmt.Errorf("model.save: gob-encoding model failed: %v", e)
+	}
+	return nil
+}
+
+func readGob(filePath string, object interface{}) error {
+	file, e := os.Open(filePath)
+	if e != nil {
+		return fmt.Errorf("model.load: gob-decoding model failed: %v", e)
+	}
+	defer file.Close()
+	if e := gob.NewDecoder(file).Decode(object); e != nil {
+		return fmt.Errorf("model.load: gob-decoding model failed: %v", e)
+	}
+	return nil
 }

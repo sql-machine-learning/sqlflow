@@ -304,10 +304,9 @@ func train(tr *extendedSelect, slct string, db *DB, cwd string, wr *PipeWriter, 
 	if e := cmd.Run(); e != nil {
 		return fmt.Errorf("training failed %v", e)
 	}
-
 	m := model{workDir: cwd, TrainSelect: slct}
 	if modelDir != "" {
-		return m.saveToFile(modelDir, tr.save)
+		return m.saveTar(modelDir, tr.save)
 	}
 	return m.save(db, tr.save)
 }
@@ -316,7 +315,7 @@ func pred(pr *extendedSelect, db *DB, cwd string, wr *PipeWriter, modelDir strin
 	var m *model
 	var e error
 	if modelDir != "" {
-		m, e = loadFromFile(modelDir, cwd, pr.model)
+		m, e = loadTar(modelDir, cwd, pr.model)
 	} else {
 		m, e = load(db, pr.model, cwd)
 	}

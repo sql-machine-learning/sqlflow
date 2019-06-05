@@ -17,53 +17,28 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"fmt"
-	"os"
 )
 
 const bufSize = 4 * 1024
 
 // Writer implements io.WriteCloser.
 type Writer struct {
-	buf []byte
-}
-
-func (w *Writer) flush() error {
-	return nil
-}
-
-// TableWriter writes to the given table in db
-type TableWriter struct {
-	Writer
 	db      *sql.DB
 	table   string
+	buf     []byte
 	flushID int
 }
 
-// FileWriter writes to the file on the host
-type FileWriter struct {
-	Writer
-	file *os.File
-}
-
-// CreateTableWriter creates a new table or truncates an existing table and
-// returns a TableWriter.
-func CreateTableWriter(db *sql.DB, driver, table string) (*TableWriter, error) {
+// Create creates a new table or truncates an existing table and
+// returns a writer.
+func Create(db *sql.DB, driver, table string) (*Writer, error) {
 	if e := dropTable(db, table); e != nil {
 		return nil, fmt.Errorf("create: %v", e)
 	}
 	if e := createTable(db, driver, table); e != nil {
 		return nil, fmt.Errorf("create: %v", e)
 	}
-	return &TableWriter{Writer{make([]byte, 0, bufSize)}, db, table, 0}, nil
-}
-
-//CreateFileWriter creates a new file and returns a FileWriter
-func CreateFileWriter(fn string) (*FileWriter, error) {
-	f, err := os.Create(fn)
-	if err != nil {
-		return nil, fmt.Errorf("create %v", err)
-	}
-	return &FileWriter{Writer{make([]byte, 0, bufSize)}, f}, nil
+	return &Writer{db, table, make([]byte, 0, bufSize), 0}, nil
 }
 
 // Write write bytes to sqlfs and returns (num_bytes, error)
@@ -87,7 +62,7 @@ func (w *Writer) Write(p []byte) (n int, e error) {
 }
 
 // Close the connection of the sqlfs
-func (w *TableWriter) Close() error {
+func (w *Writer) Close() error {
 	if e := w.flush(); e != nil {
 		return fmt.Errorf("close failed: %v", e)
 	}
@@ -95,16 +70,7 @@ func (w *TableWriter) Close() error {
 	return nil
 }
 
-// Close the file handler
-func (w *FileWriter) Close() error {
-	if e := w.flush(); e != nil {
-		return fmt.Errorf("close failed: %v", e)
-	}
-	w.file.Close()
-	return nil
-}
-
-func (w *TableWriter) flush() error {
+func (w *Writer) flush() error {
 	if w.db == nil {
 		return fmt.Errorf("bad database connection")
 	}
@@ -118,20 +84,6 @@ func (w *TableWriter) flush() error {
 		}
 		w.buf = w.buf[:0]
 		w.flushID++
-	}
-	return nil
-}
-
-func (w *FileWriter) flush() error {
-	if w.file == nil {
-		return fmt.Errorf("bad file handler status")
-	}
-	if len(w.buf) > 0 {
-		block := base64.StdEncoding.EncodeToString(w.buf)
-		if _, e := w.file.WriteString(block + "\n"); e != nil {
-			return fmt.Errorf("flush to %s, error: %v", w.file.Name(), e)
-		}
-		w.file.Sync()
 	}
 	return nil
 }
