@@ -8,6 +8,7 @@ ARG CONDA_OS=Linux
 ARG CONDA_ADD_PACKAGES=""
 ARG PIP_ADD_PACKAGES=""
 
+# keras.datasets.imdb only works with numpy==1.16.1
 RUN curl -sL https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -o mconda-install.sh && \
     bash -x mconda-install.sh -b -p miniconda && \
     rm mconda-install.sh && \
