@@ -205,7 +205,7 @@ const sqlEofCode = 1
 const sqlErrCode = 2
 const sqlInitialStackSize = 16
 
-//line sql.y:265
+//line sql.y:264
 
 /* Like Lisp's builtin function cdr. */
 func (e *expr) cdr() (r []string) {
@@ -350,20 +350,20 @@ var sqlPgo = [...]int{
 var sqlR1 = [...]int{
 
 	0, 1, 1, 1, 2, 2, 2, 2, 3, 5,
-	4, 4, 4, 4, 6, 6, 6, 10, 10, 10,
-	13, 13, 7, 7, 14, 15, 15, 9, 9, 11,
-	11, 12, 12, 8, 8, 8, 8, 8, 8, 8,
+	4, 4, 4, 6, 6, 6, 10, 10, 10, 13,
+	13, 7, 7, 14, 15, 15, 9, 9, 11, 11,
+	12, 12, 8, 8, 8, 8, 8, 8, 8, 8,
 	8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
-	8, 8, 8,
+	8, 8,
 }
 var sqlR2 = [...]int{
 
 	0, 2, 3, 3, 2, 3, 3, 3, 9, 4,
-	2, 4, 3, 5, 1, 1, 3, 1, 1, 1,
-	1, 3, 1, 3, 3, 1, 3, 3, 4, 1,
-	3, 2, 3, 1, 1, 1, 1, 3, 1, 3,
+	2, 4, 5, 1, 1, 3, 1, 1, 1, 1,
+	3, 1, 3, 3, 1, 3, 3, 4, 1, 3,
+	2, 3, 1, 1, 1, 1, 3, 1, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-	3, 2, 2,
+	2, 2,
 }
 var sqlChk = [...]int{
 
@@ -382,16 +382,16 @@ var sqlChk = [...]int{
 var sqlDef = [...]int{
 
 	0, -2, 0, 0, 1, 0, 0, 0, 0, 0,
-	0, 0, 4, 14, 15, 2, 3, 5, 22, 6,
-	7, 33, 34, 35, 36, 0, 38, 0, 0, 0,
+	0, 0, 4, 13, 14, 2, 3, 5, 21, 6,
+	7, 32, 33, 34, 35, 0, 37, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 51, 52,
-	31, 0, 29, 0, 0, 16, 23, 39, 40, 41,
-	42, 43, 44, 45, 46, 47, 48, 49, 50, 27,
-	0, 37, 0, 32, 0, 25, 0, 9, 28, 30,
-	0, 0, 0, 0, 0, 0, 26, 10, 20, 17,
-	18, 19, 24, 0, 12, 0, 0, 0, 0, 11,
-	21, 8, 13,
+	0, 0, 0, 0, 0, 0, 0, 0, 50, 51,
+	30, 0, 28, 0, 0, 15, 22, 38, 39, 40,
+	41, 42, 43, 44, 45, 46, 47, 48, 49, 26,
+	0, 36, 0, 31, 0, 24, 0, 9, 27, 29,
+	0, 0, 0, 0, 0, 0, 25, 10, 19, 16,
+	17, 18, 23, 0, 0, 0, 0, 0, 0, 11,
+	20, 8, 12,
 }
 var sqlTok1 = [...]int{
 
@@ -826,25 +826,25 @@ sqldefault:
 		sqlDollar = sqlS[sqlpt-2 : sqlpt+1]
 //line sql.y:190
 		{
-			sqlVAL.colc = map[string]exprlist{"": sqlDollar[2].expl}
+			sqlVAL.colc = map[string]exprlist{"feature_columns": sqlDollar[2].expl}
 		}
 	case 11:
 		sqlDollar = sqlS[sqlpt-4 : sqlpt+1]
 //line sql.y:191
 		{
-			sqlVAL.colc = map[string]exprlist{"": sqlDollar[2].expl}
+			sqlVAL.colc = map[string]exprlist{sqlDollar[4].val: sqlDollar[2].expl}
 		}
 	case 12:
-		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
+		sqlDollar = sqlS[sqlpt-5 : sqlpt+1]
 //line sql.y:192
 		{
-			sqlVAL.colc[""] = sqlDollar[3].expl
+			sqlVAL.colc[sqlDollar[5].val] = sqlDollar[3].expl
 		}
 	case 13:
-		sqlDollar = sqlS[sqlpt-5 : sqlpt+1]
-//line sql.y:193
+		sqlDollar = sqlS[sqlpt-1 : sqlpt+1]
+//line sql.y:196
 		{
-			sqlVAL.colc[sqlDollar[5].val] = sqlDollar[3].expl
+			sqlVAL.flds = append(sqlVAL.flds, sqlDollar[1].val)
 		}
 	case 14:
 		sqlDollar = sqlS[sqlpt-1 : sqlpt+1]
@@ -853,230 +853,224 @@ sqldefault:
 			sqlVAL.flds = append(sqlVAL.flds, sqlDollar[1].val)
 		}
 	case 15:
-		sqlDollar = sqlS[sqlpt-1 : sqlpt+1]
+		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
 //line sql.y:198
 		{
-			sqlVAL.flds = append(sqlVAL.flds, sqlDollar[1].val)
+			sqlVAL.flds = append(sqlVAL.flds, sqlDollar[3].val)
 		}
 	case 16:
-		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
-//line sql.y:199
+		sqlDollar = sqlS[sqlpt-1 : sqlpt+1]
+//line sql.y:202
 		{
-			sqlVAL.flds = append(sqlVAL.flds, sqlDollar[3].val)
+			sqlVAL.expr = atomic(IDENT, "*")
 		}
 	case 17:
 		sqlDollar = sqlS[sqlpt-1 : sqlpt+1]
 //line sql.y:203
 		{
-			sqlVAL.expr = atomic(IDENT, "*")
+			sqlVAL.expr = atomic(IDENT, sqlDollar[1].val)
 		}
 	case 18:
 		sqlDollar = sqlS[sqlpt-1 : sqlpt+1]
 //line sql.y:204
 		{
-			sqlVAL.expr = atomic(IDENT, sqlDollar[1].val)
+			sqlVAL.expr = sqlDollar[1].expr
 		}
 	case 19:
 		sqlDollar = sqlS[sqlpt-1 : sqlpt+1]
-//line sql.y:205
-		{
-			sqlVAL.expr = sqlDollar[1].expr
-		}
-	case 20:
-		sqlDollar = sqlS[sqlpt-1 : sqlpt+1]
-//line sql.y:209
+//line sql.y:208
 		{
 			sqlVAL.expl = exprlist{sqlDollar[1].expr}
 		}
-	case 21:
+	case 20:
 		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
-//line sql.y:210
+//line sql.y:209
 		{
 			sqlVAL.expl = append(sqlDollar[1].expl, sqlDollar[3].expr)
 		}
-	case 22:
+	case 21:
 		sqlDollar = sqlS[sqlpt-1 : sqlpt+1]
-//line sql.y:214
+//line sql.y:213
 		{
 			sqlVAL.tbls = []string{sqlDollar[1].val}
 		}
-	case 23:
+	case 22:
 		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
-//line sql.y:215
+//line sql.y:214
 		{
 			sqlVAL.tbls = append(sqlDollar[1].tbls, sqlDollar[3].val)
 		}
-	case 24:
+	case 23:
 		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
-//line sql.y:219
+//line sql.y:218
 		{
 			sqlVAL.atrs = attrs{sqlDollar[1].val: sqlDollar[3].expr}
 		}
-	case 25:
+	case 24:
 		sqlDollar = sqlS[sqlpt-1 : sqlpt+1]
-//line sql.y:223
+//line sql.y:222
 		{
 			sqlVAL.atrs = sqlDollar[1].atrs
 		}
-	case 26:
+	case 25:
 		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
-//line sql.y:224
+//line sql.y:223
 		{
 			sqlVAL.atrs = attrsUnion(sqlDollar[1].atrs, sqlDollar[3].atrs)
 		}
-	case 27:
+	case 26:
 		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
-//line sql.y:228
+//line sql.y:227
 		{
 			sqlVAL.expr = funcall(sqlDollar[1].val, nil)
 		}
-	case 28:
+	case 27:
 		sqlDollar = sqlS[sqlpt-4 : sqlpt+1]
-//line sql.y:229
+//line sql.y:228
 		{
 			sqlVAL.expr = funcall(sqlDollar[1].val, sqlDollar[3].expl)
 		}
-	case 29:
+	case 28:
 		sqlDollar = sqlS[sqlpt-1 : sqlpt+1]
-//line sql.y:233
+//line sql.y:232
 		{
 			sqlVAL.expl = exprlist{sqlDollar[1].expr}
 		}
-	case 30:
+	case 29:
 		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
-//line sql.y:234
+//line sql.y:233
 		{
 			sqlVAL.expl = append(sqlDollar[1].expl, sqlDollar[3].expr)
 		}
-	case 31:
+	case 30:
 		sqlDollar = sqlS[sqlpt-2 : sqlpt+1]
-//line sql.y:238
+//line sql.y:237
 		{
 			sqlVAL.expl = nil
 		}
-	case 32:
+	case 31:
 		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
-//line sql.y:239
+//line sql.y:238
 		{
 			sqlVAL.expl = sqlDollar[2].expl
+		}
+	case 32:
+		sqlDollar = sqlS[sqlpt-1 : sqlpt+1]
+//line sql.y:242
+		{
+			sqlVAL.expr = atomic(NUMBER, sqlDollar[1].val)
 		}
 	case 33:
 		sqlDollar = sqlS[sqlpt-1 : sqlpt+1]
 //line sql.y:243
 		{
-			sqlVAL.expr = atomic(NUMBER, sqlDollar[1].val)
+			sqlVAL.expr = atomic(IDENT, sqlDollar[1].val)
 		}
 	case 34:
 		sqlDollar = sqlS[sqlpt-1 : sqlpt+1]
 //line sql.y:244
 		{
-			sqlVAL.expr = atomic(IDENT, sqlDollar[1].val)
+			sqlVAL.expr = atomic(STRING, sqlDollar[1].val)
 		}
 	case 35:
 		sqlDollar = sqlS[sqlpt-1 : sqlpt+1]
 //line sql.y:245
 		{
-			sqlVAL.expr = atomic(STRING, sqlDollar[1].val)
-		}
-	case 36:
-		sqlDollar = sqlS[sqlpt-1 : sqlpt+1]
-//line sql.y:246
-		{
 			sqlVAL.expr = variadic('[', "square", sqlDollar[1].expl)
 		}
-	case 37:
+	case 36:
 		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
-//line sql.y:247
+//line sql.y:246
 		{
 			sqlVAL.expr = unary('(', "paren", sqlDollar[2].expr)
 		}
-	case 38:
+	case 37:
 		sqlDollar = sqlS[sqlpt-1 : sqlpt+1]
-//line sql.y:248
+//line sql.y:247
 		{
 			sqlVAL.expr = sqlDollar[1].expr
+		}
+	case 38:
+		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
+//line sql.y:248
+		{
+			sqlVAL.expr = binary('+', sqlDollar[1].expr, sqlDollar[2].val, sqlDollar[3].expr)
 		}
 	case 39:
 		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
 //line sql.y:249
 		{
-			sqlVAL.expr = binary('+', sqlDollar[1].expr, sqlDollar[2].val, sqlDollar[3].expr)
+			sqlVAL.expr = binary('-', sqlDollar[1].expr, sqlDollar[2].val, sqlDollar[3].expr)
 		}
 	case 40:
 		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
 //line sql.y:250
 		{
-			sqlVAL.expr = binary('-', sqlDollar[1].expr, sqlDollar[2].val, sqlDollar[3].expr)
+			sqlVAL.expr = binary('*', sqlDollar[1].expr, sqlDollar[2].val, sqlDollar[3].expr)
 		}
 	case 41:
 		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
 //line sql.y:251
 		{
-			sqlVAL.expr = binary('*', sqlDollar[1].expr, sqlDollar[2].val, sqlDollar[3].expr)
+			sqlVAL.expr = binary('/', sqlDollar[1].expr, sqlDollar[2].val, sqlDollar[3].expr)
 		}
 	case 42:
 		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
 //line sql.y:252
 		{
-			sqlVAL.expr = binary('/', sqlDollar[1].expr, sqlDollar[2].val, sqlDollar[3].expr)
+			sqlVAL.expr = binary('%', sqlDollar[1].expr, sqlDollar[2].val, sqlDollar[3].expr)
 		}
 	case 43:
 		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
 //line sql.y:253
 		{
-			sqlVAL.expr = binary('%', sqlDollar[1].expr, sqlDollar[2].val, sqlDollar[3].expr)
+			sqlVAL.expr = binary('=', sqlDollar[1].expr, sqlDollar[2].val, sqlDollar[3].expr)
 		}
 	case 44:
 		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
 //line sql.y:254
 		{
-			sqlVAL.expr = binary('=', sqlDollar[1].expr, sqlDollar[2].val, sqlDollar[3].expr)
+			sqlVAL.expr = binary('<', sqlDollar[1].expr, sqlDollar[2].val, sqlDollar[3].expr)
 		}
 	case 45:
 		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
 //line sql.y:255
 		{
-			sqlVAL.expr = binary('<', sqlDollar[1].expr, sqlDollar[2].val, sqlDollar[3].expr)
+			sqlVAL.expr = binary('>', sqlDollar[1].expr, sqlDollar[2].val, sqlDollar[3].expr)
 		}
 	case 46:
 		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
 //line sql.y:256
 		{
-			sqlVAL.expr = binary('>', sqlDollar[1].expr, sqlDollar[2].val, sqlDollar[3].expr)
+			sqlVAL.expr = binary(LE, sqlDollar[1].expr, sqlDollar[2].val, sqlDollar[3].expr)
 		}
 	case 47:
 		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
 //line sql.y:257
 		{
-			sqlVAL.expr = binary(LE, sqlDollar[1].expr, sqlDollar[2].val, sqlDollar[3].expr)
+			sqlVAL.expr = binary(GE, sqlDollar[1].expr, sqlDollar[2].val, sqlDollar[3].expr)
 		}
 	case 48:
 		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
 //line sql.y:258
 		{
-			sqlVAL.expr = binary(GE, sqlDollar[1].expr, sqlDollar[2].val, sqlDollar[3].expr)
+			sqlVAL.expr = binary(AND, sqlDollar[1].expr, sqlDollar[2].val, sqlDollar[3].expr)
 		}
 	case 49:
 		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
 //line sql.y:259
 		{
-			sqlVAL.expr = binary(AND, sqlDollar[1].expr, sqlDollar[2].val, sqlDollar[3].expr)
+			sqlVAL.expr = binary(OR, sqlDollar[1].expr, sqlDollar[2].val, sqlDollar[3].expr)
 		}
 	case 50:
-		sqlDollar = sqlS[sqlpt-3 : sqlpt+1]
+		sqlDollar = sqlS[sqlpt-2 : sqlpt+1]
 //line sql.y:260
 		{
-			sqlVAL.expr = binary(OR, sqlDollar[1].expr, sqlDollar[2].val, sqlDollar[3].expr)
+			sqlVAL.expr = unary(NOT, sqlDollar[1].val, sqlDollar[2].expr)
 		}
 	case 51:
 		sqlDollar = sqlS[sqlpt-2 : sqlpt+1]
 //line sql.y:261
-		{
-			sqlVAL.expr = unary(NOT, sqlDollar[1].val, sqlDollar[2].expr)
-		}
-	case 52:
-		sqlDollar = sqlS[sqlpt-2 : sqlpt+1]
-//line sql.y:262
 		{
 			sqlVAL.expr = unary('-', sqlDollar[1].val, sqlDollar[2].expr)
 		}
