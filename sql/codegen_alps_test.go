@@ -63,7 +63,7 @@ func TestAlpsColumnResolve(t *testing.T) {
 	r, e := newParser().Parse(testSQLStatement)
 	a.NoError(e)
 
-	c := r.cc[""]
+	c := r.columns[""]
 	fcList, fsMap, err := resolveTrainColumns(&c)
 
 	a.NoError(err)
@@ -95,7 +95,7 @@ func TestAlpsColumnResolveFailed(t *testing.T) {
 	r, e := newParser().Parse(badSQLStatement)
 	a.NoError(e)
 
-	c := r.cc[""]
+	c := r.columns[""]
 	_, _, err := resolveTrainColumns(&c)
 
 	a.EqualError(err, "not supported expr in ALPS submitter: +")
@@ -106,7 +106,7 @@ func TestAlpsFeatureColumnCodeGenerate(t *testing.T) {
 	r, e := newParser().Parse(testSQLStatement)
 	a.NoError(e)
 
-	c := r.cc[""]
+	c := r.columns[""]
 	fcList, _, err := resolveTrainColumns(&c)
 	a.NoError(err)
 

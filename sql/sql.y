@@ -187,9 +187,8 @@ predict_clause
 ;
 
 column_clause
-: COLUMN columns 				{ $$ = map[string]exprlist{"" : $2} }
-| COLUMN columns FOR IDENT 			{ $$ = map[string]exprlist{"" : $2} }
-| column_clause COLUMN columns 			{ $$[""] = $3 }
+: COLUMN columns 				{ $$ = map[string]exprlist{"feature_columns" : $2} }
+| COLUMN columns FOR IDENT 			{ $$ = map[string]exprlist{$4 : $2} }
 | column_clause COLUMN columns FOR IDENT 	{ $$[$5] = $3 }
 ;
 
