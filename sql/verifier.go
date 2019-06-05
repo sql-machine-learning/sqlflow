@@ -163,7 +163,7 @@ func verifyColumnNameAndType(trainParsed, predParsed *extendedSelect, db *DB) er
 		return e
 	}
 
-	for _, c := range trainParsed.cc[""] {
+	for _, c := range trainParsed.columns[""] {
 		it, ok := predFields.get(c.val)
 		if !ok {
 			return fmt.Errorf("predFields doesn't contain column %s", c.val)

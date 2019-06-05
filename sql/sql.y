@@ -73,11 +73,12 @@
 	type trainClause struct {
 		estimator string
 		attrs     attrs
-		cc   	  columnClause
+		columns   columnClause
                 label     string
 		save      string
 	}
 
+	/* If no FOR in the COLUMN, the key is "" */
 	type columnClause map[string]exprlist
 
 	type attrs map[string]*expr
@@ -172,7 +173,7 @@ train_clause
 : TRAIN IDENT WITH attrs column_clause LABEL IDENT INTO IDENT {
 	$$.estimator = $2
 	$$.attrs = $4
-	$$.cc = $5
+	$$.columns = $5
 	$$.label = $7
 	$$.save = $9
   }
@@ -186,16 +187,10 @@ predict_clause
 ;
 
 column_clause
-: COLUMN columns {
-	$$ = make(map[string]exprlist, 0)
-	$$[""] = $2
-  }
-| COLUMN columns FOR IDENT {
-	$$ = make(map[string]exprlist, 0)
- 	$$[$4] = $2
-  }
-| column_clause COLUMN columns { $$[""] = $3 }
-| column_clause COLUMN columns FOR IDENT { $$[$5] = $3 }
+: COLUMN columns 				{ $$ = map[string]exprlist{"" : $2} }
+| COLUMN columns FOR IDENT 			{ $$ = map[string]exprlist{"" : $2} }
+| column_clause COLUMN columns 			{ $$[""] = $3 }
+| column_clause COLUMN columns FOR IDENT 	{ $$[$5] = $3 }
 ;
 
 fields
