@@ -217,7 +217,7 @@ func runExtendedSQL(slct string, db *DB, pr *extendedSelect, modelDir string) *P
 			if e != nil {
 				return e
 			}
-			// defer os.RemoveAll(cwd)
+			defer os.RemoveAll(cwd)
 
 			// FIXME(tony): temporary branch to alps
 			if os.Getenv("SQLFLOW_submitter") == "alps" {
@@ -307,7 +307,7 @@ func train(tr *extendedSelect, slct string, db *DB, cwd string, wr *PipeWriter, 
 
 	m := model{workDir: cwd, TrainSelect: slct}
 	if modelDir != "" {
-		return m.saveFile(modelDir, tr.save)
+		return m.saveToFile(modelDir, tr.save)
 	}
 	return m.save(db, tr.save)
 }

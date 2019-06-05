@@ -46,15 +46,16 @@ func goodStream(stream chan interface{}) (bool, string) {
 
 func TestExecutorTrainAndPredictDNN(t *testing.T) {
 	a := assert.New(t)
+	modelDir := ""
 	a.NotPanics(func() {
 		pr, e := newParser().Parse(testTrainSelectIris)
 		a.NoError(e)
-		stream := runExtendedSQL(testTrainSelectIris, testDB, pr)
+		stream := runExtendedSQL(testTrainSelectIris, testDB, pr, modelDir)
 		a.True(goodStream(stream.ReadAll()))
 
 		pr, e = newParser().Parse(testPredictSelectIris)
 		a.NoError(e)
-		stream = runExtendedSQL(testPredictSelectIris, testDB, pr)
+		stream = runExtendedSQL(testPredictSelectIris, testDB, pr, modelDir)
 		a.True(goodStream(stream.ReadAll()))
 	})
 }

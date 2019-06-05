@@ -46,7 +46,6 @@ type Server struct {
 
 // Run implements `rpc Run (Request) returns (stream Response)`
 func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
-	fmt.Printf("s.modelDir: %s\n", s.modelDir)
 	pr := s.run(req.Sql, s.db, s.modelDir)
 	defer pr.Close()
 

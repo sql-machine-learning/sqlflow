@@ -128,7 +128,7 @@ func (w *FileWriter) flush() error {
 	}
 	if len(w.buf) > 0 {
 		block := base64.StdEncoding.EncodeToString(w.buf)
-		if _, e := w.file.WriteString(block); e != nil {
+		if _, e := w.file.WriteString(block + "\n"); e != nil {
 			return fmt.Errorf("flush to %s, error: %v", w.file.Name(), e)
 		}
 		w.file.Sync()

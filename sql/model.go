@@ -63,7 +63,7 @@ func (m *model) save(db *DB, table string) (e error) {
 	return nil
 }
 
-func (m *model) saveFile(modelDir, saveFn string) (e error) {
+func (m *model) saveToFile(modelDir, saveFn string) (e error) {
 	sqlfPath := filepath.Join(m.workDir, saveFn+ExtendFileSuffix)
 	sqlf, e := sqlfs.CreateFileWriter(sqlfPath)
 	if e != nil {
