@@ -370,7 +370,7 @@ func createPredictionTable(trainParsed, predParsed *extendedSelect, db *DB) erro
 
 	var b bytes.Buffer
 	fmt.Fprintf(&b, "create table %s (", tableName)
-	for _, c := range trainParsed.columns {
+	for _, c := range trainParsed.columns[""] {
 		typ, ok := fts.get(c.val)
 		if !ok {
 			return fmt.Errorf("createPredictionTable: Cannot find type of field %s", c.val)
