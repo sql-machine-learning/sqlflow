@@ -4,7 +4,6 @@ RUN apt-get update && apt-get install -y curl bzip2 \
     build-essential unzip sqlite3 libsqlite3-dev
 
 # Miniconda - Python 3.6, 64-bit, x86, latest
-ARG CONDA_OS=Linux
 ARG CONDA_ADD_PACKAGES=""
 ARG PIP_ADD_PACKAGES=""
 
