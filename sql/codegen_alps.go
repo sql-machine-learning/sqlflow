@@ -53,7 +53,6 @@ type alpsFiller struct {
 
 	// Estimator
 	EstimatorCreatorCode string
-	FeatureColumnCode    string
 	TrainSpec            collection
 	EvalSpec             collection
 
@@ -429,20 +428,23 @@ func newALPSTrainFiller(pr *extendedSelect) (*alpsFiller, error) {
 	}
 	modelDir := fmt.Sprintf("%s/model/", scratchDir)
 
-	cols := pr.columns[""]
-	fcList, fsMap, err := resolveTrainColumns(&cols)
-	if err != nil {
-		return nil, err
+	fcMap := map[string][]interface{}{}
+	fsMap := map[string]*featureSpec{}
+
+	for target, columns := range pr.columns {
+		fcs, fss, err := resolveTrainColumns(&columns)
+		if err != nil {
+			return nil, err
+		}
+		fcMap[target] = fcs
+		for k, v := range fss {
+			fsMap[k] = v
+		}
 	}
 
 	fssCode := make([]string, 0, len(fsMap))
 	for _, fs := range fsMap {
 		fssCode = append(fssCode, fs.ToString())
-	}
-
-	fcCode, err := generateFeatureColumnCode(fcList)
-	if err != nil {
-		return nil, err
 	}
 
 	attrs, err := resolveTrainAttribute(&pr.attrs)
@@ -479,12 +481,17 @@ func newALPSTrainFiller(pr *extendedSelect) (*alpsFiller, error) {
 
 	args := make([]string, 0)
 	args = append(args, "config=run_config")
+	for target, fcs := range fcMap {
+		code, err := generateFeatureColumnCode(fcs)
+		if err != nil {
+			return nil, err
+		}
+		args = append(args, fmt.Sprintf("%s=%s", target, code))
+	}
 	estimatorCode, err := generateEstimatorCreator(pr.estimator, estimatorAttrs, args)
 	if err != nil {
 		return nil, err
 	}
-
-	estimatorCode = strings.Replace(estimatorCode, "\"FC\"", "feature_columns", 1)
 
 	tableName := pr.tables[0]
 
@@ -513,7 +520,6 @@ func newALPSTrainFiller(pr *extendedSelect) (*alpsFiller, error) {
 		TrainSpec:            trainMap,
 		EvalSpec:             evalMap,
 		DatasetConf:          datasetMap,
-		FeatureColumnCode:    fcCode,
 		EstimatorCreatorCode: estimatorCode}, nil
 }
 
@@ -543,7 +549,7 @@ func submitALPS(w *PipeWriter, pr *extendedSelect, db *DB, cwd string) error {
 	code := program.String()
 
 	cw := &logChanWriter{wr: w}
-	cmd := tensorflowCmd(cwd, "maxCompute")
+	cmd := tensorflowCmd(cwd, "maxcompute")
 	cmd.Stdin = &program
 	cmd.Stdout = cw
 	cmd.Stderr = cw
@@ -572,15 +578,15 @@ import tensorflow as tf
 
 from alps.conf.closure import Closure
 from alps.framework.train.training import build_run_config
-from alps.framework.exporter import ExportStrategy, FileLocation
+from alps.framework.exporter import ExportStrategy
 from alps.framework.exporter.arks_exporter import ArksExporter
 from alps.client.base import run_experiment
 from alps.framework.engine import LocalEngine
 from alps.framework.column.column import DenseColumn
 from alps.framework.exporter.compare_fn import best_auc_fn
+from alps.io import DatasetX
 from alps.io.base import OdpsConf
 from alps.framework.experiment import EstimatorBuilder, Experiment, TrainConf, EvalConf
-from alps.io.alps_dataset import AlpsDataset
 from alps.io.reader.odps_reader import OdpsReader
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'    # for debug usage.
@@ -588,20 +594,13 @@ tf.logging.set_verbosity(tf.logging.INFO)
 
 
 class SQLFlowEstimatorBuilder(EstimatorBuilder):
-	def build(self, experiment):
-		run_config = build_run_config(experiment.train, experiment.model_dir)
-
-		feature_columns = []
-{{if .FeatureColumnCode}}
-		feature_columns.extend({{.FeatureColumnCode}})
-{{end}}
-
+    def _build(self, experiment, run_config):
 		return {{.EstimatorCreatorCode}}
 
 
 if __name__ == "__main__":
 	
-	trainDs = AlpsDataset(
+	trainDs = DatasetX(
 {{if .DatasetConf.epoch}}
 		num_epochs={{.DatasetConf.epoch}},
 {{end}}
@@ -622,7 +621,7 @@ if __name__ == "__main__":
 		)
 	)
 
-	evalDs = AlpsDataset(
+	evalDs = DatasetX(
 		num_epochs=1,
 		batch_size=64,
 		reader=OdpsReader(
@@ -639,7 +638,7 @@ if __name__ == "__main__":
 		)
 	)
 
-	export_path = FileLocation(path="{{.ModelDir}}")
+	export_path = "{{.ModelDir}}"
 
 	experiment = Experiment(
 		user="sqlflow",
@@ -675,7 +674,7 @@ if __name__ == "__main__":
  					  throttle_steps={{.TrainSpec.throttle_steps}}
 {{end}}
 		),
-		exporter=ArksExporter(export_path=export_path, export_strategy=ExportStrategy.BEST, compare_fn=Closure(best_auc_fn)),
+		exporter=ArksExporter(deploy_path=export_path, strategy=ExportStrategy.BEST, compare_fn=Closure(best_auc_fn)),
 		model_dir="{{.ScratchDir}}",
 		model_builder=SQLFlowEstimatorBuilder())
 
