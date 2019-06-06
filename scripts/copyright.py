@@ -101,13 +101,14 @@ def main(argv=None):
         if "COPYRIGHT " in second_line.upper(): continue
         if "COPYRIGHT " in third_line.upper(): continue
         skip_one = False
-        skip_two = True
+        skip_two = False
         if first_line.startswith("#!"):
             skip_one = True
         if PYTHON_ENCODE.match(second_line) != None:
             skip_two = True
         if PYTHON_ENCODE.match(first_line) != None:
             skip_one = True
+        print("skip_one %d, skip_two: %d" %(skip_one, skip_two))
 
         original_content_lines = io.open(filename, encoding="utf-8").read().split("\n")
         copyright_string = generate_copyright(COPYRIGHT, lang_type(filename))
