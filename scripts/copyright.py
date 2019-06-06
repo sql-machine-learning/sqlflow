@@ -108,7 +108,6 @@ def main(argv=None):
             skip_two = True
         if PYTHON_ENCODE.match(first_line) != None:
             skip_one = True
-        print("skip_one %d, skip_two: %d" %(skip_one, skip_two))
 
         original_content_lines = io.open(filename, encoding="utf-8").read().split("\n")
         copyright_string = generate_copyright(COPYRIGHT, lang_type(filename))
