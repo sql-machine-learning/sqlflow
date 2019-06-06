@@ -105,7 +105,7 @@ func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
 		r.Attrs[k] = v.String()
 	}
 
-	for _, c := range pr.columns {
+	for _, c := range pr.columns["feature_columns"] {
 		cf, e := translateColumnToFeature(&fts, db.driverName, c.val)
 		if e != nil {
 			return nil, e
