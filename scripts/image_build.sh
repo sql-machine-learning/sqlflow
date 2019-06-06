@@ -14,8 +14,6 @@
 
 
 set -e
-export http_proxy=http://host.docker.internal:8123
-export https_proxy=http://host.docker.internal:8123
 
 export GOPATH=/go
 export PATH=/miniconda/bin:/miniconda/envs/sqlflow-dev/bin:/usr/local/go/bin:/go/bin:$PATH
