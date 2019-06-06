@@ -40,10 +40,11 @@ function setup_sqlflow_server() {
   DS="mysql://root:root@tcp(${SQLFLOW_MYSQL_HOST}:${SQLFLOW_MYSQL_PORT})/?maxAllowedPacket=0"
   echo "Connect to the datasource ${DS}"
   # Start sqlflowserver
-  sqlflowserver --datasource=${DS}
+  source activate sqlflow-dev && sqlflowserver --datasource=${DS}
 }
 
 function setup_sqlflow_notebook() {
+  cd /workspace
   SQLFLOW_SERVER=localhost:50051 jupyter notebook --ip=0.0.0.0 --port=8888 --allow-root --NotebookApp.token=''
 }
 
@@ -57,7 +58,7 @@ function print_usage() {
 
 function main() {
   ARG=${1:-all}
-  case $ARG in 
+  case $ARG in
     mysql)
       setup_mysql
       sleep infinity
