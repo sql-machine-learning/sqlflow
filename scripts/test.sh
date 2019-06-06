@@ -19,10 +19,9 @@ service mysql start
 
 export SQLFLOW_TEST_DB=mysql
 
+source activate sqlflow-dev
 python -c "import sqlflow_models"
-
 python -c "import sqlflow_submitter.db"
-
 python -c "from tensorflow import keras; keras.datasets.imdb.load_data(num_words=10000)"
 
 go generate ./...
