@@ -8,7 +8,7 @@ ARG CONDA_ADD_PACKAGES=""
 ARG PIP_ADD_PACKAGES=""
 
 ENV GOPATH /go
-ENV PATH /miniconda/bin:/miniconda/envs/sqlflow-dev/bin:/usr/local/go/bin:/go/bin:$PATH
+ENV PATH /miniconda/envs/sqlflow-dev/bin:/miniconda/bin:/usr/local/go/bin:/go/bin:$PATH
 ENV IPYTHON_STARTUP /root/.ipython/profile_default/startup/
 
 # Main Steps to Build

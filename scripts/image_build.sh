@@ -25,6 +25,8 @@ echo ". /miniconda/etc/profile.d/conda.sh" >> ~/.bashrc
 echo "source activate sqlflow-dev" >> ~/.bashrc
 
 # keras.datasets.imdb only works with numpy==1.16.1
+# Fix jupyter server "connecting to kernel" problem
+# https://github.com/jupyter/notebook/issues/2664#issuecomment-468954423
 source /miniconda/bin/activate sqlflow-dev && python -m pip install \
 numpy==1.16.1 \
 tensorflow==2.0.0-alpha0 \

@@ -40,7 +40,7 @@ function setup_sqlflow_server() {
   DS="mysql://root:root@tcp(${SQLFLOW_MYSQL_HOST}:${SQLFLOW_MYSQL_PORT})/?maxAllowedPacket=0"
   echo "Connect to the datasource ${DS}"
   # Start sqlflowserver
-  source activate sqlflow-dev && sqlflowserver --datasource=${DS}
+  sqlflowserver --datasource=${DS}
 }
 
 function setup_sqlflow_notebook() {
