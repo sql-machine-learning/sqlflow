@@ -44,7 +44,9 @@ function setup_sqlflow_server() {
 }
 
 function setup_sqlflow_notebook() {
+  cd /workspace
   SQLFLOW_SERVER=localhost:50051 jupyter notebook --ip=0.0.0.0 --port=8888 --allow-root --NotebookApp.token=''
+  cd ..
 }
 
 function print_usage() {
@@ -57,7 +59,7 @@ function print_usage() {
 
 function main() {
   ARG=${1:-all}
-  case $ARG in 
+  case $ARG in
     mysql)
       setup_mysql
       sleep infinity
