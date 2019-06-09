@@ -157,7 +157,8 @@ func TestEnd2EndMySQL(t *testing.T) {
 		t.Skip("Skipping mysql tests")
 	}
 	dbStr := "mysql://root:root@tcp/?maxAllowedPacket=0"
-	go start(dbStr)
+	modelDir := ""
+	go start(dbStr, modelDir)
 	WaitPortReady("localhost"+port, 0)
 	err := prepareTestData(dbStr)
 	if err != nil {
@@ -176,11 +177,12 @@ func TestEnd2EndMySQL(t *testing.T) {
 
 func TestEnd2EndHive(t *testing.T) {
 	testDBDriver := os.Getenv("SQLFLOW_TEST_DB")
+	modelDir := ""
 	if testDBDriver != "hive" {
 		t.Skip("Skipping hive tests")
 	}
 	dbStr := "hive://127.0.0.1:10000/iris"
-	go start(dbStr)
+	go start(dbStr, modelDir)
 	WaitPortReady("localhost"+port, 0)
 	err := prepareTestData(dbStr)
 	if err != nil {

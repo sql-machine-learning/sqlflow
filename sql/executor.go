@@ -25,12 +25,12 @@ import (
 )
 
 // Run executes a SQL query and returns a stream of row or message
-func Run(slct string, db *DB) *PipeReader {
+func Run(slct string, db *DB, modelDir string) *PipeReader {
 	slctUpper := strings.ToUpper(slct)
 	if strings.Contains(slctUpper, "TRAIN") || strings.Contains(slctUpper, "PREDICT") {
 		pr, e := newParser().Parse(slct)
 		if e == nil && pr.extended {
-			return runExtendedSQL(slct, db, pr)
+			return runExtendedSQL(slct, db, pr, modelDir)
 		}
 	}
 	return runStandardSQL(slct, db)
@@ -196,7 +196,7 @@ func runExec(slct string, db *DB) *PipeReader {
 	return rd
 }
 
-func runExtendedSQL(slct string, db *DB, pr *extendedSelect) *PipeReader {
+func runExtendedSQL(slct string, db *DB, pr *extendedSelect, modelDir string) *PipeReader {
 	rd, wr := Pipe()
 	go func() {
 		defer wr.Close()
@@ -225,9 +225,9 @@ func runExtendedSQL(slct string, db *DB, pr *extendedSelect) *PipeReader {
 			}
 
 			if pr.train {
-				return train(pr, slct, db, cwd, wr)
+				return train(pr, slct, db, cwd, wr, modelDir)
 			}
-			return pred(pr, db, cwd, wr)
+			return pred(pr, db, cwd, wr, modelDir)
 		}()
 
 		if err != nil {
@@ -284,7 +284,7 @@ func (cw *logChanWriter) Close() {
 	}
 }
 
-func train(tr *extendedSelect, slct string, db *DB, cwd string, wr *PipeWriter) error {
+func train(tr *extendedSelect, slct string, db *DB, cwd string, wr *PipeWriter, modelDir string) error {
 	fts, e := verify(tr, db)
 	if e != nil {
 		return e
@@ -304,13 +304,21 @@ func train(tr *extendedSelect, slct string, db *DB, cwd string, wr *PipeWriter) 
 	if e := cmd.Run(); e != nil {
 		return fmt.Errorf("training failed %v", e)
 	}
-
 	m := model{workDir: cwd, TrainSelect: slct}
+	if modelDir != "" {
+		return m.saveTar(modelDir, tr.save)
+	}
 	return m.save(db, tr.save)
 }
 
-func pred(pr *extendedSelect, db *DB, cwd string, wr *PipeWriter) error {
-	m, e := load(db, pr.model, cwd)
+func pred(pr *extendedSelect, db *DB, cwd string, wr *PipeWriter, modelDir string) error {
+	var m *model
+	var e error
+	if modelDir != "" {
+		m, e = loadTar(modelDir, cwd, pr.model)
+	} else {
+		m, e = load(db, pr.model, cwd)
+	}
 	if e != nil {
 		return fmt.Errorf("load %v", e)
 	}

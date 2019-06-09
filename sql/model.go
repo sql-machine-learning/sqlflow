@@ -17,7 +17,9 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 
 	"github.com/sql-machine-learning/sqlflow/sqlfs"
 )
@@ -47,7 +49,6 @@ func (m *model) save(db *DB, table string) (e error) {
 	if _, e := buf.WriteTo(sqlf); e != nil {
 		return fmt.Errorf("model.save: write the buffer failed: %v", e)
 	}
-
 	cmd := exec.Command("tar", "czf", "-", "-C", m.workDir, ".")
 	cmd.Stdout = sqlf
 	var errBuf bytes.Buffer
@@ -57,6 +58,30 @@ func (m *model) save(db *DB, table string) (e error) {
 		return fmt.Errorf("tar stderr: %v\ntar cmd %v", errBuf.String(), e)
 	}
 	return nil
+}
+
+func (m *model) saveTar(modelDir, save string) (e error) {
+	gobFile := filepath.Join(m.workDir, save+".gob")
+	if e := writeGob(gobFile, m); e != nil {
+		return e
+	}
+	modelFile := filepath.Join(modelDir, save+".tar.gz")
+	cmd := exec.Command("tar", "czf", modelFile, "-C", m.workDir, ".")
+	return cmd.Run()
+}
+
+func loadTar(modelDir, cwd, save string) (m *model, e error) {
+	tarFile := filepath.Join(modelDir, save+".tar.gz")
+	cmd := exec.Command("tar", "zxf", tarFile, "-C", cwd)
+	if e = cmd.Run(); e != nil {
+		return nil, fmt.Errorf("load tar file failed: %v", e)
+	}
+	gobFile := filepath.Join(cwd, save+".gob")
+	m = &model{}
+	if e = readGob(gobFile, m); e != nil {
+		return nil, e
+	}
+	return m, nil
 }
 
 // load reads from the given sqlfs table for the train select
@@ -85,4 +110,28 @@ func load(db *DB, table, cwd string) (m *model, e error) {
 		return nil, fmt.Errorf("tar %v", string(output))
 	}
 	return m, nil
+}
+
+func writeGob(filePath string, object interface{}) error {
+	file, e := os.Create(filePath)
+	if e != nil {
+		return fmt.Errorf("create gob file :%s, error: %v", filePath, e)
+	}
+	defer file.Close()
+	if e := gob.NewEncoder(file).Encode(object); e != nil {
+		return fmt.Errorf("model.save: gob-encoding model failed: %v", e)
+	}
+	return nil
+}
+
+func readGob(filePath string, object interface{}) error {
+	file, e := os.Open(filePath)
+	if e != nil {
+		return fmt.Errorf("model.load: gob-decoding model failed: %v", e)
+	}
+	defer file.Close()
+	if e := gob.NewDecoder(file).Decode(object); e != nil {
+		return fmt.Errorf("model.load: gob-decoding model failed: %v", e)
+	}
+	return nil
 }

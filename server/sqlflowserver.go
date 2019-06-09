@@ -33,19 +33,20 @@ import (
 )
 
 // NewServer returns a server instance
-func NewServer(run func(string, *sf.DB) *sf.PipeReader, db *sf.DB) *Server {
-	return &Server{run: run, db: db}
+func NewServer(run func(string, *sf.DB, string) *sf.PipeReader, db *sf.DB, modelDir string) *Server {
+	return &Server{run: run, db: db, modelDir: modelDir}
 }
 
 // Server is the instance will be used to connect to DB and execute training
 type Server struct {
-	run func(sql string, db *sf.DB) *sf.PipeReader
-	db  *sf.DB
+	run      func(sql string, db *sf.DB, modelDir string) *sf.PipeReader
+	db       *sf.DB
+	modelDir string
 }
 
 // Run implements `rpc Run (Request) returns (stream Response)`
 func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
-	pr := s.run(req.Sql, s.db)
+	pr := s.run(req.Sql, s.db, s.modelDir)
 	defer pr.Close()
 
 	for r := range pr.ReadAll() {
