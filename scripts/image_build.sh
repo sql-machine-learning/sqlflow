@@ -25,7 +25,7 @@ echo ". /miniconda/etc/profile.d/conda.sh" >> ~/.bashrc
 echo "source activate sqlflow-dev" >> ~/.bashrc
 
 # keras.datasets.imdb only works with numpy==1.16.1
-# Fix jupyter server "connecting to kernel" problem
+# Fix jupyter server "connecting to kernel" problem by installing tornado==4.5.3
 # https://github.com/jupyter/notebook/issues/2664#issuecomment-468954423
 source /miniconda/bin/activate sqlflow-dev && python -m pip install \
 numpy==1.16.1 \
@@ -36,6 +36,7 @@ pyodps \
 jupyter \
 sqlflow \
 pre-commit \
+tornado==4.5.3 \
 ${PIP_ADD_PACKAGES}
 
 # 1. Install go 1.11.5
