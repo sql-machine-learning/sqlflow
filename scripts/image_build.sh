@@ -15,8 +15,6 @@
 
 set -e
 
-export GOPATH=/go
-export PATH=/miniconda/bin:/miniconda/envs/sqlflow-dev/bin:/usr/local/go/bin:/go/bin:$PATH
 
 # 0. Install miniconda and python and python dependencies.
 curl -sL https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -o mconda-install.sh
@@ -25,6 +23,7 @@ rm mconda-install.sh
 /miniconda/bin/conda create -y -q -n sqlflow-dev python=3.6 ${CONDA_ADD_PACKAGES}
 echo ". /miniconda/etc/profile.d/conda.sh" >> ~/.bashrc
 echo "source activate sqlflow-dev" >> ~/.bashrc
+
 # keras.datasets.imdb only works with numpy==1.16.1
 source /miniconda/bin/activate sqlflow-dev && python -m pip install \
 numpy==1.16.1 \
