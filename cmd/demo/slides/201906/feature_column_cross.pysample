@@ -1,0 +1,3 @@
+crossed_feature_column = tf.feature_column.crossed_column(
+        gender_feature_column, 
+        age_feature_column)
