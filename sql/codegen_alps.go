@@ -27,6 +27,8 @@ const (
 	sparse    = "SPARSE"
 	numeric   = "NUMERIC"
 	cross     = "CROSS"
+	catId     = "CAT_ID"
+	embedding = "EMBEDDING"
 	bucket    = "BUCKET"
 	square    = "SQUARE"
 	dense     = "DENSE"
@@ -90,6 +92,17 @@ type crossColumn struct {
 	HashBucketSize int
 }
 
+type catIdColumn struct {
+	Key        string
+	BucketSize int
+}
+
+type embeddingColumn struct {
+	CatColumn interface{}
+	Dimension int
+	Combiner  string
+}
+
 type attribute struct {
 	FullName string
 	Prefix   string
@@ -136,6 +149,24 @@ func (cc *crossColumn) GenerateCode() (string, error) {
 	return fmt.Sprintf(
 		"tf.feature_column.crossed_column([%s], hash_bucket_size=%d)",
 		strings.Join(keysGenerated, ","), cc.HashBucketSize), nil
+}
+
+func (cc *catIdColumn) GenerateCode() (string, error) {
+	return fmt.Sprintf("tf.feature_column.categorical_column_with_identity(key=\"%s\", num_buckets=%d)",
+		cc.Key, cc.BucketSize), nil
+}
+
+func (ec *embeddingColumn) GenerateCode() (string, error) {
+	catColumn, ok := ec.CatColumn.(featureColumn)
+	if !ok {
+		return "", fmt.Errorf("embedding generate code error, input is not featureColumn: %s", ec.CatColumn)
+	}
+	sourceCode, err := catColumn.GenerateCode()
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("tf.feature_column.embedding_column(%s, dimension=%d, combiner=\"%s\")",
+		sourceCode, ec.Dimension, ec.Combiner), nil
 }
 
 func (a *attribute) GenerateCode() (string, error) {
@@ -242,18 +273,21 @@ func resolveExpression(e interface{}) (interface{}, error) {
 		if len(*el) != 3 {
 			return nil, fmt.Errorf("bad BUCKET expression format: %s", *el)
 		}
-		sourceExprList := (*el)[1].sexp
-		boundariesExprList := (*el)[2].sexp
-		source, err := resolveExpression(&sourceExprList)
+		sourceExprList := (*el)[1]
+		boundariesExprList := (*el)[2]
+		source, err := resolveExpression(sourceExprList)
 		if err != nil {
 			return nil, err
 		}
 		if _, ok := source.(*numericColumn); !ok {
 			return nil, fmt.Errorf("key of BUCKET must be NUMERIC, which is %s", source)
 		}
-		boundaries, err := resolveExpression(&boundariesExprList)
+		boundaries, err := resolveExpression(boundariesExprList)
 		if err != nil {
 			return nil, err
+		}
+		if _, ok := boundaries.([]interface{}); !ok {
+			return nil, fmt.Errorf("bad BUCKET boundaries: %s", err)
 		}
 		b, err := transformToIntList(boundaries.([]interface{}))
 		if err != nil {
@@ -266,10 +300,13 @@ func resolveExpression(e interface{}) (interface{}, error) {
 		if len(*el) != 3 {
 			return nil, fmt.Errorf("bad CROSS expression format: %s", *el)
 		}
-		keysExpr := (*el)[1].sexp
-		keys, err := resolveExpression(&keysExpr)
+		keysExpr := (*el)[1]
+		keys, err := resolveExpression(keysExpr)
 		if err != nil {
 			return nil, err
+		}
+		if _, ok := keys.([]interface{}); !ok {
+			return nil, fmt.Errorf("bad CROSS keys: %s", err)
 		}
 		bucketSize, err := strconv.Atoi((*el)[2].val)
 		if err != nil {
@@ -278,6 +315,47 @@ func resolveExpression(e interface{}) (interface{}, error) {
 		return &crossColumn{
 			Keys:           keys.([]interface{}),
 			HashBucketSize: bucketSize}, nil
+	case catId:
+		if len(*el) != 3 {
+			return nil, fmt.Errorf("bad CAT_ID expression format: %s", *el)
+		}
+		key, err := expression2string((*el)[1])
+		if err != nil {
+			return nil, fmt.Errorf("bad CAT_ID key: %s, err: %s", (*el)[1], err)
+		}
+		bucketSize, err := strconv.Atoi((*el)[2].val)
+		if err != nil {
+			return nil, fmt.Errorf("bad CAT_ID bucketSize: %s, err: %s", (*el)[2].val, err)
+		}
+		return &catIdColumn{
+			Key:        key,
+			BucketSize: bucketSize}, nil
+	case embedding:
+		if len(*el) != 4 {
+			return nil, fmt.Errorf("bad EMBEDDING expression format: %s", *el)
+		}
+		sourceExprList := (*el)[1]
+		source, err := resolveExpression(sourceExprList)
+		if err != nil {
+			return nil, err
+		}
+		// TODO(uuleon) support other kinds of categorical column in the future
+		catColumn, ok := source.(*catIdColumn)
+		if !ok {
+			return "", fmt.Errorf("key of EMBEDDING must be categorical column")
+		}
+		dimension, err := strconv.Atoi((*el)[2].val)
+		if err != nil {
+			return nil, fmt.Errorf("bad EMBEDDING dimension: %s, err: %s", (*el)[2].val, err)
+		}
+		combiner, err := expression2string((*el)[3])
+		if err != nil {
+			return nil, fmt.Errorf("bad EMBEDDING combiner: %s, err: %s", (*el)[3], err)
+		}
+		return &embeddingColumn{
+			CatColumn: catColumn,
+			Dimension: dimension,
+			Combiner:  combiner}, nil
 	case square:
 		var list []interface{}
 		for idx, expr := range *el {
