@@ -261,18 +261,23 @@ func TestAttrs(t *testing.T) {
 	a := assert.New(t)
 	parser := newParser()
 
-	s := statementWithAttrs("estimator.hidden_units = [10, 20], dataset.name = hello")
+	s := statementWithAttrs("estimator.hidden_units = [10, 20]")
 	r, e := parser.Parse(s)
 	a.NoError(e)
 	attrs, err := resolveTrainAttribute(&r.attrs)
 	a.NoError(err)
-	a.Equal(2, len(attrs))
 	a.Equal("estimator", attrs[0].Prefix)
 	a.Equal("hidden_units", attrs[0].Name)
 	a.Equal([]interface{}([]interface{}{10, 20}), attrs[0].Value)
-	a.Equal("dataset", attrs[1].Prefix)
-	a.Equal("name", attrs[1].Name)
-	a.Equal("hello", attrs[1].Value)
+
+	s = statementWithAttrs("dataset.name = hello")
+	r, e = parser.Parse(s)
+	a.NoError(e)
+	attrs, err = resolveTrainAttribute(&r.attrs)
+	a.NoError(err)
+	a.Equal("dataset", attrs[0].Prefix)
+	a.Equal("name", attrs[0].Name)
+	a.Equal("hello", attrs[0].Value)
 }
 
 func TestTrainALPSFiller(t *testing.T) {
