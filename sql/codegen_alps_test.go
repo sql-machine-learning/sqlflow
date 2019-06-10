@@ -199,7 +199,7 @@ func TestCatIdColumn(t *testing.T) {
 	c := r.columns["feature_columns"]
 	fcList, _, e := resolveTrainColumns(&c)
 	a.NoError(e)
-	cc, ok := fcList[0].(*catIdColumn)
+	cc, ok := fcList[0].(*catIDColumn)
 	a.True(ok)
 	code, e := cc.GenerateCode()
 	a.NoError(e)
@@ -237,7 +237,7 @@ func TestEmbeddingColumn(t *testing.T) {
 	a.True(ok)
 	code, e := ec.GenerateCode()
 	a.NoError(e)
-	cc, ok := ec.CatColumn.(*catIdColumn)
+	cc, ok := ec.CatColumn.(*catIDColumn)
 	a.True(ok)
 	a.Equal("c1", cc.Key)
 	a.Equal(100, cc.BucketSize)

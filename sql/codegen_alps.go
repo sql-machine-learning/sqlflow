@@ -27,7 +27,7 @@ const (
 	sparse    = "SPARSE"
 	numeric   = "NUMERIC"
 	cross     = "CROSS"
-	catId     = "CAT_ID"
+	catID     = "CAT_ID"
 	embedding = "EMBEDDING"
 	bucket    = "BUCKET"
 	square    = "SQUARE"
@@ -92,7 +92,7 @@ type crossColumn struct {
 	HashBucketSize int
 }
 
-type catIdColumn struct {
+type catIDColumn struct {
 	Key        string
 	BucketSize int
 }
@@ -151,7 +151,7 @@ func (cc *crossColumn) GenerateCode() (string, error) {
 		strings.Join(keysGenerated, ","), cc.HashBucketSize), nil
 }
 
-func (cc *catIdColumn) GenerateCode() (string, error) {
+func (cc *catIDColumn) GenerateCode() (string, error) {
 	return fmt.Sprintf("tf.feature_column.categorical_column_with_identity(key=\"%s\", num_buckets=%d)",
 		cc.Key, cc.BucketSize), nil
 }
@@ -315,7 +315,7 @@ func resolveExpression(e interface{}) (interface{}, error) {
 		return &crossColumn{
 			Keys:           keys.([]interface{}),
 			HashBucketSize: bucketSize}, nil
-	case catId:
+	case catID:
 		if len(*el) != 3 {
 			return nil, fmt.Errorf("bad CAT_ID expression format: %s", *el)
 		}
@@ -327,7 +327,7 @@ func resolveExpression(e interface{}) (interface{}, error) {
 		if err != nil {
 			return nil, fmt.Errorf("bad CAT_ID bucketSize: %s, err: %s", (*el)[2].val, err)
 		}
-		return &catIdColumn{
+		return &catIDColumn{
 			Key:        key,
 			BucketSize: bucketSize}, nil
 	case embedding:
@@ -340,7 +340,7 @@ func resolveExpression(e interface{}) (interface{}, error) {
 			return nil, err
 		}
 		// TODO(uuleon) support other kinds of categorical column in the future
-		catColumn, ok := source.(*catIdColumn)
+		catColumn, ok := source.(*catIDColumn)
 		if !ok {
 			return "", fmt.Errorf("key of EMBEDDING must be categorical column")
 		}
