@@ -307,6 +307,7 @@ func TestTrainALPSFiller(t *testing.T) {
 	a.True(strings.Contains(filler.X, "SparseColumn(name=\"wide\", shape=[1000], dtype=\"float\", separator=\",\")"))
 	a.True(strings.Contains(filler.X, "DenseColumn(name=\"dense\", shape=[5], dtype=\"float\", separator=\",\")"))
 	a.Equal("DenseColumn(name=\"c3\", shape=[1], dtype=\"int\", separator=\",\")", filler.Y)
-	a.Equal("tf.estimator.DNNLinearCombinedClassifier(dnn_hidden_units=[10,20],config=run_config,dnn_feature_columns=[tf.feature_column.numeric_column(\"dense\", shape=(5,)),tf.feature_column.embedding_column(tf.feature_column.categorical_column_with_identity(key=\"deep\", num_buckets=2000), dimension=8, combiner=\"mean\")],linear_feature_columns=[tf.feature_column.embedding_column(tf.feature_column.categorical_column_with_identity(key=\"wide\", num_buckets=1000), dimension=16, combiner=\"mean\")])", filler.EstimatorCreatorCode)
+	a.True(strings.Contains(filler.EstimatorCreatorCode, "tf.estimator.DNNLinearCombinedClassifier(dnn_hidden_units=[10,20]"))
+	a.True(strings.Contains(filler.EstimatorCreatorCode, "linear_feature_columns=[tf.feature_column.embedding_column(tf.feature_column.categorical_column_with_identity(key=\"wide\", num_buckets=1000), dimension=16, combiner=\"mean\")]"))
 	a.Equal("1000", filler.TrainSpec["max_steps"])
 }
