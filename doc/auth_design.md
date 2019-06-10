@@ -88,7 +88,7 @@ we can use the solution [here](https://stackoverflow.com/questions/31554771/how-
 
 ### "Side-Car" Design
 
-<img src="figures/auth2.png">
+<img src="figures/auth3.png">
 
 While the straight forward way may introduce additional network communication,
 the "side-car" method can avoid this but is more complicated.
