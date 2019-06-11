@@ -13,8 +13,6 @@ SQLFlow need both permissions to access databases and submit jobs to
 systems to run distributed training jobs, like submitting jobs to Kubernetes
 to run a distributed tensorflow job.
 
-<img src="figures/auth1.png">
-
 In production environments, one SQLFlow server is designed to accept many clients'
 connections and job submissions. In this case, we must securely store a mapping
 from the user's ID to the user's credentials for accessing both the database and the
@@ -43,71 +41,67 @@ the database and submitting jobs. The session can be defined as:
 
 ```go
 type Session struct {
-    ClientEndpoint    string
-    DBConnStr         string  // mysql://user:pass@127.0.0.1:3306
-    Token             int64  // useful only in "side-car" design
+    Token          int64  // useful only in "side-car" design
+    ClientEndpoint string // ip:port from the client
+    DBConnStr      string // mysql://127.0.0.1:3306
+    AK             string // access key
+    SK             string // secret key
 }
 ```
 
-Users can set auth information in SQLFlow extended SQL statement like:
+The token will act as the unique id of the session. The session object
+should be expired within some time and deleted on the server memory.
 
-```sql
-SET CREDENTIAL username secretkey
-```
-
-**Note:** that SQLFlow depend on [SSO](https://en.wikipedia.org/wiki/Single_sign-on)
-services and databases services and training cluster should be able to
-use the same SSO service. We use SSO so that SQLFlow client can set only one
-credential for all three services: the database engine, the training cluster and
-SQLFlow server itself.
-
-When a user logged in to the SSO service, the auth server
-is responsible to fetch/generate database credentials and training cluster
-credentials. These credentials are saved in the session object and can be recreated
-when a user re-login.
+We want to make sure that SQLFlow servers are stateless so that we can
+deploy it on any cluster that does auto fail-over and auto-scaling. In
+that case, we store session data into a reliable storage service like
+[etcd](https://github.com/etcd-io/etcd). 
 
 Possible two implementations listed below can satisfy what SQLFlow needs:
 
-### A Straight Forward Design
+### Authentication of SQLFlow Server
 
-<img src="figures/auth2.png">
+**Note:** that SQLFlow should be dealing with three kinds of services:
 
-In this design, users send their requests to the "Auth Server" including
-their auth information. The auth server then communicates with SSO service
-to check if the credentials are legal. If so the auth server then send the
-SQLFlow request to SQLFlow server, when the SQLFlow returns result, the auth
-server pipe the result back to the client together with the session's token.
+- SQLFlow service itself
+- Database service that stores the training data
+- A training cluster that runs the SQLFlow training job, e.g. Kubernetes
 
-If one user is already logged in, then the client should have saved the token,
-the auth server only checks if the token is legal.
+SQLFlow should depend on the [SSO](https://en.wikipedia.org/wiki/Single_sign-on)
+service. Databases and training clusters also need to check
+if the user is valid and check if the user has granted proper permissions,
+but these services may have different credentials other than the SSO service.
+So there **must** be an "Auth Server" to fetch/create the user's AK/SK (access key/secret key)
+which will be used by databases or Kubernetes.
 
-In this design, the client here is an HTTP client rather than a gRPC client to
-make this work. And the client must support save COOKIEs. For a quick implementation
-we can use the solution [here](https://stackoverflow.com/questions/31554771/how-to-use-cookies-in-python-requests).
+For one case that we use MySQL as the database engine, the fetched AK/SK should
+be the MySQL's user and password. When running on the cloud environment, AK/SK
+should be the real user's keys.
 
+<img src="figures/sqlflow_auth.png">
 
-### "Side-Car" Design
+Users can use SQLFlow server with a simple jupyter notebook for simple deployment,
+for production deployments, users can take advantage of the cloud web IDE. The web
+IDE will redirect a user to the SSO service if the user is not logged in.
 
-<img src="figures/auth3.png">
+Once the user is logged in, SSO service will return the "token" represents the user's
+identity. Then the web IDE will call the "Auth Service" to get AK/SK for the database and
+training cluster. After that, the web IDE will call SQLFlow RPC service to create
+a new session, and the SQLFlow server will verify that all tokens, AK/SK are valid, then
+the session will be stored.
 
-While the straight forward way may introduce additional network communication,
-the "side-car" method can avoid this but is more complicated.
+If one user is already logged in, then the web IDE should have saved the token,
+then SQLFlow server can get the session to run jobs if the session not expired.
 
-In "side-car" design, a standalone auth server accepts client auth requests,
-and broadcast the session information to SQLFlow server. The SQLFlow server will
-store the session data for a short period of time. Then the auth server sends
-token as a response to the client. Then the client can send requests directly
-to SQLFlow gRPC server.
+After all that, SQLFlow server works as usual except generated training jobs can
+get all the credentials used for accessing databases or training clusters.
 
-The limitation for this design is that, when adding new SQLFlow server instances
-in the cluster, it may not know the current existing sessions. In order to make
-SQFLow server stateless, we must store the sessions in another service like etcd.
 
 ## Conclusion
 
 To make SQLFlow server production ready, supporting serve multiple clients on one
-SQLFlow server instance is necessary, and in order to achieve this, we should
-implement Authentication server and session management.
+SQLFlow server instance is necessary, Authentication and session management should
+be implemented.
 
-For simplicity, we only support services based on SSO, so that we won't need to
-specify three types of credentials when users log in.
+For production use, other services like web IDE, SSO, and Auth server are also needed
+to protect user's data and computing quotas.
