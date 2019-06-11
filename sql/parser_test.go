@@ -139,7 +139,7 @@ func TestSelectStarAndPrint(t *testing.T) {
 }
 
 func TestStandardDropTable(t *testing.T) {
-	if _, e := newParser().Parse(`DROP TABLE PREDICT`); e != nil {
-		t.Skipf("[FIXME]`drop table` expected no error, but got:%v", e)
-	}
+	a := assert.New(t)
+	_, e := newParser().Parse(`DROP TABLE PREDICT`)
+	a.Error(e)
 }
