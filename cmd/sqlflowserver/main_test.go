@@ -17,13 +17,17 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net"
 	"os"
+	"os/exec"
+	"path"
 	"testing"
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
@@ -147,6 +151,33 @@ func prepareTestData(dbStr string) error {
 	return fmt.Errorf("unrecognized SQLFLOW_TEST_DB %s", os.Getenv("SQLFLOW_TEST_DB"))
 }
 
+func generateCA(out string) (string, string, error) {
+	caKey := path.Join(out, "ca.key")
+	caCsr := path.Join(out, "ca.csr")
+	caCrt := path.Join(out, "ca.crt")
+	if err := exec.Command("openssl", "genrsa", "-out", caKey, "2048").Run(); err != nil {
+		return "", "", err
+	}
+	if err := exec.Command("openssl", "req", "-nodes", "-new", "-key", caKey, "-subj", "/CN=localhost", "-out", caCsr).Run(); err != nil {
+		return "", "", err
+	}
+	if err := exec.Command("openssl", "x509", "-req", "-sha256", "-days", "365", "-in", caCsr, "-signkey", caKey, "-out", caCrt).Run(); err != nil {
+		return "", "", err
+	}
+
+	return caCrt, caKey, nil
+}
+
+func CreateRPCConn() (*grpc.ClientConn, error) {
+	caCrt := os.Getenv("SQLFLOW_CA_CRT")
+	if caCrt != "" {
+		creds, _ := credentials.NewClientTLSFromFile(caCrt, "localhost")
+		return grpc.Dial("localhost"+port, grpc.WithTransportCredentials(creds))
+	}
+	log.Printf("insecurate client")
+	return grpc.Dial("localhost"+port, grpc.WithInsecure())
+}
+
 func TestEnd2EndMySQL(t *testing.T) {
 	testDBDriver := os.Getenv("SQLFLOW_TEST_DB")
 	// default run mysql tests
@@ -158,9 +189,17 @@ func TestEnd2EndMySQL(t *testing.T) {
 	}
 	dbStr := "mysql://root:root@tcp/?maxAllowedPacket=0"
 	modelDir := ""
-	go start(dbStr, modelDir)
+	caDir, _ := ioutil.TempDir("/tmp", "sqlflow_ssl_")
+	caCrt, caKey, err := generateCA(caDir)
+	os.Setenv("SQLFLOW_CA_CRT", caCrt)
+	os.Setenv("SQLFLOW_CA_KEY", caKey)
+
+	if err != nil {
+		t.Fatalf("failed to generate CA pair %v", err)
+	}
+	go start(dbStr, modelDir, caCrt, caKey)
 	WaitPortReady("localhost"+port, 0)
-	err := prepareTestData(dbStr)
+	err = prepareTestData(dbStr)
 	if err != nil {
 		t.Fatalf("prepare test dataset failed: %v", err)
 	}
@@ -178,11 +217,13 @@ func TestEnd2EndMySQL(t *testing.T) {
 func TestEnd2EndHive(t *testing.T) {
 	testDBDriver := os.Getenv("SQLFLOW_TEST_DB")
 	modelDir := ""
+	caCert := "" // test secure
+	caKey := ""
 	if testDBDriver != "hive" {
 		t.Skip("Skipping hive tests")
 	}
 	dbStr := "hive://127.0.0.1:10000/iris"
-	go start(dbStr, modelDir)
+	go start(dbStr, modelDir, caCert, caKey)
 	WaitPortReady("localhost"+port, 0)
 	err := prepareTestData(dbStr)
 	if err != nil {
@@ -196,8 +237,8 @@ func TestEnd2EndHive(t *testing.T) {
 func CaseShowDatabases(t *testing.T) {
 	a := assert.New(t)
 	cmd := "show databases;"
+	conn, err := CreateRPCConn()
 
-	conn, err := grpc.Dial("localhost"+port, grpc.WithInsecure())
 	a.NoError(err)
 	defer conn.Close()
 	cli := pb.NewSQLFlowClient(conn)
@@ -237,8 +278,7 @@ func CaseShowDatabases(t *testing.T) {
 func CaseSelect(t *testing.T) {
 	a := assert.New(t)
 	cmd := "select * from iris.train limit 2;"
-
-	conn, err := grpc.Dial("localhost"+port, grpc.WithInsecure())
+	conn, err := CreateRPCConn()
 	a.NoError(err)
 	defer conn.Close()
 	cli := pb.NewSQLFlowClient(conn)
@@ -287,7 +327,7 @@ COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.my_dnn_model;`
 
-	conn, err := grpc.Dial("localhost"+port, grpc.WithInsecure())
+	conn, err := CreateRPCConn()
 	a.NoError(err)
 	defer conn.Close()
 	cli := pb.NewSQLFlowClient(conn)
@@ -348,7 +388,7 @@ COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.my_dnn_model_custom;`
 
-	conn, err := grpc.Dial("localhost"+port, grpc.WithInsecure())
+	conn, err := CreateRPCConn()
 	a.NoError(err)
 	defer conn.Close()
 	cli := pb.NewSQLFlowClient(conn)
@@ -404,7 +444,7 @@ COLUMN news_title
 LABEL class_id
 INTO sqlflow_models.my_dnn_model;`
 
-	conn, err := grpc.Dial("localhost"+port, grpc.WithInsecure())
+	conn, err := CreateRPCConn()
 	a.NoError(err)
 	defer conn.Close()
 	cli := pb.NewSQLFlowClient(conn)
@@ -432,7 +472,7 @@ COLUMN news_title
 LABEL class_id
 INTO sqlflow_models.my_bilstm_model;`
 
-	conn, err := grpc.Dial("localhost"+port, grpc.WithInsecure())
+	conn, err := CreateRPCConn()
 	a.NoError(err)
 	defer conn.Close()
 	cli := pb.NewSQLFlowClient(conn)
@@ -458,7 +498,7 @@ COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.my_dnn_model;`
 
-	conn, err := grpc.Dial("localhost"+port, grpc.WithInsecure())
+	conn, err := CreateRPCConn()
 	a.NoError(err)
 	defer conn.Close()
 	cli := pb.NewSQLFlowClient(conn)
@@ -485,7 +525,7 @@ COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.my_dnn_model_custom;`
 
-	conn, err := grpc.Dial("localhost"+port, grpc.WithInsecure())
+	conn, err := CreateRPCConn()
 	a.NoError(err)
 	defer conn.Close()
 	cli := pb.NewSQLFlowClient(conn)

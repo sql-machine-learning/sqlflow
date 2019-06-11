@@ -23,6 +23,7 @@ import (
 	"os"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 
 	"github.com/sql-machine-learning/sqlflow/server"
@@ -34,7 +35,7 @@ const (
 	port = ":50051"
 )
 
-func start(datasource, modelDir string) {
+func start(datasource, modelDir, caCrt, caKey string) {
 	db, err := sql.Open(datasource)
 	if err != nil {
 		log.Fatalf("failed to open database: %v", err)
@@ -55,7 +56,19 @@ func start(datasource, modelDir string) {
 		}
 	}
 
-	s := grpc.NewServer()
+	var s *grpc.Server
+	if caCrt != "" && caKey != "" {
+		creds, err := credentials.NewServerTLSFromFile(caCrt, caKey)
+		if err != nil {
+			log.Fatalf("failed to load CA crt/key files: %s, %s, %v", caCrt, caKey, err)
+		}
+		s = grpc.NewServer(grpc.Creds(creds))
+		log.Println("Launch server with SSL/TLS certification.")
+	} else {
+		s = grpc.NewServer()
+		log.Println("Luanch server with insecure mode.")
+	}
+
 	proto.RegisterSQLFlowServer(s, server.NewServer(sql.Run, db, modelDir))
 	// Register reflection service on gRPC server.
 	reflection.Register(s)
@@ -68,6 +81,8 @@ func start(datasource, modelDir string) {
 func main() {
 	ds := flag.String("datasource", "", "database connect string")
 	modelDir := flag.String("model_dir", "", "model would be saved on the local dir, otherwise upload to the table.")
+	caCrt := flag.String("ca-crt", "", "CA certificate file.")
+	caKey := flag.String("ca-key", "", "CA private key file.")
 	flag.Parse()
-	start(*ds, *modelDir)
+	start(*ds, *modelDir, *caCrt, *caKey)
 }
