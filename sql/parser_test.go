@@ -142,4 +142,6 @@ func TestStandardDropTable(t *testing.T) {
 	a := assert.New(t)
 	_, e := newParser().Parse(`DROP TABLE PREDICT`)
 	a.Error(e)
+	// Note: currently, our parser doesn't accept anything statements other than SELECT.
+	// It will support parsing any SQL statements and even dialects in the future.
 }
