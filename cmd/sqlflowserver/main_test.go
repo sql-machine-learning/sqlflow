@@ -164,7 +164,8 @@ func generateCA(out string) (string, string, error) {
 	if err := exec.Command("openssl", "x509", "-req", "-sha256", "-days", "365", "-in", caCsr, "-signkey", caKey, "-out", caCrt).Run(); err != nil {
 		return "", "", err
 	}
-
+	os.Setenv("SQLFLOW_CA_CRT", caCrt)
+	os.Setenv("SQLFLOW_CA_KEY", caKey)
 	return caCrt, caKey, nil
 }
 
@@ -191,8 +192,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	modelDir := ""
 	caDir, _ := ioutil.TempDir("/tmp", "sqlflow_ssl_")
 	caCrt, caKey, err := generateCA(caDir)
-	os.Setenv("SQLFLOW_CA_CRT", caCrt)
-	os.Setenv("SQLFLOW_CA_KEY", caKey)
+	defer os.RemoveAll(caDir)
 
 	if err != nil {
 		t.Fatalf("failed to generate CA pair %v", err)
@@ -217,15 +217,17 @@ func TestEnd2EndMySQL(t *testing.T) {
 func TestEnd2EndHive(t *testing.T) {
 	testDBDriver := os.Getenv("SQLFLOW_TEST_DB")
 	modelDir := ""
-	caCert := "" // test secure
-	caKey := ""
+	caDir, _ := ioutil.TempDir("/tmp", "sqlflow_ssl_")
+	caCrt, caKey, err := generateCA(caDir)
+	defer os.RemoveAll(caDir)
+
 	if testDBDriver != "hive" {
 		t.Skip("Skipping hive tests")
 	}
 	dbStr := "hive://127.0.0.1:10000/iris"
-	go start(dbStr, modelDir, caCert, caKey)
+	go start(dbStr, modelDir, caCrt, caKey)
 	WaitPortReady("localhost"+port, 0)
-	err := prepareTestData(dbStr)
+	err = prepareTestData(dbStr)
 	if err != nil {
 		t.Fatalf("prepare test dataset failed: %v", err)
 	}
