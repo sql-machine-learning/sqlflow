@@ -66,7 +66,7 @@ func start(datasource, modelDir, caCrt, caKey string) {
 		log.Println("Launch server with SSL/TLS certification.")
 	} else {
 		s = grpc.NewServer()
-		log.Println("Luanch server with insecure mode.")
+		log.Println("Launch server with insecure mode.")
 	}
 
 	proto.RegisterSQLFlowServer(s, server.NewServer(sql.Run, db, modelDir))

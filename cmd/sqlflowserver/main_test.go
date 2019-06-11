@@ -175,7 +175,6 @@ func CreateRPCConn() (*grpc.ClientConn, error) {
 		creds, _ := credentials.NewClientTLSFromFile(caCrt, "localhost")
 		return grpc.Dial("localhost"+port, grpc.WithTransportCredentials(creds))
 	}
-	log.Printf("insecurate client")
 	return grpc.Dial("localhost"+port, grpc.WithInsecure())
 }
 
