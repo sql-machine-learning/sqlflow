@@ -1,4 +1,4 @@
-# Brief design for unifying format for training parameters in SQLFlow
+# Brief design for unifying format of training parameters in SQLFlow
 
 SQLFlow propose an extension to the SQL SELECT statement, which proposes the syntax for training as 
 ```sql
