@@ -1,33 +1,30 @@
 # Design: SQLFlow Authentication and Authorization
 
-## Terminology and Background
+## Concepts
 
-For a quick explanation, the word "Authentication" means to identify the
-user recognized by the system is the actual real-world user. And "Authorization"
-means to grant privileges to the user to access some part of the system
+Authentication is to identify the
+user. Authorization
+is to grant privileges to a user like accessing some system
 functionalities.
 
-SQLFlow works as a "bridge" between databases and
-Deep Learning/Machine Learning frameworks. In order to execute a job,
-SQLFlow need both permissions to access databases and submit jobs to
-systems to run distributed training jobs, like submitting jobs to Kubernetes
-to run a distributed tensorflow job.
+SQLFlow bridges SQL engines and
+machine learning systems. To execute a job,
+the SQLFlow server needs permissions to access databases and to submit machine learning jobs to
+clusters like Kubernetes.
 
-In production environments, one SQLFlow server is designed to accept many clients'
-connections and job submissions. In this case, we must securely store a mapping
-from the user's ID to the user's credentials for accessing both the database and the
-training cluster. Then server-side "session" should also be considered during
-implementing authentication.
+When we deploy SQLFlow server as a Kubernetes service with horizontal auto-scaling enabled, many clients
+might connect to each SQLFlow server instance.  For authetication and authorization, we must securely store a mapping
+from the user's ID to the user's credentials for accessing the database and the
+cluster. With authentication and authorization, we will be able to implement *sessions*, which means that each SQL statement in a SQL program might be handled by different SQLFlow server instances in the Kubernetes service; however, the user wouldn't notice that.
 
-For authorization, it will be definitely reasonable to directly proxy requests to
-databases and training clusters, the request will be denied if the current user
-have no access to the requested service.
+Authorization is not a too much a challenge because we can rely on
+SQL engines and training clusters, which denies requests if the user
+have no access.  In this document, we focus on authentication of SQLFlow users.
 
 ## Design
 
-An authentication server (for short, will use "auth server" instead) will be introduced
-to achieve extensible authentication configurations. We use a
-[Django](https://www.djangoproject.com/) web server so that the authentication methods
+To make it modulized and extensible, we prefer to introduce an authentication server, a.k.a., auth server. We use a
+[Django](https://www.djangoproject.com/) Web server so that the authentication methods
 can extend to:
 
 - Database authentication
