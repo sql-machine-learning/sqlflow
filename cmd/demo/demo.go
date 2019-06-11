@@ -83,6 +83,7 @@ func render(rsp interface{}, table *tablewriter.Table) bool {
 
 func main() {
 	ds := flag.String("datasource", "", "database connect string")
+	modelDir := flag.String("model_dir", "", "model would be saved on the local dir, otherwise upload to the table.")
 	flag.Parse()
 	db, err := sql.Open(*ds)
 	if err != nil {
@@ -93,6 +94,12 @@ func main() {
 		log.Fatalf("failed to ping database: %v", err)
 	}
 
+	if *modelDir != "" {
+		if _, derr := os.Stat(*modelDir); derr != nil {
+			os.Mkdir(*modelDir, os.ModePerm)
+		}
+	}
+
 	for {
 		fmt.Print("sqlflow> ")
 		slct := readStmt()
@@ -101,7 +108,7 @@ func main() {
 		isTable, tableRendered := false, false
 		table := tablewriter.NewWriter(os.Stdout)
 
-		stream := sql.Run(slct, db, "")
+		stream := sql.Run(slct, db, *modelDir)
 		for rsp := range stream.ReadAll() {
 			isTable = render(rsp, table)
 
