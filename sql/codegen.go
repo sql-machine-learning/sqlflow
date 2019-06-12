@@ -324,52 +324,66 @@ print("Training set accuracy: {accuracy:0.5f}".format(**eval_result))
 print("Done training")
 {{- else}}
 
-def eval_input_fn(features, batch_size):
-	dataset = tf.data.Dataset.from_tensor_slices(dict(features))
-	return dataset.batch(batch_size)
+def eval_input_fn(batch_size):
+	feature_types = dict()
+	feature_shapes = dict()
+	for name in feature_column_names:
+		if column_name_to_type[name] == "categorical_column_with_identity":
+			feature_types[name] = tf.int64
+			feature_shapes[name] = tf.TensorShape([None])
+		else:
+			feature_types[name] = tf.float32
+			feature_shapes[name] = tf.TensorShape([])
 
-field_names, columns = execute(driver, conn, """{{.StandardSelect}}""")
-X = {}
-for name in feature_column_names:
-	if column_name_to_type[name] == "categorical_column_with_identity":
-		rows = columns[field_names.index(name)]
-		# convert to int tensors
-		tensor_rows = []
-		for row in rows:
-			tensor_rows.append(np.array([int(v) for v in row.split(",")]))
-		X[name] = np.array(tensor_rows)
-	else:
-		X = {name: columns[field_names.index(name)] for name in feature_column_names}
+	gen = db_generator(driver, conn, """{{.StandardSelect}}""",
+		feature_column_names, "{{.Y.Name}}", column_name_to_type)
+	dataset = tf.data.Dataset.from_generator(gen, (feature_types, tf.int64), (feature_shapes, tf.TensorShape([1])))
+	dataset = dataset.batch(batch_size)
+	return dataset
+
 
 {{if .SelfDefined}}
-pred_dataset = eval_input_fn(X, BATCHSIZE)
+pred_dataset = eval_input_fn(BATCHSIZE)
 one_batch = pred_dataset.__iter__().next()
 # NOTE: must run predict one batch to initialize parameters
 # see: https://www.tensorflow.org/alpha/guide/keras/saving_and_serializing#saving_subclassed_models
-classifier.predict_on_batch(one_batch)
+classifier.predict_on_batch(one_batch[0])
 classifier.load_weights("{{.Save}}")
 del pred_dataset
-pred_dataset = eval_input_fn(X, BATCHSIZE)
-predictions = classifier.predict(pred_dataset)
-X["{{.Y.Name}}"] = [classifier.prepare_prediction_column(p) for p in predictions]
+pred_dataset = eval_input_fn(BATCHSIZE)
+predictions_array = classifier.predict(pred_dataset)
+def pred_gen():
+	for pred in predictions_array:
+	    yield pred
+predictions = pred_gen()
 {{else}}
-predictions = classifier.predict(input_fn=lambda:eval_input_fn(X, BATCHSIZE))
-X["{{.Y.Name}}"] = [p['class_ids'][0] for p in predictions]
+predictions = classifier.predict(input_fn=lambda:eval_input_fn(BATCHSIZE))
 {{end}}
 
-def insert(table_name, X):
-    length = [len(X[key]) for key in X]
-    assert len(set(length)) == 1, "All the fields should have the same length"
+def insert(table_name, eval_input_dataset, feature_column_names, predictions, insert_batch_size=64):
+	column_names = feature_column_names[:]
+	column_names.append("{{.Y.Name}}")
+	pred_rows = []
+	while True:
+		try:
+			in_val = eval_input_dataset.__next__()
+			pred_val = predictions.__next__()
+		except StopIteration:
+			break
+		row = []
+		for col_name in feature_column_names:
+			row.append(str(in_val[0][col_name]))
+		row.append(str(pred_val["class_ids"][0]))
+		pred_rows.append(tuple(row))
+		if len(pred_rows) == insert_batch_size:
+			insert_values(driver, conn, table_name, column_names, pred_rows)
+			pred_rows.clear()
+	if len(pred_rows) > 0:
+		insert_values(driver, conn, table_name, column_names, pred_rows)
 
-    field_names = [key for key in X]
-
-    val = []
-    for i in range(length[0]):
-        val.append(tuple([str(X[f][i]) for f in field_names]))
-
-    insert_values(driver, conn, "{{.TableName}}", field_names, val)
-
-insert("{{.TableName}}", X)
+predict_input_gen = db_generator(driver, conn, """{{.StandardSelect}}""",
+		feature_column_names, "{{.Y.Name}}", column_name_to_type)()
+insert("{{.TableName}}", predict_input_gen, feature_column_names, predictions)
 
 print("Done predicting. Predict table : {{.TableName}}")
 {{- end}}
