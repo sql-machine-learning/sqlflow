@@ -354,7 +354,7 @@ pred_dataset = eval_input_fn(BATCHSIZE)
 predictions_array = classifier.predict(pred_dataset)
 def pred_gen():
 	for pred in predictions_array:
-	    yield pred
+	    yield classifier.prepare_prediction_column(pred)
 predictions = pred_gen()
 {{else}}
 predictions = classifier.predict(input_fn=lambda:eval_input_fn(BATCHSIZE))
@@ -373,7 +373,11 @@ def insert(table_name, eval_input_dataset, feature_column_names, predictions, in
 		row = []
 		for col_name in feature_column_names:
 			row.append(str(in_val[0][col_name]))
+		{{if .SelfDefined}}
+		row.append(str(pred_val))
+		{{else}}
 		row.append(str(pred_val["class_ids"][0]))
+		{{end}}
 		pred_rows.append(tuple(row))
 		if len(pred_rows) == insert_batch_size:
 			insert_values(driver, conn, table_name, column_names, pred_rows)
