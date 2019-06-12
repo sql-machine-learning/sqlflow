@@ -151,25 +151,26 @@ func prepareTestData(dbStr string) error {
 	return fmt.Errorf("unrecognized SQLFLOW_TEST_DB %s", os.Getenv("SQLFLOW_TEST_DB"))
 }
 
-func generateCA(out string) (string, string, error) {
-	caKey := path.Join(out, "ca.key")
-	caCsr := path.Join(out, "ca.csr")
-	caCrt := path.Join(out, "ca.crt")
-	if err := exec.Command("openssl", "genrsa", "-out", caKey, "2048").Run(); err != nil {
-		return "", "", err
+func generateTempCA() (tmpDir, caCrt, caKey string, err error) {
+	tmpDir, _ = ioutil.TempDir("/tmp", "sqlflow_ssl_")
+	caKey = path.Join(tmpDir, "ca.key")
+	caCsr := path.Join(tmpDir, "ca.csr")
+	caCrt = path.Join(tmpDir, "ca.crt")
+	if err = exec.Command("openssl", "genrsa", "-out", caKey, "2048").Run(); err != nil {
+		return
 	}
-	if err := exec.Command("openssl", "req", "-nodes", "-new", "-key", caKey, "-subj", "/CN=localhost", "-out", caCsr).Run(); err != nil {
-		return "", "", err
+	if err = exec.Command("openssl", "req", "-nodes", "-new", "-key", caKey, "-subj", "/CN=localhost", "-out", caCsr).Run(); err != nil {
+		return
 	}
-	if err := exec.Command("openssl", "x509", "-req", "-sha256", "-days", "365", "-in", caCsr, "-signkey", caKey, "-out", caCrt).Run(); err != nil {
-		return "", "", err
+	if err = exec.Command("openssl", "x509", "-req", "-sha256", "-days", "365", "-in", caCsr, "-signkey", caKey, "-out", caCrt).Run(); err != nil {
+		return
 	}
 	os.Setenv("SQLFLOW_CA_CRT", caCrt)
 	os.Setenv("SQLFLOW_CA_KEY", caKey)
-	return caCrt, caKey, nil
+	return
 }
 
-func CreateRPCConn() (*grpc.ClientConn, error) {
+func createRPCConn() (*grpc.ClientConn, error) {
 	caCrt := os.Getenv("SQLFLOW_CA_CRT")
 	if caCrt != "" {
 		creds, _ := credentials.NewClientTLSFromFile(caCrt, "localhost")
@@ -189,13 +190,13 @@ func TestEnd2EndMySQL(t *testing.T) {
 	}
 	dbStr := "mysql://root:root@tcp/?maxAllowedPacket=0"
 	modelDir := ""
-	caDir, _ := ioutil.TempDir("/tmp", "sqlflow_ssl_")
-	caCrt, caKey, err := generateCA(caDir)
-	defer os.RemoveAll(caDir)
 
+	tmpDir, caCrt, caKey, err := generateTempCA()
+	defer os.RemoveAll(tmpDir)
 	if err != nil {
 		t.Fatalf("failed to generate CA pair %v", err)
 	}
+
 	go start(dbStr, modelDir, caCrt, caKey)
 	WaitPortReady("localhost"+port, 0)
 	err = prepareTestData(dbStr)
@@ -216,9 +217,12 @@ func TestEnd2EndMySQL(t *testing.T) {
 func TestEnd2EndHive(t *testing.T) {
 	testDBDriver := os.Getenv("SQLFLOW_TEST_DB")
 	modelDir := ""
-	caDir, _ := ioutil.TempDir("/tmp", "sqlflow_ssl_")
-	caCrt, caKey, err := generateCA(caDir)
-	defer os.RemoveAll(caDir)
+
+	tmpDir, caCrt, caKey, err := generateTempCA()
+	defer os.RemoveAll(tmpDir)
+	if err != nil {
+		t.Fatalf("failed to generate CA pair %v", err)
+	}
 
 	if testDBDriver != "hive" {
 		t.Skip("Skipping hive tests")
@@ -238,7 +242,7 @@ func TestEnd2EndHive(t *testing.T) {
 func CaseShowDatabases(t *testing.T) {
 	a := assert.New(t)
 	cmd := "show databases;"
-	conn, err := CreateRPCConn()
+	conn, err := createRPCConn()
 
 	a.NoError(err)
 	defer conn.Close()
@@ -279,7 +283,7 @@ func CaseShowDatabases(t *testing.T) {
 func CaseSelect(t *testing.T) {
 	a := assert.New(t)
 	cmd := "select * from iris.train limit 2;"
-	conn, err := CreateRPCConn()
+	conn, err := createRPCConn()
 	a.NoError(err)
 	defer conn.Close()
 	cli := pb.NewSQLFlowClient(conn)
@@ -328,7 +332,7 @@ COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.my_dnn_model;`
 
-	conn, err := CreateRPCConn()
+	conn, err := createRPCConn()
 	a.NoError(err)
 	defer conn.Close()
 	cli := pb.NewSQLFlowClient(conn)
@@ -389,7 +393,7 @@ COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.my_dnn_model_custom;`
 
-	conn, err := CreateRPCConn()
+	conn, err := createRPCConn()
 	a.NoError(err)
 	defer conn.Close()
 	cli := pb.NewSQLFlowClient(conn)
@@ -445,7 +449,7 @@ COLUMN news_title
 LABEL class_id
 INTO sqlflow_models.my_dnn_model;`
 
-	conn, err := CreateRPCConn()
+	conn, err := createRPCConn()
 	a.NoError(err)
 	defer conn.Close()
 	cli := pb.NewSQLFlowClient(conn)
@@ -473,7 +477,7 @@ COLUMN news_title
 LABEL class_id
 INTO sqlflow_models.my_bilstm_model;`
 
-	conn, err := CreateRPCConn()
+	conn, err := createRPCConn()
 	a.NoError(err)
 	defer conn.Close()
 	cli := pb.NewSQLFlowClient(conn)
@@ -499,7 +503,7 @@ COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.my_dnn_model;`
 
-	conn, err := CreateRPCConn()
+	conn, err := createRPCConn()
 	a.NoError(err)
 	defer conn.Close()
 	cli := pb.NewSQLFlowClient(conn)
@@ -526,7 +530,7 @@ COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.my_dnn_model_custom;`
 
-	conn, err := CreateRPCConn()
+	conn, err := createRPCConn()
 	a.NoError(err)
 	defer conn.Close()
 	cli := pb.NewSQLFlowClient(conn)

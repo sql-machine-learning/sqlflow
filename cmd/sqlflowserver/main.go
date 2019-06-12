@@ -18,6 +18,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"net"
 	"os"
@@ -35,6 +36,21 @@ const (
 	port = ":50051"
 )
 
+func newServer(caCrt, caKey string) (*grpc.Server, error) {
+	var s *grpc.Server
+	if caCrt != "" && caKey != "" {
+		creds, err := credentials.NewServerTLSFromFile(caCrt, caKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load CA crt/key files: %s, %s, %v", caCrt, caKey, err)
+		}
+		s = grpc.NewServer(grpc.Creds(creds))
+		log.Println("Launch server with SSL/TLS certification.")
+	} else {
+		s = grpc.NewServer()
+		log.Println("Launch server with insecure mode.")
+	}
+	return s, nil
+}
 func start(datasource, modelDir, caCrt, caKey string) {
 	db, err := sql.Open(datasource)
 	if err != nil {
@@ -56,17 +72,9 @@ func start(datasource, modelDir, caCrt, caKey string) {
 		}
 	}
 
-	var s *grpc.Server
-	if caCrt != "" && caKey != "" {
-		creds, err := credentials.NewServerTLSFromFile(caCrt, caKey)
-		if err != nil {
-			log.Fatalf("failed to load CA crt/key files: %s, %s, %v", caCrt, caKey, err)
-		}
-		s = grpc.NewServer(grpc.Creds(creds))
-		log.Println("Launch server with SSL/TLS certification.")
-	} else {
-		s = grpc.NewServer()
-		log.Println("Launch server with insecure mode.")
+	s, err := newServer(caCrt, caKey)
+	if err != nil {
+		log.Fatalf("failed to create new gRPC Server: %v", err)
 	}
 
 	proto.RegisterSQLFlowServer(s, server.NewServer(sql.Run, db, modelDir))
