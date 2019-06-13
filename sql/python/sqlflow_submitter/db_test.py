@@ -16,8 +16,40 @@ from unittest import TestCase
 import os
 
 import tensorflow as tf
-from sqlflow_submitter.db import connect, execute, insert_values, db_generator
+from sqlflow_submitter.db import connect, insert_values, db_generator
+from odps import ODPS, tunnel
 
+def _execute_maxcompute(conn, statement):
+    compress = tunnel.CompressOption.CompressAlgorithm.ODPS_ZLIB
+    inst = conn.execute_sql(statement)
+    if not inst.is_successful():
+        return None, None
+
+    r = inst.open_reader(tunnel=True, compress_option=compress)
+    field_names = [col.name for col in r._schema.columns]
+    rows = [[v[1] for v in rec] for rec in r[0: r.count]]
+    return field_names, list(map(list, zip(*rows))) if r.count > 0 else None
+
+def execute(driver, conn, statement):
+    if driver == "maxcompute":
+        return _execute_maxcompute(conn, statement)
+
+    cursor = conn.cursor()
+    cursor.execute(statement)
+    if driver == "hive":
+        field_names = None if cursor.description is None \
+            else [i[0][i[0].find('.') + 1:] for i in cursor.description]
+    else:
+        field_names = None if cursor.description is None \
+            else [i[0] for i in cursor.description]
+
+    try:
+        rows = cursor.fetchall()
+        field_columns = list(map(list, zip(*rows))) if len(rows) > 0 else None
+    except:
+        field_columns = None
+
+    return field_names, field_columns
 
 class TestDB(TestCase):
 
