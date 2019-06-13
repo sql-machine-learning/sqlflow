@@ -359,7 +359,7 @@ predictions = pred_gen()
 {{else}}
 predictions = classifier.predict(input_fn=lambda:eval_input_fn(BATCHSIZE))
 {{end}}
-
+{{/* TODO: insert_batch_size should be automatically chosen by experience */}}
 def insert(table_name, eval_input_dataset, feature_column_names, predictions, insert_batch_size=64):
 	column_names = feature_column_names[:]
 	column_names.append("{{.Y.Name}}")
