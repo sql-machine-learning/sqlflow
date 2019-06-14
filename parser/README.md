@@ -136,10 +136,22 @@ In the design of SQLFlow, we do verification after parsing.  The verifier would 
 
 ## Directory Structure
 
-Some parsers, like [TiDB parser](https://github.com/pingcap/parser), are implemented in Go; SQLFlow server can call them via local calls.  Some others like [Hive parser](https://github.com/apache/hive/tree/master/ql/src/java/org/apache/hadoop/hive/ql/parse) and [Calcite parser](https://github.com/apache/calcite/tree/master/core/src/main/java/org/apache/calcite/sql/parser) are in Java, or some other languages, and remote calls like gRPC is necessary.  We refer all parsers that have to be encapsulated into a gRPC server by *remote parsers*.  All remote parsers implement the same gRPC interface defined in `remote_paser.proto`.
+Some parsers, like [TiDB parser](https://github.com/pingcap/parser), are implemented in Go; SQLFlow server can call them via local calls.  Some others like [Hive parser](https://github.com/apache/hive/tree/master/ql/src/java/org/apache/hadoop/hive/ql/parse) and [Calcite parser](https://github.com/apache/calcite/tree/master/core/src/main/java/org/apache/calcite/sql/parser) are in Java, or some other languages, and remote calls like gRPC is necessary.  We refer all parsers that have to be encapsulated into a gRPC server by *remote parsers*.  All remote parsers implement the same gRPC interface defined in `remote/paser.proto`.
 
 ```protobuf
 service Parser {
   rpc Parse (Request) returns (Response) {}
 }
+```
+
+Hence, the directory structure is like the following:
+
+```
+parser/
+    tidb/
+	remote/
+	    parser.proto
+	    calcite/
+		hiveql/
+		sparksql/
 ```
