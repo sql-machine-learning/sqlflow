@@ -148,14 +148,14 @@ Hence, the directory structure is like the following:
 
 ```
 parser/
-    tidb/
-	    tidb_parser.go
-	remote/
-	    grpc/
-		    src/main/proto/parser.proto
-	    calcite/
-		    src/main/java/org/sqlflow/parser/CalciteParserServer.java
-		hiveql/
-		    src/main/java/org/sqlflow/parser/HiveQLParserServer.java
-	    client.go
+|--tidb/
+|  \--tidb_parser.go
+\--remote/
+   |--grpc/
+   |  \--src/main/proto/parser.proto
+   |--calcite/
+   |  \--src/main/java/org/sqlflow/parser/CalciteParserServer.java
+   |--hiveql/
+   |  \--src/main/java/org/sqlflow/parser/HiveQLParserServer.java
+   \--client.go
 ```
