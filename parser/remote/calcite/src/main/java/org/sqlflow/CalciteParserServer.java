@@ -17,6 +17,7 @@ import java.io.IOException;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.parser.SqlParseException;
 import org.apache.calcite.sql.parser.SqlParser;
+import org.apache.calcite.sql.parser.SqlParserPos;
 import org.sqlflow.parser.remote.ParserGrpc;
 import org.sqlflow.parser.remote.ParserProto;
 import org.sqlflow.parser.remote.ParserServer;
@@ -24,7 +25,8 @@ import org.sqlflow.parser.remote.ParserServer;
 public class CalciteParserServer extends ParserServer {
 
   public static void main(String[] args) throws IOException, InterruptedException {
-    s.start(new CalciteParserServer(), parsePort(args, 50051));
+    final CalciteParserServer s = new CalciteParserServer();
+    s.start(new CalciteParserImpl(), parsePort(args, 50051));
     s.blockUntilShutdown();
   }
 
@@ -48,7 +50,7 @@ public class CalciteParserServer extends ParserServer {
         SqlNode sqlNode = parser.parseQuery();
 
       } catch (SqlParseException e) {
-        SqlParsePos pos = e.getPos();
+        SqlParserPos pos = e.getPos();
         epos = ParserServer.posToIndex(q, pos.getLineNum(), pos.getColumnNum());
 
         try {

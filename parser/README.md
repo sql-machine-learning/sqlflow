@@ -76,14 +76,14 @@ message ParserRequest {
   string query = 1;
 }
 
-message ParserReply {
+message ParserResponse {
   string sql = 1;
   string extension = 2;
   string error = 3;
 }
 
 service Parser {
-  rpc Parse (ParserRequest) returns (ParserReply) {}
+  rpc Parse (ParserRequest) returns (ParserResponse) {}
 }
 ```
 

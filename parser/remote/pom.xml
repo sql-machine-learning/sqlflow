@@ -40,6 +40,7 @@
   
   <modules>
     <module>grpc</module>
+    <module>calcite</module>
     <module>hiveql</module>
   </modules>
 
