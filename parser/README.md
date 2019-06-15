@@ -72,18 +72,18 @@ It is notable that MySQL doesn't provide sufficient documentation on how to call
 The above example program calls `sql_engine.Parse` twice before calling `SQLFlow.Parse`.  In practice, because Calcite parser is in Java, SQLFlow is a Go program, to enable SQLFlow calling Calcite parser, we have to wrap Calcite parser up into a gRPC server.  It is time-consuming to make an RPC call, so we pack the two calls to `sql_engine.Parse` into one:
 
 ```protobuf
-message CalciteParserRequest {
+message ParserRequest {
   string query = 1;
 }
 
-message CalciteParserReply {
+message ParserReply {
   string sql = 1;
   string extension = 2;
   string error = 3;
 }
 
-service CalciteParser {
-  rpc Parse (CalciteParserRequest) returns (CalciteParserReply) {}
+service Parser {
+  rpc Parse (ParserRequest) returns (ParserReply) {}
 }
 ```
 
@@ -93,7 +93,7 @@ Some external parsers are in Go and don't need RPC.  For example, TiDB parser is
 func external_parser(kind, sql string) (idx int, err error) {
    switch(kind) {
    case 'calcite':
-       r := grpc.Call("CalciteParser.Parse", CalciteParserRequest{sql})
+       r := grpc.Call("Parser.Parse", ParserRequest{sql})
        return r.GetIndex(), r.GetError()
    case 'mysql':
        return tidb.Parse(sql)
@@ -132,3 +132,30 @@ SELECT a, b FROM t1 TRAIN DNNClassifier COLUMN c LABEL b;
 There is no syntax error in the above example; however, it has a logical mistake -- the column `c` is undefined.
 
 In the design of SQLFlow, we do verification after parsing.  The verifier would like to know the field and table named mentioned in the statement, which is supposed to be returned by `external_parser` in addition to `idx`. Both TiDB parser and Calcite parser return an abstract syntax tree; it seems that we can traverse the tree and find out the field and table names.
+
+
+## Directory Structure
+
+The [TiDB parser](https://github.com/pingcap/parser) is in Go, so SQLFlow server can make local calls to it.  Some others like [Calcite parser](https://github.com/apache/calcite/tree/master/core/src/main/java/org/apache/calcite/sql/parser) and  [Hive parser](https://github.com/apache/hive/tree/master/ql/src/java/org/apache/hadoop/hive/ql/parse) are in Java, or some other languages, and we need remote calls like gRPC.  We refer the later kind by *remote parsers*.  All remote parsers must implement the same gRPC interface defined in `remote/paser.proto`.
+
+```protobuf
+service Parser {
+  rpc Parse (Request) returns (Response) {}
+}
+```
+
+Hence, the directory structure is like the following:
+
+```
+parser/
+|--tidb/
+|  \--tidb_parser.go
+\--remote/
+   |--grpc/
+   |  \--src/main/proto/parser.proto
+   |--calcite/
+   |  \--src/main/java/org/sqlflow/parser/CalciteParserServer.java
+   |--hiveql/
+   |  \--src/main/java/org/sqlflow/parser/HiveQLParserServer.java
+   \--client.go
+```
