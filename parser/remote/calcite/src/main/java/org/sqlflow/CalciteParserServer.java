@@ -26,7 +26,7 @@ public class CalciteParserServer extends ParserServer {
 
   public static void main(String[] args) throws IOException, InterruptedException {
     final CalciteParserServer s = new CalciteParserServer();
-    s.start(new CalciteParserImpl(), parsePort(args, 50051));
+    s.start(new CalciteParserImpl(), parsePort(args, 50053));
     s.blockUntilShutdown();
   }
 
