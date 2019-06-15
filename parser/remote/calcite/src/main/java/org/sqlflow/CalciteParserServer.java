@@ -30,34 +30,37 @@ public class CalciteParserServer extends ParserServer {
 
   static class CalciteParserImpl extends ParserGrpc.ParserImplBase {
 
+    // parse returns <-1,null> if Calcite parser accepts the query, or
+    // <pos,null> if a second parsing accepts the content to the left
+    // of the error position from the first parsing, otherwise,
+    // <-1,err> if both parsing failed.
     @Override
     public void parse(
         ParserProto.ParserRequest request,
-        StreamObserver<ParserProto.ParserReply> responseObserver) {
+        StreamObserver<ParserProto.ParserResponse> responseObserver) {
 
+      String q = request.getQuery();
       int epos = -1; // Don't use query.length(), use -1.
       String err = "";
 
       try {
-        SqlParser parser = SqlParser.create(query);
+        SqlParser parser = SqlParser.create(q);
         SqlNode sqlNode = parser.parseQuery();
 
       } catch (SqlParseException e) {
         SqlParsePos pos = e.getPos();
-        epos = ParserServer.posToIndex(query, pos.getLineNum(), pos.getColumnNum());
+        epos = ParserServer.posToIndex(q, pos.getLineNum(), pos.getColumnNum());
 
         try {
-          SqlParser parser = SqlParser.create(query.substring(0, epos));
+          SqlParser parser = SqlParser.create(q.substring(0, epos));
           SqlNode sqlNode = parser.parseQuery();
-
         } catch (SqlParseException ee) {
           err = ee.getCause().getMessage();
         }
-        err = "";
       }
 
       responseObserver.onNext(
-          CalciteParserProto.CalciteParserReply.newBuilder().setIndex(pos).setError(err).build());
+          ParserProto.ParserResponse.newBuilder().setIndex(epos).setError(err).build());
       responseObserver.onCompleted();
     }
   }
