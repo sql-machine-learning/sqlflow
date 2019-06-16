@@ -115,7 +115,6 @@ func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
 		}
 		fcMap[target] = feaCols
 		for k, v := range feaSpecs {
-			fmt.Printf("feaSpec, k: %s, fname: %s\n", k, v.FeatureName)
 			fsMap[k] = v
 			cf, e := translateColumnToFeature(&fts, db.driverName, v.FeatureName)
 			if e != nil {
