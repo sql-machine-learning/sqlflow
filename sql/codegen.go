@@ -290,12 +290,12 @@ classifier = {{.Estimator}}(
 {{/* Convert go side featureSpec to python dict for input_fn */}}
 feature_specs = dict()
 {{ range $value := .X }}
-feature_spec[$value.FeatureName] = {
-	"feature_name": $value.FeatureName,
+feature_specs["{{$value.FeatureName}}"] = {
+	"feature_name": "{{$value.FeatureName}}",
 	"is_sparse": {{if $value.IsSparse}}True{{else}}False{{end}},
 	"shape": [{{range $value.Shape}}{{.}}, {{end}}],
-	"dtype": $value.Dtype,
-	"delimiter": $value.delimiter
+	"dtype": "{{$value.DType}}",
+	"delimiter": "{{$value.Delimiter}}"
 }
 {{end}}
 
