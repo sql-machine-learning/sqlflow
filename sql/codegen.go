@@ -105,25 +105,37 @@ func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
 		r.Attrs[k] = v.String()
 	}
 
-	for _, c := range pr.columns["feature_columns"] {
-		cf, e := translateColumnToFeature(&fts, db.driverName, c.val)
-		if e != nil {
-			return nil, e
+	fcMap := map[string][]featureColumn{}
+	fsMap := map[string]*featureSpec{}
+	for target, columns := range pr.columns {
+		feaCol, feaSpec, err := resolveTrainColumns(&columns)
+		if err != nil {
+			return nil, err
 		}
-		r.X = append(r.X, *cf)
-	}
-
-	cf, e := translateColumnToFeature(&fts, db.driverName, pr.label)
-	if e != nil {
-		return nil, e
-	}
-	r.Y = *cf
-
-	if !pr.train {
-		if r.TableName, _, e = parseTableColumn(pr.into); e != nil {
-			return nil, e
+		fcMap[target] = feaCol
+		for k, v := range feaSpec {
+			fsMap[k] = v
 		}
 	}
+	// for _, c := range pr.columns["feature_columns"] {
+	// 	cf, e := translateColumnToFeature(&fts, db.driverName, c.val)
+	// 	if e != nil {
+	// 		return nil, e
+	// 	}
+	// 	r.X = append(r.X, *cf)
+	// }
+
+	// cf, e := translateColumnToFeature(&fts, db.driverName, pr.label)
+	// if e != nil {
+	// 	return nil, e
+	// }
+	// r.Y = *cf
+
+	// if !pr.train {
+	// 	if r.TableName, _, e = parseTableColumn(pr.into); e != nil {
+	// 		return nil, e
+	// 	}
+	// }
 
 	return fillDatabaseInfo(r, db)
 }

@@ -10,21 +10,21 @@ https://sqlflow.org
 * Open Source
 
 - https://sqlflow.org
-- We are at very early stage, before production-ready. // HL
+- We are at very early stage, before production-ready.
 - We Would like to share our ideas and welcom contributions.
 
 * Goals
 
 - Extend SQL syntax: AI + data manipulation
 - Make analytics easy
-- Make the build and deplouyment of data+AI pipelines easy
+- Make the build and deployment of data+AI pipelines easy
 
 * Make Analytics Easy
 
 Analytics relies on AI more than before.
 
 The current process:
-- Run SELECT in BDMS to retrieve training data
+- Run SELECT in DBMS to retrieve training data
 - Export training data from tables into HDFS
 - Train models by reading HDFS
 - Repeat above steps for prediction

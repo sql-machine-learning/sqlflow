@@ -415,68 +415,14 @@ func filter(attrs []*attribute, prefix string) []*attribute {
 	return ret
 }
 
-func resolveTrainColumns(columns *exprlist) ([]interface{}, map[string]*featureSpec, error) {
-	var fsMap = make(map[string]*featureSpec)
-	var fcList = make([]interface{}, 0)
-	for _, expr := range *columns {
-		result, err := resolveExpression(expr)
-		if err != nil {
-			return nil, nil, err
-		}
-		if fs, ok := result.(*featureSpec); ok {
-			fsMap[fs.FeatureName] = fs
-			continue
-		}
-		if c, ok := result.(featureColumn); ok {
-			fcList = append(fcList, c)
-		} else {
-			return nil, nil, fmt.Errorf("not recgonized type: %s", result)
-		}
-	}
-	return fcList, fsMap, nil
-}
-
-func resolveTrainAttribute(attrs *attrs) ([]*attribute, error) {
-	var ret []*attribute
-	for k, v := range *attrs {
-		subs := strings.SplitN(k, ".", 2)
-		name := subs[len(subs)-1]
-		prefix := ""
-		if len(subs) == 2 {
-			prefix = subs[0]
-		}
-		r, err := resolveExpression(v)
-		if err != nil {
-			return nil, err
-		}
-		ret = append(ret, &attribute{
-			FullName: k,
-			Prefix:   prefix,
-			Name:     name,
-			Value:    r})
-	}
-	return ret, nil
-}
-
-func resolveDelimiter(delimiter string) (string, error) {
-	if strings.EqualFold(delimiter, comma) {
-		return ",", nil
-	}
-	return "", fmt.Errorf("unsolved delimiter: %s", delimiter)
-}
-
-func generateFeatureColumnCode(fcs []interface{}) (string, error) {
+func generateFeatureColumnCode(fcs []featureColumn) (string, error) {
 	var codes = make([]string, 0, len(fcs))
 	for _, fc := range fcs {
-		if fc, ok := fc.(featureColumn); ok {
-			code, err := fc.GenerateCode()
-			if err != nil {
-				return "", nil
-			}
-			codes = append(codes, code)
-		} else {
-			return "", fmt.Errorf("input is not featureColumn interface")
+		code, err := fc.GenerateCode()
+		if err != nil {
+			return "", nil
 		}
+		codes = append(codes, code)
 	}
 	return fmt.Sprintf("[%s]", strings.Join(codes, ",")), nil
 }
@@ -506,7 +452,7 @@ func newALPSTrainFiller(pr *extendedSelect) (*alpsFiller, error) {
 	}
 	modelDir := fmt.Sprintf("%s/model/", scratchDir)
 
-	fcMap := map[string][]interface{}{}
+	fcMap := map[string][]featureColumn{}
 	fsMap := map[string]*featureSpec{}
 
 	for target, columns := range pr.columns {
