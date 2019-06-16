@@ -80,7 +80,7 @@ type embeddingColumn struct {
 }
 
 // resolveTrainColumns resolve columns from SQL statement,
-// returns featureColumn list and featureSpecs
+// returns type string, featureColumn list or featureSpecs
 func resolveTrainColumns(columns *exprlist) ([]featureColumn, map[string]*featureSpec, error) {
 	var fsMap = make(map[string]*featureSpec)
 	var fcList = make([]featureColumn, 0)
@@ -92,9 +92,17 @@ func resolveTrainColumns(columns *exprlist) ([]featureColumn, map[string]*featur
 		if fs, ok := result.(*featureSpec); ok {
 			fsMap[fs.FeatureName] = fs
 			continue
-		}
-		if c, ok := result.(featureColumn); ok {
+		} else if c, ok := result.(featureColumn); ok {
 			fcList = append(fcList, c)
+		} else if s, ok := result.(string); ok {
+			// simple string column, generate default feature spec
+			fsMap[s] = &featureSpec{
+				FeatureName: s,
+				IsSparse:    false,
+				Shape:       []int{1},
+				DType:       "float32",
+				Delimiter:   "",
+			}
 		} else {
 			return nil, nil, fmt.Errorf("not recgonized type: %s", result)
 		}
@@ -296,21 +304,6 @@ func expression2string(e interface{}) (string, error) {
 		return str, nil
 	}
 	return "", fmt.Errorf("expression expected to be string, actual: %s", resolved)
-}
-
-func (fs *featureSpec) ToString() string {
-	if fs.IsSparse {
-		return fmt.Sprintf("SparseColumn(name=\"%s\", shape=%s, dtype=\"%s\", separator=\"%s\")",
-			fs.FeatureName,
-			strings.Join(strings.Split(fmt.Sprint(fs.Shape), " "), ","),
-			fs.DType,
-			fs.Delimiter)
-	}
-	return fmt.Sprintf("DenseColumn(name=\"%s\", shape=%s, dtype=\"%s\", separator=\"%s\")",
-		fs.FeatureName,
-		strings.Join(strings.Split(fmt.Sprint(fs.Shape), " "), ","),
-		fs.DType,
-		fs.Delimiter)
 }
 
 func (nc *numericColumn) GenerateCode() (string, error) {

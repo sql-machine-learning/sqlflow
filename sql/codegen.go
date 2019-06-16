@@ -60,6 +60,7 @@ func translateColumnToFeature(fts *fieldTypes, driverName, ident string) (*colum
 	if !ok {
 		return nil, fmt.Errorf("genTF: Cannot find type of field %s", ident)
 	}
+	fmt.Printf("ct: %s, ident: %s\n", ct, ident)
 	ctype, e := universalizeColumnType(driverName, ct)
 	if e != nil {
 		return nil, e
@@ -108,34 +109,33 @@ func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
 	fcMap := map[string][]featureColumn{}
 	fsMap := map[string]*featureSpec{}
 	for target, columns := range pr.columns {
-		feaCol, feaSpec, err := resolveTrainColumns(&columns)
+		feaCols, feaSpecs, err := resolveTrainColumns(&columns)
 		if err != nil {
 			return nil, err
 		}
-		fcMap[target] = feaCol
-		for k, v := range feaSpec {
+		fcMap[target] = feaCols
+		for k, v := range feaSpecs {
+			fmt.Printf("feaSpec, k: %s, fname: %s\n", k, v.FeatureName)
 			fsMap[k] = v
+			cf, e := translateColumnToFeature(&fts, db.driverName, v.FeatureName)
+			if e != nil {
+				return nil, e
+			}
+			r.X = append(r.X, *cf)
 		}
 	}
-	// for _, c := range pr.columns["feature_columns"] {
-	// 	cf, e := translateColumnToFeature(&fts, db.driverName, c.val)
-	// 	if e != nil {
-	// 		return nil, e
-	// 	}
-	// 	r.X = append(r.X, *cf)
-	// }
 
-	// cf, e := translateColumnToFeature(&fts, db.driverName, pr.label)
-	// if e != nil {
-	// 	return nil, e
-	// }
-	// r.Y = *cf
+	cf, e := translateColumnToFeature(&fts, db.driverName, pr.label)
+	if e != nil {
+		return nil, e
+	}
+	r.Y = *cf
 
-	// if !pr.train {
-	// 	if r.TableName, _, e = parseTableColumn(pr.into); e != nil {
-	// 		return nil, e
-	// 	}
-	// }
+	if !pr.train {
+		if r.TableName, _, e = parseTableColumn(pr.into); e != nil {
+			return nil, e
+		}
+	}
 
 	return fillDatabaseInfo(r, db)
 }
