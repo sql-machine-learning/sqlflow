@@ -24,6 +24,7 @@ const (
 	numeric   = "NUMERIC"
 	cross     = "CROSS"
 	catID     = "CAT_ID"
+	seqCatID  = "SEQ_CAT_ID"
 	embedding = "EMBEDDING"
 	bucket    = "BUCKET"
 	square    = "SQUARE"
@@ -34,10 +35,12 @@ const (
 
 // featureColumn is an interface that all types of feature columns and
 // attributes (WITH clause) should follow.
+// featureColumn is used to generate feature column code.
 type featureColumn interface {
 	GenerateCode() (string, error)
 }
 
+// featureSpec contains information to generate input_fn code
 type featureSpec struct {
 	FeatureName string
 	IsSparse    bool
@@ -69,6 +72,11 @@ type crossColumn struct {
 }
 
 type catIDColumn struct {
+	Key        string
+	BucketSize int
+}
+
+type sequenceCatIDColumn struct {
 	Key        string
 	BucketSize int
 }
@@ -213,6 +221,21 @@ func resolveExpression(e interface{}) (interface{}, error) {
 		return &catIDColumn{
 			Key:        key,
 			BucketSize: bucketSize}, nil
+	case seqCatID:
+		if len(*el) != 3 {
+			return nil, fmt.Errorf("bad CAT_ID expression format: %s", *el)
+		}
+		key, err := expression2string((*el)[1])
+		if err != nil {
+			return nil, fmt.Errorf("bad CAT_ID key: %s, err: %s", (*el)[1], err)
+		}
+		bucketSize, err := strconv.Atoi((*el)[2].val)
+		if err != nil {
+			return nil, fmt.Errorf("bad CAT_ID bucketSize: %s, err: %s", (*el)[2].val, err)
+		}
+		return &sequenceCatIDColumn{
+			Key:        key,
+			BucketSize: bucketSize}, nil
 	case embedding:
 		if len(*el) != 4 {
 			return nil, fmt.Errorf("bad EMBEDDING expression format: %s", *el)
@@ -342,6 +365,11 @@ func (cc *crossColumn) GenerateCode() (string, error) {
 
 func (cc *catIDColumn) GenerateCode() (string, error) {
 	return fmt.Sprintf("tf.feature_column.categorical_column_with_identity(key=\"%s\", num_buckets=%d)",
+		cc.Key, cc.BucketSize), nil
+}
+
+func (cc *sequenceCatIDColumn) GenerateCode() (string, error) {
+	return fmt.Sprintf("tf.feature_column.sequence_categorical_column_with_identity(key=\"%s\", num_buckets=%d)",
 		cc.Key, cc.BucketSize), nil
 }
 

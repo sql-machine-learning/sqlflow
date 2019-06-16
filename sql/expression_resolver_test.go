@@ -56,7 +56,8 @@ func TestFeatureSpec(t *testing.T) {
 	a.Equal(5, fs.Shape[0])
 	a.Equal(",", fs.Delimiter)
 	a.Equal(false, fs.IsSparse)
-	a.Equal("DenseColumn(name=\"c2\", shape=[5], dtype=\"float\", separator=\",\")", fs.ToString())
+	a.Equal("DenseColumn(name=\"c2\", shape=[5], dtype=\"float\", separator=\",\")",
+		generateFeatureSpecCode(fs))
 
 	r, e = parser.Parse(sparseStatement)
 	a.NoError(e)
@@ -68,7 +69,8 @@ func TestFeatureSpec(t *testing.T) {
 	a.Equal(100, fs.Shape[0])
 	a.Equal(",", fs.Delimiter)
 	a.Equal(true, fs.IsSparse)
-	a.Equal("SparseColumn(name=\"c1\", shape=[100], dtype=\"float\", separator=\",\")", fs.ToString())
+	a.Equal("SparseColumn(name=\"c1\", shape=[100], dtype=\"float\", separator=\",\")",
+		generateFeatureSpecCode(fs))
 
 	r, e = parser.Parse(badStatement)
 	a.NoError(e)

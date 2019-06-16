@@ -38,20 +38,22 @@ type connectionConfig struct {
 }
 
 type modelConfig struct {
-	Estimator   string
-	Attrs       map[string]string
-	Save        string
-	SelfDefined bool
+	Estimator    string
+	Attrs        map[string]string
+	Save         string
+	IsKerasModel bool
 }
 
 type filler struct {
-	Train          bool
+	IsTrain        bool
 	Driver         string
 	StandardSelect string
+	X              []*featureSpec
+	// key: for target (e.g. deep-wide model), value: list of generated code for current target
+	FeatureColumnsCode map[string][]string
+	Y                  *featureSpec
+	TableName          string
 	modelConfig
-	X         []columnType
-	Y         columnType
-	TableName string
 	connectionConfig
 }
 
@@ -60,7 +62,6 @@ func translateColumnToFeature(fts *fieldTypes, driverName, ident string) (*colum
 	if !ok {
 		return nil, fmt.Errorf("genTF: Cannot find type of field %s", ident)
 	}
-	fmt.Printf("ct: %s, ident: %s\n", ct, ident)
 	ctype, e := universalizeColumnType(driverName, ct)
 	if e != nil {
 		return nil, e
@@ -81,7 +82,7 @@ func translateColumnToFeature(fts *fieldTypes, driverName, ident string) (*colum
 	return nil, fmt.Errorf("unsupported type %s of field %s", ctype, ident)
 }
 
-// parseModelURI returns isSelfDefinedModel, modelClassString
+// parseModelURI returns isKerasModel, modelClassString
 func parseModelURI(modelString string) (bool, string) {
 	if strings.HasPrefix(modelString, "sqlflow_models.") {
 		return true, modelString
@@ -91,15 +92,15 @@ func parseModelURI(modelString string) (bool, string) {
 
 // TODO(weiguo): fts -> pointer
 func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
-	isSelfDefinedModel, modelClassString := parseModelURI(pr.estimator)
+	isKerasModel, modelClassString := parseModelURI(pr.estimator)
 	r := &filler{
-		Train:          pr.train,
+		IsTrain:        pr.train,
 		StandardSelect: pr.standardSelect.String(),
 		modelConfig: modelConfig{
-			Estimator:   modelClassString,
-			Attrs:       make(map[string]string),
-			Save:        pr.save,
-			SelfDefined: isSelfDefinedModel,
+			Estimator:    modelClassString,
+			Attrs:        make(map[string]string),
+			Save:         pr.save,
+			IsKerasModel: isKerasModel,
 		},
 	}
 	for k, v := range pr.attrs {
@@ -116,20 +117,40 @@ func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
 		fcMap[target] = feaCols
 		for k, v := range feaSpecs {
 			fsMap[k] = v
-			cf, e := translateColumnToFeature(&fts, db.driverName, v.FeatureName)
+			// cf, e := translateColumnToFeature(&fts, db.driverName, v.FeatureName)
+			// if e != nil {
+			// 	return nil, e
+			// }
+			//r.X = append(r.X, *cf)
+			r.X = append(r.X, v)
+		}
+		for _, col := range feaCols {
+			feaColCode, e := col.GenerateCode()
 			if e != nil {
 				return nil, e
 			}
-			r.X = append(r.X, *cf)
+			r.FeatureColumnsCode[target] = append(
+				r.FeatureColumnsCode[target],
+				feaColCode)
 		}
+
 	}
 
-	cf, e := translateColumnToFeature(&fts, db.driverName, pr.label)
-	if e != nil {
-		return nil, e
-	}
-	r.Y = *cf
+	// cf, e := translateColumnToFeature(&fts, db.driverName, pr.label)
+	// if e != nil {
+	// 	return nil, e
+	// }
+	// r.Y = *cf
 
+	// FIXME(): support soft label
+	r.Y = &featureSpec{
+		FeatureName: pr.label,
+		IsSparse:    false,
+		Shape:       []int{1},
+		DType:       "int",
+		Delimiter:   ","}
+
+	var e error
 	if !pr.train {
 		if r.TableName, _, e = parseTableColumn(pr.into); e != nil {
 			return nil, e
@@ -242,49 +263,43 @@ database=None
 
 conn = connect(driver, database, user="{{.User}}", password="{{.Password}}", host="{{.Host}}", port={{.Port}})
 
-{{$selfdefined := .SelfDefined}}
+{{$iskeras := .IsKerasModel}}
 
-feature_columns = []
-column_name_to_type = dict()
-{{range .X}}
-column_name_to_type["{{.Name}}"] = "{{.Type}}"
-{{if eq .Type "categorical_column_with_identity"}}
+feature_columns = dict()
+{{ range $target, $cols := .FeatureColumnsCode }}
+feature_columns[$target] = []
+{{ range $col := $cols }}
+feature_columns[$target].append("{{$col.GenerateCode}}")
+{{ end }}
+{{ end }}
 
-{{/* QUICK HACK: selfdefined models using keras always use sequence_categorical_column_with_identity */}}
-{{/* QUICK HACK: must refine this later */}}
-{{if $selfdefined}}
-feature_columns.append(tf.feature_column.embedding_column(
-	tf.feature_column.sequence_categorical_column_with_identity(
-	key="{{.Name}}",
-	num_buckets=NUM_BUCKETS),
-dimension=EMBEDDING_WIDTH))
-{{else}}
-feature_columns.append(tf.feature_column.embedding_column(
-	tf.feature_column.categorical_column_with_identity(
-	key="{{.Name}}",
-	num_buckets=NUM_BUCKETS),
-dimension=EMBEDDING_WIDTH))
-{{end}}
 
-{{else}}
-feature_columns.append(tf.feature_column.{{.Type}}(key="{{.Name}}"))
-{{end}}
-{{end}}
-
-feature_column_names = [{{range .X}}"{{.Name}}",
+feature_column_names = [{{range .X}}"{{.FeatureName}}",
 {{end}}]
 
 
 classifier = {{.Estimator}}(
 	feature_columns=feature_columns,
 	**train_args,
-	{{if .SelfDefined}}
+	{{if .IsKerasModel}}
 )
 	{{else}}
 	model_dir = "{{.Save}}")
 	{{end}}
 
-{{if .Train}}
+{{/* Convert go side featureSpec to python dict for input_fn */}}
+feature_specs = dict()
+{{ range $value := .X }}
+feature_spec[$value.FeatureName] = {
+	"feature_name": $value.FeatureName,
+	"is_sparse": {{if $value.IsSparse}}True{{else}}False{{end}},
+	"shape": [{{range $value.Shape}}{{.}}, {{end}}],
+	"dtype": $value.Dtype,
+	"delimiter": $value.delimiter
+}
+{{end}}
+
+{{if .IsTrain}}
 def input_fn(batch_size, is_train=True):
 	feature_types = dict()
 	feature_shapes = dict()
@@ -297,12 +312,12 @@ def input_fn(batch_size, is_train=True):
 			feature_shapes[name] = tf.TensorShape([])
 
 	gen = db_generator(driver, conn, """{{.StandardSelect}}""",
-		feature_column_names, "{{.Y.Name}}", column_name_to_type)
+		feature_column_names, "{{.Y.FeatureName}}", column_name_to_type)
 	dataset = tf.data.Dataset.from_generator(gen, (feature_types, tf.int64), (feature_shapes, tf.TensorShape([1])))
 	if is_train:
 		# TODO(typhoonzero): add prefetch, cache if needed.
 		dataset = dataset.shuffle(1000).batch(batch_size)
-		{{if not .SelfDefined}}
+		{{if not .IsKerasModel}}
 		{{/* estimater.train have no argument epochs, so add in dataset here */}}
 		dataset = dataset.repeat(EPOCHS if EPOCHS else 1)
 		{{end}}
@@ -310,7 +325,7 @@ def input_fn(batch_size, is_train=True):
 		dataset = dataset.batch(batch_size)
 	return dataset
 
-{{if .SelfDefined}}
+{{if .IsKerasModel}}
 classifier.compile(optimizer=classifier.default_optimizer(),
 	loss=classifier.default_loss(),
 	metrics=["accuracy"])
@@ -323,7 +338,7 @@ classifier.train(
 	input_fn=lambda:input_fn(BATCHSIZE, is_train=True))
 {{end}}
 
-{{if .SelfDefined}}
+{{if .IsKerasModel}}
 eval_result = classifier.evaluate(input_fn(BATCHSIZE, is_train=False), verbose=0)
 print("Training set accuracy: {accuracy:0.5f}".format(**{"accuracy": eval_result[1]}))
 {{else}}
@@ -353,7 +368,7 @@ def eval_input_fn(batch_size):
 	return dataset
 
 
-{{if .SelfDefined}}
+{{if .IsKerasModel}}
 pred_dataset = eval_input_fn(BATCHSIZE)
 one_batch = pred_dataset.__iter__().next()
 # NOTE: must run predict one batch to initialize parameters
@@ -384,7 +399,7 @@ def insert(table_name, eval_input_dataset, feature_column_names, predictions, in
 		row = []
 		for col_name in feature_column_names:
 			row.append(str(in_val[0][col_name]))
-		{{if .SelfDefined}}
+		{{if .IsKerasModel}}
 		row.append(str(pred_val))
 		{{else}}
 		row.append(str(pred_val["class_ids"][0]))
