@@ -39,22 +39,27 @@ pre-commit \
 tornado==4.5.3 \
 ${PIP_ADD_PACKAGES}
 
-# 1. Install go 1.11.5
+# 1. Install Go 1.11.5
 wget --quiet https://dl.google.com/go/go1.11.5.linux-amd64.tar.gz
 tar -C /usr/local -xzf go1.11.5.linux-amd64.tar.gz
 rm go1.11.5.linux-amd64.tar.gz
 mkdir -p /go
 
-# 2. Install go compile tools
+# 2. Install Go compile tools
 go get github.com/golang/protobuf/protoc-gen-go
 mv $GOPATH/bin/protoc-gen-go /usr/local/bin/
 go get golang.org/x/lint/golint
 mv $GOPATH/bin/golint /usr/local/bin
 
 # 3. Install protobuf compiler
-wget --quiet https://github.com/protocolbuffers/protobuf/releases/download/v3.6.1/protoc-3.6.1-linux-x86_64.zip
-unzip -qq protoc-3.6.1-linux-x86_64.zip -d /usr/local
-rm protoc-3.6.1-linux-x86_64.zip
+wget -q https://github.com/protocolbuffers/protobuf/releases/download/v3.7.1/protoc-3.7.1-linux-x86_64.zip
+unzip -qq protoc-3.7.1-linux-x86_64.zip -d /usr/local
+rm protoc-3.7.1-linux-x86_64.zip
+
+# 3.1 Install gRPC for Java as a protobuf-compiler plugin. c.f. https://stackoverflow.com/a/53982507/724872.
+wget -q http://central.maven.org/maven2/io/grpc/protoc-gen-grpc-java/1.21.0/protoc-gen-grpc-java-1.21.0-linux-x86_64.exe
+mv protoc-gen-grpc-java-1.21.0-linux-x86_64.exe /usr/local/bin/protoc-gen-grpc-java
+chmod +x /usr/local/bin/protoc-gen-grpc-java
 
 # 4. Install mysql without a password prompt
 echo 'mysql-server mysql-server/root_password password root' | debconf-set-selections
