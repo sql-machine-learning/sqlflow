@@ -8,7 +8,7 @@ Currently, we have two remote parsers, each as a gRPC server in Java:
 
 ## Development Environment
 
-To make sure that all developers use the same version and configration of development tools like JDK, Maven, and protoc, as well as dependencies like gRPC, we install all of them into a Docker image.
+To make sure that all developers use the same version and configuration of development tools like JDK, Maven, and protoc, as well as dependencies like gRPC, we install all of them into a Docker image.
 
 To build the image, type the following command:
 

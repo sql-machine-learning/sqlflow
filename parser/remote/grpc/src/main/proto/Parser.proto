@@ -14,6 +14,7 @@
 syntax = "proto3";
 
 option java_multiple_files = false;
+option java_package = "org.sqlflow.parser.remote";
 option java_outer_classname = "ParserProto";
 option go_package = "parser";
 

@@ -9,7 +9,7 @@
     <version>0.1-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
-  <artifactId>hiveql</artifactId>
+  <artifactId>calcite</artifactId>
   
   <dependencies>
     <dependency>
@@ -18,9 +18,9 @@
       <version>23.0</version>
     </dependency>
     <dependency>
-      <groupId>org.apache.hive</groupId>
-      <artifactId>hive-exec</artifactId>
-      <version>3.1.1</version>
+      <groupId>org.apache.calcite</groupId>
+      <artifactId>calcite-core</artifactId>
+      <version>1.19.0</version>
     </dependency>
     <dependency>
       <groupId>org.sqlflow</groupId>
@@ -50,7 +50,7 @@
             <manifest>
               <classpathPrefix>lib/</classpathPrefix>
               <addClasspath>true</addClasspath>
-              <mainClass>org.sqlflow.parser.remote.hiveql.HiveQLParserServer</mainClass>
+              <mainClass>org.sqlflow.parser.remote.calcite.CalciteParserServer</mainClass>
             </manifest>
           </archive>
         </configuration>
@@ -82,7 +82,7 @@
         <configuration>
           <archive>
             <manifest>
-              <mainClass>org.sqlflow.parser.remote.hiveql.HiveQLParserServer</mainClass>
+              <mainClass>org.sqlflow.parser.remote.calcite.CalciteParserServer</mainClass>
             </manifest>
           </archive>
           <descriptorRefs>
