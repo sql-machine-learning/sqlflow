@@ -103,6 +103,10 @@ message Session {
 }
 ```
 
+When the SQLFlow server receives this RPC call, it should store the session
+on the etcd cluster with a session expire time, see:
+https://help.compose.com/docs/etcd-using-etcd3-features#section-leases
+
 After that, the login procedure is finished. Then any SQL statement typed in
 the current user's Notebook instance, it will be translated to jobs using
 the current users' AK/SK and submit to the user's namespace on Kubernetes.
