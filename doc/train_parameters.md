@@ -1,6 +1,6 @@
-# Brief design for unifying format of training parameters in SQLFlow
+# Brief design for summarizing information necessary for code generators in SQLFlow
 
-SQLFlow propose an extension to the SQL SELECT statement, which proposes the syntax for training as 
+SQLFlow extends the syntax of the SELECT statement of SQL to support training a model:
 ```sql
 SELECT * FROM kaggle_credit_fraud_training_data
 LIMIT 1000
@@ -13,7 +13,7 @@ LABEL class
 INTO sqlflow_models.my_model_table;      /* saves trained model parameters and features into a table */
 ```
 
-The syntax for training must following rules as 
+Currently, we have the following syntax allowing users to provide necessary information for the training.
 ```sql
 SELECT STATEMENT
 TRAIN ...
@@ -23,13 +23,13 @@ LABEL ...
 INTO ...
 ```
 
-The training parameters in `WITH` or `COLUMN` is arbitrary for the `parser` of SQLFlow and validated in `codegen.go` or `codegen_alps.go` which may be using different and even conflicting rules.
+SQLFlow server passes the above information to code generators like `sql/codegen.go` and `sql/codegen_alps.go`, which generates the training program may be using different and even conflicting rules.
 
-Things will be even more difficult if we got other kinds of `codegen_**.go` in the future. 
+Things will be even more difficult if we got other kinds of `sql/codegen_**.go` in the future. 
 
-This document aims to provide a set of unifying format for training parameters.
+In this document, we summarize information necessary for the code generators.
 
-## Unifying format of training parameters
+## Necessary Information for Training
 
 ### Model Name
 Model Name is a string written after the keyword of `TRAIN`, which can be the name of a [TensorFlow pre-made estimator](https://www.tensorflow.org/guide/premade_estimators) or the full package path of a customized Estimator/KerasModel.
@@ -111,7 +111,7 @@ represents that the `c1` field is the dense format and the `c2` field is the spa
 
 | expression | arguments of expression                                          | example                            |
 |------------|------------------------------------------------------------------|------------------------------------|
-| dense      | 1. field name (str) <br> 2. dense shape (integer) <br> 3. separator (str)  | dense(c1, 100, comma)              |
+| dense      | 1. field name (str) <br> 2. dense shape (list of integer) <br> 3. separator (str)  | dense(c1, [100, 200], comma)              |
 | sparse     | 1. field name (str) <br> 2. sparse shape (integer) <br> 3. separator (str) | sparse(c2, 10000, comma)           |
 | numeric    | 1. field name (str) <br> 2. shape (integer)                           | numeric(c1, 100)                   |
 | bucket     | 1. key (numeric) <br> 2. bucket size (integer)                        | bucket(numeric(c1, 100), 20)       |
