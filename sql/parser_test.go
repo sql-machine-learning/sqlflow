@@ -139,7 +139,9 @@ func TestSelectStarAndPrint(t *testing.T) {
 }
 
 func TestStandardDropTable(t *testing.T) {
-	if _, e := newParser().Parse(`DROP TABLE PREDICT`); e != nil {
-		t.Skipf("[FIXME]`drop table` expected no error, but got:%v", e)
-	}
+	a := assert.New(t)
+	_, e := newParser().Parse(`DROP TABLE PREDICT`)
+	a.Error(e)
+	// Note: currently, our parser doesn't accept anything statements other than SELECT.
+	// It will support parsing any SQL statements and even dialects in the future.
 }

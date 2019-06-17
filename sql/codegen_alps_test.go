@@ -14,117 +14,45 @@
 package sql
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-const (
-	testSQLStatement = `select c1, c2, c3 from kaggle_credit_fraud_training_data 
-		TRAIN DNNClassifier 
+func TestTrainALPSFiller(t *testing.T) {
+	a := assert.New(t)
+	parser := newParser()
+
+	wndStatement := `select dense, deep, wide from kaggle_credit_fraud_training_data 
+		TRAIN DNNLinearCombinedClassifier 
 		WITH 
-			estimator.hidden_units = [10, 20]
-		COLUMN 
-			DENSE(c2, 5, comma), 
-			cross([BUCKET(NUMERIC(c1, 10), [1, 10]), c5], 20),
-			NUMERIC(c1, 10)
+			estimator.dnn_hidden_units = [10, 20],
+			train_spec.max_steps = 1000
+		COLUMN
+			DENSE(dense, 5, comma),
+			SPARSE(deep, 2000, comma),
+			NUMERIC(dense, 5),
+			EMBEDDING(CAT_ID(deep, 2000), 8, mean) FOR dnn_feature_columns
+		COLUMN
+			SPARSE(wide, 1000, comma),
+			EMBEDDING(CAT_ID(wide, 1000), 16, mean) FOR linear_feature_columns
 		LABEL c3 INTO model_table;`
 
-	badSQLStatement = `select c1, c2, c3 from kaggle_credit_fraud_training_data 
-		TRAIN DNNClassifier 
-		WITH n_classes = 3 
-		COLUMN 
-			BUCKET(NUMERIC(c1, 10) + 10, [1, 10])
-		LABEL c3 INTO model_table;`
-
-	featureColumnCode = `[tf.feature_column.crossed_column([tf.feature_column.bucketized_column(tf.feature_column.numeric_column("c1", shape=(10,)), boundaries=[1,10]),"c5"], hash_bucket_size=20),tf.feature_column.numeric_column("c1", shape=(10,))]`
-
-	estimatorCode = `tf.estimator.DNNClassifier(hidden_units=[10,20])`
-)
-
-func getFeatureColumnType(i interface{}) string {
-	switch i.(type) {
-	case *crossColumn:
-		return "crossColumn"
-	case *numericColumn:
-		return "numericColumn"
-	case *bucketColumn:
-		return "bucketColumn"
-	case *featureSpec:
-		return "featureSpec"
-	case string:
-		return i.(string)
-	}
-	return "UNKNOWN"
-}
-
-func TestAlpsColumnResolve(t *testing.T) {
-	a := assert.New(t)
-	r, e := newParser().Parse(testSQLStatement)
+	r, e := parser.Parse(wndStatement)
 	a.NoError(e)
 
-	c := r.columns["feature_columns"]
-	fcList, fsMap, err := resolveTrainColumns(&c)
-
-	a.NoError(err)
-
-	fs := fsMap["c2"]
-	fc := fcList[0]
-
-	a.Equal("featureSpec", getFeatureColumnType(fs))
-	a.Equal("c2", fs.FeatureName)
-	a.Equal(5, fs.Shape[0])
-	a.Equal(",", fs.Delimiter)
-
-	a.Equal("crossColumn", getFeatureColumnType(fc))
-	cl := fc.(*crossColumn)
-	a.Equal(20, cl.HashBucketSize)
-
-	a.Equal("bucketColumn", getFeatureColumnType(cl.Keys[0]))
-	bl := cl.Keys[0].(*bucketColumn)
-	nl2 := bl.SourceColumn
-	a.Equal("c1", nl2.Key)
-	a.Equal(10, nl2.Shape)
-	a.Equal([]int{1, 10}, bl.Boundaries)
-
-	a.Equal("c5", getFeatureColumnType(cl.Keys[1]))
-}
-
-func TestAlpsColumnResolveFailed(t *testing.T) {
-	a := assert.New(t)
-	r, e := newParser().Parse(badSQLStatement)
+	filler, e := newALPSTrainFiller(r)
 	a.NoError(e)
 
-	c := r.columns["feature_columns"]
-	_, _, err := resolveTrainColumns(&c)
-
-	a.EqualError(err, "not supported expr in ALPS submitter: +")
-}
-
-func TestAlpsFeatureColumnCodeGenerate(t *testing.T) {
-	a := assert.New(t)
-	r, e := newParser().Parse(testSQLStatement)
-	a.NoError(e)
-
-	c := r.columns["feature_columns"]
-	fcList, _, err := resolveTrainColumns(&c)
-	a.NoError(err)
-
-	code, err := generateFeatureColumnCode(fcList)
-	a.NoError(err)
-
-	a.Equal(featureColumnCode, code)
-}
-
-func TestAlpsEstimatorCodeGenerate(t *testing.T) {
-	a := assert.New(t)
-	r, e := newParser().Parse(testSQLStatement)
-	a.NoError(e)
-
-	attrs, err := resolveTrainAttribute(&r.attrs)
-	a.NoError(err)
-
-	code, err := generateEstimatorCreator(r.estimator, filter(attrs, estimator), nil)
-
-	a.Equal(estimatorCode, code)
+	a.True(filler.IsTraining)
+	a.Equal("kaggle_credit_fraud_training_data", filler.TrainInputTable)
+	a.Equal("[\"dense\",\"deep\",\"wide\"]", filler.Fields)
+	a.True(strings.Contains(filler.X, "SparseColumn(name=\"deep\", shape=[2000], dtype=\"float\", separator=\",\")"))
+	a.True(strings.Contains(filler.X, "SparseColumn(name=\"wide\", shape=[1000], dtype=\"float\", separator=\",\")"))
+	a.True(strings.Contains(filler.X, "DenseColumn(name=\"dense\", shape=[5], dtype=\"float\", separator=\",\")"))
+	a.Equal("DenseColumn(name=\"c3\", shape=[1], dtype=\"int\", separator=\",\")", filler.Y)
+	a.True(strings.Contains(filler.EstimatorCreatorCode, "tf.estimator.DNNLinearCombinedClassifier(dnn_hidden_units=[10,20]"))
+	a.True(strings.Contains(filler.EstimatorCreatorCode, "linear_feature_columns=[tf.feature_column.embedding_column(tf.feature_column.categorical_column_with_identity(key=\"wide\", num_buckets=1000), dimension=16, combiner=\"mean\")]"))
+	a.Equal("1000", filler.TrainSpec["max_steps"])
 }

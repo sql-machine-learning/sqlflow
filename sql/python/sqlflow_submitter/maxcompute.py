@@ -20,19 +20,7 @@ class MaxCompute:
     @staticmethod
     def connect(database, user, password, host):
         return ODPS(user, password, project=database, endpoint=host)
-
-    @staticmethod
-    def execute(conn, statement):
-        compress = tunnel.CompressOption.CompressAlgorithm.ODPS_ZLIB
-        inst = conn.execute_sql(statement)
-        if not inst.is_successful():
-            return None, None
-
-        r = inst.open_reader(tunnel=True, compress_option=compress)
-        field_names = [col.name for col in r._schema.columns]
-        rows = [[v[1] for v in rec] for rec in r[0: r.count]]
-        return field_names, list(map(list, zip(*rows))) if r.count > 0 else None
-
+    
     @staticmethod
     def db_generator(conn, statement, feature_column_names,
             label_column_name, column_name_to_type, fetch_size):

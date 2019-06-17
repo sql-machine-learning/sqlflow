@@ -14,21 +14,22 @@
 syntax = "proto3";
 
 option java_multiple_files = false;
-option java_outer_classname = "CalciteParserProto";
-option go_package = "calcite";
+option java_package = "org.sqlflow.parser.remote";
+option java_outer_classname = "ParserProto";
+option go_package = "parser";
 
-message CalciteParserRequest {
+message ParserRequest {
   string query = 1;
 }
 
-message CalciteParserReply {
-  // The index where we might want to split CalciteParserRequest.query
+message ParserResponse {
+  // The index where we might want to split ParserRequest.query
   // into a standard SELECT statement and the SQLFlow extension: TRAIN
   // or PREDICT.
   int32 index = 1; 
   string error = 2;
 }
 
-service CalciteParser {
-  rpc Parse (CalciteParserRequest) returns (CalciteParserReply) {}
+service Parser {
+  rpc Parse (ParserRequest) returns (ParserResponse) {}
 }
