@@ -11,7 +11,7 @@ SQLFlow works as a "bridge" between databases and
 Deep Learning/Machine Learning frameworks. In order to execute a job,
 SQLFlow need both permissions to access databases and submit jobs to
 systems to run distributed training jobs, like submitting jobs to Kubernetes
-to run a distributed tensorflow job.
+to run a distributed Tensorflow job.
 
 In production environments, one SQLFlow server is designed to accept many clients'
 connections and job submissions. In this case, we must securely store a mapping
@@ -25,14 +25,11 @@ have no access to the requested service.
 
 ## Design
 
-An authentication server (for short, will use "auth server" instead) will be introduced
-to achieve extensible authentication configurations. We use a
-[Django](https://www.djangoproject.com/) web server so that the authentication methods
-can extend to:
-
-- Database authentication
-- LDAP
-- User-defined authentication methods
+The [JupyterHub](https://jupyterhub.readthedocs.io/en/stable/) is the central web
+page for users to work on. JupyterHub can support many well-known authorization
+and authentication [methods](https://github.com/jupyterhub/jupyterhub/wiki/Authenticators)
+so that it will be easy to adapt the full solution to cloud environments
+or on-premise.
 
 ### Session
 
@@ -41,67 +38,92 @@ the database and submitting jobs. The session can be defined as:
 
 ```go
 type Session struct {
-    Token          int64  // useful only in "side-car" design
-    ClientEndpoint string // ip:port from the client
-    DBConnStr      string // mysql://127.0.0.1:3306
-    AK             string // access key
-    SK             string // secret key
+    Token          int64   // User token granted after login
+    ClientEndpoint string  // ip:port from the client
+    DBConnStr      string  // mysql://AK:SK@127.0.0.1:3306
+    // cached connection to database for current session, can point to a global connecion map
+    DBConn         *sql.DB
+    K8SAK          string  // AK or username for accessing kubernetes
+    K8SSK          string  // SK or secret for accessing kubernetes
 }
 ```
 
+**Note:** that SQLFlow should be dealing with three kinds of services:
+
+- SQLFlow RPC service itself
+- Database service that stores the training data, e.g. MaxCompute
+- A training cluster that runs the SQLFlow training job, e.g. Kubernetes
+
 The token will act as the unique id of the session. The session object
 should be expired within some time and deleted on the server memory.
+
+The Database connection string also contains credential information
+follow the format like `mysql://AK:SK@127.0.0.1:3306`.
+
+To submit to clusters like Kubrenetes, we also need to store credentials
+to access Kubernetes API server, so `K8SAK, K8SSK` is also stored in
+the session.
 
 We want to make sure that SQLFlow servers are stateless so that we can
 deploy it on any cluster that does auto fail-over and auto-scaling. In
 that case, we store session data into a reliable storage service like
 [etcd](https://github.com/etcd-io/etcd). 
 
-Possible two implementations listed below can satisfy what SQLFlow needs:
-
 ### Authentication of SQLFlow Server
 
-**Note:** that SQLFlow should be dealing with three kinds of services:
-
-- SQLFlow service itself
-- Database service that stores the training data
-- A training cluster that runs the SQLFlow training job, e.g. Kubernetes
-
-SQLFlow should depend on the [SSO](https://en.wikipedia.org/wiki/Single_sign-on)
-service. Databases and training clusters also need to check
-if the user is valid and check if the user has granted proper permissions,
-but these services may have different credentials other than the SSO service.
-So there **must** be an "Auth Server" to fetch/create the user's AK/SK (access key/secret key)
-which will be used by databases or Kubernetes.
-
-For one case that we use MySQL as the database engine, the fetched AK/SK should
-be the MySQL's user and password. When running on the cloud environment, AK/SK
-should be the real user's keys.
+The below figure demonstrates overall workflow for authorization and
+authentication.
 
 <img src="figures/sqlflow_auth.png">
 
-Users can use SQLFlow server with a simple jupyter notebook for simple deployment,
-for production deployments, users can take advantage of the cloud web IDE. The web
-IDE will redirect a user to the SSO service if the user is not logged in.
+Users can access the JupyterHub web page using their own username and password.
+The user's identity will be verified by the [SSO](https://en.wikipedia.org/wiki/Single_sign-on)
+service or **any** other authentication methods. Then the JupyterHub
+is responsible to fetch current user's "AK/SK"s (typically securely encoded strings)
+for accessing databases and the Kubernetes cluster. "AK/SK" for accessing database and
+the Kubernetes cluster may not be the same. The mapping from the user's ID to the user's
+"AK/SK" is stored in the "Mapping Service", which is an HTTPS RESTful service.
 
-Once the user is logged in, SSO service will return the "token" represents the user's
-identity. Then the web IDE will call the "Auth Service" to get AK/SK for the database and
-training cluster. After that, the web IDE will call SQLFlow RPC service to create
-a new session, and the SQLFlow server will verify that all tokens, AK/SK are valid, then
-the session will be stored.
+Then JupyterHub will spawn the Jupyter
+Notebook instances for each user and set the user's login token and "AK/SK" for
+the Notebook instance to some secure storage so that the SQLFlow magic command plugin
+can read it.
 
-If one user is already logged in, then the web IDE should have saved the token,
-then SQLFlow server can get the session to run jobs if the session not expired.
+Then we create a session on the SQLFlow server for the current user by calling below RPC:
 
-After all that, SQLFlow server works as usual except generated training jobs can
-get all the credentials used for accessing databases or training clusters.
+```proto
+service SQLFlow {
+    rpc CreateSession (Session) returns (Response);
+}
+
+message Session {
+    string token = 1;
+    string client_endpoint = 2;
+    string db_conn_str = 3;
+    string k8s_ak = 4;
+    string k8s_sk = 5;
+}
+```
+
+After that, the login procedure is finished. Then any SQL statement typed in
+the current user's Notebook instance, it will be translated to jobs using
+the current users' AK/SK and submit to the user's namespace on Kubernetes.
+
+If one user is already logged in, and the Jupyter Notebook instance is still
+alive, he or she can directly use the Notebook to run any job.
+
+If the Notebook instance crashed, the JupyterHub should be able to re-create
+the instance and set the user's token and "AK/SK".
+
+If one user's session is expired, the JupyterHub should be able to refresh the
+login and fetch the "AK/SK" again, then re-create the Notebook instance.
 
 
 ## Conclusion
 
-To make SQLFlow server production ready, supporting serve multiple clients on one
+To make SQLFlow server production ready, supporting serving multiple clients on one
 SQLFlow server instance is necessary, Authentication and session management should
 be implemented.
 
-For production use, other services like web IDE, SSO, and Auth server are also needed
-to protect user's data and computing quotas.
+For different environments like on cloud or on-premise, we may need to implement
+different "authenticators" for JupyterHub to adapt them.
