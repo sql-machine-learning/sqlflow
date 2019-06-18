@@ -74,7 +74,7 @@
 		estimator string
 		attrs     attrs
 		columns   columnClause
-                label     string
+                label     *expr
 		save      string
 	}
 
@@ -170,7 +170,7 @@ select
 ;
 
 train_clause
-: TRAIN IDENT WITH attrs column_clause LABEL IDENT INTO IDENT {
+: TRAIN IDENT WITH attrs column_clause LABEL expr INTO IDENT {
 	$$.estimator = $2
 	$$.attrs = $4
 	$$.columns = $5
@@ -353,4 +353,8 @@ func (p *sqlSyncParser) Parse(s string) (r *extendedSelect, e error) {
 
 	p.pr.Parse(newLexer(s))
 	return parseResult, nil
+}
+
+func (e *expr) label() string {
+	return e.val[1 : len(e.val) - 1]
 }

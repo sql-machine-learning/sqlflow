@@ -182,7 +182,7 @@ func newALPSTrainFiller(pr *extendedSelect) (*alpsFiller, error) {
 	}
 
 	y := &featureSpec{
-		FeatureName: pr.label,
+		FeatureName: pr.label.label(),
 		IsSparse:    false,
 		Shape:       []int{1},
 		DType:       "int",
