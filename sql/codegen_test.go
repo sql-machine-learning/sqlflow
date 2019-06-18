@@ -44,6 +44,36 @@ USING sqlflow_models.my_dnn_model;
 `
 )
 
+func TestCodeGenColumnFor(t *testing.T) {
+	a := assert.New(t)
+
+	ss := []string{`SELECT *
+FROM iris.train
+TRAIN DNNClassifier
+WITH n_classes = 3
+COLUMN sepal_length, sepal_width FOR deep_feature
+LABEL class
+INTO sqlflow_models.my_dnn_model;`,
+		`SELECT *
+FROM iris.train
+TRAIN DNNClassifier
+WITH n_classes = 3
+COLUMN sepal_length, sepal_width FOR deep_feature
+COLUMN petal_length, petal_width FOR wide_feature
+LABEL class
+INTO sqlflow_models.my_dnn_model;`}
+
+	for _, s := range ss {
+		r, e := newParser().Parse(s)
+		a.NoError(e)
+
+		fts, e := verify(r, testDB)
+		a.NoError(e)
+
+		a.EqualError(genTF(ioutil.Discard, r, fts, testDB), "COLUMN ... FOR ... are not supported")
+	}
+}
+
 func TestCodeGenTrain(t *testing.T) {
 	a := assert.New(t)
 	r, e := newParser().Parse(testTrainSelectIris)

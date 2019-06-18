@@ -105,6 +105,14 @@ func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
 		r.Attrs[k] = v.String()
 	}
 
+	// FIXME(tony): add support for multiple feature columns
+	if len(pr.columns) > 1 {
+		return nil, fmt.Errorf("COLUMN ... FOR ... are not supported")
+	}
+	if _, ok := pr.columns["feature_columns"]; !ok {
+		return nil, fmt.Errorf("COLUMN ... FOR ... are not supported")
+	}
+
 	for _, c := range pr.columns["feature_columns"] {
 		cf, e := translateColumnToFeature(&fts, db.driverName, c.val)
 		if e != nil {
