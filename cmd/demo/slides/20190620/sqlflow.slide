@@ -1,18 +1,10 @@
-Contribute to SQLFlow
+Contribute to SQLFlow Models
 18 June 2019
 
 Yan Xu
 Software Engineer, Ant Financial
 yancey.yx@antfin.com
 https://sqlflow.org
-
-* SQLFlow Open Source Community:
-- https://github.com/sql-machine-learning/
-  - 2800+ starts
-  - 17+ contributors
-  - 5 repos
-
-.image ./sqlflow-community.png 340 _
 
 * SQLFlow Overview
 SQLFlow is a bridge that connects a SQL engine
@@ -44,7 +36,7 @@ It extends the SQL syntax to enable model training and inference.
 - The submitter program runs SELECT on SQL engine and reads results for training/prediction.
 - The submitter program TRAIN the MODEL in sqlflow-models.
 
-* Challenges
+* Feature Column
 
 - How to convert SELECT results from a table of rows into models inputs(a Tensor of float values).
 
@@ -97,6 +89,14 @@ When we need to derive a new feature from combining multiple features, we use cr
 And this will generate feature column code like:
 
 .code ../201906/feature_column_cross.pysample
+
+* SQLFlow Open Source Community:
+- https://github.com/sql-machine-learning/
+- 2800+ starts
+- 17+ contributors
+- 5 repos
+
+.image ./sqlflow-community.png 340 _
 
 * Open Source Community WorkFlow [Demonstration]
 .image github-workflow.png _ 860
