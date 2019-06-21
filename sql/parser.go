@@ -300,10 +300,6 @@ func (p *sqlSyncParser) Parse(s string) (r *extendedSelect, e error) {
 	return parseResult, nil
 }
 
-func (e *expr) label() string {
-	return e.val[1 : len(e.val)-1]
-}
-
 //line yacctab:1
 var sqlExca = [...]int{
 	-1, 1,
@@ -904,7 +900,7 @@ sqldefault:
 		sqlDollar = sqlS[sqlpt-2 : sqlpt+1]
 //line sql.y:216
 		{
-			sqlVAL.labc = sqlDollar[2].val
+			sqlVAL.labc = sqlDollar[2].val[1 : len(sqlDollar[2].val)-1]
 		}
 	case 23:
 		sqlDollar = sqlS[sqlpt-1 : sqlpt+1]

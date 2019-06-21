@@ -213,7 +213,7 @@ columns
 
 label_clause
 : LABEL IDENT  { $$ = $2 }
-| LABEL STRING { $$ = $2 }
+| LABEL STRING { $$ = $2[1:len($2)-1] }
 ;
 
 tables
