@@ -74,7 +74,7 @@
 		estimator string
 		attrs     attrs
 		columns   columnClause
-                label     *expr
+		label     string
 		save      string
 	}
 
@@ -112,6 +112,7 @@
   slct standardSelect
   tran trainClause
   colc columnClause
+  labc string
   infr predictClause
 }
 
@@ -119,6 +120,7 @@
 %type  <slct> select
 %type  <tran> train_clause
 %type  <colc> column_clause
+%type  <labc> label_clause
 %type  <infr> predict_clause
 %type  <flds> fields
 %type  <tbls> tables
@@ -170,12 +172,12 @@ select
 ;
 
 train_clause
-: TRAIN IDENT WITH attrs column_clause LABEL expr INTO IDENT {
+: TRAIN IDENT WITH attrs column_clause label_clause INTO IDENT {
 	$$.estimator = $2
 	$$.attrs = $4
 	$$.columns = $5
-	$$.label = $7
-	$$.save = $9
+	$$.label = $6
+	$$.save = $8
   }
 ;
 
@@ -207,6 +209,11 @@ column
 columns
 : column             { $$ = exprlist{$1}     }
 | columns ',' column { $$ = append($1, $3) }
+;
+
+label_clause
+: LABEL IDENT  { $$ = $2 }
+| LABEL STRING { $$ = $2 }
 ;
 
 tables
@@ -353,8 +360,4 @@ func (p *sqlSyncParser) Parse(s string) (r *extendedSelect, e error) {
 
 	p.pr.Parse(newLexer(s))
 	return parseResult, nil
-}
-
-func (e *expr) label() string {
-	return e.val[1 : len(e.val) - 1]
 }

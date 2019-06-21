@@ -113,7 +113,7 @@ func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
 		r.X = append(r.X, *cf)
 	}
 
-	cf, e := translateColumnToFeature(&fts, db.driverName, pr.label.label())
+	cf, e := translateColumnToFeature(&fts, db.driverName, pr.label)
 	if e != nil {
 		return nil, e
 	}
