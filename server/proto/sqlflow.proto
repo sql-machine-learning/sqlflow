@@ -19,6 +19,11 @@ service SQLFlow {
     rpc Run (Request) returns (stream Response);
 }
 
+message Session {
+    string token = 1;
+    string db_conn_str = 2;
+}
+
 // SQL statements to run
 // e.g.
 //      1. `SELECT ...`
@@ -26,6 +31,7 @@ service SQLFlow {
 //      3. `SELECT ... TRAIN/PREDICT ...`
 message Request {
     string sql = 1;		// The SQL statement to be executed.
+    Session session = 2;
 }
 
 message Response {

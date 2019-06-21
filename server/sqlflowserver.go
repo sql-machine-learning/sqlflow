@@ -46,12 +46,24 @@ type Server struct {
 
 // Run implements `rpc Run (Request) returns (stream Response)`
 func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
-	pr := s.run(req.Sql, s.db, s.modelDir)
+	db := s.db
+	var err error
+
+	// TOOD(Yancey1989): delete the IF statment
+	// when we enable session in the pysqlflow repo by default.
+	if req.Session != nil {
+		db, err = sessionDB(req.Session)
+		defer db.Close()
+		if err != nil {
+			return err
+		}
+	}
+
+	pr := s.run(req.Sql, db, s.modelDir)
 	defer pr.Close()
 
 	for r := range pr.ReadAll() {
 		var res *pb.Response
-		var err error
 		switch s := r.(type) {
 		case error:
 			return s
@@ -72,6 +84,23 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 		}
 	}
 	return nil
+}
+
+func dbConnStrWithCredencial(token, dbConnStr string) string {
+	// TODO(Yancey1989): implement fetch Database crediencial according
+	// to the user token.
+	return dbConnStr
+}
+
+// SessionDB returns a sql.DB object accoding to the request session.
+func sessionDB(session *pb.Session) (*sf.DB, error) {
+	// TODO(Yancey1989): Should cache session here to avoid
+	// creating a new connection per request.
+	db, err := sf.Open(dbConnStrWithCredencial(session.Token, session.DbConnStr))
+	if err != nil {
+		return nil, fmt.Errorf("failed to open database: %v", err)
+	}
+	return db, nil
 }
 
 func encodeHead(head map[string]interface{}) (*pb.Response, error) {

@@ -51,6 +51,7 @@ func newServer(caCrt, caKey string) (*grpc.Server, error) {
 	}
 	return s, nil
 }
+
 func start(datasource, modelDir, caCrt, caKey string) {
 	db, err := sql.Open(datasource)
 	if err != nil {
