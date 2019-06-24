@@ -79,7 +79,7 @@ func start(datasource, modelDir, caCrt, caKey string, dbCacheExp time.Duration) 
 	if datasource == "" {
 		cache := sql.NewDBConnCache(dbCacheExp)
 		proto.RegisterSQLFlowServer(s, server.NewServer(sql.Run, nil, cache, modelDir))
-		// TODO(Yancey1989): Add a go function to delete the no active connection.
+		// TODO(Yancey1989): Remove the inactive DBConn with the expiration time.
 		// go cache.RemoveInactiveDBConn(60 * 60 * 24)
 	} else {
 		db, err := newDB(datasource)
