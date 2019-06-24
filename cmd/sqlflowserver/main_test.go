@@ -189,6 +189,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 		t.Skip("Skipping mysql tests")
 	}
 	dbStr := "mysql://root:root@tcp/?maxAllowedPacket=0"
+	os.Setenv("SQLFLOW_DATASOURCE", dbStr)
 	modelDir := ""
 
 	tmpDir, caCrt, caKey, err := generateTempCA()
@@ -197,7 +198,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 		t.Fatalf("failed to generate CA pair %v", err)
 	}
 
-	go start(dbStr, modelDir, caCrt, caKey, false, -1)
+	go start("", modelDir, caCrt, caKey, -1)
 	WaitPortReady("localhost"+port, 0)
 	err = prepareTestData(dbStr)
 	if err != nil {
@@ -228,7 +229,7 @@ func TestEnd2EndHive(t *testing.T) {
 		t.Skip("Skipping hive tests")
 	}
 	dbStr := "hive://127.0.0.1:10000/iris"
-	go start(dbStr, modelDir, caCrt, caKey, false, -1)
+	go start(dbStr, modelDir, caCrt, caKey, -1)
 	WaitPortReady("localhost"+port, 0)
 	err = prepareTestData(dbStr)
 	if err != nil {
@@ -241,6 +242,7 @@ func TestEnd2EndHive(t *testing.T) {
 
 func CaseShowDatabases(t *testing.T) {
 	a := assert.New(t)
+	dataSource := os.Getenv("SQLFLOW_DATASOURCE")
 	cmd := "show databases;"
 	conn, err := createRPCConn()
 
@@ -251,7 +253,7 @@ func CaseShowDatabases(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
-	stream, err := cli.Run(ctx, &pb.Request{Sql: cmd})
+	stream, err := cli.Run(ctx, &pb.Request{Sql: cmd, Session})
 	if err != nil {
 		a.Fail("Check if the server started successfully. %v", err)
 	}

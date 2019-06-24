@@ -13,15 +13,17 @@
 
 package sql
 
+import "time"
+
 // DBConnCache caches the DB object
 type DBConnCache struct {
 	cache      map[string]*DB
-	timeoutDur int64
+	expiration time.Duration
 }
 
 // NewDBConnCache returns a new DBConneCache instance.
-func NewDBConnCache(timeoutDur int64) *DBConnCache {
-	return &DBConnCache{cache: make(map[string]*DB), timeoutDur: timeoutDur}
+func NewDBConnCache(exp time.Duration) *DBConnCache {
+	return &DBConnCache{cache: make(map[string]*DB), expiration: exp}
 }
 
 // Get a cached DB connection object.
