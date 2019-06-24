@@ -37,7 +37,7 @@ COLUMN
   employee.name,
   bucketize(last_name, 1000),
   cross(embedding(emplyoee.name), bucketize(last_name, 1000))
-LABEL employee.salary
+LABEL "employee.salary"
 INTO sqlflow_models.my_dnn_model;
 `
 	testMultiColumnTrainSelect = testStandardSelectStmt + `TRAIN DNNClassifier

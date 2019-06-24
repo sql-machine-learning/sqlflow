@@ -1,7 +1,11 @@
 FROM ubuntu:16.04
 
 RUN apt-get update && apt-get install -y curl bzip2 \
-    build-essential unzip sqlite3 libsqlite3-dev wget git
+	build-essential unzip sqlite3 libsqlite3-dev wget unzip git \
+	openjdk-8-jdk maven
+
+# Need Java SDK to build remote parsers.
+ENV JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
 
 # Miniconda - Python 3.6, 64-bit, x86, latest
 ARG CONDA_ADD_PACKAGES=""

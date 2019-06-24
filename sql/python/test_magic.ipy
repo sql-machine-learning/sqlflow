@@ -1,0 +1,65 @@
+import sys
+from io import StringIO
+from IPython import get_ipython
+import unittest
+
+ipython = get_ipython()
+
+class TestSQLFlowMagic(unittest.TestCase):
+    # the stander SQL statement
+    create_statement = "create table iris.test_table_float_fea (features float, label int)"
+    drop_statement = "drop table if exists iris.test_table_float_fea"
+    insert_statement = "insert into iris.test_table_float_fea (features,label) values(1.0, 0), (2.0, 1)"
+    select_statement = "select * from iris.test_table_float_fea limit 1;"
+
+    # the extend SQL statement
+    train_statement = "SELECT *\n" \
+          "FROM iris.train\n" \
+          "TRAIN DNNClassifier\n" \
+          "WITH\n" \
+          "  n_classes = 3,\n" \
+          "  hidden_units = [10, 20]\n" \
+          "COLUMN sepal_length, sepal_width, petal_length, petal_width\n" \
+          "LABEL class\n" \
+          "INTO sqlflow_models.my_dnn_model;"
+    drop_model_statment = "drop table if exists sqlflow_models.my_dnn_model"
+    drop_predict_statment = "drop table if exists iris.predict"
+    predict_statement = "SELECT *\n" \
+          "FROM iris.test\n" \
+          "predict iris.predict.class\n" \
+          "USING sqlflow_models.my_dnn_model;"
+    select_predict_statement = "SELECT *\n" \
+          "FROM iris.predict\n"\
+          "LIMIT 1;"
+
+    def setUp(self):
+      ipython.run_cell_magic("sqlflow", "", self.drop_statement)
+      ipython.run_cell_magic("sqlflow", "", self.drop_predict_statment)
+      ipython.run_cell_magic("sqlflow", "", self.drop_model_statment)
+
+    def tearDown(self):
+      ipython.run_cell_magic("sqlflow", "", self.drop_statement)
+      ipython.run_cell_magic("sqlflow", "", self.drop_predict_statment)
+      ipython.run_cell_magic("sqlflow", "", self.drop_model_statment)
+      
+    def test_stander_sql(self):
+      ipython.run_cell_magic("sqlflow", "", self.create_statement)
+      ipython.run_cell_magic("sqlflow", "", self.insert_statement)
+
+      ret = ipython.run_cell_magic("sqlflow", "", self.select_statement)
+      ret_list = [r for r in ret.rows()]
+      self.assertEqual(len(ret_list), 1)
+      self.assertEqual(ret_list[0], [1.0, 0])
+
+    def test_extend_sql(self):
+      ipython.run_cell_magic("sqlflow", "", self.train_statement)
+      ipython.run_cell_magic("sqlflow", "", self.predict_statement)
+      ret = ipython.run_cell_magic("sqlflow", "", self.select_predict_statement)
+      ret_list = [r for r in ret.rows()]
+      self.assertEqual(len(ret_list), 1)
+      # Note: Only verify the TRAIN and PREDICT jobs works well and
+      # don't care about the precision here.
+      self.assertEqual(ret_list[0][:-1], [6.3, 2.7, 4.9, 1.8, 2][:-1])
+
+if __name__ == "__main__":
+    unittest.main(argv=['first-arg-is-ignored'], exit=False)
