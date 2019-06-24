@@ -1,0 +1,2 @@
+docker run -it -p 8888:8888 -v $PWD:/models sqlflow/sqlflow
+docker exec <container_id> pip install /models
