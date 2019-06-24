@@ -143,19 +143,6 @@ func TestGoroutineLeaky(t *testing.T) {
 	}
 }
 
-func TestSessionDB(t *testing.T) {
-	a := assert.New(t)
-	se := &pb.Session{Token: "", DbConnStr: "sqlite3://:memory:"}
-	db, e := sessionDB(se)
-	defer db.Close()
-	a.NoError(e)
-	// attach an In-Memory Database in SQLite
-	for _, name := range []string{"iris", "churn"} {
-		_, e = db.Exec(fmt.Sprintf("ATTACH DATABASE ':memory:' AS %s;", name))
-		a.NoError(e)
-	}
-}
-
 func TestMain(m *testing.M) {
 	done := make(chan bool)
 	go startServer(done)

@@ -197,7 +197,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 		t.Fatalf("failed to generate CA pair %v", err)
 	}
 
-	go start(dbStr, modelDir, caCrt, caKey)
+	go start(dbStr, modelDir, caCrt, caKey, false, -1)
 	WaitPortReady("localhost"+port, 0)
 	err = prepareTestData(dbStr)
 	if err != nil {
@@ -228,7 +228,7 @@ func TestEnd2EndHive(t *testing.T) {
 		t.Skip("Skipping hive tests")
 	}
 	dbStr := "hive://127.0.0.1:10000/iris"
-	go start(dbStr, modelDir, caCrt, caKey)
+	go start(dbStr, modelDir, caCrt, caKey, false, -1)
 	WaitPortReady("localhost"+port, 0)
 	err = prepareTestData(dbStr)
 	if err != nil {

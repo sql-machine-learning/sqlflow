@@ -33,15 +33,16 @@ import (
 )
 
 // NewServer returns a server instance
-func NewServer(run func(string, *sf.DB, string) *sf.PipeReader, db *sf.DB, modelDir string) *Server {
-	return &Server{run: run, db: db, modelDir: modelDir}
+func NewServer(run func(string, *sf.DB, string) *sf.PipeReader, db *sf.DB, cache *sf.DBConnCache, modelDir string) *Server {
+	return &Server{run: run, db: db, dbConnCache: cache, modelDir: modelDir}
 }
 
 // Server is the instance will be used to connect to DB and execute training
 type Server struct {
-	run      func(sql string, db *sf.DB, modelDir string) *sf.PipeReader
-	db       *sf.DB
-	modelDir string
+	run         func(sql string, db *sf.DB, modelDir string) *sf.PipeReader
+	db          *sf.DB
+	dbConnCache *sf.DBConnCache
+	modelDir    string
 }
 
 // Run implements `rpc Run (Request) returns (stream Response)`
@@ -49,17 +50,14 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 	db := s.db
 	var err error
 
-	// TOOD(Yancey1989): delete the IF statment
-	// when we enable session in the pysqlflow repo by default.
-	if req.Session != nil {
-		db, err = sessionDB(req.Session)
-		defer db.Close()
-		if err != nil {
+	if s.dbConnCache != nil {
+		if db, err = getCachedDBConn(s.dbConnCache, req.Session); err != nil {
 			return err
 		}
 	}
 
 	pr := s.run(req.Sql, db, s.modelDir)
+
 	defer pr.Close()
 
 	for r := range pr.ReadAll() {
@@ -86,20 +84,19 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 	return nil
 }
 
-func dbConnStrWithCredencial(token, dbConnStr string) string {
-	// TODO(Yancey1989): implement fetch Database crediencial according
-	// to the user token.
-	return dbConnStr
-}
-
-// SessionDB returns a sql.DB object accoding to the request session.
-func sessionDB(session *pb.Session) (*sf.DB, error) {
-	// TODO(Yancey1989): Should cache session here to avoid
-	// creating a new connection per request.
-	db, err := sf.Open(dbConnStrWithCredencial(session.Token, session.DbConnStr))
-	if err != nil {
-		return nil, fmt.Errorf("failed to open database: %v", err)
+func getCachedDBConn(cache *sf.DBConnCache, session *pb.Session) (*sf.DB, error) {
+	ts := time.Now().Unix()
+	var db *sf.DB
+	var err error
+	db, ok := cache.Get(session.Token)
+	if !ok {
+		db, err = sf.Open(session.DbConnStr)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open database: %v", err)
+		}
 	}
+	db.UpdateActiveTimestamp(ts)
+	cache.Set(session.Token, db)
 	return db, nil
 }
 

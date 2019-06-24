@@ -30,6 +30,7 @@ type DB struct {
 	driverName     string
 	dataSourceName string
 	*sql.DB
+	lastActiveTime int64
 }
 
 // Open pases a datasource string into driver name and datasource name,
@@ -44,7 +45,7 @@ func Open(datasource string) (*DB, error) {
 	if len(dses) != 2 {
 		return nil, fmt.Errorf("Expecting but cannot find :// in datasource %v", datasource)
 	}
-	db := &DB{driverName: dses[0], dataSourceName: dses[1]}
+	db := &DB{driverName: dses[0], dataSourceName: dses[1], lastActiveTime: -1}
 
 	var err error
 	switch db.driverName {
@@ -54,4 +55,9 @@ func Open(datasource string) (*DB, error) {
 		return nil, fmt.Errorf("sqlfow currently doesn't support DB %v", db.driverName)
 	}
 	return db, err
+}
+
+// UpdateActiveTimestamp updates the last active timestamp
+func (db *DB) UpdateActiveTimestamp(timestamp int64) {
+	db.lastActiveTime = timestamp
 }

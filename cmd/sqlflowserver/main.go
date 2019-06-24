@@ -52,19 +52,21 @@ func newServer(caCrt, caKey string) (*grpc.Server, error) {
 	return s, nil
 }
 
-func start(datasource, modelDir, caCrt, caKey string) {
+func newDB(datasource string) (*sql.DB, error) {
 	db, err := sql.Open(datasource)
 	if err != nil {
-		log.Fatalf("failed to open database: %v", err)
+		return nil, fmt.Errorf("failed to open database: %v", err)
 	}
-	defer db.Close()
 	if err := db.Ping(); err != nil {
-		log.Fatalf("failed to ping database: %v", err)
+		return nil, fmt.Errorf("failed to ping database: %v", err)
 	}
+	return db, nil
+}
 
-	lis, err := net.Listen("tcp", port)
+func start(datasource, modelDir, caCrt, caKey string, enableSession bool, dbCacheExpTime int64) {
+	s, err := newServer(caCrt, caKey)
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		log.Fatalf("failed to create new gRPC Server: %v", err)
 	}
 
 	if modelDir != "" {
@@ -73,12 +75,25 @@ func start(datasource, modelDir, caCrt, caKey string) {
 		}
 	}
 
-	s, err := newServer(caCrt, caKey)
-	if err != nil {
-		log.Fatalf("failed to create new gRPC Server: %v", err)
+	if enableSession {
+		cache := sql.NewDBConnCache(dbCacheExpTime)
+		proto.RegisterSQLFlowServer(s, server.NewServer(sql.Run, nil, cache, modelDir))
+		// TODO(Yancey1989): Add a go function to delete the no active connection.
+		// go cache.RemoveInactiveDBConn(60 * 60 * 24)
+	} else {
+		db, err := newDB(datasource)
+		if err != nil {
+			log.Fatalf("create DB failed: %v", err)
+		}
+		defer db.Close()
+		proto.RegisterSQLFlowServer(s, server.NewServer(sql.Run, db, nil, modelDir))
 	}
 
-	proto.RegisterSQLFlowServer(s, server.NewServer(sql.Run, db, modelDir))
+	lis, err := net.Listen("tcp", port)
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+
 	// Register reflection service on gRPC server.
 	reflection.Register(s)
 	log.Println("Server Started at", port)
@@ -92,6 +107,8 @@ func main() {
 	modelDir := flag.String("model_dir", "", "model would be saved on the local dir, otherwise upload to the table.")
 	caCrt := flag.String("ca-crt", "", "CA certificate file.")
 	caKey := flag.String("ca-key", "", "CA private key file.")
+	enableSession := flag.Bool("enable-session", false, "Whether to enable the server session.")
+	dbCacheExpTime := flag.Int64("db-cache-expiration-time", 60*60*24, "The DBConn cache expiration time in secs.")
 	flag.Parse()
-	start(*ds, *modelDir, *caCrt, *caKey)
+	start(*ds, *modelDir, *caCrt, *caKey, *enableSession, *dbCacheExpTime)
 }
