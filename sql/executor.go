@@ -274,7 +274,7 @@ func (cw *logChanWriter) Write(p []byte) (n int, err error) {
 			return len(cw.prev), err
 		}
 		if cw.logtostdout {
-			fmt.Println(cw.prev)
+			log.Debugf("Train script output: %s", cw.prev)
 		}
 		cw.prev = ""
 	}
@@ -298,7 +298,6 @@ func train(tr *extendedSelect, slct string, db *DB, cwd string, wr *PipeWriter, 
 	if e := genTF(&program, tr, fts, db); e != nil {
 		return fmt.Errorf("genTF %v", e)
 	}
-	fmt.Println(program.String())
 
 	cw := &logChanWriter{wr: wr, logtostdout: true}
 	defer cw.Close()
