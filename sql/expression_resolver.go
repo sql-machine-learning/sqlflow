@@ -23,7 +23,7 @@ const (
 	sparse     = "SPARSE"
 	numeric    = "NUMERIC"
 	cross      = "CROSS"
-	categoryId = "CATEGORY_ID"
+	categoryID = "CATEGORY_ID"
 	embedding  = "EMBEDDING"
 	bucket     = "BUCKET"
 	square     = "SQUARE"
@@ -90,7 +90,7 @@ type crossColumn struct {
 	HashBucketSize int
 }
 
-type categoryIdColumn struct {
+type categoryIDColumn struct {
 	Key        string
 	BucketSize int
 }
@@ -337,8 +337,8 @@ func resolveExpression(e interface{}) (interface{}, error) {
 		return resolveBucketColumn(el)
 	case cross:
 		return resolveCrossColumn(el)
-	case categoryId:
-		return resolveCategoryIdColumn(el)
+	case categoryID:
+		return resolveCategoryIDColumn(el)
 	case embedding:
 		return resolveEmbeddingColumn(el)
 	case square:
@@ -505,7 +505,7 @@ func resolveCrossColumn(el *exprlist) (*crossColumn, error) {
 		HashBucketSize: bucketSize}, nil
 }
 
-func resolveCategoryIdColumn(el *exprlist) (*categoryIdColumn, error) {
+func resolveCategoryIDColumn(el *exprlist) (*categoryIDColumn, error) {
 	if len(*el) != 3 {
 		return nil, fmt.Errorf("bad CATEGORY_ID expression format: %s", *el)
 	}
@@ -517,7 +517,7 @@ func resolveCategoryIdColumn(el *exprlist) (*categoryIdColumn, error) {
 	if err != nil {
 		return nil, fmt.Errorf("bad CATEGORY_ID bucketSize: %s, err: %s", (*el)[2].val, err)
 	}
-	return &categoryIdColumn{
+	return &categoryIDColumn{
 		Key:        key,
 		BucketSize: bucketSize}, nil
 }
@@ -532,7 +532,7 @@ func resolveEmbeddingColumn(el *exprlist) (*embeddingColumn, error) {
 		return nil, err
 	}
 	// TODO(uuleon) support other kinds of categorical column in the future
-	catColumn, ok := source.(*categoryIdColumn)
+	catColumn, ok := source.(*categoryIDColumn)
 	if !ok {
 		return nil, fmt.Errorf("key of EMBEDDING must be categorical column")
 	}
@@ -585,7 +585,7 @@ func (cc *crossColumn) GenerateCode() (string, error) {
 		strings.Join(keysGenerated, ","), cc.HashBucketSize), nil
 }
 
-func (cc *categoryIdColumn) GenerateCode() (string, error) {
+func (cc *categoryIDColumn) GenerateCode() (string, error) {
 	return fmt.Sprintf("tf.feature_column.categorical_column_with_identity(key=\"%s\", num_buckets=%d)",
 		cc.Key, cc.BucketSize), nil
 }
