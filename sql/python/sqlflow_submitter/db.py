@@ -41,7 +41,7 @@ def connect(driver, database, user, password, host, port):
 
 def db_generator(driver, conn, statement,
                  feature_column_names, label_column_name,
-                 column_name_to_type, fetch_size=128):
+                 feature_specs, fetch_size=128):
     def reader():
         cursor = conn.cursor()
         cursor.execute(statement)
@@ -62,8 +62,8 @@ def db_generator(driver, conn, statement,
                 label = row[label_idx]
                 features = dict()
                 for name in feature_column_names:
-                    if column_name_to_type[name] == "categorical_column_with_identity":
-                        cell = np.fromstring(row[field_names.index(name)], dtype=int, sep=",")
+                    if feature_specs[name]["delimiter"] != "":
+                        cell = np.fromstring(row[field_names.index(name)], dtype=int, sep=feature_specs[name]["delimiter"])
                     else:
                         cell = row[field_names.index(name)]
                     features[name] = cell
@@ -74,7 +74,7 @@ def db_generator(driver, conn, statement,
     if driver == "maxcompute":
         from sqlflow_submitter.maxcompute import MaxCompute
         return MaxCompute.db_generator(conn, statement, feature_column_names,
-                label_column_name, column_name_to_type, fetch_size)
+                label_column_name, feature_specs, fetch_size)
     return reader
 
 def insert_values(driver, conn, table_name, table_schema, values):

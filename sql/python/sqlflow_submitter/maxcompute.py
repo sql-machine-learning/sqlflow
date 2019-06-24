@@ -23,7 +23,7 @@ class MaxCompute:
     
     @staticmethod
     def db_generator(conn, statement, feature_column_names,
-            label_column_name, column_name_to_type, fetch_size):
+            label_column_name, feature_specs, fetch_size):
         def reader():
             compress = tunnel.CompressOption.CompressAlgorithm.ODPS_ZLIB
             inst = conn.execute_sql(statement)
@@ -42,8 +42,8 @@ class MaxCompute:
                     label = row[label_idx]
                     features = dict()
                     for name in feature_column_names:
-                        if column_name_to_type[name] == "categorical_column_with_identity":
-                            cell = np.fromstring(row[field_names.index(name)], dtype=int, sep=",")
+                        if feature_specs[name]["delimeter"] != "":
+                            cell = np.fromstring(row[field_names.index(name)], dtype=int, sep=feature_specs[name]["delimeter"])
                         else:
                             cell = row[field_names.index(name)]
                         features[name] = cell
