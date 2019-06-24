@@ -113,7 +113,6 @@ func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
 		r.Attrs[k] = v.String()
 	}
 
-	// fmMap := map[string]*featureMeta{}
 	for target, columns := range pr.columns {
 		feaCols, _, err := resolveTrainColumns(&columns)
 		if err != nil {
@@ -137,7 +136,7 @@ func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
 		}
 	}
 
-	// FIXME(): support soft label in addition to int types
+	// FIXME(typhoonzero): support soft label in addition to int types
 	r.Y = &featureMeta{
 		FeatureName: pr.label,
 		Dtype:       "int",

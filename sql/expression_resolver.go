@@ -108,11 +108,9 @@ func resolveTrainColumns(columns *exprlist) ([]featureColumn, map[string]*featur
 			return nil, nil, err
 		}
 		if fs, ok := result.(*featureSpec); ok {
-			fmt.Println("resolved featureSpec...")
 			fsMap[fs.FeatureName] = fs
 			continue
 		} else if c, ok := result.(featureColumn); ok {
-			fmt.Println("resolved featureColumn...")
 			fcList = append(fcList, c)
 		} else if s, ok := result.(string); ok {
 			// simple string column, generate default feature column
