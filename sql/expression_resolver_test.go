@@ -49,26 +49,26 @@ func TestFeatureSpec(t *testing.T) {
 	r, e := parser.Parse(denseStatement)
 	a.NoError(e)
 	c := r.columns["feature_columns"]
-	_, fsMap, e := resolveTrainColumns(&c)
+	_, css, e := resolveTrainColumns(&c)
 	a.NoError(e)
-	fs := fsMap["c2"]
-	a.Equal("c2", fs.FeatureName)
-	a.Equal(5, fs.Shape[0])
-	a.Equal(",", fs.Delimiter)
-	a.Equal(false, fs.IsSparse)
-	a.Equal("DenseColumn(name=\"c2\", shape=[5], dtype=\"float\", separator=\",\")", fs.ToString())
+	cs := css[0]
+	a.Equal("c2", cs.ColumnName)
+	a.Equal(5, cs.Shape[0])
+	a.Equal(",", cs.Delimiter)
+	a.Equal(false, cs.IsSparse)
+	a.Equal("DenseColumn(name=\"c2\", shape=[5], dtype=\"float\", separator=\",\")", cs.ToString())
 
 	r, e = parser.Parse(sparseStatement)
 	a.NoError(e)
 	c = r.columns["feature_columns"]
-	_, fsMap, e = resolveTrainColumns(&c)
+	_, css, e = resolveTrainColumns(&c)
 	a.NoError(e)
-	fs = fsMap["c1"]
-	a.Equal("c1", fs.FeatureName)
-	a.Equal(100, fs.Shape[0])
-	a.Equal(",", fs.Delimiter)
-	a.Equal(true, fs.IsSparse)
-	a.Equal("SparseColumn(name=\"c1\", shape=[100], dtype=\"float\", separator=\",\")", fs.ToString())
+	cs = css[0]
+	a.Equal("c1", cs.ColumnName)
+	a.Equal(100, cs.Shape[0])
+	a.Equal(",", cs.Delimiter)
+	a.Equal(true, cs.IsSparse)
+	a.Equal("SparseColumn(name=\"c1\", shape=[100], dtype=\"float\", separator=\",\")", cs.ToString())
 
 	r, e = parser.Parse(badStatement)
 	a.NoError(e)
@@ -81,33 +81,33 @@ func TestNumericColumn(t *testing.T) {
 	a := assert.New(t)
 	parser := newParser()
 
-	normal := statementWithColumn("NUMERIC(c2, 5)")
+	normal := statementWithColumn("NUMERIC(c2, [5, 10])")
 	moreArgs := statementWithColumn("NUMERIC(c1, 100, args)")
 	badShape := statementWithColumn("NUMERIC(c1, bad)")
 
 	r, e := parser.Parse(normal)
 	a.NoError(e)
 	c := r.columns["feature_columns"]
-	fcList, _, e := resolveTrainColumns(&c)
+	fcs, _, e := resolveTrainColumns(&c)
 	a.NoError(e)
-	nc, ok := fcList[0].(*numericColumn)
+	nc, ok := fcs[0].(*numericColumn)
 	a.True(ok)
 	code, e := nc.GenerateCode()
 	a.NoError(e)
 	a.Equal("c2", nc.Key)
-	a.Equal(5, nc.Shape)
-	a.Equal("tf.feature_column.numeric_column(\"c2\", shape=(5,))", code)
+	a.Equal([]int{5, 10}, nc.Shape)
+	a.Equal("tf.feature_column.numeric_column(\"c2\", shape=[5,10])", code)
 
 	r, e = parser.Parse(moreArgs)
 	a.NoError(e)
 	c = r.columns["feature_columns"]
-	fcList, _, e = resolveTrainColumns(&c)
+	fcs, _, e = resolveTrainColumns(&c)
 	a.Error(e)
 
 	r, e = parser.Parse(badShape)
 	a.NoError(e)
 	c = r.columns["feature_columns"]
-	fcList, _, e = resolveTrainColumns(&c)
+	fcs, _, e = resolveTrainColumns(&c)
 	a.Error(e)
 }
 
@@ -122,27 +122,27 @@ func TestBucketColumn(t *testing.T) {
 	r, e := parser.Parse(normal)
 	a.NoError(e)
 	c := r.columns["feature_columns"]
-	fcList, _, e := resolveTrainColumns(&c)
+	fcs, _, e := resolveTrainColumns(&c)
 	a.NoError(e)
-	bc, ok := fcList[0].(*bucketColumn)
+	bc, ok := fcs[0].(*bucketColumn)
 	a.True(ok)
 	code, e := bc.GenerateCode()
 	a.NoError(e)
 	a.Equal("c1", bc.SourceColumn.Key)
-	a.Equal(10, bc.SourceColumn.Shape)
+	a.Equal([]int{10}, bc.SourceColumn.Shape)
 	a.Equal([]int{1, 10}, bc.Boundaries)
-	a.Equal("tf.feature_column.bucketized_column(tf.feature_column.numeric_column(\"c1\", shape=(10,)), boundaries=[1,10])", code)
+	a.Equal("tf.feature_column.bucketized_column(tf.feature_column.numeric_column(\"c1\", shape=[10]), boundaries=[1,10])", code)
 
 	r, e = parser.Parse(badInput)
 	a.NoError(e)
 	c = r.columns["feature_columns"]
-	fcList, _, e = resolveTrainColumns(&c)
+	fcs, _, e = resolveTrainColumns(&c)
 	a.Error(e)
 
 	r, e = parser.Parse(badBoundaries)
 	a.NoError(e)
 	c = r.columns["feature_columns"]
-	fcList, _, e = resolveTrainColumns(&c)
+	fcs, _, e = resolveTrainColumns(&c)
 	a.Error(e)
 }
 
@@ -166,11 +166,11 @@ func TestCrossColumn(t *testing.T) {
 
 	bc := cc.Keys[0].(*bucketColumn)
 	a.Equal("c1", bc.SourceColumn.Key)
-	a.Equal(10, bc.SourceColumn.Shape)
+	a.Equal([]int{10}, bc.SourceColumn.Shape)
 	a.Equal([]int{1, 10}, bc.Boundaries)
 	a.Equal("c5", cc.Keys[1].(string))
 	a.Equal(20, cc.HashBucketSize)
-	a.Equal("tf.feature_column.crossed_column([tf.feature_column.bucketized_column(tf.feature_column.numeric_column(\"c1\", shape=(10,)), boundaries=[1,10]),\"c5\"], hash_bucket_size=20)", code)
+	a.Equal("tf.feature_column.crossed_column([tf.feature_column.bucketized_column(tf.feature_column.numeric_column(\"c1\", shape=[10]), boundaries=[1,10]),\"c5\"], hash_bucket_size=20)", code)
 
 	r, e = parser.Parse(badInput)
 	a.NoError(e)
@@ -189,16 +189,16 @@ func TestCatIdColumn(t *testing.T) {
 	a := assert.New(t)
 	parser := newParser()
 
-	normal := statementWithColumn("CAT_ID(c1, 100)")
-	badKey := statementWithColumn("CAT_ID([100], 100)")
-	badBucket := statementWithColumn("CAT_ID(c1, bad)")
+	normal := statementWithColumn("CATEGORY_ID(c1, 100)")
+	badKey := statementWithColumn("CATEGORY_ID([100], 100)")
+	badBucket := statementWithColumn("CATEGORY_ID(c1, bad)")
 
 	r, e := parser.Parse(normal)
 	a.NoError(e)
 	c := r.columns["feature_columns"]
-	fcList, _, e := resolveTrainColumns(&c)
+	fcs, _, e := resolveTrainColumns(&c)
 	a.NoError(e)
-	cc, ok := fcList[0].(*catIDColumn)
+	cc, ok := fcs[0].(*categoryIDColumn)
 	a.True(ok)
 	code, e := cc.GenerateCode()
 	a.NoError(e)
@@ -209,13 +209,13 @@ func TestCatIdColumn(t *testing.T) {
 	r, e = parser.Parse(badKey)
 	a.NoError(e)
 	c = r.columns["feature_columns"]
-	fcList, _, e = resolveTrainColumns(&c)
+	fcs, _, e = resolveTrainColumns(&c)
 	a.Error(e)
 
 	r, e = parser.Parse(badBucket)
 	a.NoError(e)
 	c = r.columns["feature_columns"]
-	fcList, _, e = resolveTrainColumns(&c)
+	fcs, _, e = resolveTrainColumns(&c)
 	a.Error(e)
 }
 
@@ -223,20 +223,20 @@ func TestEmbeddingColumn(t *testing.T) {
 	a := assert.New(t)
 	parser := newParser()
 
-	normal := statementWithColumn("EMBEDDING(CAT_ID(c1, 100), 200, mean)")
+	normal := statementWithColumn("EMBEDDING(CATEGORY_ID(c1, 100), 200, mean)")
 	badInput := statementWithColumn("EMBEDDING(c1, 100, mean)")
-	badBucket := statementWithColumn("EMBEDDING(CAT_ID(c1, 100), bad, mean)")
+	badBucket := statementWithColumn("EMBEDDING(CATEGORY_ID(c1, 100), bad, mean)")
 
 	r, e := parser.Parse(normal)
 	a.NoError(e)
 	c := r.columns["feature_columns"]
-	fcList, _, e := resolveTrainColumns(&c)
+	fcs, _, e := resolveTrainColumns(&c)
 	a.NoError(e)
-	ec, ok := fcList[0].(*embeddingColumn)
+	ec, ok := fcs[0].(*embeddingColumn)
 	a.True(ok)
 	code, e := ec.GenerateCode()
 	a.NoError(e)
-	cc, ok := ec.CatColumn.(*catIDColumn)
+	cc, ok := ec.CategoryColumn.(*categoryIDColumn)
 	a.True(ok)
 	a.Equal("c1", cc.Key)
 	a.Equal(100, cc.BucketSize)
@@ -246,13 +246,13 @@ func TestEmbeddingColumn(t *testing.T) {
 	r, e = parser.Parse(badInput)
 	a.NoError(e)
 	c = r.columns["feature_columns"]
-	fcList, _, e = resolveTrainColumns(&c)
+	fcs, _, e = resolveTrainColumns(&c)
 	a.Error(e)
 
 	r, e = parser.Parse(badBucket)
 	a.NoError(e)
 	c = r.columns["feature_columns"]
-	fcList, _, e = resolveTrainColumns(&c)
+	fcs, _, e = resolveTrainColumns(&c)
 	a.Error(e)
 }
 
@@ -265,16 +265,18 @@ func TestAttrs(t *testing.T) {
 	a.NoError(e)
 	attrs, err := resolveTrainAttribute(&r.attrs)
 	a.NoError(err)
-	a.Equal("estimator", attrs[0].Prefix)
-	a.Equal("hidden_units", attrs[0].Name)
-	a.Equal([]interface{}([]interface{}{10, 20}), attrs[0].Value)
+	attr := attrs["estimator.hidden_units"]
+	a.Equal("estimator", attr.Prefix)
+	a.Equal("hidden_units", attr.Name)
+	a.Equal([]interface{}([]interface{}{10, 20}), attr.Value)
 
 	s = statementWithAttrs("dataset.name = hello")
 	r, e = parser.Parse(s)
 	a.NoError(e)
 	attrs, err = resolveTrainAttribute(&r.attrs)
 	a.NoError(err)
-	a.Equal("dataset", attrs[0].Prefix)
-	a.Equal("name", attrs[0].Name)
-	a.Equal("hello", attrs[0].Value)
+	attr = attrs["dataset.name"]
+	a.Equal("dataset", attr.Prefix)
+	a.Equal("name", attr.Name)
+	a.Equal("hello", attr.Value)
 }

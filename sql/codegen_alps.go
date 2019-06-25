@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"sqlflow.org/gomaxcompute"
 	"strings"
 	"text/template"
 )
@@ -39,137 +40,63 @@ type alpsFiller struct {
 	X      string
 	Y      string
 
-	// Estimator
-	EstimatorCreatorCode string
-	TrainSpec            collection
-	EvalSpec             collection
+	// Train
+	ModelCreatorCode string
+	TrainClause      *resolvedTrainClause
 
-	// Config
-	OdpsConf    collection
-	DatasetConf collection
+	// ODPS
+	OdpsConf *gomaxcompute.Config
 }
 
-type collection map[string]string
-
-func (c collection) Get(key string, fallback string) string {
-	if v, ok := c[key]; ok {
-		return v
-	}
-	return fallback
-}
-
-func filter(attrs []*attribute, prefix string) []*attribute {
-	ret := make([]*attribute, 0)
+func modelCreatorCode(modelName string, attrs map[string]*attribute, args []string) (string, error) {
+	cl := make([]string, 0)
 	for _, a := range attrs {
-		if strings.EqualFold(a.Prefix, prefix) {
-			ret = append(ret, a)
-		}
-	}
-	return ret
-}
-
-func generateFeatureColumnCode(fcs []interface{}) (string, error) {
-	var codes = make([]string, 0, len(fcs))
-	for _, fc := range fcs {
-		if fc, ok := fc.(featureColumn); ok {
-			code, err := fc.GenerateCode()
-			if err != nil {
-				return "", nil
-			}
-			codes = append(codes, code)
-		} else {
-			return "", fmt.Errorf("input is not featureColumn interface")
-		}
-	}
-	return fmt.Sprintf("[%s]", strings.Join(codes, ",")), nil
-}
-
-func generateEstimatorCreator(estimator string, attrs []*attribute, args []string) (string, error) {
-	cl := make([]string, len(attrs))
-	for idx, a := range attrs {
 		code, err := a.GenerateCode()
 		if err != nil {
 			return "", err
 		}
-		cl[idx] = code
+		cl = append(cl, code)
 	}
 	if args != nil {
 		for _, arg := range args {
 			cl = append(cl, arg)
 		}
 	}
-	return fmt.Sprintf("tf.estimator.%s(%s)", estimator, strings.Join(cl, ",")), nil
+	//TODO(uuleon) support customized model
+	return fmt.Sprintf("tf.estimator.%s(%s)", modelName, strings.Join(cl, ",")), nil
 }
 
-func newALPSTrainFiller(pr *extendedSelect) (*alpsFiller, error) {
-	//TODO(uuleon): the scratchDir will be deleted after model uploading
-	scratchDir, err := ioutil.TempDir("/tmp", "alps_scratch_dir_")
+func newALPSTrainFiller(pr *extendedSelect, db *DB) (*alpsFiller, error) {
+	resolved, err := resolveTrainClause(&pr.trainClause)
 	if err != nil {
 		return nil, err
 	}
-	modelDir := fmt.Sprintf("%s/model/", scratchDir)
 
-	fcMap := map[string][]interface{}{}
-	fsMap := map[string]*featureSpec{}
+	csCode := make([]string, 0)
+	for _, css := range resolved.ColumnSpecs {
+		for _, cs := range css {
+			csCode = append(csCode, cs.ToString())
+		}
+	}
 
-	for target, columns := range pr.columns {
-		fcs, fss, err := resolveTrainColumns(&columns)
+	var odpsConfig = &gomaxcompute.Config{}
+	if db != nil {
+		odpsConfig, err = gomaxcompute.ParseDSN(db.dataSourceName)
 		if err != nil {
 			return nil, err
 		}
-		fcMap[target] = fcs
-		for k, v := range fss {
-			fsMap[k] = v
-		}
 	}
-
-	fssCode := make([]string, 0, len(fsMap))
-	for _, fs := range fsMap {
-		fssCode = append(fssCode, fs.ToString())
-	}
-
-	attrs, err := resolveTrainAttribute(&pr.attrs)
-	if err != nil {
-		return nil, err
-	}
-
-	//FIXME(uuleon): need removed and parse it from odps datasource
-	odpsAttrs := filter(attrs, "odps")
-	odpsMap := make(map[string]string, len(odpsAttrs))
-	for _, a := range odpsAttrs {
-		odpsMap[a.Name] = a.Value.(string)
-	}
-
-	trainSpecAttrs := filter(attrs, "train_spec")
-	trainMap := make(map[string]string, len(trainSpecAttrs))
-	for _, a := range trainSpecAttrs {
-		trainMap[a.Name] = a.Value.(string)
-	}
-
-	evalSpecAttrs := filter(attrs, "eval_spec")
-	evalMap := make(map[string]string, len(evalSpecAttrs))
-	for _, a := range evalSpecAttrs {
-		evalMap[a.Name] = a.Value.(string)
-	}
-
-	datasetAttrs := filter(attrs, "dataset")
-	datasetMap := make(map[string]string, len(datasetAttrs))
-	for _, a := range datasetAttrs {
-		datasetMap[a.Name] = a.Value.(string)
-	}
-
-	estimatorAttrs := filter(attrs, "estimator")
 
 	args := make([]string, 0)
 	args = append(args, "config=run_config")
-	for target, fcs := range fcMap {
+	for target, fcs := range resolved.FeatureColumns {
 		code, err := generateFeatureColumnCode(fcs)
 		if err != nil {
 			return nil, err
 		}
 		args = append(args, fmt.Sprintf("%s=%s", target, code))
 	}
-	estimatorCode, err := generateEstimatorCreator(pr.estimator, estimatorAttrs, args)
+	modelCode, err := modelCreatorCode(pr.estimator, resolved.ModelConstructorParams, args)
 	if err != nil {
 		return nil, err
 	}
@@ -181,36 +108,41 @@ func newALPSTrainFiller(pr *extendedSelect) (*alpsFiller, error) {
 		fields[idx] = fmt.Sprintf("\"%s\"", f)
 	}
 
-	y := &featureSpec{
-		FeatureName: pr.label,
-		IsSparse:    false,
-		Shape:       []int{1},
-		DType:       "int",
-		Delimiter:   ","}
+	y := &columnSpec{
+		ColumnName: pr.label,
+		IsSparse:   false,
+		Shape:      []int{1},
+		DType:      "int",
+		Delimiter:  ","}
+
+	//TODO(uuleon): the scratchDir will be deleted after model uploading
+	scratchDir, err := ioutil.TempDir("/tmp", "alps_scratch_dir_")
+	if err != nil {
+		return nil, err
+	}
+	modelDir := fmt.Sprintf("%s/model/", scratchDir)
 
 	return &alpsFiller{
-		IsTraining:           true,
-		TrainInputTable:      tableName,
-		EvalInputTable:       tableName, //FIXME(uuleon): Train and Eval should use different dataset.
-		ScratchDir:           scratchDir,
-		ModelDir:             modelDir,
-		Fields:               fmt.Sprintf("[%s]", strings.Join(fields, ",")),
-		X:                    fmt.Sprintf("[%s]", strings.Join(fssCode, ",")),
-		Y:                    y.ToString(),
-		OdpsConf:             odpsMap,
-		TrainSpec:            trainMap,
-		EvalSpec:             evalMap,
-		DatasetConf:          datasetMap,
-		EstimatorCreatorCode: estimatorCode}, nil
+		IsTraining:       true,
+		TrainInputTable:  tableName,
+		EvalInputTable:   tableName, //FIXME(uuleon): Train and Eval should use different dataset.
+		ScratchDir:       scratchDir,
+		ModelDir:         modelDir,
+		Fields:           fmt.Sprintf("[%s]", strings.Join(fields, ",")),
+		X:                fmt.Sprintf("[%s]", strings.Join(csCode, ",")),
+		Y:                y.ToString(),
+		OdpsConf:         odpsConfig,
+		ModelCreatorCode: modelCode,
+		TrainClause:      resolved}, nil
 }
 
 func newALPSPredictFiller(pr *extendedSelect) (*alpsFiller, error) {
 	return nil, fmt.Errorf("alps predict not supported")
 }
 
-func genALPSFiller(w io.Writer, pr *extendedSelect) (*alpsFiller, error) {
+func genALPSFiller(w io.Writer, pr *extendedSelect, db *DB) (*alpsFiller, error) {
 	if pr.train {
-		return newALPSTrainFiller(pr)
+		return newALPSTrainFiller(pr, db)
 	}
 	return newALPSPredictFiller(pr)
 }
@@ -218,7 +150,7 @@ func genALPSFiller(w io.Writer, pr *extendedSelect) (*alpsFiller, error) {
 func submitALPS(w *PipeWriter, pr *extendedSelect, db *DB, cwd string) error {
 	var program bytes.Buffer
 
-	filler, err := genALPSFiller(&program, pr)
+	filler, err := genALPSFiller(&program, pr, db)
 	if err != nil {
 		return err
 	}
@@ -276,42 +208,42 @@ tf.logging.set_verbosity(tf.logging.INFO)
 
 class SQLFlowEstimatorBuilder(EstimatorBuilder):
     def _build(self, experiment, run_config):
-		return {{.EstimatorCreatorCode}}
+		return {{.ModelCreatorCode}}
 
 
 if __name__ == "__main__":
+
+	odpsConf=OdpsConf(
+		accessid={{.OdpsConf.AccessID}},
+		accesskey={{.OdpsConf.AccessKey}},
+		endpoint={{.OdpsConf.Endpoint}}
+	)
 	
 	trainDs = DatasetX(
-{{if .DatasetConf.epoch}}
-		num_epochs={{.DatasetConf.epoch}},
-{{end}}
-{{if .DatasetConf.batch_size}}
-		batch_size={{.DatasetConf.batch_size}},
+		num_epochs={{.TrainClause.Epoch}},
+		batch_size={{.TrainClause.BatchSize}},
+		shuffle={{.TrainClause.EnableShuffle}},
+		shuffle_buffer_size={{.TrainClause.ShuffleBufferSize}},
+{{if .TrainClause.EnableCache eq true}}
+		cache_file={{.TrainClause.CachePath}},
 {{end}}
 		reader=OdpsReader(
-			odps=OdpsConf(
-				accessid={{.OdpsConf.Get "accessid" "None"}},
-				accesskey={{.OdpsConf.Get "accesskey" "None"}},
-				endpoint={{.OdpsConf.Get "endpoint" "None"}}
-			),
-			project={{.OdpsConf.Get "project" "None"}},
+			odps=odpsConf,
+			project={{.OdpsConf.Project}},
 			table="{{.TrainInputTable}}",
 			field_names={{.Fields}},
 			features={{.X}},
 			labels={{.Y}}
-		)
+		),
+		drop_remainder={{.TrainClause.DropRemainder}}
 	)
 
 	evalDs = DatasetX(
 		num_epochs=1,
-		batch_size=64,
+		batch_size={{.TrainClause.BatchSize}},
 		reader=OdpsReader(
-			odps=OdpsConf(
-				accessid={{.OdpsConf.Get "accessid" "None"}},
-				accesskey={{.OdpsConf.Get "accesskey" "None"}},
-				endpoint={{.OdpsConf.Get "endpoint" "None"}}
-			),
-			project={{.OdpsConf.Get "project" "None"}},
+			odps=odpsConf,
+			project={{.OdpsConf.Project}},
 			table="{{.EvalInputTable}}",
 			field_names={{.Fields}},
 			features={{.X}},
@@ -325,35 +257,16 @@ if __name__ == "__main__":
 		user="sqlflow",
 		engine=LocalEngine(),
 		train=TrainConf(input=trainDs,
-{{if .TrainSpec.max_steps}}
-						max_steps={{.TrainSpec.max_steps}},
-{{end}}
-{{if .TrainSpec.save_summary_steps}}
-						save_summary_steps={{.TrainSpec.save_summary_steps}},
-{{end}}
-{{if .TrainSpec.save_timeline_steps}}
-						save_timeline_steps={{.TrainSpec.save_timeline_steps}},
-{{end}}
-{{if .TrainSpec.save_checkpoints_steps}}
-						save_checkpoints_steps={{.TrainSpec.save_checkpoints_steps}},
-{{end}}
-{{if .TrainSpec.log_step_count_steps}}
-						log_step_count_steps={{.TrainSpec.log_step_count_steps}}
+{{if .TrainClause.MaxSteps ne -1}}
+						max_steps={{.TrainClause.MaxSteps}},
 {{end}}
 		),
 		eval=EvalConf(input=evalDs, 
-{{if .TrainSpec.steps}}
-					  steps={{.TrainSpec.steps}}, 
+{{if .TrainClause.EvalSteps ne -1}}
+					  steps={{.TrainClause.EvalSteps}}, 
 {{end}}
-{{if .TrainSpec.start_delay_secs}}
-					  start_delay_secs={{.TrainSpec.start_delay_secs}},
-{{end}}
-{{if .TrainSpec.throttle_secs}}
-					  throttle_secs={{.TrainSpec.throttle_secs}},
-{{end}}
-{{if .TrainSpec.throttle_steps}}
- 					  throttle_steps={{.TrainSpec.throttle_steps}}
-{{end}}
+					  start_delay_secs={{.TrainClause.EvalStartDelay}},
+					  throttle_secs={{.TrainClause.EvalThrottle}},
 		),
 		exporter=ArksExporter(deploy_path=export_path, strategy=ExportStrategy.BEST, compare_fn=Closure(best_auc_fn)),
 		model_dir="{{.ScratchDir}}",
