@@ -33,27 +33,27 @@ import (
 )
 
 // NewServer returns a server instance
-func NewServer(run func(string, *sf.DB, string) *sf.PipeReader, db *sf.DB, cache *sf.DBConnCache, modelDir string) *Server {
-	return &Server{run: run, db: db, dbConnCache: cache, modelDir: modelDir}
+func NewServer(run func(string, *sf.DB, string) *sf.PipeReader, db *sf.DB, modelDir string, enableSession bool) *Server {
+	return &Server{run: run, db: db, modelDir: modelDir, enableSession: enableSession}
 }
 
 // Server is the instance will be used to connect to DB and execute training
 type Server struct {
-	run         func(sql string, db *sf.DB, modelDir string) *sf.PipeReader
-	db          *sf.DB
-	dbConnCache *sf.DBConnCache
-	modelDir    string
+	run           func(sql string, db *sf.DB, modelDir string) *sf.PipeReader
+	db            *sf.DB
+	modelDir      string
+	enableSession bool
 }
 
 // Run implements `rpc Run (Request) returns (stream Response)`
 func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 	db := s.db
 	var err error
-
-	if s.dbConnCache != nil {
-		if db, err = getCachedDBConn(s.dbConnCache, req.Session); err != nil {
-			return err
+	if s.enableSession == true {
+		if db, err = sf.NewDB(req.Session.DbConnStr); err != nil {
+			return fmt.Errorf("create DB failed: %v", err)
 		}
+		defer db.Close()
 	}
 
 	pr := s.run(req.Sql, db, s.modelDir)
@@ -82,22 +82,6 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 		}
 	}
 	return nil
-}
-
-func getCachedDBConn(cache *sf.DBConnCache, session *pb.Session) (*sf.DB, error) {
-	ts := time.Now().Unix()
-	var db *sf.DB
-	var err error
-	db, ok := cache.Get(session.Token)
-	if !ok {
-		db, err = sf.Open(session.DbConnStr)
-		if err != nil {
-			return nil, fmt.Errorf("failed to open database: %v", err)
-		}
-	}
-	db.UpdateActiveTimestamp(ts)
-	cache.Set(session.Token, db)
-	return db, nil
 }
 
 func encodeHead(head map[string]interface{}) (*pb.Response, error) {

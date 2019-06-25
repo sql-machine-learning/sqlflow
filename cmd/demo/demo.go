@@ -85,14 +85,11 @@ func main() {
 	ds := flag.String("datasource", "", "database connect string")
 	modelDir := flag.String("model_dir", "", "model would be saved on the local dir, otherwise upload to the table.")
 	flag.Parse()
-	db, err := sql.Open(*ds)
+	db, err := sql.NewDB(*ds)
 	if err != nil {
 		log.Fatalf("failed to open database: %v", err)
 	}
 	defer db.Close()
-	if err := db.Ping(); err != nil {
-		log.Fatalf("failed to ping database: %v", err)
-	}
 
 	if *modelDir != "" {
 		if _, derr := os.Stat(*modelDir); derr != nil {

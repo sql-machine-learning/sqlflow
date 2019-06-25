@@ -38,6 +38,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var dbConnStr string
+
 func WaitPortReady(addr string, timeout time.Duration) {
 	// Set default timeout to
 	if timeout == 0 {
@@ -54,6 +56,11 @@ func WaitPortReady(addr string, timeout time.Duration) {
 		}
 		time.Sleep(1 * time.Second)
 	}
+}
+
+func sqlRequest(sql string) *pb.Request {
+	se := &pb.Session{Token: "user-unittest", DbConnStr: dbConnStr}
+	return &pb.Request{Sql: sql, Session: se}
 }
 
 func AssertEqualAny(a *assert.Assertions, expected interface{}, actual *any.Any) {
@@ -123,7 +130,7 @@ func ParseRow(stream pb.SQLFlow_RunClient) ([]string, [][]*any.Any) {
 
 func prepareTestData(dbStr string) error {
 	// popularize test data
-	testDB, err := sql.Open(dbStr)
+	testDB, err := sql.NewDB(dbStr)
 	if err != nil {
 		return err
 	}
@@ -188,7 +195,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	if testDBDriver != "mysql" {
 		t.Skip("Skipping mysql tests")
 	}
-	dbStr := "mysql://root:root@tcp/?maxAllowedPacket=0"
+	dbConnStr = "mysql://root:root@tcp/?maxAllowedPacket=0"
 	modelDir := ""
 
 	tmpDir, caCrt, caKey, err := generateTempCA()
@@ -197,9 +204,9 @@ func TestEnd2EndMySQL(t *testing.T) {
 		t.Fatalf("failed to generate CA pair %v", err)
 	}
 
-	go start(dbStr, modelDir, caCrt, caKey, -1)
+	go start("", modelDir, caCrt, caKey, true)
 	WaitPortReady("localhost"+port, 0)
-	err = prepareTestData(dbStr)
+	err = prepareTestData(dbConnStr)
 	if err != nil {
 		t.Fatalf("prepare test dataset failed: %v", err)
 	}
@@ -228,7 +235,7 @@ func TestEnd2EndHive(t *testing.T) {
 		t.Skip("Skipping hive tests")
 	}
 	dbStr := "hive://127.0.0.1:10000/iris"
-	go start(dbStr, modelDir, caCrt, caKey, -1)
+	go start(dbStr, modelDir, caCrt, caKey, false)
 	WaitPortReady("localhost"+port, 0)
 	err = prepareTestData(dbStr)
 	if err != nil {
@@ -251,7 +258,7 @@ func CaseShowDatabases(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
-	stream, err := cli.Run(ctx, &pb.Request{Sql: cmd})
+	stream, err := cli.Run(ctx, sqlRequest(cmd))
 	if err != nil {
 		a.Fail("Check if the server started successfully. %v", err)
 	}
@@ -291,7 +298,7 @@ func CaseSelect(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
-	stream, err := cli.Run(ctx, &pb.Request{Sql: cmd})
+	stream, err := cli.Run(ctx, sqlRequest(cmd))
 	if err != nil {
 		a.Fail("Check if the server started successfully. %v", err)
 	}
@@ -340,7 +347,7 @@ INTO sqlflow_models.my_dnn_model;`
 	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
 	defer cancel()
 
-	stream, err := cli.Run(ctx, &pb.Request{Sql: trainSQL})
+	stream, err := cli.Run(ctx, sqlRequest(trainSQL))
 	if err != nil {
 		a.Fail("Check if the server started successfully. %v", err)
 	}
@@ -352,7 +359,7 @@ FROM iris.test
 PREDICT iris.predict.class
 USING sqlflow_models.my_dnn_model;`
 
-	stream, err = cli.Run(ctx, &pb.Request{Sql: predSQL})
+	stream, err = cli.Run(ctx, sqlRequest(predSQL))
 	if err != nil {
 		a.Fail("Check if the server started successfully. %v", err)
 	}
@@ -362,7 +369,7 @@ USING sqlflow_models.my_dnn_model;`
 	showPred := `SELECT *
 FROM iris.predict LIMIT 5;`
 
-	stream, err = cli.Run(ctx, &pb.Request{Sql: showPred})
+	stream, err = cli.Run(ctx, sqlRequest(showPred))
 	if err != nil {
 		a.Fail("Check if the server started successfully. %v", err)
 	}
@@ -401,7 +408,7 @@ INTO sqlflow_models.my_dnn_model_custom;`
 	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
 	defer cancel()
 
-	stream, err := cli.Run(ctx, &pb.Request{Sql: trainSQL})
+	stream, err := cli.Run(ctx, sqlRequest(trainSQL))
 	if err != nil {
 		a.Fail("Check if the server started successfully. %v", err)
 	}
@@ -413,7 +420,7 @@ FROM iris.test
 PREDICT iris.predict.class
 USING sqlflow_models.my_dnn_model_custom;`
 
-	stream, err = cli.Run(ctx, &pb.Request{Sql: predSQL})
+	stream, err = cli.Run(ctx, sqlRequest(predSQL))
 	if err != nil {
 		a.Fail("Check if the server started successfully. %v", err)
 	}
@@ -423,7 +430,7 @@ USING sqlflow_models.my_dnn_model_custom;`
 	showPred := `SELECT *
 FROM iris.predict LIMIT 5;`
 
-	stream, err = cli.Run(ctx, &pb.Request{Sql: showPred})
+	stream, err = cli.Run(ctx, sqlRequest(showPred))
 	if err != nil {
 		a.Fail("Check if the server started successfully. %v", err)
 	}
@@ -457,7 +464,7 @@ INTO sqlflow_models.my_dnn_model;`
 	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
 	defer cancel()
 
-	stream, err := cli.Run(ctx, &pb.Request{Sql: trainSQL})
+	stream, err := cli.Run(ctx, sqlRequest(trainSQL))
 	if err != nil {
 		a.Fail("Check if the server started successfully. %v", err)
 	}
@@ -485,7 +492,7 @@ INTO sqlflow_models.my_bilstm_model;`
 	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Second)
 	defer cancel()
 
-	stream, err := cli.Run(ctx, &pb.Request{Sql: trainSQL})
+	stream, err := cli.Run(ctx, sqlRequest(trainSQL))
 	if err != nil {
 		a.Fail("Check if the server started successfully. %v", err)
 	}
@@ -511,7 +518,7 @@ INTO sqlflow_models.my_dnn_model;`
 	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
 	defer cancel()
 
-	stream, err := cli.Run(ctx, &pb.Request{Sql: trainSQL})
+	stream, err := cli.Run(ctx, sqlRequest(trainSQL))
 	if err != nil {
 		a.Fail("Check if the server started successfully. %v", err)
 	}
@@ -538,7 +545,7 @@ INTO sqlflow_models.my_dnn_model_custom;`
 	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
 	defer cancel()
 
-	stream, err := cli.Run(ctx, &pb.Request{Sql: trainSQL})
+	stream, err := cli.Run(ctx, sqlRequest(trainSQL))
 	if err != nil {
 		a.Fail("Check if the server started successfully. %v", err)
 	}

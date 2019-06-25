@@ -30,7 +30,6 @@ type DB struct {
 	driverName     string
 	dataSourceName string
 	*sql.DB
-	lastActiveTime int64
 }
 
 // Open pases a datasource string into driver name and datasource name,
@@ -40,12 +39,12 @@ type DB struct {
 //
 // In addition to sql.Open, it also does the book keeping on driverName and
 // dataSourceName
-func Open(datasource string) (*DB, error) {
+func open(datasource string) (*DB, error) {
 	dses := strings.Split(datasource, "://")
 	if len(dses) != 2 {
 		return nil, fmt.Errorf("Expecting but cannot find :// in datasource %v", datasource)
 	}
-	db := &DB{driverName: dses[0], dataSourceName: dses[1], lastActiveTime: -1}
+	db := &DB{driverName: dses[0], dataSourceName: dses[1]}
 
 	var err error
 	switch db.driverName {
@@ -57,7 +56,14 @@ func Open(datasource string) (*DB, error) {
 	return db, err
 }
 
-// UpdateActiveTimestamp updates the last active timestamp
-func (db *DB) UpdateActiveTimestamp(timestamp int64) {
-	db.lastActiveTime = timestamp
+// NewDB returns a DB object with verifying the datasource name.
+func NewDB(datasource string) (*DB, error) {
+	db, err := open(datasource)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open database: %v", err)
+	}
+	if err := db.Ping(); err != nil {
+		return nil, fmt.Errorf("failed to ping database: %v", err)
+	}
+	return db, nil
 }
