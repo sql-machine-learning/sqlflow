@@ -234,10 +234,10 @@ func TestEnd2EndHive(t *testing.T) {
 	if testDBDriver != "hive" {
 		t.Skip("Skipping hive tests")
 	}
-	dbStr := "hive://127.0.0.1:10000/iris"
-	go start(dbStr, modelDir, caCrt, caKey, false)
+	dbConnStr = "hive://127.0.0.1:10000/iris"
+	go start("", modelDir, caCrt, caKey, false)
 	WaitPortReady("localhost"+port, 0)
-	err = prepareTestData(dbStr)
+	err = prepareTestData(dbConnStr)
 	if err != nil {
 		t.Fatalf("prepare test dataset failed: %v", err)
 	}
