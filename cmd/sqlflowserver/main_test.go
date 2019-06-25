@@ -235,7 +235,7 @@ func TestEnd2EndHive(t *testing.T) {
 		t.Skip("Skipping hive tests")
 	}
 	dbConnStr = "hive://127.0.0.1:10000/iris"
-	go start("", modelDir, caCrt, caKey, false)
+	go start("", modelDir, caCrt, caKey, true)
 	WaitPortReady("localhost"+port, 0)
 	err = prepareTestData(dbConnStr)
 	if err != nil {
