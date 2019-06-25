@@ -124,7 +124,11 @@ class TestGenerator(TestCase):
             execute(driver, conn, self.create_statement)
             execute(driver, conn, self.insert_statement)
 
-            column_name_to_type = {"features": tf.float32}
+            column_name_to_type = {"features": {
+                "feature_name": "features",
+                "delimiter": "",
+                "dtype": "float32"
+            }}
             gen = db_generator(driver, conn, "SELECT * FROM test_table_float_fea",
                                ["features"], "label", column_name_to_type)
             idx = 0
