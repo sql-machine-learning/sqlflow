@@ -64,6 +64,11 @@ type featureColumn interface {
 	GetKey() string
 }
 
+type featureMap struct {
+	Table     string
+	Partition string
+}
+
 // featureSpec contains information to generate DENSE/SPARSE code
 type columnSpec struct {
 	ColumnName     string
@@ -72,6 +77,7 @@ type columnSpec struct {
 	Shape          []int
 	DType          string
 	Delimiter      string
+	FeatureMap     featureMap
 }
 
 type attribute struct {
@@ -394,16 +400,25 @@ func resolveExpression(e interface{}) (interface{}, error) {
 }
 
 func resolveColumnSpec(el *exprlist, isSparse bool) (*columnSpec, error) {
-	if len(*el) != 4 {
+	if len(*el) < 4 {
 		return nil, fmt.Errorf("bad FeatureSpec expression format: %s", *el)
 	}
 	name, err := expression2string((*el)[1])
 	if err != nil {
 		return nil, fmt.Errorf("bad FeatureSpec name: %s, err: %s", (*el)[1], err)
 	}
-	shape, err := strconv.Atoi((*el)[2].val)
+	var shape []int
+	intShape, err := strconv.Atoi((*el)[2].val)
 	if err != nil {
-		return nil, fmt.Errorf("bad FeatureSpec shape: %s, err: %s", (*el)[2].val, err)
+		strShape, err := expression2string((*el)[2])
+		if err != nil {
+			return nil, fmt.Errorf("bad FeatureSpec shape: %s, err: %s", (*el)[2].val, err)
+		}
+		if strShape != "none" {
+			return nil, fmt.Errorf("bad FeatureSpec shape: %s, err: %s", (*el)[2].val, err)
+		}
+	} else {
+		shape = append(shape, intShape)
 	}
 	unresolvedDelimiter, err := expression2string((*el)[3])
 	if err != nil {
@@ -414,14 +429,33 @@ func resolveColumnSpec(el *exprlist, isSparse bool) (*columnSpec, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// resolve feature map
+	fm := featureMap{}
+	if len(*el) >= 5 {
+		table, err := expression2string((*el)[4])
+		if err != nil {
+			return nil, fmt.Errorf("bad FeatureSpec feature_map table: %s, err: %s", (*el)[4], err)
+		}
+		fm.Table = table
+		if len(*el) >= 6 {
+			partition, err := expression2string((*el)[5])
+			if err != nil {
+				return nil, fmt.Errorf("bad FeatureSpec feature_map partition: %s, err: %s", (*el)[4], err)
+			}
+			fm.Partition = partition
+		}
+	}
+
 	// TODO(uuleon): hard coded dtype(float) should be removed
 	return &columnSpec{
 		ColumnName:     name,
 		AutoDerivation: false,
 		IsSparse:       isSparse,
-		Shape:          []int{shape},
+		Shape:          shape,
 		DType:          "float",
-		Delimiter:      delimiter}, nil
+		Delimiter:      delimiter,
+		FeatureMap:     fm}, nil
 }
 
 func expression2string(e interface{}) (string, error) {

@@ -45,13 +45,17 @@ type alpsFiller struct {
 	ModelCreatorCode string
 	TrainClause      *resolvedTrainClause
 
+	// Feature map
+	FeatureMapTable     string
+	FeatureMapPartition string
+
 	// ODPS
 	OdpsConf *gomaxcompute.Config
 }
 
-func modelCreatorCode(modelName string, attrs map[string]*attribute, args []string) (string, error) {
+func modelCreatorCode(resolved *resolvedTrainClause, args []string) (string, error) {
 	cl := make([]string, 0)
-	for _, a := range attrs {
+	for _, a := range resolved.ModelConstructorParams {
 		code, err := a.GenerateCode()
 		if err != nil {
 			return "", err
@@ -63,8 +67,11 @@ func modelCreatorCode(modelName string, attrs map[string]*attribute, args []stri
 			cl = append(cl, arg)
 		}
 	}
-	//TODO(uuleon) support customized model
-	return fmt.Sprintf("tf.estimator.%s(%s)", modelName, strings.Join(cl, ",")), nil
+	modelName := resolved.ModelName
+	if resolved.IsPreMadeModel {
+		modelName = fmt.Sprintf("tf.estimator.%s", resolved.ModelName)
+	}
+	return fmt.Sprintf("%s(%s)", modelName, strings.Join(cl, ",")), nil
 }
 
 func newALPSTrainFiller(pr *extendedSelect, db *DB) (*alpsFiller, error) {
@@ -73,10 +80,19 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB) (*alpsFiller, error) {
 		return nil, err
 	}
 
+	featureMapTable := ""
+	featureMapPartition := ""
+
 	csCode := make([]string, 0)
 	for _, css := range resolved.ColumnSpecs {
 		for _, cs := range css {
 			csCode = append(csCode, cs.ToString())
+			if cs.FeatureMap.Table != "" {
+				featureMapTable = cs.FeatureMap.Table
+			}
+			if cs.FeatureMap.Partition != "" {
+				featureMapPartition = cs.FeatureMap.Partition
+			}
 		}
 	}
 
@@ -97,7 +113,7 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB) (*alpsFiller, error) {
 		}
 		args = append(args, fmt.Sprintf("%s=%s", target, code))
 	}
-	modelCode, err := modelCreatorCode(pr.estimator, resolved.ModelConstructorParams, args)
+	modelCode, err := modelCreatorCode(resolved, args)
 	if err != nil {
 		return nil, err
 	}
@@ -124,17 +140,19 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB) (*alpsFiller, error) {
 	modelDir := fmt.Sprintf("%s/model/", scratchDir)
 
 	return &alpsFiller{
-		IsTraining:       true,
-		TrainInputTable:  tableName,
-		EvalInputTable:   tableName, //FIXME(uuleon): Train and Eval should use different dataset.
-		ScratchDir:       scratchDir,
-		ModelDir:         modelDir,
-		Fields:           fmt.Sprintf("[%s]", strings.Join(fields, ",")),
-		X:                fmt.Sprintf("[%s]", strings.Join(csCode, ",")),
-		Y:                y.ToString(),
-		OdpsConf:         odpsConfig,
-		ModelCreatorCode: modelCode,
-		TrainClause:      resolved}, nil
+		IsTraining:          true,
+		TrainInputTable:     tableName,
+		EvalInputTable:      tableName, //FIXME(uuleon): Train and Eval should use different dataset.
+		ScratchDir:          scratchDir,
+		ModelDir:            modelDir,
+		Fields:              fmt.Sprintf("[%s]", strings.Join(fields, ",")),
+		X:                   fmt.Sprintf("[%s]", strings.Join(csCode, ",")),
+		Y:                   y.ToString(),
+		OdpsConf:            odpsConfig,
+		ModelCreatorCode:    modelCode,
+		TrainClause:         resolved,
+		FeatureMapTable:     featureMapTable,
+		FeatureMapPartition: featureMapPartition}, nil
 }
 
 func newALPSPredictFiller(pr *extendedSelect) (*alpsFiller, error) {
@@ -196,10 +214,10 @@ from alps.framework.exporter import ExportStrategy
 from alps.framework.exporter.arks_exporter import ArksExporter
 from alps.client.base import run_experiment
 from alps.framework.engine import LocalEngine
-from alps.framework.column.column import DenseColumn
+from alps.framework.column.column import DenseColumn, SparseColumn
 from alps.framework.exporter.compare_fn import best_auc_fn
 from alps.io import DatasetX
-from alps.io.base import OdpsConf
+from alps.io.base import OdpsConf, FeatureMap
 from alps.framework.experiment import EstimatorBuilder, Experiment, TrainConf, EvalConf
 from alps.io.reader.odps_reader import OdpsReader
 
@@ -209,34 +227,41 @@ tf.logging.set_verbosity(tf.logging.INFO)
 
 class SQLFlowEstimatorBuilder(EstimatorBuilder):
     def _build(self, experiment, run_config):
-		return {{.ModelCreatorCode}}
+        return {{.ModelCreatorCode}}
 
 
 if __name__ == "__main__":
 
 	odpsConf=OdpsConf(
-		accessid={{.OdpsConf.AccessID}},
-		accesskey={{.OdpsConf.AccessKey}},
-		endpoint={{.OdpsConf.Endpoint}}
+		accessid="{{.OdpsConf.AccessID}}",
+		accesskey="{{.OdpsConf.AccessKey}}",
+		endpoint="{{.OdpsConf.Endpoint}}"
 	)
 	
 	trainDs = DatasetX(
 		num_epochs={{.TrainClause.Epoch}},
 		batch_size={{.TrainClause.BatchSize}},
-		shuffle={{.TrainClause.EnableShuffle}},
+		shuffle="{{.TrainClause.EnableShuffle}}" == "true",
 		shuffle_buffer_size={{.TrainClause.ShuffleBufferSize}},
-{{if .TrainClause.EnableCache eq true}}
+{{if eq .TrainClause.EnableCache true}}
 		cache_file={{.TrainClause.CachePath}},
 {{end}}
 		reader=OdpsReader(
 			odps=odpsConf,
-			project={{.OdpsConf.Project}},
+			project="{{.OdpsConf.Project}}",
 			table="{{.TrainInputTable}}",
 			field_names={{.Fields}},
 			features={{.X}},
-			labels={{.Y}}
+			labels={{.Y}},
+{{if ne .FeatureMapTable ""}}
+			feature_map=FeatureMap(table="{{.FeatureMapTable}}",
+{{if ne .FeatureMapPartition ""}}
+				partition="{{.FeatureMapPartition}}"
+{{end}}
+			)
+{{end}}
 		),
-		drop_remainder={{.TrainClause.DropRemainder}}
+		drop_remainder="{{.TrainClause.DropRemainder}}" == "true"
 	)
 
 	evalDs = DatasetX(
@@ -244,7 +269,7 @@ if __name__ == "__main__":
 		batch_size={{.TrainClause.BatchSize}},
 		reader=OdpsReader(
 			odps=odpsConf,
-			project={{.OdpsConf.Project}},
+			project="{{.OdpsConf.Project}}",
 			table="{{.EvalInputTable}}",
 			field_names={{.Fields}},
 			features={{.X}},
@@ -258,12 +283,12 @@ if __name__ == "__main__":
 		user="sqlflow",
 		engine=LocalEngine(),
 		train=TrainConf(input=trainDs,
-{{if .TrainClause.MaxSteps ne -1}}
+{{if ne .TrainClause.MaxSteps -1}}
 						max_steps={{.TrainClause.MaxSteps}},
 {{end}}
 		),
 		eval=EvalConf(input=evalDs, 
-{{if .TrainClause.EvalSteps ne -1}}
+{{if ne .TrainClause.EvalSteps -1}}
 					  steps={{.TrainClause.EvalSteps}}, 
 {{end}}
 					  start_delay_secs={{.TrainClause.EvalStartDelay}},
