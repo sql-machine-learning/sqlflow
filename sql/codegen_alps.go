@@ -156,10 +156,10 @@ func submitALPS(w *PipeWriter, pr *extendedSelect, db *DB, cwd string) error {
 		return err
 	}
 
+	fmt.Println(program.String())
 	if err = alpsTemplate.Execute(&program, filler); err != nil {
 		return fmt.Errorf("submitALPS: failed executing template: %v", err)
 	}
-
 	code := program.String()
 
 	cw := &logChanWriter{wr: w}
@@ -206,72 +206,69 @@ from alps.io.reader.odps_reader import OdpsReader
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'    # for debug usage.
 tf.logging.set_verbosity(tf.logging.INFO)
 
-
 class SQLFlowEstimatorBuilder(EstimatorBuilder):
     def _build(self, experiment, run_config):
-		return {{.ModelCreatorCode}}
-
+        return {{.ModelCreatorCode}}
 
 if __name__ == "__main__":
+    odpsConf=OdpsConf(
+        accessid="{{.OdpsConf.AccessID}}",
+        accesskey="{{.OdpsConf.AccessKey}}",
+        endpoint="{{.OdpsConf.Endpoint}}"
+    )
 
-	odpsConf=OdpsConf(
-		accessid={{.OdpsConf.AccessID}},
-		accesskey={{.OdpsConf.AccessKey}},
-		endpoint={{.OdpsConf.Endpoint}}
-	)
-	
-	trainDs = DatasetX(
-		num_epochs={{.TrainClause.Epoch}},
-		batch_size={{.TrainClause.BatchSize}},
-		shuffle={{.TrainClause.EnableShuffle}},
-		shuffle_buffer_size={{.TrainClause.ShuffleBufferSize}},
-{{if .TrainClause.EnableCache eq true}}
-		cache_file={{.TrainClause.CachePath}},
+    trainDs = DatasetX(
+        num_epochs={{.TrainClause.Epoch}},
+        batch_size={{.TrainClause.BatchSize}},
+        shuffle={{if .TrainClause.EnableShuffle}}True{{else}}False{{end}},
+        shuffle_buffer_size={{.TrainClause.ShuffleBufferSize}},
+{{if .TrainClause.EnableCache}}
+        cache_file={{.TrainClause.CachePath}},
 {{end}}
-		reader=OdpsReader(
-			odps=odpsConf,
-			project={{.OdpsConf.Project}},
-			table="{{.TrainInputTable}}",
-			field_names={{.Fields}},
-			features={{.X}},
-			labels={{.Y}}
-		),
-		drop_remainder={{.TrainClause.DropRemainder}}
-	)
+        reader=OdpsReader(
+            odps=odpsConf,
+            project="{{.OdpsConf.Project}}",
+            table="{{.TrainInputTable}}",
+            field_names={{.Fields}},
+            features={{.X}},
+            labels={{.Y}}
+        ),
+        drop_remainder={{if .TrainClause.DropRemainder}}True{{else}}False{{end}}
+    )
 
-	evalDs = DatasetX(
-		num_epochs=1,
-		batch_size={{.TrainClause.BatchSize}},
-		reader=OdpsReader(
-			odps=odpsConf,
-			project={{.OdpsConf.Project}},
-			table="{{.EvalInputTable}}",
-			field_names={{.Fields}},
-			features={{.X}},
-			labels={{.Y}}
-		)
-	)
+    evalDs = DatasetX(
+        num_epochs=1,
+        batch_size={{.TrainClause.BatchSize}},
+        reader=OdpsReader(
+        odps=odpsConf,
+            project="{{.OdpsConf.Project}}",
+            table="{{.EvalInputTable}}",
+            field_names={{.Fields}},
+            features={{.X}},
+            labels={{.Y}}
+        )
+    )
 
-	export_path = "{{.ModelDir}}"
+    export_path = "{{.ModelDir}}"
 
-	experiment = Experiment(
-		user="sqlflow",
-		engine=LocalEngine(),
-		train=TrainConf(input=trainDs,
-{{if .TrainClause.MaxSteps ne -1}}
-						max_steps={{.TrainClause.MaxSteps}},
+    experiment = Experiment(
+        user="sqlflow",
+        engine=LocalEngine(),
+        train=TrainConf(input=trainDs,
+{{if (ne .TrainClause.MaxSteps -1)}}
+                        max_steps={{.TrainClause.MaxSteps}},
 {{end}}
-		),
-		eval=EvalConf(input=evalDs, 
-{{if .TrainClause.EvalSteps ne -1}}
-					  steps={{.TrainClause.EvalSteps}}, 
+        ),
+        eval=EvalConf(input=evalDs, 
+{{if (ne .TrainClause.EvalSteps -1)}}
+                      steps={{.TrainClause.EvalSteps}}, 
 {{end}}
-					  start_delay_secs={{.TrainClause.EvalStartDelay}},
-					  throttle_secs={{.TrainClause.EvalThrottle}},
-		),
-		exporter=ArksExporter(deploy_path=export_path, strategy=ExportStrategy.BEST, compare_fn=Closure(best_auc_fn)),
-		model_dir="{{.ScratchDir}}",
-		model_builder=SQLFlowEstimatorBuilder())
+                      start_delay_secs={{.TrainClause.EvalStartDelay}},
+                      throttle_secs={{.TrainClause.EvalThrottle}},
+        ),
+        exporter=ArksExporter(deploy_path=export_path, strategy=ExportStrategy.BEST, compare_fn=Closure(best_auc_fn)),
+        model_dir="{{.ScratchDir}}",
+        model_builder=SQLFlowEstimatorBuilder())
 
 
 	run_experiment(experiment)
