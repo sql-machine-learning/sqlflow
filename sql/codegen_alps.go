@@ -45,13 +45,17 @@ type alpsFiller struct {
 	ModelCreatorCode string
 	TrainClause      *resolvedTrainClause
 
+	// Feature map
+	FeatureMapTable     string
+	FeatureMapPartition string
+
 	// ODPS
 	OdpsConf *gomaxcompute.Config
 }
 
-func modelCreatorCode(modelName string, attrs map[string]*attribute, args []string) (string, error) {
+func modelCreatorCode(resolved *resolvedTrainClause, args []string) (string, error) {
 	cl := make([]string, 0)
-	for _, a := range attrs {
+	for _, a := range resolved.ModelConstructorParams {
 		code, err := a.GenerateCode()
 		if err != nil {
 			return "", err
@@ -63,8 +67,11 @@ func modelCreatorCode(modelName string, attrs map[string]*attribute, args []stri
 			cl = append(cl, arg)
 		}
 	}
-	//TODO(uuleon) support customized model
-	return fmt.Sprintf("tf.estimator.%s(%s)", modelName, strings.Join(cl, ",")), nil
+	modelName := resolved.ModelName
+	if resolved.IsPreMadeModel {
+		modelName = fmt.Sprintf("tf.estimator.%s", resolved.ModelName)
+	}
+	return fmt.Sprintf("%s(%s)", modelName, strings.Join(cl, ",")), nil
 }
 
 func newALPSTrainFiller(pr *extendedSelect, db *DB) (*alpsFiller, error) {
@@ -73,10 +80,19 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB) (*alpsFiller, error) {
 		return nil, err
 	}
 
+	featureMapTable := ""
+	featureMapPartition := ""
+
 	csCode := make([]string, 0)
 	for _, css := range resolved.ColumnSpecs {
 		for _, cs := range css {
 			csCode = append(csCode, cs.ToString())
+			if cs.FeatureMap.Table != "" {
+				featureMapTable = cs.FeatureMap.Table
+			}
+			if cs.FeatureMap.Partition != "" {
+				featureMapPartition = cs.FeatureMap.Partition
+			}
 		}
 	}
 
@@ -97,7 +113,7 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB) (*alpsFiller, error) {
 		}
 		args = append(args, fmt.Sprintf("%s=%s", target, code))
 	}
-	modelCode, err := modelCreatorCode(pr.estimator, resolved.ModelConstructorParams, args)
+	modelCode, err := modelCreatorCode(resolved, args)
 	if err != nil {
 		return nil, err
 	}
@@ -124,17 +140,19 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB) (*alpsFiller, error) {
 	modelDir := fmt.Sprintf("%s/model/", scratchDir)
 
 	return &alpsFiller{
-		IsTraining:       true,
-		TrainInputTable:  tableName,
-		EvalInputTable:   tableName, //FIXME(uuleon): Train and Eval should use different dataset.
-		ScratchDir:       scratchDir,
-		ModelDir:         modelDir,
-		Fields:           fmt.Sprintf("[%s]", strings.Join(fields, ",")),
-		X:                fmt.Sprintf("[%s]", strings.Join(csCode, ",")),
-		Y:                y.ToString(),
-		OdpsConf:         odpsConfig,
-		ModelCreatorCode: modelCode,
-		TrainClause:      resolved}, nil
+		IsTraining:          true,
+		TrainInputTable:     tableName,
+		EvalInputTable:      tableName, //FIXME(uuleon): Train and Eval should use different dataset.
+		ScratchDir:          scratchDir,
+		ModelDir:            modelDir,
+		Fields:              fmt.Sprintf("[%s]", strings.Join(fields, ",")),
+		X:                   fmt.Sprintf("[%s]", strings.Join(csCode, ",")),
+		Y:                   y.ToString(),
+		OdpsConf:            odpsConfig,
+		ModelCreatorCode:    modelCode,
+		TrainClause:         resolved,
+		FeatureMapTable:     featureMapTable,
+		FeatureMapPartition: featureMapPartition}, nil
 }
 
 func newALPSPredictFiller(pr *extendedSelect) (*alpsFiller, error) {
@@ -195,10 +213,10 @@ from alps.framework.exporter import ExportStrategy
 from alps.framework.exporter.arks_exporter import ArksExporter
 from alps.client.base import run_experiment
 from alps.framework.engine import LocalEngine
-from alps.framework.column.column import DenseColumn
+from alps.framework.column.column import DenseColumn, SparseColumn
 from alps.framework.exporter.compare_fn import best_auc_fn
 from alps.io import DatasetX
-from alps.io.base import OdpsConf
+from alps.io.base import OdpsConf, FeatureMap
 from alps.framework.experiment import EstimatorBuilder, Experiment, TrainConf, EvalConf
 from alps.io.reader.odps_reader import OdpsReader
 
@@ -219,7 +237,7 @@ if __name__ == "__main__":
     trainDs = DatasetX(
         num_epochs={{.TrainClause.Epoch}},
         batch_size={{.TrainClause.BatchSize}},
-        shuffle={{if .TrainClause.EnableShuffle}}True{{else}}False{{end}},
+        shuffle="{{.TrainClause.EnableShuffle}}" == "true",
         shuffle_buffer_size={{.TrainClause.ShuffleBufferSize}},
 {{if .TrainClause.EnableCache}}
         cache_file={{.TrainClause.CachePath}},
@@ -230,9 +248,16 @@ if __name__ == "__main__":
             table="{{.TrainInputTable}}",
             field_names={{.Fields}},
             features={{.X}},
-            labels={{.Y}}
+			labels={{.Y}},
+{{if ne .FeatureMapTable ""}}
+            feature_map=FeatureMap(table="{{.FeatureMapTable}}",
+{{if ne .FeatureMapPartition ""}}
+                partition="{{.FeatureMapPartition}}"
+{{end}}
+            )
+{{end}}
         ),
-        drop_remainder={{if .TrainClause.DropRemainder}}True{{else}}False{{end}}
+        drop_remainder="{{.TrainClause.DropRemainder}}" == "true"
     )
 
     evalDs = DatasetX(

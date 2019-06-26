@@ -29,7 +29,7 @@ echo "source activate sqlflow-dev" >> ~/.bashrc
 # https://github.com/jupyter/notebook/issues/2664#issuecomment-468954423
 source /miniconda/bin/activate sqlflow-dev && python -m pip install \
 numpy==1.16.1 \
-tensorflow==2.0.0-alpha0 \
+tensorflow==${TENSORFLOW_VERSION} \
 mysql-connector-python \
 impyla \
 pyodps \
