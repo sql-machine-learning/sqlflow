@@ -245,9 +245,10 @@ func runExtendedSQL(slct string, db *DB, pr *extendedSelect, modelDir string) *P
 type logChanWriter struct {
 	wr *PipeWriter
 
-	m    sync.Mutex
-	buf  bytes.Buffer
-	prev string
+	m           sync.Mutex
+	buf         bytes.Buffer
+	prev        string
+	logtostdout bool
 }
 
 func (cw *logChanWriter) Write(p []byte) (n int, err error) {
@@ -272,6 +273,9 @@ func (cw *logChanWriter) Write(p []byte) (n int, err error) {
 		if err := cw.wr.Write(cw.prev); err != nil {
 			return len(cw.prev), err
 		}
+		if cw.logtostdout {
+			log.Debugf("Train script output: %s", cw.prev)
+		}
 		cw.prev = ""
 	}
 	return n, nil
@@ -295,7 +299,7 @@ func train(tr *extendedSelect, slct string, db *DB, cwd string, wr *PipeWriter, 
 		return fmt.Errorf("genTF %v", e)
 	}
 
-	cw := &logChanWriter{wr: wr}
+	cw := &logChanWriter{wr: wr, logtostdout: true}
 	defer cw.Close()
 	cmd := tensorflowCmd(cwd, db.driverName)
 	cmd.Stdin = &program

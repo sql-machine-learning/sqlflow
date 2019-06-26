@@ -18,9 +18,10 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"sqlflow.org/gomaxcompute"
 	"strings"
 	"text/template"
+
+	"sqlflow.org/gomaxcompute"
 )
 
 type alpsFiller struct {

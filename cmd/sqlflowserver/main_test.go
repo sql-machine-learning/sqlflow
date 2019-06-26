@@ -445,7 +445,7 @@ func CaseTrainTextClassification(t *testing.T) {
 FROM text_cn.train_processed
 TRAIN DNNClassifier
 WITH n_classes = 17, hidden_units = [10, 20]
-COLUMN news_title
+COLUMN EMBEDDING(CATEGORY_ID(news_title,16000,COMMA),128,mean)
 LABEL class_id
 INTO sqlflow_models.my_dnn_model;`
 
@@ -473,7 +473,7 @@ func CaseTrainTextClassificationCustomLSTM(t *testing.T) {
 FROM text_cn.train_processed
 TRAIN sqlflow_models.StackedBiLSTMClassifier
 WITH n_classes = 17, stack_units = [16], EPOCHS = 1, BATCHSIZE = 32
-COLUMN news_title
+COLUMN EMBEDDING(SEQ_CATEGORY_ID(news_title,1600,COMMA),128,mean)
 LABEL class_id
 INTO sqlflow_models.my_bilstm_model;`
 
