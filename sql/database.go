@@ -39,7 +39,7 @@ type DB struct {
 //
 // In addition to sql.Open, it also does the book keeping on driverName and
 // dataSourceName
-func Open(datasource string) (*DB, error) {
+func open(datasource string) (*DB, error) {
 	dses := strings.Split(datasource, "://")
 	if len(dses) != 2 {
 		return nil, fmt.Errorf("Expecting but cannot find :// in datasource %v", datasource)
@@ -54,4 +54,16 @@ func Open(datasource string) (*DB, error) {
 		return nil, fmt.Errorf("sqlfow currently doesn't support DB %v", db.driverName)
 	}
 	return db, err
+}
+
+// NewDB returns a DB object with verifying the datasource name.
+func NewDB(datasource string) (*DB, error) {
+	db, err := open(datasource)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open database: %v", err)
+	}
+	if err := db.Ping(); err != nil {
+		return nil, fmt.Errorf("failed to ping database: %v", err)
+	}
+	return db, nil
 }

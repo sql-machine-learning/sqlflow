@@ -36,7 +36,7 @@ func testMySQLDatabase() *DB {
 		Addr:                 getEnv("SQLFLOW_TEST_DB_MYSQL_ADDR", "127.0.0.1:3306"),
 		AllowNativePasswords: true,
 	}
-	db, e := Open(fmt.Sprintf("mysql://%s", cfg.FormatDSN()))
+	db, e := NewDB(fmt.Sprintf("mysql://%s", cfg.FormatDSN()))
 	assertNoErr(e)
 	_, e = db.Exec("CREATE DATABASE IF NOT EXISTS sqlflow_models;")
 	assertNoErr(e)
@@ -46,7 +46,7 @@ func testMySQLDatabase() *DB {
 }
 
 func testSQLiteDatabase() *DB {
-	db, e := Open("sqlite3://:memory:")
+	db, e := NewDB("sqlite3://:memory:")
 	assertNoErr(e)
 	// attach an In-Memory Database in SQLite
 	for _, name := range []string{"iris", "churn"} {
@@ -61,7 +61,7 @@ func testSQLiteDatabase() *DB {
 func testHiveDatabase() *DB {
 	// NOTE: sample dataset is written in
 	// https://github.com/sql-machine-learning/gohive/blob/develop/docker/entrypoint.sh#L123
-	db, e := Open("hive://root:root@localhost:10000/churn")
+	db, e := NewDB("hive://root:root@localhost:10000/churn")
 	assertNoErr(e)
 	_, e = db.Exec("CREATE DATABASE IF NOT EXISTS sqlflow_models;")
 	assertNoErr(e)

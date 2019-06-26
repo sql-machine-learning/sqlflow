@@ -51,19 +51,11 @@ func newServer(caCrt, caKey string) (*grpc.Server, error) {
 	}
 	return s, nil
 }
-func start(datasource, modelDir, caCrt, caKey string) {
-	db, err := sql.Open(datasource)
-	if err != nil {
-		log.Fatalf("failed to open database: %v", err)
-	}
-	defer db.Close()
-	if err := db.Ping(); err != nil {
-		log.Fatalf("failed to ping database: %v", err)
-	}
 
-	lis, err := net.Listen("tcp", port)
+func start(datasource, modelDir, caCrt, caKey string, enableSession bool) {
+	s, err := newServer(caCrt, caKey)
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		log.Fatalf("failed to create new gRPC Server: %v", err)
 	}
 
 	if modelDir != "" {
@@ -72,12 +64,22 @@ func start(datasource, modelDir, caCrt, caKey string) {
 		}
 	}
 
-	s, err := newServer(caCrt, caKey)
-	if err != nil {
-		log.Fatalf("failed to create new gRPC Server: %v", err)
+	if enableSession {
+		proto.RegisterSQLFlowServer(s, server.NewServer(sql.Run, nil, modelDir, enableSession))
+	} else {
+		db, err := sql.NewDB(datasource)
+		if err != nil {
+			log.Fatalf("create DB failed: %v", err)
+		}
+		defer db.Close()
+		proto.RegisterSQLFlowServer(s, server.NewServer(sql.Run, db, modelDir, enableSession))
 	}
 
-	proto.RegisterSQLFlowServer(s, server.NewServer(sql.Run, db, modelDir))
+	lis, err := net.Listen("tcp", port)
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+
 	// Register reflection service on gRPC server.
 	reflection.Register(s)
 	log.Println("Server Started at", port)
@@ -87,10 +89,11 @@ func start(datasource, modelDir, caCrt, caKey string) {
 }
 
 func main() {
-	ds := flag.String("datasource", "", "database connect string")
+	ds := flag.String("datasource", "", "database connect string.")
 	modelDir := flag.String("model_dir", "", "model would be saved on the local dir, otherwise upload to the table.")
 	caCrt := flag.String("ca-crt", "", "CA certificate file.")
 	caKey := flag.String("ca-key", "", "CA private key file.")
+	enableSession := flag.Bool("enable-session", false, "Whether to enable gRPC Request session.")
 	flag.Parse()
-	start(*ds, *modelDir, *caCrt, *caKey)
+	start(*ds, *modelDir, *caCrt, *caKey, *enableSession)
 }

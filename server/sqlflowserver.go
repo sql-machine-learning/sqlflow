@@ -33,25 +33,35 @@ import (
 )
 
 // NewServer returns a server instance
-func NewServer(run func(string, *sf.DB, string) *sf.PipeReader, db *sf.DB, modelDir string) *Server {
-	return &Server{run: run, db: db, modelDir: modelDir}
+func NewServer(run func(string, *sf.DB, string) *sf.PipeReader, db *sf.DB, modelDir string, enableSession bool) *Server {
+	return &Server{run: run, db: db, modelDir: modelDir, enableSession: enableSession}
 }
 
 // Server is the instance will be used to connect to DB and execute training
 type Server struct {
-	run      func(sql string, db *sf.DB, modelDir string) *sf.PipeReader
-	db       *sf.DB
-	modelDir string
+	run           func(sql string, db *sf.DB, modelDir string) *sf.PipeReader
+	db            *sf.DB
+	modelDir      string
+	enableSession bool
 }
 
 // Run implements `rpc Run (Request) returns (stream Response)`
 func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
-	pr := s.run(req.Sql, s.db, s.modelDir)
+	db := s.db
+	var err error
+	if s.enableSession == true {
+		if db, err = sf.NewDB(req.Session.DbConnStr); err != nil {
+			return fmt.Errorf("create DB failed: %v", err)
+		}
+		defer db.Close()
+	}
+
+	pr := s.run(req.Sql, db, s.modelDir)
+
 	defer pr.Close()
 
 	for r := range pr.ReadAll() {
 		var res *pb.Response
-		var err error
 		switch s := r.(type) {
 		case error:
 			return s

@@ -53,7 +53,7 @@ function print_usage() {
   echo "Usage: /bin/bash start.sh [OPTION]\n"
   echo "\tmysql: setup the mysql server with the example dataset initialized."
   echo "\tsqlflow_server: setup the sqlflow gRPC server."
-  echo "\tsqlflow}_notebook: setup the Jupyter Notebook server with SQLFlow installd."
+  echo "\tsqlflow_notebook: setup the Jupyter Notebook server."
   echo "\tall(default): setup a MySQL server instance, a sqlflow gRPC server and a Jupyter Notebook server sequentially."
 }
 
