@@ -156,7 +156,6 @@ func submitALPS(w *PipeWriter, pr *extendedSelect, db *DB, cwd string) error {
 		return err
 	}
 
-	fmt.Println(program.String())
 	if err = alpsTemplate.Execute(&program, filler); err != nil {
 		return fmt.Errorf("submitALPS: failed executing template: %v", err)
 	}
