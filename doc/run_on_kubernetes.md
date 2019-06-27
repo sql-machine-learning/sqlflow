@@ -4,12 +4,12 @@ This is a tutorial on how to run SQLFlow on Kubernetes, and this tutorial will d
 - A MySQL server instance with some example data loaded,
 - The SQLFlow gRPC server, and 
 - The Jupyter Notebook server with SQLFlow magic command installed.
-- The JupyterHub which can serve multiple Notebook server for multiple users.
+- The JupyterHub which can serve multiple Notebook server for various users.
 
 There are two sections in this tutorial:
 
 - [Deploy the All-in-One SQLFlow](#deploy-the-sqlflow-all-in-one) deployed the SQLFlow on Kubernetes quickly.
-- [Deploy the SQLFlow Hub](#deploy-the-sqlflow-hub) deployed a SQLFlow cluster and a JupyterHub server which can serve Notebook server instances for users.
+- [Deploy the SQLFlow Hub](#deploy-the-sqlflow-hub) deployed an SQLFlow cluster and a JupyterHub server which can serve Notebook server instances for users.
 
 ## Prerequisites
 
@@ -67,7 +67,7 @@ Docker image](/doc/build.md).
 
 This section will deploys
 SQLFlow Hub using JupyterHub to serve Jupyter notebook for multiple users, 
-and deployeasy to scale up/down the SQLFlow gRPC server according to workload.
+and easy to scale up/down the SQLFlow gRPC server according to workload.
 
 1. Build the SQLFlow Hub Docker image and push to a registry server that the Kubernetes Note can access it.
     ``` bash
@@ -98,9 +98,9 @@ and deployeasy to scale up/down the SQLFlow gRPC server according to workload.
     sqlflow-server-7444b4466d-kndwx   1/1     Running   0          4h
     ```
 
-1.  Check the SQLFlow Service, so the Notebook server can connect them across thier ClusterIP and Port:
+1.  Check the SQLFlow Service, so the Notebook server can connect them across their ClusterIP and Port:
     - A MySQL Service named `sqlflow-mysql`, and
-    - A SQLFlow server Service named `sqlflow-server`
+    - An SQLFlow server Service named `sqlflow-server`
 
     ``` bash
     $ kubectl get svc
@@ -112,9 +112,9 @@ and deployeasy to scale up/down the SQLFlow gRPC server according to workload.
 
 ### Login the JupyterHub
 
-JupyterHub using the PAMAuthenticator as the default authenticate method. the PAM can authenticate the system users with their username and password. You can find more information on [authenticators-users-basics](https://jupyterhub.readthedocs.io/en/stable/getting-started/authenticators-users-basics.html), and other authenticator method from [here](https://github.com/jupyterhub/jupyterhub/wiki/Authenticators)
+JupyterHub using the PAMAuthenticator as the default authenticate method. the PAM can authenticate the system users with their username and password. You can find more information on [authenticators-users-basics](https://jupyterhub.readthedocs.io/en/stable/getting-started/authenticators-users-basics.html), and other authenticator methods from [here](https://github.com/jupyterhub/jupyterhub/wiki/Authenticators)
 
-Next, please do as the following steps to create user on system and login the Jupyterhub:
+Next, please do as the following steps to create a user on the system and log in the Jupyterhub:
 
 1. List the Pods and execute into the `sqlflow-jhub` Pod
     ``` bash
@@ -134,4 +134,4 @@ Next, please do as the following steps to create user on system and login the Ju
     passwd: password updated successfully
     ```
 
-1. Open your browser and go to `<node-ip>:8000` and login by the username/password as the above step. If you are authenticated, the JupyterHub would launch a Notebook server for your account, and then you can run your SQLFlow query in it.
+1. Open your browser and go to `<node-ip>:8000` and log in by the username/password as the above step. If you passed the authenticator, the JupyterHub would launch a Notebook server for your account, and then you can run your SQLFlow query in it.
