@@ -245,10 +245,11 @@ if __name__ == "__main__":
         reader=OdpsReader(
             odps=odpsConf,
             project="{{.OdpsConf.Project}}",
-            table="{{.TrainInputTable}}",
-            field_names={{.Fields}},
+			table="{{.TrainInputTable}}",
+			# FIXME(typhoonzero): add field_names back if needed.
+            # field_names={{.Fields}},
             features={{.X}},
-			labels={{.Y}},
+            labels={{.Y}},
 {{if ne .FeatureMapTable ""}}
             feature_map=FeatureMap(table="{{.FeatureMapTable}}",
 {{if ne .FeatureMapPartition ""}}
@@ -266,8 +267,9 @@ if __name__ == "__main__":
         reader=OdpsReader(
         odps=odpsConf,
             project="{{.OdpsConf.Project}}",
-            table="{{.EvalInputTable}}",
-            field_names={{.Fields}},
+			table="{{.EvalInputTable}}",
+			# FIXME(typhoonzero): add field_names back if needed.
+            # field_names={{.Fields}},
             features={{.X}},
             labels={{.Y}}
         )
@@ -283,14 +285,17 @@ if __name__ == "__main__":
                         max_steps={{.TrainClause.MaxSteps}},
 {{end}}
         ),
-        eval=EvalConf(input=evalDs, 
+		eval=EvalConf(input=evalDs,
+                      # FIXME(typhoonzero): Support configure metrics
+                      metrics_set=['accuracy'],
 {{if (ne .TrainClause.EvalSteps -1)}}
                       steps={{.TrainClause.EvalSteps}}, 
 {{end}}
                       start_delay_secs={{.TrainClause.EvalStartDelay}},
                       throttle_secs={{.TrainClause.EvalThrottle}},
-        ),
-        exporter=ArksExporter(deploy_path=export_path, strategy=ExportStrategy.BEST, compare_fn=Closure(best_auc_fn)),
+		),
+		# FIXME(typhoonzero): Use ExportStrategy.BEST when possible.
+        exporter=ArksExporter(deploy_path=export_path, strategy=ExportStrategy.LATEST, compare_fn=Closure(best_auc_fn)),
         model_dir="{{.ScratchDir}}",
         model_builder=SQLFlowEstimatorBuilder())
 
