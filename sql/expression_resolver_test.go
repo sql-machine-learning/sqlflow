@@ -66,9 +66,8 @@ func TestFeatureSpec(t *testing.T) {
 	cs = css[0]
 	a.Equal("c1", cs.ColumnName)
 	a.Equal(100, cs.Shape[0])
-	a.Equal(",", cs.Delimiter)
 	a.Equal(true, cs.IsSparse)
-	a.Equal("SparseColumn(name=\"c1\", shape=[100], dtype=\"float\", separator=\",\")", cs.ToString())
+	a.Equal("SparseColumn(name=\"c1\", shape=[100], dtype=\"int\", separator='\x01', group_separator='\x02')", cs.ToString())
 
 	r, e = parser.Parse(badStatement)
 	a.NoError(e)
