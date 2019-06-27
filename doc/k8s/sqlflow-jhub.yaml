@@ -1,0 +1,34 @@
+apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
+kind: Deployment
+metadata:
+  name: sqlflow-jhub
+spec:
+  selector:
+    matchLabels:
+      app: sqlflow-jhub
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: sqlflow-jhub
+    spec:
+      volumes:
+      - name: shared-data
+        emptyDir: {}
+      containers:
+      - image: yancey1989/sqlflowhub
+        name: sqlflow-jhub
+        imagePullPolicy: Always
+        command: ["jupyterhub"]
+        args: ["--config", "/etc/jhub/jupyterhub_config.py"]
+        env:
+        - name: SQLFLOW_DATASOURCE
+          value: "mysql://tcp@(10.102.193.217:3306)/?maxAllowedPacket=0"
+        - name: SQLFLOW_SERVER
+          value: "10.103.140.131:50051"
+        ports:
+        - containerPort: 8000
+          hostPort: 8000
+          name: sqlflow-jhub
+
