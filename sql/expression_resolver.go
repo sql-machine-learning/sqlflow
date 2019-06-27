@@ -447,13 +447,18 @@ func resolveColumnSpec(el *exprlist, isSparse bool) (*columnSpec, error) {
 		}
 	}
 
-	// TODO(uuleon): hard coded dtype(float) should be removed
+	// TODO(uuleon): hard coded dtype(float for dense, int for sparse) should be removed
+	dtype := "float"
+	if isSparse {
+		dtype = "int"
+	}
+
 	return &columnSpec{
 		ColumnName:     name,
 		AutoDerivation: false,
 		IsSparse:       isSparse,
 		Shape:          shape,
-		DType:          "float",
+		DType:          dtype,
 		Delimiter:      delimiter,
 		FeatureMap:     fm}, nil
 }
