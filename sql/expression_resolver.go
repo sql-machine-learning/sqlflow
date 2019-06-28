@@ -814,6 +814,10 @@ func resolveDelimiter(delimiter string) (string, error) {
 
 func (a *attribute) GenerateCode() (string, error) {
 	if val, ok := a.Value.(string); ok {
+		// auto convert to int first.
+		if _, err := strconv.Atoi(val); err == nil {
+			return fmt.Sprintf("%s=%s", a.Name, val), nil
+		}
 		return fmt.Sprintf("%s=\"%s\"", a.Name, val), nil
 	}
 	if val, ok := a.Value.([]interface{}); ok {
