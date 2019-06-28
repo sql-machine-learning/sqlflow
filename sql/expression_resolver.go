@@ -447,13 +447,18 @@ func resolveColumnSpec(el *exprlist, isSparse bool) (*columnSpec, error) {
 		}
 	}
 
-	// TODO(uuleon): hard coded dtype(float) should be removed
+	// TODO(uuleon): hard coded dtype(float for dense, int for sparse) should be removed
+	dtype := "float"
+	if isSparse {
+		dtype = "int"
+	}
+
 	return &columnSpec{
 		ColumnName:     name,
 		AutoDerivation: false,
 		IsSparse:       isSparse,
 		Shape:          shape,
-		DType:          "float",
+		DType:          dtype,
 		Delimiter:      delimiter,
 		FeatureMap:     fm}, nil
 }
@@ -471,11 +476,10 @@ func expression2string(e interface{}) (string, error) {
 
 func (cs *columnSpec) ToString() string {
 	if cs.IsSparse {
-		return fmt.Sprintf("SparseColumn(name=\"%s\", shape=%s, dtype=\"%s\", separator=\"%s\")",
+		return fmt.Sprintf("SparseColumn(name=\"%s\", shape=%s, dtype=\"%s\", separator='\x01', group_separator='\x02')",
 			cs.ColumnName,
 			strings.Join(strings.Split(fmt.Sprint(cs.Shape), " "), ","),
-			cs.DType,
-			cs.Delimiter)
+			cs.DType)
 	}
 	return fmt.Sprintf("DenseColumn(name=\"%s\", shape=%s, dtype=\"%s\", separator=\"%s\")",
 		cs.ColumnName,

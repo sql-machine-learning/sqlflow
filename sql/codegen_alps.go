@@ -254,7 +254,8 @@ if __name__ == "__main__":
 {{if ne .FeatureMapPartition ""}}
                 partition="{{.FeatureMapPartition}}"
 {{end}}
-            )
+            ),
+            flatten_group=True
 {{end}}
         ),
         drop_remainder="{{.TrainClause.DropRemainder}}" == "true"
@@ -269,7 +270,8 @@ if __name__ == "__main__":
             table="{{.EvalInputTable}}",
             field_names={{.Fields}},
             features={{.X}},
-            labels={{.Y}}
+            labels={{.Y}},
+            flatten_group=True
         )
     )
 
