@@ -23,15 +23,19 @@ function sleep_until_mysql_is_ready() {
 }
 
 function setup_mysql() {
-    # Start mysqld
-    sed -i "s/.*bind-address.*/bind-address = ${SQLFLOW_MYSQL_HOST}/" /etc/mysql/mysql.conf.d/mysqld.cnf
-    service mysql start
-    sleep 1
-    sleep_until_mysql_is_ready
-    # FIXME(typhoonzero): should let docker-entrypoint.sh do this work
-    for f in /docker-entrypoint-initdb.d/*; do
-        cat $f | mysql -uroot -proot --host ${SQLFLOW_MYSQL_HOST} --port ${SQLFLOW_MYSQL_PORT}
-    done
+  # Start a local mysql service
+  sed -i "s/.*bind-address.*/bind-address = ${SQLFLOW_MYSQL_HOST}/" /etc/mysql/mysql.conf.d/mysqld.cnf
+  service mysql start
+  sleep 1
+  init_mysql_data
+}
+
+function init_mysql_data() {
+  sleep_until_mysql_is_ready
+  # FIXME(typhoonzero): should let docker-entrypoint.sh do this work
+  for f in /docker-entrypoint-initdb.d/*; do
+    cat $f | mysql -uroot -proot --host ${SQLFLOW_MYSQL_HOST} --port ${SQLFLOW_MYSQL_PORT}
+  done
 }
 
 function setup_sqlflow_server() {
@@ -52,6 +56,7 @@ function setup_sqlflow_notebook() {
 function print_usage() {
   echo "Usage: /bin/bash start.sh [OPTION]\n"
   echo "\tmysql: setup the mysql server with the example dataset initialized."
+  echo "\tinit_mysql_data: Initialized an existing local mysql db with the example dataset."
   echo "\tsqlflow_server: setup the sqlflow gRPC server."
   echo "\tsqlflow_notebook: setup the Jupyter Notebook server."
   echo "\tall(default): setup a MySQL server instance, a sqlflow gRPC server and a Jupyter Notebook server sequentially."
@@ -62,6 +67,10 @@ function main() {
   case $ARG in
     mysql)
       setup_mysql
+      sleep infinity
+      ;;
+    init_mysql_data)
+      init_mysql_data
       sleep infinity
       ;;
     sqlflow-server)

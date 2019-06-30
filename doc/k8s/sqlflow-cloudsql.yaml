@@ -1,0 +1,68 @@
+apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
+kind: Deployment
+metadata:
+  name: sqlflow-cloudsql
+spec:
+  selector:
+    matchLabels:
+      app: sqlflow
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: sqlflow
+    spec:
+      volumes:
+      - name: shared-data
+        emptyDir: {}
+      - name: cloud-service-key
+        secret:
+          secretName: cloud-service-key
+      containers:
+      - name: init-mysql-data
+        image: sqlflow/sqlflow:latest
+        imagePullPolicy: Always
+        command: ["bash"]
+        args: ["start.sh", "init_mysql_data"]
+        volumeMounts:
+        - name: shared-data
+          mountPath: /var/run/mysqld/
+      - image: sqlflow/sqlflow:latest
+        name: sqlflow-server
+        volumeMounts:
+        - name: shared-data
+          mountPath: /var/run/mysqld/
+        imagePullPolicy: Always
+        command: ["bash"]
+        args: ["start.sh", "sqlflow-server"]
+      - image: sqlflow/sqlflow:latest
+        name: notebook
+        imagePullPolicy: Always
+        command: ["bash"]
+        args: ["start.sh", "sqlflow-notebook"]
+        ports:
+        - containerPort: 8888
+          hostPort: 8888
+          name: sqlflow
+        # Change <INSTANCE_CONNECTION_NAME> here to include your GCP
+        # project, the region of your Cloud SQL instance and the name
+        # of your Cloud SQL instance. The format is
+        # $PROJECT:$REGION:$INSTANCE
+        # [START proxy_container]
+      - name: cloudsql-proxy
+        image: gcr.io/cloudsql-docker/gce-proxy:1.14
+        command: ["/cloud_sql_proxy",
+                  "-instances=<INSTANCE_CONNECTION_NAME>=tcp:3306",
+                  "-credential_file=/secrets/cloudsql/key.json"]
+        # [START cloudsql_security_context]
+        securityContext:
+          runAsUser: 2  # non-root user
+          allowPrivilegeEscalation: false
+        # [END cloudsql_security_context]
+        volumeMounts:
+          - name: cloud-service-key
+            mountPath: /secrets/cloudsql
+            readOnly: true
+        # [END proxy_container]
+
