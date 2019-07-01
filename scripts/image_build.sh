@@ -34,7 +34,7 @@ mysql-connector-python \
 impyla \
 pyodps \
 jupyter \
-sqlflow==0.1.0 \
+sqlflow==0.2.0 \
 pre-commit \
 tornado==4.5.3 \
 ${PIP_ADD_PACKAGES}
