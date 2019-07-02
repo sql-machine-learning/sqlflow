@@ -358,14 +358,14 @@ def get_dtype(type_str):
 def _parse_sparse_feature(features, label, feature_metas):
     features_dict = dict()
     for idx, col in enumerate(features):
-		name = feature_column_names[idx]
+        name = feature_column_names[idx]
         # FIXME(typhoonzer): remove != "" everywhere
-		if feature_metas[name]["delimiter"] != "":
+        if feature_metas[name]["delimiter"] != "":
             i, v, s = col
-			features_dict[name] = tf.SparseTensor(indices=i, values=v, dense_shape=s)
-		else:
+            features_dict[name] = tf.SparseTensor(indices=i, values=v, dense_shape=s)
+        else:
             features_dict[name] = tf.Tensor(col)
-	return features_dict, label
+    return features_dict, label
 
 
 {{if .IsTrain}}
@@ -374,19 +374,19 @@ def input_fn(batch_size, is_train=True):
     feature_shapes = []
     for name in feature_column_names:
         # feature_types[name] = get_dtype(feature_metas[name]["dtype"])
-		{{/* NOTE: vector columns like 23,21,3,2,0,0 should use shape None */}}
-		if feature_metas[name]["delimiter"] != "":
+        {{/* NOTE: vector columns like 23,21,3,2,0,0 should use shape None */}}
+        if feature_metas[name]["delimiter"] != "":
             feature_types.append((tf.int64, tf.int32, tf.int64))
             # feature_shapes[name] = tf.TensorShape([None])
             feature_shapes.append(tf.TensorShape([None]))
-		else:
+        else:
             feature_types.append((get_dtype(feature_metas[name]["dtype"]),))
             # feature_shapes[name] = tf.TensorShape([])
 
     gen = db_generator(driver, conn, """{{.StandardSelect}}""",
         feature_column_names, "{{.Y.FeatureName}}", feature_metas)
-	# dataset = tf.data.Dataset.from_generator(gen, (feature_types, tf.int64), (feature_shapes, tf.TensorShape([1])))
-	dataset = tf.data.Dataset.from_generator(gen, (feature_types, tf.int64))
+    # dataset = tf.data.Dataset.from_generator(gen, (feature_types, tf.int64), (feature_shapes, tf.TensorShape([1])))
+    dataset = tf.data.Dataset.from_generator(gen, (feature_types, tf.int64))
     ds_mapper = functools.partial(_parse_sparse_feature, feature_metas=feature_metas)
     dataset = dataset.map(ds_mapper)
     if is_train:
