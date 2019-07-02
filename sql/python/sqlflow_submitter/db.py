@@ -42,7 +42,6 @@ def connect(driver, database, user, password, host, port):
 def db_generator(driver, conn, statement,
                  feature_column_names, label_column_name,
                  feature_specs, fetch_size=128):
-    print("######### in db generator:", driver)
     def reader():
         cursor = conn.cursor()
         cursor.execute(statement)
@@ -61,22 +60,18 @@ def db_generator(driver, conn, statement,
                 conn.ping(True)
             for row in rows:
                 label = row[label_idx]
-                # features = dict()
                 features = []
                 for name in feature_column_names:
+                    # FIXME(typhoonzero): we process all csv tensors as SparseTensor, need to identify whether it's a
+                    # "Dense" Tensor of same shape.
                     if feature_specs[name]["delimiter"] != "":
                         indices = np.fromstring(row[field_names.index(name)], dtype=int, sep=feature_specs[name]["delimiter"])
-                        indices = indices.reshape(1, indices.size)
-                        values = np.array([1], dtype=int)
-                        dense_shape = np.array(feature_specs[name]["shape"], dtype=int)
-                        # dense_shape = np.zeros((feature_specs[name]["shape"]))
-                        # dense_shape = dense_shape.reshape(1, dense_shape.size)
-                        # print(dense_shape.shape)
-                        # cell = str(row[field_names.index(name)])
+                        indices = indices.reshape(indices.size, 1)
+                        values = np.ones([indices.size], dtype=np.int32)
+                        dense_shape = np.array(feature_specs[name]["shape"], dtype=np.int64)
                         cell = (indices, values, dense_shape)
                     else:
                         cell = row[field_names.index(name)]
-                    # features[name] = cell
                     features.append(cell)
                 yield (tuple(features), [label])
             rows = cursor.fetchmany(fetch_size)

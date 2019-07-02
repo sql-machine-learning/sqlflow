@@ -226,6 +226,63 @@ from sqlflow_submitter.db import connect, insert_values, db_generator
 # Disable Tensorflow INFO and WARNING
 import logging
 tf.get_logger().setLevel(logging.ERROR)
+
+from tensorflow.python.ops import variables
+from tensorflow.python.training import checkpoint_utils
+from tensorflow.python.ops import embedding_ops, math_ops, init_ops, array_ops
+from tensorflow import dtypes
+from tensorflow.python.feature_column.feature_column_v2 import EmbeddingColumn
+import math
+class MultiHotEmbedding(EmbeddingColumn):
+    # Overwrite tensorflow implementation
+    def _get_dense_tensor_internal_helper(self, sparse_tensors,
+                                          embedding_weights):
+        sparse_ids = sparse_tensors.id_tensor
+        sparse_weights = sparse_tensors.weight_tensor
+
+        if self.ckpt_to_load_from is not None:
+            to_restore = embedding_weights
+            if isinstance(to_restore, variables.PartitionedVariable):
+                to_restore = to_restore._get_variable_list()  # pylint: disable=protected-access
+            checkpoint_utils.init_from_checkpoint(self.ckpt_to_load_from, {
+                self.tensor_name_in_ckpt: to_restore
+            })
+
+        # Return embedding lookup result.
+        emb = embedding_ops.safe_embedding_lookup_sparse(
+            embedding_weights=embedding_weights,
+            sparse_ids=sparse_ids,
+            sparse_weights=sparse_weights,
+            combiner=self.combiner,
+            name='%s_weights' % self.name,
+            max_norm=self.max_norm)
+        batch_id = sparse_ids.indices[:, 0]
+        batch_id = tf.cast(batch_id, dtype=dtypes.int32)
+        input_shape = sparse_ids.dense_shape    # [batch_size, vocab_size] A tf.Tensor
+        batch_size = input_shape[0]
+        _, idx = array_ops.unique(sparse_ids.values)
+        ret = math_ops.sparse_segment_sum(emb, idx, batch_id, name="%s_emb" % self.name, num_segments=batch_size)
+        return ret
+
+def multi_hot_embedding(categorical_column, dimension, combiner,
+                        initializer=None,
+                        ckpt_to_load_from=None,
+                        tensor_name_in_ckpt=None,
+                        max_norm=None,
+                        trainable=True):
+    initializer = init_ops.truncated_normal_initializer(
+        mean=0.0, stddev=1 / math.sqrt(dimension))
+    return MultiHotEmbedding(
+      categorical_column=categorical_column,
+      dimension=dimension,
+      combiner=combiner,
+      initializer=initializer,
+      ckpt_to_load_from=ckpt_to_load_from,
+      tensor_name_in_ckpt=tensor_name_in_ckpt,
+      max_norm=max_norm,
+      trainable=trainable)
+
+
 ` +
 	// TODO(typhoonzero): get NUM_BUCKETS, EMBEDDING_WIDTH from Extended SQL statements in
 	// COLUMN sub clause
@@ -298,21 +355,40 @@ def get_dtype(type_str):
     else:
         raise TypeError("not supported dtype: %s" % type_str)
 
+def _parse_sparse_feature(features, label, feature_metas):
+    features_dict = dict()
+    for idx, col in enumerate(features):
+		name = feature_column_names[idx]
+        # FIXME(typhoonzer): remove != "" everywhere
+		if feature_metas[name]["delimiter"] != "":
+            i, v, s = col
+			features_dict[name] = tf.SparseTensor(indices=i, values=v, dense_shape=s)
+		else:
+            features_dict[name] = tf.Tensor(col)
+	return features_dict, label
+
+
 {{if .IsTrain}}
 def input_fn(batch_size, is_train=True):
-    feature_types = dict()
-    feature_shapes = dict()
+    feature_types = []
+    feature_shapes = []
     for name in feature_column_names:
-        feature_types[name] = get_dtype(feature_metas[name]["dtype"])
+        # feature_types[name] = get_dtype(feature_metas[name]["dtype"])
 		{{/* NOTE: vector columns like 23,21,3,2,0,0 should use shape None */}}
-        if feature_metas[name]["delimiter"] != "":
-            feature_shapes[name] = tf.TensorShape([None])
-        else:
-            feature_shapes[name] = tf.TensorShape([])
+		if feature_metas[name]["delimiter"] != "":
+            feature_types.append((tf.int64, tf.int32, tf.int64))
+            # feature_shapes[name] = tf.TensorShape([None])
+            feature_shapes.append(tf.TensorShape([None]))
+		else:
+            feature_types.append((get_dtype(feature_metas[name]["dtype"]),))
+            # feature_shapes[name] = tf.TensorShape([])
 
     gen = db_generator(driver, conn, """{{.StandardSelect}}""",
         feature_column_names, "{{.Y.FeatureName}}", feature_metas)
-    dataset = tf.data.Dataset.from_generator(gen, (feature_types, tf.int64), (feature_shapes, tf.TensorShape([1])))
+	# dataset = tf.data.Dataset.from_generator(gen, (feature_types, tf.int64), (feature_shapes, tf.TensorShape([1])))
+	dataset = tf.data.Dataset.from_generator(gen, (feature_types, tf.int64))
+    ds_mapper = functools.partial(_parse_sparse_feature, feature_metas=feature_metas)
+    dataset = dataset.map(ds_mapper)
     if is_train:
         # TODO(typhoonzero): add prefetch, cache if needed.
         dataset = dataset.shuffle(1000).batch(batch_size)
