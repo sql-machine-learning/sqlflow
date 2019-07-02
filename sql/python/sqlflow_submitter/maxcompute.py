@@ -42,8 +42,8 @@ class MaxCompute:
                     label = row[label_idx]
                     features = dict()
                     for name in feature_column_names:
-                        if feature_specs[name]["delimeter"] != "":
-                            cell = np.fromstring(row[field_names.index(name)], dtype=int, sep=feature_specs[name]["delimeter"])
+                        if feature_specs[name]["delimiter"] != "":
+                            cell = np.fromstring(row[field_names.index(name)], dtype=int, sep=feature_specs[name]["delimiter"])
                         else:
                             cell = row[field_names.index(name)]
                         features[name] = cell
