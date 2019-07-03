@@ -354,6 +354,7 @@ func pred(pr *extendedSelect, db *DB, cwd string, wr *PipeWriter, modelDir strin
 	if e := genTF(&buf, pr, fts, db); e != nil {
 		return fmt.Errorf("genTF: %v", e)
 	}
+	log.Debug(buf.String())
 
 	cw := &logChanWriter{wr: wr}
 	defer cw.Close()
@@ -385,15 +386,19 @@ func createPredictionTable(trainParsed, predParsed *extendedSelect, db *DB) erro
 	var b bytes.Buffer
 	fmt.Fprintf(&b, "create table %s (", tableName)
 	for _, c := range trainParsed.columns["feature_columns"] {
-		typ, ok := fts.get(c.val)
+		name, err := getExpressionFieldName(c)
+		if err != nil {
+			return err
+		}
+		typ, ok := fts.get(name)
 		if !ok {
-			return fmt.Errorf("createPredictionTable: Cannot find type of field %s", c.val)
+			return fmt.Errorf("createPredictionTable: Cannot find type of field %s", name)
 		}
 		stype, e := universalizeColumnType(db.driverName, typ)
 		if e != nil {
 			return e
 		}
-		fmt.Fprintf(&b, "%s %s, ", c.val, stype)
+		fmt.Fprintf(&b, "%s %s, ", name, stype)
 	}
 	typ, _ := fts.get(trainParsed.label)
 	stype, e := universalizeColumnType(db.driverName, typ)

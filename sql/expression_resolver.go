@@ -331,10 +331,27 @@ func resolveTrainColumns(columns *exprlist) ([]featureColumn, []*columnSpec, err
 			}
 			fcs = append(fcs, c)
 		} else {
-			return nil, nil, fmt.Errorf("not recgonized type: %s", result)
+			return nil, nil, fmt.Errorf("not recognized type: %s", result)
 		}
 	}
 	return fcs, css, nil
+}
+
+func getExpressionFieldName(expr *expr) (string, error) {
+	result, err := resolveExpression(expr)
+	if err != nil {
+		return "", err
+	}
+	switch r := result.(type) {
+	case *columnSpec:
+		return r.ColumnName, nil
+	case featureColumn:
+		return r.GetKey(), nil
+	case string:
+		return r, nil
+	default:
+		return "", fmt.Errorf("getExpressionFieldName: unrecognized type %T", r)
+	}
 }
 
 // resolveExpression resolve a SQLFlow expression to the actual value

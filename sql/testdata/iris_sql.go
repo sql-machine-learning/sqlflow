@@ -160,6 +160,13 @@ CREATE TABLE iris.train_dense AS
           class
    FROM   iris.train);
 
+DROP TABLE IF EXISTS iris.test_dense;
+CREATE TABLE iris.test_dense AS
+  (SELECT CONCAT_WS(",", sepal_length, sepal_width, petal_length, petal_width)
+          AS dense,
+          class
+   FROM   iris.test);
+
 DROP TABLE IF EXISTS iris.iris_empty;
 CREATE TABLE iris.iris_empty (
        sepal_length float,
