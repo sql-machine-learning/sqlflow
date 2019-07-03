@@ -83,7 +83,7 @@ func TestExecutorTrainAndPredictDNNLocalFS(t *testing.T) {
 
 func TestExecutorTrainAndPredictionDNNClassifierDENSE(t *testing.T) {
 	if getEnv("SQLFLOW_TEST_DB", "mysql") == "hive" {
-		t.Skip(fmt.Sprintf("%s: skip MySQL test", getEnv("SQLFLOW_TEST_DB", "mysql")))
+		t.Skip(fmt.Sprintf("%s: skip Hive test", getEnv("SQLFLOW_TEST_DB", "mysql")))
 	}
 	a := assert.New(t)
 	a.NotPanics(func() {
