@@ -44,7 +44,6 @@ Docker image](/doc/build.md).
     NAME                             READY   STATUS    RESTARTS   AGE
     sqlflow-all-in-one-9b57566c9-8xkpk   1/1     Running   0          60s
     ```
-    The logs of the Pod similar to:
 
 ### Running your Query in SQLFlow 
 
@@ -84,6 +83,11 @@ and easy to scale up/down the SQLFlow gRPC server according to workload.
     kubectl create -f k8s/sqlflow-jhub.yaml
     ```
 
+    **NOTE**: Should grant all the remote hosts can access to the MySQL server if you want to use the custorm MySQL Docker image, the grant command like:
+    ``` text 
+    GRANT ALL PRIVILEGES ON *.* TO 'root'@'' IDENTIFIED BY 'root' WITH GRANT OPTION;
+    ```
+
 1. Check the SQLFlow Pods, you can find:
     - A MySQL Pod named `sqlflow-mysql-*`.
     - A JupyterHub Pod named `sqlflow-jhub-*`.
@@ -112,9 +116,9 @@ and easy to scale up/down the SQLFlow gRPC server according to workload.
 
 ### Login the JupyterHub
 
-JupyterHub using the PAMAuthenticator as the default authenticate method. the PAM can authenticate the system users with their username and password. You can find more information on [authenticators-users-basics](https://jupyterhub.readthedocs.io/en/stable/getting-started/authenticators-users-basics.html), and other authenticator methods from [here](https://github.com/jupyterhub/jupyterhub/wiki/Authenticators)
+JupyterHub using the PAMAuthenticator as the default authenticate method. the [PAM](https://en.wikipedia.org/wiki/Linux_PAM) can authenticate the system users with their username and password. You can find more information on [authenticators-users-basics](https://jupyterhub.readthedocs.io/en/stable/getting-started/authenticators-users-basics.html), and other authenticator methods from [here](https://github.com/jupyterhub/jupyterhub/wiki/Authenticators)
 
-Next, please do as the following steps to create a user on the system and log in the Jupyterhub:
+Next, please do as the following steps to create a user on the system and login on the Jupyterhub:
 
 1. List the Pods and execute into the `sqlflow-jhub` Pod
     ``` bash
