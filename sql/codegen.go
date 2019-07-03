@@ -49,6 +49,7 @@ type featureMeta struct {
 	Dtype       string
 	Delimiter   string
 	InputShape  string
+	IsSparse    bool
 }
 
 type filler struct {
@@ -125,11 +126,21 @@ func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
 			if e != nil {
 				return nil, e
 			}
+			// FIXME(typhoonzero): Use Heuristic rules to determine whether a column should be transformed to a
+			// tf.SparseTensor. Currently the rules are:
+			// if column have delimiter and it's not a sequence_catigorical_column, we'll treat it as a sparse column
+			// else, use dense column.
+			isSparse := false
+			_, ok := col.(*sequenceCategoryIDColumn)
+			if !ok && col.GetDelimiter() != "" {
+				isSparse = true
+			}
 			fm := &featureMeta{
 				FeatureName: col.GetKey(),
 				Dtype:       col.GetDtype(),
 				Delimiter:   col.GetDelimiter(),
 				InputShape:  col.GetInputShape(),
+				IsSparse:    isSparse,
 			}
 			r.X = append(r.X, fm)
 			r.FeatureColumnsCode[target] = append(
@@ -144,6 +155,7 @@ func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
 		Dtype:       "int",
 		Delimiter:   ",",
 		InputShape:  "[1]",
+		IsSparse:    false,
 	}
 
 	var e error
@@ -348,8 +360,9 @@ feature_metas = dict()
 feature_metas["{{$value.FeatureName}}"] = {
     "feature_name": "{{$value.FeatureName}}",
     "dtype": "{{$value.Dtype}}",
-	"delimiter": "{{$value.Delimiter}}",
-	"shape": {{$value.InputShape}}
+    "delimiter": "{{$value.Delimiter}}",
+	"shape": {{$value.InputShape}},
+	"is_sparse": "{{$value.IsSparse}}" == "true"
 }
 {{end}}
 
@@ -365,8 +378,7 @@ def _parse_sparse_feature(features, label, feature_metas):
     features_dict = dict()
     for idx, col in enumerate(features):
         name = feature_column_names[idx]
-        # FIXME(typhoonzer): remove != "" everywhere
-        if feature_metas[name]["delimiter"] != "":
+        if feature_metas[name]["is_sparse"]:
             i, v, s = col
             features_dict[name] = tf.SparseTensor(indices=i, values=v, dense_shape=s)
         else:
@@ -381,7 +393,7 @@ def input_fn(batch_size, is_train=True):
     for name in feature_column_names:
         # feature_types[name] = get_dtype(feature_metas[name]["dtype"])
         {{/* NOTE: vector columns like 23,21,3,2,0,0 should use shape None */}}
-        if feature_metas[name]["delimiter"] != "":
+        if feature_metas[name]["is_sparse"]:
             feature_types.append((tf.int64, tf.int32, tf.int64))
             # feature_shapes[name] = tf.TensorShape([None])
             feature_shapes.append(tf.TensorShape([None]))
@@ -437,7 +449,7 @@ def eval_input_fn(batch_size):
     for name in feature_column_names:
         # feature_types[name] = get_dtype(feature_metas[name]["dtype"])
         {{/* NOTE: vector columns like 23,21,3,2,0,0 should use shape None */}}
-        if feature_metas[name]["delimiter"] != "":
+        if feature_metas[name]["is_sparse"]:
             feature_types.append((tf.int64, tf.int32, tf.int64))
 		    # feature_shapes[name] = tf.TensorShape([None])
             feature_shapes.append(tf.TensorShape([None]))

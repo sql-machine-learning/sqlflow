@@ -475,6 +475,7 @@ INTO sqlflow_models.my_dnn_model;`
 // CaseTrainTextClassificationCustomLSTM is a simple End-to-End testing for case training
 // text classification models.
 func CaseTrainTextClassificationCustomLSTM(t *testing.T) {
+	t.Skip()
 	a := assert.New(t)
 	trainSQL := `SELECT *
 FROM text_cn.train_processed
