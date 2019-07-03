@@ -476,10 +476,14 @@ func expression2string(e interface{}) (string, error) {
 
 func (cs *columnSpec) ToString() string {
 	if cs.IsSparse {
-		return fmt.Sprintf("SparseColumn(name=\"%s\", shape=%s, dtype=\"%s\", separator='\x01', group_separator='\x02')",
-			cs.ColumnName,
-			strings.Join(strings.Split(fmt.Sprint(cs.Shape), " "), ","),
-			cs.DType)
+		shape := strings.Join(strings.Split(fmt.Sprint(cs.Shape), " "), ",")
+		if len(cs.Shape) > 1 {
+			groupCnt := len(cs.Shape)
+			return fmt.Sprintf("GroupedSparseColumn(name=\"%s\", shape=%s, dtype=\"%s\", group=%d, group_separator='\\002')",
+				cs.ColumnName, shape, cs.DType, groupCnt)
+		}
+		return fmt.Sprintf("SparseColumn(name=\"%s\", shape=%s, dtype=\"%s\")", cs.ColumnName, shape, cs.DType)
+
 	}
 	return fmt.Sprintf("DenseColumn(name=\"%s\", shape=%s, dtype=\"%s\", separator=\"%s\")",
 		cs.ColumnName,
