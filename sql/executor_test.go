@@ -15,6 +15,7 @@ package sql
 
 import (
 	"container/list"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -81,6 +82,9 @@ func TestExecutorTrainAndPredictDNNLocalFS(t *testing.T) {
 }
 
 func TestExecutorTrainAndPredictionDNNClassifierDENSE(t *testing.T) {
+	if getEnv("SQLFLOW_TEST_DB", "mysql") == "hive" {
+		t.Skip(fmt.Sprintf("%s: skip MySQL test", getEnv("SQLFLOW_TEST_DB", "mysql")))
+	}
 	a := assert.New(t)
 	modelDir, e := ioutil.TempDir("/tmp", "sqlflow_models")
 	a.Nil(e)
