@@ -464,6 +464,7 @@ func (meta *metadata) getColumnInfo(featureColumns map[string][]featureColumn) (
 	return columns, nil
 }
 
+// get all referenced field names.
 func getAllKeys(fcs []featureColumn) []string {
 	output := make([]string, 0)
 	for _, fc := range fcs {
