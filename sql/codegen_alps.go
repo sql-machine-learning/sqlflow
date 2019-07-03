@@ -88,25 +88,37 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB) (*alpsFiller, error) {
 	}
 
 	var odpsConfig = &gomaxcompute.Config{}
+	var columnInfo map[string]*columnSpec
+	var meta metadata
+
+	// TODO(joyyoj) read feature mapping table's name from table attributes.
+	// TODO(joyyoj) pr may contains partition.
+	fmap := featureMap{pr.tables[0] + "_feature_map", ""}
 	if db != nil {
 		odpsConfig, err = gomaxcompute.ParseDSN(db.dataSourceName)
 		if err != nil {
 			return nil, err
 		}
+		meta = metadata{odpsConfig, pr.tables[0], &fmap, nil}
+		columnInfo, err = meta.getColumnInfo(resolved.FeatureColumns)
+		meta.columnInfo = &columnInfo
+	} else {
+		columnInfo = map[string]*columnSpec{}
+		for _, css := range resolved.ColumnSpecs {
+			for _, cs := range css {
+				columnInfo[cs.ColumnName] = cs
+			}
+		}
+		meta.columnInfo = &columnInfo
 	}
 	fields := make([]string, 0) // TODO use complete fields
 	csCode := make([]string, 0)
 
-	// TODO(joyyoj) read feature mapping table's name from table attributes.
-	// TODO(joyyoj) pr may contains partition.
-	fmap := featureMap{pr.tables[0] + "_feature_map", ""}
-	meta := metadata{odpsConfig, pr.tables[0], &fmap, nil}
-	columnInfo, err := meta.getColumnInfo(resolved.FeatureColumns)
 	if err != nil {
 		log.Fatalf("failed to get column info: %v", err)
 		return nil, err
 	}
-	meta.columnInfo = &columnInfo
+
 	for _, cs := range columnInfo {
 		csCode = append(csCode, cs.ToString())
 	}
