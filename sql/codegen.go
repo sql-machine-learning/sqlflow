@@ -48,6 +48,7 @@ type featureMeta struct {
 	FeatureName string
 	Dtype       string
 	Delimiter   string
+	InputShape  string
 }
 
 type filler struct {
@@ -128,6 +129,7 @@ func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
 				FeatureName: col.GetKey(),
 				Dtype:       col.GetDtype(),
 				Delimiter:   col.GetDelimiter(),
+				InputShape:  col.GetInputShape(),
 			}
 			r.X = append(r.X, fm)
 			r.FeatureColumnsCode[target] = append(
@@ -140,7 +142,9 @@ func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
 	r.Y = &featureMeta{
 		FeatureName: pr.label,
 		Dtype:       "int",
-		Delimiter:   ","}
+		Delimiter:   ",",
+		InputShape:  "[1]",
+	}
 
 	var e error
 	if !pr.train {
@@ -216,6 +220,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import sys, json
 import tensorflow as tf
 import numpy as np
+import functools
 try:
     import sqlflow_models
 except:
@@ -343,7 +348,8 @@ feature_metas = dict()
 feature_metas["{{$value.FeatureName}}"] = {
     "feature_name": "{{$value.FeatureName}}",
     "dtype": "{{$value.Dtype}}",
-    "delimiter": "{{$value.Delimiter}}"
+	"delimiter": "{{$value.Delimiter}}",
+	"shape": {{$value.InputShape}}
 }
 {{end}}
 
@@ -364,7 +370,7 @@ def _parse_sparse_feature(features, label, feature_metas):
             i, v, s = col
             features_dict[name] = tf.SparseTensor(indices=i, values=v, dense_shape=s)
         else:
-            features_dict[name] = tf.Tensor(col)
+            features_dict[name] = col
     return features_dict, label
 
 
@@ -380,13 +386,13 @@ def input_fn(batch_size, is_train=True):
             # feature_shapes[name] = tf.TensorShape([None])
             feature_shapes.append(tf.TensorShape([None]))
         else:
-            feature_types.append((get_dtype(feature_metas[name]["dtype"]),))
+            feature_types.append(get_dtype(feature_metas[name]["dtype"]))
             # feature_shapes[name] = tf.TensorShape([])
 
     gen = db_generator(driver, conn, """{{.StandardSelect}}""",
         feature_column_names, "{{.Y.FeatureName}}", feature_metas)
     # dataset = tf.data.Dataset.from_generator(gen, (feature_types, tf.int64), (feature_shapes, tf.TensorShape([1])))
-    dataset = tf.data.Dataset.from_generator(gen, (feature_types, tf.int64))
+    dataset = tf.data.Dataset.from_generator(gen, (tuple(feature_types), tf.int64))
     ds_mapper = functools.partial(_parse_sparse_feature, feature_metas=feature_metas)
     dataset = dataset.map(ds_mapper)
     if is_train:
@@ -426,20 +432,25 @@ print("Done training")
 {{- else}}
 
 def eval_input_fn(batch_size):
-    feature_types = dict()
-    feature_shapes = dict()
+    feature_types = []
+    feature_shapes = []
     for name in feature_column_names:
-        feature_types[name] = get_dtype(feature_metas[name]["dtype"])
+        # feature_types[name] = get_dtype(feature_metas[name]["dtype"])
         {{/* NOTE: vector columns like 23,21,3,2,0,0 should use shape None */}}
         if feature_metas[name]["delimiter"] != "":
-            feature_shapes[name] = tf.TensorShape([None])
+            feature_types.append((tf.int64, tf.int32, tf.int64))
+		    # feature_shapes[name] = tf.TensorShape([None])
+            feature_shapes.append(tf.TensorShape([None]))
         else:
-            feature_shapes[name] = tf.TensorShape([])
+            feature_types.append(get_dtype(feature_metas[name]["dtype"]))
+            # feature_shapes[name] = tf.TensorShape([])
 
     gen = db_generator(driver, conn, """{{.StandardSelect}}""",
         feature_column_names, "{{.Y.FeatureName}}", feature_metas)
-    dataset = tf.data.Dataset.from_generator(gen, (feature_types, tf.int64), (feature_shapes, tf.TensorShape([1])))
-    dataset = dataset.batch(batch_size)
+    # dataset = tf.data.Dataset.from_generator(gen, (feature_types, tf.int64), (feature_shapes, tf.TensorShape([1])))
+    dataset = tf.data.Dataset.from_generator(gen, (tuple(feature_types), tf.int64))
+    ds_mapper = functools.partial(_parse_sparse_feature, feature_metas=feature_metas)
+    dataset = dataset.map(ds_mapper).batch(batch_size)
     return dataset
 
 
@@ -472,8 +483,8 @@ def insert(table_name, eval_input_dataset, feature_column_names, predictions, in
         except StopIteration:
             break
         row = []
-        for col_name in feature_column_names:
-            row.append(str(in_val[0][col_name]))
+        for idx, _ in enumerate(feature_column_names):
+            row.append(str(in_val[0][idx]))
         {{if .IsKerasModel}}
         row.append(str(pred_val))
         {{else}}
