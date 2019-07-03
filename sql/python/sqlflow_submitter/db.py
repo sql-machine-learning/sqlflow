@@ -63,7 +63,12 @@ def db_generator(driver, conn, statement,
                 features = dict()
                 for name in feature_column_names:
                     if feature_specs[name]["delimiter"] != "":
-                        cell = np.fromstring(row[field_names.index(name)], dtype=int, sep=feature_specs[name]["delimiter"])
+                        if feature_specs[name]["dtype"] == "float32":
+                            cell = np.fromstring(row[field_names.index(name)], dtype=float, sep=feature_specs[name]["delimiter"])
+                        elif feature_specs[name]["dtype"] == "int64":
+                            cell = np.fromstring(row[field_names.index(name)], dtype=int, sep=feature_specs[name]["delimiter"])
+                        else:
+                            raise ValueError('unrecognize dtype {}'.format(feature_specs[name]["dtype"]))
                     else:
                         cell = row[field_names.index(name)]
                     features[name] = cell

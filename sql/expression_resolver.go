@@ -88,9 +88,10 @@ type attribute struct {
 }
 
 type numericColumn struct {
-	Key   string
-	Shape []int
-	Dtype string
+	Key       string
+	Shape     []int
+	Delimiter string
+	Dtype     string
 }
 
 type bucketColumn struct {
@@ -309,8 +310,8 @@ func resolveTrainClause(tc *trainClause) (*resolvedTrainClause, error) {
 // resolveTrainColumns resolve columns from SQL statement,
 // returns featureColumn list and featureSpecs
 func resolveTrainColumns(columns *exprlist) ([]featureColumn, []*columnSpec, error) {
-	var css = make([]*columnSpec, 0)
 	var fcs = make([]featureColumn, 0)
+	var css = make([]*columnSpec, 0)
 	for _, expr := range *columns {
 		result, err := resolveExpression(expr)
 		if err != nil {
@@ -644,7 +645,7 @@ func (nc *numericColumn) GenerateCode() (string, error) {
 }
 
 func (nc *numericColumn) GetDelimiter() string {
-	return ""
+	return nc.Delimiter
 }
 
 func (nc *numericColumn) GetDtype() string {

@@ -114,12 +114,35 @@ func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
 	}
 
 	for target, columns := range pr.columns {
-		feaCols, _, err := resolveTrainColumns(&columns)
+		feaCols, colSpecs, err := resolveTrainColumns(&columns)
+		log.Infof("feaCols: %+v", feaCols)
 		if err != nil {
 			return nil, err
 		}
 		r.FeatureColumnsCode = make(map[string][]string)
 		for _, col := range feaCols {
+			feaColCode, e := col.GenerateCode()
+			if e != nil {
+				return nil, e
+			}
+			fm := &featureMeta{
+				FeatureName: col.GetKey(),
+				Dtype:       col.GetDtype(),
+				Delimiter:   col.GetDelimiter(),
+			}
+			r.X = append(r.X, fm)
+			r.FeatureColumnsCode[target] = append(
+				r.FeatureColumnsCode[target],
+				feaColCode)
+		}
+		for _, spec := range colSpecs {
+			if spec.IsSparse {
+				return nil, fmt.Errorf("newFiller doesn't support SPARSE")
+			}
+			col := numericColumn{Key: spec.ColumnName,
+				Shape:     spec.Shape,
+				Delimiter: spec.Delimiter,
+				Dtype:     "float32"}
 			feaColCode, e := col.GenerateCode()
 			if e != nil {
 				return nil, e

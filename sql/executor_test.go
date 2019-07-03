@@ -80,6 +80,27 @@ func TestExecutorTrainAndPredictDNNLocalFS(t *testing.T) {
 	})
 }
 
+func TestExecutorTrainAndPredictionDNNClassifierDENSE(t *testing.T) {
+	a := assert.New(t)
+	modelDir, e := ioutil.TempDir("/tmp", "sqlflow_models")
+	a.Nil(e)
+	defer os.RemoveAll(modelDir)
+	a.NotPanics(func() {
+		stream := Run(`SELECT * FROM iris.train_dense
+TRAIN DNNClassifier
+WITH
+  n_classes = 3,
+  hidden_units = [10, 20],
+  EPOCHS = 200,
+  BATCHSIZE = 10
+COLUMN DENSE(dense, 4, comma)
+LABEL class
+INTO sqlflow_models.my_dnn_model
+;`, testDB, "")
+		a.True(goodStream(stream.ReadAll()))
+	})
+}
+
 func TestStandardSQL(t *testing.T) {
 	a := assert.New(t)
 	a.NotPanics(func() {
