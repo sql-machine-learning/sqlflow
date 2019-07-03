@@ -115,7 +115,6 @@ func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
 
 	for target, columns := range pr.columns {
 		feaCols, colSpecs, err := resolveTrainColumns(&columns)
-		log.Infof("feaCols: %+v", feaCols)
 		if err != nil {
 			return nil, err
 		}
