@@ -119,6 +119,7 @@ type sequenceCategoryIDColumn struct {
 	BucketSize int
 	Delimiter  string
 	Dtype      string
+	IsSequence bool
 }
 
 type embeddingColumn struct {
@@ -599,7 +600,8 @@ func resolveCategoryIDColumn(el *exprlist, isSequence bool) (interface{}, error)
 			BucketSize: bucketSize,
 			Delimiter:  delimiter,
 			// TODO(typhoonzero): support config dtype
-			Dtype: "int64"}, nil
+			Dtype:      "int64",
+			IsSequence: true}, nil
 	}
 	return &categoryIDColumn{
 		Key:        key,

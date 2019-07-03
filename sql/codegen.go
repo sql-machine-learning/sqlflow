@@ -131,7 +131,14 @@ func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
 			// if column have delimiter and it's not a sequence_catigorical_column, we'll treat it as a sparse column
 			// else, use dense column.
 			isSparse := false
+			var isEmb bool
 			_, ok := col.(*sequenceCategoryIDColumn)
+			if !ok {
+				_, isEmb = col.(*embeddingColumn)
+				if isEmb {
+					_, ok = col.(*embeddingColumn).CategoryColumn.(*sequenceCategoryIDColumn)
+				}
+			}
 			if !ok && col.GetDelimiter() != "" {
 				isSparse = true
 			}
@@ -244,62 +251,6 @@ from sqlflow_submitter.db import connect, insert_values, db_generator
 import logging
 tf.get_logger().setLevel(logging.ERROR)
 
-from tensorflow.python.ops import variables
-from tensorflow.python.training import checkpoint_utils
-from tensorflow.python.ops import embedding_ops, math_ops, init_ops, array_ops
-from tensorflow import dtypes
-from tensorflow.python.feature_column.feature_column_v2 import EmbeddingColumn
-import math
-class MultiHotEmbedding(EmbeddingColumn):
-    # Overwrite tensorflow implementation
-    def _get_dense_tensor_internal_helper(self, sparse_tensors,
-                                          embedding_weights):
-        sparse_ids = sparse_tensors.id_tensor
-        sparse_weights = sparse_tensors.weight_tensor
-
-        if self.ckpt_to_load_from is not None:
-            to_restore = embedding_weights
-            if isinstance(to_restore, variables.PartitionedVariable):
-                to_restore = to_restore._get_variable_list()  # pylint: disable=protected-access
-            checkpoint_utils.init_from_checkpoint(self.ckpt_to_load_from, {
-                self.tensor_name_in_ckpt: to_restore
-            })
-
-        # Return embedding lookup result.
-        emb = embedding_ops.safe_embedding_lookup_sparse(
-            embedding_weights=embedding_weights,
-            sparse_ids=sparse_ids,
-            sparse_weights=sparse_weights,
-            combiner=self.combiner,
-            name='%s_weights' % self.name,
-            max_norm=self.max_norm)
-        batch_id = sparse_ids.indices[:, 0]
-        batch_id = tf.cast(batch_id, dtype=dtypes.int32)
-        input_shape = sparse_ids.dense_shape    # [batch_size, vocab_size] A tf.Tensor
-        batch_size = input_shape[0]
-        _, idx = array_ops.unique(sparse_ids.values)
-        ret = math_ops.sparse_segment_sum(emb, idx, batch_id, name="%s_emb" % self.name, num_segments=batch_size)
-        return ret
-
-def multi_hot_embedding(categorical_column, dimension, combiner,
-                        initializer=None,
-                        ckpt_to_load_from=None,
-                        tensor_name_in_ckpt=None,
-                        max_norm=None,
-                        trainable=True):
-    initializer = init_ops.truncated_normal_initializer(
-        mean=0.0, stddev=1 / math.sqrt(dimension))
-    return MultiHotEmbedding(
-      categorical_column=categorical_column,
-      dimension=dimension,
-      combiner=combiner,
-      initializer=initializer,
-      ckpt_to_load_from=ckpt_to_load_from,
-      tensor_name_in_ckpt=tensor_name_in_ckpt,
-      max_norm=max_norm,
-      trainable=trainable)
-
-
 ` +
 	// TODO(typhoonzero): get NUM_BUCKETS, EMBEDDING_WIDTH from Extended SQL statements in
 	// COLUMN sub clause
@@ -361,8 +312,8 @@ feature_metas["{{$value.FeatureName}}"] = {
     "feature_name": "{{$value.FeatureName}}",
     "dtype": "{{$value.Dtype}}",
     "delimiter": "{{$value.Delimiter}}",
-	"shape": {{$value.InputShape}},
-	"is_sparse": "{{$value.IsSparse}}" == "true"
+    "shape": {{$value.InputShape}},
+    "is_sparse": "{{$value.IsSparse}}" == "true"
 }
 {{end}}
 

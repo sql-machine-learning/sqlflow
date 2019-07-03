@@ -62,8 +62,7 @@ def db_generator(driver, conn, statement,
                 label = row[label_idx]
                 features = []
                 for name in feature_column_names:
-                    # FIXME(typhoonzero): we process all csv tensors as SparseTensor, need to identify whether it's a
-                    # "Dense" Tensor of same shape.
+                    # FIXME(typhoonzero): Should use correct dtype here.
                     if feature_specs[name]["is_sparse"]:
                         indices = np.fromstring(row[field_names.index(name)], dtype=int, sep=feature_specs[name]["delimiter"])
                         indices = indices.reshape(indices.size, 1)
@@ -71,7 +70,11 @@ def db_generator(driver, conn, statement,
                         dense_shape = np.array(feature_specs[name]["shape"], dtype=np.int64)
                         cell = (indices, values, dense_shape)
                     else:
-                        cell = row[field_names.index(name)]
+                        # Dense string vector
+                        if feature_specs[name]["delimiter"] != "":
+                            cell = np.fromstring(row[field_names.index(name)], dtype=int, sep=feature_specs[name]["delimiter"])
+                        else:
+                            cell = row[field_names.index(name)]
                     features.append(cell)
                 yield (tuple(features), [label])
             rows = cursor.fetchmany(fetch_size)
