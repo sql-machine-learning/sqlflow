@@ -408,7 +408,7 @@ USING sqlflow_models.my_dnn_model;`, caseDB, caseTestTable, caseDB, casePredictT
 	ParseRow(stream)
 
 	showPred := fmt.Sprintf(`SELECT *
-FROM %s.%sLIMIT 5;`, caseDB, casePredictTable)
+FROM %s.%s LIMIT 5;`, caseDB, casePredictTable)
 
 	stream, err = cli.Run(ctx, sqlRequest(showPred))
 	if err != nil {
