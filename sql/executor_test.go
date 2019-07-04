@@ -94,7 +94,7 @@ n_classes = 3,
 hidden_units = [10, 20],
 EPOCHS = 200,
 BATCHSIZE = 10
-COLUMN DENSE(dense, 4, comma)
+COLUMN NUMERIC(dense, 4)
 LABEL class
 INTO sqlflow_models.my_dense_dnn_model
 ;`, testDB, "")

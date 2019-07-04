@@ -535,8 +535,9 @@ func resolveNumericColumn(el *exprlist) (*numericColumn, error) {
 	return &numericColumn{
 		Key:   key,
 		Shape: shape,
-		// FIXME(typhoonzero): support config dtype
-		Dtype: "float32"}, nil
+		// FIXME(typhoonzero, tony): support config Delimiter and Dtype
+		Delimiter: ",",
+		Dtype:     "float32"}, nil
 }
 
 func resolveBucketColumn(el *exprlist) (*bucketColumn, error) {
