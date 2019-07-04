@@ -29,4 +29,5 @@ go install ./...
 
 # -p 1 is necessary since tests in different packages are sharing the same database
 # ref: https://stackoverflow.com/a/23840896
-SQLFLOW_log_level=debug go test -p 1 -v ./...
+# TODO(Yancey1989): enable all the unit test for the maxcompute
+SQLFLOW_log_level=debug go test -p 1 -v ./... -run TestEnd2EndMaxCompute 
