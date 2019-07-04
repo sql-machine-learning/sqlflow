@@ -430,19 +430,25 @@ predictions = classifier.predict(input_fn=lambda:eval_input_fn(BATCHSIZE))
 {{end}}
 {{/* TODO: insert_batch_size should be automatically chosen by experience */}}
 def insert(table_name, eval_input_dataset, feature_column_names, predictions, insert_batch_size=64):
-    column_names = feature_column_names[:]
+    if driver != "hive":
+        column_names = feature_column_names[:]
+    else:
+        column_names = []
     column_names.append("{{.Y.FeatureName}}")
     pred_rows = []
     write_conn = connect(driver, database, user="{{.User}}", password="{{.Password}}", host="{{.Host}}", port={{.Port}})
     while True:
         try:
-            in_val = eval_input_dataset.__next__()
+            if driver != "hive":
+                # FIXME(typhoonzero): Hive inserting while reading cause random fail, should find a way to insert values to hive
+                in_val = eval_input_dataset.__next__()
             pred_val = predictions.__next__()
         except StopIteration:
             break
         row = []
-        for idx, _ in enumerate(feature_column_names):
-            row.append(str(in_val[0][idx]))
+        if driver != "hive":
+            for idx, _ in enumerate(feature_column_names):
+                row.append(str(in_val[0][idx]))
         {{if .IsKerasModel}}
         row.append(str(pred_val))
         {{else}}
