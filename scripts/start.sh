@@ -32,6 +32,10 @@ function setup_mysql() {
     for f in /docker-entrypoint-initdb.d/*; do
         cat $f | mysql -uroot -proot --host ${SQLFLOW_MYSQL_HOST} --port ${SQLFLOW_MYSQL_PORT}
     done
+    # Grant all privileges to all the remote hosts so that the sqlflow server can be scaled to more than on replicas. 
+    # NOTE: should notice this authorization on the production environment, it's not safe.
+    mysql -uroot -proot -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'' IDENTIFIED BY 'root' WITH GRANT OPTION;"
+
 }
 
 function setup_sqlflow_server() {
