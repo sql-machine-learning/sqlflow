@@ -37,6 +37,7 @@ jupyter \
 sqlflow==0.2.0 \
 pre-commit \
 tornado==4.5.3 \
+odps \
 ${PIP_ADD_PACKAGES}
 
 # 1. Install Go 1.11.5
