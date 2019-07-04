@@ -41,6 +41,7 @@ script:
   - docker run -d --name=hive -p 10000:10000 -p 10002:10002 -p 8040:8040 -p 8042:8042 -p 9864:9864 -p 9866:9866 -p 9867:9867 -p 9870:9870 -p 8020:8020 -p 8899:8899 sqlflow/gohive:dev python3 -m http.server 8899
   - docker run --rm -v $GOPATH:/go --net=host --entrypoint bash -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:latest scripts/test_hive.sh
   - docker run --rm -v $GOPATH:/go -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:latest bash scripts/test_e2e.sh
+  - docker run --rm -v $GOPATH:/go -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:latest bash scripts/test_maxcompute.sh
 
 deploy:
   skip_cleanup: true
