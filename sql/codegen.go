@@ -342,7 +342,6 @@ def input_fn(batch_size, is_train=True):
     feature_types = []
     feature_shapes = []
     for name in feature_column_names:
-        # feature_types[name] = get_dtype(feature_metas[name]["dtype"])
         {{/* NOTE: vector columns like 23,21,3,2,0,0 should use shape None */}}
         if feature_metas[name]["is_sparse"]:
             feature_types.append((tf.int64, tf.int32, tf.int64))
