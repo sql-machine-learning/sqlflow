@@ -346,15 +346,13 @@ def input_fn(batch_size, is_train=True):
         {{/* NOTE: vector columns like 23,21,3,2,0,0 should use shape None */}}
         if feature_metas[name]["is_sparse"]:
             feature_types.append((tf.int64, tf.int32, tf.int64))
-            # feature_shapes[name] = tf.TensorShape([None])
             feature_shapes.append(tf.TensorShape([None]))
         else:
             feature_types.append(get_dtype(feature_metas[name]["dtype"]))
-            # feature_shapes[name] = tf.TensorShape([])
+            feature_shapes.append(tf.TensorShape([]))
 
     gen = db_generator(driver, conn, """{{.StandardSelect}}""",
         feature_column_names, "{{.Y.FeatureName}}", feature_metas)
-    # dataset = tf.data.Dataset.from_generator(gen, (feature_types, tf.int64), (feature_shapes, tf.TensorShape([1])))
     dataset = tf.data.Dataset.from_generator(gen, (tuple(feature_types), tf.int64))
     ds_mapper = functools.partial(_parse_sparse_feature, feature_metas=feature_metas)
     dataset = dataset.map(ds_mapper)
@@ -398,19 +396,16 @@ def eval_input_fn(batch_size):
     feature_types = []
     feature_shapes = []
     for name in feature_column_names:
-        # feature_types[name] = get_dtype(feature_metas[name]["dtype"])
         {{/* NOTE: vector columns like 23,21,3,2,0,0 should use shape None */}}
         if feature_metas[name]["is_sparse"]:
             feature_types.append((tf.int64, tf.int32, tf.int64))
-		    # feature_shapes[name] = tf.TensorShape([None])
             feature_shapes.append(tf.TensorShape([None]))
         else:
             feature_types.append(get_dtype(feature_metas[name]["dtype"]))
-            # feature_shapes[name] = tf.TensorShape([])
+            feature_shapes.append(tf.TensorShape([]))
 
     gen = db_generator(driver, conn, """{{.StandardSelect}}""",
         feature_column_names, "{{.Y.FeatureName}}", feature_metas)
-    # dataset = tf.data.Dataset.from_generator(gen, (feature_types, tf.int64), (feature_shapes, tf.TensorShape([1])))
     dataset = tf.data.Dataset.from_generator(gen, (tuple(feature_types), tf.int64))
     ds_mapper = functools.partial(_parse_sparse_feature, feature_metas=feature_metas)
     dataset = dataset.map(ds_mapper).batch(batch_size)
@@ -439,6 +434,7 @@ def insert(table_name, eval_input_dataset, feature_column_names, predictions, in
     column_names = feature_column_names[:]
     column_names.append("{{.Y.FeatureName}}")
     pred_rows = []
+    write_conn = connect(driver, database, user="{{.User}}", password="{{.Password}}", host="{{.Host}}", port={{.Port}})
     while True:
         try:
             in_val = eval_input_dataset.__next__()
@@ -455,10 +451,12 @@ def insert(table_name, eval_input_dataset, feature_column_names, predictions, in
         {{end}}
         pred_rows.append(tuple(row))
         if len(pred_rows) == insert_batch_size:
-            insert_values(driver, conn, table_name, column_names, pred_rows)
+            insert_cursor = insert_values(driver, write_conn, table_name, column_names, pred_rows)
+            insert_cursor.close()
             pred_rows.clear()
     if len(pred_rows) > 0:
-        insert_values(driver, conn, table_name, column_names, pred_rows)
+        insert_cursor = insert_values(driver, write_conn, table_name, column_names, pred_rows)
+        insert_cursor.close()
 
 predict_input_gen = db_generator(driver, conn, """{{.StandardSelect}}""",
         feature_column_names, "{{.Y.FeatureName}}", feature_metas)()

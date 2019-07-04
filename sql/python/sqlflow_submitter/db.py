@@ -77,13 +77,7 @@ def db_generator(driver, conn, statement,
                             cell = row[field_names.index(name)]
                     features.append(cell)
                 yield (tuple(features), [label])
-            try:
-                rows = cursor.fetchmany(fetch_size)
-            except Exception as e:
-                if driver == "hive":
-                    break
-                else:
-                    raise e
+            rows = cursor.fetchmany(fetch_size)
         cursor.close()
 
     if driver == "maxcompute":
