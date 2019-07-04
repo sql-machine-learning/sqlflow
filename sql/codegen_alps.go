@@ -195,7 +195,6 @@ func submitALPS(w *PipeWriter, pr *extendedSelect, db *DB, cwd string) error {
 		return fmt.Errorf("submitALPS: failed executing template: %v", err)
 	}
 	code := program.String()
-	fmt.Println(code)
 	cw := &logChanWriter{wr: w}
 	cmd := tensorflowCmd(cwd, "maxcompute")
 	cmd.Stdin = &program
@@ -455,7 +454,7 @@ func (meta *metadata) getColumnInfo(featureColumns map[string][]featureColumn) (
 	}
 	columns, err := meta.getSparseColumnInfo()
 	if err != nil {
-		fmt.Println(err)
+		log.Fatalf("Failed to get sparse column info %v", err)
 		return columns, err
 	}
 	denseKeys := make([]string, 0)
