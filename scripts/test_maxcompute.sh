@@ -13,7 +13,7 @@
 # limitations under the License.
 
 export SQLFLOW_TEST_DB=maxcompute
-export MAXCOMPUTE_ENDPOINT="service.cn.maxcompute.aliyun.com/api?curr_project=gomaxcompute_driver_w7u"
+export MAXCOMPUTE_ENDPOINT="service.cn.maxcompute.aliyun.com/api?curr_project=gomaxcompute_driver_w7u&scheme=https"
 if [ "$MAXCOMPUTE_AK" = "" ] || [ "$MAXCOMPUTE_SK" == "" ]; then
   echo "skip maxcompute test because the env MAXCOMPUTE_AK or MAXCOMPUTE_SK is empty"
   exit 0
