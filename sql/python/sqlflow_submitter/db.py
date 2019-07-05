@@ -60,14 +60,23 @@ def db_generator(driver, conn, statement,
                 conn.ping(True)
             for row in rows:
                 label = row[label_idx]
-                features = dict()
+                features = []
                 for name in feature_column_names:
-                    if feature_specs[name]["delimiter"] != "":
-                        cell = np.fromstring(row[field_names.index(name)], dtype=int, sep=feature_specs[name]["delimiter"])
+                    # FIXME(typhoonzero): Should use correct dtype here.
+                    if feature_specs[name]["is_sparse"]:
+                        indices = np.fromstring(row[field_names.index(name)], dtype=int, sep=feature_specs[name]["delimiter"])
+                        indices = indices.reshape(indices.size, 1)
+                        values = np.ones([indices.size], dtype=np.int32)
+                        dense_shape = np.array(feature_specs[name]["shape"], dtype=np.int64)
+                        cell = (indices, values, dense_shape)
                     else:
-                        cell = row[field_names.index(name)]
-                    features[name] = cell
-                yield (features, [label])
+                        # Dense string vector
+                        if feature_specs[name]["delimiter"] != "":
+                            cell = np.fromstring(row[field_names.index(name)], dtype=int, sep=feature_specs[name]["delimiter"])
+                        else:
+                            cell = row[field_names.index(name)]
+                    features.append(cell)
+                yield (tuple(features), [label])
             rows = cursor.fetchmany(fetch_size)
         cursor.close()
 

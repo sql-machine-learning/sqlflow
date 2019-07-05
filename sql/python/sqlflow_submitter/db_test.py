@@ -127,15 +127,17 @@ class TestGenerator(TestCase):
             column_name_to_type = {"features": {
                 "feature_name": "features",
                 "delimiter": "",
-                "dtype": "float32"
+                "dtype": "float32",
+                "is_sparse": False,
+                "shape": []
             }}
             gen = db_generator(driver, conn, "SELECT * FROM test_table_float_fea",
                                ["features"], "label", column_name_to_type)
             idx = 0
             for d in gen():
                 if idx == 0:
-                    self.assertEqual(d, ({"features": 1.0}, [0]))
+                    self.assertEqual(d, ((1.0,), [0]))
                 elif idx == 1:
-                    self.assertEqual(d, ({"features": 2.0}, [1]))
+                    self.assertEqual(d, ((2.0,), [1]))
                 idx += 1
             self.assertEqual(idx, 2)

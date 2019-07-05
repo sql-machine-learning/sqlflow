@@ -48,6 +48,8 @@ type featureMeta struct {
 	FeatureName string
 	Dtype       string
 	Delimiter   string
+	InputShape  string
+	IsSparse    bool
 }
 
 type filler struct {
@@ -124,10 +126,28 @@ func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
 			if e != nil {
 				return nil, e
 			}
+			// FIXME(typhoonzero): Use Heuristic rules to determine whether a column should be transformed to a
+			// tf.SparseTensor. Currently the rules are:
+			// if column have delimiter and it's not a sequence_catigorical_column, we'll treat it as a sparse column
+			// else, use dense column.
+			isSparse := false
+			var isEmb bool
+			_, ok := col.(*sequenceCategoryIDColumn)
+			if !ok {
+				_, isEmb = col.(*embeddingColumn)
+				if isEmb {
+					_, ok = col.(*embeddingColumn).CategoryColumn.(*sequenceCategoryIDColumn)
+				}
+			}
+			if !ok && col.GetDelimiter() != "" {
+				isSparse = true
+			}
 			fm := &featureMeta{
 				FeatureName: col.GetKey(),
 				Dtype:       col.GetDtype(),
 				Delimiter:   col.GetDelimiter(),
+				InputShape:  col.GetInputShape(),
+				IsSparse:    isSparse,
 			}
 			r.X = append(r.X, fm)
 			r.FeatureColumnsCode[target] = append(
@@ -140,7 +160,10 @@ func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
 	r.Y = &featureMeta{
 		FeatureName: pr.label,
 		Dtype:       "int",
-		Delimiter:   ","}
+		Delimiter:   ",",
+		InputShape:  "[1]",
+		IsSparse:    false,
+	}
 
 	var e error
 	if !pr.train {
@@ -216,6 +239,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import sys, json
 import tensorflow as tf
 import numpy as np
+import functools
 try:
     import sqlflow_models
 except:
@@ -226,6 +250,7 @@ from sqlflow_submitter.db import connect, insert_values, db_generator
 # Disable Tensorflow INFO and WARNING
 import logging
 tf.get_logger().setLevel(logging.ERROR)
+
 ` +
 	// TODO(typhoonzero): get NUM_BUCKETS, EMBEDDING_WIDTH from Extended SQL statements in
 	// COLUMN sub clause
@@ -286,7 +311,9 @@ feature_metas = dict()
 feature_metas["{{$value.FeatureName}}"] = {
     "feature_name": "{{$value.FeatureName}}",
     "dtype": "{{$value.Dtype}}",
-    "delimiter": "{{$value.Delimiter}}"
+    "delimiter": "{{$value.Delimiter}}",
+    "shape": {{$value.InputShape}},
+    "is_sparse": "{{$value.IsSparse}}" == "true"
 }
 {{end}}
 
@@ -298,21 +325,36 @@ def get_dtype(type_str):
     else:
         raise TypeError("not supported dtype: %s" % type_str)
 
+def _parse_sparse_feature(features, label, feature_metas):
+    features_dict = dict()
+    for idx, col in enumerate(features):
+        name = feature_column_names[idx]
+        if feature_metas[name]["is_sparse"]:
+            i, v, s = col
+            features_dict[name] = tf.SparseTensor(indices=i, values=v, dense_shape=s)
+        else:
+            features_dict[name] = col
+    return features_dict, label
+
+
 {{if .IsTrain}}
 def input_fn(batch_size, is_train=True):
-    feature_types = dict()
-    feature_shapes = dict()
+    feature_types = []
+    feature_shapes = []
     for name in feature_column_names:
-        feature_types[name] = get_dtype(feature_metas[name]["dtype"])
-		{{/* NOTE: vector columns like 23,21,3,2,0,0 should use shape None */}}
-        if feature_metas[name]["delimiter"] != "":
-            feature_shapes[name] = tf.TensorShape([None])
+        {{/* NOTE: vector columns like 23,21,3,2,0,0 should use shape None */}}
+        if feature_metas[name]["is_sparse"]:
+            feature_types.append((tf.int64, tf.int32, tf.int64))
+            feature_shapes.append(tf.TensorShape([None]))
         else:
-            feature_shapes[name] = tf.TensorShape([])
+            feature_types.append(get_dtype(feature_metas[name]["dtype"]))
+            feature_shapes.append(tf.TensorShape([]))
 
     gen = db_generator(driver, conn, """{{.StandardSelect}}""",
         feature_column_names, "{{.Y.FeatureName}}", feature_metas)
-    dataset = tf.data.Dataset.from_generator(gen, (feature_types, tf.int64), (feature_shapes, tf.TensorShape([1])))
+    dataset = tf.data.Dataset.from_generator(gen, (tuple(feature_types), tf.int64))
+    ds_mapper = functools.partial(_parse_sparse_feature, feature_metas=feature_metas)
+    dataset = dataset.map(ds_mapper)
     if is_train:
         # TODO(typhoonzero): add prefetch, cache if needed.
         dataset = dataset.shuffle(1000).batch(batch_size)
@@ -350,20 +392,22 @@ print("Done training")
 {{- else}}
 
 def eval_input_fn(batch_size):
-    feature_types = dict()
-    feature_shapes = dict()
+    feature_types = []
+    feature_shapes = []
     for name in feature_column_names:
-        feature_types[name] = get_dtype(feature_metas[name]["dtype"])
         {{/* NOTE: vector columns like 23,21,3,2,0,0 should use shape None */}}
-        if feature_metas[name]["delimiter"] != "":
-            feature_shapes[name] = tf.TensorShape([None])
+        if feature_metas[name]["is_sparse"]:
+            feature_types.append((tf.int64, tf.int32, tf.int64))
+            feature_shapes.append(tf.TensorShape([None]))
         else:
-            feature_shapes[name] = tf.TensorShape([])
+            feature_types.append(get_dtype(feature_metas[name]["dtype"]))
+            feature_shapes.append(tf.TensorShape([]))
 
     gen = db_generator(driver, conn, """{{.StandardSelect}}""",
         feature_column_names, "{{.Y.FeatureName}}", feature_metas)
-    dataset = tf.data.Dataset.from_generator(gen, (feature_types, tf.int64), (feature_shapes, tf.TensorShape([1])))
-    dataset = dataset.batch(batch_size)
+    dataset = tf.data.Dataset.from_generator(gen, (tuple(feature_types), tf.int64))
+    ds_mapper = functools.partial(_parse_sparse_feature, feature_metas=feature_metas)
+    dataset = dataset.map(ds_mapper).batch(batch_size)
     return dataset
 
 
@@ -386,18 +430,25 @@ predictions = classifier.predict(input_fn=lambda:eval_input_fn(BATCHSIZE))
 {{end}}
 {{/* TODO: insert_batch_size should be automatically chosen by experience */}}
 def insert(table_name, eval_input_dataset, feature_column_names, predictions, insert_batch_size=64):
-    column_names = feature_column_names[:]
+    if driver != "hive":
+        column_names = feature_column_names[:]
+    else:
+        column_names = []
     column_names.append("{{.Y.FeatureName}}")
     pred_rows = []
+    write_conn = connect(driver, database, user="{{.User}}", password="{{.Password}}", host="{{.Host}}", port={{.Port}})
     while True:
         try:
-            in_val = eval_input_dataset.__next__()
+            if driver != "hive":
+                # FIXME(typhoonzero): Hive inserting while reading cause random fail, should find a way to insert values to hive
+                in_val = eval_input_dataset.__next__()
             pred_val = predictions.__next__()
         except StopIteration:
             break
         row = []
-        for col_name in feature_column_names:
-            row.append(str(in_val[0][col_name]))
+        if driver != "hive":
+            for idx, _ in enumerate(feature_column_names):
+                row.append(str(in_val[0][idx]))
         {{if .IsKerasModel}}
         row.append(str(pred_val))
         {{else}}
@@ -405,10 +456,12 @@ def insert(table_name, eval_input_dataset, feature_column_names, predictions, in
         {{end}}
         pred_rows.append(tuple(row))
         if len(pred_rows) == insert_batch_size:
-            insert_values(driver, conn, table_name, column_names, pred_rows)
+            insert_cursor = insert_values(driver, write_conn, table_name, column_names, pred_rows)
+            insert_cursor.close()
             pred_rows.clear()
     if len(pred_rows) > 0:
-        insert_values(driver, conn, table_name, column_names, pred_rows)
+        insert_cursor = insert_values(driver, write_conn, table_name, column_names, pred_rows)
+        insert_cursor.close()
 
 predict_input_gen = db_generator(driver, conn, """{{.StandardSelect}}""",
         feature_column_names, "{{.Y.FeatureName}}", feature_metas)()

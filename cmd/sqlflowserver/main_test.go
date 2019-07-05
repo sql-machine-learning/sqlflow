@@ -219,6 +219,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseTrainCustomModel", CaseTrainCustomModel)
 	t.Run("CaseTrainSQLWithHyperParams", CaseTrainSQLWithHyperParams)
 	t.Run("CaseTrainCustomModelWithHyperParams", CaseTrainCustomModelWithHyperParams)
+	t.Run("CaseSparseFeature", CaseSparseFeature)
 }
 
 func TestEnd2EndHive(t *testing.T) {
@@ -536,6 +537,32 @@ WITH n_classes = 3, hidden_units = [10, 20], BATCHSIZE = 10, EPOCHS=2
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.my_dnn_model_custom;`
+
+	conn, err := createRPCConn()
+	a.NoError(err)
+	defer conn.Close()
+	cli := pb.NewSQLFlowClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	defer cancel()
+
+	stream, err := cli.Run(ctx, sqlRequest(trainSQL))
+	if err != nil {
+		a.Fail("Check if the server started successfully. %v", err)
+	}
+	// call ParseRow only to wait train finish
+	ParseRow(stream)
+}
+
+func CaseSparseFeature(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := `SELECT *
+FROM text_cn.train
+TRAIN DNNClassifier
+WITH n_classes = 3, hidden_units = [10, 20]
+COLUMN EMBEDDING(CATEGORY_ID(news_title,16000,COMMA),128,mean)
+LABEL class_id
+INTO sqlflow_models.my_dnn_model;`
 
 	conn, err := createRPCConn()
 	a.NoError(err)

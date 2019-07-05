@@ -15,6 +15,77 @@ package testdata
 
 // TextCNSQL is .sql format data sample of chinese news dataset (pre-processed)
 var TextCNSQL = `CREATE DATABASE IF NOT EXISTS text_cn;
+DROP TABLE IF EXISTS text_cn.train;
+CREATE TABLE text_cn.train (
+  id bigint(20) NOT NULL,
+  class_id int(3) NOT NULL,
+  class_name varchar(100) COLLATE utf8_unicode_ci NOT NULL,
+  news_title text COLLATE utf8_unicode_ci,
+  news_keywords varchar(255) COLLATE utf8_unicode_ci NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+INSERT INTO text_cn.train VALUES (6551700932705387022,0,'news_culture','1,2,3,4,5,6,7,8,9','保利集团,马未都,中国科学技术馆,博物馆,新中国');
+INSERT INTO text_cn.train VALUES (6552368441838272771,0,'news_culture','10,11,8,12,13,14,15,16,17,18,19,16','');
+INSERT INTO text_cn.train VALUES (6552407965343678723,0,'news_culture','20,21,22,23,24,25,26,27,28,29,16','');
+INSERT INTO text_cn.train VALUES (6552332417753940238,0,'news_culture','30,31,32,33,34,35,36,37,38,39,40,16','');
+INSERT INTO text_cn.train VALUES (6552475601595269390,0,'news_culture','41,42,31,43,16','');
+INSERT INTO text_cn.train VALUES (6552387648126714125,0,'news_culture','20,21,44,45,46,47,48,27,28,29,16','');
+INSERT INTO text_cn.train VALUES (6552271725814350087,0,'news_culture','31,42,49,50,51,16','');
+INSERT INTO text_cn.train VALUES (6552452982015787268,0,'news_culture','52,53,54,48,29,16','');
+INSERT INTO text_cn.train VALUES (6552400379030536455,0,'news_culture','20,21,55,56,57,48,29,27,28,16','');
+INSERT INTO text_cn.train VALUES (6552339283632455939,0,'news_culture','20,21,58,59,60,61,26,62,28,29,16','');
+INSERT INTO text_cn.train VALUES (6552387367334838792,0,'news_culture','63,58,48,62,64,65','林风眠,黄海归来步步云,秋山图,计白当黑,山水画,江山万里图,张大千,巫峡清秋图,活眼,山雨欲来图');
+INSERT INTO text_cn.train VALUES (6552314684383429128,0,'news_culture','66,67,42,68,48,69,70,71,72,48,73,74','牡丹,收藏价值');
+INSERT INTO text_cn.train VALUES (6552128476109865229,0,'news_culture','14,15,75,76,77,8,78,79,16','');
+INSERT INTO text_cn.train VALUES (6552447749072093453,0,'news_culture','20,48,80,81,82,48,62,28,29,16','');
+INSERT INTO text_cn.train VALUES (6552301380562846215,0,'news_culture','83,84,85,86','叶浅予,田世光,李苦禅,花鸟画,中央美术学院');
+INSERT INTO text_cn.train VALUES (6552263394420850951,0,'news_culture','87,88,89,48,62,90,91,16','');
+INSERT INTO text_cn.train VALUES (6552290314294395139,0,'news_culture','20,21,58,59,60,61,26,62,28,29,16','');
+INSERT INTO text_cn.train VALUES (6552462208314376462,0,'news_culture','20,21,92,39,93,48,62,28,29,16','');
+INSERT INTO text_cn.train VALUES (6552311866947797262,0,'news_culture','29,94,95,96,97,98,26,20,42,99,100,16','');
+INSERT INTO text_cn.train VALUES (6552466638304707079,0,'news_culture','101,102,48,103,104,48,105,106,107,108,109,8,110,111,112,113','荷花,西湖,金粟词话,采莲女,念奴娇·赤壁怀古,林逋,荷叶');
+INSERT INTO text_cn.train VALUES (6552431613437805063,1,'news_entertainment','114,39,115,116,117,118,48,119,120,8,121,122,123,124,125,126','佟丽娅,网络谣言,快乐大本营,李浩菲,谢娜,观众们');
+INSERT INTO text_cn.train VALUES (6552320560913711629,1,'news_entertainment','114,127,39,128,129,130,131,74,114,132,133,74,128,134,135,136,74','汪涵,火星情报局,杨迪,主办方,谢娜,刘维');
+INSERT INTO text_cn.train VALUES (6552390546051039747,1,'news_entertainment','137,138,139,140,16,141,142,34,48,143,144,145,34','飞纱,新娘,脱口秀,中国网,婚礼');
+INSERT INTO text_cn.train VALUES (6552150358678831624,1,'news_entertainment','146,147,14,45,148,149,34,48,150,151,152,48,120,153,154,155,156,157','陆贞传奇,大红大紫,楚乔传,微博热搜,赵丽颖,花千骨,迪丽热巴,Angelababy');
+INSERT INTO text_cn.train VALUES (6552408585177924099,1,'news_entertainment','158,159,160,161,162,163,8,164,165,166,167,48,4,2,168,17,159','戴上眼镜,刘德华,张翰,远大前程,杜志国,刘亦菲');
+INSERT INTO text_cn.train VALUES (6552147830184608263,1,'news_entertainment','169,8,170,48,171,172','电影院,前任3,刘若英,张一白,田壮壮');
+INSERT INTO text_cn.train VALUES (6552472345548685837,1,'news_entertainment','173,174,175,176,177,178,48,179,180,181,182,183,48,184,185,186','金刚狼3,休·杰克曼,神奇女侠,绯红女巫,超人,金刚狼');
+INSERT INTO text_cn.train VALUES (6552385284682547716,1,'news_entertainment','187,188,189,190,191,192,193,194,195,196,197,198,199,200,201','张绍刚,新组合,腾讯视频,无限歌谣季,毛不易,父子');
+INSERT INTO text_cn.train VALUES (6552364464715334151,1,'news_entertainment','202,203,204,205,206,207,208,209,48,210,209,120,144,42,27,211,8,212','中岛美嘉,滨崎步,张靓颖,演唱会,林子祥');
+INSERT INTO text_cn.train VALUES (6552310157706002702,1,'news_entertainment','213,214,215,216,217,34,48,218,219,220,123,221,222,48,4,27,172,16','');
+INSERT INTO text_cn.train VALUES (6552286735408038403,1,'news_entertainment','223,199,224,199,225,48,226,159,151,227,228,229,74','王全安,张柏芝,张雨绮,吴卓林,谢霆锋');
+INSERT INTO text_cn.train VALUES (6552269871697101315,1,'news_entertainment','230,231,8,232,233,74,234,228,235,236,237,238,2,74,239,240,241','天天向上,毒鸡汤,大张伟,美男子,综艺,我去上学了,百变大咖秀');
+INSERT INTO text_cn.train VALUES (6552418723179790856,1,'news_entertainment','114,242,243,48,244,245,48,246,245,48,247,248,228,249','杜海涛,谢娜,何炅,沈梦辰,吴昕,快本');
+INSERT INTO text_cn.train VALUES (6552283654494617859,1,'news_entertainment','62,250,146,16','');
+INSERT INTO text_cn.train VALUES (6552453686398812423,1,'news_entertainment','14,15,251,252,8,253,254,16','');
+INSERT INTO text_cn.train VALUES (6552383324696871427,1,'news_entertainment','199,255,256,201,8,257,48,258,86,228,259','高富帅,阿尔维斯,颜值,吴彦祖,罗德里戈');
+INSERT INTO text_cn.train VALUES (6552390851157295629,1,'news_entertainment','260,261,262,263,264,193,228,265,266,267,268,269,270,271','杨幂,徐冬冬,背带裙,大唐荣耀,唐嫣,景甜');
+INSERT INTO text_cn.train VALUES (6552445894711575043,1,'news_entertainment','272,21,4,273,274,14,275,48,150,276,8,275,277,278,4,124,74','孤儿院,吴卓林,小龙女,加拿大');
+INSERT INTO text_cn.train VALUES (6552351831668818435,1,'news_entertainment','187,279,280,238,281,142,191,282,283,284,285,286,287,288,289,290,291,8,292,16','欢乐颂,西王母,老戏骨,赵雅芝,杨紫,刘嘉玲,新白娘子传奇');
+INSERT INTO text_cn.train VALUES (6552474018920792580,1,'news_entertainment','128,42,233,293,294,48,295,187,296,191,297,48,298,299,300,301,302,74','浩南哥,黄秋生,龙虎风云,东陵大盗,爱恋狂潮,李子雄,锣鼓巷,古惑仔,学校风云,郑伊健,张耀扬,监狱风云,无间道2');
+INSERT INTO text_cn.train VALUES (6552309039697494532,2,'news_sports','303,304,305,21,306,307,308,309,193,137,310,129,311,312','土库曼斯坦,乌兹别克斯坦,亚洲杯,赔率,小组赛');
+INSERT INTO text_cn.train VALUES (6552477789642031623,2,'news_sports','313,314,315,316,317,318,319,320,193,321,322,323,324,325','黄紫昌,武磊,卡佩罗,惠家康,韦世豪');
+INSERT INTO text_cn.train VALUES (6552495859798376712,2,'news_sports','326,327,328,304,48,329,330,331,332,16','');
+INSERT INTO text_cn.train VALUES (6552202204621570574,2,'news_sports','173,333,74,334,335,333,336,337,338,339,340','替补出场,助攻,科斯塔,赫迪拉,博洛尼亚');
+INSERT INTO text_cn.train VALUES (6552409639911162381,2,'news_sports','341,164,342,343,34,344,16,345,346,347,339,314,348,349,350,351','骑士,半决赛,猛龙,德罗赞,乐福');
+INSERT INTO text_cn.train VALUES (6552470008188895491,2,'news_sports','326,352,353,354,355,356,48,15,357,358,128,16','');
+INSERT INTO text_cn.train VALUES (6552316209847599367,2,'news_sports','331,359,360,48,4,27,172,16','');
+INSERT INTO text_cn.train VALUES (6552295807171691022,2,'news_sports','165,361,362,363,74,364,365,366,367,368,16,369,370,371,97,372,373,34','PJ-塔克,斯奈德,大魔王,火箭,爵士');
+INSERT INTO text_cn.train VALUES (6552452056043487748,2,'news_sports','374,375,376,16,377,378,48,379,380,8,381,42,382,383,384','威廉,曼联,穆里尼奥,布莱顿,马夏尔');
+INSERT INTO text_cn.train VALUES (6552287279061139972,2,'news_sports','385,386,387,330,388,389,390,21,391,392,393,8,394','尤文,博洛尼亚,施泰纳,利希施泰纳,拉齐奥');
+INSERT INTO text_cn.train VALUES (6552325997813825805,2,'news_sports','395,396,397,398,154,399,400,401,8,330,402,16','');
+INSERT INTO text_cn.train VALUES (6552468503452975630,2,'news_sports','403,404,405,406,129,407,408,409,48,127,154,128,410,411,412,8,413,414,415,416','NBA,科勒,卡戴珊,四季酒店,克利夫兰骑士队');
+INSERT INTO text_cn.train VALUES (6552312104492204301,2,'news_sports','417,418,419,420,48,421,422,423,424,425,426,4,27,172,16','');
+INSERT INTO text_cn.train VALUES (6552332687678374151,2,'news_sports','326,427,341,304,48,331,428,429,8,430,14,353,165,16','');
+INSERT INTO text_cn.train VALUES (6552466727995703815,2,'news_sports','431,432,433,434,435,164,436,437,193,438,439,128,440,441,16','阿洛,阿洛伊西奥,华夏幸福,埃尔纳内斯,穆里奇');
+INSERT INTO text_cn.train VALUES (6552416247298916612,2,'news_sports','442,443,178,444,14,445,16','');
+INSERT INTO text_cn.train VALUES (6552354211424633352,2,'news_sports','4,446,447,448,449,441,16,450,451,452,453,8,454,455','双冠王,欧冠赛场,贝里索,巴尔韦德,欧冠冠军');
+INSERT INTO text_cn.train VALUES (6552314862163198471,2,'news_sports','456,74,331,457,458,338,459,460,461,48,462,463,464,465,466,161,467','猛龙,詹姆斯,伊巴卡,德罗赞,科沃尔');
+INSERT INTO text_cn.train VALUES (6552304431164031502,2,'news_sports','468,456,74,469,8,470,471,27,472','德罗赞,詹姆斯');
+INSERT INTO text_cn.train VALUES (6552404265724281357,2,'news_sports','473,348,474,475,476,477,48,478,479,480,481','J罗,科隆,拜仁,假动作,托利索');
+
+CREATE DATABASE IF NOT EXISTS text_cn;
 DROP TABLE IF EXISTS text_cn.train_processed;
 CREATE TABLE text_cn.train_processed (
   id bigint(20) NOT NULL,
