@@ -105,17 +105,19 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB) (*alpsFiller, error) {
 	// TODO(joyyoj) pr may contains partition.
 	fmap := featureMap{pr.tables[0] + "_feature_map", ""}
 	var meta metadata
+	selectFields := pr.standardSelect.fields
 	fields := make([]string, 0)
+	for _, field := range selectFields {
+		if field != pr.label {
+			fields = append(fields, field)
+		}
+	}
 	if db != nil {
 		odpsConfig, err = gomaxcompute.ParseDSN(db.dataSourceName)
 		if err != nil {
 			return nil, err
 		}
 		meta = metadata{odpsConfig, pr.tables[0], &fmap, nil}
-		fields, err = getFields(&meta, pr)
-		if err != nil {
-			return nil, err
-		}
 		columnInfo, err = meta.getColumnInfo(resolved, fields)
 		meta.columnInfo = &columnInfo
 	} else {
@@ -128,6 +130,7 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB) (*alpsFiller, error) {
 		}
 		meta.columnInfo = &columnInfo
 	}
+	//fields := make([]string, 0) // TODO use complete fields
 	csCode := make([]string, 0)
 
 	if err != nil {
@@ -519,43 +522,6 @@ func getAllKeys(fcs []featureColumn) []string {
 		output = append(output, key)
 	}
 	return output
-}
-
-func (meta *metadata) descTable() ([]*sql.ColumnType, error) {
-	// TODO(joyyoj) use `desc table`, but maxcompute not support currently.
-	query := fmt.Sprintf("SELECT * FROM %s LIMIT 1", meta.table)
-	sqlDB, _ := sql.Open("maxcompute", meta.odpsConfig.FormatDSN())
-	rows, err := sqlDB.Query(query)
-
-	if err != nil {
-		return make([]*sql.ColumnType, 0), err
-	}
-	defer sqlDB.Close()
-	return rows.ColumnTypes()
-}
-
-func getFields(meta *metadata, pr *extendedSelect) ([]string, error) {
-	selectFields := pr.standardSelect.fields
-	if len(selectFields) == 1 && selectFields[0] == "*" {
-		selectFields = make([]string, 0)
-		columnTypes, err := meta.descTable()
-		if err != nil {
-			return selectFields, err
-		}
-		for _, columnType := range columnTypes {
-			if columnType.Name() != pr.label {
-				selectFields = append(selectFields, columnType.Name())
-			}
-		}
-		return selectFields, nil
-	}
-	fields := make([]string, 0)
-	for _, field := range selectFields {
-		if field != pr.label {
-			fields = append(fields, field)
-		}
-	}
-	return fields, nil
 }
 
 func (meta *metadata) getDenseColumnInfo(keys []string) (map[string]*columnSpec, error) {
