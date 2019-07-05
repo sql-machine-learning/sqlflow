@@ -340,15 +340,12 @@ def _parse_sparse_feature(features, label, feature_metas):
 {{if .IsTrain}}
 def input_fn(batch_size, is_train=True):
     feature_types = []
-    feature_shapes = []
     for name in feature_column_names:
         {{/* NOTE: vector columns like 23,21,3,2,0,0 should use shape None */}}
         if feature_metas[name]["is_sparse"]:
             feature_types.append((tf.int64, tf.int32, tf.int64))
-            feature_shapes.append(tf.TensorShape([None]))
         else:
             feature_types.append(get_dtype(feature_metas[name]["dtype"]))
-            feature_shapes.append(tf.TensorShape([]))
 
     gen = db_generator(driver, conn, """{{.StandardSelect}}""",
         feature_column_names, "{{.Y.FeatureName}}", feature_metas)
@@ -393,22 +390,30 @@ print("Done training")
 
 def eval_input_fn(batch_size):
     feature_types = []
-    feature_shapes = []
     for name in feature_column_names:
         {{/* NOTE: vector columns like 23,21,3,2,0,0 should use shape None */}}
         if feature_metas[name]["is_sparse"]:
             feature_types.append((tf.int64, tf.int32, tf.int64))
-            feature_shapes.append(tf.TensorShape([None]))
         else:
             feature_types.append(get_dtype(feature_metas[name]["dtype"]))
-            feature_shapes.append(tf.TensorShape([]))
 
     gen = db_generator(driver, conn, """{{.StandardSelect}}""",
         feature_column_names, "{{.Y.FeatureName}}", feature_metas)
     dataset = tf.data.Dataset.from_generator(gen, (tuple(feature_types), tf.int64))
-    ds_mapper = functools.partial(_parse_sparse_feature, feature_metas=feature_metas)
-    dataset = dataset.map(ds_mapper).batch(batch_size)
     return dataset
+
+def predict_dataset_wrapper(features):
+    feature_types = []
+    for name in feature_column_names:
+        if feature_metas[name]["is_sparse"]:
+            feature_types.append((tf.int64, tf.int32, tf.int64))
+        else:
+            feature_types.append(get_dtype(feature_metas[name]["dtype"]))
+
+    tmp_dataset = tf.data.Dataset.from_generator(lambda: (features,), (tuple(feature_types), tf.int64))
+    ds_mapper = functools.partial(_parse_sparse_feature, feature_metas=feature_metas)
+    tmp_dataset = tmp_dataset.map(ds_mapper).batch(1)
+    return tmp_dataset
 
 
 {{if .IsKerasModel}}
@@ -426,46 +431,35 @@ def pred_gen():
         yield classifier.prepare_prediction_column(pred)
 predictions = pred_gen()
 {{else}}
-predictions = classifier.predict(input_fn=lambda:eval_input_fn(BATCHSIZE))
-{{end}}
-{{/* TODO: insert_batch_size should be automatically chosen by experience */}}
-def insert(table_name, eval_input_dataset, feature_column_names, predictions, insert_batch_size=64):
-    if driver != "hive":
-        column_names = feature_column_names[:]
-    else:
-        column_names = []
-    column_names.append("{{.Y.FeatureName}}")
-    pred_rows = []
-    write_conn = connect(driver, database, user="{{.User}}", password="{{.Password}}", host="{{.Host}}", port={{.Port}})
-    while True:
-        try:
-            if driver != "hive":
-                # FIXME(typhoonzero): Hive inserting while reading cause random fail, should find a way to insert values to hive
-                in_val = eval_input_dataset.__next__()
-            pred_val = predictions.__next__()
-        except StopIteration:
-            break
-        row = []
-        if driver != "hive":
-            for idx, _ in enumerate(feature_column_names):
-                row.append(str(in_val[0][idx]))
-        {{if .IsKerasModel}}
-        row.append(str(pred_val))
-        {{else}}
-        row.append(str(pred_val["class_ids"][0]))
-        {{end}}
-        pred_rows.append(tuple(row))
-        if len(pred_rows) == insert_batch_size:
-            insert_cursor = insert_values(driver, write_conn, table_name, column_names, pred_rows)
-            insert_cursor.close()
-            pred_rows.clear()
-    if len(pred_rows) > 0:
-        insert_cursor = insert_values(driver, write_conn, table_name, column_names, pred_rows)
-        insert_cursor.close()
 
-predict_input_gen = db_generator(driver, conn, """{{.StandardSelect}}""",
-        feature_column_names, "{{.Y.FeatureName}}", feature_metas)()
-insert("{{.TableName}}", predict_input_gen, feature_column_names, predictions)
+pred_dataset = eval_input_fn(1).make_one_shot_iterator()
+column_names = feature_column_names[:]
+column_names.append("class")
+buff_rows = []
+while True:
+    try:
+        features = pred_dataset.get_next()
+    except tf.errors.OutOfRangeError as e:
+        break
+    r = functools.partial(predict_dataset_wrapper, features=features)
+    predictions = classifier.predict(r)
+    row = []
+    for idx, _ in enumerate(feature_column_names):
+        val = features[0][idx].numpy()
+        row.append(str(val))
+    row.append(str(list(predictions)[0]["class_ids"][0]))
+    buff_rows.append(row)
+    if len(buff_rows) > 100:
+        insert_cursor = insert_values(driver, conn, "{{.TableName}}", column_names, buff_rows)
+        insert_cursor.close()
+        buff_rows.clear()
+
+if len(buff_rows) > 0:
+    insert_cursor = insert_values(driver, conn, "{{.TableName}}", column_names, buff_rows)
+    insert_cursor.close()
+    buff_rows.clear()
+{{end}}
+
 
 print("Done predicting. Predict table : {{.TableName}}")
 {{- end}}
