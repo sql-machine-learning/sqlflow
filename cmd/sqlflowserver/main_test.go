@@ -40,6 +40,11 @@ import (
 
 var dbConnStr string
 
+var caseDB = "iris"
+var caseTrainTable = "train"
+var caseTestTable = "test"
+var casePredictTable = "predict"
+
 func WaitPortReady(addr string, timeout time.Duration) {
 	// Set default timeout to
 	if timeout == 0 {
@@ -134,9 +139,11 @@ func prepareTestData(dbStr string) error {
 	if err != nil {
 		return err
 	}
-	_, err = testDB.Exec("CREATE DATABASE IF NOT EXISTS sqlflow_models;")
-	if err != nil {
-		return err
+	if os.Getenv("SQLFLOW_TEST_DB") != "maxcompute" {
+		_, err = testDB.Exec("CREATE DATABASE IF NOT EXISTS sqlflow_models;")
+		if err != nil {
+			return err
+		}
 	}
 
 	switch os.Getenv("SQLFLOW_TEST_DB") {
@@ -153,6 +160,11 @@ func prepareTestData(dbStr string) error {
 			return err
 		}
 		return testdata.Popularize(testDB.DB, testdata.ChurnHiveSQL)
+	case "maxcompute":
+		if err := testdata.Popularize(testDB.DB, testdata.IrisMaxComputeSQL); err != nil {
+			return err
+		}
+		return nil
 	}
 
 	return fmt.Errorf("unrecognized SQLFLOW_TEST_DB %s", os.Getenv("SQLFLOW_TEST_DB"))
@@ -219,12 +231,12 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseTrainCustomModel", CaseTrainCustomModel)
 	t.Run("CaseTrainSQLWithHyperParams", CaseTrainSQLWithHyperParams)
 	t.Run("CaseTrainCustomModelWithHyperParams", CaseTrainCustomModelWithHyperParams)
+	t.Run("CaseSparseFeature", CaseSparseFeature)
 }
 
 func TestEnd2EndHive(t *testing.T) {
 	testDBDriver := os.Getenv("SQLFLOW_TEST_DB")
 	modelDir := ""
-
 	tmpDir, caCrt, caKey, err := generateTempCA()
 	defer os.RemoveAll(tmpDir)
 	if err != nil {
@@ -243,6 +255,36 @@ func TestEnd2EndHive(t *testing.T) {
 	}
 	t.Run("TestShowDatabases", CaseShowDatabases)
 	t.Run("TestSelect", CaseSelect)
+	t.Run("TestTrainSQL", CaseTrainSQL)
+}
+
+func TestEnd2EndMaxCompute(t *testing.T) {
+	testDBDriver := os.Getenv("SQLFLOW_TEST_DB")
+	modelDir, _ := ioutil.TempDir("/tmp", "sqlflow_ssl_")
+	defer os.RemoveAll(modelDir)
+	tmpDir, caCrt, caKey, err := generateTempCA()
+	defer os.RemoveAll(tmpDir)
+	if err != nil {
+		t.Fatalf("failed to generate CA pair %v", err)
+	}
+
+	if testDBDriver != "maxcompute" {
+		t.Skip("Skip maxcompute tests")
+	}
+	AK := os.Getenv("MAXCOMPUTE_AK")
+	SK := os.Getenv("MAXCOMPUTE_SK")
+	endpoint := os.Getenv("MAXCOMPUTE_ENDPOINT")
+	dbConnStr = fmt.Sprintf("maxcompute://%s:%s@%s", AK, SK, endpoint)
+	go start("", modelDir, caCrt, caKey, true)
+	WaitPortReady("localhost"+port, 0)
+	err = prepareTestData(dbConnStr)
+	if err != nil {
+		t.Fatalf("prepare test dataset failed: %v", err)
+	}
+	caseDB = "gomaxcompute_driver_w7u"
+	caseTrainTable = "sqlflow_test_iris_train"
+	caseTestTable = "sqlflow_test_iris_test"
+	casePredictTable = "sqlflow_test_iris_predict"
 	t.Run("TestTrainSQL", CaseTrainSQL)
 }
 
@@ -289,7 +331,7 @@ func CaseShowDatabases(t *testing.T) {
 
 func CaseSelect(t *testing.T) {
 	a := assert.New(t)
-	cmd := "select * from iris.train limit 2;"
+	cmd := fmt.Sprintf("select * from %s.%s limit 2;", caseDB, caseTrainTable)
 	conn, err := createRPCConn()
 	a.NoError(err)
 	defer conn.Close()
@@ -331,13 +373,13 @@ func CaseSelect(t *testing.T) {
 // CaseTrainSQL is a simple End-to-End testing for case training and predicting
 func CaseTrainSQL(t *testing.T) {
 	a := assert.New(t)
-	trainSQL := `SELECT *
-FROM iris.train
+	trainSQL := fmt.Sprintf(`SELECT *
+FROM %s.%s
 TRAIN DNNClassifier
 WITH n_classes = 3, hidden_units = [10, 20]
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
-INTO sqlflow_models.my_dnn_model;`
+INTO sqlflow_models.my_dnn_model;`, caseDB, caseTrainTable)
 
 	conn, err := createRPCConn()
 	a.NoError(err)
@@ -354,10 +396,10 @@ INTO sqlflow_models.my_dnn_model;`
 	// call ParseRow only to wait train finish
 	ParseRow(stream)
 
-	predSQL := `SELECT *
-FROM iris.test
-PREDICT iris.predict.class
-USING sqlflow_models.my_dnn_model;`
+	predSQL := fmt.Sprintf(`SELECT *
+FROM %s.%s
+PREDICT %s.%s.class
+USING sqlflow_models.my_dnn_model;`, caseDB, caseTestTable, caseDB, casePredictTable)
 
 	stream, err = cli.Run(ctx, sqlRequest(predSQL))
 	if err != nil {
@@ -366,8 +408,8 @@ USING sqlflow_models.my_dnn_model;`
 	// call ParseRow only to wait predict finish
 	ParseRow(stream)
 
-	showPred := `SELECT *
-FROM iris.predict LIMIT 5;`
+	showPred := fmt.Sprintf(`SELECT *
+FROM %s.%s LIMIT 5;`, caseDB, casePredictTable)
 
 	stream, err = cli.Run(ctx, sqlRequest(showPred))
 	if err != nil {
@@ -536,6 +578,32 @@ WITH n_classes = 3, hidden_units = [10, 20], BATCHSIZE = 10, EPOCHS=2
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.my_dnn_model_custom;`
+
+	conn, err := createRPCConn()
+	a.NoError(err)
+	defer conn.Close()
+	cli := pb.NewSQLFlowClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	defer cancel()
+
+	stream, err := cli.Run(ctx, sqlRequest(trainSQL))
+	if err != nil {
+		a.Fail("Check if the server started successfully. %v", err)
+	}
+	// call ParseRow only to wait train finish
+	ParseRow(stream)
+}
+
+func CaseSparseFeature(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := `SELECT *
+FROM text_cn.train
+TRAIN DNNClassifier
+WITH n_classes = 3, hidden_units = [10, 20]
+COLUMN EMBEDDING(CATEGORY_ID(news_title,16000,COMMA),128,mean)
+LABEL class_id
+INTO sqlflow_models.my_dnn_model;`
 
 	conn, err := createRPCConn()
 	a.NoError(err)

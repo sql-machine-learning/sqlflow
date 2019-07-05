@@ -14,6 +14,7 @@
 package sql
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -62,6 +63,8 @@ type featureColumn interface {
 	GetDelimiter() string
 	GetDtype() string
 	GetKey() string
+	// return input shape json string, like "[2,3]"
+	GetInputShape() string
 }
 
 type featureMap struct {
@@ -117,6 +120,7 @@ type sequenceCategoryIDColumn struct {
 	BucketSize int
 	Delimiter  string
 	Dtype      string
+	IsSequence bool
 }
 
 type embeddingColumn struct {
@@ -494,10 +498,14 @@ func expression2string(e interface{}) (string, error) {
 
 func (cs *columnSpec) ToString() string {
 	if cs.IsSparse {
-		return fmt.Sprintf("SparseColumn(name=\"%s\", shape=%s, dtype=\"%s\", separator='\x01', group_separator='\x02')",
-			cs.ColumnName,
-			strings.Join(strings.Split(fmt.Sprint(cs.Shape), " "), ","),
-			cs.DType)
+		shape := strings.Join(strings.Split(fmt.Sprint(cs.Shape), " "), ",")
+		if len(cs.Shape) > 1 {
+			groupCnt := len(cs.Shape)
+			return fmt.Sprintf("GroupedSparseColumn(name=\"%s\", shape=%s, dtype=\"%s\", group=%d, group_separator='\\002')",
+				cs.ColumnName, shape, cs.DType, groupCnt)
+		}
+		return fmt.Sprintf("SparseColumn(name=\"%s\", shape=%s, dtype=\"%s\")", cs.ColumnName, shape, cs.DType)
+
 	}
 	return fmt.Sprintf("DenseColumn(name=\"%s\", shape=%s, dtype=\"%s\", separator=\"%s\")",
 		cs.ColumnName,
@@ -615,7 +623,8 @@ func resolveCategoryIDColumn(el *exprlist, isSequence bool) (interface{}, error)
 			BucketSize: bucketSize,
 			Delimiter:  delimiter,
 			// TODO(typhoonzero): support config dtype
-			Dtype: "int64"}, nil
+			Dtype:      "int64",
+			IsSequence: true}, nil
 	}
 	return &categoryIDColumn{
 		Key:        key,
@@ -674,6 +683,14 @@ func (nc *numericColumn) GetKey() string {
 	return nc.Key
 }
 
+func (nc *numericColumn) GetInputShape() string {
+	jsonBytes, err := json.Marshal(nc.Shape)
+	if err != nil {
+		return ""
+	}
+	return string(jsonBytes)
+}
+
 func (bc *bucketColumn) GenerateCode() (string, error) {
 	sourceCode, _ := bc.SourceColumn.GenerateCode()
 	return fmt.Sprintf(
@@ -692,6 +709,10 @@ func (bc *bucketColumn) GetDtype() string {
 
 func (bc *bucketColumn) GetKey() string {
 	return bc.SourceColumn.Key
+}
+
+func (bc *bucketColumn) GetInputShape() string {
+	return bc.SourceColumn.GetInputShape()
 }
 
 func (cc *crossColumn) GenerateCode() (string, error) {
@@ -729,6 +750,12 @@ func (cc *crossColumn) GetKey() string {
 	return ""
 }
 
+func (cc *crossColumn) GetInputShape() string {
+	// NOTE: return empty since crossed column input shape is already determined
+	// by the two crossed columns.
+	return ""
+}
+
 func (cc *categoryIDColumn) GenerateCode() (string, error) {
 	return fmt.Sprintf("tf.feature_column.categorical_column_with_identity(key=\"%s\", num_buckets=%d)",
 		cc.Key, cc.BucketSize), nil
@@ -746,6 +773,10 @@ func (cc *categoryIDColumn) GetKey() string {
 	return cc.Key
 }
 
+func (cc *categoryIDColumn) GetInputShape() string {
+	return fmt.Sprintf("[%d]", cc.BucketSize)
+}
+
 func (cc *sequenceCategoryIDColumn) GenerateCode() (string, error) {
 	return fmt.Sprintf("tf.feature_column.sequence_categorical_column_with_identity(key=\"%s\", num_buckets=%d)",
 		cc.Key, cc.BucketSize), nil
@@ -761,6 +792,10 @@ func (cc *sequenceCategoryIDColumn) GetDtype() string {
 
 func (cc *sequenceCategoryIDColumn) GetKey() string {
 	return cc.Key
+}
+
+func (cc *sequenceCategoryIDColumn) GetInputShape() string {
+	return fmt.Sprintf("[%d]", cc.BucketSize)
 }
 
 func (ec *embeddingColumn) GenerateCode() (string, error) {
@@ -798,6 +833,10 @@ func (ec *embeddingColumn) GetDtype() string {
 
 func (ec *embeddingColumn) GetKey() string {
 	return ec.CategoryColumn.(featureColumn).GetKey()
+}
+
+func (ec *embeddingColumn) GetInputShape() string {
+	return ec.CategoryColumn.(featureColumn).GetInputShape()
 }
 
 func resolveTrainAttribute(attrs *attrs) (map[string]*attribute, error) {
