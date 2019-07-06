@@ -143,7 +143,9 @@ func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
 				}
 			}
 			if !ok && col.GetDelimiter() != "" {
-				isSparse = true
+				if _, ok := col.(*numericColumn); !ok {
+					isSparse = true
+				}
 			}
 			fm := &featureMeta{
 				FeatureName: col.GetKey(),
