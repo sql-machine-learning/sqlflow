@@ -33,6 +33,18 @@ const (
 	comma         = "COMMA"
 )
 
+type resourceSpec struct {
+	Num    int
+	Memory int
+	Core   int
+}
+
+type engineSpec struct {
+	etype  string
+	ps     resourceSpec
+	worker resourceSpec
+}
+
 type resolvedTrainClause struct {
 	IsPreMadeModel         bool
 	ModelName              string
@@ -51,6 +63,7 @@ type resolvedTrainClause struct {
 	EvalThrottle           int
 	FeatureColumns         map[string][]featureColumn
 	ColumnSpecs            map[string][]*columnSpec
+	EngineParams           engineSpec
 }
 
 // featureColumn is an interface that all types of feature columns and
@@ -128,151 +141,113 @@ type embeddingColumn struct {
 	Combiner       string
 }
 
+func getEngineSpec(attrs map[string]*attribute) engineSpec {
+	getInt := func(key string, defaultValue int) int {
+		if p, ok := attrs[key]; ok {
+			strVal, _ := p.Value.(string)
+			intVal, err := strconv.Atoi(strVal)
+
+			if err == nil {
+				return intVal
+			}
+		}
+		return defaultValue
+	}
+	psNum := getInt("ps_num", 1)
+	psMemory := getInt("ps_memory", 2400)
+	workerMemory := getInt("worker_memory", 1600)
+	workerNum := getInt("worker_num", 2)
+	engineType := "local"
+	if p, ok := attrs["type"]; ok {
+		strVal, ok := p.Value.(string)
+		if ok {
+			engineType = strVal
+		}
+	} else if psNum > 0 || workerNum > 0 {
+		engineType = "k8s"
+	}
+	return engineSpec{
+		etype:  engineType,
+		ps:     resourceSpec{Num: psNum, Memory: psMemory},
+		worker: resourceSpec{Num: workerNum, Memory: workerMemory}}
+}
+
 func resolveTrainClause(tc *trainClause) (*resolvedTrainClause, error) {
 	modelName := tc.estimator
 	preMadeModel := !strings.ContainsAny(modelName, ".")
-
-	// default value
-	batchSize := 512
-	dropRemainder := true
-	enableCache := false
-	cachePath := ""
-	epoch := 1
-	shard := 1
-	enableShuffle := false
-	shuffleBufferSize := 10240
-	maxSteps := -1
-	evalSteps := -1
-	evalStartDecaySecs := 120
-	evalThrottleSecs := 600
-	// end default
-
 	attrs, err := resolveTrainAttribute(&tc.attrs)
 	if err != nil {
 		return nil, err
 	}
-	modelParams := filter(attrs, "model", true)
-	trainParams := filter(attrs, "train", false)
-	evalParams := filter(attrs, "eval", false)
-
-	if p, ok := trainParams["batch_size"]; ok {
-		strVal, _ := p.Value.(string)
-		intVal, err := strconv.Atoi(strVal)
-		if err == nil {
-			batchSize = intVal
-		} else {
-			fmt.Printf("ignore invalid train.batch_size=%s, default is %d", p.Value, batchSize)
-		}
-		delete(attrs, p.FullName)
-	}
-
-	if p, ok := trainParams["drop_remainder"]; ok {
-		strVal, _ := p.Value.(string)
-		boolVal, err := strconv.ParseBool(strVal)
-		if err == nil {
-			dropRemainder = boolVal
-		} else {
-			fmt.Printf("ignore invalid train.drop_remainder=%s, default is %v", p.Value, dropRemainder)
-		}
-		delete(attrs, p.FullName)
-	}
-
-	if p, ok := trainParams["cache"]; ok {
-		strVal, _ := p.Value.(string)
-		boolVal, err := strconv.ParseBool(strVal)
-		if err == nil {
-			enableCache = boolVal
-		} else {
-			//TODO(uuleon) validation for cachePath
-			enableCache = true
-			cachePath = strVal
-		}
-		delete(attrs, p.FullName)
-	}
-
-	if p, ok := trainParams["epoch"]; ok {
-		strVal, _ := p.Value.(string)
-		intVal, err := strconv.Atoi(strVal)
-		if err == nil {
-			epoch = intVal
-		} else {
-			fmt.Printf("ignore invalid train.epoch=%s, default is %d", p.Value, epoch)
-		}
-		delete(attrs, p.FullName)
-	}
-
-	if p, ok := trainParams["shard"]; ok {
-		strVal, _ := p.Value.(string)
-		intVal, err := strconv.Atoi(strVal)
-		if err == nil {
-			shard = intVal
-		} else {
-			fmt.Printf("ignore invalid train.shard=%s, default is %d", p.Value, shard)
-		}
-		delete(attrs, p.FullName)
-	}
-
-	if p, ok := trainParams["shuffle"]; ok {
-		strVal, _ := p.Value.(string)
-		boolVal, err := strconv.ParseBool(strVal)
-		if err == nil {
-			enableShuffle = boolVal
-		} else {
-			enableShuffle = true
+	getIntAttr := func(key string, defaultValue int) int {
+		if p, ok := attrs[key]; ok {
+			strVal, _ := p.Value.(string)
 			intVal, err := strconv.Atoi(strVal)
+			defer delete(attrs, p.FullName)
 			if err == nil {
-				shuffleBufferSize = intVal
-			} else {
-				fmt.Printf("ignore invalid train.shuffle=%s, default is %v, shuffleBufferSize is %d",
-					p.Value, enableShuffle, shuffleBufferSize)
+				return intVal
+			}
+			fmt.Printf("ignore invalid %s=%s, default is %d", key, p.Value, defaultValue)
+		}
+		return defaultValue
+	}
+	getBoolAttr := func(key string, defaultValue bool, optional bool) bool {
+		if p, ok := attrs[key]; ok {
+			strVal, _ := p.Value.(string)
+			boolVal, err := strconv.ParseBool(strVal)
+			if !optional {
+				defer delete(attrs, p.FullName)
+			}
+			if err == nil {
+				return boolVal
+			} else if !optional {
+				fmt.Printf("ignore invalid %s=%s, default is %v", key, p.Value, defaultValue)
 			}
 		}
-		delete(attrs, p.FullName)
+		return defaultValue
+	}
+	getStringAttr := func(key string, defaultValue string) string {
+		if p, ok := attrs[key]; ok {
+			strVal, _ := p.Value.(string)
+			defer delete(attrs, p.FullName)
+			if err == nil {
+				return strVal
+			}
+			fmt.Printf("ignore invalid %s=%s, default is %v", key, p.Value, defaultValue)
+		}
+		return defaultValue
+	}
+	modelParams := filter(attrs, "model", true)
+	engineParams := filter(attrs, "engine", true)
+
+	batchSize := getIntAttr("train.batch_size", 512)
+	dropRemainder := getBoolAttr("train.drop_remainder", true, false)
+	cachePath := ""
+	var enableCache bool
+	if enableCache = getBoolAttr("train.cache", false, true); !enableCache {
+		cachePath = getStringAttr("train.cache", "")
+		if cachePath != "" {
+			enableCache = true
+		}
+	}
+	epoch := getIntAttr("train.epoch", 1)
+	shard := getIntAttr("train.shard", 1)
+	maxSteps := getIntAttr("train.max_steps", -1)
+
+	var shuffleBufferSize int
+	var enableShuffle bool
+	if enableShuffle = getBoolAttr("train.shuffle", false, true); !enableShuffle {
+		shuffleBufferSize = getIntAttr("train.shuffle", 0)
+		if shuffleBufferSize > 0 {
+			enableShuffle = true
+		}
+	} else {
+		shuffleBufferSize = 10240
 	}
 
-	if p, ok := trainParams["max_steps"]; ok {
-		strVal, _ := p.Value.(string)
-		intVal, err := strconv.Atoi(strVal)
-		if err == nil {
-			maxSteps = intVal
-		} else {
-			fmt.Printf("ignore invalid train.max_steps=%s, default is %d", p.Value, maxSteps)
-		}
-		delete(attrs, p.FullName)
-	}
-
-	if p, ok := evalParams["steps"]; ok {
-		strVal, _ := p.Value.(string)
-		intVal, err := strconv.Atoi(strVal)
-		if err == nil {
-			evalSteps = intVal
-		} else {
-			fmt.Printf("ignore invalid eval.steps=%s, default is %d", p.Value, evalSteps)
-		}
-		delete(attrs, p.FullName)
-	}
-
-	if p, ok := evalParams["start_delay_secs"]; ok {
-		strVal, _ := p.Value.(string)
-		intVal, err := strconv.Atoi(strVal)
-		if err == nil {
-			evalStartDecaySecs = intVal
-		} else {
-			fmt.Printf("ignore invalid start_delay_secs=%s, default is %d", p.Value, evalStartDecaySecs)
-		}
-		delete(attrs, p.FullName)
-	}
-
-	if p, ok := evalParams["throttle_secs"]; ok {
-		strVal, _ := p.Value.(string)
-		intVal, err := strconv.Atoi(strVal)
-		if err == nil {
-			evalThrottleSecs = intVal
-		} else {
-			fmt.Printf("ignore invalid throttle_secs=%s, default is %d", p.Value, evalThrottleSecs)
-		}
-		delete(attrs, p.FullName)
-	}
+	evalSteps := getIntAttr("eval.steps", -1)
+	evalStartDecaySecs := getIntAttr("eval.start_delay_secs", 120)
+	evalThrottleSecs := getIntAttr("eval.throttle_secs", 600)
 
 	if len(attrs) > 0 {
 		return nil, fmt.Errorf("unsupported parameters: %v", attrs)
@@ -307,6 +282,7 @@ func resolveTrainClause(tc *trainClause) (*resolvedTrainClause, error) {
 		EvalThrottle:           evalThrottleSecs,
 		FeatureColumns:         fcMap,
 		ColumnSpecs:            csMap,
+		EngineParams:           getEngineSpec(engineParams),
 	}, nil
 }
 
