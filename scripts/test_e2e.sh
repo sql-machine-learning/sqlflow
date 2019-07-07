@@ -17,11 +17,10 @@ set -e
 
 service mysql start
 
-
 go generate ./...
 go get -v -t ./...
 go install ./...
 
 DATASOURCE="mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
 sqlflowserver --datasource=${DATASOURCE} &
-SQLFLOW_SERVER=localhost:50051 ipython sql/python/test_magic.ipy
+SQLFLOW_SERVER=localhost:50051 ipython sql/python/test_magic.py
