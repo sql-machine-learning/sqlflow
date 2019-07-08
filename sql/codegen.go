@@ -432,22 +432,75 @@ def pred_gen():
 predictions = pred_gen()
 {{else}}
 
-pred_dataset = eval_input_fn(1).make_one_shot_iterator()
+def fast_input_fn(generator):
+    feature_types = []
+    for name in feature_column_names:
+        if feature_metas[name]["is_sparse"]:
+            feature_types.append((tf.int64, tf.int32, tf.int64))
+        else:
+            feature_types.append(get_dtype(feature_metas[name]["dtype"]))
+
+    def _inner_input_fn():
+        dataset = tf.data.Dataset.from_generator(generator, (tuple(feature_types), tf.int64) )
+        ds_mapper = functools.partial(_parse_sparse_feature, feature_metas=feature_metas)
+        dataset = dataset.map(ds_mapper).batch(1)
+        iterator = dataset.make_one_shot_iterator()
+        features = iterator.get_next()
+        return features
+
+    return _inner_input_fn
+
+class FastPredict:
+    def __init__(self, estimator, input_fn):
+        self.estimator = estimator
+        self.first_run = True
+        self.closed = False
+        self.input_fn = input_fn
+
+    def _create_generator(self):
+        while not self.closed:
+            yield self.next_features[0], self.next_features[1]
+
+    def predict(self, feature_batch):
+        self.next_features = feature_batch
+        if self.first_run:
+            self.batch_size = len(feature_batch)
+            self.predictions = self.estimator.predict(
+                input_fn=self.input_fn(self._create_generator))
+            self.first_run = False
+        elif self.batch_size != len(feature_batch):
+            raise ValueError("All batches must be of the same size. First-batch:" + str(self.batch_size) + " This-batch:" + str(len(feature_batch)))
+
+        results = []
+        for _ in range(self.batch_size):
+            results.append(next(self.predictions))
+        return results
+
+    def close(self):
+        self.closed = True
+        try:
+            next(self.predictions)
+        except Exception as e:
+            print("Exception in fast_predict. This is probably OK: %s" % e)
+
 column_names = feature_column_names[:]
-column_names.append("class")
+column_names.append("{{.Y.FeatureName}}")
+pred_gen = gen = db_generator(driver, conn, """{{.StandardSelect}}""", feature_column_names, "{{.Y.FeatureName}}", feature_metas)()
+fast_predictor = FastPredict(classifier, fast_input_fn)
 buff_rows = []
 while True:
     try:
-        features = pred_dataset.get_next()
-    except tf.errors.OutOfRangeError as e:
+        features = pred_gen.__next__()
+    except StopIteration:
         break
-    r = functools.partial(predict_dataset_wrapper, features=features)
-    predictions = classifier.predict(r)
+    result = fast_predictor.predict(features)
+    print("### Features: ", features)
+    print("## Result: ", result)
     row = []
     for idx, _ in enumerate(feature_column_names):
-        val = features[0][idx].numpy()
+        val = features[0][idx]
         row.append(str(val))
-    row.append(str(list(predictions)[0]["class_ids"][0]))
+    row.append(str(list(result)[0]["class_ids"][0]))
     buff_rows.append(row)
     if len(buff_rows) > 100:
         insert_cursor = insert_values(driver, conn, "{{.TableName}}", column_names, buff_rows)
