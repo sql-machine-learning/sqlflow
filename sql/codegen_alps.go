@@ -43,6 +43,7 @@ type alpsFiller struct {
 	Y      string
 
 	// Train
+	ImportCode        string
 	ModelCreatorCode  string
 	FeatureColumnCode string
 	TrainClause       *resolvedTrainClause
@@ -60,12 +61,12 @@ type alpsFeatureColumn interface {
 	GenerateAlpsCode(metadata *metadata) ([]string, error)
 }
 
-func modelCreatorCode(resolved *resolvedTrainClause, args []string) (string, error) {
+func modelCreatorCode(resolved *resolvedTrainClause, args []string) (string, string, error) {
 	cl := make([]string, 0)
 	for _, a := range resolved.ModelConstructorParams {
 		code, err := a.GenerateCode()
 		if err != nil {
-			return "", err
+			return "", "", err
 		}
 		cl = append(cl, code)
 	}
@@ -75,10 +76,20 @@ func modelCreatorCode(resolved *resolvedTrainClause, args []string) (string, err
 		}
 	}
 	modelName := resolved.ModelName
+	var importLib string
 	if resolved.IsPreMadeModel {
 		modelName = fmt.Sprintf("tf.estimator.%s", resolved.ModelName)
+	} else {
+		parts := strings.Split(modelName, ".")
+		importLib = strings.Join(parts[0:len(parts)-1], ".")
 	}
-	return fmt.Sprintf("%s(%s)", modelName, strings.Join(cl, ",")), nil
+	var importCode = ""
+	if importLib != "" {
+		importCode = fmt.Sprintf("import %s", importLib)
+	}
+
+	return importCode,
+		fmt.Sprintf("%s(%s)", modelName, strings.Join(cl, ",")), nil
 }
 
 func newALPSTrainFiller(pr *extendedSelect, db *DB) (*alpsFiller, error) {
@@ -89,20 +100,26 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB) (*alpsFiller, error) {
 
 	var odpsConfig = &gomaxcompute.Config{}
 	var columnInfo map[string]*columnSpec
-	var meta metadata
 
 	// TODO(joyyoj) read feature mapping table's name from table attributes.
 	// TODO(joyyoj) pr may contains partition.
 	fmap := featureMap{pr.tables[0] + "_feature_map", ""}
+	var meta metadata
+	fields := make([]string, 0)
 	if db != nil {
 		odpsConfig, err = gomaxcompute.ParseDSN(db.dataSourceName)
 		if err != nil {
 			return nil, err
 		}
 		meta = metadata{odpsConfig, pr.tables[0], &fmap, nil}
-		columnInfo, err = meta.getColumnInfo(resolved.FeatureColumns)
+		fields, err = getFields(&meta, pr)
+		if err != nil {
+			return nil, err
+		}
+		columnInfo, err = meta.getColumnInfo(resolved, fields)
 		meta.columnInfo = &columnInfo
 	} else {
+		meta = metadata{odpsConfig, pr.tables[0], nil, nil}
 		columnInfo = map[string]*columnSpec{}
 		for _, css := range resolved.ColumnSpecs {
 			for _, cs := range css {
@@ -111,7 +128,6 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB) (*alpsFiller, error) {
 		}
 		meta.columnInfo = &columnInfo
 	}
-	fields := make([]string, 0) // TODO use complete fields
 	csCode := make([]string, 0)
 
 	if err != nil {
@@ -130,7 +146,15 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB) (*alpsFiller, error) {
 		Delimiter:  ","}
 	args := make([]string, 0)
 	args = append(args, "config=run_config")
-	args = append(args, "feature_columns=feature_columns")
+	hasFeatureColumns := false
+	for _, columns := range resolved.FeatureColumns {
+		if len(columns) > 0 {
+			hasFeatureColumns = true
+		}
+	}
+	if hasFeatureColumns {
+		args = append(args, "feature_columns=feature_columns")
+	}
 	featureColumnCode := make([]string, 0)
 	for _, fcs := range resolved.FeatureColumns {
 		codes, err := generateAlpsFeatureColumnCode(fcs, &meta)
@@ -143,7 +167,7 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB) (*alpsFiller, error) {
 		}
 	}
 	fcCode := strings.Join(featureColumnCode, "\n        ")
-	modelCode, err := modelCreatorCode(resolved, args)
+	importCode, modelCode, err := modelCreatorCode(resolved, args)
 	if err != nil {
 		return nil, err
 	}
@@ -165,6 +189,7 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB) (*alpsFiller, error) {
 		X:                   fmt.Sprintf("[%s]", strings.Join(csCode, ",")),
 		Y:                   y.ToString(),
 		OdpsConf:            odpsConfig,
+		ImportCode:          importCode,
 		ModelCreatorCode:    modelCode,
 		FeatureColumnCode:   fcCode,
 		TrainClause:         resolved,
@@ -353,10 +378,13 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'    # for debug usage.
 
 class SQLFlowEstimatorBuilder(EstimatorBuilder):
     def _build(self, experiment, run_config):
+{{if ne .FeatureMapTable ""}}
         feature_columns = []
-
         {{.FeatureColumnCode}}
-
+{{end}}
+{{if ne .ImportCode ""}}
+        {{.ImportCode}}
+{{end}}
         return {{.ModelCreatorCode}}
 
 if __name__ == "__main__":
@@ -446,31 +474,39 @@ type metadata struct {
 	columnInfo *map[string]*columnSpec
 }
 
-func (meta *metadata) getColumnInfo(featureColumns map[string][]featureColumn) (map[string]*columnSpec, error) {
-	allKeys := make([]string, 0)
-	for _, fcs := range featureColumns {
-		fields := getAllKeys(fcs)
-		allKeys = append(allKeys, fields...)
+func (meta *metadata) getColumnInfo(resolved *resolvedTrainClause, fields []string) (map[string]*columnSpec, error) {
+	columns := map[string]*columnSpec{}
+	sparseColumns, _ := meta.getSparseColumnInfo()
+	// TODO(joyyoj): check error if odps can support `show tables`.
+	if len(sparseColumns) == 0 { // no feature mapping table.
+		for _, cols := range resolved.ColumnSpecs {
+			for _, col := range cols {
+				if col.IsSparse {
+					sparseColumns[col.ColumnName] = col
+				}
+			}
+		}
 	}
-	columns, err := meta.getSparseColumnInfo()
-	if err != nil {
-		log.Fatalf("Failed to get sparse column info %v", err)
-		return columns, err
+	for k, v := range sparseColumns {
+		columns[k] = v
 	}
+
 	denseKeys := make([]string, 0)
-	for _, key := range allKeys {
+	for _, key := range fields {
 		_, present := columns[key]
 		if !present {
 			denseKeys = append(denseKeys, key)
 		}
 	}
-	denseColumns, err := meta.getDenseColumnInfo(denseKeys)
-	if err != nil {
-		fmt.Println(err)
-		return columns, err
-	}
-	for k, v := range denseColumns {
-		columns[k] = v
+	if len(denseKeys) > 0 {
+		denseColumns, err := meta.getDenseColumnInfo(denseKeys)
+		if err != nil {
+			log.Fatalf("Failed to get dense column %v", err)
+			return columns, err
+		}
+		for k, v := range denseColumns {
+			columns[k] = v
+		}
 	}
 	return columns, nil
 }
@@ -483,6 +519,43 @@ func getAllKeys(fcs []featureColumn) []string {
 		output = append(output, key)
 	}
 	return output
+}
+
+func (meta *metadata) descTable() ([]*sql.ColumnType, error) {
+	// TODO(joyyoj) use `desc table`, but maxcompute not support currently.
+	query := fmt.Sprintf("SELECT * FROM %s LIMIT 1", meta.table)
+	sqlDB, _ := sql.Open("maxcompute", meta.odpsConfig.FormatDSN())
+	rows, err := sqlDB.Query(query)
+
+	if err != nil {
+		return make([]*sql.ColumnType, 0), err
+	}
+	defer sqlDB.Close()
+	return rows.ColumnTypes()
+}
+
+func getFields(meta *metadata, pr *extendedSelect) ([]string, error) {
+	selectFields := pr.standardSelect.fields
+	if len(selectFields) == 1 && selectFields[0] == "*" {
+		selectFields = make([]string, 0)
+		columnTypes, err := meta.descTable()
+		if err != nil {
+			return selectFields, err
+		}
+		for _, columnType := range columnTypes {
+			if columnType.Name() != pr.label {
+				selectFields = append(selectFields, columnType.Name())
+			}
+		}
+		return selectFields, nil
+	}
+	fields := make([]string, 0)
+	for _, field := range selectFields {
+		if field != pr.label {
+			fields = append(fields, field)
+		}
+	}
+	return fields, nil
 }
 
 func (meta *metadata) getDenseColumnInfo(keys []string) (map[string]*columnSpec, error) {
@@ -524,6 +597,7 @@ func (meta *metadata) getDenseColumnInfo(keys []string) (map[string]*columnSpec,
 func (meta *metadata) getSparseColumnInfo() (map[string]*columnSpec, error) {
 	output := map[string]*columnSpec{}
 
+	sqlDB, _ := sql.Open("maxcompute", meta.odpsConfig.FormatDSN())
 	filter := "feature_type != '' "
 	if meta.featureMap.Partition != "" {
 		filter += "and " + meta.featureMap.Partition
@@ -531,7 +605,6 @@ func (meta *metadata) getSparseColumnInfo() (map[string]*columnSpec, error) {
 	query := fmt.Sprintf("SELECT feature_type, max(cast(id as bigint)) as feature_num, group "+
 		"FROM %s WHERE %s GROUP BY group, feature_type", meta.featureMap.Table, filter)
 
-	sqlDB, _ := sql.Open("maxcompute", meta.odpsConfig.FormatDSN())
 	rows, err := sqlDB.Query(query)
 	if err != nil {
 		return output, err
