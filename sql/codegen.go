@@ -419,7 +419,6 @@ column_names.append("{{.Y.FeatureName}}")
 while True:
     try:
         features = pred_dataset.get_next()
-        print("###DEBUG: generated features: ", features)
     except tf.errors.OutOfRangeError:
         break
     result = classifier.predict_on_batch(features[0])

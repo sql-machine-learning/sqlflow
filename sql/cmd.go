@@ -58,7 +58,7 @@ func hasDockerImage(image string) bool {
 func tensorflowCmd(cwd, driverName string) (cmd *exec.Cmd) {
 	if hasPython() && hasTensorFlow() && hasDatabaseConnector(driverName) {
 		log.Printf("tensorflowCmd: run locally")
-		cmd = exec.Command("python")
+		cmd = exec.Command("python", "-u")
 		cmd.Dir = cwd
 	} else if hasDocker() {
 		log.Printf("tensorflowCmd: run in Docker container")
