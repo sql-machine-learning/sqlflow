@@ -388,6 +388,7 @@ print("Training set accuracy: {accuracy:0.5f}".format(**eval_result))
 print("Done training")
 {{- else}}
 
+{{if .IsKerasModel}}
 def eval_input_fn(batch_size):
     feature_types = []
     for name in feature_column_names:
@@ -400,36 +401,43 @@ def eval_input_fn(batch_size):
     gen = db_generator(driver, conn, """{{.StandardSelect}}""",
         feature_column_names, "{{.Y.FeatureName}}", feature_metas)
     dataset = tf.data.Dataset.from_generator(gen, (tuple(feature_types), tf.int64))
+    ds_mapper = functools.partial(_parse_sparse_feature, feature_metas=feature_metas)
+    dataset = dataset.map(ds_mapper)
     return dataset
 
-def predict_dataset_wrapper(features):
-    feature_types = []
-    for name in feature_column_names:
-        if feature_metas[name]["is_sparse"]:
-            feature_types.append((tf.int64, tf.int32, tf.int64))
-        else:
-            feature_types.append(get_dtype(feature_metas[name]["dtype"]))
-
-    tmp_dataset = tf.data.Dataset.from_generator(lambda: (features,), (tuple(feature_types), tf.int64))
-    ds_mapper = functools.partial(_parse_sparse_feature, feature_metas=feature_metas)
-    tmp_dataset = tmp_dataset.map(ds_mapper).batch(1)
-    return tmp_dataset
-
-
-{{if .IsKerasModel}}
-pred_dataset = eval_input_fn(BATCHSIZE)
+pred_dataset = eval_input_fn(1)
 one_batch = pred_dataset.__iter__().next()
 # NOTE: must run predict one batch to initialize parameters
 # see: https://www.tensorflow.org/alpha/guide/keras/saving_and_serializing#saving_subclassed_models
 classifier.predict_on_batch(one_batch[0])
 classifier.load_weights("{{.Save}}")
 del pred_dataset
-pred_dataset = eval_input_fn(BATCHSIZE)
-predictions_array = classifier.predict(pred_dataset)
-def pred_gen():
-    for pred in predictions_array:
-        yield classifier.prepare_prediction_column(pred)
-predictions = pred_gen()
+pred_dataset = eval_input_fn(1).make_one_shot_iterator()
+buff_rows = []
+column_names = feature_column_names[:]
+column_names.append("{{.Y.FeatureName}}")
+while True:
+    try:
+        features = pred_dataset.get_next()
+    except tf.errors.OutOfRangeError:
+        break
+    result = classifier.predict_on_batch(features[0])
+    result = classifier.prepare_prediction_column(result[0])
+    row = []
+    for idx, name in enumerate(feature_column_names):
+        val = features[0][name].numpy()
+        row.append(str(val))
+    row.append(str(result))
+    buff_rows.append(row)
+    if len(buff_rows) > 100:
+        insert_cursor = insert_values(driver, conn, "{{.TableName}}", column_names, buff_rows)
+        insert_cursor.close()
+        buff_rows.clear()
+
+if len(buff_rows) > 0:
+    insert_cursor = insert_values(driver, conn, "{{.TableName}}", column_names, buff_rows)
+    insert_cursor.close()
+    buff_rows.clear()
 {{else}}
 
 def fast_input_fn(generator):
@@ -494,8 +502,6 @@ while True:
     except StopIteration:
         break
     result = fast_predictor.predict(features)
-    print("### Features: ", features)
-    print("## Result: ", result)
     row = []
     for idx, _ in enumerate(feature_column_names):
         val = features[0][idx]
