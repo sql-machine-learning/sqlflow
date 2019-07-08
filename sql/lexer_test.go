@@ -56,6 +56,16 @@ func TestLexNumber(t *testing.T) {
 	var n sqlSymType
 	a.Equal(NUMBER, l.Lex(&n))
 	a.Equal("123.4", n.val)
+
+	l = newLexer("[5,10]")
+	typs := []int{'[', NUMBER, ',', NUMBER, ']'}
+	vals := []string{"[", "5", ",", "10", "]"}
+	i := 0
+	for typ := l.Lex(&n); typ != 0; typ = l.Lex(&n) {
+		a.Equal(typs[i], typ)
+		a.Equal(vals[i], n.val)
+		i++
+	}
 }
 
 func TestLexString(t *testing.T) {

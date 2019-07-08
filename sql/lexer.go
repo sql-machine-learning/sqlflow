@@ -138,8 +138,7 @@ func (l *lexer) emitIdentOrKeyword(lval *sqlSymType) int {
 }
 
 var (
-	// Stolen https://www.regular-expressions.info/floatingpoint.html.
-	reNumber = regexp.MustCompile("[-+]?[0-9]*.?[0-9]+([eE][-+]?[0-9]+)?")
+	reNumber = regexp.MustCompile("[-+]?[0-9]*[.]?[0-9]+([eE][-+]?[0-9]+)?")
 )
 
 func (l *lexer) lexNumber(lval *sqlSymType) int {
