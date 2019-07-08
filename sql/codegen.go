@@ -405,7 +405,6 @@ def eval_input_fn(batch_size):
     dataset = dataset.map(ds_mapper).batch(batch_size)
     return dataset
 
-print("######### start running predict")
 pred_dataset = eval_input_fn(1)
 one_batch = pred_dataset.__iter__().next()
 # NOTE: must run predict one batch to initialize parameters
@@ -427,7 +426,7 @@ while True:
     result = classifier.prepare_prediction_column(result[0])
     row = []
     for idx, name in enumerate(feature_column_names):
-        val = features[0][name].numpy()
+        val = features[0][name].numpy()[0]
         row.append(str(val))
     row.append(str(result))
     buff_rows.append(row)
