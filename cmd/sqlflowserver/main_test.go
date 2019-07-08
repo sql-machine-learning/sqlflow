@@ -448,7 +448,7 @@ INTO sqlflow_models.my_dnn_model_custom;`
 	defer conn.Close()
 	cli := pb.NewSQLFlowClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
 	defer cancel()
 
 	stream, err := cli.Run(ctx, sqlRequest(trainSQL))
