@@ -15,6 +15,7 @@ package sql
 
 import (
 	"container/list"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -75,6 +76,32 @@ func TestExecutorTrainAndPredictDNNLocalFS(t *testing.T) {
 		pr, e = newParser().Parse(testPredictSelectIris)
 		a.NoError(e)
 		stream = runExtendedSQL(testPredictSelectIris, testDB, pr, modelDir)
+		a.True(goodStream(stream.ReadAll()))
+	})
+}
+
+func TestExecutorTrainAndPredictionDNNClassifierDENSE(t *testing.T) {
+	if getEnv("SQLFLOW_TEST_DB", "mysql") == "hive" {
+		t.Skip(fmt.Sprintf("%s: skip Hive test", getEnv("SQLFLOW_TEST_DB", "mysql")))
+	}
+	a := assert.New(t)
+	a.NotPanics(func() {
+		stream := Run(`SELECT * FROM iris.train_dense
+TRAIN DNNClassifier
+WITH
+n_classes = 3,
+hidden_units = [10, 20],
+EPOCHS = 200,
+BATCHSIZE = 10
+COLUMN NUMERIC(dense, 4)
+LABEL class
+INTO sqlflow_models.my_dense_dnn_model
+;`, testDB, "")
+		a.True(goodStream(stream.ReadAll()))
+		stream = Run(`SELECT * FROM iris.test_dense
+PREDICT iris.predict_dense.class
+USING sqlflow_models.my_dense_dnn_model
+;`, testDB, "")
 		a.True(goodStream(stream.ReadAll()))
 	})
 }

@@ -104,9 +104,10 @@ type attribute struct {
 }
 
 type numericColumn struct {
-	Key   string
-	Shape []int
-	Dtype string
+	Key       string
+	Shape     []int
+	Delimiter string
+	Dtype     string
 }
 
 type bucketColumn struct {
@@ -289,8 +290,8 @@ func resolveTrainClause(tc *trainClause) (*resolvedTrainClause, error) {
 // resolveTrainColumns resolve columns from SQL statement,
 // returns featureColumn list and featureSpecs
 func resolveTrainColumns(columns *exprlist) ([]featureColumn, []*columnSpec, error) {
-	var css = make([]*columnSpec, 0)
 	var fcs = make([]featureColumn, 0)
+	var css = make([]*columnSpec, 0)
 	for _, expr := range *columns {
 		result, err := resolveExpression(expr)
 		if err != nil {
@@ -310,10 +311,27 @@ func resolveTrainColumns(columns *exprlist) ([]featureColumn, []*columnSpec, err
 			}
 			fcs = append(fcs, c)
 		} else {
-			return nil, nil, fmt.Errorf("not recgonized type: %s", result)
+			return nil, nil, fmt.Errorf("not recognized type: %s", result)
 		}
 	}
 	return fcs, css, nil
+}
+
+func getExpressionFieldName(expr *expr) (string, error) {
+	result, err := resolveExpression(expr)
+	if err != nil {
+		return "", err
+	}
+	switch r := result.(type) {
+	case *columnSpec:
+		return r.ColumnName, nil
+	case featureColumn:
+		return r.GetKey(), nil
+	case string:
+		return r, nil
+	default:
+		return "", fmt.Errorf("getExpressionFieldName: unrecognized type %T", r)
+	}
 }
 
 // resolveExpression resolve a SQLFlow expression to the actual value
@@ -501,8 +519,9 @@ func resolveNumericColumn(el *exprlist) (*numericColumn, error) {
 	return &numericColumn{
 		Key:   key,
 		Shape: shape,
-		// FIXME(typhoonzero): support config dtype
-		Dtype: "float32"}, nil
+		// FIXME(typhoonzero, tony): support config Delimiter and Dtype
+		Delimiter: ",",
+		Dtype:     "float32"}, nil
 }
 
 func resolveBucketColumn(el *exprlist) (*bucketColumn, error) {
@@ -629,7 +648,7 @@ func (nc *numericColumn) GenerateCode() (string, error) {
 }
 
 func (nc *numericColumn) GetDelimiter() string {
-	return ""
+	return nc.Delimiter
 }
 
 func (nc *numericColumn) GetDtype() string {

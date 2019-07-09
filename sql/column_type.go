@@ -175,6 +175,12 @@ func parseVal(val interface{}) (interface{}, error) {
 
 func universalizeColumnType(driverName, dialectType string) (string, error) {
 	if driverName == "mysql" || driverName == "sqlite3" || driverName == "maxcompute" {
+		if dialectType == "VARCHAR" {
+			// FIXME(tony): MySQL driver DatabaseName doesn't include the type length of a field.
+			// Hardcoded to 255 for now.
+			// ref: https://github.com/go-sql-driver/mysql/blob/877a9775f06853f611fb2d4e817d92479242d1cd/fields.go#L87
+			return "VARCHAR(255)", nil
+		}
 		return dialectType, nil
 	} else if driverName == "hive" {
 		if strings.HasSuffix(dialectType, hiveCTypeSuffix) {

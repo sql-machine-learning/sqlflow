@@ -116,9 +116,12 @@ func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
 	}
 
 	for target, columns := range pr.columns {
-		feaCols, _, err := resolveTrainColumns(&columns)
+		feaCols, colSpecs, err := resolveTrainColumns(&columns)
 		if err != nil {
 			return nil, err
+		}
+		if len(colSpecs) != 0 {
+			return nil, fmt.Errorf("newFiller doesn't support DENSE/SPARSE")
 		}
 		r.FeatureColumnsCode = make(map[string][]string)
 		for _, col := range feaCols {
@@ -140,7 +143,9 @@ func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
 				}
 			}
 			if !ok && col.GetDelimiter() != "" {
-				isSparse = true
+				if _, ok := col.(*numericColumn); !ok {
+					isSparse = true
+				}
 			}
 			fm := &featureMeta{
 				FeatureName: col.GetKey(),
