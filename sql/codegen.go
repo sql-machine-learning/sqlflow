@@ -405,7 +405,6 @@ def eval_input_fn(batch_size):
     dataset = dataset.map(ds_mapper).batch(batch_size)
     return dataset
 
-print("######### start running predict")
 pred_dataset = eval_input_fn(1)
 one_batch = pred_dataset.__iter__().next()
 # NOTE: must run predict one batch to initialize parameters
@@ -420,7 +419,6 @@ column_names.append("{{.Y.FeatureName}}")
 while True:
     try:
         features = pred_dataset.get_next()
-        print("###DEBUG: generated features: ", features)
     except tf.errors.OutOfRangeError:
         break
     result = classifier.predict_on_batch(features[0])
