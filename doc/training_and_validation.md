@@ -29,7 +29,7 @@ The data comes from the standard select part `SELECT col1, col2, col3 FROM mytab
 
 We want to split the result into 80% training data and 20% validation data.
 
-**We add a column sqlflow_random via RAND() and save the result to a temporary table.**     
+### We add a column sqlflow_random via RAND() and save the result to a temporary table   
 Note the `RAND()` function returns a random number between 0 (inclusive) and 1. The result temporary table looks like the following.
 
 <table>
@@ -46,19 +46,19 @@ Note the `RAND()` function returns a random number between 0 (inclusive) and 1. 
     <td>&lt;data&gt;</td>
     <td>&lt;data&gt;</td>
     <td>&lt;data&gt;</td>
-    <td>0.3</td>
+    <td>0.350812148722645</td>
   </tr>
   <tr>
     <td>&lt;data&gt;</td>
     <td>&lt;data&gt;</td>
     <td>&lt;data&gt;</td>
-    <td>0.9</td>
+    <td>0.9845468606655923</td>
   </tr>
   <tr>
     <td>&lt;data&gt;</td>
     <td>&lt;data&gt;</td>
     <td>&lt;data&gt;</td>
-    <td>0.5</td>
+    <td>0.650812148722645</td>
   </tr>
   <tr>
     <td></td>
@@ -76,6 +76,16 @@ CREATE TABLE {.TempTableName} AS
         {.StandardSQL}
     )
 ```
+
+### Naming temporary table
+- For common databases, like MySQL, Hive   
+SQLFlow creates the temporary table with the attribute [TEMPORARY ](https://dev.mysql.com/doc/refman/8.0/en/create-temporary-table.html), so we do not have to test if the temporary table exists.
+
+- For Maxcompute  
+SQLFlow saves the temporary table into the current project which must be specified by the user. 
+Meanwhile, we specify the [LIFECYCLE](http://help.aliyun-inc.com/internaldoc/detail/27808.html?spm=a2c1f.8259794.2.1.64a896d5dR0z6r) to 1 day to release the temporary table automatically.
+
+  Because multi-users run SQLFlow with their own isolated dataset at the same time, SQLFlow generates an elaborate name for the temporary table to avoid conflict.
 
 ## How to split
 
@@ -97,10 +107,11 @@ type extendedSelect struct {
 For TensorFlow submitter, we generate training dataset and validation dataset according to `extendedSelect.training` and `extendedSelect.validation`.
 
 ## Release the temporary table
-In the end, we remove the temporary table
+In the end, we remove the temporary table by
 ```SQL
 drop table if exists {temporary_table_name}
 ```
+We created the temporary table specified with `TEMPORARY` or `LIFECYCLE`, but SQLFlow would rather release the temporary table explicitly.
 
 ## Notes
 
