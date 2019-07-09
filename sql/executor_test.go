@@ -28,7 +28,6 @@ func goodStream(stream chan interface{}) (bool, string) {
 	keepSize := 10
 
 	for rsp := range stream {
-		log.Debug(rsp)
 		switch rsp.(type) {
 		case error:
 			var s []string
