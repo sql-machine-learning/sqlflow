@@ -461,12 +461,10 @@ def insert(table_name, eval_input_dataset, feature_column_names, predictions, in
         {{end}}
         pred_rows.append(tuple(row))
         if len(pred_rows) == insert_batch_size:
-            insert_cursor = insert_values(driver, write_conn, table_name, column_names, pred_rows)
-            insert_cursor.close()
+            insert_values(driver, write_conn, table_name, column_names, pred_rows)
             pred_rows.clear()
     if len(pred_rows) > 0:
-        insert_cursor = insert_values(driver, write_conn, table_name, column_names, pred_rows)
-        insert_cursor.close()
+        insert_values(driver, write_conn, table_name, column_names, pred_rows)
 
 predict_input_gen = db_generator(driver, conn, """{{.StandardSelect}}""",
         feature_column_names, "{{.Y.FeatureName}}", feature_metas)()
