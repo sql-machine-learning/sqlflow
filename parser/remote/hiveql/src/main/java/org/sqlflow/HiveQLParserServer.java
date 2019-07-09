@@ -17,7 +17,6 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import org.antlr.runtime.RecognitionException;
-import org.apache.hadoop.hive.ql.parse.ASTNode;
 import org.apache.hadoop.hive.ql.parse.ParseDriver;
 import org.apache.hadoop.hive.ql.parse.ParseError;
 import org.apache.hadoop.hive.ql.parse.ParseException;
@@ -50,7 +49,7 @@ public class HiveQLParserServer extends ParserServer {
 
       try {
         ParseDriver pd = new ParseDriver();
-        ASTNode node = pd.parse(q);
+        pd.parse(q);
 
       } catch (ParseException e) {
         try {
@@ -65,10 +64,10 @@ public class HiveQLParserServer extends ParserServer {
           err = "Cannot parse the error message from HiveQL parser";
         }
 
-        if (err == "") {
+        if (Strings.isNullOrEmpty(err)) {
           try {
             ParseDriver pd = new ParseDriver();
-            ASTNode node = pd.parse(q);
+            pd.parse(q);
           } catch (ParseException ee) {
             err = ee.getMessage();
           }

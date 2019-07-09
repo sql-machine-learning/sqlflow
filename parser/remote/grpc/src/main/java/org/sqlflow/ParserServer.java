@@ -36,15 +36,15 @@ public class ParserServer {
 
   protected void start(ParserGrpc.ParserImplBase serverImpl, int port) throws IOException {
     server = ServerBuilder.forPort(port).addService(serverImpl).build().start();
-    logger.info("Server started, listening on " + port);
+    logger.info("Server started, listening on %d.\n", port);
     Runtime.getRuntime()
         .addShutdownHook(
             new Thread() {
               @Override
               public void run() {
-                System.err.println("*** shutting down gRPC server since JVM is shutting down");
+                logger.info("*** shutting down gRPC server since JVM is shutting down.\n");
                 ParserServer.this.stop();
-                System.err.println("*** server shut down");
+                logger.info("*** server shut down.\n");
               }
             });
   }
@@ -75,7 +75,7 @@ public class ParserServer {
         return Integer.parseInt(line.getOptionValue("port"));
       }
     } catch (ParseException e) {
-      System.err.printf(
+      logger.error(
           "Command line options error: %s. Use default port %s\n", e.getMessage(), defaultPort);
     }
     return defaultPort;

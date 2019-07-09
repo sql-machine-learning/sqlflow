@@ -14,7 +14,6 @@ package org.sqlflow.parser.remote.calcite;
 
 import io.grpc.stub.StreamObserver;
 import java.io.IOException;
-import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.parser.SqlParseException;
 import org.apache.calcite.sql.parser.SqlParser;
 import org.apache.calcite.sql.parser.SqlParserPos;
@@ -47,7 +46,7 @@ public class CalciteParserServer extends ParserServer {
 
       try {
         SqlParser parser = SqlParser.create(q);
-        SqlNode sqlNode = parser.parseQuery();
+        parser.parseQuery();
 
       } catch (SqlParseException e) {
         SqlParserPos pos = e.getPos();
@@ -55,7 +54,7 @@ public class CalciteParserServer extends ParserServer {
 
         try {
           SqlParser parser = SqlParser.create(q.substring(0, epos));
-          SqlNode sqlNode = parser.parseQuery();
+          parser.parseQuery();
         } catch (SqlParseException ee) {
           err = ee.getCause().getMessage();
         }
