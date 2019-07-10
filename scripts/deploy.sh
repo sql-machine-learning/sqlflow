@@ -19,9 +19,17 @@ echo "$DOCKER_PASSWORD" | docker login --username "$DOCKER_USERNAME" --password-
 
 if [[ $TRAVIS_EVENT_TYPE == "cron" ]]; then
     DOCKER_TAG="nightly"
+    DOCKER_TAG_OLDER_TF="nightly-tf1.13.1"
 else
     DOCKER_TAG="latest"
+    DOCKER_TAG_OLDER_TF="latest-tf1.13.1"
 fi
 
 docker build -t sqlflow/sqlflow:$DOCKER_TAG -f ./Dockerfile .
 docker push sqlflow/sqlflow:$DOCKER_TAG
+
+docker build --build-arg TENSORFLOW_VERSION="1.13.1" -t sqlflow/sqlflow:$DOCKER_TAG_OLDER_TF -f ./Dockerfile .
+docker push sqlflow/sqlflow:$DOCKER_TAG_OLDER_TF
+
+
+
