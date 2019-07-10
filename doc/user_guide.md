@@ -57,9 +57,20 @@ SQLFlow will parse the statement and transpile it to a equivalent Python program
 
 ![](figures/user_overview.png)
 
-## What kind of select statement can I use?
+## What kind of standard select statement can I use?
 
-A detailed explanation of the select clause.
+We consider `SELECT * FROM iris.train` in the overview example as the *standard select*.
+
+Currently SQLFlow supports *standard select* syntax as
+
+```SQL
+SELECT select_expr [, select_expr ...]
+FROM table_references
+  [WHERE where_condition]
+  [LIMIT row_count]
+```
+
+And the team is working on supporting arbitary select statements.
 
 ## What type of preprocessing can I apply to selected data?
 
@@ -68,41 +79,64 @@ A detailed explanation of the column clause.
 <table>
   <tr>
     <th>feature column type</th>
-    <th>table field type</th>
+    <th>usage</th>
+    <th>field type</th>
     <th>example</th>
   </tr>
   <tr>
-    <td>/</td>
+    <td>X</td>
+    <td>field</td>
     <td>int/float/double</td>
-    <td>1.3</td>
+    <td>3.14</td>
   </tr>
   <tr>
     <td>NUMERIC</td>
+    <td>NUMERIC(field, dimension[, delimiter])</td>
     <td>string/varchar[n]</td>
     <td>"0.2,1.7,0.6"</td>
   </tr>
   <tr>
-    <td>...</td>
-    <td></td>
-    <td></td>
+    <td>CATEGORY_ID</td>
+    <td>CATEGORY_ID(field, dimension[, delimiter])</td>
+    <td>string/varchar[n]</td>
+    <td>"66,67,42,68,48,69,70"</td>
+  </tr>
+  <tr>
+    <td>SEQ_CATEGORY_ID</td>
+    <td>SEQ_CATEGORY_ID(field, dimension[, delimiter])</td>
+    <td>string/varchar[n]</td>
+    <td>"20,48,80,81,82,0,0,0,0"</td>
+  </tr>
+  <tr>
+    <td>EMBEDDING</td>
+    <td>EMBEDDING(category_column, dimension[, combiner])</td>
+    <td>X</td>
+    <td>X</td>
   </tr>
 </table>
+
+### Plain
+
+
 
 ### NUMERIC
 
 ```
-NUMERIC(field_name, dimension, [delimiter])
-    field_name
+NUMERIC(field_name, dimension[, delimiter])
+    field_name: e.g. dense, column1
     dimension: e.g. 12, [3,4]
-    delimiter: e.g. comma
+    delimiter: default comma
 ```
 
-Before: "0.2,1.7,0.6".
-After: Tensor(0.2, 1.7, 0.6)
+`NUMERIC` column converts a delimiter separated string to a Tensor, e.g. `"0.2,1.7,0.6" => Tensor(0.2, 1.7, 0.6)`.
+
+### CATEGORY_ID
+
+### SEQ_CATEGORY_ID
+
+### EMBEDDING
 
 ### ONE_HOT
-
-...
 
 ## What kind of model can I use?
 
