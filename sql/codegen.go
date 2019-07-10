@@ -410,6 +410,8 @@ def eval_input_fn(batch_size):
     dataset = dataset.map(ds_mapper).batch(batch_size)
     return dataset
 
+# NOTE: always use batch_size=1 when predicting to get the pairs of features and predict results
+#       to insert into result table.
 pred_dataset = eval_input_fn(1)
 one_batch = pred_dataset.__iter__().next()
 # NOTE: must run predict one batch to initialize parameters
@@ -441,6 +443,7 @@ while True:
 if len(buff_rows) > 0:
     insert_values(driver, conn, "{{.TableName}}", column_names, buff_rows)
     buff_rows.clear()
+del pred_dataset
 {{else}}
 
 def fast_input_fn(generator):
