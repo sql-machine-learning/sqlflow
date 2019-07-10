@@ -1,0 +1,19 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sqlflow-populate-demo-dataset
+spec:
+  template:
+    spec:
+      containers:
+      - image: sqlflow/sqlflow:latest
+        name: sqlflow-populate-demo-dataset
+        env:
+        - name: SQLFLOW_MYSQL_HOST
+          value: "10.20.0.3"
+        - name: SQLFLOW_MYSQL_PORT
+          value: "3306"
+        command: ["bash"]
+        args: ["start.sh", "populate-example-dataset-mysql"]
+      restartPolicy: Never
+  backoffLimit: 4
