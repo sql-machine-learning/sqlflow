@@ -4,6 +4,8 @@ SQLFlow is a bridge that connects a SQL engine (e.g. MySQL, Hive, or Maxcompute)
 
 ## Overview
 
+Say you have your data in table `iris.train`. The first four columns is the features and the last column is the label.
+
 <table>
   <tr>
     <th colspan="5">iris.train</th>
@@ -38,18 +40,20 @@ SQLFlow is a bridge that connects a SQL engine (e.g. MySQL, Hive, or Maxcompute)
   </tr>
 </table>
 
+You wanna train a DNNClassifier which has two hiddens layers each has 10 hidden units. At the end of the training, you wanna save the trained DNNClassifier into a table named `sqlflow_models.my_dnn_model` for later prediction use.
+
+Instead of writting a Python program with a lot boilerplate code, you can simply write the following statement in SQLFlow.
+
 ```SQL
--- select clause
 SELECT * FROM iris.train
--- train clause
 TRAIN DNNClassifer
-WITH n_classes, EPOCHS=10
--- column clause
+WITH hidden_units = [10, 10], n_classes = 3, EPOCHS = 10
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
--- save clause
 INTO sqlflow_models.my_dnn_model;
 ```
+
+SQLFlow will parse the statement and transpile to a Python program doing exactly the same job for you.
 
 ![](figures/user_overview.png)
 
