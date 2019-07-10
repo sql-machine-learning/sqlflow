@@ -10,7 +10,7 @@ ENV JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
 # Miniconda - Python 3.6, 64-bit, x86, latest
 ARG CONDA_ADD_PACKAGES=""
 ARG PIP_ADD_PACKAGES=""
-ARG TENSORFLOW_VERSION="2.0.0a0"
+ARG TENSORFLOW_VERSION="2.0.0b1"
 
 ENV GOPATH /go
 ENV PATH /miniconda/envs/sqlflow-dev/bin:/miniconda/bin:/usr/local/go/bin:/go/bin:$PATH
