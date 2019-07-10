@@ -435,13 +435,11 @@ while True:
     row.append(str(result))
     buff_rows.append(row)
     if len(buff_rows) > 100:
-        insert_cursor = insert_values(driver, conn, "{{.TableName}}", column_names, buff_rows)
-        insert_cursor.close()
+        insert_values(driver, conn, "{{.TableName}}", column_names, buff_rows)
         buff_rows.clear()
 
 if len(buff_rows) > 0:
-    insert_cursor = insert_values(driver, conn, "{{.TableName}}", column_names, buff_rows)
-    insert_cursor.close()
+    insert_values(driver, conn, "{{.TableName}}", column_names, buff_rows)
     buff_rows.clear()
 {{else}}
 
