@@ -74,7 +74,7 @@ And the team is working on supporting arbitary select statements.
 
 ## What type of preprocessing can I apply to selected data?
 
-A detailed explanation of the column clause.
+SQLFlow supports various feature columns to preprocess raw data. Here is a growing list.
 
 <table>
   <tr>
@@ -121,14 +121,28 @@ A detailed explanation of the column clause.
 
 ### NUMERIC
 
-```
-NUMERIC(field_name, dimension[, delimiter])
-    field_name: e.g. dense, column1
-    dimension: e.g. 12, [3,4]
-    delimiter: default comma
-```
+```SQL
+NUMERIC(field, n[, delimiter=comma])
+/*
+NUMERIC converts a delimiter separated string to a n dimensional Tensor
+    field:
+        field name of standard select result.
+        e.g. dense, column1.
+    dimension:
+        tensor dimension.
+        e.g. 12, [3,4].
+    delimiter:
+        delimiter.
+        default: comma.
 
-`NUMERIC` column converts a delimiter separated string to a Tensor, e.g. `"0.2,1.7,0.6" => Tensor(0.2, 1.7, 0.6)`.
+Example:
+    NUMERIC(dense, 3). "0.2,1.7,0.6" => Tensor(0.2, 1.7, 0.6)
+
+Error:
+    Invalid field type. field type has to be string/varchar[n]
+    Invalid dimension. e.g. convert "0.2,1.7,0.6" to dimension 2.
+    */
+```
 
 ### CATEGORY_ID
 
