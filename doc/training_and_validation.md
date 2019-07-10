@@ -1,9 +1,9 @@
 # Design: Training and Validation
 
-A common ML training job usually involves two kinds of datasets: training data and validation data. These two datasets will be generated automatically by SQLFlow through randomly splitting the select results.
+A common ML training job usually involves two kinds of data sets: training data and validation data. These two data sets will be generated automatically by SQLFlow through randomly splitting the select results.
 
 ## Overall
-SQLFlow generates a temporary table following the user-specific dataset, trains and evaluates a model.
+SQLFlow generates a temporary table following the user-specific table, trains and evaluates a model.
 
 <img src="./figures/training_and_validation.png" width="60%">
 
@@ -20,16 +20,15 @@ TRAIN ...​
 
 The data comes from the standard select part `SELECT col1, col2, col3 FROM mytable`, and let's say the query result looks like the following
 
-
 | col1   | col2   | col3   |
 | ------ | ------ | ------ |
 | \<data\> | \<data\> | \<data\> |
 | \<data\> | \<data\> | \<data\> |
 | | ... | |
-
 We want to split the result into 80% training data and 20% validation data.
 
-### We add a column sqlflow_random via RAND() and save the result to a temporary table   
+**We add a column sqlflow_random via RAND() and save the result to a temporary table**
+
 Note the `RAND()` function returns a random number between 0 (inclusive) and 1. The result temporary table looks like the following.
 
 <table>
@@ -77,15 +76,15 @@ CREATE TABLE {.TempTableName} AS
     )
 ```
 
-### Naming temporary table
-- For common databases, like MySQL, Hive   
-SQLFlow creates the temporary table with the attribute [TEMPORARY ](https://dev.mysql.com/doc/refman/8.0/en/create-temporary-table.html), so we do not have to test if the temporary table exists.
+**Naming temporary table**  
 
+Because multi-users run SQLFlow with their own isolated data set at the same time, SQLFlow generates an elaborate name for the temporary table to avoid conflict.
 - For Maxcompute  
 SQLFlow saves the temporary table into the current project which must be specified by the user. 
-Meanwhile, we specify the [LIFECYCLE](http://help.aliyun-inc.com/internaldoc/detail/27808.html?spm=a2c1f.8259794.2.1.64a896d5dR0z6r) to 1 day to release the temporary table automatically.
+Meanwhile, we specify the [LIFECYCLE](https://www.alibabacloud.com/help/en/doc-detail/55297.htm) to 14 days to release the temporary table automatically.
 
-  Because multi-users run SQLFlow with their own isolated dataset at the same time, SQLFlow generates an elaborate name for the temporary table to avoid conflict.
+- For common databases, like MySQL, Hive   
+SQLFlow creates an own database as workspace, like `sqlflow_workspace`, then creates the temporary table in `sqlflow_workspace`.
 
 ## How to split
 
@@ -93,25 +92,31 @@ Meanwhile, we specify the [LIFECYCLE](http://help.aliyun-inc.com/internaldoc/det
    
 The query for training data can be written as `SELECT * FROM temp_table WHERE sqlflow_random < 0.8`, which fetches row1 and row3 etc.. The query for validation data can be written as `SELECT * FROM temp_table WHERE sqlflow_random >= 0.8`, which fetches the rest of the rows.
 
-In SQLFlow, we modify the user-specific dataset to our temp_table restricted to `sqlflow_random >= 0.8` to train a model, then restricted the temp_table  to`sqlflow_random < 0.8` to validate that model. This context is built after the temporary dataset accomplished, passed to `runExtendedSQL`  in `extendedSelect`.
+In SQLFlow, we modify the user-specific data set to our temp_table restricted to `sqlflow_random >= 0.8` to train a model, then restricted the temp_table  to`sqlflow_random < 0.8` to validate that model. This context is built after the temporary data set accomplished, passed to `runExtendedSQL`  in `extendedSelect`.
 
 ```Go
 type extendedSelect struct {
     // ...
-    training   standardSelect // training dataset
-    validation standardSelect // validation dataset
+    training   standardSelect // training data set
+    validation standardSelect // validation data set
 }
 ```
 
 ## Codegen
-For TensorFlow submitter, we generate training dataset and validation dataset according to `extendedSelect.training` and `extendedSelect.validation`.
+For TensorFlow submitter, SQLFlow generate training data set and validation data set according to `extendedSelect.training` and `extendedSelect.validation`.
 
 ## Release the temporary table
-In the end, we remove the temporary table by
-```SQL
-drop table if exists {temporary_table_name}
-```
-We created the temporary table specified with `TEMPORARY` or `LIFECYCLE`, but SQLFlow would rather release the temporary table explicitly.
+In the end, SQLFlow remove the temporary table to release resources. 
+
+- For Maxcompute  
+  SQLFlow specify the [LIFECYCLE](https://www.alibabacloud.com/help/en/doc-detail/55297.htm) to 14 days in the create statement, so as to release the temporary table automatically.
+
+- For common databases, like MySQL, Hive   
+  After the training job, SQLFlow release the temporary table by
+  ```SQL
+  drop table if exists {temporary_table_name}
+  ```
+  So, SQLFlow need to know when the training job is completed. Whether it is a synchronized job or an asynchronous job.
 
 ## Notes
 
