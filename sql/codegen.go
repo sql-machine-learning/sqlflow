@@ -345,15 +345,12 @@ def _parse_sparse_feature(features, label, feature_metas):
 {{if .IsTrain}}
 def input_fn(batch_size, is_train=True):
     feature_types = []
-    feature_shapes = []
     for name in feature_column_names:
         {{/* NOTE: vector columns like 23,21,3,2,0,0 should use shape None */}}
         if feature_metas[name]["is_sparse"]:
             feature_types.append((tf.int64, tf.int32, tf.int64))
-            feature_shapes.append(tf.TensorShape([None]))
         else:
             feature_types.append(get_dtype(feature_metas[name]["dtype"]))
-            feature_shapes.append(tf.TensorShape([]))
 
     gen = db_generator(driver, conn, """{{.StandardSelect}}""",
         feature_column_names, "{{.Y.FeatureName}}", feature_metas)
@@ -396,17 +393,15 @@ print("Training set accuracy: {accuracy:0.5f}".format(**eval_result))
 print("Done training")
 {{- else}}
 
+{{if .IsKerasModel}}
 def eval_input_fn(batch_size):
     feature_types = []
-    feature_shapes = []
     for name in feature_column_names:
         {{/* NOTE: vector columns like 23,21,3,2,0,0 should use shape None */}}
         if feature_metas[name]["is_sparse"]:
             feature_types.append((tf.int64, tf.int32, tf.int64))
-            feature_shapes.append(tf.TensorShape([None]))
         else:
             feature_types.append(get_dtype(feature_metas[name]["dtype"]))
-            feature_shapes.append(tf.TensorShape([]))
 
     gen = db_generator(driver, conn, """{{.StandardSelect}}""",
         feature_column_names, "{{.Y.FeatureName}}", feature_metas)
@@ -415,60 +410,116 @@ def eval_input_fn(batch_size):
     dataset = dataset.map(ds_mapper).batch(batch_size)
     return dataset
 
-
-{{if .IsKerasModel}}
-pred_dataset = eval_input_fn(BATCHSIZE)
+pred_dataset = eval_input_fn(1)
 one_batch = pred_dataset.__iter__().next()
 # NOTE: must run predict one batch to initialize parameters
 # see: https://www.tensorflow.org/alpha/guide/keras/saving_and_serializing#saving_subclassed_models
 classifier.predict_on_batch(one_batch[0])
 classifier.load_weights("{{.Save}}")
 del pred_dataset
-pred_dataset = eval_input_fn(BATCHSIZE)
-predictions_array = classifier.predict(pred_dataset)
-def pred_gen():
-    for pred in predictions_array:
-        yield classifier.prepare_prediction_column(pred)
-predictions = pred_gen()
-{{else}}
-predictions = classifier.predict(input_fn=lambda:eval_input_fn(BATCHSIZE))
-{{end}}
-{{/* TODO: insert_batch_size should be automatically chosen by experience */}}
-def insert(table_name, eval_input_dataset, feature_column_names, predictions, insert_batch_size=64):
-    if driver != "hive":
-        column_names = feature_column_names[:]
-    else:
-        column_names = []
-    column_names.append("{{.Y.FeatureName}}")
-    pred_rows = []
-    write_conn = connect(driver, database, user="{{.User}}", password="{{.Password}}", host="{{.Host}}", port={{.Port}})
-    while True:
-        try:
-            if driver != "hive":
-                # FIXME(typhoonzero): Hive inserting while reading cause random fail, should find a way to insert values to hive
-                in_val = eval_input_dataset.__next__()
-            pred_val = predictions.__next__()
-        except StopIteration:
-            break
-        row = []
-        if driver != "hive":
-            for idx, _ in enumerate(feature_column_names):
-                row.append(str(in_val[0][idx]))
-        {{if .IsKerasModel}}
-        row.append(str(pred_val))
-        {{else}}
-        row.append(str(pred_val["class_ids"][0]))
-        {{end}}
-        pred_rows.append(tuple(row))
-        if len(pred_rows) == insert_batch_size:
-            insert_values(driver, write_conn, table_name, column_names, pred_rows)
-            pred_rows.clear()
-    if len(pred_rows) > 0:
-        insert_values(driver, write_conn, table_name, column_names, pred_rows)
+pred_dataset = eval_input_fn(1).make_one_shot_iterator()
+buff_rows = []
+column_names = feature_column_names[:]
+column_names.append("{{.Y.FeatureName}}")
+while True:
+    try:
+        features = pred_dataset.get_next()
+    except tf.errors.OutOfRangeError:
+        break
+    result = classifier.predict_on_batch(features[0])
+    result = classifier.prepare_prediction_column(result[0])
+    row = []
+    for idx, name in enumerate(feature_column_names):
+        val = features[0][name].numpy()[0]
+        row.append(str(val))
+    row.append(str(result))
+    buff_rows.append(row)
+    if len(buff_rows) > 100:
+        insert_values(driver, conn, "{{.TableName}}", column_names, buff_rows)
+        buff_rows.clear()
 
-predict_input_gen = db_generator(driver, conn, """{{.StandardSelect}}""",
-        feature_column_names, "{{.Y.FeatureName}}", feature_metas)()
-insert("{{.TableName}}", predict_input_gen, feature_column_names, predictions)
+if len(buff_rows) > 0:
+    insert_values(driver, conn, "{{.TableName}}", column_names, buff_rows)
+    buff_rows.clear()
+{{else}}
+
+def fast_input_fn(generator):
+    feature_types = []
+    for name in feature_column_names:
+        if feature_metas[name]["is_sparse"]:
+            feature_types.append((tf.int64, tf.int32, tf.int64))
+        else:
+            feature_types.append(get_dtype(feature_metas[name]["dtype"]))
+
+    def _inner_input_fn():
+        dataset = tf.data.Dataset.from_generator(generator, (tuple(feature_types), tf.int64) )
+        ds_mapper = functools.partial(_parse_sparse_feature, feature_metas=feature_metas)
+        dataset = dataset.map(ds_mapper).batch(1)
+        iterator = dataset.make_one_shot_iterator()
+        features = iterator.get_next()
+        return features
+
+    return _inner_input_fn
+
+class FastPredict:
+    def __init__(self, estimator, input_fn):
+        self.estimator = estimator
+        self.first_run = True
+        self.closed = False
+        self.input_fn = input_fn
+
+    def _create_generator(self):
+        while not self.closed:
+            yield self.next_features[0], self.next_features[1]
+
+    def predict(self, feature_batch):
+        self.next_features = feature_batch
+        if self.first_run:
+            self.batch_size = len(feature_batch)
+            self.predictions = self.estimator.predict(
+                input_fn=self.input_fn(self._create_generator))
+            self.first_run = False
+        elif self.batch_size != len(feature_batch):
+            raise ValueError("All batches must be of the same size. First-batch:" + str(self.batch_size) + " This-batch:" + str(len(feature_batch)))
+
+        results = []
+        for _ in range(self.batch_size):
+            results.append(next(self.predictions))
+        return results
+
+    def close(self):
+        self.closed = True
+        try:
+            next(self.predictions)
+        except Exception as e:
+            print("Exception in fast_predict. This is probably OK: %s" % e)
+
+column_names = feature_column_names[:]
+column_names.append("{{.Y.FeatureName}}")
+pred_gen = db_generator(driver, conn, """{{.StandardSelect}}""", feature_column_names, "{{.Y.FeatureName}}", feature_metas)()
+fast_predictor = FastPredict(classifier, fast_input_fn)
+buff_rows = []
+while True:
+    try:
+        features = pred_gen.__next__()
+    except StopIteration:
+        break
+    result = fast_predictor.predict(features)
+    row = []
+    for idx, _ in enumerate(feature_column_names):
+        val = features[0][idx]
+        row.append(str(val))
+    row.append(str(list(result)[0]["class_ids"][0]))
+    buff_rows.append(row)
+    if len(buff_rows) > 100:
+        insert_values(driver, conn, "{{.TableName}}", column_names, buff_rows)
+        buff_rows.clear()
+
+if len(buff_rows) > 0:
+    insert_values(driver, conn, "{{.TableName}}", column_names, buff_rows)
+    buff_rows.clear()
+{{end}}
+
 
 print("Done predicting. Predict table : {{.TableName}}")
 {{- end}}
