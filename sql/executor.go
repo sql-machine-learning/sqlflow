@@ -245,10 +245,9 @@ func runExtendedSQL(slct string, db *DB, pr *extendedSelect, modelDir string) *P
 type logChanWriter struct {
 	wr *PipeWriter
 
-	m           sync.Mutex
-	buf         bytes.Buffer
-	prev        string
-	logtostdout bool
+	m    sync.Mutex
+	buf  bytes.Buffer
+	prev string
 }
 
 func (cw *logChanWriter) Write(p []byte) (n int, err error) {
@@ -273,9 +272,7 @@ func (cw *logChanWriter) Write(p []byte) (n int, err error) {
 		if err := cw.wr.Write(cw.prev); err != nil {
 			return len(cw.prev), err
 		}
-		if cw.logtostdout {
-			log.Debugf("Train script output: %s", cw.prev)
-		}
+		log.Debugf("Train script output: %s", cw.prev)
 		cw.prev = ""
 	}
 	return n, nil
@@ -299,7 +296,7 @@ func train(tr *extendedSelect, slct string, db *DB, cwd string, wr *PipeWriter, 
 		return fmt.Errorf("genTF %v", e)
 	}
 
-	cw := &logChanWriter{wr: wr, logtostdout: true}
+	cw := &logChanWriter{wr: wr}
 	defer cw.Close()
 	cmd := tensorflowCmd(cwd, db.driverName)
 	cmd.Stdin = &program
@@ -383,15 +380,19 @@ func createPredictionTable(trainParsed, predParsed *extendedSelect, db *DB) erro
 	var b bytes.Buffer
 	fmt.Fprintf(&b, "create table %s (", tableName)
 	for _, c := range trainParsed.columns["feature_columns"] {
-		typ, ok := fts.get(c.val)
+		name, err := getExpressionFieldName(c)
+		if err != nil {
+			return err
+		}
+		typ, ok := fts.get(name)
 		if !ok {
-			return fmt.Errorf("createPredictionTable: Cannot find type of field %s", c.val)
+			return fmt.Errorf("createPredictionTable: Cannot find type of field %s", name)
 		}
 		stype, e := universalizeColumnType(db.driverName, typ)
 		if e != nil {
 			return e
 		}
-		fmt.Fprintf(&b, "%s %s, ", c.val, stype)
+		fmt.Fprintf(&b, "%s %s, ", name, stype)
 	}
 	typ, _ := fts.get(trainParsed.label)
 	stype, e := universalizeColumnType(db.driverName, typ)

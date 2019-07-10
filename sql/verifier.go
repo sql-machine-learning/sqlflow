@@ -14,6 +14,7 @@
 package sql
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 )
@@ -21,6 +22,16 @@ import (
 // fieldTypes[field][table]type.  For more information, please check
 // verifier_test.go.
 type fieldTypes map[string]map[string]string
+
+func (ft fieldTypes) String() string {
+	var b bytes.Buffer
+	for field, table := range ft {
+		for t, typ := range table {
+			fmt.Fprintf(&b, "%s, %s, %s\n", field, t, typ)
+		}
+	}
+	return b.String()
+}
 
 // verify checks the following:
 //
@@ -164,13 +175,17 @@ func verifyColumnNameAndType(trainParsed, predParsed *extendedSelect, db *DB) er
 	}
 
 	for _, c := range trainParsed.columns["feature_columns"] {
-		it, ok := predFields.get(c.val)
-		if !ok {
-			return fmt.Errorf("predFields doesn't contain column %s", c.val)
+		name, err := getExpressionFieldName(c)
+		if err != nil {
+			return err
 		}
-		tt, _ := trainFields.get(c.val)
+		it, ok := predFields.get(name)
+		if !ok {
+			return fmt.Errorf("predFields doesn't contain column %s", name)
+		}
+		tt, _ := trainFields.get(name)
 		if it != tt {
-			return fmt.Errorf("field %s type dismatch %v(pred) vs %v(train)", c.val, it, tt)
+			return fmt.Errorf("field %s type dismatch %v(pred) vs %v(train)", name, it, tt)
 		}
 	}
 	return nil

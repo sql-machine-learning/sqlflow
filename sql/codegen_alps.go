@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
+	"path/filepath"
 	"sqlflow.org/gomaxcompute"
 	"strconv"
 	"strings"
@@ -53,12 +55,25 @@ type alpsFiller struct {
 	FeatureMapPartition string
 
 	// ODPS
-	OdpsConf *gomaxcompute.Config
+	OdpsConf   *gomaxcompute.Config
+	EngineCode string
 }
 
 type alpsFeatureColumn interface {
 	featureColumn
 	GenerateAlpsCode(metadata *metadata) ([]string, error)
+}
+
+func engineCreatorCode(resolved *resolvedTrainClause) (string, error) {
+	if resolved.EngineParams.etype == "local" {
+		return "LocalEngine()", nil
+	}
+	engine := resolved.EngineParams
+	return fmt.Sprintf("YarnEngine(ps = ResourceConf(memory=%d, num=%d),worker=ResourceConf(memory=%d, num=%d))",
+		engine.ps.Memory,
+		engine.ps.Num,
+		engine.worker.Memory,
+		engine.worker.Num), nil
 }
 
 func modelCreatorCode(resolved *resolvedTrainClause, args []string) (string, string, error) {
@@ -171,14 +186,24 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB) (*alpsFiller, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	//TODO(uuleon): the scratchDir will be deleted after model uploading
-	scratchDir, err := ioutil.TempDir("/tmp", "alps_scratch_dir_")
+	tableName := pr.tables[0]
+	var engineCode string
+	engineCode, err = engineCreatorCode(resolved)
 	if err != nil {
 		return nil, err
 	}
-	modelDir := fmt.Sprintf("%s/model/", scratchDir)
-	tableName := pr.tables[0]
+	var modelDir string
+	var scratchDir string
+	if resolved.EngineParams.etype == "local" {
+		//TODO(uuleon): the scratchDir will be deleted after model uploading
+		scratchDir, err = ioutil.TempDir("/tmp", "alps_scratch_dir_")
+		if err != nil {
+			return nil, err
+		}
+		modelDir = fmt.Sprintf("%s/model/", scratchDir)
+	} else {
+
+	}
 	return &alpsFiller{
 		IsTraining:          true,
 		TrainInputTable:     tableName,
@@ -194,7 +219,8 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB) (*alpsFiller, error) {
 		FeatureColumnCode:   fcCode,
 		TrainClause:         resolved,
 		FeatureMapTable:     fmap.Table,
-		FeatureMapPartition: fmap.Partition}, nil
+		FeatureMapPartition: fmap.Partition,
+		EngineCode:          engineCode}, nil
 }
 
 func newALPSPredictFiller(pr *extendedSelect) (*alpsFiller, error) {
@@ -222,17 +248,35 @@ func submitALPS(w *PipeWriter, pr *extendedSelect, db *DB, cwd string) error {
 	code := program.String()
 	cw := &logChanWriter{wr: w}
 	cmd := tensorflowCmd(cwd, "maxcompute")
-	cmd.Stdin = &program
+	filename := "experiment.py"
+	absfile := filepath.Join(cwd, filename)
+	f, err := os.Create(absfile)
+	if err != nil {
+		return fmt.Errorf("Create python code failed %v", err)
+	}
+	f.WriteString(program.String())
+	f.Close()
+	initRc := filepath.Join(cwd, "init.rc")
+	initf, err := os.Create(initRc)
+	if err != nil {
+		return fmt.Errorf("Create init file failed %v", err)
+	}
+	// TODO(joyyoj) Release a stable-alps to pypi.antfin-inc.com, then remove it.
+	initf.WriteString(`
+#!/bin/bash
+pip install http://091349.oss-cn-hangzhou-zmf.aliyuncs.com/alps/sqlflow/alps-2.0.3rc3-py2.py3-none-any.whl -i https://pypi.antfin-inc.com/simple
+`)
+	initf.Close()
+
+	cmd.Args = append(cmd.Args, filename)
 	cmd.Stdout = cw
 	cmd.Stderr = cw
 	if e := cmd.Run(); e != nil {
 		return fmt.Errorf("code %v failed %v", code, e)
 	}
-
 	if pr.train {
 		// TODO(uuleon): save model to DB
 	}
-
 	return nil
 }
 
@@ -364,8 +408,8 @@ from alps.conf.closure import Closure
 from alps.framework.train.training import build_run_config
 from alps.framework.exporter import ExportStrategy
 from alps.framework.exporter.arks_exporter import ArksExporter
-from alps.client.base import run_experiment
-from alps.framework.engine import LocalEngine
+from alps.client.base import run_experiment, submit_experiment
+from alps.framework.engine import LocalEngine, YarnEngine, ResourceConf
 from alps.framework.column.column import DenseColumn, SparseColumn, GroupedSparseColumn
 from alps.framework.exporter.compare_fn import best_auc_fn
 from alps.io import DatasetX
@@ -440,8 +484,8 @@ if __name__ == "__main__":
     export_path = "{{.ModelDir}}"
 
     experiment = Experiment(
-        user="sqlflow",
-        engine=LocalEngine(),
+        user="shangchun.sun",  # TODO(joyyoj) pai will check user name be a valid user, removed later.
+        engine={{.EngineCode}},
         train=TrainConf(input=trainDs,
 {{if (ne .TrainClause.MaxSteps -1)}}
                         max_steps={{.TrainClause.MaxSteps}},
@@ -461,8 +505,10 @@ if __name__ == "__main__":
         model_dir="{{.ScratchDir}}",
         model_builder=SQLFlowEstimatorBuilder())
 
-
-    run_experiment(experiment)
+    if isinstance(experiment.engine, LocalEngine):
+        run_experiment(experiment)
+    else:
+        submit_experiment(experiment, exit_on_submit=True)
 `
 
 var alpsTemplate = template.Must(template.New("alps").Parse(alpsTemplateText))

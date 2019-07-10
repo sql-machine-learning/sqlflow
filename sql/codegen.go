@@ -116,9 +116,12 @@ func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
 	}
 
 	for target, columns := range pr.columns {
-		feaCols, _, err := resolveTrainColumns(&columns)
+		feaCols, colSpecs, err := resolveTrainColumns(&columns)
 		if err != nil {
 			return nil, err
+		}
+		if len(colSpecs) != 0 {
+			return nil, fmt.Errorf("newFiller doesn't support DENSE/SPARSE")
 		}
 		r.FeatureColumnsCode = make(map[string][]string)
 		for _, col := range feaCols {
@@ -140,7 +143,9 @@ func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
 				}
 			}
 			if !ok && col.GetDelimiter() != "" {
-				isSparse = true
+				if _, ok := col.(*numericColumn); !ok {
+					isSparse = true
+				}
 			}
 			fm := &featureMeta{
 				FeatureName: col.GetKey(),
@@ -493,7 +498,7 @@ class FastPredict:
 
 column_names = feature_column_names[:]
 column_names.append("{{.Y.FeatureName}}")
-pred_gen = gen = db_generator(driver, conn, """{{.StandardSelect}}""", feature_column_names, "{{.Y.FeatureName}}", feature_metas)()
+pred_gen = db_generator(driver, conn, """{{.StandardSelect}}""", feature_column_names, "{{.Y.FeatureName}}", feature_metas)()
 fast_predictor = FastPredict(classifier, fast_input_fn)
 buff_rows = []
 while True:
@@ -509,13 +514,11 @@ while True:
     row.append(str(list(result)[0]["class_ids"][0]))
     buff_rows.append(row)
     if len(buff_rows) > 100:
-        insert_cursor = insert_values(driver, conn, "{{.TableName}}", column_names, buff_rows)
-        insert_cursor.close()
+        insert_values(driver, conn, "{{.TableName}}", column_names, buff_rows)
         buff_rows.clear()
 
 if len(buff_rows) > 0:
-    insert_cursor = insert_values(driver, conn, "{{.TableName}}", column_names, buff_rows)
-    insert_cursor.close()
+    insert_values(driver, conn, "{{.TableName}}", column_names, buff_rows)
     buff_rows.clear()
 {{end}}
 
