@@ -40,9 +40,11 @@ type resourceSpec struct {
 }
 
 type engineSpec struct {
-	etype  string
-	ps     resourceSpec
-	worker resourceSpec
+	etype   string
+	ps      resourceSpec
+	worker  resourceSpec
+	cluster string
+	queue   string
 }
 
 type resolvedTrainClause struct {
@@ -154,23 +156,32 @@ func getEngineSpec(attrs map[string]*attribute) engineSpec {
 		}
 		return defaultValue
 	}
+	getString := func(key string, defaultValue string) string {
+		if p, ok := attrs[key]; ok {
+			strVal, ok := p.Value.(string)
+			if ok {
+				return strVal
+			}
+		}
+		return defaultValue
+	}
+
 	psNum := getInt("ps_num", 1)
 	psMemory := getInt("ps_memory", 2400)
 	workerMemory := getInt("worker_memory", 1600)
 	workerNum := getInt("worker_num", 2)
-	engineType := "local"
-	if p, ok := attrs["type"]; ok {
-		strVal, ok := p.Value.(string)
-		if ok {
-			engineType = strVal
-		}
-	} else if psNum > 0 || workerNum > 0 {
-		engineType = "k8s"
+	engineType := getString("type", "local")
+	if (psNum > 0 || workerNum > 0) && engineType == "local" {
+		engineType = "yarn"
 	}
+	cluster := getString("cluster", "")
+	queue := getString("queue", "")
 	return engineSpec{
-		etype:  engineType,
-		ps:     resourceSpec{Num: psNum, Memory: psMemory},
-		worker: resourceSpec{Num: workerNum, Memory: workerMemory}}
+		etype:   engineType,
+		ps:      resourceSpec{Num: psNum, Memory: psMemory},
+		worker:  resourceSpec{Num: workerNum, Memory: workerMemory},
+		cluster: cluster,
+		queue:   queue}
 }
 
 func resolveTrainClause(tc *trainClause) (*resolvedTrainClause, error) {

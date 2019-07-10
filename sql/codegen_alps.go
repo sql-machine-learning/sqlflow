@@ -69,7 +69,9 @@ func engineCreatorCode(resolved *resolvedTrainClause) (string, error) {
 		return "LocalEngine()", nil
 	}
 	engine := resolved.EngineParams
-	return fmt.Sprintf("YarnEngine(ps = ResourceConf(memory=%d, num=%d),worker=ResourceConf(memory=%d, num=%d))",
+	return fmt.Sprintf("YarnEngine(cluster = \"%s\", queue = \"%s\", ps = ResourceConf(memory=%d, num=%d), worker=ResourceConf(memory=%d, num=%d))",
+		engine.cluster,
+		engine.queue,
 		engine.ps.Memory,
 		engine.ps.Num,
 		engine.worker.Memory,
@@ -202,7 +204,9 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB) (*alpsFiller, error) {
 		}
 		modelDir = fmt.Sprintf("%s/model/", scratchDir)
 	} else {
-		modelDir = ""
+		scratchDir = ""
+		// TODO(joyyoj) hard code currently.
+		modelDir = fmt.Sprintf("arks://sqlflow/%s.tar.gz", pr.trainClause.save)
 	}
 	return &alpsFiller{
 		IsTraining:          true,
@@ -414,7 +418,7 @@ from alps.framework.column.column import DenseColumn, SparseColumn, GroupedSpars
 from alps.framework.exporter.compare_fn import best_auc_fn
 from alps.io import DatasetX
 from alps.io.base import OdpsConf, FeatureMap
-from alps.framework.experiment import EstimatorBuilder, Experiment, TrainConf, EvalConf
+from alps.framework.experiment import EstimatorBuilder, Experiment, TrainConf, EvalConf, RuntimeConf
 from alps.io.reader.odps_reader import OdpsReader
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'    # for debug usage.
@@ -483,9 +487,9 @@ if __name__ == "__main__":
 
     export_path = "{{.ModelDir}}"
 {{if ne .ScratchDir ""}}
-    runtime_conf = None
+    runtime_conf = RuntimeConf(model_dir="{{.ScratchDir}}")
 {{else}}
-    runtime = RuntimeConf(model_dir="{{.ScratchDir}}")
+    runtime_conf = None
 {{end}}
     experiment = Experiment(
         user="shangchun.sun",  # TODO(joyyoj) pai will check user name be a valid user, removed later.
