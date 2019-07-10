@@ -279,3 +279,16 @@ func TestAttrs(t *testing.T) {
 	a.Equal("name", attr.Name)
 	a.Equal("hello", attr.Value)
 }
+
+func TestExecResource(t *testing.T) {
+	a := assert.New(t)
+	parser := newParser()
+	s := statementWithAttrs("exec.worker_num = 2")
+	r, e := parser.Parse(s)
+	a.NoError(e)
+	attrs, err := resolveTrainAttribute(&r.attrs)
+	a.NoError(err)
+	attr := attrs["exec.worker_num"]
+	fmt.Println(attr)
+
+}

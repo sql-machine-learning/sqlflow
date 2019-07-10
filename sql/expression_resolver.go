@@ -430,27 +430,13 @@ func resolveColumnSpec(el *exprlist, isSparse bool) (*columnSpec, error) {
 
 	// resolve feature map
 	fm := featureMap{}
-	if len(*el) >= 5 {
-		table, err := expression2string((*el)[4])
-		if err != nil {
-			return nil, fmt.Errorf("bad FeatureSpec feature_map table: %s, err: %s", (*el)[4], err)
-		}
-		fm.Table = table
-		if len(*el) >= 6 {
-			partition, err := expression2string((*el)[5])
-			if err != nil {
-				return nil, fmt.Errorf("bad FeatureSpec feature_map partition: %s, err: %s", (*el)[4], err)
-			}
-			fm.Partition = partition
-		}
-	}
-
-	// TODO(uuleon): hard coded dtype(float for dense, int for sparse) should be removed
 	dtype := "float"
 	if isSparse {
 		dtype = "int"
 	}
-
+	if len(*el) >= 5 {
+		dtype, err = expression2string((*el)[4])
+	}
 	return &columnSpec{
 		ColumnName:     name,
 		AutoDerivation: false,
