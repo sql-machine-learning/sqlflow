@@ -40,9 +40,9 @@ Say you have your data in table `iris.train`. The first four columns is the feat
   </tr>
 </table>
 
-You wanna train a DNNClassifier which has two hiddens layers each has 10 hidden units. At the end of the training, you wanna save the trained DNNClassifier into a table named `sqlflow_models.my_dnn_model` for later prediction use.
+You wanna train a DNNClassifier which has 2 hiddens layers and each layer has 10 hidden units. At the end of the training, you wanna save the trained DNNClassifier into a table named `sqlflow_models.my_dnn_model` for later prediction use.
 
-Instead of writting a Python program with a lot boilerplate code, you can simply write the following statement in SQLFlow.
+Instead of writting a Python program with a lot of boilerplate code, you can simply write the following statement in SQLFlow.
 
 ```SQL
 SELECT * FROM iris.train
@@ -53,7 +53,7 @@ LABEL class
 INTO sqlflow_models.my_dnn_model;
 ```
 
-SQLFlow will parse the statement and transpile to a Python program doing exactly the same job for you.
+SQLFlow will parse the statement and transpile it to a equivalent Python program for you.
 
 ![](figures/user_overview.png)
 
