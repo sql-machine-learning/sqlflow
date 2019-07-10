@@ -59,9 +59,11 @@ SQLFlow will parse the statement and transpile it to a equivalent Python program
 
 ## Syntax
 
+A SQLFlow training statement consists a sequence of select, train, column, label and save clauses.
+
 ### Select clause
 
-`SELECT * FROM iris.train` in the overview example is considered as the *select clause*. It describes the data retrieved from a particular table.
+The *select clause* describes the data retrieved from a particular tabl, e.g. `SELECT * FROM iris.train`.
 
 ```SQL
 SELECT select_expr [, select_expr ...]
@@ -72,7 +74,7 @@ FROM table_references
 
 Equivalent to [ANSI SQL Standards](https://www.whoishostingthis.com/resources/ansi-sql-standards/),
 - Each *select_expr* indicates a column that you want to retrieve. There must be at least one *select_expr*.
-- *table_references* indicates the table or tables from which to retrieve rows.
+- *table_references* indicates the table from which to retrieve rows.
 - *where_condition* is an expression that evaluates to true for each row to be selected.
 - *row_count* indicates the maximum number of rows to be retrieved.
 
@@ -88,7 +90,7 @@ TRAIN ...
 
 ### Train clause
 
-`TRAIN DNNClassifer WITH hidden_units = [10, 10], n_classes = 3, EPOCHS = 10` in the overview example is considered as the *train clause*. It describes the specific model type and the way the model is trained.
+The *train clause* describes the specific model type and the way the model is trained, e.g. `TRAIN DNNClassifer WITH hidden_units = [10, 10], n_classes = 3, EPOCHS = 10`.
 
 ```SQL
 TRAIN model_identifier
@@ -97,9 +99,9 @@ WITH
   [, train_attr_expr ...]
 ```
 
-- *model_identifier* indicates the model type. e.g. `DNNClassifier`. Please refer to [Models](#Models) for a complete list of supported models.
-- *model_attr_expr* indicates the model attribute. e.g. `n_classes = 3`. Please refer to [Models](#Models) for details.
-- *train_attr_expr* indicates the training attribute. e.g. `EPOCHS = 10`. Please refer to [Hyperparameters](#Hyperparameters) for details.
+- *model_identifier* indicates the model type. e.g. `DNNClassifier`. Please refer to [Models](#models) for a complete list of supported models.
+- *model_attr_expr* indicates the model attribute. e.g. `n_classes = 3`. Please refer to [Models](#models) for details.
+- *train_attr_expr* indicates the training attribute. e.g. `EPOCHS = 10`. Please refer to [Hyperparameters](#hyperparameters) for details.
 
 For example, if you wanna train a DNNClassifier, which has 2 hiddens layers and each layer has 10 hidden units, with 10 epochs, you can write
 
@@ -115,9 +117,49 @@ WITH
 
 ### Column clause
 
+The *column clause* indicates the field name to be used as training features, along with their preprocessing if needed, e.g. `COLUMN sepal_length, sepal_width, petal_length, petal_width`.
+
+```SQL
+COLUMN column_expr [, column_expr ...]
+  | COLUMN column_expr [, column_expr ...] FOR column_name
+    [COLUMN column_expr [, column_expr ...] FOR column_name ...]
+```
+
+- *column_expr* indicates the field name and the preprocessing method on the field content. e.g. `sepal_length`, `NUMERIC(dense, 3)`. Please refer to [Feature columns](#feature-columns) for preprocessing details.
+- *column_name* indicates the feature column names for the model inputs. Some models such as [DNNLinearCombinedClassifier](https://www.tensorflow.org/api_docs/python/tf/estimator/DNNLinearCombinedClassifier) have`linear_feature_columns` and `dnn_feature_columns` as feature column input.
+
+For example, if you wanna use field `sepal_length`, `sepal_width`, `petal_length`, and `petal_width` as the features, without any preprocessing on the field content, you can write
+
+```SQL
+SELECT ...
+TRAIN ...
+COLUMN sepal_length, sepal_width, petal_length, petal_width
+...
+```
+
 ### Label clause
 
+The *label clause* indicates the field name to be used as training label, along with their preprocessing if needed, e.g. `LABEL class`.
+
+```SQL
+LABEL label_expr
+```
+
+- *label_expr* indicates the field name and the preprocessing method on the field content. e.g. `class`.
+
+Note: some field name may look like SQLFlow keywords. For example, the table may contain a field named label. You can use double quotes around the name `LABEL "label"` to work around the parsing error.
+
 ### Save clause
+
+The *save clause* indicates the table name to save the trained model
+
+```SQL
+INTO table_references
+```
+
+- *table_references* indicates the table to save the trained model. e.g. `sqlflow_model.my_dnn_model`.
+
+Note: SQLFlow team is actively working on supporting saving model to third party storage services such as AWS S3, Google Storage and Alibaba OSS.
 
 ## Feature columns
 
@@ -197,8 +239,6 @@ Error:
 
 ### EMBEDDING
 
-### ONE_HOT
-
 ## Models
 
 A detailed explanation of the train clause.
@@ -213,6 +253,4 @@ A detailed explanation of the train clause. `BATCHSIZE`, `EPOCHS` etc..
 
 ## How can I store the model?
 
-1. Save to the table
-1. Save to the file system
 
