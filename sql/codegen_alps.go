@@ -202,7 +202,7 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB) (*alpsFiller, error) {
 		}
 		modelDir = fmt.Sprintf("%s/model/", scratchDir)
 	} else {
-
+		modelDir = ""
 	}
 	return &alpsFiller{
 		IsTraining:          true,
@@ -482,7 +482,11 @@ if __name__ == "__main__":
     )
 
     export_path = "{{.ModelDir}}"
-
+{{if ne .ScratchDir ""}}
+    runtime_conf = None
+{{else}}
+    runtime = RuntimeConf(model_dir="{{.ScratchDir}}")
+{{end}}
     experiment = Experiment(
         user="shangchun.sun",  # TODO(joyyoj) pai will check user name be a valid user, removed later.
         engine={{.EngineCode}},
@@ -502,7 +506,7 @@ if __name__ == "__main__":
         ),
         # FIXME(typhoonzero): Use ExportStrategy.BEST when possible.
         exporter=ArksExporter(deploy_path=export_path, strategy=ExportStrategy.LATEST, compare_fn=Closure(best_auc_fn)),
-        model_dir="{{.ScratchDir}}",
+        runtime = runtime_conf,
         model_builder=SQLFlowEstimatorBuilder())
 
     if isinstance(experiment.engine, LocalEngine):
