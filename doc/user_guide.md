@@ -40,7 +40,7 @@ Say you have your data in table `iris.train`. The first four columns is the feat
   </tr>
 </table>
 
-You wanna train a DNNClassifier which has 2 hiddens layers and each layer has 10 hidden units. At the end of the training, you wanna save the trained DNNClassifier into a table named `sqlflow_models.my_dnn_model` for later prediction use.
+You wanna train a DNNClassifier, which has 2 hiddens layers and each layer has 10 hidden units, and save the trained model into table `sqlflow_models.my_dnn_model` for later prediction use.
 
 Instead of writting a Python program with a lot of boilerplate code, you can simply write the following statement in SQLFlow.
 
@@ -57,11 +57,11 @@ SQLFlow will parse the statement and transpile it to a equivalent Python program
 
 ![](figures/user_overview.png)
 
-## What kind of standard select statement can I use?
+## Syntax
 
-We consider `SELECT * FROM iris.train` in the overview example as the *standard select*.
+### Select clause
 
-Currently SQLFlow supports *standard select* syntax as
+`SELECT * FROM iris.train` in the overview example is considered as the *select clause*. It describes the data retrieved from a particular table.
 
 ```SQL
 SELECT select_expr [, select_expr ...]
@@ -70,9 +70,56 @@ FROM table_references
   [LIMIT row_count]
 ```
 
-And the team is working on supporting arbitary select statements.
+Equivalent to [ANSI SQL Standards](https://www.whoishostingthis.com/resources/ansi-sql-standards/),
+- Each *select_expr* indicates a column that you want to retrieve. There must be at least one *select_expr*.
+- *table_references* indicates the table or tables from which to retrieve rows.
+- *where_condition* is an expression that evaluates to true for each row to be selected.
+- *row_count* indicates the maximum number of rows to be retrieved.
 
-## What type of preprocessing can I apply to selected data?
+For example, if you wanna fast prototype a binary classifier on a small set of sample data, you can write
+
+```SQL
+SELECT *
+FROM iris.train
+WHERE class = 0 OR class = 1
+LIMIT 1000
+TRAIN ...
+```
+
+### Train clause
+
+`TRAIN DNNClassifer WITH hidden_units = [10, 10], n_classes = 3, EPOCHS = 10` in the overview example is considered as the *train clause*. It describes the specific model type and the way the model is trained.
+
+```SQL
+TRAIN model_identifier
+WITH
+  model_attr_expr [, model_attr_expr ...]
+  [, train_attr_expr ...]
+```
+
+- *model_identifier* indicates the model type. e.g. `DNNClassifier`. Please refer to [Models](#Models) for a complete list of supported models.
+- *model_attr_expr* indicates the model attribute. e.g. `n_classes = 3`. Please refer to [Models](#Models) for details.
+- *train_attr_expr* indicates the training attribute. e.g. `EPOCHS = 10`. Please refer to [Hyperparameters](#Hyperparameters) for details.
+
+For example, if you wanna train a DNNClassifier, which has 2 hiddens layers and each layer has 10 hidden units, with 10 epochs, you can write
+
+```SQL
+SELECT ...
+TRAIN DNNClassifer
+WITH
+  hidden_units = [10, 10],
+  n_classes = 3,
+  EPOCHS = 10
+...
+```
+
+### Column clause
+
+### Label clause
+
+### Save clause
+
+## Feature columns
 
 SQLFlow supports various feature columns to preprocess raw data. Here is a growing list.
 
@@ -152,7 +199,7 @@ Error:
 
 ### ONE_HOT
 
-## What kind of model can I use?
+## Models
 
 A detailed explanation of the train clause.
 
@@ -160,7 +207,7 @@ A detailed explanation of the train clause.
 
 Wide and deep example.
 
-## How do I adjust the hyperparameter?
+## Hyperparameters
 
 A detailed explanation of the train clause. `BATCHSIZE`, `EPOCHS` etc..
 
