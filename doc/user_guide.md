@@ -180,19 +180,19 @@ SQLFlow supports various feature columns to preprocess raw data. Here is a growi
   </tr>
   <tr>
     <td>NUMERIC</td>
-    <td>NUMERIC(field, dimension[, delimiter])</td>
+    <td>NUMERIC(field, n[, delimiter])</td>
     <td>string/varchar[n]</td>
     <td>"0.2,1.7,0.6"</td>
   </tr>
   <tr>
     <td>CATEGORY_ID</td>
-    <td>CATEGORY_ID(field, dimension[, delimiter])</td>
+    <td>CATEGORY_ID(field, n[, delimiter])</td>
     <td>string/varchar[n]</td>
     <td>"66,67,42,68,48,69,70"</td>
   </tr>
   <tr>
     <td>SEQ_CATEGORY_ID</td>
-    <td>SEQ_CATEGORY_ID(field, dimension[, delimiter])</td>
+    <td>SEQ_CATEGORY_ID(field, n[, delimiter])</td>
     <td>string/varchar[n]</td>
     <td>"20,48,80,81,82,0,0,0,0"</td>
   </tr>
@@ -204,10 +204,6 @@ SQLFlow supports various feature columns to preprocess raw data. Here is a growi
   </tr>
 </table>
 
-### Plain
-
-
-
 ### NUMERIC
 
 ```SQL
@@ -215,13 +211,13 @@ NUMERIC(field, n[, delimiter=comma])
 /*
 NUMERIC converts a delimiter separated string to a n dimensional Tensor
     field:
-        field name of standard select result.
+        A string specifying the field name of standard select result.
         e.g. dense, column1.
-    dimension:
-        tensor dimension.
+    n:
+        An integer specifying the tensor dimension.
         e.g. 12, [3,4].
     delimiter:
-        delimiter.
+        A string specifying the delimiter.
         default: comma.
 
 Example:
@@ -230,14 +226,82 @@ Example:
 Error:
     Invalid field type. field type has to be string/varchar[n]
     Invalid dimension. e.g. convert "0.2,1.7,0.6" to dimension 2.
-    */
+*/
 ```
 
 ### CATEGORY_ID
 
+Implements [tf.feature_column.categorical_column_with_identity](https://www.tensorflow.org/api_docs/python/tf/feature_column/categorical_column_with_identity).
+
+```SQL
+CATEGORY_ID(field, n[, delimiter=comma])
+/*
+CATEGORY_ID splits the input field by delimiter and returns identiy values
+    field:
+        A string specifying the field name of standard select result.
+        e.g. title, id, column1.
+    n:
+        An integer specifying the number of buckets
+        e.g. 12, 10000.
+    delimiter:
+        A string specifying the delimiter.
+        default: comma.
+
+Example:
+    CATEGORY_ID(title, 100). "1,2,3,4" => Tensor(1, 2, 3, 4)
+
+Error:
+    Invalid field type. field type has to be string/varchar[n]
+*/
+```
+
 ### SEQ_CATEGORY_ID
 
+Implements [tf.feature_column.sequence_categorical_column_with_identity](https://www.tensorflow.org/api_docs/python/tf/feature_column/sequence_categorical_column_with_identity).
+
+```SQL
+SEQ_CATEGORY_ID(field, n[, delimiter=comma])
+/*
+SEQ_CATEGORY_ID splits the input field by delimiter and returns identiy values
+    field:
+        A string specifying the field name of standard select result.
+        e.g. title, id, column1.
+    n:
+        An integer specifying the number of buckets
+        e.g. 12, 10000.
+    delimiter:
+        A string specifying the delimiter.
+        default: comma.
+
+Example:
+    SEQ_CATEGORY_ID(title, 100). "1,2,3,4" => Tensor(1, 2, 3, 4)
+
+Error:
+    Invalid field type. field type has to be string/varchar[n]
+*/
+```
+
 ### EMBEDDING
+
+Implements [tf.feature_column.embedding_column](https://www.tensorflow.org/api_docs/python/tf/feature_column/embedding_column).
+
+```SQL
+EMBEDDING(category_column, n[, combiner])
+/*
+EMBEDDING converts a delimiter separated string to a n dimensional Tensor
+    category_column:
+        A category column created by CATEGORY_ID*
+        e.g. CATEGORY_ID(title, 100).
+    n:
+        An integer specifying dimension of the embedding, must be > 0.
+        e.g. 12, 100.
+    combiner:
+        A string specifying how to reduce if there are multiple entries in a single row.
+
+Example:
+    EMBEDDING(CATEGORY_ID(news_title,16000,COMMA), 3, mean). "1,2,3" => Tensor(0.2, 1.7, 0.6)
+*/
+```
 
 ## Models
 
@@ -250,7 +314,3 @@ Wide and deep example.
 ## Hyperparameters
 
 A detailed explanation of the train clause. `BATCHSIZE`, `EPOCHS` etc..
-
-## How can I store the model?
-
-
