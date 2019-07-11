@@ -1,10 +1,10 @@
 # SQLFlow User Guide
 
-SQLFlow is a bridge that connects a SQL engine (e.g. MySQL, Hive, or Maxcompute) and TensorFlow and other machine learning toolkits.  SQLFlow extends the SQL syntax to enable model training and inference.
+SQLFlow is a bridge that connects a SQL engine (e.g. MySQL, Hive, or MaxCompute) and TensorFlow and other machine learning toolkits.  SQLFlow extends the SQL syntax to enable model training and inference.
 
 ## Overview
 
-Say you have your data in table `iris.train`. The first four columns is the features and the last column is the label.
+Say you have your data in table `iris.train`. The first four columns are the features and the last column is the label.
 
 <table>
   <tr>
@@ -40,9 +40,9 @@ Say you have your data in table `iris.train`. The first four columns is the feat
   </tr>
 </table>
 
-You wanna train a DNNClassifier, which has 2 hiddens layers and each layer has 10 hidden units, and save the trained model into table `sqlflow_models.my_dnn_model` for later prediction use.
+You wanna train a DNNClassifier, which has 2 hidden layers and each layer has 10 hidden units, and save the trained model into table `sqlflow_models.my_dnn_model` for later prediction use.
 
-Instead of writting a Python program with a lot of boilerplate code, you can simply write the following statement in SQLFlow.
+Instead of writing a Python program with a lot of boilerplate code, you can simply write the following statement in SQLFlow.
 
 ```SQL
 SELECT * FROM iris.train
@@ -53,17 +53,17 @@ LABEL class
 INTO sqlflow_models.my_dnn_model;
 ```
 
-SQLFlow will parse the statement and transpile it to a equivalent Python program for you.
+SQLFlow will parse the statement and transpile it to an equivalent Python program for you.
 
 ![](figures/user_overview.png)
 
 ## Syntax
 
-A SQLFlow training statement consists a sequence of select, train, column, label and save clauses.
+A SQLFlow training statement consists of a sequence of select, train, column, label and save clauses.
 
 ### Select clause
 
-The *select clause* describes the data retrieved from a particular tabl, e.g. `SELECT * FROM iris.train`.
+The *select clause* describes the data retrieved from a particular table, e.g. `SELECT * FROM iris.train`.
 
 ```SQL
 SELECT select_expr [, select_expr ...]
@@ -103,7 +103,7 @@ WITH
 - *model_attr_expr* indicates the model attribute. e.g. `n_classes = 3`. Please refer to [Models](#models) for details.
 - *train_attr_expr* indicates the training attribute. e.g. `EPOCHS = 10`. Please refer to [Hyperparameters](#hyperparameters) for details.
 
-For example, if you wanna train a DNNClassifier, which has 2 hiddens layers and each layer has 10 hidden units, with 10 epochs, you can write
+For example, if you wanna train a DNNClassifier, which has 2 hidden layers and each layer has 10 hidden units, with 10 epochs, you can write
 
 ```SQL
 SELECT ...
@@ -139,7 +139,7 @@ COLUMN sepal_length, sepal_width, petal_length, petal_width
 
 ### Label clause
 
-The *label clause* indicates the field name to be used as training label, along with their preprocessing if needed, e.g. `LABEL class`.
+The *label clause* indicates the field name to be used as the training label, along with their preprocessing if needed, e.g. `LABEL class`.
 
 ```SQL
 LABEL label_expr
@@ -159,7 +159,7 @@ INTO table_references
 
 - *table_references* indicates the table to save the trained model. e.g. `sqlflow_model.my_dnn_model`.
 
-Note: SQLFlow team is actively working on supporting saving model to third party storage services such as AWS S3, Google Storage and Alibaba OSS.
+Note: SQLFlow team is actively working on supporting saving model to third-party storage services such as AWS S3, Google Storage and Alibaba OSS.
 
 ## Feature columns
 
@@ -211,7 +211,7 @@ NUMERIC(field, n[, delimiter=comma])
 /*
 NUMERIC converts a delimiter separated string to a n dimensional Tensor
     field:
-        A string specifying the field name of standard select result.
+        A string specifying the field name of the standard select result.
         e.g. dense, column1.
     n:
         An integer specifying the tensor dimension.
@@ -238,7 +238,7 @@ CATEGORY_ID(field, n[, delimiter=comma])
 /*
 CATEGORY_ID splits the input field by delimiter and returns identiy values
     field:
-        A string specifying the field name of standard select result.
+        A string specifying the field name of the standard select result.
         e.g. title, id, column1.
     n:
         An integer specifying the number of buckets
@@ -264,7 +264,7 @@ SEQ_CATEGORY_ID(field, n[, delimiter=comma])
 /*
 SEQ_CATEGORY_ID splits the input field by delimiter and returns identiy values
     field:
-        A string specifying the field name of standard select result.
+        A string specifying the field name of the standard select result.
         e.g. title, id, column1.
     n:
         An integer specifying the number of buckets
@@ -288,12 +288,12 @@ Implements [tf.feature_column.embedding_column](https://www.tensorflow.org/api_d
 ```SQL
 EMBEDDING(category_column, n[, combiner])
 /*
-EMBEDDING converts a delimiter separated string to a n dimensional Tensor
+EMBEDDING converts a delimiter separated string to an n-dimensional Tensor
     category_column:
         A category column created by CATEGORY_ID*
         e.g. CATEGORY_ID(title, 100).
     n:
-        An integer specifying dimension of the embedding, must be > 0.
+        An integer specifying the dimension of the embedding, must be > 0.
         e.g. 12, 100.
     combiner:
         A string specifying how to reduce if there are multiple entries in a single row.
