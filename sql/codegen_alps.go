@@ -69,7 +69,18 @@ func engineCreatorCode(resolved *resolvedTrainClause) (string, error) {
 		return "LocalEngine()", nil
 	}
 	engine := resolved.EngineParams
-	return fmt.Sprintf("YarnEngine(cluster = \"%s\", queue = \"%s\", ps = ResourceConf(memory=%d, num=%d), worker=ResourceConf(memory=%d, num=%d))",
+
+	var engineName string
+	if engine.etype == "k8s" {
+		engineName = "KubemakerEngine"
+	} else if engine.etype == "yarn" {
+		engineName = "YarnEngine"
+	} else {
+		return "", fmt.Errorf("Unknown etype %s", engine.etype)
+	}
+
+	return fmt.Sprintf("%s(cluster = \"%s\", queue = \"%s\", ps = ResourceConf(memory=%d, num=%d), worker=ResourceConf(memory=%d, num=%d))",
+		engineName,
 		engine.cluster,
 		engine.queue,
 		engine.ps.Memory,

@@ -160,6 +160,9 @@ func getEngineSpec(attrs map[string]*attribute) engineSpec {
 		if p, ok := attrs[key]; ok {
 			strVal, ok := p.Value.(string)
 			if ok {
+				if strings.HasPrefix(strVal, "\"") && strings.HasSuffix(strVal, "\"") {
+					return strVal[1 : len(strVal)-1]
+				}
 				return strVal
 			}
 		}
