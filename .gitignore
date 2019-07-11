@@ -1,5 +1,6 @@
 *~
 *.test
+test
 /Gopkg.lock
 /Gopkg.toml
 /vendor/
