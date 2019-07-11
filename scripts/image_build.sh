@@ -91,11 +91,15 @@ rm -rf /go/bin/*
 cd /
 
 # 6. Install latest sqlflow_models for testing custom models, see main_test.go:CaseTrainCustomModel
-git clone https://github.com/sql-machine-learning/models.git
-cd models
-bash -c "source activate sqlflow-dev && python setup.py install"
-cd ..
-rm -rf models
+# NOTE: The sqlflow_models works well on the specific Tensorflow version,
+#       we can skip installing sqlflow_models if using the older Tensorflow.
+if [ "${WITH_SQLFLOW_MODELS:-ON}" = "ON" ]; then
+  git clone https://github.com/sql-machine-learning/models.git
+  cd models
+  bash -c "source activate sqlflow-dev && python setup.py install"
+  cd ..
+  rm -rf models
+fi
 
 # 7. Load sqlflow Jupyter magic command automatically. c.f. https://stackoverflow.com/a/32683001.
 mkdir -p $IPYTHON_STARTUP

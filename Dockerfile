@@ -11,6 +11,7 @@ ENV JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
 ARG CONDA_ADD_PACKAGES=""
 ARG PIP_ADD_PACKAGES=""
 ARG TENSORFLOW_VERSION="2.0.0b1"
+ARG WITH_SQLFLOW_MODELS="ON"
 
 ENV GOPATH /go
 ENV PATH /miniconda/envs/sqlflow-dev/bin:/miniconda/bin:/usr/local/go/bin:/go/bin:$PATH
