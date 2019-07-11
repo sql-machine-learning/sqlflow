@@ -305,12 +305,37 @@ Example:
 
 ## Models
 
-A detailed explanation of the train clause.
+SQLFlow supports various TensorFlow premade estimators.
 
-### What if some models have multiple inputs?
+### DNNClassifer
 
-Wide and deep example.
+```SQL
+TRAIN DNNClassifier
+WITH
+    hidden_units=[10,10],
+    n_classes=2,
+    optimizer='Adagrad',
+    batch_norm=False
+```
+
+### DNNLinearCombinedClassifier
+
+```SQL
+TRAIN DNNLinearCombinedClassifier
+WITH
+    linear_optimizer='Ftrl',
+    dnn_optimizer='Adagrad',
+    dnn_hidden_units=None,
+    n_classes=2,
+    batch_norm=False,
+    linear_sparse_combiner='sum'
+COLUMN ... FOR linear_feature_columns
+COLUMN ... FOR dnn_feature_columns
+```
 
 ## Hyperparameters
 
-A detailed explanation of the train clause. `BATCHSIZE`, `EPOCHS` etc..
+SQLFlow supports various configurable training hyperparameters.
+
+1. `BATCHSIZE`. Default 1.
+1. `EPOCHS` . Default 1.
