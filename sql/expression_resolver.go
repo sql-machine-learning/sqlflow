@@ -40,9 +40,11 @@ type resourceSpec struct {
 }
 
 type engineSpec struct {
-	etype  string
-	ps     resourceSpec
-	worker resourceSpec
+	etype   string
+	ps      resourceSpec
+	worker  resourceSpec
+	cluster string
+	queue   string
 }
 
 type resolvedTrainClause struct {
@@ -154,23 +156,32 @@ func getEngineSpec(attrs map[string]*attribute) engineSpec {
 		}
 		return defaultValue
 	}
+	getString := func(key string, defaultValue string) string {
+		if p, ok := attrs[key]; ok {
+			strVal, ok := p.Value.(string)
+			if ok {
+				return strVal
+			}
+		}
+		return defaultValue
+	}
+
 	psNum := getInt("ps_num", 1)
 	psMemory := getInt("ps_memory", 2400)
 	workerMemory := getInt("worker_memory", 1600)
 	workerNum := getInt("worker_num", 2)
-	engineType := "local"
-	if p, ok := attrs["type"]; ok {
-		strVal, ok := p.Value.(string)
-		if ok {
-			engineType = strVal
-		}
-	} else if psNum > 0 || workerNum > 0 {
-		engineType = "k8s"
+	engineType := getString("type", "local")
+	if (psNum > 0 || workerNum > 0) && engineType == "local" {
+		engineType = "yarn"
 	}
+	cluster := getString("cluster", "")
+	queue := getString("queue", "")
 	return engineSpec{
-		etype:  engineType,
-		ps:     resourceSpec{Num: psNum, Memory: psMemory},
-		worker: resourceSpec{Num: workerNum, Memory: workerMemory}}
+		etype:   engineType,
+		ps:      resourceSpec{Num: psNum, Memory: psMemory},
+		worker:  resourceSpec{Num: workerNum, Memory: workerMemory},
+		cluster: cluster,
+		queue:   queue}
 }
 
 func resolveTrainClause(tc *trainClause) (*resolvedTrainClause, error) {
@@ -430,27 +441,13 @@ func resolveColumnSpec(el *exprlist, isSparse bool) (*columnSpec, error) {
 
 	// resolve feature map
 	fm := featureMap{}
-	if len(*el) >= 5 {
-		table, err := expression2string((*el)[4])
-		if err != nil {
-			return nil, fmt.Errorf("bad FeatureSpec feature_map table: %s, err: %s", (*el)[4], err)
-		}
-		fm.Table = table
-		if len(*el) >= 6 {
-			partition, err := expression2string((*el)[5])
-			if err != nil {
-				return nil, fmt.Errorf("bad FeatureSpec feature_map partition: %s, err: %s", (*el)[4], err)
-			}
-			fm.Partition = partition
-		}
-	}
-
-	// TODO(uuleon): hard coded dtype(float for dense, int for sparse) should be removed
 	dtype := "float"
 	if isSparse {
 		dtype = "int"
 	}
-
+	if len(*el) >= 5 {
+		dtype, err = expression2string((*el)[4])
+	}
 	return &columnSpec{
 		ColumnName:     name,
 		AutoDerivation: false,

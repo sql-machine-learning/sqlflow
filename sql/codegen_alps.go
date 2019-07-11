@@ -69,7 +69,9 @@ func engineCreatorCode(resolved *resolvedTrainClause) (string, error) {
 		return "LocalEngine()", nil
 	}
 	engine := resolved.EngineParams
-	return fmt.Sprintf("YarnEngine(ps = ResourceConf(memory=%d, num=%d),worker=ResourceConf(memory=%d, num=%d))",
+	return fmt.Sprintf("YarnEngine(cluster = \"%s\", queue = \"%s\", ps = ResourceConf(memory=%d, num=%d), worker=ResourceConf(memory=%d, num=%d))",
+		engine.cluster,
+		engine.queue,
 		engine.ps.Memory,
 		engine.ps.Num,
 		engine.worker.Memory,
@@ -202,7 +204,9 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB) (*alpsFiller, error) {
 		}
 		modelDir = fmt.Sprintf("%s/model/", scratchDir)
 	} else {
-
+		scratchDir = ""
+		// TODO(joyyoj) hard code currently.
+		modelDir = fmt.Sprintf("arks://sqlflow/%s.tar.gz", pr.trainClause.save)
 	}
 	return &alpsFiller{
 		IsTraining:          true,
@@ -414,7 +418,7 @@ from alps.framework.column.column import DenseColumn, SparseColumn, GroupedSpars
 from alps.framework.exporter.compare_fn import best_auc_fn
 from alps.io import DatasetX
 from alps.io.base import OdpsConf, FeatureMap
-from alps.framework.experiment import EstimatorBuilder, Experiment, TrainConf, EvalConf
+from alps.framework.experiment import EstimatorBuilder, Experiment, TrainConf, EvalConf, RuntimeConf
 from alps.io.reader.odps_reader import OdpsReader
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'    # for debug usage.
@@ -482,7 +486,11 @@ if __name__ == "__main__":
     )
 
     export_path = "{{.ModelDir}}"
-
+{{if ne .ScratchDir ""}}
+    runtime_conf = RuntimeConf(model_dir="{{.ScratchDir}}")
+{{else}}
+    runtime_conf = None
+{{end}}
     experiment = Experiment(
         user="shangchun.sun",  # TODO(joyyoj) pai will check user name be a valid user, removed later.
         engine={{.EngineCode}},
@@ -502,7 +510,7 @@ if __name__ == "__main__":
         ),
         # FIXME(typhoonzero): Use ExportStrategy.BEST when possible.
         exporter=ArksExporter(deploy_path=export_path, strategy=ExportStrategy.LATEST, compare_fn=Closure(best_auc_fn)),
-        model_dir="{{.ScratchDir}}",
+        runtime = runtime_conf,
         model_builder=SQLFlowEstimatorBuilder())
 
     if isinstance(experiment.engine, LocalEngine):
@@ -520,8 +528,20 @@ type metadata struct {
 	columnInfo *map[string]*columnSpec
 }
 
+func flattenColumnSpec(columns map[string][]*columnSpec) map[string]*columnSpec {
+	output := map[string]*columnSpec{}
+	for _, cols := range columns {
+		for _, col := range cols {
+			output[col.ColumnName] = col
+		}
+	}
+	return output
+}
+
 func (meta *metadata) getColumnInfo(resolved *resolvedTrainClause, fields []string) (map[string]*columnSpec, error) {
 	columns := map[string]*columnSpec{}
+	refColumns := flattenColumnSpec(resolved.ColumnSpecs)
+
 	sparseColumns, _ := meta.getSparseColumnInfo()
 	// TODO(joyyoj): check error if odps can support `show tables`.
 	if len(sparseColumns) == 0 { // no feature mapping table.
@@ -545,7 +565,7 @@ func (meta *metadata) getColumnInfo(resolved *resolvedTrainClause, fields []stri
 		}
 	}
 	if len(denseKeys) > 0 {
-		denseColumns, err := meta.getDenseColumnInfo(denseKeys)
+		denseColumns, err := meta.getDenseColumnInfo(denseKeys, refColumns)
 		if err != nil {
 			log.Fatalf("Failed to get dense column %v", err)
 			return columns, err
@@ -604,7 +624,7 @@ func getFields(meta *metadata, pr *extendedSelect) ([]string, error) {
 	return fields, nil
 }
 
-func (meta *metadata) getDenseColumnInfo(keys []string) (map[string]*columnSpec, error) {
+func (meta *metadata) getDenseColumnInfo(keys []string, refColumns map[string]*columnSpec) (map[string]*columnSpec, error) {
 	output := map[string]*columnSpec{}
 	fields := strings.Join(keys, ",")
 	query := fmt.Sprintf("SELECT %s FROM %s LIMIT 1", fields, meta.table)
@@ -629,12 +649,16 @@ func (meta *metadata) getDenseColumnInfo(keys []string) (map[string]*columnSpec,
 		if err := rows.Scan(values...); err != nil {
 			return output, err
 		}
-		for _, ct := range columnTypes {
-			denseValue := values[0].(*string)
+		for idx, ct := range columnTypes {
+			denseValue := values[idx].(*string)
 			fields := strings.Split(*denseValue, ",")
 			shape := make([]int, 1)
 			shape[0] = len(fields)
-			output[ct.Name()] = &columnSpec{ct.Name(), false, false, shape, "float", ",", *meta.featureMap}
+			if userSpec, ok := refColumns[ct.Name()]; ok {
+				output[ct.Name()] = &columnSpec{ct.Name(), false, false, shape, userSpec.DType, userSpec.Delimiter, *meta.featureMap}
+			} else {
+				output[ct.Name()] = &columnSpec{ct.Name(), false, false, shape, "float", ",", *meta.featureMap}
+			}
 		}
 	}
 	return output, nil
@@ -674,6 +698,8 @@ func (meta *metadata) getSparseColumnInfo() (map[string]*columnSpec, error) {
 		}
 		name := values[0].(*string)
 		ishape, _ := strconv.Atoi(*values[1].(*string))
+		ishape++
+
 		group := values[2].(*string)
 		column, present := output[*name]
 		if !present {
