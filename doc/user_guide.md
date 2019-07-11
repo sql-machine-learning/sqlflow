@@ -4,7 +4,7 @@ SQLFlow is a bridge that connects a SQL engine (e.g. MySQL, Hive, or MaxCompute)
 
 ## Overview
 
-Say you have your data in table `iris.train`. The first four columns are the features and the last column is the label.
+Say you have your [iris flower data set](https://en.wikipedia.org/wiki/Iris_flower_data_set) stored in table `iris.train`. The first four columns(petal_length, petal_width, sepal_length, sepal_width) are the features. And the last column(class) is the label.
 
 <table>
   <tr>
@@ -59,7 +59,7 @@ SQLFlow will parse the statement and transpile it to an equivalent Python progra
 
 ## Syntax
 
-A SQLFlow training statement consists of a sequence of select, train, column, label and save clauses.
+A SQLFlow training statement consists of a sequence of select, train, column, label and into clauses.
 
 ### Select clause
 
@@ -149,9 +149,9 @@ LABEL label_expr
 
 Note: some field name may look like SQLFlow keywords. For example, the table may contain a field named label. You can use double quotes around the name `LABEL "label"` to work around the parsing error.
 
-### Save clause
+### Into clause
 
-The *save clause* indicates the table name to save the trained model
+The *into clause* indicates the table name to save the trained model
 
 ```SQL
 INTO table_references
@@ -163,7 +163,7 @@ Note: SQLFlow team is actively working on supporting saving model to third-party
 
 ## Feature columns
 
-SQLFlow supports various feature columns to preprocess raw data. Here is a growing list.
+SQLFlow supports various feature columns to preprocess raw data. Here is a growing list of supported feature columns.
 
 <table>
   <tr>
