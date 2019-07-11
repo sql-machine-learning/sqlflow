@@ -84,7 +84,10 @@ SQLFlow saves the temporary table into the current project which must be specifi
 Meanwhile, we specify the [LIFECYCLE](https://www.alibabacloud.com/help/en/doc-detail/55297.htm) to 14 days to release the temporary table automatically.
 
 - For common databases, like MySQL, Hive   
-SQLFlow creates an own database as workspace, like `sqlflow_workspace`, then creates the temporary table in `sqlflow_workspace`.
+SQLFlow creates an own database as workspace, like `sqlflow_workspace`, then creates the temporary table in `sqlflow_workspace`.    
+
+  Notice: Why doesn't SQLFlow [create TEMPORARY table](https://dev.mysql.com/doc/refman/8.0/en/create-temporary-table.html) to act the *TempTable*?   
+  Because SQLFlow creates *TempTable* in Go and read the contents in Python. They are different sessions, which means the *TempTable* is invisible to each other.
 
 ## How to split
 
