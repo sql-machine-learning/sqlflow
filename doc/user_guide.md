@@ -118,7 +118,7 @@ WITH
 
 ### Column clause
 
-The *column clause* indicates the field name to be used as training features, along with their optionalpreprocessing methods, e.g. `COLUMN sepal_length, sepal_width, petal_length, petal_width`.
+The *column clause* indicates the field name to be used as training features, along with their optional preprocessing methods, e.g. `COLUMN sepal_length, sepal_width, petal_length, petal_width`.
 
 ```SQL
 COLUMN column_expr [, column_expr ...]
