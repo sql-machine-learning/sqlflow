@@ -4,7 +4,7 @@ SQLFlow is a bridge that connects a SQL engine (e.g. MySQL, Hive, or MaxCompute)
 
 ## Overview
 
-Say you have your [iris flower data set](https://en.wikipedia.org/wiki/Iris_flower_data_set) stored in table `iris.train`. The first four columns(petal_length, petal_width, sepal_length, sepal_width) are the features. And the last column(class) is the label.
+Let's assume [iris flower data set](https://en.wikipedia.org/wiki/Iris_flower_data_set) stored in table `iris.train`. The first four columns (petal_length, petal_width, sepal_length, sepal_width) represent the features and the last column (class) represents the labels.
 
 <table>
   <tr>
@@ -40,9 +40,9 @@ Say you have your [iris flower data set](https://en.wikipedia.org/wiki/Iris_flow
   </tr>
 </table>
 
-You wanna train a DNNClassifier, which has 2 hidden layers and each layer has 10 hidden units, and save the trained model into table `sqlflow_models.my_dnn_model` for later prediction use.
+Let's train a `DNNClassifier`, which has 2 hidden layers where each layer has 10 hidden units, and then save the trained model into table `sqlflow_models.my_dnn_model` for making predictions later on.
 
-Instead of writing a Python program with a lot of boilerplate code, you can simply write the following statement in SQLFlow.
+Instead of writing a Python program with a lot of boilerplate code, this can be achieved easily via the following statement in SQLFlow.
 
 ```SQL
 SELECT * FROM iris.train
@@ -53,7 +53,7 @@ LABEL class
 INTO sqlflow_models.my_dnn_model;
 ```
 
-SQLFlow will parse the statement and transpile it to an equivalent Python program for you.
+SQLFlow will then parse the above statement and translate it to an equivalent Python program.
 
 ![](figures/user_overview.png)
 
@@ -78,7 +78,8 @@ Equivalent to [ANSI SQL Standards](https://www.whoishostingthis.com/resources/an
 - *where_condition* is an expression that evaluates to true for each row to be selected.
 - *row_count* indicates the maximum number of rows to be retrieved.
 
-For example, if you wanna fast prototype a binary classifier on a small set of sample data, you can write
+For example, if you want to quickly prototype a binary classifier on a subset of the sample data, you can write
+the following statement:
 
 ```SQL
 SELECT *
@@ -103,7 +104,7 @@ WITH
 - *model_attr_expr* indicates the model attribute. e.g. `n_classes = 3`. Please refer to [Models](#models) for details.
 - *train_attr_expr* indicates the training attribute. e.g. `EPOCHS = 10`. Please refer to [Hyperparameters](#hyperparameters) for details.
 
-For example, if you wanna train a DNNClassifier, which has 2 hidden layers and each layer has 10 hidden units, with 10 epochs, you can write
+For example, if you want to train a `DNNClassifier`, which has 2 hidden layers where each layer has 10 hidden units, with 10 epochs, you can write the following statement:
 
 ```SQL
 SELECT ...
@@ -117,7 +118,7 @@ WITH
 
 ### Column clause
 
-The *column clause* indicates the field name to be used as training features, along with their preprocessing if needed, e.g. `COLUMN sepal_length, sepal_width, petal_length, petal_width`.
+The *column clause* indicates the field name to be used as training features, along with their optionalpreprocessing methods, e.g. `COLUMN sepal_length, sepal_width, petal_length, petal_width`.
 
 ```SQL
 COLUMN column_expr [, column_expr ...]
@@ -128,7 +129,8 @@ COLUMN column_expr [, column_expr ...]
 - *column_expr* indicates the field name and the preprocessing method on the field content. e.g. `sepal_length`, `NUMERIC(dense, 3)`. Please refer to [Feature columns](#feature-columns) for preprocessing details.
 - *column_name* indicates the feature column names for the model inputs. Some models such as [DNNLinearCombinedClassifier](https://www.tensorflow.org/api_docs/python/tf/estimator/DNNLinearCombinedClassifier) have`linear_feature_columns` and `dnn_feature_columns` as feature column input.
 
-For example, if you wanna use field `sepal_length`, `sepal_width`, `petal_length`, and `petal_width` as the features, without any preprocessing on the field content, you can write
+For example, if you want to use fields `sepal_length`, `sepal_width`, `petal_length`, and `petal_width` as the features
+without any preprocessing, you can write the following statement:
 
 ```SQL
 SELECT ...
@@ -139,7 +141,7 @@ COLUMN sepal_length, sepal_width, petal_length, petal_width
 
 ### Label clause
 
-The *label clause* indicates the field name to be used as the training label, along with their preprocessing if needed, e.g. `LABEL class`.
+The *label clause* indicates the field name to be used as the training label, along with their optional preprocessing methods, e.g. `LABEL class`.
 
 ```SQL
 LABEL label_expr
@@ -147,11 +149,11 @@ LABEL label_expr
 
 - *label_expr* indicates the field name and the preprocessing method on the field content. e.g. `class`.
 
-Note: some field name may look like SQLFlow keywords. For example, the table may contain a field named label. You can use double quotes around the name `LABEL "label"` to work around the parsing error.
+Note: some field names may look like SQLFlow keywords. For example, the table may contain a field named "label". You can use double quotes around the name `LABEL "label"` to work around the parsing error.
 
 ### Into clause
 
-The *into clause* indicates the table name to save the trained model
+The *into clause* indicates the table name to save the trained model into:
 
 ```SQL
 INTO table_references
@@ -163,7 +165,7 @@ Note: SQLFlow team is actively working on supporting saving model to third-party
 
 ## Feature columns
 
-SQLFlow supports various feature columns to preprocess raw data. Here is a growing list of supported feature columns.
+SQLFlow supports various feature columns to preprocess raw data. Below is the currently supported feature columns:
 
 <table>
   <tr>
