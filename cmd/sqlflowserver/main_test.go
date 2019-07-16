@@ -319,13 +319,10 @@ func TestEnd2EndMaxComputeALPS(t *testing.T) {
 	if caseDB == "" {
 		t.Fatalf("Must set env MAXCOMPUTE_PROJECT when testing ALPS cases (SQLFLOW_submitter=alps)!!")
 	}
+	fmt.Printf("using project: %s\n", caseDB)
 
 	go start("", modelDir, caCrt, caKey, true)
 	WaitPortReady("localhost"+port, 0)
-	err = prepareTestData(dbConnStr)
-	if err != nil {
-		t.Fatalf("prepare test dataset failed: %v", err)
-	}
 
 	t.Run("CaseTrainALPS", CaseTrainALPS)
 	t.Run("CaseTrainALPSFeatureMap", CaseTrainALPSFeatureMap)
