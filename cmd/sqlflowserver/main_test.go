@@ -319,7 +319,6 @@ func TestEnd2EndMaxComputeALPS(t *testing.T) {
 	if caseDB == "" {
 		t.Fatalf("Must set env MAXCOMPUTE_PROJECT when testing ALPS cases (SQLFLOW_submitter=alps)!!")
 	}
-	fmt.Printf("using project: %s\n", caseDB)
 
 	go start("", modelDir, caCrt, caKey, true)
 	WaitPortReady("localhost"+port, 0)
@@ -713,7 +712,7 @@ LABEL "label" INTO model_table;`, caseDB)
 	defer conn.Close()
 	cli := pb.NewSQLFlowClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 600*time.Second)
 	defer cancel()
 
 	stream, err := cli.Run(ctx, sqlRequest(trainSQL))
