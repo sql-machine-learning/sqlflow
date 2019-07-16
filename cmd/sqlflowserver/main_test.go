@@ -702,7 +702,7 @@ func CaseTrainALPSFeatureMap(t *testing.T) {
 FROM %s.sqlflow_softmax_estimator_train_data
 LIMIT 100
 TRAIN alipay.SoftmaxClassifier
-WITH train.max_steps = 1000, engine.ps_num=0, engine.worker_num=0, engine.type = local
+WITH train.max_steps = 100, eval.steps=100, engine.ps_num=0, engine.worker_num=0, engine.type = local
 COLUMN DENSE(dense, none, comma),
 	   DENSE(item, 1, comma, int)
 LABEL "label" INTO model_table;`, caseDB)
