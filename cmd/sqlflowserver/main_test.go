@@ -314,17 +314,21 @@ func TestEnd2EndMaxComputeALPS(t *testing.T) {
 	SK := os.Getenv("MAXCOMPUTE_SK")
 	endpoint := os.Getenv("MAXCOMPUTE_ENDPOINT")
 	dbConnStr = fmt.Sprintf("maxcompute://%s:%s@%s", AK, SK, endpoint)
+
+	caseDB = os.Getenv("MAXCOMPUTE_PROJECT")
+	if caseDB == "" {
+		t.Fatalf("Must set env MAXCOMPUTE_PROJECT when testing ALPS cases (SQLFLOW_submitter=alps)!!")
+	}
+
 	go start("", modelDir, caCrt, caKey, true)
 	WaitPortReady("localhost"+port, 0)
 	err = prepareTestData(dbConnStr)
 	if err != nil {
 		t.Fatalf("prepare test dataset failed: %v", err)
 	}
-	caseDB = os.Getenv("MAXCOMPUTE_PROJECT")
-	if caseDB == "" {
-		t.Fatalf("Must set env MAXCOMPUTE_PROJECT when testing ALPS cases (SQLFLOW_submitter=alps)!!")
-	}
+
 	t.Run("CaseTrainALPS", CaseTrainALPS)
+	t.Run("CaseTrainALPSFeatureMap", CaseTrainALPSFeatureMap)
 }
 
 func CaseShowDatabases(t *testing.T) {
@@ -700,6 +704,7 @@ func CaseTrainALPSFeatureMap(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`SELECT dense, deep, item, sqlflow_softmax_estimator_train_data.label
 FROM %s.sqlflow_softmax_estimator_train_data
+LIMIT 100
 TRAIN alipay.SoftmaxClassifier
 WITH train.max_steps = 1000, engine.ps_num=0, engine.worker_num=0, engine.type = local
 COLUMN DENSE(dense, none, comma),
