@@ -24,16 +24,52 @@ import (
 	"time"
 )
 
-// Run executes a SQL query and returns a stream of row or message
+// Run executes a SQL query and returns a stream of rows or messages
 func Run(slct string, db *DB, modelDir string) *PipeReader {
-	slctUpper := strings.ToUpper(slct)
-	if strings.Contains(slctUpper, "TRAIN") || strings.Contains(slctUpper, "PREDICT") {
-		pr, e := newParser().Parse(slct)
-		if e == nil && pr.extended {
-			return runExtendedSQL(slct, db, pr, modelDir)
-		}
+	if len(splitExtendedSQL(slct)) == 2 {
+		return runExtendedSQL(slct, db, modelDir)
 	}
 	return runStandardSQL(slct, db)
+}
+
+// splitExtendedSQL splits an extended select statement into
+// its select clause and the rest. For example,
+//
+// input:
+//   "select ... train ... with ..."
+// output:
+//   ["select ...", "train ... with ..."].
+//
+// input:
+//   "select ... predict ... using ..."
+// output:
+//   ["select ...", "predict ... using ..."].
+//
+// input:
+//   "select ..."
+// output:
+//   ["select ..."]
+func splitExtendedSQL(slct string) []string {
+	l := newLexer(slct)
+	var n sqlSymType
+	var typ []int
+	var pos []int
+	for {
+		t := l.Lex(&n)
+		if t == 0 {
+			break
+		}
+		typ = append(typ, t)
+		pos = append(pos, l.pos)
+	}
+	for i := 1; i < len(typ)-2; i++ {
+		if (typ[i] == TRAIN && typ[i+1] == IDENT && typ[i+2] == WITH) ||
+			(typ[i] == PREDICT && typ[i+1] == IDENT && typ[i+2] == USING) {
+			return []string{slct[:pos[i-1]], slct[pos[i-1]:]}
+		}
+	}
+
+	return []string{slct}
 }
 
 // TODO(weiguo): isQuery is a hacky way to decide which API to call:
@@ -196,7 +232,7 @@ func runExec(slct string, db *DB) *PipeReader {
 	return rd
 }
 
-func runExtendedSQL(slct string, db *DB, pr *extendedSelect, modelDir string) *PipeReader {
+func runExtendedSQL(slct string, db *DB, modelDir string) *PipeReader {
 	rd, wr := Pipe()
 	go func() {
 		defer wr.Close()
@@ -205,6 +241,11 @@ func runExtendedSQL(slct string, db *DB, pr *extendedSelect, modelDir string) *P
 			defer func(startAt time.Time) {
 				log.Debugf("runExtendedSQL %v finished, elapsed:%v", slct, time.Since(startAt))
 			}(time.Now())
+
+			pr, e := newParser().Parse(slct)
+			if e != nil {
+				return e
+			}
 
 			// NOTE: the temporary directory must be in a host directory
 			// which can be mounted to Docker containers.  If I don't
