@@ -712,7 +712,7 @@ LABEL "label" INTO model_table;`, caseDB)
 	defer conn.Close()
 	cli := pb.NewSQLFlowClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 600*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 1200*time.Second)
 	defer cancel()
 
 	stream, err := cli.Run(ctx, sqlRequest(trainSQL))
