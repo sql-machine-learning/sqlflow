@@ -6,7 +6,7 @@ A submitter is a pluggable module in SQLFlow that is used to submit an ML job to
 
 When a user types in an extended SQL statement, SQLFlow first parses and semantically verifies the statement. Then SQLFlow either runs the ML job locally or submits the ML job to a third party computation service. 
 
-![](doc/figures/sqlflow-arch2.png)
+![](figures/sqlflow-arch2.png)
 
 In the latter case, SQLFlow produces a job description (`TrainDescription` or `PredictDescription`) and hands it over to the submitter. For a training SQL, SQLFlow produces `TrainDescription`; for prediction SQL, SQLFlow produces `PredDescription`. The concrete definition of the description looks like the following
 
@@ -24,20 +24,20 @@ type ColumnType struct {
 //   hidden_units = [10, 20]
 // COLUMN sepal_length, sepal_width, petal_length, petal_width
 // LABEL class
-// INTO my_dnn_model;
+// INTO sqlflow_models.my_dnn_model;
 type TrainDescription struct {
     StandardSelect string       // e.g. SELECT * FROM iris.train
     Estimator      string       // e.g. DNNClassifier
-    Attrs          map[string]string // e.g. {{"n_classes", "3"}, {"hidden_units", "[10, 20]"}}
-    X              []ColumnType // e.g. {{"sepal_length", "FLOAT"}, ...}
-    Y              ColumnType   // e.g. {"class", "INT"}
+    Attrs          map[string]string // e.g. "n_classes": "3", "hidden_units": "[10, 20]"
+    X              []ColumnType // e.g. "sepal_length": "FLOAT", ...
+    Y              ColumnType   // e.g. "class": "INT"
     ModelName      string       // e.g. my_dnn_model
 }
 
 // SELECT *
 // FROM iris.test
 // PREDICT iris.predict.class
-// USING my_dnn_model;
+// USING sqlflow_models.my_dnn_model;
 type PredDescription struct {
     StandardSelect string // e.g. SELECT * FROM iris.test
     TableName      string // e.g. iris.predict

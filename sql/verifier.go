@@ -1,6 +1,20 @@
+// Copyright 2019 The SQLFlow Authors. All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package sql
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 )
@@ -8,6 +22,16 @@ import (
 // fieldTypes[field][table]type.  For more information, please check
 // verifier_test.go.
 type fieldTypes map[string]map[string]string
+
+func (ft fieldTypes) String() string {
+	var b bytes.Buffer
+	for field, table := range ft {
+		for t, typ := range table {
+			fmt.Fprintf(&b, "%s, %s, %s\n", field, t, typ)
+		}
+	}
+	return b.String()
+}
 
 // verify checks the following:
 //
@@ -60,8 +84,14 @@ func (ft fieldTypes) get(ident string) (string, bool) {
 // decomp returns the table name and field name in the given
 // identifier: t.f=>(t,f), db.t.f=>(db.t,f), f=>("",f).
 func decomp(ident string) (tbl string, fld string) {
-	s := strings.Split(ident, ".")
-	return strings.Join(s[:len(s)-1], "."), s[len(s)-1]
+	// Note: Hive driver represents field names in lower cases, so we convert all identifier
+	// to lower case
+	ident = strings.ToLower(ident)
+	idx := strings.LastIndex(ident, ".")
+	if idx == -1 {
+		return "", ident
+	}
+	return ident[0:idx], ident[idx+1:]
 }
 
 // Retrieve the type of fields mentioned in SELECT.
@@ -69,20 +99,16 @@ func describeTables(slct *extendedSelect, db *DB) (ft fieldTypes, e error) {
 	ft = indexSelectFields(slct)
 	hasStar := len(ft) == 0
 	for _, tn := range slct.tables {
-		slct := "SELECT * from " + tn + " limit 1"
-		rows, err := db.Query(slct)
+		// MaxCompute's statement ends with a semicolon
+		q := "SELECT * FROM " + tn + " LIMIT 1;"
+		rows, err := db.Query(q)
 		if err != nil {
 			return nil, err
 		}
 		defer rows.Close()
 
-		cols, err := rows.Columns()
-		if err != nil {
-			return nil, err
-		}
-
 		if !rows.Next() {
-			return nil, fmt.Errorf("table is Empty. table name: %s", tn)
+			return nil, fmt.Errorf("table[%s] is empty", tn)
 		}
 
 		if rows.Err() != nil {
@@ -93,10 +119,9 @@ func describeTables(slct *extendedSelect, db *DB) (ft fieldTypes, e error) {
 		if err != nil {
 			return nil, err
 		}
-		for i, ct := range columnTypes {
-			fld := cols[i]
+		for _, ct := range columnTypes {
+			_, fld := decomp(ct.Name())
 			typeName := ct.DatabaseTypeName()
-
 			if hasStar {
 				if _, ok := ft[fld]; !ok {
 					ft[fld] = make(map[string]string)
@@ -112,7 +137,6 @@ func describeTables(slct *extendedSelect, db *DB) (ft fieldTypes, e error) {
 				}
 			}
 		}
-
 	}
 	return ft, nil
 }
@@ -150,14 +174,18 @@ func verifyColumnNameAndType(trainParsed, predParsed *extendedSelect, db *DB) er
 		return e
 	}
 
-	for _, c := range trainParsed.columns {
-		it, ok := predFields.get(c.val)
-		if !ok {
-			return fmt.Errorf("predFields doesn't contain column %s", c.val)
+	for _, c := range trainParsed.columns["feature_columns"] {
+		name, err := getExpressionFieldName(c)
+		if err != nil {
+			return err
 		}
-		tt, _ := trainFields.get(c.val)
+		it, ok := predFields.get(name)
+		if !ok {
+			return fmt.Errorf("predFields doesn't contain column %s", name)
+		}
+		tt, _ := trainFields.get(name)
 		if it != tt {
-			return fmt.Errorf("field %s type dismatch %s(pred) vs %s(train)", c.val, it, tt)
+			return fmt.Errorf("field %s type dismatch %v(pred) vs %v(train)", name, it, tt)
 		}
 	}
 	return nil

@@ -1,0 +1,44 @@
+apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
+kind: Deployment
+metadata:
+  name: sqlflow-mysql
+spec:
+  selector:
+    matchLabels:
+      app: sqlflow-mysql
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: sqlflow-mysql
+    spec:
+      volumes:
+      containers:
+      - image: sqlflow/sqlflow
+        name: mysql
+        imagePullPolicy: Always
+        env:
+        - name: SQLFLOW_MYSQL_HOST
+          value: "0.0.0.0"
+        - name: SQLFLOW_MYSQL_PORT
+          value: "3306"
+        command: ["bash"]
+        args: ["start.sh", "mysql"]
+        ports:
+        - containerPort: 3306
+          name: mysql
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: sqlflow-mysql
+  labels:
+    app: sqlflow-mysql
+spec:
+  ports:
+  - port: 3306
+    protocol: TCP
+  selector:
+    app: sqlflow-mysql

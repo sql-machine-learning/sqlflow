@@ -1,62 +1,108 @@
+// Copyright 2019 The SQLFlow Authors. All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package sql
 
 import (
+	"container/list"
+	"fmt"
+	"io/ioutil"
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-const (
-	testTrainBoostedTreeOnIris = `
-SELECT *
-FROM iris.train
-WHERE class = 0 OR class = 1
-TRAIN BoostedTreesClassifier
-WITH
-  n_batches_per_layer = 20
-COLUMN sepal_length, sepal_width, petal_length, petal_width
-LABEL class
-INTO my_boosted_tree_model;
-`
-	testPredBoostedTreeOnIris = `
-SELECT *
-FROM iris.test
-WHERE class = 0 OR class = 1
-predict iris.predict.class
-USING my_boosted_tree_model;
-`
-)
+func goodStream(stream chan interface{}) (bool, string) {
+	lastResp := list.New()
+	keepSize := 10
 
-func goodStream(stream chan interface{}) bool {
 	for rsp := range stream {
 		switch rsp.(type) {
 		case error:
-			return false
+			var s []string
+			for e := lastResp.Front(); e != nil; e = e.Next() {
+				s = append(s, e.Value.(string))
+			}
+			return false, strings.Join(s, "\n")
+		}
+		lastResp.PushBack(rsp)
+		if lastResp.Len() > keepSize {
+			e := lastResp.Front()
+			lastResp.Remove(e)
 		}
 	}
-	return true
+	return true, ""
 }
 
 func TestExecutorTrainAndPredictDNN(t *testing.T) {
 	a := assert.New(t)
+	modelDir := ""
 	a.NotPanics(func() {
 		pr, e := newParser().Parse(testTrainSelectIris)
 		a.NoError(e)
-		stream := runExtendedSQL(testTrainSelectIris, testDB, pr)
+		stream := runExtendedSQL(testTrainSelectIris, testDB, pr, modelDir)
 		a.True(goodStream(stream.ReadAll()))
 
 		pr, e = newParser().Parse(testPredictSelectIris)
 		a.NoError(e)
-		stream = runExtendedSQL(testPredictSelectIris, testDB, pr)
+		stream = runExtendedSQL(testPredictSelectIris, testDB, pr, modelDir)
 		a.True(goodStream(stream.ReadAll()))
 	})
 }
 
-func TestExecutorTrainAndPredictBoostedTree(t *testing.T) {
+func TestExecutorTrainAndPredictDNNLocalFS(t *testing.T) {
+	a := assert.New(t)
+	modelDir, e := ioutil.TempDir("/tmp", "sqlflow_models")
+	a.Nil(e)
+	defer os.RemoveAll(modelDir)
+	a.NotPanics(func() {
+		pr, e := newParser().Parse(testTrainSelectIris)
+		a.NoError(e)
+		stream := runExtendedSQL(testTrainSelectIris, testDB, pr, modelDir)
+		a.True(goodStream(stream.ReadAll()))
+
+		pr, e = newParser().Parse(testPredictSelectIris)
+		a.NoError(e)
+		stream = runExtendedSQL(testPredictSelectIris, testDB, pr, modelDir)
+		a.True(goodStream(stream.ReadAll()))
+	})
+}
+
+func TestExecutorTrainAndPredictionDNNClassifierDENSE(t *testing.T) {
+	if getEnv("SQLFLOW_TEST_DB", "mysql") == "hive" {
+		t.Skip(fmt.Sprintf("%s: skip Hive test", getEnv("SQLFLOW_TEST_DB", "mysql")))
+	}
 	a := assert.New(t)
 	a.NotPanics(func() {
-		a.True(goodStream(Run(testTrainBoostedTreeOnIris, testDB).ReadAll()))
-		a.True(goodStream(Run(testPredBoostedTreeOnIris, testDB).ReadAll()))
+		stream := Run(`SELECT * FROM iris.train_dense
+TRAIN DNNClassifier
+WITH
+n_classes = 3,
+hidden_units = [10, 20],
+EPOCHS = 200,
+BATCHSIZE = 10
+COLUMN NUMERIC(dense, 4)
+LABEL class
+INTO sqlflow_models.my_dense_dnn_model
+;`, testDB, "")
+		a.True(goodStream(stream.ReadAll()))
+		stream = Run(`SELECT * FROM iris.test_dense
+PREDICT iris.predict_dense.class
+USING sqlflow_models.my_dense_dnn_model
+;`, testDB, "")
+		a.True(goodStream(stream.ReadAll()))
 	})
 }
 
@@ -67,6 +113,9 @@ func TestStandardSQL(t *testing.T) {
 		a.True(goodStream(stream.ReadAll()))
 	})
 	a.NotPanics(func() {
+		if getEnv("SQLFLOW_TEST_DB", "mysql") == "hive" {
+			t.Skip("hive: skip DELETE statement")
+		}
 		stream := runStandardSQL(testStandardExecutiveSQLStatement, testDB)
 		a.True(goodStream(stream.ReadAll()))
 	})
@@ -122,4 +171,22 @@ func TestLogChanWriter_Write(t *testing.T) {
 	a.Equal("世界\n", <-c)
 	_, more := <-c
 	a.False(more)
+}
+
+func TestParseTableColumn(tg *testing.T) {
+	a := assert.New(tg)
+	t, c, e := parseTableColumn("a.b.c")
+	a.NoError(e)
+	a.Equal("a.b", t)
+	a.Equal("c", c)
+
+	t, c, e = parseTableColumn("a.b")
+	a.NoError(e)
+	a.Equal("a", t)
+	a.Equal("b", c)
+
+	_, _, e = parseTableColumn("a.")
+	a.Error(e)
+	_, _, e = parseTableColumn("a")
+	a.Error(e)
 }

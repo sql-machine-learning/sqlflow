@@ -29,7 +29,7 @@ On either Mac or Linux, or any other OS, we don't have to install and configure 
    Then, use the git just installed, let's clone tensorflow source code:
 
    ```bash
-   git clone --recursive https://github.com/tensorflow/tensorflow
+   git clone https://github.com/tensorflow/tensorflow
    cd tensorflow
    ```
 

@@ -1,3 +1,16 @@
+// Copyright 2019 The SQLFlow Authors. All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package sql
 
 import (
@@ -24,13 +37,24 @@ COLUMN
   employee.name,
   bucketize(last_name, 1000),
   cross(embedding(emplyoee.name), bucketize(last_name, 1000))
+LABEL "employee.salary"
+INTO sqlflow_models.my_dnn_model;
+`
+	testMultiColumnTrainSelect = testStandardSelectStmt + `TRAIN DNNClassifier
+WITH
+  n_classes = 3,
+  hidden_units = [10, 20]
+COLUMN
+  employee.name,
+  bucketize(last_name, 1000),
+  cross(embedding(emplyoee.name), bucketize(last_name, 1000))
+COLUMN
+  cross(embedding(emplyoee.name), bucketize(last_name, 1000)) FOR C2
 LABEL employee.salary
-INTO
-  my_dnn_model
-;
+INTO sqlflow_models.my_dnn_model;
 `
 	testPredictSelect = testStandardSelectStmt + `PREDICT db.table.field
-USING my_dnn_model;`
+USING sqlflow_models.my_dnn_model;`
 )
 
 func TestStandardSelect(t *testing.T) {
@@ -60,14 +84,37 @@ func TestTrainParser(t *testing.T) {
 	a.Equal("[10, 20]", r.attrs["hidden_units"].String())
 	a.Equal("3", r.attrs["n_classes"].String())
 	a.Equal(`employee.name`,
-		r.columns[0].String())
+		r.columns["feature_columns"][0].String())
 	a.Equal(`bucketize(last_name, 1000)`,
-		r.columns[1].String())
+		r.columns["feature_columns"][1].String())
 	a.Equal(
 		`cross(embedding(emplyoee.name), bucketize(last_name, 1000))`,
-		r.columns[2].String())
+		r.columns["feature_columns"][2].String())
 	a.Equal("employee.salary", r.label)
-	a.Equal("my_dnn_model", r.save)
+	a.Equal("sqlflow_models.my_dnn_model", r.save)
+}
+
+func TestMultiColumnTrainParser(t *testing.T) {
+	a := assert.New(t)
+	r, e := newParser().Parse(testMultiColumnTrainSelect)
+	a.NoError(e)
+	a.True(r.extended)
+	a.True(r.train)
+	a.Equal("DNNClassifier", r.estimator)
+	a.Equal("[10, 20]", r.attrs["hidden_units"].String())
+	a.Equal("3", r.attrs["n_classes"].String())
+	a.Equal(`employee.name`,
+		r.columns["feature_columns"][0].String())
+	a.Equal(`bucketize(last_name, 1000)`,
+		r.columns["feature_columns"][1].String())
+	a.Equal(
+		`cross(embedding(emplyoee.name), bucketize(last_name, 1000))`,
+		r.columns["feature_columns"][2].String())
+	a.Equal(
+		`cross(embedding(emplyoee.name), bucketize(last_name, 1000))`,
+		r.columns["C2"][0].String())
+	a.Equal("employee.salary", r.label)
+	a.Equal("sqlflow_models.my_dnn_model", r.save)
 }
 
 func TestPredictParser(t *testing.T) {
@@ -76,7 +123,7 @@ func TestPredictParser(t *testing.T) {
 	a.NoError(e)
 	a.True(r.extended)
 	a.False(r.train)
-	a.Equal("my_dnn_model", r.model)
+	a.Equal("sqlflow_models.my_dnn_model", r.model)
 	a.Equal("db.table.field", r.into)
 }
 
@@ -92,7 +139,9 @@ func TestSelectStarAndPrint(t *testing.T) {
 }
 
 func TestStandardDropTable(t *testing.T) {
-	if _, e := newParser().Parse(`DROP TABLE PREDICT`); e != nil {
-		t.Skipf("[FIXME]`drop table` expected no error, but got:%v", e)
-	}
+	a := assert.New(t)
+	_, e := newParser().Parse(`DROP TABLE PREDICT`)
+	a.Error(e)
+	// Note: currently, our parser doesn't accept anything statements other than SELECT.
+	// It will support parsing any SQL statements and even dialects in the future.
 }

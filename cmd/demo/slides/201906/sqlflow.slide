@@ -1,0 +1,157 @@
+SQLFlow
+Brings SQL and AI together.
+17 Jun 2019
+
+Wu Yi
+Software Engineer, Ant Financial
+xiongmu.wy@antfin.com
+https://sqlflow.org
+
+* Open Source
+
+- https://sqlflow.org
+- We are at very early stage, before production-ready. // HL
+- We Would like to share our ideas and welcom contributions.
+
+* Goals
+
+- Extend SQL syntax: AI + data manipulation
+- Make analytics easy
+- Make the build and deplouyment of data+AI pipelines easy
+
+* Make Analytics Easy
+
+Analytics relies on AI more than before.
+
+The current process:
+- Run SELECT in BDMS to retrieve training data
+- Export training data from tables into HDFS
+- Train models by reading HDFS
+- Repeat above steps for prediction
+
+* Make Analytics Easy
+
+- Training with one SELECT statement
+.code train.sql
+- Prediction with one SELECT statement
+.code pred.sql
+
+* Extended SQL Syntax
+- Some SQL+AI solutions use user-defined functions (UDF) to add AI features to SQL.
+- SQLFlow wants to work with many SQL engines (MySQL, Hive, SparkSQL, MaxCompute). It is intractable to reimplement a set of UDF for each of these engines.
+- SQLFlow extends SQL syntax by allowing users to append a TRAIN or PREDICT clause to a SELECT statement.
+
+* The Architecture
+
+.image ../201905/sqlflow-overview.png 570 _
+
+* The Architecture
+
+- Users input SQL statements in Jupyter Notebook
+- The Jupyter plug-in sends each statement to SQLFlow server
+- SQLFlow server proxies statements without using extended syntax to SQL engine
+- SQLFlow server translate each extended-syntax statement into a (Python) submitter program and runs it.
+- The submitter program runs SELECT on SQL engine and read results for training/prediction.
+
+* Challenges
+
+- How to convert SELECT results from a table of rows into models inputs (a tensor of float values).
+- How to call SQL engines’ native parser to parse the SELECT statement before the TRAIN/PREDICT clause.
+
+* Design: Feature Derivation
+
+TensorFlow model inputs are dense tensors, which are normally high-dimensional matrices of numerical values; however, the result of SELECT is a table where each field could contain various types like float, int, blob, text. How does SQLFlow convert different column types into tensors of numerical type?
+.image column_all.png _ 800
+
+* Design: Feature Derivation
+
+- To train the TF model DNNRegressor, we need a set of input tensors, the feature set X, and the label Y.
+- Because the label is income with numerical type, we can simply use the values by making it a 3*1 numerical tensor and copy to Y.
+.image column_label.png
+
+* Design: Feature Derivation
+
+- Use column "age" directly as numeric column as input feature X.
+- Use *categorization* for "gender" column: we could encode “M” using tuple {1,0,0}, “F” using {0,1,0}, and NULL using {0,0,1}
+.image column_fea1.png _ 800
+
+* Design: Feature Derivation
+
+- Add "name" field to feature to X, categorization doesn’t work well due to the sheer amount of possible name strings
+- Hash the name string into a 64-bit integer, then bucketizing hashed value into 100 dimension columns.
+.image column_fea2.png _ 600
+
+Generated code using Tensorflow "Feature Column" should look like:
+.code feature_column_code.pysample
+
+* Design: Feature Derivation
+
+User may write SQL statements below to generate "real" training code
+
+.code train_detailed.sql
+
+In real world, it's common to have many columns, so we need to generate feature inputs automatically:
+
+- Scan part of the data, to determine feature column types.
+- Determine whether the column is of sequence input type, and add padding etc.
+- Determine whether the column should add embedding, pooling...
+
+.code train_simple.sql
+
+* Design: Feature Derivation
+
+When we need to derive new feature from combining multiple features, we use crossed feature:
+
+.code train_cross.sql
+
+And this will generate feature column code like:
+
+.code feature_column_cross.pysample
+
+
+* Design: Integrating Parsers
+
+If someone already has a complex SELECT statement for data cleaning and augmentation, he could simply add a TRAIN or PREDICT clause to enable AI.
+
+Challenges:
+
+- Many SQL engines, such as MySQL, Hive, claim they are compatible with ANSI SQL but most have unique features.
+- Each parser might be very complicated, for example, MySQL’s parser sql_yacc.yy has >16,000 lines of code.
+- Some dialects have contradictory uses of the same keyword, which can not be merge to one "SQLFlow Parser" and keeps it compatible.
+
+* Design: Integrating Parsers
+
+A "pluggable" parser: SQLFlow decides if a SQL statement follows the dialect syntax of the specified SQL engine.
+
+- If so, proxy the statement to the SQL engine
+- Else, translates it into a Python program, a.k.a., the submitter program, which calls the SQL engine and the AI engine to train or to predict.
+
+* Design: Integrating Parsers
+
+.code -numbers ../../../../parser/tidb/tidb_parser.go /^func Parse/,/^}/
+
+* Design: Integrating Parsers
+
+Integrating DBMS parsers:
+
+- Beam: Calcite
+- Flink: Calcite
+- Storm: Calcite
+- Hive: [Hplsql.g4](https://github.com/apache/hive/blob/master/hplsql/src/main/antlr4/org/apache/hive/hplsql/Hplsql.g4)
+- MySQL: [PingCap Parser](https://github.com/pingcap/parser)
+
+SQLFlow is going through a rapid development. We are moving forward fast and planning to support more SQL engines. Your contributions are very welcome!
+
+* Pursue Production-Ready
+
+What we have
+
+- gohive and gomaxcompute
+- code generator of distributed TensorFlow submitters
+- naive data-to-model-input conversion
+
+What we need
+
+- new parsing mechanism
+- authorization and authentication
+- sophisticated data-to-model-input conversion

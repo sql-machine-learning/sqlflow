@@ -8,13 +8,13 @@ The following SQL statements train a TensorFlow model named `DNNClassifier`, whi
 
 ```sql
 
-SELECT * FROM a_table TRAIN DNNClassifier WITH learning_rate=0.01 INTO my_model;
+SELECT * FROM a_table TRAIN DNNClassifier WITH learning_rate=0.01 INTO sqlflow_models.my_model;
 ```
 
 And the following statement uses the trained model for prediction.
 
 ```sql
-SELECT * FROM b_table PREDICT b_table.predicted_label USING my_model;
+SELECT * FROM b_table PREDICT b_table.predicted_label USING sqlflow_models.my_model;
 ```
 
 Please be aware that the part in the above statements before the extended keyword TRAIN and PREDICT is a standard SQL statement. This feature simplifies the implementation of the SQLFlow system.
@@ -25,23 +25,23 @@ If a SQL statement is of the standard syntax, SQLFlow throws it to the SQL engin
 
 ### SQLFlow as a gRPC Server
 
-SQLFlow is a gRPC server, which can connect with multiple clients.  A typical client is [pysqlflow](https://github.com/sql-machine-learning/pysqlflow), the SQLFlow plugin for Jupyter Notebook server.  Another once is a text-based client [/cmd/sqlflowserver/main.go](/cmd/sqlflowserver/main.go).
+SQLFlow is a gRPC server, which can connect with multiple clients.  A typical client is [pysqlflow](https://github.com/sql-machine-learning/pysqlflow), the SQLFlow plugin for Jupyter Notebook server.  Another once is a text-based client [/cmd/sqlflowserver/main.go](https://github.com/sql-machine-learning/sqlflow/tree/develop/cmd/sqlflowserver/main.go).
 
 ```
 Jupyter Notebook          ---(SQL statements)-->       SQLFlow gRPC server
 (SQLFlow magic command)   <--(a stream of messages)--
 ```
 
-The protobuf definition of the gRPC service is at [/server/proto/sqlflow.proto](/server/proto/sqlflow.proto).  The return of the method `SQLFlow.Run` is a stream of `Reponse`s, where each represents either a table header, a row, or a log message.  The header and rows are usually from a standard SQL statement, for example, SELECT or DESCRIBE, and the log messages are usually from the running of a generated Python program.
+The protobuf definition of the gRPC service is at [/server/proto/sqlflow.proto](https://github.com/sql-machine-learning/sqlflow/tree/develop/server/proto/sqlflow.proto).  The return of the method `SQLFlow.Run` is a stream of `Reponse`s, where each represents either a table header, a row, or a log message.  The header and rows are usually from a standard SQL statement, for example, SELECT or DESCRIBE, and the log messages are usually from the running of a generated Python program.
 
 ### SQLFlow in the gRPC Server
 
 Once the SQLFlow server receives a batch of SQL statements via a gRPC call, it runs the following steps for each statement:
 
-1. the [parser](/sql/sql.y) to generate parsing result,
-2. the [verifier](/sql/verifier.go) to verify the semantics given the parsing result,
-3. the [code generator](/sql/codegen.go) to generate a Python program, or the *submitter*, from the parsing result,
-4. the [executor](/sql/executor.go) that runs the submitter locally.
+1. the [parser](https://github.com/sql-machine-learning/sqlflow/tree/develop/sql/sql.y) to generate parsing result,
+2. the [verifier](https://github.com/sql-machine-learning/sqlflow/tree/develop/sql/verifier.go) to verify the semantics given the parsing result,
+3. the [code generator](https://github.com/sql-machine-learning/sqlflow/tree/develop/sql/codegen.go) to generate a Python program, or the *submitter*, from the parsing result,
+4. the [executor](https://github.com/sql-machine-learning/sqlflow/tree/develop/sql/executor.go) that runs the submitter locally.
 
 Step 3. and 4. are only for a SQL statement of extended syntax; otherwise, SQLFlow server proxies the standard-syntax statement to the SQL engine.
 

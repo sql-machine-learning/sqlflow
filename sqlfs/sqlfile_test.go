@@ -1,3 +1,16 @@
+// Copyright 2019 The SQLFlow Authors. All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package sqlfs
 
 import (
@@ -11,13 +24,14 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 	_ "github.com/mattn/go-sqlite3"
-
 	"github.com/stretchr/testify/assert"
+	_ "sqlflow.org/gohive"
 )
 
 var (
-	testCfg *mysql.Config
-	testDB  *sql.DB
+	testCfg    *mysql.Config
+	testDB     *sql.DB
+	testDriver string
 )
 
 const testDatabaseName = `sqlfs_test`
@@ -26,7 +40,7 @@ func TestCreateHasDropTable(t *testing.T) {
 	a := assert.New(t)
 
 	fn := fmt.Sprintf("%s.unitest%d", testDatabaseName, rand.Int())
-	a.NoError(createTable(testDB, fn))
+	a.NoError(createTable(testDB, testDriver, fn))
 	has, e := hasTable(testDB, fn)
 	a.NoError(e)
 	a.True(has)
@@ -37,7 +51,7 @@ func TestWriterCreate(t *testing.T) {
 	a := assert.New(t)
 
 	fn := fmt.Sprintf("%s.unitest%d", testDatabaseName, rand.Int())
-	w, e := Create(testDB, fn)
+	w, e := Create(testDB, testDriver, fn)
 	a.NoError(e)
 	a.NotNil(w)
 	defer w.Close()
@@ -50,11 +64,12 @@ func TestWriterCreate(t *testing.T) {
 }
 
 func TestWriteAndRead(t *testing.T) {
+	testDriver = getEnv("SQLFLOW_TEST_DB", "mysql")
 	a := assert.New(t)
 
 	fn := fmt.Sprintf("%s.unitest%d", testDatabaseName, rand.Int())
 
-	w, e := Create(testDB, fn)
+	w, e := Create(testDB, testDriver, fn)
 	a.NoError(e)
 	a.NotNil(w)
 
@@ -65,7 +80,7 @@ func TestWriteAndRead(t *testing.T) {
 	a.Equal(len(buf), n)
 
 	// A big output.
-	buf = make([]byte, kBufSize+1)
+	buf = make([]byte, bufSize+1)
 	for i := range buf {
 		buf[i] = 'x'
 	}
@@ -87,12 +102,12 @@ func TestWriteAndRead(t *testing.T) {
 	a.Equal(2, strings.Count(string(buf), "\n"))
 
 	// A big read of rest
-	buf = make([]byte, kBufSize*2)
+	buf = make([]byte, bufSize*2)
 	n, e = r.Read(buf)
 	a.Equal(io.EOF, e)
-	a.Equal(kBufSize+2, n)
+	a.Equal(bufSize+2, n)
 	a.Equal(1, strings.Count(string(buf), "\n"))
-	a.Equal(kBufSize+1, strings.Count(string(buf), "x"))
+	a.Equal(bufSize+1, strings.Count(string(buf), "x"))
 
 	// Another big read
 	n, e = r.Read(buf)
@@ -121,10 +136,10 @@ func getEnv(key, fallback string) string {
 }
 
 func TestMain(m *testing.M) {
-	dbms := getEnv("SQLFLOW_TEST_DB", "mysql")
+	testDriver = getEnv("SQLFLOW_TEST_DB", "mysql")
 
 	var e error
-	switch dbms {
+	switch testDriver {
 	case "sqlite3":
 		testDB, e = sql.Open("sqlite3", ":memory:")
 		assertNoErr(e)
@@ -144,8 +159,14 @@ func TestMain(m *testing.M) {
 		_, e = testDB.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s;", testDatabaseName))
 		assertNoErr(e)
 		defer testDB.Close()
+	case "hive":
+		testDB, e = sql.Open("hive", "root:root@localhost:10000/churn")
+		assertNoErr(e)
+		_, e = testDB.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s;", testDatabaseName))
+		assertNoErr(e)
+		defer testDB.Close()
 	default:
-		assertNoErr(fmt.Errorf("unrecognized environment variable SQLFLOW_TEST_DB %s", dbms))
+		assertNoErr(fmt.Errorf("unrecognized environment variable SQLFLOW_TEST_DB %s", testDriver))
 	}
 	os.Exit(m.Run())
 }
