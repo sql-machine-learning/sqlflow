@@ -17,6 +17,8 @@ Given a long and nested select inside the extended SQL statement, SQLFlow
 Please be aware that SQLFlow doesn't attempt to parse the nested select due to the difficulty in handling different
 syntax across SQL engines.
 
+![](figures/arbitrary-select.png)
+
 ## Implementation
 
 ### Modification on SQLFlow parser
