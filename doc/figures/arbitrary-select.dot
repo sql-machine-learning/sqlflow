@@ -1,0 +1,19 @@
+digraph { 
+   statement[label="SELECT ...\lFROM ...\lJOIN ... ON ...\lTRAIN DNNClassifier\lWITH ...\lCOLUMN ...\l"]
+   splitter[shape="rectangle", style=""]
+   sql_syntax[label="SQL syntax checker", shape="rectangle"]
+   sqlflow_syntax[label="SQLFlow syntax checker", shape="rectangle"]
+   verifier[label="column name&type verifier", shape="rectangle", style=""]
+   select[label="SELECT ...\lFROM ...\lJOIN ... ON ...\l"]
+   train[label="TRAIN DNNClassifier\lWITH ...\lCOLUMN ...\l"]
+   codegen[shape="rectangle", style=""]
+
+   statement -> splitter;
+   splitter -> select;
+   splitter -> train;
+   select -> sql_syntax [dir="both"];
+   train -> sqlflow_syntax [dir="both"];
+   select -> verifier;
+   train -> verifier;
+   verifier -> codegen
+}
