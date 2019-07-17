@@ -66,6 +66,7 @@ type resolvedTrainClause struct {
 	FeatureColumns         map[string][]featureColumn
 	ColumnSpecs            map[string][]*columnSpec
 	EngineParams           engineSpec
+	FeatureMap             featureMap
 }
 
 // featureColumn is an interface that all types of feature columns and
@@ -95,7 +96,6 @@ type columnSpec struct {
 	Shape          []int
 	DType          string
 	Delimiter      string
-	FeatureMap     featureMap
 }
 
 type attribute struct {
@@ -265,6 +265,10 @@ func resolveTrainClause(tc *trainClause) (*resolvedTrainClause, error) {
 	evalStartDecaySecs := getIntAttr("eval.start_delay_secs", 120)
 	evalThrottleSecs := getIntAttr("eval.throttle_secs", 600)
 
+	fMapTable := getStringAttr("feature_map.table", "")
+	fMapPartition := getStringAttr("feature_map.partition", "")
+	fm := featureMap{fMapTable, fMapPartition}
+
 	if len(attrs) > 0 {
 		return nil, fmt.Errorf("unsupported parameters: %v", attrs)
 	}
@@ -299,6 +303,7 @@ func resolveTrainClause(tc *trainClause) (*resolvedTrainClause, error) {
 		FeatureColumns:         fcMap,
 		ColumnSpecs:            csMap,
 		EngineParams:           getEngineSpec(engineParams),
+		FeatureMap:             fm,
 	}, nil
 }
 
@@ -443,8 +448,6 @@ func resolveColumnSpec(el *exprlist, isSparse bool) (*columnSpec, error) {
 		return nil, err
 	}
 
-	// resolve feature map
-	fm := featureMap{}
 	dtype := "float"
 	if isSparse {
 		dtype = "int"
@@ -458,8 +461,7 @@ func resolveColumnSpec(el *exprlist, isSparse bool) (*columnSpec, error) {
 		IsSparse:       isSparse,
 		Shape:          shape,
 		DType:          dtype,
-		Delimiter:      delimiter,
-		FeatureMap:     fm}, nil
+		Delimiter:      delimiter}, nil
 }
 
 func expression2string(e interface{}) (string, error) {
