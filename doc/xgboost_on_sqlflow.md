@@ -1,6 +1,6 @@
-# xgboost on sqlflow
+# _Design:_ xgboost on sqlflow
 
-## XGBoost 
+## What is xgboost 
 
 Gradient boosting machine (GBM) is a widely used (supervised) machine learning method, 
 which trains a bunch of weak learners, typically decision trees, 
@@ -8,11 +8,11 @@ in a gradual, additive and sequential manner.
 A lot of winning solutions of data mining and machine learning challenges, 
 such as : Kaggle, KDD cup, are based on GBM or related techniques.
 
-XGBoost (https://xgboost.ai/) is an optimized distributed gradient boosting library designed to be highly efficient, 
+xgboost (https://xgboost.ai/) is an optimized distributed gradient boosting library designed to be highly efficient, 
 flexible and portable, which is often regarded as one of the best GBM frameworks.
 
 
-## xgboost on sqlflow via ant-xgboost
+## _Design:_ xgboost on sqlflow via ant-xgboost
    
 ### Overview
 
@@ -44,10 +44,10 @@ WITH
   eval_metric = "auc"
   train_eval_ratio = 0.8
 COLUMN
-  NUMERIC(c1) as fc1,
-  BUCKETIZED(fc1, [0, 10, 100]) as fc2,
-  CROSS([fc1, fc2, c3]) as fc3,
-  c4 as fc4
+  c1,
+  NUMERIC(c2, 10),
+  BUCKET(c3, [0, 10, 100]),
+  c4
 LABEL class
 INTO sqlflow_models.xgboost_model_table;
 
@@ -58,10 +58,10 @@ from kaggle_credit_fraud_development_data
 PREDICT kaggle_credit_fraud_development_data.class
 USING sqlflow_models.xgboost_model_table
 COLUMN
-  NUMERIC(c1) as fc1,
-  BUCKETIZED(fc1, [0, 10, 100]) as fc2,
-  CROSS([fc1, fc2, c3]) as fc3,
-  c4 as fc4;
+  c1, 
+  NUMERIC(c2, 10),
+  BUCKET(c3, [0, 10, 100]),
+  c4;
 ```
 
 ### Implementation
@@ -137,3 +137,18 @@ The `code template` roughly includes  components as follows:
 * Configuration conversions and entry point of _xgblauncher_.
 
 
+#### Running distributed xgboost job on k8s cluster
+
+Distributed training is supported in xgboost via [rabit](https://github.com/dmlc/rabit), a reliable allreduce and broadcast interface for distributed machine learning.
+To run a distributed xgboost job with `rabit`, all we need to do is setup a distributed environment.  
+
+For now, _xgboost_ has been bind to some of most popular distributed computing frameworks, such as _Apache Spark_, _Apache Flink_, _Dask_.
+However, specific computing frameworks are not always available in production environments. 
+So, we propose a cloud-native approach: running _xgboost_ directly on _k8s_ cluster. 
+ 
+As _xgblauncher_ is scalable and docker-friendly, xgblauncher-based containers can be easily orchestrated by [xgboost operator](https://github.com/kubeflow/xgboost-operator),
+a specific kubernetes controller for (distributed) xgboost jobs.
+With the help of `xgboost operator`, it is easy to handle `XGBoostJob` via `kuberentes API`, a kubernetes' custom resource defined by `xgboost operator`. 
+
+`XGBoostJob` building and tracking will be integrated to _xgblauncher_ in near future. 
+After that, we can generate python codes with an option to decide whether running xgboost job locally or submitting it to a remote k8s cluster.
