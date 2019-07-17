@@ -700,9 +700,9 @@ func CaseTrainALPSFeatureMap(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`SELECT dense, deep, item, sqlflow_softmax_estimator_train_data.label
 FROM %s.sqlflow_softmax_estimator_train_data
-LIMIT 100
+LIMIT 32
 TRAIN alipay.SoftmaxClassifier
-WITH train.max_steps = 100, eval.steps=100, engine.ps_num=0, engine.worker_num=0, engine.type = local
+WITH train.max_steps = 32, eval.steps=32, train.batch_size=8, engine.ps_num=0, engine.worker_num=0, engine.type = local
 COLUMN DENSE(dense, none, comma),
 	   DENSE(item, 1, comma, int)
 LABEL "label" INTO model_table;`, caseDB)
