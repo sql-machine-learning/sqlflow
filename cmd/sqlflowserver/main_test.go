@@ -154,6 +154,9 @@ func prepareTestData(dbStr string) error {
 		if err := testdata.Popularize(testDB.DB, testdata.ChurnSQL); err != nil {
 			return err
 		}
+		if err := testdata.Popularize(testDB.DB, testdata.StandardJoinTest); err != nil {
+			return err
+		}
 		return testdata.Popularize(testDB.DB, testdata.TextCNSQL)
 	case "hive":
 		if err := testdata.Popularize(testDB.DB, testdata.IrisHiveSQL); err != nil {
@@ -727,6 +730,55 @@ LABEL "label" INTO model_table;`, caseDB)
 	cli := pb.NewSQLFlowClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1200*time.Second)
+	defer cancel()
+
+	stream, err := cli.Run(ctx, sqlRequest(trainSQL))
+	if err != nil {
+		a.Fail("Check if the server started successfully. %v", err)
+	}
+	// wait train finish
+	ParseRow(stream)
+}
+
+func TestSQLByPass(t *testing.T) {
+	testDBDriver := os.Getenv("SQLFLOW_TEST_DB")
+	// default run mysql tests
+	if testDBDriver != "mysql" {
+		t.Skip("Skipping mysql tests")
+	}
+	dbConnStr = "mysql://root:root@tcp/?maxAllowedPacket=0"
+	modelDir := ""
+
+	tmpDir, caCrt, caKey, err := generateTempCA()
+	defer os.RemoveAll(tmpDir)
+	if err != nil {
+		t.Fatalf("failed to generate CA pair %v", err)
+	}
+	go start("", modelDir, caCrt, caKey, true)
+	WaitPortReady("localhost"+port, 0)
+	err = prepareTestData(dbConnStr)
+	if err != nil {
+		t.Fatalf("prepare test dataset failed: %v", err)
+	}
+	caseDB = "standard_join_test"
+
+	t.Run("CaseSQLByPassLeftJoin", CaseSQLByPassLeftJoin)
+}
+
+// CaseSQLByPassLeftJoin is a case for testing left join
+func CaseSQLByPassLeftJoin(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`SELECT f1.user_id, f1.fea1, f2.fea2
+FROM %s.user_fea1 AS f1 LEFT OUTER JOIN %s.user_fea2 AS f2
+ON f1.user_id = f2.user_id
+WHERE f1.user_id < 3;`, caseDB, caseDB)
+
+	conn, err := createRPCConn()
+	a.NoError(err)
+	defer conn.Close()
+	cli := pb.NewSQLFlowClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
 	defer cancel()
 
 	stream, err := cli.Run(ctx, sqlRequest(trainSQL))
