@@ -164,6 +164,12 @@ func prepareTestData(dbStr string) error {
 		if err := testdata.Popularize(testDB.DB, testdata.IrisMaxComputeSQL); err != nil {
 			return err
 		}
+		if err := testdata.Popularize(testDB.DB, testdata.ODPSFeatureMapSQL); err != nil {
+			return err
+		}
+		if err := testdata.Popularize(testDB.DB, testdata.ODPSSparseColumnSQL); err != nil {
+			return err
+		}
 		return nil
 	}
 
@@ -318,6 +324,10 @@ func TestEnd2EndMaxComputeALPS(t *testing.T) {
 	caseDB = os.Getenv("MAXCOMPUTE_PROJECT")
 	if caseDB == "" {
 		t.Fatalf("Must set env MAXCOMPUTE_PROJECT when testing ALPS cases (SQLFLOW_submitter=alps)!!")
+	}
+	err = prepareTestData(dbConnStr)
+	if err != nil {
+		t.Fatalf("prepare test dataset failed: %v", err)
 	}
 
 	go start("", modelDir, caCrt, caKey, true)
@@ -664,7 +674,7 @@ INTO sqlflow_models.my_dnn_model;`
 func CaseTrainALPS(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`SELECT deep_id, user_space_stat, user_behavior_stat, space_stat, l
-FROM %s.sqlflow_sparse_feature_test
+FROM %s.sparse_column_test
 LIMIT 100
 TRAIN DNNClassifier
 WITH model.n_classes = 2, model.hidden_units = [10, 20], train.batch_size = 16, engine.ps_num=0, engine.worker_num=0, engine.type=local
@@ -698,8 +708,8 @@ INTO model_table;`, caseDB)
 // CaseTrainALPSFeatureMap is a case for training models using ALPS with feature_map table
 func CaseTrainALPSFeatureMap(t *testing.T) {
 	a := assert.New(t)
-	trainSQL := fmt.Sprintf(`SELECT dense, deep, item, sqlflow_softmax_estimator_train_data.label
-FROM %s.sqlflow_softmax_estimator_train_data
+	trainSQL := fmt.Sprintf(`SELECT dense, deep, item, test_sparse_with_fm.label
+FROM %s.test_sparse_with_fm
 LIMIT 32
 TRAIN alipay.SoftmaxClassifier
 WITH train.max_steps = 32, eval.steps=32, train.batch_size=8, engine.ps_num=0, engine.worker_num=0, engine.type = local
