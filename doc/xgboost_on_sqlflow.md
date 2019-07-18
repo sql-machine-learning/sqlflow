@@ -24,11 +24,11 @@ such as better early stopping strategy, parameter checking, and end to end launc
 
 ### User Experience
     
-In terms of sqlflow users, _xgboost_ is an alternative _Estimator_ like _Tensorflow Estimators_. 
-Working with xgboost is quite similar to working with Tensorflow estimators; 
+In terms of sqlflow users, _xgboost_ is an alternative _Estimator_ like _TensorFlow Estimators_. 
+Working with xgboost is quite similar to working with TensorFlow estimators; 
 just change `TRAIN DNNClassifier` into `TRAIN XGBoostEstimator`. 
 In addition, some xgboost specific parameters are required, 
-which can be configured in the same way as _Tensorflow_ parameters. 
+which can be configured in the same way as _TensorFlow_ parameters. 
 
 Below is a demo about training/predicting via xgboost :
 
@@ -56,12 +56,7 @@ select
     c1, c2, c3, c4
 from kaggle_credit_fraud_development_data
 PREDICT kaggle_credit_fraud_development_data.class
-USING sqlflow_models.xgboost_model_table
-COLUMN
-  c1, 
-  NUMERIC(c2, 10),
-  BUCKET(c3, [0, 10, 100]),
-  c4;
+USING sqlflow_models.xgboost_model_table;
 ```
 
 ### Implementation
@@ -69,11 +64,12 @@ COLUMN
 As `codegen.go` generating _TensorFlow_ code from sqlflow AST,
 we will add `codegen_xgboost.go` which translate sqlflow AST into a python launcher program of _xgboost_. 
 
+
 In _ant-xgboost_, there exists an incubating module named [_xgblauncher_](https://github.com/alipay/ant-xgboost/tree/ant_master/xgboost-launcher), 
 an extendable, cloud-native xgboost based machine learning pipeline, 
 which provides a python API for building custom `DataSource` and `ModelSource`.
 
-Below is a demonstration of DataSource/ModelSource API.
+The full documentation of _xgblauncher_ will be available soon. Below, we show a demonstration of DataSource/ModelSource API.
  
 ```python
 class DataSource:
@@ -151,4 +147,4 @@ a specific kubernetes controller for (distributed) xgboost jobs.
 With the help of `xgboost operator`, it is easy to handle `XGBoostJob` via `kuberentes API`, a kubernetes' custom resource defined by `xgboost operator`. 
 
 `XGBoostJob` building and tracking will be integrated to _xgblauncher_ in near future. 
-After that, we can generate python codes with an option to decide whether running xgboost job locally or submitting it to a remote k8s cluster.
+After that, we can generate python codes with an option to decide whether running xgboost job locally or submitting it to remote k8s cluster.
