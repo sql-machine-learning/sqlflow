@@ -18,7 +18,7 @@ var ODPSSparseColumnSQL = `DROP TABLE IF EXISTS sparse_column_test;
 CREATE TABLE sparse_column_test (
        id int,
        user_id  bigint,
-       label int,
+       l int,
 	   user_space_stat string,
 	   user_behavior_stat string,
 	   space_stat string,

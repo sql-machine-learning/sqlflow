@@ -677,19 +677,19 @@ INTO sqlflow_models.my_dnn_model;`
 // CaseTrainALPS is a case for training models using ALPS with out feature_map table
 func CaseTrainALPS(t *testing.T) {
 	a := assert.New(t)
-	trainSQL := fmt.Sprintf(`SELECT deep_id, user_space_stat, user_behavior_stat, space_stat, sqlflow_sparse_feature_test.l
-FROM %s.sqlflow_sparse_feature_test
+	trainSQL := fmt.Sprintf(`SELECT deep_id, user_space_stat, user_behavior_stat, space_stat, l
+FROM %s.sparse_column_test
 LIMIT 100
 TRAIN DNNClassifier
-WITH model.n_classes = 2, model.hidden_units = [10, 20], train.batch_size = 16, engine.ps_num=0, engine.worker_num=0, engine.type=local
+WITH model.n_classes = 2, model.hidden_units = [10, 20], train.batch_size = 10, engine.ps_num=0, engine.worker_num=0, engine.type=local
 COLUMN SPARSE(deep_id,15033,COMMA,int),
-		SPARSE(user_space_stat,310,COMMA,int),
-		SPARSE(user_behavior_stat,511,COMMA,int),
-		SPARSE(space_stat,418,COMMA,int),
-		EMBEDDING(CATEGORY_ID(deep_id,15033,COMMA),512,mean),
-		EMBEDDING(CATEGORY_ID(user_space_stat,310,COMMA),64,mean),
-		EMBEDDING(CATEGORY_ID(user_behavior_stat,511,COMMA),64,mean),
-		EMBEDDING(CATEGORY_ID(space_stat,418,COMMA),64,mean)
+       SPARSE(user_space_stat,310,COMMA,int),
+       SPARSE(user_behavior_stat,511,COMMA,int),
+       SPARSE(space_stat,418,COMMA,int),
+       EMBEDDING(CATEGORY_ID(deep_id,15033,COMMA),512,mean),
+       EMBEDDING(CATEGORY_ID(user_space_stat,310,COMMA),64,mean),
+       EMBEDDING(CATEGORY_ID(user_behavior_stat,511,COMMA),64,mean),
+       EMBEDDING(CATEGORY_ID(space_stat,418,COMMA),64,mean)
 LABEL l
 INTO model_table;`, caseDB)
 
@@ -712,13 +712,13 @@ INTO model_table;`, caseDB)
 // CaseTrainALPSFeatureMap is a case for training models using ALPS with feature_map table
 func CaseTrainALPSFeatureMap(t *testing.T) {
 	a := assert.New(t)
-	trainSQL := fmt.Sprintf(`SELECT dense, deep, item, test_sparse_with_fm.label
-FROM %s.test_sparse_with_fm
+	trainSQL := fmt.Sprintf(`SELECT dense, deep, item, sqlflow_softmax_estimator_train_data.label
+FROM %s.sqlflow_softmax_estimator_train_data
 LIMIT 32
 TRAIN alipay.SoftmaxClassifier
 WITH train.max_steps = 32, eval.steps=32, train.batch_size=8, engine.ps_num=0, engine.worker_num=0, engine.type = local
 COLUMN DENSE(dense, none, comma),
-	   DENSE(item, 1, comma, int)
+       DENSE(item, 1, comma, int)
 LABEL "label" INTO model_table;`, caseDB)
 
 	conn, err := createRPCConn()
