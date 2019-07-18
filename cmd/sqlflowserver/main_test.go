@@ -104,7 +104,7 @@ func AssertContainsAny(a *assert.Assertions, all map[string]string, actual *any.
 		b := wrappers.StringValue{}
 		ptypes.UnmarshalAny(actual, &b)
 		if _, ok := all[b.Value]; !ok {
-			a.Failf("string value %s not exist", b.Value)
+			a.Failf("", "string value %s not exist", b.Value)
 		}
 	}
 }
@@ -245,6 +245,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseTrainSQLWithHyperParams", CaseTrainSQLWithHyperParams)
 	t.Run("CaseTrainCustomModelWithHyperParams", CaseTrainCustomModelWithHyperParams)
 	t.Run("CaseSparseFeature", CaseSparseFeature)
+	t.Run("CaseSQLByPassLeftJoin", CaseSQLByPassLeftJoin)
 }
 
 func TestEnd2EndHive(t *testing.T) {
@@ -377,6 +378,8 @@ func CaseShowDatabases(t *testing.T) {
 		"sqlfs_test":         "",
 		"sys":                "",
 		"text_cn":            "",
+		"standard_join_test": "",
+		"iris_e2e":           "", // created by Python e2e test
 		"hive":               "", // if current mysql is also used for hive
 		"default":            "", // if fetching default hive databases
 	}
@@ -740,38 +743,13 @@ LABEL "label" INTO model_table;`, caseDB)
 	ParseRow(stream)
 }
 
-func TestSQLByPass(t *testing.T) {
-	testDBDriver := os.Getenv("SQLFLOW_TEST_DB")
-	// default run mysql tests
-	if testDBDriver != "mysql" {
-		t.Skip("Skipping mysql tests")
-	}
-	dbConnStr = "mysql://root:root@tcp/?maxAllowedPacket=0"
-	modelDir := ""
-
-	tmpDir, caCrt, caKey, err := generateTempCA()
-	defer os.RemoveAll(tmpDir)
-	if err != nil {
-		t.Fatalf("failed to generate CA pair %v", err)
-	}
-	go start("", modelDir, caCrt, caKey, true)
-	WaitPortReady("localhost"+port, 0)
-	err = prepareTestData(dbConnStr)
-	if err != nil {
-		t.Fatalf("prepare test dataset failed: %v", err)
-	}
-	caseDB = "standard_join_test"
-
-	t.Run("CaseSQLByPassLeftJoin", CaseSQLByPassLeftJoin)
-}
-
 // CaseSQLByPassLeftJoin is a case for testing left join
 func CaseSQLByPassLeftJoin(t *testing.T) {
 	a := assert.New(t)
-	trainSQL := fmt.Sprintf(`SELECT f1.user_id, f1.fea1, f2.fea2
-FROM %s.user_fea1 AS f1 LEFT OUTER JOIN %s.user_fea2 AS f2
+	trainSQL := `SELECT f1.user_id, f1.fea1, f2.fea2
+FROM standard_join_test.user_fea1 AS f1 LEFT OUTER JOIN standard_join_test.user_fea2 AS f2
 ON f1.user_id = f2.user_id
-WHERE f1.user_id < 3;`, caseDB, caseDB)
+WHERE f1.user_id < 3;`
 
 	conn, err := createRPCConn()
 	a.NoError(err)
