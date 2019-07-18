@@ -677,8 +677,8 @@ INTO sqlflow_models.my_dnn_model;`
 // CaseTrainALPS is a case for training models using ALPS with out feature_map table
 func CaseTrainALPS(t *testing.T) {
 	a := assert.New(t)
-	trainSQL := fmt.Sprintf(`SELECT deep_id, user_space_stat, user_behavior_stat, space_stat, l
-FROM %s.sparse_column_test
+	trainSQL := fmt.Sprintf(`SELECT deep_id, user_space_stat, user_behavior_stat, space_stat, sqlflow_sparse_feature_test.l
+FROM %s.sqlflow_sparse_feature_test
 LIMIT 100
 TRAIN DNNClassifier
 WITH model.n_classes = 2, model.hidden_units = [10, 20], train.batch_size = 16, engine.ps_num=0, engine.worker_num=0, engine.type=local

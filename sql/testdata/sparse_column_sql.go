@@ -14,7 +14,7 @@
 package testdata
 
 // ODPSSparseColumnSQL is .sql format data sample to test odps training with sparse samples.
-var ODPSSparseColumnSQL = `TRUNCATE TABLE IF EXISTS sparse_column_test;
+var ODPSSparseColumnSQL = `DROP TABLE IF EXISTS sparse_column_test;
 CREATE TABLE sparse_column_test (
        id int,
        user_id  bigint,
