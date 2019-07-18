@@ -14,8 +14,9 @@ Given a long and nested select inside the extended SQL statement, SQLFlow
 1. verifies all fields used in train clause are produced by select clause and have the desired types.
 1. generates Python submitter program which forwards the select clause to a particular SQL engine to fetch the training data.
 
-Please be aware that SQLFlow doesn't attempt to parse the nested select due to the difficulty in handling different
-syntax across SQL engines.
+Please be aware that SQLFlow doesn't attempt to parse the nested select due to the difficulty in handling different syntax
+across SQL engines. Instead, it follows the UNIX's pipeline philosophy: forwarding the complexity to various SQL engines,
+while retrieves the data via unified DB API.
 
 ![](figures/arbitrary-select.png)
 
