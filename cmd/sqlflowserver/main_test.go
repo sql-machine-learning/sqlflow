@@ -104,7 +104,7 @@ func AssertContainsAny(a *assert.Assertions, all map[string]string, actual *any.
 		b := wrappers.StringValue{}
 		ptypes.UnmarshalAny(actual, &b)
 		if _, ok := all[b.Value]; !ok {
-			a.Failf("string value %s not exist", b.Value)
+			a.Failf("", "string value %s not exist", b.Value)
 		}
 	}
 }
@@ -152,6 +152,9 @@ func prepareTestData(dbStr string) error {
 			return err
 		}
 		if err := testdata.Popularize(testDB.DB, testdata.ChurnSQL); err != nil {
+			return err
+		}
+		if err := testdata.Popularize(testDB.DB, testdata.StandardJoinTest); err != nil {
 			return err
 		}
 		return testdata.Popularize(testDB.DB, testdata.TextCNSQL)
@@ -242,6 +245,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseTrainSQLWithHyperParams", CaseTrainSQLWithHyperParams)
 	t.Run("CaseTrainCustomModelWithHyperParams", CaseTrainCustomModelWithHyperParams)
 	t.Run("CaseSparseFeature", CaseSparseFeature)
+	t.Run("CaseSQLByPassLeftJoin", CaseSQLByPassLeftJoin)
 }
 
 func TestEnd2EndHive(t *testing.T) {
@@ -374,6 +378,8 @@ func CaseShowDatabases(t *testing.T) {
 		"sqlfs_test":         "",
 		"sys":                "",
 		"text_cn":            "",
+		"standard_join_test": "",
+		"iris_e2e":           "", // created by Python e2e test
 		"hive":               "", // if current mysql is also used for hive
 		"default":            "", // if fetching default hive databases
 	}
@@ -727,6 +733,30 @@ LABEL "label" INTO model_table;`, caseDB)
 	cli := pb.NewSQLFlowClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1200*time.Second)
+	defer cancel()
+
+	stream, err := cli.Run(ctx, sqlRequest(trainSQL))
+	if err != nil {
+		a.Fail("Check if the server started successfully. %v", err)
+	}
+	// wait train finish
+	ParseRow(stream)
+}
+
+// CaseSQLByPassLeftJoin is a case for testing left join
+func CaseSQLByPassLeftJoin(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := `SELECT f1.user_id, f1.fea1, f2.fea2
+FROM standard_join_test.user_fea1 AS f1 LEFT OUTER JOIN standard_join_test.user_fea2 AS f2
+ON f1.user_id = f2.user_id
+WHERE f1.user_id < 3;`
+
+	conn, err := createRPCConn()
+	a.NoError(err)
+	defer conn.Close()
+	cli := pb.NewSQLFlowClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
 	defer cancel()
 
 	stream, err := cli.Run(ctx, sqlRequest(trainSQL))
