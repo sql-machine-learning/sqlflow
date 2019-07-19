@@ -1,6 +1,13 @@
 # _Design:_ xgboost on sqlflow
 
-## What is xgboost 
+## Overview
+
+This is a design doc about why and how to support running xgboost via sqlflow as a machine learning estimator.
+
+We propose to build a lightweight python template for xgboost on basis of `xgblauncher`,
+an incubating xgboost wrapper in [ant-xgboost](https://github.com/alipay/ant-xgboost).
+
+## Context
 
 Gradient boosting machine (GBM) is a widely used (supervised) machine learning method, 
 which trains a bunch of weak learners, typically decision trees, 
@@ -8,27 +15,25 @@ in a gradual, additive and sequential manner.
 A lot of winning solutions of data mining and machine learning challenges, 
 such as : Kaggle, KDD cup, are based on GBM or related techniques.
 
-xgboost (https://xgboost.ai/) is an optimized distributed gradient boosting library designed to be highly efficient, 
-flexible and portable, which is often regarded as one of the best GBM frameworks.
+There exists a lot of GBM frameworks (implementations), we propose to use [xgboost](https://xgboost.ai/) as backend of sqlflow, 
+who is an optimized distributed gradient boosting library designed to be highly efficient, flexible and portable, 
+often regarded as one of the best GBM framework.
 
 
-## _Design:_ xgboost on sqlflow via ant-xgboost
+## _Proposed Solution:_ ant-xgboost on sqlflow
    
-### Overview
-
-We use [ant-xgboost](https://github.com/alipay/ant-xgboost) as backend,
-which is forked from [xgboost](https://github.com/dmlc/xgboost).
-_Ant-xgboost_ is nearly same as original xgboost, 
-except some improvements to make xgboost easier to use, 
-such as better early stopping strategy, parameter checking, and end to end launcher.
+We propose to use [ant-xgboost](https://github.com/alipay/ant-xgboost) as backend,
+which is consistent with [xgboost](https://github.com/dmlc/xgboost) in kernel level. 
+Because in `ant-xgboost`, there exists an incubating module named [xgblauncher](https://github.com/alipay/ant-xgboost/tree/ant_master/xgboost-launcher), 
+an extendable, cloud-native xgboost based machine learning pipeline. 
+Comparing to python API provided by `xgboost`, it is easier to build a python code template for xgboost task launching on basis of `xgblauncher`.
 
 ### User Experience
     
-In terms of sqlflow users, _xgboost_ is an alternative _Estimator_ like _TensorFlow Estimators_. 
-Working with xgboost is quite similar to working with TensorFlow estimators; 
-just change `TRAIN DNNClassifier` into `TRAIN XGBoostEstimator`. 
-In addition, some xgboost specific parameters are required, 
-which can be configured in the same way as _TensorFlow_ parameters. 
+In terms of sqlflow users, xgboost is an alternative `Estimator` like `TensorFlow Estimators`. 
+Working with xgboost is quite similar to working with TensorFlow Estimators; just change `TRAIN DNNClassifier` into `TRAIN XGBoostEstimator`. 
+
+In addition, xgboost specific parameters can be configured in the same way as TensorFlow parameters. 
 
 Below is a demo about training/predicting via xgboost :
 
@@ -61,15 +66,12 @@ USING sqlflow_models.xgboost_model_table;
 
 ### Implementation
 
-As `codegen.go` generating _TensorFlow_ code from sqlflow AST,
-we will add `codegen_xgboost.go` which translate sqlflow AST into a python launcher program of _xgboost_. 
+As `codegen.go` generating TensorFlow code from sqlflow AST,
+we will add `codegen_xgboost.go` which translate sqlflow AST into a python launcher program of xgboost. 
 
+Since xgblauncher provide `DataSource` and `ModelSource`, abstraction of custom I/O pipeline, by which we can reuse data/model pipeline of `sqlflow_submitter`.
 
-In _ant-xgboost_, there exists an incubating module named [_xgblauncher_](https://github.com/alipay/ant-xgboost/tree/ant_master/xgboost-launcher), 
-an extendable, cloud-native xgboost based machine learning pipeline, 
-which provides a python API for building custom `DataSource` and `ModelSource`.
-
-The full documentation of _xgblauncher_ will be available soon. Below, we show a demonstration of DataSource/ModelSource API.
+The full documentation of xgblauncher will be available soon. Below, we show a demonstration of DataSource/ModelSource API.
  
 ```python
 class DataSource:
@@ -119,8 +121,8 @@ class ModelSource:
 ``` 
 
 
-With _xgblauncher_, we can launch _xgboost_ from sqlflow AST via a lightweight python `code template` and a corrsponding `filler`.
-The `code template` roughly includes  components as follows: 
+With the help of xgblauncher, we can launch xgboost from sqlflow AST via a lightweight python `code template` and a corrsponding `filler`.
+The `code template` roughly includes components as follows: 
 
 * `TFDataSource` that is responsible for fetching and pre-processing data via tf.feature_columns API.
    Data will be fetched in mini-batch style by executing TF compute graph with mini-batch data feed by `sqlflow_submitter.db.db_generator`.
@@ -128,9 +130,9 @@ The `code template` roughly includes  components as follows:
 * `DBDataSource` that is responsible for writing prediction results into specific data base.
    The writing action can be implemented via `sqlflow_submitter.db.insert_values`.
 
-* `LocalModelSource` that is responsible for reading/writing _xgboost_ models on local file system.
+* `LocalModelSource` that is responsible for reading/writing _gboost models on local file system.
 
-* Configuration conversions and entry point of _xgblauncher_.
+* Configure template building and entry point of xgblauncher.
 
 
 #### Running distributed xgboost job on k8s cluster
@@ -138,13 +140,13 @@ The `code template` roughly includes  components as follows:
 Distributed training is supported in xgboost via [rabit](https://github.com/dmlc/rabit), a reliable allreduce and broadcast interface for distributed machine learning.
 To run a distributed xgboost job with `rabit`, all we need to do is setup a distributed environment.  
 
-For now, _xgboost_ has been bind to some of most popular distributed computing frameworks, such as _Apache Spark_, _Apache Flink_, _Dask_.
+For now, xgboost has been bind to some popular distributed computing frameworks, such as Apache Spark, Apache Flink, Dask.
 However, specific computing frameworks are not always available in production environments. 
-So, we propose a cloud-native approach: running _xgboost_ directly on _k8s_ cluster. 
+So, we propose a cloud-native approach: running xgboost directly on `k8s cluster`. 
  
-As _xgblauncher_ is scalable and docker-friendly, xgblauncher-based containers can be easily orchestrated by [xgboost operator](https://github.com/kubeflow/xgboost-operator),
+As `xgblauncher` is scalable and docker-friendly, xgblauncher-based containers can be easily orchestrated by [xgboost operator](https://github.com/kubeflow/xgboost-operator),
 a specific kubernetes controller for (distributed) xgboost jobs.
 With the help of `xgboost operator`, it is easy to handle `XGBoostJob` via `kuberentes API`, a kubernetes' custom resource defined by `xgboost operator`. 
 
-`XGBoostJob` building and tracking will be integrated to _xgblauncher_ in near future. 
+`XGBoostJob` building and tracking will be integrated to `xgblauncher` in near future. 
 After that, we can generate python codes with an option to decide whether running xgboost job locally or submitting it to remote k8s cluster.
