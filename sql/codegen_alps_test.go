@@ -42,7 +42,7 @@ func TestTrainALPSFiller(t *testing.T) {
 	r, e := parser.Parse(wndStatement)
 	a.NoError(e)
 
-	filler, e := newALPSTrainFiller(r, nil)
+	filler, e := newALPSTrainFiller(r, nil, nil)
 	a.NoError(e)
 
 	a.True(filler.IsTraining)

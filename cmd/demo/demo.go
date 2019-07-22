@@ -105,7 +105,7 @@ func main() {
 		isTable, tableRendered := false, false
 		table := tablewriter.NewWriter(os.Stdout)
 
-		stream := sql.Run(slct, db, *modelDir)
+		stream := sql.Run(slct, db, *modelDir, nil)
 		for rsp := range stream.ReadAll() {
 			isTable = render(rsp, table)
 

@@ -71,10 +71,10 @@ func TestExecutorTrainAndPredictDNN(t *testing.T) {
 	a := assert.New(t)
 	modelDir := ""
 	a.NotPanics(func() {
-		stream := runExtendedSQL(testTrainSelectIris, testDB, modelDir)
+		stream := runExtendedSQL(testTrainSelectIris, testDB, modelDir, nil)
 		a.True(goodStream(stream.ReadAll()))
 
-		stream = runExtendedSQL(testPredictSelectIris, testDB, modelDir)
+		stream = runExtendedSQL(testPredictSelectIris, testDB, modelDir, nil)
 		a.True(goodStream(stream.ReadAll()))
 	})
 }
@@ -85,10 +85,10 @@ func TestExecutorTrainAndPredictDNNLocalFS(t *testing.T) {
 	a.Nil(e)
 	defer os.RemoveAll(modelDir)
 	a.NotPanics(func() {
-		stream := runExtendedSQL(testTrainSelectIris, testDB, modelDir)
+		stream := runExtendedSQL(testTrainSelectIris, testDB, modelDir, nil)
 		a.True(goodStream(stream.ReadAll()))
 
-		stream = runExtendedSQL(testPredictSelectIris, testDB, modelDir)
+		stream = runExtendedSQL(testPredictSelectIris, testDB, modelDir, nil)
 		a.True(goodStream(stream.ReadAll()))
 	})
 }
@@ -109,12 +109,12 @@ BATCHSIZE = 10
 COLUMN NUMERIC(dense, 4)
 LABEL class
 INTO sqlflow_models.my_dense_dnn_model
-;`, testDB, "")
+;`, testDB, "", nil)
 		a.True(goodStream(stream.ReadAll()))
 		stream = Run(`SELECT * FROM iris.test_dense
 PREDICT iris.predict_dense.class
 USING sqlflow_models.my_dense_dnn_model
-;`, testDB, "")
+;`, testDB, "", nil)
 		a.True(goodStream(stream.ReadAll()))
 	})
 }
