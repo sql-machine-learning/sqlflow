@@ -233,16 +233,16 @@ func codegen(w io.Writer, pr *extendedSelect, fts fieldTypes, db *DB) error {
 		return e
 	}
 
-	// select estimatorTemplate according to Estimator
-	key := strings.ToUpper(r.Estimator)
+	estimatorKey := strings.ToUpper(r.Estimator)
+	// select estimatorTemplate
 	var temp estimatorTemplate
 	switch {
-	case strings.HasPrefix(key, "TF.ESTIMATOR"):
+	case strings.HasPrefix(estimatorKey, "TF.ESTIMATOR") || r.IsKerasModel:
 		temp = &tfTemplate{}
-	case strings.HasPrefix(key, "XGBOOST"):
+	case strings.HasPrefix(estimatorKey, "XGBOOST"):
 		temp = &xgboostTemplate{}
 	default:
-		return fmt.Errorf("unknown estimator name: %s", key)
+		return fmt.Errorf("unknown estimator name: %s", estimatorKey)
 	}
 
 	if e = temp.execute(w, r); e != nil {
