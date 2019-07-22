@@ -18,13 +18,12 @@ import (
 	"text/template"
 )
 
-type tfTemplate struct {}
+type tfTemplate struct{}
 
 func (*tfTemplate) execute(w io.Writer, r *filler) error {
 	temp := template.Must(template.New("codegen").Parse(tfCodegenTemplateText))
 	return temp.Execute(w, r)
 }
-
 
 const tfCodegenTemplateText = `
 import os
@@ -47,8 +46,8 @@ import logging
 tf.get_logger().setLevel(logging.ERROR)
 
 ` +
-// TODO(typhoonzero): get NUM_BUCKETS, EMBEDDING_WIDTH from Extended SQL statements in
-// COLUMN sub clause
+	// TODO(typhoonzero): get NUM_BUCKETS, EMBEDDING_WIDTH from Extended SQL statements in
+	// COLUMN sub clause
 	`
 BATCHSIZE = 1
 EPOCHS = None
