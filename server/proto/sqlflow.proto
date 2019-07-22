@@ -23,6 +23,7 @@ message Session {
     string token = 1;
     string db_conn_str = 2;
     bool exit_on_submit = 3;
+    string user_id = 4;
 }
 
 // SQL statements to run
