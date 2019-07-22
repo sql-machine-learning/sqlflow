@@ -237,7 +237,7 @@ func codegen(w io.Writer, pr *extendedSelect, fts fieldTypes, db *DB) error {
 	key := strings.ToUpper(r.Estimator)
 	var temp estimatorTemplate
 	switch {
-	case strings.HasPrefix(key, "DNN"):
+	case strings.HasPrefix(key, "TF.ESTIMATOR"):
 		temp = &tfTemplate{}
 	case strings.HasPrefix(key, "XGBOOST"):
 		temp = &xgboostTemplate{}
