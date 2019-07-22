@@ -210,6 +210,12 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB, session *pb.Session) (*alpsF
 	}
 	var modelDir string
 	var scratchDir string
+	exitOnSubmit := true
+	userID := ""
+	if session != nil {
+		exitOnSubmit = session.ExitOnSubmit
+		userID = session.UserId
+	}
 	if resolved.EngineParams.etype == "local" {
 		//TODO(uuleon): the scratchDir will be deleted after model uploading
 		scratchDir, err = ioutil.TempDir("/tmp", "alps_scratch_dir_")
@@ -220,12 +226,9 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB, session *pb.Session) (*alpsF
 	} else {
 		scratchDir = ""
 		// TODO(joyyoj) hard code currently.
-		modelDir = fmt.Sprintf("arks://sqlflow/%s.tar.gz", pr.trainClause.save)
+		modelDir = fmt.Sprintf("arks://%s/%s.tar.gz", filepath.Join("sqlflow", userID), pr.trainClause.save)
 	}
-	exitOnSubmit := true
-	if session != nil {
-		exitOnSubmit = session.ExitOnSubmit
-	}
+	log.Printf("Will save the models on: %s\n", modelDir)
 	return &alpsFiller{
 		IsTraining:          true,
 		TrainInputTable:     tableName,

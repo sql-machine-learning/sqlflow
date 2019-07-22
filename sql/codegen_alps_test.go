@@ -17,6 +17,7 @@ import (
 	"strings"
 	"testing"
 
+	pb "github.com/sql-machine-learning/sqlflow/server/proto"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -28,7 +29,8 @@ func TestTrainALPSFiller(t *testing.T) {
 		TRAIN DNNLinearCombinedClassifier 
 		WITH 
 			model.dnn_hidden_units = [10, 20],
-			train.max_steps = 1000
+			train.max_steps = 1000,
+			engine.type = "yarn"
 		COLUMN
 			DENSE(dense, 5, comma),
 			SPARSE(deep, 2000, comma),
@@ -37,12 +39,13 @@ func TestTrainALPSFiller(t *testing.T) {
 		COLUMN
 			SPARSE(wide, 1000, comma),
 			EMBEDDING(CATEGORY_ID(wide, 1000), 16, mean) FOR linear_feature_columns
-		LABEL c3 INTO model_table;`
+		LABEL c3
+		INTO model_table;`
 
 	r, e := parser.Parse(wndStatement)
 	a.NoError(e)
-
-	filler, e := newALPSTrainFiller(r, nil, nil)
+	session := &pb.Session{UserId: "sqlflow_user"}
+	filler, e := newALPSTrainFiller(r, nil, session)
 	a.NoError(e)
 
 	a.True(filler.IsTraining)
@@ -53,4 +56,5 @@ func TestTrainALPSFiller(t *testing.T) {
 	a.Equal("DenseColumn(name=\"c3\", shape=[1], dtype=\"int\", separator=\",\")", filler.Y)
 	a.True(strings.Contains(filler.ModelCreatorCode, "tf.estimator.DNNLinearCombinedClassifier(dnn_hidden_units=[10,20]"), filler.ModelCreatorCode)
 	a.Equal(1000, filler.TrainClause.MaxSteps)
+	a.Equal(filler.ModelDir, "arks://sqlflow/sqlflow_user/model_table.tar.gz")
 }
