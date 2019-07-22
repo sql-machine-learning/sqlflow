@@ -21,10 +21,12 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"sqlflow.org/gomaxcompute"
 	"strconv"
 	"strings"
 	"text/template"
+
+	pb "github.com/sql-machine-learning/sqlflow/server/proto"
+	"sqlflow.org/gomaxcompute"
 )
 
 type alpsFiller struct {
@@ -49,6 +51,7 @@ type alpsFiller struct {
 	ModelCreatorCode  string
 	FeatureColumnCode string
 	TrainClause       *resolvedTrainClause
+	ExitOnSubmit      bool
 
 	// Feature map
 	FeatureMapTable     string
@@ -120,7 +123,7 @@ func modelCreatorCode(resolved *resolvedTrainClause, args []string) (string, str
 		fmt.Sprintf("%s(%s)", modelName, strings.Join(cl, ",")), nil
 }
 
-func newALPSTrainFiller(pr *extendedSelect, db *DB) (*alpsFiller, error) {
+func newALPSTrainFiller(pr *extendedSelect, db *DB, session *pb.Session) (*alpsFiller, error) {
 	resolved, err := resolveTrainClause(&pr.trainClause)
 	if err != nil {
 		return nil, err
@@ -219,6 +222,10 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB) (*alpsFiller, error) {
 		// TODO(joyyoj) hard code currently.
 		modelDir = fmt.Sprintf("arks://sqlflow/%s.tar.gz", pr.trainClause.save)
 	}
+	exitOnSubmit := true
+	if session != nil {
+		exitOnSubmit = session.ExitOnSubmit
+	}
 	return &alpsFiller{
 		IsTraining:          true,
 		TrainInputTable:     tableName,
@@ -235,24 +242,25 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB) (*alpsFiller, error) {
 		TrainClause:         resolved,
 		FeatureMapTable:     fmap.Table,
 		FeatureMapPartition: fmap.Partition,
-		EngineCode:          engineCode}, nil
+		EngineCode:          engineCode,
+		ExitOnSubmit:        exitOnSubmit}, nil
 }
 
 func newALPSPredictFiller(pr *extendedSelect) (*alpsFiller, error) {
 	return nil, fmt.Errorf("alps predict not supported")
 }
 
-func genALPSFiller(w io.Writer, pr *extendedSelect, db *DB) (*alpsFiller, error) {
+func genALPSFiller(w io.Writer, pr *extendedSelect, db *DB, session *pb.Session) (*alpsFiller, error) {
 	if pr.train {
-		return newALPSTrainFiller(pr, db)
+		return newALPSTrainFiller(pr, db, session)
 	}
 	return newALPSPredictFiller(pr)
 }
 
-func submitALPS(w *PipeWriter, pr *extendedSelect, db *DB, cwd string) error {
+func submitALPS(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *pb.Session) error {
 	var program bytes.Buffer
 
-	filler, err := genALPSFiller(&program, pr, db)
+	filler, err := genALPSFiller(&program, pr, db, session)
 	if err != nil {
 		return err
 	}
@@ -527,7 +535,10 @@ if __name__ == "__main__":
     if isinstance(experiment.engine, LocalEngine):
         run_experiment(experiment)
     else:
-        submit_experiment(experiment, exit_on_submit=True)
+        if "{{.ExitOnSubmit}}" == "false":
+            run_experiment(experiment)
+        else:
+            submit_experiment(experiment, exit_on_submit=True)
 `
 
 var alpsTemplate = template.Must(template.New("alps").Parse(alpsTemplateText))

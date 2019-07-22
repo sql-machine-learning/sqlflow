@@ -33,13 +33,13 @@ import (
 )
 
 // NewServer returns a server instance
-func NewServer(run func(string, *sf.DB, string) *sf.PipeReader, db *sf.DB, modelDir string, enableSession bool) *Server {
+func NewServer(run func(string, *sf.DB, string, *pb.Session) *sf.PipeReader, db *sf.DB, modelDir string, enableSession bool) *Server {
 	return &Server{run: run, db: db, modelDir: modelDir, enableSession: enableSession}
 }
 
 // Server is the instance will be used to connect to DB and execute training
 type Server struct {
-	run           func(sql string, db *sf.DB, modelDir string) *sf.PipeReader
+	run           func(sql string, db *sf.DB, modelDir string, session *pb.Session) *sf.PipeReader
 	db            *sf.DB
 	modelDir      string
 	enableSession bool
@@ -55,8 +55,12 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 		}
 		defer db.Close()
 	}
-
-	pr := s.run(req.Sql, db, s.modelDir)
+	var pr *sf.PipeReader
+	if s.enableSession == true {
+		pr = s.run(req.Sql, db, s.modelDir, req.Session)
+	} else {
+		pr = s.run(req.Sql, db, s.modelDir, nil)
+	}
 
 	defer pr.Close()
 

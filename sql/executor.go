@@ -22,12 +22,14 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	pb "github.com/sql-machine-learning/sqlflow/server/proto"
 )
 
 // Run executes a SQL query and returns a stream of rows or messages
-func Run(slct string, db *DB, modelDir string) *PipeReader {
+func Run(slct string, db *DB, modelDir string, session *pb.Session) *PipeReader {
 	if len(splitExtendedSQL(slct)) == 2 {
-		return runExtendedSQL(slct, db, modelDir)
+		return runExtendedSQL(slct, db, modelDir, session)
 	}
 	return runStandardSQL(slct, db)
 }
@@ -232,7 +234,7 @@ func runExec(slct string, db *DB) *PipeReader {
 	return rd
 }
 
-func runExtendedSQL(slct string, db *DB, modelDir string) *PipeReader {
+func runExtendedSQL(slct string, db *DB, modelDir string, session *pb.Session) *PipeReader {
 	rd, wr := Pipe()
 	go func() {
 		defer wr.Close()
@@ -262,7 +264,7 @@ func runExtendedSQL(slct string, db *DB, modelDir string) *PipeReader {
 
 			// FIXME(tony): temporary branch to alps
 			if os.Getenv("SQLFLOW_submitter") == "alps" {
-				return submitALPS(wr, pr, db, cwd)
+				return submitALPS(wr, pr, db, cwd, session)
 			}
 
 			if pr.train {
