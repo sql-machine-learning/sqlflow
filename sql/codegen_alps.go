@@ -535,7 +535,10 @@ if __name__ == "__main__":
     if isinstance(experiment.engine, LocalEngine):
         run_experiment(experiment)
     else:
-        submit_experiment(experiment, exit_on_submit={{.ExitOnSubmit}})
+        if "{{.ExitOnSubmit}}" == "false":
+            run_experiment(experiment)
+        else:
+            submit_experiment(experiment, exit_on_submit=True)
 `
 
 var alpsTemplate = template.Must(template.New("alps").Parse(alpsTemplateText))
