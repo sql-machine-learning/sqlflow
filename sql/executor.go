@@ -333,8 +333,8 @@ func train(tr *extendedSelect, slct string, db *DB, cwd string, wr *PipeWriter, 
 	}
 
 	var program bytes.Buffer
-	if e := genTF(&program, tr, fts, db); e != nil {
-		return fmt.Errorf("genTF %v", e)
+	if e := codegen(&program, tr, fts, db); e != nil {
+		return fmt.Errorf("codegen %v", e)
 	}
 
 	cw := &logChanWriter{wr: wr}
@@ -387,8 +387,8 @@ func pred(pr *extendedSelect, db *DB, cwd string, wr *PipeWriter, modelDir strin
 	}
 
 	var buf bytes.Buffer
-	if e := genTF(&buf, pr, fts, db); e != nil {
-		return fmt.Errorf("genTF: %v", e)
+	if e := codegen(&buf, pr, fts, db); e != nil {
+		return fmt.Errorf("codegen: %v", e)
 	}
 
 	cw := &logChanWriter{wr: wr}
