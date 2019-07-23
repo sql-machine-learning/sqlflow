@@ -39,7 +39,6 @@ type modelConfig struct {
 	Estimator    string
 	Attrs        map[string]string
 	Save         string
-	IsKerasModel bool
 }
 
 type featureMeta struct {
@@ -50,7 +49,7 @@ type featureMeta struct {
 	IsSparse    bool
 }
 
-type filler struct {
+type commonFiller struct {
 	IsTrain        bool
 	Driver         string
 	StandardSelect string
@@ -63,8 +62,8 @@ type filler struct {
 	connectionConfig
 }
 
-type estimatorTemplate interface {
-	execute(w io.Writer, r *filler) error
+type EstimatorGenerator interface {
+	execute(w io.Writer) error
 }
 
 func translateColumnToFeature(fts *fieldTypes, driverName, ident string) (*columnType, error) {
@@ -92,25 +91,15 @@ func translateColumnToFeature(fts *fieldTypes, driverName, ident string) (*colum
 	return nil, fmt.Errorf("unsupported type %s of field %s", ctype, ident)
 }
 
-// parseModelURI returns isKerasModel, modelClassString
-func parseModelURI(modelString string) (bool, string) {
-	if strings.HasPrefix(modelString, "sqlflow_models.") {
-		return true, modelString
-	}
-	return false, fmt.Sprintf("tf.estimator.%s", modelString)
-}
-
 // TODO(weiguo): fts -> pointer
-func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
-	isKerasModel, modelClassString := parseModelURI(pr.estimator)
-	r := &filler{
+func newCommonFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*commonFiller, error) {
+	r := &commonFiller{
 		IsTrain:        pr.train,
 		StandardSelect: pr.standardSelect.String(),
 		modelConfig: modelConfig{
-			Estimator:    modelClassString,
-			Attrs:        make(map[string]string),
-			Save:         pr.save,
-			IsKerasModel: isKerasModel,
+			Estimator: pr.estimator,
+			Save:      pr.save,
+			Attrs:     make(map[string]string),
 		},
 	}
 	for k, v := range pr.attrs {
@@ -123,7 +112,7 @@ func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
 			return nil, err
 		}
 		if len(colSpecs) != 0 {
-			return nil, fmt.Errorf("newFiller doesn't support DENSE/SPARSE")
+			return nil, fmt.Errorf("newCommonFiller doesn't support DENSE/SPARSE")
 		}
 		r.FeatureColumnsCode = make(map[string][]string)
 		for _, col := range feaCols {
@@ -182,7 +171,7 @@ func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
 	return fillDatabaseInfo(r, db)
 }
 
-func fillDatabaseInfo(r *filler, db *DB) (*filler, error) {
+func fillDatabaseInfo(r *commonFiller, db *DB) (*commonFiller, error) {
 	r.Driver = db.driverName
 	switch db.driverName {
 	case "mysql":
@@ -228,24 +217,35 @@ func removeLastSemicolon(s string) string {
 }
 
 func codegen(w io.Writer, pr *extendedSelect, fts fieldTypes, db *DB) error {
-	r, e := newFiller(pr, fts, db)
+	// 1. generate CommonFiller
+	filler, e := newCommonFiller(pr, fts, db)
 	if e != nil {
 		return e
 	}
 
-	estimatorKey := strings.ToUpper(r.Estimator)
-	// select estimatorTemplate
-	var temp estimatorTemplate
-	switch {
-	case strings.HasPrefix(estimatorKey, "TF.ESTIMATOR") || r.IsKerasModel:
-		temp = &tfTemplate{}
-	case strings.HasPrefix(estimatorKey, "XGBOOST"):
-		temp = &xgboostTemplate{}
-	default:
-		return fmt.Errorf("unknown estimator name: %s", estimatorKey)
+	// 2. select EstimatorGenerator
+	var execFn func(w io.Writer) error
+	// Try newXGBGenerator, if filler don't adapt to it, continue to try other generators below.
+	if temp, err := newXGBGenerator(filler); err != nil {
+		return err
+	} else if temp != nil {
+		execFn = temp.execute
+		goto EXEC
+	}
+	// walk around: Try newTFGenerator at last, because it will accept any CommonFiller.
+	if temp, err := newTFGenerator(filler); err != nil {
+		return err
+	} else if temp != nil {
+		execFn = temp.execute
+		goto EXEC
 	}
 
-	if e = temp.execute(w, r); e != nil {
+EXEC:
+	// 3. execute chosen EstimatorGenerator
+	if execFn == nil {
+		return fmt.Errorf("codegen: execute function is NIL")
+	}
+	if e = execFn(w); e != nil {
 		return fmt.Errorf("codegen: failed executing template: %v", e)
 	}
 	return nil

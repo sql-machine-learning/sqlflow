@@ -13,10 +13,36 @@
 
 package sql
 
-import "io"
+import (
+	"fmt"
+	"io"
+	"strings"
+)
 
-type xgboostTemplate struct{}
+type XGBGenerator struct{
+	*commonFiller
+	estimatorType string
+}
 
-func (*xgboostTemplate) execute(w io.Writer, r *filler) error {
-	panic("xgboostTemplate has not been implemented!")
+func (*XGBGenerator) execute(w io.Writer) error {
+	return fmt.Errorf("XGBGenerator has not been implemented")
+}
+
+func newXGBGenerator(r *commonFiller) (*XGBGenerator, error) {
+	var xgbEstimatorType string
+	switch strings.ToUpper(r.Estimator) {
+	case "XGBOOSTCLASSIFIER":
+		xgbEstimatorType = "XGBoostClassifier"
+	case "XGBOOSTREGRESSOR":
+		xgbEstimatorType = "XGBoostRegressor"
+	case "XGBOOSTESTIMATOR":
+		xgbEstimatorType = "XGBoostEstimator"
+	default:
+		xgbEstimatorType = ""
+	}
+	if len(xgbEstimatorType) == 0 {
+		return nil, nil
+	}
+	temp := &XGBGenerator{r, xgbEstimatorType}
+	return temp, nil
 }

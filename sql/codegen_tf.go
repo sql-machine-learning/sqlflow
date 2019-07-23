@@ -14,15 +14,30 @@
 package sql
 
 import (
+	"fmt"
 	"io"
+	"strings"
 	"text/template"
 )
 
-type tfTemplate struct{}
+type TFGenerator struct{
+	*commonFiller
+	IsKerasModel bool
+}
 
-func (*tfTemplate) execute(w io.Writer, r *filler) error {
+func (gen *TFGenerator) execute(w io.Writer) error {
 	temp := template.Must(template.New("codegen").Parse(tfCodegenTemplateText))
-	return temp.Execute(w, r)
+	return temp.Execute(w, gen)
+}
+
+func newTFGenerator(r *commonFiller) (*TFGenerator, error) {
+	tfGen := &TFGenerator{commonFiller: r}
+	if strings.HasPrefix(r.Estimator, "sqlflow_models.") {
+		tfGen.IsKerasModel = true
+	} else {
+		tfGen.Estimator = fmt.Sprintf("tf.estimator.%s", tfGen.Estimator)
+	}
+	return tfGen, nil
 }
 
 const tfCodegenTemplateText = `
