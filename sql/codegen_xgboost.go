@@ -20,7 +20,7 @@ import (
 )
 
 // code generator of XGBoost
-type xgbGenerator struct{
+type xgbGenerator struct {
 	*commonFiller
 	estimatorType string
 }

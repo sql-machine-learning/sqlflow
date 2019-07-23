@@ -21,7 +21,7 @@ import (
 )
 
 // code generator of TensorFlow and Keras, it is default code generator.
-type tfGenerator struct{
+type tfGenerator struct {
 	*commonFiller
 	IsKerasModel bool
 }
