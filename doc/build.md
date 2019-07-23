@@ -88,7 +88,7 @@ SQLFLOW_TEST_DB=mysql go test -v ./...
 where `go generate` invokes the `protoc` command to translate `server/sqlflow.proto`
 into `server/sqlflow.pb.go` and `go test -v` builds and run unit tests. The environment variable
 `SQLFLOW_TEST_DB=mysql` specify MySQL as the backend, you can also check [test_hive.sh](/scripts/test_hive.sh) and
-[test_maxcompute.sh](/scripts/test_maxcompute.sh) to run the unit tests with other backend.
+[test_maxcompute.sh](/scripts/test_maxcompute.sh) to run the unit tests with other backends.
 
 ## Demo: Command line Prompt
 
