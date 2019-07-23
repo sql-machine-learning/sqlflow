@@ -19,6 +19,7 @@ import (
 	"strings"
 )
 
+// Code generator for XGBoost
 type XGBGenerator struct{
 	*commonFiller
 	estimatorType string

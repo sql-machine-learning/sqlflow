@@ -62,6 +62,7 @@ type commonFiller struct {
 	connectionConfig
 }
 
+// code generator interface for different estimators (backends)
 type EstimatorGenerator interface {
 	execute(w io.Writer) error
 }

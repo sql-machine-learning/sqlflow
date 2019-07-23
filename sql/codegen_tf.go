@@ -20,6 +20,7 @@ import (
 	"text/template"
 )
 
+// Code generator for TensorFlow and Keras, it is default code generator.
 type TFGenerator struct{
 	*commonFiller
 	IsKerasModel bool
