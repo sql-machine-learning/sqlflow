@@ -36,9 +36,9 @@ type connectionConfig struct {
 }
 
 type modelConfig struct {
-	Estimator    string
-	Attrs        map[string]string
-	Save         string
+	Estimator string
+	Attrs     map[string]string
+	Save      string
 }
 
 type featureMeta struct {
