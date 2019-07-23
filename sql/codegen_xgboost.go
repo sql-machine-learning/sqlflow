@@ -19,17 +19,17 @@ import (
 	"strings"
 )
 
-// XGBGenerator, code generator of XGBoost
-type XGBGenerator struct{
+// code generator of XGBoost
+type xgbGenerator struct{
 	*commonFiller
 	estimatorType string
 }
 
-func (*XGBGenerator) execute(w io.Writer) error {
-	return fmt.Errorf("XGBGenerator has not been implemented")
+func (*xgbGenerator) execute(w io.Writer) error {
+	return fmt.Errorf("xgbGenerator has not been implemented")
 }
 
-func newXGBGenerator(r *commonFiller) (*XGBGenerator, error) {
+func newXGBGenerator(r *commonFiller) (*xgbGenerator, error) {
 	var xgbEstimatorType string
 	switch strings.ToUpper(r.Estimator) {
 	case "XGBOOSTCLASSIFIER":
@@ -44,6 +44,6 @@ func newXGBGenerator(r *commonFiller) (*XGBGenerator, error) {
 	if len(xgbEstimatorType) == 0 {
 		return nil, nil
 	}
-	temp := &XGBGenerator{r, xgbEstimatorType}
+	temp := &xgbGenerator{r, xgbEstimatorType}
 	return temp, nil
 }

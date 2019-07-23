@@ -62,8 +62,8 @@ type commonFiller struct {
 	connectionConfig
 }
 
-// EstimatorGenerator, code generator interface for different estimators (backends)
-type EstimatorGenerator interface {
+// code generator interface for different estimators (backends)
+type estimatorGenerator interface {
 	execute(w io.Writer) error
 }
 
@@ -224,7 +224,7 @@ func codegen(w io.Writer, pr *extendedSelect, fts fieldTypes, db *DB) error {
 		return e
 	}
 
-	// 2. select EstimatorGenerator
+	// 2. select estimatorGenerator
 	var execFn func(w io.Writer) error
 	// Try newXGBGenerator, if filler don't adapt to it, continue to try other generators below.
 	if temp, err := newXGBGenerator(filler); err != nil {
@@ -242,7 +242,7 @@ func codegen(w io.Writer, pr *extendedSelect, fts fieldTypes, db *DB) error {
 	}
 
 EXEC:
-	// 3. execute chosen EstimatorGenerator
+	// 3. execute chosen estimatorGenerator
 	if execFn == nil {
 		return fmt.Errorf("codegen: execute function is NIL")
 	}

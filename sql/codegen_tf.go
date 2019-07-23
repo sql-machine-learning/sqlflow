@@ -20,19 +20,19 @@ import (
 	"text/template"
 )
 
-// TFGenerator, code generator of TensorFlow and Keras, it is default code generator.
-type TFGenerator struct{
+// code generator of TensorFlow and Keras, it is default code generator.
+type tfGenerator struct{
 	*commonFiller
 	IsKerasModel bool
 }
 
-func (gen *TFGenerator) execute(w io.Writer) error {
+func (gen *tfGenerator) execute(w io.Writer) error {
 	temp := template.Must(template.New("codegen").Parse(tfCodegenTemplateText))
 	return temp.Execute(w, gen)
 }
 
-func newTFGenerator(r *commonFiller) (*TFGenerator, error) {
-	tfGen := &TFGenerator{commonFiller: r}
+func newTFGenerator(r *commonFiller) (*tfGenerator, error) {
+	tfGen := &tfGenerator{commonFiller: r}
 	if strings.HasPrefix(r.Estimator, "sqlflow_models.") {
 		tfGen.IsKerasModel = true
 	} else {
