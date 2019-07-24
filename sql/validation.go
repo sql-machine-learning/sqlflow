@@ -16,13 +16,17 @@ package sql
 import (
 	"fmt"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 const (
 	temporaryTableLifecycle = 14 // day(s)
 	randomColumn            = "sqlflow_rdm"
-	randomTablePrefix       = "sqlflow_tv_" // tav = training & validation
+	randomTablePrefix       = "sqlflow_tv_" // 'tv' = training & validation
 )
+
+var errNotSupportYet = errors.New("not support yet")
 
 // SQLFlow generates a temporary table, + sqlflow_randowm column
 func tableWithRandomColumn(db *DB, slct string) (string, error) {
@@ -30,6 +34,8 @@ func tableWithRandomColumn(db *DB, slct string) (string, error) {
 	case "maxcompute":
 		return createMaxcomputeRandomTable(db, slct)
 	// TODO(weiguo): support other databases
+	case "hive", "mysql", "sqlite3":
+		return "", errNotSupportYet
 	default:
 		return "", fmt.Errorf("sqlflow currently doesn't support validation for %s", db.driverName)
 	}

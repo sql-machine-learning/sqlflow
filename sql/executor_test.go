@@ -50,7 +50,9 @@ func TestTableWithRandomColumn(t *testing.T) {
 	a := assert.New(t)
 	a.NotPanics(func() {
 		_, e := tableWithRandomColumn(testDB, testGenerateRandomColumnTable)
-		a.NoError(e)
+		if e != errNotSupportYet {
+			a.NoError(e)
+		}
 	})
 }
 
