@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/sql-machine-learning/sqlflow/sql/testdata"
+	"sqlflow.org/gomaxcompute"
 
 	"github.com/go-sql-driver/mysql"
 	_ "github.com/mattn/go-sqlite3"
@@ -70,6 +71,20 @@ func testHiveDatabase() *DB {
 	return db
 }
 
+func testMaxcompute() *DB {
+	cfg := &gomaxcompute.Config{
+		AccessID:  os.Getenv("ODPS_ACCESS_ID"),
+		AccessKey: os.Getenv("ODPS_ACCESS_KEY"),
+		Project:   os.Getenv("ODPS_PROJECT"),
+		Endpoint:  os.Getenv("ODPS_ENDPOINT"),
+	}
+
+	db, e := NewDB(fmt.Sprintf("maxcompute://%s", cfg.FormatDSN()))
+	assertNoErr(e)
+	// TODO(weiguo): Popularize
+	return db
+}
+
 func TestMain(m *testing.M) {
 	dbms := getEnv("SQLFLOW_TEST_DB", "mysql")
 	switch dbms {
@@ -79,6 +94,8 @@ func TestMain(m *testing.M) {
 		testDB = testMySQLDatabase()
 	case "hive":
 		testDB = testHiveDatabase()
+	case "maxcompute":
+		testDB = testMaxcompute()
 	default:
 		e := fmt.Errorf("unrecognized environment variable SQLFLOW_TEST_DB %s", dbms)
 		assertNoErr(e)

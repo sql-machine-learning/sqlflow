@@ -46,6 +46,14 @@ func goodStream(stream chan interface{}) (bool, string) {
 	return true, ""
 }
 
+func TestTableWithRandomColumn(t *testing.T) {
+	a := assert.New(t)
+	a.NotPanics(func() {
+		_, e := tableWithRandomColumn(testDB, testGenerateRandomColumnTable)
+		a.NoError(e)
+	})
+}
+
 func TestExecutorTrainAndPredictDNN(t *testing.T) {
 	a := assert.New(t)
 	modelDir := ""

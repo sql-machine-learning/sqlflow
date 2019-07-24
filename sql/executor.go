@@ -225,6 +225,10 @@ func runExtendedSQL(slct string, db *DB, pr *extendedSelect, modelDir string) *P
 			}
 
 			if pr.train {
+				_, e := tableWithRandomColumn(db, slct)
+				if e != nil {
+					return e
+				}
 				return train(pr, slct, db, cwd, wr, modelDir)
 			}
 			return pred(pr, db, cwd, wr, modelDir)
