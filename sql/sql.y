@@ -64,7 +64,7 @@
 	}
 
 	type standardSelect struct {
-		fields []string
+		fields exprlist 
 		tables []string
 		where *expr
 		limit string
@@ -80,6 +80,7 @@
 
 	/* If no FOR in the COLUMN, the key is "" */
 	type columnClause map[string]exprlist
+	type filedClause  exprlist
 
 	type attrs map[string]*expr
 
@@ -103,7 +104,7 @@
 
 %union {
   val string  /* NUMBER, IDENT, STRING, and keywords */
-  flds []string
+  flds exprlist
   tbls []string
   expr *expr
   expl exprlist
@@ -125,11 +126,11 @@
 %type  <flds> fields
 %type  <tbls> tables
 %type  <expr> expr funcall column
-%type  <expl> exprlist pythonlist columns
+%type  <expl> exprlist pythonlist columns field_clause 
 %type  <atrs> attr
 %type  <atrs> attrs
 
-%token <val> SELECT FROM WHERE LIMIT TRAIN PREDICT WITH COLUMN LABEL USING INTO FOR
+%token <val> SELECT FROM WHERE LIMIT TRAIN PREDICT WITH COLUMN LABEL USING INTO FOR AS
 %token <val> IDENT NUMBER STRING
 
 %left <val> AND OR
@@ -165,7 +166,7 @@ select_stmt
 ;
 
 select
-: SELECT fields         { $$.fields = $2 }
+: SELECT field_clause		{ $$.fields = $2 }
 | select FROM tables    { $$.tables = $3 }
 | select LIMIT NUMBER   { $$.limit = $3 }
 | select WHERE expr     { $$.where = $3 }
@@ -194,10 +195,15 @@ column_clause
 | column_clause COLUMN columns FOR IDENT 	{ $$[$5] = $3 }
 ;
 
+field_clause
+: funcall AS '(' expr ')'				{ $$ = exprlist{$1, atomic(IDENT, $2)} }
+|	fields												{ $$ = $1 }
+;
+
 fields
-: '*'              { $$ = append($$, $1) }
-| IDENT            { $$ = append($$, $1) }
-| fields ',' IDENT { $$ = append($$, $3) }
+: '*'              { $$ = append($$, atomic(IDENT, "*")) }
+| IDENT            { $$ = append($$, atomic(IDENT, $1)) }
+| fields ',' IDENT { $$ = append($1, atomic(IDENT, $3)) }
 ;
 
 column
@@ -278,6 +284,14 @@ func (e *expr) cdr() (r []string) {
 	return r
 }
 
+func (el exprlist) cdr() (r []string) {
+	r = make([]string, len(el))
+	for i := 0; i < len(el); i++ {
+		r = append(r, el[i].String())
+	}
+	return r
+}
+
 func (e *expr) String() string {
 	if e.typ == 0 { /* a compound expression */
 		switch e.sexp[0].typ {
@@ -320,7 +334,12 @@ func (s standardSelect) String() string {
 	if len(s.fields) == 0 {
 		r += "*"
 	} else {
-		r += strings.Join(s.fields, ", ")
+		for i := 0; i < len(s.fields); i++ {
+			r += s.fields[i].String();
+			if i != len(s.fields) -1 {
+				r += ", "
+			}
+		}
 	}
 	r += "\nFROM " + strings.Join(s.tables, ", ")
 	if s.where != nil {

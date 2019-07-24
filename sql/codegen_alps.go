@@ -254,6 +254,7 @@ func newALPSPredictFiller(pr *extendedSelect) (*alpsFiller, error) {
 }
 
 func genALPSFiller(w io.Writer, pr *extendedSelect, db *DB, session *pb.Session) (*alpsFiller, error) {
+	fmt.Println(pr.train)
 	if pr.train {
 		return newALPSTrainFiller(pr, db, session)
 	}
@@ -626,7 +627,7 @@ func (meta *metadata) descTable() ([]*sql.ColumnType, error) {
 }
 
 func getFields(meta *metadata, pr *extendedSelect) ([]string, error) {
-	selectFields := pr.standardSelect.fields
+	selectFields := pr.standardSelect.fields.cdr()
 	if len(selectFields) == 1 && selectFields[0] == "*" {
 		selectFields = make([]string, 0)
 		columnTypes, err := meta.descTable()

@@ -123,3 +123,10 @@ func TestLexSQL(t *testing.T) {
 		a.Equal(vals[i], n.val)
 	}
 }
+
+func TestLexFuncSQL(t *testing.T) {
+	a := assert.New(t)
+	slct := "Select alps_inference(',', col_1, col_2) AS (info, score) from a_table where a_table.col_1 > 100;"
+	pr, _ := newParser().Parse(slct)
+	a.Equal(pr.tables[0], "a_table")
+}

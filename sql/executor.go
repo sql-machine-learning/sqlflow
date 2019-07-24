@@ -264,6 +264,7 @@ func runExtendedSQL(slct string, db *DB, modelDir string, session *pb.Session) *
 
 			// FIXME(tony): temporary branch to alps
 			if os.Getenv("SQLFLOW_submitter") == "alps" {
+				fmt.Println("run alps submitter program...")
 				return submitALPS(wr, pr, db, cwd, session)
 			}
 
