@@ -288,7 +288,8 @@ func (e *expr) cdr() (r []string) {
 	return r
 }
 
-func (el exprlist) cdr() (r []string) {
+/* Convert exprlist to string slice. */
+func (el exprlist) Strings() (r []string) {
 	for i := 0; i < len(el); i++ {
 		r = append(r, el[i].String())
 	}

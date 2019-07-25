@@ -146,7 +146,7 @@ func describeTables(slct *extendedSelect, db *DB) (ft fieldTypes, e error) {
 // returns {f:{t1:1,t2:1}}.  For `SELECT ... * ...`, returns {}.
 func indexSelectFields(slct *extendedSelect) (ft fieldTypes) {
 	ft = make(fieldTypes)
-	for _, f := range slct.fields.cdr() {
+	for _, f := range slct.fields.Strings() {
 		if f == "*" {
 			return fieldTypes{}
 		}
