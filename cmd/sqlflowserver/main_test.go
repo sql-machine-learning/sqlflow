@@ -104,7 +104,7 @@ func AssertContainsAny(a *assert.Assertions, all map[string]string, actual *any.
 		b := wrappers.StringValue{}
 		ptypes.UnmarshalAny(actual, &b)
 		if _, ok := all[b.Value]; !ok {
-			a.Failf("string value %s not exist", b.Value)
+			a.Failf("", "string value %s not exist", b.Value)
 		}
 	}
 }
@@ -154,6 +154,9 @@ func prepareTestData(dbStr string) error {
 		if err := testdata.Popularize(testDB.DB, testdata.ChurnSQL); err != nil {
 			return err
 		}
+		if err := testdata.Popularize(testDB.DB, testdata.StandardJoinTest); err != nil {
+			return err
+		}
 		return testdata.Popularize(testDB.DB, testdata.TextCNSQL)
 	case "hive":
 		if err := testdata.Popularize(testDB.DB, testdata.IrisHiveSQL); err != nil {
@@ -161,6 +164,16 @@ func prepareTestData(dbStr string) error {
 		}
 		return testdata.Popularize(testDB.DB, testdata.ChurnHiveSQL)
 	case "maxcompute":
+		submitter := os.Getenv("SQLFLOW_submitter")
+		if submitter == "alps" {
+			if err := testdata.Popularize(testDB.DB, testdata.ODPSFeatureMapSQL); err != nil {
+				return err
+			}
+			if err := testdata.Popularize(testDB.DB, testdata.ODPSSparseColumnSQL); err != nil {
+				return err
+			}
+			return nil
+		}
 		if err := testdata.Popularize(testDB.DB, testdata.IrisMaxComputeSQL); err != nil {
 			return err
 		}
@@ -232,6 +245,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseTrainSQLWithHyperParams", CaseTrainSQLWithHyperParams)
 	t.Run("CaseTrainCustomModelWithHyperParams", CaseTrainCustomModelWithHyperParams)
 	t.Run("CaseSparseFeature", CaseSparseFeature)
+	t.Run("CaseSQLByPassLeftJoin", CaseSQLByPassLeftJoin)
 }
 
 func TestEnd2EndHive(t *testing.T) {
@@ -268,6 +282,10 @@ func TestEnd2EndMaxCompute(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to generate CA pair %v", err)
 	}
+	submitter := os.Getenv("SQLFLOW_submitter")
+	if submitter == "alps" {
+		t.Skip("Skip this test case, it's for maxcompute + non-alps submitter.")
+	}
 
 	if testDBDriver != "maxcompute" {
 		t.Skip("Skip maxcompute tests")
@@ -287,6 +305,44 @@ func TestEnd2EndMaxCompute(t *testing.T) {
 	caseTestTable = "sqlflow_test_iris_test"
 	casePredictTable = "sqlflow_test_iris_predict"
 	t.Run("TestTrainSQL", CaseTrainSQL)
+}
+
+func TestEnd2EndMaxComputeALPS(t *testing.T) {
+	testDBDriver := os.Getenv("SQLFLOW_TEST_DB")
+	modelDir, _ := ioutil.TempDir("/tmp", "sqlflow_ssl_")
+	defer os.RemoveAll(modelDir)
+	tmpDir, caCrt, caKey, err := generateTempCA()
+	defer os.RemoveAll(tmpDir)
+	if err != nil {
+		t.Fatalf("failed to generate CA pair %v", err)
+	}
+	submitter := os.Getenv("SQLFLOW_submitter")
+	if submitter != "alps" {
+		t.Skip("Skip, this test is for maxcompute + alps")
+	}
+
+	if testDBDriver != "maxcompute" {
+		t.Skip("Skip maxcompute tests")
+	}
+	AK := os.Getenv("MAXCOMPUTE_AK")
+	SK := os.Getenv("MAXCOMPUTE_SK")
+	endpoint := os.Getenv("MAXCOMPUTE_ENDPOINT")
+	dbConnStr = fmt.Sprintf("maxcompute://%s:%s@%s", AK, SK, endpoint)
+
+	caseDB = os.Getenv("MAXCOMPUTE_PROJECT")
+	if caseDB == "" {
+		t.Fatalf("Must set env MAXCOMPUTE_PROJECT when testing ALPS cases (SQLFLOW_submitter=alps)!!")
+	}
+	err = prepareTestData(dbConnStr)
+	if err != nil {
+		t.Fatalf("prepare test dataset failed: %v", err)
+	}
+
+	go start("", modelDir, caCrt, caKey, true)
+	WaitPortReady("localhost"+port, 0)
+
+	t.Run("CaseTrainALPS", CaseTrainALPS)
+	t.Run("CaseTrainALPSFeatureMap", CaseTrainALPSFeatureMap)
 }
 
 func CaseShowDatabases(t *testing.T) {
@@ -322,6 +378,8 @@ func CaseShowDatabases(t *testing.T) {
 		"sqlfs_test":         "",
 		"sys":                "",
 		"text_cn":            "",
+		"standard_join_test": "",
+		"iris_e2e":           "", // created by Python e2e test
 		"hive":               "", // if current mysql is also used for hive
 		"default":            "", // if fetching default hive databases
 	}
@@ -619,5 +677,92 @@ INTO sqlflow_models.my_dnn_model;`
 		a.Fail("Check if the server started successfully. %v", err)
 	}
 	// call ParseRow only to wait train finish
+	ParseRow(stream)
+}
+
+// CaseTrainALPS is a case for training models using ALPS with out feature_map table
+func CaseTrainALPS(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`SELECT deep_id, user_space_stat, user_behavior_stat, space_stat, l
+FROM %s.sparse_column_test
+LIMIT 100
+TRAIN DNNClassifier
+WITH model.n_classes = 2, model.hidden_units = [10, 20], train.batch_size = 10, engine.ps_num=0, engine.worker_num=0, engine.type=local
+COLUMN SPARSE(deep_id,15033,COMMA,int),
+       SPARSE(user_space_stat,310,COMMA,int),
+       SPARSE(user_behavior_stat,511,COMMA,int),
+       SPARSE(space_stat,418,COMMA,int),
+       EMBEDDING(CATEGORY_ID(deep_id,15033,COMMA),512,mean),
+       EMBEDDING(CATEGORY_ID(user_space_stat,310,COMMA),64,mean),
+       EMBEDDING(CATEGORY_ID(user_behavior_stat,511,COMMA),64,mean),
+       EMBEDDING(CATEGORY_ID(space_stat,418,COMMA),64,mean)
+LABEL l
+INTO model_table;`, caseDB)
+
+	conn, err := createRPCConn()
+	a.NoError(err)
+	defer conn.Close()
+	cli := pb.NewSQLFlowClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	defer cancel()
+
+	stream, err := cli.Run(ctx, sqlRequest(trainSQL))
+	if err != nil {
+		a.Fail("Check if the server started successfully. %v", err)
+	}
+	// wait train finish
+	ParseRow(stream)
+}
+
+// CaseTrainALPSFeatureMap is a case for training models using ALPS with feature_map table
+func CaseTrainALPSFeatureMap(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`SELECT dense, deep, item, sqlflow_softmax_estimator_train_data.label
+FROM %s.sqlflow_softmax_estimator_train_data
+LIMIT 32
+TRAIN alipay.SoftmaxClassifier
+WITH train.max_steps = 32, eval.steps=32, train.batch_size=8, engine.ps_num=0, engine.worker_num=0, engine.type = local
+COLUMN DENSE(dense, none, comma),
+       DENSE(item, 1, comma, int)
+LABEL "label" INTO model_table;`, caseDB)
+
+	conn, err := createRPCConn()
+	a.NoError(err)
+	defer conn.Close()
+	cli := pb.NewSQLFlowClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 1200*time.Second)
+	defer cancel()
+
+	stream, err := cli.Run(ctx, sqlRequest(trainSQL))
+	if err != nil {
+		a.Fail("Check if the server started successfully. %v", err)
+	}
+	// wait train finish
+	ParseRow(stream)
+}
+
+// CaseSQLByPassLeftJoin is a case for testing left join
+func CaseSQLByPassLeftJoin(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := `SELECT f1.user_id, f1.fea1, f2.fea2
+FROM standard_join_test.user_fea1 AS f1 LEFT OUTER JOIN standard_join_test.user_fea2 AS f2
+ON f1.user_id = f2.user_id
+WHERE f1.user_id < 3;`
+
+	conn, err := createRPCConn()
+	a.NoError(err)
+	defer conn.Close()
+	cli := pb.NewSQLFlowClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	defer cancel()
+
+	stream, err := cli.Run(ctx, sqlRequest(trainSQL))
+	if err != nil {
+		a.Fail("Check if the server started successfully. %v", err)
+	}
+	// wait train finish
 	ParseRow(stream)
 }

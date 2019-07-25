@@ -56,18 +56,35 @@ func TestTableWithRandomColumn(t *testing.T) {
 	})
 }
 
+func TestSplitExtendedSQL(t *testing.T) {
+	a := assert.New(t)
+	s := splitExtendedSQL(`select a train b with c;`)
+	a.Equal(2, len(s))
+	a.Equal(`select a`, s[0])
+	a.Equal(` train b with c;`, s[1])
+
+	s = splitExtendedSQL(`  select a predict b using c;`)
+	a.Equal(2, len(s))
+	a.Equal(`  select a`, s[0])
+	a.Equal(` predict b using c;`, s[1])
+
+	s = splitExtendedSQL(` select a from b;`)
+	a.Equal(1, len(s))
+	a.Equal(` select a from b;`, s[0])
+
+	s = splitExtendedSQL(`train a with b;`)
+	a.Equal(1, len(s))
+	a.Equal(`train a with b;`, s[0])
+}
+
 func TestExecutorTrainAndPredictDNN(t *testing.T) {
 	a := assert.New(t)
 	modelDir := ""
 	a.NotPanics(func() {
-		pr, e := newParser().Parse(testTrainSelectIris)
-		a.NoError(e)
-		stream := runExtendedSQL(testTrainSelectIris, testDB, pr, modelDir)
+		stream := runExtendedSQL(testTrainSelectIris, testDB, modelDir, nil)
 		a.True(goodStream(stream.ReadAll()))
 
-		pr, e = newParser().Parse(testPredictSelectIris)
-		a.NoError(e)
-		stream = runExtendedSQL(testPredictSelectIris, testDB, pr, modelDir)
+		stream = runExtendedSQL(testPredictSelectIris, testDB, modelDir, nil)
 		a.True(goodStream(stream.ReadAll()))
 	})
 }
@@ -78,14 +95,10 @@ func TestExecutorTrainAndPredictDNNLocalFS(t *testing.T) {
 	a.Nil(e)
 	defer os.RemoveAll(modelDir)
 	a.NotPanics(func() {
-		pr, e := newParser().Parse(testTrainSelectIris)
-		a.NoError(e)
-		stream := runExtendedSQL(testTrainSelectIris, testDB, pr, modelDir)
+		stream := runExtendedSQL(testTrainSelectIris, testDB, modelDir, nil)
 		a.True(goodStream(stream.ReadAll()))
 
-		pr, e = newParser().Parse(testPredictSelectIris)
-		a.NoError(e)
-		stream = runExtendedSQL(testPredictSelectIris, testDB, pr, modelDir)
+		stream = runExtendedSQL(testPredictSelectIris, testDB, modelDir, nil)
 		a.True(goodStream(stream.ReadAll()))
 	})
 }
@@ -106,12 +119,12 @@ BATCHSIZE = 10
 COLUMN NUMERIC(dense, 4)
 LABEL class
 INTO sqlflow_models.my_dense_dnn_model
-;`, testDB, "")
+;`, testDB, "", nil)
 		a.True(goodStream(stream.ReadAll()))
 		stream = Run(`SELECT * FROM iris.test_dense
 PREDICT iris.predict_dense.class
 USING sqlflow_models.my_dense_dnn_model
-;`, testDB, "")
+;`, testDB, "", nil)
 		a.True(goodStream(stream.ReadAll()))
 	})
 }
