@@ -130,7 +130,7 @@
 %type  <atrs> attr
 %type  <atrs> attrs
 
-%token <val> SELECT FROM WHERE LIMIT TRAIN PREDICT WITH COLUMN LABEL USING INTO FOR AS
+%token <val> SELECT AS FROM WHERE LIMIT TRAIN PREDICT WITH COLUMN LABEL USING INTO FOR
 %token <val> IDENT NUMBER STRING
 
 %left <val> AND OR
@@ -196,8 +196,11 @@ column_clause
 ;
 
 field_clause
-: funcall AS '(' expr ')'				{ $$ = exprlist{$1, atomic(IDENT, $2)} }
-|	fields												{ $$ = $1 }
+: funcall AS '(' exprlist ')' {
+		$$ = exprlist{$1, atomic(IDENT, "AS")};
+		$$ = append($$, funcall("", $4));
+	}
+| fields						{ $$ = $1 }
 ;
 
 fields
@@ -257,6 +260,7 @@ expr
 | STRING         { $$ = atomic(STRING, $1) }
 | pythonlist     { $$ = variadic('[', "square", $1) }
 | '(' expr ')'   { $$ = unary('(', "paren", $2) } /* take '(' as the operator */
+| '"' STRING '"'	{ $$ = unary('"', "quota", atomic(STRING,$2)) }
 | funcall        { $$ = $1 }
 | expr '+' expr  { $$ = binary('+', $1, $2, $3) }
 | expr '-' expr  { $$ = binary('-', $1, $2, $3) }
@@ -285,7 +289,6 @@ func (e *expr) cdr() (r []string) {
 }
 
 func (el exprlist) cdr() (r []string) {
-	r = make([]string, len(el))
 	for i := 0; i < len(el); i++ {
 		r = append(r, el[i].String())
 	}

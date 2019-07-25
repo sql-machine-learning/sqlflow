@@ -63,7 +63,7 @@ func TestStandardSelect(t *testing.T) {
 	a.NoError(e)
 	a.False(r.extended)
 	a.Equal([]string{"employee.age", "last_name", "salary"},
-		r.fields)
+		r.fields.cdr())
 	a.Equal([]string{"employee"}, r.tables)
 	a.Equal("100", r.limit)
 	a.Equal(AND, r.where.sexp[0].typ)
