@@ -270,10 +270,7 @@ func runExtendedSQL(slct string, db *DB, modelDir string, session *pb.Session) *
 			if pr.train {
 				_, e := tableWithRandomColumn(db, slct)
 				// TODO(weiguo): remove this `errNotSupportYet` branch
-				if e == errNotSupportYet {
-					return trainWithoutValidation(pr, slct, db, cwd, wr, modelDir)
-				}
-				if e != nil {
+				if e != nil && e != errNotSupportYet {
 					return e
 				}
 				return train(pr, slct, db, cwd, wr, modelDir)
@@ -336,34 +333,7 @@ func (cw *logChanWriter) Close() {
 	}
 }
 
-func trainWithoutValidation(tr *extendedSelect, slct string, db *DB, cwd string, wr *PipeWriter, modelDir string) error {
-	fts, e := verify(tr, db)
-	if e != nil {
-		return e
-	}
-
-	var program bytes.Buffer
-	if e := genTF(&program, tr, fts, db); e != nil {
-		return fmt.Errorf("genTF %v", e)
-	}
-
-	cw := &logChanWriter{wr: wr}
-	defer cw.Close()
-	cmd := tensorflowCmd(cwd, db.driverName)
-	cmd.Stdin = &program
-	cmd.Stdout = cw
-	cmd.Stderr = cw
-	if e := cmd.Run(); e != nil {
-		return fmt.Errorf("training failed %v", e)
-	}
-	m := model{workDir: cwd, TrainSelect: slct}
-	if modelDir != "" {
-		return m.saveTar(modelDir, tr.save)
-	}
-	return m.save(db, tr.save)
-}
-
-func train(tr *extendedSelect, slct string, db *DB, cwd string, wr *PipeWriter, modelDir string) error {
+func tain(tr *extendedSelect, slct string, db *DB, cwd string, wr *PipeWriter, modelDir string) error {
 	fts, e := verify(tr, db)
 	if e != nil {
 		return e
