@@ -95,7 +95,7 @@ SQLFlow creates an own database as workspace, like `sqlflow_workspace`, then cre
    
 The query for training data can be written as `SELECT * FROM temp_table WHERE sqlflow_random < 0.8`, which fetches row1 and row3 etc.. The query for validation data can be written as `SELECT * FROM temp_table WHERE sqlflow_random >= 0.8`, which fetches the rest of the rows.
 
-In SQLFlow, we modify the user-specific data set to our temp_table restricted to `sqlflow_random >= 0.8` to train a model, then restricted the temp_table  to`sqlflow_random < 0.8` to validate that model. This context is built after the temporary data set accomplished, passed to `runExtendedSQL`  in `extendedSelect`.
+In SQLFlow, we modify the user-specific data set to our temp_table restricted to `sqlflow_random >= 0.8` to train a model, then restricted the temp_table to `sqlflow_random < 0.8` to validate that model. This context is built after the temporary data set accomplished, passed to `runExtendedSQL`  in `extendedSelect`.
 
 ```Go
 type extendedSelect struct {

@@ -268,6 +268,11 @@ func runExtendedSQL(slct string, db *DB, modelDir string, session *pb.Session) *
 			}
 
 			if pr.train {
+				_, e := tableWithRandomColumn(db, slct)
+				// TODO(weiguo): remove this `errNotSupportYet` branch
+				if e != nil && e != errNotSupportYet {
+					return e
+				}
 				return train(pr, slct, db, cwd, wr, modelDir)
 			}
 			return pred(pr, db, cwd, wr, modelDir)
