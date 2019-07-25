@@ -333,7 +333,7 @@ func (cw *logChanWriter) Close() {
 	}
 }
 
-func tain(tr *extendedSelect, slct string, db *DB, cwd string, wr *PipeWriter, modelDir string) error {
+func train(tr *extendedSelect, slct string, db *DB, cwd string, wr *PipeWriter, modelDir string) error {
 	fts, e := verify(tr, db)
 	if e != nil {
 		return e
