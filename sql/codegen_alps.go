@@ -17,7 +17,6 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -28,6 +27,9 @@ import (
 	pb "github.com/sql-machine-learning/sqlflow/server/proto"
 	"sqlflow.org/gomaxcompute"
 )
+
+var alpsTrainTemplate = template.Must(template.New("alps_train").Parse(alpsTrainTemplateText))
+var alpsPredTemplate = template.Must(template.New("alps_predict").Parse(alpsPredTemplateText))
 
 type alpsFiller struct {
 	// Training or Predicting
@@ -40,6 +42,7 @@ type alpsFiller struct {
 	ModelDir           string
 	ScratchDir         string
 	PredictOutputTable string
+	PredictInputModel  string
 
 	// Schema & Decode info
 	Fields string
@@ -53,6 +56,10 @@ type alpsFiller struct {
 	TrainClause       *resolvedTrainClause
 	ExitOnSubmit      bool
 
+	// Predict
+	PredictStanderClause string
+	PredictUDF           string
+
 	// Feature map
 	FeatureMapTable     string
 	FeatureMapPartition string
@@ -60,6 +67,11 @@ type alpsFiller struct {
 	// ODPS
 	OdpsConf   *gomaxcompute.Config
 	EngineCode string
+
+	// Credential
+	UserID string
+	OSSID  string
+	OSSKey string
 }
 
 type alpsFeatureColumn interface {
@@ -249,26 +261,27 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB, session *pb.Session) (*alpsF
 		ExitOnSubmit:        exitOnSubmit}, nil
 }
 
-func newALPSPredictFiller(pr *extendedSelect) (*alpsFiller, error) {
-	return nil, fmt.Errorf("alps predict not supported")
+func newALPSPredictFiller(pr *extendedSelect, session *pb.Session) (*alpsFiller, error) {
+	return &alpsFiller{
+		IsTraining:         true,
+		PredictInputTable:  pr.tables[0],
+		PredictOutputTable: pr.predictClause.into,
+		PredictUDF:         strings.Join(pr.fields.Strings(), " "),
+		PredictInputModel:  pr.predictClause.model,
+		UserID:             session.UserId,
+		OSSID:              pr.attrs["OSS_ID"].String(),
+		OSSKey:             pr.attrs["OSS_KEY"].String(),
+	}, nil
 }
 
-func genALPSFiller(w io.Writer, pr *extendedSelect, db *DB, session *pb.Session) (*alpsFiller, error) {
-	if pr.train {
-		return newALPSTrainFiller(pr, db, session)
-	}
-	return newALPSPredictFiller(pr)
-}
-
-func submitALPS(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *pb.Session) error {
+func alpsTrain(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *pb.Session) error {
 	var program bytes.Buffer
-
-	filler, err := genALPSFiller(&program, pr, db, session)
+	filler, err := newALPSTrainFiller(pr, db, session)
 	if err != nil {
 		return err
 	}
 
-	if err = alpsTemplate.Execute(&program, filler); err != nil {
+	if err = alpsTrainTemplate.Execute(&program, filler); err != nil {
 		return fmt.Errorf("submitALPS: failed executing template: %v", err)
 	}
 	code := program.String()
@@ -300,10 +313,30 @@ pip install http://091349.oss-cn-hangzhou-zmf.aliyuncs.com/alps/sqlflow/alps-2.0
 	if e := cmd.Run(); e != nil {
 		return fmt.Errorf("code %v failed %v", code, e)
 	}
-	if pr.train {
-		// TODO(uuleon): save model to DB
-	}
+	// TODO(uuleon): save model to DB
 	return nil
+}
+
+func alpsPred(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *pb.Session) error {
+	var program bytes.Buffer
+	filler, err := newALPSPredictFiller(pr, session)
+	if err != nil {
+		return err
+	}
+	if err = alpsPredTemplate.Execute(&program, filler); err != nil {
+		return fmt.Errorf("submitALPS: failed executing template: %v", err)
+	}
+	fmt.Println(program.String())
+	_, err = db.Query(program.String())
+	fmt.Println(err.Error())
+	return nil
+}
+
+func submitALPS(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *pb.Session) error {
+	if pr.train {
+		return alpsTrain(w, pr, db, cwd, session)
+	}
+	return alpsPred(w, pr, db, cwd, session)
 }
 
 func (nc *numericColumn) GenerateAlpsCode(metadata *metadata) ([]string, error) {
@@ -417,134 +450,6 @@ func generateAlpsFeatureColumnCode(fcs []featureColumn, metadata *metadata) ([]s
 	}
 	return codes, nil
 }
-
-const alpsTemplateText = `
-# coding: utf-8
-# Copyright (c) Antfin, Inc. All rights reserved.
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-import os
-
-import tensorflow as tf
-
-from alps.conf.closure import Closure
-from alps.framework.train.training import build_run_config
-from alps.framework.exporter import ExportStrategy
-from alps.framework.exporter.arks_exporter import ArksExporter
-from alps.client.base import run_experiment, submit_experiment
-from alps.framework.engine import LocalEngine, YarnEngine, ResourceConf
-from alps.framework.column.column import DenseColumn, SparseColumn, GroupedSparseColumn
-from alps.framework.exporter.compare_fn import best_auc_fn
-from alps.io import DatasetX
-from alps.io.base import OdpsConf, FeatureMap
-from alps.framework.experiment import EstimatorBuilder, Experiment, TrainConf, EvalConf, RuntimeConf
-from alps.io.reader.odps_reader import OdpsReader
-
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'    # for debug usage.
-#tf.logging.set_verbosity(tf.logging.INFO)
-
-class SQLFlowEstimatorBuilder(EstimatorBuilder):
-    def _build(self, experiment, run_config):
-{{if ne .FeatureMapTable ""}}
-        feature_columns = []
-        {{.FeatureColumnCode}}
-{{end}}
-{{if ne .ImportCode ""}}
-        {{.ImportCode}}
-{{end}}
-        return {{.ModelCreatorCode}}
-
-if __name__ == "__main__":
-    odpsConf=OdpsConf(
-        accessid="{{.OdpsConf.AccessID}}",
-        accesskey="{{.OdpsConf.AccessKey}}",
-        endpoint="{{.OdpsConf.Endpoint}}"
-    )
-
-    trainDs = DatasetX(
-        num_epochs={{.TrainClause.Epoch}},
-        batch_size={{.TrainClause.BatchSize}},
-        shuffle="{{.TrainClause.EnableShuffle}}" == "true",
-        shuffle_buffer_size={{.TrainClause.ShuffleBufferSize}},
-{{if .TrainClause.EnableCache}}
-        cache_file={{.TrainClause.CachePath}},
-{{end}}
-        reader=OdpsReader(
-            odps=odpsConf,
-            project="{{.OdpsConf.Project}}",
-            table="{{.TrainInputTable}}",
-            # FIXME(typhoonzero): add field_names back if needed.
-            # field_names={{.Fields}},
-            features={{.X}},
-            labels={{.Y}},
-{{if ne .FeatureMapTable ""}}
-            feature_map=FeatureMap(table="{{.FeatureMapTable}}",
-{{if ne .FeatureMapPartition ""}}
-                partition="{{.FeatureMapPartition}}"
-{{end}}
-            ),
-            flatten_group=True
-{{end}}
-        ),
-        drop_remainder="{{.TrainClause.DropRemainder}}" == "true"
-    )
-
-    evalDs = DatasetX(
-        num_epochs=1,
-        batch_size={{.TrainClause.BatchSize}},
-        reader=OdpsReader(
-        odps=odpsConf,
-            project="{{.OdpsConf.Project}}",
-            table="{{.EvalInputTable}}",
-            # FIXME(typhoonzero): add field_names back if needed.
-            # field_names={{.Fields}},
-            features={{.X}},
-            labels={{.Y}},
-            flatten_group=True
-        )
-    )
-
-    export_path = "{{.ModelDir}}"
-{{if ne .ScratchDir ""}}
-    runtime_conf = RuntimeConf(model_dir="{{.ScratchDir}}")
-{{else}}
-    runtime_conf = None
-{{end}}
-    experiment = Experiment(
-        user="shangchun.sun",  # TODO(joyyoj) pai will check user name be a valid user, removed later.
-        engine={{.EngineCode}},
-        train=TrainConf(input=trainDs,
-{{if (ne .TrainClause.MaxSteps -1)}}
-                        max_steps={{.TrainClause.MaxSteps}},
-{{end}}
-        ),
-        eval=EvalConf(input=evalDs,
-                      # FIXME(typhoonzero): Support configure metrics
-                      metrics_set=['accuracy'],
-{{if (ne .TrainClause.EvalSteps -1)}}
-                      steps={{.TrainClause.EvalSteps}},
-{{end}}
-                      start_delay_secs={{.TrainClause.EvalStartDelay}},
-                      throttle_secs={{.TrainClause.EvalThrottle}},
-        ),
-        # FIXME(typhoonzero): Use ExportStrategy.BEST when possible.
-        exporter=ArksExporter(deploy_path=export_path, strategy=ExportStrategy.LATEST, compare_fn=Closure(best_auc_fn)),
-        runtime = runtime_conf,
-        model_builder=SQLFlowEstimatorBuilder())
-
-    if isinstance(experiment.engine, LocalEngine):
-        run_experiment(experiment)
-    else:
-        if "{{.ExitOnSubmit}}" == "false":
-            run_experiment(experiment)
-        else:
-            submit_experiment(experiment, exit_on_submit=True)
-`
-
-var alpsTemplate = template.Must(template.New("alps").Parse(alpsTemplateText))
 
 type metadata struct {
 	odpsConfig *gomaxcompute.Config

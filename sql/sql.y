@@ -58,6 +58,7 @@
 	type extendedSelect struct {
 		extended bool
 		train    bool
+		attrs 	attrs
 		standardSelect
 		trainClause
 		predictClause
@@ -72,7 +73,7 @@
 
 	type trainClause struct {
 		estimator string
-		attrs     attrs
+		trainAttrs     attrs
 		columns   columnClause
 		label     string
 		save      string
@@ -85,6 +86,7 @@
 	type attrs map[string]*expr
 
 	type predictClause struct {
+		predAttrs attrs
 		model  string
 		into   string
 	}
@@ -153,6 +155,7 @@ select_stmt
 	parseResult = &extendedSelect{
 		extended: true,
 		train: true,
+		attrs: $2.trainAttrs,
 		standardSelect: $1,
 		trainClause: $2}
   }
@@ -160,6 +163,7 @@ select_stmt
 	parseResult = &extendedSelect{
 		extended: true,
 		train: false,
+		attrs: $2.predAttrs,
 		standardSelect: $1,
 		predictClause: $2}
   }
@@ -175,7 +179,7 @@ select
 train_clause
 : TRAIN IDENT WITH attrs column_clause label_clause INTO IDENT {
 	$$.estimator = $2
-	$$.attrs = $4
+	$$.trainAttrs = $4
 	$$.columns = $5
 	$$.label = $6
 	$$.save = $8
@@ -183,10 +187,9 @@ train_clause
 ;
 
 predict_clause
-: PREDICT IDENT USING IDENT {
-	$$.into = $2
-	$$.model = $4
-}
+: PREDICT IDENT { $$.into = $2 }
+| predict_clause WITH attrs { $$.predAttrs = $3 }
+| predict_clause USING IDENT { $$.model = $3 } 
 ;
 
 column_clause
