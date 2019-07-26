@@ -29,10 +29,8 @@ import (
 // Run executes a SQL query and returns a stream of rows or messages
 func Run(slct string, db *DB, modelDir string, session *pb.Session) *PipeReader {
 	if len(splitExtendedSQL(slct)) == 2 {
-		fmt.Println("ext sql", slct)
 		return runExtendedSQL(slct, db, modelDir, session)
 	}
-	fmt.Println("standard sql", slct)
 	return runStandardSQL(slct, db)
 }
 
