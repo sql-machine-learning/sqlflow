@@ -63,7 +63,7 @@ func TestStandardSelect(t *testing.T) {
 	a.NoError(e)
 	a.False(r.extended)
 	a.Equal([]string{"employee.age", "last_name", "salary"},
-		r.fields)
+		r.fields.Strings())
 	a.Equal([]string{"employee"}, r.tables)
 	a.Equal("100", r.limit)
 	a.Equal(AND, r.where.sexp[0].typ)
@@ -131,8 +131,8 @@ func TestSelectStarAndPrint(t *testing.T) {
 	a := assert.New(t)
 	r, e := newParser().Parse(`SELECT *, b FROM a LIMIT 10;`)
 	a.NoError(e)
-	a.Equal(2, len(r.fields))
-	a.Equal("*", r.fields[0])
+	a.Equal(2, len(r.fields.Strings()))
+	a.Equal("*", r.fields.Strings()[0])
 	a.False(r.extended)
 	a.False(r.train)
 	a.Equal("SELECT *, b\nFROM a\nLIMIT 10;", r.standardSelect.String())
@@ -144,4 +144,17 @@ func TestStandardDropTable(t *testing.T) {
 	a.Error(e)
 	// Note: currently, our parser doesn't accept anything statements other than SELECT.
 	// It will support parsing any SQL statements and even dialects in the future.
+}
+
+func TestSelectMaxcomputeUDF(t *testing.T) {
+	a := assert.New(t)
+	slct := "SELECT func(func2(\"arg0\", arg1), arg_2) AS (info, score) FROM a_table where a_table.col_1 > 100;"
+	pr, _ := newParser().Parse(slct)
+	expFields := []string{
+		"func(func2(\"arg0\", arg1), arg_2)",
+		"AS",
+		"(info, score)",
+	}
+	a.Equal(pr.fields.Strings(), expFields)
+	a.Equal(pr.tables[0], "a_table")
 }

@@ -626,7 +626,7 @@ func (meta *metadata) descTable() ([]*sql.ColumnType, error) {
 }
 
 func getFields(meta *metadata, pr *extendedSelect) ([]string, error) {
-	selectFields := pr.standardSelect.fields
+	selectFields := pr.standardSelect.fields.Strings()
 	if len(selectFields) == 1 && selectFields[0] == "*" {
 		selectFields = make([]string, 0)
 		columnTypes, err := meta.descTable()
