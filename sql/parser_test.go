@@ -145,3 +145,16 @@ func TestStandardDropTable(t *testing.T) {
 	// Note: currently, our parser doesn't accept anything statements other than SELECT.
 	// It will support parsing any SQL statements and even dialects in the future.
 }
+
+func TestSelectMaxcomputeUDF(t *testing.T) {
+	a := assert.New(t)
+	slct := "SELECT func(func2(\"arg0\", arg1), arg_2) AS (info, score) FROM a_table where a_table.col_1 > 100;"
+	pr, _ := newParser().Parse(slct)
+	expFields := []string{
+		"func(func2(\"arg0\", arg1), arg_2)",
+		"AS",
+		"(info, score)",
+	}
+	a.Equal(pr.fields.Strings(), expFields)
+	a.Equal(pr.tables[0], "a_table")
+}

@@ -123,16 +123,3 @@ func TestLexSQL(t *testing.T) {
 		a.Equal(vals[i], n.val)
 	}
 }
-
-func TestLexMaxcomputeUDF(t *testing.T) {
-	a := assert.New(t)
-	slct := "SELECT func(func2(\"arg0\", arg1), arg_2) AS (info, score) FROM a_table where a_table.col_1 > 100;"
-	pr, _ := newParser().Parse(slct)
-	expFields := []string{
-		"func(func2(\"arg0\", arg1), arg_2)",
-		"AS",
-		"(info, score)",
-	}
-	a.Equal(pr.fields.Strings(), expFields)
-	a.Equal(pr.tables[0], "a_table")
-}

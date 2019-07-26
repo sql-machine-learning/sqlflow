@@ -130,7 +130,7 @@
 %type  <atrs> attr
 %type  <atrs> attrs
 
-%token <val> SELECT AS FROM WHERE LIMIT TRAIN PREDICT WITH COLUMN LABEL USING INTO FOR
+%token <val> SELECT FROM WHERE LIMIT TRAIN PREDICT WITH COLUMN LABEL USING INTO FOR AS
 %token <val> IDENT NUMBER STRING
 
 %left <val> AND OR
@@ -197,9 +197,8 @@ column_clause
 
 field_clause
 : funcall AS '(' exprlist ')' {
-		$$ = exprlist{$1, atomic(IDENT, "AS")};
-		$$ = append($$, funcall("", $4));
-	}
+		$$ = exprlist{$1, atomic(IDENT, "AS"), funcall("", $4)};
+	}  // TODO(Yancey1989): support the general "AS" keyword: https://www.w3schools.com/sql/sql_ref_as.asp
 | fields						{ $$ = $1 }
 ;
 
