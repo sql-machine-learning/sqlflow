@@ -29,10 +29,10 @@ const (
 var errNotSupportYet = errors.New("not support yet")
 
 // SQLFlow generates a temporary table, + sqlflow_randowm column
-func tableWithRandomColumn(db *DB, slct string) (string, error) {
+func tableWithRandomColumn(db *DB, standardSelect string) (string, error) {
 	switch db.driverName {
 	case "maxcompute":
-		return createMaxcomputeRandomTable(db, slct)
+		return createMaxcomputeRandomTable(db, standardSelect)
 	// TODO(weiguo): support other databases
 	case "hive", "mysql", "sqlite3":
 		return "", errNotSupportYet
@@ -41,9 +41,9 @@ func tableWithRandomColumn(db *DB, slct string) (string, error) {
 	}
 }
 
-func createMaxcomputeRandomTable(db *DB, slct string) (string, error) {
+func createMaxcomputeRandomTable(db *DB, standardSelect string) (string, error) {
 	tbl := randomTableName()
-	createStmt := fmt.Sprintf("CREATE TABLE %s LIFECYCLE %d AS SELECT *, RAND() AS %s FROM (%s) AS %s_ori", tbl, temporaryTableLifecycle, randomColumn, slct, tbl)
+	createStmt := fmt.Sprintf("CREATE TABLE %s LIFECYCLE %d AS SELECT *, RAND() AS %s FROM (%s) AS %s_ori", tbl, temporaryTableLifecycle, randomColumn, standardSelect, tbl)
 	if _, e := db.Exec(createStmt); e != nil {
 		log.Errorf("create temporary table failed, statememnt:[%s], err:%v", createStmt, e)
 		return "", e

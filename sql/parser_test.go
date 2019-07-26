@@ -135,7 +135,7 @@ func TestSelectStarAndPrint(t *testing.T) {
 	a.Equal("*", r.fields.Strings()[0])
 	a.False(r.extended)
 	a.False(r.train)
-	a.Equal("SELECT *, b\nFROM a\nLIMIT 10;", r.standardSelect.String())
+	a.Equal("SELECT *, b\nFROM a\nLIMIT 10", r.standardSelect.String())
 }
 
 func TestStandardDropTable(t *testing.T) {

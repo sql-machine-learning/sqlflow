@@ -268,7 +268,7 @@ func runExtendedSQL(slct string, db *DB, modelDir string, session *pb.Session) *
 			}
 
 			if pr.train {
-				_, e := tableWithRandomColumn(db, slct)
+				_, e := tableWithRandomColumn(db, pr.standardSelect.String())
 				// TODO(weiguo): remove this `errNotSupportYet` branch
 				if e != nil && e != errNotSupportYet {
 					return e
