@@ -21,6 +21,16 @@ import (
 
 func TestCreateTrainingDataset(t *testing.T) {
 	a := assert.New(t)
-	_, e := createTrainingDataset(testDB, testGenerateRandomColumnTable, 0.8)
+	_, e := createTrainingDataset(testDB, testTrainingDataset, 1)
+	a.Error(e)
+	_, e = createTrainingDataset(testDB, testTrainingDataset, 0)
+	a.Error(e)
+
+	ds, e := createTrainingDataset(testDB, testTrainingDataset, 0.8)
 	a.NoError(e)
+	if testDB.driverName == "maxcompute" {
+		a.True(ds.supported)
+	} else {
+		a.False(ds.supported)
+	}
 }

@@ -26,7 +26,7 @@ const (
 SELECT *
 FROM iris.train
 `
-	testGenerateRandomColumnTable = `
+	testTrainingDataset = `
 SELECT a.sepal_length,b.sepal_width,a.petal_length,b.petal_width,a.class 
 FROM iris_train a,iris_test b
 WHERE a.class=b.class
