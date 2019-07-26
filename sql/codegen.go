@@ -99,6 +99,7 @@ func parseModelURI(modelString string) (bool, string) {
 }
 
 func newFiller(pr *extendedSelect, ds trainingDataset, fts fieldTypes, db *DB) (*filler, error) {
+	// TODO(weiguo): modify filler struct to carry trainingDatase in the next PR
 	isKerasModel, modelClassString := parseModelURI(pr.estimator)
 	r := &filler{
 		IsTrain:        pr.train,
@@ -229,6 +230,7 @@ func genTF(w io.Writer, pr *extendedSelect, ds trainingDataset, fts fieldTypes, 
 	if e != nil {
 		return e
 	}
+	// TODO(weiguo): fix codegen to carry trainingDatase in the next PR
 	if e = codegenTemplate.Execute(w, r); e != nil {
 		return fmt.Errorf("genTF: failed executing template: %v", e)
 	}
