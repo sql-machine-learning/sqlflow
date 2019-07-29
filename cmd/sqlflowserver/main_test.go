@@ -387,6 +387,7 @@ func CaseShowDatabases(t *testing.T) {
 		"sys":                "",
 		"text_cn":            "",
 		"standard_join_test": "",
+		"housing":            "",
 		"iris_e2e":           "", // created by Python e2e test
 		"hive":               "", // if current mysql is also used for hive
 		"default":            "", // if fetching default hive databases
