@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -326,9 +327,38 @@ func alpsPred(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *pb
 	if err = alpsPredTemplate.Execute(&program, filler); err != nil {
 		return fmt.Errorf("submitALPS: failed executing template: %v", err)
 	}
+
+	fname := "alps_pre.odps"
+	filepath := filepath.Join(cwd, fname)
+	f, err := os.Create(filepath)
+	if err != nil {
+		return fmt.Errorf("Create ODPS script failed %v", err)
+	}
+	f.WriteString(program.String())
+	f.Close()
+	cw := &logChanWriter{wr: w}
 	fmt.Println(program.String())
-	_, err = db.Query(program.String())
-	fmt.Println(err.Error())
+	_, ok := db.Driver().(*gomaxcompute.Driver)
+	if !ok {
+		return fmt.Errorf("Alps Predict only support Maxcompute database driver")
+	}
+
+	cfg, err := gomaxcompute.ParseDSN(db.dataSourceName)
+	// FIXME(Yancey1989): using https proto.
+	fixedEndpoint := strings.Replace(cfg.Endpoint, "https://", "http://", 0)
+	// TODO(Yancey1989): submit the Maxcompute UDF script using gomaxcompute driver.
+	cmd := exec.Command("odpscmd",
+		"-u", cfg.AccessID,
+		"-p", cfg.AccessKey,
+		fmt.Sprintf("--endpoint=%s", fixedEndpoint),
+		fmt.Sprintf("--project=%s", cfg.Project),
+		"-s", filepath)
+	cmd.Dir = cwd
+	cmd.Stdout = cw
+	cmd.Stderr = cw
+	if e := cmd.Run(); e != nil {
+		return fmt.Errorf("submit ODPS script %s failed %v", program.String(), e)
+	}
 	return nil
 }
 

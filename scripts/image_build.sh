@@ -101,7 +101,13 @@ if [ "${WITH_SQLFLOW_MODELS:-ON}" = "ON" ]; then
   rm -rf models
 fi
 
-# 7. Load sqlflow Jupyter magic command automatically. c.f. https://stackoverflow.com/a/32683001.
+# 7. Install odpscmd for submitting alps predict job with odps udf script
+# TODO(Yancey1989): using gomaxcompute instead of the odpscmd command-line tool.
+wget -q http://odps.alibaba-inc.com/official_downloads/odpscmd/0.32.0/odpscmd_public.zip
+unzip -qq odpscmd_public.zip -d /usr/local/odpscmd
+ln -s /usr/local/odpscmd/bin/odpscmd /usr/local/bin/odpscmd
+
+# 8. Load sqlflow Jupyter magic command automatically. c.f. https://stackoverflow.com/a/32683001.
 mkdir -p $IPYTHON_STARTUP
 mkdir -p /workspace
 echo 'get_ipython().magic(u"%reload_ext sqlflow.magic")' >> $IPYTHON_STARTUP/00-first.py

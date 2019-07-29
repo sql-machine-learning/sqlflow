@@ -159,5 +159,5 @@ set odps.sql.mapper.split.size=64;
 
 set alps.custom.output=predictions;
 
-SELECT {{.PredictUDF}} FROM {{.PredictInputTable}};
+CREATE TABLE IF NOT EXISTS {{.PredictOutputTable}} AS SELECT {{.PredictUDF}} FROM {{.PredictInputTable}};
 `
