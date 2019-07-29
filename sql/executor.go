@@ -273,13 +273,13 @@ func runExtendedSQL(slct string, db *DB, modelDir string, session *pb.Session) *
 				if os.Getenv("SQLFLOW_submitter") == "alps" {
 					return alpsTrain(wr, pr, db, cwd, session)
 				}
-				return train(pr, ds, slct, db, cwd, wr, modelDir)
+				return train(wr, pr, db, cwd, modelDir, slct, ds)
 			}
 			// FIXME(weiguo): temporary branch to alps
 			if os.Getenv("SQLFLOW_submitter") == "alps" {
 				return alpsPred(wr, pr, db, cwd, session)
 			}
-			return pred(pr, db, cwd, wr, modelDir)
+			return pred(wr, pr, db, cwd, modelDir)
 		}()
 
 		if err != nil {
@@ -337,7 +337,7 @@ func (cw *logChanWriter) Close() {
 	}
 }
 
-func train(tr *extendedSelect, ds *trainAndValDataset, slct string, db *DB, cwd string, wr *PipeWriter, modelDir string) error {
+func train(wr *PipeWriter, tr *extendedSelect, db *DB, cwd string, modelDir string, slct string, ds *trainAndValDataset) error {
 	fts, e := verify(tr, db)
 	if e != nil {
 		return e
@@ -364,7 +364,7 @@ func train(tr *extendedSelect, ds *trainAndValDataset, slct string, db *DB, cwd 
 	return m.save(db, tr.save)
 }
 
-func pred(pr *extendedSelect, db *DB, cwd string, wr *PipeWriter, modelDir string) error {
+func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir string) error {
 	var m *model
 	var e error
 	if modelDir != "" {
