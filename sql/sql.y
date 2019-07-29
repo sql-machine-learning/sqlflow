@@ -155,7 +155,6 @@ select_stmt
 	parseResult = &extendedSelect{
 		extended: true,
 		train: true,
-		attrs: $2.trainAttrs,
 		standardSelect: $1,
 		trainClause: $2}
   }
@@ -163,7 +162,6 @@ select_stmt
 	parseResult = &extendedSelect{
 		extended: true,
 		train: false,
-		attrs: $2.predAttrs,
 		standardSelect: $1,
 		predictClause: $2}
   }

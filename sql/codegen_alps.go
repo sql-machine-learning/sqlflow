@@ -340,10 +340,12 @@ func alpsPred(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *pb
 	fmt.Println(program.String())
 	_, ok := db.Driver().(*gomaxcompute.Driver)
 	if !ok {
-		return fmt.Errorf("Alps Predict only support Maxcompute database driver")
+		return fmt.Errorf("Alps Predict Job only supports Maxcompute database driver")
 	}
-
 	cfg, err := gomaxcompute.ParseDSN(db.dataSourceName)
+	if err != nil {
+		return fmt.Errorf("Parse Maxcompute DSN failed: %v", err)
+	}
 	// FIXME(Yancey1989): using https proto.
 	fixedEndpoint := strings.Replace(cfg.Endpoint, "https://", "http://", 0)
 	// TODO(Yancey1989): submit the Maxcompute UDF script using gomaxcompute driver.
