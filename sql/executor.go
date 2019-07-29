@@ -397,7 +397,6 @@ func pred(pr *extendedSelect, db *DB, cwd string, wr *PipeWriter, modelDir strin
 	if e := genTF(&buf, pr, nil, fts, db); e != nil {
 		return fmt.Errorf("genTF: %v", e)
 	}
-	fmt.Println(buf.String())
 
 	cw := &logChanWriter{wr: wr}
 	defer cw.Close()

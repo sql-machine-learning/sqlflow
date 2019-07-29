@@ -188,7 +188,7 @@ train_clause
 
 predict_clause
 : PREDICT IDENT { $$.into = $2 }
-| predict_clause WITH attrs { $$.predAttrs = $3 }
+| PREDICT WITH attrs { $$.predAttrs = $3 }
 | predict_clause USING IDENT { $$.model = $3 } 
 ;
 
