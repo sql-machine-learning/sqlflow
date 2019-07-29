@@ -56,8 +56,10 @@ def db_generator(driver, conn, statement,
         rows = cursor.fetchmany(fetch_size)
         while len(rows) > 0:
             # NOTE: keep the connection while training or connection will lost if no activities appear.
-            if driver == "mysql" and not conn.is_connected():
-                conn.ping(True)
+            # FIXME(Yancey1989): tempory comment this reconnect, because it caused to loss the cursor failed,
+            # github issue: 
+            #if driver == "mysql" and not conn.is_connected():
+            #    conn.ping(True)
             for row in rows:
                 label = row[label_idx]
                 features = []
