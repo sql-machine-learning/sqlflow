@@ -271,7 +271,7 @@ func runExtendedSQL(slct string, db *DB, modelDir string, session *pb.Session) *
 
 				// FIXME(weiguo): temporary branch to alps
 				if os.Getenv("SQLFLOW_submitter") == "alps" {
-					return alpsTrain(wr, pr, db, cwd, session)
+					return alpsTrain(wr, pr, db, cwd, session, ds)
 				}
 				return train(wr, pr, db, cwd, modelDir, slct, ds)
 			}
