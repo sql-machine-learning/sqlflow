@@ -30,7 +30,5 @@ func TestCreateTrainAndValDataset(t *testing.T) {
 	a.NoError(e)
 	if testDB.driverName == "maxcompute" {
 		a.True(ds.supported)
-	} else {
-		a.False(ds.supported)
 	}
 }
