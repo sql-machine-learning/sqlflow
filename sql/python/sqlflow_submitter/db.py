@@ -82,6 +82,8 @@ def db_generator(driver, conn, statement,
                             cell = row[field_names.index(name)]
                     features.append(cell)
                 yield (tuple(features), [label])
+            if len(rows) < fetch_size:
+                break
             rows = cursor.fetchmany(fetch_size)
         cursor.close()
 
