@@ -19,14 +19,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCreateTrainingDataset(t *testing.T) {
+func TestCreateTrainAndValDataset(t *testing.T) {
 	a := assert.New(t)
-	_, e := createTrainingDataset(testDB, testTrainingDataset, 1)
+	_, e := newTrainAndValDataset(testDB, testTrainAndValDataset, 1)
 	a.Error(e)
-	_, e = createTrainingDataset(testDB, testTrainingDataset, 0)
+	_, e = newTrainAndValDataset(testDB, testTrainAndValDataset, 0)
 	a.Error(e)
 
-	ds, e := createTrainingDataset(testDB, testTrainingDataset, 0.8)
+	ds, e := newTrainAndValDataset(testDB, testTrainAndValDataset, 0.8)
 	a.NoError(e)
 	if testDB.driverName == "maxcompute" {
 		a.True(ds.supported)

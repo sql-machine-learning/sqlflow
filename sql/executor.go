@@ -269,7 +269,7 @@ func runExtendedSQL(slct string, db *DB, modelDir string, session *pb.Session) *
 
 			if pr.train {
 				// TODO(weiguo): fix the hard code 0.8
-				ds, e := createTrainingDataset(db, pr.standardSelect.String(), 0.8)
+				ds, e := newTrainAndValDataset(db, pr.standardSelect.String(), 0.8)
 				if e != nil {
 					return e
 				}
@@ -333,7 +333,7 @@ func (cw *logChanWriter) Close() {
 	}
 }
 
-func train(tr *extendedSelect, ds *trainingDataset, slct string, db *DB, cwd string, wr *PipeWriter, modelDir string) error {
+func train(tr *extendedSelect, ds *trainAndValDataset, slct string, db *DB, cwd string, wr *PipeWriter, modelDir string) error {
 	fts, e := verify(tr, db)
 	if e != nil {
 		return e

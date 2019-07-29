@@ -20,7 +20,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-type trainingDataset struct {
+type trainAndValDataset struct {
 	// `supported` here identifies if SQLFlow is able to split dataset into
 	// training dataset and validation dataset.
 	// So, TODO(weiguo): Let's remove `supproted` if SQLFlow supports other
@@ -44,7 +44,7 @@ var (
 )
 
 // SQLFlow generates a temporary table, + sqlflow_randowm column
-func createTrainingDataset(db *DB, slct string, trainingUpperbound float32) (*trainingDataset, error) {
+func newTrainAndValDataset(db *DB, slct string, trainingUpperbound float32) (*trainAndValDataset, error) {
 	if trainingUpperbound <= 0 || trainingUpperbound >= 1 {
 		return nil, errBadBoundary
 	}
@@ -58,12 +58,12 @@ func createTrainingDataset(db *DB, slct string, trainingUpperbound float32) (*tr
 	}
 }
 
-func releaseTrainingDataset(ds *trainingDataset) {
+func releaseTrainAndValDataset(ds *trainAndValDataset) {
 	// TODO(weiguo): release resources for databases, like: "hive", "mysql"...
 }
 
-func createMaxcomputeDataset(db *DB, slct string, trainingUpperbound float32) (*trainingDataset, error) {
-	ds := namingTrainingDataset()
+func createMaxcomputeDataset(db *DB, slct string, trainingUpperbound float32) (*trainAndValDataset, error) {
+	ds := namingTrainAndValDataset()
 	// create a table, then split it into 2 views
 	stmt := fmt.Sprintf("CREATE TABLE %s LIFECYCLE %d AS SELECT *, RAND() AS %s FROM (%s) AS %s_ori", ds.table, temporaryTableLifecycle, randomColumn, slct, ds.table)
 	if _, e := db.Exec(stmt); e != nil {
@@ -90,9 +90,9 @@ func createView(db *DB, table, view, where string) error {
 	return nil
 }
 
-func namingTrainingDataset() *trainingDataset {
+func namingTrainAndValDataset() *trainAndValDataset {
 	uniq := time.Now().UnixNano() / 1e3
-	return &trainingDataset{
+	return &trainAndValDataset{
 		supported:      true,
 		table:          fmt.Sprintf("%s%d", tablePrefix, uniq),
 		trainingView:   fmt.Sprintf("%s%d", trainingViewPrefix, uniq),
