@@ -346,7 +346,6 @@ func alpsPred(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *pb
 	f.WriteString(program.String())
 	f.Close()
 	cw := &logChanWriter{wr: w}
-	fmt.Println(program.String())
 	_, ok := db.Driver().(*gomaxcompute.Driver)
 	if !ok {
 		return fmt.Errorf("Alps Predict Job only supports Maxcompute database driver")
