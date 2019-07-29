@@ -42,6 +42,7 @@ def connect(driver, database, user, password, host, port):
 def db_generator(driver, conn, statement,
                  feature_column_names, label_column_name,
                  feature_specs, fetch_size=128):
+    print("-----")
     def reader():
         cursor = conn.cursor()
         cursor.execute(statement)
@@ -54,10 +55,12 @@ def db_generator(driver, conn, statement,
         label_idx = field_names.index(label_column_name)
 
         rows = cursor.fetchmany(fetch_size)
+        print("rows.len", len(rows))
         while len(rows) > 0:
             # NOTE: keep the connection while training or connection will lost if no activities appear.
             if driver == "mysql" and not conn.is_connected():
                 conn.ping(True)
+            print("rows.len", len(rows))
             for row in rows:
                 label = row[label_idx]
                 features = []
@@ -83,6 +86,7 @@ def db_generator(driver, conn, statement,
                     features.append(cell)
                 yield (tuple(features), [label])
             rows = cursor.fetchmany(fetch_size)
+            print("rows.len", len(rows))
         cursor.close()
 
     if driver == "maxcompute":

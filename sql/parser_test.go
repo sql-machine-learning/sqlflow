@@ -81,8 +81,8 @@ func TestTrainParser(t *testing.T) {
 	a.True(r.extended)
 	a.True(r.train)
 	a.Equal("DNNClassifier", r.estimator)
-	a.Equal("[10, 20]", r.attrs["hidden_units"].String())
-	a.Equal("3", r.attrs["n_classes"].String())
+	a.Equal("[10, 20]", r.trainAttrs["hidden_units"].String())
+	a.Equal("3", r.trainAttrs["n_classes"].String())
 	a.Equal(`employee.name`,
 		r.columns["feature_columns"][0].String())
 	a.Equal(`bucketize(last_name, 1000)`,
@@ -101,8 +101,8 @@ func TestMultiColumnTrainParser(t *testing.T) {
 	a.True(r.extended)
 	a.True(r.train)
 	a.Equal("DNNClassifier", r.estimator)
-	a.Equal("[10, 20]", r.attrs["hidden_units"].String())
-	a.Equal("3", r.attrs["n_classes"].String())
+	a.Equal("[10, 20]", r.trainAttrs["hidden_units"].String())
+	a.Equal("3", r.trainAttrs["n_classes"].String())
 	a.Equal(`employee.name`,
 		r.columns["feature_columns"][0].String())
 	a.Equal(`bucketize(last_name, 1000)`,

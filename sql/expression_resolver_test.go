@@ -286,7 +286,7 @@ func TestExecResource(t *testing.T) {
 	s := statementWithAttrs("exec.worker_num = 2")
 	r, e := parser.Parse(s)
 	a.NoError(e)
-	attrs, err := resolveTrainAttribute(&r.attrs)
+	attrs, err := resolveTrainAttribute(&r.trainAttrs)
 	a.NoError(err)
 	attr := attrs["exec.worker_num"]
 	fmt.Println(attr)
