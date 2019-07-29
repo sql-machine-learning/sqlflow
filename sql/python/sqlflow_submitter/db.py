@@ -23,7 +23,7 @@ def connect(driver, database, user, password, host, port):
                        passwd=password,
                        db=database,
                        host=host,
-                       port=port)
+                       port=int(port))
     elif driver == "sqlite3":
         from sqlite3 import connect
         return connect(database)
