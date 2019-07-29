@@ -303,7 +303,7 @@ driver="{{.Driver}}"
 {{if ne .Database ""}}
 database="{{.Database}}"
 {{else}}
-database=None
+database=""
 {{end}}
 
 conn = connect(driver, database, user="{{.User}}", password="{{.Password}}", host="{{.Host}}", port={{.Port}})
