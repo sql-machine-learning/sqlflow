@@ -17,7 +17,6 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -253,22 +252,9 @@ func newALPSPredictFiller(pr *extendedSelect) (*alpsFiller, error) {
 	return nil, fmt.Errorf("alps predict not supported")
 }
 
-func genALPSFiller(w io.Writer, pr *extendedSelect, db *DB, session *pb.Session) (*alpsFiller, error) {
-	if pr.train {
-		return newALPSTrainFiller(pr, db, session)
-	}
-	return newALPSPredictFiller(pr)
-}
-
-func submitALPS(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *pb.Session) error {
+func submitALPS(w *PipeWriter, cwd string, filler *alpsFiller) error {
 	var program bytes.Buffer
-
-	filler, err := genALPSFiller(&program, pr, db, session)
-	if err != nil {
-		return err
-	}
-
-	if err = alpsTemplate.Execute(&program, filler); err != nil {
+	if err := alpsTemplate.Execute(&program, filler); err != nil {
 		return fmt.Errorf("submitALPS: failed executing template: %v", err)
 	}
 	code := program.String()
@@ -300,10 +286,24 @@ pip install http://091349.oss-cn-hangzhou-zmf.aliyuncs.com/alps/sqlflow/alps-2.0
 	if e := cmd.Run(); e != nil {
 		return fmt.Errorf("code %v failed %v", code, e)
 	}
-	if pr.train {
-		// TODO(uuleon): save model to DB
-	}
+	// TODO(uuleon): save model to DB if train
 	return nil
+}
+
+func alpsTrain(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *pb.Session) error {
+	f, err := newALPSTrainFiller(pr, db, session)
+	if err != nil {
+		return err
+	}
+	return submitALPS(w, cwd, f)
+}
+
+func alpsPred(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *pb.Session) error {
+	f, err := newALPSPredictFiller(pr)
+	if err != nil {
+		return err
+	}
+	return submitALPS(w, cwd, f)
 }
 
 func (nc *numericColumn) GenerateAlpsCode(metadata *metadata) ([]string, error) {

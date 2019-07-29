@@ -262,18 +262,22 @@ func runExtendedSQL(slct string, db *DB, modelDir string, session *pb.Session) *
 			}
 			defer os.RemoveAll(cwd)
 
-			// FIXME(tony): temporary branch to alps
-			if os.Getenv("SQLFLOW_submitter") == "alps" {
-				return submitALPS(wr, pr, db, cwd, session)
-			}
-
 			if pr.train {
 				// TODO(weiguo): fix the hard code 0.8
 				ds, e := newTrainAndValDataset(db, pr.standardSelect.String(), 0.8)
 				if e != nil {
 					return e
 				}
+
+				// FIXME(weiguo): temporary branch to alps
+				if os.Getenv("SQLFLOW_submitter") == "alps" {
+					return alpsTrain(wr, pr, db, cwd, session)
+				}
 				return train(pr, ds, slct, db, cwd, wr, modelDir)
+			}
+			// FIXME(weiguo): temporary branch to alps
+			if os.Getenv("SQLFLOW_submitter") == "alps" {
+				return alpsPred(wr, pr, db, cwd, session)
 			}
 			return pred(pr, db, cwd, wr, modelDir)
 		}()
