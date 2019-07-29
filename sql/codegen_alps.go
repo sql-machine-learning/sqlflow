@@ -263,6 +263,15 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB, session *pb.Session) (*alpsF
 }
 
 func newALPSPredictFiller(pr *extendedSelect, session *pb.Session) (*alpsFiller, error) {
+	var ossID, ossKey *expr
+	var ok bool
+	if ossID, ok = pr.predAttrs["OSS_ID"]; !ok {
+		return nil, fmt.Errorf("the ALPS Predict job should specify OSS_ID")
+	}
+	if ossKey, ok = pr.predAttrs["OSS_KEY"]; !ok {
+		return nil, fmt.Errorf("the ALPS Predict job should specify OSS_KEY")
+	}
+
 	return &alpsFiller{
 		IsTraining:         true,
 		PredictInputTable:  pr.tables[0],
@@ -270,8 +279,8 @@ func newALPSPredictFiller(pr *extendedSelect, session *pb.Session) (*alpsFiller,
 		PredictUDF:         strings.Join(pr.fields.Strings(), " "),
 		PredictInputModel:  pr.predictClause.model,
 		UserID:             session.UserId,
-		OSSID:              pr.attrs["OSS_ID"].String(),
-		OSSKey:             pr.attrs["OSS_KEY"].String(),
+		OSSID:              ossID.String(),
+		OSSKey:             ossKey.String(),
 	}, nil
 }
 
