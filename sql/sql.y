@@ -58,7 +58,6 @@
 	type extendedSelect struct {
 		extended bool
 		train    bool
-		attrs 	attrs
 		standardSelect
 		trainClause
 		predictClause
