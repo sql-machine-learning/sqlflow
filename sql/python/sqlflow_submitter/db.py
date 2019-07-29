@@ -16,13 +16,14 @@ import tensorflow as tf
 
 def connect(driver, database, user, password, host, port):
     if driver == "mysql":
-        from mysql.connector import connect
+        # NOTE: use MySQLdb to avoid bugs like infinite reading:
+        # https://bugs.mysql.com/bug.php?id=91971
+        from MySQLdb import connect
         return connect(user=user,
                        passwd=password,
-                       database=database,
+                       db=database,
                        host=host,
-                       port=port,
-                       connection_timeout=3600)
+                       port=port)
     elif driver == "sqlite3":
         from sqlite3 import connect
         return connect(database)
@@ -53,11 +54,15 @@ def db_generator(driver, conn, statement,
                 else [i[0] for i in cursor.description]
         label_idx = field_names.index(label_column_name)
 
-        rows = cursor.fetchmany(fetch_size)
-        while len(rows) > 0:
+        
+        while True:
+            rows = cursor.fetchmany(size = fetch_size)
+            if not rows:
+                break
             # NOTE: keep the connection while training or connection will lost if no activities appear.
-            if driver == "mysql" and not conn.is_connected():
-                conn.ping(True)
+            # if driver == "mysql" and not conn.is_connected():
+            #     conn.ping(True)
+            print("fetched rows: ", len(rows))
             for row in rows:
                 label = row[label_idx]
                 features = []
@@ -82,7 +87,6 @@ def db_generator(driver, conn, statement,
                             cell = row[field_names.index(name)]
                     features.append(cell)
                 yield (tuple(features), [label])
-            rows = cursor.fetchmany(fetch_size)
         cursor.close()
 
     if driver == "maxcompute":
