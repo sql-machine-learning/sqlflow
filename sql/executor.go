@@ -268,12 +268,12 @@ func runExtendedSQL(slct string, db *DB, modelDir string, session *pb.Session) *
 			}
 
 			if pr.train {
-				_, e := tableWithRandomColumn(db, slct)
-				// TODO(weiguo): remove this `errNotSupportYet` branch
-				if e != nil && e != errNotSupportYet {
+				// TODO(weiguo): fix the hard code 0.8
+				ds, e := newTrainAndValDataset(db, pr.standardSelect.String(), 0.8)
+				if e != nil {
 					return e
 				}
-				return train(pr, slct, db, cwd, wr, modelDir)
+				return train(pr, ds, slct, db, cwd, wr, modelDir)
 			}
 			return pred(pr, db, cwd, wr, modelDir)
 		}()
@@ -333,14 +333,14 @@ func (cw *logChanWriter) Close() {
 	}
 }
 
-func train(tr *extendedSelect, slct string, db *DB, cwd string, wr *PipeWriter, modelDir string) error {
+func train(tr *extendedSelect, ds *trainAndValDataset, slct string, db *DB, cwd string, wr *PipeWriter, modelDir string) error {
 	fts, e := verify(tr, db)
 	if e != nil {
 		return e
 	}
 
 	var program bytes.Buffer
-	if e := genTF(&program, tr, fts, db); e != nil {
+	if e := genTF(&program, tr, ds, fts, db); e != nil {
 		return fmt.Errorf("genTF %v", e)
 	}
 
@@ -394,7 +394,7 @@ func pred(pr *extendedSelect, db *DB, cwd string, wr *PipeWriter, modelDir strin
 	}
 
 	var buf bytes.Buffer
-	if e := genTF(&buf, pr, fts, db); e != nil {
+	if e := genTF(&buf, pr, nil, fts, db); e != nil {
 		return fmt.Errorf("genTF: %v", e)
 	}
 	fmt.Println(buf.String())
