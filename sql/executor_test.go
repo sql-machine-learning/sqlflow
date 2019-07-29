@@ -46,16 +46,6 @@ func goodStream(stream chan interface{}) (bool, string) {
 	return true, ""
 }
 
-func TestTableWithRandomColumn(t *testing.T) {
-	a := assert.New(t)
-	a.NotPanics(func() {
-		_, e := tableWithRandomColumn(testDB, testGenerateRandomColumnTable)
-		if e != errNotSupportYet {
-			a.NoError(e)
-		}
-	})
-}
-
 func TestSplitExtendedSQL(t *testing.T) {
 	a := assert.New(t)
 	s := splitExtendedSQL(`select a train b with c;`)

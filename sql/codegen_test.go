@@ -26,7 +26,7 @@ const (
 SELECT *
 FROM iris.train
 `
-	testGenerateRandomColumnTable = `
+	testTrainAndValDataset = `
 SELECT a.sepal_length,b.sepal_width,a.petal_length,b.petal_width,a.class 
 FROM iris_train a,iris_test b
 WHERE a.class=b.class
@@ -59,7 +59,7 @@ func TestCodeGenTrain(t *testing.T) {
 	fts, e := verify(r, testDB)
 	a.NoError(e)
 
-	a.NoError(genTF(ioutil.Discard, r, fts, testDB))
+	a.NoError(genTF(ioutil.Discard, r, nil, fts, testDB))
 }
 
 func TestCodeGenPredict(t *testing.T) {
@@ -75,5 +75,5 @@ func TestCodeGenPredict(t *testing.T) {
 	fts, e := verify(r, testDB)
 	a.NoError(e)
 
-	a.NoError(genTF(ioutil.Discard, r, fts, testDB))
+	a.NoError(genTF(ioutil.Discard, r, nil, fts, testDB))
 }
