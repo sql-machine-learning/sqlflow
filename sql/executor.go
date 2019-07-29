@@ -333,7 +333,7 @@ func (cw *logChanWriter) Close() {
 	}
 }
 
-func train(tr *extendedSelect, ds trainingDataset, slct string, db *DB, cwd string, wr *PipeWriter, modelDir string) error {
+func train(tr *extendedSelect, ds *trainingDataset, slct string, db *DB, cwd string, wr *PipeWriter, modelDir string) error {
 	fts, e := verify(tr, db)
 	if e != nil {
 		return e
@@ -394,7 +394,7 @@ func pred(pr *extendedSelect, db *DB, cwd string, wr *PipeWriter, modelDir strin
 	}
 
 	var buf bytes.Buffer
-	if e := genTF(&buf, pr, trainingDataset{}, fts, db); e != nil {
+	if e := genTF(&buf, pr, nil, fts, db); e != nil {
 		return fmt.Errorf("genTF: %v", e)
 	}
 

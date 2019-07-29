@@ -44,9 +44,9 @@ var (
 )
 
 // SQLFlow generates a temporary table, + sqlflow_randowm column
-func createTrainingDataset(db *DB, slct string, trainingUpperbound float32) (trainingDataset, error) {
+func createTrainingDataset(db *DB, slct string, trainingUpperbound float32) (*trainingDataset, error) {
 	if trainingUpperbound <= 0 || trainingUpperbound >= 1 {
-		return trainingDataset{}, errBadBoundary
+		return nil, errBadBoundary
 	}
 
 	switch db.driverName {
@@ -54,29 +54,29 @@ func createTrainingDataset(db *DB, slct string, trainingUpperbound float32) (tra
 		return createMaxcomputeDataset(db, slct, trainingUpperbound)
 		// TODO(weiguo): support other databases, like: "hive", "mysql"...
 	default:
-		return trainingDataset{}, nil
+		return nil, nil
 	}
 }
 
-func releaseTrainingDataset(ds trainingDataset) {
+func releaseTrainingDataset(ds *trainingDataset) {
 	// TODO(weiguo): release resources for databases, like: "hive", "mysql"...
 }
 
-func createMaxcomputeDataset(db *DB, slct string, trainingUpperbound float32) (trainingDataset, error) {
+func createMaxcomputeDataset(db *DB, slct string, trainingUpperbound float32) (*trainingDataset, error) {
 	ds := namingTrainingDataset()
 	// create a table, then split it into 2 views
 	stmt := fmt.Sprintf("CREATE TABLE %s LIFECYCLE %d AS SELECT *, RAND() AS %s FROM (%s) AS %s_ori", ds.table, temporaryTableLifecycle, randomColumn, slct, ds.table)
 	if _, e := db.Exec(stmt); e != nil {
 		log.Errorf("create temporary table failed, stmt:[%s], err:%v", stmt, e)
-		return trainingDataset{}, e
+		return nil, e
 	}
 	trainingCond := fmt.Sprintf("%s < %f", randomColumn, trainingUpperbound)
 	if e := createView(db, ds.table, ds.trainingView, trainingCond); e != nil {
-		return trainingDataset{}, e
+		return nil, e
 	}
 	validationCond := fmt.Sprintf("%s >= %f", randomColumn, trainingUpperbound)
 	if e := createView(db, ds.table, ds.validationView, validationCond); e != nil {
-		return trainingDataset{}, e
+		return nil, e
 	}
 	return ds, nil
 }
@@ -90,9 +90,9 @@ func createView(db *DB, table, view, where string) error {
 	return nil
 }
 
-func namingTrainingDataset() trainingDataset {
+func namingTrainingDataset() *trainingDataset {
 	uniq := time.Now().UnixNano() / 1e3
-	return trainingDataset{
+	return &trainingDataset{
 		supported:      true,
 		table:          fmt.Sprintf("%s%d", tablePrefix, uniq),
 		trainingView:   fmt.Sprintf("%s%d", trainingViewPrefix, uniq),

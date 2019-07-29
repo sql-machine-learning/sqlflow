@@ -59,7 +59,7 @@ func TestCodeGenTrain(t *testing.T) {
 	fts, e := verify(r, testDB)
 	a.NoError(e)
 
-	a.NoError(genTF(ioutil.Discard, r, trainingDataset{}, fts, testDB))
+	a.NoError(genTF(ioutil.Discard, r, nil, fts, testDB))
 }
 
 func TestCodeGenPredict(t *testing.T) {
@@ -75,5 +75,5 @@ func TestCodeGenPredict(t *testing.T) {
 	fts, e := verify(r, testDB)
 	a.NoError(e)
 
-	a.NoError(genTF(ioutil.Discard, r, trainingDataset{}, fts, testDB))
+	a.NoError(genTF(ioutil.Discard, r, nil, fts, testDB))
 }

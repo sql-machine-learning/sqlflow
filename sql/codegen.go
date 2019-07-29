@@ -98,7 +98,7 @@ func parseModelURI(modelString string) (bool, string) {
 	return false, fmt.Sprintf("tf.estimator.%s", modelString)
 }
 
-func newFiller(pr *extendedSelect, ds trainingDataset, fts fieldTypes, db *DB) (*filler, error) {
+func newFiller(pr *extendedSelect, ds *trainingDataset, fts fieldTypes, db *DB) (*filler, error) {
 	// TODO(weiguo): modify filler struct to carry trainingDatase in the next PR
 	isKerasModel, modelClassString := parseModelURI(pr.estimator)
 	r := &filler{
@@ -225,7 +225,7 @@ func removeLastSemicolon(s string) string {
 	return s
 }
 
-func genTF(w io.Writer, pr *extendedSelect, ds trainingDataset, fts fieldTypes, db *DB) error {
+func genTF(w io.Writer, pr *extendedSelect, ds *trainingDataset, fts fieldTypes, db *DB) error {
 	r, e := newFiller(pr, ds, fts, db)
 	if e != nil {
 		return e
