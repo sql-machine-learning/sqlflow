@@ -40,7 +40,7 @@ type xgRuntimeFields struct {
 type xgRuntimeResourceFields struct {
 	WorkerNum  uint `json:"worker_num,omitempty"`
 	MemorySize uint `json:"memory_size,omitempty"`
-	CpuSize    uint `json:"cpu_size,omitempty"`
+	CPUSize    uint `json:"cpu_size,omitempty"`
 }
 
 type xgboostFields struct {
@@ -125,7 +125,7 @@ func uIntPartial(key string, ptrFn func(*xgboostFiller) *uint) func(*map[string]
 		if intVal, err := strconv.ParseUint(val[0], 10, 32); err != nil {
 			return err
 		} else if intPtr := ptrFn(r); *intPtr != 0 {
-			return fmt.Errorf("dupicate xgboost (int)attr setting, the key of attr is %s", key)
+			return fmt.Errorf("duplicate xgboost (int)attr setting, the key of attr is %s", key)
 		} else {
 			*intPtr = uint(intVal)
 			delete(*a, key)
@@ -144,7 +144,7 @@ func fp32Partial(key string, ptrFn func(*xgboostFiller) *float32) func(*map[stri
 		if fpVal, err := strconv.ParseFloat(val[0], 32); err != nil {
 			return err
 		} else if fpPtr := ptrFn(r); *fpPtr != 0 {
-			return fmt.Errorf("dupicate xgboost (float)attr setting, the key of attr is %s", key)
+			return fmt.Errorf("duplicate xgboost (float)attr setting, the key of attr is %s", key)
 		} else {
 			*fpPtr = float32(fpVal)
 			delete(*a, key)
@@ -160,13 +160,13 @@ func boolPartial(key string, ptrFn func(*xgboostFiller) *bool) func(*map[string]
 		if len(val) != 1 {
 			return fmt.Errorf("invalid attr value(%v) for key(%s)", val, key)
 		}
-		if bVal, err := strconv.ParseBool(val[0]); err != nil {
+		bVal, err := strconv.ParseBool(val[0])
+		if err != nil {
 			return err
-		} else {
-			bPtr := ptrFn(r)
-			*bPtr = bVal
-			delete(*a, key)
 		}
+		bPtr := ptrFn(r)
+		*bPtr = bVal
+		delete(*a, key)
 		return nil
 	}
 }
@@ -178,12 +178,12 @@ func strPartial(key string, ptrFn func(*xgboostFiller) *string) func(*map[string
 		if len(val) != 1 {
 			return fmt.Errorf("invalid attr value(%v) for key(%s)", val, key)
 		}
-		if stringPtr := ptrFn(r); len(*stringPtr) != 0 {
-			return fmt.Errorf("dupicate xgboost (string)attr setting, the key of attr is %s", key)
-		} else {
-			*stringPtr = val[0]
-			delete(*a, key)
+		stringPtr := ptrFn(r)
+		if len(*stringPtr) != 0 {
+			return fmt.Errorf("duplicate xgboost (string)attr setting, the key of attr is %s", key)
 		}
+		*stringPtr = val[0]
+		delete(*a, key)
 		return nil
 	}
 }
@@ -192,12 +192,12 @@ func sListPartial(key string, ptrFn func(*xgboostFiller) []string) func(*map[str
 	return func(a *map[string][]string, r *xgboostFiller) error {
 		// setXGBoostAttr will ensure the key is existing in map
 		val, _ := (*a)[key]
-		if strListPtr := ptrFn(r); len(strListPtr) != 0 {
-			return fmt.Errorf("dupicate xgboost (string list)attr setting, the key of attr is %s", key)
-		} else {
-			strListPtr = val
-			delete(*a, key)
+		strListPtr := ptrFn(r)
+		if len(strListPtr) != 0 {
+			return fmt.Errorf("duplicate xgboost (string list)attr setting, the key of attr is %s", key)
 		}
+		strListPtr = val
+		delete(*a, key)
 		return nil
 	}
 }
@@ -207,7 +207,7 @@ var xgbAttrSetterMap = map[string]func(*map[string][]string, *xgboostFiller) err
 	"run_local": boolPartial("run_local", func(r *xgboostFiller) *bool { return &(r.runLocal) }),
 	"workers":   uIntPartial("workers", func(r *xgboostFiller) *uint { return &(r.WorkerNum) }),
 	"memory":    uIntPartial("memory", func(r *xgboostFiller) *uint { return &(r.MemorySize) }),
-	"cpu":       uIntPartial("cpu", func(r *xgboostFiller) *uint { return &(r.CpuSize) }),
+	"cpu":       uIntPartial("cpu", func(r *xgboostFiller) *uint { return &(r.CPUSize) }),
 	// booster params
 	"objective":            strPartial("objective", func(r *xgboostFiller) *string { return &(r.Objective) }),
 	"booster":              strPartial("booster", func(r *xgboostFiller) *string { return &(r.Booster) }),
@@ -235,7 +235,7 @@ var xgbAttrSetterMap = map[string]func(*map[string][]string, *xgboostFiller) err
 }
 
 func setXGBoostAttr(attrs *map[string][]string, r *xgboostFiller) error {
-	for k, _ := range *attrs {
+	for k := range *attrs {
 		if setter, ok := xgbAttrSetterMap[k]; ok {
 			if e := setter(attrs, r); e != nil {
 				return e
@@ -468,23 +468,23 @@ func newXGBoostFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*xgboostFille
 				return nil, fmt.Errorf("failed to parse feature columns, %v", e)
 			}
 		case "label":
-			if colMeta, err := parseSimpleColumn("label", &columns); err != nil {
+			colMeta, err := parseSimpleColumn("label", &columns);
+			if err != nil {
 				return nil, fmt.Errorf("failed to parse LABEL, %v", err)
-			} else {
-				filler.LabelField = colMeta
 			}
+			filler.LabelField = colMeta
 		case "group":
-			if colMeta, err := parseSimpleColumn("group", &columns); err != nil {
+			colMeta, err := parseSimpleColumn("group", &columns)
+			if err != nil {
 				return nil, fmt.Errorf("failed to parse GROUP, %v", err)
-			} else {
-				filler.GroupField = colMeta
 			}
+			filler.GroupField = colMeta
 		case "weight":
-			if colMeta, err := parseSimpleColumn("weight", &columns); err != nil {
+			colMeta, err := parseSimpleColumn("weight", &columns)
+			if err != nil {
 				return nil, fmt.Errorf("failed to parse WEIGHT, %v", err)
-			} else {
-				filler.WeightField = colMeta
 			}
+			filler.WeightField = colMeta
 		default:
 			return nil, fmt.Errorf("unsupported COLUMN TAG: %s", target)
 		}
