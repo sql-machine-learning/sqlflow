@@ -47,10 +47,13 @@ type engineSpec struct {
 	queue   string
 }
 
-type customModule struct {
-	Name       string
-	Url        string
-	SourceRoot string
+type gitLabModule struct {
+	ModuleName   string
+	ProjectName  string
+	Sha          string
+	PrivateToken string
+	SourceRoot   string
+	GitLabServer string
 }
 
 type resolvedTrainClause struct {
@@ -72,7 +75,7 @@ type resolvedTrainClause struct {
 	FeatureColumns         map[string][]featureColumn
 	ColumnSpecs            map[string][]*columnSpec
 	EngineParams           engineSpec
-	CustomModule           *customModule
+	CustomModule           *gitLabModule
 }
 
 // featureColumn is an interface that all types of feature columns and
@@ -272,15 +275,20 @@ func resolveTrainClause(tc *trainClause) (*resolvedTrainClause, error) {
 	evalStartDecaySecs := getIntAttr("eval.start_delay_secs", 120)
 	evalThrottleSecs := getIntAttr("eval.throttle_secs", 600)
 
-	customModel := func() *customModule {
+	customModel := func() *gitLabModule {
 		if preMadeModel == false {
-			moduleName := strings.SplitN(modelName, ".", 2)[0]
-			url := getStringAttr("custom_model_url", "")
-			sourceRoot := getStringAttr("custom_model_source_root", "")
-			return &customModule{
-				Name:       moduleName,
-				Url:        url,
-				SourceRoot: sourceRoot}
+			project := getStringAttr("gitlab_project", "")
+			sha := getStringAttr("gitlab_sha", "")
+			token := getStringAttr("gitlab_token", "")
+			server := getStringAttr("gitlab_server", "")
+			sourceRoot := getStringAttr("gitlab_source_root", "")
+			return &gitLabModule{
+				ModuleName:   modelName,
+				ProjectName:  project,
+				Sha:          sha,
+				PrivateToken: token,
+				GitLabServer: server,
+				SourceRoot:   sourceRoot}
 		}
 		return nil
 	}()

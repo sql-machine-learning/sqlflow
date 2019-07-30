@@ -47,6 +47,9 @@ class SQLFlowEstimatorBuilder(EstimatorBuilder):
         feature_columns = []
         {{.FeatureColumnCode}}
 {{end}}
+{{if ne .RemoteModuleCode ""}}
+		{{.RemoteModuleCode}}
+{{end}}
 {{if ne .ImportCode ""}}
         {{.ImportCode}}
 {{end}}
@@ -135,7 +138,7 @@ if __name__ == "__main__":
         run_experiment(experiment)
     else:
         if "{{.ExitOnSubmit}}" == "false":
-            run_experiment(experiment)
+            submit_experiment(experiment)
         else:
             submit_experiment(experiment, exit_on_submit=True)
 `
