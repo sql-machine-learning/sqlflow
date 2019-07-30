@@ -23,9 +23,9 @@ import (
 )
 
 type xgboostFiller struct {
-	isTrain bool
+	isTrain        bool
 	standardSelect string
-	modelPath string
+	modelPath      string
 	xgboostFields
 	xgColumnFields
 	xgDataSourceFields
@@ -188,15 +188,15 @@ func strPartial(key string, ptrFn func(*xgboostFiller) *string) func(*map[string
 	}
 }
 
-func sListPartial(key string, ptrFn func(*xgboostFiller) []string) func(*map[string][]string, *xgboostFiller) error {
+func sListPartial(key string, ptrFn func(*xgboostFiller) *[]string) func(*map[string][]string, *xgboostFiller) error {
 	return func(a *map[string][]string, r *xgboostFiller) error {
 		// setXGBoostAttr will ensure the key is existing in map
 		val, _ := (*a)[key]
 		strListPtr := ptrFn(r)
-		if len(strListPtr) != 0 {
+		if len(*strListPtr) != 0 {
 			return fmt.Errorf("duplicate xgboost (string list)attr setting, the key of attr is %s", key)
 		}
-		strListPtr = val
+		*strListPtr = val
 		delete(*a, key)
 		return nil
 	}
@@ -226,7 +226,7 @@ var xgbAttrSetterMap = map[string]func(*map[string][]string, *xgboostFiller) err
 	"num_round":  uIntPartial("num_round", func(r *xgboostFiller) *uint { return &(r.NumRound) }),
 	"auto_train": boolPartial("auto_train", func(r *xgboostFiller) *bool { return &(r.AutoTrain) }),
 	// xgboost output columns (for prediction)
-	"append_columns":  sListPartial("append_columns", func(r *xgboostFiller) []string { return r.AppendColumns }),
+	"append_columns":  sListPartial("append_columns", func(r *xgboostFiller) *[]string { return &(r.AppendColumns) }),
 	"result_column":   strPartial("result_column", func(r *xgboostFiller) *string { return &(r.ResultColumn) }),
 	"prob_column":     strPartial("prob_column", func(r *xgboostFiller) *string { return &(r.ProbColumn) }),
 	"detail_column":   strPartial("detail_column", func(r *xgboostFiller) *string { return &(r.DetailColumn) }),
@@ -253,7 +253,7 @@ func setXGBoostAttr(attrs *map[string][]string, r *xgboostFiller) error {
 			data example: COLUMN SPARSE("0:1.5 1:100.1f 11:-1.2", [20], " ")
 		2. tf feature columns
 			 roughly same as TFEstimator, except output shape of feaColumns are required to be 1-dim.
- */
+*/
 func parseFeatureColumns(columns *exprlist, r *xgboostFiller) error {
 	feaCols, colSpecs, err := resolveTrainColumns(columns)
 	if err != nil {
@@ -467,12 +467,6 @@ func newXGBoostFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*xgboostFille
 			if e := parseFeatureColumns(&columns, filler); e != nil {
 				return nil, fmt.Errorf("failed to parse feature columns, %v", e)
 			}
-		case "label":
-			colMeta, err := parseSimpleColumn("label", &columns);
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse LABEL, %v", err)
-			}
-			filler.LabelField = colMeta
 		case "group":
 			colMeta, err := parseSimpleColumn("group", &columns)
 			if err != nil {
@@ -488,6 +482,9 @@ func newXGBoostFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*xgboostFille
 		default:
 			return nil, fmt.Errorf("unsupported COLUMN TAG: %s", target)
 		}
+	}
+	filler.LabelField = &xgFeatureMeta{
+		FeatureName: pr.label,
 	}
 
 	return xgFillDatabaseInfo(filler, db)
