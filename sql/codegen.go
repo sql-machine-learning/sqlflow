@@ -161,9 +161,6 @@ func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *D
 		}
 	}
 
-	// for k, v := range fts {
-	// 	fmt.Printf("field: %s, types: %v\n", k, v)
-	// }
 	// Default use int32 label dtype
 	labelDtype := "int32"
 	if val, ok := fts[pr.label]; ok {
