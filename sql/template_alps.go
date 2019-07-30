@@ -146,7 +146,7 @@ set odps.service.mode=off;
 set odps.instance.priority = 0;
 set odps.sql.udf.timeout = 3000;
 
-set mst.model.path=oss://arks-model/{{.UserID}}/{{.PredictInputModel}}.tar.gz;
+set mst.model.path={{.ModelDir}};
 set mst.model.name={{.PredictInputModel}};
 set mst.oss.id={{.OSSID}};
 set mst.oss.key={{.OSSKey}};

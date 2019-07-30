@@ -43,7 +43,6 @@ type alpsFiller struct {
 	ModelDir           string
 	ScratchDir         string
 	PredictOutputTable string
-	PredictInputModel  string
 
 	// Schema & Decode info
 	Fields string
@@ -271,13 +270,14 @@ func newALPSPredictFiller(pr *extendedSelect, session *pb.Session) (*alpsFiller,
 	if ossKey, ok = pr.predAttrs["OSS_KEY"]; !ok {
 		return nil, fmt.Errorf("the ALPS Predict job should specify OSS_KEY")
 	}
+	modelDir := fmt.Sprintf("oss://arks-model/%s/%s.tar.gz", session.UserId, pr.predictClause.model)
 
 	return &alpsFiller{
 		IsTraining:         true,
 		PredictInputTable:  pr.tables[0],
 		PredictOutputTable: pr.predictClause.into,
 		PredictUDF:         strings.Join(pr.fields.Strings(), " "),
-		PredictInputModel:  pr.predictClause.model,
+		ModelDir:           modelDir,
 		UserID:             session.UserId,
 		OSSID:              ossID.String(),
 		OSSKey:             ossKey.String(),

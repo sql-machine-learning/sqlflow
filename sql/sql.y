@@ -184,9 +184,8 @@ train_clause
 ;
 
 predict_clause
-: PREDICT IDENT { $$.into = $2 }
-| PREDICT WITH attrs { $$.predAttrs = $3 }
-| predict_clause USING IDENT { $$.model = $3 } 
+: PREDICT IDENT USING IDENT { $$.into = $2; $$.model = $4 }
+| PREDICT IDENT WITH attrs USING IDENT { $$.into = $2; $$.predAttrs = $4; $$.model = $6 }
 ;
 
 column_clause
