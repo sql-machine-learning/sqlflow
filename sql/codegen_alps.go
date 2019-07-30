@@ -57,8 +57,7 @@ type alpsFiller struct {
 	ExitOnSubmit      bool
 
 	// Predict
-	PredictStanderClause string
-	PredictUDF           string
+	PredictUDF string
 
 	// Feature map
 	FeatureMapTable     string
