@@ -172,7 +172,7 @@ func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *D
 				labelDtype = "float32"
 			} else if v == "DOUBLE" {
 				labelDtype = "float64"
-			} else if v == "INT" {
+			} else if v == "INT" || v == "INT_TYPE" {
 				labelDtype = "int32"
 			} else if v == "BIGINT" {
 				labelDtype = "int64"
