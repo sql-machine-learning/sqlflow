@@ -60,7 +60,8 @@ def db_generator(driver, conn, statement,
             if not rows:
                 break
             # NOTE: keep the connection while training or connection will lost if no activities appear.
-            conn.ping(True)
+            if driver == "mysql":
+                conn.ping(True)
             for row in rows:
                 label = row[label_idx]
                 features = []
