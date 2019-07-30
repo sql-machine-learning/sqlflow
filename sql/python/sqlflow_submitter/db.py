@@ -56,8 +56,10 @@ def db_generator(driver, conn, statement,
         rows = cursor.fetchmany(fetch_size)
         while len(rows) > 0:
             # NOTE: keep the connection while training or connection will lost if no activities appear.
-            if driver == "mysql" and not conn.is_connected():
-                conn.ping(True)
+            # FIXME(Yancey1989): tempory comment this reconnect, because it caused to loss the cursor failed,
+            # github issue: https://github.com/sql-machine-learning/sqlflow/issues/612
+            #if driver == "mysql" and not conn.is_connected():
+            #    conn.ping(True)
             for row in rows:
                 label = row[label_idx]
                 features = []
@@ -82,6 +84,8 @@ def db_generator(driver, conn, statement,
                             cell = row[field_names.index(name)]
                     features.append(cell)
                 yield (tuple(features), [label])
+            if len(rows) < fetch_size:
+                break
             rows = cursor.fetchmany(fetch_size)
         cursor.close()
 
