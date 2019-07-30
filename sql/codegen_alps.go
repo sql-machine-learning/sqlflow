@@ -134,7 +134,7 @@ func modelCreatorCode(resolved *resolvedTrainClause, args []string) (string, str
 		fmt.Sprintf("%s(%s)", modelName, strings.Join(cl, ",")), nil
 }
 
-func newALPSTrainFiller(pr *extendedSelect, db *DB, session *pb.Session) (*alpsFiller, error) {
+func newALPSTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds *trainAndValDataset) (*alpsFiller, error) {
 	resolved, err := resolveTrainClause(&pr.trainClause)
 	if err != nil {
 		return nil, err
@@ -213,7 +213,6 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB, session *pb.Session) (*alpsF
 	if err != nil {
 		return nil, err
 	}
-	tableName := pr.tables[0]
 	var engineCode string
 	engineCode, err = engineCreatorCode(resolved)
 	if err != nil {
@@ -239,11 +238,19 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB, session *pb.Session) (*alpsF
 		// TODO(joyyoj) hard code currently.
 		modelDir = fmt.Sprintf("arks://%s/%s.tar.gz", filepath.Join("sqlflow", userID), pr.trainClause.save)
 	}
+	var trainInput, evalInput string
+	if ds != nil && ds.supported {
+		trainInput, evalInput = ds.trainingView, ds.validationView
+	} else {
+		// TODO(weiguo): we will remove `supported` from the ds struct.
+		// so, do not worry too much about the same dataset train&eval is.
+		trainInput, evalInput = pr.tables[0], pr.tables[0]
+	}
 	log.Printf("Will save the models on: %s\n", modelDir)
 	return &alpsFiller{
 		IsTraining:          true,
-		TrainInputTable:     tableName,
-		EvalInputTable:      tableName, //FIXME(uuleon): Train and Eval should use different dataset.
+		TrainInputTable:     trainInput,
+		EvalInputTable:      evalInput,
 		ScratchDir:          scratchDir,
 		ModelDir:            modelDir,
 		Fields:              fmt.Sprintf("[%s]", strings.Join(fields, ",")),

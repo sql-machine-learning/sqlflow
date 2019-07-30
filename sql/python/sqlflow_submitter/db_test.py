@@ -141,3 +141,23 @@ class TestGenerator(TestCase):
                     self.assertEqual(d, ((2.0,), [1]))
                 idx += 1
             self.assertEqual(idx, 2)
+
+    def test_generate_fetch_size(self):
+        driver = os.environ.get('SQLFLOW_TEST_DB')
+        if driver == "mysql":
+            database = "iris"
+            user = os.environ.get('SQLFLOW_TEST_DB_MYSQL_USER') or "root"
+            password = os.environ.get('SQLFLOW_TEST_DB_MYSQL_PASSWD') or "root"
+            conn = connect(driver, database, user=user, password=password, host="127.0.0.1", port="3306")
+            column_name_to_type = {"sepal_length": {
+                    "feature_name": "sepal_length",
+                    "delimiter": "",
+                    "dtype": "float32",
+                    "is_sparse": False,
+                    "shape": []
+                }}
+            
+
+            gen = db_generator(driver, conn, 'SELECT * FROM iris.train limit 10',
+                                ["sepal_length"], "class", column_name_to_type, fetch_size=4)
+            self.assertEqual(len([g for g in gen()]), 10)

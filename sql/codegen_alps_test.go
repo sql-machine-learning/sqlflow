@@ -45,7 +45,7 @@ func TestTrainALPSFiller(t *testing.T) {
 	r, e := parser.Parse(wndStatement)
 	a.NoError(e)
 	session := &pb.Session{UserId: "sqlflow_user"}
-	filler, e := newALPSTrainFiller(r, nil, session)
+	filler, e := newALPSTrainFiller(r, nil, session, nil)
 	a.NoError(e)
 
 	a.True(filler.IsTraining)

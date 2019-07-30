@@ -95,6 +95,10 @@ func AssertGreaterEqualAny(a *assert.Assertions, actual *any.Any, expected inter
 		b := wrappers.Int64Value{}
 		ptypes.UnmarshalAny(actual, &b)
 		a.GreaterOrEqual(b.Value, expected.(int64))
+	case "type.googleapis.com/google.protobuf.FloatValue":
+		b := wrappers.FloatValue{}
+		ptypes.UnmarshalAny(actual, &b)
+		a.GreaterOrEqual(float32(expected.(float64)), b.Value)
 	}
 }
 
@@ -155,6 +159,9 @@ func prepareTestData(dbStr string) error {
 			return err
 		}
 		if err := testdata.Popularize(testDB.DB, testdata.StandardJoinTest); err != nil {
+			return err
+		}
+		if err := testdata.Popularize(testDB.DB, testdata.HousingSQL); err != nil {
 			return err
 		}
 		return testdata.Popularize(testDB.DB, testdata.TextCNSQL)
@@ -246,6 +253,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseTrainCustomModelWithHyperParams", CaseTrainCustomModelWithHyperParams)
 	t.Run("CaseSparseFeature", CaseSparseFeature)
 	t.Run("CaseSQLByPassLeftJoin", CaseSQLByPassLeftJoin)
+	t.Run("CaseTrainRegression", CaseTrainRegression)
 }
 
 func TestEnd2EndHive(t *testing.T) {
@@ -379,6 +387,7 @@ func CaseShowDatabases(t *testing.T) {
 		"sys":                "",
 		"text_cn":            "",
 		"standard_join_test": "",
+		"housing":            "",
 		"iris_e2e":           "", // created by Python e2e test
 		"hive":               "", // if current mysql is also used for hive
 		"default":            "", // if fetching default hive databases
@@ -765,4 +774,65 @@ WHERE f1.user_id < 3;`
 	}
 	// wait train finish
 	ParseRow(stream)
+}
+
+// CaseTrainRegression is used to test regression models
+func CaseTrainRegression(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`SELECT *
+FROM housing.train
+TRAIN LinearRegressor
+WITH label_dimension=1
+COLUMN f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13
+LABEL target
+INTO sqlflow_models.my_regression_model;`)
+
+	conn, err := createRPCConn()
+	a.NoError(err)
+	defer conn.Close()
+	cli := pb.NewSQLFlowClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	defer cancel()
+
+	stream, err := cli.Run(ctx, sqlRequest(trainSQL))
+	if err != nil {
+		a.Fail("Check if the server started successfully. %v", err)
+	}
+	// call ParseRow only to wait train finish
+	ParseRow(stream)
+
+	predSQL := fmt.Sprintf(`SELECT *
+FROM housing.test
+PREDICT housing.predict.target
+USING sqlflow_models.my_regression_model;`)
+
+	stream, err = cli.Run(ctx, sqlRequest(predSQL))
+	if err != nil {
+		a.Fail("Check if the server started successfully. %v", err)
+	}
+	// call ParseRow only to wait predict finish
+	ParseRow(stream)
+
+	showPred := fmt.Sprintf(`SELECT *
+FROM housing.predict LIMIT 5;`)
+
+	stream, err = cli.Run(ctx, sqlRequest(showPred))
+	if err != nil {
+		a.Fail("Check if the server started successfully. %v", err)
+	}
+	_, rows := ParseRow(stream)
+
+	for _, row := range rows {
+		// NOTE: predict result maybe random, only check predicted
+		// class >=0, need to change to more flexible checks than
+		// checking expectedPredClasses := []int64{2, 1, 0, 2, 0}
+		AssertGreaterEqualAny(a, row[13], float64(0))
+
+		// avoiding nil features in predict result
+		nilCount := 0
+		for ; nilCount < 13 && row[nilCount] == nil; nilCount++ {
+		}
+		a.False(nilCount == 13)
+	}
 }

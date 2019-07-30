@@ -164,10 +164,29 @@ func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *D
 		}
 	}
 
-	// FIXME(typhoonzero): support soft label in addition to int types
+	// Default use int32 label dtype
+	labelDtype := "int32"
+	if val, ok := fts[pr.label]; ok {
+		for _, v := range val {
+			if v == "FLOAT" {
+				labelDtype = "float32"
+			} else if v == "DOUBLE" {
+				labelDtype = "float64"
+			} else if v == "INT" || v == "INT_TYPE" {
+				labelDtype = "int32"
+			} else if v == "BIGINT" {
+				labelDtype = "int64"
+			} else {
+				log.Fatalf("Unsupported label data type: %s", v)
+			}
+			// TODO(typhoonzero): get the dtype from first appeared table name.
+			// fix this if we have multiple tables in select statement.
+			break
+		}
+	}
 	r.Y = &featureMeta{
 		FeatureName: pr.label,
-		Dtype:       "int",
+		Dtype:       labelDtype,
 		Delimiter:   ",",
 		InputShape:  "[1]",
 		IsSparse:    false,
@@ -268,6 +287,7 @@ BATCHSIZE = 1
 EPOCHS = None
 NUM_BUCKETS=160000
 EMBEDDING_WIDTH=128
+VERBOSE = 0
 
 train_args = dict()
 {{range $key, $value := .Attrs}}
@@ -275,6 +295,8 @@ train_args = dict()
 BATCHSIZE = {{$value}}
 {{else if eq $key "EPOCHS"}}
 EPOCHS = {{$value}}
+{{else if eq $key "VERBOSE"}}
+VERBOSE = int({{$value}})
 {{else}}
 train_args["{{$key}}"] = {{$value}}
 {{end}}
@@ -284,7 +306,7 @@ driver="{{.Driver}}"
 {{if ne .Database ""}}
 database="{{.Database}}"
 {{else}}
-database=None
+database=""
 {{end}}
 
 conn = connect(driver, database, user="{{.User}}", password="{{.Password}}", host="{{.Host}}", port={{.Port}})
@@ -358,7 +380,7 @@ def input_fn(batch_size, is_train=True):
 
     gen = db_generator(driver, conn, """{{.StandardSelect}}""",
         feature_column_names, "{{.Y.FeatureName}}", feature_metas)
-    dataset = tf.data.Dataset.from_generator(gen, (tuple(feature_types), tf.int64))
+    dataset = tf.data.Dataset.from_generator(gen, (tuple(feature_types), tf.{{.Y.Dtype}}))
     ds_mapper = functools.partial(_parse_sparse_feature, feature_metas=feature_metas)
     dataset = dataset.map(ds_mapper)
     if is_train:
@@ -378,7 +400,7 @@ classifier.compile(optimizer=classifier.default_optimizer(),
     metrics=["accuracy"])
 classifier.fit(input_fn(BATCHSIZE, is_train=True),
     epochs=EPOCHS if EPOCHS else classifier.default_training_epochs(),
-    verbose=0)
+    verbose=VERBOSE)
 classifier.save_weights("{{.Save}}", save_format="h5")
 {{else}}
 classifier.train(
@@ -386,13 +408,12 @@ classifier.train(
 {{end}}
 
 {{if .IsKerasModel}}
-eval_result = classifier.evaluate(input_fn(BATCHSIZE, is_train=False), verbose=0)
+eval_result = classifier.evaluate(input_fn(BATCHSIZE, is_train=False), verbose=VERBOSE)
 print("Training set accuracy: {accuracy:0.5f}".format(**{"accuracy": eval_result[1]}))
 {{else}}
 eval_result = classifier.evaluate(
     input_fn=lambda:input_fn(BATCHSIZE, is_train=False))
-print(eval_result)
-print("Training set accuracy: {accuracy:0.5f}".format(**eval_result))
+print("Evaluation result:", eval_result)
 {{end}}
 print("Done training")
 {{- else}}
@@ -409,7 +430,7 @@ def eval_input_fn(batch_size):
 
     gen = db_generator(driver, conn, """{{.StandardSelect}}""",
         feature_column_names, "{{.Y.FeatureName}}", feature_metas)
-    dataset = tf.data.Dataset.from_generator(gen, (tuple(feature_types), tf.int64))
+    dataset = tf.data.Dataset.from_generator(gen, (tuple(feature_types), tf.{{.Y.Dtype}}))
     ds_mapper = functools.partial(_parse_sparse_feature, feature_metas=feature_metas)
     dataset = dataset.map(ds_mapper).batch(batch_size)
     return dataset
@@ -459,7 +480,7 @@ def fast_input_fn(generator):
             feature_types.append(get_dtype(feature_metas[name]["dtype"]))
 
     def _inner_input_fn():
-        dataset = tf.data.Dataset.from_generator(generator, (tuple(feature_types), tf.int64) )
+        dataset = tf.data.Dataset.from_generator(generator, (tuple(feature_types), tf.{{.Y.Dtype}}) )
         ds_mapper = functools.partial(_parse_sparse_feature, feature_metas=feature_metas)
         dataset = dataset.map(ds_mapper).batch(1)
         iterator = dataset.make_one_shot_iterator()
@@ -516,7 +537,11 @@ while True:
     for idx, _ in enumerate(feature_column_names):
         val = features[0][idx]
         row.append(str(val))
-    row.append(str(list(result)[0]["class_ids"][0]))
+    if "class_ids" in list(result)[0]:
+        row.append(str(list(result)[0]["class_ids"][0]))
+    else:
+        # regression predictions
+        row.append(str(list(result)[0]["predictions"][0]))
     buff_rows.append(row)
     if len(buff_rows) > 100:
         insert_values(driver, conn, "{{.TableName}}", column_names, buff_rows)

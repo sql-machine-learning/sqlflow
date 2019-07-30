@@ -12,7 +12,7 @@
 # limitations under the License.
 
 import tensorflow as tf
-import mysql.connector
+from MySQLdb import connect
 
 
 def connect(user, passwd, host, port):
@@ -21,10 +21,10 @@ def connect(user, passwd, host, port):
     to make it self-complete as a template.
 
     """
-    return mysql.connector.connect(user=user,
-                                   passwd=passwd,
-                                   host=host,
-                                   port=port)
+    return connect(user=user,
+                   passwd=passwd,
+                   host=host,
+                   port=port)
 
 
 def load(db, slct, label, features):
@@ -33,7 +33,7 @@ a dict from field names to data columns, and the label is a dict from
 the label field name to the label data column.
 
     Args:
-        db: returned from mysql.connector.connect()
+        db: returned from MySQLdb.connect()
         slct (str): SQL SELECT statement
         label (str): the label field name as a string.
         features (list of str or None): feature field names.
