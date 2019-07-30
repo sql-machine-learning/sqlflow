@@ -290,9 +290,9 @@ func newALPSPredictFiller(pr *extendedSelect, session *pb.Session) (*alpsFiller,
 	}, nil
 }
 
-func alpsTrain(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *pb.Session) error {
+func alpsTrain(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *pb.Session, ds *trainAndValDataset) error {
 	var program bytes.Buffer
-	filler, err := newALPSTrainFiller(pr, db, session)
+	filler, err := newALPSTrainFiller(pr, db, session, ds)
 	if err != nil {
 		return err
 	}
@@ -376,13 +376,6 @@ func alpsPred(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *pb
 		return fmt.Errorf("submit ODPS script %s failed %v", program.String(), e)
 	}
 	return nil
-}
-
-func submitALPS(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *pb.Session) error {
-	if pr.train {
-		return alpsTrain(w, pr, db, cwd, session)
-	}
-	return alpsPred(w, pr, db, cwd, session)
 }
 
 func (nc *numericColumn) GenerateAlpsCode(metadata *metadata) ([]string, error) {
