@@ -287,6 +287,7 @@ BATCHSIZE = 1
 EPOCHS = None
 NUM_BUCKETS=160000
 EMBEDDING_WIDTH=128
+VERBOSE = 0
 
 train_args = dict()
 {{range $key, $value := .Attrs}}
@@ -294,6 +295,8 @@ train_args = dict()
 BATCHSIZE = {{$value}}
 {{else if eq $key "EPOCHS"}}
 EPOCHS = {{$value}}
+{{else if eq $key "VERBOSE"}}
+VERBOSE = int({{$value}})
 {{else}}
 train_args["{{$key}}"] = {{$value}}
 {{end}}
@@ -397,7 +400,7 @@ classifier.compile(optimizer=classifier.default_optimizer(),
     metrics=["accuracy"])
 classifier.fit(input_fn(BATCHSIZE, is_train=True),
     epochs=EPOCHS if EPOCHS else classifier.default_training_epochs(),
-    verbose=0)
+    verbose=VERBOSE)
 classifier.save_weights("{{.Save}}", save_format="h5")
 {{else}}
 classifier.train(
@@ -405,7 +408,7 @@ classifier.train(
 {{end}}
 
 {{if .IsKerasModel}}
-eval_result = classifier.evaluate(input_fn(BATCHSIZE, is_train=False), verbose=0)
+eval_result = classifier.evaluate(input_fn(BATCHSIZE, is_train=False), verbose=VERBOSE)
 print("Training set accuracy: {accuracy:0.5f}".format(**{"accuracy": eval_result[1]}))
 {{else}}
 eval_result = classifier.evaluate(
