@@ -341,7 +341,7 @@ func alpsTrain(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *p
 	// TODO(joyyoj) Release a stable-alps to pypi.antfin-inc.com, then remove it.
 	initf.WriteString(`
 #!/bin/bash
-pip install http://091349.oss-cn-hangzhou-zmf.aliyuncs.com/alps/sqlflow/alps-2.0.3rc3-py2.py3-none-any.whl -i https://pypi.antfin-inc.com/simple
+pip install http://091349.oss-cn-hangzhou-zmf.aliyuncs.com/alps/sqlflow/alps-2.0.3rc5-py2.py3-none-any.whl -i https://pypi.antfin-inc.com/simple
 `)
 	initf.Close()
 
