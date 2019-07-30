@@ -87,7 +87,6 @@ def db_generator(driver, conn, statement,
                 yield (tuple(features), [label])
             if len(rows) < fetch_size:
                 break
-            rows = cursor.fetchmany(fetch_size)
         cursor.close()
 
     if driver == "maxcompute":
