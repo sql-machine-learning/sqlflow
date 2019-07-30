@@ -47,6 +47,12 @@ type engineSpec struct {
 	queue   string
 }
 
+type customModule struct {
+	Name       string
+	Url        string
+	SourceRoot string
+}
+
 type resolvedTrainClause struct {
 	IsPreMadeModel         bool
 	ModelName              string
@@ -66,6 +72,7 @@ type resolvedTrainClause struct {
 	FeatureColumns         map[string][]featureColumn
 	ColumnSpecs            map[string][]*columnSpec
 	EngineParams           engineSpec
+	CustomModule           *customModule
 }
 
 // featureColumn is an interface that all types of feature columns and
@@ -265,6 +272,19 @@ func resolveTrainClause(tc *trainClause) (*resolvedTrainClause, error) {
 	evalStartDecaySecs := getIntAttr("eval.start_delay_secs", 120)
 	evalThrottleSecs := getIntAttr("eval.throttle_secs", 600)
 
+	customModel := func() *customModule {
+		if preMadeModel == false {
+			moduleName := strings.SplitN(modelName, ".", 2)[0]
+			url := getStringAttr("custom_model_url", "")
+			sourceRoot := getStringAttr("custom_model_source_root", "")
+			return &customModule{
+				Name:       moduleName,
+				Url:        url,
+				SourceRoot: sourceRoot}
+		}
+		return nil
+	}()
+
 	if len(attrs) > 0 {
 		return nil, fmt.Errorf("unsupported parameters: %v", attrs)
 	}
@@ -299,7 +319,7 @@ func resolveTrainClause(tc *trainClause) (*resolvedTrainClause, error) {
 		FeatureColumns:         fcMap,
 		ColumnSpecs:            csMap,
 		EngineParams:           getEngineSpec(engineParams),
-	}, nil
+		CustomModule:           customModel}, nil
 }
 
 // resolveTrainColumns resolve columns from SQL statement,
