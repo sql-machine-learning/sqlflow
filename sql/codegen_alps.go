@@ -17,7 +17,6 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -123,7 +122,7 @@ func modelCreatorCode(resolved *resolvedTrainClause, args []string) (string, str
 		fmt.Sprintf("%s(%s)", modelName, strings.Join(cl, ",")), nil
 }
 
-func newALPSTrainFiller(pr *extendedSelect, db *DB, session *pb.Session) (*alpsFiller, error) {
+func newALPSTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds *trainAndValDataset) (*alpsFiller, error) {
 	resolved, err := resolveTrainClause(&pr.trainClause)
 	if err != nil {
 		return nil, err
@@ -202,7 +201,6 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB, session *pb.Session) (*alpsF
 	if err != nil {
 		return nil, err
 	}
-	tableName := pr.tables[0]
 	var engineCode string
 	engineCode, err = engineCreatorCode(resolved)
 	if err != nil {
@@ -228,11 +226,19 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB, session *pb.Session) (*alpsF
 		// TODO(joyyoj) hard code currently.
 		modelDir = fmt.Sprintf("arks://%s/%s.tar.gz", filepath.Join("sqlflow", userID), pr.trainClause.save)
 	}
+	var trainInput, evalInput string
+	if ds != nil && ds.supported {
+		trainInput, evalInput = ds.trainingView, ds.validationView
+	} else {
+		// TODO(weiguo): we will remove `supported` from the ds struct.
+		// so, do not worry too much about the same dataset train&eval is.
+		trainInput, evalInput = pr.tables[0], pr.tables[0]
+	}
 	log.Printf("Will save the models on: %s\n", modelDir)
 	return &alpsFiller{
 		IsTraining:          true,
-		TrainInputTable:     tableName,
-		EvalInputTable:      tableName, //FIXME(uuleon): Train and Eval should use different dataset.
+		TrainInputTable:     trainInput,
+		EvalInputTable:      evalInput,
 		ScratchDir:          scratchDir,
 		ModelDir:            modelDir,
 		Fields:              fmt.Sprintf("[%s]", strings.Join(fields, ",")),
@@ -253,22 +259,9 @@ func newALPSPredictFiller(pr *extendedSelect) (*alpsFiller, error) {
 	return nil, fmt.Errorf("alps predict not supported")
 }
 
-func genALPSFiller(w io.Writer, pr *extendedSelect, db *DB, session *pb.Session) (*alpsFiller, error) {
-	if pr.train {
-		return newALPSTrainFiller(pr, db, session)
-	}
-	return newALPSPredictFiller(pr)
-}
-
-func submitALPS(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *pb.Session) error {
+func submitALPS(w *PipeWriter, cwd string, filler *alpsFiller) error {
 	var program bytes.Buffer
-
-	filler, err := genALPSFiller(&program, pr, db, session)
-	if err != nil {
-		return err
-	}
-
-	if err = alpsTemplate.Execute(&program, filler); err != nil {
+	if err := alpsTemplate.Execute(&program, filler); err != nil {
 		return fmt.Errorf("submitALPS: failed executing template: %v", err)
 	}
 	code := program.String()
@@ -300,10 +293,24 @@ pip install http://091349.oss-cn-hangzhou-zmf.aliyuncs.com/alps/sqlflow/alps-2.0
 	if e := cmd.Run(); e != nil {
 		return fmt.Errorf("code %v failed %v", code, e)
 	}
-	if pr.train {
-		// TODO(uuleon): save model to DB
-	}
+	// TODO(uuleon): save model to DB if train
 	return nil
+}
+
+func alpsTrain(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *pb.Session, ds *trainAndValDataset) error {
+	f, err := newALPSTrainFiller(pr, db, session, ds)
+	if err != nil {
+		return err
+	}
+	return submitALPS(w, cwd, f)
+}
+
+func alpsPred(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *pb.Session) error {
+	f, err := newALPSPredictFiller(pr)
+	if err != nil {
+		return err
+	}
+	return submitALPS(w, cwd, f)
 }
 
 func (nc *numericColumn) GenerateAlpsCode(metadata *metadata) ([]string, error) {
