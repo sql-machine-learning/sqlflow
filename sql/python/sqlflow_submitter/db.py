@@ -16,13 +16,14 @@ import tensorflow as tf
 
 def connect(driver, database, user, password, host, port):
     if driver == "mysql":
-        from mysql.connector import connect
+        # NOTE: use MySQLdb to avoid bugs like infinite reading:
+        # https://bugs.mysql.com/bug.php?id=91971
+        from MySQLdb import connect
         return connect(user=user,
                        passwd=password,
-                       database=database,
+                       db=database,
                        host=host,
-                       port=port,
-                       connection_timeout=3600)
+                       port=int(port))
     elif driver == "sqlite3":
         from sqlite3 import connect
         return connect(database)
@@ -53,13 +54,14 @@ def db_generator(driver, conn, statement,
                 else [i[0] for i in cursor.description]
         label_idx = field_names.index(label_column_name)
 
-        rows = cursor.fetchmany(fetch_size)
-        while len(rows) > 0:
+        
+        while True:
+            rows = cursor.fetchmany(size = fetch_size)
+            if not rows:
+                break
             # NOTE: keep the connection while training or connection will lost if no activities appear.
-            # FIXME(Yancey1989): tempory comment this reconnect, because it caused to loss the cursor failed,
-            # github issue: https://github.com/sql-machine-learning/sqlflow/issues/612
-            #if driver == "mysql" and not conn.is_connected():
-            #    conn.ping(True)
+            if driver == "mysql":
+                conn.ping(True)
             for row in rows:
                 label = row[label_idx]
                 features = []
@@ -86,7 +88,6 @@ def db_generator(driver, conn, statement,
                 yield (tuple(features), [label])
             if len(rows) < fetch_size:
                 break
-            rows = cursor.fetchmany(fetch_size)
         cursor.close()
 
     if driver == "maxcompute":
