@@ -115,17 +115,53 @@ type xgFeatureMeta struct {
 	FeatureColumnCode string `json:"fc_code,omitempty"`
 }
 
+func xgParseAttrError(err error) error {
+	return fmt.Errorf("xgParseAttrError: %v", err)
+}
+
+func xgParseColumnError(tpe string, err error) error {
+	return fmt.Errorf("xgParseColumnError: column type(%s), error: %v", tpe, err)
+}
+
+func xgParseEstimatorError(tpe string, err error) error {
+	return fmt.Errorf("xgParseEstimatorError: Estimator keyword(%s), error: %v", tpe, err)
+}
+
+func xgInvalidAttrValError(key string, val []string) error {
+	return fmt.Errorf("xgInvalidAttrValError: invalid attr value(%v) for key(%s)", val, key)
+}
+
+func xgDupAttrSettingError(key string) error {
+	return fmt.Errorf("xgDupAttrSettingError: duplicate attr setting, key is %s", key)
+}
+
+func xgMixSchemaError() error {
+	return fmt.Errorf("xgMixSchemaError: SPARSE column can't work with other columns")
+}
+
+func xgMultiSparseError(colNames []string) error {
+	return fmt.Errorf("xgMultiSparseError: SPARSE column should be unique, but found more than one: %v", colNames)
+}
+
+func xgUnknownFCError(kw string) error {
+	return fmt.Errorf("xgUnknownFCError: feature column keyword(`%s`) is not supported by xgboost engine", kw)
+}
+
+func xgUnsupportedColTagError() error {
+	return fmt.Errorf("xgUnsupportedColTagError: valid column tags of xgboost engine([feature_columns, group, weight])")
+}
+
 func uIntPartial(key string, ptrFn func(*xgboostFiller) *uint) func(*map[string][]string, *xgboostFiller) error {
 	return func(a *map[string][]string, r *xgboostFiller) error {
-		// setXGBoostAttr will ensure the key is existing in map
+		// xgParseAttr will ensure the key is existing in map
 		val, _ := (*a)[key]
 		if len(val) != 1 {
-			return fmt.Errorf("invalid attr value(%v) for key(%s)", val, key)
+			return xgInvalidAttrValError(key, val)
 		}
 		if intVal, err := strconv.ParseUint(val[0], 10, 32); err != nil {
-			return err
+			return xgInvalidAttrValError(key, val)
 		} else if intPtr := ptrFn(r); *intPtr != 0 {
-			return fmt.Errorf("duplicate xgboost (int)attr setting, the key of attr is %s", key)
+			return xgDupAttrSettingError(key)
 		} else {
 			*intPtr = uint(intVal)
 			delete(*a, key)
@@ -136,15 +172,15 @@ func uIntPartial(key string, ptrFn func(*xgboostFiller) *uint) func(*map[string]
 
 func fp32Partial(key string, ptrFn func(*xgboostFiller) *float32) func(*map[string][]string, *xgboostFiller) error {
 	return func(a *map[string][]string, r *xgboostFiller) error {
-		// setXGBoostAttr will ensure the key is existing in map
+		// xgParseAttr will ensure the key is existing in map
 		val, _ := (*a)[key]
 		if len(val) != 1 {
-			return fmt.Errorf("invalid attr value(%v) for key(%s)", val, key)
+			return xgInvalidAttrValError(key, val)
 		}
 		if fpVal, err := strconv.ParseFloat(val[0], 32); err != nil {
-			return err
+			return xgInvalidAttrValError(key, val)
 		} else if fpPtr := ptrFn(r); *fpPtr != 0 {
-			return fmt.Errorf("duplicate xgboost (float)attr setting, the key of attr is %s", key)
+			return xgDupAttrSettingError(key)
 		} else {
 			*fpPtr = float32(fpVal)
 			delete(*a, key)
@@ -155,14 +191,14 @@ func fp32Partial(key string, ptrFn func(*xgboostFiller) *float32) func(*map[stri
 
 func boolPartial(key string, ptrFn func(*xgboostFiller) *bool) func(*map[string][]string, *xgboostFiller) error {
 	return func(a *map[string][]string, r *xgboostFiller) error {
-		// setXGBoostAttr will ensure the key is existing in map
+		// xgParseAttr will ensure the key is existing in map
 		val, _ := (*a)[key]
 		if len(val) != 1 {
-			return fmt.Errorf("invalid attr value(%v) for key(%s)", val, key)
+			return xgInvalidAttrValError(key, val)
 		}
 		bVal, err := strconv.ParseBool(val[0])
 		if err != nil {
-			return err
+			return xgInvalidAttrValError(key, val)
 		}
 		bPtr := ptrFn(r)
 		*bPtr = bVal
@@ -173,14 +209,14 @@ func boolPartial(key string, ptrFn func(*xgboostFiller) *bool) func(*map[string]
 
 func strPartial(key string, ptrFn func(*xgboostFiller) *string) func(*map[string][]string, *xgboostFiller) error {
 	return func(a *map[string][]string, r *xgboostFiller) error {
-		// setXGBoostAttr will ensure the key is existing in map
+		// xgParseAttr will ensure the key is existing in map
 		val, _ := (*a)[key]
 		if len(val) != 1 {
-			return fmt.Errorf("invalid attr value(%v) for key(%s)", val, key)
+			return xgInvalidAttrValError(key, val)
 		}
 		stringPtr := ptrFn(r)
 		if len(*stringPtr) != 0 {
-			return fmt.Errorf("duplicate xgboost (string)attr setting, the key of attr is %s", key)
+			return xgDupAttrSettingError(key)
 		}
 		*stringPtr = val[0]
 		delete(*a, key)
@@ -190,11 +226,11 @@ func strPartial(key string, ptrFn func(*xgboostFiller) *string) func(*map[string
 
 func sListPartial(key string, ptrFn func(*xgboostFiller) *[]string) func(*map[string][]string, *xgboostFiller) error {
 	return func(a *map[string][]string, r *xgboostFiller) error {
-		// setXGBoostAttr will ensure the key is existing in map
+		// xgParseAttr will ensure the key is existing in map
 		val, _ := (*a)[key]
 		strListPtr := ptrFn(r)
 		if len(*strListPtr) != 0 {
-			return fmt.Errorf("duplicate xgboost (string list)attr setting, the key of attr is %s", key)
+			return xgDupAttrSettingError(key)
 		}
 		*strListPtr = val
 		delete(*a, key)
@@ -234,14 +270,41 @@ var xgbAttrSetterMap = map[string]func(*map[string][]string, *xgboostFiller) err
 	// Label, Group, Weight and xgFeatureFields are parsed from columnClause
 }
 
-func setXGBoostAttr(attrs *map[string][]string, r *xgboostFiller) error {
-	for k := range *attrs {
-		if setter, ok := xgbAttrSetterMap[k]; ok {
-			if e := setter(attrs, r); e != nil {
-				return e
+func xgParseAttr(pr *extendedSelect, r *xgboostFiller) error {
+	// parse pr.attrs to map[string][]string
+	attrs := make(map[string][]string)
+	for k, exp := range pr.attrs {
+		strExp := exp.String()
+		if strings.HasPrefix(strExp, "[") && strings.HasSuffix(strExp, "]") {
+			attrs[k] = exp.cdr()
+		} else {
+			attrs[k] = []string{strExp}
+		}
+		for i, s := range attrs[k] {
+			if s[0] == 34 && s[len(s)-1] == 34 {
+				s = s[1 : len(s)-1]
+				attrs[k][i] = s
 			}
 		}
 	}
+
+	// fill xgboostFiller with attrs
+	for k := range attrs {
+		if setter, ok := xgbAttrSetterMap[k]; ok {
+			if e := setter(&attrs, r); e != nil {
+				return xgParseAttrError(e)
+			}
+		}
+	}
+
+	// remaining elements in xgbAttrs are unsolved ones, so we throw exception if any elements remaining.
+	if len(attrs) > 0 {
+		for k, v := range attrs {
+			log.Errorf("unsolved xgboost attr: %s = %s", k, v)
+		}
+		return fmt.Errorf("found unsolved xgboost attributes")
+	}
+
 	return nil
 }
 
@@ -262,7 +325,7 @@ func parseFeatureColumns(columns *exprlist, r *xgboostFiller) error {
 	r.IsTensorFlowIntegrated = true
 	if len(colSpecs) != 0 {
 		if len(feaCols) != 0 {
-			return fmt.Errorf("if SPARSE column is defined, there shouldn't exist another feature columns")
+			return xgMixSchemaError()
 		}
 		return parseSparseKeyValueFeatures(colSpecs, r)
 	}
@@ -274,14 +337,18 @@ func parseFeatureColumns(columns *exprlist, r *xgboostFiller) error {
 }
 
 // parse sparse kv feature, which identified by `SPARSE`.
-// ex: SPARSE(col1, [100], ",")
+// ex: SPARSE(col1, [100], comma)
 func parseSparseKeyValueFeatures(colSpecs []*columnSpec, r *xgboostFiller) error {
+	var colNames []string
+	for _, spec := range colSpecs {
+		colNames = append(colNames, spec.ColumnName)
+	}
 	if len(colSpecs) > 1 {
-		return fmt.Errorf("detect more than one SPARSE column, SPARSE column should be unqiue")
+		return xgMultiSparseError(colNames)
 	}
 	spec := colSpecs[0]
 	if !spec.IsSparse {
-		return fmt.Errorf("DENSE column is not supported by xgboost engine")
+		return xgUnknownFCError("DENSE")
 	}
 	if len(spec.Shape) != 1 || spec.Shape[0] <= 0 {
 		return fmt.Errorf("dim of SPARSE (key-value) column should be one")
@@ -358,6 +425,11 @@ func parseDenseFeatures(feaCols []featureColumn, r *xgboostFiller) error {
 		r.X = append(r.X, fm)
 	}
 
+	r.Delimiter = ""
+	r.IsSparse = false
+	r.FeatureSize = uint(0)
+	r.FeatureColumns = []string{}
+	r.IsTensorFlowIntegrated = true
 	if allSimpleCol {
 		for _, fm := range r.X {
 			fm.FeatureColumnCode = ""
@@ -366,7 +438,6 @@ func parseDenseFeatures(feaCols []featureColumn, r *xgboostFiller) error {
 		r.FeatureSize = uint(len(r.X))
 		r.IsTensorFlowIntegrated = false
 	}
-	r.IsSparse = false
 
 	return nil
 }
@@ -402,89 +473,96 @@ func parseSimpleColumn(field string, columns *exprlist) (*xgFeatureMeta, error) 
 	return fm, nil
 }
 
-func newXGBoostFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*xgboostFiller, error) {
-	filler := &xgboostFiller{isTrain: pr.train, modelPath: pr.save}
-
-	xgbAttrs := make(map[string][]string)
-	for k, exp := range pr.attrs {
-		strExp := exp.String()
-		if strings.HasPrefix(strExp, "[") && strings.HasSuffix(strExp, "]") {
-			xgbAttrs[k] = exp.cdr()
-			continue
+func xgParseColumns(pr *extendedSelect, filler *xgboostFiller) error {
+	for target, columns := range pr.columns {
+		switch target {
+		case "feature_columns":
+			if e := parseFeatureColumns(&columns, filler); e != nil {
+				return xgParseColumnError(target, e)
+			}
+		case "group":
+			colMeta, e := parseSimpleColumn("group", &columns)
+			if e != nil {
+				return xgParseColumnError(target, e)
+			}
+			filler.GroupField = colMeta
+			filler.Group = colMeta.FeatureName
+		case "weight":
+			colMeta, e := parseSimpleColumn("weight", &columns)
+			if e != nil {
+				return xgParseColumnError(target, e)
+			}
+			filler.WeightField = colMeta
+			filler.Weight = colMeta.FeatureName
+		default:
+			return xgParseColumnError(target, xgUnsupportedColTagError())
 		}
-		xgbAttrs[k] = []string{strExp}
 	}
+	filler.LabelField = &xgFeatureMeta{
+		FeatureName: pr.label,
+	}
+	filler.Label = pr.label
 
-	if e := setXGBoostAttr(&xgbAttrs, filler); e != nil {
-		return nil, fmt.Errorf("failed to set xgboost attributes: %exp", e)
-	}
-	// remaining elements in xgbAttrs are unsolved ones, so we throw exception if any elements remaining.
-	if len(xgbAttrs) > 0 {
-		for k, v := range xgbAttrs {
-			log.Errorf("unsolved xgboost attr: %s = %s", k, v)
-		}
-		return nil, fmt.Errorf("found unsolved xgboost attributes")
-	}
+	return nil
+}
 
-	// solve keyword: TRAIN (estimator)
+func xgParseEstimator(pr *extendedSelect, filler *xgboostFiller) error {
 	switch strings.ToUpper(pr.estimator) {
 	case "XGBOOSTESTIMATOR":
 		if len(filler.Objective) == 0 {
-			return nil, fmt.Errorf("objective must be defined, when using XGBoostEstimator")
+			return xgParseEstimatorError(pr.estimator, fmt.Errorf("objective must be defined"))
 		}
 	case "XGBOOSTCLASSIFIER":
 		if obj := filler.Objective; len(obj) == 0 {
 			filler.Objective = "binary:logistic"
 		} else if !strings.HasPrefix(obj, "binary") && !strings.HasPrefix(obj, "multi") {
-			return nil, fmt.Errorf("found non classification objective(%s), when using XGBoostClassifier", obj)
+			return xgParseEstimatorError(pr.estimator, fmt.Errorf("found non classification objective(%s)", obj))
 		}
 	case "XGBOOSTBINARYCLASSIFIER":
 		if obj := filler.Objective; len(obj) == 0 {
 			filler.Objective = "binary:logistic"
 		} else if !strings.HasPrefix(obj, "binary") {
-			return nil, fmt.Errorf("found non binary objective(%s), when using XGBoostBinaryClassifier", obj)
+			return xgParseEstimatorError(pr.estimator, fmt.Errorf("found non binary objective(%s)", obj))
 		}
 	case "XGBOOSTMULTICLASSIFIER":
 		if obj := filler.Objective; len(obj) == 0 {
 			filler.Objective = "multi:softmax"
 		} else if !strings.HasPrefix(obj, "multi") {
-			return nil, fmt.Errorf("found non multi-class objective(%s), when using XGBoostMultiClassifier", obj)
+			return xgParseEstimatorError(pr.estimator, fmt.Errorf("found non multi-class objective(%s)", obj))
 		}
 	case "XGBOOSTREGRESSOR":
 		if obj := filler.Objective; len(obj) == 0 {
 			filler.Objective = "reg:squarederror"
 		} else if !strings.HasPrefix(obj, "reg") && !strings.HasPrefix(obj, "rank") {
-			return nil, fmt.Errorf("found non reg objective(%s), when using XGBoostRegressor", obj)
+			return xgParseEstimatorError(pr.estimator, fmt.Errorf("found non reg objective(%s)", obj))
 		}
 	default:
-		return nil, fmt.Errorf("unknown xgboost estimator: %s", pr.estimator)
+		return xgParseEstimatorError(pr.estimator, fmt.Errorf("unknown xgboost estimator"))
 	}
 
-	// solve columns
-	for target, columns := range pr.columns {
-		switch target {
-		case "feature_columns":
-			if e := parseFeatureColumns(&columns, filler); e != nil {
-				return nil, fmt.Errorf("failed to parse feature columns, %v", e)
-			}
-		case "group":
-			colMeta, err := parseSimpleColumn("group", &columns)
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse GROUP, %v", err)
-			}
-			filler.GroupField = colMeta
-		case "weight":
-			colMeta, err := parseSimpleColumn("weight", &columns)
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse WEIGHT, %v", err)
-			}
-			filler.WeightField = colMeta
-		default:
-			return nil, fmt.Errorf("unsupported COLUMN TAG: %s", target)
-		}
+	return nil
+}
+
+func newXGBoostFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*xgboostFiller, error) {
+	filler := &xgboostFiller{
+		isTrain:        pr.train,
+		modelPath:      pr.save,
+		standardSelect: pr.standardSelect.String(),
 	}
-	filler.LabelField = &xgFeatureMeta{
-		FeatureName: pr.label,
+
+	// solve keyword: WITH (attributes)
+	if e := xgParseAttr(pr, filler); e != nil {
+		return nil, fmt.Errorf("failed to set xgboost attributes: %exp", e)
+	}
+
+	// solve keyword: TRAIN (estimator)
+	if e := xgParseEstimator(pr, filler); e != nil {
+		return nil, e
+	}
+
+	// solve keyword: COLUMN (column clauses)
+	if e := xgParseColumns(pr, filler); e != nil {
+		return nil, e
 	}
 
 	return xgFillDatabaseInfo(filler, db)
