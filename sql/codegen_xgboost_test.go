@@ -305,13 +305,15 @@ LABEL e INTO model_table;
 	a.NoError(e)
 	fts, e := verify(pr, testDB)
 	a.NoError(e)
-
 	filler, e := newXGBoostFiller(pr, fts, testDB)
 	a.NoError(e)
+
 	a.True(filler.isTrain)
-	a.EqualValues("SELECT * FROM iris.train;", strings.Replace(filler.standardSelect, "\n", " ", -1))
-	a.EqualValues("model_table", filler.modelPath)
 	a.True(filler.runLocal)
+	stdSlct := strings.Replace(filler.standardSelect, "\n", " ", -1)
+	stdSlct = removeLastSemicolon(stdSlct)
+	a.EqualValues("SELECT * FROM iris.train", stdSlct)
+	a.EqualValues("model_table", filler.modelPath)
 
 	a.EqualValues("reg:squarederror", filler.Objective)
 	a.EqualValues(0.03, filler.Eta)
