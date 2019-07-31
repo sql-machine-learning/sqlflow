@@ -101,11 +101,6 @@ func verifyColumnNameAndType(trainParsed, predParsed *extendedSelect, db *DB) er
 		return e
 	}
 
-	log.Debug("train ----------------")
-	log.Debug(trainFields.String())
-	log.Debug("predict ----------------")
-	log.Debug(predFields.String())
-
 	for _, c := range trainParsed.columns["feature_columns"] {
 		name, err := getExpressionFieldName(c)
 		if err != nil {
