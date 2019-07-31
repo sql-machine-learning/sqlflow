@@ -466,6 +466,7 @@ class SQLFlowEstimatorBuilder(EstimatorBuilder):
 
 if __name__ == "__main__":
     odpsConf=OdpsConf(
+		project="{{.OdpsConf.Project}}",
         accessid="{{.OdpsConf.AccessID}}",
         accesskey="{{.OdpsConf.AccessKey}}",
         endpoint="{{.OdpsConf.Endpoint}}"
