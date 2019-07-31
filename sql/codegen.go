@@ -171,7 +171,7 @@ func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *D
 				labelDtype = "float64"
 			} else if v == "INT" || v == "INT_TYPE" {
 				labelDtype = "int32"
-			} else if v == "BIGINT" {
+			} else if v == "BIGINT" || v == "bigint" {
 				labelDtype = "int64"
 			} else {
 				log.Fatalf("Unsupported label data type: %s", v)
