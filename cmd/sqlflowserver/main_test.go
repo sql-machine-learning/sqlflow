@@ -727,8 +727,8 @@ INTO model_table;`, caseDB)
 // CaseTrainALPSFeatureMap is a case for training models using ALPS with feature_map table
 func CaseTrainALPSFeatureMap(t *testing.T) {
 	a := assert.New(t)
-	trainSQL := fmt.Sprintf(`SELECT dense, deep, item, sqlflow_softmax_estimator_train_data.label
-FROM %s.sqlflow_softmax_estimator_train_data
+	trainSQL := fmt.Sprintf(`SELECT dense, deep, item, test_sparse_with_fm.label
+FROM %s.test_sparse_with_fm
 LIMIT 32
 TRAIN alipay.SoftmaxClassifier
 WITH train.max_steps = 32, eval.steps=32, train.batch_size=8, engine.ps_num=0, engine.worker_num=0, engine.type = local

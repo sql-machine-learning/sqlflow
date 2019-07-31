@@ -163,7 +163,8 @@ func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *D
 
 	// Default use int32 label dtype
 	labelDtype := "int32"
-	if v, ok := fts.get(pr.label); ok {
+	if dbDType, ok := fts.get(pr.label); ok {
+		v := strings.ToUpper(dbDType)
 		if v == "FLOAT" {
 			labelDtype = "float32"
 		} else if v == "DOUBLE" {
