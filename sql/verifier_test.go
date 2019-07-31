@@ -19,18 +19,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestDryRunSelect(t *testing.T) {
+func TestVerify_1(t *testing.T) {
 	a := assert.New(t)
 	r, e := newParser().Parse(`SELECT * FROM churn.train LIMIT 10;`)
 	a.NoError(e)
-	a.Nil(dryRunSelect(r, testDB))
-}
-
-func TestDescribeTables(t *testing.T) {
-	a := assert.New(t)
-	r, e := newParser().Parse(`SELECT * FROM churn.train LIMIT 10;`)
-	a.NoError(e)
-	fts, e := describeTables(r, testDB)
+	fts, e := verify(r, testDB)
 	a.NoError(e)
 	a.Equal(21, len(fts))
 
@@ -39,46 +32,24 @@ func TestDescribeTables(t *testing.T) {
 	}
 	r, e = newParser().Parse(`SELECT Churn, churn.train.Partner,TotalCharges FROM churn.train LIMIT 10;`)
 	a.NoError(e)
-	fts, e = describeTables(r, testDB)
+	fts, e = verify(r, testDB)
 	a.NoError(e)
 	a.Equal(3, len(fts))
 
-	typ, ok := fts.get("churn.train.Churn")
+	typ, ok := fts.get("churn")
 	a.True(ok)
 	a.Contains([]string{"VARCHAR(255)", "VARCHAR"}, typ)
 
-	typ, ok = fts.get("churn.train.Partner")
+	typ, ok = fts.get("partner")
 	a.True(ok)
 	a.Contains([]string{"VARCHAR(255)", "VARCHAR"}, typ)
 
-	typ, ok = fts.get("churn.train.TotalCharges")
+	typ, ok = fts.get("totalcharges")
 	a.True(ok)
 	a.Equal("FLOAT", typ)
 }
 
-func TestIndexSelectFields(t *testing.T) {
-	a := assert.New(t)
-	r, e := newParser().Parse(`SELECT * FROM churn.train LIMIT 10;`)
-	a.NoError(e)
-	f := indexSelectFields(r)
-	a.Equal(0, len(f))
-
-	r, e = newParser().Parse(`SELECT f FROM churn.train LIMIT 10;`)
-	a.NoError(e)
-	f = indexSelectFields(r)
-	a.Equal(1, len(f))
-	a.Equal(map[string]string{}, f["f"])
-
-	r, e = newParser().Parse(`SELECT t1.f, t2.f, g FROM churn.train LIMIT 10;`)
-	a.NoError(e)
-	f = indexSelectFields(r)
-	a.Equal(2, len(f))
-	a.Equal(map[string]string{}, f["g"])
-	a.Equal(f["f"]["t1"], "")
-	a.Equal(f["f"]["t2"], "")
-}
-
-func TestVerify(t *testing.T) {
+func TestVerify_2(t *testing.T) {
 	if getEnv("SQLFLOW_TEST_DB", "mysql") == "hive" {
 		t.Skip("in Hive, db_name.table_name.field_name will raise error, because . operator is only supported on struct or list of struct types")
 	}
@@ -88,16 +59,13 @@ func TestVerify(t *testing.T) {
 	fts, e := verify(r, testDB)
 	a.NoError(e)
 	a.Equal(2, len(fts))
-	typ, ok := fts.get("Churn")
+	typ, ok := fts.get("churn")
 	a.Equal(true, ok)
 	a.Contains([]string{"VARCHAR(255)", "VARCHAR"}, typ)
 
-	typ, ok = fts.get("churn.train.Partner")
+	typ, ok = fts.get("partner")
 	a.Equal(true, ok)
 	a.Contains([]string{"VARCHAR(255)", "VARCHAR"}, typ)
-
-	_, ok = fts.get("churn.train.gender")
-	a.Equal(false, ok)
 
 	_, ok = fts.get("gender")
 	a.Equal(false, ok)
@@ -111,7 +79,7 @@ TRAIN DNNClassifier
 WITH
   n_classes = 3,
   hidden_units = [10, 20]
-COLUMN gender, tenure, TotalCharges
+COLUMN gender, tenure, totalcharges
 LABEL class
 INTO sqlflow_models.my_dnn_model;`)
 	a.NoError(e)
@@ -129,13 +97,15 @@ PREDICT iris.predict.class
 USING sqlflow_models.my_dnn_model;`)
 	a.NoError(e)
 	a.EqualError(verifyColumnNameAndType(trainParse, predParse, testDB),
-		"predFields doesn't contain column TotalCharges")
+		"predFields doesn't contain column totalcharges")
 }
 
 func TestDescribeEmptyTables(t *testing.T) {
 	a := assert.New(t)
 	r, e := newParser().Parse(`SELECT * FROM iris.iris_empty LIMIT 10;`)
 	a.NoError(e)
-	_, e = describeTables(r, testDB)
-	a.EqualError(e, "table[iris.iris_empty] is empty")
+	_, e = verify(r, testDB)
+	a.EqualError(e, `query SELECT *
+FROM iris.iris_empty
+LIMIT 10 gives 0 row`)
 }

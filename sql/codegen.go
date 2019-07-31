@@ -163,23 +163,18 @@ func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *D
 
 	// Default use int32 label dtype
 	labelDtype := "int32"
-	if val, ok := fts[pr.label]; ok {
-		for _, dbDtype := range val {
-			v := strings.ToUpper(dbDtype)
-			if v == "FLOAT" {
-				labelDtype = "float32"
-			} else if v == "DOUBLE" {
-				labelDtype = "float64"
-			} else if v == "INT" || v == "INT_TYPE" {
-				labelDtype = "int32"
-			} else if v == "BIGINT" {
-				labelDtype = "int64"
-			} else {
-				log.Fatalf("Unsupported label data type: %s", v)
-			}
-			// TODO(typhoonzero): get the dtype from first appeared table name.
-			// fix this if we have multiple tables in select statement.
-			break
+	if dbDType, ok := fts.get(pr.label); ok {
+		v := strings.ToUpper(dbDType)
+		if v == "FLOAT" {
+			labelDtype = "float32"
+		} else if v == "DOUBLE" {
+			labelDtype = "float64"
+		} else if v == "INT" || v == "INT_TYPE" {
+			labelDtype = "int32"
+		} else if v == "BIGINT" {
+			labelDtype = "int64"
+		} else {
+			log.Fatalf("Unsupported label data type: %s", v)
 		}
 	}
 	r.Y = &featureMeta{
