@@ -513,6 +513,140 @@ func generateAlpsFeatureColumnCode(fcs []featureColumn, metadata *metadata) ([]s
 	return codes, nil
 }
 
+<<<<<<< HEAD
+=======
+const alpsTemplateText = `
+# coding: utf-8
+# Copyright (c) Antfin, Inc. All rights reserved.
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+import os
+
+import tensorflow as tf
+
+from alps.conf.closure import Closure
+from alps.framework.train.training import build_run_config
+from alps.framework.exporter import ExportStrategy
+from alps.framework.exporter.arks_exporter import ArksExporter
+from alps.client.base import run_experiment, submit_experiment
+from alps.framework.engine import LocalEngine, YarnEngine, ResourceConf
+from alps.framework.column.column import DenseColumn, SparseColumn, GroupedSparseColumn
+from alps.framework.exporter.compare_fn import best_auc_fn
+from alps.io import DatasetX
+from alps.io.base import OdpsConf, FeatureMap
+from alps.framework.experiment import EstimatorBuilder, Experiment, TrainConf, EvalConf, RuntimeConf
+from alps.io.reader.odps_reader import OdpsReader
+from alps.util.remote_module import RemoteModule
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'    # for debug usage.
+#tf.logging.set_verbosity(tf.logging.INFO)
+
+class SQLFlowEstimatorBuilder(EstimatorBuilder):
+    def _build(self, experiment, run_config):
+{{if ne .FeatureMapTable ""}}
+        feature_columns = []
+        {{.FeatureColumnCode}}
+{{end}}
+{{if ne .RemoteModuleCode ""}}
+		{{.RemoteModuleCode}}
+{{end}}
+{{if ne .ImportCode ""}}
+        {{.ImportCode}}
+{{end}}
+        return {{.ModelCreatorCode}}
+
+if __name__ == "__main__":
+    odpsConf=OdpsConf(
+        accessid="{{.OdpsConf.AccessID}}",
+        accesskey="{{.OdpsConf.AccessKey}}",
+        project="{{.OdpsConf.Project}}",
+        endpoint="{{.OdpsConf.Endpoint}}"
+    )
+
+    trainDs = DatasetX(
+        num_epochs={{.TrainClause.Epoch}},
+        batch_size={{.TrainClause.BatchSize}},
+        shuffle="{{.TrainClause.EnableShuffle}}" == "true",
+        shuffle_buffer_size={{.TrainClause.ShuffleBufferSize}},
+{{if .TrainClause.EnableCache}}
+        cache_file={{.TrainClause.CachePath}},
+{{end}}
+        reader=OdpsReader(
+            odps=odpsConf,
+            table="{{.TrainInputTable}}",
+            # FIXME(typhoonzero): add field_names back if needed.
+            # field_names={{.Fields}},
+            features={{.X}},
+            labels={{.Y}},
+{{if ne .FeatureMapTable ""}}
+            feature_map=FeatureMap(table="{{.FeatureMapTable}}",
+{{if ne .FeatureMapPartition ""}}
+                partition="{{.FeatureMapPartition}}"
+{{end}}
+            ),
+            flatten_group=True
+{{end}}
+        ),
+        drop_remainder="{{.TrainClause.DropRemainder}}" == "true"
+    )
+
+    evalDs = DatasetX(
+        num_epochs=1,
+        batch_size={{.TrainClause.BatchSize}},
+        reader=OdpsReader(
+            odps=odpsConf,
+            table="{{.EvalInputTable}}",
+            # FIXME(typhoonzero): add field_names back if needed.
+            # field_names={{.Fields}},
+            features={{.X}},
+            labels={{.Y}},
+            flatten_group=True
+        )
+    )
+
+    export_path = "{{.ModelDir}}"
+{{if ne .ScratchDir ""}}
+    runtime_conf = RuntimeConf(model_dir="{{.ScratchDir}}")
+{{else}}
+    runtime_conf = None
+{{end}}
+    experiment = Experiment(
+        user="shangchun.sun",  # TODO(joyyoj) pai will check user name be a valid user, removed later.
+        engine={{.EngineCode}},
+        train=TrainConf(input=trainDs,
+{{if (ne .TrainClause.MaxSteps -1)}}
+                        max_steps={{.TrainClause.MaxSteps}},
+{{end}}
+        ),
+        eval=EvalConf(input=evalDs,
+                      # FIXME(typhoonzero): Support configure metrics
+                      metrics_set=['accuracy'],
+{{if (ne .TrainClause.EvalSteps -1)}}
+                      steps={{.TrainClause.EvalSteps}},
+{{end}}
+                      start_delay_secs={{.TrainClause.EvalStartDelay}},
+                      throttle_secs={{.TrainClause.EvalThrottle}},
+        ),
+        # FIXME(typhoonzero): Use ExportStrategy.BEST when possible.
+        exporter=ArksExporter(deploy_path=export_path, strategy=ExportStrategy.LATEST, compare_fn=Closure(best_auc_fn)),
+        runtime = runtime_conf,
+        model_builder=SQLFlowEstimatorBuilder())
+
+    if isinstance(experiment.engine, LocalEngine):
+        run_experiment(experiment)
+    else:
+        if "{{.ExitOnSubmit}}" == "false":
+            submit_experiment(experiment)
+        else:
+            submit_experiment(experiment, exit_on_submit=True)
+`
+
+var alpsTemplate = template.Must(template.New("alps").Parse(alpsTemplateText))
+
+>>>>>>> bugfix
 type metadata struct {
 	odpsConfig *gomaxcompute.Config
 	table      string
