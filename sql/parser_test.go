@@ -55,6 +55,13 @@ INTO sqlflow_models.my_dnn_model;
 `
 	testPredictSelect = testStandardSelectStmt + `PREDICT db.table.field
 USING sqlflow_models.my_dnn_model;`
+
+	testMaxcomputeUDFPredict = `
+SELECT predict_fun(concat(",", col_1, col_2)) AS (info, score) FROM db.table
+PREDICT db.predict_result
+WITH OSS_KEY=a, OSS_ID=b
+USING sqlflow_models.my_model;
+	`
 )
 
 func TestStandardSelect(t *testing.T) {
@@ -81,8 +88,8 @@ func TestTrainParser(t *testing.T) {
 	a.True(r.extended)
 	a.True(r.train)
 	a.Equal("DNNClassifier", r.estimator)
-	a.Equal("[10, 20]", r.attrs["hidden_units"].String())
-	a.Equal("3", r.attrs["n_classes"].String())
+	a.Equal("[10, 20]", r.trainAttrs["hidden_units"].String())
+	a.Equal("3", r.trainAttrs["n_classes"].String())
 	a.Equal(`employee.name`,
 		r.columns["feature_columns"][0].String())
 	a.Equal(`bucketize(last_name, 1000)`,
@@ -101,8 +108,8 @@ func TestMultiColumnTrainParser(t *testing.T) {
 	a.True(r.extended)
 	a.True(r.train)
 	a.Equal("DNNClassifier", r.estimator)
-	a.Equal("[10, 20]", r.attrs["hidden_units"].String())
-	a.Equal("3", r.attrs["n_classes"].String())
+	a.Equal("[10, 20]", r.trainAttrs["hidden_units"].String())
+	a.Equal("3", r.trainAttrs["n_classes"].String())
 	a.Equal(`employee.name`,
 		r.columns["feature_columns"][0].String())
 	a.Equal(`bucketize(last_name, 1000)`,
@@ -148,13 +155,14 @@ func TestStandardDropTable(t *testing.T) {
 
 func TestSelectMaxcomputeUDF(t *testing.T) {
 	a := assert.New(t)
-	slct := "SELECT func(func2(\"arg0\", arg1), arg_2) AS (info, score) FROM a_table where a_table.col_1 > 100;"
-	pr, _ := newParser().Parse(slct)
-	expFields := []string{
-		"func(func2(\"arg0\", arg1), arg_2)",
-		"AS",
-		"(info, score)",
-	}
-	a.Equal(pr.fields.Strings(), expFields)
-	a.Equal(pr.tables[0], "a_table")
+	r, e := newParser().Parse(testMaxcomputeUDFPredict)
+	a.NoError(e)
+	a.Equal(3, len(r.fields.Strings()))
+	a.Equal(r.fields[0].String(), `predict_fun(concat(",", col_1, col_2))`)
+	a.Equal(r.fields[1].String(), `AS`)
+	a.Equal(r.fields[2].String(), `(info, score)`)
+	a.Equal(r.predictClause.into, "db.predict_result")
+	a.Equal(r.predAttrs["OSS_KEY"].String(), "a")
+	a.Equal(r.predAttrs["OSS_ID"].String(), "b")
+	a.Equal(r.predictClause.model, "sqlflow_models.my_model")
 }

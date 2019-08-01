@@ -191,7 +191,7 @@ func getEngineSpec(attrs map[string]*attribute) engineSpec {
 func resolveTrainClause(tc *trainClause) (*resolvedTrainClause, error) {
 	modelName := tc.estimator
 	preMadeModel := !strings.ContainsAny(modelName, ".")
-	attrs, err := resolveTrainAttribute(&tc.attrs)
+	attrs, err := resolveTrainAttribute(&tc.trainAttrs)
 	if err != nil {
 		return nil, err
 	}

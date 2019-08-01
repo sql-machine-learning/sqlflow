@@ -262,7 +262,7 @@ func TestAttrs(t *testing.T) {
 	s := statementWithAttrs("estimator.hidden_units = [10, 20]")
 	r, e := parser.Parse(s)
 	a.NoError(e)
-	attrs, err := resolveTrainAttribute(&r.attrs)
+	attrs, err := resolveTrainAttribute(&r.trainAttrs)
 	a.NoError(err)
 	attr := attrs["estimator.hidden_units"]
 	a.Equal("estimator", attr.Prefix)
@@ -272,7 +272,7 @@ func TestAttrs(t *testing.T) {
 	s = statementWithAttrs("dataset.name = hello")
 	r, e = parser.Parse(s)
 	a.NoError(e)
-	attrs, err = resolveTrainAttribute(&r.attrs)
+	attrs, err = resolveTrainAttribute(&r.trainAttrs)
 	a.NoError(err)
 	attr = attrs["dataset.name"]
 	a.Equal("dataset", attr.Prefix)
@@ -286,7 +286,7 @@ func TestExecResource(t *testing.T) {
 	s := statementWithAttrs("exec.worker_num = 2")
 	r, e := parser.Parse(s)
 	a.NoError(e)
-	attrs, err := resolveTrainAttribute(&r.attrs)
+	attrs, err := resolveTrainAttribute(&r.trainAttrs)
 	a.NoError(err)
 	attr := attrs["exec.worker_num"]
 	fmt.Println(attr)

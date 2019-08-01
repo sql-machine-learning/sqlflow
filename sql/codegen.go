@@ -111,7 +111,10 @@ func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *D
 			IsKerasModel: isKerasModel,
 		},
 	}
-	for k, v := range pr.attrs {
+	for k, v := range pr.trainClause.trainAttrs {
+		r.Attrs[k] = v.String()
+	}
+	for k, v := range pr.predictClause.predAttrs {
 		r.Attrs[k] = v.String()
 	}
 

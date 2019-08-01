@@ -66,7 +66,8 @@ func splitExtendedSQL(slct string) []string {
 	}
 	for i := 1; i < len(typ)-2; i++ {
 		if (typ[i] == TRAIN && typ[i+1] == IDENT && typ[i+2] == WITH) ||
-			(typ[i] == PREDICT && typ[i+1] == IDENT && typ[i+2] == USING) {
+			(typ[i] == PREDICT && typ[i+1] == IDENT && typ[i+2] == USING) ||
+			(typ[i] == PREDICT && typ[i+1] == IDENT && typ[i+2] == WITH) {
 			return []string{slct[:pos[i-1]], slct[pos[i-1]:]}
 		}
 	}
@@ -243,7 +244,6 @@ func runExtendedSQL(slct string, db *DB, modelDir string, session *pb.Session) *
 			defer func(startAt time.Time) {
 				log.Debugf("runExtendedSQL %v finished, elapsed:%v", slct, time.Since(startAt))
 			}(time.Now())
-
 			pr, e := newParser().Parse(slct)
 			if e != nil {
 				return e
