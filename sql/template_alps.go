@@ -56,7 +56,8 @@ if __name__ == "__main__":
     odpsConf=OdpsConf(
         accessid="{{.OdpsConf.AccessID}}",
         accesskey="{{.OdpsConf.AccessKey}}",
-        endpoint="{{.OdpsConf.Endpoint}}"
+        endpoint="{{.OdpsConf.Endpoint}}",
+        project="{{.OdpsConf.Project}}"
     )
 
     trainDs = DatasetX(

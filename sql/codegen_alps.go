@@ -240,7 +240,7 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds *tra
 	}
 	var trainInput, evalInput string
 	if ds != nil && ds.supported {
-		trainInput, evalInput = ds.trainingView, ds.validationView
+		trainInput, evalInput = ds.training, ds.validation
 	} else {
 		// TODO(weiguo): we will remove `supported` from the ds struct.
 		// so, do not worry too much about the same dataset train&eval is.

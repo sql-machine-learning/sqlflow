@@ -25,18 +25,18 @@ type trainAndValDataset struct {
 	// training dataset and validation dataset.
 	// So, TODO(weiguo): Let's remove `supproted` if SQLFlow supports other
 	// drivers, like: MySQL, hive(specified in database.go:open()).
-	supported      bool
-	table          string
-	trainingView   string // view of table (<k)
-	validationView string // view of table (>=k)
+	supported  bool
+	table      string
+	training   string // table for training: < k
+	validation string // table for validation: >= k
 }
 
 const (
 	temporaryTableLifecycle = 14 // day(s)
 	randomColumn            = "sqlflow_rdm"
 	tablePrefix             = "sqlflow_tv_" // 'tv' = training & validation
-	trainingViewPrefix      = "sqlflow_view_training_"
-	validationViewPrefix    = "sqlflow_view_validation_"
+	trainingPrefix          = "sqlflow_training_"
+	validationPrefix        = "sqlflow_validation_"
 )
 
 var (
@@ -64,27 +64,27 @@ func releaseTrainAndValDataset(ds *trainAndValDataset) {
 
 func createMaxcomputeDataset(db *DB, slct string, trainingUpperbound float32) (*trainAndValDataset, error) {
 	ds := namingTrainAndValDataset()
-	// create a table, then split it into 2 views
+	// create a table, then split it into train and val tables
 	stmt := fmt.Sprintf("CREATE TABLE %s LIFECYCLE %d AS SELECT *, RAND() AS %s FROM (%s) AS %s_ori", ds.table, temporaryTableLifecycle, randomColumn, slct, ds.table)
 	if _, e := db.Exec(stmt); e != nil {
 		log.Errorf("create temporary table failed, stmt:[%s], err:%v", stmt, e)
 		return nil, e
 	}
 	trainingCond := fmt.Sprintf("%s < %f", randomColumn, trainingUpperbound)
-	if e := createView(db, ds.table, ds.trainingView, trainingCond); e != nil {
+	if e := createMaxcomputeTable(ds.training, ds.table, db, trainingCond); e != nil {
 		return nil, e
 	}
 	validationCond := fmt.Sprintf("%s >= %f", randomColumn, trainingUpperbound)
-	if e := createView(db, ds.table, ds.validationView, validationCond); e != nil {
+	if e := createMaxcomputeTable(ds.validation, ds.table, db, validationCond); e != nil {
 		return nil, e
 	}
 	return ds, nil
 }
 
-func createView(db *DB, table, view, where string) error {
-	stmt := fmt.Sprintf("CREATE VIEW %s AS SELECT * FROM %s WHERE %s", view, table, where)
+func createMaxcomputeTable(target, origin string, db *DB, cond string) error {
+	stmt := fmt.Sprintf("CREATE TABLE %s LIFECYCLE %d AS SELECT * FROM %s WHERE %s", target, temporaryTableLifecycle, origin, cond)
 	if _, e := db.Exec(stmt); e != nil {
-		log.Errorf("create view failed, stmt:[%s], err:%v", stmt, e)
+		log.Errorf("create table failed, stmt:[%s], err:%v", stmt, e)
 		return e
 	}
 	return nil
@@ -93,9 +93,9 @@ func createView(db *DB, table, view, where string) error {
 func namingTrainAndValDataset() *trainAndValDataset {
 	uniq := time.Now().UnixNano() / 1e3
 	return &trainAndValDataset{
-		supported:      true,
-		table:          fmt.Sprintf("%s%d", tablePrefix, uniq),
-		trainingView:   fmt.Sprintf("%s%d", trainingViewPrefix, uniq),
-		validationView: fmt.Sprintf("%s%d", validationViewPrefix, uniq),
+		supported:  true,
+		table:      fmt.Sprintf("%s%d", tablePrefix, uniq),
+		training:   fmt.Sprintf("%s%d", trainingPrefix, uniq),
+		validation: fmt.Sprintf("%s%d", validationPrefix, uniq),
 	}
 }
