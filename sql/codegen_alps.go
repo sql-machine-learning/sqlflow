@@ -279,7 +279,7 @@ func newALPSPredictFiller(pr *extendedSelect, session *pb.Session) (*alpsFiller,
 	modelDir := fmt.Sprintf("oss://arks-model/%s/%s.tar.gz", session.UserId, pr.predictClause.model)
 
 	return &alpsFiller{
-		IsTraining:         true,
+		IsTraining:         false,
 		PredictInputTable:  pr.tables[0],
 		PredictOutputTable: pr.predictClause.into,
 		PredictUDF:         strings.Join(pr.fields.Strings(), " "),
@@ -349,6 +349,7 @@ func alpsPred(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *pb
 	if err != nil {
 		return fmt.Errorf("Create ODPS script failed %v", err)
 	}
+	defer os.Remove(filepath)
 	f.WriteString(program.String())
 	f.Close()
 	cw := &logChanWriter{wr: w}
