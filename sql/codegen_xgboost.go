@@ -15,11 +15,12 @@ package sql
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
+
 	"github.com/go-sql-driver/mysql"
 	"sqlflow.org/gohive"
 	"sqlflow.org/gomaxcompute"
-	"strconv"
-	"strings"
 )
 
 type xgboostFiller struct {
@@ -273,7 +274,7 @@ var xgbAttrSetterMap = map[string]func(*map[string][]string, *xgboostFiller) err
 func xgParseAttr(pr *extendedSelect, r *xgboostFiller) error {
 	// parse pr.attrs to map[string][]string
 	attrs := make(map[string][]string)
-	for k, exp := range pr.attrs {
+	for k, exp := range pr.trainAttrs {
 		strExp := exp.String()
 		if strings.HasPrefix(strExp, "[") && strings.HasSuffix(strExp, "]") {
 			attrs[k] = exp.cdr()
