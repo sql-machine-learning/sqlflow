@@ -72,8 +72,6 @@ if __name__ == "__main__":
             odps=odpsConf,
             project="{{.OdpsConf.Project}}",
             table="{{.TrainInputTable}}",
-            # FIXME(typhoonzero): add field_names back if needed.
-            # field_names={{.Fields}},
             features={{.X}},
             labels={{.Y}},
 {{if ne .FeatureMapTable ""}}
@@ -90,13 +88,11 @@ if __name__ == "__main__":
 
     evalDs = DatasetX(
         num_epochs=1,
-        batch_size={{.TrainClause.BatchSize}},
+        batch_size={{.TrainClause.EvalBatchSize}},
         reader=OdpsReader(
         odps=odpsConf,
             project="{{.OdpsConf.Project}}",
             table="{{.EvalInputTable}}",
-            # FIXME(typhoonzero): add field_names back if needed.
-            # field_names={{.Fields}},
             features={{.X}},
             labels={{.Y}},
             flatten_group=True
@@ -135,7 +131,7 @@ if __name__ == "__main__":
         run_experiment(experiment)
     else:
         if "{{.ExitOnSubmit}}" == "false":
-            run_experiment(experiment)
+            submit_experiment(experiment)
         else:
             submit_experiment(experiment, exit_on_submit=True)
 `
