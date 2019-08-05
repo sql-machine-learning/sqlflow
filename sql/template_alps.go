@@ -106,7 +106,7 @@ if __name__ == "__main__":
     runtime_conf = None
 {{end}}
     experiment = Experiment(
-        user="shangchun.sun",  # TODO(joyyoj) pai will check user name be a valid user, removed later.
+        user="{{.UserID}}",
         engine={{.EngineCode}},
         train=TrainConf(input=trainDs,
 {{if (ne .TrainClause.MaxSteps -1)}}
