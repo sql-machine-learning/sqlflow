@@ -52,6 +52,7 @@ type resolvedTrainClause struct {
 	ModelName              string
 	ModelConstructorParams map[string]*attribute
 	BatchSize              int
+	EvalBatchSize          int
 	DropRemainder          bool
 	EnableCache            bool
 	CachePath              string
@@ -261,6 +262,7 @@ func resolveTrainClause(tc *trainClause) (*resolvedTrainClause, error) {
 		shuffleBufferSize = 10240
 	}
 
+	evalBatchSize := getIntAttr("eval.batch_size", 1)
 	evalSteps := getIntAttr("eval.steps", -1)
 	evalStartDecaySecs := getIntAttr("eval.start_delay_secs", 120)
 	evalThrottleSecs := getIntAttr("eval.throttle_secs", 600)
@@ -285,6 +287,7 @@ func resolveTrainClause(tc *trainClause) (*resolvedTrainClause, error) {
 		ModelName:              modelName,
 		ModelConstructorParams: modelParams,
 		BatchSize:              batchSize,
+		EvalBatchSize:          evalBatchSize,
 		DropRemainder:          dropRemainder,
 		EnableCache:            enableCache,
 		CachePath:              cachePath,
