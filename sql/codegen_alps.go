@@ -43,6 +43,7 @@ type alpsFiller struct {
 	ModelDir           string
 	ScratchDir         string
 	PredictOutputTable string
+	PredictInputModel  string
 
 	// Schema & Decode info
 	Fields string
@@ -283,6 +284,7 @@ func newALPSPredictFiller(pr *extendedSelect, session *pb.Session) (*alpsFiller,
 		PredictInputTable:  pr.tables[0],
 		PredictOutputTable: pr.predictClause.into,
 		PredictUDF:         strings.Join(pr.fields.Strings(), " "),
+		PredictInputModel:  pr.predictClause.model,
 		ModelDir:           modelDir,
 		UserID:             session.UserId,
 		OSSID:              ossID.String(),

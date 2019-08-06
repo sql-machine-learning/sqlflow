@@ -58,3 +58,28 @@ func TestTrainALPSFiller(t *testing.T) {
 	a.Equal(1000, filler.TrainClause.MaxSteps)
 	a.Equal(filler.ModelDir, "arks://sqlflow/sqlflow_user/model_table.tar.gz")
 }
+
+func TestPredALPSFiller(t *testing.T) {
+	a := assert.New(t)
+	parser := newParser()
+	predStatement := `SELECT predict_fun(concat(",", col_1, col_2)) AS (info, score) FROM db.table
+		PREDICT db.predict_result
+		WITH
+			OSS_KEY=sqlflow_key,
+			OSS_ID=sqlflow_id
+		USING sqlflow_model;`
+
+	r, e := parser.Parse(predStatement)
+	session := &pb.Session{UserId: "sqlflow_user"}
+	filler, e := newALPSPredictFiller(r, session)
+	a.NoError(e)
+
+	a.False(filler.IsTraining)
+	a.Equal(filler.PredictInputTable, "db.table")
+	a.Equal(filler.PredictOutputTable, "db.predict_result")
+	a.Equal(filler.PredictUDF, `predict_fun(concat(",", col_1, col_2)) AS (info, score)`)
+	a.Equal(filler.ModelDir, "oss://arks-model/sqlflow_user/sqlflow_model.tar.gz")
+	a.Equal(filler.UserID, "sqlflow_user")
+	a.Equal(filler.OSSID, "sqlflow_id")
+	a.Equal(filler.OSSKey, "sqlflow_key")
+}
