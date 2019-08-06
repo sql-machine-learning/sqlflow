@@ -48,7 +48,7 @@ class SQLFlowEstimatorBuilder(EstimatorBuilder):
         {{.FeatureColumnCode}}
 {{end}}
 {{if ne .RemoteModuleCode ""}}
-		{{.RemoteModuleCode}}
+        {{.RemoteModuleCode}}
 {{end}}
 {{if ne .ImportCode ""}}
         {{.ImportCode}}
