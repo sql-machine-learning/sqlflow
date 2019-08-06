@@ -275,6 +275,7 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds *tra
 		EvalInputTable:      evalInput,
 		ScratchDir:          scratchDir,
 		ModelDir:            modelDir,
+		UserID:              userID,
 		Fields:              fmt.Sprintf("[%s]", strings.Join(fields, ",")),
 		X:                   fmt.Sprintf("[%s]", strings.Join(csCode, ",")),
 		Y:                   y.ToString(),
