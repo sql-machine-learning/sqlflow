@@ -58,6 +58,7 @@ func TestTrainALPSFiller(t *testing.T) {
 	a.True(strings.Contains(filler.ModelCreatorCode, "tf.estimator.DNNLinearCombinedClassifier(dnn_hidden_units=[10,20]"), filler.ModelCreatorCode)
 	a.Equal(1000, filler.TrainClause.MaxSteps)
 	a.Equal(filler.ModelDir, "arks://sqlflow/sqlflow_user/model_table.tar.gz")
+	a.Equal(filler.UserID, "sqlflow_user")
 }
 
 func TestPredALPSFiller(t *testing.T) {
