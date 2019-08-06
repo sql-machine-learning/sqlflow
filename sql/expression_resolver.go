@@ -290,6 +290,9 @@ func resolveTrainClause(tc *trainClause) (*resolvedTrainClause, error) {
 			token := getStringAttr("gitlab_token", "")
 			server := getStringAttr("gitlab_server", "")
 			sourceRoot := getStringAttr("gitlab_source_root", "")
+			if project == "" {
+				return nil
+			}
 			return &gitLabModule{
 				ModuleName:   modelName,
 				ProjectName:  project,
