@@ -205,10 +205,18 @@ func resolveTrainClause(tc *trainClause) (*resolvedTrainClause, error) {
 	if err != nil {
 		return nil, err
 	}
+	trimQuotes := func(s string) string {
+		if len(s) >= 2 {
+			if s[0] == '"' && s[len(s)-1] == '"' {
+				return s[1 : len(s)-1]
+			}
+		}
+		return s
+	}
 	getIntAttr := func(key string, defaultValue int) int {
 		if p, ok := attrs[key]; ok {
 			strVal, _ := p.Value.(string)
-			intVal, err := strconv.Atoi(strVal)
+			intVal, err := strconv.Atoi(trimQuotes(strVal))
 			defer delete(attrs, p.FullName)
 			if err == nil {
 				return intVal
@@ -220,7 +228,7 @@ func resolveTrainClause(tc *trainClause) (*resolvedTrainClause, error) {
 	getBoolAttr := func(key string, defaultValue bool, optional bool) bool {
 		if p, ok := attrs[key]; ok {
 			strVal, _ := p.Value.(string)
-			boolVal, err := strconv.ParseBool(strVal)
+			boolVal, err := strconv.ParseBool(trimQuotes(strVal))
 			if !optional {
 				defer delete(attrs, p.FullName)
 			}
@@ -237,7 +245,7 @@ func resolveTrainClause(tc *trainClause) (*resolvedTrainClause, error) {
 			strVal, _ := p.Value.(string)
 			defer delete(attrs, p.FullName)
 			if err == nil {
-				return strVal
+				return trimQuotes(strVal)
 			}
 			fmt.Printf("ignore invalid %s=%s, default is %v", key, p.Value, defaultValue)
 		}

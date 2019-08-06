@@ -731,11 +731,12 @@ func CaseTrainALPSRemoteModel(t *testing.T) {
 	trainSQL := fmt.Sprintf(`SELECT deep_id, user_space_stat, user_behavior_stat, space_stat, l
 FROM %s.sparse_column_test
 LIMIT 100
-TRAIN models.estimator.DNNClassifier
+TRAIN models.estimator.dnn_classifier.DNNClassifier
 WITH 
 	model.n_classes = 2, model.hidden_units = [10, 20], train.batch_size = 10, engine.ps_num=0, engine.worker_num=0, engine.type=local,
-	gitlab_project = sqlflow-models,
-	gitlab_source_root = python
+	gitlab_project = "Alps/sqlflow-models",
+	gitlab_source_root = python,
+	gitlab_token = "6r8HLzUFw-J2E1DyjqJL"
 COLUMN SPARSE(deep_id,15033,COMMA,int),
        SPARSE(user_space_stat,310,COMMA,int),
        SPARSE(user_behavior_stat,511,COMMA,int),
