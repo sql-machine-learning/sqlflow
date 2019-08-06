@@ -351,6 +351,7 @@ func TestEnd2EndMaxComputeALPS(t *testing.T) {
 
 	t.Run("CaseTrainALPS", CaseTrainALPS)
 	t.Run("CaseTrainALPSFeatureMap", CaseTrainALPSFeatureMap)
+	t.Run("CaseTrainALPSRemoteModel", CaseTrainALPSRemoteModel)
 }
 
 func CaseShowDatabases(t *testing.T) {
@@ -697,6 +698,45 @@ FROM %s.sparse_column_test
 LIMIT 100
 TRAIN DNNClassifier
 WITH model.n_classes = 2, model.hidden_units = [10, 20], train.batch_size = 10, engine.ps_num=0, engine.worker_num=0, engine.type=local
+COLUMN SPARSE(deep_id,15033,COMMA,int),
+       SPARSE(user_space_stat,310,COMMA,int),
+       SPARSE(user_behavior_stat,511,COMMA,int),
+       SPARSE(space_stat,418,COMMA,int),
+       EMBEDDING(CATEGORY_ID(deep_id,15033,COMMA),512,mean),
+       EMBEDDING(CATEGORY_ID(user_space_stat,310,COMMA),64,mean),
+       EMBEDDING(CATEGORY_ID(user_behavior_stat,511,COMMA),64,mean),
+       EMBEDDING(CATEGORY_ID(space_stat,418,COMMA),64,mean)
+LABEL l
+INTO model_table;`, caseDB)
+
+	conn, err := createRPCConn()
+	a.NoError(err)
+	defer conn.Close()
+	cli := pb.NewSQLFlowClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	defer cancel()
+
+	stream, err := cli.Run(ctx, sqlRequest(trainSQL))
+	if err != nil {
+		a.Fail("Check if the server started successfully. %v", err)
+	}
+	// wait train finish
+	ParseRow(stream)
+}
+
+// CaseTrainALPSRemoteModel is a case for training models using ALPS with remote model
+func CaseTrainALPSRemoteModel(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`SELECT deep_id, user_space_stat, user_behavior_stat, space_stat, l
+FROM %s.sparse_column_test
+LIMIT 100
+TRAIN models.estimator.dnn_classifier.DNNClassifier
+WITH 
+	model.n_classes = 2, model.hidden_units = [10, 20], train.batch_size = 10, engine.ps_num=0, engine.worker_num=0, engine.type=local,
+	gitlab_project = "Alps/sqlflow-models",
+	gitlab_source_root = python,
+	gitlab_token = "6r8HLzUFw-J2E1DyjqJL"
 COLUMN SPARSE(deep_id,15033,COMMA,int),
        SPARSE(user_space_stat,310,COMMA,int),
        SPARSE(user_behavior_stat,511,COMMA,int),

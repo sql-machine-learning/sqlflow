@@ -47,6 +47,15 @@ type engineSpec struct {
 	queue   string
 }
 
+type gitLabModule struct {
+	ModuleName   string
+	ProjectName  string
+	Sha          string
+	PrivateToken string
+	SourceRoot   string
+	GitLabServer string
+}
+
 type resolvedTrainClause struct {
 	IsPreMadeModel         bool
 	ModelName              string
@@ -67,6 +76,7 @@ type resolvedTrainClause struct {
 	FeatureColumns         map[string][]featureColumn
 	ColumnSpecs            map[string][]*columnSpec
 	EngineParams           engineSpec
+	CustomModule           *gitLabModule
 }
 
 // featureColumn is an interface that all types of feature columns and
@@ -196,10 +206,18 @@ func resolveTrainClause(tc *trainClause) (*resolvedTrainClause, error) {
 	if err != nil {
 		return nil, err
 	}
+	trimQuotes := func(s string) string {
+		if len(s) >= 2 {
+			if s[0] == '"' && s[len(s)-1] == '"' {
+				return s[1 : len(s)-1]
+			}
+		}
+		return s
+	}
 	getIntAttr := func(key string, defaultValue int) int {
 		if p, ok := attrs[key]; ok {
 			strVal, _ := p.Value.(string)
-			intVal, err := strconv.Atoi(strVal)
+			intVal, err := strconv.Atoi(trimQuotes(strVal))
 			defer delete(attrs, p.FullName)
 			if err == nil {
 				return intVal
@@ -211,7 +229,7 @@ func resolveTrainClause(tc *trainClause) (*resolvedTrainClause, error) {
 	getBoolAttr := func(key string, defaultValue bool, optional bool) bool {
 		if p, ok := attrs[key]; ok {
 			strVal, _ := p.Value.(string)
-			boolVal, err := strconv.ParseBool(strVal)
+			boolVal, err := strconv.ParseBool(trimQuotes(strVal))
 			if !optional {
 				defer delete(attrs, p.FullName)
 			}
@@ -228,7 +246,7 @@ func resolveTrainClause(tc *trainClause) (*resolvedTrainClause, error) {
 			strVal, _ := p.Value.(string)
 			defer delete(attrs, p.FullName)
 			if err == nil {
-				return strVal
+				return trimQuotes(strVal)
 			}
 			fmt.Printf("ignore invalid %s=%s, default is %v", key, p.Value, defaultValue)
 		}
@@ -267,6 +285,27 @@ func resolveTrainClause(tc *trainClause) (*resolvedTrainClause, error) {
 	evalStartDecaySecs := getIntAttr("eval.start_delay_secs", 120)
 	evalThrottleSecs := getIntAttr("eval.throttle_secs", 600)
 
+	customModel := func() *gitLabModule {
+		if preMadeModel == false {
+			project := getStringAttr("gitlab_project", "")
+			sha := getStringAttr("gitlab_sha", "")
+			token := getStringAttr("gitlab_token", "")
+			server := getStringAttr("gitlab_server", "")
+			sourceRoot := getStringAttr("gitlab_source_root", "")
+			if project == "" {
+				return nil
+			}
+			return &gitLabModule{
+				ModuleName:   modelName,
+				ProjectName:  project,
+				Sha:          sha,
+				PrivateToken: token,
+				GitLabServer: server,
+				SourceRoot:   sourceRoot}
+		}
+		return nil
+	}()
+
 	if len(attrs) > 0 {
 		return nil, fmt.Errorf("unsupported parameters: %v", attrs)
 	}
@@ -302,7 +341,7 @@ func resolveTrainClause(tc *trainClause) (*resolvedTrainClause, error) {
 		FeatureColumns:         fcMap,
 		ColumnSpecs:            csMap,
 		EngineParams:           getEngineSpec(engineParams),
-	}, nil
+		CustomModule:           customModel}, nil
 }
 
 // resolveTrainColumns resolve columns from SQL statement,

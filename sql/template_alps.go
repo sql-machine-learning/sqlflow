@@ -37,6 +37,7 @@ from alps.io import DatasetX
 from alps.io.base import OdpsConf, FeatureMap
 from alps.framework.experiment import EstimatorBuilder, Experiment, TrainConf, EvalConf, RuntimeConf
 from alps.io.reader.odps_reader import OdpsReader
+from alps.util.remote_module import RemoteModule
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'    # for debug usage.
 #tf.logging.set_verbosity(tf.logging.INFO)
@@ -46,6 +47,9 @@ class SQLFlowEstimatorBuilder(EstimatorBuilder):
 {{if ne .FeatureMapTable ""}}
         feature_columns = []
         {{.FeatureColumnCode}}
+{{end}}
+{{if ne .RemoteModuleCode ""}}
+        {{.RemoteModuleCode}}
 {{end}}
 {{if ne .ImportCode ""}}
         {{.ImportCode}}

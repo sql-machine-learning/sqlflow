@@ -52,6 +52,7 @@ type alpsFiller struct {
 
 	// Train
 	ImportCode        string
+	RemoteModuleCode  string
 	ModelCreatorCode  string
 	FeatureColumnCode string
 	TrainClause       *resolvedTrainClause
@@ -104,12 +105,12 @@ func engineCreatorCode(resolved *resolvedTrainClause) (string, error) {
 		engine.worker.Num), nil
 }
 
-func modelCreatorCode(resolved *resolvedTrainClause, args []string) (string, string, error) {
+func modelCreatorCode(resolved *resolvedTrainClause, args []string) (string, string, string, error) {
 	cl := make([]string, 0)
 	for _, a := range resolved.ModelConstructorParams {
 		code, err := a.GenerateCode()
 		if err != nil {
-			return "", "", err
+			return "", "", "", err
 		}
 		cl = append(cl, code)
 	}
@@ -131,7 +132,27 @@ func modelCreatorCode(resolved *resolvedTrainClause, args []string) (string, str
 		importCode = fmt.Sprintf("import %s", importLib)
 	}
 
-	return importCode,
+	var remoteModuleCode = ""
+	if resolved.CustomModule != nil {
+		sha, token, sourceRoot, server := "None", "None", "None", "None"
+		customModule := resolved.CustomModule
+		if customModule.Sha != "" {
+			sha = fmt.Sprintf("\"%s\"", customModule.Sha)
+		}
+		if customModule.PrivateToken != "" {
+			token = fmt.Sprintf("\"%s\"", customModule.PrivateToken)
+		}
+		if customModule.SourceRoot != "" {
+			sourceRoot = fmt.Sprintf("\"%s\"", customModule.SourceRoot)
+		}
+		if customModule.GitLabServer != "" {
+			server = fmt.Sprintf("\"%s\"", customModule.GitLabServer)
+		}
+		remoteModuleCode = fmt.Sprintf("RemoteModule.create_module(module_name=None, project_name=\"%s\", sha=%s, private_token=%s, source_root=%s, gitlab_server=%s)()",
+			customModule.ProjectName, sha, token, sourceRoot, server)
+	}
+
+	return remoteModuleCode, importCode,
 		fmt.Sprintf("%s(%s)", modelName, strings.Join(cl, ",")), nil
 }
 
@@ -210,7 +231,7 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds *tra
 		}
 	}
 	fcCode := strings.Join(featureColumnCode, "\n        ")
-	importCode, modelCode, err := modelCreatorCode(resolved, args)
+	remoteModuleCode, importCode, modelCode, err := modelCreatorCode(resolved, args)
 	if err != nil {
 		return nil, err
 	}
@@ -259,6 +280,7 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds *tra
 		Y:                   y.ToString(),
 		OdpsConf:            odpsConfig,
 		ImportCode:          importCode,
+		RemoteModuleCode:    remoteModuleCode,
 		ModelCreatorCode:    modelCode,
 		FeatureColumnCode:   fcCode,
 		TrainClause:         resolved,
@@ -321,7 +343,7 @@ func alpsTrain(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *p
 	// TODO(joyyoj) Release a stable-alps to pypi.antfin-inc.com, then remove it.
 	initf.WriteString(`
 #!/bin/bash
-pip install http://091349.oss-cn-hangzhou-zmf.aliyuncs.com/alps/sqlflow/alps-2.0.3rc3-py2.py3-none-any.whl -i https://pypi.antfin-inc.com/simple
+pip install http://091349.oss-cn-hangzhou-zmf.aliyuncs.com/alps/sqlflow/alps-2.0.3rc5-py2.py3-none-any.whl -i https://pypi.antfin-inc.com/simple
 `)
 	initf.Close()
 
