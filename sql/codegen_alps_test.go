@@ -14,6 +14,7 @@
 package sql
 
 import (
+	"bytes"
 	"strings"
 	"testing"
 
@@ -82,4 +83,14 @@ func TestPredALPSFiller(t *testing.T) {
 	a.Equal(filler.UserID, "sqlflow_user")
 	a.Equal(filler.OSSID, "sqlflow_id")
 	a.Equal(filler.OSSKey, "sqlflow_key")
+
+	var program bytes.Buffer
+	e = alpsPredTemplate.Execute(&program, filler)
+	a.NoError(e)
+
+	arr := strings.Split(program.String(), ";")
+	udfSQL := strings.Trim(arr[len(arr)-2], "\n")
+	a.Equal(udfSQL,
+		`CREATE TABLE IF NOT EXISTS db.predict_result AS `+
+			`SELECT predict_fun(concat(",", col_1, col_2)) AS (info, score) FROM db.table`)
 }
