@@ -86,7 +86,7 @@ func (l *lexer) Lex(lval *sqlSymType) int {
 		return l.lexNumber(lval)
 	case r == '"':
 		return l.lexString(lval)
-	case strings.IndexRune("+-*/%<>=()[]{},;", r) >= 0:
+	case strings.IndexRune("+-*/%<>=()[]{},;!", r) >= 0:
 		return l.lexOperator(lval)
 	case r == eof:
 		return 0 // indicate the end of lexing.
