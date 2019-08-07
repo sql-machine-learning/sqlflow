@@ -32,12 +32,12 @@ from alps.framework.exporter.arks_exporter import ArksExporter
 from alps.client.base import run_experiment, submit_experiment
 from alps.framework.engine import LocalEngine, YarnEngine, ResourceConf
 from alps.framework.column.column import DenseColumn, SparseColumn, GroupedSparseColumn
-from alps.framework.exporter.compare_fn import best_auc_fn
 from alps.io import DatasetX
 from alps.io.base import OdpsConf, FeatureMap
 from alps.framework.experiment import EstimatorBuilder, Experiment, TrainConf, EvalConf, RuntimeConf
 from alps.io.reader.odps_reader import OdpsReader
 from alps.util.remote_module import RemoteModule
+from alps.framework.exporter.base import MetricComparator, Goal
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'    # for debug usage.
 #tf.logging.set_verbosity(tf.logging.INFO)
@@ -127,7 +127,7 @@ if __name__ == "__main__":
                       throttle_secs={{.TrainClause.EvalThrottle}},
         ),
         # FIXME(typhoonzero): Use ExportStrategy.BEST when possible.
-        exporter=ArksExporter(deploy_path=export_path, strategy=ExportStrategy.LATEST, compare_fn=Closure(best_auc_fn)),
+        exporter=ArksExporter(deploy_path=export_path, strategy=ExportStrategy.LATEST, compare=MetricComparator("auc", Goal.MAXIMIZE)),
         runtime = runtime_conf,
         model_builder=SQLFlowEstimatorBuilder())
 
