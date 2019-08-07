@@ -135,7 +135,7 @@
 %token <val> IDENT NUMBER STRING
 
 %left <val> AND OR
-%left <val> '>' '<' '=' GE LE
+%left <val> '>' '<' '=' '!' GE LE NE
 %left <val> '+' '-'
 %left <val> '*' '/' '%'
 %left <val> NOT
@@ -259,6 +259,7 @@ expr
 | pythonlist     { $$ = variadic('[', "square", $1) }
 | '(' expr ')'   { $$ = unary('(', "paren", $2) } /* take '(' as the operator */
 | '"' STRING '"'	{ $$ = unary('"', "quota", atomic(STRING,$2)) }
+| '\'' STRING '\''	{ $$ = unary('\'', "quota", atomic(STRING,$2)) }
 | funcall        { $$ = $1 }
 | expr '+' expr  { $$ = binary('+', $1, $2, $3) }
 | expr '-' expr  { $$ = binary('-', $1, $2, $3) }
@@ -270,6 +271,7 @@ expr
 | expr '>' expr  { $$ = binary('>', $1, $2, $3) }
 | expr LE  expr  { $$ = binary(LE,  $1, $2, $3) }
 | expr GE  expr  { $$ = binary(GE,  $1, $2, $3) }
+| expr NE  expr  { $$ = binary(NE,  $1, $2, $3) }
 | expr AND expr  { $$ = binary(AND, $1, $2, $3) }
 | expr OR  expr  { $$ = binary(OR,  $1, $2, $3) }
 | NOT expr %prec NOT    { $$ = unary(NOT, $1, $2) }
@@ -297,7 +299,7 @@ func (el exprlist) Strings() (r []string) {
 func (e *expr) String() string {
 	if e.typ == 0 { /* a compound expression */
 		switch e.sexp[0].typ {
-		case '+', '*', '/', '%', '=', '<', '>', LE, GE, AND, OR:
+		case '+', '*', '/', '%', '=', '<', '>', '!', LE, GE, AND, OR:
 			if len(e.sexp) != 3 {
 				log.Panicf("Expecting binary expression, got %.10q", e.sexp)
 			}

@@ -84,7 +84,7 @@ func (l *lexer) Lex(lval *sqlSymType) int {
 		return l.lexIdentOrKeyword(lval)
 	case unicode.IsDigit(r):
 		return l.lexNumber(lval)
-	case r == '"':
+	case r == '"' || r == '\'':
 		return l.lexString(lval)
 	case strings.IndexRune("+-*/%<>=()[]{},;!", r) >= 0:
 		return l.lexOperator(lval)
@@ -162,13 +162,19 @@ func (l *lexer) lexOperator(lval *sqlSymType) int {
 	} else if r == '>' && l.peek() == '=' {
 		l.next()
 		return l.emit(lval, GE)
+	} else if r == '!' && l.peek() == '=' {
+		l.next()
+		return l.emit(lval, NE)
+	} else if r == '<' && l.peek() == '>' {
+		l.next()
+		return l.emit(lval, NE)
 	}
 	return l.emit(lval, int(r))
 }
 
 func (l *lexer) lexString(lval *sqlSymType) int {
 	l.next() // the left quote
-	for r := l.next(); r != '"'; r = l.next() {
+	for r := l.next(); r != '"' && r != '\''; r = l.next() {
 		if r == '\\' {
 			l.next()
 		}
