@@ -123,3 +123,49 @@ func TestLexSQL(t *testing.T) {
 		a.Equal(vals[i], n.val)
 	}
 }
+
+func TestLexSQLWithOperators(t *testing.T) {
+	a := assert.New(t)
+	l := newLexer(`  CREATE TABLE tmp AS
+SELECT a,b,c,d
+FROM x.y
+WHERE c=20190806
+AND b IS NOT NULL AND b != "-" and COALESCE(d, "-")<>"-";`)
+	var n sqlSymType
+	typs := []int{
+		IDENT, IDENT, IDENT, AS,
+		SELECT, IDENT, ',', IDENT, ',', IDENT, ',', IDENT,
+		FROM, IDENT, WHERE, IDENT, '=', NUMBER,
+		AND, IDENT, IDENT, NOT, IDENT, AND, IDENT, NE, STRING, AND,
+		IDENT, '(', IDENT, ',', STRING, ')', NE, STRING, ';'}
+	vals := []string{
+		"CREATE", "TABLE", "tmp", "AS", "SELECT",
+		"a", ",", "b", ",", "c", ",", "d", "FROM", "x.y",
+		"WHERE", "c", "=", "20190806", "AND", "b",
+		"IS", "NOT", "NULL", "AND", "b", "!=", "\"-\"", "and",
+		"COALESCE", "(", "d", ",", "\"-\"", ")", "<>", "\"-\"", ";"}
+
+	for i := range typs {
+		a.Equal(typs[i], l.Lex(&n))
+		a.Equal(vals[i], n.val)
+	}
+}
+
+func TestLexSQLWithSingleQuote(t *testing.T) {
+	a := assert.New(t)
+	l := newLexer(`  SELECT a,b
+FROM x.y
+WHERE b='20190806';`)
+	var n sqlSymType
+	typs := []int{
+		SELECT, IDENT, ',', IDENT,
+		FROM, IDENT, WHERE, IDENT, '=', STRING, ';'}
+	vals := []string{
+		"SELECT", "a", ",", "b", "FROM", "x.y",
+		"WHERE", "b", "=", "'20190806'", ";"}
+
+	for i := range typs {
+		a.Equal(typs[i], l.Lex(&n))
+		a.Equal(vals[i], n.val)
+	}
+}
