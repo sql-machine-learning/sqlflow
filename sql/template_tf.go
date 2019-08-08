@@ -58,8 +58,6 @@ database=""
 
 conn = connect(driver, database, user="{{.User}}", password="{{.Password}}", host="{{.Host}}", port={{.Port}})
 
-{{$iskeras := .IsKerasModel}}
-
 feature_columns = dict()
 {{ range $target, $colsCode := .FeatureColumnsCode }}
 feature_columns["{{$target}}"] = []
@@ -115,7 +113,7 @@ def _parse_sparse_feature(features, label, feature_metas):
     return features_dict, label
 
 
-def input_fn(batch_size, is_train=True):
+def input_fn(datasetStr):
     feature_types = []
     for name in feature_column_names:
         {{/* NOTE: vector columns like 23,21,3,2,0,0 should use shape None */}}
@@ -124,37 +122,38 @@ def input_fn(batch_size, is_train=True):
         else:
             feature_types.append(get_dtype(feature_metas[name]["dtype"]))
 
-    gen = db_generator(driver, conn, """{{.StandardSelect}}""",
-        feature_column_names, "{{.Y.FeatureName}}", feature_metas)
+    gen = db_generator(driver, conn, datasetStr, feature_column_names, "{{.Y.FeatureName}}", feature_metas)
     dataset = tf.data.Dataset.from_generator(gen, (tuple(feature_types), tf.{{.Y.Dtype}}))
     ds_mapper = functools.partial(_parse_sparse_feature, feature_metas=feature_metas)
-    dataset = dataset.map(ds_mapper)
-    if is_train:
-        # TODO(typhoonzero): add prefetch, cache if needed.
-        dataset = dataset.shuffle(1000).batch(batch_size)
-        {{if not .IsKerasModel}}
-        {{/* estimater.train have no argument epochs, so add in dataset here */}}
-        dataset = dataset.repeat(EPOCHS if EPOCHS else 1)
-        {{end}}
-    else:
-        dataset = dataset.batch(batch_size)
+    return dataset.map(ds_mapper)
+
+def train_input_fn(batch_size):
+    dataset = input_fn("""{{.TrainingDataset}}""")
+    # TODO(typhoonzero): add prefetch, cache if needed.
+    dataset = dataset.shuffle(1000).batch(batch_size)
+    {{if not .IsKerasModel}}
+    {{/* estimater.train have no argument epochs, so add in dataset here */}}
+    dataset = dataset.repeat(EPOCHS if EPOCHS else 1)
+    {{end}}
     return dataset
+
+def validate_input_fn(batch_size):
+    dataset = input_fn("""{{.ValidationDataset}}""")
+    return dataset.batch(batch_size)
 
 {{if .IsKerasModel}}
 classifier.compile(optimizer=classifier.default_optimizer(),
     loss=classifier.default_loss(),
     metrics=["accuracy"])
-classifier.fit(input_fn(BATCHSIZE, is_train=True),
+classifier.fit(train_input_fn(BATCHSIZE),
     epochs=EPOCHS if EPOCHS else classifier.default_training_epochs(),
     verbose=VERBOSE)
 classifier.save_weights("{{.Save}}", save_format="h5")
-
-eval_result = classifier.evaluate(input_fn(BATCHSIZE, is_train=False), verbose=VERBOSE)
+eval_result = classifier.evaluate(validate_input_fn(BATCHSIZE), verbose=VERBOSE)
 print("Training set accuracy: {accuracy:0.5f}".format(**{"accuracy": eval_result[1]}))
 {{else}}
-classifier.train(input_fn=lambda:input_fn(BATCHSIZE, is_train=True))
-
-eval_result = classifier.evaluate(input_fn=lambda:input_fn(BATCHSIZE, is_train=False))
+classifier.train(input_fn=lambda:train_input_fn(BATCHSIZE))
+eval_result = classifier.evaluate(input_fn=lambda:validate_input_fn(BATCHSIZE))
 print("Evaluation result:", eval_result)
 {{end}}
 
@@ -195,8 +194,6 @@ database=""
 {{end}}
 
 conn = connect(driver, database, user="{{.User}}", password="{{.Password}}", host="{{.Host}}", port={{.Port}})
-
-{{$iskeras := .IsKerasModel}}
 
 feature_columns = dict()
 {{ range $target, $colsCode := .FeatureColumnsCode }}
@@ -263,7 +260,7 @@ def eval_input_fn(batch_size):
         else:
             feature_types.append(get_dtype(feature_metas[name]["dtype"]))
 
-    gen = db_generator(driver, conn, """{{.StandardSelect}}""",
+    gen = db_generator(driver, conn, """{{.PredictionDataset}}""",
         feature_column_names, "{{.Y.FeatureName}}", feature_metas)
     dataset = tf.data.Dataset.from_generator(gen, (tuple(feature_types), tf.{{.Y.Dtype}}))
     ds_mapper = functools.partial(_parse_sparse_feature, feature_metas=feature_metas)
@@ -359,7 +356,7 @@ class FastPredict:
 
 column_names = feature_column_names[:]
 column_names.append("{{.Y.FeatureName}}")
-pred_gen = db_generator(driver, conn, """{{.StandardSelect}}""", feature_column_names, "{{.Y.FeatureName}}", feature_metas)()
+pred_gen = db_generator(driver, conn, """{{.PredictionDataset}}""", feature_column_names, "{{.Y.FeatureName}}", feature_metas)()
 fast_predictor = FastPredict(classifier, fast_input_fn)
 buff_rows = []
 while True:

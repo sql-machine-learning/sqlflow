@@ -53,10 +53,12 @@ type featureMeta struct {
 }
 
 type filler struct {
-	IsTrain        bool
-	Driver         string
-	StandardSelect string
-	X              []*featureMeta
+	IsTrain           bool
+	Driver            string
+	TrainingDataset   string // IsTrain == true
+	ValidationDataset string // IsTrain == true
+	PredictionDataset string // IsTrain != true
+	X                 []*featureMeta
 	// key: for target (e.g. deep-wide model), value: list of generated code for current target
 	FeatureColumnsCode map[string][]string
 	Y                  *featureMeta
@@ -98,12 +100,21 @@ func parseModelURI(modelString string) (bool, string) {
 	return false, fmt.Sprintf("tf.estimator.%s", modelString)
 }
 
+func trainingAndValidationDataset(pr *extendedSelect, ds *trainAndValDataset) (string, string) {
+	if pr.train && ds != nil && ds.supported {
+		return fmt.Sprintf("SELECT * FROM %s", ds.training), fmt.Sprintf("SELECT * FROM %s", ds.validation)
+	}
+	return pr.standardSelect.String(), pr.standardSelect.String()
+}
+
 func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *DB) (*filler, error) {
-	// TODO(weiguo): modify filler struct to carry trainingDatase in the next PR
 	isKerasModel, modelClassString := parseModelURI(pr.estimator)
+	training, validation := trainingAndValidationDataset(pr, ds)
 	r := &filler{
-		IsTrain:        pr.train,
-		StandardSelect: pr.standardSelect.String(),
+		IsTrain:           pr.train,
+		TrainingDataset:   training,
+		ValidationDataset: validation,
+		PredictionDataset: pr.standardSelect.String(),
 		modelConfig: modelConfig{
 			Estimator:    modelClassString,
 			Attrs:        make(map[string]string),
@@ -220,7 +231,9 @@ func fillDatabaseInfo(r *filler, db *DB) (*filler, error) {
 		r.Host, r.Port, r.Database = sa[0], sa[1], cfg.DBName
 		r.User, r.Password = cfg.User, cfg.Passwd
 		// remove the last ';' which leads to a ParseException
-		r.StandardSelect = removeLastSemicolon(r.StandardSelect)
+		r.TrainingDataset = removeLastSemicolon(r.TrainingDataset)
+		r.ValidationDataset = removeLastSemicolon(r.ValidationDataset)
+		r.PredictionDataset = removeLastSemicolon(r.PredictionDataset)
 	case "maxcompute":
 		cfg, err := gomaxcompute.ParseDSN(db.dataSourceName)
 		if err != nil {
@@ -248,7 +261,6 @@ func genTF(w io.Writer, pr *extendedSelect, ds *trainAndValDataset, fts fieldTyp
 	if e != nil {
 		return e
 	}
-	// TODO(weiguo): fix codegen to carry trainingDatase in the next PR
 	if pr.train {
 		if e = tfTrainTemplate.Execute(w, r); e != nil {
 			return fmt.Errorf("genTF: failed executing template: %v", e)
