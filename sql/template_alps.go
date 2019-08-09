@@ -128,6 +128,7 @@ if __name__ == "__main__":
         ),
         # FIXME(typhoonzero): Use ExportStrategy.BEST when possible.
         exporter=ArksExporter(deploy_path=export_path, strategy=ExportStrategy.LATEST, compare=MetricComparator("auc", Goal.MAXIMIZE)),
+        arbitrary_evaluator=True,
         runtime = runtime_conf,
         model_builder=SQLFlowEstimatorBuilder())
 
