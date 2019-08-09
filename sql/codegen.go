@@ -112,7 +112,6 @@ func trainingAndValidationDataset(pr *extendedSelect, ds *trainAndValDataset) (s
 
 func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *DB) (*filler, error) {
 	isKerasModel, modelClassString := parseModelURI(pr.estimator)
-<<<<<<< HEAD
 	auth := ""
 	if db.driverName == "hive" {
 		cfg, err := gohive.ParseDSN(db.dataSourceName)
@@ -121,9 +120,7 @@ func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *D
 		}
 		auth = cfg.Auth
 	}
-=======
 	training, validation := trainingAndValidationDataset(pr, ds)
->>>>>>> 410ff8c6093be66e330e2709434c9273eaeaec7b
 	r := &filler{
 		IsTrain:           pr.train,
 		TrainingDataset:   training,
