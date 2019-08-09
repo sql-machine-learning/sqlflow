@@ -262,15 +262,9 @@ func genTF(w io.Writer, pr *extendedSelect, ds *trainAndValDataset, fts fieldTyp
 		return e
 	}
 	if pr.train {
-		if e = tfTrainTemplate.Execute(w, r); e != nil {
-			return fmt.Errorf("genTF: failed executing template: %v", e)
-		}
-	} else {
-		if e = tfPredTemplate.Execute(w, r); e != nil {
-			return fmt.Errorf("genTF: failed executing template: %v", e)
-		}
+		return tfTrainTemplate.Execute(w, r)
 	}
-	return nil
+	return tfPredTemplate.Execute(w, r)
 }
 
 var tfTrainTemplate = template.Must(template.New("codegenTfTrain").Parse(tfTrainTemplateText))
