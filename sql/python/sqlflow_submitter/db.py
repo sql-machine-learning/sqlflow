@@ -14,7 +14,7 @@
 import numpy as np
 import tensorflow as tf
 
-def connect(driver, database, user, password, host, port):
+def connect(driver, database, user, password, host, port, auth=""):
     if driver == "mysql":
         # NOTE: use MySQLdb to avoid bugs like infinite reading:
         # https://bugs.mysql.com/bug.php?id=91971
@@ -33,7 +33,8 @@ def connect(driver, database, user, password, host, port):
                        password=password,
                        database=database,
                        host=host,
-                       port=int(port))
+                       port=int(port),
+                       auth_mechanism=auth)
     elif driver == "maxcompute":
         from sqlflow_submitter.maxcompute import MaxCompute
         return MaxCompute.connect(database, user, password, host)

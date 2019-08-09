@@ -65,6 +65,9 @@ type filler struct {
 	TableName          string
 	modelConfig
 	connectionConfig
+
+	// the auth field is only used for hiveserver2
+	Auth string
 }
 
 func translateColumnToFeature(fts *fieldTypes, driverName, ident string) (*columnType, error) {
@@ -109,6 +112,14 @@ func trainingAndValidationDataset(pr *extendedSelect, ds *trainAndValDataset) (s
 
 func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *DB) (*filler, error) {
 	isKerasModel, modelClassString := parseModelURI(pr.estimator)
+	auth := ""
+	if db.driverName == "hive" {
+		cfg, err := gohive.ParseDSN(db.dataSourceName)
+		if err != nil {
+			return nil, err
+		}
+		auth = cfg.Auth
+	}
 	training, validation := trainingAndValidationDataset(pr, ds)
 	r := &filler{
 		IsTrain:           pr.train,
@@ -121,6 +132,7 @@ func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *D
 			Save:         pr.save,
 			IsKerasModel: isKerasModel,
 		},
+		Auth: auth,
 	}
 	for k, v := range pr.trainClause.trainAttrs {
 		r.Attrs[k] = v.String()
