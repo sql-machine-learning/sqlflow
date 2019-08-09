@@ -268,7 +268,7 @@ func TestEnd2EndHive(t *testing.T) {
 	if testDBDriver != "hive" {
 		t.Skip("Skipping hive tests")
 	}
-	dbConnStr = "hive://127.0.0.1:10000/iris?auth=NOASAL"
+	dbConnStr = "hive://127.0.0.1:10000/iris?auth=NOSASL"
 	go start("", modelDir, caCrt, caKey, true)
 	WaitPortReady("localhost"+port, 0)
 	err = prepareTestData(dbConnStr)
