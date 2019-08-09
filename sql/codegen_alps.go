@@ -369,12 +369,12 @@ func alpsPred(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *pb
 	}
 
 	fname := "alps_pre.odps"
-	filepath := filepath.Join(cwd, fname)
-	f, err := os.Create(filepath)
+	odpsScript := filepath.Join(cwd, fname)
+	f, err := os.Create(odpsScript)
 	if err != nil {
 		return fmt.Errorf("Create ODPS script failed %v", err)
 	}
-	defer os.Remove(filepath)
+	defer os.Remove(odpsScript)
 	f.WriteString(program.String())
 	f.Close()
 	cw := &logChanWriter{wr: w}
@@ -389,12 +389,21 @@ func alpsPred(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *pb
 	// FIXME(Yancey1989): using https proto.
 	fixedEndpoint := strings.Replace(cfg.Endpoint, "https://", "http://", 0)
 	// TODO(Yancey1989): submit the Maxcompute UDF script using gomaxcompute driver.
+	odpsCfg := filepath.Join(cwd, "odps_config.ini")
+	odpsCfgFile, err := os.Create(odpsCfg)
+	if err != nil {
+		return fmt.Errorf("Create odps cfg file failed %v", err)
+	}
+	odpsCfgFile.WriteString(fmt.Sprintf("access_id=%s\n", cfg.AccessID))
+	odpsCfgFile.WriteString(fmt.Sprintf("access_key=%s\n", cfg.AccessKey))
+	odpsCfgFile.WriteString(fmt.Sprintf("project_name=%s\n", cfg.Project))
+	odpsCfgFile.WriteString(fmt.Sprintf("end_point=%s\n", fixedEndpoint))
+	odpsCfgFile.WriteString(fmt.Sprintf("log_view_host=http://logview.odps.aliyun-inc.com:8080\n"))
+	odpsCfgFile.Close()
+
 	cmd := exec.Command("odpscmd",
-		"-u", cfg.AccessID,
-		"-p", cfg.AccessKey,
-		fmt.Sprintf("--endpoint=%s", fixedEndpoint),
-		fmt.Sprintf("--project=%s", cfg.Project),
-		"-s", filepath)
+		fmt.Sprintf("--config=%s", odpsCfg),
+		"-s", odpsScript)
 	cmd.Dir = cwd
 	cmd.Stdout = cw
 	cmd.Stderr = cw
