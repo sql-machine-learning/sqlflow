@@ -14,7 +14,7 @@
 import numpy as np
 import tensorflow as tf
 
-def connect(driver, database, user, password, host, port, auth):
+def connect(driver, database, user, password, host, port, auth=""):
     if driver == "mysql":
         # NOTE: use MySQLdb to avoid bugs like infinite reading:
         # https://bugs.mysql.com/bug.php?id=91971

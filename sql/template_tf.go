@@ -193,7 +193,7 @@ database="{{.Database}}"
 database=""
 {{end}}
 
-conn = connect(driver, database, user="{{.User}}", password="{{.Password}}", host="{{.Host}}", port={{.Port}})
+conn = connect(driver, database, user="{{.User}}", password="{{.Password}}", host="{{.Host}}", port={{.Port}}, auth="{{.Auth}}")
 
 feature_columns = dict()
 {{ range $target, $colsCode := .FeatureColumnsCode }}
