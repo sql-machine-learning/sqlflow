@@ -52,8 +52,10 @@ def db_generator(driver, conn, statement,
         else:
             field_names = None if cursor.description is None \
                 else [i[0] for i in cursor.description]
-        label_idx = field_names.index(label_column_name)
-
+        if label_column_name:
+            label_idx = field_names.index(label_column_name)
+        else:
+            label_idx = None
         
         while True:
             rows = cursor.fetchmany(size = fetch_size)
@@ -63,7 +65,7 @@ def db_generator(driver, conn, statement,
             if driver == "mysql":
                 conn.ping(True)
             for row in rows:
-                label = row[label_idx]
+                label = row[label_idx] if label_idx is not None else None
                 features = []
                 for name in feature_column_names:
                     # FIXME(typhoonzero): Should use correct dtype here.
