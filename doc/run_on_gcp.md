@@ -1,13 +1,13 @@
 # Running SQLFlow on Google Cloud Platform
 
-This tutorial introduces on running SQLFlow on Google Kubernetes Engine with
+This tutorial introduces running SQLFlow on Google Kubernetes Engine with
 Google CloudSQL service. It is built on top of the knowledge from the [Running SQLFlow on Kubernetes](/doc/run_on_kubernetes.md)
 tutorial, so make sure to check it out first.
 
 This tutorial will walk you through the steps of:
-- Setting up a Google CloudSQL instance with necessary Google Cloud VPC (Virtual
+- Setting up a Google CloudSQL MySQL instance with necessary Google Cloud VPC (Virtual
   Private Cloud) setup to access the CloudSQL instance with private IP address.
-- Setting up a Google Kubernetes Engine cluster to access CloudSQL Instance.
+- Setting up a Google Kubernetes Engine cluster to access CloudSQL MySQL Instance.
 - Launch SQLFlow demo (SQLFlow gRPC server and Jupyter Notebook server) on GKE cluster.
 
 ## Prerequisites
@@ -19,7 +19,10 @@ This tutorial will walk you through the steps of:
    and [Service Networking API](https://console.cloud.google.com/apis/library/servicenetworking.googleapis.com?q=Service%20Networking)
    enabled.
 1. [Install gcloud](https://cloud.google.com/sdk/gcloud/), which is the command-line interface for interacting with Google Cloud Platform.
-1. [Install kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/), which is the command-line interface for interacting with the Kubernetes cluster.
+1. [Install kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/), which is the command-line interface for interacting with the Kubernetes cluster. Note that this tutorial will create the Kubernetes cluster with the default version documented in the [GKE Versioning and Upgrades](https://cloud.google.com/kubernetes-engine/docs/how-to/creating-a-cluster). You need to make sure the installed kubectl version works well with it. You can also use the following command to install the correct kubectl.
+    ``` bash
+    > gcloud components install kubectl
+    ```
 
 ## Set Up gcloud CLI
 
@@ -33,19 +36,19 @@ This tutorial will walk you through the steps of:
     > gcloud config set project ${YOUR_GCP_PROJECT_ID}
     ```
 
-## Set Up Google CloudSQL Instance
+## Set Up Google CloudSQL MySQL Instance
 
 1. Create a VPC (Virtual Private Cloud) on Google Cloud Platform. [VPC](https://cloud.google.com/vpc/docs/overview)
    provides a logically isolated network for your GKE clusters to communicate
    with services like CloudSQL, so traffic between SQLFlow server and CloudSQL
-   instance does not go through public Internet.
+   MySQL instance does not go through public Internet.
     ``` bash
     > gcloud compute networks create sqlflow-demo-vpc --subnet-mode custom
     ```
 
 1. Reserve an ip range for the created VPC. This ip range will be used for private service
    connections from applications (in our case, SQLFlow server) running within the created VPC
-   to communicate with CloudSQL instance.
+   to communicate with CloudSQL MySQL instance.
     ``` bash
     > gcloud beta compute addresses create vpc-peering-sqlflow-demo-vpc --global --purpose VPC_PEERING --description="For sqlflow with cloudsql private connection" --addresses 10.20.0.0 --prefix-length 16 --network sqlflow-demo-vpc
     ```
@@ -58,8 +61,9 @@ This tutorial will walk you through the steps of:
     You can read more about private services access [here](https://cloud.google.com/vpc/docs/configure-private-services-access).
     To summary, this private connection establishes a VPC Network Peering
     connection between our VPC (in which our application will be running), and
-    the service producer's VPC network (the CloudSQL instance we will create
-    will be running within a different VPC network managed by GCP internally).
+    the service producer's VPC network (the CloudSQL MySQL instance we will
+    create will be running within a different VPC network managed by GCP
+    internally).
 
 1. Create a CloudSQL MySQL instance.
     ``` bash
@@ -70,15 +74,15 @@ This tutorial will walk you through the steps of:
     ```
 
     You can find the *Instance connection name* and *Private IP address* for the
-    newly created CloudSQL instance at the [CloudSQL console](https://console.cloud.google.com/sql/instances/sqlflow-cloudsql-instance/overview).
+    newly created CloudSQL MySQL instance at the [CloudSQL console](https://console.cloud.google.com/sql/instances/sqlflow-cloudsql-instance/overview).
     Note that
     - the private ip address is within the IP range we reserved in the previous step.
     - You should be able to see a private connection between your VPC and the
-      newly created CloudSQL instance on the VPC console.
+      newly created CloudSQL MySQL instance on the VPC console.
 
 1. Configure the default CloudSQL MySQL user account password
-   For this demo purpose, we assume the *root* user of our MySQL instance has
-   password *root*. To configure this, run the following:
+   For this demo purpose, we assume the *root* user of our CloudSQL MySQL
+   instance has password *root*. To configure this, run the following:
     ``` bash
     > gcloud sql users set-password root --host=% --instance=sqlflow-cloudsql-instance --password=root
     ```
@@ -101,6 +105,9 @@ This tutorial will walk you through the steps of:
     sqlflow-gke-cluster  us-central1-a  1.12.8-gke.10   108.50.81.7  n1-standard-1  1.12.8-gke.10  3          RUNNING
     ```
 
+    This command will create the Kubernetes clusters with the default version
+    documented in the [GKE Versioning and Upgrades](https://cloud.google.com/kubernetes-engine/docs/how-to/creating-a-cluster).
+
     Note that after this, gcloud will automatically add the proper
     configurations for kubectl CLI. You can verify that kubectl is configured properly by running
     ``` bash
@@ -116,13 +123,13 @@ tutorial for a more comprehensive guide on deploying SQLFlow on Kubernetes
 cluster.
 
 In this tutorial, the difference is that we are relying on an existing MySQL
-instance (hosted on CloudSQL). We will show how to deploy a miminal SQLFlow
-service (SQLFlow server and Jupyter Notebook server) below.
+instance (hosted on CloudSQL service). We will show how to deploy a SQLFlow gRPC
+server and Jupyter Notebook server.
 
-1. Write demo data to our CloudSQL instance.
+1. Write demo data to our CloudSQL MySQL instance.
    - Modify doc/k8s/sqlflow-populate-demo-dataset.yaml to replace ${SQLFLOW_MYSQL_HOST}
-     with the created CloudSQL instance private ip address.
-   - Launch a one-off job to populate our CloudSQL instance with demo data.
+     with the created CloudSQL MySQL instance private ip address.
+   - Launch a one-off job to populate our CloudSQL MySQL instance with demo data.
     ``` bash
     > kubectl apply -f doc/k8s/sqlflow-populate-demo-dataset.yaml
     ```
@@ -132,8 +139,8 @@ service (SQLFlow server and Jupyter Notebook server) below.
    except for that only SQLFlow server and Jupyter notebook server are being
    deployed.
    - Modify doc/k8s/sqlflow-all-in-one-without-mysql.yaml to replace ${SQLFLOW_MYSQL_HOST}
-     with the created CloudSQL instance private ip address.
-   - Launch a one-off job to populate our CloudSQL instance with demo data.
+     with the created CloudSQL MySQL instance private ip address.
+   - Launch a one-off job to populate our CloudSQL MySQL instance with demo data.
     ``` bash
     > kubectl apply -f doc/k8s/sqlflow-all-in-one-without-mysql.yaml
     ```
@@ -166,4 +173,4 @@ cluster and how to deploy JupyterHub.
 ## Clean Up All Resources
 
 You should delete all the GCP resources created in this tutorial (including the
-CloudSQL instance, GKE cluster and VPC) to avoid paying unnecessary bills.
+CloudSQL MySQL instance, GKE cluster and VPC) to avoid paying unnecessary bills.
