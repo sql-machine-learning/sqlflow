@@ -115,6 +115,7 @@ if __name__ == "__main__":
         train=TrainConf(input=trainDs,
 {{if (ne .TrainClause.MaxSteps -1)}}
                         max_steps={{.TrainClause.MaxSteps}},
+                        keep_checkpoint_max=int({{.TrainClause.MaxSteps}} / 100),
 {{end}}
         ),
         eval=EvalConf(input=evalDs,
