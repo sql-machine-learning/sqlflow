@@ -55,7 +55,7 @@ class SqlflowDSConfig(typing.NamedTuple):
     write_batch_size: int = 1024
 
 
-class SqlflowDataSource(DataSource):
+class SqlFlowDataSource(DataSource):
     def __init__(self, rank: int, num_worker: int,
                  column_conf: config_fields.ColumnFields,
                  source_conf):
@@ -70,6 +70,9 @@ class SqlflowDataSource(DataSource):
         self._train = source_conf.is_train
         self._rcd_builder = RecordBuilder(column_conf.features)
 
+        # concatenate all column fields in use into `col_names`
+        # in training mode, there exists [features, label, group(optional), weight(optional)]
+        # in prediction mode, there exists [features, result_columns, additional_columns(optional)]
         spec_temp = {'is_sparse': False, 'shape': [1], 'delimiter': ''}
         metas = {}
         col_names = []
@@ -113,6 +116,7 @@ class SqlflowDataSource(DataSource):
 
         conn = connect(**source_conf.db_config)
 
+        # Since label field has already been included into `col_names`, we just fill `label_column_name` with None.
         self._reader = db_generator(
             driver=source_conf.db_config['driver'],
             conn=conn,
