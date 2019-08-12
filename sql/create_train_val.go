@@ -15,7 +15,6 @@ package sql
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/pkg/errors"
 )
@@ -91,11 +90,11 @@ func createMaxcomputeTable(target, origin string, db *DB, cond string) error {
 }
 
 func namingTrainAndValDataset() *trainAndValDataset {
-	uniq := time.Now().UnixNano() / 1e3
+	suffix := "sqlflow"
 	return &trainAndValDataset{
 		supported:  true,
-		table:      fmt.Sprintf("%s%d", tablePrefix, uniq),
-		training:   fmt.Sprintf("%s%d", trainingPrefix, uniq),
-		validation: fmt.Sprintf("%s%d", validationPrefix, uniq),
+		table:      fmt.Sprintf("%s_%s", tablePrefix, suffix),
+		training:   fmt.Sprintf("%s_%s", trainingPrefix, suffix),
+		validation: fmt.Sprintf("%s_%s", validationPrefix, suffix),
 	}
 }

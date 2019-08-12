@@ -150,9 +150,9 @@ set odps.sql.udf.timeout = 3000;
 
 set mst.model.path={{.ModelDir}};
 set mst.model.name=tf_model;
-set mst.oss.id={{.OSSID}}
+set mst.oss.id={{.OSSID}};
 set mst.oss.key={{.OSSKey}};
-set mst.oss.endpoint={{.OSSEndpoint}}
+set mst.oss.endpoint={{.OSSEndpoint}};
 set mst.load.feature_map=false;
 
 set deepbreath.sparse.group.separator=:;
