@@ -15,6 +15,7 @@ package sql
 
 import (
 	"bytes"
+	"os"
 	"strings"
 	"testing"
 
@@ -64,11 +65,11 @@ func TestTrainALPSFiller(t *testing.T) {
 func TestPredALPSFiller(t *testing.T) {
 	a := assert.New(t)
 	parser := newParser()
+	os.Setenv("OSS_KEY", "sqlflow_key")
+	os.Setenv("OSS_ID", "sqlflow_id")
+	os.Setenv("OSS_ENDPOINT", "http://sqlflow-oss-endpoint")
 	predStatement := `SELECT predict_fun(concat(",", col_1, col_2)) AS (info, score) FROM db.table
 		PREDICT db.predict_result
-		WITH
-			OSS_KEY=sqlflow_key,
-			OSS_ID=sqlflow_id
 		USING sqlflow_model;`
 
 	r, e := parser.Parse(predStatement)
@@ -80,7 +81,7 @@ func TestPredALPSFiller(t *testing.T) {
 	a.Equal(filler.PredictInputTable, "db.table")
 	a.Equal(filler.PredictOutputTable, "db.predict_result")
 	a.Equal(filler.PredictUDF, `predict_fun(concat(",", col_1, col_2)) AS (info, score)`)
-	a.Equal(filler.ModelDir, "oss://arks-model/sqlflow_user/sqlflow_model.tar.gz")
+	a.Equal(filler.ModelDir, "oss://cmps-model/sqlflow/sqlflow_user/sqlflow_model.tar.gz")
 	a.Equal(filler.PredictInputModel, "sqlflow_model")
 	a.Equal(filler.UserID, "sqlflow_user")
 	a.Equal(filler.OSSID, "sqlflow_id")

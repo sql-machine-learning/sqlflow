@@ -149,9 +149,10 @@ set odps.instance.priority = 0;
 set odps.sql.udf.timeout = 3000;
 
 set mst.model.path={{.ModelDir}};
-set mst.model.name={{.PredictInputModel}};
-set mst.oss.id={{.OSSID}};
+set mst.model.name=tf_model;
+set mst.oss.id={{.OSSID}}
 set mst.oss.key={{.OSSKey}};
+set mst.oss.endpoint={{.OSSEndpoint}}
 set mst.load.feature_map=false;
 
 set deepbreath.sparse.group.separator=:;
@@ -159,7 +160,7 @@ set deepbreath.sparse.separator=,;
 set deepbreath.enable.sigmoid=false;
 set odps.sql.mapper.split.size=64;
 
-set alps.custom.output=predictions;
+DROP TABLE IF EXISTS {{.PredictOutputTable}};
 
 CREATE TABLE IF NOT EXISTS {{.PredictOutputTable}} AS SELECT {{.PredictUDF}} FROM {{.PredictInputTable}};
 `

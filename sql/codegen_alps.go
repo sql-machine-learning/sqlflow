@@ -69,10 +69,11 @@ type alpsFiller struct {
 	OdpsConf   *gomaxcompute.Config
 	EngineCode string
 
-	// Credential
-	UserID string
-	OSSID  string
-	OSSKey string
+	// OSS Credential
+	UserID      string
+	OSSID       string
+	OSSKey      string
+	OSSEndpoint string
 }
 
 type alpsFeatureColumn interface {
@@ -292,15 +293,13 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds *tra
 }
 
 func newALPSPredictFiller(pr *extendedSelect, session *pb.Session) (*alpsFiller, error) {
-	var ossID, ossKey *expr
-	var ok bool
-	if ossID, ok = pr.predAttrs["OSS_ID"]; !ok {
-		return nil, fmt.Errorf("the ALPS Predict job should specify OSS_ID")
+	ossID := os.Getenv("OSS_ID")
+	ossKey := os.Getenv("OSS_KEY")
+	ossEp := os.Getenv("OSS_ENDPOINT")
+	if ossID == "" || ossKey == "" || ossEp == "" {
+		return nil, fmt.Errorf("Should set env OSS_ID, OSS_KEY and OSS_ENDPOINT while laucnh sqlflowserver")
 	}
-	if ossKey, ok = pr.predAttrs["OSS_KEY"]; !ok {
-		return nil, fmt.Errorf("the ALPS Predict job should specify OSS_KEY")
-	}
-	modelDir := fmt.Sprintf("oss://arks-model/%s/%s.tar.gz", session.UserId, pr.predictClause.model)
+	modelDir := fmt.Sprintf("oss://cmps-model/sqlflow/%s/%s.tar.gz", session.UserId, pr.predictClause.model)
 
 	return &alpsFiller{
 		IsTraining:         false,
@@ -310,8 +309,9 @@ func newALPSPredictFiller(pr *extendedSelect, session *pb.Session) (*alpsFiller,
 		PredictInputModel:  pr.predictClause.model,
 		ModelDir:           modelDir,
 		UserID:             session.UserId,
-		OSSID:              ossID.String(),
-		OSSKey:             ossKey.String(),
+		OSSID:              ossID,
+		OSSKey:             ossKey,
+		OSSEndpoint:        ossEp,
 	}, nil
 }
 
@@ -464,7 +464,8 @@ func (cc *categoryIDColumn) GenerateAlpsCode(metadata *metadata) ([]string, erro
 	} else if len(columnInfo.Shape) == 0 {
 		err = fmt.Errorf("Shape is empty %s", cc.Key)
 	} else if len(columnInfo.Shape) == 1 {
-		output = append(output, fmt.Sprintf("tf.feature_column.categorical_column_with_identity(key=\"%s\", num_buckets=%d)",
+		// FIXME(Yancey1989): the suffix "_0" is only used in alps-rc5, would be fixed in the next release.
+		output = append(output, fmt.Sprintf("tf.feature_column.categorical_column_with_identity(key=\"%s_0\", num_buckets=%d)",
 			cc.Key, cc.BucketSize))
 	} else {
 		for i := 0; i < len(columnInfo.Shape); i++ {
