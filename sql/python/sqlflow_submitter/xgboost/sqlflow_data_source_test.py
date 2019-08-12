@@ -10,11 +10,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import json
 import os
 from unittest import TestCase
 
-from sqlflow_submitter.xgboost.sqlflow_data_source import SqlflowDSConfig, SqlFlowDataSource
+from sqlflow_submitter.xgboost.sqlflow_data_source import SqlFlowDSConfig, SqlFlowDataSource
 from launcher import config_helper, config_fields, register_data_source, XGBoostRecord, XGBoostResult
 from launcher.data_source import create_data_source_init_fn
 from sqlflow_submitter.db_test import execute as db_exec
@@ -23,7 +24,7 @@ from sqlflow_submitter.db import connect, insert_values
 
 class TestSqlFlowDataSource(TestCase):
     def setUp(self) -> None:
-        register_data_source('sqlflow', SqlflowDSConfig, SqlFlowDataSource)
+        register_data_source('sqlflow', SqlFlowDSConfig, SqlFlowDataSource)
 
         db_conf = {
             'driver': 'mysql',

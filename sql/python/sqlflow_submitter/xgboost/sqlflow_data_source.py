@@ -10,6 +10,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import json
 import typing
 from typing import Iterator
@@ -41,7 +42,7 @@ class FeatureMeta(typing.NamedTuple):
             raise XGBoostError('invalid shape %s of FeatureMeta' % value)
 
 
-class SqlflowDSConfig(typing.NamedTuple):
+class SqlFlowDSConfig(typing.NamedTuple):
     is_train: bool
     standard_select: str
     db_config: typing.Dict
@@ -60,7 +61,7 @@ class SqlFlowDataSource(DataSource):
                  column_conf: config_fields.ColumnFields,
                  source_conf):
         super().__init__(rank, num_worker, column_conf, source_conf)
-        if not isinstance(source_conf, SqlflowDSConfig):
+        if not isinstance(source_conf, SqlFlowDSConfig):
             raise XGBoostError("SqlflowDataSource: invalid source conf")
 
         # TODO: support tf.feature_column transformation
