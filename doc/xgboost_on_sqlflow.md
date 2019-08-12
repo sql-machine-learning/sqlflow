@@ -16,8 +16,8 @@ A lot of winning solutions of data mining and machine learning challenges,
 such as : Kaggle, KDD cup, are based on GBM or related techniques.
 
 There exists a lot of GBM frameworks (implementations), we propose to use [xgboost](https://xgboost.ai/) as backend of sqlflow, 
-who is an optimized distributed gradient boosting library designed to be highly efficient, flexible and portable, 
-often regarded as one of the best GBM framework.
+which is an optimized distributed gradient boosting library designed to be highly efficient, flexible and portable, 
+often regarded as one of the best GBM frameworks.
 
 
 ## _Proposed Solution:_ ant-xgboost on sqlflow
