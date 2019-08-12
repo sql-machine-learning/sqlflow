@@ -81,7 +81,7 @@ func TestPredALPSFiller(t *testing.T) {
 	a.Equal(filler.PredictInputTable, "db.table")
 	a.Equal(filler.PredictOutputTable, "db.predict_result")
 	a.Equal(filler.PredictUDF, `predict_fun(concat(",", col_1, col_2)) AS (info, score)`)
-	a.Equal(filler.ModelDir, "oss://arks-model/sqlflow_user/sqlflow_model.tar.gz")
+	a.Equal(filler.ModelDir, "oss://cmps-model/sqlflow_user/sqlflow_model.tar.gz")
 	a.Equal(filler.PredictInputModel, "sqlflow_model")
 	a.Equal(filler.UserID, "sqlflow_user")
 	a.Equal(filler.OSSID, "sqlflow_id")
