@@ -56,10 +56,10 @@ WITH
   runtime.num_epochs = 2
   runtime.master_resource_request = "cpu=400m,memory=1024Mi"
   runtime.master_resource_limit = "cpu=400m,memory=1024Mi"
-  runtime.worker_resource_request="cpu=400m,memory=2048Mi"
-  runtime.worker_resource_limit="cpu=1,memory=3072Mi"
-  runtime.records_per_task=100
-  runtime.num_workers=2
+  runtime.worker_resource_request = "cpu=400m,memory=2048Mi"
+  runtime.worker_resource_limit = "cpu=1,memory=3072Mi"
+  runtime.records_per_task = 100
+  runtime.num_workers = 2
 COLUMN
   c1, c2, c3, c4
 LABEL class
