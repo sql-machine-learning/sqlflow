@@ -66,7 +66,7 @@ func TestPredALPSFiller(t *testing.T) {
 	a := assert.New(t)
 	parser := newParser()
 	os.Setenv("OSS_KEY", "sqlflow_key")
-	os.Setenv("OSS_ID", "sqlflow_ID")
+	os.Setenv("OSS_ID", "sqlflow_id")
 	os.Setenv("OSS_ENDPOINT", "http://sqlflow-oss-endpoint")
 	predStatement := `SELECT predict_fun(concat(",", col_1, col_2)) AS (info, score) FROM db.table
 		PREDICT db.predict_result
