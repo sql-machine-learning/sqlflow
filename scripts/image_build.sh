@@ -104,7 +104,7 @@ fi
 wget -q http://docs-aliyun.cn-hangzhou.oss.aliyun-inc.com/assets/attach/119096/cn_zh/1557995455961/odpscmd_public.zip
 unzip -qq odpscmd_public.zip -d /usr/local/odpscmd
 ln -s /usr/local/odpscmd/bin/odpscmd /usr/local/bin/odpscmd
-rm -rf odpscmd_public.zip 
+rm -rf odpscmd_public.zip
 
 # 8. Load sqlflow Jupyter magic command automatically. c.f. https://stackoverflow.com/a/32683001.
 mkdir -p $IPYTHON_STARTUP
@@ -112,3 +112,6 @@ mkdir -p /workspace
 echo 'get_ipython().magic(u"%reload_ext sqlflow.magic")' >> $IPYTHON_STARTUP/00-first.py
 echo 'get_ipython().magic(u"%autoreload 2")' >> $IPYTHON_STARTUP/00-first.py
 curl https://raw.githubusercontent.com/sql-machine-learning/sqlflow/develop/example/jupyter/example.ipynb --output /workspace/example.ipynb
+
+# 9. install xgboost-launcher
+pip install xgboost-launcher==0.0.1
