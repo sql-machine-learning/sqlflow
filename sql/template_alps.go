@@ -160,7 +160,7 @@ set deepbreath.sparse.separator=,;
 set deepbreath.enable.sigmoid=false;
 set odps.sql.mapper.split.size=64;
 
-DROP TABLE IF EXISTS {{.PredictOutputTable}}
+DROP TABLE IF EXISTS {{.PredictOutputTable}};
 
 CREATE TABLE IF NOT EXISTS {{.PredictOutputTable}} AS SELECT {{.PredictUDF}} FROM {{.PredictInputTable}};
 `
