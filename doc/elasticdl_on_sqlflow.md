@@ -26,18 +26,6 @@ LABEL class
 INTO sqlflow_models.elasticdl_model_table;
 ```
 
-Submitting evaluation job:
-
-```sql
-SELECT 
-    c1, c2, c3, c4
-FROM evaluation_data
-WITH
-    eval_metrics = "eval_metrics_fn"
-EVALUATE evaluation_results.evaluated
-USING sqlflow_models.elasticdl_model_table;
-```
-
 Submitting prediction job:
 ```sql
 SELECT 
@@ -60,10 +48,6 @@ Steps:
     * Skip `COLUMN` clause for now as this requires additional design details and discussions
     * Pass column names, shapes, and types for features and labels to `dataset_fn`'s feature description that will be used in `tf.io.parse_single_example()` (based on `SELECT ... LABEL ...`)
     * Pass `INTO` clause to ElasticDL's high-level API's `--outputs` arg
-
-#### Evaluation
-
-This is similar to training except that some clauses and parameters are not needed. Additional clause `EVALUATE` is needed to write back evaluation results to a table.
 
 #### Prediction
 
