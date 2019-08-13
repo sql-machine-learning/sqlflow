@@ -169,3 +169,17 @@ WHERE b='20190806';`)
 		a.Equal(vals[i], n.val)
 	}
 }
+
+func TestLexerLexError(t *testing.T) {
+	a := assert.New(t)
+
+	l := newLexer(`SELECT a, b $`)
+	typs := []int{SELECT, IDENT, ',', IDENT, -1}
+	vals := []string{"SELECT", "a", ",", "b", "b"}
+
+	var n sqlSymType
+	for i := range typs {
+		a.Equal(typs[i], l.Lex(&n))
+		a.Equal(vals[i], n.val)
+	}
+}

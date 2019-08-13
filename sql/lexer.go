@@ -91,7 +91,7 @@ func (l *lexer) Lex(lval *sqlSymType) int {
 	case r == eof:
 		return 0 // indicate the end of lexing.
 	}
-	log.Panicf("Lex: Unknown problem %s", l.input[l.start:])
+	log.Errorf("Lex: Unknown problem %s", l.input[l.start:])
 	return -1 // indicate an error
 }
 

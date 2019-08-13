@@ -58,6 +58,9 @@ func splitExtendedSQL(slct string) []string {
 	var pos []int
 	for {
 		t := l.Lex(&n)
+		if t == -1 {
+			return []string{slct}
+		}
 		if t == 0 {
 			break
 		}
