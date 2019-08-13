@@ -114,29 +114,30 @@ Steps:
    - Pass `INTO` clause to `--outputs` argument in ElasticDL high-level API.
 
 3. Submit ElasticDL training job via a generated ElasticDL high-level API or CLI. Below is an example:
-   ```sh
-   elasticdl train \
-   --image_base=elasticdl:ci \
-   --model_zoo=model_zoo \
-   --model_def=ElasticDLKerasClassifier \
-   --training_data_dir=/data/mnist/train \
-   --evaluation_data_dir=/data/mnist/test \
-   --num_epochs=2 \
-   --master_resource_request="cpu=400m,memory=1024Mi" \
-   --master_resource_limit="cpu=1,memory=2048Mi" \
-   --worker_resource_request="cpu=400m,memory=2048Mi" \
-   --worker_resource_limit="cpu=1,memory=3072Mi" \
-   --minibatch_size=64 \
-   --records_per_task=100 \
-   --num_workers=2 \
-   --checkpoint_steps=10 \
-   --evaluation_steps=15 \
-   --grads_to_wait=2 \
-   --job_name=test-mnist \
-   --log_level=INFO \
-   --image_pull_policy=Never \
-   --output=model_output
-   ```
+
+```sh
+elasticdl train \
+--image_base=elasticdl:ci \
+--model_zoo=model_zoo \
+--model_def=ElasticDLKerasClassifier \
+--training_data_dir=/data/mnist/train \
+--evaluation_data_dir=/data/mnist/test \
+--num_epochs=2 \
+--master_resource_request="cpu=400m,memory=1024Mi" \
+--master_resource_limit="cpu=1,memory=2048Mi" \
+--worker_resource_request="cpu=400m,memory=2048Mi" \
+--worker_resource_limit="cpu=1,memory=3072Mi" \
+--minibatch_size=64 \
+--records_per_task=100 \
+--num_workers=2 \
+--checkpoint_steps=10 \
+--evaluation_steps=15 \
+--grads_to_wait=2 \
+--job_name=test-mnist \
+--log_level=INFO \
+--image_pull_policy=Never \
+--output=model_output
+```
 
 #### Prediction Job
 
@@ -163,6 +164,6 @@ where an `ODPSWriter` will be instantiated with necessary information on ODPS ac
 
 `USING` clause contains the name to the trained model to be used to make predictions.
 
-#### Run-time Configurations
+#### Differentiate Run-time Configurations
 
 We need to differentiate between the run-time configuration parameters (e.g. `num_workers`, `num_epochs`, etc.) and the model construction parameters (e.g. `optimizer`, `loss`, `num_classes`, etc.). In this MVP, we can add different prefixes to different types of parameters, such as addding "runtime." to run-time configuration parameters.
