@@ -15,7 +15,7 @@ spec:
         app: sqlflow-server
     spec:
       containers:
-      - image: sqlflow/sqlflow 
+      - image: sqlflow/sqlflow
         name: sqlflow-server
         imagePullPolicy: Always
         command: ["sqlflowserver"]
