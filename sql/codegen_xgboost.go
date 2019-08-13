@@ -29,9 +29,9 @@ type xgboostFiller struct {
 	xgboostFields
 	xgColumnFields
 	xgDataSourceFields
-	xgboostJson      string
-	xgDataSourceJson string
-	xgColumnJson     string
+	xgboostJSON      string
+	xgDataSourceJSON string
+	xgColumnJSON     string
 }
 
 type xgboostFields struct {
@@ -315,7 +315,7 @@ func xgParseAttr(pr *extendedSelect, r *xgboostFiller) error {
 }
 
 //  parseFeatureColumns, parse feature columns from AST(pr.columns).
-//  Features columns are columns owned by default column target("feature_columns:).
+//  Features columns are columns owned by default column target whose key is "feature_columns".
 //  For now, two schemas are supported:
 //	1. sparse-kv
 //		schema: COLUMN SPARSE([feature_column], [1-dim shape], [single char delimiter])
@@ -586,19 +586,19 @@ func newXGBoostFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*xgboostFille
 	if e != nil {
 		return nil, e
 	}
-	filler.xgboostJson = string(jsonBuffer)
+	filler.xgboostJSON = string(jsonBuffer)
 
 	jsonBuffer, e = json.Marshal(filler.xgDataSourceFields)
 	if e != nil {
 		return nil, e
 	}
-	filler.xgDataSourceJson = string(jsonBuffer)
+	filler.xgDataSourceJSON = string(jsonBuffer)
 
 	jsonBuffer, e = json.Marshal(filler.xgColumnFields)
 	if e != nil {
 		return nil, e
 	}
-	filler.xgColumnJson = string(jsonBuffer)
+	filler.xgColumnJSON = string(jsonBuffer)
 
 	return filler, nil
 }

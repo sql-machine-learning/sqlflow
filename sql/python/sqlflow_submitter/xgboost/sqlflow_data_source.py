@@ -42,7 +42,7 @@ class FeatureMeta(typing.NamedTuple):
             raise XGBoostError('invalid shape %s of FeatureMeta' % value)
 
 
-class SqlFlowDSConfig(typing.NamedTuple):
+class SQLFlowDSConfig(typing.NamedTuple):
     is_train: bool
     standard_select: str
     db_config: typing.Dict
@@ -56,13 +56,13 @@ class SqlFlowDSConfig(typing.NamedTuple):
     write_batch_size: int = 1024
 
 
-class SqlFlowDataSource(DataSource):
+class SQLFlowDataSource(DataSource):
     def __init__(self, rank: int, num_worker: int,
                  column_conf: config_fields.ColumnFields,
                  source_conf):
         super().__init__(rank, num_worker, column_conf, source_conf)
-        if not isinstance(source_conf, SqlFlowDSConfig):
-            raise XGBoostError("SqlflowDataSource: invalid source conf")
+        if not isinstance(source_conf, SQLFlowDSConfig):
+            raise XGBoostError("SQLFlowDataSource: invalid source conf")
 
         # TODO: support tf.feature_column transformation
         if source_conf.is_tf_integrated:

@@ -299,7 +299,7 @@ LABEL e INTO model_table;
 	filler, e := newXGBoostFiller(pr, fts, testDB)
 	a.NoError(e)
 
-	//a.False(filler.IsTrain)
+	a.True(filler.IsTrain)
 	stdSlct := removeLastSemicolon(strings.Replace(filler.StandardSelect, "\n", " ", -1))
 	a.EqualValues("SELECT * FROM iris.train", stdSlct)
 	a.EqualValues("model_table", filler.modelPath)
@@ -328,15 +328,15 @@ LABEL e INTO model_table;
 	a.EqualValues(&xgFeatureMeta{FeatureName: "petal_width", Dtype: "float32", InputShape: "[1]"}, filler.X[3])
 
 	colFields := &xgColumnFields{}
-	e = json.Unmarshal([]byte(filler.xgColumnJson), colFields)
+	e = json.Unmarshal([]byte(filler.xgColumnJSON), colFields)
 	a.NoError(e)
 	a.EqualValues(filler.xgColumnFields, *colFields)
 	dsFields := &xgDataSourceFields{}
-	e = json.Unmarshal([]byte(filler.xgDataSourceJson), dsFields)
+	e = json.Unmarshal([]byte(filler.xgDataSourceJSON), dsFields)
 	a.NoError(e)
 	a.EqualValues(filler.xgDataSourceFields, *dsFields)
 	xgbFields := &xgboostFields{}
-	e = json.Unmarshal([]byte(filler.xgboostJson), xgbFields)
+	e = json.Unmarshal([]byte(filler.xgboostJSON), xgbFields)
 	a.NoError(e)
 	a.EqualValues(filler.xgboostFields, *xgbFields)
 }
