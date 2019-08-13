@@ -14,9 +14,9 @@ SELECT
 FROM training_data
 TRAIN ElasticDLKerasClassifier
 WITH
-  optimizer = "optimizer"
-  loss = "loss"
-  eval_metrics = "eval_metrics_fn"
+  optimizer = "optimizer",
+  loss = "loss",
+  eval_metrics = "eval_metrics_fn",
   num_classes = 10
 COLUMN
   c1,
@@ -49,16 +49,16 @@ SELECT
 FROM training_data
 TRAIN ElasticDLKerasClassifier
 WITH
-  optimizer = "optimizer"
-  loss = "loss"
-  eval_metrics = "eval_metrics_fn"
-  num_classes = 10
-  runtime.num_epochs = 2
-  runtime.master_resource_request = "cpu=400m,memory=1024Mi"
-  runtime.master_resource_limit = "cpu=400m,memory=1024Mi"
-  runtime.worker_resource_request = "cpu=400m,memory=2048Mi"
-  runtime.worker_resource_limit = "cpu=1,memory=3072Mi"
-  runtime.records_per_task = 100
+  optimizer = "optimizer",
+  loss = "loss",
+  eval_metrics = "eval_metrics_fn",
+  num_classes = 10,
+  runtime.num_epochs = 2,
+  runtime.master_resource_request = "cpu=400m,memory=1024Mi",
+  runtime.master_resource_limit = "cpu=400m,memory=1024Mi",
+  runtime.worker_resource_request = "cpu=400m,memory=2048Mi",
+  runtime.worker_resource_limit = "cpu=1,memory=3072Mi",
+  runtime.records_per_task = 100,
   runtime.num_workers = 2
 COLUMN
   c1, c2, c3, c4
@@ -72,9 +72,9 @@ INTO trained_elasticdl_keras_classifier;
 
 Steps:
 
-1. Based on `SELECT ... FROM ...`, read ODPS table and write it to [RecordIO](https://github.com/wangkuiyi/recordio) files, including both features and labels.
+1. Based on `SELECT ... FROM ...`, read ODPS table and write it to [RecordIO](https://github.com/wangkuiyi/recordio)  files, including both features and labels. These files will be stored in [Kubernetes Persistent Volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/). In the future, we will support reading ODPS table directly without having to convert it to RecordIO files.
 2. Generate model definition file (e.g. [cifar10_functional_api.py](https://github.com/wangkuiyi/elasticdl/blob/develop/model_zoo/cifar10_functional_api/cifar10_functional_api.py)) that will be used in `TRAIN` clause, which includes:
-    * In model definition function e.g. `custom_model()`, we need to configure model input and output shapes correctly in `inputs = tf.keras.layers.Input(shape=<input_shape>)` and `outputs = tf.keras.layers.Dense(<num_classes>)`(based on `COLUMN ... LABEL ...`). For this MVP, users can provide `<input_shape>` and `<num_classes>` using `WITH` clause which will then get passed to the model constructor `custom_model(input_shape, num_classes)` via `--params` argument in ElasticDL high-level API. In the future, this will be inferred from the ODPS table.
+    * In model definition function e.g. `custom_model()`, we need to configure model input and output shapes correctly in `inputs = tf.keras.layers.Input(shape=<input_shape>)` (only when the model is defined using `tf.keras` functional APIs) and `outputs = tf.keras.layers.Dense(<num_classes>)`(based on `COLUMN ... LABEL ...`). For this MVP, users can provide `<input_shape>` and `<num_classes>` using `WITH` clause which will then get passed to the model constructor `custom_model(input_shape, num_classes)` via `--params` argument in ElasticDL high-level API. In the future, this will be inferred from the ODPS table.
     * Pass additional parameters from `WITH` clause to `custom_model()`'s instantiation, such as `optimizer` and `loss`.
     * Skip support for feature transformation functions such as `NUMERIC` or `BUCKET` in `COLUMN` clause for now as this requires additional design details and discussions on the use of feature column APIs.
     * Pass column names, shapes, and types for features and labels to `dataset_fn`'s feature description that will be used in `tf.io.parse_single_example()`. For this MVP, column names can be obtained from `SELECT ... LABEL ...`. Each feature columns will be of shape `[1]` and of type `tf.float32` while label column is of shape `[1]` and of type `tf.int64` for classification problems and `tf.float32` for regression problems. In the future, this will be inferred from the ODPS table. An example `dataset_fn()` looks like the following:
@@ -109,7 +109,30 @@ Steps:
         return dataset
     ```
     * Pass `INTO` clause to `--outputs` argument in ElasticDL high-level API.
-3. Submit ElasticDL training job via a generated ElasticDL high-level API or CLI.
+3. Submit ElasticDL training job via a generated ElasticDL high-level API or CLI. Below is an example:
+    ```sh
+    elasticdl train \
+    --image_base=elasticdl:ci \
+    --model_zoo=model_zoo \
+    --model_def=ElasticDLKerasClassifier \
+    --training_data_dir=/data/mnist/train \
+    --evaluation_data_dir=/data/mnist/test \
+    --num_epochs=2 \
+    --master_resource_request="cpu=400m,memory=1024Mi" \
+    --master_resource_limit="cpu=1,memory=2048Mi" \
+    --worker_resource_request="cpu=400m,memory=2048Mi" \
+    --worker_resource_limit="cpu=1,memory=3072Mi" \
+    --minibatch_size=64 \
+    --records_per_task=100 \
+    --num_workers=2 \
+    --checkpoint_steps=10 \
+    --evaluation_steps=15 \
+    --grads_to_wait=2 \
+    --job_name=test-mnist \
+    --log_level=INFO \
+    --image_pull_policy=Never \
+    --output=model_output
+    ```
 
 #### Prediction Job
 
