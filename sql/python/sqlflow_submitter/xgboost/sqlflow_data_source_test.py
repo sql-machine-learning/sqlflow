@@ -10,20 +10,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import json
 import os
 from unittest import TestCase
 
-from sqlflow_submitter.xgboost.sqlflow_data_source import SqlflowDSConfig, SqlFlowDataSource
+from sqlflow_submitter.xgboost.sqlflow_data_source import SQLFlowDSConfig, SQLFlowDataSource
 from launcher import config_helper, config_fields, register_data_source, XGBoostRecord, XGBoostResult
 from launcher.data_source import create_data_source_init_fn
 from sqlflow_submitter.db_test import execute as db_exec
 from sqlflow_submitter.db import connect, insert_values
 
 
-class TestSqlFlowDataSource(TestCase):
+class TestSQLFlowDataSource(TestCase):
     def setUp(self) -> None:
-        register_data_source('sqlflow', SqlflowDSConfig, SqlFlowDataSource)
+        register_data_source('sqlflow', SQLFlowDSConfig, SQLFlowDataSource)
 
         db_conf = {
             'driver': 'mysql',
@@ -116,13 +117,13 @@ class TestSqlFlowDataSource(TestCase):
             return
 
         ds = self._ds_builder(True)
-        assert isinstance(ds, SqlFlowDataSource)
+        assert isinstance(ds, SQLFlowDataSource)
         assert ds._label_offset == 3
         assert ds._group_offset == 4
         assert ds._weight_offset == 5
 
         ds = self._ds_builder(False)
-        assert isinstance(ds, SqlFlowDataSource)
+        assert isinstance(ds, SQLFlowDataSource)
         assert ds._append_indices == [3, 4, 1]
 
     def test_read(self):

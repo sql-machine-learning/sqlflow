@@ -49,12 +49,12 @@ func TestPartials(t *testing.T) {
 	a.Equal(filler.Objective, "reg:linear")
 
 	// test uIntPartial
-	part = uIntPartial("workers", func(r *xgboostFiller) *uint { return &(r.WorkerNum) })
-	tmpMap["workers"] = []string{"10"}
+	part = uIntPartial("num_class", func(r *xgboostFiller) *uint { return &(r.NumClass) })
+	tmpMap["num_class"] = []string{"3"}
 	e = part(&tmpMap, filler)
 	a.NoError(e)
-	a.EqualValues(filler.WorkerNum, 10)
-	_, ok = tmpMap["workers"]
+	a.EqualValues(filler.NumClass, 3)
+	_, ok = tmpMap["num_class"]
 	a.Equal(ok, false)
 
 	// test fp32Partial
@@ -67,25 +67,25 @@ func TestPartials(t *testing.T) {
 	a.Equal(ok, false)
 
 	// test boolPartial
-	part = boolPartial("run_local", func(r *xgboostFiller) *bool { return &(r.runLocal) })
-	tmpMap["run_local"] = []string{"false"}
+	part = boolPartial("auto_train", func(r *xgboostFiller) *bool { return &(r.AutoTrain) })
+	tmpMap["auto_train"] = []string{"false"}
 	e = part(&tmpMap, filler)
 	a.NoError(e)
-	a.Equal(filler.runLocal, false)
-	_, ok = tmpMap["run_local"]
+	a.Equal(filler.AutoTrain, false)
+	_, ok = tmpMap["auto_train"]
 	a.Equal(ok, false)
-	tmpMap["run_local"] = []string{"true"}
+	tmpMap["auto_train"] = []string{"true"}
 	e = part(&tmpMap, filler)
 	a.NoError(e)
-	a.Equal(filler.runLocal, true)
+	a.Equal(filler.AutoTrain, true)
 
 	// test sListPartial
-	part = sListPartial("app_col", func(r *xgboostFiller) *[]string { return &(r.AppendColumns) })
-	tmpMap["app_col"] = []string{"AA", "BB", "CC"}
+	part = sListPartial("append_columns", func(r *xgboostFiller) *[]string { return &(r.AppendColumns) })
+	tmpMap["append_columns"] = []string{"AA", "BB", "CC"}
 	e = part(&tmpMap, filler)
 	a.NoError(e)
 	a.EqualValues(filler.AppendColumns, []string{"AA", "BB", "CC"})
-	_, ok = tmpMap["app_col"]
+	_, ok = tmpMap["append_columns"]
 	a.Equal(ok, false)
 }
 
@@ -97,15 +97,19 @@ func TestXGBoostAttr(t *testing.T) {
 	}
 	parser := newParser()
 
-	filler := &xgboostFiller{}
-	testClause := `
+	parseAndFill := func(clause string) *xgboostFiller {
+		filler := &xgboostFiller{}
+		r, e := parser.Parse(clause)
+		a.NoError(e)
+		e = xgParseAttr(r, filler)
+		a.NoError(e)
+		return filler
+	}
+
+	trainClause := `
 SELECT a, b, c, d, e FROM table_xx
 TRAIN XGBoostEstimator
 WITH
-	run_local = true,
-	workers = 11,
-	memory = 8192,
-	cpu = 4,
 	objective = "binary:logistic",
 	booster = gblinear,
 	num_class = 2,
@@ -118,20 +122,11 @@ WITH
 	max_bin = 128,
 	verbosity = 3,
 	num_round = 300,
-	auto_train = true,
-	detail_column = "prediction_detail",
-	prob_column = "prediction_probability",
-	encoding_column = "prediction_leafs",
-	result_column = "prediction_results",
-	append_columns = ["AA", "BB", "CC"]
+	auto_train = true
 COLUMN a, b, c, d
-LABEL e INTO model_table;
+LABEL e INTO table_123;
 `
-	r, e := parser.Parse(testClause)
-	a.NoError(e)
-	e = xgParseAttr(r, filler)
-	a.NoError(e)
-
+	filler := parseAndFill(trainClause)
 	data, e := json.Marshal(filler.xgboostFields)
 	a.NoError(e)
 	mapData := make(map[string]interface{})
@@ -153,26 +148,23 @@ LABEL e INTO model_table;
 	assertEq(mapData, "num_boost_round", 300)
 	assertEq(mapData, "auto_train", true)
 
-	data, e = json.Marshal(filler.xgColumnFields)
-	a.NoError(e)
-	mapData = make(map[string]interface{})
-	e = json.Unmarshal(data, &mapData)
-	a.NoError(e)
-	ret, _ := mapData["result_columns"]
-	retMap, _ := ret.(map[string]interface{})
-	assertEq(retMap, "result_column", "prediction_results")
-	assertEq(retMap, "probability_column", "prediction_probability")
-	assertEq(retMap, "detail_column", "prediction_detail")
-	assertEq(retMap, "leaf_column", "prediction_leafs")
-	assertEq(mapData, "append_columns", []interface{}{"AA", "BB", "CC"})
-
-	data, e = json.Marshal(filler.xgRuntimeResourceFields)
-	mapData = make(map[string]interface{})
-	e = json.Unmarshal(data, &mapData)
-	a.NoError(e)
-	assertEq(mapData, "worker_num", 11)
-	assertEq(mapData, "memory_size", 8192)
-	assertEq(mapData, "cpu_size", 4)
+	predClause := `
+SELECT a, b, c, d, e FROM table_xx
+PREDICT table_yy
+WITH
+	detail_column = "prediction_detail",
+	prob_column = "prediction_probability",
+	encoding_column = "prediction_leafs",
+	result_column = "prediction_results",
+	append_columns = ["AA", "BB", "CC"]
+USING sqlflow_models.my_xgboost_model;
+`
+	filler = parseAndFill(predClause)
+	a.EqualValues([]string{"AA", "BB", "CC"}, filler.AppendColumns)
+	a.EqualValues("prediction_probability", filler.ProbColumn)
+	a.EqualValues("prediction_results", filler.ResultColumn)
+	a.EqualValues("prediction_detail", filler.DetailColumn)
+	a.EqualValues("prediction_leafs", filler.EncodingColumn)
 }
 
 func TestColumnClause(t *testing.T) {
@@ -285,33 +277,30 @@ LABEL e INTO model_table;
 
 func TestXGBoostFiller(t *testing.T) {
 	a := assert.New(t)
+
 	parser := newParser()
-	testClause := `
+	trainClause := `
 SELECT * FROM iris.train
 TRAIN XGBoostRegressor
 WITH
-	run_local = true,
 	max_depth = 5,
 	eta = 0.03,
 	tree_method = "hist",
-	num_round = 300,
-	append_columns = ["A", B, "C"]
+	num_round = 300
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 COLUMN gg FOR group 
 COLUMN ww FOR weight
 LABEL e INTO model_table;
 `
-	pr, e := parser.Parse(testClause)
+	pr, e := parser.Parse(trainClause)
 	a.NoError(e)
 	fts, e := verify(pr, testDB)
 	a.NoError(e)
 	filler, e := newXGBoostFiller(pr, fts, testDB)
 	a.NoError(e)
 
-	a.True(filler.isTrain)
-	a.True(filler.runLocal)
-	stdSlct := strings.Replace(filler.standardSelect, "\n", " ", -1)
-	stdSlct = removeLastSemicolon(stdSlct)
+	a.True(filler.IsTrain)
+	stdSlct := removeLastSemicolon(strings.Replace(filler.StandardSelect, "\n", " ", -1))
 	a.EqualValues("SELECT * FROM iris.train", stdSlct)
 	a.EqualValues("model_table", filler.modelPath)
 
@@ -320,7 +309,6 @@ LABEL e INTO model_table;
 	a.EqualValues(5, filler.MaxDepth)
 	a.EqualValues("hist", filler.TreeMethod)
 	a.EqualValues(300, filler.NumRound)
-	a.EqualValues([]string{"A", "B", "C"}, filler.AppendColumns)
 
 	a.EqualValues("e", filler.Label)
 	a.EqualValues("e", filler.LabelField.FeatureName)
@@ -338,4 +326,17 @@ LABEL e INTO model_table;
 	a.EqualValues(&xgFeatureMeta{FeatureName: "sepal_width", Dtype: "float32", InputShape: "[1]"}, filler.X[1])
 	a.EqualValues(&xgFeatureMeta{FeatureName: "petal_length", Dtype: "float32", InputShape: "[1]"}, filler.X[2])
 	a.EqualValues(&xgFeatureMeta{FeatureName: "petal_width", Dtype: "float32", InputShape: "[1]"}, filler.X[3])
+
+	colFields := &xgColumnFields{}
+	e = json.Unmarshal([]byte(filler.xgColumnJSON), colFields)
+	a.NoError(e)
+	a.EqualValues(filler.xgColumnFields, *colFields)
+	dsFields := &xgDataSourceFields{}
+	e = json.Unmarshal([]byte(filler.xgDataSourceJSON), dsFields)
+	a.NoError(e)
+	a.EqualValues(filler.xgDataSourceFields, *dsFields)
+	xgbFields := &xgboostFields{}
+	e = json.Unmarshal([]byte(filler.xgboostJSON), xgbFields)
+	a.NoError(e)
+	a.EqualValues(filler.xgboostFields, *xgbFields)
 }
