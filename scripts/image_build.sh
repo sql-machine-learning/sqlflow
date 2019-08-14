@@ -114,4 +114,4 @@ echo 'get_ipython().magic(u"%autoreload 2")' >> $IPYTHON_STARTUP/00-first.py
 curl https://raw.githubusercontent.com/sql-machine-learning/sqlflow/develop/example/jupyter/example.ipynb --output /workspace/example.ipynb
 
 # 9. install xgboost-launcher
-pip install xgboost-launcher==0.0.1
+pip install xgboost-launcher==0.0.3
