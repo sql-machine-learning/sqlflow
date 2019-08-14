@@ -138,9 +138,8 @@ func TestStandardSQL(t *testing.T) {
 	})
 	a.NotPanics(func() {
 		stream := runStandardSQL("SELECT * FROM iris.iris_empty LIMIT 10;", testDB)
-		stat, errString := goodStream(stream.ReadAll())
-		a.False(stat)
-		fmt.Println(errString)
+		stat, _ := goodStream(stream.ReadAll())
+		a.True(stat)
 	})
 }
 
