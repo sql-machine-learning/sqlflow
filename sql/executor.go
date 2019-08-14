@@ -30,10 +30,12 @@ import (
 func Run(slct string, db *DB, modelDir string, session *pb.Session) *PipeReader {
 	splitedSQL, err := splitExtendedSQL(slct)
 	if err != nil {
-		// return the lexer error message to client side
 		rd, wr := Pipe()
-		defer wr.Close()
-		wr.Write(fmt.Sprintf("%v", err))
+		// return the lexer error message to client side
+		go func() {
+			defer wr.Close()
+			wr.Write(fmt.Sprintf("%v", err))
+		}()
 		return rd
 	}
 	if len(splitedSQL) == 2 {
@@ -65,9 +67,9 @@ func splitExtendedSQL(slct string) ([]string, error) {
 	var typ []int
 	var pos []int
 	for {
-		t, err := l.Lex(&n)
-		if err != nil {
-			return []string{}, err
+		t := l.Lex(&n)
+		if t < 0 {
+			return []string{}, fmt.Errorf("Lex: Unknown problem %s", slct[0-t:])
 		}
 		if t == 0 {
 			break

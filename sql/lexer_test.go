@@ -23,7 +23,7 @@ func TestNewLexer(t *testing.T) {
 	a := assert.New(t)
 	l := newLexer("")
 	var n sqlSymType
-	ret, err := l.Lex(&n)
+	ret := l.Lex(&n)
 	a.Equal(0, ret)
 }
 
@@ -55,8 +55,7 @@ func TestLexNumber(t *testing.T) {
 	a := assert.New(t)
 	l := newLexer("123.4")
 	var n sqlSymType
-	ret, err := l.Lex(&n)
-	a.Equal(NUMBER, ret)
+	a.Equal(NUMBER, l.Lex(&n))
 	a.Equal("123.4", n.val)
 
 	l = newLexer("[5,10]")
@@ -64,7 +63,7 @@ func TestLexNumber(t *testing.T) {
 	vals := []string{"[", "5", ",", "10", "]"}
 	i := 0
 	for {
-		typ, err := l.Lex(&n)
+		typ := l.Lex(&n)
 		if typ == 0 {
 			break
 		}
@@ -78,8 +77,7 @@ func TestLexString(t *testing.T) {
 	a := assert.New(t)
 	l := newLexer(`  "\""  `)
 	var n sqlSymType
-	ret, err := l.Lex(&n)
-	a.Equal(STRING, ret)
+	a.Equal(STRING, l.Lex(&n))
 	a.Equal(`"\""`, n.val)
 }
 
@@ -96,7 +94,7 @@ func TestLexOperator(t *testing.T) {
 	i := 0
 	var n sqlSymType
 	for {
-		typ, err := l.Lex(&n)
+		typ := l.Lex(&n)
 		if typ == 0 {
 			break
 		}
@@ -115,8 +113,7 @@ func TestLexIdentOrKeyword(t *testing.T) {
 	var n sqlSymType
 	for i, it := range vals {
 		l := newLexer(it)
-		ret, err := l.Lex(&n)
-		a.Equal(typs[i], ret)
+		a.Equal(typs[i], l.Lex(&n))
 		a.Equal(vals[i], n.val)
 	}
 }
@@ -131,8 +128,7 @@ func TestLexSQL(t *testing.T) {
 		"a_table.col_1", ">", "100", ";"}
 	var n sqlSymType
 	for i := range typs {
-		ret, err := l.Lex(&n)
-		a.Equal(typs[i], ret)
+		a.Equal(typs[i], l.Lex(&n))
 		a.Equal(vals[i], n.val)
 	}
 }
@@ -159,8 +155,7 @@ AND b IS NOT NULL AND b != "-" and COALESCE(d, "-")<>"-";`)
 		"COALESCE", "(", "d", ",", "\"-\"", ")", "<>", "\"-\"", ";"}
 
 	for i := range typs {
-		ret, err := l.Lex(&n)
-		a.Equal(typs[i], ret)
+		a.Equal(typs[i], l.Lex(&n))
 		a.Equal(vals[i], n.val)
 	}
 }
@@ -179,8 +174,7 @@ WHERE b='20190806';`)
 		"WHERE", "b", "=", "'20190806'", ";"}
 
 	for i := range typs {
-		ret, err := l.Lex(&n)
-		a.Equal(typs[i], ret)
+		a.Equal(typs[i], l.Lex(&n))
 		a.Equal(vals[i], n.val)
 	}
 }
