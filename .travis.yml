@@ -3,7 +3,7 @@ language: go
 branches:
   only:
   - gh-pages
-  - "/.*/"
+  - develop
 service:
   - docker
 
