@@ -21,12 +21,12 @@ import (
 
 func TestCreateTrainAndValDataset(t *testing.T) {
 	a := assert.New(t)
-	_, e := newTrainAndValDataset(testDB, testTrainAndValDataset, 1)
+	_, e := newTrainAndValDataset(testDB, testTrainAndValDataset, "orig", 1)
 	a.Error(e)
-	_, e = newTrainAndValDataset(testDB, testTrainAndValDataset, 0)
+	_, e = newTrainAndValDataset(testDB, testTrainAndValDataset, "orig", 0)
 	a.Error(e)
 
-	ds, e := newTrainAndValDataset(testDB, testTrainAndValDataset, 0.8)
+	ds, e := newTrainAndValDataset(testDB, testTrainAndValDataset, "orig", 0.8)
 	a.NoError(e)
 	if testDB.driverName == "maxcompute" {
 		a.True(ds.supported)

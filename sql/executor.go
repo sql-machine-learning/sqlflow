@@ -264,7 +264,7 @@ func runExtendedSQL(slct string, db *DB, modelDir string, session *pb.Session) *
 
 			if pr.train {
 				// TODO(weiguo): fix the hard code 0.8
-				ds, e := newTrainAndValDataset(db, pr.standardSelect.String(), 0.8)
+				ds, e := newTrainAndValDataset(db, pr.standardSelect.String(), pr.standardSelect.tables[0], 0.8)
 				if e != nil {
 					return e
 				}
