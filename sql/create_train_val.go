@@ -33,24 +33,25 @@ type trainAndValDataset struct {
 const (
 	temporaryTableLifecycle = 14 // day(s)
 	randomColumn            = "sqlflow_rdm"
-	tablePrefix             = "sqlflow_tv_" // 'tv' = training & validation
-	trainingPrefix          = "sqlflow_training_"
-	validationPrefix        = "sqlflow_validation_"
+	tablePrefix             = "sqlflow_tv" // 'tv' = training & validation
+	trainingPrefix          = "sqlflow_training"
+	validationPrefix        = "sqlflow_validation"
+	suffix                  = "sqlflow"
 )
 
 var (
 	errBadBoundary = errors.New("boundary should between (0.0, 1.0) exclude")
 )
 
-// SQLFlow generates a temporary table, + sqlflow_randowm column
-func newTrainAndValDataset(db *DB, slct string, trainingUpperbound float32) (*trainAndValDataset, error) {
+// newTrainAndValDataset generates a temporary table, + sqlflow_randowm column
+func newTrainAndValDataset(db *DB, slct string, origTable string, trainingUpperbound float32) (*trainAndValDataset, error) {
 	if trainingUpperbound <= 0 || trainingUpperbound >= 1 {
 		return nil, errBadBoundary
 	}
 
 	switch db.driverName {
 	case "maxcompute":
-		return createMaxcomputeDataset(db, slct, trainingUpperbound)
+		return createMaxcomputeDataset(db, slct, origTable, trainingUpperbound)
 		// TODO(weiguo): support other databases, like: "hive", "mysql"...
 	default:
 		return nil, nil
@@ -61,8 +62,14 @@ func releaseTrainAndValDataset(ds *trainAndValDataset) {
 	// TODO(weiguo): release resources for databases, like: "hive", "mysql"...
 }
 
-func createMaxcomputeDataset(db *DB, slct string, trainingUpperbound float32) (*trainAndValDataset, error) {
-	ds := namingTrainAndValDataset()
+func createMaxcomputeDataset(db *DB, slct string, origTable string, trainingUpperbound float32) (*trainAndValDataset, error) {
+	ds := namingTrainAndValDataset(origTable)
+	// drop the table if already exist
+	dropStmt := fmt.Sprintf("DROP TABLE IF EXISTS %s;", ds.table)
+	if _, e := db.Exec(dropStmt); e != nil {
+		log.Errorf("drop temporary table failed, stmt:[%s], err:%v", dropStmt, e)
+		return nil, e
+	}
 	// create a table, then split it into train and val tables
 	stmt := fmt.Sprintf("CREATE TABLE %s LIFECYCLE %d AS SELECT *, RAND() AS %s FROM (%s) AS %s_ori", ds.table, temporaryTableLifecycle, randomColumn, slct, ds.table)
 	if _, e := db.Exec(stmt); e != nil {
@@ -81,6 +88,12 @@ func createMaxcomputeDataset(db *DB, slct string, trainingUpperbound float32) (*
 }
 
 func createMaxcomputeTable(target, origin string, db *DB, cond string) error {
+	// drop the table if already exist
+	dropStmt := fmt.Sprintf("DROP TABLE IF EXISTS %s;", target)
+	if _, e := db.Exec(dropStmt); e != nil {
+		log.Errorf("drop temporary table failed, stmt:[%s], err:%v", dropStmt, e)
+		return e
+	}
 	stmt := fmt.Sprintf("CREATE TABLE %s LIFECYCLE %d AS SELECT * FROM %s WHERE %s", target, temporaryTableLifecycle, origin, cond)
 	if _, e := db.Exec(stmt); e != nil {
 		log.Errorf("create table failed, stmt:[%s], err:%v", stmt, e)
@@ -89,12 +102,11 @@ func createMaxcomputeTable(target, origin string, db *DB, cond string) error {
 	return nil
 }
 
-func namingTrainAndValDataset() *trainAndValDataset {
-	suffix := "sqlflow"
+func namingTrainAndValDataset(origTable string) *trainAndValDataset {
 	return &trainAndValDataset{
 		supported:  true,
-		table:      fmt.Sprintf("%s_%s", tablePrefix, suffix),
-		training:   fmt.Sprintf("%s_%s", trainingPrefix, suffix),
-		validation: fmt.Sprintf("%s_%s", validationPrefix, suffix),
+		table:      fmt.Sprintf("%s_%s_%s", tablePrefix, origTable, suffix),
+		training:   fmt.Sprintf("%s_%s_%s", trainingPrefix, origTable, suffix),
+		validation: fmt.Sprintf("%s_%s_%s", validationPrefix, origTable, suffix),
 	}
 }
