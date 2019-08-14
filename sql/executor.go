@@ -28,7 +28,15 @@ import (
 
 // Run executes a SQL query and returns a stream of rows or messages
 func Run(slct string, db *DB, modelDir string, session *pb.Session) *PipeReader {
-	if len(splitExtendedSQL(slct)) == 2 {
+	splitedSQL, err := splitExtendedSQL(slct)
+	if err != nil {
+		// return the lexer error message to client side
+		rd, wr := Pipe()
+		defer wr.Close()
+		wr.Write(fmt.Sprintf("%v", err))
+		return rd
+	}
+	if len(splitedSQL) == 2 {
 		return runExtendedSQL(slct, db, modelDir, session)
 	}
 	return runStandardSQL(slct, db)
@@ -51,13 +59,16 @@ func Run(slct string, db *DB, modelDir string, session *pb.Session) *PipeReader 
 //   "select ..."
 // output:
 //   ["select ..."]
-func splitExtendedSQL(slct string) []string {
+func splitExtendedSQL(slct string) ([]string, error) {
 	l := newLexer(slct)
 	var n sqlSymType
 	var typ []int
 	var pos []int
 	for {
-		t := l.Lex(&n)
+		t, err := l.Lex(&n)
+		if err != nil {
+			return []string{}, err
+		}
 		if t == 0 {
 			break
 		}
@@ -68,11 +79,11 @@ func splitExtendedSQL(slct string) []string {
 		if (typ[i] == TRAIN && typ[i+1] == IDENT && typ[i+2] == WITH) ||
 			(typ[i] == PREDICT && typ[i+1] == IDENT && typ[i+2] == USING) ||
 			(typ[i] == PREDICT && typ[i+1] == IDENT && typ[i+2] == WITH) {
-			return []string{slct[:pos[i-1]], slct[pos[i-1]:]}
+			return []string{slct[:pos[i-1]], slct[pos[i-1]:]}, nil
 		}
 	}
 
-	return []string{slct}
+	return []string{slct}, nil
 }
 
 // TODO(weiguo): isQuery is a hacky way to decide which API to call:

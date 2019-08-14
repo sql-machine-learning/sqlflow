@@ -465,7 +465,7 @@ var (
 )
 
 type sqlLexer interface {
-	Lex(lval *sqlSymType) int
+	Lex(lval *sqlSymType) (int, error)
 	Error(s string)
 }
 

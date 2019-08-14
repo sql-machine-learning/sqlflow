@@ -23,7 +23,8 @@ func TestNewLexer(t *testing.T) {
 	a := assert.New(t)
 	l := newLexer("")
 	var n sqlSymType
-	a.Equal(0, l.Lex(&n))
+	ret, err := l.Lex(&n)
+	a.Equal(0, ret)
 }
 
 func TestNextAndBackup(t *testing.T) {
@@ -54,14 +55,19 @@ func TestLexNumber(t *testing.T) {
 	a := assert.New(t)
 	l := newLexer("123.4")
 	var n sqlSymType
-	a.Equal(NUMBER, l.Lex(&n))
+	ret, err := l.Lex(&n)
+	a.Equal(NUMBER, ret)
 	a.Equal("123.4", n.val)
 
 	l = newLexer("[5,10]")
 	typs := []int{'[', NUMBER, ',', NUMBER, ']'}
 	vals := []string{"[", "5", ",", "10", "]"}
 	i := 0
-	for typ := l.Lex(&n); typ != 0; typ = l.Lex(&n) {
+	for {
+		typ, err := l.Lex(&n)
+		if typ == 0 {
+			break
+		}
 		a.Equal(typs[i], typ)
 		a.Equal(vals[i], n.val)
 		i++
@@ -72,7 +78,8 @@ func TestLexString(t *testing.T) {
 	a := assert.New(t)
 	l := newLexer(`  "\""  `)
 	var n sqlSymType
-	a.Equal(STRING, l.Lex(&n))
+	ret, err := l.Lex(&n)
+	a.Equal(STRING, ret)
 	a.Equal(`"\""`, n.val)
 }
 
@@ -88,7 +95,11 @@ func TestLexOperator(t *testing.T) {
 		"{", "}", "<", "<=", "=", ",", ";"}
 	i := 0
 	var n sqlSymType
-	for typ := l.Lex(&n); typ != 0; typ = l.Lex(&n) {
+	for {
+		typ, err := l.Lex(&n)
+		if typ == 0 {
+			break
+		}
 		a.Equal(typs[i], typ)
 		a.Equal(vals[i], n.val)
 		i++
@@ -104,7 +115,8 @@ func TestLexIdentOrKeyword(t *testing.T) {
 	var n sqlSymType
 	for i, it := range vals {
 		l := newLexer(it)
-		a.Equal(typs[i], l.Lex(&n))
+		ret, err := l.Lex(&n)
+		a.Equal(typs[i], ret)
 		a.Equal(vals[i], n.val)
 	}
 }
@@ -119,7 +131,8 @@ func TestLexSQL(t *testing.T) {
 		"a_table.col_1", ">", "100", ";"}
 	var n sqlSymType
 	for i := range typs {
-		a.Equal(typs[i], l.Lex(&n))
+		ret, err := l.Lex(&n)
+		a.Equal(typs[i], ret)
 		a.Equal(vals[i], n.val)
 	}
 }
@@ -146,7 +159,8 @@ AND b IS NOT NULL AND b != "-" and COALESCE(d, "-")<>"-";`)
 		"COALESCE", "(", "d", ",", "\"-\"", ")", "<>", "\"-\"", ";"}
 
 	for i := range typs {
-		a.Equal(typs[i], l.Lex(&n))
+		ret, err := l.Lex(&n)
+		a.Equal(typs[i], ret)
 		a.Equal(vals[i], n.val)
 	}
 }
@@ -165,7 +179,8 @@ WHERE b='20190806';`)
 		"WHERE", "b", "=", "'20190806'", ";"}
 
 	for i := range typs {
-		a.Equal(typs[i], l.Lex(&n))
+		ret, err := l.Lex(&n)
+		a.Equal(typs[i], ret)
 		a.Equal(vals[i], n.val)
 	}
 }

@@ -14,6 +14,7 @@
 package sql
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 	"unicode"
@@ -76,23 +77,22 @@ func (l *lexer) skipSpaces() {
 	l.start = l.pos
 }
 
-func (l *lexer) Lex(lval *sqlSymType) int {
+func (l *lexer) Lex(lval *sqlSymType) (int, error) {
 	l.skipSpaces()
 	r := l.peek()
 	switch {
 	case unicode.IsLetter(r):
-		return l.lexIdentOrKeyword(lval)
+		return l.lexIdentOrKeyword(lval), nil
 	case unicode.IsDigit(r):
-		return l.lexNumber(lval)
+		return l.lexNumber(lval), nil
 	case r == '"' || r == '\'':
-		return l.lexString(lval)
+		return l.lexString(lval), nil
 	case strings.IndexRune("+-*/%<>=()[]{},;!", r) >= 0:
-		return l.lexOperator(lval)
+		return l.lexOperator(lval), nil
 	case r == eof:
-		return 0 // indicate the end of lexing.
+		return 0, nil // indicate the end of lexing.
 	}
-	log.Panicf("Lex: Unknown problem %s", l.input[l.start:])
-	return -1 // indicate an error
+	return -1, fmt.Errorf("Lex: Unknown problem %s", l.input[l.start:])
 }
 
 func (l *lexer) lexIdentOrKeyword(lval *sqlSymType) int {

@@ -138,6 +138,12 @@ func TestStandardSQL(t *testing.T) {
 	})
 }
 
+func TestSQLLexerError(t *testing.T) {
+	a := assert.New(t)
+	stream := runStandardSQL("SELECT * FROM AS WHERE LIMIT;", testDB)
+	fmt.Println(stream.ReadAll())
+}
+
 func TestCreatePredictionTable(t *testing.T) {
 	a := assert.New(t)
 	trainParsed, e := newParser().Parse(testTrainSelectIris)
