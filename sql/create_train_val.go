@@ -36,7 +36,6 @@ const (
 	tablePrefix             = "sqlflow_tv" // 'tv' = training & validation
 	trainingPrefix          = "sqlflow_training"
 	validationPrefix        = "sqlflow_validation"
-	suffix                  = "sqlflow"
 )
 
 var (
@@ -105,8 +104,8 @@ func createMaxcomputeTable(target, origin string, db *DB, cond string) error {
 func namingTrainAndValDataset(origTable string) *trainAndValDataset {
 	return &trainAndValDataset{
 		supported:  true,
-		table:      fmt.Sprintf("%s_%s_%s", tablePrefix, origTable, suffix),
-		training:   fmt.Sprintf("%s_%s_%s", trainingPrefix, origTable, suffix),
-		validation: fmt.Sprintf("%s_%s_%s", validationPrefix, origTable, suffix),
+		table:      fmt.Sprintf("%s_%s", tablePrefix, origTable),
+		training:   fmt.Sprintf("%s_%s", trainingPrefix, origTable),
+		validation: fmt.Sprintf("%s_%s", validationPrefix, origTable),
 	}
 }
