@@ -411,7 +411,7 @@ func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir strin
 		if e != nil {
 			return fmt.Errorf("genXG %v", e)
 		}
-		if e:= xgCreatePredictionTable(pr, filler, db); e!= nil {
+		if e := xgCreatePredictionTable(pr, filler, db); e != nil {
 			return fmt.Errorf("genXG %v", e)
 		}
 		if e := xgTemplate.Execute(&buf, filler); e != nil {
