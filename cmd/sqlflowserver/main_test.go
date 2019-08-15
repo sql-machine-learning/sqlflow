@@ -243,17 +243,18 @@ func TestEnd2EndMySQL(t *testing.T) {
 		t.Fatalf("prepare test dataset failed: %v", err)
 	}
 
-	t.Run("TestShowDatabases", CaseShowDatabases)
-	t.Run("TestSelect", CaseSelect)
-	t.Run("TestTrainSQL", CaseTrainSQL)
-	t.Run("TestTextClassification", CaseTrainTextClassification)
-	t.Run("CaseTrainTextClassificationCustomLSTM", CaseTrainTextClassificationCustomLSTM)
-	t.Run("CaseTrainCustomModel", CaseTrainCustomModel)
-	t.Run("CaseTrainSQLWithHyperParams", CaseTrainSQLWithHyperParams)
-	t.Run("CaseTrainCustomModelWithHyperParams", CaseTrainCustomModelWithHyperParams)
-	t.Run("CaseSparseFeature", CaseSparseFeature)
-	t.Run("CaseSQLByPassLeftJoin", CaseSQLByPassLeftJoin)
-	t.Run("CaseTrainRegression", CaseTrainRegression)
+	t.Run("CaseConcurrentJobs", CaseConcurrentJobs)
+	//t.Run("TestShowDatabases", CaseShowDatabases)
+	//t.Run("TestSelect", CaseSelect)
+	//t.Run("TestTrainSQL", CaseTrainSQL)
+	//t.Run("TestTextClassification", CaseTrainTextClassification)
+	//t.Run("CaseTrainTextClassificationCustomLSTM", CaseTrainTextClassificationCustomLSTM)
+	//t.Run("CaseTrainCustomModel", CaseTrainCustomModel)
+	//t.Run("CaseTrainSQLWithHyperParams", CaseTrainSQLWithHyperParams)
+	//t.Run("CaseTrainCustomModelWithHyperParams", CaseTrainCustomModelWithHyperParams)
+	//t.Run("CaseSparseFeature", CaseSparseFeature)
+	//t.Run("CaseSQLByPassLeftJoin", CaseSQLByPassLeftJoin)
+	//t.Run("CaseTrainRegression", CaseTrainRegression)
 }
 
 func TestEnd2EndHive(t *testing.T) {
@@ -353,6 +354,52 @@ func TestEnd2EndMaxComputeALPS(t *testing.T) {
 	t.Run("CaseTrainALPS", CaseTrainALPS)
 	t.Run("CaseTrainALPSFeatureMap", CaseTrainALPSFeatureMap)
 	t.Run("CaseTrainALPSRemoteModel", CaseTrainALPSRemoteModel)
+}
+
+func timeIt(start time.Time, name string) {
+	e := time.Since(start)
+	log.Printf("%s took %s", name, e)
+}
+
+func CaseConcurrentJobs(t *testing.T) {
+	a := assert.New(t)
+	conn, err := createRPCConn()
+
+	a.NoError(err)
+	defer conn.Close()
+	cli := pb.NewSQLFlowClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	numberJobs := 2
+	done := make(chan bool)
+	for i := 0; i < numberJobs; i++ {
+		go func(i int) {
+			defer timeIt(time.Now(), "longSQL")
+			//cmd := `select sleep(5);`
+			cmd := fmt.Sprintf(`SELECT *
+FROM iris.train
+TRAIN DNNClassifier
+WITH
+  n_classes = 3,
+  hidden_units = [10, 20]
+COLUMN sepal_length, sepal_width, petal_length, petal_width
+LABEL class
+INTO sqlflow_models.my_dnn_model%d;`, i)
+			stream, err := cli.Run(ctx, sqlRequest(cmd))
+			if err != nil {
+				a.Fail("Check if the server started successfully. %v", err)
+			}
+			head, rows := ParseRow(stream)
+			fmt.Println(head)
+			fmt.Println(rows)
+			done <- true
+		}(i)
+	}
+	for i := 0; i < numberJobs; i++ {
+		<-done
+	}
 }
 
 func CaseShowDatabases(t *testing.T) {
