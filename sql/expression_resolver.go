@@ -57,32 +57,33 @@ type gitLabModule struct {
 }
 
 type resolvedTrainClause struct {
-	IsPreMadeModel                bool
-	ModelName                     string
-	ModelConstructorParams        map[string]*attribute
-	BatchSize                     int
-	EvalBatchSize                 int
-	DropRemainder                 bool
-	EnableCache                   bool
-	CachePath                     string
-	Epoch                         int
-	Shard                         int
-	EnableShuffle                 bool
-	ShuffleBufferSize             int
-	MaxSteps                      int
-	GradsToWait                   int
-	TensorboardLogDir             string
-	CheckpointSteps               int
-	CheckpointDir                 string
-	KeepCheckpointMax             int
-	EvalSteps                     int
-	EvalStartDelay                int
-	EvalThrottle                  int
-	EvalCheckpointFilenameForInit string
-	FeatureColumns                map[string][]featureColumn
-	ColumnSpecs                   map[string][]*columnSpec
-	EngineParams                  engineSpec
-	CustomModule                  *gitLabModule
+	IsPreMadeModel                   bool
+	ModelName                        string
+	ModelConstructorParams           map[string]*attribute
+	BatchSize                        int
+	EvalBatchSize                    int
+	DropRemainder                    bool
+	EnableCache                      bool
+	CachePath                        string
+	Epoch                            int
+	Shard                            int
+	EnableShuffle                    bool
+	ShuffleBufferSize                int
+	MaxSteps                         int
+	GradsToWait                      int
+	TensorboardLogDir                string
+	CheckpointSteps                  int
+	CheckpointDir                    string
+	KeepCheckpointMax                int
+	EvalSteps                        int
+	EvalStartDelay                   int
+	EvalThrottle                     int
+	EvalCheckpointFilenameForInit    string
+	PredictCheckpointFilenameForInit string
+	FeatureColumns                   map[string][]featureColumn
+	ColumnSpecs                      map[string][]*columnSpec
+	EngineParams                     engineSpec
+	CustomModule                     *gitLabModule
 }
 
 // featureColumn is an interface that all types of feature columns and
@@ -298,6 +299,8 @@ func resolveTrainClause(tc *trainClause) (*resolvedTrainClause, error) {
 	evalThrottleSecs := getIntAttr("eval.throttle_secs", 600)
 	evalCheckpointFilenameForInit := getStringAttr("eval.checkpoint_filename_for_init", "")
 
+	predictCheckpointFilenameForInit := getStringAttr("predict.checkpoint_filename_for_init", "")
+
 	customModel := func() *gitLabModule {
 		if preMadeModel == false {
 			project := getStringAttr("gitlab_project", "")
@@ -335,32 +338,33 @@ func resolveTrainClause(tc *trainClause) (*resolvedTrainClause, error) {
 	}
 
 	return &resolvedTrainClause{
-		IsPreMadeModel:                preMadeModel,
-		ModelName:                     modelName,
-		ModelConstructorParams:        modelParams,
-		BatchSize:                     batchSize,
-		EvalBatchSize:                 evalBatchSize,
-		DropRemainder:                 dropRemainder,
-		EnableCache:                   enableCache,
-		CachePath:                     cachePath,
-		Epoch:                         epoch,
-		Shard:                         shard,
-		EnableShuffle:                 enableShuffle,
-		ShuffleBufferSize:             shuffleBufferSize,
-		MaxSteps:                      maxSteps,
-		GradsToWait:                   gradsToWait,
-		TensorboardLogDir:             tensorboardLogDir,
-		CheckpointSteps:               checkpointSteps,
-		CheckpointDir:                 checkpointDir,
-		KeepCheckpointMax:             keepCheckpointMax,
-		EvalSteps:                     evalSteps,
-		EvalStartDelay:                evalStartDecaySecs,
-		EvalThrottle:                  evalThrottleSecs,
-		EvalCheckpointFilenameForInit: evalCheckpointFilenameForInit,
-		FeatureColumns:                fcMap,
-		ColumnSpecs:                   csMap,
-		EngineParams:                  getEngineSpec(engineParams),
-		CustomModule:                  customModel}, nil
+		IsPreMadeModel:                   preMadeModel,
+		ModelName:                        modelName,
+		ModelConstructorParams:           modelParams,
+		BatchSize:                        batchSize,
+		EvalBatchSize:                    evalBatchSize,
+		DropRemainder:                    dropRemainder,
+		EnableCache:                      enableCache,
+		CachePath:                        cachePath,
+		Epoch:                            epoch,
+		Shard:                            shard,
+		EnableShuffle:                    enableShuffle,
+		ShuffleBufferSize:                shuffleBufferSize,
+		MaxSteps:                         maxSteps,
+		GradsToWait:                      gradsToWait,
+		TensorboardLogDir:                tensorboardLogDir,
+		CheckpointSteps:                  checkpointSteps,
+		CheckpointDir:                    checkpointDir,
+		KeepCheckpointMax:                keepCheckpointMax,
+		EvalSteps:                        evalSteps,
+		EvalStartDelay:                   evalStartDecaySecs,
+		EvalThrottle:                     evalThrottleSecs,
+		EvalCheckpointFilenameForInit:    evalCheckpointFilenameForInit,
+		PredictCheckpointFilenameForInit: predictCheckpointFilenameForInit,
+		FeatureColumns:                   fcMap,
+		ColumnSpecs:                      csMap,
+		EngineParams:                     getEngineSpec(engineParams),
+		CustomModule:                     customModel}, nil
 }
 
 // resolveTrainColumns resolve columns from SQL statement,
