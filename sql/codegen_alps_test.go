@@ -27,7 +27,7 @@ func TestTrainALPSFiller(t *testing.T) {
 	a := assert.New(t)
 	parser := newParser()
 
-	wndStatement := `select dense, deep, wide from kaggle_credit_fraud_training_data 
+	wndStatement := `SELECT dense, deep, wide FROM kaggle_credit_fraud_training_data 
 		TRAIN DNNLinearCombinedClassifier 
 		WITH 
 			model.dnn_hidden_units = [10, 20],
