@@ -28,7 +28,7 @@ import (
 
 // Run executes a SQL query and returns a stream of rows or messages
 func Run(slct string, db *DB, modelDir string, session *pb.Session) *PipeReader {
-	splitedSQL, err := splitExtendedSQL(slct)
+	splittedSQL, err := splitExtendedSQL(slct)
 	if err != nil {
 		rd, wr := Pipe()
 		// return the lexer error message to client side
@@ -38,7 +38,7 @@ func Run(slct string, db *DB, modelDir string, session *pb.Session) *PipeReader 
 		}()
 		return rd
 	}
-	if len(splitedSQL) == 2 {
+	if len(splittedSQL) == 2 {
 		return runExtendedSQL(slct, db, modelDir, session)
 	}
 	return runStandardSQL(slct, db)
