@@ -32,13 +32,13 @@ reader = ODPSReader(
     os.environ[ODPSConfig.ENDPOINT],
     table = "{{.ODPSTableName}}",
     partition = None,
-    num_processes = 4,
+    num_processes = {{.NumProcesses}},
 )
 
 records_iter = reader.to_iterator(
     num_workers = 1,
     worker_index = 0,
-    batch_size = 200,
+    batch_size = {{.BatchSize}},
     epoch = 1,
     shuffle = False,
     columns = COLUMN_NAMES,

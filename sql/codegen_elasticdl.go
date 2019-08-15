@@ -32,6 +32,8 @@ type elasticDLDataConversionFiller struct {
 	FeaturesList    string
 	ODPSTableName   string
 	RecordIODataDir string
+	BatchSize       int
+	NumProcesses    int
 }
 
 type elasticDLFiller struct {
@@ -46,7 +48,7 @@ type elasticDLFiller struct {
 	TrainClause *resolvedTrainClause
 }
 
-func newElasticDLDataConversionFiller(odpsTableName string, featuresList string) (*elasticDLDataConversionFiller, error) {
+func newElasticDLDataConversionFiller(odpsTableName string, featuresList string, batchSize int, numProcesses int) (*elasticDLDataConversionFiller, error) {
 	recordIODataDir, err := ioutil.TempDir("/tmp", "recordio_data_dir_")
 	if err != nil {
 		return nil, err
@@ -55,6 +57,8 @@ func newElasticDLDataConversionFiller(odpsTableName string, featuresList string)
 		FeaturesList:    featuresList,
 		ODPSTableName:   odpsTableName,
 		RecordIODataDir: recordIODataDir,
+		BatchSize:       batchSize,
+		NumProcesses:    numProcesses,
 	}, err
 }
 

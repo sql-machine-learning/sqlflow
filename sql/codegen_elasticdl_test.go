@@ -80,7 +80,7 @@ func TestTrainElasticDLFiller(t *testing.T) {
 func TestElasticDLDataConversionFiller(t *testing.T) {
 	a := assert.New(t)
 	var program bytes.Buffer
-	filler, e := newElasticDLDataConversionFiller("table_name", `["a", "b", "c"]`)
+	filler, e := newElasticDLDataConversionFiller("table_name", `["a", "b", "c"]`, 200, 1)
 	a.NoError(e)
 	e = elasticdlDataConversionTemplate.Execute(&program, filler)
 	a.NoError(e)
@@ -88,4 +88,6 @@ func TestElasticDLDataConversionFiller(t *testing.T) {
 	a.True(strings.Contains(code, `table = "table_name"`), code)
 	a.True(strings.Contains(code, `COLUMN_NAMES = ["a", "b", "c"]`), code)
 	a.True(strings.Contains(code, `output_dir = "/tmp/recordio_data_dir_`), code)
+	a.True(strings.Contains(code, `batch_size = 200`), code)
+	a.True(strings.Contains(code, `num_processes = 1`), code)
 }
