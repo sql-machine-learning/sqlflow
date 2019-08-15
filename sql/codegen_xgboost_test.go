@@ -20,6 +20,35 @@ import (
 	"testing"
 )
 
+const (
+	testXGTrainSelectIris = `
+SELECT *
+FROM iris.train
+TRAIN XGBoostEstimator
+WITH
+	objective = "multi:softmax",
+	num_class = 3,
+	max_depth = 5,
+	eta = 0.3,
+	tree_method = "approx",
+	num_round = 30
+COLUMN sepal_length, sepal_width, petal_length, petal_width
+LABEL class INTO sqlflow_models.my_xgboost_model;
+`
+
+	testXGPredSelectIris = `
+SELECT *
+FROM iris.test
+PREDICT iris.predict
+WITH
+	append_columns = [sepal_length, sepal_width, petal_length, petal_width],
+	prob_column = prob,
+	detail_column = detail,
+	encoding_column = encoding
+USING sqlflow_models.my_xgboost_model;
+`
+)
+
 func TestPartials(t *testing.T) {
 	a := assert.New(t)
 	tmpMap := make(map[string][]string)
@@ -127,7 +156,7 @@ COLUMN a, b, c, d
 LABEL e INTO table_123;
 `
 	filler := parseAndFill(trainClause)
-	data, e := json.Marshal(filler.xgboostFields)
+	data, e := json.Marshal(filler.xgLearningFields)
 	a.NoError(e)
 	mapData := make(map[string]interface{})
 	e = json.Unmarshal(data, &mapData)
@@ -302,7 +331,7 @@ LABEL e INTO model_table;
 	a.True(filler.IsTrain)
 	stdSlct := removeLastSemicolon(strings.Replace(filler.StandardSelect, "\n", " ", -1))
 	a.EqualValues("SELECT * FROM iris.train", stdSlct)
-	a.EqualValues("model_table", filler.modelPath)
+	a.EqualValues("model_table", filler.ModelPath)
 
 	a.EqualValues("reg:squarederror", filler.Objective)
 	a.EqualValues(0.03, filler.Eta)
@@ -328,15 +357,15 @@ LABEL e INTO model_table;
 	a.EqualValues(&xgFeatureMeta{FeatureName: "petal_width", Dtype: "float32", InputShape: "[1]"}, filler.X[3])
 
 	colFields := &xgColumnFields{}
-	e = json.Unmarshal([]byte(filler.xgColumnJSON), colFields)
+	e = json.Unmarshal([]byte(filler.ColumnJSON), colFields)
 	a.NoError(e)
 	a.EqualValues(filler.xgColumnFields, *colFields)
 	dsFields := &xgDataSourceFields{}
-	e = json.Unmarshal([]byte(filler.xgDataSourceJSON), dsFields)
+	e = json.Unmarshal([]byte(filler.DataSourceJSON), dsFields)
 	a.NoError(e)
 	a.EqualValues(filler.xgDataSourceFields, *dsFields)
-	xgbFields := &xgboostFields{}
-	e = json.Unmarshal([]byte(filler.xgboostJSON), xgbFields)
+	xgbFields := &xgLearningFields{}
+	e = json.Unmarshal([]byte(filler.LearningJSON), xgbFields)
 	a.NoError(e)
-	a.EqualValues(filler.xgboostFields, *xgbFields)
+	a.EqualValues(filler.xgLearningFields, *xgbFields)
 }

@@ -186,6 +186,10 @@ func universalizeColumnType(driverName, dialectType string) (string, error) {
 		if strings.HasSuffix(dialectType, hiveCTypeSuffix) {
 			return dialectType[:len(dialectType)-len(hiveCTypeSuffix)], nil
 		}
+		// In hive, capacity is also needed when define a VARCHAR field, so we replace it with STRING.
+		if dialectType == "VARCHAR" {
+			return "STRING", nil
+		}
 		return dialectType, nil
 	}
 	return "", fmt.Errorf("not support driver:%s", driverName)

@@ -357,8 +357,19 @@ func train(wr *PipeWriter, tr *extendedSelect, db *DB, cwd string, modelDir stri
 	}
 
 	var program bytes.Buffer
-	if e := genTF(&program, tr, ds, fts, db); e != nil {
-		return fmt.Errorf("genTF %v", e)
+	// FIXME(sperlingxx): write a separate train pipeline for xgboost to support remote mode
+	if os.Getenv("SQLFLOW_submitter") == "XGBOOST" {
+		filler, e := newXGBoostFiller(tr, fts, db)
+		if e != nil {
+			return fmt.Errorf("genXG %v", e)
+		}
+		if e := xgTemplate.Execute(&program, filler); e != nil {
+			return fmt.Errorf("genXG %v", e)
+		}
+	} else {
+		if e := genTF(&program, tr, ds, fts, db); e != nil {
+			return fmt.Errorf("genTF %v", e)
+		}
 	}
 
 	cw := &logChanWriter{wr: wr}
@@ -400,10 +411,6 @@ func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir strin
 		return fmt.Errorf("verifyColumnNameAndType: %v", e)
 	}
 
-	if e := createPredictionTable(tr, pr, db); e != nil {
-		return fmt.Errorf("createPredictionTable: %v", e)
-	}
-
 	pr.trainClause = tr.trainClause
 	fts, e := verify(pr, db)
 	if e != nil {
@@ -411,8 +418,25 @@ func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir strin
 	}
 
 	var buf bytes.Buffer
-	if e := genTF(&buf, pr, nil, fts, db); e != nil {
-		return fmt.Errorf("genTF: %v", e)
+	// FIXME(sperlingxx): write a separate pred pipeline for xgboost to support remote mode
+	if os.Getenv("SQLFLOW_submitter") == "XGBOOST" {
+		filler, e := newXGBoostFiller(pr, fts, db)
+		if e != nil {
+			return fmt.Errorf("genXG %v", e)
+		}
+		if e := xgCreatePredictionTable(pr, filler, db); e != nil {
+			return fmt.Errorf("genXG %v", e)
+		}
+		if e := xgTemplate.Execute(&buf, filler); e != nil {
+			return fmt.Errorf("genXG %v", e)
+		}
+	} else {
+		if e := createPredictionTable(tr, pr, db); e != nil {
+			return fmt.Errorf("createPredictionTable: %v", e)
+		}
+		if e := genTF(&buf, pr, nil, fts, db); e != nil {
+			return fmt.Errorf("genTF %v", e)
+		}
 	}
 
 	cw := &logChanWriter{wr: wr}

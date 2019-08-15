@@ -14,10 +14,12 @@
 package sql
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
+	"text/template"
 
 	"github.com/go-sql-driver/mysql"
 	"sqlflow.org/gohive"
@@ -25,18 +27,18 @@ import (
 )
 
 type xgboostFiller struct {
-	modelPath string
-	xgboostFields
+	ModelPath string
+	xgLearningFields
 	xgColumnFields
 	xgDataSourceFields
-	xgboostJSON      string
-	xgDataSourceJSON string
-	xgColumnJSON     string
+	LearningJSON   string
+	DataSourceJSON string
+	ColumnJSON     string
 }
 
-type xgboostFields struct {
+type xgLearningFields struct {
 	NumRound        uint `json:"num_boost_round,omitempty"`
-	AutoTrain       bool `json:"auto_train,omitempty"`
+	AutoTrain       bool `json:"auto_train"`
 	xgBoosterFields `json:"params,omitempty"`
 }
 
@@ -74,30 +76,31 @@ type xgResultColumnFields struct {
 
 type xgFeatureFields struct {
 	FeatureColumns []string `json:"columns,omitempty"`
-	IsSparse       bool     `json:"is_sparse,omitempty"`
+	IsSparse       bool     `json:"is_sparse"`
 	Delimiter      string   `json:"item_delimiter,omitempty"`
 	FeatureSize    uint     `json:"feature_num,omitempty"`
 }
 
 type xgDataSourceFields struct {
-	IsTrain                bool             `json:"is_train,omitempty"`
+	IsTrain                bool             `json:"is_train"`
 	StandardSelect         string           `json:"standard_select,omitempty"`
-	IsTensorFlowIntegrated bool             `json:"is_tf_integrated,omitempty"`
+	IsTensorFlowIntegrated bool             `json:"is_tf_integrated"`
 	X                      []*xgFeatureMeta `json:"x,omitempty"`
 	LabelField             *xgFeatureMeta   `json:"label,omitempty"`
 	WeightField            *xgFeatureMeta   `json:"weight,omitempty"`
 	GroupField             *xgFeatureMeta   `json:"group,omitempty"`
 	xgDataBaseField        `json:"db_config,omitempty"`
-	WriteBatchSize         int `json:"write_batch_size,omitempty"`
+	OutputTable            string `json:"output_table,omitempty"`
+	WriteBatchSize         int    `json:"write_batch_size,omitempty"`
 }
 
 type xgDataBaseField struct {
-	User     string `json:"user,omitempty"`
-	Password string `json:"password,omitempty"`
-	Host     string `json:"host,omitempty"`
-	Port     string `json:"port,omitempty"`
-	Database string `json:"database,omitempty"`
-	Driver   string `json:"driver,omitempty"`
+	User     string `json:"user"`
+	Password string `json:"password"`
+	Host     string `json:"host"`
+	Port     string `json:"port"`
+	Database string `json:"database"`
+	Driver   string `json:"driver"`
 }
 
 type xgFeatureMeta struct {
@@ -554,9 +557,10 @@ func xgParseEstimator(pr *extendedSelect, filler *xgboostFiller) error {
 	return nil
 }
 
+// TODO(sperlingxx): support trainAndValDataset
 func newXGBoostFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*xgboostFiller, error) {
 	filler := &xgboostFiller{
-		modelPath: pr.save,
+		ModelPath: pr.save,
 	}
 	filler.IsTrain = pr.train
 	filler.StandardSelect = pr.standardSelect.String()
@@ -565,10 +569,22 @@ func newXGBoostFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*xgboostFille
 	if e := xgParseAttr(pr, filler); e != nil {
 		return nil, fmt.Errorf("failed to set xgboost attributes: %v", e)
 	}
+	// set default value of result column field in pred mode
+	if !pr.train && len(filler.ResultColumn) == 0 {
+		filler.ResultColumn = "result"
+	}
 
-	// solve keyword: TRAIN (estimator)
-	if e := xgParseEstimator(pr, filler); e != nil {
-		return nil, e
+	if pr.train {
+		// solve keyword: TRAIN (estimator）
+		if e := xgParseEstimator(pr, filler); e != nil {
+			return nil, e
+		}
+	} else {
+		// solve keyword: PREDICT (output_table）
+		if len(pr.into) == 0 {
+			return nil, fmt.Errorf("missing output table in xgboost prediction clause")
+		}
+		filler.OutputTable = pr.into
 	}
 
 	// solve keyword: COLUMN (column clauses)
@@ -582,23 +598,23 @@ func newXGBoostFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*xgboostFille
 	}
 
 	// serialize fields
-	jsonBuffer, e := json.Marshal(filler.xgboostFields)
+	jsonBuffer, e := json.Marshal(filler.xgLearningFields)
 	if e != nil {
 		return nil, e
 	}
-	filler.xgboostJSON = string(jsonBuffer)
+	filler.LearningJSON = string(jsonBuffer)
 
 	jsonBuffer, e = json.Marshal(filler.xgDataSourceFields)
 	if e != nil {
 		return nil, e
 	}
-	filler.xgDataSourceJSON = string(jsonBuffer)
+	filler.DataSourceJSON = string(jsonBuffer)
 
 	jsonBuffer, e = json.Marshal(filler.xgColumnFields)
 	if e != nil {
 		return nil, e
 	}
-	filler.xgColumnJSON = string(jsonBuffer)
+	filler.ColumnJSON = string(jsonBuffer)
 
 	return filler, nil
 }
@@ -639,3 +655,85 @@ func xgFillDatabaseInfo(r *xgboostFiller, db *DB) (*xgboostFiller, error) {
 	}
 	return r, nil
 }
+
+func xgCreatePredictionTable(pr *extendedSelect, r *xgboostFiller, db *DB) error {
+	dropStmt := fmt.Sprintf("drop table if exists %s;", r.OutputTable)
+	if _, e := db.Exec(dropStmt); e != nil {
+		return fmt.Errorf("failed executing %s: %q", dropStmt, e)
+	}
+
+	fts, e := verify(pr, db)
+	if e != nil {
+		return e
+	}
+
+	var b bytes.Buffer
+	fmt.Fprintf(&b, "create table %s (", r.OutputTable)
+	for _, col := range r.AppendColumns {
+		typ, ok := fts.get(col)
+		if !ok {
+			return fmt.Errorf("xgCreatePredictionTable: Cannot find type of field %s", col)
+		}
+		stype, e := universalizeColumnType(db.driverName, typ)
+		if e != nil {
+			return e
+		}
+		fmt.Fprintf(&b, "%s %s, ", col, stype)
+	}
+	// add prob column
+	if len(r.ProbColumn) > 0 {
+		stype, e := universalizeColumnType(db.driverName, "DOUBLE")
+		if e != nil {
+			return e
+		}
+		fmt.Fprintf(&b, "%s %s, ", r.ProbColumn, stype)
+	}
+	// add detail column
+	if len(r.DetailColumn) > 0 {
+		stype, e := universalizeColumnType(db.driverName, "VARCHAR")
+		if e != nil {
+			return e
+		}
+		fmt.Fprintf(&b, "%s %s, ", r.DetailColumn, stype)
+	}
+	// add encoding column
+	if len(r.EncodingColumn) > 0 {
+		stype, e := universalizeColumnType(db.driverName, "VARCHAR")
+		if e != nil {
+			return e
+		}
+		fmt.Fprintf(&b, "%s %s, ", r.EncodingColumn, stype)
+	}
+	// add result column
+	stype, e := universalizeColumnType(db.driverName, "DOUBLE")
+	if e != nil {
+		return e
+	}
+	fmt.Fprintf(&b, "%s %s);", r.ResultColumn, stype)
+
+	createStmt := b.String()
+	if _, e := db.Exec(createStmt); e != nil {
+		return fmt.Errorf("failed executing %s: %q", createStmt, e)
+	}
+	return nil
+}
+
+var xgTemplate = template.Must(template.New("codegenXG").Parse(xgTemplateText))
+
+const xgTemplateText = `
+from launcher.config_fields import JobType
+from sqlflow_submitter.xgboost import run_with_sqlflow
+
+{{if .IsTrain}}
+mode = JobType.TRAIN
+{{else}}
+mode = JobType.PREDICT
+{{end}}
+
+run_with_sqlflow(
+	mode=mode,
+	model_path='{{.ModelPath}}',
+	learning_config='{{.LearningJSON}}',	
+	data_source_config='{{.DataSourceJSON}}',	
+	column_config='{{.ColumnJSON}}')
+`
