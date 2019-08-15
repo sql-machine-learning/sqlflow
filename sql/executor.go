@@ -34,7 +34,7 @@ func Run(slct string, db *DB, modelDir string, session *pb.Session) *PipeReader 
 		// return the lexer error message to client side
 		go func() {
 			defer wr.Close()
-			wr.Write(fmt.Sprintf("%v", err))
+			wr.Write(err)
 		}()
 		return rd
 	}

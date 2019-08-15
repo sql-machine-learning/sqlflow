@@ -146,7 +146,7 @@ func TestStandardSQL(t *testing.T) {
 func TestSQLLexerError(t *testing.T) {
 	a := assert.New(t)
 	stream := Run("SELECT * FROM ``?[] AS WHERE LIMIT;", testDB, "", nil)
-	a.True(goodStream(stream.ReadAll()))
+	a.False(goodStream(stream.ReadAll()))
 }
 
 func TestCreatePredictionTable(t *testing.T) {
