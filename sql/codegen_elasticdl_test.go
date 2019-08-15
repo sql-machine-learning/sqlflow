@@ -14,6 +14,8 @@
 package sql
 
 import (
+	"bytes"
+	"strings"
 	"testing"
 
 	pb "github.com/sql-machine-learning/sqlflow/server/proto"
@@ -71,7 +73,19 @@ func TestTrainElasticDLFiller(t *testing.T) {
 	session := &pb.Session{UserId: "sqlflow_user"}
 	filler, e := newElasticDLTrainFiller(r, nil, session, nil)
 	a.NoError(e)
-
 	a.True(filler.IsTraining)
 	a.Equal("training_data", filler.TrainInputTable)
+}
+
+func TestElasticDLDataConversionFiller(t *testing.T) {
+	a := assert.New(t)
+	var program bytes.Buffer
+	filler, e := newElasticDLDataConversionFiller("table_name", `["a", "b", "c"]`)
+	a.NoError(e)
+	e = elasticdlDataConversionTemplate.Execute(&program, filler)
+	a.NoError(e)
+	code := program.String()
+	a.True(strings.Contains(code, `table = "table_name"`), code)
+	a.True(strings.Contains(code, `COLUMN_NAMES = ["a", "b", "c"]`), code)
+	a.True(strings.Contains(code, `output_dir = "/tmp/recordio_data_dir_`), code)
 }
