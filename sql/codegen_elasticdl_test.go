@@ -24,12 +24,39 @@ func TestTrainElasticDLFiller(t *testing.T) {
 	a := assert.New(t)
 	parser := newParser()
 
-	// TODO: Currently we use ALPS' parameter imm WITH block temporarily
-	// Need to register for ElasticDL parameters
-	wndStatement := `select c1, c2, c3, c4, c5 from training_data 
+	wndStatement := `SELECT c1, c2, c3, c4, c5 FROM training_data
 		TRAIN ElasticDLKerasClassifier 
 		WITH
-			engine.type = "k8s"
+			model.optimizer = "optimizer",
+			model.loss = "loss",
+			model.eval_metrics_fn = "eval_metrics_fn",
+			model.num_classes = 10,
+			model.dataset_fn = "dataset_fn",
+			train.epoch = 2,
+			train.grads_to_wait = 2,
+			train.tensorboard_log_dir = "",
+			train.checkpoint_steps = 0,
+			train.checkpoint_dir = "",
+			train.keep_checkpoint_max = 0,
+			eval.steps = 0,
+			eval.start_delay_secs = 100,
+			eval.throttle_secs = 0,
+			eval.checkpoint_filename_for_init = "",
+			engine.docker_image_prefix = "",
+			engine.master_resource_request = "cpu=400m,memory=1024Mi",
+			engine.master_resource_limit = "cpu=400m,memory=1024Mi",
+			engine.worker_resource_request = "cpu=400m,memory=2048Mi",
+			engine.worker_resource_limit = "cpu=1,memory=3072Mi",
+			engine.num_workers = 2,
+			engine.volume = "",
+			engine.image_pull_policy = "Always",
+			engine.restart_policy = "Never",
+			engine.extra_pypi_index = "",
+			engine.namespace = "default",
+			engine.minibatch_size = 64,
+			engine.master_pod_priority = "",
+			engine.cluster_spec = "",
+			engine.records_per_task = 100
 		COLUMN
 			c1,
 			NUMERIC(c2, 10),
