@@ -23,7 +23,8 @@ func TestNewLexer(t *testing.T) {
 	a := assert.New(t)
 	l := newLexer("")
 	var n sqlSymType
-	a.Equal(0, l.Lex(&n))
+	ret := l.Lex(&n)
+	a.Equal(0, ret)
 }
 
 func TestNextAndBackup(t *testing.T) {
@@ -61,7 +62,11 @@ func TestLexNumber(t *testing.T) {
 	typs := []int{'[', NUMBER, ',', NUMBER, ']'}
 	vals := []string{"[", "5", ",", "10", "]"}
 	i := 0
-	for typ := l.Lex(&n); typ != 0; typ = l.Lex(&n) {
+	for {
+		typ := l.Lex(&n)
+		if typ == 0 {
+			break
+		}
 		a.Equal(typs[i], typ)
 		a.Equal(vals[i], n.val)
 		i++
@@ -88,7 +93,11 @@ func TestLexOperator(t *testing.T) {
 		"{", "}", "<", "<=", "=", ",", ";"}
 	i := 0
 	var n sqlSymType
-	for typ := l.Lex(&n); typ != 0; typ = l.Lex(&n) {
+	for {
+		typ := l.Lex(&n)
+		if typ == 0 {
+			break
+		}
 		a.Equal(typs[i], typ)
 		a.Equal(vals[i], n.val)
 		i++

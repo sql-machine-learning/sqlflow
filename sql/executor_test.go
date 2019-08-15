@@ -48,21 +48,25 @@ func goodStream(stream chan interface{}) (bool, string) {
 
 func TestSplitExtendedSQL(t *testing.T) {
 	a := assert.New(t)
-	s := splitExtendedSQL(`select a train b with c;`)
+	s, err := splitExtendedSQL(`select a train b with c;`)
+	a.Equal(err, nil)
 	a.Equal(2, len(s))
 	a.Equal(`select a`, s[0])
 	a.Equal(` train b with c;`, s[1])
 
-	s = splitExtendedSQL(`  select a predict b using c;`)
+	s, err = splitExtendedSQL(`  select a predict b using c;`)
+	a.Equal(err, nil)
 	a.Equal(2, len(s))
 	a.Equal(`  select a`, s[0])
 	a.Equal(` predict b using c;`, s[1])
 
-	s = splitExtendedSQL(` select a from b;`)
+	s, err = splitExtendedSQL(` select a from b;`)
+	a.Equal(err, nil)
 	a.Equal(1, len(s))
 	a.Equal(` select a from b;`, s[0])
 
-	s = splitExtendedSQL(`train a with b;`)
+	s, err = splitExtendedSQL(`train a with b;`)
+	a.Equal(err, nil)
 	a.Equal(1, len(s))
 	a.Equal(`train a with b;`, s[0])
 }
@@ -134,8 +138,15 @@ func TestStandardSQL(t *testing.T) {
 	})
 	a.NotPanics(func() {
 		stream := runStandardSQL("SELECT * FROM iris.iris_empty LIMIT 10;", testDB)
-		a.True(goodStream(stream.ReadAll()))
+		stat, _ := goodStream(stream.ReadAll())
+		a.True(stat)
 	})
+}
+
+func TestSQLLexerError(t *testing.T) {
+	a := assert.New(t)
+	stream := Run("SELECT * FROM ``?[] AS WHERE LIMIT;", testDB, "", nil)
+	a.False(goodStream(stream.ReadAll()))
 }
 
 func TestCreatePredictionTable(t *testing.T) {
