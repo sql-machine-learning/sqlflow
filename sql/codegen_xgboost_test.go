@@ -26,7 +26,7 @@ SELECT *
 FROM iris.train
 TRAIN XGBoostEstimator
 WITH
-    objective = "multi:softmax",
+	objective = "multi:softmax",
 	num_class = 3,
 	max_depth = 5,
 	eta = 0.3,

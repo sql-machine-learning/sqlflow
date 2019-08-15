@@ -730,9 +730,10 @@ mode = JobType.TRAIN
 mode = JobType.PREDICT
 {{end}}
 
-run_with_sqlflow(mode=mode,
-                 model_path='{{.ModelPath}}',
-				 learning_config='{{.LearningJSON}}',	
-				 data_source_config='{{.DataSourceJSON}}',	
-				 column_config='{{.ColumnJSON}}')
+run_with_sqlflow(
+	mode=mode,
+	model_path='{{.ModelPath}}',
+	learning_config='{{.LearningJSON}}',	
+	data_source_config='{{.DataSourceJSON}}',	
+	column_config='{{.ColumnJSON}}')
 `
