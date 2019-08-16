@@ -52,6 +52,14 @@ LABEL label
 INTO my_model_file;
 ```
 
+Since we can not get the original "dense shape" if the csv column represents a sparse tensor,
+the shape must be specified in the SQL statement. But if the column represents a "dense tensor"
+we can get the shape by reading some of the values and confirm the shape is the same.
+
+For csv values, we can also infer the tensor data type by reading some of the training data, whether
+it's int value or float value. Note we can always parse float values to `float32` but not `float64`
+since `float32` seems enough for most cases.
+
 ## The Derivation Routine
 
 We need to `SELECT` part of the training data, like 1000 rows and go through the below routine:
