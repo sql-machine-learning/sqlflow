@@ -78,7 +78,7 @@ func makePythonListCode(items []string) string {
 	return sb.String()
 }
 
-func newElasticDLDataConversionFiller(pr *extendedSelect, odpsTableName string, batchSize int, numProcesses int) (*elasticDLDataConversionFiller, error) {
+func newElasticDLDataConversionFiller(pr *extendedSelect, batchSize int, numProcesses int) (*elasticDLDataConversionFiller, error) {
 	recordIODataDir, err := ioutil.TempDir("/tmp", "recordio_data_dir_")
 	if err != nil {
 		return nil, err
@@ -90,7 +90,7 @@ func newElasticDLDataConversionFiller(pr *extendedSelect, odpsTableName string, 
 	}
 	return &elasticDLDataConversionFiller{
 		FeaturesList:    makePythonListCode(append(featureNames, pr.label)),
-		ODPSTableName:   odpsTableName,
+		ODPSTableName:   pr.tables[0],
 		RecordIODataDir: recordIODataDir,
 		BatchSize:       batchSize,
 		NumProcesses:    numProcesses,

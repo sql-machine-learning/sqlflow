@@ -98,12 +98,12 @@ func TestElasticDLDataConversionFiller(t *testing.T) {
 	a.NoError(e)
 
 	var program bytes.Buffer
-	filler, e := newElasticDLDataConversionFiller(r, "table_name", 200, 1)
+	filler, e := newElasticDLDataConversionFiller(r, 200, 1)
 	a.NoError(e)
 	e = elasticdlDataConversionTemplate.Execute(&program, filler)
 	a.NoError(e)
 	code := program.String()
-	a.True(strings.Contains(code, `table = "table_name"`), code)
+	a.True(strings.Contains(code, `table = "training_data"`), code)
 	a.True(strings.Contains(code, `COLUMN_NAMES = ["c1", "c2", "c3", "c4", "c5"]`), code)
 	a.True(strings.Contains(code, `output_dir = "/tmp/recordio_data_dir_`), code)
 	a.True(strings.Contains(code, `batch_size = 200`), code)
