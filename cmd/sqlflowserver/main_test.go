@@ -281,6 +281,7 @@ func TestEnd2EndHive(t *testing.T) {
 	t.Run("TestSelect", CaseSelect)
 	t.Run("TestTrainSQL", CaseTrainSQL)
 	t.Run("CaseTrainCustomModel", CaseTrainCustomModel)
+	t.Run("CaseTrainDeepWideModel", CaseTrainDeepWideModel)
 }
 
 func TestEnd2EndMaxCompute(t *testing.T) {
