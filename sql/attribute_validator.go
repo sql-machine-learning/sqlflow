@@ -55,6 +55,9 @@ func ValidateAttributes(attrs map[string]*attribute) error {
 			} else {
 				return fmt.Errorf("Not supported attribute value: %s", stringAttr)
 			}
+		} else if _, ok := v.Value.([]interface{}); ok {
+			// a list attribute
+			return nil
 		} else {
 			return fmt.Errorf("Attribute value is not string type, %v", v.Value)
 		}

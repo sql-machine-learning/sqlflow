@@ -23,7 +23,7 @@ func TestValidateAttribute(t *testing.T) {
 	a := assert.New(t)
 	attrs := make(map[string]*attribute)
 	attrs["train.steps"] = &attribute{FullName: "train.steps", Name: "steps", Prefix: "train", Value: "100"}
-	attrs["model.hidden_units"] = &attribute{FullName: "model.hidden_units", Name: "hidden_units", Prefix: "model", Value: "[100,200,300]"}
+	attrs["model.hidden_units"] = &attribute{FullName: "model.hidden_units", Name: "hidden_units", Prefix: "model", Value: []int{100, 200, 300}}
 	attrs["model.learning_rate"] = &attribute{FullName: "model.learning_rate", Name: "learning_rate", Prefix: "model", Value: "0.01"}
 	attrs["engine.type"] = &attribute{FullName: "engine.type", Name: "type", Prefix: "engine", Value: "yarn"}
 	err := ValidateAttributes(attrs)
