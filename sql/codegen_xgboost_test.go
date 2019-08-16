@@ -15,9 +15,10 @@ package sql
 
 import (
 	"encoding/json"
-	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 const (
@@ -26,12 +27,12 @@ SELECT *
 FROM iris.train
 TRAIN XGBoostEstimator
 WITH
-	objective = "multi:softmax",
-	num_class = 3,
-	max_depth = 5,
-	eta = 0.3,
-	tree_method = "approx",
-	num_round = 30
+	train.objective = "multi:softmax",
+	train.num_class = 3,
+	train.max_depth = 5,
+	train.eta = 0.3,
+	train.tree_method = "approx",
+	train.num_round = 30
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class INTO sqlflow_models.my_xgboost_model;
 `
@@ -41,10 +42,10 @@ SELECT *
 FROM iris.test
 PREDICT iris.predict
 WITH
-	append_columns = [sepal_length, sepal_width, petal_length, petal_width],
-	prob_column = prob,
-	detail_column = detail,
-	encoding_column = encoding
+	pred.append_columns = [sepal_length, sepal_width, petal_length, petal_width],
+	pred.prob_column = prob,
+	pred.detail_column = detail,
+	pred.encoding_column = encoding
 USING sqlflow_models.my_xgboost_model;
 `
 )
@@ -139,19 +140,19 @@ func TestXGBoostAttr(t *testing.T) {
 SELECT a, b, c, d, e FROM table_xx
 TRAIN XGBoostEstimator
 WITH
-	objective = "binary:logistic",
-	booster = gblinear,
-	num_class = 2,
-	max_depth = 5,
-	eta = 0.03,
-	tree_method = hist,
-	subsample = 0.8,
-	colsample_bytree = 0.5,
-	colsample_bylevel = 0.6,
-	max_bin = 128,
-	verbosity = 3,
-	num_round = 300,
-	auto_train = true
+	train.objective = "binary:logistic",
+	train.booster = gblinear,
+	train.num_class = 2,
+	train.max_depth = 5,
+	train.eta = 0.03,
+	train.tree_method = hist,
+	train.subsample = 0.8,
+	train.colsample_bytree = 0.5,
+	train.colsample_bylevel = 0.6,
+	train.max_bin = 128,
+	train.verbosity = 3,
+	train.num_round = 300,
+	train.auto_train = true
 COLUMN a, b, c, d
 LABEL e INTO table_123;
 `
@@ -181,11 +182,11 @@ LABEL e INTO table_123;
 SELECT a, b, c, d, e FROM table_xx
 PREDICT table_yy
 WITH
-	detail_column = "prediction_detail",
-	prob_column = "prediction_probability",
-	encoding_column = "prediction_leafs",
-	result_column = "prediction_results",
-	append_columns = ["AA", "BB", "CC"]
+	pred.detail_column = "prediction_detail",
+	pred.prob_column = "prediction_probability",
+	pred.encoding_column = "prediction_leafs",
+	pred.result_column = "prediction_results",
+	pred.append_columns = ["AA", "BB", "CC"]
 USING sqlflow_models.my_xgboost_model;
 `
 	filler = parseAndFill(predClause)
@@ -312,10 +313,10 @@ func TestXGBoostFiller(t *testing.T) {
 SELECT * FROM iris.train
 TRAIN XGBoostRegressor
 WITH
-	max_depth = 5,
-	eta = 0.03,
-	tree_method = "hist",
-	num_round = 300
+	train.max_depth = 5,
+	train.eta = 0.03,
+	train.tree_method = "hist",
+	train.num_round = 300
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 COLUMN gg FOR group 
 COLUMN ww FOR weight

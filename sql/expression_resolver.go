@@ -213,6 +213,10 @@ func resolveTrainClause(tc *trainClause) (*resolvedTrainClause, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = ValidateAttributes(attrs)
+	if err != nil {
+		return nil, err
+	}
 	trimQuotes := func(s string) string {
 		if len(s) >= 2 {
 			if s[0] == '"' && s[len(s)-1] == '"' {

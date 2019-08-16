@@ -237,32 +237,32 @@ func sListPartial(key string, ptrFn func(*xgboostFiller) *[]string) func(*map[st
 
 var xgbTrainAttrSetterMap = map[string]func(*map[string][]string, *xgboostFiller) error{
 	// booster params
-	"objective":            strPartial("objective", func(r *xgboostFiller) *string { return &(r.Objective) }),
-	"booster":              strPartial("booster", func(r *xgboostFiller) *string { return &(r.Booster) }),
-	"max_depth":            uIntPartial("max_depth", func(r *xgboostFiller) *uint { return &(r.MaxDepth) }),
-	"num_class":            uIntPartial("num_class", func(r *xgboostFiller) *uint { return &(r.NumClass) }),
-	"eta":                  fp32Partial("eta", func(r *xgboostFiller) *float32 { return &(r.Eta) }),
-	"tree_method":          strPartial("tree_method", func(r *xgboostFiller) *string { return &(r.TreeMethod) }),
-	"eval_metric":          strPartial("eval_metric", func(r *xgboostFiller) *string { return &(r.EvalMetric) }),
-	"subsample":            fp32Partial("subsample", func(r *xgboostFiller) *float32 { return &(r.Subsample) }),
-	"colsample_bytree":     fp32Partial("colsample_bytree", func(r *xgboostFiller) *float32 { return &(r.ColSampleByTree) }),
-	"colsample_bylevel":    fp32Partial("colsample_bylevel", func(r *xgboostFiller) *float32 { return &(r.ColSampleByLevel) }),
-	"max_bin":              uIntPartial("max_bin", func(r *xgboostFiller) *uint { return &(r.MaxBin) }),
-	"convergence_criteria": strPartial("convergence_criteria", func(r *xgboostFiller) *string { return &(r.ConvergenceCriteria) }),
-	"verbosity":            uIntPartial("verbosity", func(r *xgboostFiller) *uint { return &(r.Verbosity) }),
+	"train.objective":            strPartial("train.objective", func(r *xgboostFiller) *string { return &(r.Objective) }),
+	"train.booster":              strPartial("train.booster", func(r *xgboostFiller) *string { return &(r.Booster) }),
+	"train.max_depth":            uIntPartial("train.max_depth", func(r *xgboostFiller) *uint { return &(r.MaxDepth) }),
+	"train.num_class":            uIntPartial("train.num_class", func(r *xgboostFiller) *uint { return &(r.NumClass) }),
+	"train.eta":                  fp32Partial("train.eta", func(r *xgboostFiller) *float32 { return &(r.Eta) }),
+	"train.tree_method":          strPartial("train.tree_method", func(r *xgboostFiller) *string { return &(r.TreeMethod) }),
+	"train.eval_metric":          strPartial("train.eval_metric", func(r *xgboostFiller) *string { return &(r.EvalMetric) }),
+	"train.subsample":            fp32Partial("train.subsample", func(r *xgboostFiller) *float32 { return &(r.Subsample) }),
+	"train.colsample_bytree":     fp32Partial("train.colsample_bytree", func(r *xgboostFiller) *float32 { return &(r.ColSampleByTree) }),
+	"train.colsample_bylevel":    fp32Partial("train.colsample_bylevel", func(r *xgboostFiller) *float32 { return &(r.ColSampleByLevel) }),
+	"train.max_bin":              uIntPartial("train.max_bin", func(r *xgboostFiller) *uint { return &(r.MaxBin) }),
+	"train.convergence_criteria": strPartial("train.convergence_criteria", func(r *xgboostFiller) *string { return &(r.ConvergenceCriteria) }),
+	"train.verbosity":            uIntPartial("train.verbosity", func(r *xgboostFiller) *uint { return &(r.Verbosity) }),
 	// xgboost train controllers
-	"num_round":  uIntPartial("num_round", func(r *xgboostFiller) *uint { return &(r.NumRound) }),
-	"auto_train": boolPartial("auto_train", func(r *xgboostFiller) *bool { return &(r.AutoTrain) }),
+	"train.num_round":  uIntPartial("train.num_round", func(r *xgboostFiller) *uint { return &(r.NumRound) }),
+	"train.auto_train": boolPartial("train.auto_train", func(r *xgboostFiller) *bool { return &(r.AutoTrain) }),
 	// Label, Group, Weight and xgFeatureFields are parsed from columnClause
 }
 
 var xgbPredAttrSetterMap = map[string]func(*map[string][]string, *xgboostFiller) error{
 	// xgboost output columns (for prediction)
-	"append_columns":  sListPartial("append_columns", func(r *xgboostFiller) *[]string { return &(r.AppendColumns) }),
-	"result_column":   strPartial("result_column", func(r *xgboostFiller) *string { return &(r.ResultColumn) }),
-	"prob_column":     strPartial("prob_column", func(r *xgboostFiller) *string { return &(r.ProbColumn) }),
-	"detail_column":   strPartial("detail_column", func(r *xgboostFiller) *string { return &(r.DetailColumn) }),
-	"encoding_column": strPartial("encoding_column", func(r *xgboostFiller) *string { return &(r.EncodingColumn) }),
+	"pred.append_columns":  sListPartial("pred.append_columns", func(r *xgboostFiller) *[]string { return &(r.AppendColumns) }),
+	"pred.result_column":   strPartial("pred.result_column", func(r *xgboostFiller) *string { return &(r.ResultColumn) }),
+	"pred.prob_column":     strPartial("pred.prob_column", func(r *xgboostFiller) *string { return &(r.ProbColumn) }),
+	"pred.detail_column":   strPartial("pred.detail_column", func(r *xgboostFiller) *string { return &(r.DetailColumn) }),
+	"pred.encoding_column": strPartial("pred.encoding_column", func(r *xgboostFiller) *string { return &(r.EncodingColumn) }),
 	// Label, Group, Weight and xgFeatureFields are parsed from columnClause
 }
 
