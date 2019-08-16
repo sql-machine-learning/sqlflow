@@ -16,6 +16,7 @@ package sql
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -25,8 +26,17 @@ import (
 )
 
 var elasticdlTrainTemplate = template.Must(template.New("elasticdl_train").Parse(elasticdlTrainTemplateText))
+var elasticdlDataConversionTemplate = template.Must(template.New("elasticdl_data_conversion").Parse(elasticdlDataConversionTemplateText))
 
-type elasticdlFiller struct {
+type elasticDLDataConversionFiller struct {
+	FeaturesList    string
+	ODPSTableName   string
+	RecordIODataDir string
+	BatchSize       int
+	NumProcesses    int
+}
+
+type elasticDLFiller struct {
 	// Training or Predicting
 	IsTraining bool
 
@@ -38,7 +48,21 @@ type elasticdlFiller struct {
 	TrainClause *resolvedTrainClause
 }
 
-func newElasticDLTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds *trainAndValDataset) (*elasticdlFiller, error) {
+func newElasticDLDataConversionFiller(odpsTableName string, featuresList string, batchSize int, numProcesses int) (*elasticDLDataConversionFiller, error) {
+	recordIODataDir, err := ioutil.TempDir("/tmp", "recordio_data_dir_")
+	if err != nil {
+		return nil, err
+	}
+	return &elasticDLDataConversionFiller{
+		FeaturesList:    featuresList,
+		ODPSTableName:   odpsTableName,
+		RecordIODataDir: recordIODataDir,
+		BatchSize:       batchSize,
+		NumProcesses:    numProcesses,
+	}, err
+}
+
+func newElasticDLTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds *trainAndValDataset) (*elasticDLFiller, error) {
 	resolved, err := resolveTrainClause(&pr.trainClause)
 	if err != nil {
 		return nil, err
@@ -49,7 +73,7 @@ func newElasticDLTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds
 	} else {
 		trainInput, evalInput = pr.tables[0], pr.tables[0]
 	}
-	return &elasticdlFiller{
+	return &elasticDLFiller{
 		IsTraining:      true,
 		TrainInputTable: trainInput,
 		EvalInputTable:  evalInput,
@@ -57,14 +81,14 @@ func newElasticDLTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds
 	}, err
 }
 
-func elasticdlTrain(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *pb.Session, ds *trainAndValDataset) error {
+func elasticDLTrain(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *pb.Session, ds *trainAndValDataset) error {
 	var program bytes.Buffer
-	filler, err := newElasticDLTrainFiller(pr, db, session, ds)
+	trainFiller, err := newElasticDLTrainFiller(pr, db, session, ds)
 	if err != nil {
 		return err
 	}
 
-	if err = elasticdlTrainTemplate.Execute(&program, filler); err != nil {
+	if err = elasticdlTrainTemplate.Execute(&program, trainFiller); err != nil {
 		return fmt.Errorf("submitElasticDL: failed executing template: %v", err)
 	}
 	code := program.String()
