@@ -20,6 +20,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"text/template"
 
 	pb "github.com/sql-machine-learning/sqlflow/server/proto"
@@ -48,13 +49,47 @@ type elasticDLFiller struct {
 	TrainClause *resolvedTrainClause
 }
 
-func newElasticDLDataConversionFiller(odpsTableName string, featuresList string, batchSize int, numProcesses int) (*elasticDLDataConversionFiller, error) {
+func getFeaturesNames(pr *extendedSelect) ([]string, error) {
+	selectFeatures := pr.standardSelect.fields.Strings()
+	if len(selectFeatures) == 1 && selectFeatures[0] == "*" {
+		log.Fatalf("ElasticDL doesn't support wildcard select yet")
+	}
+	features := make([]string, 0)
+	for _, feature := range selectFeatures {
+		if feature != pr.label {
+			features = append(features, feature)
+		}
+	}
+	return features, nil
+}
+
+func makePythonListCode(items []string) string {
+	var sb strings.Builder
+	sb.WriteString("[")
+	for i, item := range items {
+		sb.WriteString(`"`)
+		sb.WriteString(item)
+		sb.WriteString(`"`)
+		if i != len(items)-1 {
+			sb.WriteString(`, `)
+		}
+	}
+	sb.WriteString("]")
+	return sb.String()
+}
+
+func newElasticDLDataConversionFiller(pr *extendedSelect, odpsTableName string, batchSize int, numProcesses int) (*elasticDLDataConversionFiller, error) {
 	recordIODataDir, err := ioutil.TempDir("/tmp", "recordio_data_dir_")
 	if err != nil {
 		return nil, err
 	}
+	featureNames, err := getFeaturesNames(pr)
+	if err != nil {
+		log.Fatalf("Failed to get feature names from SELECT statement %v", err)
+		return nil, err
+	}
 	return &elasticDLDataConversionFiller{
-		FeaturesList:    featuresList,
+		FeaturesList:    makePythonListCode(append(featureNames, pr.label)),
 		ODPSTableName:   odpsTableName,
 		RecordIODataDir: recordIODataDir,
 		BatchSize:       batchSize,
