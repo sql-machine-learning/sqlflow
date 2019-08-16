@@ -254,6 +254,8 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseSparseFeature", CaseSparseFeature)
 	t.Run("CaseSQLByPassLeftJoin", CaseSQLByPassLeftJoin)
 	t.Run("CaseTrainRegression", CaseTrainRegression)
+	t.Run("CaseTrainDeepWideModel", CaseTrainDeepWideModel)
+
 }
 
 func TestEnd2EndHive(t *testing.T) {
@@ -646,6 +648,33 @@ WITH n_classes = 3, hidden_units = [10, 20], BATCHSIZE = 10, EPOCHS = 2
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.my_dnn_model;`
+
+	conn, err := createRPCConn()
+	a.NoError(err)
+	defer conn.Close()
+	cli := pb.NewSQLFlowClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	defer cancel()
+
+	stream, err := cli.Run(ctx, sqlRequest(trainSQL))
+	if err != nil {
+		a.Fail("Check if the server started successfully. %v", err)
+	}
+	// call ParseRow only to wait train finish
+	ParseRow(stream)
+}
+
+func CaseTrainDeepWideModel(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := `SELECT *
+FROM iris.train
+TRAIN DNNLinearCombinedClassifier
+WITH n_classes = 3, dnn_hidden_units = [10, 20], BATCHSIZE = 10, EPOCHS = 2
+COLUMN sepal_length, sepal_width FOR linear_feature_columns
+COLUMN petal_length, petal_width FOR dnn_feature_columns
+LABEL class
+INTO sqlflow_models.my_dnn_linear_model;`
 
 	conn, err := createRPCConn()
 	a.NoError(err)
