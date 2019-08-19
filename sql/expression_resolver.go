@@ -160,6 +160,7 @@ type embeddingColumn struct {
 	CategoryColumn interface{}
 	Dimension      int
 	Combiner       string
+	Initializer    string
 }
 
 func getEngineSpec(attrs map[string]*attribute) engineSpec {
@@ -533,7 +534,8 @@ func expression2string(e interface{}) (string, error) {
 		return "", err
 	}
 	if str, ok := resolved.(string); ok {
-		return str, nil
+		// FIXME(typhoonzero): remove leading and trailing quotes if needed.
+		return strings.Trim(str, "\""), nil
 	}
 	return "", fmt.Errorf("expression expected to be string, actual: %s", resolved)
 }
@@ -677,7 +679,7 @@ func resolveCategoryIDColumn(el *exprlist, isSequence bool) (interface{}, error)
 }
 
 func resolveEmbeddingColumn(el *exprlist) (*embeddingColumn, error) {
-	if len(*el) != 4 {
+	if len(*el) != 4 && len(*el) != 5 {
 		return nil, fmt.Errorf("bad EMBEDDING expression format: %s", *el)
 	}
 	sourceExprList := (*el)[1]
@@ -702,10 +704,18 @@ func resolveEmbeddingColumn(el *exprlist) (*embeddingColumn, error) {
 	if err != nil {
 		return nil, fmt.Errorf("bad EMBEDDING combiner: %s, err: %s", (*el)[3], err)
 	}
+	initializer := ""
+	if len(*el) == 5 {
+		initializer, err = expression2string((*el)[4])
+		if err != nil {
+			return nil, fmt.Errorf("bad EMBEDDING initializer: %s, err: %s", (*el)[4], err)
+		}
+	}
 	return &embeddingColumn{
 		CategoryColumn: catColumn,
 		Dimension:      dimension,
-		Combiner:       combiner}, nil
+		Combiner:       combiner,
+		Initializer:    initializer}, nil
 }
 
 func (nc *numericColumn) GenerateCode() (string, error) {

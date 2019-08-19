@@ -508,8 +508,13 @@ func (ec *embeddingColumn) GenerateAlpsCode(metadata *metadata) ([]string, error
 	}
 	output = make([]string, 0)
 	for _, elem := range sourceCode {
-		output = append(output, fmt.Sprintf("tf.feature_column.embedding_column(%s, dimension=%d, combiner=\"%s\")",
-			elem, ec.Dimension, ec.Combiner))
+		if ec.Initializer != "" {
+			output = append(output, fmt.Sprintf("tf.feature_column.embedding_column(%s, dimension=%d, combiner=\"%s\", initializer=%s)",
+				elem, ec.Dimension, ec.Combiner, ec.Initializer))
+		} else {
+			output = append(output, fmt.Sprintf("tf.feature_column.embedding_column(%s, dimension=%d, combiner=\"%s\")",
+				elem, ec.Dimension, ec.Combiner))
+		}
 	}
 	return output, nil
 }

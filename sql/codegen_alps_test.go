@@ -15,6 +15,7 @@ package sql
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -60,6 +61,31 @@ func TestTrainALPSFiller(t *testing.T) {
 	a.Equal(1000, filler.TrainClause.MaxSteps)
 	a.Equal(filler.ModelDir, "arks://sqlflow/sqlflow_user/model_table.tar.gz")
 	a.Equal(filler.UserID, "sqlflow_user")
+}
+
+func TestTrainALPSEmbeddingInitializer(t *testing.T) {
+	a := assert.New(t)
+	parser := newParser()
+
+	wndStatement := `SELECT deep FROM kaggle_credit_fraud_training_data 
+		TRAIN DNNClassifier 
+		WITH 
+			model.dnn_hidden_units = [10, 20],
+			train.max_steps = 1000,
+			engine.type = "yarn"
+		COLUMN
+			SPARSE(deep, 2000, comma),
+			EMBEDDING(CATEGORY_ID(deep, 2000), 8, "sum", "tf.random_normal_initializer(stddev=0.001)") FOR dnn_feature_columns
+		LABEL class
+		INTO model_table;`
+
+	r, e := parser.Parse(wndStatement)
+	a.NoError(e)
+	session := &pb.Session{UserId: "sqlflow_user"}
+	filler, e := newALPSTrainFiller(r, nil, session, nil)
+	a.NoError(e)
+	fmt.Println(filler.FeatureColumnCode)
+	a.True(strings.Contains(filler.FeatureColumnCode, "tf.feature_column.embedding_column(tf.feature_column.categorical_column_with_identity(key=\"deep_0\", num_buckets=2000), dimension=8, combiner=\"sum\", initializer=tf.random_normal_initializer(stddev=0.001))"))
 }
 
 func TestPredALPSFiller(t *testing.T) {
