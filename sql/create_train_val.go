@@ -55,9 +55,9 @@ func newTrainAndValDataset(db *DB, slct string, origTable string, trainingUpperb
 		return createMaxcomputeDataset(db, slct, origTable, trainingUpperbound)
 	case "hive":
 		return createHiveDataset(db, slct, origTable, trainingUpperbound)
-	// TODO(weiguo): support other databases, like: "mysql"...
 	default:
 		return nil, nil
+		//return nil, fmt.Errorf("newTrainAndValDataset: unsupported database %s", db.driverName)
 	}
 }
 
