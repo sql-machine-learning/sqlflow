@@ -32,3 +32,5 @@ func TestCreateTrainAndValDataset(t *testing.T) {
 		a.True(ds.supported)
 	}
 }
+
+// TODO(weiguo): add test cases for hive&maxcompute
