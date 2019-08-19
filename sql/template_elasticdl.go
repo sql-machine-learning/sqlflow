@@ -153,7 +153,7 @@ def custom_model():
     dropout = tf.keras.layers.Dropout(0.4)(max_pool)
 
     flatten = tf.keras.layers.Flatten()(dropout)
-    outputs = tf.keras.layers.Dense({{.OutputShape}}, name="output")(flatten)
+    outputs = tf.keras.layers.Dense({{.PredictOutputShape}}, name="output")(flatten)
 
     return tf.keras.Model(inputs=inputs, outputs=outputs, name="cifar10_model")
 
