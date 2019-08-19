@@ -15,6 +15,7 @@ package sql
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/pkg/errors"
 )
@@ -25,6 +26,7 @@ type trainAndValDataset struct {
 	// So, TODO(weiguo): Let's remove `supproted` if SQLFlow supports other
 	// drivers, like: MySQL, hive(specified in database.go:open()).
 	supported  bool
+	database   string
 	table      string
 	training   string // table for training: < k
 	validation string // table for validation: >= k
@@ -51,61 +53,120 @@ func newTrainAndValDataset(db *DB, slct string, origTable string, trainingUpperb
 	switch db.driverName {
 	case "maxcompute":
 		return createMaxcomputeDataset(db, slct, origTable, trainingUpperbound)
-		// TODO(weiguo): support other databases, like: "hive", "mysql"...
+	case "hive":
+		return createHiveDataset(db, slct, origTable, trainingUpperbound)
+	// TODO(weiguo): support other databases, like: "mysql"...
 	default:
 		return nil, nil
 	}
 }
 
-func releaseTrainAndValDataset(ds *trainAndValDataset) {
-	// TODO(weiguo): release resources for databases, like: "hive", "mysql"...
-}
-
 func createMaxcomputeDataset(db *DB, slct string, origTable string, trainingUpperbound float32) (*trainAndValDataset, error) {
 	ds := namingTrainAndValDataset(origTable)
-	// drop the table if already exist
-	dropStmt := fmt.Sprintf("DROP TABLE IF EXISTS %s;", ds.table)
-	if _, e := db.Exec(dropStmt); e != nil {
-		log.Errorf("drop temporary table failed, stmt:[%s], err:%v", dropStmt, e)
+	if e := createMaxcomputeRandomTable(ds.table, slct, db); e != nil {
+		log.Errorf("create table with a randowm column failed, err: %v", e)
 		return nil, e
 	}
-	// create a table, then split it into train and val tables
-	stmt := fmt.Sprintf("CREATE TABLE %s LIFECYCLE %d AS SELECT *, RAND() AS %s FROM (%s) AS %s_ori", ds.table, temporaryTableLifecycle, randomColumn, slct, ds.table)
-	if _, e := db.Exec(stmt); e != nil {
-		log.Errorf("create temporary table failed, stmt:[%s], err:%v", stmt, e)
+	trnCond := fmt.Sprintf("%s < %f", randomColumn, trainingUpperbound)
+	if e := createMaxcomputeTable(ds.training, ds.table, db, trnCond); e != nil {
+		log.Errorf("create training table failed, err: %v", e)
 		return nil, e
 	}
-	trainingCond := fmt.Sprintf("%s < %f", randomColumn, trainingUpperbound)
-	if e := createMaxcomputeTable(ds.training, ds.table, db, trainingCond); e != nil {
-		return nil, e
-	}
-	validationCond := fmt.Sprintf("%s >= %f", randomColumn, trainingUpperbound)
-	if e := createMaxcomputeTable(ds.validation, ds.table, db, validationCond); e != nil {
+	valCond := fmt.Sprintf("%s >= %f", randomColumn, trainingUpperbound)
+	if e := createMaxcomputeTable(ds.validation, ds.table, db, valCond); e != nil {
+		log.Errorf("create validation table failed, err: %v", e)
 		return nil, e
 	}
 	return ds, nil
 }
 
+func createMaxcomputeRandomTable(target, slct string, db *DB) error {
+	// drop the table if already exist
+	dropStmt := fmt.Sprintf("DROP TABLE IF EXISTS %s", target)
+	if _, e := db.Exec(dropStmt); e != nil {
+		return e
+	}
+	// create a table, then split it into train and val tables
+	stmt := fmt.Sprintf("CREATE TABLE %s LIFECYCLE %d AS SELECT *, RAND() AS %s FROM (%s) AS %s_ori", target, temporaryTableLifecycle, randomColumn, slct, target)
+	_, e := db.Exec(stmt)
+	return e
+}
+
 func createMaxcomputeTable(target, origin string, db *DB, cond string) error {
 	// drop the table if already exist
-	dropStmt := fmt.Sprintf("DROP TABLE IF EXISTS %s;", target)
+	dropStmt := fmt.Sprintf("DROP TABLE IF EXISTS %s", target)
 	if _, e := db.Exec(dropStmt); e != nil {
-		log.Errorf("drop temporary table failed, stmt:[%s], err:%v", dropStmt, e)
 		return e
 	}
 	stmt := fmt.Sprintf("CREATE TABLE %s LIFECYCLE %d AS SELECT * FROM %s WHERE %s", target, temporaryTableLifecycle, origin, cond)
+	_, e := db.Exec(stmt)
+	return e
+}
+
+func createHiveDataset(db *DB, slct string, origTable string, trainingUpperbound float32) (*trainAndValDataset, error) {
+	ds := namingTrainAndValDataset(origTable)
+	stmt := fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s", ds.database)
 	if _, e := db.Exec(stmt); e != nil {
-		log.Errorf("create table failed, stmt:[%s], err:%v", stmt, e)
-		return e
+		log.Errorf("create temporary database failed, stmt:[%s], err:%v", stmt, e)
+		return nil, e
 	}
-	return nil
+	rdmTbl, e := createHiveRandomTable(ds.database, ds.table, slct, db)
+	if e != nil {
+		log.Errorf("create table with a random column failed, err: %v", e)
+		return nil, e
+	}
+	trnCond := fmt.Sprintf("%s < %f", randomColumn, trainingUpperbound)
+	trnTbl, e := createHiveTable(ds.database, ds.training, rdmTbl, db, trnCond)
+	if e != nil {
+		log.Errorf("create training table failed, err: %v", e)
+		return nil, e
+	}
+	ds.training = trnTbl
+
+	valCond := fmt.Sprintf("%s >= %f", randomColumn, trainingUpperbound)
+	valTbl, e := createHiveTable(ds.database, ds.validation, rdmTbl, db, valCond)
+	if e != nil {
+		log.Errorf("create validation table failed, err: %v", e)
+		return nil, e
+	}
+	ds.validation = valTbl
+	return ds, nil
+}
+
+func createHiveRandomTable(database, table, slct string, db *DB) (string, error) {
+	fullTbl := fmt.Sprintf("%s.%s", database, table)
+	dropStmt := fmt.Sprintf("DROP TABLE IF EXISTS %s", fullTbl)
+	if _, e := db.Exec(dropStmt); e != nil {
+		return "", e
+	}
+	stmt := fmt.Sprintf("CREATE TABLE %s AS SELECT *, RAND() AS %s FROM (%s) AS %s_ori", fullTbl, randomColumn, slct, table)
+	_, e := db.Exec(stmt)
+	return fullTbl, e
+}
+
+func createHiveTable(database, table, origin string, db *DB, cond string) (string, error) {
+	fullTbl := fmt.Sprintf("%s.%s", database, table)
+	dropStmt := fmt.Sprintf("DROP TABLE IF EXISTS %s", fullTbl)
+	if _, e := db.Exec(dropStmt); e != nil {
+		return "", e
+	}
+	stmt := fmt.Sprintf("CREATE TABLE %s AS SELECT * FROM %s WHERE %s", fullTbl, origin, cond)
+	_, e := db.Exec(stmt)
+	return fullTbl, e
 }
 
 func namingTrainAndValDataset(origTable string) *trainAndValDataset {
+	// hive returns a table with a database name
+	flattenTbl := strings.Replace(origTable, ".", "__", -1)
 	return &trainAndValDataset{
 		supported:  true,
-		table:      fmt.Sprintf("%s_%s", tablePrefix, origTable),
-		training:   fmt.Sprintf("%s_%s", trainingPrefix, origTable),
-		validation: fmt.Sprintf("%s_%s", validationPrefix, origTable),
+		database:   "sf_home",
+		table:      fmt.Sprintf("%s_%s", tablePrefix, flattenTbl),
+		training:   fmt.Sprintf("%s_%s", trainingPrefix, flattenTbl),
+		validation: fmt.Sprintf("%s_%s", validationPrefix, flattenTbl),
 	}
+}
+
+func releaseTrainAndValDataset(ds *trainAndValDataset) {
+	// TODO(weiguo): release resources for databases, like: "hive", "mysql"...
 }
