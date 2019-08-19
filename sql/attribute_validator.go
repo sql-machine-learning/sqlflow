@@ -28,7 +28,7 @@ var attributeRegions = map[string]string{
 	"engine": "",
 }
 
-// ValidateAttributes validates the attributes are leagal.
+// ValidateAttributes validates the attributes are legal.
 func ValidateAttributes(attrs map[string]*attribute) error {
 	for k, v := range attrs {
 		keyParts := strings.Split(k, ".")
