@@ -42,9 +42,12 @@ type elasticDLFiller struct {
 	IsTraining bool
 
 	// Input & Output
-	TrainInputTable   string
-	EvalInputTable    string
-	PredictInputTable string
+	TrainInputTable    string
+	EvalInputTable     string
+	PredictInputTable  string
+	PredictOutputTable string
+	PredictInputModel  string
+	PredictOutputShape int
 
 	TrainClause *resolvedTrainClause
 }
@@ -114,6 +117,16 @@ func newElasticDLTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds
 		EvalInputTable:  evalInput,
 		TrainClause:     resolved,
 	}, err
+}
+
+func newElasticDLPredictFiller(pr *extendedSelect, outputShape int) *elasticDLFiller {
+	return &elasticDLFiller{
+		IsTraining:         false,
+		PredictInputTable:  pr.tables[0],
+		PredictOutputTable: pr.predictClause.into,
+		PredictInputModel:  pr.predictClause.model,
+		PredictOutputShape: outputShape,
+	}
 }
 
 func elasticDLTrain(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *pb.Session, ds *trainAndValDataset) error {
