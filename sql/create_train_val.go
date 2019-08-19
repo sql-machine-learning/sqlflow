@@ -77,6 +77,7 @@ func createMaxcomputeDataset(db *DB, slct string, origTable string, trainingUppe
 		log.Errorf("create validation table failed, err: %v", e)
 		return nil, e
 	}
+	// TODO(weiguo): release the random table
 	return ds, nil
 }
 
@@ -130,6 +131,10 @@ func createHiveDataset(db *DB, slct string, origTable string, trainingUpperbound
 		return nil, e
 	}
 	ds.validation = valTbl
+	if _, e := db.Exec("DROP TABLE IF EXISTS " + rdmTbl); e != nil {
+		log.Errorf("drop temporary table failed, err:%v", e)
+		return nil, e
+	}
 	return ds, nil
 }
 
@@ -167,6 +172,16 @@ func namingTrainAndValDataset(origTable string) *trainAndValDataset {
 	}
 }
 
-func releaseTrainAndValDataset(ds *trainAndValDataset) {
-	// TODO(weiguo): release resources for databases, like: "hive", "mysql"...
+func releaseTrainAndValDataset(db *DB, ds *trainAndValDataset) error {
+	switch db.driverName {
+	case "hive":
+		if _, e := db.Exec("DROP TABLE IF EXISTS " + ds.training); e != nil {
+			return e
+		}
+		if _, e := db.Exec("DROP TABLE IF EXISTS " + ds.validation); e != nil {
+			return e
+		}
+	default:
+	}
+	return nil
 }
