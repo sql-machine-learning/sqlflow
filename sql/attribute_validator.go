@@ -21,11 +21,11 @@ import (
 )
 
 var attributeRegions = map[string]string{
-	"model":  "",
-	"train":  "",
-	"eval":   "",
-	"pred":   "",
-	"engine": "",
+	"model":   "",
+	"train":   "",
+	"eval":    "",
+	"predict": "",
+	"engine":  "",
 }
 
 // ValidateAttributes validates the attributes are legal.
