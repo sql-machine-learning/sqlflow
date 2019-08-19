@@ -77,6 +77,32 @@ func TestTrainElasticDLFiller(t *testing.T) {
 	a.Equal("training_data", filler.TrainInputTable)
 }
 
+func TestPredElasticDLFiller(t *testing.T) {
+	a := assert.New(t)
+	parser := newParser()
+	predStatement := `SELECT c1, c2, c3, c4 FROM prediction_data
+		PREDICT prediction_results_table
+		USING trained_elasticdl_keras_classifier;`
+
+	r, e := parser.Parse(predStatement)
+	filler := newElasticDLPredictFiller(r, 10)
+
+	a.False(filler.IsTraining)
+	a.Equal(filler.PredictInputTable, "prediction_data")
+	a.Equal(filler.PredictOutputTable, "prediction_results_table")
+	a.Equal(filler.PredictInputModel, "trained_elasticdl_keras_classifier")
+
+	var program bytes.Buffer
+	e = elasticdlTrainTemplate.Execute(&program, filler)
+	a.NoError(e)
+
+	code := program.String()
+	a.True(strings.Contains(code, `tf.keras.layers.Dense(10, name="output")(flatten)`), code)
+	a.True(strings.Contains(code, `columns=["pred_" + str(i) for i in range(10)]`), code)
+	a.True(strings.Contains(code, `column_types=["double" for _ in range(10)]`), code)
+	a.True(strings.Contains(code, `table = "prediction_results_table"`), code)
+}
+
 func TestElasticDLDataConversionFiller(t *testing.T) {
 	a := assert.New(t)
 	parser := newParser()

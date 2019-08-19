@@ -153,7 +153,7 @@ def custom_model():
     dropout = tf.keras.layers.Dropout(0.4)(max_pool)
 
     flatten = tf.keras.layers.Flatten()(dropout)
-    outputs = tf.keras.layers.Dense(10, name="output")(flatten)
+    outputs = tf.keras.layers.Dense({{.PredictOutputShape}}, name="output")(flatten)
 
     return tf.keras.Model(inputs=inputs, outputs=outputs, name="cifar10_model")
 
@@ -229,9 +229,9 @@ class PredictionOutputsProcessor(BasePredictionOutputsProcessor):
                 os.environ[ODPSConfig.ACCESS_ID],
                 os.environ[ODPSConfig.ACCESS_KEY],
                 os.environ[ODPSConfig.ENDPOINT],
-                "cifar10_prediction_outputs",
-                columns=["f" + str(i) for i in range(10)],
-                column_types=["double" for _ in range(10)],
+                table = "{{.PredictOutputTable}}",
+                columns=["pred_" + str(i) for i in range({{.PredictOutputShape}})],
+                column_types=["double" for _ in range({{.PredictOutputShape}})],
             )
         else:
             self.odps_writer = None
