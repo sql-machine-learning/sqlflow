@@ -79,15 +79,39 @@ func TestTrainElasticDLFiller(t *testing.T) {
 
 func TestElasticDLDataConversionFiller(t *testing.T) {
 	a := assert.New(t)
+	parser := newParser()
+
+	wndStatement := `SELECT c1, c2, c3, c4, c5 FROM training_data
+		TRAIN ElasticDLKerasClassifier 
+		WITH
+			model.optimizer = "optimizer",
+			model.loss = "loss"
+		COLUMN
+			c1,
+			NUMERIC(c2, 10),
+			c3,
+			c4
+		LABEL c5
+		INTO trained_elasticdl_keras_classifier;`
+
+	r, e := parser.Parse(wndStatement)
+	a.NoError(e)
+
 	var program bytes.Buffer
-	filler, e := newElasticDLDataConversionFiller("table_name", `["a", "b", "c"]`, 200, 1)
+	filler, e := newElasticDLDataConversionFiller(r, 200, 1)
 	a.NoError(e)
 	e = elasticdlDataConversionTemplate.Execute(&program, filler)
 	a.NoError(e)
 	code := program.String()
-	a.True(strings.Contains(code, `table = "table_name"`), code)
-	a.True(strings.Contains(code, `COLUMN_NAMES = ["a", "b", "c"]`), code)
+	a.True(strings.Contains(code, `table = "training_data"`), code)
+	a.True(strings.Contains(code, `COLUMN_NAMES = ["c1", "c2", "c3", "c4", "c5"]`), code)
 	a.True(strings.Contains(code, `output_dir = "/tmp/recordio_data_dir_`), code)
 	a.True(strings.Contains(code, `batch_size = 200`), code)
 	a.True(strings.Contains(code, `num_processes = 1`), code)
+}
+
+func TestMakePythonListCode(t *testing.T) {
+	a := assert.New(t)
+	listCode := makePythonListCode([]string{"a", "b", "c"})
+	a.Equal(`["a", "b", "c"]`, listCode)
 }

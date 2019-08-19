@@ -20,6 +20,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"text/template"
 
 	pb "github.com/sql-machine-learning/sqlflow/server/proto"
@@ -48,14 +49,48 @@ type elasticDLFiller struct {
 	TrainClause *resolvedTrainClause
 }
 
-func newElasticDLDataConversionFiller(odpsTableName string, featuresList string, batchSize int, numProcesses int) (*elasticDLDataConversionFiller, error) {
+func getFeaturesNames(pr *extendedSelect) ([]string, error) {
+	selectFeatures := pr.standardSelect.fields.Strings()
+	if len(selectFeatures) == 1 && selectFeatures[0] == "*" {
+		log.Fatalf("ElasticDL doesn't support wildcard select yet")
+	}
+	features := make([]string, 0)
+	for _, feature := range selectFeatures {
+		if feature != pr.label {
+			features = append(features, feature)
+		}
+	}
+	return features, nil
+}
+
+func makePythonListCode(items []string) string {
+	var sb strings.Builder
+	sb.WriteString("[")
+	for i, item := range items {
+		sb.WriteString(`"`)
+		sb.WriteString(item)
+		sb.WriteString(`"`)
+		if i != len(items)-1 {
+			sb.WriteString(`, `)
+		}
+	}
+	sb.WriteString("]")
+	return sb.String()
+}
+
+func newElasticDLDataConversionFiller(pr *extendedSelect, batchSize int, numProcesses int) (*elasticDLDataConversionFiller, error) {
 	recordIODataDir, err := ioutil.TempDir("/tmp", "recordio_data_dir_")
 	if err != nil {
 		return nil, err
 	}
+	featureNames, err := getFeaturesNames(pr)
+	if err != nil {
+		log.Fatalf("Failed to get feature names from SELECT statement %v", err)
+		return nil, err
+	}
 	return &elasticDLDataConversionFiller{
-		FeaturesList:    featuresList,
-		ODPSTableName:   odpsTableName,
+		FeaturesList:    makePythonListCode(append(featureNames, pr.label)),
+		ODPSTableName:   pr.tables[0],
 		RecordIODataDir: recordIODataDir,
 		BatchSize:       batchSize,
 		NumProcesses:    numProcesses,
@@ -82,32 +117,51 @@ func newElasticDLTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds
 }
 
 func elasticDLTrain(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *pb.Session, ds *trainAndValDataset) error {
-	var program bytes.Buffer
+	// Write data conversion script
+	// TODO: Execute the script inside container where ElasticDL is available
+	var dataConversionProgram bytes.Buffer
+	dataConversionFiller, err := newElasticDLDataConversionFiller(pr, 200, 1)
+	if err != nil {
+		return err
+	}
+	if err = elasticdlDataConversionTemplate.Execute(&dataConversionProgram, dataConversionFiller); err != nil {
+		return fmt.Errorf("Failed executing data conversion template: %v", err)
+	}
+	dataConversionScriptPath := "data_conversion.py"
+	dataConversionScript, err := os.Create(filepath.Join(cwd, dataConversionScriptPath))
+	if err != nil {
+		return fmt.Errorf("Create python code failed %v", err)
+	}
+	dataConversionScript.WriteString(dataConversionProgram.String())
+	dataConversionScript.Close()
+
+	// Write model definition file
+	var elasticdlProgram bytes.Buffer
 	trainFiller, err := newElasticDLTrainFiller(pr, db, session, ds)
 	if err != nil {
 		return err
 	}
 
-	if err = elasticdlTrainTemplate.Execute(&program, trainFiller); err != nil {
-		return fmt.Errorf("submitElasticDL: failed executing template: %v", err)
+	if err = elasticdlTrainTemplate.Execute(&elasticdlProgram, trainFiller); err != nil {
+		return fmt.Errorf("Failed executing ElasticDL training template: %v", err)
 	}
-	code := program.String()
+	modelDefCode := elasticdlProgram.String()
 	cw := &logChanWriter{wr: w}
-	cmd := elasticdlCmd(cwd, "train")
-	filename := "model_definition.py"
-	absfile := filepath.Join(cwd, filename)
-	f, err := os.Create(absfile)
+	modelDefFilePath := "model_definition.py"
+	modelDefFile, err := os.Create(filepath.Join(cwd, modelDefFilePath))
 	if err != nil {
 		return fmt.Errorf("Create python code failed %v", err)
 	}
-	f.WriteString(program.String())
-	f.Close()
+	modelDefFile.WriteString(modelDefCode)
+	modelDefFile.Close()
 
-	cmd.Args = append(cmd.Args, filename)
+	// Create and execute ElasticDL training command
+	cmd := elasticdlCmd(cwd, "train")
+	cmd.Args = append(cmd.Args, modelDefFilePath)
 	cmd.Stdout = cw
 	cmd.Stderr = cw
 	if e := cmd.Run(); e != nil {
-		return fmt.Errorf("code %v failed %v", code, e)
+		return fmt.Errorf("code %v failed %v", modelDefCode, e)
 	}
 	return nil
 }
