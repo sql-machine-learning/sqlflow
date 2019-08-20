@@ -19,9 +19,9 @@ class HiveDBWriter(DBWriter):
 
     def flush(self):
         statement = '''insert into table {} ({}) values({})'''.format(
-            table_name,
-            ", ".join(table_schema),
-            ", ".join(["%s"] * len(table_schema))
+            self.table_name,
+            ", ".join(self.table_schema),
+            ", ".join(["%s"] * len(self.table_schema))
         )
         cursor = self.conn.cursor()
         cursor.executemany(statement, self.rows)

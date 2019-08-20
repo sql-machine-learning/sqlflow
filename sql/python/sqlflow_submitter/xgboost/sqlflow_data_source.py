@@ -119,7 +119,7 @@ class SQLFlowDataSource(DataSource):
         
         def writer_maker(table_schema):
             return db_writer_factory(
-                    source_conf.db_config['driver'],
+                    driver=source_conf.db_config['driver'],
                     conn=conn,
                     table_name=source_conf.output_table,
                     table_schema=table_schema,
