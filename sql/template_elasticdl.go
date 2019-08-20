@@ -192,8 +192,11 @@ def dataset_fn(dataset, mode):
 
     dataset = dataset.map(_parse_data)
 
+    {{if .IsTraining}}
     if mode != Mode.PREDICTION and "{{.TrainClause.EnableShuffle}}" == "true":
         dataset = dataset.shuffle(buffer_size={{.TrainClause.ShuffleBufferSize}})
+    {{end}}
+
     return dataset
 
 
