@@ -46,15 +46,7 @@ func TestCreateTrainAndValDataset(t *testing.T) {
 		ds, e := newTrainAndValDataset(testDB, testMaxcomputeTrainAndValDataset, "orig", 0.8)
 		a.NoError(e)
 		a.Empty(ds.database)
-	case "hive":
-		_, e := newTrainAndValDataset(testDB, testTrainAndValDataset, "orig", 1)
-		a.Error(e)
-		_, e = newTrainAndValDataset(testDB, testTrainAndValDataset, "orig", 0)
-		a.Error(e)
-		ds, e := newTrainAndValDataset(testDB, testTrainAndValDataset, "orig", 0.8)
-		a.NoError(e)
-		a.NotEmpty(ds.database)
-	case "mysql":
+	case "hive", "mysql":
 		_, e := newTrainAndValDataset(testDB, testTrainAndValDataset, "orig", 1)
 		a.Error(e)
 		_, e = newTrainAndValDataset(testDB, testTrainAndValDataset, "orig", 0)
