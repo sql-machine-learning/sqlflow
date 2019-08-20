@@ -33,33 +33,24 @@ func ValidateAttributes(attrs map[string]*attribute) error {
 	for k, v := range attrs {
 		keyParts := strings.Split(k, ".")
 		if len(keyParts) != 2 {
-			return fmt.Errorf("Attributes should have only 2 parts, got %d in %s", len(keyParts), k)
+			return fmt.Errorf("attributes should of format first_part.second_part, got %s", k)
 		}
 		keyRegion := keyParts[0]
 		if _, ok := attributeRegions[keyRegion]; !ok {
-			return fmt.Errorf("Unsupported WITH attribute region: %s", keyRegion)
+			return fmt.Errorf("unsupported WITH attribute region: %s", keyRegion)
 		}
 		// test the value is of supported type:
-		// string, int, float, []int, []float
-		if stringAttr, ok := v.Value.(string); ok {
-			if govalidator.IsInt(stringAttr) {
-				return nil
-			} else if govalidator.IsFloat(stringAttr) {
-				return nil
-			} else if govalidator.IsJSON(stringAttr) {
-				// test if json object like [1,2,3]
-				return nil
-			} else if govalidator.IsASCII(stringAttr) {
-				// NOTE: should avoid this checking is ascii
-				return nil
-			} else {
-				return fmt.Errorf("Not supported attribute value: %s", stringAttr)
+		// string, int, float, []int
+		switch value := v.Value.(type) {
+		case string:
+			if govalidator.IsInt(value) || govalidator.IsFloat(value) || govalidator.IsJSON(value) || govalidator.IsASCII(value) {
+				continue
 			}
-		} else if _, ok := v.Value.([]interface{}); ok {
-			// a list attribute
-			return nil
-		} else {
-			return fmt.Errorf("Attribute value is not string type, %v", v.Value)
+			return fmt.Errorf("not supported attribute value: %s", value)
+		case []int:
+			continue
+		default:
+			return fmt.Errorf("unrecognize attribute %v with type %T", value, value)
 		}
 	}
 	return nil
