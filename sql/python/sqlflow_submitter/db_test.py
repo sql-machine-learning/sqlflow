@@ -95,7 +95,8 @@ class TestDB(TestCase):
         else:
             execute(driver, conn, self.create_statement)
         writer = db_writer_factory(driver, conn, table_name, table_schema)
-        [writer.write(row) for row in values]
+        for row in values:
+            writer.write(row)
         writer.close()
 
         field_names, data = execute(driver, conn, self.select_statement)

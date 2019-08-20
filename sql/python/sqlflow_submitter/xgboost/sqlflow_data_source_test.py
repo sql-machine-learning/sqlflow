@@ -86,7 +86,7 @@ class TestSQLFlowDataSource(TestCase):
         schema = ['f1', 'f2', 'f3', 'weight1', 'label1', 'group1', 'a1', 'a2']
         writer = db_writer_factory(db_conf['driver'], conn, 'input_table', schema)
         for row in data:
-            writer.write(data)
+            writer.write(row)
         writer.close()
         self._sql = run_sql
 
