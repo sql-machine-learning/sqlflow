@@ -736,4 +736,9 @@ run_with_sqlflow(
 	learning_config='{{.LearningJSON}}',	
 	data_source_config='{{.DataSourceJSON}}',	
 	column_config='{{.ColumnJSON}}')
+{{if .IsTrain}}
+print("Done training.")
+{{else}}
+print("Done prediction, the result table: {{.OutputTable}}")
+{{end}}
 `
