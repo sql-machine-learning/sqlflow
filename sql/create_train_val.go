@@ -33,7 +33,7 @@ type trainAndValDataset struct {
 }
 
 const (
-	temporaryTableLifecycle = 14 // day(s)
+	temporaryTableLifecycle = 14 // day(s), for maxcompuate
 	randomColumn            = "sqlflow_rdm"
 	tablePrefix             = "sqlflow_tv" // 'tv' = training & validation
 	trainingPrefix          = "sqlflow_training"
@@ -53,11 +53,11 @@ func newTrainAndValDataset(db *DB, slct string, origTable string, trainingUpperb
 	switch db.driverName {
 	case "maxcompute":
 		return createMaxcomputeDataset(db, slct, origTable, trainingUpperbound)
-	case "hive":
-		return createHiveDataset(db, slct, origTable, trainingUpperbound)
+	case "hive", "mysql":
+		return createDataset(db, slct, origTable, trainingUpperbound)
+	// TODO(weiguo) case "sqlite":
 	default:
 		return nil, nil
-		//return nil, fmt.Errorf("newTrainAndValDataset: unsupported database %s", db.driverName)
 	}
 }
 
@@ -94,7 +94,6 @@ func createMaxcomputeRandomTable(target, slct string, db *DB) error {
 }
 
 func createMaxcomputeTable(target, origin string, db *DB, cond string) error {
-	// drop the table if already exist
 	dropStmt := fmt.Sprintf("DROP TABLE IF EXISTS %s", target)
 	if _, e := db.Exec(dropStmt); e != nil {
 		return e
@@ -104,20 +103,21 @@ func createMaxcomputeTable(target, origin string, db *DB, cond string) error {
 	return e
 }
 
-func createHiveDataset(db *DB, slct string, origTable string, trainingUpperbound float32) (*trainAndValDataset, error) {
+// create dataset on Hive, MySQL
+func createDataset(db *DB, slct string, origTable string, trainingUpperbound float32) (*trainAndValDataset, error) {
 	ds := namingTrainAndValDataset(origTable)
 	stmt := fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s", ds.database)
 	if _, e := db.Exec(stmt); e != nil {
 		log.Errorf("create temporary database failed, stmt:[%s], err:%v", stmt, e)
 		return nil, e
 	}
-	rdmTbl, e := createHiveRandomTable(ds.database, ds.table, slct, db)
+	rdmTbl, e := createRandomTable(ds.database, ds.table, slct, db)
 	if e != nil {
 		log.Errorf("create table with a random column failed, err: %v", e)
 		return nil, e
 	}
 	trnCond := fmt.Sprintf("%s < %f", randomColumn, trainingUpperbound)
-	trnTbl, e := createHiveTable(ds.database, ds.training, rdmTbl, db, trnCond)
+	trnTbl, e := createTable(ds.database, ds.training, rdmTbl, db, trnCond)
 	if e != nil {
 		log.Errorf("create training table failed, err: %v", e)
 		return nil, e
@@ -125,7 +125,7 @@ func createHiveDataset(db *DB, slct string, origTable string, trainingUpperbound
 	ds.training = trnTbl
 
 	valCond := fmt.Sprintf("%s >= %f", randomColumn, trainingUpperbound)
-	valTbl, e := createHiveTable(ds.database, ds.validation, rdmTbl, db, valCond)
+	valTbl, e := createTable(ds.database, ds.validation, rdmTbl, db, valCond)
 	if e != nil {
 		log.Errorf("create validation table failed, err: %v", e)
 		return nil, e
@@ -138,7 +138,7 @@ func createHiveDataset(db *DB, slct string, origTable string, trainingUpperbound
 	return ds, nil
 }
 
-func createHiveRandomTable(database, table, slct string, db *DB) (string, error) {
+func createRandomTable(database, table, slct string, db *DB) (string, error) {
 	fullTbl := fmt.Sprintf("%s.%s", database, table)
 	dropStmt := fmt.Sprintf("DROP TABLE IF EXISTS %s", fullTbl)
 	if _, e := db.Exec(dropStmt); e != nil {
@@ -149,7 +149,7 @@ func createHiveRandomTable(database, table, slct string, db *DB) (string, error)
 	return fullTbl, e
 }
 
-func createHiveTable(database, table, origin string, db *DB, cond string) (string, error) {
+func createTable(database, table, origin string, db *DB, cond string) (string, error) {
 	fullTbl := fmt.Sprintf("%s.%s", database, table)
 	dropStmt := fmt.Sprintf("DROP TABLE IF EXISTS %s", fullTbl)
 	if _, e := db.Exec(dropStmt); e != nil {
@@ -174,7 +174,7 @@ func namingTrainAndValDataset(origTable string) *trainAndValDataset {
 
 func releaseTrainAndValDataset(db *DB, ds *trainAndValDataset) error {
 	switch db.driverName {
-	case "hive":
+	case "hive", "mysql":
 		if _, e := db.Exec("DROP TABLE IF EXISTS " + ds.training); e != nil {
 			return e
 		}
