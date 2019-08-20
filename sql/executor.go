@@ -358,8 +358,8 @@ func train(wr *PipeWriter, tr *extendedSelect, db *DB, cwd string, modelDir stri
 	}
 
 	var program bytes.Buffer
-	// FIXME(sperlingxx): write a separate train pipeline for xgboost to support remote mode
-	if os.Getenv("SQLFLOW_submitter") == "XGBOOST" {
+	if strings.HasPrefix(strings.ToUpper(tr.estimator), `XGBOOST.`) {
+		// FIXME(sperlingxx): write a separate train pipeline for xgboost to support remote mode
 		filler, e := newXGBoostFiller(tr, fts, db)
 		if e != nil {
 			return fmt.Errorf("genXG %v", e)
@@ -419,8 +419,8 @@ func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir strin
 	}
 
 	var buf bytes.Buffer
-	// FIXME(sperlingxx): write a separate pred pipeline for xgboost to support remote mode
-	if os.Getenv("SQLFLOW_submitter") == "XGBOOST" {
+	if strings.HasPrefix(strings.ToUpper(tr.estimator), `XGBOOST.`) {
+		// FIXME(sperlingxx): write a separate pred pipeline for xgboost to support remote mode
 		filler, e := newXGBoostFiller(pr, fts, db)
 		if e != nil {
 			return fmt.Errorf("genXG %v", e)
