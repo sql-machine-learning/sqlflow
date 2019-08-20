@@ -85,8 +85,11 @@ float values to `float32` but not `float64` since `float32` seems enough for mos
 
 We need to `SELECT` part of the training data, like 1000 rows and go through the below routine:
 
-1. If the column data type is numeric: int, bigint, float, double, can directly parse to a tensor of shape `[1]`.
-2. If the column data type is string: VARCHAR or TEXT:
+1. If the column processor is specified in the `COLUMN` clause, parse the column as described.
+   try to infer the inner data type by reading some data, if float value presents, then the
+   `dtype` should be `float32`.
+2. If the column data type is numeric: int, bigint, float, double, can directly parse to a tensor of shape `[1]`.
+3. If the column data type is string: VARCHAR or TEXT:
    1. If the string is not one of the supported serialized format (only support CSV currently):
       1. If all the rows of the column's string data can be parsed to a float or int value,
          treat it as a tensor of shape `[1]`.
@@ -94,12 +97,11 @@ We need to `SELECT` part of the training data, like 1000 rows and go through the
       3. The string value can not be parsed to int or float, treat it as enum type and use
          `categorical columns` to process the string to tensors.
       4. If the enum values in the above step have very little in common (like only 5% of the data appeared twice or more), use `categorical_column_with_hash_bucket`.
-    2. If the string is of CSV format, try to infer the inner data type by reading some data, if
-       float value presents, then the `dtype` should be `float32`
-       1. If all rows for this column have the same number of values in the CSV, parse the column to a "dense" tensor.
-       2. If the rows contain CSV data of different length, then:
-          1. Check if the column is defined in SQL statement a `SPARSE` column, if not, throw an error.
-          2. If the current column is defined as a `SPARSE` column, use the "dense shape" to parse the column data to a `tf.SparseTensor`.
+    2. If the string is of CSV format:
+       1. If already appeared in `COLUMN` clause, then continue.
+       2. If all rows for this column have the same number of values in the CSV, parse the column to a "dense" tensor, use this dense tensor directly as model input.
+       3. If the rows contain CSV data of different length, then return a parsing error to the
+          client and top.
 
 After going through the above "routine" we can be sure how to parse the data for each column and
 what feature column to use. Also, we can add support more serialized format in additional to CSV,
