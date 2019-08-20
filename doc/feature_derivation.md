@@ -8,57 +8,78 @@ Target: We need to know the below two information for each column after the
 feature type infer routine:
 
 1. How to transform the column data to tensors, including `tf.SparseTensor`.
-2. What type of feature column should adapt to the column and the parameters for the feature column call.
+2. What type of feature column should adapt to the column and the parameters
+   for the feature column call.
 
 ## Simpler COLUMN Clause
 
 When we have a training table contains many columns that should be used
 for training like https://www.kaggle.com/mlg-ulb/creditcardfraud, it's
-not friendly if we must provide all column names in `COLUMN` clause, we'd
-like to just use `COLUMN *` here.
+not friendly if we must provide all column names in `COLUMN` clause.
+Since we'd like to use all columns, when we write `SELECT *` then we can
+assume that we are using all columns to train and no longer need to write
+`COLUMN` anymore:
 
-But, for cases when the columns are of quite different data format, like:
-
+```sql
+SELECT * FROM creditcardfraud
+TRAIN DNNClassifier
+INTO my_model_name;
 ```
-data type: (float, float, float, float, csv_string_for_dense_tensor, csv_string_for_sparse_tensor, int)
-column name: (a , b , c , d , e , f, label)
+
+For columns that may need to do preprocessing, we can add those preprocessing
+descriptions in the `COLUMN` clause. For the credit card fraud dataset, assume
+only the column `time` should be processed use a function before feed to the model, so
+the SQL statement should look like:
+
+```sql
+SELECT * FROM creditcardfraud
+TRAIN DNNClassifier
+COLUMN YOUR_NORMALIZE_FUNC(time)
+INTO my_model_name;
 ```
 
-`COLUMN *` and plus the data in the table may not provide enough information we need:
+For more complex cases when columns are of quite different data format, like:
 
-- whether the `csv_string_for_dense_tensor` should going through an embedding layer
-- what the original "dense shape" for the `csv_string_for_sparse_tensor` column to parse to a `SparseTensor`.
+| column name | data type |
+| ----------- | --------- |
+| a | float |
+| b | float |
+| c | string (csv as a dense tensor) |
+| d | string (csv as a sparse tensor) |
+| label | int |
 
-So we need SQLFlow users to provide such information in the SQL statements to make the training
-network specific. We support the below SQL statements for the above case:
+If the column represents a "dense tensor", we can get the shape by reading
+some of the values and confirm the shapes are the same.
 
-```
+While we can not infer the actual "dense shape" by reading the data if the CSV
+string column represents a sparse tensor, nor whether the column should use a
+embedding feature column. So, these information must be provided by the SQL
+statement, the SQL statement for the above case should be like:
+
+```sql
 SELECT * FROM training_table
 TRAIN DNNClassifier
-WITH someattr=somevalue
-COLUMN *,EMBEDDING(e, 128, "sum"),EMBEDDING(SPARSE(f, [1000000]), 512, "sum")
+COLUMN EMBEDDING(c, 128, "sum"),
+       EMBEDDING(SPARSE(d, [1000000]), 512, "sum")
+LABEL label
+INTO my_model_name;
+```
+
+You can also write the full description of every column like below:
+
+```sql
+SELECT a, b, c, d, label FROM training_table
+TRAIN DNNClassifier
+COLUMN a, b,
+       EMBEDDING(DENSE(c, [64]), 128, "sum"),
+       EMBEDDING(SPARSE(d, [1000000]), 512, "sum")
 LABEL label
 INTO my_model_file;
 ```
 
-Note that the above SQL have the same meaning to:
-
-```
-SELECT * FROM training_table
-TRAIN DNNClassifier
-WITH someattr=somevalue
-COLUMN a, b, c, d ,EMBEDDING(DENSE(e, [64]), 128, "sum"),EMBEDDING(SPARSE(f, [1000000]), 512, "sum")
-LABEL label
-INTO my_model_file;
-```
-
-Since we can not get the original "dense shape" if the CSV column represents a sparse tensor,
-the shape must be specified in the SQL statement. But if the column represents a "dense tensor"
-we can get the shape by reading some of the values and confirm the shape is the same.
-
-For CSV values, we can also infer the tensor data type by reading some of the training data, whether
-it's int value or float value. Note we can always parse float values to `float32` but not `float64`
-since `float32` seems enough for most cases.
+For CSV values, we also need to infer the tensor data type by reading some of
+the training data, whether it's int value or float value. Note that we always parse
+float values to `float32` but not `float64` since `float32` seems enough for most cases.
 
 ## The Feature Derivation Routine
 
