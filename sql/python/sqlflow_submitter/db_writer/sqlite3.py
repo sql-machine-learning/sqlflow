@@ -28,12 +28,3 @@ class SQLite3Writer(DBWriter):
         self.conn.commit()
         cursor.close()
         self.rows = []
-
-    def write(self, value):
-        self.rows.append(value)
-        if len(self.rows) > self.buff_size:
-            self.flush()
-
-    def close(self):
-        if len(self.rows) > 0:
-            self.flush()

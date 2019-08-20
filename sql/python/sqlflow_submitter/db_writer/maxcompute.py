@@ -22,12 +22,3 @@ class MaxComputeDBWriter(DBWriter):
         compress = tunnel.CompressOption.CompressAlgorithm.ODPS_ZLIB
         self.conn.write_table(self.table, self.rows, compress_option=compress)
         self.rows = []
-
-    def write(self, value):
-        self.rows.append(value)
-        if len(self.rows) > self.buff_size:
-            self.flush()
-
-    def close(self):
-        if len(self.rows) > 0:
-            self.flush()

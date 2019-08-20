@@ -24,7 +24,10 @@ class DBWriter(object):
         raise NotImplementedError("Should implement flush function.")
 
     def write(self, value):
-        raise NotImplementedError("Should implement write function.")
+        self.rows.append(value)
+        if len(self.rows) > self.buff_size:
+            self.flush()
 
     def close(self):
-        raise NotImplementedError("Should implement close function.")
+        if len(self.rows) > 0:
+            self.flush()
