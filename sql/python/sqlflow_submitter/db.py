@@ -102,12 +102,12 @@ def db_generator(driver, conn, statement,
 
 def db_writer_factory(driver, conn, table_name, table_schema, buff_size=100):
     if driver == "maxcompute":
-        pass
+        return db_writer.MaxComputeDBWriter(conn, table_name, table_schema, buff_size)
     elif driver == "mysql":
         return db_writer.MySQLDBWriter(conn, table_name, table_schema, buff_size)
     elif driver == "sqlite3":
-        pass
+        return db_writer.SQLite3DBWriter(conn, table_name, table_schema, buff_size)
     elif driver == "hive":
-        pass
+        return db_writer.HiveDBWriter(conn, table_name, table_schema, buff_size)
     else:
         raise ValueError("unrecognized database driver: %s" % driver)

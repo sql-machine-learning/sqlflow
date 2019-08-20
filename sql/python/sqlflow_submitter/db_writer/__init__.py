@@ -12,4 +12,7 @@
 # limitations under the License.
 
 from .mysql import MySQLDBWriter
-__all__=["MySQLDBWriter"]
+from .hive import HiveDBWriter
+from .maxcompute import MaxComputeDBWriter
+from .sqlite3 import SQLite3DBWriter
+__all__=["MySQLDBWriter", "HiveDBWriter", "MaxComputeDBWriter", "SQLite3DBWriter"]
