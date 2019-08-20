@@ -175,11 +175,11 @@ def dataset_fn(dataset, mode):
     def _parse_data(record):
         if mode == Mode.PREDICTION:
             feature_description = {
-                {{.FEATURES_DESCRIPTION}}
+                {{.FeaturesDescription}}
             }
         else:
             feature_description = {
-                {{.FEATURES_DESCRIPTION}}
+                {{.FeaturesDescription}}
                 "{{.LabelColName}}": tf.io.FixedLenFeature([1], tf.int64),
             }
         parsed_example = tf.io.parse_single_example(record, feature_description)
@@ -192,8 +192,8 @@ def dataset_fn(dataset, mode):
 
     dataset = dataset.map(_parse_data)
 
-    if mode != Mode.PREDICTION:
-        dataset = dataset.shuffle(buffer_size=1024)
+    if mode != Mode.PREDICTION and "{{.TrainClause.EnableShuffle}}" == "true":
+        dataset = dataset.shuffle(buffer_size={{.TrainClause.ShuffleBufferSize}})
     return dataset
 
 

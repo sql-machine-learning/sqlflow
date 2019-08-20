@@ -49,6 +49,9 @@ type elasticDLFiller struct {
 	PredictInputModel  string
 	PredictOutputShape int
 
+	FeaturesDescription string
+	LabelColName        string
+
 	TrainClause *resolvedTrainClause
 }
 
@@ -119,6 +122,11 @@ func newElasticDLTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds
 	if err != nil {
 		return nil, err
 	}
+	featureNames, err := getFeaturesNames(pr)
+	if err != nil {
+		log.Fatalf("Failed to get feature names from SELECT statement %v", err)
+		return nil, err
+	}
 	var trainInput, evalInput string
 	if ds != nil && ds.supported {
 		trainInput, evalInput = ds.training, ds.validation
@@ -126,21 +134,29 @@ func newElasticDLTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds
 		trainInput, evalInput = pr.tables[0], pr.tables[0]
 	}
 	return &elasticDLFiller{
-		IsTraining:      true,
-		TrainInputTable: trainInput,
-		EvalInputTable:  evalInput,
-		TrainClause:     resolved,
+		IsTraining:          true,
+		TrainInputTable:     trainInput,
+		EvalInputTable:      evalInput,
+		FeaturesDescription: genFeaturesDescription(featureNames),
+		LabelColName:        pr.label,
+		TrainClause:         resolved,
 	}, err
 }
 
-func newElasticDLPredictFiller(pr *extendedSelect, outputShape int) *elasticDLFiller {
-	return &elasticDLFiller{
-		IsTraining:         false,
-		PredictInputTable:  pr.tables[0],
-		PredictOutputTable: pr.predictClause.into,
-		PredictInputModel:  pr.predictClause.model,
-		PredictOutputShape: outputShape,
+func newElasticDLPredictFiller(pr *extendedSelect, outputShape int) (*elasticDLFiller, error) {
+	featureNames, err := getFeaturesNames(pr)
+	if err != nil {
+		log.Fatalf("Failed to get feature names from SELECT statement %v", err)
+		return nil, err
 	}
+	return &elasticDLFiller{
+		IsTraining:          false,
+		PredictInputTable:   pr.tables[0],
+		PredictOutputTable:  pr.predictClause.into,
+		PredictInputModel:   pr.predictClause.model,
+		PredictOutputShape:  outputShape,
+		FeaturesDescription: genFeaturesDescription(featureNames),
+	}, err
 }
 
 func elasticDLTrain(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *pb.Session, ds *trainAndValDataset) error {
