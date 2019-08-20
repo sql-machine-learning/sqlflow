@@ -175,21 +175,20 @@ def dataset_fn(dataset, mode):
     def _parse_data(record):
         if mode == Mode.PREDICTION:
             feature_description = {
-                "image": tf.io.FixedLenFeature([32, 32, 3], tf.float32)
+                {{.FEATURES_DESCRIPTION}}
             }
         else:
             feature_description = {
-                "image": tf.io.FixedLenFeature([32, 32, 3], tf.float32),
-                "label": tf.io.FixedLenFeature([1], tf.int64),
+                {{.FEATURES_DESCRIPTION}}
+                "{{.LabelColName}}": tf.io.FixedLenFeature([1], tf.int64),
             }
-        r = tf.io.parse_single_example(record, feature_description)
-        features = {
-            "image": tf.math.divide(tf.cast(r["image"], tf.float32), 255.0)
-        }
+        parsed_example = tf.io.parse_single_example(record, feature_description)
+        label = tf.cast(parsed_example["{{.LabelColName}}"], tf.int32)
+        del parsed_example["{{.LabelColName}}"]
         if mode == Mode.PREDICTION:
-            return features
+            return parsed_example
         else:
-            return features, tf.cast(r["label"], tf.int32)
+            return parsed_example, label
 
     dataset = dataset.map(_parse_data)
 

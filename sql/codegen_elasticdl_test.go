@@ -141,3 +141,9 @@ func TestMakePythonListCode(t *testing.T) {
 	listCode := makePythonListCode([]string{"a", "b", "c"})
 	a.Equal(`["a", "b", "c"]`, listCode)
 }
+
+func TestGenFeaturesDescription(t *testing.T) {
+	a := assert.New(t)
+	listCode := genFeaturesDescription([]string{"a", "b", "c"})
+	a.Equal(`"a": tf.io.FixedLenFeature([1], tf.float32), "b": tf.io.FixedLenFeature([1], tf.float32), "c": tf.io.FixedLenFeature([1], tf.float32),`, listCode)
+}

@@ -66,6 +66,20 @@ func getFeaturesNames(pr *extendedSelect) ([]string, error) {
 	return features, nil
 }
 
+func genFeaturesDescription(featureNames []string) string {
+	var sb strings.Builder
+	for i, featureName := range featureNames {
+		sb.WriteString(`"`)
+		sb.WriteString(featureName)
+		sb.WriteString(`"`)
+		sb.WriteString(`: tf.io.FixedLenFeature([1], tf.float32),`)
+		if i != len(featureNames)-1 {
+			sb.WriteString(` `)
+		}
+	}
+	return sb.String()
+}
+
 func makePythonListCode(items []string) string {
 	var sb strings.Builder
 	sb.WriteString("[")
