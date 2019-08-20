@@ -180,7 +180,9 @@ def dataset_fn(dataset, mode):
         else:
             feature_description = {
                 {{.FeaturesDescription}}
+                {{if .IsTraining}}
                 "{{.LabelColName}}": tf.io.FixedLenFeature([1], tf.int64),
+                {{end}}
             }
         parsed_example = tf.io.parse_single_example(record, feature_description)
         label = tf.cast(parsed_example["{{.LabelColName}}"], tf.int32)
