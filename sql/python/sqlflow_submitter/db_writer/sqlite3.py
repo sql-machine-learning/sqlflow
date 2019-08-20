@@ -13,7 +13,7 @@
 
 from .db_writer import DBWriter
 
-class SQLite3Writer(DBWriter):
+class SQLite3DBWriter(DBWriter):
     def __init__(self, conn, table_name, table_schema, buff_size):
         return super().__init__(conn, table_name, table_schema, buff_size)
 

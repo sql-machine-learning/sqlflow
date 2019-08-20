@@ -13,7 +13,7 @@
 
 from .db_writer import DBWriter
 
-class MySQLDBWriter(DBWriter):
+class HiveDBWriter(DBWriter):
     def __init__(self, conn, table_name, table_schema, buff_size):
         return super().__init__(conn, table_name, table_schema, buff_size)
 
