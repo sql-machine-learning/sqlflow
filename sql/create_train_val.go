@@ -21,11 +21,6 @@ import (
 )
 
 type trainAndValDataset struct {
-	// `supported` here identifies if SQLFlow is able to split dataset into
-	// training dataset and validation dataset.
-	// So, TODO(weiguo): Let's remove `supproted` if SQLFlow supports other
-	// drivers, like: MySQL, hive(specified in database.go:open()).
-	supported  bool
 	database   string
 	table      string
 	training   string // table for training: < k
@@ -55,7 +50,7 @@ func newTrainAndValDataset(db *DB, slct string, origTable string, trainingUpperb
 		return createMaxcomputeDataset(db, slct, origTable, trainingUpperbound)
 	case "hive", "mysql":
 		return createDataset(db, slct, origTable, trainingUpperbound)
-	// TODO(weiguo) case "sqlite":
+	// TODO(weiguo) case "sqlite3":
 	default:
 		return nil, nil
 	}
@@ -164,7 +159,6 @@ func namingTrainAndValDataset(origTable string) *trainAndValDataset {
 	// hive returns a table with a database name
 	flattenTbl := strings.Replace(origTable, ".", "__", -1)
 	return &trainAndValDataset{
-		supported:  true,
 		database:   "sf_home",
 		table:      fmt.Sprintf("%s_%s", tablePrefix, flattenTbl),
 		training:   fmt.Sprintf("%s_%s", trainingPrefix, flattenTbl),

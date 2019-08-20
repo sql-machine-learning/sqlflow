@@ -262,11 +262,9 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds *tra
 		modelDir = fmt.Sprintf("arks://%s/%s.tar.gz", filepath.Join("sqlflow", userID), pr.trainClause.save)
 	}
 	var trainInput, evalInput string
-	if ds != nil && ds.supported {
+	if ds != nil {
 		trainInput, evalInput = ds.training, ds.validation
 	} else {
-		// TODO(weiguo): we will remove `supported` from the ds struct.
-		// so, do not worry too much about the same dataset train&eval is.
 		trainInput, evalInput = pr.tables[0], pr.tables[0]
 	}
 	log.Printf("Will save the models on: %s\n", modelDir)
