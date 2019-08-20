@@ -281,6 +281,7 @@ func runExtendedSQL(slct string, db *DB, modelDir string, session *pb.Session) *
 				if e != nil {
 					return e
 				}
+				defer releaseTrainAndValDataset(db, ds)
 
 				// FIXME(weiguo): temporary branch to alps
 				if os.Getenv("SQLFLOW_submitter") == "alps" {
