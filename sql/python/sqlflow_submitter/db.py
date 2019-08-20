@@ -13,6 +13,7 @@
 
 import numpy as np
 import tensorflow as tf
+import sqlflow_submitter.db_writer as db_writer
 
 def connect(driver, database, user, password, host, port, auth=""):
     if driver == "mysql":
@@ -99,32 +100,14 @@ def db_generator(driver, conn, statement,
                 label_column_name, feature_specs, fetch_size)
     return reader
 
-def insert_values(driver, conn, table_name, table_schema, values):
+def db_writer_factory(driver, conn, table_name, table_schema, buff_size=100):
     if driver == "maxcompute":
-        from sqlflow_submitter.maxcompute import MaxCompute
-        return MaxCompute.insert_values(conn, table_name, values)
+        pass
     elif driver == "mysql":
-        statement = '''insert into {} ({}) values({})'''.format(
-            table_name,
-            ", ".join(table_schema),
-            ", ".join(["%s"] * len(table_schema))
-        )
+        return db_writer.MySQLDBWriter(conn, table_name, table_schema, buff_size)
     elif driver == "sqlite3":
-        statement = '''insert into {} ({}) values({})'''.format(
-            table_name,
-            ", ".join(table_schema),
-            ", ".join(["?"] * len(table_schema))
-        )
+        pass
     elif driver == "hive":
-        statement = '''insert into table {} ({}) values({})'''.format(
-            table_name,
-            ", ".join(table_schema),
-            ", ".join(["%s"] * len(table_schema))
-        )
+        pass
     else:
         raise ValueError("unrecognized database driver: %s" % driver)
-
-    cursor = conn.cursor()
-    cursor.executemany(statement, values)
-    conn.commit()
-    cursor.close()

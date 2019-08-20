@@ -173,7 +173,7 @@ try:
 except:
     pass
 
-from sqlflow_submitter.db import connect, insert_values, db_generator
+from sqlflow_submitter.db import connect, db_generator, db_writer_factory
 
 # Disable Tensorflow INFO and WARNING
 import logging
@@ -280,6 +280,7 @@ pred_dataset = eval_input_fn(1).make_one_shot_iterator()
 buff_rows = []
 column_names = feature_column_names[:]
 column_names.append("{{.Y.FeatureName}}")
+writer = db_writer_factory(driver, conn, "{{.TableName}}", column_names, 100)
 while True:
     try:
         features = pred_dataset.get_next()
@@ -292,14 +293,8 @@ while True:
         val = features[0][name].numpy()[0]
         row.append(str(val))
     row.append(str(result))
-    buff_rows.append(row)
-    if len(buff_rows) > 100:
-        insert_values(driver, conn, "{{.TableName}}", column_names, buff_rows)
-        buff_rows.clear()
-
-if len(buff_rows) > 0:
-    insert_values(driver, conn, "{{.TableName}}", column_names, buff_rows)
-    buff_rows.clear()
+    writer.write(row)
+writer.close()
 del pred_dataset
 {{else}}
 
@@ -358,7 +353,8 @@ column_names = feature_column_names[:]
 column_names.append("{{.Y.FeatureName}}")
 pred_gen = db_generator(driver, conn, """{{.PredictionDataset}}""", feature_column_names, "{{.Y.FeatureName}}", feature_metas)()
 fast_predictor = FastPredict(classifier, fast_input_fn)
-buff_rows = []
+
+writer = db_writer_factory(driver, conn, "{{.TableName}}", column_names, 100)
 while True:
     try:
         features = pred_gen.__next__()
@@ -374,14 +370,9 @@ while True:
     else:
         # regression predictions
         row.append(str(list(result)[0]["predictions"][0]))
-    buff_rows.append(row)
-    if len(buff_rows) > 100:
-        insert_values(driver, conn, "{{.TableName}}", column_names, buff_rows)
-        buff_rows.clear()
+    writer.write(row)
 
-if len(buff_rows) > 0:
-    insert_values(driver, conn, "{{.TableName}}", column_names, buff_rows)
-    buff_rows.clear()
+writer.close()
 {{end}}
 
 print("Done predicting. Predict table : {{.TableName}}")

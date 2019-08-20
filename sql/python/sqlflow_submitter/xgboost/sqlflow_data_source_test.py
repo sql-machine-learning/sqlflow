@@ -19,7 +19,7 @@ from sqlflow_submitter.xgboost.sqlflow_data_source import SQLFlowDSConfig, SQLFl
 from launcher import config_helper, config_fields, register_data_source, XGBoostRecord, XGBoostResult
 from launcher.data_source import create_data_source_init_fn
 from sqlflow_submitter.db_test import execute as db_exec
-from sqlflow_submitter.db import connect, insert_values
+from sqlflow_submitter.db import connect, db_writer_factory 
 
 
 class TestSQLFlowDataSource(TestCase):
@@ -84,7 +84,10 @@ class TestSQLFlowDataSource(TestCase):
         self._data = [1.1, 2.2, 3.3, 4.5, 1, 2, 'A1', "A2"]
         data = [self._data[:] for _ in range(100)]
         schema = ['f1', 'f2', 'f3', 'weight1', 'label1', 'group1', 'a1', 'a2']
-        insert_values(db_conf['driver'], conn, 'input_table', schema, data)
+        writer = db_writer_factory(db_conf['driver'], conn, 'input_table', schema)
+        for row in data:
+            writer.write(data)
+        writer.close()
         self._sql = run_sql
 
         run_sql("DROP TABLE IF EXISTS output_table")
