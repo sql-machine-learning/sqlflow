@@ -34,6 +34,7 @@ func TestTrainElasticDLFiller(t *testing.T) {
 			model.eval_metrics_fn = "eval_metrics_fn",
 			model.num_classes = 10,
 			model.dataset_fn = "dataset_fn",
+			train.shuffle = 120,
 			train.epoch = 2,
 			train.grads_to_wait = 2,
 			train.tensorboard_log_dir = "",
@@ -75,6 +76,18 @@ func TestTrainElasticDLFiller(t *testing.T) {
 	a.NoError(e)
 	a.True(filler.IsTraining)
 	a.Equal("training_data", filler.TrainInputTable)
+	a.Equal(true, filler.TrainClause.EnableShuffle)
+	a.Equal(120, filler.TrainClause.ShuffleBufferSize)
+
+	var program bytes.Buffer
+	e = elasticdlTrainTemplate.Execute(&program, filler)
+	a.NoError(e)
+	code := program.String()
+	a.True(strings.Contains(code, `if mode != Mode.PREDICTION and "true" == "true":`), code)
+	a.True(strings.Contains(code, `dataset = dataset.shuffle(buffer_size=120)`), code)
+	a.True(strings.Contains(code, `"c5": tf.io.FixedLenFeature([1], tf.int64),`), code)
+	a.True(strings.Contains(code, `"c1": tf.io.FixedLenFeature([1], tf.float32), "c2": tf.io.FixedLenFeature([1], tf.float32), "c3": tf.io.FixedLenFeature([1], tf.float32), "c4": tf.io.FixedLenFeature([1], tf.float32),`), code)
+	a.True(strings.Contains(code, `return parsed_example, tf.cast(parsed_example["c5"], tf.int32)`), code)
 }
 
 func TestPredElasticDLFiller(t *testing.T) {
@@ -85,7 +98,8 @@ func TestPredElasticDLFiller(t *testing.T) {
 		USING trained_elasticdl_keras_classifier;`
 
 	r, e := parser.Parse(predStatement)
-	filler := newElasticDLPredictFiller(r, 10)
+	filler, err := newElasticDLPredictFiller(r, 10)
+	a.NoError(err)
 
 	a.False(filler.IsTraining)
 	a.Equal(filler.PredictInputTable, "prediction_data")
@@ -101,6 +115,7 @@ func TestPredElasticDLFiller(t *testing.T) {
 	a.True(strings.Contains(code, `columns=["pred_" + str(i) for i in range(10)]`), code)
 	a.True(strings.Contains(code, `column_types=["double" for _ in range(10)]`), code)
 	a.True(strings.Contains(code, `table = "prediction_results_table"`), code)
+	a.True(strings.Contains(code, `"c1": tf.io.FixedLenFeature([1], tf.float32), "c2": tf.io.FixedLenFeature([1], tf.float32), "c3": tf.io.FixedLenFeature([1], tf.float32), "c4": tf.io.FixedLenFeature([1], tf.float32),`), code)
 }
 
 func TestElasticDLDataConversionFiller(t *testing.T) {
@@ -140,4 +155,10 @@ func TestMakePythonListCode(t *testing.T) {
 	a := assert.New(t)
 	listCode := makePythonListCode([]string{"a", "b", "c"})
 	a.Equal(`["a", "b", "c"]`, listCode)
+}
+
+func TestGenFeaturesDescription(t *testing.T) {
+	a := assert.New(t)
+	listCode := genFeaturesDescription([]string{"a", "b", "c"})
+	a.Equal(`"a": tf.io.FixedLenFeature([1], tf.float32), "b": tf.io.FixedLenFeature([1], tf.float32), "c": tf.io.FixedLenFeature([1], tf.float32),`, listCode)
 }
