@@ -12,15 +12,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+function sleep_until_mysql_is_ready() {
+  until mysql -u root -proot --host 127.0.0.1 --port 3306 -e ";" ; do
+    sleep 1
+    read -p "Can't connect, retrying..."
+  done
+}
+
+
+function populate_example_dataset() {
+  sleep_until_mysql_is_ready
+  # FIXME(typhoonzero): should let docker-entrypoint.sh do this work
+  for f in /docker-entrypoint-initdb.d/*; do
+    cat $f | mysql -uroot -proot --host 127.0.0.1  --port 3306
+  done
+}
 
 set -e
 
 service mysql start
+sleep 1
+populate_example_dataset
 
 go generate ./...
 go get -v -t ./...
 go install ./...
 
 DATASOURCE="mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
+
 sqlflowserver --datasource=${DATASOURCE} &
+
+# e2e test for standar SQL
 SQLFLOW_SERVER=localhost:50051 ipython sql/python/test_magic.py
+# e2e test for xgboost train and prediciton SQL.
+SQLFLOW_SERVER=localhost:50051 ipython sql/python/test_magic_xgboost.py

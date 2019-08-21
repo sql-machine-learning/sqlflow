@@ -104,7 +104,7 @@ func parseModelURI(modelString string) (bool, string) {
 }
 
 func trainingAndValidationDataset(pr *extendedSelect, ds *trainAndValDataset) (string, string) {
-	if pr.train && ds != nil && ds.supported {
+	if pr.train && ds != nil {
 		return fmt.Sprintf("SELECT * FROM %s", ds.training), fmt.Sprintf("SELECT * FROM %s", ds.validation)
 	}
 	return pr.standardSelect.String(), pr.standardSelect.String()

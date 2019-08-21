@@ -175,26 +175,32 @@ def dataset_fn(dataset, mode):
     def _parse_data(record):
         if mode == Mode.PREDICTION:
             feature_description = {
-                "image": tf.io.FixedLenFeature([32, 32, 3], tf.float32)
+                {{.FeaturesDescription}}
             }
         else:
             feature_description = {
-                "image": tf.io.FixedLenFeature([32, 32, 3], tf.float32),
-                "label": tf.io.FixedLenFeature([1], tf.int64),
+                {{.FeaturesDescription}}
+                {{if .IsTraining}}
+                "{{.LabelColName}}": tf.io.FixedLenFeature([1], tf.int64),
+                {{end}}
             }
-        r = tf.io.parse_single_example(record, feature_description)
-        features = {
-            "image": tf.math.divide(tf.cast(r["image"], tf.float32), 255.0)
-        }
+        parsed_example = tf.io.parse_single_example(record, feature_description)
+
         if mode == Mode.PREDICTION:
-            return features
+            return parsed_example
+        {{if .IsTraining}}
         else:
-            return features, tf.cast(r["label"], tf.int32)
+            del parsed_example["{{.LabelColName}}"]
+            return parsed_example, tf.cast(parsed_example["{{.LabelColName}}"], tf.int32)
+        {{end}}
 
     dataset = dataset.map(_parse_data)
 
-    if mode != Mode.PREDICTION:
-        dataset = dataset.shuffle(buffer_size=1024)
+    {{if .IsTraining}}
+    if mode != Mode.PREDICTION and "{{.TrainClause.EnableShuffle}}" == "true":
+        dataset = dataset.shuffle(buffer_size={{.TrainClause.ShuffleBufferSize}})
+    {{end}}
+
     return dataset
 
 

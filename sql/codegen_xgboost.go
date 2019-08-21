@@ -522,29 +522,29 @@ func xgParseColumns(pr *extendedSelect, filler *xgboostFiller) error {
 
 func xgParseEstimator(pr *extendedSelect, filler *xgboostFiller) error {
 	switch strings.ToUpper(pr.estimator) {
-	case "XGBOOSTESTIMATOR":
+	case "XGBOOST.ESTIMATOR":
 		if len(filler.Objective) == 0 {
 			return xgParseEstimatorError(pr.estimator, fmt.Errorf("objective must be defined"))
 		}
-	case "XGBOOSTCLASSIFIER":
+	case "XGBOOST.CLASSIFIER":
 		if obj := filler.Objective; len(obj) == 0 {
 			filler.Objective = "binary:logistic"
 		} else if !strings.HasPrefix(obj, "binary") && !strings.HasPrefix(obj, "multi") {
 			return xgParseEstimatorError(pr.estimator, fmt.Errorf("found non classification objective(%s)", obj))
 		}
-	case "XGBOOSTBINARYCLASSIFIER":
+	case "XGBOOST.BINARYCLASSIFIER":
 		if obj := filler.Objective; len(obj) == 0 {
 			filler.Objective = "binary:logistic"
 		} else if !strings.HasPrefix(obj, "binary") {
 			return xgParseEstimatorError(pr.estimator, fmt.Errorf("found non binary objective(%s)", obj))
 		}
-	case "XGBOOSTMULTICLASSIFIER":
+	case "XGBOOST.MULTICLASSIFIER":
 		if obj := filler.Objective; len(obj) == 0 {
 			filler.Objective = "multi:softmax"
 		} else if !strings.HasPrefix(obj, "multi") {
 			return xgParseEstimatorError(pr.estimator, fmt.Errorf("found non multi-class objective(%s)", obj))
 		}
-	case "XGBOOSTREGRESSOR":
+	case "XGBOOST.REGRESSOR":
 		if obj := filler.Objective; len(obj) == 0 {
 			filler.Objective = "reg:squarederror"
 		} else if !strings.HasPrefix(obj, "reg") && !strings.HasPrefix(obj, "rank") {
@@ -736,4 +736,9 @@ run_with_sqlflow(
 	learning_config='{{.LearningJSON}}',	
 	data_source_config='{{.DataSourceJSON}}',	
 	column_config='{{.ColumnJSON}}')
+{{if .IsTrain}}
+print("Done training.")
+{{else}}
+print("Done prediction, the result table: {{.OutputTable}}")
+{{end}}
 `
