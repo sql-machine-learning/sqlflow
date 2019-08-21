@@ -15,6 +15,7 @@ package sql
 
 import (
 	"bytes"
+	"io/ioutil"
 	"strings"
 	"testing"
 
@@ -139,7 +140,9 @@ func TestElasticDLDataConversionFiller(t *testing.T) {
 	a.NoError(e)
 
 	var program bytes.Buffer
-	filler, e := newElasticDLDataConversionFiller(r, 200, 1)
+	recordIODataDir, e := ioutil.TempDir("/tmp", "recordio_data_dir_")
+	a.NoError(e)
+	filler, e := newElasticDLDataConversionFiller(r, recordIODataDir, 200, 1)
 	a.NoError(e)
 	e = elasticdlDataConversionTemplate.Execute(&program, filler)
 	a.NoError(e)
