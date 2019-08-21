@@ -23,7 +23,9 @@ class MySQLDBWriter(BufferedDBWriter):
                 ", ".join(self.table_schema),
                 ", ".join(["%s"] * len(self.table_schema)))
         cursor = self.conn.cursor()
-        cursor.executemany(statement, self.rows)
-        self.conn.commit()
-        cursor.close()
-        self.rows = []
+        try:
+            cursor.executemany(statement, self.rows)
+            self.conn.commit()
+        finally:
+            cursor.close()
+            self.rows = []
