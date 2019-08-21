@@ -185,12 +185,14 @@ def dataset_fn(dataset, mode):
                 {{end}}
             }
         parsed_example = tf.io.parse_single_example(record, feature_description)
-        label = tf.cast(parsed_example["{{.LabelColName}}"], tf.int32)
-        del parsed_example["{{.LabelColName}}"]
+
         if mode == Mode.PREDICTION:
             return parsed_example
+        {{if .IsTraining}}
         else:
-            return parsed_example, label
+            del parsed_example["{{.LabelColName}}"]
+            return parsed_example, tf.cast(parsed_example["{{.LabelColName}}"], tf.int32)
+        {{end}}
 
     dataset = dataset.map(_parse_data)
 

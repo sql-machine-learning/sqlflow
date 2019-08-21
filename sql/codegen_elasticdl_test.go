@@ -87,6 +87,7 @@ func TestTrainElasticDLFiller(t *testing.T) {
 	a.True(strings.Contains(code, `dataset = dataset.shuffle(buffer_size=120)`), code)
 	a.True(strings.Contains(code, `"c5": tf.io.FixedLenFeature([1], tf.int64),`), code)
 	a.True(strings.Contains(code, `"c1": tf.io.FixedLenFeature([1], tf.float32), "c2": tf.io.FixedLenFeature([1], tf.float32), "c3": tf.io.FixedLenFeature([1], tf.float32), "c4": tf.io.FixedLenFeature([1], tf.float32),`), code)
+	a.True(strings.Contains(code, `return parsed_example, tf.cast(parsed_example["c5"], tf.int32)`), code)
 }
 
 func TestPredElasticDLFiller(t *testing.T) {
