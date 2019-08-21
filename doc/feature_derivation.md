@@ -23,6 +23,7 @@ assume that we are using all columns to train and no longer need to write
 ```sql
 SELECT * FROM creditcardfraud
 TRAIN DNNClassifier
+LABEL class
 INTO my_model_name;
 ```
 
@@ -35,6 +36,7 @@ the SQL statement should look like:
 SELECT * FROM creditcardfraud
 TRAIN DNNClassifier
 COLUMN YOUR_NORMALIZE_FUNC(time)
+LABEL class
 INTO my_model_name;
 ```
 
