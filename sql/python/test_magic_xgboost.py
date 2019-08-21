@@ -24,7 +24,7 @@ class TestSQLFlowMagic(unittest.TestCase):
     train_statement = """
 SELECT *
 FROM iris.train
-TRAIN XGBoostEstimator
+TRAIN xgboost.Estimator
 WITH
 	train.objective = "multi:softmax",
 	train.num_class = 3,

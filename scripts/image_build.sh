@@ -33,7 +33,7 @@ impyla \
 pyodps \
 jupyter \
 notebook==6.0.0 \
-sqlflow==0.2.0 \
+sqlflow==0.4.0 \
 pre-commit \
 odps \
 ${PIP_ADD_PACKAGES}
