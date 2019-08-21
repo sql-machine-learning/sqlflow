@@ -173,7 +173,7 @@ try:
 except:
     pass
 
-from sqlflow_submitter.db import connect, db_generator, db_writer_factory
+from sqlflow_submitter.db import connect, db_generator, buffered_db_writer
 
 # Disable Tensorflow INFO and WARNING
 import logging
@@ -280,21 +280,20 @@ pred_dataset = eval_input_fn(1).make_one_shot_iterator()
 buff_rows = []
 column_names = feature_column_names[:]
 column_names.append("{{.Y.FeatureName}}")
-writer = db_writer_factory(driver, conn, "{{.TableName}}", column_names, 100)
-while True:
-    try:
-        features = pred_dataset.get_next()
-    except tf.errors.OutOfRangeError:
-        break
-    result = classifier.predict_on_batch(features[0])
-    result = classifier.prepare_prediction_column(result[0])
-    row = []
-    for idx, name in enumerate(feature_column_names):
-        val = features[0][name].numpy()[0]
-        row.append(str(val))
-    row.append(str(result))
-    writer.write(row)
-writer.close()
+with buffered_db_writer(driver, conn, "{{.TableName}}", column_names, 100) as w:
+    while True:
+        try:
+            features = pred_dataset.get_next()
+        except tf.errors.OutOfRangeError:
+            break
+        result = classifier.predict_on_batch(features[0])
+        result = classifier.prepare_prediction_column(result[0])
+        row = []
+        for idx, name in enumerate(feature_column_names):
+            val = features[0][name].numpy()[0]
+            row.append(str(val))
+        row.append(str(result))
+        w.write(row)
 del pred_dataset
 {{else}}
 
@@ -354,25 +353,24 @@ column_names.append("{{.Y.FeatureName}}")
 pred_gen = db_generator(driver, conn, """{{.PredictionDataset}}""", feature_column_names, "{{.Y.FeatureName}}", feature_metas)()
 fast_predictor = FastPredict(classifier, fast_input_fn)
 
-writer = db_writer_factory(driver, conn, "{{.TableName}}", column_names, 100)
-while True:
-    try:
-        features = pred_gen.__next__()
-    except StopIteration:
-        break
-    result = fast_predictor.predict(features)
-    row = []
-    for idx, _ in enumerate(feature_column_names):
-        val = features[0][idx]
-        row.append(str(val))
-    if "class_ids" in list(result)[0]:
-        row.append(str(list(result)[0]["class_ids"][0]))
-    else:
-        # regression predictions
-        row.append(str(list(result)[0]["predictions"][0]))
-    writer.write(row)
+with buffered_db_writer(driver, conn, "{{.TableName}}", column_names, 100) as w:
+    while True:
+        try:
+            features = pred_gen.__next__()
+        except StopIteration:
+            break
+        result = fast_predictor.predict(features)
+        row = []
+        for idx, _ in enumerate(feature_column_names):
+            val = features[0][idx]
+            row.append(str(val))
+        if "class_ids" in list(result)[0]:
+            row.append(str(list(result)[0]["class_ids"][0]))
+        else:
+            # regression predictions
+            row.append(str(list(result)[0]["predictions"][0]))
+        w.write(row)
 
-writer.close()
 {{end}}
 
 print("Done predicting. Predict table : {{.TableName}}")
