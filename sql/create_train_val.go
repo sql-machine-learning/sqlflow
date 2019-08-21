@@ -159,17 +159,15 @@ func namingTrainAndValDataset(origTable string) *trainAndValDataset {
 	// NOTE: We always create temporary table under current in using
 	// database or MaxCompute project, because the origin table may
 	// from another database which we may not have write access.
-	var origTableWithNoDBPrefix string
 	origTableParts := strings.Split(origTable, ".")
-	// FIXME(typhoonzero): use last part, if len != 2 should return some error
-	origTableWithNoDBPrefix = origTableParts[len(origTableParts)-1]
-	fmt.Printf("create table : %s_%s\n", tablePrefix, origTableWithNoDBPrefix)
+	// FIXME(typhoonzero): use last part, if len > 2 should return some error
+	origTableWithoutDBPrefix := origTableParts[len(origTableParts)-1]
 
 	return &trainAndValDataset{
 		database:   "sf_home",
-		table:      fmt.Sprintf("%s_%s", tablePrefix, origTableWithNoDBPrefix),
-		training:   fmt.Sprintf("%s_%s", trainingPrefix, origTableWithNoDBPrefix),
-		validation: fmt.Sprintf("%s_%s", validationPrefix, origTableWithNoDBPrefix),
+		table:      fmt.Sprintf("%s_%s", tablePrefix, origTableWithoutDBPrefix),
+		training:   fmt.Sprintf("%s_%s", trainingPrefix, origTableWithoutDBPrefix),
+		validation: fmt.Sprintf("%s_%s", validationPrefix, origTableWithoutDBPrefix),
 	}
 }
 
