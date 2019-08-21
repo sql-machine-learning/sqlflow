@@ -156,13 +156,20 @@ func createTable(database, table, origin string, db *DB, cond string) (string, e
 }
 
 func namingTrainAndValDataset(origTable string) *trainAndValDataset {
-	// hive returns a table with a database name
-	flattenTbl := strings.Replace(origTable, ".", "__", -1)
+	// NOTE: We always create temporary table under current in using
+	// database or MaxCompute project, because the origin table may
+	// from another database which we may not have write access.
+	var origTableWithNoDBPrefix string
+	origTableParts := strings.Split(origTable, ".")
+	// FIXME(typhoonzero): use last part, if len != 2 should return some error
+	origTableWithNoDBPrefix = origTableParts[len(origTableParts)-1]
+	fmt.Printf("create table : %s_%s\n", tablePrefix, origTableWithNoDBPrefix)
+
 	return &trainAndValDataset{
 		database:   "sf_home",
-		table:      fmt.Sprintf("%s_%s", tablePrefix, flattenTbl),
-		training:   fmt.Sprintf("%s_%s", trainingPrefix, flattenTbl),
-		validation: fmt.Sprintf("%s_%s", validationPrefix, flattenTbl),
+		table:      fmt.Sprintf("%s_%s", tablePrefix, origTableWithNoDBPrefix),
+		training:   fmt.Sprintf("%s_%s", trainingPrefix, origTableWithNoDBPrefix),
+		validation: fmt.Sprintf("%s_%s", validationPrefix, origTableWithNoDBPrefix),
 	}
 }
 
