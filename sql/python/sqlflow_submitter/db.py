@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
 import numpy as np
 import tensorflow as tf
 import sqlflow_submitter.db_writer as db_writer
@@ -100,14 +101,21 @@ def db_generator(driver, conn, statement,
                 label_column_name, feature_specs, fetch_size)
     return reader
 
-def db_writer_factory(driver, conn, table_name, table_schema, buff_size=100):
+
+@contextlib.contextmanager
+def buffered_db_writer(driver, conn, table_name, table_schema, buff_size=100):
     if driver == "maxcompute":
-        return db_writer.MaxComputeDBWriter(conn, table_name, table_schema, buff_size)
+        w = db_writer.MaxComputeDBWriter(conn, table_name, table_schema, buff_size)
     elif driver == "mysql":
-        return db_writer.MySQLDBWriter(conn, table_name, table_schema, buff_size)
+        w = db_writer.MySQLDBWriter(conn, table_name, table_schema, buff_size)
     elif driver == "sqlite3":
-        return db_writer.SQLite3DBWriter(conn, table_name, table_schema, buff_size)
+        w = db_writer.SQLite3DBWriter(conn, table_name, table_schema, buff_size)
     elif driver == "hive":
-        return db_writer.HiveDBWriter(conn, table_name, table_schema, buff_size)
+        w = db_writer.HiveDBWriter(conn, table_name, table_schema, buff_size)
     else:
         raise ValueError("unrecognized database driver: %s" % driver)
+
+    try:
+        yield w
+    finally:
+        w.close()

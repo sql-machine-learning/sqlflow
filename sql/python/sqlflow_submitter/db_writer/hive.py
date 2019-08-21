@@ -11,9 +11,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .db_writer import DBWriter
+from .base import BufferedDBWriter
 
-class HiveDBWriter(DBWriter):
+class HiveDBWriter(BufferedDBWriter):
     def __init__(self, conn, table_name, table_schema, buff_size):
         return super().__init__(conn, table_name, table_schema, buff_size)
 

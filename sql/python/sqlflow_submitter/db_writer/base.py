@@ -11,8 +11,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from abc import ABC, abstractmethod
 
-class DBWriter(object):
+class BufferedDBWriter(ABC):
     def __init__(self, conn, table_name, table_schema, buff_size=100):
         self.conn = conn
         self.table_name = table_name
@@ -20,8 +21,9 @@ class DBWriter(object):
         self.buff_size = buff_size
         self.rows = []
 
+    @abstractmethod
     def flush(self):
-        raise NotImplementedError("Should implement flush function.")
+        return
 
     def write(self, value):
         self.rows.append(value)

@@ -18,7 +18,7 @@ from typing import Iterator
 from launcher.data_units import RecordBuilder
 
 from .common import XGBoostError
-from ..db import connect, db_generator, db_writer_factory
+from ..db import connect, db_generator, buffered_db_writer
 from launcher import DataSource, config_fields, XGBoostResult, XGBoostRecord
 
 
@@ -118,7 +118,7 @@ class SQLFlowDataSource(DataSource):
         conn = connect(**source_conf.db_config)
         
         def writer_maker(table_schema):
-            return db_writer_factory(
+            return buffered_db_writer(
                     driver=source_conf.db_config['driver'],
                     conn=conn,
                     table_name=source_conf.output_table,
@@ -181,8 +181,6 @@ class SQLFlowDataSource(DataSource):
             output_detail = True
             table_schema.append(self._result_schema['detail_column'])
 
-        writer = self._writer_maker(table_schema)
-
         def make_row(xgb_ret: XGBoostResult):
             row = [xgb_ret.result]
             if xgb_ret.append_info:
@@ -196,9 +194,7 @@ class SQLFlowDataSource(DataSource):
                 row.append(json.dumps(detail))
             return row 
 
-        writer.write(make_row(peek_ret))
-
-        for ret in result_iter:
-            writer.write(make_row(ret))
-
-        writer.close() # close function can flush the buffer
+        with self._writer_maker(table_schema) as w:
+            w.write(make_row(peek_ret))
+            for ret in result_iter:
+                w.write(make_row(ret))
