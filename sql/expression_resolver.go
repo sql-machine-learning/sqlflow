@@ -40,11 +40,24 @@ type resourceSpec struct {
 }
 
 type engineSpec struct {
-	etype   string
-	ps      resourceSpec
-	worker  resourceSpec
-	cluster string
-	queue   string
+	etype                 string
+	ps                    resourceSpec
+	worker                resourceSpec
+	cluster               string
+	queue                 string
+	masterResourceRequest string
+	masterResourceLimit   string
+	workerResourceRequest string
+	workerResourceLimit   string
+	volume                string
+	imagePullPolicy       string
+	restartPolicy         string
+	extraPypiIndex        string
+	namespace             string
+	minibatchSize         int
+	masterPodPriority     string
+	clusterSpec           string
+	recordsPerTask        int
 }
 
 type gitLabModule struct {
@@ -199,12 +212,42 @@ func getEngineSpec(attrs map[string]*attribute) engineSpec {
 	}
 	cluster := getString("cluster", "")
 	queue := getString("queue", "")
+
+	// ElasticDL engine specs
+	masterResourceRequest := getString("master_resource_request", "cpu=0.1,memory=1024Mi")
+	masterResourceLimit := getString("master_resource_limit", "")
+	workerResourceRequest := getString("worker_resource_request", "cpu=1,memory=4096Mi")
+	workerResourceLimit := getString("worker_resource_limit", "")
+	volume := getString("volume", "")
+	imagePullPolicy := getString("image_pull_policy", "Always")
+	restartPolicy := getString("restart_policy", "Never")
+	extraPypiIndex := getString("extra_pypi_index", "")
+	namespace := getString("namespace", "default")
+	minibatchSize := getInt("minibatch_size", 64)
+	masterPodPriority := getString("master_pod_priority", "")
+	clusterSpec := getString("cluster_spec", "")
+	recordsPerTask := getInt("records_per_task", 100)
+
 	return engineSpec{
-		etype:   engineType,
-		ps:      resourceSpec{Num: psNum, Memory: psMemory},
-		worker:  resourceSpec{Num: workerNum, Memory: workerMemory},
-		cluster: cluster,
-		queue:   queue}
+		etype:                 engineType,
+		ps:                    resourceSpec{Num: psNum, Memory: psMemory},
+		worker:                resourceSpec{Num: workerNum, Memory: workerMemory},
+		cluster:               cluster,
+		queue:                 queue,
+		masterResourceRequest: masterResourceRequest,
+		masterResourceLimit:   masterResourceLimit,
+		workerResourceRequest: workerResourceRequest,
+		workerResourceLimit:   workerResourceLimit,
+		volume:                volume,
+		imagePullPolicy:       imagePullPolicy,
+		restartPolicy:         restartPolicy,
+		extraPypiIndex:        extraPypiIndex,
+		namespace:             namespace,
+		minibatchSize:         minibatchSize,
+		masterPodPriority:     masterPodPriority,
+		clusterSpec:           clusterSpec,
+		recordsPerTask:        recordsPerTask,
+	}
 }
 
 func resolveTrainClause(tc *trainClause) (*resolvedTrainClause, error) {

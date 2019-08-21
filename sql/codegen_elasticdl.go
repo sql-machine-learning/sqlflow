@@ -98,11 +98,7 @@ func makePythonListCode(items []string) string {
 	return sb.String()
 }
 
-func newElasticDLDataConversionFiller(pr *extendedSelect, batchSize int, numProcesses int) (*elasticDLDataConversionFiller, error) {
-	recordIODataDir, err := ioutil.TempDir("/tmp", "recordio_data_dir_")
-	if err != nil {
-		return nil, err
-	}
+func newElasticDLDataConversionFiller(pr *extendedSelect, recordIODataDir string, batchSize int, numProcesses int) (*elasticDLDataConversionFiller, error) {
 	featureNames, err := getFeaturesNames(pr)
 	if err != nil {
 		log.Fatalf("Failed to get feature names from SELECT statement %v", err)
@@ -163,7 +159,12 @@ func elasticDLTrain(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, sessi
 	// Write data conversion script
 	// TODO: Execute the script inside container where ElasticDL is available
 	var dataConversionProgram bytes.Buffer
-	dataConversionFiller, err := newElasticDLDataConversionFiller(pr, 200, 1)
+	recordIODataDir, err := ioutil.TempDir("/tmp", "recordio_data_dir_")
+	if err != nil {
+		return err
+	}
+	// TODO: Also need to generate evaluation data
+	dataConversionFiller, err := newElasticDLDataConversionFiller(pr, recordIODataDir, 200, 1)
 	if err != nil {
 		return err
 	}
@@ -199,8 +200,7 @@ func elasticDLTrain(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, sessi
 	modelDefFile.Close()
 
 	// Create and execute ElasticDL training command
-	cmd := elasticdlCmd(cwd, "train")
-	cmd.Args = append(cmd.Args, modelDefFilePath)
+	cmd := elasticdlTrainCmd(cwd, modelDefFilePath, recordIODataDir, trainFiller)
 	cmd.Stdout = cw
 	cmd.Stderr = cw
 	if e := cmd.Run(); e != nil {
@@ -209,9 +209,44 @@ func elasticDLTrain(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, sessi
 	return nil
 }
 
-func elasticdlCmd(cwd, subCommand string) (cmd *exec.Cmd) {
+func elasticdlTrainCmd(cwd, modelDefFilePath string, recordIODataDir string, filler *elasticDLFiller) (cmd *exec.Cmd) {
 	if hasDocker() {
-		cmd = exec.Command("elasticdl", subCommand)
+		cmd = exec.Command(
+			"elasticdl", "train",
+			"--image_base", "elasticdl:ci",
+			// TODO: Generate this dynamically
+			"--job_name", "edl-sqlflow-test-job",
+			// TODO: Get this from model name
+			"--model_zoo", "model_zoo",
+			"--model_def", modelDefFilePath,
+			"--training_data_dir", recordIODataDir,
+			// TODO: Use a separate directory for evaluation data
+			"--evaluation_data_dir", recordIODataDir,
+			"--num_epochs", string(filler.TrainClause.Epoch),
+			"--master_resource_request", filler.TrainClause.EngineParams.masterResourceRequest,
+			"--master_resource_limit", filler.TrainClause.EngineParams.masterResourceLimit,
+			"--worker_resource_request", filler.TrainClause.EngineParams.workerResourceRequest,
+			"--worker_resource_limit", filler.TrainClause.EngineParams.workerResourceLimit,
+			"--num_workers", string(filler.TrainClause.EngineParams.worker.Num),
+			"--volume", filler.TrainClause.EngineParams.volume,
+			"--image_pull_policy", filler.TrainClause.EngineParams.imagePullPolicy,
+			"--restart_policy", filler.TrainClause.EngineParams.restartPolicy,
+			"--extra_pypi_index", filler.TrainClause.EngineParams.extraPypiIndex,
+			"--namespace", filler.TrainClause.EngineParams.namespace,
+			"--minibatch_size", string(filler.TrainClause.EngineParams.minibatchSize),
+			"--master_pod_priority", filler.TrainClause.EngineParams.masterPodPriority,
+			"--cluster_spec", filler.TrainClause.EngineParams.clusterSpec,
+			"--records_per_task", string(filler.TrainClause.EngineParams.recordsPerTask),
+			"--log_level", "INFO",
+			// TODO: Get this from INTO clause
+			"--output", "model_output",
+			"--checkpoint_steps", string(filler.TrainClause.CheckpointSteps),
+			"--evaluation_steps", string(filler.TrainClause.EvalSteps),
+			"--grads_to_wait", string(filler.TrainClause.GradsToWait),
+			"--tensorboard_log_dir", filler.TrainClause.TensorboardLogDir,
+			"--checkpoint_dir", filler.TrainClause.CheckpointDir,
+			"--keep_checkpoint_max", string(filler.TrainClause.KeepCheckpointMax),
+		)
 		cmd.Dir = cwd
 	} else {
 		log.Fatalf("Docker has to be installed to run ElasticDL command")
