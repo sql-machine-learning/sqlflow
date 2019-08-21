@@ -11,8 +11,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
 import numpy as np
 import tensorflow as tf
+import sqlflow_submitter.db_writer as db_writer
 
 def connect(driver, database, user, password, host, port, auth=""):
     if driver == "mysql":
@@ -99,32 +101,21 @@ def db_generator(driver, conn, statement,
                 label_column_name, feature_specs, fetch_size)
     return reader
 
-def insert_values(driver, conn, table_name, table_schema, values):
+
+@contextlib.contextmanager
+def buffered_db_writer(driver, conn, table_name, table_schema, buff_size=100):
     if driver == "maxcompute":
-        from sqlflow_submitter.maxcompute import MaxCompute
-        return MaxCompute.insert_values(conn, table_name, values)
+        w = db_writer.MaxComputeDBWriter(conn, table_name, table_schema, buff_size)
     elif driver == "mysql":
-        statement = '''insert into {} ({}) values({})'''.format(
-            table_name,
-            ", ".join(table_schema),
-            ", ".join(["%s"] * len(table_schema))
-        )
+        w = db_writer.MySQLDBWriter(conn, table_name, table_schema, buff_size)
     elif driver == "sqlite3":
-        statement = '''insert into {} ({}) values({})'''.format(
-            table_name,
-            ", ".join(table_schema),
-            ", ".join(["?"] * len(table_schema))
-        )
+        w = db_writer.SQLite3DBWriter(conn, table_name, table_schema, buff_size)
     elif driver == "hive":
-        statement = '''insert into table {} ({}) values({})'''.format(
-            table_name,
-            ", ".join(table_schema),
-            ", ".join(["%s"] * len(table_schema))
-        )
+        w = db_writer.HiveDBWriter(conn, table_name, table_schema, buff_size)
     else:
         raise ValueError("unrecognized database driver: %s" % driver)
 
-    cursor = conn.cursor()
-    cursor.executemany(statement, values)
-    conn.commit()
-    cursor.close()
+    try:
+        yield w
+    finally:
+        w.close()

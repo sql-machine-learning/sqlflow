@@ -18,7 +18,7 @@ from typing import Iterator
 from launcher.data_units import RecordBuilder
 
 from .common import XGBoostError
-from ..db import connect, insert_values, db_generator
+from ..db import connect, db_generator, buffered_db_writer
 from launcher import DataSource, config_fields, XGBoostResult, XGBoostRecord
 
 
@@ -116,6 +116,16 @@ class SQLFlowDataSource(DataSource):
             self._result_schema.update(column_conf.result_columns._asdict())
 
         conn = connect(**source_conf.db_config)
+        
+        def writer_maker(table_schema):
+            return buffered_db_writer(
+                    driver=source_conf.db_config['driver'],
+                    conn=conn,
+                    table_name=source_conf.output_table,
+                    table_schema=table_schema,
+                    buff_size=source_conf.write_batch_size)
+
+        self._writer_maker = writer_maker
 
         # Since label field has already been included into `col_names`, we just fill `label_column_name` with None.
         self._reader = db_generator(
@@ -126,22 +136,9 @@ class SQLFlowDataSource(DataSource):
             label_column_name=None,
             feature_specs=metas)
 
-        self._write_partial = None
         if not self._train:
             if not source_conf.output_table:
                 raise XGBoostError('Output_table must be defined in xgboost prediction job.')
-
-            def write_data_partial(table_schema, data):
-                insert_values(
-                    driver=source_conf.db_config['driver'],
-                    conn=conn,
-                    table_name=source_conf.output_table,
-                    table_schema=table_schema,
-                    values=data)
-
-            self._write_partial = write_data_partial
-            self._write_batch_size = source_conf.write_batch_size
-            self._write_buffer = []
 
     def _read_impl(self):
         label = None
@@ -184,7 +181,7 @@ class SQLFlowDataSource(DataSource):
             output_detail = True
             table_schema.append(self._result_schema['detail_column'])
 
-        def append_row(xgb_ret: XGBoostResult):
+        def make_row(xgb_ret: XGBoostResult):
             row = [xgb_ret.result]
             if xgb_ret.append_info:
                 row.extend(xgb_ret.append_info)
@@ -195,18 +192,9 @@ class SQLFlowDataSource(DataSource):
             if output_detail:
                 detail = {i: p for i, p in enumerate(xgb_ret.classification_detail)}
                 row.append(json.dumps(detail))
-            self._write_buffer.append(row)
+            return row 
 
-        # append the peek record
-        append_row(peek_ret)
-
-        # batching write with a buffer
-        for ret in result_iter:
-            append_row(ret)
-            if len(self._write_buffer) >= self._write_batch_size:
-                self._write_partial(table_schema, self._write_buffer)
-                self._write_buffer = []
-
-        # clean the buffer
-        if self._write_buffer:
-            self._write_partial(table_schema, self._write_buffer)
+        with self._writer_maker(table_schema) as w:
+            w.write(make_row(peek_ret))
+            for ret in result_iter:
+                w.write(make_row(ret))

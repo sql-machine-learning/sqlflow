@@ -16,7 +16,7 @@ from unittest import TestCase
 import os
 
 import tensorflow as tf
-from sqlflow_submitter.db import connect, insert_values, db_generator
+from sqlflow_submitter.db import connect, db_generator, buffered_db_writer
 from odps import ODPS, tunnel
 
 def _execute_maxcompute(conn, statement):
@@ -94,8 +94,9 @@ class TestDB(TestCase):
             execute(driver, conn, self.hive_create_statement)
         else:
             execute(driver, conn, self.create_statement)
-
-        insert_values(driver, conn, table_name, table_schema, values)
+        with buffered_db_writer(driver, conn, table_name, table_schema, buff_size=10) as w:
+            for row in values:
+                w.write(row)
 
         field_names, data = execute(driver, conn, self.select_statement)
 
