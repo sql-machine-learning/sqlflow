@@ -40,11 +40,9 @@ go install ./...
 
 DATASOURCE="mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
 
-# e2e test for standar SQL
 sqlflowserver --datasource=${DATASOURCE} &
-SQLFLOW_SERVER=localhost:50051 ipython sql/python/test_magic.py
-pkill sqlflowserver
 
+# e2e test for standar SQL
+SQLFLOW_SERVER=localhost:50051 ipython sql/python/test_magic.py
 # e2e test for xgboost train and prediciton SQL.
-SQLFLOW_submitter=XGBOOST sqlflowserver --datasource=${DATASOURCE} &
 SQLFLOW_SERVER=localhost:50051 ipython sql/python/test_magic_xgboost.py
