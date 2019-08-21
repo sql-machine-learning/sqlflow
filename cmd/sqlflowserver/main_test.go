@@ -311,8 +311,7 @@ func TestEnd2EndMaxCompute(t *testing.T) {
 	if err != nil {
 		t.Fatalf("prepare test dataset failed: %v", err)
 	}
-	// caseDB = "gomaxcompute_driver_w7u"
-	caseDB = ""
+	caseDB = "gomaxcompute_driver_w7u"
 	caseTrainTable = "sqlflow_test_iris_train"
 	caseTestTable = "sqlflow_test_iris_test"
 	casePredictTable = "sqlflow_test_iris_predict"
@@ -446,25 +445,13 @@ func CaseSelect(t *testing.T) {
 // CaseTrainSQL is a simple End-to-End testing for case training and predicting
 func CaseTrainSQL(t *testing.T) {
 	a := assert.New(t)
-	var trainSQL string
-	// FIXME(typhoonzero): figure out why maxcompute can not use db.table
-	if caseDB == "" {
-		trainSQL = fmt.Sprintf(`SELECT *
-FROM %s
-TRAIN DNNClassifier
-WITH n_classes = 3, hidden_units = [10, 20]
-COLUMN sepal_length, sepal_width, petal_length, petal_width
-LABEL class
-INTO sqlflow_models.my_dnn_model;`, caseTrainTable)
-	} else {
-		trainSQL = fmt.Sprintf(`SELECT *
+	trainSQL := fmt.Sprintf(`SELECT *
 FROM %s.%s
 TRAIN DNNClassifier
 WITH n_classes = 3, hidden_units = [10, 20]
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.my_dnn_model;`, caseDB, caseTrainTable)
-	}
 
 	conn, err := createRPCConn()
 	a.NoError(err)
@@ -480,18 +467,10 @@ INTO sqlflow_models.my_dnn_model;`, caseDB, caseTrainTable)
 	}
 	// call ParseRow only to wait train finish
 	ParseRow(stream)
-	var predSQL string
-	if caseDB == "" {
-		predSQL = fmt.Sprintf(`SELECT *
-FROM %s
-PREDICT %s.class
-USING sqlflow_models.my_dnn_model;`, caseTestTable, casePredictTable)
-	} else {
-		predSQL = fmt.Sprintf(`SELECT *
+	predSQL := fmt.Sprintf(`SELECT *
 FROM %s.%s
 PREDICT %s.%s.class
 USING sqlflow_models.my_dnn_model;`, caseDB, caseTestTable, caseDB, casePredictTable)
-	}
 
 	stream, err = cli.Run(ctx, sqlRequest(predSQL))
 	if err != nil {
@@ -500,14 +479,8 @@ USING sqlflow_models.my_dnn_model;`, caseDB, caseTestTable, caseDB, casePredictT
 	// call ParseRow only to wait predict finish
 	ParseRow(stream)
 
-	var showPred string
-	if caseDB == "" {
-		showPred = fmt.Sprintf(`SELECT *
-FROM %s LIMIT 5;`, casePredictTable)
-	} else {
-		showPred = fmt.Sprintf(`SELECT *
+	showPred := fmt.Sprintf(`SELECT *
 FROM %s.%s LIMIT 5;`, caseDB, casePredictTable)
-	}
 
 	stream, err = cli.Run(ctx, sqlRequest(showPred))
 	if err != nil {
