@@ -47,7 +47,7 @@ func ValidateAttributes(attrs map[string]*attribute) error {
 				continue
 			}
 			return fmt.Errorf("not supported attribute value: %s", value)
-		case []int:
+		case []int, []interface{}:
 			continue
 		default:
 			return fmt.Errorf("unrecognize attribute %v with type %T", value, value)
