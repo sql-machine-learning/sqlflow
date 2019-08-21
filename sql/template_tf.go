@@ -32,22 +32,9 @@ from sqlflow_submitter.db import connect, db_generator
 import logging
 tf.get_logger().setLevel(logging.ERROR)
 
-BATCHSIZE = 1
-EPOCHS = None
+BATCHSIZE = {{.BatchSize}}
+EPOCHS = {{.Epochs}}
 VERBOSE = 0
-
-train_args = dict()
-{{range $key, $value := .Attrs}}
-{{if eq $key "BATCHSIZE"}}
-BATCHSIZE = {{$value}}
-{{else if eq $key "EPOCHS"}}
-EPOCHS = {{$value}}
-{{else if eq $key "VERBOSE"}}
-VERBOSE = int({{$value}})
-{{else}}
-train_args["{{$key}}"] = {{$value}}
-{{end}}
-{{end}}
 
 driver="{{.Driver}}"
 {{if ne .Database ""}}
@@ -58,23 +45,14 @@ database=""
 
 conn = connect(driver, database, user="{{.User}}", password="{{.Password}}", host="{{.Host}}", port={{.Port}}, auth="{{.Auth}}")
 
-feature_columns = dict()
-{{ range $target, $colsCode := .FeatureColumnsCode }}
-feature_columns["{{$target}}"] = []
-{{ range $col := $colsCode }}
-feature_columns["{{$target}}"].append({{$col}})
-{{ end }}
-{{ end }}
-
-
 feature_column_names = [{{range .X}}
 "{{.FeatureName}}",
 {{end}}]
 
 
-classifier = {{.Estimator}}(
-    **feature_columns,
-    **train_args,
+classifier = {{.EstimatorCode}}(
+    {{.FeatureColumnParmas}},
+    {{.AttrParams}},
     {{if .IsKerasModel}}
 )
     {{else}}
@@ -179,12 +157,6 @@ from sqlflow_submitter.db import connect, insert_values, db_generator
 import logging
 tf.get_logger().setLevel(logging.ERROR)
 
-train_args = dict()
-{{range $key, $value := .Attrs}}
-{{if and (ne $key "BATCHSIZE") (ne $key "EPOCHS") (ne $key "VERBOSE") }}
-train_args["{{$key}}"] = {{$value}}
-{{end}}
-{{end}}
 
 driver="{{.Driver}}"
 {{if ne .Database ""}}
@@ -195,28 +167,19 @@ database=""
 
 conn = connect(driver, database, user="{{.User}}", password="{{.Password}}", host="{{.Host}}", port={{.Port}}, auth="{{.Auth}}")
 
-feature_columns = dict()
-{{ range $target, $colsCode := .FeatureColumnsCode }}
-feature_columns["{{$target}}"] = []
-{{ range $col := $colsCode }}
-feature_columns["{{$target}}"].append({{$col}})
-{{ end }}
-{{ end }}
-
-
 feature_column_names = [{{range .X}}
 "{{.FeatureName}}",
 {{end}}]
 
 
-classifier = {{.Estimator}}(
-    **feature_columns,
-    **train_args,
-{{if .IsKerasModel}}
+classifier = {{.EstimatorCode}}(
+    {{.FeatureColumnParmas}},
+    {{.AttrParams}},
+    {{if .IsKerasModel}}
 )
-{{else}}
+    {{else}}
     model_dir = "{{.Save}}")
-{{end}}
+    {{end}}
 
 {{/* Convert go side featureSpec to python dict for input_fn */}}
 feature_metas = dict()

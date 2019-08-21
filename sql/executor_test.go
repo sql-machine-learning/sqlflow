@@ -120,10 +120,10 @@ func TestExecutorTrainAndPredictionDNNClassifierDENSE(t *testing.T) {
 		stream := Run(`SELECT * FROM iris.train_dense
 TRAIN DNNClassifier
 WITH
-n_classes = 3,
-hidden_units = [10, 20],
-EPOCHS = 200,
-BATCHSIZE = 10
+model.n_classes = 3,
+model.hidden_units = [10, 20],
+train.epoch = 200,
+train.batch_size = 10
 COLUMN NUMERIC(dense, 4)
 LABEL class
 INTO sqlflow_models.my_dense_dnn_model
