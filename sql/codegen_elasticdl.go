@@ -106,7 +106,7 @@ func newElasticDLTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds
 		return nil, err
 	}
 	var trainInput, evalInput string
-	if ds != nil && ds.supported {
+	if ds != nil {
 		trainInput, evalInput = ds.training, ds.validation
 	} else {
 		trainInput, evalInput = pr.tables[0], pr.tables[0]

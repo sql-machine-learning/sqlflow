@@ -20,13 +20,13 @@ import (
 )
 
 const (
-	testTrainAndValDataset = `
+	testMaxcomputeTrainAndValDataset = `
 SELECT a.sepal_length,b.sepal_width,a.petal_length,b.petal_width,a.class
 FROM iris_train a,iris_test b
 WHERE a.class=b.class
 LIMIT 7
 `
-	testHiveTrainAndValDataset = `
+	testTrainAndValDataset = `
 SELECT a.sepal_length,b.sepal_width,a.petal_length,b.petal_width,a.class
 FROM iris.train a,iris.test b
 WHERE a.class=b.class
@@ -39,20 +39,20 @@ func TestCreateTrainAndValDataset(t *testing.T) {
 
 	switch testDB.driverName {
 	case "maxcompute":
+		_, e := newTrainAndValDataset(testDB, testMaxcomputeTrainAndValDataset, "orig", 1)
+		a.Error(e)
+		_, e = newTrainAndValDataset(testDB, testMaxcomputeTrainAndValDataset, "orig", 0)
+		a.Error(e)
+		ds, e := newTrainAndValDataset(testDB, testMaxcomputeTrainAndValDataset, "orig", 0.8)
+		a.NoError(e)
+		a.Empty(ds.database)
+	case "hive", "mysql":
 		_, e := newTrainAndValDataset(testDB, testTrainAndValDataset, "orig", 1)
 		a.Error(e)
 		_, e = newTrainAndValDataset(testDB, testTrainAndValDataset, "orig", 0)
 		a.Error(e)
 		ds, e := newTrainAndValDataset(testDB, testTrainAndValDataset, "orig", 0.8)
 		a.NoError(e)
-		a.True(ds.supported)
-	case "hive":
-		_, e := newTrainAndValDataset(testDB, testHiveTrainAndValDataset, "orig", 1)
-		a.Error(e)
-		_, e = newTrainAndValDataset(testDB, testHiveTrainAndValDataset, "orig", 0)
-		a.Error(e)
-		ds, e := newTrainAndValDataset(testDB, testHiveTrainAndValDataset, "orig", 0.8)
-		a.NoError(e)
-		a.True(ds.supported)
+		a.NotEmpty(ds.database)
 	}
 }
