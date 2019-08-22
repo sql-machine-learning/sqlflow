@@ -115,7 +115,7 @@ func TestPredElasticDLFiller(t *testing.T) {
 	a.NoError(e)
 
 	code := program.String()
-	a.True(strings.Contains(code, `tf.keras.layers.Dense(10, name="output")(flatten)`), code)
+	a.True(strings.Contains(code, `tf.keras.layers.Dense(10, name="output")(inputs)`), code)
 	a.True(strings.Contains(code, `columns=["pred_" + str(i) for i in range(10)]`), code)
 	a.True(strings.Contains(code, `column_types=["double" for _ in range(10)]`), code)
 	a.True(strings.Contains(code, `table = "prediction_results_table"`), code)
