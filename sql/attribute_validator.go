@@ -26,6 +26,7 @@ var attributeRegions = map[string]string{
 	"eval":    "",
 	"predict": "",
 	"engine":  "",
+	"gitlab":  "",
 }
 
 // ValidateAttributes validates the attributes are legal.

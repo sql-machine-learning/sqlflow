@@ -351,11 +351,11 @@ func resolveTrainClause(tc *trainClause) (*resolvedTrainClause, error) {
 
 	customModel := func() *gitLabModule {
 		if preMadeModel == false {
-			project := getStringAttr("gitlab_project", "")
-			sha := getStringAttr("gitlab_sha", "")
-			token := getStringAttr("gitlab_token", "")
-			server := getStringAttr("gitlab_server", "")
-			sourceRoot := getStringAttr("gitlab_source_root", "")
+			project := getStringAttr("gitlab.project", "")
+			sha := getStringAttr("gitlab.sha", "")
+			token := getStringAttr("gitlab.token", "")
+			server := getStringAttr("gitlab.server", "")
+			sourceRoot := getStringAttr("gitlab.source_root", "")
 			if project == "" {
 				return nil
 			}
