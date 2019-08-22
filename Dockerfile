@@ -14,7 +14,7 @@ ARG TENSORFLOW_VERSION="2.0.0b1"
 ARG WITH_SQLFLOW_MODELS="ON"
 
 ENV GOPATH /go
-ENV PATH /miniconda/envs/sqlflow-dev/bin:/miniconda/bin:/usr/local/go/bin:/go/bin:$PATH
+ENV PATH /opt/hadoop/bin:/miniconda/envs/sqlflow-dev/bin:/miniconda/bin:/usr/local/go/bin:/go/bin:$PATH
 ENV IPYTHON_STARTUP /root/.ipython/profile_default/startup/
 
 # Main Steps to Build

@@ -115,3 +115,10 @@ curl https://raw.githubusercontent.com/sql-machine-learning/sqlflow/develop/exam
 
 # 9. install xgboost-launcher
 pip install xgboost-launcher==0.0.3
+
+# 10. install hadoop
+HADOOP_URL=https://archive.apache.org/dist/hadoop/common/stable/hadoop-3.2.0.tar.gz
+curl -fsSL "$HADOOP_URL" -o /tmp/hadoop.tar.gz 
+tar -xzf /tmp/hadoop.tar.gz -C /opt/
+rm -rf /tmp/hadoop.tar.gz
+rm -rf /opt/hadoop/share/doc
