@@ -58,6 +58,10 @@ type elasticDLFiller struct {
 	TrainClause *resolvedTrainClause
 }
 
+type elasticDLModelSpec struct {
+	NumClasses int
+}
+
 func getFeaturesNames(pr *extendedSelect) ([]string, error) {
 	selectFeatures := pr.standardSelect.fields.Strings()
 	if len(selectFeatures) == 1 && selectFeatures[0] == "*" {
@@ -101,6 +105,24 @@ func makePythonListCode(items []string) string {
 	return sb.String()
 }
 
+func getElasticDLModelSpec(attrs map[string]*attribute) elasticDLModelSpec {
+	getInt := func(key string, defaultValue int) int {
+		if p, ok := attrs[key]; ok {
+			strVal, _ := p.Value.(string)
+			intVal, err := strconv.Atoi(strVal)
+
+			if err == nil {
+				return intVal
+			}
+		}
+		return defaultValue
+	}
+
+	return elasticDLModelSpec{
+		NumClasses: getInt("num_classes", 1),
+	}
+}
+
 func newElasticDLDataConversionFiller(pr *extendedSelect, recordIODataDir string, batchSize int, numProcesses int) (*elasticDLDataConversionFiller, error) {
 	featureNames, err := getFeaturesNames(pr)
 	if err != nil {
@@ -132,18 +154,6 @@ func newElasticDLTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds
 	} else {
 		trainInput, evalInput = pr.tables[0], pr.tables[0]
 	}
-	getInt := func(key string, defaultValue int) int {
-		if p, ok := resolved.ModelConstructorParams[key]; ok {
-			strVal, _ := p.Value.(string)
-			intVal, err := strconv.Atoi(strVal)
-
-			if err == nil {
-				return intVal
-			}
-		}
-		return defaultValue
-	}
-	outputShape := getInt("num_classes", 1)
 	return &elasticDLFiller{
 		IsTraining:          true,
 		TrainInputTable:     trainInput,
@@ -153,7 +163,7 @@ func newElasticDLTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds
 		TrainClause:         resolved,
 		ModelDir:            pr.trainClause.save,
 		InputShape:          len(featureNames),
-		OutputShape:         outputShape,
+		OutputShape:         getElasticDLModelSpec(resolved.ModelConstructorParams).NumClasses,
 	}, err
 }
 
