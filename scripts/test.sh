@@ -25,7 +25,6 @@ export PYTHONPATH=$GOPATH/src/github.com/sql-machine-learning/sqlflow/sql/python
 
 python -c "import sqlflow_models"
 python -c "import sqlflow_submitter.db"
-#python -c "from tensorflow import keras; keras.datasets.imdb.load_data(num_words=10000)"
 
 go generate ./...
 go get -v -t ./...
