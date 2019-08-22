@@ -27,6 +27,9 @@ done
 
 set -e
 
+hdfs dfs -rm -r hdfs://localhost:8020/sqlflow
+hdfs dfs -mkdir -p hdfs://localhost:8020/sqlflow
+export SQLFLOW_HIVE_LOCATION_ROOT_PATH=/sqlflow
 export SQLFLOW_TEST_DB=hive
 # NOTE: we have already installed sqlflow_submitter under python installation path
 # using latest develop branch, but when testing on CI, we need to use the code in
@@ -42,3 +45,5 @@ go install ./...
 SQLFLOW_log_level=debug go test -p 1 -v ./...
 
 python -m unittest discover -v sql/python "db_test.py"
+
+hdfs dfs -rm -r hdfs://localhost:8020/sqlflow

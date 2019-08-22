@@ -490,13 +490,13 @@ func createPredictionTable(trainParsed, predParsed *extendedSelect, db *DB) erro
 		return e
 	}
 	if db.driverName == "hive" {
-		hdfsPath := os.Getenv("SQLFLOW_HIVE_HDFS_PATH")
+		hdfsPath := os.Getenv("SQLFLOW_HIVE_LOCATION_ROOT_PATH")
 		if hdfsPath == "" {
 			hdfsPath = "/sqlflow"
 		}
 		// "." can not be as the hdfs path.
 		location := fmt.Sprintf("%s/%s", hdfsPath, strings.Replace(tableName, ".", "_", -1))
-		fmt.Fprintf(&b, "%s %s) ROW FORMAT DELIMITED FIELDS TERMINATED BY '\001' LOCATION \"%s\" ;", columnName, stype, location)
+		fmt.Fprintf(&b, "%s %s) ROW FORMAT DELIMITED FIELDS TERMINATED BY \"\\001\" LOCATION \"%s\" ;", columnName, stype, location)
 	} else {
 		fmt.Fprintf(&b, "%s %s);", columnName, stype)
 	}

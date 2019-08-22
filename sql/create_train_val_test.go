@@ -14,6 +14,7 @@
 package sql
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -48,10 +49,13 @@ func TestCreateTrainAndValDataset(t *testing.T) {
 		a.Empty(ds.database)
 	case "hive", "mysql":
 		_, e := newTrainAndValDataset(testDB, testTrainAndValDataset, "orig", 1)
+		fmt.Println("rdm 1", e)
 		a.Error(e)
 		_, e = newTrainAndValDataset(testDB, testTrainAndValDataset, "orig", 0)
+		fmt.Println("rdm 0", e)
 		a.Error(e)
 		ds, e := newTrainAndValDataset(testDB, testTrainAndValDataset, "orig", 0.8)
+		fmt.Println("rdm 0.8", e)
 		a.NoError(e)
 		a.NotEmpty(ds.database)
 	}
