@@ -54,7 +54,7 @@ def execute(driver, conn, statement):
 class TestDB(TestCase):
 
     create_statement = "create table test_db (features text, label int)"
-    hive_create_statement = "create table test_db (features string, label int)"
+    hive_create_statement = 'create table test_db (features string, label int) ROW FORMAT DELIMITED FIELDS TERMINATED BY "\001" LOCATION "/sqlflow/test_db"'
     select_statement = "select * from test_db"
     drop_statement = "drop table if exists test_db"
 
