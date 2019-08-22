@@ -494,9 +494,7 @@ func createPredictionTable(trainParsed, predParsed *extendedSelect, db *DB) erro
 		if hdfsPath == "" {
 			hdfsPath = "/sqlflow"
 		}
-		// "." can not be as the hdfs path.
-		location := fmt.Sprintf("%s/%s", hdfsPath, strings.Replace(tableName, ".", "_", -1))
-		fmt.Fprintf(&b, "%s %s) ROW FORMAT DELIMITED FIELDS TERMINATED BY \"\\001\" LOCATION \"%s\" ;", columnName, stype, location)
+		fmt.Fprintf(&b, "%s %s) ROW FORMAT DELIMITED FIELDS TERMINATED BY \"\\001\" LOCATION \"%s/%s\" ;", columnName, stype, hdfsPath, tableName)
 	} else {
 		fmt.Fprintf(&b, "%s %s);", columnName, stype)
 	}

@@ -107,7 +107,6 @@ func AssertContainsAny(a *assert.Assertions, all map[string]string, actual *any.
 	case "type.googleapis.com/google.protobuf.StringValue":
 		b := wrappers.StringValue{}
 		ptypes.UnmarshalAny(actual, &b)
-		fmt.Println("actual.Value", b.Value)
 		if _, ok := all[b.Value]; !ok {
 			a.Failf("", "string value %s not exist", b.Value)
 		}
@@ -398,7 +397,6 @@ func CaseShowDatabases(t *testing.T) {
 		"default":            "", // if fetching default hive databases
 	}
 	for i := 0; i < len(resp); i++ {
-		fmt.Println(resp[i][0])
 		AssertContainsAny(a, expectedDBs, resp[i][0])
 	}
 }
