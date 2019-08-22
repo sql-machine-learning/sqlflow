@@ -20,6 +20,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -131,6 +132,18 @@ func newElasticDLTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds
 	} else {
 		trainInput, evalInput = pr.tables[0], pr.tables[0]
 	}
+	getInt := func(key string, defaultValue int) int {
+		if p, ok := resolved.ModelConstructorParams[key]; ok {
+			strVal, _ := p.Value.(string)
+			intVal, err := strconv.Atoi(strVal)
+
+			if err == nil {
+				return intVal
+			}
+		}
+		return defaultValue
+	}
+	outputShape := getInt("num_classes", 1)
 	return &elasticDLFiller{
 		IsTraining:          true,
 		TrainInputTable:     trainInput,
@@ -140,6 +153,7 @@ func newElasticDLTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds
 		TrainClause:         resolved,
 		ModelDir:            pr.trainClause.save,
 		InputShape:          len(featureNames),
+		OutputShape:         outputShape,
 	}, err
 }
 
