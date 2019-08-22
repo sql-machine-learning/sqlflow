@@ -90,6 +90,7 @@ func TestTrainElasticDLFiller(t *testing.T) {
 	a.True(strings.Contains(code, `"c5": tf.io.FixedLenFeature([1], tf.int64),`), code)
 	a.True(strings.Contains(code, `"c1": tf.io.FixedLenFeature([1], tf.float32), "c2": tf.io.FixedLenFeature([1], tf.float32), "c3": tf.io.FixedLenFeature([1], tf.float32), "c4": tf.io.FixedLenFeature([1], tf.float32),`), code)
 	a.True(strings.Contains(code, `return parsed_example, tf.cast(parsed_example["c5"], tf.int32)`), code)
+	a.True(strings.Contains(code, `inputs = tf.keras.layers.Input(shape=(4, 1), name="input")`), code)
 }
 
 func TestPredElasticDLFiller(t *testing.T) {
@@ -118,6 +119,7 @@ func TestPredElasticDLFiller(t *testing.T) {
 	a.True(strings.Contains(code, `column_types=["double" for _ in range(10)]`), code)
 	a.True(strings.Contains(code, `table = "prediction_results_table"`), code)
 	a.True(strings.Contains(code, `"c1": tf.io.FixedLenFeature([1], tf.float32), "c2": tf.io.FixedLenFeature([1], tf.float32), "c3": tf.io.FixedLenFeature([1], tf.float32), "c4": tf.io.FixedLenFeature([1], tf.float32),`), code)
+	a.True(strings.Contains(code, `inputs = tf.keras.layers.Input(shape=(4, 1), name="input")`), code)
 }
 
 func TestElasticDLDataConversionFiller(t *testing.T) {

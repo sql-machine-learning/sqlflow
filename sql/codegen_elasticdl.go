@@ -47,7 +47,8 @@ type elasticDLFiller struct {
 	PredictInputTable  string
 	PredictOutputTable string
 	PredictInputModel  string
-	PredictOutputShape int
+	OutputShape        int
+	InputShape         int
 	ModelDir           string
 
 	FeaturesDescription string
@@ -138,6 +139,7 @@ func newElasticDLTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds
 		LabelColName:        pr.label,
 		TrainClause:         resolved,
 		ModelDir:            pr.trainClause.save,
+		InputShape:          len(featureNames),
 	}, err
 }
 
@@ -152,8 +154,9 @@ func newElasticDLPredictFiller(pr *extendedSelect, outputShape int) (*elasticDLF
 		PredictInputTable:   pr.tables[0],
 		PredictOutputTable:  pr.predictClause.into,
 		PredictInputModel:   pr.predictClause.model,
-		PredictOutputShape:  outputShape,
+		OutputShape:         outputShape,
 		FeaturesDescription: genFeaturesDescription(featureNames),
+		InputShape:          len(featureNames),
 	}, err
 }
 

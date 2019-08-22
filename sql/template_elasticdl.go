@@ -68,94 +68,9 @@ from elasticdl.python.worker.prediction_outputs_processor import (
 
 
 def custom_model():
-    inputs = tf.keras.layers.Input(shape=(32, 32, 3), name="image")
-    use_bias = True
-
-    conv = tf.keras.layers.Conv2D(
-        32,
-        kernel_size=(3, 3),
-        padding="same",
-        use_bias=use_bias,
-        activation=None,
-    )(inputs)
-    bn = tf.keras.layers.BatchNormalization(
-        epsilon=1e-06, axis=-1, momentum=0.9
-    )(conv)
-    activation = tf.keras.layers.Activation(tf.nn.relu)(bn)
-
-    conv = tf.keras.layers.Conv2D(
-        32,
-        kernel_size=(3, 3),
-        padding="same",
-        use_bias=use_bias,
-        activation=None,
-    )(activation)
-    bn = tf.keras.layers.BatchNormalization(
-        epsilon=1e-06, axis=-1, momentum=0.9
-    )(conv)
-    activation = tf.keras.layers.Activation(tf.nn.relu)(bn)
-
-    max_pool = tf.keras.layers.MaxPooling2D(pool_size=(2, 2))(activation)
-    dropout = tf.keras.layers.Dropout(0.2)(max_pool)
-
-    conv = tf.keras.layers.Conv2D(
-        64,
-        kernel_size=(3, 3),
-        padding="same",
-        use_bias=use_bias,
-        activation=None,
-    )(dropout)
-    bn = tf.keras.layers.BatchNormalization(
-        epsilon=1e-06, axis=-1, momentum=0.9
-    )(conv)
-    activation = tf.keras.layers.Activation(tf.nn.relu)(bn)
-
-    conv = tf.keras.layers.Conv2D(
-        64,
-        kernel_size=(3, 3),
-        padding="same",
-        use_bias=use_bias,
-        activation=None,
-    )(activation)
-    bn = tf.keras.layers.BatchNormalization(
-        epsilon=1e-06, axis=-1, momentum=0.9
-    )(conv)
-    activation = tf.keras.layers.Activation(tf.nn.relu)(bn)
-
-    max_pool = tf.keras.layers.MaxPooling2D()(activation)
-    dropout = tf.keras.layers.Dropout(0.3)(max_pool)
-
-    conv = tf.keras.layers.Conv2D(
-        128,
-        kernel_size=(3, 3),
-        padding="same",
-        use_bias=use_bias,
-        activation=None,
-    )(dropout)
-    bn = tf.keras.layers.BatchNormalization(
-        epsilon=1e-06, axis=-1, momentum=0.9
-    )(conv)
-    activation = tf.keras.layers.Activation(tf.nn.relu)(bn)
-
-    conv = tf.keras.layers.Conv2D(
-        128,
-        kernel_size=(3, 3),
-        padding="same",
-        use_bias=use_bias,
-        activation=None,
-    )(activation)
-    bn = tf.keras.layers.BatchNormalization(
-        epsilon=1e-06, axis=-1, momentum=0.9
-    )(conv)
-    activation = tf.keras.layers.Activation(tf.nn.relu)(bn)
-
-    max_pool = tf.keras.layers.MaxPooling2D()(activation)
-    dropout = tf.keras.layers.Dropout(0.4)(max_pool)
-
-    flatten = tf.keras.layers.Flatten()(dropout)
-    outputs = tf.keras.layers.Dense({{.PredictOutputShape}}, name="output")(flatten)
-
-    return tf.keras.Model(inputs=inputs, outputs=outputs, name="cifar10_model")
+    inputs = tf.keras.layers.Input(shape=({{.InputShape}}, 1), name="input")
+    outputs = tf.keras.layers.Dense({{.OutputShape}}, name="output")(flatten)
+    return tf.keras.Model(inputs=inputs, outputs=outputs, name="simple-model")
 
 
 def loss(output, labels):
@@ -236,8 +151,8 @@ class PredictionOutputsProcessor(BasePredictionOutputsProcessor):
                 os.environ[ODPSConfig.ACCESS_KEY],
                 os.environ[ODPSConfig.ENDPOINT],
                 table = "{{.PredictOutputTable}}",
-                columns=["pred_" + str(i) for i in range({{.PredictOutputShape}})],
-                column_types=["double" for _ in range({{.PredictOutputShape}})],
+                columns=["pred_" + str(i) for i in range({{.OutputShape}})],
+                column_types=["double" for _ in range({{.OutputShape}})],
             )
         else:
             self.odps_writer = None
