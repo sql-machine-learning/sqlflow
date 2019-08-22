@@ -79,6 +79,7 @@ func TestTrainElasticDLFiller(t *testing.T) {
 	a.Equal("training_data", filler.TrainInputTable)
 	a.Equal(true, filler.TrainClause.EnableShuffle)
 	a.Equal(120, filler.TrainClause.ShuffleBufferSize)
+	a.Equal("trained_elasticdl_keras_classifier", filler.ModelDir)
 
 	var program bytes.Buffer
 	e = elasticdlTrainTemplate.Execute(&program, filler)

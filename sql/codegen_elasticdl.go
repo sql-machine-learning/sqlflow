@@ -48,6 +48,7 @@ type elasticDLFiller struct {
 	PredictOutputTable string
 	PredictInputModel  string
 	PredictOutputShape int
+	ModelDir           string
 
 	FeaturesDescription string
 	LabelColName        string
@@ -136,6 +137,7 @@ func newElasticDLTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds
 		FeaturesDescription: genFeaturesDescription(featureNames),
 		LabelColName:        pr.label,
 		TrainClause:         resolved,
+		ModelDir:            pr.trainClause.save,
 	}, err
 }
 
@@ -238,8 +240,7 @@ func elasticdlTrainCmd(cwd, modelDefFilePath string, recordIODataDir string, fil
 			"--cluster_spec", filler.TrainClause.EngineParams.clusterSpec,
 			"--records_per_task", string(filler.TrainClause.EngineParams.recordsPerTask),
 			"--log_level", "INFO",
-			// TODO: Get this from INTO clause
-			"--output", "model_output",
+			"--output", filler.ModelDir,
 			"--checkpoint_steps", string(filler.TrainClause.CheckpointSteps),
 			"--evaluation_steps", string(filler.TrainClause.EvalSteps),
 			"--grads_to_wait", string(filler.TrainClause.GradsToWait),
