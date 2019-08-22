@@ -17,6 +17,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"text/template"
@@ -709,7 +710,15 @@ func xgCreatePredictionTable(pr *extendedSelect, r *xgboostFiller, db *DB) error
 	if e != nil {
 		return e
 	}
-	fmt.Fprintf(&b, "%s %s);", r.ResultColumn, stype)
+	if db.driverName == "hive" {
+		hdfsPath := os.Getenv("SQLFLOW_HIVE_LOCATION_ROOT_PATH")
+		if hdfsPath == "" {
+			hdfsPath = "/sqlflow"
+		}
+		fmt.Fprintf(&b, "%s %s) ROW FORMAT DELIMITED FIELDS TERMINATED BY \"\\001\" LOCATION \"%s/%s\" ;", r.ResultColumn, stype, hdfsPath, r.OutputTable)
+	} else {
+		fmt.Fprintf(&b, "%s %s);", r.ResultColumn, stype)
+	}
 
 	createStmt := b.String()
 	if _, e := db.Exec(createStmt); e != nil {
