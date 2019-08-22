@@ -448,7 +448,7 @@ func CaseTrainSQL(t *testing.T) {
 	trainSQL := fmt.Sprintf(`SELECT *
 FROM %s.%s
 TRAIN DNNClassifier
-WITH n_classes = 3, hidden_units = [10, 20]
+WITH model.n_classes = 3, model.hidden_units = [10, 20]
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.my_dnn_model;`, caseDB, caseTrainTable)
@@ -508,7 +508,7 @@ func CaseTrainCustomModel(t *testing.T) {
 	trainSQL := `SELECT *
 FROM iris.train
 TRAIN sqlflow_models.DNNClassifier
-WITH n_classes = 3, hidden_units = [10, 20]
+WITH model.n_classes = 3, model.hidden_units = [10, 20]
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.my_dnn_model_custom;`
@@ -564,7 +564,7 @@ func CaseTrainTextClassification(t *testing.T) {
 	trainSQL := `SELECT *
 FROM text_cn.train_processed
 TRAIN DNNClassifier
-WITH n_classes = 17, hidden_units = [10, 20]
+WITH model.n_classes = 17, model.hidden_units = [10, 20]
 COLUMN EMBEDDING(CATEGORY_ID(news_title,16000,COMMA),128,mean)
 LABEL class_id
 INTO sqlflow_models.my_dnn_model;`
@@ -592,7 +592,7 @@ func CaseTrainTextClassificationCustomLSTM(t *testing.T) {
 	trainSQL := `SELECT *
 FROM text_cn.train_processed
 TRAIN sqlflow_models.StackedBiLSTMClassifier
-WITH n_classes = 17, stack_units = [16], EPOCHS = 1, BATCHSIZE = 32
+WITH model.n_classes = 17, model.stack_units = [16], train.epoch = 1, train.batch_size = 32
 COLUMN EMBEDDING(SEQ_CATEGORY_ID(news_title,1600,COMMA),128,mean)
 LABEL class_id
 INTO sqlflow_models.my_bilstm_model;`
@@ -618,7 +618,7 @@ func CaseTrainSQLWithHyperParams(t *testing.T) {
 	trainSQL := `SELECT *
 FROM iris.train
 TRAIN DNNClassifier
-WITH n_classes = 3, hidden_units = [10, 20], BATCHSIZE = 10, EPOCHS = 2
+WITH model.n_classes = 3, model.hidden_units = [10, 20], train.batch_size = 10, train.epoch = 2
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.my_dnn_model;`
@@ -644,7 +644,7 @@ func CaseTrainDeepWideModel(t *testing.T) {
 	trainSQL := `SELECT *
 FROM iris.train
 TRAIN DNNLinearCombinedClassifier
-WITH n_classes = 3, dnn_hidden_units = [10, 20], BATCHSIZE = 10, EPOCHS = 2
+WITH model.n_classes = 3, model.dnn_hidden_units = [10, 20], train.batch_size = 10, train.epoch = 2
 COLUMN sepal_length, sepal_width FOR linear_feature_columns
 COLUMN petal_length, petal_width FOR dnn_feature_columns
 LABEL class
@@ -672,7 +672,7 @@ func CaseTrainCustomModelWithHyperParams(t *testing.T) {
 	trainSQL := `SELECT *
 FROM iris.train
 TRAIN sqlflow_models.DNNClassifier
-WITH n_classes = 3, hidden_units = [10, 20], BATCHSIZE = 10, EPOCHS=2
+WITH model.n_classes = 3, model.hidden_units = [10, 20], train.batch_size = 10, train.epoch=2
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.my_dnn_model_custom;`
@@ -698,7 +698,7 @@ func CaseSparseFeature(t *testing.T) {
 	trainSQL := `SELECT *
 FROM text_cn.train
 TRAIN DNNClassifier
-WITH n_classes = 3, hidden_units = [10, 20]
+WITH model.n_classes = 3, model.hidden_units = [10, 20]
 COLUMN EMBEDDING(CATEGORY_ID(news_title,16000,COMMA),128,mean)
 LABEL class_id
 INTO sqlflow_models.my_dnn_model;`
@@ -851,7 +851,7 @@ func CaseTrainRegression(t *testing.T) {
 	trainSQL := fmt.Sprintf(`SELECT *
 FROM housing.train
 TRAIN LinearRegressor
-WITH label_dimension=1
+WITH model.label_dimension=1
 COLUMN f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13
 LABEL target
 INTO sqlflow_models.my_regression_model;`)

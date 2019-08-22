@@ -29,8 +29,8 @@ FROM iris.train
 	testTrainSelectIris = testSelectIris + `
 TRAIN DNNClassifier
 WITH
-  n_classes = 3,
-  hidden_units = [10, 20]
+  model.n_classes = 3,
+  model.hidden_units = [10, 20]
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.my_dnn_model

@@ -25,8 +25,8 @@ segmented by spaces. You can download the full dataset from:
     FROM imdb.train
     TRAIN DNNClassifier
     WITH
-    n_classes = 2,
-    hidden_units = [128, 64]
+    model.n_classes = 2,
+    model.hidden_units = [128, 64]
     COLUMN content
     LABEL class
     INTO sqlflow_models.my_text_model_en;
@@ -56,11 +56,11 @@ you may need to follow the below steps:
     FROM imdb.train
     TRAIN sqlflow_models.StackedBiLSTMClassifier
     WITH
-    n_classes = 2,
-    stack_units = [64,32],
-    hidden_size = 64,
-    EPOCHS = 10,
-    BATCHSIZE = 64
+    model.n_classes = 2,
+    model.stack_units = [64,32],
+    model.hidden_size = 64,
+    train.epoch = 10,
+    train.batch_size = 64
     COLUMN content
     LABEL class
     INTO sqlflow_models.my_custom_model;
@@ -131,8 +131,8 @@ you may need to follow the below steps:
     FROM toutiao.train_processed
     TRAIN DNNClassifier
     WITH
-    n_classes = 17,
-    hidden_units = [128, 512]
+    model.n_classes = 17,
+    model.hidden_units = [128, 512]
     COLUMN news_title
     LABEL class_id
     INTO sqlflow_models.my_text_model;

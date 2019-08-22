@@ -38,10 +38,13 @@ type connectionConfig struct {
 }
 
 type modelConfig struct {
-	Estimator    string
-	Attrs        map[string]string
-	Save         string
-	IsKerasModel bool
+	EstimatorCode       string
+	FeatureColumnParmas string
+	AttrParams          string
+	BatchSize           int
+	Epochs              int
+	Save                string
+	IsKerasModel        bool
 }
 
 type featureMeta struct {
@@ -53,46 +56,18 @@ type featureMeta struct {
 }
 
 type filler struct {
-	IsTrain           bool
-	Driver            string
-	TrainingDataset   string // IsTrain == true
-	ValidationDataset string // IsTrain == true
-	PredictionDataset string // IsTrain != true
-	X                 []*featureMeta
-	// key: for target (e.g. deep-wide model), value: list of generated code for current target
+	IsTrain            bool
+	Driver             string
+	TrainingDataset    string // IsTrain == true
+	ValidationDataset  string // IsTrain == true
+	PredictionDataset  string // IsTrain != true
+	X                  []*featureMeta
 	FeatureColumnsCode map[string][]string
 	Y                  *featureMeta
 	TableName          string
+	Auth               string // the auth field is only used for hiveserver2
 	modelConfig
 	connectionConfig
-
-	// the auth field is only used for hiveserver2
-	Auth string
-}
-
-func translateColumnToFeature(fts *fieldTypes, driverName, ident string) (*columnType, error) {
-	ct, ok := fts.get(ident)
-	if !ok {
-		return nil, fmt.Errorf("genTF: Cannot find type of field %s", ident)
-	}
-	ctype, e := universalizeColumnType(driverName, ct)
-	if e != nil {
-		return nil, e
-	}
-	ctype = strings.ToUpper(ctype)
-
-	if ctype == "FLOAT" || ctype == "INT" || ctype == "DOUBLE" || ctype == "BIGINT" {
-		return &columnType{ident, "numeric_column"}, nil
-	} else if ctype == "TEXT" || ctype == "VARCHAR" {
-		// FIXME(typhoonzero): only support preprocessed string of int vector
-		// like: "231,291,0,0,9", to support arbitrary string, we need to provide
-		// additional information like how to parse.
-		// TODO(typhoonzero): need to support categorical_column_with_vocabulary_list
-		// which read vocabulary from DB.
-		// return &columnType{ident, "categorical_column_with_identity"}, nil
-		return &columnType{ident, "categorical_column_with_identity"}, nil
-	}
-	return nil, fmt.Errorf("unsupported type %s of field %s", ctype, ident)
 }
 
 // parseModelURI returns isKerasModel, modelClassString
@@ -127,20 +102,23 @@ func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *D
 		ValidationDataset: validation,
 		PredictionDataset: pr.standardSelect.String(),
 		modelConfig: modelConfig{
-			Estimator:    modelClassString,
-			Attrs:        make(map[string]string),
-			Save:         pr.save,
-			IsKerasModel: isKerasModel,
+			EstimatorCode: modelClassString,
+			BatchSize:     1,
+			Epochs:        1,
+			Save:          pr.save,
+			IsKerasModel:  isKerasModel,
 		},
 		Auth: auth,
 	}
-	for k, v := range pr.trainClause.trainAttrs {
-		r.Attrs[k] = v.String()
-	}
-	for k, v := range pr.predictClause.predAttrs {
-		r.Attrs[k] = v.String()
-	}
 
+	trainResolved, err := resolveTrainClause(&pr.trainClause)
+	if err != nil {
+		return nil, err
+	}
+	r.modelConfig.BatchSize = trainResolved.BatchSize
+	r.modelConfig.Epochs = trainResolved.Epoch
+
+	featureColumnsCode := make(map[string][]string)
 	for target, columns := range pr.columns {
 		feaCols, colSpecs, err := resolveTrainColumns(&columns)
 		if err != nil {
@@ -149,7 +127,6 @@ func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *D
 		if len(colSpecs) != 0 {
 			return nil, fmt.Errorf("newFiller doesn't support DENSE/SPARSE")
 		}
-		r.FeatureColumnsCode = make(map[string][]string)
 		for _, col := range feaCols {
 			feaColCode, e := col.GenerateCode()
 			if e != nil {
@@ -181,11 +158,35 @@ func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *D
 				IsSparse:    isSparse,
 			}
 			r.X = append(r.X, fm)
-			r.FeatureColumnsCode[target] = append(
-				r.FeatureColumnsCode[target],
+			featureColumnsCode[target] = append(
+				featureColumnsCode[target],
 				feaColCode)
 		}
 	}
+
+	// Format estimator creation code
+	var attrParams []string
+	for _, attrValue := range trainResolved.ModelConstructorParams {
+		attrValueStr, err := attrValue.GenerateCode()
+		if err != nil {
+			return nil, err
+		}
+		attrParams = append(attrParams, attrValueStr)
+	}
+	r.AttrParams = strings.Join(attrParams, ",")
+
+	var featureColumnParams []string
+	for target, fcCodeList := range featureColumnsCode {
+		paramKey := target
+		if paramKey == "" {
+			paramKey = "feature_columns"
+		}
+		featureColumnParams = append(
+			featureColumnParams,
+			fmt.Sprintf("%s=[%s]", paramKey, strings.Join(fcCodeList, ",")),
+		)
+	}
+	r.FeatureColumnParmas = strings.Join(featureColumnParams, ",")
 
 	// Default use int32 label dtype
 	labelDtype := "int32"

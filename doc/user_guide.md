@@ -101,8 +101,8 @@ WITH
 ```
 
 - *model_identifier* indicates the model type. e.g. `DNNClassifier`. Please refer to [Models](#models) for a complete list of supported models.
-- *model_attr_expr* indicates the model attribute. e.g. `n_classes = 3`. Please refer to [Models](#models) for details.
-- *train_attr_expr* indicates the training attribute. e.g. `EPOCHS = 10`. Please refer to [Hyperparameters](#hyperparameters) for details.
+- *model_attr_expr* indicates the model attribute. e.g. `model.n_classes = 3`. Please refer to [Models](#models) for details.
+- *train_attr_expr* indicates the training attribute. e.g. `train.epoch = 10`. Please refer to [Hyperparameters](#hyperparameters) for details.
 
 For example, if you want to train a `DNNClassifier`, which has 2 hidden layers where each layer has 10 hidden units, with 10 epochs, you can write the following statement:
 
@@ -110,9 +110,9 @@ For example, if you want to train a `DNNClassifier`, which has 2 hidden layers w
 SELECT ...
 TRAIN DNNClassifer
 WITH
-  hidden_units = [10, 10],
-  n_classes = 3,
-  EPOCHS = 10
+  model.hidden_units = [10, 10],
+  model.n_classes = 3,
+  train.epoch = 10
 ...
 ```
 
@@ -314,10 +314,9 @@ SQLFlow supports various TensorFlow premade estimators.
 ```SQL
 TRAIN DNNClassifier
 WITH
-    hidden_units=[10,10],
-    n_classes=2,
-    optimizer='Adagrad',
-    batch_norm=False
+    model.hidden_units=[10,10],
+    model.n_classes=2,
+    model.batch_norm=False
 ```
 
 ### DNNLinearCombinedClassifier
@@ -325,12 +324,12 @@ WITH
 ```SQL
 TRAIN DNNLinearCombinedClassifier
 WITH
-    linear_optimizer='Ftrl',
-    dnn_optimizer='Adagrad',
-    dnn_hidden_units=None,
-    n_classes=2,
-    batch_norm=False,
-    linear_sparse_combiner='sum'
+    model.linear_optimizer='Ftrl',
+    model.dnn_optimizer='Adagrad',
+    model.dnn_hidden_units=None,
+    model.n_classes=2,
+    model.batch_norm=False,
+    model.linear_sparse_combiner='sum'
 COLUMN ... FOR linear_feature_columns
 COLUMN ... FOR dnn_feature_columns
 ```
@@ -339,5 +338,5 @@ COLUMN ... FOR dnn_feature_columns
 
 SQLFlow supports various configurable training hyperparameters.
 
-1. `BATCHSIZE`. Default 1.
-1. `EPOCHS` . Default 1.
+1. `train.batch_size`. Default 1.
+1. `train.epoch` . Default 1.
