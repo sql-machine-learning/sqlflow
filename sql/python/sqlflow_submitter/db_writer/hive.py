@@ -29,5 +29,6 @@ class HiveDBWriter(BufferedDBWriter):
                 f.write(line)
 
         hdfs_path = os.getenv("SQLFLOW_HIVE_LOCATION_ROOT_PATH", "/sqlflow")
-        cmd_str = "hdfs dfs -copyFromLocal %s hdfs://127.0.0.1:8020%s/%s" % (f.name, hdfs_path, self.table_name)
+        namenode_addr = os.getenv("SQLFLOW_HDFS_NAMENODE_ADDR", "127.0.0.1:8020")
+        cmd_str = "hdfs dfs -copyFromLocal %s hdfs://%s%s/%s" % (f.name, namenode_addr, hdfs_path, self.table_name)
         subprocess.run(cmd_str.split())

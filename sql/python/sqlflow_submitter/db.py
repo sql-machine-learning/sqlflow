@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import contextlib
 import numpy as np
 import tensorflow as tf
@@ -47,6 +48,14 @@ def db_generator(driver, conn, statement,
                  feature_column_names, label_column_name,
                  feature_specs, fetch_size=128):
     def reader():
+        if driver == "hive":
+            conf = {}
+            for k, v in os.environ.items():
+                if k.startswith("SQLFLOW_HIVE_CONF_"):
+                    conf.update({k[18:].replace("_", "."), v})
+            cursor = conn.cursor(configuration=conf)
+        else:
+            cursor = conn.cursor()
         cursor = conn.cursor()
         cursor.execute(statement)
         if driver == "hive":

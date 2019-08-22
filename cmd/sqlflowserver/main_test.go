@@ -395,6 +395,7 @@ func CaseShowDatabases(t *testing.T) {
 		"iris_e2e":           "", // created by Python e2e test
 		"hive":               "", // if current mysql is also used for hive
 		"default":            "", // if fetching default hive databases
+		"sf_home":            "", // default auto train&val database
 	}
 	for i := 0; i < len(resp); i++ {
 		AssertContainsAny(a, expectedDBs, resp[i][0])

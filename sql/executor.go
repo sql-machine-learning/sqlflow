@@ -443,6 +443,7 @@ func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir strin
 	cw := &logChanWriter{wr: wr}
 	defer cw.Close()
 	cmd := tensorflowCmd(cwd, db.driverName)
+	cmd.Env = append(os.Environ())
 	cmd.Stdin = &buf
 	cmd.Stdout = cw
 	cmd.Stderr = cw

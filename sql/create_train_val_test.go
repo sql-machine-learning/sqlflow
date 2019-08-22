@@ -14,7 +14,6 @@
 package sql
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -53,7 +52,6 @@ func TestCreateTrainAndValDataset(t *testing.T) {
 		_, e = newTrainAndValDataset(testDB, testTrainAndValDataset, "orig", 0)
 		a.Error(e)
 		ds, e := newTrainAndValDataset(testDB, testTrainAndValDataset, "orig", 0.8)
-		fmt.Println("rdm 0.8", e)
 		a.NoError(e)
 		a.NotEmpty(ds.database)
 	}
