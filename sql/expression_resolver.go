@@ -256,6 +256,15 @@ func getEngineSpec(attrs map[string]*attribute) engineSpec {
 	}
 }
 
+func trimQuotes(s string) string {
+	if len(s) >= 2 {
+		if s[0] == '"' && s[len(s)-1] == '"' {
+			return s[1 : len(s)-1]
+		}
+	}
+	return s
+}
+
 func resolveTrainClause(tc *trainClause) (*resolvedTrainClause, error) {
 	modelName := tc.estimator
 	preMadeModel := !strings.ContainsAny(modelName, ".")
@@ -266,14 +275,6 @@ func resolveTrainClause(tc *trainClause) (*resolvedTrainClause, error) {
 	err = ValidateAttributes(attrs)
 	if err != nil {
 		return nil, err
-	}
-	trimQuotes := func(s string) string {
-		if len(s) >= 2 {
-			if s[0] == '"' && s[len(s)-1] == '"' {
-				return s[1 : len(s)-1]
-			}
-		}
-		return s
 	}
 	getIntAttr := func(key string, defaultValue int) int {
 		if p, ok := attrs[key]; ok {
@@ -427,14 +428,6 @@ func resolvePredictClause(pc *predictClause) (*resolvedPredictClause, error) {
 	err = ValidateAttributes(attrs)
 	if err != nil {
 		return nil, err
-	}
-	trimQuotes := func(s string) string {
-		if len(s) >= 2 {
-			if s[0] == '"' && s[len(s)-1] == '"' {
-				return s[1 : len(s)-1]
-			}
-		}
-		return s
 	}
 	getStringAttr := func(key string, defaultValue string) string {
 		if p, ok := attrs[key]; ok {
