@@ -48,8 +48,10 @@ func newTrainAndValDataset(db *DB, slct string, origTable string, trainingUpperb
 	switch db.driverName {
 	case "maxcompute":
 		return createMaxcomputeDataset(db, slct, origTable, trainingUpperbound)
-	case "hive", "mysql":
-		return createDataset(db, slct, origTable, trainingUpperbound)
+	case "hive":
+		return createDataset(db, slct, origTable, trainingUpperbound, true) // use the current database for hive
+	case "mysql":
+		return createDataset(db, slct, origTable, trainingUpperbound, false) // use the specify database for MySQL
 	// TODO(weiguo) case "sqlite3":
 	default:
 		return nil, nil
@@ -99,20 +101,22 @@ func createMaxcomputeTable(target, origin string, db *DB, cond string) error {
 }
 
 // create dataset on Hive, MySQL
-func createDataset(db *DB, slct string, origTable string, trainingUpperbound float32) (*trainAndValDataset, error) {
+func createDataset(db *DB, slct string, origTable string, trainingUpperbound float32, useCurrentDB bool) (*trainAndValDataset, error) {
 	ds := namingTrainAndValDataset(origTable)
-	stmt := fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s", ds.database)
-	if _, e := db.Exec(stmt); e != nil {
-		log.Errorf("create temporary database failed, stmt:[%s], err:%v", stmt, e)
-		return nil, e
+	if useCurrentDB == false {
+		stmt := fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s", ds.database)
+		if _, e := db.Exec(stmt); e != nil {
+			log.Errorf("create temporary database failed, stmt:[%s], err:%v", stmt, e)
+			return nil, e
+		}
 	}
-	rdmTbl, e := createRandomTable(ds.database, ds.table, slct, db)
+	rdmTbl, e := createRandomTable(ds.database, ds.table, slct, db, useCurrentDB)
 	if e != nil {
 		log.Errorf("create table with a random column failed, err: %v", e)
 		return nil, e
 	}
 	trnCond := fmt.Sprintf("%s < %f", randomColumn, trainingUpperbound)
-	trnTbl, e := createTable(ds.database, ds.training, rdmTbl, db, trnCond)
+	trnTbl, e := createTable(ds.database, ds.training, rdmTbl, db, trnCond, useCurrentDB)
 	if e != nil {
 		log.Errorf("create training table failed, err: %v", e)
 		return nil, e
@@ -120,7 +124,7 @@ func createDataset(db *DB, slct string, origTable string, trainingUpperbound flo
 	ds.training = trnTbl
 
 	valCond := fmt.Sprintf("%s >= %f", randomColumn, trainingUpperbound)
-	valTbl, e := createTable(ds.database, ds.validation, rdmTbl, db, valCond)
+	valTbl, e := createTable(ds.database, ds.validation, rdmTbl, db, valCond, useCurrentDB)
 	if e != nil {
 		log.Errorf("create validation table failed, err: %v", e)
 		return nil, e
@@ -133,26 +137,32 @@ func createDataset(db *DB, slct string, origTable string, trainingUpperbound flo
 	return ds, nil
 }
 
-func createRandomTable(database, table, slct string, db *DB) (string, error) {
-	fullTbl := fmt.Sprintf("%s.%s", database, table)
-	dropStmt := fmt.Sprintf("DROP TABLE IF EXISTS %s", fullTbl)
+func createRandomTable(database, table, slct string, db *DB, useCurrentDB bool) (string, error) {
+	fullTb := table
+	if useCurrentDB == false {
+		fullTb = fmt.Sprintf("%s.%s", database, table)
+	}
+	dropStmt := fmt.Sprintf("DROP TABLE IF EXISTS %s", fullTb)
 	if _, e := db.Exec(dropStmt); e != nil {
 		return "", e
 	}
-	stmt := fmt.Sprintf("CREATE TABLE %s AS SELECT *, RAND() AS %s FROM (%s) AS %s_ori", fullTbl, randomColumn, slct, table)
+	stmt := fmt.Sprintf("CREATE TABLE %s AS SELECT *, RAND() AS %s FROM (%s) AS %s_ori", fullTb, randomColumn, slct, table)
 	_, e := db.Exec(stmt)
-	return fullTbl, e
+	return fullTb, e
 }
 
-func createTable(database, table, origin string, db *DB, cond string) (string, error) {
-	fullTbl := fmt.Sprintf("%s.%s", database, table)
+func createTable(database, table, origin string, db *DB, cond string, userCurrentDB bool) (string, error) {
+	fullTbl := table
+	if userCurrentDB == false {
+		fullTbl = fmt.Sprintf("%s.%s", database, table)
+	}
 	dropStmt := fmt.Sprintf("DROP TABLE IF EXISTS %s", fullTbl)
 	if _, e := db.Exec(dropStmt); e != nil {
 		return "", e
 	}
 	stmt := fmt.Sprintf("CREATE TABLE %s AS SELECT * FROM %s WHERE %s", fullTbl, origin, cond)
 	_, e := db.Exec(stmt)
-	return fullTbl, e
+	return table, e
 }
 
 func namingTrainAndValDataset(origTable string) *trainAndValDataset {
