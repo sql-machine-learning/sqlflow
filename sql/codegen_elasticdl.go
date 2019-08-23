@@ -20,6 +20,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -47,12 +48,18 @@ type elasticDLFiller struct {
 	PredictInputTable  string
 	PredictOutputTable string
 	PredictInputModel  string
-	PredictOutputShape int
+	OutputShape        int
+	InputShape         int
+	ModelDir           string
 
 	FeaturesDescription string
 	LabelColName        string
 
 	TrainClause *resolvedTrainClause
+}
+
+type elasticDLModelSpec struct {
+	NumClasses int
 }
 
 func getFeaturesNames(pr *extendedSelect) ([]string, error) {
@@ -98,6 +105,24 @@ func makePythonListCode(items []string) string {
 	return sb.String()
 }
 
+func getElasticDLModelSpec(attrs map[string]*attribute) elasticDLModelSpec {
+	getInt := func(key string, defaultValue int) int {
+		if p, ok := attrs[key]; ok {
+			strVal, _ := p.Value.(string)
+			intVal, err := strconv.Atoi(strVal)
+
+			if err == nil {
+				return intVal
+			}
+		}
+		return defaultValue
+	}
+
+	return elasticDLModelSpec{
+		NumClasses: getInt("num_classes", 1),
+	}
+}
+
 func newElasticDLDataConversionFiller(pr *extendedSelect, recordIODataDir string, batchSize int, numProcesses int) (*elasticDLDataConversionFiller, error) {
 	featureNames, err := getFeaturesNames(pr)
 	if err != nil {
@@ -136,6 +161,9 @@ func newElasticDLTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds
 		FeaturesDescription: genFeaturesDescription(featureNames),
 		LabelColName:        pr.label,
 		TrainClause:         resolved,
+		ModelDir:            pr.trainClause.save,
+		InputShape:          len(featureNames),
+		OutputShape:         getElasticDLModelSpec(resolved.ModelConstructorParams).NumClasses,
 	}, err
 }
 
@@ -150,8 +178,9 @@ func newElasticDLPredictFiller(pr *extendedSelect, outputShape int) (*elasticDLF
 		PredictInputTable:   pr.tables[0],
 		PredictOutputTable:  pr.predictClause.into,
 		PredictInputModel:   pr.predictClause.model,
-		PredictOutputShape:  outputShape,
+		OutputShape:         outputShape,
 		FeaturesDescription: genFeaturesDescription(featureNames),
+		InputShape:          len(featureNames),
 	}, err
 }
 
@@ -238,8 +267,7 @@ func elasticdlTrainCmd(cwd, modelDefFilePath string, recordIODataDir string, fil
 			"--cluster_spec", filler.TrainClause.EngineParams.clusterSpec,
 			"--records_per_task", string(filler.TrainClause.EngineParams.recordsPerTask),
 			"--log_level", "INFO",
-			// TODO: Get this from INTO clause
-			"--output", "model_output",
+			"--output", filler.ModelDir,
 			"--checkpoint_steps", string(filler.TrainClause.CheckpointSteps),
 			"--evaluation_steps", string(filler.TrainClause.EvalSteps),
 			"--grads_to_wait", string(filler.TrainClause.GradsToWait),
