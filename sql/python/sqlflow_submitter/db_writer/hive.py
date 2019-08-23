@@ -20,15 +20,28 @@ import subprocess
 class HiveDBWriter(BufferedDBWriter):
     def __init__(self, conn, table_name, table_schema, buff_size=10000):
         super().__init__(conn, table_name, table_schema, buff_size)
+        self.tmp_f = tempfile.NamedTemporaryFile()
+        self.f = open(self.tmp_f, "w")
 
     def flush(self):
-        tmp_f = tempfile.NamedTemporaryFile()
-        with open(tmp_f.name, "w") as f:
-            for row in self.rows:
-                line = "%s\n"  % '\001'.join([str(v) for v in row])
-                f.write(line)
+        for row in self.rows:
+            line = "%s\n"  % '\001'.join([str(v) for v in row])
+            self.f.write(line)
+        self.rows = []
 
+    def write_hive_table(self):
         hdfs_path = os.getenv("SQLFLOW_HIVE_LOCATION_ROOT_PATH", "/sqlflow")
         namenode_addr = os.getenv("SQLFLOW_HDFS_NAMENODE_ADDR", "127.0.0.1:8020")
-        cmd_str = "hdfs dfs -copyFromLocal %s hdfs://%s%s/%s" % (f.name, namenode_addr, hdfs_path, self.table_name)
-        subprocess.run(cmd_str.split())
+        cmd_str = "hdfs dfs -copyFromLocal %s hdfs://%s%s/%s" % (self.tmp_f.name, namenode_addr, hdfs_path, self.table_name)
+        subprocess.check_output(cmd_str.split())
+
+    def close(self):
+        try:
+            if len(self.rows) > 0:
+                self.flush()
+            self.f.flush()
+            self.write_hive_table()
+        finally:
+            self.f.close()
+            self.tmp_f.close()
+        
