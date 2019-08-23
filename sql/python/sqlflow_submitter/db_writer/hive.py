@@ -20,8 +20,8 @@ import subprocess
 class HiveDBWriter(BufferedDBWriter):
     def __init__(self, conn, table_name, table_schema, buff_size=10000):
         super().__init__(conn, table_name, table_schema, buff_size)
-        self.tmp_f = tempfile.NamedTemporaryFile()
-        self.f = open(self.tmp_f, "w")
+        self.tmp_f = tempfile.NamedTemporaryFile(dir="./")
+        self.f = open(self.tmp_f.name, "w")
 
     def flush(self):
         for row in self.rows:
