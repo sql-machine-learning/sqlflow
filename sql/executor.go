@@ -443,6 +443,7 @@ func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir strin
 	cw := &logChanWriter{wr: wr}
 	defer cw.Close()
 	cmd := tensorflowCmd(cwd, db.driverName)
+	cmd.Env = append(os.Environ())
 	cmd.Stdin = &buf
 	cmd.Stdout = cw
 	cmd.Stderr = cw
@@ -489,7 +490,15 @@ func createPredictionTable(trainParsed, predParsed *extendedSelect, db *DB) erro
 	if e != nil {
 		return e
 	}
-	fmt.Fprintf(&b, "%s %s);", columnName, stype)
+	if db.driverName == "hive" {
+		hdfsPath := os.Getenv("SQLFLOW_HIVE_LOCATION_ROOT_PATH")
+		if hdfsPath == "" {
+			hdfsPath = "/sqlflow"
+		}
+		fmt.Fprintf(&b, "%s %s) ROW FORMAT DELIMITED FIELDS TERMINATED BY \"\\001\" LOCATION \"%s/%s\" ;", columnName, stype, hdfsPath, tableName)
+	} else {
+		fmt.Fprintf(&b, "%s %s);", columnName, stype)
+	}
 
 	createStmt := b.String()
 	if _, e := db.Exec(createStmt); e != nil {

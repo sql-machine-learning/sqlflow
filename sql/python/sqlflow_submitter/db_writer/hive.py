@@ -11,22 +11,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 from .base import BufferedDBWriter
+import tempfile
+import subprocess
 
 class HiveDBWriter(BufferedDBWriter):
-    def __init__(self, conn, table_name, table_schema, buff_size):
-        return super().__init__(conn, table_name, table_schema, buff_size)
+    def __init__(self, conn, table_name, table_schema, buff_size=10000):
+        super().__init__(conn, table_name, table_schema, buff_size)
+        self.tmp_f = tempfile.NamedTemporaryFile(dir="./")
+        self.f = open(self.tmp_f.name, "w")
 
     def flush(self):
-        statement = '''insert into table {} ({}) values({})'''.format(
-            self.table_name,
-            ", ".join(self.table_schema),
-            ", ".join(["%s"] * len(self.table_schema))
-        )
-        cursor = self.conn.cursor()
+        for row in self.rows:
+            line = "%s\n"  % '\001'.join([str(v) for v in row])
+            self.f.write(line)
+        self.rows = []
+
+    def write_hive_table(self):
+        hdfs_path = os.getenv("SQLFLOW_HIVE_LOCATION_ROOT_PATH", "/sqlflow")
+        namenode_addr = os.getenv("SQLFLOW_HDFS_NAMENODE_ADDR", "127.0.0.1:8020")
+        cmd_str = "hdfs dfs -copyFromLocal %s hdfs://%s%s/%s" % (self.tmp_f.name, namenode_addr, hdfs_path, self.table_name)
+        subprocess.check_output(cmd_str.split())
+
+    def close(self):
         try:
-            cursor.executemany(statement, self.rows)
-            self.conn.commit()
+            if len(self.rows) > 0:
+                self.flush()
+            self.f.flush()
+            self.write_hive_table()
         finally:
-            cursor.close()
-            self.rows = []
+            self.f.close()
+            self.tmp_f.close()
+        
