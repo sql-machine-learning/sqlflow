@@ -436,7 +436,6 @@ func resolvePredictClause(pc *predictClause) (*resolvedPredictClause, error) {
 			if err == nil {
 				return trimQuotes(strVal)
 			}
-			fmt.Printf("ignore invalid %s=%s, default is %v", key, p.Value, defaultValue)
 		}
 		return defaultValue
 	}
