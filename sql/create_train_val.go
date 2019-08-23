@@ -138,17 +138,17 @@ func createDataset(db *DB, slct string, origTable string, trainingUpperbound flo
 }
 
 func createRandomTable(database, table, slct string, db *DB, useCurrentDB bool) (string, error) {
-	fullTb := table
+	fullTbl := table
 	if useCurrentDB == false {
-		fullTb = fmt.Sprintf("%s.%s", database, table)
+		fullTbl = fmt.Sprintf("%s.%s", database, table)
 	}
-	dropStmt := fmt.Sprintf("DROP TABLE IF EXISTS %s", fullTb)
+	dropStmt := fmt.Sprintf("DROP TABLE IF EXISTS %s", fullTbl)
 	if _, e := db.Exec(dropStmt); e != nil {
 		return "", e
 	}
-	stmt := fmt.Sprintf("CREATE TABLE %s AS SELECT *, RAND() AS %s FROM (%s) AS %s_ori", fullTb, randomColumn, slct, table)
+	stmt := fmt.Sprintf("CREATE TABLE %s AS SELECT *, RAND() AS %s FROM (%s) AS %s_ori", fullTbl, randomColumn, slct, table)
 	_, e := db.Exec(stmt)
-	return fullTb, e
+	return fullTbl, e
 }
 
 func createTable(database, table, origin string, db *DB, cond string, userCurrentDB bool) (string, error) {
@@ -162,7 +162,7 @@ func createTable(database, table, origin string, db *DB, cond string, userCurren
 	}
 	stmt := fmt.Sprintf("CREATE TABLE %s AS SELECT * FROM %s WHERE %s", fullTbl, origin, cond)
 	_, e := db.Exec(stmt)
-	return table, e
+	return fullTbl, e
 }
 
 func namingTrainAndValDataset(origTable string) *trainAndValDataset {
