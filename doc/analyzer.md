@@ -13,7 +13,6 @@ Users usually use a **TRAIN SQL** to train a model and then analyze the model us
 Train SQL:
 
 ``` sql
-%%sqlflow
 SELECT * FROM train_table
 TRAIN xgboost.Estimator
 WITH
@@ -24,8 +23,8 @@ INTO my_model;
 ```
 
 Analyze SQL:
+
 ``` sql
-%%sqlflow
 SELECT * FROM train_table
 ANALYZE my_dnn_model
 WITH
