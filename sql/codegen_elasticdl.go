@@ -27,7 +27,7 @@ import (
 	pb "github.com/sql-machine-learning/sqlflow/server/proto"
 )
 
-var elasticdlTrainTemplate = template.Must(template.New("elasticdl_train").Parse(elasticdlTrainTemplateText))
+var elasticdlModelDefTemplate = template.Must(template.New("elasticdl_train").Parse(elasticdlModelDefTemplateText))
 var elasticdlDataConversionTemplate = template.Must(template.New("elasticdl_data_conversion").Parse(elasticdlDataConversionTemplateText))
 
 type elasticDLDataConversionFiller struct {
@@ -55,7 +55,8 @@ type elasticDLFiller struct {
 	FeaturesDescription string
 	LabelColName        string
 
-	TrainClause *resolvedTrainClause
+	TrainClause   *resolvedTrainClause
+	PredictClause *resolvedPredictClause
 }
 
 type elasticDLModelSpec struct {
@@ -167,7 +168,11 @@ func newElasticDLTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds
 	}, err
 }
 
-func newElasticDLPredictFiller(pr *extendedSelect, outputShape int) (*elasticDLFiller, error) {
+func newElasticDLPredictFiller(pr *extendedSelect) (*elasticDLFiller, error) {
+	resolved, err := resolvePredictClause(&pr.predictClause)
+	if err != nil {
+		return nil, err
+	}
 	featureNames, err := getFeaturesNames(pr)
 	if err != nil {
 		log.Fatalf("Failed to get feature names from SELECT statement %v", err)
@@ -176,37 +181,47 @@ func newElasticDLPredictFiller(pr *extendedSelect, outputShape int) (*elasticDLF
 	return &elasticDLFiller{
 		IsTraining:          false,
 		PredictInputTable:   pr.tables[0],
-		PredictOutputTable:  pr.predictClause.into,
-		PredictInputModel:   pr.predictClause.model,
-		OutputShape:         outputShape,
+		PredictOutputTable:  resolved.OutputTable,
+		PredictInputModel:   resolved.ModelName,
+		OutputShape:         getElasticDLModelSpec(resolved.ModelConstructorParams).NumClasses,
 		FeaturesDescription: genFeaturesDescription(featureNames),
 		InputShape:          len(featureNames),
+		PredictClause:       resolved,
 	}, err
 }
 
-func elasticDLTrain(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *pb.Session, ds *trainAndValDataset) error {
-	// Write data conversion script
+func elasticDLDataConversion(pr *extendedSelect, cwd string) (string, error) {
 	// TODO: Execute the script inside container where ElasticDL is available
 	var dataConversionProgram bytes.Buffer
+	recordIODataDir := ""
 	recordIODataDir, err := ioutil.TempDir("/tmp", "recordio_data_dir_")
 	if err != nil {
-		return err
+		return recordIODataDir, err
 	}
 	// TODO: Also need to generate evaluation data
 	dataConversionFiller, err := newElasticDLDataConversionFiller(pr, recordIODataDir, 200, 1)
 	if err != nil {
-		return err
+		return recordIODataDir, err
 	}
 	if err = elasticdlDataConversionTemplate.Execute(&dataConversionProgram, dataConversionFiller); err != nil {
-		return fmt.Errorf("Failed executing data conversion template: %v", err)
+		return recordIODataDir, fmt.Errorf("Failed executing data conversion template: %v", err)
 	}
 	dataConversionScriptPath := "data_conversion.py"
 	dataConversionScript, err := os.Create(filepath.Join(cwd, dataConversionScriptPath))
 	if err != nil {
-		return fmt.Errorf("Create python code failed %v", err)
+		return recordIODataDir, fmt.Errorf("Create python code failed %v", err)
 	}
 	dataConversionScript.WriteString(dataConversionProgram.String())
 	dataConversionScript.Close()
+	return recordIODataDir, nil
+}
+
+func elasticDLTrain(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *pb.Session, ds *trainAndValDataset) error {
+	// Write data conversion script
+	recordIODataDir, err := elasticDLDataConversion(pr, cwd)
+	if err != nil {
+		return err
+	}
 
 	// Write model definition file
 	var elasticdlProgram bytes.Buffer
@@ -215,7 +230,7 @@ func elasticDLTrain(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, sessi
 		return err
 	}
 
-	if err = elasticdlTrainTemplate.Execute(&elasticdlProgram, trainFiller); err != nil {
+	if err = elasticdlModelDefTemplate.Execute(&elasticdlProgram, trainFiller); err != nil {
 		return fmt.Errorf("Failed executing ElasticDL training template: %v", err)
 	}
 	modelDefCode := elasticdlProgram.String()
@@ -244,7 +259,7 @@ func elasticdlTrainCmd(cwd, modelDefFilePath string, recordIODataDir string, fil
 			"elasticdl", "train",
 			"--image_base", "elasticdl:ci",
 			// TODO: Generate this dynamically
-			"--job_name", "edl-sqlflow-test-job",
+			"--job_name", "edl-sqlflow-train-job",
 			// TODO: Get this from model name
 			"--model_zoo", "model_zoo",
 			"--model_def", modelDefFilePath,
@@ -274,6 +289,78 @@ func elasticdlTrainCmd(cwd, modelDefFilePath string, recordIODataDir string, fil
 			"--tensorboard_log_dir", filler.TrainClause.TensorboardLogDir,
 			"--checkpoint_dir", filler.TrainClause.CheckpointDir,
 			"--keep_checkpoint_max", string(filler.TrainClause.KeepCheckpointMax),
+		)
+		cmd.Dir = cwd
+	} else {
+		log.Fatalf("Docker has to be installed to run ElasticDL command")
+	}
+	return cmd
+}
+
+func elasticDLPredict(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *pb.Session, ds *trainAndValDataset) error {
+	// Write data conversion script
+	recordIODataDir, err := elasticDLDataConversion(pr, cwd)
+	if err != nil {
+		return err
+	}
+
+	// Write model definition file
+	var elasticdlProgram bytes.Buffer
+	predictFiller, err := newElasticDLPredictFiller(pr)
+	if err != nil {
+		return err
+	}
+
+	if err = elasticdlModelDefTemplate.Execute(&elasticdlProgram, predictFiller); err != nil {
+		return fmt.Errorf("Failed executing ElasticDL prediction template: %v", err)
+	}
+	modelDefCode := elasticdlProgram.String()
+	cw := &logChanWriter{wr: w}
+	modelDefFilePath := "model_definition.py"
+	modelDefFile, err := os.Create(filepath.Join(cwd, modelDefFilePath))
+	if err != nil {
+		return fmt.Errorf("Create python code failed %v", err)
+	}
+	modelDefFile.WriteString(modelDefCode)
+	modelDefFile.Close()
+
+	// Create and execute ElasticDL prediction command
+	cmd := elasticdlPredictCmd(cwd, modelDefFilePath, recordIODataDir, predictFiller)
+	cmd.Stdout = cw
+	cmd.Stderr = cw
+	if e := cmd.Run(); e != nil {
+		return fmt.Errorf("code %v failed %v", modelDefCode, e)
+	}
+	return nil
+}
+
+func elasticdlPredictCmd(cwd, modelDefFilePath string, recordIODataDir string, filler *elasticDLFiller) (cmd *exec.Cmd) {
+	if hasDocker() {
+		cmd = exec.Command(
+			"elasticdl", "predict",
+			"--image_base", "elasticdl:ci",
+			// TODO: Generate this dynamically
+			"--job_name", "edl-sqlflow-predict-job",
+			// TODO: Get this from model name
+			"--model_zoo", "model_zoo",
+			"--model_def", modelDefFilePath,
+			"--prediction_data_dir", recordIODataDir,
+			"--checkpoint_filename_for_init", filler.PredictClause.CheckpointFilenameForInit,
+			"--master_resource_request", filler.PredictClause.EngineParams.masterResourceRequest,
+			"--master_resource_limit", filler.PredictClause.EngineParams.masterResourceLimit,
+			"--worker_resource_request", filler.PredictClause.EngineParams.workerResourceRequest,
+			"--worker_resource_limit", filler.PredictClause.EngineParams.workerResourceLimit,
+			"--num_workers", string(filler.PredictClause.EngineParams.worker.Num),
+			"--volume", filler.PredictClause.EngineParams.volume,
+			"--image_pull_policy", filler.PredictClause.EngineParams.imagePullPolicy,
+			"--restart_policy", filler.PredictClause.EngineParams.restartPolicy,
+			"--extra_pypi_index", filler.PredictClause.EngineParams.extraPypiIndex,
+			"--namespace", filler.PredictClause.EngineParams.namespace,
+			"--minibatch_size", string(filler.PredictClause.EngineParams.minibatchSize),
+			"--master_pod_priority", filler.PredictClause.EngineParams.masterPodPriority,
+			"--cluster_spec", filler.PredictClause.EngineParams.clusterSpec,
+			"--records_per_task", string(filler.PredictClause.EngineParams.recordsPerTask),
+			"--log_level", "INFO",
 		)
 		cmd.Dir = cwd
 	} else {
