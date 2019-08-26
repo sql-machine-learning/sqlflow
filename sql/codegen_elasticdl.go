@@ -55,7 +55,8 @@ type elasticDLFiller struct {
 	FeaturesDescription string
 	LabelColName        string
 
-	TrainClause *resolvedTrainClause
+	TrainClause   *resolvedTrainClause
+	PredictClause *resolvedPredictClause
 }
 
 type elasticDLModelSpec struct {
@@ -185,6 +186,7 @@ func newElasticDLPredictFiller(pr *extendedSelect, outputShape int) (*elasticDLF
 		OutputShape:         outputShape,
 		FeaturesDescription: genFeaturesDescription(featureNames),
 		InputShape:          len(featureNames),
+		PredictClause:       resolved,
 	}, err
 }
 
@@ -248,7 +250,7 @@ func elasticdlTrainCmd(cwd, modelDefFilePath string, recordIODataDir string, fil
 			"elasticdl", "train",
 			"--image_base", "elasticdl:ci",
 			// TODO: Generate this dynamically
-			"--job_name", "edl-sqlflow-test-job",
+			"--job_name", "edl-sqlflow-train-job",
 			// TODO: Get this from model name
 			"--model_zoo", "model_zoo",
 			"--model_def", modelDefFilePath,
@@ -278,6 +280,41 @@ func elasticdlTrainCmd(cwd, modelDefFilePath string, recordIODataDir string, fil
 			"--tensorboard_log_dir", filler.TrainClause.TensorboardLogDir,
 			"--checkpoint_dir", filler.TrainClause.CheckpointDir,
 			"--keep_checkpoint_max", string(filler.TrainClause.KeepCheckpointMax),
+		)
+		cmd.Dir = cwd
+	} else {
+		log.Fatalf("Docker has to be installed to run ElasticDL command")
+	}
+	return cmd
+}
+
+func elasticdlPredictCmd(cwd, modelDefFilePath string, recordIODataDir string, filler *elasticDLFiller) (cmd *exec.Cmd) {
+	if hasDocker() {
+		cmd = exec.Command(
+			"elasticdl", "predict",
+			"--image_base", "elasticdl:ci",
+			// TODO: Generate this dynamically
+			"--job_name", "edl-sqlflow-predict-job",
+			// TODO: Get this from model name
+			"--model_zoo", "model_zoo",
+			"--model_def", modelDefFilePath,
+			"--prediction_data_dir", recordIODataDir,
+			"--checkpoint_filename_for_init", filler.PredictClause.CheckpointFilenameForInit,
+			"--master_resource_request", filler.PredictClause.EngineParams.masterResourceRequest,
+			"--master_resource_limit", filler.PredictClause.EngineParams.masterResourceLimit,
+			"--worker_resource_request", filler.PredictClause.EngineParams.workerResourceRequest,
+			"--worker_resource_limit", filler.PredictClause.EngineParams.workerResourceLimit,
+			"--num_workers", string(filler.PredictClause.EngineParams.worker.Num),
+			"--volume", filler.PredictClause.EngineParams.volume,
+			"--image_pull_policy", filler.PredictClause.EngineParams.imagePullPolicy,
+			"--restart_policy", filler.PredictClause.EngineParams.restartPolicy,
+			"--extra_pypi_index", filler.PredictClause.EngineParams.extraPypiIndex,
+			"--namespace", filler.PredictClause.EngineParams.namespace,
+			"--minibatch_size", string(filler.PredictClause.EngineParams.minibatchSize),
+			"--master_pod_priority", filler.PredictClause.EngineParams.masterPodPriority,
+			"--cluster_spec", filler.PredictClause.EngineParams.clusterSpec,
+			"--records_per_task", string(filler.PredictClause.EngineParams.recordsPerTask),
+			"--log_level", "INFO",
 		)
 		cmd.Dir = cwd
 	} else {
