@@ -26,7 +26,7 @@ Analyze SQL:
 
 ``` sql
 SELECT * FROM train_table
-ANALYZE my_dnn_model
+ANALYZE my_model
 WITH
   plots = force 
 USING TreeExplainer
@@ -34,7 +34,7 @@ USING TreeExplainer
 
 where:
 - `train_table` is the table of training data.
-- `my_dnn_model` is the trained model.
+- `my_model` is the trained model.
 - `force` and `summary` is the visualized method.
 - `TreeExplainer` is the [explain type](https://github.com/slundberg/shap#sample-notebooks).
 
@@ -43,9 +43,9 @@ The **Analyze SQL** would display the visualization image on Jupyter like:
 
 ## Implement Details
 
-- Enhance the SQLFlow parser to support the `ANALYZE` keyword.
-- implement the `codgen_shap.go` to generate a SHAP Python program to save the visualization image as HTML format.
-- For each `ANALYZE SQL` request, the SQLFlow server would response it with the content of the above HTML file, and then the SQLFlow magic command would display it on Jupyter Notebook.
+- Enhance the SQLFlow parser to support the `Analyze` keyword.
+- Implement the `codegen_shap.go` to generate a SHAP Python program. The Python program would be executed by SQLFlow `Executor` module and prints the visualization image in HTML format to stdout. The stdout will be captured by the Go program using [CombinedOutput](https://golang.org/pkg/os/exec/#Cmd.CombinedOutput).
+- For each `Analyze SQL` request from the SQLFlow magic command, the SQLFlow server would response the HTML text as a single message, and then display the visualization image on Jupyter Notebook
 
 ## Note
 
