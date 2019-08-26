@@ -98,10 +98,12 @@ func TestPredElasticDLFiller(t *testing.T) {
 	parser := newParser()
 	predStatement := `SELECT c1, c2, c3, c4 FROM prediction_data
 		PREDICT prediction_results_table
+		WITH
+			model.num_classes = 10
 		USING trained_elasticdl_keras_classifier;`
 
 	r, e := parser.Parse(predStatement)
-	filler, err := newElasticDLPredictFiller(r, 10)
+	filler, err := newElasticDLPredictFiller(r)
 	a.NoError(err)
 
 	a.False(filler.IsTraining)

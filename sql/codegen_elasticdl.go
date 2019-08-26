@@ -168,7 +168,7 @@ func newElasticDLTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds
 	}, err
 }
 
-func newElasticDLPredictFiller(pr *extendedSelect, outputShape int) (*elasticDLFiller, error) {
+func newElasticDLPredictFiller(pr *extendedSelect) (*elasticDLFiller, error) {
 	resolved, err := resolvePredictClause(&pr.predictClause)
 	if err != nil {
 		return nil, err
@@ -183,7 +183,7 @@ func newElasticDLPredictFiller(pr *extendedSelect, outputShape int) (*elasticDLF
 		PredictInputTable:   pr.tables[0],
 		PredictOutputTable:  resolved.OutputTable,
 		PredictInputModel:   resolved.ModelName,
-		OutputShape:         outputShape,
+		OutputShape:         getElasticDLModelSpec(resolved.ModelConstructorParams).NumClasses,
 		FeaturesDescription: genFeaturesDescription(featureNames),
 		InputShape:          len(featureNames),
 		PredictClause:       resolved,
@@ -306,7 +306,7 @@ func elasticDLPredict(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, ses
 
 	// Write model definition file
 	var elasticdlProgram bytes.Buffer
-	predictFiller, err := newElasticDLPredictFiller(pr, 10)
+	predictFiller, err := newElasticDLPredictFiller(pr)
 	if err != nil {
 		return err
 	}
