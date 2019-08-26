@@ -276,6 +276,9 @@ func runExtendedSQL(slct string, db *DB, modelDir string, session *pb.Session) *
 			defer os.RemoveAll(cwd)
 
 			if pr.train {
+				if os.Getenv("SQLFLOW_submitter") == "elasticdl" {
+					return elasticDLTrain(wr, pr, db, cwd, session, nil)
+				}
 				// TODO(weiguo): fix the hard code 0.8
 				ds, e := newTrainAndValDataset(db, pr.standardSelect.String(), pr.standardSelect.tables[0], 0.8)
 				if e != nil {
@@ -292,6 +295,8 @@ func runExtendedSQL(slct string, db *DB, modelDir string, session *pb.Session) *
 			// FIXME(weiguo): temporary branch to alps
 			if os.Getenv("SQLFLOW_submitter") == "alps" {
 				return alpsPred(wr, pr, db, cwd, session)
+			} else if os.Getenv("SQLFLOW_submitter") == "elasticdl" {
+				return elasticDLPredict(wr, pr, db, cwd, session, nil)
 			}
 			return pred(wr, pr, db, cwd, modelDir)
 		}()
