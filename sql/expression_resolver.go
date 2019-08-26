@@ -70,33 +70,39 @@ type gitLabModule struct {
 }
 
 type resolvedTrainClause struct {
-	IsPreMadeModel                   bool
-	ModelName                        string
-	ModelConstructorParams           map[string]*attribute
-	BatchSize                        int
-	EvalBatchSize                    int
-	DropRemainder                    bool
-	EnableCache                      bool
-	CachePath                        string
-	Epoch                            int
-	Shard                            int
-	EnableShuffle                    bool
-	ShuffleBufferSize                int
-	MaxSteps                         int
-	GradsToWait                      int
-	TensorboardLogDir                string
-	CheckpointSteps                  int
-	CheckpointDir                    string
-	KeepCheckpointMax                int
-	EvalSteps                        int
-	EvalStartDelay                   int
-	EvalThrottle                     int
-	EvalCheckpointFilenameForInit    string
-	PredictCheckpointFilenameForInit string
-	FeatureColumns                   map[string][]featureColumn
-	ColumnSpecs                      map[string][]*columnSpec
-	EngineParams                     engineSpec
-	CustomModule                     *gitLabModule
+	IsPreMadeModel                bool
+	ModelName                     string
+	ModelConstructorParams        map[string]*attribute
+	BatchSize                     int
+	EvalBatchSize                 int
+	DropRemainder                 bool
+	EnableCache                   bool
+	CachePath                     string
+	Epoch                         int
+	Shard                         int
+	EnableShuffle                 bool
+	ShuffleBufferSize             int
+	MaxSteps                      int
+	GradsToWait                   int
+	TensorboardLogDir             string
+	CheckpointSteps               int
+	CheckpointDir                 string
+	KeepCheckpointMax             int
+	EvalSteps                     int
+	EvalStartDelay                int
+	EvalThrottle                  int
+	EvalCheckpointFilenameForInit string
+	FeatureColumns                map[string][]featureColumn
+	ColumnSpecs                   map[string][]*columnSpec
+	EngineParams                  engineSpec
+	CustomModule                  *gitLabModule
+}
+
+type resolvedPredictClause struct {
+	ModelName                 string
+	ModelConstructorParams    map[string]*attribute
+	CheckpointFilenameForInit string
+	EngineParams              engineSpec
 }
 
 // featureColumn is an interface that all types of feature columns and
@@ -250,24 +256,25 @@ func getEngineSpec(attrs map[string]*attribute) engineSpec {
 	}
 }
 
+func trimQuotes(s string) string {
+	if len(s) >= 2 {
+		if s[0] == '"' && s[len(s)-1] == '"' {
+			return s[1 : len(s)-1]
+		}
+	}
+	return s
+}
+
 func resolveTrainClause(tc *trainClause) (*resolvedTrainClause, error) {
 	modelName := tc.estimator
 	preMadeModel := !strings.ContainsAny(modelName, ".")
-	attrs, err := resolveTrainAttribute(&tc.trainAttrs)
+	attrs, err := resolveAttribute(&tc.trainAttrs)
 	if err != nil {
 		return nil, err
 	}
 	err = ValidateAttributes(attrs)
 	if err != nil {
 		return nil, err
-	}
-	trimQuotes := func(s string) string {
-		if len(s) >= 2 {
-			if s[0] == '"' && s[len(s)-1] == '"' {
-				return s[1 : len(s)-1]
-			}
-		}
-		return s
 	}
 	getIntAttr := func(key string, defaultValue int) int {
 		if p, ok := attrs[key]; ok {
@@ -347,8 +354,6 @@ func resolveTrainClause(tc *trainClause) (*resolvedTrainClause, error) {
 	evalThrottleSecs := getIntAttr("eval.throttle_secs", 600)
 	evalCheckpointFilenameForInit := getStringAttr("eval.checkpoint_filename_for_init", "")
 
-	predictCheckpointFilenameForInit := getStringAttr("predict.checkpoint_filename_for_init", "")
-
 	customModel := func() *gitLabModule {
 		if preMadeModel == false {
 			project := getStringAttr("gitlab.project", "")
@@ -386,33 +391,68 @@ func resolveTrainClause(tc *trainClause) (*resolvedTrainClause, error) {
 	}
 
 	return &resolvedTrainClause{
-		IsPreMadeModel:                   preMadeModel,
-		ModelName:                        modelName,
-		ModelConstructorParams:           modelParams,
-		BatchSize:                        batchSize,
-		EvalBatchSize:                    evalBatchSize,
-		DropRemainder:                    dropRemainder,
-		EnableCache:                      enableCache,
-		CachePath:                        cachePath,
-		Epoch:                            epoch,
-		Shard:                            shard,
-		EnableShuffle:                    enableShuffle,
-		ShuffleBufferSize:                shuffleBufferSize,
-		MaxSteps:                         maxSteps,
-		GradsToWait:                      gradsToWait,
-		TensorboardLogDir:                tensorboardLogDir,
-		CheckpointSteps:                  checkpointSteps,
-		CheckpointDir:                    checkpointDir,
-		KeepCheckpointMax:                keepCheckpointMax,
-		EvalSteps:                        evalSteps,
-		EvalStartDelay:                   evalStartDecaySecs,
-		EvalThrottle:                     evalThrottleSecs,
-		EvalCheckpointFilenameForInit:    evalCheckpointFilenameForInit,
-		PredictCheckpointFilenameForInit: predictCheckpointFilenameForInit,
-		FeatureColumns:                   fcMap,
-		ColumnSpecs:                      csMap,
-		EngineParams:                     getEngineSpec(engineParams),
-		CustomModule:                     customModel}, nil
+		IsPreMadeModel:                preMadeModel,
+		ModelName:                     modelName,
+		ModelConstructorParams:        modelParams,
+		BatchSize:                     batchSize,
+		EvalBatchSize:                 evalBatchSize,
+		DropRemainder:                 dropRemainder,
+		EnableCache:                   enableCache,
+		CachePath:                     cachePath,
+		Epoch:                         epoch,
+		Shard:                         shard,
+		EnableShuffle:                 enableShuffle,
+		ShuffleBufferSize:             shuffleBufferSize,
+		MaxSteps:                      maxSteps,
+		GradsToWait:                   gradsToWait,
+		TensorboardLogDir:             tensorboardLogDir,
+		CheckpointSteps:               checkpointSteps,
+		CheckpointDir:                 checkpointDir,
+		KeepCheckpointMax:             keepCheckpointMax,
+		EvalSteps:                     evalSteps,
+		EvalStartDelay:                evalStartDecaySecs,
+		EvalThrottle:                  evalThrottleSecs,
+		EvalCheckpointFilenameForInit: evalCheckpointFilenameForInit,
+		FeatureColumns:                fcMap,
+		ColumnSpecs:                   csMap,
+		EngineParams:                  getEngineSpec(engineParams),
+		CustomModule:                  customModel}, nil
+}
+
+func resolvePredictClause(pc *predictClause) (*resolvedPredictClause, error) {
+	modelName := pc.model
+	attrs, err := resolveAttribute(&pc.predAttrs)
+	if err != nil {
+		return nil, err
+	}
+	err = ValidateAttributes(attrs)
+	if err != nil {
+		return nil, err
+	}
+	getStringAttr := func(key string, defaultValue string) string {
+		if p, ok := attrs[key]; ok {
+			strVal, _ := p.Value.(string)
+			defer delete(attrs, p.FullName)
+			if err == nil {
+				return trimQuotes(strVal)
+			}
+		}
+		return defaultValue
+	}
+	modelParams := filter(attrs, "model", true)
+	engineParams := filter(attrs, "engine", true)
+
+	checkpointFilenameForInit := getStringAttr("predict.checkpoint_filename_for_init", "")
+
+	if len(attrs) > 0 {
+		return nil, fmt.Errorf("unsupported parameters: %v", attrs)
+	}
+
+	return &resolvedPredictClause{
+		ModelName:                 modelName,
+		ModelConstructorParams:    modelParams,
+		CheckpointFilenameForInit: checkpointFilenameForInit,
+		EngineParams:              getEngineSpec(engineParams)}, nil
 }
 
 // resolveTrainColumns resolve columns from SQL statement,
@@ -938,7 +978,7 @@ func (ec *embeddingColumn) GetInputShape() string {
 	return ec.CategoryColumn.(featureColumn).GetInputShape()
 }
 
-func resolveTrainAttribute(attrs *attrs) (map[string]*attribute, error) {
+func resolveAttribute(attrs *attrs) (map[string]*attribute, error) {
 	ret := make(map[string]*attribute)
 	for k, v := range *attrs {
 		subs := strings.SplitN(k, ".", 2)

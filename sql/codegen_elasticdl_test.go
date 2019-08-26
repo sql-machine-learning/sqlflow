@@ -46,7 +46,6 @@ func TestTrainElasticDLFiller(t *testing.T) {
 			eval.start_delay_secs = 100,
 			eval.throttle_secs = 0,
 			eval.checkpoint_filename_for_init = "",
-			predict.checkpoint_filename_for_init = "",
 			engine.docker_image_prefix = "",
 			engine.master_resource_request = "cpu=400m,memory=1024Mi",
 			engine.master_resource_limit = "cpu=400m,memory=1024Mi",
