@@ -81,7 +81,7 @@ func TestTrainElasticDLFiller(t *testing.T) {
 	a.Equal("trained_elasticdl_keras_classifier", filler.ModelDir)
 
 	var program bytes.Buffer
-	e = elasticdlTrainTemplate.Execute(&program, filler)
+	e = elasticdlModelDefTemplate.Execute(&program, filler)
 	a.NoError(e)
 	code := program.String()
 	a.True(strings.Contains(code, `if mode != Mode.PREDICTION and "true" == "true":`), code)
@@ -112,7 +112,7 @@ func TestPredElasticDLFiller(t *testing.T) {
 	a.Equal(filler.OutputShape, 10)
 
 	var program bytes.Buffer
-	e = elasticdlTrainTemplate.Execute(&program, filler)
+	e = elasticdlModelDefTemplate.Execute(&program, filler)
 	a.NoError(e)
 
 	code := program.String()
