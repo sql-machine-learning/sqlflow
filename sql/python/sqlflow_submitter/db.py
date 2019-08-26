@@ -56,7 +56,6 @@ def db_generator(driver, conn, statement,
             cursor = conn.cursor(configuration=conf)
         else:
             cursor = conn.cursor()
-        cursor = conn.cursor()
         cursor.execute(statement)
         if driver == "hive":
             field_names = None if cursor.description is None \
