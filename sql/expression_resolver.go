@@ -100,6 +100,7 @@ type resolvedTrainClause struct {
 
 type resolvedPredictClause struct {
 	ModelName                 string
+	OutputTable               string
 	ModelConstructorParams    map[string]*attribute
 	CheckpointFilenameForInit string
 	EngineParams              engineSpec
@@ -420,7 +421,6 @@ func resolveTrainClause(tc *trainClause) (*resolvedTrainClause, error) {
 }
 
 func resolvePredictClause(pc *predictClause) (*resolvedPredictClause, error) {
-	modelName := pc.model
 	attrs, err := resolveAttribute(&pc.predAttrs)
 	if err != nil {
 		return nil, err
@@ -449,7 +449,8 @@ func resolvePredictClause(pc *predictClause) (*resolvedPredictClause, error) {
 	}
 
 	return &resolvedPredictClause{
-		ModelName:                 modelName,
+		ModelName:                 pc.model,
+		OutputTable:               pc.into,
 		ModelConstructorParams:    modelParams,
 		CheckpointFilenameForInit: checkpointFilenameForInit,
 		EngineParams:              getEngineSpec(engineParams)}, nil

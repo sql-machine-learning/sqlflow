@@ -108,6 +108,8 @@ func TestPredElasticDLFiller(t *testing.T) {
 	a.Equal(filler.PredictInputTable, "prediction_data")
 	a.Equal(filler.PredictOutputTable, "prediction_results_table")
 	a.Equal(filler.PredictInputModel, "trained_elasticdl_keras_classifier")
+	a.Equal(filler.InputShape, 4)
+	a.Equal(filler.OutputShape, 10)
 
 	var program bytes.Buffer
 	e = elasticdlTrainTemplate.Execute(&program, filler)

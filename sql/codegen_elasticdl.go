@@ -168,6 +168,10 @@ func newElasticDLTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds
 }
 
 func newElasticDLPredictFiller(pr *extendedSelect, outputShape int) (*elasticDLFiller, error) {
+	resolved, err := resolvePredictClause(&pr.predictClause)
+	if err != nil {
+		return nil, err
+	}
 	featureNames, err := getFeaturesNames(pr)
 	if err != nil {
 		log.Fatalf("Failed to get feature names from SELECT statement %v", err)
@@ -176,8 +180,8 @@ func newElasticDLPredictFiller(pr *extendedSelect, outputShape int) (*elasticDLF
 	return &elasticDLFiller{
 		IsTraining:          false,
 		PredictInputTable:   pr.tables[0],
-		PredictOutputTable:  pr.predictClause.into,
-		PredictInputModel:   pr.predictClause.model,
+		PredictOutputTable:  resolved.OutputTable,
+		PredictInputModel:   resolved.ModelName,
 		OutputShape:         outputShape,
 		FeaturesDescription: genFeaturesDescription(featureNames),
 		InputShape:          len(featureNames),
