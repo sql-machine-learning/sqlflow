@@ -58,9 +58,11 @@
 	type extendedSelect struct {
 		extended bool
 		train    bool
+		analyze  bool
 		standardSelect
 		trainClause
 		predictClause
+		analyzeClause
 	}
 
 	type standardSelect struct {
@@ -90,6 +92,12 @@
 		into   string
 	}
 
+	type analyzeClause struct {
+		analyzeAttrs attrs
+		trainedModel string
+		explainer    string
+	}
+
 	var parseResult *extendedSelect
 
 	func attrsUnion(as1, as2 attrs) attrs {
@@ -116,6 +124,7 @@
   colc columnClause
   labc string
   infr predictClause
+  anal analyzeClause
 }
 
 %type  <eslt> select_stmt
@@ -124,6 +133,7 @@
 %type  <colc> column_clause
 %type  <labc> label_clause
 %type  <infr> predict_clause
+%type  <anal> analyze_clause
 %type  <flds> fields
 %type  <tbls> tables
 %type  <expr> expr funcall column
@@ -164,6 +174,14 @@ select_stmt
 		standardSelect: $1,
 		predictClause: $2}
   }
+| select analyze_clause ';' {
+	parseResult = &extendedSelect{
+		extended: true,
+		train: false,
+		analyze: true,
+		standardSelect: $1,
+		analyzeClause: $2}
+}
 ;
 
 select
@@ -186,6 +204,11 @@ train_clause
 predict_clause
 : PREDICT IDENT USING IDENT { $$.into = $2; $$.model = $4 }
 | PREDICT IDENT WITH attrs USING IDENT { $$.into = $2; $$.predAttrs = $4; $$.model = $6 }
+;
+
+analyze_clause
+: ANALYZE IDENT USING IDENT { $$.trainedModel = $2; $$.explainer = $4 }
+| ANALYZE IDENT WITH attrs USING IDENT { $$.trainedModel = $2; $$.analyzeAttrs = $4; $$.explainer = $6 }
 ;
 
 column_clause
