@@ -44,12 +44,12 @@ def connect(driver, database, user, password, host, port, auth=""):
 
     raise ValueError("unrecognized database driver: %s" % driver)
 
-def db_generator(driver, conn, sessionConf, statement,
+def db_generator(driver, conn, session_cfg, statement,
                  feature_column_names, label_column_name,
                  feature_specs, fetch_size=128):
     def reader():
         if driver == "hive":
-            cursor = conn.cursor(configuration=sessionConf)
+            cursor = conn.cursor(configuration=session_cfg)
         else:
             cursor = conn.cursor()
         cursor.execute(statement)

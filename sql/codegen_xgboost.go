@@ -736,7 +736,7 @@ func xgCreatePredictionTable(pr *extendedSelect, r *xgboostFiller, db *DB) error
 		if hdfsPath == "" {
 			hdfsPath = "/sqlflow"
 		}
-		fmt.Fprintf(&b, "%s %s) ROW FORMAT DELIMITED FIELDS TERMINATED BY \"\\001\" LOCATION \"%s/%s\" ;", r.ResultColumn, stype, hdfsPath, r.OutputTable)
+		fmt.Fprintf(&b, "%s %s) ROW FORMAT DELIMITED FIELDS TERMINATED BY \"\\001\" STORED AS TEXTFILE LOCATION \"%s/%s\" ;", r.ResultColumn, stype, hdfsPath, r.OutputTable)
 	} else {
 		fmt.Fprintf(&b, "%s %s);", r.ResultColumn, stype)
 	}
