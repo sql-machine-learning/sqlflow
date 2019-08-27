@@ -369,4 +369,21 @@ LABEL e INTO model_table;
 	e = json.Unmarshal([]byte(filler.LearningJSON), xgbFields)
 	a.NoError(e)
 	a.EqualValues(filler.xgLearningFields, *xgbFields)
+
+	// test with trainAndValDataset
+	ds := &trainAndValDataset{training: "TrainTable", validation: "EvalTable"}
+	filler, e = newXGBoostFiller(pr, ds, fts, testDB)
+	a.NoError(e)
+	trainSlct := removeLastSemicolon(strings.Replace(filler.StandardSelect, "\n", " ", -1))
+	a.EqualValues("SELECT * FROM TrainTable", trainSlct)
+	evalSlct := removeLastSemicolon(strings.Replace(filler.validDataSource.StandardSelect, "\n", " ", -1))
+	a.EqualValues("SELECT * FROM EvalTable", evalSlct)
+
+	vdsFields := &xgDataSourceFields{}
+	e = json.Unmarshal([]byte(filler.ValidDataSourceJSON), vdsFields)
+	a.NoError(e)
+	a.EqualValues(filler.validDataSource, *vdsFields)
+
+	filler.StandardSelect, filler.validDataSource.StandardSelect = "", ""
+	a.EqualValues(filler.xgDataSourceFields, filler.validDataSource)
 }
