@@ -14,6 +14,7 @@
 
 export SQLFLOW_TEST_DB=maxcompute
 export MAXCOMPUTE_ENDPOINT="service.cn.maxcompute.aliyun.com/api?curr_project=gomaxcompute_driver_w7u&scheme=https"
+export MAXCOMPUTE_PROJECT="gomaxcompute_driver_w7u"
 if [ "$MAXCOMPUTE_AK" = "" ] || [ "$MAXCOMPUTE_SK" == "" ]; then
   echo "skip maxcompute test because the env MAXCOMPUTE_AK or MAXCOMPUTE_SK is empty"
   exit 0

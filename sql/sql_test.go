@@ -73,15 +73,16 @@ func testHiveDatabase() *DB {
 
 func testMaxcompute() *DB {
 	cfg := &gomaxcompute.Config{
-		AccessID:  os.Getenv("ODPS_ACCESS_ID"),
-		AccessKey: os.Getenv("ODPS_ACCESS_KEY"),
-		Project:   os.Getenv("ODPS_PROJECT"),
-		Endpoint:  os.Getenv("ODPS_ENDPOINT"),
+		AccessID:  os.Getenv("MAXCOMPUTE_AK"),
+		AccessKey: os.Getenv("MAXCOMPUTE_SK"),
+		Project:   os.Getenv("MAXCOMPUTE_PROJECT"),
+		Endpoint:  os.Getenv("MAXCOMPUTE_ENDPOINT"),
 	}
 
 	db, e := NewDB(fmt.Sprintf("maxcompute://%s", cfg.FormatDSN()))
 	assertNoErr(e)
-	// TODO(weiguo): Popularize
+	// Note: We do not popularize the test data here intentionally since
+	// it will take up quite some time on Maxcompute.
 	return db
 }
 
