@@ -500,7 +500,7 @@ func createPredictionTable(trainParsed, predParsed *extendedSelect, db *DB) erro
 		if hdfsPath == "" {
 			hdfsPath = "/sqlflow"
 		}
-		fmt.Fprintf(&b, "%s %s) ROW FORMAT DELIMITED FIELDS TERMINATED BY \"\\001\" LOCATION \"%s/%s\" ;", columnName, stype, hdfsPath, tableName)
+		fmt.Fprintf(&b, "%s %s) ROW FORMAT DELIMITED FIELDS TERMINATED BY \"\\001\" LOCATION \"%s/%s\" STORED AS TEXTFILE;", columnName, stype, hdfsPath, tableName)
 	} else {
 		fmt.Fprintf(&b, "%s %s);", columnName, stype)
 	}
