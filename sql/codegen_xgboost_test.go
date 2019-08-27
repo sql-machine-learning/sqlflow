@@ -326,7 +326,7 @@ LABEL e INTO model_table;
 	a.NoError(e)
 	fts, e := verify(pr, testDB)
 	a.NoError(e)
-	filler, e := newXGBoostFiller(pr, fts, testDB)
+	filler, e := newXGBoostFiller(pr, nil, fts, testDB)
 	a.NoError(e)
 
 	a.True(filler.IsTrain)
