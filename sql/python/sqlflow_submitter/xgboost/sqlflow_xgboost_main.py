@@ -26,7 +26,8 @@ def run_with_sqlflow(mode: str,
                      model_path: str,
                      learning_config: str,
                      data_source_config: str,
-                     column_config: str):
+                     column_config: str,
+                     valid_data_source_config: str = None):
     if mode not in (cf.JobType.TRAIN, cf.JobType.PREDICT):
         raise XGBoostError('Unknown run mode(%s) of xgboost launcher.' % mode)
     is_train = mode == cf.JobType.TRAIN
@@ -41,11 +42,20 @@ def run_with_sqlflow(mode: str,
 
     data_source_config = parse_json_str(data_source_config)
     ds_fields = cf.DataSourceFields('sqlflow', data_source_config)
+    if valid_data_source_config:
+        valid_data_source_config = parse_json_str(valid_data_source_config)
+        val_ds_fields = cf.DataSourceFields('sqlflow', valid_data_source_config)
+    else:
+        val_ds_fields = None
     column_config = parse_json_str(column_config)
     col_fields = config_helper.load_config(cf.ColumnFields, **column_config)
     # hard code batch size of prediction with 1024
     data_builder = cf.DataBuilderFields() if is_train else cf.DataBuilderFields(batch_size=1024)
-    data_fields = cf.DataFields(ds_fields, col_fields, data_builder)
+    data_fields = cf.DataFields(
+        data_source=ds_fields,
+        column_format=col_fields,
+        builder=data_builder,
+        valid_data_source=val_ds_fields)
     bst_path = os.path.join(model_path, 'sqlflow_booster')
     dump_fields = cf.DumpInfoFields(
         path=os.path.join(model_path, 'sqlflow_booster.txt'),

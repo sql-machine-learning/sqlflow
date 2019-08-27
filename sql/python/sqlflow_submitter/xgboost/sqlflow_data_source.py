@@ -131,6 +131,8 @@ class SQLFlowDataSource(DataSource):
         self._reader = db_generator(
             driver=source_conf.db_config['driver'],
             conn=conn,
+            # TODO(weiguo): support auth(connect)/session_cfg for hive
+            session_cfg={},
             statement=source_conf.standard_select,
             feature_column_names=col_names,
             label_column_name=None,

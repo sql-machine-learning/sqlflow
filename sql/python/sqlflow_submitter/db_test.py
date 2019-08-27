@@ -132,7 +132,7 @@ class TestGenerator(TestCase):
                 "is_sparse": False,
                 "shape": []
             }}
-            gen = db_generator(driver, conn, "SELECT * FROM test_table_float_fea",
+            gen = db_generator(driver, conn, {}, "SELECT * FROM test_table_float_fea",
                                ["features"], "label", column_name_to_type)
             idx = 0
             for d in gen():
@@ -159,6 +159,6 @@ class TestGenerator(TestCase):
                 }}
             
 
-            gen = db_generator(driver, conn, 'SELECT * FROM iris.train limit 10',
+            gen = db_generator(driver, conn, {}, 'SELECT * FROM iris.train limit 10',
                                 ["sepal_length"], "class", column_name_to_type, fetch_size=4)
             self.assertEqual(len([g for g in gen()]), 10)

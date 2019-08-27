@@ -32,9 +32,11 @@ type xgboostFiller struct {
 	xgLearningFields
 	xgColumnFields
 	xgDataSourceFields
-	LearningJSON   string
-	DataSourceJSON string
-	ColumnJSON     string
+	validDataSource     xgDataSourceFields
+	LearningJSON        string
+	DataSourceJSON      string
+	ValidDataSourceJSON string
+	ColumnJSON          string
 }
 
 type xgLearningFields struct {
@@ -558,8 +560,7 @@ func xgParseEstimator(pr *extendedSelect, filler *xgboostFiller) error {
 	return nil
 }
 
-// TODO(sperlingxx): support trainAndValDataset
-func newXGBoostFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*xgboostFiller, error) {
+func newXGBoostFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *DB) (*xgboostFiller, error) {
 	filler := &xgboostFiller{
 		ModelPath: pr.save,
 	}
@@ -593,9 +594,21 @@ func newXGBoostFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*xgboostFille
 		return nil, e
 	}
 
+	// rewrite (train & valid) data source if ds is defined
+	if pr.train && ds != nil {
+		filler.validDataSource = filler.xgDataSourceFields
+		filler.StandardSelect = fmt.Sprintf("SELECT * FROM %s", ds.training)
+		filler.validDataSource.StandardSelect = fmt.Sprintf("SELECT * FROM %s", ds.validation)
+	}
+
 	// fill data base info
-	if _, e := xgFillDatabaseInfo(filler, db); e != nil {
+	if e := xgFillDatabaseInfo(&filler.xgDataSourceFields, db); e != nil {
 		return nil, e
+	}
+	if len(filler.validDataSource.StandardSelect) > 0 {
+		if e := xgFillDatabaseInfo(&filler.validDataSource, db); e != nil {
+			return nil, e
+		}
 	}
 
 	// serialize fields
@@ -605,28 +618,36 @@ func newXGBoostFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*xgboostFille
 	}
 	filler.LearningJSON = string(jsonBuffer)
 
-	jsonBuffer, e = json.Marshal(filler.xgDataSourceFields)
-	if e != nil {
-		return nil, e
-	}
-	filler.DataSourceJSON = string(jsonBuffer)
-
 	jsonBuffer, e = json.Marshal(filler.xgColumnFields)
 	if e != nil {
 		return nil, e
 	}
 	filler.ColumnJSON = string(jsonBuffer)
 
+	jsonBuffer, e = json.Marshal(filler.xgDataSourceFields)
+	if e != nil {
+		return nil, e
+	}
+	filler.DataSourceJSON = string(jsonBuffer)
+
+	if len(filler.validDataSource.StandardSelect) > 0 {
+		jsonBuffer, e = json.Marshal(filler.validDataSource)
+		if e != nil {
+			return nil, e
+		}
+		filler.ValidDataSourceJSON = string(jsonBuffer)
+	}
+
 	return filler, nil
 }
 
-func xgFillDatabaseInfo(r *xgboostFiller, db *DB) (*xgboostFiller, error) {
+func xgFillDatabaseInfo(r *xgDataSourceFields, db *DB) error {
 	r.Driver = db.driverName
 	switch db.driverName {
 	case "mysql":
 		cfg, err := mysql.ParseDSN(db.dataSourceName)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		sa := strings.Split(cfg.Addr, ":")
 		r.Host, r.Port, r.Database = sa[0], sa[1], cfg.DBName
@@ -636,7 +657,7 @@ func xgFillDatabaseInfo(r *xgboostFiller, db *DB) (*xgboostFiller, error) {
 	case "hive":
 		cfg, err := gohive.ParseDSN(db.dataSourceName)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		sa := strings.Split(cfg.Addr, ":")
 		r.Host, r.Port, r.Database = sa[0], sa[1], cfg.DBName
@@ -646,15 +667,15 @@ func xgFillDatabaseInfo(r *xgboostFiller, db *DB) (*xgboostFiller, error) {
 	case "maxcompute":
 		cfg, err := gomaxcompute.ParseDSN(db.dataSourceName)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		// setting r.Port=0 just makes connect() happy
 		r.Host, r.Port, r.Database = cfg.Endpoint, "0", cfg.Project
 		r.User, r.Password = cfg.AccessID, cfg.AccessKey
 	default:
-		return nil, fmt.Errorf("sqlfow currently doesn't support DB %v", db.driverName)
+		return fmt.Errorf("sqlfow currently doesn't support DB %v", db.driverName)
 	}
-	return r, nil
+	return nil
 }
 
 func xgCreatePredictionTable(pr *extendedSelect, r *xgboostFiller, db *DB) error {
@@ -743,7 +764,8 @@ run_with_sqlflow(
 	mode=mode,
 	model_path='{{.ModelPath}}',
 	learning_config='{{.LearningJSON}}',	
-	data_source_config='{{.DataSourceJSON}}',	
+	data_source_config='{{.DataSourceJSON}}',
+	valid_data_source_config='{{.ValidDataSourceJSON}}',
 	column_config='{{.ColumnJSON}}')
 {{if .IsTrain}}
 print("Done training.")
