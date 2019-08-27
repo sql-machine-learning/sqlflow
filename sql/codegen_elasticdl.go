@@ -149,6 +149,16 @@ func newElasticDLTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds
 		log.Fatalf("Failed to get feature names from SELECT statement %v", err)
 		return nil, err
 	}
+	hasFeatureColumns := false
+	for _, columns := range resolved.FeatureColumns {
+		if len(columns) > 0 {
+			hasFeatureColumns = true
+		}
+	}
+	if hasFeatureColumns {
+		log.Warnln("COLUMN clause is ignored since ElasticDL does not support feature columns yet")
+	}
+
 	var trainInput, evalInput string
 	if ds != nil {
 		trainInput, evalInput = ds.training, ds.validation
