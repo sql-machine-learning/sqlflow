@@ -42,6 +42,11 @@ DATASOURCE="mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
 
 sqlflowserver --datasource=${DATASOURCE} &
 
+# NOTE: we have already installed sqlflow_submitter under python installation path
+# using latest develop branch, but when testing on CI, we need to use the code in
+# the current pull request.
+export PYTHONPATH=$GOPATH/src/github.com/sql-machine-learning/sqlflow/sql/python
+
 # e2e test for standar SQL
 SQLFLOW_SERVER=localhost:50051 ipython sql/python/test_magic.py
 # e2e test for xgboost train and prediciton SQL.
