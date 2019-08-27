@@ -560,7 +560,6 @@ func xgParseEstimator(pr *extendedSelect, filler *xgboostFiller) error {
 	return nil
 }
 
-// TODO(sperlingxx): support trainAndValDataset
 func newXGBoostFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *DB) (*xgboostFiller, error) {
 	filler := &xgboostFiller{
 		ModelPath: pr.save,
