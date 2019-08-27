@@ -292,3 +292,19 @@ func TestExecResource(t *testing.T) {
 	fmt.Println(attr)
 
 }
+
+func TestCatIdColumnWithColumnSpec(t *testing.T) {
+	a := assert.New(t)
+	parser := newParser()
+
+	dense := statementWithColumn("CATEGORY_ID(DENSE(col1, 128), 100)")
+	// sparse := statementWithColumn("CATEGORY_ID(SPARSE(col2, 1000, COMMA))")
+
+	r, e := parser.Parse(dense)
+	a.NoError(e)
+	c := r.columns["feature_columns"]
+	fcs, _, e := resolveTrainColumns(&c)
+	a.NoError(e)
+	_, ok := fcs[0].(*categoryIDColumn)
+	a.True(ok)
+}

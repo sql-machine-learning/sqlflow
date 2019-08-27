@@ -663,9 +663,9 @@ func (meta *metadata) getDenseColumnInfo(keys []string, refColumns map[string]*c
 			shape := make([]int, 1)
 			shape[0] = len(fields)
 			if userSpec, ok := refColumns[ct.Name()]; ok {
-				output[ct.Name()] = &columnSpec{ct.Name(), false, false, shape, userSpec.DType, userSpec.Delimiter, *meta.featureMap}
+				output[ct.Name()] = &columnSpec{ct.Name(), false, shape, userSpec.DType, userSpec.Delimiter, *meta.featureMap}
 			} else {
-				output[ct.Name()] = &columnSpec{ct.Name(), false, false, shape, "float", ",", *meta.featureMap}
+				output[ct.Name()] = &columnSpec{ct.Name(), false, shape, "float", ",", *meta.featureMap}
 			}
 		}
 	}
@@ -712,7 +712,7 @@ func (meta *metadata) getSparseColumnInfo() (map[string]*columnSpec, error) {
 		column, present := output[*name]
 		if !present {
 			shape := make([]int, 0, 1000)
-			column := &columnSpec{*name, false, true, shape, "int64", "", *meta.featureMap}
+			column := &columnSpec{*name, true, shape, "int64", "", *meta.featureMap}
 			column.DType = "int64"
 			output[*name] = column
 		}

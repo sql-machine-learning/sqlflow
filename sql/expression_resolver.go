@@ -14,7 +14,6 @@
 package sql
 
 import (
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -37,36 +36,6 @@ type resourceSpec struct {
 	Num    int
 	Memory int
 	Core   int
-}
-
-type engineSpec struct {
-	etype                 string
-	ps                    resourceSpec
-	worker                resourceSpec
-	cluster               string
-	queue                 string
-	masterResourceRequest string
-	masterResourceLimit   string
-	workerResourceRequest string
-	workerResourceLimit   string
-	volume                string
-	imagePullPolicy       string
-	restartPolicy         string
-	extraPypiIndex        string
-	namespace             string
-	minibatchSize         int
-	masterPodPriority     string
-	clusterSpec           string
-	recordsPerTask        int
-}
-
-type gitLabModule struct {
-	ModuleName   string
-	ProjectName  string
-	Sha          string
-	PrivateToken string
-	SourceRoot   string
-	GitLabServer string
 }
 
 type resolvedTrainClause struct {
@@ -106,155 +75,9 @@ type resolvedPredictClause struct {
 	EngineParams              engineSpec
 }
 
-// featureColumn is an interface that all types of feature columns and
-// attributes (WITH clause) should follow.
-// featureColumn is used to generate feature column code.
-type featureColumn interface {
-	GenerateCode() (string, error)
-	// Some feature columns accept input tensors directly, and the data
-	// may be a tensor string like: 12,32,4,58,0,0
-	GetDelimiter() string
-	GetDtype() string
-	GetKey() string
-	// return input shape json string, like "[2,3]"
-	GetInputShape() string
-}
-
 type featureMap struct {
 	Table     string
 	Partition string
-}
-
-// featureSpec contains information to generate DENSE/SPARSE code
-type columnSpec struct {
-	ColumnName     string
-	AutoDerivation bool
-	IsSparse       bool
-	Shape          []int
-	DType          string
-	Delimiter      string
-	FeatureMap     featureMap
-}
-
-type attribute struct {
-	FullName string
-	Prefix   string
-	Name     string
-	Value    interface{}
-}
-
-type numericColumn struct {
-	Key       string
-	Shape     []int
-	Delimiter string
-	Dtype     string
-}
-
-type bucketColumn struct {
-	SourceColumn *numericColumn
-	Boundaries   []int
-}
-
-// TODO(uuleon) specify the hash_key if needed
-type crossColumn struct {
-	Keys           []interface{}
-	HashBucketSize int
-}
-
-type categoryIDColumn struct {
-	Key        string
-	BucketSize int
-	Delimiter  string
-	Dtype      string
-}
-
-type sequenceCategoryIDColumn struct {
-	Key        string
-	BucketSize int
-	Delimiter  string
-	Dtype      string
-	IsSequence bool
-}
-
-type embeddingColumn struct {
-	CategoryColumn interface{}
-	Dimension      int
-	Combiner       string
-	Initializer    string
-}
-
-func getEngineSpec(attrs map[string]*attribute) engineSpec {
-	getInt := func(key string, defaultValue int) int {
-		if p, ok := attrs[key]; ok {
-			strVal, _ := p.Value.(string)
-			intVal, err := strconv.Atoi(strVal)
-
-			if err == nil {
-				return intVal
-			}
-		}
-		return defaultValue
-	}
-	getString := func(key string, defaultValue string) string {
-		if p, ok := attrs[key]; ok {
-			strVal, ok := p.Value.(string)
-			if ok {
-				// TODO(joyyoj): use the parser to do those validations.
-				if strings.HasPrefix(strVal, "\"") && strings.HasSuffix(strVal, "\"") {
-					return strVal[1 : len(strVal)-1]
-				}
-				return strVal
-			}
-		}
-		return defaultValue
-	}
-
-	psNum := getInt("ps_num", 1)
-	psMemory := getInt("ps_memory", 2400)
-	workerMemory := getInt("worker_memory", 1600)
-	workerNum := getInt("worker_num", 2)
-	engineType := getString("type", "local")
-	if (psNum > 0 || workerNum > 0) && engineType == "local" {
-		engineType = "yarn"
-	}
-	cluster := getString("cluster", "")
-	queue := getString("queue", "")
-
-	// ElasticDL engine specs
-	masterResourceRequest := getString("master_resource_request", "cpu=0.1,memory=1024Mi")
-	masterResourceLimit := getString("master_resource_limit", "")
-	workerResourceRequest := getString("worker_resource_request", "cpu=1,memory=4096Mi")
-	workerResourceLimit := getString("worker_resource_limit", "")
-	volume := getString("volume", "")
-	imagePullPolicy := getString("image_pull_policy", "Always")
-	restartPolicy := getString("restart_policy", "Never")
-	extraPypiIndex := getString("extra_pypi_index", "")
-	namespace := getString("namespace", "default")
-	minibatchSize := getInt("minibatch_size", 64)
-	masterPodPriority := getString("master_pod_priority", "")
-	clusterSpec := getString("cluster_spec", "")
-	recordsPerTask := getInt("records_per_task", 100)
-
-	return engineSpec{
-		etype:                 engineType,
-		ps:                    resourceSpec{Num: psNum, Memory: psMemory},
-		worker:                resourceSpec{Num: workerNum, Memory: workerMemory},
-		cluster:               cluster,
-		queue:                 queue,
-		masterResourceRequest: masterResourceRequest,
-		masterResourceLimit:   masterResourceLimit,
-		workerResourceRequest: workerResourceRequest,
-		workerResourceLimit:   workerResourceLimit,
-		volume:                volume,
-		imagePullPolicy:       imagePullPolicy,
-		restartPolicy:         restartPolicy,
-		extraPypiIndex:        extraPypiIndex,
-		namespace:             namespace,
-		minibatchSize:         minibatchSize,
-		masterPodPriority:     masterPodPriority,
-		clusterSpec:           clusterSpec,
-		recordsPerTask:        recordsPerTask,
-	}
 }
 
 func trimQuotes(s string) string {
@@ -535,9 +358,9 @@ func resolveExpression(e interface{}) (interface{}, error) {
 	case cross:
 		return resolveCrossColumn(el)
 	case categoryID:
-		return resolveCategoryIDColumn(el, false)
+		return resolveSeqCategoryIDColumn(el)
 	case seqCategoryID:
-		return resolveCategoryIDColumn(el, true)
+		return resolveCategoryIDColumn(el)
 	case embedding:
 		return resolveEmbeddingColumn(el)
 	case square:
@@ -607,13 +430,12 @@ func resolveColumnSpec(el *exprlist, isSparse bool) (*columnSpec, error) {
 		dtype, err = expression2string((*el)[4])
 	}
 	return &columnSpec{
-		ColumnName:     name,
-		AutoDerivation: false,
-		IsSparse:       isSparse,
-		Shape:          shape,
-		DType:          dtype,
-		Delimiter:      delimiter,
-		FeatureMap:     fm}, nil
+		ColumnName: name,
+		IsSparse:   isSparse,
+		Shape:      shape,
+		DType:      dtype,
+		Delimiter:  delimiter,
+		FeatureMap: fm}, nil
 }
 
 func expression2string(e interface{}) (string, error) {
@@ -646,311 +468,6 @@ func (cs *columnSpec) ToString() string {
 		cs.Delimiter)
 }
 
-func resolveNumericColumn(el *exprlist) (*numericColumn, error) {
-	if len(*el) != 3 {
-		return nil, fmt.Errorf("bad NUMERIC expression format: %s", *el)
-	}
-	key, err := expression2string((*el)[1])
-	if err != nil {
-		return nil, fmt.Errorf("bad NUMERIC key: %s, err: %s", (*el)[1], err)
-	}
-	var shape []int
-	intVal, err := strconv.Atoi((*el)[2].val)
-	if err != nil {
-		list, err := resolveExpression((*el)[2])
-		if err != nil {
-			return nil, err
-		}
-		if list, ok := list.([]interface{}); ok {
-			shape, err = transformToIntList(list)
-			if err != nil {
-				return nil, fmt.Errorf("bad NUMERIC shape: %s, err: %s", (*el)[2].val, err)
-			}
-		} else {
-			return nil, fmt.Errorf("bad NUMERIC shape: %s, err: %s", (*el)[2].val, err)
-		}
-	} else {
-		shape = append(shape, intVal)
-	}
-	return &numericColumn{
-		Key:   key,
-		Shape: shape,
-		// FIXME(typhoonzero, tony): support config Delimiter and Dtype
-		Delimiter: ",",
-		Dtype:     "float32"}, nil
-}
-
-func resolveBucketColumn(el *exprlist) (*bucketColumn, error) {
-	if len(*el) != 3 {
-		return nil, fmt.Errorf("bad BUCKET expression format: %s", *el)
-	}
-	sourceExprList := (*el)[1]
-	boundariesExprList := (*el)[2]
-	source, err := resolveExpression(sourceExprList)
-	if err != nil {
-		return nil, err
-	}
-	if _, ok := source.(*numericColumn); !ok {
-		return nil, fmt.Errorf("key of BUCKET must be NUMERIC, which is %s", source)
-	}
-	boundaries, err := resolveExpression(boundariesExprList)
-	if err != nil {
-		return nil, err
-	}
-	if _, ok := boundaries.([]interface{}); !ok {
-		return nil, fmt.Errorf("bad BUCKET boundaries: %s", err)
-	}
-	b, err := transformToIntList(boundaries.([]interface{}))
-	if err != nil {
-		return nil, fmt.Errorf("bad BUCKET boundaries: %s", err)
-	}
-	return &bucketColumn{
-		SourceColumn: source.(*numericColumn),
-		Boundaries:   b}, nil
-}
-
-func resolveCrossColumn(el *exprlist) (*crossColumn, error) {
-	if len(*el) != 3 {
-		return nil, fmt.Errorf("bad CROSS expression format: %s", *el)
-	}
-	keysExpr := (*el)[1]
-	keys, err := resolveExpression(keysExpr)
-	if err != nil {
-		return nil, err
-	}
-	if _, ok := keys.([]interface{}); !ok {
-		return nil, fmt.Errorf("bad CROSS keys: %s", err)
-	}
-	bucketSize, err := strconv.Atoi((*el)[2].val)
-	if err != nil {
-		return nil, fmt.Errorf("bad CROSS bucketSize: %s, err: %s", (*el)[2].val, err)
-	}
-	return &crossColumn{
-		Keys:           keys.([]interface{}),
-		HashBucketSize: bucketSize}, nil
-}
-
-func resolveCategoryIDColumn(el *exprlist, isSequence bool) (interface{}, error) {
-	if len(*el) != 3 && len(*el) != 4 {
-		return nil, fmt.Errorf("bad CATEGORY_ID expression format: %s", *el)
-	}
-	key, err := expression2string((*el)[1])
-	if err != nil {
-		return nil, fmt.Errorf("bad CATEGORY_ID key: %s, err: %s", (*el)[1], err)
-	}
-	bucketSize, err := strconv.Atoi((*el)[2].val)
-	if err != nil {
-		return nil, fmt.Errorf("bad CATEGORY_ID bucketSize: %s, err: %s", (*el)[2].val, err)
-	}
-	delimiter := ""
-	if len(*el) == 4 {
-		delimiter, err = resolveDelimiter((*el)[3].val)
-		if err != nil {
-			return nil, fmt.Errorf("bad CATEGORY_ID delimiter: %s, %s", (*el)[3].val, err)
-		}
-	}
-	if isSequence {
-		return &sequenceCategoryIDColumn{
-			Key:        key,
-			BucketSize: bucketSize,
-			Delimiter:  delimiter,
-			// TODO(typhoonzero): support config dtype
-			Dtype:      "int64",
-			IsSequence: true}, nil
-	}
-	return &categoryIDColumn{
-		Key:        key,
-		BucketSize: bucketSize,
-		Delimiter:  delimiter,
-		// TODO(typhoonzero): support config dtype
-		Dtype: "int64"}, nil
-}
-
-func resolveEmbeddingColumn(el *exprlist) (*embeddingColumn, error) {
-	if len(*el) != 4 && len(*el) != 5 {
-		return nil, fmt.Errorf("bad EMBEDDING expression format: %s", *el)
-	}
-	sourceExprList := (*el)[1]
-	source, err := resolveExpression(sourceExprList)
-	if err != nil {
-		return nil, err
-	}
-	// TODO(uuleon) support other kinds of categorical column in the future
-	var catColumn interface{}
-	catColumn, ok := source.(*categoryIDColumn)
-	if !ok {
-		catColumn, ok = source.(*sequenceCategoryIDColumn)
-		if !ok {
-			return nil, fmt.Errorf("key of EMBEDDING must be categorical column")
-		}
-	}
-	dimension, err := strconv.Atoi((*el)[2].val)
-	if err != nil {
-		return nil, fmt.Errorf("bad EMBEDDING dimension: %s, err: %s", (*el)[2].val, err)
-	}
-	combiner, err := expression2string((*el)[3])
-	if err != nil {
-		return nil, fmt.Errorf("bad EMBEDDING combiner: %s, err: %s", (*el)[3], err)
-	}
-	initializer := ""
-	if len(*el) == 5 {
-		initializer, err = expression2string((*el)[4])
-		if err != nil {
-			return nil, fmt.Errorf("bad EMBEDDING initializer: %s, err: %s", (*el)[4], err)
-		}
-	}
-	return &embeddingColumn{
-		CategoryColumn: catColumn,
-		Dimension:      dimension,
-		Combiner:       combiner,
-		Initializer:    initializer}, nil
-}
-
-func (nc *numericColumn) GenerateCode() (string, error) {
-	return fmt.Sprintf("tf.feature_column.numeric_column(\"%s\", shape=%s)", nc.Key,
-		strings.Join(strings.Split(fmt.Sprint(nc.Shape), " "), ",")), nil
-}
-
-func (nc *numericColumn) GetDelimiter() string {
-	return nc.Delimiter
-}
-
-func (nc *numericColumn) GetDtype() string {
-	return nc.Dtype
-}
-
-func (nc *numericColumn) GetKey() string {
-	return nc.Key
-}
-
-func (nc *numericColumn) GetInputShape() string {
-	jsonBytes, err := json.Marshal(nc.Shape)
-	if err != nil {
-		return ""
-	}
-	return string(jsonBytes)
-}
-
-func (bc *bucketColumn) GenerateCode() (string, error) {
-	sourceCode, _ := bc.SourceColumn.GenerateCode()
-	return fmt.Sprintf(
-		"tf.feature_column.bucketized_column(%s, boundaries=%s)",
-		sourceCode,
-		strings.Join(strings.Split(fmt.Sprint(bc.Boundaries), " "), ",")), nil
-}
-
-func (bc *bucketColumn) GetDelimiter() string {
-	return ""
-}
-
-func (bc *bucketColumn) GetDtype() string {
-	return ""
-}
-
-func (bc *bucketColumn) GetKey() string {
-	return bc.SourceColumn.Key
-}
-
-func (bc *bucketColumn) GetInputShape() string {
-	return bc.SourceColumn.GetInputShape()
-}
-
-func (cc *crossColumn) GenerateCode() (string, error) {
-	var keysGenerated = make([]string, len(cc.Keys))
-	for idx, key := range cc.Keys {
-		if c, ok := key.(featureColumn); ok {
-			code, err := c.GenerateCode()
-			if err != nil {
-				return "", err
-			}
-			keysGenerated[idx] = code
-			continue
-		}
-		if str, ok := key.(string); ok {
-			keysGenerated[idx] = fmt.Sprintf("\"%s\"", str)
-		} else {
-			return "", fmt.Errorf("cross generate code error, key: %s", key)
-		}
-	}
-	return fmt.Sprintf(
-		"tf.feature_column.crossed_column([%s], hash_bucket_size=%d)",
-		strings.Join(keysGenerated, ","), cc.HashBucketSize), nil
-}
-
-func (cc *crossColumn) GetDelimiter() string {
-	return ""
-}
-
-func (cc *crossColumn) GetDtype() string {
-	return ""
-}
-
-func (cc *crossColumn) GetKey() string {
-	// NOTE: cross column is a feature on multiple column keys.
-	return ""
-}
-
-func (cc *crossColumn) GetInputShape() string {
-	// NOTE: return empty since crossed column input shape is already determined
-	// by the two crossed columns.
-	return ""
-}
-
-func (cc *categoryIDColumn) GenerateCode() (string, error) {
-	return fmt.Sprintf("tf.feature_column.categorical_column_with_identity(key=\"%s\", num_buckets=%d)",
-		cc.Key, cc.BucketSize), nil
-}
-
-func (cc *categoryIDColumn) GetDelimiter() string {
-	return cc.Delimiter
-}
-
-func (cc *categoryIDColumn) GetDtype() string {
-	return cc.Dtype
-}
-
-func (cc *categoryIDColumn) GetKey() string {
-	return cc.Key
-}
-
-func (cc *categoryIDColumn) GetInputShape() string {
-	return fmt.Sprintf("[%d]", cc.BucketSize)
-}
-
-func (cc *sequenceCategoryIDColumn) GenerateCode() (string, error) {
-	return fmt.Sprintf("tf.feature_column.sequence_categorical_column_with_identity(key=\"%s\", num_buckets=%d)",
-		cc.Key, cc.BucketSize), nil
-}
-
-func (cc *sequenceCategoryIDColumn) GetDelimiter() string {
-	return cc.Delimiter
-}
-
-func (cc *sequenceCategoryIDColumn) GetDtype() string {
-	return cc.Dtype
-}
-
-func (cc *sequenceCategoryIDColumn) GetKey() string {
-	return cc.Key
-}
-
-func (cc *sequenceCategoryIDColumn) GetInputShape() string {
-	return fmt.Sprintf("[%d]", cc.BucketSize)
-}
-
-func (ec *embeddingColumn) GenerateCode() (string, error) {
-	catColumn, ok := ec.CategoryColumn.(featureColumn)
-	if !ok {
-		return "", fmt.Errorf("embedding generate code error, input is not featureColumn: %s", ec.CategoryColumn)
-	}
-	sourceCode, err := catColumn.GenerateCode()
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("tf.feature_column.embedding_column(%s, dimension=%d, combiner=\"%s\")",
-		sourceCode, ec.Dimension, ec.Combiner), nil
-}
-
 func generateFeatureColumnCode(fcs []featureColumn) (string, error) {
 	var codes = make([]string, 0, len(fcs))
 	for _, fc := range fcs {
@@ -963,70 +480,11 @@ func generateFeatureColumnCode(fcs []featureColumn) (string, error) {
 	return fmt.Sprintf("[%s]", strings.Join(codes, ",")), nil
 }
 
-func (ec *embeddingColumn) GetDelimiter() string {
-	return ec.CategoryColumn.(featureColumn).GetDelimiter()
-}
-
-func (ec *embeddingColumn) GetDtype() string {
-	return ec.CategoryColumn.(featureColumn).GetDtype()
-}
-
-func (ec *embeddingColumn) GetKey() string {
-	return ec.CategoryColumn.(featureColumn).GetKey()
-}
-
-func (ec *embeddingColumn) GetInputShape() string {
-	return ec.CategoryColumn.(featureColumn).GetInputShape()
-}
-
-func resolveAttribute(attrs *attrs) (map[string]*attribute, error) {
-	ret := make(map[string]*attribute)
-	for k, v := range *attrs {
-		subs := strings.SplitN(k, ".", 2)
-		name := subs[len(subs)-1]
-		prefix := ""
-		if len(subs) == 2 {
-			prefix = subs[0]
-		}
-		r, err := resolveExpression(v)
-		if err != nil {
-			return nil, err
-		}
-
-		a := &attribute{
-			FullName: k,
-			Prefix:   prefix,
-			Name:     name,
-			Value:    r}
-		ret[a.FullName] = a
-	}
-	return ret, nil
-}
-
 func resolveDelimiter(delimiter string) (string, error) {
 	if strings.EqualFold(delimiter, comma) {
 		return ",", nil
 	}
 	return "", fmt.Errorf("unsolved delimiter: %s", delimiter)
-}
-
-func (a *attribute) GenerateCode() (string, error) {
-	if val, ok := a.Value.(string); ok {
-		// auto convert to int first.
-		if _, err := strconv.Atoi(val); err == nil {
-			return fmt.Sprintf("%s=%s", a.Name, val), nil
-		}
-		return fmt.Sprintf("%s=\"%s\"", a.Name, val), nil
-	}
-	if val, ok := a.Value.([]interface{}); ok {
-		intList, err := transformToIntList(val)
-		if err != nil {
-			return "", err
-		}
-		return fmt.Sprintf("%s=%s", a.Name,
-			strings.Join(strings.Split(fmt.Sprint(intList), " "), ",")), nil
-	}
-	return "", fmt.Errorf("value of attribute must be string or list of int, given %s", a.Value)
 }
 
 func transformToIntList(list []interface{}) ([]int, error) {
@@ -1039,17 +497,4 @@ func transformToIntList(list []interface{}) ([]int, error) {
 		}
 	}
 	return b, nil
-}
-
-func filter(attrs map[string]*attribute, prefix string, remove bool) map[string]*attribute {
-	ret := make(map[string]*attribute, 0)
-	for _, a := range attrs {
-		if strings.EqualFold(a.Prefix, prefix) {
-			ret[a.Name] = a
-			if remove {
-				delete(attrs, a.FullName)
-			}
-		}
-	}
-	return ret
 }
