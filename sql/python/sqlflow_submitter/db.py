@@ -52,7 +52,7 @@ def db_generator(driver, conn, statement,
             conf = {}
             for k, v in os.environ.items():
                 if k.startswith("SQLFLOW_HIVE_CONF_"):
-                    conf.update({k[18:].replace("_", "."), v})
+                    conf.update({k[18:].replace("_", "."): v})
             cursor = conn.cursor(configuration=conf)
         else:
             cursor = conn.cursor()
