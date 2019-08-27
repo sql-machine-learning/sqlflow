@@ -44,16 +44,12 @@ def connect(driver, database, user, password, host, port, auth=""):
 
     raise ValueError("unrecognized database driver: %s" % driver)
 
-def db_generator(driver, conn, statement,
+def db_generator(driver, conn, sessionConf, statement,
                  feature_column_names, label_column_name,
                  feature_specs, fetch_size=128):
     def reader():
         if driver == "hive":
-            conf = {}
-            for k, v in os.environ.items():
-                if k.startswith("SQLFLOW_HIVE_CONF_"):
-                    conf.update({k[18:].replace("_", "."), v})
-            cursor = conn.cursor(configuration=conf)
+            cursor = conn.cursor(configuration=sessionConf)
         else:
             cursor = conn.cursor()
         cursor.execute(statement)

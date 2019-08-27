@@ -30,11 +30,14 @@ type columnType struct {
 }
 
 type connectionConfig struct {
+	Driver   string
 	User     string
 	Password string
 	Host     string
 	Port     string
 	Database string
+	Auth     string // the auth field is only used for hiveserver2
+	Session  map[string]string
 }
 
 type modelConfig struct {
@@ -57,7 +60,6 @@ type featureMeta struct {
 
 type filler struct {
 	IsTrain            bool
-	Driver             string
 	TrainingDataset    string // IsTrain == true
 	ValidationDataset  string // IsTrain == true
 	PredictionDataset  string // IsTrain != true
@@ -65,7 +67,6 @@ type filler struct {
 	FeatureColumnsCode map[string][]string
 	Y                  *featureMeta
 	TableName          string
-	Auth               string // the auth field is only used for hiveserver2
 	modelConfig
 	connectionConfig
 }
@@ -88,12 +89,14 @@ func trainingAndValidationDataset(pr *extendedSelect, ds *trainAndValDataset) (s
 func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *DB) (*filler, error) {
 	isKerasModel, modelClassString := parseModelURI(pr.estimator)
 	auth := ""
+	var sc map[string]string
 	if db.driverName == "hive" {
 		cfg, err := gohive.ParseDSN(db.dataSourceName)
 		if err != nil {
 			return nil, err
 		}
 		auth = cfg.Auth
+		sc = cfg.SessionCfg
 	}
 	training, validation := trainingAndValidationDataset(pr, ds)
 	r := &filler{
@@ -108,7 +111,10 @@ func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *D
 			Save:          pr.save,
 			IsKerasModel:  isKerasModel,
 		},
-		Auth: auth,
+		connectionConfig: connectionConfig{
+			Auth:    auth,
+			Session: sc,
+		},
 	}
 
 	trainResolved, err := resolveTrainClause(&pr.trainClause)
