@@ -16,7 +16,6 @@ package sql
 const elasticdlDataConversionTemplateText = `
 import os
 
-from elasticdl.python.common.constants import ODPSConfig
 from elasticdl.python.common.odps_io import ODPSReader
 from elasticdl.python.common.odps_recordio_conversion_utils import (
     write_recordio_shards_from_iterator,
@@ -26,10 +25,10 @@ from elasticdl.python.common.odps_recordio_conversion_utils import (
 COLUMN_NAMES = {{.FeaturesList}}
 
 reader = ODPSReader(
-    os.environ[ODPSConfig.PROJECT_NAME],
-    os.environ[ODPSConfig.ACCESS_ID],
-    os.environ[ODPSConfig.ACCESS_KEY],
-    os.environ[ODPSConfig.ENDPOINT],
+    os.environ["MAXCOMPUTE_PROJECT"],
+    os.environ["MAXCOMPUTE_AK"],
+    os.environ["MAXCOMPUTE_SK"],
+    os.environ["MAXCOMPUTE_ENDPOINT"],
     table = "{{.ODPSTableName}}",
     partition = None,
     num_processes = {{.NumProcesses}},
@@ -140,17 +139,17 @@ class PredictionOutputsProcessor(BasePredictionOutputsProcessor):
         if all(
             k in os.environ
             for k in (
-                ODPSConfig.PROJECT_NAME,
-                ODPSConfig.ACCESS_ID,
-                ODPSConfig.ACCESS_KEY,
-                ODPSConfig.ENDPOINT,
+                "MAXCOMPUTE_PROJECT",
+                "MAXCOMPUTE_AK",
+                "MAXCOMPUTE_SK",
+                "MAXCOMPUTE_ENDPOINT",
             )
         ):
             self.odps_writer = ODPSWriter(
-                os.environ[ODPSConfig.PROJECT_NAME],
-                os.environ[ODPSConfig.ACCESS_ID],
-                os.environ[ODPSConfig.ACCESS_KEY],
-                os.environ[ODPSConfig.ENDPOINT],
+                os.environ["MAXCOMPUTE_PROJECT"],
+                os.environ["MAXCOMPUTE_AK"],
+                os.environ["MAXCOMPUTE_SK"],
+                os.environ["MAXCOMPUTE_ENDPOINT"],
                 table = "{{.PredictOutputTable}}",
                 columns=["pred_" + str(i) for i in range({{.OutputShape}})],
                 column_types=["double" for _ in range({{.OutputShape}})],

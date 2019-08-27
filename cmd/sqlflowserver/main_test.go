@@ -311,7 +311,7 @@ func TestEnd2EndMaxCompute(t *testing.T) {
 	if err != nil {
 		t.Fatalf("prepare test dataset failed: %v", err)
 	}
-	caseDB = "gomaxcompute_driver_w7u"
+	caseDB = os.Getenv("MAXCOMPUTE_PROJECT")
 	caseTrainTable = "sqlflow_test_iris_train"
 	caseTestTable = "sqlflow_test_iris_test"
 	casePredictTable = "sqlflow_test_iris_predict"
