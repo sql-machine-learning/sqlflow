@@ -96,7 +96,7 @@ def dataset_fn(dataset, mode):
             feature_description = {
                 {{.FeaturesDescription}}
                 {{if .IsTraining}}
-                "{{.LabelColName}}": tf.io.FixedLenFeature([1], tf.int32),
+                "{{.LabelColName}}": tf.io.FixedLenFeature([1], tf.int64),
                 {{end}}
             }
         parsed_example = tf.io.parse_single_example(record, feature_description)
@@ -105,7 +105,7 @@ def dataset_fn(dataset, mode):
             return parsed_example
         {{if .IsTraining}}
         else:
-            labels = tf.cast(parsed_example["{{.LabelColName}}"], tf.int32)
+            labels = tf.cast(parsed_example["{{.LabelColName}}"], tf.int64)
             del parsed_example["{{.LabelColName}}"]
             return parsed_example, labels
         {{end}}
@@ -126,7 +126,7 @@ def eval_metrics_fn(predictions, labels):
         "accuracy": tf.reduce_mean(
             input_tensor=tf.cast(
                 tf.equal(
-                    tf.argmax(predictions, 1, output_type=tf.dtypes.int32),
+                    tf.argmax(predictions, 1, output_type=tf.dtypes.int64),
                     labels,
                 ),
                 tf.float32,
