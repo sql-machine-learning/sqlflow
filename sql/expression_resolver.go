@@ -358,9 +358,9 @@ func resolveExpression(e interface{}) (interface{}, error) {
 	case cross:
 		return resolveCrossColumn(el)
 	case categoryID:
-		return resolveSeqCategoryIDColumn(el)
-	case seqCategoryID:
 		return resolveCategoryIDColumn(el)
+	case seqCategoryID:
+		return resolveSeqCategoryIDColumn(el)
 	case embedding:
 		return resolveEmbeddingColumn(el)
 	case square:
