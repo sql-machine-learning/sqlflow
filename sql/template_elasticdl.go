@@ -28,7 +28,7 @@ reader = ODPSReader(
     os.environ["MAXCOMPUTE_PROJECT"],
     os.environ["MAXCOMPUTE_AK"],
     os.environ["MAXCOMPUTE_SK"],
-    os.environ["MAXCOMPUTE_ENDPOINT"],
+    os.environ["MAXCOMPUTE_ENDPOINT"] if "MAXCOMPUTE_ENDPOINT" in os.environ else None,
     table="{{.ODPSTableName}}",
     partition=None,
     num_processes={{.NumProcesses}},
@@ -143,14 +143,13 @@ class PredictionOutputsProcessor(BasePredictionOutputsProcessor):
                 "MAXCOMPUTE_PROJECT",
                 "MAXCOMPUTE_AK",
                 "MAXCOMPUTE_SK",
-                "MAXCOMPUTE_ENDPOINT",
             )
         ):
             self.odps_writer = ODPSWriter(
                 os.environ["MAXCOMPUTE_PROJECT"],
                 os.environ["MAXCOMPUTE_AK"],
                 os.environ["MAXCOMPUTE_SK"],
-                os.environ["MAXCOMPUTE_ENDPOINT"],
+                os.environ["MAXCOMPUTE_ENDPOINT"] if "MAXCOMPUTE_ENDPOINT" in os.environ else None,
                 table="{{.PredictOutputTable}}",
                 columns=["pred_" + str(i) for i in range({{.OutputShape}})],
                 column_types=["double" for _ in range({{.OutputShape}})],
