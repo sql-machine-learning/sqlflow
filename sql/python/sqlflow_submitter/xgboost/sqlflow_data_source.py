@@ -11,15 +11,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import inspect
 import json
 import typing
 from typing import Iterator
 
+from launcher import DataSource, config_fields, XGBoostResult, XGBoostRecord
 from launcher.data_units import RecordBuilder
 
 from .common import XGBoostError
 from ..db import connect, db_generator, buffered_db_writer
-from launcher import DataSource, config_fields, XGBoostResult, XGBoostRecord
 
 
 class FeatureMeta(typing.NamedTuple):
@@ -116,7 +117,6 @@ class SQLFlowDataSource(DataSource):
             self._result_schema.update(column_conf.result_columns._asdict())
 
         # assert sqlflow_submitter.db.connect contains no varargs
-        import inspect
         conn_fields = set(inspect.getfullargspec(connect).args)
         conn_conf = {k: v for k, v in source_conf.db_config.items() if k in conn_fields}
         conn = connect(**conn_conf)
