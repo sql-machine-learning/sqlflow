@@ -46,7 +46,7 @@ type featureColumn interface {
 func resolveColumn(el *exprlist) (featureColumn, *columnSpec, error) {
 	head := (*el)[0].val
 	if head == "" {
-		return nil, nil, fmt.Errorf("column description expects format like NUMERIC(key) etc, got %s", el)
+		return nil, nil, fmt.Errorf("column description expects format like NUMERIC(key) etc, got %v", el)
 	}
 
 	switch strings.ToUpper(head) {

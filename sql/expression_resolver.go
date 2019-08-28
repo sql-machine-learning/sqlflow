@@ -285,6 +285,7 @@ func resolveTrainColumns(columns *exprlist) ([]featureColumn, []*columnSpec, err
 	var fcs = make([]featureColumn, 0)
 	var css = make([]*columnSpec, 0)
 	for _, expr := range *columns {
+		fmt.Printf("resolve columns: %v\n", expr)
 		if expr.typ != 0 {
 			// only column identifier like "COLUMN a1,b1"
 			// FIXME(typhoonzero): infer the column spec here.
@@ -314,20 +315,25 @@ func resolveTrainColumns(columns *exprlist) ([]featureColumn, []*columnSpec, err
 }
 
 func getExpressionFieldName(expr *expr) (string, error) {
-	result, err := resolveLispExpression(expr)
+	if expr.typ != 0 {
+		return expr.val, nil
+	}
+	fc, _, err := resolveColumn(&expr.sexp)
 	if err != nil {
 		return "", err
 	}
-	switch r := result.(type) {
-	case *columnSpec:
-		return r.ColumnName, nil
-	case featureColumn:
-		return r.GetKey(), nil
-	case string:
-		return r, nil
-	default:
-		return "", fmt.Errorf("getExpressionFieldName: unrecognized type %T", r)
-	}
+	return fc.GetKey(), nil
+
+	// switch r := result.(type) {
+	// case *columnSpec:
+	// 	return r.ColumnName, nil
+	// case featureColumn:
+	// 	return r.GetKey(), nil
+	// case string:
+	// 	return r, nil
+	// default:
+	// 	return "", fmt.Errorf("getExpressionFieldName: unrecognized type %T", r)
+	// }
 }
 
 // resolveLispExpression returns the actual value of the expression:

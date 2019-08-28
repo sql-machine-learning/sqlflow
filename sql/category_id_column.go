@@ -126,17 +126,18 @@ func parseCategoryIDColumnExpr(el *exprlist) (string, int, string, *columnSpec, 
 	}
 	var cs *columnSpec
 	key := ""
+	var err error
 	if (*el)[1].typ == 0 {
 		// explist, maybe DENSE/SPARSE expressions
 		subExprList := (*el)[1].sexp
 		isSparse := subExprList[0].val == sparse
-		cs, err := resolveColumnSpec(&subExprList, isSparse)
+		cs, err = resolveColumnSpec(&subExprList, isSparse)
 		if err != nil {
 			return "", 0, "", nil, fmt.Errorf("bad CATEGORY_ID expression format: %s", *el)
 		}
 		key = cs.ColumnName
 	} else {
-		key, err := expression2string((*el)[1])
+		key, err = expression2string((*el)[1])
 		if err != nil {
 			return "", 0, "", nil, fmt.Errorf("bad CATEGORY_ID key: %s, err: %s", (*el)[1], err)
 		}
