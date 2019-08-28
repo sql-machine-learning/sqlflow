@@ -36,6 +36,7 @@ notebook==6.0.0 \
 sqlflow==0.4.0 \
 pre-commit \
 odps \
+shap \
 ${PIP_ADD_PACKAGES}
 
 # 1. Install Go 1.11.5
