@@ -88,16 +88,6 @@ func trainingAndValidationDataset(pr *extendedSelect, ds *trainAndValDataset) (s
 
 func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *DB) (*filler, error) {
 	isKerasModel, modelClassString := parseModelURI(pr.estimator)
-	auth := ""
-	var sc map[string]string
-	if db.driverName == "hive" {
-		cfg, err := gohive.ParseDSN(db.dataSourceName)
-		if err != nil {
-			return nil, err
-		}
-		auth = cfg.Auth
-		sc = cfg.SessionCfg
-	}
 	training, validation := trainingAndValidationDataset(pr, ds)
 	r := &filler{
 		IsTrain:           pr.train,
@@ -110,10 +100,6 @@ func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *D
 			Epochs:        1,
 			Save:          pr.save,
 			IsKerasModel:  isKerasModel,
-		},
-		connectionConfig: connectionConfig{
-			Auth:    auth,
-			Session: sc,
 		},
 	}
 
@@ -246,6 +232,8 @@ func fillDatabaseInfo(r *filler, db *DB) (*filler, error) {
 		if err != nil {
 			return nil, err
 		}
+		r.Auth = cfg.Auth
+		r.Session = cfg.SessionCfg
 		sa := strings.Split(cfg.Addr, ":")
 		r.Host, r.Port, r.Database = sa[0], sa[1], cfg.DBName
 		r.User, r.Password = cfg.User, cfg.Passwd

@@ -104,6 +104,12 @@ type xgDataBaseField struct {
 	Port     string `json:"port"`
 	Database string `json:"database"`
 	Driver   string `json:"driver"`
+	xgDataBaseHiveField
+}
+
+type xgDataBaseHiveField struct {
+	HiveAuth    string            `json:"auth,omitempty"`
+	HiveSession map[string]string `json:"session,omitempty"`
 }
 
 type xgFeatureMeta struct {
@@ -658,6 +664,10 @@ func xgFillDatabaseInfo(r *xgDataSourceFields, db *DB) error {
 		cfg, err := gohive.ParseDSN(db.dataSourceName)
 		if err != nil {
 			return err
+		}
+		r.HiveAuth = cfg.Auth
+		if len(cfg.SessionCfg) > 0 {
+			r.HiveSession = cfg.SessionCfg
 		}
 		sa := strings.Split(cfg.Addr, ":")
 		r.Host, r.Port, r.Database = sa[0], sa[1], cfg.DBName
