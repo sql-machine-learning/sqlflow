@@ -144,11 +144,18 @@ func newElasticDLTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds
 	if err != nil {
 		return nil, err
 	}
-	featureNames, err := getFeaturesNames(pr)
-	if err != nil {
-		log.Fatalf("Failed to get feature names from SELECT statement %v", err)
-		return nil, err
+	fts, e := verify(pr, db)
+
+	featureNames := make([]string, 0, len(fts))
+	for featureName := range fts {
+		featureNames = append(featureNames, featureName)
 	}
+
+	// featureNames, err := getFeaturesNames(pr)
+	// if err != nil {
+	// 	log.Fatalf("Failed to get feature names from SELECT statement %v", err)
+	// 	return nil, err
+	// }
 	hasFeatureColumns := false
 	for _, columns := range resolved.FeatureColumns {
 		if len(columns) > 0 {
@@ -173,7 +180,7 @@ func newElasticDLTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds
 		LabelColName:        pr.label,
 		TrainClause:         resolved,
 		ModelDir:            pr.trainClause.save,
-		InputShape:          len(featureNames),
+		InputShape:          len(fts),
 		OutputShape:         getElasticDLModelSpec(resolved.ModelConstructorParams).NumClasses,
 	}, err
 }
