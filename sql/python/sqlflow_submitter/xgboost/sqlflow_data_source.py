@@ -115,7 +115,11 @@ class SQLFlowDataSource(DataSource):
             self._result_schema = {'append_columns': column_conf.append_columns or []}
             self._result_schema.update(column_conf.result_columns._asdict())
 
-        conn = connect(**source_conf.db_config)
+        # assert sqlflow_submitter.db.connect contains no varargs
+        import inspect
+        conn_fields = set(inspect.getfullargspec(connect).args)
+        conn_conf = {k: v for k, v in source_conf.db_config.items() if k in conn_fields}
+        conn = connect(**conn_conf)
         
         def writer_maker(table_schema):
             return buffered_db_writer(
@@ -131,8 +135,8 @@ class SQLFlowDataSource(DataSource):
         self._reader = db_generator(
             driver=source_conf.db_config['driver'],
             conn=conn,
-            # TODO(weiguo): support auth(connect)/session_cfg for hive
-            session_cfg={},
+            # specialized session_cfg for hive
+            session_cfg=source_conf.db_config.get('session', {}),
             statement=source_conf.standard_select,
             feature_column_names=col_names,
             label_column_name=None,
