@@ -666,7 +666,9 @@ func xgFillDatabaseInfo(r *xgDataSourceFields, db *DB) error {
 			return err
 		}
 		r.HiveAuth = cfg.Auth
-		r.HiveSession = cfg.SessionCfg
+		if len(cfg.SessionCfg) > 0 {
+			r.HiveSession = cfg.SessionCfg
+		}
 		sa := strings.Split(cfg.Addr, ":")
 		r.Host, r.Port, r.Database = sa[0], sa[1], cfg.DBName
 		r.User, r.Password = cfg.User, cfg.Passwd

@@ -364,12 +364,6 @@ LABEL e INTO model_table;
 	dsFields := &xgDataSourceFields{}
 	e = json.Unmarshal([]byte(filler.DataSourceJSON), dsFields)
 	a.NoError(e)
-	if filler.HiveSession == nil {
-		filler.HiveSession = make(map[string]string)
-	}
-	if dsFields.HiveSession == nil {
-		dsFields.HiveSession = make(map[string]string)
-	}
 	a.EqualValues(filler.xgDataSourceFields, *dsFields)
 	xgbFields := &xgLearningFields{}
 	e = json.Unmarshal([]byte(filler.LearningJSON), xgbFields)
@@ -388,12 +382,6 @@ LABEL e INTO model_table;
 	vdsFields := &xgDataSourceFields{}
 	e = json.Unmarshal([]byte(filler.ValidDataSourceJSON), vdsFields)
 	a.NoError(e)
-	if filler.validDataSource.HiveSession == nil {
-		filler.validDataSource.HiveSession = make(map[string]string)
-	}
-	if vdsFields.HiveSession == nil {
-		vdsFields.HiveSession = make(map[string]string)
-	}
 	a.EqualValues(filler.validDataSource, *vdsFields)
 
 	filler.StandardSelect, filler.validDataSource.StandardSelect = "", ""
