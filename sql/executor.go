@@ -16,9 +16,12 @@ package sql
 import (
 	"bytes"
 	"database/sql"
+	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
+	"path"
 	"strings"
 	"sync"
 	"time"
@@ -80,7 +83,9 @@ func splitExtendedSQL(slct string) ([]string, error) {
 	for i := 1; i < len(typ)-2; i++ {
 		if (typ[i] == TRAIN && typ[i+1] == IDENT && typ[i+2] == WITH) ||
 			(typ[i] == PREDICT && typ[i+1] == IDENT && typ[i+2] == USING) ||
-			(typ[i] == PREDICT && typ[i+1] == IDENT && typ[i+2] == WITH) {
+			(typ[i] == PREDICT && typ[i+1] == IDENT && typ[i+2] == WITH) ||
+			(typ[i] == ANALYZE && typ[i+1] == IDENT && typ[i+2] == WITH) ||
+			(typ[i] == ANALYZE && typ[i+1] == IDENT && typ[i+2] == USING) {
 			return []string{slct[:pos[i-1]], slct[pos[i-1]:]}, nil
 		}
 	}
@@ -292,6 +297,11 @@ func runExtendedSQL(slct string, db *DB, modelDir string, session *pb.Session) *
 				}
 				return train(wr, pr, db, cwd, modelDir, slct, ds)
 			}
+
+			if pr.analyze {
+				return analyze(wr, pr, db, cwd, modelDir)
+			}
+
 			// FIXME(weiguo): temporary branch to alps
 			if os.Getenv("SQLFLOW_submitter") == "alps" {
 				return alpsPred(wr, pr, db, cwd, session)
@@ -453,6 +463,32 @@ func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir strin
 	cmd.Stdout = cw
 	cmd.Stderr = cw
 	return cmd.Run()
+}
+
+func analyze(wr *PipeWriter, es *extendedSelect, db *DB, cwd string, modelDir string) error {
+	cmd := exec.Command("python", "-u")
+	cmd.Dir = cwd
+	cmd.Stdin = strings.NewReader(analyzeTemplateText)
+	_, err := cmd.CombinedOutput()
+	if err != nil {
+		return err
+	}
+
+	imgFile, err := os.Open(path.Join(cwd, "summary.png"))
+	if err != nil {
+		return err
+	}
+	defer imgFile.Close()
+
+	imgBytes, err := ioutil.ReadAll(imgFile)
+	if err != nil {
+		return err
+	}
+	imgBase64Str := base64.StdEncoding.EncodeToString(imgBytes)
+	img2html := "<html><body><img src=\"data:image/png;base64," + imgBase64Str + "\" /></body></html>"
+	wr.Write(img2html)
+
+	return nil
 }
 
 // Create prediction table with appropriate column type.

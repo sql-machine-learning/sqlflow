@@ -137,6 +137,18 @@ USING sqlflow_models.my_dense_dnn_model
 	})
 }
 
+func TestAnalyzeSQL(t *testing.T) {
+	a := assert.New(t)
+
+	a.NotPanics(func() {
+		stream := Run(`select * from mytable
+ANALYZE my_model
+USING TreeExplainer;`, testDB, "", nil)
+		a.True(goodStream(stream.ReadAll()))
+	})
+
+}
+
 func TestStandardSQL(t *testing.T) {
 	a := assert.New(t)
 	a.NotPanics(func() {
