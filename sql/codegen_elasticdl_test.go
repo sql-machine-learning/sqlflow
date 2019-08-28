@@ -27,7 +27,7 @@ func TestTrainElasticDLFiller(t *testing.T) {
 	a := assert.New(t)
 	parser := newParser()
 
-	wndStatement := `SELECT c1, c2, c3, c4, c5 FROM training_data
+	wndStatement := `SELECT * FROM iris.train
 		TRAIN ElasticDLKerasClassifier 
 		WITH
 			model.optimizer = "optimizer",
@@ -62,20 +62,17 @@ func TestTrainElasticDLFiller(t *testing.T) {
 			engine.cluster_spec = "",
 			engine.records_per_task = 100
 		COLUMN
-			c1,
-			NUMERIC(c2, 10),
-			c3,
-			c4
-		LABEL c5
+			sepal_length, sepal_width, petal_length, petal_width
+		LABEL class
 		INTO trained_elasticdl_keras_classifier;`
 
 	r, e := parser.Parse(wndStatement)
 	a.NoError(e)
 	session := &pb.Session{UserId: "sqlflow_user"}
-	filler, e := newElasticDLTrainFiller(r, nil, session, nil)
+	filler, e := newElasticDLTrainFiller(r, testDB, session, nil)
 	a.NoError(e)
 	a.True(filler.IsTraining)
-	a.Equal("training_data", filler.TrainInputTable)
+	a.Equal("iris.train", filler.TrainInputTable)
 	a.Equal(true, filler.TrainClause.EnableShuffle)
 	a.Equal(120, filler.TrainClause.ShuffleBufferSize)
 	a.Equal("trained_elasticdl_keras_classifier", filler.ModelDir)
@@ -86,9 +83,9 @@ func TestTrainElasticDLFiller(t *testing.T) {
 	code := program.String()
 	a.True(strings.Contains(code, `if mode != Mode.PREDICTION and "true" == "true":`), code)
 	a.True(strings.Contains(code, `dataset = dataset.shuffle(buffer_size=120)`), code)
-	a.True(strings.Contains(code, `"c5": tf.io.FixedLenFeature([1], tf.int64),`), code)
-	a.True(strings.Contains(code, `"c1": tf.io.FixedLenFeature([1], tf.float32), "c2": tf.io.FixedLenFeature([1], tf.float32), "c3": tf.io.FixedLenFeature([1], tf.float32), "c4": tf.io.FixedLenFeature([1], tf.float32),`), code)
-	a.True(strings.Contains(code, `return parsed_example, tf.cast(parsed_example["c5"], tf.int32)`), code)
+	a.True(strings.Contains(code, `"class": tf.io.FixedLenFeature([1], tf.int64),`), code)
+	a.True(strings.Contains(code, `"petal_length": tf.io.FixedLenFeature([1], tf.float32), "petal_width": tf.io.FixedLenFeature([1], tf.float32), "sepal_length": tf.io.FixedLenFeature([1], tf.float32), "sepal_width": tf.io.FixedLenFeature([1], tf.float32),`), code)
+	a.True(strings.Contains(code, `return parsed_example, tf.cast(parsed_example["class"], tf.int32)`), code)
 	a.True(strings.Contains(code, `inputs = tf.keras.layers.Input(shape=(4, 1), name="input")`), code)
 	a.True(strings.Contains(code, `outputs = tf.keras.layers.Dense(10, name="output")(inputs)`), code)
 }
@@ -96,18 +93,18 @@ func TestTrainElasticDLFiller(t *testing.T) {
 func TestPredElasticDLFiller(t *testing.T) {
 	a := assert.New(t)
 	parser := newParser()
-	predStatement := `SELECT c1, c2, c3, c4 FROM prediction_data
+	predStatement := `SELECT sepal_length, sepal_width, petal_length, petal_width FROM iris.test
 		PREDICT prediction_results_table
 		WITH
 			model.num_classes = 10
 		USING trained_elasticdl_keras_classifier;`
 
 	r, e := parser.Parse(predStatement)
-	filler, err := newElasticDLPredictFiller(r)
+	filler, err := newElasticDLPredictFiller(r, testDB)
 	a.NoError(err)
 
 	a.False(filler.IsTraining)
-	a.Equal(filler.PredictInputTable, "prediction_data")
+	a.Equal(filler.PredictInputTable, "iris.test")
 	a.Equal(filler.PredictOutputTable, "prediction_results_table")
 	a.Equal(filler.PredictInputModel, "trained_elasticdl_keras_classifier")
 	a.Equal(filler.InputShape, 4)
@@ -122,7 +119,7 @@ func TestPredElasticDLFiller(t *testing.T) {
 	a.True(strings.Contains(code, `columns=["pred_" + str(i) for i in range(10)]`), code)
 	a.True(strings.Contains(code, `column_types=["double" for _ in range(10)]`), code)
 	a.True(strings.Contains(code, `table = "prediction_results_table"`), code)
-	a.True(strings.Contains(code, `"c1": tf.io.FixedLenFeature([1], tf.float32), "c2": tf.io.FixedLenFeature([1], tf.float32), "c3": tf.io.FixedLenFeature([1], tf.float32), "c4": tf.io.FixedLenFeature([1], tf.float32),`), code)
+	a.True(strings.Contains(code, `"petal_length": tf.io.FixedLenFeature([1], tf.float32), "petal_width": tf.io.FixedLenFeature([1], tf.float32), "sepal_length": tf.io.FixedLenFeature([1], tf.float32), "sepal_width": tf.io.FixedLenFeature([1], tf.float32),`), code)
 	a.True(strings.Contains(code, `inputs = tf.keras.layers.Input(shape=(4, 1), name="input")`), code)
 }
 
@@ -130,17 +127,14 @@ func TestElasticDLDataConversionFiller(t *testing.T) {
 	a := assert.New(t)
 	parser := newParser()
 
-	wndStatement := `SELECT c1, c2, c3, c4, c5 FROM training_data
+	wndStatement := `SELECT * FROM iris.train
 		TRAIN ElasticDLKerasClassifier 
 		WITH
 			model.optimizer = "optimizer",
 			model.loss = "loss"
 		COLUMN
-			c1,
-			NUMERIC(c2, 10),
-			c3,
-			c4
-		LABEL c5
+			sepal_length, sepal_width, petal_length, petal_width
+		LABEL class
 		INTO trained_elasticdl_keras_classifier;`
 
 	r, e := parser.Parse(wndStatement)
@@ -149,13 +143,13 @@ func TestElasticDLDataConversionFiller(t *testing.T) {
 	var program bytes.Buffer
 	recordIODataDir, e := ioutil.TempDir("/tmp", "recordio_data_dir_")
 	a.NoError(e)
-	filler, e := newElasticDLDataConversionFiller(r, recordIODataDir, 200, 1)
+	filler, e := newElasticDLDataConversionFiller(r, testDB, recordIODataDir, 200, 1)
 	a.NoError(e)
 	e = elasticdlDataConversionTemplate.Execute(&program, filler)
 	a.NoError(e)
 	code := program.String()
-	a.True(strings.Contains(code, `table = "training_data"`), code)
-	a.True(strings.Contains(code, `COLUMN_NAMES = ["c1", "c2", "c3", "c4", "c5"]`), code)
+	a.True(strings.Contains(code, `table = "iris.train"`), code)
+	a.True(strings.Contains(code, `COLUMN_NAMES = ["petal_length", "petal_width", "sepal_length", "sepal_width", "class"]`), code)
 	a.True(strings.Contains(code, `output_dir = "/tmp/recordio_data_dir_`), code)
 	a.True(strings.Contains(code, `batch_size = 200`), code)
 	a.True(strings.Contains(code, `num_processes = 1`), code)
