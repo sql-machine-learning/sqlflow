@@ -364,6 +364,9 @@ LABEL e INTO model_table;
 	dsFields := &xgDataSourceFields{}
 	e = json.Unmarshal([]byte(filler.DataSourceJSON), dsFields)
 	a.NoError(e)
+	if filler.HiveSession == nil {
+		filler.HiveSession = make(map[string]string)
+	}
 	if dsFields.HiveSession == nil {
 		dsFields.HiveSession = make(map[string]string)
 	}
