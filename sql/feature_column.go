@@ -13,16 +13,67 @@
 
 package sql
 
-// featureColumn is an interface that all types of feature columns and
-// attributes (WITH clause) should follow.
-// featureColumn is used to generate feature column code.
+import (
+	"fmt"
+	"strings"
+)
+
+const (
+	columnTypeBucket        = 0
+	columnTypeEmbedding     = 1
+	columnTypeNumeric       = 2
+	columnTypeCategoryID    = 3
+	columnTypeSeqCategoryID = 3
+	columnTypeCross         = 4
+)
+
+// featureColumn is an interface that all types of feature columns
+// should follow. featureColumn is used to generate feature column code.
 type featureColumn interface {
 	GenerateCode() (string, error)
-	// Some feature columns accept input tensors directly, and the data
-	// may be a tensor string like: 12,32,4,58,0,0
+	// FIXME(typhoonzero): remove delimiter, dtype shape from feature column
+	// get these from column spec claused or by feature derivation.
 	GetDelimiter() string
 	GetDtype() string
 	GetKey() string
 	// return input shape json string, like "[2,3]"
 	GetInputShape() string
+	GetColumnType() int
+}
+
+// resolveFeatureColumn returns the acutal feature column typed struct
+// as well as the columnSpec infomation.
+func resolveColumn(el *exprlist) (featureColumn, *columnSpec, error) {
+	head := (*el)[0].val
+	if head == "" {
+		return nil, nil, fmt.Errorf("column description expects format like NUMERIC(key) etc, got %s", el)
+	}
+
+	switch strings.ToUpper(head) {
+	case dense:
+		cs, err := resolveColumnSpec(el, false)
+		return nil, cs, err
+	case sparse:
+		cs, err := resolveColumnSpec(el, true)
+		return nil, cs, err
+	case numeric:
+		// TODO(typhoonzero): support NUMERIC(DENSE(col)) and NUMERIC(SPARSE(col))
+		fc, err := resolveNumericColumn(el)
+		return fc, nil, err
+	case bucket:
+		fc, err := resolveBucketColumn(el)
+		return fc, nil, err
+	case cross:
+		fc, err := resolveCrossColumn(el)
+		return fc, nil, err
+	case categoryID:
+		return resolveCategoryIDColumn(el)
+	case seqCategoryID:
+		return resolveSeqCategoryIDColumn(el)
+	case embedding:
+		fc, err := resolveEmbeddingColumn(el)
+		return fc, nil, err
+	default:
+		return nil, nil, fmt.Errorf("not supported expr: %s", head)
+	}
 }

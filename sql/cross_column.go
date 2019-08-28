@@ -66,12 +66,16 @@ func (cc *crossColumn) GetInputShape() string {
 	return ""
 }
 
+func (cc *crossColumn) GetColumnType() int {
+	return columnTypeCross
+}
+
 func resolveCrossColumn(el *exprlist) (*crossColumn, error) {
 	if len(*el) != 3 {
 		return nil, fmt.Errorf("bad CROSS expression format: %s", *el)
 	}
 	keysExpr := (*el)[1]
-	keys, err := resolveExpression(keysExpr)
+	keys, err := resolveLispExpression(keysExpr)
 	if err != nil {
 		return nil, err
 	}

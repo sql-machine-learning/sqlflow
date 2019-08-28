@@ -54,6 +54,10 @@ func (cc *categoryIDColumn) GetInputShape() string {
 	return fmt.Sprintf("[%d]", cc.BucketSize)
 }
 
+func (cc *categoryIDColumn) GetColumnType() int {
+	return columnTypeCategoryID
+}
+
 func (cc *sequenceCategoryIDColumn) GenerateCode() (string, error) {
 	return fmt.Sprintf("tf.feature_column.sequence_categorical_column_with_identity(key=\"%s\", num_buckets=%d)",
 		cc.Key, cc.BucketSize), nil
@@ -75,10 +79,24 @@ func (cc *sequenceCategoryIDColumn) GetInputShape() string {
 	return fmt.Sprintf("[%d]", cc.BucketSize)
 }
 
-func resolveSeqCategoryIDColumn(el *exprlist) (*sequenceCategoryIDColumn, error) {
-	key, bucketSize, delimiter, err := parseCategoryIDColumnExpr(el)
+func (cc *sequenceCategoryIDColumn) GetColumnType() int {
+	return columnTypeSeqCategoryID
+}
+
+func parseCategoryColumnKey(el *exprlist) (*columnSpec, error) {
+	if (*el)[1].typ == 0 {
+		// explist, maybe DENSE/SPARSE expressions
+		subExprList := (*el)[1].sexp
+		isSparse := subExprList[0].val == sparse
+		return resolveColumnSpec(&subExprList, isSparse)
+	}
+	return nil, nil
+}
+
+func resolveSeqCategoryIDColumn(el *exprlist) (*sequenceCategoryIDColumn, *columnSpec, error) {
+	key, bucketSize, delimiter, cs, err := parseCategoryIDColumnExpr(el)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	return &sequenceCategoryIDColumn{
 		Key:        key,
@@ -86,40 +104,53 @@ func resolveSeqCategoryIDColumn(el *exprlist) (*sequenceCategoryIDColumn, error)
 		Delimiter:  delimiter,
 		// TODO(typhoonzero): support config dtype
 		Dtype:      "int64",
-		IsSequence: true}, nil
+		IsSequence: true}, cs, nil
 }
 
-func resolveCategoryIDColumn(el *exprlist) (*categoryIDColumn, error) {
-	key, bucketSize, delimiter, err := parseCategoryIDColumnExpr(el)
+func resolveCategoryIDColumn(el *exprlist) (*categoryIDColumn, *columnSpec, error) {
+	key, bucketSize, delimiter, cs, err := parseCategoryIDColumnExpr(el)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	return &categoryIDColumn{
 		Key:        key,
 		BucketSize: bucketSize,
 		Delimiter:  delimiter,
 		// TODO(typhoonzero): support config dtype
-		Dtype: "int64"}, nil
+		Dtype: "int64"}, cs, nil
 }
 
-func parseCategoryIDColumnExpr(el *exprlist) (string, int, string, error) {
+func parseCategoryIDColumnExpr(el *exprlist) (string, int, string, *columnSpec, error) {
 	if len(*el) != 3 && len(*el) != 4 {
-		return "", 0, "", fmt.Errorf("bad CATEGORY_ID expression format: %s", *el)
+		return "", 0, "", nil, fmt.Errorf("bad CATEGORY_ID expression format: %s", *el)
 	}
-	key, err := expression2string((*el)[1])
-	if err != nil {
-		return "", 0, "", fmt.Errorf("bad CATEGORY_ID key: %s, err: %s", (*el)[1], err)
+	var cs *columnSpec
+	key := ""
+	if (*el)[1].typ == 0 {
+		// explist, maybe DENSE/SPARSE expressions
+		subExprList := (*el)[1].sexp
+		isSparse := subExprList[0].val == sparse
+		cs, err := resolveColumnSpec(&subExprList, isSparse)
+		if err != nil {
+			return "", 0, "", nil, fmt.Errorf("bad CATEGORY_ID expression format: %s", *el)
+		}
+		key = cs.ColumnName
+	} else {
+		key, err := expression2string((*el)[1])
+		if err != nil {
+			return "", 0, "", nil, fmt.Errorf("bad CATEGORY_ID key: %s, err: %s", (*el)[1], err)
+		}
 	}
 	bucketSize, err := strconv.Atoi((*el)[2].val)
 	if err != nil {
-		return "", 0, "", fmt.Errorf("bad CATEGORY_ID bucketSize: %s, err: %s", (*el)[2].val, err)
+		return "", 0, "", nil, fmt.Errorf("bad CATEGORY_ID bucketSize: %s, err: %s", (*el)[2].val, err)
 	}
 	delimiter := ""
 	if len(*el) == 4 {
 		delimiter, err = resolveDelimiter((*el)[3].val)
 		if err != nil {
-			return "", 0, "", fmt.Errorf("bad CATEGORY_ID delimiter: %s, %s", (*el)[3].val, err)
+			return "", 0, "", nil, fmt.Errorf("bad CATEGORY_ID delimiter: %s, %s", (*el)[3].val, err)
 		}
 	}
-	return key, bucketSize, delimiter, nil
+	return key, bucketSize, delimiter, cs, nil
 }

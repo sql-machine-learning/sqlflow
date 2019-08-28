@@ -47,20 +47,24 @@ func (bc *bucketColumn) GetInputShape() string {
 	return bc.SourceColumn.GetInputShape()
 }
 
+func (bc *bucketColumn) GetColumnType() int {
+	return columnTypeBucket
+}
+
 func resolveBucketColumn(el *exprlist) (*bucketColumn, error) {
 	if len(*el) != 3 {
 		return nil, fmt.Errorf("bad BUCKET expression format: %s", *el)
 	}
 	sourceExprList := (*el)[1]
 	boundariesExprList := (*el)[2]
-	source, err := resolveExpression(sourceExprList)
+	source, _, err := resolveColumn(&sourceExprList.sexp)
 	if err != nil {
 		return nil, err
 	}
-	if _, ok := source.(*numericColumn); !ok {
+	if source.GetColumnType() != columnTypeNumeric {
 		return nil, fmt.Errorf("key of BUCKET must be NUMERIC, which is %s", source)
 	}
-	boundaries, err := resolveExpression(boundariesExprList)
+	boundaries, err := resolveLispExpression(boundariesExprList)
 	if err != nil {
 		return nil, err
 	}
@@ -72,6 +76,7 @@ func resolveBucketColumn(el *exprlist) (*bucketColumn, error) {
 		return nil, fmt.Errorf("bad BUCKET boundaries: %s", err)
 	}
 	return &bucketColumn{
+		// SourceColumn: source.(*numericColumn),
 		SourceColumn: source.(*numericColumn),
 		Boundaries:   b}, nil
 }

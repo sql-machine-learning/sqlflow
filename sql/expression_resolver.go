@@ -285,32 +285,36 @@ func resolveTrainColumns(columns *exprlist) ([]featureColumn, []*columnSpec, err
 	var fcs = make([]featureColumn, 0)
 	var css = make([]*columnSpec, 0)
 	for _, expr := range *columns {
-		result, err := resolveExpression(expr)
-		if err != nil {
-			return nil, nil, err
-		}
-		if cs, ok := result.(*columnSpec); ok {
-			css = append(css, cs)
-			continue
-		} else if c, ok := result.(featureColumn); ok {
-			fcs = append(fcs, c)
-		} else if s, ok := result.(string); ok {
-			// simple string column, generate default numeric column
+		if expr.typ != 0 {
+			// only column identifier like "COLUMN a1,b1"
+			// FIXME(typhoonzero): infer the column spec here.
 			c := &numericColumn{
-				Key:   s,
+				Key:   expr.val,
 				Shape: []int{1},
 				Dtype: "float32",
 			}
 			fcs = append(fcs, c)
 		} else {
-			return nil, nil, fmt.Errorf("not recognized type: %s", result)
+			result, cs, err := resolveColumn(&expr.sexp)
+			if err != nil {
+				return nil, nil, err
+			}
+			// if cs, ok := result.(*columnSpec); ok {
+			if cs != nil {
+				css = append(css, cs)
+				continue
+			} else if c, ok := result.(featureColumn); ok {
+				fcs = append(fcs, c)
+			} else {
+				return nil, nil, fmt.Errorf("not recognized type: %s", result)
+			}
 		}
 	}
 	return fcs, css, nil
 }
 
 func getExpressionFieldName(expr *expr) (string, error) {
-	result, err := resolveExpression(expr)
+	result, err := resolveLispExpression(expr)
 	if err != nil {
 		return "", err
 	}
@@ -326,56 +330,40 @@ func getExpressionFieldName(expr *expr) (string, error) {
 	}
 }
 
-// resolveExpression resolve a SQLFlow expression to the actual value
-// see: sql.y:241 for the definition of expression.
-func resolveExpression(e interface{}) (interface{}, error) {
+// resolveLispExpression returns the actual value of the expression:
+// IDENT -> string
+// [1,2,3] -> []interface{}
+// ["a","b","c"] -> []interface{}
+// [[1,2,3], "b", "c"] -> []interface{}
+func resolveLispExpression(e interface{}) (interface{}, error) {
 	if expr, ok := e.(*expr); ok {
-		if expr.val != "" {
+		if expr.typ != 0 {
 			return expr.val, nil
 		}
-		return resolveExpression(&expr.sexp)
+		return resolveLispExpression(&expr.sexp)
 	}
 
 	el, ok := e.(*exprlist)
 	if !ok {
-		return nil, fmt.Errorf("input of resolveExpression must be `expr` or `exprlist` given %s", e)
+		return nil, fmt.Errorf("input of resolveLispExpression must be `expr` or `exprlist` given %s", e)
 	}
-
-	head := (*el)[0].val
-	if head == "" {
-		return resolveExpression(&(*el)[0].sexp)
-	}
-
-	switch strings.ToUpper(head) {
-	case dense:
-		return resolveColumnSpec(el, false)
-	case sparse:
-		return resolveColumnSpec(el, true)
-	case numeric:
-		return resolveNumericColumn(el)
-	case bucket:
-		return resolveBucketColumn(el)
-	case cross:
-		return resolveCrossColumn(el)
-	case categoryID:
-		return resolveCategoryIDColumn(el)
-	case seqCategoryID:
-		return resolveSeqCategoryIDColumn(el)
-	case embedding:
-		return resolveEmbeddingColumn(el)
-	case square:
+	headTyp := (*el)[0].typ
+	if headTyp == 0 {
+		return resolveLispExpression(&(*el)[0].sexp)
+	} else if headTyp == '[' {
 		var list []interface{}
 		for idx, expr := range *el {
 			if idx > 0 {
 				if expr.sexp == nil {
 					intVal, err := strconv.Atoi(expr.val)
+					// TODO: support list of float etc.
 					if err != nil {
 						list = append(list, expr.val)
 					} else {
 						list = append(list, intVal)
 					}
 				} else {
-					value, err := resolveExpression(&expr.sexp)
+					value, err := resolveLispExpression(&expr.sexp)
 					if err != nil {
 						return nil, err
 					}
@@ -384,62 +372,12 @@ func resolveExpression(e interface{}) (interface{}, error) {
 			}
 		}
 		return list, nil
-	default:
-		return nil, fmt.Errorf("not supported expr: %s", head)
 	}
-}
-
-func resolveColumnSpec(el *exprlist, isSparse bool) (*columnSpec, error) {
-	if len(*el) < 4 {
-		return nil, fmt.Errorf("bad FeatureSpec expression format: %s", *el)
-	}
-	name, err := expression2string((*el)[1])
-	if err != nil {
-		return nil, fmt.Errorf("bad FeatureSpec name: %s, err: %s", (*el)[1], err)
-	}
-	var shape []int
-	intShape, err := strconv.Atoi((*el)[2].val)
-	if err != nil {
-		strShape, err := expression2string((*el)[2])
-		if err != nil {
-			return nil, fmt.Errorf("bad FeatureSpec shape: %s, err: %s", (*el)[2].val, err)
-		}
-		if strShape != "none" {
-			return nil, fmt.Errorf("bad FeatureSpec shape: %s, err: %s", (*el)[2].val, err)
-		}
-	} else {
-		shape = append(shape, intShape)
-	}
-	unresolvedDelimiter, err := expression2string((*el)[3])
-	if err != nil {
-		return nil, fmt.Errorf("bad FeatureSpec delimiter: %s, err: %s", (*el)[1], err)
-	}
-
-	delimiter, err := resolveDelimiter(unresolvedDelimiter)
-	if err != nil {
-		return nil, err
-	}
-
-	// resolve feature map
-	fm := featureMap{}
-	dtype := "float"
-	if isSparse {
-		dtype = "int"
-	}
-	if len(*el) >= 5 {
-		dtype, err = expression2string((*el)[4])
-	}
-	return &columnSpec{
-		ColumnName: name,
-		IsSparse:   isSparse,
-		Shape:      shape,
-		DType:      dtype,
-		Delimiter:  delimiter,
-		FeatureMap: fm}, nil
+	return nil, fmt.Errorf("not supported expr: %v", el)
 }
 
 func expression2string(e interface{}) (string, error) {
-	resolved, err := resolveExpression(e)
+	resolved, err := resolveLispExpression(e)
 	if err != nil {
 		return "", err
 	}

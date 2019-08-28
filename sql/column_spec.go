@@ -13,6 +13,11 @@
 
 package sql
 
+import (
+	"fmt"
+	"strconv"
+)
+
 // columnSpec defines how to generate codes to parse column data to tensor/sparsetensor
 type columnSpec struct {
 	ColumnName string
@@ -21,4 +26,53 @@ type columnSpec struct {
 	DType      string
 	Delimiter  string
 	FeatureMap featureMap
+}
+
+func resolveColumnSpec(el *exprlist, isSparse bool) (*columnSpec, error) {
+	if len(*el) < 4 {
+		return nil, fmt.Errorf("bad FeatureSpec expression format: %s", *el)
+	}
+	name, err := expression2string((*el)[1])
+	if err != nil {
+		return nil, fmt.Errorf("bad FeatureSpec name: %s, err: %s", (*el)[1], err)
+	}
+	var shape []int
+	intShape, err := strconv.Atoi((*el)[2].val)
+	if err != nil {
+		strShape, err := expression2string((*el)[2])
+		if err != nil {
+			return nil, fmt.Errorf("bad FeatureSpec shape: %s, err: %s", (*el)[2].val, err)
+		}
+		if strShape != "none" {
+			return nil, fmt.Errorf("bad FeatureSpec shape: %s, err: %s", (*el)[2].val, err)
+		}
+	} else {
+		shape = append(shape, intShape)
+	}
+	unresolvedDelimiter, err := expression2string((*el)[3])
+	if err != nil {
+		return nil, fmt.Errorf("bad FeatureSpec delimiter: %s, err: %s", (*el)[1], err)
+	}
+
+	delimiter, err := resolveDelimiter(unresolvedDelimiter)
+	if err != nil {
+		return nil, err
+	}
+
+	// resolve feature map
+	fm := featureMap{}
+	dtype := "float"
+	if isSparse {
+		dtype = "int"
+	}
+	if len(*el) >= 5 {
+		dtype, err = expression2string((*el)[4])
+	}
+	return &columnSpec{
+		ColumnName: name,
+		IsSparse:   isSparse,
+		Shape:      shape,
+		DType:      dtype,
+		Delimiter:  delimiter,
+		FeatureMap: fm}, nil
 }

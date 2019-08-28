@@ -52,6 +52,10 @@ func (nc *numericColumn) GetInputShape() string {
 	return string(jsonBytes)
 }
 
+func (nc *numericColumn) GetColumnType() int {
+	return columnTypeNumeric
+}
+
 func resolveNumericColumn(el *exprlist) (*numericColumn, error) {
 	if len(*el) != 3 {
 		return nil, fmt.Errorf("bad NUMERIC expression format: %s", *el)
@@ -63,7 +67,7 @@ func resolveNumericColumn(el *exprlist) (*numericColumn, error) {
 	var shape []int
 	intVal, err := strconv.Atoi((*el)[2].val)
 	if err != nil {
-		list, err := resolveExpression((*el)[2])
+		list, err := resolveLispExpression((*el)[2])
 		if err != nil {
 			return nil, err
 		}

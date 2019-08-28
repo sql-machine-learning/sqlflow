@@ -41,6 +41,10 @@ func (ec *embeddingColumn) GetInputShape() string {
 	return ec.CategoryColumn.(featureColumn).GetInputShape()
 }
 
+func (ec *embeddingColumn) GetColumnType() int {
+	return columnTypeEmbedding
+}
+
 func (ec *embeddingColumn) GenerateCode() (string, error) {
 	catColumn, ok := ec.CategoryColumn.(featureColumn)
 	if !ok {
@@ -59,7 +63,7 @@ func resolveEmbeddingColumn(el *exprlist) (*embeddingColumn, error) {
 		return nil, fmt.Errorf("bad EMBEDDING expression format: %s", *el)
 	}
 	sourceExprList := (*el)[1]
-	source, err := resolveExpression(sourceExprList)
+	source, _, err := resolveColumn(&sourceExprList.sexp)
 	if err != nil {
 		return nil, err
 	}
