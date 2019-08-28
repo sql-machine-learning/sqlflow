@@ -134,6 +134,35 @@ func TestPredictParser(t *testing.T) {
 	a.Equal("db.table.field", r.into)
 }
 
+func TestAnalyzeParser(t *testing.T) {
+	a := assert.New(t)
+	{
+		r, e := newParser().Parse(`select * from mytable
+ANALYZE my_model
+USING TreeExplainer;`)
+		a.NoError(e)
+		a.True(r.extended)
+		a.False(r.train)
+		a.True(r.analyze)
+		a.Equal("my_model", r.trainedModel)
+		a.Equal("TreeExplainer", r.explainer)
+	}
+	{
+		r, e := newParser().Parse(`select * from mytable
+ANALYZE my_model
+WITH
+  plots = force
+USING TreeExplainer;`)
+		a.NoError(e)
+		a.True(r.extended)
+		a.False(r.train)
+		a.True(r.analyze)
+		a.Equal("my_model", r.trainedModel)
+		a.Equal("force", r.analyzeAttrs["plots"].String())
+		a.Equal("TreeExplainer", r.explainer)
+	}
+}
+
 func TestSelectStarAndPrint(t *testing.T) {
 	a := assert.New(t)
 	r, e := newParser().Parse(`SELECT *, b FROM a LIMIT 10;`)

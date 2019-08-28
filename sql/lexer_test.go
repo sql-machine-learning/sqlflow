@@ -178,3 +178,24 @@ WHERE b='20190806';`)
 		a.Equal(vals[i], n.val)
 	}
 }
+
+func TestAnalysisSQL(t *testing.T) {
+	a := assert.New(t)
+	l := newLexer(` SELECT * FROM train_table
+ANALYZE my_model
+WITH
+  plots = force
+USING TreeExplainer;`)
+	var n sqlSymType
+	typs := []int{
+		SELECT, '*', FROM, IDENT, ANALYZE, IDENT, WITH, IDENT, '=', IDENT, USING, IDENT, ';'}
+	vals := []string{
+		"SELECT", "*", "FROM", "train_table", "ANALYZE",
+		"my_model", "WITH", "plots", "=", "force", "USING", "TreeExplainer", ";"}
+
+	for i := range typs {
+		a.Equal(typs[i], l.Lex(&n))
+		a.Equal(vals[i], n.val)
+	}
+
+}

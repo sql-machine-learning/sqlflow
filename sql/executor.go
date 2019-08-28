@@ -365,7 +365,7 @@ func train(wr *PipeWriter, tr *extendedSelect, db *DB, cwd string, modelDir stri
 	var program bytes.Buffer
 	if strings.HasPrefix(strings.ToUpper(tr.estimator), `XGBOOST.`) {
 		// FIXME(sperlingxx): write a separate train pipeline for xgboost to support remote mode
-		filler, e := newXGBoostFiller(tr, fts, db)
+		filler, e := newXGBoostFiller(tr, ds, fts, db)
 		if e != nil {
 			return fmt.Errorf("genXG %v", e)
 		}
@@ -426,7 +426,7 @@ func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir strin
 	var buf bytes.Buffer
 	if strings.HasPrefix(strings.ToUpper(tr.estimator), `XGBOOST.`) {
 		// FIXME(sperlingxx): write a separate pred pipeline for xgboost to support remote mode
-		filler, e := newXGBoostFiller(pr, fts, db)
+		filler, e := newXGBoostFiller(pr, nil, fts, db)
 		if e != nil {
 			return fmt.Errorf("genXG %v", e)
 		}
@@ -500,7 +500,7 @@ func createPredictionTable(trainParsed, predParsed *extendedSelect, db *DB) erro
 		if hdfsPath == "" {
 			hdfsPath = "/sqlflow"
 		}
-		fmt.Fprintf(&b, "%s %s) ROW FORMAT DELIMITED FIELDS TERMINATED BY \"\\001\" LOCATION \"%s/%s\" ;", columnName, stype, hdfsPath, tableName)
+		fmt.Fprintf(&b, "%s %s) ROW FORMAT DELIMITED FIELDS TERMINATED BY \"\\001\" STORED AS TEXTFILE LOCATION \"%s/%s\" ;", columnName, stype, hdfsPath, tableName)
 	} else {
 		fmt.Fprintf(&b, "%s %s);", columnName, stype)
 	}
