@@ -30,5 +30,5 @@ curl -Lo minikube https://storage.googleapis.com/minikube/releases/v$MINIKUBE_VE
 mkdir -p $HOME/.kube $HOME/.minikube
 touch $KUBECONFIG
 sudo minikube start --vm-driver=none --kubernetes-version=v$K8S_VERSION --cpus 2 --memory 6144
-"sudo chown -R travis: /home/travis/.minikube/"
+"sudo chown -R travis: $HOME/.minikube/"
 kubectl cluster-info
