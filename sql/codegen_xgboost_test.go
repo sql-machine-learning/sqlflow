@@ -27,7 +27,7 @@ SELECT *
 FROM iris.train
 TRAIN xgboost.Estimator
 WITH
-	train.objective = "multi:softmax",
+	train.objective = "multi:softprob",
 	train.num_class = 3,
 	train.max_depth = 5,
 	train.eta = 0.3,
@@ -40,12 +40,11 @@ LABEL class INTO sqlflow_models.my_xgboost_model;
 	testXGPredSelectIris = `
 SELECT *
 FROM iris.test
-PREDICT iris.predict
+PREDICT iris.predict.result
 WITH
 	pred.append_columns = [sepal_length, sepal_width, petal_length, petal_width],
 	pred.prob_column = prob,
-	pred.detail_column = detail,
-	pred.encoding_column = encoding
+	pred.detail_column = detail
 USING sqlflow_models.my_xgboost_model;
 `
 )
@@ -180,9 +179,8 @@ LABEL e INTO table_123;
 
 	predClause := `
 SELECT a, b, c, d, e FROM table_xx
-PREDICT table_yy
+PREDICT table_yy.prediction_detail
 WITH
-	pred.detail_column = "prediction_detail",
 	pred.prob_column = "prediction_probability",
 	pred.encoding_column = "prediction_leafs",
 	pred.result_column = "prediction_results",
