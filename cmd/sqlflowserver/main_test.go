@@ -23,8 +23,6 @@ import (
 	"os"
 	"os/exec"
 	"path"
-	"strconv"
-	"strings"
 	"testing"
 	"time"
 
@@ -591,18 +589,6 @@ INTO sqlflow_models.my_dnn_model;`
 // CaseTrainTextClassificationCustomLSTM is a simple End-to-End testing for case training
 // text classification models.
 func CaseTrainTextClassificationCustomLSTM(t *testing.T) {
-	tfVersionStr, err := exec.Command("python", "-c", "\"import tensorflow;print(tensorflow.__version__)\"").Output()
-	if err != nil {
-		t.Fatalf("error getting tensorflow version: %v", err)
-	}
-	versionParts := strings.Split(string(tfVersionStr), ".")
-	mainVer, err := strconv.Atoi(versionParts[0])
-	if err != nil {
-		t.Fatalf("err tensorflow version format: %s", tfVersionStr)
-	}
-	if mainVer < 2 {
-		t.Skip("skip on tf version < 2")
-	}
 	a := assert.New(t)
 	trainSQL := `SELECT *
 FROM text_cn.train_processed
