@@ -112,7 +112,7 @@ mkdir -p $IPYTHON_STARTUP
 mkdir -p /workspace
 echo 'get_ipython().magic(u"%reload_ext sqlflow.magic")' >> $IPYTHON_STARTUP/00-first.py
 echo 'get_ipython().magic(u"%autoreload 2")' >> $IPYTHON_STARTUP/00-first.py
-cp $GOPATH/src/github.com/sql-machine-learning/sqlflow/example/jupyter/* /workspace/
+curl https://raw.githubusercontent.com/sql-machine-learning/sqlflow/develop/example/jupyter/example.ipynb --output /workspace/example.ipynb
 
 # 9. install xgboost-launcher
 pip install xgboost-launcher==0.0.3
