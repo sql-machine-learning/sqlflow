@@ -57,6 +57,9 @@ func resolveBucketColumn(el *exprlist) (*bucketColumn, error) {
 	}
 	sourceExprList := (*el)[1]
 	boundariesExprList := (*el)[2]
+	if sourceExprList.typ != 0 {
+		return nil, fmt.Errorf("key of BUCKET must be NUMERIC, which is %v", sourceExprList)
+	}
 	source, _, err := resolveColumn(&sourceExprList.sexp)
 	if err != nil {
 		return nil, err
@@ -64,7 +67,7 @@ func resolveBucketColumn(el *exprlist) (*bucketColumn, error) {
 	if source.GetColumnType() != columnTypeNumeric {
 		return nil, fmt.Errorf("key of BUCKET must be NUMERIC, which is %s", source)
 	}
-	boundaries, err := resolveLispExpression(boundariesExprList)
+	boundaries, _, err := resolveExpression(boundariesExprList)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +79,6 @@ func resolveBucketColumn(el *exprlist) (*bucketColumn, error) {
 		return nil, fmt.Errorf("bad BUCKET boundaries: %s", err)
 	}
 	return &bucketColumn{
-		// SourceColumn: source.(*numericColumn),
 		SourceColumn: source.(*numericColumn),
 		Boundaries:   b}, nil
 }

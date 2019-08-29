@@ -67,7 +67,7 @@ func resolveNumericColumn(el *exprlist) (*numericColumn, error) {
 	var shape []int
 	intVal, err := strconv.Atoi((*el)[2].val)
 	if err != nil {
-		list, err := resolveLispExpression((*el)[2])
+		list, _, err := resolveExpression((*el)[2])
 		if err != nil {
 			return nil, err
 		}

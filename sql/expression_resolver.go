@@ -319,41 +319,33 @@ func getExpressionFieldName(expr *expr) (string, error) {
 		return "", err
 	}
 	return fc.GetKey(), nil
-
-	// switch r := result.(type) {
-	// case *columnSpec:
-	// 	return r.ColumnName, nil
-	// case featureColumn:
-	// 	return r.GetKey(), nil
-	// case string:
-	// 	return r, nil
-	// default:
-	// 	return "", fmt.Errorf("getExpressionFieldName: unrecognized type %T", r)
-	// }
 }
 
-// resolveLispExpression returns the actual value of the expression:
-// IDENT -> string
-// [1,2,3] -> []interface{}
-// ["a","b","c"] -> []interface{}
-// [[1,2,3], "b", "c"] -> []interface{}
-func resolveLispExpression(e interface{}) (interface{}, error) {
+// resolveExpression parse the expression recursively and
+// returns the actual value of the expression:
+// featureColumns, columnSpecs, error
+// e.g.
+// column_1 -> "column_1", nil, nil
+// [1,2,3,4] -> [1,2,3,4], nil, nil
+// [NUMERIC(col1), col2] -> [*numericColumn, "col2"], nil, nil
+func resolveExpression(e interface{}) (interface{}, interface{}, error) {
 	if expr, ok := e.(*expr); ok {
 		if expr.typ != 0 {
-			return expr.val, nil
+			return expr.val, nil, nil
 		}
-		return resolveLispExpression(&expr.sexp)
+		return resolveExpression(&expr.sexp)
 	}
-
 	el, ok := e.(*exprlist)
 	if !ok {
-		return nil, fmt.Errorf("input of resolveLispExpression must be `expr` or `exprlist` given %s", e)
+		return nil, nil, fmt.Errorf("input of resolveExpression must be `expr` or `exprlist` given %s", e)
 	}
 	headTyp := (*el)[0].typ
-	if headTyp == 0 {
-		return resolveLispExpression(&(*el)[0].sexp)
+	if headTyp == IDENT {
+		// Expression is a function call
+		return resolveColumn(el)
 	} else if headTyp == '[' {
 		var list []interface{}
+		var columnSpecList []interface{}
 		for idx, expr := range *el {
 			if idx > 0 {
 				if expr.sexp == nil {
@@ -365,21 +357,22 @@ func resolveLispExpression(e interface{}) (interface{}, error) {
 						list = append(list, intVal)
 					}
 				} else {
-					value, err := resolveLispExpression(&expr.sexp)
+					value, cs, err := resolveExpression(&expr.sexp)
 					if err != nil {
-						return nil, err
+						return nil, nil, err
 					}
 					list = append(list, value)
+					columnSpecList = append(columnSpecList, cs)
 				}
 			}
 		}
-		return list, nil
+		return list, columnSpecList, nil
 	}
-	return nil, fmt.Errorf("not supported expr: %v", el)
+	return nil, nil, fmt.Errorf("not supported expr: %v", el)
 }
 
 func expression2string(e interface{}) (string, error) {
-	resolved, err := resolveLispExpression(e)
+	resolved, _, err := resolveExpression(e)
 	if err != nil {
 		return "", err
 	}

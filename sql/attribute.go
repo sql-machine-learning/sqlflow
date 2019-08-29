@@ -67,9 +67,8 @@ func resolveAttribute(attrs *attrs) (map[string]*attribute, error) {
 		if len(subs) == 2 {
 			prefix = subs[0]
 		}
-		r, err := resolveLispExpression(v)
+		r, _, err := resolveExpression(v)
 		if err != nil {
-			fmt.Printf("%v", err)
 			return nil, err
 		}
 		a := &attribute{

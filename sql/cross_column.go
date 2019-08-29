@@ -75,18 +75,19 @@ func resolveCrossColumn(el *exprlist) (*crossColumn, error) {
 		return nil, fmt.Errorf("bad CROSS expression format: %s", *el)
 	}
 	keysExpr := (*el)[1]
-	keys, err := resolveLispExpression(keysExpr)
+	key, _, err := resolveExpression(keysExpr)
 	if err != nil {
 		return nil, err
 	}
-	if _, ok := keys.([]interface{}); !ok {
-		return nil, fmt.Errorf("bad CROSS keys: %s", err)
+	if _, ok := key.([]interface{}); !ok {
+		return nil, fmt.Errorf("bad CROSS expression format: %s", *el)
 	}
+
 	bucketSize, err := strconv.Atoi((*el)[2].val)
 	if err != nil {
 		return nil, fmt.Errorf("bad CROSS bucketSize: %s, err: %s", (*el)[2].val, err)
 	}
 	return &crossColumn{
-		Keys:           keys.([]interface{}),
+		Keys:           key.([]interface{}),
 		HashBucketSize: bucketSize}, nil
 }
