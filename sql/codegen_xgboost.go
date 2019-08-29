@@ -71,10 +71,10 @@ type xgColumnFields struct {
 }
 
 type xgResultColumnFields struct {
-	ResultColumn   string `json:"result_column,omitempty"`
-	ProbColumn     string `json:"probability_column,omitempty"`
-	DetailColumn   string `json:"detail_column,omitempty"`
-	EncodingColumn string `json:"leaf_column,omitempty"`
+	ResultColumn   string `json:"result_column"`
+	ProbColumn     string `json:"probability_column"`
+	DetailColumn   string `json:"detail_column"`
+	EncodingColumn string `json:"leaf_column"`
 }
 
 type xgFeatureFields struct {
