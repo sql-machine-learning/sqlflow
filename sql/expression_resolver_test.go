@@ -184,77 +184,6 @@ func TestCrossColumn(t *testing.T) {
 	a.Error(e)
 }
 
-func TestCatIdColumn(t *testing.T) {
-	a := assert.New(t)
-	parser := newParser()
-
-	normal := statementWithColumn("CATEGORY_ID(c1, 100)")
-	badKey := statementWithColumn("CATEGORY_ID([100], 100)")
-	badBucket := statementWithColumn("CATEGORY_ID(c1, bad)")
-
-	r, e := parser.Parse(normal)
-	a.NoError(e)
-	c := r.columns["feature_columns"]
-	fcs, _, e := resolveTrainColumns(&c)
-	a.NoError(e)
-	cc, ok := fcs[0].(*categoryIDColumn)
-	a.True(ok)
-	code, e := cc.GenerateCode()
-	a.NoError(e)
-	a.Equal("c1", cc.Key)
-	a.Equal(100, cc.BucketSize)
-	a.Equal("tf.feature_column.categorical_column_with_identity(key=\"c1\", num_buckets=100)", code)
-
-	r, e = parser.Parse(badKey)
-	a.NoError(e)
-	c = r.columns["feature_columns"]
-	fcs, _, e = resolveTrainColumns(&c)
-	a.Error(e)
-
-	r, e = parser.Parse(badBucket)
-	a.NoError(e)
-	c = r.columns["feature_columns"]
-	fcs, _, e = resolveTrainColumns(&c)
-	a.Error(e)
-}
-
-func TestEmbeddingColumn(t *testing.T) {
-	a := assert.New(t)
-	parser := newParser()
-
-	normal := statementWithColumn("EMBEDDING(CATEGORY_ID(c1, 100), 200, mean)")
-	badInput := statementWithColumn("EMBEDDING(c1, 100, mean)")
-	badBucket := statementWithColumn("EMBEDDING(CATEGORY_ID(c1, 100), bad, mean)")
-
-	r, e := parser.Parse(normal)
-	a.NoError(e)
-	c := r.columns["feature_columns"]
-	fcs, _, e := resolveTrainColumns(&c)
-	a.NoError(e)
-	ec, ok := fcs[0].(*embeddingColumn)
-	a.True(ok)
-	code, e := ec.GenerateCode()
-	a.NoError(e)
-	cc, ok := ec.CategoryColumn.(*categoryIDColumn)
-	a.True(ok)
-	a.Equal("c1", cc.Key)
-	a.Equal(100, cc.BucketSize)
-	a.Equal(200, ec.Dimension)
-	a.Equal("tf.feature_column.embedding_column(tf.feature_column.categorical_column_with_identity(key=\"c1\", num_buckets=100), dimension=200, combiner=\"mean\")", code)
-
-	r, e = parser.Parse(badInput)
-	a.NoError(e)
-	c = r.columns["feature_columns"]
-	fcs, _, e = resolveTrainColumns(&c)
-	a.Error(e)
-
-	r, e = parser.Parse(badBucket)
-	a.NoError(e)
-	c = r.columns["feature_columns"]
-	fcs, _, e = resolveTrainColumns(&c)
-	a.Error(e)
-}
-
 func TestAttrs(t *testing.T) {
 	a := assert.New(t)
 	parser := newParser()
@@ -291,20 +220,4 @@ func TestExecResource(t *testing.T) {
 	attr := attrs["exec.worker_num"]
 	fmt.Println(attr)
 
-}
-
-func TestCatIdColumnWithColumnSpec(t *testing.T) {
-	a := assert.New(t)
-	parser := newParser()
-
-	dense := statementWithColumn("CATEGORY_ID(DENSE(col1, 128), 100)")
-	// sparse := statementWithColumn("CATEGORY_ID(SPARSE(col2, 1000, COMMA))")
-
-	r, e := parser.Parse(dense)
-	a.NoError(e)
-	c := r.columns["feature_columns"]
-	fcs, _, e := resolveTrainColumns(&c)
-	a.NoError(e)
-	_, ok := fcs[0].(*categoryIDColumn)
-	a.True(ok)
 }

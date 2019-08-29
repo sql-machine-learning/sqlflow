@@ -63,9 +63,15 @@ func resolveEmbeddingColumn(el *exprlist) (*embeddingColumn, error) {
 		return nil, fmt.Errorf("bad EMBEDDING expression format: %s", *el)
 	}
 	sourceExprList := (*el)[1]
-	source, _, err := resolveColumn(&sourceExprList.sexp)
-	if err != nil {
-		return nil, err
+	var source featureColumn
+	var err error
+	if sourceExprList.typ == 0 {
+		source, _, err = resolveColumn(&sourceExprList.sexp)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, fmt.Errorf("key of EMBEDDING must be categorical column")
 	}
 	// TODO(uuleon) support other kinds of categorical column in the future
 	var catColumn interface{}

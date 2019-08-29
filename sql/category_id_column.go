@@ -133,7 +133,7 @@ func parseCategoryIDColumnExpr(el *exprlist) (string, int, string, *columnSpec, 
 		isSparse := subExprList[0].val == sparse
 		cs, err = resolveColumnSpec(&subExprList, isSparse)
 		if err != nil {
-			return "", 0, "", nil, fmt.Errorf("bad CATEGORY_ID expression format: %s", *el)
+			return "", 0, "", nil, fmt.Errorf("bad CATEGORY_ID expression format: %v", subExprList)
 		}
 		key = cs.ColumnName
 	} else {

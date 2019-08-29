@@ -285,9 +285,8 @@ func resolveTrainColumns(columns *exprlist) ([]featureColumn, []*columnSpec, err
 	var fcs = make([]featureColumn, 0)
 	var css = make([]*columnSpec, 0)
 	for _, expr := range *columns {
-		fmt.Printf("resolve columns: %v\n", expr)
 		if expr.typ != 0 {
-			// only column identifier like "COLUMN a1,b1"
+			// Column identifier like "COLUMN a1,b1"
 			// FIXME(typhoonzero): infer the column spec here.
 			c := &numericColumn{
 				Key:   expr.val,
@@ -300,14 +299,11 @@ func resolveTrainColumns(columns *exprlist) ([]featureColumn, []*columnSpec, err
 			if err != nil {
 				return nil, nil, err
 			}
-			// if cs, ok := result.(*columnSpec); ok {
 			if cs != nil {
 				css = append(css, cs)
-				continue
-			} else if c, ok := result.(featureColumn); ok {
-				fcs = append(fcs, c)
-			} else {
-				return nil, nil, fmt.Errorf("not recognized type: %s", result)
+			}
+			if result != nil {
+				fcs = append(fcs, result)
 			}
 		}
 	}
