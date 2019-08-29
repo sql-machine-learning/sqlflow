@@ -8,44 +8,49 @@ This design doc introduces how to support the `Cluster Model` in SQLFlow.
 
 ## User interface
 
-Users usually use a **TRAIN SQL** to train a model, then use a **Cluster Predict SQL** to predict the clusters and output the results, the simple pipeline like:
+Users usually use a **TRAIN SQL** to train a model in Supervised learning. But, in this scenario, we focus on the extraction of data patterns in unsupervised learning. Therefore, we use **EXTRCT SQL** for pattern extraction, the simple pipeline like:
 
-Train SQL:
+EXTRCT SQL:
 
 ``` sql
 SELECT * FROM train_table
-TRAIN clusterModel
+EXTRCT clusterModel
 WITH
-	model.encode_units = [100, 7]
+    model.encode_units = [100, 7]
     model.n_clusters = 5
 COLUMN m1, m2, m3, m4, m5, m6, m7, m8, m9, m10 
-INTO my_cluster_model;
+INTO my_cluster_model, result_table;
 ```
 
-Cluster Predict SQL:
+PREDICT SQL:
 ``` sql
 SELECT *
-FROM train_table
-PREDICT result_table
+FROM new_table
+PREDICT result_test_table
 USING my_cluster_model;
 ```
 
 where:
-- `train_table` is the table of training data.
-- `model.encode_units` is the autoencoder layer's encoder units
-- `my_cluster_model` is the trained cluster model.
+- `train_table` is the high-dimensional table to be clustered.
+- `model.encode_units` is the autoencoder model layer's encoder units, the decode_units can reverse encode_units directly.
 - `model.n_clusters` is the number of patterns after clustering.
-- `result_table` is the table of cluster result data.
+- `my_cluster_model` is the trained cluster model.
+- `result_table` is the cluster result for train_table.
+- `new_table`: If you want to apply the model that extracts from train_table to the new data new_table directly, you can use **PREDICT SQL**. Note that the structure of new_table is the same as train_table, namely, same feature column.
+- `result_test_table` is the cluster result for new_table.
 
 ## Implement Details
-
+-
 - 
 - 
 
 ## Note
-- Train_table is a high-dimensional table to be clustered
-- Result_table is a result of averaging the data of each dimension according to the clustering result label.
-- Result_table example:
+- The **EXTRCT SQL** includes two models, the autoencode model and the cluster model. 
+First, the former is used to achieve data compression. At training time, the input to this model is train_table (eg. train_table.shape = (10000 * 184)), and the output is also train_table. We only use the output of the trained encode layer (10000*7) as the input to the clustering model.
+Then, the clustering model starts training, randomly initializes weights and multiple iterations, generates clustering models and clustering results of train_table.
+Next, we average each feature in the train_table according to the clustering result category to get the result table.
+Finally, **EXTRCT SQL** outputs two parts, clustering model and the result table are included.
+- The example of result_table:
 | group_id | m1 | m2 | m3 | m4 | m5 | m6 | m7 | m8 | m9 | m10 |
 | ----------- | --------- | --------- | --------- | --------- | --------- | --------- | --------- | --------- | --------- |
 | 0 | 0.017 | 0.015 | 0.013 | 0.012 | 0.01 | 0.01 | 0.009 | 0.008 | 0.008 | 0.008 |
