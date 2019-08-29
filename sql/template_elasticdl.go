@@ -28,26 +28,26 @@ reader = ODPSReader(
     os.environ["MAXCOMPUTE_PROJECT"],
     os.environ["MAXCOMPUTE_AK"],
     os.environ["MAXCOMPUTE_SK"],
-    os.environ["MAXCOMPUTE_ENDPOINT"],
-    table = "{{.ODPSTableName}}",
-    partition = None,
-    num_processes = {{.NumProcesses}},
+    os.environ.get("MAXCOMPUTE_ENDPOINT", None),
+    table="{{.ODPSTableName}}",
+    partition=None,
+    num_processes={{.NumProcesses}},
 )
 
 records_iter = reader.to_iterator(
-    num_workers = 1,
-    worker_index = 0,
-    batch_size = {{.BatchSize}},
-    epoch = 1,
-    shuffle = False,
-    columns = COLUMN_NAMES,
+    num_workers=1,
+    worker_index=0,
+    batch_size={{.BatchSize}},
+    epochs=1,
+    shuffle=False,
+    columns=COLUMN_NAMES,
 )
 
 write_recordio_shards_from_iterator(
     records_iter,
     COLUMN_NAMES,
-    output_dir = "{{.RecordIODataDir}}",
-    records_per_shard = 200,
+    output_dir="{{.RecordIODataDir}}",
+    records_per_shard=200,
 )
 `
 
@@ -59,7 +59,7 @@ import os
 
 import tensorflow as tf
 
-from elasticdl.python.common.constants import Mode, ODPSConfig
+from elasticdl.python.common.constants import Mode
 from elasticdl.python.common.log_util import default_logger as logger
 from elasticdl.python.common.odps_io import ODPSWriter
 from elasticdl.python.worker.prediction_outputs_processor import (
@@ -105,8 +105,9 @@ def dataset_fn(dataset, mode):
             return parsed_example
         {{if .IsTraining}}
         else:
+            labels = tf.cast(parsed_example["{{.LabelColName}}"], tf.int64)
             del parsed_example["{{.LabelColName}}"]
-            return parsed_example, tf.cast(parsed_example["{{.LabelColName}}"], tf.int32)
+            return parsed_example, labels
         {{end}}
 
     dataset = dataset.map(_parse_data)
@@ -125,7 +126,7 @@ def eval_metrics_fn(predictions, labels):
         "accuracy": tf.reduce_mean(
             input_tensor=tf.cast(
                 tf.equal(
-                    tf.argmax(predictions, 1, output_type=tf.dtypes.int32),
+                    tf.argmax(predictions, 1, output_type=tf.dtypes.int64),
                     labels,
                 ),
                 tf.float32,
@@ -142,15 +143,14 @@ class PredictionOutputsProcessor(BasePredictionOutputsProcessor):
                 "MAXCOMPUTE_PROJECT",
                 "MAXCOMPUTE_AK",
                 "MAXCOMPUTE_SK",
-                "MAXCOMPUTE_ENDPOINT",
             )
         ):
             self.odps_writer = ODPSWriter(
                 os.environ["MAXCOMPUTE_PROJECT"],
                 os.environ["MAXCOMPUTE_AK"],
                 os.environ["MAXCOMPUTE_SK"],
-                os.environ["MAXCOMPUTE_ENDPOINT"],
-                table = "{{.PredictOutputTable}}",
+                os.environ.get("MAXCOMPUTE_ENDPOINT", None),
+                table="{{.PredictOutputTable}}",
                 columns=["pred_" + str(i) for i in range({{.OutputShape}})],
                 column_types=["double" for _ in range({{.OutputShape}})],
             )
