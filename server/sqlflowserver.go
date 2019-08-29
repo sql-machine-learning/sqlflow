@@ -62,16 +62,17 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 	sqlStatements := strings.Split(req.Sql, ";")
 	fmt.Printf("@@@@@ start run: %v\n", sqlStatements)
 	for _, singleSQL := range sqlStatements {
-		if singleSQL == "" {
+		sqlToRun := strings.Trim(singleSQL, "\n")
+		if sqlToRun == "" {
 			continue
 		}
 		fmt.Printf("@@@@@ start run: %s\n", singleSQL)
 		var pr *sf.PipeReader
 		startTime := time.Now().UnixNano()
 		if s.enableSession == true {
-			pr = s.run(singleSQL, db, s.modelDir, req.Session)
+			pr = s.run(sqlToRun, db, s.modelDir, req.Session)
 		} else {
-			pr = s.run(singleSQL, db, s.modelDir, nil)
+			pr = s.run(sqlToRun, db, s.modelDir, nil)
 		}
 
 		defer pr.Close()
