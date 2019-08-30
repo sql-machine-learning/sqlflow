@@ -60,13 +60,16 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 	// FIXME(typhoonzero): split by ; can not deal with situations like
 	// "SELECT * from mytable where col <> ';';", should be fixed.
 	sqlStatements := strings.Split(req.Sql, ";")
-	fmt.Printf("@@@@@ start run: %v\n", sqlStatements)
+	trimedStatements := []string{}
 	for _, singleSQL := range sqlStatements {
 		sqlToRun := strings.Trim(singleSQL, "\n")
 		if sqlToRun == "" {
 			continue
 		}
-		fmt.Printf("@@@@@ start run: %s\n", singleSQL)
+		trimedStatements = append(trimedStatements, sqlToRun)
+	}
+	for _, singleSQL := range trimedStatements {
+		sqlToRun := fmt.Sprintf("%s;", singleSQL)
 		var pr *sf.PipeReader
 		startTime := time.Now().UnixNano()
 		if s.enableSession == true {
@@ -98,13 +101,15 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 				return err
 			}
 		}
-		// Send EndOfExecution message
-		eoe := &pb.EndOfExecution{}
-		eoe.Sql = singleSQL
-		eoe.SpentTimeSeconds = time.Now().UnixNano() - startTime
-		eoeResponse := &pb.Response{Response: &pb.Response_Eoe{Eoe: eoe}}
-		if err := stream.Send(eoeResponse); err != nil {
-			return err
+		// Send EndOfExecution message if have multiple requests.
+		if len(trimedStatements) > 1 {
+			eoe := &pb.EndOfExecution{}
+			eoe.Sql = singleSQL
+			eoe.SpentTimeSeconds = time.Now().UnixNano() - startTime
+			eoeResponse := &pb.Response{Response: &pb.Response_Eoe{Eoe: eoe}}
+			if err := stream.Send(eoeResponse); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
