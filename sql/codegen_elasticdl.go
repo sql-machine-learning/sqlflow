@@ -348,7 +348,7 @@ func elasticDLPredict(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, ses
 }
 
 func elasticdlPredictCmd(cwd, modelDefFilePath string, recordIODataDir string, filler *elasticDLFiller) (cmd *exec.Cmd) {
-	if hasDocker() {
+	if hasDocker() && hasElasticDLCmd() {
 		cmd = exec.Command(
 			"elasticdl", "predict",
 			"--image_base", "elasticdl:ci",
@@ -377,7 +377,7 @@ func elasticdlPredictCmd(cwd, modelDefFilePath string, recordIODataDir string, f
 		)
 		cmd.Dir = cwd
 	} else {
-		log.Fatalf("Docker has to be installed to run ElasticDL command")
+		log.Fatalf("Docker and ElasticDL CLI have to be installed to run ElasticDL")
 	}
 	return cmd
 }

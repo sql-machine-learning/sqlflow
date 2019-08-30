@@ -123,3 +123,12 @@ curl -fsSL "$HADOOP_URL" -o /tmp/hadoop.tar.gz
 tar -xzf /tmp/hadoop.tar.gz -C /opt/
 rm -rf /tmp/hadoop.tar.gz
 rm -rf /opt/hadoop-${HADOOP_VERSION}/share/doc
+
+# 11. Install additional dependencies for ElasticDL
+apt install -y docker.io
+# TODO(terrytangyuan): Uncomment once ElasticDL is open sourced
+# git clone https://github.com/wangkuiyi/elasticdl.git
+# cd elasticdl
+# pip install -r elasticdl/requirements.txt
+# python setup.py install
+# cd ..
