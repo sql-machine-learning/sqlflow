@@ -8,8 +8,6 @@ This design doc introduces how to support the `Cluster Model` in SQLFlow.
 
 ## User interface
 
-Users usually use a **TRAIN SQL** to train a model in Supervised learning. But, In this scenario, we focus on the extraction of data patterns in unsupervised learning. Therefore, we use **EXTRCT SQL** for pattern extraction, the simple pipeline like:
-
 In this scenario, we focus on the extraction of data patterns in unsupervised learning. SO, we plan to use a **TRAIN SQL** to train a unsupervised model. We will support whether to perform Pretrain at the beginning of this unsupervised network in `WITH`, and whether to use the already trained model as a pre-training in `USING`. The simple pipeline like:
 
 
@@ -93,13 +91,13 @@ if 'cluster_train_loop' is in classifier:
 - The user can choose whether to run pre_train before the cluster model, ie run_pretrain=true. The user can also choose to load the already trained model by loading the existed_pretrain_model.
 Therefore, there are four cases in total:
 1.  run_pretrain = true & Using model.existed_pretrain_model = None：
-Autoencoder Pretrain + Random initialization weights for cluster. (Note that model.encode_units `is worked` at this time.)
+Autoencoder Pretrain + Random initialization weights for cluster. (Note that model.encode_units `is work` at this time.)
 2.  run_pretrain = true & Using model.existed_pretrain_model = existed_pretrain_model：
-existed_pretrain_model Pretrain+ Random initialization weights for cluster. (Note that model.encode_units `is not worked` at this time.)
+existed_pretrain_model Pretrain+ Random initialization weights for cluster. (Note that model.encode_units `is not work` at this time.)
 3.  run_pretrain = false & Using model.existed_pretrain_model = None: 
-Random initialization weights for cluster. (Note that model.encode_units `is not worked` at this time.)
+Random initialization weights for cluster. (Note that model.encode_units `is not work` at this time.)
 4.  run_pretrain = false & Using model.existed_pretrain_model = existed_pretrain_model：
-existed_pretrain_model Pretrain+ Random initialization weights for cluster. (Note that model.encode_units `is not worked` at this time.)
+existed_pretrain_model Pretrain+ Random initialization weights for cluster. (Note that model.encode_units `is not work` at this time.)
 
 - Users can use the trained cluster model in ` PREDICT SQL` to predict the group of input_table to get output_table.
 - Finally, the user can perform a combined aggregation operation on the output_table based on the SQL statement to obtain a result_table, which can be saved to the local dataframe and then analyzed according to his own needs.
