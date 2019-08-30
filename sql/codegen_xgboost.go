@@ -17,6 +17,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 	"strings"
@@ -763,6 +764,20 @@ func xgCreatePredictionTable(pr *extendedSelect, r *xgboostFiller, db *DB) error
 		return fmt.Errorf("failed executing %s: %q", createStmt, e)
 	}
 	return nil
+}
+
+func genXG(w io.Writer, pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *DB) error {
+	r, e := newXGBoostFiller(pr, ds, fts, db)
+	if e != nil {
+		return e
+	}
+	if pr.train {
+		return xgTemplate.Execute(w, r)
+	}
+	if e := xgCreatePredictionTable(pr, r, db); e != nil {
+		return fmt.Errorf("failed to create prediction table: %v", e)
+	}
+	return xgTemplate.Execute(w, r)
 }
 
 var xgTemplate = template.Must(template.New("codegenXG").Parse(xgTemplateText))
