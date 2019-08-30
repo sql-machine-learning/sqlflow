@@ -123,3 +123,15 @@ curl -fsSL "$HADOOP_URL" -o /tmp/hadoop.tar.gz
 tar -xzf /tmp/hadoop.tar.gz -C /opt/
 rm -rf /tmp/hadoop.tar.gz
 rm -rf /opt/hadoop-${HADOOP_VERSION}/share/doc
+
+# 11. Install additional dependencies for ElasticDL, ElasticDL CLI, and build testing images
+apt-get install -y docker.io sudo
+curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/v1.14.0/bin/linux/amd64/kubectl && chmod +x kubectl && sudo mv kubectl /usr/local/bin/
+# TODO(terrytangyuan): Uncomment once ElasticDL is open sourced
+# git clone https://github.com/wangkuiyi/elasticdl.git
+# cd elasticdl
+# pip install -r elasticdl/requirements.txt
+# python setup.py install
+# docker build -t elasticdl:dev -f elasticdl/docker/Dockerfile.dev .
+# docker build -t elasticdl:ci -f elasticdl/docker/Dockerfile.ci .
+# cd ..
