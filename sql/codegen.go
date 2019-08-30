@@ -68,7 +68,7 @@ type filler struct {
 	Y                  *featureMeta
 	TableName          string
 	modelConfig
-	connectionConfig
+	*connectionConfig
 }
 
 // parseModelURI returns isKerasModel, modelClassString
@@ -211,11 +211,20 @@ func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *D
 		}
 	}
 
-	return fillDatabaseInfo(r, db)
+	r.connectionConfig, err = newConnectionConfig(db)
+	if err == nil && r.Driver == "hive" {
+		// remove the last ';' which leads to a (hive)ParseException
+		r.TrainingDataset = removeLastSemicolon(r.TrainingDataset)
+		r.ValidationDataset = removeLastSemicolon(r.ValidationDataset)
+		r.PredictionDataset = removeLastSemicolon(r.PredictionDataset)
+	}
+	return r, err
 }
 
-func fillDatabaseInfo(r *filler, db *DB) (*filler, error) {
-	r.Driver = db.driverName
+func newConnectionConfig(db *DB) (*connectionConfig, error) {
+	cc := &connectionConfig{
+		Driver: db.driverName,
+	}
 	switch db.driverName {
 	case "mysql":
 		cfg, err := mysql.ParseDSN(db.dataSourceName)
@@ -223,36 +232,32 @@ func fillDatabaseInfo(r *filler, db *DB) (*filler, error) {
 			return nil, err
 		}
 		sa := strings.Split(cfg.Addr, ":")
-		r.Host, r.Port, r.Database = sa[0], sa[1], cfg.DBName
-		r.User, r.Password = cfg.User, cfg.Passwd
+		cc.Host, cc.Port, cc.Database = sa[0], sa[1], cfg.DBName
+		cc.User, cc.Password = cfg.User, cfg.Passwd
 	case "sqlite3":
-		r.Database = db.dataSourceName
+		cc.Database = db.dataSourceName
 	case "hive":
 		cfg, err := gohive.ParseDSN(db.dataSourceName)
 		if err != nil {
 			return nil, err
 		}
-		r.Auth = cfg.Auth
-		r.Session = cfg.SessionCfg
+		cc.Auth = cfg.Auth
+		cc.Session = cfg.SessionCfg
 		sa := strings.Split(cfg.Addr, ":")
-		r.Host, r.Port, r.Database = sa[0], sa[1], cfg.DBName
-		r.User, r.Password = cfg.User, cfg.Passwd
-		// remove the last ';' which leads to a ParseException
-		r.TrainingDataset = removeLastSemicolon(r.TrainingDataset)
-		r.ValidationDataset = removeLastSemicolon(r.ValidationDataset)
-		r.PredictionDataset = removeLastSemicolon(r.PredictionDataset)
+		cc.Host, cc.Port, cc.Database = sa[0], sa[1], cfg.DBName
+		cc.User, cc.Password = cfg.User, cfg.Passwd
 	case "maxcompute":
 		cfg, err := gomaxcompute.ParseDSN(db.dataSourceName)
 		if err != nil {
 			return nil, err
 		}
 		// setting r.Port=0 just makes connect() happy
-		r.Host, r.Port, r.Database = cfg.Endpoint, "0", cfg.Project
-		r.User, r.Password = cfg.AccessID, cfg.AccessKey
+		cc.Host, cc.Port, cc.Database = cfg.Endpoint, "0", cfg.Project
+		cc.User, cc.Password = cfg.AccessID, cfg.AccessKey
 	default:
 		return nil, fmt.Errorf("sqlfow currently doesn't support DB %v", db.driverName)
 	}
-	return r, nil
+	return cc, nil
 }
 
 func removeLastSemicolon(s string) string {
