@@ -108,7 +108,7 @@ type attrs map[string]*expr
 type predictClause struct {
 	predAttrs attrs
 	model     string
-	into      string
+	INTO boston.train     string
 }
 
 type analyzeClause struct {
