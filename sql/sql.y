@@ -89,7 +89,7 @@
 	type predictClause struct {
 		predAttrs attrs
 		model  string
-		INTO boston.train  string
+		into   string
 	}
 
 	type analyzeClause struct {

@@ -68,7 +68,6 @@ function print_usage() {
 
 function main() {
   ARG=${1:-all}
-      echo ${SQLFLOW_MYSQL_HOST}  ${SQLFLOW_MYSQL_PORT}
   case $ARG in
     mysql)
       setup_mysql
