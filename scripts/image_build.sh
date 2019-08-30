@@ -131,4 +131,6 @@ apt install -y docker.io
 # cd elasticdl
 # pip install -r elasticdl/requirements.txt
 # python setup.py install
+# docker build -t elasticdl:dev -f elasticdl/docker/Dockerfile.dev .
+# docker build -t elasticdl:ci -f elasticdl/docker/Dockerfile.ci .
 # cd ..
