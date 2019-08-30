@@ -71,10 +71,10 @@ type xgColumnFields struct {
 }
 
 type xgResultColumnFields struct {
-	ResultColumn   string `json:"result_column,omitempty"`
-	ProbColumn     string `json:"probability_column,omitempty"`
-	DetailColumn   string `json:"detail_column,omitempty"`
-	EncodingColumn string `json:"leaf_column,omitempty"`
+	ResultColumn   string `json:"result_column"`
+	ProbColumn     string `json:"probability_column"`
+	DetailColumn   string `json:"detail_column"`
+	EncodingColumn string `json:"leaf_column"`
 }
 
 type xgFeatureFields struct {
@@ -268,7 +268,6 @@ var xgbTrainAttrSetterMap = map[string]func(*map[string][]string, *xgboostFiller
 var xgbPredAttrSetterMap = map[string]func(*map[string][]string, *xgboostFiller) error{
 	// xgboost output columns (for prediction)
 	"pred.append_columns":  sListPartial("pred.append_columns", func(r *xgboostFiller) *[]string { return &(r.AppendColumns) }),
-	"pred.result_column":   strPartial("pred.result_column", func(r *xgboostFiller) *string { return &(r.ResultColumn) }),
 	"pred.prob_column":     strPartial("pred.prob_column", func(r *xgboostFiller) *string { return &(r.ProbColumn) }),
 	"pred.detail_column":   strPartial("pred.detail_column", func(r *xgboostFiller) *string { return &(r.DetailColumn) }),
 	"pred.encoding_column": strPartial("pred.encoding_column", func(r *xgboostFiller) *string { return &(r.EncodingColumn) }),
@@ -549,7 +548,7 @@ func xgParseEstimator(pr *extendedSelect, filler *xgboostFiller) error {
 		}
 	case "XGBOOST.MULTICLASSIFIER":
 		if obj := filler.Objective; len(obj) == 0 {
-			filler.Objective = "multi:softmax"
+			filler.Objective = "multi:softprob"
 		} else if !strings.HasPrefix(obj, "multi") {
 			return xgParseEstimatorError(pr.estimator, fmt.Errorf("found non multi-class objective(%s)", obj))
 		}
@@ -577,10 +576,6 @@ func newXGBoostFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes
 	if e := xgParseAttr(pr, filler); e != nil {
 		return nil, fmt.Errorf("failed to set xgboost attributes: %v", e)
 	}
-	// set default value of result column field in pred mode
-	if !pr.train && len(filler.ResultColumn) == 0 {
-		filler.ResultColumn = "result"
-	}
 
 	if pr.train {
 		// solve keyword: TRAIN (estimator）
@@ -588,11 +583,23 @@ func newXGBoostFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes
 			return nil, e
 		}
 	} else {
-		// solve keyword: PREDICT (output_table）
-		if len(pr.into) == 0 {
-			return nil, fmt.Errorf("missing output table in xgboost prediction clause")
+		// solve keyword: PREDICT (output_table.result_column）
+		var e error
+		filler.OutputTable, filler.ResultColumn, e = parseTableColumn(pr.into)
+		if e != nil {
+			return nil, fmt.Errorf("invalid predParsed.into, %v", e)
 		}
-		filler.OutputTable = pr.into
+	}
+
+	if !pr.train {
+		// remove detail & prob column field when non-classification objective found
+		classObj := filler.Objective == "binary:logistic" || filler.Objective == "multi:softprob"
+		if len(filler.DetailColumn) > 0 && !classObj {
+			filler.DetailColumn = ""
+		}
+		if len(filler.ProbColumn) > 0 && !classObj {
+			filler.ProbColumn = ""
+		}
 	}
 
 	// solve keyword: COLUMN (column clauses)

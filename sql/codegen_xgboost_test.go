@@ -27,7 +27,7 @@ SELECT *
 FROM iris.train
 TRAIN xgboost.Estimator
 WITH
-	train.objective = "multi:softmax",
+	train.objective = "multi:softprob",
 	train.num_class = 3,
 	train.max_depth = 5,
 	train.eta = 0.3,
@@ -40,12 +40,11 @@ LABEL class INTO sqlflow_models.my_xgboost_model;
 	testXGPredSelectIris = `
 SELECT *
 FROM iris.test
-PREDICT iris.predict
+PREDICT iris.predict.result
 WITH
 	pred.append_columns = [sepal_length, sepal_width, petal_length, petal_width],
 	pred.prob_column = prob,
-	pred.detail_column = detail,
-	pred.encoding_column = encoding
+	pred.detail_column = detail
 USING sqlflow_models.my_xgboost_model;
 `
 )
@@ -151,7 +150,7 @@ WITH
 	train.colsample_bylevel = 0.6,
 	train.max_bin = 128,
 	train.verbosity = 3,
-	train.num_round = 300,
+	train.num_round = 30,
 	train.auto_train = true
 COLUMN a, b, c, d
 LABEL e INTO table_123;
@@ -175,24 +174,22 @@ LABEL e INTO table_123;
 	assertEq(paramMap, "colsample_bylevel", 0.6)
 	assertEq(paramMap, "max_bin", 128)
 	assertEq(paramMap, "verbosity", 3)
-	assertEq(mapData, "num_boost_round", 300)
+	assertEq(mapData, "num_boost_round", 30)
 	assertEq(mapData, "auto_train", true)
 
 	predClause := `
 SELECT a, b, c, d, e FROM table_xx
-PREDICT table_yy
+PREDICT table_yy.prediction_results
 WITH
-	pred.detail_column = "prediction_detail",
 	pred.prob_column = "prediction_probability",
 	pred.encoding_column = "prediction_leafs",
-	pred.result_column = "prediction_results",
+	pred.detail_column = "prediction_detail",
 	pred.append_columns = ["AA", "BB", "CC"]
 USING sqlflow_models.my_xgboost_model;
 `
 	filler = parseAndFill(predClause)
 	a.EqualValues([]string{"AA", "BB", "CC"}, filler.AppendColumns)
 	a.EqualValues("prediction_probability", filler.ProbColumn)
-	a.EqualValues("prediction_results", filler.ResultColumn)
 	a.EqualValues("prediction_detail", filler.DetailColumn)
 	a.EqualValues("prediction_leafs", filler.EncodingColumn)
 }
@@ -386,4 +383,13 @@ LABEL e INTO model_table;
 
 	filler.StandardSelect, filler.validDataSource.StandardSelect = "", ""
 	a.EqualValues(filler.xgDataSourceFields, filler.validDataSource)
+
+	pr, e = parser.Parse(testPredictSelectIris)
+	a.NoError(e)
+	fts, e = verify(pr, testDB)
+	a.NoError(e)
+	filler, e = newXGBoostFiller(pr, nil, fts, testDB)
+	a.NoError(e)
+	a.Equal("class", filler.ResultColumn)
+	a.Equal("iris.predict", filler.OutputTable)
 }
