@@ -368,7 +368,7 @@ func (cw *logChanWriter) Close() {
 
 func buildFiller(es *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *DB) (filler interface{}, e error) {
 	// trainAndValDataset only work in train mode
-	var dataset *trainAndValDataset = nil
+	var dataset *trainAndValDataset
 	if es.train {
 		dataset = ds
 	}
