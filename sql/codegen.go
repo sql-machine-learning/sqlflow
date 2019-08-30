@@ -276,6 +276,9 @@ func genTF(w io.Writer, pr *extendedSelect, ds *trainAndValDataset, fts fieldTyp
 	if pr.train {
 		return tfTrainTemplate.Execute(w, r)
 	}
+	if e := createPredictionTable(pr, db); e != nil {
+		return fmt.Errorf("failed to create prediction table: %v", e)
+	}
 	return tfPredTemplate.Execute(w, r)
 }
 

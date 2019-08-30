@@ -181,7 +181,8 @@ func TestCreatePredictionTable(t *testing.T) {
 	a.NoError(e)
 	predParsed, e := newParser().Parse(testPredictSelectIris)
 	a.NoError(e)
-	a.NoError(createPredictionTable(trainParsed, predParsed, testDB))
+	predParsed.trainClause = trainParsed.trainClause
+	a.NoError(createPredictionTable(predParsed, testDB))
 }
 
 func TestIsQuery(t *testing.T) {

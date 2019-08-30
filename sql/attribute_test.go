@@ -14,38 +14,32 @@
 package sql
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-const (
-	trainStatement = `select c1, c2, c3 from kaggle_credit_fraud_training_data 
-		TRAIN DNNClassifier 
-		WITH 
-			%v
-		COLUMN
-			%v
-		LABEL c3 INTO model_table;`
-)
-
-func statementWithColumn(column string) string {
-	return fmt.Sprintf(trainStatement, "estimator.hidden_units = [10, 20]", column)
-}
-
-func statementWithAttrs(attrs string) string {
-	return fmt.Sprintf(trainStatement, attrs, "DENSE(c2, 5, comma)")
-}
-
-func TestExecResource(t *testing.T) {
+func TestAttrs(t *testing.T) {
 	a := assert.New(t)
 	parser := newParser()
-	s := statementWithAttrs("exec.worker_num = 2")
+
+	s := statementWithAttrs("estimator.hidden_units = [10, 20]")
 	r, e := parser.Parse(s)
 	a.NoError(e)
 	attrs, err := resolveAttribute(&r.trainAttrs)
 	a.NoError(err)
-	attr := attrs["exec.worker_num"]
-	a.Equal(attr.Value, "2")
+	attr := attrs["estimator.hidden_units"]
+	a.Equal("estimator", attr.Prefix)
+	a.Equal("hidden_units", attr.Name)
+	a.Equal([]interface{}([]interface{}{10, 20}), attr.Value)
+
+	s = statementWithAttrs("dataset.name = hello")
+	r, e = parser.Parse(s)
+	a.NoError(e)
+	attrs, err = resolveAttribute(&r.trainAttrs)
+	a.NoError(err)
+	attr = attrs["dataset.name"]
+	a.Equal("dataset", attr.Prefix)
+	a.Equal("name", attr.Name)
+	a.Equal("hello", attr.Value)
 }
