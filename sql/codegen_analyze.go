@@ -14,23 +14,23 @@
 package sql
 
 type analyzeFiller struct {
-	Dataset string
 	*connectionConfig
+	Columns []string
+	Label   string
 	// feature names:
 	// model: booster
 	// model file
 	// explainer: TreeExplainer
 }
 
-func newAnalyzeFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *DB) (*analyzeFiller, error) {
-	training, _ := trainingAndValidationDataset(pr, ds)
+func newAnalyzeFiller(db *DB, columns []string, label string) (*analyzeFiller, error) {
 	conn, err := newConnectionConfig(db)
 	if err != nil {
 		return nil, err
 	}
-	fr := &analyzeFiller{
-		Dataset:          training,
+	return &analyzeFiller{
 		connectionConfig: conn,
-	}
-	return fr, nil
+		Columns:          columns,
+		Label:            label,
+	}, nil
 }

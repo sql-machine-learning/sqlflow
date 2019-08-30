@@ -321,9 +321,7 @@ LABEL e INTO model_table;
 `
 	pr, e := parser.Parse(trainClause)
 	a.NoError(e)
-	fts, e := verify(pr, testDB)
-	a.NoError(e)
-	filler, e := newXGBoostFiller(pr, nil, fts, testDB)
+	filler, e := newXGBoostFiller(pr, nil, testDB)
 	a.NoError(e)
 
 	a.True(filler.IsTrain)
@@ -369,7 +367,7 @@ LABEL e INTO model_table;
 
 	// test with trainAndValDataset
 	ds := &trainAndValDataset{training: "TrainTable", validation: "EvalTable"}
-	filler, e = newXGBoostFiller(pr, ds, fts, testDB)
+	filler, e = newXGBoostFiller(pr, ds, testDB)
 	a.NoError(e)
 	trainSlct := removeLastSemicolon(strings.Replace(filler.StandardSelect, "\n", " ", -1))
 	a.EqualValues("SELECT * FROM TrainTable", trainSlct)
@@ -386,9 +384,7 @@ LABEL e INTO model_table;
 
 	pr, e = parser.Parse(testPredictSelectIris)
 	a.NoError(e)
-	fts, e = verify(pr, testDB)
-	a.NoError(e)
-	filler, e = newXGBoostFiller(pr, nil, fts, testDB)
+	filler, e = newXGBoostFiller(pr, nil, testDB)
 	a.NoError(e)
 	a.Equal("class", filler.ResultColumn)
 	a.Equal("iris.predict", filler.OutputTable)

@@ -373,17 +373,9 @@ func buildFiller(es *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db 
 		dataset = ds
 	}
 	if strings.HasPrefix(strings.ToUpper(es.estimator), `XGBOOST.`) {
-		filler, e = newXGBoostFiller(es, dataset, fts, db)
-		if e != nil {
-			e = fmt.Errorf("failed to build XGBoostFiller: %v", e)
-		}
-	} else {
-		filler, e = newFiller(es, dataset, fts, db)
-		if e != nil {
-			e = fmt.Errorf("failed to build TensorFlowFiller: %v", e)
-		}
+		return newXGBoostFiller(es, dataset, db)
 	}
-	return filler, e
+	return newFiller(es, dataset, fts, db)
 }
 
 func train(wr *PipeWriter, tr *extendedSelect, db *DB, cwd string, modelDir string, slct string, ds *trainAndValDataset) error {
@@ -480,25 +472,42 @@ func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir strin
 	return cmd.Run()
 }
 
+func readFeatureNames(es *extendedSelect, db *DB) ([]string, string, error) {
+	if strings.HasPrefix(strings.ToUpper(es.estimator), `XGBOOST.`) {
+		// TODO(weiguo): It's a quick way to read column and label names,
+		//  but too heavy.
+		xgbFiller, err := newXGBoostFiller(es, nil, db)
+		if err != nil {
+			return nil, "", err
+		}
+		return xgbFiller.FeatureColumns, xgbFiller.Label, nil
+	}
+	return nil, "", fmt.Errorf("analyzer: model[%s] not supported", es.estimator)
+}
+
 func analyze(wr *PipeWriter, es *extendedSelect, db *DB, cwd string, modelDir string) error {
-	//pr, fts, e := loadModelMeta(es, db, cwd, modelDir)
-	//if e != nil {
-	//	return fmt.Errorf("loadModelMeta %v", e)
-	//}
-	//filler, e := buildFiller(pr, nil, fts, db)
-	//if e != nil {
-	//	return e
-	//}
-	//switch filler.(type) {
-	//case *xgboostFiller:
-	//
-	//default:
-	//
-	//}
+	pr, _, err := loadModelMeta(es, db, cwd, modelDir)
+	if err != nil {
+		return fmt.Errorf("loadModelMeta %v", err)
+	}
+
+	var buf bytes.Buffer
+	columns, label, err := readFeatureNames(pr, db)
+	if err != nil {
+		return fmt.Errorf("read feature names err: %v", err)
+	}
+	fr, err := newAnalyzeFiller(db, columns, label)
+	if err != nil {
+		return fmt.Errorf("create analyze filler failed: %v", err)
+	}
+	if err = analyzeTemplate.Execute(&buf, fr); err != nil {
+		return fmt.Errorf("execute analyze template failed: %v", err)
+	}
+
 	cmd := exec.Command("python", "-u")
 	cmd.Dir = cwd
-	cmd.Stdin = strings.NewReader(analyzeTemplateText)
-	_, err := cmd.CombinedOutput()
+	cmd.Stdin = &buf
+	_, err = cmd.CombinedOutput()
 	if err != nil {
 		return err
 	}
