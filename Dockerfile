@@ -24,7 +24,7 @@ RUN bash /image_build.sh && rm -f /image_build.sh
 VOLUME /var/lib/mysql
 
 # Prepare sample datasets
-COPY example/datasets/popularize_churn.sql example/datasets/popularize_iris.sql example/datasets/create_model_db.sql /docker-entrypoint-initdb.d/
+COPY example/datasets/popularize_churn.sql example/datasets/popularize_iris.sql example/datasets/popularize_boston.sql example/datasets/create_model_db.sql /docker-entrypoint-initdb.d/
 
 ADD scripts/start.sh /
 CMD ["bash", "/start.sh"]
