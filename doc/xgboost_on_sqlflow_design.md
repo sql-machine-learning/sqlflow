@@ -42,7 +42,7 @@ where:
 XGBoost using `DMatrix` as the input structure, according to [Text Input Format of DMatrix](https://xgboost.readthedocs.io/en/latest/tutorials/input_format.html), we prefer to implement refuse `db.generator` and 
 generate text files as LibSVM format.
 
-- For the basic input format, `db_geneator` would yield `(features, label)` for each iteration
+- For the **basic** input format, `db_geneator` would yield `(features, label)` for each iteration
 
     the train table can be like:
 
@@ -63,7 +63,7 @@ generate text files as LibSVM format.
     2 0:0.77 1:4.0 2:2.6 
     ```
 
-- For the group information, users can easy to specify the group column by `train.group_column` in the WITH statement
+- For the **group** input format, users can easy to specify the group column by `train.group_column` in the WITH statement
 , just like:
 
     ``` sql
@@ -92,7 +92,7 @@ generate text files as LibSVM format.
     1
     ```
 
-- For the `Weight` information, users can specify the weight column like `group`:
+- For the **weight** input format, users can specify the weight column like `group`:
 
     ``` sql
     SELECT * FROM train_table
