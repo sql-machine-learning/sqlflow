@@ -16,7 +16,7 @@ import os
 
 from launcher import register_data_source, config_helper, config_fields as cf, train, predict
 
-from sqlflow_submitter.ant_xgboost.common import XGBoostError
+from sqlflow_submitter.ant_xgboost.common import AntXGBoostError
 from sqlflow_submitter.ant_xgboost.sqlflow_data_source import SQLFlowDSConfig, SQLFlowDataSource
 
 register_data_source('sqlflow', SQLFlowDSConfig, SQLFlowDataSource)
@@ -29,7 +29,7 @@ def run_with_sqlflow(mode: str,
                      column_config: str,
                      valid_data_source_config: str = None):
     if mode not in (cf.JobType.TRAIN, cf.JobType.PREDICT):
-        raise XGBoostError('Unknown run mode(%s) of ant-xgboost launcher.' % mode)
+        raise AntXGBoostError('Unknown run mode(%s) of ant-xgboost launcher.' % mode)
     is_train = mode == cf.JobType.TRAIN
 
     def parse_json_str(string: str):
@@ -71,10 +71,10 @@ def run_with_sqlflow(mode: str,
             train_fields = cf.TrainFields(learning_fields, data_fields, model_fields)
             train(train_fields)
         except Exception as e:
-            raise XGBoostError('XGBoost training task failed: %s' % e)
+            raise AntXGBoostError('XGBoost training task failed: %s' % e)
     else:
         try:
             pred_fields = cf.PredictFields(data_fields, model_fields)
             predict(pred_fields)
         except Exception as e:
-            raise XGBoostError('XGBoost prediction task failed: %s' % e)
+            raise AntXGBoostError('XGBoost prediction task failed: %s' % e)

@@ -19,7 +19,7 @@ from typing import Iterator
 from launcher import DataSource, config_fields, XGBoostResult, XGBoostRecord
 from launcher.data_units import RecordBuilder
 
-from .common import XGBoostError
+from .common import AntXGBoostError
 from ..db import connect, db_generator, buffered_db_writer
 
 
@@ -40,7 +40,7 @@ class FeatureMeta(typing.NamedTuple):
         elif isinstance(value, typing.List):
             return value
         else:
-            raise XGBoostError('invalid shape %s of FeatureMeta' % value)
+            raise AntXGBoostError('invalid shape %s of FeatureMeta' % value)
 
 
 class SQLFlowDSConfig(typing.NamedTuple):
@@ -63,11 +63,11 @@ class SQLFlowDataSource(DataSource):
                  source_conf):
         super().__init__(rank, num_worker, column_conf, source_conf)
         if not isinstance(source_conf, SQLFlowDSConfig):
-            raise XGBoostError("SQLFlowDataSource: invalid source conf")
+            raise AntXGBoostError("SQLFlowDataSource: invalid source conf")
 
         # TODO: support tf.feature_column transformation
         if source_conf.is_tf_integrated:
-            raise XGBoostError('So far, tf transformation is not supported in xgboost job.')
+            raise AntXGBoostError('So far, tf transformation is not supported in xgboost job.')
 
         self._train = source_conf.is_train
         self._rcd_builder = RecordBuilder(column_conf.features)
@@ -144,7 +144,7 @@ class SQLFlowDataSource(DataSource):
 
         if not self._train:
             if not source_conf.output_table:
-                raise XGBoostError('Output_table must be defined in xgboost prediction job.')
+                raise AntXGBoostError('Output_table must be defined in xgboost prediction job.')
 
     def _read_impl(self):
         label = None

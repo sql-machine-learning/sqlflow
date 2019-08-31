@@ -13,6 +13,6 @@
 
 from .sqlflow_data_source import SQLFlowDataSource, SQLFlowDSConfig
 from .sqlflow_ant_xgboost_main import run_with_sqlflow
-from .common import XGBoostError
+from .common import AntXGBoostError
 
-__all__ = ['run_with_sqlflow', 'SQLFlowDataSource', 'SQLFlowDSConfig', 'XGBoostError']
+__all__ = ['run_with_sqlflow', 'SQLFlowDataSource', 'SQLFlowDSConfig', 'AntXGBoostError']

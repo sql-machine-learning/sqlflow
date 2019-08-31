@@ -12,5 +12,5 @@
 # limitations under the License.
 
 
-class XGBoostError(Exception):
+class AntXGBoostError(Exception):
     pass
