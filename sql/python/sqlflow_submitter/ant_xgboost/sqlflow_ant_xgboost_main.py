@@ -16,8 +16,8 @@ import os
 
 from launcher import register_data_source, config_helper, config_fields as cf, train, predict
 
-from sqlflow_submitter.xgboost.common import XGBoostError
-from sqlflow_submitter.xgboost.sqlflow_data_source import SQLFlowDSConfig, SQLFlowDataSource
+from sqlflow_submitter.ant_xgboost.common import XGBoostError
+from sqlflow_submitter.ant_xgboost.sqlflow_data_source import SQLFlowDSConfig, SQLFlowDataSource
 
 register_data_source('sqlflow', SQLFlowDSConfig, SQLFlowDataSource)
 
@@ -29,7 +29,7 @@ def run_with_sqlflow(mode: str,
                      column_config: str,
                      valid_data_source_config: str = None):
     if mode not in (cf.JobType.TRAIN, cf.JobType.PREDICT):
-        raise XGBoostError('Unknown run mode(%s) of xgboost launcher.' % mode)
+        raise XGBoostError('Unknown run mode(%s) of ant-xgboost launcher.' % mode)
     is_train = mode == cf.JobType.TRAIN
 
     def parse_json_str(string: str):

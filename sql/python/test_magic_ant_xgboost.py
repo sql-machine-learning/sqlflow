@@ -24,7 +24,7 @@ class TestSQLFlowMagic(unittest.TestCase):
     train_statement = """
 SELECT *
 FROM iris.train
-TRAIN xgboost.Estimator
+TRAIN antxgboost.Estimator
 WITH
 	train.objective = "multi:softprob",
 	train.num_class = 3,
@@ -46,7 +46,7 @@ WITH
 USING sqlflow_models.my_xgboost_model;
 """
 
-    def test_xgboost(self):
+    def test_antxgboost(self):
         ipython.run_cell_magic("sqlflow", "", self.train_statement)
         ipython.run_cell_magic("sqlflow", "", self.pred_statement)
 
