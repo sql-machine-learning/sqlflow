@@ -583,7 +583,7 @@ func newXGBoostFiller(pr *extendedSelect, ds *trainAndValDataset, db *DB) (*xgbo
 		if e := xgParseEstimator(pr, filler); e != nil {
 			return nil, e
 		}
-	} else {
+	} else if !pr.analyze {
 		// solve keyword: PREDICT (output_table.result_column）
 		var e error
 		filler.OutputTable, filler.ResultColumn, e = parseTableColumn(pr.into)
@@ -681,7 +681,7 @@ func xgFillDatabaseInfo(r *xgDataSourceFields, db *DB) error {
 		r.Host, r.Port, r.Database = sa[0], sa[1], cfg.DBName
 		r.User, r.Password = cfg.User, cfg.Passwd
 		// remove the last ';' which leads to a ParseException
-		r.StandardSelect = removeLastSemicolon(r.StandardSelect)
+		r.StandardSelect = trimTailOf(r.StandardSelect, ';')
 	case "maxcompute":
 		cfg, err := gomaxcompute.ParseDSN(db.dataSourceName)
 		if err != nil {

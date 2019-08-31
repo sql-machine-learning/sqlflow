@@ -214,9 +214,9 @@ func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *D
 	r.connectionConfig, err = newConnectionConfig(db)
 	if err == nil && r.Driver == "hive" {
 		// remove the last ';' which leads to a (hive)ParseException
-		r.TrainingDataset = removeLastSemicolon(r.TrainingDataset)
-		r.ValidationDataset = removeLastSemicolon(r.ValidationDataset)
-		r.PredictionDataset = removeLastSemicolon(r.PredictionDataset)
+		r.TrainingDataset = trimTailOf(r.TrainingDataset, ';')
+		r.ValidationDataset = trimTailOf(r.ValidationDataset, ';')
+		r.PredictionDataset = trimTailOf(r.PredictionDataset, ';')
 	}
 	return r, err
 }
@@ -260,9 +260,9 @@ func newConnectionConfig(db *DB) (*connectionConfig, error) {
 	return cc, nil
 }
 
-func removeLastSemicolon(s string) string {
+func trimTailOf(s string, c byte) string {
 	n := len(s)
-	if n > 0 && s[n-1] == ';' {
+	if n > 0 && s[n-1] == c {
 		return s[0 : n-1]
 	}
 	return s

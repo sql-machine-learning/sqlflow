@@ -412,13 +412,13 @@ func train(wr *PipeWriter, tr *extendedSelect, db *DB, cwd string, modelDir stri
 	return m.save(db, tr.save)
 }
 
-func loadModelMeta(pr *extendedSelect, db *DB, cwd string, modelDir string) (*extendedSelect, fieldTypes, error) {
+func loadModelMeta(pr *extendedSelect, db *DB, cwd, modelDir, modelName string) (*extendedSelect, fieldTypes, error) {
 	var m *model
 	var e error
 	if modelDir != "" {
-		m, e = loadTar(modelDir, cwd, pr.model)
+		m, e = loadTar(modelDir, cwd, modelName)
 	} else {
-		m, e = load(db, pr.model, cwd)
+		m, e = load(db, modelName, cwd)
 	}
 	if e != nil {
 		return nil, nil, fmt.Errorf("load %v", e)
@@ -445,7 +445,7 @@ func loadModelMeta(pr *extendedSelect, db *DB, cwd string, modelDir string) (*ex
 }
 
 func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir string) error {
-	pr, fts, e := loadModelMeta(pr, db, cwd, modelDir)
+	pr, fts, e := loadModelMeta(pr, db, cwd, modelDir, pr.model)
 	if e != nil {
 		return fmt.Errorf("loadModelMeta %v", e)
 	}
@@ -472,43 +472,15 @@ func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir strin
 	return cmd.Run()
 }
 
-func readFeatureNames(es *extendedSelect, db *DB) ([]string, string, error) {
-	if strings.HasPrefix(strings.ToUpper(es.estimator), `XGBOOST.`) {
-		// TODO(weiguo): It's a quick way to read column and label names,
-		//  but too heavy.
-		xgbFiller, err := newXGBoostFiller(es, nil, db)
-		if err != nil {
-			return nil, "", err
-		}
-		return xgbFiller.FeatureColumns, xgbFiller.Label, nil
-	}
-	return nil, "", fmt.Errorf("analyzer: model[%s] not supported", es.estimator)
-}
-
-func analyze(wr *PipeWriter, es *extendedSelect, db *DB, cwd string, modelDir string) error {
-	pr, _, err := loadModelMeta(es, db, cwd, modelDir)
+func analyze(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir string) error {
+	program, err := genAnalyzer(pr, db, cwd, modelDir)
 	if err != nil {
-		return fmt.Errorf("loadModelMeta %v", err)
+		return err
 	}
-
-	var buf bytes.Buffer
-	columns, label, err := readFeatureNames(pr, db)
-	if err != nil {
-		return fmt.Errorf("read feature names err: %v", err)
-	}
-	fr, err := newAnalyzeFiller(db, columns, label)
-	if err != nil {
-		return fmt.Errorf("create analyze filler failed: %v", err)
-	}
-	if err = analyzeTemplate.Execute(&buf, fr); err != nil {
-		return fmt.Errorf("execute analyze template failed: %v", err)
-	}
-
 	cmd := exec.Command("python", "-u")
 	cmd.Dir = cwd
-	cmd.Stdin = &buf
-	_, err = cmd.CombinedOutput()
-	if err != nil {
+	cmd.Stdin = program
+	if _, err = cmd.CombinedOutput(); err != nil {
 		return err
 	}
 

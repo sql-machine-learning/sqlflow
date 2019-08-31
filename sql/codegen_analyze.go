@@ -13,6 +13,12 @@
 
 package sql
 
+import (
+	"bytes"
+	"fmt"
+	"strings"
+)
+
 type analyzeFiller struct {
 	*connectionConfig
 	Columns []string
@@ -33,4 +39,37 @@ func newAnalyzeFiller(db *DB, columns []string, label string) (*analyzeFiller, e
 		Columns:          columns,
 		Label:            label,
 	}, nil
+}
+
+func readFeatureNames(pr *extendedSelect, db *DB) ([]string, string, error) {
+	if strings.HasPrefix(strings.ToUpper(pr.estimator), `XGBOOST.`) {
+		// TODO(weiguo): It's a quick way to read column and label names from
+		// xgboost.*, but too heavy.
+		xgbFiller, err := newXGBoostFiller(pr, nil, db)
+		if err != nil {
+			return nil, "", err
+		}
+		return xgbFiller.FeatureColumns, xgbFiller.Label, nil
+	}
+	return nil, "", fmt.Errorf("analyzer: model[%s] not supported", pr.estimator)
+}
+
+func genAnalyzer(pr *extendedSelect, db *DB, cwd string, modelDir string) (*bytes.Buffer, error) {
+	pr, _, err := loadModelMeta(pr, db, cwd, modelDir, pr.trainedModel)
+	if err != nil {
+		return nil, fmt.Errorf("loadModelMeta %v", err)
+	}
+
+	columns, label, err := readFeatureNames(pr, db)
+	if err != nil {
+		return nil, fmt.Errorf("read feature names err: %v", err)
+	}
+	fr, err := newAnalyzeFiller(db, columns, label)
+	if err != nil {
+		return nil, fmt.Errorf("create analyze filler failed: %v", err)
+	}
+
+	var program bytes.Buffer
+	err = analyzeTemplate.Execute(&program, fr)
+	return &program, err
 }

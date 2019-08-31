@@ -36,7 +36,12 @@ WITH
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class INTO sqlflow_models.my_xgboost_model;
 `
-
+	testXGAnalyzeSelectIris = `
+SELECT *
+FROM iris.train
+ANALYZE sqlflow_models.my_xgboost_model
+USING TreeExplainer;
+	`
 	testXGPredSelectIris = `
 SELECT *
 FROM iris.test
@@ -325,7 +330,7 @@ LABEL e INTO model_table;
 	a.NoError(e)
 
 	a.True(filler.IsTrain)
-	stdSlct := removeLastSemicolon(strings.Replace(filler.StandardSelect, "\n", " ", -1))
+	stdSlct := trimTailOf(strings.Replace(filler.StandardSelect, "\n", " ", -1), ';')
 	a.EqualValues("SELECT * FROM iris.train", stdSlct)
 	a.EqualValues("model_table", filler.ModelPath)
 
@@ -369,9 +374,9 @@ LABEL e INTO model_table;
 	ds := &trainAndValDataset{training: "TrainTable", validation: "EvalTable"}
 	filler, e = newXGBoostFiller(pr, ds, testDB)
 	a.NoError(e)
-	trainSlct := removeLastSemicolon(strings.Replace(filler.StandardSelect, "\n", " ", -1))
+	trainSlct := trimTailOf(strings.Replace(filler.StandardSelect, "\n", " ", -1), ';')
 	a.EqualValues("SELECT * FROM TrainTable", trainSlct)
-	evalSlct := removeLastSemicolon(strings.Replace(filler.validDataSource.StandardSelect, "\n", " ", -1))
+	evalSlct := trimTailOf(strings.Replace(filler.validDataSource.StandardSelect, "\n", " ", -1), ';')
 	a.EqualValues("SELECT * FROM EvalTable", evalSlct)
 
 	vdsFields := &xgDataSourceFields{}
