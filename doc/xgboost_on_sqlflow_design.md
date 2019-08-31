@@ -29,7 +29,7 @@ We prefer users to execute the SQLFlow Train/Predict SQL as follows:
 where:
 - `my_xgb_model` is the trained model.
 - The keyword `XGBOOST` is used to distinguish with the Tensorflow Model.
-- The prefix `train.` in `WITH` statement mappings to the training arguments of XGBoost [train function](https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.train) except the `params` arguments.
+- The prefix `train.` in `WITH` statement mappings to the training arguments of XGBoost [train function](https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.train).
 - The prefix `model.` in `WITH` statement mappings to the [XGBoost Parameters](https://xgboost.readthedocs.io/en/latest/parameter.html);
 
 `codegen_xgboost.go` would generate a XGBoost Python program accoding to the XGBoost SQL including:
