@@ -519,7 +519,7 @@ func xgParseColumns(pr *extendedSelect, filler *antXGBoostFiller) error {
 		}
 	}
 	// in predict mode, ignore label info
-	if pr.train {
+	if pr.train || pr.analyze {
 		filler.LabelField = &xgFeatureMeta{
 			FeatureName: pr.label,
 		}
@@ -566,7 +566,7 @@ func xgParseEstimator(pr *extendedSelect, filler *antXGBoostFiller) error {
 	return nil
 }
 
-func newXGBoostFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *DB) (*antXGBoostFiller, error) {
+func newAntXGBoostFiller(pr *extendedSelect, ds *trainAndValDataset, db *DB) (*antXGBoostFiller, error) {
 	filler := &antXGBoostFiller{
 		ModelPath: pr.save,
 	}
@@ -583,7 +583,7 @@ func newXGBoostFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes
 		if e := xgParseEstimator(pr, filler); e != nil {
 			return nil, e
 		}
-	} else {
+	} else if !pr.analyze {
 		// solve keyword: PREDICT (output_table.result_column）
 		var e error
 		filler.OutputTable, filler.ResultColumn, e = parseTableColumn(pr.into)
@@ -681,7 +681,7 @@ func xgFillDatabaseInfo(r *xgDataSourceFields, db *DB) error {
 		r.Host, r.Port, r.Database = sa[0], sa[1], cfg.DBName
 		r.User, r.Password = cfg.User, cfg.Passwd
 		// remove the last ';' which leads to a ParseException
-		r.StandardSelect = removeLastSemicolon(r.StandardSelect)
+		r.StandardSelect = strings.TrimSuffix(r.StandardSelect, ";")
 	case "maxcompute":
 		cfg, err := gomaxcompute.ParseDSN(db.dataSourceName)
 		if err != nil {
@@ -767,7 +767,7 @@ func xgCreatePredictionTable(pr *extendedSelect, r *antXGBoostFiller, db *DB) er
 }
 
 func genXG(w io.Writer, pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *DB) error {
-	r, e := newXGBoostFiller(pr, ds, fts, db)
+	r, e := newAntXGBoostFiller(pr, ds, db)
 	if e != nil {
 		return e
 	}

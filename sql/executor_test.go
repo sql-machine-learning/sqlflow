@@ -71,7 +71,7 @@ func TestSplitExtendedSQL(t *testing.T) {
 	a.Equal(`train a with b;`, s[0])
 }
 
-func TestExecutorTrainAndPredictAntXGBoost(t *testing.T) {
+func TestExecutorTrainAnalyzePredictAntXGBoost(t *testing.T) {
 	a := assert.New(t)
 	modelDir, e := ioutil.TempDir("/tmp", "sqlflow_models")
 	a.Nil(e)
@@ -80,7 +80,10 @@ func TestExecutorTrainAndPredictAntXGBoost(t *testing.T) {
 		stream := runExtendedSQL(testAntXGTrainSelectIris, testDB, modelDir, nil)
 		a.True(goodStream(stream.ReadAll()))
 
-		stream = runExtendedSQL(testAntXGPredSelectIris, testDB, modelDir, nil)
+		stream = runExtendedSQL(testAntXGAnalyzeSelectIris, testDB, modelDir, nil)
+		a.True(goodStream(stream.ReadAll()))
+
+		stream = runExtendedSQL(testXGPredSelectIris, testDB, modelDir, nil)
 		a.True(goodStream(stream.ReadAll()))
 	})
 }
@@ -135,18 +138,6 @@ USING sqlflow_models.my_dense_dnn_model
 ;`, testDB, "", nil)
 		a.True(goodStream(stream.ReadAll()))
 	})
-}
-
-func TestAnalyzeSQL(t *testing.T) {
-	a := assert.New(t)
-
-	a.NotPanics(func() {
-		stream := Run(`select * from mytable
-ANALYZE my_model
-USING TreeExplainer;`, testDB, "", nil)
-		a.True(goodStream(stream.ReadAll()))
-	})
-
 }
 
 func TestStandardSQL(t *testing.T) {
