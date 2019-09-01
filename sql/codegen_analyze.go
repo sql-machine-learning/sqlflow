@@ -23,10 +23,6 @@ type analyzeFiller struct {
 	*connectionConfig
 	Columns []string
 	Label   string
-	// feature names:
-	// model: booster
-	// model file
-	// explainer: TreeExplainer
 }
 
 func newAnalyzeFiller(db *DB, columns []string, label string) (*analyzeFiller, error) {

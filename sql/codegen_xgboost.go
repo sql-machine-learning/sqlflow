@@ -681,7 +681,7 @@ func xgFillDatabaseInfo(r *xgDataSourceFields, db *DB) error {
 		r.Host, r.Port, r.Database = sa[0], sa[1], cfg.DBName
 		r.User, r.Password = cfg.User, cfg.Passwd
 		// remove the last ';' which leads to a ParseException
-		r.StandardSelect = trimTailOf(r.StandardSelect, ';')
+		r.StandardSelect = strings.TrimSuffix(r.StandardSelect, ";")
 	case "maxcompute":
 		cfg, err := gomaxcompute.ParseDSN(db.dataSourceName)
 		if err != nil {

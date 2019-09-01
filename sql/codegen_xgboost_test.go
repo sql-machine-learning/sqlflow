@@ -330,7 +330,7 @@ LABEL e INTO model_table;
 	a.NoError(e)
 
 	a.True(filler.IsTrain)
-	stdSlct := trimTailOf(strings.Replace(filler.StandardSelect, "\n", " ", -1), ';')
+	stdSlct := strings.TrimSuffix(strings.Replace(filler.StandardSelect, "\n", " ", -1), ";")
 	a.EqualValues("SELECT * FROM iris.train", stdSlct)
 	a.EqualValues("model_table", filler.ModelPath)
 
@@ -374,9 +374,9 @@ LABEL e INTO model_table;
 	ds := &trainAndValDataset{training: "TrainTable", validation: "EvalTable"}
 	filler, e = newXGBoostFiller(pr, ds, testDB)
 	a.NoError(e)
-	trainSlct := trimTailOf(strings.Replace(filler.StandardSelect, "\n", " ", -1), ';')
+	trainSlct := strings.TrimSuffix(strings.Replace(filler.StandardSelect, "\n", " ", -1), ";")
 	a.EqualValues("SELECT * FROM TrainTable", trainSlct)
-	evalSlct := trimTailOf(strings.Replace(filler.validDataSource.StandardSelect, "\n", " ", -1), ';')
+	evalSlct := strings.TrimSuffix(strings.Replace(filler.validDataSource.StandardSelect, "\n", " ", -1), ";")
 	a.EqualValues("SELECT * FROM EvalTable", evalSlct)
 
 	vdsFields := &xgDataSourceFields{}
