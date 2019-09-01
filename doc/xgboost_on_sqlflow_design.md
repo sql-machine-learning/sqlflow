@@ -28,21 +28,25 @@ We prefer users to execute the SQLFlow Train/Predict SQL as follows:
 
 where:
 - `my_xgb_model` is the trained model.
-- The keyword `XGBOOST` is used to distinguish with the Tensorflow Model.
+- `XGBoost` is used to distinguish with the Tensorflow Model.
 - The prefix `train.` in `WITH` statement mappings to the training arguments of XGBoost [train function](https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.train).
 - The prefix `model.` in `WITH` statement mappings to the [XGBoost Parameters](https://xgboost.readthedocs.io/en/latest/parameter.html);
 
-`codegen_xgboost.go` would generate a XGBoost Python program accoding to the XGBoost SQL including:
-- Prepare the input data.
-- pass the arguments to XGBoost Python program.
+`codegen_xgboost.go` would generate a XGBoost Python program including:
+- Generate the XGBoost input database.
+- Pass the train/predict parameters to XGBoost Python program.
 - Save the trained model.
 
 ### Input Format
 
-XGBoost using `DMatrix` as the input structure, according to [Text Input Format of DMatrix](https://xgboost.readthedocs.io/en/latest/tutorials/input_format.html), we prefer to implement refuse `db.generator` and 
-generate text files as LibSVM format.
+SQLFlow implemented `db_generator` taht takes the `SELECT STATEMENT` as the input and outputs a iterator function which 
+yields `(features, label)` for each iteration. `codegen_xgboost` would reuse the `db_generator` to generate the XGBoost 
+input database.
 
-- For the **basic** input format, `db_geneator` would yield `(features, label)` for each iteration
+XGBoost using `DMatrix` as the input structure, according to [Text Input Format of DMatrix](https://xgboost.readthedocs.io/en/latest/tutorials/input_format.html), we prefer to implement `XGBoostDatabase` that
+takes `db_generator` as the input and outputs text files with LibSVM format.
+
+- For the **basic** input format
 
     the train table can be like:
 
