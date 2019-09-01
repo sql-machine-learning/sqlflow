@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This design doc introduces how do users train/predict the [XGBoost](https://xgboost.ai/) model by SQLFlow SQL and how
+This design doc introduces how  users can train/predict the [XGBoost](https://xgboost.ai/) model by SQLFlow SQL and how
 we implement it.
 
 ## Design
@@ -17,6 +17,7 @@ We prefer users to execute the SQLFlow Train/Predict SQL as follows:
       train.num_round=2,
       model.max_depth=2,
       model.eta=1
+  LABEL class
   INTO my_xgb_model;
   ```
   
@@ -28,20 +29,21 @@ We prefer users to execute the SQLFlow Train/Predict SQL as follows:
 
 where:
 - `my_xgb_model` is the trained model.
-- `XGBoost` is used to distinguish with the Tensorflow Model.
+- `XGBoost` means to train an XGBoost model instead of the TensorFlow Model.
 - The prefix `train.` in `WITH` statement mappings to the training arguments of XGBoost [train function](https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.train).
 - The prefix `model.` in `WITH` statement mappings to the [XGBoost Parameters](https://xgboost.readthedocs.io/en/latest/parameter.html);
 
-`codegen_xgboost.go` would generate a XGBoost Python program including:
+`codegen_xgboost.go` would generate an XGBoost Python program including:
 - Generate the XGBoost input database.
 - Pass the train/predict parameters to XGBoost Python program.
 - Save the trained model.
 
 ### Input Format
 
-SQLFlow implemented `db_generator` taht takes the `SELECT STATEMENT` as the input and outputs a iterator function which 
-yields `(features, label)` for each iteration. `codegen_xgboost` would reuse the `db_generator` to generate the XGBoost 
-input database.
+SQLFlow implements [db_generator](/sql/python/sqlflow_submitter/db.py#db_generator) that takes the 
+`SELECT STATEMENT` as the input and outputs a iterable function which 
+yields `(features, label)` for each iteration call. `codegen_xgboost` would reuse the `db_generator`
+to generate the XGBoost input database.
 
 XGBoost using `DMatrix` as the input structure, according to [Text Input Format of DMatrix](https://xgboost.readthedocs.io/en/latest/tutorials/input_format.html), we prefer to implement `XGBoostDatabase` that
 takes `db_generator` as the input and outputs text files with LibSVM format.
@@ -67,12 +69,12 @@ takes `db_generator` as the input and outputs text files with LibSVM format.
     2 0:0.77 1:4.0 2:2.6 
     ```
 
-- For the **group** input format, users can easy to specify the group column by `train.group_column` in the WITH statement
-, just like:
+- For the **group** input format, users can easy to specify the group column by `train.group_column` in the WITH statement like:
 
     ``` sql
     SELECT * FROM train_table
-    TRAIN XGBOOST
+    TRAIN XGBoost
+    LABEL class
     WITH
         train.group_column=group
     ...
@@ -100,7 +102,8 @@ takes `db_generator` as the input and outputs text files with LibSVM format.
 
     ``` sql
     SELECT * FROM train_table
-    TRAIN XGBOOST
+    TRAIN XGBoost
+    LABEL class
     WITH
         train.weight_column=weight
     ```
