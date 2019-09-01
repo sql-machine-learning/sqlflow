@@ -59,14 +59,14 @@ type featureMeta struct {
 }
 
 type filler struct {
-	IsTrain            bool
-	TrainingDataset    string // IsTrain == true
-	ValidationDataset  string // IsTrain == true
-	PredictionDataset  string // IsTrain != true
-	X                  []*featureMeta
-	FeatureColumnsCode map[string][]string
-	Y                  *featureMeta
-	TableName          string
+	IsTrain              bool
+	TrainingDatasetSQL   string // IsTrain == true
+	ValidationDatasetSQL string // IsTrain == true
+	PredictionDatasetSQL string // IsTrain != true
+	X                    []*featureMeta
+	FeatureColumnsCode   map[string][]string
+	Y                    *featureMeta
+	TableName            string
 	modelConfig
 	*connectionConfig
 }
@@ -90,10 +90,10 @@ func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *D
 	isKerasModel, modelClassString := parseModelURI(pr.estimator)
 	training, validation := trainingAndValidationDataset(pr, ds)
 	r := &filler{
-		IsTrain:           pr.train,
-		TrainingDataset:   training,
-		ValidationDataset: validation,
-		PredictionDataset: pr.standardSelect.String(),
+		IsTrain:              pr.train,
+		TrainingDatasetSQL:   training,
+		ValidationDatasetSQL: validation,
+		PredictionDatasetSQL: pr.standardSelect.String(),
 		modelConfig: modelConfig{
 			EstimatorCode: modelClassString,
 			BatchSize:     1,
@@ -214,9 +214,9 @@ func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *D
 	r.connectionConfig, err = newConnectionConfig(db)
 	if err == nil && r.Driver == "hive" {
 		// remove the last ';' which leads to a (hive)ParseException
-		r.TrainingDataset = strings.TrimSuffix(r.TrainingDataset, ";")
-		r.ValidationDataset = strings.TrimSuffix(r.ValidationDataset, ";")
-		r.PredictionDataset = strings.TrimSuffix(r.PredictionDataset, ";")
+		r.TrainingDatasetSQL = strings.TrimSuffix(r.TrainingDatasetSQL, ";")
+		r.ValidationDatasetSQL = strings.TrimSuffix(r.ValidationDatasetSQL, ";")
+		r.PredictionDatasetSQL = strings.TrimSuffix(r.PredictionDatasetSQL, ";")
 	}
 	return r, err
 }
