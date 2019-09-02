@@ -47,19 +47,32 @@ type xgLearningFields struct {
 }
 
 type xgBoosterFields struct {
-	Objective           string  `json:"objective,omitempty"`
-	Booster             string  `json:"booster,omitempty"`
-	NumClass            uint    `json:"num_class,omitempty"`
-	MaxDepth            uint    `json:"max_depth,omitempty"`
-	Eta                 float32 `json:"eta,omitempty"`
+	Objective        string  `json:"objective,omitempty"`
+	EvalMetric       string  `json:"eval_metric,omitempty"`
+	Booster          string  `json:"booster,omitempty"`
+	Seed             uint    `json:"seed,omitempty"`
+	NumClass         uint    `json:"num_class,omitempty"`
+	Eta              float32 `json:"eta,omitempty"`
+	Gamma            float32 `json:"gamma,omitempy"`
+	MaxDepth         uint    `json:"max_depth,omitempty"`
+	MinChildWeight   uint    `json:"min_child_weight,omitempty"`
+	Subsample        float32 `json:"subsample,omtiempty"`
+	ColSampleByTree  float32 `json:"colsample_bytree,omitempty"`
+	ColSampleByLevel float32 `json:"colsample_bylevel,omitempty"`
+	ColSampleByNode  float32 `json:"colsample_bynode,omitempty"`
+	// `Lambda` is reversed in python, so we use alias reg_lambda.
+	Lambda float32 `json:"reg_lambda,omitempty"`
+	// We use alias `reg_alpha` to keep align with `reg_lambda`。
+	Alpha               float32 `json:"reg_alpha,omitempty"`
 	TreeMethod          string  `json:"tree_method,omitempty"`
-	EvalMetric          string  `json:"eval_metric,omitempty"`
-	Subsample           float32 `json:"subsample,omitempty"`
-	ColSampleByTree     float32 `json:"colsample_bytree,omitempty"`
-	ColSampleByLevel    float32 `json:"colsample_bylevel,omitempty"`
+	SketchEps           float32 `json:"sketch_eps,omitempty"`
+	ScalePosWeight      float32 `json:"scale_pos_weight,omitempty"`
+	GrowPolicy          string  `json:"grow_policy,omitempty"`
+	MaxLeaves           uint    `json:"max_leaves,omitempty"`
 	MaxBin              uint    `json:"max_bin,omitempty"`
-	ConvergenceCriteria string  `json:"convergence_criteria,omitempty"`
-	Verbosity           uint    `json:"verbosity,omitempty"`
+	NumParallelTree     uint    `json:"num_parallel_tree,omitempty"`
+	ConvergenceCriteria string  `json:"convergence_criteria,omitempty"` // auto_train config
+	Verbosity           uint    `json:"verbosity,omitempty"`            // auto_train config
 }
 
 type xgColumnFields struct {
@@ -248,16 +261,27 @@ func sListPartial(key string, ptrFn func(*antXGBoostFiller) *[]string) func(*map
 var xgbTrainAttrSetterMap = map[string]func(*map[string][]string, *antXGBoostFiller) error{
 	// booster params
 	"train.objective":            strPartial("train.objective", func(r *antXGBoostFiller) *string { return &(r.Objective) }),
+	"train.eval_metric":          strPartial("train.eval_metric", func(r *antXGBoostFiller) *string { return &(r.EvalMetric) }),
 	"train.booster":              strPartial("train.booster", func(r *antXGBoostFiller) *string { return &(r.Booster) }),
-	"train.max_depth":            uIntPartial("train.max_depth", func(r *antXGBoostFiller) *uint { return &(r.MaxDepth) }),
+	"train.seed":                 uIntPartial("train.seed", func(r *antXGBoostFiller) *uint { return &(r.Seed) }),
 	"train.num_class":            uIntPartial("train.num_class", func(r *antXGBoostFiller) *uint { return &(r.NumClass) }),
 	"train.eta":                  fp32Partial("train.eta", func(r *antXGBoostFiller) *float32 { return &(r.Eta) }),
-	"train.tree_method":          strPartial("train.tree_method", func(r *antXGBoostFiller) *string { return &(r.TreeMethod) }),
-	"train.eval_metric":          strPartial("train.eval_metric", func(r *antXGBoostFiller) *string { return &(r.EvalMetric) }),
+	"train.gamma":                fp32Partial("train.gamma", func(r *antXGBoostFiller) *float32 { return &(r.Gamma) }),
+	"train.max_depth":            uIntPartial("train.max_depth", func(r *antXGBoostFiller) *uint { return &(r.MaxDepth) }),
+	"train.min_child_weight":     uIntPartial("train.min_child_weight", func(r *antXGBoostFiller) *uint { return &(r.MinChildWeight) }),
 	"train.subsample":            fp32Partial("train.subsample", func(r *antXGBoostFiller) *float32 { return &(r.Subsample) }),
 	"train.colsample_bytree":     fp32Partial("train.colsample_bytree", func(r *antXGBoostFiller) *float32 { return &(r.ColSampleByTree) }),
 	"train.colsample_bylevel":    fp32Partial("train.colsample_bylevel", func(r *antXGBoostFiller) *float32 { return &(r.ColSampleByLevel) }),
+	"train.colsample_bynode":     fp32Partial("train.colsample_bynode", func(r *antXGBoostFiller) *float32 { return &(r.ColSampleByNode) }),
+	"train.lambda":               fp32Partial("train.lambda", func(r *antXGBoostFiller) *float32 { return &(r.Lambda) }),
+	"train.alpha":                fp32Partial("train.alpha", func(r *antXGBoostFiller) *float32 { return &(r.Alpha) }),
+	"train.tree_method":          strPartial("train.tree_method", func(r *antXGBoostFiller) *string { return &(r.TreeMethod) }),
+	"train.sketch_eps":           fp32Partial("train.sketch_eps", func(r *antXGBoostFiller) *float32 { return &(r.SketchEps) }),
+	"train.scale_pos_weight":     fp32Partial("train.scale_pos_weight", func(r *antXGBoostFiller) *float32 { return &(r.ScalePosWeight) }),
+	"train.grow_policy":          strPartial("train.grow_policy", func(r *antXGBoostFiller) *string { return &(r.GrowPolicy) }),
+	"train.max_leaves":           uIntPartial("train.max_leaves", func(r *antXGBoostFiller) *uint { return &(r.MaxLeaves) }),
 	"train.max_bin":              uIntPartial("train.max_bin", func(r *antXGBoostFiller) *uint { return &(r.MaxBin) }),
+	"train.num_parallel_tree":    uIntPartial("train.num_parallel_tree", func(r *antXGBoostFiller) *uint { return &(r.NumParallelTree) }),
 	"train.convergence_criteria": strPartial("train.convergence_criteria", func(r *antXGBoostFiller) *string { return &(r.ConvergenceCriteria) }),
 	"train.verbosity":            uIntPartial("train.verbosity", func(r *antXGBoostFiller) *uint { return &(r.Verbosity) }),
 	// xgboost train controllers
