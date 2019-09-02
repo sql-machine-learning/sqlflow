@@ -16,6 +16,7 @@ package sql
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"strings"
 )
 
@@ -66,6 +67,8 @@ func genAnalyzer(pr *extendedSelect, db *DB, cwd string, modelDir string) (*byte
 	}
 
 	var program bytes.Buffer
-	err = analyzeTemplate.Execute(&program, fr)
+	// FIXME(weiguo): comment the following just for debug. You should not see this.
+	// err = analyzeTemplate.Execute(&program, fr)
+	err = analyzeTemplate.Execute(os.Stdout, fr)
 	return &program, err
 }
