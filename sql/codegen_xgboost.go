@@ -24,6 +24,7 @@ import (
 	"text/template"
 
 	"github.com/go-sql-driver/mysql"
+	"github.com/sql-machine-learning/sqlflow/sql/columns"
 	"sqlflow.org/gohive"
 	"sqlflow.org/gomaxcompute"
 )
@@ -355,7 +356,7 @@ func parseFeatureColumns(columns *exprlist, r *xgboostFiller) error {
 
 // parseSparseKeyValueFeatures, parse features which is identified by `SPARSE`.
 // ex: SPARSE(col1, [100], comma)
-func parseSparseKeyValueFeatures(colSpecs []*columnSpec, r *xgboostFiller) error {
+func parseSparseKeyValueFeatures(colSpecs []*columns.ColumnSpec, r *xgboostFiller) error {
 	var colNames []string
 	for _, spec := range colSpecs {
 		colNames = append(colNames, spec.ColumnName)
@@ -394,14 +395,14 @@ func parseSparseKeyValueFeatures(colSpecs []*columnSpec, r *xgboostFiller) error
 }
 
 // check whether column is raw column (no tf transformation need)
-func isSimpleColumn(col featureColumn) bool {
-	if _, ok := col.(*numericColumn); ok {
+func isSimpleColumn(col columns.FeatureColumn) bool {
+	if _, ok := col.(*columns.NumericColumn); ok {
 		return col.GetDelimiter() == "" && col.GetInputShape() == "[1]" && col.GetDtype() == "float32"
 	}
 	return false
 }
 
-func parseDenseFeatures(feaCols []featureColumn, r *xgboostFiller) error {
+func parseDenseFeatures(feaCols []columns.FeatureColumn, r *xgboostFiller) error {
 	allSimpleCol := true
 	for _, col := range feaCols {
 		if allSimpleCol && !isSimpleColumn(col) {
@@ -410,22 +411,26 @@ func parseDenseFeatures(feaCols []featureColumn, r *xgboostFiller) error {
 
 		isSparse := false
 		var isEmb bool
-		_, ok := col.(*sequenceCategoryIDColumn)
+		_, ok := col.(*columns.SequenceCategoryIDColumn)
 		if !ok {
-			_, isEmb = col.(*embeddingColumn)
+			_, isEmb = col.(*columns.EmbeddingColumn)
 			if isEmb {
-				_, ok = col.(*embeddingColumn).CategoryColumn.(*sequenceCategoryIDColumn)
+				_, ok = col.(*columns.EmbeddingColumn).CategoryColumn.(*columns.SequenceCategoryIDColumn)
 			}
 		}
 		if !ok && col.GetDelimiter() != "" {
-			if _, ok := col.(*numericColumn); !ok {
+			if _, ok := col.(*columns.NumericColumn); !ok {
 				isSparse = true
 			}
 		}
 
-		feaColCode, e := col.GenerateCode()
+		// TODO(typhoonzero): pass columnSpec if needed.
+		feaColCode, e := col.GenerateCode(nil)
 		if e != nil {
 			return e
+		}
+		if len(feaColCode) > 1 {
+			return fmt.Errorf("does not support grouped column yet: %v", feaColCode)
 		}
 
 		fm := &xgFeatureMeta{
@@ -433,7 +438,7 @@ func parseDenseFeatures(feaCols []featureColumn, r *xgboostFiller) error {
 			Dtype:             col.GetDtype(),
 			Delimiter:         col.GetDelimiter(),
 			InputShape:        col.GetInputShape(),
-			FeatureColumnCode: feaColCode,
+			FeatureColumnCode: feaColCode[0],
 			IsSparse:          isSparse,
 		}
 		r.X = append(r.X, fm)

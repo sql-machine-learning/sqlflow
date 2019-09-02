@@ -20,6 +20,7 @@ import (
 	"text/template"
 
 	"github.com/go-sql-driver/mysql"
+	"github.com/sql-machine-learning/sqlflow/sql/columns"
 	"sqlflow.org/gohive"
 	"sqlflow.org/gomaxcompute"
 )
@@ -111,8 +112,8 @@ func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *D
 	r.modelConfig.Epochs = trainResolved.Epoch
 
 	featureColumnsCode := make(map[string][]string)
-	for target, columns := range pr.columns {
-		feaCols, colSpecs, err := resolveTrainColumns(&columns)
+	for target, columnsExpr := range pr.columns {
+		feaCols, colSpecs, err := resolveTrainColumns(&columnsExpr)
 		if err != nil {
 			return nil, err
 		}
@@ -120,25 +121,30 @@ func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *D
 			return nil, fmt.Errorf("newFiller doesn't support DENSE/SPARSE")
 		}
 		for _, col := range feaCols {
-			feaColCode, e := col.GenerateCode()
+			// TODO(typhoonzero): pass columnSpecs if needed.
+			feaColCode, e := col.GenerateCode(nil)
 			if e != nil {
 				return nil, e
 			}
+			if len(feaColCode) > 1 {
+				return nil, fmt.Errorf("does not support grouped feature column yet, grouped column: %v", feaColCode)
+			}
+
 			// FIXME(typhoonzero): Use Heuristic rules to determine whether a column should be transformed to a
 			// tf.SparseTensor. Currently the rules are:
 			// if column have delimiter and it's not a sequence_catigorical_column, we'll treat it as a sparse column
 			// else, use dense column.
 			isSparse := false
 			var isEmb bool
-			_, ok := col.(*sequenceCategoryIDColumn)
+			_, ok := col.(*columns.SequenceCategoryIDColumn)
 			if !ok {
-				_, isEmb = col.(*embeddingColumn)
+				_, isEmb = col.(*columns.EmbeddingColumn)
 				if isEmb {
-					_, ok = col.(*embeddingColumn).CategoryColumn.(*sequenceCategoryIDColumn)
+					_, ok = col.(*columns.EmbeddingColumn).CategoryColumn.(*columns.SequenceCategoryIDColumn)
 				}
 			}
 			if !ok && col.GetDelimiter() != "" {
-				if _, ok := col.(*numericColumn); !ok {
+				if _, ok := col.(*columns.NumericColumn); !ok {
 					isSparse = true
 				}
 			}
@@ -152,7 +158,7 @@ func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *D
 			r.X = append(r.X, fm)
 			featureColumnsCode[target] = append(
 				featureColumnsCode[target],
-				feaColCode)
+				feaColCode[0])
 		}
 	}
 

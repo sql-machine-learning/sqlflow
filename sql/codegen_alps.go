@@ -26,6 +26,7 @@ import (
 	"text/template"
 
 	pb "github.com/sql-machine-learning/sqlflow/server/proto"
+	"github.com/sql-machine-learning/sqlflow/sql/columns"
 	"sqlflow.org/gomaxcompute"
 )
 
@@ -76,9 +77,28 @@ type alpsFiller struct {
 	OSSEndpoint string
 }
 
-type alpsFeatureColumn interface {
-	featureColumn
-	GenerateAlpsCode(metadata *metadata) ([]string, error)
+// type alpsFeatureColumn interface {
+// 	columns.FeatureColumn
+// 	GenerateAlpsCode(metadata *metadata) ([]string, error)
+// }
+
+type alpsBucketCol struct {
+	columns.BucketColumn
+}
+type alpsCategoryIDCol struct {
+	columns.CategoryIDColumn
+}
+type alpsSeqCategoryIDCol struct {
+	columns.SequenceCategoryIDColumn
+}
+type alpsCrossCol struct {
+	columns.CrossColumn
+}
+type alpsEmbeddingCol struct {
+	columns.EmbeddingColumn
+}
+type alpsNumericCol struct {
+	columns.NumericColumn
 }
 
 func engineCreatorCode(resolved *resolvedTrainClause) (string, error) {
@@ -164,11 +184,11 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds *tra
 	}
 
 	var odpsConfig = &gomaxcompute.Config{}
-	var columnInfo map[string]*columnSpec
+	var columnInfo map[string]*columns.ColumnSpec
 
 	// TODO(joyyoj) read feature mapping table's name from table attributes.
 	// TODO(joyyoj) pr may contains partition.
-	fmap := featureMap{pr.tables[0] + "_feature_map", ""}
+	fmap := columns.FeatureMap{pr.tables[0] + "_feature_map", ""}
 	var meta metadata
 	fields := make([]string, 0)
 	if db != nil {
@@ -185,7 +205,7 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds *tra
 		meta.columnInfo = &columnInfo
 	} else {
 		meta = metadata{odpsConfig, pr.tables[0], nil, nil}
-		columnInfo = map[string]*columnSpec{}
+		columnInfo = map[string]*columns.ColumnSpec{}
 		for _, css := range resolved.ColumnSpecs {
 			for _, cs := range css {
 				columnInfo[cs.ColumnName] = cs
@@ -203,7 +223,7 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds *tra
 	for _, cs := range columnInfo {
 		csCode = append(csCode, cs.ToString())
 	}
-	y := &columnSpec{
+	y := &columns.ColumnSpec{
 		ColumnName: pr.label,
 		IsSparse:   false,
 		Shape:      []int{1},
@@ -411,55 +431,16 @@ func alpsPred(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *pb
 	return nil
 }
 
-func (nc *numericColumn) GenerateAlpsCode(metadata *metadata) ([]string, error) {
+// GenerateCode overrides the member function defined in `category_id_column.go`
+func (cc *alpsCategoryIDCol) GenerateCode(cs *columns.ColumnSpec) ([]string, error) {
 	output := make([]string, 0)
-	output = append(output,
-		fmt.Sprintf("tf.feature_column.numeric_column(\"%s\", shape=%s)", nc.Key,
-			strings.Join(strings.Split(fmt.Sprint(nc.Shape), " "), ",")))
-	return output, nil
-}
-
-func (bc *bucketColumn) GenerateAlpsCode(metadata *metadata) ([]string, error) {
-	sourceCode, _ := bc.SourceColumn.GenerateCode()
-	output := make([]string, 0)
-	output = append(output, fmt.Sprintf(
-		"tf.feature_column.bucketized_column(%s, boundaries=%s)",
-		sourceCode,
-		strings.Join(strings.Split(fmt.Sprint(bc.Boundaries), " "), ",")))
-	return output, nil
-}
-
-func (cc *crossColumn) GenerateAlpsCode(metadata *metadata) ([]string, error) {
-	var keysGenerated = make([]string, len(cc.Keys))
-	var output []string
-	for idx, key := range cc.Keys {
-		if c, ok := key.(featureColumn); ok {
-			code, err := c.GenerateCode()
-			if err != nil {
-				return output, err
-			}
-			keysGenerated[idx] = code
-			continue
-		}
-		if str, ok := key.(string); ok {
-			keysGenerated[idx] = fmt.Sprintf("\"%s\"", str)
-		} else {
-			return output, fmt.Errorf("cross generate code error, key: %s", key)
-		}
-	}
-	output = append(output, fmt.Sprintf(
-		"tf.feature_column.crossed_column([%s], hash_bucket_size=%d)",
-		strings.Join(keysGenerated, ","), cc.HashBucketSize))
-	return output, nil
-}
-
-func (cc *categoryIDColumn) GenerateAlpsCode(metadata *metadata) ([]string, error) {
-	output := make([]string, 0)
-	columnInfo, present := (*metadata.columnInfo)[cc.Key]
+	// columnInfo, present := (*metadata.columnInfo)[cc.Key]
+	columnInfo := cs
 	var err error
-	if !present {
-		err = fmt.Errorf("Failed to get column info of %s", cc.Key)
-	} else if len(columnInfo.Shape) == 0 {
+	// if !present {
+	// 	err = fmt.Errorf("Failed to get column info of %s", cc.Key)
+	// } else
+	if len(columnInfo.Shape) == 0 {
 		err = fmt.Errorf("Shape is empty %s", cc.Key)
 	} else if len(columnInfo.Shape) == 1 {
 		// FIXME(Yancey1989): the suffix "_0" is only used in alps-rc5, would be fixed in the next release.
@@ -474,13 +455,15 @@ func (cc *categoryIDColumn) GenerateAlpsCode(metadata *metadata) ([]string, erro
 	return output, err
 }
 
-func (cc *sequenceCategoryIDColumn) GenerateAlpsCode(metadata *metadata) ([]string, error) {
+func (cc *alpsSeqCategoryIDCol) GenerateCode(cs *columns.ColumnSpec) ([]string, error) {
 	output := make([]string, 0)
-	columnInfo, present := (*metadata.columnInfo)[cc.Key]
+	// columnInfo, present := (*metadata.columnInfo)[cc.Key]
+	columnInfo := cs
 	var err error
-	if !present {
-		err = fmt.Errorf("Failed to get column info of %s", cc.Key)
-	} else if len(columnInfo.Shape) == 0 {
+	// if !present {
+	// 	err = fmt.Errorf("Failed to get column info of %s", cc.Key)
+	// } else
+	if len(columnInfo.Shape) == 0 {
 		err = fmt.Errorf("Shape is empty %s", cc.Key)
 	} else if len(columnInfo.Shape) == 1 {
 		output = append(output, fmt.Sprintf("tf.feature_column.sequence_categorical_column_with_identity(key=\"%s\", num_buckets=%d)",
@@ -494,15 +477,15 @@ func (cc *sequenceCategoryIDColumn) GenerateAlpsCode(metadata *metadata) ([]stri
 	return output, err
 }
 
-func (ec *embeddingColumn) GenerateAlpsCode(metadata *metadata) ([]string, error) {
+func (ec *alpsEmbeddingCol) GenerateCode(cs *columns.ColumnSpec) ([]string, error) {
 	var output []string
-	catColumn, ok := ec.CategoryColumn.(alpsFeatureColumn)
-	if !ok {
-		return output, fmt.Errorf("embedding generate code error, input is not featureColumn: %s", ec.CategoryColumn)
-	}
-	sourceCode, err := catColumn.GenerateAlpsCode(metadata)
+	catColumn := &alpsCategoryIDCol{*(ec.CategoryColumn.(*columns.CategoryIDColumn))}
+	// if !ok {
+	// 	return output, fmt.Errorf("embedding generate code error, input is not featureColumn: %s", ec.CategoryColumn)
+	// }
+	sourceCode, err := catColumn.GenerateCode(cs)
 	if err != nil {
-		return output, err
+		return []string{}, err
 	}
 	output = make([]string, 0)
 	for _, elem := range sourceCode {
@@ -517,12 +500,35 @@ func (ec *embeddingColumn) GenerateAlpsCode(metadata *metadata) ([]string, error
 	return output, nil
 }
 
-func generateAlpsFeatureColumnCode(fcs []featureColumn, metadata *metadata) ([]string, error) {
+func generateAlpsFeatureColumnCode(fcs []columns.FeatureColumn, metadata *metadata) ([]string, error) {
 	var codes = make([]string, 0, 1000)
 	for _, fc := range fcs {
-		code, err := fc.(alpsFeatureColumn).GenerateAlpsCode(metadata)
-		if err != nil {
-			return codes, nil
+		var castedFC columns.FeatureColumn
+		// FIXME(typhoonzero): Find a better way to override the `GenerateCode` function
+		switch fc.GetColumnType() {
+		case columns.ColumnTypeCategoryID:
+			castedFC = &alpsCategoryIDCol{(*fc.(*columns.CategoryIDColumn))}
+		case columns.ColumnTypeEmbedding:
+			castedFC = &alpsEmbeddingCol{(*fc.(*columns.EmbeddingColumn))}
+		case columns.ColumnTypeSeqCategoryID:
+			castedFC = &alpsSeqCategoryIDCol{(*fc.(*columns.SequenceCategoryIDColumn))}
+		default:
+			castedFC = fc
+		}
+		var code []string
+		var err error
+		if fc.GetKey() == "" {
+			// cross column have single key
+			code, err = castedFC.GenerateCode(nil)
+		} else {
+			cs, ok := (*metadata.columnInfo)[fc.GetKey()]
+			if !ok {
+				return nil, fmt.Errorf("No column spec found for column: %v", fc.GetKey())
+			}
+			code, err = castedFC.GenerateCode(cs)
+			if err != nil {
+				return nil, err
+			}
 		}
 		codes = append(codes, code...)
 	}
@@ -532,13 +538,13 @@ func generateAlpsFeatureColumnCode(fcs []featureColumn, metadata *metadata) ([]s
 type metadata struct {
 	odpsConfig *gomaxcompute.Config
 	table      string
-	featureMap *featureMap
-	columnInfo *map[string]*columnSpec
+	featureMap *columns.FeatureMap
+	columnInfo *map[string]*columns.ColumnSpec
 }
 
-func flattenColumnSpec(columns map[string][]*columnSpec) map[string]*columnSpec {
-	output := map[string]*columnSpec{}
-	for _, cols := range columns {
+func flattenColumnSpec(columnSpecs map[string][]*columns.ColumnSpec) map[string]*columns.ColumnSpec {
+	output := map[string]*columns.ColumnSpec{}
+	for _, cols := range columnSpecs {
 		for _, col := range cols {
 			output[col.ColumnName] = col
 		}
@@ -546,8 +552,8 @@ func flattenColumnSpec(columns map[string][]*columnSpec) map[string]*columnSpec 
 	return output
 }
 
-func (meta *metadata) getColumnInfo(resolved *resolvedTrainClause, fields []string) (map[string]*columnSpec, error) {
-	columns := map[string]*columnSpec{}
+func (meta *metadata) getColumnInfo(resolved *resolvedTrainClause, fields []string) (map[string]*columns.ColumnSpec, error) {
+	columns := map[string]*columns.ColumnSpec{}
 	refColumns := flattenColumnSpec(resolved.ColumnSpecs)
 
 	sparseColumns, _ := meta.getSparseColumnInfo()
@@ -586,10 +592,10 @@ func (meta *metadata) getColumnInfo(resolved *resolvedTrainClause, fields []stri
 }
 
 // get all referenced field names.
-func getAllKeys(fcs []featureColumn) []string {
+func getAllKeys(fcs []columns.FeatureColumn) []string {
 	output := make([]string, 0)
 	for _, fc := range fcs {
-		key := fc.(alpsFeatureColumn).GetKey()
+		key := fc.GetKey()
 		output = append(output, key)
 	}
 	return output
@@ -632,8 +638,8 @@ func getFields(meta *metadata, pr *extendedSelect) ([]string, error) {
 	return fields, nil
 }
 
-func (meta *metadata) getDenseColumnInfo(keys []string, refColumns map[string]*columnSpec) (map[string]*columnSpec, error) {
-	output := map[string]*columnSpec{}
+func (meta *metadata) getDenseColumnInfo(keys []string, refColumns map[string]*columns.ColumnSpec) (map[string]*columns.ColumnSpec, error) {
+	output := map[string]*columns.ColumnSpec{}
 	fields := strings.Join(keys, ",")
 	query := fmt.Sprintf("SELECT %s FROM %s LIMIT 1", fields, meta.table)
 	sqlDB, _ := sql.Open("maxcompute", meta.odpsConfig.FormatDSN())
@@ -643,8 +649,8 @@ func (meta *metadata) getDenseColumnInfo(keys []string, refColumns map[string]*c
 	}
 	defer sqlDB.Close()
 	columnTypes, _ := rows.ColumnTypes()
-	columns, _ := rows.Columns()
-	count := len(columns)
+	columnNamess, _ := rows.Columns()
+	count := len(columnNamess)
 	for rows.Next() {
 		values := make([]interface{}, count)
 		for i, ct := range columnTypes {
@@ -663,17 +669,29 @@ func (meta *metadata) getDenseColumnInfo(keys []string, refColumns map[string]*c
 			shape := make([]int, 1)
 			shape[0] = len(fields)
 			if userSpec, ok := refColumns[ct.Name()]; ok {
-				output[ct.Name()] = &columnSpec{ct.Name(), false, shape, userSpec.DType, userSpec.Delimiter, *meta.featureMap}
+				output[ct.Name()] = &columns.ColumnSpec{
+					ct.Name(),
+					false,
+					shape,
+					userSpec.DType,
+					userSpec.Delimiter,
+					*meta.featureMap}
 			} else {
-				output[ct.Name()] = &columnSpec{ct.Name(), false, shape, "float", ",", *meta.featureMap}
+				output[ct.Name()] = &columns.ColumnSpec{
+					ct.Name(),
+					false,
+					shape,
+					"float",
+					",",
+					*meta.featureMap}
 			}
 		}
 	}
 	return output, nil
 }
 
-func (meta *metadata) getSparseColumnInfo() (map[string]*columnSpec, error) {
-	output := map[string]*columnSpec{}
+func (meta *metadata) getSparseColumnInfo() (map[string]*columns.ColumnSpec, error) {
+	output := map[string]*columns.ColumnSpec{}
 
 	sqlDB, _ := sql.Open("maxcompute", meta.odpsConfig.FormatDSN())
 	filter := "feature_type != '' "
@@ -689,8 +707,8 @@ func (meta *metadata) getSparseColumnInfo() (map[string]*columnSpec, error) {
 	}
 	defer sqlDB.Close()
 	columnTypes, _ := rows.ColumnTypes()
-	columns, _ := rows.Columns()
-	count := len(columns)
+	columnNames, _ := rows.Columns()
+	count := len(columnNames)
 	for rows.Next() {
 		values := make([]interface{}, count)
 		for i, ct := range columnTypes {
@@ -712,7 +730,7 @@ func (meta *metadata) getSparseColumnInfo() (map[string]*columnSpec, error) {
 		column, present := output[*name]
 		if !present {
 			shape := make([]int, 0, 1000)
-			column := &columnSpec{*name, true, shape, "int64", "", *meta.featureMap}
+			column := &columns.ColumnSpec{*name, true, shape, "int64", "", *meta.featureMap}
 			column.DType = "int64"
 			output[*name] = column
 		}
