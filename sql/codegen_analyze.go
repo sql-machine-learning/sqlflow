@@ -25,6 +25,7 @@ type analyzeFiller struct {
 	X                 []*featureMeta
 	Label             string
 	AnalyzeDatasetSQL string
+	ModelFile         string // path/to/model_file
 }
 
 func newAnalyzeFiller(pr *extendedSelect, db *DB, fms []*featureMeta, label string) (*analyzeFiller, error) {
@@ -85,6 +86,10 @@ func genAnalyzer(pr *extendedSelect, db *DB, cwd string, modelDir string) (*byte
 	if err != nil {
 		return nil, fmt.Errorf("create analyze filler failed: %v", err)
 	}
+	// fill model file
+	// TODO(weiguo): untar model.tar.gz
+	// then set: fr.ModelFile = "models/sqlflow_booster"
+	// TODO(weiguo): remove the untar-fold at the end
 
 	var program bytes.Buffer
 	// FIXME(weiguo): comment the following just for debug. You should not see this.

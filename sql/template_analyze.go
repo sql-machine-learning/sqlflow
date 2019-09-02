@@ -27,7 +27,7 @@ from sqlflow_submitter.db import connect, db_generator
 
 shap.initjs()
 
-# read data
+# 1. read data
 driver="{{.Driver}}"
 feature_names = [{{ range $value := .X }} "{{$value.FeatureName}}", {{end}}]
 feature_metas={}
@@ -64,19 +64,18 @@ def analyzer_dataset():
 		i += 1
 	return xs, ys
 
-# TODO(weiguo): load a model
+# 2. load the model
+model_file="{{.ModelFile}}"
 
 X,y = analyzer_dataset()
 
-model = xgboost.train({"learning_rate": 0.01}, xgboost.DMatrix(X, label=y), 100)
-explainer = shap.TreeExplainer(model)
+bst = xgboost.Booster()
+bst.load_model(fname=model_file)
+explainer = shap.TreeExplainer(bst)
 shap_values = explainer.shap_values(X)
 
-# summarize the effects of all the features
-shap.summary_plot(shap_values, X, plot_type="dot")
-
+shap.summary_plot(shap_values, X)
 plt.savefig('summary')
-
 `
 
 var analyzeTemplate = template.Must(template.New("analyzeTemplate").Parse(analyzeTemplateText))
