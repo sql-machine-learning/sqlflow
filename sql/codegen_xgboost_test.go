@@ -67,15 +67,15 @@ func TestPartials(t *testing.T) {
 	e = part(&tmpMap, filler)
 	a.Error(e)
 	// Error: len(val) > 1
-	tmpMap["obj"] = []string{"binary:logistic", "reg:linear"}
+	tmpMap["obj"] = []string{"binary:logistic", "reg:squarederror"}
 	e = part(&tmpMap, filler)
 	a.Error(e)
-	//  change objective to "reg:linear"
-	tmpMap["obj"] = []string{"reg:linear"}
+	//  change objective to "reg:squarederror"
+	tmpMap["obj"] = []string{"reg:squarederror"}
 	filler.Objective = ""
 	e = part(&tmpMap, filler)
 	a.NoError(e)
-	a.Equal(filler.Objective, "reg:linear")
+	a.Equal(filler.Objective, "reg:squarederror")
 
 	// test uIntPartial
 	part = uIntPartial("num_class", func(r *xgboostFiller) *uint { return &(r.NumClass) })
@@ -140,17 +140,29 @@ SELECT a, b, c, d, e FROM table_xx
 TRAIN xgboost.Estimator
 WITH
 	train.objective = "binary:logistic",
-	train.booster = gblinear,
+	train.eval_metric = auc,
+	train.booster = gbtree,
+	train.seed = 1000,
 	train.num_class = 2,
-	train.max_depth = 5,
 	train.eta = 0.03,
-	train.tree_method = hist,
+	train.gamma = 0.01,
+	train.max_depth = 5,
+	train.min_child_weight = 10,
 	train.subsample = 0.8,
 	train.colsample_bytree = 0.5,
 	train.colsample_bylevel = 0.6,
+	train.colsample_bynode = 0.4,
+	train.lambda = 0.001,
+	train.alpha = 0.01,
+	train.tree_method = hist,
+	train.sketch_eps = 0.03,
+	train.scale_pos_weight = 1,
+	train.grow_policy = lossguide,
+	train.max_leaves = 64,
 	train.max_bin = 128,
 	train.verbosity = 3,
 	train.num_round = 30,
+	train.convergence_criteria = "10:200:0.8",
 	train.auto_train = true
 COLUMN a, b, c, d
 LABEL e INTO table_123;
@@ -164,16 +176,28 @@ LABEL e INTO table_123;
 	params, _ := mapData["params"]
 	paramMap, _ := params.(map[string]interface{})
 	assertEq(paramMap, "objective", "binary:logistic")
-	assertEq(paramMap, "booster", "gblinear")
+	assertEq(paramMap, "eval_metric", "auc")
+	assertEq(paramMap, "booster", "gbtree")
+	assertEq(paramMap, "seed", 1000)
 	assertEq(paramMap, "num_class", 2)
-	assertEq(paramMap, "max_depth", 5)
 	assertEq(paramMap, "eta", 0.03)
-	assertEq(paramMap, "tree_method", "hist")
+	assertEq(paramMap, "gamma", 0.01)
+	assertEq(paramMap, "max_depth", 5)
+	assertEq(paramMap, "min_child_weight", 10)
 	assertEq(paramMap, "subsample", 0.8)
 	assertEq(paramMap, "colsample_bytree", 0.5)
 	assertEq(paramMap, "colsample_bylevel", 0.6)
+	assertEq(paramMap, "colsample_bynode", 0.4)
+	assertEq(paramMap, "reg_lambda", 0.001)
+	assertEq(paramMap, "reg_alpha", 0.01)
+	assertEq(paramMap, "tree_method", "hist")
+	assertEq(paramMap, "sketch_eps", 0.03)
+	assertEq(paramMap, "scale_pos_weight", 1)
+	assertEq(paramMap, "grow_policy", "lossguide")
+	assertEq(paramMap, "max_leaves", 64)
 	assertEq(paramMap, "max_bin", 128)
 	assertEq(paramMap, "verbosity", 3)
+	assertEq(paramMap, "convergence_criteria", "10:200:0.8")
 	assertEq(mapData, "num_boost_round", 30)
 	assertEq(mapData, "auto_train", true)
 
