@@ -67,7 +67,7 @@ class SQLFlowDataSource(DataSource):
 
         # TODO: support tf.feature_column transformation
         if source_conf.is_tf_integrated:
-            raise AntXGBoostError('So far, tf transformation is not supported in xgboost job.')
+            raise AntXGBoostError('So far, tf transformation is not supported in ant-xgboost job.')
 
         self._train = source_conf.is_train
         self._rcd_builder = RecordBuilder(column_conf.features)

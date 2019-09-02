@@ -373,7 +373,7 @@ func buildFiller(es *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db 
 		dataset = ds
 	}
 	if strings.HasPrefix(strings.ToUpper(es.estimator), `XGBOOST.`) {
-		return newXGBoostFiller(es, dataset, db)
+		return newAntXGBoostFiller(es, dataset, db)
 	}
 	return newFiller(es, dataset, fts, db)
 }
@@ -386,7 +386,7 @@ func train(wr *PipeWriter, tr *extendedSelect, db *DB, cwd string, modelDir stri
 
 	var program bytes.Buffer
 	if strings.HasPrefix(strings.ToUpper(tr.estimator), `ANTXGBOOST.`) {
-		// TODO(sperlingxx): write a separate train pipeline for xgboost to support remote mode
+		// TODO(sperlingxx): write a separate train pipeline for ant-xgboost to support remote mode
 		if e := genXG(&program, tr, ds, fts, db); e != nil {
 			return fmt.Errorf("genXG %v", e)
 		}
@@ -452,7 +452,7 @@ func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir strin
 
 	var buf bytes.Buffer
 	if strings.HasPrefix(strings.ToUpper(pr.estimator), `ANTXGBOOST.`) {
-		// TODO(sperlingxx): write a separate pred pipeline for xgboost to support remote mode
+		// TODO(sperlingxx): write a separate pred pipeline for ant-xgboost to support remote mode
 		if e := genXG(&buf, pr, nil, fts, db); e != nil {
 			return fmt.Errorf("genXG %v", e)
 		}
