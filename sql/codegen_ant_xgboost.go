@@ -531,29 +531,29 @@ func xgParseColumns(pr *extendedSelect, filler *antXGBoostFiller) error {
 
 func xgParseEstimator(pr *extendedSelect, filler *antXGBoostFiller) error {
 	switch strings.ToUpper(pr.estimator) {
-	case "ANTXGBOOST.ESTIMATOR":
+	case "XGBOOST.ESTIMATOR":
 		if len(filler.Objective) == 0 {
 			return xgParseEstimatorError(pr.estimator, fmt.Errorf("objective must be defined"))
 		}
-	case "ANTXGBOOST.CLASSIFIER":
+	case "XGBOOST.CLASSIFIER":
 		if obj := filler.Objective; len(obj) == 0 {
 			filler.Objective = "binary:logistic"
 		} else if !strings.HasPrefix(obj, "binary") && !strings.HasPrefix(obj, "multi") {
 			return xgParseEstimatorError(pr.estimator, fmt.Errorf("found non classification objective(%s)", obj))
 		}
-	case "ANTXGBOOST.BINARYCLASSIFIER":
+	case "XGBOOST.BINARYCLASSIFIER":
 		if obj := filler.Objective; len(obj) == 0 {
 			filler.Objective = "binary:logistic"
 		} else if !strings.HasPrefix(obj, "binary") {
 			return xgParseEstimatorError(pr.estimator, fmt.Errorf("found non binary objective(%s)", obj))
 		}
-	case "ANTXGBOOST.MULTICLASSIFIER":
+	case "XGBOOST.MULTICLASSIFIER":
 		if obj := filler.Objective; len(obj) == 0 {
 			filler.Objective = "multi:softprob"
 		} else if !strings.HasPrefix(obj, "multi") {
 			return xgParseEstimatorError(pr.estimator, fmt.Errorf("found non multi-class objective(%s)", obj))
 		}
-	case "ANTXGBOOST.REGRESSOR":
+	case "XGBOOST.REGRESSOR":
 		if obj := filler.Objective; len(obj) == 0 {
 			filler.Objective = "reg:squarederror"
 		} else if !strings.HasPrefix(obj, "reg") && !strings.HasPrefix(obj, "rank") {

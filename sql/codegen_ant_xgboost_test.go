@@ -25,7 +25,7 @@ const (
 	testAntXGTrainSelectIris = `
 SELECT *
 FROM iris.train
-TRAIN antxgboost.Estimator
+TRAIN xgboost.Estimator
 WITH
 	train.objective = "multi:softprob",
 	train.num_class = 3,
@@ -142,7 +142,7 @@ func TestXGBoostAttr(t *testing.T) {
 
 	trainClause := `
 SELECT a, b, c, d, e FROM table_xx
-TRAIN antxgboost.Estimator
+TRAIN xgboost.Estimator
 WITH
 	train.objective = "binary:logistic",
 	train.booster = gblinear,
@@ -204,7 +204,7 @@ func TestColumnClause(t *testing.T) {
 	parser := newParser()
 	sqlHead := `
 SELECT a, b, c, d, e FROM table_xx
-TRAIN antxgboost.Estimator
+TRAIN xgboost.Estimator
 WITH attr_x = XXX
 `
 	sqlTail := `
@@ -313,7 +313,7 @@ func TestXGBoostFiller(t *testing.T) {
 	parser := newParser()
 	trainClause := `
 SELECT * FROM iris.train
-TRAIN antxgboost.Regressor
+TRAIN xgboost.Regressor
 WITH
 	train.max_depth = 5,
 	train.eta = 0.03,

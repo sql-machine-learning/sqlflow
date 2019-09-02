@@ -38,7 +38,7 @@ func newAnalyzeFiller(db *DB, columns []string, label string) (*analyzeFiller, e
 }
 
 func readFeatureNames(pr *extendedSelect, db *DB) ([]string, string, error) {
-	if strings.HasPrefix(strings.ToUpper(pr.estimator), `ANTXGBOOST.`) {
+	if strings.HasPrefix(strings.ToUpper(pr.estimator), `XGBOOST.`) {
 		// TODO(weiguo): It's a quick way to read column and label names from
 		// xgboost.*, but too heavy.
 		xgbFiller, err := newAntXGBoostFiller(pr, nil, db)
