@@ -11,6 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .sqlflow_data_source import SQLFlowDataSource, SQLFlowDSConfig
+from .sqlflow_ant_xgboost_main import run_with_sqlflow
+from .common import AntXGBoostError
 
-class XGBoostError(Exception):
-    pass
+__all__ = ['run_with_sqlflow', 'SQLFlowDataSource', 'SQLFlowDSConfig', 'AntXGBoostError']
