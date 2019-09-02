@@ -8,7 +8,7 @@ This design document introduced how to support the `Cluster Model` in SQLFLow.
 
 The figure below demonstrates the overall workflow for cluster model training, which include both the pre_train autoencoder model and the clustering model.(Reference https://www.dlology.com/blog/how-to-do-unsupervised-clustering-with-keras/)
 
-<img width="230" height="275" src="figures/cluster_model_train_overview.png">
+<div align=center> <img width="460" height="550" src="figures/cluster_model_train_overview.png"> </div>
 
 1. The first part is used to load a pre_trained model. We use the output of the trained encoder layer as the input to the clustering model. 
 2. Then, the clustering model starts training with randomly initialized weights, and generate clusters after multiple iterations.
