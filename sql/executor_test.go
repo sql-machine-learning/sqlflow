@@ -83,7 +83,7 @@ func TestExecutorTrainAnalyzePredictAntXGBoost(t *testing.T) {
 		stream = runExtendedSQL(testAntXGAnalyzeSelectIris, testDB, modelDir, nil)
 		a.True(goodStream(stream.ReadAll()))
 
-		stream = runExtendedSQL(testXGPredSelectIris, testDB, modelDir, nil)
+		stream = runExtendedSQL(testAntXGPredSelectIris, testDB, modelDir, nil)
 		a.True(goodStream(stream.ReadAll()))
 	})
 }
