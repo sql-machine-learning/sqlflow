@@ -27,23 +27,20 @@ from sqlflow_submitter.db import connect, db_generator
 
 shap.initjs()
 
-X,y = shap.datasets.boston()
-
-model = xgboost.train({"learning_rate": 0.01}, xgboost.DMatrix(X, label=y), 100)
-explainer = shap.TreeExplainer(model)
-shap_values = explainer.shap_values(X)
-
-# summarize the effects of all the features
-shap.summary_plot(shap_values, X, plot_type="dot")
-
-plt.savefig('summary')
-
-### vars 
-# Session={{.Session}}
-
 # read data
 driver="{{.Driver}}"
-feature_names = [{{ range $value := .Columns }} "{{$value}}", {{end}}]
+feature_names = [{{ range $value := .X }} "{{$value.FeatureName}}", {{end}}]
+feature_metas={}
+{{ range $value := .X }}
+feature_metas["{{$value.FeatureName}}"] = {
+    "feature_name": "{{$value.FeatureName}}",
+    "dtype": "{{$value.Dtype}}",
+    "delimiter": "{{$value.Delimiter}}",
+    "shape": {{$value.InputShape}},
+    "is_sparse": "{{$value.IsSparse}}" == "true"
+}
+{{end}}
+
 label_name="{{.Label}}"
 database=""
 {{if ne .Database ""}}
@@ -56,7 +53,29 @@ session_cfg["{{$k}}"] = "{{$v}}"
 
 conn = connect(driver, database, user="{{.User}}", password="{{.Password}}", host="{{.Host}}", port={{.Port}}, auth="{{.Auth}}")
 
+def analyzer_dataset():
+	stream = db_generator(driver, conn, session_cfg, """{{.AnalyzeDatasetSQL}}""", feature_names, label_name, feature_metas)
+	xs = pd.DataFrame(columns=feature_names)
+	ys = pd.DataFrame(columns=[label_name])
+	i = 0
+	for row in stream():
+		xs.loc[i] = row[0]
+		ys.loc[i] = row[1]
+		i += 1
+	return xs, ys
+
 # TODO(weiguo): load a model
+
+X,y = analyzer_dataset()
+
+model = xgboost.train({"learning_rate": 0.01}, xgboost.DMatrix(X, label=y), 100)
+explainer = shap.TreeExplainer(model)
+shap_values = explainer.shap_values(X)
+
+# summarize the effects of all the features
+shap.summary_plot(shap_values, X, plot_type="dot")
+
+plt.savefig('summary')
 
 `
 

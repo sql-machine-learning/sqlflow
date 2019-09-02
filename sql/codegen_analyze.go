@@ -22,31 +22,51 @@ import (
 
 type analyzeFiller struct {
 	*connectionConfig
-	Columns []string
-	Label   string
+	X                 []*featureMeta
+	Label             string
+	AnalyzeDatasetSQL string
 }
 
-func newAnalyzeFiller(db *DB, columns []string, label string) (*analyzeFiller, error) {
+func newAnalyzeFiller(pr *extendedSelect, db *DB, fms []*featureMeta, label string) (*analyzeFiller, error) {
 	conn, err := newConnectionConfig(db)
 	if err != nil {
 		return nil, err
 	}
 	return &analyzeFiller{
 		connectionConfig: conn,
-		Columns:          columns,
+		X:                fms,
 		Label:            label,
+		// TODO(weiguo): test if it needs TrimSuffix(SQL, ";") on hive,
+		// or we trim it in pr(*extendedSelect)
+		AnalyzeDatasetSQL: pr.standardSelect.String(),
 	}, nil
 }
 
-func readFeatureNames(pr *extendedSelect, db *DB) ([]string, string, error) {
+func readFeatureNames(pr *extendedSelect, db *DB) ([]*featureMeta, string, error) {
 	if strings.HasPrefix(strings.ToUpper(pr.estimator), `XGBOOST.`) {
 		// TODO(weiguo): It's a quick way to read column and label names from
 		// xgboost.*, but too heavy.
-		xgbFiller, err := newAntXGBoostFiller(pr, nil, db)
+		fr, err := newAntXGBoostFiller(pr, nil, db)
 		if err != nil {
 			return nil, "", err
 		}
-		return xgbFiller.FeatureColumns, xgbFiller.Label, nil
+
+		fms := make([]*featureMeta, len(fr.X))
+		for i := 0; i < len(fr.X); i++ {
+			// FIXME(weiguo): we convert xgboost.X to normal(tf).X to reuse
+			// DB access API, but I don't think it is a good practice,
+			// Think about the AI engines increased, such as ALPS, (EDL?)
+			// we should write as many as such converters.
+			// How about we unify all featureMetas?
+			fms[i] = &featureMeta{
+				FeatureName: fr.X[i].FeatureName,
+				Dtype:       fr.X[i].Dtype,
+				Delimiter:   fr.X[i].Delimiter,
+				InputShape:  fr.X[i].InputShape,
+				IsSparse:    fr.X[i].IsSparse,
+			}
+		}
+		return fms, fr.Label, nil
 	}
 	return nil, "", fmt.Errorf("analyzer: model[%s] not supported", pr.estimator)
 }
@@ -57,11 +77,11 @@ func genAnalyzer(pr *extendedSelect, db *DB, cwd string, modelDir string) (*byte
 		return nil, fmt.Errorf("loadModelMeta %v", err)
 	}
 
-	columns, label, err := readFeatureNames(pr, db)
+	fms, label, err := readFeatureNames(pr, db)
 	if err != nil {
 		return nil, fmt.Errorf("read feature names err: %v", err)
 	}
-	fr, err := newAnalyzeFiller(db, columns, label)
+	fr, err := newAnalyzeFiller(pr, db, fms, label)
 	if err != nil {
 		return nil, fmt.Errorf("create analyze filler failed: %v", err)
 	}
