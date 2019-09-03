@@ -78,5 +78,5 @@ dtest = xgb_dataset('test.txt', "{{.ValidationDatasetSQL}}")
 #TODO(Yancey1989): specify the eval metrics by WITH statement in SQL
 train_args["evals"] = [(dtest, "auc")]
 bst = xgb.train(params, dtrain, **train_args)
-bst.save_model()
+bst.save_model("{{.Save}}")
 `

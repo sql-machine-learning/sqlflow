@@ -56,9 +56,9 @@ func resolveXGBTrainClause(tc *trainClause) (*resolvedXGBTrainClause, error) {
 		}
 		return defaultValue
 	}
+
 	return &resolvedXGBTrainClause{
 		NumBoostRound: getIntAttr("train.num_boost_round", 10),
 		Maximize:      getBoolAttr("train.maximize", false, true),
-		ParamsAttr:    filter(attrs, "params", true),
 	}, nil
 }

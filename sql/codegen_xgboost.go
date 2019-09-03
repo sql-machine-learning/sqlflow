@@ -31,6 +31,7 @@ type xgbFiller struct {
 	TrainCfg             *xgbTrainConfig
 	Features             []*featureMeta
 	Label                *featureMeta
+	Save                 string
 	ParamsCfgJSON        string
 	TrainCfgJSON         string
 	*connectionConfig
@@ -62,6 +63,7 @@ func newXGBFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db
 		TrainCfg:             trainCfg,
 		TrainingDatasetSQL:   training,
 		ValidationDatasetSQL: validation,
+		Save:                 pr.save,
 	}
 	// TODO(Yancey1989): fill the train_args and parameters by WITH statment
 	r.TrainCfgJSON = ""
@@ -77,7 +79,7 @@ func newXGBFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db
 			return nil, err
 		}
 		if len(colSpecs) != 0 {
-			return nil, fmt.Errorf("newFiller doesn't support DENSE/SPARSE")
+			return nil, fmt.Errorf("newXGBoostFiller doesn't support DENSE/SPARSE")
 		}
 		for _, col := range feaCols {
 			fm := &featureMeta{
