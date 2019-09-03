@@ -17,6 +17,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/sql-machine-learning/sqlflow/sql/columns"
 )
 
 const (
@@ -61,8 +63,8 @@ type resolvedTrainClause struct {
 	EvalStartDelay                int
 	EvalThrottle                  int
 	EvalCheckpointFilenameForInit string
-	FeatureColumns                map[string][]featureColumn
-	ColumnSpecs                   map[string][]*columnSpec
+	FeatureColumns                map[string][]columns.FeatureColumn
+	ColumnSpecs                   map[string][]*columns.ColumnSpec
 	EngineParams                  engineSpec
 	CustomModule                  *gitLabModule
 }
@@ -73,11 +75,6 @@ type resolvedPredictClause struct {
 	ModelConstructorParams    map[string]*attribute
 	CheckpointFilenameForInit string
 	EngineParams              engineSpec
-}
-
-type featureMap struct {
-	Table     string
-	Partition string
 }
 
 func trimQuotes(s string) string {
@@ -138,8 +135,8 @@ func resolveTrainClause(tc *trainClause) (*resolvedTrainClause, error) {
 		}
 		return defaultValue
 	}
-	modelParams := filter(attrs, "model", true)
-	engineParams := filter(attrs, "engine", true)
+	modelParams := attrFilter(attrs, "model", true)
+	engineParams := attrFilter(attrs, "engine", true)
 
 	batchSize := getIntAttr("train.batch_size", 512)
 	dropRemainder := getBoolAttr("train.drop_remainder", true, false)
@@ -203,8 +200,8 @@ func resolveTrainClause(tc *trainClause) (*resolvedTrainClause, error) {
 		return nil, fmt.Errorf("unsupported parameters: %v", attrs)
 	}
 
-	fcMap := map[string][]featureColumn{}
-	csMap := map[string][]*columnSpec{}
+	fcMap := map[string][]columns.FeatureColumn{}
+	csMap := map[string][]*columns.ColumnSpec{}
 	for target, columns := range tc.columns {
 		fcs, css, err := resolveTrainColumns(&columns)
 		if err != nil {
@@ -262,8 +259,8 @@ func resolvePredictClause(pc *predictClause) (*resolvedPredictClause, error) {
 		}
 		return defaultValue
 	}
-	modelParams := filter(attrs, "model", true)
-	engineParams := filter(attrs, "engine", true)
+	modelParams := attrFilter(attrs, "model", true)
+	engineParams := attrFilter(attrs, "engine", true)
 
 	checkpointFilenameForInit := getStringAttr("predict.checkpoint_filename_for_init", "")
 
@@ -281,14 +278,14 @@ func resolvePredictClause(pc *predictClause) (*resolvedPredictClause, error) {
 
 // resolveTrainColumns resolve columns from SQL statement,
 // returns featureColumn list and featureSpecs
-func resolveTrainColumns(columns *exprlist) ([]featureColumn, []*columnSpec, error) {
-	var fcs = make([]featureColumn, 0)
-	var css = make([]*columnSpec, 0)
-	for _, expr := range *columns {
+func resolveTrainColumns(columnExprs *exprlist) ([]columns.FeatureColumn, []*columns.ColumnSpec, error) {
+	var fcs = make([]columns.FeatureColumn, 0)
+	var css = make([]*columns.ColumnSpec, 0)
+	for _, expr := range *columnExprs {
 		if expr.typ != 0 {
 			// Column identifier like "COLUMN a1,b1"
 			// FIXME(typhoonzero): infer the column spec here.
-			c := &numericColumn{
+			c := &columns.NumericColumn{
 				Key:   expr.val,
 				Shape: []int{1},
 				Dtype: "float32",
@@ -383,35 +380,17 @@ func expression2string(e interface{}) (string, error) {
 	return "", fmt.Errorf("expression expected to be string, actual: %s", resolved)
 }
 
-func (cs *columnSpec) ToString() string {
-	if cs.IsSparse {
-		shape := strings.Join(strings.Split(fmt.Sprint(cs.Shape), " "), ",")
-		if len(cs.Shape) > 1 {
-			groupCnt := len(cs.Shape)
-			return fmt.Sprintf("GroupedSparseColumn(name=\"%s\", shape=%s, dtype=\"%s\", group=%d, group_separator='\\002')",
-				cs.ColumnName, shape, cs.DType, groupCnt)
-		}
-		return fmt.Sprintf("SparseColumn(name=\"%s\", shape=%s, dtype=\"%s\")", cs.ColumnName, shape, cs.DType)
-
-	}
-	return fmt.Sprintf("DenseColumn(name=\"%s\", shape=%s, dtype=\"%s\", separator=\"%s\")",
-		cs.ColumnName,
-		strings.Join(strings.Split(fmt.Sprint(cs.Shape), " "), ","),
-		cs.DType,
-		cs.Delimiter)
-}
-
-func generateFeatureColumnCode(fcs []featureColumn) (string, error) {
-	var codes = make([]string, 0, len(fcs))
-	for _, fc := range fcs {
-		code, err := fc.GenerateCode()
-		if err != nil {
-			return "", nil
-		}
-		codes = append(codes, code)
-	}
-	return fmt.Sprintf("[%s]", strings.Join(codes, ",")), nil
-}
+// func generateFeatureColumnCode(fcs []columns.FeatureColumn) (string, error) {
+// 	var codes = make([]string, 0, len(fcs))
+// 	for _, fc := range fcs {
+// 		code, err := fc.GenerateCode()
+// 		if err != nil {
+// 			return "", nil
+// 		}
+// 		codes = append(codes, code)
+// 	}
+// 	return fmt.Sprintf("[%s]", strings.Join(codes, ",")), nil
+// }
 
 func resolveDelimiter(delimiter string) (string, error) {
 	if strings.EqualFold(delimiter, comma) {
@@ -430,4 +409,310 @@ func transformToIntList(list []interface{}) ([]int, error) {
 		}
 	}
 	return b, nil
+}
+
+func resolveAttribute(attrs *attrs) (map[string]*attribute, error) {
+	ret := make(map[string]*attribute)
+	for k, v := range *attrs {
+		subs := strings.SplitN(k, ".", 2)
+		name := subs[len(subs)-1]
+		prefix := ""
+		if len(subs) == 2 {
+			prefix = subs[0]
+		}
+		r, _, err := resolveExpression(v)
+		if err != nil {
+			return nil, err
+		}
+		a := &attribute{
+			FullName: k,
+			Prefix:   prefix,
+			Name:     name,
+			Value:    r}
+		ret[a.FullName] = a
+	}
+	return ret, nil
+}
+
+func resolveBucketColumn(el *exprlist) (*columns.BucketColumn, error) {
+	if len(*el) != 3 {
+		return nil, fmt.Errorf("bad BUCKET expression format: %s", *el)
+	}
+	sourceExprList := (*el)[1]
+	boundariesExprList := (*el)[2]
+	if sourceExprList.typ != 0 {
+		return nil, fmt.Errorf("key of BUCKET must be NUMERIC, which is %v", sourceExprList)
+	}
+	source, _, err := resolveColumn(&sourceExprList.sexp)
+	if err != nil {
+		return nil, err
+	}
+	if source.GetColumnType() != columns.ColumnTypeNumeric {
+		return nil, fmt.Errorf("key of BUCKET must be NUMERIC, which is %s", source)
+	}
+	boundaries, _, err := resolveExpression(boundariesExprList)
+	if err != nil {
+		return nil, err
+	}
+	if _, ok := boundaries.([]interface{}); !ok {
+		return nil, fmt.Errorf("bad BUCKET boundaries: %s", err)
+	}
+	b, err := transformToIntList(boundaries.([]interface{}))
+	if err != nil {
+		return nil, fmt.Errorf("bad BUCKET boundaries: %s", err)
+	}
+	return &columns.BucketColumn{
+		SourceColumn: source.(*columns.NumericColumn),
+		Boundaries:   b}, nil
+}
+
+func resolveSeqCategoryIDColumn(el *exprlist) (*columns.SequenceCategoryIDColumn, *columns.ColumnSpec, error) {
+	key, bucketSize, delimiter, cs, err := parseCategoryIDColumnExpr(el)
+	if err != nil {
+		return nil, nil, err
+	}
+	return &columns.SequenceCategoryIDColumn{
+		Key:        key,
+		BucketSize: bucketSize,
+		Delimiter:  delimiter,
+		// TODO(typhoonzero): support config dtype
+		Dtype:      "int64",
+		IsSequence: true}, cs, nil
+}
+
+func resolveCategoryIDColumn(el *exprlist) (*columns.CategoryIDColumn, *columns.ColumnSpec, error) {
+	key, bucketSize, delimiter, cs, err := parseCategoryIDColumnExpr(el)
+	if err != nil {
+		return nil, nil, err
+	}
+	return &columns.CategoryIDColumn{
+		Key:        key,
+		BucketSize: bucketSize,
+		Delimiter:  delimiter,
+		// TODO(typhoonzero): support config dtype
+		Dtype: "int64"}, cs, nil
+}
+
+func parseCategoryIDColumnExpr(el *exprlist) (string, int, string, *columns.ColumnSpec, error) {
+	if len(*el) != 3 && len(*el) != 4 {
+		return "", 0, "", nil, fmt.Errorf("bad CATEGORY_ID expression format: %s", *el)
+	}
+	var cs *columns.ColumnSpec
+	key := ""
+	var err error
+	if (*el)[1].typ == 0 {
+		// explist, maybe DENSE/SPARSE expressions
+		subExprList := (*el)[1].sexp
+		isSparse := subExprList[0].val == sparse
+		cs, err = resolveColumnSpec(&subExprList, isSparse)
+		if err != nil {
+			return "", 0, "", nil, fmt.Errorf("bad CATEGORY_ID expression format: %v", subExprList)
+		}
+		key = cs.ColumnName
+	} else {
+		key, err = expression2string((*el)[1])
+		if err != nil {
+			return "", 0, "", nil, fmt.Errorf("bad CATEGORY_ID key: %s, err: %s", (*el)[1], err)
+		}
+	}
+	bucketSize, err := strconv.Atoi((*el)[2].val)
+	if err != nil {
+		return "", 0, "", nil, fmt.Errorf("bad CATEGORY_ID bucketSize: %s, err: %s", (*el)[2].val, err)
+	}
+	delimiter := ""
+	if len(*el) == 4 {
+		delimiter, err = resolveDelimiter((*el)[3].val)
+		if err != nil {
+			return "", 0, "", nil, fmt.Errorf("bad CATEGORY_ID delimiter: %s, %s", (*el)[3].val, err)
+		}
+	}
+	return key, bucketSize, delimiter, cs, nil
+}
+
+func resolveCrossColumn(el *exprlist) (*columns.CrossColumn, error) {
+	if len(*el) != 3 {
+		return nil, fmt.Errorf("bad CROSS expression format: %s", *el)
+	}
+	keysExpr := (*el)[1]
+	key, _, err := resolveExpression(keysExpr)
+	if err != nil {
+		return nil, err
+	}
+	if _, ok := key.([]interface{}); !ok {
+		return nil, fmt.Errorf("bad CROSS expression format: %s", *el)
+	}
+
+	bucketSize, err := strconv.Atoi((*el)[2].val)
+	if err != nil {
+		return nil, fmt.Errorf("bad CROSS bucketSize: %s, err: %s", (*el)[2].val, err)
+	}
+	return &columns.CrossColumn{
+		Keys:           key.([]interface{}),
+		HashBucketSize: bucketSize}, nil
+}
+
+func resolveEmbeddingColumn(el *exprlist) (*columns.EmbeddingColumn, error) {
+	if len(*el) != 4 && len(*el) != 5 {
+		return nil, fmt.Errorf("bad EMBEDDING expression format: %s", *el)
+	}
+	sourceExprList := (*el)[1]
+	var source columns.FeatureColumn
+	var err error
+	if sourceExprList.typ == 0 {
+		source, _, err = resolveColumn(&sourceExprList.sexp)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, fmt.Errorf("key of EMBEDDING must be categorical column")
+	}
+	// TODO(uuleon) support other kinds of categorical column in the future
+	var catColumn interface{}
+	catColumn, ok := source.(*columns.CategoryIDColumn)
+	if !ok {
+		catColumn, ok = source.(*columns.SequenceCategoryIDColumn)
+		if !ok {
+			return nil, fmt.Errorf("key of EMBEDDING must be categorical column")
+		}
+	}
+	dimension, err := strconv.Atoi((*el)[2].val)
+	if err != nil {
+		return nil, fmt.Errorf("bad EMBEDDING dimension: %s, err: %s", (*el)[2].val, err)
+	}
+	combiner, err := expression2string((*el)[3])
+	if err != nil {
+		return nil, fmt.Errorf("bad EMBEDDING combiner: %s, err: %s", (*el)[3], err)
+	}
+	initializer := ""
+	if len(*el) == 5 {
+		initializer, err = expression2string((*el)[4])
+		if err != nil {
+			return nil, fmt.Errorf("bad EMBEDDING initializer: %s, err: %s", (*el)[4], err)
+		}
+	}
+	return &columns.EmbeddingColumn{
+		CategoryColumn: catColumn,
+		Dimension:      dimension,
+		Combiner:       combiner,
+		Initializer:    initializer}, nil
+}
+
+func resolveNumericColumn(el *exprlist) (*columns.NumericColumn, error) {
+	if len(*el) != 3 {
+		return nil, fmt.Errorf("bad NUMERIC expression format: %s", *el)
+	}
+	key, err := expression2string((*el)[1])
+	if err != nil {
+		return nil, fmt.Errorf("bad NUMERIC key: %s, err: %s", (*el)[1], err)
+	}
+	var shape []int
+	intVal, err := strconv.Atoi((*el)[2].val)
+	if err != nil {
+		list, _, err := resolveExpression((*el)[2])
+		if err != nil {
+			return nil, err
+		}
+		if list, ok := list.([]interface{}); ok {
+			shape, err = transformToIntList(list)
+			if err != nil {
+				return nil, fmt.Errorf("bad NUMERIC shape: %s, err: %s", (*el)[2].val, err)
+			}
+		} else {
+			return nil, fmt.Errorf("bad NUMERIC shape: %s, err: %s", (*el)[2].val, err)
+		}
+	} else {
+		shape = append(shape, intVal)
+	}
+	return &columns.NumericColumn{
+		Key:   key,
+		Shape: shape,
+		// FIXME(typhoonzero, tony): support config Delimiter and Dtype
+		Delimiter: ",",
+		Dtype:     "float32"}, nil
+}
+
+func resolveColumnSpec(el *exprlist, isSparse bool) (*columns.ColumnSpec, error) {
+	if len(*el) < 4 {
+		return nil, fmt.Errorf("bad FeatureSpec expression format: %s", *el)
+	}
+	name, err := expression2string((*el)[1])
+	if err != nil {
+		return nil, fmt.Errorf("bad FeatureSpec name: %s, err: %s", (*el)[1], err)
+	}
+	var shape []int
+	intShape, err := strconv.Atoi((*el)[2].val)
+	if err != nil {
+		strShape, err := expression2string((*el)[2])
+		if err != nil {
+			return nil, fmt.Errorf("bad FeatureSpec shape: %s, err: %s", (*el)[2].val, err)
+		}
+		if strShape != "none" {
+			return nil, fmt.Errorf("bad FeatureSpec shape: %s, err: %s", (*el)[2].val, err)
+		}
+	} else {
+		shape = append(shape, intShape)
+	}
+	unresolvedDelimiter, err := expression2string((*el)[3])
+	if err != nil {
+		return nil, fmt.Errorf("bad FeatureSpec delimiter: %s, err: %s", (*el)[1], err)
+	}
+
+	delimiter, err := resolveDelimiter(unresolvedDelimiter)
+	if err != nil {
+		return nil, err
+	}
+
+	// resolve feature map
+	fm := columns.FeatureMap{}
+	dtype := "float"
+	if isSparse {
+		dtype = "int"
+	}
+	if len(*el) >= 5 {
+		dtype, err = expression2string((*el)[4])
+	}
+	return &columns.ColumnSpec{
+		ColumnName: name,
+		IsSparse:   isSparse,
+		Shape:      shape,
+		DType:      dtype,
+		Delimiter:  delimiter,
+		FeatureMap: fm}, nil
+}
+
+// resolveFeatureColumn returns the acutal feature column typed struct
+// as well as the columnSpec infomation.
+func resolveColumn(el *exprlist) (columns.FeatureColumn, *columns.ColumnSpec, error) {
+	head := (*el)[0].val
+	if head == "" {
+		return nil, nil, fmt.Errorf("column description expects format like NUMERIC(key) etc, got %v", el)
+	}
+
+	switch strings.ToUpper(head) {
+	case dense:
+		cs, err := resolveColumnSpec(el, false)
+		return nil, cs, err
+	case sparse:
+		cs, err := resolveColumnSpec(el, true)
+		return nil, cs, err
+	case numeric:
+		// TODO(typhoonzero): support NUMERIC(DENSE(col)) and NUMERIC(SPARSE(col))
+		fc, err := resolveNumericColumn(el)
+		return fc, nil, err
+	case bucket:
+		fc, err := resolveBucketColumn(el)
+		return fc, nil, err
+	case cross:
+		fc, err := resolveCrossColumn(el)
+		return fc, nil, err
+	case categoryID:
+		return resolveCategoryIDColumn(el)
+	case seqCategoryID:
+		return resolveSeqCategoryIDColumn(el)
+	case embedding:
+		fc, err := resolveEmbeddingColumn(el)
+		return fc, nil, err
+	default:
+		return nil, nil, fmt.Errorf("not supported expr: %s", head)
+	}
 }
