@@ -46,7 +46,7 @@ WITH
 USING sqlflow_models.my_xgboost_model;
 """
 
-    def test_xgboost(self):
+    def test_antxgboost(self):
         ipython.run_cell_magic("sqlflow", "", self.train_statement)
         ipython.run_cell_magic("sqlflow", "", self.pred_statement)
 

@@ -85,7 +85,7 @@ func createMaxcomputeRandomTable(target, slct string, db *DB) error {
 		return e
 	}
 	// create a table, then split it into train and val tables
-	stmt := fmt.Sprintf("CREATE TABLE %s LIFECYCLE %d AS SELECT *, RAND() AS %s FROM (%s) AS %s_ori", target, temporaryTableLifecycle, randomColumn, slct, target)
+	stmt := fmt.Sprintf("CREATE TABLE %s LIFECYCLE %d AS SELECT *, RAND(42) AS %s FROM (%s) AS %s_ori", target, temporaryTableLifecycle, randomColumn, slct, target)
 	_, e := db.Exec(stmt)
 	return e
 }
@@ -146,7 +146,7 @@ func createRandomTable(database, table, slct string, db *DB, useCurrentDB bool) 
 	if _, e := db.Exec(dropStmt); e != nil {
 		return "", e
 	}
-	stmt := fmt.Sprintf("CREATE TABLE %s AS SELECT *, RAND() AS %s FROM (%s) AS %s_ori", fullTbl, randomColumn, slct, table)
+	stmt := fmt.Sprintf("CREATE TABLE %s AS SELECT *, RAND(42) AS %s FROM (%s) AS %s_ori", fullTbl, randomColumn, slct, table)
 	_, e := db.Exec(stmt)
 	return fullTbl, e
 }

@@ -24,11 +24,12 @@ import (
 	"text/template"
 
 	"github.com/go-sql-driver/mysql"
+	"github.com/sql-machine-learning/sqlflow/sql/columns"
 	"sqlflow.org/gohive"
 	"sqlflow.org/gomaxcompute"
 )
 
-type xgboostFiller struct {
+type antXGBoostFiller struct {
 	ModelPath string
 	xgLearningFields
 	xgColumnFields
@@ -47,19 +48,32 @@ type xgLearningFields struct {
 }
 
 type xgBoosterFields struct {
-	Objective           string  `json:"objective,omitempty"`
-	Booster             string  `json:"booster,omitempty"`
-	NumClass            uint    `json:"num_class,omitempty"`
-	MaxDepth            uint    `json:"max_depth,omitempty"`
-	Eta                 float32 `json:"eta,omitempty"`
+	Objective        string  `json:"objective,omitempty"`
+	EvalMetric       string  `json:"eval_metric,omitempty"`
+	Booster          string  `json:"booster,omitempty"`
+	Seed             uint    `json:"seed,omitempty"`
+	NumClass         uint    `json:"num_class,omitempty"`
+	Eta              float32 `json:"eta,omitempty"`
+	Gamma            float32 `json:"gamma,omitempy"`
+	MaxDepth         uint    `json:"max_depth,omitempty"`
+	MinChildWeight   uint    `json:"min_child_weight,omitempty"`
+	Subsample        float32 `json:"subsample,omtiempty"`
+	ColSampleByTree  float32 `json:"colsample_bytree,omitempty"`
+	ColSampleByLevel float32 `json:"colsample_bylevel,omitempty"`
+	ColSampleByNode  float32 `json:"colsample_bynode,omitempty"`
+	// `Lambda` is reversed in python, so we use alias reg_lambda.
+	Lambda float32 `json:"reg_lambda,omitempty"`
+	// We use alias `reg_alpha` to keep align with `reg_lambda`。
+	Alpha               float32 `json:"reg_alpha,omitempty"`
 	TreeMethod          string  `json:"tree_method,omitempty"`
-	EvalMetric          string  `json:"eval_metric,omitempty"`
-	Subsample           float32 `json:"subsample,omitempty"`
-	ColSampleByTree     float32 `json:"colsample_bytree,omitempty"`
-	ColSampleByLevel    float32 `json:"colsample_bylevel,omitempty"`
+	SketchEps           float32 `json:"sketch_eps,omitempty"`
+	ScalePosWeight      float32 `json:"scale_pos_weight,omitempty"`
+	GrowPolicy          string  `json:"grow_policy,omitempty"`
+	MaxLeaves           uint    `json:"max_leaves,omitempty"`
 	MaxBin              uint    `json:"max_bin,omitempty"`
-	ConvergenceCriteria string  `json:"convergence_criteria,omitempty"`
-	Verbosity           uint    `json:"verbosity,omitempty"`
+	NumParallelTree     uint    `json:"num_parallel_tree,omitempty"`
+	ConvergenceCriteria string  `json:"convergence_criteria,omitempty"` // auto_train config
+	Verbosity           uint    `json:"verbosity,omitempty"`            // auto_train config
 }
 
 type xgColumnFields struct {
@@ -151,15 +165,15 @@ func xgMultiSparseError(colNames []string) error {
 }
 
 func xgUnknownFCError(kw string) error {
-	return fmt.Errorf("xgUnknownFCError: feature column keyword(`%s`) is not supported by xgboost engine", kw)
+	return fmt.Errorf("xgUnknownFCError: feature column keyword(`%s`) is not supported by ant-xgboost engine", kw)
 }
 
 func xgUnsupportedColTagError() error {
-	return fmt.Errorf("xgUnsupportedColTagError: valid column tags of xgboost engine([feature_columns, group, weight])")
+	return fmt.Errorf("xgUnsupportedColTagError: valid column tags of ant-xgboost engine([feature_columns, group, weight])")
 }
 
-func uIntPartial(key string, ptrFn func(*xgboostFiller) *uint) func(*map[string][]string, *xgboostFiller) error {
-	return func(a *map[string][]string, r *xgboostFiller) error {
+func uIntPartial(key string, ptrFn func(*antXGBoostFiller) *uint) func(*map[string][]string, *antXGBoostFiller) error {
+	return func(a *map[string][]string, r *antXGBoostFiller) error {
 		// xgParseAttr will ensure the key is existing in map
 		val, _ := (*a)[key]
 		if len(val) != 1 {
@@ -177,8 +191,8 @@ func uIntPartial(key string, ptrFn func(*xgboostFiller) *uint) func(*map[string]
 	}
 }
 
-func fp32Partial(key string, ptrFn func(*xgboostFiller) *float32) func(*map[string][]string, *xgboostFiller) error {
-	return func(a *map[string][]string, r *xgboostFiller) error {
+func fp32Partial(key string, ptrFn func(*antXGBoostFiller) *float32) func(*map[string][]string, *antXGBoostFiller) error {
+	return func(a *map[string][]string, r *antXGBoostFiller) error {
 		// xgParseAttr will ensure the key is existing in map
 		val, _ := (*a)[key]
 		if len(val) != 1 {
@@ -196,8 +210,8 @@ func fp32Partial(key string, ptrFn func(*xgboostFiller) *float32) func(*map[stri
 	}
 }
 
-func boolPartial(key string, ptrFn func(*xgboostFiller) *bool) func(*map[string][]string, *xgboostFiller) error {
-	return func(a *map[string][]string, r *xgboostFiller) error {
+func boolPartial(key string, ptrFn func(*antXGBoostFiller) *bool) func(*map[string][]string, *antXGBoostFiller) error {
+	return func(a *map[string][]string, r *antXGBoostFiller) error {
 		// xgParseAttr will ensure the key is existing in map
 		val, _ := (*a)[key]
 		if len(val) != 1 {
@@ -214,8 +228,8 @@ func boolPartial(key string, ptrFn func(*xgboostFiller) *bool) func(*map[string]
 	}
 }
 
-func strPartial(key string, ptrFn func(*xgboostFiller) *string) func(*map[string][]string, *xgboostFiller) error {
-	return func(a *map[string][]string, r *xgboostFiller) error {
+func strPartial(key string, ptrFn func(*antXGBoostFiller) *string) func(*map[string][]string, *antXGBoostFiller) error {
+	return func(a *map[string][]string, r *antXGBoostFiller) error {
 		// xgParseAttr will ensure the key is existing in map
 		val, _ := (*a)[key]
 		if len(val) != 1 {
@@ -231,8 +245,8 @@ func strPartial(key string, ptrFn func(*xgboostFiller) *string) func(*map[string
 	}
 }
 
-func sListPartial(key string, ptrFn func(*xgboostFiller) *[]string) func(*map[string][]string, *xgboostFiller) error {
-	return func(a *map[string][]string, r *xgboostFiller) error {
+func sListPartial(key string, ptrFn func(*antXGBoostFiller) *[]string) func(*map[string][]string, *antXGBoostFiller) error {
+	return func(a *map[string][]string, r *antXGBoostFiller) error {
 		// xgParseAttr will ensure the key is existing in map
 		val, _ := (*a)[key]
 		strListPtr := ptrFn(r)
@@ -245,37 +259,48 @@ func sListPartial(key string, ptrFn func(*xgboostFiller) *[]string) func(*map[st
 	}
 }
 
-var xgbTrainAttrSetterMap = map[string]func(*map[string][]string, *xgboostFiller) error{
+var xgbTrainAttrSetterMap = map[string]func(*map[string][]string, *antXGBoostFiller) error{
 	// booster params
-	"train.objective":            strPartial("train.objective", func(r *xgboostFiller) *string { return &(r.Objective) }),
-	"train.booster":              strPartial("train.booster", func(r *xgboostFiller) *string { return &(r.Booster) }),
-	"train.max_depth":            uIntPartial("train.max_depth", func(r *xgboostFiller) *uint { return &(r.MaxDepth) }),
-	"train.num_class":            uIntPartial("train.num_class", func(r *xgboostFiller) *uint { return &(r.NumClass) }),
-	"train.eta":                  fp32Partial("train.eta", func(r *xgboostFiller) *float32 { return &(r.Eta) }),
-	"train.tree_method":          strPartial("train.tree_method", func(r *xgboostFiller) *string { return &(r.TreeMethod) }),
-	"train.eval_metric":          strPartial("train.eval_metric", func(r *xgboostFiller) *string { return &(r.EvalMetric) }),
-	"train.subsample":            fp32Partial("train.subsample", func(r *xgboostFiller) *float32 { return &(r.Subsample) }),
-	"train.colsample_bytree":     fp32Partial("train.colsample_bytree", func(r *xgboostFiller) *float32 { return &(r.ColSampleByTree) }),
-	"train.colsample_bylevel":    fp32Partial("train.colsample_bylevel", func(r *xgboostFiller) *float32 { return &(r.ColSampleByLevel) }),
-	"train.max_bin":              uIntPartial("train.max_bin", func(r *xgboostFiller) *uint { return &(r.MaxBin) }),
-	"train.convergence_criteria": strPartial("train.convergence_criteria", func(r *xgboostFiller) *string { return &(r.ConvergenceCriteria) }),
-	"train.verbosity":            uIntPartial("train.verbosity", func(r *xgboostFiller) *uint { return &(r.Verbosity) }),
+	"train.objective":            strPartial("train.objective", func(r *antXGBoostFiller) *string { return &(r.Objective) }),
+	"train.eval_metric":          strPartial("train.eval_metric", func(r *antXGBoostFiller) *string { return &(r.EvalMetric) }),
+	"train.booster":              strPartial("train.booster", func(r *antXGBoostFiller) *string { return &(r.Booster) }),
+	"train.seed":                 uIntPartial("train.seed", func(r *antXGBoostFiller) *uint { return &(r.Seed) }),
+	"train.num_class":            uIntPartial("train.num_class", func(r *antXGBoostFiller) *uint { return &(r.NumClass) }),
+	"train.eta":                  fp32Partial("train.eta", func(r *antXGBoostFiller) *float32 { return &(r.Eta) }),
+	"train.gamma":                fp32Partial("train.gamma", func(r *antXGBoostFiller) *float32 { return &(r.Gamma) }),
+	"train.max_depth":            uIntPartial("train.max_depth", func(r *antXGBoostFiller) *uint { return &(r.MaxDepth) }),
+	"train.min_child_weight":     uIntPartial("train.min_child_weight", func(r *antXGBoostFiller) *uint { return &(r.MinChildWeight) }),
+	"train.subsample":            fp32Partial("train.subsample", func(r *antXGBoostFiller) *float32 { return &(r.Subsample) }),
+	"train.colsample_bytree":     fp32Partial("train.colsample_bytree", func(r *antXGBoostFiller) *float32 { return &(r.ColSampleByTree) }),
+	"train.colsample_bylevel":    fp32Partial("train.colsample_bylevel", func(r *antXGBoostFiller) *float32 { return &(r.ColSampleByLevel) }),
+	"train.colsample_bynode":     fp32Partial("train.colsample_bynode", func(r *antXGBoostFiller) *float32 { return &(r.ColSampleByNode) }),
+	"train.lambda":               fp32Partial("train.lambda", func(r *antXGBoostFiller) *float32 { return &(r.Lambda) }),
+	"train.alpha":                fp32Partial("train.alpha", func(r *antXGBoostFiller) *float32 { return &(r.Alpha) }),
+	"train.tree_method":          strPartial("train.tree_method", func(r *antXGBoostFiller) *string { return &(r.TreeMethod) }),
+	"train.sketch_eps":           fp32Partial("train.sketch_eps", func(r *antXGBoostFiller) *float32 { return &(r.SketchEps) }),
+	"train.scale_pos_weight":     fp32Partial("train.scale_pos_weight", func(r *antXGBoostFiller) *float32 { return &(r.ScalePosWeight) }),
+	"train.grow_policy":          strPartial("train.grow_policy", func(r *antXGBoostFiller) *string { return &(r.GrowPolicy) }),
+	"train.max_leaves":           uIntPartial("train.max_leaves", func(r *antXGBoostFiller) *uint { return &(r.MaxLeaves) }),
+	"train.max_bin":              uIntPartial("train.max_bin", func(r *antXGBoostFiller) *uint { return &(r.MaxBin) }),
+	"train.num_parallel_tree":    uIntPartial("train.num_parallel_tree", func(r *antXGBoostFiller) *uint { return &(r.NumParallelTree) }),
+	"train.convergence_criteria": strPartial("train.convergence_criteria", func(r *antXGBoostFiller) *string { return &(r.ConvergenceCriteria) }),
+	"train.verbosity":            uIntPartial("train.verbosity", func(r *antXGBoostFiller) *uint { return &(r.Verbosity) }),
 	// xgboost train controllers
-	"train.num_round":  uIntPartial("train.num_round", func(r *xgboostFiller) *uint { return &(r.NumRound) }),
-	"train.auto_train": boolPartial("train.auto_train", func(r *xgboostFiller) *bool { return &(r.AutoTrain) }),
+	"train.num_round":  uIntPartial("train.num_round", func(r *antXGBoostFiller) *uint { return &(r.NumRound) }),
+	"train.auto_train": boolPartial("train.auto_train", func(r *antXGBoostFiller) *bool { return &(r.AutoTrain) }),
 	// Label, Group, Weight and xgFeatureFields are parsed from columnClause
 }
 
-var xgbPredAttrSetterMap = map[string]func(*map[string][]string, *xgboostFiller) error{
+var xgbPredAttrSetterMap = map[string]func(*map[string][]string, *antXGBoostFiller) error{
 	// xgboost output columns (for prediction)
-	"pred.append_columns":  sListPartial("pred.append_columns", func(r *xgboostFiller) *[]string { return &(r.AppendColumns) }),
-	"pred.prob_column":     strPartial("pred.prob_column", func(r *xgboostFiller) *string { return &(r.ProbColumn) }),
-	"pred.detail_column":   strPartial("pred.detail_column", func(r *xgboostFiller) *string { return &(r.DetailColumn) }),
-	"pred.encoding_column": strPartial("pred.encoding_column", func(r *xgboostFiller) *string { return &(r.EncodingColumn) }),
+	"pred.append_columns":  sListPartial("pred.append_columns", func(r *antXGBoostFiller) *[]string { return &(r.AppendColumns) }),
+	"pred.prob_column":     strPartial("pred.prob_column", func(r *antXGBoostFiller) *string { return &(r.ProbColumn) }),
+	"pred.detail_column":   strPartial("pred.detail_column", func(r *antXGBoostFiller) *string { return &(r.DetailColumn) }),
+	"pred.encoding_column": strPartial("pred.encoding_column", func(r *antXGBoostFiller) *string { return &(r.EncodingColumn) }),
 	// Label, Group, Weight and xgFeatureFields are parsed from columnClause
 }
 
-func xgParseAttr(pr *extendedSelect, r *xgboostFiller) error {
+func xgParseAttr(pr *extendedSelect, r *antXGBoostFiller) error {
 	var rawAttrs map[string]*expr
 	if pr.train {
 		rawAttrs = pr.trainAttrs
@@ -300,8 +325,8 @@ func xgParseAttr(pr *extendedSelect, r *xgboostFiller) error {
 		}
 	}
 
-	// fill xgboostFiller with attrs
-	var setterMap map[string]func(*map[string][]string, *xgboostFiller) error
+	// fill antXGBoostFiller with attrs
+	var setterMap map[string]func(*map[string][]string, *antXGBoostFiller) error
 	if pr.train {
 		setterMap = xgbTrainAttrSetterMap
 	} else {
@@ -334,7 +359,7 @@ func xgParseAttr(pr *extendedSelect, r *xgboostFiller) error {
 //		data example: COLUMN SPARSE("0:1.5 1:100.1f 11:-1.2", [20], " ")
 //	2. tf feature columns
 //		Roughly same as TFEstimator, except output shape of feaColumns are required to be 1-dim.
-func parseFeatureColumns(columns *exprlist, r *xgboostFiller) error {
+func parseFeatureColumns(columns *exprlist, r *antXGBoostFiller) error {
 	feaCols, colSpecs, err := resolveTrainColumns(columns)
 	if err != nil {
 		return err
@@ -355,7 +380,7 @@ func parseFeatureColumns(columns *exprlist, r *xgboostFiller) error {
 
 // parseSparseKeyValueFeatures, parse features which is identified by `SPARSE`.
 // ex: SPARSE(col1, [100], comma)
-func parseSparseKeyValueFeatures(colSpecs []*columnSpec, r *xgboostFiller) error {
+func parseSparseKeyValueFeatures(colSpecs []*columns.ColumnSpec, r *antXGBoostFiller) error {
 	var colNames []string
 	for _, spec := range colSpecs {
 		colNames = append(colNames, spec.ColumnName)
@@ -394,14 +419,14 @@ func parseSparseKeyValueFeatures(colSpecs []*columnSpec, r *xgboostFiller) error
 }
 
 // check whether column is raw column (no tf transformation need)
-func isSimpleColumn(col featureColumn) bool {
-	if _, ok := col.(*numericColumn); ok {
+func isSimpleColumn(col columns.FeatureColumn) bool {
+	if _, ok := col.(*columns.NumericColumn); ok {
 		return col.GetDelimiter() == "" && col.GetInputShape() == "[1]" && col.GetDtype() == "float32"
 	}
 	return false
 }
 
-func parseDenseFeatures(feaCols []featureColumn, r *xgboostFiller) error {
+func parseDenseFeatures(feaCols []columns.FeatureColumn, r *antXGBoostFiller) error {
 	allSimpleCol := true
 	for _, col := range feaCols {
 		if allSimpleCol && !isSimpleColumn(col) {
@@ -410,22 +435,26 @@ func parseDenseFeatures(feaCols []featureColumn, r *xgboostFiller) error {
 
 		isSparse := false
 		var isEmb bool
-		_, ok := col.(*sequenceCategoryIDColumn)
+		_, ok := col.(*columns.SequenceCategoryIDColumn)
 		if !ok {
-			_, isEmb = col.(*embeddingColumn)
+			_, isEmb = col.(*columns.EmbeddingColumn)
 			if isEmb {
-				_, ok = col.(*embeddingColumn).CategoryColumn.(*sequenceCategoryIDColumn)
+				_, ok = col.(*columns.EmbeddingColumn).CategoryColumn.(*columns.SequenceCategoryIDColumn)
 			}
 		}
 		if !ok && col.GetDelimiter() != "" {
-			if _, ok := col.(*numericColumn); !ok {
+			if _, ok := col.(*columns.NumericColumn); !ok {
 				isSparse = true
 			}
 		}
 
-		feaColCode, e := col.GenerateCode()
+		// TODO(typhoonzero): pass columnSpec if needed.
+		feaColCode, e := col.GenerateCode(nil)
 		if e != nil {
 			return e
+		}
+		if len(feaColCode) > 1 {
+			return fmt.Errorf("does not support grouped column yet: %v", feaColCode)
 		}
 
 		fm := &xgFeatureMeta{
@@ -433,7 +462,7 @@ func parseDenseFeatures(feaCols []featureColumn, r *xgboostFiller) error {
 			Dtype:             col.GetDtype(),
 			Delimiter:         col.GetDelimiter(),
 			InputShape:        col.GetInputShape(),
-			FeatureColumnCode: feaColCode,
+			FeatureColumnCode: feaColCode[0],
 			IsSparse:          isSparse,
 		}
 		r.X = append(r.X, fm)
@@ -487,7 +516,7 @@ func parseSimpleColumn(field string, columns *exprlist) (*xgFeatureMeta, error) 
 	return fm, nil
 }
 
-func xgParseColumns(pr *extendedSelect, filler *xgboostFiller) error {
+func xgParseColumns(pr *extendedSelect, filler *antXGBoostFiller) error {
 	for target, columns := range pr.columns {
 		switch target {
 		case "feature_columns":
@@ -519,7 +548,7 @@ func xgParseColumns(pr *extendedSelect, filler *xgboostFiller) error {
 		}
 	}
 	// in predict mode, ignore label info
-	if pr.train {
+	if pr.train || pr.analyze {
 		filler.LabelField = &xgFeatureMeta{
 			FeatureName: pr.label,
 		}
@@ -529,7 +558,7 @@ func xgParseColumns(pr *extendedSelect, filler *xgboostFiller) error {
 	return nil
 }
 
-func xgParseEstimator(pr *extendedSelect, filler *xgboostFiller) error {
+func xgParseEstimator(pr *extendedSelect, filler *antXGBoostFiller) error {
 	switch strings.ToUpper(pr.estimator) {
 	case "XGBOOST.ESTIMATOR":
 		if len(filler.Objective) == 0 {
@@ -566,8 +595,8 @@ func xgParseEstimator(pr *extendedSelect, filler *xgboostFiller) error {
 	return nil
 }
 
-func newXGBoostFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *DB) (*xgboostFiller, error) {
-	filler := &xgboostFiller{
+func newAntXGBoostFiller(pr *extendedSelect, ds *trainAndValDataset, db *DB) (*antXGBoostFiller, error) {
+	filler := &antXGBoostFiller{
 		ModelPath: pr.save,
 	}
 	filler.IsTrain = pr.train
@@ -583,7 +612,7 @@ func newXGBoostFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes
 		if e := xgParseEstimator(pr, filler); e != nil {
 			return nil, e
 		}
-	} else {
+	} else if !pr.analyze {
 		// solve keyword: PREDICT (output_table.result_column）
 		var e error
 		filler.OutputTable, filler.ResultColumn, e = parseTableColumn(pr.into)
@@ -681,7 +710,7 @@ func xgFillDatabaseInfo(r *xgDataSourceFields, db *DB) error {
 		r.Host, r.Port, r.Database = sa[0], sa[1], cfg.DBName
 		r.User, r.Password = cfg.User, cfg.Passwd
 		// remove the last ';' which leads to a ParseException
-		r.StandardSelect = removeLastSemicolon(r.StandardSelect)
+		r.StandardSelect = strings.TrimSuffix(r.StandardSelect, ";")
 	case "maxcompute":
 		cfg, err := gomaxcompute.ParseDSN(db.dataSourceName)
 		if err != nil {
@@ -696,7 +725,7 @@ func xgFillDatabaseInfo(r *xgDataSourceFields, db *DB) error {
 	return nil
 }
 
-func xgCreatePredictionTable(pr *extendedSelect, r *xgboostFiller, db *DB) error {
+func xgCreatePredictionTable(pr *extendedSelect, r *antXGBoostFiller, db *DB) error {
 	dropStmt := fmt.Sprintf("drop table if exists %s;", r.OutputTable)
 	if _, e := db.Exec(dropStmt); e != nil {
 		return fmt.Errorf("failed executing %s: %q", dropStmt, e)
@@ -767,7 +796,7 @@ func xgCreatePredictionTable(pr *extendedSelect, r *xgboostFiller, db *DB) error
 }
 
 func genXG(w io.Writer, pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *DB) error {
-	r, e := newXGBoostFiller(pr, ds, fts, db)
+	r, e := newAntXGBoostFiller(pr, ds, db)
 	if e != nil {
 		return e
 	}
@@ -784,7 +813,7 @@ var xgTemplate = template.Must(template.New("codegenXG").Parse(xgTemplateText))
 
 const xgTemplateText = `
 from launcher.config_fields import JobType
-from sqlflow_submitter.xgboost import run_with_sqlflow
+from sqlflow_submitter.ant_xgboost import run_with_sqlflow
 
 {{if .IsTrain}}
 mode = JobType.TRAIN

@@ -26,6 +26,110 @@ type attribute struct {
 	Value    interface{}
 }
 
+type gitLabModule struct {
+	ModuleName   string
+	ProjectName  string
+	Sha          string
+	PrivateToken string
+	SourceRoot   string
+	GitLabServer string
+}
+
+type engineSpec struct {
+	etype                 string
+	ps                    resourceSpec
+	worker                resourceSpec
+	cluster               string
+	queue                 string
+	masterResourceRequest string
+	masterResourceLimit   string
+	workerResourceRequest string
+	workerResourceLimit   string
+	volume                string
+	imagePullPolicy       string
+	restartPolicy         string
+	extraPypiIndex        string
+	namespace             string
+	minibatchSize         int
+	masterPodPriority     string
+	clusterSpec           string
+	recordsPerTask        int
+}
+
+func getEngineSpec(attrs map[string]*attribute) engineSpec {
+	getInt := func(key string, defaultValue int) int {
+		if p, ok := attrs[key]; ok {
+			strVal, _ := p.Value.(string)
+			intVal, err := strconv.Atoi(strVal)
+
+			if err == nil {
+				return intVal
+			}
+		}
+		return defaultValue
+	}
+	getString := func(key string, defaultValue string) string {
+		if p, ok := attrs[key]; ok {
+			strVal, ok := p.Value.(string)
+			if ok {
+				// TODO(joyyoj): use the parser to do those validations.
+				if strings.HasPrefix(strVal, "\"") && strings.HasSuffix(strVal, "\"") {
+					return strVal[1 : len(strVal)-1]
+				}
+				return strVal
+			}
+		}
+		return defaultValue
+	}
+
+	psNum := getInt("ps_num", 1)
+	psMemory := getInt("ps_memory", 2400)
+	workerMemory := getInt("worker_memory", 1600)
+	workerNum := getInt("worker_num", 2)
+	engineType := getString("type", "local")
+	if (psNum > 0 || workerNum > 0) && engineType == "local" {
+		engineType = "yarn"
+	}
+	cluster := getString("cluster", "")
+	queue := getString("queue", "")
+
+	// ElasticDL engine specs
+	masterResourceRequest := getString("master_resource_request", "cpu=0.1,memory=1024Mi")
+	masterResourceLimit := getString("master_resource_limit", "")
+	workerResourceRequest := getString("worker_resource_request", "cpu=1,memory=4096Mi")
+	workerResourceLimit := getString("worker_resource_limit", "")
+	volume := getString("volume", "")
+	imagePullPolicy := getString("image_pull_policy", "Always")
+	restartPolicy := getString("restart_policy", "Never")
+	extraPypiIndex := getString("extra_pypi_index", "")
+	namespace := getString("namespace", "default")
+	minibatchSize := getInt("minibatch_size", 64)
+	masterPodPriority := getString("master_pod_priority", "")
+	clusterSpec := getString("cluster_spec", "")
+	recordsPerTask := getInt("records_per_task", 100)
+
+	return engineSpec{
+		etype:                 engineType,
+		ps:                    resourceSpec{Num: psNum, Memory: psMemory},
+		worker:                resourceSpec{Num: workerNum, Memory: workerMemory},
+		cluster:               cluster,
+		queue:                 queue,
+		masterResourceRequest: masterResourceRequest,
+		masterResourceLimit:   masterResourceLimit,
+		workerResourceRequest: workerResourceRequest,
+		workerResourceLimit:   workerResourceLimit,
+		volume:                volume,
+		imagePullPolicy:       imagePullPolicy,
+		restartPolicy:         restartPolicy,
+		extraPypiIndex:        extraPypiIndex,
+		namespace:             namespace,
+		minibatchSize:         minibatchSize,
+		masterPodPriority:     masterPodPriority,
+		clusterSpec:           clusterSpec,
+		recordsPerTask:        recordsPerTask,
+	}
+}
+
 func (a *attribute) GenerateCode() (string, error) {
 	if val, ok := a.Value.(string); ok {
 		// auto convert to int first.
@@ -45,7 +149,7 @@ func (a *attribute) GenerateCode() (string, error) {
 	return "", fmt.Errorf("value of attribute must be string or list of int, given %s", a.Value)
 }
 
-func filter(attrs map[string]*attribute, prefix string, remove bool) map[string]*attribute {
+func attrFilter(attrs map[string]*attribute, prefix string, remove bool) map[string]*attribute {
 	ret := make(map[string]*attribute, 0)
 	for _, a := range attrs {
 		if strings.EqualFold(a.Prefix, prefix) {
@@ -56,27 +160,4 @@ func filter(attrs map[string]*attribute, prefix string, remove bool) map[string]
 		}
 	}
 	return ret
-}
-
-func resolveAttribute(attrs *attrs) (map[string]*attribute, error) {
-	ret := make(map[string]*attribute)
-	for k, v := range *attrs {
-		subs := strings.SplitN(k, ".", 2)
-		name := subs[len(subs)-1]
-		prefix := ""
-		if len(subs) == 2 {
-			prefix = subs[0]
-		}
-		r, _, err := resolveExpression(v)
-		if err != nil {
-			return nil, err
-		}
-		a := &attribute{
-			FullName: k,
-			Prefix:   prefix,
-			Name:     name,
-			Value:    r}
-		ret[a.FullName] = a
-	}
-	return ret, nil
 }

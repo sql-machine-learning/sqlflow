@@ -373,17 +373,9 @@ func buildFiller(es *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db 
 		dataset = ds
 	}
 	if strings.HasPrefix(strings.ToUpper(es.estimator), `XGBOOST.`) {
-		filler, e = newXGBoostFiller(es, dataset, fts, db)
-		if e != nil {
-			e = fmt.Errorf("failed to build XGBoostFiller: %v", e)
-		}
-	} else {
-		filler, e = newFiller(es, dataset, fts, db)
-		if e != nil {
-			e = fmt.Errorf("failed to build TensorFlowFiller: %v", e)
-		}
+		return newAntXGBoostFiller(es, dataset, db)
 	}
-	return filler, e
+	return newFiller(es, dataset, fts, db)
 }
 
 func train(wr *PipeWriter, tr *extendedSelect, db *DB, cwd string, modelDir string, slct string, ds *trainAndValDataset) error {
@@ -394,7 +386,7 @@ func train(wr *PipeWriter, tr *extendedSelect, db *DB, cwd string, modelDir stri
 
 	var program bytes.Buffer
 	if strings.HasPrefix(strings.ToUpper(tr.estimator), `XGBOOST.`) {
-		// TODO(sperlingxx): write a separate train pipeline for xgboost to support remote mode
+		// TODO(sperlingxx): write a separate train pipeline for ant-xgboost to support remote mode
 		if e := genXG(&program, tr, ds, fts, db); e != nil {
 			return fmt.Errorf("genXG %v", e)
 		}
@@ -420,13 +412,13 @@ func train(wr *PipeWriter, tr *extendedSelect, db *DB, cwd string, modelDir stri
 	return m.save(db, tr.save)
 }
 
-func loadModelMeta(pr *extendedSelect, db *DB, cwd string, modelDir string) (*extendedSelect, fieldTypes, error) {
+func loadModelMeta(pr *extendedSelect, db *DB, cwd, modelDir, modelName string) (*extendedSelect, fieldTypes, error) {
 	var m *model
 	var e error
 	if modelDir != "" {
-		m, e = loadTar(modelDir, cwd, pr.model)
+		m, e = loadTar(modelDir, cwd, modelName)
 	} else {
-		m, e = load(db, pr.model, cwd)
+		m, e = load(db, modelName, cwd)
 	}
 	if e != nil {
 		return nil, nil, fmt.Errorf("load %v", e)
@@ -453,14 +445,14 @@ func loadModelMeta(pr *extendedSelect, db *DB, cwd string, modelDir string) (*ex
 }
 
 func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir string) error {
-	pr, fts, e := loadModelMeta(pr, db, cwd, modelDir)
+	pr, fts, e := loadModelMeta(pr, db, cwd, modelDir, pr.model)
 	if e != nil {
 		return fmt.Errorf("loadModelMeta %v", e)
 	}
 
 	var buf bytes.Buffer
 	if strings.HasPrefix(strings.ToUpper(pr.estimator), `XGBOOST.`) {
-		// TODO(sperlingxx): write a separate pred pipeline for xgboost to support remote mode
+		// TODO(sperlingxx): write a separate pred pipeline for ant-xgboost to support remote mode
 		if e := genXG(&buf, pr, nil, fts, db); e != nil {
 			return fmt.Errorf("genXG %v", e)
 		}
@@ -480,26 +472,15 @@ func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir strin
 	return cmd.Run()
 }
 
-func analyze(wr *PipeWriter, es *extendedSelect, db *DB, cwd string, modelDir string) error {
-	//pr, fts, e := loadModelMeta(es, db, cwd, modelDir)
-	//if e != nil {
-	//	return fmt.Errorf("loadModelMeta %v", e)
-	//}
-	//filler, e := buildFiller(pr, nil, fts, db)
-	//if e != nil {
-	//	return e
-	//}
-	//switch filler.(type) {
-	//case *xgboostFiller:
-	//
-	//default:
-	//
-	//}
+func analyze(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir string) error {
+	program, err := genAnalyzer(pr, db, cwd, modelDir)
+	if err != nil {
+		return err
+	}
 	cmd := exec.Command("python", "-u")
 	cmd.Dir = cwd
-	cmd.Stdin = strings.NewReader(analyzeTemplateText)
-	_, err := cmd.CombinedOutput()
-	if err != nil {
+	cmd.Stdin = program
+	if _, err = cmd.CombinedOutput(); err != nil {
 		return err
 	}
 
