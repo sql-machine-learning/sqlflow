@@ -55,22 +55,21 @@ USING sqlflow_models.iris_antXG_model;
 
 	testAntXGTrainSelectBoston = `
 SELECT *
-FROM boston.train
+FROM housing.train
 TRAIN xgboost.Regressor
 WITH
 	train.tree_method = "hist",
-	train.num_round = 100,
-	train.convergence_criteria = "10:100:0.8",
-	train.eta = 0.12
-COLUMN crim, zn, indus, chas, nox, rm, age, dis, rad, tax, ptratio, b, lstat
-LABEL medv INTO sqlflow_models.boston_antXG_model;
+	train.num_round = 50,
+	train.eta = 0.15
+COLUMN f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13
+LABEL target INTO sqlflow_models.boston_antXG_model;
 `
 	testAntXGPredSelectBoston = `
 SELECT *
-FROM boston.test
-PREDICT boston.predict.result
+FROM housing.test
+PREDICT housing.predict.result
 WITH
-	pred.append_columns = [crim, zn, indus, chas, nox, rm, age, dis, rad, tax, ptratio, b, lstat, medv]
+	pred.append_columns = [f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, target]
 USING sqlflow_models.boston_antXG_model;
 `
 )

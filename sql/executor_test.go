@@ -98,7 +98,9 @@ func TestExecutorTrainAnalyzePredictAntXGBoost(t *testing.T) {
 		})
 	}
 	runWithVerify(testAntXGTrainSelectIris, testAntXGPredSelectIris, testAntXGAnalyzeSelectIris, "sqlflow_models.iris_antXG_model", 0.0001)
-	runWithVerify(testAntXGTrainSelectBoston, testAntXGPredSelectBoston, "", "sqlflow_models.boston_antXG_model", 3)
+	if getEnv("SQLFLOW_TEST_DB", "mysql") == "mysql" {
+		runWithVerify(testAntXGTrainSelectBoston, testAntXGPredSelectBoston, "", "sqlflow_models.boston_antXG_model", 3.5)
+	}
 }
 
 func TestExecutorTrainAndPredictDNN(t *testing.T) {
