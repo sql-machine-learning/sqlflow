@@ -74,7 +74,7 @@ func loadTar(modelDir, cwd, save string) (m *model, e error) {
 	tarFile := filepath.Join(modelDir, save+".tar.gz")
 	cmd := exec.Command("tar", "zxf", tarFile, "-C", cwd)
 	if e = cmd.Run(); e != nil {
-		return nil, fmt.Errorf("load tar file failed: %v", e)
+		return nil, fmt.Errorf("load tar file(%s) failed: %v", tarFile, e)
 	}
 	gobFile := filepath.Join(cwd, save+".gob")
 	m = &model{}

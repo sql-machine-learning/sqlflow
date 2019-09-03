@@ -13,6 +13,8 @@ feature type infer routine:
 
 ## Simpler COLUMN Clause
 
+We assume all the selected columns will be used as either `COLUMN` or `LABEL`.
+
 When we have a training table contains many columns that should be used
 for training like https://www.kaggle.com/mlg-ulb/creditcardfraud, it's
 not friendly if we must provide all column names in `COLUMN` clause.
@@ -26,6 +28,8 @@ TRAIN DNNClassifier
 LABEL class
 INTO my_model_name;
 ```
+
+We assume all the selected columns without specific annotations will be [derived automatically](#the-feature-derivation-routine).
 
 For columns that may need to do preprocessing, we can add those preprocessing
 descriptions in the `COLUMN` clause. For the credit card fraud dataset, assume

@@ -1,8 +1,8 @@
-# _Design:_ xgboost on sqlflow
+# _Design:_ ant-xgboost on sqlflow
 
 ## Overview
 
-This is a design doc about why and how to support running xgboost via sqlflow as a machine learning estimator.
+This is a design doc about why and how to support running ant-xgboost via sqlflow as a machine learning estimator.
 
 We propose to build a lightweight python template for xgboost on basis of `xgblauncher`,
 an incubating xgboost wrapper in [ant-xgboost](https://github.com/alipay/ant-xgboost).

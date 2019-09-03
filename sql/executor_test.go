@@ -71,16 +71,19 @@ func TestSplitExtendedSQL(t *testing.T) {
 	a.Equal(`train a with b;`, s[0])
 }
 
-func TestExecutorTrainAndPredictXGBoost(t *testing.T) {
+func TestExecutorTrainAnalyzePredictAntXGBoost(t *testing.T) {
 	a := assert.New(t)
 	modelDir, e := ioutil.TempDir("/tmp", "sqlflow_models")
 	a.Nil(e)
 	defer os.RemoveAll(modelDir)
 	a.NotPanics(func() {
-		stream := runExtendedSQL(testXGTrainSelectIris, testDB, modelDir, nil)
+		stream := runExtendedSQL(testAntXGTrainSelectIris, testDB, modelDir, nil)
 		a.True(goodStream(stream.ReadAll()))
 
-		stream = runExtendedSQL(testXGPredSelectIris, testDB, modelDir, nil)
+		stream = runExtendedSQL(testAntXGAnalyzeSelectIris, testDB, modelDir, nil)
+		a.True(goodStream(stream.ReadAll()))
+
+		stream = runExtendedSQL(testAntXGPredSelectIris, testDB, modelDir, nil)
 		a.True(goodStream(stream.ReadAll()))
 	})
 }
@@ -169,7 +172,8 @@ func TestCreatePredictionTable(t *testing.T) {
 	a.NoError(e)
 	predParsed, e := newParser().Parse(testPredictSelectIris)
 	a.NoError(e)
-	a.NoError(createPredictionTable(trainParsed, predParsed, testDB))
+	predParsed.trainClause = trainParsed.trainClause
+	a.NoError(createPredictionTable(predParsed, testDB))
 }
 
 func TestIsQuery(t *testing.T) {

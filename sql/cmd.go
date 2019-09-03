@@ -47,6 +47,10 @@ func hasDocker() bool {
 	return tryRun("docker", "version")
 }
 
+func hasElasticDLCmd() bool {
+	return tryRun("elasticdl", "-h")
+}
+
 func hasDockerImage(image string) bool {
 	b, e := exec.Command("docker", "images", "-q", image).Output()
 	if e != nil || len(b) == 0 {

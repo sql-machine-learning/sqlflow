@@ -20,6 +20,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"text/template"
@@ -63,18 +64,20 @@ type elasticDLModelSpec struct {
 	NumClasses int
 }
 
-func getFeaturesNames(pr *extendedSelect) ([]string, error) {
-	selectFeatures := pr.standardSelect.fields.Strings()
-	if len(selectFeatures) == 1 && selectFeatures[0] == "*" {
-		log.Fatalf("ElasticDL doesn't support wildcard select yet")
+func getFeaturesNames(pr *extendedSelect, db *DB) ([]string, error) {
+	fts, err := verify(pr, db)
+	if err != nil {
+		return nil, err
 	}
-	features := make([]string, 0)
-	for _, feature := range selectFeatures {
-		if feature != pr.label {
-			features = append(features, feature)
+
+	featureNames := make([]string, 0, len(fts))
+	for featureName := range fts {
+		if featureName != pr.label {
+			featureNames = append(featureNames, featureName)
 		}
 	}
-	return features, nil
+	sort.Strings(featureNames)
+	return featureNames, nil
 }
 
 func genFeaturesDescription(featureNames []string) string {
@@ -124,8 +127,8 @@ func getElasticDLModelSpec(attrs map[string]*attribute) elasticDLModelSpec {
 	}
 }
 
-func newElasticDLDataConversionFiller(pr *extendedSelect, recordIODataDir string, batchSize int, numProcesses int) (*elasticDLDataConversionFiller, error) {
-	featureNames, err := getFeaturesNames(pr)
+func newElasticDLDataConversionFiller(pr *extendedSelect, db *DB, recordIODataDir string, batchSize int, numProcesses int) (*elasticDLDataConversionFiller, error) {
+	featureNames, err := getFeaturesNames(pr, db)
 	if err != nil {
 		log.Fatalf("Failed to get feature names from SELECT statement %v", err)
 		return nil, err
@@ -144,11 +147,21 @@ func newElasticDLTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds
 	if err != nil {
 		return nil, err
 	}
-	featureNames, err := getFeaturesNames(pr)
+	featureNames, err := getFeaturesNames(pr, db)
 	if err != nil {
 		log.Fatalf("Failed to get feature names from SELECT statement %v", err)
 		return nil, err
 	}
+	hasFeatureColumns := false
+	for _, columns := range resolved.FeatureColumns {
+		if len(columns) > 0 {
+			hasFeatureColumns = true
+		}
+	}
+	if hasFeatureColumns {
+		log.Warnln("COLUMN clause is ignored since ElasticDL does not support feature columns yet")
+	}
+
 	var trainInput, evalInput string
 	if ds != nil {
 		trainInput, evalInput = ds.training, ds.validation
@@ -168,12 +181,12 @@ func newElasticDLTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds
 	}, err
 }
 
-func newElasticDLPredictFiller(pr *extendedSelect) (*elasticDLFiller, error) {
+func newElasticDLPredictFiller(pr *extendedSelect, db *DB) (*elasticDLFiller, error) {
 	resolved, err := resolvePredictClause(&pr.predictClause)
 	if err != nil {
 		return nil, err
 	}
-	featureNames, err := getFeaturesNames(pr)
+	featureNames, err := getFeaturesNames(pr, db)
 	if err != nil {
 		log.Fatalf("Failed to get feature names from SELECT statement %v", err)
 		return nil, err
@@ -190,7 +203,7 @@ func newElasticDLPredictFiller(pr *extendedSelect) (*elasticDLFiller, error) {
 	}, err
 }
 
-func elasticDLDataConversion(pr *extendedSelect, cwd string) (string, error) {
+func elasticDLDataConversion(pr *extendedSelect, db *DB, cwd string) (string, error) {
 	// TODO: Execute the script inside container where ElasticDL is available
 	var dataConversionProgram bytes.Buffer
 	recordIODataDir := ""
@@ -199,7 +212,7 @@ func elasticDLDataConversion(pr *extendedSelect, cwd string) (string, error) {
 		return recordIODataDir, err
 	}
 	// TODO: Also need to generate evaluation data
-	dataConversionFiller, err := newElasticDLDataConversionFiller(pr, recordIODataDir, 200, 1)
+	dataConversionFiller, err := newElasticDLDataConversionFiller(pr, db, recordIODataDir, 200, 1)
 	if err != nil {
 		return recordIODataDir, err
 	}
@@ -218,7 +231,7 @@ func elasticDLDataConversion(pr *extendedSelect, cwd string) (string, error) {
 
 func elasticDLTrain(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *pb.Session, ds *trainAndValDataset) error {
 	// Write data conversion script
-	recordIODataDir, err := elasticDLDataConversion(pr, cwd)
+	recordIODataDir, err := elasticDLDataConversion(pr, db, cwd)
 	if err != nil {
 		return err
 	}
@@ -299,14 +312,14 @@ func elasticdlTrainCmd(cwd, modelDefFilePath string, recordIODataDir string, fil
 
 func elasticDLPredict(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *pb.Session, ds *trainAndValDataset) error {
 	// Write data conversion script
-	recordIODataDir, err := elasticDLDataConversion(pr, cwd)
+	recordIODataDir, err := elasticDLDataConversion(pr, db, cwd)
 	if err != nil {
 		return err
 	}
 
 	// Write model definition file
 	var elasticdlProgram bytes.Buffer
-	predictFiller, err := newElasticDLPredictFiller(pr)
+	predictFiller, err := newElasticDLPredictFiller(pr, db)
 	if err != nil {
 		return err
 	}
@@ -335,7 +348,7 @@ func elasticDLPredict(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, ses
 }
 
 func elasticdlPredictCmd(cwd, modelDefFilePath string, recordIODataDir string, filler *elasticDLFiller) (cmd *exec.Cmd) {
-	if hasDocker() {
+	if hasDocker() && hasElasticDLCmd() {
 		cmd = exec.Command(
 			"elasticdl", "predict",
 			"--image_base", "elasticdl:ci",
@@ -364,7 +377,7 @@ func elasticdlPredictCmd(cwd, modelDefFilePath string, recordIODataDir string, f
 		)
 		cmd.Dir = cwd
 	} else {
-		log.Fatalf("Docker has to be installed to run ElasticDL command")
+		log.Fatalf("Docker and ElasticDL CLI have to be installed to run ElasticDL")
 	}
 	return cmd
 }

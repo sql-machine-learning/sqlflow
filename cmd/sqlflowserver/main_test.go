@@ -294,8 +294,8 @@ func TestEnd2EndMaxCompute(t *testing.T) {
 		t.Fatalf("failed to generate CA pair %v", err)
 	}
 	submitter := os.Getenv("SQLFLOW_submitter")
-	if submitter == "alps" {
-		t.Skip("Skip this test case, it's for maxcompute + non-alps submitter.")
+	if submitter == "alps" || submitter == "elasticdl" {
+		t.Skip("Skip this test case, it's for maxcompute + submitters other than alps and elasticdl.")
 	}
 
 	if testDBDriver != "maxcompute" {
@@ -355,6 +355,43 @@ func TestEnd2EndMaxComputeALPS(t *testing.T) {
 	t.Run("CaseTrainALPS", CaseTrainALPS)
 	t.Run("CaseTrainALPSFeatureMap", CaseTrainALPSFeatureMap)
 	t.Run("CaseTrainALPSRemoteModel", CaseTrainALPSRemoteModel)
+}
+
+func TestEnd2EndMaxComputeElasticDL(t *testing.T) {
+	testDBDriver := os.Getenv("SQLFLOW_TEST_DB")
+	modelDir, _ := ioutil.TempDir("/tmp", "sqlflow_ssl_")
+	defer os.RemoveAll(modelDir)
+	tmpDir, caCrt, caKey, err := generateTempCA()
+	defer os.RemoveAll(tmpDir)
+	if err != nil {
+		t.Fatalf("failed to generate CA pair %v", err)
+	}
+	submitter := os.Getenv("SQLFLOW_submitter")
+	if submitter != "elasticdl" {
+		t.Skip("Skip, this test is for maxcompute + ElasticDL")
+	}
+
+	if testDBDriver != "maxcompute" {
+		t.Skip("Skip maxcompute tests")
+	}
+	AK := os.Getenv("MAXCOMPUTE_AK")
+	SK := os.Getenv("MAXCOMPUTE_SK")
+	endpoint := os.Getenv("MAXCOMPUTE_ENDPOINT")
+	dbConnStr = fmt.Sprintf("maxcompute://%s:%s@%s", AK, SK, endpoint)
+
+	caseDB = os.Getenv("MAXCOMPUTE_PROJECT")
+	if caseDB == "" {
+		t.Fatalf("Must set env MAXCOMPUTE_PROJECT when testing ElasticDL cases (SQLFLOW_submitter=elasticdl)!!")
+	}
+	err = prepareTestData(dbConnStr)
+	if err != nil {
+		t.Fatalf("prepare test dataset failed: %v", err)
+	}
+
+	go start("", modelDir, caCrt, caKey, true)
+	WaitPortReady("localhost"+port, 0)
+
+	t.Run("CaseTrainElasticDL", CaseTrainElasticDL)
 }
 
 func CaseShowDatabases(t *testing.T) {
@@ -717,6 +754,63 @@ INTO sqlflow_models.my_dnn_model;`
 		a.Fail("Check if the server started successfully. %v", err)
 	}
 	// call ParseRow only to wait train finish
+	ParseRow(stream)
+}
+
+// CaseTrainElasticDL is a case for training models using ElasticDL
+func CaseTrainElasticDL(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`SELECT sepal_length, sepal_width, petal_length, petal_width, class
+FROM %s.%s
+TRAIN ElasticDLDNNClassifier
+WITH
+			model.optimizer = "optimizer",
+			model.loss = "loss",
+			model.eval_metrics_fn = "eval_metrics_fn",
+			model.num_classes = 10,
+			model.dataset_fn = "dataset_fn",
+			train.shuffle = 120,
+			train.epoch = 2,
+			train.grads_to_wait = 2,
+			train.tensorboard_log_dir = "",
+			train.checkpoint_steps = 0,
+			train.checkpoint_dir = "",
+			train.keep_checkpoint_max = 0,
+			eval.steps = 0,
+			eval.start_delay_secs = 100,
+			eval.throttle_secs = 0,
+			eval.checkpoint_filename_for_init = "",
+			engine.docker_image_prefix = "",
+			engine.master_resource_request = "cpu=400m,memory=1024Mi",
+			engine.master_resource_limit = "cpu=400m,memory=1024Mi",
+			engine.worker_resource_request = "cpu=400m,memory=2048Mi",
+			engine.worker_resource_limit = "cpu=1,memory=3072Mi",
+			engine.num_workers = 2,
+			engine.volume = "",
+			engine.image_pull_policy = "Always",
+			engine.restart_policy = "Never",
+			engine.extra_pypi_index = "",
+			engine.namespace = "default",
+			engine.minibatch_size = 64,
+			engine.master_pod_priority = "",
+			engine.cluster_spec = "",
+			engine.records_per_task = 100
+LABEL class
+INTO trained_elasticdl_keras_classifier;`, caseDB, caseTrainTable)
+
+	conn, err := createRPCConn()
+	a.NoError(err)
+	defer conn.Close()
+	cli := pb.NewSQLFlowClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	defer cancel()
+
+	stream, err := cli.Run(ctx, sqlRequest(trainSQL))
+	if err != nil {
+		a.Fail("Check if the server started successfully. %v", err)
+	}
+	// wait train finish
 	ParseRow(stream)
 }
 

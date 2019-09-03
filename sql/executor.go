@@ -16,9 +16,12 @@ package sql
 import (
 	"bytes"
 	"database/sql"
+	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
+	"path"
 	"strings"
 	"sync"
 	"time"
@@ -80,7 +83,9 @@ func splitExtendedSQL(slct string) ([]string, error) {
 	for i := 1; i < len(typ)-2; i++ {
 		if (typ[i] == TRAIN && typ[i+1] == IDENT && typ[i+2] == WITH) ||
 			(typ[i] == PREDICT && typ[i+1] == IDENT && typ[i+2] == USING) ||
-			(typ[i] == PREDICT && typ[i+1] == IDENT && typ[i+2] == WITH) {
+			(typ[i] == PREDICT && typ[i+1] == IDENT && typ[i+2] == WITH) ||
+			(typ[i] == ANALYZE && typ[i+1] == IDENT && typ[i+2] == WITH) ||
+			(typ[i] == ANALYZE && typ[i+1] == IDENT && typ[i+2] == USING) {
 			return []string{slct[:pos[i-1]], slct[pos[i-1]:]}, nil
 		}
 	}
@@ -292,6 +297,11 @@ func runExtendedSQL(slct string, db *DB, modelDir string, session *pb.Session) *
 				}
 				return train(wr, pr, db, cwd, modelDir, slct, ds)
 			}
+
+			if pr.analyze {
+				return analyze(wr, pr, db, cwd, modelDir)
+			}
+
 			// FIXME(weiguo): temporary branch to alps
 			if os.Getenv("SQLFLOW_submitter") == "alps" {
 				return alpsPred(wr, pr, db, cwd, session)
@@ -356,6 +366,18 @@ func (cw *logChanWriter) Close() {
 	}
 }
 
+func buildFiller(es *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *DB) (filler interface{}, e error) {
+	// trainAndValDataset only work in train mode
+	var dataset *trainAndValDataset
+	if es.train {
+		dataset = ds
+	}
+	if strings.HasPrefix(strings.ToUpper(es.estimator), `XGBOOST.`) {
+		return newAntXGBoostFiller(es, dataset, db)
+	}
+	return newFiller(es, dataset, fts, db)
+}
+
 func train(wr *PipeWriter, tr *extendedSelect, db *DB, cwd string, modelDir string, slct string, ds *trainAndValDataset) error {
 	fts, e := verify(tr, db)
 	if e != nil {
@@ -364,12 +386,8 @@ func train(wr *PipeWriter, tr *extendedSelect, db *DB, cwd string, modelDir stri
 
 	var program bytes.Buffer
 	if strings.HasPrefix(strings.ToUpper(tr.estimator), `XGBOOST.`) {
-		// FIXME(sperlingxx): write a separate train pipeline for xgboost to support remote mode
-		filler, e := newXGBoostFiller(tr, ds, fts, db)
-		if e != nil {
-			return fmt.Errorf("genXG %v", e)
-		}
-		if e := xgTemplate.Execute(&program, filler); e != nil {
+		// TODO(sperlingxx): write a separate train pipeline for ant-xgboost to support remote mode
+		if e := genXG(&program, tr, ds, fts, db); e != nil {
 			return fmt.Errorf("genXG %v", e)
 		}
 	} else {
@@ -394,52 +412,51 @@ func train(wr *PipeWriter, tr *extendedSelect, db *DB, cwd string, modelDir stri
 	return m.save(db, tr.save)
 }
 
-func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir string) error {
+func loadModelMeta(pr *extendedSelect, db *DB, cwd, modelDir, modelName string) (*extendedSelect, fieldTypes, error) {
 	var m *model
 	var e error
 	if modelDir != "" {
-		m, e = loadTar(modelDir, cwd, pr.model)
+		m, e = loadTar(modelDir, cwd, modelName)
 	} else {
-		m, e = load(db, pr.model, cwd)
+		m, e = load(db, modelName, cwd)
 	}
 	if e != nil {
-		return fmt.Errorf("load %v", e)
+		return nil, nil, fmt.Errorf("load %v", e)
 	}
 
 	// Parse the training SELECT statement used to train
 	// the model for the prediction.
 	tr, e := newParser().Parse(m.TrainSelect)
 	if e != nil {
-		return fmt.Errorf("parse: TrainSelect %v raise %v", m.TrainSelect, e)
+		return nil, nil, fmt.Errorf("parse: TrainSelect %v raise %v", m.TrainSelect, e)
 	}
 
 	if e := verifyColumnNameAndType(tr, pr, db); e != nil {
-		return fmt.Errorf("verifyColumnNameAndType: %v", e)
+		return nil, nil, fmt.Errorf("verifyColumnNameAndType: %v", e)
 	}
 
 	pr.trainClause = tr.trainClause
 	fts, e := verify(pr, db)
 	if e != nil {
-		return fmt.Errorf("verify: %v", e)
+		return nil, nil, fmt.Errorf("verify: %v", e)
+	}
+
+	return pr, fts, nil
+}
+
+func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir string) error {
+	pr, fts, e := loadModelMeta(pr, db, cwd, modelDir, pr.model)
+	if e != nil {
+		return fmt.Errorf("loadModelMeta %v", e)
 	}
 
 	var buf bytes.Buffer
-	if strings.HasPrefix(strings.ToUpper(tr.estimator), `XGBOOST.`) {
-		// FIXME(sperlingxx): write a separate pred pipeline for xgboost to support remote mode
-		filler, e := newXGBoostFiller(pr, nil, fts, db)
-		if e != nil {
-			return fmt.Errorf("genXG %v", e)
-		}
-		if e := xgCreatePredictionTable(pr, filler, db); e != nil {
-			return fmt.Errorf("genXG %v", e)
-		}
-		if e := xgTemplate.Execute(&buf, filler); e != nil {
+	if strings.HasPrefix(strings.ToUpper(pr.estimator), `XGBOOST.`) {
+		// TODO(sperlingxx): write a separate pred pipeline for ant-xgboost to support remote mode
+		if e := genXG(&buf, pr, nil, fts, db); e != nil {
 			return fmt.Errorf("genXG %v", e)
 		}
 	} else {
-		if e := createPredictionTable(tr, pr, db); e != nil {
-			return fmt.Errorf("createPredictionTable: %v", e)
-		}
 		if e := genTF(&buf, pr, nil, fts, db); e != nil {
 			return fmt.Errorf("genTF %v", e)
 		}
@@ -455,9 +472,38 @@ func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir strin
 	return cmd.Run()
 }
 
+func analyze(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir string) error {
+	program, err := genAnalyzer(pr, db, cwd, modelDir)
+	if err != nil {
+		return err
+	}
+	cmd := exec.Command("python", "-u")
+	cmd.Dir = cwd
+	cmd.Stdin = program
+	if _, err = cmd.CombinedOutput(); err != nil {
+		return err
+	}
+
+	imgFile, err := os.Open(path.Join(cwd, "summary.png"))
+	if err != nil {
+		return err
+	}
+	defer imgFile.Close()
+
+	imgBytes, err := ioutil.ReadAll(imgFile)
+	if err != nil {
+		return err
+	}
+	imgBase64Str := base64.StdEncoding.EncodeToString(imgBytes)
+	img2html := "<html><body><img src=\"data:image/png;base64," + imgBase64Str + "\" /></body></html>"
+	wr.Write(img2html)
+
+	return nil
+}
+
 // Create prediction table with appropriate column type.
 // If prediction table already exists, it will be overwritten.
-func createPredictionTable(trainParsed, predParsed *extendedSelect, db *DB) error {
+func createPredictionTable(predParsed *extendedSelect, db *DB) error {
 	tableName, columnName, e := parseTableColumn(predParsed.into)
 	if e != nil {
 		return fmt.Errorf("invalid predParsed.into, %v", e)
@@ -468,14 +514,14 @@ func createPredictionTable(trainParsed, predParsed *extendedSelect, db *DB) erro
 		return fmt.Errorf("failed executing %s: %q", dropStmt, e)
 	}
 
-	fts, e := verify(trainParsed, db)
+	fts, e := verify(predParsed, db)
 	if e != nil {
 		return e
 	}
 
 	var b bytes.Buffer
 	fmt.Fprintf(&b, "create table %s (", tableName)
-	for _, c := range trainParsed.columns["feature_columns"] {
+	for _, c := range predParsed.columns["feature_columns"] {
 		name, err := getExpressionFieldName(c)
 		if err != nil {
 			return err
@@ -490,7 +536,7 @@ func createPredictionTable(trainParsed, predParsed *extendedSelect, db *DB) erro
 		}
 		fmt.Fprintf(&b, "%s %s, ", name, stype)
 	}
-	typ, _ := fts.get(trainParsed.label)
+	typ, _ := fts.get(predParsed.label)
 	stype, e := universalizeColumnType(db.driverName, typ)
 	if e != nil {
 		return e

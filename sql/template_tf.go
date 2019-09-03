@@ -110,7 +110,7 @@ def input_fn(datasetStr):
     return dataset.map(ds_mapper)
 
 def train_input_fn(batch_size):
-    dataset = input_fn("""{{.TrainingDataset}}""")
+    dataset = input_fn("""{{.TrainingDatasetSQL}}""")
     # TODO(typhoonzero): add prefetch, cache if needed.
     dataset = dataset.shuffle(1000).batch(batch_size)
     {{if not .IsKerasModel}}
@@ -120,7 +120,7 @@ def train_input_fn(batch_size):
     return dataset
 
 def validate_input_fn(batch_size):
-    dataset = input_fn("""{{.ValidationDataset}}""")
+    dataset = input_fn("""{{.ValidationDatasetSQL}}""")
     return dataset.batch(batch_size)
 
 {{if .IsKerasModel}}
@@ -232,7 +232,7 @@ def eval_input_fn(batch_size):
         else:
             feature_types.append(get_dtype(feature_metas[name]["dtype"]))
 
-    gen = db_generator(driver, conn, session_cfg, """{{.PredictionDataset}}""",
+    gen = db_generator(driver, conn, session_cfg, """{{.PredictionDatasetSQL}}""",
         feature_column_names, "{{.Y.FeatureName}}", feature_metas)
     dataset = tf.data.Dataset.from_generator(gen, (tuple(feature_types), tf.{{.Y.Dtype}}))
     ds_mapper = functools.partial(_parse_sparse_feature, feature_metas=feature_metas)
@@ -322,7 +322,7 @@ class FastPredict:
 
 column_names = feature_column_names[:]
 column_names.append("{{.Y.FeatureName}}")
-pred_gen = db_generator(driver, conn, session_cfg, """{{.PredictionDataset}}""", feature_column_names, "{{.Y.FeatureName}}", feature_metas)()
+pred_gen = db_generator(driver, conn, session_cfg, """{{.PredictionDatasetSQL}}""", feature_column_names, "{{.Y.FeatureName}}", feature_metas)()
 fast_predictor = FastPredict(classifier, fast_input_fn)
 
 with buffered_db_writer(driver, conn, "{{.TableName}}", column_names, 100) as w:

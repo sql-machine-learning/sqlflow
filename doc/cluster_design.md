@@ -4,6 +4,7 @@
 
 Most of time when businessman and analyst faced the data, they need not only the supervised learning model to perform classification and prediction, but also unsupervised learning to catch hidden patterns. This can help analysts to draw inferences from datasets consisting of input data without labeled responses, such as grouping users by their behavioral characteristics. 
 
+
 This design document introduced how to support the `Cluster Model` in SQLFLow.
 
 The figure below demonstrates the overall workflow for cluster model training, which include both the pre_train autoencoder model and the clustering model.(Reference https://www.dlology.com/blog/how-to-do-unsupervised-clustering-with-keras/)
@@ -14,13 +15,14 @@ The figure below demonstrates the overall workflow for cluster model training, w
 2. Then, the clustering model starts training with randomly initialized weights, and generate clusters after multiple iterations.
 3. The overall train process ultimately outputs an unsupervised clustering model.
 
+
 ## How to implement ClusterModel it in SQLFlow
 
 ### User interface in SQLFlow 
 
 In this scenario, we focus on the extraction of data patterns in unsupervised learning. 
 
-So, the user can use `TRAIN` keyword to training a model. The user can also specify the training hyper-parameters with the keyword `WITH` and determine whether to use a pre-trained model by `USING`. The training and predicting syntax looks like:
+So, the user can use `TRAIN` keyword to training a model. The user can also specify the training hyper-parameters with the keyword `WITH` and determine whether to use pre-trained model by `USING`. The training and predicting syntax looks like:
 
 TRAIN SQL:
 
@@ -92,6 +94,7 @@ if hasattr(classifier, 'cluster_train_loop'):
 Therefore, there are four cases in total:
 
 1.  model.run_pretrain = true & User do not use `USING` keyword in this situation.
+
     Autoencoder Pre_train + Random initialization weights for cluster. (Note that model.encode_units "does work" at this time.)
 
 2.  model.run_pretrain = true & Using existed_pretrain_model.
@@ -108,6 +111,7 @@ Therefore, there are four cases in total:
 - Users can use the trained cluster model in ` PREDICT SQL` to predict the group of input_table to get output_table.
 
 - Finally, the user can perform a combined aggregation operation on the output_table based on the SQL statement to obtain a result_table, which can be saved to the local dataframe and then analyzed according to his own needs.
+
 Sometimes, analysts will compare the mean of each feature in each group of users, this helps them to understand the difference of behavioral characteristics in each group.
 
 ```mysql
