@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/sql-machine-learning/sqlflow/sql/columns"
+	"github.com/sql-machine-learning/sqlflow/sql/testdata"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -308,4 +309,39 @@ func TestFeatureSpec(t *testing.T) {
 	_, _, e = resolveTrainColumns(&c)
 	a.Error(e)
 
+}
+
+func TestFeatureDerivation(t *testing.T) {
+	a := assert.New(t)
+	// Prepare feature derivation test table in MySQL.
+	db, err := NewDB("mysql://root:root@tcp/?maxAllowedPacket=0")
+	if err != nil {
+		a.Fail("error connect to mysql: %v", err)
+	}
+	err = testdata.Popularize(db.DB, testdata.FeatureDericationCaseSQL)
+	if err != nil {
+		a.Fail("error creating test data: %v", err)
+	}
+
+	parser := newParser()
+
+	normal := `select c1, c2, c3, c4, c5, class from feature_derivation_case.train
+	TRAIN DNNClassifier
+	WITH model.n_classes=2
+	COLUMN EMBEDDING(c3), EMBEDDING(SPARSE(c5))
+	LABEL class INTO model_table;`
+
+	r, e := parser.Parse(normal)
+	a.NoError(e)
+	c := r.columns["feature_columns"]
+	_, _, e = resolveTrainColumns(&c)
+	a.NoError(e)
+	// bc, ok := fcs[0].(*columns.BucketColumn)
+	// a.True(ok)
+	// code, e := bc.GenerateCode(nil)
+	// a.NoError(e)
+	// a.Equal("c1", bc.SourceColumn.Key)
+	// a.Equal([]int{10}, bc.SourceColumn.Shape)
+	// a.Equal([]int{1, 10}, bc.Boundaries)
+	// a.Equal("tf.feature_column.bucketized_column(tf.feature_column.numeric_column(\"c1\", shape=[10]), boundaries=[1,10])", code[0])
 }

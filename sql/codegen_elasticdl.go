@@ -143,7 +143,7 @@ func newElasticDLDataConversionFiller(pr *extendedSelect, db *DB, recordIODataDi
 }
 
 func newElasticDLTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds *trainAndValDataset) (*elasticDLFiller, error) {
-	resolved, err := resolveTrainClause(&pr.trainClause)
+	resolved, err := resolveTrainClause(&pr.trainClause, &pr.standardSelect)
 	if err != nil {
 		return nil, err
 	}

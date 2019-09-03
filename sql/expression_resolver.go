@@ -86,7 +86,7 @@ func trimQuotes(s string) string {
 	return s
 }
 
-func resolveTrainClause(tc *trainClause) (*resolvedTrainClause, error) {
+func resolveTrainClause(tc *trainClause, slct *standardSelect) (*resolvedTrainClause, error) {
 	modelName := tc.estimator
 	preMadeModel := !strings.ContainsAny(modelName, ".")
 	attrs, err := resolveAttribute(&tc.trainAttrs)
@@ -209,6 +209,12 @@ func resolveTrainClause(tc *trainClause) (*resolvedTrainClause, error) {
 		}
 		fcMap[target] = fcs
 		csMap[target] = css
+		if len(fcs) > 0 {
+			log.Infof("got feature_column from sql: %v, target(%s)", fcs, target)
+		}
+		if len(css) > 0 {
+			log.Infof("got columnSpec from sql: %v, target(%s)", css, target)
+		}
 	}
 
 	return &resolvedTrainClause{
@@ -284,7 +290,6 @@ func resolveTrainColumns(columnExprs *exprlist) ([]columns.FeatureColumn, []*col
 	for _, expr := range *columnExprs {
 		if expr.typ != 0 {
 			// Column identifier like "COLUMN a1,b1"
-			// FIXME(typhoonzero): infer the column spec here.
 			c := &columns.NumericColumn{
 				Key:   expr.val,
 				Shape: []int{1},

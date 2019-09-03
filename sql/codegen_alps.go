@@ -178,7 +178,7 @@ func modelCreatorCode(resolved *resolvedTrainClause, args []string) (string, str
 }
 
 func newALPSTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds *trainAndValDataset) (*alpsFiller, error) {
-	resolved, err := resolveTrainClause(&pr.trainClause)
+	resolved, err := resolveTrainClause(&pr.trainClause, &pr.standardSelect)
 	if err != nil {
 		return nil, err
 	}

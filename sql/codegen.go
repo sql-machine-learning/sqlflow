@@ -104,7 +104,7 @@ func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *D
 		},
 	}
 
-	trainResolved, err := resolveTrainClause(&pr.trainClause)
+	trainResolved, err := resolveTrainClause(&pr.trainClause, &pr.standardSelect)
 	if err != nil {
 		return nil, err
 	}
