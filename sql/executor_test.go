@@ -71,19 +71,19 @@ func TestSplitExtendedSQL(t *testing.T) {
 	a.Equal(`train a with b;`, s[0])
 }
 
-func TestExecutorTrainAnalyzePredictXGBoost(t *testing.T) {
+func TestExecutorTrainAnalyzePredictAntXGBoost(t *testing.T) {
 	a := assert.New(t)
 	modelDir, e := ioutil.TempDir("/tmp", "sqlflow_models")
 	a.Nil(e)
 	defer os.RemoveAll(modelDir)
 	a.NotPanics(func() {
-		stream := runExtendedSQL(testXGTrainSelectIris, testDB, modelDir, nil)
+		stream := runExtendedSQL(testAntXGTrainSelectIris, testDB, modelDir, nil)
 		a.True(goodStream(stream.ReadAll()))
 
-		stream = runExtendedSQL(testXGAnalyzeSelectIris, testDB, modelDir, nil)
+		stream = runExtendedSQL(testAntXGAnalyzeSelectIris, testDB, modelDir, nil)
 		a.True(goodStream(stream.ReadAll()))
 
-		stream = runExtendedSQL(testXGPredSelectIris, testDB, modelDir, nil)
+		stream = runExtendedSQL(testAntXGPredSelectIris, testDB, modelDir, nil)
 		a.True(goodStream(stream.ReadAll()))
 	})
 }

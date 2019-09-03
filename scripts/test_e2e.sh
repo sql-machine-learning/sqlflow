@@ -48,8 +48,8 @@ export PYTHONPATH=$GOPATH/src/github.com/sql-machine-learning/sqlflow/sql/python
 sqlflowserver --datasource=${DATASOURCE} &
 # e2e test for standard SQL
 SQLFLOW_SERVER=localhost:50051 ipython sql/python/test_magic.py
-# e2e test for xgboost train and prediciton SQL.
-SQLFLOW_SERVER=localhost:50051 ipython sql/python/test_magic_xgboost.py
+# e2e test for ant-xgboost train and prediciton SQL.
+SQLFLOW_SERVER=localhost:50051 ipython sql/python/test_magic_ant_xgboost.py
 # TODO(terrytangyuan): Enable this when ElasticDL is open sourced
 # e2e test for ElasticDL SQL
 # export SQLFLOW_submitter=elasticdl

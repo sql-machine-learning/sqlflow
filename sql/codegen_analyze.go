@@ -41,7 +41,7 @@ func readFeatureNames(pr *extendedSelect, db *DB) ([]string, string, error) {
 	if strings.HasPrefix(strings.ToUpper(pr.estimator), `XGBOOST.`) {
 		// TODO(weiguo): It's a quick way to read column and label names from
 		// xgboost.*, but too heavy.
-		xgbFiller, err := newXGBoostFiller(pr, nil, db)
+		xgbFiller, err := newAntXGBoostFiller(pr, nil, db)
 		if err != nil {
 			return nil, "", err
 		}
