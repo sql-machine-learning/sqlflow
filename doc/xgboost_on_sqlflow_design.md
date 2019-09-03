@@ -15,8 +15,8 @@ We prefer users to execute the SQLFlow Train/Predict SQL as follows:
   WITH
       train.objective="multi:softmax",
       train.num_round=2,
-      model.max_depth=2,
-      model.eta=1
+      params.max_depth=2,
+      params.eta=1
   LABEL class
   INTO my_xgb_model;
   ```
@@ -33,7 +33,7 @@ where:
     - The prefix `xgboost.` is used to distinguish with Tensorflow model.
     - `multi.softmax` is the learning task, SQLFlow would fill it to [XGBoost objective parameter](https://xgboost.readthedocs.io/en/latest/parameter.html#learning-task-parameters): `objective=multi:softmax`.
 - The prefix `train.` in `WITH` statement mappings to the training arguments of XGBoost [train function](https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.train).
-- The prefix `model.` in `WITH` statement mappings to the [XGBoost Parameters](https://xgboost.readthedocs.io/en/latest/parameter.html) except the `objective` parameter.
+- The prefix `params.` in `WITH` statement mappings to the [XGBoost Parameters](https://xgboost.readthedocs.io/en/latest/parameter.html) except the `objective` parameter.
 
 `codegen_xgboost.go` would generate an XGBoost Python program including:
 - Generate the XGBoost input database.
