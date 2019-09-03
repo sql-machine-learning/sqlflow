@@ -88,6 +88,16 @@ func TestExecutorTrainAnalyzePredictAntXGBoost(t *testing.T) {
 	})
 }
 
+func TestExecutorTrainXGBoost(t *testing.T) {
+	a := assert.New(t)
+	modelDir := ""
+	a.NotPanics(func() {
+		stream := runExtendedSQL(testXGBoostTrainSelectIris, testDB, modelDir, nil)
+		a.True(goodStream(stream.ReadAll()))
+
+	})
+}
+
 func TestExecutorTrainAndPredictDNN(t *testing.T) {
 	a := assert.New(t)
 	modelDir := ""
