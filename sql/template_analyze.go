@@ -28,9 +28,9 @@ from sqlflow_submitter.db import connect, db_generator
 shap.initjs()
 
 # 1. read data
-driver="{{.Driver}}"
+driver = "{{.Driver}}"
 feature_names = [{{ range $value := .X }} "{{$value.FeatureName}}", {{end}}]
-feature_metas={}
+feature_metas = {}
 {{ range $value := .X }}
 feature_metas["{{$value.FeatureName}}"] = {
     "feature_name": "{{$value.FeatureName}}",
@@ -41,10 +41,10 @@ feature_metas["{{$value.FeatureName}}"] = {
 }
 {{end}}
 
-label_name="{{.Label}}"
-database=""
+label_name = "{{.Label}}"
+database = ""
 {{if ne .Database ""}}
-database="{{.Database}}"
+database = "{{.Database}}"
 {{end}}
 session_cfg = {}
 {{ range $k, $v := .Session }}
@@ -65,12 +65,12 @@ def analyzer_dataset():
     return xs, ys
 
 # 2. load the model
-model_file="{{.ModelFile}}"
+model_path = "{{.ModelFile}}"
 
 X,y = analyzer_dataset()
 
 bst = xgboost.Booster()
-bst.load_model(fname=model_file)
+bst.load_model(fname=model_path)
 explainer = shap.TreeExplainer(bst)
 shap_values = explainer.shap_values(X)
 
