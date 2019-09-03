@@ -11,83 +11,70 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package columns
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 )
 
+// CrossColumn is the wapper of `tf.feature_column.crossed_column`
 // TODO(uuleon) specify the hash_key if needed
-type crossColumn struct {
+type CrossColumn struct {
 	Keys           []interface{}
 	HashBucketSize int
 }
 
-func (cc *crossColumn) GenerateCode() (string, error) {
+// GenerateCode implements the FeatureColumn interface.
+func (cc *CrossColumn) GenerateCode(cs *ColumnSpec) ([]string, error) {
 	var keysGenerated = make([]string, len(cc.Keys))
 	for idx, key := range cc.Keys {
-		if c, ok := key.(featureColumn); ok {
-			code, err := c.GenerateCode()
+		if c, ok := key.(FeatureColumn); ok {
+			codeList, err := c.GenerateCode(cs)
 			if err != nil {
-				return "", err
+				return []string{}, err
 			}
-			keysGenerated[idx] = code
+			if len(codeList) > 1 {
+				return []string{}, fmt.Errorf("cross column does not support crossing multi feature column types")
+			}
+			keysGenerated[idx] = codeList[0]
 			continue
 		}
 		if str, ok := key.(string); ok {
 			keysGenerated[idx] = fmt.Sprintf("\"%s\"", str)
 		} else {
-			return "", fmt.Errorf("cross generate code error, key: %s", key)
+			return []string{}, fmt.Errorf("cross generate code error, key: %s", key)
 		}
 	}
-	return fmt.Sprintf(
+	return []string{fmt.Sprintf(
 		"tf.feature_column.crossed_column([%s], hash_bucket_size=%d)",
-		strings.Join(keysGenerated, ","), cc.HashBucketSize), nil
+		strings.Join(keysGenerated, ","), cc.HashBucketSize)}, nil
 }
 
-func (cc *crossColumn) GetDelimiter() string {
+// GetDelimiter implements the FeatureColumn interface.
+func (cc *CrossColumn) GetDelimiter() string {
 	return ""
 }
 
-func (cc *crossColumn) GetDtype() string {
+// GetDtype implements the FeatureColumn interface.
+func (cc *CrossColumn) GetDtype() string {
 	return ""
 }
 
-func (cc *crossColumn) GetKey() string {
+// GetKey implements the FeatureColumn interface.
+func (cc *CrossColumn) GetKey() string {
 	// NOTE: cross column is a feature on multiple column keys.
 	return ""
 }
 
-func (cc *crossColumn) GetInputShape() string {
+// GetInputShape implements the FeatureColumn interface.
+func (cc *CrossColumn) GetInputShape() string {
 	// NOTE: return empty since crossed column input shape is already determined
 	// by the two crossed columns.
 	return ""
 }
 
-func (cc *crossColumn) GetColumnType() int {
-	return columnTypeCross
-}
-
-func resolveCrossColumn(el *exprlist) (*crossColumn, error) {
-	if len(*el) != 3 {
-		return nil, fmt.Errorf("bad CROSS expression format: %s", *el)
-	}
-	keysExpr := (*el)[1]
-	key, _, err := resolveExpression(keysExpr)
-	if err != nil {
-		return nil, err
-	}
-	if _, ok := key.([]interface{}); !ok {
-		return nil, fmt.Errorf("bad CROSS expression format: %s", *el)
-	}
-
-	bucketSize, err := strconv.Atoi((*el)[2].val)
-	if err != nil {
-		return nil, fmt.Errorf("bad CROSS bucketSize: %s, err: %s", (*el)[2].val, err)
-	}
-	return &crossColumn{
-		Keys:           key.([]interface{}),
-		HashBucketSize: bucketSize}, nil
+// GetColumnType implements the FeatureColumn interface.
+func (cc *CrossColumn) GetColumnType() int {
+	return ColumnTypeCross
 }
