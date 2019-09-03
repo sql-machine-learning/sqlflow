@@ -12,8 +12,8 @@ Ant-XGBoost is built on top of dmlc/xgboost but with additional support on kuber
 In dmlc/xgboost, early stopping is applied when there is no improvement after consecutive `n` boosting rounds. 
 In Ant-XGBoost, we generalize this strategy and call the new strategy convergence test. 
 We keep track of the series of metric values and determine whether the series is converged or not. 
-There are three main parameters to test convergence; `minNumPoints`, `n` and `c`. 
-The series has to be at least `minNumPoints` long to be eligible for convergence test. 
+There are three main parameters to test convergence: `minNumPoints`, `n` and `c`. 
+Only after the series is longer than (or equal to)  `minNumPoints`, it start to be eligible for convergence test. 
 Once a series is at least `minNumPoints` long, we find the index `idx` for the best metric value so far. 
 We say a series is converged if `idx + n < size * c`, where `size` is the current number of points in the series. 
 The intuition is that the best metric value should be peaked (or bottomed) with a wide margin. 
