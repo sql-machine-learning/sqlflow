@@ -1,20 +1,20 @@
 CREATE DATABASE IF NOT EXISTS boston;
 DROP TABLE IF EXISTS boston.train;
 CREATE TABLE boston.train (
-	CRIM FLOAT,
-	ZN FLOAT,
-	INDUS FLOAT,
-	CHAS INT,
-	NOX FLOAT,
-	RM FLOAT,
-	AGE FLOAT,
-	DIS FLOAT,
-	RAD INT,
-	TAX INT,
-	PTRATIO FLOAT,
-	B FLOAT,
-	LSTAT FLOAT,
-	MEDV FLOAT
+	crim FLOAT,
+	zn FLOAT,
+	indus FLOAT,
+	chas INT,
+	nox FLOAT,
+	rm FLOAT,
+	age FLOAT,
+	dis FLOAT,
+	rad INT,
+	tax INT,
+	ptratio FLOAT,
+	b FLOAT,
+	lstat FLOAT,
+	medv FLOAT
 );
 INSERT INTO boston.train VALUES("0.00632","18","2.31","0","0.538","6.575","65.2","4.09","1","296","15.3","396.9","4.98","24");
 INSERT INTO boston.train VALUES("0.02731","0","7.07","0","0.469","6.421","78.9","4.9671","2","242","17.8","396.9","9.14","21.6");
@@ -517,20 +517,20 @@ INSERT INTO boston.train VALUES("0.17899","0","9.69","0","0.585","5.67","28.8","
 
 DROP TABLE IF EXISTS boston.test;
 CREATE TABLE boston.test (
-	CRIM FLOAT,
-	ZN FLOAT,
-	INDUS FLOAT,
-	CHAS INT,
-	NOX FLOAT,
-	RM FLOAT,
-	AGE FLOAT,
-	DIS FLOAT,
-	RAD INT,
-	TAX INT,
-	PTRATIO FLOAT,
-	B FLOAT,
-	LSTAT FLOAT,
-	MEDV FLOAT
+	crim FLOAT,
+	zn FLOAT,
+	indus FLOAT,
+	chas INT,
+	nox FLOAT,
+	rm FLOAT,
+	age FLOAT,
+	dis FLOAT,
+	rad INT,
+	tax INT,
+	ptratio FLOAT,
+	b FLOAT,
+	lstat FLOAT,
+	medv FLOAT
 );
 INSERT INTO boston.test VALUES("0.2896","0","9.69","0","0.585","5.39","72.9","2.7986","6","391","19.2","396.9","21.14","19.7");
 INSERT INTO boston.test VALUES("0.26838","0","9.69","0","0.585","5.794","70.6","2.8927","6","391","19.2","396.9","14.1","18.3");
