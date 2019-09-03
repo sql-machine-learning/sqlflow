@@ -109,7 +109,6 @@ func genXGBoost(w io.Writer, pr *extendedSelect, ds *trainAndValDataset, fts fie
 		return e
 	}
 	if pr.train {
-		fmt.Println(r.TrainCfgJSON)
 		return xgbTrainTemplate.Execute(w, r)
 	}
 	return fmt.Errorf("xgboost prediction codegen has not been implemented")
