@@ -795,7 +795,7 @@ func xgCreatePredictionTable(pr *extendedSelect, r *antXGBoostFiller, db *DB) er
 	return nil
 }
 
-func genAntXGboost(w io.Writer, pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *DB) error {
+func genAntXGBoost(w io.Writer, pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *DB) error {
 	r, e := newAntXGBoostFiller(pr, ds, db)
 	if e != nil {
 		return e

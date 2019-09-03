@@ -387,7 +387,7 @@ func train(wr *PipeWriter, tr *extendedSelect, db *DB, cwd string, modelDir stri
 	var program bytes.Buffer
 	if strings.HasPrefix(strings.ToUpper(tr.estimator), `XGBOOST.`) {
 		// TODO(sperlingxx): write a separate train pipeline for ant-xgboost to support remote mode
-		if e := genAntXGboost(&program, tr, ds, fts, db); e != nil {
+		if e := genAntXGBoost(&program, tr, ds, fts, db); e != nil {
 			return fmt.Errorf("genAntXGBoost %v", e)
 		}
 	} else if strings.HasPrefix(strings.ToUpper(tr.estimator), `XGB.`) {
@@ -460,7 +460,7 @@ func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir strin
 	var buf bytes.Buffer
 	if strings.HasPrefix(strings.ToUpper(pr.estimator), `XGBOOST.`) {
 		// TODO(sperlingxx): write a separate pred pipeline for ant-xgboost to support remote mode
-		if e := genAntXGboost(&buf, pr, nil, fts, db); e != nil {
+		if e := genAntXGBoost(&buf, pr, nil, fts, db); e != nil {
 			return fmt.Errorf("genAntXGBoost %v", e)
 		}
 	} else {
