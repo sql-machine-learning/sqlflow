@@ -4,16 +4,19 @@
 
 Most of time when businessman and analyst faced the data, they need not only the supervised learning model to perform classification and prediction, but also unsupervised learning to catch hidden patterns. This can help analysts to draw inferences from datasets consisting of input data without labeled responses, such as grouping users by their behavioral characteristics. 
 
-This design document introduced how to support `Cluster Model` in SQLFLow.
 
-The figure below demonstrates overall workflow for clusterModel training, which include both the pre_train autoencoder model and the clustering model.
-<img src="figures/cluster_model_train_overview.png">
+This design document introduced how to support the `Cluster Model` in SQLFLow.
+
+The figure below demonstrates the overall workflow for cluster model training, which include both the pre_train autoencoder model and the clustering model.(Reference https://www.dlology.com/blog/how-to-do-unsupervised-clustering-with-keras/)
+
+<div align=center> <img width="460" height="550" src="figures/cluster_model_train_overview.png"> </div>
 
 1. The first part is used to load a pre_trained model. We use the output of the trained encoder layer as the input to the clustering model. 
 2. Then, the clustering model starts training with randomly initialized weights, and generate clusters after multiple iterations.
 3. The overall train process ultimately outputs an unsupervised clustering model.
 
-##How to implement ClusterModel it in SQLFlow
+
+## How to implement ClusterModel it in SQLFlow
 
 ### User interface in SQLFlow 
 
@@ -40,7 +43,7 @@ PREDICT SQL:
 ``` sql
 SELECT *
 FROM input_table
-PREDICT output_table
+PREDICT output_table.group_id
 USING my_cluster_model;
 ```
 
@@ -51,7 +54,7 @@ where:
 - `my_cluster_model` is the trained cluster model.
 - `run_pretrain`  is used to determine if autoencoder pre_train needs to be run, default true.
 - `existed_pretrain_model` is used to specify an existing pretrain_model
-- `output_table` is the cluster result for input_table, which is adding the `group_id` column predicted by the cluster model to the input_table. The `group_id` is the category label predicted by the cluster model.
+- `output_table` is the clustering result for input_table, which is adding the `group_id` column predicted by the cluster model to the input_table. The `group_id` is the category label predicted by the cluster model.
 
 ### Code Details
 
@@ -86,25 +89,24 @@ if hasattr(classifier, 'cluster_train_loop'):
 
 ## Note
 
-The user can choose whether to run pre_train before the cluster model, ie run_pretrain=true. And the user can also choose to load the already trained model by loading the existed_pretrain_model.
+- The user can choose whether to run pre_train before the cluster model, ie run_pretrain=true. And the user can also choose to load the already trained model by loading the existed_pretrain_model.
 
 Therefore, there are four cases in total:
 
 1.  model.run_pretrain = true & User do not use `USING` keyword in this situation.
 
-	Autoencoder Pre_train + Random initialization weights for cluster. (Note that model.encode_units "does work" at this time.)
+    Autoencoder Pre_train + Random initialization weights for cluster. (Note that model.encode_units "does work" at this time.)
 
-2.  model.run_pretrain = true & Using existed_pretrain_model：
+2.  model.run_pretrain = true & Using existed_pretrain_model.
+    existed_pretrain_model Pre_train + Random initialization weights for cluster. (Note that model.encode_units "does not work" at this time.)
+    
+3.  model.run_pretrain = false & User do not use `USING` keyword in this situation.
+    Random initialization weights for cluster. (Note that model.encode_units "does not work" at this time.)
+    
+4.  model.run_pretrain = false & Using existed_pretrain_model.
+    existed_pretrain_model Pre_train + Random initialization weights for cluster. (Note that model.encode_units "does not work" at this time.)
 
-	existed_pretrain_model Pre_train + Random initialization weights for cluster. (Note that model.encode_units "does not work" at this time.)
-	
-3.  model.run_pretrain = false & User do not use `USING` keyword in this situation: 
-	
-	Random initialization weights for cluster. (Note that model.encode_units "does not work" at this time.)
-	
-4.  model.run_pretrain = false & Using existed_pretrain_model：
-	
-	existed_pretrain_model Pre_train + Random initialization weights for cluster. (Note that model.encode_units "does not work" at this time.)
+- In the first stage of the clustering model on sqlflow, we plan to achieve the `first case`. We will achieve the other cases in the later. 
 
 - Users can use the trained cluster model in ` PREDICT SQL` to predict the group of input_table to get output_table.
 
