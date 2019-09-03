@@ -54,15 +54,15 @@ session_cfg["{{$k}}"] = "{{$v}}"
 conn = connect(driver, database, user="{{.User}}", password="{{.Password}}", host="{{.Host}}", port={{.Port}}, auth="{{.Auth}}")
 
 def analyzer_dataset():
-	stream = db_generator(driver, conn, session_cfg, """{{.AnalyzeDatasetSQL}}""", feature_names, label_name, feature_metas)
-	xs = pd.DataFrame(columns=feature_names)
-	ys = pd.DataFrame(columns=[label_name])
-	i = 0
-	for row in stream():
-		xs.loc[i] = row[0]
-		ys.loc[i] = row[1]
-		i += 1
-	return xs, ys
+    stream = db_generator(driver, conn, session_cfg, """{{.AnalyzeDatasetSQL}}""", feature_names, label_name, feature_metas)
+    xs = pd.DataFrame(columns=feature_names)
+    ys = pd.DataFrame(columns=[label_name])
+    i = 0
+    for row in stream():
+        xs.loc[i] = row[0]
+        ys.loc[i] = row[1]
+        i += 1
+    return xs, ys
 
 # 2. load the model
 model_file="{{.ModelFile}}"
