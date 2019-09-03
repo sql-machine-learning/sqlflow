@@ -87,7 +87,7 @@ def run_with_sqlflow(mode: str,
             metrics = model.booster.attributes().copy()
             metrics['best_score'] = float(metrics['best_score'])
             metrics['best_iteration'] = int(metrics['best_iteration'])
-            metrics['maximize'] = get_optimization_direction(train_fields.xgboost_conf.params._asdict())
+            metrics['maximize_metric'] = get_optimization_direction(train_fields.xgboost_conf.params._asdict())
             with open(os.path.join(model_path, 'metrics.json'), 'a') as f:
                 f.write(json.dumps(metrics))
         except Exception as e:
