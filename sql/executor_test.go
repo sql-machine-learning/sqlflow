@@ -76,16 +76,29 @@ func TestExecutorTrainAnalyzePredictAntXGBoost(t *testing.T) {
 	modelDir, e := ioutil.TempDir("/tmp", "sqlflow_models")
 	a.Nil(e)
 	defer os.RemoveAll(modelDir)
-	a.NotPanics(func() {
-		stream := runExtendedSQL(testAntXGTrainSelectIris, testDB, modelDir, nil)
-		a.True(goodStream(stream.ReadAll()))
 
-		stream = runExtendedSQL(testAntXGAnalyzeSelectIris, testDB, modelDir, nil)
-		a.True(goodStream(stream.ReadAll()))
+	runWithVerify := func(trainSql, predSql, analyzeSql, modelName string, baseline float32) {
+		a.NotPanics(func() {
+			stream := runExtendedSQL(trainSql, testDB, modelDir, nil)
+			a.True(goodStream(stream.ReadAll()))
+			if len(modelName) >= 0 {
+				metrics, e := loadXgTrainMetrics(testDB, modelDir, modelName)
+				a.NoError(e)
+				a.True(metrics.verifyPerf(baseline))
+			}
 
-		stream = runExtendedSQL(testAntXGPredSelectIris, testDB, modelDir, nil)
-		a.True(goodStream(stream.ReadAll()))
-	})
+			if len(analyzeSql) > 0 {
+				stream = runExtendedSQL(analyzeSql, testDB, modelDir, nil)
+				a.True(goodStream(stream.ReadAll()))
+			}
+			if len(predSql) > 0 {
+				stream = runExtendedSQL(predSql, testDB, modelDir, nil)
+				a.True(goodStream(stream.ReadAll()))
+			}
+		})
+	}
+	runWithVerify(testAntXGTrainSelectIris, testAntXGPredSelectIris, testAntXGAnalyzeSelectIris, "sqlflow_models.iris_antXG_model", 0.0001)
+	runWithVerify(testAntXGTrainSelectBoston, testAntXGPredSelectBoston, "", "sqlflow_models.boston_antXG_model", 3)
 }
 
 func TestExecutorTrainAndPredictDNN(t *testing.T) {

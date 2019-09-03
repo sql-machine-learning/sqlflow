@@ -34,12 +34,12 @@ WITH
 	train.tree_method = "approx",
 	train.num_round = 30
 COLUMN sepal_length, sepal_width, petal_length, petal_width
-LABEL class INTO sqlflow_models.my_xgboost_model;
+LABEL class INTO sqlflow_models.iris_antXG_model;
 `
 	testAntXGAnalyzeSelectIris = `
 SELECT *
 FROM iris.train
-ANALYZE sqlflow_models.my_xgboost_model
+ANALYZE sqlflow_models.iris_antXG_model
 USING TreeExplainer;
 	`
 	testAntXGPredSelectIris = `
@@ -50,7 +50,28 @@ WITH
 	pred.append_columns = [sepal_length, sepal_width, petal_length, petal_width],
 	pred.prob_column = prob,
 	pred.detail_column = detail
-USING sqlflow_models.my_xgboost_model;
+USING sqlflow_models.iris_antXG_model;
+`
+
+	testAntXGTrainSelectBoston = `
+SELECT *
+FROM boston.train
+TRAIN xgboost.Regressor
+WITH
+	train.tree_method = "hist",
+	train.num_round = 100,
+	train.convergence_criteria = "10:100:0.8",
+	train.eta = 0.12
+COLUMN crim, zn, indus, chas, nox, rm, age, dis, rad, tax, ptratio, b, lstat
+LABEL medv INTO sqlflow_models.boston_antXG_model;
+`
+	testAntXGPredSelectBoston = `
+SELECT *
+FROM boston.test
+PREDICT boston.predict.result
+WITH
+	pred.append_columns = [crim, zn, indus, chas, nox, rm, age, dis, rad, tax, ptratio, b, lstat, medv]
+USING sqlflow_models.boston_antXG_model;
 `
 )
 
