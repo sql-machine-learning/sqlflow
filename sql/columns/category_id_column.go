@@ -32,13 +32,17 @@ type SequenceCategoryIDColumn struct {
 	BucketSize int
 	Delimiter  string
 	Dtype      string
-	IsSequence bool
 }
 
 // GenerateCode implements the FeatureColumn interface.
 func (cc *CategoryIDColumn) GenerateCode(cs *ColumnSpec) ([]string, error) {
 	return []string{fmt.Sprintf("tf.feature_column.categorical_column_with_identity(key=\"%s\", num_buckets=%d)",
 		cc.Key, cc.BucketSize)}, nil
+}
+
+// GetKey implements the FeatureColumn interface.
+func (cc *CategoryIDColumn) GetKey() string {
+	return cc.Key
 }
 
 // GetDelimiter implements the FeatureColumn interface.
@@ -49,11 +53,6 @@ func (cc *CategoryIDColumn) GetDelimiter() string {
 // GetDtype implements the FeatureColumn interface.
 func (cc *CategoryIDColumn) GetDtype() string {
 	return cc.Dtype
-}
-
-// GetKey implements the FeatureColumn interface.
-func (cc *CategoryIDColumn) GetKey() string {
-	return cc.Key
 }
 
 // GetInputShape implements the FeatureColumn interface.

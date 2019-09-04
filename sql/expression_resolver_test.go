@@ -328,7 +328,7 @@ func TestFeatureDerivation(t *testing.T) {
 	normal := `select c1, c2, c3, c4, c5, class from feature_derivation_case.train
 	TRAIN DNNClassifier
 	WITH model.n_classes=2
-	COLUMN EMBEDDING(c3), EMBEDDING(SPARSE(c5))
+	COLUMN EMBEDDING(c3, 128, sum), EMBEDDING(SPARSE(c5, 10000, COMMA), 128, sum)
 	LABEL class INTO model_table;`
 
 	r, e := parser.Parse(normal)

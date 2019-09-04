@@ -35,12 +35,13 @@ type FeatureColumn interface {
 	// feature_column code. And we maybe use one compound column's data to generate
 	// multiple feature columns, so return a list of strings.
 	GenerateCode(cs *ColumnSpec) ([]string, error)
+	GetKey() string
+
 	// FIXME(typhoonzero): remove delimiter, dtype shape from feature column
 	// get these from column spec claused or by feature derivation.
 	GetDelimiter() string
 	GetDtype() string
-	GetKey() string
-	// return input shape json string, like "[2,3]"
 	GetInputShape() string
+
 	GetColumnType() int
 }

@@ -25,6 +25,11 @@ type EmbeddingColumn struct {
 	Initializer    string
 }
 
+// GetKey implements the FeatureColumn interface.
+func (ec *EmbeddingColumn) GetKey() string {
+	return ec.CategoryColumn.(FeatureColumn).GetKey()
+}
+
 // GetDelimiter implements the FeatureColumn interface.
 func (ec *EmbeddingColumn) GetDelimiter() string {
 	return ec.CategoryColumn.(FeatureColumn).GetDelimiter()
@@ -33,11 +38,6 @@ func (ec *EmbeddingColumn) GetDelimiter() string {
 // GetDtype implements the FeatureColumn interface.
 func (ec *EmbeddingColumn) GetDtype() string {
 	return ec.CategoryColumn.(FeatureColumn).GetDtype()
-}
-
-// GetKey implements the FeatureColumn interface.
-func (ec *EmbeddingColumn) GetKey() string {
-	return ec.CategoryColumn.(FeatureColumn).GetKey()
 }
 
 // GetInputShape implements the FeatureColumn interface.

@@ -210,9 +210,11 @@ func resolveTrainClause(tc *trainClause, slct *standardSelect) (*resolvedTrainCl
 		fcMap[target] = fcs
 		csMap[target] = css
 		if len(fcs) > 0 {
+			fmt.Printf("got feature_column from sql: %v, target(%s)\n", fcs, target)
 			log.Infof("got feature_column from sql: %v, target(%s)", fcs, target)
 		}
 		if len(css) > 0 {
+			fmt.Printf("got columnSpec from sql: %v, target(%s)\n", css, target)
 			log.Infof("got columnSpec from sql: %v, target(%s)", css, target)
 		}
 	}
@@ -481,8 +483,7 @@ func resolveSeqCategoryIDColumn(el *exprlist) (*columns.SequenceCategoryIDColumn
 		BucketSize: bucketSize,
 		Delimiter:  delimiter,
 		// TODO(typhoonzero): support config dtype
-		Dtype:      "int64",
-		IsSequence: true}, cs, nil
+		Dtype: "int64"}, cs, nil
 }
 
 func resolveCategoryIDColumn(el *exprlist) (*columns.CategoryIDColumn, *columns.ColumnSpec, error) {
@@ -560,26 +561,51 @@ func resolveEmbeddingColumn(el *exprlist) (*columns.EmbeddingColumn, error) {
 	if len(*el) != 4 && len(*el) != 5 {
 		return nil, fmt.Errorf("bad EMBEDDING expression format: %s", *el)
 	}
+
 	sourceExprList := (*el)[1]
 	var source columns.FeatureColumn
+	var cs *columns.ColumnSpec
 	var err error
+
+	var catColumnResult interface{}
+	fmt.Printf("sourceExprList %v\n", sourceExprList)
 	if sourceExprList.typ == 0 {
-		source, _, err = resolveColumn(&sourceExprList.sexp)
+		source, cs, err = resolveColumn(&sourceExprList.sexp)
 		if err != nil {
 			return nil, err
 		}
+		// user may write EMBEDDING(SPARSE(...)) or EMBEDDING(DENSE(...))
+		fmt.Printf("source.GetKey: %v\n", source)
+		if cs != nil {
+			catColumnResult = &columns.CategoryIDColumn{
+				Key:        cs.ColumnName,
+				BucketSize: cs.Shape[0],
+				Delimiter:  cs.Delimiter,
+				Dtype:      cs.DType,
+			}
+		} else {
+			// TODO(uuleon) support other kinds of categorical column in the future
+			var catColumn interface{}
+			catColumn, ok := source.(*columns.CategoryIDColumn)
+			if !ok {
+				catColumn, ok = source.(*columns.SequenceCategoryIDColumn)
+				if !ok {
+					return nil, fmt.Errorf("key of EMBEDDING must be categorical column")
+				}
+			}
+			// NOTE: to avoid golang multiple assignment compiler restrictions
+			catColumnResult = catColumn
+		}
 	} else {
-		return nil, fmt.Errorf("key of EMBEDDING must be categorical column")
-	}
-	// TODO(uuleon) support other kinds of categorical column in the future
-	var catColumn interface{}
-	catColumn, ok := source.(*columns.CategoryIDColumn)
-	if !ok {
-		catColumn, ok = source.(*columns.SequenceCategoryIDColumn)
-		if !ok {
-			return nil, fmt.Errorf("key of EMBEDDING must be categorical column")
+		// generate a default CategoryIDColumn for later feature derivation.
+		catColumnResult = &columns.CategoryIDColumn{
+			Key:        sourceExprList.val,
+			BucketSize: 0,
+			Delimiter:  "",
+			Dtype:      "int64",
 		}
 	}
+
 	dimension, err := strconv.Atoi((*el)[2].val)
 	if err != nil {
 		return nil, fmt.Errorf("bad EMBEDDING dimension: %s, err: %s", (*el)[2].val, err)
@@ -596,7 +622,7 @@ func resolveEmbeddingColumn(el *exprlist) (*columns.EmbeddingColumn, error) {
 		}
 	}
 	return &columns.EmbeddingColumn{
-		CategoryColumn: catColumn,
+		CategoryColumn: catColumnResult,
 		Dimension:      dimension,
 		Combiner:       combiner,
 		Initializer:    initializer}, nil
