@@ -1,14 +1,14 @@
-### _user guide:_ Ant-XGBoost on sqlflow
+# _user guide:_ Ant-XGBoost on sqlflow
 
-#### Overview
+## Overview
 
 [Ant-XGBoost](https://github.com/alipay/ant-xgboost) is fork repo of [dmlc/xgboost](https://github.com/dmlc/xgboost), which is maintained by active contributors of dmlc/xgboost in Alipay.inc.
 
 Ant-XGBoost is built on top of dmlc/xgboost but with additional support on kubernetes and automatic training. 
 
-#### Why Ant-XGBoost
+## Why Ant-XGBoost
 
-##### Generalized Early Stopping Strategy
+### Generalized Early Stopping Strategy
 In dmlc/xgboost, early stopping is applied when there is no improvement after consecutive `n` boosting rounds. 
 In Ant-XGBoost, we generalize this strategy and call the new strategy convergence test. 
 We keep track of the series of metric values and determine whether the series is converged or not. 
@@ -30,7 +30,7 @@ With `n` and `c` we can implement complex convergence rules, but there are two c
 In addition, convergence test understands the optimization direction for all built-in metrics, so there is no need to set `maximize` parameter (defaults to `false`, forgetting to set this parameter often leads to strange behavior when metric value should be maximized).
 
 
-##### AutoTrain
+### AutoTrain
 With convergence test, we implement a simple `auto_train` method. There are several components in `auto_train`:
 * Automatic parameter validation, setting and rewriting
 
@@ -53,14 +53,14 @@ With convergence test, we implement a simple `auto_train` method. There are seve
     While the current `auto_train` method is a very simple approach, we are working on better strategies to further scale up hyperparameter tuning in XGBoost training.
 
 
-##### Helpful Backports of XGBoost master
+### Helpful Backports of XGBoost master
 We keep watching the progress of XGBoost community.
 Our stable version is based on latest stable version of dmlc/xgboost.
 What's more, we will cherry-pick helpful cutting edge commits, such as blocking issue fix and non-trivial performance improvement.
 
 <br>
 
-#### Quick Start
+## Quick Start
 
 * train XGBoost model on [boston housing dataset](https://www.kaggle.com/c/boston-housing)
 
@@ -110,8 +110,8 @@ INTO sqlflow_models.my_boston_autoxgb_model;
 
 <br>
 
-#### Overall SQL Syntax
-##### Training Syntax
+## Overall SQL Syntax
+### Training Syntax
 ```sql
 // standard select clause
 SELECT ... FROM ${TABLE_NAME}
@@ -127,7 +127,7 @@ COLUMN ${feature_columns}
 LABEL ${label_column}
 INTO ${model};
 ```
-##### Prediction Syntax
+### Prediction Syntax
 ```sql
 // standard select clause
 SELECT ... FROM ${TABLE_NAME}
@@ -140,7 +140,7 @@ USING ${model};
 ```
 <br>
 
-#### Estimators
+## Estimators
 We provide various XGBoost estimators for better user experience.
 All of them are case-insensitive and sharing same prefix `xgboost`. They are listed below.
 
@@ -166,9 +166,9 @@ All of them are case-insensitive and sharing same prefix `xgboost`. They are lis
 
 <br>
 
-#### Columns
+## Columns
 
-##### Feature Columns
+### Feature Columns
 For now, two feature column schemas are available.
 
 First one is `dense schema`, which concatenate numeric table columns transparently, such as `COLUMN f1, f2, f3, f4`.
@@ -176,40 +176,40 @@ First one is `dense schema`, which concatenate numeric table columns transparent
 Second one is `sparse key-value schema`, which received string sparse feature formatted like `$k1:$v1,$k2:$v2,...`.
 This schema is decorated with keyword `SPARSE`, such as `COLUMN SPARSE(col1)`.
 
-##### Label Column
+### Label Column
 Following general sqlflow syntax, label clause of AntXGBoost is formatted in  `LABEL $label_col`. 
 
-##### Group Column
+### Group Column
 In training mode, group column can be declared in a separate column clause. Group column is identified by keyword `group`, such as `COLUMN ${group_col} FOR group`.
 
-##### Weight Column
+### Weight Column
 As group column schema, weight column is identified by keyword `weight`, such as `COLUMN ${weight_col} FOR weight`.
 
-#### Result Schema of Prediction
+### Result Columns
 Schema of straightforward result (class_id for classification task, score for regression task) is following general sqlflow syntax(`PREDICT ${output_table}.${result_column}`).
 
 In addition, we also provide supplementary information of XGBoost prediction. They can be configured with `pred.attributes`.
 
-##### append columns
+#### append columns
 Columns of prediction data table which need to be appended into result table, such as id_col, label_col.
 
 _syntax: `pred.append_columns = [$col1, $col2, ...]`_ 
-##### classification probability
+#### classification probability
 Probability of the chosen class, which only work in classification task.
 
 _syntax: `pred.prob_column = ${col}`_
-##### classification detail
+#### classification detail
 A json string who holds the probability distribution of all classes, formatted like `{$class_id:$class_prob,...}`. Only work in classification task.
 
 _syntax: `pred.detail_column = ${col}`_
-##### encoding of leaf indices 
+#### encoding of leaf indices 
 Predicted leaf index in each tree, they are joined orderly into a string with format `$id_1,$id_2,...`.   
 
 _syntax: `pred.encoding_column = ${col}`_
 
 <br>
 
-#### Attributes
+## Attributes
 
 There exists two kinds of attributes, `train.attributes` and `pred.attrbutes`.
 `train.attributes`, which starts with prefix `train.`, only work in training mode.
@@ -217,7 +217,7 @@ There exists two kinds of attributes, `train.attributes` and `pred.attrbutes`.
 
 All attributes are optional except `train.objective` must be defined when training with `xgboost.Estimator`.
 
-##### Available train.attributes
+### Available train.attributes
 
 * [General Params](https://xgboost.readthedocs.io/en/latest/parameter.html#general-parameters)
     * train.booster
@@ -257,7 +257,7 @@ All attributes are optional except `train.objective` must be defined when traini
     * train.auto_train 
  
  
-##### Available pred.attributes
+### Available pred.attributes
    * pred.append_columns
    * pred.prob_column
    * pred.detail_column
