@@ -472,7 +472,7 @@ func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir strin
 	return cmd.Run()
 }
 
-func analyze(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir string) error {
+func analyze(wr *PipeWriter, pr *extendedSelect, db *DB, cwd, modelDir string) error {
 	program, err := genAnalyzer(pr, db, cwd, modelDir)
 	if err != nil {
 		return err

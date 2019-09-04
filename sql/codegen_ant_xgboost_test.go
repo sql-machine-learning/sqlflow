@@ -32,7 +32,8 @@ WITH
 	train.max_depth = 5,
 	train.eta = 0.3,
 	train.tree_method = "approx",
-	train.num_round = 30
+	train.num_round = 30,
+	train.subsample = 1
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class INTO sqlflow_models.iris_antXG_model;
 `
