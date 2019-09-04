@@ -30,26 +30,26 @@ We choose the lexer solution due to its sufficiency and simplicity.
 
 We add an `EndOfExecution` message type to the gRPC protocol buffer definition to indicate the end of an SQL statement execution. So the client should able to distinguish responses message of different SQL statements.
 
-In addition to logging the received message, the client should also log the SQL number so that the user can keep track of the progress. For example
+In addition to the job message, the server should also send the currently running SQL statements so that the user can keep track of the progress. For example
 
 ```
 %%sqlflow
 select ... train ...;
 select ... predict ...;
 --------------------------------------------------
-start running the first SQL
+start running the first SQL: select ... train ...;
 
 accuracy ...
 accuracy ...
 
-finished running the first SQL: select ... train ...
+finished running the first SQL: select ... train ...;
 total time: ... s
 
-start running the second SQL
+start running the second SQL: select ... predict ...;
 
 Prediction Finished.
 
-finished running the second SQL: select ... predict ...
+finished running the second SQL: select ... predict ...;
 total time: ... s
 ```
 
