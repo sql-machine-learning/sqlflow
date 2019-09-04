@@ -2,44 +2,48 @@
 
 ## Introduction
 
-This design doc introduces how  users can train/predict the [XGBoost](https://xgboost.ai/) model by SQLFlow SQL and how
-we implement it.
+This design explains how SQLFlow calls [XGBoost](https://xgboost.ai/) for training models and prediciton.
 
-## Design
+## Usage
 
-We prefer users to execute the SQLFlow Train/Predict SQL as follows:
+To explain the benefit of integrating XGBoost with SQLFlow, let us start with an example.  The following SQLFlow code snippet shows how users can train an XGBoost tree model named `my_xgb_model`.
 
-  ``` sql
-  SELECT * FROM train_table
-  TRAIN xgboost.multi.softmax
-  WITH
-      train.objective="multi:softmax",
-      train.num_round=2,
-      params.max_depth=2,
-      params.eta=1
-  LABEL class
-  INTO my_xgb_model;
-  ```
-  
-  ``` sql
-  SELECT * FROM test_table
-  PREDICT pred_table.result
-  USING my_xgb_model;
-  ```
+``` sql
+SELECT * FROM train_table
+TRAIN xgboost.multi.softmax
+WITH
+    train.objective="multi:softmax",
+    train.num_round=2,
+    params.max_depth=2,
+    params.eta=1
+LABEL class
+INTO my_xgb_model;
+```
 
-where:
-- `my_xgb_model` is the trained model.
-- `xgboost.multi.softmax` specify the training model:
-    - The prefix `xgboost.` is used to distinguish with Tensorflow model.
-    - `multi.softmax` is the learning task, SQLFlow would fill it to [XGBoost objective parameter](https://xgboost.readthedocs.io/en/latest/parameter.html#learning-task-parameters): `objective=multi:softmax`.
-- The prefix `train.` in `WITH` statement mappings to the training arguments of XGBoost [train function](https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.train).
-- The prefix `params.` in `WITH` statement mappings to the [XGBoost Parameters](https://xgboost.readthedocs.io/en/latest/parameter.html) except the `objective` parameter.
+The following example shows how to predict using the model `my_xgb_model`.
 
-`codegen_xgboost.go` would generate an XGBoost Python program including:
-- Generate the XGBoost input database.
-- Pass the train/predict parameters to XGBoost Python program.
-- Save the trained model.
-- Using [Learning API](https://xgboost.readthedocs.io/en/latest/python/python_api.html#module-xgboost.training) instead of [Sckiet-Learn API](https://xgboost.readthedocs.io/en/latest/python/python_api.html#module-xgboost.sklearn) just because we prefer explain the XGBoost model by [SHAP](https://github.com/slundberg/shap).
+``` sql
+SELECT * FROM test_table
+PREDICT pred_table.result
+USING my_xgb_model;
+```
+
+The the above examples,
+- `my_xgb_model` names the trained model.
+- `xgboost.multi.softmax` is the model spec, where
+    - the prefix `xgboost.` tells the model is a XGBoost one, but not a Tensorflow model, and
+    - `multi.softmax` names an [XGBoost learning task](https://xgboost.readthedocs.io/en/latest/parameter.html#learning-task-parameters).
+- In the `WITH` clause, 
+  - keys with the prefix `train.` identifies parameters of XGBoost API [`xgboost.train`](https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.train), and
+  - the prefix `params.` identifies [XGBoost Parameters](https://xgboost.readthedocs.io/en/latest/parameter.html) except the `objective` parameter, which was specified by the identifier after the keyword `TRAIN`, as explained above.
+
+## The Code Generator
+
+The code generator `codegen_xgboost.go` outputs an XGBoost program in Python. It contains the following features:
+1. Generate the XGBoost input database.
+1. Pass the train/predict parameters to XGBoost Python program.
+1. Save the trained model.
+1. Using [Learning API](https://xgboost.readthedocs.io/en/latest/python/python_api.html#module-xgboost.training) instead of [Sckiet-Learn API](https://xgboost.readthedocs.io/en/latest/python/python_api.html#module-xgboost.sklearn) just because we prefer explain the XGBoost model by [SHAP](https://github.com/slundberg/shap).
 
 ### Input Format
 
