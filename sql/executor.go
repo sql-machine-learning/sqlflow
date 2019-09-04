@@ -387,8 +387,15 @@ func train(wr *PipeWriter, tr *extendedSelect, db *DB, cwd string, modelDir stri
 	var program bytes.Buffer
 	if strings.HasPrefix(strings.ToUpper(tr.estimator), `XGBOOST.`) {
 		// TODO(sperlingxx): write a separate train pipeline for ant-xgboost to support remote mode
-		if e := genXG(&program, tr, ds, fts, db); e != nil {
-			return fmt.Errorf("genXG %v", e)
+		if e := genAntXGBoost(&program, tr, ds, fts, db); e != nil {
+			return fmt.Errorf("genAntXGBoost %v", e)
+		}
+	} else if strings.HasPrefix(strings.ToUpper(tr.estimator), `XGB.`) {
+		// FIXME(Yancey1989): it's a temporary solution, just for the unit test, we perfer to distinguish
+		// xgboost and ant-xgboost with env SQLFLOW_WITH_ANTXGBOOST,
+		// issue: https://github.com/sql-machine-learning/sqlflow/issues/758
+		if e := genXGBoost(&program, tr, ds, fts, db); e != nil {
+			return fmt.Errorf("GenXGBoost %v", e)
 		}
 	} else {
 		if e := genTF(&program, tr, ds, fts, db); e != nil {
@@ -453,8 +460,8 @@ func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir strin
 	var buf bytes.Buffer
 	if strings.HasPrefix(strings.ToUpper(pr.estimator), `XGBOOST.`) {
 		// TODO(sperlingxx): write a separate pred pipeline for ant-xgboost to support remote mode
-		if e := genXG(&buf, pr, nil, fts, db); e != nil {
-			return fmt.Errorf("genXG %v", e)
+		if e := genAntXGBoost(&buf, pr, nil, fts, db); e != nil {
+			return fmt.Errorf("genAntXGBoost %v", e)
 		}
 	} else {
 		if e := genTF(&buf, pr, nil, fts, db); e != nil {
