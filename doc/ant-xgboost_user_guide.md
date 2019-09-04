@@ -134,7 +134,7 @@ All attributes are optional except `train.objective` must be defined when traini
    * pred.encoding_column
    
 
-## Overall SQL Syntax
+## Overall SQL Syntax for Ant-XGBoost
 ### Training Syntax
 ```sql
 // standard select clause
