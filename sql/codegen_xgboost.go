@@ -37,30 +37,11 @@ type xgbFiller struct {
 	*connectionConfig
 }
 
-func fillXGBTrainCfg(rt *resolvedXGBTrainClause) (*xgbTrainConfig, error) {
-	// TODO(Yancey1989): fill all the training control parameters
-	c := &xgbTrainConfig{
-		NumBoostRound: rt.NumBoostRound,
-		Maximize:      rt.Maximize,
-	}
-	return c, nil
-}
-
 func newXGBFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *DB) (*xgbFiller, error) {
-	rt, err := resolveXGBTrainClause(&pr.trainClause)
+	var err error
 	training, validation := trainingAndValidationDataset(pr, ds)
-	if err != nil {
-		return nil, err
-	}
-
-	trainCfg, err := fillXGBTrainCfg(rt)
-	if err != nil {
-		return nil, err
-	}
-
 	r := &xgbFiller{
 		IsTrain:              pr.train,
-		TrainCfg:             trainCfg,
 		TrainingDatasetSQL:   training,
 		ValidationDatasetSQL: validation,
 		Save:                 pr.save,
