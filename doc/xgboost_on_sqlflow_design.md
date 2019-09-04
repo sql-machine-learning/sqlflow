@@ -39,9 +39,7 @@ The the above examples,
 ## The Code Generator
 
 The code generator `codegen_xgboost.go` outputs an XGBoost program in Python. It contains the following features:
-1. Execute the user-typed **SELECT STATEMENT** to retrieve the training data from SQL engine, then convert it to
-[XGBoost DMatrix](https://xgboost.readthedocs.io/en/latest/python/python_api.html?highlight=dmatrix#xgboost.DMatrix)
-which is the Data Matrix used inn XGBoost.
-1. Parse and resolve the **WITH** clause to fill the `xgboost.train` arguments and the XGBoost Parameters.
+1. It tells the SQL engine to run the SELECT statement and retrieve the training/test data. It saves the data into a text file, which could be loaded by XGBoost using the DMatrix interface.
+1. Parse and resolve the WITH clause to fill the `xgboost.train` arguments and the XGBoost Parameters.
 1. Save the trained model on disk.
-1. For the **PREDICT STATEMENT**, the submitter Python program would load the trained model and test data to output the prediction result to a SQL engine.
+1. For the PREDICT clause, it loads the trained model and test data and then outputs the prediction result to a SQL engine.
