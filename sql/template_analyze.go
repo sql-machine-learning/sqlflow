@@ -74,7 +74,7 @@ bst.load_model(fname=model_path)
 explainer = shap.TreeExplainer(bst)
 shap_values = explainer.shap_values(X)
 
-shap.summary_plot(shap_values, X)
+shap.summary_plot(shap_values, X, plot_type={{.PlotType}})
 plt.savefig('summary')
 `
 
