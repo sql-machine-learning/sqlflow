@@ -8,7 +8,7 @@ Ant-XGBoost extends `dmlc/xgboost` with the capability of running on Kubernetes 
 In particular, Ant-XGBoost includes `auto_train` methods for automatic training and introduces an additional parameter `convergence_criteria` for generalized early stopping strategy.
 
 ## Tutorial
-We provide an [interactive tutorial](../example/jupyter/tutorial_antxgb.ipynb) via jupyter notebook, which can be run out-of-the-box in [sqlflow playground](play.sqlflow.org).
+We provide an [interactive tutorial](../example/jupyter/tutorial_antxgb.ipynb) via jupyter notebook, which can be run out-of-the-box in [sqlflow playground](https://play.sqlflow.org).
 If you want to run it locally, you need to install sqlflow first. You can learn how to install sqlflow at [here](../doc/installation.md).
 
 ## Concepts
