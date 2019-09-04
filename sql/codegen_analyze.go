@@ -74,7 +74,8 @@ func readAntXGBFeatures(pr *extendedSelect, db *DB) ([]*featureMeta, string, err
 func readPlotType(pr *extendedSelect) string {
 	v, ok := pr.analyzeAttrs["shap.plot_type"]
 	if !ok {
-		return `"bar"`
+		// using shap default value
+		return `""`
 	}
 	return v.val
 }
