@@ -32,10 +32,6 @@ import (
 	"github.com/sql-machine-learning/sqlflow/sql"
 )
 
-const (
-	port = ":50051"
-)
-
 func newServer(caCrt, caKey string) (*grpc.Server, error) {
 	var s *grpc.Server
 	if caCrt != "" && caKey != "" {
@@ -52,7 +48,7 @@ func newServer(caCrt, caKey string) (*grpc.Server, error) {
 	return s, nil
 }
 
-func start(datasource, modelDir, caCrt, caKey string, enableSession bool) {
+func start(datasource, modelDir, caCrt, caKey string, enableSession bool, port int) {
 	s, err := newServer(caCrt, caKey)
 	if err != nil {
 		log.Fatalf("failed to create new gRPC Server: %v", err)
@@ -74,15 +70,16 @@ func start(datasource, modelDir, caCrt, caKey string, enableSession bool) {
 		defer db.Close()
 		proto.RegisterSQLFlowServer(s, server.NewServer(sql.Run, db, modelDir, enableSession))
 	}
+	listenString := fmt.Sprintf(":%d", port)
 
-	lis, err := net.Listen("tcp", port)
+	lis, err := net.Listen("tcp", listenString)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
 	// Register reflection service on gRPC server.
 	reflection.Register(s)
-	log.Println("Server Started at", port)
+	log.Println("Server Started at", listenString)
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
@@ -94,6 +91,7 @@ func main() {
 	caCrt := flag.String("ca-crt", "", "CA certificate file.")
 	caKey := flag.String("ca-key", "", "CA private key file.")
 	enableSession := flag.Bool("enable-session", false, "Whether to enable gRPC Request session.")
+	port := flag.Int("port", 50051, "TCP port to listen on.")
 	flag.Parse()
-	start(*ds, *modelDir, *caCrt, *caKey, *enableSession)
+	start(*ds, *modelDir, *caCrt, *caKey, *enableSession, *port)
 }
