@@ -21,13 +21,13 @@ import (
 
 type analyzeFiller struct {
 	*connectionConfig
-	X                 []*featureMeta
+	X                 []*FeatureMeta
 	Label             string
 	AnalyzeDatasetSQL string
 	ModelFile         string // path/to/model_file
 }
 
-func newAnalyzeFiller(pr *extendedSelect, db *DB, fms []*featureMeta, label, modelPath string) (*analyzeFiller, error) {
+func newAnalyzeFiller(pr *extendedSelect, db *DB, fms []*FeatureMeta, label, modelPath string) (*analyzeFiller, error) {
 	conn, err := newConnectionConfig(db)
 	if err != nil {
 		return nil, err
@@ -43,7 +43,7 @@ func newAnalyzeFiller(pr *extendedSelect, db *DB, fms []*featureMeta, label, mod
 	}, nil
 }
 
-func readAntXGBFeatures(pr *extendedSelect, db *DB) ([]*featureMeta, string, error) {
+func readAntXGBFeatures(pr *extendedSelect, db *DB) ([]*FeatureMeta, string, error) {
 	// TODO(weiguo): It's a quick way to read column and label names from
 	// xgboost.*, but too heavy.
 	fr, err := newAntXGBoostFiller(pr, nil, db)
@@ -51,14 +51,14 @@ func readAntXGBFeatures(pr *extendedSelect, db *DB) ([]*featureMeta, string, err
 		return nil, "", err
 	}
 
-	xs := make([]*featureMeta, len(fr.X))
+	xs := make([]*FeatureMeta, len(fr.X))
 	for i := 0; i < len(fr.X); i++ {
 		// FIXME(weiguo): we convert xgboost.X to normal(tf).X to reuse
 		// DB access API, but I don't think it is a good practice,
 		// Think about the AI engines increased, such as ALPS, (EDL?)
 		// we should write as many as such converters.
 		// How about we unify all featureMetas?
-		xs[i] = &featureMeta{
+		xs[i] = &FeatureMeta{
 			FeatureName: fr.X[i].FeatureName,
 			Dtype:       fr.X[i].Dtype,
 			Delimiter:   fr.X[i].Delimiter,

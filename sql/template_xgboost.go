@@ -30,11 +30,11 @@ session_cfg = {}
 session_cfg["{{$k}}"] = "{{$v}}"
 {{end}}
 
-{{if ne .TrainCfgJSON ""}}
-train_args = {{.TrainCfgJSON}}
-{{else}}
-train_args = {}
-{{end}}
+num_boost_round = {{.NumBoostRound}}
+maximize = True if "{{.Maximize}}" == "true" else False
+early_stopping_rounds = {{.EarlyStoppingRounds}}
+if early_stopping_rounds == -1:
+		early_stopping_rounds = None
 
 {{if ne .ParamsCfgJSON ""}}
 params = {{.ParamsCfgJSON}}
@@ -42,13 +42,13 @@ params = {{.ParamsCfgJSON}}
 params = {}
 {{end}}
 
-feature_column_names = [{{range .Features}}
+feature_column_names = [{{range .X}}
 "{{.FeatureName}}",
 {{end}}]
 
 {{/* Convert go side featureSpec to python dict for input_fn */}}
 feature_specs = dict()
-{{ range $value := .Features }}
+{{ range $value := .X }}
 feature_specs["{{$value.FeatureName}}"] = {
     "feature_name": "{{$value.FeatureName}}",
     "dtype": "{{$value.Dtype}}",
@@ -63,7 +63,7 @@ feature_specs["{{$value.FeatureName}}"] = {
 conn = connect(driver, database, user="{{.User}}", password="{{.Password}}", host="{{.Host}}", port={{.Port}}, auth="{{.Auth}}")
 
 def xgb_dataset(fn, dataset_sql):
-		gen = db_generator(driver, conn, session_cfg, dataset_sql, feature_column_names, "{{.Label.FeatureName}}", feature_specs)
+		gen = db_generator(driver, conn, session_cfg, dataset_sql, feature_column_names, "{{.Y.FeatureName}}", feature_specs)
 		with open(fn, 'w') as f:
 				for item in gen():
 						features, label = item
@@ -75,8 +75,12 @@ def xgb_dataset(fn, dataset_sql):
 dtrain = xgb_dataset('train.txt', "{{.TrainingDatasetSQL}}")
 dtest = xgb_dataset('test.txt', "{{.ValidationDatasetSQL}}")
 
-#TODO(Yancey1989): specify the eval metrics by WITH statement in SQL
-train_args["evals"] = [(dtest, "auc")]
+train_args = {}
+train_args["num_boost_round"] = num_boost_round
+train_args["maximize"] = maximize
+train_args["early_stopping_rounds"] = early_stopping_rounds
+train_args["evals"] = [(dtrain, "train"), (dtest, "validation")]
+
 bst = xgb.train(params, dtrain, **train_args)
 bst.save_model("{{.Save}}")
 `
