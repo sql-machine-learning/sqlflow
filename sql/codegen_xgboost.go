@@ -73,11 +73,18 @@ func resolveParamsCfg(attrs map[string]*attribute) (map[string]interface{}, erro
 			}
 		}
 	}
-
 	return params, nil
 }
 
-func newXGBFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *DB) (*xgbFiller, error) {
+func resolveObjective(pr *extendedSelect) (string, error) {
+	estimatorParts := strings.Split(pr.estimator, ".")
+	if len(estimatorParts) != 3 {
+		return "", fmt.Errorf("XGBoost Estimator should be xgboost.first_part.second_part")
+	}
+	return strings.Join(estimatorParts[1:], ":"), nil
+}
+
+func newXGBFiller(pr *extendedSelect, ds *trainAndValDataset, db *DB) (*xgbFiller, error) {
 	attrs, err := resolveAttribute(&pr.trainAttrs)
 	if err != nil {
 		return nil, err
@@ -97,6 +104,14 @@ func newXGBFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db
 	if err != nil {
 		return nil, err
 	}
+
+	// fill learning targe
+	objective, err := resolveObjective(pr)
+	if err != nil {
+		return nil, err
+	}
+	params["objective"] = objective
+
 	paramsJSON, err := json.Marshal(params)
 	if err != nil {
 		return nil, err
@@ -138,7 +153,7 @@ func newXGBFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db
 }
 
 func genXGBoost(w io.Writer, pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *DB) error {
-	r, e := newXGBFiller(pr, ds, fts, db)
+	r, e := newXGBFiller(pr, ds, db)
 	if e != nil {
 		return e
 	}

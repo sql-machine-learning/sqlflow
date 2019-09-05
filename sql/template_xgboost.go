@@ -79,7 +79,7 @@ train_args = {}
 train_args["num_boost_round"] = num_boost_round
 train_args["maximize"] = maximize
 train_args["early_stopping_rounds"] = early_stopping_rounds
-train_args["evals"] = [(dtest, "auc)]
+train_args["evals"] = [(dtrain, "train"), (dtest, "validation")]
 
 bst = xgb.train(params, dtrain, **train_args)
 bst.save_model("{{.Save}}")
