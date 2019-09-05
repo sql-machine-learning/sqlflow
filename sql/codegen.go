@@ -51,7 +51,8 @@ type modelConfig struct {
 	IsKerasModel        bool
 }
 
-type featureMeta struct {
+// FeatureMeta describes feature column meta data
+type FeatureMeta struct {
 	FeatureName string
 	Dtype       string
 	Delimiter   string
@@ -59,17 +60,22 @@ type featureMeta struct {
 	IsSparse    bool
 }
 
-type filler struct {
+// Estimator describes estimator meta data
+type Estimator struct {
 	IsTrain              bool
 	TrainingDatasetSQL   string // IsTrain == true
 	ValidationDatasetSQL string // IsTrain == true
 	PredictionDatasetSQL string // IsTrain != true
-	X                    []*featureMeta
-	FeatureColumnsCode   map[string][]string
-	Y                    *featureMeta
+	X                    []*FeatureMeta
+	Y                    *FeatureMeta
 	TableName            string
-	modelConfig
 	*connectionConfig
+}
+
+type tfFiller struct {
+	Estimator
+	modelConfig
+	FeatureColumnsCode map[string][]string
 }
 
 // parseModelURI returns isKerasModel, modelClassString
@@ -87,14 +93,16 @@ func trainingAndValidationDataset(pr *extendedSelect, ds *trainAndValDataset) (s
 	return pr.standardSelect.String(), pr.standardSelect.String()
 }
 
-func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *DB) (*filler, error) {
+func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *DB) (*tfFiller, error) {
 	isKerasModel, modelClassString := parseModelURI(pr.estimator)
 	training, validation := trainingAndValidationDataset(pr, ds)
-	r := &filler{
-		IsTrain:              pr.train,
-		TrainingDatasetSQL:   training,
-		ValidationDatasetSQL: validation,
-		PredictionDatasetSQL: pr.standardSelect.String(),
+	r := &tfFiller{
+		Estimator: Estimator{
+			IsTrain:              pr.train,
+			TrainingDatasetSQL:   training,
+			ValidationDatasetSQL: validation,
+			PredictionDatasetSQL: pr.standardSelect.String(),
+		},
 		modelConfig: modelConfig{
 			EstimatorCode: modelClassString,
 			BatchSize:     1,
@@ -153,7 +161,7 @@ func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *D
 					isSparse = true
 				}
 			}
-			fm := &featureMeta{
+			fm := &FeatureMeta{
 				FeatureName: col.GetKey(),
 				Dtype:       col.GetDtype(),
 				Delimiter:   col.GetDelimiter(),
@@ -207,7 +215,7 @@ func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *D
 			log.Fatalf("Unsupported label data type: %s", v)
 		}
 	}
-	r.Y = &featureMeta{
+	r.Y = &FeatureMeta{
 		FeatureName: pr.label,
 		Dtype:       labelDtype,
 		Delimiter:   ",",

@@ -18,7 +18,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"text/template"
@@ -54,10 +56,10 @@ type xgBoosterFields struct {
 	Seed             uint    `json:"seed,omitempty"`
 	NumClass         uint    `json:"num_class,omitempty"`
 	Eta              float32 `json:"eta,omitempty"`
-	Gamma            float32 `json:"gamma,omitempy"`
+	Gamma            float32 `json:"gamma,omitempty"`
 	MaxDepth         uint    `json:"max_depth,omitempty"`
 	MinChildWeight   uint    `json:"min_child_weight,omitempty"`
-	Subsample        float32 `json:"subsample,omtiempty"`
+	Subsample        float32 `json:"subsample,omitempty"`
 	ColSampleByTree  float32 `json:"colsample_bytree,omitempty"`
 	ColSampleByLevel float32 `json:"colsample_bylevel,omitempty"`
 	ColSampleByNode  float32 `json:"colsample_bynode,omitempty"`
@@ -795,7 +797,7 @@ func xgCreatePredictionTable(pr *extendedSelect, r *antXGBoostFiller, db *DB) er
 	return nil
 }
 
-func genXG(w io.Writer, pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *DB) error {
+func genAntXGBoost(w io.Writer, pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *DB) error {
 	r, e := newAntXGBoostFiller(pr, ds, db)
 	if e != nil {
 		return e
@@ -834,3 +836,50 @@ print("Done training.")
 print("Done prediction, the result table: {{.OutputTable}}")
 {{end}}
 `
+
+type xgTrainMetrics struct {
+	BestScore      float32 `json:"best_score"`
+	BestIteration  uint    `json:"best_iteration"`
+	MaximizeMetric bool    `json:"maximize_metric"`
+	Config         string  `json:"config,omitempty"`
+}
+
+func (metrics *xgTrainMetrics) verifyPerf(baseline float32) bool {
+	if metrics.MaximizeMetric {
+		return baseline <= metrics.BestScore
+	}
+	return baseline >= metrics.BestScore
+}
+
+func loadXgTrainMetrics(db *DB, modelDir, modelName string) (*xgTrainMetrics, error) {
+	var e error
+
+	cwd, e := ioutil.TempDir("/tmp", "sqlflow")
+	if e != nil {
+		return nil, e
+	}
+	defer os.RemoveAll(cwd)
+
+	if modelDir != "" {
+		_, e = loadTar(modelDir, cwd, modelName)
+	} else {
+		_, e = load(db, modelName, cwd)
+	}
+	if e != nil {
+		return nil, fmt.Errorf("load %v", e)
+	}
+
+	metricsFile, e := os.Open(filepath.Join(cwd, modelName, "metrics.json"))
+	if e != nil {
+		return nil, e
+	}
+	defer metricsFile.Close()
+
+	metrics := &xgTrainMetrics{}
+	byteValue, _ := ioutil.ReadAll(metricsFile)
+	if e = json.Unmarshal([]byte(byteValue), metrics); e != nil {
+		return nil, e
+	}
+
+	return metrics, nil
+}

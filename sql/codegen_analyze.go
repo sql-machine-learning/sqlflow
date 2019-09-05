@@ -21,46 +21,71 @@ import (
 
 type analyzeFiller struct {
 	*connectionConfig
-	Columns []string
-	Label   string
+	X                 []*FeatureMeta
+	Label             string
+	AnalyzeDatasetSQL string
+	ModelFile         string // path/to/model_file
 }
 
-func newAnalyzeFiller(db *DB, columns []string, label string) (*analyzeFiller, error) {
+func newAnalyzeFiller(pr *extendedSelect, db *DB, fms []*FeatureMeta, label, modelPath string) (*analyzeFiller, error) {
 	conn, err := newConnectionConfig(db)
 	if err != nil {
 		return nil, err
 	}
 	return &analyzeFiller{
 		connectionConfig: conn,
-		Columns:          columns,
+		X:                fms,
 		Label:            label,
+		// TODO(weiguo): test if it needs TrimSuffix(SQL, ";") on hive,
+		// or we trim it in pr(*extendedSelect)
+		AnalyzeDatasetSQL: pr.standardSelect.String(),
+		ModelFile:         modelPath,
 	}, nil
 }
 
-func readFeatureNames(pr *extendedSelect, db *DB) ([]string, string, error) {
-	if strings.HasPrefix(strings.ToUpper(pr.estimator), `XGBOOST.`) {
-		// TODO(weiguo): It's a quick way to read column and label names from
-		// xgboost.*, but too heavy.
-		xgbFiller, err := newAntXGBoostFiller(pr, nil, db)
-		if err != nil {
-			return nil, "", err
-		}
-		return xgbFiller.FeatureColumns, xgbFiller.Label, nil
+func readAntXGBFeatures(pr *extendedSelect, db *DB) ([]*FeatureMeta, string, error) {
+	// TODO(weiguo): It's a quick way to read column and label names from
+	// xgboost.*, but too heavy.
+	fr, err := newAntXGBoostFiller(pr, nil, db)
+	if err != nil {
+		return nil, "", err
 	}
-	return nil, "", fmt.Errorf("analyzer: model[%s] not supported", pr.estimator)
+
+	xs := make([]*FeatureMeta, len(fr.X))
+	for i := 0; i < len(fr.X); i++ {
+		// FIXME(weiguo): we convert xgboost.X to normal(tf).X to reuse
+		// DB access API, but I don't think it is a good practice,
+		// Think about the AI engines increased, such as ALPS, (EDL?)
+		// we should write as many as such converters.
+		// How about we unify all featureMetas?
+		xs[i] = &FeatureMeta{
+			FeatureName: fr.X[i].FeatureName,
+			Dtype:       fr.X[i].Dtype,
+			Delimiter:   fr.X[i].Delimiter,
+			InputShape:  fr.X[i].InputShape,
+			IsSparse:    fr.X[i].IsSparse,
+		}
+	}
+	return xs, fr.Label, nil
 }
 
-func genAnalyzer(pr *extendedSelect, db *DB, cwd string, modelDir string) (*bytes.Buffer, error) {
+func genAnalyzer(pr *extendedSelect, db *DB, cwd, modelDir string) (*bytes.Buffer, error) {
 	pr, _, err := loadModelMeta(pr, db, cwd, modelDir, pr.trainedModel)
 	if err != nil {
 		return nil, fmt.Errorf("loadModelMeta %v", err)
 	}
-
-	columns, label, err := readFeatureNames(pr, db)
-	if err != nil {
-		return nil, fmt.Errorf("read feature names err: %v", err)
+	if !strings.HasPrefix(strings.ToUpper(pr.estimator), `XGBOOST.`) {
+		return nil, fmt.Errorf("analyzer: model[%s] not supported", pr.estimator)
 	}
-	fr, err := newAnalyzeFiller(db, columns, label)
+	// We untar the AntXGBoost.{pr.trainedModel}.tar.gz and get three files.
+	// Here, the sqlflow_booster is a raw xgboost binary file can be analyzed.
+	antXGBModelPath := fmt.Sprintf("%s/sqlflow_booster", pr.trainedModel)
+	xs, label, err := readAntXGBFeatures(pr, db)
+	if err != nil {
+		return nil, err
+	}
+
+	fr, err := newAnalyzeFiller(pr, db, xs, label, antXGBModelPath)
 	if err != nil {
 		return nil, fmt.Errorf("create analyze filler failed: %v", err)
 	}

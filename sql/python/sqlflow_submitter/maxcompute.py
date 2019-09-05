@@ -25,6 +25,20 @@ class MaxCompute:
     @staticmethod
     def db_generator(conn, statement, feature_column_names,
                      label_column_name, feature_specs, fetch_size):
+        def read_feature(raw_val, feature_spec):
+            if feature_spec["is_sparse"]:
+                indices = np.fromstring(raw_val, dtype=int, sep=feature_spec["delimiter"])
+                indices = indices.reshape(indices.size, 1)
+                values = np.ones([indices.size], dtype=np.int32)
+                dense_shape = np.array(feature_specs[name]["shape"], dtype=np.int64)
+                return (indices, values, dense_shape)
+            else:
+                # Dense string vector
+                if feature_spec["delimiter"] != "":
+                    return np.fromstring(raw_val, dtype=int, sep=feature_spec["delimiter"])
+                else:
+                    return raw_val
+
         def reader():
             compress = tunnel.CompressOption.CompressAlgorithm.ODPS_ZLIB
             inst = conn.execute_sql(statement)
@@ -46,21 +60,8 @@ class MaxCompute:
                     label = row[label_idx] if label_idx is not None else None
                     features = []
                     for name in feature_column_names:
-                        if feature_specs[name]["is_sparse"]:
-                            indices = np.fromstring(row[field_names.index(name)], dtype=int,
-                                                    sep=feature_specs[name]["delimiter"])
-                            indices = indices.reshape(indices.size, 1)
-                            values = np.ones([indices.size], dtype=np.int32)
-                            dense_shape = np.array(feature_specs[name]["shape"], dtype=np.int64)
-                            cell = (indices, values, dense_shape)
-                        else:
-                            # Dense string vector
-                            if feature_specs[name]["delimiter"] != "":
-                                cell = np.fromstring(row[field_names.index(name)], dtype=int,
-                                                     sep=feature_specs[name]["delimiter"])
-                            else:
-                                cell = row[field_names.index(name)]
-                        features.append(cell)
+                        feature = read_feature(row[field_names.index(name)], feature_specs[name])
+                        features.append(feature)
                     yield (tuple(features), [label])
                 i += expected
 
