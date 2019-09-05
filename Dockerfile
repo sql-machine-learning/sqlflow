@@ -1,5 +1,14 @@
 FROM ubuntu:16.04
 
+# use a mirror to run apt-get
+RUN echo "###### Ubuntu Main Repos" > /etc/apt/sources.list && \
+echo "deb http://us.archive.ubuntu.com/ubuntu/ xenial main restricted universe multiverse" >> /etc/apt/sources.list && \
+echo "###### Ubuntu Update Repos" >> /etc/apt/sources.list && \
+echo "deb http://us.archive.ubuntu.com/ubuntu/ xenial-security main restricted universe multiverse" >> /etc/apt/sources.list && \
+echo "deb http://us.archive.ubuntu.com/ubuntu/ xenial-updates main restricted universe multiverse" >> /etc/apt/sources.list && \
+echo "deb http://us.archive.ubuntu.com/ubuntu/ xenial-proposed main restricted universe multiverse" >> /etc/apt/sources.list && \
+echo "deb http://us.archive.ubuntu.com/ubuntu/ xenial-backports main restricted universe multiverse" >> /etc/apt/sources.list
+
 RUN apt-get update && apt-get install -y curl bzip2 \
 	build-essential unzip sqlite3 libsqlite3-dev wget unzip git \
 	openjdk-8-jdk maven libmysqlclient-dev
