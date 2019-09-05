@@ -58,11 +58,13 @@ func newRowValue(columnTypeList []*sql.ColumnType) ([]interface{}, error) {
 		typeName := ct.DatabaseTypeName()
 		switch typeName {
 		case "TEXT":
+			rowData[idx] = new(string)
 		case "VARCHAR":
 			rowData[idx] = new(string)
 		case "INT":
 			rowData[idx] = new(int32)
 		case "BIGINT":
+			rowData[idx] = new(int64)
 		case "DECIMAL":
 			rowData[idx] = new(int64)
 		case "FLOAT":
@@ -196,7 +198,6 @@ func InferFeatureColumns(slct *standardSelect,
 		re.ReplaceAllString(q, fmt.Sprintf("LIMIT %d", featureDerivationRows))
 	}
 
-	log.Printf("feature derivation query: %s", q)
 	rows, err := db.Query(q)
 	if err != nil {
 		return err
@@ -232,12 +233,15 @@ func InferFeatureColumns(slct *standardSelect,
 	if err != nil {
 		return err
 	}
+	for k, cs := range csMap {
+		log.Printf("filled csMap: %s: %v", k, cs)
+	}
 
 	for slctKey, fieldType := range selectFieldTypeMap {
 		// fill up FeatureColumn struct
 		if fc, ok := fcMap[slctKey]; ok {
 			if fc.GetColumnType() == columns.ColumnTypeEmbedding {
-				fmt.Printf("automatically generate category_id_column here, fieldType: %v", fieldType)
+				log.Printf("automatically generate category_id_column here, fieldType: %v", fieldType)
 			}
 		}
 	}
