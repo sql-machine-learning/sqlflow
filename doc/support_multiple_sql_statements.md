@@ -6,7 +6,7 @@ This is a design doc on supporting multiple SQL statements in one magic command 
 
 ## Problem
 
-Currently our Jupyter magic command `%%sqlflow` only supports to run one statement a time. If a user has multiple SQL statements to run, he/she needs to type `%%sqlflow` many times, which is not ideal.
+Currently, our Jupyter magic command `%%sqlflow` only supports to run one statement a time. If a user has multiple SQL statements to run, he/she needs to type `%%sqlflow` many times, which is not ideal.
 
 ## Design Choice
 
@@ -15,14 +15,14 @@ There are several design choices to make.
 ### Splitting Location: Client-side vs Server-side
 
 While splitting at the client-side is relatively simple to implement. We prefer to split at the server-side for the following reasons.
-Loose coupling. SQLFlow server can use its lexer/parser to split SQL statements accurately. 
-Extensibility. SQLFlow server can run a sequence of SQL statements to form a workflow.
+1. Loose coupling. SQLFlow server can use its lexer/parser to split SQL statements accurately. 
+1. Extensibility. SQLFlow server can run a sequence of SQL statements to form a workflow. In future work, we would like to analyze the dependencies of the execution order of all the SQL statements to create an execution graph automatically, then parallelly execute the graph nodes.
 
-### Splitting Technique: Hybrid Parser vs Lexer
+### Splitting Technique: Hybrid Parser vs. Lexer
 
-The hybrid parser solution uses the standard SQL parser and SQLFlow parser to determine the end of an SQL statement. The standard SQL parser first parses the extended SQL statement. It will raise error near SQLFlow extended keywords, like TRAIN and PREDICT. Then the SQLFlow parser starts from the error position and stops at the end of the first statement. However, this solution relies on the standard SQL parser to report the error **accurately** on the keywords, like TRAIN and PREDICT, that it can't recognize.
+The hybrid parser solution uses the third-party SQL parser (like [TiDB parser](https://github.com/pingcap/parser/blob/master/parser.y)) and SQLFlow parser to determine the end of an SQL statement. The third-party SQL parser first parses the extended SQL statement. It will raise error near SQLFlow extended keywords, like TRAIN and PREDICT. Then the SQLFlow parser starts from the error position and stops at the end of the first statement. However, this solution relies on the third-party SQL parser to report the error **accurately** on the keywords, like TRAIN and PREDICT, that it can't recognize.
 
-The lexer solution scans the whole SQL statements, finds the `;` tokens, and splits the SQL based on the position of  `;` token.
+The lexer solution scans the entire SQL statements, finds the `;` tokens, and splits the SQL based on the position of  `;` token.
 
 We choose the lexer solution due to its sufficiency and simplicity.
 
@@ -39,18 +39,19 @@ select ... predict ...;
 --------------------------------------------------
 start running the first SQL: select ... train ...;
 
-accuracy ...
-accuracy ...
+<log>
+<log>
 
 finished running the first SQL: select ... train ...;
 total time: ... s
 
 start running the second SQL: select ... predict ...;
 
-Prediction Finished.
+<log>
+<log>
 
 finished running the second SQL: select ... predict ...;
 total time: ... s
 ```
 
-We implement the split function using the lexer in the `sql` package, then we expose this function as `SplitSQLStatements(s string) []string` for the `server` package. The server calls this function then feeds the result to `sql.Run` one by one.
+We implement the split function using the lexer in the `sql` package; then we expose this function as `SplitSQLStatements(s string) []string` for the `server` package. The server calls this function then feeds the result to `sql.Run` one by one.
