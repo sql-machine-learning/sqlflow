@@ -1,3 +1,16 @@
+// Copyright 2019 The SQLFlow Authors. All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package sql
 
 import (
@@ -71,15 +84,15 @@ func (l *lexer) Lex(lval *sqlSymType) int {
 		return l.lexIdentOrKeyword(lval)
 	case unicode.IsDigit(r):
 		return l.lexNumber(lval)
-	case r == '"':
+	case r == '"' || r == '\'':
 		return l.lexString(lval)
-	case strings.IndexRune("+-*/%<>=()[]{},;", r) >= 0:
+	case strings.IndexRune("+-*/%<>=()[]{},;!", r) >= 0:
 		return l.lexOperator(lval)
 	case r == eof:
 		return 0 // indicate the end of lexing.
 	}
-	log.Panicf("Lex: Unknown problem %s", l.input[l.start:])
-	return -1 // indicate an error
+	// return the position where the error was detected.
+	return 0 - l.start
 }
 
 func (l *lexer) lexIdentOrKeyword(lval *sqlSymType) int {
@@ -108,14 +121,17 @@ func (l *lexer) emitIdentOrKeyword(lval *sqlSymType) int {
 		"LIMIT":   LIMIT,
 		"TRAIN":   TRAIN,
 		"PREDICT": PREDICT,
+		"ANALYZE": ANALYZE,
 		"USING":   USING,
 		"WITH":    WITH,
 		"COLUMN":  COLUMN,
+		"FOR":     FOR,
 		"LABEL":   LABEL,
 		"INTO":    INTO,
 		"AND":     AND,
 		"OR":      OR,
 		"NOT":     NOT,
+		"AS":      AS,
 	}
 	if typ, ok := keywds[strings.ToUpper(l.input[l.start:l.pos])]; ok {
 		return l.emit(lval, typ)
@@ -124,8 +140,7 @@ func (l *lexer) emitIdentOrKeyword(lval *sqlSymType) int {
 }
 
 var (
-	// Stolen https://www.regular-expressions.info/floatingpoint.html.
-	reNumber = regexp.MustCompile("[-+]?[0-9]*.?[0-9]+([eE][-+]?[0-9]+)?")
+	reNumber = regexp.MustCompile("[-+]?[0-9]*[.]?[0-9]+([eE][-+]?[0-9]+)?")
 )
 
 func (l *lexer) lexNumber(lval *sqlSymType) int {
@@ -148,13 +163,19 @@ func (l *lexer) lexOperator(lval *sqlSymType) int {
 	} else if r == '>' && l.peek() == '=' {
 		l.next()
 		return l.emit(lval, GE)
+	} else if r == '!' && l.peek() == '=' {
+		l.next()
+		return l.emit(lval, NE)
+	} else if r == '<' && l.peek() == '>' {
+		l.next()
+		return l.emit(lval, NE)
 	}
 	return l.emit(lval, int(r))
 }
 
 func (l *lexer) lexString(lval *sqlSymType) int {
 	l.next() // the left quote
-	for r := l.next(); r != '"'; r = l.next() {
+	for r := l.next(); r != '"' && r != '\''; r = l.next() {
 		if r == '\\' {
 			l.next()
 		}

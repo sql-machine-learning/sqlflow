@@ -1,0 +1,54 @@
+apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
+kind: Deployment
+metadata:
+  name: sqlflow-all-in-one-without-mysql
+spec:
+  selector:
+    matchLabels:
+      app: sqlflow-all-in-one-without-mysql
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: sqlflow-all-in-one-without-mysql
+    spec:
+      volumes:
+      - name: shared-data
+        emptyDir: {}
+      containers:
+      - image: sqlflow/sqlflow:latest
+        name: sqlflow-server
+        imagePullPolicy: Always
+        command: ["bash"]
+        args: ["start.sh", "sqlflow-server"]
+        env:
+        - name: SQLFLOW_MYSQL_HOST
+          value: "10.20.0.3"
+        - name: SQLFLOW_MYSQL_PORT
+          value: "3306"
+      - image: sqlflow/sqlflow:latest
+        name: notebook
+        imagePullPolicy: Always
+        command: ["bash"]
+        args: ["start.sh", "sqlflow-notebook"]
+        ports:
+        - containerPort: 8888
+          hostPort: 8888
+          name: sqlflow
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: sqlflow-service
+  labels:
+    app: sqlflow-service
+spec:
+  ports:
+  - port: 8888
+    protocol: TCP
+  selector:
+    app: sqlflow-all-in-one-without-mysql
+  type: "LoadBalancer"

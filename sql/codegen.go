@@ -1,3 +1,16 @@
+// Copyright 2019 The SQLFlow Authors. All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package sql
 
 import (
@@ -7,12 +20,10 @@ import (
 	"text/template"
 
 	"github.com/go-sql-driver/mysql"
+	"github.com/sql-machine-learning/sqlflow/sql/columns"
+	"sqlflow.org/gohive"
+	"sqlflow.org/gomaxcompute"
 )
-
-// TODO(tonyyang): This is currently a quick hack to map from SQL
-// field types to feature types.  We will enhance it to support more
-// complex cases like cross features.
-var fieldTypeFeatureType = map[string]string{"FLOAT": "numeric_column"}
 
 type columnType struct {
 	Name string
@@ -20,187 +31,254 @@ type columnType struct {
 }
 
 type connectionConfig struct {
+	Driver   string
 	User     string
 	Password string
 	Host     string
 	Port     string
 	Database string
+	Auth     string // the auth field is only used for hiveserver2
+	Session  map[string]string
 }
 
 type modelConfig struct {
-	Estimator string
-	Attrs     map[string]string
-	Save      string
+	EstimatorCode       string
+	FeatureColumnParmas string
+	AttrParams          string
+	BatchSize           int
+	Epochs              int
+	Save                string
+	IsKerasModel        bool
+}
+
+type featureMeta struct {
+	FeatureName string
+	Dtype       string
+	Delimiter   string
+	InputShape  string
+	IsSparse    bool
 }
 
 type filler struct {
-	Train          bool
-	Driver         string
-	StandardSelect string
+	IsTrain              bool
+	TrainingDatasetSQL   string // IsTrain == true
+	ValidationDatasetSQL string // IsTrain == true
+	PredictionDatasetSQL string // IsTrain != true
+	X                    []*featureMeta
+	FeatureColumnsCode   map[string][]string
+	Y                    *featureMeta
+	TableName            string
 	modelConfig
-	X         []columnType
-	Y         columnType
-	TableName string
-	connectionConfig
+	*connectionConfig
 }
 
-func newFiller(pr *extendedSelect, fts fieldTypes, db *DB) (*filler, error) {
+// parseModelURI returns isKerasModel, modelClassString
+func parseModelURI(modelString string) (bool, string) {
+	if strings.HasPrefix(modelString, "sqlflow_models.") {
+		return true, modelString
+	}
+	return false, fmt.Sprintf("tf.estimator.%s", modelString)
+}
+
+func trainingAndValidationDataset(pr *extendedSelect, ds *trainAndValDataset) (string, string) {
+	if pr.train && ds != nil {
+		return fmt.Sprintf("SELECT * FROM %s", ds.training), fmt.Sprintf("SELECT * FROM %s", ds.validation)
+	}
+	return pr.standardSelect.String(), pr.standardSelect.String()
+}
+
+func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *DB) (*filler, error) {
+	isKerasModel, modelClassString := parseModelURI(pr.estimator)
+	training, validation := trainingAndValidationDataset(pr, ds)
 	r := &filler{
-		Train:          pr.train,
-		StandardSelect: pr.standardSelect.String(),
+		IsTrain:              pr.train,
+		TrainingDatasetSQL:   training,
+		ValidationDatasetSQL: validation,
+		PredictionDatasetSQL: pr.standardSelect.String(),
 		modelConfig: modelConfig{
-			Estimator: pr.estimator,
-			Attrs:     make(map[string]string),
-			Save:      pr.save}}
-	for k, v := range pr.attrs {
-		r.Attrs[k] = v.String()
+			EstimatorCode: modelClassString,
+			BatchSize:     1,
+			Epochs:        1,
+			Save:          pr.save,
+			IsKerasModel:  isKerasModel,
+		},
 	}
 
-	for _, c := range pr.columns {
-		typ, ok := fts.get(c.val)
-		if !ok {
-			return nil, fmt.Errorf("genTF: Cannot find type of field %s", c.val)
+	trainResolved, err := resolveTrainClause(&pr.trainClause)
+	if err != nil {
+		return nil, err
+	}
+	r.modelConfig.BatchSize = trainResolved.BatchSize
+	r.modelConfig.Epochs = trainResolved.Epoch
+
+	featureColumnsCode := make(map[string][]string)
+	for target, columnsExpr := range pr.columns {
+		feaCols, colSpecs, err := resolveTrainColumns(&columnsExpr)
+		if err != nil {
+			return nil, err
 		}
-		ct := columnType{Name: c.val, Type: fieldTypeFeatureType[typ]}
-		r.X = append(r.X, ct)
-	}
-	typ, ok := fts.get(pr.label)
-	if !ok {
-		return nil, fmt.Errorf("genTF: Cannot find type of label %s", pr.label)
-	}
-	r.Y = columnType{Name: pr.label, Type: fieldTypeFeatureType[typ]}
+		if len(colSpecs) != 0 {
+			return nil, fmt.Errorf("newFiller doesn't support DENSE/SPARSE")
+		}
+		for _, col := range feaCols {
+			// TODO(typhoonzero): pass columnSpecs if needed.
+			feaColCode, e := col.GenerateCode(nil)
+			if e != nil {
+				return nil, e
+			}
+			if len(feaColCode) > 1 {
+				return nil, fmt.Errorf("does not support grouped feature column yet, grouped column: %v", feaColCode)
+			}
 
+			// FIXME(typhoonzero): Use Heuristic rules to determine whether a column should be transformed to a
+			// tf.SparseTensor. Currently the rules are:
+			// if column have delimiter and it's not a sequence_catigorical_column, we'll treat it as a sparse column
+			// else, use dense column.
+			isSparse := false
+			var isEmb bool
+			_, ok := col.(*columns.SequenceCategoryIDColumn)
+			if !ok {
+				_, isEmb = col.(*columns.EmbeddingColumn)
+				if isEmb {
+					_, ok = col.(*columns.EmbeddingColumn).CategoryColumn.(*columns.SequenceCategoryIDColumn)
+				}
+			}
+			if !ok && col.GetDelimiter() != "" {
+				if _, ok := col.(*columns.NumericColumn); !ok {
+					isSparse = true
+				}
+			}
+			fm := &featureMeta{
+				FeatureName: col.GetKey(),
+				Dtype:       col.GetDtype(),
+				Delimiter:   col.GetDelimiter(),
+				InputShape:  col.GetInputShape(),
+				IsSparse:    isSparse,
+			}
+			r.X = append(r.X, fm)
+			featureColumnsCode[target] = append(
+				featureColumnsCode[target],
+				feaColCode[0])
+		}
+	}
+
+	// Format estimator creation code
+	var attrParams []string
+	for _, attrValue := range trainResolved.ModelConstructorParams {
+		attrValueStr, err := attrValue.GenerateCode()
+		if err != nil {
+			return nil, err
+		}
+		attrParams = append(attrParams, attrValueStr)
+	}
+	r.AttrParams = strings.Join(attrParams, ",")
+
+	var featureColumnParams []string
+	for target, fcCodeList := range featureColumnsCode {
+		paramKey := target
+		if paramKey == "" {
+			paramKey = "feature_columns"
+		}
+		featureColumnParams = append(
+			featureColumnParams,
+			fmt.Sprintf("%s=[%s]", paramKey, strings.Join(fcCodeList, ",")),
+		)
+	}
+	r.FeatureColumnParmas = strings.Join(featureColumnParams, ",")
+
+	// Default use int32 label dtype
+	labelDtype := "int32"
+	if dbDType, ok := fts.get(pr.label); ok {
+		v := strings.ToUpper(dbDType)
+		if v == "FLOAT" {
+			labelDtype = "float32"
+		} else if v == "DOUBLE" {
+			labelDtype = "float64"
+		} else if v == "INT" || v == "INT_TYPE" {
+			labelDtype = "int32"
+		} else if v == "BIGINT" {
+			labelDtype = "int64"
+		} else {
+			log.Fatalf("Unsupported label data type: %s", v)
+		}
+	}
+	r.Y = &featureMeta{
+		FeatureName: pr.label,
+		Dtype:       labelDtype,
+		Delimiter:   ",",
+		InputShape:  "[1]",
+		IsSparse:    false,
+	}
+
+	var e error
 	if !pr.train {
-		r.TableName = strings.Join(strings.Split(pr.into, ".")[:2], ".")
+		if r.TableName, _, e = parseTableColumn(pr.into); e != nil {
+			return nil, e
+		}
 	}
 
+	r.connectionConfig, err = newConnectionConfig(db)
+	if err == nil && r.Driver == "hive" {
+		// remove the last ';' which leads to a (hive)ParseException
+		r.TrainingDatasetSQL = strings.TrimSuffix(r.TrainingDatasetSQL, ";")
+		r.ValidationDatasetSQL = strings.TrimSuffix(r.ValidationDatasetSQL, ";")
+		r.PredictionDatasetSQL = strings.TrimSuffix(r.PredictionDatasetSQL, ";")
+	}
+	return r, err
+}
+
+func newConnectionConfig(db *DB) (*connectionConfig, error) {
+	cc := &connectionConfig{
+		Driver: db.driverName,
+	}
 	switch db.driverName {
 	case "mysql":
 		cfg, err := mysql.ParseDSN(db.dataSourceName)
 		if err != nil {
 			return nil, err
 		}
-		r.Driver = "mysql"
-		r.User = cfg.User
-		r.Password = cfg.Passwd
-		r.Host = strings.Split(cfg.Addr, ":")[0]
-		r.Port = strings.Split(cfg.Addr, ":")[1]
+		sa := strings.Split(cfg.Addr, ":")
+		cc.Host, cc.Port, cc.Database = sa[0], sa[1], cfg.DBName
+		cc.User, cc.Password = cfg.User, cfg.Passwd
 	case "sqlite3":
-		r.Driver = "sqlite3"
-		r.Database = db.dataSourceName
+		cc.Database = db.dataSourceName
+	case "hive":
+		cfg, err := gohive.ParseDSN(db.dataSourceName)
+		if err != nil {
+			return nil, err
+		}
+		cc.Auth = cfg.Auth
+		cc.Session = cfg.SessionCfg
+		sa := strings.Split(cfg.Addr, ":")
+		cc.Host, cc.Port, cc.Database = sa[0], sa[1], cfg.DBName
+		cc.User, cc.Password = cfg.User, cfg.Passwd
+	case "maxcompute":
+		cfg, err := gomaxcompute.ParseDSN(db.dataSourceName)
+		if err != nil {
+			return nil, err
+		}
+		// setting r.Port=0 just makes connect() happy
+		cc.Host, cc.Port, cc.Database = cfg.Endpoint, "0", cfg.Project
+		cc.User, cc.Password = cfg.AccessID, cfg.AccessKey
 	default:
 		return nil, fmt.Errorf("sqlfow currently doesn't support DB %v", db.driverName)
 	}
-
-	return r, nil
+	return cc, nil
 }
 
-func genTF(w io.Writer, pr *extendedSelect, fts fieldTypes, db *DB) error {
-	r, e := newFiller(pr, fts, db)
+func genTF(w io.Writer, pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *DB) error {
+	r, e := newFiller(pr, ds, fts, db)
 	if e != nil {
 		return e
 	}
-	if e = codegenTemplate.Execute(w, r); e != nil {
-		return fmt.Errorf("genTF: failed executing template: %v", e)
+	if pr.train {
+		return tfTrainTemplate.Execute(w, r)
 	}
-	return nil
+	if e := createPredictionTable(pr, db); e != nil {
+		return fmt.Errorf("failed to create prediction table: %v", e)
+	}
+	return tfPredTemplate.Execute(w, r)
 }
 
-const codegenTemplateText = `
-import tensorflow as tf
-import sys, json, os
-import mysql.connector
-` +
-	// TODO(tonyyang-svail): remove hard coded BATCHSIZE, STEP
-	`
-BATCHSIZE = 1
-STEP = 1000
-
-{{if eq .Driver "mysql"}}
-db = mysql.connector.connect(user="{{.User}}",
-                             passwd="{{.Password}}",
-                             host="{{.Host}}",
-                             port={{.Port}}{{if eq .Database ""}}{{- else}}, database="{{.DATABASE}}"{{end}})
-{{else}}
-{{if eq .Driver "sqlite3"}}
-db = sqlite3.connect({{.Database}})
-{{else}}
-raise ValueError("unrecognized database driver: {{.Driver}}")
-{{end}}
-{{end}}
-
-cursor = db.cursor()
-cursor.execute("""{{.StandardSelect}}""")
-field_names = [i[0] for i in cursor.description]
-columns = list(map(list, zip(*cursor.fetchall())))
-
-feature_columns = [{{range .X}}tf.feature_column.{{.Type}}(key="{{.Name}}"),
-    {{end}}]
-feature_column_names = [{{range .X}}"{{.Name}}",
-    {{end}}]
-
-X = {name: columns[field_names.index(name)] for name in feature_column_names}
-{{if .Train}}
-Y = columns[field_names.index("{{.Y.Name}}")]
-{{- end}}
-
-classifier = tf.estimator.{{.Estimator}}(
-    feature_columns=feature_columns,{{range $key, $value := .Attrs}}
-    {{$key}} = {{$value}},{{end}}
-    model_dir= "{{.Save}}")
-
-{{if .Train}}
-def train_input_fn(features, labels, batch_size):
-    dataset = tf.data.Dataset.from_tensor_slices((dict(features), labels))
-    dataset = dataset.shuffle(1000).repeat().batch(batch_size)
-    return dataset
-
-classifier.train(
-    input_fn=lambda:train_input_fn(X, Y, BATCHSIZE),
-    steps=STEP)
-
-def eval_input_fn(features, labels, batch_size):
-    dataset = tf.data.Dataset.from_tensor_slices((dict(features), labels))
-    dataset = dataset.batch(batch_size)
-    return dataset
-
-eval_result = classifier.evaluate(
-        input_fn=lambda:eval_input_fn(X, Y, BATCHSIZE),
-        steps=STEP)
-print("\nTraining set accuracy: {accuracy:0.5f}\n".format(**eval_result))
-
-print("Done training")
-{{- else}}
-def eval_input_fn(features, batch_size):
-    dataset = tf.data.Dataset.from_tensor_slices(dict(features))
-    dataset = dataset.batch(batch_size)
-    return dataset
-
-predictions = classifier.predict(
-        input_fn=lambda:eval_input_fn(X, BATCHSIZE))
-
-X["{{.Y.Name}}"] = [p['class_ids'][0] for p in predictions]
-
-def insert(table_name, X, db):
-    length = [len(X[key]) for key in X]
-    assert len(set(length)) == 1, "All the fields should have the same length"
-
-    field_names = [key for key in X]
-    # FIXME(tony): HIVE and ODPS use INSERT INTO TABLE ...
-    sql = "INSERT INTO {} ({}) VALUES ({})".format(
-            table_name, ",".join(field_names), ",".join(["%s" for _ in field_names]))
-    val = []
-    for i in range(length[0]):
-        val.append(tuple([str(X[f][i]) for f in field_names]))
-
-    cursor = db.cursor()
-    cursor.executemany(sql, val)
-    db.commit()
-
-insert("{{.TableName}}", X, db)
-
-print("Done predicting. Predict Table : {{.TableName}}")
-{{- end}}
-`
-
-var codegenTemplate = template.Must(template.New("codegen").Parse(codegenTemplateText))
+var tfTrainTemplate = template.Must(template.New("codegenTfTrain").Parse(tfTrainTemplateText))
+var tfPredTemplate = template.Must(template.New("codegenTfPred").Parse(tfPredTemplateText))

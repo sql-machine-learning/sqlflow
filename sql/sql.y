@@ -3,7 +3,6 @@
 
 	import (
 		"fmt"
-		"sort"
 		"strings"
 		"sync"
 	)
@@ -59,13 +58,15 @@
 	type extendedSelect struct {
 		extended bool
 		train    bool
+		analyze  bool
 		standardSelect
 		trainClause
 		predictClause
+		analyzeClause
 	}
 
 	type standardSelect struct {
-		fields []string
+		fields exprlist 
 		tables []string
 		where *expr
 		limit string
@@ -73,17 +74,28 @@
 
 	type trainClause struct {
 		estimator string
-		attrs     attrs
-		columns   exprlist
-                label     string
+		trainAttrs     attrs
+		columns   columnClause
+		label     string
 		save      string
 	}
+
+	/* If no FOR in the COLUMN, the key is "" */
+	type columnClause map[string]exprlist
+	type filedClause  exprlist
 
 	type attrs map[string]*expr
 
 	type predictClause struct {
+		predAttrs attrs
 		model  string
 		into   string
+	}
+
+	type analyzeClause struct {
+		analyzeAttrs attrs
+		trainedModel string
+		explainer    string
 	}
 
 	var parseResult *extendedSelect
@@ -101,7 +113,7 @@
 
 %union {
   val string  /* NUMBER, IDENT, STRING, and keywords */
-  flds []string
+  flds exprlist
   tbls []string
   expr *expr
   expl exprlist
@@ -109,25 +121,31 @@
   eslt extendedSelect
   slct standardSelect
   tran trainClause
+  colc columnClause
+  labc string
   infr predictClause
+  anal analyzeClause
 }
 
 %type  <eslt> select_stmt
 %type  <slct> select
 %type  <tran> train_clause
+%type  <colc> column_clause
+%type  <labc> label_clause
 %type  <infr> predict_clause
+%type  <anal> analyze_clause
 %type  <flds> fields
 %type  <tbls> tables
 %type  <expr> expr funcall column
-%type  <expl> exprlist pythonlist columns
+%type  <expl> exprlist pythonlist columns field_clause 
 %type  <atrs> attr
 %type  <atrs> attrs
 
-%token <val> SELECT FROM WHERE LIMIT TRAIN PREDICT WITH COLUMN LABEL USING INTO
+%token <val> SELECT FROM WHERE LIMIT TRAIN PREDICT ANALYZE WITH COLUMN LABEL USING INTO FOR AS
 %token <val> IDENT NUMBER STRING
 
 %left <val> AND OR
-%left <val> '>' '<' '=' GE LE
+%left <val> '>' '<' '=' '!' GE LE NE
 %left <val> '+' '-'
 %left <val> '*' '/' '%'
 %left <val> NOT
@@ -156,36 +174,60 @@ select_stmt
 		standardSelect: $1,
 		predictClause: $2}
   }
+| select analyze_clause ';' {
+	parseResult = &extendedSelect{
+		extended: true,
+		train: false,
+		analyze: true,
+		standardSelect: $1,
+		analyzeClause: $2}
+}
 ;
 
 select
-: SELECT fields         { $$.fields = $2 }
+: SELECT field_clause		{ $$.fields = $2 }
 | select FROM tables    { $$.tables = $3 }
 | select LIMIT NUMBER   { $$.limit = $3 }
 | select WHERE expr     { $$.where = $3 }
 ;
 
 train_clause
-: TRAIN IDENT WITH attrs COLUMN columns LABEL IDENT INTO IDENT {
+: TRAIN IDENT WITH attrs column_clause label_clause INTO IDENT {
 	$$.estimator = $2
-	$$.attrs = $4
-	$$.columns = $6
-	$$.label = $8
-	$$.save = $10
+	$$.trainAttrs = $4
+	$$.columns = $5
+	$$.label = $6
+	$$.save = $8
   }
 ;
 
 predict_clause
-: PREDICT IDENT USING IDENT {
-	$$.into = $2
-	$$.model = $4
-}
+: PREDICT IDENT USING IDENT { $$.into = $2; $$.model = $4 }
+| PREDICT IDENT WITH attrs USING IDENT { $$.into = $2; $$.predAttrs = $4; $$.model = $6 }
+;
+
+analyze_clause
+: ANALYZE IDENT USING IDENT { $$.trainedModel = $2; $$.explainer = $4 }
+| ANALYZE IDENT WITH attrs USING IDENT { $$.trainedModel = $2; $$.analyzeAttrs = $4; $$.explainer = $6 }
+;
+
+column_clause
+: COLUMN columns 				{ $$ = map[string]exprlist{"feature_columns" : $2} }
+| COLUMN columns FOR IDENT 			{ $$ = map[string]exprlist{$4 : $2} }
+| column_clause COLUMN columns FOR IDENT 	{ $$[$5] = $3 }
+;
+
+field_clause
+: funcall AS '(' exprlist ')' {
+		$$ = exprlist{$1, atomic(IDENT, "AS"), funcall("", $4)};
+	}  // TODO(Yancey1989): support the general "AS" keyword: https://www.w3schools.com/sql/sql_ref_as.asp
+| fields						{ $$ = $1 }
 ;
 
 fields
-: '*'              { $$ = append($$, $1) }
-| IDENT            { $$ = append($$, $1) }
-| fields ',' IDENT { $$ = append($$, $3) }
+: '*'              { $$ = append($$, atomic(IDENT, "*")) }
+| IDENT            { $$ = append($$, atomic(IDENT, $1)) }
+| fields ',' IDENT { $$ = append($1, atomic(IDENT, $3)) }
 ;
 
 column
@@ -197,6 +239,11 @@ column
 columns
 : column             { $$ = exprlist{$1}     }
 | columns ',' column { $$ = append($1, $3) }
+;
+
+label_clause
+: LABEL IDENT  { $$ = $2 }
+| LABEL STRING { $$ = $2[1:len($2)-1] }
 ;
 
 tables
@@ -234,6 +281,8 @@ expr
 | STRING         { $$ = atomic(STRING, $1) }
 | pythonlist     { $$ = variadic('[', "square", $1) }
 | '(' expr ')'   { $$ = unary('(', "paren", $2) } /* take '(' as the operator */
+| '"' STRING '"'	{ $$ = unary('"', "quota", atomic(STRING,$2)) }
+| '\'' STRING '\''	{ $$ = unary('\'', "quota", atomic(STRING,$2)) }
 | funcall        { $$ = $1 }
 | expr '+' expr  { $$ = binary('+', $1, $2, $3) }
 | expr '-' expr  { $$ = binary('-', $1, $2, $3) }
@@ -245,6 +294,7 @@ expr
 | expr '>' expr  { $$ = binary('>', $1, $2, $3) }
 | expr LE  expr  { $$ = binary(LE,  $1, $2, $3) }
 | expr GE  expr  { $$ = binary(GE,  $1, $2, $3) }
+| expr NE  expr  { $$ = binary(NE,  $1, $2, $3) }
 | expr AND expr  { $$ = binary(AND, $1, $2, $3) }
 | expr OR  expr  { $$ = binary(OR,  $1, $2, $3) }
 | NOT expr %prec NOT    { $$ = unary(NOT, $1, $2) }
@@ -261,10 +311,18 @@ func (e *expr) cdr() (r []string) {
 	return r
 }
 
+/* Convert exprlist to string slice. */
+func (el exprlist) Strings() (r []string) {
+	for i := 0; i < len(el); i++ {
+		r = append(r, el[i].String())
+	}
+	return r
+}
+
 func (e *expr) String() string {
 	if e.typ == 0 { /* a compound expression */
 		switch e.sexp[0].typ {
-		case '+', '*', '/', '%', '=', '<', '>', LE, GE, AND, OR:
+		case '+', '*', '/', '%', '=', '<', '>', '!', LE, GE, AND, OR:
 			if len(e.sexp) != 3 {
 				log.Panicf("Expecting binary expression, got %.10q", e.sexp)
 			}
@@ -303,7 +361,12 @@ func (s standardSelect) String() string {
 	if len(s.fields) == 0 {
 		r += "*"
 	} else {
-		r += strings.Join(s.fields, ", ")
+		for i := 0; i < len(s.fields); i++ {
+			r += s.fields[i].String();
+			if i != len(s.fields) -1 {
+				r += ", "
+			}
+		}
 	}
 	r += "\nFROM " + strings.Join(s.tables, ", ")
 	if s.where != nil {
@@ -312,83 +375,7 @@ func (s standardSelect) String() string {
 	if len(s.limit) > 0 {
 		r += fmt.Sprintf("\nLIMIT %s", s.limit)
 	}
-	return r + ";"
-}
-
-func jsonString(s string) string {
-	return strings.Replace(
-		strings.Replace(
-			strings.Replace(s, "\n", "\\n", -1),
-			"\r", "\\r", -1),
-		"\"", "\\\"", -1)
-}
-
-func (ats attrs) JSON() string {
-	ks := []string{}
-	for k := range ats {
-		ks = append(ks, k)
-	}
-	sort.Strings(ks) /* Remove the randomness of map traversal. */
-
-	for i, k := range ks {
-		ks[i] = fmt.Sprintf(`"%s": "%s"`, k, jsonString(ats[k].String()))
-	}
-	return "{\n" + strings.Join(ks, ",\n") + "\n}"
-}
-
-func (el exprlist) JSON() string {
-	ks := []string{}
-	for _, e := range el {
-		ks = append(ks, "\"" + jsonString(e.String()) + "\"")
-	}
-	return "[\n" + strings.Join(ks, ",\n") + "\n]"
-}
-
-func (s trainClause) JSON() string {
-	fmter := `{
-"estimator": "%s",
-"attrs": %s,
-"columns": %s,
-"save": "%s"
-}`
-	return fmt.Sprintf(fmter, s.estimator, s.attrs.JSON(), s.columns.JSON(), s.save)
-}
-
-func (s predictClause) JSON() string {
-	fmter := `{
-"model":"%s"
-}`
-	return fmt.Sprintf(fmter, "\"" + s.model + "\"")
-}
-
-func (s extendedSelect) JSON() string {
-	bf := `{
-"extended": %t,
-"train": %t,
-"standardSelect": "%s"
-}`
-	tf := `{
-"extended": %t,
-"train": %t,
-"standardSelect": "%s",
-"trainClause": %s
-}`
-	nf := `{
-"extended": %t,
-"train": %t,
-"standardSelect": "%s",
-"predictClause": %s
-}`
-	if s.extended {
-		if s.train {
-			return fmt.Sprintf(tf, s.extended, s.train,
-				jsonString(s.standardSelect.String()), s.trainClause.JSON())
-		} else {
-			return fmt.Sprintf(nf, s.extended, s.train,
-				jsonString(s.standardSelect.String()), s.predictClause.JSON())
-		}
-	}
-	return fmt.Sprintf(bf, s.extended, s.train, jsonString(s.standardSelect.String()))
+    return r
 }
 
 // sqlReentrantParser makes sqlParser, generated by goyacc and using a

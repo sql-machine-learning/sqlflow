@@ -1,0 +1,40 @@
+apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
+kind: Deployment
+metadata:
+  name: sqlflow-server
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: sqlflow-server
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: sqlflow-server
+    spec:
+      containers:
+      - image: sqlflow/sqlflow
+        name: sqlflow-server
+        imagePullPolicy: Always
+        command: ["sqlflowserver"]
+        args: ["--enable-session"]
+        ports:
+        - containerPort: 50051
+          name: sqlflow-server
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: sqlflow-server
+  labels:
+    app: sqlflow-server
+spec:
+  ports:
+  - port: 50051
+    protocol: TCP
+  selector:
+    app: sqlflow-server

@@ -1,9 +1,18 @@
 - repo: git://github.com/dnephin/pre-commit-golang
-  sha: HEAD
+  rev: v0.3.3
   hooks:
     - id: go-fmt
-    - id: go-vet
     - id: go-lint
     - id: validate-toml
     - id: no-go-testing
-    - id: no-go-testing
+- repo: https://github.com/wangkuiyi/google-style-precommit-hook
+  rev: v0.1.1
+  hooks:
+    - id: google-style-java
+- repo: local
+  hooks:
+    - id: copyright_checker
+      name: copyright_checker
+      entry: python ./scripts/copyright.py
+      language: system
+      files: \.(go|py|sh)$

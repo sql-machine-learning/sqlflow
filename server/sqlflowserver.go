@@ -1,4 +1,22 @@
+// Copyright 2019 The SQLFlow Authors. All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 //go:generate protoc -I proto proto/sqlflow.proto --go_out=plugins=grpc:proto
+
+// Package server is the SQLFlow grpc server which connects to database and
+// parse, submit or execute the training and predicting codes.
+//
+// To generate grpc protobuf code, run the below command:
 package server
 
 import (
@@ -15,23 +33,39 @@ import (
 )
 
 // NewServer returns a server instance
-func NewServer(run func(string, *sf.DB) *sf.PipeReader, db *sf.DB) *server {
-	return &server{run: run, db: db}
+func NewServer(run func(string, *sf.DB, string, *pb.Session) *sf.PipeReader, db *sf.DB, modelDir string, enableSession bool) *Server {
+	return &Server{run: run, db: db, modelDir: modelDir, enableSession: enableSession}
 }
 
-type server struct {
-	run func(sql string, db *sf.DB) *sf.PipeReader
-	db  *sf.DB
+// Server is the instance will be used to connect to DB and execute training
+type Server struct {
+	run           func(sql string, db *sf.DB, modelDir string, session *pb.Session) *sf.PipeReader
+	db            *sf.DB
+	modelDir      string
+	enableSession bool
 }
 
 // Run implements `rpc Run (Request) returns (stream Response)`
-func (s *server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
-	pr := s.run(req.Sql, s.db)
+func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
+	db := s.db
+	var err error
+	if s.enableSession == true {
+		if db, err = sf.NewDB(req.Session.DbConnStr); err != nil {
+			return fmt.Errorf("create DB failed: %v", err)
+		}
+		defer db.Close()
+	}
+	var pr *sf.PipeReader
+	if s.enableSession == true {
+		pr = s.run(req.Sql, db, s.modelDir, req.Session)
+	} else {
+		pr = s.run(req.Sql, db, s.modelDir, nil)
+	}
+
 	defer pr.Close()
 
 	for r := range pr.ReadAll() {
 		var res *pb.Response
-		var err error
 		switch s := r.(type) {
 		case error:
 			return s

@@ -1,3 +1,16 @@
+// Copyright 2019 The SQLFlow Authors. All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package sql
 
 import (
@@ -17,12 +30,25 @@ func hasTensorFlow() bool {
 	return tryRun("python", "-c", "import tensorflow")
 }
 
-func hasMySQLConnector() bool {
-	return tryRun("python", "-c", "import mysql.connector")
+func hasDatabaseConnector(driverName string) bool {
+	if driverName == "hive" {
+		return tryRun("python", "-c", "from impala.dbapi import connect")
+	} else if driverName == "mysql" {
+		return tryRun("python", "-c", "from MySQLdb import connect")
+	} else if driverName == "sqlite3" {
+		return tryRun("python", "-c", "from sqlite3 import connect")
+	} else if driverName == "maxcompute" {
+		return tryRun("python", "-c", "from odps import ODPS")
+	}
+	return false
 }
 
 func hasDocker() bool {
 	return tryRun("docker", "version")
+}
+
+func hasElasticDLCmd() bool {
+	return tryRun("elasticdl", "-h")
 }
 
 func hasDockerImage(image string) bool {
@@ -33,10 +59,10 @@ func hasDockerImage(image string) bool {
 	return true
 }
 
-func tensorflowCmd(cwd string) (cmd *exec.Cmd) {
-	if hasPython() && hasTensorFlow() && hasMySQLConnector() {
+func tensorflowCmd(cwd, driverName string) (cmd *exec.Cmd) {
+	if hasPython() && hasTensorFlow() && hasDatabaseConnector(driverName) {
 		log.Printf("tensorflowCmd: run locally")
-		cmd = exec.Command("python")
+		cmd = exec.Command("python", "-u")
 		cmd.Dir = cwd
 	} else if hasDocker() {
 		log.Printf("tensorflowCmd: run in Docker container")

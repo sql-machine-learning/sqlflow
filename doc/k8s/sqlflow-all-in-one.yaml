@@ -1,0 +1,34 @@
+apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
+kind: Deployment
+metadata:
+  name: sqlflow-all-in-one
+spec:
+  selector:
+    matchLabels:
+      app: sqlflow-all-in-one
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: sqlflow-all-in-one
+    spec:
+      volumes:
+      - name: shared-data
+        emptyDir: {}
+      containers:
+      - image: sqlflow/sqlflow:latest
+        name: sqlflow-all-in-one
+        imagePullPolicy: Always
+        env:
+        - name: SQLFLOW_MYSQL_HOST
+          value: "127.0.0.1"
+        - name: SQLFLOW_MYSQL_PORT
+          value: "3306"
+        command: ["bash"]
+        args: ["start.sh"]
+        ports:
+        - containerPort: 8888
+          hostPort: 8888
+          name: sqlflow
+

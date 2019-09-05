@@ -1,0 +1,122 @@
+Contribute to SQLFlow Models
+18 June 2019
+
+Yan Xu
+Software Engineer, Ant Financial
+yancey.yx@antfin.com
+https://sqlflow.org
+
+* SQLFlow Overview
+SQLFlow is a bridge that connects a SQL engine
+
+- MySQL, Alibaba MaxCompute, Hive, ...
+
+with an ML engine
+
+- TensorFlow, XGboost, ...
+
+It extends the SQL syntax to enable model training and inference.
+
+* Syntax: Train
+.code ../201905/train.sql
+
+* Syntax: Prediction
+.code ../201905/pred.sql
+
+* The Architecture
+
+.image ../201905/sqlflow-overview.png 570 _
+
+* The Architecture
+
+- Users input SQL statements in Jupyter Notebook
+- The SQLFlow magic command sends each statement to SQLFlow server
+- SQLFlow server proxies statements without using extended syntax to an SQL engine
+- SQLFlow server translates each extended-syntax statement into a (Python) submitter program and runs it.
+- The submitter program runs SELECT on SQL engine and reads results for training/prediction.
+- The submitter program TRAIN the MODEL in sqlflow-models.
+
+* Feature Column
+
+- How to convert SELECT results from a table of rows into models inputs(a Tensor of float values).
+
+* Design: Feature Derivation
+
+TensorFlow model inputs are dense tensors, which usually are high-dimensional matrices of numerical values; however, the result of SELECT is a table where each field could contain various types like float, int, blob, text. How does SQLFlow convert different column types into tensors of numerical type?
+.image ../201906/column_all.png _ 800
+
+* Design: Feature Derivation
+
+- To train the TF model DNNRegressor, we need a set of input tensors, the feature set X, and the label Y.
+- Because the label is income with numerical type, we can use the values by making it a 3*1 numerical tensor and copy to Y.
+.image ../201906/column_label.png
+
+* Design: Feature Derivation
+
+- Use column "age" directly as numeric column as input feature X.
+- Use *categorization* for "gender" column: we could encode “M” using tuple {1,0,0}, “F” using {0,1,0}, and NULL using {0,0,1}
+.image ../201906/column_fea1.png _ 800
+
+* Design: Feature Derivation
+
+- Add "name" field to feature to X, the categorization doesn’t work well due to the sheer amount of possible name strings
+- Hash the name string into a 64-bit integer, then bucketing hashed value into 100 dimension columns.
+.image ../201906/column_fea2.png _ 600
+
+Generated code using Tensorflow "Feature Column" should look like:
+.code ../201906/feature_column_code.pysample
+
+* Design: Feature Derivation
+
+User may write SQL statements below to generate "real" training code
+
+.code ../201906/train_detailed.sql
+
+In the real world, it's common to have many columns, so we need to generate feature inputs automatically:
+
+- Scan part of the data, to determine feature column types.
+- Determine whether the column is of sequence input type, and add padding, etc.
+- Determine whether the column should add embedding, pooling...
+
+.code ../201906/train_simple.sql
+
+* Design: Feature Derivation
+
+When we need to derive a new feature from combining multiple features, we use crossed feature:
+
+.code ../201906/train_cross.sql
+
+And this will generate feature column code like:
+
+.code ../201906/feature_column_cross.pysample
+
+* SQLFlow Open Source Community:
+- https://github.com/sql-machine-learning/
+- 2800+ starts
+- 17+ contributors
+- 5 repos
+
+.image ./sqlflow-community.png 340 _
+
+* Open Source Community WorkFlow [Demonstration]
+.image github-workflow.png _ 860
+
+- Check Your Code Style
+  - Google Code Style: golang, python, ...
+  - pre-commit-hook: copyright, pylint, golint, ...
+
+- Demonstration on Github:
+  - create an issue && do some discussion.
+  - push a pull request.
+  - comment && update && LGTM!
+
+* Contribute your SQLFlow models [Demonstration]
+
+- Fork && Clone the sqlflow_models repo.
+.code clone_sqlflow_models.bashsample
+- Coding and test...
+- Test in SQLFlow Docker container.
+.code update_sqlflow_models.bashsample
+- Using your custom model in SQLFlow.
+.code custom_model.sql
+- Create a PR on Github!

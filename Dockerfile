@@ -1,24 +1,39 @@
 FROM ubuntu:16.04
 
-RUN apt-get update
-RUN apt-get install -y python3-pip
-RUN pip3 install --upgrade pip
-RUN pip3 install tensorflow mysql-connector-python jupyter sqlflow
-# Fix jupyter server "connecting to kernel" problem
-# https://github.com/jupyter/notebook/issues/2664#issuecomment-468954423
-RUN pip3 install tornado==4.5.3
+# use a mirror to run apt-get
+RUN echo "###### Ubuntu Main Repos" > /etc/apt/sources.list && \
+echo "deb http://us.archive.ubuntu.com/ubuntu/ xenial main restricted universe multiverse" >> /etc/apt/sources.list && \
+echo "###### Ubuntu Update Repos" >> /etc/apt/sources.list && \
+echo "deb http://us.archive.ubuntu.com/ubuntu/ xenial-security main restricted universe multiverse" >> /etc/apt/sources.list && \
+echo "deb http://us.archive.ubuntu.com/ubuntu/ xenial-updates main restricted universe multiverse" >> /etc/apt/sources.list && \
+echo "deb http://us.archive.ubuntu.com/ubuntu/ xenial-proposed main restricted universe multiverse" >> /etc/apt/sources.list && \
+echo "deb http://us.archive.ubuntu.com/ubuntu/ xenial-backports main restricted universe multiverse" >> /etc/apt/sources.list
 
-# Load sqlflow Jupyter magic command automatically. c.f. https://stackoverflow.com/a/32683001.
+RUN apt-get update && apt-get install -y curl bzip2 \
+	build-essential unzip sqlite3 libsqlite3-dev wget unzip git \
+	openjdk-8-jdk maven libmysqlclient-dev
+
+# Need Java SDK to build remote parsers.
+ENV JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
+
+# Miniconda - Python 3.6, 64-bit, x86, latest
+ARG CONDA_ADD_PACKAGES=""
+ARG PIP_ADD_PACKAGES=""
+ARG TENSORFLOW_VERSION="2.0.0b1"
+ARG WITH_SQLFLOW_MODELS="ON"
+
+ENV GOPATH /go
+ENV HADOOP_VERSION 3.2.0
+ENV PATH /opt/hadoop-${HADOOP_VERSION}/bin:/miniconda/envs/sqlflow-dev/bin:/miniconda/bin:/usr/local/go/bin:/go/bin:$PATH
 ENV IPYTHON_STARTUP /root/.ipython/profile_default/startup/
-RUN mkdir -p $IPYTHON_STARTUP
-RUN echo 'get_ipython().magic(u"%reload_ext sqlflow.magic")' >> $IPYTHON_STARTUP/00-first.py
-RUN echo 'get_ipython().magic(u"%autoreload 2")' >> $IPYTHON_STARTUP/00-first.py
 
-ADD demo /usr/bin/demo
-ADD sqlflowserver /usr/bin/sqlflowserver
+# Main Steps to Build
+COPY scripts/image_build.sh /image_build.sh
+RUN bash /image_build.sh && rm -f /image_build.sh
+VOLUME /var/lib/mysql
 
-# Make python3 callable through python
-RUN ln -s /usr/bin/python3 /usr/bin/python
-RUN chmod +x /usr/bin/python
+# Prepare sample datasets
+COPY example/datasets/popularize_churn.sql example/datasets/popularize_iris.sql example/datasets/popularize_boston.sql example/datasets/create_model_db.sql /docker-entrypoint-initdb.d/
 
-CMD ["/usr/bin/demo"]
+ADD scripts/start.sh /
+CMD ["bash", "/start.sh"]

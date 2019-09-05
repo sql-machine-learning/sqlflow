@@ -8,11 +8,10 @@ SQLFlow calls Go's [standard database API](https://golang.org/pkg/database/sql/)
 
 ### Data Retrieval
 
-The basic idea of SQLFlow is to extend the SELECT statement of SQL to have the TRAIN and PREDICT clauses.  For more discussion, please refer to the [syntax design](/doc/syntax.md).  SQLFlow translates such "extended SQL statements" into submitter programs, which forward the part from SELECT to TRAIN or PREDICT, which we call the "standard part", to the SQL engine.  SQLFlow also accepts the SELECT statement without TRAIN or PREDICt clauses and would forward such "standard statements" to the engine.  It is noticeable that the "standard part" or "standard statements" are not standardized.  For example, various engines use different syntax for joining.
+The basic idea of SQLFlow is to extend the SELECT statement of SQL to have the TRAIN and PREDICT clauses.  For more discussion, please refer to the [syntax design](/doc/syntax.md).  SQLFlow translates such "extended SQL statements" into submitter programs, which forward the part from SELECT to TRAIN or PREDICT, which we call the "standard part", to the SQL engine.  SQLFlow also accepts the SELECT statement without TRAIN or PREDICT clauses and would forward such "standard statements" to the engine.  It is noticeable that the "standard part" or "standard statements" are not standardized.  For example, various engines use different syntax for `FULL OUTER JOIN`.
 
-- MySQL: `SELECT pet.name, comment FROM pet, event WHERE pet.name =event.name;` with keyword `WHERE` .
-- Hive: `SELECT pet.name, comment FROM pet JOIN event ON (pet.name =event.name)` with keyword `JOIN` and `ON`.
-- ODPS and SQLite use either `INNER JOIN` or `OUTER JOIN`.
+- Hive supports `FULL OUTER JOIN` directly.
+- MySQL doesn't have `FULL OUTER JOIN`. However, a user can emulates `FULL OUTER JOIN` using `LEFT JOIN`, `UNION` and `RIGHT JOIN`.
  
 Fortunately, as SQLFlow forwards the above parts to the engine,  it doesn't have to care much about the differences above.
 
@@ -21,7 +20,13 @@ Fortunately, as SQLFlow forwards the above parts to the engine,  it doesn't have
 To verify the semantics of users' inputs, SQLFlow needs to retrieve the schema of tables.  For example, the input might be
 
 ```SQL
-SELECT name, age, income FROM employee TRAIN DNNRegressor WITH hidden_layers=[10,50,10] COLUMN name, agee LABEL income;
+SELECT 
+      name,
+      age,
+      income 
+FROM  employee TRAIN DNNRegressor 
+WITH  hidden_layers=[10,50,10] 
+COLUMN name, agee LABEL income;
 ```
 
 In the above example, the user misspelled the field name `age` in the COLUMN clause as "agee". SQLFlow must be able to find that out.
