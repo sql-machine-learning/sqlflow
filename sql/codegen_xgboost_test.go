@@ -18,7 +18,8 @@ SELECT *
 FROM iris.train
 TRAIN xgb.multi.softprob
 WITH
-	train.num_boost_round = 30
+	train.num_boost_round = 30,
+	eta = 3.1
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class 
 INTO sqlflow_models.my_xgboost_model;
