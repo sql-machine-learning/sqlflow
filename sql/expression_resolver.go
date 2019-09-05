@@ -86,6 +86,55 @@ func trimQuotes(s string) string {
 	return s
 }
 
+func getIntAttr(attrs map[string]*attribute, key string, defaultValue int) int {
+	if p, ok := attrs[key]; ok {
+		strVal, _ := p.Value.(string)
+		intVal, err := strconv.Atoi(trimQuotes(strVal))
+		defer delete(attrs, p.FullName)
+		if err == nil {
+			return intVal
+		}
+		fmt.Printf("ignore invalid %s=%s, default is %d", key, p.Value, defaultValue)
+	}
+	return defaultValue
+}
+
+func getBoolAttr(attrs map[string]*attribute, key string, defaultValue bool, optional bool) bool {
+	if p, ok := attrs[key]; ok {
+		strVal, _ := p.Value.(string)
+		boolVal, err := strconv.ParseBool(trimQuotes(strVal))
+		if !optional {
+			defer delete(attrs, p.FullName)
+		}
+		if err == nil {
+			return boolVal
+		} else if !optional {
+			fmt.Printf("ignore invalid %s=%s, default is %v", key, p.Value, defaultValue)
+		}
+	}
+	return defaultValue
+}
+
+func getStringAttr(attrs map[string]*attribute, key string, defaultValue string) string {
+	if p, ok := attrs[key]; ok {
+		strVal, _ := p.Value.(string)
+		defer delete(attrs, p.FullName)
+		return trimQuotes(strVal)
+		fmt.Printf("ignore invalid %s=%s, default is %v", key, p.Value, defaultValue)
+	}
+	return defaultValue
+}
+
+func getStringsAttr(attrs map[string]*attribute, key string, defaultValue []string) []string {
+	if p, ok := attrs[key]; ok {
+		strVal, _ := p.Value.(string)
+		defer delete(attrs, p.FullName)
+		return strings.Split(trimQuotes(strVal), ",")
+		fmt.Printf("ignore invalid %s=%s, default is %v", key, p.Value, defaultValue)
+	}
+	return defaultValue
+}
+
 func resolveTrainClause(tc *trainClause) (*resolvedTrainClause, error) {
 	modelName := tc.estimator
 	preMadeModel := !strings.ContainsAny(modelName, ".")
@@ -97,71 +146,33 @@ func resolveTrainClause(tc *trainClause) (*resolvedTrainClause, error) {
 	if err != nil {
 		return nil, err
 	}
-	getIntAttr := func(key string, defaultValue int) int {
-		if p, ok := attrs[key]; ok {
-			strVal, _ := p.Value.(string)
-			intVal, err := strconv.Atoi(trimQuotes(strVal))
-			defer delete(attrs, p.FullName)
-			if err == nil {
-				return intVal
-			}
-			fmt.Printf("ignore invalid %s=%s, default is %d", key, p.Value, defaultValue)
-		}
-		return defaultValue
-	}
-	getBoolAttr := func(key string, defaultValue bool, optional bool) bool {
-		if p, ok := attrs[key]; ok {
-			strVal, _ := p.Value.(string)
-			boolVal, err := strconv.ParseBool(trimQuotes(strVal))
-			if !optional {
-				defer delete(attrs, p.FullName)
-			}
-			if err == nil {
-				return boolVal
-			} else if !optional {
-				fmt.Printf("ignore invalid %s=%s, default is %v", key, p.Value, defaultValue)
-			}
-		}
-		return defaultValue
-	}
-	getStringAttr := func(key string, defaultValue string) string {
-		if p, ok := attrs[key]; ok {
-			strVal, _ := p.Value.(string)
-			defer delete(attrs, p.FullName)
-			if err == nil {
-				return trimQuotes(strVal)
-			}
-			fmt.Printf("ignore invalid %s=%s, default is %v", key, p.Value, defaultValue)
-		}
-		return defaultValue
-	}
 	modelParams := attrFilter(attrs, "model", true)
 	engineParams := attrFilter(attrs, "engine", true)
 
-	batchSize := getIntAttr("train.batch_size", 512)
-	dropRemainder := getBoolAttr("train.drop_remainder", true, false)
+	batchSize := getIntAttr(attrs, "train.batch_size", 512)
+	dropRemainder := getBoolAttr(attrs, "train.drop_remainder", true, false)
 	cachePath := ""
 	var enableCache bool
-	if enableCache = getBoolAttr("train.cache", false, true); !enableCache {
-		cachePath = getStringAttr("train.cache", "")
+	if enableCache = getBoolAttr(attrs, "train.cache", false, true); !enableCache {
+		cachePath = getStringAttr(attrs, "train.cache", "")
 		if cachePath != "" {
 			enableCache = true
 		}
 	}
-	epoch := getIntAttr("train.epoch", 1)
-	shard := getIntAttr("train.shard", 1)
-	maxSteps := getIntAttr("train.max_steps", -1)
+	epoch := getIntAttr(attrs, "train.epoch", 1)
+	shard := getIntAttr(attrs, "train.shard", 1)
+	maxSteps := getIntAttr(attrs, "train.max_steps", -1)
 
-	gradsToWait := getIntAttr("train.grads_to_wait", 2)
-	tensorboardLogDir := getStringAttr("train.tensorboard_log_dir", "")
-	checkpointSteps := getIntAttr("train.checkpoint_steps", 0)
-	checkpointDir := getStringAttr("train.checkpoint_dir", "")
-	keepCheckpointMax := getIntAttr("train.keep_checkpoint_max", 0)
+	gradsToWait := getIntAttr(attrs, "train.grads_to_wait", 2)
+	tensorboardLogDir := getStringAttr(attrs, "train.tensorboard_log_dir", "")
+	checkpointSteps := getIntAttr(attrs, "train.checkpoint_steps", 0)
+	checkpointDir := getStringAttr(attrs, "train.checkpoint_dir", "")
+	keepCheckpointMax := getIntAttr(attrs, "train.keep_checkpoint_max", 0)
 
 	var shuffleBufferSize int
 	var enableShuffle bool
-	if enableShuffle = getBoolAttr("train.shuffle", false, true); !enableShuffle {
-		shuffleBufferSize = getIntAttr("train.shuffle", 0)
+	if enableShuffle = getBoolAttr(attrs, "train.shuffle", false, true); !enableShuffle {
+		shuffleBufferSize = getIntAttr(attrs, "train.shuffle", 0)
 		if shuffleBufferSize > 0 {
 			enableShuffle = true
 		}
@@ -169,19 +180,19 @@ func resolveTrainClause(tc *trainClause) (*resolvedTrainClause, error) {
 		shuffleBufferSize = 10240
 	}
 
-	evalBatchSize := getIntAttr("eval.batch_size", 1)
-	evalSteps := getIntAttr("eval.steps", -1)
-	evalStartDecaySecs := getIntAttr("eval.start_delay_secs", 120)
-	evalThrottleSecs := getIntAttr("eval.throttle_secs", 600)
-	evalCheckpointFilenameForInit := getStringAttr("eval.checkpoint_filename_for_init", "")
+	evalBatchSize := getIntAttr(attrs, "eval.batch_size", 1)
+	evalSteps := getIntAttr(attrs, "eval.steps", -1)
+	evalStartDecaySecs := getIntAttr(attrs, "eval.start_delay_secs", 120)
+	evalThrottleSecs := getIntAttr(attrs, "eval.throttle_secs", 600)
+	evalCheckpointFilenameForInit := getStringAttr(attrs, "eval.checkpoint_filename_for_init", "")
 
 	customModel := func() *gitLabModule {
 		if preMadeModel == false {
-			project := getStringAttr("gitlab.project", "")
-			sha := getStringAttr("gitlab.sha", "")
-			token := getStringAttr("gitlab.token", "")
-			server := getStringAttr("gitlab.server", "")
-			sourceRoot := getStringAttr("gitlab.source_root", "")
+			project := getStringAttr(attrs, "gitlab.project", "")
+			sha := getStringAttr(attrs, "gitlab.sha", "")
+			token := getStringAttr(attrs, "gitlab.token", "")
+			server := getStringAttr(attrs, "gitlab.server", "")
+			sourceRoot := getStringAttr(attrs, "gitlab.source_root", "")
 			if project == "" {
 				return nil
 			}
@@ -249,20 +260,11 @@ func resolvePredictClause(pc *predictClause) (*resolvedPredictClause, error) {
 	if err != nil {
 		return nil, err
 	}
-	getStringAttr := func(key string, defaultValue string) string {
-		if p, ok := attrs[key]; ok {
-			strVal, _ := p.Value.(string)
-			defer delete(attrs, p.FullName)
-			if err == nil {
-				return trimQuotes(strVal)
-			}
-		}
-		return defaultValue
-	}
+
 	modelParams := attrFilter(attrs, "model", true)
 	engineParams := attrFilter(attrs, "engine", true)
 
-	checkpointFilenameForInit := getStringAttr("predict.checkpoint_filename_for_init", "")
+	checkpointFilenameForInit := getStringAttr(attrs, "predict.checkpoint_filename_for_init", "")
 
 	if len(attrs) > 0 {
 		return nil, fmt.Errorf("unsupported parameters: %v", attrs)
