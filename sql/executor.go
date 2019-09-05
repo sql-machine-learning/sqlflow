@@ -397,7 +397,6 @@ func train(wr *PipeWriter, tr *extendedSelect, db *DB, cwd string, modelDir stri
 		if e := genXGBoost(&program, tr, ds, fts, db); e != nil {
 			return fmt.Errorf("GenXGBoost %v", e)
 		}
-		fmt.Println(program.String())
 	} else {
 		if e := genTF(&program, tr, ds, fts, db); e != nil {
 			return fmt.Errorf("genTF %v", e)

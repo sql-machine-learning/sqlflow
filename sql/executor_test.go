@@ -109,7 +109,6 @@ func TestExecutorTrainXGBoost(t *testing.T) {
 	modelDir := ""
 	a.NotPanics(func() {
 		stream := runExtendedSQL(testXGBoostTrainSelectIris, testDB, modelDir, nil)
-		fmt.Println(stream.ReadAll())
 		a.True(goodStream(stream.ReadAll()))
 	})
 }
