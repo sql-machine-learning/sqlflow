@@ -100,12 +100,13 @@ func newXGBFiller(pr *extendedSelect, ds *trainAndValDataset, db *DB) (*xgbFille
 		Save:           pr.save,
 	}
 
+	// resolve the attribute keys without any prefix as the XGBoost Paremeters
 	params, err := resolveParamsCfg(attrs)
 	if err != nil {
 		return nil, err
 	}
 
-	// fill learning targe
+	// fill learning target
 	objective, err := resolveObjective(pr)
 	if err != nil {
 		return nil, err
