@@ -61,34 +61,34 @@ type FieldMeta struct {
 
 // TrainIR is the intermediate representation for code generation of a training job
 type TrainIR struct {
-	DataSource       string                 // e.g. "hive://root:root@localhost:10000/churn"
-	Select           string                 // e.g. "select * from iris.train"
-	ValidationSelect string                 // e.g. "select * from iris.val;"
-	Estimator        string                 // e.g. "DNNClassifier"
-	Attribute        map[string]interface{} // e.g. {"train.epoch": 1000, "model.hidden_units": [10 10]}
-	Feature          map[string]FieldMeta   // e.g. {"sepal_length": {"float", "", [1], false}, ...}
-	Label            map[string]FieldMeta   // e.g. {"class": {"int32", "", [1], false}}
+	DataSource       string                          // e.g. "hive://root:root@localhost:10000/churn"
+	Select           string                          // e.g. "select * from iris.train"
+	ValidationSelect string                          // e.g. "select * from iris.val;"
+	Estimator        string                          // e.g. "DNNClassifier"
+	Attribute        map[string]interface{}          // e.g. {"train.epoch": 1000, "model.hidden_units": [10 10]}
+	Feature          map[string]map[string]FieldMeta // e.g. {"feature_columns": {"sepal_length": {"float", "", [1], false}, ...}}
+	Label            map[string]FieldMeta            // e.g. {"class": {"int32", "", [1], false}}
 }
 
 // PredictIR is the intermediate representation for code generation of a prediction job
 type PredictIR struct {
-	DataSource  string                 // e.g. "hive://root:root@localhost:10000/churn"
-	Select      string                 // e.g. "select * from iris.test"
-	Estimator   string                 // e.g. "DNNClassifier"
-	Attribute   map[string]interface{} // e.g. {"predict.batch_size": 32}
-	Feature     map[string]FieldMeta   // e.g. {"sepal_length": {"float", "", [1], false}, ...}
-	Label       map[string]FieldMeta   // e.g. {"class": {"int32", "", [1], false}}
-	ReusltTable string                 // e.g. "iris.predict"
+	DataSource  string                          // e.g. "hive://root:root@localhost:10000/churn"
+	Select      string                          // e.g. "select * from iris.test"
+	Estimator   string                          // e.g. "DNNClassifier"
+	Attribute   map[string]interface{}          // e.g. {"predict.batch_size": 32}
+	Feature     map[string]map[string]FieldMeta // e.g. {"feature_columns": {"sepal_length": {"float", "", [1], false}, ...}}
+	Label       map[string]FieldMeta            // e.g. {"class": {"int32", "", [1], false}}
+	ReusltTable string                          // e.g. "iris.predict"
 }
 
 // AnalyzeIR is the intermediate representation for code generation of a analysis job
 type AnalyzeIR struct {
-	DataSource string                 // e.g. "hive://root:root@localhost:10000/churn"
-	Select     string                 // e.g. "select * from iris.train"
-	Estimator  string                 // e.g. "DNNClassifier"
-	Attribute  map[string]interface{} // e.g. {"analyze.plot_type": "bar"}
-	Feature    map[string]FieldMeta   // e.g. {"sepal_length": {"float", "", [1], false}, ...}
-	Label      map[string]FieldMeta   // e.g. {"class": {"int32", "", [1], false}}
+	DataSource string                          // e.g. "hive://root:root@localhost:10000/churn"
+	Select     string                          // e.g. "select * from iris.train"
+	Estimator  string                          // e.g. "DNNClassifier"
+	Attribute  map[string]interface{}          // e.g. {"analyze.plot_type": "bar"}
+	Feature    map[string]map[string]FieldMeta // e.g. {"feature_columns": {"sepal_length": {"float", "", [1], false}, ...}}
+	Label      map[string]FieldMeta            // e.g. {"class": {"int32", "", [1], false}}
 }
 ```
 
