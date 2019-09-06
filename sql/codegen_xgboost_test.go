@@ -25,9 +25,9 @@ SELECT *
 FROM iris.train
 TRAIN xgb.multi.softprob
 WITH
-	train.num_boost_round = 30,
-	eta = 3.1,
-	num_class = 3
+    train.num_boost_round = 30,
+    eta = 3.1,
+    num_class = 3
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class 
 INTO sqlflow_models.my_xgboost_model;
@@ -36,6 +36,13 @@ const testAnalyzeTreeModelSelectIris = `
 SELECT * FROM iris.train
 ANALYZE sqlflow_models.my_xgboost_model
 USING TreeExplainer;
+`
+
+const testXGBoostPredictIris = ` 
+SELECT *
+FROM iris.test
+PREDICT iris.predict.class
+USING sqlflow_models.my_xgboost_model;
 `
 
 func TestXGBFiller(t *testing.T) {
@@ -55,4 +62,18 @@ func TestXGBFiller(t *testing.T) {
 	paramsJSON, err := json.Marshal(expectedParams)
 	a.NoError(err)
 	a.Equal(filler.ParamsCfgJSON, string(paramsJSON))
+}
+
+func TestXGBFillerPredict(t *testing.T) {
+	a := assert.New(t)
+	parser := newParser()
+	r, e := parser.Parse(testXGBoostPredictIris)
+	a.NoError(e)
+	filler, e := newXGBFiller(r, nil, testDB)
+	a.NoError(e)
+	a.False(filler.IsTrain)
+	a.Equal(filler.TableName, "iris.predict")
+	a.Equal(filler.Save, "sqlflow_models.my_xgboost_model")
+	a.Equal(filler.PredictionDatasetSQL, `SELECT *
+FROM iris.test`)
 }

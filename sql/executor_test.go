@@ -112,6 +112,8 @@ func TestExecutorXGBoost(t *testing.T) {
 		a.True(goodStream(stream.ReadAll()))
 		stream = runExtendedSQL(testAnalyzeTreeModelSelectIris, testDB, modelDir, nil)
 		a.True(goodStream(stream.ReadAll()))
+		stream = runExtendedSQL(testXGBoostPredictIris, testDB, modelDir, nil)
+		a.True(goodStream(stream.ReadAll()))
 	})
 }
 

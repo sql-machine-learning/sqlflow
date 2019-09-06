@@ -463,6 +463,10 @@ func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir strin
 		if e := genAntXGBoost(&buf, pr, nil, fts, db); e != nil {
 			return fmt.Errorf("genAntXGBoost %v", e)
 		}
+	} else if strings.HasPrefix(strings.ToUpper(pr.estimator), `XGB.`) {
+		if e := genXGBoost(&buf, pr, nil, fts, db); e != nil {
+			return fmt.Errorf("genXGBoost %v", e)
+		}
 	} else {
 		if e := genTF(&buf, pr, nil, fts, db); e != nil {
 			return fmt.Errorf("genTF %v", e)
