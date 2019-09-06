@@ -45,10 +45,10 @@ func newAnalyzeFiller(pr *extendedSelect, db *DB, fms []*FeatureMeta, label, mod
 	}, nil
 }
 
-func readAntXGBFeatures(pr *extendedSelect, db *DB) ([]*FeatureMeta, string, error) {
+func readXGBFeatures(pr *extendedSelect, db *DB) ([]*FeatureMeta, string, error) {
 	// TODO(weiguo): It's a quick way to read column and label names from
 	// xgboost.*, but too heavy.
-	fr, err := newAntXGBoostFiller(pr, nil, db)
+	fr, err := newXGBFiller(pr, nil, db)
 	if err != nil {
 		return nil, "", err
 	}
@@ -68,7 +68,7 @@ func readAntXGBFeatures(pr *extendedSelect, db *DB) ([]*FeatureMeta, string, err
 			IsSparse:    fr.X[i].IsSparse,
 		}
 	}
-	return xs, fr.Label, nil
+	return xs, fr.Y.FeatureName, nil
 }
 
 func readPlotType(pr *extendedSelect) string {
@@ -85,19 +85,17 @@ func genAnalyzer(pr *extendedSelect, db *DB, cwd, modelDir string) (*bytes.Buffe
 	if err != nil {
 		return nil, fmt.Errorf("loadModelMeta %v", err)
 	}
-	if !strings.HasPrefix(strings.ToUpper(pr.estimator), `XGBOOST.`) {
+	if !strings.HasPrefix(strings.ToUpper(pr.estimator), `XGB.`) {
 		return nil, fmt.Errorf("analyzer: model[%s] not supported", pr.estimator)
 	}
-	// We untar the AntXGBoost.{pr.trainedModel}.tar.gz and get three files.
-	// Here, the sqlflow_booster is a raw xgboost binary file can be analyzed.
-	antXGBModelPath := fmt.Sprintf("%s/sqlflow_booster", pr.trainedModel)
+	// We untar the XGBoost.{pr.trainedModel}.tar.gz and get three files.
 	plotType := readPlotType(pr)
-	xs, label, err := readAntXGBFeatures(pr, db)
+	xs, label, err := readXGBFeatures(pr, db)
 	if err != nil {
 		return nil, err
 	}
 
-	fr, err := newAnalyzeFiller(pr, db, xs, label, antXGBModelPath, plotType)
+	fr, err := newAnalyzeFiller(pr, db, xs, label, pr.trainedModel, plotType)
 	if err != nil {
 		return nil, fmt.Errorf("create analyze filler failed: %v", err)
 	}
