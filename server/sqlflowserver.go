@@ -21,6 +21,7 @@ package server
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -55,34 +56,60 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 		}
 		defer db.Close()
 	}
-	var pr *sf.PipeReader
-	if s.enableSession == true {
-		pr = s.run(req.Sql, db, s.modelDir, req.Session)
-	} else {
-		pr = s.run(req.Sql, db, s.modelDir, nil)
+
+	// FIXME(typhoonzero): split by ; can not deal with situations like
+	// "SELECT * from mytable where col <> ';';", should be fixed.
+	sqlStatements := strings.Split(req.Sql, ";")
+	trimedStatements := []string{}
+	for _, singleSQL := range sqlStatements {
+		sqlToRun := strings.Trim(singleSQL, "\n")
+		if sqlToRun == "" {
+			continue
+		}
+		trimedStatements = append(trimedStatements, sqlToRun)
 	}
-
-	defer pr.Close()
-
-	for r := range pr.ReadAll() {
-		var res *pb.Response
-		switch s := r.(type) {
-		case error:
-			return s
-		case map[string]interface{}:
-			res, err = encodeHead(s)
-		case []interface{}:
-			res, err = encodeRow(s)
-		case string:
-			res, err = encodeMessage(s)
-		default:
-			return fmt.Errorf("unrecognize run channel return type %#v", s)
+	for _, singleSQL := range trimedStatements {
+		sqlToRun := fmt.Sprintf("%s;", singleSQL)
+		var pr *sf.PipeReader
+		startTime := time.Now().UnixNano()
+		if s.enableSession == true {
+			pr = s.run(sqlToRun, db, s.modelDir, req.Session)
+		} else {
+			pr = s.run(sqlToRun, db, s.modelDir, nil)
 		}
-		if err != nil {
-			return err
+
+		defer pr.Close()
+
+		for r := range pr.ReadAll() {
+			var res *pb.Response
+			switch s := r.(type) {
+			case error:
+				return s
+			case map[string]interface{}:
+				res, err = encodeHead(s)
+			case []interface{}:
+				res, err = encodeRow(s)
+			case string:
+				res, err = encodeMessage(s)
+			default:
+				return fmt.Errorf("unrecognize run channel return type %#v", s)
+			}
+			if err != nil {
+				return err
+			}
+			if err := stream.Send(res); err != nil {
+				return err
+			}
 		}
-		if err := stream.Send(res); err != nil {
-			return err
+		// Send EndOfExecution message if have multiple requests.
+		if len(trimedStatements) > 1 {
+			eoe := &pb.EndOfExecution{}
+			eoe.Sql = singleSQL
+			eoe.SpentTimeSeconds = time.Now().UnixNano() - startTime
+			eoeResponse := &pb.Response{Response: &pb.Response_Eoe{Eoe: eoe}}
+			if err := stream.Send(eoeResponse); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

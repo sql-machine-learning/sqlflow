@@ -32,6 +32,11 @@ COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class 
 INTO sqlflow_models.my_xgboost_model;
 `
+const testAnalyzeTreeModelSelectIris = `
+SELECT * FROM iris.train
+ANALYZE sqlflow_models.my_xgboost_model
+USING TreeExplainer;
+	`
 
 const testXGBoostPredictIris = ` 
 SELECT *
