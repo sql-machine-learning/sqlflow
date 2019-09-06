@@ -25,13 +25,16 @@ import (
 
 const featureDerivationRows = 1000
 
-type featureColumnMap map[string]columns.FeatureColumn
-type columnSpecMap map[string]*columns.ColumnSpec
+// FeatureColumnMap is a mapping from column name to FeatureColumn struct
+type FeatureColumnMap map[string]columns.FeatureColumn
+
+// ColumnSpecMap is a mappign from column name to ColumnSpec struct
+type ColumnSpecMap map[string]*columns.ColumnSpec
 
 // makeFeatureColumnMap returns a map from column key to FeatureColumn
 // NOTE that the target is not important for analyzing feature derivation.
-func makeFeatureColumnMap(parsedFeatureColumns map[string][]columns.FeatureColumn) featureColumnMap {
-	fcMap := make(featureColumnMap)
+func makeFeatureColumnMap(parsedFeatureColumns map[string][]columns.FeatureColumn) FeatureColumnMap {
+	fcMap := make(FeatureColumnMap)
 	for _, fcList := range parsedFeatureColumns {
 		for _, fc := range fcList {
 			fcMap[fc.GetKey()] = fc
@@ -42,8 +45,8 @@ func makeFeatureColumnMap(parsedFeatureColumns map[string][]columns.FeatureColum
 
 // makeColumnSpecMap returns a map from column key to ColumnSpec
 // NOTE that the target is not important for analyzing feature derivation.
-func makeColumnSpecMap(parsedColumnSpecs map[string][]*columns.ColumnSpec) columnSpecMap {
-	csMap := make(columnSpecMap)
+func makeColumnSpecMap(parsedColumnSpecs map[string][]*columns.ColumnSpec) ColumnSpecMap {
+	csMap := make(ColumnSpecMap)
 	for _, fcList := range parsedColumnSpecs {
 		for _, cs := range fcList {
 			csMap[cs.ColumnName] = cs
@@ -57,15 +60,11 @@ func newRowValue(columnTypeList []*sql.ColumnType) ([]interface{}, error) {
 	for idx, ct := range columnTypeList {
 		typeName := ct.DatabaseTypeName()
 		switch typeName {
-		case "TEXT":
-			rowData[idx] = new(string)
-		case "VARCHAR":
+		case "VARCHAR", "TEXT":
 			rowData[idx] = new(string)
 		case "INT":
 			rowData[idx] = new(int32)
-		case "BIGINT":
-			rowData[idx] = new(int64)
-		case "DECIMAL":
+		case "BIGINT", "DECIMAL":
 			rowData[idx] = new(int64)
 		case "FLOAT":
 			rowData[idx] = new(float32)
@@ -78,7 +77,7 @@ func newRowValue(columnTypeList []*sql.ColumnType) ([]interface{}, error) {
 	return rowData, nil
 }
 
-func fillColumnSpec(columnTypeList []*sql.ColumnType, rowdata []interface{}, csmap columnSpecMap) error {
+func fillColumnSpec(columnTypeList []*sql.ColumnType, rowdata []interface{}, csmap ColumnSpecMap) error {
 	csvRegex, err := regexp.Compile("(\\-?[0-9\\.]\\,)+(\\-?[0-9\\.])")
 	if err != nil {
 		return err
@@ -101,19 +100,21 @@ func fillColumnSpec(columnTypeList []*sql.ColumnType, rowdata []interface{}, csm
 		switch typeName {
 		case "INT":
 			csmap[fld].DType = "int32"
-		case "BIGINT":
-		case "DECIMAL":
+			csmap[fld].Shape = []int{1}
+		case "DECIMAL", "BIGINT":
 			csmap[fld].DType = "int64"
+			csmap[fld].Shape = []int{1}
 		case "FLOAT":
 			csmap[fld].DType = "float32"
+			csmap[fld].Shape = []int{1}
 		case "DOUBLE":
 			csmap[fld].DType = "float64"
-		case "TEXT":
-		case "VARCHAR":
-			cellData := rowdata[idx].(string)
-			if csvRegex.MatchString(cellData) {
+			csmap[fld].Shape = []int{1}
+		case "VARCHAR", "TEXT":
+			cellData := rowdata[idx].(*string)
+			if csvRegex.MatchString(*cellData) {
 				// ----------------------- CSV string values -----------------------
-				values := strings.Split(cellData, ",")
+				values := strings.Split(*cellData, ",")
 				// set shape only when the column is "DENSE"
 				if csmap[fld].IsSparse == false && csmap[fld].Shape == nil {
 					csmap[fld].Shape = []int{len(values)}
@@ -135,9 +136,9 @@ func fillColumnSpec(columnTypeList []*sql.ColumnType, rowdata []interface{}, csm
 				}
 			} else {
 				// -------------------- non-CSV string values --------------------
-				_, err := strconv.ParseInt(cellData, 10, 32)
+				_, err := strconv.ParseInt(*cellData, 10, 32)
 				if err != nil {
-					_, err := strconv.ParseFloat(cellData, 32)
+					_, err := strconv.ParseFloat(*cellData, 32)
 					if err == nil {
 						// column is float value
 						if csmap[fld].Shape == nil {
@@ -148,8 +149,8 @@ func fillColumnSpec(columnTypeList []*sql.ColumnType, rowdata []interface{}, csm
 						// neither int nor float, should deal with string dtype
 						// to form a category_id_column
 						csmap[fld].DType = "string"
-						if _, ok := csmap[fld].Vocabulary[cellData]; !ok {
-							csmap[fld].Vocabulary[cellData] = cellData
+						if _, ok := csmap[fld].Vocabulary[*cellData]; !ok {
+							csmap[fld].Vocabulary[*cellData] = *cellData
 						}
 					}
 				} else {
@@ -171,7 +172,10 @@ func fillColumnSpec(columnTypeList []*sql.ColumnType, rowdata []interface{}, csm
 func InferFeatureColumns(slct *standardSelect,
 	parsedFeatureColumns map[string][]columns.FeatureColumn,
 	parsedColumnSpecs map[string][]*columns.ColumnSpec,
-	connConfig *connectionConfig) error {
+	connConfig *connectionConfig) (FeatureColumnMap, ColumnSpecMap, error) {
+	if connConfig == nil {
+		return nil, nil, fmt.Errorf("no connectionConfig provided")
+	}
 	// Convert feature column list to a map
 	fcMap := makeFeatureColumnMap(parsedFeatureColumns)
 	csMap := makeColumnSpecMap(parsedColumnSpecs)
@@ -182,12 +186,12 @@ func InferFeatureColumns(slct *standardSelect,
 		connConfig.Host, connConfig.Port)
 	db, err := NewDB(connStr)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	q := slct.String()
 	re, err := regexp.Compile("LIMIT [0-9]+")
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	limitClauseIndexes := re.FindStringIndex(q)
 	if limitClauseIndexes == nil {
@@ -200,12 +204,12 @@ func InferFeatureColumns(slct *standardSelect,
 
 	rows, err := db.Query(q)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	defer rows.Close()
 	columnTypes, err := rows.ColumnTypes()
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	selectFieldTypeMap := make(fieldTypes)
@@ -213,7 +217,7 @@ func InferFeatureColumns(slct *standardSelect,
 		_, fld := decomp(ct.Name())
 		typeName := ct.DatabaseTypeName()
 		if _, ok := selectFieldTypeMap[fld]; ok {
-			return fmt.Errorf("duplicated field name %s", fld)
+			return nil, nil, fmt.Errorf("duplicated field name %s", fld)
 		}
 		selectFieldTypeMap[fld] = typeName
 	}
@@ -221,30 +225,61 @@ func InferFeatureColumns(slct *standardSelect,
 	for rows.Next() {
 		rowData, err := newRowValue(columnTypes)
 		if err != nil {
-			return err
+			return nil, nil, err
 		}
 		err = rows.Scan(rowData...)
 		if err != nil {
-			return err
+			return nil, nil, err
 		}
 		fillColumnSpec(columnTypes, rowData, csMap)
 	}
 	err = rows.Err()
 	if err != nil {
-		return err
-	}
-	for k, cs := range csMap {
-		log.Printf("filled csMap: %s: %v", k, cs)
+		return nil, nil, err
 	}
 
-	for slctKey, fieldType := range selectFieldTypeMap {
-		// fill up FeatureColumn struct
+	// 1. Infer omited category_id_column for embedding_columns
+	// 2. Add derivated feature column.
+	for slctKey := range selectFieldTypeMap {
 		if fc, ok := fcMap[slctKey]; ok {
 			if fc.GetColumnType() == columns.ColumnTypeEmbedding {
-				log.Printf("automatically generate category_id_column here, fieldType: %v", fieldType)
+				if fc.(*columns.EmbeddingColumn).CategoryColumn == nil {
+					cs, ok := csMap[fc.GetKey()]
+					if !ok {
+						return nil, nil, fmt.Errorf("column not found or infered: %s", fc.GetKey())
+					}
+					// FIXME(typhoonzero): when to use sequence_category_id_column?
+					fc.(*columns.EmbeddingColumn).CategoryColumn = &columns.CategoryIDColumn{
+						Key:        cs.ColumnName,
+						BucketSize: cs.Shape[0],
+						Delimiter:  cs.Delimiter,
+						Dtype:      cs.DType,
+					}
+				}
+			}
+		} else {
+			cs, ok := csMap[slctKey]
+			if !ok {
+				return nil, nil, fmt.Errorf("column not found or infered: %s", slctKey)
+			}
+			if cs.DType != "string" {
+				fcMap[slctKey] = &columns.NumericColumn{
+					Key:       cs.ColumnName,
+					Shape:     cs.Shape,
+					Dtype:     cs.DType,
+					Delimiter: cs.Delimiter,
+				}
+			} else {
+				// FIXME(typhoonzero): need full test case for string numeric columns
+				fcMap[slctKey] = &columns.CategoryIDColumn{
+					Key:        cs.ColumnName,
+					BucketSize: len(cs.Vocabulary),
+					Delimiter:  cs.Delimiter,
+					Dtype:      cs.DType,
+				}
 			}
 		}
 	}
 
-	return nil
+	return fcMap, csMap, nil
 }

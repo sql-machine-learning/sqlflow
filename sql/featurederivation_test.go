@@ -17,6 +17,8 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/sql-machine-learning/sqlflow/sql/columns"
+
 	"github.com/sql-machine-learning/sqlflow/sql/testdata"
 	"github.com/stretchr/testify/assert"
 )
@@ -75,17 +77,44 @@ func TestFeatureDerivation(t *testing.T) {
 
 	connConfig, e := newConnectionConfig(db)
 	a.NoError(e)
-	_, e = resolveTrainClause(&r.trainClause, &r.standardSelect, connConfig)
+	res, e := resolveTrainClause(&r.trainClause, &r.standardSelect, connConfig)
 	a.NoError(e)
-	// c := r.columns["feature_columns"]
-	// _, _, e = resolveTrainColumns(&c)
-	// a.NoError(e)
-	// bc, ok := fcs[0].(*columns.BucketColumn)
-	// a.True(ok)
-	// code, e := bc.GenerateCode(nil)
-	// a.NoError(e)
-	// a.Equal("c1", bc.SourceColumn.Key)
-	// a.Equal([]int{10}, bc.SourceColumn.Shape)
-	// a.Equal([]int{1, 10}, bc.Boundaries)
-	// a.Equal("tf.feature_column.bucketized_column(tf.feature_column.numeric_column(\"c1\", shape=[10]), boundaries=[1,10])", code[0])
+
+	cs := res.ColumnSpecInfered["c1"]
+	a.Equal("c1", cs.ColumnName)
+	a.Equal([]int{1}, cs.Shape)
+	a.Equal("float32", cs.DType)
+	a.False(cs.IsSparse)
+
+	cs = res.ColumnSpecInfered["c3"]
+	a.Equal("c3", cs.ColumnName)
+	a.Equal([]int{4}, cs.Shape)
+	a.Equal("int64", cs.DType)
+
+	cs = res.ColumnSpecInfered["c4"]
+	a.Equal("c4", cs.ColumnName)
+	a.Equal([]int{4}, cs.Shape)
+	a.Equal("float32", cs.DType)
+	a.False(cs.IsSparse)
+
+	cs = res.ColumnSpecInfered["c5"]
+	a.Equal("c5", cs.ColumnName)
+	a.Equal([]int{10000}, cs.Shape)
+	a.Equal("int", cs.DType)
+	a.True(cs.IsSparse)
+
+	fc := res.FeatureColumnInfered["c1"]
+	a.Equal(columns.ColumnTypeNumeric, fc.GetColumnType())
+
+	fc = res.FeatureColumnInfered["c3"]
+	a.Equal(columns.ColumnTypeEmbedding, fc.GetColumnType())
+	emb, ok := fc.(*columns.EmbeddingColumn)
+	a.True(ok)
+	a.NotNil(emb.CategoryColumn)
+	a.Equal("c3", emb.CategoryColumn.(*columns.CategoryIDColumn).GetKey())
+
+	fc = res.FeatureColumnInfered["c5"]
+	a.Equal(columns.ColumnTypeEmbedding, fc.GetColumnType())
+	emb, ok = fc.(*columns.EmbeddingColumn)
+	a.Equal(10000, emb.CategoryColumn.(*columns.CategoryIDColumn).BucketSize)
 }

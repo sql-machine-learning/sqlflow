@@ -67,6 +67,8 @@ type resolvedTrainClause struct {
 	ColumnSpecs                   map[string][]*columns.ColumnSpec
 	EngineParams                  engineSpec
 	CustomModule                  *gitLabModule
+	FeatureColumnInfered          FeatureColumnMap
+	ColumnSpecInfered             ColumnSpecMap
 }
 
 type resolvedPredictClause struct {
@@ -221,10 +223,11 @@ func resolveTrainClause(tc *trainClause, slct *standardSelect, connConfig *conne
 		fcMap[target] = fcs
 		csMap[target] = css
 	}
-	err = InferFeatureColumns(slct, fcMap, csMap, connConfig)
-	if err != nil {
-		return nil, err
-	}
+	// TODO(typhoonzero): use the derivated maps for codegen, skip checking error
+	// since it's not used by codegen yet.
+	// also, need to clean up what is inside "resolvedTrainClause", keep only
+	// fcInfered, csInfered
+	fcInfered, csInfered, err := InferFeatureColumns(slct, fcMap, csMap, connConfig)
 
 	return &resolvedTrainClause{
 		IsPreMadeModel:                preMadeModel,
@@ -252,7 +255,10 @@ func resolveTrainClause(tc *trainClause, slct *standardSelect, connConfig *conne
 		FeatureColumns:                fcMap,
 		ColumnSpecs:                   csMap,
 		EngineParams:                  getEngineSpec(engineParams),
-		CustomModule:                  customModel}, nil
+		CustomModule:                  customModel,
+		FeatureColumnInfered:          fcInfered,
+		ColumnSpecInfered:             csInfered,
+	}, nil
 }
 
 func resolvePredictClause(pc *predictClause) (*resolvedPredictClause, error) {
@@ -307,16 +313,6 @@ func resolveTrainColumns(columnExprs *exprlist) ([]columns.FeatureColumn, []*col
 			if result != nil {
 				fcs = append(fcs, result)
 			}
-		}
-	}
-	if len(fcs) > 0 {
-		for _, myfc := range fcs {
-			log.Infof("got feature_column from sql: %v", myfc)
-		}
-	}
-	if len(css) > 0 {
-		for _, mycs := range css {
-			log.Infof("got columnSpec from sql: %v", mycs)
 		}
 	}
 	return fcs, css, nil
@@ -574,6 +570,7 @@ func resolveEmbeddingColumn(el *exprlist) (*columns.EmbeddingColumn, *columns.Co
 	var source columns.FeatureColumn
 	var cs *columns.ColumnSpec
 	var err error
+	var innerCategoryColumnKey string
 
 	var catColumnResult interface{}
 	if sourceExprList.typ == 0 {
@@ -583,6 +580,7 @@ func resolveEmbeddingColumn(el *exprlist) (*columns.EmbeddingColumn, *columns.Co
 		}
 		// user may write EMBEDDING(SPARSE(...)) or EMBEDDING(DENSE(...))
 		if cs != nil {
+			innerCategoryColumnKey = cs.ColumnName
 			catColumnResult = &columns.CategoryIDColumn{
 				Key:        cs.ColumnName,
 				BucketSize: cs.Shape[0],
@@ -601,15 +599,12 @@ func resolveEmbeddingColumn(el *exprlist) (*columns.EmbeddingColumn, *columns.Co
 			}
 			// NOTE: to avoid golang multiple assignment compiler restrictions
 			catColumnResult = catColumn
+			innerCategoryColumnKey = source.GetKey()
 		}
 	} else {
 		// generate a default CategoryIDColumn for later feature derivation.
-		catColumnResult = &columns.CategoryIDColumn{
-			Key:        sourceExprList.val,
-			BucketSize: 0,
-			Delimiter:  "",
-			Dtype:      "int64",
-		}
+		catColumnResult = nil
+		innerCategoryColumnKey = sourceExprList.val
 	}
 
 	dimension, err := strconv.Atoi((*el)[2].val)
@@ -628,6 +623,7 @@ func resolveEmbeddingColumn(el *exprlist) (*columns.EmbeddingColumn, *columns.Co
 		}
 	}
 	return &columns.EmbeddingColumn{
+		Key:            innerCategoryColumnKey,
 		CategoryColumn: catColumnResult,
 		Dimension:      dimension,
 		Combiner:       combiner,
