@@ -79,7 +79,7 @@ func resolveParamsCfg(attrs map[string]*attribute) (map[string]interface{}, erro
 func resolveObjective(pr *extendedSelect) (string, error) {
 	estimatorParts := strings.Split(pr.estimator, ".")
 	if len(estimatorParts) != 3 {
-		return "", fmt.Errorf("XGBoost Estimator should be xgboost.first_part.second_part")
+		return "", fmt.Errorf("XGBoost Estimator should be xgboost.first_part.second_part, current: %s", pr.estimator)
 	}
 	return strings.Join(estimatorParts[1:], ":"), nil
 }
@@ -90,6 +90,7 @@ func newXGBFiller(pr *extendedSelect, ds *trainAndValDataset, db *DB) (*xgbFille
 		return nil, err
 	}
 	training, validation := trainingAndValidationDataset(pr, ds)
+	isTrain := pr.train
 	r := &xgbFiller{
 		Estimator: Estimator{
 			IsTrain:              pr.train,
@@ -100,24 +101,33 @@ func newXGBFiller(pr *extendedSelect, ds *trainAndValDataset, db *DB) (*xgbFille
 		Save:           pr.save,
 	}
 
-	// resolve the attribute keys without any prefix as the XGBoost Paremeters
-	params, err := resolveParamsCfg(attrs)
-	if err != nil {
-		return nil, err
+	if !isTrain {
+		r.PredictionDatasetSQL = pr.standardSelect.String()
+		if r.TableName, _, err = parseTableColumn(pr.into); err != nil {
+			return nil, err
+		}
 	}
 
-	// fill learning target
-	objective, err := resolveObjective(pr)
-	if err != nil {
-		return nil, err
-	}
-	params["objective"] = objective
+	if isTrain {
+		// resolve the attribute keys without any prefix as the XGBoost Paremeters
+		params, err := resolveParamsCfg(attrs)
+		if err != nil {
+			return nil, err
+		}
 
-	paramsJSON, err := json.Marshal(params)
-	if err != nil {
-		return nil, err
+		// fill learning target
+		objective, err := resolveObjective(pr)
+		if err != nil {
+			return nil, err
+		}
+		params["objective"] = objective
+
+		paramsJSON, err := json.Marshal(params)
+		if err != nil {
+			return nil, err
+		}
+		r.ParamsCfgJSON = string(paramsJSON)
 	}
-	r.ParamsCfgJSON = string(paramsJSON)
 
 	if r.connectionConfig, err = newConnectionConfig(db); err != nil {
 		return nil, err
@@ -161,7 +171,11 @@ func genXGBoost(w io.Writer, pr *extendedSelect, ds *trainAndValDataset, fts fie
 	if pr.train {
 		return xgbTrainTemplate.Execute(w, r)
 	}
-	return fmt.Errorf("xgboost prediction codegen has not been implemented")
+	if e := createPredictionTable(pr, db); e != nil {
+		return fmt.Errorf("failed to create prediction table: %v", e)
+	}
+	return xgbPredictTemplate.Execute(w, r)
 }
 
 var xgbTrainTemplate = template.Must(template.New("codegenXGBTrain").Parse(xgbTrainTemplateText))
+var xgbPredictTemplate = template.Must(template.New("codegenXGBPredict").Parse(xgbPredictTemplateText))
