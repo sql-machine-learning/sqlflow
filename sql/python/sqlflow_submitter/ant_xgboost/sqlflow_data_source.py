@@ -16,6 +16,7 @@ import json
 import typing
 from typing import Iterator
 
+
 from launcher import DataSource, config_fields, XGBoostResult, XGBoostRecord
 from launcher.data_units import RecordBuilder
 

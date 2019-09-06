@@ -71,40 +71,7 @@ func TestSplitExtendedSQL(t *testing.T) {
 	a.Equal(`train a with b;`, s[0])
 }
 
-func TestExecutorTrainAnalyzePredictAntXGBoost(t *testing.T) {
-	t.Skip("Fix this failed test later")
-	a := assert.New(t)
-	modelDir, e := ioutil.TempDir("/tmp", "sqlflow_models")
-	a.Nil(e)
-	defer os.RemoveAll(modelDir)
-
-	runWithVerify := func(trainSql, predSql, analyzeSql, modelName string, baseline float32) {
-		a.NotPanics(func() {
-			stream := runExtendedSQL(trainSql, testDB, modelDir, nil)
-			a.True(goodStream(stream.ReadAll()))
-			if len(modelName) >= 0 {
-				metrics, e := loadXgTrainMetrics(testDB, modelDir, modelName)
-				a.NoError(e)
-				a.True(metrics.verifyPerf(baseline))
-			}
-
-			if len(analyzeSql) > 0 {
-				stream = runExtendedSQL(analyzeSql, testDB, modelDir, nil)
-				a.True(goodStream(stream.ReadAll()))
-			}
-			if len(predSql) > 0 {
-				stream = runExtendedSQL(predSql, testDB, modelDir, nil)
-				a.True(goodStream(stream.ReadAll()))
-			}
-		})
-	}
-	runWithVerify(testAntXGTrainSelectIris, testAntXGPredSelectIris, testAntXGAnalyzeSelectIris, "sqlflow_models.iris_antXG_model", 0.0001)
-	if getEnv("SQLFLOW_TEST_DB", "mysql") == "mysql" {
-		runWithVerify(testAntXGTrainSelectBoston, testAntXGPredSelectBoston, "", "sqlflow_models.boston_antXG_model", 3.5)
-	}
-}
-
-func TestExecutorXGBoost(t *testing.T) {
+func TestExecutorTrainXGBoost(t *testing.T) {
 	a := assert.New(t)
 	modelDir := ""
 	a.NotPanics(func() {

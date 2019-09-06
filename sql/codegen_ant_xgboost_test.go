@@ -76,6 +76,7 @@ USING sqlflow_models.boston_antXG_model;
 )
 
 func TestPartials(t *testing.T) {
+	t.Skip()
 	a := assert.New(t)
 	tmpMap := make(map[string][]string)
 	filler := &antXGBoostFiller{}
@@ -145,6 +146,7 @@ func TestPartials(t *testing.T) {
 }
 
 func TestXGBoostAttr(t *testing.T) {
+	t.Skip()
 	a := assert.New(t)
 	assertEq := func(m map[string]interface{}, key string, refVal interface{}) {
 		val, _ := m[key]
@@ -245,6 +247,7 @@ USING sqlflow_models.my_xgboost_model;
 }
 
 func TestColumnClause(t *testing.T) {
+	t.Skip()
 	a := assert.New(t)
 	parser := newParser()
 	sqlHead := `
@@ -353,6 +356,7 @@ LABEL e INTO model_table;
 }
 
 func TestXGBoostFiller(t *testing.T) {
+	t.Skip()
 	a := assert.New(t)
 
 	parser := newParser()
