@@ -148,7 +148,7 @@ with buffered_db_writer(driver, conn, "{{.TableName}}", result_column_names, 100
         line = feature_file_read.readline()
         if not line:
             break
-        row = [float(i.split(":")[1]) for i in line.replace("\n", "").split("\t")[1:]]
+        row = [i.split(":")[1] for i in line.replace("\n", "").split("\t")[1:]]
         row.append(pred_classes[line_no])
         w.write(row)
         line_no += 1
