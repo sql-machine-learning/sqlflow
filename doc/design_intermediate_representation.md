@@ -72,11 +72,13 @@ type TrainIR struct {
 
 // PredictIR is the intermediate representation for code generation of a prediction job
 type PredictIR struct {
-	DataSource string                 // e.g. "hive://root:root@localhost:10000/churn"
-	Select     string                 // e.g. "select * from iris.train"
-	Estimator  string                 // e.g. "DNNClassifier"
-	Attribute  map[string]interface{} // e.g. {"predict.batch_size": 32}
-	Feature    map[string]FieldMeta   // e.g. {"sepal_length": {"float", "", [1], false}, ...}
+	DataSource  string                 // e.g. "hive://root:root@localhost:10000/churn"
+	Select      string                 // e.g. "select * from iris.test"
+	Estimator   string                 // e.g. "DNNClassifier"
+	Attribute   map[string]interface{} // e.g. {"predict.batch_size": 32}
+	Feature     map[string]FieldMeta   // e.g. {"sepal_length": {"float", "", [1], false}, ...}
+	Label       map[string]FieldMeta   // e.g. {"class": {"int32", "", [1], false}}
+	ReusltTable string                 // e.g. "iris.predict"
 }
 
 // AnalyzeIR is the intermediate representation for code generation of a analysis job
