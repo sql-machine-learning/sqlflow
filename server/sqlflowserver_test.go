@@ -20,6 +20,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -47,7 +48,8 @@ func mockRun(sql string, db *sf.DB, modelDir string, session *pb.Session) *sf.Pi
 	rd, wr := sf.Pipe()
 	go func() {
 		defer wr.Close()
-
+		// the server may automatically add a trailing ";", remove it
+		sql = strings.Trim(sql, ";")
 		switch sql {
 		case testErrorSQL:
 			wr.Write(fmt.Errorf("run error: %v", testErrorSQL))
