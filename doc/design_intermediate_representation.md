@@ -79,3 +79,13 @@ type AnalyzeIR struct {
 	Label       map[string]FieldMeta   // e.g. {"class": {"int32", "", [1], false}}
 }
 ```
+
+Please be aware that all the IR excludes the information of working directory. This information belongs to the `executor` in `sql` package.
+- For training job
+  - If `executor` runs the generated program in a temporary directory, it should serialize the directory to a table for later use.
+  - If `executor` runs the generated program in a local directory, it should make sure the prediction and analyze job sees the same directory.
+- For prediction and analyze job, the `executor` should recover everything produced by the training job.
+
+Please be aware that `TrainIR` excludes the saving table name. This information belongs to the `executor` in `sql` package.
+- For a local training job, the result of the generated program contains the trained model. And `executor` is re
+- For a distributed training job, the generated program should garantee that the local directory contains enough information, such as OSS bucket name. So that later on the prediction job find it.
