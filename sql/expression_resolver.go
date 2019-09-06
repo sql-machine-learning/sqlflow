@@ -391,18 +391,6 @@ func expression2string(e interface{}) (string, error) {
 	return "", fmt.Errorf("expression expected to be string, actual: %s", resolved)
 }
 
-// func generateFeatureColumnCode(fcs []columns.FeatureColumn) (string, error) {
-// 	var codes = make([]string, 0, len(fcs))
-// 	for _, fc := range fcs {
-// 		code, err := fc.GenerateCode()
-// 		if err != nil {
-// 			return "", nil
-// 		}
-// 		codes = append(codes, code)
-// 	}
-// 	return fmt.Sprintf("[%s]", strings.Join(codes, ",")), nil
-// }
-
 func resolveDelimiter(delimiter string) (string, error) {
 	if strings.EqualFold(delimiter, comma) {
 		return ",", nil
