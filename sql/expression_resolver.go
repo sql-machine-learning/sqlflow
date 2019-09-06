@@ -120,7 +120,6 @@ func getStringAttr(attrs map[string]*attribute, key string, defaultValue string)
 		strVal, _ := p.Value.(string)
 		defer delete(attrs, p.FullName)
 		return trimQuotes(strVal)
-		fmt.Printf("ignore invalid %s=%s, default is %v", key, p.Value, defaultValue)
 	}
 	return defaultValue
 }
@@ -130,7 +129,6 @@ func getStringsAttr(attrs map[string]*attribute, key string, defaultValue []stri
 		strVal, _ := p.Value.(string)
 		defer delete(attrs, p.FullName)
 		return strings.Split(trimQuotes(strVal), ",")
-		fmt.Printf("ignore invalid %s=%s, default is %v", key, p.Value, defaultValue)
 	}
 	return defaultValue
 }

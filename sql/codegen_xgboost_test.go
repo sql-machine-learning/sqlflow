@@ -36,7 +36,7 @@ const testAnalyzeTreeModelSelectIris = `
 SELECT * FROM iris.train
 ANALYZE sqlflow_models.my_xgboost_model
 USING TreeExplainer;
-	`
+`
 
 func TestXGBFiller(t *testing.T) {
 	a := assert.New(t)
