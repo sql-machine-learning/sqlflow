@@ -38,45 +38,55 @@ We propose the following struct as the IR for code generation.
 ```go
 package sql
 
-// FieldMeta contains the meta information for decoding
+import (
+	"github.com/sql-machine-learning/sqlflow/sql/columns"
+)
+
+type FieldType int
+
+const (
+	Int FieldType = iota
+	Float
+	String
+)
+
+// FieldMeta contains the meta information for decoding and feature columns
 type FieldMeta struct {
-	DType     string // e.g. "float", "int32"
-	Delimiter string // e.g. ","
-	Shape     []int  // e.g. [1], [1 2 3]
-	IsSparse  bool   // e.g. false
+	DType         FieldType               // e.g. "float", "int32"
+	Delimiter     string                  // e.g. ","
+	Shape         []int                   // e.g. [1], [1 2 3]
+	IsSparse      bool                    // e.g. false
+	FeatureColumn []columns.FeatureColumn // e.g. [EmbeddingColumn, CategoryIDColumn]
 }
 
 // TrainIR is the intermediate representation for code generation of a training job
 type TrainIR struct {
-	DataSource  string                 // e.g. "hive://root:root@localhost:10000/churn"
-	ExtraConfig string                 // Extra configuration in JSON format. e.g. OSS credential
-	Select      string                 // e.g. "select * from iris.train"
-	ExtraSelect map[string]string      // e.g. {"validation": "select * from iris.val;"}
-	Estimator   string                 // e.g. "DNNClassifier"
-	Attribute   map[string]interface{} // e.g. {"train.epoch": 1000, "model.hidden_units": [10 10]}
-	Feature     map[string]FieldMeta   // e.g. {"sepal_length": {"float", "", [1], false}, ...}
-	Label       map[string]FieldMeta   // e.g. {"class": {"int32", "", [1], false}}
+	DataSource       string                 // e.g. "hive://root:root@localhost:10000/churn"
+	Select           string                 // e.g. "select * from iris.train"
+	ValidationSelect string                 // e.g. "select * from iris.val;"
+	Estimator        string                 // e.g. "DNNClassifier"
+	Attribute        map[string]interface{} // e.g. {"train.epoch": 1000, "model.hidden_units": [10 10]}
+	Feature          map[string]FieldMeta   // e.g. {"sepal_length": {"float", "", [1], false}, ...}
+	Label            map[string]FieldMeta   // e.g. {"class": {"int32", "", [1], false}}
 }
 
 // PredictIR is the intermediate representation for code generation of a prediction job
 type PredictIR struct {
-	DataSource  string                 // e.g. "hive://root:root@localhost:10000/churn"
-	ExtraConfig string                 // Extra configuration in JSON format. e.g. OSS credential
-	Select      string                 // e.g. "select * from iris.train"
-	Estimator   string                 // e.g. "DNNClassifier"
-	Attribute   map[string]interface{} // e.g. {"predict.batch_size": 32}
-	Feature     map[string]FieldMeta   // e.g. {"sepal_length": {"float", "", [1], false}, ...}
+	DataSource string                 // e.g. "hive://root:root@localhost:10000/churn"
+	Select     string                 // e.g. "select * from iris.train"
+	Estimator  string                 // e.g. "DNNClassifier"
+	Attribute  map[string]interface{} // e.g. {"predict.batch_size": 32}
+	Feature    map[string]FieldMeta   // e.g. {"sepal_length": {"float", "", [1], false}, ...}
 }
 
 // AnalyzeIR is the intermediate representation for code generation of a analysis job
 type AnalyzeIR struct {
-	DataSource  string                 // e.g. "hive://root:root@localhost:10000/churn"
-	ExtraConfig string                 // Extra configuration in JSON format. e.g. OSS credential
-	Select      string                 // e.g. "select * from iris.train"
-	Estimator   string                 // e.g. "DNNClassifier"
-	Attribute   map[string]interface{} // e.g. {"analyze.plot_type": "bar"}
-	Feature     map[string]FieldMeta   // e.g. {"sepal_length": {"float", "", [1], false}, ...}
-	Label       map[string]FieldMeta   // e.g. {"class": {"int32", "", [1], false}}
+	DataSource string                 // e.g. "hive://root:root@localhost:10000/churn"
+	Select     string                 // e.g. "select * from iris.train"
+	Estimator  string                 // e.g. "DNNClassifier"
+	Attribute  map[string]interface{} // e.g. {"analyze.plot_type": "bar"}
+	Feature    map[string]FieldMeta   // e.g. {"sepal_length": {"float", "", [1], false}, ...}
+	Label      map[string]FieldMeta   // e.g. {"class": {"int32", "", [1], false}}
 }
 ```
 
