@@ -47,6 +47,26 @@ def connect(driver, database, user, password, host, port, auth=""):
 def db_generator(driver, conn, session_cfg, statement,
                  feature_column_names, label_column_name,
                  feature_specs, fetch_size=128):
+    def read_feature(raw_val, feature_spec, feature_name):
+        # FIXME(typhoonzero): Should use correct dtype here.
+        if feature_spec["is_sparse"]:
+            indices = np.fromstring(raw_val, dtype=int, sep=feature_spec["delimiter"])
+            indices = indices.reshape(indices.size, 1)
+            values = np.ones([indices.size], dtype=np.int32)
+            dense_shape = np.array(feature_spec["shape"], dtype=np.int64)
+            return (indices, values, dense_shape)
+        else:
+            # Dense string vector
+            if feature_spec["delimiter"] != "":
+                if feature_spec["dtype"] == "float32":
+                    return np.fromstring(raw_val, dtype=float, sep=feature_spec["delimiter"])
+                elif feature_spec["dtype"] == "int64":
+                    return np.fromstring(raw_val, dtype=int, sep=feature_spec["delimiter"])
+                else:
+                    raise ValueError('unrecognize dtype {}'.format(feature_spec[feature_name]["dtype"]))
+            else:
+                return raw_val
+
     def reader():
         if driver == "hive":
             cursor = conn.cursor(configuration=session_cfg)
@@ -75,25 +95,8 @@ def db_generator(driver, conn, session_cfg, statement,
                 label = row[label_idx] if label_idx is not None else None
                 features = []
                 for name in feature_column_names:
-                    # FIXME(typhoonzero): Should use correct dtype here.
-                    if feature_specs[name]["is_sparse"]:
-                        indices = np.fromstring(row[field_names.index(name)], dtype=int, sep=feature_specs[name]["delimiter"])
-                        indices = indices.reshape(indices.size, 1)
-                        values = np.ones([indices.size], dtype=np.int32)
-                        dense_shape = np.array(feature_specs[name]["shape"], dtype=np.int64)
-                        cell = (indices, values, dense_shape)
-                    else:
-                        # Dense string vector
-                        if feature_specs[name]["delimiter"] != "":
-                            if feature_specs[name]["dtype"] == "float32":
-                                cell = np.fromstring(row[field_names.index(name)], dtype=float, sep=feature_specs[name]["delimiter"])
-                            elif feature_specs[name]["dtype"] == "int64":
-                                cell = np.fromstring(row[field_names.index(name)], dtype=int, sep=feature_specs[name]["delimiter"])
-                            else:
-                                raise ValueError('unrecognize dtype {}'.format(feature_specs[name]["dtype"]))
-                        else:
-                            cell = row[field_names.index(name)]
-                    features.append(cell)
+                    feature = read_feature(row[field_names.index(name)], feature_specs[name], name)
+                    features.append(feature)
                 yield (tuple(features), [label])
             if len(rows) < fetch_size:
                 break

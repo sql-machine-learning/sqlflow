@@ -20,6 +20,7 @@ import (
 	"text/template"
 
 	"github.com/go-sql-driver/mysql"
+	"github.com/sql-machine-learning/sqlflow/sql/columns"
 	"sqlflow.org/gohive"
 	"sqlflow.org/gomaxcompute"
 )
@@ -50,7 +51,8 @@ type modelConfig struct {
 	IsKerasModel        bool
 }
 
-type featureMeta struct {
+// FeatureMeta describes feature column meta data
+type FeatureMeta struct {
 	FeatureName string
 	Dtype       string
 	Delimiter   string
@@ -58,17 +60,22 @@ type featureMeta struct {
 	IsSparse    bool
 }
 
-type filler struct {
-	IsTrain            bool
-	TrainingDataset    string // IsTrain == true
-	ValidationDataset  string // IsTrain == true
-	PredictionDataset  string // IsTrain != true
-	X                  []*featureMeta
-	FeatureColumnsCode map[string][]string
-	Y                  *featureMeta
-	TableName          string
+// Estimator describes estimator meta data
+type Estimator struct {
+	IsTrain              bool
+	TrainingDatasetSQL   string // IsTrain == true
+	ValidationDatasetSQL string // IsTrain == true
+	PredictionDatasetSQL string // IsTrain != true
+	X                    []*FeatureMeta
+	Y                    *FeatureMeta
+	TableName            string
+	*connectionConfig
+}
+
+type tfFiller struct {
+	Estimator
 	modelConfig
-	connectionConfig
+	FeatureColumnsCode map[string][]string
 }
 
 // parseModelURI returns isKerasModel, modelClassString
@@ -86,14 +93,16 @@ func trainingAndValidationDataset(pr *extendedSelect, ds *trainAndValDataset) (s
 	return pr.standardSelect.String(), pr.standardSelect.String()
 }
 
-func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *DB) (*filler, error) {
+func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *DB) (*tfFiller, error) {
 	isKerasModel, modelClassString := parseModelURI(pr.estimator)
 	training, validation := trainingAndValidationDataset(pr, ds)
-	r := &filler{
-		IsTrain:           pr.train,
-		TrainingDataset:   training,
-		ValidationDataset: validation,
-		PredictionDataset: pr.standardSelect.String(),
+	r := &tfFiller{
+		Estimator: Estimator{
+			IsTrain:              pr.train,
+			TrainingDatasetSQL:   training,
+			ValidationDatasetSQL: validation,
+			PredictionDatasetSQL: pr.standardSelect.String(),
+		},
 		modelConfig: modelConfig{
 			EstimatorCode: modelClassString,
 			BatchSize:     1,
@@ -111,8 +120,8 @@ func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *D
 	r.modelConfig.Epochs = trainResolved.Epoch
 
 	featureColumnsCode := make(map[string][]string)
-	for target, columns := range pr.columns {
-		feaCols, colSpecs, err := resolveTrainColumns(&columns)
+	for target, columnsExpr := range pr.columns {
+		feaCols, colSpecs, err := resolveTrainColumns(&columnsExpr)
 		if err != nil {
 			return nil, err
 		}
@@ -120,29 +129,34 @@ func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *D
 			return nil, fmt.Errorf("newFiller doesn't support DENSE/SPARSE")
 		}
 		for _, col := range feaCols {
-			feaColCode, e := col.GenerateCode()
+			// TODO(typhoonzero): pass columnSpecs if needed.
+			feaColCode, e := col.GenerateCode(nil)
 			if e != nil {
 				return nil, e
 			}
+			if len(feaColCode) > 1 {
+				return nil, fmt.Errorf("does not support grouped feature column yet, grouped column: %v", feaColCode)
+			}
+
 			// FIXME(typhoonzero): Use Heuristic rules to determine whether a column should be transformed to a
 			// tf.SparseTensor. Currently the rules are:
 			// if column have delimiter and it's not a sequence_catigorical_column, we'll treat it as a sparse column
 			// else, use dense column.
 			isSparse := false
 			var isEmb bool
-			_, ok := col.(*sequenceCategoryIDColumn)
+			_, ok := col.(*columns.SequenceCategoryIDColumn)
 			if !ok {
-				_, isEmb = col.(*embeddingColumn)
+				_, isEmb = col.(*columns.EmbeddingColumn)
 				if isEmb {
-					_, ok = col.(*embeddingColumn).CategoryColumn.(*sequenceCategoryIDColumn)
+					_, ok = col.(*columns.EmbeddingColumn).CategoryColumn.(*columns.SequenceCategoryIDColumn)
 				}
 			}
 			if !ok && col.GetDelimiter() != "" {
-				if _, ok := col.(*numericColumn); !ok {
+				if _, ok := col.(*columns.NumericColumn); !ok {
 					isSparse = true
 				}
 			}
-			fm := &featureMeta{
+			fm := &FeatureMeta{
 				FeatureName: col.GetKey(),
 				Dtype:       col.GetDtype(),
 				Delimiter:   col.GetDelimiter(),
@@ -152,7 +166,7 @@ func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *D
 			r.X = append(r.X, fm)
 			featureColumnsCode[target] = append(
 				featureColumnsCode[target],
-				feaColCode)
+				feaColCode[0])
 		}
 	}
 
@@ -196,7 +210,7 @@ func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *D
 			log.Fatalf("Unsupported label data type: %s", v)
 		}
 	}
-	r.Y = &featureMeta{
+	r.Y = &FeatureMeta{
 		FeatureName: pr.label,
 		Dtype:       labelDtype,
 		Delimiter:   ",",
@@ -211,11 +225,20 @@ func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *D
 		}
 	}
 
-	return fillDatabaseInfo(r, db)
+	r.connectionConfig, err = newConnectionConfig(db)
+	if err == nil && r.Driver == "hive" {
+		// remove the last ';' which leads to a (hive)ParseException
+		r.TrainingDatasetSQL = strings.TrimSuffix(r.TrainingDatasetSQL, ";")
+		r.ValidationDatasetSQL = strings.TrimSuffix(r.ValidationDatasetSQL, ";")
+		r.PredictionDatasetSQL = strings.TrimSuffix(r.PredictionDatasetSQL, ";")
+	}
+	return r, err
 }
 
-func fillDatabaseInfo(r *filler, db *DB) (*filler, error) {
-	r.Driver = db.driverName
+func newConnectionConfig(db *DB) (*connectionConfig, error) {
+	cc := &connectionConfig{
+		Driver: db.driverName,
+	}
 	switch db.driverName {
 	case "mysql":
 		cfg, err := mysql.ParseDSN(db.dataSourceName)
@@ -223,44 +246,32 @@ func fillDatabaseInfo(r *filler, db *DB) (*filler, error) {
 			return nil, err
 		}
 		sa := strings.Split(cfg.Addr, ":")
-		r.Host, r.Port, r.Database = sa[0], sa[1], cfg.DBName
-		r.User, r.Password = cfg.User, cfg.Passwd
+		cc.Host, cc.Port, cc.Database = sa[0], sa[1], cfg.DBName
+		cc.User, cc.Password = cfg.User, cfg.Passwd
 	case "sqlite3":
-		r.Database = db.dataSourceName
+		cc.Database = db.dataSourceName
 	case "hive":
 		cfg, err := gohive.ParseDSN(db.dataSourceName)
 		if err != nil {
 			return nil, err
 		}
-		r.Auth = cfg.Auth
-		r.Session = cfg.SessionCfg
+		cc.Auth = cfg.Auth
+		cc.Session = cfg.SessionCfg
 		sa := strings.Split(cfg.Addr, ":")
-		r.Host, r.Port, r.Database = sa[0], sa[1], cfg.DBName
-		r.User, r.Password = cfg.User, cfg.Passwd
-		// remove the last ';' which leads to a ParseException
-		r.TrainingDataset = removeLastSemicolon(r.TrainingDataset)
-		r.ValidationDataset = removeLastSemicolon(r.ValidationDataset)
-		r.PredictionDataset = removeLastSemicolon(r.PredictionDataset)
+		cc.Host, cc.Port, cc.Database = sa[0], sa[1], cfg.DBName
+		cc.User, cc.Password = cfg.User, cfg.Passwd
 	case "maxcompute":
 		cfg, err := gomaxcompute.ParseDSN(db.dataSourceName)
 		if err != nil {
 			return nil, err
 		}
 		// setting r.Port=0 just makes connect() happy
-		r.Host, r.Port, r.Database = cfg.Endpoint, "0", cfg.Project
-		r.User, r.Password = cfg.AccessID, cfg.AccessKey
+		cc.Host, cc.Port, cc.Database = cfg.Endpoint, "0", cfg.Project
+		cc.User, cc.Password = cfg.AccessID, cfg.AccessKey
 	default:
 		return nil, fmt.Errorf("sqlfow currently doesn't support DB %v", db.driverName)
 	}
-	return r, nil
-}
-
-func removeLastSemicolon(s string) string {
-	n := len(s)
-	if n > 0 && s[n-1] == ';' {
-		return s[0 : n-1]
-	}
-	return s
+	return cc, nil
 }
 
 func genTF(w io.Writer, pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *DB) error {
@@ -270,6 +281,9 @@ func genTF(w io.Writer, pr *extendedSelect, ds *trainAndValDataset, fts fieldTyp
 	}
 	if pr.train {
 		return tfTrainTemplate.Execute(w, r)
+	}
+	if e := createPredictionTable(pr, db); e != nil {
+		return fmt.Errorf("failed to create prediction table: %v", e)
 	}
 	return tfPredTemplate.Execute(w, r)
 }

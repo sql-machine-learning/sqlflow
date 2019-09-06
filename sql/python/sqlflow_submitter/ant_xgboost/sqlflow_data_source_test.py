@@ -15,7 +15,7 @@ import json
 import os
 from unittest import TestCase
 
-from sqlflow_submitter.xgboost.sqlflow_data_source import SQLFlowDSConfig, SQLFlowDataSource
+from sqlflow_submitter.ant_xgboost.sqlflow_data_source import SQLFlowDSConfig, SQLFlowDataSource
 from launcher import config_helper, config_fields, register_data_source, XGBoostRecord, XGBoostResult
 from launcher.data_source import create_data_source_init_fn
 from sqlflow_submitter.db_test import execute as db_exec

@@ -26,7 +26,7 @@ SELECT *
 FROM iris.train
 TRAIN xgboost.Estimator
 WITH
-	train.objective = "multi:softmax",
+	train.objective = "multi:softprob",
 	train.num_class = 3,
 	train.max_depth = 5,
 	train.eta = 0.3,
@@ -38,16 +38,15 @@ LABEL class INTO sqlflow_models.my_xgboost_model;
     pred_statement = """
 SELECT *
 FROM iris.test
-PREDICT iris.predict
+PREDICT iris.predict.result
 WITH
 	pred.append_columns = [sepal_length, sepal_width, petal_length, petal_width],
 	pred.prob_column = prob,
-	pred.detail_column = detail,
-	pred.encoding_column = encoding
+	pred.detail_column = detail
 USING sqlflow_models.my_xgboost_model;
 """
 
-    def test_xgboost(self):
+    def test_antxgboost(self):
         ipython.run_cell_magic("sqlflow", "", self.train_statement)
         ipython.run_cell_magic("sqlflow", "", self.pred_statement)
 
