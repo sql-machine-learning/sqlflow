@@ -2,7 +2,7 @@
 
 ## Overview
 
-As SQLFlow is supporting more and more machine learning toolkits, their corresponding code generation logics are better being orgnized as separate packages. An intermediate representation(IR) of the SQL jobs becomes necessary to connect these separate packages with the core `sql` package.
+As SQLFlow is supporting more and more machine learning toolkits, the corresponding code generation logics are better being organized as separate packages. An intermediate representation(IR) of the SQL jobs becomes necessary to connect these separate packages with the core `sql` package.
 
 The core `sql` package should include the following functionalities:
 1. The entry point of running extended SQL statements.
@@ -92,12 +92,6 @@ type AnalyzeIR struct {
 }
 ```
 
-Please be aware that all the IR excludes the information of working directory. This information belongs to the `executor` in `sql` package.
-- For training job
-  - If `executor` runs the generated program in a temporary directory, it should serialize the directory to a table for later use.
-  - If `executor` runs the generated program in a local directory, it should make sure the prediction and analyze job sees the same directory.
-- For prediction and analyze job, the `executor` should recover everything produced by the training job.
+Please be aware that all the IR excludes the information of the current working directory. This information belongs to the `executor` in `sql` package. For a prediction/analyze job, the `executor` should recover everything produced by the training job.
 
 Please be aware that `TrainIR` excludes the saving table name. This information belongs to the `executor` in `sql` package.
-- For a local training job, the result of the generated program contains the trained model. And `executor` is re
-- For a distributed training job, the generated program should garantee that the local directory contains enough information, such as OSS bucket name. So that later on the prediction job find it.
