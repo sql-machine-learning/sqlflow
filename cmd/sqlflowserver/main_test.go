@@ -518,7 +518,6 @@ USING sqlflow_models.my_dnn_model;`, caseDB, caseTestTable, caseDB, casePredictT
 	}
 	// call ParseRow only to wait predict finish
 	ParseRow(stream)
-
 	showPred := fmt.Sprintf(`SELECT *
 FROM %s.%s LIMIT 5;`, caseDB, casePredictTable)
 
@@ -527,7 +526,6 @@ FROM %s.%s LIMIT 5;`, caseDB, casePredictTable)
 		a.Fail("Check if the server started successfully. %v", err)
 	}
 	_, rows := ParseRow(stream)
-
 	for _, row := range rows {
 		// NOTE: predict result maybe random, only check predicted
 		// class >=0, need to change to more flexible checks than
