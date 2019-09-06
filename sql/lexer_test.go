@@ -1,3 +1,16 @@
+// Copyright 2019 The SQLFlow Authors. All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package sql
 
 import (
@@ -10,7 +23,8 @@ func TestNewLexer(t *testing.T) {
 	a := assert.New(t)
 	l := newLexer("")
 	var n sqlSymType
-	a.Equal(0, l.Lex(&n))
+	ret := l.Lex(&n)
+	a.Equal(0, ret)
 }
 
 func TestNextAndBackup(t *testing.T) {
@@ -43,6 +57,20 @@ func TestLexNumber(t *testing.T) {
 	var n sqlSymType
 	a.Equal(NUMBER, l.Lex(&n))
 	a.Equal("123.4", n.val)
+
+	l = newLexer("[5,10]")
+	typs := []int{'[', NUMBER, ',', NUMBER, ']'}
+	vals := []string{"[", "5", ",", "10", "]"}
+	i := 0
+	for {
+		typ := l.Lex(&n)
+		if typ == 0 {
+			break
+		}
+		a.Equal(typs[i], typ)
+		a.Equal(vals[i], n.val)
+		i++
+	}
 }
 
 func TestLexString(t *testing.T) {
@@ -65,7 +93,11 @@ func TestLexOperator(t *testing.T) {
 		"{", "}", "<", "<=", "=", ",", ";"}
 	i := 0
 	var n sqlSymType
-	for typ := l.Lex(&n); typ != 0; typ = l.Lex(&n) {
+	for {
+		typ := l.Lex(&n)
+		if typ == 0 {
+			break
+		}
 		a.Equal(typs[i], typ)
 		a.Equal(vals[i], n.val)
 		i++
@@ -99,4 +131,71 @@ func TestLexSQL(t *testing.T) {
 		a.Equal(typs[i], l.Lex(&n))
 		a.Equal(vals[i], n.val)
 	}
+}
+
+func TestLexSQLWithOperators(t *testing.T) {
+	a := assert.New(t)
+	l := newLexer(`  CREATE TABLE tmp AS
+SELECT a,b,c,d
+FROM x.y
+WHERE c=20190806
+AND b IS NOT NULL AND b != "-" and COALESCE(d, "-")<>"-";`)
+	var n sqlSymType
+	typs := []int{
+		IDENT, IDENT, IDENT, AS,
+		SELECT, IDENT, ',', IDENT, ',', IDENT, ',', IDENT,
+		FROM, IDENT, WHERE, IDENT, '=', NUMBER,
+		AND, IDENT, IDENT, NOT, IDENT, AND, IDENT, NE, STRING, AND,
+		IDENT, '(', IDENT, ',', STRING, ')', NE, STRING, ';'}
+	vals := []string{
+		"CREATE", "TABLE", "tmp", "AS", "SELECT",
+		"a", ",", "b", ",", "c", ",", "d", "FROM", "x.y",
+		"WHERE", "c", "=", "20190806", "AND", "b",
+		"IS", "NOT", "NULL", "AND", "b", "!=", "\"-\"", "and",
+		"COALESCE", "(", "d", ",", "\"-\"", ")", "<>", "\"-\"", ";"}
+
+	for i := range typs {
+		a.Equal(typs[i], l.Lex(&n))
+		a.Equal(vals[i], n.val)
+	}
+}
+
+func TestLexSQLWithSingleQuote(t *testing.T) {
+	a := assert.New(t)
+	l := newLexer(`  SELECT a,b
+FROM x.y
+WHERE b='20190806';`)
+	var n sqlSymType
+	typs := []int{
+		SELECT, IDENT, ',', IDENT,
+		FROM, IDENT, WHERE, IDENT, '=', STRING, ';'}
+	vals := []string{
+		"SELECT", "a", ",", "b", "FROM", "x.y",
+		"WHERE", "b", "=", "'20190806'", ";"}
+
+	for i := range typs {
+		a.Equal(typs[i], l.Lex(&n))
+		a.Equal(vals[i], n.val)
+	}
+}
+
+func TestAnalysisSQL(t *testing.T) {
+	a := assert.New(t)
+	l := newLexer(` SELECT * FROM train_table
+ANALYZE my_model
+WITH
+  plots = force
+USING TreeExplainer;`)
+	var n sqlSymType
+	typs := []int{
+		SELECT, '*', FROM, IDENT, ANALYZE, IDENT, WITH, IDENT, '=', IDENT, USING, IDENT, ';'}
+	vals := []string{
+		"SELECT", "*", "FROM", "train_table", "ANALYZE",
+		"my_model", "WITH", "plots", "=", "force", "USING", "TreeExplainer", ";"}
+
+	for i := range typs {
+		a.Equal(typs[i], l.Lex(&n))
+		a.Equal(vals[i], n.val)
+	}
+
 }

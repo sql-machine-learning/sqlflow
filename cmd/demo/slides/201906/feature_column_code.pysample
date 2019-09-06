@@ -1,0 +1,10 @@
+gender_feature_column = tf.feature_column.categorical_column_with_vocabulary_list(
+    key= "gender",
+    vocabulary_list=["M", "F", NULL])
+name_feature_column =
+    tf.feature_column.categorical_column_with_hash_bucket(
+    key = "name",
+    hash_bucket_size = 100) # The number of categories
+age_feature_column =
+    tf.feature_column.numeric_column(
+    key = "age")

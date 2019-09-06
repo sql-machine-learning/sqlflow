@@ -1,6 +1,6 @@
 # SQLFlow
 
-[![Build Status](https://travis-ci.org/sql-machine-learning/sqlflow.svg?branch=develop)](https://travis-ci.org/sql-machine-learning/sqlflow) [![GoDoc](https://godoc.org/github.com/sql-machine-learning/sqlflow?status.svg)](https://godoc.org/github.com/sql-machine-learning/sqlflow) [![Release](https://img.shields.io/github/release/sql-machine-learning/sqlflow.svg)](https://github.com/sql-machine-learning/sqlflow/releases) [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](LICENSE)
+[![Build Status](https://travis-ci.com/sql-machine-learning/sqlflow.svg?branch=develop)](https://travis-ci.com/sql-machine-learning/sqlflow) [![GoDoc](https://godoc.org/github.com/sql-machine-learning/sqlflow?status.svg)](https://godoc.org/github.com/sql-machine-learning/sqlflow) [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](LICENSE)
 
 ## What is SQLFlow?
 
@@ -28,7 +28,7 @@ Here are examples for training a Tensorflow [DNNClassifer](https://www.tensorflo
 sqlflow> SELECT *
 FROM iris.train
 TRAIN DNNClassifier
-WITH n_classes = 3, hidden_units = [10, 20]
+WITH model.n_classes = 3, model.hidden_units = [10, 20]
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.my_dnn_model;

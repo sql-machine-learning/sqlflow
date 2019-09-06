@@ -1,5 +1,6 @@
 *~
 *.test
+test
 /Gopkg.lock
 /Gopkg.toml
 /vendor/
@@ -9,3 +10,7 @@
 *.log
 /logs
 sql/my_dnn_model
+.DS_Store
+coverage.out
+.vscode
+.cache

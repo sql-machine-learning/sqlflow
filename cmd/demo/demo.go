@@ -1,3 +1,16 @@
+// Copyright 2019 The SQLFlow Authors. All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package main
 
 import (
@@ -70,14 +83,18 @@ func render(rsp interface{}, table *tablewriter.Table) bool {
 
 func main() {
 	ds := flag.String("datasource", "", "database connect string")
+	modelDir := flag.String("model_dir", "", "model would be saved on the local dir, otherwise upload to the table.")
 	flag.Parse()
-	db, err := sql.Open(*ds)
+	db, err := sql.NewDB(*ds)
 	if err != nil {
 		log.Fatalf("failed to open database: %v", err)
 	}
 	defer db.Close()
-	if err := db.Ping(); err != nil {
-		log.Fatalf("failed to ping database: %v", err)
+
+	if *modelDir != "" {
+		if _, derr := os.Stat(*modelDir); derr != nil {
+			os.Mkdir(*modelDir, os.ModePerm)
+		}
 	}
 
 	for {
@@ -88,7 +105,7 @@ func main() {
 		isTable, tableRendered := false, false
 		table := tablewriter.NewWriter(os.Stdout)
 
-		stream := sql.Run(slct, db)
+		stream := sql.Run(slct, db, *modelDir, nil)
 		for rsp := range stream.ReadAll() {
 			isTable = render(rsp, table)
 

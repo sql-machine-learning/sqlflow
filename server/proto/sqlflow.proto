@@ -19,6 +19,13 @@ service SQLFlow {
     rpc Run (Request) returns (stream Response);
 }
 
+message Session {
+    string token = 1;
+    string db_conn_str = 2;
+    bool exit_on_submit = 3;
+    string user_id = 4;
+}
+
 // SQL statements to run
 // e.g.
 //      1. `SELECT ...`
@@ -26,6 +33,7 @@ service SQLFlow {
 //      3. `SELECT ... TRAIN/PREDICT ...`
 message Request {
     string sql = 1;		// The SQL statement to be executed.
+    Session session = 2;
 }
 
 message Response {
@@ -33,6 +41,7 @@ message Response {
         Head head = 1;
         Row row = 2;
         Message message = 3;
+        EndOfExecution eoe = 4;
     }
 }
 
@@ -57,4 +66,12 @@ message Row {
 // messages which indicates the training/predicting progress
 message Message {
   string message = 1;
+}
+
+// SQLFlow server may execute multiple SQL statements in one RPC call.
+// EndOfExecution message tells the client that execution of one SQL is
+// finished, the client should go to next loop to parse the result stream.
+message EndOfExecution {
+    string sql = 1;
+    int64 spent_time_seconds = 2;
 }

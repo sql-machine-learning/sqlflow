@@ -1,3 +1,16 @@
+// Copyright 2019 The SQLFlow Authors. All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package server
 
 import (
@@ -7,6 +20,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -30,11 +44,12 @@ const (
 
 var testServerAddress string
 
-func mockRun(sql string, db *sf.DB) *sf.PipeReader {
+func mockRun(sql string, db *sf.DB, modelDir string, session *pb.Session) *sf.PipeReader {
 	rd, wr := sf.Pipe()
 	go func() {
 		defer wr.Close()
-
+		// the server may automatically add a trailing ";", remove it
+		sql = strings.Trim(sql, ";")
 		switch sql {
 		case testErrorSQL:
 			wr.Write(fmt.Errorf("run error: %v", testErrorSQL))
@@ -67,7 +82,7 @@ func startServer(done chan bool) {
 
 	s := grpc.NewServer()
 	s.GetServiceInfo()
-	pb.RegisterSQLFlowServer(s, &Server{run: mockRun, db: nil})
+	pb.RegisterSQLFlowServer(s, &Server{run: mockRun, db: nil, enableSession: false})
 	reflection.Register(s)
 	if err := s.Serve(listener); err != nil {
 		log.Fatalf("failed to serve: %v", err)

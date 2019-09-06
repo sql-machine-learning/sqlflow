@@ -1,45 +1,39 @@
 FROM ubuntu:16.04
 
-RUN apt-get update && apt-get install -y curl bzip2 gcc
+# use a mirror to run apt-get
+RUN echo "###### Ubuntu Main Repos" > /etc/apt/sources.list && \
+echo "deb http://us.archive.ubuntu.com/ubuntu/ xenial main restricted universe multiverse" >> /etc/apt/sources.list && \
+echo "###### Ubuntu Update Repos" >> /etc/apt/sources.list && \
+echo "deb http://us.archive.ubuntu.com/ubuntu/ xenial-security main restricted universe multiverse" >> /etc/apt/sources.list && \
+echo "deb http://us.archive.ubuntu.com/ubuntu/ xenial-updates main restricted universe multiverse" >> /etc/apt/sources.list && \
+echo "deb http://us.archive.ubuntu.com/ubuntu/ xenial-proposed main restricted universe multiverse" >> /etc/apt/sources.list && \
+echo "deb http://us.archive.ubuntu.com/ubuntu/ xenial-backports main restricted universe multiverse" >> /etc/apt/sources.list
+
+RUN apt-get update && apt-get install -y curl bzip2 \
+	build-essential unzip sqlite3 libsqlite3-dev wget unzip git \
+	openjdk-8-jdk maven libmysqlclient-dev
+
+# Need Java SDK to build remote parsers.
+ENV JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
 
 # Miniconda - Python 3.6, 64-bit, x86, latest
-ARG CONDA_OS=Linux
-RUN curl -sL https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -o mconda-install.sh && \
-    bash -x mconda-install.sh -b -p miniconda && \
-    rm mconda-install.sh
-ENV PATH="/miniconda/bin:$PATH"
-
 ARG CONDA_ADD_PACKAGES=""
-RUN conda create -y -q -n sqlflow-dev python=3.6 ${CONDA_ADD_PACKAGES}
-
-RUN echo ". /miniconda/etc/profile.d/conda.sh" >> ~/.bashrc && \
-    echo "source activate sqlflow-dev" >> ~/.bashrc
-
 ARG PIP_ADD_PACKAGES=""
-RUN /bin/bash -c "source activate sqlflow-dev && python -m pip install \
-    tensorflow==2.0.0-alpha0 \
-    mysql-connector-python \
-    impyla \
-    jupyter \
-    sqlflow \
-    ${PIP_ADD_PACKAGES} \
-    "
-# Fix jupyter server "connecting to kernel" problem
-# https://github.com/jupyter/notebook/issues/2664#issuecomment-468954423
-RUN /bin/bash -c "source activate sqlflow-dev && python -m pip install tornado==4.5.3"
+ARG TENSORFLOW_VERSION="2.0.0b1"
+ARG WITH_SQLFLOW_MODELS="ON"
 
-# Load sqlflow Jupyter magic command automatically. c.f. https://stackoverflow.com/a/32683001.
+ENV GOPATH /go
+ENV HADOOP_VERSION 3.2.0
+ENV PATH /opt/hadoop-${HADOOP_VERSION}/bin:/miniconda/envs/sqlflow-dev/bin:/miniconda/bin:/usr/local/go/bin:/go/bin:$PATH
 ENV IPYTHON_STARTUP /root/.ipython/profile_default/startup/
-RUN mkdir -p $IPYTHON_STARTUP
-RUN echo 'get_ipython().magic(u"%reload_ext sqlflow.magic")' >> $IPYTHON_STARTUP/00-first.py
-RUN echo 'get_ipython().magic(u"%autoreload 2")' >> $IPYTHON_STARTUP/00-first.py
-RUN curl https://raw.githubusercontent.com/sql-machine-learning/sqlflow/develop/example/jupyter/example.ipynb --output /example.ipynb
 
-ADD demo /usr/bin/demo
-ADD sqlflowserver /usr/bin/sqlflowserver
+# Main Steps to Build
+COPY scripts/image_build.sh /image_build.sh
+RUN bash /image_build.sh && rm -f /image_build.sh
+VOLUME /var/lib/mysql
 
-CMD ["/usr/bin/demo"]
+# Prepare sample datasets
+COPY example/datasets/popularize_churn.sql example/datasets/popularize_iris.sql example/datasets/popularize_boston.sql example/datasets/create_model_db.sql /docker-entrypoint-initdb.d/
 
-# Make sqlflow-dev pyenv the default Python environment
-ENV PATH=/miniconda/envs/sqlflow-dev/bin:$PATH
-
+ADD scripts/start.sh /
+CMD ["bash", "/start.sh"]

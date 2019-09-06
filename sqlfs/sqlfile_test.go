@@ -1,3 +1,16 @@
+// Copyright 2019 The SQLFlow Authors. All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package sqlfs
 
 import (
@@ -51,6 +64,7 @@ func TestWriterCreate(t *testing.T) {
 }
 
 func TestWriteAndRead(t *testing.T) {
+	testDriver = getEnv("SQLFLOW_TEST_DB", "mysql")
 	a := assert.New(t)
 
 	fn := fmt.Sprintf("%s.unitest%d", testDatabaseName, rand.Int())
@@ -146,7 +160,7 @@ func TestMain(m *testing.M) {
 		assertNoErr(e)
 		defer testDB.Close()
 	case "hive":
-		testDB, e = sql.Open("hive", "hive://root:root@localhost:10000/churn")
+		testDB, e = sql.Open("hive", "root:root@localhost:10000/churn")
 		assertNoErr(e)
 		_, e = testDB.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s;", testDatabaseName))
 		assertNoErr(e)

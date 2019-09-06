@@ -1,3 +1,16 @@
+// Copyright 2019 The SQLFlow Authors. All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 //go:generate protoc -I proto proto/sqlflow.proto --go_out=plugins=grpc:proto
 
 // Package server is the SQLFlow grpc server which connects to database and
@@ -8,6 +21,7 @@ package server
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -20,41 +34,82 @@ import (
 )
 
 // NewServer returns a server instance
-func NewServer(run func(string, *sf.DB) *sf.PipeReader, db *sf.DB) *Server {
-	return &Server{run: run, db: db}
+func NewServer(run func(string, *sf.DB, string, *pb.Session) *sf.PipeReader, db *sf.DB, modelDir string, enableSession bool) *Server {
+	return &Server{run: run, db: db, modelDir: modelDir, enableSession: enableSession}
 }
 
 // Server is the instance will be used to connect to DB and execute training
 type Server struct {
-	run func(sql string, db *sf.DB) *sf.PipeReader
-	db  *sf.DB
+	run           func(sql string, db *sf.DB, modelDir string, session *pb.Session) *sf.PipeReader
+	db            *sf.DB
+	modelDir      string
+	enableSession bool
 }
 
 // Run implements `rpc Run (Request) returns (stream Response)`
 func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
-	pr := s.run(req.Sql, s.db)
-	defer pr.Close()
+	db := s.db
+	var err error
+	if s.enableSession == true {
+		if db, err = sf.NewDB(req.Session.DbConnStr); err != nil {
+			return fmt.Errorf("create DB failed: %v", err)
+		}
+		defer db.Close()
+	}
 
-	for r := range pr.ReadAll() {
-		var res *pb.Response
-		var err error
-		switch s := r.(type) {
-		case error:
-			return s
-		case map[string]interface{}:
-			res, err = encodeHead(s)
-		case []interface{}:
-			res, err = encodeRow(s)
-		case string:
-			res, err = encodeMessage(s)
-		default:
-			return fmt.Errorf("unrecognize run channel return type %#v", s)
+	// FIXME(typhoonzero): split by ; can not deal with situations like
+	// "SELECT * from mytable where col <> ';';", should be fixed.
+	sqlStatements := strings.Split(req.Sql, ";")
+	trimedStatements := []string{}
+	for _, singleSQL := range sqlStatements {
+		sqlToRun := strings.Trim(singleSQL, "\n")
+		if sqlToRun == "" {
+			continue
 		}
-		if err != nil {
-			return err
+		trimedStatements = append(trimedStatements, sqlToRun)
+	}
+	for _, singleSQL := range trimedStatements {
+		sqlToRun := fmt.Sprintf("%s;", singleSQL)
+		var pr *sf.PipeReader
+		startTime := time.Now().UnixNano()
+		if s.enableSession == true {
+			pr = s.run(sqlToRun, db, s.modelDir, req.Session)
+		} else {
+			pr = s.run(sqlToRun, db, s.modelDir, nil)
 		}
-		if err := stream.Send(res); err != nil {
-			return err
+
+		defer pr.Close()
+
+		for r := range pr.ReadAll() {
+			var res *pb.Response
+			switch s := r.(type) {
+			case error:
+				return s
+			case map[string]interface{}:
+				res, err = encodeHead(s)
+			case []interface{}:
+				res, err = encodeRow(s)
+			case string:
+				res, err = encodeMessage(s)
+			default:
+				return fmt.Errorf("unrecognize run channel return type %#v", s)
+			}
+			if err != nil {
+				return err
+			}
+			if err := stream.Send(res); err != nil {
+				return err
+			}
+		}
+		// Send EndOfExecution message if have multiple requests.
+		if len(trimedStatements) > 1 {
+			eoe := &pb.EndOfExecution{}
+			eoe.Sql = singleSQL
+			eoe.SpentTimeSeconds = time.Now().UnixNano() - startTime
+			eoeResponse := &pb.Response{Response: &pb.Response_Eoe{Eoe: eoe}}
+			if err := stream.Send(eoeResponse); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

@@ -3,8 +3,7 @@ language: go
 branches:
   only:
   - gh-pages
-  - /.*/
-
+  - develop
 service:
   - docker
 
@@ -15,24 +14,35 @@ addons:
   apt:
     packages:
       - docker-ce
-
 install:
   # Note(tony): TravisCI's native `go get ${gobuild_args} ./...` failed with
   # `/usr/bin/ld: final link failed: Bad value`, the cause is the system linker
   # being not up to date: https://github.com/golang/go/issues/15038
-  # So I decided to skip install, and go get inside sqlflow:dev image
+  # So I decided to skip install, and go get inside sqlflow:latest image
   # Ref build: https://travis-ci.com/sql-machine-learning/sqlflow/builds/107870583
   - echo "skip install"
 
 # NOTE: mount all $GOPATH into container, then after build and test,
 # $GOPATH/bin will have expected binaries.
+
+# NOTE: When doing tests for hive, we must expose all ports that gohive client
+# may need, like thrift ports, namenode ports, datanode ports etc: 
+# 10000,10002,8040,8042,9864,9866,9867,9870,8020. Then we start a simple http
+# server on port 8899 using python, so that the docker container running SQLFlow
+# test can know when the hive server becomes ready.
+
 script:
   - set -e
+  - df -h
   - ls -lah
-  - docker build -t sqlflow:dev -f Dockerfile.dev .
-  - docker run --rm -v $GOPATH/src:/go/src -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:dev pre-commit run -a
-  - docker run --rm -v $GOPATH:/go -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:dev bash scripts/test.sh
-  - docker run --rm -v $GOPATH:/go -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow/gohive:dev bash scripts/test_hive.sh
+  - docker run -d --name=hive sqlflow/gohive:dev python3 -m http.server 8899
+  - docker build -t sqlflow:latest -f Dockerfile .
+  - docker run --rm -v $GOPATH/src:/go/src -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:latest pre-commit run -a
+  - docker run --rm -v $GOPATH:/go -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:latest bash scripts/test.sh
+  - docker run --rm -v $GOPATH:/go --net=container:hive --entrypoint bash -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:latest scripts/test_hive.sh
+  - bash scripts/setup_k8s_env.sh
+  - docker run --rm --net=host -v /var/run/docker.sock:/var/run/docker.sock -v $HOME/.kube:/root/.kube -v /home/$USER/.minikube/:/home/$USER/.minikube/ -v $GOPATH:/go -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:latest bash scripts/test_e2e.sh
+  - docker run -e MAXCOMPUTE_AK=$MAXCOMPUTE_AK -e MAXCOMPUTE_SK=$MAXCOMPUTE_SK --rm --net=host -v /var/run/docker.sock:/var/run/docker.sock -v $HOME/.kube:/root/.kube -v /home/$USER/.minikube/:/home/$USER/.minikube/ -v $GOPATH:/go -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:latest bash scripts/test_maxcompute.sh
 
 deploy:
   skip_cleanup: true
@@ -40,3 +50,7 @@ deploy:
   script: bash scripts/deploy.sh
   on:
     branch: develop
+
+env:
+  global:
+    secure: f03CHRo2Afl9PD6jLuKtY/6b/MgJkytcfeIhSrAYZFLzUCQTa4MI5yih4pG/VJtTpKVpoQD7NJikj/x0eO/6NOGxegJwaruY8EDg/4LVLeuVqRipmw0V9l3LcZ7AofxPAeJ6RZLpHALR9cYegXEEtvyfjNRw2BhQZsZBvTE8sbbvfzLJOY1UC9CeQnHxDGZYXG3WSMr7b+44ifg4OBweATmEsdIVPD7kgexunJvHw0vzQ25vsf+huYwLorVc7uRghoYY8SoaLMEcmP50Jsl2Mn7AUoFUyM3tl/kOub11BV4/yGrGJC1BysT7l48frSKYqSU1yeT+0xiJjgkOwpV8BcxOmXrgm2s6PDzWDmiXtBRhE6n79iG2IuuTuYLk4n/Rm7uwKYu6EdnooKSnhGV6DW7mLVJ5Rcb655xCB+AoXb79Ilp60YxsMFTqzdhMkf3QpQV/OsEHFrzNhab6+pWcrwOeCq/CXU0MDO0rQuX4YIBwdEyAlDrj2JDvJ868lpdTJTxUUgUovH2j8rFrtCf5Bx0gqg0Cj81s/7cMdhtoV+wbTtHoQ7TLTZkvqYyFAMCkl2d5g00UhZpq+HTjzcPOL5xKc0mZhsuYq03nTVMQWzIJiKkaWbDPoY3eZcLga0cO8VD2HgzsQ5lg300ZTF73AxonZheyzJVWtLQvrpT8dPI=
