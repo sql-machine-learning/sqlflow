@@ -41,6 +41,7 @@ message Response {
         Head head = 1;
         Row row = 2;
         Message message = 3;
+        EndOfExecution eoe = 4;
     }
 }
 
@@ -65,4 +66,12 @@ message Row {
 // messages which indicates the training/predicting progress
 message Message {
   string message = 1;
+}
+
+// SQLFlow server may execute multiple SQL statements in one RPC call.
+// EndOfExecution message tells the client that execution of one SQL is
+// finished, the client should go to next loop to parse the result stream.
+message EndOfExecution {
+    string sql = 1;
+    int64 spent_time_seconds = 2;
 }
