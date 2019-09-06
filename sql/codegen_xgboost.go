@@ -100,8 +100,7 @@ func newXGBFiller(pr *extendedSelect, ds *trainAndValDataset, db *DB) (*xgbFille
 		xgbTrainConfig: *resolveTrainCfg(attrs),
 		Save:           pr.save,
 	}
-
-	if !isTrain {
+	if !isTrain && !pr.analyze {
 		r.PredictionDatasetSQL = pr.standardSelect.String()
 		if r.TableName, _, err = parseTableColumn(pr.into); err != nil {
 			return nil, err
