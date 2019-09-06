@@ -24,10 +24,11 @@ type analyzeFiller struct {
 	X                 []*FeatureMeta
 	Label             string
 	AnalyzeDatasetSQL string
+	PlotType          string
 	ModelFile         string // path/to/model_file
 }
 
-func newAnalyzeFiller(pr *extendedSelect, db *DB, fms []*FeatureMeta, label, modelPath string) (*analyzeFiller, error) {
+func newAnalyzeFiller(pr *extendedSelect, db *DB, fms []*FeatureMeta, label, modelPath, plotType string) (*analyzeFiller, error) {
 	conn, err := newConnectionConfig(db)
 	if err != nil {
 		return nil, err
@@ -40,6 +41,7 @@ func newAnalyzeFiller(pr *extendedSelect, db *DB, fms []*FeatureMeta, label, mod
 		// or we trim it in pr(*extendedSelect)
 		AnalyzeDatasetSQL: pr.standardSelect.String(),
 		ModelFile:         modelPath,
+		PlotType:          plotType,
 	}, nil
 }
 
@@ -69,6 +71,15 @@ func readAntXGBFeatures(pr *extendedSelect, db *DB) ([]*FeatureMeta, string, err
 	return xs, fr.Label, nil
 }
 
+func readPlotType(pr *extendedSelect) string {
+	v, ok := pr.analyzeAttrs["shap.plot_type"]
+	if !ok {
+		// using shap default value
+		return `""`
+	}
+	return v.val
+}
+
 func genAnalyzer(pr *extendedSelect, db *DB, cwd, modelDir string) (*bytes.Buffer, error) {
 	pr, _, err := loadModelMeta(pr, db, cwd, modelDir, pr.trainedModel)
 	if err != nil {
@@ -80,12 +91,13 @@ func genAnalyzer(pr *extendedSelect, db *DB, cwd, modelDir string) (*bytes.Buffe
 	// We untar the AntXGBoost.{pr.trainedModel}.tar.gz and get three files.
 	// Here, the sqlflow_booster is a raw xgboost binary file can be analyzed.
 	antXGBModelPath := fmt.Sprintf("%s/sqlflow_booster", pr.trainedModel)
+	plotType := readPlotType(pr)
 	xs, label, err := readAntXGBFeatures(pr, db)
 	if err != nil {
 		return nil, err
 	}
 
-	fr, err := newAnalyzeFiller(pr, db, xs, label, antXGBModelPath)
+	fr, err := newAnalyzeFiller(pr, db, xs, label, antXGBModelPath, plotType)
 	if err != nil {
 		return nil, fmt.Errorf("create analyze filler failed: %v", err)
 	}
