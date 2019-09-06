@@ -67,4 +67,8 @@ func TestXGBFillerPredict(t *testing.T) {
 	filler, e := newXGBFiller(r, nil, testDB)
 	a.NoError(e)
 	a.False(filler.IsTrain)
+	a.Equal(filler.TableName, "iris.predict")
+	a.Equal(filler.Save, "sqlflow_models.my_xgboost_model")
+	a.Equal(filler.PredictionDatasetSQL, `SELECT *
+FROM iris.test`)
 }

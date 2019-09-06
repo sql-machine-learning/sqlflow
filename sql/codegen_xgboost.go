@@ -106,6 +106,7 @@ func newXGBFiller(pr *extendedSelect, ds *trainAndValDataset, db *DB) (*xgbFille
 		if r.TableName, _, err = parseTableColumn(pr.into); err != nil {
 			return nil, err
 		}
+		r.Save = pr.model
 	}
 
 	if isTrain {
