@@ -114,7 +114,7 @@ echo 'get_ipython().magic(u"%reload_ext sqlflow.magic")' >> $IPYTHON_STARTUP/00-
 echo 'get_ipython().magic(u"%autoreload 2")' >> $IPYTHON_STARTUP/00-first.py
 curl https://raw.githubusercontent.com/sql-machine-learning/sqlflow/develop/example/jupyter/example.ipynb --output /workspace/example.ipynb
 
-# 9. install xgboost-launcher
+# 9. install xgboost
 pip install xgboost==0.90
 # Re-enable this after Ant-XGBoost is ready.
 # pip install xgboost-launcher==0.0.4
