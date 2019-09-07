@@ -110,7 +110,5 @@ func Train(ir sql.TrainIR) (string, error) {
 		return "", err
 	}
 
-	fmt.Println(program.String())
-
 	return program.String(), nil
 }

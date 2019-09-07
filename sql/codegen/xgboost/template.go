@@ -35,7 +35,7 @@ train_params = json.loads('''{{.TrainParamsJSON}}''')
 feature_spec = json.loads('''{{.FeatureJSON}}''')
 label_spec = json.loads('''{{.LabelJSON}}''')
 
-# NOTE(tony): sorting is necessary to achieve consistent feature orders between training and prediction/analysis job
+# NOTE(tony): sorting is necessary to achieve consistent feature orders between training job and prediction/analysis job
 feature_column_name = sorted([k for k in feature_spec])
 label_name = [k for k in label_spec][0]
 
