@@ -11,11 +11,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import re
 import os
 import contextlib
 import numpy as np
 import tensorflow as tf
 import sqlflow_submitter.db_writer as db_writer
+
+def connect_with_data_source(data_source):
+    driver, source = data_source.split("://")
+    if driver != "mysql":
+        raise ValueError("connect_with_data_source doesn't support driver type {}".format(driver))
+
+    if driver == "mysql":
+        user, passwd, _, host, port = re.findall("^(\w*):(\w*)@(\w*)\((.*):(.*)\)/?.*$", source)[0]
+        from MySQLdb import connect
+        conn = connect(user=user,
+                       passwd=passwd,
+                       host=host,
+                       port=int(port))
+    conn.driver = driver
+    return conn
 
 def connect(driver, database, user, password, host, port, auth=""):
     if driver == "mysql":
