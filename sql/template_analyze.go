@@ -66,9 +66,11 @@ def analyzer_dataset():
 
 # 2. load the model
 model_path = "{{.ModelFile}}"
-ptype = {{.PlotType}}
-if len(ptype) == 0:
-    ptype = None
+
+summaryAttrs = {}
+{{ range $k, $v := .ShapSummaryParames }}
+summaryAttrs["{{$k}}"] = {{$v}}
+{{end}}
 
 X,y = analyzer_dataset()
 
@@ -77,7 +79,7 @@ bst.load_model(fname=model_path)
 explainer = shap.TreeExplainer(bst)
 shap_values = explainer.shap_values(X)
 
-shap.summary_plot(shap_values, X, plot_type=ptype)
+shap.summary_plot(shap_values, X, **summaryAttrs)
 plt.savefig('summary')
 `
 
