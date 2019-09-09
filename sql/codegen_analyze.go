@@ -85,7 +85,7 @@ func genAnalyzer(pr *extendedSelect, db *DB, cwd, modelDir string) (*bytes.Buffe
 	if err != nil {
 		return nil, fmt.Errorf("loadModelMeta %v", err)
 	}
-	if !strings.HasPrefix(strings.ToUpper(pr.estimator), `XGB.`) {
+	if !strings.HasPrefix(strings.ToUpper(pr.estimator), `XGBOOST.`) {
 		return nil, fmt.Errorf("analyzer: model[%s] not supported", pr.estimator)
 	}
 	// We untar the XGBoost.{pr.trainedModel}.tar.gz and get three files.
