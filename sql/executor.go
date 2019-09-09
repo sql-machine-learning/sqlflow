@@ -29,6 +29,8 @@ import (
 	pb "github.com/sql-machine-learning/sqlflow/server/proto"
 )
 
+var usingIR = false
+
 // Run executes a SQL query and returns a stream of rows or messages
 func Run(slct string, db *DB, modelDir string, session *pb.Session) *PipeReader {
 	splittedSQL, err := splitExtendedSQL(slct)

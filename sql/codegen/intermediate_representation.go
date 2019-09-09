@@ -13,6 +13,8 @@
 
 package codegen
 
+import "github.com/sql-machine-learning/sqlflow/sql/columns"
+
 // FieldType indicates the field type of a table column
 type FieldType int
 
@@ -27,10 +29,11 @@ const (
 
 // FieldMeta contains the meta information for decoding and feature columns
 type FieldMeta struct {
-	DType     FieldType `json:"dtype"`     // e.g. "float", "int32"
-	Delimiter string    `json:"delimiter"` // e.g. ","
-	Shape     []int     `json:"shape"`     // e.g. [1], [1 2 3]
-	IsSparse  bool      `json:"is_sparse"` // e.g. false
+	DType         FieldType               `json:"dtype"`     // e.g. "float", "int32"
+	Delimiter     string                  `json:"delimiter"` // e.g. ","
+	Shape         []int                   `json:"shape"`     // e.g. [1], [1 2 3]
+	IsSparse      bool                    `json:"is_sparse"` // e.g. false
+	FeatureColumn []columns.FeatureColumn `json:"-"`         // e.g. [EmbeddingColumn, CategoryIDColumn]
 }
 
 // TrainIR is the intermediate representation for code generation of a training job

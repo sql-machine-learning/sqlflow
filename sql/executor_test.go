@@ -84,6 +84,17 @@ func TestExecuteXGBoost(t *testing.T) {
 	})
 }
 
+func TestExecuteXGBoostWithIR(t *testing.T) {
+	a := assert.New(t)
+	modelDir := ""
+	a.NotPanics(func() {
+		usingIR = true
+		defer func() { usingIR = false }()
+		stream := runExtendedSQL(testXGBoostTrainSelectIris, testDB, modelDir, nil)
+		a.True(goodStream(stream.ReadAll()))
+	})
+}
+
 func TestExecutorTrainAndPredictDNN(t *testing.T) {
 	a := assert.New(t)
 	modelDir := ""

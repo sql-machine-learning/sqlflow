@@ -200,18 +200,15 @@ func resolveColumnMeta(fcs []columns.FeatureColumn, css []*columns.ColumnSpec) (
 }
 
 func genXGBoost(w io.Writer, pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *DB) error {
-	r, e := newXGBFiller(pr, ds, db)
-	if e != nil {
-		return e
-	}
-	if pr.train {
-		if true {
+	if usingIR {
+		if pr.train {
 			// TODO(tony): the following snippet should be shared across all codegens
 			ir := codegen.TrainIR{
 				DataSource:       db.driverName + "://" + db.dataSourceName,
-				Select:           ds.training,
-				ValidationSelect: ds.validation,
+				Select:           fmt.Sprintf("select * from %s;", ds.training),
+				ValidationSelect: fmt.Sprintf("select * from %s;", ds.validation),
 				Estimator:        pr.estimator,
+				Feature:          map[string]map[string]codegen.FieldMeta{},
 				Attribute:        map[string]interface{}{},
 			}
 			for columnName, columns := range pr.columns {
@@ -228,21 +225,25 @@ func genXGBoost(w io.Writer, pr *extendedSelect, ds *trainAndValDataset, fts fie
 					pr.label: {DType: codegen.Int, Delimiter: "", IsSparse: false, Shape: []int{1}},
 				}
 			}
-			attrs, err := resolveAttribute(&pr.trainAttrs)
+			attrs, err := resolveAttributeForIR(&pr.trainAttrs)
 			if err != nil {
 				return err
 			}
-			for k, v := range attrs {
-				ir.Attribute[k] = v.Value
-			}
+			ir.Attribute = attrs
 			program, err := xgboost.Train(ir)
-			fmt.Println(ir)
-			fmt.Println(program)
 			if err != nil {
 				return err
 			}
 			w.Write([]byte(program))
+			return nil
 		}
+		return nil
+	}
+	r, e := newXGBFiller(pr, ds, db)
+	if e != nil {
+		return e
+	}
+	if pr.train {
 
 		return xgbTrainTemplate.Execute(w, r)
 	}

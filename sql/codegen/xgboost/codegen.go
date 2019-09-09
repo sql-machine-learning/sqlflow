@@ -31,14 +31,14 @@ var attributeChecker = map[string]func(interface{}) error{
 		return nil
 	},
 	"model.num_class": func(x interface{}) error {
-		if _, ok := x.(int); !ok {
-			return fmt.Errorf("model.num_class should be of type int, received %T", x)
+		if _, ok := x.(int64); !ok {
+			return fmt.Errorf("model.num_class should be of type int64, received %T", x)
 		}
 		return nil
 	},
 	"train.num_boost_round": func(x interface{}) error {
-		if _, ok := x.(int); !ok {
-			return fmt.Errorf("train.num_boost_round should be of type int, received %T", x)
+		if _, ok := x.(int64); !ok {
+			return fmt.Errorf("train.num_boost_round should be of type int64, received %T", x)
 		}
 		return nil
 	},
