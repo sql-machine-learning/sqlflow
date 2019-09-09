@@ -76,12 +76,15 @@ func resolveParamsCfg(attrs map[string]*attribute) (map[string]interface{}, erro
 	return params, nil
 }
 
-func resolveObjective(pr *extendedSelect) (string, error) {
+func resolveModelName(pr *extendedSelect) (string, error) {
 	estimatorParts := strings.Split(pr.estimator, ".")
-	if len(estimatorParts) != 3 {
-		return "", fmt.Errorf("XGBoost Estimator should be xgboost.first_part.second_part, current: %s", pr.estimator)
+	if len(estimatorParts) != 2 {
+		return "", fmt.Errorf("XGBoost Estimator should be xgboost.modelname, current: %s", pr.estimator)
 	}
-	return strings.Join(estimatorParts[1:], ":"), nil
+	if strings.ToUpper(estimatorParts[1]) != "GBTREE" {
+		return "", fmt.Errorf("model name %s is not supported yet", estimatorParts[1])
+	}
+	return estimatorParts[1], nil
 }
 
 func newXGBFiller(pr *extendedSelect, ds *trainAndValDataset, db *DB) (*xgbFiller, error) {
@@ -109,18 +112,21 @@ func newXGBFiller(pr *extendedSelect, ds *trainAndValDataset, db *DB) (*xgbFille
 	}
 
 	if isTrain {
+		objective := getStringAttr(attrs, "objective", "gbtree")
 		// resolve the attribute keys without any prefix as the XGBoost Paremeters
 		params, err := resolveParamsCfg(attrs)
 		if err != nil {
 			return nil, err
 		}
+		params["objective"] = objective
 
-		// fill learning target
-		objective, err := resolveObjective(pr)
+		// get model name, could be gbtree, gblinear or dart.
+		// TODO(typhoonzero): only gbtree is supported here, use model name to generate
+		// differnet training code.
+		_, err = resolveModelName(pr)
 		if err != nil {
 			return nil, err
 		}
-		params["objective"] = objective
 
 		paramsJSON, err := json.Marshal(params)
 		if err != nil {
