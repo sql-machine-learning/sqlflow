@@ -149,7 +149,12 @@ func fillColumnSpec(columnTypeList []*sql.ColumnType, rowdata []interface{}, csm
 						// neither int nor float, should deal with string dtype
 						// to form a category_id_column
 						csmap[fld].DType = "string"
+						if csmap[fld].Vocabulary == nil {
+							// initialize the vocabulary map
+							csmap[fld].Vocabulary = make(map[string]string)
+						}
 						if _, ok := csmap[fld].Vocabulary[*cellData]; !ok {
+
 							csmap[fld].Vocabulary[*cellData] = *cellData
 						}
 					}
