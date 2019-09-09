@@ -17,7 +17,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/sql-machine-learning/sqlflow/sql"
+	"github.com/sql-machine-learning/sqlflow/sql/codegen"
 	"strings"
 )
 
@@ -50,6 +50,19 @@ var attributeChecker = map[string]func(interface{}) error{
 	},
 }
 
+func resolveModelType(estimator string) (string, error) {
+	switch strings.ToUpper(estimator) {
+	case "XGBOOST.GBTREE":
+		return "gbtree", nil
+	case "XGBOOST.GBLINEAR":
+		return "gblinear", nil
+	case "XGBOOST.DART":
+		return "dart", nil
+	default:
+		return "", fmt.Errorf("unsupport model name %v, currently supports xgboost.gbtree, xgboost.gblinear, xgboost.dart", estimator)
+	}
+}
+
 func parseAttribute(attrs map[string]interface{}) (map[string]map[string]interface{}, error) {
 	params := map[string]map[string]interface{}{"model.": {}, "train.": {}}
 	for k, v := range attrs {
@@ -71,11 +84,16 @@ func parseAttribute(attrs map[string]interface{}) (map[string]map[string]interfa
 }
 
 // Train generates a Python program for train a XgBoost model.
-func Train(ir sql.TrainIR) (string, error) {
+func Train(ir codegen.TrainIR) (string, error) {
 	params, err := parseAttribute(ir.Attribute)
 	if err != nil {
 		return "", err
 	}
+	booster, err := resolveModelType(ir.Estimator)
+	if err != nil {
+		return "", err
+	}
+	params["model."]["booster"] = booster
 	if len(ir.Feature) != 1 {
 		return "", fmt.Errorf("xgboost only support 1 feature column set, received %d", len(ir.Feature))
 	}

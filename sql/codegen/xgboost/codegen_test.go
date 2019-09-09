@@ -16,7 +16,7 @@ package xgboost
 import (
 	"fmt"
 	"github.com/go-sql-driver/mysql"
-	"github.com/sql-machine-learning/sqlflow/sql"
+	"github.com/sql-machine-learning/sqlflow/sql/codegen"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -33,7 +33,7 @@ func TestTrain(t *testing.T) {
 	}
 	_ = `SELECT *
 		FROM iris.train
-	TRAIN xgboost
+	TRAIN xgboost.gbtree
 	WITH
 		train.num_boost_round = 30,
 		model.objective = "multi:softprob"
@@ -42,19 +42,19 @@ func TestTrain(t *testing.T) {
 	COLUMN sepal_length, sepal_width, petal_length, petal_width
 	LABEL class
 	INTO sqlflow_models.my_xgboost_model;`
-	ir := sql.TrainIR{
+	ir := codegen.TrainIR{
 		DataSource:       fmt.Sprintf("mysql://%s", cfg.FormatDSN()),
 		Select:           "select * from iris.train;",
 		ValidationSelect: "select * from iris.test;",
-		Estimator:        "xgb.multi.softprob",
+		Estimator:        "xgboost.gbtree",
 		Attribute:        map[string]interface{}{"train.num_boost_round": 30, "model.objective": "multi:softprob", "model.eta": 3.1, "model.num_class": 3},
-		Feature: map[string]map[string]sql.FieldMeta{
+		Feature: map[string]map[string]codegen.FieldMeta{
 			"feature_columns": {
-				"sepal_length": {sql.Float, "", []int{1}, false},
-				"sepal_width":  {sql.Float, "", []int{1}, false},
-				"petal_length": {sql.Float, "", []int{1}, false},
-				"petal_width":  {sql.Float, "", []int{1}, false}}},
-		Label: map[string]sql.FieldMeta{"class": {sql.Int, "", []int{1}, false}}}
+				"sepal_length": {codegen.Float, "", []int{1}, false},
+				"sepal_width":  {codegen.Float, "", []int{1}, false},
+				"petal_length": {codegen.Float, "", []int{1}, false},
+				"petal_width":  {codegen.Float, "", []int{1}, false}}},
+		Label: map[string]codegen.FieldMeta{"class": {codegen.Int, "", []int{1}, false}}}
 	_, err := Train(ir)
 	a.NoError(err)
 }

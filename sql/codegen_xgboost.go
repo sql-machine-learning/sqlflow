@@ -16,6 +16,9 @@ package sql
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/sql-machine-learning/sqlflow/sql/codegen"
+	"github.com/sql-machine-learning/sqlflow/sql/codegen/xgboost"
+	"github.com/sql-machine-learning/sqlflow/sql/columns"
 	"io"
 	"strconv"
 	"strings"
@@ -163,12 +166,78 @@ func newXGBFiller(pr *extendedSelect, ds *trainAndValDataset, db *DB) (*xgbFille
 	return r, nil
 }
 
+func resolveColumnMeta(fcs []columns.FeatureColumn, css []*columns.ColumnSpec) (map[string]codegen.FieldMeta, error) {
+	if len(fcs) != len(css) {
+		return nil, fmt.Errorf("length of feature columns should equal to the length of column spec, %v != %v", len(fcs), len(css))
+	}
+	fms := make(map[string]codegen.FieldMeta)
+	for i := range fcs {
+		fc := fcs[i]
+		cs := css[i]
+		if fc.GetKey() != cs.ColumnName {
+			return nil, fmt.Errorf("feature column and column spec should correspond to the same column, %v != %v", fc.GetKey(), cs.ColumnName)
+		}
+		if fc.GetColumnType() != columns.ColumnTypeNumeric {
+			return nil, fmt.Errorf("codegen currently only support numeric feature column, received %v", fc.GetColumnType())
+		}
+		if cs.DType != "float32" {
+			return nil, fmt.Errorf("codegen currently only support float32 as column type, received %v", cs.DType)
+		}
+		fms[cs.ColumnName] = codegen.FieldMeta{
+			DType:     codegen.Float,
+			Delimiter: cs.Delimiter,
+			IsSparse:  cs.IsSparse,
+			Shape:     cs.Shape,
+		}
+	}
+	return fms, nil
+}
+
 func genXGBoost(w io.Writer, pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *DB) error {
 	r, e := newXGBFiller(pr, ds, db)
 	if e != nil {
 		return e
 	}
 	if pr.train {
+		if true {
+			// TODO(tony): the following snippet should be shared across all codegens
+			ir := codegen.TrainIR{
+				DataSource:       db.driverName + "://" + db.dataSourceName,
+				Select:           ds.training,
+				ValidationSelect: ds.validation,
+				Estimator:        pr.estimator,
+				Attribute:        map[string]interface{}{},
+			}
+			for columnName, columns := range pr.columns {
+				fc, cs, err := resolveTrainColumns(&columns)
+				if err != nil {
+					return err
+				}
+				features, err := resolveColumnMeta(fc, cs)
+				if err != nil {
+					return err
+				}
+				ir.Feature[columnName] = features
+				ir.Label = map[string]codegen.FieldMeta{
+					pr.label: {DType: codegen.Int, Delimiter: "", IsSparse: false, Shape: []int{1}},
+				}
+			}
+			attrs, err := resolveAttribute(&pr.trainAttrs)
+			if err != nil {
+				return err
+			}
+			for k, v := range attrs {
+				ir.Attribute[k] = v.Value
+			}
+			program, err := xgboost.Train(ir)
+			fmt.Println(ir)
+			fmt.Println(program)
+			if err != nil {
+				return err
+			}
+			w.Write([]byte(program))
+		}
+
 		return xgbTrainTemplate.Execute(w, r)
 	}
 	if e := createPredictionTable(pr, db); e != nil {

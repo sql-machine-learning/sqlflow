@@ -285,12 +285,19 @@ func resolveTrainColumns(columnExprs *exprlist) ([]columns.FeatureColumn, []*col
 		if expr.typ != 0 {
 			// Column identifier like "COLUMN a1,b1"
 			// FIXME(typhoonzero): infer the column spec here.
-			c := &columns.NumericColumn{
+			fc := &columns.NumericColumn{
 				Key:   expr.val,
 				Shape: []int{1},
 				Dtype: "float32",
 			}
-			fcs = append(fcs, c)
+			cs := &columns.ColumnSpec{
+				ColumnName: expr.val,
+				DType:      "float32",
+				IsSparse:   false,
+				Shape:      []int{1},
+			}
+			fcs = append(fcs, fc)
+			css = append(css, cs)
 		} else {
 			result, cs, err := resolveColumn(&expr.sexp)
 			if err != nil {
