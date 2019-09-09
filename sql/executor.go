@@ -366,18 +366,6 @@ func (cw *logChanWriter) Close() {
 	}
 }
 
-func buildFiller(es *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *DB) (filler interface{}, e error) {
-	// trainAndValDataset only work in train mode
-	var dataset *trainAndValDataset
-	if es.train {
-		dataset = ds
-	}
-	if strings.HasPrefix(strings.ToUpper(es.estimator), `XGBOOST.`) {
-		return newAntXGBoostFiller(es, dataset, db)
-	}
-	return newFiller(es, dataset, fts, db)
-}
-
 func train(wr *PipeWriter, tr *extendedSelect, db *DB, cwd string, modelDir string, slct string, ds *trainAndValDataset) error {
 	fts, e := verify(tr, db)
 	if e != nil {
@@ -386,14 +374,6 @@ func train(wr *PipeWriter, tr *extendedSelect, db *DB, cwd string, modelDir stri
 
 	var program bytes.Buffer
 	if strings.HasPrefix(strings.ToUpper(tr.estimator), `XGBOOST.`) {
-		// TODO(sperlingxx): write a separate train pipeline for ant-xgboost to support remote mode
-		if e := genAntXGBoost(&program, tr, ds, fts, db); e != nil {
-			return fmt.Errorf("genAntXGBoost %v", e)
-		}
-	} else if strings.HasPrefix(strings.ToUpper(tr.estimator), `XGB.`) {
-		// FIXME(Yancey1989): it's a temporary solution, just for the unit test, we perfer to distinguish
-		// xgboost and ant-xgboost with env SQLFLOW_WITH_ANTXGBOOST,
-		// issue: https://github.com/sql-machine-learning/sqlflow/issues/758
 		if e := genXGBoost(&program, tr, ds, fts, db); e != nil {
 			return fmt.Errorf("GenXGBoost %v", e)
 		}
@@ -459,11 +439,6 @@ func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir strin
 
 	var buf bytes.Buffer
 	if strings.HasPrefix(strings.ToUpper(pr.estimator), `XGBOOST.`) {
-		// TODO(sperlingxx): write a separate pred pipeline for ant-xgboost to support remote mode
-		if e := genAntXGBoost(&buf, pr, nil, fts, db); e != nil {
-			return fmt.Errorf("genAntXGBoost %v", e)
-		}
-	} else if strings.HasPrefix(strings.ToUpper(pr.estimator), `XGB.`) {
 		if e := genXGBoost(&buf, pr, nil, fts, db); e != nil {
 			return fmt.Errorf("genXGBoost %v", e)
 		}

@@ -71,7 +71,7 @@ func TestSplitExtendedSQL(t *testing.T) {
 	a.Equal(`train a with b;`, s[0])
 }
 
-func TestExecutorTrainXGBoost(t *testing.T) {
+func TestExecuteXGBoost(t *testing.T) {
 	a := assert.New(t)
 	modelDir := ""
 	a.NotPanics(func() {

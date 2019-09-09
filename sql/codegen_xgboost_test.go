@@ -23,7 +23,7 @@ import (
 const testXGBoostTrainSelectIris = ` 
 SELECT *
 FROM iris.train
-TRAIN xgb.gbtree
+TRAIN xgboost.gbtree
 WITH
     objective="multi:softprob",
     train.num_boost_round = 30,
