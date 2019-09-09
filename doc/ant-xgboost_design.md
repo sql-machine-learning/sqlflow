@@ -1,5 +1,7 @@
 # _Design:_ ant-xgboost on sqlflow
 
+**NOTE: ant-xgboost on SQLFlow has moved to [backup_antxgboot_work branch](https://github.com/sql-machine-learning/sqlflow/tree/backup_antxgboost_work)**
+
 ## Overview
 
 This is a design doc about why and how to support running ant-xgboost via sqlflow as a machine learning estimator.
