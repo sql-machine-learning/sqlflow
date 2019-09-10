@@ -21,12 +21,13 @@ import (
 // CrossColumn is the wapper of `tf.feature_column.crossed_column`
 // TODO(uuleon) specify the hash_key if needed
 type CrossColumn struct {
+	FeatureColumnMetasImpl
 	Keys           []interface{}
 	HashBucketSize int
 }
 
 // GenerateCode implements the FeatureColumn interface.
-func (cc *CrossColumn) GenerateCode(cs *ColumnSpec) ([]string, error) {
+func (cc *CrossColumn) GenerateCode(cs *FieldMeta) ([]string, error) {
 	var keysGenerated = make([]string, len(cc.Keys))
 	for idx, key := range cc.Keys {
 		if c, ok := key.(FeatureColumn); ok {
@@ -54,23 +55,6 @@ func (cc *CrossColumn) GenerateCode(cs *ColumnSpec) ([]string, error) {
 // GetKey implements the FeatureColumn interface.
 func (cc *CrossColumn) GetKey() string {
 	// NOTE: cross column is a feature on multiple column keys.
-	return ""
-}
-
-// GetDelimiter implements the FeatureColumn interface.
-func (cc *CrossColumn) GetDelimiter() string {
-	return ""
-}
-
-// GetDtype implements the FeatureColumn interface.
-func (cc *CrossColumn) GetDtype() string {
-	return ""
-}
-
-// GetInputShape implements the FeatureColumn interface.
-func (cc *CrossColumn) GetInputShape() string {
-	// NOTE: return empty since crossed column input shape is already determined
-	// by the two crossed columns.
 	return ""
 }
 

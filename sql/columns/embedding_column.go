@@ -19,6 +19,7 @@ import (
 
 // EmbeddingColumn is the wrapper of `tf.feature_column.embedding_column`
 type EmbeddingColumn struct {
+	FeatureColumnMetasImpl
 	Key            string // only used when CategoryColumn = nil, feature derivation will fill up the details
 	CategoryColumn interface{}
 	Dimension      int
@@ -34,28 +35,13 @@ func (ec *EmbeddingColumn) GetKey() string {
 	return ec.Key
 }
 
-// GetDelimiter implements the FeatureColumn interface.
-func (ec *EmbeddingColumn) GetDelimiter() string {
-	return ec.CategoryColumn.(FeatureColumn).GetDelimiter()
-}
-
-// GetDtype implements the FeatureColumn interface.
-func (ec *EmbeddingColumn) GetDtype() string {
-	return ec.CategoryColumn.(FeatureColumn).GetDtype()
-}
-
-// GetInputShape implements the FeatureColumn interface.
-func (ec *EmbeddingColumn) GetInputShape() string {
-	return ec.CategoryColumn.(FeatureColumn).GetInputShape()
-}
-
 // GetColumnType implements the FeatureColumn interface.
 func (ec *EmbeddingColumn) GetColumnType() int {
 	return ColumnTypeEmbedding
 }
 
 // GenerateCode implements the FeatureColumn interface.
-func (ec *EmbeddingColumn) GenerateCode(cs *ColumnSpec) ([]string, error) {
+func (ec *EmbeddingColumn) GenerateCode(cs *FieldMeta) ([]string, error) {
 	catColumn, ok := ec.CategoryColumn.(FeatureColumn)
 	if !ok {
 		return []string{}, fmt.Errorf("embedding generate code error, input is not featureColumn: %s", ec.CategoryColumn)

@@ -25,19 +25,19 @@ type FeatureMap struct {
 	Partition string
 }
 
-// ColumnSpec defines how to generate codes to parse column data to tensor/sparsetensor
-type ColumnSpec struct {
+// FieldMeta defines how to generate codes to parse column data to tensor/sparsetensor
+type FieldMeta struct {
 	ColumnName string
 	IsSparse   bool
 	Shape      []int
 	DType      string
 	Delimiter  string
 	Vocabulary map[string]string // use a map to generate a list without duplication
-	FeatureMap FeatureMap
+	FeatureMap FeatureMap        // FeatureMap is a table describes how to parse the columns data, only used in codegen_alps
 }
 
-// ToString generates the debug string of ColumnSpec
-func (cs *ColumnSpec) ToString() string {
+// ToString generates the debug string of FieldMeta
+func (cs *FieldMeta) ToString() string {
 	if cs.IsSparse {
 		shape := strings.Join(strings.Split(fmt.Sprint(cs.Shape), " "), ",")
 		if len(cs.Shape) > 1 {

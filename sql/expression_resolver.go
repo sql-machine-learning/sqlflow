@@ -64,11 +64,9 @@ type resolvedTrainClause struct {
 	EvalThrottle                  int
 	EvalCheckpointFilenameForInit string
 	FeatureColumns                map[string][]columns.FeatureColumn
-	ColumnSpecs                   map[string][]*columns.ColumnSpec
 	EngineParams                  engineSpec
 	CustomModule                  *gitLabModule
 	FeatureColumnInfered          FeatureColumnMap
-	ColumnSpecInfered             ColumnSpecMap
 }
 
 type resolvedPredictClause struct {
@@ -212,7 +210,7 @@ func resolveTrainClause(tc *trainClause, slct *standardSelect, connConfig *conne
 	}
 
 	fcMap := map[string][]columns.FeatureColumn{}
-	csMap := map[string][]*columns.ColumnSpec{}
+	csMap := map[string][]*columns.FieldMeta{}
 	for target, columns := range tc.columns {
 		fcs, css, err := resolveTrainColumns(&columns)
 		if err != nil {
@@ -251,11 +249,9 @@ func resolveTrainClause(tc *trainClause, slct *standardSelect, connConfig *conne
 		EvalThrottle:                  evalThrottleSecs,
 		EvalCheckpointFilenameForInit: evalCheckpointFilenameForInit,
 		FeatureColumns:                fcMap,
-		ColumnSpecs:                   csMap,
 		EngineParams:                  getEngineSpec(engineParams),
 		CustomModule:                  customModel,
 		FeatureColumnInfered:          fcInfered,
-		ColumnSpecInfered:             csInfered,
 	}, nil
 }
 
@@ -288,28 +284,32 @@ func resolvePredictClause(pc *predictClause) (*resolvedPredictClause, error) {
 
 // resolveTrainColumns resolve columns from SQL statement,
 // returns featureColumn list and featureSpecs
-func resolveTrainColumns(columnExprs *exprlist) ([]columns.FeatureColumn, []*columns.ColumnSpec, error) {
+func resolveTrainColumns(columnExprs *exprlist) ([]columns.FeatureColumn, []*columns.FieldMeta, error) {
 	var fcs = make([]columns.FeatureColumn, 0)
-	var css = make([]*columns.ColumnSpec, 0)
+	var css = make([]*columns.FieldMeta, 0)
 	for _, expr := range *columnExprs {
 		if expr.typ != 0 {
 			// Column identifier like "COLUMN a1,b1"
 			c := &columns.NumericColumn{
-				Key:   expr.val,
-				Shape: []int{1},
-				Dtype: "float32",
+				Key: expr.val,
 			}
+			fm := &columns.FieldMeta{
+				ColumnName: expr.val,
+				Shape:      []int{1},
+				DType:      "float32",
+			}
+			c.FieldMetas = append(c.FieldMetas, fm)
 			fcs = append(fcs, c)
 		} else {
-			result, cs, err := resolveColumn(&expr.sexp)
+			result, err := resolveColumn(&expr.sexp)
 			if err != nil {
 				return nil, nil, err
 			}
-			if cs != nil {
-				css = append(css, cs)
+			if fm, ok := result.(*columns.FieldMeta); ok {
+				css = append(css, fm)
 			}
-			if result != nil {
-				fcs = append(fcs, result)
+			if fc, ok := result.(columns.FeatureColumn); ok {
+				fcs = append(fcs, fc)
 			}
 		}
 	}
@@ -320,11 +320,14 @@ func getExpressionFieldName(expr *expr) (string, error) {
 	if expr.typ != 0 {
 		return expr.val, nil
 	}
-	fc, _, err := resolveColumn(&expr.sexp)
+	result, err := resolveColumn(&expr.sexp)
 	if err != nil {
 		return "", err
 	}
-	return fc.GetKey(), nil
+	if fc, ok := result.(columns.FeatureColumn); ok {
+		return fc.GetKey(), nil
+	}
+	return "", fmt.Errorf("expression not a feature column")
 }
 
 // resolveExpression parse the expression recursively and
@@ -334,16 +337,16 @@ func getExpressionFieldName(expr *expr) (string, error) {
 // column_1 -> "column_1", nil, nil
 // [1,2,3,4] -> [1,2,3,4], nil, nil
 // [NUMERIC(col1), col2] -> [*numericColumn, "col2"], nil, nil
-func resolveExpression(e interface{}) (interface{}, interface{}, error) {
+func resolveExpression(e interface{}) (interface{}, error) {
 	if expr, ok := e.(*expr); ok {
 		if expr.typ != 0 {
-			return expr.val, nil, nil
+			return expr.val, nil
 		}
 		return resolveExpression(&expr.sexp)
 	}
 	el, ok := e.(*exprlist)
 	if !ok {
-		return nil, nil, fmt.Errorf("input of resolveExpression must be `expr` or `exprlist` given %s", e)
+		return nil, fmt.Errorf("input of resolveExpression must be `expr` or `exprlist` given %s", e)
 	}
 	headTyp := (*el)[0].typ
 	if headTyp == IDENT {
@@ -351,7 +354,6 @@ func resolveExpression(e interface{}) (interface{}, interface{}, error) {
 		return resolveColumn(el)
 	} else if headTyp == '[' {
 		var list []interface{}
-		var columnSpecList []interface{}
 		for idx, expr := range *el {
 			if idx > 0 {
 				if expr.sexp == nil {
@@ -363,22 +365,21 @@ func resolveExpression(e interface{}) (interface{}, interface{}, error) {
 						list = append(list, intVal)
 					}
 				} else {
-					value, cs, err := resolveExpression(&expr.sexp)
+					value, err := resolveExpression(&expr.sexp)
 					if err != nil {
-						return nil, nil, err
+						return nil, err
 					}
 					list = append(list, value)
-					columnSpecList = append(columnSpecList, cs)
 				}
 			}
 		}
-		return list, columnSpecList, nil
+		return list, nil
 	}
-	return nil, nil, fmt.Errorf("not supported expr: %v", el)
+	return nil, fmt.Errorf("not supported expr: %v", el)
 }
 
 func expression2string(e interface{}) (string, error) {
-	resolved, _, err := resolveExpression(e)
+	resolved, err := resolveExpression(e)
 	if err != nil {
 		return "", err
 	}
@@ -417,7 +418,7 @@ func resolveAttribute(attrs *attrs) (map[string]*attribute, error) {
 		if len(subs) == 2 {
 			prefix = subs[0]
 		}
-		r, _, err := resolveExpression(v)
+		r, err := resolveExpression(v)
 		if err != nil {
 			return nil, err
 		}
@@ -440,14 +441,17 @@ func resolveBucketColumn(el *exprlist) (*columns.BucketColumn, error) {
 	if sourceExprList.typ != 0 {
 		return nil, fmt.Errorf("key of BUCKET must be NUMERIC, which is %v", sourceExprList)
 	}
-	source, _, err := resolveColumn(&sourceExprList.sexp)
+	source, err := resolveColumn(&sourceExprList.sexp)
 	if err != nil {
 		return nil, err
 	}
-	if source.GetColumnType() != columns.ColumnTypeNumeric {
-		return nil, fmt.Errorf("key of BUCKET must be NUMERIC, which is %s", source)
+	if fc, ok := source.(columns.FeatureColumn); !ok {
+		if fc.GetColumnType() != columns.ColumnTypeNumeric {
+			return nil, fmt.Errorf("key of BUCKET must be NUMERIC, which is %s", source)
+		}
 	}
-	boundaries, _, err := resolveExpression(boundariesExprList)
+
+	boundaries, err := resolveExpression(boundariesExprList)
 	if err != nil {
 		return nil, err
 	}
@@ -463,37 +467,41 @@ func resolveBucketColumn(el *exprlist) (*columns.BucketColumn, error) {
 		Boundaries:   b}, nil
 }
 
-func resolveSeqCategoryIDColumn(el *exprlist) (*columns.SequenceCategoryIDColumn, *columns.ColumnSpec, error) {
-	key, bucketSize, delimiter, cs, err := parseCategoryIDColumnExpr(el)
+func resolveSeqCategoryIDColumn(el *exprlist) (*columns.SequenceCategoryIDColumn, error) {
+	key, bucketSize, delimiter, fm, err := parseCategoryIDColumnExpr(el)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return &columns.SequenceCategoryIDColumn{
+	fc := &columns.SequenceCategoryIDColumn{
 		Key:        key,
 		BucketSize: bucketSize,
 		Delimiter:  delimiter,
 		// TODO(typhoonzero): support config dtype
-		Dtype: "int64"}, cs, nil
+		Dtype: "int64"}
+	fc.AppendFieldMetas(fm)
+	return fc, nil
 }
 
-func resolveCategoryIDColumn(el *exprlist) (*columns.CategoryIDColumn, *columns.ColumnSpec, error) {
-	key, bucketSize, delimiter, cs, err := parseCategoryIDColumnExpr(el)
+func resolveCategoryIDColumn(el *exprlist) (*columns.CategoryIDColumn, error) {
+	key, bucketSize, delimiter, fm, err := parseCategoryIDColumnExpr(el)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return &columns.CategoryIDColumn{
+	fc := &columns.CategoryIDColumn{
 		Key:        key,
 		BucketSize: bucketSize,
 		Delimiter:  delimiter,
 		// TODO(typhoonzero): support config dtype
-		Dtype: "int64"}, cs, nil
+		Dtype: "int64"}
+	fc.AppendFieldMetas(fm)
+	return fc, nil
 }
 
-func parseCategoryIDColumnExpr(el *exprlist) (string, int, string, *columns.ColumnSpec, error) {
+func parseCategoryIDColumnExpr(el *exprlist) (string, int, string, *columns.FieldMeta, error) {
 	if len(*el) != 3 && len(*el) != 4 {
 		return "", 0, "", nil, fmt.Errorf("bad CATEGORY_ID expression format: %s", *el)
 	}
-	var cs *columns.ColumnSpec
+	var cs *columns.FieldMeta
 	key := ""
 	var err error
 	if (*el)[1].typ == 0 {
@@ -530,7 +538,7 @@ func resolveCrossColumn(el *exprlist) (*columns.CrossColumn, error) {
 		return nil, fmt.Errorf("bad CROSS expression format: %s", *el)
 	}
 	keysExpr := (*el)[1]
-	key, _, err := resolveExpression(keysExpr)
+	key, err := resolveExpression(keysExpr)
 	if err != nil {
 		return nil, err
 	}
@@ -547,45 +555,45 @@ func resolveCrossColumn(el *exprlist) (*columns.CrossColumn, error) {
 		HashBucketSize: bucketSize}, nil
 }
 
-func resolveEmbeddingColumn(el *exprlist) (*columns.EmbeddingColumn, *columns.ColumnSpec, error) {
+func resolveEmbeddingColumn(el *exprlist) (*columns.EmbeddingColumn, error) {
 	if len(*el) != 4 && len(*el) != 5 {
-		return nil, nil, fmt.Errorf("bad EMBEDDING expression format: %s", *el)
+		return nil, fmt.Errorf("bad EMBEDDING expression format: %s", *el)
 	}
 
 	sourceExprList := (*el)[1]
-	var source columns.FeatureColumn
-	var cs *columns.ColumnSpec
+	var source interface{}
 	var err error
 	var innerCategoryColumnKey string
 
 	var catColumnResult interface{}
 	if sourceExprList.typ == 0 {
-		source, cs, err = resolveColumn(&sourceExprList.sexp)
+		source, err = resolveColumn(&sourceExprList.sexp)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		// user may write EMBEDDING(SPARSE(...)) or EMBEDDING(DENSE(...))
-		if cs != nil {
-			innerCategoryColumnKey = cs.ColumnName
+		fm, ok := source.(*columns.FieldMeta)
+		if ok {
+			innerCategoryColumnKey = fm.ColumnName
 			catColumnResult = &columns.CategoryIDColumn{
-				Key:        cs.ColumnName,
-				BucketSize: cs.Shape[0],
-				Delimiter:  cs.Delimiter,
-				Dtype:      cs.DType,
+				Key:        fm.ColumnName,
+				BucketSize: fm.Shape[0],
+				Delimiter:  fm.Delimiter,
+				Dtype:      fm.DType,
 			}
+			catColumnResult.(*columns.CategoryIDColumn).AppendFieldMetas(fm)
 		} else {
 			// TODO(uuleon) support other kinds of categorical column in the future
 			var catColumn interface{}
-			catColumn, ok := source.(*columns.CategoryIDColumn)
+			catColumn, ok = source.(*columns.CategoryIDColumn)
 			if !ok {
 				catColumn, ok = source.(*columns.SequenceCategoryIDColumn)
 				if !ok {
-					return nil, nil, fmt.Errorf("key of EMBEDDING must be categorical column")
+					return nil, fmt.Errorf("key of EMBEDDING must be categorical column")
 				}
 			}
-			// NOTE: to avoid golang multiple assignment compiler restrictions
 			catColumnResult = catColumn
-			innerCategoryColumnKey = source.GetKey()
+			innerCategoryColumnKey = source.(columns.FeatureColumn).GetKey()
 		}
 	} else {
 		// generate a default CategoryIDColumn for later feature derivation.
@@ -595,17 +603,17 @@ func resolveEmbeddingColumn(el *exprlist) (*columns.EmbeddingColumn, *columns.Co
 
 	dimension, err := strconv.Atoi((*el)[2].val)
 	if err != nil {
-		return nil, nil, fmt.Errorf("bad EMBEDDING dimension: %s, err: %s", (*el)[2].val, err)
+		return nil, fmt.Errorf("bad EMBEDDING dimension: %s, err: %s", (*el)[2].val, err)
 	}
 	combiner, err := expression2string((*el)[3])
 	if err != nil {
-		return nil, nil, fmt.Errorf("bad EMBEDDING combiner: %s, err: %s", (*el)[3], err)
+		return nil, fmt.Errorf("bad EMBEDDING combiner: %s, err: %s", (*el)[3], err)
 	}
 	initializer := ""
 	if len(*el) == 5 {
 		initializer, err = expression2string((*el)[4])
 		if err != nil {
-			return nil, nil, fmt.Errorf("bad EMBEDDING initializer: %s, err: %s", (*el)[4], err)
+			return nil, fmt.Errorf("bad EMBEDDING initializer: %s, err: %s", (*el)[4], err)
 		}
 	}
 	return &columns.EmbeddingColumn{
@@ -613,7 +621,7 @@ func resolveEmbeddingColumn(el *exprlist) (*columns.EmbeddingColumn, *columns.Co
 		CategoryColumn: catColumnResult,
 		Dimension:      dimension,
 		Combiner:       combiner,
-		Initializer:    initializer}, cs, nil
+		Initializer:    initializer}, nil
 }
 
 func resolveNumericColumn(el *exprlist) (*columns.NumericColumn, error) {
@@ -627,7 +635,7 @@ func resolveNumericColumn(el *exprlist) (*columns.NumericColumn, error) {
 	var shape []int
 	intVal, err := strconv.Atoi((*el)[2].val)
 	if err != nil {
-		list, _, err := resolveExpression((*el)[2])
+		list, err := resolveExpression((*el)[2])
 		if err != nil {
 			return nil, err
 		}
@@ -643,14 +651,10 @@ func resolveNumericColumn(el *exprlist) (*columns.NumericColumn, error) {
 		shape = append(shape, intVal)
 	}
 	return &columns.NumericColumn{
-		Key:   key,
-		Shape: shape,
-		// FIXME(typhoonzero, tony): support config Delimiter and Dtype
-		Delimiter: ",",
-		Dtype:     "float32"}, nil
+		Key: key}, nil
 }
 
-func resolveColumnSpec(el *exprlist, isSparse bool) (*columns.ColumnSpec, error) {
+func resolveColumnSpec(el *exprlist, isSparse bool) (*columns.FieldMeta, error) {
 	if len(*el) < 4 {
 		return nil, fmt.Errorf("bad FeatureSpec expression format: %s", *el)
 	}
@@ -690,7 +694,7 @@ func resolveColumnSpec(el *exprlist, isSparse bool) (*columns.ColumnSpec, error)
 	if len(*el) >= 5 {
 		dtype, err = expression2string((*el)[4])
 	}
-	return &columns.ColumnSpec{
+	return &columns.FieldMeta{
 		ColumnName: name,
 		IsSparse:   isSparse,
 		Shape:      shape,
@@ -699,31 +703,34 @@ func resolveColumnSpec(el *exprlist, isSparse bool) (*columns.ColumnSpec, error)
 		FeatureMap: fm}, nil
 }
 
-// resolveFeatureColumn returns the acutal feature column typed struct
-// as well as the columnSpec infomation.
-func resolveColumn(el *exprlist) (columns.FeatureColumn, *columns.ColumnSpec, error) {
+// resolveColumn returns the acutal feature column typed struct
+// as well as the FieldMeta infomation.
+func resolveColumn(el *exprlist) (interface{}, error) {
 	head := (*el)[0].val
 	if head == "" {
-		return nil, nil, fmt.Errorf("column description expects format like NUMERIC(key) etc, got %v", el)
+		return nil, fmt.Errorf("column description expects format like NUMERIC(key) etc, got %v", el)
 	}
 
 	switch strings.ToUpper(head) {
 	case dense:
-		cs, err := resolveColumnSpec(el, false)
-		return nil, cs, err
+		fm, err := resolveColumnSpec(el, false)
+		if err != nil {
+			return nil, err
+		}
+		return fm, err
 	case sparse:
-		cs, err := resolveColumnSpec(el, true)
-		return nil, cs, err
+		fm, err := resolveColumnSpec(el, true)
+		if err != nil {
+			return nil, err
+		}
+		return fm, err
 	case numeric:
 		// TODO(typhoonzero): support NUMERIC(DENSE(col)) and NUMERIC(SPARSE(col))
-		fc, err := resolveNumericColumn(el)
-		return fc, nil, err
+		return resolveNumericColumn(el)
 	case bucket:
-		fc, err := resolveBucketColumn(el)
-		return fc, nil, err
+		return resolveBucketColumn(el)
 	case cross:
-		fc, err := resolveCrossColumn(el)
-		return fc, nil, err
+		return resolveCrossColumn(el)
 	case categoryID:
 		return resolveCategoryIDColumn(el)
 	case seqCategoryID:
@@ -731,6 +738,6 @@ func resolveColumn(el *exprlist) (columns.FeatureColumn, *columns.ColumnSpec, er
 	case embedding:
 		return resolveEmbeddingColumn(el)
 	default:
-		return nil, nil, fmt.Errorf("not supported expr: %s", head)
+		return nil, fmt.Errorf("not supported expr: %s", head)
 	}
 }

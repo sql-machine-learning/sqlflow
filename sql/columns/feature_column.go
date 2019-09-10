@@ -31,17 +31,40 @@ const (
 // FeatureColumn is an interface that all types of feature columns
 // should follow. featureColumn is used to generate feature column code.
 type FeatureColumn interface {
-	// NOTE: submitters need to know the columnSpec when generating
+	FeatureColumnMetas
+	// NOTE: submitters need to know the FieldMeta when generating
 	// feature_column code. And we maybe use one compound column's data to generate
 	// multiple feature columns, so return a list of strings.
-	GenerateCode(cs *ColumnSpec) ([]string, error)
+	GenerateCode(cs *FieldMeta) ([]string, error)
 	GetKey() string
 
 	// FIXME(typhoonzero): remove delimiter, dtype shape from feature column
 	// get these from column spec claused or by feature derivation.
-	GetDelimiter() string
-	GetDtype() string
-	GetInputShape() string
+	// GetDelimiter() string
+	// GetDtype() string
+	// GetInputShape() string
 
 	GetColumnType() int
+}
+
+// FeatureColumnMetas is the interface of FieldMetas list, embeded in FeatureColumn interface.
+type FeatureColumnMetas interface {
+	GetFieldMetas() []*FieldMeta
+	AppendFieldMetas(fm *FieldMeta)
+}
+
+// FeatureColumnMetasImpl is a general struct that all feature column structs should embed.
+type FeatureColumnMetasImpl struct {
+	// one feature column may use more than one field as input data, like cross_column
+	FieldMetas []*FieldMeta
+}
+
+// GetFieldMetas returns the FieldMeta List
+func (fcm *FeatureColumnMetasImpl) GetFieldMetas() []*FieldMeta {
+	return fcm.FieldMetas
+}
+
+// AppendFieldMetas append a new FieldMeta
+func (fcm *FeatureColumnMetasImpl) AppendFieldMetas(fm *FieldMeta) {
+	fcm.FieldMetas = append(fcm.FieldMetas, fm)
 }

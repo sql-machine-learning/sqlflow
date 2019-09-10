@@ -20,12 +20,13 @@ import (
 
 // BucketColumn is the wrapper of `tf.feature_column.bucketized_column`
 type BucketColumn struct {
+	FeatureColumnMetasImpl
 	SourceColumn *NumericColumn
 	Boundaries   []int
 }
 
 // GenerateCode implements the FeatureColumn interface.
-func (bc *BucketColumn) GenerateCode(cs *ColumnSpec) ([]string, error) {
+func (bc *BucketColumn) GenerateCode(cs *FieldMeta) ([]string, error) {
 	sourceCode, _ := bc.SourceColumn.GenerateCode(cs)
 	if len(sourceCode) > 1 {
 		return []string{}, fmt.Errorf("does not support grouped column: %v", sourceCode)
@@ -39,21 +40,6 @@ func (bc *BucketColumn) GenerateCode(cs *ColumnSpec) ([]string, error) {
 // GetKey implements the FeatureColumn interface.
 func (bc *BucketColumn) GetKey() string {
 	return bc.SourceColumn.Key
-}
-
-// GetDelimiter implements the FeatureColumn interface.
-func (bc *BucketColumn) GetDelimiter() string {
-	return ""
-}
-
-// GetDtype implements the FeatureColumn interface.
-func (bc *BucketColumn) GetDtype() string {
-	return ""
-}
-
-// GetInputShape implements the FeatureColumn interface.
-func (bc *BucketColumn) GetInputShape() string {
-	return bc.SourceColumn.GetInputShape()
 }
 
 // GetColumnType implements the FeatureColumn interface.

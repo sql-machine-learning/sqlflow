@@ -14,6 +14,7 @@
 package sql
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
@@ -163,19 +164,21 @@ func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *D
 					_, ok = col.(*columns.EmbeddingColumn).CategoryColumn.(*columns.SequenceCategoryIDColumn)
 				}
 			}
-			if !ok && col.GetDelimiter() != "" {
-				if _, ok := col.(*columns.NumericColumn); !ok {
-					isSparse = true
-				}
+
+			fieldMetas := col.GetFieldMetas()
+			if len(fieldMetas) == 0 {
+				return nil, fmt.Errorf("no fieldmeta found for current column: %s", col.GetKey())
 			}
-			fm := &FeatureMeta{
-				FeatureName: col.GetKey(),
-				Dtype:       col.GetDtype(),
-				Delimiter:   col.GetDelimiter(),
-				InputShape:  col.GetInputShape(),
-				IsSparse:    isSparse,
-			}
-			r.X = append(r.X, fm)
+			fm := fieldMetas[0]
+			jsonShape, _ := json.Marshal(fm.Shape)
+			r.X = append(r.X, &FeatureMeta{
+				FeatureName: fm.ColumnName,
+				Dtype:       fm.DType,
+				Delimiter:   fm.Delimiter,
+				InputShape:  string(jsonShape),
+				IsSparse:    fm.IsSparse,
+			})
+
 			featureColumnsCode[target] = append(
 				featureColumnsCode[target],
 				feaColCode[0])

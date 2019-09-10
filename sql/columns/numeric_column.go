@@ -14,47 +14,31 @@
 package columns
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 )
 
 // NumericColumn is the wrapper of `tf.feature_column.numeric_column`
 type NumericColumn struct {
-	Key       string
-	Shape     []int
-	Delimiter string
-	Dtype     string
+	FeatureColumnMetasImpl
+	Key string
 }
 
 // GenerateCode implements FeatureColumn interface.
-func (nc *NumericColumn) GenerateCode(cs *ColumnSpec) ([]string, error) {
+func (nc *NumericColumn) GenerateCode(cs *FieldMeta) ([]string, error) {
+	var shape []int
+	if len(nc.FieldMetas) > 0 {
+		shape = nc.FieldMetas[0].Shape
+	} else {
+		shape = []int{1}
+	}
 	return []string{fmt.Sprintf("tf.feature_column.numeric_column(\"%s\", shape=%s)", nc.Key,
-		strings.Join(strings.Split(fmt.Sprint(nc.Shape), " "), ","))}, nil
-}
-
-// GetDelimiter implements FeatureColumn interface.
-func (nc *NumericColumn) GetDelimiter() string {
-	return nc.Delimiter
-}
-
-// GetDtype implements FeatureColumn interface.
-func (nc *NumericColumn) GetDtype() string {
-	return nc.Dtype
+		strings.Join(strings.Split(fmt.Sprint(shape), " "), ","))}, nil
 }
 
 // GetKey implements FeatureColumn interface.
 func (nc *NumericColumn) GetKey() string {
 	return nc.Key
-}
-
-// GetInputShape implements FeatureColumn interface.
-func (nc *NumericColumn) GetInputShape() string {
-	jsonBytes, err := json.Marshal(nc.Shape)
-	if err != nil {
-		return ""
-	}
-	return string(jsonBytes)
 }
 
 // GetColumnType implements FeatureColumn interface.

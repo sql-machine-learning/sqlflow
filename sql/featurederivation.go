@@ -28,8 +28,8 @@ const featureDerivationRows = 1000
 // FeatureColumnMap is a mapping from column name to FeatureColumn struct
 type FeatureColumnMap map[string]columns.FeatureColumn
 
-// ColumnSpecMap is a mappign from column name to ColumnSpec struct
-type ColumnSpecMap map[string]*columns.ColumnSpec
+// ColumnSpecMap is a mappign from column name to FieldMeta struct
+type ColumnSpecMap map[string]*columns.FieldMeta
 
 // makeFeatureColumnMap returns a map from column key to FeatureColumn
 // NOTE that the target is not important for analyzing feature derivation.
@@ -43,9 +43,9 @@ func makeFeatureColumnMap(parsedFeatureColumns map[string][]columns.FeatureColum
 	return fcMap
 }
 
-// makeColumnSpecMap returns a map from column key to ColumnSpec
+// makeColumnSpecMap returns a map from column key to FieldMeta
 // NOTE that the target is not important for analyzing feature derivation.
-func makeColumnSpecMap(parsedColumnSpecs map[string][]*columns.ColumnSpec) ColumnSpecMap {
+func makeColumnSpecMap(parsedColumnSpecs map[string][]*columns.FieldMeta) ColumnSpecMap {
 	csMap := make(ColumnSpecMap)
 	for _, fcList := range parsedColumnSpecs {
 		for _, cs := range fcList {
@@ -84,9 +84,9 @@ func fillColumnSpec(columnTypeList []*sql.ColumnType, rowdata []interface{}, csm
 	}
 	for idx, ct := range columnTypeList {
 		_, fld := decomp(ct.Name())
-		// add a default ColumnSpec for updating.
+		// add a default FieldMeta for updating.
 		if _, ok := csmap[fld]; !ok {
-			csmap[fld] = &columns.ColumnSpec{
+			csmap[fld] = &columns.FieldMeta{
 				ColumnName: fld,
 				IsSparse:   false,
 				Shape:      nil,
@@ -172,11 +172,11 @@ func fillColumnSpec(columnTypeList []*sql.ColumnType, rowdata []interface{}, csm
 	return nil
 }
 
-// InferFeatureColumns fill up featureColumn and columnSpec structs
+// InferFeatureColumns fill up featureColumn and FieldMeta structs
 // for all fields.
 func InferFeatureColumns(slct *standardSelect,
 	parsedFeatureColumns map[string][]columns.FeatureColumn,
-	parsedColumnSpecs map[string][]*columns.ColumnSpec,
+	parsedColumnSpecs map[string][]*columns.FieldMeta,
 	connConfig *connectionConfig) (FeatureColumnMap, ColumnSpecMap, error) {
 	if connConfig == nil {
 		return nil, nil, fmt.Errorf("no connectionConfig provided")

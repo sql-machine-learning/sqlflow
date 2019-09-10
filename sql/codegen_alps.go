@@ -77,11 +77,6 @@ type alpsFiller struct {
 	OSSEndpoint string
 }
 
-// type alpsFeatureColumn interface {
-// 	columns.FeatureColumn
-// 	GenerateAlpsCode(metadata *metadata) ([]string, error)
-// }
-
 type alpsBucketCol struct {
 	columns.BucketColumn
 }
@@ -184,7 +179,7 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds *tra
 	}
 
 	var odpsConfig = &gomaxcompute.Config{}
-	var columnInfo map[string]*columns.ColumnSpec
+	var columnInfo map[string]*columns.FieldMeta
 
 	// TODO(joyyoj) read feature mapping table's name from table attributes.
 	// TODO(joyyoj) pr may contains partition.
@@ -205,7 +200,7 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds *tra
 		meta.columnInfo = &columnInfo
 	} else {
 		meta = metadata{odpsConfig, pr.tables[0], nil, nil}
-		columnInfo = map[string]*columns.ColumnSpec{}
+		columnInfo = map[string]*columns.FieldMeta{}
 		for _, css := range resolved.ColumnSpecs {
 			for _, cs := range css {
 				columnInfo[cs.ColumnName] = cs
@@ -223,7 +218,7 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds *tra
 	for _, cs := range columnInfo {
 		csCode = append(csCode, cs.ToString())
 	}
-	y := &columns.ColumnSpec{
+	y := &columns.FieldMeta{
 		ColumnName: pr.label,
 		IsSparse:   false,
 		Shape:      []int{1},
@@ -432,7 +427,7 @@ func alpsPred(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *pb
 }
 
 // GenerateCode overrides the member function defined in `category_id_column.go`
-func (cc *alpsCategoryIDCol) GenerateCode(cs *columns.ColumnSpec) ([]string, error) {
+func (cc *alpsCategoryIDCol) GenerateCode(cs *columns.FieldMeta) ([]string, error) {
 	output := make([]string, 0)
 	// columnInfo, present := (*metadata.columnInfo)[cc.Key]
 	columnInfo := cs
@@ -455,7 +450,7 @@ func (cc *alpsCategoryIDCol) GenerateCode(cs *columns.ColumnSpec) ([]string, err
 	return output, err
 }
 
-func (cc *alpsSeqCategoryIDCol) GenerateCode(cs *columns.ColumnSpec) ([]string, error) {
+func (cc *alpsSeqCategoryIDCol) GenerateCode(cs *columns.FieldMeta) ([]string, error) {
 	output := make([]string, 0)
 	// columnInfo, present := (*metadata.columnInfo)[cc.Key]
 	columnInfo := cs
@@ -477,7 +472,7 @@ func (cc *alpsSeqCategoryIDCol) GenerateCode(cs *columns.ColumnSpec) ([]string, 
 	return output, err
 }
 
-func (ec *alpsEmbeddingCol) GenerateCode(cs *columns.ColumnSpec) ([]string, error) {
+func (ec *alpsEmbeddingCol) GenerateCode(cs *columns.FieldMeta) ([]string, error) {
 	var output []string
 	catColumn := &alpsCategoryIDCol{*(ec.CategoryColumn.(*columns.CategoryIDColumn))}
 	// if !ok {
@@ -539,11 +534,11 @@ type metadata struct {
 	odpsConfig *gomaxcompute.Config
 	table      string
 	featureMap *columns.FeatureMap
-	columnInfo *map[string]*columns.ColumnSpec
+	columnInfo *map[string]*columns.FieldMeta
 }
 
-func flattenColumnSpec(columnSpecs map[string][]*columns.ColumnSpec) map[string]*columns.ColumnSpec {
-	output := map[string]*columns.ColumnSpec{}
+func flattenColumnSpec(columnSpecs map[string][]*columns.FieldMeta) map[string]*columns.FieldMeta {
+	output := map[string]*columns.FieldMeta{}
 	for _, cols := range columnSpecs {
 		for _, col := range cols {
 			output[col.ColumnName] = col
@@ -552,8 +547,8 @@ func flattenColumnSpec(columnSpecs map[string][]*columns.ColumnSpec) map[string]
 	return output
 }
 
-func (meta *metadata) getColumnInfo(resolved *resolvedTrainClause, fields []string) (map[string]*columns.ColumnSpec, error) {
-	columns := map[string]*columns.ColumnSpec{}
+func (meta *metadata) getColumnInfo(resolved *resolvedTrainClause, fields []string) (map[string]*columns.FieldMeta, error) {
+	columns := map[string]*columns.FieldMeta{}
 	refColumns := flattenColumnSpec(resolved.ColumnSpecs)
 
 	sparseColumns, _ := meta.getSparseColumnInfo()
@@ -638,8 +633,8 @@ func getFields(meta *metadata, pr *extendedSelect) ([]string, error) {
 	return fields, nil
 }
 
-func (meta *metadata) getDenseColumnInfo(keys []string, refColumns map[string]*columns.ColumnSpec) (map[string]*columns.ColumnSpec, error) {
-	output := map[string]*columns.ColumnSpec{}
+func (meta *metadata) getDenseColumnInfo(keys []string, refColumns map[string]*columns.FieldMeta) (map[string]*columns.FieldMeta, error) {
+	output := map[string]*columns.FieldMeta{}
 	fields := strings.Join(keys, ",")
 	query := fmt.Sprintf("SELECT %s FROM %s LIMIT 1", fields, meta.table)
 	sqlDB, _ := sql.Open("maxcompute", meta.odpsConfig.FormatDSN())
@@ -669,7 +664,7 @@ func (meta *metadata) getDenseColumnInfo(keys []string, refColumns map[string]*c
 			shape := make([]int, 1)
 			shape[0] = len(fields)
 			if userSpec, ok := refColumns[ct.Name()]; ok {
-				output[ct.Name()] = &columns.ColumnSpec{
+				output[ct.Name()] = &columns.FieldMeta{
 					ct.Name(),
 					false,
 					shape,
@@ -678,7 +673,7 @@ func (meta *metadata) getDenseColumnInfo(keys []string, refColumns map[string]*c
 					nil,
 					*meta.featureMap}
 			} else {
-				output[ct.Name()] = &columns.ColumnSpec{
+				output[ct.Name()] = &columns.FieldMeta{
 					ct.Name(),
 					false,
 					shape,
@@ -692,8 +687,8 @@ func (meta *metadata) getDenseColumnInfo(keys []string, refColumns map[string]*c
 	return output, nil
 }
 
-func (meta *metadata) getSparseColumnInfo() (map[string]*columns.ColumnSpec, error) {
-	output := map[string]*columns.ColumnSpec{}
+func (meta *metadata) getSparseColumnInfo() (map[string]*columns.FieldMeta, error) {
+	output := map[string]*columns.FieldMeta{}
 
 	sqlDB, _ := sql.Open("maxcompute", meta.odpsConfig.FormatDSN())
 	filter := "feature_type != '' "
@@ -732,7 +727,7 @@ func (meta *metadata) getSparseColumnInfo() (map[string]*columns.ColumnSpec, err
 		column, present := output[*name]
 		if !present {
 			shape := make([]int, 0, 1000)
-			column := &columns.ColumnSpec{*name, true, shape, "int64", "", nil, *meta.featureMap}
+			column := &columns.FieldMeta{*name, true, shape, "int64", "", nil, *meta.featureMap}
 			column.DType = "int64"
 			output[*name] = column
 		}
