@@ -256,6 +256,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseSparseFeature", CaseSparseFeature)
 	t.Run("CaseSQLByPassLeftJoin", CaseSQLByPassLeftJoin)
 	t.Run("CaseTrainRegression", CaseTrainRegression)
+	t.Run("CaseTrainXGBoostRegression", CaseTrainXGBoostRegression)
 	t.Run("CaseTrainDeepWideModel", CaseTrainDeepWideModel)
 
 }
@@ -980,6 +981,71 @@ USING sqlflow_models.my_regression_model;`)
 
 	showPred := fmt.Sprintf(`SELECT *
 FROM housing.predict LIMIT 5;`)
+
+	stream, err = cli.Run(ctx, sqlRequest(showPred))
+	if err != nil {
+		a.Fail("Check if the server started successfully. %v", err)
+	}
+	_, rows := ParseRow(stream)
+
+	for _, row := range rows {
+		// NOTE: predict result maybe random, only check predicted
+		// class >=0, need to change to more flexible checks than
+		// checking expectedPredClasses := []int64{2, 1, 0, 2, 0}
+		AssertGreaterEqualAny(a, row[13], float64(0))
+
+		// avoiding nil features in predict result
+		nilCount := 0
+		for ; nilCount < 13 && row[nilCount] == nil; nilCount++ {
+		}
+		a.False(nilCount == 13)
+	}
+}
+
+// CaseTrainXGBoostRegression is used to test xgboost regression models
+func CaseTrainXGBoostRegression(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`
+SELECT *
+FROM housing.train
+TRAIN xgboost.gbtree
+WITH
+		objective="reg:squarederror",
+		train.num_boost_round = 30
+		COLUMN f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13
+LABEL target
+INTO sqlflow_models.my_xgb_regression_model;
+`)
+
+	conn, err := createRPCConn()
+	a.NoError(err)
+	defer conn.Close()
+	cli := pb.NewSQLFlowClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	defer cancel()
+
+	stream, err := cli.Run(ctx, sqlRequest(trainSQL))
+	if err != nil {
+		a.Fail("Check if the server started successfully. %v", err)
+	}
+	// call ParseRow only to wait train finish
+	ParseRow(stream)
+
+	predSQL := fmt.Sprintf(`SELECT *
+FROM housing.test
+PREDICT housing.xgb_predict.target
+USING sqlflow_models.my_xgb_regression_model;`)
+
+	stream, err = cli.Run(ctx, sqlRequest(predSQL))
+	if err != nil {
+		a.Fail("Check if the server started successfully. %v", err)
+	}
+	// call ParseRow only to wait predict finish
+	ParseRow(stream)
+
+	showPred := fmt.Sprintf(`SELECT *
+FROM housing.xgb_predict LIMIT 5;`)
 
 	stream, err = cli.Run(ctx, sqlRequest(showPred))
 	if err != nil {
