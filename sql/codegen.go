@@ -117,7 +117,7 @@ func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *D
 	if err != nil {
 		return nil, err
 	}
-	if err == nil && r.Driver == "hive" {
+	if r.Driver == "hive" {
 		// remove the last ';' which leads to a (hive)ParseException
 		r.TrainingDatasetSQL = strings.TrimSuffix(r.TrainingDatasetSQL, ";")
 		r.ValidationDatasetSQL = strings.TrimSuffix(r.ValidationDatasetSQL, ";")
