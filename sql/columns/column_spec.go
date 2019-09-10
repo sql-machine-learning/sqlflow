@@ -32,6 +32,7 @@ type ColumnSpec struct {
 	Shape      []int
 	DType      string
 	Delimiter  string
+	Vocabulary map[string]string // use a map to generate a list without duplication
 	FeatureMap FeatureMap
 }
 

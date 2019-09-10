@@ -19,10 +19,19 @@ import (
 
 // EmbeddingColumn is the wrapper of `tf.feature_column.embedding_column`
 type EmbeddingColumn struct {
+	Key            string // only used when CategoryColumn = nil, feature derivation will fill up the details
 	CategoryColumn interface{}
 	Dimension      int
 	Combiner       string
 	Initializer    string
+}
+
+// GetKey implements the FeatureColumn interface.
+func (ec *EmbeddingColumn) GetKey() string {
+	if ec.CategoryColumn != nil {
+		return ec.CategoryColumn.(FeatureColumn).GetKey()
+	}
+	return ec.Key
 }
 
 // GetDelimiter implements the FeatureColumn interface.
@@ -33,11 +42,6 @@ func (ec *EmbeddingColumn) GetDelimiter() string {
 // GetDtype implements the FeatureColumn interface.
 func (ec *EmbeddingColumn) GetDtype() string {
 	return ec.CategoryColumn.(FeatureColumn).GetDtype()
-}
-
-// GetKey implements the FeatureColumn interface.
-func (ec *EmbeddingColumn) GetKey() string {
-	return ec.CategoryColumn.(FeatureColumn).GetKey()
 }
 
 // GetInputShape implements the FeatureColumn interface.

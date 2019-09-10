@@ -205,7 +205,7 @@ func TestEmbeddingColumn(t *testing.T) {
 	parser := newParser()
 
 	normal := statementWithColumn("EMBEDDING(CATEGORY_ID(c1, 100), 200, mean)")
-	badInput := statementWithColumn("EMBEDDING(c1, 100, mean)")
+	badInput := statementWithColumn("EMBEDDING(c1, 100)")
 	badBucket := statementWithColumn("EMBEDDING(CATEGORY_ID(c1, 100), bad, mean)")
 
 	r, e := parser.Parse(normal)

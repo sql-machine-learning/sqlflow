@@ -51,6 +51,12 @@ func (cc *CrossColumn) GenerateCode(cs *ColumnSpec) ([]string, error) {
 		strings.Join(keysGenerated, ","), cc.HashBucketSize)}, nil
 }
 
+// GetKey implements the FeatureColumn interface.
+func (cc *CrossColumn) GetKey() string {
+	// NOTE: cross column is a feature on multiple column keys.
+	return ""
+}
+
 // GetDelimiter implements the FeatureColumn interface.
 func (cc *CrossColumn) GetDelimiter() string {
 	return ""
@@ -58,12 +64,6 @@ func (cc *CrossColumn) GetDelimiter() string {
 
 // GetDtype implements the FeatureColumn interface.
 func (cc *CrossColumn) GetDtype() string {
-	return ""
-}
-
-// GetKey implements the FeatureColumn interface.
-func (cc *CrossColumn) GetKey() string {
-	// NOTE: cross column is a feature on multiple column keys.
 	return ""
 }
 

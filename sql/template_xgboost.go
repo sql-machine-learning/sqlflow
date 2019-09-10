@@ -134,8 +134,11 @@ dpred = xgb_dataset('predict.txt', """{{.PredictionDatasetSQL}}""")
 bst = xgb.Booster({'nthread': 4})  # init model
 bst.load_model("{{.Save}}")  # load data
 preds = bst.predict(dpred)
-# TODO(typhoonzero): regression models may have different behavior
-pred_classes = np.argmax(np.array(preds), axis=1)
+
+# TODO(Yancey1989): using the train parameters to decide regressoin model or classifier model
+if len(preds.shape) == 2:
+    # classifier result
+    preds = np.argmax(np.array(preds), axis=1)
 
 feature_file_read = open("predict.txt", "r")
 
@@ -149,7 +152,8 @@ with buffered_db_writer(driver, conn, "{{.TableName}}", result_column_names, 100
         if not line:
             break
         row = [i.split(":")[1] for i in line.replace("\n", "").split("\t")[1:]]
-        row.append(pred_classes[line_no])
+        row.append(preds[line_no])
         w.write(row)
         line_no += 1
+print("Done predicting. Predict table : {{.TableName}}")
 `
