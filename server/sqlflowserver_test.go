@@ -123,7 +123,9 @@ func TestSQL(t *testing.T) {
 	_, err = stream.Recv()
 	a.Equal(status.Error(codes.Unknown, fmt.Sprintf("run error: %v", testErrorSQL)), err)
 
-	for _, s := range []string{testQuerySQL, testExecuteSQL, testExtendedSQL} {
+	testMultipleSQL := fmt.Sprintf("%s; %s", testQuerySQL, testExtendedSQL)
+
+	for _, s := range []string{testQuerySQL, testExecuteSQL, testExtendedSQL, testMultipleSQL} {
 		stream, err := c.Run(ctx, &pb.Request{Sql: s})
 		a.NoError(err)
 		for {
