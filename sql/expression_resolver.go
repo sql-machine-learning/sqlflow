@@ -67,6 +67,8 @@ type resolvedTrainClause struct {
 	ColumnSpecs                   map[string][]*columns.ColumnSpec
 	EngineParams                  engineSpec
 	CustomModule                  *gitLabModule
+	FeatureColumnInfered          FeatureColumnMap
+	ColumnSpecInfered             ColumnSpecMap
 }
 
 type resolvedPredictClause struct {
@@ -133,7 +135,7 @@ func getStringsAttr(attrs map[string]*attribute, key string, defaultValue []stri
 	return defaultValue
 }
 
-func resolveTrainClause(tc *trainClause) (*resolvedTrainClause, error) {
+func resolveTrainClause(tc *trainClause, slct *standardSelect, connConfig *connectionConfig) (*resolvedTrainClause, error) {
 	modelName := tc.estimator
 	preMadeModel := !strings.ContainsAny(modelName, ".")
 	attrs, err := resolveAttribute(&tc.trainAttrs)
@@ -219,6 +221,11 @@ func resolveTrainClause(tc *trainClause) (*resolvedTrainClause, error) {
 		fcMap[target] = fcs
 		csMap[target] = css
 	}
+	// TODO(typhoonzero): use the derivated maps for codegen, skip checking error
+	// since it's not used by codegen yet.
+	// also, need to clean up what is inside "resolvedTrainClause", keep only
+	// fcInfered, csInfered
+	fcInfered, csInfered, err := InferFeatureColumns(slct, fcMap, csMap, connConfig)
 
 	return &resolvedTrainClause{
 		IsPreMadeModel:                preMadeModel,
@@ -246,7 +253,10 @@ func resolveTrainClause(tc *trainClause) (*resolvedTrainClause, error) {
 		FeatureColumns:                fcMap,
 		ColumnSpecs:                   csMap,
 		EngineParams:                  getEngineSpec(engineParams),
-		CustomModule:                  customModel}, nil
+		CustomModule:                  customModel,
+		FeatureColumnInfered:          fcInfered,
+		ColumnSpecInfered:             csInfered,
+	}, nil
 }
 
 func resolvePredictClause(pc *predictClause) (*resolvedPredictClause, error) {
@@ -284,7 +294,6 @@ func resolveTrainColumns(columnExprs *exprlist) ([]columns.FeatureColumn, []*col
 	for _, expr := range *columnExprs {
 		if expr.typ != 0 {
 			// Column identifier like "COLUMN a1,b1"
-			// FIXME(typhoonzero): infer the column spec here.
 			c := &columns.NumericColumn{
 				Key:   expr.val,
 				Shape: []int{1},
@@ -380,18 +389,6 @@ func expression2string(e interface{}) (string, error) {
 	return "", fmt.Errorf("expression expected to be string, actual: %s", resolved)
 }
 
-// func generateFeatureColumnCode(fcs []columns.FeatureColumn) (string, error) {
-// 	var codes = make([]string, 0, len(fcs))
-// 	for _, fc := range fcs {
-// 		code, err := fc.GenerateCode()
-// 		if err != nil {
-// 			return "", nil
-// 		}
-// 		codes = append(codes, code)
-// 	}
-// 	return fmt.Sprintf("[%s]", strings.Join(codes, ",")), nil
-// }
-
 func resolveDelimiter(delimiter string) (string, error) {
 	if strings.EqualFold(delimiter, comma) {
 		return ",", nil
@@ -476,8 +473,7 @@ func resolveSeqCategoryIDColumn(el *exprlist) (*columns.SequenceCategoryIDColumn
 		BucketSize: bucketSize,
 		Delimiter:  delimiter,
 		// TODO(typhoonzero): support config dtype
-		Dtype:      "int64",
-		IsSequence: true}, cs, nil
+		Dtype: "int64"}, cs, nil
 }
 
 func resolveCategoryIDColumn(el *exprlist) (*columns.CategoryIDColumn, *columns.ColumnSpec, error) {
@@ -551,50 +547,73 @@ func resolveCrossColumn(el *exprlist) (*columns.CrossColumn, error) {
 		HashBucketSize: bucketSize}, nil
 }
 
-func resolveEmbeddingColumn(el *exprlist) (*columns.EmbeddingColumn, error) {
+func resolveEmbeddingColumn(el *exprlist) (*columns.EmbeddingColumn, *columns.ColumnSpec, error) {
 	if len(*el) != 4 && len(*el) != 5 {
-		return nil, fmt.Errorf("bad EMBEDDING expression format: %s", *el)
+		return nil, nil, fmt.Errorf("bad EMBEDDING expression format: %s", *el)
 	}
+
 	sourceExprList := (*el)[1]
 	var source columns.FeatureColumn
+	var cs *columns.ColumnSpec
 	var err error
+	var innerCategoryColumnKey string
+
+	var catColumnResult interface{}
 	if sourceExprList.typ == 0 {
-		source, _, err = resolveColumn(&sourceExprList.sexp)
+		source, cs, err = resolveColumn(&sourceExprList.sexp)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
+		}
+		// user may write EMBEDDING(SPARSE(...)) or EMBEDDING(DENSE(...))
+		if cs != nil {
+			innerCategoryColumnKey = cs.ColumnName
+			catColumnResult = &columns.CategoryIDColumn{
+				Key:        cs.ColumnName,
+				BucketSize: cs.Shape[0],
+				Delimiter:  cs.Delimiter,
+				Dtype:      cs.DType,
+			}
+		} else {
+			// TODO(uuleon) support other kinds of categorical column in the future
+			var catColumn interface{}
+			catColumn, ok := source.(*columns.CategoryIDColumn)
+			if !ok {
+				catColumn, ok = source.(*columns.SequenceCategoryIDColumn)
+				if !ok {
+					return nil, nil, fmt.Errorf("key of EMBEDDING must be categorical column")
+				}
+			}
+			// NOTE: to avoid golang multiple assignment compiler restrictions
+			catColumnResult = catColumn
+			innerCategoryColumnKey = source.GetKey()
 		}
 	} else {
-		return nil, fmt.Errorf("key of EMBEDDING must be categorical column")
+		// generate a default CategoryIDColumn for later feature derivation.
+		catColumnResult = nil
+		innerCategoryColumnKey = sourceExprList.val
 	}
-	// TODO(uuleon) support other kinds of categorical column in the future
-	var catColumn interface{}
-	catColumn, ok := source.(*columns.CategoryIDColumn)
-	if !ok {
-		catColumn, ok = source.(*columns.SequenceCategoryIDColumn)
-		if !ok {
-			return nil, fmt.Errorf("key of EMBEDDING must be categorical column")
-		}
-	}
+
 	dimension, err := strconv.Atoi((*el)[2].val)
 	if err != nil {
-		return nil, fmt.Errorf("bad EMBEDDING dimension: %s, err: %s", (*el)[2].val, err)
+		return nil, nil, fmt.Errorf("bad EMBEDDING dimension: %s, err: %s", (*el)[2].val, err)
 	}
 	combiner, err := expression2string((*el)[3])
 	if err != nil {
-		return nil, fmt.Errorf("bad EMBEDDING combiner: %s, err: %s", (*el)[3], err)
+		return nil, nil, fmt.Errorf("bad EMBEDDING combiner: %s, err: %s", (*el)[3], err)
 	}
 	initializer := ""
 	if len(*el) == 5 {
 		initializer, err = expression2string((*el)[4])
 		if err != nil {
-			return nil, fmt.Errorf("bad EMBEDDING initializer: %s, err: %s", (*el)[4], err)
+			return nil, nil, fmt.Errorf("bad EMBEDDING initializer: %s, err: %s", (*el)[4], err)
 		}
 	}
 	return &columns.EmbeddingColumn{
-		CategoryColumn: catColumn,
+		Key:            innerCategoryColumnKey,
+		CategoryColumn: catColumnResult,
 		Dimension:      dimension,
 		Combiner:       combiner,
-		Initializer:    initializer}, nil
+		Initializer:    initializer}, cs, nil
 }
 
 func resolveNumericColumn(el *exprlist) (*columns.NumericColumn, error) {
@@ -710,8 +729,7 @@ func resolveColumn(el *exprlist) (columns.FeatureColumn, *columns.ColumnSpec, er
 	case seqCategoryID:
 		return resolveSeqCategoryIDColumn(el)
 	case embedding:
-		fc, err := resolveEmbeddingColumn(el)
-		return fc, nil, err
+		return resolveEmbeddingColumn(el)
 	default:
 		return nil, nil, fmt.Errorf("not supported expr: %s", head)
 	}

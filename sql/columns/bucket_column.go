@@ -36,6 +36,11 @@ func (bc *BucketColumn) GenerateCode(cs *ColumnSpec) ([]string, error) {
 		strings.Join(strings.Split(fmt.Sprint(bc.Boundaries), " "), ","))}, nil
 }
 
+// GetKey implements the FeatureColumn interface.
+func (bc *BucketColumn) GetKey() string {
+	return bc.SourceColumn.Key
+}
+
 // GetDelimiter implements the FeatureColumn interface.
 func (bc *BucketColumn) GetDelimiter() string {
 	return ""
@@ -44,11 +49,6 @@ func (bc *BucketColumn) GetDelimiter() string {
 // GetDtype implements the FeatureColumn interface.
 func (bc *BucketColumn) GetDtype() string {
 	return ""
-}
-
-// GetKey implements the FeatureColumn interface.
-func (bc *BucketColumn) GetKey() string {
-	return bc.SourceColumn.Key
 }
 
 // GetInputShape implements the FeatureColumn interface.

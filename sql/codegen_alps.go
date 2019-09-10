@@ -178,7 +178,7 @@ func modelCreatorCode(resolved *resolvedTrainClause, args []string) (string, str
 }
 
 func newALPSTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds *trainAndValDataset) (*alpsFiller, error) {
-	resolved, err := resolveTrainClause(&pr.trainClause)
+	resolved, err := resolveTrainClause(&pr.trainClause, &pr.standardSelect, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -675,6 +675,7 @@ func (meta *metadata) getDenseColumnInfo(keys []string, refColumns map[string]*c
 					shape,
 					userSpec.DType,
 					userSpec.Delimiter,
+					nil,
 					*meta.featureMap}
 			} else {
 				output[ct.Name()] = &columns.ColumnSpec{
@@ -683,6 +684,7 @@ func (meta *metadata) getDenseColumnInfo(keys []string, refColumns map[string]*c
 					shape,
 					"float",
 					",",
+					nil,
 					*meta.featureMap}
 			}
 		}
@@ -730,7 +732,7 @@ func (meta *metadata) getSparseColumnInfo() (map[string]*columns.ColumnSpec, err
 		column, present := output[*name]
 		if !present {
 			shape := make([]int, 0, 1000)
-			column := &columns.ColumnSpec{*name, true, shape, "int64", "", *meta.featureMap}
+			column := &columns.ColumnSpec{*name, true, shape, "int64", "", nil, *meta.featureMap}
 			column.DType = "int64"
 			output[*name] = column
 		}
