@@ -353,7 +353,7 @@ func (cw *logChanWriter) Write(p []byte) (n int, err error) {
 		if err := cw.wr.Write(cw.prev); err != nil {
 			return len(cw.prev), err
 		}
-
+		log.Debugf("Train script output: %s", cw.prev)
 		cw.prev = ""
 	}
 	return n, nil
