@@ -79,8 +79,8 @@ bst.load_model(fname=model_path)
 explainer = shap.TreeExplainer(bst)
 shap_values = explainer.shap_values(X)
 
-shap.summary_plot(shap_values, X, **summaryAttrs)
-plt.savefig('summary')
+shap.summary_plot(shap_values, X, show=False, **summaryAttrs)
+plt.savefig('summary', bbox_inches='tight')
 `
 
 var analyzeTemplate = template.Must(template.New("analyzeTemplate").Parse(analyzeTemplateText))
