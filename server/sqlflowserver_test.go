@@ -36,10 +36,11 @@ import (
 )
 
 const (
-	testErrorSQL    = "ERROR ..."
-	testQuerySQL    = "SELECT ..."
-	testExecuteSQL  = "INSERT ..."
-	testExtendedSQL = "SELECT ... TRAIN ..."
+	testErrorSQL             = "ERROR ..."
+	testQuerySQL             = "SELECT ..."
+	testExecuteSQL           = "INSERT ..."
+	testExtendedSQL          = "SELECT ... TRAIN ..."
+	testExtendedSQLWithSpace = "SELECT ... TRAIN ...; \n\t"
 )
 
 var testServerAddress string
@@ -67,6 +68,8 @@ func mockRun(sql string, db *sf.DB, modelDir string, session *pb.Session) *sf.Pi
 		case testExtendedSQL:
 			wr.Write("log 0")
 			wr.Write("log 1")
+		default:
+			wr.Write(fmt.Errorf("unexcepted SQL: %s", sql))
 		}
 	}()
 	return rd
@@ -125,7 +128,7 @@ func TestSQL(t *testing.T) {
 
 	testMultipleSQL := fmt.Sprintf("%s; %s", testQuerySQL, testExtendedSQL)
 
-	for _, s := range []string{testQuerySQL, testExecuteSQL, testExtendedSQL, testMultipleSQL} {
+	for _, s := range []string{testQuerySQL, testExecuteSQL, testExtendedSQL, testExtendedSQLWithSpace, testMultipleSQL} {
 		stream, err := c.Run(ctx, &pb.Request{Sql: s})
 		a.NoError(err)
 		for {
