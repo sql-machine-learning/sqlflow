@@ -36,10 +36,11 @@ import (
 )
 
 const (
-	testErrorSQL    = "ERROR ..."
-	testQuerySQL    = "SELECT ..."
-	testExecuteSQL  = "INSERT ..."
-	testExtendedSQL = "SELECT ... TRAIN ..."
+	testErrorSQL               = "ERROR ..."
+	testQuerySQL               = "SELECT * FROM some_table;"
+	testExecuteSQL             = "INSERT INTO some_table VALUES (1,2,3,4);"
+	testExtendedSQL            = "SELECT * FROM some_table TRAIN SomeModel;"
+	testExtendedSQLNoSemicolon = "SELECT * FROM some_table TRAIN SomeModel"
 )
 
 var testServerAddress string
@@ -121,9 +122,9 @@ func TestSQL(t *testing.T) {
 	stream, err := c.Run(ctx, &pb.Request{Sql: testErrorSQL})
 	a.NoError(err)
 	_, err = stream.Recv()
-	a.Equal(status.Error(codes.Unknown, fmt.Sprintf("run error: %v", testErrorSQL)), err)
+	a.Equal(status.Error(codes.Unknown, "Lex: Unknown problem ..."), err)
 
-	for _, s := range []string{testQuerySQL, testExecuteSQL, testExtendedSQL} {
+	for _, s := range []string{testQuerySQL, testExecuteSQL, testExtendedSQL, testExtendedSQLNoSemicolon} {
 		stream, err := c.Run(ctx, &pb.Request{Sql: s})
 		a.NoError(err)
 		for {

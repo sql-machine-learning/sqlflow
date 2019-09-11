@@ -106,6 +106,10 @@ func SplitMultipleSQL(statements string) ([]string, error) {
 			return []string{}, fmt.Errorf("Lex: Unknown problem %s", statements[0-t:])
 		}
 		if t == 0 {
+			if len(sqlList) == 0 {
+				// NOTE: this line support executing SQL statement without a trailing ";"
+				sqlList = append(sqlList, statements)
+			}
 			break
 		}
 		if t == ';' {
@@ -115,7 +119,6 @@ func SplitMultipleSQL(statements string) ([]string, error) {
 			splitPos = l.pos
 		}
 	}
-
 	return sqlList, nil
 }
 

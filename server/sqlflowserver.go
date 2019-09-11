@@ -55,7 +55,6 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 		}
 		defer db.Close()
 	}
-
 	sqlStatements, err := sf.SplitMultipleSQL(req.Sql)
 	if err != nil {
 		return err
