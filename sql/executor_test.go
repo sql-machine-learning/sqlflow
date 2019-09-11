@@ -71,6 +71,16 @@ func TestSplitExtendedSQL(t *testing.T) {
 	a.Equal(`train a with b;`, s[0])
 }
 
+func TestSplitMulipleSQL(t *testing.T) {
+	a := assert.New(t)
+	splited, err := SplitMultipleSQL(`CREATE TABLE copy_table_1 AS SELECT a,b,c FROM table_1 WHERE c<>";";
+SELECT * FROM copy_table_1;SELECT * FROM copy_table_1 TRAIN DNNClassifier WITH n_classes=2 INTO test_model;`)
+	a.NoError(err)
+	a.Equal("CREATE TABLE copy_table_1 AS SELECT a,b,c FROM table_1 WHERE c<>\";\";", splited[0])
+	a.Equal("SELECT * FROM copy_table_1;", splited[1])
+	a.Equal("SELECT * FROM copy_table_1 TRAIN DNNClassifier WITH n_classes=2 INTO test_model;", splited[2])
+}
+
 func TestExecuteXGBoost(t *testing.T) {
 	a := assert.New(t)
 	modelDir := ""

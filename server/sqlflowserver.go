@@ -21,7 +21,6 @@ package server
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -56,26 +55,17 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 		}
 		defer db.Close()
 	}
-
-	// FIXME(typhoonzero): split by ; can not deal with situations like
-	// "SELECT * from mytable where col <> ';';", should be fixed.
-	sqlStatements := strings.Split(req.Sql, ";")
-	trimedStatements := []string{}
-	for _, singleSQL := range sqlStatements {
-		sqlToRun := strings.TrimSpace(singleSQL)
-		if sqlToRun == "" {
-			continue
-		}
-		trimedStatements = append(trimedStatements, sqlToRun)
+	sqlStatements, err := sf.SplitMultipleSQL(req.Sql)
+	if err != nil {
+		return err
 	}
-	for _, singleSQL := range trimedStatements {
-		sqlToRun := fmt.Sprintf("%s;", singleSQL)
+	for _, singleSQL := range sqlStatements {
 		var pr *sf.PipeReader
 		startTime := time.Now().UnixNano()
 		if s.enableSession == true {
-			pr = s.run(sqlToRun, db, s.modelDir, req.Session)
+			pr = s.run(singleSQL, db, s.modelDir, req.Session)
 		} else {
-			pr = s.run(sqlToRun, db, s.modelDir, nil)
+			pr = s.run(singleSQL, db, s.modelDir, nil)
 		}
 
 		defer pr.Close()
@@ -102,7 +92,7 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 			}
 		}
 		// Send EndOfExecution message if have multiple requests.
-		if len(trimedStatements) > 1 {
+		if len(sqlStatements) > 1 {
 			eoe := &pb.EndOfExecution{}
 			eoe.Sql = singleSQL
 			eoe.SpentTimeSeconds = time.Now().UnixNano() - startTime

@@ -93,6 +93,35 @@ func splitExtendedSQL(slct string) ([]string, error) {
 	return []string{slct}, nil
 }
 
+// SplitMultipleSQL returns a list of SQL statements if the input statements contains mutiple
+// SQL statements separated by ;
+func SplitMultipleSQL(statements string) ([]string, error) {
+	l := newLexer(statements)
+	var n sqlSymType
+	var sqlList []string
+	splitPos := 0
+	for {
+		t := l.Lex(&n)
+		if t < 0 {
+			return []string{}, fmt.Errorf("Lex: Unknown problem %s", statements[0-t:])
+		}
+		if t == 0 {
+			if len(sqlList) == 0 {
+				// NOTE: this line support executing SQL statement without a trailing ";"
+				sqlList = append(sqlList, statements)
+			}
+			break
+		}
+		if t == ';' {
+			splited := statements[splitPos:l.pos]
+			splited = strings.TrimSpace(splited)
+			sqlList = append(sqlList, splited)
+			splitPos = l.pos
+		}
+	}
+	return sqlList, nil
+}
+
 // TODO(weiguo): isQuery is a hacky way to decide which API to call:
 // https://golang.org/pkg/database/sql/#DB.Exec .
 // We will need to extend our parser to be a full SQL parser in the future.

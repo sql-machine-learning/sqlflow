@@ -20,7 +20,6 @@ import (
 	"log"
 	"net"
 	"os"
-	"strings"
 	"testing"
 	"time"
 
@@ -36,11 +35,12 @@ import (
 )
 
 const (
-	testErrorSQL             = "ERROR ..."
-	testQuerySQL             = "SELECT ..."
-	testExecuteSQL           = "INSERT ..."
-	testExtendedSQL          = "SELECT ... TRAIN ..."
-	testExtendedSQLWithSpace = "SELECT ... TRAIN ...; \n\t"
+	testErrorSQL               = "ERROR ..."
+	testQuerySQL               = "SELECT * FROM some_table;"
+	testExecuteSQL             = "INSERT INTO some_table VALUES (1,2,3,4);"
+	testExtendedSQL            = "SELECT * FROM some_table TRAIN SomeModel;"
+	testExtendedSQLNoSemicolon = "SELECT * FROM some_table TRAIN SomeModel"
+	testExtendedSQLWithSpace   = "SELECT * FROM some_table TRAIN SomeModel; \n\t"
 )
 
 var testServerAddress string
@@ -49,8 +49,6 @@ func mockRun(sql string, db *sf.DB, modelDir string, session *pb.Session) *sf.Pi
 	rd, wr := sf.Pipe()
 	go func() {
 		defer wr.Close()
-		// the server may automatically add a trailing ";", remove it
-		sql = strings.Trim(sql, ";")
 		switch sql {
 		case testErrorSQL:
 			wr.Write(fmt.Errorf("run error: %v", testErrorSQL))
@@ -65,7 +63,7 @@ func mockRun(sql string, db *sf.DB, modelDir string, session *pb.Session) *sf.Pi
 			wr.Write([]interface{}{time.Now(), nil})
 		case testExecuteSQL:
 			wr.Write("success; 0 rows affected")
-		case testExtendedSQL:
+		case testExtendedSQL, testExtendedSQLNoSemicolon, testExtendedSQLWithSpace:
 			wr.Write("log 0")
 			wr.Write("log 1")
 		default:
@@ -124,11 +122,10 @@ func TestSQL(t *testing.T) {
 	stream, err := c.Run(ctx, &pb.Request{Sql: testErrorSQL})
 	a.NoError(err)
 	_, err = stream.Recv()
-	a.Equal(status.Error(codes.Unknown, fmt.Sprintf("run error: %v", testErrorSQL)), err)
+	a.Equal(status.Error(codes.Unknown, "Lex: Unknown problem ..."), err)
 
-	testMultipleSQL := fmt.Sprintf("%s; %s", testQuerySQL, testExtendedSQL)
-
-	for _, s := range []string{testQuerySQL, testExecuteSQL, testExtendedSQL, testExtendedSQLWithSpace, testMultipleSQL} {
+	testMultipleSQL := fmt.Sprintf("%s %s", testQuerySQL, testExtendedSQL)
+	for _, s := range []string{testQuerySQL, testExecuteSQL, testExtendedSQL, testExtendedSQLWithSpace, testExtendedSQLNoSemicolon, testMultipleSQL} {
 		stream, err := c.Run(ctx, &pb.Request{Sql: s})
 		a.NoError(err)
 		for {
