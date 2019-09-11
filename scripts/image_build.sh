@@ -25,6 +25,7 @@ echo ". /miniconda/etc/profile.d/conda.sh" >> ~/.bashrc
 echo "source activate sqlflow-dev" >> ~/.bashrc
 
 # keras.datasets.imdb only works with numpy==1.16.1
+# NOTE: shap == 0.30.1 depends on dill but not include dill as it's dependency, need to install manually
 source /miniconda/bin/activate sqlflow-dev && python -m pip install \
 numpy==1.16.1 \
 tensorflow==${TENSORFLOW_VERSION} \
@@ -36,6 +37,7 @@ notebook==6.0.0 \
 sqlflow==0.4.0 \
 pre-commit \
 odps \
+dill \
 shap \
 ${PIP_ADD_PACKAGES}
 
@@ -121,7 +123,7 @@ pip install xgboost==0.90
 
 # 10. install Hadoop to use as the client when writing CSV to hive tables
 HADOOP_URL=https://archive.apache.org/dist/hadoop/common/stable/hadoop-${HADOOP_VERSION}.tar.gz
-curl -fsSL "$HADOOP_URL" -o /tmp/hadoop.tar.gz 
+curl -fsSL "$HADOOP_URL" -o /tmp/hadoop.tar.gz
 tar -xzf /tmp/hadoop.tar.gz -C /opt/
 rm -rf /tmp/hadoop.tar.gz
 rm -rf /opt/hadoop-${HADOOP_VERSION}/share/doc
