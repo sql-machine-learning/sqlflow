@@ -62,7 +62,7 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 	sqlStatements := strings.Split(req.Sql, ";")
 	trimedStatements := []string{}
 	for _, singleSQL := range sqlStatements {
-		sqlToRun := strings.Trim(singleSQL, "\n")
+		sqlToRun := strings.TrimSpace(singleSQL)
 		if sqlToRun == "" {
 			continue
 		}
