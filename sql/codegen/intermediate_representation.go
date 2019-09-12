@@ -51,34 +51,73 @@ type FieldMeta struct {
 // github.com/sql-machine-learning/sqlflow/sql/codegen/feature_column.go for detailed list of all feature columns.
 type FeatureColumn interface{}
 
-// TrainIR is the intermediate representation for code generation of a training job
+// Attribute represents an parsed entry in the WITH clause.
+type Attribute struct {
+	Key   string
+	Value interface{}
+}
+
+// TrainIR is the intermediate representation for code generation of a training job.
+//
+// Please be aware that the TrainIR intentionally excludes the model table name in the
+// INTO clause. The sql package will save the output files of a generated Python program.
+// For prediction and analysis jobs, the sql will restore an identical working directly.
 type TrainIR struct {
-	DataSource       string                     // e.g. "hive://root:root@localhost:10000/churn"
-	Select           string                     // e.g. "select * from iris.train"
-	ValidationSelect string                     // e.g. "select * from iris.val;"
-	Estimator        string                     // e.g. "DNNClassifier"
-	Attribute        map[string]interface{}     // e.g. {"train.epoch": 1000, "model.hidden_units": [10 10]}
-	Feature          map[string][]FeatureColumn // e.g. {"feature_columns": {NumericColumn{...}}}
-	Label            FeatureColumn              // e.g. NumericColumn{...}
+	// DataSource contains the connection information. For example, "hive://root:root@localhost:10000/churn"
+	DataSource string
+	// Select specifies the query for fetching the training data. For example, "select * from iris.train;".
+	Select string
+	// ValidationSelect specifies the query for fetching the validation data. For example, "select * from iris.val;".
+	ValidationSelect string
+	// Estimator specifies the estimator type. For example, after parsing "select ... train DNNClassifier WITH ...",
+	// the Estimator will be "DNNClassifier".
+	Estimator string
+	// Attributes contain a list of parsed attribute in the WITH Clause. For example, after parsing
+	// "select ... train ... with train.epoch = 1000, model.hidden_units = [10, 10]",
+	// the Attributes will be {{"train.epoch", 1000}, {"model.hidden_units", [10 10]}}.
+	Attributes []Attribute
+	// Features contain a map of a list of feature columns in the COLUMN clause.
+	// For multiple COLUMN clauses like
+	//   ```
+	//   column ... for deep_feature
+	//   column ... for wide_feature
+	//   ```
+	// They will be parsed as {"deep_feature": {...}, "wide_feature": {...}}
+	// For single column clause like "column ...", "feature_columns" will be used as the default map key.
+	Features map[string][]FeatureColumn
+	// Label specifies the feature column in the LABEL clause.
+	Label FeatureColumn
 }
 
 // PredictIR is the intermediate representation for code generation of a prediction job
+//
+// Please be aware the PredictionIR contains the result table name, so the
+// generated Python program is responsible to create and write the result table.
 type PredictIR struct {
-	DataSource  string                     // e.g. "hive://root:root@localhost:10000/churn"
-	Select      string                     // e.g. "select * from iris.test"
-	Estimator   string                     // e.g. "DNNClassifier"
-	Attribute   map[string]interface{}     // e.g. {"predict.batch_size": 32}
-	Feature     map[string][]FeatureColumn // e.g. {"feature_columns": {NumericColumn{...}}}
-	Label       FeatureColumn              // e.g. NumericColumn{...}
-	ResultTable string                     // e.g. "iris.predict"
+	// DataSource contains the connection information. For example, "hive://root:root@localhost:10000/churn"
+	DataSource string
+	// Select specifies the query for fetching the prediction data. For example, "select * from iris.test;".
+	Select string
+	// ResultTable specifies the table to store the prediction result.
+	ResultTable string
+	// Attributes contain a list of parsed attribute in the WITH clause. For example, after parsing
+	// "select ... predict ... with predict.batch_size = 32 into ...",
+	// the Attributes will be {{"predict.batch_size", 32}}
+	Attributes []Attribute
+	// TrainIR is the TrainIR used for generating the training job of the corresponding model
+	TrainIR TrainIR
 }
 
 // AnalyzeIR is the intermediate representation for code generation of a analysis job
 type AnalyzeIR struct {
-	DataSource string                     // e.g. "hive://root:root@localhost:10000/churn"
-	Select     string                     // e.g. "select * from iris.train"
-	Estimator  string                     // e.g. "DNNClassifier"
-	Attribute  map[string]interface{}     // e.g. {"analyze.plot_type": "bar"}
-	Feature    map[string][]FeatureColumn // e.g. {"feature_columns": {NumericColumn{...}}}
-	Label      FeatureColumn              // e.g. NumericColumn{...}
+	// DataSource contains the connection information. For example, "hive://root:root@localhost:10000/churn"
+	DataSource string
+	// Select specifies the query for fetching the analysis data. For example, "select * from iris.test;".
+	Select string
+	// Attributes contain a list of parsed attribute in the WITH clause. For example, after parsing
+	// "select ... analyze ... with analyze.plot_type = "bar"",
+	// the Attributes will be {{"analyze.plot_type", "bar"}}
+	Attributes []Attribute
+	// TrainIR is the TrainIR used for generating the training job of the corresponding model
+	TrainIR TrainIR
 }
