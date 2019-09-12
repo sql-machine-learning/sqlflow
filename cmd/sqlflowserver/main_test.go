@@ -199,15 +199,15 @@ func generateTempCA() (tmpDir, caCrt, caKey string, err error) {
 	caCrt = path.Join(tmpDir, "ca.crt")
 	if output, err := exec.Command("openssl", "genrsa", "-out", caKey, "2048").CombinedOutput(); err != nil {
 		err = fmt.Errorf("\n%s\n%s", output, err.Error())
-		return
+		return "", "", "", err
 	}
 	if output, err := exec.Command("openssl", "req", "-nodes", "-new", "-key", caKey, "-subj", "/CN=localhost", "-out", caCsr).CombinedOutput(); err != nil {
 		err = fmt.Errorf("\n%s\n%s", output, err.Error())
-		return
+		return "", "", "", err
 	}
 	if output, err := exec.Command("openssl", "x509", "-req", "-sha256", "-days", "365", "-in", caCsr, "-signkey", caKey, "-out", caCrt).CombinedOutput(); err != nil {
 		err = fmt.Errorf("\n%s\n%s", output, err.Error())
-		return
+		return "", "", "", err
 	}
 	os.Setenv("SQLFLOW_CA_CRT", caCrt)
 	os.Setenv("SQLFLOW_CA_KEY", caKey)
