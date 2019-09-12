@@ -132,6 +132,8 @@ class TestGenerator(TestCase):
                 "is_sparse": False,
                 "shape": []
             }}
+
+
             gen = db_generator(driver, conn, {}, "SELECT * FROM test_table_float_fea",
                                ["features"], "label", column_name_to_type)
             idx = 0
@@ -157,8 +159,32 @@ class TestGenerator(TestCase):
                     "is_sparse": False,
                     "shape": []
                 }}
-            
-
             gen = db_generator(driver, conn, {}, 'SELECT * FROM iris.train limit 10',
                                 ["sepal_length"], "class", column_name_to_type, fetch_size=4)
             self.assertEqual(len([g for g in gen()]), 10)
+
+from sqlflow_submitter.db import parseHiveDSN, parseMaxComputeDSN,parseMySQLDSN
+
+class TestConnectWithDataSource(TestCase):
+    def test_parse_mysql_dsn(self):
+        # [username[:password]@][protocol[(address)]]/dbname[?param1=value1&...&paramN=valueN]
+        self.assertEqual(
+            ("usr", "pswd", "localhost", "8000", "mydb", {"param1":"value1"}),
+            parseMySQLDSN("usr:pswd@tcp(localhost:8000)/mydb?param1=value1"))
+
+    def test_parse_hive_dsn(self):
+        self.assertEqual(
+                ("usr", "pswd", "hiveserver", "1000", "mydb", {"auth":"PLAIN", "session.mapreduce_job_quenename": "mr"}),
+            parseHiveDSN("usr:pswd@hiveserver:1000/mydb?auth=PLAIN&session.mapreduce_job_quenename=mr"))
+        self.assertEqual(
+            ("root", "root", "127.0.0.1", None, "mnist", {"auth":"PLAIN"}),
+            parseHiveDSN("root:root@127.0.0.1/mnist?auth=PLAIN"))
+        self.assertEqual(
+            ("root", "root", "127.0.0.1", None, None, {}),
+            parseHiveDSN("root:root@127.0.0.1"))
+
+    def test_parse_maxcompute_dsn(self):
+        self.assertEqual(
+                ("access_id", "access_key", "http://service.com/api", "test_ci"),
+            parseMaxComputeDSN("access_id:access_key@service.com/api?curr_project=test_ci&scheme=http"))
+
