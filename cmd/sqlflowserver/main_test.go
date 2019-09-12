@@ -198,12 +198,15 @@ func generateTempCA() (tmpDir, caCrt, caKey string, err error) {
 	caCsr := path.Join(tmpDir, "ca.csr")
 	caCrt = path.Join(tmpDir, "ca.crt")
 	if err = exec.Command("openssl", "genrsa", "-out", caKey, "2048").Run(); err != nil {
+		fmt.Println("rsa", err.Error())
 		return
 	}
 	if err = exec.Command("openssl", "req", "-nodes", "-new", "-key", caKey, "-subj", "/CN=localhost", "-out", caCsr).Run(); err != nil {
+		fmt.Println("key", err.Error())
 		return
 	}
 	if err = exec.Command("openssl", "x509", "-req", "-sha256", "-days", "365", "-in", caCsr, "-signkey", caKey, "-out", caCrt).Run(); err != nil {
+		fmt.Println("crt", err.Error())
 		return
 	}
 	os.Setenv("SQLFLOW_CA_CRT", caCrt)
