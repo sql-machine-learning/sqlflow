@@ -51,10 +51,10 @@ session_cfg = {}
 session_cfg["{{$k}}"] = "{{$v}}"
 {{end}}
 
-conn = connect(driver, database, user="{{.User}}", password="{{.Password}}", host="{{.Host}}", port={{.Port}}, auth="{{.Auth}}")
+conn = connect(driver, database, user="{{.User}}", password="{{.Password}}", host="{{.Host}}", port={{.Port}}, auth="{{.Auth}}",session_cfg=session_cfg)
 
 def analyzer_dataset():
-    stream = db_generator(driver, conn, session_cfg, """{{.AnalyzeDatasetSQL}}""", feature_names, label_name, feature_metas)
+    stream = db_generator(driver, conn, """{{.AnalyzeDatasetSQL}}""", feature_names, label_name, feature_metas)
     xs = pd.DataFrame(columns=feature_names)
     ys = pd.DataFrame(columns=[label_name])
     i = 0
