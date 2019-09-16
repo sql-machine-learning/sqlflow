@@ -42,7 +42,12 @@ database=""
 database="{{.Database}}"
 {{end}}
 
-conn = connect(driver, database, user="{{.User}}", password="{{.Password}}", host="{{.Host}}", port={{.Port}}, auth="{{.Auth}}")
+session_cfg = {}
+{{ range $k, $v := .Session }}
+session_cfg["{{$k}}"] = "{{$v}}"
+{{end}}
+
+conn = connect(driver, database, user="{{.User}}", password="{{.Password}}", host="{{.Host}}", port={{.Port}}, auth="{{.Auth}}",session_cfg=session_cfg)
 
 feature_column_names = [{{range .X}}
 "{{.FeatureName}}",
@@ -68,11 +73,6 @@ feature_metas["{{$value.FeatureName}}"] = {
     "shape": {{$value.InputShape}},
     "is_sparse": "{{$value.IsSparse}}" == "true"
 }
-{{end}}
-
-session_cfg = {}
-{{ range $k, $v := .Session }}
-session_cfg["{{$k}}"] = "{{$v}}"
 {{end}}
 
 def get_dtype(type_str):
@@ -104,7 +104,7 @@ def input_fn(datasetStr):
         else:
             feature_types.append(get_dtype(feature_metas[name]["dtype"]))
 
-    gen = db_generator(driver, conn, session_cfg, datasetStr, feature_column_names, "{{.Y.FeatureName}}", feature_metas)
+    gen = db_generator(driver, conn, datasetStr, feature_column_names, "{{.Y.FeatureName}}", feature_metas)
     dataset = tf.data.Dataset.from_generator(gen, (tuple(feature_types), tf.{{.Y.Dtype}}))
     ds_mapper = functools.partial(_parse_sparse_feature, feature_metas=feature_metas)
     return dataset.map(ds_mapper)
@@ -169,7 +169,12 @@ database="{{.Database}}"
 database=""
 {{end}}
 
-conn = connect(driver, database, user="{{.User}}", password="{{.Password}}", host="{{.Host}}", port={{.Port}}, auth="{{.Auth}}")
+session_cfg = {}
+{{ range $k, $v := .Session }}
+session_cfg["{{$k}}"] = "{{$v}}"
+{{end}}
+
+conn = connect(driver, database, user="{{.User}}", password="{{.Password}}", host="{{.Host}}", port={{.Port}}, auth="{{.Auth}}",session_cfg=session_cfg)
 
 feature_column_names = [{{range .X}}
 "{{.FeatureName}}",
@@ -195,11 +200,6 @@ feature_metas["{{$value.FeatureName}}"] = {
     "shape": {{$value.InputShape}},
     "is_sparse": "{{$value.IsSparse}}" == "true"
 }
-{{end}}
-
-session_cfg = {}
-{{ range $k, $v := .Session }}
-session_cfg["{{$k}}"] = "{{$v}}"
 {{end}}
 
 def get_dtype(type_str):
@@ -232,7 +232,7 @@ def eval_input_fn(batch_size):
         else:
             feature_types.append(get_dtype(feature_metas[name]["dtype"]))
 
-    gen = db_generator(driver, conn, session_cfg, """{{.PredictionDatasetSQL}}""",
+    gen = db_generator(driver, conn, """{{.PredictionDatasetSQL}}""",
         feature_column_names, "{{.Y.FeatureName}}", feature_metas)
     dataset = tf.data.Dataset.from_generator(gen, (tuple(feature_types), tf.{{.Y.Dtype}}))
     ds_mapper = functools.partial(_parse_sparse_feature, feature_metas=feature_metas)
@@ -322,7 +322,7 @@ class FastPredict:
 
 column_names = feature_column_names[:]
 column_names.append("{{.Y.FeatureName}}")
-pred_gen = db_generator(driver, conn, session_cfg, """{{.PredictionDatasetSQL}}""", feature_column_names, "{{.Y.FeatureName}}", feature_metas)()
+pred_gen = db_generator(driver, conn, """{{.PredictionDatasetSQL}}""", feature_column_names, "{{.Y.FeatureName}}", feature_metas)()
 fast_predictor = FastPredict(classifier, fast_input_fn)
 
 with buffered_db_writer(driver, conn, "{{.TableName}}", column_names, 100) as w:

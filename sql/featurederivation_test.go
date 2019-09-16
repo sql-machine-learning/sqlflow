@@ -14,6 +14,7 @@
 package sql
 
 import (
+	"fmt"
 	"regexp"
 	"testing"
 
@@ -103,17 +104,18 @@ func TestFeatureDerivation(t *testing.T) {
 	a.Equal("int", cs.DType)
 	a.True(cs.IsSparse)
 
-	fc := res.FeatureColumnInfered["c1"]
+	fmt.Printf("fc inferred: %v\n", res.FeatureColumnInfered)
+	fc := res.FeatureColumnInfered["feature_columns"]["c1"]
 	a.Equal(columns.ColumnTypeNumeric, fc.GetColumnType())
 
-	fc = res.FeatureColumnInfered["c3"]
+	fc = res.FeatureColumnInfered["feature_columns"]["c3"]
 	a.Equal(columns.ColumnTypeEmbedding, fc.GetColumnType())
 	emb, ok := fc.(*columns.EmbeddingColumn)
 	a.True(ok)
 	a.NotNil(emb.CategoryColumn)
 	a.Equal("c3", emb.CategoryColumn.(*columns.CategoryIDColumn).GetKey())
 
-	fc = res.FeatureColumnInfered["c5"]
+	fc = res.FeatureColumnInfered["feature_columns"]["c5"]
 	a.Equal(columns.ColumnTypeEmbedding, fc.GetColumnType())
 	emb, ok = fc.(*columns.EmbeddingColumn)
 	a.Equal(10000, emb.CategoryColumn.(*columns.CategoryIDColumn).BucketSize)

@@ -21,77 +21,17 @@ We propose the following code structures.
 sql/
   ...
   codegen/
+    feature_column.go
+    intermediate_representation.go
     tensorflow/
-      train.go
-      predict.go
-      analyze.go
+      ...
     xgboost/
       ...
 ```
 
-The `tensorflow` package will expose function `func Train(ir sql.TrainIR) string, error`, which takes the `sql`'s `TrainIR` and returns a generated Python program.
+The IR and feature column definition will resides in `sql/codegen`. Each code generator package forms a subdirectory in `sql/codegen` like `sql/codegen/tensorflow/`.
 
 ## Intermediate Representation
 
-We propose the following struct as the IR for code generation.
+Please refer to [sql/codegen/intermediate_representation.go](sql/codegen/intermediate_representation.go) and [sql/codegen/feature_column.go](sql/codegen/intermediate_representation.go) for implementation details.
 
-```go
-package sql
-
-import (
-	"github.com/sql-machine-learning/sqlflow/sql/columns"
-)
-
-type FieldType int
-
-const (
-	Int FieldType = iota
-	Float
-	String
-)
-
-// FieldMeta contains the meta information for decoding and feature columns
-type FieldMeta struct {
-	DType         FieldType               // e.g. "float", "int32"
-	Delimiter     string                  // e.g. ","
-	Shape         []int                   // e.g. [1], [1 2 3]
-	IsSparse      bool                    // e.g. false
-	FeatureColumn []columns.FeatureColumn // e.g. [EmbeddingColumn, CategoryIDColumn]
-}
-
-// TrainIR is the intermediate representation for code generation of a training job
-type TrainIR struct {
-	DataSource       string                          // e.g. "hive://root:root@localhost:10000/churn"
-	Select           string                          // e.g. "select * from iris.train"
-	ValidationSelect string                          // e.g. "select * from iris.val;"
-	Estimator        string                          // e.g. "DNNClassifier"
-	Attribute        map[string]interface{}          // e.g. {"train.epoch": 1000, "model.hidden_units": [10 10]}
-	Feature          map[string]map[string]FieldMeta // e.g. {"feature_columns": {"sepal_length": {"float", "", [1], false}, ...}}
-	Label            map[string]FieldMeta            // e.g. {"class": {"int32", "", [1], false}}
-}
-
-// PredictIR is the intermediate representation for code generation of a prediction job
-type PredictIR struct {
-	DataSource  string                          // e.g. "hive://root:root@localhost:10000/churn"
-	Select      string                          // e.g. "select * from iris.test"
-	Estimator   string                          // e.g. "DNNClassifier"
-	Attribute   map[string]interface{}          // e.g. {"predict.batch_size": 32}
-	Feature     map[string]map[string]FieldMeta // e.g. {"feature_columns": {"sepal_length": {"float", "", [1], false}, ...}}
-	Label       map[string]FieldMeta            // e.g. {"class": {"int32", "", [1], false}}
-	ReusltTable string                          // e.g. "iris.predict"
-}
-
-// AnalyzeIR is the intermediate representation for code generation of a analysis job
-type AnalyzeIR struct {
-	DataSource string                          // e.g. "hive://root:root@localhost:10000/churn"
-	Select     string                          // e.g. "select * from iris.train"
-	Estimator  string                          // e.g. "DNNClassifier"
-	Attribute  map[string]interface{}          // e.g. {"analyze.plot_type": "bar"}
-	Feature    map[string]map[string]FieldMeta // e.g. {"feature_columns": {"sepal_length": {"float", "", [1], false}, ...}}
-	Label      map[string]FieldMeta            // e.g. {"class": {"int32", "", [1], false}}
-}
-```
-
-Please be aware that all the IR excludes the information of the current working directory. This information belongs to the `executor` in `sql` package. For a prediction/analyze job, the `executor` should recover everything produced by the training job.
-
-Please be aware that `TrainIR` excludes the saving table name. This information belongs to the `executor` in `sql` package.
