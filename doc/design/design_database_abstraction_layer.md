@@ -1,4 +1,4 @@
-# Compatibility with Various SQL Engines
+# _Design:_ Compatibility with Various SQL Engines
 
 SQLFlow interacts with SQL engines like MySQL and Hive, while different SQL engines use variants of SQL syntax, it is important for SQLFlow to have an abstraction layer that hides such differences.
 
@@ -8,7 +8,7 @@ SQLFlow calls Go's [standard database API](https://golang.org/pkg/database/sql/)
 
 ### Data Retrieval
 
-The basic idea of SQLFlow is to extend the SELECT statement of SQL to have the TRAIN and PREDICT clauses.  For more discussion, please refer to the [syntax design](/doc/syntax.md).  SQLFlow translates such "extended SQL statements" into submitter programs, which forward the part from SELECT to TRAIN or PREDICT, which we call the "standard part", to the SQL engine.  SQLFlow also accepts the SELECT statement without TRAIN or PREDICT clauses and would forward such "standard statements" to the engine.  It is noticeable that the "standard part" or "standard statements" are not standardized.  For example, various engines use different syntax for `FULL OUTER JOIN`.
+The basic idea of SQLFlow is to extend the SELECT statement of SQL to have the TRAIN and PREDICT clauses.  For more discussion, please refer to the [syntax design](/doc/design/design_syntax.md).  SQLFlow translates such "extended SQL statements" into submitter programs, which forward the part from SELECT to TRAIN or PREDICT, which we call the "standard part", to the SQL engine.  SQLFlow also accepts the SELECT statement without TRAIN or PREDICT clauses and would forward such "standard statements" to the engine.  It is noticeable that the "standard part" or "standard statements" are not standardized.  For example, various engines use different syntax for `FULL OUTER JOIN`.
 
 - Hive supports `FULL OUTER JOIN` directly.
 - MySQL doesn't have `FULL OUTER JOIN`. However, a user can emulates `FULL OUTER JOIN` using `LEFT JOIN`, `UNION` and `RIGHT JOIN`.

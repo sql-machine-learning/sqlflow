@@ -1,4 +1,4 @@
-# Design: SQLFlow Authentication and Authorization
+# _Design:_ SQLFlow Authentication and Authorization
 
 ## Concepts
 
