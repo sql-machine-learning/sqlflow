@@ -58,10 +58,10 @@ feature_specs["{{$value.FeatureName}}"] = {
 }
 {{end}}
 
-conn = connect(driver, database, user="{{.User}}", password="{{.Password}}", host="{{.Host}}", port={{.Port}}, auth="{{.Auth}}")
+conn = connect(driver, database, user="{{.User}}", password="{{.Password}}", host="{{.Host}}", port={{.Port}}, auth="{{.Auth}}",session_cfg=session_cfg)
 
 def xgb_dataset(fn, dataset_sql):
-    gen = db_generator(driver, conn, session_cfg, dataset_sql, feature_column_names, "{{.Y.FeatureName}}", feature_specs)
+    gen = db_generator(driver, conn, dataset_sql, feature_column_names, "{{.Y.FeatureName}}", feature_specs)
     with open(fn, 'w') as f:
         for item in gen():
             features, label = item
@@ -117,10 +117,10 @@ feature_specs["{{$value.FeatureName}}"] = {
 }
 {{end}}
 
-conn = connect(driver, database, user="{{.User}}", password="{{.Password}}", host="{{.Host}}", port={{.Port}}, auth="{{.Auth}}")
+conn = connect(driver, database, user="{{.User}}", password="{{.Password}}", host="{{.Host}}", port={{.Port}}, auth="{{.Auth}}",session_cfg=session_cfg)
 
 def xgb_dataset(fn, dataset_sql):
-    gen = db_generator(driver, conn, session_cfg, dataset_sql, feature_column_names, "", feature_specs)
+    gen = db_generator(driver, conn, dataset_sql, feature_column_names, "", feature_specs)
     with open(fn, 'w') as f:
         for item in gen():
             features, label = item

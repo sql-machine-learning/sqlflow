@@ -97,7 +97,7 @@ def connect_with_data_source(dsn):
     return conn
 
 
-def connect(driver, database, user, password, host, port, auth=""):
+def connect(driver, database, user, password, host, port, session_cfg={}, auth=""):
     if driver == "mysql":
         # NOTE: use MySQLdb to avoid bugs like infinite reading:
         # https://bugs.mysql.com/bug.php?id=91971
@@ -112,19 +112,21 @@ def connect(driver, database, user, password, host, port, auth=""):
         return connect(database)
     elif driver == "hive":
         from impala.dbapi import connect
-        return connect(user=user,
+        conn = connect(user=user,
                        password=password,
                        database=database,
                        host=host,
                        port=int(port),
                        auth_mechanism=auth)
+        conn.session_cfg = session_cfg
+        return conn
     elif driver == "maxcompute":
         from sqlflow_submitter.maxcompute import MaxCompute
         return MaxCompute.connect(database, user, password, host)
 
     raise ValueError("unrecognized database driver: %s" % driver)
 
-def db_generator(driver, conn, session_cfg, statement,
+def db_generator(driver, conn, statement,
                  feature_column_names, label_column_name,
                  feature_specs, fetch_size=128):
 
@@ -150,7 +152,7 @@ def db_generator(driver, conn, session_cfg, statement,
 
     def reader():
         if driver == "hive":
-            cursor = conn.cursor(configuration=session_cfg)
+            cursor = conn.cursor(configuration=conn.session_cfg)
         else:
             cursor = conn.cursor()
         cursor.execute(statement)
