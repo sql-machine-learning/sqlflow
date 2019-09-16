@@ -1,4 +1,4 @@
-# Submitter
+# _Design:_ Submitter
 
 A submitter is a pluggable module in SQLFlow that is used to submit an ML job to a third party computation service.
 
@@ -6,7 +6,7 @@ A submitter is a pluggable module in SQLFlow that is used to submit an ML job to
 
 When a user types in an extended SQL statement, SQLFlow first parses and semantically verifies the statement. Then SQLFlow either runs the ML job locally or submits the ML job to a third party computation service. 
 
-![](figures/sqlflow-arch2.png)
+![](../figures/sqlflow-arch2.png)
 
 In the latter case, SQLFlow produces a job description (`TrainDescription` or `PredictDescription`) and hands it over to the submitter. For a training SQL, SQLFlow produces `TrainDescription`; for prediction SQL, SQLFlow produces `PredDescription`. The concrete definition of the description looks like the following
 

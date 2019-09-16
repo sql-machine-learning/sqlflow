@@ -5,7 +5,7 @@ Note that the steps in this tutorial may be changed during the development
 of SQLFlow, we only provide a way that simply works for the current version.
 
 To support custom models like CNN text classification, you may check out the
-current [design](https://github.com/sql-machine-learning/models/blob/develop/doc/customized%2Bmodel.md)
+current [design](https://github.com/sql-machine-learning/models/blob/develop/doc/design/design_customized_model.md)
 for ongoing development.
 
 In this tutorial we use two datasets both for english and chinese text classification.

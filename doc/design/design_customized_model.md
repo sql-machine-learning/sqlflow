@@ -1,4 +1,4 @@
-# Design Doc: Define Models for SQLFlow
+# _Design:_ Define Models for SQLFlow
 
 SQLFlow enables SQL programs to call deep learning models defined in Python. This document is about how to define models for SQLFlow.
 

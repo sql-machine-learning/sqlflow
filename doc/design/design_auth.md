@@ -1,4 +1,4 @@
-# Design: SQLFlow Authentication and Authorization
+# _Design:_ SQLFlow Authentication and Authorization
 
 ## Concepts
 
@@ -72,7 +72,7 @@ that case, we store session data into a reliable storage service like
 The below figure demonstrates overall workflow for authorization and
 authentication.
 
-<img src="figures/sqlflow_auth.png">
+<img src="../figures/sqlflow_auth.png">
 
 Users can access the JupyterHub web page using their own username and password.
 The user's identity will be verified by the [SSO](https://en.wikipedia.org/wiki/Single_sign-on)

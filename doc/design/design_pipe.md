@@ -1,9 +1,9 @@
-# Piping Responses
+# _Design:_ Piping Responses
 
 
 ## Streaming Responses
 
-As described in the [overall design](doc/syntax.md), a SQLFlow job could be a standard or an extended SQL statement, where an extended SQL statement will be translated into a Python program.  Therefore, each job might generate up to the following data streams:
+As described in the [overall design](design_syntax.md), a SQLFlow job could be a standard or an extended SQL statement, where an extended SQL statement will be translated into a Python program.  Therefore, each job might generate up to the following data streams:
 
 1. standard output, where each element is a line of text,
 1. standard error, where each element is a line of text,
