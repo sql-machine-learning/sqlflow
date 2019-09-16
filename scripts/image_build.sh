@@ -34,7 +34,7 @@ impyla \
 pyodps \
 jupyter \
 notebook==6.0.0 \
-sqlflow==0.4.0 \
+sqlflow==0.5.0 \
 pre-commit \
 odps \
 dill \
