@@ -20,3 +20,5 @@ package codegen
 type NumericColumn struct {
 	FieldMeta *FieldMeta
 }
+
+func (NumericColumn) isFeatureColumn() {}
