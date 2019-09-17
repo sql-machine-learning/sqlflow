@@ -75,7 +75,7 @@ type TrainIR struct {
 	// Attributes contain a list of parsed attribute in the WITH Clause. For example, after parsing
 	// "select ... train ... with train.epoch = 1000, model.hidden_units = [10, 10]",
 	// the Attributes will be {{"train.epoch", 1000}, {"model.hidden_units", [10 10]}}.
-	Attributes []Attribute
+	Attributes []*Attribute
 	// Features contain a map of a list of feature columns in the COLUMN clause.
 	// For multiple COLUMN clauses like
 	//   ```
