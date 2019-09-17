@@ -509,7 +509,7 @@ func analyze(wr *PipeWriter, pr *extendedSelect, db *DB, cwd, modelDir string) e
 		return err
 	}
 	imgBase64Str := base64.StdEncoding.EncodeToString(imgBytes)
-	img2html := "<html><body><img src=\"data:image/png;base64," + imgBase64Str + "\" /></body></html>"
+	img2html := fmt.Sprintf("<div align='center'><img src='data:image/png;base64,%s' /></div>", imgBase64Str)
 	wr.Write(img2html)
 
 	return nil
