@@ -27,9 +27,13 @@ ENV HADOOP_VERSION 3.2.0
 ENV PATH /opt/hadoop-${HADOOP_VERSION}/bin:/miniconda/envs/sqlflow-dev/bin:/miniconda/bin:/usr/local/go/bin:/go/bin:$PATH
 ENV IPYTHON_STARTUP /root/.ipython/profile_default/startup/
 
+
 # Main Steps to Build
-COPY scripts/image_build.sh /image_build.sh
-RUN bash /image_build.sh && rm -f /image_build.sh
+COPY . ${GOPATH}/src/github.com/sql-machine-learning/sqlflow
+RUN bash ${GOPATH}/src/github.com/sql-machine-learning/sqlflow/scripts/image_build.sh && \
+		mkdir -p /workspace && \
+		bash ${GOPATH}/src/github.com/sql-machine-learning/sqlflow/scripts/convert_markdown_into_ipynb.sh && \
+		rm -rf ${GOPATH}/src && rm -rf ${GOPATH}/bin
 VOLUME /var/lib/mysql
 
 # Prepare sample datasets
