@@ -79,9 +79,11 @@ class TestDB(TestCase):
             port = "10000"
             conn = connect(driver, "iris", user="root", password="root", host=host, port=port)
             self._do_test(driver, conn)
+            conn.close()
 
-            conn = connect_with_data_source("hive://root:root@127.0.0.1:10000/iris?auth=PLAIN&session.mapreduce_job_quenename=mr")
+            conn = connect_with_data_source("hive://root:root@127.0.0.1:10000/iris")
             self._do_test(driver, conn)
+            conn.close()
 
     def _do_test(self, driver, conn):
         table_name = "test_db"
