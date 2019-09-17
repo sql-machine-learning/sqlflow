@@ -6,6 +6,8 @@
 
 SQLFlow is a bridge that connects a SQL engine, e.g. MySQL, Hive, SparkSQL or SQL Server, with TensorFlow and other machine learning toolkits.  SQLFlow extends the SQL language to enable model training, prediction and inference.
 
+<img src="doc/figures/SQLFlow_overview.png" width="500px">
+
 ## Motivation
 The current experience of development ML based applications requires a team of data engineers, data scientists, business analysts as well as a proliferation of advanced languages and programming tools like Python, SQL, SAS, SASS, Julia, R. The fragmentation of tooling and development environment brings additional difficulties in engineering to model trainning/tunning. What if we marry the most widely used data management/processing language SQL with ML/system capabilities and let engineers with SQL skills develop advanced ML based applications? 
 
