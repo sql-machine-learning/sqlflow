@@ -73,22 +73,17 @@ chown mysql:mysql /var/run/mysqld
 chown mysql:mysql /var/lib/mysql
 mkdir -p /docker-entrypoint-initdb.d
 
-# 5. Build SQLFlow binaries by git clone the latest develop branch.
+# 5. Build SQLFlow binaries from the current branch.
 #    Then move binary file: "sqlflowserver" and "demo" to /usr/local/bin
 #    Then delete contents under $GOPATH to reduce the image size.
 # NOTE: During development and testing, /go will be overridden by -v.
-mkdir -p /go/src/github.com/sql-machine-learning
-cd /go/src/github.com/sql-machine-learning
-git clone -q https://github.com/sql-machine-learning/sqlflow.git
-cd sqlflow
+cd /go/src/github.com/sql-machine-learning/sqlflow
 go generate ./...
 go get -t ./...
 go install -v ./...
 mv $GOPATH/bin/sqlflowserver /usr/local/bin
 mv $GOPATH/bin/demo /usr/local/bin
 cp -r $GOPATH/src/github.com/sql-machine-learning/sqlflow/sql/python/sqlflow_submitter /miniconda/envs/sqlflow-dev/lib/python3.6/site-packages/
-rm -rf /go/src/*
-rm -rf /go/bin/*
 cd /
 
 # 6. Install latest sqlflow_models for testing custom models, see main_test.go:CaseTrainCustomModel
@@ -114,7 +109,6 @@ mkdir -p $IPYTHON_STARTUP
 mkdir -p /workspace
 echo 'get_ipython().magic(u"%reload_ext sqlflow.magic")' >> $IPYTHON_STARTUP/00-first.py
 echo 'get_ipython().magic(u"%autoreload 2")' >> $IPYTHON_STARTUP/00-first.py
-curl https://raw.githubusercontent.com/sql-machine-learning/sqlflow/develop/example/jupyter/example.ipynb --output /workspace/example.ipynb
 
 # 9. install xgboost
 pip install xgboost==0.90
