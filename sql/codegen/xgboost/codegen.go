@@ -22,20 +22,20 @@ import (
 )
 
 var attributeChecker = map[string]func(interface{}) error{
-	"model.eta": func(x interface{}) error {
+	"eta": func(x interface{}) error {
 		switch x.(type) {
 		case float32, float64:
 			return nil
 		default:
-			return fmt.Errorf("model.eta should be of type float, received %T", x)
+			return fmt.Errorf("eta should be of type float, received %T", x)
 		}
 	},
-	"model.num_class": func(x interface{}) error {
+	"num_class": func(x interface{}) error {
 		switch x.(type) {
 		case int, int32, int64:
 			return nil
 		default:
-			return fmt.Errorf("model.num_class should be of type int, received %T", x)
+			return fmt.Errorf("num_class should be of type int, received %T", x)
 		}
 	},
 	"train.num_boost_round": func(x interface{}) error {
@@ -46,9 +46,9 @@ var attributeChecker = map[string]func(interface{}) error{
 			return fmt.Errorf("train.num_boost_round should be of type int, received %T", x)
 		}
 	},
-	"model.objective": func(x interface{}) error {
+	"objective": func(x interface{}) error {
 		if _, ok := x.(string); !ok {
-			return fmt.Errorf("model.objective should be of type string, received %T", x)
+			return fmt.Errorf("objective should be of type string, received %T", x)
 		}
 		return nil
 	},
@@ -70,7 +70,7 @@ func resolveModelType(estimator string) (string, error) {
 func parseAttribute(attrs []codegen.Attribute) (map[string]map[string]interface{}, error) {
 	attrNames := map[string]bool{}
 
-	params := map[string]map[string]interface{}{"model.": {}, "train.": {}}
+	params := map[string]map[string]interface{}{"": {}, "train.": {}}
 	for _, attr := range attrs {
 		if _, ok := attrNames[attr.Key]; ok {
 			return nil, fmt.Errorf("duplicated attribute %s", attr.Key)
@@ -125,14 +125,14 @@ func Train(ir codegen.TrainIR) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	params["model."]["booster"] = booster
+	params[""]["booster"] = booster
 
 	if len(ir.Features) != 1 {
 		return "", fmt.Errorf("xgboost only support 1 feature column set, received %d", len(ir.Features))
 	}
 	featureFieldMeta, labelFieldMeta, err := getFieldMeta(ir.Features["feature_columns"], ir.Label)
 
-	mp, err := json.Marshal(params["model."])
+	mp, err := json.Marshal(params[""])
 	if err != nil {
 		return "", err
 	}

@@ -35,10 +35,10 @@ func TestTrain(t *testing.T) {
 		FROM iris.train
 	TRAIN xgboost.gbtree
 	WITH
-		train.num_boost_round = 30,
-		model.objective = "multi:softprob"
-		model.eta = 3.1,
-		model.num_class = 3
+		objective = "multi:softprob"
+		eta = 3.1,
+		num_class = 3,
+		train.num_boost_round = 30
 	COLUMN sepal_length, sepal_width, petal_length, petal_width
 	LABEL class
 	INTO sqlflow_models.my_xgboost_model;`
@@ -49,9 +49,9 @@ func TestTrain(t *testing.T) {
 		Estimator:        "xgboost.gbtree",
 		Attributes: []codegen.Attribute{
 			{"train.num_boost_round", 30},
-			{"model.objective", "multi:softprob"},
-			{"model.eta", 3.1},
-			{"model.num_class", 3}},
+			{"objective", "multi:softprob"},
+			{"eta", 3.1},
+			{"num_class", 3}},
 		Features: map[string][]codegen.FeatureColumn{
 			"feature_columns": {
 				codegen.NumericColumn{&codegen.FieldMeta{"sepal_length", codegen.Float, "", []int{1}, false}},
