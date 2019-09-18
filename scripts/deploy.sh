@@ -15,6 +15,7 @@
 
 set -e
 
+echo "$TRAVIS_PULL_REQUEST"
 if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then
     echo "skip deployment on pull request"
 fi
