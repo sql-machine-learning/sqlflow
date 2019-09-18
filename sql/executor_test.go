@@ -115,8 +115,14 @@ func TestExecutorTrainAndPredictDNN(t *testing.T) {
 		a.True(goodStream(stream.ReadAll()))
 		stream = runExtendedSQL(testPredictSelectIris, testDB, modelDir, nil)
 		a.True(goodStream(stream.ReadAll()))
+	})
+}
 
-		stream = runExtendedSQL(testClusteringTrain, testDB, modelDir, nil)
+func TestExecutorTrainAndPredictClustering(t *testing.T) {
+	a := assert.New(t)
+	modelDir := ""
+	a.NotPanics(func() {
+		stream := runExtendedSQL(testClusteringTrain, testDB, modelDir, nil)
 		a.True(goodStream(stream.ReadAll()))
 		stream = runExtendedSQL(testClusteringPredict, testDB, modelDir, nil)
 		a.True(goodStream(stream.ReadAll()))
