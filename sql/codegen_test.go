@@ -49,6 +49,12 @@ COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.my_clustering_model;
 `
+	testClusteringPredict = `
+SELECT *
+FROM iris.test
+PREDICT iris.predict.class
+USING sqlflow_models.my_clustering_model;
+`
 )
 
 func TestCodeGenTrain(t *testing.T) {

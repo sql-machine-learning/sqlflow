@@ -113,11 +113,12 @@ func TestExecutorTrainAndPredictDNN(t *testing.T) {
 	a.NotPanics(func() {
 		stream := runExtendedSQL(testTrainSelectIris, testDB, modelDir, nil)
 		a.True(goodStream(stream.ReadAll()))
-
 		stream = runExtendedSQL(testPredictSelectIris, testDB, modelDir, nil)
 		a.True(goodStream(stream.ReadAll()))
 
 		stream = runExtendedSQL(testClusteringTrain, testDB, modelDir, nil)
+		a.True(goodStream(stream.ReadAll()))
+		stream = runExtendedSQL(testClusteringPredict, testDB, modelDir, nil)
 		a.True(goodStream(stream.ReadAll()))
 	})
 }
