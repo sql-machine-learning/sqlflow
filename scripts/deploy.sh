@@ -15,12 +15,15 @@
 
 set -e
 
+if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then
+    echo "skip deployment on pull request"
+fi
+
 echo "$DOCKER_PASSWORD" | docker login --username "$DOCKER_USERNAME" --password-stdin
 #docker build -t sqlflow/sqlflow:deploy_build -f ./Dockerfile .
 
-GIT_BRANCH=`git branch | grep \* | cut -d ' ' -f2`
-if [[ $GIT_BRANCH == "develop" ]]; then
-    echo branch develop
+echo "$TRAVIS_BRANCH"
+if [[ "TRAVIS_BRANCH" == "develop" ]]; then
     if [[ $TRAVIS_EVENT_TYPE == "cron" ]]; then
         DOCKER_TAG="nightly"
     else
@@ -31,8 +34,8 @@ if [[ $GIT_BRANCH == "develop" ]]; then
 #    docker tag sqlflow/sqlflow:deploy_build sqlflow/sqlflow:$DOCKER_TAG
 #    docker push sqlflow/sqlflow:$DOCKER_TAG
 else
-    echo branch $GIT_BRANCH
     GIT_TAG=`git tag -l --points-at HEAD`
+    echo tag $GIT_TAG
     if [[ $GIT_TAG != "" ]]; then
         echo tag $GIT_TAG
 #        echo docker push sqlflow/sqlflow:$GIT_TAG
