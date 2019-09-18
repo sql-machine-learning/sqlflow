@@ -883,7 +883,7 @@ sqldefault:
 			sqlVAL.tran.estimator = sqlDollar[2].val
 			sqlVAL.tran.trainAttrs = sqlDollar[4].atrs
 			sqlVAL.tran.columns = sqlDollar[5].colc
-			sqlVAL.tran.save = sqlDollar[6].val
+			sqlVAL.tran.save = sqlDollar[7].val
 		}
 	case 11:
 		sqlDollar = sqlS[sqlpt-4 : sqlpt+1]

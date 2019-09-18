@@ -203,7 +203,7 @@ train_clause
 	$$.estimator = $2
 	$$.trainAttrs = $4
 	$$.columns = $5
-	$$.save = $6
+	$$.save = $7
 }
 ;
 

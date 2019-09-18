@@ -550,7 +550,7 @@ func createPredictionTable(predParsed *extendedSelect, db *DB) error {
 		}
 		fmt.Fprintf(&b, "%s %s, ", name, stype)
 	}
-	typ, _ := fts.get(predParsed.label)
+	typ, _ := fts.get(columnName)
 	stype, e := universalizeColumnType(db.driverName, typ)
 	if e != nil {
 		return e
