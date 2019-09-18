@@ -550,6 +550,10 @@ func createPredictionTable(predParsed *extendedSelect, db *DB) error {
 		}
 		fmt.Fprintf(&b, "%s %s, ", name, stype)
 	}
+
+	// TODO(Yancey1989): For the current implementation, the predcition result column type is
+	// derivated by the pred-select-statment, the better way is derivating the result column
+	// type by the prediction result.
 	typ, _ := fts.get(columnName)
 	stype, e := universalizeColumnType(db.driverName, typ)
 	if e != nil {
