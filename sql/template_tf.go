@@ -34,7 +34,7 @@ tf.get_logger().setLevel(logging.ERROR)
 
 BATCHSIZE = {{.BatchSize}}
 EPOCHS = {{.Epochs}}
-VERBOSE = 0
+VERBOSE = {{.Verbose}}
 
 driver="{{.Driver}}"
 database=""

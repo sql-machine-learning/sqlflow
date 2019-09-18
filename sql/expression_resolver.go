@@ -45,6 +45,7 @@ type resolvedTrainClause struct {
 	ModelName                     string
 	ModelConstructorParams        map[string]*attribute
 	BatchSize                     int
+	Verbose                       int
 	EvalBatchSize                 int
 	DropRemainder                 bool
 	EnableCache                   bool
@@ -161,6 +162,7 @@ func resolveTrainClause(tc *trainClause, slct *standardSelect, connConfig *conne
 	}
 	epoch := getIntAttr(attrs, "train.epoch", 1)
 	shard := getIntAttr(attrs, "train.shard", 1)
+	verbose := getIntAttr(attrs, "train.verbose", 0)
 	maxSteps := getIntAttr(attrs, "train.max_steps", -1)
 
 	gradsToWait := getIntAttr(attrs, "train.grads_to_wait", 2)
@@ -256,6 +258,7 @@ func resolveTrainClause(tc *trainClause, slct *standardSelect, connConfig *conne
 		CustomModule:                  customModel,
 		FeatureColumnInfered:          fcInfered,
 		ColumnSpecInfered:             csInfered,
+		Verbose:                       verbose,
 	}, nil
 }
 

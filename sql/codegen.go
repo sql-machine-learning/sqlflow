@@ -49,6 +49,7 @@ type modelConfig struct {
 	Epochs              int
 	Save                string
 	IsKerasModel        bool
+	Verbose             int
 }
 
 // FeatureMeta describes feature column meta data
@@ -107,6 +108,7 @@ func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *D
 			EstimatorCode: modelClassString,
 			BatchSize:     1,
 			Epochs:        1,
+			Verbose:       0,
 			Save:          pr.save,
 			IsKerasModel:  isKerasModel,
 		},
@@ -130,6 +132,7 @@ func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *D
 	}
 	r.modelConfig.BatchSize = trainResolved.BatchSize
 	r.modelConfig.Epochs = trainResolved.Epoch
+	r.modelConfig.Verbose = trainResolved.Verbose
 
 	featureColumnsCode := make(map[string][]string)
 	for target, columnsExpr := range pr.columns {

@@ -145,7 +145,8 @@ WITH
 model.n_classes = 3,
 model.hidden_units = [10, 20],
 train.epoch = 200,
-train.batch_size = 10
+train.batch_size = 10,
+train.verbose = 1
 COLUMN NUMERIC(dense, 4)
 LABEL class
 INTO sqlflow_models.my_dense_dnn_model
