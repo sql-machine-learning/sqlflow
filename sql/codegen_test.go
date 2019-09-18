@@ -47,7 +47,6 @@ WITH
   model.pretrain_dims = [4,10,3],
   train.batch_size = 1
 COLUMN sepal_length, sepal_width, petal_length, petal_width
-LABEL class
 INTO sqlflow_models.my_clustering_model;
 `
 	testClusteringPredict = `

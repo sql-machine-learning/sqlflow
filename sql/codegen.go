@@ -211,7 +211,19 @@ func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *D
 
 	// Default use int32 label dtype
 	labelDtype := "int32"
-	if dbDType, ok := fts.get(pr.label); ok {
+	var labelColumnName string
+	var e error
+
+	if pr.train {
+		labelColumnName = pr.label
+	} else {
+		r.TableName, labelColumnName, e = parseTableColumn(pr.into)
+		if e != nil {
+			return nil, fmt.Errorf("invalid predParsed.into, %v", e)
+		}
+	}
+
+	if dbDType, ok := fts.get(labelColumnName); ok {
 		v := strings.ToUpper(dbDType)
 		if v == "FLOAT" {
 			labelDtype = "float32"
@@ -226,19 +238,13 @@ func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *D
 		}
 	}
 	r.Y = &FeatureMeta{
-		FeatureName: pr.label,
+		FeatureName: labelColumnName,
 		Dtype:       labelDtype,
 		Delimiter:   ",",
 		InputShape:  "[1]",
 		IsSparse:    false,
 	}
 
-	var e error
-	if !pr.train {
-		if r.TableName, _, e = parseTableColumn(pr.into); e != nil {
-			return nil, e
-		}
-	}
 	return r, e
 }
 
