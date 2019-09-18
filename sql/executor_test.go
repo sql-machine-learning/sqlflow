@@ -118,9 +118,11 @@ func TestExecutorTrainAndPredictDNN(t *testing.T) {
 	})
 }
 
-func TestExecutorTrainAndPredictClustering(t *testing.T) {
+func TestExecutorTrainAndPredictClusteringLocalFS(t *testing.T) {
 	a := assert.New(t)
-	modelDir := ""
+	modelDir, e := ioutil.TempDir("/tmp", "sqlflow_models")
+	a.Nil(e)
+	defer os.RemoveAll(modelDir)
 	a.NotPanics(func() {
 		stream := runExtendedSQL(testClusteringTrain, testDB, modelDir, nil)
 		a.True(goodStream(stream.ReadAll()))
