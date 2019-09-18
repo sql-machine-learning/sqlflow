@@ -33,14 +33,21 @@ WITH
   model.hidden_units = [10, 20]
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
-INTO sqlflow_models.my_dnn_model
-;
+INTO sqlflow_models.my_dnn_model;
 `
 	testPredictSelectIris = `
 SELECT *
 FROM iris.test
 predict iris.predict.class
 USING sqlflow_models.my_dnn_model;
+`
+	testClusteringTrain = testSelectIris + `
+TRAIN sqlflow_models.DeepEmbeddingClusterModel
+WITH
+  model.pretrain_dims = [4,500,500,2000,10]
+COLUMN sepal_length, sepal_width, petal_length, petal_width
+LABEL class
+INTO sqlflow_models.my_clustering_model;
 `
 )
 

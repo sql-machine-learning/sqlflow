@@ -116,6 +116,9 @@ func TestExecutorTrainAndPredictDNN(t *testing.T) {
 
 		stream = runExtendedSQL(testPredictSelectIris, testDB, modelDir, nil)
 		a.True(goodStream(stream.ReadAll()))
+
+		stream = runExtendedSQL(testClusteringTrain, testDB, modelDir, nil)
+		a.True(goodStream(stream.ReadAll()))
 	})
 }
 
