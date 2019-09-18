@@ -15,13 +15,26 @@
 
 set -e
 
-echo "$DOCKER_PASSWORD" | docker login --username "$DOCKER_USERNAME" --password-stdin
+#echo "$DOCKER_PASSWORD" | docker login --username "$DOCKER_USERNAME" --password-stdin
+#docker build -t sqlflow/sqlflow:deploy_build -f ./Dockerfile .
 
-if [[ $TRAVIS_EVENT_TYPE == "cron" ]]; then
-    DOCKER_TAG="nightly"
+GIT_BRANCH=`git branch | grep \* | cut -d ' ' -f2`
+if [[ $GIT_BRANCH == "develop" ]]; then
+    if [[ $TRAVIS_EVENT_TYPE == "cron" ]]; then
+        DOCKER_TAG="nightly"
+    else
+        DOCKER_TAG="latest"
+    fi
+
+    echo docker push sqlflow/sqlflow:$DOCKER_TAG
+    docker tag sqlflow/sqlflow:deploy_build sqlflow/sqlflow:$DOCKER_TAG
+    docker push sqlflow/sqlflow:$DOCKER_TAG
 else
-    DOCKER_TAG="latest"
+    GIT_TAG=`git tag -l --points-at HEAD`
+    if [[ $GIT_TAG != "" ]]; then
+        echo docker push sqlflow/sqlflow:$GIT_TAG
+        docker tag sqlflow/sqlflow:deploy_build sqlflow/sqlflow:$GIT_TAG
+        docker push sqlflow/sqlflow:$GIT_TAG
+    fi
 fi
 
-docker build -t sqlflow/sqlflow:$DOCKER_TAG -f ./Dockerfile .
-docker push sqlflow/sqlflow:$DOCKER_TAG
