@@ -509,7 +509,7 @@ func analyze(wr *PipeWriter, pr *extendedSelect, db *DB, cwd, modelDir string) e
 		return err
 	}
 	imgBase64Str := base64.StdEncoding.EncodeToString(imgBytes)
-	img2html := "<html><body><img src=\"data:image/png;base64," + imgBase64Str + "\" /></body></html>"
+	img2html := fmt.Sprintf("<div align='center'><img src='data:image/png;base64,%s' /></div>", imgBase64Str)
 	wr.Write(img2html)
 
 	return nil
@@ -550,7 +550,11 @@ func createPredictionTable(predParsed *extendedSelect, db *DB) error {
 		}
 		fmt.Fprintf(&b, "%s %s, ", name, stype)
 	}
-	typ, _ := fts.get(predParsed.label)
+
+	// TODO(Yancey1989): For the current implementation, the prediction result column
+	// type is derivated by the pred-select-statement, the better way is derivating
+	// the result column type by the prediction result.
+	typ, _ := fts.get(columnName)
 	stype, e := universalizeColumnType(db.driverName, typ)
 	if e != nil {
 		return e
