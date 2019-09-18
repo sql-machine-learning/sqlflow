@@ -45,10 +45,16 @@ INTO mymodel;`
 	a.Equal("DNNClassifier", trainIR.Estimator)
 	a.Equal("SELECT c1, c2, c3, c4\nFROM my_table", trainIR.Select)
 
-	a.Equal("model.n_classes", trainIR.Attributes[0].Key)
-	a.Equal("2", trainIR.Attributes[0].Value)
-	a.Equal("train.optimizer", trainIR.Attributes[1].Key)
-	a.Equal("\"adam\"", trainIR.Attributes[1].Value)
+	// TODO(typhoonzero): should find out why the order of parsed attributes changes randomly
+	for _, attr := range trainIR.Attributes {
+		if attr.Key == "model.n_classes" {
+			a.Equal("2", attr.Value)
+		} else if attr.Key == "train.optimizer" {
+			a.Equal("\"adam\"", attr.Value)
+		} else {
+			a.Failf("error key: %s", attr.Key)
+		}
+	}
 
 	nc, ok := trainIR.Features["feature_columns"][0].(*codegen.NumericColumn)
 	a.True(ok)
