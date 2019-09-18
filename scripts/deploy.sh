@@ -38,9 +38,9 @@ if [[ "TRAVIS_BRANCH" == "develop" ]]; then
 else
     echo "tag $TRAVIS_TAG"
     if [[ "$TRAVIS_TAG" != "" ]]; then
-        echo "docker push sqlflow/sqlflow:$GIT_TAG"
-#        docker tag sqlflow/sqlflow:deploy_build sqlflow/sqlflow:$GIT_TAG
-#        docker push sqlflow/sqlflow:$GIT_TAG
+        echo "docker push sqlflow/sqlflow:$TRAVIS_TAG"
+#        docker tag sqlflow/sqlflow:deploy_build sqlflow/sqlflow:$TRAVIS_TAG
+#        docker push sqlflow/sqlflow:$TRAVIS_TAG
     fi
 fi
 
