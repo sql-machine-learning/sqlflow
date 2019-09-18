@@ -3,7 +3,7 @@ language: go
 branches:
   only:
   - gh-pages
-  - develop|release-*
+  - "/develop|release-*/"
 service:
   - docker
 
@@ -49,7 +49,7 @@ deploy:
   provider: script
   script: bash scripts/deploy.sh
   on:
-    branch: develop|release-*
+    branch: "/develop|release-*/"
 
 env:
   global:
