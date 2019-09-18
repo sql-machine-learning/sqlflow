@@ -47,7 +47,12 @@ def parseHiveDSN(dsn):
         for c in config_str[1:].split("&"):
             k, v = c.split("=")
             config[k] = v
-    return user, passwd, host, port, database, config
+    auth = config["auth"] if "auth" in config else ""
+    session = {}
+    for k, v in config.items():
+        if k.startswith("session."):
+            session[k[len("session."):]] = v
+    return user, passwd, host, port, database, auth, session
 
 
 def parseMaxComputeDSN(dsn):
@@ -64,32 +69,32 @@ def parseMaxComputeDSN(dsn):
     return user, passwd, address, config["curr_project"]
 
 
-def connect_with_data_source(dsn):
-    driver, source = data_source.split("://")
+def connect_with_data_source(driver_dsn):
+    driver, dsn = driver_dsn.split("://")
     if driver == "mysql":
         # NOTE: use MySQLdb to avoid bugs like infinite reading:
         # https://bugs.mysql.com/bug.php?id=91971
         from MySQLdb import connect
         user, passwd, host, port, database, config = parseMySQLDSN(dsn)
         conn = connect(user=user,
-                       passwd=password,
+                       passwd=passwd,
                        db=database,
                        host=host,
                        port=int(port))
     elif driver == "hive":
         from impala.dbapi import connect
-        user, passwd, host, port, database, config = parseHiveDSN(dsn)
-        auth = config["auth"] if "auth" in config else ""
+        user, passwd, host, port, database, auth, session = parseHiveDSN(dsn)
         conn = connect(user=user,
-                       password=password,
+                       password=passwd,
                        database=database,
                        host=host,
                        port=int(port),
                        auth_mechanism=auth)
+        conn.session = session
     elif driver == "maxcompute":
         from sqlflow_submitter.maxcompute import MaxCompute
         user, passwd, address, database = parseMaxComputeDSN(dsn)
-        conn = MaxCompute.connect(database, user, password, address)
+        conn = MaxCompute.connect(database, user, passwd, address)
     else:
         raise ValueError("connect_with_data_source doesn't support driver type {}".format(driver))
 

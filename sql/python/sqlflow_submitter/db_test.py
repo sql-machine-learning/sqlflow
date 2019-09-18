@@ -16,7 +16,7 @@ from unittest import TestCase
 import os
 
 import tensorflow as tf
-from sqlflow_submitter.db import connect, db_generator, buffered_db_writer
+from sqlflow_submitter.db import connect, db_generator, buffered_db_writer, connect_with_data_source
 from odps import ODPS, tunnel
 
 def _execute_maxcompute(conn, statement):
@@ -58,12 +58,6 @@ class TestDB(TestCase):
     select_statement = "select * from test_db"
     drop_statement = "drop table if exists test_db"
 
-    def test_sqlite3(self):
-        driver = os.environ.get('SQLFLOW_TEST_DB') or "sqlite3"
-        if driver == "sqlite3":
-            conn = connect(driver, ":memory:", user=None, password=None, host=None, port=None)
-            self._do_test(driver, conn)
-
     def test_mysql(self):
         driver = os.environ.get('SQLFLOW_TEST_DB')
         if driver == "mysql":
@@ -75,6 +69,9 @@ class TestDB(TestCase):
             conn = connect(driver, database, user=user, password=password, host=host, port=port)
             self._do_test(driver, conn)
 
+            conn = connect_with_data_source("mysql://root:root@tcp(127.0.0.1:3306)/iris?maxAllowedPacket=0")
+            self._do_test(driver, conn)
+
     def test_hive(self):
         driver = os.environ.get('SQLFLOW_TEST_DB')
         if driver == "hive":
@@ -82,6 +79,11 @@ class TestDB(TestCase):
             port = "10000"
             conn = connect(driver, "iris", user="root", password="root", host=host, port=port)
             self._do_test(driver, conn)
+            conn.close()
+
+            conn = connect_with_data_source("hive://root:root@127.0.0.1:10000/iris")
+            self._do_test(driver, conn)
+            conn.close()
 
     def _do_test(self, driver, conn):
         table_name = "test_db"
@@ -172,13 +174,13 @@ class TestConnectWithDataSource(TestCase):
 
     def test_parse_hive_dsn(self):
         self.assertEqual(
-                ("usr", "pswd", "hiveserver", "1000", "mydb", {"auth":"PLAIN", "session.mapreduce_job_quenename": "mr"}),
+                ("usr", "pswd", "hiveserver", "1000", "mydb", "PLAIN", {"mapreduce_job_quenename": "mr"}),
             parseHiveDSN("usr:pswd@hiveserver:1000/mydb?auth=PLAIN&session.mapreduce_job_quenename=mr"))
         self.assertEqual(
-            ("root", "root", "127.0.0.1", None, "mnist", {"auth":"PLAIN"}),
+            ("root", "root", "127.0.0.1", None, "mnist", "PLAIN", {}),
             parseHiveDSN("root:root@127.0.0.1/mnist?auth=PLAIN"))
         self.assertEqual(
-            ("root", "root", "127.0.0.1", None, None, {}),
+            ("root", "root", "127.0.0.1", None, None, "", {}),
             parseHiveDSN("root:root@127.0.0.1"))
 
     def test_parse_maxcompute_dsn(self):
