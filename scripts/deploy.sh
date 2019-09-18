@@ -21,8 +21,8 @@ if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then
     exit 0
 fi
 
-
 echo "TRAVIS_BRANCH $TRAVIS_BRANCH"
+echo "TRAVIS_TAG $TRAVIS_TAG"
 if [[ "TRAVIS_BRANCH" == "develop" ]]; then
     if [[ $TRAVIS_EVENT_TYPE == "cron" ]]; then
         DOCKER_TAG="nightly"
