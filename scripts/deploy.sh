@@ -15,8 +15,8 @@
 
 set -e
 
-#echo "$DOCKER_PASSWORD" | docker login --username "$DOCKER_USERNAME" --password-stdin
-#docker build -t sqlflow/sqlflow:deploy_build -f ./Dockerfile .
+echo "$DOCKER_PASSWORD" | docker login --username "$DOCKER_USERNAME" --password-stdin
+docker build -t sqlflow/sqlflow:deploy_build -f ./Dockerfile .
 
 GIT_BRANCH=`git branch | grep \* | cut -d ' ' -f2`
 if [[ $GIT_BRANCH == "develop" ]]; then
