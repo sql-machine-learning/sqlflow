@@ -71,6 +71,7 @@ func parseAttribute(attrs []codegen.Attribute) (map[string]map[string]interface{
 	attrNames := map[string]bool{}
 
 	params := map[string]map[string]interface{}{"": {}, "train.": {}}
+	paramPrefix := []string{"train.", ""} // use slice to assure traverse order
 	for _, attr := range attrs {
 		if _, ok := attrNames[attr.Key]; ok {
 			return nil, fmt.Errorf("duplicated attribute %s", attr.Key)
@@ -83,9 +84,9 @@ func parseAttribute(attrs []codegen.Attribute) (map[string]map[string]interface{
 		if err := checker(attr.Value); err != nil {
 			return nil, err
 		}
-		for prefix, paramMap := range params {
-			if strings.HasPrefix(attr.Key, prefix) {
-				paramMap[attr.Key[len(prefix):]] = attr.Value
+		for _, pp := range paramPrefix {
+			if strings.HasPrefix(attr.Key, pp) {
+				params[pp][attr.Key[len(pp):]] = attr.Value
 			}
 		}
 	}
