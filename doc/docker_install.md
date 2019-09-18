@@ -1,37 +1,31 @@
-# Installation
+# Install SQLFlow Using Docker
 
-SQLFlow is currently under active development. For those who are interested in trying
-it out, we have provided the instructions and demo. Play around with it. Any bug report and issue is welcome. :)
+SQLFlow releases an "all-in-one" Docker image that contains SQLFlow binary, MySQL
+service, sample datasets loaded in the MySQL service, and jupyter notebook server.
 
+You can use this Docker image for either local trying out or production deployment.
 
 ## Preparation
 
-1. Install [Docker Community Edition](https://docs.docker.com/install/) on your Macbook.
-1. Pull the latest SQLFlow "all-in-one" Docker image, which contains pre-built SQLFlow
-   binary, sample datasets (under `example/datasets`), and jupyter notebook.
+1. Install [Docker Community Edition](https://docs.docker.com/install/) on your PC/Macbook/Server.
+1. Pull the latest SQLFlow "all-in-one" Docker image:
 
    ```
-   docker pull sqlflow/sqlflow:latest
+   docker pull sqlflow/sqlflow
    ```
 
-## Running Your First SQLFlow Query
+## Try Out SQLFlow using Notebook
 
-1. Simply type the below command to start the service:
-
-   ```
-   docker run -it -p 8888:8888 sqlflow/sqlflow:latest
-   ```
-
-1. Open a web browser, go to `localhost:8888`.  Select the "New" drop-down menu on the right side, and open the "Python 3" development environment in a new Notebook cell (also in a new tab). In the new cell, type in below SELECT statement to fetch 5 records from train table in Iris database. 
+1. Type the below command to start the container:
 
    ```
-   %%sqlflow
-   select * from iris.train limit 5;
+   docker run -it -p 8888:8888 sqlflow/sqlflow
    ```
 
-1. Now you've successfully tested SQLFlow installation and written some SQL from Jupyter Notebook. Just as shown in the Quick Overview, you can continue your [SQLFlow journey](demo.md) in the command line setting. Also feel free to check out more [SQLFlow examples](/example/jupyter/example.ipynb) if you are new to Jupyter Notebook.
+1. Open a web browser, go to `localhost:8888`, open `tutorial_dnn_iris.ipynb` file, then you can
+   follow the tutorial and run the SQL statements to run the training and prediction.
 
-## Use Your Own Database
+## Connect to Your Own Database
 
 If you have your own database setup, below steps enables running a seperated container
 that runs SQLFlow server and Jupyter Notebook, which connects to your own database.
