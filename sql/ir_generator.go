@@ -19,7 +19,6 @@ import (
 	"strings"
 
 	"github.com/sql-machine-learning/sqlflow/sql/codegen"
-	"github.com/sql-machine-learning/sqlflow/sql/columns"
 )
 
 func generateTrainIR(slct *extendedSelect, connStr string) (*codegen.TrainIR, error) {
@@ -29,6 +28,7 @@ func generateTrainIR(slct *extendedSelect, connStr string) (*codegen.TrainIR, er
 	if err != nil {
 		return nil, err
 	}
+	// TODO(typhoonzero): call feature derivation here and verify the fields are all valid.
 	fcMap := make(map[string][]codegen.FeatureColumn)
 	for target, columnList := range tc.columns {
 		fcList := []codegen.FeatureColumn{}
@@ -59,6 +59,7 @@ func generateTrainIR(slct *extendedSelect, connStr string) (*codegen.TrainIR, er
 			Name: tc.label,
 		}}
 
+	// TODO(typhoonzero): fill in ValidationSelect using `create_train_val.go`
 	// TODO(typhoonzero): fill in ValidationSelect when VALIDATE clause is ready
 	return &codegen.TrainIR{
 		DataSource:       connStr,
@@ -320,9 +321,9 @@ func parseEmbeddingColumn(el *exprlist) (*codegen.EmbeddingColumn, error) {
 
 	// TODO(uuleon) support other kinds of categorical column in the future
 	var catColumn interface{}
-	catColumn, ok := source.(*columns.CategoryIDColumn)
+	catColumn, ok := source.(*codegen.CategoryIDColumn)
 	if !ok {
-		catColumn, ok = source.(*columns.SequenceCategoryIDColumn)
+		catColumn, ok = source.(*codegen.SeqCategoryIDColumn)
 		if !ok {
 			return nil, fmt.Errorf("key of EMBEDDING must be categorical column")
 		}

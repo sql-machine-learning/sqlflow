@@ -29,7 +29,11 @@ func TestGenerateTrainIR(t *testing.T) {
 FROM my_table
 TRAIN DNNClassifier
 WITH model.n_classes=2, train.optimizer="adam"
-COLUMN c1,NUMERIC(c2, [128, 32]),CATEGORY_ID(c3, 512)
+COLUMN c1,NUMERIC(c2, [128, 32]),CATEGORY_ID(c3, 512),
+       SEQ_CATEGORY_ID(c3, 512),
+	   CROSS([c1,c2], 64),
+	   BUCKET(NUMERIC(c1, [100]), 100),
+	   EMBEDDING(CATEGORY_ID(c3, 512), 128, mean)
 LABEL c4
 INTO mymodel;`
 
@@ -63,4 +67,28 @@ INTO mymodel;`
 	l, ok := trainIR.Label.(*codegen.NumericColumn)
 	a.True(ok)
 	a.Equal("c4", l.FieldMeta.Name)
+
+	seqcc, ok := trainIR.Features["feature_columns"][3].(*codegen.SeqCategoryIDColumn)
+	a.True(ok)
+	a.Equal("c3", seqcc.FieldMeta.Name)
+
+	cross, ok := trainIR.Features["feature_columns"][4].(*codegen.CrossColumn)
+	a.True(ok)
+	a.Equal("c1", cross.Keys[0].(string))
+	a.Equal("c2", cross.Keys[1].(string))
+	a.Equal(64, cross.HashBucketSize)
+
+	bucket, ok := trainIR.Features["feature_columns"][5].(*codegen.BucketColumn)
+	a.True(ok)
+	a.Equal(100, bucket.Boundaries[0])
+	a.Equal("c1", bucket.SourceColumn.FieldMeta.Name)
+
+	emb, ok := trainIR.Features["feature_columns"][6].(*codegen.EmbeddingColumn)
+	a.True(ok)
+	a.Equal("mean", emb.Combiner)
+	a.Equal(128, emb.Dimension)
+	embInner, ok := emb.CategoryColumn.(*codegen.CategoryIDColumn)
+	a.True(ok)
+	a.Equal("c3", embInner.FieldMeta.Name)
+	a.Equal(512, embInner.BucketSize)
 }
