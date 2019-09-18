@@ -1,11 +1,11 @@
-# _Design:_ Clustering in SQLflow to analyze patterns in data
+# _Design:_ Clustering in SQLFlow to analyze patterns in data
 
 ## ClusterModel introduction
 
 Most of time when businessman and analyst faced the data, they need not only the supervised learning model to perform classification and prediction, but also unsupervised learning to catch hidden patterns. This can help analysts to draw inferences from datasets consisting of input data without labeled responses, such as grouping users by their behavioral characteristics. 
 
 
-This design document introduced how to support the `Cluster Model` in SQLFLow.
+This design document introduced how to support the `Cluster Model` in SQLFlow.
 
 The figure below demonstrates the overall workflow for cluster model training, which include both the pre_train autoencoder model and the clustering model.(Reference https://www.dlology.com/blog/how-to-do-unsupervised-clustering-with-keras/)
 
@@ -106,7 +106,7 @@ Therefore, there are four cases in total:
 4.  model.run_pretrain = false & Using existed_pretrain_model.
     existed_pretrain_model Pre_train + Random initialization weights for cluster. (Note that model.encode_units "does not work" at this time.)
 
-- In the first stage of the clustering model on sqlflow, we plan to achieve the `first case`. We will achieve the other cases in the later. 
+- In the first stage of the clustering model on SQLFlow, we plan to achieve the `first case`. We will achieve the other cases in the later. 
 
 - Users can use the trained cluster model in ` PREDICT SQL` to predict the group of input_table to get output_table.
 

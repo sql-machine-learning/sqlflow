@@ -21,12 +21,16 @@ type NumericColumn struct {
 	FieldMeta *FieldMeta
 }
 
+func (NumericColumn) isFeatureColumn() {}
+
 // BucketColumn represents `tf.feature_column.bucketized_column`
 // ref: https://www.tensorflow.org/api_docs/python/tf/feature_column/bucketized_column
 type BucketColumn struct {
 	SourceColumn *NumericColumn
 	Boundaries   []int
 }
+
+func (BucketColumn) isFeatureColumn() {}
 
 // CrossColumn represents `tf.feature_column.crossed_column`
 // ref: https://www.tensorflow.org/api_docs/python/tf/feature_column/crossed_column
@@ -35,6 +39,8 @@ type CrossColumn struct {
 	HashBucketSize int
 }
 
+func (CrossColumn) isFeatureColumn() {}
+
 // CategoryIDColumn represents `tf.feature_column.categorical_column_with_identity`
 // ref: https://www.tensorflow.org/api_docs/python/tf/feature_column/categorical_column_with_identity
 type CategoryIDColumn struct {
@@ -42,12 +48,16 @@ type CategoryIDColumn struct {
 	BucketSize int
 }
 
+func (CategoryIDColumn) isFeatureColumn() {}
+
 // SeqCategoryIDColumn represents `tf.feature_column.sequence_categorical_column_with_identity`
 // ref: https://www.tensorflow.org/api_docs/python/tf/feature_column/sequence_categorical_column_with_identity
 type SeqCategoryIDColumn struct {
 	FieldMeta  *FieldMeta
 	BucketSize int
 }
+
+func (SeqCategoryIDColumn) isFeatureColumn() {}
 
 // EmbeddingColumn represents `tf.feature_column.embedding_column`
 // ref: https://www.tensorflow.org/api_docs/python/tf/feature_column/embedding_column
@@ -58,7 +68,4 @@ type EmbeddingColumn struct {
 	Initializer    string
 }
 
-// LabelColumn describes training label FieldMeta
-type LabelColumn struct {
-	FieldMeta *FieldMeta
-}
+func (EmbeddingColumn) isFeatureColumn() {}

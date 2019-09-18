@@ -60,7 +60,7 @@ INTO mymodel;`
 	a.Equal("c3", cc.FieldMeta.Name)
 	a.Equal(512, cc.BucketSize)
 
-	l, ok := trainIR.Label.(*codegen.LabelColumn)
+	l, ok := trainIR.Label.(*codegen.NumericColumn)
 	a.True(ok)
 	a.Equal("c4", l.FieldMeta.Name)
 }

@@ -54,7 +54,7 @@ func generateTrainIR(slct *extendedSelect, connStr string) (*codegen.TrainIR, er
 		}
 		fcMap[target] = fcList
 	}
-	label := &codegen.LabelColumn{
+	label := &codegen.NumericColumn{
 		FieldMeta: &codegen.FieldMeta{
 			Name: tc.label,
 		}}
