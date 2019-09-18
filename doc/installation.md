@@ -8,7 +8,8 @@ it out, we have provided the instructions and demo. Play around with it. Any bug
 
 1. Install [Docker Community Edition](https://docs.docker.com/install/) on your Macbook.
 1. Pull the latest SQLFlow "all-in-one" Docker image, which contains pre-built SQLFlow
-   binary, sample datasets (under `example/datasets`), and jupyter notebook. You can also [build the Docker image from source code](./build.md).
+   binary, sample datasets (under `example/datasets`), and jupyter notebook. You can also 
+   build the Docker image from source code following [this guide](./build.md).
 
    ```
    docker pull sqlflow/sqlflow:latest
