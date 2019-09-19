@@ -12,7 +12,7 @@ It's quite simple to try out SQLFlow using [Docker](https://docs.docker.com/).
 
 For advanced usage, you can continue reading:
 
-[User Guide](user_guid.md)
+[User Guide](user_guide.md)
 
 [Run SQLFlow Command Line](demo.md)
 
