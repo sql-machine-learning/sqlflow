@@ -1,12 +1,9 @@
 FROM ubuntu:16.04
 
-# The default apt-get source archive.ubuntu.com might take too much traffic and 
-# has been slow. The following source makes docker build running faster.  The 
-# way of writing multi-line string is from https://stackoverflow.com/a/54397762/724872.
-RUN echo $' \n\
-###### Ubuntu Main Repos \n\
+# The default apt-get source archive.ubuntu.com might take too much traffic and
+# has been slow. The following source makes docker build running faster.
+RUN echo ' \n\
 deb http://us.archive.ubuntu.com/ubuntu/ xenial main restricted universe multiverse \n\
-###### Ubuntu Update Repos \n\
 deb http://us.archive.ubuntu.com/ubuntu/ xenial-security main restricted universe multiverse \n\
 deb http://us.archive.ubuntu.com/ubuntu/ xenial-updates main restricted universe multiverse \n\
 deb http://us.archive.ubuntu.com/ubuntu/ xenial-proposed main restricted universe multiverse \n\
