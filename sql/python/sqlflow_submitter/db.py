@@ -180,7 +180,9 @@ def db_generator(driver, conn, statement,
             if driver == "mysql":
                 conn.ping(True)
             for row in rows:
-                label = row[label_idx] if label_idx is not None else None
+                # NOTE: If there is no label clause in the extened SQL, the default label value would 
+                # be -1, the Model implementation can determine use it or not.
+                label = row[label_idx] if label_idx is not None else -1
                 features = []
                 for name in feature_column_names:
                     feature = read_feature(row[field_names.index(name)], feature_specs[name], name)

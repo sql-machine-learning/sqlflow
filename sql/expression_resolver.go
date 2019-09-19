@@ -150,7 +150,7 @@ func resolveTrainClause(tc *trainClause, slct *standardSelect, connConfig *conne
 	modelParams := attrFilter(attrs, "model", true)
 	engineParams := attrFilter(attrs, "engine", true)
 
-	batchSize := getIntAttr(attrs, "train.batch_size", 512)
+	batchSize := getIntAttr(attrs, "train.batch_size", 1)
 	dropRemainder := getBoolAttr(attrs, "train.drop_remainder", true, false)
 	cachePath := ""
 	var enableCache bool

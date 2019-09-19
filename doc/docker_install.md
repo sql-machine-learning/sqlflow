@@ -37,7 +37,7 @@ Follow steps in [example/datasets](https://github.com/sql-machine-learning/sqlfl
 After data is popularized in MySQL, let's test the installation by running a query in Jupyter Notebook. If you are using Docker for Linux, please change `host.docker.internal:3306` to `localhost:3306`. If you are connecting to a remote database, please make sure to change `host.docker.internal:3306` to the remote address.
 
 ```
-docker run -it -p 8888:8888 sqlflow/sqlflow:latest \
+docker run -it -p 8888:8888 sqlflow/sqlflow \
 bash -c "sqlflowserver --datasource='mysql://root:root@tcp(host.docker.internal:3306)/?maxAllowedPacket=0' &
 SQLFLOW_SERVER=localhost:50051 jupyter notebook --ip=0.0.0.0 --port=8888 --allow-root"
 ```
@@ -57,7 +57,7 @@ docker run -d -p 10000:10000 -p 10002:10002 -p 8040:8040 -p 8042:8042 -p 9864:98
 Test the installation by running a query in Jupyter Notebook. If you are using Docker for Linux, please change `host.docker.internal:10000` to `localhost:10000`. If you are connecting to a remote database, please make sure to change `host.docker.internal:10000` to the remote address.
 
 ```
-docker run -it -p 8888:8888 sqlflow/sqlflow:latest \
+docker run -it -p 8888:8888 sqlflow/sqlflow \
 bash -c "sqlflowserver --datasource='hive://root:root@host.docker.internal:10000/' &
 SQLFLOW_SERVER=localhost:50051 jupyter notebook --ip=0.0.0.0 --port=8888 --allow-root"
 ```
