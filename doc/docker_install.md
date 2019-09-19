@@ -1,7 +1,7 @@
-# Install SQLFlow Using Docker
+# Run SQLFlow Using Docker
 
-SQLFlow releases an "all-in-one" Docker image that contains SQLFlow binary, MySQL
-service, sample datasets loaded in the MySQL service, and jupyter notebook server.
+SQLFlow releases an "all-in-one" Docker image that contains the SQLFlow server, MySQL
+server, sample datasets, Jupyter Notebook server, and the SQLFlow plugin for Jupyter.
 
 You can use this Docker image for either local trying out or production deployment.
 
