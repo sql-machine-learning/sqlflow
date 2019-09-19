@@ -1,13 +1,17 @@
 FROM ubuntu:16.04
 
-# use a mirror to run apt-get
-RUN echo "###### Ubuntu Main Repos" > /etc/apt/sources.list && \
-echo "deb http://us.archive.ubuntu.com/ubuntu/ xenial main restricted universe multiverse" >> /etc/apt/sources.list && \
-echo "###### Ubuntu Update Repos" >> /etc/apt/sources.list && \
-echo "deb http://us.archive.ubuntu.com/ubuntu/ xenial-security main restricted universe multiverse" >> /etc/apt/sources.list && \
-echo "deb http://us.archive.ubuntu.com/ubuntu/ xenial-updates main restricted universe multiverse" >> /etc/apt/sources.list && \
-echo "deb http://us.archive.ubuntu.com/ubuntu/ xenial-proposed main restricted universe multiverse" >> /etc/apt/sources.list && \
-echo "deb http://us.archive.ubuntu.com/ubuntu/ xenial-backports main restricted universe multiverse" >> /etc/apt/sources.list
+# The default apt-get source archive.ubuntu.com might take too much traffic and 
+# has been slow. The following source makes docker build running faster.  The 
+# way of writing multi-line string is from https://stackoverflow.com/a/54397762/724872.
+RUN echo $' \n\
+###### Ubuntu Main Repos \n\
+deb http://us.archive.ubuntu.com/ubuntu/ xenial main restricted universe multiverse \n\
+###### Ubuntu Update Repos \n\
+deb http://us.archive.ubuntu.com/ubuntu/ xenial-security main restricted universe multiverse \n\
+deb http://us.archive.ubuntu.com/ubuntu/ xenial-updates main restricted universe multiverse \n\
+deb http://us.archive.ubuntu.com/ubuntu/ xenial-proposed main restricted universe multiverse \n\
+deb http://us.archive.ubuntu.com/ubuntu/ xenial-backports main restricted universe multiverse \n\
+' >> /etc/apt/sources.list
 
 RUN apt-get update && apt-get install -y curl bzip2 \
 	build-essential unzip sqlite3 libsqlite3-dev wget unzip git \
@@ -27,17 +31,20 @@ ENV HADOOP_VERSION 3.2.0
 ENV PATH /opt/hadoop-${HADOOP_VERSION}/bin:/miniconda/envs/sqlflow-dev/bin:/miniconda/bin:/usr/local/go/bin:/go/bin:$PATH
 ENV IPYTHON_STARTUP /root/.ipython/profile_default/startup/
 
-
-# Main Steps to Build
+# Main steps to Build
 COPY . ${GOPATH}/src/github.com/sql-machine-learning/sqlflow
 RUN bash ${GOPATH}/src/github.com/sql-machine-learning/sqlflow/scripts/image_build.sh && \
-		mkdir -p /workspace && \
-		bash ${GOPATH}/src/github.com/sql-machine-learning/sqlflow/scripts/convert_markdown_into_ipynb.sh && \
-		rm -rf ${GOPATH}/src && rm -rf ${GOPATH}/bin
+    mkdir -p /workspace && \
+    bash ${GOPATH}/src/github.com/sql-machine-learning/sqlflow/scripts/convert_markdown_into_ipynb.sh && \
+    rm -rf ${GOPATH}/src && rm -rf ${GOPATH}/bin
 VOLUME /var/lib/mysql
 
 # Prepare sample datasets
-COPY example/datasets/popularize_churn.sql example/datasets/popularize_iris.sql example/datasets/popularize_boston.sql example/datasets/create_model_db.sql /docker-entrypoint-initdb.d/
+COPY example/datasets/popularize_churn.sql \
+     example/datasets/popularize_iris.sql \
+     example/datasets/popularize_boston.sql \
+     example/datasets/create_model_db.sql \
+     /docker-entrypoint-initdb.d/
 
 ADD scripts/start.sh /
 CMD ["bash", "/start.sh"]
