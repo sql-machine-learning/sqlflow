@@ -15,10 +15,11 @@ package xgboost
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/go-sql-driver/mysql"
 	"github.com/sql-machine-learning/sqlflow/sql/codegen"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestTrain(t *testing.T) {
@@ -47,11 +48,11 @@ func TestTrain(t *testing.T) {
 		Select:           "select * from iris.train;",
 		ValidationSelect: "select * from iris.test;",
 		Estimator:        "xgboost.gbtree",
-		Attributes: []codegen.Attribute{
-			{"train.num_boost_round", 30},
-			{"objective", "multi:softprob"},
-			{"eta", 3.1},
-			{"num_class", 3}},
+		Attributes: []*codegen.Attribute{
+			&codegen.Attribute{Key: "train.num_boost_round", Value: 30},
+			&codegen.Attribute{Key: "objective", Value: "multi:softprob"},
+			&codegen.Attribute{Key: "eta", Value: 3.1},
+			&codegen.Attribute{Key: "num_class", Value: 3}},
 		Features: map[string][]codegen.FeatureColumn{
 			"feature_columns": {
 				codegen.NumericColumn{&codegen.FieldMeta{"sepal_length", codegen.Float, "", []int{1}, false}},
