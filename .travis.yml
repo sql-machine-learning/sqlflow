@@ -3,7 +3,9 @@ language: go
 branches:
   only:
   - gh-pages
-  - "/develop|release-*/"
+  - develop
+  - "/release-*/"
+  - "/^v\\d+\\.\\d+(\\.\\d+)?(-\\S*)?$/"
 service:
   - docker
 
