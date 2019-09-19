@@ -48,7 +48,7 @@ go get -u -t ./...
 To build the project, we need protobuf compiler, Go compiler, Python interpreter and gRPC extension to protobuf compiler. To prepare our dev environment with these tools, the easist way is to pull latest image from DockerHub by running command below and give it an alias sqlflow:latest. Alternatively, we provide a Dockerfile where can build image from. Note it will take a while to build from Dockerfile, especially when the network is unpredictable.
 
 ```bash
-docker pull sqlflow/sqlflow:latest
+docker pull sqlflow/sqlflow
 docker tag sqlflow/sqlflow:latest sqlflow:latest
 ```
 
