@@ -17,8 +17,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/sql-machine-learning/sqlflow/sql/codegen"
 	"strings"
+
+	"github.com/sql-machine-learning/sqlflow/sql/codegen"
 )
 
 var attributeChecker = map[string]func(interface{}) error{
@@ -67,7 +68,7 @@ func resolveModelType(estimator string) (string, error) {
 	}
 }
 
-func parseAttribute(attrs []codegen.Attribute) (map[string]map[string]interface{}, error) {
+func parseAttribute(attrs []*codegen.Attribute) (map[string]map[string]interface{}, error) {
 	attrNames := map[string]bool{}
 
 	params := map[string]map[string]interface{}{"": {}, "train.": {}}
