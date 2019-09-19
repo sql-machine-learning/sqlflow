@@ -68,26 +68,26 @@ func resolveModelType(estimator string) (string, error) {
 	}
 }
 
-func parseAttribute(attrs []*codegen.Attribute) (map[string]map[string]interface{}, error) {
+func parseAttribute(attrs map[string]interface{}) (map[string]map[string]interface{}, error) {
 	attrNames := map[string]bool{}
 
 	params := map[string]map[string]interface{}{"": {}, "train.": {}}
 	paramPrefix := []string{"train.", ""} // use slice to assure traverse order
-	for _, attr := range attrs {
-		if _, ok := attrNames[attr.Key]; ok {
-			return nil, fmt.Errorf("duplicated attribute %s", attr.Key)
+	for key, attr := range attrs {
+		if _, ok := attrNames[key]; ok {
+			return nil, fmt.Errorf("duplicated attribute %s", key)
 		}
-		attrNames[attr.Key] = true
-		checker, ok := attributeChecker[attr.Key]
+		attrNames[key] = true
+		checker, ok := attributeChecker[key]
 		if !ok {
-			return nil, fmt.Errorf("unrecognized attribute %v", attr.Key)
+			return nil, fmt.Errorf("unrecognized attribute %v", key)
 		}
-		if err := checker(attr.Value); err != nil {
+		if err := checker(attr); err != nil {
 			return nil, err
 		}
 		for _, pp := range paramPrefix {
-			if strings.HasPrefix(attr.Key, pp) {
-				params[pp][attr.Key[len(pp):]] = attr.Value
+			if strings.HasPrefix(key, pp) {
+				params[pp][key[len(pp):]] = attr
 			}
 		}
 	}

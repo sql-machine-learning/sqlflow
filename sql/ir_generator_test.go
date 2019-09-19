@@ -46,13 +46,13 @@ INTO mymodel;`
 	a.Equal("SELECT c1, c2, c3, c4\nFROM my_table", trainIR.Select)
 
 	// TODO(typhoonzero): should find out why the order of parsed attributes changes randomly
-	for _, attr := range trainIR.Attributes {
-		if attr.Key == "model.n_classes" {
-			a.Equal("2", attr.Value)
-		} else if attr.Key == "train.optimizer" {
-			a.Equal("\"adam\"", attr.Value)
+	for key, attr := range trainIR.Attributes {
+		if key == "model.n_classes" {
+			a.Equal("2", attr.(string))
+		} else if key == "train.optimizer" {
+			a.Equal("\"adam\"", attr.(string))
 		} else {
-			a.Failf("error key: %s", attr.Key)
+			a.Failf("error key: %s", key)
 		}
 	}
 

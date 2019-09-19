@@ -53,12 +53,6 @@ type FeatureColumn interface {
 	isFeatureColumn()
 }
 
-// Attribute represents an parsed entry in the WITH clause.
-type Attribute struct {
-	Key   string
-	Value interface{}
-}
-
 // TrainIR is the intermediate representation for code generation of a training job.
 //
 // Please be aware that the TrainIR intentionally excludes the model table name in the
@@ -74,10 +68,10 @@ type TrainIR struct {
 	// Estimator specifies the estimator type. For example, after parsing "select ... train DNNClassifier WITH ...",
 	// the Estimator will be "DNNClassifier".
 	Estimator string
-	// Attributes contain a list of parsed attribute in the WITH Clause. For example, after parsing
+	// Attributes is a map of parsed attribute in the WITH Clause. For example, after parsing
 	// "select ... train ... with train.epoch = 1000, model.hidden_units = [10, 10]",
-	// the Attributes will be {{"train.epoch", 1000}, {"model.hidden_units", [10 10]}}.
-	Attributes []*Attribute
+	// the Attributes will be {"train.epoch": 1000, "model.hidden_units": [10 10]}.
+	Attributes map[string]interface{}
 	// Features contain a map of a list of feature columns in the COLUMN clause.
 	// For multiple COLUMN clauses like
 	//   ```
@@ -102,10 +96,10 @@ type PredictIR struct {
 	Select string
 	// ResultTable specifies the table to store the prediction result.
 	ResultTable string
-	// Attributes contain a list of parsed attribute in the WITH clause. For example, after parsing
+	// Attributes is a map of parsed attribute in the WITH clause. For example, after parsing
 	// "select ... predict ... with predict.batch_size = 32 into ...",
-	// the Attributes will be {{"predict.batch_size", 32}}
-	Attributes []Attribute
+	// the Attributes will be {"predict.batch_size": 32}
+	Attributes map[string]interface{}
 	// TrainIR is the TrainIR used for generating the training job of the corresponding model
 	TrainIR TrainIR
 }
@@ -116,10 +110,10 @@ type AnalyzeIR struct {
 	DataSource string
 	// Select specifies the query for fetching the analysis data. For example, "select * from iris.test;".
 	Select string
-	// Attributes contain a list of parsed attribute in the WITH clause. For example, after parsing
+	// Attributes is a map of parsed attribute in the WITH clause. For example, after parsing
 	// "select ... analyze ... with analyze.plot_type = "bar"",
-	// the Attributes will be {{"analyze.plot_type", "bar"}}
-	Attributes []Attribute
+	// the Attributes will be {"analyze.plot_type": "bar"}
+	Attributes map[string]interface{}
 	// TrainIR is the TrainIR used for generating the training job of the corresponding model
 	TrainIR TrainIR
 }
