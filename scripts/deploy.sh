@@ -15,13 +15,31 @@
 
 set -e
 
-echo "$DOCKER_PASSWORD" | docker login --username "$DOCKER_USERNAME" --password-stdin
-
-if [[ $TRAVIS_EVENT_TYPE == "cron" ]]; then
-    DOCKER_TAG="nightly"
-else
-    DOCKER_TAG="latest"
+echo "TRAVIS_PULL_REQUEST $TRAVIS_PULL_REQUEST"
+if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then
+    echo "skip deployment on pull request"
+    exit 0
 fi
 
-docker build -t sqlflow/sqlflow:$DOCKER_TAG -f ./Dockerfile .
-docker push sqlflow/sqlflow:$DOCKER_TAG
+echo "TRAVIS_BRANCH $TRAVIS_BRANCH"
+echo "TRAVIS_TAG $TRAVIS_TAG"
+if [[ "TRAVIS_BRANCH" == "develop" ]]; then
+    if [[ $TRAVIS_EVENT_TYPE == "cron" ]]; then
+        DOCKER_TAG="nightly"
+    else
+        DOCKER_TAG="latest"
+    fi
+
+    echo "docker push sqlflow/sqlflow:$DOCKER_TAG"
+    echo "$DOCKER_PASSWORD" | docker login --username "$DOCKER_USERNAME" --password-stdin
+    docker build -t sqlflow/sqlflow:$DOCKER_TAG -f ./Dockerfile .
+    docker push sqlflow/sqlflow:$DOCKER_TAG
+elif [[ "$TRAVIS_TAG" != "" ]]; then
+    echo "docker push sqlflow/sqlflow:$TRAVIS_TAG"
+    echo "$DOCKER_PASSWORD" | docker login --username "$DOCKER_USERNAME" --password-stdin
+    docker build -t sqlflow/sqlflow:$TRAVIS_TAG -f ./Dockerfile .
+    docker push sqlflow/sqlflow:$TRAVIS_TAG
+else
+    echo "Nothing to docker push"
+fi
+
