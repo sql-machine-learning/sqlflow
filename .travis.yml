@@ -4,6 +4,8 @@ branches:
   only:
   - gh-pages
   - develop
+  - "/release-*/"
+  - "/^v\\d+\\.\\d+(\\.\\d+)?(-\\S*)?$/"
 service:
   - docker
 
@@ -44,12 +46,8 @@ script:
   - docker run --rm --net=host -v /var/run/docker.sock:/var/run/docker.sock -v $HOME/.kube:/root/.kube -v /home/$USER/.minikube/:/home/$USER/.minikube/ -v $GOPATH:/go -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:latest bash scripts/test_e2e.sh
   - docker run -e MAXCOMPUTE_AK=$MAXCOMPUTE_AK -e MAXCOMPUTE_SK=$MAXCOMPUTE_SK --rm --net=host -v /var/run/docker.sock:/var/run/docker.sock -v $HOME/.kube:/root/.kube -v /home/$USER/.minikube/:/home/$USER/.minikube/ -v $GOPATH:/go -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:latest bash scripts/test_maxcompute.sh
 
-deploy:
-  skip_cleanup: true
-  provider: script
-  script: bash scripts/deploy.sh
-  on:
-    branch: develop
+after_success:
+  - bash scripts/deploy.sh
 
 env:
   global:

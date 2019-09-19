@@ -33,5 +33,5 @@ The IR and feature column definition will resides in `sql/codegen`. Each code ge
 
 ## Intermediate Representation
 
-Please refer to [sql/codegen/intermediate_representation.go](sql/codegen/intermediate_representation.go) and [sql/codegen/feature_column.go](sql/codegen/intermediate_representation.go) for implementation details.
+Please refer to [sql/codegen/intermediate_representation.go](/sql/codegen/intermediate_representation.go) and [sql/codegen/feature_column.go](/sql/codegen/feature_column.go) for implementation details.
 
