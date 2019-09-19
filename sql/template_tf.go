@@ -127,15 +127,18 @@ def validate_input_fn(batch_size):
 classifier.compile(optimizer=classifier.default_optimizer(),
     loss=classifier.default_loss(),
     metrics=["accuracy"])
-if hasattr(classifier, 'cluster_train_loop'):
-    classifier.cluster_train_loop(train_input_fn(BATCHSIZE))
+premade = hasattr(classifier, 'sqlflow_train_loop')
+if premade:
+    classifier.sqlflow_train_loop(train_input_fn(BATCHSIZE))
 else:
     classifier.fit(train_input_fn(BATCHSIZE),
         epochs=EPOCHS if EPOCHS else classifier.default_training_epochs(),
         verbose=VERBOSE)
 classifier.save_weights("{{.Save}}", save_format="h5")
 eval_result = classifier.evaluate(validate_input_fn(BATCHSIZE), verbose=VERBOSE)
-print("Training set accuracy: {accuracy:0.5f}".format(**{"accuracy": eval_result[1]}))
+
+if not premade:
+    print("Training set accuracy: {accuracy:0.5f}".format(**{"accuracy": eval_result[1]}))
 {{else}}
 classifier.train(input_fn=lambda:train_input_fn(BATCHSIZE))
 eval_result = classifier.evaluate(input_fn=lambda:validate_input_fn(BATCHSIZE))
