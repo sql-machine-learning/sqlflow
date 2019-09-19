@@ -35,10 +35,8 @@ install:
 
 script:
   - set -e
-  - df -h
-  - ls -lah
-  - docker run -d --name=hive sqlflow/gohive:dev python3 -m http.server 8899
-  - docker build -t sqlflow:latest -f Dockerfile .
+  - docker pull -q sqlflow/gohive:dev && docker run -d --name=hive sqlflow/gohive:dev python3 -m http.server 8899
+  - docker pull -q sqlflow/sqlflow:latest && docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile .
   - docker run --rm -v $GOPATH/src:/go/src -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:latest pre-commit run -a
   - docker run --rm -v $GOPATH:/go -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:latest bash scripts/test.sh
   - docker run --rm -v $GOPATH:/go --net=container:hive --entrypoint bash -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:latest scripts/test_hive.sh
