@@ -2,7 +2,7 @@ FROM ubuntu:16.04
 
 # The default apt-get source archive.ubuntu.com might take too much traffic and
 # has been slow. The following source makes docker build running faster.
-RUN echo ' \n\
+RUN echo '\n\
 deb http://us.archive.ubuntu.com/ubuntu/ xenial main restricted universe multiverse \n\
 deb http://us.archive.ubuntu.com/ubuntu/ xenial-security main restricted universe multiverse \n\
 deb http://us.archive.ubuntu.com/ubuntu/ xenial-updates main restricted universe multiverse \n\
