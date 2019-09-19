@@ -11,8 +11,8 @@ deb http://us.archive.ubuntu.com/ubuntu/ xenial-backports main restricted univer
 ' >> /etc/apt/sources.list
 
 RUN apt-get update && apt-get install -y curl bzip2 \
-	build-essential unzip sqlite3 libsqlite3-dev wget unzip git \
-	openjdk-8-jdk maven libmysqlclient-dev
+    build-essential unzip sqlite3 libsqlite3-dev wget unzip git \
+    openjdk-8-jdk maven libmysqlclient-dev
 
 # Need Java SDK to build remote parsers.
 ENV JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
