@@ -16,7 +16,9 @@
 set -e
 
 
-# 0. Install miniconda and python and python dependencies.
+# 0. Install conda via Miniconda, Python and Python packages.
+# We use conda to manage the version of Python interpreter, currently we use Python 3.6.
+# All Python packages will be installed at /miniconda/envs/sqlflow-dev/lib/python3.6/site-packages/
 curl -sL https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -o mconda-install.sh
 bash -x mconda-install.sh -b -p miniconda
 rm mconda-install.sh
