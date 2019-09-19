@@ -3,7 +3,7 @@
 Besides running SQLFlow from Notebook, we could also run it from command line. If you are using Docker for Linux, please change `host.docker.internal:3306` to `localhost:3306`.
 
 ```
-docker run -it --rm --net=host sqlflow/sqlflow:latest demo \
+docker run -it --rm --net=host sqlflow/sqlflow demo \
 --datasource="mysql://root:root@tcp(host.docker.internal:3306)/?maxAllowedPacket=0"
 ```
 

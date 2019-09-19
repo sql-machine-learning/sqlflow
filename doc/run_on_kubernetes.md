@@ -18,7 +18,7 @@ full cluster or use a local quick start tool: [minikube](https://kubernetes.io/d
 This tutorial would use [minikube] to demonstrate the SQLFlow.
 1. [Install kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/), which is the command line tool
 to interact with the Kubernetes cluster.
-1. Make sure the Kubernetes nodes can pull the official SQLFlow Docker image [sqlflow/sqlflow:latest] or your [custom
+1. Make sure the Kubernetes nodes can pull the official SQLFlow Docker image [sqlflow/sqlflow] or your [custom
 Docker image](/doc/build.md).
 
 ## Deploy the All-in-One SQLFlow
@@ -33,7 +33,7 @@ Docker image](/doc/build.md).
     spec:
         ...
         containers:
-        - image: <your repo name>/sqlflow:latest
+        - image: <your repo name>/sqlflow
     ```
 
 1. Testing your SQLFlow setup
