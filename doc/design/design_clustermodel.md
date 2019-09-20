@@ -68,7 +68,7 @@ class  clusterModel(tf.keras.Model):
         pretrainmodel.save("/tmp/ae_pretrain.h5"）
     def target_distribution():
         ...
-    def  cluster_train_loop():
+    def  sqlflow_train_loop():
         for ite in range(int(maxiter)):
             if ite % update_interval == 0:
                 q = model.predict(x, verbose=0)
@@ -83,8 +83,8 @@ class  clusterModel(tf.keras.Model):
 ```python
 if hasattr(classifier, 'pre_train'):
     classifier.pre_train(...)
-if hasattr(classifier, 'cluster_train_loop'):
-    classifier.cluster_train_loop(...)
+if hasattr(classifier, 'sqlflow_train_loop'):
+    classifier.sqlflow_train_loop(...)
 ```
 
 ## Note

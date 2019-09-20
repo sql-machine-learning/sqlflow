@@ -8,7 +8,7 @@ deb http://us.archive.ubuntu.com/ubuntu/ xenial-security main restricted univers
 deb http://us.archive.ubuntu.com/ubuntu/ xenial-updates main restricted universe multiverse \n\
 deb http://us.archive.ubuntu.com/ubuntu/ xenial-proposed main restricted universe multiverse \n\
 deb http://us.archive.ubuntu.com/ubuntu/ xenial-backports main restricted universe multiverse \n\
-' >> /etc/apt/sources.list
+' > /etc/apt/sources.list
 
 RUN apt-get update && apt-get install -y curl bzip2 \
     build-essential unzip sqlite3 libsqlite3-dev wget unzip git \
