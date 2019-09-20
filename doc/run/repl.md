@@ -1,6 +1,6 @@
-## Run SQLFlow in Debug Mode
+# Run SQLFlow REPL
 
-In addition to buliding SQLFlow into a gRPC server, accessed via Jupyter Notebook, we could also build it into a command line program, whose `main` function reads SQL statements from the console.  This command-line program makes it easy to debug and profile locally without starting the SQLFlow server and the Jupyter server.  We call this command-line program the debug mode.
+In addition to buliding SQLFlow into a gRPC server, accessed via Jupyter Notebook, we could also build it into a command line program, whose `main` function reads SQL statements from the console, evaluates them by calling SQLFlow, and prints the results.  This command-line program makes it easy to debug and profile locally without starting the SQLFlow server and the Jupyter server.  We call this command-line program the REPL.
 
 The SQLFlow Docker image contains the command-line program.  We can run an example session by typing the following command on MacOS.  If you run Docker on Linux, please change `host.docker.internal:3306` to `localhost:3306`.
 
@@ -15,9 +15,10 @@ You should be able to see the following:
 sqlflow>
 ```
 
-### Training a DNNClassifier and run prediction
+Suppose that we are going to train a DNNClassifier model.
 
-- Step One: Let's see some training data from Iris database
+Let's go over some training data from the Iris database:
+
 ```sql
 sqlflow> SELECT * from iris.train limit 2;
 -----------------------------
@@ -29,7 +30,8 @@ sqlflow> SELECT * from iris.train limit 2;
 +--------------+-------------+--------------+-------------+-------+
 ```
 
-- Step Two: Train a Tensorflow [DNNClassifier](https://www.tensorflow.org/api_docs/python/tf/estimator/DNNClassifier)
+Then we can train a TensorFlow [DNNClassifier](https://www.tensorflow.org/api_docs/python/tf/estimator/DNNClassifier) model using the following statement.
+
 ```sql
 sqlflow> SELECT *
 FROM iris.train
@@ -44,7 +46,8 @@ Training set accuracy: 0.96721
 Done training
 ```
 
-- Step Three: Run prediction using the trained model produced from step two. Note my_dnn_model is not a table, therefore it's not visually displayable from Select statement.
+To predict using the trained model, we can type the following statement.
+
 ```sql
 sqlflow> SELECT *
 FROM iris.test
@@ -55,7 +58,8 @@ USING sqlflow_models.my_dnn_model;
 Done predicting. Predict table : iris.predict
 ```
 
-- Step Four: Checkout the prediction result
+We can then check the prediction result.
+
 ```sql
 sqlflow>
 SELECT * from iris.predict limit 3;
