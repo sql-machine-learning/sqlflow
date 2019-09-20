@@ -98,7 +98,7 @@ up a MySQL server instance with populated data following
 setting up MySQL, run the following inside the Docker container
 
 ```bash
-go run cmd/demo/demo.go --datasource="mysql://root:root@tcp(host.docker.internal:3306)/?maxAllowedPacket=0"
+go run cmd/repl/repl.go --datasource="mysql://root:root@tcp(host.docker.internal:3306)/?maxAllowedPacket=0"
 ```
 
 You should be able to see the following prompt
