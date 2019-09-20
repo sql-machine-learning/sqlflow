@@ -1,7 +1,7 @@
 # Running SQLFlow on Google Cloud Platform
 
 This tutorial introduces running SQLFlow on Google Kubernetes Engine with
-Google CloudSQL service. It is built on top of the knowledge from the [Running SQLFlow on Kubernetes](/doc/run_on_kubernetes.md)
+Google CloudSQL service. It is built on top of the knowledge from the [Running SQLFlow on Kubernetes](/doc/run/kubernetes.md)
 tutorial, so make sure to check it out first.
 
 This tutorial will walk you through the steps of:
@@ -135,7 +135,7 @@ server and Jupyter Notebook server.
     ```
 
 1. Deploy the SQLFlow service/deployment on Kubernetes
-   This is similar to the **All-in-One** example in the [Running SQLFlow on Kubernetes](/doc/run_on_kubernetes.md),
+   This is similar to the **All-in-One** example in the [Running SQLFlow on Kubernetes](/doc/run/kubernetes.md),
    except for that only SQLFlow server and Jupyter notebook server are being
    deployed.
    - Modify doc/k8s/sqlflow-all-in-one-without-mysql.yaml to replace ${SQLFLOW_MYSQL_HOST}
@@ -165,7 +165,7 @@ server and Jupyter Notebook server.
 
 1. Open a web browser and go to '<EXTERNAL-IP>:8888', you can find the [SQLFlow example](/example/jupyter/example.ipynb) in the Jupyter notebook file lists.
 
-You can refer to the [Running SQLFlow on Kubernetes](/doc/run_on_kubernetes.md)
+You can refer to the [Running SQLFlow on Kubernetes](/doc/run/kubernetes.md)
 tutorial for a more comprehensive guide on deploying SQLFlow on Kubernetes
 cluster and how to deploy JupyterHub.
 
