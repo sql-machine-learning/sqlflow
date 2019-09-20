@@ -45,7 +45,6 @@ INTO mymodel;`
 	a.Equal("DNNClassifier", trainIR.Estimator)
 	a.Equal("SELECT c1, c2, c3, c4\nFROM my_table", trainIR.Select)
 
-	// TODO(typhoonzero): should find out why the order of parsed attributes changes randomly
 	for key, attr := range trainIR.Attributes {
 		if key == "model.n_classes" {
 			a.Equal("2", attr.(string))
