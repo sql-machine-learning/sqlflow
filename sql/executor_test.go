@@ -118,7 +118,7 @@ func TestExecutorTrainAndPredictDNN(t *testing.T) {
 	})
 }
 
-// NOTE(wangkuiyi): Temporarily disable this test case, which fails in 
+// NOTE(wangkuiyi): Temporarily disable this test case, which fails in
 //    https://github.com/sql-machine-learning/sqlflow/issues/877.
 // TODO(weiguo): Re-enable it after the clustering feature is well developed.
 /*
