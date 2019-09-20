@@ -1,6 +1,8 @@
-## Demo: Using SQLFlow from Command Line
+## How to Use the SQLFlow Command Line Client
 
-Besides running SQLFlow from Notebook, we could also run it from command line. If you are using Docker for Linux, please change `host.docker.internal:3306` to `localhost:3306`.
+In addition to use Jupyter Notebook as a client of SQLFlow, we could also its command line client. 
+
+The SQLFlow Docker image contains the command-line client.  We can run an example session by typing the following command on MacOS.  If you run Docker on Linux, please change `host.docker.internal:3306` to `localhost:3306`.
 
 ```
 docker run -it --rm --net=host sqlflow/sqlflow demo \
