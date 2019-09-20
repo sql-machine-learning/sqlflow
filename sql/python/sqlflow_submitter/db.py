@@ -196,7 +196,9 @@ def db_generator(driver, conn, statement,
         from sqlflow_submitter.maxcompute import MaxCompute
         return MaxCompute.db_generator(conn, statement, feature_column_names,
                 label_column_name, feature_specs, fetch_size)
-
+    if driver == "hive":
+        # trip the suffix ';' to avoid the ParseException in hive
+        statement = statement.rstrip(';')
     return reader
 
 

@@ -282,6 +282,14 @@ func runExec(slct string, db *DB) *PipeReader {
 	return rd
 }
 
+func isUnsupervisedLearning(pr *extendedSelect) bool {
+	// TODO(Yancey1989): It's an immature way to determinate whether it's a unsupservised learning model or not.
+	if pr.label == "" {
+		return true
+	}
+	return false
+}
+
 func runExtendedSQL(slct string, db *DB, modelDir string, session *pb.Session) *PipeReader {
 	rd, wr := Pipe()
 	go func() {
@@ -313,13 +321,14 @@ func runExtendedSQL(slct string, db *DB, modelDir string, session *pb.Session) *
 				if os.Getenv("SQLFLOW_submitter") == "elasticdl" {
 					return elasticDLTrain(wr, pr, db, cwd, session, nil)
 				}
-				// TODO(weiguo): fix the hard code 0.8
-				ds, e := newTrainAndValDataset(db, pr.standardSelect.String(), pr.standardSelect.tables[0], 0.8)
-				if e != nil {
-					return e
+				var ds *trainAndValDataset
+				if !isUnsupervisedLearning(pr) {
+					// TODO(weiguo): fix the hard code 0.8
+					if ds, e = newTrainAndValDataset(db, pr.standardSelect.String(), pr.standardSelect.tables[0], 0.8); e != nil {
+						return e
+					}
+					defer releaseTrainAndValDataset(db, ds)
 				}
-				defer releaseTrainAndValDataset(db, ds)
-
 				// FIXME(weiguo): temporary branch to alps
 				if os.Getenv("SQLFLOW_submitter") == "alps" {
 					return alpsTrain(wr, pr, db, cwd, session, ds)
@@ -399,7 +408,6 @@ func train(wr *PipeWriter, tr *extendedSelect, db *DB, cwd string, modelDir stri
 	if e != nil {
 		return e
 	}
-
 	var program bytes.Buffer
 	if strings.HasPrefix(strings.ToUpper(tr.estimator), `XGBOOST.`) {
 		if e := genXGBoost(&program, tr, ds, fts, db); e != nil {
