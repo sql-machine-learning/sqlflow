@@ -70,4 +70,4 @@ SELECT * from iris.predict limit 3;
 +--------------+-------------+--------------+-------------+-------+
 ```
 
-Congratulations! Now you have successfully completed a demo using SQLFlow syntax to train model using DNNClassifier and make a quick prediction. More demos are on the road, please stay tuned.
+Congratulations! Now you have successfully completed a session using SQLFlow syntax to train model using DNNClassifier and make a quick prediction.
