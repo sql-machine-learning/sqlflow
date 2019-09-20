@@ -1,8 +1,8 @@
-## How to Use the SQLFlow Command Line Client
+## Run SQLFlow in Debug Mode
 
-In addition to use Jupyter Notebook as a client of SQLFlow, we could also its command line client. 
+In addition to buliding SQLFlow into a gRPC server, accessed via Jupyter Notebook, we could also build it into a command line program, whose `main` function reads SQL statements from the console.  This command-line program makes it easy to debug and profile locally without starting the SQLFlow server and the Jupyter server.  We call this command-line program the debug mode.
 
-The SQLFlow Docker image contains the command-line client.  We can run an example session by typing the following command on MacOS.  If you run Docker on Linux, please change `host.docker.internal:3306` to `localhost:3306`.
+The SQLFlow Docker image contains the command-line program.  We can run an example session by typing the following command on MacOS.  If you run Docker on Linux, please change `host.docker.internal:3306` to `localhost:3306`.
 
 ```
 docker run -it --rm --net=host sqlflow/sqlflow demo \
