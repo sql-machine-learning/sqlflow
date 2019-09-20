@@ -25,6 +25,7 @@ cache:
     - ${CACHE_FOLDER} 
 
 before_cache:
+  - mkdir -p ${CACHE_FOLDER}
   - docker save sqlflow/sqlflow:latest | gzip -2 > ${CACHE_FOLDER}/sqlfow.tar.gz
 
 install:
@@ -33,6 +34,9 @@ install:
   # being not up to date: https://github.com/golang/go/issues/15038
   # So I decided to skip install, and go get inside sqlflow:latest image
   # Ref build: https://travis-ci.com/sql-machine-learning/sqlflow/builds/107870583
+  - docker pull sqlflow/sqlflow:latest
+  - mkdir -p ${CACHE_FOLDER}
+  - docker save sqlflow/sqlflow:latest | gzip -2 > ${CACHE_FOLDER}/sqlflow.tar.gz
   - zcat ${CACHE_FOLDER}/sqlflow.tar.gz | docker load
 
 # NOTE: mount all $GOPATH into container, then after build and test,
@@ -50,7 +54,7 @@ script:
   - docker pull --help
   - docker images
   - docker pull sqlflow/gohive:dev && docker run -d --name=hive sqlflow/gohive:dev python3 -m http.server 8899
-  - docker pull sqlflow/sqlflow:latest && docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile .
+  - docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile .
   - docker run --rm -v $GOPATH/src:/go/src -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:latest pre-commit run -a
   - docker run --rm -v $GOPATH:/go -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:latest bash scripts/test.sh
   - docker run --rm -v $GOPATH:/go --net=container:hive --entrypoint bash -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:latest scripts/test_hive.sh
@@ -63,4 +67,6 @@ after_success:
 
 env:
   global:
-    secure: f03CHRo2Afl9PD6jLuKtY/6b/MgJkytcfeIhSrAYZFLzUCQTa4MI5yih4pG/VJtTpKVpoQD7NJikj/x0eO/6NOGxegJwaruY8EDg/4LVLeuVqRipmw0V9l3LcZ7AofxPAeJ6RZLpHALR9cYegXEEtvyfjNRw2BhQZsZBvTE8sbbvfzLJOY1UC9CeQnHxDGZYXG3WSMr7b+44ifg4OBweATmEsdIVPD7kgexunJvHw0vzQ25vsf+huYwLorVc7uRghoYY8SoaLMEcmP50Jsl2Mn7AUoFUyM3tl/kOub11BV4/yGrGJC1BysT7l48frSKYqSU1yeT+0xiJjgkOwpV8BcxOmXrgm2s6PDzWDmiXtBRhE6n79iG2IuuTuYLk4n/Rm7uwKYu6EdnooKSnhGV6DW7mLVJ5Rcb655xCB+AoXb79Ilp60YxsMFTqzdhMkf3QpQV/OsEHFrzNhab6+pWcrwOeCq/CXU0MDO0rQuX4YIBwdEyAlDrj2JDvJ868lpdTJTxUUgUovH2j8rFrtCf5Bx0gqg0Cj81s/7cMdhtoV+wbTtHoQ7TLTZkvqYyFAMCkl2d5g00UhZpq+HTjzcPOL5xKc0mZhsuYq03nTVMQWzIJiKkaWbDPoY3eZcLga0cO8VD2HgzsQ5lg300ZTF73AxonZheyzJVWtLQvrpT8dPI=
+    - secure: f03CHRo2Afl9PD6jLuKtY/6b/MgJkytcfeIhSrAYZFLzUCQTa4MI5yih4pG/VJtTpKVpoQD7NJikj/x0eO/6NOGxegJwaruY8EDg/4LVLeuVqRipmw0V9l3LcZ7AofxPAeJ6RZLpHALR9cYegXEEtvyfjNRw2BhQZsZBvTE8sbbvfzLJOY1UC9CeQnHxDGZYXG3WSMr7b+44ifg4OBweATmEsdIVPD7kgexunJvHw0vzQ25vsf+huYwLorVc7uRghoYY8SoaLMEcmP50Jsl2Mn7AUoFUyM3tl/kOub11BV4/yGrGJC1BysT7l48frSKYqSU1yeT+0xiJjgkOwpV8BcxOmXrgm2s6PDzWDmiXtBRhE6n79iG2IuuTuYLk4n/Rm7uwKYu6EdnooKSnhGV6DW7mLVJ5Rcb655xCB+AoXb79Ilp60YxsMFTqzdhMkf3QpQV/OsEHFrzNhab6+pWcrwOeCq/CXU0MDO0rQuX4YIBwdEyAlDrj2JDvJ868lpdTJTxUUgUovH2j8rFrtCf5Bx0gqg0Cj81s/7cMdhtoV+wbTtHoQ7TLTZkvqYyFAMCkl2d5g00UhZpq+HTjzcPOL5xKc0mZhsuYq03nTVMQWzIJiKkaWbDPoY3eZcLga0cO8VD2HgzsQ5lg300ZTF73AxonZheyzJVWtLQvrpT8dPI=
+    - CACHE_FOLDER: ${HOME}/docker
+
