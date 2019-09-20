@@ -28,7 +28,7 @@ func TestGenerateTrainIR(t *testing.T) {
 	normal := `SELECT c1, c2, c3,c4
 FROM my_table
 TRAIN DNNClassifier
-WITH model.n_classes=2, train.optimizer="adam"
+WITH model.n_classes=2, train.optimizer="adam", model.stddev=0.001, model.hidden_units=[128,64]
 COLUMN c1,NUMERIC(c2, [128, 32]),CATEGORY_ID(c3, 512),
        SEQ_CATEGORY_ID(c3, 512),
 	   CROSS([c1,c2], 64),
@@ -47,9 +47,16 @@ INTO mymodel;`
 
 	for key, attr := range trainIR.Attributes {
 		if key == "model.n_classes" {
-			a.Equal("2", attr.(string))
+			a.Equal(2, attr.(int))
 		} else if key == "train.optimizer" {
-			a.Equal("\"adam\"", attr.(string))
+			a.Equal("adam", attr.(string))
+		} else if key == "model.stddev" {
+			a.Equal(float32(0.001), attr.(float32))
+		} else if key == "model.hidden_units" {
+			l, ok := attr.([]interface{})
+			a.True(ok)
+			a.Equal(128, l[0].(int))
+			a.Equal(64, l[1].(int))
 		} else {
 			a.Failf("error key: %s", key)
 		}
