@@ -119,12 +119,6 @@ func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *D
 	if err != nil {
 		return nil, err
 	}
-	if r.Driver == "hive" {
-		// remove the last ';' which leads to a (hive)ParseException
-		r.TrainingDatasetSQL = strings.TrimSuffix(r.TrainingDatasetSQL, ";")
-		r.ValidationDatasetSQL = strings.TrimSuffix(r.ValidationDatasetSQL, ";")
-		r.PredictionDatasetSQL = strings.TrimSuffix(r.PredictionDatasetSQL, ";")
-	}
 
 	trainResolved, err := resolveTrainClause(&pr.trainClause, &pr.standardSelect, r.connectionConfig)
 	if err != nil {
