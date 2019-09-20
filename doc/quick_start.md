@@ -11,5 +11,6 @@ It's quite simple to try out SQLFlow using [Docker](https://docs.docker.com/).
 For advanced usage, you might want to go on reading
 
 - [User Guide](user_guide.md)
-- [Run SQLFlow Command Line](demo.md)
 - [Installation Guide](docker_install.md)
+- [Run SQLFlow in Debug Mode](debug_mode.md)
+

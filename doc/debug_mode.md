@@ -1,6 +1,8 @@
-## Demo: Using SQLFlow from Command Line
+## Run SQLFlow in Debug Mode
 
-Besides running SQLFlow from Notebook, we could also run it from command line. If you are using Docker for Linux, please change `host.docker.internal:3306` to `localhost:3306`.
+In addition to buliding SQLFlow into a gRPC server, accessed via Jupyter Notebook, we could also build it into a command line program, whose `main` function reads SQL statements from the console.  This command-line program makes it easy to debug and profile locally without starting the SQLFlow server and the Jupyter server.  We call this command-line program the debug mode.
+
+The SQLFlow Docker image contains the command-line program.  We can run an example session by typing the following command on MacOS.  If you run Docker on Linux, please change `host.docker.internal:3306` to `localhost:3306`.
 
 ```
 docker run -it --rm --net=host sqlflow/sqlflow demo \
@@ -68,4 +70,4 @@ SELECT * from iris.predict limit 3;
 +--------------+-------------+--------------+-------------+-------+
 ```
 
-Congratulations! Now you have successfully completed a demo using SQLFlow syntax to train model using DNNClassifier and make a quick prediction. More demos are on the road, please stay tuned.
+Congratulations! Now you have successfully completed a session using SQLFlow syntax to train model using DNNClassifier and make a quick prediction.
