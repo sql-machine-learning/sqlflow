@@ -40,6 +40,7 @@ VOLUME /var/lib/mysql
 COPY example/datasets/popularize_churn.sql \
      example/datasets/popularize_iris.sql \
      example/datasets/popularize_boston.sql \
+     example/datasets/popularize_creditcardfraud.sql \
      example/datasets/create_model_db.sql \
      /docker-entrypoint-initdb.d/
 

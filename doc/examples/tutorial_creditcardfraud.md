@@ -1,72 +1,8 @@
 # The Credit Card Fraud Detection Example
 
-The `creditcard_samples.csv` file in this directory comes from [Kaggle](https://www.kaggle.com/mlg-ulb/creditcardfraud). To train the model using the full dataset, you need to download the dataset manually and load the dataset into MySQL under below instructions.
+The sample data already loaded in MySQL comes from [Kaggle](https://www.kaggle.com/mlg-ulb/creditcardfraud). To train the model using the full dataset, you need to download the dataset and load the dataset into MySQL manually.
 
-## Import the Dataset into MySQL
-
-Below SQL statements will create a table used to store the dataset:
-
-```sql
-%%sqlflow
-CREATE DATABASE IF NOT EXISTS creditcard;
-CREATE TABLE IF NOT EXISTS creditcard.creditcard (
-    time INT,
-	v1 float,
-	v2 float,
-	v3 float,
-	v4 float,
-	v5 float,
-	v6 float,
-	v7 float,
-	v8 float,
-	v9 float,
-	v10 float,
-	v11 float,
-	v12 float,
-	v13 float,
-	v14 float,
-	v15 float,
-	v16 float,
-	v17 float,
-	v18 float,
-	v19 float,
-	v20 float,
-	v21 float,
-	v22 float,
-	v23 float,
-	v24 float,
-	v25 float,
-	v26 float,
-	v27 float,
-	v28 float,
-	amount float,
-	class INT);
-```
-
-Then we could run a python script to insert values to that table:
-
-```python
-from MySQLdb import connect
-fn = open("creditcard_samples.csv", "r")
-line_no = 0
-samples = []
-for line in fn:
-    if line_no == 0:
-        line_no += 1
-        continue
-    l = line.replace("\n", "")
-    samples.append("(%s)" % l)
-    line_no += 1
-sql = "INSERT INTO creditcard.creditcard VALUES %s" % ",".join(samples)
-conn = connect(user="root", passwd="root", db="creditcard", host="localhost", port=3306)
-c = conn.cursor()
-c.execute(sql)
-conn.commit()
-c.close()
-conn.close()
-```
-
-You can verify the data in MySQL using:
+You can verify the sample data content in MySQL using:
 
 ```sql
 %%sqlflow
