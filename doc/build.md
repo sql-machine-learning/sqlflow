@@ -90,11 +90,12 @@ into `server/sqlflow.pb.go` and `go test -v` builds and run unit tests. The envi
 `SQLFLOW_TEST_DB=mysql` specify MySQL as the backend, you can also check [test_hive.sh](/scripts/test_hive.sh) and
 [test_maxcompute.sh](/scripts/test_maxcompute.sh) to run the unit tests with other backends.
 
-## Demo: Command line Prompt
+## The Command-line REPL
 
-The demo requires a MySQL server instance with populated data. If you don't, please
-follow [example/datasets/README.md](/example/datasets/README.md) to start one on the host.
-After setting up MySQL, run the following inside the Docker container
+The REPL is a binary linked with SQLFlow.  To run it, we need to set
+up a MySQL server instance with populated data following
+[example/datasets/README.md](/example/datasets/README.md).  After
+setting up MySQL, run the following inside the Docker container
 
 ```bash
 go run cmd/demo/demo.go --datasource="mysql://root:root@tcp(host.docker.internal:3306)/?maxAllowedPacket=0"
@@ -105,3 +106,5 @@ You should be able to see the following prompt
 ```
 sqlflow>
 ```
+
+Then, please follow the [REPL tutorial](doc/run/repl.md).
