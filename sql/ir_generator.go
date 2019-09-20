@@ -72,17 +72,17 @@ func generateTrainIR(slct *extendedSelect, connStr string) (*codegen.TrainIR, er
 	}, nil
 }
 
-func generateAttributeIR(attrs *attrs) ([]*codegen.Attribute, error) {
-	ret := []*codegen.Attribute{}
+func generateAttributeIR(attrs *attrs) (map[string]interface{}, error) {
+	ret := make(map[string]interface{})
 	for k, v := range *attrs {
 		resolvedExpr, err := parseExpression(v)
 		if err != nil {
 			return nil, err
 		}
-		ret = append(ret, &codegen.Attribute{
-			Key:   k,
-			Value: resolvedExpr,
-		})
+		if _, ok := ret[k]; ok {
+			return nil, fmt.Errorf("duplicate attribute: %v=%v", k, resolvedExpr)
+		}
+		ret[k] = resolvedExpr
 	}
 	return ret, nil
 }

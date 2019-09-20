@@ -45,21 +45,20 @@ INTO mymodel;`
 	a.Equal("DNNClassifier", trainIR.Estimator)
 	a.Equal("SELECT c1, c2, c3, c4\nFROM my_table", trainIR.Select)
 
-	// TODO(typhoonzero): should find out why the order of parsed attributes changes randomly
-	for _, attr := range trainIR.Attributes {
-		if attr.Key == "model.n_classes" {
-			a.Equal(2, attr.Value.(int))
-		} else if attr.Key == "train.optimizer" {
-			a.Equal("adam", attr.Value.(string))
-		} else if attr.Key == "model.stddev" {
-			a.Equal(float32(0.001), attr.Value.(float32))
-		} else if attr.Key == "model.hidden_units" {
-			l, ok := attr.Value.([]interface{})
+	for key, attr := range trainIR.Attributes {
+		if key == "model.n_classes" {
+			a.Equal(2, attr.(int))
+		} else if key == "train.optimizer" {
+			a.Equal("adam", attr.(string))
+		} else if key == "model.stddev" {
+			a.Equal(float32(0.001), attr.(float32))
+		} else if key == "model.hidden_units" {
+			l, ok := attr.([]interface{})
 			a.True(ok)
 			a.Equal(128, l[0].(int))
 			a.Equal(64, l[1].(int))
 		} else {
-			a.Failf("error key: %s", attr.Key)
+			a.Failf("error key: %s", key)
 		}
 	}
 
