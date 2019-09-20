@@ -16,13 +16,24 @@ addons:
   apt:
     packages:
       - docker-ce
+env:
+  global:
+    - CACHE_FOLDER=${HOME}/docker
+  
+cache:
+  directories:
+    - ${CACHE_FOLDER} 
+
+before_cache:
+  - docker save sqlflow/sqlflow:latest | gzip -2 > ${CACHE_FOLDER}/sqlfow.tar.gz
+
 install:
   # Note(tony): TravisCI's native `go get ${gobuild_args} ./...` failed with
   # `/usr/bin/ld: final link failed: Bad value`, the cause is the system linker
   # being not up to date: https://github.com/golang/go/issues/15038
   # So I decided to skip install, and go get inside sqlflow:latest image
   # Ref build: https://travis-ci.com/sql-machine-learning/sqlflow/builds/107870583
-  - echo "skip install"
+  - zcat ${CACHE_FOLDER}/sqlflow.tar.gz | docker load
 
 # NOTE: mount all $GOPATH into container, then after build and test,
 # $GOPATH/bin will have expected binaries.
@@ -37,6 +48,7 @@ script:
   - set -e
   - docker version
   - docker pull --help
+  - docker images
   - docker pull sqlflow/gohive:dev && docker run -d --name=hive sqlflow/gohive:dev python3 -m http.server 8899
   - docker pull sqlflow/sqlflow:latest && docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile .
   - docker run --rm -v $GOPATH/src:/go/src -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:latest pre-commit run -a
