@@ -101,7 +101,6 @@ func generateAttributeIR(attrs *attrs) ([]*codegen.Attribute, error) {
 func parseExpression(e interface{}) (interface{}, error) {
 	if expr, ok := e.(*expr); ok {
 		if expr.typ != 0 {
-			// TODO(typhoonzero): infer the element expression type like int, float, string
 			return inferStringValue(expr.val), nil
 		}
 		return parseExpression(&expr.sexp)
@@ -143,14 +142,12 @@ func parseExpression(e interface{}) (interface{}, error) {
 }
 
 func inferStringValue(expr string) interface{} {
-	ret, err := strconv.Atoi(expr)
-	if err == nil {
+	if ret, err := strconv.Atoi(expr); err == nil {
 		return ret
 	}
-	retFloat, err := strconv.ParseFloat(expr, 32)
-	if err == nil {
-		// NOTE: always use float32 for attributes, we may never use a
-		//       float64 value as some attribute.
+	if retFloat, err := strconv.ParseFloat(expr, 32); err == nil {
+		// always use float32 for attributes, we may never use a float64
+		// value as some attribute.
 		return float32(retFloat)
 	}
 	retString := strings.Trim(expr, "\"")
@@ -165,7 +162,9 @@ func parseFeatureColumn(el *exprlist) (codegen.FeatureColumn, error) {
 	}
 
 	switch strings.ToUpper(head) {
-	// TODO(typhoonzero): support FieldMeta configurations in column clause
+	// TODO(typhoonzero): support FieldMeta configurations (DENSE/SPARSE) in column clause, e.g.
+	// CATEGORY_ID(DENSE(...))
+	//
 	// case dense:
 	// 	cs, err := resolveColumnSpec(el, false)
 	// 	return nil, cs, err
