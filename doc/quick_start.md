@@ -14,5 +14,5 @@ For advanced usage, you might want to go on reading
 - [Run Locally with Docker](run/docker.md)
 - [Run on Google Cloud](run/gcp.md)
 - [Run on Kubernetes](run/kubernetes.md)
-- [Run Locally in Debug Mode](run/debug_mode.md)
+- [Run in REPL Mode](run/repl.md)
 
