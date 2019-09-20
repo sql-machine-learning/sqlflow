@@ -16,7 +16,11 @@
 set -e
 
 
-# 0. Install miniconda and python and python dependencies.
+# 0. Install conda using Miniconda. 
+# We use conda to (1) specify the use of a specific version of Python, currently, 3.6, and (2) to
+# canonicalize the Python pacakge installation directory, currently, 
+# /miniconda/envs/sqlflow-dev/lib/python3.6/site-packages/.  SQLFlow submitter programs could
+# depend on pacakges installed in the above canocicalized pacakge directory.
 curl -sL https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -o mconda-install.sh
 bash -x mconda-install.sh -b -p miniconda
 rm mconda-install.sh

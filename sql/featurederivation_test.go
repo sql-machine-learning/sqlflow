@@ -14,7 +14,6 @@
 package sql
 
 import (
-	"fmt"
 	"regexp"
 	"testing"
 
@@ -104,7 +103,6 @@ func TestFeatureDerivation(t *testing.T) {
 	a.Equal("int", cs.DType)
 	a.True(cs.IsSparse)
 
-	fmt.Printf("fc inferred: %v\n", res.FeatureColumnInfered)
 	fc := res.FeatureColumnInfered["feature_columns"]["c1"]
 	a.Equal(columns.ColumnTypeNumeric, fc.GetColumnType())
 
