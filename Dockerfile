@@ -37,11 +37,11 @@ RUN bash ${GOPATH}/src/github.com/sql-machine-learning/sqlflow/scripts/build_doc
 VOLUME /var/lib/mysql
 
 # Prepare sample datasets
-COPY example/datasets/popularize_churn.sql \
-     example/datasets/popularize_iris.sql \
-     example/datasets/popularize_boston.sql \
-     example/datasets/popularize_creditcardfraud.sql \
-     example/datasets/create_model_db.sql \
+COPY doc/datasets/popularize_churn.sql \
+     doc/datasets/popularize_iris.sql \
+     doc/datasets/popularize_boston.sql \
+     doc/datasets/popularize_creditcardfraud.sql \
+     doc/datasets/create_model_db.sql \
      /docker-entrypoint-initdb.d/
 
 ADD scripts/start.sh /
