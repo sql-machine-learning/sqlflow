@@ -15,6 +15,7 @@ package sql
 
 import (
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/pkg/errors"

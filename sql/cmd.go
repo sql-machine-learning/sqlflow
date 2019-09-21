@@ -15,6 +15,7 @@ package sql
 
 import (
 	"fmt"
+	"log"
 	"os/exec"
 )
 

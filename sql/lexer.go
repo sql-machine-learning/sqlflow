@@ -14,6 +14,7 @@
 package sql
 
 import (
+	"log"
 	"regexp"
 	"strings"
 	"unicode"
