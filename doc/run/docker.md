@@ -33,9 +33,7 @@ that runs SQLFlow server and Jupyter Notebook, which connects to your own databa
 
 ### MySQL
 
-Follow steps in [example/datasets](https://github.com/sql-machine-learning/sqlflow/blob/develop/example/datasets) to import sample data.
-
-After data is popularized in MySQL, let's test the installation by running a query in Jupyter Notebook. If you are using Docker for Linux, please change `host.docker.internal:3306` to `localhost:3306`. If you are connecting to a remote database, please make sure to change `host.docker.internal:3306` to the remote address.
+Some sample data is already loaded inside the docker image, just type `service mysql start` to start MySQL instance, After that, let's test the installation by running a query in Jupyter Notebook. If you are using Docker for Linux, please change `host.docker.internal:3306` to `localhost:3306`. If you are connecting to a remote database, please make sure to change `host.docker.internal:3306` to the remote address.
 
 ```
 docker run -it -p 8888:8888 sqlflow/sqlflow \
