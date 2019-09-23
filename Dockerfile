@@ -30,10 +30,10 @@ ENV IPYTHON_STARTUP /root/.ipython/profile_default/startup/
 
 # Main steps to Build
 COPY . ${GOPATH}/src/github.com/sql-machine-learning/sqlflow
-RUN bash ${GOPATH}/src/github.com/sql-machine-learning/sqlflow/scripts/build_docker_image.sh && \
-    mkdir -p /workspace && \
-    bash ${GOPATH}/src/github.com/sql-machine-learning/sqlflow/scripts/convert_markdown_into_ipynb.sh && \
-    rm -rf ${GOPATH}/src && rm -rf ${GOPATH}/bin
+RUN bash ${GOPATH}/src/github.com/sql-machine-learning/sqlflow/scripts/build_docker_image.sh
+RUN mkdir -p /workspace
+RUN bash ${GOPATH}/src/github.com/sql-machine-learning/sqlflow/scripts/convert_markdown_into_ipynb.sh
+RUN rm -rf ${GOPATH}/src && rm -rf ${GOPATH}/bin
 VOLUME /var/lib/mysql
 
 # Prepare sample datasets
