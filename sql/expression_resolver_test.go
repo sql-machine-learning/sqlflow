@@ -17,8 +17,8 @@ import (
 	"fmt"
 	"testing"
 
-	"sqlflow.org/sqlflow/sql/columns"
 	"github.com/stretchr/testify/assert"
+	"sqlflow.org/sqlflow/sql/columns"
 )
 
 const (

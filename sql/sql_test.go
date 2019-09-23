@@ -18,8 +18,8 @@ import (
 	"os"
 	"testing"
 
-	"sqlflow.org/sqlflow/sql/testdata"
 	"sqlflow.org/gomaxcompute"
+	"sqlflow.org/sqlflow/sql/testdata"
 
 	"github.com/go-sql-driver/mysql"
 	_ "github.com/mattn/go-sqlite3"

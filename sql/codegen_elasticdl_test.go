@@ -19,8 +19,8 @@ import (
 	"strings"
 	"testing"
 
-	pb "sqlflow.org/sqlflow/server/proto"
 	"github.com/stretchr/testify/assert"
+	pb "sqlflow.org/sqlflow/server/proto"
 )
 
 func TestTrainElasticDLFiller(t *testing.T) {

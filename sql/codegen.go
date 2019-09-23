@@ -20,9 +20,9 @@ import (
 	"text/template"
 
 	"github.com/go-sql-driver/mysql"
-	"sqlflow.org/sqlflow/sql/columns"
 	"sqlflow.org/gohive"
 	"sqlflow.org/gomaxcompute"
+	"sqlflow.org/sqlflow/sql/columns"
 )
 
 type columnType struct {
