@@ -92,10 +92,9 @@ into `server/sqlflow.pb.go` and `go test -v` builds and run unit tests. The envi
 
 ## The Command-line REPL
 
-The REPL is a binary linked with SQLFlow.  To run it, we need to set
-up a MySQL server instance with populated data following
-[example/datasets/README.md](/example/datasets/README.md).  After
-setting up MySQL, run the following inside the Docker container
+The REPL is a binary linked with SQLFlow. In the Docker image, the sample data is already loaded in
+the MySQL service, you can start MySQL using `service mysql start`. To run it, type the following
+command:
 
 ```bash
 go run cmd/repl/repl.go --datasource="mysql://root:root@tcp(host.docker.internal:3306)/?maxAllowedPacket=0"
