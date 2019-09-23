@@ -33,7 +33,12 @@ COLUMN c1,NUMERIC(c2, [128, 32]),CATEGORY_ID(c3, 512),
        SEQ_CATEGORY_ID(c3, 512),
 	   CROSS([c1,c2], 64),
 	   BUCKET(NUMERIC(c1, [100]), 100),
-	   EMBEDDING(CATEGORY_ID(c3, 512), 128, mean)
+	   EMBEDDING(CATEGORY_ID(c3, 512), 128, mean),
+	   NUMERIC(DENSE(c1, 64, COMMA), [128]),
+	   CATEGORY_ID(SPARSE(c2, 10000, COMMA), 128),
+	   SEQ_CATEGORY_ID(SPARSE(c2, 10000, COMMA), 128),
+	   EMBEDDING(c1, 128, sum),
+	   EMBEDDING(SPARSE(c2, 10000, COMMA, "int"), 128, sum)
 LABEL c4
 INTO mymodel;`
 
@@ -103,4 +108,43 @@ INTO mymodel;`
 	a.True(ok)
 	a.Equal("c3", embInner.FieldMeta.Name)
 	a.Equal(512, embInner.BucketSize)
+
+	// NUMERIC(DENSE(c1, [64], COMMA), [128])
+	nc, ok = trainIR.Features["feature_columns"][7].(*codegen.NumericColumn)
+	a.True(ok)
+	a.Equal(64, nc.FieldMeta.Shape[0])
+	a.Equal(",", nc.FieldMeta.Delimiter)
+	a.False(nc.FieldMeta.IsSparse)
+
+	// CATEGORY_ID(SPARSE(c2, 10000, COMMA), 128),
+	cc, ok = trainIR.Features["feature_columns"][8].(*codegen.CategoryIDColumn)
+	a.True(ok)
+	a.True(cc.FieldMeta.IsSparse)
+	a.Equal("c2", cc.FieldMeta.Name)
+	a.Equal(10000, cc.FieldMeta.Shape[0])
+	a.Equal(",", cc.FieldMeta.Delimiter)
+	a.Equal(128, cc.BucketSize)
+
+	// SEQ_CATEGORY_ID(SPARSE(c2, 10000, COMMA), 128)
+	scc, ok := trainIR.Features["feature_columns"][9].(*codegen.SeqCategoryIDColumn)
+	a.True(ok)
+	a.True(scc.FieldMeta.IsSparse)
+	a.Equal("c2", scc.FieldMeta.Name)
+	a.Equal(10000, scc.FieldMeta.Shape[0])
+
+	// EMBEDDING(c1, 128)
+	emb, ok = trainIR.Features["feature_columns"][10].(*codegen.EmbeddingColumn)
+	a.True(ok)
+	a.Equal(nil, emb.CategoryColumn)
+	a.Equal(128, emb.Dimension)
+
+	// EMBEDDING(SPARSE(c2, 10000, COMMA, "int"), 128)
+	emb, ok = trainIR.Features["feature_columns"][11].(*codegen.EmbeddingColumn)
+	a.True(ok)
+	catCol, ok := emb.CategoryColumn.(*codegen.CategoryIDColumn)
+	a.True(ok)
+	a.True(catCol.FieldMeta.IsSparse)
+	a.Equal("c2", catCol.FieldMeta.Name)
+	a.Equal(10000, catCol.FieldMeta.Shape[0])
+	a.Equal(",", catCol.FieldMeta.Delimiter)
 }

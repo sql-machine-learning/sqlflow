@@ -162,15 +162,6 @@ func parseFeatureColumn(el *exprlist) (codegen.FeatureColumn, error) {
 	}
 
 	switch strings.ToUpper(head) {
-	// TODO(typhoonzero): support FieldMeta configurations (DENSE/SPARSE) in column clause, e.g.
-	// CATEGORY_ID(DENSE(...))
-	//
-	// case dense:
-	// 	cs, err := resolveColumnSpec(el, false)
-	// 	return nil, cs, err
-	// case sparse:
-	// 	cs, err := resolveColumnSpec(el, true)
-	// 	return nil, cs, err
 	case numeric:
 		return parseNumericColumn(el)
 	case bucket:
@@ -189,11 +180,19 @@ func parseFeatureColumn(el *exprlist) (codegen.FeatureColumn, error) {
 }
 
 func parseNumericColumn(el *exprlist) (*codegen.NumericColumn, error) {
-	help := "NUMERIC(DENSE(col_name,...)[, SHAPE])"
+	help := "NUMERIC([DENSE()|SPARSE()|col_name][, SHAPE])"
 	if len(*el) != 3 {
 		return nil, fmt.Errorf("bad NUMERIC expression format: %s, should be like: %s", *el, help)
 	}
-	// TODO(typhoonzero): support DENSE()/SPARSE() here
+	// 1. NUMERIC(DENSE()/SPARSE()) phrases
+	if (*el)[1].typ == 0 {
+		fieldMeta, err := parseFieldMeta(&(*el)[1].sexp)
+		if err != nil {
+			return nil, err
+		}
+		return &codegen.NumericColumn{FieldMeta: fieldMeta}, nil
+	}
+	// 1. NUMERIC(col_name, ...) phrases
 	key, err := expression2string((*el)[1])
 	if err != nil {
 		return nil, fmt.Errorf("bad NUMERIC key: %s, err: %s, should be like: %s", (*el)[1], err, help)
@@ -261,87 +260,121 @@ func parseCrossColumn(el *exprlist) (*codegen.CrossColumn, error) {
 }
 
 func parseCategoryIDColumn(el *exprlist) (*codegen.CategoryIDColumn, error) {
-	help := "CATEGORY_ID(column_1, BUCKET_SIZE)"
+	help := "CATEGORY_ID([DENSE()|SPARSE()|col_name], BUCKET_SIZE)"
 	if len(*el) != 3 && len(*el) != 4 {
 		return nil, fmt.Errorf("bad CATEGORY_ID expression format: %s, should be like: %s", *el, help)
 	}
+	var fieldMeta *codegen.FieldMeta
+	var err error
 	if (*el)[1].typ == 0 {
-		// TODO(typhoonzero): support DENSE()/SPARSE() in category_id_column to fill FieldMeta
-		return nil, fmt.Errorf("bad CATEGORY_ID expression format: %s, should be like: %s", *el, help)
+		// CATEGORY_ID(DENSE()/SPARSE()) phrases
+		fieldMeta, err = parseFieldMeta(&(*el)[1].sexp)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		key, err := expression2string((*el)[1])
+		if err != nil {
+			return nil, fmt.Errorf("bad CATEGORY_ID key: %s, err: %s", (*el)[1], err)
+		}
+		// generate a default FieldMeta
+		// TODO(typhoonzero): update default FieldMeta when doing feature derivation
+		fieldMeta = &codegen.FieldMeta{
+			Name:     key,
+			DType:    codegen.Int,
+			IsSparse: false,
+		}
 	}
-	key, err := expression2string((*el)[1])
-	if err != nil {
-		return nil, fmt.Errorf("bad CATEGORY_ID key: %s, err: %s", (*el)[1], err)
-	}
+
 	bucketSize, err := strconv.Atoi((*el)[2].val)
 	if err != nil {
 		return nil, fmt.Errorf("bad CATEGORY_ID bucketSize: %s, err: %s", (*el)[2].val, err)
 	}
 	return &codegen.CategoryIDColumn{
-		// TODO(typhoonzero): support CATEGORY_ID(DENSE(...)) to fill FieldMeta
-		FieldMeta: &codegen.FieldMeta{
-			Name:     key,
-			DType:    codegen.Int,
-			IsSparse: false,
-		},
+		FieldMeta:  fieldMeta,
 		BucketSize: bucketSize,
 	}, nil
 }
 
 func parseSeqCategoryIDColumn(el *exprlist) (*codegen.SeqCategoryIDColumn, error) {
-	help := "SEQ_CATEGORY_ID(column_1, BUCKET_SIZE)"
+	help := "SEQ_CATEGORY_ID([DENSE()|SPARSE()|col_name], BUCKET_SIZE)"
 	if len(*el) != 3 && len(*el) != 4 {
 		return nil, fmt.Errorf("bad SEQ_CATEGORY_ID expression format: %s, should be like: %s", *el, help)
 	}
+	var fieldMeta *codegen.FieldMeta
+	var err error
 	if (*el)[1].typ == 0 {
-		// TODO(typhoonzero): support DENSE()/SPARSE() in seq_category_id_column to fill FieldMeta
-		return nil, fmt.Errorf("bad SEQ_CATEGORY_ID expression format: %s, should be like: %s", *el, help)
+		// CATEGORY_ID(DENSE()/SPARSE()) phrases
+		fieldMeta, err = parseFieldMeta(&(*el)[1].sexp)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		key, err := expression2string((*el)[1])
+		if err != nil {
+			return nil, fmt.Errorf("bad SEQ_CATEGORY_ID key: %s, err: %s", (*el)[1], err)
+		}
+		// generate a default FieldMeta
+		// TODO(typhoonzero): update default FieldMeta when doing feature derivation
+		fieldMeta = &codegen.FieldMeta{
+			Name:     key,
+			DType:    codegen.Int,
+			IsSparse: false,
+		}
 	}
-	key, err := expression2string((*el)[1])
-	if err != nil {
-		return nil, fmt.Errorf("bad SEQ_CATEGORY_ID key: %s, err: %s", (*el)[1], err)
-	}
+
 	bucketSize, err := strconv.Atoi((*el)[2].val)
 	if err != nil {
 		return nil, fmt.Errorf("bad SEQ_CATEGORY_ID bucketSize: %s, err: %s", (*el)[2].val, err)
 	}
 	return &codegen.SeqCategoryIDColumn{
-		// TODO(typhoonzero): support SEQ_CATEGORY_ID(DENSE(...)) to fill FieldMeta
-		FieldMeta: &codegen.FieldMeta{
-			Name:     key,
-			DType:    codegen.Int,
-			IsSparse: false,
-		},
+		FieldMeta:  fieldMeta,
 		BucketSize: bucketSize,
 	}, nil
 }
 
 func parseEmbeddingColumn(el *exprlist) (*codegen.EmbeddingColumn, error) {
-	help := "EMBEDDING(CATEGORY_ID(...), SIZE[, COMBINER, INITIALIZER])"
+	help := "EMBEDDING([CATEGORY_ID(...)|col_name], SIZE, COMBINER[, INITIALIZER])"
 	if len(*el) < 4 || len(*el) > 5 {
 		return nil, fmt.Errorf("bad EMBEDDING expression format: %s, should be like: %s", *el, help)
 	}
+	var catColumn interface{}
 	sourceExprList := (*el)[1]
 	if sourceExprList.typ != 0 {
-		// key is a IDET string
-		// TODO(typhoonzero): support auto add embedding key as a category_id_column
-		return nil, fmt.Errorf("bad EMBEDDING expression format: %s, should be like: %s", *el, help)
-	}
-
-	// TODO(typhoonzero): user may write EMBEDDING(SPARSE(...)) or EMBEDDING(DENSE(...)),
-	// should call parseFieldMeta if error here.
-	source, err := parseFeatureColumn(&sourceExprList.sexp)
-	if err != nil {
-		return nil, err
-	}
-
-	// TODO(uuleon) support other kinds of categorical column in the future
-	var catColumn interface{}
-	catColumn, ok := source.(*codegen.CategoryIDColumn)
-	if !ok {
-		catColumn, ok = source.(*codegen.SeqCategoryIDColumn)
-		if !ok {
-			return nil, fmt.Errorf("key of EMBEDDING must be categorical column")
+		// 1. key is a IDET string: EMBEDDING(col_name, size), fill a nil in CategoryColumn for later
+		// feature derivation.
+		catColumn = nil
+	} else {
+		source, err := parseFeatureColumn(&sourceExprList.sexp)
+		if err != nil {
+			var tmpCatColumn interface{}
+			// 2. source is a FieldMeta like EMBEDDING(SPARSE(...), size)
+			fm, err := parseFieldMeta(&sourceExprList.sexp)
+			if err != nil {
+				return nil, err
+			}
+			// generate default CategoryIDColumn according to FieldMeta, use shape[0]
+			// as category_id_column bucket size.
+			if len(fm.Shape) < 1 {
+				return nil, fmt.Errorf("invalid FieldMeta Shape: %v", sourceExprList)
+			}
+			tmpCatColumn = &codegen.CategoryIDColumn{
+				FieldMeta:  fm,
+				BucketSize: fm.Shape[0],
+			}
+			catColumn = tmpCatColumn
+		} else {
+			var tmpCatColumn interface{}
+			// 3. source is a FeatureColumn like EMBEDDING(CATEGORY_ID(...), size)
+			// TODO(uuleon) support other kinds of categorical column in the future
+			tmpCatColumn, ok := source.(*codegen.CategoryIDColumn)
+			if !ok {
+				tmpCatColumn, ok = source.(*codegen.SeqCategoryIDColumn)
+				if !ok {
+					return nil, fmt.Errorf("key of EMBEDDING must be categorical column")
+				}
+			}
+			catColumn = tmpCatColumn
 		}
 	}
 
@@ -365,6 +398,74 @@ func parseEmbeddingColumn(el *exprlist) (*codegen.EmbeddingColumn, error) {
 		Dimension:      dimension,
 		Combiner:       combiner,
 		Initializer:    initializer}, nil
+}
+
+func parseFieldMeta(el *exprlist) (*codegen.FieldMeta, error) {
+	help := "DENSE|SPARSE(col_name, SHAPE, DELIMITER[, DTYPE])"
+	if len(*el) < 4 {
+		return nil, fmt.Errorf("bad FieldMeta format: %s, should be like: %s", *el, help)
+	}
+	call, err := expression2string((*el)[0])
+	if err != nil {
+		return nil, fmt.Errorf("bad FieldMeta format: %v, should be like: %s", err, help)
+	}
+	var isSparse bool
+	if strings.ToUpper(call) == "DENSE" {
+		isSparse = false
+	} else if strings.ToUpper(call) == "SPARSE" {
+		isSparse = true
+	} else {
+		return nil, fmt.Errorf("bad FieldMeta: %s, should be like: %s", call, help)
+	}
+
+	name, err := expression2string((*el)[1])
+	if err != nil {
+		return nil, fmt.Errorf("bad FieldMeta name: %s, err: %s", (*el)[1], err)
+	}
+	var shape []int
+	intShape, err := strconv.Atoi((*el)[2].val)
+	if err != nil {
+		strShape, err := expression2string((*el)[2])
+		if err != nil {
+			return nil, fmt.Errorf("bad FieldMeta shape: %s, err: %s", (*el)[2].val, err)
+		}
+		if strShape != "none" {
+			return nil, fmt.Errorf("bad FieldMeta shape: %s, err: %s", (*el)[2].val, err)
+		}
+	} else {
+		shape = append(shape, intShape)
+	}
+	unresolvedDelimiter, err := expression2string((*el)[3])
+	if err != nil {
+		return nil, fmt.Errorf("bad FieldMeta delimiter: %s, err: %s", (*el)[1], err)
+	}
+
+	delimiter, err := resolveDelimiter(unresolvedDelimiter)
+	if err != nil {
+		return nil, err
+	}
+
+	dtype := codegen.Float
+	if isSparse {
+		dtype = codegen.Int
+	}
+	if len(*el) >= 5 {
+		dtypeStr, err := expression2string((*el)[4])
+		if err != nil {
+			return nil, err
+		}
+		if dtypeStr == "float" {
+			dtype = codegen.Float
+		} else if dtypeStr == "int" {
+			dtype = codegen.Int
+		}
+	}
+	return &codegen.FieldMeta{
+		Name:      name,
+		IsSparse:  isSparse,
+		Shape:     shape,
+		DType:     dtype,
+		Delimiter: delimiter}, nil
 }
 
 // -------------------------- parse utilities --------------------------------------
