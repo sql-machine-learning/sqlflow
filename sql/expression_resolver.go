@@ -14,7 +14,7 @@
 package sql
 
 import (
-	"log"
+	"fmt"
 	"strconv"
 	"strings"
 
