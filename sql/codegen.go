@@ -20,7 +20,7 @@ import (
 	"text/template"
 
 	"github.com/go-sql-driver/mysql"
-	"github.com/sql-machine-learning/sqlflow/sql/columns"
+	"sqlflow.org/sqlflow/sql/columns"
 	"sqlflow.org/gohive"
 	"sqlflow.org/gomaxcompute"
 )

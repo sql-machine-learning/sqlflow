@@ -17,7 +17,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/sql-machine-learning/sqlflow/sql/columns"
+	"sqlflow.org/sqlflow/sql/columns"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -20,7 +20,7 @@ import (
 	"strings"
 	"testing"
 
-	pb "github.com/sql-machine-learning/sqlflow/server/proto"
+	pb "sqlflow.org/sqlflow/server/proto"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -18,7 +18,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/sql-machine-learning/sqlflow/sql/testdata"
+	"sqlflow.org/sqlflow/sql/testdata"
 	"sqlflow.org/gomaxcompute"
 
 	"github.com/go-sql-driver/mysql"

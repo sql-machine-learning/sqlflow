@@ -25,8 +25,8 @@ import (
 	"strings"
 	"text/template"
 
-	pb "github.com/sql-machine-learning/sqlflow/server/proto"
-	"github.com/sql-machine-learning/sqlflow/sql/columns"
+	pb "sqlflow.org/sqlflow/server/proto"
+	"sqlflow.org/sqlflow/sql/columns"
 	"sqlflow.org/gomaxcompute"
 )
 

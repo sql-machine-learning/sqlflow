@@ -18,7 +18,7 @@ import (
 	"testing"
 
 	"github.com/go-sql-driver/mysql"
-	"github.com/sql-machine-learning/sqlflow/sql/codegen"
+	"sqlflow.org/sqlflow/sql/codegen"
 	"github.com/stretchr/testify/assert"
 )
 

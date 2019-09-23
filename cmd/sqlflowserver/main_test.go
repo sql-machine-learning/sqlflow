@@ -32,9 +32,9 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
 	"github.com/golang/protobuf/ptypes/wrappers"
-	pb "github.com/sql-machine-learning/sqlflow/server/proto"
-	"github.com/sql-machine-learning/sqlflow/sql"
-	"github.com/sql-machine-learning/sqlflow/sql/testdata"
+	pb "sqlflow.org/sqlflow/server/proto"
+	"sqlflow.org/sqlflow/sql"
+	"sqlflow.org/sqlflow/sql/testdata"
 	"github.com/stretchr/testify/assert"
 )
 
