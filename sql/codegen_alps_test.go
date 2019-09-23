@@ -15,7 +15,6 @@ package sql
 
 import (
 	"bytes"
-	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -84,7 +83,6 @@ func TestTrainALPSEmbeddingInitializer(t *testing.T) {
 	session := &pb.Session{UserId: "sqlflow_user"}
 	filler, e := newALPSTrainFiller(r, nil, session, nil)
 	a.NoError(e)
-	fmt.Println(filler.FeatureColumnCode)
 	a.True(strings.Contains(filler.FeatureColumnCode, "tf.feature_column.embedding_column(tf.feature_column.categorical_column_with_identity(key=\"deep_0\", num_buckets=2000), dimension=8, combiner=\"sum\", initializer=tf.random_normal_initializer(stddev=0.001))"))
 }
 
