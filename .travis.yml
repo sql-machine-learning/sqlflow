@@ -1,4 +1,5 @@
 language: go
+go_import_path: sqlflow.org/sqlflow
 
 branches:
   only:
@@ -35,6 +36,7 @@ install:
 
 script:
   - set -e
+  - pwd
   - docker version
   - docker pull --help
   - docker pull sqlflow/gohive:dev && docker run -d --name=hive sqlflow/gohive:dev python3 -m http.server 8899
