@@ -11,12 +11,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:generate protoc -I proto proto/sqlflow.proto --go_out=plugins=grpc:proto
-
 // Package server is the SQLFlow grpc server which connects to database and
 // parse, submit or execute the training and predicting codes.
 //
 // To generate grpc protobuf code, run the below command:
+//
+//go:generate protoc -I proto proto/sqlflow.proto --go_out=plugins=grpc:proto
+
 package server
 
 import (

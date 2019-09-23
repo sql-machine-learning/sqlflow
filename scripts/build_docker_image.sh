@@ -54,6 +54,8 @@ mkdir -p /go
 # 2. Install Go compile tools
 go get github.com/golang/protobuf/protoc-gen-go
 mv $GOPATH/bin/protoc-gen-go /usr/local/bin/
+go get modernc.org/goyacc
+mv $GOPATH/bin/goyacc /usr/local/bin/
 go get golang.org/x/lint/golint
 mv $GOPATH/bin/golint /usr/local/bin
 
