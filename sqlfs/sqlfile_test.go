@@ -15,7 +15,7 @@ package sqlfs
 
 import (
 	"database/sql"
-	"log"
+	"fmt"
 	"io"
 	"math/rand"
 	"os"
@@ -122,7 +122,8 @@ func TestWriteAndRead(t *testing.T) {
 // log doesn't work.
 func assertNoErr(e error) {
 	if e != nil {
-		log.Fatal(e)
+		fmt.Println(e)
+		os.Exit(-1)
 	}
 }
 
