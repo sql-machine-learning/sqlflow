@@ -32,7 +32,8 @@ ENV IPYTHON_STARTUP /root/.ipython/profile_default/startup/
 COPY . ${GOPATH}/src/github.com/sql-machine-learning/sqlflow
 RUN bash ${GOPATH}/src/github.com/sql-machine-learning/sqlflow/scripts/build_docker_image.sh && \
     mkdir -p /workspace && \
-    bash ${GOPATH}/src/github.com/sql-machine-learning/sqlflow/scripts/convert_markdown_into_ipynb.sh && \
+    cp ${GOPATH}/src/github.com/sql-machine-learning/sqlflow/scripts/convert_markdown_into_ipynb.sh /convert_markdown_into_ipynb.sh && \
+    bash /convert_markdown_into_ipynb.sh && \
     rm -rf ${GOPATH}/src && rm -rf ${GOPATH}/bin
 VOLUME /var/lib/mysql
 
