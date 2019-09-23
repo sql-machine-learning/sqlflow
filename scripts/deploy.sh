@@ -23,8 +23,8 @@ fi
 
 echo "TRAVIS_BRANCH $TRAVIS_BRANCH"
 echo "TRAVIS_TAG $TRAVIS_TAG"
-if [[ "TRAVIS_BRANCH" == "develop" ]]; then
-    if [[ $TRAVIS_EVENT_TYPE == "cron" ]]; then
+if [[ "$TRAVIS_BRANCH" == "develop" ]]; then
+    if [[ "$TRAVIS_EVENT_TYPE" == "cron" ]]; then
         DOCKER_TAG="nightly"
     else
         DOCKER_TAG="latest"
