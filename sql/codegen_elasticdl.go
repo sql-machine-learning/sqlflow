@@ -160,7 +160,7 @@ func newElasticDLTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds
 		}
 	}
 	if hasFeatureColumns {
-		log.Warnln("COLUMN clause is ignored since ElasticDL does not support feature columns yet")
+		log.Printf("COLUMN clause is ignored since ElasticDL does not support feature columns yet")
 	}
 
 	var trainInput, evalInput string

@@ -15,7 +15,6 @@ package sql
 
 import (
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -62,18 +61,15 @@ func newTrainAndValDataset(db *DB, slct string, origTable string, trainingUpperb
 func createMaxcomputeDataset(db *DB, slct string, origTable string, trainingUpperbound float32) (*trainAndValDataset, error) {
 	ds := namingTrainAndValDataset(origTable)
 	if e := createMaxcomputeRandomTable(ds.table, slct, db); e != nil {
-		log.Errorf("create table with a randowm column failed, err: %v", e)
-		return nil, e
+		return nil, fmt.Errorf("create table with a randowm column failed, err: %v", e)
 	}
 	trnCond := fmt.Sprintf("%s < %f", randomColumn, trainingUpperbound)
 	if e := createMaxcomputeTable(ds.training, ds.table, db, trnCond); e != nil {
-		log.Errorf("create training table failed, err: %v", e)
-		return nil, e
+		return nil, fmt.Errorf("create training table failed, err: %v", e)
 	}
 	valCond := fmt.Sprintf("%s >= %f", randomColumn, trainingUpperbound)
 	if e := createMaxcomputeTable(ds.validation, ds.table, db, valCond); e != nil {
-		log.Errorf("create validation table failed, err: %v", e)
-		return nil, e
+		return nil, fmt.Errorf("create validation table failed, err: %v", e)
 	}
 	// TODO(weiguo): release the random table
 	return ds, nil
@@ -107,33 +103,29 @@ func createDataset(db *DB, slct string, origTable string, trainingUpperbound flo
 	if useCurrentDB == false {
 		stmt := fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s", ds.database)
 		if _, e := db.Exec(stmt); e != nil {
-			log.Errorf("create temporary database failed, stmt:[%s], err:%v", stmt, e)
-			return nil, e
+			return nil, fmt.Errorf("create temporary database failed, stmt:[%s], err:%v", stmt, e)
 		}
 	}
 	rdmTbl, e := createRandomTable(ds.database, ds.table, slct, db, useCurrentDB)
 	if e != nil {
-		log.Errorf("create table with a random column failed, err: %v", e)
-		return nil, e
+		return nil, fmt.Errorf("create table with a random column failed, err: %v", e)
 	}
 	trnCond := fmt.Sprintf("%s < %f", randomColumn, trainingUpperbound)
 	trnTbl, e := createTable(ds.database, ds.training, rdmTbl, db, trnCond, useCurrentDB)
 	if e != nil {
-		log.Errorf("create training table failed, err: %v", e)
-		return nil, e
+		return nil, fmt.Errorf("create training table failed, err: %v", e)
+
 	}
 	ds.training = trnTbl
 
 	valCond := fmt.Sprintf("%s >= %f", randomColumn, trainingUpperbound)
 	valTbl, e := createTable(ds.database, ds.validation, rdmTbl, db, valCond, useCurrentDB)
 	if e != nil {
-		log.Errorf("create validation table failed, err: %v", e)
-		return nil, e
+		return nil, fmt.Errorf("create validation table failed, err: %v", e)
 	}
 	ds.validation = valTbl
 	if _, e := db.Exec("DROP TABLE IF EXISTS " + rdmTbl); e != nil {
-		log.Errorf("drop temporary table failed, err:%v", e)
-		return nil, e
+		return nil, fmt.Errorf("drop temporary table failed, err:%v", e)
 	}
 	return ds, nil
 }

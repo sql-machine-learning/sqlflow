@@ -151,7 +151,7 @@ func runStandardSQL(slct string, db *DB) *PipeReader {
 // query runs slct and writes the retrieved rows into pipe wr.
 func query(slct string, db *DB, wr *PipeWriter) error {
 	defer func(startAt time.Time) {
-		log.Debugf("runQuery %v finished, elapsed:%v", slct, time.Since(startAt))
+		log.Printf("runQuery %v finished, elapsed:%v", slct, time.Since(startAt))
 	}(time.Now())
 
 	rows, err := db.Query(slct)
@@ -233,12 +233,7 @@ func runQuery(slct string, db *DB) *PipeReader {
 	go func() {
 		defer wr.Close()
 		if e := query(slct, db, wr); e != nil {
-			log.Errorf("runQuery error:%v", e)
-			if e != ErrClosedPipe {
-				if err := wr.Write(e); err != nil {
-					log.Errorf("runQuery error(piping):%v", err)
-				}
-			}
+			pipeError(wr, e)
 		}
 	}()
 	return rd
@@ -251,7 +246,9 @@ func runExec(slct string, db *DB) *PipeReader {
 
 		err := func() error {
 			defer func(startAt time.Time) {
-				log.Debugf("runEexc %v finished, elapsed:%v", slct, time.Since(startAt))
+				// TODO(wangkuiyi): If we got too many logs from this printf, we
+				// trigger it if only a bool command-line flag named profiling is true.
+				log.Printf("runExec %v finished, elapsed:%v", slct, time.Since(startAt))
 			}(time.Now())
 
 			res, e := db.Exec(slct)
@@ -271,14 +268,7 @@ func runExec(slct string, db *DB) *PipeReader {
 			}
 			return wr.Write(fmt.Sprintf("%d row affected", affected))
 		}()
-		if err != nil {
-			log.Errorf("runExec error:%v", err)
-			if err != ErrClosedPipe {
-				if err := wr.Write(err); err != nil {
-					log.Errorf("runExec error(piping):%v", err)
-				}
-			}
-		}
+		pipeError(wr, err)
 	}()
 	return rd
 }
@@ -298,7 +288,9 @@ func runExtendedSQL(slct string, db *DB, modelDir string, session *pb.Session) *
 
 		err := func() error {
 			defer func(startAt time.Time) {
-				log.Debugf("runExtendedSQL %v finished, elapsed:%v", slct, time.Since(startAt))
+				// TODO(wangkuiyi): Might need to add a command-line flag profiling to tigger
+				// the following printf.
+				log.Printf("runExtendedSQL %v finished, elapsed:%v", slct, time.Since(startAt))
 			}(time.Now())
 			pr, e := newParser().Parse(slct)
 			if e != nil {
@@ -350,16 +342,20 @@ func runExtendedSQL(slct string, db *DB, modelDir string, session *pb.Session) *
 			return pred(wr, pr, db, cwd, modelDir)
 		}()
 
-		if err != nil {
-			log.Errorf("runExtendedSQL error:%v", err)
-			if err != ErrClosedPipe {
-				if err := wr.Write(err); err != nil {
-					log.Errorf("runExtendedSQL error(piping):%v", err)
-				}
-			}
-		}
+		pipeError(wr, err)
 	}()
 	return rd
+}
+
+func pipeError(wr *PipeWriter, err error) {
+	if err != nil {
+		log.Print(err)
+		if err != ErrClosedPipe {
+			if err := wr.Write(err); err != nil {
+				log.Printf("error pipe error: %v", err)
+			}
+		}
+	}
 }
 
 type logChanWriter struct {
