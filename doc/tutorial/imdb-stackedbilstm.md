@@ -21,6 +21,7 @@ segmented by spaces. You can download the full dataset from:
    to download, preprocess and insert data into MySQL database.
 1. Then use the following statements to train and predict using SQLFlow:
     ```sql
+    %%sqlflow
     SELECT *
     FROM imdb.train
     TRAIN DNNClassifier
@@ -30,7 +31,10 @@ segmented by spaces. You can download the full dataset from:
     COLUMN content
     LABEL class
     INTO sqlflow_models.my_text_model_en;
+    ```
 
+    ```sql
+    %%sqlflow
     SELECT *
     FROM imdb.test
     PREDICT imdb.predict.class
@@ -51,7 +55,8 @@ you may need to follow the below steps:
 1. Modify above SQL statement to use custom model by simply change the model name to
    `sqlflow_models.YourAwesomeModel` like:
 
-   ```sql
+    ```sql
+    %%sqlflow
     SELECT *
     FROM imdb.train
     TRAIN sqlflow_models.StackedBiLSTMClassifier
@@ -75,6 +80,7 @@ you may need to follow the below steps:
    dataset, note the table must create with `CHARSET=utf8 COLLATE=utf8_unicode_ci` so that the Chinese
    texts can be correctly shown.
     ```sql
+    %%sqlflow
     CREATE DATABASE toutiao;
     CREATE TABLE `train` (
         `id` bigint(20) NOT NULL,
@@ -103,6 +109,7 @@ you may need to follow the below steps:
     ```
 1. In the MySQL shell, type below line to load the dataset into created table:
     ```sql
+    %%sqlflow
     LOAD DATA LOCAL
     INFILE '/var/lib/mysql-files/toutiao_cat_data.txt'
     INTO TABLE train
@@ -116,6 +123,7 @@ you may need to follow the below steps:
 1. Split some of the data into a validation table, and remove the validation
    data from train data:
     ```sql
+    %%sqlflow
     INSERT INTO `test_processed` (`id`, `class_id`, `class_name`, `news_title`, `news_keywords`)
     SELECT `id`, `class_id`, `class_name`, `news_title`, `news_keywords` FROM `train_processed`
     ORDER BY RAND()
@@ -127,6 +135,7 @@ you may need to follow the below steps:
     ```
 1. Then use the following statements to train and predict using SQLFlow:
     ```sql
+    %%sqlflow
     SELECT *
     FROM toutiao.train_processed
     TRAIN DNNClassifier
@@ -136,7 +145,10 @@ you may need to follow the below steps:
     COLUMN news_title
     LABEL class_id
     INTO sqlflow_models.my_text_model;
+    ```
 
+    ```sql
+    %%sqlflow
     SELECT *
     FROM toutiao.test_processed
     PREDICT toutiao.predict.class_id
