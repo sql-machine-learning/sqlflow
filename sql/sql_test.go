@@ -113,6 +113,7 @@ func TestMain(m *testing.M) {
 // log doesn't work.
 func assertNoErr(e error) {
 	if e != nil {
-		log.Fatal(e)
+		fmt.Println(e)
+		os.Exit(-1)
 	}
 }
