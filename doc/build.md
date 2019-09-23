@@ -106,4 +106,4 @@ You should be able to see the following prompt
 sqlflow>
 ```
 
-Then, please follow the [REPL tutorial](doc/run/repl.md).
+Then, please follow the [REPL tutorial](run/repl.md).
