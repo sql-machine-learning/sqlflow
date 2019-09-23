@@ -81,13 +81,13 @@ mkdir -p /docker-entrypoint-initdb.d
 #    Then move binary file: "sqlflowserver" and "repl" to /usr/local/bin
 #    Then delete contents under $GOPATH to reduce the image size.
 # NOTE: During development and testing, /go will be overridden by -v.
-cd /go/src/github.com/sql-machine-learning/sqlflow
+cd /go/src/sqlflow.org/sqlflow
 go generate ./...
 go get -t ./...
 go install -v ./...
 mv $GOPATH/bin/sqlflowserver /usr/local/bin
 mv $GOPATH/bin/repl /usr/local/bin
-cp -r $GOPATH/src/github.com/sql-machine-learning/sqlflow/sql/python/sqlflow_submitter /miniconda/envs/sqlflow-dev/lib/python3.6/site-packages/
+cp -r $GOPATH/src/sqlflow.org/sqlflow/sql/python/sqlflow_submitter /miniconda/envs/sqlflow-dev/lib/python3.6/site-packages/
 cd /
 
 # 6. Install latest sqlflow_models for testing custom models, see main_test.go:CaseTrainCustomModel

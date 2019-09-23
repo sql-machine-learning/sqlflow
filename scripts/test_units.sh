@@ -21,7 +21,7 @@ export SQLFLOW_TEST_DB=mysql
 # NOTE: we have already installed sqlflow_submitter under python installation path
 # using latest develop branch, but when testing on CI, we need to use the code in
 # the current pull request.
-export PYTHONPATH=$GOPATH/src/github.com/sql-machine-learning/sqlflow/sql/python
+export PYTHONPATH=$GOPATH/src/sqlflow.org/sqlflow/sql/python
 
 python -c "import sqlflow_models"
 python -c "import sqlflow_submitter.db"

@@ -1,4 +1,5 @@
 language: go
+go_import_path: sqlflow.org/sqlflow
 
 branches:
   only:
@@ -39,12 +40,12 @@ script:
   - docker pull --help
   - docker pull sqlflow/gohive:dev && docker run -d --name=hive sqlflow/gohive:dev python3 -m http.server 8899
   - docker pull sqlflow/sqlflow:latest && docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile .
-  - docker run --rm -v $GOPATH/src:/go/src -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:latest pre-commit run -a
-  - docker run --rm -v $GOPATH:/go -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:latest bash scripts/test_units.sh
-  - docker run --rm -v $GOPATH:/go --net=container:hive --entrypoint bash -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:latest scripts/test_hive.sh
+  - docker run --rm -v $GOPATH/src:/go/src -w /go/src/sqlflow.org/sqlflow sqlflow:latest pre-commit run -a
+  - docker run --rm -v $GOPATH:/go -w /go/src/sqlflow.org/sqlflow sqlflow:latest bash scripts/test_units.sh
+  - docker run --rm -v $GOPATH:/go --net=container:hive --entrypoint bash -w /go/src/sqlflow.org/sqlflow sqlflow:latest scripts/test_hive.sh
   - bash scripts/setup_k8s_env.sh
-  - docker run --rm --net=host -v /var/run/docker.sock:/var/run/docker.sock -v $HOME/.kube:/root/.kube -v /home/$USER/.minikube/:/home/$USER/.minikube/ -v $GOPATH:/go -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:latest bash scripts/test_ipython.sh
-  - docker run -e MAXCOMPUTE_AK=$MAXCOMPUTE_AK -e MAXCOMPUTE_SK=$MAXCOMPUTE_SK --rm --net=host -v /var/run/docker.sock:/var/run/docker.sock -v $HOME/.kube:/root/.kube -v /home/$USER/.minikube/:/home/$USER/.minikube/ -v $GOPATH:/go -w /go/src/github.com/sql-machine-learning/sqlflow sqlflow:latest bash scripts/test_maxcompute.sh
+  - docker run --rm --net=host -v /var/run/docker.sock:/var/run/docker.sock -v $HOME/.kube:/root/.kube -v /home/$USER/.minikube/:/home/$USER/.minikube/ -v $GOPATH:/go -w /go/src/sqlflow.org/sqlflow sqlflow:latest bash scripts/test_ipython.sh
+  - docker run -e MAXCOMPUTE_AK=$MAXCOMPUTE_AK -e MAXCOMPUTE_SK=$MAXCOMPUTE_SK --rm --net=host -v /var/run/docker.sock:/var/run/docker.sock -v $HOME/.kube:/root/.kube -v /home/$USER/.minikube/:/home/$USER/.minikube/ -v $GOPATH:/go -w /go/src/sqlflow.org/sqlflow sqlflow:latest bash scripts/test_maxcompute.sh
 
 after_success:
   - bash scripts/deploy.sh
