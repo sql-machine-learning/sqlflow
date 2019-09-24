@@ -48,7 +48,7 @@ type FieldMeta struct {
 }
 
 // FeatureColumn indicates the feature column to be applied on the field. Please refer to
-// github.com/sql-machine-learning/sqlflow/sql/codegen/feature_column.go for detailed list of all feature columns.
+// sqlflow.org/sqlflow/sql/codegen/feature_column.go for detailed list of all feature columns.
 type FeatureColumn interface {
 	isFeatureColumn()
 }

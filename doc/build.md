@@ -31,7 +31,7 @@ export GOPATH=$HOME/go
 Now that `$GOPATH$` is set, we could git clone the source code of our project by running:
 
 ```bash
-go get github.com/sql-machine-learning/sqlflow
+go get sqlflow.org/sqlflow
 ```
 
 Change the directory to our project root, and we can use `go get` to retrieve
@@ -41,7 +41,7 @@ others' work. If somebody added new dependencies, we might need to run `go -u ./
 after `git pull` to update dependencies.
 
 ```bash
-cd $GOPATH/src/github.com/sql-machine-learning/sqlflow
+cd $GOPATH/src/sqlflow.org/sqlflow
 go get -u -t ./...
 ```
 
@@ -68,7 +68,7 @@ the `$GOPATH` in the container:
 
 ```bash
 docker run --rm -it -v $GOPATH:/go \
-    -w /go/src/github.com/sql-machine-learning/sqlflow \
+    -w /go/src/sqlflow.org/sqlflow \
     sqlflow:latest bash
 ```
 
@@ -92,10 +92,9 @@ into `server/sqlflow.pb.go` and `go test -v` builds and run unit tests. The envi
 
 ## The Command-line REPL
 
-The REPL is a binary linked with SQLFlow.  To run it, we need to set
-up a MySQL server instance with populated data following
-[example/datasets/README.md](/example/datasets/README.md).  After
-setting up MySQL, run the following inside the Docker container
+The REPL is a binary linked with SQLFlow. In the Docker image, the sample data is already loaded in
+the MySQL service, you can start MySQL using `service mysql start`. To run it, type the following
+command:
 
 ```bash
 go run cmd/repl/repl.go --datasource="mysql://root:root@tcp(host.docker.internal:3306)/?maxAllowedPacket=0"

@@ -21,7 +21,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/sql-machine-learning/sqlflow/sqlfs"
+	"sqlflow.org/sqlflow/sqlfs"
 )
 
 type model struct {
