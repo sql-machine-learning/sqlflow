@@ -120,7 +120,7 @@ pip install xgboost==0.90
 # pip install xgboost-launcher==0.0.4
 
 # 10. install Hadoop to use as the client when writing CSV to hive tables
-HADOOP_URL=https://archive.apache.org/dist/hadoop/common/stable/hadoop-${HADOOP_VERSION}.tar.gz
+HADOOP_URL=https://archive.apache.org/dist/hadoop/common/hadoop-${HADOOP_VERSION}/hadoop-${HADOOP_VERSION}.tar.gz
 curl -fsSL "$HADOOP_URL" -o /tmp/hadoop.tar.gz
 tar -xzf /tmp/hadoop.tar.gz -C /opt/
 rm -rf /tmp/hadoop.tar.gz
