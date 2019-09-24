@@ -1,4 +1,4 @@
-FROM python:3.7-buster
+FROM python:3.7-stretch
 
 RUN apt-get update && apt-get install -y curl bzip2 \
     build-essential unzip sqlite3 libsqlite3-dev wget unzip git \

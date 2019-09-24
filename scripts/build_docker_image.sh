@@ -61,6 +61,8 @@ install_golang() {
 
 # 2. Install mysql without a password prompt
 install_mysql() {
+  echo 'mariadb-server-10.1 mysql-server/root_password password root' | debconf-set-selections
+  echo 'mariadb-server-10.1 mysql-server/root_password_again password root' | debconf-set-selections
   apt-get install -y default-mysql-server
   mkdir -p /var/run/mysqld
   mkdir -p /var/lib/mysql
