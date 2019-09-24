@@ -61,9 +61,9 @@ install_golang() {
 
 # 2. Install mysql without a password prompt
 install_mysql() {
-  echo 'mariadb-server-10.1 mysql-server/root_password password root' | debconf-set-selections
-  echo 'mariadb-server-10.1 mysql-server/root_password_again password root' | debconf-set-selections
-  apt-get install -y default-mysql-server
+  # echo 'mysql-server mysql-server/root_password password root' | debconf-set-selections
+  # echo 'mysql-server mysql-server/root_password_again password root' | debconf-set-selections
+  apt-get install -y mysql-server
   mkdir -p /var/run/mysqld
   mkdir -p /var/lib/mysql
   chown mysql:mysql /var/run/mysqld
@@ -72,7 +72,8 @@ install_mysql() {
   # we need to use mysqld_safe to start the server and set the root password
   mysqld_safe --skip-networking &
   sleep 5
-  mysql -uroot -proot -e "ALTER USER 'root'@'localhost' IDENTIFIED BY 'root';"
+  # mysql -uroot -proot -e "ALTER USER 'root'@'localhost' IDENTIFIED BY 'root';"
+  mysql -uroot -proot -e "SET PASSWORD FOR 'root'@'localhost' = PASSWORD('root');"
   kill `cat /var/run/mysqld/mysqld.pid`
   mkdir -p /docker-entrypoint-initdb.d
 }
@@ -139,4 +140,3 @@ install_sqlflow_models
 install_odpscmd
 install_magic_command
 install_hadoop
-install_elasticdl_deps
