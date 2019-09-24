@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-SRC_FOLDER=${SRC_FOLDER:-doc/tutorial}
-
 command -v go >/dev/null 2>&1
 if [ $? -ne 0 ]; then
     echo >&2 "Please install go https://golang.org/doc/install#install"
@@ -24,7 +22,10 @@ if [[ $GOPATH == "" ]]; then
     echo "Set GOPATH to ~/go"
     export GOPATH=~/go
 fi
-#go get -u github.com/wangkuiyi/ipynb/markdown-to-ipynb
+
+SRC_FOLDER=${SRC_FOLDER:-doc/tutorial}
+
+go get -u github.com/wangkuiyi/ipynb/markdown-to-ipynb
 
 cur_path="$(cd "$(dirname "$0")" && pwd -P)"
 cd $cur_path/../
