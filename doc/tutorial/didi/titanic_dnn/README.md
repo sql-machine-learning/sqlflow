@@ -1,4 +1,4 @@
-# Classify Titanic Dataset Using DNNClassifer
+# Train and Predict Titanic Dataset Using DNNClassifer in SQLFlow
 
 In this tutorial we will:
 
