@@ -14,7 +14,7 @@ In the above format,
 - `password` indicates the password, e.g. `root`.
 - `address` indicates the ip address including the port number, e.g. `127.0.0.1:3306`.
 - `dbname` indicates the database name, e.g. `iris`.
-- `param1=value1` indicates configurations, e.g. `maxAllowedPacket=0`.
+- `param1=value1` indicates additional configurations, e.g. `maxAllowedPacket=0`.
 
 Putting these all together, we can construct a data source string like
 ```
@@ -27,7 +27,7 @@ Using the `datasource`, you may launch an all-in-one Docker container by running
 SQLFLOW_SERVER=localhost:50051 jupyter notebook --ip=0.0.0.0 --port=8888 --allow-root --NotebookApp.token=''"
 ```
 
-Open [localhost:8888](localhost:8888) through a web browser, you will find there are many SQLFlow tutorials, e.g. `iris-dnn.ipynb`. Please follow the tutorials and substitute the data for your use.
+Open [localhost:8888](localhost:8888) through a web browser, and you will find there are many SQLFlow tutorials, e.g. `iris-dnn.ipynb`. Please follow the tutorials and substitute the data for your use.
 
 ## Create a MySQL server locally for testing
 
