@@ -32,12 +32,12 @@ if [[ "$TRAVIS_BRANCH" == "develop" ]]; then
 
     echo "docker push sqlflow/sqlflow:$DOCKER_TAG"
     echo "$DOCKER_PASSWORD" | docker login --username "$DOCKER_USERNAME" --password-stdin
-    docker build -t sqlflow/sqlflow:$DOCKER_TAG -f ./Dockerfile .
+    docker tag sqlflow:latest sqlflow/sqlflow:$DOCKER_TAG
     docker push sqlflow/sqlflow:$DOCKER_TAG
 elif [[ "$TRAVIS_TAG" != "" ]]; then
     echo "docker push sqlflow/sqlflow:$TRAVIS_TAG"
     echo "$DOCKER_PASSWORD" | docker login --username "$DOCKER_USERNAME" --password-stdin
-    docker build -t sqlflow/sqlflow:$TRAVIS_TAG -f ./Dockerfile .
+    docker tag sqlflow:latest sqlflow/sqlflow:$TRAVIS_TAG
     docker push sqlflow/sqlflow:$TRAVIS_TAG
 else
     echo "Nothing to docker push"
