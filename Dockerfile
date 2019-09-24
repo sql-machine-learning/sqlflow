@@ -1,4 +1,4 @@
-FROM python:3.7-buster AS dev
+FROM python:3.7-buster
 
 # The default apt-get source archive.ubuntu.com might take too much traffic and
 # has been slow. The following source makes docker build running faster.
@@ -33,6 +33,16 @@ ENV IPYTHON_STARTUP /root/.ipython/profile_default/startup/
 COPY scripts/build_docker_image.sh /
 RUN bash /build_docker_image.sh
 
+VOLUME /var/lib/mysql
+
+# Prepare sample datasets
+COPY doc/datasets/popularize_churn.sql \
+     doc/datasets/popularize_iris.sql \
+     doc/datasets/popularize_boston.sql \
+     doc/datasets/popularize_creditcardfraud.sql \
+     doc/datasets/create_model_db.sql \
+     /docker-entrypoint-initdb.d/
+
 # Build SQLFlow, copy sqlflow_submitter, convert tutorial markdown to ipython notebook
 COPY . ${GOPATH}/src/sqlflow.org/sqlflow
 RUN cd /go/src/sqlflow.org/sqlflow && \
@@ -45,16 +55,6 @@ cp -r $GOPATH/src/sqlflow.org/sqlflow/sql/python/sqlflow_submitter /usr/local/li
 cd / && \
 bash ${GOPATH}/src/sqlflow.org/sqlflow/scripts/convert_markdown_into_ipynb.sh && \
 rm -rf ${GOPATH}/src && rm -rf ${GOPATH}/bin
-
-VOLUME /var/lib/mysql
-
-# Prepare sample datasets
-COPY doc/datasets/popularize_churn.sql \
-     doc/datasets/popularize_iris.sql \
-     doc/datasets/popularize_boston.sql \
-     doc/datasets/popularize_creditcardfraud.sql \
-     doc/datasets/create_model_db.sql \
-     /docker-entrypoint-initdb.d/
 
 ADD scripts/start.sh /
 CMD ["bash", "/start.sh"]
