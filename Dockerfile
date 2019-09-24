@@ -46,4 +46,6 @@ COPY doc/datasets/popularize_churn.sql \
      /docker-entrypoint-initdb.d/
 
 ADD scripts/start.sh /
+ADD scripts/convert_markdown_into_ipynb.sh /
+
 CMD ["bash", "/start.sh"]
