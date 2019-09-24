@@ -24,7 +24,7 @@ ARG TENSORFLOW_VERSION="2.0.0b1"
 ARG WITH_SQLFLOW_MODELS="ON"
 
 ENV GOPATH /go
-ENV HADOOP_VERSION 3.2.0
+ENV HADOOP_VERSION 3.2.1
 ENV PATH /opt/hadoop-${HADOOP_VERSION}/bin:/miniconda/envs/sqlflow-dev/bin:/miniconda/bin:/usr/local/go/bin:/go/bin:$PATH
 ENV IPYTHON_STARTUP /root/.ipython/profile_default/startup/
 
