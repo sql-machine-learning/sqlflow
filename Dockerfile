@@ -1,18 +1,19 @@
-FROM ubuntu:16.04
+FROM python:3.7-buster AS dev
 
 # The default apt-get source archive.ubuntu.com might take too much traffic and
 # has been slow. The following source makes docker build running faster.
-RUN echo '\n\
-deb http://us.archive.ubuntu.com/ubuntu/ xenial main restricted universe multiverse \n\
-deb http://us.archive.ubuntu.com/ubuntu/ xenial-security main restricted universe multiverse \n\
-deb http://us.archive.ubuntu.com/ubuntu/ xenial-updates main restricted universe multiverse \n\
-deb http://us.archive.ubuntu.com/ubuntu/ xenial-proposed main restricted universe multiverse \n\
-deb http://us.archive.ubuntu.com/ubuntu/ xenial-backports main restricted universe multiverse \n\
-' > /etc/apt/sources.list
+# RUN echo '\n\
+# deb http://us.archive.ubuntu.com/ubuntu/ xenial main restricted universe multiverse \n\
+# deb http://us.archive.ubuntu.com/ubuntu/ xenial-security main restricted universe multiverse \n\
+# deb http://us.archive.ubuntu.com/ubuntu/ xenial-updates main restricted universe multiverse \n\
+# deb http://us.archive.ubuntu.com/ubuntu/ xenial-proposed main restricted universe multiverse \n\
+# deb http://us.archive.ubuntu.com/ubuntu/ xenial-backports main restricted universe multiverse \n\
+# ' > /etc/apt/sources.list
 
 RUN apt-get update && apt-get install -y curl bzip2 \
     build-essential unzip sqlite3 libsqlite3-dev wget unzip git \
-    openjdk-8-jdk maven libmysqlclient-dev
+    default-libmysqlclient-dev
+    # openjdk-8-jdk maven default-libmysqlclient-dev
 
 # Need Java SDK to build remote parsers.
 ENV JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
@@ -28,12 +29,22 @@ ENV HADOOP_VERSION 3.2.0
 ENV PATH /opt/hadoop-${HADOOP_VERSION}/bin:/miniconda/envs/sqlflow-dev/bin:/miniconda/bin:/usr/local/go/bin:/go/bin:$PATH
 ENV IPYTHON_STARTUP /root/.ipython/profile_default/startup/
 
-# Main steps to Build
+COPY scripts/build_docker_image.sh /
+RUN bash /build_docker_image.sh
+
+# Build SQLFlow, copy sqlflow_submitter, convert tutorial markdown to ipython notebook
 COPY . ${GOPATH}/src/github.com/sql-machine-learning/sqlflow
-RUN bash ${GOPATH}/src/github.com/sql-machine-learning/sqlflow/scripts/build_docker_image.sh && \
-    mkdir -p /workspace && \
-    bash ${GOPATH}/src/github.com/sql-machine-learning/sqlflow/scripts/convert_markdown_into_ipynb.sh && \
-    rm -rf ${GOPATH}/src && rm -rf ${GOPATH}/bin
+RUN cd /go/src/github.com/sql-machine-learning/sqlflow && \
+go generate ./... && \
+go get -t ./... && \
+go install -v ./... && \
+mv $GOPATH/bin/sqlflowserver /usr/local/bin && \
+mv $GOPATH/bin/repl /usr/local/bin && \
+cp -r $GOPATH/src/github.com/sql-machine-learning/sqlflow/sql/python/sqlflow_submitter /miniconda/envs/sqlflow-dev/lib/python3.6/site-packages/ && \
+cd / && \
+bash ${GOPATH}/src/github.com/sql-machine-learning/sqlflow/scripts/convert_markdown_into_ipynb.sh && \
+rm -rf ${GOPATH}/src && rm -rf ${GOPATH}/bin
+
 VOLUME /var/lib/mysql
 
 # Prepare sample datasets
