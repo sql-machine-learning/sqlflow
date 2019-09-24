@@ -12,7 +12,7 @@ mysql://{username}:{password}@tcp({address})/{dbname}[?param1=value1&...&paramN=
 In the above format,
 - `username` indicates the user name, e.g `root`.
 - `password` indicates the password, e.g. `root`.
-- `address` indicates the ip address including the port number, e.g. `127.0.0.1:3306`.
+- `address` indicates the ip address and the port number, e.g. `127.0.0.1:3306`.
 - `dbname` indicates the database name, e.g. `iris`.
 - `param1=value1` indicates additional configurations, e.g. `maxAllowedPacket=0`.
 
