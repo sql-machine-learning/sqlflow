@@ -109,7 +109,7 @@ install_magic_command() {
 
 # 6. install Hadoop to use as the client when writing CSV to hive tables
 install_hadoop() {
-  HADOOP_URL=https://archive.apache.org/dist/hadoop/common/stable/hadoop-${HADOOP_VERSION}.tar.gz
+  HADOOP_URL=https://archive.apache.org/dist/hadoop/common/hadoop-${HADOOP_VERSION}/hadoop-${HADOOP_VERSION}.tar.gz
   curl -fsSL "$HADOOP_URL" -o /tmp/hadoop.tar.gz
   tar -xzf /tmp/hadoop.tar.gz -C /opt/
   rm -rf /tmp/hadoop.tar.gz
