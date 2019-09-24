@@ -6,7 +6,8 @@ COPY titanic_dnn/README.md /didi_tutorial/titanic_dnn.md
 COPY carprice_xgboost/README.md /didi_tutorial/carprice_xgboost.md
 
 # Convert markdown files into SQLFlow ipynb tutorials
-RUN SRC_FOLDER=/didi_tutorial bash /convert_markdown_into_ipynb.sh
+RUN curl -fsSL "https://raw.githubusercontent.com/sql-machine-learning/sqlflow/develop/scripts/convert_markdown_into_ipynb.sh" -o /convert_markdown_into_ipynb.sh && \
+    SRC_FOLDER=/didi_tutorial bash /convert_markdown_into_ipynb.sh
 
 CMD ["bash", "/start.sh"]
 
