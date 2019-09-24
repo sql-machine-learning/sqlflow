@@ -132,10 +132,15 @@ func getEngineSpec(attrs map[string]*attribute) engineSpec {
 
 func (a *attribute) GenerateCode() (string, error) {
 	if val, ok := a.Value.(string); ok {
-		// auto convert to int first.
+		// First try converting a hyperparameter to int.
 		if _, err := strconv.Atoi(val); err == nil {
 			return fmt.Sprintf("%s=%s", a.Name, val), nil
 		}
+		// Then try converting the hyperparameter to float.
+		if _, err := strconv.ParseFloat(val, 32); err == nil {
+			return fmt.Sprintf("%s=%s", a.Name, val), nil
+		}
+		// Hyperparameters of other types generate quoted plain string.
 		return fmt.Sprintf("%s=\"%s\"", a.Name, val), nil
 	}
 	if val, ok := a.Value.([]interface{}); ok {
