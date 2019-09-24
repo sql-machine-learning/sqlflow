@@ -72,8 +72,7 @@ install_mysql() {
   # we need to use mysqld_safe to start the server and set the root password
   mysqld_safe --skip-networking &
   sleep 5
-  # mysql -uroot -proot -e "ALTER USER 'root'@'localhost' IDENTIFIED BY 'root';"
-  mysql -uroot -proot -e "SET PASSWORD FOR 'root'@'localhost' = PASSWORD('root');"
+  mysql -uroot -e "UPDATE mysql.user SET Password=PASSWORD('root') WHERE User='root';"
   kill `cat /var/run/mysqld/mysqld.pid`
   mkdir -p /docker-entrypoint-initdb.d
 }
