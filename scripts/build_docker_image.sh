@@ -15,11 +15,25 @@
 
 set -e
 
+# 0. Install conda using Miniconda.
+ # We use conda to (1) specify the use of a specific version of Python, currently, 3.6, and (2) to
+ # canonicalize the Python pacakge installation directory, currently,
+ # /miniconda/envs/sqlflow-dev/lib/python3.6/site-packages/.  SQLFlow submitter programs could
+ # depend on pacakges installed in the above canocicalized pacakge directory.
+ install_python3() {
+  curl -sL https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -o mconda-install.sh
+  bash -x mconda-install.sh -b -p miniconda
+  rm mconda-install.sh
+  /miniconda/bin/conda create -y -q -n sqlflow-dev python=3.6 ${CONDA_ADD_PACKAGES}
+  echo ". /miniconda/etc/profile.d/conda.sh" >> ~/.bashrc
+  echo "source activate sqlflow-dev" >> ~/.bashrc
+ }
+
 # keras.datasets.imdb only works with numpy==1.16.1
 # NOTE: shap == 0.30.1 depends on dill but not include dill as it's dependency, need to install manually
 # source /miniconda/bin/activate sqlflow-dev && python -m pip install \
 install_python_deps() {
-  python -m pip install \
+  source /miniconda/bin/activate sqlflow-dev && python -m pip install \
   numpy==1.16.1 \
   tensorflow==${TENSORFLOW_VERSION} \
   mysqlclient \
@@ -61,19 +75,13 @@ install_golang() {
 
 # 2. Install mysql without a password prompt
 install_mysql() {
-  # echo 'mysql-server mysql-server/root_password password root' | debconf-set-selections
-  # echo 'mysql-server mysql-server/root_password_again password root' | debconf-set-selections
+  echo 'mysql-server mysql-server/root_password password root' | debconf-set-selections
+  echo 'mysql-server mysql-server/root_password_again password root' | debconf-set-selections
   apt-get install -y mysql-server
   mkdir -p /var/run/mysqld
   mkdir -p /var/lib/mysql
   chown mysql:mysql /var/run/mysqld
   chown mysql:mysql /var/lib/mysql
-  # debian's default-mysql-server install a mariadb and to set root password
-  # we need to use mysqld_safe to start the server and set the root password
-  mysqld_safe --skip-networking &
-  sleep 5
-  mysql -uroot -e "UPDATE mysql.user SET Password=PASSWORD('root') WHERE User='root';"
-  kill `cat /var/run/mysqld/mysqld.pid`
   mkdir -p /docker-entrypoint-initdb.d
 }
 
@@ -132,6 +140,7 @@ install_elasticdl_deps() {
   # cd ..
 }
 
+install_python3
 install_python_deps
 install_golang
 install_mysql

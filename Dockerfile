@@ -1,8 +1,16 @@
-FROM python:3.7-stretch
+FROM ubuntu:16.04
+
+RUN echo '\n\		
+ deb http://us.archive.ubuntu.com/ubuntu/ xenial main restricted universe multiverse \n\		
+ deb http://us.archive.ubuntu.com/ubuntu/ xenial-security main restricted universe multiverse \n\		
+ deb http://us.archive.ubuntu.com/ubuntu/ xenial-updates main restricted universe multiverse \n\		
+ deb http://us.archive.ubuntu.com/ubuntu/ xenial-proposed main restricted universe multiverse \n\		
+ deb http://us.archive.ubuntu.com/ubuntu/ xenial-backports main restricted universe multiverse \n\		
+ ' > /etc/apt/sources.list
 
 RUN apt-get update && apt-get install -y curl bzip2 \
     build-essential unzip sqlite3 libsqlite3-dev wget unzip git \
-    openjdk-8-jdk maven default-libmysqlclient-dev
+    openjdk-8-jdk maven libmysqlclient-dev
 
 # Need Java SDK to build remote parsers.
 ENV JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
