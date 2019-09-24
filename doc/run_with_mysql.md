@@ -29,7 +29,7 @@ SQLFLOW_SERVER=localhost:50051 jupyter notebook --ip=0.0.0.0 --port=8888 --allow
 
 Open `localhost:8888` through a web browser, and you will find there are many SQLFlow tutorials, e.g. `iris-dnn.ipynb`. Please follow the tutorials and substitute the data for your use.
 
-If you are running MySQL on remote, please be aware that MySQL only allows connections from localhost by default. Fix can be found [here](https://stackoverflow.com/questions/14779104/how-to-allow-remote-connection-to-mysql).
+If you are running MySQL on remote, please be aware that MySQL only allows connections from localhost by default. The fix can be found [here](https://stackoverflow.com/questions/14779104/how-to-allow-remote-connection-to-mysql).
 
 ## Create a MySQL server locally for testing
 

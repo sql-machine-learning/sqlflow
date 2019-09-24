@@ -32,11 +32,8 @@ You can use this Docker image for either local trying out or production deployme
 If you have your own database setup, below steps enables running a seperated
 SQLFlow server and Jupyter Notebook which connects to your own database service.
 
-### MySQL
+For MySQL, please refer to [run_with_mysql.md](/doc/run_with_mysql.md).
 
-Please refer to [run_with_mysql.md](/doc/run_with_mysql.md) for details.
+For Hive, please refer to [run_with_hive.md](/doc/run_with_hive.md).
 
-### Hive
-
-Please refer to [run_with_hive.md](/doc/run_with_hive.md) for details on connecting with Hive.
-
+For MaxCompute, please refer to [run_with_maxcompute.md](/doc/run_with_maxcompute.md).
