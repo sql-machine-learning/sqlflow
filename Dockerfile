@@ -25,7 +25,8 @@ ARG TENSORFLOW_VERSION="2.0.0b1"
 ARG WITH_SQLFLOW_MODELS="ON"
 
 ENV GOPATH /go
-ENV HADOOP_VERSION 3.2.0
+# Using the stable version of Hadoop
+ENV HADOOP_VERSION 3.2.1
 ENV PATH /opt/hadoop-${HADOOP_VERSION}/bin:/miniconda/envs/sqlflow-dev/bin:/miniconda/bin:/usr/local/go/bin:/go/bin:$PATH
 ENV IPYTHON_STARTUP /root/.ipython/profile_default/startup/
 
@@ -33,16 +34,16 @@ COPY scripts/build_docker_image.sh /
 RUN bash /build_docker_image.sh
 
 # Build SQLFlow, copy sqlflow_submitter, convert tutorial markdown to ipython notebook
-COPY . ${GOPATH}/src/github.com/sql-machine-learning/sqlflow
-RUN cd /go/src/github.com/sql-machine-learning/sqlflow && \
+COPY . ${GOPATH}/src/sqlflow.org/sqlflow
+RUN cd /go/src/sqlflow.org/sqlflow && \
 go generate ./... && \
 go get -t ./... && \
 go install -v ./... && \
 mv $GOPATH/bin/sqlflowserver /usr/local/bin && \
 mv $GOPATH/bin/repl /usr/local/bin && \
-cp -r $GOPATH/src/github.com/sql-machine-learning/sqlflow/sql/python/sqlflow_submitter /miniconda/envs/sqlflow-dev/lib/python3.6/site-packages/ && \
+cp -r $GOPATH/src/sqlflow.org/sqlflow/sql/python/sqlflow_submitter /usr/local/lib/python3.7/site-packages && \
 cd / && \
-bash ${GOPATH}/src/github.com/sql-machine-learning/sqlflow/scripts/convert_markdown_into_ipynb.sh && \
+bash ${GOPATH}/src/sqlflow.org/sqlflow/scripts/convert_markdown_into_ipynb.sh && \
 rm -rf ${GOPATH}/src && rm -rf ${GOPATH}/bin
 
 VOLUME /var/lib/mysql

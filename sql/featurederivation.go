@@ -20,7 +20,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/sql-machine-learning/sqlflow/sql/columns"
+	"sqlflow.org/sqlflow/sql/columns"
 )
 
 const featureDerivationRows = 1000

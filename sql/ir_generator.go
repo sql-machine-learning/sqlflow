@@ -18,7 +18,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/sql-machine-learning/sqlflow/sql/codegen"
+	"sqlflow.org/sqlflow/sql/codegen"
 )
 
 func generateTrainIR(slct *extendedSelect, connStr string) (*codegen.TrainIR, error) {
