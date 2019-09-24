@@ -27,9 +27,9 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 
-	"github.com/sql-machine-learning/sqlflow/server"
-	"github.com/sql-machine-learning/sqlflow/server/proto"
-	"github.com/sql-machine-learning/sqlflow/sql"
+	"sqlflow.org/sqlflow/server"
+	"sqlflow.org/sqlflow/server/proto"
+	"sqlflow.org/sqlflow/sql"
 )
 
 func newServer(caCrt, caKey string) (*grpc.Server, error) {

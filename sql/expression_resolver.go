@@ -18,7 +18,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/sql-machine-learning/sqlflow/sql/columns"
+	"sqlflow.org/sqlflow/sql/columns"
 )
 
 const (
@@ -97,7 +97,7 @@ func getIntAttr(attrs map[string]*attribute, key string, defaultValue int) int {
 		if err == nil {
 			return intVal
 		}
-		fmt.Printf("ignore invalid %s=%s, default is %d", key, p.Value, defaultValue)
+		log.Printf("ignore invalid %s=%s, default is %d", key, p.Value, defaultValue)
 	}
 	return defaultValue
 }
@@ -112,7 +112,7 @@ func getBoolAttr(attrs map[string]*attribute, key string, defaultValue bool, opt
 		if err == nil {
 			return boolVal
 		} else if !optional {
-			fmt.Printf("ignore invalid %s=%s, default is %v", key, p.Value, defaultValue)
+			log.Printf("ignore invalid %s=%s, default is %v", key, p.Value, defaultValue)
 		}
 	}
 	return defaultValue

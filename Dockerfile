@@ -29,10 +29,10 @@ ENV PATH /opt/hadoop-${HADOOP_VERSION}/bin:/miniconda/envs/sqlflow-dev/bin:/mini
 ENV IPYTHON_STARTUP /root/.ipython/profile_default/startup/
 
 # Main steps to Build
-COPY . ${GOPATH}/src/github.com/sql-machine-learning/sqlflow
-RUN bash ${GOPATH}/src/github.com/sql-machine-learning/sqlflow/scripts/build_docker_image.sh && \
+COPY . ${GOPATH}/src/sqlflow.org/sqlflow
+RUN bash ${GOPATH}/src/sqlflow.org/sqlflow/scripts/build_docker_image.sh && \
     mkdir -p /workspace && \
-    bash ${GOPATH}/src/github.com/sql-machine-learning/sqlflow/scripts/convert_markdown_into_ipynb.sh && \
+    bash ${GOPATH}/src/sqlflow.org/sqlflow/scripts/convert_markdown_into_ipynb.sh && \
     rm -rf ${GOPATH}/src && rm -rf ${GOPATH}/bin
 VOLUME /var/lib/mysql
 

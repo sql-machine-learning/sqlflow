@@ -31,7 +31,7 @@ export GOPATH=$HOME/go
 Now that `$GOPATH$` is set, we could git clone the source code of our project by running:
 
 ```bash
-go get github.com/sql-machine-learning/sqlflow
+go get sqlflow.org/sqlflow
 ```
 
 Change the directory to our project root, and we can use `go get` to retrieve
@@ -41,7 +41,7 @@ others' work. If somebody added new dependencies, we might need to run `go -u ./
 after `git pull` to update dependencies.
 
 ```bash
-cd $GOPATH/src/github.com/sql-machine-learning/sqlflow
+cd $GOPATH/src/sqlflow.org/sqlflow
 go get -u -t ./...
 ```
 
@@ -68,7 +68,7 @@ the `$GOPATH` in the container:
 
 ```bash
 docker run --rm -it -v $GOPATH:/go \
-    -w /go/src/github.com/sql-machine-learning/sqlflow \
+    -w /go/src/sqlflow.org/sqlflow \
     sqlflow:latest bash
 ```
 

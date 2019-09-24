@@ -26,7 +26,7 @@ import (
 	"sync"
 	"time"
 
-	pb "github.com/sql-machine-learning/sqlflow/server/proto"
+	pb "sqlflow.org/sqlflow/server/proto"
 )
 
 // Run executes a SQL query and returns a stream of rows or messages
