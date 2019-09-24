@@ -458,6 +458,8 @@ func parseFieldMeta(el *exprlist) (*codegen.FieldMeta, error) {
 			dtype = codegen.Float
 		} else if dtypeStr == "int" {
 			dtype = codegen.Int
+		} else {
+			return nil, fmt.Errorf("bad FieldMeta data type %s", dtypeStr)
 		}
 	}
 	return &codegen.FieldMeta{
