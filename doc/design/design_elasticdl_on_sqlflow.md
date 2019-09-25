@@ -1,4 +1,4 @@
-# _Design:_ ElasticDL on sqlflow
+# _Design:_ ElasticDL on SQLFlow
 
 ## Overview
 

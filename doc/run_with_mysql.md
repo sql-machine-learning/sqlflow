@@ -1,8 +1,8 @@
-# How to connect MySQL with SQLFlow
+# How to Connect MySQL with SQLFlow
 
 This tutorial explains how to connect SQLFlow with [MySQL](https://en.wikipedia.org/wiki/MySQL).
 
-## Connect Existing MySQL server
+## Connect Existing MySQL Server
 
 To connect an existed MySQL server instance, we need to configure a `datasource` string in the format of   
 ```
@@ -31,7 +31,7 @@ Open `localhost:8888` through a web browser, and you will find there are many SQ
 
 If you are running MySQL on remote, please be aware that MySQL only allows connections from localhost by default. The fix can be found [here](https://stackoverflow.com/questions/14779104/how-to-allow-remote-connection-to-mysql).
 
-## Create a MySQL server locally for testing
+## Create a MySQL Server Locally for Testing
 
 Our official Docker image has installed a `mysql` server. We can start it by `docker run --rm -it sqlflow/sqlflow bash`, then type `service mysql start` in the console. We should be able to see
 

@@ -1,4 +1,4 @@
-# _Design:_ ant-xgboost on sqlflow
+# _Design:_ Ant-XGBoost on SQLFlow
 
 **NOTE: ant-xgboost on SQLFlow has moved to [backup_antxgboot_work branch](https://github.com/sql-machine-learning/sqlflow/tree/backup_antxgboost_work)**
 
@@ -22,7 +22,7 @@ which is an optimized distributed gradient boosting library designed to be highl
 often regarded as one of the best GBM frameworks.
 
 
-## _Proposed Solution:_ ant-xgboost on sqlflow
+## _Proposed Solution:_ Ant-XGBoost on SQLFlow
    
 We propose to use [ant-xgboost](https://github.com/alipay/ant-xgboost) as backend,
 which is consistent with [xgboost](https://github.com/dmlc/xgboost) in kernel level. 
@@ -137,7 +137,7 @@ The `code template` roughly includes components as follows:
 * Configure template building and entry point of xgblauncher.
 
 
-#### Running distributed xgboost job on k8s cluster
+#### Running Distributed XGBoost Job on K8S Cluster
 
 Distributed training is supported in xgboost via [rabit](https://github.com/dmlc/rabit), a reliable allreduce and broadcast interface for distributed machine learning.
 To run a distributed xgboost job with `rabit`, all we need to do is setup a distributed environment.  

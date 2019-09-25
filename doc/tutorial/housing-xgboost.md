@@ -86,7 +86,7 @@ LABEL medv
 INTO sqlflow_models.my_xgb_regression_model;
 ```
 
-### Predict the housing price
+### Predict the Housing Price
 After training the regression model, let's predict the house price using the trained model.
 
 First, we can specify the trained model by `USING clause`: 

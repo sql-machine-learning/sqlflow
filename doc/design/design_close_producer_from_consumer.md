@@ -1,4 +1,4 @@
-# _Design:_ Closing the producer goroutine from the consumer
+# _Design:_ Closing the Producer Goroutine from the Consumer
 
 The producer-and-consumer pattern is well used in Go concurrent programming. When
 the consumer stops, we want to gracefully stop the producer as well.
@@ -52,7 +52,7 @@ This problem is important because the leaking goroutine usually owns scarce syst
 resources such as network connection and memory.
 
 
-## Solution: pipeline explicit cancellation
+## Solution: Pipeline Explicit Cancellation
 
 Inspired by this [blog post](https://blog.golang.org/pipelines) section
 *Explicit cancellation*, we can signal the cancellation via closing on a separate

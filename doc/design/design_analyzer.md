@@ -6,7 +6,7 @@ Although the machine learning model is widely used in many fields, it remains mo
 
 This design doc introduces how to support the `Analyze SQL` in SQLFlow with SHAP as the backend and display the visualization image to the user.
 
-## User interface
+## User Interface
 
 Users usually use a **TRAIN SQL** to train a model and then analyze the model using an **ANALYZE SQL**, the simple pipeline like:
 

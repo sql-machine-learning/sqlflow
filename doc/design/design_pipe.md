@@ -53,7 +53,7 @@ In the above figure, from the SQLFlow magic command to the bottom layer are our 
 We have two alternative ideas: multiple streams and a multiplexing stream.
 We decided to use a multiplexing stream because we had a unsuccessful trial with the multiple streams idea: we make the job writes to various Go channels and forward each Go channel to a streaming gRPC call, as the following:
 
-### Multiple streams
+### Multiple Streams
 
 The above figure shows that there are multiple streams between the Jupyter Notebook server and Jupyter kernels.  According to the [document](https://jupyter-client.readthedocs.io/en/stable/messaging.html), there are five: Shell, IOPub, stdin, Control, and Heartbeat.  These streams are ZeroMQ streams.  We don't use ZeroMQ, but we can take the idea of having multiple parallel streams in the pipe.
 

@@ -1,4 +1,4 @@
-# Analyzing model on SQLFlow Tutorial
+# Analyzing Model on SQLFlow Tutorial
 
 The [Analyzer](../../doc/analyzer_design.md) is designed to explain the machine learning model in SQLFlow. In this tutorial, you will learn how to,
 
@@ -25,12 +25,12 @@ USING TreeExplainer;
 - By `WITH`, we specify the parameters to [summary_plot](https://github.com/slundberg/shap/blob/master/shap/plots/summary.py#L18-L43) with a prefix `shap_summary.`
   like: `shap_summary.plot_type=\"bar\"`.
 
-## The dataset
+## The Dataset
 
 We use the [boston housing](https://www.kaggle.com/c/boston-housing) as the demonstration dataset.
 First, we train a model to fit the dataset. Next, we write an `ANALYZE` SQL to get an overview of which features are most important for the model.
 
-## Train a model
+## Train a Model
 
 ```sql
 %%sqlflow
@@ -44,7 +44,7 @@ LABEL medv
 INTO sqlflow_models.my_xgb_regression_model;
 ```
 
-## Analyze the model
+## Analyze the Model
 
 We can plot the SHAP values of every feature for every sample.
 

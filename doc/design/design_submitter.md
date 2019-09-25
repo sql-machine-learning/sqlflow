@@ -68,7 +68,7 @@ type Submitter interface {
 }
 ```
 
-## Register a submitter
+## Register a Submitter
 
 A new submitter can be added as
 
