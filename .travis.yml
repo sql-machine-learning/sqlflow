@@ -1,4 +1,6 @@
 language: go
+# SQLFlow uses sqlflow.org/sqlflow as vanity import path. TravisCI supports it via go_import_path.
+# Ref: https://docs.travis-ci.com/user/languages/go/#go-import-path
 go_import_path: sqlflow.org/sqlflow
 
 branches:
@@ -10,7 +12,7 @@ branches:
 service:
   - docker
 
-# Update to newer version of Docker to allow
+# Note(tony): Update to newer version of Docker to allow
 # Dockerfile being outside of the context directory
 # https://github.com/docker/compose/issues/4926#issuecomment-370501452
 addons:
@@ -25,9 +27,8 @@ install:
   # Ref build: https://travis-ci.com/sql-machine-learning/sqlflow/builds/107870583
   - echo "skip install"
 
-# NOTE: mount all $GOPATH into container, then after build and test,
+# NOTE(weiguoz): mount $GOPATH into container, then after build and test,
 # $GOPATH/bin will have expected binaries.
-
 script:
   - set -e
   - docker version
