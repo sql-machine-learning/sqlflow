@@ -54,4 +54,6 @@ bash ${GOPATH}/src/sqlflow.org/sqlflow/scripts/convert_markdown_into_ipynb.sh &&
 rm -rf ${GOPATH}/src && rm -rf ${GOPATH}/bin
 
 ADD scripts/start.sh /
+ADD scripts/convert_markdown_into_ipynb.sh /
+
 CMD ["bash", "/start.sh"]

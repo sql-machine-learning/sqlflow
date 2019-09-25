@@ -36,16 +36,15 @@ install_python_deps() {
   source /miniconda/bin/activate sqlflow-dev && python -m pip install \
   numpy==1.16.1 \
   tensorflow==${TENSORFLOW_VERSION} \
-  mysqlclient \
-  impyla \
-  pyodps \
-  jupyter \
+  mysqlclient==1.4.4 \
+  impyla==0.16.0 \
+  pyodps==0.8.3 \
+  jupyter==1.0.0 \
   notebook==6.0.0 \
   sqlflow==0.5.0 \
-  pre-commit \
-  odps \
-  dill \
-  shap \
+  pre-commit==1.18.3 \
+  dill==0.3.0 \
+  shap==0.30.1 \
   xgboost==0.90 \
   ${PIP_ADD_PACKAGES}
 }

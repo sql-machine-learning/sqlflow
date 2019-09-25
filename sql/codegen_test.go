@@ -44,7 +44,9 @@ USING sqlflow_models.my_dnn_model;
 	testClusteringTrain = testSelectIris + `
 TRAIN sqlflow_models.DeepEmbeddingClusterModel
 WITH
-  model.pretrain_dims = [4,10,3],
+  model.pretrain_dims = [10,10],
+  model.n_clusters = 3,
+  model.pretrain_lr = 0.001,
   train.batch_size = 1
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 INTO sqlflow_models.my_clustering_model;

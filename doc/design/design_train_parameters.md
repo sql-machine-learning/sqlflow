@@ -1,4 +1,4 @@
-# Brief design for summarizing information necessary for code generators in SQLFlow
+# _Design:_ Information necessary for code generators in SQLFlow
 
 SQLFlow extends the syntax of the SELECT statement of SQL to support training a model:
 ```sql
