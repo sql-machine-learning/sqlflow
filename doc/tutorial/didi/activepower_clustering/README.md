@@ -119,7 +119,7 @@ We can use the SQL statement to explore the number of each category after cluste
 ```sql
 %%sqlflow
 select class, count(*) as count 
-from predict 
+from activepower.predict 
 group by class;
 ```
 
