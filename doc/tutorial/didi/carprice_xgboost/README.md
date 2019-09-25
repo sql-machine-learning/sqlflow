@@ -1,21 +1,21 @@
 # Predict the Car Price using XGBoost in SQLFlow
 
-This is a tutorial on how to train/predict an XGBoost model to fit the [Cars Dataset](https://www.kaggle.com/CooperUnion/cardataset). You can find more SQLFlow usage from the [User Guide](https://github.com/sql-machine-learning/sqlflow/blob/develop/doc/user_guide.md). In this tutorial, you will learn how to:
+This tutorial describes how to train an XGBoost model using the [Cars Dataset](https://www.kaggle.com/CooperUnion/cardataset), then how to predict the car price using SQLFlow. You can checkout the [User Guide](https://github.com/sql-machine-learning/sqlflow/blob/develop/doc/user_guide.md) if you are new to SQLFlow. In this tutorial, you will learn how to:
 
 - Train an XGBoost model to fit the cars dataset.
 - Predict the car price using a well-trained model.
-- Using the [SHAP EXPLAINER](https://github.com/slundberg/shap) toolkit to interpret the trained model that you can know
+- Use the [SHAP EXPLAINER](https://github.com/slundberg/shap) toolkit to interpret the trained model then you can know
 how these features affect the car price.
 
-## Car Price Dataset
+## The Car Price Dataset
 
-This tutorial would use the [Cars Dataset](https://www.kaggle.com/CooperUnion/cardataset) as the demonstration dataset from [kaggle](https://www.kaggle.com/).
+We are using the [Cars Dataset](https://www.kaggle.com/CooperUnion/cardataset) as the demonstration dataset from [kaggle](https://www.kaggle.com/).
 
 The preprocessed data has already loaded in MySQL, and you can check the Python script [carprie_preprocessing.py](/doc/tutorial/didi/carprice_xgboost/carprie_preprocessing.py) to reproduce the preprocessing.
 
-The preprocessed data contains eighty-two features and one label. The features identify the characteristics of a car. Each feature is stored as a single float number. The label `msrp` indicates the car's price.
+The preprocessed data contains 82 features and one label. The features identify the characteristics of a car. Each feature is stored as a single float number. The label `msrp` indicates the car's price.
 
-The meanings of a part of the columns are shown below:
+Here are some of the column descriptions of the dataset:
 
 Column | Explain
 -- | --
@@ -67,7 +67,7 @@ To specify the training data, we use standard SQL statements to fetch the traini
 SELECT * FROM carprice.train
 ```
 
-We can explicitly specify which column is used for features in `COLUMN clause` and which column is used for the label by `LABEL` keyword:
+We can explicitly specify which column is used as features in `COLUMN clause` and which column is used for the label by `LABEL` keyword:
 
 ``` text
 COLUMN engine_hp, engine_cylinders, number_of_doors, highway_mpg, city_mpg, ...
@@ -106,13 +106,13 @@ First, we can specify the trained model by USING clause:
 USING sqlflow_models.my_xgb_regression_model
 ```
 
-Than, we can specify the prediction result table by PREDICT clause:
+Then, we can specify the prediction result table by PREDICT clause:
 
 ```text
 PREDICT carprice.predict.msrp
 ```
 
-And using a standar SQL to fetch the prediction data:
+And using a standard SQL to fetch the prediction data.
 
 ```text
 SELECT * FROM carprice.test
