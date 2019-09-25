@@ -1,6 +1,8 @@
 # Predict the Car Price using XGBoost in SQLFlow
 
-This tutorial describes how to train an XGBoost model using the [Cars Dataset](https://www.kaggle.com/CooperUnion/cardataset), then how to predict the car price using SQLFlow. You can checkout the [User Guide](https://github.com/sql-machine-learning/sqlflow/blob/develop/doc/user_guide.md) if you are new to SQLFlow. In this tutorial, you will learn how to:
+This tutorial describes how to train an XGBoost model using the [Cars Dataset](https://www.kaggle.com/CooperUnion/cardataset), then how to predict the car price using SQLFlow. You can checkout the [Language Guide](https://github.com/sql-machine-learning/sqlflow/blob/develop/doc/language_guide.md) if you are new to SQLFlow.
+
+In this tutorial, you will learn how to:
 
 - Train an XGBoost model to fit the cars dataset.
 - Predict the car price using a well-trained model.
@@ -11,9 +13,9 @@ how these features affect the car price.
 
 We are using the [Cars Dataset](https://www.kaggle.com/CooperUnion/cardataset) as the demonstration dataset from [kaggle](https://www.kaggle.com/).
 
-We use feature engineering to preprocess the raw data and creating new features, The feature engineering script is `titanic_preprocessing.py` in the current directory.
+We use feature engineering to preprocess the raw data and creating new features, The feature engineering script is `carprice_preprocessing.py` in the current directory.
 
-The Car Price Dataset after preprocessed contains 82 features and one label. The features identify the characteristics of a car. Each feature is stored as a single float number. The label `msrp` indicates the car's price.
+The Car Price Dataset after preprocessed contains eighty two features and one label. The features identify the characteristics of a car. Each feature is stored as a single float number. The label `msrp` indicates the car's price.
 
 Here are some of the column descriptions of the dataset:
 
