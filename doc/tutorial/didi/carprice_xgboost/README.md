@@ -1,6 +1,6 @@
 # Predict the Car Price using XGBoost in SQLFlow
 
-This tutorial describes how to train an XGBoost model using the [Cars Dataset](https://www.kaggle.com/CooperUnion/cardataset), then how to predict the car price using SQLFlow. You can checkout the [Language Guide](https://github.com/sql-machine-learning/sqlflow/blob/develop/doc/language_guide.md) if you are new to SQLFlow.
+This tutorial describes how to train an XGBoost model using the [Cars Dataset](https://www.kaggle.com/CooperUnion/cardataset), then how to predict the car price using SQLFlow. You can check out the [Language Guide](https://github.com/sql-machine-learning/sqlflow/blob/develop/doc/language_guide.md) if you are new to SQLFlow.
 
 In this tutorial, you will learn how to:
 
@@ -13,9 +13,7 @@ how these features affect the car price.
 
 We are using the [Cars Dataset](https://www.kaggle.com/CooperUnion/cardataset) as the demonstration dataset from [kaggle](https://www.kaggle.com/).
 
-We use feature engineering to preprocess the raw data and creating new features, The feature engineering script is `carprice_preprocessing.py` in the current directory.
-
-The Car Price Dataset after preprocessed contains eighty two features and one label. The features identify the characteristics of a car. Each feature is stored as a single float number. The label `msrp` indicates the car's price.
+We use feature engineering to [preprocess](/doc/toturial/didi/carprice_preprocessing.py) the raw data and creating new features.  The Car Price Dataset after preprocessing contains eighty-two numeric features and one label. Each feature identifies one characteristic of a car. And the label `msrp` indicates the car's price.
 
 Here are some of the column descriptions of the dataset:
 
@@ -61,7 +59,7 @@ WITH
     objective="reg:squarederror"
 ```
 
-`xgboost.gbtree` is the estimator name, `gbtree` is one of the XGBoost booster, you can find more information from [here](https://xgboost.readthedocs.io/en/latest/parameter.html#general-parameters).
+`xgboost.gbtree` is the estimator name, `gbtree` is one of the [XGBoost booster](https://xgboost.readthedocs.io/en/latest/parameter.html#general-parameters).
 
 To specify the training data, we use standard SQL statements to fetch the training data from table `carprice.train`:
 
@@ -69,7 +67,7 @@ To specify the training data, we use standard SQL statements to fetch the traini
 SELECT * FROM carprice.train
 ```
 
-We can explicitly specify which column is used as features in `COLUMN clause` and which column is used for the label by `LABEL` keyword:
+We can explicitly specify which column to use in `COLUMN clause` and which column is used for the label by `LABEL` keyword:
 
 ``` text
 COLUMN engine_hp, engine_cylinders, number_of_doors, highway_mpg, city_mpg, ...
@@ -136,12 +134,13 @@ Let's have a glance at prediction results.
 SELECT * FROM carprice.predict limit 5;
 ```
 
-## Interpret the output of the trained model
+## Analyze the trained model
 
-We use the analyzer to explain the trained model. The analyzer is implemented based on SHAP.
-The ANALYZE SQL will be translated to the SHAP code and SQLFlow enables the code to read the dataset and load the trained model, then draws a figure to explain the model. At this stage, SQLFlow supports using the [TreeExplianer](https://github.com/slundberg/shap#tree-ensemble-example-with-treeexplainer-xgboostlightgbmcatboostscikit-learn-models) to draw a summary plot.
+We use the ANALYZE SQL to explain the trained model. Behind the scene, SQLFlow will translate the ANALYZE SQL to a Python program that reads the dataset, loads the trained model, then draws a figure using SHAP to explain the model.
 
-We can set the parameters of shap in WITH part like:
+We use the [TreeExplianer](https://github.com/slundberg/shap#tree-ensemble-example-with-treeexplainer-xgboostlightgbmcatboostscikit-learn-models) to draw a summary plot.
+
+We can set the parameters of SHAP like:
 
 ``` sql
 WITH
@@ -167,9 +166,10 @@ USING TreeExplainer;
 ```
 
 <img src="./imgs/shap0.png">
-The plot above sorts features by the sum of SHAP value magnitudes over all samples, and use SHAP values to show the distribution of the impacts each feature has on the model output. The color represents the feature values(red high, blue low). This reveals for example that a low engine_hp lowers the predicted car price.
 
-We can also just take the mean absolute value of the SHAP values for each feature to get a standard bar plot:
+The plot above sorts features by the sum of SHAP value magnitudes over all samples, and use SHAP values to show the distribution of the impacts each feature has on the model output. The color represents the feature values(red high, blue low). For example, a low engine_hp lowers the predicted car price.
+
+We can also take the mean absolute value of the SHAP values for each feature to get a standard bar plot:
 
 ```sql
 %%sqlflow
@@ -183,4 +183,5 @@ WITH
     shap_summary.max_display=20
 USING TreeExplainer;
 ```
+
 <img src="./imgs/shap1.png">
