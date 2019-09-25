@@ -31,7 +31,7 @@ export GOPATH=$HOME/go
 Now that `$GOPATH$` is set, we could git clone the source code of our project by running:
 
 ```bash
-go get github.com/sql-machine-learning/sqlflow
+go get sqlflow.org/sqlflow
 ```
 
 Change the directory to our project root, and we can use `go get` to retrieve
@@ -41,7 +41,7 @@ others' work. If somebody added new dependencies, we might need to run `go -u ./
 after `git pull` to update dependencies.
 
 ```bash
-cd $GOPATH/src/github.com/sql-machine-learning/sqlflow
+cd $GOPATH/src/sqlflow.org/sqlflow
 go get -u -t ./...
 ```
 
@@ -68,7 +68,7 @@ the `$GOPATH` in the container:
 
 ```bash
 docker run --rm -it -v $GOPATH:/go \
-    -w /go/src/github.com/sql-machine-learning/sqlflow \
+    -w /go/src/sqlflow.org/sqlflow \
     sqlflow:latest bash
 ```
 
@@ -87,8 +87,8 @@ SQLFLOW_TEST_DB=mysql go test -v ./...
 
 where `go generate` invokes the `protoc` command to translate `server/sqlflow.proto`
 into `server/sqlflow.pb.go` and `go test -v` builds and run unit tests. The environment variable
-`SQLFLOW_TEST_DB=mysql` specify MySQL as the backend, you can also check [test_hive.sh](/scripts/test_hive.sh) and
-[test_maxcompute.sh](/scripts/test_maxcompute.sh) to run the unit tests with other backends.
+`SQLFLOW_TEST_DB=mysql` specify MySQL as the backend, you can also check [test_hive.sh](https://github.com/sql-machine-learning/sqlflow/blob/develop/scripts/test_hive.sh) and
+[test_maxcompute.sh](https://github.com/sql-machine-learning/sqlflow/blob/develop/scripts/test_maxcompute.sh) to run the unit tests with other backends.
 
 ## The Command-line REPL
 
@@ -106,4 +106,4 @@ You should be able to see the following prompt
 sqlflow>
 ```
 
-Then, please follow the [REPL tutorial](run/repl.md).
+Then, please follow the [REPL tutorial](/doc/run/repl.md).

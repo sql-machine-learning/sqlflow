@@ -33,16 +33,15 @@ echo "source activate sqlflow-dev" >> ~/.bashrc
 source /miniconda/bin/activate sqlflow-dev && python -m pip install \
 numpy==1.16.1 \
 tensorflow==${TENSORFLOW_VERSION} \
-mysqlclient \
-impyla \
-pyodps \
-jupyter \
+mysqlclient==1.4.4 \
+impyla==0.16.0 \
+pyodps==0.8.3 \
+jupyter==1.0.0 \
 notebook==6.0.0 \
 sqlflow==0.5.0 \
-pre-commit \
-odps \
-dill \
-shap \
+pre-commit==1.18.3 \
+dill==0.3.0 \
+shap==0.30.1 \
 ${PIP_ADD_PACKAGES}
 
 # 1. Install Go 1.11.5
@@ -81,13 +80,13 @@ mkdir -p /docker-entrypoint-initdb.d
 #    Then move binary file: "sqlflowserver" and "repl" to /usr/local/bin
 #    Then delete contents under $GOPATH to reduce the image size.
 # NOTE: During development and testing, /go will be overridden by -v.
-cd /go/src/github.com/sql-machine-learning/sqlflow
+cd /go/src/sqlflow.org/sqlflow
 go generate ./...
 go get -t ./...
 go install -v ./...
 mv $GOPATH/bin/sqlflowserver /usr/local/bin
 mv $GOPATH/bin/repl /usr/local/bin
-cp -r $GOPATH/src/github.com/sql-machine-learning/sqlflow/sql/python/sqlflow_submitter /miniconda/envs/sqlflow-dev/lib/python3.6/site-packages/
+cp -r $GOPATH/src/sqlflow.org/sqlflow/sql/python/sqlflow_submitter /miniconda/envs/sqlflow-dev/lib/python3.6/site-packages/
 cd /
 
 # 6. Install latest sqlflow_models for testing custom models, see main_test.go:CaseTrainCustomModel
@@ -120,7 +119,7 @@ pip install xgboost==0.90
 # pip install xgboost-launcher==0.0.4
 
 # 10. install Hadoop to use as the client when writing CSV to hive tables
-HADOOP_URL=https://archive.apache.org/dist/hadoop/common/stable/hadoop-${HADOOP_VERSION}.tar.gz
+HADOOP_URL=https://archive.apache.org/dist/hadoop/common/hadoop-${HADOOP_VERSION}/hadoop-${HADOOP_VERSION}.tar.gz
 curl -fsSL "$HADOOP_URL" -o /tmp/hadoop.tar.gz
 tar -xzf /tmp/hadoop.tar.gz -C /opt/
 rm -rf /tmp/hadoop.tar.gz

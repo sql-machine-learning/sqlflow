@@ -28,8 +28,8 @@ import (
 	pyts "github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/golang/protobuf/ptypes/wrappers"
 
-	pb "github.com/sql-machine-learning/sqlflow/server/proto"
-	sf "github.com/sql-machine-learning/sqlflow/sql"
+	pb "sqlflow.org/sqlflow/server/proto"
+	sf "sqlflow.org/sqlflow/sql"
 )
 
 // NewServer returns a server instance

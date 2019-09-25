@@ -1,4 +1,4 @@
-# _Design:_ Intermediate Representation
+# Intermediate Representation
 
 ## Overview
 

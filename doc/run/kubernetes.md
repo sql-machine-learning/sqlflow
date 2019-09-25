@@ -45,7 +45,7 @@ Docker image](/doc/build.md).
     sqlflow-all-in-one-9b57566c9-8xkpk   1/1     Running   0          60s
     ```
 
-### Running your Query in SQLFlow 
+### Running Your Query in SQLFlow 
 
 1. Copy the node IP of the sqlflow Pod on minikube as the follows command:
     ``` bash

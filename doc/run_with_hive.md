@@ -1,8 +1,8 @@
-# How SQLFlow connects with Hive
+# How to Connect Hive with SQLFlow
 
 This document is a tutorial on how SQLFlow connects Hive via [HiveServer2](https://cwiki.apache.org/confluence/display/Hive/HiveServer2+Overview).
 
-## Connect Existing Hive server
+## Connect Existing Hive Server
 
 To connect an existing Hive server instance, we only need to configure a `datasource` string in the format of
 
@@ -30,11 +30,11 @@ SQLFLOW_SERVER=localhost:50051 jupyter notebook --ip=0.0.0.0 --port=8888 --allow
 
 Then you can open a web browser and go to `localhost:8888`. There are many SQLFlow tutorials, e.g. `tutorial_dnn_iris.ipynb`. You can follow the tutorials and substitute the data for your own use.
 
-## Connect standalone Hive server for testing
+## Connect Standalone Hive Server for Testing
 
 We also pack a standalone Hive server Docker image for testing.
 
-### Connect Hive server with NOSASL Transport
+### Connect Hive Server with NOSASL Transport
 
 Launch your standalone hive server Docker container by running:
 
