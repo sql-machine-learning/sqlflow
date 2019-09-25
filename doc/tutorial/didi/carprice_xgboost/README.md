@@ -133,3 +133,52 @@ Let's have a glance at prediction results.
 %%sqlflow
 SELECT * FROM carprice.predict limit 5;
 ```
+
+## Interpret the output of the trained model
+
+We use the analyzer to explain the trained model. The analyzer is implemented based on SHAP.
+The ANALYZE SQL will be translated to the SHAP code and SQLFlow enables the code to read the dataset and load the trained model, then draws a figure to explain the model. At this stage, SQLFlow supports using the [TreeExplianer](https://github.com/slundberg/shap#tree-ensemble-example-with-treeexplainer-xgboostlightgbmcatboostscikit-learn-models) to draw a summary plot.
+
+We can set the parameters of shap in WITH part like:
+
+``` sql
+WITH
+    shap_summary.plot_type="dot",
+    shap_summary.alpha=1,
+    shap_summary.sort=True,
+    shap_summary.max_display=20
+```
+
+We can plot the SHAP values of every feature for every sample.
+
+```sql
+%%sqlflow
+SELECT *
+FROM carprice.train
+ANALYZE sqlflow_models.my_xgb_regression_model
+WITH
+    shap_summary.plot_type="dot",
+    shap_summary.alpha=1,
+    shap_summary.sort=True,
+    shap_summary.max_display=20
+USING TreeExplainer;
+```
+
+<img src="./imgs/shap0.png">
+The plot above sorts features by the sum of SHAP value magnitudes over all samples, and use SHAP values to show the distribution of the impacts each feature has on the model output. The color represents the feature values(red high, blue low). This reveals for example that a low engine_hp lowers the predicted car price.
+
+We can also just take the mean absolute value of the SHAP values for each feature to get a standard bar plot:
+
+```sql
+%%sqlflow
+SELECT *
+FROM carprice.train
+ANALYZE sqlflow_models.my_xgb_regression_model
+WITH
+    shap_summary.plot_type="bar",
+    shap_summary.alpha=1,
+    shap_summary.sort=True,
+    shap_summary.max_display=20
+USING TreeExplainer;
+```
+<img src="./imgs/shap0.png">

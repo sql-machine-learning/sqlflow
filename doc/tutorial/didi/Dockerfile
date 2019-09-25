@@ -4,6 +4,7 @@ FROM sqlflow/sqlflow:latest
 COPY  titanic_dnn/titanic.sql   carprice_xgboost/carprice.sql   /docker-entrypoint-initdb.d/
 COPY titanic_dnn/README.md /didi_tutorial/titanic_dnn.md
 COPY carprice_xgboost/README.md /didi_tutorial/carprice_xgboost.md
+COPY carprice_xgboost/imgs /workspace/imgs
 
 # Convert markdown files into SQLFlow ipynb tutorials
 RUN curl -fsSL "https://raw.githubusercontent.com/sql-machine-learning/sqlflow/develop/scripts/convert_markdown_into_ipynb.sh" -o /convert_markdown_into_ipynb.sh && \
