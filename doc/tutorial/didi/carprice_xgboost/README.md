@@ -1,32 +1,35 @@
-# XGBoost on SQLFlow Tutorial
+# Predict the Car Price using XGBoost in SQLFlow
 
-This is a tutorial on a train/predict XGBoost model in SQLFLow, you can find more SQLFlow usage from the [User Guide](https://github.com/sql-machine-learning/sqlflow/blob/develop/doc/user_guide.md). In this tutorial, we will introduce the following:
+This tutorial describes how to train an XGBoost model using the [Cars Dataset](https://www.kaggle.com/CooperUnion/cardataset), then how to predict the car price using SQLFlow. You can check out the [Language Guide](https://github.com/sql-machine-learning/sqlflow/blob/develop/doc/language_guide.md) if you are new to SQLFlow.
+
+In this tutorial, you will learn how to:
+
 - Train an XGBoost model to fit the cars dataset.
-- predict the price of a car using a well-trained model.
-- Use the [SHAP EXPLAINER](https://github.com/slundberg/shap) tool to interpret the output of the trained model to known how these features affect the price.
+- Predict the car price using a well-trained model.
+- Use the [SHAP EXPLAINER](https://github.com/slundberg/shap) toolkit to interpret the trained model then you can know
+how these features affect the car price.
 
-## The Dataset
+## The Car Price Dataset
 
-This tutorial would use the [Car Features and MSRP](https://www.kaggle.com/CooperUnion/cardataset) as the demonstration dataset from kaggle.
+We are using the [Cars Dataset](https://www.kaggle.com/CooperUnion/cardataset) as the demonstration dataset from [kaggle](https://www.kaggle.com/).
 
-We have used feature engineering to preprocess the raw data and create new features. The feature engineering file is `carprice_preprocessing.py` in the current directory. Finally, We separated the dataset into the train/test dataset and got the `trainSet.csv` and `testSet.csv` files, which is used to train/predict our model. 
+We use feature engineering to [preprocess](/doc/toturial/didi/carprice_preprocessing.py) the raw data and creating new features.  The Car Price Dataset after preprocessing contains eighty-two numeric features and one label. Each feature identifies one characteristic of a car. And the label `msrp` indicates the car's price.
 
-The dataset after preprocessed contains eighty-two features and one label. The features identify the characteristics of a car. Each feature is stored as a single float number. The label `msrp` indicates the car's price. 
+Here are some of the column descriptions of the dataset:
 
-The meaning of parts of columns in `trainSet.csv` and `testSet.csv` is shown as follows:
-
-Column | Explain 
--- | -- 
-make_* |One-hot value for the "Make" field in the raw data.
+Column | Explain
+-- | --
+make_* | One-hot value for the "Make" field in the raw data.
 engine_fuel_type_* | One-hot value for the "Engine Fuel Type" field in the raw data.
 transmission_type_* | One-hot value for the "Transmission Type" field in the raw data.
-Driven_Wheels_* | One-hot value for the "Driven_Wheels" field in the raw data.
-Vehicle Size_* | One-hot value for the "Vehicle Size" field in the raw data.
-Vehicle style_* | One-hot value for the "Vehicle Style" field in the raw data.
+driven_Wheels_* | One-hot value for the "Driven_Wheels" field in the raw data.
+vehicle Size_* | One-hot value for the "Vehicle Size" field in the raw data.
+vehicle style_* | One-hot value for the "Vehicle Style" field in the raw data.
 market_category_nums | The number of categories for the "Market Category" field in the raw data
 category_* |Identify this category in the "Market Category" field of the raw data(1 Yes, 0 No).
+msrp | Float value for the manufacturer's suggested retail price of a Car
 
-We have prepared the cars dataset `trainSet.csv` and `testSet.csv` into SQL table `carprice.train` and `carprice.test` separately. We will be using them as training data and test data respectively.
+Finally, we separated the cars dataset into two tables `carprice.train` and `carprice.test` which would be used as training/testing data respectively.
 
 **Note**: SQLFlow would automatically split the training dataset into a train/validation dataset while training progress.
 
@@ -44,9 +47,11 @@ from carprice.train
 limit 1
 ```
 
-# Train: Fit Cars Dataset
-Let's train an xgboost model on the dataset. We prefer to train the model for `300 rounds`,
+## Train an XGBoost Model using SQLFlow
+
+Let's train an XGBoost model on the dataset. We prefer to train the model for `300 rounds`,
 and using `squarederror` loss function that the SQLFLow extended SQL can be like:
+
 ``` text
 TRAIN xgboost.gbtree
 WITH
@@ -54,28 +59,28 @@ WITH
     objective="reg:squarederror"
 ```
 
-`xgboost.gbtree` is the estimator name, `gbtree` is one of the XGBoost booster, you can find more information from [here](https://xgboost.readthedocs.io/en/latest/parameter.html#general-parameters).
+`xgboost.gbtree` is the estimator name, `gbtree` is one of the [XGBoost booster](https://xgboost.readthedocs.io/en/latest/parameter.html#general-parameters).
 
-To specify the training data, we use standard SQL statements to fetch the traning data from table `carprice.train`:
+To specify the training data, we use standard SQL statements to fetch the training data from table `carprice.train`:
 
 ``` text
 SELECT * FROM carprice.train
 ```
 
-We can explicit specify which column is used for features in `COLUMN clause` and which column is used for the label by `LABEL` keyword:
+We can explicitly specify which column to use in `COLUMN clause` and which column is used for the label by `LABEL` keyword:
 
 ``` text
-COLUMN engine_hp, engine_cylinders, number_of_doors, highway_mpg, city_mpg, popularity, market_category_nums, category_factory_tuner, category_luxury, category_high_performance, category_performance, category_flex_fuel, category_hatchback, category_hybrid, category_diesel, category_exotic, category_crossover, make_audi, make_bmw, make_buick, make_cadillac, make_chevrolet, make_chrysler, make_dodge, make_fiat, make_ford, make_gmc, make_genesis, make_hummer, make_honda, make_hyundai, make_infiniti, make_kia, make_land_rover, make_lexus, make_lincoln, make_lotus, make_mazda, make_mercedes_benz, make_mitsubishi, make_nissan, make_oldsmobile, make_plymouth, make_pontiac, make_porsche, make_saab, make_scion, make_subaru, make_suzuki, make_toyota, make_volkswagen, make_volvo, engine_fuel_type_electric, engine_fuel_type_flex_fuel, engine_fuel_type_premium_unleaded_recommended, engine_fuel_type_premium_unleaded_required, engine_fuel_type_regular_unleaded, transmission_type_automatic, transmission_type_direct_drive, transmission_type_manual, transmission_type_unknown, driven_wheels_four_wheel_drive, driven_wheels_front_wheel_drive, driven_wheels_rear_wheel_drive, vehicle_size_large, vehicle_size_midsize, vehicle_style_2dr_suv, vehicle_style_4dr_hatchback, vehicle_style_4dr_suv, vehicle_style_cargo_minivan, vehicle_style_cargo_van, vehicle_style_convertible, vehicle_style_convertible_suv, vehicle_style_coupe, vehicle_style_crew_cab_pickup, vehicle_style_extended_cab_pickup, vehicle_style_passenger_minivan, vehicle_style_passenger_van, vehicle_style_regular_cab_pickup, vehicle_style_sedan, vehicle_style_wagon
+COLUMN engine_hp, engine_cylinders, number_of_doors, highway_mpg, city_mpg, ...
 LABEL msrp
 ```
 
 To save the trained model, we can use `INTO clause` to specify a model name:
 
-```sql
+``` text
 INTO sqlflow_models.my_xgb_regression_model
 ```
 
-Finally, the following is the SQLFlow Train statment of this regression task, you can run it in the cell:
+Finally, the following is the SQLFlow TRAIN statement of this regression task; you can run it in the cell:
 
 ```sql
 %%sqlflow
@@ -91,7 +96,8 @@ LABEL msrp
 INTO sqlflow_models.my_xgb_regression_model;
 ```
 
-# Predict the Car's Price
+## Predict the Car Price
+
 After training the regression model, let's predict the car price using the trained model.
 
 First, we can specify the trained model by USING clause:
@@ -100,13 +106,13 @@ First, we can specify the trained model by USING clause:
 USING sqlflow_models.my_xgb_regression_model
 ```
 
-Than, we can specify the prediction result table by PREDICT clause:
+Then, we can specify the prediction result table by PREDICT clause:
 
 ```text
 PREDICT carprice.predict.msrp
 ```
 
-And using a standar SQL to fetch the prediction data:
+And using a standard SQL to fetch the prediction data.
 
 ```text
 SELECT * FROM carprice.test
@@ -127,3 +133,55 @@ Let's have a glance at prediction results.
 %%sqlflow
 SELECT * FROM carprice.predict limit 5;
 ```
+
+## Analyze the Trained Model
+
+We use the ANALYZE SQL to explain the trained model. Behind the scene, SQLFlow will translate the ANALYZE SQL to a Python program that reads the dataset, loads the trained model, then draws a figure using SHAP to explain the model.
+
+We use the [TreeExplianer](https://github.com/slundberg/shap#tree-ensemble-example-with-treeexplainer-xgboostlightgbmcatboostscikit-learn-models) to draw a summary plot.
+
+We can set the parameters of SHAP like:
+
+``` sql
+WITH
+    shap_summary.plot_type="dot",
+    shap_summary.alpha=1,
+    shap_summary.sort=True,
+    shap_summary.max_display=20
+```
+
+We can plot the SHAP values of every feature for every sample.
+
+```sql
+%%sqlflow
+SELECT *
+FROM carprice.train
+ANALYZE sqlflow_models.my_xgb_regression_model
+WITH
+    shap_summary.plot_type="dot",
+    shap_summary.alpha=1,
+    shap_summary.sort=True,
+    shap_summary.max_display=20
+USING TreeExplainer;
+```
+
+<img src="./imgs/shap0.png">
+
+The plot above sorts features by the sum of SHAP value magnitudes over all samples, and use SHAP values to show the distribution of the impacts each feature has on the model output. The color represents the feature values(red high, blue low). For example, a low engine_hp lowers the predicted car price.
+
+We can also take the mean absolute value of the SHAP values for each feature to get a standard bar plot:
+
+```sql
+%%sqlflow
+SELECT *
+FROM carprice.train
+ANALYZE sqlflow_models.my_xgb_regression_model
+WITH
+    shap_summary.plot_type="bar",
+    shap_summary.alpha=1,
+    shap_summary.sort=True,
+    shap_summary.max_display=20
+USING TreeExplainer;
+```
+
+<img src="./imgs/shap1.png">
