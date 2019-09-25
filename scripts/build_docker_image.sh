@@ -148,3 +148,4 @@ install_sqlflow_models
 install_odpscmd
 install_magic_command
 install_hadoop
+install_elasticdl_deps

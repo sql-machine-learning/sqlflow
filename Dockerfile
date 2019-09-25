@@ -48,7 +48,7 @@ go get -t ./... && \
 go install -v ./... && \
 mv $GOPATH/bin/sqlflowserver /usr/local/bin && \
 mv $GOPATH/bin/repl /usr/local/bin && \
-cp -r $GOPATH/src/sqlflow.org/sqlflow/sql/python/sqlflow_submitter /usr/local/lib/python3.7/site-packages && \
+cp -r $GOPATH/src/sqlflow.org/sqlflow/sql/python/sqlflow_submitter /miniconda/envs/sqlflow-dev/lib/python3.6/site-packages/ && \
 cd / && \
 bash ${GOPATH}/src/sqlflow.org/sqlflow/scripts/convert_markdown_into_ipynb.sh && \
 rm -rf ${GOPATH}/src && rm -rf ${GOPATH}/bin
