@@ -11,9 +11,9 @@ how these features affect the car price.
 
 We are using the [Cars Dataset](https://www.kaggle.com/CooperUnion/cardataset) as the demonstration dataset from [kaggle](https://www.kaggle.com/).
 
-The preprocessed data has already loaded in MySQL, and you can check the Python script [carprie_preprocessing.py](/doc/tutorial/didi/carprice_xgboost/carprie_preprocessing.py) to reproduce the preprocessing.
+We use feature engineering to preprocess the raw data and creating new features, The feature engineering script is `titanic_preprocessing.py` in the current directory.
 
-The preprocessed data contains 82 features and one label. The features identify the characteristics of a car. Each feature is stored as a single float number. The label `msrp` indicates the car's price.
+The Car Price Dataset after preprocessed contains 82 features and one label. The features identify the characteristics of a car. Each feature is stored as a single float number. The label `msrp` indicates the car's price.
 
 Here are some of the column descriptions of the dataset:
 
