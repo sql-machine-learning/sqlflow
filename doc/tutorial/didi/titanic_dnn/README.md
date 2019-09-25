@@ -14,7 +14,7 @@ The task is to predict which passenger can survive the tragedy.
 We use feature engineering to preprocess the raw data and creating new features.
 The feature engineering script is `titanic_preprocessing.py` in the current directory.
 
-The Titanic dataset after preprocessed contains 22 features and one label. The features identify the characteristics of individual passengers on titanic. Each feature is stored as a single float number. The label indicates the individual passenger survival. The label is stored as an integer and the possible value is 0 and 1 (1 survived, 0 deceased).
+The Titanic dataset after preprocessed contains twenty-two features and one label. The features identify the characteristics of individual passengers on titanic. Each feature is stored as a single float number. The label indicates the individual passenger survival. The label is stored as an integer and the possible values are zero and one (one: survived, zero: deceased).
 
 Here are some of the column descriptions of the dataset:
 
@@ -49,7 +49,7 @@ limit 1;
 
 ## Train a DNN Model Using SQLFlow
 
-Now let's train a DNNClassifier model. This is a two-category model, we use 3 hidden layers and the size of hidden layers are 10, 40, 10. This can be done by specifying the training clause using SQLFlow's extended syntax.
+Now let's train a DNNClassifier model. This is a two-category model, we use three hidden layers and the size of hidden layers are ten, forty, ten. This can be done by specifying the training clause using SQLFlow's extended syntax.
 
 ```text
 TRAIN DNNClassifier
