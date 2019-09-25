@@ -1,4 +1,4 @@
-# SQLFlow language guide
+# SQLFlow Language Guide
 
 SQLFlow is a bridge that connects a SQL engine (e.g., MySQL, Hive, or MaxCompute) and TensorFlow and other machine learning toolkits.  SQLFlow extends the SQL syntax to enable model training, prediction, and analysis.
 
@@ -79,7 +79,7 @@ COLUMN column_expr [, column_expr ...]
 INTO table_references;
 ```
 
-### Select clause
+### Select Clause
 
 The *select clause* describes the data retrieved from a particular table, e.g., `SELECT * FROM iris.train`.
 
@@ -107,7 +107,7 @@ LIMIT 1000
 TRAIN ...
 ```
 
-### Train clause
+### Train Clause
 
 The *train clause* describes the specific model type and the way the model is trained, e.g. `TRAIN DNNClassifer WITH hidden_units = [10, 10], n_classes = 3, EPOCHS = 10`.
 
@@ -134,7 +134,7 @@ WITH
 ...
 ```
 
-### Column clause
+### Column Clause
 
 The *column clause* indicates the field name for training features, along with their optional pre-processing methods, e.g. `COLUMN sepal_length, sepal_width, petal_length, petal_width`.
 
@@ -156,7 +156,7 @@ COLUMN sepal_length, sepal_width, petal_length, petal_width
 ...
 ```
 
-### Label clause
+### Label Clause
 
 The *label clause* indicates the field name for the training label, along with their optional pre-processing methods, e.g. `LABEL class`.
 
@@ -168,7 +168,7 @@ LABEL label_expr
 
 Note: some field names may look like SQLFlow keywords. For example, the table may contain a field named "label". You can use double quotes around the name `LABEL "label"` to work around the parsing error.
 
-### Into clause
+### Into Clause
 
 The *into clause* indicates the table name to save the trained model into:
 
@@ -180,7 +180,7 @@ INTO table_references
 
 Note: SQLFlow team is actively working on supporting saving model to third-party storage services such as AWS S3, Google Storage, and Alibaba OSS.
 
-### Feature columns
+### Feature Columns
 
 SQLFlow supports specifying various feature columns in the column clause and label clause. Below are the currently supported feature columns:
 
@@ -305,7 +305,7 @@ Example:
 */
 ```
 
-## Prediction syntax
+## Prediction Syntax
 
 A SQLFlow prediction statement consists of a sequence of select, predict, and using clauses.
 
@@ -320,11 +320,11 @@ PREDICT result_table_reference
 USING model_table_reference;
 ```
 
-### Select clause
+### Select Clause
 
 The [select clause](#select-clause) syntax is the same as the select clause syntax in the training syntax. SQLFlow uses the column name to guarantee the prediction data has the same order as the training data. For example, if we have used `c1`, `c2`, `c3` and `label` column to train a model, the select clause in the prediction job should also retrieve columns that contain exactly the same names.
 
-### Predict and using clause
+### Predict and Using Clause
 
 The *predict clause* describes the result table that a prediction job should write to, the table a prediction job should load the model from, and necessary configuration attributes for a prediction job.
 
@@ -347,7 +347,7 @@ PREDICT iris.predict.class
 USING sqlflow.my_dnn_model;
 ```
 
-## Analysis syntax
+## Analysis Syntax
 
 A SQLFlow prediction statement consists of a sequence of select, analyze, and using clauses.
 
@@ -362,11 +362,11 @@ ANALYZE model_table_reference
 USING explainer;
 ```
 
-### Select clause
+### Select Clause
 
 The [select clause](#select-clause) syntax is the same as the select clause syntax in the training syntax. SQLFlow uses the column name to guarantee the analysis data has the same order as the training data. For example, if we have used `c1`, `c2`, `c3` and `label` column to train a model, the select clause in the analysis job should also retrieve columns that contain the same names.
 
-### Analyze and using clause
+### Analyze and Using Clause
 
 The *analyze clause* describes the table an analysis job should load the model from, necessary configuration attributes, and the explainer for analysis.
 
