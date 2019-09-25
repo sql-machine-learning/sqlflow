@@ -1,4 +1,4 @@
-# How SQLFlow Connects with Hive
+# How to Connect Hive with SQLFlow
 
 This document is a tutorial on how SQLFlow connects Hive via [HiveServer2](https://cwiki.apache.org/confluence/display/Hive/HiveServer2+Overview).
 

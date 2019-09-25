@@ -118,7 +118,7 @@ This tutorial will walk you through the steps of:
 
 ## Deploy SQLFlow Services
 
-You can refer to the [Running SQLFlow on Kubernetes](/doc/run_on_kubernetes.md)
+You can refer to the [Running SQLFlow on Kubernetes](/doc/run/kubernetes.md)
 tutorial for a more comprehensive guide on deploying SQLFlow on Kubernetes
 cluster.
 

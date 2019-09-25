@@ -9,7 +9,7 @@ You can use this Docker image for either local trying out or production deployme
 
 1. Install [Docker Community Edition](https://docs.docker.com/install/) on your PC/Macbook/Server.
 1. Pull the latest SQLFlow "all-in-one" Docker image. Or you can also 
-   build the Docker image from source code following [this guide](./build.md).
+   build the Docker image from source code following [this guide](/doc/build.md).
 
    ```
    docker pull sqlflow/sqlflow
