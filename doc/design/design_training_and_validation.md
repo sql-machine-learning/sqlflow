@@ -1,4 +1,4 @@
-# _Design:_ Training and Validation
+# Training and Validation
 
 A common ML training job usually involves two kinds of data sets: training data and validation data. These two data sets will be generated automatically by SQLFlow through randomly splitting the select results.
 

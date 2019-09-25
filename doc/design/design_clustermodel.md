@@ -1,4 +1,4 @@
-# _Design:_ Clustering in SQLFlow to Analyze Patterns in Data
+# Clustering in SQLFlow to Analyze Patterns in Data
 
 ## ClusterModel Introduction
 

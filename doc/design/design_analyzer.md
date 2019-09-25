@@ -1,4 +1,4 @@
-# _Design:_ Analyze the Machine Learning Model in SQLFlow
+# Analyze the Machine Learning Model in SQLFlow
 
 ## Concept
 

@@ -1,4 +1,4 @@
-# _Design:_ Ant-XGBoost on SQLFlow
+# Ant-XGBoost on SQLFlow
 
 **NOTE: ant-xgboost on SQLFlow has moved to [backup_antxgboot_work branch](https://github.com/sql-machine-learning/sqlflow/tree/backup_antxgboost_work)**
 

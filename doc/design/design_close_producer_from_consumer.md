@@ -1,4 +1,4 @@
-# _Design:_ Closing the Producer Goroutine from the Consumer
+# Closing the Producer Goroutine from the Consumer
 
 The producer-and-consumer pattern is well used in Go concurrent programming. When
 the consumer stops, we want to gracefully stop the producer as well.

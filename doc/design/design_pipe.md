@@ -1,4 +1,4 @@
-# _Design:_ Piping Responses
+# Piping Responses
 
 
 ## Streaming Responses

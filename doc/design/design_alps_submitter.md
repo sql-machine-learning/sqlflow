@@ -1,4 +1,4 @@
-# _Design:_ ALPS Submitter
+# ALPS Submitter
 
 ALPS (Ant Learning and Prediction Suite) provides a common algorithm-driven framework in Ant Financial, focusing on providing users with an efficient and easy-to-use machine learning programming framework and a financial learning machine learning algorithm solution.
 

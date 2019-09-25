@@ -1,4 +1,4 @@
-# _Design:_ Support Multiple SQL Statements
+# Support Multiple SQL Statements
 
 ## Overview
 
