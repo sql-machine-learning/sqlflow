@@ -47,7 +47,7 @@ from carprice.train
 limit 1
 ```
 
-## Train an XGBoost model using SQLFlow
+## Train an XGBoost Model using SQLFlow
 
 Let's train an XGBoost model on the dataset. We prefer to train the model for `300 rounds`,
 and using `squarederror` loss function that the SQLFLow extended SQL can be like:
@@ -134,7 +134,7 @@ Let's have a glance at prediction results.
 SELECT * FROM carprice.predict limit 5;
 ```
 
-## Analyze the trained model
+## Analyze the Trained Model
 
 We use the ANALYZE SQL to explain the trained model. Behind the scene, SQLFlow will translate the ANALYZE SQL to a Python program that reads the dataset, loads the trained model, then draws a figure using SHAP to explain the model.
 
