@@ -1,8 +1,8 @@
-# How to connect MaxCompute with SQLFlow
+# How to Connect MaxCompute with SQLFlow
 
 This tutorial explains how to connect SQLFlow with [MaxCompute (a.k.a ODPS)](https://www.alibabacloud.com/product/maxcompute).
 
-## Connect Existing MaxCompute server
+## Connect Existing MaxCompute Server
 
 To connect an existed MaxCompute server instance, we need to configure a `datasource` string in the format of   
 `maxcompute://{accesskey_id}:{accesskey_secret}@{endpoint}?curr_project={curr_project}&scheme={scheme}`
@@ -24,7 +24,7 @@ SQLFLOW_SERVER=localhost:50051 jupyter notebook --ip=0.0.0.0 --port=8888 --allow
 
 Open `localhost:8888` through a web browser, you will find there are many SQLFlow tutorials, e.g. `iris-dnn.ipynb`. Please follow the tutorials and substitute the data for your use.
 
-## Create a MaxCompute instance for testing
+## Create a MaxCompute Instance for Testing
 Aliyun supplies a development version that is suitable as a testing environment. Follow the tutorial [Create Workspace](https://www.alibabacloud.com/help/doc-detail/74293.htm), we could create a MaxCompute instance for testing. The development version has some capacity limitations. If you wanna play the testing on a large dataset, please turn to the standard version.
 
 Then, according to the above section, we could build a `datasource` and launch a container.

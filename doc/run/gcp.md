@@ -116,9 +116,9 @@ This tutorial will walk you through the steps of:
     It should show a cluster name like 'gke_${YOUR_GCP_PROJECT_ID}'-central1-a_sqlflow-gke-cluster
 
 
-## Deploy SQLFlow services
+## Deploy SQLFlow Services
 
-You can refer to the [Running SQLFlow on Kubernetes](/doc/run_on_kubernetes.md)
+You can refer to the [Running SQLFlow on Kubernetes](/doc/run/kubernetes.md)
 tutorial for a more comprehensive guide on deploying SQLFlow on Kubernetes
 cluster.
 
@@ -154,7 +154,7 @@ server and Jupyter Notebook server.
     sqlflow-populate-demo-dataset-8qdtd                 0/1     Completed   0          9m30s
     ```
 
-## Run your Query in SQLFlow
+## Run Your Query in SQLFlow
 
 1. Get the external ip address for the sqlflow service
     ``` bash

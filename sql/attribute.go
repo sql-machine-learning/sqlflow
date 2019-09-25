@@ -132,10 +132,15 @@ func getEngineSpec(attrs map[string]*attribute) engineSpec {
 
 func (a *attribute) GenerateCode() (string, error) {
 	if val, ok := a.Value.(string); ok {
-		// auto convert to int first.
+		// First try converting a hyperparameter to int.
 		if _, err := strconv.Atoi(val); err == nil {
 			return fmt.Sprintf("%s=%s", a.Name, val), nil
 		}
+		// Then try converting the hyperparameter to float.
+		if _, err := strconv.ParseFloat(val, 32); err == nil {
+			return fmt.Sprintf("%s=%s", a.Name, val), nil
+		}
+		// Hyperparameters of other types generate quoted plain string.
 		return fmt.Sprintf("%s=\"%s\"", a.Name, val), nil
 	}
 	if val, ok := a.Value.([]interface{}); ok {
@@ -146,7 +151,7 @@ func (a *attribute) GenerateCode() (string, error) {
 		return fmt.Sprintf("%s=%s", a.Name,
 			strings.Join(strings.Split(fmt.Sprint(intList), " "), ",")), nil
 	}
-	return "", fmt.Errorf("value of attribute must be string or list of int, given %s", a.Value)
+	return "", fmt.Errorf("the value type of an attribute must be string, int, float or list of ints, given %s", a.Value)
 }
 
 func attrFilter(attrs map[string]*attribute, prefix string, remove bool) map[string]*attribute {

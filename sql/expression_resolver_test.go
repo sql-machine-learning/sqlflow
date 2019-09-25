@@ -74,6 +74,27 @@ func TestResolveAttrs(t *testing.T) {
 	a.Equal("dataset", attr.Prefix)
 	a.Equal("name", attr.Name)
 	a.Equal("hello", attr.Value)
+
+	s = statementWithAttrs("optimizer.learning_rate = 0.01")
+	r, e = parser.Parse(s)
+	a.NoError(e)
+	attrs, err = resolveAttribute(&r.trainAttrs)
+	a.NoError(err)
+	attr = attrs["optimizer.learning_rate"]
+	a.Equal("optimizer", attr.Prefix)
+	a.Equal("learning_rate", attr.Name)
+	a.Equal("0.01", attr.Value)
+
+	s = statementWithAttrs("model.n_classes = 2")
+	r, e = parser.Parse(s)
+	a.NoError(e)
+	attrs, err = resolveAttribute(&r.trainAttrs)
+	a.NoError(err)
+	attr = attrs["model.n_classes"]
+	a.Equal("model", attr.Prefix)
+	a.Equal("n_classes", attr.Name)
+	a.Equal("2", attr.Value)
+
 }
 
 func TestBucketColumn(t *testing.T) {

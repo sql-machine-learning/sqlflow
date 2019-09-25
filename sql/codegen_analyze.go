@@ -39,11 +39,9 @@ func newAnalyzeFiller(pr *extendedSelect, db *DB, fms []*FeatureMeta, label, mod
 		return nil, err
 	}
 	return &analyzeFiller{
-		connectionConfig: conn,
-		X:                fms,
-		Label:            label,
-		// TODO(weiguo): test if it needs TrimSuffix(SQL, ";") on hive,
-		// or we trim it in pr(*extendedSelect)
+		connectionConfig:   conn,
+		X:                  fms,
+		Label:              label,
 		AnalyzeDatasetSQL:  pr.standardSelect.String(),
 		ModelFile:          modelPath,
 		ShapSummaryParames: summaryAttrs,

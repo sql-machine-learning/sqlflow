@@ -1,4 +1,4 @@
-# _Design:_ Submitter
+# Submitter
 
 A submitter is a pluggable module in SQLFlow that is used to submit an ML job to a third party computation service.
 
@@ -68,7 +68,7 @@ type Submitter interface {
 }
 ```
 
-## Register a submitter
+## Register a Submitter
 
 A new submitter can be added as
 

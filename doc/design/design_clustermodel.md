@@ -1,6 +1,6 @@
-# _Design:_ Clustering in SQLFlow to analyze patterns in data
+# Clustering in SQLFlow to Analyze Patterns in Data
 
-## ClusterModel introduction
+## ClusterModel Introduction
 
 Most of time when businessman and analyst faced the data, they need not only the supervised learning model to perform classification and prediction, but also unsupervised learning to catch hidden patterns. This can help analysts to draw inferences from datasets consisting of input data without labeled responses, such as grouping users by their behavioral characteristics. 
 
@@ -16,9 +16,9 @@ The figure below demonstrates the overall workflow for cluster model training, w
 3. The overall train process ultimately outputs an unsupervised clustering model.
 
 
-## How to implement ClusterModel it in SQLFlow
+## How to Implement a ClusterModel in SQLFlow
 
-### User interface in SQLFlow 
+### User Interface in SQLFlow 
 
 In this scenario, we focus on the extraction of data patterns in unsupervised learning. 
 
