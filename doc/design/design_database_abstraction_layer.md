@@ -1,4 +1,4 @@
-# _Design:_ Compatibility with Various SQL Engines
+# Compatibility with Various SQL Engines
 
 SQLFlow interacts with SQL engines like MySQL and Hive, while different SQL engines use variants of SQL syntax, it is important for SQLFlow to have an abstraction layer that hides such differences.
 

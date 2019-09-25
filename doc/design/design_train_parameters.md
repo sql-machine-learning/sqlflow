@@ -1,4 +1,4 @@
-# _Design:_ Information necessary for code generators in SQLFlow
+# Information Necessary for Code Generators in SQLFlow
 
 SQLFlow extends the syntax of the SELECT statement of SQL to support training a model:
 ```sql
@@ -50,7 +50,7 @@ WITH
     model.hidden_units = [10, 20, 10]
 ```
 
-### Training hyper-parameters
+### Training Hyper-Parameters
 The training hyper-parameters can be also set in the `WITH` block.
 
 <b>Here is the list of hyper-parameters planning to support.</b>
@@ -119,7 +119,7 @@ represents that the `c1` field is the dense format and the `c2` field is the spa
 | embedding  | 1. key (cat_id) <br> 2. dimension (integer) <br> 3. combiner (str)         | embedding(cat_id(c2, 10000), mean) |
 
 
-## Independent module for resolving of training parameters
+## Independent Module for Resolving of Training Parameters
 Since the format of training parameters has been unified, it's better to have an independent module in SQLFlow to do the resolving according to the rules instead of doing it in each `codegen_**.go`.
 
 The advantage of an independent module contains

@@ -91,7 +91,7 @@ LABEL msrp
 INTO sqlflow_models.my_xgb_regression_model;
 ```
 
-# Predict the car's price
+# Predict the Car's Price
 After training the regression model, let's predict the car price using the trained model.
 
 First, we can specify the trained model by USING clause:

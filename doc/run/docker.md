@@ -15,7 +15,7 @@ You can use this Docker image for either local trying out or production deployme
    docker pull sqlflow/sqlflow
    ```
 
-## Try Out SQLFlow using Notebook
+## Try Out SQLFlow Using Notebook
 
 1. Type the below command to start the container:
 

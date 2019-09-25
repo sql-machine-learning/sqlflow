@@ -1,4 +1,4 @@
-# _Design:_ Training and Validation
+# Training and Validation
 
 A common ML training job usually involves two kinds of data sets: training data and validation data. These two data sets will be generated automatically by SQLFlow through randomly splitting the select results.
 
@@ -9,7 +9,7 @@ SQLFlow generates a temporary table following the user-specific table, trains an
 
 Notice, we talk about the **train** process in this post.
 
-## Generate a temporary table
+## Generate a Temporary Table
 Splitting the training table into training data and validation data is the key point. We suppose SQLFlow are dealing with the following SQL to train an ML model:
 
 ```SQL
@@ -89,7 +89,7 @@ SQLFlow creates an own database as workspace, like `sqlflow_workspace`, then cre
   Notice: Why doesn't SQLFlow [create TEMPORARY table](https://dev.mysql.com/doc/refman/8.0/en/create-temporary-table.html) to act the *TempTable*?   
   Because SQLFlow creates *TempTable* in Go and read the contents in Python. They are different sessions, which means the *TempTable* is invisible to each other.
 
-## How to split
+## How to Split
 
 **We fetch the training/validation data using two different queries respectively.** 
    
@@ -108,7 +108,7 @@ type extendedSelect struct {
 ## Codegen
 For TensorFlow submitter, SQLFlow generate training data set and validation data set according to `extendedSelect.training` and `extendedSelect.validation`.
 
-## Release the temporary table
+## Release the Temporary Table
 In the end, SQLFlow remove the temporary table to release resources. 
 
 - For Maxcompute  

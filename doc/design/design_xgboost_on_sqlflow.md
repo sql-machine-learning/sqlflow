@@ -1,4 +1,4 @@
-# _Design:_ XGBoost on SQLFlow
+# XGBoost on SQLFlow
 
 ## Introduction
 

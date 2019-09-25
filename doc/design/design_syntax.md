@@ -1,4 +1,4 @@
-# _Design:_ SQLFlow
+# SQLFlow
 
 ## What is SQLFlow
 
