@@ -183,4 +183,4 @@ WITH
     shap_summary.max_display=20
 USING TreeExplainer;
 ```
-<img src="./imgs/shap0.png">
+<img src="./imgs/shap1.png">
