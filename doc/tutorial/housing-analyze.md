@@ -61,7 +61,7 @@ USING TreeExplainer;
 ```
 
 <p align="center">
-<img src="../figures/shap_plot_dot.png" width="500px">
+<img src="https://github.com/sql-machine-learning/sqlflow/blob/8e52276a6005f17ccfe6895f7900bf9f79131181/doc/figures/shap_plot_dot.png?raw=true" width="500px">
 </p>
 
 The plot above sorts features by the sum of SHAP value magnitudes over all samples, and use SHAP values to show the distribution of the impacts each feature has on the model output. The color represents the feature values(red high, blue low). This reveals for example that a high LSTAT(% lower status of the population) lowers the predicted home price.
@@ -81,5 +81,5 @@ USING TreeExplainer;
 ```
 
 <p align="center">
-<img src="../figures/shap_plot_bar.png" width="500px">
+<img src="https://github.com/sql-machine-learning/sqlflow/blob/8e52276a6005f17ccfe6895f7900bf9f79131181/doc/figures/shap_plot_bar.png" width="500px">
 </p>
