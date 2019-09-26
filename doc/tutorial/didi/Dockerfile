@@ -1,9 +1,11 @@
 FROM sqlflow/sqlflow:latest
 
 # Prepare sample datasets
-COPY titanic_dnn/titanic.sql carprice_xgboost/carprice.sql /docker-entrypoint-initdb.d/
+COPY titanic_dnn/titanic.sql carprice_xgboost/carprice.sql activepower_clustering/activepower.sql /docker-entrypoint-initdb.d/
+
 COPY titanic_dnn/README.md /didi_tutorial/titanic_dnn.md
 COPY carprice_xgboost/README.md /didi_tutorial/carprice_xgboost.md
+COPY activepower_clustering/README.md /didi_tutorial/activepower_clustering.md
 COPY carprice_xgboost/imgs /workspace/imgs
 
 # Convert markdown files into SQLFlow ipynb tutorials
