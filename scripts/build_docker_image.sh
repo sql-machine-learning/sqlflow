@@ -15,136 +15,124 @@
 
 set -e
 
-# 0. Install conda using Miniconda.
- # We use conda to (1) specify the use of a specific version of Python, currently, 3.6, and (2) to
- # canonicalize the Python pacakge installation directory, currently,
- # /miniconda/envs/sqlflow-dev/lib/python3.6/site-packages/.  SQLFlow submitter programs could
- # depend on pacakges installed in the above canocicalized pacakge directory.
- install_python3() {
-  curl -sL https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -o mconda-install.sh
-  bash -x mconda-install.sh -b -p miniconda
-  rm mconda-install.sh
-  /miniconda/bin/conda create -y -q -n sqlflow-dev python=3.6 ${CONDA_ADD_PACKAGES}
-  echo ". /miniconda/etc/profile.d/conda.sh" >> ~/.bashrc
-  echo "source activate sqlflow-dev" >> ~/.bashrc
- }
+
+# 0. Install conda using Miniconda. 
+# We use conda to (1) specify the use of a specific version of Python, currently, 3.6, and (2) to
+# canonicalize the Python pacakge installation directory, currently, 
+# /miniconda/envs/sqlflow-dev/lib/python3.6/site-packages/.  SQLFlow submitter programs could
+# depend on pacakges installed in the above canocicalized pacakge directory.
+curl -sL https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -o mconda-install.sh
+bash -x mconda-install.sh -b -p miniconda
+rm mconda-install.sh
+/miniconda/bin/conda create -y -q -n sqlflow-dev python=3.6 ${CONDA_ADD_PACKAGES}
+echo ". /miniconda/etc/profile.d/conda.sh" >> ~/.bashrc
+echo "source activate sqlflow-dev" >> ~/.bashrc
 
 # keras.datasets.imdb only works with numpy==1.16.1
 # NOTE: shap == 0.30.1 depends on dill but not include dill as it's dependency, need to install manually
-# source /miniconda/bin/activate sqlflow-dev && python -m pip install \
-install_python_deps() {
-  source /miniconda/bin/activate sqlflow-dev && python -m pip install \
-  numpy==1.16.1 \
-  tensorflow==${TENSORFLOW_VERSION} \
-  mysqlclient==1.4.4 \
-  impyla==0.16.0 \
-  pyodps==0.8.3 \
-  jupyter==1.0.0 \
-  notebook==6.0.0 \
-  sqlflow==0.5.0 \
-  pre-commit==1.18.3 \
-  dill==0.3.0 \
-  shap==0.30.1 \
-  xgboost==0.90 \
-  ${PIP_ADD_PACKAGES}
-}
+source /miniconda/bin/activate sqlflow-dev && python -m pip install \
+numpy==1.16.1 \
+tensorflow==${TENSORFLOW_VERSION} \
+mysqlclient==1.4.4 \
+impyla==0.16.0 \
+pyodps==0.8.3 \
+jupyter==1.0.0 \
+notebook==6.0.0 \
+sqlflow==0.5.0 \
+pre-commit==1.18.3 \
+dill==0.3.0 \
+shap==0.30.1 \
+${PIP_ADD_PACKAGES}
 
 # 1. Install Go 1.11.5
-install_golang() {
-  wget --quiet https://dl.google.com/go/go1.11.5.linux-amd64.tar.gz
-  tar -C /usr/local -xzf go1.11.5.linux-amd64.tar.gz
-  rm go1.11.5.linux-amd64.tar.gz
-  mkdir -p /go
+wget --quiet https://dl.google.com/go/go1.11.5.linux-amd64.tar.gz
+tar -C /usr/local -xzf go1.11.5.linux-amd64.tar.gz
+rm go1.11.5.linux-amd64.tar.gz
+mkdir -p /go
 
-  # Install Go compile tools
-  go get github.com/golang/protobuf/protoc-gen-go
-  mv $GOPATH/bin/protoc-gen-go /usr/local/bin/
-  go get golang.org/x/lint/golint
-  mv $GOPATH/bin/golint /usr/local/bin
+# 2. Install Go compile tools
+go get github.com/golang/protobuf/protoc-gen-go
+mv $GOPATH/bin/protoc-gen-go /usr/local/bin/
+go get golang.org/x/lint/golint
+mv $GOPATH/bin/golint /usr/local/bin
 
-  # Install protobuf compiler
-  wget -q https://github.com/protocolbuffers/protobuf/releases/download/v3.7.1/protoc-3.7.1-linux-x86_64.zip
-  unzip -qq protoc-3.7.1-linux-x86_64.zip -d /usr/local
-  rm protoc-3.7.1-linux-x86_64.zip
-  # Install gRPC for Java as a protobuf-compiler plugin. c.f. https://stackoverflow.com/a/53982507/724872.
-  wget -q http://central.maven.org/maven2/io/grpc/protoc-gen-grpc-java/1.21.0/protoc-gen-grpc-java-1.21.0-linux-x86_64.exe
-  mv protoc-gen-grpc-java-1.21.0-linux-x86_64.exe /usr/local/bin/protoc-gen-grpc-java
-  chmod +x /usr/local/bin/protoc-gen-grpc-java
-}
+# 3. Install protobuf compiler
+wget -q https://github.com/protocolbuffers/protobuf/releases/download/v3.7.1/protoc-3.7.1-linux-x86_64.zip
+unzip -qq protoc-3.7.1-linux-x86_64.zip -d /usr/local
+rm protoc-3.7.1-linux-x86_64.zip
 
-# 2. Install mysql without a password prompt
-install_mysql() {
-  echo 'mysql-server mysql-server/root_password password root' | debconf-set-selections
-  echo 'mysql-server mysql-server/root_password_again password root' | debconf-set-selections
-  apt-get install -y mysql-server
-  mkdir -p /var/run/mysqld
-  mkdir -p /var/lib/mysql
-  chown mysql:mysql /var/run/mysqld
-  chown mysql:mysql /var/lib/mysql
-  mkdir -p /docker-entrypoint-initdb.d
-}
+# 3.1 Install gRPC for Java as a protobuf-compiler plugin. c.f. https://stackoverflow.com/a/53982507/724872.
+wget -q http://central.maven.org/maven2/io/grpc/protoc-gen-grpc-java/1.21.0/protoc-gen-grpc-java-1.21.0-linux-x86_64.exe
+mv protoc-gen-grpc-java-1.21.0-linux-x86_64.exe /usr/local/bin/protoc-gen-grpc-java
+chmod +x /usr/local/bin/protoc-gen-grpc-java
 
-# 3. Install latest sqlflow_models for testing custom models, see main_test.go:CaseTrainCustomModel
+# 4. Install mysql without a password prompt
+echo 'mysql-server mysql-server/root_password password root' | debconf-set-selections
+echo 'mysql-server mysql-server/root_password_again password root' | debconf-set-selections
+apt-get install -y mysql-server
+mkdir -p /var/run/mysqld
+mkdir -p /var/lib/mysql
+chown mysql:mysql /var/run/mysqld
+chown mysql:mysql /var/lib/mysql
+mkdir -p /docker-entrypoint-initdb.d
+
+# 5. Build SQLFlow binaries from the current branch.
+#    Then move binary file: "sqlflowserver" and "repl" to /usr/local/bin
+#    Then delete contents under $GOPATH to reduce the image size.
+# NOTE: During development and testing, /go will be overridden by -v.
+cd /go/src/sqlflow.org/sqlflow
+go generate ./...
+go get -t ./...
+go install -v ./...
+mv $GOPATH/bin/sqlflowserver /usr/local/bin
+mv $GOPATH/bin/repl /usr/local/bin
+cp -r $GOPATH/src/sqlflow.org/sqlflow/sql/python/sqlflow_submitter /miniconda/envs/sqlflow-dev/lib/python3.6/site-packages/
+cd /
+
+# 6. Install latest sqlflow_models for testing custom models, see main_test.go:CaseTrainCustomModel
 # NOTE: The sqlflow_models works well on the specific Tensorflow version,
 #       we can skip installing sqlflow_models if using the older Tensorflow.
-install_sqlflow_models() {
-  if [ "${WITH_SQLFLOW_MODELS:-ON}" = "ON" ]; then
-    git clone https://github.com/sql-machine-learning/models.git
-    cd models
-    bash -c "python setup.py install"
-    cd ..
-    rm -rf models
-  fi
-}
+if [ "${WITH_SQLFLOW_MODELS:-ON}" = "ON" ]; then
+  git clone https://github.com/sql-machine-learning/models.git
+  cd models
+  bash -c "source activate sqlflow-dev && python setup.py install"
+  cd ..
+  rm -rf models
+fi
 
-# 4. Install odpscmd for submitting alps predict job with odps udf script
+# 7. Install odpscmd for submitting alps predict job with odps udf script
 # TODO(Yancey1989): using gomaxcompute instead of the odpscmd command-line tool.
-install_odpscmd() {
-  wget -q http://docs-aliyun.cn-hangzhou.oss.aliyun-inc.com/assets/attach/119096/cn_zh/1557995455961/odpscmd_public.zip
-  unzip -qq odpscmd_public.zip -d /usr/local/odpscmd
-  ln -s /usr/local/odpscmd/bin/odpscmd /usr/local/bin/odpscmd
-  rm -rf odpscmd_public.zip
-}
+wget -q http://docs-aliyun.cn-hangzhou.oss.aliyun-inc.com/assets/attach/119096/cn_zh/1557995455961/odpscmd_public.zip
+unzip -qq odpscmd_public.zip -d /usr/local/odpscmd
+ln -s /usr/local/odpscmd/bin/odpscmd /usr/local/bin/odpscmd
+rm -rf odpscmd_public.zip
 
-# 5. Load sqlflow Jupyter magic command automatically under /workspace. 
-#    c.f. https://stackoverflow.com/a/32683001.
-install_magic_command() {
-  mkdir -p $IPYTHON_STARTUP
-  mkdir -p /workspace
-  echo 'get_ipython().magic(u"%reload_ext sqlflow.magic")' >> $IPYTHON_STARTUP/00-first.py
-  echo 'get_ipython().magic(u"%autoreload 2")' >> $IPYTHON_STARTUP/00-first.py
-}
+# 8. Load sqlflow Jupyter magic command automatically. c.f. https://stackoverflow.com/a/32683001.
+mkdir -p $IPYTHON_STARTUP
+mkdir -p /workspace
+echo 'get_ipython().magic(u"%reload_ext sqlflow.magic")' >> $IPYTHON_STARTUP/00-first.py
+echo 'get_ipython().magic(u"%autoreload 2")' >> $IPYTHON_STARTUP/00-first.py
 
+# 9. install xgboost
+pip install xgboost==0.90
+# Re-enable this after Ant-XGBoost is ready.
+# pip install xgboost-launcher==0.0.4
 
-# 6. install Hadoop to use as the client when writing CSV to hive tables
-install_hadoop() {
-  HADOOP_URL=https://archive.apache.org/dist/hadoop/common/hadoop-${HADOOP_VERSION}/hadoop-${HADOOP_VERSION}.tar.gz
-  curl -fsSL "$HADOOP_URL" -o /tmp/hadoop.tar.gz
-  tar -xzf /tmp/hadoop.tar.gz -C /opt/
-  rm -rf /tmp/hadoop.tar.gz
-  rm -rf /opt/hadoop-${HADOOP_VERSION}/share/doc
-}
+# 10. install Hadoop to use as the client when writing CSV to hive tables
+HADOOP_URL=https://archive.apache.org/dist/hadoop/common/hadoop-${HADOOP_VERSION}/hadoop-${HADOOP_VERSION}.tar.gz
+curl -fsSL "$HADOOP_URL" -o /tmp/hadoop.tar.gz
+tar -xzf /tmp/hadoop.tar.gz -C /opt/
+rm -rf /tmp/hadoop.tar.gz
+rm -rf /opt/hadoop-${HADOOP_VERSION}/share/doc
 
-# 7. Install additional dependencies for ElasticDL, ElasticDL CLI, and build testing images
-install_elasticdl_deps() {
-  apt-get install -y docker.io sudo
-  curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/v1.14.0/bin/linux/amd64/kubectl && chmod +x kubectl && sudo mv kubectl /usr/local/bin/
-  # TODO(terrytangyuan): Uncomment once ElasticDL is open sourced
-  # git clone https://github.com/wangkuiyi/elasticdl.git
-  # cd elasticdl
-  # pip install -r elasticdl/requirements.txt
-  # python setup.py install
-  # docker build -t elasticdl:dev -f elasticdl/docker/Dockerfile.dev .
-  # docker build -t elasticdl:ci -f elasticdl/docker/Dockerfile.ci .
-  # cd ..
-}
-
-install_python3
-install_python_deps
-install_golang
-install_mysql
-install_sqlflow_models
-install_odpscmd
-install_magic_command
-install_hadoop
-install_elasticdl_deps
+# 11. Install additional dependencies for ElasticDL, ElasticDL CLI, and build testing images
+apt-get install -y docker.io sudo
+curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/v1.14.0/bin/linux/amd64/kubectl && chmod +x kubectl && sudo mv kubectl /usr/local/bin/
+# TODO(terrytangyuan): Uncomment once ElasticDL is open sourced
+# git clone https://github.com/wangkuiyi/elasticdl.git
+# cd elasticdl
+# pip install -r elasticdl/requirements.txt
+# python setup.py install
+# docker build -t elasticdl:dev -f elasticdl/docker/Dockerfile.dev .
+# docker build -t elasticdl:ci -f elasticdl/docker/Dockerfile.ci .
+# cd ..
