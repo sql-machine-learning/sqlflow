@@ -53,7 +53,7 @@ Done predicting. Predict table : iris.predict
 
 - [Quick Start](/doc/quick_start.md)
 - [User Guide](/doc/language_guide.md)
-- [Docker Installation](/doc/docker_install.md)
+- [Docker Installation](/doc/run/docker.md)
 
 ## Contributions
 
