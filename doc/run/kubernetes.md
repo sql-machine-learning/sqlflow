@@ -60,7 +60,7 @@ Docker image](/doc/build.md).
     sqlflow-all-in-one-9b57566c9-8xkpk   1/1     Running   0          24s     172.17.0.9   minikube   <none>           <none>
     ```
 
-1. Open a web browser and go to '<node-ip>:8888', you can find the [SQLFlow example](/example/jupyter/example.ipynb) in the Jupyter notebook file lists.
+1. Open a web browser and go to '<node-ip>:8888', you can find the [SQLFlow example](/doc/tutorial/iris-dnn.md) in the Jupyter notebook file lists.
 
 ## Deploy the SQLFlow Hub
 

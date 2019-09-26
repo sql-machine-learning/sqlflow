@@ -163,7 +163,7 @@ server and Jupyter Notebook server.
     sqlflow-service           LoadBalancer   10.249.11.123   34.65.192.101   8888:32761/TCP   24h
     ```
 
-1. Open a web browser and go to '<EXTERNAL-IP>:8888', you can find the [SQLFlow example](/example/jupyter/example.ipynb) in the Jupyter notebook file lists.
+1. Open a web browser and go to '<EXTERNAL-IP>:8888', you can find the [SQLFlow example](/doc/tutorial/iris-dnn.md) in the Jupyter notebook file lists.
 
 You can refer to the [Running SQLFlow on Kubernetes](/doc/run/kubernetes.md)
 tutorial for a more comprehensive guide on deploying SQLFlow on Kubernetes
