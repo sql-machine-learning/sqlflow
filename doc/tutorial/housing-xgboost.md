@@ -1,6 +1,6 @@
 # XGBoost on SQLFlow Tutorial
 
-This is a tutorial on train/predict XGBoost model in SQLFLow, you can find more SQLFlow usage from the [User Guide](https://github.com/sql-machine-learning/sqlflow/blob/develop/doc/user_guide.md), in this tutorial you will learn how to:
+This is a tutorial on train/predict XGBoost model in SQLFLow, you can find more SQLFlow usage from the [User Guide](/doc/language_guide.md), in this tutorial you will learn how to:
 - Train a XGBoost model to fit the boston housing dataset; and
 - Predict the housing price using the trained model;
 
