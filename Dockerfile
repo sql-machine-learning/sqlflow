@@ -1,11 +1,13 @@
 FROM ubuntu:16.04
 
-RUN echo '\n\		
- deb http://us.archive.ubuntu.com/ubuntu/ xenial main restricted universe multiverse \n\		
- deb http://us.archive.ubuntu.com/ubuntu/ xenial-security main restricted universe multiverse \n\		
- deb http://us.archive.ubuntu.com/ubuntu/ xenial-updates main restricted universe multiverse \n\		
- deb http://us.archive.ubuntu.com/ubuntu/ xenial-proposed main restricted universe multiverse \n\		
- deb http://us.archive.ubuntu.com/ubuntu/ xenial-backports main restricted universe multiverse \n\		
+# The default apt-get source archive.ubuntu.com might take too much traffic and
+# has been slow. The following source makes docker build running faster.
+RUN echo '\n\
+ deb http://us.archive.ubuntu.com/ubuntu/ xenial main restricted universe multiverse \n\
+ deb http://us.archive.ubuntu.com/ubuntu/ xenial-security main restricted universe multiverse \n\
+ deb http://us.archive.ubuntu.com/ubuntu/ xenial-updates main restricted universe multiverse \n\
+ deb http://us.archive.ubuntu.com/ubuntu/ xenial-proposed main restricted universe multiverse \n\
+ deb http://us.archive.ubuntu.com/ubuntu/ xenial-backports main restricted universe multiverse \n\
  ' > /etc/apt/sources.list
 
 RUN apt-get update && apt-get install -y curl bzip2 \
@@ -40,6 +42,13 @@ COPY doc/datasets/popularize_churn.sql \
      doc/datasets/create_model_db.sql \
      /docker-entrypoint-initdb.d/
 
+ADD scripts/start.sh /
+ADD scripts/convert_markdown_into_ipynb.sh /
+
+# -----------------------------------------------------------------------------------
+# Above Steps Should be Cached for Each CI Build if Dockerfile is not Changed.
+# -----------------------------------------------------------------------------------
+
 # Build SQLFlow, copy sqlflow_submitter, convert tutorial markdown to ipython notebook
 COPY . ${GOPATH}/src/sqlflow.org/sqlflow
 RUN cd /go/src/sqlflow.org/sqlflow && \
@@ -52,8 +61,5 @@ cp -r $GOPATH/src/sqlflow.org/sqlflow/sql/python/sqlflow_submitter /miniconda/en
 cd / && \
 bash ${GOPATH}/src/sqlflow.org/sqlflow/scripts/convert_markdown_into_ipynb.sh && \
 rm -rf ${GOPATH}/src && rm -rf ${GOPATH}/bin
-
-ADD scripts/start.sh /
-ADD scripts/convert_markdown_into_ipynb.sh /
 
 CMD ["bash", "/start.sh"]
