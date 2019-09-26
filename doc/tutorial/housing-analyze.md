@@ -5,7 +5,7 @@ The [Analyzer](/doc/design/design_analyzer.md) is designed to explain the machin
 - [Train an XGBoost](/doc/tutorial/housing-xgboost.md) tree model on [the Boston housing dataset](https://www.kaggle.com/c/boston-housing).
 - Analyze the trained model using `ANALYZE` SQL statements.
 
-You can find more SQLFlow usages from the [User Guide](/doc/language_guide.md).
+You can find more SQLFlow usages from the [Language Guide](/doc/language_guide.md).
 
 We implement the analyzer based on [SHAP](https://github.com/slundberg/shap). By SQLFlow, an ANALYZE SQL will be translated to the SHAP code. SQLFlow enables the code to read the dataset and load the trained model, then draws a figure to explain the model. At this stage, SQLFlow supports using the [TreeExplianer](https://github.com/slundberg/shap#tree-ensemble-example-with-treeexplainer-xgboostlightgbmcatboostscikit-learn-models) to draw a summary plot.
 
