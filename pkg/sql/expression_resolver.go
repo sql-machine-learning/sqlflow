@@ -18,7 +18,7 @@ import (
 	"strconv"
 	"strings"
 
-	"sqlflow.org/sqlflow/sql/columns"
+	"sqlflow.org/sqlflow/pkg/sql/columns"
 )
 
 const (

@@ -21,7 +21,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"sqlflow.org/sqlflow/sqlfs"
+	"sqlflow.org/sqlflow/pkg/sqlfs"
 )
 
 type model struct {

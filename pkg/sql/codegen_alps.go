@@ -26,8 +26,8 @@ import (
 	"text/template"
 
 	"sqlflow.org/gomaxcompute"
-	pb "sqlflow.org/sqlflow/server/proto"
-	"sqlflow.org/sqlflow/sql/columns"
+	pb "sqlflow.org/sqlflow/pkg/server/proto"
+	"sqlflow.org/sqlflow/pkg/sql/columns"
 )
 
 var alpsTrainTemplate = template.Must(template.New("alps_train").Parse(alpsTrainTemplateText))

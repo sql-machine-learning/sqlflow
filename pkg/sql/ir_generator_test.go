@@ -16,7 +16,7 @@ package sql
 import (
 	"testing"
 
-	"sqlflow.org/sqlflow/sql/codegen"
+	"sqlflow.org/sqlflow/pkg/sql/codegen"
 
 	"github.com/stretchr/testify/assert"
 )

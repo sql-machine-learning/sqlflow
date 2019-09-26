@@ -19,7 +19,7 @@ import (
 	"testing"
 
 	"sqlflow.org/gomaxcompute"
-	"sqlflow.org/sqlflow/sql/testdata"
+	"sqlflow.org/sqlflow/pkg/sql/testdata"
 
 	"github.com/go-sql-driver/mysql"
 	_ "github.com/mattn/go-sqlite3"

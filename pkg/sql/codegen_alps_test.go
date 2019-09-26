@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	pb "sqlflow.org/sqlflow/server/proto"
+	pb "sqlflow.org/sqlflow/pkg/server/proto"
 )
 
 func TestTrainALPSFiller(t *testing.T) {

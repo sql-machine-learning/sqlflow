@@ -22,7 +22,7 @@ import (
 	"strings"
 
 	"github.com/olekukonko/tablewriter"
-	"sqlflow.org/sqlflow/sql"
+	"sqlflow.org/sqlflow/pkg/sql"
 )
 
 const tablePageSize = 1000
