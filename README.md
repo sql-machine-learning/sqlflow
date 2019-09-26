@@ -52,7 +52,7 @@ Done predicting. Predict table : iris.predict
 ## How to use SQLFlow
 
 - [Quick Start](/doc/quick_start.md)
-- [User Guide](/doc/language_guide.md)
+- [Language Guide](/doc/language_guide.md)
 - [Docker Installation](/doc/run/docker.md)
 
 ## Contributions
