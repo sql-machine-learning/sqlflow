@@ -24,7 +24,7 @@ if [[ $GOPATH == "" ]]; then
 fi
 
 SRC_FOLDER=${SRC_FOLDER:-doc/tutorial}
-DEST_FOLDER=${DEST_FOLDER-/workspace}
+DEST_FOLDER=${DEST_FOLDER:-/workspace}
 
 go get -u github.com/wangkuiyi/ipynb/markdown-to-ipynb
 
