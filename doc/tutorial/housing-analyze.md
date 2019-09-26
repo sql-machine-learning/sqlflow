@@ -5,7 +5,7 @@ The [Analyzer](/doc/design/design_analyzer.md) is designed to explain the machin
 - [Train an XGBoost](/doc/tutorial/housing-xgboost.md) tree model on [the Boston housing dataset](https://www.kaggle.com/c/boston-housing).
 - Analyze the trained model using `ANALYZE` SQL statements.
 
-You can find more SQLFlow usages from the [User Guide](/doc/language_guide.md).
+You can find more SQLFlow usages from the [Language Guide](/doc/language_guide.md).
 
 We implement the analyzer based on [SHAP](https://github.com/slundberg/shap). By SQLFlow, an ANALYZE SQL will be translated to the SHAP code. SQLFlow enables the code to read the dataset and load the trained model, then draws a figure to explain the model. At this stage, SQLFlow supports using the [TreeExplianer](https://github.com/slundberg/shap#tree-ensemble-example-with-treeexplainer-xgboostlightgbmcatboostscikit-learn-models) to draw a summary plot.
 
@@ -61,7 +61,7 @@ USING TreeExplainer;
 ```
 
 <p align="center">
-<img src="../figures/shap_plot_dot.png" width="500px">
+<img src="https://github.com/sql-machine-learning/sqlflow/blob/8e52276a6005f17ccfe6895f7900bf9f79131181/doc/figures/shap_plot_dot.png" width="60%">
 </p>
 
 The plot above sorts features by the sum of SHAP value magnitudes over all samples, and use SHAP values to show the distribution of the impacts each feature has on the model output. The color represents the feature values(red high, blue low). This reveals for example that a high LSTAT(% lower status of the population) lowers the predicted home price.
@@ -81,5 +81,5 @@ USING TreeExplainer;
 ```
 
 <p align="center">
-<img src="../figures/shap_plot_bar.png" width="500px">
+<img src="https://github.com/sql-machine-learning/sqlflow/blob/8e52276a6005f17ccfe6895f7900bf9f79131181/doc/figures/shap_plot_bar.png" width="60%">
 </p>
