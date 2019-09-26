@@ -86,7 +86,7 @@ go get -t ./...
 go install -v ./...
 mv $GOPATH/bin/sqlflowserver /usr/local/bin
 mv $GOPATH/bin/repl /usr/local/bin
-cp -r $GOPATH/src/sqlflow.org/sqlflow/pkg/sql/python/sqlflow_submitter /miniconda/envs/sqlflow-dev/lib/python3.6/site-packages/
+cp -r $GOPATH/src/sqlflow.org/sqlflow/python/sqlflow_submitter /miniconda/envs/sqlflow-dev/lib/python3.6/site-packages/
 cd /
 
 # 6. Install latest sqlflow_models for testing custom models, see main_test.go:CaseTrainCustomModel
