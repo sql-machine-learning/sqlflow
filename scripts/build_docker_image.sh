@@ -76,19 +76,6 @@ chown mysql:mysql /var/run/mysqld
 chown mysql:mysql /var/lib/mysql
 mkdir -p /docker-entrypoint-initdb.d
 
-# 5. Build SQLFlow binaries from the current branch.
-#    Then move binary file: "sqlflowserver" and "repl" to /usr/local/bin
-#    Then delete contents under $GOPATH to reduce the image size.
-# NOTE: During development and testing, /go will be overridden by -v.
-cd /go/src/sqlflow.org/sqlflow
-go generate ./...
-go get -t ./...
-go install -v ./...
-mv $GOPATH/bin/sqlflowserver /usr/local/bin
-mv $GOPATH/bin/repl /usr/local/bin
-cp -r $GOPATH/src/sqlflow.org/sqlflow/sql/python/sqlflow_submitter /miniconda/envs/sqlflow-dev/lib/python3.6/site-packages/
-cd /
-
 # 6. Install latest sqlflow_models for testing custom models, see main_test.go:CaseTrainCustomModel
 # NOTE: The sqlflow_models works well on the specific Tensorflow version,
 #       we can skip installing sqlflow_models if using the older Tensorflow.
