@@ -14,7 +14,6 @@
 
 SQLFLOW_MYSQL_HOST=${SQLFLOW_MYSQL_HOST:-127.0.0.1}
 SQLFLOW_MYSQL_PORT=${SQLFLOW_MYSQL_PORT:-3306}
-SQLFLOW_NOTEBOOK_DIR=${$SQLFLOW_NOTEBOOK_DIR:-/workspace}
 
 function sleep_until_mysql_is_ready() {
   until mysql -u root -proot --host ${SQLFLOW_MYSQL_HOST} --port ${SQLFLOW_MYSQL_PORT} -e ";" ; do
@@ -53,7 +52,7 @@ function setup_sqlflow_server() {
 }
 
 function setup_sqlflow_notebook() {
-  cd ${SQLFLOW_NOTEBOOK_DIR}
+  cd /workspace
   SQLFLOW_SERVER=localhost:50051 jupyter notebook --ip=0.0.0.0 --port=8888 --allow-root --NotebookApp.token=''
   cd ..
 }
