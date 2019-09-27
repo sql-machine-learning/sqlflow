@@ -62,4 +62,15 @@ cd / && \
 bash ${GOPATH}/src/sqlflow.org/sqlflow/scripts/convert_markdown_into_ipynb.sh && \
 rm -rf ${GOPATH}/src && rm -rf ${GOPATH}/bin
 
+# Install latest sqlflow_models for testing custom models, see main_test.go:CaseTrainCustomModel
+# NOTE: The sqlflow_models works well on the specific Tensorflow version,
+#       we can skip installing sqlflow_models if using the older Tensorflow.
+RUN if [ "${WITH_SQLFLOW_MODELS:-ON}" = "ON" ]; then \
+  git clone https://github.com/sql-machine-learning/models.git && \
+  cd models && \
+  bash -c "source activate sqlflow-dev && python setup.py install" && \
+  cd .. && \
+  rm -rf models; \
+fi
+
 CMD ["bash", "/start.sh"]

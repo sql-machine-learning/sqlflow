@@ -76,43 +76,32 @@ chown mysql:mysql /var/run/mysqld
 chown mysql:mysql /var/lib/mysql
 mkdir -p /docker-entrypoint-initdb.d
 
-# 6. Install latest sqlflow_models for testing custom models, see main_test.go:CaseTrainCustomModel
-# NOTE: The sqlflow_models works well on the specific Tensorflow version,
-#       we can skip installing sqlflow_models if using the older Tensorflow.
-if [ "${WITH_SQLFLOW_MODELS:-ON}" = "ON" ]; then
-  git clone https://github.com/sql-machine-learning/models.git
-  cd models
-  bash -c "source activate sqlflow-dev && python setup.py install"
-  cd ..
-  rm -rf models
-fi
-
-# 7. Install odpscmd for submitting alps predict job with odps udf script
+# 5. Install odpscmd for submitting alps predict job with odps udf script
 # TODO(Yancey1989): using gomaxcompute instead of the odpscmd command-line tool.
 wget -q http://docs-aliyun.cn-hangzhou.oss.aliyun-inc.com/assets/attach/119096/cn_zh/1557995455961/odpscmd_public.zip
 unzip -qq odpscmd_public.zip -d /usr/local/odpscmd
 ln -s /usr/local/odpscmd/bin/odpscmd /usr/local/bin/odpscmd
 rm -rf odpscmd_public.zip
 
-# 8. Load sqlflow Jupyter magic command automatically. c.f. https://stackoverflow.com/a/32683001.
+# 6. Load sqlflow Jupyter magic command automatically. c.f. https://stackoverflow.com/a/32683001.
 mkdir -p $IPYTHON_STARTUP
 mkdir -p /workspace
 echo 'get_ipython().magic(u"%reload_ext sqlflow.magic")' >> $IPYTHON_STARTUP/00-first.py
 echo 'get_ipython().magic(u"%autoreload 2")' >> $IPYTHON_STARTUP/00-first.py
 
-# 9. install xgboost
+# 7. install xgboost
 pip install xgboost==0.90
 # Re-enable this after Ant-XGBoost is ready.
 # pip install xgboost-launcher==0.0.4
 
-# 10. install Hadoop to use as the client when writing CSV to hive tables
+# 8. install Hadoop to use as the client when writing CSV to hive tables
 HADOOP_URL=https://archive.apache.org/dist/hadoop/common/hadoop-${HADOOP_VERSION}/hadoop-${HADOOP_VERSION}.tar.gz
 curl -fsSL "$HADOOP_URL" -o /tmp/hadoop.tar.gz
 tar -xzf /tmp/hadoop.tar.gz -C /opt/
 rm -rf /tmp/hadoop.tar.gz
 rm -rf /opt/hadoop-${HADOOP_VERSION}/share/doc
 
-# 11. Install additional dependencies for ElasticDL, ElasticDL CLI, and build testing images
+# 9. Install additional dependencies for ElasticDL, ElasticDL CLI, and build testing images
 apt-get install -y docker.io sudo
 curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/v1.14.0/bin/linux/amd64/kubectl && chmod +x kubectl && sudo mv kubectl /usr/local/bin/
 # TODO(terrytangyuan): Uncomment once ElasticDL is open sourced
