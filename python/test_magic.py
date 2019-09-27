@@ -40,7 +40,7 @@ class TestSQLFlowMagic(unittest.TestCase):
 
     def test_stander_sql(self):
         ret = ipython.run_cell_magic("sqlflow", "", self.select_statement)
-        ret_list = [r for r in ret.rows()]
+        ret_list = [r for r in ret.get(0).rows()]
         self.assertEqual(len(ret_list), 1)
         self.assertEqual(ret_list[0], [1.0, 0])
 

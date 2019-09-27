@@ -51,15 +51,15 @@ Done predicting. Predict table : iris.predict
 
 ## How to use SQLFlow
 
-- [Quick Start](doc/quick_start.md)
-- [User Guide](doc/user_guide.md)
-- [Docker Installation](doc/docker_install.md)
+- [Quick Start](/doc/quick_start.md)
+- [Language Guide](/doc/language_guide.md)
+- [Docker Installation](/doc/run/docker.md)
 
 ## Contributions
 
-- [Build from source](doc/build.md)
-- [The walkthrough of the source code](doc/walkthrough.md)
-- [The choice of parser generator](doc/design/design_sql_parser.md)
+- [Build from source](/doc/build.md)
+- [The walkthrough of the source code](/doc/walkthrough.md)
+- [The choice of parser generator](/doc/design/design_sql_parser.md)
 
 ## Roadmap
 

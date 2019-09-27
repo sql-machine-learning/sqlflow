@@ -10,7 +10,7 @@ It's quite simple to try out SQLFlow using [Docker](https://docs.docker.com/).
 
 For advanced usage, you might want to go on reading
 
-- [User Guide](/doc/language_guide.md)
+- [Language Guide](/doc/language_guide.md)
 - [Run Locally with Docker](/doc/run/docker.md)
 - [Run on Google Cloud](/doc/run/gcp.md)
 - [Run on Kubernetes](/doc/run/kubernetes.md)

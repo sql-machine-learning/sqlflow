@@ -18,7 +18,7 @@ In the above format,
 - `auth_mechanism` is the authentication mechanism of hiveserver2, can be `NOSASL` for unsecurest transport or `PLAIN` for SASL transport.
 - parameters with prefix `session.` is the session confiuration of Hive Thrift API, such as `session.mapreduce_job_queuename=mr` implies `mapreduce.job.queuename=mr`.
 
-You can find more details at [gohive](https://sql-machine-learning.github.io/doc_index/gohive.html).
+You can find more details at [gohive](https://github.com/sql-machine-learning/gohive).
 
 Using the `datasource` string, you can launch an all-in-one Docker container by running:
 

@@ -10,7 +10,7 @@ The [Clustering model](https://github.com/sql-machine-learning/sqlflow/blob/deve
 ## The Active Power Consumption DataSet
 We are using the active [Active Power Consumption Dataset](https://www.kaggle.com/uciml/electric-power-consumption-data-set) data as the demonstration dataset from [kaggle](https://www.kaggle.com/).
 
-The [preprocessed](/doc/tutorial/didi/activepower_clustering/activepower_preprocessing.py) data contains 50 fields. The first field is the date column, and the last field is the pattern to be predicted. The other fields are power consumption data at different times. The time interval is half an hour, and each power consumption data is a numeric feature.
+The [preprocessed](/doc/tutorial/aspara2019/activepower_clustering/activepower_preprocessing.py) data contains 50 fields. The first field is the date column, and the last field is the pattern to be predicted. The other fields are power consumption data at different times. The time interval is half an hour, and each power consumption data is a numeric feature.
 
 Here are the column descriptions of the dataset:
 
