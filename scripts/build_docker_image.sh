@@ -55,6 +55,8 @@ go get github.com/golang/protobuf/protoc-gen-go
 mv $GOPATH/bin/protoc-gen-go /usr/local/bin/
 go get golang.org/x/lint/golint
 mv $GOPATH/bin/golint /usr/local/bin
+go get golang.org/x/tools/cmd/goyacc
+mv $GOPATH/bin/goyacc /usr/local/bin/
 
 # 3. Install protobuf compiler
 wget -q https://github.com/protocolbuffers/protobuf/releases/download/v3.7.1/protoc-3.7.1-linux-x86_64.zip
