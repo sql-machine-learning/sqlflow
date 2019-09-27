@@ -17,10 +17,10 @@ import (
 	"regexp"
 	"testing"
 
-	"sqlflow.org/sqlflow/sql/columns"
+	"sqlflow.org/sqlflow/pkg/sql/columns"
 
 	"github.com/stretchr/testify/assert"
-	"sqlflow.org/sqlflow/sql/testdata"
+	"sqlflow.org/sqlflow/pkg/sql/testdata"
 )
 
 func TestCSVRegex(t *testing.T) {

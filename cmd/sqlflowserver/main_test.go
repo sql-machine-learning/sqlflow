@@ -33,9 +33,9 @@ import (
 	"github.com/golang/protobuf/ptypes/any"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/stretchr/testify/assert"
-	pb "sqlflow.org/sqlflow/server/proto"
-	"sqlflow.org/sqlflow/sql"
-	"sqlflow.org/sqlflow/sql/testdata"
+	pb "sqlflow.org/sqlflow/pkg/server/proto"
+	"sqlflow.org/sqlflow/pkg/sql"
+	"sqlflow.org/sqlflow/pkg/sql/testdata"
 )
 
 var dbConnStr string

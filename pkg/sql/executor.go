@@ -26,7 +26,7 @@ import (
 	"sync"
 	"time"
 
-	pb "sqlflow.org/sqlflow/server/proto"
+	pb "sqlflow.org/sqlflow/pkg/server/proto"
 )
 
 // Run executes a SQL query and returns a stream of rows or messages

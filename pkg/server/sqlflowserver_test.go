@@ -30,8 +30,8 @@ import (
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 
-	pb "sqlflow.org/sqlflow/server/proto"
-	sf "sqlflow.org/sqlflow/sql"
+	pb "sqlflow.org/sqlflow/pkg/server/proto"
+	sf "sqlflow.org/sqlflow/pkg/sql"
 )
 
 const (

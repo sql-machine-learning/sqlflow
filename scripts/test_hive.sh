@@ -34,7 +34,7 @@ export SQLFLOW_TEST_DB=hive
 # NOTE: we have already installed sqlflow_submitter under python installation path
 # using latest develop branch, but when testing on CI, we need to use the code in
 # the current pull request.
-export PYTHONPATH=$GOPATH/src/sqlflow.org/sqlflow/sql/python
+export PYTHONPATH=$GOPATH/src/sqlflow.org/sqlflow/python
 
 go generate ./...
 go get -v -t ./...
@@ -44,4 +44,4 @@ go install ./...
 # ref: https://stackoverflow.com/a/23840896
 SQLFLOW_log_level=debug go test -p 1 -v ./...
 
-python -m unittest discover -v sql/python "db_test.py"
+python -m unittest discover -v python "db_test.py"
