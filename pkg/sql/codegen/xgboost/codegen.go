@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"strings"
 
-	"sqlflow.org/sqlflow/sql/codegen"
+	"sqlflow.org/sqlflow/pkg/sql/codegen"
 )
 
 var attributeChecker = map[string]func(interface{}) error{

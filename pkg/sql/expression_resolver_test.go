@@ -18,7 +18,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"sqlflow.org/sqlflow/sql/columns"
+	"sqlflow.org/sqlflow/pkg/sql/columns"
 )
 
 const (

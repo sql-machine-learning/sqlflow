@@ -19,7 +19,7 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"
-	"sqlflow.org/sqlflow/sql/codegen"
+	"sqlflow.org/sqlflow/pkg/sql/codegen"
 )
 
 func TestTrain(t *testing.T) {
