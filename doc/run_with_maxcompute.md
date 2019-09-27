@@ -11,7 +11,7 @@ In the above format,
 - `accesskey_id:accesskey_secret` are the API keys for you to access aliyun. You may find it at the [user center of aliyun](https://usercenter.console.aliyun.com/#/manage/ak) after login.
 - `endpoint`. You may find it through the [workbench of aliyun](https://workbench.data.aliyun.com/console?#/) and the [configure endpoints](https://www.alibabacloud.com/help/doc-detail/34951.htm). In the workbench page, let's find the region in the workspace block, e.g.`China North 2`. Then, in the configure endpoints page, we may find out the public endpoint corresponding to the region, in this case, is `service.cn-beijing.maxcompute.aliyun-inc.com/api`. 
    
-   **Note**: please be aware that the whole endpoint is http://service.cn-beijing.maxcompute.aliyun-inc.com/api. We just take `service.cn-beijing.maxcompute.aliyun-inc.com/api` as the endpoint and the protocol(http) as `scheme` for the `datasource`.
+   **Note**: please be aware that the whole endpoint is `http://service.cn-beijing.maxcompute.aliyun-inc.com/api`. We just take `service.cn-beijing.maxcompute.aliyun-inc.com/api` as the endpoint and the protocol(http) as `scheme` for the `datasource`.
 - `curr_project` specifies the workspace name. Let's find it out in the basic information of [the workspace setting](https://workbench.data.aliyun.com/console#/).
 - `scheme` specifies the connection protocol of the endpoint. Both `http` and `https` are supported. If you need to encrypt your requests, use `https`.
 

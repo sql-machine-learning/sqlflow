@@ -12,7 +12,7 @@ Some proprietary SQL engines provide extensions to support machine learning.
 
 ### Microsoft SQL Server
 
-Microsoft SQL Server has the [machine learning service](https://docs.microsoft.com/en-us/sql/advanced-analytics/tutorials/rtsql-create-a-predictive-model-r?view=sql-server-2017) that runs machine learning programs in R or Python as an external script:
+Microsoft SQL Server has the [machine learning service](https://docs.microsoft.com/en-us/sql/advanced-analytics/?view=sql-server-2017) that runs machine learning programs in R or Python as an external script:
 
 ```sql
 CREATE PROCEDURE generate_linear_model
