@@ -78,7 +78,7 @@ We understand that a key to address the above challenges is the syntax of the SQ
 
 As the beginning of the iteration, we propose an extension to the SQL SELECT statement. We are not going a new statement way like that BigQuery provides `CREATE MODEL`, because we want to maintain a loose couple between our system and the underlying SQL engine, and we cannot create the new data type for the SQL engine, like `CREATE MODEL` requires.
 
-We highly appreciate the work of [TensorFlow Estimator](https://www.tensorflow.org/guide/estimators), a high-level API for deep learning. The basic idea behind Estimator is to implement each deep learning model, and related training/testing/evaluating algorithms as a Python class derived from `tf.estimator.Estimator`.  As we want to keep our SQL syntax simple, we would make the system extensible by calling estimators contributed by machine learning experts and written in Python.
+We highly appreciate the work of [TensorFlow Estimator](https://www.tensorflow.org/api_docs/python/tf/estimator/Estimator), a high-level API for deep learning. The basic idea behind Estimator is to implement each deep learning model, and related training/testing/evaluating algorithms as a Python class derived from `tf.estimator.Estimator`.  As we want to keep our SQL syntax simple, we would make the system extensible by calling estimators contributed by machine learning experts and written in Python.
 
 The SQL syntax must allow users to set Estimator attributes (parameters of the Python class' constructor, and those of `train`, `evaluate`, or `predict`).  Users can choose to use default values.  We have a plan to integrate our hyperparameter estimation research into the system to optimize the default values.
 
