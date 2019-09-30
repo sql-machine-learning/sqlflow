@@ -16,7 +16,6 @@ package sql
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -29,15 +28,6 @@ import (
 )
 
 var elasticdlModelDefTemplate = template.Must(template.New("elasticdl_train").Parse(elasticdlModelDefTemplateText))
-var elasticdlDataConversionTemplate = template.Must(template.New("elasticdl_data_conversion").Parse(elasticdlDataConversionTemplateText))
-
-type elasticDLDataConversionFiller struct {
-	FeaturesList    string
-	ODPSTableName   string
-	RecordIODataDir string
-	BatchSize       int
-	NumProcesses    int
-}
 
 type elasticDLFiller struct {
 	// Training or Predicting
@@ -55,6 +45,7 @@ type elasticDLFiller struct {
 
 	FeaturesDescription string
 	LabelColName        string
+	FeaturesList        string
 
 	TrainClause   *resolvedTrainClause
 	PredictClause *resolvedPredictClause
@@ -127,21 +118,6 @@ func getElasticDLModelSpec(attrs map[string]*attribute) elasticDLModelSpec {
 	}
 }
 
-func newElasticDLDataConversionFiller(pr *extendedSelect, db *DB, recordIODataDir string, batchSize int, numProcesses int) (*elasticDLDataConversionFiller, error) {
-	featureNames, err := getFeaturesNames(pr, db)
-	if err != nil {
-		log.Fatalf("Failed to get feature names from SELECT statement %v", err)
-		return nil, err
-	}
-	return &elasticDLDataConversionFiller{
-		FeaturesList:    makePythonListCode(append(featureNames, pr.label)),
-		ODPSTableName:   pr.tables[0],
-		RecordIODataDir: recordIODataDir,
-		BatchSize:       batchSize,
-		NumProcesses:    numProcesses,
-	}, err
-}
-
 func newElasticDLTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds *trainAndValDataset) (*elasticDLFiller, error) {
 	resolved, err := resolveTrainClause(&pr.trainClause, &pr.standardSelect, nil)
 	if err != nil {
@@ -173,6 +149,7 @@ func newElasticDLTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds
 		TrainInputTable:     trainInput,
 		EvalInputTable:      evalInput,
 		FeaturesDescription: genFeaturesDescription(featureNames),
+		FeaturesList:        makePythonListCode(append(featureNames, pr.label)),
 		LabelColName:        pr.label,
 		TrainClause:         resolved,
 		ModelDir:            pr.trainClause.save,
@@ -198,44 +175,13 @@ func newElasticDLPredictFiller(pr *extendedSelect, db *DB) (*elasticDLFiller, er
 		PredictInputModel:   resolved.ModelName,
 		OutputShape:         getElasticDLModelSpec(resolved.ModelConstructorParams).NumClasses,
 		FeaturesDescription: genFeaturesDescription(featureNames),
+		FeaturesList:        makePythonListCode(append(featureNames, pr.label)),
 		InputShape:          len(featureNames),
 		PredictClause:       resolved,
 	}, err
 }
 
-func elasticDLDataConversion(pr *extendedSelect, db *DB, cwd string) (string, error) {
-	// TODO: Execute the script inside container where ElasticDL is available
-	var dataConversionProgram bytes.Buffer
-	recordIODataDir := ""
-	recordIODataDir, err := ioutil.TempDir("/tmp", "recordio_data_dir_")
-	if err != nil {
-		return recordIODataDir, err
-	}
-	// TODO: Also need to generate evaluation data
-	dataConversionFiller, err := newElasticDLDataConversionFiller(pr, db, recordIODataDir, 200, 1)
-	if err != nil {
-		return recordIODataDir, err
-	}
-	if err = elasticdlDataConversionTemplate.Execute(&dataConversionProgram, dataConversionFiller); err != nil {
-		return recordIODataDir, fmt.Errorf("Failed executing data conversion template: %v", err)
-	}
-	dataConversionScriptPath := "data_conversion.py"
-	dataConversionScript, err := os.Create(filepath.Join(cwd, dataConversionScriptPath))
-	if err != nil {
-		return recordIODataDir, fmt.Errorf("Create python code failed %v", err)
-	}
-	dataConversionScript.WriteString(dataConversionProgram.String())
-	dataConversionScript.Close()
-	return recordIODataDir, nil
-}
-
 func elasticDLTrain(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *pb.Session, ds *trainAndValDataset) error {
-	// Write data conversion script
-	recordIODataDir, err := elasticDLDataConversion(pr, db, cwd)
-	if err != nil {
-		return err
-	}
-
 	// Write model definition file
 	var elasticdlProgram bytes.Buffer
 	trainFiller, err := newElasticDLTrainFiller(pr, db, session, ds)
@@ -257,7 +203,7 @@ func elasticDLTrain(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, sessi
 	modelDefFile.Close()
 
 	// Create and execute ElasticDL training command
-	cmd := elasticdlTrainCmd(cwd, modelDefFilePath, recordIODataDir, trainFiller)
+	cmd := elasticdlTrainCmd(cwd, modelDefFilePath, trainFiller)
 	cmd.Stdout = cw
 	cmd.Stderr = cw
 	if e := cmd.Run(); e != nil {
@@ -266,7 +212,7 @@ func elasticDLTrain(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, sessi
 	return nil
 }
 
-func elasticdlTrainCmd(cwd, modelDefFilePath string, recordIODataDir string, filler *elasticDLFiller) (cmd *exec.Cmd) {
+func elasticdlTrainCmd(cwd, modelDefFilePath string, filler *elasticDLFiller) (cmd *exec.Cmd) {
 	if hasDocker() {
 		cmd = exec.Command(
 			"elasticdl", "train",
@@ -276,9 +222,8 @@ func elasticdlTrainCmd(cwd, modelDefFilePath string, recordIODataDir string, fil
 			// TODO: Get this from model name
 			"--model_zoo", "model_zoo",
 			"--model_def", modelDefFilePath,
-			"--training_data_dir", recordIODataDir,
-			// TODO: Use a separate directory for evaluation data
-			"--evaluation_data_dir", recordIODataDir,
+			"--training_data_dir", filler.TrainInputTable,
+			"--evaluation_data_dir", filler.EvalInputTable,
 			"--num_epochs", string(filler.TrainClause.Epoch),
 			"--master_resource_request", filler.TrainClause.EngineParams.masterResourceRequest,
 			"--master_resource_limit", filler.TrainClause.EngineParams.masterResourceLimit,
@@ -293,6 +238,7 @@ func elasticdlTrainCmd(cwd, modelDefFilePath string, recordIODataDir string, fil
 			"--minibatch_size", string(filler.TrainClause.EngineParams.minibatchSize),
 			"--master_pod_priority", filler.TrainClause.EngineParams.masterPodPriority,
 			"--cluster_spec", filler.TrainClause.EngineParams.clusterSpec,
+			// TODO: Update to use `num_minibatches_per_task` instead
 			"--records_per_task", string(filler.TrainClause.EngineParams.recordsPerTask),
 			"--log_level", "INFO",
 			"--output", filler.ModelDir,
@@ -302,6 +248,8 @@ func elasticdlTrainCmd(cwd, modelDefFilePath string, recordIODataDir string, fil
 			"--tensorboard_log_dir", filler.TrainClause.TensorboardLogDir,
 			"--checkpoint_dir", filler.TrainClause.CheckpointDir,
 			"--keep_checkpoint_max", string(filler.TrainClause.KeepCheckpointMax),
+			// TODO: Append ODPS related environment variables to "--envs"
+			"--data_reader_params", `'columns=` + string(filler.FeaturesList + `'`)
 		)
 		cmd.Dir = cwd
 	} else {
@@ -311,12 +259,6 @@ func elasticdlTrainCmd(cwd, modelDefFilePath string, recordIODataDir string, fil
 }
 
 func elasticDLPredict(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *pb.Session, ds *trainAndValDataset) error {
-	// Write data conversion script
-	recordIODataDir, err := elasticDLDataConversion(pr, db, cwd)
-	if err != nil {
-		return err
-	}
-
 	// Write model definition file
 	var elasticdlProgram bytes.Buffer
 	predictFiller, err := newElasticDLPredictFiller(pr, db)
@@ -374,6 +316,8 @@ func elasticdlPredictCmd(cwd, modelDefFilePath string, recordIODataDir string, f
 			"--cluster_spec", filler.PredictClause.EngineParams.clusterSpec,
 			"--records_per_task", string(filler.PredictClause.EngineParams.recordsPerTask),
 			"--log_level", "INFO",
+			// TODO: Append ODPS related environment variables to "--envs"
+			"--data_reader_params", `'columns=` + string(filler.FeaturesList + `'`)
 		)
 		cmd.Dir = cwd
 	} else {
