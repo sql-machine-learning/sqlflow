@@ -249,7 +249,7 @@ func elasticdlTrainCmd(cwd, modelDefFilePath string, filler *elasticDLFiller) (c
 			"--checkpoint_dir", filler.TrainClause.CheckpointDir,
 			"--keep_checkpoint_max", string(filler.TrainClause.KeepCheckpointMax),
 			// TODO: Append ODPS related environment variables to "--envs"
-			"--data_reader_params", `'columns=` + string(filler.FeaturesList + `'`),
+			"--data_reader_params", `'columns=`+string(filler.FeaturesList+`'`),
 		)
 		cmd.Dir = cwd
 	} else {
@@ -280,7 +280,7 @@ func elasticDLPredict(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, ses
 	modelDefFile.Close()
 
 	// Create and execute ElasticDL prediction command
-	cmd := elasticdlPredictCmd(cwd, modelDefFilePath, recordIODataDir, predictFiller)
+	cmd := elasticdlPredictCmd(cwd, modelDefFilePath, predictFiller)
 	cmd.Stdout = cw
 	cmd.Stderr = cw
 	if e := cmd.Run(); e != nil {
@@ -289,7 +289,7 @@ func elasticDLPredict(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, ses
 	return nil
 }
 
-func elasticdlPredictCmd(cwd, modelDefFilePath string, recordIODataDir string, filler *elasticDLFiller) (cmd *exec.Cmd) {
+func elasticdlPredictCmd(cwd, modelDefFilePath string, filler *elasticDLFiller) (cmd *exec.Cmd) {
 	if hasDocker() && hasElasticDLCmd() {
 		cmd = exec.Command(
 			"elasticdl", "predict",
@@ -299,7 +299,7 @@ func elasticdlPredictCmd(cwd, modelDefFilePath string, recordIODataDir string, f
 			// TODO: Get this from model name
 			"--model_zoo", "model_zoo",
 			"--model_def", modelDefFilePath,
-			"--prediction_data_dir", recordIODataDir,
+			"--prediction_data_dir", filler.PredictInputTable,
 			"--checkpoint_filename_for_init", filler.PredictClause.CheckpointFilenameForInit,
 			"--master_resource_request", filler.PredictClause.EngineParams.masterResourceRequest,
 			"--master_resource_limit", filler.PredictClause.EngineParams.masterResourceLimit,
@@ -317,7 +317,7 @@ func elasticdlPredictCmd(cwd, modelDefFilePath string, recordIODataDir string, f
 			"--records_per_task", string(filler.PredictClause.EngineParams.recordsPerTask),
 			"--log_level", "INFO",
 			// TODO: Append ODPS related environment variables to "--envs"
-			"--data_reader_params", `'columns=` + string(filler.FeaturesList + `'`),
+			"--data_reader_params", `'columns=`+string(filler.FeaturesList+`'`),
 		)
 		cmd.Dir = cwd
 	} else {
