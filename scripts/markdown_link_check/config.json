@@ -1,0 +1,13 @@
+{
+    "ignorePatterns": [
+        {
+            "pattern": "^http://example.net"
+        }
+    ],
+    "replacementPatterns": [
+        {
+            "pattern": "^/",
+            "replacement": "https://github.com/sql-machine-learning/sqlflow/tree/develop/"
+        }
+    ]
+}

@@ -126,8 +126,7 @@ def main(argv=None):
             new_contents = generate_copyright(
                 COPYRIGHT, lang_type(filename)) + "\n".join(original_content_lines)
         print('Auto Insert Copyright Header {}'.format(filename))
-        retv = 1
-        with io.open(filename, 'w') as output_file:
+        with io.open(filename, 'w', encoding='utf8') as output_file:
             output_file.write(new_contents)
 
     return retv
