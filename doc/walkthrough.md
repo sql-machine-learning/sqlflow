@@ -40,7 +40,7 @@ Once the SQLFlow server receives a batch of SQL statements via a gRPC call, it r
 
 1. the [parser](https://github.com/sql-machine-learning/sqlflow/tree/develop/pkg/sql/sql.y) to generate parsing result,
 2. the [verifier](https://github.com/sql-machine-learning/sqlflow/tree/develop/pkg/sql/verifier.go) to verify the semantics given the parsing result,
-3. the [code generator](https://github.com/sql-machine-learning/sqlflow/tree/pkg/develop/sql/codegen.go) to generate a Python program, or the *submitter*, from the parsing result,
+3. the [code generator](https://github.com/sql-machine-learning/sqlflow/tree/develop/pkg/sql/codegen.go) to generate a Python program, or the *submitter*, from the parsing result,
 4. the [executor](https://github.com/sql-machine-learning/sqlflow/tree/develop/pkg/sql/executor.go) that runs the submitter locally.
 
 Step 3. and 4. are only for a SQL statement of extended syntax; otherwise, SQLFlow server proxies the standard-syntax statement to the SQL engine.
