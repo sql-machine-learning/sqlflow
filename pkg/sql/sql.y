@@ -102,6 +102,9 @@
 
 	func attrsUnion(as1, as2 attrs) attrs {
 		for k, v := range as2 {
+			if _, ok := as1[k]; ok {
+				log.Panicf("attr %q already specified", as2)
+			}
 			as1[k] = v
 		}
 		return as1
