@@ -249,7 +249,7 @@ func elasticdlTrainCmd(cwd, modelDefFilePath string, filler *elasticDLFiller) (c
 			"--checkpoint_dir", filler.TrainClause.CheckpointDir,
 			"--keep_checkpoint_max", string(filler.TrainClause.KeepCheckpointMax),
 			// TODO: Append ODPS related environment variables to "--envs"
-			"--data_reader_params", `'columns=` + string(filler.FeaturesList + `'`)
+			"--data_reader_params", `'columns=` + string(filler.FeaturesList + `'`),
 		)
 		cmd.Dir = cwd
 	} else {
@@ -317,7 +317,7 @@ func elasticdlPredictCmd(cwd, modelDefFilePath string, recordIODataDir string, f
 			"--records_per_task", string(filler.PredictClause.EngineParams.recordsPerTask),
 			"--log_level", "INFO",
 			// TODO: Append ODPS related environment variables to "--envs"
-			"--data_reader_params", `'columns=` + string(filler.FeaturesList + `'`)
+			"--data_reader_params", `'columns=` + string(filler.FeaturesList + `'`),
 		)
 		cmd.Dir = cwd
 	} else {
