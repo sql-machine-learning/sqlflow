@@ -53,7 +53,9 @@ type engineSpec struct {
 	minibatchSize         int
 	masterPodPriority     string
 	clusterSpec           string
-	recordsPerTask        int
+	numMinibatchesPerTask int
+	dockerImageRepository string
+	envs                  string
 }
 
 func getEngineSpec(attrs map[string]*attribute) engineSpec {
@@ -106,7 +108,9 @@ func getEngineSpec(attrs map[string]*attribute) engineSpec {
 	minibatchSize := getInt("minibatch_size", 64)
 	masterPodPriority := getString("master_pod_priority", "")
 	clusterSpec := getString("cluster_spec", "")
-	recordsPerTask := getInt("records_per_task", 100)
+	numMinibatchesPerTask := getInt("num_minibatches_per_task", 10)
+	dockerImageRepository := getString("docker_image_repository", "")
+	envs := getString("envs", "")
 
 	return engineSpec{
 		etype:                 engineType,
@@ -126,7 +130,9 @@ func getEngineSpec(attrs map[string]*attribute) engineSpec {
 		minibatchSize:         minibatchSize,
 		masterPodPriority:     masterPodPriority,
 		clusterSpec:           clusterSpec,
-		recordsPerTask:        recordsPerTask,
+		numMinibatchesPerTask: numMinibatchesPerTask,
+		dockerImageRepository: dockerImageRepository,
+		envs:                  envs,
 	}
 }
 

@@ -238,8 +238,7 @@ func elasticdlTrainCmd(cwd, modelDefFilePath string, filler *elasticDLFiller) (c
 			"--minibatch_size", string(filler.TrainClause.EngineParams.minibatchSize),
 			"--master_pod_priority", filler.TrainClause.EngineParams.masterPodPriority,
 			"--cluster_spec", filler.TrainClause.EngineParams.clusterSpec,
-			// TODO: Update to use `num_minibatches_per_task` instead
-			"--records_per_task", string(filler.TrainClause.EngineParams.recordsPerTask),
+			"--num_minibatches_per_task", string(filler.TrainClause.EngineParams.numMinibatchesPerTask),
 			"--log_level", "INFO",
 			"--output", filler.ModelDir,
 			"--checkpoint_steps", string(filler.TrainClause.CheckpointSteps),
@@ -248,7 +247,8 @@ func elasticdlTrainCmd(cwd, modelDefFilePath string, filler *elasticDLFiller) (c
 			"--tensorboard_log_dir", filler.TrainClause.TensorboardLogDir,
 			"--checkpoint_dir", filler.TrainClause.CheckpointDir,
 			"--keep_checkpoint_max", string(filler.TrainClause.KeepCheckpointMax),
-			// TODO: Append ODPS related environment variables to "--envs"
+			"--docker_image_repository", string(filler.TrainClause.EngineParams.dockerImageRepository),
+			"--envs", string(filler.TrainClause.EngineParams.envs),
 			"--data_reader_params", `'columns=`+string(filler.FeaturesList+`'`),
 		)
 		cmd.Dir = cwd
@@ -314,9 +314,10 @@ func elasticdlPredictCmd(cwd, modelDefFilePath string, filler *elasticDLFiller) 
 			"--minibatch_size", string(filler.PredictClause.EngineParams.minibatchSize),
 			"--master_pod_priority", filler.PredictClause.EngineParams.masterPodPriority,
 			"--cluster_spec", filler.PredictClause.EngineParams.clusterSpec,
-			"--records_per_task", string(filler.PredictClause.EngineParams.recordsPerTask),
+			"--num_minibatches_per_task", string(filler.PredictClause.EngineParams.numMinibatchesPerTask),
 			"--log_level", "INFO",
-			// TODO: Append ODPS related environment variables to "--envs"
+			"--docker_image_repository", string(filler.TrainClause.EngineParams.dockerImageRepository),
+			"--envs", string(filler.TrainClause.EngineParams.envs),
 			"--data_reader_params", `'columns=`+string(filler.FeaturesList+`'`),
 		)
 		cmd.Dir = cwd
