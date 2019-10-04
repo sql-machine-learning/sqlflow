@@ -1,5 +1,7 @@
 # Workflow
 
+Motivation
+
 ## Concepts
 
 
@@ -15,8 +17,8 @@ Using function?
 
 Some base jobs
 
-WorkflowParam represents intermediate values passed between steps, and can also be used to find out dependencies. (name, owner_step, type)
-Argo里如何描述input/output?
+WorkflowParam represents intermediate values passed between steps, and can also be used to find out dependencies. (name, owner_step, type).
+How inputs/outputs are supported in Argo now?
 
 ```python
 # Base job
@@ -59,17 +61,16 @@ class ResourceJob(BaseJob):
 ```
 
 ```python
-# loop里面如果是一个linear sequence咋办？只能弄成subDAG？
+# What is loop has a linear sequence inside?
 @for_loop()
 @while_loop()
 @when(step1.output.a="abc")
 
 # For a simple bash step
-# 这里为啥要搞一个function进来？for/while-loop和check branching是不是要在这里做？
 @Run_with(....)
 @for_loop(....)
 def print_date():
-    return BashOp(
+    return ContainerJob(
         name="name",
         image="",
         command="",
@@ -89,20 +90,6 @@ def create_workflow():
 ArgoRunner().run(create_workflow())
 ```
 
-每个step本身是一个function，function可以return一个类？
-
-Three different type of steps:
-
-- Single container job
-- A k8s resource job
-- 
-
-
-input/output如何处理？
-
-while-loop
-for-loop
-conditional branching
 
 **Non-conditional Loop**
 	Static loop: authors specify the number of iterations in the DSL code.
@@ -113,9 +100,3 @@ The loop condition is based on the runtime statuses and the downstream operators
 
 
 **How to describe dependencies?**
-
-
-ConditionOperator
-
-
-
