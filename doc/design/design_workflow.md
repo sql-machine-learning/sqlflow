@@ -1,6 +1,10 @@
 # Workflow
 
-Motivation
+## Motivation
+
+Programming languages are a natural solution to workflow description. We want an API, other than programming languages, because we want to force users to explicitly declare steps and their dependencies. Given such information, we could identify shared parts between workflows, which might come from a user or different users, and remove redundent executions of the shared parts.
+
+A secondary motivation is to identify steps that could run simultaneously from dependency analysis. Or, in short, to improve concurrency of the execution of a workflow.
 
 ## Concepts
 
