@@ -59,7 +59,9 @@ func TestTrainElasticDLFiller(t *testing.T) {
 			engine.minibatch_size = 64,
 			engine.master_pod_priority = "",
 			engine.cluster_spec = "",
-			engine.records_per_task = 100
+			engine.num_minibatches_per_task = 10,
+			engine.docker_image_repository = "",
+			engine.envs = ""
 		COLUMN
 			sepal_length, sepal_width, petal_length, petal_width
 		LABEL class

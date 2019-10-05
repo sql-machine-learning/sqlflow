@@ -798,7 +798,9 @@ WITH
 			engine.minibatch_size = 64,
 			engine.master_pod_priority = "",
 			engine.cluster_spec = "",
-			engine.records_per_task = 100
+			engine.num_minibatches_per_task = 10,
+			engine.docker_image_repository = "",
+			engine.envs = ""
 LABEL class
 INTO trained_elasticdl_keras_classifier;`, caseDB, caseTrainTable)
 
