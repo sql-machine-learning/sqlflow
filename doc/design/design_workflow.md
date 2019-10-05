@@ -2,7 +2,9 @@
 
 ## Motivation
 
-Programming languages are a natural solution to workflow description. We want an API, other than programming languages, because we want to force users to explicitly declare steps and their dependencies. Given such information, we could identify shared parts between workflows, which might come from a user or different users, and remove redundent executions of the shared parts.
+SQLFlow translates a SQL program, perhaps with extended SQL syntax for AI, into a workflow. Currently, it translates a SQL program into a Python program.
+
+Programming languages are a natural solution to workflow description. However, we want another way of workflow description, because we want to force users to explicitly declare steps and their dependencies. Given such information, we could identify shared parts between workflows, which might come from a user or different users, and remove redundent executions of the shared parts.
 
 A secondary motivation is to identify steps that could run simultaneously from dependency analysis. Or, in short, to improve concurrency of the execution of a workflow.
 
@@ -10,25 +12,25 @@ A secondary motivation is to identify steps that could run simultaneously from d
 
 ### Programming Languages
 
-Programming language are the most intuitive way to describe a workflow. And, they can describe pretty complex workflows. The minimum computational unit in proramming langauges is CPU instructions, which are often hidden from programmers.  For AI system developers, most workflows consist of steps with a certain granularity -- a job running on Kubernetes.  It is true that the language runtime, i.e., the compilers and interpreters, often optimzie the exeuction of the "workflow" by concurrently running CPU instructions, but they don't parallelize jobs.
+Programming language are the most intuitive way to describe a workflow. And, they can describe pretty complex workflows. The minimum computational unit in proramming langauges is some primitive built-in functions and operators.  For AI system developers, most workflows consist of steps with a certain granularity -- a job running on Kubernetes.  It is true that the language runtime, i.e., the compilers and interpreters, often optimzie the exeuction of the "workflow" by concurrently running primitives, but they don't parallelize jobs.
 
 We prefer the intuitive description of workflows provided by programming languages, but we need to define a certian granulairty as steps.
 
 ### TensorFlow
 
-TenosrFlow 1.x provides a define-and-run API that describes a computation process, adding some steps into it (known as autodiff in the terminology of deep learning), then run the computation process.  TensorFlow 1.x represents the process as a data structure known as *graph*, which looks very similar to workflow.
+TensorFlow is a deep learning system, which allows users to describe a computaiton process known as the *forward pass*, and runs an algorithm kownn as *autodiff* to derive the *backward pass* automatically from the forward pass.
 
-We prefer the workflow engine represents each workflow as a data structure, so we can identify shared parts among multiple graphs, and merge multiple workflows into a big one without redundent parts.
+TenosrFlow 1.x represents the computation process by a data structure known as a *graph*, whose each node is a step, known as a *TensorFlow operation*.
+
+We prefer the workflow engine represents each workflow as a data structure or something similar, so we can identify shared parts among multiple graphs, and merge multiple workflows into a big one without redundent parts.
 
 ### Google Tangent
 
 Tangent is another deep learning system developed by Google. In contrast to TensorFlow, it represents the computation process by Python source code, other than a graph.
 
-As a deep learning system, Tangent needs to do autodiff to add steps of the backward pass.  It parses the Python source code into an abstract syntax tree (AST) and adds the backward steps into the AST tree, then prints the AST tree into a new segment of Python code.
+Tangent does autodiff by parsing the Python source code into an abstract syntax tree (AST), adding the backward steps into the AST tree, and printing the AST tree into a new snippet of Python code.
 
-Google Tangent allows users to describe the deep learning computaiton process, in particular, the forward pass, in Python, which is familar to most programmers.  Such convenience is what we want.
-
-Tangent doesn't support all Python syntax used in the description of the forward pass. Similarly, we might not allow all Python syntax used to describe the workflow, if we follow the Tangent way.
+We like the capability of describing the computation process by a program.  Tangent doesn't support all Python syntax used in the description of the forward pass. Similarly, we might not allow all Python syntax used to describe the workflow, if we follow the Tangent way.  The steps in Tagnent include some pre-listed functions, mostly, TensorFlow operations, and Python operators.
 
 ## Concepts
 
