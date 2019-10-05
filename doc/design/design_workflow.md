@@ -12,13 +12,13 @@ A secondary motivation is to identify steps that could run simultaneously from d
 
 ### Programming Languages
 
-Programming language are the most intuitive way to describe a workflow. And, they can describe pretty complex workflows. The minimum computational unit in proramming langauges is some primitive built-in functions and operators.  For AI system developers, most workflows consist of steps with a certain granularity -- a job running on Kubernetes.  It is true that the language runtime, i.e., the compilers and interpreters, often optimzie the exeuction of the "workflow" by concurrently running primitives, but they don't parallelize jobs.
+Programming languages are the most intuitive way to describe a workflow. And, they can describe pretty complex workflows. The minimum computational unit in proramming languages is some primitive built-in functions and operators.  For AI system developers, most workflows consist of steps with a certain granularity -- a job running on Kubernetes.  It is true that the language runtime, i.e., the compilers and interpreters, often optimzie the execution of the "workflow" by concurrently running primitives, but they don't parallelize jobs.
 
-We prefer the intuitive description of workflows provided by programming languages, but we need to define a certian granulairty as steps.
+We prefer the intuitive description of workflows provided by programming languages, but we need to define a certain granulairty as steps.
 
 ### TensorFlow
 
-TensorFlow is a deep learning system, which allows users to describe a computaiton process known as the *forward pass*, and runs an algorithm kownn as *autodiff* to derive the *backward pass* automatically from the forward pass.
+TensorFlow is a deep learning system, which allows users to describe a computation process known as the *forward pass*, and runs an algorithm known as *autodiff* to derive the *backward pass* automatically from the forward pass.
 
 TenosrFlow 1.x represents the computation process by a data structure known as a *graph*, whose each node is a step, known as a *TensorFlow operation*.
 
@@ -34,18 +34,7 @@ We like the capability of describing the computation process by a program.  Tang
 
 ## Concepts
 
-
-
-
-What is workflow?
-
-**What are included in a workflow specification?**
-workflow + step
-
-**How to define a workflow step?**
-Using function?
-
-Some base jobs
+Some base jobs.
 
 WorkflowParam represents intermediate values passed between steps, and can also be used to find out dependencies. (name, owner_step, type).
 How inputs/outputs are supported in Argo now?
@@ -90,43 +79,37 @@ class ResourceJob(BaseJob):
 
 ```
 
+**Branching**
 ```python
-# What is loop has a linear sequence inside?
-@for_loop()
-@while_loop()
-@when(step1.output.a="abc")
+step1 = self.create_step1()
+step2 = self.create_step2()
+step3 = self.create_step3()
 
-# For a simple bash step
-@Run_with(....)
-@for_loop(....)
-def print_date():
-    return ContainerJob(
-        name="name",
-        image="",
-        command="",
-        args="",
-    )
-
-
-# Define a workflow
-def create_workflow():
-    ...
-    return Workflow(
-        name="pipeline1",
-        steps=[a, b, c],
-        ...
-    )
-
-ArgoRunner().run(create_workflow())
+output1 = self.run(step1, args1)
+if output1.field_a == 0:
+    self.run(step2, args2)
+else:
+    self.run(step3, args3)
 ```
 
+**Static loop**
+```python
+step1 = self.create_step1()
+step2 = self.create_step2()
 
-**Non-conditional Loop**
-	Static loop: authors specify the number of iterations in the DSL code.
-	Dynamic loop: Since argo supports template parameters, the number of iterations could be from the input parameters when users submit the pipeline run.
+self.run(step1)
+for x in ["apple", "banana", "cherry"]:
+    self.run(step2, x)
+```
 
-**Conditional Loop**
-The loop condition is based on the runtime statuses and the downstream operators can depend on the loop as a whole and specify the I/O dependencies. However, the downstream operators can only access the output from the loop of the last iteration. 
+**Dynamic loop**
 
+```python
+step1 = self.create_step1()
+step2 = self.create_step2()
 
-**How to describe dependencies?**
+while output and output != "head":
+    output = self.run(step1, args1)
+
+self.run(step2, args2)
+```
