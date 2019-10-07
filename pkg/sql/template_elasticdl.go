@@ -36,42 +36,46 @@ def custom_model():
 
 
 def loss(output, labels):
-    labels = tf.reshape(labels, [-1])
-    return tf.reduce_mean(
-        input_tensor=tf.nn.sparse_softmax_cross_entropy_with_logits(
-            logits=output, labels=labels
-        )
-    )
+    return tf.reduce_sum(tf.reduce_mean(tf.reshape(output, [-1])) - labels)
 
 
 def optimizer(lr=0.1):
     return tf.optimizers.SGD(lr)
 
 
-// TODO: Update to use dataset_fn compatible with ODPS data source
-def dataset_fn(dataset, mode):
+def dataset_fn(dataset, mode, metadata):
     def _parse_data(record):
-        if mode == Mode.PREDICTION:
-            feature_description = {
-                {{.FeaturesDescription}}
-            }
-        else:
-            feature_description = {
-                {{.FeaturesDescription}}
-                {{if .IsTraining}}
-                "{{.LabelColName}}": tf.io.FixedLenFeature([1], tf.int64),
-                {{end}}
-            }
-        parsed_example = tf.io.parse_single_example(record, feature_description)
 
-        if mode == Mode.PREDICTION:
-            return parsed_example
+        def _get_features_without_labels(
+            record, label_col_ind, features_shape
+        ):
+            features = [
+                record[:label_col_ind],
+                record[label_col_ind + 1 :],  # noqa: E203
+            ]
+            features = tf.concat(features, -1)
+            return tf.reshape(features, features_shape)
+
+        features_shape = ({{.InputShape}}, 1)
+        labels_shape = (1,)
         {{if .IsTraining}}
-        else:
-            labels = tf.cast(parsed_example["{{.LabelColName}}"], tf.int64)
-            del parsed_example["{{.LabelColName}}"]
-            return parsed_example, labels
+        label_col_name = "{{.LabelColName}}"
+        if mode != Mode.PREDICTION:
+            if label_col_name not in metadata.column_names:
+                raise ValueError(
+                    "Missing the label column '%s' in the retrieved "
+                    "table." % label_col_name
+                )
+            label_col_ind = metadata.column_names.index(label_col_name)
+            labels = tf.reshape(record[label_col_ind], labels_shape)
+            return (
+                _get_features_without_labels(
+                    record, label_col_ind, features_shape
+                ),
+                labels,
+            )
         {{end}}
+        return tf.reshape(record, features_shape)
 
     dataset = dataset.map(_parse_data)
 
@@ -84,16 +88,9 @@ def dataset_fn(dataset, mode):
 
 
 def eval_metrics_fn(predictions, labels):
-    labels = tf.reshape(labels, [-1])
     return {
-        "accuracy": tf.reduce_mean(
-            input_tensor=tf.cast(
-                tf.equal(
-                    tf.argmax(predictions, 1, output_type=tf.dtypes.int64),
-                    labels,
-                ),
-                tf.float32,
-            )
+        "dummy_metric": tf.reduce_sum(
+            tf.reduce_mean(tf.reshape(predictions, [-1])) - labels
         )
     }
 
