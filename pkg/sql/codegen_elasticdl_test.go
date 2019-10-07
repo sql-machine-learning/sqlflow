@@ -84,10 +84,8 @@ func TestTrainElasticDLFiller(t *testing.T) {
 	code := program.String()
 	a.True(strings.Contains(code, `if mode != Mode.PREDICTION and "true" == "true":`), code)
 	a.True(strings.Contains(code, `dataset = dataset.shuffle(buffer_size=120)`), code)
-	a.True(strings.Contains(code, `"class": tf.io.FixedLenFeature([1], tf.int64),`), code)
-	a.True(strings.Contains(code, `"petal_length": tf.io.FixedLenFeature([1], tf.float32), "petal_width": tf.io.FixedLenFeature([1], tf.float32), "sepal_length": tf.io.FixedLenFeature([1], tf.float32), "sepal_width": tf.io.FixedLenFeature([1], tf.float32),`), code)
-	a.True(strings.Contains(code, `labels = tf.cast(parsed_example["class"], tf.int64)`), code)
-	a.True(strings.Contains(code, `return parsed_example, labels`), code)
+	a.True(strings.Contains(code, `label_col_name = "class"`), code)
+	a.True(strings.Contains(code, `features_shape = (4, 1)`), code)
 	a.True(strings.Contains(code, `inputs = tf.keras.layers.Input(shape=(4, 1), name="input")`), code)
 	a.True(strings.Contains(code, `outputs = tf.keras.layers.Dense(10, name="output")(inputs)`), code)
 }
@@ -121,7 +119,7 @@ func TestPredElasticDLFiller(t *testing.T) {
 	a.True(strings.Contains(code, `columns=["pred_" + str(i) for i in range(10)]`), code)
 	a.True(strings.Contains(code, `column_types=["double" for _ in range(10)]`), code)
 	a.True(strings.Contains(code, `table="prediction_results_table"`), code)
-	a.True(strings.Contains(code, `"petal_length": tf.io.FixedLenFeature([1], tf.float32), "petal_width": tf.io.FixedLenFeature([1], tf.float32), "sepal_length": tf.io.FixedLenFeature([1], tf.float32), "sepal_width": tf.io.FixedLenFeature([1], tf.float32),`), code)
+	a.True(strings.Contains(code, `tf.reshape(record, features_shape)`), code)
 	a.True(strings.Contains(code, `inputs = tf.keras.layers.Input(shape=(4, 1), name="input")`), code)
 }
 

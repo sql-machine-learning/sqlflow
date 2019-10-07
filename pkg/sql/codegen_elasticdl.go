@@ -145,16 +145,15 @@ func newElasticDLTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds
 		trainInput, evalInput = pr.tables[0], pr.tables[0]
 	}
 	return &elasticDLFiller{
-		IsTraining:          true,
-		TrainInputTable:     trainInput,
-		EvalInputTable:      evalInput,
-		FeaturesDescription: genFeaturesDescription(featureNames),
-		FeaturesList:        makePythonListCode(append(featureNames, pr.label)),
-		LabelColName:        pr.label,
-		TrainClause:         resolved,
-		ModelDir:            pr.trainClause.save,
-		InputShape:          len(featureNames),
-		OutputShape:         getElasticDLModelSpec(resolved.ModelConstructorParams).NumClasses,
+		IsTraining:      true,
+		TrainInputTable: trainInput,
+		EvalInputTable:  evalInput,
+		FeaturesList:    makePythonListCode(append(featureNames, pr.label)),
+		LabelColName:    pr.label,
+		TrainClause:     resolved,
+		ModelDir:        pr.trainClause.save,
+		InputShape:      len(featureNames),
+		OutputShape:     getElasticDLModelSpec(resolved.ModelConstructorParams).NumClasses,
 	}, err
 }
 
@@ -169,15 +168,14 @@ func newElasticDLPredictFiller(pr *extendedSelect, db *DB) (*elasticDLFiller, er
 		return nil, err
 	}
 	return &elasticDLFiller{
-		IsTraining:          false,
-		PredictInputTable:   pr.tables[0],
-		PredictOutputTable:  resolved.OutputTable,
-		PredictInputModel:   resolved.ModelName,
-		OutputShape:         getElasticDLModelSpec(resolved.ModelConstructorParams).NumClasses,
-		FeaturesDescription: genFeaturesDescription(featureNames),
-		FeaturesList:        makePythonListCode(append(featureNames, pr.label)),
-		InputShape:          len(featureNames),
-		PredictClause:       resolved,
+		IsTraining:         false,
+		PredictInputTable:  pr.tables[0],
+		PredictOutputTable: resolved.OutputTable,
+		PredictInputModel:  resolved.ModelName,
+		OutputShape:        getElasticDLModelSpec(resolved.ModelConstructorParams).NumClasses,
+		FeaturesList:       makePythonListCode(append(featureNames, pr.label)),
+		InputShape:         len(featureNames),
+		PredictClause:      resolved,
 	}, err
 }
 
