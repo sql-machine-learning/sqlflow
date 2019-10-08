@@ -61,6 +61,8 @@ func makeFeatureColumnMap(parsedFeatureColumns map[string][]codegen.FeatureColum
 				if emb, isEmb := fc.(*codegen.EmbeddingColumn); isEmb {
 					if fc.GetFieldMeta() == nil {
 						fcMap[target][emb.Name] = fc
+					} else {
+						fcMap[target][fc.GetFieldMeta().Name] = fc
 					}
 				} else {
 					fcMap[target][fc.GetFieldMeta().Name] = fc
@@ -276,13 +278,8 @@ func InferFeatureColumns(ir *codegen.TrainIR) error {
 				fcMap[target] = make(map[string]codegen.FeatureColumn)
 				fcTargetMap = fcMap[target]
 			}
-			fmt.Printf("deal with %s\n", slctKey)
 			if fc, ok := fcTargetMap[slctKey]; ok {
-				embCol, isEmbCol := fc.(*codegen.EmbeddingColumn)
-				fmt.Printf("deal with %s, is emb: %v\n", slctKey, isEmbCol)
-
-				// if embCol, isEmbCol := fc.(*codegen.EmbeddingColumn); isEmbCol {
-				if isEmbCol {
+				if embCol, isEmbCol := fc.(*codegen.EmbeddingColumn); isEmbCol {
 					if embCol.CategoryColumn == nil {
 						cs, ok := fmMap[embCol.Name]
 						if !ok {

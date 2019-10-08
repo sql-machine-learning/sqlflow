@@ -14,7 +14,6 @@
 package sql
 
 import (
-	"fmt"
 	"regexp"
 	"testing"
 
@@ -114,7 +113,6 @@ func TestFeatureDerivation(t *testing.T) {
 	a.False(nc3.FieldMeta.IsSparse)
 
 	fc5 := trainIR.Features["feature_columns"][4]
-	fmt.Println(fc5)
 	emb2, ok := fc5.(*codegen.EmbeddingColumn)
 	a.True(ok)
 	a.NotNil(emb2.CategoryColumn)
@@ -125,25 +123,4 @@ func TestFeatureDerivation(t *testing.T) {
 	a.Equal([]int{10000}, cat2.FieldMeta.Shape)
 	a.Equal(codegen.Int, cat2.FieldMeta.DType)
 	a.True(cat2.FieldMeta.IsSparse)
-
-	// cs = res.ColumnSpecInfered["c5"]
-	// a.Equal("c5", cs.ColumnName)
-	// a.Equal([]int{10000}, cs.Shape)
-	// a.Equal("int", cs.DType)
-	// a.True(cs.IsSparse)
-
-	// fc := res.FeatureColumnInfered["feature_columns"]["c1"]
-	// a.Equal(columns.ColumnTypeNumeric, fc.GetColumnType())
-
-	// fc = res.FeatureColumnInfered["feature_columns"]["c3"]
-	// a.Equal(columns.ColumnTypeEmbedding, fc.GetColumnType())
-	// emb, ok := fc.(*columns.EmbeddingColumn)
-	// a.True(ok)
-	// a.NotNil(emb.CategoryColumn)
-	// a.Equal("c3", emb.CategoryColumn.(*columns.CategoryIDColumn).GetKey())
-
-	// fc = res.FeatureColumnInfered["feature_columns"]["c5"]
-	// a.Equal(columns.ColumnTypeEmbedding, fc.GetColumnType())
-	// emb, ok = fc.(*columns.EmbeddingColumn)
-	// a.Equal(10000, emb.CategoryColumn.(*columns.CategoryIDColumn).BucketSize)
 }
