@@ -866,7 +866,7 @@ WITH
 	model.n_classes = 2, model.hidden_units = [10, 20], train.batch_size = 10, engine.ps_num=0, engine.worker_num=0, engine.type=local,
 	gitlab.project = "Alps/sqlflow-models",
 	gitlab.source_root = python,
-	gitlab.token = "6r8HLzUFw-J2E1DyjqJL"
+	gitlab.token = "%s"
 COLUMN SPARSE(deep_id,15033,COMMA,int),
        SPARSE(user_space_stat,310,COMMA,int),
        SPARSE(user_behavior_stat,511,COMMA,int),
@@ -876,7 +876,7 @@ COLUMN SPARSE(deep_id,15033,COMMA,int),
        EMBEDDING(CATEGORY_ID(user_behavior_stat,511,COMMA),64,mean),
        EMBEDDING(CATEGORY_ID(space_stat,418,COMMA),64,mean)
 LABEL l
-INTO model_table;`, caseDB)
+INTO model_table;`, caseDB, os.Getenv("GITLAB_TOKEN"))
 
 	conn, err := createRPCConn()
 	a.NoError(err)
