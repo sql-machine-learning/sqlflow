@@ -21,7 +21,10 @@ type NumericColumn struct {
 	FieldMeta *FieldMeta
 }
 
-func (NumericColumn) isFeatureColumn() {}
+// GetFieldMeta returns FieldMeta member
+func (nc *NumericColumn) GetFieldMeta() *FieldMeta {
+	return nc.FieldMeta
+}
 
 // BucketColumn represents `tf.feature_column.bucketized_column`
 // ref: https://www.tensorflow.org/api_docs/python/tf/feature_column/bucketized_column
@@ -30,7 +33,10 @@ type BucketColumn struct {
 	Boundaries   []int
 }
 
-func (BucketColumn) isFeatureColumn() {}
+// GetFieldMeta returns FieldMeta member
+func (bc *BucketColumn) GetFieldMeta() *FieldMeta {
+	return bc.SourceColumn.GetFieldMeta()
+}
 
 // CrossColumn represents `tf.feature_column.crossed_column`
 // ref: https://www.tensorflow.org/api_docs/python/tf/feature_column/crossed_column
@@ -39,7 +45,10 @@ type CrossColumn struct {
 	HashBucketSize int
 }
 
-func (CrossColumn) isFeatureColumn() {}
+// GetFieldMeta returns FieldMeta member
+func (cc *CrossColumn) GetFieldMeta() *FieldMeta {
+	return nil
+}
 
 // CategoryIDColumn represents `tf.feature_column.categorical_column_with_identity`
 // ref: https://www.tensorflow.org/api_docs/python/tf/feature_column/categorical_column_with_identity
@@ -48,7 +57,10 @@ type CategoryIDColumn struct {
 	BucketSize int
 }
 
-func (CategoryIDColumn) isFeatureColumn() {}
+// GetFieldMeta returns FieldMeta member
+func (cc *CategoryIDColumn) GetFieldMeta() *FieldMeta {
+	return cc.FieldMeta
+}
 
 // SeqCategoryIDColumn represents `tf.feature_column.sequence_categorical_column_with_identity`
 // ref: https://www.tensorflow.org/api_docs/python/tf/feature_column/sequence_categorical_column_with_identity
@@ -57,7 +69,10 @@ type SeqCategoryIDColumn struct {
 	BucketSize int
 }
 
-func (SeqCategoryIDColumn) isFeatureColumn() {}
+// GetFieldMeta returns FieldMeta member
+func (scc *SeqCategoryIDColumn) GetFieldMeta() *FieldMeta {
+	return scc.FieldMeta
+}
 
 // EmbeddingColumn represents `tf.feature_column.embedding_column`
 // ref: https://www.tensorflow.org/api_docs/python/tf/feature_column/embedding_column
@@ -66,6 +81,15 @@ type EmbeddingColumn struct {
 	Dimension      int
 	Combiner       string
 	Initializer    string
+	// only used when EMBEDDING(col_name, ...) this will set CategoryColumn = nil
+	// will fill the feature column details using feature_derivation
+	Name string
 }
 
-func (EmbeddingColumn) isFeatureColumn() {}
+// GetFieldMeta returns FieldMeta member
+func (ec *EmbeddingColumn) GetFieldMeta() *FieldMeta {
+	if ec.CategoryColumn == nil {
+		return nil
+	}
+	return ec.CategoryColumn.(FeatureColumn).GetFieldMeta()
+}

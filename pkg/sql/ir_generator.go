@@ -339,11 +339,13 @@ func parseEmbeddingColumn(el *exprlist) (*codegen.EmbeddingColumn, error) {
 		return nil, fmt.Errorf("bad EMBEDDING expression format: %s, should be like: %s", *el, help)
 	}
 	var catColumn interface{}
+	embColName := "" // only used when catColumn == nil
 	sourceExprList := (*el)[1]
 	if sourceExprList.typ != 0 {
 		// 1. key is a IDET string: EMBEDDING(col_name, size), fill a nil in CategoryColumn for later
 		// feature derivation.
 		catColumn = nil
+		embColName = sourceExprList.val
 	} else {
 		source, err := parseFeatureColumn(&sourceExprList.sexp)
 		if err != nil {
@@ -397,7 +399,8 @@ func parseEmbeddingColumn(el *exprlist) (*codegen.EmbeddingColumn, error) {
 		CategoryColumn: catColumn,
 		Dimension:      dimension,
 		Combiner:       combiner,
-		Initializer:    initializer}, nil
+		Initializer:    initializer,
+		Name:           embColName}, nil
 }
 
 func parseFieldMeta(el *exprlist) (*codegen.FieldMeta, error) {
