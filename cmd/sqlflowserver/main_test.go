@@ -801,8 +801,10 @@ WITH
 			engine.num_minibatches_per_task = 10,
 			engine.docker_image_repository = "",
 			engine.envs = ""
+COLUMN
+			sepal_length, sepal_width, petal_length, petal_width
 LABEL class
-INTO trained_elasticdl_keras_classifier;`, caseDB, caseTrainTable)
+INTO trained_elasticdl_keras_classifier;`, caseDB, "sqlflow_test_iris_train")
 
 	conn, err := createRPCConn()
 	a.NoError(err)
