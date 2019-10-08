@@ -804,7 +804,7 @@ WITH
 COLUMN
 			sepal_length, sepal_width, petal_length, petal_width
 LABEL class
-INTO trained_elasticdl_keras_classifier;`, caseDB, "sqlflow_test_iris_train")
+INTO trained_elasticdl_keras_classifier;`, os.Getenv("MAXCOMPUTE_PROJECT"), "sqlflow_test_iris_train")
 
 	conn, err := createRPCConn()
 	a.NoError(err)
