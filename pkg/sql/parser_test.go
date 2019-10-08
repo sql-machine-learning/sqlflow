@@ -24,11 +24,11 @@ const (
 	testStandardSelectStmt = `
 SELECT employee.age, last_name, salary
 FROM   employee
-LIMIT  100
 WHERE
   employee.age % 10 < (salary / 10000)
   AND
   strings.Upper(last_name) = "WANG"
+LIMIT  100
 `
 	testTrainSelect = testStandardSelectStmt + `TRAIN DNNClassifier
 WITH
@@ -181,6 +181,12 @@ func TestStandardDropTable(t *testing.T) {
 	a.Error(e)
 	// Note: currently, our parser doesn't accept anything statements other than SELECT.
 	// It will support parsing any SQL statements and even dialects in the future.
+}
+
+func TestDuplicatedFrom(t *testing.T) {
+	a := assert.New(t)
+	_, e := newParser().Parse(`SELECT table.field FROM table FROM tttt;`)
+	a.Error(e)
 }
 
 func TestSelectMaxcomputeUDF(t *testing.T) {
