@@ -40,5 +40,13 @@ go install ./...
 # -p 1 is necessary since tests in different packages are sharing the same database
 # ref: https://stackoverflow.com/a/23840896
 SQLFLOW_log_level=debug go test -v -p 1 ./...  -covermode=count -coverprofile=coverage.out
+if [[ "$TRAVIS_BRANCH" == "develop" ]]; then
+    if [[ "$TRAVIS_EVENT_TYPE" != "cron" ]]; then
+        # upload to coveralls.io only when commit to develop branch
+        goveralls -coverprofile=coverage.out -service=travis-ci -repotoken $COVERALLS_TOKEN
+    fi
+fi
+
+
 
 python -m unittest discover -v python "*_test.py"
