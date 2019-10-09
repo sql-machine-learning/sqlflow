@@ -202,16 +202,8 @@ func elasticDLTrain(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, sessi
 
 	// Create and execute ElasticDL training command
 	cmd := elasticdlTrainCmd(cwd, modelDefFilePath, trainFiller)
-	// cw := &logChanWriter{wr: w}
-	// cmd.Stdout = cw
-	// cmd.Stderr = cw
-	// if e := cmd.Run(); e != nil {
-	// 	return fmt.Errorf("code %v failed %v", modelDefCode, e)
-	// }
-	// out, err := cmd.Output()
 	stderr, _ := cmd.StderrPipe()
 	if err := cmd.Start(); err != nil {
-		log.Debugf("The generated code is %v", modelDefCode)
 		log.Fatal(err)
 	}
 
@@ -219,10 +211,9 @@ func elasticDLTrain(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, sessi
 	for scanner.Scan() {
 		fmt.Println(scanner.Text())
 	}
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// fmt.Printf("The output is %s\n", out)
+	if err != nil {
+		return fmt.Errorf("Command failed. The generated code is: %v", modelDefCode)
+	}
 	return nil
 }
 
@@ -284,7 +275,6 @@ func elasticDLPredict(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, ses
 		return fmt.Errorf("Failed executing ElasticDL prediction template: %v", err)
 	}
 	modelDefCode := elasticdlProgram.String()
-	cw := &logChanWriter{wr: w}
 	modelDefFilePath := "model_definition.py"
 	modelDefFile, err := os.Create(filepath.Join(cwd, modelDefFilePath))
 	if err != nil {
@@ -295,10 +285,17 @@ func elasticDLPredict(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, ses
 
 	// Create and execute ElasticDL prediction command
 	cmd := elasticdlPredictCmd(cwd, modelDefFilePath, predictFiller)
-	cmd.Stdout = cw
-	cmd.Stderr = cw
-	if e := cmd.Run(); e != nil {
-		return fmt.Errorf("code %v failed %v", modelDefCode, e)
+	stderr, _ := cmd.StderrPipe()
+	if err := cmd.Start(); err != nil {
+		log.Fatal(err)
+	}
+
+	scanner := bufio.NewScanner(stderr)
+	for scanner.Scan() {
+		fmt.Println(scanner.Text())
+	}
+	if err != nil {
+		return fmt.Errorf("Command failed. The generated code is: %v", modelDefCode)
 	}
 	return nil
 }
@@ -319,16 +316,16 @@ func elasticdlPredictCmd(cwd, modelDefFilePath string, filler *elasticDLFiller) 
 			"--master_resource_limit", filler.PredictClause.EngineParams.masterResourceLimit,
 			"--worker_resource_request", filler.PredictClause.EngineParams.workerResourceRequest,
 			"--worker_resource_limit", filler.PredictClause.EngineParams.workerResourceLimit,
-			"--num_workers", string(filler.PredictClause.EngineParams.worker.Num),
+			fmt.Sprintf("--num_workers=%d", filler.PredictClause.EngineParams.worker.Num),
 			"--volume", filler.PredictClause.EngineParams.volume,
 			"--image_pull_policy", filler.PredictClause.EngineParams.imagePullPolicy,
 			"--restart_policy", filler.PredictClause.EngineParams.restartPolicy,
 			"--extra_pypi_index", filler.PredictClause.EngineParams.extraPypiIndex,
 			"--namespace", filler.PredictClause.EngineParams.namespace,
-			"--minibatch_size", string(filler.PredictClause.EngineParams.minibatchSize),
+			fmt.Sprintf("--minibatch_size=%d", filler.PredictClause.EngineParams.minibatchSize),
 			"--master_pod_priority", filler.PredictClause.EngineParams.masterPodPriority,
 			"--cluster_spec", filler.PredictClause.EngineParams.clusterSpec,
-			"--num_minibatches_per_task", string(filler.PredictClause.EngineParams.numMinibatchesPerTask),
+			fmt.Sprintf("--num_minibatches_per_task=%d", filler.PredictClause.EngineParams.numMinibatchesPerTask),
 			"--log_level", "INFO",
 			"--docker_image_repository", string(filler.TrainClause.EngineParams.dockerImageRepository),
 			"--envs", string(filler.TrainClause.EngineParams.envs),
