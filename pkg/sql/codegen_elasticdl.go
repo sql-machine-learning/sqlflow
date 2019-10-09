@@ -222,9 +222,9 @@ func elasticdlTrainCmd(cwd, modelDefFilePath string, filler *elasticDLFiller) (c
 		cmd = exec.Command(
 			"elasticdl", "train",
 			"--image_base", "elasticdl:ci",
-			// // TODO: Generate this dynamically
+			// TODO: Generate this dynamically
 			"--job_name", "edl-sqlflow-train-job",
-			// // TODO: Get this from model name
+			// TODO: Get this from model name
 			"--model_zoo", "/elasticdl/model_zoo",
 			"--model_def", modelDefFilePath,
 			"--training_data_dir", filler.TrainInputTable,
@@ -308,7 +308,7 @@ func elasticdlPredictCmd(cwd, modelDefFilePath string, filler *elasticDLFiller) 
 			// TODO: Generate this dynamically
 			"--job_name", "edl-sqlflow-predict-job",
 			// TODO: Get this from model name
-			"--model_zoo", "model_zoo",
+			"--model_zoo", "/elasticdl/model_zoo",
 			"--model_def", modelDefFilePath,
 			"--prediction_data_dir", filler.PredictInputTable,
 			"--checkpoint_filename_for_init", filler.PredictClause.CheckpointFilenameForInit,
