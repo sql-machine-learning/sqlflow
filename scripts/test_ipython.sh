@@ -47,7 +47,7 @@ export PYTHONPATH=$GOPATH/src/sqlflow.org/sqlflow/python
 
 sqlflowserver --datasource=${DATASOURCE} &
 # e2e test for standard SQL
-SQLFLOW_SERVER=localhost:50051 ipython sql/python/test_magic.py
+SQLFLOW_SERVER=localhost:50051 ipython python/test_magic.py
 # TODO(yi): Re-enable the end-to-end test of Ant XGBoost after accelerating Travis CI.
 # SQLFLOW_SERVER=localhost:50051 ipython sql/python/test_magic_ant_xgboost.py
 # TODO(terrytangyuan): Enable this when ElasticDL is open sourced

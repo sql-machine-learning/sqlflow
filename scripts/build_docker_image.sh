@@ -93,6 +93,7 @@ rm -rf odpscmd_public.zip
 mkdir -p $IPYTHON_STARTUP
 mkdir -p /workspace
 echo 'get_ipython().magic(u"%reload_ext sqlflow.magic")' >> $IPYTHON_STARTUP/00-first.py
+echo 'get_ipython().magic(u"%reload_ext autoreload")' >> $IPYTHON_STARTUP/00-first.py
 echo 'get_ipython().magic(u"%autoreload 2")' >> $IPYTHON_STARTUP/00-first.py
 
 # 7. install xgboost
