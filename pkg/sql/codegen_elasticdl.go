@@ -14,6 +14,7 @@
 package sql
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -191,7 +192,6 @@ func elasticDLTrain(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, sessi
 		return fmt.Errorf("Failed executing ElasticDL training template: %v", err)
 	}
 	modelDefCode := elasticdlProgram.String()
-	cw := &logChanWriter{wr: w}
 	modelDefFilePath := "model_definition.py"
 	modelDefFile, err := os.Create(filepath.Join(cwd, modelDefFilePath))
 	if err != nil {
@@ -202,52 +202,68 @@ func elasticDLTrain(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, sessi
 
 	// Create and execute ElasticDL training command
 	cmd := elasticdlTrainCmd(cwd, modelDefFilePath, trainFiller)
-	cmd.Stdout = cw
-	cmd.Stderr = cw
-	if e := cmd.Run(); e != nil {
-		return fmt.Errorf("code %v failed %v", modelDefCode, e)
+	// cw := &logChanWriter{wr: w}
+	// cmd.Stdout = cw
+	// cmd.Stderr = cw
+	// if e := cmd.Run(); e != nil {
+	// 	return fmt.Errorf("code %v failed %v", modelDefCode, e)
+	// }
+	// out, err := cmd.Output()
+	stderr, _ := cmd.StderrPipe()
+	if err := cmd.Start(); err != nil {
+		log.Debugf("The generated code is %v", modelDefCode)
+		log.Fatal(err)
 	}
+
+	scanner := bufio.NewScanner(stderr)
+	for scanner.Scan() {
+		fmt.Println(scanner.Text())
+	}
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// fmt.Printf("The output is %s\n", out)
 	return nil
 }
 
 func elasticdlTrainCmd(cwd, modelDefFilePath string, filler *elasticDLFiller) (cmd *exec.Cmd) {
 	if hasDocker() {
 		cmd = exec.Command(
-			"elasticdl", "train -h",
-			// "--image_base", "elasticdl:ci",
+			"elasticdl", "train",
+			"--image_base", "elasticdl:ci",
 			// // TODO: Generate this dynamically
-			// "--job_name", "edl-sqlflow-train-job",
+			"--job_name", "edl-sqlflow-train-job",
 			// // TODO: Get this from model name
-			// "--model_zoo", "model_zoo",
-			// "--model_def", modelDefFilePath,
-			// "--training_data_dir", filler.TrainInputTable,
-			// "--evaluation_data_dir", filler.EvalInputTable,
-			// "--num_epochs", string(filler.TrainClause.Epoch),
-			// "--master_resource_request", filler.TrainClause.EngineParams.masterResourceRequest,
-			// "--master_resource_limit", filler.TrainClause.EngineParams.masterResourceLimit,
-			// "--worker_resource_request", filler.TrainClause.EngineParams.workerResourceRequest,
-			// "--worker_resource_limit", filler.TrainClause.EngineParams.workerResourceLimit,
-			// "--num_workers", string(filler.TrainClause.EngineParams.worker.Num),
-			// "--volume", filler.TrainClause.EngineParams.volume,
-			// "--image_pull_policy", filler.TrainClause.EngineParams.imagePullPolicy,
-			// "--restart_policy", filler.TrainClause.EngineParams.restartPolicy,
-			// "--extra_pypi_index", filler.TrainClause.EngineParams.extraPypiIndex,
-			// "--namespace", filler.TrainClause.EngineParams.namespace,
-			// "--minibatch_size", string(filler.TrainClause.EngineParams.minibatchSize),
-			// "--master_pod_priority", filler.TrainClause.EngineParams.masterPodPriority,
-			// "--cluster_spec", filler.TrainClause.EngineParams.clusterSpec,
-			// "--num_minibatches_per_task", string(filler.TrainClause.EngineParams.numMinibatchesPerTask),
-			// "--log_level", "INFO",
-			// "--output", filler.ModelDir,
-			// "--checkpoint_steps", string(filler.TrainClause.CheckpointSteps),
-			// "--evaluation_steps", string(filler.TrainClause.EvalSteps),
-			// "--grads_to_wait", string(filler.TrainClause.GradsToWait),
-			// "--tensorboard_log_dir", filler.TrainClause.TensorboardLogDir,
-			// "--checkpoint_dir", filler.TrainClause.CheckpointDir,
-			// "--keep_checkpoint_max", string(filler.TrainClause.KeepCheckpointMax),
-			// "--docker_image_repository", string(filler.TrainClause.EngineParams.dockerImageRepository),
-			// "--envs", string(filler.TrainClause.EngineParams.envs),
-			// "--data_reader_params", `'columns=`+string(filler.FeaturesList+`'`),
+			"--model_zoo", "model_zoo",
+			"--model_def", modelDefFilePath,
+			"--training_data_dir", filler.TrainInputTable,
+			"--evaluation_data_dir", filler.EvalInputTable,
+			fmt.Sprintf("--num_epochs=%d", filler.TrainClause.Epoch),
+			"--master_resource_request", filler.TrainClause.EngineParams.masterResourceRequest,
+			"--master_resource_limit", filler.TrainClause.EngineParams.masterResourceLimit,
+			"--worker_resource_request", filler.TrainClause.EngineParams.workerResourceRequest,
+			"--worker_resource_limit", filler.TrainClause.EngineParams.workerResourceLimit,
+			fmt.Sprintf("--num_workers=%d", filler.TrainClause.EngineParams.worker.Num),
+			"--volume", filler.TrainClause.EngineParams.volume,
+			"--image_pull_policy", filler.TrainClause.EngineParams.imagePullPolicy,
+			"--restart_policy", filler.TrainClause.EngineParams.restartPolicy,
+			"--extra_pypi_index", filler.TrainClause.EngineParams.extraPypiIndex,
+			"--namespace", filler.TrainClause.EngineParams.namespace,
+			fmt.Sprintf("--minibatch_size=%d", filler.TrainClause.EngineParams.minibatchSize),
+			"--master_pod_priority", filler.TrainClause.EngineParams.masterPodPriority,
+			"--cluster_spec", filler.TrainClause.EngineParams.clusterSpec,
+			fmt.Sprintf("--num_minibatches_per_task=%d", filler.TrainClause.EngineParams.numMinibatchesPerTask),
+			"--log_level", "INFO",
+			"--output", filler.ModelDir,
+			fmt.Sprintf("--checkpoint_steps=%d", filler.TrainClause.CheckpointSteps),
+			fmt.Sprintf("--evaluation_steps=%d", filler.TrainClause.EvalSteps),
+			fmt.Sprintf("--grads_to_wait=%d", filler.TrainClause.GradsToWait),
+			"--tensorboard_log_dir", filler.TrainClause.TensorboardLogDir,
+			"--checkpoint_dir", filler.TrainClause.CheckpointDir,
+			fmt.Sprintf("--keep_checkpoint_max=%d", filler.TrainClause.KeepCheckpointMax),
+			"--docker_image_repository", string(filler.TrainClause.EngineParams.dockerImageRepository),
+			"--envs", string(filler.TrainClause.EngineParams.envs),
+			"--data_reader_params", `'columns=`+string(filler.FeaturesList+`'`),
 		)
 		cmd.Dir = cwd
 	} else {
