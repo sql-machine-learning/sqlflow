@@ -14,7 +14,6 @@
 package sql
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -192,6 +191,7 @@ func elasticDLTrain(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, sessi
 		return fmt.Errorf("Failed executing ElasticDL training template: %v", err)
 	}
 	modelDefCode := elasticdlProgram.String()
+	cw := &logChanWriter{wr: w}
 	modelDefFilePath := "model_definition.py"
 	modelDefFile, err := os.Create(filepath.Join(cwd, modelDefFilePath))
 	if err != nil {
@@ -202,17 +202,10 @@ func elasticDLTrain(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, sessi
 
 	// Create and execute ElasticDL training command
 	cmd := elasticdlTrainCmd(cwd, modelDefFilePath, trainFiller)
-	stderr, _ := cmd.StderrPipe()
-	if err := cmd.Start(); err != nil {
-		log.Fatal(err)
-	}
-
-	scanner := bufio.NewScanner(stderr)
-	for scanner.Scan() {
-		fmt.Println(scanner.Text())
-	}
-	if err != nil {
-		return fmt.Errorf("Command failed. The generated code is: %v", modelDefCode)
+	cmd.Stdout = cw
+	cmd.Stderr = cw
+	if e := cmd.Run(); e != nil {
+		return fmt.Errorf("code %v failed %v", modelDefCode, e)
 	}
 	return nil
 }
@@ -275,6 +268,7 @@ func elasticDLPredict(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, ses
 		return fmt.Errorf("Failed executing ElasticDL prediction template: %v", err)
 	}
 	modelDefCode := elasticdlProgram.String()
+	cw := &logChanWriter{wr: w}
 	modelDefFilePath := "model_definition.py"
 	modelDefFile, err := os.Create(filepath.Join(cwd, modelDefFilePath))
 	if err != nil {
@@ -285,17 +279,10 @@ func elasticDLPredict(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, ses
 
 	// Create and execute ElasticDL prediction command
 	cmd := elasticdlPredictCmd(cwd, modelDefFilePath, predictFiller)
-	stderr, _ := cmd.StderrPipe()
-	if err := cmd.Start(); err != nil {
-		log.Fatal(err)
-	}
-
-	scanner := bufio.NewScanner(stderr)
-	for scanner.Scan() {
-		fmt.Println(scanner.Text())
-	}
-	if err != nil {
-		return fmt.Errorf("Command failed. The generated code is: %v", modelDefCode)
+	cmd.Stdout = cw
+	cmd.Stderr = cw
+	if e := cmd.Run(); e != nil {
+		return fmt.Errorf("code %v failed %v", modelDefCode, e)
 	}
 	return nil
 }
