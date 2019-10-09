@@ -41,6 +41,4 @@ go install ./...
 # ref: https://stackoverflow.com/a/23840896
 SQLFLOW_log_level=debug go test -v -p 1 ./...  -covermode=count -coverprofile=coverage.out
 
-
-
 python -m unittest discover -v python "*_test.py"
