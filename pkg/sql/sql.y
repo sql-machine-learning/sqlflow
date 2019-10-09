@@ -129,6 +129,7 @@
 
 %type  <eslt> select_stmt
 %type  <slct> select
+%type  <val>  opt_limit
 %type  <tran> train_clause
 %type  <colc> column_clause
 %type  <labc> label_clause
@@ -136,7 +137,7 @@
 %type  <anal> analyze_clause
 %type  <flds> fields
 %type  <tbls> tables
-%type  <expr> expr funcall column
+%type  <expr> expr funcall column opt_where
 %type  <expl> exprlist pythonlist columns field_clause 
 %type  <atrs> attr
 %type  <atrs> attrs
@@ -185,10 +186,22 @@ select_stmt
 ;
 
 select
-: SELECT field_clause		{ $$.fields = $2 }
-| select FROM tables    { $$.tables = $3 }
-| select LIMIT NUMBER   { $$.limit = $3 }
-| select WHERE expr     { $$.where = $3 }
+: SELECT field_clause FROM tables opt_where opt_limit {
+	$$.fields = $2
+	$$.tables = $4
+	$$.where = $5
+	$$.limit = $6
+}
+;
+
+opt_where
+: /* empty */ {}
+| WHERE expr  { $$ = $2 }
+;
+
+opt_limit
+: /* empty */  {}
+| LIMIT NUMBER { $$ = $2 }
 ;
 
 train_clause
