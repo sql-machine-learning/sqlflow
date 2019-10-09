@@ -234,7 +234,7 @@ func elasticdlTrainCmd(cwd, modelDefFilePath string, filler *elasticDLFiller) (c
 			// // TODO: Generate this dynamically
 			"--job_name", "edl-sqlflow-train-job",
 			// // TODO: Get this from model name
-			"--model_zoo", "model_zoo",
+			"--model_zoo", "/elasticdl/model_zoo",
 			"--model_def", modelDefFilePath,
 			"--training_data_dir", filler.TrainInputTable,
 			"--evaluation_data_dir", filler.EvalInputTable,
