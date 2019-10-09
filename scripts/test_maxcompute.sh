@@ -39,4 +39,4 @@ cd /elasticdl
 docker build -t elasticdl:dev -f elasticdl/docker/Dockerfile.dev .
 docker build -t elasticdl:ci -f elasticdl/docker/Dockerfile.ci .
 cd -
-SQLFLOW_log_level=debug go test -p 1 -v ./cmd/... -run  TestEnd2EndMaxComputeElasticDL
+SQLFLOW_log_level=debug go test -p 1 -v ./cmd/... -run TestEnd2EndMaxComputeElasticDL

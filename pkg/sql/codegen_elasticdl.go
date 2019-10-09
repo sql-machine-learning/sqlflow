@@ -227,8 +227,8 @@ func elasticdlTrainCmd(cwd, modelDefFilePath string, filler *elasticDLFiller) (c
 			// TODO: Get this from model name
 			"--model_zoo", "/elasticdl/model_zoo",
 			"--model_def", modelDefFilePath,
-			"--training_data_dir", filler.TrainInputTable,
-			"--evaluation_data_dir", filler.EvalInputTable,
+			"--training_data", filler.TrainInputTable,
+			"--evaluation_data", filler.EvalInputTable,
 			fmt.Sprintf("--num_epochs=%d", filler.TrainClause.Epoch),
 			"--master_resource_request", filler.TrainClause.EngineParams.masterResourceRequest,
 			"--master_resource_limit", filler.TrainClause.EngineParams.masterResourceLimit,
@@ -310,7 +310,7 @@ func elasticdlPredictCmd(cwd, modelDefFilePath string, filler *elasticDLFiller) 
 			// TODO: Get this from model name
 			"--model_zoo", "/elasticdl/model_zoo",
 			"--model_def", modelDefFilePath,
-			"--prediction_data_dir", filler.PredictInputTable,
+			"--prediction_data", filler.PredictInputTable,
 			"--checkpoint_filename_for_init", filler.PredictClause.CheckpointFilenameForInit,
 			"--master_resource_request", filler.PredictClause.EngineParams.masterResourceRequest,
 			"--master_resource_limit", filler.PredictClause.EngineParams.masterResourceLimit,
