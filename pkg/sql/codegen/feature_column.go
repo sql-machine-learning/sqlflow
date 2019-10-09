@@ -22,8 +22,8 @@ type NumericColumn struct {
 }
 
 // GetFieldMeta returns FieldMeta member
-func (nc *NumericColumn) GetFieldMeta() *FieldMeta {
-	return nc.FieldMeta
+func (nc *NumericColumn) GetFieldMeta() []*FieldMeta {
+	return []*FieldMeta{nc.FieldMeta}
 }
 
 // BucketColumn represents `tf.feature_column.bucketized_column`
@@ -34,7 +34,7 @@ type BucketColumn struct {
 }
 
 // GetFieldMeta returns FieldMeta member
-func (bc *BucketColumn) GetFieldMeta() *FieldMeta {
+func (bc *BucketColumn) GetFieldMeta() []*FieldMeta {
 	return bc.SourceColumn.GetFieldMeta()
 }
 
@@ -46,8 +46,18 @@ type CrossColumn struct {
 }
 
 // GetFieldMeta returns FieldMeta member
-func (cc *CrossColumn) GetFieldMeta() *FieldMeta {
-	return nil
+func (cc *CrossColumn) GetFieldMeta() []*FieldMeta {
+	var retKeys []*FieldMeta
+	for idx, k := range cc.Keys {
+		if _, ok := k.(string); ok {
+			retKeys = append(retKeys, nil)
+		} else if _, ok := k.(FeatureColumn); ok {
+			retKeys = append(retKeys, cc.Keys[idx].(*NumericColumn).GetFieldMeta()[0])
+		}
+		// k is not posibble to be neither string and FeatureColumn, the ir_generator should
+		// catch the syntax error.
+	}
+	return retKeys
 }
 
 // CategoryIDColumn represents `tf.feature_column.categorical_column_with_identity`
@@ -58,8 +68,8 @@ type CategoryIDColumn struct {
 }
 
 // GetFieldMeta returns FieldMeta member
-func (cc *CategoryIDColumn) GetFieldMeta() *FieldMeta {
-	return cc.FieldMeta
+func (cc *CategoryIDColumn) GetFieldMeta() []*FieldMeta {
+	return []*FieldMeta{cc.FieldMeta}
 }
 
 // SeqCategoryIDColumn represents `tf.feature_column.sequence_categorical_column_with_identity`
@@ -70,8 +80,8 @@ type SeqCategoryIDColumn struct {
 }
 
 // GetFieldMeta returns FieldMeta member
-func (scc *SeqCategoryIDColumn) GetFieldMeta() *FieldMeta {
-	return scc.FieldMeta
+func (scc *SeqCategoryIDColumn) GetFieldMeta() []*FieldMeta {
+	return []*FieldMeta{scc.FieldMeta}
 }
 
 // EmbeddingColumn represents `tf.feature_column.embedding_column`
@@ -87,9 +97,9 @@ type EmbeddingColumn struct {
 }
 
 // GetFieldMeta returns FieldMeta member
-func (ec *EmbeddingColumn) GetFieldMeta() *FieldMeta {
+func (ec *EmbeddingColumn) GetFieldMeta() []*FieldMeta {
 	if ec.CategoryColumn == nil {
-		return nil
+		return []*FieldMeta{nil}
 	}
 	return ec.CategoryColumn.(FeatureColumn).GetFieldMeta()
 }

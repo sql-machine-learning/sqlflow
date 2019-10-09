@@ -53,19 +53,19 @@ func makeFeatureColumnMap(parsedFeatureColumns map[string][]codegen.FeatureColum
 							},
 						}
 					} else if fc, ok := k.(codegen.FeatureColumn); ok {
-						fcMap[target][fc.GetFieldMeta().Name] = fc
+						fcMap[target][fc.GetFieldMeta()[0].Name] = fc
 					}
 				}
 			} else {
 				// embedding column may got GetFieldMeta() == nil
 				if emb, isEmb := fc.(*codegen.EmbeddingColumn); isEmb {
-					if fc.GetFieldMeta() == nil {
+					if fc.GetFieldMeta()[0] == nil {
 						fcMap[target][emb.Name] = fc
 					} else {
-						fcMap[target][fc.GetFieldMeta().Name] = fc
+						fcMap[target][fc.GetFieldMeta()[0].Name] = fc
 					}
 				} else {
-					fcMap[target][fc.GetFieldMeta().Name] = fc
+					fcMap[target][fc.GetFieldMeta()[0].Name] = fc
 				}
 			}
 		}
@@ -76,12 +76,13 @@ func makeFeatureColumnMap(parsedFeatureColumns map[string][]codegen.FeatureColum
 // makeFieldMetaMap returns a map from column key to FieldMeta
 // NOTE that the target is not important for analyzing feature derivation.
 func makeFieldMetaMap(features map[string][]codegen.FeatureColumn) FieldMetaMap {
-	// csMap := make(ColumnSpecMap)
 	fmMap := make(FieldMetaMap)
 	for _, fcList := range features {
 		for _, fc := range fcList {
-			if fc.GetFieldMeta() != nil {
-				fmMap[fc.GetFieldMeta().Name] = fc.GetFieldMeta()
+			for _, fm := range fc.GetFieldMeta() {
+				if fm != nil {
+					fmMap[fm.Name] = fm
+				}
 			}
 		}
 	}

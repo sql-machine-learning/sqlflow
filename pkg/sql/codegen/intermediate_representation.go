@@ -51,7 +51,7 @@ type FieldMeta struct {
 // FeatureColumn indicates the feature column to be applied on the field. Please refer to
 // sqlflow.org/sqlflow/pkg/sql/codegen/feature_column.go for detailed list of all feature columns.
 type FeatureColumn interface {
-	GetFieldMeta() *FieldMeta
+	GetFieldMeta() []*FieldMeta
 }
 
 // TrainIR is the intermediate representation for code generation of a training job.
