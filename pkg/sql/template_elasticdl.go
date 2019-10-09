@@ -22,8 +22,8 @@ import os
 import tensorflow as tf
 
 from elasticdl.python.common.constants import Mode
-from elasticdl.python.common.log_util import default_logger as logger
-from elasticdl.python.common.odps_io import ODPSWriter
+from elasticdl.python.common.log_utils import default_logger as logger
+from elasticdl.python.data.odps_io import ODPSWriter
 from elasticdl.python.worker.prediction_outputs_processor import (
     BasePredictionOutputsProcessor,
 )

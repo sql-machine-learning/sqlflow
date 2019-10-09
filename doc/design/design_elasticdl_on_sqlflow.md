@@ -120,8 +120,8 @@ elasticdl train \
 --image_base=elasticdl:ci \
 --model_zoo=model_zoo \
 --model_def=ElasticDLKerasClassifier \
---training_data_dir=/data/mnist/train \
---evaluation_data_dir=/data/mnist/test \
+--training_data=training_table_name \
+--evaluation_data=evaluation_table_name \
 --num_epochs=2 \
 --master_resource_request="cpu=400m,memory=1024Mi" \
 --master_resource_limit="cpu=1,memory=2048Mi" \
