@@ -110,6 +110,6 @@ git clone https://github.com/sql-machine-learning/elasticdl.git
 cd elasticdl
 pip install -r elasticdl/requirements.txt
 python setup.py install
-# docker build -t elasticdl:dev -f elasticdl/docker/Dockerfile.dev .
-# docker build -t elasticdl:ci -f elasticdl/docker/Dockerfile.ci .
+docker build -t elasticdl:dev -f elasticdl/docker/Dockerfile.dev .
+docker build -t elasticdl:ci -f elasticdl/docker/Dockerfile.ci .
 cd ..
