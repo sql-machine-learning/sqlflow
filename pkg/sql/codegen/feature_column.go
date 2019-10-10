@@ -99,7 +99,7 @@ type EmbeddingColumn struct {
 // GetFieldMeta returns FieldMeta member
 func (ec *EmbeddingColumn) GetFieldMeta() []*FieldMeta {
 	if ec.CategoryColumn == nil {
-		return []*FieldMeta{nil}
+		return []*FieldMeta{}
 	}
 	return ec.CategoryColumn.(FeatureColumn).GetFieldMeta()
 }

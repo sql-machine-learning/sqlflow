@@ -40,11 +40,13 @@ const (
 //
 // IsSparse indicates the type of tensor for a field. True means the tensor is a sparse tensor.
 type FieldMeta struct {
-	Name       string            `json:"name"`       // e.g. "spetal_length"
-	DType      FieldType         `json:"dtype"`      // e.g. "float", "int32"
-	Delimiter  string            `json:"delimiter"`  // e.g. ","
-	Shape      []int             `json:"shape"`      // e.g. [1], [1 2 3]
-	IsSparse   bool              `json:"is_sparse"`  // e.g. false
+	Name      string    `json:"name"`      // e.g. "spetal_length"
+	DType     FieldType `json:"dtype"`     // e.g. "float", "int32"
+	Delimiter string    `json:"delimiter"` // e.g. ","
+	Shape     []int     `json:"shape"`     // e.g. [1], [1 2 3]
+	IsSparse  bool      `json:"is_sparse"` // e.g. false
+	// Vocabulary stores all possible enumerate values if the column type is string,
+	// e.g. the column values are: "MALE", "FEMALE", "NULL"
 	Vocabulary map[string]string `json:"vocabulary"` // use a map to generate a list without duplication
 }
 
