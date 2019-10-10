@@ -17,7 +17,7 @@ import (
 	"regexp"
 	"testing"
 
-	"sqlflow.org/sqlflow/pkg/sql/columns"
+	"sqlflow.org/sqlflow/pkg/sql/codegen"
 
 	"github.com/stretchr/testify/assert"
 	"sqlflow.org/sqlflow/pkg/sql/testdata"
@@ -74,47 +74,53 @@ func TestFeatureDerivation(t *testing.T) {
 
 	r, e := parser.Parse(normal)
 	a.NoError(e)
-
-	connConfig, e := newConnectionConfig(db)
-	a.NoError(e)
-	res, e := resolveTrainClause(&r.trainClause, &r.standardSelect, connConfig)
+	trainIR, err := generateTrainIR(r, "mysql://root:root@tcp/?maxAllowedPacket=0")
+	e = InferFeatureColumns(trainIR)
 	a.NoError(e)
 
-	cs := res.ColumnSpecInfered["c1"]
-	a.Equal("c1", cs.ColumnName)
-	a.Equal([]int{1}, cs.Shape)
-	a.Equal("float32", cs.DType)
-	a.False(cs.IsSparse)
+	fc1 := trainIR.Features["feature_columns"][0]
+	nc, ok := fc1.(*codegen.NumericColumn)
+	a.True(ok)
+	a.Equal("c1", nc.FieldMeta.Name)
+	a.Equal([]int{1}, nc.FieldMeta.Shape)
+	a.Equal(codegen.Float, nc.FieldMeta.DType)
+	a.False(nc.FieldMeta.IsSparse)
 
-	cs = res.ColumnSpecInfered["c3"]
-	a.Equal("c3", cs.ColumnName)
-	a.Equal([]int{4}, cs.Shape)
-	a.Equal("int64", cs.DType)
+	fc2 := trainIR.Features["feature_columns"][1]
+	nc2, ok := fc2.(*codegen.NumericColumn)
+	a.True(ok)
+	a.Equal("c2", nc2.FieldMeta.Name)
 
-	cs = res.ColumnSpecInfered["c4"]
-	a.Equal("c4", cs.ColumnName)
-	a.Equal([]int{4}, cs.Shape)
-	a.Equal("float32", cs.DType)
-	a.False(cs.IsSparse)
-
-	cs = res.ColumnSpecInfered["c5"]
-	a.Equal("c5", cs.ColumnName)
-	a.Equal([]int{10000}, cs.Shape)
-	a.Equal("int", cs.DType)
-	a.True(cs.IsSparse)
-
-	fc := res.FeatureColumnInfered["feature_columns"]["c1"]
-	a.Equal(columns.ColumnTypeNumeric, fc.GetColumnType())
-
-	fc = res.FeatureColumnInfered["feature_columns"]["c3"]
-	a.Equal(columns.ColumnTypeEmbedding, fc.GetColumnType())
-	emb, ok := fc.(*columns.EmbeddingColumn)
+	fc3 := trainIR.Features["feature_columns"][2]
+	emb, ok := fc3.(*codegen.EmbeddingColumn)
 	a.True(ok)
 	a.NotNil(emb.CategoryColumn)
-	a.Equal("c3", emb.CategoryColumn.(*columns.CategoryIDColumn).GetKey())
+	a.Equal(128, emb.Dimension)
+	a.Equal("sum", emb.Combiner)
+	a.Equal("c3", emb.Name)
+	cat, ok := emb.CategoryColumn.(*codegen.CategoryIDColumn)
+	a.True(ok)
+	a.Equal("c3", cat.FieldMeta.Name)
+	a.Equal([]int{4}, cat.FieldMeta.Shape)
+	a.Equal(codegen.Int, cat.FieldMeta.DType)
 
-	fc = res.FeatureColumnInfered["feature_columns"]["c5"]
-	a.Equal(columns.ColumnTypeEmbedding, fc.GetColumnType())
-	emb, ok = fc.(*columns.EmbeddingColumn)
-	a.Equal(10000, emb.CategoryColumn.(*columns.CategoryIDColumn).BucketSize)
+	fc4 := trainIR.Features["feature_columns"][3]
+	nc3, ok := fc4.(*codegen.NumericColumn)
+	a.True(ok)
+	a.Equal("c4", nc3.FieldMeta.Name)
+	a.Equal([]int{4}, nc3.FieldMeta.Shape)
+	a.Equal(codegen.Float, nc3.FieldMeta.DType)
+	a.False(nc3.FieldMeta.IsSparse)
+
+	fc5 := trainIR.Features["feature_columns"][4]
+	emb2, ok := fc5.(*codegen.EmbeddingColumn)
+	a.True(ok)
+	a.NotNil(emb2.CategoryColumn)
+	cat2, ok := emb2.CategoryColumn.(*codegen.CategoryIDColumn)
+	a.True(ok)
+	a.Equal(10000, cat2.BucketSize)
+	a.Equal("c5", cat2.FieldMeta.Name)
+	a.Equal([]int{10000}, cat2.FieldMeta.Shape)
+	a.Equal(codegen.Int, cat2.FieldMeta.DType)
+	a.True(cat2.FieldMeta.IsSparse)
 }

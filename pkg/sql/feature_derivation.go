@@ -20,40 +20,73 @@ import (
 	"strconv"
 	"strings"
 
-	"sqlflow.org/sqlflow/pkg/sql/columns"
+	"sqlflow.org/sqlflow/pkg/sql/codegen"
 )
 
 const featureDerivationRows = 1000
 
 // FeatureColumnMap is like: target -> key -> FeatureColumn
-type FeatureColumnMap map[string]map[string]columns.FeatureColumn
+type FeatureColumnMap map[string]map[string]codegen.FeatureColumn
 
-// ColumnSpecMap is a mappign from column name to ColumnSpec struct
-type ColumnSpecMap map[string]*columns.ColumnSpec
+// FieldMetaMap is a mapping from column name to ColumnSpec struct
+type FieldMetaMap map[string]*codegen.FieldMeta
 
 // makeFeatureColumnMap returns a map from column key to FeatureColumn
 // NOTE that the target is not important for analyzing feature derivation.
-func makeFeatureColumnMap(parsedFeatureColumns map[string][]columns.FeatureColumn) FeatureColumnMap {
+func makeFeatureColumnMap(parsedFeatureColumns map[string][]codegen.FeatureColumn) FeatureColumnMap {
 	fcMap := make(FeatureColumnMap)
 	for target, fcList := range parsedFeatureColumns {
-		fcMap[target] = make(map[string]columns.FeatureColumn)
+		fcMap[target] = make(map[string]codegen.FeatureColumn)
 		for _, fc := range fcList {
-			fcMap[target][fc.GetKey()] = fc
+			// CrossColumn use two columns as input, record the key for each column
+			// FIXME(typhoonzero): how to handle duplicated keys?
+			if cc, ok := fc.(*codegen.CrossColumn); ok {
+				for _, k := range cc.Keys {
+					if strKey, ok := k.(string); ok {
+						fcMap[target][strKey] = &codegen.NumericColumn{
+							FieldMeta: &codegen.FieldMeta{
+								Name:      strKey,
+								DType:     codegen.Float,
+								Delimiter: "",
+								Shape:     []int{1},
+								IsSparse:  false,
+							},
+						}
+					} else if fc, ok := k.(codegen.FeatureColumn); ok {
+						fcMap[target][fc.GetFieldMeta()[0].Name] = fc
+					}
+				}
+			} else {
+				// embedding column may got GetFieldMeta() == nil
+				if emb, isEmb := fc.(*codegen.EmbeddingColumn); isEmb {
+					if fc.GetFieldMeta()[0] == nil {
+						fcMap[target][emb.Name] = fc
+					} else {
+						fcMap[target][fc.GetFieldMeta()[0].Name] = fc
+					}
+				} else {
+					fcMap[target][fc.GetFieldMeta()[0].Name] = fc
+				}
+			}
 		}
 	}
 	return fcMap
 }
 
-// makeColumnSpecMap returns a map from column key to ColumnSpec
+// makeFieldMetaMap returns a map from column key to FieldMeta
 // NOTE that the target is not important for analyzing feature derivation.
-func makeColumnSpecMap(parsedColumnSpecs map[string][]*columns.ColumnSpec) ColumnSpecMap {
-	csMap := make(ColumnSpecMap)
-	for _, fcList := range parsedColumnSpecs {
-		for _, cs := range fcList {
-			csMap[cs.ColumnName] = cs
+func makeFieldMetaMap(features map[string][]codegen.FeatureColumn) FieldMetaMap {
+	fmMap := make(FieldMetaMap)
+	for _, fcList := range features {
+		for _, fc := range fcList {
+			for _, fm := range fc.GetFieldMeta() {
+				if fm != nil {
+					fmMap[fm.Name] = fm
+				}
+			}
 		}
 	}
-	return csMap
+	return fmMap
 }
 
 func newRowValue(columnTypeList []*sql.ColumnType) ([]interface{}, error) {
@@ -78,7 +111,7 @@ func newRowValue(columnTypeList []*sql.ColumnType) ([]interface{}, error) {
 	return rowData, nil
 }
 
-func fillColumnSpec(columnTypeList []*sql.ColumnType, rowdata []interface{}, csmap ColumnSpecMap) error {
+func fillFieldMeta(columnTypeList []*sql.ColumnType, rowdata []interface{}, fieldMetaMap FieldMetaMap) error {
 	csvRegex, err := regexp.Compile("(\\-?[0-9\\.]\\,)+(\\-?[0-9\\.])")
 	if err != nil {
 		return err
@@ -86,12 +119,12 @@ func fillColumnSpec(columnTypeList []*sql.ColumnType, rowdata []interface{}, csm
 	for idx, ct := range columnTypeList {
 		_, fld := decomp(ct.Name())
 		// add a default ColumnSpec for updating.
-		if _, ok := csmap[fld]; !ok {
-			csmap[fld] = &columns.ColumnSpec{
-				ColumnName: fld,
+		if _, ok := fieldMetaMap[fld]; !ok {
+			fieldMetaMap[fld] = &codegen.FieldMeta{
+				Name:       fld,
 				IsSparse:   false,
 				Shape:      nil,
-				DType:      "int64",
+				DType:      codegen.Int,
 				Delimiter:  "",
 				Vocabulary: nil,
 			}
@@ -99,31 +132,25 @@ func fillColumnSpec(columnTypeList []*sql.ColumnType, rowdata []interface{}, csm
 		// start the feature derivation routine
 		typeName := ct.DatabaseTypeName()
 		switch typeName {
-		case "INT":
-			csmap[fld].DType = "int32"
-			csmap[fld].Shape = []int{1}
-		case "DECIMAL", "BIGINT":
-			csmap[fld].DType = "int64"
-			csmap[fld].Shape = []int{1}
-		case "FLOAT":
-			csmap[fld].DType = "float32"
-			csmap[fld].Shape = []int{1}
-		case "DOUBLE":
-			csmap[fld].DType = "float64"
-			csmap[fld].Shape = []int{1}
+		case "INT", "DECIMAL", "BIGINT":
+			fieldMetaMap[fld].DType = codegen.Int
+			fieldMetaMap[fld].Shape = []int{1}
+		case "FLOAT", "DOUBLE":
+			fieldMetaMap[fld].DType = codegen.Float
+			fieldMetaMap[fld].Shape = []int{1}
 		case "VARCHAR", "TEXT":
 			cellData := rowdata[idx].(*string)
 			if csvRegex.MatchString(*cellData) {
 				// ----------------------- CSV string values -----------------------
 				values := strings.Split(*cellData, ",")
 				// set shape only when the column is "DENSE"
-				if csmap[fld].IsSparse == false && csmap[fld].Shape == nil {
-					csmap[fld].Shape = []int{len(values)}
+				if fieldMetaMap[fld].IsSparse == false && fieldMetaMap[fld].Shape == nil {
+					fieldMetaMap[fld].Shape = []int{len(values)}
 				}
-				if csmap[fld].IsSparse == false && csmap[fld].Shape[0] != len(values) {
+				if fieldMetaMap[fld].IsSparse == false && fieldMetaMap[fld].Shape[0] != len(values) {
 					return fmt.Errorf("column %s is csv format sparse tensor, but got DENSE column or not specified", fld)
 				}
-				csmap[fld].Delimiter = ","
+				fieldMetaMap[fld].Delimiter = ","
 				// get dtype for csv values, use int64 and float32 only
 				for _, v := range values {
 					_, err := strconv.ParseInt(v, 10, 32)
@@ -131,7 +158,7 @@ func fillColumnSpec(columnTypeList []*sql.ColumnType, rowdata []interface{}, csm
 						_, err := strconv.ParseFloat(v, 32)
 						// set dtype to float32 once a float value come up
 						if err == nil {
-							csmap[fld].DType = "float32"
+							fieldMetaMap[fld].DType = codegen.Float
 						}
 					}
 				}
@@ -142,27 +169,27 @@ func fillColumnSpec(columnTypeList []*sql.ColumnType, rowdata []interface{}, csm
 					_, err := strconv.ParseFloat(*cellData, 32)
 					if err == nil {
 						// column is float value
-						if csmap[fld].Shape == nil {
-							csmap[fld].Shape = []int{1}
+						if fieldMetaMap[fld].Shape == nil {
+							fieldMetaMap[fld].Shape = []int{1}
 						}
-						csmap[fld].DType = "float32"
+						fieldMetaMap[fld].DType = codegen.Float
 					} else {
 						// neither int nor float, should deal with string dtype
 						// to form a category_id_column
-						csmap[fld].DType = "string"
-						if csmap[fld].Vocabulary == nil {
+						fieldMetaMap[fld].DType = codegen.String
+						if fieldMetaMap[fld].Vocabulary == nil {
 							// initialize the vocabulary map
-							csmap[fld].Vocabulary = make(map[string]string)
+							fieldMetaMap[fld].Vocabulary = make(map[string]string)
 						}
-						if _, ok := csmap[fld].Vocabulary[*cellData]; !ok {
+						if _, ok := fieldMetaMap[fld].Vocabulary[*cellData]; !ok {
 
-							csmap[fld].Vocabulary[*cellData] = *cellData
+							fieldMetaMap[fld].Vocabulary[*cellData] = *cellData
 						}
 					}
 				} else {
 					// column is int value
-					if csmap[fld].Shape == nil {
-						csmap[fld].Shape = []int{1}
+					if fieldMetaMap[fld].Shape == nil {
+						fieldMetaMap[fld].Shape = []int{1}
 					}
 				}
 			}
@@ -175,29 +202,19 @@ func fillColumnSpec(columnTypeList []*sql.ColumnType, rowdata []interface{}, csm
 
 // InferFeatureColumns fill up featureColumn and columnSpec structs
 // for all fields.
-func InferFeatureColumns(slct *standardSelect,
-	parsedFeatureColumns map[string][]columns.FeatureColumn,
-	parsedColumnSpecs map[string][]*columns.ColumnSpec,
-	connConfig *connectionConfig) (FeatureColumnMap, ColumnSpecMap, error) {
-	if connConfig == nil {
-		return nil, nil, fmt.Errorf("no connectionConfig provided")
+func InferFeatureColumns(ir *codegen.TrainIR) error {
+	db, err := NewDB(ir.DataSource)
+	if err != nil {
+		return err
 	}
 	// Convert feature column list to a map
-	fcMap := makeFeatureColumnMap(parsedFeatureColumns)
-	csMap := makeColumnSpecMap(parsedColumnSpecs)
+	fcMap := makeFeatureColumnMap(ir.Features)
+	fmMap := makeFieldMetaMap(ir.Features)
 
-	// TODO(typhoonzero): format connStr for hive/maxcompute
-	connStr := fmt.Sprintf("%s://%s:%s@tcp(%s:%s)/", connConfig.Driver,
-		connConfig.User, connConfig.Password,
-		connConfig.Host, connConfig.Port)
-	db, err := NewDB(connStr)
-	if err != nil {
-		return nil, nil, err
-	}
-	q := slct.String()
+	q := ir.Select
 	re, err := regexp.Compile("LIMIT [0-9]+")
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 	limitClauseIndexes := re.FindStringIndex(q)
 	if limitClauseIndexes == nil {
@@ -210,38 +227,40 @@ func InferFeatureColumns(slct *standardSelect,
 
 	rows, err := db.Query(q)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 	defer rows.Close()
 	columnTypes, err := rows.ColumnTypes()
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 
 	selectFieldTypeMap := make(fieldTypes)
+	selectFieldNames := []string{}
 	for _, ct := range columnTypes {
 		_, fld := decomp(ct.Name())
 		typeName := ct.DatabaseTypeName()
 		if _, ok := selectFieldTypeMap[fld]; ok {
-			return nil, nil, fmt.Errorf("duplicated field name %s", fld)
+			return fmt.Errorf("duplicated field name %s", fld)
 		}
 		selectFieldTypeMap[fld] = typeName
+		selectFieldNames = append(selectFieldNames, fld)
 	}
 
 	for rows.Next() {
 		rowData, err := newRowValue(columnTypes)
 		if err != nil {
-			return nil, nil, err
+			return err
 		}
 		err = rows.Scan(rowData...)
 		if err != nil {
-			return nil, nil, err
+			return err
 		}
-		fillColumnSpec(columnTypes, rowData, csMap)
+		fillFieldMeta(columnTypes, rowData, fmMap)
 	}
 	err = rows.Err()
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 
 	// 1. Infer omited category_id_column for embedding_columns
@@ -252,54 +271,56 @@ func InferFeatureColumns(slct *standardSelect,
 	// COLUMN EMBEDDING(c1) for deep
 	//        EMBEDDING(c2) for deep
 	//        EMBEDDING(c1) for wide
-	for target := range parsedFeatureColumns {
+	for target := range ir.Features {
 		for slctKey := range selectFieldTypeMap {
 			fcTargetMap, ok := fcMap[target]
 			if !ok {
 				// create map for current target
-				fcMap[target] = make(map[string]columns.FeatureColumn)
+				fcMap[target] = make(map[string]codegen.FeatureColumn)
 				fcTargetMap = fcMap[target]
 			}
 			if fc, ok := fcTargetMap[slctKey]; ok {
-				if fc.GetColumnType() == columns.ColumnTypeEmbedding {
-					if fc.(*columns.EmbeddingColumn).CategoryColumn == nil {
-						cs, ok := csMap[fc.GetKey()]
+				if embCol, isEmbCol := fc.(*codegen.EmbeddingColumn); isEmbCol {
+					if embCol.CategoryColumn == nil {
+						cs, ok := fmMap[embCol.Name]
 						if !ok {
-							return nil, nil, fmt.Errorf("column not found or infered: %s", fc.GetKey())
+							return fmt.Errorf("column not found or infered: %s", embCol.Name)
 						}
 						// FIXME(typhoonzero): when to use sequence_category_id_column?
-						fc.(*columns.EmbeddingColumn).CategoryColumn = &columns.CategoryIDColumn{
-							Key:        cs.ColumnName,
+						embCol.CategoryColumn = &codegen.CategoryIDColumn{
+							FieldMeta:  cs,
 							BucketSize: cs.Shape[0],
-							Delimiter:  cs.Delimiter,
-							Dtype:      cs.DType,
 						}
 					}
 				}
 			} else {
-				cs, ok := csMap[slctKey]
+				cs, ok := fmMap[slctKey]
 				if !ok {
-					return nil, nil, fmt.Errorf("column not found or infered: %s", slctKey)
+					return fmt.Errorf("column not found or infered: %s", slctKey)
 				}
-				if cs.DType != "string" {
-					fcMap[target][slctKey] = &columns.NumericColumn{
-						Key:       cs.ColumnName,
-						Shape:     cs.Shape,
-						Dtype:     cs.DType,
-						Delimiter: cs.Delimiter,
+				if cs.DType != codegen.String {
+					fcMap[target][slctKey] = &codegen.NumericColumn{
+						FieldMeta: cs,
 					}
 				} else {
 					// FIXME(typhoonzero): need full test case for string numeric columns
-					fcMap[target][slctKey] = &columns.CategoryIDColumn{
-						Key:        cs.ColumnName,
+					fcMap[target][slctKey] = &codegen.CategoryIDColumn{
+						FieldMeta:  cs,
 						BucketSize: len(cs.Vocabulary),
-						Delimiter:  cs.Delimiter,
-						Dtype:      cs.DType,
 					}
 				}
 			}
 		}
 	}
+	// set back ir.Features in the order of select
+	for target := range ir.Features {
+		targetFeatureColumnMap := fcMap[target]
+		ir.Features[target] = []codegen.FeatureColumn{}
+		for _, slctKey := range selectFieldNames {
+			// FIXME(typhoonzero): deal with cross column, do not add duplicate feature columns
+			ir.Features[target] = append(ir.Features[target], targetFeatureColumnMap[slctKey])
+		}
+	}
 
-	return fcMap, csMap, nil
+	return nil
 }
