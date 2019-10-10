@@ -52,14 +52,14 @@ func makeFeatureColumnMap(parsedFeatureColumns map[string][]codegen.FeatureColum
 								IsSparse:  false,
 							},
 						}
-					} else if fc, ok := k.(codegen.FeatureColumn); ok {
-						fcMap[target][fc.GetFieldMeta()[0].Name] = fc
+					} else if nc, ok := k.(*codegen.NumericColumn); ok {
+						fcMap[target][nc.FieldMeta.Name] = fc
 					}
 				}
 			} else {
-				// embedding column may got GetFieldMeta() == nil
+				// embedding column may got len(GetFieldMeta()) == 0
 				if emb, isEmb := fc.(*codegen.EmbeddingColumn); isEmb {
-					if fc.GetFieldMeta()[0] == nil {
+					if len(fc.GetFieldMeta()) == 0 {
 						fcMap[target][emb.Name] = fc
 					} else {
 						fcMap[target][fc.GetFieldMeta()[0].Name] = fc
