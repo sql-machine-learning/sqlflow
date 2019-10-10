@@ -70,6 +70,13 @@ the returned task status is **COMPLETED** or **FAILED**.
       string job_tracer_url = 5; // add a new filed `url` in Session
     }
 
+    message Response {
+        oneof response {
+            ...
+            Session session = 5; // add session in Response
+        }
+    }
+
     message TaskStatus{
       enum Code {
         PENDING = 0;
