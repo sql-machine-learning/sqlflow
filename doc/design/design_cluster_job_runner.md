@@ -6,10 +6,10 @@ In the current system, SQLFlow client connects the SQLFlow server with a long li
 a gRPC request which contains a SQL statement and blocking until the SQLFlow server finishes executing the SQL statement.
 
 For each SQL statement, the SQLFlow code generator would generate a submitter program in Python, and then the SQLFlow server
-would launch a process on the host or launch a distributed Job on k8s/Yarn, this would cause two problems in the production environment:
+would launch a process on the host or launch a distributed Job on cluster(Kubernetes/Yarn), this would cause two problems in the production environment:
 
-1. The local job can cause the SQLFlow server resource insufficient when there are many SQL statements.
-1. The SQLFlow server may take a lone time to execute the SQL statement and the gRPC calls timeout.
+1. The local job may cause the SQLFlow server resource insufficient when there are too much SQL jobs.
+1. Sometimes, the SQL job takes too much time and the gRPC calls timeout.
 1. The SQLFlow server is not High-Available, if an SQLFlow server instance failed, the jobs on this instance are failed.
 
 In this design, we propose to implement the **Cluster Job Runner** to solve the above problems.
@@ -19,14 +19,13 @@ check the job status in a polling manner instead of a long live connection. We r
 
 ## High-Level Design
 
-For the most submitter program, it can run as the local mode or distributed mode. for the local mode, SQLFlow would run
-the submitter program as a local process on the host, for the distributed model, the submitter program would launch a distributed
-Job on a cluster(Kubernetes/Yarn). For the two modes, the behavior of SQLFlow is different in both local job runner and cluster job runner:
+For the most submitter program, it can run as the local mode or distributed mode. For the local mode, SQLFlow would run
+the submitter program as a local process on the host; For the distributed model, the submitter program would submit a distributed Job to the cluster. For the two modes, the behavior of SQLFlow is different in both local job runner and cluster job runner:
 
 Job Runner| local mode | distributed mode
 -- | -- | --
-Local | launch a process on the host with blocking| launch a job on Yarn/k8s with blocking
-Cluster| launch a k8s Pod with no-blocing| launch a job on Yarn/k8s with no-blocking
+Local | launch a process on the host with blocking| submite a job to cluster with blocking
+Cluster| launch a Kubernetes Pod with no-blocing| submite a job to cluster with no-blocking
 
 The cluster job runner workflow is as follows:
 
