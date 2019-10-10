@@ -1,17 +1,17 @@
 # Model Zoo
 
-SQLFlow model zoo is a place to store model definitions, pre-trained model weights and model documentations. You can directly train, predict, analyze using one of the models using SQLFlow, or you can do model fine-tune, transfer learning to use the model to fit your own dataset.
+SQLFlow model zoo is a place to store model definitions, pre-trained model weights and model documentations. You can directly train, predict, analyze using one of the models using SQLFlow, or you can do model fine-tune, transfer learning to use the model to fit your dataset.
 
 SQLFlow should support below features to support common cases in machine learning:
 
-1. Host model defination and pre-trained weights in `sqlflow.org`. e.g. `sqlflow.org/modelzoo/iris_dnn_128x32` points to a directory containing a model defination of `DNNClassifier` with 128, 32 hidden layers and pre-trained weights using the iris dataset.
+1. Host model definition and pre-trained weights in `sqlflow.org`. e.g. `sqlflow.org/modelzoo/iris_dnn_128x32` points to a directory containing a model definition of `DNNClassifier` with 128, 32 hidden layers and pre-trained weights using the iris dataset.
 1. Download pre-trained model to predict a dataset:
    ```sql
    SELECT * FROM iris.predict_samples
    PREDICT predict_result.class
    USING sqlflow.org/modelzoo/iris_dnn_128x32;
    ```
-1. Train a model from scratch using the model defination:
+1. Train a model from scratch using the model definition:
    ```sql
    SELECT * FROM iris.new_iris_train
    TRAIN sqlflow.org/modelzoo/iris_dnn_128x32
@@ -44,7 +44,7 @@ The directory name is responsible to explain the model's type, network structure
 used to train the pre-trained weights. You can access `sqlflow.org/modelzoo/iris_dnn_128x32/README.md`
 from the browser to get the model's full documentation. All models under `sqlflow.org/modelzoo` are
 developed under `https://github.com/sql-machine-learning/models` weights is only stored under
-`sqlflow.org` but not under github.
+`sqlflow.org` but not under Github.
 
 The content of the directory should be like:
 
@@ -63,7 +63,7 @@ Some details about the files in one model:
 - `model_meta.json` contains important information used for load and run this model, a sample is shown below:
     ```json
     {
-        // engine used for train this model, can be tensorflow, keras or xgboost.
+        // engine used to train this model, can be TensorFlow, Keras or XGBoost.
         // and the version of the engine used.
         "model": {
             "engine": "tensorflow",
@@ -80,7 +80,7 @@ Some details about the files in one model:
         // The SQL statement may not have full specification of how to parse the column
         // data, the "columns" section contains derivated FieldMetas when training. We
         // use information in "columns" section to construct "FieldMeta" when using this
-        // model. If the input data does not fit the definations under "columns" section,
+        // model. If the input data does not fit the definitions under "columns" section,
         // the error will be raised.
         "columns": {
             "col1": {
@@ -101,16 +101,15 @@ Some details about the files in one model:
    ```
 - `model_def.py` file is the model python definition. The content varies when using different engines:
     - Custom Estimator: A sub class of `tf.estimator.Estimator`
-    - Keras Model: A keras sub class model defination.
+    - Keras Model: A keras sub class model definition.
     - XGBoost Model: One line indicating the XGBoost supported model type, like: `model_type = xgboost.gbtree`
 
 ## ElasticDL Compatible Model
 
-The model trained using ElasticDL can also be published and used by SQLFlow. SQLFlow is responsible
-to save the `model_meta.json` file when training with ElasticDL. When use a model in the model zoo
-to train/fine-tune using ElasticDL, SQLFlow can use the "columns"
-information in `model_meta.json` to form a `dataset_fn` when generating a ElasticDL distributed training
-program, see: https://github.com/sql-machine-learning/sqlflow/blob/develop/pkg/sql/template_elasticdl.go#L46
+On the one hand, the model trained by ElasticDL can also be published in SQLFlow model zoo. A `model_meta.json` file will be generated when training ElasticDL.
+
+On the other hand, If you want to train/fine-tune a model from the model zoo with ElasticDL, SQLFlow can use the "columns" information in `model_meta.json` to form a `dataset_fn` which ElasticDL needed.
+see: https://github.com/sql-machine-learning/sqlflow/blob/develop/pkg/sql/template_elasticdl.go#L46
 
 ## Publish A Model to the Model Zoo
 
@@ -134,8 +133,8 @@ The overall workflow to publish and use a model in the model zoo is shown below:
 
 ## Model Sharing
 
-Model sharing is nessesary feature to encourage more user to contribute models to the model zoo. The
-features are quiet common for products like [DockerHub](https://hub.docker.com/). We can discuss these
+Model sharing is a necessary feature to encourage more users to contribute models to the model zoo. The
+features are quite common for products like [DockerHub](https://hub.docker.com/). We can discuss these
 features when we need to implement the model sharing features.
 
 ## Use the Model Zoo in SQLFlow Statements
@@ -148,7 +147,7 @@ weights will be loaded both in `TRAIN` process or `PREDICT` process.
 We can use the models in the model zoo to start below jobs in minutes:
 
 1. Predict some data
-1. Transfer learning to fit your own data
+1. Transfer learning to fit your data
 1. Fine-tuning to achieve better performance on your data
 1. Train a model from scratch
 
@@ -160,8 +159,8 @@ A simple example to use a pre-trained model to predict iris class is like below:
    USING sqlflow.org/modelzoo/iris_dnn_128x32;
 ```
 
-SQLFlow will download the model from `sqlflow.org` and predict the iris class immediently. For more cases
-please checkout the SQL statements in the top section.
+SQLFlow will download the model from `sqlflow.org` and predict the iris class immediately. For more cases
+please check out the SQL statements in the top section.
 
 For models that supports load only parts of the weights for transfer learning or prediction, the layers
 in the model should have different name if you do not want to load the weights for current layer when
