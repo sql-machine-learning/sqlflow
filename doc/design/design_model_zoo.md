@@ -11,7 +11,7 @@ SQLFlow should support below features to support common cases in machine learnin
    PREDICT predict_result.class
    USING sqlflow.org/modelzoo/iris_dnn_128x32;
    ```
-1. Train a new model using the model defination:
+1. Train a model from scratch using the model defination:
    ```sql
    SELECT * FROM iris.new_iris_train
    TRAIN sqlflow.org/modelzoo/iris_dnn_128x32
@@ -50,29 +50,111 @@ The content of the directory should be like:
 
 ```
 iris_dnn_128x32
-   - README.md     # model documents.
-   - model_def.py  # python file of model definition (Tensorflow Estimator model or Keras model).
-   - model/        # the saved Tensorflow/Keras/XGBoost model.
-   - columns       # saved codegen.FeatureColumn meta for parsing and extracting features.
-   - some_deps.py  # if model_def.py have dependent python source files just put them in the same folder.
+   - model_meta.json  # model information useful for load and run.
+   - README.md        # model documents.
+   - requirments.txt  # python package dependency for the model.
+   - model_def.py     # python file of model definition (Tensorflow Estimator model or Keras model).
+   - model/           # the saved Tensorflow/Keras/XGBoost model.
+   - some_deps.py     # if model_def.py have dependent python source files just put them in the same folder.
 ```
 
-- Note that we save the `columns` file so that we can check if user-provided data is of the same type.
-- Note that we only support Tensorflow Estimator model, Keras model, and XGBoost model currently, and the
-`model_def.py` file is the model python definition only when the model is a Tensorflow Estimator model or Keras model. For XGBoost model, the content of `model_def.py` should be like: `model_type = xgboost.gbtree`.
+Some details about the files in one model:
 
-To publish a new model into the model zoo, you must:
+- `model_meta.json` contains important information used for load and run this model, a sample is shown below:
+    ```json
+    {
+        // engine used for train this model, can be tensorflow, keras or xgboost.
+        // and the version of the engine used.
+        "model": {
+            "engine": "tensorflow",
+            "version": "2.0.0",
+        },
+        // SQL statement used when train the model, this is useful when you use this
+        // model to run prediction using sqlflow. Things can be extracted from the SQL:
+        // 1. The model name (a python class name defined in "model_def.py")
+        // 2. How to extract column data (FieldMeta info from DENSE/SPARSE syntax)
+        // 3. Target to train or predict
+        "train_sql": {
+            "SELECT * FROM traintable TRAIN ...",
+        },
+        // The SQL statement may not have full specification of how to parse the column
+        // data, the "columns" section contains derivated FieldMetas when training. We
+        // use information in "columns" section to construct "FieldMeta" when using this
+        // model. If the input data does not fit the definations under "columns" section,
+        // the error will be raised.
+        "columns": {
+            "col1": {
+                "Shape": [1],
+                "IsSparse": false,
+                "Delimiter": "",
+                "DType": "Float",
+            },
+            "col2": {...},
+        },
+        "label": {
+            "Shape": [1],
+                "IsSparse": false,
+                "Delimiter": "",
+                "DType": "Int",
+        },
+    }
+   ```
+- `model_def.py` file is the model python definition. The content varies when using different engines:
+    - Custom Estimator: A sub class of `tf.estimator.Estimator`
+    - Keras Model: A keras sub class model defination.
+    - XGBoost Model: One line indicating the XGBoost supported model type, like: `model_type = xgboost.gbtree`
 
-1. commit your model (code and README.md) to https://github.com/sql-machine-learning/models and merge the code.
-1. train and test your model on the dataset then save the pre-trained model together with `columns` file.
+
+## Publish A Model to the Model Zoo
+
+To publish a new model into the model zoo, you need to:
+
+1. commit your model (code and README.md) to https://github.com/sql-machine-learning/models and merge the code. A model in the models repo should contain below files:
+    ```
+    - README.md
+    - requirments.txt
+    - model_def.py
+    - some_deps.py
+    ```
+1. train and test your model on the dataset then save the model weights together with `model_meta.json` file.
 1. name a directory and upload all files listed above into the directory on the server.
 
-## Using the Model Zoo in SQLFlow Statements
+The overall workflow to publish and use a model in the model zoo is shown below:
+
+<p align="center">
+<img src="../figures/modelzoo_workflow.png" width=500px>
+</p>
+
+## Model Sharing
+
+Model sharing is nessesary feature to encourage more user to contribute models to the model zoo. The
+features are quiet common for products like [DockerHub](https://hub.docker.com/). We can discuss these
+features when we need to implement the model sharing features.
+
+## Use the Model Zoo in SQLFlow Statements
 
 In SQLFlow, you can specify the model under `sqlflow.org/modelzoo` in the `TRAIN` and `USING` clause.
 
 If the `TRAIN` clause accepts a model under `sqlflow.org/modelzoo`, SQLFlow will only use the model definition to start the train. If `USING` clause accepts a model under `sqlflow.org/modelzoo`, the model's
 weights will be loaded both in `TRAIN` process or `PREDICT` process.
+
+We can use the models in the model zoo to start below jobs in minutes:
+
+1. Predict some data
+1. Transfer learning to fit your own data
+1. Fine-tuning to achieve better performance on your data
+1. Train a model from scratch
+
+A simple example to use a pre-trained model to predict iris class is like below:
+
+```sql
+    SELECT * FROM iris.predict_samples
+   PREDICT predict_result.class
+   USING sqlflow.org/modelzoo/iris_dnn_128x32;
+```
+
+SQLFlow will download the model from `sqlflow.org` and predict the iris class immediently. For more cases
+please checkout the SQL statements in the top section.
 
 For models that supports load only parts of the weights for transfer learning or prediction, the layers
 in the model should have different name if you do not want to load the weights for current layer when
