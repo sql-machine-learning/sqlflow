@@ -104,6 +104,13 @@ Some details about the files in one model:
     - Keras Model: A keras sub class model defination.
     - XGBoost Model: One line indicating the XGBoost supported model type, like: `model_type = xgboost.gbtree`
 
+## ElasticDL Compatible Model
+
+The model trained using ElasticDL can also be published and used by SQLFlow. SQLFlow is responsible
+to save the `model_meta.json` file when training with ElasticDL. When use a model in the model zoo
+to train/fine-tune using ElasticDL, SQLFlow can use the "columns"
+information in `model_meta.json` to form a `dataset_fn` when generating a ElasticDL distributed training
+program, see: https://github.com/sql-machine-learning/sqlflow/blob/develop/pkg/sql/template_elasticdl.go#L46
 
 ## Publish A Model to the Model Zoo
 
