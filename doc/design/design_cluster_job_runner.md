@@ -68,7 +68,7 @@ the returned task status is **COMPLETED** or **FAILED**.
 
     message Session {
       ...
-      string job_tracer_url = 5; // add a new filed "url" in the session 
+      string job_tracer_url = 5; // add a new filed `url` in Session
     }
 
     message TaskStatus{
