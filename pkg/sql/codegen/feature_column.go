@@ -50,7 +50,7 @@ func (cc *CrossColumn) GetFieldMeta() []*FieldMeta {
 	var retKeys []*FieldMeta
 	for idx, k := range cc.Keys {
 		if _, ok := k.(string); ok {
-			retKeys = append(retKeys, nil)
+			continue
 		} else if _, ok := k.(FeatureColumn); ok {
 			retKeys = append(retKeys, cc.Keys[idx].(*NumericColumn).GetFieldMeta()[0])
 		}
