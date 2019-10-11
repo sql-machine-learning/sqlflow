@@ -46,5 +46,12 @@ func TestDatabaseOpenSQLite3(t *testing.T) {
 	db, e := NewDB("sqlite3://test")
 	a.NoError(e)
 	defer db.Close()
-	// TODO: need more tests
+}
+
+func TestDBString(t *testing.T) {
+	a := assert.New(t)
+	conn := "mysql://root:root@host/db"
+	db, e := NewDB(conn)
+	a.NoError(e)
+	a.EqualValues(conn, db.String())
 }

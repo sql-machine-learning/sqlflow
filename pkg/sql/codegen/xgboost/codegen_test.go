@@ -43,7 +43,7 @@ func TestTrain(t *testing.T) {
 	COLUMN sepal_length, sepal_width, petal_length, petal_width
 	LABEL class
 	INTO sqlflow_models.my_xgboost_model;`
-	ir := codegen.TrainIR{
+	ir := &codegen.TrainIR{
 		DataSource:       fmt.Sprintf("mysql://%s", cfg.FormatDSN()),
 		Select:           "select * from iris.train;",
 		ValidationSelect: "select * from iris.test;",
