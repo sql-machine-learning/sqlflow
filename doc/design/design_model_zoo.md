@@ -53,8 +53,8 @@ iris_dnn_128x32
    - model_meta.json  # model information useful for load and run.
    - README.md        # model documents.
    - requirments.txt  # python package dependency for the model.
-   - model_def.py     # python file of model definition (Tensorflow Estimator model or Keras model).
-   - model/           # the saved Tensorflow/Keras/XGBoost model.
+   - model_def.py     # python file of model definition (TensorFlow Estimator model or Keras model).
+   - model/           # the saved TensorFlow/Keras/XGBoost model.
    - some_deps.py     # if model_def.py have dependent python source files just put them in the same folder.
 ```
 
@@ -118,7 +118,7 @@ To publish a new model into the model zoo, you need to:
 1. commit your model (code and README.md) to https://github.com/sql-machine-learning/models and merge the code. A model in the models repo should contain below files:
     ```
     - README.md
-    - requirments.txt
+    - requirements.txt
     - model_def.py
     - some_deps.py
     ```
