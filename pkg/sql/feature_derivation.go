@@ -25,8 +25,10 @@ import (
 
 const featureDerivationRows = 1000
 
-// FeatureColumnMap is like: target -> key -> FeatureColumn
-type FeatureColumnMap map[string]map[string]codegen.FeatureColumn
+// FeatureColumnMap is like: target -> key -> []FeatureColumn
+// one column's data can be used by multiple feature columns, e.g.
+// EMBEDDING(c1), CROSS(c1, c2)
+type FeatureColumnMap map[string]map[string][]codegen.FeatureColumn
 
 // FieldMetaMap is a mapping from column name to ColumnSpec struct
 type FieldMetaMap map[string]*codegen.FieldMeta
@@ -36,14 +38,14 @@ type FieldMetaMap map[string]*codegen.FieldMeta
 func makeFeatureColumnMap(parsedFeatureColumns map[string][]codegen.FeatureColumn) FeatureColumnMap {
 	fcMap := make(FeatureColumnMap)
 	for target, fcList := range parsedFeatureColumns {
-		fcMap[target] = make(map[string]codegen.FeatureColumn)
+		fcMap[target] = make(map[string][]codegen.FeatureColumn)
 		for _, fc := range fcList {
 			// CrossColumn use two columns as input, record the key for each column
-			// FIXME(typhoonzero): how to handle duplicated keys?
 			if cc, ok := fc.(*codegen.CrossColumn); ok {
-				for _, k := range cc.Keys {
+				for idx, k := range cc.Keys {
+					// if the key of CrossColumn is a string, generate a default numeric column.
 					if strKey, ok := k.(string); ok {
-						fcMap[target][strKey] = &codegen.NumericColumn{
+						cc.Keys[idx] = &codegen.NumericColumn{
 							FieldMeta: &codegen.FieldMeta{
 								Name:      strKey,
 								DType:     codegen.Float,
@@ -52,20 +54,21 @@ func makeFeatureColumnMap(parsedFeatureColumns map[string][]codegen.FeatureColum
 								IsSparse:  false,
 							},
 						}
+						fcMap[target][strKey] = append(fcMap[target][strKey], cc)
 					} else if nc, ok := k.(*codegen.NumericColumn); ok {
-						fcMap[target][nc.FieldMeta.Name] = fc
+						fcMap[target][nc.FieldMeta.Name] = append(fcMap[target][nc.FieldMeta.Name], cc)
 					}
 				}
 			} else {
 				// embedding column may got len(GetFieldMeta()) == 0
 				if emb, isEmb := fc.(*codegen.EmbeddingColumn); isEmb {
 					if len(fc.GetFieldMeta()) == 0 {
-						fcMap[target][emb.Name] = fc
+						fcMap[target][emb.Name] = append(fcMap[target][emb.Name], fc)
 					} else {
-						fcMap[target][fc.GetFieldMeta()[0].Name] = fc
+						fcMap[target][fc.GetFieldMeta()[0].Name] = append(fcMap[target][fc.GetFieldMeta()[0].Name], fc)
 					}
 				} else {
-					fcMap[target][fc.GetFieldMeta()[0].Name] = fc
+					fcMap[target][fc.GetFieldMeta()[0].Name] = append(fcMap[target][fc.GetFieldMeta()[0].Name], fc)
 				}
 			}
 		}
@@ -276,20 +279,22 @@ func InferFeatureColumns(ir *codegen.TrainIR) error {
 			fcTargetMap, ok := fcMap[target]
 			if !ok {
 				// create map for current target
-				fcMap[target] = make(map[string]codegen.FeatureColumn)
+				fcMap[target] = make(map[string][]codegen.FeatureColumn)
 				fcTargetMap = fcMap[target]
 			}
-			if fc, ok := fcTargetMap[slctKey]; ok {
-				if embCol, isEmbCol := fc.(*codegen.EmbeddingColumn); isEmbCol {
-					if embCol.CategoryColumn == nil {
-						cs, ok := fmMap[embCol.Name]
-						if !ok {
-							return fmt.Errorf("column not found or infered: %s", embCol.Name)
-						}
-						// FIXME(typhoonzero): when to use sequence_category_id_column?
-						embCol.CategoryColumn = &codegen.CategoryIDColumn{
-							FieldMeta:  cs,
-							BucketSize: cs.Shape[0],
+			if fcList, ok := fcTargetMap[slctKey]; ok {
+				for _, fc := range fcList {
+					if embCol, isEmbCol := fc.(*codegen.EmbeddingColumn); isEmbCol {
+						if embCol.CategoryColumn == nil {
+							cs, ok := fmMap[embCol.Name]
+							if !ok {
+								return fmt.Errorf("column not found or infered: %s", embCol.Name)
+							}
+							// FIXME(typhoonzero): when to use sequence_category_id_column?
+							embCol.CategoryColumn = &codegen.CategoryIDColumn{
+								FieldMeta:  cs,
+								BucketSize: cs.Shape[0],
+							}
 						}
 					}
 				}
@@ -299,15 +304,17 @@ func InferFeatureColumns(ir *codegen.TrainIR) error {
 					return fmt.Errorf("column not found or infered: %s", slctKey)
 				}
 				if cs.DType != codegen.String {
-					fcMap[target][slctKey] = &codegen.NumericColumn{
-						FieldMeta: cs,
-					}
+					fcMap[target][slctKey] = append(fcMap[target][slctKey],
+						&codegen.NumericColumn{
+							FieldMeta: cs,
+						})
 				} else {
 					// FIXME(typhoonzero): need full test case for string numeric columns
-					fcMap[target][slctKey] = &codegen.CategoryIDColumn{
-						FieldMeta:  cs,
-						BucketSize: len(cs.Vocabulary),
-					}
+					fcMap[target][slctKey] = append(fcMap[target][slctKey],
+						&codegen.CategoryIDColumn{
+							FieldMeta:  cs,
+							BucketSize: len(cs.Vocabulary),
+						})
 				}
 			}
 		}
@@ -316,11 +323,32 @@ func InferFeatureColumns(ir *codegen.TrainIR) error {
 	for target := range ir.Features {
 		targetFeatureColumnMap := fcMap[target]
 		ir.Features[target] = []codegen.FeatureColumn{}
+		// append cross columns at the end of all selected fields.
+		crossColumns := []*codegen.CrossColumn{}
 		for _, slctKey := range selectFieldNames {
 			// FIXME(typhoonzero): deal with cross column, do not add duplicate feature columns
-			ir.Features[target] = append(ir.Features[target], targetFeatureColumnMap[slctKey])
+			for _, fc := range targetFeatureColumnMap[slctKey] {
+				if cc, ok := fc.(*codegen.CrossColumn); ok {
+					crossColumns = append(crossColumns, cc)
+					continue
+				}
+				ir.Features[target] = append(ir.Features[target], fc)
+			}
+		}
+		// remove duplicated CrossColumns pointers, for CROSS(c1, c2), both fcMap[c1], fcMap[c2] will
+		// record the CrossColumn pointer
+		for i := 0; i < len(crossColumns); i++ {
+			exists := false
+			for v := 0; v < i; v++ {
+				if crossColumns[v] == crossColumns[i] {
+					exists = true
+					break
+				}
+			}
+			if !exists {
+				ir.Features[target] = append(ir.Features[target], crossColumns[i])
+			}
 		}
 	}
-
 	return nil
 }
