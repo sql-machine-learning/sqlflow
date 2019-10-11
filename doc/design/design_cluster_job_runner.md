@@ -124,3 +124,116 @@ the returned task status is **COMPLETED** or **FAILED**.
     There are two steps to save the trained model:
     1. SQLFLow server creates a folder `sqlflow_model` on the distributed file system and saves `sqlflow.gob` in it.
     1. The machine learning framework saves the model weights file `sqlflow_model.tar` in the same folder.
+
+## Alternative high-level design:
+
+### Client
+
+The client calls `Run` and receives a string token. The client subsequently fetches the result using the token periodically. And the client is unaware of the deployment type of the server.
+
+```python
+token = client.Run("sqls ...")
+while True:
+    result = client.Fetch(token)
+    for r in result.results:
+        # do stuff: either print logs or construct Rows
+    if result.job_status in (SUCCEEDED, FAILED):
+        break
+    sleep(some_time)
+```
+
+And the Protocol Buffer definition looks like the following
+
+```proto
+service SQLFlow {
+    // Client calls Run and receives a string token.
+    rpc Run (Request) returns (Token);
+    // Client subsequently fetches the result using the token periodically.
+    rpc Fetch(Token) returns (Result);
+}
+
+message Token {
+    string token = 1;
+}
+
+message Session {
+    string token = 1;
+    string db_conn_str = 2;
+    bool exit_on_submit = 3;
+    string user_id = 4;
+}
+
+message Result {
+    JobStatus job_status = 1;
+    // Fetches multiple responses at once
+    repeated Response results = 2;
+}
+
+message JobStatus {
+    enum Code {
+        PENDING = 0;
+        RUNNING = 1;
+        SUCCEEDED = 2;
+        FAILED = 3;
+        UNKNOWN = 4;
+    }
+}
+```
+
+### Server
+
+Upon processing a `Run` request, the server generates, bookkeeps and returns the token to the client. Upon processing a `Fetch` request, the server looks up the result channel and returns the most recent result.
+
+```go
+func (s *Server) Run(ctx context.Context, req *pb.Request) (*pb.Token, error) {
+   db := s.db
+   sqlStatements, _ := sf.SplitMultipleSQL(req.Sql)
+
+   token := tokenGen()
+   pr, pw := sf.Pipe()
+   s.jobs[token] = pr
+
+   go func() {
+      defer pw.Close()
+      pw.Write(`RUNNING`)
+      for _, singleSQL := range sqlStatements {
+         for e := range s.run(singleSQL, db, s.modelDir, req.Session).ReadAll() {
+            pw.Write(e)
+         }
+      }
+      pw.Write(`SUCCEEDED`)
+   }()
+
+   return &pb.Token{Token: token}, nil
+}
+
+func (s *Server) Fetch(ctx context.Context, token *pb.Token) (*pb.Result, error) {
+   result := &pb.Result{}
+   pr, ok := s.jobs[token.Token]
+   if !ok {
+      return nil, fmt.Errorf("unrecognized token %s", token.Token)
+   }
+   for ;; {
+      select {
+      case res := <-pr.ReadAll():
+         // construct result
+      case <-time.After(1 * time.Second):
+         break;
+      }
+   }
+   return result, nil
+}
+```
+
+Since we have multiple gRPC calls for the same SQLFlow job, we need to maintain a state across different calls. We certainly can't store the state on the client since the client doesn't know the number of SQLs/tasks. So we decide to save the state as a token&`PipeReader` pair.
+
+### Third-party computation service
+
+The server calls the third party computation service synchronously.
+
+### Dealing with failures:
+
+Q: What if the client forgets to fetch? For example, a user hits `ctrl+C` in the Jupyter Notebook right after the `client.Run`.
+
+A: The client can specify a timeout T. The server will kill the corresponding job if the client doesn't fetch in the last T seconds.
+
