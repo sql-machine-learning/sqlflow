@@ -273,7 +273,7 @@ func TestEnd2EndMySQLIR(t *testing.T) {
 	if testDBDriver != "mysql" {
 		t.Skip("Skipping mysql tests")
 	}
-	dbConnStr = "mysql://root:root@tcp/?maxAllowedPacket=0"
+	dbConnStr = "mysql://root:root@tcp(localhost:3306)/?maxAllowedPacket=0"
 	modelDir := ""
 
 	tmpDir, caCrt, caKey, err := generateTempCA()
