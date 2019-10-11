@@ -31,12 +31,17 @@ from elasticdl.python.worker.prediction_outputs_processor import (
 
 def custom_model():
     inputs = tf.keras.layers.Input(shape=({{.InputShape}}, 1), name="input")
-    outputs = tf.keras.layers.Dense({{.OutputShape}}, name="output")(inputs)
+    x = tf.keras.layers.Flatten()(inputs)
+    outputs = tf.keras.layers.Dense(3, name="output")(x)
     return tf.keras.Model(inputs=inputs, outputs=outputs, name="simple-model")
 
 
 def loss(output, labels):
-    return tf.reduce_sum(tf.reduce_mean(tf.reshape(output, [-1])) - labels)
+    return tf.reduce_mean(
+        tf.nn.sparse_softmax_cross_entropy_with_logits(
+            tf.cast(tf.reshape(labels, [-1]), tf.int32), output
+        )
+    )
 
 
 def optimizer(lr=0.1):
@@ -87,10 +92,11 @@ def dataset_fn(dataset, mode, metadata):
     return dataset
 
 
-def eval_metrics_fn(predictions, labels):
+def eval_metrics_fn():
     return {
-        "dummy_metric": tf.reduce_sum(
-            tf.reduce_mean(tf.reshape(predictions, [-1])) - labels
+        "accuracy": lambda labels, predictions: tf.equal(
+            tf.argmax(predictions, 1, output_type=tf.int32),
+            tf.cast(tf.reshape(labels, [-1]), tf.int32),
         )
     }
 
