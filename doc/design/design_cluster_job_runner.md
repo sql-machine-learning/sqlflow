@@ -98,10 +98,14 @@ The `JobRunner` interface should provide two functions `run` and `fetch`:
 
 ```go
 type JobRunner interface {
-  run(sql string, pr *PipeReader) (token string, err error)
-  fetchResult() (result *pb.Result)
+  run(sql string, pr *PipeReader, pw *PipeWriter) (token string, err error){
+  fetchResult(token string) (result *pb.Result)
 }
+```
 
+Registe `JobRunner` in `sql.Server`:
+
+```go
 func (s *Server) Run(ctx context.Context, req *pb.Request) (*pb.Token, error) {
   db := s.db
   pr, pw := sf.Pipe()
@@ -114,9 +118,13 @@ func (s *Server) Fetch(ctx context.Context, token *pb.Token) (*pb.Result, error)
   return result, nil
 }
 
+func main() {
+  // registe `LocalJobRunner` or `ClusterJobRunner` according to the env variable `SQLFLOW_JOB_RUNNER`
+  server.RegisteJobRunner(os.getenv("SQLFLOW_JOB_RUNNER"))
+}
 ```
 
-### Local Job Runner 
+### Local Job Runner
 
 Upon processing a `Run` request, the server generates, bookkeeps, and returns the token to the client. Upon processing a `Fetch` request, the server looks up the result channel and returns the most recent result.
 
@@ -125,7 +133,7 @@ type LocalJobRunner {
   jobs map[string]*PipeReader
 }
 
-func (r LocalJobRunner)run(pr *PipeReader, pw *PipeWriter){
+func (r *LocalJobRunner) run (sql string, pr *PipeReader, pw *PipeWriter) (string, error){
   token := tokenGen()
   r.jobs[token] = pr
   go func() {
@@ -142,7 +150,7 @@ func (r LocalJobRunner)run(pr *PipeReader, pw *PipeWriter){
   return token
 }
 
-func (r LocalJobRunner) fetch(token string) (pb.Result, error) (
+func (r *LocalJobRunner) fetch(token string) (*pb.Result, error) (
   result := &pb.Result{}
   pr, ok := r.jobs[token]
   if !ok {
@@ -171,16 +179,15 @@ Upon processing a `Fetch` request, the server checks the Pod status and returns 
 
 ```go
 type ClusterJobRunner {
-  jobs map[string]*PipeReader
 }
 
-func (r LocalJobRunner)run(sql string, pr *PipeReader, pw *PipeWriter) (string, error){
+func (r *LocalJobRunner)run(sql string, pr *PipeReader, pw *PipeWriter) (string, error){
   podID, err := r.launchK8sPod(sql)
   pw.Write(fmt.Sprintf("Logs viewer URL: %s", r.logsViewerURL(podID)))
   return podID, nil
 }
 
-func (r LocalJobRunner) fetch(token string) (pb.Result, error) (
+func (r *LocalJobRunner) fetch(token string) (*pb.Result, error) (
   result := &pb.Result{}
   result.job_status := r.PodStatus(token)
   return result, nil
