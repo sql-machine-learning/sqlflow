@@ -1,21 +1,20 @@
-# High-available SQLFlow server
+# High-available SQLFlow Server
 
 ## Motivations
 
-In the current system, SQLFlow client connects the SQLFlow server with a long live connection. the SQLFlow client sends
-a gRPC request which contains a SQL statement and blocking until the SQLFlow server finishes executing the SQL statement.
+In the current system, the SQLFlow client connects the SQLFlow server with a long live connection.
+the SQLFlow client sends a gRPC request which contains a SQL statement and wait until the SQLFlow server finishes executing the SQL statement.
 
-For each SQL statement, the SQLFlow code generator would generate a submitter program in Python, and then the SQLFlow server
-would launch a process on the host or launch a distributed job on a cluster(Kubernetes/Yarn), this would cause two problems in the production environment:
+When the SQLFlow server receives one training SQL statement, it will generate a python training program that runs on the host or submit the training job to some distributed training service cluster (Kubernetes/Yarn). This will cause:
 
 1. The local job may cause the SQLFlow server resource insufficient when there are too many SQL jobs.
 1. Sometimes, the SQL job takes too much time, and the gRPC calls timeout.
-1. If an SQLFlow server instance fails, the SQL jobs in this instance failed.
+1. If one of the SQLFlow server instance fails, the SQL job also fails.
 
 In this design, we propose to:
 
-1. communicate with the SQLFlow server in a pooling manner.
-1. implement `ClusterJobRunner` on the server-side to launch the SQL Job on Kubernetes.
+1. Communicate with the SQLFlow server in a polling manner.
+1. Implement `ClusterJobRunner` on the server-side to launch the SQL Job on Kubernetes.
 
 We recommend using `ClusterJobRunner` in the production environment.
 
@@ -27,7 +26,7 @@ The high-availabe SQLFlow job workflow is as follows:
 
 1. SQLFlow client sends the SQL statement via a gRPC call to the SQLFlow server.
 1. For the `LocalJobRunner`:
-    1. SQLFLow server launches a SQL job on the host and generates a token mapping to the SQL job.
+    1. SQLFLow server launches a SQL job on the host and generates a token identifies the SQL job.
     1. SQLFLow server maintains a mapping from token to the SQL job.
     1. SQLFlow server returns the token to the client.
 1. For the `ClusterJobRunner`:
