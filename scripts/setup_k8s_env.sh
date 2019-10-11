@@ -31,8 +31,3 @@ touch $KUBECONFIG
 sudo minikube start --vm-driver=none --kubernetes-version=v$K8S_VERSION --cpus 2 --memory 6144
 sudo chown -R travis: $HOME/.minikube/
 kubectl cluster-info
-
-# Set up necessary RBAC roles for k8s cluster
-cd /elasticdl
-kubectl apply -f elasticdl/manifests/examples/elasticdl-rbac.yaml
-cd -
