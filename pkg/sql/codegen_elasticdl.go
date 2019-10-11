@@ -229,9 +229,9 @@ func getEnvs(envs string) string {
 	}
 	// TODO: Consolidate environment variable names in two projects
 	return fmt.Sprintf(`--envs="ODPS_PROJECT_NAME=%s,ODPS_ACCESS_ID=%s,ODPS_ACCESS_KEY=%s%s"`,
-		os.Getenv("MAXCOMPUTE_PROJECT"),
-		os.Getenv("MAXCOMPUTE_AK"),
-		os.Getenv("MAXCOMPUTE_SK"), envs)
+		strings.Trim(os.Getenv("MAXCOMPUTE_PROJECT"), `\'"`),
+		strings.Trim(os.Getenv("MAXCOMPUTE_AK"), `\'"`),
+		strings.Trim(os.Getenv("MAXCOMPUTE_SK"), `\'"`), envs)
 }
 
 func elasticdlTrainCmd(cwd, modelDefFilePath string, filler *elasticDLFiller) (cmd *exec.Cmd) {
