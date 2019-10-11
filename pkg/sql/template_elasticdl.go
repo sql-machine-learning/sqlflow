@@ -32,7 +32,7 @@ from elasticdl.python.worker.prediction_outputs_processor import (
 def custom_model():
     inputs = tf.keras.layers.Input(shape=({{.InputShape}}, 1), name="input")
     x = tf.keras.layers.Flatten()(inputs)
-    outputs = tf.keras.layers.Dense(3, name="output")(x)
+    outputs = tf.keras.layers.Dense({{.OutputShape}}, name="output")(x)
     return tf.keras.Model(inputs=inputs, outputs=outputs, name="simple-model")
 
 

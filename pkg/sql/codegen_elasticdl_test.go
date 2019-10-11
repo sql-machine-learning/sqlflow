@@ -87,7 +87,7 @@ func TestTrainElasticDLFiller(t *testing.T) {
 	a.True(strings.Contains(code, `label_col_name = "class"`), code)
 	a.True(strings.Contains(code, `features_shape = (4, 1)`), code)
 	a.True(strings.Contains(code, `inputs = tf.keras.layers.Input(shape=(4, 1), name="input")`), code)
-	a.True(strings.Contains(code, `outputs = tf.keras.layers.Dense(10, name="output")(inputs)`), code)
+	a.True(strings.Contains(code, `outputs = tf.keras.layers.Dense(10, name="output")(x)`), code)
 }
 
 func TestPredElasticDLFiller(t *testing.T) {
@@ -115,7 +115,7 @@ func TestPredElasticDLFiller(t *testing.T) {
 	a.NoError(e)
 
 	code := program.String()
-	a.True(strings.Contains(code, `tf.keras.layers.Dense(10, name="output")(inputs)`), code)
+	a.True(strings.Contains(code, `tf.keras.layers.Dense(10, name="output")(x)`), code)
 	a.True(strings.Contains(code, `columns=["pred_" + str(i) for i in range(10)]`), code)
 	a.True(strings.Contains(code, `column_types=["double" for _ in range(10)]`), code)
 	a.True(strings.Contains(code, `table="prediction_results_table"`), code)
