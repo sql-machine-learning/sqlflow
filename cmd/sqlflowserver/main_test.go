@@ -173,19 +173,19 @@ func prepareTestData(dbStr string) error {
 		}
 		return testdata.Popularize(testDB.DB, testdata.ChurnHiveSQL)
 	case "maxcompute":
-		submitter := os.Getenv("SQLFLOW_submitter")
-		if submitter == "alps" {
-			if err := testdata.Popularize(testDB.DB, testdata.ODPSFeatureMapSQL); err != nil {
-				return err
-			}
-			if err := testdata.Popularize(testDB.DB, testdata.ODPSSparseColumnSQL); err != nil {
-				return err
-			}
-			return nil
-		}
-		if err := testdata.Popularize(testDB.DB, testdata.IrisMaxComputeSQL); err != nil {
-			return err
-		}
+		// submitter := os.Getenv("SQLFLOW_submitter")
+		// if submitter == "alps" {
+		// 	if err := testdata.Popularize(testDB.DB, testdata.ODPSFeatureMapSQL); err != nil {
+		// 		return err
+		// 	}
+		// 	if err := testdata.Popularize(testDB.DB, testdata.ODPSSparseColumnSQL); err != nil {
+		// 		return err
+		// 	}
+		// 	return nil
+		// }
+		// if err := testdata.Popularize(testDB.DB, testdata.IrisMaxComputeSQL); err != nil {
+		// 	return err
+		// }
 		return nil
 	}
 
@@ -771,7 +771,7 @@ WITH
 			model.optimizer = "optimizer",
 			model.loss = "loss",
 			model.eval_metrics_fn = "eval_metrics_fn",
-			model.num_classes = 10,
+			model.num_classes = 3,
 			model.dataset_fn = "dataset_fn",
 			train.shuffle = 120,
 			train.epoch = 2,
@@ -784,28 +784,29 @@ WITH
 			eval.start_delay_secs = 100,
 			eval.throttle_secs = 0,
 			eval.checkpoint_filename_for_init = "",
-			engine.docker_image_prefix = "",
 			engine.master_resource_request = "cpu=400m,memory=1024Mi",
-			engine.master_resource_limit = "cpu=400m,memory=1024Mi",
+			engine.master_resource_limit = "cpu=1,memory=2048Mi",
 			engine.worker_resource_request = "cpu=400m,memory=2048Mi",
 			engine.worker_resource_limit = "cpu=1,memory=3072Mi",
 			engine.num_workers = 2,
 			engine.volume = "",
-			engine.image_pull_policy = "Always",
+			engine.image_pull_policy = "Never",
 			engine.restart_policy = "Never",
 			engine.extra_pypi_index = "",
 			engine.namespace = "default",
 			engine.minibatch_size = 64,
 			engine.master_pod_priority = "",
 			engine.cluster_spec = "",
-			engine.num_minibatches_per_task = 10,
+			engine.num_minibatches_per_task = 2,
 			engine.docker_image_repository = "",
 			engine.envs = ""
 COLUMN
 			sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO trained_elasticdl_keras_classifier;`, os.Getenv("MAXCOMPUTE_PROJECT"), "sqlflow_test_iris_train")
-
+	// TODO: Change image_pull_policy to Never on minikube
+	// engine.cluster_spec = "/go/src/sqlflow.org/sqlflow/sigma.py",
+	// engine.docker_image_repository = "reg.docker.alibaba-inc.com/yuantang/",
 	conn, err := createRPCConn()
 	a.NoError(err)
 	defer conn.Close()
