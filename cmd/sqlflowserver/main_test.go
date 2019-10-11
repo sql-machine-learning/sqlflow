@@ -260,8 +260,36 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseSQLByPassLeftJoin", CaseSQLByPassLeftJoin)
 	t.Run("CaseTrainRegression", CaseTrainRegression)
 	t.Run("CaseTrainXGBoostRegression", CaseTrainXGBoostRegression)
+	t.Run("CasePredictXGBoostRegression", CasePredictXGBoostRegression)
 	t.Run("CaseTrainDeepWideModel", CaseTrainDeepWideModel)
+}
 
+func TestEnd2EndMySQLIR(t *testing.T) {
+	testDBDriver := os.Getenv("SQLFLOW_TEST_DB")
+	// default run mysql tests
+	if len(testDBDriver) == 0 {
+		testDBDriver = "mysql"
+	}
+	if testDBDriver != "mysql" {
+		t.Skip("Skipping mysql tests")
+	}
+	dbConnStr = "mysql://root:root@tcp/?maxAllowedPacket=0"
+	modelDir := ""
+
+	tmpDir, caCrt, caKey, err := generateTempCA()
+	defer os.RemoveAll(tmpDir)
+	if err != nil {
+		t.Fatalf("failed to generate CA pair %v", err)
+	}
+
+	go start("", modelDir, caCrt, caKey, true, unitestPort)
+	WaitPortReady(fmt.Sprintf("localhost:%d", unitestPort), 0)
+	err = prepareTestData(dbConnStr)
+	if err != nil {
+		t.Fatalf("prepare test dataset failed: %v", err)
+	}
+
+	t.Run("CaseTrainXGBoostRegression", CaseTrainXGBoostRegression)
 }
 
 func TestEnd2EndHive(t *testing.T) {
@@ -1038,13 +1066,24 @@ INTO sqlflow_models.my_xgb_regression_model;
 	}
 	// call ParseRow only to wait train finish
 	ParseRow(stream)
+}
+
+func CasePredictXGBoostRegression(t *testing.T) {
+	a := assert.New(t)
+	conn, err := createRPCConn()
+	a.NoError(err)
+	defer conn.Close()
+	cli := pb.NewSQLFlowClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	defer cancel()
 
 	predSQL := fmt.Sprintf(`SELECT *
 FROM housing.test
 PREDICT housing.xgb_predict.target
 USING sqlflow_models.my_xgb_regression_model;`)
 
-	stream, err = cli.Run(ctx, sqlRequest(predSQL))
+	stream, err := cli.Run(ctx, sqlRequest(predSQL))
 	if err != nil {
 		a.Fail("Check if the server started successfully. %v", err)
 	}
