@@ -3,13 +3,13 @@
 ## Motivations
 
 In the current system, the SQLFlow client connects the SQLFlow server with a long live connection.
-the SQLFlow client sends a gRPC request which contains a SQL statement and wait until the SQLFlow server complete executing the SQL statement.
+The SQLFlow client sends a gRPC request which contains a SQL statement and waits until the SQLFlow server completes executing the SQL statement.
 
-Once the SQLFlow server receives a training SQL statement, it generates a Python training program that submit the job. This will cause:
+Once the SQLFlow server receives a training SQL statement, it generates a Python training program that submits the job. This will cause:
 
 1. The local job may cause the SQLFlow server resource insufficient when there are too many SQL jobs.
 1. Sometimes, the SQL job takes too much time, and the gRPC calls timeout.
-1. If one of the SQLFlow server instance fails, the SQL job also fails.
+1. If one of the SQLFlow server instances fails, the SQL job also fails.
 
 In this design, we propose to:
 
@@ -26,7 +26,7 @@ The high-availabe SQLFlow job workflow is as follows:
 
 1. SQLFlow client sends the SQL statement via a gRPC call to the SQLFlow server.
 1. For the `LocalJobRunner`:
-    1. SQLFLow server launches a SQL job on the host and generates a job ID identifies the SQL job.
+    1. SQLFLow server launches a SQL job on the host and generates a job ID that identifies the SQL job.
     1. SQLFLow server maintains a mapping from job ID to the SQL job.
     1. SQLFlow server returns the job ID to the client.
 1. For the `KubernetesJobRunner`:
@@ -124,7 +124,8 @@ func main() {
 
 ### Local Job Runner
 
-Upon processing a `Run` request, the server generates, bookkeeps, and returns the job ID to the client. Upon processing a `Fetch` request, the server looks up the result channel and returns the most recent result.
+Upon processing a `Run` request, the server generates, bookkeeps, and returns the job ID to the client.
+Upon processing a `Fetch` request, the server looks up the result channel and returns the most recent result.
 
 ```go
 type LocalJobRunner {
@@ -179,13 +180,13 @@ Upon processing a `Fetch` request, the server checks the Pod status and returns 
 type KubernetesJobRunner {
 }
 
-func (r *LocalJobRunner)run(sql string, pr *PipeReader, pw *PipeWriter) (string, error){
+func (r *KubernetesJobRunner)run(sql string, pr *PipeReader, pw *PipeWriter) (string, error){
   podID, err := r.launchK8sPod(sql)
   pw.Write(fmt.Sprintf("Logs viewer URL: %s", r.logsViewerURL(podID)))
   return podID, nil
 }
 
-func (r *LocalJobRunner) fetch(jobID string) (*pb.Result, error) (
+func (r *KubernetesJobRunner) fetch(jobID string) (*pb.Result, error) (
   responses := &pb.Responses{}
   responses.job_status := r.PodStatus(jobID)
   return responsesk, nil
@@ -205,10 +206,10 @@ COLUMN ...
 INTO sqlflow_model
 ```
 
-The SQL would save the model named `sqlflow_model` which contains two parts:
+This SQL statment would save the model named `sqlflow_model` which contains two parts:
 
-1. `TRAIN` statement, which would be saved as a `.mod` file.
-1. Model weights, which would be saved as a `.tar.gz` file.
+1. The `TRAIN` statement, which would be saved as a `.mod` file.
+1. The Model weights, which would be saved as a `.tar.gz` file.
 
 An example of a trained model folder is as follows:
 
