@@ -1,10 +1,10 @@
 # Model Zoo
 
-SQLFlow model zoo is a place to store model definitions, pre-trained model weights and model documentations. You can directly train, predict, analyze using one of the models using SQLFlow, or you can do model fine-tune, transfer learning to use the model to fit your dataset.
+SQLFlow model zoo is a place to store model definitions, pre-trained model parameters (or weights) and model documentations. You can directly train, predict, analyze using one of the models using SQLFlow, or you can do model fine-tune, transfer learning to use the model to fit your dataset.
 
 SQLFlow should support below features to support common cases in machine learning:
 
-1. Host model definition and pre-trained weights in `sqlflow.org`. e.g. `sqlflow.org/modelzoo/iris_dnn_128x32` points to a directory containing a model definition of `DNNClassifier` with 128, 32 hidden layers and pre-trained weights using the iris dataset.
+1. Host model definition and pre-trained parameters in `sqlflow.org`. e.g. `sqlflow.org/modelzoo/iris_dnn_128x32` points to a directory containing a model definition of `DNNClassifier` with 128, 32 hidden layers and pre-trained parameters using the iris dataset.
 1. Download pre-trained model to predict a dataset:
    ```sql
    SELECT * FROM iris.predict_samples
@@ -41,9 +41,9 @@ becomes large.
 
 Each model is saved on the server under a unique directory like: `sqlflow.org/modelzoo/iris_dnn_128x32`.
 The directory name is responsible to explain the model's type, network structure and which dataset is
-used to train the pre-trained weights. You can access `sqlflow.org/modelzoo/iris_dnn_128x32/README.md`
+used to train the pre-trained parameters. You can access `sqlflow.org/modelzoo/iris_dnn_128x32/README.md`
 from the browser to get the model's full documentation. All models under `sqlflow.org/modelzoo` are
-developed under `https://github.com/sql-machine-learning/models` weights is only stored under
+developed under `https://github.com/sql-machine-learning/models` parameters is only stored under
 `sqlflow.org` but not under Github.
 
 The content of the directory should be like:
@@ -52,7 +52,7 @@ The content of the directory should be like:
 iris_dnn_128x32
    - model_meta.json  # model information useful for load and run.
    - README.md        # model documents.
-   - requirments.txt  # python package dependency for the model.
+   - requirements.txt  # python package dependency for the model.
    - model_def.py     # python file of model definition (TensorFlow Estimator model or Keras model).
    - model/           # the saved TensorFlow/Keras/XGBoost model.
    - some_deps.py     # if model_def.py have dependent python source files just put them in the same folder.
@@ -122,7 +122,7 @@ To publish a new model into the model zoo, you need to:
     - model_def.py
     - some_deps.py
     ```
-1. train and test your model on the dataset then save the model weights together with `model_meta.json` file.
+1. train and test your model on the dataset then save the model parameters together with `model_meta.json` file.
 1. name a directory and upload all files listed above into the directory on the server.
 
 The overall workflow to publish and use a model in the model zoo is shown below:
@@ -142,7 +142,7 @@ features when we need to implement the model sharing features.
 In SQLFlow, you can specify the model under `sqlflow.org/modelzoo` in the `TRAIN` and `USING` clause.
 
 If the `TRAIN` clause accepts a model under `sqlflow.org/modelzoo`, SQLFlow will only use the model definition to start the train. If `USING` clause accepts a model under `sqlflow.org/modelzoo`, the model's
-weights will be loaded both in `TRAIN` process or `PREDICT` process.
+parameters will be loaded both in `TRAIN` process or `PREDICT` process.
 
 We can use the models in the model zoo to start below jobs in minutes:
 
@@ -162,8 +162,8 @@ A simple example to use a pre-trained model to predict iris class is like below:
 SQLFlow will download the model from `sqlflow.org` and predict the iris class immediately. For more cases
 please check out the SQL statements in the top section.
 
-For models that supports load only parts of the weights for transfer learning or prediction, the layers
-in the model should have different name if you do not want to load the weights for current layer when
+For models that supports load only parts of the parameters for transfer learning or prediction, the layers
+in the model should have different name if you do not want to load the parameters for current layer when
 transfer learning (refer to [Define Models for SQLFlow](desing_customized_model.md) for how to implement a customized model):
 
 ```python
