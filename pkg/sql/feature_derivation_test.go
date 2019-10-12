@@ -66,7 +66,7 @@ func TestFeatureDerivation(t *testing.T) {
 
 	parser := newParser()
 
-	normal := `select c1, c2, c3, c4, c5, class from feature_derivation_case.train
+	normal := `select c1, c2, c3, c4, c5, c6, class from feature_derivation_case.train
 	TRAIN DNNClassifier
 	WITH model.n_classes=2
 	COLUMN EMBEDDING(c3, 128, sum), EMBEDDING(SPARSE(c5, 10000, COMMA), 128, sum)
@@ -123,4 +123,55 @@ func TestFeatureDerivation(t *testing.T) {
 	a.Equal([]int{10000}, cat2.FieldMeta.Shape)
 	a.Equal(codegen.Int, cat2.FieldMeta.DType)
 	a.True(cat2.FieldMeta.IsSparse)
+
+	fc6 := trainIR.Features["feature_columns"][5]
+	cat3, ok := fc6.(*codegen.CategoryIDColumn)
+	a.True(ok)
+	a.Equal(3, len(cat3.FieldMeta.Vocabulary))
+	_, ok = cat3.FieldMeta.Vocabulary["MALE"]
+	a.True(ok)
+	a.Equal(3, cat3.BucketSize)
+
+	a.Equal(7, len(trainIR.Features["feature_columns"]))
+
+	crossSQL := `select c1, c2, c3, class from feature_derivation_case.train
+	TRAIN DNNClassifier
+	WITH model.n_classes=2
+	COLUMN c1, c2, CROSS([c1, c2], 256)
+	LABEL class INTO model_table;`
+
+	parser = newParser()
+	r, e = parser.Parse(crossSQL)
+	a.NoError(e)
+	trainIR, err = generateTrainIR(r, "mysql://root:root@tcp/?maxAllowedPacket=0")
+	e = InferFeatureColumns(trainIR)
+	a.NoError(e)
+
+	fc1 = trainIR.Features["feature_columns"][0]
+	nc, ok = fc1.(*codegen.NumericColumn)
+	a.True(ok)
+
+	fc2 = trainIR.Features["feature_columns"][1]
+	nc, ok = fc2.(*codegen.NumericColumn)
+	a.True(ok)
+
+	fc3 = trainIR.Features["feature_columns"][2]
+	nc, ok = fc3.(*codegen.NumericColumn)
+	a.True(ok)
+
+	// trainIR.Features["feature_columns"][3] is the column class
+	fc4 = trainIR.Features["feature_columns"][4]
+	cc, ok := fc4.(*codegen.CrossColumn)
+	a.True(ok)
+	a.Equal(256, cc.HashBucketSize)
+	nc4, ok := cc.Keys[0].(*codegen.NumericColumn)
+	a.True(ok)
+	a.Equal("c1", nc4.FieldMeta.Name)
+	a.Equal(codegen.Float, nc4.FieldMeta.DType)
+	nc5, ok := cc.Keys[1].(*codegen.NumericColumn)
+	a.True(ok)
+	a.Equal("c2", nc5.FieldMeta.Name)
+	a.Equal(codegen.Float, nc5.FieldMeta.DType)
+
+	a.Equal(5, len(trainIR.Features["feature_columns"]))
 }
