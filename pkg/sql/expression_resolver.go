@@ -68,8 +68,6 @@ type resolvedTrainClause struct {
 	ColumnSpecs                   map[string][]*columns.ColumnSpec
 	EngineParams                  engineSpec
 	CustomModule                  *gitLabModule
-	FeatureColumnInfered          FeatureColumnMap
-	ColumnSpecInfered             ColumnSpecMap
 }
 
 type resolvedPredictClause struct {
@@ -227,7 +225,7 @@ func resolveTrainClause(tc *trainClause, slct *standardSelect, connConfig *conne
 	// since it's not used by codegen yet.
 	// also, need to clean up what is inside "resolvedTrainClause", keep only
 	// fcInfered, csInfered
-	fcInfered, csInfered, err := InferFeatureColumns(slct, fcMap, csMap, connConfig)
+	// fcInfered, csInfered, err := InferFeatureColumns(slct, fcMap, csMap, connConfig)
 
 	return &resolvedTrainClause{
 		IsPreMadeModel:                preMadeModel,
@@ -256,8 +254,6 @@ func resolveTrainClause(tc *trainClause, slct *standardSelect, connConfig *conne
 		ColumnSpecs:                   csMap,
 		EngineParams:                  getEngineSpec(engineParams),
 		CustomModule:                  customModel,
-		FeatureColumnInfered:          fcInfered,
-		ColumnSpecInfered:             csInfered,
 		Verbose:                       verbose,
 	}, nil
 }
