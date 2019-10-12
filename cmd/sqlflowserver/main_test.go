@@ -47,7 +47,7 @@ var casePredictTable = "predict"
 
 const unitestPort = 50051
 
-func testServerReady(addr string, timeout time.Duration) bool {
+func serverIsReady(addr string, timeout time.Duration) bool {
 	conn, err := net.DialTimeout("tcp", addr, timeout)
 	if err != nil {
 		return false
@@ -61,7 +61,7 @@ func waitPortReady(addr string, timeout time.Duration) {
 	if timeout == 0 {
 		timeout = time.Duration(1) * time.Second
 	}
-	for !testServerReady(addr, timeout) {
+	for !serverIsReady(addr, timeout) {
 		time.Sleep(1 * time.Second)
 	}
 }
@@ -266,6 +266,9 @@ func TestEnd2EndMySQL(t *testing.T) {
 }
 
 func TestEnd2EndMySQLIR(t *testing.T) {
+	if os.Getenv("SQLFLOW_codegen") != "ir" {
+		t.Skip("Skipping ir test")
+	}
 	testDBDriver := os.Getenv("SQLFLOW_TEST_DB")
 	// default run mysql tests
 	if len(testDBDriver) == 0 {
@@ -284,7 +287,7 @@ func TestEnd2EndMySQLIR(t *testing.T) {
 	}
 
 	addr := fmt.Sprintf("localhost:%d", unitestPort)
-	if !testServerReady(addr, 0) {
+	if !serverIsReady(addr, 0) {
 		go start("", modelDir, caCrt, caKey, true, unitestPort)
 		waitPortReady(addr, 0)
 	}
@@ -293,7 +296,7 @@ func TestEnd2EndMySQLIR(t *testing.T) {
 		t.Fatalf("prepare test dataset failed: %v", err)
 	}
 
-	t.Run("CaseTrainXGBoostRegression", CaseTrainXGBoostRegression)
+	t.Run("CaseTrainXGBoostRegressionIR", CaseTrainXGBoostRegression)
 }
 
 func TestEnd2EndHive(t *testing.T) {
@@ -456,21 +459,24 @@ func CaseShowDatabases(t *testing.T) {
 	}
 
 	expectedDBs := map[string]string{
-		"information_schema": "",
-		"churn":              "",
-		"iris":               "",
-		"mysql":              "",
-		"performance_schema": "",
-		"sqlflow_models":     "",
-		"sqlfs_test":         "",
-		"sys":                "",
-		"text_cn":            "",
-		"standard_join_test": "",
-		"housing":            "",
-		"iris_e2e":           "", // created by Python e2e test
-		"hive":               "", // if current mysql is also used for hive
-		"default":            "", // if fetching default hive databases
-		"sf_home":            "", // default auto train&val database
+		"information_schema":      "",
+		"boston":                  "",
+		"churn":                   "",
+		"creditcard":              "",
+		"feature_derivation_case": "",
+		"housing":                 "",
+		"iris":                    "",
+		"mysql":                   "",
+		"performance_schema":      "",
+		"sqlflow_models":          "",
+		"sf_home":                 "", // default auto train&val database
+		"sqlfs_test":              "",
+		"sys":                     "",
+		"text_cn":                 "",
+		"standard_join_test":      "",
+		"iris_e2e":                "", // created by Python e2e test
+		"hive":                    "", // if current mysql is also used for hive
+		"default":                 "", // if fetching default hive databases
 	}
 	for i := 0; i < len(resp); i++ {
 		AssertContainsAny(a, expectedDBs, resp[i][0])
