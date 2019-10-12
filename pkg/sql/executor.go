@@ -439,7 +439,6 @@ func train(wr *PipeWriter, tr *extendedSelect, db *DB, cwd string, modelDir stri
 	cmd.Stdin = &program
 	cmd.Stdout = cw
 	cmd.Stderr = cw
-	fmt.Fprintf(os.Stdout, program.String())
 	if e := cmd.Run(); e != nil {
 		return fmt.Errorf("training failed %v", e)
 	}
