@@ -13,17 +13,22 @@
 
 package tensorflow
 
-import "sqlflow.org/sqlflow/pkg/sql/codegen"
+import (
+	"sqlflow.org/sqlflow/pkg/sql/codegen"
+)
 
 type trainFiller struct {
 	DataSource        string
 	TrainSelect       string
 	ValidationSelect  string
+	Estimator         string
+	IsKerasModel      bool
 	FieldMetas        []*codegen.FieldMeta
-	FeatureColumnCode []string
-	Y                 codegen.FeatureColumn
-	modelParams       map[string]string
-	trainParams       map[string]interface{}
+	FeatureColumnCode string
+	Y                 *codegen.FieldMeta
+	ModelParams       map[string]interface{}
+	TrainParams       map[string]interface{}
+	Save              string
 }
 
 const tfTrainTemplateText = `
@@ -45,25 +50,22 @@ from sqlflow_submitter.db import connect_with_data_source, db_generator
 import logging
 tf.get_logger().setLevel(logging.ERROR)
 
-BATCHSIZE = {{.BatchSize}}
-EPOCHS = {{.Epochs}}
-VERBOSE = {{.Verbose}}
-
-session_cfg = {}
-{{ range $k, $v := .Session }}
-session_cfg["{{$k}}"] = "{{$v}}"
-{{end}}
+BATCHSIZE = {{index .TrainParams "batch_size" | attrToPythonValue}}
+EPOCHS = {{index .TrainParams "epoch" | attrToPythonValue}}
+VERBOSE = {{index .TrainParams "verbose" | attrToPythonValue}}
 
 conn = connect_with_data_source("{{.DataSource}}")
 
-feature_column_names = [{{range .X}}
-"{{.FeatureName}}",
+feature_column_names = [{{range .FieldMetas}}
+"{{.Name}}",
 {{end}}]
 
 
-classifier = {{.EstimatorCode}}(
-    {{.FeatureColumnParmas}},
-    {{.AttrParams}},
+classifier = {{.Estimator}}(
+    {{.FeatureColumnCode}},
+    {{range $k, $v := .ModelParams}}
+    {{$k}}={{$v | attrToPythonValue}},
+    {{end}}
     {{if .IsKerasModel}}
 )
     {{else}}
@@ -72,12 +74,12 @@ classifier = {{.EstimatorCode}}(
 
 {{/* Convert go side featureSpec to python dict for input_fn */}}
 feature_metas = dict()
-{{ range $value := .X }}
-feature_metas["{{$value.FeatureName}}"] = {
-    "feature_name": "{{$value.FeatureName}}",
-    "dtype": "{{$value.Dtype}}",
+{{ range $value := .FieldMetas }}
+feature_metas["{{$value.Name}}"] = {
+    "feature_name": "{{$value.Name}}",
+    "dtype": "{{$value.DType | dtypeToString}}",
     "delimiter": "{{$value.Delimiter}}",
-    "shape": {{$value.InputShape}},
+    "shape": {{$value.Shape | intArrayToJSONString}},
     "is_sparse": "{{$value.IsSparse}}" == "true"
 }
 {{end}}
@@ -111,13 +113,13 @@ def input_fn(datasetStr):
         else:
             feature_types.append(get_dtype(feature_metas[name]["dtype"]))
 
-    gen = db_generator(conn.driver, conn, datasetStr, feature_column_names, "{{.Y.FeatureName}}", feature_metas)
-    dataset = tf.data.Dataset.from_generator(gen, (tuple(feature_types), tf.{{.Y.Dtype}}))
+    gen = db_generator(conn.driver, conn, datasetStr, feature_column_names, "{{.Y.Name}}", feature_metas)
+    dataset = tf.data.Dataset.from_generator(gen, (tuple(feature_types), tf.{{.Y.DType | dtypeToString}}))
     ds_mapper = functools.partial(_parse_sparse_feature, feature_metas=feature_metas)
     return dataset.map(ds_mapper)
 
 def train_input_fn(batch_size):
-    dataset = input_fn("""{{.TrainingDatasetSQL}}""")
+    dataset = input_fn("""{{.TrainSelect}}""")
     # TODO(typhoonzero): add prefetch, cache if needed.
     dataset = dataset.shuffle(1000).batch(batch_size)
     {{if not .IsKerasModel}}
@@ -127,7 +129,7 @@ def train_input_fn(batch_size):
     return dataset
 
 def validate_input_fn(batch_size):
-    dataset = input_fn("""{{.ValidationDatasetSQL}}""")
+    dataset = input_fn("""{{.ValidationSelect}}""")
     return dataset.batch(batch_size)
 
 {{if .IsKerasModel}}
@@ -141,7 +143,7 @@ else:
         epochs=EPOCHS if EPOCHS else classifier.default_training_epochs(),
         verbose=VERBOSE)
 classifier.save_weights("{{.Save}}", save_format="h5")
-if "{{.Y.FeatureName}}" != "":
+if "{{.Y.Name}}" != "":
     eval_result = classifier.evaluate(validate_input_fn(BATCHSIZE), verbose=VERBOSE)
     print("Training set accuracy: {accuracy:0.5f}".format(**{"accuracy": eval_result[1]}))
 {{else}}
