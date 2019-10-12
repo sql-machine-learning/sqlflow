@@ -122,7 +122,7 @@ func main() {
 }
 ```
 
-### Local Job Runner
+### LocalJobRunner
 
 Upon processing a `Run` request, the server generates, bookkeeps, and returns the job ID to the client.
 Upon processing a `Fetch` request, the server looks up the result channel and returns the most recent result.
@@ -171,7 +171,7 @@ func (r *LocalJobRunner) fetch(jobID string) (*pb.Responses, error) (
 Since we have multiple gRPC calls for a server instance, we need to maintain a state across different calls.
 So we use a map `map[string]*PipeReader` to maintain the job states on the server
 
-### Cluster Job Runner on Server
+### KubernetesJobRunner
 
 Upon processing a `Run` request, the server launches a Kubernetes Pod and return the Pod ID and log view URL to the client.
 Upon processing a `Fetch` request, the server checks the Pod status and returns the `JobStatus`.
@@ -192,6 +192,7 @@ func (r *KubernetesJobRunner) fetch(jobID string) (*pb.Result, error) (
   return responsesk, nil
 )
 ```
+
 
 ### Store the Trained Model
 
