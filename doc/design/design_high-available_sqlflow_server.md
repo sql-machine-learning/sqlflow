@@ -44,10 +44,10 @@ The client calls `Run` and receives a string job ID. The client subsequently fet
 ```python
 job_id = client.Run("sqls ...")
 while True:
-    result = client.Fetch(job_id)
-    for r in result.results:
+    responses = client.Fetch(job_id)
+    for r in responses.response:
         # do stuff: either print logs or construct Rows
-    if result.job_status in (SUCCEEDED, FAILED):
+    if responses.job_status in (SUCCEEDED, FAILED):
         break
     sleep(some_time)
 ```
@@ -59,7 +59,7 @@ service SQLFlow {
     // Client calls Run and receives a string job ID.
     rpc Run (Request) returns (JobID);
     // Client subsequently fetches the result using the job ID periodically.
-    rpc Fetch(JobID) returns (Result);
+    rpc Fetch(JobID) returns (Responses);
 }
 
 message JobID {
@@ -74,13 +74,8 @@ message Session {
 }
 
 message Responses {
-    oneof response {
-        Head head = 1;
-        Row row = 2;
-        Message message = 3;
-        EndOfExecution eoe = 4;
-        JobStatus job_status = 5;
-    }
+    JobStatus job_status = 0;
+    repeated Response response = 1;
 }
 
 message JobStatus {
@@ -102,7 +97,7 @@ The `JobRunner` interface should provide two functions `run` and `fetch`:
 ```go
 type JobRunner interface {
   run(sql string, pr *PipeReader, pw *PipeWriter) (jobID string, err error){
-  fetchResult(jobID string) (result *pb.Result)
+  fetchResult(jobID string) (responses *pb.Responses)
 }
 ```
 
@@ -116,9 +111,9 @@ func (s *Server) Run(ctx context.Context, req *pb.Request) (*pb.JobID, error) {
   return &pb.JobID{jobID: jobID), nil
 }
 
-func (s *Server) Fetch(ctx context.Context, jobID *pb.JobID) (*pb.Result, error) {
-  result, error := s.jobRunner.fetch(jobID.jobID)
-  return result, nil
+func (s *Server) Fetch(ctx context.Context, jobID *pb.JobID) (*pb.Responses, error) {
+  responses, error := s.jobRunner.fetch(jobID.jobID)
+  return responses, nil
 }
 
 func main() {
@@ -153,8 +148,8 @@ func (r *LocalJobRunner)run (sql string, pr *PipeReader, pw *PipeWriter) (string
   return jobID, nil
 }
 
-func (r *LocalJobRunner) fetch(jobID string) (*pb.Result, error) (
-  result := &pb.Result{}
+func (r *LocalJobRunner) fetch(jobID string) (*pb.Responses, error) (
+  responses := &pb.Responsts{}
   pr, ok := r.jobs[jobID]
   if !ok {
       return nil, fmt.Errorf("unrecognized jobID %s", jobID)
@@ -167,7 +162,7 @@ func (r *LocalJobRunner) fetch(jobID string) (*pb.Result, error) (
          break;
       }
    }
-   return result, nil
+   return responses, nil
 )
 
 ```
@@ -191,9 +186,9 @@ func (r *LocalJobRunner)run(sql string, pr *PipeReader, pw *PipeWriter) (string,
 }
 
 func (r *LocalJobRunner) fetch(jobID string) (*pb.Result, error) (
-  result := &pb.Result{}
-  result.job_status := r.PodStatus(jobID)
-  return result, nil
+  responses := &pb.Responses{}
+  responses.job_status := r.PodStatus(jobID)
+  return responsesk, nil
 )
 ```
 
