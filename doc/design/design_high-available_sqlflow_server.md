@@ -26,8 +26,8 @@ The high-availabe SQLFlow job workflow is as follows:
 
 1. SQLFlow client sends the SQL statement via a gRPC call to the SQLFlow server.
 1. For the `LocalJobRunner`:
-    1. SQLFLow server launches a SQL job on the host and generates a job ID that identifies the SQL job.
-    1. SQLFLow server maintains a mapping from job ID to the SQL job.
+    1. SQLFlow server launches a SQL job on the host and generates a job ID that identifies the SQL job.
+    1. SQLFlow server maintains a mapping from job ID to the SQL job.
     1. SQLFlow server returns the job ID to the client.
 1. For the `KubernetesJobRunner`:
     1. SQLFlow server launches a Kubernetes Pod via Kubernetes API and executes the SQL job in it.
@@ -37,7 +37,7 @@ The high-availabe SQLFlow job workflow is as follows:
 
 ## Proposal Details
 
-### SQLFLow Client
+### SQLFlow Client
 
 The client calls `Run` and receives a string job ID. The client subsequently fetches the result using the job ID periodically. And the client is unaware of the deployment type of the server.
 
@@ -222,7 +222,7 @@ An example of a trained model folder is as follows:
 
 There are two steps to save the trained model:
 
-1. SQLFLow server creates a folder `sqlflow_model` on the distributed file system and saves `sqlflow.gob` in it.
+1. SQLFlow server creates a folder `sqlflow_model` on the distributed file system and saves `sqlflow.gob` in it.
 1. The machine learning framework saves the model weights file `sqlflow_model.tar` in the same folder.
 
 ### Dealing with failures
