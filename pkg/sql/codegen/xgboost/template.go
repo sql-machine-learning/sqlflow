@@ -20,7 +20,6 @@ type trainFiller struct {
 	TrainSelect      string
 	ValidationSelect string
 	ModelParamsJSON  string
-	Save             string
 	TrainParamsJSON  string
 	FieldMetaJSON    string
 	LabelJSON        string
@@ -58,7 +57,7 @@ dtrain = xgb_dataset('train.txt', '''{{.TrainSelect}}''')
 # dtest = xgb_dataset('test.txt', '''{{.ValidationSelect}}''')
 
 bst = xgb.train(model_params, dtrain, **train_params)
-bst.save_model('''{{.Save}}''')
+bst.save_model("my_model")
 `
 
 var trainTemplate = template.Must(template.New("Train").Parse(trainTemplateText))

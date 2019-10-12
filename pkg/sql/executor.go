@@ -417,7 +417,7 @@ func train(wr *PipeWriter, tr *extendedSelect, db *DB, cwd string, modelDir stri
 			if err != nil {
 				return err
 			}
-			code, err := xgb.Train(ir, tr.save)
+			code, err := xgb.Train(ir)
 			if err != nil {
 				return err
 			}
