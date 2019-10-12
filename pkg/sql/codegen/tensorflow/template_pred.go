@@ -13,6 +13,22 @@
 
 package tensorflow
 
+import "sqlflow.org/sqlflow/pkg/sql/codegen"
+
+type predFiller struct {
+	DataSource  string
+	Select      string
+	ResultTable string
+	// below members comes from TrainIR
+	Estimator         string
+	IsKerasModel      bool
+	FieldMetas        []*codegen.FieldMeta
+	FeatureColumnCode string
+	Y                 *codegen.FieldMeta
+	ModelParams       map[string]interface{}
+	Save              string
+}
+
 const tfPredTemplateText = `
 import os
 # Disable Tensorflow INFO and WARNING logs
@@ -32,29 +48,18 @@ from sqlflow_submitter.db import connect, db_generator, buffered_db_writer
 import logging
 tf.get_logger().setLevel(logging.ERROR)
 
+conn = connect_with_data_source("{{.DataSource}}")
 
-driver="{{.Driver}}"
-{{if ne .Database ""}}
-database="{{.Database}}"
-{{else}}
-database=""
-{{end}}
-
-session_cfg = {}
-{{ range $k, $v := .Session }}
-session_cfg["{{$k}}"] = "{{$v}}"
-{{end}}
-
-conn = connect(driver, database, user="{{.User}}", password="{{.Password}}", host="{{.Host}}", port={{.Port}}, auth="{{.Auth}}",session_cfg=session_cfg)
-
-feature_column_names = [{{range .X}}
-"{{.FeatureName}}",
+feature_column_names = [{{range .FieldMetas}}
+"{{.Name}}",
 {{end}}]
 
 
-classifier = {{.EstimatorCode}}(
-    {{.FeatureColumnParmas}},
-    {{.AttrParams}},
+classifier = {{.Estimator}}(
+    {{.FeatureColumnCode}},
+    {{range $k, $v := .ModelParams}}
+    {{$k}}={{$v | attrToPythonValue}},
+    {{end}}
     {{if .IsKerasModel}}
 )
     {{else}}
@@ -63,12 +68,12 @@ classifier = {{.EstimatorCode}}(
 
 {{/* Convert go side featureSpec to python dict for input_fn */}}
 feature_metas = dict()
-{{ range $value := .X }}
-feature_metas["{{$value.FeatureName}}"] = {
-    "feature_name": "{{$value.FeatureName}}",
-    "dtype": "{{$value.Dtype}}",
+{{ range $value := .FieldMetas }}
+feature_metas["{{$value.Name}}"] = {
+    "feature_name": "{{$value.Name}}",
+    "dtype": "{{$value.DType | dtypeToString}}",
     "delimiter": "{{$value.Delimiter}}",
-    "shape": {{$value.InputShape}},
+    "shape": {{$value.Shape | intArrayToJSONString}},
     "is_sparse": "{{$value.IsSparse}}" == "true"
 }
 {{end}}
@@ -103,9 +108,9 @@ def eval_input_fn(batch_size):
         else:
             feature_types.append(get_dtype(feature_metas[name]["dtype"]))
 
-    gen = db_generator(driver, conn, """{{.PredictionDatasetSQL}}""",
-        feature_column_names, "{{.Y.FeatureName}}", feature_metas)
-    dataset = tf.data.Dataset.from_generator(gen, (tuple(feature_types), tf.{{.Y.Dtype}}))
+    gen = db_generator(driver, conn, """{{.Select}}""",
+        feature_column_names, "{{.Y.Name}}", feature_metas)
+    dataset = tf.data.Dataset.from_generator(gen, (tuple(feature_types), tf.{{.Y.DType | dtypeToString}}))
     ds_mapper = functools.partial(_parse_sparse_feature, feature_metas=feature_metas)
     dataset = dataset.map(ds_mapper).batch(batch_size)
     return dataset
@@ -122,8 +127,8 @@ del pred_dataset
 pred_dataset = eval_input_fn(1).make_one_shot_iterator()
 buff_rows = []
 column_names = feature_column_names[:]
-column_names.append("{{.Y.FeatureName}}")
-with buffered_db_writer(driver, conn, "{{.TableName}}", column_names, 100) as w:
+column_names.append("{{.Y.Name}}")
+with buffered_db_writer(driver, conn, "{{.ResultTable}}", column_names, 100) as w:
     while True:
         try:
             features = pred_dataset.get_next()
@@ -149,7 +154,7 @@ def fast_input_fn(generator):
             feature_types.append(get_dtype(feature_metas[name]["dtype"]))
 
     def _inner_input_fn():
-        dataset = tf.data.Dataset.from_generator(generator, (tuple(feature_types), tf.{{.Y.Dtype}}) )
+        dataset = tf.data.Dataset.from_generator(generator, (tuple(feature_types), tf.{{.Y.DType | dtypeToString}}) )
         ds_mapper = functools.partial(_parse_sparse_feature, feature_metas=feature_metas)
         dataset = dataset.map(ds_mapper).batch(1)
         iterator = dataset.make_one_shot_iterator()
@@ -192,11 +197,11 @@ class FastPredict:
             print("Exception in fast_predict. This is probably OK: %s" % e)
 
 column_names = feature_column_names[:]
-column_names.append("{{.Y.FeatureName}}")
-pred_gen = db_generator(driver, conn, """{{.PredictionDatasetSQL}}""", feature_column_names, "{{.Y.FeatureName}}", feature_metas)()
+column_names.append("{{.Y.Name}}")
+pred_gen = db_generator(driver, conn, """{{.Select}}""", feature_column_names, "{{.Y.Name}}", feature_metas)()
 fast_predictor = FastPredict(classifier, fast_input_fn)
 
-with buffered_db_writer(driver, conn, "{{.TableName}}", column_names, 100) as w:
+with buffered_db_writer(driver, conn, "{{.ResultTable}}", column_names, 100) as w:
     while True:
         try:
             features = pred_gen.__next__()
@@ -216,5 +221,5 @@ with buffered_db_writer(driver, conn, "{{.TableName}}", column_names, 100) as w:
 
 {{end}}
 
-print("Done predicting. Predict table : {{.TableName}}")
+print("Done predicting. Predict table : {{.ResultTable}}")
 `

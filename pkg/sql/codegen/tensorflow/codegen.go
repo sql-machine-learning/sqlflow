@@ -195,3 +195,57 @@ func Train(ir codegen.TrainIR) (string, error) {
 
 	return program.String(), nil
 }
+
+// Pred generates a Python program for predict using a TensorFlow model.
+func Pred(ir codegen.PredictIR) (string, error) {
+	modelParams := make(map[string]interface{})
+	for attrKey, attr := range ir.TrainIR.Attributes {
+		if strings.HasPrefix(attrKey, "model.") {
+			modelParams[strings.Replace(attrKey, "model.", "", 1)] = attr
+		}
+	}
+	featureColumnsCode := []string{}
+	perTargetFeatureColumnsCode := []string{}
+	fieldMetas := []*codegen.FieldMeta{}
+	for target, fcList := range ir.TrainIR.Features {
+		for _, fc := range fcList {
+			fcCode, err := generateFeatureColumnCode(fc)
+			if err != nil {
+				return "", err
+			}
+			perTargetFeatureColumnsCode = append(perTargetFeatureColumnsCode, fcCode)
+			if len(fc.GetFieldMeta()) > 0 {
+				for _, fm := range fc.GetFieldMeta() {
+					fieldMetas = append(fieldMetas, fm)
+				}
+			}
+		}
+		featureColumnsCode = append(featureColumnsCode,
+			fmt.Sprintf("%s=[%s]", target, strings.Join(perTargetFeatureColumnsCode, ",\n")))
+	}
+	isKeras, estimatorStr := isKerasModel(ir.TrainIR.Estimator)
+
+	filler := predFiller{
+		DataSource:        ir.DataSource,
+		Select:            ir.Select,
+		ResultTable:       ir.ResultTable,
+		Estimator:         estimatorStr,
+		IsKerasModel:      isKeras,
+		FieldMetas:        fieldMetas,
+		FeatureColumnCode: strings.Join(featureColumnsCode, ",\n"),
+		Y:                 ir.TrainIR.Label.GetFieldMeta()[0],
+		ModelParams:       modelParams,
+		Save:              "model_save",
+	}
+	var program bytes.Buffer
+	var predTemplate = template.Must(template.New("Pred").Funcs(template.FuncMap{
+		"intArrayToJSONString": intArrayToJSONString,
+		"attrToPythonValue":    attrToPythonValue,
+		"dtypeToString":        dtypeToString,
+	}).Parse(tfPredTemplateText))
+	if err := predTemplate.Execute(&program, filler); err != nil {
+		return "", err
+	}
+
+	return program.String(), nil
+}
