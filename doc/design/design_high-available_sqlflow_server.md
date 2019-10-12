@@ -1,11 +1,11 @@
-# High-available SQLFlow Server
+# Highly Available SQLFlow Server
 
 ## Motivations
 
 In the current system, the SQLFlow client connects the SQLFlow server with a long live connection.
-the SQLFlow client sends a gRPC request which contains a SQL statement and wait until the SQLFlow server finishes executing the SQL statement.
+the SQLFlow client sends a gRPC request which contains a SQL statement and wait until the SQLFlow server complete executing the SQL statement.
 
-When the SQLFlow server receives one training SQL statement, it will generate a python training program that runs on the host or submit the training job to some distributed training service cluster (Kubernetes/Yarn). This will cause:
+Once the SQLFlow server receives a training SQL statement, it generates a Python training program that submit the job. This will cause:
 
 1. The local job may cause the SQLFlow server resource insufficient when there are too many SQL jobs.
 1. Sometimes, the SQL job takes too much time, and the gRPC calls timeout.
@@ -13,10 +13,10 @@ When the SQLFlow server receives one training SQL statement, it will generate a 
 
 In this design, we propose to:
 
-1. Communicate with the SQLFlow server in a polling manner.
-1. Implement `ClusterJobRunner` on the server-side to launch the SQL Job on Kubernetes.
+1. the SQLFlow client communicates with the SQLFlow server in a polling manner.
+1. Implement `KubernetesJobRunner` on the server-side to launch the SQL job on Kubernetes.
 
-We recommend using `ClusterJobRunner` in the production environment.
+We recommend using `KubernetesJobRunner` in the production environment.
 
 ## High-Level Design
 
@@ -26,25 +26,25 @@ The high-availabe SQLFlow job workflow is as follows:
 
 1. SQLFlow client sends the SQL statement via a gRPC call to the SQLFlow server.
 1. For the `LocalJobRunner`:
-    1. SQLFLow server launches a SQL job on the host and generates a token identifies the SQL job.
-    1. SQLFLow server maintains a mapping from token to the SQL job.
-    1. SQLFlow server returns the token to the client.
-1. For the `ClusterJobRunner`:
+    1. SQLFLow server launches a SQL job on the host and generates a job ID identifies the SQL job.
+    1. SQLFLow server maintains a mapping from job ID to the SQL job.
+    1. SQLFlow server returns the job ID to the client.
+1. For the `KubernetesJobRunner`:
     1. SQLFlow server launches a Kubernetes Pod via Kubernetes API and executes the SQL job in it.
     1. SQLFlow server fetches the Pod ID.
-    1. SQLFlow server returns the Pod ID as the token to the client.
+    1. SQLFlow server returns the Pod ID as the job ID to the client.
 1. The SQLFlow client fetches the job result and job status in a polling manner until the returned job status is **SUCCESS** or **FAILED**.
 
 ## Proposal Details
 
 ### SQLFLow Client
 
-The client calls `Run` and receives a string token. The client subsequently fetches the result using the token periodically. And the client is unaware of the deployment type of the server.
+The client calls `Run` and receives a string job ID. The client subsequently fetches the result using the job ID periodically. And the client is unaware of the deployment type of the server.
 
 ```python
-token = client.Run("sqls ...")
+job_id = client.Run("sqls ...")
 while True:
-    result = client.Fetch(token)
+    result = client.Fetch(job_id)
     for r in result.results:
         # do stuff: either print logs or construct Rows
     if result.job_status in (SUCCEEDED, FAILED):
@@ -56,14 +56,14 @@ And the Protocol Buffer definition looks like the following.
 
 ```proto
 service SQLFlow {
-    // Client calls Run and receives a string token.
-    rpc Run (Request) returns (Token);
-    // Client subsequently fetches the result using the token periodically.
-    rpc Fetch(Token) returns (Result);
+    // Client calls Run and receives a string job ID.
+    rpc Run (Request) returns (JobID);
+    // Client subsequently fetches the result using the job ID periodically.
+    rpc Fetch(JobID) returns (Result);
 }
 
-message Token {
-    string token = 1;
+message JobID {
+    string job_id = 1;
 }
 
 message Session {
@@ -73,10 +73,14 @@ message Session {
     string user_id = 4;
 }
 
-message Result {
-    JobStatus job_status = 1;
-    // Fetches multiple responses at once
-    repeated Response results = 2;
+message Responses {
+    oneof response {
+        Head head = 1;
+        Row row = 2;
+        Message message = 3;
+        EndOfExecution eoe = 4;
+        JobStatus job_status = 5;
+    }
 }
 
 message JobStatus {
@@ -97,44 +101,44 @@ The `JobRunner` interface should provide two functions `run` and `fetch`:
 
 ```go
 type JobRunner interface {
-  run(sql string, pr *PipeReader, pw *PipeWriter) (token string, err error){
-  fetchResult(token string) (result *pb.Result)
+  run(sql string, pr *PipeReader, pw *PipeWriter) (jobID string, err error){
+  fetchResult(jobID string) (result *pb.Result)
 }
 ```
 
 Registe `JobRunner` in `sql.Server`:
 
 ```go
-func (s *Server) Run(ctx context.Context, req *pb.Request) (*pb.Token, error) {
+func (s *Server) Run(ctx context.Context, req *pb.Request) (*pb.JobID, error) {
   db := s.db
   pr, pw := sf.Pipe()
-  token := s.jobRunner.run(req.Sql, pr, pw)
-  return &pb.Token(Token: token), nil
+  jobID := s.jobRunner.run(req.Sql, pr, pw)
+  return &pb.JobID{jobID: jobID), nil
 }
 
-func (s *Server) Fetch(ctx context.Context, token *pb.Token) (*pb.Result, error) {
-  result, error := s.jobRunner.fetch(token.Token)
+func (s *Server) Fetch(ctx context.Context, jobID *pb.JobID) (*pb.Result, error) {
+  result, error := s.jobRunner.fetch(jobID.jobID)
   return result, nil
 }
 
 func main() {
-  // registe `LocalJobRunner` or `ClusterJobRunner` according to the env variable `SQLFLOW_JOB_RUNNER`
+  // registe `LocalJobRunner` or `KubernetesJobRunner` according to the env variable `SQLFLOW_JOB_RUNNER`
   server.RegisteJobRunner(os.getenv("SQLFLOW_JOB_RUNNER"))
 }
 ```
 
 ### Local Job Runner
 
-Upon processing a `Run` request, the server generates, bookkeeps, and returns the token to the client. Upon processing a `Fetch` request, the server looks up the result channel and returns the most recent result.
+Upon processing a `Run` request, the server generates, bookkeeps, and returns the job ID to the client. Upon processing a `Fetch` request, the server looks up the result channel and returns the most recent result.
 
 ```go
 type LocalJobRunner {
   jobs map[string]*PipeReader
 }
 
-func (r *LocalJobRunner) run (sql string, pr *PipeReader, pw *PipeWriter) (string, error){
-  token := tokenGen()
-  r.jobs[token] = pr
+func (r *LocalJobRunner)run (sql string, pr *PipeReader, pw *PipeWriter) (string, error){
+  jobID := jobIDGen()
+  r.jobs[jobID] = pr
   go func() {
       defer pw.Close()
       pw.Write(`RUNNING`)
@@ -146,14 +150,14 @@ func (r *LocalJobRunner) run (sql string, pr *PipeReader, pw *PipeWriter) (strin
       }
       pw.Write(`SUCCEEDED`)
   }()
-  return token
+  return jobID, nil
 }
 
-func (r *LocalJobRunner) fetch(token string) (*pb.Result, error) (
+func (r *LocalJobRunner) fetch(jobID string) (*pb.Result, error) (
   result := &pb.Result{}
-  pr, ok := r.jobs[token]
+  pr, ok := r.jobs[jobID]
   if !ok {
-      return nil, fmt.Errorf("unrecognized token %s", token.Token)
+      return nil, fmt.Errorf("unrecognized jobID %s", jobID)
    }
    for ;; {
       select {
@@ -177,7 +181,7 @@ Upon processing a `Run` request, the server launches a Kubernetes Pod and return
 Upon processing a `Fetch` request, the server checks the Pod status and returns the `JobStatus`.
 
 ```go
-type ClusterJobRunner {
+type KubernetesJobRunner {
 }
 
 func (r *LocalJobRunner)run(sql string, pr *PipeReader, pw *PipeWriter) (string, error){
@@ -186,9 +190,9 @@ func (r *LocalJobRunner)run(sql string, pr *PipeReader, pw *PipeWriter) (string,
   return podID, nil
 }
 
-func (r *LocalJobRunner) fetch(token string) (*pb.Result, error) (
+func (r *LocalJobRunner) fetch(jobID string) (*pb.Result, error) (
   result := &pb.Result{}
-  result.job_status := r.PodStatus(token)
+  result.job_status := r.PodStatus(jobID)
   return result, nil
 )
 ```
@@ -211,7 +215,7 @@ The SQL would save the model named `sqlflow_model` which contains two parts:
 1. `TRAIN` statement, which would be saved as a `.mod` file.
 1. Model weights, which would be saved as a `.tar.gz` file.
 
-an example of a trained model folder is as follows:
+An example of a trained model folder is as follows:
 
 ``` text
 `-sqlflow_model
