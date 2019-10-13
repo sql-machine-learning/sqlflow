@@ -27,6 +27,7 @@ import (
 	"time"
 
 	pb "sqlflow.org/sqlflow/pkg/server/proto"
+	xgb "sqlflow.org/sqlflow/pkg/sql/codegen/xgboost"
 )
 
 // Run executes a SQL query and returns a stream of rows or messages
@@ -410,8 +411,21 @@ func train(wr *PipeWriter, tr *extendedSelect, db *DB, cwd string, modelDir stri
 	}
 	var program bytes.Buffer
 	if strings.HasPrefix(strings.ToUpper(tr.estimator), `XGBOOST.`) {
-		if e := genXGBoost(&program, tr, ds, fts, db); e != nil {
-			return fmt.Errorf("GenXGBoost %v", e)
+		// FIXME(weiguoz): Remove the condition after the codegen refactor
+		if os.Getenv("SQLFLOW_codegen") == "ir" {
+			ir, err := generateTrainIR(tr, db.String())
+			if err != nil {
+				return err
+			}
+			code, err := xgb.Train(ir)
+			if err != nil {
+				return err
+			}
+			program.WriteString(code)
+		} else {
+			if e := genXGBoost(&program, tr, ds, fts, db); e != nil {
+				return fmt.Errorf("GenXGBoost %v", e)
+			}
 		}
 	} else {
 		if e := genTF(&program, tr, ds, fts, db); e != nil {

@@ -53,7 +53,8 @@ def xgb_dataset(fn, dataset_sql):
     return xgb.DMatrix(fn)
 
 dtrain = xgb_dataset('train.txt', '''{{.TrainSelect}}''')
-dtest = xgb_dataset('test.txt', '''{{.ValidationSelect}}''')
+# FIXME(weiguoz): bring dtest back when VALIDATE clause is ready
+# dtest = xgb_dataset('test.txt', '''{{.ValidationSelect}}''')
 
 bst = xgb.train(model_params, dtrain, **train_params)
 bst.save_model("my_model")

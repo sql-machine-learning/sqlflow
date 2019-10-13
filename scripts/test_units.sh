@@ -41,4 +41,7 @@ go install ./...
 # ref: https://stackoverflow.com/a/23840896
 SQLFLOW_log_level=debug go test -v -p 1 ./...  -covermode=count -coverprofile=coverage.out
 
+# test IR
+SQLFLOW_codegen=ir SQLFLOW_log_level=debug go test -p 1 -v ./cmd/... -run TestEnd2EndMySQLIR
+
 python -m unittest discover -v python "*_test.py"

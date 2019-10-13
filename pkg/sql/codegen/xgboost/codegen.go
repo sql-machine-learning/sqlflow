@@ -118,7 +118,7 @@ func getFieldMeta(fcs []codegen.FeatureColumn, l codegen.FeatureColumn) ([]codeg
 }
 
 // Train generates a Python program for train a XgBoost model.
-func Train(ir codegen.TrainIR) (string, error) {
+func Train(ir *codegen.TrainIR) (string, error) {
 	params, err := parseAttribute(ir.Attributes)
 	if err != nil {
 		return "", err

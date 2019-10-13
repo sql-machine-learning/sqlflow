@@ -47,20 +47,21 @@ var casePredictTable = "predict"
 
 const unitestPort = 50051
 
-func WaitPortReady(addr string, timeout time.Duration) {
+func serverIsReady(addr string, timeout time.Duration) bool {
+	conn, err := net.DialTimeout("tcp", addr, timeout)
+	if err != nil {
+		return false
+	}
+	err = conn.Close()
+	return err == nil
+}
+
+func waitPortReady(addr string, timeout time.Duration) {
 	// Set default timeout to
 	if timeout == 0 {
 		timeout = time.Duration(1) * time.Second
 	}
-	for {
-		conn, err := net.DialTimeout("tcp", addr, timeout)
-		if err != nil {
-			log.Printf("%s, try again", err.Error())
-		}
-		if conn != nil {
-			err = conn.Close()
-			break
-		}
+	for !serverIsReady(addr, timeout) {
 		time.Sleep(1 * time.Second)
 	}
 }
@@ -242,7 +243,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	}
 
 	go start("", modelDir, caCrt, caKey, true, unitestPort)
-	WaitPortReady(fmt.Sprintf("localhost:%d", unitestPort), 0)
+	waitPortReady(fmt.Sprintf("localhost:%d", unitestPort), 0)
 	err = prepareTestData(dbConnStr)
 	if err != nil {
 		t.Fatalf("prepare test dataset failed: %v", err)
@@ -260,8 +261,42 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseSQLByPassLeftJoin", CaseSQLByPassLeftJoin)
 	t.Run("CaseTrainRegression", CaseTrainRegression)
 	t.Run("CaseTrainXGBoostRegression", CaseTrainXGBoostRegression)
+	t.Run("CasePredictXGBoostRegression", CasePredictXGBoostRegression)
 	t.Run("CaseTrainDeepWideModel", CaseTrainDeepWideModel)
+}
 
+func TestEnd2EndMySQLIR(t *testing.T) {
+	if os.Getenv("SQLFLOW_codegen") != "ir" {
+		t.Skip("Skipping ir test")
+	}
+	testDBDriver := os.Getenv("SQLFLOW_TEST_DB")
+	// default run mysql tests
+	if len(testDBDriver) == 0 {
+		testDBDriver = "mysql"
+	}
+	if testDBDriver != "mysql" {
+		t.Skip("Skipping mysql tests")
+	}
+	dbConnStr = "mysql://root:root@tcp(localhost:3306)/?maxAllowedPacket=0"
+	modelDir := ""
+
+	tmpDir, caCrt, caKey, err := generateTempCA()
+	defer os.RemoveAll(tmpDir)
+	if err != nil {
+		t.Fatalf("failed to generate CA pair %v", err)
+	}
+
+	addr := fmt.Sprintf("localhost:%d", unitestPort)
+	if !serverIsReady(addr, 0) {
+		go start("", modelDir, caCrt, caKey, true, unitestPort)
+		waitPortReady(addr, 0)
+	}
+	err = prepareTestData(dbConnStr)
+	if err != nil {
+		t.Fatalf("prepare test dataset failed: %v", err)
+	}
+
+	t.Run("CaseTrainXGBoostRegressionIR", CaseTrainXGBoostRegression)
 }
 
 func TestEnd2EndHive(t *testing.T) {
@@ -278,7 +313,7 @@ func TestEnd2EndHive(t *testing.T) {
 	}
 	dbConnStr = "hive://127.0.0.1:10000/iris?auth=NOSASL"
 	go start("", modelDir, caCrt, caKey, true, unitestPort)
-	WaitPortReady(fmt.Sprintf("localhost:%d", unitestPort), 0)
+	waitPortReady(fmt.Sprintf("localhost:%d", unitestPort), 0)
 	err = prepareTestData(dbConnStr)
 	if err != nil {
 		t.Fatalf("prepare test dataset failed: %v", err)
@@ -312,7 +347,7 @@ func TestEnd2EndMaxCompute(t *testing.T) {
 	endpoint := os.Getenv("MAXCOMPUTE_ENDPOINT")
 	dbConnStr = fmt.Sprintf("maxcompute://%s:%s@%s", AK, SK, endpoint)
 	go start("", modelDir, caCrt, caKey, true, unitestPort)
-	WaitPortReady(fmt.Sprintf("localhost:%d", unitestPort), 0)
+	waitPortReady(fmt.Sprintf("localhost:%d", unitestPort), 0)
 	err = prepareTestData(dbConnStr)
 	if err != nil {
 		t.Fatalf("prepare test dataset failed: %v", err)
@@ -356,7 +391,7 @@ func TestEnd2EndMaxComputeALPS(t *testing.T) {
 	}
 
 	go start("", modelDir, caCrt, caKey, true, unitestPort)
-	WaitPortReady(fmt.Sprintf("localhost:%d", unitestPort), 0)
+	waitPortReady(fmt.Sprintf("localhost:%d", unitestPort), 0)
 
 	t.Run("CaseTrainALPS", CaseTrainALPS)
 	t.Run("CaseTrainALPSFeatureMap", CaseTrainALPSFeatureMap)
@@ -395,7 +430,7 @@ func TestEnd2EndMaxComputeElasticDL(t *testing.T) {
 	}
 
 	go start("", modelDir, caCrt, caKey, true, unitestPort)
-	WaitPortReady(fmt.Sprintf("localhost:%d", unitestPort), 0)
+	waitPortReady(fmt.Sprintf("localhost:%d", unitestPort), 0)
 
 	t.Run("CaseTrainElasticDL", CaseTrainElasticDL)
 }
@@ -424,21 +459,24 @@ func CaseShowDatabases(t *testing.T) {
 	}
 
 	expectedDBs := map[string]string{
-		"information_schema": "",
-		"churn":              "",
-		"iris":               "",
-		"mysql":              "",
-		"performance_schema": "",
-		"sqlflow_models":     "",
-		"sqlfs_test":         "",
-		"sys":                "",
-		"text_cn":            "",
-		"standard_join_test": "",
-		"housing":            "",
-		"iris_e2e":           "", // created by Python e2e test
-		"hive":               "", // if current mysql is also used for hive
-		"default":            "", // if fetching default hive databases
-		"sf_home":            "", // default auto train&val database
+		"information_schema":      "",
+		"boston":                  "",
+		"churn":                   "",
+		"creditcard":              "",
+		"feature_derivation_case": "",
+		"housing":                 "",
+		"iris":                    "",
+		"mysql":                   "",
+		"performance_schema":      "",
+		"sqlflow_models":          "",
+		"sf_home":                 "", // default auto train&val database
+		"sqlfs_test":              "",
+		"sys":                     "",
+		"text_cn":                 "",
+		"standard_join_test":      "",
+		"iris_e2e":                "", // created by Python e2e test
+		"hive":                    "", // if current mysql is also used for hive
+		"default":                 "", // if fetching default hive databases
 	}
 	for i := 0; i < len(resp); i++ {
 		AssertContainsAny(a, expectedDBs, resp[i][0])
@@ -1038,13 +1076,24 @@ INTO sqlflow_models.my_xgb_regression_model;
 	}
 	// call ParseRow only to wait train finish
 	ParseRow(stream)
+}
+
+func CasePredictXGBoostRegression(t *testing.T) {
+	a := assert.New(t)
+	conn, err := createRPCConn()
+	a.NoError(err)
+	defer conn.Close()
+	cli := pb.NewSQLFlowClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	defer cancel()
 
 	predSQL := fmt.Sprintf(`SELECT *
 FROM housing.test
 PREDICT housing.xgb_predict.target
 USING sqlflow_models.my_xgb_regression_model;`)
 
-	stream, err = cli.Run(ctx, sqlRequest(predSQL))
+	stream, err := cli.Run(ctx, sqlRequest(predSQL))
 	if err != nil {
 		a.Fail("Check if the server started successfully. %v", err)
 	}
