@@ -18,7 +18,7 @@ Please be aware that SQLFlow doesn't attempt to parse the nested select due to t
 across SQL engines. Instead, it follows the UNIX's pipeline philosophy: forwarding the complexity to various SQL engines,
 while retrieves the data via unified DB API.
 
-![](figures/arbitrary-select.png)
+![](/doc/figures/arbitrary-select.png)
 
 ## Implementation
 
