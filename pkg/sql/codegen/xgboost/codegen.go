@@ -17,42 +17,33 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"sqlflow.org/sqlflow/pkg/sql/codegen/attribute"
 	"strings"
 
 	"sqlflow.org/sqlflow/pkg/sql/codegen"
 )
 
-var attributeChecker = map[string]func(interface{}) error{
-	"eta": func(x interface{}) error {
-		switch x.(type) {
-		case float32, float64:
-			return nil
-		default:
-			return fmt.Errorf("eta should be of type float, received %T", x)
-		}
-	},
-	"num_class": func(x interface{}) error {
-		switch x.(type) {
-		case int, int32, int64:
-			return nil
-		default:
-			return fmt.Errorf("num_class should be of type int, received %T", x)
-		}
-	},
-	"train.num_boost_round": func(x interface{}) error {
-		switch x.(type) {
-		case int, int32, int64:
-			return nil
-		default:
-			return fmt.Errorf("train.num_boost_round should be of type int, received %T", x)
-		}
-	},
-	"objective": func(x interface{}) error {
-		if _, ok := x.(string); !ok {
-			return fmt.Errorf("objective should be of type string, received %T", x)
-		}
-		return nil
-	},
+func newFloat32(f float32) *float32 {
+	return &f
+}
+
+func newInt(i int) *int {
+	return &i
+}
+
+// TODO(tony): complete model parameter and training parameter list
+// model parameter list: https://xgboost.readthedocs.io/en/latest/parameter.html#general-parameters
+// training parameter list: https://github.com/dmlc/xgboost/blob/b61d53447203ca7a321d72f6bdd3f553a3aa06c4/python-package/xgboost/training.py#L115-L117
+var attributeDictionary = attribute.Dictionary{
+	"eta": {attribute.Float, `[default=0.3, alias: learning_rate]
+Step size shrinkage used in update to prevents overfitting. After each boosting step, we can directly get the weights of new features, and eta shrinks the feature weights to make the boosting process more conservative.
+range: [0,1]`, attribute.Float32RangeChecker(newFloat32(0), newFloat32(1), true, true)},
+	"num_class": {attribute.Int, `Number of classes.
+range: [1, Infinity]`, attribute.IntRangeChecker(newInt(0), nil, false, false)},
+	"objective": {attribute.String, `Learning objective`, nil},
+	"train.num_boost_round": {attribute.Int, `[default=10]
+The number of rounds for boosting.
+range: [1, Infinity]`, attribute.IntRangeChecker(newInt(0), nil, false, false)},
 }
 
 func resolveModelType(estimator string) (string, error) {
@@ -69,22 +60,13 @@ func resolveModelType(estimator string) (string, error) {
 }
 
 func parseAttribute(attrs map[string]interface{}) (map[string]map[string]interface{}, error) {
-	attrNames := map[string]bool{}
+	if err := attributeDictionary.Validate(attrs); err != nil {
+		return nil, err
+	}
 
 	params := map[string]map[string]interface{}{"": {}, "train.": {}}
-	paramPrefix := []string{"train.", ""} // use slice to assure traverse order
+	paramPrefix := []string{"train.", ""} // use slice to assure traverse order, this is necessary because all string starts with ""
 	for key, attr := range attrs {
-		if _, ok := attrNames[key]; ok {
-			return nil, fmt.Errorf("duplicated attribute %s", key)
-		}
-		attrNames[key] = true
-		checker, ok := attributeChecker[key]
-		if !ok {
-			return nil, fmt.Errorf("unrecognized attribute %v", key)
-		}
-		if err := checker(attr); err != nil {
-			return nil, err
-		}
 		for _, pp := range paramPrefix {
 			if strings.HasPrefix(key, pp) {
 				params[pp][key[len(pp):]] = attr
