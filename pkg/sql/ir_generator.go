@@ -98,6 +98,21 @@ func generatePredictIR(slct *extendedSelect, connStr string, cwd string, modelDi
 	}, nil
 }
 
+func generateAnalyzeIR(slct *extendedSelect, connStr string) (*codegen.AnalyzeIR, error) {
+	attrs, err := generateAttributeIR(&slct.analyzeAttrs)
+	if err != nil {
+		return nil, err
+	}
+	return &codegen.AnalyzeIR{
+		DataSource: connStr,
+		Select:     slct.standardSelect.String(),
+		Attributes: attrs,
+		Explainer:  slct.explainer,
+		// TrainIR is the TrainIR used for generating the training job of the corresponding model
+		// TrainIR TrainIR
+	}, nil
+}
+
 func generateAttributeIR(attrs *attrs) (map[string]interface{}, error) {
 	ret := make(map[string]interface{})
 	for k, v := range *attrs {

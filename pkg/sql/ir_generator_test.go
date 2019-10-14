@@ -193,3 +193,25 @@ INTO sqlflow_models.mymodel;`, testDB, modelDir, nil)
 	a.True(ok)
 	a.Equal("sepal_length", nc.FieldMeta.Name)
 }
+
+func TestGenerateAnalyzeIR(t *testing.T) {
+	a := assert.New(t)
+	stmt := `
+	SELECT *
+	FROM iris.train
+	ANALYZE sqlflow_models.my_xgboost_model
+	WITH
+	    shap_summary.plot_type="bar",
+	    shap_summary.alpha=1,
+	    shap_summary.sort=True
+	USING TreeExplainer;
+	`
+	pr, e := newParser().Parse(stmt)
+	a.NoError(e)
+
+	connStr := "mysql://root:root@tcp(localhost)"
+	ir, e := generateAnalyzeIR(pr, connStr)
+	a.NoError(e)
+	a.Equal(ir.Explainer, "TreeExplainer")
+	a.Equal(ir.DataSource, connStr)
+}
