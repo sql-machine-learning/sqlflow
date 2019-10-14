@@ -2,7 +2,7 @@
 
 This tutorial demonstrates how to
 - Train a DNNClassifer on the [Iris flower dataset](https://en.wikipedia.org/wiki/Iris_flower_data_set).
-- Use the trained DNNClassifer to predict the 3 species of Iris(Iris setosa, Iris virginica and Iris versicolor).
+- Use the trained DNNClassifer to predict the three species of Iris(Iris setosa, Iris virginica and Iris versicolor).
 
 ## The Dataset
 
@@ -26,7 +26,7 @@ limit 5;
 
 ## Train
 
-Let's train a 3-class DNNClassifier, which has 2 hidden layers with 10 hidden units each. This can be done by specifying the training clause for SQLFlow's extended syntax.
+Let's train a ternary DNNClassifier, which has two hidden layers with ten hidden units each. This can be done by specifying the training clause for SQLFlow's extended syntax.
 
 ```
 TRAIN DNNClassifier
