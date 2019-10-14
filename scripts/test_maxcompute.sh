@@ -22,7 +22,7 @@ fi
 # NOTE: we have already installed sqlflow_submitter under python installation path
 # using latest develop branch, but when testing on CI, we need to use the code in
 # the current pull request.
-export PYTHONPATH=$GOPATH/src/github.com/sql-machine-learning/sqlflow/sql/python
+export PYTHONPATH=$GOPATH/src/sqlflow.org/sqlflow/python
 
 go generate ./...
 go get -v -t ./...
@@ -31,4 +31,12 @@ go install ./...
 # -p 1 is necessary since tests in different packages are sharing the same database
 # ref: https://stackoverflow.com/a/23840896
 # TODO(Yancey1989): enable all the unit test for the maxcompute
-SQLFLOW_log_level=debug go test -p 1 -v ./cmd/... -run TestEnd2EndMaxCompute 
+SQLFLOW_log_level=debug go test -p 1 -v ./cmd/... -run TestEnd2EndMaxCompute
+
+# End-to-end test for ElasticDL
+export SQLFLOW_submitter=elasticdl
+cd /elasticdl
+docker build -t elasticdl:dev -f elasticdl/docker/Dockerfile.dev .
+docker build -t elasticdl:ci -f elasticdl/docker/Dockerfile.ci .
+cd -
+SQLFLOW_log_level=debug go test -p 1 -v ./cmd/... -run TestEnd2EndMaxComputeElasticDL

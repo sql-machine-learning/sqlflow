@@ -1,4 +1,4 @@
-# _Design:_ Support multiple SQL statements
+# Support Multiple SQL Statements
 
 ## Overview
 
@@ -12,7 +12,7 @@ Currently, our Jupyter magic command `%%sqlflow` only supports to run one statem
 
 There are several design choices to make.
 
-### Splitting Location: Client-side vs Server-side
+### Splitting Location: Client-Side vs Server-Side
 
 While splitting at the client-side is relatively simple to implement. We prefer to split at the server-side for the following reasons.
 1. Loose coupling. SQLFlow server can use its lexer/parser to split SQL statements accurately. 

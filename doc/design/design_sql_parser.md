@@ -1,4 +1,4 @@
-# _Design:_ Extended SQL Parser
+# Extended SQL Parser
 
 This documentation explains the technical decision made in building a SQL
 parser in Go. It is used to parsed the extended SELECT syntax of SQL that

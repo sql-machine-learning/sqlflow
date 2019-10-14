@@ -24,24 +24,52 @@ ARG TENSORFLOW_VERSION="2.0.0b1"
 ARG WITH_SQLFLOW_MODELS="ON"
 
 ENV GOPATH /go
-ENV HADOOP_VERSION 3.2.0
+# Using the stable version of Hadoop
+ENV HADOOP_VERSION 3.2.1
 ENV PATH /opt/hadoop-${HADOOP_VERSION}/bin:/miniconda/envs/sqlflow-dev/bin:/miniconda/bin:/usr/local/go/bin:/go/bin:$PATH
 ENV IPYTHON_STARTUP /root/.ipython/profile_default/startup/
 
-# Main steps to Build
-COPY . ${GOPATH}/src/github.com/sql-machine-learning/sqlflow
-RUN bash ${GOPATH}/src/github.com/sql-machine-learning/sqlflow/scripts/build_docker_image.sh && \
-    mkdir -p /workspace && \
-    bash ${GOPATH}/src/github.com/sql-machine-learning/sqlflow/scripts/convert_markdown_into_ipynb.sh && \
-    rm -rf ${GOPATH}/src && rm -rf ${GOPATH}/bin
+COPY scripts/build_docker_image.sh /
+RUN bash /build_docker_image.sh
+
 VOLUME /var/lib/mysql
 
 # Prepare sample datasets
-COPY example/datasets/popularize_churn.sql \
-     example/datasets/popularize_iris.sql \
-     example/datasets/popularize_boston.sql \
-     example/datasets/create_model_db.sql \
+COPY doc/datasets/popularize_churn.sql \
+     doc/datasets/popularize_iris.sql \
+     doc/datasets/popularize_boston.sql \
+     doc/datasets/popularize_creditcardfraud.sql \
+     doc/datasets/create_model_db.sql \
      /docker-entrypoint-initdb.d/
 
 ADD scripts/start.sh /
+
+# -----------------------------------------------------------------------------------
+# Above Steps Should be Cached for Each CI Build if Dockerfile is not Changed.
+# -----------------------------------------------------------------------------------
+
+# Build SQLFlow, copy sqlflow_submitter, convert tutorial markdown to ipython notebook
+COPY . ${GOPATH}/src/sqlflow.org/sqlflow
+RUN cd /go/src/sqlflow.org/sqlflow && \
+go generate ./... && \
+go get -t ./... && \
+go install -v ./... && \
+mv $GOPATH/bin/sqlflowserver /usr/local/bin && \
+mv $GOPATH/bin/repl /usr/local/bin && \
+cp -r $GOPATH/src/sqlflow.org/sqlflow/python/sqlflow_submitter /miniconda/envs/sqlflow-dev/lib/python3.6/site-packages/ && \
+cd / && \
+bash ${GOPATH}/src/sqlflow.org/sqlflow/scripts/convert_markdown_into_ipynb.sh && \
+rm -rf ${GOPATH}/src && rm -rf ${GOPATH}/bin
+
+# Install latest sqlflow_models for testing custom models, see main_test.go:CaseTrainCustomModel
+# NOTE: The sqlflow_models works well on the specific Tensorflow version,
+#       we can skip installing sqlflow_models if using the older Tensorflow.
+RUN if [ "${WITH_SQLFLOW_MODELS:-ON}" = "ON" ]; then \
+  git clone https://github.com/sql-machine-learning/models.git && \
+  cd models && \
+  bash -c "source activate sqlflow-dev && python setup.py install" && \
+  cd .. && \
+  rm -rf models; \
+fi
+
 CMD ["bash", "/start.sh"]

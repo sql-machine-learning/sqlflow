@@ -16,9 +16,9 @@
 set -e
 
 
-# 0. Install conda using Miniconda. 
+# 0. Install conda using Miniconda.
 # We use conda to (1) specify the use of a specific version of Python, currently, 3.6, and (2) to
-# canonicalize the Python pacakge installation directory, currently, 
+# canonicalize the Python pacakge installation directory, currently,
 # /miniconda/envs/sqlflow-dev/lib/python3.6/site-packages/.  SQLFlow submitter programs could
 # depend on pacakges installed in the above canocicalized pacakge directory.
 curl -sL https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -o mconda-install.sh
@@ -33,16 +33,15 @@ echo "source activate sqlflow-dev" >> ~/.bashrc
 source /miniconda/bin/activate sqlflow-dev && python -m pip install \
 numpy==1.16.1 \
 tensorflow==${TENSORFLOW_VERSION} \
-mysqlclient \
-impyla \
-pyodps \
-jupyter \
+mysqlclient==1.4.4 \
+impyla==0.16.0 \
+pyodps==0.8.3 \
+jupyter==1.0.0 \
 notebook==6.0.0 \
-sqlflow==0.5.0 \
-pre-commit \
-odps \
-dill \
-shap \
+sqlflow==0.6.0 \
+pre-commit==1.18.3 \
+dill==0.3.0 \
+shap==0.30.1 \
 ${PIP_ADD_PACKAGES}
 
 # 1. Install Go 1.11.5
@@ -56,6 +55,12 @@ go get github.com/golang/protobuf/protoc-gen-go
 mv $GOPATH/bin/protoc-gen-go /usr/local/bin/
 go get golang.org/x/lint/golint
 mv $GOPATH/bin/golint /usr/local/bin
+go get golang.org/x/tools/cmd/goyacc
+mv $GOPATH/bin/goyacc /usr/local/bin/
+go get golang.org/x/tools/cmd/cover
+mv $GOPATH/bin/cover /usr/local/bin/
+go get github.com/mattn/goveralls
+mv $GOPATH/bin/goveralls /usr/local/bin/
 
 # 3. Install protobuf compiler
 wget -q https://github.com/protocolbuffers/protobuf/releases/download/v3.7.1/protoc-3.7.1-linux-x86_64.zip
@@ -77,63 +82,37 @@ chown mysql:mysql /var/run/mysqld
 chown mysql:mysql /var/lib/mysql
 mkdir -p /docker-entrypoint-initdb.d
 
-# 5. Build SQLFlow binaries from the current branch.
-#    Then move binary file: "sqlflowserver" and "demo" to /usr/local/bin
-#    Then delete contents under $GOPATH to reduce the image size.
-# NOTE: During development and testing, /go will be overridden by -v.
-cd /go/src/github.com/sql-machine-learning/sqlflow
-go generate ./...
-go get -t ./...
-go install -v ./...
-mv $GOPATH/bin/sqlflowserver /usr/local/bin
-mv $GOPATH/bin/demo /usr/local/bin
-cp -r $GOPATH/src/github.com/sql-machine-learning/sqlflow/sql/python/sqlflow_submitter /miniconda/envs/sqlflow-dev/lib/python3.6/site-packages/
-cd /
-
-# 6. Install latest sqlflow_models for testing custom models, see main_test.go:CaseTrainCustomModel
-# NOTE: The sqlflow_models works well on the specific Tensorflow version,
-#       we can skip installing sqlflow_models if using the older Tensorflow.
-if [ "${WITH_SQLFLOW_MODELS:-ON}" = "ON" ]; then
-  git clone https://github.com/sql-machine-learning/models.git
-  cd models
-  bash -c "source activate sqlflow-dev && python setup.py install"
-  cd ..
-  rm -rf models
-fi
-
-# 7. Install odpscmd for submitting alps predict job with odps udf script
+# 5. Install odpscmd for submitting alps predict job with odps udf script
 # TODO(Yancey1989): using gomaxcompute instead of the odpscmd command-line tool.
 wget -q http://docs-aliyun.cn-hangzhou.oss.aliyun-inc.com/assets/attach/119096/cn_zh/1557995455961/odpscmd_public.zip
 unzip -qq odpscmd_public.zip -d /usr/local/odpscmd
 ln -s /usr/local/odpscmd/bin/odpscmd /usr/local/bin/odpscmd
 rm -rf odpscmd_public.zip
 
-# 8. Load sqlflow Jupyter magic command automatically. c.f. https://stackoverflow.com/a/32683001.
+# 6. Load sqlflow Jupyter magic command automatically. c.f. https://stackoverflow.com/a/32683001.
 mkdir -p $IPYTHON_STARTUP
 mkdir -p /workspace
 echo 'get_ipython().magic(u"%reload_ext sqlflow.magic")' >> $IPYTHON_STARTUP/00-first.py
+echo 'get_ipython().magic(u"%reload_ext autoreload")' >> $IPYTHON_STARTUP/00-first.py
 echo 'get_ipython().magic(u"%autoreload 2")' >> $IPYTHON_STARTUP/00-first.py
 
-# 9. install xgboost
+# 7. install xgboost
 pip install xgboost==0.90
 # Re-enable this after Ant-XGBoost is ready.
 # pip install xgboost-launcher==0.0.4
 
-# 10. install Hadoop to use as the client when writing CSV to hive tables
-HADOOP_URL=https://archive.apache.org/dist/hadoop/common/stable/hadoop-${HADOOP_VERSION}.tar.gz
+# 8. install Hadoop to use as the client when writing CSV to hive tables
+HADOOP_URL=https://archive.apache.org/dist/hadoop/common/hadoop-${HADOOP_VERSION}/hadoop-${HADOOP_VERSION}.tar.gz
 curl -fsSL "$HADOOP_URL" -o /tmp/hadoop.tar.gz
 tar -xzf /tmp/hadoop.tar.gz -C /opt/
 rm -rf /tmp/hadoop.tar.gz
 rm -rf /opt/hadoop-${HADOOP_VERSION}/share/doc
 
-# 11. Install additional dependencies for ElasticDL, ElasticDL CLI, and build testing images
+# 9. Install additional dependencies for ElasticDL, ElasticDL CLI, and build testing images
 apt-get install -y docker.io sudo
 curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/v1.14.0/bin/linux/amd64/kubectl && chmod +x kubectl && sudo mv kubectl /usr/local/bin/
-# TODO(terrytangyuan): Uncomment once ElasticDL is open sourced
-# git clone https://github.com/wangkuiyi/elasticdl.git
-# cd elasticdl
-# pip install -r elasticdl/requirements.txt
-# python setup.py install
-# docker build -t elasticdl:dev -f elasticdl/docker/Dockerfile.dev .
-# docker build -t elasticdl:ci -f elasticdl/docker/Dockerfile.ci .
-# cd ..
+git clone https://github.com/sql-machine-learning/elasticdl.git
+cd elasticdl
+pip install -r elasticdl/requirements.txt
+python setup.py install
+cd ..

@@ -12,22 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 command -v go >/dev/null 2>&1
 if [ $? -ne 0 ]; then
     echo >&2 "Please install go https://golang.org/doc/install#install"
     exit 1
 fi
 
-export GOPATH=~/go; go get -u github.com/wangkuiyi/ipynb/markdown-to-ipynb
+if [[ $GOPATH == "" ]]; then
+    echo "Set GOPATH to ~/go"
+    export GOPATH=~/go
+fi
+
+SRC_FOLDER=${SRC_FOLDER:-doc/tutorial}
+DEST_FOLDER=${DEST_FOLDER:-/workspace}
+
+go get -u github.com/wangkuiyi/ipynb/markdown-to-ipynb
 
 cur_path="$(cd "$(dirname "$0")" && pwd -P)"
 cd $cur_path/../
 
 # convert markdown to ipynb
-for file in doc/examples/*.md; do
+for file in ${SRC_FOLDER}/*.md; do
     filename=$(basename -- "$file")
-    ~/go/bin/markdown-to-ipynb --code-block-type=sql < $file > /workspace/${filename%.*}."ipynb"
+    $GOPATH/bin/markdown-to-ipynb --code-block-type=sql < $file > $DEST_FOLDER/${filename%.*}."ipynb"
     if [ $? -ne 0 ]; then
         echo >&2 "markdown-to-ipynb $file error"
         exit 1
