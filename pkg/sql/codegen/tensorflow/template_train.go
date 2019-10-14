@@ -32,47 +32,12 @@ type trainFiller struct {
 }
 
 const tfTrainTemplateText = `
-import os
-# Disable Tensorflow INFO and WARNING logs
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-
-import sys, json
-import tensorflow as tf
-import functools
-try:
-    import sqlflow_models
-except:
-    pass
-
-from sqlflow_submitter.db import connect_with_data_source, db_generator
-
-# Disable Tensorflow INFO and WARNING
-import logging
-tf.get_logger().setLevel(logging.ERROR)
-
-BATCHSIZE = {{index .TrainParams "batch_size" | attrToPythonValue}}
-EPOCHS = {{index .TrainParams "epoch" | attrToPythonValue}}
-VERBOSE = {{index .TrainParams "verbose" | attrToPythonValue}}
-
-conn = connect_with_data_source("{{.DataSource}}")
+from sqlflow_submitter.templates.tensorflow import train
 
 feature_column_names = [{{range .FieldMetas}}
 "{{.Name}}",
 {{end}}]
 
-
-classifier = {{.Estimator}}(
-    {{.FeatureColumnCode}},
-    {{range $k, $v := .ModelParams}}
-    {{$k}}={{$v | attrToPythonValue}},
-    {{end}}
-    {{if .IsKerasModel}}
-)
-    {{else}}
-    model_dir = "{{.Save}}")
-    {{end}}
-
-{{/* Convert go side featureSpec to python dict for input_fn */}}
 feature_metas = dict()
 {{ range $value := .FieldMetas }}
 feature_metas["{{$value.Name}}"] = {
@@ -84,73 +49,31 @@ feature_metas["{{$value.Name}}"] = {
 }
 {{end}}
 
-def get_dtype(type_str):
-    if type_str == "float32":
-        return tf.float32
-    elif type_str == "int64":
-        return tf.int64
-    else:
-        raise TypeError("not supported dtype: %s" % type_str)
+label_meta = {
+    "feature_name": {{.Y.Name}},
+    "dtype": "{{.Y.DType | dtypeToString}}",
+    "delimiter": {{.Y.Delimiter}},
+    "shape": {{.Y.Shape | intArrayToJSONString}},
+    "is_sparse": "{{.Y.IsSparse}}" == "true"
+}
 
-def _parse_sparse_feature(features, label, feature_metas):
-    features_dict = dict()
-    for idx, col in enumerate(features):
-        name = feature_column_names[idx]
-        if feature_metas[name]["is_sparse"]:
-            i, v, s = col
-            features_dict[name] = tf.SparseTensor(indices=i, values=v, dense_shape=s)
-        else:
-            features_dict[name] = col
-    return features_dict, label
-
-
-def input_fn(datasetStr):
-    feature_types = []
-    for name in feature_column_names:
-        {{/* NOTE: vector columns like 23,21,3,2,0,0 should use shape None */}}
-        if feature_metas[name]["is_sparse"]:
-            feature_types.append((tf.int64, tf.int32, tf.int64))
-        else:
-            feature_types.append(get_dtype(feature_metas[name]["dtype"]))
-
-    gen = db_generator(conn.driver, conn, datasetStr, feature_column_names, "{{.Y.Name}}", feature_metas)
-    dataset = tf.data.Dataset.from_generator(gen, (tuple(feature_types), tf.{{.Y.DType | dtypeToString}}))
-    ds_mapper = functools.partial(_parse_sparse_feature, feature_metas=feature_metas)
-    return dataset.map(ds_mapper)
-
-def train_input_fn(batch_size):
-    dataset = input_fn("""{{.TrainSelect}}""")
-    # TODO(typhoonzero): add prefetch, cache if needed.
-    dataset = dataset.shuffle(1000).batch(batch_size)
-    {{if not .IsKerasModel}}
-    {{/* estimater.train have no argument epochs, so add in dataset here */}}
-    dataset = dataset.repeat(EPOCHS if EPOCHS else 1)
-    {{end}}
-    return dataset
-
-def validate_input_fn(batch_size):
-    dataset = input_fn("""{{.ValidationSelect}}""")
-    return dataset.batch(batch_size)
-
-{{if .IsKerasModel}}
-classifier.compile(optimizer=classifier.default_optimizer(),
-    loss=classifier.default_loss(),
-    metrics=["accuracy"])
-if hasattr(classifier, 'sqlflow_train_loop'):
-    classifier.sqlflow_train_loop(train_input_fn(BATCHSIZE))
-else:
-    classifier.fit(train_input_fn(BATCHSIZE),
-        epochs=EPOCHS if EPOCHS else classifier.default_training_epochs(),
-        verbose=VERBOSE)
-classifier.save_weights("{{.Save}}", save_format="h5")
-if "{{.Y.Name}}" != "":
-    eval_result = classifier.evaluate(validate_input_fn(BATCHSIZE), verbose=VERBOSE)
-    print("Training set accuracy: {accuracy:0.5f}".format(**{"accuracy": eval_result[1]}))
-{{else}}
-classifier.train(input_fn=lambda:train_input_fn(BATCHSIZE))
-eval_result = classifier.evaluate(input_fn=lambda:validate_input_fn(BATCHSIZE))
-print("Evaluation result:", eval_result)
+model_params=dict()
+{{range $k, $v := .ModelParams}}
+model_params["{{$k}}"]={{$v | attrToPythonValue}},
 {{end}}
 
-print("Done training")
+train(is_keara_model={{.IsKerasModel}},
+    datasource="{{.DataSource}}"
+    estimator="{{.Estimator}}",
+    select="""{{.TrainSelect}}""",
+    validate_select="""{{.ValidationSelect}}""",
+    feature_column_code="""{{.FeatureColumnCode}}""",
+    feature_column_names=feature_column_names,
+    feature_metas=feature_metas,
+    label_meta=label_meta,
+    model_params=model_params,
+    save="{{.Save}}",
+    batch_size={{index .TrainParams "batch_size" | attrToPythonValue}},
+    epochs={{index .TrainParams "epoch" | attrToPythonValue}},
+    verbose={{index .TrainParams "verbose" | attrToPythonValue}})
 `
