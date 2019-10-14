@@ -85,3 +85,21 @@ func TestCodeGenPredict(t *testing.T) {
 
 	a.NoError(genTF(ioutil.Discard, r, nil, fts, testDB))
 }
+
+func TestLabelAsStringType(t *testing.T) {
+	a := assert.New(t)
+	r, e := newParser().Parse(`SELECT customerID, gender FROM churn.train
+TRAIN DNNClassifier
+WITH
+	model.n_classes = 3,
+	model.hidden_units = [10, 20]
+COLUMN customerID
+LABEL gender
+INTO sqlflow_models.my_dnn_model;`)
+	a.NoError(e)
+
+	fts, e := verify(r, testDB)
+	a.NoError(e)
+
+	a.EqualError(genTF(ioutil.Discard, r, nil, fts, testDB), "unsupported label data type: VARCHAR")
+}
