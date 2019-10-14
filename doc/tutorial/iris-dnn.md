@@ -1,14 +1,14 @@
 # Classify Iris Dataset Using DNNClassifer
 
 This tutorial demonstrates how to
-1. train a DNNClassifer on iris dataset.
-1. use trained DNNClassifer to predict iris class.
+- Train a DNNClassifer on the [Iris flower dataset](https://en.wikipedia.org/wiki/Iris_flower_data_set).
+- Use the trained DNNClassifer to predict the 3 species of Iris(Iris setosa, Iris virginica and Iris versicolor).
 
 ## The Dataset
 
-The Iris data set contains four features and one label. The four features identify the botanical characteristics of individual Iris flowers. Each feature is stored as a single float number. The label indicates the class of individual Iris flowers. The label is stored as a integer and has possible value of 0, 1, 2.
+The Iris data set contains four features and one label. The four features identify the botanical characteristics of individual Iris flowers. Each feature is stored as a single float number. The label indicates the species of individual Iris flowers. The label is stored as a integer and has possible value of 0, 1, 2.
 
-We have prepared the iris dataset in table `iris.train` and `iris.test`. We will be using them as training data and test data respectively.
+We have prepared the Iris dataset in table `iris.train` and `iris.test`. We will use them as training data and test data respectively.
 
 We can have a quick peek of the data by running the following standard SQL statements.
 
@@ -26,13 +26,13 @@ limit 5;
 
 ## Train
 
-Let's train a DNNClassifier, which has two hidden layers where each layer has ten hidden units. This can be done by specifying the training clause for SQLFlow's extended syntax.
+Let's train a 3-class DNNClassifier, which has 2 hidden layers with 10 hidden units each. This can be done by specifying the training clause for SQLFlow's extended syntax.
 
 ```
 TRAIN DNNClassifier
 WITH
   model.n_classes = 3,
-  model.hidden_units = [10, 20]
+  model.hidden_units = [10, 10]
 ```
 
 To specify the training data, we use standard SQL statements like `SELECT * FROM iris.train`.
@@ -55,7 +55,7 @@ FROM iris.train
 TRAIN DNNClassifier
 WITH
   model.n_classes = 3,
-  model.hidden_units = [10, 20],
+  model.hidden_units = [10, 10],
   train.epoch = 100
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
