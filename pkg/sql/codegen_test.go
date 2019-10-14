@@ -15,6 +15,7 @@ package sql
 
 import (
 	"io/ioutil"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -100,6 +101,7 @@ INTO sqlflow_models.my_dnn_model;`)
 
 	fts, e := verify(r, testDB)
 	a.NoError(e)
-
-	a.EqualError(genTF(ioutil.Discard, r, nil, fts, testDB), "unsupported label data type: VARCHAR")
+	e = genTF(ioutil.Discard, r, nil, fts, testDB)
+	a.NotNil(e)
+	a.True(strings.HasPrefix(e.Error(), "unsupported label data type:"))
 }
