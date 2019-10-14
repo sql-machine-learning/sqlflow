@@ -4,30 +4,30 @@ SQLFlow model zoo is a place to store model definitions, pre-trained model param
 
 SQLFlow should support below features to support common cases in machine learning:
 
-1. Host model definition and pre-trained parameters in `sqlflow.org`. e.g. `sqlflow.org/modelzoo/iris_dnn_128x32` points to a directory containing a model definition of `DNNClassifier` with 128, 32 hidden layers and pre-trained parameters using the iris dataset.
+1. Host model definition and pre-trained parameters in `sqlflow.org`. e.g. `sqlflow.org/modelzoo/iris_dnn_128x32/v1.0` points to a directory containing a model definition of `DNNClassifier` with 128, 32 hidden layers and pre-trained parameters using the iris dataset.
 1. Download pre-trained model to predict a dataset:
    ```sql
    SELECT * FROM iris.predict_samples
    PREDICT predict_result.class
-   USING sqlflow.org/modelzoo/iris_dnn_128x32;
+   USING sqlflow.org/modelzoo/iris_dnn_128x32/v1.0;
    ```
 1. Train a model from scratch using the model definition:
    ```sql
    SELECT * FROM iris.new_iris_train
-   TRAIN sqlflow.org/modelzoo/iris_dnn_128x32
+   TRAIN sqlflow.org/modelzoo/iris_dnn_128x32/v1.0
    INTO modeldb.my_iris_dnn_model;
    ```
 1. Transfer learning to fit a new dataset with the same features:
    ```sql
    SELECT * FROM iris.transfer_iris_samples
-   TRAIN sqlflow.org/modelzoo/iris_dnn_128x32
-   USING sqlflow.org/modelzoo/iris_dnn_128x32
+   TRAIN sqlflow.org/modelzoo/iris_dnn_128x32/v1.0
+   USING sqlflow.org/modelzoo/iris_dnn_128x32/v1.0
    INTO modeldb.my_iris_dnn_model;
    ```
 1. Fine-tune the pre-trained model:
    ```sql
    SELECT * FROM iris.train
-   TRAIN sqlflow.org/modelzoo/iris_dnn_128x32
+   TRAIN sqlflow.org/modelzoo/iris_dnn_128x32/v1.0
    WITH model.learning_rate=0.001, model.learning_rate_decay="cosine_decay" ...
    INTO modeldb.my_iris_dnn_model_fine_tune;
    ```
@@ -39,9 +39,12 @@ It serves all available models and corresponding pre-trained weight. We may need
 a [CDN](https://en.wikipedia.org/wiki/Content_delivery_network) service if the traffic
 becomes large.
 
-Each model is saved on the server under a unique directory like: `sqlflow.org/modelzoo/iris_dnn_128x32`.
+The publication of a trained model needs to upload the parameters of the model to a
+storage service, labeled with the version, or Git commit ID, of the model zoo.
+The model directory is of the format: `sqlflow.org/modelzoo/iris_dnn_128x32/v1.0/`.
+`iris_dnn_128x32` is the model's name, and `v1.0` is the version.
 The directory name is responsible to explain the model's type, network structure and which dataset is
-used to train the pre-trained parameters. You can access `sqlflow.org/modelzoo/iris_dnn_128x32/README.md`
+used to train the pre-trained parameters. You can access `sqlflow.org/modelzoo/v1.0/README.md`
 from the browser to get the model's full documentation. All models under `sqlflow.org/modelzoo` are
 developed under `https://github.com/sql-machine-learning/models` parameters is only stored under
 `sqlflow.org` but not under Github.
@@ -49,7 +52,7 @@ developed under `https://github.com/sql-machine-learning/models` parameters is o
 The content of the directory should be like:
 
 ```
-iris_dnn_128x32
+iris_dnn_128x32/v1.0/
    - model_meta.json  # model information useful for load and run.
    - README.md        # model documents.
    - requirements.txt  # python package dependency for the model.
@@ -156,7 +159,7 @@ A simple example to use a pre-trained model to predict iris class is like below:
 ```sql
     SELECT * FROM iris.predict_samples
    PREDICT predict_result.class
-   USING sqlflow.org/modelzoo/iris_dnn_128x32;
+   USING sqlflow.org/modelzoo/iris_dnn_128x32/v1.0;
 ```
 
 SQLFlow will download the model from `sqlflow.org` and predict the iris class immediately. For more cases
