@@ -188,7 +188,9 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds *tra
 
 	// TODO(joyyoj) read feature mapping table's name from table attributes.
 	// TODO(joyyoj) pr may contains partition.
-	fmap := columns.FeatureMap{pr.tables[0] + "_feature_map", ""}
+	fmap := columns.FeatureMap{
+		Table:     pr.tables[0] + "_feature_map",
+		Partition: ""}
 	var meta metadata
 	fields := make([]string, 0)
 	if db != nil {
@@ -670,22 +672,22 @@ func (meta *metadata) getDenseColumnInfo(keys []string, refColumns map[string]*c
 			shape[0] = len(fields)
 			if userSpec, ok := refColumns[ct.Name()]; ok {
 				output[ct.Name()] = &columns.ColumnSpec{
-					ct.Name(),
-					false,
-					shape,
-					userSpec.DType,
-					userSpec.Delimiter,
-					nil,
-					*meta.featureMap}
+					ColumnName: ct.Name(),
+					IsSparse:   false,
+					Shape:      shape,
+					DType:      userSpec.DType,
+					Delimiter:  userSpec.Delimiter,
+					Vocabulary: nil,
+					FeatureMap: *meta.featureMap}
 			} else {
 				output[ct.Name()] = &columns.ColumnSpec{
-					ct.Name(),
-					false,
-					shape,
-					"float",
-					",",
-					nil,
-					*meta.featureMap}
+					ColumnName: ct.Name(),
+					IsSparse:   false,
+					Shape:      shape,
+					DType:      "float",
+					Delimiter:  ",",
+					Vocabulary: nil,
+					FeatureMap: *meta.featureMap}
 			}
 		}
 	}
@@ -732,7 +734,14 @@ func (meta *metadata) getSparseColumnInfo() (map[string]*columns.ColumnSpec, err
 		column, present := output[*name]
 		if !present {
 			shape := make([]int, 0, 1000)
-			column := &columns.ColumnSpec{*name, true, shape, "int64", "", nil, *meta.featureMap}
+			column := &columns.ColumnSpec{
+				ColumnName: *name,
+				IsSparse:   true,
+				Shape:      shape,
+				DType:      "int64",
+				Delimiter:  "",
+				Vocabulary: nil,
+				FeatureMap: *meta.featureMap}
 			column.DType = "int64"
 			output[*name] = column
 		}
