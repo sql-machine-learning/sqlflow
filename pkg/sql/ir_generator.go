@@ -146,8 +146,7 @@ func inferStringValue(expr string) interface{} {
 		return ret
 	}
 	if retFloat, err := strconv.ParseFloat(expr, 32); err == nil {
-		// always use float32 for attributes, we may never use a float64
-		// value as some attribute.
+		// Note(typhoonzero): always use float32 for attributes, we may never use a float64.
 		return float32(retFloat)
 	}
 	retString := strings.Trim(expr, "\"")

@@ -228,7 +228,7 @@ func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *D
 		} else if v == "BIGINT" {
 			labelDtype = "int64"
 		} else {
-			log.Fatalf("Unsupported label data type: %s", v)
+			return nil, fmt.Errorf("unsupported label data type: %s", v)
 		}
 	}
 	r.Y = &FeatureMeta{
