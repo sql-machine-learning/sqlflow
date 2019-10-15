@@ -136,7 +136,7 @@ SELECT * FROM carprice.predict limit 5;
 
 ## Analyze the Trained Model
 
-We use the TO ANALYZE SQL to explain the trained model. Behind the scene, SQLFlow will translate the TO ANALYZE SQL to a Python program that reads the dataset, loads the trained model, then draws a figure using SHAP to explain the model.
+We use the TO EXPLAIN SQL to explain the trained model. Behind the scene, SQLFlow will translate the TO EXPLAIN SQL to a Python program that reads the dataset, loads the trained model, then draws a figure using SHAP to explain the model.
 
 We use the [TreeExplianer](https://github.com/slundberg/shap#tree-ensemble-example-with-treeexplainer-xgboostlightgbmcatboostscikit-learn-models) to draw a summary plot.
 
@@ -156,7 +156,7 @@ We can plot the SHAP values of every feature for every sample.
 %%sqlflow
 SELECT *
 FROM carprice.train
-TO ANALYZE sqlflow_models.my_xgb_regression_model
+TO EXPLAIN sqlflow_models.my_xgb_regression_model
 WITH
     shap_summary.plot_type="dot",
     shap_summary.alpha=1,
@@ -175,7 +175,7 @@ We can also take the mean absolute value of the SHAP values for each feature to 
 %%sqlflow
 SELECT *
 FROM carprice.train
-TO ANALYZE sqlflow_models.my_xgb_regression_model
+TO EXPLAIN sqlflow_models.my_xgb_regression_model
 WITH
     shap_summary.plot_type="bar",
     shap_summary.alpha=1,

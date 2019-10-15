@@ -142,7 +142,7 @@
 %type  <atrs> attr
 %type  <atrs> attrs
 
-%token <val> SELECT FROM WHERE LIMIT TRAIN PREDICT ANALYZE WITH COLUMN LABEL USING INTO FOR AS TO
+%token <val> SELECT FROM WHERE LIMIT TRAIN PREDICT EXPLAIN WITH COLUMN LABEL USING INTO FOR AS TO
 %token <val> IDENT NUMBER STRING
 
 %left <val> AND OR
@@ -226,8 +226,8 @@ predict_clause
 ;
 
 analyze_clause
-: TO ANALYZE IDENT USING IDENT { $$.trainedModel = $3; $$.explainer = $5 }
-| TO ANALYZE IDENT WITH attrs USING IDENT { $$.trainedModel = $3; $$.analyzeAttrs = $5; $$.explainer = $7 }
+: TO EXPLAIN IDENT USING IDENT { $$.trainedModel = $3; $$.explainer = $5 }
+| TO EXPLAIN IDENT WITH attrs USING IDENT { $$.trainedModel = $3; $$.analyzeAttrs = $5; $$.explainer = $7 }
 ;
 
 column_clause

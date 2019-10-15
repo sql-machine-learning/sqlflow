@@ -139,7 +139,7 @@ func TestAnalyzeParser(t *testing.T) {
 	a := assert.New(t)
 	{
 		r, e := newParser().Parse(`select * from mytable
-TO ANALYZE my_model
+TO EXPLAIN my_model
 USING TreeExplainer;`)
 		a.NoError(e)
 		a.True(r.extended)
@@ -150,7 +150,7 @@ USING TreeExplainer;`)
 	}
 	{
 		r, e := newParser().Parse(`select * from mytable
-TO ANALYZE my_model
+TO EXPLAIN my_model
 WITH
   plots = force
 USING TreeExplainer;`)

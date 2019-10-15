@@ -8,7 +8,7 @@ This design doc introduces how to support the `Analyze SQL` in SQLFlow with SHAP
 
 ## User Interface
 
-Users usually use a **TO TRAIN SQL** to train a model and then analyze the model using an **TO ANALYZE SQL**, the simple pipeline like:
+Users usually use a **TO TRAIN SQL** to train a model and then analyze the model using an **TO EXPLAIN SQL**, the simple pipeline like:
 
 Train SQL:
 
@@ -26,7 +26,7 @@ Analyze SQL:
 
 ``` sql
 SELECT * FROM train_table
-TO ANALYZE my_model
+TO EXPLAIN my_model
 WITH
   plots = force 
 USING TreeExplainer

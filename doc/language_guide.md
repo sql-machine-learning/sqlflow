@@ -356,7 +356,7 @@ SELECT select_expr [, select_expr ...]
 FROM table_references
   [WHERE where_condition]
   [LIMIT row_count]
-TO ANALYZE model_table_reference
+TO EXPLAIN model_table_reference
 [WITH
   attr_expr [, attr_expr ...]]
 USING explainer;
@@ -371,7 +371,7 @@ The [select clause](#select-clause) syntax is the same as the select clause synt
 The *analyze clause* describes the table an analysis job should load the model from, necessary configuration attributes, and the explainer for analysis.
 
 ```
-TO ANALYZE model_table_reference
+TO EXPLAIN model_table_reference
 [WITH
   attr_expr [, attr_expr ...]]
 USING explainer;
@@ -386,7 +386,7 @@ For example, if we want to analyze the model stored at `sqlflow_models.my_xgb_re
 ```
 SELECT *
 FROM boston.train
-TO ANALYZE sqlflow_models.my_xgb_regression_model
+TO EXPLAIN sqlflow_models.my_xgb_regression_model
 WITH
     shap_summary.sort=True
 USING TreeExplainer;

@@ -153,7 +153,7 @@ const WHERE = 57348
 const LIMIT = 57349
 const TRAIN = 57350
 const PREDICT = 57351
-const ANALYZE = 57352
+const EXPLAIN = 57352
 const WITH = 57353
 const COLUMN = 57354
 const LABEL = 57355
@@ -184,7 +184,7 @@ var sqlToknames = [...]string{
 	"LIMIT",
 	"TRAIN",
 	"PREDICT",
-	"ANALYZE",
+	"EXPLAIN",
 	"WITH",
 	"COLUMN",
 	"LABEL",

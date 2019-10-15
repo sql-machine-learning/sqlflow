@@ -3,24 +3,24 @@
 The [Analyzer](/doc/design/design_analyzer.md) is designed to explain the machine learning model in SQLFlow. In this tutorial, you will learn how to,
 
 - [Train an XGBoost](/doc/tutorial/housing-xgboost.md) tree model on [the Boston housing dataset](https://www.kaggle.com/c/boston-housing).
-- Analyze the trained model using `TO ANALYZE` SQL statements.
+- Analyze the trained model using `TO EXPLAIN` SQL statements.
 
 You can find more SQLFlow usages from the [Language Guide](/doc/language_guide.md).
 
-We implement the analyzer based on [SHAP](https://github.com/slundberg/shap). By SQLFlow, an TO ANALYZE SQL will be translated to the SHAP code. SQLFlow enables the code to read the dataset and load the trained model, then draws a figure to explain the model. At this stage, SQLFlow supports using the [TreeExplianer](https://github.com/slundberg/shap#tree-ensemble-example-with-treeexplainer-xgboostlightgbmcatboostscikit-learn-models) to draw a summary plot.
+We implement the analyzer based on [SHAP](https://github.com/slundberg/shap). By SQLFlow, an TO EXPLAIN SQL will be translated to the SHAP code. SQLFlow enables the code to read the dataset and load the trained model, then draws a figure to explain the model. At this stage, SQLFlow supports using the [TreeExplianer](https://github.com/slundberg/shap#tree-ensemble-example-with-treeexplainer-xgboostlightgbmcatboostscikit-learn-models) to draw a summary plot.
 
 ## Syntax
 
 ```sql
 SELECT * FROM tbl
-TO ANALYZE a_trained_model
+TO EXPLAIN a_trained_model
 WITH 
   shap_summary.parameter_i=value_i ...
 USING TreeExplainer;
 ```
 
 - A standard SQL statement used to specify the dataset.
-- `TO ANALYZE` introduces the model to explain.
+- `TO EXPLAIN` introduces the model to explain.
 - `USING TreeExplainer` restricts the explainer.
 - By `WITH`, we specify the parameters to [summary_plot](https://github.com/slundberg/shap/blob/master/shap/plots/summary.py#L18-L43) with a prefix `shap_summary.`
   like: `shap_summary.plot_type=\"bar\"`.
@@ -28,7 +28,7 @@ USING TreeExplainer;
 ## The Dataset
 
 We use the [boston housing](https://www.kaggle.com/c/boston-housing) as the demonstration dataset.
-First, we train a model to fit the dataset. Next, we write an `TO ANALYZE` SQL to get an overview of which features are most important for the model.
+First, we train a model to fit the dataset. Next, we write an `TO EXPLAIN` SQL to get an overview of which features are most important for the model.
 
 ## Train a Model
 
@@ -52,7 +52,7 @@ We can plot the SHAP values of every feature for every sample.
 %%sqlflow
 SELECT *
 FROM boston.train
-TO ANALYZE sqlflow_models.my_xgb_regression_model
+TO EXPLAIN sqlflow_models.my_xgb_regression_model
 WITH
     shap_summary.plot_type="dot",
     shap_summary.alpha=1,
@@ -72,7 +72,7 @@ We can also just take the mean absolute value of the SHAP values for each featur
 %%sqlflow
 SELECT *
 FROM boston.train
-TO ANALYZE sqlflow_models.my_xgb_regression_model
+TO EXPLAIN sqlflow_models.my_xgb_regression_model
 WITH
     shap_summary.plot_type="bar",
     shap_summary.alpha=1,
