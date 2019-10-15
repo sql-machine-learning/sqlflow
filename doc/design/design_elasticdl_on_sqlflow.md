@@ -58,7 +58,7 @@ WITH
   runtime.master_resource_limit = "cpu=400m,memory=1024Mi",
   runtime.worker_resource_request = "cpu=400m,memory=2048Mi",
   runtime.worker_resource_limit = "cpu=1,memory=3072Mi",
-  runtime.records_per_task = 100,
+  runtime.num_minibatches_per_task = 10,
   runtime.num_workers = 2
 COLUMN
   c1, c2, c3, c4
@@ -120,15 +120,15 @@ elasticdl train \
 --image_base=elasticdl:ci \
 --model_zoo=model_zoo \
 --model_def=ElasticDLKerasClassifier \
---training_data_dir=/data/mnist/train \
---evaluation_data_dir=/data/mnist/test \
+--training_data=training_table_name \
+--evaluation_data=evaluation_table_name \
 --num_epochs=2 \
 --master_resource_request="cpu=400m,memory=1024Mi" \
 --master_resource_limit="cpu=1,memory=2048Mi" \
 --worker_resource_request="cpu=400m,memory=2048Mi" \
 --worker_resource_limit="cpu=1,memory=3072Mi" \
 --minibatch_size=64 \
---records_per_task=100 \
+--num_minibatches_per_task=10 \
 --num_workers=2 \
 --checkpoint_steps=10 \
 --evaluation_steps=15 \

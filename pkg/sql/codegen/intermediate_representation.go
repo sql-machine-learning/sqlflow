@@ -45,12 +45,15 @@ type FieldMeta struct {
 	Delimiter string    `json:"delimiter"` // e.g. ","
 	Shape     []int     `json:"shape"`     // e.g. [1], [1 2 3]
 	IsSparse  bool      `json:"is_sparse"` // e.g. false
+	// Vocabulary stores all possible enumerate values if the column type is string,
+	// e.g. the column values are: "MALE", "FEMALE", "NULL"
+	Vocabulary map[string]string `json:"vocabulary"` // use a map to generate a list without duplication
 }
 
 // FeatureColumn indicates the feature column to be applied on the field. Please refer to
 // sqlflow.org/sqlflow/pkg/sql/codegen/feature_column.go for detailed list of all feature columns.
 type FeatureColumn interface {
-	isFeatureColumn()
+	GetFieldMeta() []*FieldMeta
 }
 
 // TrainIR is the intermediate representation for code generation of a training job.

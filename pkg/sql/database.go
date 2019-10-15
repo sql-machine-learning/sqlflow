@@ -67,3 +67,7 @@ func NewDB(datasource string) (*DB, error) {
 	}
 	return db, nil
 }
+
+func (db *DB) String() string {
+	return db.driverName + "://" + db.dataSourceName
+}

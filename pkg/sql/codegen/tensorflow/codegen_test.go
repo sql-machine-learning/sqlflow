@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package xgboost
+package tensorflow
 
 import (
 	"fmt"
@@ -22,7 +22,7 @@ import (
 	"sqlflow.org/sqlflow/pkg/sql/codegen"
 )
 
-func TestTrain(t *testing.T) {
+func TestTrainCodegen(t *testing.T) {
 	a := assert.New(t)
 
 	cfg := &mysql.Config{
@@ -34,25 +34,24 @@ func TestTrain(t *testing.T) {
 	}
 	_ = `SELECT *
 		FROM iris.train
-	TRAIN xgboost.gbtree
-	WITH
-		objective = "multi:softprob"
-		eta = 3.1,
-		num_class = 3,
-		train.num_boost_round = 30
+	TRAIN DNNClassifier
+	WITH train.batch_size=4,
+		 train.epoch=3,
+		 model.hidden_units=[10,20],
+		 model.n_classes=3
 	COLUMN sepal_length, sepal_width, petal_length, petal_width
 	LABEL class
 	INTO sqlflow_models.my_xgboost_model;`
-	ir := &codegen.TrainIR{
+	ir := codegen.TrainIR{
 		DataSource:       fmt.Sprintf("mysql://%s", cfg.FormatDSN()),
 		Select:           "select * from iris.train;",
 		ValidationSelect: "select * from iris.test;",
-		Estimator:        "xgboost.gbtree",
+		Estimator:        "DNNClassifier",
 		Attributes: map[string]interface{}{
-			"train.num_boost_round": 30,
-			"objective":             "multi:softprob",
-			"eta":                   3.1,
-			"num_class":             3},
+			"train.batch_size":   4,
+			"train.epoch":        3,
+			"model.hidden_units": []int{10, 20},
+			"model.n_classes":    3},
 		Features: map[string][]codegen.FeatureColumn{
 			"feature_columns": {
 				&codegen.NumericColumn{&codegen.FieldMeta{"sepal_length", codegen.Float, "", []int{1}, false, nil}},
@@ -61,5 +60,15 @@ func TestTrain(t *testing.T) {
 				&codegen.NumericColumn{&codegen.FieldMeta{"petal_width", codegen.Float, "", []int{1}, false, nil}}}},
 		Label: &codegen.NumericColumn{&codegen.FieldMeta{"class", codegen.Int, "", []int{1}, false, nil}}}
 	_, err := Train(ir)
+	a.NoError(err)
+
+	predIR := codegen.PredictIR{
+		DataSource:  fmt.Sprintf("mysql://%s", cfg.FormatDSN()),
+		Select:      "select * from iris.test;",
+		ResultTable: "iris.predict",
+		Attributes:  make(map[string]interface{}),
+		TrainIR:     ir,
+	}
+	_, err = Pred(predIR)
 	a.NoError(err)
 }

@@ -99,7 +99,7 @@ func getFieldMeta(fcs []codegen.FeatureColumn, l codegen.FeatureColumn) ([]codeg
 	var features []codegen.FieldMeta
 	for _, fc := range fcs {
 		switch c := fc.(type) {
-		case codegen.NumericColumn:
+		case *codegen.NumericColumn:
 			features = append(features, *c.FieldMeta)
 		default:
 			return nil, codegen.FieldMeta{}, fmt.Errorf("unsupported feature column type %T on %v", c, c)
@@ -108,7 +108,7 @@ func getFieldMeta(fcs []codegen.FeatureColumn, l codegen.FeatureColumn) ([]codeg
 
 	var label codegen.FieldMeta
 	switch c := l.(type) {
-	case codegen.NumericColumn:
+	case *codegen.NumericColumn:
 		label = *c.FieldMeta
 	default:
 		return nil, codegen.FieldMeta{}, fmt.Errorf("unsupported label column type %T on %v", c, c)
@@ -118,7 +118,7 @@ func getFieldMeta(fcs []codegen.FeatureColumn, l codegen.FeatureColumn) ([]codeg
 }
 
 // Train generates a Python program for train a XgBoost model.
-func Train(ir codegen.TrainIR) (string, error) {
+func Train(ir *codegen.TrainIR) (string, error) {
 	params, err := parseAttribute(ir.Attributes)
 	if err != nil {
 		return "", err

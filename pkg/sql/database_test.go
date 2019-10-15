@@ -33,10 +33,12 @@ func TestDatabaseOpenMysql(t *testing.T) {
 		Addr:                 "localhost:3306",
 		AllowNativePasswords: true,
 	}
-	db, e := NewDB(fmt.Sprintf("mysql://%s", cfg.FormatDSN()))
+	connStr := fmt.Sprintf("mysql://%s", cfg.FormatDSN())
+	db, e := NewDB(connStr)
 	a.NoError(e)
 	defer db.Close()
 
+	a.EqualValues(connStr, db.String())
 	_, e = db.Exec("show databases")
 	a.NoError(e)
 }
@@ -46,5 +48,4 @@ func TestDatabaseOpenSQLite3(t *testing.T) {
 	db, e := NewDB("sqlite3://test")
 	a.NoError(e)
 	defer db.Close()
-	// TODO: need more tests
 }
