@@ -17,20 +17,41 @@ SQLFlow should support below features to support common cases in machine learnin
    TRAIN sqlflow.org/modelzoo/iris_dnn_128x32/v1.0
    INTO modeldb.my_iris_dnn_model;
    ```
-1. Transfer learning to fit a new dataset with the same features:
+1. [Transfer learning](https://en.wikipedia.org/wiki/Transfer_learning) to fit a new dataset with the same features:
    ```sql
    SELECT * FROM iris.transfer_iris_samples
    TRAIN sqlflow.org/modelzoo/iris_dnn_128x32/v1.0
    USING sqlflow.org/modelzoo/iris_dnn_128x32/v1.0
    INTO modeldb.my_iris_dnn_model;
    ```
-1. Fine-tune the pre-trained model:
-   ```sql
-   SELECT * FROM iris.train
-   TRAIN sqlflow.org/modelzoo/iris_dnn_128x32/v1.0
-   WITH model.learning_rate=0.001, model.learning_rate_decay="cosine_decay" ...
-   INTO modeldb.my_iris_dnn_model_fine_tune;
-   ```
+
+## Concept of A Model in the Model Zoo
+
+A Model in the Model Zoo contains below components:
+
+1. The model definition. A python program defines the model's structure, currently it can be:
+    - TensorFlow Estimator
+    - A Keras subclass model
+    - A XGBoost model type
+1. Pre-trained model parameters.
+1. Model publication information, including:
+    - Unique model name
+    - Author
+    - Version
+    - Hyper Parameters used to train the model parameters
+    - How to convert database input to model input
+
+Note that the model definition may have configurable hyper-parameters for training, like the size
+and depth of the DNN layers, loss function and optimizer used to train the model. We can train
+many different model parameters with different hyper parameter settings use one model definition.
+Also we can train the model parameters using different dataset. So the model definition can be reused
+to form many "models" to solve the real-world problem, but the dataset, hyper-parameters, model parameters
+are unique for each "model" to solve a problem.
+
+The "model" in the model zoo does not mean a model definition here, but a "model" with model parameters
+and other information used to solve one real-world problem. So we always use the dataset name, model name,
+model structure description to form a "model name" to indicate that this model is used to solve this kind
+of problem.
 
 ## The Model Zoo Hosting Service
 
@@ -147,23 +168,39 @@ In SQLFlow, you can specify the model under `sqlflow.org/modelzoo` in the `TRAIN
 If the `TRAIN` clause accepts a model under `sqlflow.org/modelzoo`, SQLFlow will only use the model definition to start the train. If `USING` clause accepts a model under `sqlflow.org/modelzoo`, the model's
 parameters will be loaded both in `TRAIN` process or `PREDICT` process.
 
-We can use the models in the model zoo to start below jobs in minutes:
+Supported use cases:
 
-1. Predict some data
-1. Transfer learning to fit your data
-1. Fine-tuning to achieve better performance on your data
-1. Train a model from scratch
-
-A simple example to use a pre-trained model to predict iris class is like below:
-
-```sql
+1. Predict some data using a pre-trained model:
+    ```sql
     SELECT * FROM iris.predict_samples
-   PREDICT predict_result.class
-   USING sqlflow.org/modelzoo/iris_dnn_128x32/v1.0;
-```
-
-SQLFlow will download the model from `sqlflow.org` and predict the iris class immediately. For more cases
-please check out the SQL statements in the top section.
+    PREDICT predict_result.class
+    USING sqlflow.org/modelzoo/iris_dnn_128x32/v1.0;
+    ```
+    By using the SQL statement above, SQLFlow will download all the contents under
+    `sqlflow.org/modelzoo/iris_dnn_128x32/v1.0`, then use the data from table `iris.predict_samples`
+    as input, then output the predict result on the screen.
+1. Transfer learning to fit your data:
+    ```sql
+    SELECT * FROM iris.transfer_iris_samples
+    TRAIN sqlflow.org/modelzoo/iris_dnn_128x32/v1.0
+    USING sqlflow.org/modelzoo/iris_dnn_128x32/v1.0
+    INTO modeldb.my_iris_dnn_model;
+    ```
+    SQLFlow will first load the model definition and parameters using
+    `sqlflow.org/modelzoo/iris_dnn_128x32/v1.0`, then train the model using the data in
+    `iris.transfer_iris_samples`. The model will use the basic "knowledge" from our
+    pre-trained parameters and learn to fit your data fast, the trained model is saved
+    into the table `modeldb.my_iris_dnn_model`.
+1. Train a model from scratch:
+    ```sql
+    SELECT * FROM iris.new_iris_train
+    TRAIN sqlflow.org/modelzoo/iris_dnn_128x32/v1.0
+    INTO modeldb.my_iris_dnn_model;
+    ```
+    By using the SQL statement above, SQLFlow will **not** load the model parameters,
+    it will initialize the parameters randomly and train the model only using the model
+    definition from `sqlflow.org/modelzoo/iris_dnn_128x32/v1.0`, the trained model is saved
+    into the table `modeldb.my_iris_dnn_model`.
 
 For models that supports load only parts of the parameters for transfer learning or prediction, the layers
 in the model should have different name if you do not want to load the parameters for current layer when
