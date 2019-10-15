@@ -34,9 +34,9 @@ func readStmt() string {
 	scn := bufio.NewScanner(os.Stdin)
 	for scn.Scan() {
 		stmt += scn.Text()
-		// FIXME(tonyyang-svail): It is hacky and buggy to assume that 
-		// SQL statements are separated by substrings ";\n".  We need 
-		// to call the SQLFlow parser to retrieve statements and run 
+		// FIXME(tonyyang-svail): It is hacky and buggy to assume that
+		// SQL statements are separated by substrings ";\n".  We need
+		// to call the SQLFlow parser to retrieve statements and run
 		// them one-by-one in a REPL.
 		if strings.HasSuffix(strings.TrimSpace(scn.Text()), ";") {
 			break
