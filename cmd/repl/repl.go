@@ -147,8 +147,8 @@ func main() {
 			if err != nil {
 				log.Fatal(err)
 			}
+			defer sqlFile.Close()
 		}
-		defer sqlFile.Close()
 		scanner := bufio.NewScanner(sqlFile)
 
 		for {
