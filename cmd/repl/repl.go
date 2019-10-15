@@ -17,10 +17,13 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"strings"
+	"syscall"
 
+	"golang.org/x/crypto/ssh/terminal"
 	"github.com/olekukonko/tablewriter"
 	"sqlflow.org/sqlflow/pkg/sql"
 )
@@ -28,21 +31,21 @@ import (
 const tablePageSize = 1000
 
 // readStmt reads a SQL statement from the scanner.  A statement could have
-// multiple lines and ends at a semicolon at theend of the last line.
-func readStmt() string {
+// multiple lines and ends at a semicolon at the end of the last line.
+func readStmt(scn *bufio.Scanner) (string, error) {
 	stmt := ""
-	scn := bufio.NewScanner(os.Stdin)
 	for scn.Scan() {
 		stmt += scn.Text()
 		if strings.HasSuffix(strings.TrimSpace(scn.Text()), ";") {
-			break
+			return strings.TrimSpace(stmt), nil
 		}
 		stmt += "\n"
 	}
-	if scn.Err() != nil {
-		return ""
+	if scn.Err() == nil {
+		return "", io.EOF
+	} else {
+		return "", scn.Err()
 	}
-	return strings.TrimSpace(stmt)
 }
 
 func header(head map[string]interface{}) ([]string, error) {
@@ -81,9 +84,25 @@ func render(rsp interface{}, table *tablewriter.Table) bool {
 	return isTable
 }
 
+func flagPassed(name ...string) bool {
+	found := false
+	for _, n := range name {
+		flag.Visit(func(f *flag.Flag) {
+			if f.Name == n {
+				found = true
+			}
+		})
+	}
+	return found
+}
+
 func main() {
 	ds := flag.String("datasource", "", "database connect string")
 	modelDir := flag.String("model_dir", "", "model would be saved on the local dir, otherwise upload to the table.")
+	cliStmt := flag.String("execute", "", "execute SQLFlow from command line.  e.g. --execute 'select * from table1'")
+	flag.StringVar(cliStmt, "e", "", "execute SQLFlow from command line, short for --execute")
+	sqlFileName := flag.String("file", "", "execute SQLFlow from file.  e.g. --file '~/iris_dnn.sql'")
+	flag.StringVar(sqlFileName, "f", "", "execute SQLFlow from file, short for --file")
 	flag.Parse()
 	db, err := sql.NewDB(*ds)
 	if err != nil {
@@ -97,15 +116,13 @@ func main() {
 		}
 	}
 
-	for {
-		fmt.Print("sqlflow> ")
-		slct := readStmt()
-		fmt.Println("")
-
+	isTerminal := !flagPassed("execute", "e", "file", "f") && terminal.IsTerminal(syscall.Stdin)
+	sqlRun := func (stmt string) {
+		fmt.Println("sqlflow>", stmt)
 		isTable, tableRendered := false, false
 		table := tablewriter.NewWriter(os.Stdout)
 
-		stream := sql.Run(slct, db, *modelDir, nil)
+		stream := sql.Run(stmt, db, *modelDir, nil)
 		for rsp := range stream.ReadAll() {
 			isTable = render(rsp, table)
 
@@ -119,6 +136,31 @@ func main() {
 		if isTable && (table.NumLines() > 0 || !tableRendered) {
 			table.Render()
 		}
-		fmt.Println("")
+	}
+
+	if flagPassed("execute", "e") {
+		sqlRun(*cliStmt)
+	} else {
+		sqlFile := os.Stdin
+		if flagPassed("file", "f") {
+			sqlFile, err = os.Open(*sqlFileName)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+		defer sqlFile.Close()
+		scanner := bufio.NewScanner(sqlFile)
+
+		for {
+			if isTerminal {
+				fmt.Print("sqlflow> ")
+			}
+			stmt, err := readStmt(scanner)
+			fmt.Println()
+			if err == io.EOF {
+				return
+			}
+			sqlRun(stmt)
+		}
 	}
 }
