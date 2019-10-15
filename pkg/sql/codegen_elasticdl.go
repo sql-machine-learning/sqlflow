@@ -274,7 +274,7 @@ func elasticdlTrainCmd(cwd, modelDefFilePath string, filler *elasticDLFiller) (c
 			fmt.Sprintf("--keep_checkpoint_max=%d", filler.TrainClause.KeepCheckpointMax),
 			"--docker_image_repository", string(filler.TrainClause.EngineParams.dockerImageRepository),
 			getEnvs(string(filler.TrainClause.EngineParams.envs)),
-			"--data_reader_params", `"""columns=`+string(filler.FeaturesList+`"""`),
+			"--data_reader_params", string("columns="+string(filler.FeaturesList)),
 		)
 		cmd.Dir = cwd
 	} else {
@@ -344,7 +344,7 @@ func elasticdlPredictCmd(cwd, modelDefFilePath string, filler *elasticDLFiller) 
 			"--log_level", "INFO",
 			"--docker_image_repository", string(filler.PredictClause.EngineParams.dockerImageRepository),
 			getEnvs(string(filler.PredictClause.EngineParams.envs)),
-			"--data_reader_params", `"""columns=`+string(filler.FeaturesList+`"""`),
+			"--data_reader_params", string("columns="+string(filler.FeaturesList)),
 		)
 		cmd.Dir = cwd
 	} else {
