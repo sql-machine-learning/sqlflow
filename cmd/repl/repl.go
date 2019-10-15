@@ -117,7 +117,9 @@ func main() {
 
 	isTerminal := !flagPassed("execute", "e", "file", "f") && terminal.IsTerminal(syscall.Stdin)
 	sqlRun := func(stmt string) {
-		fmt.Println("sqlflow>", stmt)
+		if !isTerminal {
+			fmt.Println("sqlflow>", stmt)
+		}
 		isTable, tableRendered := false, false
 		table := tablewriter.NewWriter(os.Stdout)
 
