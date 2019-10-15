@@ -24,7 +24,7 @@ except:
     pass
 
 from sqlflow_submitter.db import connect_with_data_source, db_generator, buffered_db_writer
-from sqlflow_submitter.templates.tensorflow.train_template import get_dtype, parse_sparse_feature
+from sqlflow_submitter.tensorflow.train import get_dtype, parse_sparse_feature
 # Disable Tensorflow INFO and WARNING
 import logging
 tf.get_logger().setLevel(logging.ERROR)
@@ -178,5 +178,6 @@ def pred(is_keara_model,
                     # regression predictions
                     row.append(str(list(result)[0]["predictions"][0]))
                 w.write(row)
+        fast_predictor.close()
 
     print("Done predicting. Predict table : %s" % result_table)
