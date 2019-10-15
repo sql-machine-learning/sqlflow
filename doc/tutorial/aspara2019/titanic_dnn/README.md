@@ -106,7 +106,7 @@ Say we want to use the model stored at `sqlflow_models.my_dnn_model`, and read t
 %%sqlflow
 SELECT *
 FROM titanic.test
-PREDICT titanic.predict.survived
+TO PREDICT titanic.predict.survived
 USING sqlflow_models.my_dnn_model;
 
 SELECT *

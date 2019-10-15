@@ -39,7 +39,7 @@ INTO sqlflow_models.my_dnn_model;
 	testPredictSelectIris = `
 SELECT *
 FROM iris.test
-predict iris.predict.class
+TO PREDICT iris.predict.class
 USING sqlflow_models.my_dnn_model;
 `
 	testClusteringTrain = testSelectIris + `
@@ -55,7 +55,7 @@ INTO sqlflow_models.my_clustering_model;
 	testClusteringPredict = `
 SELECT *
 FROM iris.test
-PREDICT iris.predict.class
+TO PREDICT iris.predict.class
 USING sqlflow_models.my_clustering_model;
 `
 )

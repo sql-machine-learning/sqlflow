@@ -42,7 +42,7 @@ USING TreeExplainer;
 const testXGBoostPredictIris = ` 
 SELECT *
 FROM iris.test
-PREDICT iris.predict.class
+TO PREDICT iris.predict.class
 USING sqlflow_models.my_xgboost_model;
 `
 

@@ -14,10 +14,10 @@ SELECT * FROM a_table TO TRAIN DNNClassifier WITH learning_rate=0.01 INTO sqlflo
 And the following statement uses the trained model for prediction.
 
 ```sql
-SELECT * FROM b_table PREDICT b_table.predicted_label USING sqlflow_models.my_model;
+SELECT * FROM b_table TO PREDICT b_table.predicted_label USING sqlflow_models.my_model;
 ```
 
-Please be aware that the part in the above statements before the extended keyword TO TRAIN and PREDICT is a standard SQL statement. This feature simplifies the implementation of the SQLFlow system.
+Please be aware that the part in the above statements before the extended keyword TO TRAIN and TO PREDICT is a standard SQL statement. This feature simplifies the implementation of the SQLFlow system.
 
 ## System Implementation
 

@@ -86,9 +86,9 @@ Firstly, we can use a standard SQL to fetch the prediction data:
 SELECT * FROM activepower.train.
 ```
 
-Next, we can specify the prediction result table by PREDICT clause:
+Next, we can specify the prediction result table by TO PREDICT clause:
 ```text
-PREDICT activepower.predict.class
+TO PREDICT activepower.predict.class
 ```
 
 Then, we can specify the trained model by USING clause:
@@ -101,7 +101,7 @@ Putting it all together, the following is the SQLFLow Prediction statement:
 %%sqlflow
 SELECT * 
 FROM activepower.train
-PREDICT activepower.predict.class
+TO PREDICT activepower.predict.class
 USING sqlflow_models.my_customized_model;
 ```
 

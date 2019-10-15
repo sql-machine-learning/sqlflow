@@ -94,7 +94,7 @@ func TestPredElasticDLFiller(t *testing.T) {
 	a := assert.New(t)
 	parser := newParser()
 	predStatement := `SELECT sepal_length, sepal_width, petal_length, petal_width FROM iris.test
-		PREDICT prediction_results_table
+		TO PREDICT prediction_results_table
 		WITH
 			model.num_classes = 10
 		USING trained_elasticdl_keras_classifier;`
