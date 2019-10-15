@@ -1,40 +1,46 @@
-# Design: Support arbitrary select statements
+# Support Arbitrary Select Statements
 
-SQLFlow extends the SQL syntax to enable model training and inference. The SQL extension should be natural to learn and
-integrate well with existing SQL programs despite many existing ones contain nested SELECT statements. Our SQLFlow
-users could append a TRAIN or PREDICT clause in those programs and add AI functionalities with ease.
+SQLFlow extends the SQL syntax to enable model training and inference. This extension should be easy to learn and integrate well with the existing SQL syntax such as nested SELECT statements. By appending a TRAIN or PREDICT clause after any select statement, we can add AI functionalities to our database with ease.
 
 ## Overview
 
-Given a long and nested select inside the extended SQL statement, SQLFlow
+Given a long and nested select inside the extended SQL statement like the following
 
-1. splits the extended SQL statement into its select clause and the train clause.
-    1. SQL syntactically check the select clause via a particular SQL engine parser. (MySQL/Calcite/ODPS)
-    1. SQL The train clause will be syntactically checked by SQLFlow's parser.
-1. verifies all fields used in train clause are produced by select clause and have the desired types.
-1. generates Python submitter program which forwards the select clause to a particular SQL engine to fetch the training data.
+```sql
+SELECT c1, c2, c3, label              -- select clause
+FROM table1 JOIN table2
+ON table1.id = table2.id
+WHERE condition
+TO TRAIN DNNClassifier                -- train clause
+WITH n_class = 3
+COLUMN c1, c2, c3
+OUTPUT label
+INTO my_dnn_model;
+```
 
-Please be aware that SQLFlow doesn't attempt to parse the nested select due to the difficulty in handling different syntax
-across SQL engines. Instead, it follows the UNIX's pipeline philosophy: forwarding the complexity to various SQL engines,
-while retrieves the data via unified DB API.
+SQLFlow does the following.
+
+1. Splits the extended SQL statement into its select clause and the train clause. In the above example, the select clause is `SELECT ... WHERE condition` and the train clause is `TO TRAIN DNNClassifier ... INTO my_dnn_model`.
+    1. For select clause, we check the syntax by pass it to a particular SQL engine. (MySQL/Hive/ODPS)
+    1. For train clause, we check the syntax by our parser at `pkg/sql/parser.go`.
+
+1. Verifies the extended SQL statement.
+    1. For select clause, we verify that it is executable. And we also verify the column selected is either mentioned explicitly in the train clause or inferred by feature derivation.
+    1. For train clause, we verify that the column names exists and have the desired types.
+
+1. Generates a Python submitter program which forwards the select clause to a particular SQL engine to fetch the training data.
+
+Please be aware that the SQLFlow parser does not parse the nested select due to the difficulty in handling different syntax across different SQL engines. Instead, it follows the UNIX's pipeline philosophy: forwarding the complexity to various SQL engines, while retrieves the data via unified database API.
 
 ![](/doc/figures/arbitrary-select.png)
 
 ## Implementation
 
-### Modification on SQLFlow parser
+### Splitting the Extended SQL
 
-The SQLFlow parser is only responsible for parsing the train clause, instead of the full extended SQL statement. So the
-[`standardSelect`](https://github.com/sql-machine-learning/sqlflow/blob/158b098cfecf7b12479171b09c12b877ad3fb00b/sql/sql.y#L66-L71)
-struct will be a string.
+SQLFlow splits the extended SQL by looking for consecutive tokens returned by the lexer. If SQLFlow finds the following consecutive tokens [`TO`, `TRAIN`, `IDENT`], [`TO`, `PREDICT`, `IDENT`] or [`TO`, `EXPLAIN`, `IDENT`], it splits the SQL string at the beginning of the first token in the list.
 
-### Splitting the extended SQL
-
-SQLFlow splits the extended SQL by looking for consecutive tokens returned by the lexer. If SQLFlow finds the following consecutive tokens 
-[`TRAIN`, `IDENT`, `WITH`] or [`PREDICT`, `IDENT`, `USING`], it splits the SQL string at the beginning of the first token
-in the list.
-
-### Syntactic checking on the select clause
+### Syntactic Checking on the Select Clause
 
 SQLFlow checks the syntax on the select clause by calling the particular SQL engine parser.
 
@@ -44,14 +50,14 @@ SQLFlow checks the syntax on the select clause by calling the particular SQL eng
 
 ### Verifier
 
-The column clause requires fields returned by the select clause to exist and of certain types. The SQLFlow verifies these
-requirements by fetching field names and field types via executing the following template.
+The train clause requires column names returned by the select clause to exist and of certain types. To verifies these
+requirements, SQLFlow fetches column names and column types via executing the following template.
 
 ```SQL
 SELECT a.* FROM ({.SelectClause}) AS a LIMIT 1;
 ```
 
-### Codegen
+### Code Generation
 
 `codegen.go`'s supports all types of queries. So SQLFlow fills it with the select clause.
 
