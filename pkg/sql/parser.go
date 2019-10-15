@@ -81,7 +81,7 @@ type extendedSelect struct {
 	standardSelect
 	trainClause
 	predictClause
-	analyzeClause
+	explainClause
 }
 
 type standardSelect struct {
@@ -111,8 +111,8 @@ type predictClause struct {
 	into      string
 }
 
-type analyzeClause struct {
-	analyzeAttrs attrs
+type explainClause struct {
+	explainAttrs attrs
 	trainedModel string
 	explainer    string
 }
@@ -131,20 +131,20 @@ func attrsUnion(as1, as2 attrs) attrs {
 
 //line sql.y:114
 type sqlSymType struct {
-	yys  int
-	val  string /* NUMBER, IDENT, STRING, and keywords */
-	flds exprlist
-	tbls []string
-	expr *expr
-	expl exprlist
-	atrs attrs
-	eslt extendedSelect
-	slct standardSelect
-	tran trainClause
-	colc columnClause
-	labc string
-	infr predictClause
-	anal analyzeClause
+	yys   int
+	val   string /* NUMBER, IDENT, STRING, and keywords */
+	flds  exprlist
+	tbls  []string
+	expr  *expr
+	expl  exprlist
+	atrs  attrs
+	eslt  extendedSelect
+	slct  standardSelect
+	tran  trainClause
+	colc  columnClause
+	labc  string
+	infr  predictClause
+	expln explainClause
 }
 
 const SELECT = 57346
@@ -843,7 +843,7 @@ sqldefault:
 				train:          false,
 				analyze:        true,
 				standardSelect: sqlDollar[1].slct,
-				analyzeClause:  sqlDollar[2].anal}
+				explainClause:  sqlDollar[2].expln}
 		}
 	case 5:
 		sqlDollar = sqlS[sqlpt-6 : sqlpt+1]
@@ -914,16 +914,16 @@ sqldefault:
 		sqlDollar = sqlS[sqlpt-5 : sqlpt+1]
 //line sql.y:229
 		{
-			sqlVAL.anal.trainedModel = sqlDollar[3].val
-			sqlVAL.anal.explainer = sqlDollar[5].val
+			sqlVAL.expln.trainedModel = sqlDollar[3].val
+			sqlVAL.expln.explainer = sqlDollar[5].val
 		}
 	case 15:
 		sqlDollar = sqlS[sqlpt-7 : sqlpt+1]
 //line sql.y:230
 		{
-			sqlVAL.anal.trainedModel = sqlDollar[3].val
-			sqlVAL.anal.analyzeAttrs = sqlDollar[5].atrs
-			sqlVAL.anal.explainer = sqlDollar[7].val
+			sqlVAL.expln.trainedModel = sqlDollar[3].val
+			sqlVAL.expln.explainAttrs = sqlDollar[5].atrs
+			sqlVAL.expln.explainer = sqlDollar[7].val
 		}
 	case 16:
 		sqlDollar = sqlS[sqlpt-2 : sqlpt+1]

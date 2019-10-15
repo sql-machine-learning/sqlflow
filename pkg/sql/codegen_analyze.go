@@ -98,7 +98,7 @@ func genAnalyzer(pr *extendedSelect, db *DB, cwd, modelDir string) (*bytes.Buffe
 		return nil, fmt.Errorf("analyzer: model[%s] not supported", pr.estimator)
 	}
 	// We untar the XGBoost.{pr.trainedModel}.tar.gz and get three files.
-	summaryAttrs, err := resolveAnalyzeSummaryParames(&pr.analyzeAttrs)
+	summaryAttrs, err := resolveAnalyzeSummaryParames(&pr.explainAttrs)
 	if err != nil {
 		return nil, err
 	}

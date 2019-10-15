@@ -159,7 +159,7 @@ USING TreeExplainer;`)
 		a.False(r.train)
 		a.True(r.analyze)
 		a.Equal("my_model", r.trainedModel)
-		a.Equal("force", r.analyzeAttrs["plots"].String())
+		a.Equal("force", r.explainAttrs["plots"].String())
 		a.Equal("TreeExplainer", r.explainer)
 	}
 }
