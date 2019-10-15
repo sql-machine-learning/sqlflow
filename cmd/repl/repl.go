@@ -23,8 +23,8 @@ import (
 	"strings"
 	"syscall"
 
-	"golang.org/x/crypto/ssh/terminal"
 	"github.com/olekukonko/tablewriter"
+	"golang.org/x/crypto/ssh/terminal"
 	"sqlflow.org/sqlflow/pkg/sql"
 )
 
@@ -43,9 +43,8 @@ func readStmt(scn *bufio.Scanner) (string, error) {
 	}
 	if scn.Err() == nil {
 		return "", io.EOF
-	} else {
-		return "", scn.Err()
 	}
+	return "", scn.Err()
 }
 
 func header(head map[string]interface{}) ([]string, error) {
@@ -117,7 +116,7 @@ func main() {
 	}
 
 	isTerminal := !flagPassed("execute", "e", "file", "f") && terminal.IsTerminal(syscall.Stdin)
-	sqlRun := func (stmt string) {
+	sqlRun := func(stmt string) {
 		fmt.Println("sqlflow>", stmt)
 		isTable, tableRendered := false, false
 		table := tablewriter.NewWriter(os.Stdout)
