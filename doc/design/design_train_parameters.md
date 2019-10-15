@@ -4,7 +4,7 @@ SQLFlow extends the syntax of the SELECT statement of SQL to support training a 
 ```sql
 SELECT * FROM kaggle_credit_fraud_training_data
 LIMIT 1000
-TRAIN DNNClassifier       /* a pre-defined TensorFlow estimator, tf.estimator.DNNClassifier */
+TO TRAIN DNNClassifier       /* a pre-defined TensorFlow estimator, tf.estimator.DNNClassifier */
 WITH layers=[100, 200],   /* a parameter of the Estimator class constructor */
      train.batch_size = 8 /* a parameter of the Estimator.train method */
 COLUMN *,                 /* all columns as raw features */
@@ -16,7 +16,7 @@ INTO sqlflow_models.my_model_table;      /* saves trained model parameters and f
 Currently, we have the following syntax allowing users to provide necessary information for the training.
 ```sql
 SELECT STATEMENT
-TRAIN ...
+TO TRAIN ...
 WITH ...
 COLUMN ... [FOR ...]
 LABEL ...
@@ -32,7 +32,7 @@ In this document, we summarize information necessary for the code generators.
 ## Necessary Information for Training
 
 ### Model Name
-Model Name is a string written after the keyword of `TRAIN`, which can be the name of a [TensorFlow pre-made estimator](https://www.tensorflow.org/guide/premade_estimators) or the full package path of a customized Estimator/KerasModel.
+Model Name is a string written after the keyword of `TO TRAIN`, which can be the name of a [TensorFlow pre-made estimator](https://www.tensorflow.org/guide/premade_estimators) or the full package path of a customized Estimator/KerasModel.
 
 If the model name is the full package path of a customized model, the model should be installed according to [How to install the customized model in SQLFlow]().
 
@@ -45,7 +45,7 @@ Here are some rules:
 
 Take an example for `DNNClassifier`
 ```sql
-TRAIN DNNClassifier
+TO TRAIN DNNClassifier
 WITH
     model.hidden_units = [10, 20, 10]
 ```
@@ -76,7 +76,7 @@ The value of `FOR` keyword represents which parameter of the constructor method 
 For example, the following SQL
 ```sql
 ...
-TRAIN
+TO TRAIN
 	DNNLinearCombinedClassifier
 WITH
 	...

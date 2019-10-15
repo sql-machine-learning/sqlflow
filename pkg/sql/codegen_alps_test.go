@@ -28,7 +28,7 @@ func TestTrainALPSFiller(t *testing.T) {
 	parser := newParser()
 
 	wndStatement := `SELECT dense, deep, wide FROM kaggle_credit_fraud_training_data 
-		TRAIN DNNLinearCombinedClassifier 
+		TO TRAIN DNNLinearCombinedClassifier 
 		WITH 
 			model.dnn_hidden_units = [10, 20],
 			train.max_steps = 1000,
@@ -67,7 +67,7 @@ func TestTrainALPSEmbeddingInitializer(t *testing.T) {
 	parser := newParser()
 
 	wndStatement := `SELECT deep FROM kaggle_credit_fraud_training_data 
-		TRAIN DNNClassifier 
+		TO TRAIN DNNClassifier 
 		WITH 
 			model.dnn_hidden_units = [10, 20],
 			train.max_steps = 1000,

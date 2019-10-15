@@ -89,7 +89,7 @@ The column `c1` is dense encoded and `c2` is sparse encoded, `c3` is label colum
 select 
   c1, c2, c3 as class
 from kaggle_credit_fraud_training_data
-TRAIN DNNClassifier
+TO TRAIN DNNClassifier
 WITH
   ...
 COLUMN
@@ -148,7 +148,7 @@ Here is an example which do `BUCKETIZED` on `c2` then `CROSS` with `c1`.
 select 
     c1, c2, c3 as class
 from kaggle_credit_fraud_training_data
-TRAIN DNNClassifier
+TO TRAIN DNNClassifier
 WITH
   ...
 COLUMN
@@ -162,7 +162,7 @@ Feature Expressions except for Tensorflow Feature Column API should raise an err
 ```sql
 /* Not supported */
 select * from kaggle_credit_fraud_training_data
-TRAIN DNNClassifier
+TO TRAIN DNNClassifier
 WITH
     ...
 COLUMN
@@ -206,7 +206,7 @@ Let's create a DNNClassifier example, the minimum parameters of the constructor 
 select 
     c1, c2, c3 as class
 from kaggle_credit_fraud_training_data
-TRAIN DNNClassifier
+TO TRAIN DNNClassifier
 WITH
     estimator.hidden_units = [10, 20],
     train_spec.max_steps = 2000,
@@ -223,7 +223,7 @@ For now, we will pass the result of snippet code as `feature_columns` parameters
 select 
     c1, c2, c3, c4, c5 as class
 from kaggle_credit_fraud_training_data
-TRAIN DNNLinearCombinedClassifier
+TO TRAIN DNNLinearCombinedClassifier
 WITH
   linear_feature_columns = [fc1, fc2]
   dnn_feature_columns = [fc3]
