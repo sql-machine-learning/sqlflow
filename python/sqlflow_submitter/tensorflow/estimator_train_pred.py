@@ -11,12 +11,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-from unittest import TestCase
+from sqlflow_submitter.tensorflow.train import train
+from sqlflow_submitter.tensorflow.predict import pred
 
-from sqlflow_submitter.templates.tensorflow.train_template import train
-from sqlflow_submitter.templates.tensorflow.pred_template import pred
-import tensorflow as tf
 datasource = "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
 select = "SELECT * FROM iris.train;"
 validate_select = "SELECT * FROM iris.test;"
@@ -68,36 +65,32 @@ label_meta = {
     "is_sparse": "false" == "true"
 }
 
-class TestDB(TestCase):
-    def test_train(self):
-        train(is_keara_model=False,
-            datasource=datasource,
-            estimator="tf.estimator.DNNClassifier",
-            select=select,
-            validate_select=validate_select,
-            feature_column_code=feature_column_code,
-            feature_column_names=feature_column_names,
-            feature_metas=feature_metas,
-            label_meta=label_meta,
-            model_params={"n_classes": 3, "hidden_units":[10,20]},
-            save="mymodel",
-            batch_size=1,
-            epochs=1,
-            verbose=0)
-        pred(is_keara_model=False,
-            datasource=datasource,
-            estimator="tf.estimator.DNNClassifier",
-            select=select,
-            result_table="iris.predict",
-            feature_column_code=feature_column_code,
-            feature_column_names=feature_column_names,
-            feature_metas=feature_metas,
-            label_meta=label_meta,
-            model_params={"n_classes": 3, "hidden_units":[10,20]},
-            save="mymodel",
-            batch_size=1,
-            epochs=1,
-            verbose=0)
-
-if __name__ == '__main__':
-    unittest.main()
+if __name__ == "__main__":
+    train(is_keara_model=False,
+        datasource=datasource,
+        estimator="tf.estimator.DNNClassifier",
+        select=select,
+        validate_select=validate_select,
+        feature_column_code=feature_column_code,
+        feature_column_names=feature_column_names,
+        feature_metas=feature_metas,
+        label_meta=label_meta,
+        model_params={"n_classes": 3, "hidden_units":[10,20]},
+        save="mymodel",
+        batch_size=1,
+        epochs=1,
+        verbose=0)
+    pred(is_keara_model=False,
+        datasource=datasource,
+        estimator="tf.estimator.DNNClassifier",
+        select=select,
+        result_table="iris.predict",
+        feature_column_code=feature_column_code,
+        feature_column_names=feature_column_names,
+        feature_metas=feature_metas,
+        label_meta=label_meta,
+        model_params={"n_classes": 3, "hidden_units":[10,20]},
+        save="mymodel",
+        batch_size=1,
+        epochs=1,
+        verbose=0)
