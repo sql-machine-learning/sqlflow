@@ -1,6 +1,6 @@
 # Support Arbitrary Select Statements
 
-SQLFlow extends the SQL syntax to enable model training and inference. This extension should be easy to learn and integrate well with the existing SQL syntax such as nested SELECT statements. By appending a TRAIN or PREDICT clause after any select statement, we can add AI functionalities to our database with ease.
+SQLFlow extends the SQL syntax to enable model training and inference. This extension should be easy to learn and integrate well with the existing SQL syntax, such as nested SELECT statements. By appending a TRAIN or PREDICT clause after any select statement, we can add AI functionalities to our database with ease.
 
 ## Overview
 
@@ -20,15 +20,15 @@ INTO my_dnn_model;
 
 SQLFlow does the following.
 
-1. Splits the extended SQL statement into its select clause and the train clause. In the above example, the select clause is `SELECT ... WHERE condition` and the train clause is `TO TRAIN DNNClassifier ... INTO my_dnn_model`.
-    1. For select clause, we check the syntax by pass it to a particular SQL engine. (MySQL/Hive/ODPS)
-    1. For train clause, we check the syntax by our parser at `pkg/sql/parser.go`.
+1. Splits the extended SQL statement into its select clause and its train clause. In the above example, the select clause is `SELECT ... WHERE condition` and the train clause is `TO TRAIN DNNClassifier ... INTO my_dnn_model`.
+    1. For the select clause, we check the syntax by passing it to a particular SQL engine. (MySQL/Hive/ODPS)
+    1. For the train clause, we check the syntax by our parser at `pkg/sql/parser.go`.
 
 1. Verifies the extended SQL statement.
-    1. For select clause, we verify that it is executable. And we also verify the column selected is either mentioned explicitly in the train clause or inferred by feature derivation.
-    1. For train clause, we verify that the column names exists and have the desired types.
+    1. For the select clause, we verify that it is executable. And we also verify the column selected is either mentioned explicitly in the train clause or inferred by feature derivation.
+    1. For the train clause, we verify that the column names exist and have the desired types.
 
-1. Generates a Python submitter program which forwards the select clause to a particular SQL engine to fetch the training data.
+1. Generates a Python submitter program that forwards the select clause to a particular SQL engine to fetch the training data.
 
 Please be aware that the SQLFlow parser does not parse the nested select due to the difficulty in handling different syntax across different SQL engines. Instead, it follows the UNIX's pipeline philosophy: forwarding the complexity to various SQL engines, while retrieves the data via unified database API.
 
@@ -50,8 +50,7 @@ SQLFlow checks the syntax on the select clause by calling the particular SQL eng
 
 ### Verifier
 
-The train clause requires column names returned by the select clause to exist and of certain types. To verifies these
-requirements, SQLFlow fetches column names and column types via executing the following template.
+The train clause requires column names returned by the select clause to exist and of certain types. To verifies these requirements, SQLFlow fetches column names, and column types via executing the following template.
 
 ```SQL
 SELECT a.* FROM ({.SelectClause}) AS a LIMIT 1;
