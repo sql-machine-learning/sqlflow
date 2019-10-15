@@ -193,7 +193,7 @@ func elasticDLTrain(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, sessi
 	}
 	modelDefCode := elasticdlProgram.String()
 	// cw := &logChanWriter{wr: w}
-	modelDefFilePath := "model_definition.py"
+	modelDefFilePath := "/elasticdl/model_zoo/model_definition.py"
 	modelDefFile, err := os.Create(filepath.Join(cwd, modelDefFilePath))
 	if err != nil {
 		return fmt.Errorf("Create python code failed %v", err)
@@ -236,6 +236,7 @@ func getEnvs(envs string) string {
 }
 
 func elasticdlTrainCmd(cwd, modelDefFilePath string, filler *elasticDLFiller) (cmd *exec.Cmd) {
+	log.Debugf("Using model definition file at: %s", modelDefFilePath)
 	if hasDocker() {
 		cmd = exec.Command(
 			"elasticdl", "train",
@@ -245,7 +246,7 @@ func elasticdlTrainCmd(cwd, modelDefFilePath string, filler *elasticDLFiller) (c
 			"--job_name", "test-odps",
 			// TODO: Get this from model name
 			"--model_zoo", "/elasticdl/model_zoo",
-			"--model_def", modelDefFilePath,
+			"--model_def", "model_definition.custom_model",
 			"--training_data", filler.TrainInputTable,
 			"--evaluation_data", filler.EvalInputTable,
 			fmt.Sprintf("--num_epochs=%d", filler.TrainClause.Epoch),
@@ -295,7 +296,7 @@ func elasticDLPredict(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, ses
 	}
 	modelDefCode := elasticdlProgram.String()
 	cw := &logChanWriter{wr: w}
-	modelDefFilePath := "model_definition.py"
+	modelDefFilePath := "/elasticdl/model_zoo/model_definition.py"
 	modelDefFile, err := os.Create(filepath.Join(cwd, modelDefFilePath))
 	if err != nil {
 		return fmt.Errorf("Create python code failed %v", err)
