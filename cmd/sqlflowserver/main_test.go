@@ -173,19 +173,19 @@ func prepareTestData(dbStr string) error {
 		}
 		return testdata.Popularize(testDB.DB, testdata.ChurnHiveSQL)
 	case "maxcompute":
-		// submitter := os.Getenv("SQLFLOW_submitter")
-		// if submitter == "alps" {
-		// 	if err := testdata.Popularize(testDB.DB, testdata.ODPSFeatureMapSQL); err != nil {
-		// 		return err
-		// 	}
-		// 	if err := testdata.Popularize(testDB.DB, testdata.ODPSSparseColumnSQL); err != nil {
-		// 		return err
-		// 	}
-		// 	return nil
-		// }
-		// if err := testdata.Popularize(testDB.DB, testdata.IrisMaxComputeSQL); err != nil {
-		// 	return err
-		// }
+		submitter := os.Getenv("SQLFLOW_submitter")
+		if submitter == "alps" {
+			if err := testdata.Popularize(testDB.DB, testdata.ODPSFeatureMapSQL); err != nil {
+				return err
+			}
+			if err := testdata.Popularize(testDB.DB, testdata.ODPSSparseColumnSQL); err != nil {
+				return err
+			}
+			return nil
+		}
+		if err := testdata.Popularize(testDB.DB, testdata.IrisMaxComputeSQL); err != nil {
+			return err
+		}
 		return nil
 	}
 
