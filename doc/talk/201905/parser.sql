@@ -15,7 +15,7 @@ LEFT OUTER JOIN
                        FROM   some_table3) c 
 ON              a.id = c.event_id 
 GROUP BY        ...
-TRAIN LogisticRegression
+TO TRAIN LogisticRegression
 COLUMN *
 LABEL score
 INTO my_project.my_lr_model;

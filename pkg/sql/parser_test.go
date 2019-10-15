@@ -30,7 +30,7 @@ WHERE
   strings.Upper(last_name) = "WANG"
 LIMIT  100
 `
-	testTrainSelect = testStandardSelectStmt + `TRAIN DNNClassifier
+	testTrainSelect = testStandardSelectStmt + `TO TRAIN DNNClassifier
 WITH
   n_classes = 3,
   hidden_units = [10, 20]
@@ -41,7 +41,7 @@ COLUMN
 LABEL "employee.salary"
 INTO sqlflow_models.my_dnn_model;
 `
-	testMultiColumnTrainSelect = testStandardSelectStmt + `TRAIN DNNClassifier
+	testMultiColumnTrainSelect = testStandardSelectStmt + `TO TRAIN DNNClassifier
 WITH
   n_classes = 3,
   hidden_units = [10, 20]

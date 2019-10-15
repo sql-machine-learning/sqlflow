@@ -35,7 +35,7 @@ Then we can train a TensorFlow [DNNClassifier](https://www.tensorflow.org/api_do
 ```sql
 sqlflow> SELECT *
 FROM iris.train
-TRAIN DNNClassifier
+TO TRAIN DNNClassifier
 WITH model.n_classes = 3, model.hidden_units = [10, 20]
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class

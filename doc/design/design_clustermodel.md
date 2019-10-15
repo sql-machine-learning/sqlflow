@@ -22,13 +22,13 @@ The figure below demonstrates the overall workflow for cluster model training, w
 
 In this scenario, we focus on the extraction of data patterns in unsupervised learning. 
 
-So, the user can use `TRAIN` keyword to training a model. The user can also specify the training hyper-parameters with the keyword `WITH` and determine whether to use pre-trained model by `USING`. The training and predicting syntax looks like:
+So, the user can use `TO TRAIN` keyword to training a model. The user can also specify the training hyper-parameters with the keyword `WITH` and determine whether to use pre-trained model by `USING`. The training and predicting syntax looks like:
 
-TRAIN SQL:
+TO TRAIN SQL:
 
 ``` sql
 SELECT * FROM input_table
-TRAIN clusterModel
+TO TRAIN clusterModel
 WITH
     model.encode_units = [100, 7]
     model.n_clusters = 5

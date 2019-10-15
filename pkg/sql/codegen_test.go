@@ -28,7 +28,7 @@ SELECT *
 FROM iris.train
 `
 	testTrainSelectIris = testSelectIris + `
-TRAIN DNNClassifier
+TO TRAIN DNNClassifier
 WITH
   model.n_classes = 3,
   model.hidden_units = [10, 20]
@@ -43,7 +43,7 @@ predict iris.predict.class
 USING sqlflow_models.my_dnn_model;
 `
 	testClusteringTrain = testSelectIris + `
-TRAIN sqlflow_models.DeepEmbeddingClusterModel
+TO TRAIN sqlflow_models.DeepEmbeddingClusterModel
 WITH
   model.pretrain_dims = [10,10],
   model.n_clusters = 3,
@@ -90,7 +90,7 @@ func TestCodeGenPredict(t *testing.T) {
 func TestLabelAsStringType(t *testing.T) {
 	a := assert.New(t)
 	r, e := newParser().Parse(`SELECT customerID, gender FROM churn.train
-TRAIN DNNClassifier
+TO TRAIN DNNClassifier
 WITH
 	model.n_classes = 3,
 	model.hidden_units = [10, 20]

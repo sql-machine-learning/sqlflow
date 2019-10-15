@@ -24,7 +24,7 @@ segmented by spaces. You can download the full dataset from:
     %%sqlflow
     SELECT *
     FROM imdb.train
-    TRAIN DNNClassifier
+    TO TRAIN DNNClassifier
     WITH
     model.n_classes = 2,
     model.hidden_units = [128, 64]
@@ -59,7 +59,7 @@ you may need to follow the below steps:
     %%sqlflow
     SELECT *
     FROM imdb.train
-    TRAIN sqlflow_models.StackedBiLSTMClassifier
+    TO TRAIN sqlflow_models.StackedBiLSTMClassifier
     WITH
     model.n_classes = 2,
     model.stack_units = [64,32],
@@ -138,7 +138,7 @@ you may need to follow the below steps:
     %%sqlflow
     SELECT *
     FROM toutiao.train_processed
-    TRAIN DNNClassifier
+    TO TRAIN DNNClassifier
     WITH
     model.n_classes = 17,
     model.hidden_units = [128, 512]

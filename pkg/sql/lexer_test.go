@@ -179,6 +179,29 @@ WHERE b='20190806';`)
 	}
 }
 
+func TestTrainSQL(t *testing.T) {
+	a := assert.New(t)
+	l := newLexer(` SELECT * FROM train_table
+TO TRAIN my_model
+WITH
+  param = value
+COLUMN a, b
+LABEL c
+INTO model_table;`)
+	var n sqlSymType
+	typs := []int{
+		SELECT, '*', FROM, IDENT, TO, TRAIN, IDENT, WITH, IDENT, '=', IDENT, COLUMN, IDENT, ',', IDENT, LABEL, IDENT, INTO, IDENT, ';'}
+	vals := []string{
+		"SELECT", "*", "FROM", "train_table", "TO", "TRAIN", "my_model", "WITH", "param", "=", "value", "COLUMN", "a", ",", "b",
+		"LABEL", "c", "INTO", "model_table", ";"}
+
+	for i := range typs {
+		a.Equal(typs[i], l.Lex(&n))
+		a.Equal(vals[i], n.val)
+	}
+
+}
+
 func TestAnalysisSQL(t *testing.T) {
 	a := assert.New(t)
 	l := newLexer(` SELECT * FROM train_table

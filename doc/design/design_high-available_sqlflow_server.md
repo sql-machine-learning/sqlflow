@@ -196,11 +196,11 @@ func (r *KubernetesJobRunner) fetch(jobID string) (*pb.Result, error) (
 
 ### Store the Trained Model
 
-For example, a tinny `TRAIN` statement:
+For example, a tinny `TO TRAIN` statement:
 
 ``` sql
 SELECT ...
-TRAIN DNNClassifer
+TO TRAIN DNNClassifer
 WITH
   ...
 COLUMN ...
@@ -209,7 +209,7 @@ INTO sqlflow_model
 
 This SQL statment would save the model named `sqlflow_model` which contains two parts:
 
-1. The `TRAIN` statement, which would be saved as a `.mod` file.
+1. The `TO TRAIN` statement, which would be saved as a `.mod` file.
 1. The Model weights, which would be saved as a `.tar.gz` file.
 
 An example of a trained model folder is as follows:
