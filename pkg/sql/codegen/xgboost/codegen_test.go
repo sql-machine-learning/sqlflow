@@ -49,9 +49,9 @@ func TestTrain(t *testing.T) {
 		ValidationSelect: "select * from iris.test;",
 		Estimator:        "xgboost.gbtree",
 		Attributes: map[string]interface{}{
-			"train.num_boost_round": 30,
+			"train.num_boost_round": 10,
 			"objective":             "multi:softprob",
-			"eta":                   3.1,
+			"eta":                   float32(0.1),
 			"num_class":             3},
 		Features: map[string][]codegen.FeatureColumn{
 			"feature_columns": {

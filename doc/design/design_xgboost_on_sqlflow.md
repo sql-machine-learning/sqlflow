@@ -13,7 +13,7 @@ SELECT * FROM train_table
 TO TRAIN xgboost.gbtree
 WITH
     objective=multi:softmax,
-    train.num_round=2,
+    train.num_boost_round=2,
     max_depth=2,
     eta=1
 LABEL class
