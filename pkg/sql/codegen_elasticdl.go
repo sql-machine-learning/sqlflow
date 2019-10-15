@@ -194,7 +194,7 @@ func elasticDLTrain(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, sessi
 	modelDefCode := elasticdlProgram.String()
 	// cw := &logChanWriter{wr: w}
 	modelDefFilePath := "/elasticdl/model_zoo/model_definition.py"
-	modelDefFile, err := os.Create(filepath.Join(cwd, modelDefFilePath))
+	modelDefFile, err := os.Create(modelDefFilePath)
 	if err != nil {
 		return fmt.Errorf("Create python code failed %v", err)
 	}
