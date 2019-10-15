@@ -226,8 +226,8 @@ predict_clause
 ;
 
 analyze_clause
-: ANALYZE IDENT USING IDENT { $$.trainedModel = $2; $$.explainer = $4 }
-| ANALYZE IDENT WITH attrs USING IDENT { $$.trainedModel = $2; $$.analyzeAttrs = $4; $$.explainer = $6 }
+: TO ANALYZE IDENT USING IDENT { $$.trainedModel = $3; $$.explainer = $5 }
+| TO ANALYZE IDENT WITH attrs USING IDENT { $$.trainedModel = $3; $$.analyzeAttrs = $5; $$.explainer = $7 }
 ;
 
 column_clause

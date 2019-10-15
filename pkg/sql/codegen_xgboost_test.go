@@ -35,7 +35,7 @@ INTO sqlflow_models.my_xgboost_model;
 `
 const testAnalyzeTreeModelSelectIris = `
 SELECT * FROM iris.train
-ANALYZE sqlflow_models.my_xgboost_model
+TO ANALYZE sqlflow_models.my_xgboost_model
 USING TreeExplainer;
 `
 

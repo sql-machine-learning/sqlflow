@@ -225,15 +225,15 @@ USING model_table;`)
 func TestAnalysisSQL(t *testing.T) {
 	a := assert.New(t)
 	l := newLexer(` SELECT * FROM train_table
-ANALYZE my_model
+TO ANALYZE my_model
 WITH
   plots = force
 USING TreeExplainer;`)
 	var n sqlSymType
 	typs := []int{
-		SELECT, '*', FROM, IDENT, ANALYZE, IDENT, WITH, IDENT, '=', IDENT, USING, IDENT, ';'}
+		SELECT, '*', FROM, IDENT, TO, ANALYZE, IDENT, WITH, IDENT, '=', IDENT, USING, IDENT, ';'}
 	vals := []string{
-		"SELECT", "*", "FROM", "train_table", "ANALYZE",
+		"SELECT", "*", "FROM", "train_table", "TO", "ANALYZE",
 		"my_model", "WITH", "plots", "=", "force", "USING", "TreeExplainer", ";"}
 
 	for i := range typs {
