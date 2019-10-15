@@ -202,6 +202,26 @@ INTO model_table;`)
 
 }
 
+func TestPredictSQL(t *testing.T) {
+	a := assert.New(t)
+	l := newLexer(` SELECT * FROM train_table
+TO PREDICT result_table
+WITH
+  param = value
+USING model_table;`)
+	var n sqlSymType
+	typs := []int{
+		SELECT, '*', FROM, IDENT, TO, PREDICT, IDENT, WITH, IDENT, '=', IDENT, USING, IDENT, ';'}
+	vals := []string{
+		"SELECT", "*", "FROM", "train_table", "TO", "PREDICT", "result_table", "WITH", "param", "=", "value", "USING", "model_table", ";"}
+
+	for i := range typs {
+		a.Equal(typs[i], l.Lex(&n))
+		a.Equal(vals[i], n.val)
+	}
+
+}
+
 func TestAnalysisSQL(t *testing.T) {
 	a := assert.New(t)
 	l := newLexer(` SELECT * FROM train_table
