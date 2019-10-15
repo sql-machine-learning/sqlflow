@@ -34,7 +34,7 @@ to do predict:
 %%sqlflow
 SELECT * from creditcard.creditcard
 WHERE class=1
-PREDICT creditcard.predict.class
+TO PREDICT creditcard.predict.class
 USING creditcard.creditcard_deep_model;
 ```
 

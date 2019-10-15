@@ -37,7 +37,7 @@ segmented by spaces. You can download the full dataset from:
     %%sqlflow
     SELECT *
     FROM imdb.test
-    PREDICT imdb.predict.class
+    TO PREDICT imdb.predict.class
     USING sqlflow_models.my_text_model_en;
     ```
 1. Then you can get predict result from table `imdb.predict`.
@@ -151,7 +151,7 @@ you may need to follow the below steps:
     %%sqlflow
     SELECT *
     FROM toutiao.test_processed
-    PREDICT toutiao.predict.class_id
+    TO PREDICT toutiao.predict.class_id
     USING sqlflow_models.my_text_model;
     ```
 1. Then you can get predict result from table `toutiao.predict`:

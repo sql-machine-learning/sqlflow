@@ -131,7 +131,7 @@ Similarly, to infer the class (fraud or regular), we could
 
 ```sql
 SELECT * FROM kaggle_credit_fraud_development_data
-PREDICT kaggle_credit_fraud_development_data.class
+TO PREDICT kaggle_credit_fraud_development_data.class
 USING sqlflow_models.my_model_table;
 ```
 

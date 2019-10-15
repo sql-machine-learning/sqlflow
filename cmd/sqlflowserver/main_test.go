@@ -551,7 +551,7 @@ INTO sqlflow_models.my_dnn_model;`, caseDB, caseTrainTable)
 	ParseRow(stream)
 	predSQL := fmt.Sprintf(`SELECT *
 FROM %s.%s
-PREDICT %s.%s.class
+TO PREDICT %s.%s.class
 USING sqlflow_models.my_dnn_model;`, caseDB, caseTestTable, caseDB, casePredictTable)
 
 	stream, err = cli.Run(ctx, sqlRequest(predSQL))
@@ -610,7 +610,7 @@ INTO sqlflow_models.my_dnn_model_custom;`
 
 	predSQL := `SELECT *
 FROM iris.test
-PREDICT iris.predict.class
+TO PREDICT iris.predict.class
 USING sqlflow_models.my_dnn_model_custom;`
 
 	stream, err = cli.Run(ctx, sqlRequest(predSQL))
@@ -1014,7 +1014,7 @@ INTO sqlflow_models.my_regression_model;`)
 
 	predSQL := fmt.Sprintf(`SELECT *
 FROM housing.test
-PREDICT housing.predict.target
+TO PREDICT housing.predict.target
 USING sqlflow_models.my_regression_model;`)
 
 	stream, err = cli.Run(ctx, sqlRequest(predSQL))
@@ -1090,7 +1090,7 @@ func CasePredictXGBoostRegression(t *testing.T) {
 
 	predSQL := fmt.Sprintf(`SELECT *
 FROM housing.test
-PREDICT housing.xgb_predict.target
+TO PREDICT housing.xgb_predict.target
 USING sqlflow_models.my_xgb_regression_model;`)
 
 	stream, err := cli.Run(ctx, sqlRequest(predSQL))

@@ -54,12 +54,12 @@ COLUMN
 LABEL employee.salary
 INTO sqlflow_models.my_dnn_model;
 `
-	testPredictSelect = testStandardSelectStmt + `PREDICT db.table.field
+	testPredictSelect = testStandardSelectStmt + `TO PREDICT db.table.field
 USING sqlflow_models.my_dnn_model;`
 
 	testMaxcomputeUDFPredict = `
 SELECT predict_fun(concat(",", col_1, col_2)) AS (info, score) FROM db.table
-PREDICT db.predict_result
+TO PREDICT db.predict_result
 WITH OSS_KEY=a, OSS_ID=b
 USING sqlflow_models.my_model;
 	`
@@ -177,7 +177,7 @@ func TestSelectStarAndPrint(t *testing.T) {
 
 func TestStandardDropTable(t *testing.T) {
 	a := assert.New(t)
-	_, e := newParser().Parse(`DROP TABLE PREDICT`)
+	_, e := newParser().Parse(`DROP TABLE TO PREDICT`)
 	a.Error(e)
 	// Note: currently, our parser doesn't accept anything statements other than SELECT.
 	// It will support parsing any SQL statements and even dialects in the future.

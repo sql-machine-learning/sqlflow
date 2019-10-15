@@ -95,10 +95,10 @@ First, we can specify the trained model by `USING clause`:
 USING sqlflow_models.my_xgb_regression_model
 ```
 
-Than, we can specify the prediction result table by `PREDICT clause`:
+Than, we can specify the prediction result table by `TO PREDICT clause`:
 
 ```
-PREDICT boston.predict.medv
+TO PREDICT boston.predict.medv
 ```
 
 And using a standar SQL to fetch the prediction data:
@@ -112,7 +112,7 @@ Finally, the following is the SQLFLow Prediction statment:
 ```sql
 %%sqlflow
 SELECT * FROM boston.test
-PREDICT boston.predict.medv
+TO PREDICT boston.predict.medv
 USING sqlflow_models.my_xgb_regression_model;
 ```
 

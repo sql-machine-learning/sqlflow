@@ -44,7 +44,7 @@ Done training
 ```sql
 sqlflow> SELECT *
 FROM iris.test
-PREDICT iris.predict.class
+TO PREDICT iris.predict.class
 USING sqlflow_models.my_dnn_model;
 
 ...

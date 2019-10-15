@@ -62,7 +62,7 @@ INTO sqlflow_models.xgboost_model_table;
 select 
     c1, c2, c3, c4
 from kaggle_credit_fraud_development_data
-PREDICT kaggle_credit_fraud_development_data.class
+TO PREDICT kaggle_credit_fraud_development_data.class
 USING sqlflow_models.xgboost_model_table;
 ```
 

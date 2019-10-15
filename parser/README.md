@@ -7,10 +7,10 @@ Typical SQLFlow statements are like the following.
 ```sql
 SELECT * FROM training_data TO TRAIN DNNClassifier LABEL kind INTO my_model;
 
-SELECT * FROM testing_data PREDICT testing_data.predicted_kind USING my_model;
+SELECT * FROM testing_data TO PREDICT testing_data.predicted_kind USING my_model;
 ```
 
-The point is, assuming someone already has a SELECT statement for data cleaning and augmentation, (s)he could add a TO TRAIN or PREDICT clause to enable AI, no matter how complex the statement is or if it is hundreds of lines of code including nested SELECT.
+The point is, assuming someone already has a SELECT statement for data cleaning and augmentation, (s)he could add a TO TRAIN or TO PREDICT clause to enable AI, no matter how complex the statement is or if it is hundreds of lines of code including nested SELECT.
 
 A significant challenge for SQLFlow here is to parse the SQL. Many SQL engines, such as MySQL, Oracle, Hive, SparkSQL, Flink, claim they are compatible with ANSI SQL but most have unique features.
 
@@ -49,7 +49,7 @@ func Parse(sql string) (acceptable bool, err error) {
         return false, errRight 
     }
 
-    // The left part is a SELECT and the right part is TO TRAIN or PREDICT.
+    // The left part is a SELECT and the right part is TO TRAIN or TO PREDICT.
     return false, nil 
 }
 ```
