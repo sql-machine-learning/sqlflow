@@ -804,9 +804,6 @@ COLUMN
 			sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO trained_elasticdl_keras_classifier;`, os.Getenv("MAXCOMPUTE_PROJECT"), "sqlflow_test_iris_train")
-	// TODO: Change image_pull_policy to Never on minikube
-	// engine.cluster_spec = "/go/src/sqlflow.org/sqlflow/sigma.py",
-	// engine.docker_image_repository = "reg.docker.alibaba-inc.com/yuantang/",
 	conn, err := createRPCConn()
 	a.NoError(err)
 	defer conn.Close()
