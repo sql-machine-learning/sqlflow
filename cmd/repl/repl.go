@@ -118,7 +118,7 @@ func runStmt(stmt string, isTerminal bool, modelDir string, db *sql.DB) {
 	}
 }
 
-func repl(scanner *bufio.Scanner, isTerminal bool, modelDir string, db* sql.DB) {
+func repl(scanner *bufio.Scanner, isTerminal bool, modelDir string, db *sql.DB) {
 	for {
 		if isTerminal {
 			fmt.Print("sqlflow> ")
