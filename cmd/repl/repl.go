@@ -42,7 +42,7 @@ func readStmt(scn *bufio.Scanner) (string, error) {
 		stmt += "\n"
 	}
 	if scn.Err() == nil {
-		return "", io.EOF
+		return stmt, io.EOF
 	}
 	return "", scn.Err()
 }
@@ -95,6 +95,44 @@ func flagPassed(name ...string) bool {
 	return found
 }
 
+func runStmt(stmt string, isTerminal bool, modelDir string, db *sql.DB) {
+	if !isTerminal {
+		fmt.Println("sqlflow>", stmt)
+	}
+	isTable, tableRendered := false, false
+	table := tablewriter.NewWriter(os.Stdout)
+
+	stream := sql.Run(stmt, db, modelDir, nil)
+	for rsp := range stream.ReadAll() {
+		isTable = render(rsp, table)
+
+		// pagination. avoid exceed memory
+		if isTable && table.NumLines() == tablePageSize {
+			table.Render()
+			tableRendered = true
+			table.ClearRows()
+		}
+	}
+	if isTable && (table.NumLines() > 0 || !tableRendered) {
+		table.Render()
+	}
+}
+
+func repl(scanner *bufio.Scanner, isTerminal bool, modelDir string, db* sql.DB) {
+	for {
+		if isTerminal {
+			fmt.Print("sqlflow> ")
+		}
+		stmt, err := readStmt(scanner)
+		fmt.Println()
+		if err == io.EOF && stmt == "" {
+			return
+		}
+		runStmt(stmt, isTerminal, modelDir, db)
+	}
+
+}
+
 func main() {
 	ds := flag.String("datasource", "", "database connect string")
 	modelDir := flag.String("model_dir", "", "model would be saved on the local dir, otherwise upload to the table.")
@@ -116,52 +154,20 @@ func main() {
 	}
 
 	isTerminal := !flagPassed("execute", "e", "file", "f") && terminal.IsTerminal(syscall.Stdin)
-	sqlRun := func(stmt string) {
-		if !isTerminal {
-			fmt.Println("sqlflow>", stmt)
-		}
-		isTable, tableRendered := false, false
-		table := tablewriter.NewWriter(os.Stdout)
 
-		stream := sql.Run(stmt, db, *modelDir, nil)
-		for rsp := range stream.ReadAll() {
-			isTable = render(rsp, table)
-
-			// pagination. avoid exceed memory
-			if isTable && table.NumLines() == tablePageSize {
-				table.Render()
-				tableRendered = true
-				table.ClearRows()
-			}
+	sqlFile := os.Stdin
+	if flagPassed("file", "f") {
+		sqlFile, err = os.Open(*sqlFileName)
+		if err != nil {
+			log.Fatal(err)
 		}
-		if isTable && (table.NumLines() > 0 || !tableRendered) {
-			table.Render()
-		}
+		defer sqlFile.Close()
 	}
-
+	var reader io.Reader = sqlFile
+	// Override stdin and file when the `-e|-execute' options are present.
 	if flagPassed("execute", "e") {
-		sqlRun(*cliStmt)
-	} else {
-		sqlFile := os.Stdin
-		if flagPassed("file", "f") {
-			sqlFile, err = os.Open(*sqlFileName)
-			if err != nil {
-				log.Fatal(err)
-			}
-			defer sqlFile.Close()
-		}
-		scanner := bufio.NewScanner(sqlFile)
-
-		for {
-			if isTerminal {
-				fmt.Print("sqlflow> ")
-			}
-			stmt, err := readStmt(scanner)
-			fmt.Println()
-			if err == io.EOF {
-				return
-			}
-			sqlRun(stmt)
-		}
+		reader = strings.NewReader(*cliStmt)
 	}
+	scanner := bufio.NewScanner(reader)
+	repl(scanner, isTerminal, *modelDir, db)
 }
