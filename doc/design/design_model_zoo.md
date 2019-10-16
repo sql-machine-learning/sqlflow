@@ -1,5 +1,11 @@
 # Model Zoo
 
+## Motivation
+
+To Productize SQLFlow letting professionalists leverage the power of AI just by using SQL, business solutions must be built to solve individual problems. Each business solution may depend on multiple AI models together to solve the problem. Model zoo is a basic facility to develop such solutions.
+
+## The Design
+
 SQLFlow model zoo is a place to store model definitions, pre-trained model parameters (or weights) and model documentations. You can directly train, predict, analyze using one of the models using SQLFlow, or you can do model fine-tune, transfer learning to use the model to fit your dataset.
 
 SQLFlow should support below features to support common cases in machine learning:
