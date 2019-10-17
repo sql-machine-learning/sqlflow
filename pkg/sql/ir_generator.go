@@ -72,14 +72,14 @@ func generateTrainIR(slct *extendedSelect, connStr string) (*codegen.TrainIR, er
 	}, nil
 }
 
-func generateTrainIRByModel(slct *extendedSelect, connStr, cwd, modelDir string) (*codegen.TrainIR, error) {
+func generateTrainIRByModel(slct *extendedSelect, connStr, cwd, modelDir, model string) (*codegen.TrainIR, error) {
 	db, err := open(connStr)
 	if err != nil {
 		return nil, err
 	}
 	defer db.Close()
 
-	slctWithTrain, _, err := loadModelMeta(slct, db, cwd, modelDir, slct.trainedModel)
+	slctWithTrain, _, err := loadModelMeta(slct, db, cwd, modelDir, model)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +92,7 @@ func generatePredictIR(slct *extendedSelect, connStr string, cwd string, modelDi
 		return nil, err
 	}
 
-	trainIR, err := generateTrainIRByModel(slct, connStr, cwd, modelDir)
+	trainIR, err := generateTrainIRByModel(slct, connStr, cwd, modelDir, slct.model)
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +111,7 @@ func generateAnalyzeIR(slct *extendedSelect, connStr, cwd, modelDir string) (*co
 		return nil, err
 	}
 
-	trainIR, err := generateTrainIRByModel(slct, connStr, cwd, modelDir)
+	trainIR, err := generateTrainIRByModel(slct, connStr, cwd, modelDir, slct.trainedModel)
 	if err != nil {
 		return nil, err
 	}
