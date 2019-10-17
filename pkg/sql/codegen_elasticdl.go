@@ -232,10 +232,8 @@ func elasticdlTrainCmd(cwd string, filler *elasticDLFiller) (cmd *exec.Cmd) {
 	if hasDocker() {
 		cmd = exec.Command(
 			"elasticdl", "train",
-			"--image_base", "elasticdl:ci",
-			// TODO: This is hard-coded for now for testing purposes.
-			// We need to allow users to configure this or generating this dynamically.
-			"--job_name", "test-odps",
+			"--image_base", filler.TrainClause.EngineParams.imageBase,
+			"--job_name", filler.TrainClause.EngineParams.jobName,
 			"--model_zoo", modelZooPath,
 			"--model_def", modelDefModule,
 			"--training_data", filler.TrainInputTable,
@@ -309,10 +307,8 @@ func elasticdlPredictCmd(cwd string, filler *elasticDLFiller) (cmd *exec.Cmd) {
 	if hasDocker() && hasElasticDLCmd() {
 		cmd = exec.Command(
 			"elasticdl", "predict",
-			"--image_base", "elasticdl:ci",
-			// TODO: This is hard-coded for now for testing purposes.
-			// We need to allow users to configure this or generating this dynamically.
-			"--job_name", "test-odps",
+			"--image_base", filler.PredictClause.EngineParams.imageBase,
+			"--job_name", filler.PredictClause.EngineParams.jobName,
 			"--model_zoo", modelZooPath,
 			"--model_def", modelDefModule,
 			"--prediction_data", filler.PredictInputTable,
