@@ -32,8 +32,6 @@ SQLFlow does the following steps.
 
 Please be aware that the SQLFlow parser does not parse the nested select due to the difficulty in handling different syntax across different SQL engines. Instead, it follows the UNIX's pipeline philosophy: forwarding the complexity to various SQL engines, while retrieves the data via unified database API.
 
-![](/doc/figures/arbitrary-select.png)
-
 ## Implementation
 
 ### Splitting the Extended SQL
