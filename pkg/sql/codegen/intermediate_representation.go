@@ -120,5 +120,5 @@ type AnalyzeIR struct {
 	// SQLFlow supports TreeExplainer so far.
 	Explainer string
 	// TrainIR is the TrainIR used for generating the training job of the corresponding model
-	TrainIR TrainIR
+	TrainIR *TrainIR
 }

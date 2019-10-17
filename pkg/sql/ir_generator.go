@@ -72,20 +72,27 @@ func generateTrainIR(slct *extendedSelect, connStr string) (*codegen.TrainIR, er
 	}, nil
 }
 
+func generateTrainIRByModel(slct *extendedSelect, connStr, cwd, modelDir string) (*codegen.TrainIR, error) {
+	db, err := open(connStr)
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+
+	slctWithTrain, _, err := loadModelMeta(slct, db, cwd, modelDir, slct.trainedModel)
+	if err != nil {
+		return nil, err
+	}
+	return generateTrainIR(slctWithTrain, connStr)
+}
+
 func generatePredictIR(slct *extendedSelect, connStr string, cwd string, modelDir string) (*codegen.PredictIR, error) {
 	attrMap, err := generateAttributeIR(&slct.predAttrs)
 	if err != nil {
 		return nil, err
 	}
-	db, err := open(connStr)
-	if err != nil {
-		return nil, err
-	}
-	slctWithTrain, _, err := loadModelMeta(slct, db, cwd, modelDir, slct.model)
-	if err != nil {
-		return nil, err
-	}
-	trainir, err := generateTrainIR(slctWithTrain, connStr)
+
+	trainIR, err := generateTrainIRByModel(slct, connStr, cwd, modelDir)
 	if err != nil {
 		return nil, err
 	}
@@ -94,12 +101,17 @@ func generatePredictIR(slct *extendedSelect, connStr string, cwd string, modelDi
 		Select:      slct.standardSelect.String(),
 		ResultTable: slct.into,
 		Attributes:  attrMap,
-		TrainIR:     trainir,
+		TrainIR:     trainIR,
 	}, nil
 }
 
-func generateAnalyzeIR(slct *extendedSelect, connStr string) (*codegen.AnalyzeIR, error) {
+func generateAnalyzeIR(slct *extendedSelect, connStr, cwd, modelDir string) (*codegen.AnalyzeIR, error) {
 	attrs, err := generateAttributeIR(&slct.analyzeAttrs)
+	if err != nil {
+		return nil, err
+	}
+
+	trainIR, err := generateTrainIRByModel(slct, connStr, cwd, modelDir)
 	if err != nil {
 		return nil, err
 	}
@@ -108,8 +120,7 @@ func generateAnalyzeIR(slct *extendedSelect, connStr string) (*codegen.AnalyzeIR
 		Select:     slct.standardSelect.String(),
 		Attributes: attrs,
 		Explainer:  slct.explainer,
-		// TrainIR is the TrainIR used for generating the training job of the corresponding model
-		// TrainIR TrainIR
+		TrainIR:    trainIR,
 	}, nil
 }
 
