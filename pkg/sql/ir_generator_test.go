@@ -14,6 +14,7 @@
 package sql
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -152,6 +153,9 @@ INTO mymodel;`
 }
 
 func TestGeneratePredictIR(t *testing.T) {
+	if getEnv("SQLFLOW_TEST_DB", "mysql") == "hive" {
+		t.Skip(fmt.Sprintf("%s: skip Hive test", getEnv("SQLFLOW_TEST_DB", "mysql")))
+	}
 	a := assert.New(t)
 	parser := newParser()
 	predSQL := `SELECT * FROM iris.test
