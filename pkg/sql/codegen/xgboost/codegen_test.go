@@ -34,7 +34,7 @@ func TestTrain(t *testing.T) {
 	}
 	_ = `SELECT *
 		FROM iris.train
-	TO TRAIN xgboost.gbtree
+	TRAIN xgboost.gbtree
 	WITH
 		objective = "multi:softprob"
 		eta = 3.1,

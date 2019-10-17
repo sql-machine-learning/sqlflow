@@ -30,7 +30,7 @@ func TestGenerateTrainIR(t *testing.T) {
 
 	normal := `SELECT c1, c2, c3,c4
 FROM my_table
-TO TRAIN DNNClassifier
+TRAIN DNNClassifier
 WITH model.n_classes=2, train.optimizer="adam", model.stddev=0.001, model.hidden_units=[128,64]
 COLUMN c1,NUMERIC(c2, [128, 32]),CATEGORY_ID(c3, 512),
        SEQ_CATEGORY_ID(c3, 512),

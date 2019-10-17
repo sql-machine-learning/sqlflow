@@ -23,7 +23,7 @@ import (
 
 const (
 	trainStatement = `select c1, c2, c3 from kaggle_credit_fraud_training_data 
-		TO TRAIN DNNClassifier 
+		TRAIN DNNClassifier 
 		WITH 
 			%v
 		COLUMN

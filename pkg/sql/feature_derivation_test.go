@@ -67,7 +67,7 @@ func TestFeatureDerivation(t *testing.T) {
 	parser := newParser()
 
 	normal := `select c1, c2, c3, c4, c5, c6, class from feature_derivation_case.train
-	TO TRAIN DNNClassifier
+	TRAIN DNNClassifier
 	WITH model.n_classes=2
 	COLUMN EMBEDDING(c3, 128, sum), EMBEDDING(SPARSE(c5, 10000, COMMA), 128, sum)
 	LABEL class INTO model_table;`
@@ -135,7 +135,7 @@ func TestFeatureDerivation(t *testing.T) {
 	a.Equal(7, len(trainIR.Features["feature_columns"]))
 
 	crossSQL := `select c1, c2, c3, class from feature_derivation_case.train
-	TO TRAIN DNNClassifier
+	TRAIN DNNClassifier
 	WITH model.n_classes=2
 	COLUMN c1, c2, CROSS([c1, c2], 256)
 	LABEL class INTO model_table;`

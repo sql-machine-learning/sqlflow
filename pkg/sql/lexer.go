@@ -132,7 +132,6 @@ func (l *lexer) emitIdentOrKeyword(lval *sqlSymType) int {
 		"OR":      OR,
 		"NOT":     NOT,
 		"AS":      AS,
-		"TO":      TO,
 	}
 	if typ, ok := keywds[strings.ToUpper(l.input[l.start:l.pos])]; ok {
 		return l.emit(lval, typ)

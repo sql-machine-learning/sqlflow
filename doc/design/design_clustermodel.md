@@ -22,13 +22,13 @@ The figure below demonstrates the overall workflow for cluster model training, w
 
 In this scenario, we focus on the extraction of data patterns in unsupervised learning. 
 
-So, the user can use `TO TRAIN` keyword to training a model. The user can also specify the training hyper-parameters with the keyword `WITH` and determine whether to use pre-trained model by `USING`. The training and predicting syntax looks like:
+So, the user can use `TRAIN` keyword to training a model. The user can also specify the training hyper-parameters with the keyword `WITH` and determine whether to use pre-trained model by `USING`. The training and predicting syntax looks like:
 
-TO TRAIN SQL:
+TRAIN SQL:
 
 ``` sql
 SELECT * FROM input_table
-TO TRAIN clusterModel
+TRAIN clusterModel
 WITH
     model.encode_units = [100, 7]
     model.n_clusters = 5
@@ -38,12 +38,12 @@ USING existed_pretrain_model
 INTO my_cluster_model;
 ```
 
-TO PREDICT SQL:
+PREDICT SQL:
 
 ``` sql
 SELECT *
 FROM input_table
-TO PREDICT output_table.group_id
+PREDICT output_table.group_id
 USING my_cluster_model;
 ```
 
@@ -108,7 +108,7 @@ Therefore, there are four cases in total:
 
 - In the first stage of the clustering model on SQLFlow, we plan to achieve the `first case`. We will achieve the other cases in the later. 
 
-- Users can use the trained cluster model in ` TO PREDICT SQL` to predict the group of input_table to get output_table.
+- Users can use the trained cluster model in ` PREDICT SQL` to predict the group of input_table to get output_table.
 
 - Finally, the user can perform a combined aggregation operation on the output_table based on the SQL statement to obtain a result_table, which can be saved to the local dataframe and then analyzed according to his own needs.
 

@@ -8,13 +8,13 @@ This design doc introduces how to support the `Analyze SQL` in SQLFlow with SHAP
 
 ## User Interface
 
-Users usually use a **TO TRAIN SQL** to train a model and then analyze the model using an **ANALYZE SQL**, the simple pipeline like:
+Users usually use a **TRAIN SQL** to train a model and then analyze the model using an **ANALYZE SQL**, the simple pipeline like:
 
 Train SQL:
 
 ``` sql
 SELECT * FROM train_table
-TO TRAIN xgboost.Estimator
+TRAIN xgboost.Estimator
 WITH
     train.objective = "reg:linear"
 COLUMN x

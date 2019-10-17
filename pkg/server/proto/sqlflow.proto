@@ -14,7 +14,7 @@ service SQLFlow {
     // SQL statements like `USE database`, `DELETE` returns only a success
     // message.
     //
-    // SQL statement like `SELECT ... TO TRAIN/PREDICT ...` returns a stream of
+    // SQL statement like `SELECT ... TRAIN/PREDICT ...` returns a stream of
     // messages which indicates the training/predicting progress
     rpc Run (Request) returns (stream Response);
 }
@@ -30,7 +30,7 @@ message Session {
 // e.g.
 //      1. `SELECT ...`
 //      2. `USE ...`, `DELETE ...`
-//      3. `SELECT ... TO TRAIN/PREDICT ...`
+//      3. `SELECT ... TRAIN/PREDICT ...`
 message Request {
     string sql = 1;		// The SQL statement to be executed.
     Session session = 2;
@@ -62,7 +62,7 @@ message Row {
 // SQL statements like `USE database`, `DELETE` returns only a success
 // message.
 //
-// SQL statement like `SELECT ... TO TRAIN/PREDICT ...` returns a stream of
+// SQL statement like `SELECT ... TRAIN/PREDICT ...` returns a stream of
 // messages which indicates the training/predicting progress
 message Message {
   string message = 1;
