@@ -839,7 +839,7 @@ WITH
 			engine.docker_image_repository = "",
 			engine.envs = "",
 			engine.job_name = "test-odps",
-			engine.image_base = "elasticdl:ci",
+			engine.image_base = "elasticdl:ci"
 COLUMN
 			sepal_length, sepal_width, petal_length, petal_width
 LABEL class
