@@ -48,7 +48,7 @@ Instead of writing a Python program with a lot of boilerplate code, this can be 
 
 ```
 SELECT * FROM iris.train
-TO TRAIN DNNClassifer
+TRAIN DNNClassifer
 WITH hidden_units = [10, 10], n_classes = 3, EPOCHS = 10
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
@@ -68,7 +68,7 @@ SELECT select_expr [, select_expr ...]
 FROM table_references
   [WHERE where_condition]
   [LIMIT row_count]
-TO TRAIN model_identifier
+TRAIN model_identifier
 [WITH
   model_attr_expr [, model_attr_expr ...]
   [, train_attr_expr ...]]
@@ -104,15 +104,15 @@ SELECT *
 FROM iris.train
 WHERE class = 0 OR class = 1
 LIMIT 1000
-TO TRAIN ...
+TRAIN ...
 ```
 
 ### Train Clause
 
-The *train clause* describes the specific model type and the way the model is trained, e.g. `TO TRAIN DNNClassifer WITH hidden_units = [10, 10], n_classes = 3, EPOCHS = 10`.
+The *train clause* describes the specific model type and the way the model is trained, e.g. `TRAIN DNNClassifer WITH hidden_units = [10, 10], n_classes = 3, EPOCHS = 10`.
 
 ```
-TO TRAIN model_identifier
+TRAIN model_identifier
 WITH
   model_attr_expr [, model_attr_expr ...]
   [, train_attr_expr ...]
@@ -126,7 +126,7 @@ For example, if you want to train a `DNNClassifier`, which has two hidden layers
 
 ```
 SELECT ...
-TO TRAIN DNNClassifer
+TRAIN DNNClassifer
 WITH
   model.hidden_units = [10, 10],
   model.n_classes = 3,
@@ -151,7 +151,7 @@ For example, if you want to use fields `sepal_length`, `sepal_width`, `petal_len
 
 ```
 SELECT ...
-TO TRAIN ...
+TRAIN ...
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 ...
 ```
@@ -314,7 +314,7 @@ SELECT select_expr [, select_expr ...]
 FROM table_references
   [WHERE where_condition]
   [LIMIT row_count]
-TO PREDICT result_table_reference
+PREDICT result_table_reference
 [WITH
   attr_expr [, attr_expr ...]]
 USING model_table_reference;
@@ -329,7 +329,7 @@ The [select clause](#select-clause) syntax is the same as the select clause synt
 The *predict clause* describes the result table that a prediction job should write to, the table a prediction job should load the model from, and necessary configuration attributes for a prediction job.
 
 ```
-TO PREDICT result_table_reference
+PREDICT result_table_reference
 [WITH
   attr_expr [, attr_expr ...]]
 USING model_table_reference;
@@ -343,7 +343,7 @@ For example, if we want to save the predicted result into table `iris.predict` a
 
 ```
 SELECT ...
-TO PREDICT iris.predict.class
+PREDICT iris.predict.class
 USING sqlflow.my_dnn_model;
 ```
 

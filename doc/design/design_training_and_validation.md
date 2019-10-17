@@ -15,7 +15,7 @@ Splitting the training table into training data and validation data is the key p
 ```SQL
 SELECT col1, col2, col3
 FROM mytable
-TO TRAIN ...​
+TRAIN ...​
 ```
 
 The data comes from the standard select part `SELECT col1, col2, col3 FROM mytable`, and let's say the query result looks like the following

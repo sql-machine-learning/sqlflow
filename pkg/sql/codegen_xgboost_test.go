@@ -23,7 +23,7 @@ import (
 const testXGBoostTrainSelectIris = ` 
 SELECT *
 FROM iris.train
-TO TRAIN xgboost.gbtree
+TRAIN xgboost.gbtree
 WITH
     objective="multi:softprob",
     train.num_boost_round = 30,
@@ -42,7 +42,7 @@ USING TreeExplainer;
 const testXGBoostPredictIris = ` 
 SELECT *
 FROM iris.test
-TO PREDICT iris.predict.class
+PREDICT iris.predict.class
 USING sqlflow_models.my_xgboost_model;
 `
 

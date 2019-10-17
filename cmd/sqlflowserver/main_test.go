@@ -529,7 +529,7 @@ func CaseTrainSQL(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`SELECT *
 FROM %s.%s
-TO TRAIN DNNClassifier
+TRAIN DNNClassifier
 WITH model.n_classes = 3, model.hidden_units = [10, 20]
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
@@ -551,7 +551,7 @@ INTO sqlflow_models.my_dnn_model;`, caseDB, caseTrainTable)
 	ParseRow(stream)
 	predSQL := fmt.Sprintf(`SELECT *
 FROM %s.%s
-TO PREDICT %s.%s.class
+PREDICT %s.%s.class
 USING sqlflow_models.my_dnn_model;`, caseDB, caseTestTable, caseDB, casePredictTable)
 
 	stream, err = cli.Run(ctx, sqlRequest(predSQL))
@@ -587,7 +587,7 @@ func CaseTrainCustomModel(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := `SELECT *
 FROM iris.train
-TO TRAIN sqlflow_models.DNNClassifier
+TRAIN sqlflow_models.DNNClassifier
 WITH model.n_classes = 3, model.hidden_units = [10, 20]
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
@@ -610,7 +610,7 @@ INTO sqlflow_models.my_dnn_model_custom;`
 
 	predSQL := `SELECT *
 FROM iris.test
-TO PREDICT iris.predict.class
+PREDICT iris.predict.class
 USING sqlflow_models.my_dnn_model_custom;`
 
 	stream, err = cli.Run(ctx, sqlRequest(predSQL))
@@ -643,7 +643,7 @@ func CaseTrainTextClassification(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := `SELECT *
 FROM text_cn.train_processed
-TO TRAIN DNNClassifier
+TRAIN DNNClassifier
 WITH model.n_classes = 17, model.hidden_units = [10, 20]
 COLUMN EMBEDDING(CATEGORY_ID(news_title,16000,COMMA),128,mean)
 LABEL class_id
@@ -671,7 +671,7 @@ func CaseTrainTextClassificationCustomLSTM(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := `SELECT *
 FROM text_cn.train_processed
-TO TRAIN sqlflow_models.StackedBiLSTMClassifier
+TRAIN sqlflow_models.StackedBiLSTMClassifier
 WITH model.n_classes = 17, model.stack_units = [16], train.epoch = 1, train.batch_size = 32
 COLUMN EMBEDDING(SEQ_CATEGORY_ID(news_title,1600,COMMA),128,mean)
 LABEL class_id
@@ -697,7 +697,7 @@ func CaseTrainSQLWithHyperParams(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := `SELECT *
 FROM iris.train
-TO TRAIN DNNClassifier
+TRAIN DNNClassifier
 WITH model.n_classes = 3, model.hidden_units = [10, 20], train.batch_size = 10, train.epoch = 2
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
@@ -723,7 +723,7 @@ func CaseTrainDeepWideModel(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := `SELECT *
 FROM iris.train
-TO TRAIN DNNLinearCombinedClassifier
+TRAIN DNNLinearCombinedClassifier
 WITH model.n_classes = 3, model.dnn_hidden_units = [10, 20], train.batch_size = 10, train.epoch = 2
 COLUMN sepal_length, sepal_width FOR linear_feature_columns
 COLUMN petal_length, petal_width FOR dnn_feature_columns
@@ -751,7 +751,7 @@ func CaseTrainCustomModelWithHyperParams(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := `SELECT *
 FROM iris.train
-TO TRAIN sqlflow_models.DNNClassifier
+TRAIN sqlflow_models.DNNClassifier
 WITH model.n_classes = 3, model.hidden_units = [10, 20], train.batch_size = 10, train.epoch=2
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
@@ -777,7 +777,7 @@ func CaseSparseFeature(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := `SELECT *
 FROM text_cn.train
-TO TRAIN DNNClassifier
+TRAIN DNNClassifier
 WITH model.n_classes = 3, model.hidden_units = [10, 20]
 COLUMN EMBEDDING(CATEGORY_ID(news_title,16000,COMMA),128,mean)
 LABEL class_id
@@ -804,12 +804,12 @@ func CaseTrainElasticDL(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`SELECT sepal_length, sepal_width, petal_length, petal_width, class
 FROM %s.%s
-TO TRAIN ElasticDLDNNClassifier
+TRAIN ElasticDLDNNClassifier
 WITH
 			model.optimizer = "optimizer",
 			model.loss = "loss",
 			model.eval_metrics_fn = "eval_metrics_fn",
-			model.num_classes = 10,
+			model.num_classes = 3,
 			model.dataset_fn = "dataset_fn",
 			train.shuffle = 120,
 			train.epoch = 2,
@@ -822,28 +822,26 @@ WITH
 			eval.start_delay_secs = 100,
 			eval.throttle_secs = 0,
 			eval.checkpoint_filename_for_init = "",
-			engine.docker_image_prefix = "",
 			engine.master_resource_request = "cpu=400m,memory=1024Mi",
-			engine.master_resource_limit = "cpu=400m,memory=1024Mi",
+			engine.master_resource_limit = "cpu=1,memory=2048Mi",
 			engine.worker_resource_request = "cpu=400m,memory=2048Mi",
 			engine.worker_resource_limit = "cpu=1,memory=3072Mi",
 			engine.num_workers = 2,
 			engine.volume = "",
-			engine.image_pull_policy = "Always",
+			engine.image_pull_policy = "Never",
 			engine.restart_policy = "Never",
 			engine.extra_pypi_index = "",
 			engine.namespace = "default",
 			engine.minibatch_size = 64,
 			engine.master_pod_priority = "",
 			engine.cluster_spec = "",
-			engine.num_minibatches_per_task = 10,
+			engine.num_minibatches_per_task = 2,
 			engine.docker_image_repository = "",
 			engine.envs = ""
 COLUMN
 			sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO trained_elasticdl_keras_classifier;`, os.Getenv("MAXCOMPUTE_PROJECT"), "sqlflow_test_iris_train")
-
 	conn, err := createRPCConn()
 	a.NoError(err)
 	defer conn.Close()
@@ -866,7 +864,7 @@ func CaseTrainALPS(t *testing.T) {
 	trainSQL := fmt.Sprintf(`SELECT deep_id, user_space_stat, user_behavior_stat, space_stat, l
 FROM %s.sparse_column_test
 LIMIT 100
-TO TRAIN DNNClassifier
+TRAIN DNNClassifier
 WITH model.n_classes = 2, model.hidden_units = [10, 20], train.batch_size = 10, engine.ps_num=0, engine.worker_num=0, engine.type=local
 COLUMN SPARSE(deep_id,15033,COMMA,int),
        SPARSE(user_space_stat,310,COMMA,int),
@@ -901,7 +899,7 @@ func CaseTrainALPSRemoteModel(t *testing.T) {
 	trainSQL := fmt.Sprintf(`SELECT deep_id, user_space_stat, user_behavior_stat, space_stat, l
 FROM %s.sparse_column_test
 LIMIT 100
-TO TRAIN models.estimator.dnn_classifier.DNNClassifier
+TRAIN models.estimator.dnn_classifier.DNNClassifier
 WITH 
 	model.n_classes = 2, model.hidden_units = [10, 20], train.batch_size = 10, engine.ps_num=0, engine.worker_num=0, engine.type=local,
 	gitlab.project = "Alps/sqlflow-models",
@@ -940,7 +938,7 @@ func CaseTrainALPSFeatureMap(t *testing.T) {
 	trainSQL := fmt.Sprintf(`SELECT dense, deep, item, test_sparse_with_fm.label
 FROM %s.test_sparse_with_fm
 LIMIT 32
-TO TRAIN alipay.SoftmaxClassifier
+TRAIN alipay.SoftmaxClassifier
 WITH train.max_steps = 32, eval.steps=32, train.batch_size=8, engine.ps_num=0, engine.worker_num=0, engine.type = local
 COLUMN DENSE(dense, none, comma),
        DENSE(item, 1, comma, int)
@@ -991,7 +989,7 @@ func CaseTrainRegression(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`SELECT *
 FROM housing.train
-TO TRAIN LinearRegressor
+TRAIN LinearRegressor
 WITH model.label_dimension=1
 COLUMN f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13
 LABEL target
@@ -1014,7 +1012,7 @@ INTO sqlflow_models.my_regression_model;`)
 
 	predSQL := fmt.Sprintf(`SELECT *
 FROM housing.test
-TO PREDICT housing.predict.target
+PREDICT housing.predict.target
 USING sqlflow_models.my_regression_model;`)
 
 	stream, err = cli.Run(ctx, sqlRequest(predSQL))
@@ -1053,7 +1051,7 @@ func CaseTrainXGBoostRegression(t *testing.T) {
 	trainSQL := fmt.Sprintf(`
 SELECT *
 FROM housing.train
-TO TRAIN xgboost.gbtree
+TRAIN xgboost.gbtree
 WITH
 		objective="reg:squarederror",
 		train.num_boost_round = 30
@@ -1090,7 +1088,7 @@ func CasePredictXGBoostRegression(t *testing.T) {
 
 	predSQL := fmt.Sprintf(`SELECT *
 FROM housing.test
-TO PREDICT housing.xgb_predict.target
+PREDICT housing.xgb_predict.target
 USING sqlflow_models.my_xgb_regression_model;`)
 
 	stream, err := cli.Run(ctx, sqlRequest(predSQL))

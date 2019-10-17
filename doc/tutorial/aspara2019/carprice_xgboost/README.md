@@ -53,7 +53,7 @@ Let's train an XGBoost model on the dataset. We prefer to train the model for `3
 and using `squarederror` loss function that the SQLFLow extended SQL can be like:
 
 ``` text
-TO TRAIN xgboost.gbtree
+TRAIN xgboost.gbtree
 WITH
     train.num_boost_round=300,
     objective="reg:squarederror"
@@ -80,13 +80,13 @@ To save the trained model, we can use `INTO clause` to specify a model name:
 INTO sqlflow_models.my_xgb_regression_model
 ```
 
-Finally, the following is the SQLFlow TO TRAIN statement of this regression task; you can run it in the cell:
+Finally, the following is the SQLFlow TRAIN statement of this regression task; you can run it in the cell:
 
 ```sql
 %%sqlflow
 SELECT *
 FROM carprice.train
-TO TRAIN xgboost.gbtree
+TRAIN xgboost.gbtree
 WITH
     objective="reg:squarederror",
     train.num_boost_round = 300,
@@ -106,10 +106,10 @@ First, we can specify the trained model by USING clause:
 USING sqlflow_models.my_xgb_regression_model
 ```
 
-Then, we can specify the prediction result table by TO PREDICT clause:
+Then, we can specify the prediction result table by PREDICT clause:
 
 ```text
-TO PREDICT carprice.predict.msrp
+PREDICT carprice.predict.msrp
 ```
 
 And using a standard SQL to fetch the prediction data.
@@ -123,7 +123,7 @@ Finally, the following is the SQLFLow Prediction statement:
 ```sql
 %%sqlflow
 SELECT * FROM carprice.test
-TO PREDICT carprice.predict.msrp
+PREDICT carprice.predict.msrp
 USING sqlflow_models.my_xgb_regression_model;
 ```
 

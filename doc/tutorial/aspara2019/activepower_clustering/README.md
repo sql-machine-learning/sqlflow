@@ -45,7 +45,7 @@ SELECT * FROM activepower.train;
 
 We can specify the training configurations in the WITH clause. For example, we can set the number of clustering categories to 3, pre-train epochs to 10, etc..
 ```text
-TO TRAIN DeepEmbeddingClusterModel
+TRAIN DeepEmbeddingClusterModel
 WITH
     model.n_clusters=3,
     model.pretrain_epochs=10,
@@ -61,11 +61,11 @@ COLUMN m1,m2,m3,m4,m5,m6,m7,m8,m9,m10...
 INTO sqlflow_models.my_customized_model
 ```
 
-Putting it all together, the following is the SQLFlow TO TRAIN statement of this clustering task. You can run it in the cell:
+Putting it all together, the following is the SQLFlow TRAIN statement of this clustering task. You can run it in the cell:
 ```sql
 %%sqlflow
 SELECT * FROM activepower.train
-TO TRAIN sqlflow_models.DeepEmbeddingClusterModel
+TRAIN sqlflow_models.DeepEmbeddingClusterModel
 WITH
   model.n_clusters=3,
   model.pretrain_epochs=10,
@@ -86,9 +86,9 @@ Firstly, we can use a standard SQL to fetch the prediction data:
 SELECT * FROM activepower.train.
 ```
 
-Next, we can specify the prediction result table by TO PREDICT clause:
+Next, we can specify the prediction result table by PREDICT clause:
 ```text
-TO PREDICT activepower.predict.class
+PREDICT activepower.predict.class
 ```
 
 Then, we can specify the trained model by USING clause:
@@ -101,7 +101,7 @@ Putting it all together, the following is the SQLFLow Prediction statement:
 %%sqlflow
 SELECT * 
 FROM activepower.train
-TO PREDICT activepower.predict.class
+PREDICT activepower.predict.class
 USING sqlflow_models.my_customized_model;
 ```
 

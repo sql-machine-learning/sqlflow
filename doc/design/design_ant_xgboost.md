@@ -33,7 +33,7 @@ Comparing to python API provided by `xgboost`, it is easier to build a python co
 ### User Experience
     
 In terms of sqlflow users, xgboost is an alternative `Estimator` like `TensorFlow Estimators`. 
-Working with xgboost is quite similar to working with TensorFlow Estimators; just change `TO TRAIN DNNClassifier` into `TO TRAIN XGBoostEstimator`. 
+Working with xgboost is quite similar to working with TensorFlow Estimators; just change `TRAIN DNNClassifier` into `TRAIN XGBoostEstimator`. 
 
 In addition, xgboost specific parameters can be configured in the same way as TensorFlow parameters. 
 
@@ -44,7 +44,7 @@ Below is a demo about training/predicting via xgboost :
 select 
     c1, c2, c3, c4, c5 as class
 from kaggle_credit_fraud_training_data
-TO TRAIN XGBoostEstimator
+TRAIN XGBoostEstimator
 WITH
   booster = "gbtree"
   objective = "logistic:binary"
@@ -62,7 +62,7 @@ INTO sqlflow_models.xgboost_model_table;
 select 
     c1, c2, c3, c4
 from kaggle_credit_fraud_development_data
-TO PREDICT kaggle_credit_fraud_development_data.class
+PREDICT kaggle_credit_fraud_development_data.class
 USING sqlflow_models.xgboost_model_table;
 ```
 

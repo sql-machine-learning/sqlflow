@@ -34,7 +34,7 @@ func TestTrainCodegen(t *testing.T) {
 	}
 	_ = `SELECT *
 		FROM iris.train
-	TO TRAIN DNNClassifier
+	TRAIN DNNClassifier
 	WITH train.batch_size=4,
 		 train.epoch=3,
 		 model.hidden_units=[10,20],
@@ -67,7 +67,7 @@ func TestTrainCodegen(t *testing.T) {
 		Select:      "select * from iris.test;",
 		ResultTable: "iris.predict",
 		Attributes:  make(map[string]interface{}),
-		TrainIR:     ir,
+		TrainIR:     &ir,
 	}
 	_, err = Pred(predIR)
 	a.NoError(err)

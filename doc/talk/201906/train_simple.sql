@@ -1,4 +1,4 @@
 SELECT * FROM survey 
-TO TRAIN DNNRegressor 
+TRAIN DNNRegressor 
 LABEL income
 INTO my_model;

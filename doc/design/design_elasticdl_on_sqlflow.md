@@ -12,7 +12,7 @@ This is a design doc on integration with [ElasticDL](https://github.com/wangkuiy
 SELECT
     c1, c2, c3, c4, c5 as class
 FROM training_data
-TO TRAIN ElasticDLKerasClassifier
+TRAIN ElasticDLKerasClassifier
 WITH
   optimizer = "optimizer",
   loss = "loss",
@@ -33,7 +33,7 @@ INTO trained_elasticdl_keras_classifier;
 SELECT
     c1, c2, c3, c4
 FROM prediction_data
-TO PREDICT prediction_results_table
+PREDICT prediction_results_table
 WITH
   num_classes = 10
 USING trained_elasticdl_keras_classifier;
@@ -47,7 +47,7 @@ Users can provide run-time configurations to ElasticDL job via additional parame
 SELECT
     c1, c2, c3, c4, c5 as class
 FROM training_data
-TO TRAIN ElasticDLKerasClassifier
+TRAIN ElasticDLKerasClassifier
 WITH
   optimizer = "optimizer",
   loss = "loss",
@@ -73,7 +73,7 @@ INTO trained_elasticdl_keras_classifier;
 Steps:
 
 1. Based on `SELECT ... FROM ...`, read ODPS table and write it to [RecordIO](https://github.com/wangkuiyi/recordio) files, including both features and labels. These files will be stored in [Kubernetes Persistent Volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/). In the future, we will support reading ODPS table directly without having to convert it to RecordIO files.
-2. Generate model definition file (e.g. [cifar10_functional_api.py](https://github.com/wangkuiyi/elasticdl/blob/develop/model_zoo/cifar10_functional_api/cifar10_functional_api.py)) that will be used in `TO TRAIN` clause, which includes:
+2. Generate model definition file (e.g. [cifar10_functional_api.py](https://github.com/wangkuiyi/elasticdl/blob/develop/model_zoo/cifar10_functional_api/cifar10_functional_api.py)) that will be used in `TRAIN` clause, which includes:
 
    - In model definition function e.g. `custom_model()`, we need to configure model input and output shapes correctly in `inputs = tf.keras.layers.Input(shape=<input_shape>)` (only when the model is defined using `tf.keras` functional APIs) and `outputs = tf.keras.layers.Dense(<num_classes>)`(based on `COLUMN ... LABEL ...`). For this MVP, users can provide `<input_shape>` and `<num_classes>` using `WITH` clause which will then get passed to the model constructor `custom_model(input_shape, num_classes)` via `--params` argument in ElasticDL high-level API. In the future, this will be inferred from the ODPS table.
    - Pass additional parameters from `WITH` clause to `custom_model()`'s instantiation, such as `optimizer` and `loss`.

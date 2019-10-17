@@ -22,7 +22,7 @@ ipython = get_ipython()
 
 class TestSQLFlowMagic(unittest.TestCase):
     train_statement = """SELECT * FROM iris.train
-		TO TRAIN ElasticDLKerasClassifier 
+		TRAIN ElasticDLKerasClassifier 
 		WITH
 			model.num_classes = 10,
 			train.shuffle = 120,

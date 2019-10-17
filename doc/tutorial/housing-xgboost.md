@@ -45,7 +45,7 @@ First, let's train an XGBoost regression model to fit the boston housing dataset
 and using `squarederror` loss function that the SQLFLow extended SQL can be like:
 
 ```
-TO TRAIN xgboost.gbtree
+TRAIN xgboost.gbtree
 WITH
     train.num_boost_round=30,
     objective="reg:squarederror"
@@ -77,7 +77,7 @@ Finally, the following is the SQLFlow Train statment of this regression task, yo
 ```sql
 %%sqlflow
 SELECT * FROM boston.train
-TO TRAIN xgboost.gbtree
+TRAIN xgboost.gbtree
 WITH
     objective="reg:squarederror",
     train.num_boost_round = 30
@@ -95,10 +95,10 @@ First, we can specify the trained model by `USING clause`:
 USING sqlflow_models.my_xgb_regression_model
 ```
 
-Than, we can specify the prediction result table by `TO PREDICT clause`:
+Than, we can specify the prediction result table by `PREDICT clause`:
 
 ```
-TO PREDICT boston.predict.medv
+PREDICT boston.predict.medv
 ```
 
 And using a standar SQL to fetch the prediction data:
@@ -112,7 +112,7 @@ Finally, the following is the SQLFLow Prediction statment:
 ```sql
 %%sqlflow
 SELECT * FROM boston.test
-TO PREDICT boston.predict.medv
+PREDICT boston.predict.medv
 USING sqlflow_models.my_xgb_regression_model;
 ```
 

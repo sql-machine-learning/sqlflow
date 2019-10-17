@@ -27,7 +27,7 @@ func TestTrainElasticDLFiller(t *testing.T) {
 	parser := newParser()
 
 	wndStatement := `SELECT * FROM iris.train
-		TO TRAIN ElasticDLKerasClassifier 
+		TRAIN ElasticDLKerasClassifier 
 		WITH
 			model.optimizer = "optimizer",
 			model.loss = "loss",
@@ -87,14 +87,14 @@ func TestTrainElasticDLFiller(t *testing.T) {
 	a.True(strings.Contains(code, `label_col_name = "class"`), code)
 	a.True(strings.Contains(code, `features_shape = (4, 1)`), code)
 	a.True(strings.Contains(code, `inputs = tf.keras.layers.Input(shape=(4, 1), name="input")`), code)
-	a.True(strings.Contains(code, `outputs = tf.keras.layers.Dense(10, name="output")(inputs)`), code)
+	a.True(strings.Contains(code, `outputs = tf.keras.layers.Dense(10, name="output")(x)`), code)
 }
 
 func TestPredElasticDLFiller(t *testing.T) {
 	a := assert.New(t)
 	parser := newParser()
 	predStatement := `SELECT sepal_length, sepal_width, petal_length, petal_width FROM iris.test
-		TO PREDICT prediction_results_table
+		PREDICT prediction_results_table
 		WITH
 			model.num_classes = 10
 		USING trained_elasticdl_keras_classifier;`
@@ -115,7 +115,7 @@ func TestPredElasticDLFiller(t *testing.T) {
 	a.NoError(e)
 
 	code := program.String()
-	a.True(strings.Contains(code, `tf.keras.layers.Dense(10, name="output")(inputs)`), code)
+	a.True(strings.Contains(code, `tf.keras.layers.Dense(10, name="output")(x)`), code)
 	a.True(strings.Contains(code, `columns=["pred_" + str(i) for i in range(10)]`), code)
 	a.True(strings.Contains(code, `column_types=["double" for _ in range(10)]`), code)
 	a.True(strings.Contains(code, `table="prediction_results_table"`), code)
