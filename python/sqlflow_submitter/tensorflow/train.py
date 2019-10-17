@@ -49,7 +49,7 @@ def parse_sparse_feature(features, label, feature_column_names, feature_metas):
     return features_dict, label
 
 
-def train(is_keara_model,
+def train(is_keras_model,
           datasource,
           estimator,
           select,
@@ -66,7 +66,7 @@ def train(is_keara_model,
     conn = connect_with_data_source(datasource)
 
     model_dir_code = ""
-    if not is_keara_model:
+    if not is_keras_model:
         model_dir_code = ", model_dir=\"%s\"" % save
     estimator_create_code = "%s(%s, %s%s)" % (
         estimator,
@@ -95,7 +95,7 @@ def train(is_keara_model,
         dataset = input_fn(select)
         # TODO(typhoonzero): add prefetch, cache if needed.
         dataset = dataset.shuffle(1000).batch(batch_size)
-        if not is_keara_model:
+        if not is_keras_model:
             dataset = dataset.repeat(epochs if epochs else 1)
         return dataset
 
@@ -103,7 +103,7 @@ def train(is_keara_model,
         dataset = input_fn(validate_select)
         return dataset.batch(batch_size)
 
-    if is_keara_model:
+    if is_keras_model:
         classifier.compile(optimizer=classifier.default_optimizer(),
             loss=classifier.default_loss(),
             metrics=["accuracy"])
