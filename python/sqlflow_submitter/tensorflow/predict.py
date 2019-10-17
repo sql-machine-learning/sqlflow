@@ -62,7 +62,7 @@ class FastPredict:
         except Exception as e:
             print("Exception in fast_predict. This is probably OK: %s" % e)
 
-def pred(is_keara_model,
+def pred(is_keras_model,
          datasource,
          estimator,
          select,
@@ -78,7 +78,7 @@ def pred(is_keara_model,
          verbose=0):
     conn = connect_with_data_source(datasource)
     model_dir_code = ""
-    if not is_keara_model:
+    if not is_keras_model:
         model_dir_code = ", model_dir=\"%s\"" % save
     estimator_create_code = "%s(%s, %s%s)" % (
         estimator,
@@ -89,7 +89,7 @@ def pred(is_keara_model,
 
     classifier = eval(estimator_create_code)
 
-    if is_keara_model:
+    if is_keras_model:
         def eval_input_fn(batch_size):
             feature_types = []
             for name in feature_column_names:

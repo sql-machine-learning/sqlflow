@@ -62,7 +62,7 @@ model_params=dict()
 model_params["{{$k}}"]={{$v | attrToPythonValue}},
 {{end}}
 
-train(is_keara_model={{.IsKerasModel}},
+train(is_keras_model={{.IsKerasModel}},
     datasource="{{.DataSource}}"
     estimator="{{.Estimator}}",
     select="""{{.TrainSelect}}""",
