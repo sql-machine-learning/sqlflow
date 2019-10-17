@@ -20,11 +20,13 @@ import subprocess
 CSV_DELIMITER = '\001'
 
 class HiveDBWriter(BufferedDBWriter):
-    def __init__(self, conn, table_name, table_schema, buff_size=10000):
+    def __init__(self, conn, table_name, table_schema, buff_size=10000, hdfs_namenode_addr="", hive_location=""):
         super().__init__(conn, table_name, table_schema, buff_size)
         self.tmp_f = tempfile.NamedTemporaryFile(dir="./")
         self.f = open(self.tmp_f.name, "w")
         self.schema_idx = self._indexing_table_schema(table_schema)
+        self.hdfs_namenode_addr = hdfs_namenode_addr
+        self.hive_location = hive_location
     
     def _indexing_table_schema(self, table_schema):
         cursor = self.conn.cursor()
@@ -57,10 +59,30 @@ class HiveDBWriter(BufferedDBWriter):
         self.rows = []
 
     def write_hive_table(self):
-        hdfs_path = os.getenv("SQLFLOW_HIVE_LOCATION_ROOT_PATH", "/sqlflow")
-        namenode_addr = os.getenv("SQLFLOW_HDFS_NAMENODE_ADDR", "127.0.0.1:8020")
-        cmd_str = "hdfs dfs -copyFromLocal %s hdfs://%s%s/%s" % (self.tmp_f.name, namenode_addr, hdfs_path, self.table_name)
+        if self.hive_location == "":
+            hdfs_path = os.getenv("SQLFLOW_HIVE_LOCATION_ROOT_PATH", "/sqlflow")
+        else:
+            hdfs_path = self.hive_location
+        if self.hdfs_namenode_addr == "":
+            namenode_addr = os.getenv("SQLFLOW_HDFS_NAMENODE_ADDR", "127.0.0.1:8020")
+        else:
+            namenode_addr = self.hdfs_namenode_addr
+        # upload CSV to HDFS
+        cmd_str = "hdfs dfs -mkdir -p hdfs://%s%s/%s/" % (namenode_addr, hdfs_path, self.table_name)
         subprocess.check_output(cmd_str.split())
+        cmd_str = "hdfs dfs -copyFromLocal %s hdfs://%s%s/%s/" % (self.tmp_f.name, namenode_addr, hdfs_path, self.table_name)
+        subprocess.check_output(cmd_str.split())
+        # load CSV into Hive
+        cursor = self.conn.cursor()
+        load_sql = "LOAD DATA INPATH 'hdfs://%s%s/%s/' OVERWRITE INTO TABLE %s" % (
+            namenode_addr,
+            hdfs_path,
+            self.table_name,
+            self.table_name
+        )
+        cursor.execute(load_sql)
+        self.conn.commit()
+        cursor.close()
 
     def close(self):
         try:

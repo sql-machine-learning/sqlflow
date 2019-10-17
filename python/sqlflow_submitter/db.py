@@ -203,7 +203,7 @@ def db_generator(driver, conn, statement,
 
 
 @contextlib.contextmanager
-def buffered_db_writer(driver, conn, table_name, table_schema, buff_size=100):
+def buffered_db_writer(driver, conn, table_name, table_schema, buff_size=100, hdfs_namenode_addr="", hive_location=""):
     if driver == "maxcompute":
         w = db_writer.MaxComputeDBWriter(conn, table_name, table_schema, buff_size)
     elif driver == "mysql":
@@ -211,7 +211,8 @@ def buffered_db_writer(driver, conn, table_name, table_schema, buff_size=100):
     elif driver == "sqlite3":
         w = db_writer.SQLite3DBWriter(conn, table_name, table_schema, buff_size)
     elif driver == "hive":
-        w = db_writer.HiveDBWriter(conn, table_name, table_schema, buff_size)
+        w = db_writer.HiveDBWriter(conn, table_name, table_schema, buff_size,
+            hdfs_namenode_addr=hdfs_namenode_addr, hive_location=hive_location)
     else:
         raise ValueError("unrecognized database driver: %s" % driver)
 

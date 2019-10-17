@@ -51,7 +51,8 @@ func newAnalyzeFiller(pr *extendedSelect, db *DB, fms []*FeatureMeta, label, mod
 func readXGBFeatures(pr *extendedSelect, db *DB) ([]*FeatureMeta, string, error) {
 	// TODO(weiguo): It's a quick way to read column and label names from
 	// xgboost.*, but too heavy.
-	fr, err := newXGBFiller(pr, nil, db)
+	// NOTE(typhoonzero): analyze does not need to pass session to set hive_location etc.
+	fr, err := newXGBFiller(pr, nil, db, nil)
 	if err != nil {
 		return nil, "", err
 	}

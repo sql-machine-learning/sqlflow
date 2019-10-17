@@ -24,6 +24,9 @@ message Session {
     string db_conn_str = 2;
     bool exit_on_submit = 3;
     string user_id = 4;
+    // for loading CSV to hive
+    string hive_location = 5;
+    string hdfs_namenode_addr = 6;
 }
 
 // SQL statements to run

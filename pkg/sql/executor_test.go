@@ -205,7 +205,7 @@ func TestCreatePredictionTable(t *testing.T) {
 	predParsed, e := newParser().Parse(testPredictSelectIris)
 	a.NoError(e)
 	predParsed.trainClause = trainParsed.trainClause
-	a.NoError(createPredictionTable(predParsed, testDB))
+	a.NoError(createPredictionTable(predParsed, testDB, nil))
 }
 
 func TestIsQuery(t *testing.T) {

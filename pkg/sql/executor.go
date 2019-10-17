@@ -334,7 +334,7 @@ func runExtendedSQL(slct string, db *DB, modelDir string, session *pb.Session) *
 				if os.Getenv("SQLFLOW_submitter") == "alps" {
 					return alpsTrain(wr, pr, db, cwd, session, ds)
 				}
-				return train(wr, pr, db, cwd, modelDir, slct, ds)
+				return train(wr, pr, db, cwd, modelDir, slct, session, ds)
 			}
 
 			if pr.analyze {
@@ -347,7 +347,7 @@ func runExtendedSQL(slct string, db *DB, modelDir string, session *pb.Session) *
 			} else if os.Getenv("SQLFLOW_submitter") == "elasticdl" {
 				return elasticDLPredict(wr, pr, db, cwd, session, nil)
 			}
-			return pred(wr, pr, db, cwd, modelDir)
+			return pred(wr, pr, db, cwd, modelDir, session)
 		}()
 
 		if err != nil {
@@ -404,7 +404,7 @@ func (cw *logChanWriter) Close() {
 	}
 }
 
-func train(wr *PipeWriter, tr *extendedSelect, db *DB, cwd string, modelDir string, slct string, ds *trainAndValDataset) error {
+func train(wr *PipeWriter, tr *extendedSelect, db *DB, cwd string, modelDir string, slct string, session *pb.Session, ds *trainAndValDataset) error {
 	fts, e := verify(tr, db)
 	if e != nil {
 		return e
@@ -423,12 +423,12 @@ func train(wr *PipeWriter, tr *extendedSelect, db *DB, cwd string, modelDir stri
 			}
 			program.WriteString(code)
 		} else {
-			if e := genXGBoost(&program, tr, ds, fts, db); e != nil {
+			if e := genXGBoost(&program, tr, ds, fts, db, session); e != nil {
 				return fmt.Errorf("GenXGBoost %v", e)
 			}
 		}
 	} else {
-		if e := genTF(&program, tr, ds, fts, db); e != nil {
+		if e := genTF(&program, tr, ds, fts, db, session); e != nil {
 			return fmt.Errorf("genTF %v", e)
 		}
 	}
@@ -481,7 +481,7 @@ func loadModelMeta(pr *extendedSelect, db *DB, cwd, modelDir, modelName string) 
 	return pr, fts, nil
 }
 
-func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir string) error {
+func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir string, session *pb.Session) error {
 	pr, fts, e := loadModelMeta(pr, db, cwd, modelDir, pr.model)
 	if e != nil {
 		return fmt.Errorf("loadModelMeta %v", e)
@@ -489,11 +489,11 @@ func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir strin
 
 	var buf bytes.Buffer
 	if strings.HasPrefix(strings.ToUpper(pr.estimator), `XGBOOST.`) {
-		if e := genXGBoost(&buf, pr, nil, fts, db); e != nil {
+		if e := genXGBoost(&buf, pr, nil, fts, db, session); e != nil {
 			return fmt.Errorf("genXGBoost %v", e)
 		}
 	} else {
-		if e := genTF(&buf, pr, nil, fts, db); e != nil {
+		if e := genTF(&buf, pr, nil, fts, db, session); e != nil {
 			return fmt.Errorf("genTF %v", e)
 		}
 	}
@@ -539,7 +539,7 @@ func analyze(wr *PipeWriter, pr *extendedSelect, db *DB, cwd, modelDir string) e
 
 // Create prediction table with appropriate column type.
 // If prediction table already exists, it will be overwritten.
-func createPredictionTable(predParsed *extendedSelect, db *DB) error {
+func createPredictionTable(predParsed *extendedSelect, db *DB, session *pb.Session) error {
 	tableName, columnName, e := parseTableColumn(predParsed.into)
 	if e != nil {
 		return fmt.Errorf("invalid predParsed.into, %v", e)
@@ -582,11 +582,7 @@ func createPredictionTable(predParsed *extendedSelect, db *DB) error {
 		return e
 	}
 	if db.driverName == "hive" {
-		hdfsPath := os.Getenv("SQLFLOW_HIVE_LOCATION_ROOT_PATH")
-		if hdfsPath == "" {
-			hdfsPath = "/sqlflow"
-		}
-		fmt.Fprintf(&b, "%s %s) ROW FORMAT DELIMITED FIELDS TERMINATED BY \"\\001\" STORED AS TEXTFILE LOCATION \"%s/%s\" ;", columnName, stype, hdfsPath, tableName)
+		fmt.Fprintf(&b, "%s %s) ROW FORMAT DELIMITED FIELDS TERMINATED BY \"\\001\" STORED AS TEXTFILE;", columnName, stype)
 	} else {
 		fmt.Fprintf(&b, "%s %s);", columnName, stype)
 	}

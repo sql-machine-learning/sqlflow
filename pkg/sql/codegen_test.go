@@ -68,7 +68,7 @@ func TestCodeGenTrain(t *testing.T) {
 	fts, e := verify(r, testDB)
 	a.NoError(e)
 
-	a.NoError(genTF(ioutil.Discard, r, nil, fts, testDB))
+	a.NoError(genTF(ioutil.Discard, r, nil, fts, testDB, nil))
 }
 
 func TestCodeGenPredict(t *testing.T) {
@@ -84,7 +84,7 @@ func TestCodeGenPredict(t *testing.T) {
 	fts, e := verify(r, testDB)
 	a.NoError(e)
 
-	a.NoError(genTF(ioutil.Discard, r, nil, fts, testDB))
+	a.NoError(genTF(ioutil.Discard, r, nil, fts, testDB, nil))
 }
 
 func TestLabelAsStringType(t *testing.T) {
@@ -101,7 +101,7 @@ INTO sqlflow_models.my_dnn_model;`)
 
 	fts, e := verify(r, testDB)
 	a.NoError(e)
-	e = genTF(ioutil.Discard, r, nil, fts, testDB)
+	e = genTF(ioutil.Discard, r, nil, fts, testDB, nil)
 	a.NotNil(e)
 	a.True(strings.HasPrefix(e.Error(), "unsupported label data type:"))
 }
