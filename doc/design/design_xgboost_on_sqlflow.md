@@ -24,7 +24,7 @@ The following example shows how to predict using the model `my_xgb_model`.
 
 ``` sql
 SELECT * FROM test_table
-TO PREDICT pred_table.result
+PREDICT pred_table.result
 USING my_xgb_model;
 ```
 
@@ -42,4 +42,4 @@ The code generator `codegen_xgboost.go` outputs an XGBoost program in Python. It
 1. It tells the SQL engine to run the SELECT statement and retrieve the training/test data. It saves the data into a text file, which could be loaded by XGBoost using the DMatrix interface.
 1. Parse and resolve the WITH clause to fill the `xgboost.train` arguments and the XGBoost Parameters.
 1. Save the trained model on disk.
-1. For the TO PREDICT clause, it loads the trained model and test data and then outputs the prediction result to a SQL engine.
+1. For the PREDICT clause, it loads the trained model and test data and then outputs the prediction result to a SQL engine.

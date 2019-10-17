@@ -36,7 +36,7 @@ type TrainDescription struct {
 
 // SELECT *
 // FROM iris.test
-// TO PREDICT iris.predict.class
+// PREDICT iris.predict.class
 // USING sqlflow_models.my_dnn_model;
 type PredDescription struct {
     StandardSelect string // e.g. SELECT * FROM iris.test

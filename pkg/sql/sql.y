@@ -221,8 +221,8 @@ train_clause
 ;
 
 predict_clause
-: TO PREDICT IDENT USING IDENT { $$.into = $3; $$.model = $5 }
-| TO PREDICT IDENT WITH attrs USING IDENT { $$.into = $3; $$.predAttrs = $5; $$.model = $7 }
+: PREDICT IDENT USING IDENT { $$.into = $2; $$.model = $4 }
+| PREDICT IDENT WITH attrs USING IDENT { $$.into = $2; $$.predAttrs = $4; $$.model = $6 }
 ;
 
 analyze_clause

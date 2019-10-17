@@ -33,7 +33,7 @@ INTO trained_elasticdl_keras_classifier;
 SELECT
     c1, c2, c3, c4
 FROM prediction_data
-TO PREDICT prediction_results_table
+PREDICT prediction_results_table
 WITH
   num_classes = 10
 USING trained_elasticdl_keras_classifier;

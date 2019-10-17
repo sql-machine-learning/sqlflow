@@ -39,7 +39,7 @@ The current process:
 * Extended SQL Syntax
 - Some SQL+AI solutions use user-defined functions (UDF) to add AI features to SQL.
 - SQLFlow wants to work with many SQL engines (MySQL, Hive, SparkSQL, MaxCompute). It is intractable to reimplement a set of UDF for each of these engines.
-- SQLFlow extends SQL syntax by allowing users to append a TO TRAIN or TO PREDICT clause to a SELECT statement.
+- SQLFlow extends SQL syntax by allowing users to append a TO TRAIN or PREDICT clause to a SELECT statement.
 
 * The Architecture
 
@@ -56,7 +56,7 @@ The current process:
 * Challenges
 
 - How to convert SELECT results from a table of rows into models inputs (a tensor of float values).
-- How to call SQL engines’ native parser to parse the SELECT statement before the TO TRAIN/TO PREDICT clause.
+- How to call SQL engines’ native parser to parse the SELECT statement before the TO TRAIN/PREDICT clause.
 
 * Design: Feature Derivation
 
@@ -111,7 +111,7 @@ And this will generate feature column code like:
 
 * Design: Integrating Parsers
 
-If someone already has a complex SELECT statement for data cleaning and augmentation, he could simply add a TO TRAIN or TO PREDICT clause to enable AI.
+If someone already has a complex SELECT statement for data cleaning and augmentation, he could simply add a TO TRAIN or PREDICT clause to enable AI.
 
 Challenges:
 

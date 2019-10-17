@@ -165,7 +165,7 @@ INTO sqlflow_models.my_dense_dnn_model
 ;`, testDB, "", nil)
 		a.True(goodStream(stream.ReadAll()))
 		stream = Run(`SELECT * FROM iris.test_dense
-TO PREDICT iris.predict_dense.class
+PREDICT iris.predict_dense.class
 USING sqlflow_models.my_dense_dnn_model
 ;`, testDB, "", nil)
 		a.True(goodStream(stream.ReadAll()))

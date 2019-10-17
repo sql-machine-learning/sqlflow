@@ -38,12 +38,12 @@ USING existed_pretrain_model
 INTO my_cluster_model;
 ```
 
-TO PREDICT SQL:
+PREDICT SQL:
 
 ``` sql
 SELECT *
 FROM input_table
-TO PREDICT output_table.group_id
+PREDICT output_table.group_id
 USING my_cluster_model;
 ```
 
@@ -108,7 +108,7 @@ Therefore, there are four cases in total:
 
 - In the first stage of the clustering model on SQLFlow, we plan to achieve the `first case`. We will achieve the other cases in the later. 
 
-- Users can use the trained cluster model in ` TO PREDICT SQL` to predict the group of input_table to get output_table.
+- Users can use the trained cluster model in ` PREDICT SQL` to predict the group of input_table to get output_table.
 
 - Finally, the user can perform a combined aggregation operation on the output_table based on the SQL statement to obtain a result_table, which can be saved to the local dataframe and then analyzed according to his own needs.
 

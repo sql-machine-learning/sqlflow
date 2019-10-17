@@ -51,7 +51,7 @@ To predict using the trained model, we can type the following statement.
 ```sql
 sqlflow> SELECT *
 FROM iris.test
-TO PREDICT iris.predict.class
+PREDICT iris.predict.class
 USING sqlflow_models.my_dnn_model;
 
 ...

@@ -20,7 +20,7 @@ While splitting at the client-side is relatively simple to implement. We prefer 
 
 ### Splitting Technique: Hybrid Parser vs. Lexer
 
-The hybrid parser solution uses the third-party SQL parser (like [TiDB parser](https://github.com/pingcap/parser/blob/master/parser.y)) and SQLFlow parser to determine the end of an SQL statement. The third-party SQL parser first parses the extended SQL statement. It will raise error near SQLFlow extended keywords, like TO TRAIN and TO PREDICT. Then the SQLFlow parser starts from the error position and stops at the end of the first statement. However, this solution relies on the third-party SQL parser to report the error **accurately** on the keywords, like TO TRAIN and TO PREDICT, that it can't recognize.
+The hybrid parser solution uses the third-party SQL parser (like [TiDB parser](https://github.com/pingcap/parser/blob/master/parser.y)) and SQLFlow parser to determine the end of an SQL statement. The third-party SQL parser first parses the extended SQL statement. It will raise error near SQLFlow extended keywords, like TO TRAIN and PREDICT. Then the SQLFlow parser starts from the error position and stops at the end of the first statement. However, this solution relies on the third-party SQL parser to report the error **accurately** on the keywords, like TO TRAIN and PREDICT, that it can't recognize.
 
 The lexer solution scans the entire SQL statements, finds the `;` tokens, and splits the SQL based on the position of  `;` token.
 

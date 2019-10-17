@@ -314,7 +314,7 @@ SELECT select_expr [, select_expr ...]
 FROM table_references
   [WHERE where_condition]
   [LIMIT row_count]
-TO PREDICT result_table_reference
+PREDICT result_table_reference
 [WITH
   attr_expr [, attr_expr ...]]
 USING model_table_reference;
@@ -329,7 +329,7 @@ The [select clause](#select-clause) syntax is the same as the select clause synt
 The *predict clause* describes the result table that a prediction job should write to, the table a prediction job should load the model from, and necessary configuration attributes for a prediction job.
 
 ```
-TO PREDICT result_table_reference
+PREDICT result_table_reference
 [WITH
   attr_expr [, attr_expr ...]]
 USING model_table_reference;
@@ -343,7 +343,7 @@ For example, if we want to save the predicted result into table `iris.predict` a
 
 ```
 SELECT ...
-TO PREDICT iris.predict.class
+PREDICT iris.predict.class
 USING sqlflow.my_dnn_model;
 ```
 
