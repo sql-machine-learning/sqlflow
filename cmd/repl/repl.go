@@ -17,21 +17,23 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"strings"
+	"syscall"
 
 	"github.com/olekukonko/tablewriter"
+	"golang.org/x/crypto/ssh/terminal"
 	"sqlflow.org/sqlflow/pkg/sql"
 )
 
 const tablePageSize = 1000
 
 // readStmt reads a SQL statement from the scanner.  A statement could have
-// multiple lines and ends at a semicolon at theend of the last line.
-func readStmt() string {
+// multiple lines and ends at a semicolon at the end of the last line.
+func readStmt(scn *bufio.Scanner) (string, error) {
 	stmt := ""
-	scn := bufio.NewScanner(os.Stdin)
 	for scn.Scan() {
 		stmt += scn.Text()
 		// FIXME(tonyyang-svail): It is hacky and buggy to assume that
@@ -39,14 +41,14 @@ func readStmt() string {
 		// to call the SQLFlow parser to retrieve statements and run
 		// them one-by-one in a REPL.
 		if strings.HasSuffix(strings.TrimSpace(scn.Text()), ";") {
-			break
+			return strings.TrimSpace(stmt), nil
 		}
 		stmt += "\n"
 	}
-	if scn.Err() != nil {
-		return ""
+	if scn.Err() == nil {
+		return stmt, io.EOF
 	}
-	return strings.TrimSpace(stmt)
+	return "", scn.Err()
 }
 
 func header(head map[string]interface{}) ([]string, error) {
@@ -85,9 +87,63 @@ func render(rsp interface{}, table *tablewriter.Table) bool {
 	return isTable
 }
 
+func flagPassed(name ...string) bool {
+	found := false
+	for _, n := range name {
+		flag.Visit(func(f *flag.Flag) {
+			if f.Name == n {
+				found = true
+			}
+		})
+	}
+	return found
+}
+
+func runStmt(stmt string, isTerminal bool, modelDir string, db *sql.DB) {
+	if !isTerminal {
+		fmt.Println("sqlflow>", stmt)
+	}
+	isTable, tableRendered := false, false
+	table := tablewriter.NewWriter(os.Stdout)
+
+	stream := sql.Run(stmt, db, modelDir, nil)
+	for rsp := range stream.ReadAll() {
+		isTable = render(rsp, table)
+
+		// pagination. avoid exceed memory
+		if isTable && table.NumLines() == tablePageSize {
+			table.Render()
+			tableRendered = true
+			table.ClearRows()
+		}
+	}
+	if isTable && (table.NumLines() > 0 || !tableRendered) {
+		table.Render()
+	}
+}
+
+func repl(scanner *bufio.Scanner, isTerminal bool, modelDir string, db *sql.DB) {
+	for {
+		if isTerminal {
+			fmt.Print("sqlflow> ")
+		}
+		stmt, err := readStmt(scanner)
+		fmt.Println()
+		if err == io.EOF && stmt == "" {
+			return
+		}
+		runStmt(stmt, isTerminal, modelDir, db)
+	}
+
+}
+
 func main() {
 	ds := flag.String("datasource", "", "database connect string")
 	modelDir := flag.String("model_dir", "", "model would be saved on the local dir, otherwise upload to the table.")
+	cliStmt := flag.String("execute", "", "execute SQLFlow from command line.  e.g. --execute 'select * from table1'")
+	flag.StringVar(cliStmt, "e", "", "execute SQLFlow from command line, short for --execute")
+	sqlFileName := flag.String("file", "", "execute SQLFlow from file.  e.g. --file '~/iris_dnn.sql'")
+	flag.StringVar(sqlFileName, "f", "", "execute SQLFlow from file, short for --file")
 	flag.Parse()
 	db, err := sql.NewDB(*ds)
 	if err != nil {
@@ -101,28 +157,21 @@ func main() {
 		}
 	}
 
-	for {
-		fmt.Print("sqlflow> ")
-		slct := readStmt()
-		fmt.Println("")
+	isTerminal := !flagPassed("execute", "e", "file", "f") && terminal.IsTerminal(syscall.Stdin)
 
-		isTable, tableRendered := false, false
-		table := tablewriter.NewWriter(os.Stdout)
-
-		stream := sql.Run(slct, db, *modelDir, nil)
-		for rsp := range stream.ReadAll() {
-			isTable = render(rsp, table)
-
-			// pagination. avoid exceed memory
-			if isTable && table.NumLines() == tablePageSize {
-				table.Render()
-				tableRendered = true
-				table.ClearRows()
-			}
+	sqlFile := os.Stdin
+	if flagPassed("file", "f") {
+		sqlFile, err = os.Open(*sqlFileName)
+		if err != nil {
+			log.Fatal(err)
 		}
-		if isTable && (table.NumLines() > 0 || !tableRendered) {
-			table.Render()
-		}
-		fmt.Println("")
+		defer sqlFile.Close()
 	}
+	var reader io.Reader = sqlFile
+	// Override stdin and file when the `-e|-execute' options are present.
+	if flagPassed("execute", "e") {
+		reader = strings.NewReader(*cliStmt)
+	}
+	scanner := bufio.NewScanner(reader)
+	repl(scanner, isTerminal, *modelDir, db)
 }
