@@ -1,12 +1,12 @@
 # Support Arbitrary Select Statements
 
-SQLFlow extends the SQL syntax to enable model training and inference. The syntax extension should be easy to learn and integrate well with the existing SQL syntax. While the existing SQL syntax supports complicated select statements such as nested select statements, SQLFlow should support training/predicting on these statements via appending a TRAIN/PREDICT clause right after them.
+SQLFlow extends the SQL syntax to enable model training and inference. The syntax extension should be easy to learn and integrate well with the existing SQL syntax. While the standard SQL syntax supports complicated select statements, SQLFlow should support training/predict on these statements via appending a TRAIN/PREDICT clause right after them.
 
-With the support of arbitrary select statements, a user can integrate AI to his/her database with ease.
+With the support of arbitrary select statements, a user can integrate AI into his/her database with ease.
 
 ## Overview
 
-Given a long and nested select inside a extended SQL statement like
+Given a long and nested select inside an extended SQL statement like
 
 ```sql
 -- select clause
@@ -25,8 +25,8 @@ SQLFlow does the following steps.
 
 1. SQLFlow verifies the column in the train clause.
     1. SQLFlow executes the select clause and retrieves the column names and column types of the result. For example, the result of `SELECT ... a` has four columns with names `c1`, `c2`, `id`, and `class`. `c1`, and `c2` are of float types. And `id` and `class` are of integer types.
-    1. SQLFlow checks the columns of train clause exist in the select result. For example, `c1`, `c2`, `id`, and `class` in `COLUMN` and `LABEL` are all in the select result. (Please be aware that `select expression` without an alias might give system generated names that the user doesn't know in advance. In this case, we suggested using alias such as `select expression as my_column_name`.)
-    1. SQLFlow checks the columns have the desired types. The type is either suitable to explicit feature column transformation such as `EMBEDDING(id)`, or derived from [feature derivation](/doc/design/design_feature_derivation.md) such as `c1` of float type will be derived as numerical column.
+    1. SQLFlow checks the columns of train clause exist in the select result. For example, `c1`, `c2`, `id`, and `class` in `COLUMN` and `LABEL` are all in the select result. (Please be aware that `select expression` without an alias might give system-generated names that the user doesn't know in advance. In this case, we suggested using alias such as `select expression as my_column_name`.)
+    1. SQLFlow checks the columns have the desired types. The type is either suitable to explicit feature column transformation such as `EMBEDDING(id)`, or derived from [feature derivation](/doc/design/design_feature_derivation.md) such as `c1` of float type will be derived as a numerical column.
 
 1. SQLFlow generates a Python submitter program that forwards the select clause to a particular SQL engine to fetch the training data.
 
@@ -42,7 +42,7 @@ SQLFlow splits the extended SQL by looking for consecutive tokens returned by th
 
 ### Verifier
 
-The train clause requires column names returned by the select clause to exist and of certain types. To verifies these requirements, SQLFlow fetches column names, and column types via executing the following template.
+The train clause requires column names returned by the select clause to exist and of certain types. To verifies these requirements, SQLFlow fetches column names and column types via executing the following template.
 
 ```SQL
 SELECT a.* FROM ({.SelectClause}) AS a LIMIT 1;
