@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -28,6 +27,13 @@ import (
 )
 
 var elasticdlModelDefTemplate = template.Must(template.New("elasticdl_train").Parse(elasticdlModelDefTemplateText))
+
+// TODO: Get this from model name
+const (
+	modelZooPath     = "/elasticdl/model_zoo"
+	modelDefFileName = "/model_definition.py"
+	modelDefModule   = "model_definition.custom_model"
+)
 
 type elasticDLFiller struct {
 	// Training or Predicting
@@ -192,8 +198,8 @@ func elasticDLTrain(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, sessi
 	}
 	modelDefCode := elasticdlProgram.String()
 	cw := &logChanWriter{wr: w}
-	modelDefFilePath := "model_definition.py"
-	modelDefFile, err := os.Create(filepath.Join(cwd, modelDefFilePath))
+	modelDefFilePath := modelZooPath + modelDefFileName
+	modelDefFile, err := os.Create(modelDefFilePath)
 	if err != nil {
 		return fmt.Errorf("Create python code failed %v", err)
 	}
@@ -201,7 +207,7 @@ func elasticDLTrain(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, sessi
 	modelDefFile.Close()
 
 	// Create and execute ElasticDL training command
-	cmd := elasticdlTrainCmd(cwd, modelDefFilePath, trainFiller)
+	cmd := elasticdlTrainCmd(cwd, trainFiller)
 	cmd.Stdout = cw
 	cmd.Stderr = cw
 	if e := cmd.Run(); e != nil {
@@ -210,16 +216,28 @@ func elasticDLTrain(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, sessi
 	return nil
 }
 
-func elasticdlTrainCmd(cwd, modelDefFilePath string, filler *elasticDLFiller) (cmd *exec.Cmd) {
+func getEnvs(envs string) string {
+	if envs != "" {
+		envs = "," + envs
+	}
+	// TODO: Consolidate environment variable names in two projects
+	envs = fmt.Sprintf(`--envs="ODPS_PROJECT_NAME=%s,ODPS_ACCESS_ID=%s,ODPS_ACCESS_KEY=%s%s"`,
+		os.Getenv("MAXCOMPUTE_PROJECT"),
+		os.Getenv("MAXCOMPUTE_AK"),
+		os.Getenv("MAXCOMPUTE_SK"), envs)
+	return strings.Replace(strings.Replace(envs, "\\", "", -1), "\"", "", -1)
+}
+
+func elasticdlTrainCmd(cwd string, filler *elasticDLFiller) (cmd *exec.Cmd) {
 	if hasDocker() {
 		cmd = exec.Command(
 			"elasticdl", "train",
 			"--image_base", "elasticdl:ci",
-			// TODO: Generate this dynamically
-			"--job_name", "edl-sqlflow-train-job",
-			// TODO: Get this from model name
-			"--model_zoo", "/elasticdl/model_zoo",
-			"--model_def", modelDefFilePath,
+			// TODO: This is hard-coded for now for testing purposes.
+			// We need to allow users to configure this or generating this dynamically.
+			"--job_name", "test-odps",
+			"--model_zoo", modelZooPath,
+			"--model_def", modelDefModule,
 			"--training_data", filler.TrainInputTable,
 			"--evaluation_data", filler.EvalInputTable,
 			fmt.Sprintf("--num_epochs=%d", filler.TrainClause.Epoch),
@@ -246,8 +264,8 @@ func elasticdlTrainCmd(cwd, modelDefFilePath string, filler *elasticDLFiller) (c
 			"--checkpoint_dir", filler.TrainClause.CheckpointDir,
 			fmt.Sprintf("--keep_checkpoint_max=%d", filler.TrainClause.KeepCheckpointMax),
 			"--docker_image_repository", string(filler.TrainClause.EngineParams.dockerImageRepository),
-			"--envs", string(filler.TrainClause.EngineParams.envs),
-			"--data_reader_params", `'columns=`+string(filler.FeaturesList+`'`),
+			getEnvs(string(filler.TrainClause.EngineParams.envs)),
+			"--data_reader_params", string("columns="+string(filler.FeaturesList)),
 		)
 		cmd.Dir = cwd
 	} else {
@@ -269,8 +287,8 @@ func elasticDLPredict(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, ses
 	}
 	modelDefCode := elasticdlProgram.String()
 	cw := &logChanWriter{wr: w}
-	modelDefFilePath := "model_definition.py"
-	modelDefFile, err := os.Create(filepath.Join(cwd, modelDefFilePath))
+	modelDefFilePath := modelZooPath + modelDefFileName
+	modelDefFile, err := os.Create(modelDefFilePath)
 	if err != nil {
 		return fmt.Errorf("Create python code failed %v", err)
 	}
@@ -278,7 +296,7 @@ func elasticDLPredict(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, ses
 	modelDefFile.Close()
 
 	// Create and execute ElasticDL prediction command
-	cmd := elasticdlPredictCmd(cwd, modelDefFilePath, predictFiller)
+	cmd := elasticdlPredictCmd(cwd, predictFiller)
 	cmd.Stdout = cw
 	cmd.Stderr = cw
 	if e := cmd.Run(); e != nil {
@@ -287,16 +305,16 @@ func elasticDLPredict(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, ses
 	return nil
 }
 
-func elasticdlPredictCmd(cwd, modelDefFilePath string, filler *elasticDLFiller) (cmd *exec.Cmd) {
+func elasticdlPredictCmd(cwd string, filler *elasticDLFiller) (cmd *exec.Cmd) {
 	if hasDocker() && hasElasticDLCmd() {
 		cmd = exec.Command(
 			"elasticdl", "predict",
 			"--image_base", "elasticdl:ci",
-			// TODO: Generate this dynamically
-			"--job_name", "edl-sqlflow-predict-job",
-			// TODO: Get this from model name
-			"--model_zoo", "/elasticdl/model_zoo",
-			"--model_def", modelDefFilePath,
+			// TODO: This is hard-coded for now for testing purposes.
+			// We need to allow users to configure this or generating this dynamically.
+			"--job_name", "test-odps",
+			"--model_zoo", modelZooPath,
+			"--model_def", modelDefModule,
 			"--prediction_data", filler.PredictInputTable,
 			"--checkpoint_filename_for_init", filler.PredictClause.CheckpointFilenameForInit,
 			"--master_resource_request", filler.PredictClause.EngineParams.masterResourceRequest,
@@ -314,9 +332,9 @@ func elasticdlPredictCmd(cwd, modelDefFilePath string, filler *elasticDLFiller) 
 			"--cluster_spec", filler.PredictClause.EngineParams.clusterSpec,
 			fmt.Sprintf("--num_minibatches_per_task=%d", filler.PredictClause.EngineParams.numMinibatchesPerTask),
 			"--log_level", "INFO",
-			"--docker_image_repository", string(filler.TrainClause.EngineParams.dockerImageRepository),
-			"--envs", string(filler.TrainClause.EngineParams.envs),
-			"--data_reader_params", `'columns=`+string(filler.FeaturesList+`'`),
+			"--docker_image_repository", string(filler.PredictClause.EngineParams.dockerImageRepository),
+			getEnvs(string(filler.PredictClause.EngineParams.envs)),
+			"--data_reader_params", string("columns="+string(filler.FeaturesList)),
 		)
 		cmd.Dir = cwd
 	} else {
