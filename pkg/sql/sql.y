@@ -142,7 +142,7 @@
 %type  <atrs> attr
 %type  <atrs> attrs
 
-%token <val> SELECT FROM WHERE LIMIT TRAIN PREDICT ANALYZE WITH COLUMN LABEL USING INTO FOR AS TO
+%token <val> SELECT FROM WHERE LIMIT TRAIN PREDICT ANALYZE WITH COLUMN LABEL USING INTO FOR AS
 %token <val> IDENT NUMBER STRING
 
 %left <val> AND OR
@@ -205,18 +205,18 @@ opt_limit
 ;
 
 train_clause
-: TO TRAIN IDENT WITH attrs column_clause label_clause INTO IDENT {
-	$$.estimator = $3
-	$$.trainAttrs = $5
-	$$.columns = $6
-	$$.label = $7
-	$$.save = $9
-  }
-| TO TRAIN IDENT WITH attrs column_clause INTO IDENT {
-	$$.estimator = $3
-	$$.trainAttrs = $5
-	$$.columns = $6
+: TRAIN IDENT WITH attrs column_clause label_clause INTO IDENT {
+	$$.estimator = $2
+	$$.trainAttrs = $4
+	$$.columns = $5
+	$$.label = $6
 	$$.save = $8
+  }
+| TRAIN IDENT WITH attrs column_clause INTO IDENT {
+	$$.estimator = $2
+	$$.trainAttrs = $4
+	$$.columns = $5
+	$$.save = $7
 }
 ;
 

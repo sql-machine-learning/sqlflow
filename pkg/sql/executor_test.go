@@ -74,11 +74,11 @@ func TestSplitExtendedSQL(t *testing.T) {
 func TestSplitMulipleSQL(t *testing.T) {
 	a := assert.New(t)
 	splited, err := SplitMultipleSQL(`CREATE TABLE copy_table_1 AS SELECT a,b,c FROM table_1 WHERE c<>";";
-SELECT * FROM copy_table_1;SELECT * FROM copy_table_1 TO TRAIN DNNClassifier WITH n_classes=2 INTO test_model;`)
+SELECT * FROM copy_table_1;SELECT * FROM copy_table_1 TRAIN DNNClassifier WITH n_classes=2 INTO test_model;`)
 	a.NoError(err)
 	a.Equal("CREATE TABLE copy_table_1 AS SELECT a,b,c FROM table_1 WHERE c<>\";\";", splited[0])
 	a.Equal("SELECT * FROM copy_table_1;", splited[1])
-	a.Equal("SELECT * FROM copy_table_1 TO TRAIN DNNClassifier WITH n_classes=2 INTO test_model;", splited[2])
+	a.Equal("SELECT * FROM copy_table_1 TRAIN DNNClassifier WITH n_classes=2 INTO test_model;", splited[2])
 }
 
 func TestExecuteXGBoost(t *testing.T) {
@@ -152,7 +152,7 @@ func TestExecutorTrainAndPredictionDNNClassifierDENSE(t *testing.T) {
 	a := assert.New(t)
 	a.NotPanics(func() {
 		stream := Run(`SELECT * FROM iris.train_dense
-TO TRAIN DNNClassifier
+TRAIN DNNClassifier
 WITH
 model.n_classes = 3,
 model.hidden_units = [10, 20],

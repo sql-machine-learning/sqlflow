@@ -27,7 +27,7 @@ func TestTrainElasticDLFiller(t *testing.T) {
 	parser := newParser()
 
 	wndStatement := `SELECT * FROM iris.train
-		TO TRAIN ElasticDLKerasClassifier 
+		TRAIN ElasticDLKerasClassifier 
 		WITH
 			model.optimizer = "optimizer",
 			model.loss = "loss",

@@ -18,7 +18,7 @@ type ColumnType struct {
 
 // SELECT *
 // FROM iris.train
-// TO TRAIN DNNClassifier
+// TRAIN DNNClassifier
 // WITH
 //   n_classes = 3,
 //   hidden_units = [10, 20]

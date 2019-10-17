@@ -75,7 +75,7 @@ func TestVerifyColumnNameAndType(t *testing.T) {
 	a := assert.New(t)
 	trainParse, e := newParser().Parse(`SELECT gender, tenure, TotalCharges
 FROM churn.train LIMIT 10
-TO TRAIN DNNClassifier
+TRAIN DNNClassifier
 WITH
   n_classes = 3,
   hidden_units = [10, 20]

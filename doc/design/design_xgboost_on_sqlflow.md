@@ -10,7 +10,7 @@ To explain the benefit of integrating XGBoost with SQLFlow, let us start with an
 
 ``` sql
 SELECT * FROM train_table
-TO TRAIN xgboost.gbtree
+TRAIN xgboost.gbtree
 WITH
     objective=multi:softmax,
     train.num_boost_round=2,
@@ -34,7 +34,7 @@ The the above examples,
 - In the `WITH` clause,
   - objective names an [XGBoost learning task](https://xgboost.readthedocs.io/en/latest/parameter.html#learning-task-parameters)
   - keys with the prefix `train.` identifies parameters of XGBoost API [`xgboost.train`](https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.train), and
-  - keys without any prefix identifies [XGBoost Parameters](https://xgboost.readthedocs.io/en/latest/parameter.html) except the `objective` parameter, which was specified by the identifier after the keyword `TO TRAIN`, as explained above.
+  - keys without any prefix identifies [XGBoost Parameters](https://xgboost.readthedocs.io/en/latest/parameter.html) except the `objective` parameter, which was specified by the identifier after the keyword `TRAIN`, as explained above.
 
 ## The Code Generator
 

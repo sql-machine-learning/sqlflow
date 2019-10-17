@@ -30,7 +30,7 @@ Here are examples for training a Tensorflow [DNNClassifer](https://www.tensorflo
 ```sql
 sqlflow> SELECT *
 FROM iris.train
-TO TRAIN DNNClassifier
+TRAIN DNNClassifier
 WITH model.n_classes = 3, model.hidden_units = [10, 20]
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
