@@ -104,7 +104,7 @@ type PredictIR struct {
 	// the Attributes will be {"predict.batch_size": 32}
 	Attributes map[string]interface{}
 	// TrainIR is the TrainIR used for generating the training job of the corresponding model
-	TrainIR TrainIR
+	TrainIR *TrainIR
 }
 
 // AnalyzeIR is the intermediate representation for code generation of a analysis job

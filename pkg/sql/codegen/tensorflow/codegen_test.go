@@ -67,7 +67,7 @@ func TestTrainCodegen(t *testing.T) {
 		Select:      "select * from iris.test;",
 		ResultTable: "iris.predict",
 		Attributes:  make(map[string]interface{}),
-		TrainIR:     ir,
+		TrainIR:     &ir,
 	}
 	_, err = Pred(predIR)
 	a.NoError(err)

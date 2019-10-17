@@ -72,6 +72,32 @@ func generateTrainIR(slct *extendedSelect, connStr string) (*codegen.TrainIR, er
 	}, nil
 }
 
+func generatePredictIR(slct *extendedSelect, connStr string, cwd string, modelDir string) (*codegen.PredictIR, error) {
+	attrMap, err := generateAttributeIR(&slct.predAttrs)
+	if err != nil {
+		return nil, err
+	}
+	db, err := open(connStr)
+	if err != nil {
+		return nil, err
+	}
+	slctWithTrain, _, err := loadModelMeta(slct, db, cwd, modelDir, slct.model)
+	if err != nil {
+		return nil, err
+	}
+	trainir, err := generateTrainIR(slctWithTrain, connStr)
+	if err != nil {
+		return nil, err
+	}
+	return &codegen.PredictIR{
+		DataSource:  connStr,
+		Select:      slct.standardSelect.String(),
+		ResultTable: slct.into,
+		Attributes:  attrMap,
+		TrainIR:     trainir,
+	}, nil
+}
+
 func generateAttributeIR(attrs *attrs) (map[string]interface{}, error) {
 	ret := make(map[string]interface{})
 	for k, v := range *attrs {

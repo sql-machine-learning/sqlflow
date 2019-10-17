@@ -14,6 +14,9 @@
 package sql
 
 import (
+	"fmt"
+	"io/ioutil"
+	"os"
 	"testing"
 
 	"sqlflow.org/sqlflow/pkg/sql/codegen"
@@ -147,4 +150,46 @@ INTO mymodel;`
 	a.Equal("c2", catCol.FieldMeta.Name)
 	a.Equal(10000, catCol.FieldMeta.Shape[0])
 	a.Equal(",", catCol.FieldMeta.Delimiter)
+}
+
+func TestGeneratePredictIR(t *testing.T) {
+	if getEnv("SQLFLOW_TEST_DB", "mysql") == "hive" {
+		t.Skip(fmt.Sprintf("%s: skip Hive test", getEnv("SQLFLOW_TEST_DB", "mysql")))
+	}
+	a := assert.New(t)
+	parser := newParser()
+	predSQL := `SELECT * FROM iris.test
+TO PREDICT iris.predict.class
+USING sqlflow_models.mymodel;`
+	r, e := parser.Parse(predSQL)
+	a.NoError(e)
+
+	connStr := "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
+	// need to save a model first because predict SQL will read the train SQL
+	// from saved model
+	modelDir, e := ioutil.TempDir("/tmp", "sqlflow_models")
+	a.Nil(e)
+	defer os.RemoveAll(modelDir)
+	stream := runExtendedSQL(`SELECT * FROM iris.train
+TO TRAIN DNNClassifier
+WITH model.n_classes=3, model.hidden_units=[10,20]
+COLUMN sepal_length, sepal_width, petal_length, petal_width
+LABEL class
+INTO sqlflow_models.mymodel;`, testDB, modelDir, nil)
+	a.True(goodStream(stream.ReadAll()))
+
+	// Test generate PredicrIR
+	cwd, e := ioutil.TempDir("/tmp", "sqlflow")
+	a.Nil(e)
+	defer os.RemoveAll(cwd)
+	predIR, err := generatePredictIR(r, connStr, cwd, modelDir)
+	a.NoError(err)
+
+	a.Equal(connStr, predIR.DataSource)
+	a.Equal("iris.predict.class", predIR.ResultTable)
+	a.Equal("class", predIR.TrainIR.Label.GetFieldMeta()[0].Name)
+	a.Equal("DNNClassifier", predIR.TrainIR.Estimator)
+	nc, ok := predIR.TrainIR.Features["feature_columns"][0].(*codegen.NumericColumn)
+	a.True(ok)
+	a.Equal("sepal_length", nc.FieldMeta.Name)
 }
