@@ -72,20 +72,27 @@ func generateTrainIR(slct *extendedSelect, connStr string) (*codegen.TrainIR, er
 	}, nil
 }
 
+func generateTrainIRByModel(slct *extendedSelect, connStr, cwd, modelDir, model string) (*codegen.TrainIR, error) {
+	db, err := open(connStr)
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+
+	slctWithTrain, _, err := loadModelMeta(slct, db, cwd, modelDir, model)
+	if err != nil {
+		return nil, err
+	}
+	return generateTrainIR(slctWithTrain, connStr)
+}
+
 func generatePredictIR(slct *extendedSelect, connStr string, cwd string, modelDir string) (*codegen.PredictIR, error) {
 	attrMap, err := generateAttributeIR(&slct.predAttrs)
 	if err != nil {
 		return nil, err
 	}
-	db, err := open(connStr)
-	if err != nil {
-		return nil, err
-	}
-	slctWithTrain, _, err := loadModelMeta(slct, db, cwd, modelDir, slct.model)
-	if err != nil {
-		return nil, err
-	}
-	trainir, err := generateTrainIR(slctWithTrain, connStr)
+
+	trainIR, err := generateTrainIRByModel(slct, connStr, cwd, modelDir, slct.model)
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +101,26 @@ func generatePredictIR(slct *extendedSelect, connStr string, cwd string, modelDi
 		Select:      slct.standardSelect.String(),
 		ResultTable: slct.into,
 		Attributes:  attrMap,
-		TrainIR:     trainir,
+		TrainIR:     trainIR,
+	}, nil
+}
+
+func generateAnalyzeIR(slct *extendedSelect, connStr, cwd, modelDir string) (*codegen.AnalyzeIR, error) {
+	attrs, err := generateAttributeIR(&slct.analyzeAttrs)
+	if err != nil {
+		return nil, err
+	}
+
+	trainIR, err := generateTrainIRByModel(slct, connStr, cwd, modelDir, slct.trainedModel)
+	if err != nil {
+		return nil, err
+	}
+	return &codegen.AnalyzeIR{
+		DataSource: connStr,
+		Select:     slct.standardSelect.String(),
+		Attributes: attrs,
+		Explainer:  slct.explainer,
+		TrainIR:    trainIR,
 	}, nil
 }
 
@@ -175,9 +201,18 @@ func inferStringValue(expr string) interface{} {
 		// Note(typhoonzero): always use float32 for attributes, we may never use a float64.
 		return float32(retFloat)
 	}
+
+	// boolean. We pick the candidates which following the SQL usage from
+	// implementation of `strconv.ParseBool(expr)`.
+	switch expr {
+	case "true", "TRUE", "True":
+		return true
+	case "false", "FALSE", "False":
+		return false
+	}
+
 	retString := strings.Trim(expr, "\"")
-	retString = strings.Trim(retString, "'")
-	return retString
+	return strings.Trim(retString, "'")
 }
 
 func parseFeatureColumn(el *exprlist) (codegen.FeatureColumn, error) {

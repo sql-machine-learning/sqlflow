@@ -56,6 +56,8 @@ type engineSpec struct {
 	numMinibatchesPerTask int
 	dockerImageRepository string
 	envs                  string
+	jobName               string
+	imageBase             string
 }
 
 func getEngineSpec(attrs map[string]*attribute) engineSpec {
@@ -111,6 +113,8 @@ func getEngineSpec(attrs map[string]*attribute) engineSpec {
 	numMinibatchesPerTask := getInt("num_minibatches_per_task", 10)
 	dockerImageRepository := getString("docker_image_repository", "")
 	envs := getString("envs", "")
+	jobName := getString("job_name", "")
+	imageBase := getString("image_base", "")
 
 	return engineSpec{
 		etype:                 engineType,
@@ -133,6 +137,8 @@ func getEngineSpec(attrs map[string]*attribute) engineSpec {
 		numMinibatchesPerTask: numMinibatchesPerTask,
 		dockerImageRepository: dockerImageRepository,
 		envs:                  envs,
+		jobName:               jobName,
+		imageBase:             imageBase,
 	}
 }
 
