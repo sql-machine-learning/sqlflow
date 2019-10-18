@@ -193,3 +193,25 @@ INTO sqlflow_models.mymodel;`, testDB, modelDir, nil)
 	a.True(ok)
 	a.Equal("sepal_length", nc.FieldMeta.Name)
 }
+
+func TestInferStringValue(t *testing.T) {
+	a := assert.New(t)
+	for _, s := range []string{"true", "TRUE", "True"} {
+		a.Equal(inferStringValue(s), true)
+		a.Equal(inferStringValue(fmt.Sprintf("\"%s\"", s)), s)
+		a.Equal(inferStringValue(fmt.Sprintf("'%s'", s)), s)
+	}
+	for _, s := range []string{"false", "FALSE", "False"} {
+		a.Equal(inferStringValue(s), false)
+		a.Equal(inferStringValue(fmt.Sprintf("\"%s\"", s)), s)
+		a.Equal(inferStringValue(fmt.Sprintf("'%s'", s)), s)
+	}
+	a.Equal(inferStringValue("t"), "t")
+	a.Equal(inferStringValue("F"), "F")
+	a.Equal(inferStringValue("1"), 1)
+	a.Equal(inferStringValue("\"1\""), "1")
+	a.Equal(inferStringValue("'1'"), "1")
+	a.Equal(inferStringValue("2.3"), float32(2.3))
+	a.Equal(inferStringValue("\"2.3\""), "2.3")
+	a.Equal(inferStringValue("'2.3'"), "2.3")
+}
