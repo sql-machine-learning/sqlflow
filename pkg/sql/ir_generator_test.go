@@ -194,6 +194,62 @@ INTO sqlflow_models.mymodel;`, testDB, modelDir, nil)
 	a.Equal("sepal_length", nc.FieldMeta.Name)
 }
 
+func TestGenerateAnalyzeIR(t *testing.T) {
+	if getEnv("SQLFLOW_TEST_DB", "mysql") != "mysql" {
+		t.Skip(fmt.Sprintf("%s: skip test", getEnv("SQLFLOW_TEST_DB", "mysql")))
+	}
+	a := assert.New(t)
+
+	modelDir, e := ioutil.TempDir("/tmp", "sqlflow_models")
+	a.Nil(e)
+	defer os.RemoveAll(modelDir)
+	stream := runExtendedSQL(`
+	SELECT *
+	FROM iris.train
+	TRAIN xgboost.gbtree
+	WITH
+	    objective="multi:softprob",
+	    train.num_boost_round = 30,
+	    eta = 3.1,
+	    num_class = 3
+	COLUMN sepal_length, sepal_width, petal_length, petal_width
+	LABEL class
+	INTO sqlflow_models.my_xgboost_model;
+	`, testDB, modelDir, nil)
+	a.True(goodStream(stream.ReadAll()))
+
+	// Test generate AnalyzeIR
+	cwd, e := ioutil.TempDir("/tmp", "sqlflow")
+	a.Nil(e)
+	defer os.RemoveAll(cwd)
+
+	pr, e := newParser().Parse(`
+	SELECT *
+	FROM iris.train
+	ANALYZE sqlflow_models.my_xgboost_model
+	WITH
+	    shap_summary.plot_type="bar",
+	    shap_summary.alpha=1,
+	    shap_summary.sort=True
+	USING TreeExplainer;
+	`)
+	a.NoError(e)
+
+	connStr := "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
+	ir, e := generateAnalyzeIR(pr, connStr, cwd, modelDir)
+	a.NoError(e)
+	a.Equal(ir.DataSource, connStr)
+	a.Equal(ir.Explainer, "TreeExplainer")
+	a.Equal(len(ir.Attributes), 3)
+	a.Equal(ir.Attributes["shap_summary.sort"], true)
+	a.Equal(ir.Attributes["shap_summary.plot_type"], "bar")
+	a.Equal(ir.Attributes["shap_summary.alpha"], 1)
+
+	nc, ok := ir.TrainIR.Features["feature_columns"][0].(*codegen.NumericColumn)
+	a.True(ok)
+	a.Equal("sepal_length", nc.FieldMeta.Name)
+}
+
 func TestInferStringValue(t *testing.T) {
 	a := assert.New(t)
 	for _, s := range []string{"true", "TRUE", "True"} {
