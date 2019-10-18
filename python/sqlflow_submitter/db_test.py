@@ -54,7 +54,8 @@ def execute(driver, conn, statement):
 class TestDB(TestCase):
 
     create_statement = "create table test_db (features text, label int)"
-    hive_create_statement = 'create table test_db (features string, label int) ROW FORMAT DELIMITED FIELDS TERMINATED BY "\001" LOCATION "/sqlflow/test_db"'
+    # hive_create_statement = 'create table test_db (features string, label int) ROW FORMAT DELIMITED FIELDS TERMINATED BY "\001" LOCATION "/sqlflow/test_db"'
+    hive_create_statement = 'create table test_db (features string, label int) ROW FORMAT DELIMITED FIELDS TERMINATED BY "\001"'
     select_statement = "select * from test_db"
     drop_statement = "drop table if exists test_db"
 
@@ -78,14 +79,14 @@ class TestDB(TestCase):
             host = "127.0.0.1"
             port = "10000"
             conn = connect(driver, "iris", user="root", password="root", host=host, port=port)
-            self._do_test(driver, conn)
+            self._do_test(driver, conn, hdfs_namenode_addr="127.0.0.1:8020", hive_location="/sqlflow")
             conn.close()
 
             conn = connect_with_data_source("hive://root:root@127.0.0.1:10000/iris")
             self._do_test(driver, conn)
             conn.close()
 
-    def _do_test(self, driver, conn):
+    def _do_test(self, driver, conn, hdfs_namenode_addr="", hive_location=""):
         table_name = "test_db"
         table_schema = ["label", "features"]
         values = [(1, '5,6,1,2')] * 10
@@ -96,7 +97,7 @@ class TestDB(TestCase):
             execute(driver, conn, self.hive_create_statement)
         else:
             execute(driver, conn, self.create_statement)
-        with buffered_db_writer(driver, conn, table_name, table_schema, buff_size=10) as w:
+        with buffered_db_writer(driver, conn, table_name, table_schema, buff_size=10, hdfs_namenode_addr=hdfs_namenode_addr, hive_location=hive_location) as w:
             for row in values:
                 w.write(row)
 

@@ -22,6 +22,7 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"sqlflow.org/gohive"
 	"sqlflow.org/gomaxcompute"
+	pb "sqlflow.org/sqlflow/pkg/server/proto"
 	"sqlflow.org/sqlflow/pkg/sql/columns"
 )
 
@@ -77,6 +78,8 @@ type tfFiller struct {
 	Estimator
 	modelConfig
 	FeatureColumnsCode map[string][]string
+	HDFSNameNodeAddr   string
+	HiveLocation       string
 }
 
 // parseModelURI returns isKerasModel, modelClassString
@@ -94,7 +97,7 @@ func trainingAndValidationDataset(pr *extendedSelect, ds *trainAndValDataset) (s
 	return pr.standardSelect.String(), pr.standardSelect.String()
 }
 
-func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *DB) (*tfFiller, error) {
+func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *DB, session *pb.Session) (*tfFiller, error) {
 	isKerasModel, modelClassString := parseModelURI(pr.estimator)
 	training, validation := trainingAndValidationDataset(pr, ds)
 	r := &tfFiller{
@@ -112,6 +115,8 @@ func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *D
 			Save:          pr.save,
 			IsKerasModel:  isKerasModel,
 		},
+		HDFSNameNodeAddr: session.GetHdfsNamenodeAddr(),
+		HiveLocation:     session.GetHiveLocation(),
 	}
 
 	var err error
@@ -281,15 +286,15 @@ func newConnectionConfig(db *DB) (*connectionConfig, error) {
 	return cc, nil
 }
 
-func genTF(w io.Writer, pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *DB) error {
-	r, e := newFiller(pr, ds, fts, db)
+func genTF(w io.Writer, pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *DB, session *pb.Session) error {
+	r, e := newFiller(pr, ds, fts, db, session)
 	if e != nil {
 		return e
 	}
 	if pr.train {
 		return tfTrainTemplate.Execute(w, r)
 	}
-	if e := createPredictionTable(pr, db); e != nil {
+	if e := createPredictionTable(pr, db, session); e != nil {
 		return fmt.Errorf("failed to create prediction table: %v", e)
 	}
 	return tfPredTemplate.Execute(w, r)
