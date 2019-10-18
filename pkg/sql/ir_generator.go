@@ -175,12 +175,18 @@ func inferStringValue(expr string) interface{} {
 		// Note(typhoonzero): always use float32 for attributes, we may never use a float64.
 		return float32(retFloat)
 	}
-	if ret, err := strconv.ParseBool(expr); err == nil {
-		return ret
+
+	// boolean. We pick the candidates from implementation of
+	// `strconv.ParseBool(expr)` which follow the SQL usage.
+	switch expr {
+	case "true", "TRUE", "True":
+		return true
+	case "false", "FALSE", "False":
+		return false
 	}
+
 	retString := strings.Trim(expr, "\"")
-	retString = strings.Trim(retString, "'")
-	return retString
+	return strings.Trim(retString, "'")
 }
 
 func parseFeatureColumn(el *exprlist) (codegen.FeatureColumn, error) {

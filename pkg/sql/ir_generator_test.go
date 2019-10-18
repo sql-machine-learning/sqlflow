@@ -196,16 +196,18 @@ INTO sqlflow_models.mymodel;`, testDB, modelDir, nil)
 
 func TestInferStringValue(t *testing.T) {
 	a := assert.New(t)
-	for _, t := range []string{"t", "T", "true", "TRUE", "True"} {
+	for _, t := range []string{"true", "TRUE", "True"} {
 		a.Equal(inferStringValue(t), true)
 		a.Equal(inferStringValue(fmt.Sprintf("\"%s\"", t)), t)
 		a.Equal(inferStringValue(fmt.Sprintf("'%s'", t)), t)
 	}
-	for _, t := range []string{"f", "F", "false", "FALSE", "False"} {
+	for _, t := range []string{"false", "FALSE", "False"} {
 		a.Equal(inferStringValue(t), false)
 		a.Equal(inferStringValue(fmt.Sprintf("\"%s\"", t)), t)
 		a.Equal(inferStringValue(fmt.Sprintf("'%s'", t)), t)
 	}
+	a.Equal(inferStringValue("t"), "t")
+	a.Equal(inferStringValue("F"), "F")
 	a.Equal(inferStringValue("1"), 1)
 	a.Equal(inferStringValue("\"1\""), "1")
 	a.Equal(inferStringValue("'1'"), "1")
