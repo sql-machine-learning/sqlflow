@@ -16,3 +16,9 @@
       entry: python ./scripts/copyright.py
       language: system
       files: \.(go|py|sh)$
+- repo: local
+  hooks:
+  - id: documentation_checker
+    name: documentation_checker
+    entry: go run cmd/docgen/main.go > doc/model.md
+    language: system

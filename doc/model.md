@@ -1,7 +1,6 @@
 # Model Document
 
 SQLFlow connects a SQL engine (e.g., MySQL, Hive, or MaxCompute) and TensorFlow and other machine learning toolkits by extending the SQL syntax. The extended SQL syntax contains the WITH clause where a user specifies the parameters of his/her ML jobs. This documentation lists all parameters supported by SQLFlow.
-
 ## XGBoost Parameters
 
 ### TRAIN
