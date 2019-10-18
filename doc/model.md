@@ -1,10 +1,12 @@
-# XGBoost Parameter Document
+# Model Document
 
-In SQLFlow, we specify the parameter of training/predicting/analyzing in the [WITH clause](https://github.com/sql-machine-learning/sqlflow/blob/develop/doc/language_guide.md#train-clause). This document provides a full list of supported parameters.
+SQLFlow connects a SQL engine (e.g., MySQL, Hive, or MaxCompute) and TensorFlow and other machine learning toolkits by extending the SQL syntax. The extended SQL syntax contains the WITH clause where a user specifies the parameters of his/her ML jobs. This documentation lists all parameters supported by SQLFlow.
 
-## TRAIN
+## XGBoost Parameters
 
-### Example
+### TRAIN
+
+#### Example
 
 ```SQL
 SELECT * FROM boston.train
@@ -17,7 +19,7 @@ LABEL medv
 INTO sqlflow_models.my_xgb_regression_model;
 ```
 
-### Parameters
+#### Parameters
 
 <table>
 <tr>
@@ -47,10 +49,11 @@ INTO sqlflow_models.my_xgb_regression_model;
 </tr>
 </table>
 
-## PREDICT
+### PREDICT
 
 TBD
 
-## ANALYZE
+### ANALYZE
 
 TBD
+

@@ -26,9 +26,7 @@ func DocGenInMarkdown() string {
 	return doc.String()
 }
 
-const docTemplateText = `# XGBoost Parameter Document
-
-In SQLFlow, we specify the parameter of training/predicting/analyzing in the [WITH clause](https://github.com/sql-machine-learning/sqlflow/blob/develop/doc/language_guide.md#train-clause). This document provides a full list of supported parameters.
+const docTemplateText = `# XGBoost Parameters
 
 ## TRAIN
 
