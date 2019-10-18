@@ -18,7 +18,8 @@
       files: \.(go|py|sh)$
 - repo: local
   hooks:
-  - id: documentation_checker
-    name: documentation_checker
-    entry: go run cmd/docgen/main.go > doc/model.md
-    language: system
+    - id: documentation_checker
+      name: documentation_checker
+      entry: bash ./scripts/docgen.sh
+      language: system
+      files: \.(go|py|sh|md)$
