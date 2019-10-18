@@ -25,10 +25,10 @@ SQLFlow does the following steps.
 
 1. SQLFlow verifies the column in the train clause.
     1. SQLFlow executes the select clause and retrieves the column names and column types of the result. For example, the result of `SELECT ... a` has four columns with names `c1`, `c2`, `id`, and `class`. `c1`, and `c2` are of float types. And `id` and `class` are of integer types.
-    1. SQLFlow checks the columns of train clause exist in the select result. For example, `c1`, `c2`, `id`, and `class` in `COLUMN` and `LABEL` are all in the select result. (Please be aware that `select expression` without an alias might give system-generated names that the user doesn't know in advance. In this case, we suggested using alias such as `select expression as my_column_name`.)
+    1. SQLFlow checks the columns of train clause exist in the select result. For example, `c1`, `c2`, `id`, and `class` in `COLUMN` and `LABEL` are all in the select result. (Please be aware that `select expression` without an alias might give system-generated names that the user doesn't know in advance. For example, `select log(a + a) from my_table` may give a column named `log(a + a)` or any system-generated names. In this case, we suggested using alias such as `select log(a + a) as my_column_name`.)
     1. SQLFlow checks the columns have the desired types. The type is either suitable to explicit feature column transformation such as `EMBEDDING(id)`, or derived from [feature derivation](/doc/design/design_feature_derivation.md) such as `c1` of float type will be derived as a numerical column.
 
-1. SQLFlow generates a Python submitter program that forwards the select clause to a particular SQL engine to fetch the training data.
+1. SQLFlow generates a Python submitter program that forwards the select clause to a particular SQL engine.
 
 Please be aware that the SQLFlow parser does not parse the nested select due to the difficulty in handling different syntax across different SQL engines. Instead, it follows the UNIX's pipeline philosophy: forwarding the complexity to various SQL engines, while retrieves the data via unified database API.
 
@@ -36,7 +36,17 @@ Please be aware that the SQLFlow parser does not parse the nested select due to 
 
 ### Splitting the Extended SQL
 
-SQLFlow splits the extended SQL by looking for consecutive tokens returned by the lexer. If SQLFlow finds the following consecutive tokens [`TRAIN`, `IDENT`, `WITH`], [`PREDICT`, `IDENT`, `WITH`] or [`ANALYZE` `IDENT`, `WITH`], it splits the SQL string at the beginning of the first token in the list.
+SQLFlow splits the extended SQL by looking for consecutive tokens returned by the lexer. If SQLFlow finds the consecutive tokens like [`TRAIN`, `IDENT`, `WITH`], [`PREDICT`, `IDENT`, `WITH`] or [`ANALYZE` `IDENT`, `WITH`], it splits the SQL string at the beginning of the first token in the list. For example, the lexer can go through the following SQL statement and find `TRAIN DNNClassifier WITH` satisfies the splitting criteria.
+
+```sql
+SELECT c1, c2, id, class FROM (SELECT * FROM my_table) a
+-- splits at here
+TRAIN DNNClassifier
+WITH n_class = 3
+COLUMN c1, c2, EMBEDDING(id)
+LABEL class
+INTO my_dnn_model;
+```
 
 ### Verifier
 
