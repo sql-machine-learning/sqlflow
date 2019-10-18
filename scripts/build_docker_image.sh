@@ -113,6 +113,7 @@ apt-get update && apt-get install -y docker.io sudo
 curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/v1.14.0/bin/linux/amd64/kubectl && chmod +x kubectl && sudo mv kubectl /usr/local/bin/
 git clone https://github.com/sql-machine-learning/elasticdl.git
 cd elasticdl
+git checkout eb93e2a48e6fe8f077c4937d8c0c5987faa9cf56
 pip install -r elasticdl/requirements.txt
 python setup.py install
 cd ..
