@@ -117,7 +117,7 @@ type AnalyzeIR struct {
 	// "select ... analyze ... with analyze.plot_type = "bar"",
 	// the Attributes will be {"analyze.plot_type": "bar"}
 	Attributes map[string]interface{}
-	// SQLFlow supports TreeExplainer so far.
+	// Explainer types. For example TreeExplainer.
 	Explainer string
 	// TrainIR is the TrainIR used for generating the training job of the corresponding model
 	TrainIR *TrainIR

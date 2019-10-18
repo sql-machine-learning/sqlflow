@@ -222,7 +222,7 @@ func TestGenerateAnalyzeIR(t *testing.T) {
 	`, testDB, modelDir, nil)
 	a.True(goodStream(stream.ReadAll()))
 
-	// Test generate PredicrIR
+	// Test generate AnalyzeIR
 	cwd, e := ioutil.TempDir("/tmp", "sqlflow")
 	a.Nil(e)
 	defer os.RemoveAll(cwd)
