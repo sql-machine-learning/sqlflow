@@ -13,7 +13,11 @@
 
 package attribute
 
-import "fmt"
+import (
+	"fmt"
+	"sort"
+	"strings"
+)
 
 // Type indicates the attribute type of an attribute in the WITH clause
 type Type int
@@ -97,5 +101,35 @@ func (d Dictionary) Validate(attrs map[string]interface{}) error {
 	return nil
 }
 
-// TODO(tony): Add doc generation functionality. For example
-// func (d *Dictionary) GenerateTableInMarkdown() string
+// GenerateTableInHTML generates the attribute dictionary table in HTML format
+func (d Dictionary) GenerateTableInHTML() string {
+	l := make([]string, 0)
+	l = append(l, `<table>`)
+	l = append(l, `<tr>
+	<td>Name</td>
+	<td>Type</td>
+	<td>Description</td>
+</tr>`)
+
+	// the rows are sorted according key names
+	keys := make([]string, 0)
+	for k := range d {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	for _, k := range keys {
+		desc := d[k]
+		t := `<tr>
+	<td>%s</td>
+	<td>%s</td>
+	<td>%s</td>
+</tr>`
+		// NOTE(tony): if the doc string has multiple lines, need to replace \n with <br>
+		s := fmt.Sprintf(t, k, desc.Type.String(), strings.Replace(desc.Doc, "\n", `<br>`, -1))
+		l = append(l, s)
+	}
+
+	l = append(l, `</table>`)
+	return strings.Join(l, "\n")
+}

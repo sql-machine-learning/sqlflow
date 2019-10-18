@@ -38,3 +38,32 @@ func TestDictionary_Validate(t *testing.T) {
 	a.EqualError(tb.Validate(map[string]interface{}{"_a": -1}), fmt.Sprintf(errUnsupportedAttribute, "_a"))
 	a.EqualError(tb.Validate(map[string]interface{}{"a": 1.0}), fmt.Sprintf(errUnexpectedType, "a", "Int", 1.0))
 }
+
+func TestDictionary_GenerateTableInHTML(t *testing.T) {
+	a := assert.New(t)
+	tb := Dictionary{
+		"a": {Int, `this is a
+multiple line
+doc string.`, nil},
+		"世界": {String, `42`, nil},
+	}
+	expected := `<table>
+<tr>
+	<td>Name</td>
+	<td>Type</td>
+	<td>Description</td>
+</tr>
+<tr>
+	<td>a</td>
+	<td>Int</td>
+	<td>this is a<br>multiple line<br>doc string.</td>
+</tr>
+<tr>
+	<td>世界</td>
+	<td>String</td>
+	<td>42</td>
+</tr>
+</table>`
+	actual := tb.GenerateTableInHTML()
+	a.Equal(expected, actual)
+}
