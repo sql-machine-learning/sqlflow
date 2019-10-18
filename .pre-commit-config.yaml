@@ -22,4 +22,3 @@
       name: documentation_checker
       entry: bash ./scripts/docgen.sh
       language: system
-      files: \.(go|py|sh|md)$
