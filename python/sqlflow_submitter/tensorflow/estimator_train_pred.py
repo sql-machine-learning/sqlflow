@@ -66,7 +66,7 @@ label_meta = {
 }
 
 if __name__ == "__main__":
-    train(is_keara_model=False,
+    train(is_keras_model=False,
         datasource=datasource,
         estimator="tf.estimator.DNNClassifier",
         select=select,
@@ -80,7 +80,7 @@ if __name__ == "__main__":
         batch_size=1,
         epochs=1,
         verbose=0)
-    pred(is_keara_model=False,
+    pred(is_keras_model=False,
         datasource=datasource,
         estimator="tf.estimator.DNNClassifier",
         select=select,

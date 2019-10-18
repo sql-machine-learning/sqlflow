@@ -16,7 +16,7 @@ from sqlflow_submitter.tensorflow.train import train
 from sqlflow_submitter.tensorflow.predict import pred
 
 if __name__ == "__main__":
-    train(is_keara_model=True,
+    train(is_keras_model=True,
         datasource=datasource,
         estimator="sqlflow_models.DNNClassifier",
         select=select,
@@ -30,7 +30,7 @@ if __name__ == "__main__":
         batch_size=1,
         epochs=1,
         verbose=0)
-    pred(is_keara_model=True,
+    pred(is_keras_model=True,
         datasource=datasource,
         estimator="sqlflow_models.DNNClassifier",
         select=select,

@@ -22,6 +22,7 @@ import (
 	"text/template"
 
 	"github.com/asaskevich/govalidator"
+	pb "sqlflow.org/sqlflow/pkg/server/proto"
 )
 
 type xgbTrainConfig struct {
@@ -33,8 +34,10 @@ type xgbTrainConfig struct {
 type xgbFiller struct {
 	Estimator
 	xgbTrainConfig
-	Save          string
-	ParamsCfgJSON string
+	Save             string
+	ParamsCfgJSON    string
+	HDFSNameNodeAddr string
+	HiveLocation     string
 }
 
 func resolveTrainCfg(attrs map[string]*attribute) *xgbTrainConfig {
@@ -87,7 +90,7 @@ func resolveModelName(pr *extendedSelect) (string, error) {
 	return estimatorParts[1], nil
 }
 
-func newXGBFiller(pr *extendedSelect, ds *trainAndValDataset, db *DB) (*xgbFiller, error) {
+func newXGBFiller(pr *extendedSelect, ds *trainAndValDataset, db *DB, session *pb.Session) (*xgbFiller, error) {
 	attrs, err := resolveAttribute(&pr.trainAttrs)
 	if err != nil {
 		return nil, err
@@ -100,8 +103,10 @@ func newXGBFiller(pr *extendedSelect, ds *trainAndValDataset, db *DB) (*xgbFille
 			TrainingDatasetSQL:   training,
 			ValidationDatasetSQL: validation,
 		},
-		xgbTrainConfig: *resolveTrainCfg(attrs),
-		Save:           pr.save,
+		xgbTrainConfig:   *resolveTrainCfg(attrs),
+		Save:             pr.save,
+		HDFSNameNodeAddr: session.GetHdfsNamenodeAddr(),
+		HiveLocation:     session.GetHiveLocation(),
 	}
 	if !isTrain && !pr.analyze {
 		r.PredictionDatasetSQL = pr.standardSelect.String()
@@ -169,15 +174,15 @@ func newXGBFiller(pr *extendedSelect, ds *trainAndValDataset, db *DB) (*xgbFille
 	return r, nil
 }
 
-func genXGBoost(w io.Writer, pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *DB) error {
-	r, e := newXGBFiller(pr, ds, db)
+func genXGBoost(w io.Writer, pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *DB, session *pb.Session) error {
+	r, e := newXGBFiller(pr, ds, db, session)
 	if e != nil {
 		return e
 	}
 	if pr.train {
 		return xgbTrainTemplate.Execute(w, r)
 	}
-	if e := createPredictionTable(pr, db); e != nil {
+	if e := createPredictionTable(pr, db, session); e != nil {
 		return fmt.Errorf("failed to create prediction table: %v", e)
 	}
 	return xgbPredictTemplate.Execute(w, r)

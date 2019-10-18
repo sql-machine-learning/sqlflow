@@ -158,11 +158,9 @@ func TestGeneratePredictIR(t *testing.T) {
 	}
 	a := assert.New(t)
 	parser := newParser()
-	predSQL := `
-	SELECT * FROM iris.test
-	PREDICT iris.predict.class
-	USING sqlflow_models.mymodel;
-	`
+	predSQL := `SELECT * FROM iris.test
+PREDICT iris.predict.class
+USING sqlflow_models.mymodel;`
 	r, e := parser.Parse(predSQL)
 	a.NoError(e)
 
@@ -172,14 +170,12 @@ func TestGeneratePredictIR(t *testing.T) {
 	modelDir, e := ioutil.TempDir("/tmp", "sqlflow_models")
 	a.Nil(e)
 	defer os.RemoveAll(modelDir)
-	stream := runExtendedSQL(`
-	SELECT * FROM iris.train
-	TRAIN DNNClassifier
-	WITH model.n_classes=3, model.hidden_units=[10,20]
-	COLUMN sepal_length, sepal_width, petal_length, petal_width
-	LABEL class
-	INTO sqlflow_models.mymodel;
-	`, testDB, modelDir, nil)
+	stream := runExtendedSQL(`SELECT * FROM iris.train
+TRAIN DNNClassifier
+WITH model.n_classes=3, model.hidden_units=[10,20]
+COLUMN sepal_length, sepal_width, petal_length, petal_width
+LABEL class
+INTO sqlflow_models.mymodel;`, testDB, modelDir, nil)
 	a.True(goodStream(stream.ReadAll()))
 
 	// Test generate PredicrIR
