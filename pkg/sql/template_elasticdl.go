@@ -61,6 +61,7 @@ def dataset_fn(dataset, mode, metadata):
             features = tf.concat(features, -1)
             return tf.reshape(features, features_shape)
 
+        record = tf.strings.to_number(record, tf.float32)
         features_shape = ({{.InputShape}}, 1)
         labels_shape = (1,)
         {{if .IsTraining}}
