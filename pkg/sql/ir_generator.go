@@ -176,8 +176,8 @@ func inferStringValue(expr string) interface{} {
 		return float32(retFloat)
 	}
 
-	// boolean. We pick the candidates from implementation of
-	// `strconv.ParseBool(expr)` which follow the SQL usage.
+	// boolean. We pick the candidates which following the SQL usage from
+	// implementation of `strconv.ParseBool(expr)`.
 	switch expr {
 	case "true", "TRUE", "True":
 		return true
