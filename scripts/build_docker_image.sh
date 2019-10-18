@@ -38,7 +38,7 @@ impyla==0.16.0 \
 pyodps==0.8.3 \
 jupyter==1.0.0 \
 notebook==6.0.0 \
-sqlflow==0.6.0 \
+sqlflow==0.7.0 \
 pre-commit==1.18.3 \
 dill==0.3.0 \
 shap==0.30.1 \
@@ -75,7 +75,7 @@ chmod +x /usr/local/bin/protoc-gen-grpc-java
 # 4. Install mysql without a password prompt
 echo 'mysql-server mysql-server/root_password password root' | debconf-set-selections
 echo 'mysql-server mysql-server/root_password_again password root' | debconf-set-selections
-apt-get install -y mysql-server
+apt-get update && apt-get install -y mysql-server
 mkdir -p /var/run/mysqld
 mkdir -p /var/lib/mysql
 chown mysql:mysql /var/run/mysqld
@@ -109,7 +109,7 @@ rm -rf /tmp/hadoop.tar.gz
 rm -rf /opt/hadoop-${HADOOP_VERSION}/share/doc
 
 # 9. Install additional dependencies for ElasticDL, ElasticDL CLI, and build testing images
-apt-get install -y docker.io sudo
+apt-get update && apt-get install -y docker.io sudo
 curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/v1.14.0/bin/linux/amd64/kubectl && chmod +x kubectl && sudo mv kubectl /usr/local/bin/
 git clone https://github.com/sql-machine-learning/elasticdl.git
 cd elasticdl
