@@ -38,7 +38,7 @@ impyla==0.16.0 \
 pyodps==0.8.3 \
 jupyter==1.0.0 \
 notebook==6.0.0 \
-sqlflow==0.6.0 \
+sqlflow==0.7.0 \
 pre-commit==1.18.3 \
 dill==0.3.0 \
 shap==0.30.1 \
