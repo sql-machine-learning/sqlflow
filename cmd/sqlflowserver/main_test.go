@@ -184,9 +184,9 @@ func prepareTestData(dbStr string) error {
 			}
 			return nil
 		}
-		if err := testdata.Popularize(testDB.DB, testdata.IrisMaxComputeSQL); err != nil {
-			return err
-		}
+		// if err := testdata.Popularize(testDB.DB, testdata.IrisMaxComputeSQL); err != nil {
+		// 	return err
+		// }
 		return nil
 	}
 
