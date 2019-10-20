@@ -1,0 +1,5 @@
+package analyzer
+
+func name() {
+
+}
