@@ -58,9 +58,9 @@ A key to this design is the representation of the above concepts.  It is not a s
 
 Such design flaw roots from the ignoring of the fact that model definitions are code that has versions. Another important aspect is that we often build the source code into some release-ready form.  Once we noticed these facts, we can use version management tools and Git and release engineering tools like Docker.  Here follows our proposal.
 
-1. A collection of model definitions is a Git repo of source files. 
-1. To describe dependencies, we require a Dockerfile at the root directory of the repo.
-1. To release a repo, we checkout the specific version and run `docker run` with the Dockerfile.
+1. A collection of model definitions is a Git repository of source files. 
+1. To describe dependencies, we require a Dockerfile at the root directory of the repository.
+1. To release a repository, we checkout the specific version and run `docker run` with the Dockerfile.
 1. Each release has a globally unique ID (GUID) represented by the hash ID of the Docker image.
 1. The Docker image must support a protocol of command-line arguments so that SQLFlow can pass in required information like hyperparameters from the `docker run` command.
 
@@ -68,20 +68,24 @@ Such design flaw roots from the ignoring of the fact that model definitions are 
 
 For a SELECT program using the SQLFlow syntax extension, the SQLFlow server converts it into a *submitter* program, usually in Python.
 
-Consider the training statement at the beginning of this document. Suppose that the Python class `MyDNNRegressor` is in source file `my_dnn_regressor.py` in repo https://github.com/wangkuiyi/regressors, which builds into Docker image `wangkuiyi/regressors`.  Let us also assume that the submitter program is `my_first_model.py`.  SQLFlow can run the submitter using the Docker image as follows:
+Consider the training statement at the beginning of this document. Suppose that the Python class `MyDNNRegressor` is in source file `my_dnn_regressor.py` in the repository https://github.com/a_data_scientist/regressors, which builds into Docker image `a_data_scientist/regressors`.  Let us also assume that the submitter program is `/var/sqlflow/submitters/an_analyst/my_first_model.py`.  SQLFlow can run the submitter using the Docker image as follows:
 
 ```bash
 docker run --rm -it \
-  -v $SUBMITTERS:/submitters \
-  wangkuiyi/regressors \
-    python /submitters/my_first_model.py
+  -v /var/sqlflow/submitters:/submitters \
+  a_data_scientist/regressors \
+    python /submitters/an_analyst/my_first_model.py
 ```
 
-The submitter program `my_first_model.py` should
+If we run SQLFlow in a Docker container, to allow it to run another Docker container, we must enable the Docker-in-Docker feature, say, following [this blog post](https://itnext.io/docker-in-docker-521958d34efd).  Suppose that the SQLFlow server runs in a Kubernetes cluster, where we cannot enable Docker-in-Docker. In such a case, we can make the SQLFlow server call Kubernetes API to run a Pod that executes the above `docker run` command line.
 
-1. submit the dataset `SELECT * FROM employee WHERE onboard_year < 2019` to the preconfigured database system and export the query result,
-1. submit a (distributed) training job to a preconfigured cluster, and
-1. add or edit a row in a **model zoo table**.
+ There could be more than one model definition repositories and Docker images. We need to be able to choose the right one that contains the model `MyDNNRegressor`.  We might want to require that the Docker image, when passed the specific argument `list`, prints the model definition names it contains.  For example, the following command prints a name in the form of `a_data_scientist.MyDNNRegressor`.
+
+```bash
+docker run --rm -it a_data_scientist/regressors list
+```
+
+The submitter program `my_first_model.py`, running in the model definition Docker container, should be able to submit a (distributed) training job to a preconfigured cluster.  Once the job completes, the submitter program adds, or edits, a row in a **model zoo table**.
 
 The model zoo table is in a database deployed as part of the SQLFlow service. This database might not be the one that holds data sources.  The only requirement of the model zoo table is to have a particular data schema.
 
@@ -90,7 +94,7 @@ The model zoo table is in a database deployed as part of the SQLFlow service. Th
 The model zoo table must have the following data schema:
 
 1. model ID (key), specified by the INTO clause, or `$USER/my_first_model` in the above example.
-1. Docker image ID, the Docker commit ID of the image `wangkuiyi/regressors` in the above example.
+1. Docker image ID, the Docker commit ID of the image `a_data_scientist/regressors` in the above example.
 1. submitter program, the source code of the submitter program, `my_first_model.py` in the above example, or its MD5 hash.
 1. data converter, the COLUMN and LABEL clauses.
 1. model parameter file path, the path to the trained model parameters on the distributed filesystem of the cluster.
