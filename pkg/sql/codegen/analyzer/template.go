@@ -13,11 +13,16 @@
 
 package sql
 
-import (
-	"text/template"
-)
+type filler struct {
+	DataSource         string
+	DatasetSQL         string
+	X                  []*FeatureMeta
+	Label              string
+	ShapSummaryParames map[string]interface{}
+	ModelFile          string
+}
 
-const analyzeTemplateText = `
+const templateText = `
 import xgboost
 import shap
 import json 
@@ -49,7 +54,7 @@ summaryAttrs["{{$k}}"] = {{$v}}
 {{end}}
 
 def analyzer_dataset():
-    stream = db_generator(conn.driver, conn, """{{.AnalyzeDatasetSQL}}""", feature_names, label_name, feature_metas)
+    stream = db_generator(conn.driver, conn, """{{.DatasetSQL}}""", feature_names, label_name, feature_metas)
     xs = pd.DataFrame(columns=feature_names)
     ys = pd.DataFrame(columns=[label_name])
     i = 0
@@ -68,4 +73,4 @@ shap.summary_plot(shap_values, X, show=False, **summaryAttrs)
 plt.savefig('summary', bbox_inches='tight')
 `
 
-var analyzeTemplate = template.Must(template.New("analyze").Parse(analyzeTemplateText))
+var template = template.Must(template.New("analyze").Parse(templateText))
