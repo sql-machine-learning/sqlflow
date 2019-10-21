@@ -13,12 +13,16 @@
 
 package analyzer
 
+import (
+	"text/template"
+)
+
 type filler struct {
 	DataSource         string
 	DatasetSQL         string
-	X                  []*FeatureMeta
-	Label              string
 	ShapSummaryParames map[string]interface{}
+	FieldMetaJSON      string
+	Label              string
 	ModelFile          string
 }
 
@@ -33,17 +37,9 @@ from sqlflow_submitter.db import connect_with_data_source, db_generator
 
 shap.initjs()
 
-feature_names = [{{ range $value := .X }} "{{$value.FeatureName}}", {{end}}]
-feature_metas = {}
-{{ range $value := .X }}
-feature_metas["{{$value.FeatureName}}"] = {
-    "feature_name": "{{$value.FeatureName}}",
-    "dtype": "{{$value.Dtype}}",
-    "delimiter": "{{$value.Delimiter}}",
-    "shape": {{$value.InputShape}},
-    "is_sparse": "{{$value.IsSparse}}" == "true"
-}
-{{end}}
+feature_field_meta = json.loads('''{{.FieldMetaJSON}}''')
+feature_column_name = sorted([k["name"] for k in feature_field_meta])
+feature_spec = {k['name']: k for k in feature_field_meta}
 conn = connect_with_data_source('''{{.DataSource}}''')
 label_name = "{{.Label}}"
 model_path = "{{.ModelFile}}"
@@ -54,8 +50,8 @@ summaryAttrs["{{$k}}"] = {{$v}}
 {{end}}
 
 def analyzer_dataset():
-    stream = db_generator(conn.driver, conn, """{{.DatasetSQL}}""", feature_names, label_name, feature_metas)
-    xs = pd.DataFrame(columns=feature_names)
+    stream = db_generator(conn.driver, conn, """{{.DatasetSQL}}""", feature_column_name, label_name, feature_spec)
+    xs = pd.DataFrame(columns=feature_column_name)
     ys = pd.DataFrame(columns=[label_name])
     i = 0
     for row in stream():
@@ -73,4 +69,4 @@ shap.summary_plot(shap_values, X, show=False, **summaryAttrs)
 plt.savefig('summary', bbox_inches='tight')
 `
 
-var template = template.Must(template.New("analyze").Parse(templateText))
+var templ = template.Must(template.New("analyze").Parse(templateText))

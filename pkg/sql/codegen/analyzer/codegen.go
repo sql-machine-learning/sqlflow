@@ -15,6 +15,7 @@ package analyzer
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -22,17 +23,29 @@ import (
 )
 
 const (
-	shapSummaryAttributePrefix = "shap_summary"
+	shapSummaryAttributes = "shap_summary"
 )
 
-func GenAnalysis(ir *codegen.AnalyzeIR) (string, error) {
-	if !strings.HasPrefix(strings.ToUpper(ir.TrainIR.Estimator), "XGBOOST.") {
-		return "", fmt.Errorf("unsupported model:%s", ir.TrainIR.Estimator)
+func GenAnalysis(ir *codegen.AnalyzeIR, modelPath string) (string, error) {
+	if strings.HasPrefix(strings.ToUpper(ir.TrainIR.Estimator), "XGBOOST.") {
+		return genXGBAnalysis(ir, modelPath)
 	}
+	return "", fmt.Errorf("unsupported model:%s", ir.TrainIR.Estimator)
+}
+
+func genXGBAnalysis(ir *codegen.AnalyzeIR, modelPath string) (string, error) {
 	if ir.Explainer != "TreeExplainer" {
 		return "", fmt.Errorf("unsupported explainer")
 	}
-	summaryAttrs, err := resolveSummaryParames(ir.Attributes)
+	summaryAttrs, err := resolveParames(ir.Attributes, shapSummaryAttributes)
+	if err != nil {
+		return "", err
+	}
+	xs, y, err := getFieldMeta(ir.TrainIR)
+	if err != nil {
+		return "", err
+	}
+	fm, err := json.Marshal(xs)
 	if err != nil {
 		return "", err
 	}
@@ -41,60 +54,44 @@ func GenAnalysis(ir *codegen.AnalyzeIR) (string, error) {
 		DataSource:         ir.DataSource,
 		DatasetSQL:         ir.Select,
 		ShapSummaryParames: summaryAttrs,
-		// X []*FeatureMeta
-		// Label
-		// ModelFile
+		FieldMetaJSON:      string(fm),
+		Label:              y.Name,
+		ModelFile:          modelPath,
 	}
 	var analysis bytes.Buffer
-	if err := template.Execute(&analysis, fr); err != nil {
+	if err := templ.Execute(&analysis, fr); err != nil {
 		return "", err
 	}
 	return analysis.String(), nil
 }
 
-// func readXGBFeatures(pr *extendedSelect, db *DB) ([]*FeatureMeta, string, error) {
-// 	// TODO(weiguo): It's a quick way to read column and label names from
-// 	// xgboost.*, but too heavy.
-// 	// NOTE(typhoonzero): analyze does not need to pass session to set hive_location etc.
-// 	fr, err := newXGBFiller(pr, nil, db, nil)
-// 	if err != nil {
-// 		return nil, "", err
-// 	}
-//
-// 	xs := make([]*FeatureMeta, len(fr.X))
-// 	for i := 0; i < len(fr.X); i++ {
-// 		// FIXME(weiguo): we convert xgboost.X to normal(tf).X to reuse
-// 		// DB access API, but I don't think it is a good practice,
-// 		// Think about the AI engines increased, such as ALPS, (EDL?)
-// 		// we should write as many as such converters.
-// 		// How about we unify all featureMetas?
-// 		xs[i] = &FeatureMeta{
-// 			FeatureName: fr.X[i].FeatureName,
-// 			Dtype:       fr.X[i].Dtype,
-// 			Delimiter:   fr.X[i].Delimiter,
-// 			InputShape:  fr.X[i].InputShape,
-// 			IsSparse:    fr.X[i].IsSparse,
-// 		}
-// 	}
-// 	return xs, fr.Y.FeatureName, nil
-// }
-
-func resolveSummaryParames(attrs map[string]interface{}) (map[string]interface{}, error) {
-	ret := make(map[string]interface{})
-	return ret, nil
+func resolveParames(attrs map[string]interface{}, group string) (map[string]interface{}, error) {
+	sp := make(map[string]interface{})
+	for k, v := range attrs {
+		if strings.HasPrefix(k, group) {
+			sp[k[len(group):]] = v
+		}
+	}
+	return sp, nil
 }
 
-// func resolveAnalyzeSummaryParames(atts *attrs) (map[string]interface{}, error) {
-// 	parames, err := resolveAttribute(atts)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-//
-// 	summaryAttrs := make(map[string]interface{})
-// 	for _, v := range parames {
-// 		if v.Prefix == shapSummaryAttributePrefix {
-// 			summaryAttrs[v.Name] = v.Value
-// 		}
-// 	}
-// 	return summaryAttrs, nil
-// }
+func getFieldMeta(ir *codegen.TrainIR) ([]codegen.FieldMeta, codegen.FieldMeta, error) {
+	var features []codegen.FieldMeta
+	for _, fc := range ir.Features["feature_columns"] {
+		switch c := fc.(type) {
+		case *codegen.NumericColumn:
+			features = append(features, *c.FieldMeta)
+		default:
+			return nil, codegen.FieldMeta{}, fmt.Errorf("unsupported feature column type %T on %v", c, c)
+		}
+	}
+
+	var label codegen.FieldMeta
+	switch c := ir.Label.(type) {
+	case *codegen.NumericColumn:
+		label = *c.FieldMeta
+	default:
+		return nil, codegen.FieldMeta{}, fmt.Errorf("unsupported label column type %T on %v", c, c)
+	}
+	return features, label, nil
+}
