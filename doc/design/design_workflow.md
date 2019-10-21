@@ -32,84 +32,77 @@ Tangent does autodiff by parsing the Python source code into an abstract syntax 
 
 We like the capability of describing the computation process by a program.  Tangent doesn't support all Python syntax used in the description of the forward pass. Similarly, we might not allow all Python syntax used to describe the workflow if we follow the Tangent way.  The steps in Tangent include some pre-listed functions, mostly, TensorFlow operations, and Python operators.
 
-## Concepts
+## Proposal
 
-Some base jobs.
+There seem multiple strategies to design the high-level API of a workflow engine.
 
-WorkflowParam represents intermediate values passed between steps, and can also be used to find out dependencies. (name, owner_step, type).
-How inputs/outputs are supported in Argo now?
+1. The program written in this API runs and executes the workflow.  This way works obviously as the interpreter/runtime of the host language serves as the workflow engine.  However, we might want to use some other workflow engines, like Argo.
+1. The program written in the API runs and generates the YAML workflow definition, which is the input for Argo.
+1. We write a **transpiler** to convert the program in the API into the YAML workflow.
 
-```python
-# Base job
-class BaseJob(object):
-    def __init__(
-        self,
-        name: str,
-        inputs: List[WorkflowParam],
-        outputs: List[WorkflowParam],
-        retry: int,
-        timeout: int,
-    ):
-        # Create a new instance of BaseJob
+These strategies are not necessarily mutually exclusive to each other. The key depends on how we implement the [control flow](https://en.wikipedia.org/wiki/Control_flow).  If we use control flows of the host programming language, 1. and 3. work. Otherwise, we define control flows as API calls, then all of them work.
 
+### Control Flow as API Calls
 
-# Single container job
-class ContainerJob(BaseJob):
-    def __init__(
-        self,
-        name: str,
-        image: str,
-        command: str,
-        args: str,
-        **kwargs,
-    ):
-        # Create a new instance of ContainerJob
-        
-
-# A k8s resource job
-class ResourceJob(BaseJob):
-    def __init__(
-        self,
-        name: str,
-        success_condition: str,
-        failure_condition: str,
-        **kwargs,
-    ):
-        # Create a new instance of ResourceJob
-
-```
-
-**Branching**
-```python
-step1 = self.create_step1()
-step2 = self.create_step2()
-step3 = self.create_step3()
-
-output1 = self.run(step1, args1)
-if output1.field_a == 0:
-    self.run(step2, args2)
-else:
-    self.run(step3, args3)
-```
-
-**Static loop**
-```python
-step1 = self.create_step1()
-step2 = self.create_step2()
-
-self.run(step1)
-for x in ["apple", "banana", "cherry"]:
-    self.run(step2, x)
-```
-
-**Dynamic loop**
+With an API function `couler.for` representing a loop, we can write the following example program.
 
 ```python
-step1 = self.create_step1()
-step2 = self.create_step2()
+def loop_example():
+    couler.for(whalesay, ["hello world", "goodbye world"])
 
-while output and output != "head":
-    output = self.run(step1, args1)
-
-self.run(step2, args2)
+def whalesay(message):
+    couler.run_docker(image="docker/whalesay:latest", command=["cowsay"], args=[message])
 ```
+
+We can define `couler.run_docker` to call the Docker API and run a container, and `couler.for` to call Python's loop control flow. In this way, the above program can run and execute a workflow.
+
+Alternatively, by defining `couler.run_docker` and `couler.for` in some particular way, we can make sure that when we run the above program, it generates the following YAML file.
+
+```yaml
+spec:
+  entrypoint: loop-example
+  templates:
+  - name: loop-example
+    steps:
+    - - name: print-message
+        template: whalesay
+        arguments:
+          parameters:
+          - name: message
+            value: "{{item}}"
+        withItems:              # invoke whalesay once for each item in parallel
+        - hello world           # item 1
+        - goodbye world         # item 2
+
+  - name: whalesay
+    inputs:
+      parameters:
+      - name: message
+    container:
+      image: docker/whalesay:latest
+      command: [cowsay]
+      args: ["{{inputs.parameters.message}}"]
+```
+
+A transpiler that calls the parser of the host language (Python in this example) can do the above conversion from a program to a YAML file. However, if the program can run and generate the YAML itself, we might not bother to write the transpiler.
+
+### Control Flow from the Host Language
+
+Let us rewrite the above example program using Python's control flow.
+
+```python
+def loop_example():
+    for m in ["hello world", "goodbye world"]:
+        whalesay(m)
+
+def whalesay(message):
+    couler.run_docker(image="docker/whalesay:latest", command=["cowsay"], args=[message])
+```
+
+When we run the above program, it executes the workflow and calls `whalesay` three times.
+
+But if we want the YAML file, we would have to write a transpiler that takes the Python program as the input and converts it, in particular, the for loop, into the YAML file.
+
+## Conclusion
+
+Let us try the control-flow-as-API strategy first, as it seems easier to implement.  If it doesn't work, let us try the control-flow-from-host-language approach.
