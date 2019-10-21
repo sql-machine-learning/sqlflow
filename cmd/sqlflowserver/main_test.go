@@ -297,7 +297,14 @@ func TestEnd2EndMySQLIR(t *testing.T) {
 	}
 
 	t.Run("TestTrainSQL", CaseTrainSQL)
+	// // TODO(typhoonzero): CaseTrainTextClassification*, CaseSparseFeature should follow the new column grammar like:
+	// // EMBEDDING(CATEGORY_ID(SPARSE(col, 160000, COMMA), 160000), 512, sum)
 	t.Run("CaseTrainCustomModel", CaseTrainCustomModel)
+	t.Run("CaseTrainSQLWithHyperParams", CaseTrainSQLWithHyperParams)
+	t.Run("CaseTrainCustomModelWithHyperParams", CaseTrainCustomModelWithHyperParams)
+
+	t.Run("CaseSQLByPassLeftJoin", CaseSQLByPassLeftJoin)
+	t.Run("CaseTrainRegression", CaseTrainRegression)
 	t.Run("CaseTrainXGBoostRegressionIR", CaseTrainXGBoostRegression)
 }
 

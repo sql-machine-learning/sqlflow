@@ -96,6 +96,8 @@ func generatePredictIR(slct *extendedSelect, connStr string, cwd string, modelDi
 	if err != nil {
 		return nil, err
 	}
+	fmt.Printf("select %s, result table: %s\n", slct.standardSelect.String(), slct.into)
+
 	return &codegen.PredictIR{
 		DataSource:  connStr,
 		Select:      slct.standardSelect.String(),

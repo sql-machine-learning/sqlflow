@@ -518,6 +518,10 @@ func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir strin
 			if err != nil {
 				return err
 			}
+			err = createPredictionTable(pr, db, session)
+			if err != nil {
+				return err
+			}
 			buf.WriteString(code)
 		} else {
 			if e := genTF(&buf, pr, nil, fts, db, session); e != nil {
