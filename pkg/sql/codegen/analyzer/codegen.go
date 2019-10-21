@@ -26,6 +26,7 @@ const (
 	shapSummaryAttributes = "shap_summary"
 )
 
+// GenAnalysis generates a Python program to analyze a trained model.
 func GenAnalysis(ir *codegen.AnalyzeIR, modelPath string) (string, error) {
 	if strings.HasPrefix(strings.ToUpper(ir.TrainIR.Estimator), "XGBOOST.") {
 		return genXGBAnalysis(ir, modelPath)
