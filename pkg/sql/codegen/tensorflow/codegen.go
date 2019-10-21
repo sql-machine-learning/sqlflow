@@ -98,6 +98,19 @@ func attrToPythonValue(attr interface{}) string {
 	case []int:
 		return intArrayToJSONString(attr.([]int))
 		// TODO(typhoonzero): support []float etc.
+	case []interface{}:
+		tmplist := attr.([]interface{})
+		if len(tmplist) > 0 {
+			if _, ok := tmplist[0].(int); ok {
+				intlist := []int{}
+				for _, v := range tmplist {
+					intlist = append(intlist, v.(int))
+				}
+				return intArrayToJSONString(intlist)
+			}
+		}
+		// TODO(typhoonzero): support []float etc.
+		return "[]"
 	case string:
 		return attr.(string)
 	default:
@@ -126,7 +139,7 @@ func isKerasModel(estimator string) (bool, string) {
 }
 
 // Train generates a Python program for train a TensorFlow model.
-func Train(ir codegen.TrainIR) (string, error) {
+func Train(ir *codegen.TrainIR) (string, error) {
 	trainParams := make(map[string]interface{})
 	modelParams := make(map[string]interface{})
 	for attrKey, attr := range ir.Attributes {
@@ -197,7 +210,7 @@ func Train(ir codegen.TrainIR) (string, error) {
 }
 
 // Pred generates a Python program for predict using a TensorFlow model.
-func Pred(ir codegen.PredictIR) (string, error) {
+func Pred(ir *codegen.PredictIR) (string, error) {
 	modelParams := make(map[string]interface{})
 	for attrKey, attr := range ir.TrainIR.Attributes {
 		if strings.HasPrefix(attrKey, "model.") {
@@ -225,10 +238,20 @@ func Pred(ir codegen.PredictIR) (string, error) {
 	}
 	isKeras, estimatorStr := isKerasModel(ir.TrainIR.Estimator)
 
+	resultTableParts := strings.Split(ir.ResultTable, ".")
+	resultTable := ""
+	if len(resultTableParts) == 3 {
+		resultTable = strings.Join(resultTableParts[0:2], ".")
+	} else if len(resultTableParts) == 2 || len(resultTableParts) == 1 {
+		resultTable = ir.ResultTable
+	} else {
+		return "", fmt.Errorf("error result table format, should be db.table.class_col or db.table or table")
+	}
+
 	filler := predFiller{
 		DataSource:        ir.DataSource,
 		Select:            ir.Select,
-		ResultTable:       ir.ResultTable,
+		ResultTable:       resultTable,
 		Estimator:         estimatorStr,
 		IsKerasModel:      isKeras,
 		FieldMetas:        fieldMetas,

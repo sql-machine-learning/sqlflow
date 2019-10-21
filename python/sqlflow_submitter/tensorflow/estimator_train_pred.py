@@ -91,6 +91,4 @@ if __name__ == "__main__":
         label_meta=label_meta,
         model_params={"n_classes": 3, "hidden_units":[10,20]},
         save="mymodel",
-        batch_size=1,
-        epochs=1,
-        verbose=0)
+        batch_size=1)

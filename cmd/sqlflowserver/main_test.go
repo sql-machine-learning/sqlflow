@@ -233,7 +233,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	if testDBDriver != "mysql" {
 		t.Skip("Skipping mysql tests")
 	}
-	dbConnStr = "mysql://root:root@tcp/?maxAllowedPacket=0"
+	dbConnStr = "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
 	modelDir := ""
 
 	tmpDir, caCrt, caKey, err := generateTempCA()
@@ -296,6 +296,8 @@ func TestEnd2EndMySQLIR(t *testing.T) {
 		t.Fatalf("prepare test dataset failed: %v", err)
 	}
 
+	t.Run("TestTrainSQL", CaseTrainSQL)
+	t.Run("CaseTrainCustomModel", CaseTrainCustomModel)
 	t.Run("CaseTrainXGBoostRegressionIR", CaseTrainXGBoostRegression)
 }
 

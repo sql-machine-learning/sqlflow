@@ -32,7 +32,7 @@ type trainFiller struct {
 }
 
 const tfTrainTemplateText = `
-from sqlflow_submitter.templates.tensorflow import train
+from sqlflow_submitter.tensorflow.train import train
 
 feature_column_names = [{{range .FieldMetas}}
 "{{.Name}}",
@@ -50,20 +50,20 @@ feature_metas["{{$value.Name}}"] = {
 {{end}}
 
 label_meta = {
-    "feature_name": {{.Y.Name}},
+    "feature_name": "{{.Y.Name}}",
     "dtype": "{{.Y.DType | dtypeToString}}",
-    "delimiter": {{.Y.Delimiter}},
+    "delimiter": "{{.Y.Delimiter}}",
     "shape": {{.Y.Shape | intArrayToJSONString}},
     "is_sparse": "{{.Y.IsSparse}}" == "true"
 }
 
 model_params=dict()
 {{range $k, $v := .ModelParams}}
-model_params["{{$k}}"]={{$v | attrToPythonValue}},
+model_params["{{$k}}"]={{$v | attrToPythonValue}}
 {{end}}
 
-train(is_keras_model={{.IsKerasModel}},
-    datasource="{{.DataSource}}"
+train(is_keras_model="{{.IsKerasModel}}" == "true",
+    datasource="{{.DataSource}}",
     estimator="{{.Estimator}}",
     select="""{{.TrainSelect}}""",
     validate_select="""{{.ValidationSelect}}""",
@@ -73,7 +73,7 @@ train(is_keras_model={{.IsKerasModel}},
     label_meta=label_meta,
     model_params=model_params,
     save="{{.Save}}",
-    batch_size={{index .TrainParams "batch_size" | attrToPythonValue}},
+    batch_size=1,
     epochs={{index .TrainParams "epoch" | attrToPythonValue}},
     verbose={{index .TrainParams "verbose" | attrToPythonValue}})
 `

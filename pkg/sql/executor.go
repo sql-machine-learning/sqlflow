@@ -27,6 +27,7 @@ import (
 	"time"
 
 	pb "sqlflow.org/sqlflow/pkg/server/proto"
+	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
 	xgb "sqlflow.org/sqlflow/pkg/sql/codegen/xgboost"
 )
 
@@ -428,8 +429,23 @@ func train(wr *PipeWriter, tr *extendedSelect, db *DB, cwd string, modelDir stri
 			}
 		}
 	} else {
-		if e := genTF(&program, tr, ds, fts, db, session); e != nil {
-			return fmt.Errorf("genTF %v", e)
+		// FIXME(typhoonzero): Remove the condition after the codegen refactor
+		if os.Getenv("SQLFLOW_codegen") == "ir" {
+			ir, err := generateTrainIR(tr, db.String())
+			if err != nil {
+				return err
+			}
+			// TODO(typhoonzero): change to use validation clause to fill in ir.ValidationSelect
+			ir.ValidationSelect = fmt.Sprintf("SELECT * FROM %s", ds.validation)
+			code, err := tensorflow.Train(ir)
+			if err != nil {
+				return err
+			}
+			program.WriteString(code)
+		} else {
+			if e := genTF(&program, tr, ds, fts, db, session); e != nil {
+				return fmt.Errorf("genTF %v", e)
+			}
 		}
 	}
 
@@ -493,8 +509,20 @@ func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir strin
 			return fmt.Errorf("genXGBoost %v", e)
 		}
 	} else {
-		if e := genTF(&buf, pr, nil, fts, db, session); e != nil {
-			return fmt.Errorf("genTF %v", e)
+		if os.Getenv("SQLFLOW_codegen") == "ir" {
+			ir, err := generatePredictIR(pr, db.String(), cwd, modelDir)
+			if err != nil {
+				return err
+			}
+			code, err := tensorflow.Pred(ir)
+			if err != nil {
+				return err
+			}
+			buf.WriteString(code)
+		} else {
+			if e := genTF(&buf, pr, nil, fts, db, session); e != nil {
+				return fmt.Errorf("genTF %v", e)
+			}
 		}
 	}
 
