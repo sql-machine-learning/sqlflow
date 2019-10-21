@@ -79,12 +79,6 @@ docker run --rm -it \
 
 If we run SQLFlow in a Docker container, to allow it to run another Docker container, we must enable the Docker-in-Docker feature, say, following [this blog post](https://itnext.io/docker-in-docker-521958d34efd).  Suppose that the SQLFlow server runs in a Kubernetes cluster, where we cannot enable Docker-in-Docker. In such a case, we can make the SQLFlow server call Kubernetes API to run a Pod that executes the above `docker run` command line.
 
- There could be more than one model definition repositories and Docker images. We need to be able to choose the right one that contains the model `MyDNNRegressor`.  We might want to require that the Docker image, when passed the specific argument `list`, prints the model definition names it contains.  For example, the following command prints a name in the form of `a_data_scientist.MyDNNRegressor`.
-
-```bash
-docker run --rm -it a_data_scientist/regressors list
-```
-
 The training submitter program `my_first_model.py`, running in the model definition Docker container, should be able to submit a (distributed) training job to a preconfigured cluster.  Once the job completes, the submitter program adds, or edits, a row in a **model zoo table**.
 
 ### Model Zoo Data Schema
@@ -115,6 +109,49 @@ If another analyst wants to use the trained model, he would need to use the full
 
 ```sql
 SELECT ... TO PREDICT ... USING an_analyst/my_first_model
+```
+
+There could be more than one model definitions in each model's Docker image. We need to be able to find out which model definition is used to train current saved model. Also if we only want to reuse the model definition to train a new model we need to know the model definition class name, so that we can pass it to the `TRAIN` clause.
+
+To list all trained models of one user, you can do:
+
+```sql
+SQLFLOW LIST an_analyst
+```
+
+This should output a table showing the saved models and which model definition it was using.
+
+```
+|  saved model    |   model def    |
+| my_first_model  | MyDNNRegressor |
+| my_second_model | MyDNNRegressor |
+```
+
+Within **any** deployment that have internet access, to list published models:
+
+```sql
+SQLFLOW LIST [models.sqlflow.com/an_analyst]
+```
+
+Display model definitions and documentation of the published model:
+
+```
+SQLFLOW DESCRIBE model.sqlflow.com/an_analyst/my_first_model;
+| available model defs |
+| MyDNNRegressor       |
+| MyDNNClassifier      |
+
+SQLFLOW DESCRIBE model.sqlflow.com/an_analyst/my_first_model.MyDNNRegressor;
+
+Documatation for my_first_model.MyDNNRegressor
+...
+...
+```
+
+Use a published model to predict some data:
+
+```sql
+SELECT ... TO PREDICT employee.predicted_salary USING model.sqlflow.com/an_analyst/my_first_model
 ```
 
 ### Model Publication
