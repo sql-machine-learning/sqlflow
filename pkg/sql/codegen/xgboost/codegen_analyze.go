@@ -31,7 +31,7 @@ func Analyze(ir *codegen.AnalyzeIR, modelPath string) (string, error) {
 	if ir.Explainer != "TreeExplainer" {
 		return "", fmt.Errorf("unsupported explainer %s", ir.Explainer)
 	}
-	summaryAttrs, err := resolveParames(ir.Attributes, shapSummaryAttributes)
+	summaryAttrs, err := resolveParams(ir.Attributes, shapSummaryAttributes)
 	if err != nil {
 		return "", err
 	}
@@ -59,7 +59,7 @@ func Analyze(ir *codegen.AnalyzeIR, modelPath string) (string, error) {
 	return analysis.String(), nil
 }
 
-func resolveParames(attrs map[string]interface{}, group string) (map[string]interface{}, error) {
+func resolveParams(attrs map[string]interface{}, group string) (map[string]interface{}, error) {
 	sp := make(map[string]interface{})
 	for k, v := range attrs {
 		if strings.HasPrefix(k, group) {
