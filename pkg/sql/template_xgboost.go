@@ -144,7 +144,7 @@ feature_file_read = open("predict.txt", "r")
 
 result_column_names = feature_column_names
 result_column_names.append("{{.Y.FeatureName}}")
-
+print(result_column_names)
 line_no = 0
 with buffered_db_writer(driver, conn, "{{.TableName}}", result_column_names, 100, hdfs_namenode_addr="{{.HDFSNameNodeAddr}}", hive_location="{{.HiveLocation}}") as w:
     while True:
@@ -153,6 +153,7 @@ with buffered_db_writer(driver, conn, "{{.TableName}}", result_column_names, 100
             break
         row = [i.split(":")[1] for i in line.replace("\n", "").split("\t")[1:]]
         row.append(preds[line_no])
+        print(row)
         w.write(row)
         line_no += 1
 print("Done predicting. Predict table : {{.TableName}}")

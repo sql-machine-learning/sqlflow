@@ -18,31 +18,31 @@ import (
 )
 
 type predFiller struct {
-	DataSource       string
-	PredSelect       string
-	FeatureMetaJSON  string
-	LabelMetaJSON    string
-	HDFSNameNodeAddr string
-	HiveLocation     string
+	DataSource      string
+	PredSelect      string
+	FeatureMetaJSON string
+	LabelMetaJSON   string
+	ResultTable     string
 }
 
 const predTemplateText = `
+import json
 import xgboost as xgb
 import numpy as np
-from sqlflow_submitter.db import connect, db_generator, buffered_db_writer
+from sqlflow_submitter.db import connect_with_data_source, db_generator, buffered_db_writer
 
-feature_field_meta = json.loads('''{{.FieldMetaJSON}}''')
-label_field_meta = json.loads('''{{.LabelJSON}}''')
+feature_field_meta = json.loads('''{{.FeatureMetaJSON}}''')
+label_field_meta = json.loads('''{{.LabelMetaJSON}}''')
 
-feature_column_name = sorted([k["name"] for k in feature_field_meta])
+feature_column_names = [k["name"] for k in feature_field_meta]
 label_name = label_field_meta["name"]
 
-feature_spec = {k['name']: k for k in feature_field_meta}
+feature_specs = {k['name']: k for k in feature_field_meta}
 
 conn = connect_with_data_source('''{{.DataSource}}''')
 
 def xgb_dataset(fn, dataset_sql):
-    gen = db_generator(driver, conn, dataset_sql, feature_column_names, "", feature_specs)
+    gen = db_generator(conn.driver, conn, dataset_sql, feature_column_names, "", feature_specs)
     with open(fn, 'w') as f:
         for item in gen():
             features, label = item
@@ -54,7 +54,7 @@ def xgb_dataset(fn, dataset_sql):
 dpred = xgb_dataset('predict.txt', """{{.PredSelect}}""")
 
 bst = xgb.Booster({'nthread': 4})  # init model
-bst.load_model("{{.Save}}")  # load data
+bst.load_model("my_model")  # load data
 preds = bst.predict(dpred)
 
 # TODO(Yancey1989): using the train parameters to decide regressoin model or classifier model
@@ -66,7 +66,6 @@ feature_file_read = open("predict.txt", "r")
 
 result_column_names = feature_column_names
 result_column_names.append(label_name)
-
 line_no = 0
 with buffered_db_writer(conn.driver, conn, "{{.ResultTable}}", result_column_names, 100) as w:
     while True:
@@ -74,10 +73,10 @@ with buffered_db_writer(conn.driver, conn, "{{.ResultTable}}", result_column_nam
         if not line:
             break
         row = [i.split(":")[1] for i in line.replace("\n", "").split("\t")[1:]]
-        row.append(preds[line_no])
+        row.append(str(preds[line_no]))
         w.write(row)
         line_no += 1
-print("Done predicting. Predict table : {{.ResultName}}")
+print("Done predicting. Predict table : {{.ResultTable}}")
 `
 
 var predTemplate = template.Must(template.New("Pred").Parse(predTemplateText))

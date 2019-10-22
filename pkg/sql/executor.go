@@ -499,10 +499,7 @@ func loadModelMeta(pr *extendedSelect, db *DB, cwd, modelDir, modelName string) 
 }
 
 func enableIR() bool {
-	if os.Getenv("SQLFLOW_codegen") == "ir" {
-		return true
-	}
-	return false
+	return os.Getenv("SQLFLOW_codegen") == "ir"
 }
 
 func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir string, session *pb.Session) error {

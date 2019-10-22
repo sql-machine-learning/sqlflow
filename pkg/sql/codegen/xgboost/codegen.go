@@ -167,12 +167,13 @@ func Pred(ir *codegen.PredictIR) (string, error) {
 		PredSelect:      ir.Select,
 		FeatureMetaJSON: string(f),
 		LabelMetaJSON:   string(l),
+		ResultTable:     ir.ResultTable,
 	}
 
 	var program bytes.Buffer
 
 	if err := predTemplate.Execute(&program, r); err != nil {
-		return "", nil
+		return "", err
 	}
 	return program.String(), nil
 }
