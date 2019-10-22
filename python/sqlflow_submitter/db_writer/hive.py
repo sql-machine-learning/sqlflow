@@ -72,8 +72,11 @@ class HiveDBWriter(BufferedDBWriter):
         else:
             namenode_addr = self.hdfs_namenode_addr
         # upload CSV to HDFS
-        hdfs_envs = os.environ
-        hdfs_envs.update({"HADOOP_USER_NAME": self.hdfs_user, "HADOOP_USER_PASSWORD": self.hdfs_pass})
+        hdfs_envs = os.environ.copy()
+        if self.hdfs_user != "":
+            hdfs_envs.update({"HADOOP_USER_NAME": self.hdfs_user})
+        if self.hdfs_pass != "":
+            hdfs_envs.update({"HADOOP_USER_PASSWORD": self.hdfs_pass})
         cmd_str = "hdfs dfs -mkdir -p hdfs://%s%s/%s/" % (namenode_addr, hdfs_path, self.table_name)
         subprocess.check_output(cmd_str.split(), env=hdfs_envs)
         cmd_str = "hdfs dfs -copyFromLocal %s hdfs://%s%s/%s/" % (self.tmp_f.name, namenode_addr, hdfs_path, self.table_name)
