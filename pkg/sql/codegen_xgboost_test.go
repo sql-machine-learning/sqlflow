@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	pb "sqlflow.org/sqlflow/pkg/server/proto"
 )
 
 const testXGBoostTrainSelectIris = ` 
@@ -70,11 +71,26 @@ func TestXGBFillerPredict(t *testing.T) {
 	parser := newParser()
 	r, e := parser.Parse(testXGBoostPredictIris)
 	a.NoError(e)
-	filler, e := newXGBFiller(r, nil, testDB, nil)
+
+	sess := &pb.Session{
+		Token:            "",
+		DbConnStr:        testDB.String(),
+		ExitOnSubmit:     false,
+		UserId:           "",
+		HiveLocation:     "/sqlflowtmp",
+		HdfsNamenodeAddr: "192.168.1.1:8020",
+		HdfsUser:         "hdfs_user",
+		HdfsPass:         "hdfs_pass",
+	}
+	filler, e := newXGBFiller(r, nil, testDB, sess)
 	a.NoError(e)
 	a.False(filler.IsTrain)
 	a.Equal(filler.TableName, "iris.predict")
 	a.Equal(filler.Save, "sqlflow_models.my_xgboost_model")
 	a.Equal(filler.PredictionDatasetSQL, `SELECT *
 FROM iris.test`)
+	a.Equal("/sqlflowtmp", filler.HiveLocation)
+	a.Equal("192.168.1.1:8020", filler.HDFSNameNodeAddr)
+	a.Equal("hdfs_user", filler.HDFSUser)
+	a.Equal("hdfs_pass", filler.HDFSPass)
 }

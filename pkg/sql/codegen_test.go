@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	pb "sqlflow.org/sqlflow/pkg/server/proto"
 )
 
 const (
@@ -85,6 +86,36 @@ func TestCodeGenPredict(t *testing.T) {
 	a.NoError(e)
 
 	a.NoError(genTF(ioutil.Discard, r, nil, fts, testDB, nil))
+}
+
+func TestCodeGenPredictHiveConfigInSession(t *testing.T) {
+	a := assert.New(t)
+
+	sess := &pb.Session{
+		Token:            "",
+		DbConnStr:        testDB.String(),
+		ExitOnSubmit:     false,
+		UserId:           "",
+		HiveLocation:     "/sqlflowtmp",
+		HdfsNamenodeAddr: "192.168.1.1:8020",
+		HdfsUser:         "hdfs_user",
+		HdfsPass:         "hdfs_pass",
+	}
+	r, e := newParser().Parse(testTrainSelectIris)
+	a.NoError(e)
+	tc := r.trainClause
+	r, e = newParser().Parse(testPredictSelectIris)
+	a.NoError(e)
+	r.trainClause = tc
+	fts, e := verify(r, testDB)
+	a.NoError(e)
+
+	filler, e := newFiller(r, nil, fts, testDB, sess)
+	a.NoError(e)
+	a.Equal("/sqlflowtmp", filler.HiveLocation)
+	a.Equal("192.168.1.1:8020", filler.HDFSNameNodeAddr)
+	a.Equal("hdfs_user", filler.HDFSUser)
+	a.Equal("hdfs_pass", filler.HDFSPass)
 }
 
 func TestLabelAsStringType(t *testing.T) {

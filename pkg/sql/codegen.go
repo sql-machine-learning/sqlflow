@@ -80,6 +80,8 @@ type tfFiller struct {
 	FeatureColumnsCode map[string][]string
 	HDFSNameNodeAddr   string
 	HiveLocation       string
+	HDFSUser           string
+	HDFSPass           string
 }
 
 // parseModelURI returns isKerasModel, modelClassString
@@ -117,6 +119,8 @@ func newFiller(pr *extendedSelect, ds *trainAndValDataset, fts fieldTypes, db *D
 		},
 		HDFSNameNodeAddr: session.GetHdfsNamenodeAddr(),
 		HiveLocation:     session.GetHiveLocation(),
+		HDFSUser:         session.GetHdfsUser(),
+		HDFSPass:         session.GetHdfsPass(),
 	}
 
 	var err error
