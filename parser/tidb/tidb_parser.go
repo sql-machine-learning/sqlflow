@@ -66,3 +66,27 @@ func Parse(sql string) (idx int, err error) {
 	}
 	return -1, nil
 }
+
+// Split splits a SQL program into a slice of SQL statements
+func Split(sql string) ([]string, error) {
+	if psr == nil || re == nil {
+		log.Fatalf("Parser must be called after Init")
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	nodes, warning, err := psr.Parse(sql, "", "")
+	fmt.Println("Split: %v", nodes)
+	fmt.Println("Split: %v", warning)
+	fmt.Println("Split: %v", err)
+	if err != nil {
+		return nil, err
+	}
+
+	sqls := make([]string, 0)
+	for _, n := range nodes {
+		sqls = append(sqls, n.Text())
+	}
+	return sqls, nil
+}
