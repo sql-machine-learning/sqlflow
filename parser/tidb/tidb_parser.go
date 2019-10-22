@@ -43,7 +43,7 @@ func Init() {
 // Parse calls TiDB's parser to parse a statement sql.  It returns
 // <-1,nil> if TiDB parser accepts the statement, or <pos,nil> if TiDB
 // doesn't accept but returns a `near "..."` in the error message, or
-// <-1,err> if the error messages doens't contain near.
+// <-1,err> if the error messages don't contain near.
 func Parse(sql string) (idx int, err error) {
 	if psr == nil || re == nil {
 		log.Fatalf("Parser must be called after Init")
@@ -55,12 +55,12 @@ func Parse(sql string) (idx int, err error) {
 	if _, _, err = psr.Parse(sql, "", ""); err != nil {
 		matched := re.FindAllStringSubmatch(err.Error(), -1)
 		if len(matched) != 1 || len(matched[0]) != 2 {
-			return -1, fmt.Errorf("Cannot match near in %q", err)
+			return -1, fmt.Errorf("parser cannot match near in %q", err)
 		}
 		idx = strings.Index(sql, matched[0][1])
 
 		if _, _, e := psr.Parse(sql[:idx], "", ""); e != nil {
-			return idx, fmt.Errorf("Parsing \"%s\" failed: %v", sql[:idx], e)
+			return idx, fmt.Errorf("parsing \"%s\" failed: %v", sql[:idx], e)
 		}
 		return idx, nil
 	}
@@ -76,10 +76,7 @@ func Split(sql string) ([]string, error) {
 	mu.Lock()
 	defer mu.Unlock()
 
-	nodes, warning, err := psr.Parse(sql, "", "")
-	fmt.Println("Split: %v", nodes)
-	fmt.Println("Split: %v", warning)
-	fmt.Println("Split: %v", err)
+	nodes, _, err := psr.Parse(sql, "", "")
 	if err != nil {
 		return nil, err
 	}
