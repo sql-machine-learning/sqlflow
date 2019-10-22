@@ -22,7 +22,7 @@ import (
 	"sqlflow.org/sqlflow/pkg/sql/codegen"
 )
 
-func TestTrain(t *testing.T) {
+func TestTrainAndPredict(t *testing.T) {
 	a := assert.New(t)
 
 	cfg := &mysql.Config{
@@ -61,5 +61,14 @@ func TestTrain(t *testing.T) {
 				&codegen.NumericColumn{&codegen.FieldMeta{"petal_width", codegen.Float, "", []int{1}, false, nil}}}},
 		Label: &codegen.NumericColumn{&codegen.FieldMeta{"class", codegen.Int, "", []int{1}, false, nil}}}
 	_, err := Train(ir)
+	a.NoError(err)
+
+	predIR := codegen.PredictIR{
+		DataSource:  fmt.Sprintf("mysql://%s", cfg.FormatDSN()),
+		Select:      "select * from iris.test;",
+		ResultTable: "iris.predict",
+		TrainIR:     ir,
+	}
+	_, err = Pred(&predIR)
 	a.NoError(err)
 }

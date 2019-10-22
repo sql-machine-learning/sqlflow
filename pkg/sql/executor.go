@@ -28,6 +28,7 @@ import (
 
 	pb "sqlflow.org/sqlflow/pkg/server/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
+	"sqlflow.org/sqlflow/pkg/sql/codegen/xgboost"
 	xgb "sqlflow.org/sqlflow/pkg/sql/codegen/xgboost"
 )
 
@@ -413,7 +414,7 @@ func train(wr *PipeWriter, tr *extendedSelect, db *DB, cwd string, modelDir stri
 	var program bytes.Buffer
 	if strings.HasPrefix(strings.ToUpper(tr.estimator), `XGBOOST.`) {
 		// FIXME(weiguoz): Remove the condition after the codegen refactor
-		if os.Getenv("SQLFLOW_codegen") == "ir" {
+		if enableIR() {
 			ir, err := generateTrainIR(tr, db.String())
 			if err != nil {
 				return err
@@ -430,7 +431,7 @@ func train(wr *PipeWriter, tr *extendedSelect, db *DB, cwd string, modelDir stri
 		}
 	} else {
 		// FIXME(typhoonzero): Remove the condition after the codegen refactor
-		if os.Getenv("SQLFLOW_codegen") == "ir" {
+		if enableIR() {
 			ir, err := generateTrainIR(tr, db.String())
 			if err != nil {
 				return err
@@ -497,6 +498,13 @@ func loadModelMeta(pr *extendedSelect, db *DB, cwd, modelDir, modelName string) 
 	return pr, fts, nil
 }
 
+func enableIR() bool {
+	if os.Getenv("SQLFLOW_codegen") == "ir" {
+		return true
+	}
+	return false
+}
+
 func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir string, session *pb.Session) error {
 	pr, fts, e := loadModelMeta(pr, db, cwd, modelDir, pr.model)
 	if e != nil {
@@ -505,11 +513,27 @@ func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir strin
 
 	var buf bytes.Buffer
 	if strings.HasPrefix(strings.ToUpper(pr.estimator), `XGBOOST.`) {
-		if e := genXGBoost(&buf, pr, nil, fts, db, session); e != nil {
-			return fmt.Errorf("genXGBoost %v", e)
+		if enableIR() {
+			ir, err := generatePredictIR(pr, db.String(), cwd, modelDir)
+			if err != nil {
+				return err
+			}
+			code, err := xgboost.Pred(ir)
+			if err != nil {
+				return err
+			}
+			err = createPredictionTable(pr, db, session)
+			if err != nil {
+				return err
+			}
+			buf.WriteString(code)
+		} else {
+			if e := genXGBoost(&buf, pr, nil, fts, db, session); e != nil {
+				return fmt.Errorf("genXGBoost %v", e)
+			}
 		}
 	} else {
-		if os.Getenv("SQLFLOW_codegen") == "ir" {
+		if enableIR() {
 			ir, err := generatePredictIR(pr, db.String(), cwd, modelDir)
 			if err != nil {
 				return err

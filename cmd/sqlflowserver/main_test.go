@@ -306,6 +306,7 @@ func TestEnd2EndMySQLIR(t *testing.T) {
 	t.Run("CaseSQLByPassLeftJoin", CaseSQLByPassLeftJoin)
 	t.Run("CaseTrainRegression", CaseTrainRegression)
 	t.Run("CaseTrainXGBoostRegressionIR", CaseTrainXGBoostRegression)
+	t.Run("CasePredXGBoostRegressionIR", CasePredictXGBoostRegression)
 }
 
 func TestEnd2EndHive(t *testing.T) {

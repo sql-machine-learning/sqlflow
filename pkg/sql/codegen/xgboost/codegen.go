@@ -17,8 +17,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"sqlflow.org/sqlflow/pkg/sql/codegen/attribute"
 	"strings"
+
+	"sqlflow.org/sqlflow/pkg/sql/codegen/attribute"
 
 	"sqlflow.org/sqlflow/pkg/sql/codegen"
 )
@@ -146,5 +147,33 @@ func Train(ir *codegen.TrainIR) (string, error) {
 		return "", err
 	}
 
+	return program.String(), nil
+}
+
+// Pred generates a Python program for predict a xgboost model.
+func Pred(ir *codegen.PredictIR) (string, error) {
+	featureFieldMeta, labelFieldMeta, err := getFieldMeta(ir.TrainIR.Features["feature_columns"], ir.TrainIR.Label)
+	f, err := json.Marshal(featureFieldMeta)
+	if err != nil {
+		return "", err
+	}
+	l, err := json.Marshal(labelFieldMeta)
+	if err != nil {
+		return "", err
+	}
+
+	r := predFiller{
+		DataSource:      ir.DataSource,
+		PredSelect:      ir.Select,
+		FeatureMetaJSON: string(f),
+		LabelMetaJSON:   string(l),
+	}
+
+	var program bytes.Buffer
+
+	if err := predTemplate.Execute(&program, r); err != nil {
+		return "", nil
+	}
+	fmt.Println(program.String())
 	return program.String(), nil
 }
