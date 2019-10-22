@@ -17,10 +17,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"sqlflow.org/sqlflow/pkg/sql/codegen/attribute"
 	"strings"
 
 	"sqlflow.org/sqlflow/pkg/sql/codegen"
+	"sqlflow.org/sqlflow/pkg/sql/codegen/attribute"
 )
 
 func newFloat32(f float32) *float32 {

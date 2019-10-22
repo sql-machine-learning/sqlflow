@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.o
 
-package analyzer
+package xgboost
 
 import (
 	"bytes"
@@ -26,23 +26,23 @@ const (
 	shapSummaryAttributes = "shap_summary"
 )
 
-// GenAnalysis generates a Python program to analyze a trained model.
-func GenAnalysis(ir *codegen.AnalyzeIR, modelPath string) (string, error) {
+// Analyze generates a Python program to analyze a trained model.
+func Analyze(ir *codegen.AnalyzeIR, modelPath string) (string, error) {
 	if strings.HasPrefix(strings.ToUpper(ir.TrainIR.Estimator), "XGBOOST.") {
 		return genXGBAnalysis(ir, modelPath)
 	}
-	return "", fmt.Errorf("unsupported model:%s", ir.TrainIR.Estimator)
+	return "", fmt.Errorf("unsupported model %s", ir.TrainIR.Estimator)
 }
 
 func genXGBAnalysis(ir *codegen.AnalyzeIR, modelPath string) (string, error) {
 	if ir.Explainer != "TreeExplainer" {
-		return "", fmt.Errorf("unsupported explainer")
+		return "", fmt.Errorf("unsupported explainer %s", ir.Explainer)
 	}
 	summaryAttrs, err := resolveParames(ir.Attributes, shapSummaryAttributes)
 	if err != nil {
 		return "", err
 	}
-	xs, y, err := getFieldMeta(ir.TrainIR)
+	xs, y, err := getFieldMeta(ir.TrainIR.Features["feature_columns"], ir.TrainIR.Label)
 	if err != nil {
 		return "", err
 	}
@@ -51,7 +51,7 @@ func genXGBAnalysis(ir *codegen.AnalyzeIR, modelPath string) (string, error) {
 		return "", err
 	}
 
-	fr := &filler{
+	fr := &analyzeFiller{
 		DataSource:         ir.DataSource,
 		DatasetSQL:         ir.Select,
 		ShapSummaryParames: summaryAttrs,
@@ -60,7 +60,7 @@ func genXGBAnalysis(ir *codegen.AnalyzeIR, modelPath string) (string, error) {
 		ModelFile:          modelPath,
 	}
 	var analysis bytes.Buffer
-	if err := templ.Execute(&analysis, fr); err != nil {
+	if err := analyzeTemplate.Execute(&analysis, fr); err != nil {
 		return "", err
 	}
 	return analysis.String(), nil
@@ -74,25 +74,4 @@ func resolveParames(attrs map[string]interface{}, group string) (map[string]inte
 		}
 	}
 	return sp, nil
-}
-
-func getFieldMeta(ir *codegen.TrainIR) ([]codegen.FieldMeta, codegen.FieldMeta, error) {
-	var features []codegen.FieldMeta
-	for _, fc := range ir.Features["feature_columns"] {
-		switch c := fc.(type) {
-		case *codegen.NumericColumn:
-			features = append(features, *c.FieldMeta)
-		default:
-			return nil, codegen.FieldMeta{}, fmt.Errorf("unsupported feature column type %T on %v", c, c)
-		}
-	}
-
-	var label codegen.FieldMeta
-	switch c := ir.Label.(type) {
-	case *codegen.NumericColumn:
-		label = *c.FieldMeta
-	default:
-		return nil, codegen.FieldMeta{}, fmt.Errorf("unsupported label column type %T on %v", c, c)
-	}
-	return features, label, nil
 }

@@ -11,13 +11,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package analyzer
+package xgboost
 
 import (
 	"text/template"
 )
 
-type filler struct {
+type analyzeFiller struct {
 	DataSource         string
 	DatasetSQL         string
 	ShapSummaryParames map[string]interface{}
@@ -26,7 +26,7 @@ type filler struct {
 	ModelFile          string
 }
 
-const templateText = `
+const analyzeTemplateText = `
 import xgboost
 import shap
 import json 
@@ -69,4 +69,4 @@ shap.summary_plot(shap_values, X, show=False, **summaryAttrs)
 plt.savefig('summary', bbox_inches='tight')
 `
 
-var templ = template.Must(template.New("analyze").Parse(templateText))
+var analyzeTemplate = template.Must(template.New("analyze").Parse(analyzeTemplateText))
