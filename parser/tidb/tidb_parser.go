@@ -55,12 +55,12 @@ func Parse(sql string) (idx int, err error) {
 	if _, _, err = psr.Parse(sql, "", ""); err != nil {
 		matched := re.FindAllStringSubmatch(err.Error(), -1)
 		if len(matched) != 1 || len(matched[0]) != 2 {
-			return -1, fmt.Errorf("parser cannot match near in %q", err)
+			return -1, fmt.Errorf("cannot match near in %q", err)
 		}
 		idx = strings.Index(sql, matched[0][1])
 
 		if _, _, e := psr.Parse(sql[:idx], "", ""); e != nil {
-			return idx, fmt.Errorf("parsing \"%s\" failed: %v", sql[:idx], e)
+			return idx, fmt.Errorf("parsing left hand side \"%s\" failed: %v", sql[:idx], e)
 		}
 		return idx, nil
 	}
