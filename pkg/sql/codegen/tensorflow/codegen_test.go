@@ -59,7 +59,7 @@ func TestTrainCodegen(t *testing.T) {
 				&codegen.NumericColumn{&codegen.FieldMeta{"petal_length", codegen.Float, "", []int{1}, false, nil}},
 				&codegen.NumericColumn{&codegen.FieldMeta{"petal_width", codegen.Float, "", []int{1}, false, nil}}}},
 		Label: &codegen.NumericColumn{&codegen.FieldMeta{"class", codegen.Int, "", []int{1}, false, nil}}}
-	_, err := Train(ir)
+	_, err := Train(&ir)
 	a.NoError(err)
 
 	predIR := codegen.PredictIR{
@@ -69,6 +69,6 @@ func TestTrainCodegen(t *testing.T) {
 		Attributes:  make(map[string]interface{}),
 		TrainIR:     &ir,
 	}
-	_, err = Pred(predIR)
+	_, err = Pred(&predIR)
 	a.NoError(err)
 }

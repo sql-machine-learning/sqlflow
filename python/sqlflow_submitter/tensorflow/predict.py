@@ -73,9 +73,7 @@ def pred(is_keras_model,
          label_meta={},
          model_params={},
          save="",
-         batch_size=1,
-         epochs=1,
-         verbose=0):
+         batch_size=1):
     conn = connect_with_data_source(datasource)
     model_dir_code = ""
     if not is_keras_model:
