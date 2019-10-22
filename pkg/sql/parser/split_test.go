@@ -36,7 +36,33 @@ select
 FROM
     payments
 WHERE
-    amount = (SELECT MAX(amount) FROM payments)`}
+    amount = (SELECT MAX(amount) FROM payments)`,
+		`SELECT 
+    orderNumber, 
+    SUM(priceEach * quantityOrdered) total
+FROM
+    orderdetails
+        INNER JOIN
+    orders USING (orderNumber)
+GROUP BY orderNumber
+HAVING SUM(priceEach * quantityOrdered) > 60000`,
+		`SELECT 
+    customerNumber, 
+    customerName
+FROM
+    customers
+WHERE
+    EXISTS( SELECT 
+            orderNumber, SUM(priceEach * quantityOrdered)
+        FROM
+            orderdetails
+                INNER JOIN
+            orders USING (orderNumber)
+        WHERE
+            customerNumber = customers.customerNumber
+        GROUP BY orderNumber
+        HAVING SUM(priceEach * quantityOrdered) > 60000)`,
+	}
 
 	// one standard SQL statement
 	for _, sql := range selectCases {
@@ -90,7 +116,7 @@ WHERE
 	{ // two SQL statements, the first standard SQL has an error.
 		sql := `select select 1; select 1 to train;`
 		s, err := split(sql)
-		a.EqualError(err, `parsing "select " failed: line 1 column 7 near "" `)
+		a.EqualError(err, `parsing left hand side "select " failed: line 1 column 7 near "" `)
 		a.Equal(0, len(s))
 	}
 
@@ -98,7 +124,7 @@ WHERE
 	for _, sql := range selectCases {
 		sqls := fmt.Sprintf(`%s to train; select select 1;`, sql)
 		s, err := split(sqls)
-		a.EqualError(err, `parsing " select " failed: line 1 column 8 near "" `)
+		a.EqualError(err, `parsing left hand side " select " failed: line 1 column 8 near "" `)
 		a.Equal(0, len(s))
 	}
 }
