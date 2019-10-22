@@ -75,3 +75,12 @@ SELECT * from iris.predict limit 3;
 ```
 
 Congratulations! Now you have successfully completed a session using SQLFlow syntax to train model using DNNClassifier and make a quick prediction.
+
+## REPL Command Line Options
+
+|             Option                      | Description |
+|-----------------------------------------|-------------|
+| -e \<quoted-query-string\>              | Execute from command line without entering interactive mode. e.g. <br>`-e "SELECT * FROM iris.train TRAIN DNNClassifier..." `<br>does the same thing as the training example above.|
+| -f \<filename\>                         | Execute from file without entering interactive mode. e.g. <br>`-f ./my_sqlflow.sql`<br>does the same thing as<br>`< ./my_sqlflow.sql` and `cat ./my_sqlflow.sql \| REPL...` |
+| -model_dir \<local-directory\>          | Save model to a local directory. e.g. `-model_dir "./models/"` |
+| -datasource \<database-connection-url\> | Connect to the specified database. e.g. `-datasource "mysql://root:root@tcp(host.docker.internal:3306)/" ` |
