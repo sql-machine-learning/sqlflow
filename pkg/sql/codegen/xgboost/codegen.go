@@ -174,6 +174,5 @@ func Pred(ir *codegen.PredictIR) (string, error) {
 	if err := predTemplate.Execute(&program, r); err != nil {
 		return "", nil
 	}
-	fmt.Println(program.String())
 	return program.String(), nil
 }
