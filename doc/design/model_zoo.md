@@ -146,18 +146,18 @@ This should output a table showing the saved models and which model definition i
 Within **any** deployment that have internet access, to list published models:
 
 ```sql
-SQLFLOW LIST [models.sqlflow.com/an_analyst]
+SQLFLOW LIST [models.sqlflow.org/an_analyst]
 ```
 
 Display model definitions and documentation of the published model:
 
 ```
-SQLFLOW DESCRIBE model.sqlflow.com/an_analyst/my_first_model;
+SQLFLOW DESCRIBE models.sqlflow.org/an_analyst/my_first_model;
 | available model defs |
 | MyDNNRegressor       |
 | MyDNNClassifier      |
 
-SQLFLOW DESCRIBE model.sqlflow.com/an_analyst/my_first_model.MyDNNRegressor;
+SQLFLOW DESCRIBE models.sqlflow.org/an_analyst/my_first_model.MyDNNRegressor;
 
 Documatation for my_first_model.MyDNNRegressor
 ...
@@ -167,7 +167,7 @@ Documatation for my_first_model.MyDNNRegressor
 Use a published model make some predictions on new data:
 
 ```sql
-SELECT ... TO PREDICT employee.predicted_salary USING model.sqlflow.com/an_analyst/my_first_model
+SELECT ... TO PREDICT employee.predicted_salary USING models.sqlflow.org/an_analyst/my_first_model
 ```
 
 ### Model Publication
@@ -178,13 +178,13 @@ It requires more steps to publish a trained model. We need a public registry lik
 
 ```sql
 SQLFLOW PUBLISH my_first_model
-    [TO https://models.sqlflow.com/user_name]
+    [TO https://models.sqlflow.org/user_name]
 ```
 
-This statement uploads the model parameters and other information to the registry service, which defaults to https://models.sqlflow.com, and under the account `user_name`, which defaults to `an_analyst` in the above example.
+This statement uploads the model parameters and other information to the registry service, which defaults to https://models.sqlflow.org, and under the account `user_name`, which defaults to `an_analyst` in the above example.
 
 Then, another analyst should be able to use the trained model by referring to it in its full name.
 
 ```sql
-SELECT ... TO PREDICT employee.predicted_salary USING model.sqlflow.com/an_analyst/my_first_model
+SELECT ... TO PREDICT employee.predicted_salary USING models.sqlflow.org/an_analyst/my_first_model
 ```
