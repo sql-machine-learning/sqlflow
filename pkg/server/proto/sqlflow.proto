@@ -27,6 +27,8 @@ message Session {
     // for loading CSV to hive
     string hive_location = 5;
     string hdfs_namenode_addr = 6;
+    string hdfs_user = 7;
+    string hdfs_pass = 8;
 }
 
 // SQL statements to run

@@ -20,13 +20,17 @@ import subprocess
 CSV_DELIMITER = '\001'
 
 class HiveDBWriter(BufferedDBWriter):
-    def __init__(self, conn, table_name, table_schema, buff_size=10000, hdfs_namenode_addr="", hive_location=""):
+    def __init__(self, conn, table_name, table_schema, buff_size=10000, 
+                 hdfs_namenode_addr="", hive_location="",
+                 hdfs_user="", hdfs_pass=""):
         super().__init__(conn, table_name, table_schema, buff_size)
         self.tmp_f = tempfile.NamedTemporaryFile(dir="./")
         self.f = open(self.tmp_f.name, "w")
         self.schema_idx = self._indexing_table_schema(table_schema)
         self.hdfs_namenode_addr = hdfs_namenode_addr
         self.hive_location = hive_location
+        self.hdfs_user = hdfs_user
+        self.hdfs_pass = hdfs_pass
     
     def _indexing_table_schema(self, table_schema):
         cursor = self.conn.cursor()
@@ -68,10 +72,11 @@ class HiveDBWriter(BufferedDBWriter):
         else:
             namenode_addr = self.hdfs_namenode_addr
         # upload CSV to HDFS
+        hdfs_envs = {"HADOOP_USER_NAME": self.hdfs_user, "HADOOP_USER_PASSWORD": self.hdfs_pass}
         cmd_str = "hdfs dfs -mkdir -p hdfs://%s%s/%s/" % (namenode_addr, hdfs_path, self.table_name)
-        subprocess.check_output(cmd_str.split())
+        subprocess.check_output(cmd_str.split(), env=hdfs_envs)
         cmd_str = "hdfs dfs -copyFromLocal %s hdfs://%s%s/%s/" % (self.tmp_f.name, namenode_addr, hdfs_path, self.table_name)
-        subprocess.check_output(cmd_str.split())
+        subprocess.check_output(cmd_str.split(), env=hdfs_envs)
         # load CSV into Hive
         cursor = self.conn.cursor()
         load_sql = "LOAD DATA INPATH 'hdfs://%s%s/%s/' OVERWRITE INTO TABLE %s" % (
