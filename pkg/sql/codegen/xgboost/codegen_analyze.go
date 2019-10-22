@@ -28,13 +28,6 @@ const (
 
 // Analyze generates a Python program to analyze a trained model.
 func Analyze(ir *codegen.AnalyzeIR, modelPath string) (string, error) {
-	if strings.HasPrefix(strings.ToUpper(ir.TrainIR.Estimator), "XGBOOST.") {
-		return genXGBAnalysis(ir, modelPath)
-	}
-	return "", fmt.Errorf("unsupported model %s", ir.TrainIR.Estimator)
-}
-
-func genXGBAnalysis(ir *codegen.AnalyzeIR, modelPath string) (string, error) {
 	if ir.Explainer != "TreeExplainer" {
 		return "", fmt.Errorf("unsupported explainer %s", ir.Explainer)
 	}
