@@ -15,4 +15,4 @@
 
 set -e
 
-go run cmd/docgen/main.go > doc/model.md
+go run cmd/docgen/model_parameter.go > doc/model_parameter.md
