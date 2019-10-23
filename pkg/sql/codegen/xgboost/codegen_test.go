@@ -19,6 +19,7 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"
+	pb "sqlflow.org/sqlflow/pkg/server/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen"
 )
 
@@ -29,7 +30,17 @@ func TestTrainAndPredict(t *testing.T) {
 	a.NoError(err)
 
 	pir := mockPrdcIR(tir)
-	_, err = Pred(pir)
+	sess := &pb.Session{
+		Token:            "",
+		DbConnStr:        "",
+		ExitOnSubmit:     false,
+		UserId:           "",
+		HiveLocation:     "/sqlflowtmp",
+		HdfsNamenodeAddr: "192.168.1.1:8020",
+		HdfsUser:         "hdfs_user",
+		HdfsPass:         "hdfs_pass",
+	}
+	_, err = Pred(pir, sess)
 	a.NoError(err)
 }
 

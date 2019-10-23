@@ -19,12 +19,33 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"
+	pb "sqlflow.org/sqlflow/pkg/server/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen"
 )
 
 func TestTrainCodegen(t *testing.T) {
 	a := assert.New(t)
+	tir := mockTrainIR()
+	_, err := Train(tir)
+	a.NoError(err)
 
+	pir := mockPredIR(tir)
+
+	sess := &pb.Session{
+		Token:            "",
+		DbConnStr:        "",
+		ExitOnSubmit:     false,
+		UserId:           "",
+		HiveLocation:     "/sqlflowtmp",
+		HdfsNamenodeAddr: "192.168.1.1:8020",
+		HdfsUser:         "hdfs_user",
+		HdfsPass:         "hdfs_pass",
+	}
+	_, err = Pred(pir, sess)
+	a.NoError(err)
+}
+
+func mockTrainIR() *codegen.TrainIR {
 	cfg := &mysql.Config{
 		User:                 "root",
 		Passwd:               "root",
@@ -42,7 +63,7 @@ func TestTrainCodegen(t *testing.T) {
 	COLUMN sepal_length, sepal_width, petal_length, petal_width
 	LABEL class
 	INTO sqlflow_models.my_xgboost_model;`
-	ir := codegen.TrainIR{
+	return &codegen.TrainIR{
 		DataSource:       fmt.Sprintf("mysql://%s", cfg.FormatDSN()),
 		Select:           "select * from iris.train;",
 		ValidationSelect: "select * from iris.test;",
@@ -59,16 +80,14 @@ func TestTrainCodegen(t *testing.T) {
 				&codegen.NumericColumn{&codegen.FieldMeta{"petal_length", codegen.Float, "", []int{1}, false, nil}},
 				&codegen.NumericColumn{&codegen.FieldMeta{"petal_width", codegen.Float, "", []int{1}, false, nil}}}},
 		Label: &codegen.NumericColumn{&codegen.FieldMeta{"class", codegen.Int, "", []int{1}, false, nil}}}
-	_, err := Train(&ir)
-	a.NoError(err)
+}
 
-	predIR := codegen.PredictIR{
-		DataSource:  fmt.Sprintf("mysql://%s", cfg.FormatDSN()),
+func mockPredIR(trainIR *codegen.TrainIR) *codegen.PredictIR {
+	return &codegen.PredictIR{
+		DataSource:  trainIR.DataSource,
 		Select:      "select * from iris.test;",
 		ResultTable: "iris.predict",
 		Attributes:  make(map[string]interface{}),
-		TrainIR:     &ir,
+		TrainIR:     trainIR,
 	}
-	_, err = Pred(&predIR)
-	a.NoError(err)
 }

@@ -27,6 +27,10 @@ type predFiller struct {
 	Y                 *codegen.FieldMeta
 	ModelParams       map[string]interface{}
 	Save              string
+	HDFSNameNodeAddr  string
+	HiveLocation      string
+	HDFSUser          string
+	HDFSPass          string
 }
 
 const tfPredTemplateText = `
@@ -71,5 +75,9 @@ pred(is_keras_model="{{.IsKerasModel}}" == "true",
     label_meta=label_meta,
     model_params=model_params,
     save="{{.Save}}",
-    batch_size=1)
+    batch_size=1,
+    hdfs_namenode_addr="{{.HDFSNameNodeAddr}}",
+    hive_location="{{.HiveLocation}}",
+    hdfs_user="{{.HDFSUser}}",
+    hdfs_pass="{{.HDFSPass}}")
 `
