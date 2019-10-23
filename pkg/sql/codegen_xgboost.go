@@ -38,6 +38,8 @@ type xgbFiller struct {
 	ParamsCfgJSON    string
 	HDFSNameNodeAddr string
 	HiveLocation     string
+	HDFSUser         string
+	HDFSPass         string
 }
 
 func resolveTrainCfg(attrs map[string]*attribute) *xgbTrainConfig {
@@ -107,6 +109,8 @@ func newXGBFiller(pr *extendedSelect, ds *trainAndValDataset, db *DB, session *p
 		Save:             pr.save,
 		HDFSNameNodeAddr: session.GetHdfsNamenodeAddr(),
 		HiveLocation:     session.GetHiveLocation(),
+		HDFSUser:         session.GetHdfsUser(),
+		HDFSPass:         session.GetHdfsPass(),
 	}
 	if !isTrain && !pr.analyze {
 		r.PredictionDatasetSQL = pr.standardSelect.String()

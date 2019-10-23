@@ -24,7 +24,24 @@ import (
 
 func TestTrainAndPredict(t *testing.T) {
 	a := assert.New(t)
+	tir := mockTrainIR()
+	_, err := Train(tir)
+	a.NoError(err)
 
+	pir := mockPrdcIR(tir)
+	_, err = Pred(pir)
+	a.NoError(err)
+}
+
+func mockPrdcIR(trainIR *codegen.TrainIR) *codegen.PredictIR {
+	return &codegen.PredictIR{
+		DataSource:  trainIR.DataSource,
+		Select:      "select * from iris.test;",
+		ResultTable: "iris.predict",
+		TrainIR:     trainIR,
+	}
+}
+func mockTrainIR() *codegen.TrainIR {
 	cfg := &mysql.Config{
 		User:                 "root",
 		Passwd:               "root",
@@ -43,7 +60,7 @@ func TestTrainAndPredict(t *testing.T) {
 	COLUMN sepal_length, sepal_width, petal_length, petal_width
 	LABEL class
 	INTO sqlflow_models.my_xgboost_model;`
-	ir := &codegen.TrainIR{
+	return &codegen.TrainIR{
 		DataSource:       fmt.Sprintf("mysql://%s", cfg.FormatDSN()),
 		Select:           "select * from iris.train;",
 		ValidationSelect: "select * from iris.test;",
@@ -60,15 +77,4 @@ func TestTrainAndPredict(t *testing.T) {
 				&codegen.NumericColumn{&codegen.FieldMeta{"petal_length", codegen.Float, "", []int{1}, false, nil}},
 				&codegen.NumericColumn{&codegen.FieldMeta{"petal_width", codegen.Float, "", []int{1}, false, nil}}}},
 		Label: &codegen.NumericColumn{&codegen.FieldMeta{"class", codegen.Int, "", []int{1}, false, nil}}}
-	_, err := Train(ir)
-	a.NoError(err)
-
-	predIR := codegen.PredictIR{
-		DataSource:  fmt.Sprintf("mysql://%s", cfg.FormatDSN()),
-		Select:      "select * from iris.test;",
-		ResultTable: "iris.predict",
-		TrainIR:     ir,
-	}
-	_, err = Pred(&predIR)
-	a.NoError(err)
 }

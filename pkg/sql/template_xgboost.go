@@ -145,7 +145,7 @@ feature_file_read = open("predict.txt", "r")
 result_column_names = feature_column_names
 result_column_names.append("{{.Y.FeatureName}}")
 line_no = 0
-with buffered_db_writer(driver, conn, "{{.TableName}}", result_column_names, 100, hdfs_namenode_addr="{{.HDFSNameNodeAddr}}", hive_location="{{.HiveLocation}}") as w:
+with buffered_db_writer(driver, conn, "{{.TableName}}", result_column_names, 100, hdfs_namenode_addr="{{.HDFSNameNodeAddr}}", hive_location="{{.HiveLocation}}", hdfs_user="{{.HDFSUser}}", hdfs_pass="{{.HDFSPass}}") as w:
     while True:
         line = feature_file_read.readline()
         if not line:
