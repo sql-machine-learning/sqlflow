@@ -51,12 +51,12 @@ def loop_example():
     couler.for(whalesay, ["hello world", "goodbye world"])
 
 def whalesay(message):
-    couler.run_docker(image="docker/whalesay:latest", command=["cowsay"], args=[message])
+    couler.run_container(image="docker/whalesay:latest", command=["cowsay"], args=[message])
 ```
 
-We can define `couler.run_docker` to call the Docker API and run a container, and `couler.for` to call Python's loop control flow. In this way, the above program can run and execute a workflow.
+We can define `couler.run_container` to call the Docker API and run a container, and `couler.for` to call Python's loop control flow. In this way, the above program can run and execute a workflow.
 
-Alternatively, by defining `couler.run_docker` and `couler.for` in some particular way, we can make sure that when we run the above program, it generates the following YAML file.
+Alternatively, by defining `couler.run_container` and `couler.for` in some particular way, we can make sure that when we run the above program, it generates the following YAML file.
 
 ```yaml
 spec:
@@ -96,7 +96,7 @@ def loop_example():
         whalesay(m)
 
 def whalesay(message):
-    couler.run_docker(image="docker/whalesay:latest", command=["cowsay"], args=[message])
+    couler.run_container(image="docker/whalesay:latest", command=["cowsay"], args=[message])
 ```
 
 When we run the above program, it executes the workflow and calls `whalesay` three times.
