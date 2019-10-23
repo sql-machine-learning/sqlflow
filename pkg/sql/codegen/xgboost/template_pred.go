@@ -79,7 +79,7 @@ with buffered_db_writer(conn.driver,
                         hdfs_namenode_addr="{{.HDFSNameNodeAddr}}",
                         hive_location="{{.HiveLocation}}",
                         hdfs_user="{{.HDFSUser}}",
-                        hdfs_pass="{{.HDFSPass}}")) as w:
+                        hdfs_pass="{{.HDFSPass}}") as w:
     while True:
         line = feature_file_read.readline()
         if not line:
