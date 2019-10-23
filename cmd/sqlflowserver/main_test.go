@@ -307,6 +307,7 @@ func TestEnd2EndMySQLIR(t *testing.T) {
 	t.Run("CaseTrainRegression", CaseTrainRegression)
 	t.Run("CaseTrainXGBoostRegressionIR", CaseTrainXGBoostRegression)
 	t.Run("CasePredictXGBoostRegressionIR", CasePredictXGBoostRegression)
+	t.Run("CaseAnalyzeXGBoostModel", CaseAnalyzeXGBoostModel)
 }
 
 func TestEnd2EndHive(t *testing.T) {
@@ -912,7 +913,7 @@ func CaseTrainALPSRemoteModel(t *testing.T) {
 FROM %s.sparse_column_test
 LIMIT 100
 TRAIN models.estimator.dnn_classifier.DNNClassifier
-WITH 
+WITH
 	model.n_classes = 2, model.hidden_units = [10, 20], train.batch_size = 10, engine.ps_num=0, engine.worker_num=0, engine.type=local,
 	gitlab.project = "Alps/sqlflow-models",
 	gitlab.source_root = python,
@@ -1085,6 +1086,34 @@ INTO sqlflow_models.my_xgb_regression_model;
 		a.Fail("Check if the server started successfully. %v", err)
 	}
 	// call ParseRow only to wait train finish
+	ParseRow(stream)
+}
+
+// CaseAnalyzeXGBoostModel is used to test analyze a xgboost model
+func CaseAnalyzeXGBoostModel(t *testing.T) {
+	a := assert.New(t)
+	stmt := `
+SELECT *
+FROM housing.train
+ANALYZE sqlflow_models.my_xgb_regression_model
+WITH
+    shap_summary.plot_type="bar",
+    shap_summary.alpha=1,
+    shap_summary.sort=True
+USING TreeExplainer;
+	`
+	conn, err := createRPCConn()
+	a.NoError(err)
+	defer conn.Close()
+	cli := pb.NewSQLFlowClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	defer cancel()
+
+	stream, err := cli.Run(ctx, sqlRequest(stmt))
+	if err != nil {
+		a.Fail("Check if the server started successfully. %v", err)
+	}
 	ParseRow(stream)
 }
 

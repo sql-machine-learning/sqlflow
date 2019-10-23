@@ -23,11 +23,11 @@ import (
 )
 
 const (
-	shapSummaryAttributes = "shap_summary"
+	shapSummaryAttributes = "shap_summary."
 )
 
 // Analyze generates a Python program to analyze a trained model.
-func Analyze(ir *codegen.AnalyzeIR, modelPath string) (string, error) {
+func Analyze(ir *codegen.AnalyzeIR) (string, error) {
 	if ir.Explainer != "TreeExplainer" {
 		return "", fmt.Errorf("unsupported explainer %s", ir.Explainer)
 	}
@@ -50,7 +50,6 @@ func Analyze(ir *codegen.AnalyzeIR, modelPath string) (string, error) {
 		ShapSummaryParames: summaryAttrs,
 		FieldMetaJSON:      string(fm),
 		Label:              y.Name,
-		ModelFile:          modelPath,
 	}
 	var analysis bytes.Buffer
 	if err := analyzeTemplate.Execute(&analysis, fr); err != nil {

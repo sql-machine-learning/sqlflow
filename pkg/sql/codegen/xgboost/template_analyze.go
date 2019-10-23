@@ -23,7 +23,6 @@ type analyzeFiller struct {
 	ShapSummaryParames map[string]interface{}
 	FieldMetaJSON      string
 	Label              string
-	ModelFile          string
 }
 
 const analyzeTemplateText = `
@@ -42,7 +41,6 @@ feature_column_name = sorted([k["name"] for k in feature_field_meta])
 feature_spec = {k['name']: k for k in feature_field_meta}
 conn = connect_with_data_source('''{{.DataSource}}''')
 label_name = "{{.Label}}"
-model_path = "{{.ModelFile}}"
 
 summaryAttrs = {}
 {{ range $k, $v := .ShapSummaryParames }}
@@ -62,7 +60,7 @@ def analyzer_dataset():
 
 X,y = analyzer_dataset()
 bst = xgboost.Booster()
-bst.load_model(fname=model_path)
+bst.load_model("my_model")
 explainer = shap.TreeExplainer(bst)
 shap_values = explainer.shap_values(X)
 shap.summary_plot(shap_values, X, show=False, **summaryAttrs)
