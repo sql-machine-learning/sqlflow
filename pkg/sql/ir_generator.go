@@ -96,7 +96,6 @@ func generatePredictIR(slct *extendedSelect, connStr string, cwd string, modelDi
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("select %s, result table: %s\n", slct.standardSelect.String(), slct.into)
 
 	resultTable, err := parseResultTable(slct.into)
 	if err != nil {
@@ -564,15 +563,18 @@ func parseShape(e *expr) ([]int, error) {
 	return shape, nil
 }
 
+// parseResultTable parse out the table name from the INTO statment
+// as the following 3 cases:
+// db.table.class_col -> db.table # cut the column name
+// db.table -> db.table               # using the specified db
+// table -> table                     # using the default db
 func parseResultTable(intoStatement string) (string, error) {
 	resultTableParts := strings.Split(intoStatement, ".")
-	resultTable := ""
 	if len(resultTableParts) == 3 {
-		resultTable = strings.Join(resultTableParts[0:2], ".")
+		return strings.Join(resultTableParts[0:2], "."), nil
 	} else if len(resultTableParts) == 2 || len(resultTableParts) == 1 {
-		resultTable = intoStatement
+		return intoStatement, nil
 	} else {
 		return "", fmt.Errorf("error result table format, should be db.table.class_col or db.table or table")
 	}
-	return resultTable, nil
 }

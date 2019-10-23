@@ -22,7 +22,6 @@ import (
 	"sqlflow.org/sqlflow/pkg/sql/codegen/attribute"
 
 	"sqlflow.org/sqlflow/pkg/sql/codegen"
-	"sqlflow.org/sqlflow/pkg/sql/codegen/attribute"
 )
 
 func newFloat32(f float32) *float32 {

@@ -29,7 +29,6 @@ import (
 	pb "sqlflow.org/sqlflow/pkg/server/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/xgboost"
-	xgb "sqlflow.org/sqlflow/pkg/sql/codegen/xgboost"
 )
 
 // Run executes a SQL query and returns a stream of rows or messages
@@ -419,7 +418,7 @@ func train(wr *PipeWriter, tr *extendedSelect, db *DB, cwd string, modelDir stri
 			if err != nil {
 				return err
 			}
-			code, err := xgb.Train(ir)
+			code, err := xgboost.Train(ir)
 			if err != nil {
 				return err
 			}
