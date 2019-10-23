@@ -569,13 +569,12 @@ func analyze(wr *PipeWriter, pr *extendedSelect, db *DB, cwd, modelDir string) e
 			return err
 		}
 		if !strings.HasPrefix(strings.ToUpper(ir.TrainIR.Estimator), `XGBOOST.`) {
-			return fmt.Errorf("unsupported model%s", ir.TrainIR.Estimator)
+			return fmt.Errorf("unsupported model %s", ir.TrainIR.Estimator)
 		}
 		code, err := xgboost.Analyze(ir)
 		if err != nil {
 			return err
 		}
-		fmt.Fprintln(os.Stdout, code)
 		var program bytes.Buffer
 		program.WriteString(code)
 		cmd.Stdin = &program

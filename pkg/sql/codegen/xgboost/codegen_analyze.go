@@ -31,7 +31,8 @@ func Analyze(ir *codegen.AnalyzeIR) (string, error) {
 	if ir.Explainer != "TreeExplainer" {
 		return "", fmt.Errorf("unsupported explainer %s", ir.Explainer)
 	}
-	summaryAttrs, err := resolveParams(ir.Attributes, shapSummaryAttributes)
+	summaryAttrs := resolveParams(ir.Attributes, shapSummaryAttributes)
+	jsonSummary, err := json.Marshal(summaryAttrs)
 	if err != nil {
 		return "", err
 	}
@@ -47,7 +48,7 @@ func Analyze(ir *codegen.AnalyzeIR) (string, error) {
 	fr := &analyzeFiller{
 		DataSource:         ir.DataSource,
 		DatasetSQL:         ir.Select,
-		ShapSummaryParames: summaryAttrs,
+		ShapSummaryParames: string(jsonSummary),
 		FieldMetaJSON:      string(fm),
 		Label:              y.Name,
 	}
@@ -58,12 +59,12 @@ func Analyze(ir *codegen.AnalyzeIR) (string, error) {
 	return analysis.String(), nil
 }
 
-func resolveParams(attrs map[string]interface{}, group string) (map[string]interface{}, error) {
+func resolveParams(attrs map[string]interface{}, group string) map[string]interface{} {
 	sp := make(map[string]interface{})
 	for k, v := range attrs {
 		if strings.HasPrefix(k, group) {
 			sp[k[len(group):]] = v
 		}
 	}
-	return sp, nil
+	return sp
 }

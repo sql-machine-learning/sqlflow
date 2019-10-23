@@ -20,7 +20,7 @@ import (
 type analyzeFiller struct {
 	DataSource         string
 	DatasetSQL         string
-	ShapSummaryParames map[string]interface{}
+	ShapSummaryParames string
 	FieldMetaJSON      string
 	Label              string
 }
@@ -28,7 +28,7 @@ type analyzeFiller struct {
 const analyzeTemplateText = `
 import xgboost
 import shap
-import json 
+import json
 import matplotlib.pyplot as plt
 import pandas as pd
 
@@ -42,10 +42,7 @@ feature_spec = {k['name']: k for k in feature_field_meta}
 conn = connect_with_data_source('''{{.DataSource}}''')
 label_name = "{{.Label}}"
 
-summaryAttrs = {}
-{{ range $k, $v := .ShapSummaryParames }}
-summaryAttrs["{{$k}}"] = {{$v}}
-{{end}}
+summaryAttrs = json.loads('''{{.ShapSummaryParames}}''')
 
 def analyzer_dataset():
     stream = db_generator(conn.driver, conn, """{{.DatasetSQL}}""", feature_column_name, label_name, feature_spec)
