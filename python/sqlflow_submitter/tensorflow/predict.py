@@ -122,7 +122,7 @@ def pred(is_keras_model,
         buff_rows = []
         column_names = feature_column_names[:]
         column_names.append(label_meta["feature_name"])
-        with buffered_db_writer(conn.driver, conn, result_table, column_names, 100, hdfs_namenode_addr="", hive_location="", hdfs_user="", hdfs_pass="") as w:
+        with buffered_db_writer(conn.driver, conn, result_table, column_names, 100, hdfs_namenode_addr, hive_location, hdfs_user, hdfs_pass) as w:
             while True:
                 try:
                     features = pred_dataset.get_next()
@@ -164,7 +164,7 @@ def pred(is_keras_model,
         pred_gen = db_generator(conn.driver, conn, select, feature_column_names, label_meta["feature_name"], feature_metas)()
         fast_predictor = FastPredict(classifier, fast_input_fn)
 
-        with buffered_db_writer(conn.driver, conn, result_table, column_names, 100, hdfs_namenode_addr="", hive_location="", hdfs_user="", hdfs_pass="") as w:
+        with buffered_db_writer(conn.driver, conn, result_table, column_names, 100, hdfs_namenode_addr, hive_location, hdfs_user, hdfs_pass) as w:
             while True:
                 try:
                     features = pred_gen.__next__()
