@@ -13,6 +13,7 @@
 
 from sqlflow_submitter.tensorflow.train import train
 from sqlflow_submitter.tensorflow.predict import pred
+import tensorflow as tf
 
 datasource = "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
 select = "SELECT * FROM iris.train;"
@@ -23,10 +24,10 @@ feature_column_names = [
 "petal_length",
 "petal_width"]
 
-feature_column_code = '''feature_columns=[tf.feature_column.numeric_column("sepal_length", shape=[1]),
+feature_columns={"feature_columns": [tf.feature_column.numeric_column("sepal_length", shape=[1]),
 tf.feature_column.numeric_column("sepal_width", shape=[1]),
 tf.feature_column.numeric_column("petal_length", shape=[1]),
-tf.feature_column.numeric_column("petal_width", shape=[1])]'''
+tf.feature_column.numeric_column("petal_width", shape=[1])]}
 
 feature_metas = {
     "sepal_length": {
@@ -68,10 +69,10 @@ label_meta = {
 if __name__ == "__main__":
     train(is_keras_model=False,
         datasource=datasource,
-        estimator="tf.estimator.DNNClassifier",
+        estimator=tf.estimator.DNNClassifier,
         select=select,
         validate_select=validate_select,
-        feature_column_code=feature_column_code,
+        feature_columns=feature_columns,
         feature_column_names=feature_column_names,
         feature_metas=feature_metas,
         label_meta=label_meta,
@@ -82,10 +83,10 @@ if __name__ == "__main__":
         verbose=0)
     pred(is_keras_model=False,
         datasource=datasource,
-        estimator="tf.estimator.DNNClassifier",
+        estimator=tf.estimator.DNNClassifier,
         select=select,
         result_table="iris.predict",
-        feature_column_code=feature_column_code,
+        feature_columns=feature_columns,
         feature_column_names=feature_column_names,
         feature_metas=feature_metas,
         label_meta=label_meta,
