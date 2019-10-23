@@ -59,13 +59,13 @@ func hasDockerImage(image string) bool {
 	return true
 }
 
-func tensorflowCmd(cwd, driverName string) (cmd *exec.Cmd) {
+func sqlflowCmd(cwd, driverName string) (cmd *exec.Cmd) {
 	if hasPython() && hasTensorFlow() && hasDatabaseConnector(driverName) {
-		log.Printf("tensorflowCmd: run locally")
+		log.Printf("sqlflowCmd: run locally")
 		cmd = exec.Command("python", "-u")
 		cmd.Dir = cwd
 	} else if hasDocker() {
-		log.Printf("tensorflowCmd: run in Docker container")
+		log.Printf("sqlflowCmd: run in Docker container")
 		const tfImg = "sqlflow/sqlflow"
 		if !hasDockerImage(tfImg) {
 			log.Printf("No local Docker image %s.  It will take a long time to pull.", tfImg)
