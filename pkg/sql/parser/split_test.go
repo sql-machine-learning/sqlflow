@@ -116,7 +116,7 @@ WHERE
 	{ // two SQL statements, the first standard SQL has an error.
 		sql := `select select 1; select 1 to train;`
 		s, err := split(sql)
-		a.EqualError(err, `parsing left hand side "select " failed: line 1 column 7 near "" `)
+		a.EqualError(err, `line 1 column 13 near "select 1; select 1 to train;" `)
 		a.Equal(0, len(s))
 	}
 
@@ -124,7 +124,14 @@ WHERE
 	for _, sql := range selectCases {
 		sqls := fmt.Sprintf(`%s to train; select select 1;`, sql)
 		s, err := split(sqls)
-		a.EqualError(err, `parsing left hand side " select " failed: line 1 column 8 near "" `)
+		a.EqualError(err, `line 1 column 14 near "select 1;" `)
+		a.Equal(0, len(s))
+	}
+
+	{ // non select statement before to train
+		sql := `describe table to train;`
+		s, err := split(sql)
+		a.EqualError(err, `line 1 column 14 near "table to train;" `)
 		a.Equal(0, len(s))
 	}
 }

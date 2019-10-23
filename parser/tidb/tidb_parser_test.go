@@ -28,39 +28,39 @@ func TestTiDBParser(t *testing.T) {
 
 	Init()
 
-	i, e = Parse("SELECTED a FROM t1") // SELECTED => SELECT
-	a.Equal(0, i)
-	a.NoError(e) // The second parse is on "", for which, TiDB parser doesn't err. But SQLFlow parser will err.
+	_, i, e = ParseAndSplit("SELECTED a FROM t1") // SELECTED => SELECT
+	a.Equal(-1, i)
+	a.Error(e)
 
-	i, e = Parse("SELECT * FROM t1 TO TRAIN DNNClassifier")
+	_, i, e = ParseAndSplit("SELECT * FROM t1 TO TRAIN DNNClassifier")
 	a.Equal(17, i)
 	a.NoError(e)
 
-	i, e = Parse("SELECT * FROM t1 TO TO TRAIN DNNClassifier")
+	_, i, e = ParseAndSplit("SELECT * FROM t1 TO TO TRAIN DNNClassifier")
 	a.Equal(17, i)
 	a.NoError(e)
 
-	i, e = Parse("SELECT * FROM t1 t2 TO TRAIN DNNClassifier") // t2 is an alias of t1
+	_, i, e = ParseAndSplit("SELECT * FROM t1 t2 TO TRAIN DNNClassifier") // t2 is an alias of t1
 	a.Equal(20, i)
 	a.NoError(e)
 
-	i, e = Parse("SELECT * FROM t1 t2, t3 TO TRAIN DNNClassifier") // t2 is an alias of t1
+	_, i, e = ParseAndSplit("SELECT * FROM t1 t2, t3 TO TRAIN DNNClassifier") // t2 is an alias of t1
 	a.Equal(24, i)
 	a.NoError(e)
 
-	i, e = Parse("SELECT * FROM t1 t2, t3 t4 TO TRAIN DNNClassifier") // t2 and t4 are aliases.
+	_, i, e = ParseAndSplit("SELECT * FROM t1 t2, t3 t4 TO TRAIN DNNClassifier") // t2 and t4 are aliases.
 	a.Equal(27, i)
 	a.NoError(e)
 
-	i, e = Parse("SELECT * FROM (SELECT * FROM t1)")
+	_, i, e = ParseAndSplit("SELECT * FROM (SELECT * FROM t1)")
 	a.Equal(-1, i)
 	a.Error(e) // TiDB parser and MySQL require an alias name after the nested SELECT.
 
-	i, e = Parse("SELECT * FROM (SELECT * FROM t1) t2")
+	_, i, e = ParseAndSplit("SELECT * FROM (SELECT * FROM t1) t2")
 	a.Equal(-1, i)
 	a.NoError(e)
 
-	i, e = Parse("SELECT * FROM (SELECT * FROM t1) t2 TO TRAIN DNNClassifier")
+	_, i, e = ParseAndSplit("SELECT * FROM (SELECT * FROM t1) t2 TO TRAIN DNNClassifier")
 	a.Equal(36, i)
 	a.NoError(e)
 }
