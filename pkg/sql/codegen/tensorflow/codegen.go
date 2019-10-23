@@ -238,20 +238,10 @@ func Pred(ir *codegen.PredictIR) (string, error) {
 	}
 	isKeras, estimatorStr := isKerasModel(ir.TrainIR.Estimator)
 
-	resultTableParts := strings.Split(ir.ResultTable, ".")
-	resultTable := ""
-	if len(resultTableParts) == 3 {
-		resultTable = strings.Join(resultTableParts[0:2], ".")
-	} else if len(resultTableParts) == 2 || len(resultTableParts) == 1 {
-		resultTable = ir.ResultTable
-	} else {
-		return "", fmt.Errorf("error result table format, should be db.table.class_col or db.table or table")
-	}
-
 	filler := predFiller{
 		DataSource:        ir.DataSource,
 		Select:            ir.Select,
-		ResultTable:       resultTable,
+		ResultTable:       ir.ResultTable,
 		Estimator:         estimatorStr,
 		IsKerasModel:      isKeras,
 		FieldMetas:        fieldMetas,

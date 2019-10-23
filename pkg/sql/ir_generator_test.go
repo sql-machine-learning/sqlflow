@@ -186,7 +186,7 @@ INTO sqlflow_models.mymodel;`, testDB, modelDir, nil)
 	a.NoError(err)
 
 	a.Equal(connStr, predIR.DataSource)
-	a.Equal("iris.predict.class", predIR.ResultTable)
+	a.Equal("iris.predict", predIR.ResultTable)
 	a.Equal("class", predIR.TrainIR.Label.GetFieldMeta()[0].Name)
 	a.Equal("DNNClassifier", predIR.TrainIR.Estimator)
 	nc, ok := predIR.TrainIR.Features["feature_columns"][0].(*codegen.NumericColumn)

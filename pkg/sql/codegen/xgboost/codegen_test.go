@@ -22,13 +22,25 @@ import (
 	"sqlflow.org/sqlflow/pkg/sql/codegen"
 )
 
-func TestTrain(t *testing.T) {
+func TestTrainAndPredict(t *testing.T) {
 	a := assert.New(t)
 	tir := mockTrainIR()
 	_, err := Train(tir)
 	a.NoError(err)
+
+	pir := mockPrdcIR(tir)
+	_, err = Pred(pir)
+	a.NoError(err)
 }
 
+func mockPrdcIR(trainIR *codegen.TrainIR) *codegen.PredictIR {
+	return &codegen.PredictIR{
+		DataSource:  trainIR.DataSource,
+		Select:      "select * from iris.test;",
+		ResultTable: "iris.predict",
+		TrainIR:     trainIR,
+	}
+}
 func mockTrainIR() *codegen.TrainIR {
 	cfg := &mysql.Config{
 		User:                 "root",
