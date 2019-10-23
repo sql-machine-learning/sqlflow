@@ -347,7 +347,7 @@ func alpsTrain(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *p
 	}
 	code := program.String()
 	cw := &logChanWriter{wr: w}
-	cmd := tensorflowCmd(cwd, "maxcompute")
+	cmd := sqlflowCmd(cwd, "maxcompute")
 	filename := "experiment.py"
 	absfile := filepath.Join(cwd, filename)
 	f, err := os.Create(absfile)
