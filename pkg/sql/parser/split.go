@@ -34,17 +34,12 @@ func sqlflowParser(sql string) (string, error) {
 }
 
 func split(sql string) ([]string, error) {
-	i, err := tidb.Parse(sql)
+	sqls, i, err := tidb.ParseAndSplit(sql)
 	if err != nil {
 		return nil, err
 	}
-	if i == -1 { // No error in parsing
-		return tidb.Split(sql)
-	}
-
-	sqls, err := tidb.Split(sql[:i])
-	if err != nil {
-		return nil, err
+	if i == -1 { // The third party parser accepts all SQL statements
+		return sqls, nil
 	}
 
 	sql = sql[i:]
