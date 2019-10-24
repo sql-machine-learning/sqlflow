@@ -557,14 +557,31 @@ func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir strin
 }
 
 func analyze(wr *PipeWriter, pr *extendedSelect, db *DB, cwd, modelDir string) error {
-	program, err := genAnalyzer(pr, db, cwd, modelDir)
-	if err != nil {
-		return err
-	}
 	cmd := exec.Command("python", "-u")
 	cmd.Dir = cwd
-	cmd.Stdin = program
-	if _, err = cmd.CombinedOutput(); err != nil {
+	if enableIR() {
+		ir, err := generateAnalyzeIR(pr, db.String(), cwd, modelDir)
+		if err != nil {
+			return err
+		}
+		if !strings.HasPrefix(strings.ToUpper(ir.TrainIR.Estimator), `XGBOOST.`) {
+			return fmt.Errorf("unsupported model %s", ir.TrainIR.Estimator)
+		}
+		code, err := xgboost.Analyze(ir)
+		if err != nil {
+			return err
+		}
+		var program bytes.Buffer
+		program.WriteString(code)
+		cmd.Stdin = &program
+	} else {
+		prog, err := genAnalyzer(pr, db, cwd, modelDir)
+		if err != nil {
+			return err
+		}
+		cmd.Stdin = prog
+	}
+	if _, err := cmd.CombinedOutput(); err != nil {
 		return err
 	}
 
