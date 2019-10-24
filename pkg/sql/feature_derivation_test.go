@@ -201,6 +201,9 @@ func TestFeatureDerivationNoColumnClause(t *testing.T) {
 	r, e := parser.Parse(normal)
 	a.NoError(e)
 	trainIR, err := generateTrainIR(r, "mysql://root:root@tcp/?maxAllowedPacket=0")
+	e = InferFeatureColumns(trainIR)
+	a.NoError(e)
+
 	a.Equal(4, len(trainIR.Features["feature_columns"]))
 	fc1 := trainIR.Features["feature_columns"][0]
 	_, ok := fc1.(*codegen.NumericColumn)
