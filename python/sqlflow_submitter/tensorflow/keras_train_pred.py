@@ -11,17 +11,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from sqlflow_submitter.tensorflow.estimator_train_pred import datasource, select, validate_select, feature_column_names, feature_column_code, feature_metas, label_meta
+from sqlflow_submitter.tensorflow.estimator_train_pred import datasource, select, validate_select, feature_column_names, feature_columns, feature_metas, label_meta
 from sqlflow_submitter.tensorflow.train import train
 from sqlflow_submitter.tensorflow.predict import pred
+import sqlflow_models
 
 if __name__ == "__main__":
     train(is_keras_model=True,
         datasource=datasource,
-        estimator="sqlflow_models.DNNClassifier",
+        estimator=sqlflow_models.DNNClassifier,
         select=select,
         validate_select=validate_select,
-        feature_column_code=feature_column_code,
+        feature_columns=feature_columns,
         feature_column_names=feature_column_names,
         feature_metas=feature_metas,
         label_meta=label_meta,
@@ -32,10 +33,10 @@ if __name__ == "__main__":
         verbose=0)
     pred(is_keras_model=True,
         datasource=datasource,
-        estimator="sqlflow_models.DNNClassifier",
+        estimator=sqlflow_models.DNNClassifier,
         select=select,
         result_table="iris.predict",
-        feature_column_code=feature_column_code,
+        feature_columns=feature_columns,
         feature_column_names=feature_column_names,
         feature_metas=feature_metas,
         label_meta=label_meta,

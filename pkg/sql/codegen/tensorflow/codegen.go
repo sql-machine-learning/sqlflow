@@ -180,7 +180,7 @@ func Train(ir *codegen.TrainIR) (string, error) {
 			}
 		}
 		featureColumnsCode = append(featureColumnsCode,
-			fmt.Sprintf("%s=[%s]", target, strings.Join(perTargetFeatureColumnsCode, ",\n")))
+			fmt.Sprintf("\"%s\": [%s]", target, strings.Join(perTargetFeatureColumnsCode, ",\n")))
 	}
 	isKeras, estimatorStr := isKerasModel(ir.Estimator)
 
@@ -191,7 +191,7 @@ func Train(ir *codegen.TrainIR) (string, error) {
 		Estimator:         estimatorStr,
 		IsKerasModel:      isKeras,
 		FieldMetas:        fieldMetas,
-		FeatureColumnCode: strings.Join(featureColumnsCode, ",\n"),
+		FeatureColumnCode: fmt.Sprintf("{%s}", strings.Join(featureColumnsCode, ",\n")),
 		Y:                 ir.Label.GetFieldMeta()[0], // TODO(typhoonzero): label only support numericColumn.
 		ModelParams:       modelParams,
 		TrainParams:       trainParams,
@@ -236,7 +236,7 @@ func Pred(ir *codegen.PredictIR, session *pb.Session) (string, error) {
 			}
 		}
 		featureColumnsCode = append(featureColumnsCode,
-			fmt.Sprintf("%s=[%s]", target, strings.Join(perTargetFeatureColumnsCode, ",\n")))
+			fmt.Sprintf("\"%s\": [%s]", target, strings.Join(perTargetFeatureColumnsCode, ",\n")))
 	}
 	isKeras, estimatorStr := isKerasModel(ir.TrainIR.Estimator)
 
@@ -247,7 +247,7 @@ func Pred(ir *codegen.PredictIR, session *pb.Session) (string, error) {
 		Estimator:         estimatorStr,
 		IsKerasModel:      isKeras,
 		FieldMetas:        fieldMetas,
-		FeatureColumnCode: strings.Join(featureColumnsCode, ",\n"),
+		FeatureColumnCode: fmt.Sprintf("{%s}", strings.Join(featureColumnsCode, ",\n")),
 		Y:                 ir.TrainIR.Label.GetFieldMeta()[0],
 		ModelParams:       modelParams,
 		Save:              "model_save",
