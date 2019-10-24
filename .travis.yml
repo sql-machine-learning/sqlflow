@@ -29,18 +29,29 @@ install:
 
 # NOTE(weiguoz): mount $GOPATH into container, then after build and test,
 # $GOPATH/bin will have expected binaries.
-script:
-  - set -e
-  - docker version
-  - docker pull --help
-  - docker pull sqlflow/gohive:dev && docker run -d --name=hive sqlflow/gohive:dev python3 -m http.server 8899
-  - docker pull sqlflow/sqlflow:latest && docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile .
-  - docker run --rm -v $GOPATH/src:/go/src -w /go/src/sqlflow.org/sqlflow sqlflow:latest pre-commit run -a
-  - docker run --rm -v $GOPATH:/go -w /go/src/sqlflow.org/sqlflow sqlflow:latest bash scripts/test_units.sh
-  - docker run --rm -v $GOPATH:/go --net=container:hive --entrypoint bash -w /go/src/sqlflow.org/sqlflow sqlflow:latest scripts/test_hive.sh
-  - bash scripts/setup_k8s_env.sh
-  - docker run --rm --net=host -v /var/run/docker.sock:/var/run/docker.sock -v $HOME/.kube:/root/.kube -v /home/$USER/.minikube/:/home/$USER/.minikube/ -v $GOPATH:/go -w /go/src/sqlflow.org/sqlflow sqlflow:latest bash scripts/test_ipython.sh
-  - docker run -e MAXCOMPUTE_AK=$MAXCOMPUTE_AK -e MAXCOMPUTE_SK=$MAXCOMPUTE_SK --rm --net=host -v /var/run/docker.sock:/var/run/docker.sock -v $HOME/.kube:/root/.kube -v /home/$USER/.minikube/:/home/$USER/.minikube/ -v $GOPATH:/go -w /go/src/sqlflow.org/sqlflow sqlflow:latest bash scripts/test_maxcompute.sh
+jobs:
+  include:
+    - stage: mysql
+      script:
+        - ls
+    - stage: hive
+      script:
+        - ls
+    - stage: maxcompute
+      script:
+        - ls
+# script:
+#   - set -e
+#   - docker version
+#   - docker pull --help
+#   - docker pull sqlflow/gohive:dev && docker run -d --name=hive sqlflow/gohive:dev python3 -m http.server 8899
+#   - docker pull sqlflow/sqlflow:latest && docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile .
+#   - docker run --rm -v $GOPATH/src:/go/src -w /go/src/sqlflow.org/sqlflow sqlflow:latest pre-commit run -a
+#   - docker run --rm -v $GOPATH:/go -w /go/src/sqlflow.org/sqlflow sqlflow:latest bash scripts/test_units.sh
+#   - docker run --rm -v $GOPATH:/go --net=container:hive --entrypoint bash -w /go/src/sqlflow.org/sqlflow sqlflow:latest scripts/test_hive.sh
+#   - bash scripts/setup_k8s_env.sh
+#   - docker run --rm --net=host -v /var/run/docker.sock:/var/run/docker.sock -v $HOME/.kube:/root/.kube -v /home/$USER/.minikube/:/home/$USER/.minikube/ -v $GOPATH:/go -w /go/src/sqlflow.org/sqlflow sqlflow:latest bash scripts/test_ipython.sh
+#   - docker run -e MAXCOMPUTE_AK=$MAXCOMPUTE_AK -e MAXCOMPUTE_SK=$MAXCOMPUTE_SK --rm --net=host -v /var/run/docker.sock:/var/run/docker.sock -v $HOME/.kube:/root/.kube -v /home/$USER/.minikube/:/home/$USER/.minikube/ -v $GOPATH:/go -w /go/src/sqlflow.org/sqlflow sqlflow:latest bash scripts/test_maxcompute.sh
 
 after_success:
   - bash scripts/deploy.sh
