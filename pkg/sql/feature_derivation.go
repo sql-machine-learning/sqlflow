@@ -99,11 +99,12 @@ func newRowValue(columnTypeList []*sql.ColumnType) ([]interface{}, error) {
 		switch typeName {
 		case "VARCHAR", "TEXT":
 			rowData[idx] = new(string)
-		case "INT":
+		// XXX_TYPE is the type name used by Hive
+		case "INT", "INT_TYPE":
 			rowData[idx] = new(int32)
 		case "BIGINT", "DECIMAL":
 			rowData[idx] = new(int64)
-		case "FLOAT":
+		case "FLOAT", "FLOAT_TYPE":
 			rowData[idx] = new(float32)
 		case "DOUBLE":
 			rowData[idx] = new(float64)
