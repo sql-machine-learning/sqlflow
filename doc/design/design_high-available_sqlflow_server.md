@@ -31,8 +31,8 @@ The high-availabe SQLFlow job workflow is as follows:
     1. SQLFlow server returns the job ID to the client.
 1. For the `KubernetesJobRunner`:
     1. SQLFlow server launches a Argo workflow via Kubernetes API and executes the SQL job as a workflow.
-    1. SQLFlow server fetches the workflow ID.
-    1. SQLFlow server returns the workflow ID as the job ID to the client.
+    1. SQLFlow server fetches the Argo workflow ID as the job ID.
+    1. SQLFlow server returns the the job ID to the client.
 1. The SQLFlow client fetches the job result and job status in a polling manner until the returned job status is **SUCCESS** or **FAILED**.
 
 ## Proposal Details
@@ -96,7 +96,7 @@ The `JobRunner` interface should provide two functions `run` and `fetch`:
 
 ```go
 type JobRunner interface {
-  run(sql string, pr *PipeReader, pw *PipeWriter) (jobID string, err error){
+  run(sql *req.Sql, pr *PipeReader, pw *PipeWriter) (jobID string, err error){
   fetchResult(jobID string) (responses *pb.Responses)
 }
 ```
