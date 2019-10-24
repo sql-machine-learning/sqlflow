@@ -26,22 +26,23 @@ install:
   # So I decided to skip install, and go get inside sqlflow:latest image
   # Ref build: https://travis-ci.com/sql-machine-learning/sqlflow/builds/107870583
   - echo "skip install"
-
-
-before_script:
-  - script:
-    - docker pull sqlflow/sqlflow:latest && docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile .
+ 
 # NOTE(weiguoz): mount $GOPATH into container, then after build and test,
 # $GOPATH/bin will have expected binaries.
 jobs:
   include:
-    - stage: mysql
+    - stage: BuildDocker
+      script:
+        - docker pull sqlflow/sqlflow:latest && docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile .
+    - stage: Unitests
+      env: SQLFLOW_TEST_DB=mysql
       script:
         - ls
-    - stage: hive
+    - # run more parallel tests in the same stage:
+      env: SQLFLOW_TEST_DB=hive
       script:
         - ls
-    - stage: maxcompute
+    - env: SQLFLOW_TEST_DB=hive
       script:
         - ls
 # script:
