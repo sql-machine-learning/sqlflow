@@ -30,9 +30,9 @@ The high-availabe SQLFlow job workflow is as follows:
     1. SQLFlow server maintains a mapping from job ID to the SQL job.
     1. SQLFlow server returns the job ID to the client.
 1. For the `KubernetesJobRunner`:
-    1. SQLFlow server launches a Kubernetes Pod via Kubernetes API and executes the SQL job in it.
-    1. SQLFlow server fetches the Pod ID.
-    1. SQLFlow server returns the Pod ID as the job ID to the client.
+    1. SQLFlow server launches a Argo workflow via Kubernetes API and executes the SQL job as a workflow.
+    1. SQLFlow server fetches the workflow ID.
+    1. SQLFlow server returns the workflow ID as the job ID to the client.
 1. The SQLFlow client fetches the job result and job status in a polling manner until the returned job status is **SUCCESS** or **FAILED**.
 
 ## Proposal Details
@@ -104,14 +104,14 @@ type JobRunner interface {
 Registe `JobRunner` in `sql.Server`:
 
 ```go
-func (s *Server) Run(ctx context.Context, req *pb.Request) (*pb.JobID, error) {
+func (s *Server) Run (ctx context.Context, req *pb.Request) (*pb.JobID, error) {
   db := s.db
   pr, pw := sf.Pipe()
   jobID := s.jobRunner.run(req.Sql, pr, pw)
   return &pb.JobID{jobID: jobID), nil
 }
 
-func (s *Server) Fetch(ctx context.Context, jobID *pb.JobID) (*pb.Responses, error) {
+func (s *Server) Fetch (ctx context.Context, jobID *pb.JobID) (*pb.Responses, error) {
   responses, error := s.jobRunner.fetch(jobID.jobID)
   return responses, nil
 }
@@ -132,13 +132,13 @@ type LocalJobRunner {
   jobs map[string]*PipeReader
 }
 
-func (r *LocalJobRunner)run (sql string, pr *PipeReader, pw *PipeWriter) (string, error){
+func (r *LocalJobRunner) run(sql *req.SQL, pr *PipeReader, pw *PipeWriter) (string, error){
   jobID := jobIDGen()
   r.jobs[jobID] = pr
   go func() {
       defer pw.Close()
       pw.Write(`RUNNING`)
-      sqlStatements, _ := sf.SplitMultipleSQL(req.Sql)
+      sqlStatements, _ := sf.SplitMultipleSQL(sql)
       for _, singleSQL := range sqlStatements {
          for e := range s.run(singleSQL, db, s.modelDir, req.Session).ReadAll() {
             pw.Write(e)
@@ -173,57 +173,58 @@ So we use a map `map[string]*PipeReader` to maintain the job states on the serve
 
 ### KubernetesJobRunner
 
-Upon processing a `Run` request, the server launches a Kubernetes Pod and return the Pod ID and log view URL to the client.
-Upon processing a `Fetch` request, the server checks the Pod status and returns the `JobStatus`.
+Upon processing a `Run` request, the server launches a Kubernetes Pod and returns the Pod ID and Argo UI URL.
+Upon processing a `Fetch` request, the server checks the Pod status and returns the `JobStatus` and logs.
 
 ```go
 type KubernetesJobRunner {
 }
 
-func (r *KubernetesJobRunner)run(sql string, pr *PipeReader, pw *PipeWriter) (string, error){
-  podID, err := r.launchK8sPod(sql)
-  pw.Write(fmt.Sprintf("Logs viewer URL: %s", r.logsViewerURL(podID)))
-  return podID, nil
+func (r *KubernetesJobRunner) run(sql *req.Sql, pr *PipeReader, pw *PipeWriter) (string, error){
+  // codegenArgo generates Argo YAML file from the input SQL program.
+  workflow, err := codegenArgo(sql)
+  // submit the Argo workflow to the Kubernetes cluster.
+  jobID, err := r.submitArgoWorkflow(workflow)
+  pw.Write(fmt.Sprintf("Argo UI URL: %s", r.argoUI(jobID)))
+  return jobID, nil
 }
 
 func (r *KubernetesJobRunner) fetch(jobID string) (*pb.Result, error) (
   responses := &pb.Responses{}
-  responses.job_status := r.PodStatus(jobID)
-  return responsesk, nil
+  responses.job_status := r.workFlowStatus(jobID)
+  logs := r.lastStepLogs(jobID)
+  // construct logs message ...
+  return responses, nil
 )
 ```
 
+`codegenArgo` generates an Argo multi-steps workflow from the input SQL program. Each step would execute a
+single SQL statment.
 
-### Store the Trained Model
+``` yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: steps-
+spec:
+  entrypoint: hello-hello-hello
 
-For example, a tinny `TRAIN` statement:
-
-``` sql
-SELECT ...
-TRAIN DNNClassifer
-WITH
-  ...
-COLUMN ...
-INTO sqlflow_model
+  templates:
+  - name: hello-hello-hello
+    # Instead of just running a container
+    # This template has a sequence of steps
+    steps:
+    - name: sql1  # sql1 is run before the following steps
+      container:
+        image: sqlflow/sqlflow 
+        command: [sqlflowcmd]
+        args: ["-e", "sql1..."]
+    - name: sql2 # sql2 run after previous step
+      container:
+        image: sqlflow/sqlflow 
+        command: [sqlflowcmd]
+        args: ["-e", "sql2..."]
 ```
-
-This SQL statment would save the model named `sqlflow_model` which contains two parts:
-
-1. The `TRAIN` statement, which would be saved as a `.mod` file.
-1. The Model weights, which would be saved as a `.tar.gz` file.
-
-An example of a trained model folder is as follows:
-
-``` text
-`-sqlflow_model
-  |-sqlflow.gob
-  `-sqlflow_model.tar.gz
-```
-
-There are two steps to save the trained model:
-
-1. SQLFlow server creates a folder `sqlflow_model` on the distributed file system and saves `sqlflow.gob` in it.
-1. The machine learning framework saves the model weights file `sqlflow_model.tar` in the same folder.
 
 ### Dealing with failures
 
