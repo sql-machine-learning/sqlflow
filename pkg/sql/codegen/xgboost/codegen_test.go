@@ -15,10 +15,12 @@ package xgboost
 
 import (
 	"fmt"
+	"regexp"
 	"testing"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"
+	pb "sqlflow.org/sqlflow/pkg/server/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen"
 )
 
@@ -29,7 +31,23 @@ func TestTrainAndPredict(t *testing.T) {
 	a.NoError(err)
 
 	pir := mockPrdcIR(tir)
-	_, err = Pred(pir)
+	sess := &pb.Session{
+		Token:            "",
+		DbConnStr:        "",
+		ExitOnSubmit:     false,
+		UserId:           "",
+		HiveLocation:     "/sqlflowtmp",
+		HdfsNamenodeAddr: "192.168.1.1:8020",
+		HdfsUser:         "sqlflow_admin",
+		HdfsPass:         "sqlflow_pass",
+	}
+	code, err := Pred(pir, sess)
+
+	r, _ := regexp.Compile(`hdfs_user="(.*)"`)
+	a.Equal(r.FindStringSubmatch(code)[1], "sqlflow_admin")
+	r, _ = regexp.Compile(`hdfs_pass="(.*)"`)
+	a.Equal(r.FindStringSubmatch(code)[1], "sqlflow_pass")
+
 	a.NoError(err)
 }
 

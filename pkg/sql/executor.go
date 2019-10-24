@@ -411,7 +411,7 @@ func train(wr *PipeWriter, tr *extendedSelect, db *DB, cwd string, modelDir stri
 		return e
 	}
 	var program bytes.Buffer
-	if strings.HasPrefix(strings.ToUpper(tr.estimator), `XGBOOST.`) {
+	if isXGBoostModel(tr.estimator) {
 		// FIXME(weiguoz): Remove the condition after the codegen refactor
 		if enableIR() {
 			ir, err := generateTrainIR(tr, db.String())
@@ -497,10 +497,6 @@ func loadModelMeta(pr *extendedSelect, db *DB, cwd, modelDir, modelName string) 
 	return pr, fts, nil
 }
 
-func enableIR() bool {
-	return os.Getenv("SQLFLOW_codegen") == "ir"
-}
-
 func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir string, session *pb.Session) error {
 	pr, fts, e := loadModelMeta(pr, db, cwd, modelDir, pr.model)
 	if e != nil {
@@ -508,13 +504,13 @@ func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir strin
 	}
 
 	var buf bytes.Buffer
-	if strings.HasPrefix(strings.ToUpper(pr.estimator), `XGBOOST.`) {
+	if isXGBoostModel(pr.estimator) {
 		if enableIR() {
 			ir, err := generatePredictIR(pr, db.String(), cwd, modelDir)
 			if err != nil {
 				return err
 			}
-			code, err := xgboost.Pred(ir)
+			code, err := xgboost.Pred(ir, session)
 			if err != nil {
 				return err
 			}
@@ -534,7 +530,7 @@ func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir strin
 			if err != nil {
 				return err
 			}
-			code, err := tensorflow.Pred(ir)
+			code, err := tensorflow.Pred(ir, session)
 			if err != nil {
 				return err
 			}
@@ -644,6 +640,15 @@ func createPredictionTable(predParsed *extendedSelect, db *DB, session *pb.Sessi
 		return fmt.Errorf("failed executing %s: %q", createStmt, e)
 	}
 	return nil
+}
+
+// -------------------------- utilities --------------------------------------
+func isXGBoostModel(estimator string) bool {
+	return strings.HasPrefix(strings.ToUpper(estimator), `XGBOOST.`)
+}
+
+func enableIR() bool {
+	return os.Getenv("SQLFLOW_codegen") == "ir"
 }
 
 func parseTableColumn(s string) (string, string, error) {

@@ -18,11 +18,15 @@ import (
 )
 
 type predFiller struct {
-	DataSource      string
-	PredSelect      string
-	FeatureMetaJSON string
-	LabelMetaJSON   string
-	ResultTable     string
+	DataSource       string
+	PredSelect       string
+	FeatureMetaJSON  string
+	LabelMetaJSON    string
+	ResultTable      string
+	HDFSNameNodeAddr string
+	HiveLocation     string
+	HDFSUser         string
+	HDFSPass         string
 }
 
 const predTemplateText = `
@@ -61,13 +65,20 @@ preds = bst.predict(dpred)
 if len(preds.shape) == 2:
     # classifier result
     preds = np.argmax(np.array(preds), axis=1)
-
 feature_file_read = open("predict.txt", "r")
 
 result_column_names = feature_column_names
 result_column_names.append(label_name)
 line_no = 0
-with buffered_db_writer(conn.driver, conn, "{{.ResultTable}}", result_column_names, 100) as w:
+with buffered_db_writer(conn.driver,
+                        conn,
+                        "{{.ResultTable}}",
+                        result_column_names,
+                        100,
+                        hdfs_namenode_addr="{{.HDFSNameNodeAddr}}",
+                        hive_location="{{.HiveLocation}}",
+                        hdfs_user="{{.HDFSUser}}",
+                        hdfs_pass="{{.HDFSPass}}") as w:
     while True:
         line = feature_file_read.readline()
         if not line:

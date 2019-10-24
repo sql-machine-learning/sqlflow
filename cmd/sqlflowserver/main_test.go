@@ -118,7 +118,7 @@ func AssertGreaterEqualAny(a *assert.Assertions, actual *any.Any, expected inter
 	case "type.googleapis.com/google.protobuf.FloatValue":
 		b := wrappers.FloatValue{}
 		ptypes.UnmarshalAny(actual, &b)
-		a.GreaterOrEqual(float32(expected.(float64)), b.Value)
+		a.GreaterOrEqual(b.Value, float32(expected.(float64)))
 	}
 }
 
@@ -189,7 +189,10 @@ func prepareTestData(dbStr string) error {
 		if err := testdata.Popularize(testDB.DB, testdata.IrisHiveSQL); err != nil {
 			return err
 		}
-		return testdata.Popularize(testDB.DB, testdata.ChurnHiveSQL)
+		if err = testdata.Popularize(testDB.DB, testdata.ChurnHiveSQL); err != nil {
+			return err
+		}
+		return testdata.Popularize(testDB.DB, testdata.HousingSQL)
 	case "maxcompute":
 		submitter := os.Getenv("SQLFLOW_submitter")
 		if submitter == "alps" {
@@ -379,6 +382,38 @@ func TestEnd2EndHive(t *testing.T) {
 	t.Run("TestTrainSQL", CaseTrainSQL)
 	t.Run("CaseTrainCustomModel", CaseTrainCustomModel)
 	t.Run("CaseTrainDeepWideModel", CaseTrainDeepWideModel)
+}
+
+func TestEnd2EndHiveIR(t *testing.T) {
+	if os.Getenv("SQLFLOW_codegen") != "ir" {
+		t.Skip("Skipping ir test")
+	}
+
+	if os.Getenv("SQLFLOW_TEST_DB") != "hive" {
+		t.Skip("Skipping hive tests")
+	}
+
+	modelDir := ""
+	tmpDir, caCrt, caKey, err := generateTempCA()
+	defer os.RemoveAll(tmpDir)
+	if err != nil {
+		t.Fatalf("failed to generate CA pair %v", err)
+	}
+
+	dbConnStr = "hive://root:root@127.0.0.1:10000/iris?auth=NOSASL"
+	go start("", modelDir, caCrt, caKey, true, unitestPort)
+	waitPortReady(fmt.Sprintf("localhost:%d", unitestPort), 0)
+	err = prepareTestData(dbConnStr)
+	if err != nil {
+		t.Fatalf("prepare test dataset failed: %v", err)
+	}
+	t.Run("TestShowDatabases", CaseShowDatabases)
+	t.Run("TestSelect", CaseSelect)
+	t.Run("TestTrainSQL", CaseTrainSQL)
+	t.Run("CaseTrainCustomModel", CaseTrainCustomModel)
+	t.Run("CaseTrainDeepWideModel", CaseTrainDeepWideModel)
+	t.Run("CaseTrainXGBoostRegression", CaseTrainXGBoostRegression)
+	t.Run("CasePredictXGBoostRegression", CasePredictXGBoostRegression)
 }
 
 func TestEnd2EndMaxCompute(t *testing.T) {

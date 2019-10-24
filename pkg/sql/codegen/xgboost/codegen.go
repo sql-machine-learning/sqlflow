@@ -19,9 +19,9 @@ import (
 	"fmt"
 	"strings"
 
-	"sqlflow.org/sqlflow/pkg/sql/codegen/attribute"
-
+	pb "sqlflow.org/sqlflow/pkg/server/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen"
+	"sqlflow.org/sqlflow/pkg/sql/codegen/attribute"
 )
 
 func newFloat32(f float32) *float32 {
@@ -151,7 +151,7 @@ func Train(ir *codegen.TrainIR) (string, error) {
 }
 
 // Pred generates a Python program for predict a xgboost model.
-func Pred(ir *codegen.PredictIR) (string, error) {
+func Pred(ir *codegen.PredictIR, session *pb.Session) (string, error) {
 	featureFieldMeta, labelFieldMeta, err := getFieldMeta(ir.TrainIR.Features["feature_columns"], ir.TrainIR.Label)
 	f, err := json.Marshal(featureFieldMeta)
 	if err != nil {
@@ -163,11 +163,15 @@ func Pred(ir *codegen.PredictIR) (string, error) {
 	}
 
 	r := predFiller{
-		DataSource:      ir.DataSource,
-		PredSelect:      ir.Select,
-		FeatureMetaJSON: string(f),
-		LabelMetaJSON:   string(l),
-		ResultTable:     ir.ResultTable,
+		DataSource:       ir.DataSource,
+		PredSelect:       ir.Select,
+		FeatureMetaJSON:  string(f),
+		LabelMetaJSON:    string(l),
+		ResultTable:      ir.ResultTable,
+		HDFSNameNodeAddr: session.HdfsNamenodeAddr,
+		HiveLocation:     session.HiveLocation,
+		HDFSUser:         session.HdfsUser,
+		HDFSPass:         session.HdfsPass,
 	}
 
 	var program bytes.Buffer
