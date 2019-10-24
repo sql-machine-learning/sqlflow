@@ -83,14 +83,14 @@ def connect_with_data_source(driver_dsn):
                        port=int(port))
     elif driver == "hive":
         from impala.dbapi import connect
-        user, passwd, host, port, database, auth, session = parseHiveDSN(dsn)
+        user, passwd, host, port, database, auth, session_cfg = parseHiveDSN(dsn)
         conn = connect(user=user,
                        password=passwd,
                        database=database,
                        host=host,
                        port=int(port),
                        auth_mechanism=auth)
-        conn.session = session
+        conn.session_cfg = session_cfg
     elif driver == "maxcompute":
         from sqlflow_submitter.maxcompute import MaxCompute
         user, passwd, address, database = parseMaxComputeDSN(dsn)

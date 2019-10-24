@@ -285,6 +285,10 @@ func InferFeatureColumns(ir *codegen.TrainIR) error {
 	}
 	for _, target := range columnTargets {
 		for slctKey := range selectFieldTypeMap {
+			if slctKey == ir.Label.GetFieldMeta()[0].Name {
+				// skip label field
+				continue
+			}
 			fcTargetMap, ok := fcMap[target]
 			if !ok {
 				// create map for current target

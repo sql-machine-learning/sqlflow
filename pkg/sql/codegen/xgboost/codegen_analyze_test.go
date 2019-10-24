@@ -33,6 +33,6 @@ func TestAnalyze(t *testing.T) {
 		},
 		TrainIR: tir,
 	}
-	_, err := Analyze(air, "")
+	_, err := Analyze(air)
 	a.NoError(err)
 }

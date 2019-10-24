@@ -19,6 +19,7 @@ import (
 	"strings"
 	"text/template"
 
+	pb "sqlflow.org/sqlflow/pkg/server/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen"
 )
 
@@ -195,6 +196,7 @@ func Train(ir *codegen.TrainIR) (string, error) {
 		ModelParams:       modelParams,
 		TrainParams:       trainParams,
 		Save:              "model_save", // TODO(typhoonzero): executor.go will save the working directory, should test later.
+
 	}
 	var program bytes.Buffer
 	var trainTemplate = template.Must(template.New("Train").Funcs(template.FuncMap{
@@ -210,7 +212,7 @@ func Train(ir *codegen.TrainIR) (string, error) {
 }
 
 // Pred generates a Python program for predict using a TensorFlow model.
-func Pred(ir *codegen.PredictIR) (string, error) {
+func Pred(ir *codegen.PredictIR, session *pb.Session) (string, error) {
 	modelParams := make(map[string]interface{})
 	for attrKey, attr := range ir.TrainIR.Attributes {
 		if strings.HasPrefix(attrKey, "model.") {
@@ -249,6 +251,10 @@ func Pred(ir *codegen.PredictIR) (string, error) {
 		Y:                 ir.TrainIR.Label.GetFieldMeta()[0],
 		ModelParams:       modelParams,
 		Save:              "model_save",
+		HDFSNameNodeAddr:  session.HdfsNamenodeAddr,
+		HiveLocation:      session.HiveLocation,
+		HDFSUser:          session.HdfsUser,
+		HDFSPass:          session.HdfsPass,
 	}
 	var program bytes.Buffer
 	var predTemplate = template.Must(template.New("Pred").Funcs(template.FuncMap{

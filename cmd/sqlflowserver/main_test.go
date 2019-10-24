@@ -118,7 +118,7 @@ func AssertGreaterEqualAny(a *assert.Assertions, actual *any.Any, expected inter
 	case "type.googleapis.com/google.protobuf.FloatValue":
 		b := wrappers.FloatValue{}
 		ptypes.UnmarshalAny(actual, &b)
-		a.GreaterOrEqual(float32(expected.(float64)), b.Value)
+		a.GreaterOrEqual(b.Value, float32(expected.(float64)))
 	}
 }
 
@@ -189,7 +189,10 @@ func prepareTestData(dbStr string) error {
 		if err := testdata.Popularize(testDB.DB, testdata.IrisHiveSQL); err != nil {
 			return err
 		}
-		return testdata.Popularize(testDB.DB, testdata.ChurnHiveSQL)
+		if err = testdata.Popularize(testDB.DB, testdata.ChurnHiveSQL); err != nil {
+			return err
+		}
+		return testdata.Popularize(testDB.DB, testdata.HousingSQL)
 	case "maxcompute":
 		submitter := os.Getenv("SQLFLOW_submitter")
 		if submitter == "alps" {
@@ -324,6 +327,7 @@ func TestEnd2EndMySQLIR(t *testing.T) {
 	t.Run("CaseTrainXGBoostRegressionIR", CaseTrainXGBoostRegression)
 	t.Run("CasePredictXGBoostRegressionIR", CasePredictXGBoostRegression)
 	t.Run("CaseTrainFeatureDerevation", CaseTrainFeatureDerevation)
+	t.Run("CaseAnalyzeXGBoostModel", CaseTrainAndAnalyzeXGBoostModel)
 }
 
 func CaseTrainTextClassificationIR(t *testing.T) {
@@ -380,6 +384,38 @@ func TestEnd2EndHive(t *testing.T) {
 	t.Run("TestTrainSQL", CaseTrainSQL)
 	t.Run("CaseTrainCustomModel", CaseTrainCustomModel)
 	t.Run("CaseTrainDeepWideModel", CaseTrainDeepWideModel)
+}
+
+func TestEnd2EndHiveIR(t *testing.T) {
+	if os.Getenv("SQLFLOW_codegen") != "ir" {
+		t.Skip("Skipping ir test")
+	}
+
+	if os.Getenv("SQLFLOW_TEST_DB") != "hive" {
+		t.Skip("Skipping hive tests")
+	}
+
+	modelDir := ""
+	tmpDir, caCrt, caKey, err := generateTempCA()
+	defer os.RemoveAll(tmpDir)
+	if err != nil {
+		t.Fatalf("failed to generate CA pair %v", err)
+	}
+
+	dbConnStr = "hive://root:root@127.0.0.1:10000/iris?auth=NOSASL"
+	go start("", modelDir, caCrt, caKey, true, unitestPort)
+	waitPortReady(fmt.Sprintf("localhost:%d", unitestPort), 0)
+	err = prepareTestData(dbConnStr)
+	if err != nil {
+		t.Fatalf("prepare test dataset failed: %v", err)
+	}
+	t.Run("TestShowDatabases", CaseShowDatabases)
+	t.Run("TestSelect", CaseSelect)
+	t.Run("TestTrainSQL", CaseTrainSQL)
+	t.Run("CaseTrainCustomModel", CaseTrainCustomModel)
+	t.Run("CaseTrainDeepWideModel", CaseTrainDeepWideModel)
+	t.Run("CaseTrainXGBoostRegression", CaseTrainXGBoostRegression)
+	t.Run("CasePredictXGBoostRegression", CasePredictXGBoostRegression)
 }
 
 func TestEnd2EndMaxCompute(t *testing.T) {
@@ -840,7 +876,7 @@ func CaseTrainALPSRemoteModel(t *testing.T) {
 FROM %s.sparse_column_test
 LIMIT 100
 TRAIN models.estimator.dnn_classifier.DNNClassifier
-WITH 
+WITH
 	model.n_classes = 2, model.hidden_units = [10, 20], train.batch_size = 10, engine.ps_num=0, engine.worker_num=0, engine.type=local,
 	gitlab.project = "Alps/sqlflow-models",
 	gitlab.source_root = python,
@@ -965,6 +1001,51 @@ INTO sqlflow_models.my_xgb_regression_model;
 	if err != nil {
 		a.Fail("run trainSQL error: %v", err)
 	}
+}
+
+// CaseTrainAndAnalyzeXGBoostModel is used to test training a xgboost model,
+// then analyze it
+func CaseTrainAndAnalyzeXGBoostModel(t *testing.T) {
+	a := assert.New(t)
+	trainStmt := `
+SELECT *
+FROM housing.train
+TRAIN xgboost.gbtree
+WITH
+	objective="reg:squarederror",
+	train.num_boost_round = 30
+	COLUMN f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13
+LABEL target
+INTO sqlflow_models.my_xgb_regression_model;
+	`
+	analyzeStmt := `
+SELECT *
+FROM housing.train
+ANALYZE sqlflow_models.my_xgb_regression_model
+WITH
+    shap_summary.plot_type="bar",
+    shap_summary.alpha=1,
+    shap_summary.sort=True
+USING TreeExplainer;
+	`
+	conn, err := createRPCConn()
+	a.NoError(err)
+	defer conn.Close()
+	cli := pb.NewSQLFlowClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	defer cancel()
+
+	stream, err := cli.Run(ctx, sqlRequest(trainStmt))
+	if err != nil {
+		a.Fail("Check if the server started successfully. %v", err)
+	}
+	ParseRow(stream)
+	stream, err = cli.Run(ctx, sqlRequest(analyzeStmt))
+	if err != nil {
+		a.Fail("Check if the server started successfully. %v", err)
+	}
+	ParseRow(stream)
 }
 
 func CasePredictXGBoostRegression(t *testing.T) {
