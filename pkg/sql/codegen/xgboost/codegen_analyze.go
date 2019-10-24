@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	shapSummaryAttributes = "shap_summary."
+	shapSummaryAttrPrefix = "shap_summary."
 )
 
 // Analyze generates a Python program to analyze a trained model.
@@ -31,7 +31,7 @@ func Analyze(ir *codegen.AnalyzeIR) (string, error) {
 	if ir.Explainer != "TreeExplainer" {
 		return "", fmt.Errorf("unsupported explainer %s", ir.Explainer)
 	}
-	summaryAttrs := resolveParams(ir.Attributes, shapSummaryAttributes)
+	summaryAttrs := resolveParams(ir.Attributes, shapSummaryAttrPrefix)
 	jsonSummary, err := json.Marshal(summaryAttrs)
 	if err != nil {
 		return "", err

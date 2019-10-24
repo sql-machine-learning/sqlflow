@@ -307,7 +307,7 @@ func TestEnd2EndMySQLIR(t *testing.T) {
 	t.Run("CaseTrainRegression", CaseTrainRegression)
 	t.Run("CaseTrainXGBoostRegressionIR", CaseTrainXGBoostRegression)
 	t.Run("CasePredictXGBoostRegressionIR", CasePredictXGBoostRegression)
-	t.Run("CaseAnalyzeXGBoostModel", CaseAnalyzeXGBoostModel)
+	t.Run("CaseAnalyzeXGBoostModel", CaseTrainAndAnalyzeXGBoostModel)
 }
 
 func TestEnd2EndHive(t *testing.T) {
@@ -1089,10 +1089,22 @@ INTO sqlflow_models.my_xgb_regression_model;
 	ParseRow(stream)
 }
 
-// CaseAnalyzeXGBoostModel is used to test analyze a xgboost model
-func CaseAnalyzeXGBoostModel(t *testing.T) {
+// CaseTrainAndAnalyzeXGBoostModel is used to test training a xgboost model,
+// then analyze it
+func CaseTrainAndAnalyzeXGBoostModel(t *testing.T) {
 	a := assert.New(t)
-	stmt := `
+	trainStmt := `
+SELECT *
+FROM housing.train
+TRAIN xgboost.gbtree
+WITH
+	objective="reg:squarederror",
+	train.num_boost_round = 30
+	COLUMN f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13
+LABEL target
+INTO sqlflow_models.my_xgb_regression_model;
+	`
+	analyzeStmt := `
 SELECT *
 FROM housing.train
 ANALYZE sqlflow_models.my_xgb_regression_model
@@ -1110,7 +1122,12 @@ USING TreeExplainer;
 	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
 	defer cancel()
 
-	stream, err := cli.Run(ctx, sqlRequest(stmt))
+	stream, err := cli.Run(ctx, sqlRequest(trainStmt))
+	if err != nil {
+		a.Fail("Check if the server started successfully. %v", err)
+	}
+	ParseRow(stream)
+	stream, err = cli.Run(ctx, sqlRequest(analyzeStmt))
 	if err != nil {
 		a.Fail("Check if the server started successfully. %v", err)
 	}
