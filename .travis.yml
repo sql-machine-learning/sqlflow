@@ -27,6 +27,10 @@ install:
   # Ref build: https://travis-ci.com/sql-machine-learning/sqlflow/builds/107870583
   - echo "skip install"
 
+
+before_script:
+  - script:
+    - docker pull sqlflow/sqlflow:latest && docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile .
 # NOTE(weiguoz): mount $GOPATH into container, then after build and test,
 # $GOPATH/bin will have expected binaries.
 jobs:
