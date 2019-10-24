@@ -218,6 +218,12 @@ train_clause
 	$$.columns = $5
 	$$.save = $7
 }
+| TRAIN IDENT WITH attrs label_clause INTO IDENT {
+	$$.estimator = $2
+	$$.trainAttrs = $4
+	$$.label = $5
+	$$.save = $7
+}
 ;
 
 predict_clause

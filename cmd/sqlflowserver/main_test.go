@@ -307,6 +307,7 @@ func TestEnd2EndMySQLIR(t *testing.T) {
 	t.Run("CaseTrainRegression", CaseTrainRegression)
 	t.Run("CaseTrainXGBoostRegressionIR", CaseTrainXGBoostRegression)
 	t.Run("CasePredictXGBoostRegressionIR", CasePredictXGBoostRegression)
+	t.Run("CaseTrainFeatureDerevation", CaseTrainFeatureDerevation)
 }
 
 func TestEnd2EndHive(t *testing.T) {
@@ -590,6 +591,28 @@ FROM %s.%s LIMIT 5;`, caseDB, casePredictTable)
 		}
 		a.False(nilCount == 4)
 	}
+}
+
+func CaseTrainFeatureDerevation(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`SELECT *
+FROM %s.%s
+TRAIN DNNClassifier
+WITH model.n_classes = 3, model.hidden_units = [10, 20]
+LABEL class
+INTO sqlflow_models.my_dnn_model;`, caseDB, caseTrainTable)
+
+	conn, err := createRPCConn()
+	a.NoError(err)
+	defer conn.Close()
+	cli := pb.NewSQLFlowClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	defer cancel()
+	stream, err := cli.Run(ctx, sqlRequest(trainSQL))
+	if err != nil {
+		a.Fail("Check if the server started successfully. %v", err)
+	}
+	ParseRow(stream)
 }
 
 // CaseTrainCustomModel tests using customized models

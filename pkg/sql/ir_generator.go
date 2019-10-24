@@ -61,7 +61,7 @@ func generateTrainIR(slct *extendedSelect, connStr string) (*codegen.TrainIR, er
 
 	// TODO(typhoonzero): fill in ValidationSelect using `create_train_val.go`
 	// TODO(typhoonzero): fill in ValidationSelect when VALIDATE clause is ready
-	return &codegen.TrainIR{
+	trainIR := &codegen.TrainIR{
 		DataSource:       connStr,
 		Select:           slct.standardSelect.String(),
 		ValidationSelect: "",
@@ -69,7 +69,12 @@ func generateTrainIR(slct *extendedSelect, connStr string) (*codegen.TrainIR, er
 		Attributes:       attrList,
 		Features:         fcMap,
 		Label:            label,
-	}, nil
+	}
+	err = InferFeatureColumns(trainIR)
+	if err != nil {
+		return nil, err
+	}
+	return trainIR, nil
 }
 
 func generateTrainIRByModel(slct *extendedSelect, connStr, cwd, modelDir, model string) (*codegen.TrainIR, error) {

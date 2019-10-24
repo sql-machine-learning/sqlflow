@@ -274,7 +274,15 @@ func InferFeatureColumns(ir *codegen.TrainIR) error {
 	// COLUMN EMBEDDING(c1) for deep
 	//        EMBEDDING(c2) for deep
 	//        EMBEDDING(c1) for wide
-	for target := range ir.Features {
+	columnTargets := []string{}
+	if len(ir.Features) > 0 {
+		for target := range ir.Features {
+			columnTargets = append(columnTargets, target)
+		}
+	} else {
+		columnTargets = append(columnTargets, "feature_columns")
+	}
+	for _, target := range columnTargets {
 		for slctKey := range selectFieldTypeMap {
 			fcTargetMap, ok := fcMap[target]
 			if !ok {
@@ -319,14 +327,18 @@ func InferFeatureColumns(ir *codegen.TrainIR) error {
 			}
 		}
 	}
+
 	// set back ir.Features in the order of select
-	for target := range ir.Features {
+	for _, target := range columnTargets {
 		targetFeatureColumnMap := fcMap[target]
 		ir.Features[target] = []codegen.FeatureColumn{}
 		// append cross columns at the end of all selected fields.
 		crossColumns := []*codegen.CrossColumn{}
 		for _, slctKey := range selectFieldNames {
-			// FIXME(typhoonzero): deal with cross column, do not add duplicate feature columns
+			// label should not be added to feature columns
+			if slctKey == ir.Label.GetFieldMeta()[0].Name {
+				continue
+			}
 			for _, fc := range targetFeatureColumnMap[slctKey] {
 				if cc, ok := fc.(*codegen.CrossColumn); ok {
 					crossColumns = append(crossColumns, cc)
