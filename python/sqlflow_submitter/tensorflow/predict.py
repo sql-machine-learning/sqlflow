@@ -67,7 +67,7 @@ def pred(is_keras_model,
          estimator,
          select,
          result_table,
-         feature_column_code,
+         feature_columns,
          feature_column_names,
          feature_metas={},
          label_meta={},
@@ -75,17 +75,11 @@ def pred(is_keras_model,
          save="",
          batch_size=1):
     conn = connect_with_data_source(datasource)
-    model_dir_code = ""
     if not is_keras_model:
-        model_dir_code = ", model_dir=\"%s\"" % save
-    estimator_create_code = "%s(%s, %s%s)" % (
-        estimator,
-        feature_column_code,
-        ",".join(["%s=%s" % (k, model_params[k]) for k in model_params]),
-        model_dir_code
-    )
+        classifier = estimator(**feature_columns, **model_params, model_dir=save)
+    else:
+        classifier = estimator(**feature_columns, **model_params)
 
-    classifier = eval(estimator_create_code)
 
     if is_keras_model:
         def eval_input_fn(batch_size):

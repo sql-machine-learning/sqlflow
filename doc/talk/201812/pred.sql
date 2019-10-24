@@ -3,7 +3,7 @@ FROM iris.test
 PREDICT iris.predict.class
 USING sqlflow_models.my_dnn_model;
 -----------------------------
-2018/12/16 15:05:58 tensorflowCmd: run in Docker container
+2018/12/16 15:05:58 sqlflowCmd: run in Docker container
 Job success
 sqlflow> SELECT * FROM iris.predict LIMIT 10;
 +--------------+-------------+--------------+-------------+-------+

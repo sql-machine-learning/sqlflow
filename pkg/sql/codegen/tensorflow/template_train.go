@@ -33,6 +33,11 @@ type trainFiller struct {
 
 const tfTrainTemplateText = `
 from sqlflow_submitter.tensorflow.train import train
+import tensorflow as tf
+try:
+    import sqlflow_models
+except:
+    pass
 
 feature_column_names = [{{range .FieldMetas}}
 "{{.Name}}",
@@ -62,12 +67,14 @@ model_params=dict()
 model_params["{{$k}}"]={{$v | attrToPythonValue}}
 {{end}}
 
+feature_columns = {{.FeatureColumnCode}}
+
 train(is_keras_model="{{.IsKerasModel}}" == "true",
     datasource="{{.DataSource}}",
-    estimator="{{.Estimator}}",
+    estimator={{.Estimator}},
     select="""{{.TrainSelect}}""",
     validate_select="""{{.ValidationSelect}}""",
-    feature_column_code="""{{.FeatureColumnCode}}""",
+    feature_columns=feature_columns,
     feature_column_names=feature_column_names,
     feature_metas=feature_metas,
     label_meta=label_meta,

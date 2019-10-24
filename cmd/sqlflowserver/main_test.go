@@ -66,6 +66,23 @@ func waitPortReady(addr string, timeout time.Duration) {
 	}
 }
 
+func connectAndRunSQL(sql string) ([]string, [][]*any.Any, error) {
+	conn, err := createRPCConn()
+	if err != nil {
+		return nil, nil, err
+	}
+	defer conn.Close()
+	cli := pb.NewSQLFlowClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	defer cancel()
+	stream, err := cli.Run(ctx, sqlRequest(sql))
+	if err != nil {
+		return nil, nil, err
+	}
+	cols, rows := ParseRow(stream)
+	return cols, rows, nil
+}
+
 func sqlRequest(sql string) *pb.Request {
 	se := &pb.Session{Token: "user-unittest", DbConnStr: dbConnStr}
 	return &pb.Request{Sql: sql, Session: se}
@@ -296,18 +313,47 @@ func TestEnd2EndMySQLIR(t *testing.T) {
 		t.Fatalf("prepare test dataset failed: %v", err)
 	}
 
-	t.Run("TestTrainSQL", CaseTrainSQL)
-	// // TODO(typhoonzero): CaseTrainTextClassification*, CaseSparseFeature should follow the new column grammar like:
-	// // EMBEDDING(CATEGORY_ID(SPARSE(col, 160000, COMMA), 160000), 512, sum)
+	t.Run("CaseTrainSQL", CaseTrainSQL)
+	t.Run("CaseTrainTextClassificationIR", CaseTrainTextClassificationIR)
+	t.Run("CaseTrainTextClassificationFeatureDerivation", CaseTrainTextClassificationFeatureDerivation)
 	t.Run("CaseTrainCustomModel", CaseTrainCustomModel)
 	t.Run("CaseTrainSQLWithHyperParams", CaseTrainSQLWithHyperParams)
 	t.Run("CaseTrainCustomModelWithHyperParams", CaseTrainCustomModelWithHyperParams)
-
 	t.Run("CaseSQLByPassLeftJoin", CaseSQLByPassLeftJoin)
 	t.Run("CaseTrainRegression", CaseTrainRegression)
 	t.Run("CaseTrainXGBoostRegressionIR", CaseTrainXGBoostRegression)
 	t.Run("CasePredictXGBoostRegressionIR", CasePredictXGBoostRegression)
 	t.Run("CaseTrainFeatureDerevation", CaseTrainFeatureDerevation)
+}
+
+func CaseTrainTextClassificationIR(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := `SELECT news_title, class_id
+FROM text_cn.train_processed
+TRAIN DNNClassifier
+WITH model.n_classes = 17, model.hidden_units = [10, 20]
+COLUMN EMBEDDING(CATEGORY_ID(SPARSE(news_title,16000,COMMA), 16000),128,mean)
+LABEL class_id
+INTO sqlflow_models.my_dnn_model;`
+	_, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Check if the server started successfully. %v", err)
+	}
+}
+
+func CaseTrainTextClassificationFeatureDerivation(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := `SELECT news_title, class_id
+FROM text_cn.train_processed
+TRAIN DNNClassifier
+WITH model.n_classes = 17, model.hidden_units = [10, 20]
+COLUMN EMBEDDING(SPARSE(news_title,16000,COMMA),128,mean)
+LABEL class_id
+INTO sqlflow_models.my_dnn_model;`
+	_, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Check if the server started successfully. %v", err)
+	}
 }
 
 func TestEnd2EndHive(t *testing.T) {
@@ -449,20 +495,10 @@ func TestEnd2EndMaxComputeElasticDL(t *testing.T) {
 func CaseShowDatabases(t *testing.T) {
 	a := assert.New(t)
 	cmd := "show databases;"
-	conn, err := createRPCConn()
-
-	a.NoError(err)
-	defer conn.Close()
-	cli := pb.NewSQLFlowClient(conn)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	defer cancel()
-
-	stream, err := cli.Run(ctx, sqlRequest(cmd))
+	head, resp, err := connectAndRunSQL(cmd)
 	if err != nil {
 		a.Fail("Check if the server started successfully. %v", err)
 	}
-	head, resp := ParseRow(stream)
 	if os.Getenv("SQLFLOW_TEST_DB") == "hive" {
 		a.Equal("database_name", head[0])
 	} else {
@@ -497,19 +533,10 @@ func CaseShowDatabases(t *testing.T) {
 func CaseSelect(t *testing.T) {
 	a := assert.New(t)
 	cmd := fmt.Sprintf("select * from %s.%s limit 2;", caseDB, caseTrainTable)
-	conn, err := createRPCConn()
-	a.NoError(err)
-	defer conn.Close()
-	cli := pb.NewSQLFlowClient(conn)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	defer cancel()
-
-	stream, err := cli.Run(ctx, sqlRequest(cmd))
+	head, rows, err := connectAndRunSQL(cmd)
 	if err != nil {
 		a.Fail("Check if the server started successfully. %v", err)
 	}
-	head, rows := ParseRow(stream)
 	expectedHeads := []string{
 		"sepal_length",
 		"sepal_width",
@@ -535,7 +562,6 @@ func CaseSelect(t *testing.T) {
 	}
 }
 
-// CaseTrainSQL is a simple End-to-End testing for case training and predicting
 func CaseTrainSQL(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`SELECT *
@@ -545,40 +571,27 @@ WITH model.n_classes = 3, model.hidden_units = [10, 20]
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.my_dnn_model;`, caseDB, caseTrainTable)
-
-	conn, err := createRPCConn()
-	a.NoError(err)
-	defer conn.Close()
-	cli := pb.NewSQLFlowClient(conn)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
-	defer cancel()
-
-	stream, err := cli.Run(ctx, sqlRequest(trainSQL))
+	_, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
-		a.Fail("Check if the server started successfully. %v", err)
+		a.Fail("Run trainSQL error: %v", err)
 	}
-	// call ParseRow only to wait train finish
-	ParseRow(stream)
+
 	predSQL := fmt.Sprintf(`SELECT *
 FROM %s.%s
 PREDICT %s.%s.class
 USING sqlflow_models.my_dnn_model;`, caseDB, caseTestTable, caseDB, casePredictTable)
-
-	stream, err = cli.Run(ctx, sqlRequest(predSQL))
+	_, _, err = connectAndRunSQL(predSQL)
 	if err != nil {
-		a.Fail("Check if the server started successfully. %v", err)
+		a.Fail("Run predSQL error: %v", err)
 	}
-	// call ParseRow only to wait predict finish
-	ParseRow(stream)
+
 	showPred := fmt.Sprintf(`SELECT *
 FROM %s.%s LIMIT 5;`, caseDB, casePredictTable)
-
-	stream, err = cli.Run(ctx, sqlRequest(showPred))
+	_, rows, err := connectAndRunSQL(showPred)
 	if err != nil {
-		a.Fail("Check if the server started successfully. %v", err)
+		a.Fail("Run showPred error: %v", err)
 	}
-	_, rows := ParseRow(stream)
+
 	for _, row := range rows {
 		// NOTE: predict result maybe random, only check predicted
 		// class >=0, need to change to more flexible checks than
@@ -615,7 +628,6 @@ INTO sqlflow_models.my_dnn_model;`, caseDB, caseTrainTable)
 	ParseRow(stream)
 }
 
-// CaseTrainCustomModel tests using customized models
 func CaseTrainCustomModel(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := `SELECT *
@@ -625,42 +637,26 @@ WITH model.n_classes = 3, model.hidden_units = [10, 20]
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.my_dnn_model_custom;`
-
-	conn, err := createRPCConn()
-	a.NoError(err)
-	defer conn.Close()
-	cli := pb.NewSQLFlowClient(conn)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
-	defer cancel()
-
-	stream, err := cli.Run(ctx, sqlRequest(trainSQL))
+	_, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
-		a.Fail("Check if the server started successfully. %v", err)
+		a.Fail("run trainSQL error: %v", err)
 	}
-	// call ParseRow only to wait train finish
-	ParseRow(stream)
 
 	predSQL := `SELECT *
 FROM iris.test
 PREDICT iris.predict.class
 USING sqlflow_models.my_dnn_model_custom;`
-
-	stream, err = cli.Run(ctx, sqlRequest(predSQL))
+	_, _, err = connectAndRunSQL(predSQL)
 	if err != nil {
-		a.Fail("Check if the server started successfully. %v", err)
+		a.Fail("run predSQL error: %v", err)
 	}
-	// call ParseRow only to wait predict finish
-	ParseRow(stream)
 
 	showPred := `SELECT *
 FROM iris.predict LIMIT 5;`
-
-	stream, err = cli.Run(ctx, sqlRequest(showPred))
+	_, rows, err := connectAndRunSQL(showPred)
 	if err != nil {
-		a.Fail("Check if the server started successfully. %v", err)
+		a.Fail("run showPred error: %v", err)
 	}
-	_, rows := ParseRow(stream)
 
 	for _, row := range rows {
 		// NOTE: predict result maybe random, only check predicted
@@ -670,60 +666,34 @@ FROM iris.predict LIMIT 5;`
 	}
 }
 
-// CaseTrainTextClassification is a simple End-to-End testing for case training
-// text classification models.
 func CaseTrainTextClassification(t *testing.T) {
 	a := assert.New(t)
-	trainSQL := `SELECT *
+	trainSQL := `SELECT news_title, class_id
 FROM text_cn.train_processed
 TRAIN DNNClassifier
 WITH model.n_classes = 17, model.hidden_units = [10, 20]
 COLUMN EMBEDDING(CATEGORY_ID(news_title,16000,COMMA),128,mean)
 LABEL class_id
 INTO sqlflow_models.my_dnn_model;`
-
-	conn, err := createRPCConn()
-	a.NoError(err)
-	defer conn.Close()
-	cli := pb.NewSQLFlowClient(conn)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
-	defer cancel()
-
-	stream, err := cli.Run(ctx, sqlRequest(trainSQL))
+	_, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
-		a.Fail("Check if the server started successfully. %v", err)
+		a.Fail("run trainSQL error: %v", err)
 	}
-	// call ParseRow only to wait train finish
-	ParseRow(stream)
 }
 
-// CaseTrainTextClassificationCustomLSTM is a simple End-to-End testing for case training
-// text classification models.
 func CaseTrainTextClassificationCustomLSTM(t *testing.T) {
 	a := assert.New(t)
-	trainSQL := `SELECT *
+	trainSQL := `SELECT news_title, class_id
 FROM text_cn.train_processed
 TRAIN sqlflow_models.StackedBiLSTMClassifier
 WITH model.n_classes = 17, model.stack_units = [16], train.epoch = 1, train.batch_size = 32
 COLUMN EMBEDDING(SEQ_CATEGORY_ID(news_title,1600,COMMA),128,mean)
 LABEL class_id
 INTO sqlflow_models.my_bilstm_model;`
-
-	conn, err := createRPCConn()
-	a.NoError(err)
-	defer conn.Close()
-	cli := pb.NewSQLFlowClient(conn)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Second)
-	defer cancel()
-
-	stream, err := cli.Run(ctx, sqlRequest(trainSQL))
+	_, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
-		a.Fail("Check if the server started successfully. %v", err)
+		a.Fail("run trainSQL error: %v", err)
 	}
-	// call ParseRow only to wait train finish
-	ParseRow(stream)
 }
 
 func CaseTrainSQLWithHyperParams(t *testing.T) {
@@ -735,21 +705,10 @@ WITH model.n_classes = 3, model.hidden_units = [10, 20], train.batch_size = 10, 
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.my_dnn_model;`
-
-	conn, err := createRPCConn()
-	a.NoError(err)
-	defer conn.Close()
-	cli := pb.NewSQLFlowClient(conn)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
-	defer cancel()
-
-	stream, err := cli.Run(ctx, sqlRequest(trainSQL))
+	_, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
-		a.Fail("Check if the server started successfully. %v", err)
+		a.Fail("run trainSQL error: %v", err)
 	}
-	// call ParseRow only to wait train finish
-	ParseRow(stream)
 }
 
 func CaseTrainDeepWideModel(t *testing.T) {
@@ -762,21 +721,10 @@ COLUMN sepal_length, sepal_width FOR linear_feature_columns
 COLUMN petal_length, petal_width FOR dnn_feature_columns
 LABEL class
 INTO sqlflow_models.my_dnn_linear_model;`
-
-	conn, err := createRPCConn()
-	a.NoError(err)
-	defer conn.Close()
-	cli := pb.NewSQLFlowClient(conn)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
-	defer cancel()
-
-	stream, err := cli.Run(ctx, sqlRequest(trainSQL))
+	_, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
-		a.Fail("Check if the server started successfully. %v", err)
+		a.Fail("run trainSQL error: %v", err)
 	}
-	// call ParseRow only to wait train finish
-	ParseRow(stream)
 }
 
 // CaseTrainCustomModel tests using customized models
@@ -789,47 +737,25 @@ WITH model.n_classes = 3, model.hidden_units = [10, 20], train.batch_size = 10, 
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.my_dnn_model_custom;`
-
-	conn, err := createRPCConn()
-	a.NoError(err)
-	defer conn.Close()
-	cli := pb.NewSQLFlowClient(conn)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
-	defer cancel()
-
-	stream, err := cli.Run(ctx, sqlRequest(trainSQL))
+	_, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
-		a.Fail("Check if the server started successfully. %v", err)
+		a.Fail("run trainSQL error: %v", err)
 	}
-	// call ParseRow only to wait train finish
-	ParseRow(stream)
 }
 
 func CaseSparseFeature(t *testing.T) {
 	a := assert.New(t)
-	trainSQL := `SELECT *
+	trainSQL := `SELECT news_title, class_id
 FROM text_cn.train
 TRAIN DNNClassifier
 WITH model.n_classes = 3, model.hidden_units = [10, 20]
 COLUMN EMBEDDING(CATEGORY_ID(news_title,16000,COMMA),128,mean)
 LABEL class_id
 INTO sqlflow_models.my_dnn_model;`
-
-	conn, err := createRPCConn()
-	a.NoError(err)
-	defer conn.Close()
-	cli := pb.NewSQLFlowClient(conn)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
-	defer cancel()
-
-	stream, err := cli.Run(ctx, sqlRequest(trainSQL))
+	_, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
-		a.Fail("Check if the server started successfully. %v", err)
+		a.Fail("run trainSQL error: %v", err)
 	}
-	// call ParseRow only to wait train finish
-	ParseRow(stream)
 }
 
 // CaseTrainElasticDL is a case for training models using ElasticDL
@@ -877,20 +803,10 @@ COLUMN
 			sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO trained_elasticdl_keras_classifier;`, os.Getenv("MAXCOMPUTE_PROJECT"), "sqlflow_test_iris_train")
-	conn, err := createRPCConn()
-	a.NoError(err)
-	defer conn.Close()
-	cli := pb.NewSQLFlowClient(conn)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
-	defer cancel()
-
-	stream, err := cli.Run(ctx, sqlRequest(trainSQL))
+	_, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
-		a.Fail("Check if the server started successfully. %v", err)
+		a.Fail("run trainSQL error: %v", err)
 	}
-	// wait train finish
-	ParseRow(stream)
 }
 
 // CaseTrainALPS is a case for training models using ALPS with out feature_map table
@@ -911,21 +827,10 @@ COLUMN SPARSE(deep_id,15033,COMMA,int),
        EMBEDDING(CATEGORY_ID(space_stat,418,COMMA),64,mean)
 LABEL l
 INTO model_table;`, caseDB)
-
-	conn, err := createRPCConn()
-	a.NoError(err)
-	defer conn.Close()
-	cli := pb.NewSQLFlowClient(conn)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
-	defer cancel()
-
-	stream, err := cli.Run(ctx, sqlRequest(trainSQL))
+	_, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
-		a.Fail("Check if the server started successfully. %v", err)
+		a.Fail("run trainSQL error: %v", err)
 	}
-	// wait train finish
-	ParseRow(stream)
 }
 
 // CaseTrainALPSRemoteModel is a case for training models using ALPS with remote model
@@ -950,21 +855,10 @@ COLUMN SPARSE(deep_id,15033,COMMA,int),
        EMBEDDING(CATEGORY_ID(space_stat,418,COMMA),64,mean)
 LABEL l
 INTO model_table;`, caseDB, os.Getenv("GITLAB_TOKEN"))
-
-	conn, err := createRPCConn()
-	a.NoError(err)
-	defer conn.Close()
-	cli := pb.NewSQLFlowClient(conn)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
-	defer cancel()
-
-	stream, err := cli.Run(ctx, sqlRequest(trainSQL))
+	_, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
-		a.Fail("Check if the server started successfully. %v", err)
+		a.Fail("run trainSQL error: %v", err)
 	}
-	// wait train finish
-	ParseRow(stream)
 }
 
 // CaseTrainALPSFeatureMap is a case for training models using ALPS with feature_map table
@@ -978,21 +872,10 @@ WITH train.max_steps = 32, eval.steps=32, train.batch_size=8, engine.ps_num=0, e
 COLUMN DENSE(dense, none, comma),
        DENSE(item, 1, comma, int)
 LABEL "label" INTO model_table;`, caseDB)
-
-	conn, err := createRPCConn()
-	a.NoError(err)
-	defer conn.Close()
-	cli := pb.NewSQLFlowClient(conn)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 1200*time.Second)
-	defer cancel()
-
-	stream, err := cli.Run(ctx, sqlRequest(trainSQL))
+	_, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
-		a.Fail("Check if the server started successfully. %v", err)
+		a.Fail("run trainSQL error: %v", err)
 	}
-	// wait train finish
-	ParseRow(stream)
 }
 
 // CaseSQLByPassLeftJoin is a case for testing left join
@@ -1029,42 +912,26 @@ WITH model.label_dimension=1
 COLUMN f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13
 LABEL target
 INTO sqlflow_models.my_regression_model;`)
-
-	conn, err := createRPCConn()
-	a.NoError(err)
-	defer conn.Close()
-	cli := pb.NewSQLFlowClient(conn)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
-	defer cancel()
-
-	stream, err := cli.Run(ctx, sqlRequest(trainSQL))
+	_, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
-		a.Fail("Check if the server started successfully. %v", err)
+		a.Fail("run trainSQL error: %v", err)
 	}
-	// call ParseRow only to wait train finish
-	ParseRow(stream)
 
 	predSQL := fmt.Sprintf(`SELECT *
 FROM housing.test
 PREDICT housing.predict.target
 USING sqlflow_models.my_regression_model;`)
-
-	stream, err = cli.Run(ctx, sqlRequest(predSQL))
+	_, _, err = connectAndRunSQL(predSQL)
 	if err != nil {
-		a.Fail("Check if the server started successfully. %v", err)
+		a.Fail("run predSQL error: %v", err)
 	}
-	// call ParseRow only to wait predict finish
-	ParseRow(stream)
 
 	showPred := fmt.Sprintf(`SELECT *
 FROM housing.predict LIMIT 5;`)
-
-	stream, err = cli.Run(ctx, sqlRequest(showPred))
+	_, rows, err := connectAndRunSQL(showPred)
 	if err != nil {
-		a.Fail("Check if the server started successfully. %v", err)
+		a.Fail("run showPred error: %v", err)
 	}
-	_, rows := ParseRow(stream)
 
 	for _, row := range rows {
 		// NOTE: predict result maybe random, only check predicted
@@ -1094,53 +961,29 @@ WITH
 LABEL target
 INTO sqlflow_models.my_xgb_regression_model;
 `)
-
-	conn, err := createRPCConn()
-	a.NoError(err)
-	defer conn.Close()
-	cli := pb.NewSQLFlowClient(conn)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
-	defer cancel()
-
-	stream, err := cli.Run(ctx, sqlRequest(trainSQL))
+	_, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
-		a.Fail("Check if the server started successfully. %v", err)
+		a.Fail("run trainSQL error: %v", err)
 	}
-	// call ParseRow only to wait train finish
-	ParseRow(stream)
 }
 
 func CasePredictXGBoostRegression(t *testing.T) {
 	a := assert.New(t)
-	conn, err := createRPCConn()
-	a.NoError(err)
-	defer conn.Close()
-	cli := pb.NewSQLFlowClient(conn)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
-	defer cancel()
-
 	predSQL := fmt.Sprintf(`SELECT *
 FROM housing.test
 PREDICT housing.xgb_predict.target
 USING sqlflow_models.my_xgb_regression_model;`)
-
-	stream, err := cli.Run(ctx, sqlRequest(predSQL))
+	_, _, err := connectAndRunSQL(predSQL)
 	if err != nil {
-		a.Fail("Check if the server started successfully. %v", err)
+		a.Fail("run predSQL error: %v", err)
 	}
-	// call ParseRow only to wait predict finish
-	ParseRow(stream)
 
 	showPred := fmt.Sprintf(`SELECT *
 FROM housing.xgb_predict LIMIT 5;`)
-
-	stream, err = cli.Run(ctx, sqlRequest(showPred))
+	_, rows, err := connectAndRunSQL(showPred)
 	if err != nil {
-		a.Fail("Check if the server started successfully. %v", err)
+		a.Fail("run showPred error: %v", err)
 	}
-	_, rows := ParseRow(stream)
 
 	for _, row := range rows {
 		// NOTE: predict result maybe random, only check predicted

@@ -307,6 +307,11 @@ func InferFeatureColumns(ir *codegen.TrainIR) error {
 					}
 				}
 			} else {
+				if len(columnTargets) > 1 {
+					// if column clause have more than one target, each target should specify the
+					// full list of the columns to use.
+					continue
+				}
 				cs, ok := fmMap[slctKey]
 				if !ok {
 					return fmt.Errorf("column not found or infered: %s", slctKey)
