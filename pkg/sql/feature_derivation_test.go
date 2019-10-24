@@ -14,6 +14,7 @@
 package sql
 
 import (
+	"os"
 	"regexp"
 	"testing"
 
@@ -132,7 +133,7 @@ func TestFeatureDerivation(t *testing.T) {
 	a.True(ok)
 	a.Equal(3, cat3.BucketSize)
 
-	a.Equal(7, len(trainIR.Features["feature_columns"]))
+	a.Equal(6, len(trainIR.Features["feature_columns"]))
 
 	crossSQL := `select c1, c2, c3, class from feature_derivation_case.train
 	TRAIN DNNClassifier
@@ -159,8 +160,7 @@ func TestFeatureDerivation(t *testing.T) {
 	nc, ok = fc3.(*codegen.NumericColumn)
 	a.True(ok)
 
-	// trainIR.Features["feature_columns"][3] is the column class
-	fc4 = trainIR.Features["feature_columns"][4]
+	fc4 = trainIR.Features["feature_columns"][3]
 	cc, ok := fc4.(*codegen.CrossColumn)
 	a.True(ok)
 	a.Equal(256, cc.HashBucketSize)
@@ -173,5 +173,39 @@ func TestFeatureDerivation(t *testing.T) {
 	a.Equal("c2", nc5.FieldMeta.Name)
 	a.Equal(codegen.Float, nc5.FieldMeta.DType)
 
-	a.Equal(5, len(trainIR.Features["feature_columns"]))
+	a.Equal(4, len(trainIR.Features["feature_columns"]))
+}
+
+func TestFeatureDerivationNoColumnClause(t *testing.T) {
+	if os.Getenv("SQLFLOW_TEST_DB") != "" && os.Getenv("SQLFLOW_TEST_DB") != "mysql" {
+		t.Skip("skip TestFeatureDerivationNoColumnClause for tests not using mysql")
+	}
+	a := assert.New(t)
+	// Prepare feature derivation test table in MySQL.
+	db, err := NewDB("mysql://root:root@tcp/?maxAllowedPacket=0")
+	if err != nil {
+		a.Fail("error connect to mysql: %v", err)
+	}
+	err = testdata.Popularize(db.DB, testdata.IrisSQL)
+	if err != nil {
+		a.Fail("error creating test data: %v", err)
+	}
+
+	parser := newParser()
+
+	normal := `select * from iris.train
+	TRAIN DNNClassifier
+	WITH model.n_classes=3, model.hidden_units=[10,10]
+	LABEL class INTO model_table;`
+
+	r, e := parser.Parse(normal)
+	a.NoError(e)
+	trainIR, err := generateTrainIR(r, "mysql://root:root@tcp/?maxAllowedPacket=0")
+	e = InferFeatureColumns(trainIR)
+	a.NoError(e)
+
+	a.Equal(4, len(trainIR.Features["feature_columns"]))
+	fc1 := trainIR.Features["feature_columns"][0]
+	_, ok := fc1.(*codegen.NumericColumn)
+	a.True(ok)
 }

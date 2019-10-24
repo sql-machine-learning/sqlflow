@@ -326,12 +326,13 @@ func TestEnd2EndMySQLIR(t *testing.T) {
 	t.Run("CaseTrainRegression", CaseTrainRegression)
 	t.Run("CaseTrainXGBoostRegressionIR", CaseTrainXGBoostRegression)
 	t.Run("CasePredictXGBoostRegressionIR", CasePredictXGBoostRegression)
+	t.Run("CaseTrainFeatureDerevation", CaseTrainFeatureDerevation)
 	t.Run("CaseAnalyzeXGBoostModel", CaseTrainAndAnalyzeXGBoostModel)
 }
 
 func CaseTrainTextClassificationIR(t *testing.T) {
 	a := assert.New(t)
-	trainSQL := `SELECT *
+	trainSQL := `SELECT news_title, class_id
 FROM text_cn.train_processed
 TRAIN DNNClassifier
 WITH model.n_classes = 17, model.hidden_units = [10, 20]
@@ -346,7 +347,7 @@ INTO sqlflow_models.my_dnn_model;`
 
 func CaseTrainTextClassificationFeatureDerivation(t *testing.T) {
 	a := assert.New(t)
-	trainSQL := `SELECT *
+	trainSQL := `SELECT news_title, class_id
 FROM text_cn.train_processed
 TRAIN DNNClassifier
 WITH model.n_classes = 17, model.hidden_units = [10, 20]
@@ -641,6 +642,28 @@ FROM %s.%s LIMIT 5;`, caseDB, casePredictTable)
 	}
 }
 
+func CaseTrainFeatureDerevation(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`SELECT *
+FROM %s.%s
+TRAIN DNNClassifier
+WITH model.n_classes = 3, model.hidden_units = [10, 20]
+LABEL class
+INTO sqlflow_models.my_dnn_model;`, caseDB, caseTrainTable)
+
+	conn, err := createRPCConn()
+	a.NoError(err)
+	defer conn.Close()
+	cli := pb.NewSQLFlowClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	defer cancel()
+	stream, err := cli.Run(ctx, sqlRequest(trainSQL))
+	if err != nil {
+		a.Fail("Check if the server started successfully. %v", err)
+	}
+	ParseRow(stream)
+}
+
 func CaseTrainCustomModel(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := `SELECT *
@@ -681,7 +704,7 @@ FROM iris.predict LIMIT 5;`
 
 func CaseTrainTextClassification(t *testing.T) {
 	a := assert.New(t)
-	trainSQL := `SELECT *
+	trainSQL := `SELECT news_title, class_id
 FROM text_cn.train_processed
 TRAIN DNNClassifier
 WITH model.n_classes = 17, model.hidden_units = [10, 20]
@@ -696,7 +719,7 @@ INTO sqlflow_models.my_dnn_model;`
 
 func CaseTrainTextClassificationCustomLSTM(t *testing.T) {
 	a := assert.New(t)
-	trainSQL := `SELECT *
+	trainSQL := `SELECT news_title, class_id
 FROM text_cn.train_processed
 TRAIN sqlflow_models.StackedBiLSTMClassifier
 WITH model.n_classes = 17, model.stack_units = [16], train.epoch = 1, train.batch_size = 32
@@ -758,7 +781,7 @@ INTO sqlflow_models.my_dnn_model_custom;`
 
 func CaseSparseFeature(t *testing.T) {
 	a := assert.New(t)
-	trainSQL := `SELECT *
+	trainSQL := `SELECT news_title, class_id
 FROM text_cn.train
 TRAIN DNNClassifier
 WITH model.n_classes = 3, model.hidden_units = [10, 20]

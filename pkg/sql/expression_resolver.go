@@ -221,11 +221,6 @@ func resolveTrainClause(tc *trainClause, slct *standardSelect, connConfig *conne
 		fcMap[target] = fcs
 		csMap[target] = css
 	}
-	// TODO(typhoonzero): use the derivated maps for codegen, skip checking error
-	// since it's not used by codegen yet.
-	// also, need to clean up what is inside "resolvedTrainClause", keep only
-	// fcInfered, csInfered
-	// fcInfered, csInfered, err := InferFeatureColumns(slct, fcMap, csMap, connConfig)
 
 	return &resolvedTrainClause{
 		IsPreMadeModel:                preMadeModel,

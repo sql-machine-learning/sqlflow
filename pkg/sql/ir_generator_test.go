@@ -48,7 +48,7 @@ INTO mymodel;`
 	r, e := parser.Parse(normal)
 	a.NoError(e)
 
-	trainIR, err := generateTrainIR(r, "mysql://somestring")
+	trainIR, err := generateTrainIR(r, "mysql://root:root@tcp(127.0.0.1:3306)/iris?maxAllowedPacket=0")
 	a.NoError(err)
 	a.Equal("DNNClassifier", trainIR.Estimator)
 	a.Equal("SELECT c1, c2, c3, c4\nFROM my_table", trainIR.Select)
