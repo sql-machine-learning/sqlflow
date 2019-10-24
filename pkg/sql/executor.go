@@ -418,6 +418,10 @@ func train(wr *PipeWriter, tr *extendedSelect, db *DB, cwd string, modelDir stri
 			if err != nil {
 				return err
 			}
+			err = InferFeatureColumns(ir)
+			if err != nil {
+				return err
+			}
 			code, err := xgboost.Train(ir)
 			if err != nil {
 				return err
@@ -432,6 +436,10 @@ func train(wr *PipeWriter, tr *extendedSelect, db *DB, cwd string, modelDir stri
 		// FIXME(typhoonzero): Remove the condition after the codegen refactor
 		if enableIR() {
 			ir, err := generateTrainIR(tr, db.String())
+			if err != nil {
+				return err
+			}
+			err = InferFeatureColumns(ir)
 			if err != nil {
 				return err
 			}
