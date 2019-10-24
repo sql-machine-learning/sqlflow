@@ -108,8 +108,7 @@ tar -xzf /tmp/hadoop.tar.gz -C /opt/
 rm -rf /tmp/hadoop.tar.gz
 rm -rf /opt/hadoop-${HADOOP_VERSION}/share/doc
 # configure hdfs client to connect hdfs namenode at localhost:8020
-echo '\n\
-<?xml version="1.0" encoding="UTF-8"?>
+echo '<?xml version="1.0" encoding="UTF-8"?>
 <?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
 <configuration>
 <property><name>hadoop.proxyuser.hue.hosts</name><value>*</value></property>
