@@ -15,6 +15,7 @@ package xgboost
 
 import (
 	"fmt"
+	"regexp"
 	"testing"
 
 	"github.com/go-sql-driver/mysql"
@@ -37,10 +38,16 @@ func TestTrainAndPredict(t *testing.T) {
 		UserId:           "",
 		HiveLocation:     "/sqlflowtmp",
 		HdfsNamenodeAddr: "192.168.1.1:8020",
-		HdfsUser:         "hdfs_user",
-		HdfsPass:         "hdfs_pass",
+		HdfsUser:         "sqlflow_admin",
+		HdfsPass:         "sqlflow_pass",
 	}
-	_, err = Pred(pir, sess)
+	code, err := Pred(pir, sess)
+
+	r, _ := regexp.Compile(`hdfs_user="(.*)"`)
+	a.Equal(r.FindStringSubmatch(code)[1], "sqlflow_admin")
+	r, _ = regexp.Compile(`hdfs_pass="(.*)"`)
+	a.Equal(r.FindStringSubmatch(code)[1], "sqlflow_pass")
+
 	a.NoError(err)
 }
 

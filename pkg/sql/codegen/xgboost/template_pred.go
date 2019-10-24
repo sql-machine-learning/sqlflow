@@ -65,7 +65,6 @@ preds = bst.predict(dpred)
 if len(preds.shape) == 2:
     # classifier result
     preds = np.argmax(np.array(preds), axis=1)
-
 feature_file_read = open("predict.txt", "r")
 
 result_column_names = feature_column_names

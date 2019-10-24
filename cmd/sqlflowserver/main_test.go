@@ -118,7 +118,7 @@ func AssertGreaterEqualAny(a *assert.Assertions, actual *any.Any, expected inter
 	case "type.googleapis.com/google.protobuf.FloatValue":
 		b := wrappers.FloatValue{}
 		ptypes.UnmarshalAny(actual, &b)
-		a.GreaterOrEqual(float32(expected.(float64)), b.Value)
+		a.GreaterOrEqual(b.Value, float32(expected.(float64)))
 	}
 }
 
@@ -189,7 +189,10 @@ func prepareTestData(dbStr string) error {
 		if err := testdata.Popularize(testDB.DB, testdata.IrisHiveSQL); err != nil {
 			return err
 		}
-		return testdata.Popularize(testDB.DB, testdata.ChurnHiveSQL)
+		if err = testdata.Popularize(testDB.DB, testdata.ChurnHiveSQL); err != nil {
+			return err
+		}
+		return testdata.Popularize(testDB.DB, testdata.HousingSQL)
 	case "maxcompute":
 		submitter := os.Getenv("SQLFLOW_submitter")
 		if submitter == "alps" {
@@ -409,6 +412,8 @@ func TestEnd2EndHiveIR(t *testing.T) {
 	t.Run("TestTrainSQL", CaseTrainSQL)
 	t.Run("CaseTrainCustomModel", CaseTrainCustomModel)
 	t.Run("CaseTrainDeepWideModel", CaseTrainDeepWideModel)
+	t.Run("CaseTrainXGBoostRegression", CaseTrainXGBoostRegression)
+	t.Run("CasePredictXGBoostRegression", CasePredictXGBoostRegression)
 }
 
 func TestEnd2EndMaxCompute(t *testing.T) {
