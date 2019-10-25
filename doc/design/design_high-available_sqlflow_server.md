@@ -2,21 +2,18 @@
 
 ## Motivations
 
-In the current system, the SQLFlow client connects the SQLFlow server with a long live connection.
-The SQLFlow client sends a gRPC request which contains a SQL statement and waits until the SQLFlow server completes executing the SQL statement.
+In current implementation, the SQLFlow client submits a SQL program to the SQLFlow server via a gRPC call. The client keeps the gPRC call until the completion of the SQL program. The SQLFlow server translates the received SQL program to a series of submitter programs, and runs the submitter program on the server. 
 
-Once the SQLFlow server receives a training SQL statement, it generates a Python training program that submits the job. This will cause:
+This implementation has the following pitfalls.
 
-1. The local job may cause the SQLFlow server resource insufficient when there are too many SQL jobs.
-1. Sometimes, the SQL job takes too much time, and the gRPC calls timeout.
-1. If one of the SQLFlow server instances fails, the SQL job also fails.
+1. Timeout: the SQL program might be a long running job, and the on holding gRPC connection will timeout.
+1. Job Persistence: the SQLFlow server owns the running state of SQL program. If the SQLFlow server fails, the SQL program also fails.
+1. Job Isolation: different clients shares the same SQLFlow server, one client can affect the other.
 
-In this design, we propose to:
+In this design, we propose solve these pitfalls.
 
-1. the SQLFlow client communicates with the SQLFlow server in a polling manner.
-1. Implement `KubernetesJobRunner` on the server-side to launch the SQL job on Kubernetes.
-
-We recommend using `KubernetesJobRunner` in the production environment.
+1. Timeout: instead of using gRPC long connections, the SQLFlow client communicates with the SQLFlow server in a polling manner.
+1. Job Persistence&Isolation: instead of running submitter program locally, SQLFlow server launches the SQL job on Kubernetes via Argo.
 
 ## High-Level Design
 
