@@ -118,7 +118,7 @@ echo '<?xml version="1.0" encoding="UTF-8"?>
 <property><name>hadoop.proxyuser.root.hosts</name><value></value></property>
 <property><name>hadoop.http.staticuser.user</name><value>root</value></property>
 </configuration>
-' > /opt/hadoop-3.2.1/etc/hadoop/core-site.xml
+' > /opt/hadoop-${HADOOP_VERSION}/etc/hadoop/core-site.xml
 
 # 9. Install additional dependencies for ElasticDL, ElasticDL CLI, and build testing images
 apt-get update && apt-get install -y docker.io sudo
