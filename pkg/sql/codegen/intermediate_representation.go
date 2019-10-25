@@ -48,6 +48,9 @@ type FieldMeta struct {
 	// Vocabulary stores all possible enumerate values if the column type is string,
 	// e.g. the column values are: "MALE", "FEMALE", "NULL"
 	Vocabulary map[string]string `json:"vocabulary"` // use a map to generate a list without duplication
+	// if the column data is used as embedding(category_column()), the `num_buckets` should use the maxID
+	// appeared in the sample data. if error still occurs, users should set `num_buckts` manually.
+	MaxID int64
 }
 
 // FeatureColumn indicates the feature column to be applied on the field. Please refer to
