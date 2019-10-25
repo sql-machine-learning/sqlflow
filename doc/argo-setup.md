@@ -1,6 +1,6 @@
-# Submit Argo Jobs from SQLFlow Container
+# Submit Argo Workflow from SQLFlow Container
 
-This document demonstrates how to setup Minikube on your Mac and submit argo jobs from a running SQLFlow container.
+This document demonstrates how to setup Minikube on your Mac and submit argo workflow from a SQLFlow container.
 
 
 | command  | version |
@@ -43,7 +43,7 @@ This document demonstrates how to setup Minikube on your Mac and submit argo job
    kubectl create namespace argo
    kubectl apply -n argo -f https://raw.githubusercontent.com/argoproj/argo/stable/manifests/install.yaml
    ```
-1. Grant admin privileges to the 'default' service account in the namespace 'default', so that the service account can run workflows.
+1. Grant admin privileges to the 'default' service account in the namespace 'default', so that the service account can run workflow.
    ```
    kubectl create rolebinding default-admin --clusterrole=admin --serviceaccount=default:default
    ```
@@ -52,7 +52,7 @@ This document demonstrates how to setup Minikube on your Mac and submit argo job
    curl -sSL -o /usr/local/bin/argo https://github.com/argoproj/argo/releases/download/v2.3.0/argo-linux-amd64
    chmod +x /usr/local/bin/argo
    ```
-1. Run example workflows.
+1. Run example workflow.
    ```
    argo submit --watch https://raw.githubusercontent.com/argoproj/argo/master/examples/hello-world.yaml
    argo submit --watch https://raw.githubusercontent.com/argoproj/argo/master/examples/coinflip.yaml
