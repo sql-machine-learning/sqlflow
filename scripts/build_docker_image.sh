@@ -107,6 +107,18 @@ curl -fsSL "$HADOOP_URL" -o /tmp/hadoop.tar.gz
 tar -xzf /tmp/hadoop.tar.gz -C /opt/
 rm -rf /tmp/hadoop.tar.gz
 rm -rf /opt/hadoop-${HADOOP_VERSION}/share/doc
+# configure hdfs client to connect hdfs namenode at localhost:8020
+echo '<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<configuration>
+<property><name>hadoop.proxyuser.hue.hosts</name><value>*</value></property>
+<property><name>fs.defaultFS</name><value>hdfs://localhost:8020</value></property>
+<property><name>hadoop.proxyuser.hue.groups</name><value>*</value></property>
+<property><name>hadoop.proxyuser.root.groups</name><value></value></property>
+<property><name>hadoop.proxyuser.root.hosts</name><value></value></property>
+<property><name>hadoop.http.staticuser.user</name><value>root</value></property>
+</configuration>
+' > /opt/hadoop-3.2.1/etc/hadoop/core-site.xml
 
 # 9. Install additional dependencies for ElasticDL, ElasticDL CLI, and build testing images
 apt-get update && apt-get install -y docker.io sudo
