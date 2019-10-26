@@ -10,64 +10,57 @@ This implementation has the following pitfalls.
 1. Job Persistence: the SQLFlow server owns the running state of SQL program. If the SQLFlow server fails, the SQL program also fails.
 1. Job Isolation: different clients shares the same SQLFlow server, one client can affect the other.
 
-In this design, we propose solve these pitfalls.
+We propose the following solutions.
 
-1. Timeout: instead of using gRPC long connections, the SQLFlow client communicates with the SQLFlow server in a polling manner.
-1. Job Persistence&Isolation: instead of running submitter program locally, SQLFlow server launches the SQL job on Kubernetes via Argo.
+1. To solve timeout: instead of using gRPC long connections, the SQLFlow client communicates with the SQLFlow server in a polling manner.
+1. To support Job Persistence & Isolation: instead of running the submitter program locally, SQLFlow server launches an Argo workflow on the Kubernetes cluster.
 
 ## High-Level Design
 
-The high-availabe SQLFlow job workflow is as follows:
+**The server** has two deployment modes: local and cluster. In the **local** mode,
 
-<img src="figures/cluster_job_runner.png">
+1. On receiving a SQL program, the SQLFlow server
+   1. Translates the SQL program to a series of submitter    programs and runs the submitter programs locally in a separate Go routine.
+   1. Generates a job token that identifies the running submitter program.
+   1. Maintains a mapping from job token to the running submitter program.
+   1. Returns the job ID to the client.
+1. On receiving a job token, the SQLFlow server
+   1. Looks up the associated submitter program.
+   1. Returns the most recent results of the submitter program along with a possibly refreshed job token.
 
-1. SQLFlow client sends the SQL statement via a gRPC call to the SQLFlow server.
-1. For the `LocalJobRunner`:
-    1. SQLFlow server launches a SQL job on the host and generates a job ID that identifies the SQL job.
-    1. SQLFlow server maintains a mapping from job ID to the SQL job.
-    1. SQLFlow server returns the job ID to the client.
-1. For the `KubernetesJobRunner`:
-    1. SQLFlow server launches a Argo workflow via Kubernetes API and executes the SQL job as a workflow.
-    1. SQLFlow server fetches the Argo workflow ID as the job ID.
-    1. SQLFlow server returns the the job ID to the client.
-1. The SQLFlow client fetches the job result and job status in a polling manner until the returned job status is **SUCCESS** or **FAILED**.
+In the **cluster** mode,
+
+1. On receiving a SQL program, the SQLFlow server
+   1. Translates the SQL program to a series of submitter    programs.
+   1. Launches the submitter program as an Argo workflow on the Kubernetes cluster and receives a Argo workflow ID.
+   1. Initialize the job token using Argo workflow ID and current fetching step.
+   1. Returns the job token to the client.
+1. On receiving a job token, the SQLFlow server
+   1. Looks up the associated Argo workflow.
+   1. Fetches the results of specific workflow step.
+   1. Updates the fetching state of the job token.
+   1. Returns the results of the submitter program along with a  updated job token.
+
+**The job token** is associated to a running SQL program and the fetching state. The fetching state should be opaque to the client.
+
+**The client** sends the SQL program and receives a job token. In every few seconds, the client fetches the results using the job token, until the SQL program is completed. The client is unaware of the deployment type of the server.
+
+![](figures/cluster_job_runner.png)
 
 ## Proposal Details
 
-### SQLFlow Client
-
-The client calls `Run` and receives a string job ID. The client subsequently fetches the result using the job ID periodically. And the client is unaware of the deployment type of the server.
-
-```python
-job_id = client.Run("sqls ...")
-while True:
-    responses = client.Fetch(job_id)
-    for r in responses.response:
-        # do stuff: either print logs or construct Rows
-    if responses.job_status in (SUCCEEDED, FAILED):
-        break
-    sleep(some_time)
-```
-
-And the Protocol Buffer definition looks like the following.
+### Protocol Buffer Definition
 
 ```proto
 service SQLFlow {
-    // Client calls Run and receives a string job ID.
-    rpc Run (Request) returns (JobID);
-    // Client subsequently fetches the result using the job ID periodically.
-    rpc Fetch(JobID) returns (Responses);
+    // Client calls Run and receives a string job token.
+    rpc Run (Request) returns (Job);
+    // Client subsequently fetches the result using the job token periodically.
+    rpc Fetch(Job) returns (Responses);
 }
 
-message JobID {
-    string job_id = 1;
-}
-
-message Session {
+message Job {
     string token = 1;
-    string db_conn_str = 2;
-    bool exit_on_submit = 3;
-    string user_id = 4;
 }
 
 message Responses {
@@ -87,21 +80,37 @@ message JobStatus {
 }
 ```
 
+### Client
+
+The client's `execute` function should behave like a single grpc stream call, while the under the hood there are `Run` and multiple `Fetch`s.
+
+```python
+def execute(sql):
+    job = client.Run(sql)
+    while True:
+        responses = client.Fetch(job)
+        for r in responses.response:
+            yield r
+        if responses.job_status in (SUCCEEDED, FAILED):
+            break
+        sleep(some_time)
+```
+
 ### JobRunner Interface
 
 The `JobRunner` interface should provide two functions `run` and `fetch`:
 
 ```go
 type JobRunner interface {
-  run(sql *req.Sql, pr *PipeReader, pw *PipeWriter) (jobID string, err error){
-  fetchResult(jobID string) (responses *pb.Responses)
+  run(sql *req.Sql, pr *PipeReader, pw *PipeWriter) (job string, err error){
+  fetchResult(job string) (responses *pb.Responses)
 }
 ```
 
-Registe `JobRunner` in `sql.Server`:
+Register `JobRunner` in `sql.Server`:
 
 ```go
-func (s *Server) Run (ctx context.Context, req *pb.Request) (*pb.JobID, error) {
+func (s *Server) Run (ctx context.Context, req *pb.Request) (*pb.Job, error) {
   db := s.db
   pr, pw := sf.Pipe()
   jobID := s.jobRunner.run(req.Sql, pr, pw)
