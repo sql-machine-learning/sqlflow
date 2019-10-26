@@ -119,7 +119,7 @@ func TestFeatureDerivation(t *testing.T) {
 	a.NotNil(emb2.CategoryColumn)
 	cat2, ok := emb2.CategoryColumn.(*codegen.CategoryIDColumn)
 	a.True(ok)
-	a.Equal(10000, cat2.BucketSize)
+	a.Equal(int64(10000), cat2.BucketSize)
 	a.Equal("c5", cat2.FieldMeta.Name)
 	a.Equal([]int{10000}, cat2.FieldMeta.Shape)
 	a.Equal(codegen.Int, cat2.FieldMeta.DType)
@@ -131,7 +131,7 @@ func TestFeatureDerivation(t *testing.T) {
 	a.Equal(3, len(cat3.FieldMeta.Vocabulary))
 	_, ok = cat3.FieldMeta.Vocabulary["MALE"]
 	a.True(ok)
-	a.Equal(3, cat3.BucketSize)
+	a.Equal(int64(3), cat3.BucketSize)
 
 	a.Equal(6, len(trainIR.Features["feature_columns"]))
 
