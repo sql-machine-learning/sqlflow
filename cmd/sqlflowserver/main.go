@@ -65,7 +65,7 @@ func start(datasource, modelDir, caCrt, caKey string, enableSession bool, port i
 	} else {
 		db, err := sql.NewDB(datasource)
 		if err != nil {
-			log.Fatalf("create DB failed: %v", err)
+			log.Fatalf("create DB failed: %v ", err)
 		}
 		defer db.Close()
 		proto.RegisterSQLFlowServer(s, server.NewServer(sql.Run, db, modelDir, enableSession))
