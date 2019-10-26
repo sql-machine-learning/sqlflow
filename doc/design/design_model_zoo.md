@@ -1,4 +1,4 @@
-# Design Doc: Model Definition and Model Zoo
+# Model Definition and Model Zoo
 
 ## Introduction
 
