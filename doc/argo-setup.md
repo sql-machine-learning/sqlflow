@@ -1,35 +1,27 @@
 # Submit Argo Workflow from SQLFlow Container
 
-This document demonstrates how to setup Minikube on your Mac and submit argo workflow from a SQLFlow container.
+In this document, we explain how to submit jobs from a SQLFlow server container to a Kubernetes clluster.  We use Minikube on a Mac, but you can use Kubernetes clusters on public cloud services as well.  The jobs we submit in this document are Argo workflows.  
 
+## On the Mac
 
-| command  | version |
-|----------|---------|
-| minikube | v1.4.0  |
-| kubectl  | v1.16   |
-| argo     | v2.3.0  |
-
-## Step by Step
-
-**On Host**
-
-1. Install Minikube following this [guide](https://kubernetes.io/docs/tasks/tools/install-minikube/).
+1. Install [Minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/).
 1. Start Minikube 
-   ```
+   ```bash
    minikube start --cpus 2 --memory 4000
    ```
-1. Start SQLFlow Docker container. Please be aware that we mount the host `$HOME` as container `/root`, so that the `$HOME/.kube/`(configured by Minikube) can be access inside the container.
-   ```
+1. Start a SQLFlow Docker container.
+   ```bash
    docker run --rm --net=host -it -v $GOPATH:/go -v $HOME:/root -w /go/src/sqlflow.org/sqlflow sqlflow:latest bash
    ```
+   We use `-v $HOME:/root` to mount the home directory on the host, `$HOME`, to the home directory in the container, `/root`, so we can access the Minikube cluster configuration files in `$HOME/.kube/` from within the container.
 
-**In Container**
+## In the SQLFlow Container
 
-1. One more step for sharing the `$HOME/.kube/`. The credential in `$HOME/.kube/config` is referred by absolute path, e.g. `certificate-authority: /Users/yang.y/.minikube/ca.crt`. So we need to create a symbolic link mapping from `/User/yang.y` to `/root`. Please substitute `yang.y` to your user name and type the following command.
+1. One more step for sharing the `$HOME/.kube/`. The credential in `$HOME/.kube/config` is referred to by absolute path, e.g. `certificate-authority: /Users/yang.y/.minikube/ca.crt`. So we need to create a symbolic link mapping `/User/yang.y` to `/root`. Please substitute `yang.y` to your user name and type the following command.
    ```
    mkdir /Users && ln -s /root /Users/yang.y
    ```
-1. Verify you have access to the Minikube cluster.
+1. Verify you have access to the Minikube cluster by typing the following command in the container.
    ```
    $ kubectl get namespaces
    NAME              STATUS   AGE
@@ -38,12 +30,12 @@ This document demonstrates how to setup Minikube on your Mac and submit argo wor
    kube-public       Active   23h
    kube-system       Active   23h
    ```
-1. Install the controller and UI.
-   ```
+1. Install the Argo controller and UI.
+   ```bash
    kubectl create namespace argo
    kubectl apply -n argo -f https://raw.githubusercontent.com/argoproj/argo/stable/manifests/install.yaml
    ```
-1. Grant admin privileges to the 'default' service account in the namespace 'default', so that the service account can run workflow.
+1. Grant admin privileges to the 'default' service account in the namespace `default`, so that the service account can run workflow.
    ```
    kubectl create rolebinding default-admin --clusterrole=admin --serviceaccount=default:default
    ```
