@@ -2,6 +2,8 @@
 
 In this document, we explain how to submit jobs from a SQLFlow server container to a Kubernetes clluster.  We use Minikube on a Mac, but you can use Kubernetes clusters on public cloud services as well.  The jobs we submit in this document are Argo workflows.  
 
+Please be aware that, in practice, the SQLFlow container might be running on the Kubernetes cluster as Argo workflows, but not in a separate container. And, it is the submitter program running in the SQLFlow server container who submits Argo workflows by calling the Kubernetes API other than the argo command.  It is known as **Kubernetes-native** to call Kubernetes APIs from a container running on the Kubernetes cluster. For how to implement Kubernetes-native calls, please refer to the ElasticDL master program as an example.
+
 ## On the Mac
 
 1. Install [Minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/).
