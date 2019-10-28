@@ -131,6 +131,7 @@ func fillFieldMeta(columnTypeList []*sql.ColumnType, rowdata []interface{}, fiel
 				DType:      codegen.Int,
 				Delimiter:  "",
 				Vocabulary: nil,
+				MaxID:      0,
 			}
 		}
 		// start the feature derivation routine
@@ -157,12 +158,17 @@ func fillFieldMeta(columnTypeList []*sql.ColumnType, rowdata []interface{}, fiel
 				fieldMetaMap[fld].Delimiter = ","
 				// get dtype for csv values, use int64 and float32 only
 				for _, v := range values {
-					_, err := strconv.ParseInt(v, 10, 32)
+					intValue, err := strconv.ParseInt(v, 10, 64)
 					if err != nil {
 						_, err := strconv.ParseFloat(v, 32)
 						// set dtype to float32 once a float value come up
 						if err == nil {
 							fieldMetaMap[fld].DType = codegen.Float
+						}
+					} else {
+						// if the value is integer, record maxID
+						if intValue > fieldMetaMap[fld].MaxID {
+							fieldMetaMap[fld].MaxID = intValue
 						}
 					}
 				}
@@ -304,9 +310,19 @@ func InferFeatureColumns(ir *codegen.TrainIR) error {
 								return fmt.Errorf("column not found or infered: %s", embCol.Name)
 							}
 							// FIXME(typhoonzero): when to use sequence_category_id_column?
+							// if column fieldMeta is SPARSE, the sparse shape should be in cs.Shape[0]
+							bucketSize := int64(cs.Shape[0])
+							// if the column is infered as DENSE, use infered MaxID as the
+							// categoryIDColumns's bucket_size
+							if cs.IsSparse == false {
+								if cs.MaxID == 0 {
+									return fmt.Errorf("use dense column on embedding column but did not got a correct MaxID")
+								}
+								bucketSize = cs.MaxID + 1
+							}
 							embCol.CategoryColumn = &codegen.CategoryIDColumn{
 								FieldMeta:  cs,
-								BucketSize: cs.Shape[0],
+								BucketSize: bucketSize,
 							}
 						}
 					}
@@ -331,7 +347,7 @@ func InferFeatureColumns(ir *codegen.TrainIR) error {
 					fcMap[target][slctKey] = append(fcMap[target][slctKey],
 						&codegen.CategoryIDColumn{
 							FieldMeta:  cs,
-							BucketSize: len(cs.Vocabulary),
+							BucketSize: int64(len(cs.Vocabulary)),
 						})
 				}
 			}

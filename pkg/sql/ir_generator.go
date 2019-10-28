@@ -349,16 +349,17 @@ func parseCategoryIDColumn(el *exprlist) (*codegen.CategoryIDColumn, error) {
 			Name:     key,
 			DType:    codegen.Int,
 			IsSparse: false,
+			MaxID:    0,
 		}
 	}
-
+	// FIXME(typhoonzero): support very large bucket size (int64)
 	bucketSize, err := strconv.Atoi((*el)[2].val)
 	if err != nil {
 		return nil, fmt.Errorf("bad CATEGORY_ID bucketSize: %s, err: %s", (*el)[2].val, err)
 	}
 	return &codegen.CategoryIDColumn{
 		FieldMeta:  fieldMeta,
-		BucketSize: bucketSize,
+		BucketSize: int64(bucketSize),
 	}, nil
 }
 
@@ -386,6 +387,7 @@ func parseSeqCategoryIDColumn(el *exprlist) (*codegen.SeqCategoryIDColumn, error
 			Name:     key,
 			DType:    codegen.Int,
 			IsSparse: false,
+			MaxID:    0,
 		}
 	}
 
@@ -428,7 +430,7 @@ func parseEmbeddingColumn(el *exprlist) (*codegen.EmbeddingColumn, error) {
 			}
 			tmpCatColumn = &codegen.CategoryIDColumn{
 				FieldMeta:  fm,
-				BucketSize: fm.Shape[0],
+				BucketSize: int64(fm.Shape[0]),
 			}
 			catColumn = tmpCatColumn
 		} else {
@@ -536,7 +538,8 @@ func parseFieldMeta(el *exprlist) (*codegen.FieldMeta, error) {
 		IsSparse:  isSparse,
 		Shape:     shape,
 		DType:     dtype,
-		Delimiter: delimiter}, nil
+		Delimiter: delimiter,
+		MaxID:     0}, nil
 }
 
 // -------------------------- parse utilities --------------------------------------

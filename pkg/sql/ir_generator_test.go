@@ -82,7 +82,7 @@ INTO mymodel;`
 	cc, ok := trainIR.Features["feature_columns"][2].(*codegen.CategoryIDColumn)
 	a.True(ok)
 	a.Equal("c3", cc.FieldMeta.Name)
-	a.Equal(512, cc.BucketSize)
+	a.Equal(int64(512), cc.BucketSize)
 
 	l, ok := trainIR.Label.(*codegen.NumericColumn)
 	a.True(ok)
@@ -110,7 +110,7 @@ INTO mymodel;`
 	embInner, ok := emb.CategoryColumn.(*codegen.CategoryIDColumn)
 	a.True(ok)
 	a.Equal("c3", embInner.FieldMeta.Name)
-	a.Equal(512, embInner.BucketSize)
+	a.Equal(int64(512), embInner.BucketSize)
 
 	// NUMERIC(DENSE(c1, [64], COMMA), [128])
 	nc, ok = trainIR.Features["feature_columns"][7].(*codegen.NumericColumn)
@@ -126,7 +126,7 @@ INTO mymodel;`
 	a.Equal("c2", cc.FieldMeta.Name)
 	a.Equal(10000, cc.FieldMeta.Shape[0])
 	a.Equal(",", cc.FieldMeta.Delimiter)
-	a.Equal(128, cc.BucketSize)
+	a.Equal(int64(128), cc.BucketSize)
 
 	// SEQ_CATEGORY_ID(SPARSE(c2, 10000, COMMA), 128)
 	scc, ok := trainIR.Features["feature_columns"][9].(*codegen.SeqCategoryIDColumn)

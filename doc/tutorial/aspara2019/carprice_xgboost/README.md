@@ -165,7 +165,7 @@ WITH
 USING TreeExplainer;
 ```
 
-<img src="./imgs/shap0.png">
+![](./imgs/shap0.png)
 
 The plot above sorts features by the sum of SHAP value magnitudes over all samples, and use SHAP values to show the distribution of the impacts each feature has on the model output. The color represents the feature values(red high, blue low). For example, a low engine_hp lowers the predicted car price.
 
@@ -184,4 +184,4 @@ WITH
 USING TreeExplainer;
 ```
 
-<img src="./imgs/shap1.png">
+![](./imgs/shap1.png)

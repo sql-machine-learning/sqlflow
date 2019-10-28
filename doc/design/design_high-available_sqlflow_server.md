@@ -22,7 +22,7 @@ We recommend using `KubernetesJobRunner` in the production environment.
 
 The high-availabe SQLFlow job workflow is as follows:
 
-<img src="figures/cluster_job_runner.png">
+![](figures/cluster_job_runner.png)
 
 1. SQLFlow client sends the SQL statement via a gRPC call to the SQLFlow server.
 1. For the `LocalJobRunner`:
