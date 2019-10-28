@@ -33,28 +33,25 @@ import (
 )
 
 // NewServer returns a server instance
-func NewServer(run func(string, *sf.DB, string, *pb.Session) *sf.PipeReader, db *sf.DB, modelDir string, enableSession bool) *Server {
-	return &Server{run: run, db: db, modelDir: modelDir, enableSession: enableSession}
+func NewServer(run func(string, *sf.DB, string, *pb.Session) *sf.PipeReader, modelDir string) *Server {
+	return &Server{run: run, modelDir: modelDir}
 }
 
 // Server is the instance will be used to connect to DB and execute training
 type Server struct {
-	run           func(sql string, db *sf.DB, modelDir string, session *pb.Session) *sf.PipeReader
-	db            *sf.DB
-	modelDir      string
-	enableSession bool
+	run      func(sql string, db *sf.DB, modelDir string, session *pb.Session) *sf.PipeReader
+	db       *sf.DB
+	modelDir string
 }
 
 // Run implements `rpc Run (Request) returns (stream Response)`
 func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
-	db := s.db
+	var db *sf.DB
 	var err error
-	if s.enableSession == true {
-		if db, err = sf.NewDB(req.Session.DbConnStr); err != nil {
-			return fmt.Errorf("create DB failed: %v", err)
-		}
-		defer db.Close()
+	if db, err = sf.NewDB(req.Session.DbConnStr); err != nil {
+		return fmt.Errorf("create DB failed: %v", err)
 	}
+	defer db.Close()
 	sqlStatements, err := sf.SplitMultipleSQL(req.Sql)
 	if err != nil {
 		return err
@@ -62,11 +59,7 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 	for _, singleSQL := range sqlStatements {
 		var pr *sf.PipeReader
 		startTime := time.Now().UnixNano()
-		if s.enableSession == true {
-			pr = s.run(singleSQL, db, s.modelDir, req.Session)
-		} else {
-			pr = s.run(singleSQL, db, s.modelDir, nil)
-		}
+		pr = s.run(singleSQL, db, s.modelDir, req.Session)
 
 		defer pr.Close()
 

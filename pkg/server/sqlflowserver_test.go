@@ -83,7 +83,7 @@ func startServer(done chan bool) {
 
 	s := grpc.NewServer()
 	s.GetServiceInfo()
-	pb.RegisterSQLFlowServer(s, &Server{run: mockRun, db: nil, enableSession: false})
+	pb.RegisterSQLFlowServer(s, &Server{run: mockRun, db: nil})
 	reflection.Register(s)
 	if err := s.Serve(listener); err != nil {
 		log.Fatalf("failed to serve: %v", err)
@@ -118,15 +118,15 @@ func TestSQL(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-
-	stream, err := c.Run(ctx, &pb.Request{Sql: testErrorSQL})
+	dbConnStr := "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
+	stream, err := c.Run(ctx, &pb.Request{Sql: testErrorSQL, Session: &pb.Session{DbConnStr: dbConnStr}})
 	a.NoError(err)
 	_, err = stream.Recv()
 	a.Equal(status.Error(codes.Unknown, "Lex: Unknown problem ..."), err)
 
 	testMultipleSQL := fmt.Sprintf("%s %s", testQuerySQL, testExtendedSQL)
 	for _, s := range []string{testQuerySQL, testExecuteSQL, testExtendedSQL, testExtendedSQLWithSpace, testExtendedSQLNoSemicolon, testMultipleSQL} {
-		stream, err := c.Run(ctx, &pb.Request{Sql: s})
+		stream, err := c.Run(ctx, &pb.Request{Sql: s, Session: &pb.Session{DbConnStr: dbConnStr}})
 		a.NoError(err)
 		for {
 			_, err := stream.Recv()
