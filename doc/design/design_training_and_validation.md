@@ -5,7 +5,7 @@ A common ML training job usually involves two kinds of data sets: training data 
 ## Overall
 SQLFlow generates a temporary table following the user-specific table, trains and evaluates a model.
 
-<img src="../figures/training_and_validation.png" width="60%">
+![](../figures/training_and_validation.png)
 
 Notice, we talk about the **train** process in this post.
 

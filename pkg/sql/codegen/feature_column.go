@@ -64,7 +64,7 @@ func (cc *CrossColumn) GetFieldMeta() []*FieldMeta {
 // ref: https://www.tensorflow.org/api_docs/python/tf/feature_column/categorical_column_with_identity
 type CategoryIDColumn struct {
 	FieldMeta  *FieldMeta
-	BucketSize int
+	BucketSize int64
 }
 
 // GetFieldMeta returns FieldMeta member

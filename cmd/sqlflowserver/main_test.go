@@ -184,6 +184,9 @@ func prepareTestData(dbStr string) error {
 		if err := testdata.Popularize(testDB.DB, testdata.HousingSQL); err != nil {
 			return err
 		}
+		if err := testdata.Popularize(testDB.DB, testdata.FeatureDericationCaseSQL); err != nil {
+			return err
+		}
 		return testdata.Popularize(testDB.DB, testdata.TextCNSQL)
 	case "hive":
 		if err := testdata.Popularize(testDB.DB, testdata.IrisHiveSQL); err != nil {
@@ -650,18 +653,18 @@ TRAIN DNNClassifier
 WITH model.n_classes = 3, model.hidden_units = [10, 20]
 LABEL class
 INTO sqlflow_models.my_dnn_model;`, caseDB, caseTrainTable)
-
-	conn, err := createRPCConn()
+	_, _, err := connectAndRunSQL(trainSQL)
 	a.NoError(err)
-	defer conn.Close()
-	cli := pb.NewSQLFlowClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
-	defer cancel()
-	stream, err := cli.Run(ctx, sqlRequest(trainSQL))
-	if err != nil {
-		a.Fail("Check if the server started successfully. %v", err)
-	}
-	ParseRow(stream)
+
+	// TODO(typhoonzero): also support string column type for training and prediction (column c6)
+	trainVaryColumnTypes := `SELECT c1, c2, c3, c4, c5, class from feature_derivation_case.train
+TRAIN DNNClassifier
+WITH model.n_classes=3, model.hidden_units=[10,10]
+COLUMN EMBEDDING(c3, 128, sum), EMBEDDING(SPARSE(c5, 10000, COMMA), 128, sum)
+LABEL class
+INTO sqlflow_models.my_dnn_model;`
+	_, _, err = connectAndRunSQL(trainVaryColumnTypes)
+	a.NoError(err)
 }
 
 func CaseTrainCustomModel(t *testing.T) {
