@@ -8,45 +8,17 @@ This language guide elaborates SQLFlow extended syntax and feature column API. F
 
 Let's assume [iris flower data set](https://en.wikipedia.org/wiki/Iris_flower_data_set) stored in table `iris.train`. The first four columns (petal_length, petal_width, sepal_length, sepal_width) represent the features and the last column (class) represents the labels.
 
-<table>
-  <tr>
-    <th colspan="5">iris.train</th>
-  </tr>
-  <tr>
-    <td>sepal_length</td>
-    <td>sepal_width</td>
-    <td>petal_length</td>
-    <td>petal_width</td>
-    <td>class</td>
-  </tr>
-  <tr>
-    <td>6.4</td>
-    <td>2.8</td>
-    <td>5.6</td>
-    <td>2.2</td>
-    <td>2</td>
-  </tr>
-  <tr>
-    <td>5.0</td>
-    <td>2.3</td>
-    <td>3.3</td>
-    <td>1.0</td>
-    <td>1</td>
-  </tr>
-  <tr>
-    <td>...</td>
-    <td>...</td>
-    <td>...</td>
-    <td>...</td>
-    <td>...</td>
-  </tr>
-</table>
+ sepal_length | sepal_width | petal_length | petal_width | class
+--------------|-------------|--------------|-------------|--------
+ 6.4          | 2.8         | 5.6          | 2.2         | 2
+ 5.0          | 2.3         | 3.3          | 1.0         | 1
+ ...          | ...         | ...          | ...         |
 
 Let's train a `DNNClassifier`, which has two hidden layers where each layer has ten hidden units, and then save the trained model into table `sqlflow_models.my_dnn_model` for making predictions later on.
 
 Instead of writing a Python program with a lot of boilerplate code, this can be achieved easily via the following statement in SQLFlow.
 
-```
+```sql
 SELECT * FROM iris.train
 TRAIN DNNClassifer
 WITH hidden_units = [10, 10], n_classes = 3, EPOCHS = 10
@@ -57,13 +29,13 @@ INTO sqlflow_models.my_dnn_model;
 
 SQLFlow will then parse the above statement and translate it to an equivalent Python program.
 
-![](figures/user_overview.png)
+![Translate SQL statement into Python](figures/user_overview.png)
 
 ## Training Syntax
 
 A SQLFlow training statement consists of a sequence of select, train, column, label, and into clauses.
 
-```
+```sql
 SELECT select_expr [, select_expr ...]
 FROM table_references
   [WHERE where_condition]
@@ -79,19 +51,18 @@ COLUMN column_expr [, column_expr ...]
 INTO table_references;
 ```
 
-### Select Clause
+The select statement describes the data retrieved from a particular table, e.g., `SELECT * FROM iris.train`.
 
-The *select clause* describes the data retrieved from a particular table, e.g., `SELECT * FROM iris.train`.
-
-```
+```sql
 SELECT select_expr [, select_expr ...]
 FROM table_references
   [WHERE where_condition]
   [LIMIT row_count]
 ```
 
-Equivalent to [ANSI SQL Standards](https://www.whoishostingthis.com/resources/ansi-sql-standards/),
-- Each *select_expr* indicates a column that you want to retrieve. There must be at least one *select_expr*.
+According to [ANSI SQL Standards](https://www.whoishostingthis.com/resources/ansi-sql-standards/),
+
+- each *select_expr* indicates a column that you want to retrieve. There must be at least one *select_expr*.
 - *table_references* indicates the table from which to retrieve rows.
 - *where_condition* is an expression that evaluates to true for each row to be selected.
 - *row_count* indicates the maximum number of rows to be retrieved.
@@ -99,7 +70,7 @@ Equivalent to [ANSI SQL Standards](https://www.whoishostingthis.com/resources/an
 For example, if you want to quickly prototype a binary classifier on a subset of the sample data, you can write
 the following statement:
 
-```
+```sql
 SELECT *
 FROM iris.train
 WHERE class = 0 OR class = 1
@@ -111,7 +82,7 @@ TRAIN ...
 
 The *train clause* describes the specific model type and the way the model is trained, e.g. `TRAIN DNNClassifer WITH hidden_units = [10, 10], n_classes = 3, EPOCHS = 10`.
 
-```
+```sql
 TRAIN model_identifier
 WITH
   model_attr_expr [, model_attr_expr ...]
@@ -124,7 +95,7 @@ WITH
 
 For example, if you want to train a `DNNClassifier`, which has two hidden layers where each layer has ten hidden units, with ten epochs, you can write the following statement:
 
-```
+```sql
 SELECT ...
 TRAIN DNNClassifer
 WITH
@@ -138,7 +109,7 @@ WITH
 
 The *column clause* indicates the field name for training features, along with their optional pre-processing methods, e.g. `COLUMN sepal_length, sepal_width, petal_length, petal_width`.
 
-```
+```sql
 COLUMN column_expr [, column_expr ...]
   | COLUMN column_expr [, column_expr ...] FOR column_name
     [COLUMN column_expr [, column_expr ...] FOR column_name ...]
@@ -149,7 +120,7 @@ COLUMN column_expr [, column_expr ...]
 
 For example, if you want to use fields `sepal_length`, `sepal_width`, `petal_length`, and `petal_width` as the features without any pre-processing, you can write the following statement:
 
-```
+```sql
 SELECT ...
 TRAIN ...
 COLUMN sepal_length, sepal_width, petal_length, petal_width
@@ -160,7 +131,7 @@ COLUMN sepal_length, sepal_width, petal_length, petal_width
 
 The *label clause* indicates the field name for the training label, along with their optional pre-processing methods, e.g. `LABEL class`.
 
-```
+```sql
 LABEL label_expr
 ```
 
@@ -172,7 +143,7 @@ Note: some field names may look like SQLFlow keywords. For example, the table ma
 
 The *into clause* indicates the table name to save the trained model into:
 
-```
+```sql
 INTO table_references
 ```
 
@@ -184,46 +155,15 @@ Note: SQLFlow team is actively working on supporting saving model to third-party
 
 SQLFlow supports specifying various feature columns in the column clause and label clause. Below are the currently supported feature columns:
 
-<table>
-  <tr>
-    <th>feature column type</th>
-    <th>usage</th>
-    <th>field type</th>
-    <th>example</th>
-  </tr>
-  <tr>
-    <td>X</td>
-    <td>field</td>
-    <td>int/float/double</td>
-    <td>3.14</td>
-  </tr>
-  <tr>
-    <td>NUMERIC</td>
-    <td>NUMERIC(field, n[, delimiter])</td>
-    <td>string/varchar[n]</td>
-    <td>"0.2,1.7,0.6"</td>
-  </tr>
-  <tr>
-    <td>CATEGORY_ID</td>
-    <td>CATEGORY_ID(field, n[, delimiter])</td>
-    <td>string/varchar[n]</td>
-    <td>"66,67,42,68,48,69,70"</td>
-  </tr>
-  <tr>
-    <td>SEQ_CATEGORY_ID</td>
-    <td>SEQ_CATEGORY_ID(field, n[, delimiter])</td>
-    <td>string/varchar[n]</td>
-    <td>"20,48,80,81,82,0,0,0,0"</td>
-  </tr>
-  <tr>
-    <td>EMBEDDING</td>
-    <td>EMBEDDING(category_column, dimension[, combiner])</td>
-    <td>X</td>
-    <td>X</td>
-  </tr>
-</table>
+ feature column type | usage | field type | example
+---|---|---|---
+ X | field | int/float/double | 3.14
+ NUMERIC | NUMERIC(field, n[,delimiter]) | string/varchar[n] | "0.2,1.7,0.6"
+ CATEGORY_ID | CATEGORY_ID(field, n[,delimiter]) | string/varchar[n] | "66,67,42,68,48,69,70"
+ SEQ_CATEGORY_ID | SEQ_CATEGORY_ID(field, n[, delimiter]) | string/varchar[n] | "20,48,80,81,82,0,0,0,0"
+ EMBEDDING | EMBEDDING(category_column, dimension[, combiner]) | X | X
 
-```
+```text
 NUMERIC(field, n[, delimiter=comma])
 /*
 NUMERIC converts a delimiter separated string to a n dimensional Tensor
@@ -309,7 +249,7 @@ Example:
 
 A SQLFlow prediction statement consists of a sequence of select, predict, and using clauses.
 
-```
+```sql
 SELECT select_expr [, select_expr ...]
 FROM table_references
   [WHERE where_condition]
@@ -320,28 +260,26 @@ PREDICT result_table_reference
 USING model_table_reference;
 ```
 
-### Select Clause
-
-The [select clause](#select-clause) syntax is the same as the select clause syntax in the training syntax. SQLFlow uses the column name to guarantee the prediction data has the same order as the training data. For example, if we have used `c1`, `c2`, `c3` and `label` column to train a model, the select clause in the prediction job should also retrieve columns that contain exactly the same names.
+The select statement syntax is the same as the select statement syntax in the training syntax. SQLFlow uses the column name to guarantee the prediction data has the same order as the training data. For example, if we have used `c1`, `c2`, `c3` and `label` column to train a model, the select statement in the prediction job should also retrieve columns that contain exactly the same names.
 
 ### Predict and Using Clause
 
 The *predict clause* describes the result table that a prediction job should write to, the table a prediction job should load the model from, and necessary configuration attributes for a prediction job.
 
-```
+```sql
 PREDICT result_table_reference
 [WITH
   attr_expr [, attr_expr ...]]
 USING model_table_reference;
 ```
 
-- *result_table_reference* indicates the table to store the prediction result. Please be aware that all the data retrieved by the select clause plus the prediction result will be stored.
+- *result_table_reference* indicates the table to store the prediction result. Please be aware that all the data retrieved by the select statement plus the prediction result will be stored.
 - *attr_expr* indicates the configuration attributes, e.g. `predict.batch_size = 1`.
 - *model_table_reference* indicates the table a prediction job should load the model from.
 
 For example, if we want to save the predicted result into table `iris.predict` at column `class` using the model stored at `sqlflow.my_dnn_model`. We can write the following statement:
 
-```
+```sql
 SELECT ...
 PREDICT iris.predict.class
 USING sqlflow.my_dnn_model;
@@ -351,7 +289,7 @@ USING sqlflow.my_dnn_model;
 
 A SQLFlow prediction statement consists of a sequence of select, analyze, and using clauses.
 
-```
+```sql
 SELECT select_expr [, select_expr ...]
 FROM table_references
   [WHERE where_condition]
@@ -362,15 +300,13 @@ ANALYZE model_table_reference
 USING explainer;
 ```
 
-### Select Clause
-
-The [select clause](#select-clause) syntax is the same as the select clause syntax in the training syntax. SQLFlow uses the column name to guarantee the analysis data has the same order as the training data. For example, if we have used `c1`, `c2`, `c3` and `label` column to train a model, the select clause in the analysis job should also retrieve columns that contain the same names.
+The select statement syntax is the same as the select statement syntax in the training syntax. SQLFlow uses the column name to guarantee the analysis data has the same order as the training data. For example, if we have used `c1`, `c2`, `c3` and `label` column to train a model, the select statement in the analysis job should also retrieve columns that contain the same names.
 
 ### Analyze and Using Clause
 
 The *analyze clause* describes the table an analysis job should load the model from, necessary configuration attributes, and the explainer for analysis.
 
-```
+```sql
 ANALYZE model_table_reference
 [WITH
   attr_expr [, attr_expr ...]]
@@ -383,7 +319,7 @@ USING explainer;
 
 For example, if we want to analyze the model stored at `sqlflow_models.my_xgb_regression_model` using the tree explainer and plot the analysis results in sorted order. We can write the following statement:
 
-```
+```sql
 SELECT *
 FROM boston.train
 ANALYZE sqlflow_models.my_xgb_regression_model
