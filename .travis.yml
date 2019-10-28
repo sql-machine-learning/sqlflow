@@ -40,6 +40,7 @@ jobs:
       script:
         - docker pull sqlflow/sqlflow:latest && docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile .
         - docker run --rm -v $GOPATH:/go -w /go/src/sqlflow.org/sqlflow sqlflow:latest bash scripts/test_units.sh
+        - docker run --rm -v $GOPATH:/go -w /go/src/sqlflow.org/sqlflow sqlflow:latest bash scripts/upload_coveralls.sh
     - # run more parallel tests in the same stage:
       env: SQLFLOW_TEST_DB=hive
       script:
@@ -54,10 +55,8 @@ jobs:
         - docker run -e MAXCOMPUTE_AK=$MAXCOMPUTE_AK -e MAXCOMPUTE_SK=$MAXCOMPUTE_SK --rm --net=host -v /var/run/docker.sock:/var/run/docker.sock -v $HOME/.kube:/root/.kube -v /home/$USER/.minikube/:/home/$USER/.minikube/ -v $GOPATH:/go -w /go/src/sqlflow.org/sqlflow sqlflow:latest bash scripts/test_maxcompute.sh
     - stage: deploy
       script:
+        - docker pull sqlflow/sqlflow:latest && docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile .
         - bash scripts/deploy.sh
-
-after_success:
-  - bash scripts/deploy.sh
 
 env:
   global:
