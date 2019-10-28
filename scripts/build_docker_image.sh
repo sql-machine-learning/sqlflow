@@ -129,7 +129,3 @@ git checkout eb93e2a48e6fe8f077c4937d8c0c5987faa9cf56
 pip install -r elasticdl/requirements.txt
 python setup.py install
 cd ..
-
-# 10. Install Argo. 34M total.
-curl -sSL -o /usr/local/bin/argo https://github.com/argoproj/argo/releases/download/v2.3.0/argo-linux-amd64
-chmod +x /usr/local/bin/argo
