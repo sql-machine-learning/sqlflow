@@ -334,6 +334,7 @@ func TestEnd2EndMySQLIR(t *testing.T) {
 }
 
 func CaseTrainTextClassificationIR(t *testing.T) {
+	t.Parallel()
 	a := assert.New(t)
 	trainSQL := `SELECT news_title, class_id
 FROM text_cn.train_processed
@@ -349,6 +350,7 @@ INTO sqlflow_models.my_dnn_model;`
 }
 
 func CaseTrainTextClassificationFeatureDerivation(t *testing.T) {
+	t.Parallel()
 	a := assert.New(t)
 	trainSQL := `SELECT news_title, class_id
 FROM text_cn.train_processed
@@ -532,6 +534,7 @@ func TestEnd2EndMaxComputeElasticDL(t *testing.T) {
 }
 
 func CaseShowDatabases(t *testing.T) {
+	t.Parallel()
 	a := assert.New(t)
 	cmd := "show databases;"
 	head, resp, err := connectAndRunSQL(cmd)
@@ -570,6 +573,7 @@ func CaseShowDatabases(t *testing.T) {
 }
 
 func CaseSelect(t *testing.T) {
+	t.Parallel()
 	a := assert.New(t)
 	cmd := fmt.Sprintf("select * from %s.%s limit 2;", caseDB, caseTrainTable)
 	head, rows, err := connectAndRunSQL(cmd)
@@ -602,6 +606,7 @@ func CaseSelect(t *testing.T) {
 }
 
 func CaseTrainSQL(t *testing.T) {
+	t.Parallel()
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`SELECT *
 FROM %s.%s
@@ -646,6 +651,7 @@ FROM %s.%s LIMIT 5;`, caseDB, casePredictTable)
 }
 
 func CaseTrainFeatureDerevation(t *testing.T) {
+	t.Parallel()
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`SELECT *
 FROM %s.%s
@@ -668,6 +674,7 @@ INTO sqlflow_models.my_dnn_model;`
 }
 
 func CaseTrainCustomModel(t *testing.T) {
+	t.Parallel()
 	a := assert.New(t)
 	trainSQL := `SELECT *
 FROM iris.train
@@ -706,6 +713,7 @@ FROM iris.predict LIMIT 5;`
 }
 
 func CaseTrainTextClassification(t *testing.T) {
+	t.Parallel()
 	a := assert.New(t)
 	trainSQL := `SELECT news_title, class_id
 FROM text_cn.train_processed
@@ -721,6 +729,7 @@ INTO sqlflow_models.my_dnn_model;`
 }
 
 func CaseTrainTextClassificationCustomLSTM(t *testing.T) {
+	t.Parallel()
 	a := assert.New(t)
 	trainSQL := `SELECT news_title, class_id
 FROM text_cn.train_processed
@@ -736,6 +745,7 @@ INTO sqlflow_models.my_bilstm_model;`
 }
 
 func CaseTrainSQLWithHyperParams(t *testing.T) {
+	t.Parallel()
 	a := assert.New(t)
 	trainSQL := `SELECT *
 FROM iris.train
@@ -751,6 +761,7 @@ INTO sqlflow_models.my_dnn_model;`
 }
 
 func CaseTrainDeepWideModel(t *testing.T) {
+	t.Parallel()
 	a := assert.New(t)
 	trainSQL := `SELECT *
 FROM iris.train
@@ -768,6 +779,7 @@ INTO sqlflow_models.my_dnn_linear_model;`
 
 // CaseTrainCustomModel tests using customized models
 func CaseTrainCustomModelWithHyperParams(t *testing.T) {
+	t.Parallel()
 	a := assert.New(t)
 	trainSQL := `SELECT *
 FROM iris.train
@@ -783,6 +795,7 @@ INTO sqlflow_models.my_dnn_model_custom;`
 }
 
 func CaseSparseFeature(t *testing.T) {
+	t.Parallel()
 	a := assert.New(t)
 	trainSQL := `SELECT news_title, class_id
 FROM text_cn.train
@@ -799,6 +812,7 @@ INTO sqlflow_models.my_dnn_model;`
 
 // CaseTrainElasticDL is a case for training models using ElasticDL
 func CaseTrainElasticDL(t *testing.T) {
+	t.Parallel()
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`SELECT sepal_length, sepal_width, petal_length, petal_width, class
 FROM %s.%s
@@ -850,6 +864,7 @@ INTO trained_elasticdl_keras_classifier;`, os.Getenv("MAXCOMPUTE_PROJECT"), "sql
 
 // CaseTrainALPS is a case for training models using ALPS with out feature_map table
 func CaseTrainALPS(t *testing.T) {
+	t.Parallel()
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`SELECT deep_id, user_space_stat, user_behavior_stat, space_stat, l
 FROM %s.sparse_column_test
@@ -874,6 +889,7 @@ INTO model_table;`, caseDB)
 
 // CaseTrainALPSRemoteModel is a case for training models using ALPS with remote model
 func CaseTrainALPSRemoteModel(t *testing.T) {
+	t.Parallel()
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`SELECT deep_id, user_space_stat, user_behavior_stat, space_stat, l
 FROM %s.sparse_column_test
@@ -902,6 +918,7 @@ INTO model_table;`, caseDB, os.Getenv("GITLAB_TOKEN"))
 
 // CaseTrainALPSFeatureMap is a case for training models using ALPS with feature_map table
 func CaseTrainALPSFeatureMap(t *testing.T) {
+	t.Parallel()
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`SELECT dense, deep, item, test_sparse_with_fm.label
 FROM %s.test_sparse_with_fm
@@ -919,6 +936,7 @@ LABEL "label" INTO model_table;`, caseDB)
 
 // CaseSQLByPassLeftJoin is a case for testing left join
 func CaseSQLByPassLeftJoin(t *testing.T) {
+	t.Parallel()
 	a := assert.New(t)
 	trainSQL := `SELECT f1.user_id, f1.fea1, f2.fea2
 FROM standard_join_test.user_fea1 AS f1 LEFT OUTER JOIN standard_join_test.user_fea2 AS f2
@@ -943,6 +961,7 @@ WHERE f1.user_id < 3;`
 
 // CaseTrainRegression is used to test regression models
 func CaseTrainRegression(t *testing.T) {
+	t.Parallel()
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`SELECT *
 FROM housing.train
@@ -988,6 +1007,7 @@ FROM housing.predict LIMIT 5;`)
 
 // CaseTrainXGBoostRegression is used to test xgboost regression models
 func CaseTrainXGBoostRegression(t *testing.T) {
+	t.Parallel()
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`
 SELECT *
@@ -1009,6 +1029,7 @@ INTO sqlflow_models.my_xgb_regression_model;
 // CaseTrainAndAnalyzeXGBoostModel is used to test training a xgboost model,
 // then analyze it
 func CaseTrainAndAnalyzeXGBoostModel(t *testing.T) {
+	t.Parallel()
 	a := assert.New(t)
 	trainStmt := `
 SELECT *
@@ -1052,6 +1073,7 @@ USING TreeExplainer;
 }
 
 func CasePredictXGBoostRegression(t *testing.T) {
+	t.Parallel()
 	a := assert.New(t)
 	predSQL := fmt.Sprintf(`SELECT *
 FROM housing.test
