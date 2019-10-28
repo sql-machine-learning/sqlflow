@@ -36,6 +36,8 @@ const (
 	String
 	// IntList indicates the corresponding attribute is a list of integers
 	IntList
+	// Unknown type indicates that the attribute type is dynamically determined.
+	Unknown
 )
 
 // Dictionary contains the description of all attributes
@@ -68,9 +70,27 @@ func (t Type) String() string {
 //   2. Customer checker
 func (d Dictionary) Validate(attrs map[string]interface{}) error {
 	for k, v := range attrs {
+		var desc *Description
 		desc, ok := d[k]
 		if !ok {
-			return fmt.Errorf(errUnsupportedAttribute, k)
+			// Support attribute defination like "model.*" to match attributes start with "model"
+			keyParts := strings.Split(k, ".")
+			if len(keyParts) == 2 {
+				wildCard := fmt.Sprintf("%s.*", keyParts[0])
+				descWild, okWildCard := d[wildCard]
+				if okWildCard {
+					desc = descWild
+				} else {
+					return fmt.Errorf(errUnsupportedAttribute, k)
+				}
+			} else {
+				return fmt.Errorf(errUnsupportedAttribute, k)
+			}
+
+		}
+		// unknown type of attribute do not need to run validate
+		if desc.Type == Unknown {
+			return nil
 		}
 		switch v.(type) {
 		case int, int32, int64:

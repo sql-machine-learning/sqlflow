@@ -99,3 +99,11 @@ func IntRangeChecker(lower, upper *int, includeLower, includeUpper bool) func(in
 
 	return checker
 }
+
+// EmptyChecker returns a checker function that do **not** check the input.
+func EmptyChecker() func(interface{}) error {
+	checker := func(e interface{}) error {
+		return nil
+	}
+	return checker
+}
