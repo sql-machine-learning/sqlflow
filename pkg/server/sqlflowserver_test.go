@@ -41,6 +41,7 @@ const (
 	testExtendedSQL            = "SELECT * FROM some_table TRAIN SomeModel;"
 	testExtendedSQLNoSemicolon = "SELECT * FROM some_table TRAIN SomeModel"
 	testExtendedSQLWithSpace   = "SELECT * FROM some_table TRAIN SomeModel; \n\t"
+	mockDBConnStr              = "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
 )
 
 var testServerAddress string
@@ -97,7 +98,8 @@ func createRudeClient() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	_, err := c.Run(ctx, &pb.Request{Sql: testQuerySQL})
+	_, err := c.Run(ctx, &pb.Request{Sql: testQuerySQL, Session: &pb.Session{DbConnStr: mockDBConnStr}})
+
 	if err != nil {
 		log.Fatalf("Run encounts err:%v", err)
 	}
@@ -118,15 +120,14 @@ func TestSQL(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	dbConnStr := "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
-	stream, err := c.Run(ctx, &pb.Request{Sql: testErrorSQL, Session: &pb.Session{DbConnStr: dbConnStr}})
+	stream, err := c.Run(ctx, &pb.Request{Sql: testErrorSQL, Session: &pb.Session{DbConnStr: mockDBConnStr}})
 	a.NoError(err)
 	_, err = stream.Recv()
 	a.Equal(status.Error(codes.Unknown, "Lex: Unknown problem ..."), err)
 
 	testMultipleSQL := fmt.Sprintf("%s %s", testQuerySQL, testExtendedSQL)
 	for _, s := range []string{testQuerySQL, testExecuteSQL, testExtendedSQL, testExtendedSQLWithSpace, testExtendedSQLNoSemicolon, testMultipleSQL} {
-		stream, err := c.Run(ctx, &pb.Request{Sql: s, Session: &pb.Session{DbConnStr: dbConnStr}})
+		stream, err := c.Run(ctx, &pb.Request{Sql: s, Session: &pb.Session{DbConnStr: mockDBConnStr}})
 		a.NoError(err)
 		for {
 			_, err := stream.Recv()
