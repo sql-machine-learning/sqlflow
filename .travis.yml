@@ -32,6 +32,7 @@ jobs:
     - stage: BuildDockerAndPreCommit
       script:
         - docker version
+        - docker run --rm -v $GOPATH/src:/go/src -w /go/src/sqlflow.org/sqlflow sqlflow/sqlflow:latest go generate ./...
         - docker run --rm -v $GOPATH/src:/go/src -w /go/src/sqlflow.org/sqlflow sqlflow/sqlflow:latest pre-commit run -a
     - stage: Unitests
       # env is just used for displaying the job type in travis web page
