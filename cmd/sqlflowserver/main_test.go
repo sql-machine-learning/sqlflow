@@ -534,6 +534,7 @@ func TestEnd2EndMaxComputeElasticDL(t *testing.T) {
 }
 
 func CaseShowDatabases(t *testing.T) {
+	t.Skip()
 	t.Parallel()
 	a := assert.New(t)
 	cmd := "show databases;"
