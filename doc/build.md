@@ -74,13 +74,13 @@ docker run --rm -it -v $GOPATH:/go \
 
 Inside the Docker container, start a MySQL server in the background
 
-```
+```bash
 service mysql start
 ```
 
 run all the tests as
 
-```
+```bash
 go generate ./...
 SQLFLOW_TEST_DB=mysql go test -v ./...
 ```
@@ -100,10 +100,4 @@ command:
 go run cmd/repl/repl.go --datasource="mysql://root:root@tcp(host.docker.internal:3306)/?maxAllowedPacket=0"
 ```
 
-You should be able to see the following prompt
-
-```
-sqlflow>
-```
-
-Then, please follow the [REPL tutorial](/doc/run/repl.md).
+You should be able to see the prompt of `sqlflow>`.  Now, please follow the [REPL tutorial](/doc/run/repl.md).
