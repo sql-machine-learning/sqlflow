@@ -29,7 +29,7 @@ install:
 
 jobs:
   include:
-    - stage: BuildDockerAndPreCommit
+    - stage: PreCommit
       script:
         - docker version
         - docker run --rm -v $GOPATH/src:/go/src -w /go/src/sqlflow.org/sqlflow sqlflow/sqlflow:latest go generate ./... && go get ./... && python scripts/copyright.py pkg/sql/parser.go
@@ -53,6 +53,11 @@ jobs:
         - bash scripts/setup_k8s_env.sh
         - docker run --rm --net=host -v /var/run/docker.sock:/var/run/docker.sock -v $HOME/.kube:/root/.kube -v /home/$USER/.minikube/:/home/$USER/.minikube/ -v $GOPATH:/go -w /go/src/sqlflow.org/sqlflow sqlflow:latest bash scripts/test_ipython.sh
         - docker run -e MAXCOMPUTE_AK=$MAXCOMPUTE_AK -e MAXCOMPUTE_SK=$MAXCOMPUTE_SK --rm --net=host -v /var/run/docker.sock:/var/run/docker.sock -v $HOME/.kube:/root/.kube -v /home/$USER/.minikube/:/home/$USER/.minikube/ -v $GOPATH:/go -w /go/src/sqlflow.org/sqlflow sqlflow:latest bash scripts/test_maxcompute.sh
+    - env: SQLFLOW_TEST_JOB_RUNNER=argo
+      script:
+      - docker pull sqlflow/sqlflow:latest && docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile .
+      - bash scripts/setup_k8s_env.sh
+      - docker run --rm --net=host -v /var/run/docker.sock:/var/run/docker.sock -v $HOME/.kube:/root/.kube -v /home/$USER/.minikube/:/home/$USER/.minikube/ -v $GOPATH:/go -w /go/src/sqlflow.org/sqlflow sqlflow:latest bash scripts/test_argo.sh
     - stage: deploy
       script:
         - docker pull sqlflow/sqlflow:latest && docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile .
