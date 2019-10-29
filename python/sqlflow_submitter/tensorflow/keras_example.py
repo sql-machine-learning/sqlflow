@@ -13,7 +13,7 @@
 
 # NOTE: this file is used by train_predict_test.py, do **NOT** delete!
 
-from sqlflow_submitter.tensorflow.estimator_train_pred import datasource, select, validate_select, feature_column_names, feature_columns, feature_metas, label_meta
+from sqlflow_submitter.tensorflow.estimator_example import datasource, select, validate_select, feature_column_names, feature_columns, feature_metas, label_meta
 from sqlflow_submitter.tensorflow.train import train
 from sqlflow_submitter.tensorflow.predict import pred
 import sqlflow_models
