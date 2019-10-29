@@ -40,7 +40,6 @@ func NewServer(run func(string, *sf.DB, string, *pb.Session) *sf.PipeReader, mod
 // Server is the instance will be used to connect to DB and execute training
 type Server struct {
 	run      func(sql string, db *sf.DB, modelDir string, session *pb.Session) *sf.PipeReader
-	db       *sf.DB
 	modelDir string
 }
 
