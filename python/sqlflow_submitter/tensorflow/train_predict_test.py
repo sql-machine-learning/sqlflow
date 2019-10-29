@@ -21,7 +21,7 @@ class TestEstimatorModels(TestCase):
     def test_estimator(self):
         try:
             # should run this test under directory $GOPATH/sqlflow.org/sqlflow
-            ret = subprocess.run(["/miniconda/envs/sqlflow-dev/bin/python", "python/sqlflow_submitter/tensorflow/estimator_train_pred.py"],
+            ret = subprocess.run(["/miniconda/envs/sqlflow-dev/bin/python", "python/sqlflow_submitter/tensorflow/estimator_example.py"],
                 env={"PYTHONPATH": "python"})
             self.assertEqual(ret.returncode, 0)
         except:
@@ -30,7 +30,7 @@ class TestEstimatorModels(TestCase):
     def test_keras(self):
         try:
             # should run this test under directory $GOPATH/sqlflow.org/sqlflow
-            ret = subprocess.run(["/miniconda/envs/sqlflow-dev/bin/python", "python/sqlflow_submitter/tensorflow/keras_train_pred.py"],
+            ret = subprocess.run(["/miniconda/envs/sqlflow-dev/bin/python", "python/sqlflow_submitter/tensorflow/keras_example.py"],
                 env={"PYTHONPATH": "python"})
             self.assertEqual(ret.returncode, 0)
         except:

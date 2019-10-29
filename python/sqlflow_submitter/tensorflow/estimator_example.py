@@ -11,6 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# NOTE: this file is used by train_predict_test.py, do **NOT** delete!
+
 from sqlflow_submitter.tensorflow.train import train
 from sqlflow_submitter.tensorflow.predict import pred
 import tensorflow as tf
