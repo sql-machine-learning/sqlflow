@@ -265,7 +265,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 		t.Fatalf("failed to generate CA pair %v", err)
 	}
 
-	go start("", modelDir, caCrt, caKey, true, unitestPort)
+	go start(modelDir, caCrt, caKey, unitestPort)
 	waitPortReady(fmt.Sprintf("localhost:%d", unitestPort), 0)
 	err = prepareTestData(dbConnStr)
 	if err != nil {
@@ -311,7 +311,7 @@ func TestEnd2EndMySQLIR(t *testing.T) {
 
 	addr := fmt.Sprintf("localhost:%d", unitestPort)
 	if !serverIsReady(addr, 0) {
-		go start("", modelDir, caCrt, caKey, true, unitestPort)
+		go start(modelDir, caCrt, caKey, unitestPort)
 		waitPortReady(addr, 0)
 	}
 	err = prepareTestData(dbConnStr)
@@ -376,7 +376,7 @@ func TestEnd2EndHive(t *testing.T) {
 		t.Skip("Skipping hive tests")
 	}
 	dbConnStr = "hive://127.0.0.1:10000/iris?auth=NOSASL"
-	go start("", modelDir, caCrt, caKey, true, unitestPort)
+	go start(modelDir, caCrt, caKey, unitestPort)
 	waitPortReady(fmt.Sprintf("localhost:%d", unitestPort), 0)
 	err = prepareTestData(dbConnStr)
 	if err != nil {
@@ -406,7 +406,7 @@ func TestEnd2EndHiveIR(t *testing.T) {
 	}
 
 	dbConnStr = "hive://root:root@127.0.0.1:10000/iris?auth=NOSASL"
-	go start("", modelDir, caCrt, caKey, true, unitestPort)
+	go start(modelDir, caCrt, caKey, unitestPort)
 	waitPortReady(fmt.Sprintf("localhost:%d", unitestPort), 0)
 	err = prepareTestData(dbConnStr)
 	if err != nil {
@@ -442,7 +442,7 @@ func TestEnd2EndMaxCompute(t *testing.T) {
 	SK := os.Getenv("MAXCOMPUTE_SK")
 	endpoint := os.Getenv("MAXCOMPUTE_ENDPOINT")
 	dbConnStr = fmt.Sprintf("maxcompute://%s:%s@%s", AK, SK, endpoint)
-	go start("", modelDir, caCrt, caKey, true, unitestPort)
+	go start(modelDir, caCrt, caKey, unitestPort)
 	waitPortReady(fmt.Sprintf("localhost:%d", unitestPort), 0)
 	err = prepareTestData(dbConnStr)
 	if err != nil {
@@ -486,7 +486,7 @@ func TestEnd2EndMaxComputeALPS(t *testing.T) {
 		t.Fatalf("prepare test dataset failed: %v", err)
 	}
 
-	go start("", modelDir, caCrt, caKey, true, unitestPort)
+	go start(modelDir, caCrt, caKey, unitestPort)
 	waitPortReady(fmt.Sprintf("localhost:%d", unitestPort), 0)
 
 	t.Run("CaseTrainALPS", CaseTrainALPS)
@@ -525,7 +525,7 @@ func TestEnd2EndMaxComputeElasticDL(t *testing.T) {
 		t.Fatalf("prepare test dataset failed: %v", err)
 	}
 
-	go start("", modelDir, caCrt, caKey, true, unitestPort)
+	go start(modelDir, caCrt, caKey, unitestPort)
 	waitPortReady(fmt.Sprintf("localhost:%d", unitestPort), 0)
 
 	t.Run("CaseTrainElasticDL", CaseTrainElasticDL)

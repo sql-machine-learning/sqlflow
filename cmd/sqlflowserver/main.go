@@ -48,7 +48,7 @@ func newServer(caCrt, caKey string) (*grpc.Server, error) {
 	return s, nil
 }
 
-func start(datasource, modelDir, caCrt, caKey string, enableSession bool, port int) {
+func start(modelDir, caCrt, caKey string, port int) {
 	s, err := newServer(caCrt, caKey)
 	if err != nil {
 		log.Fatalf("failed to create new gRPC Server: %v", err)
@@ -60,16 +60,7 @@ func start(datasource, modelDir, caCrt, caKey string, enableSession bool, port i
 		}
 	}
 
-	if enableSession {
-		proto.RegisterSQLFlowServer(s, server.NewServer(sql.Run, nil, modelDir, enableSession))
-	} else {
-		db, err := sql.NewDB(datasource)
-		if err != nil {
-			log.Fatalf("create DB failed: %v", err)
-		}
-		defer db.Close()
-		proto.RegisterSQLFlowServer(s, server.NewServer(sql.Run, db, modelDir, enableSession))
-	}
+	proto.RegisterSQLFlowServer(s, server.NewServer(sql.Run, modelDir))
 	listenString := fmt.Sprintf(":%d", port)
 
 	lis, err := net.Listen("tcp", listenString)
@@ -86,12 +77,10 @@ func start(datasource, modelDir, caCrt, caKey string, enableSession bool, port i
 }
 
 func main() {
-	ds := flag.String("datasource", "", "database connect string.")
 	modelDir := flag.String("model_dir", "", "model would be saved on the local dir, otherwise upload to the table.")
 	caCrt := flag.String("ca-crt", "", "CA certificate file.")
 	caKey := flag.String("ca-key", "", "CA private key file.")
-	enableSession := flag.Bool("enable-session", false, "Whether to enable gRPC Request session.")
 	port := flag.Int("port", 50051, "TCP port to listen on.")
 	flag.Parse()
-	start(*ds, *modelDir, *caCrt, *caKey, *enableSession, *port)
+	start(*modelDir, *caCrt, *caKey, *port)
 }
