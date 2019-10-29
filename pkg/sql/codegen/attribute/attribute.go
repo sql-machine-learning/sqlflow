@@ -73,7 +73,7 @@ func (d Dictionary) Validate(attrs map[string]interface{}) error {
 		var desc *Description
 		desc, ok := d[k]
 		if !ok {
-			// Support attribute defination like "model.*" to match attributes start with "model"
+			// Support attribute definition like "model.*" to match attributes start with "model"
 			keyParts := strings.Split(k, ".")
 			if len(keyParts) == 2 {
 				wildCard := fmt.Sprintf("%s.*", keyParts[0])
@@ -90,6 +90,11 @@ func (d Dictionary) Validate(attrs map[string]interface{}) error {
 		}
 		// unknown type of attribute do not need to run validate
 		if desc.Type == Unknown {
+			if desc.Checker != nil {
+				if err := desc.Checker(v); err != nil {
+					return err
+				}
+			}
 			return nil
 		}
 		switch v.(type) {
