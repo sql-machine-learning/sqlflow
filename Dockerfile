@@ -24,7 +24,6 @@ ARG TENSORFLOW_VERSION="2.0.0b1"
 ARG WITH_SQLFLOW_MODELS="ON"
 
 ENV GOPATH /go
-ENV GO111MODULE on
 # Using the stable version of Hadoop
 ENV HADOOP_VERSION 3.2.1
 ENV PATH /opt/hadoop-${HADOOP_VERSION}/bin:/miniconda/envs/sqlflow-dev/bin:/miniconda/bin:/usr/local/go/bin:/go/bin:$PATH
@@ -48,6 +47,8 @@ ADD scripts/start.sh /
 # -----------------------------------------------------------------------------------
 # Above Steps Should be Cached for Each CI Build if Dockerfile is not Changed.
 # -----------------------------------------------------------------------------------
+
+ENV GO111MODULE on
 
 # Build SQLFlow, copy sqlflow_submitter, convert tutorial markdown to ipython notebook
 COPY . ${GOPATH}/src/sqlflow.org/sqlflow
