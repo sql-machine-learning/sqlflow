@@ -460,7 +460,7 @@ func train(wr *PipeWriter, tr *extendedSelect, db *DB, cwd string, modelDir stri
 
 	cw := &logChanWriter{wr: wr}
 	var buf bytes.Buffer
-	buf.WriteString(fmt.Sprintf("program: %s", program.String()))
+	buf.WriteString(fmt.Sprintf("\n========== Program ======\n%s\n=======Error Message===========\n", program.String()))
 
 	w := io.MultiWriter(cw, &buf)
 	defer cw.Close()
@@ -561,7 +561,7 @@ func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir strin
 	}
 
 	var buf bytes.Buffer
-	buf.WriteString(fmt.Sprintf("program: %s", program.String()))
+	buf.WriteString(fmt.Sprintf("\n========== Program ======\n%s\n=======Error Message===========\n", program.String()))
 
 	cw := &logChanWriter{wr: wr}
 	w := io.MultiWriter(cw, &buf)
