@@ -39,7 +39,6 @@ feature_column_name = sorted([k["name"] for k in feature_field_meta])
 label_name = label_field_meta["name"]
 
 feature_spec = {k['name']: k for k in feature_field_meta}
-
 conn = connect_with_data_source('''{{.DataSource}}''')
 
 def xgb_dataset(fn, dataset_sql):
