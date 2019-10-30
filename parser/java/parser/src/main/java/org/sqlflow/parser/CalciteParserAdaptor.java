@@ -41,25 +41,26 @@ public class CalciteParserAdaptor {
       } catch (SqlParseException e) {
         int line = e.getPos().getLineNum();
         int column = e.getPos().getColumnNum();
-        int pos = posToIndex(sql, line, column);
+        int epos = posToIndex(sql, line, column);
 
         try {
-          SqlParser parser = SqlParser.create(sql.substring(0, pos));
+          SqlParser parser = SqlParser.create(sql.substring(0, epos));
           SqlNode sqlnode = parser.parseQuery();
 
           // parseQuery doesn't throw exception
-          parse_result.Statements.add(sql.substring(0, pos));
+          parse_result.Statements.add(sql.substring(0, epos));
 
           // multiple SQL statements
-          if (sql.charAt(pos) == ';') {
+          if (sql.charAt(epos) == ';') {
             logger.debug("2.1 -----------------");
-            logger.debug(sql.substring(0, pos));
+            logger.debug(sql.substring(0, epos));
 
-            sql = sql.substring(pos + 1);
-            accumulated_position += pos + 1;
+            sql = sql.substring(epos + 1);
+            accumulated_position += epos + 1;
 
             // FIXME(tony): trim is not enough to handle statements
             // like "select 1; select 1; -- this is a comment"
+            // So maybe we need some preprocessors to remove all the comments first.
             if (sql.trim().equals("")) {
               return parse_result;
             }
@@ -78,8 +79,8 @@ public class CalciteParserAdaptor {
           }
 
           logger.debug("2.2 -----------------");
-          logger.debug(sql.substring(0, pos));
-          parse_result.Position = accumulated_position + pos;
+          logger.debug(sql.substring(0, epos));
+          parse_result.Position = accumulated_position + epos;
           return parse_result;
         } catch (SqlParseException ee) {
           logger.debug("3 -----------------");
