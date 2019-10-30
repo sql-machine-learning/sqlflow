@@ -568,10 +568,10 @@ func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir strin
 	defer cw.Close()
 	cmd := sqlflowCmd(cwd, db.driverName)
 	cmd.Env = append(os.Environ())
-	cmd.Stdin = &buf
+	cmd.Stdin = &program
 	cmd.Stdout = w
 	cmd.Stderr = w
-	if err := cmd.Run(); err != nil {
+	if e := cmd.Run(); e != nil {
 		log.Errorf("predict failed: %v, details: %s", e, buf.String())
 		return fmt.Errorf("predict failed: %v", e)
 	}
