@@ -5,11 +5,10 @@ import static org.junit.Assert.*;
 import java.util.ArrayList;
 import org.apache.log4j.BasicConfigurator;
 import org.junit.Test;
-import org.sqlflow.parser.CalciteParserAdaptor.ParseResult;
 
 public class ParserTest {
   @Test
-  public void testParseAndSplit() {
+  public void testCalciteParseAndSplit() {
     // FIXME(tony): Move logger configuration to unit test initializer
     BasicConfigurator.configure();
 
@@ -37,8 +36,7 @@ public class ParserTest {
     // one standard SQL statement
     for (String sql : standard_select) {
       String sql_program = String.format("%s;", sql);
-      CalciteParserAdaptor parser = new CalciteParserAdaptor();
-      ParseResult parse_result = parser.ParseAndSplit(sql_program);
+      ParseResult parse_result = (new CalciteParserAdaptor()).ParseAndSplit(sql_program);
       assertEquals(-1, parse_result.Position);
       assertEquals("", parse_result.Error);
       assertEquals(1, parse_result.Statements.size());
@@ -48,8 +46,7 @@ public class ParserTest {
     // two standard SQL statements
     for (String sql : standard_select) {
       String sql_program = String.format("%s;%s;", sql, sql);
-      CalciteParserAdaptor parser = new CalciteParserAdaptor();
-      ParseResult parse_result = parser.ParseAndSplit(sql_program);
+      ParseResult parse_result = (new CalciteParserAdaptor()).ParseAndSplit(sql_program);
       assertEquals(-1, parse_result.Position);
       assertEquals("", parse_result.Error);
       assertEquals(2, parse_result.Statements.size());
@@ -60,8 +57,7 @@ public class ParserTest {
     // two SQL statements, the first one is extendedSQL
     for (String sql : standard_select) {
       String sql_program = String.format("%s to train;%s;", sql, sql);
-      CalciteParserAdaptor parser = new CalciteParserAdaptor();
-      ParseResult parse_result = parser.ParseAndSplit(sql_program);
+      ParseResult parse_result = (new CalciteParserAdaptor()).ParseAndSplit(sql_program);
       assertEquals(sql.length() + 1, parse_result.Position);
       assertEquals("", parse_result.Error);
       assertEquals(1, parse_result.Statements.size());
@@ -71,8 +67,7 @@ public class ParserTest {
     // two SQL statements, the second one is extendedSQL
     for (String sql : standard_select) {
       String sql_program = String.format("%s;%s to train;", sql, sql);
-      CalciteParserAdaptor parser = new CalciteParserAdaptor();
-      ParseResult parse_result = parser.ParseAndSplit(sql_program);
+      ParseResult parse_result = (new CalciteParserAdaptor()).ParseAndSplit(sql_program);
       assertEquals(sql.length() + 1 + sql.length() + 1, parse_result.Position);
       assertEquals("", parse_result.Error);
       assertEquals(2, parse_result.Statements.size());
@@ -82,8 +77,7 @@ public class ParserTest {
 
     { // two SQL statements, the first standard SQL has an error.
       String sql_program = "select select 1; select 1 to train;";
-      CalciteParserAdaptor parser = new CalciteParserAdaptor();
-      ParseResult parse_result = parser.ParseAndSplit(sql_program);
+      ParseResult parse_result = (new CalciteParserAdaptor()).ParseAndSplit(sql_program);
       assertEquals(0, parse_result.Statements.size());
       assertEquals(-1, parse_result.Position);
       assertTrue(parse_result.Error.startsWith("Encountered \"select\" at line 1, column 8."));
@@ -92,8 +86,7 @@ public class ParserTest {
     // two SQL statements, the second standard SQL has an error.
     for (String sql : standard_select) {
       String sql_program = String.format("%s;select select 1;", sql);
-      CalciteParserAdaptor parser = new CalciteParserAdaptor();
-      ParseResult parse_result = parser.ParseAndSplit(sql_program);
+      ParseResult parse_result = (new CalciteParserAdaptor()).ParseAndSplit(sql_program);
       assertEquals(0, parse_result.Statements.size());
       assertEquals(-1, parse_result.Position);
       assertTrue(parse_result.Error.startsWith("Encountered \"select\" at line 1, column 8."));
@@ -101,8 +94,7 @@ public class ParserTest {
 
     { // non select statement before to train
       String sql_program = "describe table to train;";
-      CalciteParserAdaptor parser = new CalciteParserAdaptor();
-      ParseResult parse_result = parser.ParseAndSplit(sql_program);
+      ParseResult parse_result = (new CalciteParserAdaptor()).ParseAndSplit(sql_program);
       assertEquals(0, parse_result.Statements.size());
       assertEquals(-1, parse_result.Position);
       assertTrue(parse_result.Error.startsWith("Encountered \"to\" at line 1, column 16."));

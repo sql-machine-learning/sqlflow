@@ -11,12 +11,6 @@ public class CalciteParserAdaptor {
 
   static final Logger logger = Logger.getLogger(CalciteParserAdaptor.class);
 
-  class ParseResult {
-    public ArrayList<String> Statements;
-    public int Position;
-    public String Error;
-  };
-
   public CalciteParserAdaptor() {}
 
   // ParseAndSplit calls Calcite parser to parse a SQL program and returns a ParseResult.
