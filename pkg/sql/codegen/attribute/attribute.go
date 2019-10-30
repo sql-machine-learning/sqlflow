@@ -95,7 +95,7 @@ func (d Dictionary) Validate(attrs map[string]interface{}) error {
 					return err
 				}
 			}
-			return nil
+			continue
 		}
 		switch v.(type) {
 		case int, int32, int64:
