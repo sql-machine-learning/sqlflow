@@ -46,15 +46,16 @@ function populate_example_dataset() {
 function setup_sqlflow_server() {
   sleep_until_mysql_is_ready
 
-  DS="mysql://root:root@tcp(${SQLFLOW_MYSQL_HOST}:${SQLFLOW_MYSQL_PORT})/?maxAllowedPacket=0"
-  echo "Connect to the datasource ${DS}"
   # Start sqlflowserver
-  sqlflowserver --datasource=${DS}
+  sqlflowserver
 }
 
 function setup_sqlflow_notebook() {
   cd ${SQLFLOW_NOTEBOOK_DIR}
-  SQLFLOW_SERVER=localhost:50051 jupyter notebook --ip=0.0.0.0 --port=8888 --allow-root --NotebookApp.token=''
+  DS="mysql://root:root@tcp(${SQLFLOW_MYSQL_HOST}:${SQLFLOW_MYSQL_PORT})/?maxAllowedPacket=0"
+  echo "Connect to the datasource ${DS}"
+
+  SQLFLOW_DATASOURCE=${DS} SQLFLOW_SERVER=localhost:50051 jupyter notebook --ip=0.0.0.0 --port=8888 --allow-root --NotebookApp.token=''
   cd ..
 }
 
