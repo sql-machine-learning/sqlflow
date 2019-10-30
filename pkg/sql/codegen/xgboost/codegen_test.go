@@ -43,9 +43,9 @@ func TestTrainAndPredict(t *testing.T) {
 	}
 	code, err := Pred(pir, sess)
 
-	r, _ := regexp.Compile(`hdfs_user="(.*)"`)
+	r, _ := regexp.Compile(`hdfs_user='''(.*)'''`)
 	a.Equal(r.FindStringSubmatch(code)[1], "sqlflow_admin")
-	r, _ = regexp.Compile(`hdfs_pass="(.*)"`)
+	r, _ = regexp.Compile(`hdfs_pass='''(.*)'''`)
 	a.Equal(r.FindStringSubmatch(code)[1], "sqlflow_pass")
 
 	a.NoError(err)
