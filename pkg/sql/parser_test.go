@@ -101,6 +101,7 @@ func TestTrainParser(t *testing.T) {
 		r.columns["feature_columns"][2].String())
 	a.Equal("employee.salary", r.label)
 	a.Equal("sqlflow_models.my_dnn_model", r.save)
+	a.Equal("SELECT * from employee", r.validation.String())
 }
 
 func TestMultiColumnTrainParser(t *testing.T) {

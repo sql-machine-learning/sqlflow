@@ -78,7 +78,7 @@
 		columns     columnClause
 		label       string
 		save        string
-        validation  standardSelect
+		validation  standardSelect
 	}
 
 	/* If no FOR in the COLUMN, the key is "" */
@@ -213,21 +213,21 @@ train_clause
 	$$.columns = $5
 	$$.label = $6
 	$$.save = $8
-    $$.validation = $9
+	$$.validation = $9
   }
 | TRAIN IDENT WITH attrs column_clause INTO IDENT validate_clause {
 	$$.estimator = $2
 	$$.trainAttrs = $4
 	$$.columns = $5
 	$$.save = $7
-    $$.validation = $8
+	$$.validation = $8
 }
 | TRAIN IDENT WITH attrs label_clause INTO IDENT validate_clause {
 	$$.estimator = $2
 	$$.trainAttrs = $4
 	$$.label = $5
 	$$.save = $7
-    $$.validation = $8
+	$$.validation = $8
 }
 ;
 
