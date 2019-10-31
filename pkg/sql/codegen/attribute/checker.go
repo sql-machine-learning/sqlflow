@@ -19,7 +19,7 @@ import (
 
 var equalSign = map[bool]string{true: "=", false: ""}
 
-// Float32RangeChecker is a helper functions to generate range checkers on attributes.
+// Float32RangeChecker is a helper function to generate range checkers on attributes.
 // lower/upper indicates the lower bound and upper bound of the attribute value.
 // includeLower/includeUpper indicates the inclusion of the bound.
 func Float32RangeChecker(lower, upper float32, includeLower, includeUpper bool) func(interface{}) error {
@@ -35,7 +35,7 @@ func Float32RangeChecker(lower, upper float32, includeLower, includeUpper bool) 
 	}
 }
 
-// Float32LowerBoundChecker returns a range checker that only checks the lower bound
+// Float32LowerBoundChecker returns a range checker that only checks the lower bound.
 func Float32LowerBoundChecker(lower float32, includeLower bool) func(interface{}) error {
 	return func(attr interface{}) error {
 		if f, ok := attr.(float32); ok {
@@ -48,7 +48,7 @@ func Float32LowerBoundChecker(lower float32, includeLower bool) func(interface{}
 	}
 }
 
-// Float32UpperBoundChecker returns a range checker that only checks the upper bound
+// Float32UpperBoundChecker returns a range checker that only checks the upper bound.
 func Float32UpperBoundChecker(upper float32, includeUpper bool) func(interface{}) error {
 	return func(attr interface{}) error {
 		if f, ok := attr.(float32); ok {
@@ -61,7 +61,7 @@ func Float32UpperBoundChecker(upper float32, includeUpper bool) func(interface{}
 	}
 }
 
-// IntRangeChecker is a helper functions to generate range checkers on attributes.
+// IntRangeChecker is a helper function to generate range checkers on attributes.
 // lower/upper indicates the lower bound and upper bound of the attribute value.
 // includeLower/includeUpper indicates the inclusion of the bound.
 func IntRangeChecker(lower, upper int, includeLower, includeUpper bool) func(interface{}) error {
@@ -77,7 +77,7 @@ func IntRangeChecker(lower, upper int, includeLower, includeUpper bool) func(int
 	}
 }
 
-// IntLowerBoundChecker returns a range checker that only checks the lower bound
+// IntLowerBoundChecker returns a range checker that only checks the lower bound.
 func IntLowerBoundChecker(lower int, includeLower bool) func(interface{}) error {
 	return func(attr interface{}) error {
 		if f, ok := attr.(int); ok {
@@ -90,7 +90,7 @@ func IntLowerBoundChecker(lower int, includeLower bool) func(interface{}) error 
 	}
 }
 
-// IntUpperBoundChecker returns a range checker that only checks the upper bound
+// IntUpperBoundChecker returns a range checker that only checks the upper bound.
 func IntUpperBoundChecker(upper int, includeUpper bool) func(interface{}) error {
 	return func(attr interface{}) error {
 		if f, ok := attr.(int); ok {
