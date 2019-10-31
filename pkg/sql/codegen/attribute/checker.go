@@ -71,7 +71,7 @@ func IntRangeChecker(lower, upper *int, includeLower, includeUpper bool) func(in
 	checker := func(e interface{}) error {
 		i, ok := e.(int)
 		if !ok {
-			return fmt.Errorf("expected type float32, received %T", e)
+			return fmt.Errorf("expected type int, received %T", e)
 		}
 
 		// NOTE(tony): nil means no boundary
@@ -97,6 +97,28 @@ func IntRangeChecker(lower, upper *int, includeLower, includeUpper bool) func(in
 		return nil
 	}
 
+	return checker
+}
+
+// BoolIntChecker returns a checker function that do **not** check the input.
+func BoolIntChecker(choices []int) func(interface{}) error {
+	checker := func(e interface{}) error {
+		i, ok := e.(int)
+		if !ok {
+			return fmt.Errorf("expected type int, received %T", e)
+		}
+		found := false
+		for _, possibleValue := range choices {
+			if i == possibleValue {
+				found = true
+				break
+			}
+		}
+		if found == false {
+			return fmt.Errorf("attribute value out of range(%v), actual: %d", choices, i)
+		}
+		return nil
+	}
 	return checker
 }
 

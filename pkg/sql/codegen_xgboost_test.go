@@ -28,7 +28,7 @@ TRAIN xgboost.gbtree
 WITH
     objective="multi:softprob",
     train.num_boost_round = 30,
-    eta = 3.1,
+    eta = 0.4,
     num_class = 3
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class 
@@ -57,7 +57,7 @@ func TestXGBFiller(t *testing.T) {
 	a.True(filler.IsTrain)
 	a.Equal(filler.NumBoostRound, 30)
 	expectedParams := map[string]interface{}{
-		"eta":       3.1,
+		"eta":       0.4,
 		"num_class": 3,
 		"objective": "multi:softprob",
 	}

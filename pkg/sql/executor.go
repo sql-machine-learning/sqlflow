@@ -406,55 +406,47 @@ func (cw *logChanWriter) Close() {
 }
 
 func train(wr *PipeWriter, tr *extendedSelect, db *DB, cwd string, modelDir string, slct string, session *pb.Session, ds *trainAndValDataset) error {
-	fts, e := verify(tr, db)
+	_, e := verify(tr, db)
 	if e != nil {
 		return e
 	}
 	var program bytes.Buffer
 	if isXGBoostModel(tr.estimator) {
-		// FIXME(weiguoz): Remove the condition after the codegen refactor
-		if enableIR() {
-			ir, err := generateTrainIR(tr, db.String())
-			if err != nil {
-				return err
-			}
-			err = InferFeatureColumns(ir)
-			if err != nil {
-				return err
-			}
-			code, err := xgboost.Train(ir)
-			if err != nil {
-				return err
-			}
-			program.WriteString(code)
-		} else {
-			if e := genXGBoost(&program, tr, ds, fts, db, session); e != nil {
-				return fmt.Errorf("GenXGBoost %v", e)
-			}
+		ir, err := generateTrainIR(tr, db.String())
+		if err != nil {
+			return err
 		}
+		err = InferFeatureColumns(ir)
+		if err != nil {
+			return err
+		}
+		code, err := xgboost.Train(ir)
+		if err != nil {
+			return err
+		}
+		program.WriteString(code)
 	} else {
-		// FIXME(typhoonzero): Remove the condition after the codegen refactor
-		if enableIR() {
-			ir, err := generateTrainIR(tr, db.String())
-			if err != nil {
-				return err
-			}
-			err = InferFeatureColumns(ir)
-			if err != nil {
-				return err
-			}
-			// TODO(typhoonzero): change to use validation clause to fill in ir.ValidationSelect
-			ir.ValidationSelect = fmt.Sprintf("SELECT * FROM %s", ds.validation)
-			code, err := tensorflow.Train(ir)
-			if err != nil {
-				return err
-			}
-			program.WriteString(code)
-		} else {
-			if e := genTF(&program, tr, ds, fts, db, session); e != nil {
-				return fmt.Errorf("genTF %v", e)
-			}
+		ir, err := generateTrainIR(tr, db.String())
+		if err != nil {
+			return err
 		}
+		err = InferFeatureColumns(ir)
+		if err != nil {
+			return err
+		}
+		// TODO(typhoonzero): change to use validation clause to fill in ir.ValidationSelect
+		// Clustering model will have ds == nil
+		if ds == nil {
+			ir.ValidationSelect = ir.Select
+		} else {
+			ir.ValidationSelect = fmt.Sprintf("SELECT * FROM %s", ds.validation)
+		}
+
+		code, err := tensorflow.Train(ir)
+		if err != nil {
+			return err
+		}
+		program.WriteString(code)
 	}
 
 	cw := &logChanWriter{wr: wr}
@@ -506,52 +498,44 @@ func loadModelMeta(pr *extendedSelect, db *DB, cwd, modelDir, modelName string) 
 }
 
 func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir string, session *pb.Session) error {
-	pr, fts, e := loadModelMeta(pr, db, cwd, modelDir, pr.model)
+	pr, _, e := loadModelMeta(pr, db, cwd, modelDir, pr.model)
 	if e != nil {
 		return fmt.Errorf("loadModelMeta %v", e)
 	}
 
 	var buf bytes.Buffer
 	if isXGBoostModel(pr.estimator) {
-		if enableIR() {
-			ir, err := generatePredictIR(pr, db.String(), cwd, modelDir)
-			if err != nil {
-				return err
-			}
-			code, err := xgboost.Pred(ir, session)
-			if err != nil {
-				return err
-			}
-			err = createPredictionTable(pr, db, session)
-			if err != nil {
-				return err
-			}
-			buf.WriteString(code)
-		} else {
-			if e := genXGBoost(&buf, pr, nil, fts, db, session); e != nil {
-				return fmt.Errorf("genXGBoost %v", e)
-			}
+		ir, err := generatePredictIR(pr, db.String(), cwd, modelDir)
+		if err != nil {
+			return err
 		}
+		code, err := xgboost.Pred(ir, session)
+		if err != nil {
+			return err
+		}
+		err = createPredictionTable(pr, db, session)
+		if err != nil {
+			return err
+		}
+		buf.WriteString(code)
 	} else {
-		if enableIR() {
-			ir, err := generatePredictIR(pr, db.String(), cwd, modelDir)
-			if err != nil {
-				return err
-			}
-			code, err := tensorflow.Pred(ir, session)
-			if err != nil {
-				return err
-			}
-			err = createPredictionTable(pr, db, session)
-			if err != nil {
-				return err
-			}
-			buf.WriteString(code)
-		} else {
-			if e := genTF(&buf, pr, nil, fts, db, session); e != nil {
-				return fmt.Errorf("genTF %v", e)
-			}
+		ir, err := generatePredictIR(pr, db.String(), cwd, modelDir)
+		if err != nil {
+			return err
 		}
+		err = InferFeatureColumns(ir.TrainIR)
+		if err != nil {
+			return err
+		}
+		code, err := tensorflow.Pred(ir, session)
+		if err != nil {
+			return err
+		}
+		err = createPredictionTable(pr, db, session)
+		if err != nil {
+			return err
+		}
+		buf.WriteString(code)
 	}
 
 	cw := &logChanWriter{wr: wr}
@@ -567,28 +551,20 @@ func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir strin
 func analyze(wr *PipeWriter, pr *extendedSelect, db *DB, cwd, modelDir string) error {
 	cmd := exec.Command("python", "-u")
 	cmd.Dir = cwd
-	if enableIR() {
-		ir, err := generateAnalyzeIR(pr, db.String(), cwd, modelDir)
-		if err != nil {
-			return err
-		}
-		if !strings.HasPrefix(strings.ToUpper(ir.TrainIR.Estimator), `XGBOOST.`) {
-			return fmt.Errorf("unsupported model %s", ir.TrainIR.Estimator)
-		}
-		code, err := xgboost.Analyze(ir)
-		if err != nil {
-			return err
-		}
-		var program bytes.Buffer
-		program.WriteString(code)
-		cmd.Stdin = &program
-	} else {
-		prog, err := genAnalyzer(pr, db, cwd, modelDir)
-		if err != nil {
-			return err
-		}
-		cmd.Stdin = prog
+	ir, err := generateAnalyzeIR(pr, db.String(), cwd, modelDir)
+	if err != nil {
+		return err
 	}
+	if !strings.HasPrefix(strings.ToUpper(ir.TrainIR.Estimator), `XGBOOST.`) {
+		return fmt.Errorf("unsupported model %s", ir.TrainIR.Estimator)
+	}
+	code, err := xgboost.Analyze(ir)
+	if err != nil {
+		return err
+	}
+	var program bytes.Buffer
+	program.WriteString(code)
+	cmd.Stdin = &program
 	if _, err := cmd.CombinedOutput(); err != nil {
 		return err
 	}
@@ -649,7 +625,11 @@ func createPredictionTable(predParsed *extendedSelect, db *DB, session *pb.Sessi
 	// TODO(Yancey1989): For the current implementation, the prediction result column
 	// type is derivated by the pred-select-statement, the better way is derivating
 	// the result column type by the prediction result.
-	typ, _ := fts.get(columnName)
+	typ, ok := fts.get(columnName)
+	if !ok {
+		// NOTE(typhoonzero): Clustering model may not have label in select statement, default use INT type
+		typ = "INT"
+	}
 	stype, e := universalizeColumnType(db.driverName, typ)
 	if e != nil {
 		return e

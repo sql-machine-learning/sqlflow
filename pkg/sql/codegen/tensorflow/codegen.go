@@ -16,6 +16,7 @@ package tensorflow
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"strings"
 	"text/template"
 
@@ -39,6 +40,9 @@ range: [0,Infinity]`, attribute.IntRangeChecker(newInt(0), nil, false, false)},
 	"train.epoch": {attribute.Int, `[default=1]
 Number of epochs the training will run.
 range: [1, Infinity]`, attribute.IntRangeChecker(newInt(0), nil, false, false)},
+	"train.verbose": {attribute.Int, `[default=0]
+Show verbose logs when training.
+possible values: 0, 1`, attribute.BoolIntChecker([]int{0, 1})},
 	"model.*": {attribute.Unknown, `parameters defined by the model implementation, e.g. https://www.tensorflow.org/api_docs/python/tf/estimator/DNNClassifier#__init__, customized model example: https://github.com/sql-machine-learning/models/blob/develop/sqlflow_models/dnnclassifier.py#L4`,
 		attribute.EmptyChecker()},
 }
@@ -262,6 +266,16 @@ func Pred(ir *codegen.PredictIR, session *pb.Session) (string, error) {
 			fmt.Sprintf("\"%s\": [%s]", target, strings.Join(perTargetFeatureColumnsCode, ",\n")))
 	}
 	isKeras, estimatorStr := isKerasModel(ir.TrainIR.Estimator)
+	labelFM := ir.TrainIR.Label.GetFieldMeta()[0]
+	if labelFM.Name == "" {
+		log.Printf("clustering model, got result table: %s, result column: %s", ir.ResultTable, ir.ResultColumn)
+		// no label in train SQL means a clustering model, generate a fieldmeta using result table's column
+		labelFM = &codegen.FieldMeta{
+			Name:  ir.ResultColumn,
+			Shape: []int{1},
+			DType: codegen.Int,
+		}
+	}
 
 	filler := predFiller{
 		DataSource:        ir.DataSource,
@@ -271,7 +285,7 @@ func Pred(ir *codegen.PredictIR, session *pb.Session) (string, error) {
 		IsKerasModel:      isKeras,
 		FieldMetas:        fieldMetas,
 		FeatureColumnCode: fmt.Sprintf("{%s}", strings.Join(featureColumnsCode, ",\n")),
-		Y:                 ir.TrainIR.Label.GetFieldMeta()[0],
+		Y:                 labelFM,
 		ModelParams:       modelParams,
 		Save:              "model_save",
 		HDFSNameNodeAddr:  session.HdfsNamenodeAddr,

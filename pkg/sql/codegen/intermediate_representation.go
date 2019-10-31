@@ -102,6 +102,8 @@ type PredictIR struct {
 	Select string
 	// ResultTable specifies the table to store the prediction result.
 	ResultTable string
+	// ResultColumn is the column to store predict result in ResultTable
+	ResultColumn string
 	// Attributes is a map of parsed attribute in the WITH clause. For example, after parsing
 	// "select ... predict ... with predict.batch_size = 32 into ...",
 	// the Attributes will be {"predict.batch_size": 32}

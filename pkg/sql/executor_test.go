@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	pb "sqlflow.org/sqlflow/pkg/server/proto"
 )
 
 func goodStream(stream chan interface{}) (bool, string) {
@@ -81,15 +82,18 @@ SELECT * FROM copy_table_1;SELECT * FROM copy_table_1 TRAIN DNNClassifier WITH n
 	a.Equal("SELECT * FROM copy_table_1 TRAIN DNNClassifier WITH n_classes=2 INTO test_model;", splited[2])
 }
 
+func getDefaultSession() *pb.Session {
+	return &pb.Session{}
+}
 func TestExecuteXGBoost(t *testing.T) {
 	a := assert.New(t)
 	modelDir := ""
 	a.NotPanics(func() {
-		stream := runExtendedSQL(testXGBoostTrainSelectIris, testDB, modelDir, nil)
+		stream := runExtendedSQL(testXGBoostTrainSelectIris, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
-		stream = runExtendedSQL(testAnalyzeTreeModelSelectIris, testDB, modelDir, nil)
+		stream = runExtendedSQL(testAnalyzeTreeModelSelectIris, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
-		stream = runExtendedSQL(testXGBoostPredictIris, testDB, modelDir, nil)
+		stream = runExtendedSQL(testXGBoostPredictIris, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
 	})
 }
@@ -98,11 +102,11 @@ func TestExecuteXGBoostRegression(t *testing.T) {
 	a := assert.New(t)
 	modelDir := ""
 	a.NotPanics(func() {
-		stream := runExtendedSQL(testXGBoostTrainSelectIris, testDB, modelDir, nil)
+		stream := runExtendedSQL(testXGBoostTrainSelectIris, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
-		stream = runExtendedSQL(testAnalyzeTreeModelSelectIris, testDB, modelDir, nil)
+		stream = runExtendedSQL(testAnalyzeTreeModelSelectIris, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
-		stream = runExtendedSQL(testXGBoostPredictIris, testDB, modelDir, nil)
+		stream = runExtendedSQL(testXGBoostPredictIris, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
 	})
 }
@@ -111,9 +115,9 @@ func TestExecutorTrainAndPredictDNN(t *testing.T) {
 	a := assert.New(t)
 	modelDir := ""
 	a.NotPanics(func() {
-		stream := runExtendedSQL(testTrainSelectIris, testDB, modelDir, nil)
+		stream := runExtendedSQL(testTrainSelectIris, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
-		stream = runExtendedSQL(testPredictSelectIris, testDB, modelDir, nil)
+		stream = runExtendedSQL(testPredictSelectIris, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
 	})
 }
@@ -124,9 +128,9 @@ func TestExecutorTrainAndPredictClusteringLocalFS(t *testing.T) {
 	a.Nil(e)
 	defer os.RemoveAll(modelDir)
 	a.NotPanics(func() {
-		stream := runExtendedSQL(testClusteringTrain, testDB, modelDir, nil)
+		stream := runExtendedSQL(testClusteringTrain, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
-		stream = runExtendedSQL(testClusteringPredict, testDB, modelDir, nil)
+		stream = runExtendedSQL(testClusteringPredict, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
 	})
 }
@@ -137,10 +141,10 @@ func TestExecutorTrainAndPredictDNNLocalFS(t *testing.T) {
 	a.Nil(e)
 	defer os.RemoveAll(modelDir)
 	a.NotPanics(func() {
-		stream := runExtendedSQL(testTrainSelectIris, testDB, modelDir, nil)
+		stream := runExtendedSQL(testTrainSelectIris, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
 
-		stream = runExtendedSQL(testPredictSelectIris, testDB, modelDir, nil)
+		stream = runExtendedSQL(testPredictSelectIris, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
 	})
 }
@@ -161,13 +165,13 @@ train.batch_size = 10,
 train.verbose = 1
 COLUMN NUMERIC(dense, 4)
 LABEL class
-INTO sqlflow_models.my_dense_dnn_model
-;`, testDB, "", nil)
+INTO sqlflow_models.my_dense_dnn_model;
+`, testDB, "", getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
 		stream = Run(`SELECT * FROM iris.test_dense
 PREDICT iris.predict_dense.class
 USING sqlflow_models.my_dense_dnn_model
-;`, testDB, "", nil)
+;`, testDB, "", getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
 	})
 }
@@ -194,7 +198,7 @@ func TestStandardSQL(t *testing.T) {
 
 func TestSQLLexerError(t *testing.T) {
 	a := assert.New(t)
-	stream := Run("SELECT * FROM ``?[] AS WHERE LIMIT;", testDB, "", nil)
+	stream := Run("SELECT * FROM ``?[] AS WHERE LIMIT;", testDB, "", getDefaultSession())
 	a.False(goodStream(stream.ReadAll()))
 }
 

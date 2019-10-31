@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
 import xgboost as xgb
 from sqlflow_submitter.db import connect_with_data_source, db_generator, buffered_db_writer
 from .train import xgb_dataset
