@@ -39,7 +39,7 @@ func Float32RangeChecker(lower, upper float32, includeLower, includeUpper bool) 
 func Float32LowerBoundChecker(lower float32, includeLower bool) func(interface{}) error {
 	return func(attr interface{}) error {
 		if f, ok := attr.(float32); ok {
-			if f > lower || includeLower && f == lower {
+			if (!includeLower && f > lower) || (includeLower && f >= lower) {
 				return nil
 			}
 			return fmt.Errorf("range check %v <%v %v failed", lower, equalSign[includeLower], f)
@@ -52,7 +52,7 @@ func Float32LowerBoundChecker(lower float32, includeLower bool) func(interface{}
 func Float32UpperBoundChecker(upper float32, includeUpper bool) func(interface{}) error {
 	return func(attr interface{}) error {
 		if f, ok := attr.(float32); ok {
-			if f < upper || includeUpper && f == upper {
+			if (!includeUpper && f < upper) || (includeUpper && f <= upper) {
 				return nil
 			}
 			return fmt.Errorf("range check %v >%v %v failed", upper, equalSign[includeUpper], f)
