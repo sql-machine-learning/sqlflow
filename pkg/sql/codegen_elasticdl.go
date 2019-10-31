@@ -125,7 +125,7 @@ func getElasticDLModelSpec(attrs map[string]*attribute) elasticDLModelSpec {
 }
 
 func newElasticDLTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds *trainAndValDataset) (*elasticDLFiller, error) {
-	resolved, err := resolveTrainClause(&pr.trainClause, &pr.standardSelect, nil)
+	resolved, err := resolveTrainClause(&pr.trainClause, &pr.standardSelect)
 	if err != nil {
 		return nil, err
 	}

@@ -25,6 +25,70 @@ import (
 	pb "sqlflow.org/sqlflow/pkg/server/proto"
 )
 
+const (
+	testStandardExecutiveSQLStatement = `DELETE FROM iris.train WHERE class = 4;`
+	testSelectIris                    = `
+SELECT *
+FROM iris.train
+`
+	testTrainSelectIris = testSelectIris + `
+TRAIN DNNClassifier
+WITH
+  model.n_classes = 3,
+  model.hidden_units = [10, 20]
+COLUMN sepal_length, sepal_width, petal_length, petal_width
+LABEL class
+INTO sqlflow_models.my_dnn_model;
+`
+	testPredictSelectIris = `
+SELECT *
+FROM iris.test
+predict iris.predict.class
+USING sqlflow_models.my_dnn_model;
+`
+	testClusteringTrain = `SELECT sepal_length, sepal_width, petal_length, petal_width
+FROM iris.train
+TRAIN sqlflow_models.DeepEmbeddingClusterModel
+WITH
+  model.pretrain_dims = [10,10],
+  model.n_clusters = 3,
+  model.pretrain_lr = 0.001,
+  train.batch_size = 1
+COLUMN sepal_length, sepal_width, petal_length, petal_width
+INTO sqlflow_models.my_clustering_model;
+`
+	testClusteringPredict = `
+SELECT sepal_length, sepal_width, petal_length, petal_width
+FROM iris.test
+PREDICT iris.predict.class
+USING sqlflow_models.my_clustering_model;
+`
+	testXGBoostTrainSelectIris = ` 
+SELECT *
+FROM iris.train
+TRAIN xgboost.gbtree
+WITH
+    objective="multi:softprob",
+    train.num_boost_round = 30,
+    eta = 0.4,
+    num_class = 3
+COLUMN sepal_length, sepal_width, petal_length, petal_width
+LABEL class 
+INTO sqlflow_models.my_xgboost_model;
+`
+	testAnalyzeTreeModelSelectIris = `
+SELECT * FROM iris.train
+ANALYZE sqlflow_models.my_xgboost_model
+USING TreeExplainer;
+`
+	testXGBoostPredictIris = ` 
+SELECT *
+FROM iris.test
+PREDICT iris.predict.class
+USING sqlflow_models.my_xgboost_model;
+`
+)
+
 func goodStream(stream chan interface{}) (bool, string) {
 	lastResp := list.New()
 	keepSize := 10
