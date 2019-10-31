@@ -39,7 +39,8 @@ COLUMN
   bucketize(last_name, 1000),
   cross(embedding(emplyoee.name), bucketize(last_name, 1000))
 LABEL "employee.salary"
-INTO sqlflow_models.my_dnn_model;
+INTO sqlflow_models.my_dnn_model
+VALIDATE ON (SELECT * from employee);
 `
 	testMultiColumnTrainSelect = testStandardSelectStmt + `TRAIN DNNClassifier
 WITH

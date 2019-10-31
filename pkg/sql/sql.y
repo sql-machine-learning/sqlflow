@@ -73,11 +73,12 @@
 	}
 
 	type trainClause struct {
-		estimator string
-		trainAttrs     attrs
-		columns   columnClause
-		label     string
-		save      string
+		estimator   string
+		trainAttrs  attrs
+		columns     columnClause
+		label       string
+		save        string
+        validation  standardSelect
 	}
 
 	/* If no FOR in the COLUMN, the key is "" */
@@ -133,6 +134,7 @@
 %type  <tran> train_clause
 %type  <colc> column_clause
 %type  <labc> label_clause
+%type  <slct> validate_clause
 %type  <infr> predict_clause
 %type  <anal> analyze_clause
 %type  <flds> fields
@@ -142,7 +144,7 @@
 %type  <atrs> attr
 %type  <atrs> attrs
 
-%token <val> SELECT FROM WHERE LIMIT TRAIN PREDICT ANALYZE WITH COLUMN LABEL USING INTO FOR AS
+%token <val> SELECT FROM WHERE LIMIT TRAIN PREDICT ANALYZE WITH COLUMN LABEL USING INTO FOR AS VALIDATE ON
 %token <val> IDENT NUMBER STRING
 
 %left <val> AND OR
@@ -205,24 +207,27 @@ opt_limit
 ;
 
 train_clause
-: TRAIN IDENT WITH attrs column_clause label_clause INTO IDENT {
+: TRAIN IDENT WITH attrs column_clause label_clause INTO IDENT validate_clause {
 	$$.estimator = $2
 	$$.trainAttrs = $4
 	$$.columns = $5
 	$$.label = $6
 	$$.save = $8
+    $$.validation = $9
   }
-| TRAIN IDENT WITH attrs column_clause INTO IDENT {
+| TRAIN IDENT WITH attrs column_clause INTO IDENT validate_clause {
 	$$.estimator = $2
 	$$.trainAttrs = $4
 	$$.columns = $5
 	$$.save = $7
+    $$.validation = $8
 }
-| TRAIN IDENT WITH attrs label_clause INTO IDENT {
+| TRAIN IDENT WITH attrs label_clause INTO IDENT validate_clause {
 	$$.estimator = $2
 	$$.trainAttrs = $4
 	$$.label = $5
 	$$.save = $7
+    $$.validation = $8
 }
 ;
 
@@ -269,6 +274,10 @@ columns
 label_clause
 : LABEL IDENT  { $$ = $2 }
 | LABEL STRING { $$ = $2[1:len($2)-1] }
+;
+
+validate_clause
+: VALIDATE ON '(' select ')' { $$ = $4 }
 ;
 
 tables
