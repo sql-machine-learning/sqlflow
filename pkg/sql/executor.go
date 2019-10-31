@@ -448,7 +448,6 @@ func train(wr *PipeWriter, tr *extendedSelect, db *DB, cwd string, modelDir stri
 		}
 		program.WriteString(code)
 	}
-
 	cw := &logChanWriter{wr: wr}
 	defer cw.Close()
 	cmd := sqlflowCmd(cwd, db.driverName)
