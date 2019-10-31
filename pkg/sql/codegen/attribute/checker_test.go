@@ -21,14 +21,16 @@ import (
 func TestFloat32RangeChecker(t *testing.T) {
 	a := assert.New(t)
 
-	checker := Float32RangeChecker(newFloat32(0.0), newFloat32(1.0), true, true)
+	checker := Float32RangeChecker(0.0, 1.0, true, true)
+	a.Error(checker(1))
 	a.Error(checker(float32(-1)))
 	a.NoError(checker(float32(0)))
 	a.NoError(checker(float32(0.5)))
 	a.NoError(checker(float32(1)))
 	a.Error(checker(float32(2)))
 
-	checker2 := Float32RangeChecker(newFloat32(0.0), newFloat32(1.0), false, false)
+	checker2 := Float32RangeChecker(0.0, 1.0, false, false)
+	a.Error(checker(1))
 	a.Error(checker2(float32(-1)))
 	a.Error(checker2(float32(0)))
 	a.NoError(checker2(float32(0.5)))
@@ -39,14 +41,16 @@ func TestFloat32RangeChecker(t *testing.T) {
 func TestIntRangeChecker(t *testing.T) {
 	a := assert.New(t)
 
-	checker := IntRangeChecker(newInt(0), newInt(2), true, true)
+	checker := IntRangeChecker(0, 2, true, true)
+	a.Error(checker(1.0))
 	a.Error(checker(int(-1)))
 	a.NoError(checker(int(0)))
 	a.NoError(checker(int(1)))
 	a.NoError(checker(int(2)))
 	a.Error(checker(int(3)))
 
-	checker2 := IntRangeChecker(newInt(0), newInt(2), false, false)
+	checker2 := IntRangeChecker(0, 2, false, false)
+	a.Error(checker(1.0))
 	a.Error(checker2(int(-1)))
 	a.Error(checker2(int(0)))
 	a.NoError(checker2(int(1)))
