@@ -100,8 +100,8 @@ func IntRangeChecker(lower, upper *int, includeLower, includeUpper bool) func(in
 	return checker
 }
 
-// BoolIntChecker returns a checker function that do **not** check the input.
-func BoolIntChecker(choices []int) func(interface{}) error {
+// IntChoicesChecker verifies the attribute value is in a list of choices.
+func IntChoicesChecker(choices []int) func(interface{}) error {
 	checker := func(e interface{}) error {
 		i, ok := e.(int)
 		if !ok {
