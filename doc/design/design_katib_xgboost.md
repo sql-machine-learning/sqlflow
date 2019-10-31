@@ -12,17 +12,17 @@ SQLFlow needs to provide users with a simple way to train their ML model. This f
 
 [XGBoost](https://xgboost.readthedocs.io/en/latest/) is an optimized distributed gradient boosting library designed to be highly efficient, flexible and portable. 
 
-When to run XGBoost jobs in Katib, we create an Experiment CR on Kubernetes via a yaml file. This Experiment CR will create one Suggestion CR and multiple Trail Pods later. The Suggestion CR generates the value for hyperparameters. Each Trail Pod include two containers: a job container and a MetricsCollector container. The job container is created from a standard XGBoost Docker image created by us. When the job container is started, it receives paramters defined in SQLFlow as well as value of hyperparameters from Suggestion CR.
+When to run XGBoost jobs in Katib, we create an Experiment CR on Kubernetes via a yaml file. This Experiment CR will create one Suggestion CR and multiple Trail Pods later. The Suggestion CR generates the value for hyperparameters. Each Trail Pod includes two containers: a job container and a MetricsCollector container. The job container is created from a standard XGBoost Docker image created by us. When the job container is started, it receives parameters defined in SQLFlow as well as the value of hyperparameters from Suggestion CR.
 
-MetricsCollector container parse logs of the job containers and put training results into Katib data store. When the training job is complete, SQLFlow can read results from Katib data store.
+MetricsCollector container parses logs of the job containers and put training results into Katib data store. When the training job is complete, SQLFlow can read results from Katib data store.
 
 ## Pipeline:
 
 1. Users input SQL queries. 
-2. Based on input SQL queries, the codegen `codegen_katib_xgboost.go` generates `katib_xgboost.py` file. This file include all parameters for XGBoost jobs. 
+2. Based on input SQL queries, the codegen `codegen_katib_xgboost.go` generates `katib_xgboost.py` file. This file includes all parameters for XGBoost jobs. 
 3. SQLFlow server executes `katib_xgboost.py`:
    1. generates `katib_xgboost.yaml` file and fill it with: 
-      1. the scope of hyperparameters: now the scope of hyperparameters are constant value. Later there will be a `model_zoo` to generate optimzed scope for each hyperparameters.
+      1. the scope of hyperparameters: now the scope of hyperparameters are constant value. Later there will be a `model_zoo` to generate optimized scope for each hyperparameters.
       2. source of standard XGBoost Docker image.
       3. commands to execute XGBoost job python program in the container.
    2. executes `katib_xgboost.yaml` on kubernetes and start XGBoost jobs in Katib.
