@@ -460,7 +460,7 @@ func train(wr *PipeWriter, tr *extendedSelect, db *DB, cwd string, modelDir stri
 
 	cw := &logChanWriter{wr: wr}
 	var buf bytes.Buffer
-	buf.WriteString(fmt.Sprintf("\n========== Program ======\n%s\n=======Error Message===========\n", program.String()))
+	buf.WriteString(fmt.Sprintf("\n==========Program======\n%s\n=======Program Output===========\n", program.String()))
 
 	w := io.MultiWriter(cw, &buf)
 	defer cw.Close()
@@ -469,8 +469,7 @@ func train(wr *PipeWriter, tr *extendedSelect, db *DB, cwd string, modelDir stri
 	cmd.Stdout = w
 	cmd.Stderr = w
 	if e := cmd.Run(); e != nil {
-		log.Errorf("sqlflowcmd failed: %v, details: %s", e, buf.String())
-		return fmt.Errorf("training failed %v", e)
+		return fmt.Errorf("predict failed: %v\n %s", e, buf.String())
 	}
 	m := model{workDir: cwd, TrainSelect: slct}
 	if modelDir != "" {
@@ -561,7 +560,7 @@ func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir strin
 	}
 
 	var buf bytes.Buffer
-	buf.WriteString(fmt.Sprintf("\n========== Program ======\n%s\n=======Error Message===========\n", program.String()))
+	buf.WriteString(fmt.Sprintf("\n==========Program======\n%s\n=======Program Output===========\n", program.String()))
 
 	cw := &logChanWriter{wr: wr}
 	w := io.MultiWriter(cw, &buf)
@@ -572,8 +571,7 @@ func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir strin
 	cmd.Stdout = w
 	cmd.Stderr = w
 	if e := cmd.Run(); e != nil {
-		log.Errorf("predict failed: %v, details: %s", e, buf.String())
-		return fmt.Errorf("predict failed: %v", e)
+		return fmt.Errorf("predict failed: %v\n %s", e, buf.String())
 	}
 	return nil
 }
