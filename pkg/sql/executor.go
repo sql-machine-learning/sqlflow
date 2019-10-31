@@ -18,6 +18,7 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -449,13 +450,17 @@ func train(wr *PipeWriter, tr *extendedSelect, db *DB, cwd string, modelDir stri
 		program.WriteString(code)
 	}
 	cw := &logChanWriter{wr: wr}
+	var buf bytes.Buffer
+	buf.WriteString(fmt.Sprintf("\n==========Program======\n%s\n=======Program Output===========\n", program.String()))
+
+	w := io.MultiWriter(cw, &buf)
 	defer cw.Close()
 	cmd := sqlflowCmd(cwd, db.driverName)
 	cmd.Stdin = &program
-	cmd.Stdout = cw
-	cmd.Stderr = cw
+	cmd.Stdout = w
+	cmd.Stderr = w
 	if e := cmd.Run(); e != nil {
-		return fmt.Errorf("training failed %v", e)
+		return fmt.Errorf("predict failed: %v\n %s", e, buf.String())
 	}
 	m := model{workDir: cwd, TrainSelect: slct}
 	if modelDir != "" {
@@ -502,7 +507,7 @@ func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir strin
 		return fmt.Errorf("loadModelMeta %v", e)
 	}
 
-	var buf bytes.Buffer
+	var program bytes.Buffer
 	if isXGBoostModel(pr.estimator) {
 		ir, err := generatePredictIR(pr, db.String(), cwd, modelDir)
 		if err != nil {
@@ -516,7 +521,7 @@ func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir strin
 		if err != nil {
 			return err
 		}
-		buf.WriteString(code)
+		program.WriteString(code)
 	} else {
 		ir, err := generatePredictIR(pr, db.String(), cwd, modelDir)
 		if err != nil {
@@ -534,17 +539,24 @@ func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir strin
 		if err != nil {
 			return err
 		}
-		buf.WriteString(code)
+		program.WriteString(code)
 	}
 
+	var buf bytes.Buffer
+	buf.WriteString(fmt.Sprintf("\n==========Program======\n%s\n=======Program Output===========\n", program.String()))
+
 	cw := &logChanWriter{wr: wr}
+	w := io.MultiWriter(cw, &buf)
 	defer cw.Close()
 	cmd := sqlflowCmd(cwd, db.driverName)
 	cmd.Env = append(os.Environ())
-	cmd.Stdin = &buf
-	cmd.Stdout = cw
-	cmd.Stderr = cw
-	return cmd.Run()
+	cmd.Stdin = &program
+	cmd.Stdout = w
+	cmd.Stderr = w
+	if e := cmd.Run(); e != nil {
+		return fmt.Errorf("predict failed: %v\n %s", e, buf.String())
+	}
+	return nil
 }
 
 func analyze(wr *PipeWriter, pr *extendedSelect, db *DB, cwd, modelDir string) error {
