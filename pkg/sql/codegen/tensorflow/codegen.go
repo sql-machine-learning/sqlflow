@@ -24,21 +24,13 @@ import (
 	"sqlflow.org/sqlflow/pkg/sql/codegen/attribute"
 )
 
-func newFloat32(f float32) *float32 {
-	return &f
-}
-
-func newInt(i int) *int {
-	return &i
-}
-
 var attributeDictionary = attribute.Dictionary{
 	"train.batch_size": {attribute.Int, `[default=1]
 The training batch size.
-range: [0,Infinity]`, attribute.IntRangeChecker(newInt(0), nil, false, false)},
+range: [1,Infinity]`, attribute.IntLowerBoundChecker(1, true)},
 	"train.epoch": {attribute.Int, `[default=1]
 Number of epochs the training will run.
-range: [1, Infinity]`, attribute.IntRangeChecker(newInt(0), nil, false, false)},
+range: [1, Infinity]`, attribute.IntLowerBoundChecker(1, true)},
 	"model.*": {attribute.Unknown, `parameters defined by the model implementation, e.g. https://www.tensorflow.org/api_docs/python/tf/estimator/DNNClassifier#__init__, customized model example: https://github.com/sql-machine-learning/models/blob/develop/sqlflow_models/dnnclassifier.py#L4`,
 		attribute.EmptyChecker()},
 }

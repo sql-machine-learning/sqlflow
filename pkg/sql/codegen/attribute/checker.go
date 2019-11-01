@@ -17,87 +17,90 @@ import (
 	"fmt"
 )
 
-func newFloat32(f float32) *float32 {
-	return &f
-}
+var equalSign = map[bool]string{true: "=", false: ""}
 
-// Float32RangeChecker is a helper function to generate range checkers on attribute.
+// Float32RangeChecker is a helper function to generate range checkers on attributes.
 // lower/upper indicates the lower bound and upper bound of the attribute value.
-// If lower/upper is nil, it means no boundary.
 // includeLower/includeUpper indicates the inclusion of the bound.
-func Float32RangeChecker(lower, upper *float32, includeLower, includeUpper bool) func(interface{}) error {
-
-	checker := func(e interface{}) error {
-		f, ok := e.(float32)
-		if !ok {
-			return fmt.Errorf("expected type float32, received %T", e)
+func Float32RangeChecker(lower, upper float32, includeLower, includeUpper bool) func(interface{}) error {
+	return func(attr interface{}) error {
+		if f, ok := attr.(float32); ok {
+			e := Float32LowerBoundChecker(lower, includeLower)(f)
+			if e == nil {
+				e = Float32UpperBoundChecker(upper, includeUpper)(f)
+			}
+			return e
 		}
-
-		// NOTE(tony): nil means no boundary
-		if lower != nil {
-			if includeLower && !(*lower <= f) {
-				return fmt.Errorf("range check %v <= %v failed", *lower, f)
-			}
-			if !includeLower && !(*lower < f) {
-				return fmt.Errorf("range check %v < %v failed", *lower, f)
-			}
-		}
-
-		// NOTE(tony): nil means no boundary
-		if upper != nil {
-			if includeUpper && !(f <= *upper) {
-				return fmt.Errorf("range check %v <= %v failed", f, *upper)
-			}
-			if !includeUpper && !(f < *upper) {
-				return fmt.Errorf("range check %v < %v failed", f, *upper)
-			}
-		}
-
-		return nil
+		return fmt.Errorf("expected type float32, received %T", attr)
 	}
-
-	return checker
 }
 
-func newInt(i int) *int {
-	return &i
+// Float32LowerBoundChecker returns a range checker that only checks the lower bound.
+func Float32LowerBoundChecker(lower float32, includeLower bool) func(interface{}) error {
+	return func(attr interface{}) error {
+		if f, ok := attr.(float32); ok {
+			if (!includeLower && f > lower) || (includeLower && f >= lower) {
+				return nil
+			}
+			return fmt.Errorf("range check %v <%v %v failed", lower, equalSign[includeLower], f)
+		}
+		return fmt.Errorf("expected type float32, received %T", attr)
+	}
 }
 
-// IntRangeChecker is a helper function to generate range checkers on attribute.
+// Float32UpperBoundChecker returns a range checker that only checks the upper bound.
+func Float32UpperBoundChecker(upper float32, includeUpper bool) func(interface{}) error {
+	return func(attr interface{}) error {
+		if f, ok := attr.(float32); ok {
+			if (!includeUpper && f < upper) || (includeUpper && f <= upper) {
+				return nil
+			}
+			return fmt.Errorf("range check %v >%v %v failed", upper, equalSign[includeUpper], f)
+		}
+		return fmt.Errorf("expected type float32, received %T", attr)
+	}
+}
+
+// IntRangeChecker is a helper function to generate range checkers on attributes.
 // lower/upper indicates the lower bound and upper bound of the attribute value.
-// If lower/upper is nil, it means no boundary.
 // includeLower/includeUpper indicates the inclusion of the bound.
-func IntRangeChecker(lower, upper *int, includeLower, includeUpper bool) func(interface{}) error {
-	checker := func(e interface{}) error {
-		i, ok := e.(int)
-		if !ok {
-			return fmt.Errorf("expected type float32, received %T", e)
+func IntRangeChecker(lower, upper int, includeLower, includeUpper bool) func(interface{}) error {
+	return func(attr interface{}) error {
+		if f, ok := attr.(int); ok {
+			e := IntLowerBoundChecker(lower, includeLower)(f)
+			if e == nil {
+				e = IntUpperBoundChecker(upper, includeUpper)(f)
+			}
+			return e
 		}
-
-		// NOTE(tony): nil means no boundary
-		if lower != nil {
-			if includeLower && !(*lower <= i) {
-				return fmt.Errorf("range check %v <= %v failed", *lower, i)
-			}
-			if !includeLower && !(*lower < i) {
-				return fmt.Errorf("range check %v < %v failed", *lower, i)
-			}
-		}
-
-		// NOTE(tony): nil means no boundary
-		if upper != nil {
-			if includeUpper && !(i <= *upper) {
-				return fmt.Errorf("range check %v <= %v failed", i, *upper)
-			}
-			if !includeUpper && !(i < *upper) {
-				return fmt.Errorf("range check %v < %v failed", i, *upper)
-			}
-		}
-
-		return nil
+		return fmt.Errorf("expected type int, received %T", attr)
 	}
+}
 
-	return checker
+// IntLowerBoundChecker returns a range checker that only checks the lower bound.
+func IntLowerBoundChecker(lower int, includeLower bool) func(interface{}) error {
+	return func(attr interface{}) error {
+		if f, ok := attr.(int); ok {
+			if f > lower || includeLower && f == lower {
+				return nil
+			}
+			return fmt.Errorf("range check %v <%v %v failed", lower, equalSign[includeLower], f)
+		}
+		return fmt.Errorf("expected type int, received %T", attr)
+	}
+}
+
+// IntUpperBoundChecker returns a range checker that only checks the upper bound.
+func IntUpperBoundChecker(upper int, includeUpper bool) func(interface{}) error {
+	return func(attr interface{}) error {
+		if f, ok := attr.(int); ok {
+			if f < upper || includeUpper && f == upper {
+				return nil
+			}
+			return fmt.Errorf("range check %v >%v %v failed", upper, equalSign[includeUpper], f)
+		}
+		return fmt.Errorf("expected type int, received %T", attr)
+	}
 }
 
 // EmptyChecker returns a checker function that do **not** check the input.
