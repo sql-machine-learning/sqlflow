@@ -23,7 +23,7 @@ INTO my_model_hp;
 The the above examples,
 - This query tries to tune hyperparameter `num_boost_round`, `max_depth`. 
 - In the `WITH` clause:
-    - `framework=katib.xgboost`indicates to tune those hyperparameters by running XGBoost jobs on Katib. 
+    - `katib.xgboost`indicates to tune those hyperparameters by running XGBoost jobs on Katib. 
     - `xgboost.gbtree`, `objective` and `eta` are parameters for XGBoost model, see: [here](https://xgboost.readthedocs.io/en/latest/parameter.html#general-parameters) for more details of XGBoost parameters.
 - `my_model_hp` file includes optimized value for `num_boost_round` and `max_depth`.
   
