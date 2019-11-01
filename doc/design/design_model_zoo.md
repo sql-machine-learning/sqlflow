@@ -12,7 +12,7 @@ The following example SQL statement shows the syntax for training a model.
 
 ```sql
 SELECT * FROM employee WHERE onboard_year < 2019
-TO TRAIN a_data_scientist/regressors.MyDNNRegressor
+TO TRAIN a_data_scientist/regressors:v0.2/MyDNNRegressor
 WITH hidden_units=[10,50,5], lr=0.01
 COLUMN gender, scale(age, 0, 1), bucketize(address, 100) 
 LABEL salary 
