@@ -4,7 +4,7 @@
 
 SQLFlow extends SQL syntax to allow SQL programmers, a.k.a., analysts, to invoke models defined by Python programmers, a.k.a., data scientists.  For each deployment of SQLFlow service, we refer to the collection of **model definitions** accessible by analysts as a **model zoo**.  A model zoo contains not only the model definitions but also the trained model parameters, as well as the hyperparameters and other information, which are necessary when we use the model for prediction and other analytics jobs.
 
-This document is about how to define models and how to build a model zoo.
+This document is about how to define models and how to build a model zoo.  For the conclusion, please go to the last section of this document.
 
 ## Background
 
@@ -19,7 +19,7 @@ LABEL salary
 INTO my_first_model;
 ```
 
-The string `a_data_scientist/regressors` names a Docker image, inside which, there is `MyDNNRegressor`, a Python class derived from `tf.keras.Model`, and its dependencies.  The `WITH` clause provides hyperparameters required by the constructor of `MyDNNRegressor`  and the training process. The `COLUMN` clause specifies how to convert the SELECT result, a table, into model inputs in the form of tensors. `LABEL` identifies the field used as the label, in the case of supervised learning.  The training process saves all the above information, plus the estimated model parameters, under the name `my_first_model`.
+The string `a_data_scientist/regressors:v0.2` names a Docker image, inside which, there is `MyDNNRegressor`, a Python class derived from `tf.keras.Model`, and its dependencies.  The `WITH` clause provides hyperparameters required by the constructor of `MyDNNRegressor`  and the training process. The `COLUMN` clause specifies how to convert the SELECT result, a table, into model inputs in the form of tensors. `LABEL` identifies the field used as the label, in the case of supervised learning.  The training process saves all the above information, plus the estimated model parameters, under the name `my_first_model`.
 
 The following example fills in the column `predicted_salary` of the table `employee` for rows that represent employees recruited in and after 2019.
 
@@ -151,3 +151,32 @@ Then, another analyst should be able to use the trained model by referring to it
 ```sql
 SELECT ... TO PREDICT employee.predicted_salary USING models.sqlflow.org/an_analyst/my_first_model
 ```
+
+## Summarization
+
+There are three roles in the ecossytem of SQLFlow: 
+
+1. the tool developers who use Go/C++ to create SQLFlow,
+1. the model developers, or data scientists, who use Python to define, say, Keras models, and
+1. the analysts, who use SQL to train models, or to use trained models for prediction or model explanation.
+
+Any data scientist can create arbitrary number of model zoos, and in each model zoo, there could be arbitrary number of model definitions.  There are some concepts from the perspective of a data scientist `a_data_scientist`:
+
+1. A model zoo is a Git repo, say, `github.com/a_data_scientist/regressors`.
+1. A model zoo is built and published in the form of a Docker image, say, `dockerhub.com/a_data_scientist/regressors:v0.2`.
+
+From the perspective of an analyst, say, `an_analyst`, who is going to use the model definition `DNNRegressor` defined in github.com/a_data_scientist/regressors, s/he could refer to the model definition by
+
+- dockerhub.com/a_data_scientist/regressor:v0.2/DNNRegressor, which is the full name,
+- dockerhub.com/a_data_scientist/regressor/DNNRegressor, if the Docker image tag is `latest`,
+- a_data_scientist/regressor/DNNRegressor, if dockerhub.com is configured the default Docker registry, or
+- regressor/DNNRegressor, if the user is the model developer `a_data_scientist`.
+
+The class `DNNRegressor` could be define in any file in any directory of the repository github.com/a_data_scientist/regressor.  The only requirement is that when the submitter program trains the model, it can run a Docker command, or an equivalent Docker API call, to train the model.
+
+A trained model could have its name in any of the following form:
+
+- my_first_model
+- an_analyst/my_first_model
+- a_database_project/an_analyst/my_first_model
+- a_dbms_server.somewhere.com/a_database_project/an_analyst/my_first_model
