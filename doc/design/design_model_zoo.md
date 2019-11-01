@@ -127,43 +127,6 @@ If another analyst wants to use the trained model, he would need to use the full
 SELECT ... TO PREDICT ... USING an_analyst/my_first_model
 ```
 
-There could be more than one model definitions in each model's Docker image. We need to be able to find out which model definition is used to train current saved model. Also if we only want to reuse the model definition to train a new model we need to know the model definition class name, so that we can pass it to the `TRAIN` clause.
-
-To list all trained models of one user, you can do:
-
-```sql
-SQLFLOW LIST an_analyst
-```
-
-This should output a table showing the saved models and which model definition it was using.
-
-```
-|  saved model    |   model def    |
-| my_first_model  | MyDNNRegressor |
-| my_second_model | MyDNNRegressor |
-```
-
-Within **any** deployment that have internet access, to list published models:
-
-```sql
-SQLFLOW LIST [models.sqlflow.org/an_analyst]
-```
-
-Display model definitions and documentation of the published model:
-
-```
-SQLFLOW DESCRIBE models.sqlflow.org/an_analyst/my_first_model;
-| available model defs |
-| MyDNNRegressor       |
-| MyDNNClassifier      |
-
-SQLFLOW DESCRIBE models.sqlflow.org/an_analyst/my_first_model.MyDNNRegressor;
-
-Documatation for my_first_model.MyDNNRegressor
-...
-...
-```
-
 Use a published model make some predictions on new data:
 
 ```sql
