@@ -8,7 +8,7 @@ To provide better support to programmers, SQLFlow allows programmers to specify 
 
 ## SQLFlow Syntax
 
-Here we use a couple of examples to explain the syntax of SQLFlow.  The following SQLFlow code snippet shows how users can train an XGBoost tree model named `my_xgb_model`.
+Here we use a simple example to explain the syntax of SQLFlow.  
 
 ``` sql
 SELECT * FROM train_table, test_table
