@@ -26,7 +26,7 @@ SQLFlow does the following steps.
 1. SQLFlow verifies the column in the train clause.
     1. SQLFlow executes the select clause and retrieves the column names and column types of the result. For example, the result of `SELECT ... a` has four columns with names `c1`, `c2`, `id`, and `class`. `c1`, and `c2` are of float types. And `id` and `class` are of integer types.
     1. SQLFlow checks the columns of train clause exist in the select result. For example, `c1`, `c2`, `id`, and `class` in `COLUMN` and `LABEL` are all in the select result. (Please be aware that `select expression` without an alias might give system-generated names that the user doesn't know in advance. For example, `select log(a + a) from my_table` may give a column named `log(a + a)` or any system-generated names. In this case, we suggested using alias such as `select log(a + a) as my_column_name`.)
-    1. SQLFlow checks the columns have the desired types. The type is either suitable to explicit feature column transformation such as `EMBEDDING(id)`, or derived from [feature derivation](/doc/design/design_feature_derivation.md) such as `c1` of float type will be derived as a numerical column.
+    1. SQLFlow checks the columns have the desired types. The type is either suitable to explicit feature column transformation such as `EMBEDDING(id)`, or derived from [feature derivation](design_feature_derivation.md) such as `c1` of float type will be derived as a numerical column.
 
 1. SQLFlow generates a Python submitter program that forwards the select clause to a particular SQL engine.
 

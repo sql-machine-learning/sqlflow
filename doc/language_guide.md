@@ -2,7 +2,7 @@
 
 SQLFlow is a bridge that connects a SQL engine (e.g., MySQL, Hive, or MaxCompute) and TensorFlow and other machine learning toolkits.  SQLFlow extends the SQL syntax to enable model training, prediction, and analysis.
 
-This language guide elaborates SQLFlow extended syntax and feature column API. For specific examples, please refer to [the tutorial](/doc/tutorial).
+This language guide elaborates SQLFlow extended syntax and feature column API. For specific examples, please refer to [the tutorial](tutorial/iris-dnn.md).
 
 ## Overview
 
@@ -330,4 +330,4 @@ USING TreeExplainer;
 
 ## Models
 
-SQLFlow supports various TensorFlow pre-made estimators, Keras customized models, and XGBoost models. A full supported parameter list is under active construction, for now, please refer to [the tutorial](/doc/tutorial) for example usage.
+SQLFlow supports various TensorFlow pre-made estimators, Keras customized models, and XGBoost models. A full supported parameter list is under active construction, for now, please refer to [the tutorial](tutorial/iris-dnn.md) for example usage.

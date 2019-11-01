@@ -9,7 +9,7 @@ You can use this Docker image for either local trying out or production deployme
 
 1. Install [Docker Community Edition](https://docs.docker.com/install/) on your PC/Macbook/Server.
 1. Pull the latest SQLFlow "all-in-one" Docker image. Or you can also 
-   build the Docker image from source code following [this guide](/doc/build.md).
+   build the Docker image from source code following [this guide](../build.md).
 
    ```
    docker pull sqlflow/sqlflow
@@ -32,8 +32,8 @@ You can use this Docker image for either local trying out or production deployme
 If you have your own database setup, below steps enables running a seperated
 SQLFlow server and Jupyter Notebook which connects to your own database service.
 
-For MySQL, please refer to [run_with_mysql.md](/doc/run_with_mysql.md).
+For MySQL, please refer to [run_with_mysql](../run_with_mysql.md).
 
-For Hive, please refer to [run_with_hive.md](/doc/run_with_hive.md).
+For Hive, please refer to [run_with_hive](../run_with_hive.md).
 
-For MaxCompute, please refer to [run_with_maxcompute.md](/doc/run_with_maxcompute.md).
+For MaxCompute, please refer to [run_with_maxcompute](../run_with_maxcompute.md).

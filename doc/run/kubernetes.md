@@ -19,7 +19,7 @@ This tutorial would use [minikube] to demonstrate the SQLFlow.
 1. [Install kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/), which is the command line tool
 to interact with the Kubernetes cluster.
 1. Make sure the Kubernetes nodes can pull the official SQLFlow Docker image [sqlflow/sqlflow] or your [custom
-Docker image](/doc/build.md).
+Docker image](../build.md).
 
 ## Deploy the All-in-One SQLFlow
 
@@ -28,7 +28,7 @@ Docker image](/doc/build.md).
     > kubectl create -f k8s/sqlflow-mysql.yaml
     ```
     The above command deploys a Pod, a MySQL server instance, a SQLFlow gRPC server and the Jupyter Notebook server runs in this Pod. You can also use
-    your custom Docker image by editting the `image` field of the yaml file: [k8s/sqlflow-all-in-one.yaml](/doc/k8s/sqlflow-all-in-one.yaml)
+    your custom Docker image by editting the `image` field of the yaml file: [k8s/sqlflow-all-in-one.yaml](https://github.com/sql-machine-learning/sqlflow/tree/develop/doc/k8s/sqlflow-all-in-one.yaml)
     ``` yaml
     spec:
         ...
@@ -60,7 +60,7 @@ Docker image](/doc/build.md).
     sqlflow-all-in-one-9b57566c9-8xkpk   1/1     Running   0          24s     172.17.0.9   minikube   <none>           <none>
     ```
 
-1. Open a web browser and go to '<node-ip>:8888', you can find the [SQLFlow example](/doc/tutorial/iris-dnn.md) in the Jupyter notebook file lists.
+1. Open a web browser and go to '<node-ip>:8888', you can find the [SQLFlow example](../tutorial/iris-dnn.md) in the Jupyter notebook file lists.
 
 ## Deploy the SQLFlow Hub
 
@@ -91,7 +91,7 @@ and easy to scale up/down the SQLFlow gRPC server according to workload.
 1. Check the SQLFlow Pods, you can find:
     - A MySQL Pod named `sqlflow-mysql-*`.
     - A JupyterHub Pod named `sqlflow-jhub-*`.
-    - 3 SQLFlow gRPC server Pods named `sqlflow-server-*`, and it's easy to scale up/down the replica count by modifying the `replicas` field of the yaml file: [k8s/sqlflow-server.yaml](/doc/k8s/sqlflow-server.yaml).
+    - 3 SQLFlow gRPC server Pods named `sqlflow-server-*`, and it's easy to scale up/down the replica count by modifying the `replicas` field of the yaml file: [k8s/sqlflow-server.yaml](https://github.com/sql-machine-learning/sqlflow/tree/develop/doc/k8s/sqlflow-server.yaml).
     ``` bash
     $ kubectl get pods
     NAME                              READY   STATUS    RESTARTS   AGE
