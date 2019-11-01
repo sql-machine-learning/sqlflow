@@ -12,14 +12,14 @@ The following example SQL statement shows the syntax for training a model.
 
 ```sql
 SELECT * FROM employee WHERE onboard_year < 2019
-TO TRAIN MyDNNRegressor
+TO TRAIN a_data_scientist/regressors.MyDNNRegressor
 WITH hidden_units=[10,50,5], lr=0.01
 COLUMN gender, scale(age, 0, 1), bucketize(address, 100) 
 LABEL salary 
 INTO my_first_model;
 ```
 
-The identifier `MyDNNRegressor` names a Python class derived from `tf.keras.Model`.  The `WITH` clause provides hyperparameters required by the constructor of `MyDNNRegressor`  and the training process. The `COLUMN` clause specifies how to convert the SELECT result, a table, into model inputs in the form of tensors. `LABEL` identifies the field used as the label, in the case of supervised learning.  The training process saves all the above information, plus the estimated model parameters, under the name `my_first_model`.
+The string `a_data_scientist/regressors` names a Docker image, inside which, there is `MyDNNRegressor`, a Python class derived from `tf.keras.Model`, and its dependencies.  The `WITH` clause provides hyperparameters required by the constructor of `MyDNNRegressor`  and the training process. The `COLUMN` clause specifies how to convert the SELECT result, a table, into model inputs in the form of tensors. `LABEL` identifies the field used as the label, in the case of supervised learning.  The training process saves all the above information, plus the estimated model parameters, under the name `my_first_model`.
 
 The following example fills in the column `predicted_salary` of the table `employee` for rows that represent employees recruited in and after 2019.
 
