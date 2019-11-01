@@ -1,18 +1,40 @@
 # SQLFlow Trains Models via XGBoost in Katib
 
-## Requirement description:
+## Requirements:
 
-SQLFlow needs to provide users with a simple way to train their ML model. This function is supported by SQLFlow running XGBoost jobs on Katib.
+SQLFlow allows programmers to use SQL queries to enable ML model training, prediction and explaination. SQLFlow also allows programmers to tune hyperparamters of their models with an easy way. This function (Hyperparameter Optimization) is supported by running HPO jobs on Katib.
+
+In order to provide better support to programmers, SQLFlow allows programmers to specify particular framework or algorithm to tune their hyperparameters. XGBoost is one of most popular one among them. 
+
+## SQLFlow Syntax
+
+Here we use a couple of examples to explain the syntax of SQLFlow.  The following SQLFlow code snippet shows how users can train an XGBoost tree model named `my_xgb_model`.
+
+``` sql
+SELECT * FROM train_table, test_table
+TUNE num_boost_round, max_depth
+WITH
+    framework=katib.xgboost
+    model=xgboost.gbtree
+    objective=multi:softmax,
+    eta=1
+INTO my_model_hp;
+```
+The the above examples,
+- This query tries to tune hyperparameter `num_boost_round`, `max_depth` vy running XGBoost jobs on Katib. 
+- `my_model_hp` file includes optimized value for `num_boost_round` and `max_depth`.
+- In the `WITH` clause, `xgboost.gbtree`, `objective` and `eta` are parameters for XGBoost model, see: [here](https://xgboost.readthedocs.io/en/latest/parameter.html#general-parameters) for more details of XGBoost parameters.
+  
 
 ## Hyperparameter Optimization in Katib
 
-[Katib](https://github.com/kubeflow/katib) is a Kubernetes Native System for Hyperparameter Tuning and Neural Architecture Search. The system is inspired by Google vizier and supports multiple ML/DL frameworks (e.g. TensorFlow, MXNet, and PyTorch).
+[Katib](https://github.com/kubeflow/katib) is a Kubernetes Native System for Hyperparameter Tuning and Neural Architecture Search. The system is inspired by Google Vizier and supports multiple ML/DL frameworks (e.g. TensorFlow, Apache MXNet, and PyTorch).
 
 ## Support XGBoost job in Katib
 
 [XGBoost](https://xgboost.readthedocs.io/en/latest/) is an optimized distributed gradient boosting library designed to be highly efficient, flexible and portable. 
 
-When to run XGBoost jobs in Katib, we create an Experiment CR on Kubernetes via a yaml file. This Experiment CR will create one Suggestion CR and multiple Trail Pods later. The Suggestion CR generates the value for hyperparameters. Each Trail Pod includes two containers: a job container and a MetricsCollector container. The job container is created from a standard XGBoost Docker image created by us. When the job container is started, it receives parameters defined in SQLFlow as well as the value of hyperparameters from Suggestion CR.
+When to run XGBoost jobs in Katib, we create an Experiment CR on Kubernetes via a yaml file. This Experiment CR will create one Suggestion CR and multiple Trial Pods later. The Suggestion CR generates the value for hyperparameters. Each Trail Pod includes two containers: a job container and a MetricsCollector container. The job container is created from a standard XGBoost Docker image created by us. When the job container is started, it receives parameters defined in SQL query and the value of hyperparameters from Suggestion CR.
 
 MetricsCollector container parses logs of the job containers and put training results into Katib data store. When the training job is complete, SQLFlow can read results from Katib data store.
 
