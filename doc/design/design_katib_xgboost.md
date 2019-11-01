@@ -1,4 +1,4 @@
-# SQLFlow Trains Models via XGBoost in Katib
+# SQLFlow Optimize Model Hyperparameters via XGBoost in Katib
 
 ## Requirements:
 
