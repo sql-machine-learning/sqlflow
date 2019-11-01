@@ -24,27 +24,19 @@ import (
 	"sqlflow.org/sqlflow/pkg/sql/codegen/attribute"
 )
 
-func newFloat32(f float32) *float32 {
-	return &f
-}
-
-func newInt(i int) *int {
-	return &i
-}
-
 // TODO(tony): complete model parameter and training parameter list
 // model parameter list: https://xgboost.readthedocs.io/en/latest/parameter.html#general-parameters
 // training parameter list: https://github.com/dmlc/xgboost/blob/b61d53447203ca7a321d72f6bdd3f553a3aa06c4/python-package/xgboost/training.py#L115-L117
 var attributeDictionary = attribute.Dictionary{
 	"eta": {attribute.Float, `[default=0.3, alias: learning_rate]
 Step size shrinkage used in update to prevents overfitting. After each boosting step, we can directly get the weights of new features, and eta shrinks the feature weights to make the boosting process more conservative.
-range: [0,1]`, attribute.Float32RangeChecker(newFloat32(0), newFloat32(1), true, true)},
+range: [0,1]`, attribute.Float32RangeChecker(0, 1, true, true)},
 	"num_class": {attribute.Int, `Number of classes.
-range: [1, Infinity]`, attribute.IntRangeChecker(newInt(0), nil, false, false)},
+range: [2, Infinity]`, attribute.IntLowerBoundChecker(2, true)},
 	"objective": {attribute.String, `Learning objective`, nil},
 	"train.num_boost_round": {attribute.Int, `[default=10]
 The number of rounds for boosting.
-range: [1, Infinity]`, attribute.IntRangeChecker(newInt(0), nil, false, false)},
+range: [1, Infinity]`, attribute.IntLowerBoundChecker(1, true)},
 }
 
 func resolveModelType(estimator string) (string, error) {
