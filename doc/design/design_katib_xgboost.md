@@ -2,9 +2,9 @@
 
 ## Requirements:
 
-SQLFlow allows programmers to use SQL queries to enable ML model training, prediction and explaination. SQLFlow also allows programmers to tune hyperparamters of their models with an easy way. This function (Hyperparameter Optimization) is supported by running HPO jobs on Katib.
+SQLFlow allows programmers to use SQL queries to enable ML model training, prediction and explaination. SQLFlow also allows programmers to tune hyperparamters of their models in an easy way. This function (Hyperparameter Optimization) is supported by running HPO jobs on Katib.
 
-In order to provide better support to programmers, SQLFlow allows programmers to specify particular framework or algorithm to tune their hyperparameters. XGBoost is one of most popular one among them. 
+To provide better support to programmers, SQLFlow allows programmers to specify a particular framework or model to tune their hyperparameters. XGBoost is among the most popular models. 
 
 ## SQLFlow Syntax
 
@@ -21,7 +21,8 @@ WITH
 INTO my_model_hp;
 ```
 The the above examples,
-- This query tries to tune hyperparameter `num_boost_round`, `max_depth` vy running XGBoost jobs on Katib. 
+- This query tries to tune hyperparameter `num_boost_round`, `max_depth`.
+- `framework=katib.xgboost`indicates to tune those hyperparameters by running XGBoost jobs on Katib. 
 - `my_model_hp` file includes optimized value for `num_boost_round` and `max_depth`.
 - In the `WITH` clause, `xgboost.gbtree`, `objective` and `eta` are parameters for XGBoost model, see: [here](https://xgboost.readthedocs.io/en/latest/parameter.html#general-parameters) for more details of XGBoost parameters.
   
