@@ -15,16 +15,17 @@ SELECT * FROM train_table, test_table
 TUNE num_boost_round, max_depth
 WITH
     framework=katib.xgboost
-    model=xgboost.gbtree
-    objective=multi:softmax,
-    eta=1
+    param.model=xgboost.gbtree
+    param.objective=multi:softmax,
+    param.eta=1
 INTO my_model_hp;
 ```
 The the above examples,
-- This query tries to tune hyperparameter `num_boost_round`, `max_depth`.
-- `framework=katib.xgboost`indicates to tune those hyperparameters by running XGBoost jobs on Katib. 
+- This query tries to tune hyperparameter `num_boost_round`, `max_depth`. 
+- In the `WITH` clause:
+    - `framework=katib.xgboost`indicates to tune those hyperparameters by running XGBoost jobs on Katib. 
+    - `xgboost.gbtree`, `objective` and `eta` are parameters for XGBoost model, see: [here](https://xgboost.readthedocs.io/en/latest/parameter.html#general-parameters) for more details of XGBoost parameters.
 - `my_model_hp` file includes optimized value for `num_boost_round` and `max_depth`.
-- In the `WITH` clause, `xgboost.gbtree`, `objective` and `eta` are parameters for XGBoost model, see: [here](https://xgboost.readthedocs.io/en/latest/parameter.html#general-parameters) for more details of XGBoost parameters.
   
 
 ## Hyperparameter Optimization in Katib
