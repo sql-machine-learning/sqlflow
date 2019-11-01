@@ -74,6 +74,7 @@ The base image of the SQLFlow model zoo should incorporate both odpscmd(which is
 Currently, each deployment of SQLFlow has been configured to use only one submitter. So we assume that all the tasks of the deployment of SQLFlow on PAI will be submitted to PAI.
 
 When a user submits a SELECT statement as above, SQLFlow should take the following actions:
+
 1. SQLFlow Checks whether the entity after `TO TRAIN/PREDICT/ANALYZE` is from a SQLFlow model zoo. For example, a plain `DNNClassier` implies that the model is a premade estimator, and `"models.sqlflow.org/sqlflow/my_awesome_model"` implies that the model is from model zoo "models.sqlflow.org". The actual mechanism may be more complicated and is still under progress.
 1. Case A, the model **is not** from a model zoo:
     - The SQLFlow server generates a submitter program with PAI-required command line options.
