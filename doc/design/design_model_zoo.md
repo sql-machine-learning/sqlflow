@@ -101,11 +101,12 @@ The training submitter program `my_first_model.py`, running in the model definit
 
 The model zoo table is in a database deployed as part of the SQLFlow service. This database might not be the one that holds data sources.  The only requirement of the model zoo table is to have a particular data schema that contains at least the following fields.
 
-1. model ID (key), specified by the INTO clause, or `an_analyst/my_first_model` in the above example.
-1. Docker image ID, the Docker commit ID of the image `a_data_scientist/regressors` in the above example.
-1. submitter program, the source code of the submitter program, `my_first_model.py` in the above example, or its MD5 hash.
-1. data converter, the COLUMN and LABEL clauses.
-1. model parameter file path, the path to the trained model parameters on the distributed filesystem of the cluster.
+1. The model ID, specified by the INTO clause, or `my_first_model` in the above example.
+1. The creator, as specified in the INTO clause, or `an_analyst` in the above example.
+1. The model defintion release, which is a Docker image commit ID, or `a_data_scientist/regressors` in the above example.
+1. The submitter program, the source code of the submitter program, `my_first_model.py` in the above example, or its MD5 hash.
+1. The data converter, including the COLUMN and LABEL clauses.
+1. The model parameter file path, the path to the trained model parameters on the distributed filesystem of the cluster.
 
 It is necessary to have the model ID so users can refer to the trained model when they want to use it.  Suppose that the user typed the prediction SQL statement at the beginning of this document. SQLFlow server will convert it into a submitter program and run it with the Docker image used to train the model. Therefore, the Docker image ID is also required. The model parameter path allows the prediction submitter program to locate and load the trained models.  The data converter helps the prediction submitter to use the conversion rules consistent with the ones used when training.
 
@@ -180,3 +181,6 @@ A trained model could have its name in any of the following form:
 - an_analyst/my_first_model
 - a_database_project/an_analyst/my_first_model
 - a_dbms_server.somewhere.com/a_database_project/an_analyst/my_first_model
+
+`a_dmbs_server.somewhere.com` defaults to the SQL engine that hosts the data source. `a_database_project` defaults to `sqlflow`. `an_analyst` and `my_first_model` are part of a row in the database table `trained_models`.
+
