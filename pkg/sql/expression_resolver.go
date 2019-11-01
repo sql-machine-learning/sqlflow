@@ -134,7 +134,7 @@ func getStringsAttr(attrs map[string]*attribute, key string, defaultValue []stri
 	return defaultValue
 }
 
-func resolveTrainClause(tc *trainClause, slct *standardSelect, connConfig *connectionConfig) (*resolvedTrainClause, error) {
+func resolveTrainClause(tc *trainClause, slct *standardSelect) (*resolvedTrainClause, error) {
 	modelName := tc.estimator
 	preMadeModel := !strings.ContainsAny(modelName, ".")
 	attrs, err := resolveAttribute(&tc.trainAttrs)

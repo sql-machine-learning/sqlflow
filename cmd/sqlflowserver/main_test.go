@@ -375,36 +375,6 @@ func TestEnd2EndHive(t *testing.T) {
 	if testDBDriver != "hive" {
 		t.Skip("Skipping hive tests")
 	}
-	dbConnStr = "hive://127.0.0.1:10000/iris?auth=NOSASL"
-	go start(modelDir, caCrt, caKey, unitestPort)
-	waitPortReady(fmt.Sprintf("localhost:%d", unitestPort), 0)
-	err = prepareTestData(dbConnStr)
-	if err != nil {
-		t.Fatalf("prepare test dataset failed: %v", err)
-	}
-	t.Run("TestShowDatabases", CaseShowDatabases)
-	t.Run("TestSelect", CaseSelect)
-	t.Run("TestTrainSQL", CaseTrainSQL)
-	t.Run("CaseTrainCustomModel", CaseTrainCustomModel)
-	t.Run("CaseTrainDeepWideModel", CaseTrainDeepWideModel)
-}
-
-func TestEnd2EndHiveIR(t *testing.T) {
-	if os.Getenv("SQLFLOW_codegen") != "ir" {
-		t.Skip("Skipping ir test")
-	}
-
-	if os.Getenv("SQLFLOW_TEST_DB") != "hive" {
-		t.Skip("Skipping hive tests")
-	}
-
-	modelDir := ""
-	tmpDir, caCrt, caKey, err := generateTempCA()
-	defer os.RemoveAll(tmpDir)
-	if err != nil {
-		t.Fatalf("failed to generate CA pair %v", err)
-	}
-
 	dbConnStr = "hive://root:root@127.0.0.1:10000/iris?auth=NOSASL"
 	go start(modelDir, caCrt, caKey, unitestPort)
 	waitPortReady(fmt.Sprintf("localhost:%d", unitestPort), 0)
