@@ -1,119 +1,94 @@
 # SQLFlow Parser
 
-SQLFlow's user experience should integrate smoothly with SQL programmer's daily work routine, which involves
-
-1. Submitting multiple SQL statements at once.
-1. Working with complicated select statements.
-
-So the SQLFlow parser should
-
-1. Support any SQL dialect.
-1. Accept a SQL program contains multiple SQL statements.
-1. Support arbitrary select statements for extended syntax.
-
-The design of SQLFlow parser should support the above requirements.
+SQLFlow is a translator that translates a SQL program to a workflow program. The first step of this translation is parsing the SQL program, which is the focus of this design doc.
 
 ## Overview
 
-**The third-party parser** means the pre-existing parser of a particular SQL engine, like HiveQL/Calcite/TiDB parser. It supports parsing on a specific SQL dialect.
+A typical SQL program includes **standard SQL statements** and **extended SQL statements**.
 
-**The extended syntax parser** means the parser written by the SQLFlow team to parse the extended syntax like `TO TRAIN/PREDICT/EXPLAIN ...`.
+The **standard SQL statements** is defined by the existing SQL engines like MySQL, Hive, Alibaba MaxCompute. Because different SQL engines have different syntax, we use the engine's parsers to parse the standard SQL statement. We denote this parser as the **third party parser(TPP)** in this design doc.
 
-**The SQLFlow parser** means the combination of the above two parsers. It supports parsing a SQL program of any SQL dialect.
+The **extended SQL statements** is defined by appending a train/predict/explain clause, or **ML clause** for short, right after a select statement. We use TPP to parse the select statement because we want its syntax to be consistent with the standard SQL. And we implement an **extended syntax parser(ESP)** to parse the ML clause.
 
-Upon receiving a SQL program like the following (`SELECT ...` represents a complicated select statement).
+Take the following SQL program for example, it has five SQL statements. The first, second, fifth statements are standard SQL statements, and the third and fourth are extended SQL statements. TPP is responsible for parsing `CREATE TABLE my_training_table ...`, `CREATE TABLE my_test_table ...`, `SELECT * FROM my_training_table`, `SELECT * FROM my_test_table`, and `SELECT * FROM my_prediction`. And ESP is responsible for parsing `TO TRAIN ...` and `TO PREDICT ...`.
 
 ```SQL
-CREATE TABLE my_training_table AS SELECT ...;
+CREATE TABLE my_training_table AS SELECT employee WHERE onboard_year < 2018;
 
-SELECT ... TO TRAIN ...;
+CREATE TABLE my_test_table AS SELECT employee WHERE onboard_year >= 2018;
 
-SELECT ... TO PREDICT ...;
+SELECT * FROM my_training_table
+TO TRAIN MyDNNRegressor
+LABEL class
+INTO my_model_table;
 
-SELECT * FROM predict_result_table;
+SELECT * FROM my_test_table
+TO PREDICT my_predict_table
+USING my_model_table;
+
+SELECT * FROM my_predict_table;
 ```
 
-The SQLFlow splits it into four statements.
-- For standard SQL statements like the `CREATE ...` and `SELECT * FROM predict_result_table`, SQLFlow calls the third party parser to check syntax.
-- For extended SQL statements like the second and the third statement, SQLFlow parser further splits the statement into two parts, namely a standard select statement and a train/predict statement.
-    - SQLFlow verifies the first half is a syntactically correct select statement.
-    - SQLFlow parses the second half using the extended parser.
+After the parsing of TTP and ESP, SQLFlow will generate a workflow based on the parsed results.
 
 ## Design Choices
 
-### Lexer vs. Third-Party Parser
+SQLFlow needs to decide where to call which parser. Here are two proposals.
 
-One major technical challenge is splitting, which includes
+In the first proposal, we use the lexer of the ESP to scan the SQL program and receive a sequence of tokens. SQLFlow splits the SQL program by the `;` token and gets a list of substrings. In each substring, SQLFlow splits the extended SQL by looking for consecutive tokens like [`TO`, `TRAIN`], or [`TO`, `PREDICT`]. If found, SQLFlow splits the substring at the beginning position of the `TO` token. TPP will parse the first half of the substring, and ESP will parse the second half. If not found, TPP will parse the whole substring. For example, the lexer can go through the SQL statement like `SELECT ... TO TRAIN` and find it satisfies the splitting criteria.
 
-1. Splitting a SQL program into multiple SQL statements.
-1. Splitting an extended SQL statement into a standard select statement and a train/predict statement.
+While this proposal is straight forward to implement, it is incomplete. Because ESP's lexer can't tokenize SQL programs uniformly across different SQL dialects, this proposal may lead to errors in the splitting. Also, SQLFlow needs to deal with special cases like `ALTER TABLE table_name RENAME TO train`, which is a standard SQL statement by will be considered as an extended SQL statement in the proposal.
 
-There are two possible solutions.
+In the second proposal, SQLFlow begins parsing by using the TPP. If TPP encounters an error at position `p`, TPP will try to parse on the SQL statement before `p`, if success, ESP will parse on the statement after `p`. SQLFlow repeat these steps until the end of the SQL program. We can put this logic as the following pseudo-code.
 
-#### Solution 1: Splitting using Lexer
+```go
+func Parse(sql_program string) (nodes, error) {
+    allNodes := make([]nodes, 0)
+    while not done processing sql_program {
+        // Start parsing by the third party parser
+        nodes, err := tpp.Parse(sql_program)
+        if err != nil {
+            // Error message from a parser should contain error position.
+            pos := parseErrorPosition(err) 
+            leftPart = sql[:pos]
+            rightPart = sql[pos:]
 
-SQLFlow lexer scans the SQL program and receives a sequence of tokens.
+            nodes, errLeft := tpp.Parse(leftPart)
+            // In this case, the SQL is not acceptable due to the syntax error
+            if errLeft != nil {
+               return nil, err 
+            }
 
-SQLFlow splits the SQL program by the `;` token.
+            // If leftPart is acceptable, it is a legitimate  SELECT statement.
+            // We then try right part with SQLFlow parser using the extended syntax parser.
+            node, errRight := esp.Parse(rightPart)
+            if errRight != nil {
+                return false, err
+            }
 
-SQLFlow splits the extended SQL by looking for consecutive tokens returned by the lexer. If SQLFlow finds the consecutive tokens like [`TO`, `TRAIN`] or [`TO`, `PREDICT`], it splits the SQL string at the beginning of the first token in the list. For example, the lexer can go through the SQL statement `SELECT ... TO TRAIN` and find it satisfies the splitting criteria.
+            // Combine the select statement and the ML clause
+            nodes[-1] = combineNode(nodes[-1], node)
+        }
+        allNodes = append(allNodes, nodes)
+    }
+    
 
-Pros:
-1. Straight forward to implement.
-
-Cons:
-1. Incompleteness: single quote, double quote, square parentheses have different meanings in different SQL dialects. SQLFlow Lexer can't tokenize SQL programs of varying SQL dialects uniformly. This may lead to errors in the splitting.
-1. Needs to deal with special cases like `ALTER TABLE table_name RENAME TO train`.
-
-#### Solution 2: Splitting using the Third Party Parser
-
-SQLFlow begins parsing by using the third party parser(TPP). If TPP encounters an error at position `p`, TPP redoes parsing on the SQL statement before `p`, if success, extended SQL parser will parse on the statement after `p`. SQLFlow repeat these steps until the end of the SQL program.
-
-To demonstrate the above logic, let's consider the following SQL program.
-
-```SQL
-CREATE TABLE my_training_table AS SELECT ...;
-
-SELECT ... TO TRAIN ...;
-
-SELECT ... TO PREDICT ...;
-
-SELECT * FROM predict_result_table;
+    return allNodes, nil 
+}
 ```
 
-SQLFlow does the following step.
-
-1. TPP parses on the first line, stop at the `;`, and succeed.
-1. TPP parses on the second line and encounters an error at `TO TRAIN`.
-    1. TPP parses the `SELECT ...` and succeeds.
-    1. The extended parser parses `TO TRAIN ...`, stops at `;` and succeeds.
-1. TPP parses on the third line and encounters an error at `TO PREDICT`.
-    1. TPP parses the `SELECT ...` and succeeds.
-    1. The extended parser parses `TO PREDICT ...`, stops at `;` and succeeds.
-1. TPP parse on the fourth line and succeed.
-
-Pros:
-1. We can support different SQL dialects.
+This proposal has many advantages:
 1. We start parsing from the beginning, so the TPP has a chance to raise useful error messages based on its global view.
-1. Distinguishing a SQL statement between standard SQL and extended SQL becomes trivial (i.e., if the third party parser can't parse the statement alone, then it is an extended SQL statement).
+1. Distinguishing a SQL statement between standard SQL and extended SQL becomes trivial (i.e., if the TPP can't parse the statement alone, then it is an extended SQL statement).
 1. Splitting a SQL program into multiple SQL statements becomes trivial.
 
-Cons:
-1. The error position `p` raise by TPP might be inaccurate. However, we haven't found any counterexample in our experiments at #1046 and #1103.
+One concern is that the error position `p` raise by TPP might be inaccurate. However, we haven't found any specific case in our experiments at #1046 and #1103.
 
-Based on the above pros and cons, we choose the TPP solution.
-
-### gRPC vs. Local Command Line
-
-SQLFlow is written in Go, third party parsers for Calcite/HiveQL are written in Java. So we need to call the third parse via either gRPC or local command line.
-
-We prefer the local command line for the following reason.
-1. We can avoid setting up an additional gRPC server, which makes the testing/deployment simpler. And because there is no downstream call for the parser, wrapping the parser as a service might be overkill.
-1. We can guarantee the isolation between parsing requests. The gPRC server may fail due to an unexpected request, meaning one request can affect the other.
+So we choose the second proposal two over the first proposal.
 
 ## Implementation Details
 
-### Change `TRAIN/PREDICT` to `TO TRAIN/PREDICT`
+### Change `TRAIN/PREDICT/ANALYZE` to `TO TRAIN/TO PREDICT/TO EXPLAIN`
 
 SQLFlow syntax should be compatible with the standard SQL syntax. During our earlier experiments, we found using `TRAIN` along to denote the SQL extension is not enough. In cases like
 1. `select * from mytable train dnn ...`, the SQL syntax will treat `train` as an alias of `mytable`.
@@ -143,6 +118,10 @@ It returns <statements, idx, ""> if Calcite parser accepts part of the SQL progr
     output: {"select 1;", "select 1"}, 19, nil
 It returns <nil, -1, error> if an error is occurred.
 ```
+
+### Call the Third-Party Parser
+
+SQLFlow is written in Go, third party parsers for Calcite/HiveQL are written in Java. So we need to call the third parse via either gRPC or local command line. We prefer the local command line for the following reasons. Firstly, we can avoid setting up an additional gRPC server, which makes the testing/deployment simpler. And because there is no downstream call for the parser, wrapping the parser as a service might be overkill. Secondly, We can guarantee the isolation between parsing requests. The gPRC server may fail due to an unexpected request, meaning one request can affect the other.
 
 ### Remove Comments
 
