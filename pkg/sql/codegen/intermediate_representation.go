@@ -34,7 +34,7 @@ const (
 // Delimiter indicates the decoding method of a field. For example, the field may
 // contain a string like "1,23,42" which represent a 3-D tensor [1, 23, 42].
 //
-// Shape indicates the shape of the tensor represented for a field. For exmaple, the
+// Shape indicates the shape of the tensor represented for a field. For example, the
 // field may contain a string like "1,23,42" which represent a 3-D tensor, the shape
 // will be [3].
 //
