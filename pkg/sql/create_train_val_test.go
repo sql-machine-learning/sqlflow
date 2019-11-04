@@ -26,12 +26,10 @@ FROM iris_train a,iris_test b
 WHERE a.class=b.class
 LIMIT 7
 `
+	// TODO(typhoonzero): original complex statement will error when run on Hive. If we are moving
+	// to use a separate SQL statement for retrieving this test can be removed.
 	testTrainAndValDataset = `
-SELECT a.sepal_length,b.sepal_width,a.petal_length,b.petal_width,a.class
-FROM iris.train a,iris.test b
-WHERE a.class=b.class
-LIMIT 7
-`
+SELECT * from iris.train`
 )
 
 func TestCreateTrainAndValDataset(t *testing.T) {
