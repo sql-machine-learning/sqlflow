@@ -177,7 +177,7 @@ func modelCreatorCode(resolved *resolvedTrainClause, args []string) (string, str
 		fmt.Sprintf("%s(%s)", modelName, strings.Join(cl, ",")), nil
 }
 
-func newALPSTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds *trainAndValDataset) (*alpsFiller, error) {
+func newALPSTrainFiller(pr *extendedSelect, db *DB, session *pb.Session) (*alpsFiller, error) {
 	resolved, err := resolveTrainClause(&pr.trainClause, &pr.standardSelect)
 	if err != nil {
 		return nil, err
@@ -283,17 +283,12 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds *tra
 		// TODO(joyyoj) hard code currently.
 		modelDir = fmt.Sprintf("arks://%s/%s.tar.gz", filepath.Join("sqlflow", userID), pr.trainClause.save)
 	}
-	var trainInput, evalInput string
-	if ds != nil {
-		trainInput, evalInput = ds.training, ds.validation
-	} else {
-		trainInput, evalInput = pr.tables[0], pr.tables[0]
-	}
+	trainTable, evalTable := pr.tables[0], resolved.ValidationDatasetTable
 	log.Printf("Will save the models on: %s\n", modelDir)
 	return &alpsFiller{
 		IsTraining:          true,
-		TrainInputTable:     trainInput,
-		EvalInputTable:      evalInput,
+		TrainInputTable:     trainTable,
+		EvalInputTable:      evalTable,
 		ScratchDir:          scratchDir,
 		ModelDir:            modelDir,
 		UserID:              userID,
@@ -335,9 +330,9 @@ func newALPSPredictFiller(pr *extendedSelect, session *pb.Session) (*alpsFiller,
 	}, nil
 }
 
-func alpsTrain(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *pb.Session, ds *trainAndValDataset) error {
+func alpsTrain(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *pb.Session) error {
 	var program bytes.Buffer
-	filler, err := newALPSTrainFiller(pr, db, session, ds)
+	filler, err := newALPSTrainFiller(pr, db, session)
 	if err != nil {
 		return err
 	}

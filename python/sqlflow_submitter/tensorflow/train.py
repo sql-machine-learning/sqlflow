@@ -106,12 +106,13 @@ def train(is_keras_model,
                 epochs=epochs if epochs else classifier.default_training_epochs(),
                 verbose=verbose)
         classifier.save_weights(save, save_format="h5")
-        if label_meta["feature_name"] != "":
+        if label_meta["feature_name"] != "" and validate_select != "":
             eval_result = classifier.evaluate(validate_input_fn(batch_size), verbose=verbose)
             print("Training set accuracy: {accuracy:0.5f}".format(**{"accuracy": eval_result[1]}))
     else:
         classifier.train(input_fn=lambda:train_input_fn(batch_size))
-        eval_result = classifier.evaluate(input_fn=lambda:validate_input_fn(batch_size))
-        print("Evaluation result:", eval_result)
+        if validate_select != "":
+            eval_result = classifier.evaluate(input_fn=lambda:validate_input_fn(batch_size))
+            print("Evaluation result:", eval_result)
 
     print("Done training")

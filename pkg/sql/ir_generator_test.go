@@ -28,22 +28,29 @@ func TestGenerateTrainIR(t *testing.T) {
 	a := assert.New(t)
 	parser := newParser()
 
-	normal := `SELECT c1, c2, c3,c4
-FROM my_table
-TRAIN DNNClassifier
-WITH model.n_classes=2, train.optimizer="adam", model.stddev=0.001, model.hidden_units=[128,64]
-COLUMN c1,NUMERIC(c2, [128, 32]),CATEGORY_ID(c3, 512),
-       SEQ_CATEGORY_ID(c3, 512),
-	   CROSS([c1,c2], 64),
-	   BUCKET(NUMERIC(c1, [100]), 100),
-	   EMBEDDING(CATEGORY_ID(c3, 512), 128, mean),
-	   NUMERIC(DENSE(c1, 64, COMMA), [128]),
-	   CATEGORY_ID(SPARSE(c2, 10000, COMMA), 128),
-	   SEQ_CATEGORY_ID(SPARSE(c2, 10000, COMMA), 128),
-	   EMBEDDING(c1, 128, sum),
-	   EMBEDDING(SPARSE(c2, 10000, COMMA, "int"), 128, sum)
-LABEL c4
-INTO mymodel;`
+	normal := `
+	SELECT c1, c2, c3, c4
+	FROM my_table
+	TRAIN DNNClassifier
+	WITH
+		model.n_classes=2,
+		train.optimizer="adam",
+		model.stddev=0.001,
+		model.hidden_units=[128,64],
+		validation.dataset="SELECT c1, c2, c3, c4 FROM my_table LIMIT 10"
+	COLUMN c1,NUMERIC(c2, [128, 32]),CATEGORY_ID(c3, 512),
+		SEQ_CATEGORY_ID(c3, 512),
+		CROSS([c1,c2], 64),
+		BUCKET(NUMERIC(c1, [100]), 100),
+		EMBEDDING(CATEGORY_ID(c3, 512), 128, mean),
+		NUMERIC(DENSE(c1, 64, COMMA), [128]),
+		CATEGORY_ID(SPARSE(c2, 10000, COMMA), 128),
+		SEQ_CATEGORY_ID(SPARSE(c2, 10000, COMMA), 128),
+		EMBEDDING(c1, 128, sum),
+		EMBEDDING(SPARSE(c2, 10000, COMMA, "int"), 128, sum)
+	LABEL c4
+	INTO mymodel;
+	`
 
 	r, e := parser.Parse(normal)
 	a.NoError(e)
@@ -52,6 +59,7 @@ INTO mymodel;`
 	a.NoError(err)
 	a.Equal("DNNClassifier", trainIR.Estimator)
 	a.Equal("SELECT c1, c2, c3, c4\nFROM my_table", trainIR.Select)
+	a.Equal("SELECT c1, c2, c3, c4 FROM my_table LIMIT 10", trainIR.ValidationSelect)
 
 	for key, attr := range trainIR.Attributes {
 		if key == "model.n_classes" {
@@ -65,7 +73,7 @@ INTO mymodel;`
 			a.True(ok)
 			a.Equal(128, l[0].(int))
 			a.Equal(64, l[1].(int))
-		} else {
+		} else if key != "validation.dataset" {
 			a.Failf("error key: %s", key)
 		}
 	}

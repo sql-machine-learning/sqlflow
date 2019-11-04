@@ -37,6 +37,9 @@ Show verbose logs when training.
 possible values: 0, 1`, attribute.IntChoicesChecker([]int{0, 1})},
 	"model.*": {attribute.Unknown, `parameters defined by the model implementation, e.g. https://www.tensorflow.org/api_docs/python/tf/estimator/DNNClassifier#__init__, customized model example: https://github.com/sql-machine-learning/models/blob/develop/sqlflow_models/dnnclassifier.py#L4`,
 		attribute.EmptyChecker()},
+	"validation.dataset": {attribute.String, `[default=""]
+Specify the dataset for validation.
+example: "SELECT * FROM petal_length FROM iris LIMIT 100"`, nil},
 }
 
 func intArrayToJSONString(ia []int) string {
