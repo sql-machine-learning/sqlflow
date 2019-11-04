@@ -26,8 +26,9 @@ FROM iris_train a,iris_test b
 WHERE a.class=b.class
 LIMIT 7
 `
-	// TODO(typhoonzero): original complex statement will error when run on Hive. If we are moving
-	// to use a separate SQL statement for retrieving this test can be removed.
+	// TODO(typhoonzero): original complex statement will error when run on Hive
+	// (CI resource not enouph, see: https://community.cloudera.com/t5/Support-Questions/HIVE-return-code-2-from-org-apache-hadoop-hive-ql-exec-mr/td-p/19750).
+	// If we are moving to use a separate SQL statement for retrieving this test can be removed.
 	testTrainAndValDataset = `
 SELECT * from iris.train`
 )
