@@ -335,7 +335,7 @@ func InferFeatureColumns(ir *codegen.TrainIR) error {
 				}
 				cs, ok := fmMap[slctKey]
 				if !ok {
-					return fmt.Errorf("column not found or infered: %s", slctKey)
+					return fmt.Errorf("column not found or inferred: %s", slctKey)
 				}
 				if cs.DType != codegen.String {
 					fcMap[target][slctKey] = append(fcMap[target][slctKey],

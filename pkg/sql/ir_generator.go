@@ -567,7 +567,7 @@ func parseShape(e *expr) ([]int, error) {
 	return shape, nil
 }
 
-// parseResultTable parse out the table name from the INTO statment
+// parseResultTable parse out the table name from the INTO statement
 // as the following 3 cases:
 // db.table.class_col -> db.table, class_col # cut the column name
 // db.table -> db.table               # using the specified db
