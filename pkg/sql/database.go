@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"strings"
 
-	// import drivers for heterogonous DB support
+	// import drivers for heterogenous DB support
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/mattn/go-sqlite3"
 	_ "sqlflow.org/gohive"
@@ -32,7 +32,7 @@ type DB struct {
 	*sql.DB
 }
 
-// Open pases a datasource string into driver name and datasource name,
+// open passes a datasource string into driver name and datasource name,
 // then opens a database specified by the driver name and a driver-specific
 // data source name, usually consisting of at least a database name and
 // connection information.
@@ -51,7 +51,7 @@ func open(datasource string) (*DB, error) {
 	case "sqlite3", "mysql", "hive", "maxcompute":
 		db.DB, err = sql.Open(db.driverName, db.dataSourceName)
 	default:
-		return nil, fmt.Errorf("sqlfow currently doesn't support DB %v", db.driverName)
+		return nil, fmt.Errorf("sqlflow currently doesn't support DB %v", db.driverName)
 	}
 	return db, err
 }

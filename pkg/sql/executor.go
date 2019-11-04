@@ -96,7 +96,7 @@ func splitExtendedSQL(slct string) ([]string, error) {
 	return []string{slct}, nil
 }
 
-// SplitMultipleSQL returns a list of SQL statements if the input statements contains mutiple
+// SplitMultipleSQL returns a list of SQL statements if the input statements contains multiple
 // SQL statements separated by ;
 func SplitMultipleSQL(statements string) ([]string, error) {
 	l := newLexer(statements)
@@ -116,9 +116,9 @@ func SplitMultipleSQL(statements string) ([]string, error) {
 			break
 		}
 		if t == ';' {
-			splited := statements[splitPos:l.pos]
-			splited = strings.TrimSpace(splited)
-			sqlList = append(sqlList, splited)
+			splitted := statements[splitPos:l.pos]
+			splitted = strings.TrimSpace(splitted)
+			sqlList = append(sqlList, splitted)
 			splitPos = l.pos
 		}
 	}
@@ -187,7 +187,7 @@ func query(slct string, db *DB, wr *PipeWriter) error {
 }
 
 // parseRow calls rows.Scan to retrieve the current row, and convert
-// each cell value from {}interface to an accurary value.  It then
+// each cell value from {}interface to an accuracy value.  It then
 // writes the converted row into wr.
 func parseRow(columns []string, columnTypes []*sql.ColumnType, rows *sql.Rows, wr *PipeWriter) error {
 	// Since we don't know the table schema in advance, we create
@@ -223,7 +223,7 @@ func parseRow(columns []string, columnTypes []*sql.ColumnType, rows *sql.Rows, w
 	return nil
 }
 
-// runQeury creates a pipe before starting a goroutine that execute
+// runQuery creates a pipe before starting a goroutine that execute
 // query, which runs slct and writes retrieved rows to a pipe.
 // runQuery returns the read end of the pipe.  The caller doesn't have
 // to close the pipe because the query goroutine will close it after
@@ -253,7 +253,7 @@ func runExec(slct string, db *DB) *PipeReader {
 
 		err := func() error {
 			defer func(startAt time.Time) {
-				log.Debugf("runEexc %v finished, elapsed:%v", slct, time.Since(startAt))
+				log.Debugf("runExec %v finished, elapsed:%v", slct, time.Since(startAt))
 			}(time.Now())
 
 			res, e := db.Exec(slct)
@@ -286,7 +286,7 @@ func runExec(slct string, db *DB) *PipeReader {
 }
 
 func isUnsupervisedLearning(pr *extendedSelect) bool {
-	// TODO(Yancey1989): It's an immature way to determinate whether it's a unsupservised learning model or not.
+	// TODO(Yancey1989): It's an immature way to determinate whether it's a unsupervised learning model or not.
 	if pr.label == "" {
 		return true
 	}

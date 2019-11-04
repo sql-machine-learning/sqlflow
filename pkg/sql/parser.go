@@ -97,7 +97,7 @@ type trainClause struct {
 
 /* If no FOR in the COLUMN, the key is "" */
 type columnClause map[string]exprlist
-type filedClause exprlist
+type fieldClause exprlist
 
 type attrs map[string]*expr
 
