@@ -573,13 +573,18 @@ func CaseSelect(t *testing.T) {
 
 func CaseTrainSQL(t *testing.T) {
 	a := assert.New(t)
-	trainSQL := fmt.Sprintf(`SELECT *
-FROM %s.%s
-TRAIN DNNClassifier
-WITH model.n_classes = 3, model.hidden_units = [10, 20]
-COLUMN sepal_length, sepal_width, petal_length, petal_width
-LABEL class
-INTO sqlflow_models.my_dnn_model;`, caseDB, caseTrainTable)
+	trainSQL := fmt.Sprintf(`
+	SELECT *
+	FROM %s.%s
+	TRAIN DNNClassifier
+	WITH
+		model.n_classes = 3,
+		model.hidden_units = [10, 20],
+		validation.dataset = "SELECT * FROM %s.%s LIMIT 30"
+	COLUMN sepal_length, sepal_width, petal_length, petal_width
+	LABEL class
+	INTO sqlflow_models.my_dnn_model;
+	`, caseDB, caseTrainTable, caseDB, caseTrainTable)
 	_, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)
@@ -821,21 +826,31 @@ INTO trained_elasticdl_keras_classifier;`, os.Getenv("MAXCOMPUTE_PROJECT"), "sql
 // CaseTrainALPS is a case for training models using ALPS with out feature_map table
 func CaseTrainALPS(t *testing.T) {
 	a := assert.New(t)
-	trainSQL := fmt.Sprintf(`SELECT deep_id, user_space_stat, user_behavior_stat, space_stat, l
-FROM %s.sparse_column_test
-LIMIT 100
-TRAIN DNNClassifier
-WITH model.n_classes = 2, model.hidden_units = [10, 20], train.batch_size = 10, engine.ps_num=0, engine.worker_num=0, engine.type=local
-COLUMN SPARSE(deep_id,15033,COMMA,int),
-       SPARSE(user_space_stat,310,COMMA,int),
-       SPARSE(user_behavior_stat,511,COMMA,int),
-       SPARSE(space_stat,418,COMMA,int),
-       EMBEDDING(CATEGORY_ID(deep_id,15033,COMMA),512,mean),
-       EMBEDDING(CATEGORY_ID(user_space_stat,310,COMMA),64,mean),
-       EMBEDDING(CATEGORY_ID(user_behavior_stat,511,COMMA),64,mean),
-       EMBEDDING(CATEGORY_ID(space_stat,418,COMMA),64,mean)
-LABEL l
-INTO model_table;`, caseDB)
+	trainSQL := fmt.Sprintf(`
+	SELECT deep_id, user_space_stat, user_behavior_stat, space_stat, l
+	FROM %s.sparse_column_test
+	LIMIT 100
+	TRAIN DNNClassifier
+	WITH
+	    model.n_classes = 2,
+	    model.hidden_units = [10, 20],
+	    train.batch_size = 10,
+	    engine.ps_num = 0,
+	    engine.worker_num = 0,
+	    engine.type = local,
+	    validation.dataset.table = "%s.sparse_column_test"
+	COLUMN
+	    SPARSE(deep_id,15033,COMMA,int),
+	    SPARSE(user_space_stat,310,COMMA,int),
+	    SPARSE(user_behavior_stat,511,COMMA,int),
+	    SPARSE(space_stat,418,COMMA,int),
+	    EMBEDDING(CATEGORY_ID(deep_id,15033,COMMA),512,mean),
+	    EMBEDDING(CATEGORY_ID(user_space_stat,310,COMMA),64,mean),
+	    EMBEDDING(CATEGORY_ID(user_behavior_stat,511,COMMA),64,mean),
+	    EMBEDDING(CATEGORY_ID(space_stat,418,COMMA),64,mean)
+	LABEL l
+	INTO model_table;
+	`, caseDB, caseDB)
 	_, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("run trainSQL error: %v", err)
