@@ -31,7 +31,7 @@ public class CalciteParser {
    * Returns { "epos" : -1 "error" : "***"} if both parsing failed.
    */ 
   public static void main( String[] args ) {
-    if (args.length != 1) {
+    if (args.length != 2) {
       throw new IllegalArgumentException("CalciteParser needs two arguments. 1. output path, 2. Calcite SQL");
     }
     try {
