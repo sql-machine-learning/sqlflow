@@ -62,7 +62,7 @@ Done predicting. Predict table : iris.predict
 
 - [Build from source](/doc/build.md)
 - [The walkthrough of the source code](/doc/walkthrough.md)
-- [The choice of parser generator](/doc/design/design_sql_parser.md)
+- [The choice of parser generator](/doc/design/sql_parser.md)
 
 ## Roadmap
 

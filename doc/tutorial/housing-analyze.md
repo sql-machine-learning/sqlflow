@@ -1,6 +1,6 @@
 # Analyzing Model on SQLFlow Tutorial
 
-The [Analyzer](../design/design_analyzer.md) is designed to explain the machine learning model in SQLFlow. In this tutorial, you will learn how to,
+The [Analyzer](../design/analyzer.md) is designed to explain the machine learning model in SQLFlow. In this tutorial, you will learn how to,
 
 - [Train an XGBoost](housing-xgboost.md) tree model on [the Boston housing dataset](https://www.kaggle.com/c/boston-housing).
 - Analyze the trained model using `ANALYZE` SQL statements.
