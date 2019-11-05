@@ -582,3 +582,42 @@ func parseResultTable(intoStatement string) (string, string, error) {
 		return "", "", fmt.Errorf("error result table format, should be db.table.class_col or db.table or table")
 	}
 }
+
+// ProgramToIR generate a list of IRs from a SQL program
+func ProgramToIR(sqls []string, connStr, cwd, modelDir string) ([]codegen.SQLFlowIR, error) {
+	IRs := []codegen.SQLFlowIR{}
+	for _, sql := range sqls {
+		splittedSQL, err := splitExtendedSQL(sql)
+		if err != nil {
+			return nil, err
+		}
+		if len(splittedSQL) == 2 {
+			parsed, err := newParser().Parse(sql)
+			if err != nil {
+				return nil, err
+			}
+			if parsed.train {
+				ir, err := generateTrainIR(parsed, connStr)
+				if err != nil {
+					return nil, err
+				}
+				IRs = append(IRs, ir)
+			} else if parsed.analyze {
+				ir, err := generateAnalyzeIR(parsed, connStr, cwd, modelDir)
+				if err != nil {
+					return nil, err
+				}
+				IRs = append(IRs, ir)
+			} else {
+				ir, err := generatePredictIR(parsed, connStr, cwd, modelDir)
+				if err != nil {
+					return nil, err
+				}
+				IRs = append(IRs, ir)
+			}
+		}
+		standardSQL := codegen.StandardSQLIR(sql)
+		IRs = append(IRs, &standardSQL)
+	}
+	return IRs, nil
+}

@@ -21,6 +21,8 @@ package server
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -55,6 +57,18 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 	if err != nil {
 		return err
 	}
+	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(cwd)
+
+	irs, err := sf.ProgramToIR(sqlStatements, req.Session.DbConnStr, cwd, s.modelDir)
+	if err != nil {
+		return err
+	}
+	fmt.Println(irs)
+
 	for _, singleSQL := range sqlStatements {
 		var pr *sf.PipeReader
 		startTime := time.Now().UnixNano()

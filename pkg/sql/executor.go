@@ -28,6 +28,7 @@ import (
 	"time"
 
 	pb "sqlflow.org/sqlflow/pkg/server/proto"
+	"sqlflow.org/sqlflow/pkg/sql/codegen"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/xgboost"
 )
@@ -48,6 +49,16 @@ func Run(slct string, db *DB, modelDir string, session *pb.Session) *PipeReader 
 		return runExtendedSQL(slct, db, modelDir, session)
 	}
 	return runStandardSQL(slct, db)
+}
+
+// RunIRList execute all kind of parsed SQL statements and returns the result
+func RunIRList(irs []codegen.SQLFlowIR, db *DB) *PipeReader {
+	for _, ir := range irs {
+		switch ir.(type) {
+		case *codegen.StandardSQLIR:
+			pr := runStandardSQL(string(*ir.(*codegen.StandardSQLIR)), db)
+		}
+	}
 }
 
 // splitExtendedSQL splits an extended select statement into

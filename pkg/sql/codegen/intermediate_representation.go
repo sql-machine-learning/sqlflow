@@ -59,6 +59,12 @@ type FeatureColumn interface {
 	GetFieldMeta() []*FieldMeta
 }
 
+// SQLFlowIR represent all kind of IRs including: TrainIR, PredictIR, AnalyzeIR and standard SQL.
+type SQLFlowIR interface {
+	// This function is used only for restrict the IR struct types
+	IsIR()
+}
+
 // TrainIR is the intermediate representation for code generation of a training job.
 //
 // Please be aware that the TrainIR intentionally excludes the model table name in the
@@ -91,6 +97,9 @@ type TrainIR struct {
 	Label FeatureColumn
 }
 
+// IsIR is used only for restrict the IR struct types
+func (trainIR *TrainIR) IsIR() {}
+
 // PredictIR is the intermediate representation for code generation of a prediction job
 //
 // Please be aware the PredictionIR contains the result table name, so the
@@ -112,6 +121,9 @@ type PredictIR struct {
 	TrainIR *TrainIR
 }
 
+// IsIR is used only for restrict the IR struct types
+func (predictIR *PredictIR) IsIR() {}
+
 // AnalyzeIR is the intermediate representation for code generation of a analysis job
 type AnalyzeIR struct {
 	// DataSource contains the connection information. For example, "hive://root:root@localhost:10000/churn"
@@ -127,3 +139,12 @@ type AnalyzeIR struct {
 	// TrainIR is the TrainIR used for generating the training job of the corresponding model
 	TrainIR *TrainIR
 }
+
+// IsIR is used only for restrict the IR struct types
+func (analyzeIR *AnalyzeIR) IsIR() {}
+
+// StandardSQLIR is a string of a standard SQL statement that can run on the database system.
+type StandardSQLIR string
+
+// IsIR is used only for restrict the IR struct types
+func (sql *StandardSQLIR) IsIR() {}
