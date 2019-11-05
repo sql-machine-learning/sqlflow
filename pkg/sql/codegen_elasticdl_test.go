@@ -70,7 +70,7 @@ func TestTrainElasticDLFiller(t *testing.T) {
 	r, e := parser.Parse(wndStatement)
 	a.NoError(e)
 	session := &pb.Session{UserId: "sqlflow_user"}
-	filler, e := newElasticDLTrainFiller(r, testDB, session, nil)
+	filler, e := newElasticDLTrainFiller(r, testDB, session)
 	a.NoError(e)
 	a.True(filler.IsTraining)
 	a.Equal("iris.train", filler.TrainInputTable)

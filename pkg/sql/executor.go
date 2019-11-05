@@ -322,21 +322,13 @@ func runExtendedSQL(slct string, db *DB, modelDir string, session *pb.Session) *
 
 			if pr.train {
 				if os.Getenv("SQLFLOW_submitter") == "elasticdl" {
-					return elasticDLTrain(wr, pr, db, cwd, session, nil)
-				}
-				var ds *trainAndValDataset
-				if !isUnsupervisedLearning(pr) {
-					// TODO(weiguo): fix the hard code 0.8
-					if ds, e = newTrainAndValDataset(db, pr.standardSelect.String(), pr.standardSelect.tables[0], 0.8); e != nil {
-						return e
-					}
-					defer releaseTrainAndValDataset(db, ds)
+					return elasticDLTrain(wr, pr, db, cwd, session)
 				}
 				// FIXME(weiguo): temporary branch to alps
 				if os.Getenv("SQLFLOW_submitter") == "alps" {
-					return alpsTrain(wr, pr, db, cwd, session, ds)
+					return alpsTrain(wr, pr, db, cwd, session)
 				}
-				return train(wr, pr, db, cwd, modelDir, slct, session, ds)
+				return train(wr, pr, db, cwd, modelDir, slct, session)
 			}
 
 			if pr.analyze {
@@ -347,7 +339,7 @@ func runExtendedSQL(slct string, db *DB, modelDir string, session *pb.Session) *
 			if os.Getenv("SQLFLOW_submitter") == "alps" {
 				return alpsPred(wr, pr, db, cwd, session)
 			} else if os.Getenv("SQLFLOW_submitter") == "elasticdl" {
-				return elasticDLPredict(wr, pr, db, cwd, session, nil)
+				return elasticDLPredict(wr, pr, db, cwd, session)
 			}
 			return pred(wr, pr, db, cwd, modelDir, session)
 		}()
@@ -406,7 +398,7 @@ func (cw *logChanWriter) Close() {
 	}
 }
 
-func train(wr *PipeWriter, tr *extendedSelect, db *DB, cwd string, modelDir string, slct string, session *pb.Session, ds *trainAndValDataset) error {
+func train(wr *PipeWriter, tr *extendedSelect, db *DB, cwd string, modelDir string, slct string, session *pb.Session) error {
 	_, e := verify(tr, db)
 	if e != nil {
 		return e
@@ -434,13 +426,6 @@ func train(wr *PipeWriter, tr *extendedSelect, db *DB, cwd string, modelDir stri
 		err = InferFeatureColumns(ir)
 		if err != nil {
 			return err
-		}
-		// TODO(typhoonzero): change to use validation clause to fill in ir.ValidationSelect
-		// Clustering model will have ds == nil
-		if ds == nil {
-			ir.ValidationSelect = ir.Select
-		} else {
-			ir.ValidationSelect = fmt.Sprintf("SELECT * FROM %s", ds.validation)
 		}
 
 		code, err := tensorflow.Train(ir)
