@@ -34,7 +34,6 @@ python scripts/copyright.py pkg/sql/parser.go
 # exits with 1 if there were differences and 0 means no differences.
 git diff --exit-code pkg/sql/parser.go
 
-go get -v -t ./...
 go install ./...
 
 # -p 1 is necessary since tests in different packages are sharing the same database
