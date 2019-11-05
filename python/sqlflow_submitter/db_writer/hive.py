@@ -47,7 +47,7 @@ class HiveDBWriter(BufferedDBWriter):
         else:
             raise ValueError("")
         result = cursor.fetchall()
-        cursor.execute("use %s " % self.conn.database)
+        cursor.execute("use %s " % self.conn.default_db)
         return result
     
     def _indexing_table_schema(self, table_schema):
