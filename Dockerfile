@@ -53,17 +53,14 @@ VOLUME /var/lib/mysql
 COPY scripts/docker/install-odps.bash /
 RUN /install-odps.bash
 
-# The SQLFlow magic command for Jupyter.
-ENV IPYTHON_STARTUP /root/.ipython/profile_default/startup/
-COPY scripts/docker/install-jypyter.bash /
-RUN /install-jupyter.bash
-
 # ElasticDL and kubectl
 COPY scripts/docker/install-elasticdl.bash /
 RUN /install-elasticdl.bash
 
-
-
+# The SQLFlow magic command for Jupyter.
+ENV IPYTHON_STARTUP /root/.ipython/profile_default/startup/
+COPY scripts/docker/install-jypyter.bash /
+RUN /install-jupyter.bash
 
 # -----------------------------------------------------------------------------------
 # Above Steps Should be Cached for Each CI Build if Dockerfile is not Changed.
