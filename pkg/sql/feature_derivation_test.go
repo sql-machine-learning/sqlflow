@@ -194,7 +194,7 @@ func TestFeatureDerivationNoColumnClause(t *testing.T) {
 	parser := newParser()
 
 	normal := `select * from iris.train
-	TRAIN DNNClassifier
+	TO TRAIN DNNClassifier
 	WITH model.n_classes=3, model.hidden_units=[10,10]
 	LABEL class INTO model_table;`
 

@@ -218,11 +218,11 @@ train_clause
 	$$.columns = $6
 	$$.save = $8
 }
-| TRAIN IDENT WITH attrs label_clause INTO IDENT {
-	$$.estimator = $2
-	$$.trainAttrs = $4
-	$$.label = $5
-	$$.save = $7
+| TO TRAIN IDENT WITH attrs label_clause INTO IDENT {
+	$$.estimator = $3
+	$$.trainAttrs = $5
+	$$.label = $6
+	$$.save = $8
 }
 ;
 

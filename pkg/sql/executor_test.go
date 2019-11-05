@@ -32,7 +32,7 @@ SELECT *
 FROM iris.train
 `
 	testTrainSelectIris = testSelectIris + `
-TRAIN DNNClassifier
+TO TRAIN DNNClassifier
 WITH
   model.n_classes = 3,
   model.hidden_units = [10, 20]
@@ -43,12 +43,12 @@ INTO sqlflow_models.my_dnn_model;
 	testPredictSelectIris = `
 SELECT *
 FROM iris.test
-predict iris.predict.class
+TO PREDICT iris.predict.class
 USING sqlflow_models.my_dnn_model;
 `
 	testClusteringTrain = `SELECT sepal_length, sepal_width, petal_length, petal_width
 FROM iris.train
-TRAIN sqlflow_models.DeepEmbeddingClusterModel
+TO TRAIN sqlflow_models.DeepEmbeddingClusterModel
 WITH
   model.pretrain_dims = [10,10],
   model.n_clusters = 3,
@@ -60,13 +60,13 @@ INTO sqlflow_models.my_clustering_model;
 	testClusteringPredict = `
 SELECT sepal_length, sepal_width, petal_length, petal_width
 FROM iris.test
-PREDICT iris.predict.class
+TO PREDICT iris.predict.class
 USING sqlflow_models.my_clustering_model;
 `
 	testXGBoostTrainSelectIris = ` 
 SELECT *
 FROM iris.train
-TRAIN xgboost.gbtree
+TO TRAIN xgboost.gbtree
 WITH
     objective="multi:softprob",
     train.num_boost_round = 30,
@@ -84,7 +84,7 @@ USING TreeExplainer;
 	testXGBoostPredictIris = ` 
 SELECT *
 FROM iris.test
-PREDICT iris.predict.class
+TO PREDICT iris.predict.class
 USING sqlflow_models.my_xgboost_model;
 `
 )

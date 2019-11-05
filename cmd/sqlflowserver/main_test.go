@@ -337,7 +337,7 @@ func CaseTrainTextClassificationIR(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := `SELECT news_title, class_id
 FROM text_cn.train_processed
-TRAIN DNNClassifier
+TO TRAIN DNNClassifier
 WITH model.n_classes = 17, model.hidden_units = [10, 20]
 COLUMN EMBEDDING(CATEGORY_ID(SPARSE(news_title,16000,COMMA), 16000),128,mean)
 LABEL class_id
@@ -352,7 +352,7 @@ func CaseTrainTextClassificationFeatureDerivation(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := `SELECT news_title, class_id
 FROM text_cn.train_processed
-TRAIN DNNClassifier
+TO TRAIN DNNClassifier
 WITH model.n_classes = 17, model.hidden_units = [10, 20]
 COLUMN EMBEDDING(SPARSE(news_title,16000,COMMA),128,mean)
 LABEL class_id
@@ -619,7 +619,7 @@ func CaseTrainFeatureDerevation(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`SELECT *
 FROM %s.%s
-TRAIN DNNClassifier
+TO TRAIN DNNClassifier
 WITH model.n_classes = 3, model.hidden_units = [10, 20]
 LABEL class
 INTO sqlflow_models.my_dnn_model;`, caseDB, caseTrainTable)
@@ -628,7 +628,7 @@ INTO sqlflow_models.my_dnn_model;`, caseDB, caseTrainTable)
 
 	// TODO(typhoonzero): also support string column type for training and prediction (column c6)
 	trainVaryColumnTypes := `SELECT c1, c2, c3, c4, c5, class from feature_derivation_case.train
-TRAIN DNNClassifier
+TO TRAIN DNNClassifier
 WITH model.n_classes=3, model.hidden_units=[10,10]
 COLUMN EMBEDDING(c3, 128, sum), EMBEDDING(SPARSE(c5, 10000, COMMA), 128, sum)
 LABEL class
@@ -983,7 +983,7 @@ func CaseTrainAndAnalyzeXGBoostModel(t *testing.T) {
 	trainStmt := `
 SELECT *
 FROM housing.train
-TRAIN xgboost.gbtree
+TO TRAIN xgboost.gbtree
 WITH
 	objective="reg:squarederror",
 	train.num_boost_round = 30
