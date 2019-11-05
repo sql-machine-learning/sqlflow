@@ -1,6 +1,6 @@
 sqlflow> SELECT *
 FROM iris.test
-PREDICT iris.predict.class
+TO PREDICT iris.predict.class
 USING sqlflow_models.my_dnn_model;
 -----------------------------
 2018/12/16 15:05:58 sqlflowCmd: run in Docker container

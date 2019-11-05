@@ -102,7 +102,7 @@ Again, just as the beginning of the iteration, we propose the syntax for trainin
 ```sql
 SELECT * FROM kaggle_credit_fraud_training_data
 LIMIT 1000
-TRAIN DNNClassifier       /* a pre-defined TensorFlow estimator, tf.estimator.DNNClassifier */
+TO TRAIN DNNClassifier       /* a pre-defined TensorFlow estimator, tf.estimator.DNNClassifier */
 WITH layers=[100, 200],   /* a parameter of the Estimator class constructor */
      train.batch_size = 8 /* a parameter of the Estimator.train method */
 COLUMN *,                 /* all columns as raw features */
@@ -131,7 +131,7 @@ Similarly, to infer the class (fraud or regular), we could
 
 ```sql
 SELECT * FROM kaggle_credit_fraud_development_data
-PREDICT kaggle_credit_fraud_development_data.class
+TO PREDICT kaggle_credit_fraud_development_data.class
 USING sqlflow_models.my_model_table;
 ```
 

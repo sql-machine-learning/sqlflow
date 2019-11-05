@@ -10,7 +10,7 @@ sqlflow> SELECT * FROM employee LIMIT 3;
 +------------+------------+-----------+-----------+
 
 sqlflow> SELECT * FROM employee
-TRAIN LogisticRegression
+TO TRAIN LogisticRegression
 COLUMN categorical_column_with_hash_bucket(name, 10), categorical_column(gender), age
 LABEL salary
 INTO my_project.my_lr_model;

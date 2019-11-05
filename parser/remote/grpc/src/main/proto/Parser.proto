@@ -24,7 +24,7 @@ message ParserRequest {
 
 message ParserResponse {
   // The index where we might want to split ParserRequest.query
-  // into a standard SELECT statement and the SQLFlow extension: TRAIN
+  // into a standard SELECT statement and the SQLFlow extension: TO TRAIN
   // or PREDICT.
   int32 index = 1; 
   string error = 2;

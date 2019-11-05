@@ -31,7 +31,7 @@ func TestGenerateTrainIR(t *testing.T) {
 	normal := `
 	SELECT c1, c2, c3, c4
 	FROM my_table
-	TRAIN DNNClassifier
+	TO TRAIN DNNClassifier
 	WITH
 		model.n_classes=2,
 		train.optimizer="adam",
@@ -167,7 +167,7 @@ func TestGeneratePredictIR(t *testing.T) {
 	a := assert.New(t)
 	parser := newParser()
 	predSQL := `SELECT * FROM iris.test
-PREDICT iris.predict.class
+TO PREDICT iris.predict.class
 USING sqlflow_models.mymodel;`
 	r, e := parser.Parse(predSQL)
 	a.NoError(e)
@@ -179,7 +179,7 @@ USING sqlflow_models.mymodel;`
 	a.Nil(e)
 	defer os.RemoveAll(modelDir)
 	stream := runExtendedSQL(`SELECT * FROM iris.train
-TRAIN DNNClassifier
+TO TRAIN DNNClassifier
 WITH model.n_classes=3, model.hidden_units=[10,20]
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
@@ -214,7 +214,7 @@ func TestGenerateAnalyzeIR(t *testing.T) {
 	stream := runExtendedSQL(`
 	SELECT *
 	FROM iris.train
-	TRAIN xgboost.gbtree
+	TO TRAIN xgboost.gbtree
 	WITH
 	    objective="multi:softprob",
 	    train.num_boost_round = 30,
