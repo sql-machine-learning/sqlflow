@@ -139,11 +139,11 @@ func TestSplitExtendedSQL(t *testing.T) {
 func TestSplitMulipleSQL(t *testing.T) {
 	a := assert.New(t)
 	splited, err := SplitMultipleSQL(`CREATE TABLE copy_table_1 AS SELECT a,b,c FROM table_1 WHERE c<>";";
-SELECT * FROM copy_table_1;SELECT * FROM copy_table_1 TRAIN DNNClassifier WITH n_classes=2 INTO test_model;`)
+SELECT * FROM copy_table_1;SELECT * FROM copy_table_1 TO TRAIN DNNClassifier WITH n_classes=2 INTO test_model;`)
 	a.NoError(err)
 	a.Equal("CREATE TABLE copy_table_1 AS SELECT a,b,c FROM table_1 WHERE c<>\";\";", splited[0])
 	a.Equal("SELECT * FROM copy_table_1;", splited[1])
-	a.Equal("SELECT * FROM copy_table_1 TRAIN DNNClassifier WITH n_classes=2 INTO test_model;", splited[2])
+	a.Equal("SELECT * FROM copy_table_1 TO TRAIN DNNClassifier WITH n_classes=2 INTO test_model;", splited[2])
 }
 
 func getDefaultSession() *pb.Session {
@@ -220,7 +220,7 @@ func TestExecutorTrainAndPredictionDNNClassifierDENSE(t *testing.T) {
 	a := assert.New(t)
 	a.NotPanics(func() {
 		stream := Run(`SELECT * FROM iris.train_dense
-TRAIN DNNClassifier
+TO TRAIN DNNClassifier
 WITH
 model.n_classes = 3,
 model.hidden_units = [10, 20],
@@ -233,7 +233,7 @@ INTO sqlflow_models.my_dense_dnn_model;
 `, testDB, "", getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
 		stream = Run(`SELECT * FROM iris.test_dense
-PREDICT iris.predict_dense.class
+TO PREDICT iris.predict_dense.class
 USING sqlflow_models.my_dense_dnn_model
 ;`, testDB, "", getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))

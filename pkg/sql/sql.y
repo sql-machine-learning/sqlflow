@@ -142,7 +142,7 @@
 %type  <atrs> attr
 %type  <atrs> attrs
 
-%token <val> SELECT FROM WHERE LIMIT TRAIN PREDICT ANALYZE WITH COLUMN LABEL USING INTO FOR AS
+%token <val> SELECT FROM WHERE LIMIT TRAIN PREDICT ANALYZE WITH COLUMN LABEL USING INTO FOR AS TO
 %token <val> IDENT NUMBER STRING
 
 %left <val> AND OR
@@ -205,18 +205,18 @@ opt_limit
 ;
 
 train_clause
-: TRAIN IDENT WITH attrs column_clause label_clause INTO IDENT {
-	$$.estimator = $2
-	$$.trainAttrs = $4
-	$$.columns = $5
-	$$.label = $6
-	$$.save = $8
+: TO TRAIN IDENT WITH attrs column_clause label_clause INTO IDENT {
+	$$.estimator = $3
+	$$.trainAttrs = $5
+	$$.columns = $6
+	$$.label = $7
+	$$.save = $9
   }
-| TRAIN IDENT WITH attrs column_clause INTO IDENT {
-	$$.estimator = $2
-	$$.trainAttrs = $4
-	$$.columns = $5
-	$$.save = $7
+| TO TRAIN IDENT WITH attrs column_clause INTO IDENT {
+	$$.estimator = $3
+	$$.trainAttrs = $5
+	$$.columns = $6
+	$$.save = $8
 }
 | TRAIN IDENT WITH attrs label_clause INTO IDENT {
 	$$.estimator = $2
@@ -227,8 +227,8 @@ train_clause
 ;
 
 predict_clause
-: PREDICT IDENT USING IDENT { $$.into = $2; $$.model = $4 }
-| PREDICT IDENT WITH attrs USING IDENT { $$.into = $2; $$.predAttrs = $4; $$.model = $6 }
+: TO PREDICT IDENT USING IDENT { $$.into = $3; $$.model = $5 }
+| TO PREDICT IDENT WITH attrs USING IDENT { $$.into = $3; $$.predAttrs = $5; $$.model = $7 }
 ;
 
 analyze_clause

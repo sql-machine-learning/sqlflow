@@ -61,7 +61,7 @@ func mockTrainIR() *codegen.TrainIR {
 	}
 	_ = `SELECT *
 		FROM iris.train
-	TRAIN DNNClassifier
+	TO TRAIN DNNClassifier
 	WITH train.batch_size=4,
 		 train.epoch=3,
 		 model.hidden_units=[10,20],

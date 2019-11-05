@@ -1,6 +1,6 @@
 sqlflow> SELECT *
 FROM iris.train
-TRAIN DNNClassifier
+TO TRAIN DNNClassifier
 WITH
   n_classes = 3,
   hidden_units = [10, 20]

@@ -34,7 +34,7 @@ It extends the SQL syntax to enable model training and inference.
 - SQLFlow server proxies statements without using extended syntax to an SQL engine
 - SQLFlow server translates each extended-syntax statement into a (Python) submitter program and runs it.
 - The submitter program runs SELECT on SQL engine and reads results for training/prediction.
-- The submitter program TRAIN the MODEL in sqlflow-models.
+- The submitter program TO TRAIN the MODEL in sqlflow-models.
 
 * Feature Column
 
