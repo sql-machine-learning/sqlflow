@@ -17,6 +17,8 @@ set -e
 
 service mysql start
 
+# enable go mod
+export GO111MODULE=on
 export SQLFLOW_TEST_DB=mysql
 # NOTE: we have already installed sqlflow_submitter under python installation path
 # using latest develop branch, but when testing on CI, we need to use the code in
@@ -34,7 +36,6 @@ python scripts/copyright.py pkg/sql/parser.go
 # exits with 1 if there were differences and 0 means no differences.
 git diff --exit-code pkg/sql/parser.go
 
-go get -v -t ./...
 go install ./...
 
 # -p 1 is necessary since tests in different packages are sharing the same database

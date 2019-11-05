@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# enable go mod
+export GO111MODULE=on
 export SQLFLOW_TEST_DB=maxcompute
 export MAXCOMPUTE_ENDPOINT="service.cn.maxcompute.aliyun.com/api?curr_project=gomaxcompute_driver_w7u&scheme=https"
 export MAXCOMPUTE_PROJECT="gomaxcompute_driver_w7u"
@@ -25,7 +27,6 @@ fi
 export PYTHONPATH=$GOPATH/src/sqlflow.org/sqlflow/python
 
 go generate ./...
-go get -v -t ./...
 go install ./...
 
 # -p 1 is necessary since tests in different packages are sharing the same database

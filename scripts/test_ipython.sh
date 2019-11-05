@@ -34,8 +34,10 @@ service mysql start
 sleep 1
 populate_example_dataset
 
+# enable go mod
+export GO111MODULE=on
+
 go generate ./...
-go get -v -t ./...
 go install ./...
 
 DATASOURCE="mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
