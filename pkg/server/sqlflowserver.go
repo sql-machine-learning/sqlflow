@@ -74,7 +74,7 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 			case string:
 				res, err = encodeMessage(s)
 			default:
-				return fmt.Errorf("unrecognize run channel return type %#v", s)
+				return fmt.Errorf("unrecognized run channel return type %#v", s)
 			}
 			if err != nil {
 				return err

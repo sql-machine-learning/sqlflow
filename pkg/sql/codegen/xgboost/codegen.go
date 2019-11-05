@@ -48,7 +48,7 @@ func resolveModelType(estimator string) (string, error) {
 	case "XGBOOST.DART":
 		return "dart", nil
 	default:
-		return "", fmt.Errorf("unsupport model name %v, currently supports xgboost.gbtree, xgboost.gblinear, xgboost.dart", estimator)
+		return "", fmt.Errorf("unsupported model name %v, currently supports xgboost.gbtree, xgboost.gblinear, xgboost.dart", estimator)
 	}
 }
 

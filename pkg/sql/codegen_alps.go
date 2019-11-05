@@ -312,7 +312,7 @@ func newALPSPredictFiller(pr *extendedSelect, session *pb.Session) (*alpsFiller,
 	ossKey := os.Getenv("OSS_KEY")
 	ossEp := os.Getenv("OSS_ENDPOINT")
 	if ossID == "" || ossKey == "" || ossEp == "" {
-		return nil, fmt.Errorf("Should set env OSS_ID, OSS_KEY and OSS_ENDPOINT while laucnh sqlflowserver")
+		return nil, fmt.Errorf("Should set env OSS_ID, OSS_KEY and OSS_ENDPOINT while launch sqlflowserver")
 	}
 	modelDir := fmt.Sprintf("oss://cmps-model/sqlflow/%s/%s.tar.gz", session.UserId, pr.predictClause.model)
 
