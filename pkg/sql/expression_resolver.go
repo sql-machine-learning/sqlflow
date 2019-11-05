@@ -694,7 +694,7 @@ func resolveColumnSpec(el *exprlist, isSparse bool) (*columns.ColumnSpec, error)
 }
 
 // resolveFeatureColumn returns the acutal feature column typed struct
-// as well as the columnSpec infomation.
+// as well as the columnSpec information.
 func resolveColumn(el *exprlist) (columns.FeatureColumn, *columns.ColumnSpec, error) {
 	head := (*el)[0].val
 	if head == "" {

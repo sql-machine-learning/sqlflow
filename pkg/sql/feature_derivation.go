@@ -273,7 +273,7 @@ func InferFeatureColumns(ir *codegen.TrainIR) error {
 		return err
 	}
 
-	// 1. Infer omited category_id_column for embedding_columns
+	// 1. Infer omitted category_id_column for embedding_columns
 	// 2. Add derivated feature column.
 	//
 	// need to store FeatureColumn under it's target in case of
@@ -307,12 +307,12 @@ func InferFeatureColumns(ir *codegen.TrainIR) error {
 						if embCol.CategoryColumn == nil {
 							cs, ok := fmMap[embCol.Name]
 							if !ok {
-								return fmt.Errorf("column not found or infered: %s", embCol.Name)
+								return fmt.Errorf("column not found or inferred: %s", embCol.Name)
 							}
 							// FIXME(typhoonzero): when to use sequence_category_id_column?
 							// if column fieldMeta is SPARSE, the sparse shape should be in cs.Shape[0]
 							bucketSize := int64(cs.Shape[0])
-							// if the column is infered as DENSE, use infered MaxID as the
+							// if the column is inferred as DENSE, use inferred MaxID as the
 							// categoryIDColumns's bucket_size
 							if cs.IsSparse == false {
 								if cs.MaxID == 0 {
@@ -335,7 +335,7 @@ func InferFeatureColumns(ir *codegen.TrainIR) error {
 				}
 				cs, ok := fmMap[slctKey]
 				if !ok {
-					return fmt.Errorf("column not found or infered: %s", slctKey)
+					return fmt.Errorf("column not found or inferred: %s", slctKey)
 				}
 				if cs.DType != codegen.String {
 					fcMap[target][slctKey] = append(fcMap[target][slctKey],

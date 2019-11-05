@@ -2,7 +2,7 @@
 
 This tutorial describes how to train a Clustering model using the Active Power Consumption dataset.
 
-The [Clustering model](https://github.com/sql-machine-learning/sqlflow/blob/develop/doc/design/design_clustermodel.md) is designed to support the unsupervised learning model on SQLFlow. In this tutorial, you will learn how to:
+The [Clustering model](https://github.com/sql-machine-learning/sqlflow/blob/develop/doc/design/clustermodel.md) is designed to support the unsupervised learning model on SQLFlow. In this tutorial, you will learn how to:
 - Train a clustering model based on deep embedding neural network on active power consumption dataset;
 - Predict the patterns of the unlabeled data using the trained model.
 - Clustering the date pairs according to the characteristics of power consumption. We can identify the difference in different categories.
