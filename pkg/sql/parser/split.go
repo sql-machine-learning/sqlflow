@@ -23,7 +23,7 @@ func init() {
 	tidb.Init()
 }
 
-func sqlflowParser(sql string) (string, error) {
+func extendedSyntaxParse(sql string) (string, error) {
 	// FIXME(tony): only supports "to train" for prototyping.
 	// Substitute this function for real SQLFlow parser later.
 	extendedSyntax := "to train;"
@@ -43,7 +43,7 @@ func split(sql string) ([]string, error) {
 	}
 
 	sql = sql[i:]
-	s, err := sqlflowParser(sql)
+	s, err := extendedSyntaxParse(sql)
 	if err != nil {
 		return nil, err
 	}
