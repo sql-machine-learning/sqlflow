@@ -87,8 +87,8 @@ func splitExtendedSQL(slct string) ([]string, error) {
 		if (typ[i] == TRAIN && typ[i+1] == IDENT && typ[i+2] == WITH) ||
 			(typ[i] == PREDICT && typ[i+1] == IDENT && typ[i+2] == USING) ||
 			(typ[i] == PREDICT && typ[i+1] == IDENT && typ[i+2] == WITH) ||
-			(typ[i] == ANALYZE && typ[i+1] == IDENT && typ[i+2] == WITH) ||
-			(typ[i] == ANALYZE && typ[i+1] == IDENT && typ[i+2] == USING) {
+			(typ[i] == EXPLAIN && typ[i+1] == IDENT && typ[i+2] == WITH) ||
+			(typ[i] == EXPLAIN && typ[i+1] == IDENT && typ[i+2] == USING) {
 			return []string{slct[:pos[i-1]], slct[pos[i-1]:]}, nil
 		}
 	}

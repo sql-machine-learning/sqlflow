@@ -53,7 +53,7 @@ INTO sqlflow_models.my_xgb_regression_model;
 
 TBD
 
-### ANALYZE
+### EXPLAIN
 
 TBD
 

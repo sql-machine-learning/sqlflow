@@ -1009,7 +1009,7 @@ INTO sqlflow_models.my_xgb_regression_model;
 	analyzeStmt := `
 SELECT *
 FROM housing.train
-ANALYZE sqlflow_models.my_xgb_regression_model
+TO EXPLAIN sqlflow_models.my_xgb_regression_model
 WITH
     shap_summary.plot_type="bar",
     shap_summary.alpha=1,
