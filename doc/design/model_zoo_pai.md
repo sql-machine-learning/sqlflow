@@ -1,8 +1,8 @@
-# Model Zoo on PAI TensorFlow
+# Model Zoo on Alibaba PAI
 
 ## Introduction
 
-[Alibaba PAI](https://www.alibabacloud.com/product/machine-learning) is an end-to-end platform that provides various machine learning algorithms to meet users' data mining and analysis requirements. PAI supports TensorFlow and many other machine learning frameworks. SQLFlow model zoo also works on PAI. [Model Zoo Design Doc](./design_model_zoo.md) is a high level design for SQLFlow model zoo. This document is about how to do model training, model prediction, and model analysis using SQLFlow model zoo on PAI.
+[Alibaba PAI](https://www.alibabacloud.com/product/machine-learning) is an end-to-end platform that provides various machine learning algorithms to meet users' data mining and analysis requirements. PAI supports TensorFlow and many other machine learning frameworks. SQLFlow model zoo also works on PAI. [Model Zoo Design Doc](model_zoo.md) is a high level design for SQLFlow model zoo. This document is about how to do model training, model prediction, and model analysis using SQLFlow model zoo on PAI.
 
 ## Background
 
@@ -59,17 +59,29 @@ SELECT * FROM pred_table ... TO PREDICT using my_awesome_model ... ;
 SELECT * FROM train_table ...  TO ANALYZE my_awesome_model USING TreeExplainer;
 ```
 
-The extended SELECT statements are executed as described in [Model Zoo Design Doc](./design_model_zoo.md#Submitter-Programs):
+The extended SELECT statements are executed as described in [Model Zoo Design Doc](model_zoo.md#Submitter-Programs):
 - If the model **is not** from a model zoo, The SQLFlow server converts these statements to a *submitter* program and submits the program to a specified engine.
-- If the model **is** from a model zoo, the submmiter program is mounted into a Docker image. the SQLFlow server calls k8s API to launch the Docker image on a k8s cluster.
+- If the model **is** from a model zoo, the submmiter program is mounted into a Docker image. The SQLFlow server calls k8s API to launch the Docker image on a k8s cluster.
+
+## Concepts
+
+Besides what described in [Model Zoo Concepts](model_zoo.md#Concepts), there are several new concepts about Alibaba PAI.
+
+1. The **PAI platform** or **PAI** for short is an end-to-end platform that provides various machine learning algorithms to meet your data mining and analysis requirements. PAI supports TensorFlow and many other machine learning frameworks. See [PAI Introduction](https://www.alibabacloud.com/help/doc-detail/67461.htm) for more details.
+
+1. **PAI TensorFlow** is the deployment of TensorFlow on **PAI**, with necessary optimization and further development that makes it possible to cooperate efficiently with other [Alibaba Cloud](https://www.alibabacloud.com/) components such as MaxCompute.
+
+1. A **PAI program** is a python program that is developed base on TensorFlow, MXNet or [other machine learning frameworks supported by PAI](https://www.alibabacloud.com/help/doc-detail/69688.htm).
+
+1. A **PAI task** is an instance of a **PAI program** that is being executed by the **PAI platform**.
 
 ## The Design
 
-### Base Image
+### Versioning and Releasing
 
-The base image of the SQLFlow model zoo should incorporate both odpscmd(which is already in place) and pyodps.  We propose to use `odpscmd` at the moment because it requires less code modification in both python and golang.
+Versioning and releasing in PAI model zoo is the same as what's described in [Model Zoo Design](model_zoo.md#Versioning-and-Releasing). The only requirement is that the base docker image of the SQLFlow model zoo should incorporate both `odpscmd`(which is already in place) and `pyodps`.  We propose to use `odpscmd` at the moment because it requires less code modification in both python and golang.
 
-### Submit a SQLFlow Task to PAI With Model Zoo
+### Submitter Programs of PAI Model Zoo
 
 Currently, each deployment of SQLFlow has been configured to use only one submitter. So we assume that all the tasks of the deployment of SQLFlow on PAI will be submitted to PAI.
 
@@ -93,11 +105,16 @@ When a user submits a SELECT statement as above, SQLFlow should take the followi
 
 For security reasons, we propose to leverage the existing user access control of MaxCompute. As a result of this consideration, the PAI model zoo table should be built on MaxCompute, which is typically the data source of a PAI training program. The model zoo table of PAI should contain the following fields:
 
-| model ID | Docker image ID | submitter program | data converter | model parameter file path | metrics | datetime | logview | statement | SQLFlow version | name |
-|----------|-----------------|-------------------|----------------|---------------------------|---------|----------|---------|-----------|-----------------|------|
-|          |                 |                   |                |                           |         |          |         |           |                 |      |
+| model ID | creator | model zoo release | model definition | submitter program | data converter | model parameter file path | metrics | datetime | logview | statement | SQLFlow version | name |
+|----------|---------|-------------------|------------------|-------------------|----------------|---------------------------|---------|----------|---------|-----------|-----------------|------|
 
-1. *model ID*, *Docker image ID*, *submitter program*, *data converter*, *model parameter file path*, these fields is described in [Model Zoo Design Doc](./design_model_zoo.md)
+1. *model ID*
+1. *creator*
+1. *model zoo release*
+1. *model definition*
+1. *submitter program*
+1. *data converter*
+1. *model parameter file path*
 1. *metrics*, the metrics that measure the training results, e.g. AUC, loss, F1 etc.
 1. *datetime*, a timestamp when the user start training.
 1. *logview*, logview URL of a PAI task.
@@ -105,8 +122,13 @@ For security reasons, we propose to leverage the existing user access control of
 1. *SQLFlow version*, the version of SQLFlow which generated the submitter program.
 1. *name*, the same meaning as its namesake in `odpscmd -e "pai -name ...`, defaults to "tensorflow"
 
-The last six fields is used to ease usage on PAI. 
+The 1st to 7th fields are consistent with the [Model Zoo Data Schema](model_zoo.md#Model-Zoo-Data-Schema) where they are introduced. The 8th to 13th fields are used to ease usage on PAI, because they are only useful for users of PAI model zoo, we can simply omit these extra fields when publishing a PAI model to `model.sqlflow.org`. Similarly, we can keep the extra fields unfilled when submitting a PAI task using a published model from `model.sqlflow.org`.
 
-### Model Sharing and Publication
+### Model Sharing
 
-For security reasons, in addition to models.sqlflow.org, we propose to deploy a private Docker registry with stricter access control for model publication and model sharing. Each user can enjoy all the models authorized from both public and private repositories.
+Model sharing in PAI model zoo is nearly the same as [Model Zoo Model Sharing](model_zoo.md#Model-Sharing). The only difference is, for security reasons, users can only access the models they are authorized.
+For example, suppose there is a model `my_first_model` that is trained by `an_analyst`, if another analyst wants to use the trained model, she not only need to use the full name `an_analyst/my_first_model`, but also need to have access to the model. The access control mechanism is based on an SSO system or similar systems.
+
+### Model Publication
+
+For the same security reasons, in addition to models.sqlflow.org, we propose to deploy a private Docker registry with stricter access control for model publication. Each user can enjoy all the models authorized from both public and private repositories. Beyond that, model publication in PAI model zoo is the same as [Model Zoo Model Publication](model_zoo.md#Model-Publication). 
