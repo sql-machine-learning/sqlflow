@@ -34,9 +34,6 @@ service mysql start
 sleep 1
 populate_example_dataset
 
-# enable go mod
-export GO111MODULE=on
-
 go generate ./...
 go install ./...
 
