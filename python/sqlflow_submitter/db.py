@@ -123,6 +123,7 @@ def connect(driver, database, user, password, host, port, session_cfg={}, auth="
                        host=host,
                        port=int(port),
                        auth_mechanism=auth)
+        conn.database = database
         conn.session_cfg = session_cfg
         return conn
     elif driver == "maxcompute":
