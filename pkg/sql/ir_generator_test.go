@@ -37,7 +37,7 @@ func TestGenerateTrainIR(t *testing.T) {
 		train.optimizer="adam",
 		model.stddev=0.001,
 		model.hidden_units=[128,64],
-		validation.dataset="SELECT c1, c2, c3, c4 FROM my_table LIMIT 10"
+		validation.select="SELECT c1, c2, c3, c4 FROM my_table LIMIT 10"
 	COLUMN c1,NUMERIC(c2, [128, 32]),CATEGORY_ID(c3, 512),
 		SEQ_CATEGORY_ID(c3, 512),
 		CROSS([c1,c2], 64),
@@ -73,7 +73,7 @@ func TestGenerateTrainIR(t *testing.T) {
 			a.True(ok)
 			a.Equal(128, l[0].(int))
 			a.Equal(64, l[1].(int))
-		} else if key != "validation.dataset" {
+		} else if key != "validation.select" {
 			a.Failf("error key: %s", key)
 		}
 	}

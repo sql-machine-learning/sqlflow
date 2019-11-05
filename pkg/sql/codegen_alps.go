@@ -283,7 +283,7 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB, session *pb.Session) (*alpsF
 		// TODO(joyyoj) hard code currently.
 		modelDir = fmt.Sprintf("arks://%s/%s.tar.gz", filepath.Join("sqlflow", userID), pr.trainClause.save)
 	}
-	trainTable, evalTable := pr.tables[0], resolved.ValidationDatasetTable
+	trainTable, evalTable := pr.tables[0], resolved.ValidationTable
 	log.Printf("Will save the models on: %s\n", modelDir)
 	return &alpsFiller{
 		IsTraining:          true,

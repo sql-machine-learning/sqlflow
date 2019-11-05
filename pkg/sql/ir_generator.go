@@ -59,13 +59,13 @@ func generateTrainIR(slct *extendedSelect, connStr string) (*codegen.TrainIR, er
 			Name: tc.label,
 		}}
 
-	validationDS, _ := parseValidataionDataset(attrList)
+	vslct, _ := parseValidataionSelect(attrList)
 	return &codegen.TrainIR{
 		DataSource: connStr,
 		Select:     slct.standardSelect.String(),
 		// TODO(weiguoz): This is a temporary implement. Specifying the
 		// validation dataset by keyword `VALIDATE` is the final solution.
-		ValidationSelect: validationDS,
+		ValidationSelect: vslct,
 		Estimator:        estimator,
 		Attributes:       attrList,
 		Features:         fcMap,
@@ -581,13 +581,13 @@ func parseAttrsGroup(attrs map[string]interface{}, group string) map[string]inte
 	return g
 }
 
-func parseValidataionDataset(attrs map[string]interface{}) (string, error) {
+func parseValidataionSelect(attrs map[string]interface{}) (string, error) {
 	validation := parseAttrsGroup(attrs, "validation.")
-	ds, ok := validation["dataset"].(string)
+	ds, ok := validation["select"].(string)
 	if ok {
 		return ds, nil
 	}
-	return "", fmt.Errorf("validation.dataset not found")
+	return "", fmt.Errorf("validation.select not found")
 }
 
 // parseResultTable parse out the table name from the INTO statement

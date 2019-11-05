@@ -60,7 +60,7 @@ type resolvedTrainClause struct {
 	CheckpointSteps               int
 	CheckpointDir                 string
 	KeepCheckpointMax             int
-	ValidationDatasetTable        string
+	ValidationTable               string
 	EvalSteps                     int
 	EvalStartDelay                int
 	EvalThrottle                  int
@@ -148,7 +148,7 @@ func resolveTrainClause(tc *trainClause, slct *standardSelect) (*resolvedTrainCl
 	}
 	modelParams := attrFilter(attrs, "model", true)
 	engineParams := attrFilter(attrs, "engine", true)
-	validationDatasetTable := getStringAttr(attrs, "validation.dataset.table", "")
+	validationTable := getStringAttr(attrs, "validation.table", "")
 
 	batchSize := getIntAttr(attrs, "train.batch_size", 1)
 	dropRemainder := getBoolAttr(attrs, "train.drop_remainder", true, false)
@@ -243,7 +243,7 @@ func resolveTrainClause(tc *trainClause, slct *standardSelect) (*resolvedTrainCl
 		CheckpointSteps:               checkpointSteps,
 		CheckpointDir:                 checkpointDir,
 		KeepCheckpointMax:             keepCheckpointMax,
-		ValidationDatasetTable:        validationDatasetTable,
+		ValidationTable:               validationTable,
 		EvalSteps:                     evalSteps,
 		EvalStartDelay:                evalStartDecaySecs,
 		EvalThrottle:                  evalThrottleSecs,

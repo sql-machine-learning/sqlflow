@@ -580,7 +580,7 @@ func CaseTrainSQL(t *testing.T) {
 	WITH
 		model.n_classes = 3,
 		model.hidden_units = [10, 20],
-		validation.dataset = "SELECT * FROM %s.%s LIMIT 30"
+		validation.select = "SELECT * FROM %s.%s LIMIT 30"
 	COLUMN sepal_length, sepal_width, petal_length, petal_width
 	LABEL class
 	INTO sqlflow_models.my_dnn_model;
@@ -838,7 +838,7 @@ func CaseTrainALPS(t *testing.T) {
 	    engine.ps_num = 0,
 	    engine.worker_num = 0,
 	    engine.type = local,
-	    validation.dataset.table = "%s.sparse_column_test"
+	    validation.table = "%s.sparse_column_test"
 	COLUMN
 	    SPARSE(deep_id,15033,COMMA,int),
 	    SPARSE(user_space_stat,310,COMMA,int),
