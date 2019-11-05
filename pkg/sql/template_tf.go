@@ -114,7 +114,7 @@ def train_input_fn(batch_size):
     # TODO(typhoonzero): add prefetch, cache if needed.
     dataset = dataset.shuffle(1000).batch(batch_size)
     {{if not .IsKerasModel}}
-    {{/* estimater.train have no argument epochs, so add in dataset here */}}
+    {{/* estimator.train have no argument epochs, so add in dataset here */}}
     dataset = dataset.repeat(EPOCHS if EPOCHS else 1)
     {{end}}
     return dataset

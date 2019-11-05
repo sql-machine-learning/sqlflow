@@ -40,7 +40,7 @@ const (
 //
 // IsSparse indicates the type of tensor for a field. True means the tensor is a sparse tensor.
 type FieldMeta struct {
-	Name      string    `json:"name"`      // e.g. "spetal_length"
+	Name      string    `json:"name"`      // e.g. "petal_length"
 	DType     FieldType `json:"dtype"`     // e.g. "float", "int32"
 	Delimiter string    `json:"delimiter"` // e.g. ","
 	Shape     []int     `json:"shape"`     // e.g. [1], [1 2 3]
@@ -49,7 +49,7 @@ type FieldMeta struct {
 	// e.g. the column values are: "MALE", "FEMALE", "NULL"
 	Vocabulary map[string]string `json:"vocabulary"` // use a map to generate a list without duplication
 	// if the column data is used as embedding(category_column()), the `num_buckets` should use the maxID
-	// appeared in the sample data. if error still occurs, users should set `num_buckts` manually.
+	// appeared in the sample data. if error still occurs, users should set `num_buckets` manually.
 	MaxID int64
 }
 
