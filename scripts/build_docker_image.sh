@@ -1,4 +1,5 @@
 #!/bin/bash
+
 # Copyright 2019 The SQLFlow Authors. All rights reserved.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,53 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 set -e
 
 
-# 0. Install conda using Miniconda.
-# We use conda to (1) specify the use of a specific version of Python, currently, 3.6, and (2) to
-# canonicalize the Python pacakge installation directory, currently,
-# /miniconda/envs/sqlflow-dev/lib/python3.6/site-packages/.  SQLFlow submitter programs could
-# depend on pacakges installed in the above canocicalized pacakge directory.
-curl -sL https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -o mconda-install.sh
-bash -x mconda-install.sh -b -p miniconda
-rm mconda-install.sh
-/miniconda/bin/conda create -y -q -n sqlflow-dev python=3.6 ${CONDA_ADD_PACKAGES}
-echo ". /miniconda/etc/profile.d/conda.sh" >> ~/.bashrc
-echo "source activate sqlflow-dev" >> ~/.bashrc
 
-# keras.datasets.imdb only works with numpy==1.16.1
-# NOTE: shap == 0.30.1 depends on dill but not include dill as it's dependency, need to install manually
-source /miniconda/bin/activate sqlflow-dev && python -m pip install \
-numpy==1.16.1 \
-tensorflow==${TENSORFLOW_VERSION} \
-mysqlclient==1.4.4 \
-impyla==0.16.0 \
-pyodps==0.8.3 \
-jupyter==1.0.0 \
-notebook==6.0.0 \
-sqlflow==0.7.0 \
-pre-commit==1.18.3 \
-dill==0.3.0 \
-shap==0.30.1 \
-${PIP_ADD_PACKAGES}
 
-# 1. Install Go
-curl --silent https://dl.google.com/go/go1.13.4.linux-amd64.tar.gz | tar -C /usr/local -xzf -
-mkdir -p /go
-
-# 2. Install Go compile tools
-go get github.com/golang/protobuf/protoc-gen-go
-mv $GOPATH/bin/protoc-gen-go /usr/local/bin/
-go get golang.org/x/lint/golint
-mv $GOPATH/bin/golint /usr/local/bin
-go get golang.org/x/tools/cmd/goyacc
-mv $GOPATH/bin/goyacc /usr/local/bin/
-go get golang.org/x/tools/cmd/cover
-mv $GOPATH/bin/cover /usr/local/bin/
-go get github.com/mattn/goveralls
-mv $GOPATH/bin/goveralls /usr/local/bin/
 
 # 3. Install protobuf compiler
 wget -q https://github.com/protocolbuffers/protobuf/releases/download/v3.7.1/protoc-3.7.1-linux-x86_64.zip
@@ -99,24 +58,7 @@ pip install xgboost==0.90
 # Re-enable this after Ant-XGBoost is ready.
 # pip install xgboost-launcher==0.0.4
 
-# 8. install Hadoop to use as the client when writing CSV to hive tables
-HADOOP_URL=https://archive.apache.org/dist/hadoop/common/hadoop-${HADOOP_VERSION}/hadoop-${HADOOP_VERSION}.tar.gz
-curl -fsSL "$HADOOP_URL" -o /tmp/hadoop.tar.gz
-tar -xzf /tmp/hadoop.tar.gz -C /opt/
-rm -rf /tmp/hadoop.tar.gz
-rm -rf /opt/hadoop-${HADOOP_VERSION}/share/doc
-# configure hdfs client to connect hdfs namenode at localhost:8020
-echo '<?xml version="1.0" encoding="UTF-8"?>
-<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
-<configuration>
-<property><name>hadoop.proxyuser.hue.hosts</name><value>*</value></property>
-<property><name>fs.defaultFS</name><value>hdfs://localhost:8020</value></property>
-<property><name>hadoop.proxyuser.hue.groups</name><value>*</value></property>
-<property><name>hadoop.proxyuser.root.groups</name><value></value></property>
-<property><name>hadoop.proxyuser.root.hosts</name><value></value></property>
-<property><name>hadoop.http.staticuser.user</name><value>root</value></property>
-</configuration>
-' > /opt/hadoop-${HADOOP_VERSION}/etc/hadoop/core-site.xml
+
 
 # 9. Install additional dependencies for ElasticDL, ElasticDL CLI, and build testing images
 apt-get update && apt-get install -y docker.io sudo
