@@ -17,6 +17,8 @@ set -e
 
 service mysql start
 
+# enable go mod
+export GO111MODULE=on
 export SQLFLOW_TEST_DB=mysql
 # NOTE: we have already installed sqlflow_submitter under python installation path
 # using latest develop branch, but when testing on CI, we need to use the code in
