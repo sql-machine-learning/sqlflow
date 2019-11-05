@@ -24,7 +24,7 @@ assume that we are using all columns to train and no longer need to write
 
 ```sql
 SELECT * FROM creditcardfraud
-TRAIN DNNClassifier
+TO TRAIN DNNClassifier
 LABEL class
 INTO my_model_name;
 ```
@@ -38,7 +38,7 @@ the SQL statement should look like:
 
 ```sql
 SELECT * FROM creditcardfraud
-TRAIN DNNClassifier
+TO TRAIN DNNClassifier
 COLUMN YOUR_NORMALIZE_FUNC(time)
 LABEL class
 INTO my_model_name;
@@ -64,7 +64,7 @@ statement, the SQL statement for the above case should be like:
 
 ```sql
 SELECT * FROM training_table
-TRAIN DNNClassifier
+TO TRAIN DNNClassifier
 COLUMN EMBEDDING(c, 128, "sum"),
        EMBEDDING(SPARSE(d, [1000000]), 512, "sum")
 LABEL label
@@ -75,7 +75,7 @@ You can also write the full description of every column like below:
 
 ```sql
 SELECT a, b, c, d, label FROM training_table
-TRAIN DNNClassifier
+TO TRAIN DNNClassifier
 COLUMN a, b,
        EMBEDDING(DENSE(c, [64]), 128, "sum"),
        EMBEDDING(SPARSE(d, [1000000]), 512, "sum")

@@ -38,9 +38,9 @@ const (
 	testErrorSQL               = "ERROR ..."
 	testQuerySQL               = "SELECT * FROM some_table;"
 	testExecuteSQL             = "INSERT INTO some_table VALUES (1,2,3,4);"
-	testExtendedSQL            = "SELECT * FROM some_table TRAIN SomeModel;"
-	testExtendedSQLNoSemicolon = "SELECT * FROM some_table TRAIN SomeModel"
-	testExtendedSQLWithSpace   = "SELECT * FROM some_table TRAIN SomeModel; \n\t"
+	testExtendedSQL            = "SELECT * FROM some_table TO TRAIN SomeModel;"
+	testExtendedSQLNoSemicolon = "SELECT * FROM some_table TO TRAIN SomeModel"
+	testExtendedSQLWithSpace   = "SELECT * FROM some_table TO TRAIN SomeModel; \n\t"
 	mockDBConnStr              = "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
 )
 

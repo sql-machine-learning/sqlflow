@@ -28,7 +28,7 @@ func TestTrainALPSFiller(t *testing.T) {
 	parser := newParser()
 
 	wndStatement := `SELECT dense, deep, wide FROM kaggle_credit_fraud_training_data 
-		TRAIN DNNLinearCombinedClassifier 
+		TO TRAIN DNNLinearCombinedClassifier 
 		WITH 
 			model.dnn_hidden_units = [10, 20],
 			train.max_steps = 1000,
@@ -67,7 +67,7 @@ func TestTrainALPSEmbeddingInitializer(t *testing.T) {
 	parser := newParser()
 
 	wndStatement := `SELECT deep FROM kaggle_credit_fraud_training_data 
-		TRAIN DNNClassifier 
+		TO TRAIN DNNClassifier 
 		WITH 
 			model.dnn_hidden_units = [10, 20],
 			train.max_steps = 1000,
@@ -93,7 +93,7 @@ func TestPredALPSFiller(t *testing.T) {
 	os.Setenv("OSS_ID", "sqlflow_id")
 	os.Setenv("OSS_ENDPOINT", "http://sqlflow-oss-endpoint")
 	predStatement := `SELECT predict_fun(concat(",", col_1, col_2)) AS (info, score) FROM db.table
-		PREDICT db.predict_result
+		TO PREDICT db.predict_result
 		USING sqlflow_model;`
 
 	r, e := parser.Parse(predStatement)

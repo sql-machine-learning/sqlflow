@@ -69,7 +69,7 @@ func mockTrainIR() *codegen.TrainIR {
 	}
 	_ = `SELECT *
 		FROM iris.train
-	TRAIN xgboost.gbtree
+	TO TRAIN xgboost.gbtree
 	WITH
 		objective = "multi:softprob"
 		eta = 3.1,

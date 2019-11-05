@@ -35,7 +35,7 @@ First, we train a model to fit the dataset. Next, we write an `ANALYZE` SQL to g
 ```sql
 %%sqlflow
 SELECT * FROM boston.train
-TRAIN xgboost.gbtree
+TO TRAIN xgboost.gbtree
 WITH
     objective="reg:squarederror",
     train.num_boost_round = 30

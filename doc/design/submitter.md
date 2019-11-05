@@ -18,7 +18,7 @@ type ColumnType struct {
 
 // SELECT *
 // FROM iris.train
-// TRAIN DNNClassifier
+// TO TRAIN DNNClassifier
 // WITH
 //   n_classes = 3,
 //   hidden_units = [10, 20]
@@ -36,7 +36,7 @@ type TrainDescription struct {
 
 // SELECT *
 // FROM iris.test
-// PREDICT iris.predict.class
+// TO PREDICT iris.predict.class
 // USING sqlflow_models.my_dnn_model;
 type PredDescription struct {
     StandardSelect string // e.g. SELECT * FROM iris.test
