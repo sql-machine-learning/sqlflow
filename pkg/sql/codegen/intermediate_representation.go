@@ -71,6 +71,8 @@ type SQLFlowIR interface {
 // INTO clause. The sql package will save the output files of a generated Python program.
 // For prediction and analysis jobs, the sql will restore an identical working directly.
 type TrainIR struct {
+	// OriginalSQL record the original SQL statement used to get current IR result
+	OriginalSQL string
 	// DataSource contains the connection information. For example, "hive://root:root@localhost:10000/churn"
 	DataSource string
 	// Select specifies the query for fetching the training data. For example, "select * from iris.train;".
@@ -105,6 +107,8 @@ func (trainIR *TrainIR) IsIR() {}
 // Please be aware the PredictionIR contains the result table name, so the
 // generated Python program is responsible to create and write the result table.
 type PredictIR struct {
+	// OriginalSQL record the original SQL statement used to get current IR result
+	OriginalSQL string
 	// DataSource contains the connection information. For example, "hive://root:root@localhost:10000/churn"
 	DataSource string
 	// Select specifies the query for fetching the prediction data. For example, "select * from iris.test;".
@@ -126,6 +130,8 @@ func (predictIR *PredictIR) IsIR() {}
 
 // AnalyzeIR is the intermediate representation for code generation of a analysis job
 type AnalyzeIR struct {
+	// OriginalSQL record the original SQL statement used to get current IR result
+	OriginalSQL string
 	// DataSource contains the connection information. For example, "hive://root:root@localhost:10000/churn"
 	DataSource string
 	// Select specifies the query for fetching the analysis data. For example, "select * from iris.test;".
