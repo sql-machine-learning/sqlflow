@@ -11,21 +11,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package parser
+package sql
 
 import (
 	"fmt"
-	"sqlflow.org/sqlflow/parser/tidb"
+	"sqlflow.org/sqlflow/pkg/sql/tpp"
 	"strings"
 )
 
-func init() {
-	tidb.Init()
-}
-
+// FIXME(tony): only supports "to train" for prototyping.
+// Substitute this function for real SQLFlow parser later.
 func extendedSyntaxParse(sql string) (string, error) {
-	// FIXME(tony): only supports "to train" for prototyping.
-	// Substitute this function for real SQLFlow parser later.
 	extendedSyntax := "to train;"
 	if strings.HasPrefix(sql, extendedSyntax) {
 		return extendedSyntax, nil
@@ -33,8 +29,8 @@ func extendedSyntaxParse(sql string) (string, error) {
 	return "", fmt.Errorf("SQLFlow parser error %v", sql)
 }
 
-func split(sql string) ([]string, error) {
-	sqls, i, err := tidb.ParseAndSplit(sql)
+func split(driver, sql string) ([]string, error) {
+	sqls, i, err := tpp.ParseAndSplit(driver, sql)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +46,7 @@ func split(sql string) ([]string, error) {
 	sqls[len(sqls)-1] += s
 
 	sql = sql[len(s):]
-	nextSqls, err := split(sql)
+	nextSqls, err := split(driver, sql)
 	if err != nil {
 		return nil, err
 	}

@@ -11,17 +11,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package parser
+package tpp
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
-func TestSplit(t *testing.T) {
+func TestTiDBParseAndSplit(t *testing.T) {
 	a := assert.New(t)
+	tiDBInit()
 
 	selectCases := []string{
 		`select 1`,
@@ -37,8 +39,8 @@ FROM
     payments
 WHERE
     amount = (SELECT MAX(amount) FROM payments)`,
-		`SELECT 
-    orderNumber, 
+		`SELECT
+    orderNumber,
     SUM(priceEach * quantityOrdered) total
 FROM
     orderdetails
@@ -46,13 +48,13 @@ FROM
     orders USING (orderNumber)
 GROUP BY orderNumber
 HAVING SUM(priceEach * quantityOrdered) > 60000`,
-		`SELECT 
-    customerNumber, 
+		`SELECT
+    customerNumber,
     customerName
 FROM
     customers
 WHERE
-    EXISTS( SELECT 
+    EXISTS( SELECT
             orderNumber, SUM(priceEach * quantityOrdered)
         FROM
             orderdetails
@@ -66,16 +68,18 @@ WHERE
 
 	// one standard SQL statement
 	for _, sql := range selectCases {
-		s, err := split(sql)
+		s, idx, err := tiDBParseAndSplit(sql)
 		a.NoError(err)
+		a.Equal(-1, idx)
 		a.Equal(1, len(s))
 		a.Equal(sql, s[0])
 	}
 
 	{ // several standard SQL statements with comments
 		sqls := strings.Join(selectCases, `;`) + `;`
-		s, err := split(sqls)
+		s, idx, err := tiDBParseAndSplit(sqls)
 		a.NoError(err)
+		a.Equal(-1, idx)
 		a.Equal(len(selectCases), len(s))
 		for i := range s {
 			a.Equal(selectCases[i]+`;`, s[i])
@@ -85,53 +89,104 @@ WHERE
 	// two SQL statements, the first one is extendedSQL
 	for _, sql := range selectCases {
 		sqls := fmt.Sprintf(`%s to train;%s;`, sql, sql)
-		s, err := split(sqls)
+		s, idx, err := tiDBParseAndSplit(sqls)
 		a.NoError(err)
-		a.Equal(2, len(s))
-		a.Equal(sql+` to train;`, s[0])
-		a.Equal(sql+`;`, s[1])
+		a.Equal(len(sql)+1, idx)
+		a.Equal(1, len(s))
+		a.Equal(sql+" ", s[0])
 	}
 
 	// two SQL statements, the second one is extendedSQL
 	for _, sql := range selectCases {
 		sqls := fmt.Sprintf(`%s;%s to train;`, sql, sql)
-		s, err := split(sqls)
+		s, idx, err := tiDBParseAndSplit(sqls)
 		a.NoError(err)
+		a.Equal(len(sql)+1+len(sql)+1, idx)
 		a.Equal(2, len(s))
 		a.Equal(sql+`;`, s[0])
-		a.Equal(sql+` to train;`, s[1])
+		a.Equal(sql+` `, s[1])
 	}
 
 	// three SQL statements, the second one is extendedSQL
 	for _, sql := range selectCases {
 		sqls := fmt.Sprintf(`%s;%s to train;%s;`, sql, sql, sql)
-		s, err := split(sqls)
+		s, idx, err := tiDBParseAndSplit(sqls)
 		a.NoError(err)
-		a.Equal(3, len(s))
+		a.Equal(len(sql)+1+len(sql)+1, idx)
+		a.Equal(2, len(s))
 		a.Equal(sql+`;`, s[0])
-		a.Equal(sql+` to train;`, s[1])
-		a.Equal(sql+`;`, s[2])
+		a.Equal(sql+` `, s[1])
 	}
 
 	{ // two SQL statements, the first standard SQL has an error.
 		sql := `select select 1; select 1 to train;`
-		s, err := split(sql)
+		s, idx, err := tiDBParseAndSplit(sql)
+		a.Nil(s)
+		a.Equal(-1, idx)
 		a.EqualError(err, `line 1 column 13 near "select 1; select 1 to train;" `)
-		a.Equal(0, len(s))
 	}
 
 	// two SQL statements, the second standard SQL has an error.
 	for _, sql := range selectCases {
 		sqls := fmt.Sprintf(`%s to train; select select 1;`, sql)
-		s, err := split(sqls)
-		a.EqualError(err, `line 1 column 14 near "select 1;" `)
-		a.Equal(0, len(s))
+		s, idx, err := tiDBParseAndSplit(sqls)
+		a.NoError(err)
+		a.Equal(len(sql)+1, idx)
+		a.Equal(1, len(s))
+		a.Equal(sql+` `, s[0])
 	}
 
 	{ // non select statement before to train
 		sql := `describe table to train;`
-		s, err := split(sql)
+		s, idx, err := tiDBParseAndSplit(sql)
 		a.EqualError(err, `line 1 column 14 near "table to train;" `)
 		a.Equal(0, len(s))
+		a.Equal(-1, idx)
 	}
+}
+
+func TestTiDBParseAndSplitIdx(t *testing.T) {
+	a := assert.New(t)
+	var (
+		i int
+		e error
+	)
+
+	tiDBInit()
+
+	_, i, e = tiDBParseAndSplit("SELECTED a FROM t1") // SELECTED => SELECT
+	a.Equal(-1, i)
+	a.Error(e)
+
+	_, i, e = tiDBParseAndSplit("SELECT * FROM t1 TO TRAIN DNNClassifier")
+	a.Equal(17, i)
+	a.NoError(e)
+
+	_, i, e = tiDBParseAndSplit("SELECT * FROM t1 TO TO TRAIN DNNClassifier")
+	a.Equal(17, i)
+	a.NoError(e)
+
+	_, i, e = tiDBParseAndSplit("SELECT * FROM t1 t2 TO TRAIN DNNClassifier") // t2 is an alias of t1
+	a.Equal(20, i)
+	a.NoError(e)
+
+	_, i, e = tiDBParseAndSplit("SELECT * FROM t1 t2, t3 TO TRAIN DNNClassifier") // t2 is an alias of t1
+	a.Equal(24, i)
+	a.NoError(e)
+
+	_, i, e = tiDBParseAndSplit("SELECT * FROM t1 t2, t3 t4 TO TRAIN DNNClassifier") // t2 and t4 are aliases.
+	a.Equal(27, i)
+	a.NoError(e)
+
+	_, i, e = tiDBParseAndSplit("SELECT * FROM (SELECT * FROM t1)")
+	a.Equal(-1, i)
+	a.Error(e) // TiDB parser and MySQL require an alias name after the nested SELECT.
+
+	_, i, e = tiDBParseAndSplit("SELECT * FROM (SELECT * FROM t1) t2")
+	a.Equal(-1, i)
+	a.NoError(e)
+
+	_, i, e = tiDBParseAndSplit("SELECT * FROM (SELECT * FROM t1) t2 TO TRAIN DNNClassifier")
+	a.Equal(36, i)
+	a.NoError(e)
 }

@@ -11,11 +11,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tidb
+package tpp
 
 import (
 	"fmt"
-	"log"
 	"regexp"
 	"strings"
 	"sync"
@@ -33,7 +32,7 @@ var (
 )
 
 // Init creates the TiDB parser instance and other resources.
-func Init() {
+func tiDBInit() {
 	mu.Lock()
 	defer mu.Unlock()
 
@@ -41,7 +40,7 @@ func Init() {
 	re = regexp.MustCompile(`.* near "([^"]+)".*`)
 }
 
-// ParseAndSplit calls TiDB's parser to parse a SQL program and returns a slice of SQL statements.
+// tiDBParseAndSplit calls TiDB's parser to parse a SQL program and returns a slice of SQL statements.
 //
 // It returns <statements, -1, nil> if TiDB parser accepts the SQL program.
 //     input:  "select 1; select 1;"
@@ -50,9 +49,9 @@ func Init() {
 //     input:  "select 1; select 1 to train; select 1"
 //     output: {"select 1;", "select 1"}, 19, nil
 // It returns <nil, -1, error> if an error is occurred.
-func ParseAndSplit(sql string) ([]string, int, error) {
+func tiDBParseAndSplit(sql string) ([]string, int, error) {
 	if psr == nil || re == nil {
-		log.Fatalf("Parser must be called after Init")
+		return nil, -1, fmt.Errorf("parser is not initialized")
 	}
 
 	mu.Lock()
