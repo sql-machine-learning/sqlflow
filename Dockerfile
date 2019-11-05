@@ -47,15 +47,20 @@ COPY doc/datasets/popularize_churn.sql \
      doc/datasets/popularize_creditcardfraud.sql \
      doc/datasets/create_model_db.sql \
      /docker-entrypoint-initdb.d/
-
-
-ENV IPYTHON_STARTUP /root/.ipython/profile_default/startup/
-
-COPY scripts/build_docker_image.sh /
-RUN bash /build_docker_image.sh
-
 VOLUME /var/lib/mysql
 
+# ODPS
+COPY scripts/docker/install-odps.bash /
+RUN /install-odps.bash
+
+# The SQLFlow magic command for Jupyter.
+ENV IPYTHON_STARTUP /root/.ipython/profile_default/startup/
+COPY scripts/docker/install-jypyter.bash /
+RUN /install-jupyter.bash
+
+# ElasticDL and kubectl
+COPY scripts/docker/install-elasticdl.bash /
+RUN /install-elasticdl.bash
 
 
 

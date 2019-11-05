@@ -36,4 +36,5 @@ notebook==6.0.0 \
 sqlflow==0.7.0 \
 pre-commit==1.18.3 \
 dill==0.3.0 \
-shap==0.30.1
+shap==0.30.1 \
+xgboost==0.90
