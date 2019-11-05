@@ -10,7 +10,8 @@ require (
 	github.com/mattn/go-runewidth v0.0.6 // indirect
 	github.com/mattn/go-sqlite3 v1.11.0
 	github.com/olekukonko/tablewriter v0.0.1
-	github.com/pingcap/tidb v0.0.0-20190625145607-60965b006877 // indirect
+	github.com/pingcap/parser v0.0.0-20190613045206-37cc370a20a4
+	github.com/pingcap/tidb v0.0.0-20190625145607-60965b006877
 	github.com/pkg/errors v0.8.1
 	github.com/sirupsen/logrus v1.4.2
 	github.com/stretchr/testify v1.4.0
