@@ -39,7 +39,7 @@ The number of rounds for boosting.
 range: [1, Infinity]`, attribute.IntLowerBoundChecker(1, true)},
 	"validation.select": {attribute.String, `[default=""]
 Specify the dataset for validation.
-example: "SELECT * FROM petal_length FROM iris LIMIT 100"`, nil},
+example: "SELECT * FROM boston.train LIMIT 8"`, nil},
 }
 
 func resolveModelType(estimator string) (string, error) {
