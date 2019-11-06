@@ -35,13 +35,12 @@ import (
 )
 
 // NewServer returns a server instance
-func NewServer(run func(string, *sf.DB, string, *pb.Session) *sf.PipeReader, modelDir string) *Server {
-	return &Server{run: run, modelDir: modelDir}
+func NewServer(modelDir string) *Server {
+	return &Server{modelDir: modelDir}
 }
 
 // Server is the instance will be used to connect to DB and execute training
 type Server struct {
-	run      func(sql string, db *sf.DB, modelDir string, session *pb.Session) *sf.PipeReader
 	modelDir string
 }
 
@@ -81,6 +80,7 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 		case string:
 			res, err = encodeMessage(s)
 		case sf.EndOfExecution:
+			// if programIR have only one field, do **NOT** return EndOfExecution message.
 			if len(programIR) > 1 {
 				eoeMsg := r.(sf.EndOfExecution)
 				eoe := &pb.EndOfExecution{
@@ -104,46 +104,6 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 			return err
 		}
 	}
-
-	// for _, singleSQL := range sqlStatements {
-	// 	var pr *sf.PipeReader
-	// 	startTime := time.Now().UnixNano()
-	// 	pr = s.run(singleSQL, db, s.modelDir, req.Session)
-
-	// 	defer pr.Close()
-
-	// 	for r := range pr.ReadAll() {
-	// 		var res *pb.Response
-	// 		switch s := r.(type) {
-	// 		case error:
-	// 			return s
-	// 		case map[string]interface{}:
-	// 			res, err = encodeHead(s)
-	// 		case []interface{}:
-	// 			res, err = encodeRow(s)
-	// 		case string:
-	// 			res, err = encodeMessage(s)
-	// 		default:
-	// 			return fmt.Errorf("unrecognize run channel return type %#v", s)
-	// 		}
-	// 		if err != nil {
-	// 			return err
-	// 		}
-	// 		if err := stream.Send(res); err != nil {
-	// 			return err
-	// 		}
-	// 	}
-	// 	// Send EndOfExecution message if have multiple requests.
-	// 	if len(sqlStatements) > 1 {
-	// 		eoe := &pb.EndOfExecution{}
-	// 		eoe.Sql = singleSQL
-	// 		eoe.SpentTimeSeconds = time.Now().UnixNano() - startTime
-	// 		eoeResponse := &pb.Response{Response: &pb.Response_Eoe{Eoe: eoe}}
-	// 		if err := stream.Send(eoeResponse); err != nil {
-	// 			return err
-	// 		}
-	// 	}
-	// }
 	return nil
 }
 
