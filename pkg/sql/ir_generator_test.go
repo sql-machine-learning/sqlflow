@@ -234,7 +234,7 @@ func TestGenerateAnalyzeIR(t *testing.T) {
 	pr, e := newParser().Parse(`
 	SELECT *
 	FROM iris.train
-	ANALYZE sqlflow_models.my_xgboost_model
+	TO EXPLAIN sqlflow_models.my_xgboost_model
 	WITH
 	    shap_summary.plot_type="bar",
 	    shap_summary.alpha=1,

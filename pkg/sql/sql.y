@@ -62,7 +62,7 @@
 		standardSelect
 		trainClause
 		predictClause
-		analyzeClause
+		explainClause
 	}
 
 	type standardSelect struct {
@@ -92,8 +92,8 @@
 		into   string
 	}
 
-	type analyzeClause struct {
-		analyzeAttrs attrs
+	type explainClause struct {
+		explainAttrs attrs
 		trainedModel string
 		explainer    string
 	}
@@ -124,7 +124,7 @@
   colc columnClause
   labc string
   infr predictClause
-  anal analyzeClause
+  expln explainClause
 }
 
 %type  <eslt> select_stmt
@@ -134,7 +134,7 @@
 %type  <colc> column_clause
 %type  <labc> label_clause
 %type  <infr> predict_clause
-%type  <anal> analyze_clause
+%type  <expln> explain_clause
 %type  <flds> fields
 %type  <tbls> tables
 %type  <expr> expr funcall column opt_where
@@ -142,7 +142,7 @@
 %type  <atrs> attr
 %type  <atrs> attrs
 
-%token <val> SELECT FROM WHERE LIMIT TRAIN PREDICT ANALYZE WITH COLUMN LABEL USING INTO FOR AS TO
+%token <val> SELECT FROM WHERE LIMIT TRAIN PREDICT EXPLAIN WITH COLUMN LABEL USING INTO FOR AS TO
 %token <val> IDENT NUMBER STRING
 
 %left <val> AND OR
@@ -175,13 +175,13 @@ select_stmt
 		standardSelect: $1,
 		predictClause: $2}
   }
-| select analyze_clause ';' {
+| select explain_clause ';' {
 	parseResult = &extendedSelect{
 		extended: true,
 		train: false,
 		analyze: true,
 		standardSelect: $1,
-		analyzeClause: $2}
+		explainClause: $2}
 }
 ;
 
@@ -231,9 +231,9 @@ predict_clause
 | TO PREDICT IDENT WITH attrs USING IDENT { $$.into = $3; $$.predAttrs = $5; $$.model = $7 }
 ;
 
-analyze_clause
-: ANALYZE IDENT USING IDENT { $$.trainedModel = $2; $$.explainer = $4 }
-| ANALYZE IDENT WITH attrs USING IDENT { $$.trainedModel = $2; $$.analyzeAttrs = $4; $$.explainer = $6 }
+explain_clause
+: TO EXPLAIN IDENT USING IDENT { $$.trainedModel = $3; $$.explainer = $5 }
+| TO EXPLAIN IDENT WITH attrs USING IDENT { $$.trainedModel = $3; $$.explainAttrs = $5; $$.explainer = $7 }
 ;
 
 column_clause

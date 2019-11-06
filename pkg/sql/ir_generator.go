@@ -114,7 +114,7 @@ func generatePredictIR(slct *extendedSelect, connStr string, cwd string, modelDi
 }
 
 func generateAnalyzeIR(slct *extendedSelect, connStr, cwd, modelDir string) (*codegen.AnalyzeIR, error) {
-	attrs, err := generateAttributeIR(&slct.analyzeAttrs)
+	attrs, err := generateAttributeIR(&slct.explainAttrs)
 	if err != nil {
 		return nil, err
 	}
