@@ -31,7 +31,7 @@ echo "source activate sqlflow-dev" >> ~/.bashrc
 # NOTE: mysqlclient depends on apt-get install mysqlclient in install-mysql.bash.
 source /miniconda/bin/activate sqlflow-dev && python -m pip install \
 numpy==1.16.1 \
-tensorflow==2.0.0 \
+tensorflow==2.0.0b1 \
 mysqlclient==1.4.4 \
 impyla==0.16.0 \
 pyodps==0.8.3 \
