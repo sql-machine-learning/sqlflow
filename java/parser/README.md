@@ -2,10 +2,12 @@
 
 We build and test two third party parsers:
 
-- hiveql
-- calcite
+- HiveQL
+- Calcite
 
-## Development Environment
+## Build and Test the Parsers
+
+### Docker
 
 To make sure that all developers use the same version and configuration of development tools like JDK and Maven, we install all of them into a Docker image.
 
@@ -15,10 +17,8 @@ To build the image, type the following command:
 docker build -t sqlflow:mvn .
 ```
 
-The suffix `:mvn` refers to Maven.  We use Maven to build and run the gRPC servers in Java.
+The suffix `:mvn` refers to Maven.  We use Maven to build and run the tests in Java.
 
-
-## Build the Parsers
 
 To start a Docker container that runs the above image, we can type the following command:
 
@@ -34,11 +34,6 @@ In the container, we can type the following command to test the package
 $ mvn test
 ```
 
-In the container, we can type the following command to build the package into a `.jar` file.
+### IntelliJ
 
-```bash
-$ mvn package
-```
-
-You can find the `.jar` file at `target/parser-1.0-SNAPSHOT.jar`.
-
+Import Project > Maven project.
