@@ -43,6 +43,7 @@ func testMySQLDatabase() *DB {
 	assertNoErr(e)
 	assertNoErr(testdata.Popularize(db.DB, testdata.IrisSQL))
 	assertNoErr(testdata.Popularize(db.DB, testdata.ChurnSQL))
+	assertNoErr(testdata.Popularize(db.DB, testdata.HousingSQL))
 	return db
 }
 
@@ -56,6 +57,7 @@ func testSQLiteDatabase() *DB {
 	}
 	assertNoErr(testdata.Popularize(db.DB, testdata.IrisSQL))
 	assertNoErr(testdata.Popularize(db.DB, testdata.ChurnSQL))
+	assertNoErr(testdata.Popularize(db.DB, testdata.HousingSQL))
 	return db
 }
 
@@ -68,6 +70,7 @@ func testHiveDatabase() *DB {
 	assertNoErr(e)
 	assertNoErr(testdata.Popularize(db.DB, testdata.IrisHiveSQL))
 	assertNoErr(testdata.Popularize(db.DB, testdata.ChurnHiveSQL))
+	assertNoErr(testdata.Popularize(db.DB, testdata.HousingSQL))
 	return db
 }
 
