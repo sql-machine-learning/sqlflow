@@ -159,7 +159,7 @@ set mst.load.feature_map=false;
 set deepbreath.sparse.group.separator=:;
 set deepbreath.sparse.separator=,;
 set deepbreath.enable.sigmoid=false;
-set odps.sql.mapper.split.size=64;
+set odps.sql.mapper.parse.size=64;
 
 DROP TABLE IF EXISTS {{.PredictOutputTable}};
 

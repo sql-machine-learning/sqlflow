@@ -69,7 +69,7 @@ It is notable that MySQL doesn't provide sufficient documentation on how to call
 
 ## The External Parser Abstraction
 
-The above example program calls `sql_engine.Parse` twice before calling `SQLFlow.Parse`.  In practice, because Calcite parser is in Java, SQLFlow is a Go program, to enable SQLFlow calling Calcite parser, we have to wrap Calcite parser up into a command line tool which outputs the parsing result in JSON format.  It is time-consuming to make an Java command line call, so we pack the two calls to `sql_engine.Parse` into one and Parse the JSON response using the following struct.
+The above example program calls `sql_engine.Parse` twice before calling `SQLFlow.Parse`.  In practice, because Calcite parser is in Java, SQLFlow is a Go program, to enable SQLFlow calling Calcite parser, we have to wrap Calcite parser up into a command line tool which outputs the parsing result in JSON format.  It is time-consuming to make a Java command line call, so we pack the two calls to `sql_engine.Parse` into one call. Each call will output and result in JSON format and SQLFlow can parse the output into the following Go struct.
 
 ```
 type ParseResult struct {

@@ -29,8 +29,9 @@ func extendedSyntaxParse(sql string) (string, error) {
 	return "", fmt.Errorf("SQLFlow parser error %v", sql)
 }
 
-func split(driver, sql string) ([]string, error) {
-	sqls, i, err := tpp.ParseAndSplit(driver, sql)
+// FIXME(tony): change the return type from []string to []parsedResult
+func parse(dbms, sqlProgram string) ([]string, error) {
+	sqls, i, err := tpp.ParseAndSplit(dbms, sqlProgram)
 	if err != nil {
 		return nil, err
 	}
@@ -38,15 +39,15 @@ func split(driver, sql string) ([]string, error) {
 		return sqls, nil
 	}
 
-	sql = sql[i:]
-	s, err := extendedSyntaxParse(sql)
+	sqlProgram = sqlProgram[i:]
+	s, err := extendedSyntaxParse(sqlProgram)
 	if err != nil {
 		return nil, err
 	}
 	sqls[len(sqls)-1] += s
 
-	sql = sql[len(s):]
-	nextSqls, err := split(driver, sql)
+	sqlProgram = sqlProgram[len(s):]
+	nextSqls, err := parse(dbms, sqlProgram)
 	if err != nil {
 		return nil, err
 	}
