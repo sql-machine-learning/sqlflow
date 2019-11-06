@@ -13,6 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pip install mysqlclient needs GCC.
+apt-get update && apt-get install -y build-essential
+
 # We use miniconda to maintain the Python environment so we can install SQLFlow's submitter 
 # template Python files to the canonical path /miniconda/envs/sqlflow-dev/lib/python3.6/site-packages/.
 curl -sL https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -o mconda-install.sh
@@ -24,7 +27,8 @@ echo ". /miniconda/etc/profile.d/conda.sh" >> ~/.bashrc
 echo "source activate sqlflow-dev" >> ~/.bashrc
 
 # keras.datasets.imdb only works with numpy==1.16.1
-# NOTE: shap == 0.30.1 depends on dill but not include dill as it's dependency, need to install manually
+# NOTE: shap == 0.30.1 depends on dill but not include dill as it's dependency, need to install manually.
+# NOTE: mysqlclient depends on apt-get install mysqlclient in install-mysql.bash.
 source /miniconda/bin/activate sqlflow-dev && python -m pip install \
 numpy==1.16.1 \
 tensorflow==2.0.0 \

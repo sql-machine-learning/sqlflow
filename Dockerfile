@@ -13,6 +13,17 @@ deb http://us.archive.ubuntu.com/ubuntu/ xenial-backports main restricted univer
 COPY scripts/docker/install-download-tools.bash /
 RUN /install-download-tools.bash
 
+# MySQL server and client
+COPY scripts/docker/install-mysql.bash /
+RUN /install-mysql.bash
+COPY doc/datasets/popularize_churn.sql \
+     doc/datasets/popularize_iris.sql \
+     doc/datasets/popularize_boston.sql \
+     doc/datasets/popularize_creditcardfraud.sql \
+     doc/datasets/create_model_db.sql \
+     /docker-entrypoint-initdb.d/
+VOLUME /var/lib/mysql
+
 # Install protobuf and protoc
 COPY scripts/docker/install-protobuf.bash /
 RUN /install-protobuf.bash
@@ -37,17 +48,6 @@ ENV GOPATH /go
 ENV PATH /usr/local/go/bin:$GOPATH/bin:$PATH
 COPY scripts/docker/install-go.bash /
 RUN /install-go.bash
-
-# MySQL server and client
-COPY scripts/docker/install-mysql.bash /
-RUN /install-mysql.bash
-COPY doc/datasets/popularize_churn.sql \
-     doc/datasets/popularize_iris.sql \
-     doc/datasets/popularize_boston.sql \
-     doc/datasets/popularize_creditcardfraud.sql \
-     doc/datasets/create_model_db.sql \
-     /docker-entrypoint-initdb.d/
-VOLUME /var/lib/mysql
 
 # ODPS
 COPY scripts/docker/install-odps.bash /
