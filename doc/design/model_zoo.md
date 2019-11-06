@@ -4,7 +4,7 @@
 
 SQLFlow extends SQL syntax to allow SQL programmers, a.k.a., analysts, to invoke models defined by Python programmers, a.k.a., data scientists.  For each deployment of SQLFlow service, we refer to the collection of **model definitions** accessible by analysts as a **model zoo**.  A model zoo contains not only the model definitions but also the trained model parameters, as well as the hyperparameters and other information, which are necessary when we use the model for prediction and other analytics jobs.
 
-This document is about how to define models and how to build a model zoo.
+This document is about how to define models and how to build a model zoo.  For the conclusion, please go to the last section of this document.
 
 ## Background
 
@@ -12,14 +12,14 @@ The following example SQL statement shows the syntax for training a model.
 
 ```sql
 SELECT * FROM employee WHERE onboard_year < 2019
-TO TRAIN MyDNNRegressor
+TO TRAIN a_data_scientist/regressors:v0.2/MyDNNRegressor
 WITH hidden_units=[10,50,5], lr=0.01
 COLUMN gender, scale(age, 0, 1), bucketize(address, 100) 
 LABEL salary 
 INTO my_first_model;
 ```
 
-The identifier `MyDNNRegressor` names a Python class derived from `tf.keras.Model`.  The `WITH` clause provides hyperparameters required by the constructor of `MyDNNRegressor`  and the training process. The `COLUMN` clause specifies how to convert the SELECT result, a table, into model inputs in the form of tensors. `LABEL` identifies the field used as the label, in the case of supervised learning.  The training process saves all the above information, plus the estimated model parameters, under the name `my_first_model`.
+The string `a_data_scientist/regressors:v0.2` names a Docker image, inside which, there is `MyDNNRegressor`, a Python class derived from `tf.keras.Model`, and its dependencies.  The `WITH` clause provides hyperparameters required by the constructor of `MyDNNRegressor`  and the training process. The `COLUMN` clause specifies how to convert the SELECT result, a table, into model inputs in the form of tensors. `LABEL` identifies the field used as the label, in the case of supervised learning.  The training process saves all the above information, plus the estimated model parameters, under the name `my_first_model`.
 
 The following example fills in the column `predicted_salary` of the table `employee` for rows that represent employees recruited in and after 2019.
 
@@ -53,8 +53,8 @@ The above training and prediction example reveals some concepts related to model
 In SQLFlow SQL grammar, the identifiers after `TRAIN`, `USING` and `INTO` have different meanings:
 
 1. `TRAIN IDENT`: `IDENT` is the name of a model definition.
-1. `USING IDENT`: `IDENT` is the `model ID` refering to a **trained model**, please refer to the below sections for the definition of `model ID`.
-1. `INTO IDENT`: `IDENT` is the `model ID` refering to a **trained model**.
+1. `USING IDENT`: `IDENT` is the `model ID` referring to a **trained model**, please refer to the below sections for the definition of `model ID`.
+1. `INTO IDENT`: `IDENT` is the `model ID` referring to a **trained model**.
 
 ## The Design
 
@@ -86,7 +86,7 @@ To submit an ElasticDL training job, we need the following actions:
 1. The SQLFlow server invokes `codegen_elasticdl.go` to generates the submitter program `my_first_model.py`.
 1. `my_first_model.py` calls the ElasticDL client API to submit a job.
 1. The SQLFlow server then runs `my_first_model.py` in a Docker container (if SQLFlow service is not running in a Kubernetes cluster), or a Pod, which has ElasticDL client library installed.
-1. As this container needs to contain ElasticDL and the model definition, all model Docker images should derive from our base image which installs ElasticDL by default:
+1. As this container needs to contain ElasticDL and the model definition, all model Docker images should derive from our base image, which installs ElasticDL by default:
 
 ```
 FROM sqlflow/sqlflow_model_base
@@ -101,19 +101,35 @@ The training submitter program `my_first_model.py`, running in the model definit
 
 The model zoo table is in a database deployed as part of the SQLFlow service. This database might not be the one that holds data sources.  The only requirement of the model zoo table is to have a particular data schema that contains at least the following fields.
 
-1. model ID (key), specified by the INTO clause, or `an_analyst/my_first_model` in the above example.
-1. Docker image ID, the Docker commit ID of the image `a_data_scientist/regressors` in the above example.
-1. submitter program, the source code of the submitter program, `my_first_model.py` in the above example, or its MD5 hash.
-1. data converter, the COLUMN and LABEL clauses.
-1. model parameter file path, the path to the trained model parameters on the distributed filesystem of the cluster.
+1. The model ID, specified by the INTO clause, or `my_first_model` in the above example.
+1. The creator, as defined in the INTO clause, or `an_analyst` in the above example.
+1. The model zoo release, which is a Docker image commit ID, or `a_data_scientist/regressors` in the above example.
+1. The model definition, which is a Python class name, or `DNNRegressor` in the above example.
+1. The submitter program, the source code of the submitter program, `my_first_model.py` in the above example, or its MD5 hash.
+1. The data converter, including the COLUMN and LABEL clauses.
+1. The model parameter file path, the path to the trained model parameters on the distributed filesystem of the cluster.
 
 It is necessary to have the model ID so users can refer to the trained model when they want to use it.  Suppose that the user typed the prediction SQL statement at the beginning of this document. SQLFlow server will convert it into a submitter program and run it with the Docker image used to train the model. Therefore, the Docker image ID is also required. The model parameter path allows the prediction submitter program to locate and load the trained models.  The data converter helps the prediction submitter to use the conversion rules consistent with the ones used when training.
 
 It is necessary to record the content or the MD5 hash of the training submitter program in the model zoo table for experiment management. Please be aware that the training submitter encodes all three categories of hyperparameters, as listed in the above sections.  Suppose that the analyst re-trains the model with different hyperparameter settings, the training submitter changes accordingly, and SQLFlow should be able to remind the analyst to either uses a new model ID or overwrites the existing row in the model zoo table.
 
+We recommend reusing the DBMS configured as the data source of SQLFlow for storing model zoo.  Following this recommendation, users can query the trained models using SQL.  For example, the following SQL statement lists all models trained by `an_analyst`:
+
+```sql
+SELECT * FROM sqlflow.trained_models WHERE creator="an_analyst"
+```
+
+The following statement queries all model zoos used by `an_analyst` to train his/her models.
+
+```sql
+SELECT DISTINCT model_zoo FROM sqlflow.trained_models WHERE creator="an_analyst"
+```
+
+Users can checkout the model list and saved models published by `models.sqlflow.org` through the web site: https://models.sqlflow.org. Then the user can use a SQL statement like `SELECT ... TO PREDICT ... USING models.sqlflow.org/an_analyst/my_first_model` to use that saved model, just by specifying a model from `models.sqlflow.org` after `USING` clause. See below section for more details.
+
 ### Model Sharing
 
-After all, what is a model zoo? A model zoo refers to all the model definitions and trained models accessible by a deployment of SQLFlow.  It contains one or more model definition Docker images and the source code repositories that build the images.  It also includes the model zoo table configured to work with all submitter programs generated by the deployment.
+After all, what is a model zoo? A model zoo refers to all the model definitions and trained models accessible by a setup of the SQLFlow server.  It contains one or more model definition Docker images and the source code repositories that build the images.  It also includes the model zoo table configured to work with all submitter programs generated by the deployment.
 
 Within a deployment, it is straightforward to share a trained model.  If the analyst, `an_analyst`, in the above example wants to use her own trained model `my_first_model` for prediction, she could use the short name `my_first_model`.
 
@@ -127,47 +143,18 @@ If another analyst wants to use the trained model, he would need to use the full
 SELECT ... TO PREDICT ... USING an_analyst/my_first_model
 ```
 
-There could be more than one model definitions in each model's Docker image. We need to be able to find out which model definition is used to train current saved model. Also if we only want to reuse the model definition to train a new model we need to know the model definition class name, so that we can pass it to the `TRAIN` clause.
-
-To list all trained models of one user, you can do:
-
-```sql
-SQLFLOW LIST an_analyst
-```
-
-This should output a table showing the saved models and which model definition it was using.
-
-```
-|  saved model    |   model def    |
-| my_first_model  | MyDNNRegressor |
-| my_second_model | MyDNNRegressor |
-```
-
-Within **any** deployment that have internet access, to list published models:
-
-```sql
-SQLFLOW LIST [models.sqlflow.org/an_analyst]
-```
-
-Display model definitions and documentation of the published model:
-
-```
-SQLFLOW DESCRIBE models.sqlflow.org/an_analyst/my_first_model;
-| available model defs |
-| MyDNNRegressor       |
-| MyDNNClassifier      |
-
-SQLFLOW DESCRIBE models.sqlflow.org/an_analyst/my_first_model.MyDNNRegressor;
-
-Documatation for my_first_model.MyDNNRegressor
-...
-...
-```
-
 Use a published model make some predictions on new data:
 
 ```sql
 SELECT ... TO PREDICT employee.predicted_salary USING models.sqlflow.org/an_analyst/my_first_model
+```
+
+Use a published model to train on a new dataset:
+
+```sql
+SELECT * FROM employee WHERE onboard_year < 2019
+TO TRAIN an_analyst/regressors:v0.2/MyDNNRegressor
+USING models.sqlflow.org/an_analyst/my_first_model;
 ```
 
 ### Model Publication
@@ -188,3 +175,34 @@ Then, another analyst should be able to use the trained model by referring to it
 ```sql
 SELECT ... TO PREDICT employee.predicted_salary USING models.sqlflow.org/an_analyst/my_first_model
 ```
+
+## Summarization
+
+There are three roles in the ecosystem of SQLFlow: 
+
+1. the tool developers who use Go/C++ to create SQLFlow,
+1. the model developers, or data scientists, who use Python to define, say, Keras models, and
+1. the analysts, who use SQL to train models, or to use trained models for prediction or model explanation.
+
+Any data scientist can create an arbitrary number of model zoos, and in each model zoo, there could be any number of model definitions.  There are some concepts from the perspective of a data scientist `a_data_scientist`:
+
+1. A model zoo is a Git repo, say, `github.com/a_data_scientist/regressors`.
+1. A model zoo is built and published in the form of a Docker image, say, `dockerhub.com/a_data_scientist/regressors:v0.2`.
+
+From the perspective of an analyst, say, `an_analyst`, who is going to use the model definition `DNNRegressor` defined in github.com/a_data_scientist/regressors, s/he could refer to the model definition by
+
+- dockerhub.com/a_data_scientist/regressor:v0.2/DNNRegressor, which is the full name,
+- dockerhub.com/a_data_scientist/regressor/DNNRegressor, if the Docker image tag is `latest`,
+- a_data_scientist/regressor/DNNRegressor, if dockerhub.com is the default Docker registry, or
+- regressor/DNNRegressor, if the user is the model developer `a_data_scientist`.
+
+The class `DNNRegressor` could be in any file in any directory of the repository github.com/a_data_scientist/regressor.  The only requirement is that when the submitter program trains the model, it can run a Docker command, or an equivalent Docker API call, to train the model.
+
+A trained model could have its name in any of the following forms:
+
+- my_first_model
+- an_analyst/my_first_model
+- a_database_project/an_analyst/my_first_model
+- a_dbms_server.somewhere.com/a_database_project/an_analyst/my_first_model
+
+`a_dmbs_server.somewhere.com` defaults to the SQL engine that hosts the data source. `a_database_project` defaults to `sqlflow`. `an_analyst` and `my_first_model` are in a row in the database table `trained_models`.

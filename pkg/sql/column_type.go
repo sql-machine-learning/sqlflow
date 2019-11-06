@@ -169,7 +169,7 @@ func parseVal(val interface{}) (interface{}, error) {
 	case *float64:
 		return *v, nil
 	default:
-		return nil, fmt.Errorf("unrecogized type %v", v)
+		return nil, fmt.Errorf("unrecognized type %v", v)
 	}
 }
 

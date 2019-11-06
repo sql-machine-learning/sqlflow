@@ -30,7 +30,7 @@ WHERE
   strings.Upper(last_name) = "WANG"
 LIMIT  100
 `
-	testTrainSelect = testStandardSelectStmt + `TRAIN DNNClassifier
+	testTrainSelect = testStandardSelectStmt + `TO TRAIN DNNClassifier
 WITH
   n_classes = 3,
   hidden_units = [10, 20]
@@ -41,7 +41,7 @@ COLUMN
 LABEL "employee.salary"
 INTO sqlflow_models.my_dnn_model;
 `
-	testMultiColumnTrainSelect = testStandardSelectStmt + `TRAIN DNNClassifier
+	testMultiColumnTrainSelect = testStandardSelectStmt + `TO TRAIN DNNClassifier
 WITH
   n_classes = 3,
   hidden_units = [10, 20]
@@ -54,12 +54,12 @@ COLUMN
 LABEL employee.salary
 INTO sqlflow_models.my_dnn_model;
 `
-	testPredictSelect = testStandardSelectStmt + `PREDICT db.table.field
+	testPredictSelect = testStandardSelectStmt + `TO PREDICT db.table.field
 USING sqlflow_models.my_dnn_model;`
 
 	testMaxcomputeUDFPredict = `
 SELECT predict_fun(concat(",", col_1, col_2)) AS (info, score) FROM db.table
-PREDICT db.predict_result
+TO PREDICT db.predict_result
 WITH OSS_KEY=a, OSS_ID=b
 USING sqlflow_models.my_model;
 	`
@@ -139,7 +139,7 @@ func TestAnalyzeParser(t *testing.T) {
 	a := assert.New(t)
 	{
 		r, e := newParser().Parse(`select * from mytable
-ANALYZE my_model
+TO EXPLAIN my_model
 USING TreeExplainer;`)
 		a.NoError(e)
 		a.True(r.extended)
@@ -150,7 +150,7 @@ USING TreeExplainer;`)
 	}
 	{
 		r, e := newParser().Parse(`select * from mytable
-ANALYZE my_model
+TO EXPLAIN my_model
 WITH
   plots = force
 USING TreeExplainer;`)
@@ -159,7 +159,7 @@ USING TreeExplainer;`)
 		a.False(r.train)
 		a.True(r.analyze)
 		a.Equal("my_model", r.trainedModel)
-		a.Equal("force", r.analyzeAttrs["plots"].String())
+		a.Equal("force", r.explainAttrs["plots"].String())
 		a.Equal("TreeExplainer", r.explainer)
 	}
 }
@@ -177,7 +177,7 @@ func TestSelectStarAndPrint(t *testing.T) {
 
 func TestStandardDropTable(t *testing.T) {
 	a := assert.New(t)
-	_, e := newParser().Parse(`DROP TABLE PREDICT`)
+	_, e := newParser().Parse(`DROP TABLE TO PREDICT`)
 	a.Error(e)
 	// Note: currently, our parser doesn't accept anything statements other than SELECT.
 	// It will support parsing any SQL statements and even dialects in the future.

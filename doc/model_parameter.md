@@ -35,7 +35,7 @@ INTO sqlflow_models.my_xgb_regression_model;
 <tr>
 	<td>num_class</td>
 	<td>Int</td>
-	<td>Number of classes.<br>range: [1, Infinity]</td>
+	<td>Number of classes.<br>range: [2, Infinity]</td>
 </tr>
 <tr>
 	<td>objective</td>
@@ -53,7 +53,7 @@ INTO sqlflow_models.my_xgb_regression_model;
 
 TBD
 
-### ANALYZE
+### EXPLAIN
 
 TBD
 

@@ -34,13 +34,13 @@ const (
 // Delimiter indicates the decoding method of a field. For example, the field may
 // contain a string like "1,23,42" which represent a 3-D tensor [1, 23, 42].
 //
-// Shape indicates the shape of the tensor represented for a field. For exmaple, the
+// Shape indicates the shape of the tensor represented for a field. For example, the
 // field may contain a string like "1,23,42" which represent a 3-D tensor, the shape
 // will be [3].
 //
 // IsSparse indicates the type of tensor for a field. True means the tensor is a sparse tensor.
 type FieldMeta struct {
-	Name      string    `json:"name"`      // e.g. "spetal_length"
+	Name      string    `json:"name"`      // e.g. "petal_length"
 	DType     FieldType `json:"dtype"`     // e.g. "float", "int32"
 	Delimiter string    `json:"delimiter"` // e.g. ","
 	Shape     []int     `json:"shape"`     // e.g. [1], [1 2 3]
@@ -49,7 +49,7 @@ type FieldMeta struct {
 	// e.g. the column values are: "MALE", "FEMALE", "NULL"
 	Vocabulary map[string]string `json:"vocabulary"` // use a map to generate a list without duplication
 	// if the column data is used as embedding(category_column()), the `num_buckets` should use the maxID
-	// appeared in the sample data. if error still occurs, users should set `num_buckts` manually.
+	// appeared in the sample data. if error still occurs, users should set `num_buckets` manually.
 	MaxID int64
 }
 
@@ -102,6 +102,8 @@ type PredictIR struct {
 	Select string
 	// ResultTable specifies the table to store the prediction result.
 	ResultTable string
+	// ResultColumn is the column to store predict result in ResultTable
+	ResultColumn string
 	// Attributes is a map of parsed attribute in the WITH clause. For example, after parsing
 	// "select ... predict ... with predict.batch_size = 32 into ...",
 	// the Attributes will be {"predict.batch_size": 32}

@@ -50,7 +50,7 @@ Keras provides three approaches to define models.
   model = tf.keras.models.Model(inputs=feature_columns, outputs=pred)
   ```
 
-  Please be aware that functional API doesn't work with feature column API, as reported [here](https://github.com/tensorflow/tensorflow/issues/27416). However, the approach of deriving classes from `keras.Model` works with the feature column API.
+  The functional API can work with feature column API only by assigning `tf.keras.Input` to each original feature column. See [this](https://github.com/tensorflow/tensorflow/issues/27416#issuecomment-502218673)link for an example.
 
 ### 3. `keras.Sequential`
 
@@ -71,11 +71,11 @@ We chose the approach of subclassing `tf.keras.Model` according to the following
 | Keras APIs         | Work with feature column API | Save/load models           | Model coverage |
 | ------------------ | ---------------------------- | -------------------------- | -------------- |
 | `tf.keras.Model`   | ☑️                            | weights-only, no topology  | High           |
-| Functional API     | ❌                           | ☑️                          | High           |
+| Functional API     | ☑️                            | ☑️                          | High           |
 | Sequential Model   | ☑️                            | ☑️                          | Low            |
 
 
-## An Example
+## A Subclass model Example
 
 Here is an example `DNNClassifier` of multiple hidden layers as a Python class derived from `tf.keras.Model`. To run it, please use TensorFlow 2.0 alpha or newer versions.
 
@@ -120,6 +120,37 @@ class DNNClassifier(tf.keras.Model):
     def prepare_prediction_column(self, prediction):
         """Return the class label of highest probability."""
         return prediction.argmax(axis=-1)
+```
+
+## A Functional API model Example
+
+```python
+def MyExampleModel(feature_columns, field_metas, learning_rate=0.01):
+    feature_layer_inputs = dict()
+    for fm in field_metas:
+        feature_layer_inputs[fm.name] = tf.keras.Input(shape=(fm.shape), name=fm.name, dtype=fm.dtype)
+    feature_layer = tf.keras.layers.DenseFeatures(feature_columns)
+    feature_layer_outputs = feature_layer(feature_layer_inputs)
+
+    x = layers.Dense(128, activation='relu')(feature_layer_outputs)
+    x = layers.Dense(64, activation='relu')(x)
+    pred = layers.Dense(1, activation='sigmoid')(x)
+    return keras.Model(inputs=[v for v in feature_layer_inputs.values()], outputs=pred)
+
+def loss(output, labels):
+    labels = tf.reshape(labels, [-1])
+    return tf.reduce_mean(
+        input_tensor=tf.nn.sparse_softmax_cross_entropy_with_logits(
+            logits=output, labels=labels
+        )
+    )
+
+def optimizer(lr=0.1):
+    return tf.optimizers.SGD(lr)
+
+def prepare_prediction_column(self, prediction):
+    """Return the class label of highest probability."""
+    return prediction.argmax(axis=-1)
 ```
 
 ## Further Reading

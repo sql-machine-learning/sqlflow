@@ -22,6 +22,71 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	pb "sqlflow.org/sqlflow/pkg/server/proto"
+)
+
+const (
+	testStandardExecutiveSQLStatement = `DELETE FROM iris.train WHERE class = 4;`
+	testSelectIris                    = `
+SELECT *
+FROM iris.train
+`
+	testTrainSelectIris = testSelectIris + `
+TO TRAIN DNNClassifier
+WITH
+  model.n_classes = 3,
+  model.hidden_units = [10, 20]
+COLUMN sepal_length, sepal_width, petal_length, petal_width
+LABEL class
+INTO sqlflow_models.my_dnn_model;
+`
+	testPredictSelectIris = `
+SELECT *
+FROM iris.test
+TO PREDICT iris.predict.class
+USING sqlflow_models.my_dnn_model;
+`
+	testClusteringTrain = `SELECT sepal_length, sepal_width, petal_length, petal_width
+FROM iris.train
+TO TRAIN sqlflow_models.DeepEmbeddingClusterModel
+WITH
+  model.pretrain_dims = [10,10],
+  model.n_clusters = 3,
+  model.pretrain_lr = 0.001,
+  train.batch_size = 1
+COLUMN sepal_length, sepal_width, petal_length, petal_width
+INTO sqlflow_models.my_clustering_model;
+`
+	testClusteringPredict = `
+SELECT sepal_length, sepal_width, petal_length, petal_width
+FROM iris.test
+TO PREDICT iris.predict.class
+USING sqlflow_models.my_clustering_model;
+`
+	testXGBoostTrainSelectIris = ` 
+SELECT *
+FROM iris.train
+TO TRAIN xgboost.gbtree
+WITH
+    objective="multi:softprob",
+    train.num_boost_round = 30,
+    eta = 0.4,
+    num_class = 3
+COLUMN sepal_length, sepal_width, petal_length, petal_width
+LABEL class 
+INTO sqlflow_models.my_xgboost_model;
+`
+	testAnalyzeTreeModelSelectIris = `
+SELECT * FROM iris.train
+TO EXPLAIN sqlflow_models.my_xgboost_model
+USING TreeExplainer;
+`
+	testXGBoostPredictIris = ` 
+SELECT *
+FROM iris.test
+TO PREDICT iris.predict.class
+USING sqlflow_models.my_xgboost_model;
+`
 )
 
 func goodStream(stream chan interface{}) (bool, string) {
@@ -74,22 +139,25 @@ func TestSplitExtendedSQL(t *testing.T) {
 func TestSplitMulipleSQL(t *testing.T) {
 	a := assert.New(t)
 	splited, err := SplitMultipleSQL(`CREATE TABLE copy_table_1 AS SELECT a,b,c FROM table_1 WHERE c<>";";
-SELECT * FROM copy_table_1;SELECT * FROM copy_table_1 TRAIN DNNClassifier WITH n_classes=2 INTO test_model;`)
+SELECT * FROM copy_table_1;SELECT * FROM copy_table_1 TO TRAIN DNNClassifier WITH n_classes=2 INTO test_model;`)
 	a.NoError(err)
 	a.Equal("CREATE TABLE copy_table_1 AS SELECT a,b,c FROM table_1 WHERE c<>\";\";", splited[0])
 	a.Equal("SELECT * FROM copy_table_1;", splited[1])
-	a.Equal("SELECT * FROM copy_table_1 TRAIN DNNClassifier WITH n_classes=2 INTO test_model;", splited[2])
+	a.Equal("SELECT * FROM copy_table_1 TO TRAIN DNNClassifier WITH n_classes=2 INTO test_model;", splited[2])
 }
 
+func getDefaultSession() *pb.Session {
+	return &pb.Session{}
+}
 func TestExecuteXGBoost(t *testing.T) {
 	a := assert.New(t)
 	modelDir := ""
 	a.NotPanics(func() {
-		stream := runExtendedSQL(testXGBoostTrainSelectIris, testDB, modelDir, nil)
+		stream := runExtendedSQL(testXGBoostTrainSelectIris, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
-		stream = runExtendedSQL(testAnalyzeTreeModelSelectIris, testDB, modelDir, nil)
+		stream = runExtendedSQL(testAnalyzeTreeModelSelectIris, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
-		stream = runExtendedSQL(testXGBoostPredictIris, testDB, modelDir, nil)
+		stream = runExtendedSQL(testXGBoostPredictIris, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
 	})
 }
@@ -98,11 +166,11 @@ func TestExecuteXGBoostRegression(t *testing.T) {
 	a := assert.New(t)
 	modelDir := ""
 	a.NotPanics(func() {
-		stream := runExtendedSQL(testXGBoostTrainSelectIris, testDB, modelDir, nil)
+		stream := runExtendedSQL(testXGBoostTrainSelectIris, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
-		stream = runExtendedSQL(testAnalyzeTreeModelSelectIris, testDB, modelDir, nil)
+		stream = runExtendedSQL(testAnalyzeTreeModelSelectIris, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
-		stream = runExtendedSQL(testXGBoostPredictIris, testDB, modelDir, nil)
+		stream = runExtendedSQL(testXGBoostPredictIris, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
 	})
 }
@@ -111,9 +179,9 @@ func TestExecutorTrainAndPredictDNN(t *testing.T) {
 	a := assert.New(t)
 	modelDir := ""
 	a.NotPanics(func() {
-		stream := runExtendedSQL(testTrainSelectIris, testDB, modelDir, nil)
+		stream := runExtendedSQL(testTrainSelectIris, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
-		stream = runExtendedSQL(testPredictSelectIris, testDB, modelDir, nil)
+		stream = runExtendedSQL(testPredictSelectIris, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
 	})
 }
@@ -124,9 +192,9 @@ func TestExecutorTrainAndPredictClusteringLocalFS(t *testing.T) {
 	a.Nil(e)
 	defer os.RemoveAll(modelDir)
 	a.NotPanics(func() {
-		stream := runExtendedSQL(testClusteringTrain, testDB, modelDir, nil)
+		stream := runExtendedSQL(testClusteringTrain, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
-		stream = runExtendedSQL(testClusteringPredict, testDB, modelDir, nil)
+		stream = runExtendedSQL(testClusteringPredict, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
 	})
 }
@@ -137,10 +205,10 @@ func TestExecutorTrainAndPredictDNNLocalFS(t *testing.T) {
 	a.Nil(e)
 	defer os.RemoveAll(modelDir)
 	a.NotPanics(func() {
-		stream := runExtendedSQL(testTrainSelectIris, testDB, modelDir, nil)
+		stream := runExtendedSQL(testTrainSelectIris, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
 
-		stream = runExtendedSQL(testPredictSelectIris, testDB, modelDir, nil)
+		stream = runExtendedSQL(testPredictSelectIris, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
 	})
 }
@@ -152,7 +220,7 @@ func TestExecutorTrainAndPredictionDNNClassifierDENSE(t *testing.T) {
 	a := assert.New(t)
 	a.NotPanics(func() {
 		stream := Run(`SELECT * FROM iris.train_dense
-TRAIN DNNClassifier
+TO TRAIN DNNClassifier
 WITH
 model.n_classes = 3,
 model.hidden_units = [10, 20],
@@ -161,13 +229,13 @@ train.batch_size = 10,
 train.verbose = 1
 COLUMN NUMERIC(dense, 4)
 LABEL class
-INTO sqlflow_models.my_dense_dnn_model
-;`, testDB, "", nil)
+INTO sqlflow_models.my_dense_dnn_model;
+`, testDB, "", getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
 		stream = Run(`SELECT * FROM iris.test_dense
-PREDICT iris.predict_dense.class
+TO PREDICT iris.predict_dense.class
 USING sqlflow_models.my_dense_dnn_model
-;`, testDB, "", nil)
+;`, testDB, "", getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
 	})
 }
@@ -194,7 +262,7 @@ func TestStandardSQL(t *testing.T) {
 
 func TestSQLLexerError(t *testing.T) {
 	a := assert.New(t)
-	stream := Run("SELECT * FROM ``?[] AS WHERE LIMIT;", testDB, "", nil)
+	stream := Run("SELECT * FROM ``?[] AS WHERE LIMIT;", testDB, "", getDefaultSession())
 	a.False(goodStream(stream.ReadAll()))
 }
 

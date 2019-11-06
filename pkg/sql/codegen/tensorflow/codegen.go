@@ -16,12 +16,31 @@ package tensorflow
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"strings"
 	"text/template"
 
 	pb "sqlflow.org/sqlflow/pkg/server/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen"
+	"sqlflow.org/sqlflow/pkg/sql/codegen/attribute"
 )
+
+var attributeDictionary = attribute.Dictionary{
+	"train.batch_size": {attribute.Int, `[default=1]
+The training batch size.
+range: [1,Infinity]`, attribute.IntLowerBoundChecker(1, true)},
+	"train.epoch": {attribute.Int, `[default=1]
+Number of epochs the training will run.
+range: [1, Infinity]`, attribute.IntLowerBoundChecker(1, true)},
+	"train.verbose": {attribute.Int, `[default=0]
+Show verbose logs when training.
+possible values: 0, 1`, attribute.IntChoicesChecker([]int{0, 1})},
+	"model.*": {attribute.Unknown, `parameters defined by the model implementation, e.g. https://www.tensorflow.org/api_docs/python/tf/estimator/DNNClassifier#__init__, customized model example: https://github.com/sql-machine-learning/models/blob/develop/sqlflow_models/dnnclassifier.py#L4`,
+		attribute.EmptyChecker()},
+	"validation.select": {attribute.String, `[default=""]
+Specify the dataset for validation.
+example: "SELECT * FROM petal_length FROM iris LIMIT 100"`, nil},
+}
 
 func intArrayToJSONString(ia []int) string {
 	return strings.Join(strings.Split(fmt.Sprint(ia), " "), ",")
@@ -141,6 +160,9 @@ func isKerasModel(estimator string) (bool, string) {
 
 // Train generates a Python program for train a TensorFlow model.
 func Train(ir *codegen.TrainIR) (string, error) {
+	if err := attributeDictionary.Validate(ir.Attributes); err != nil {
+		return "", err
+	}
 	trainParams := make(map[string]interface{})
 	modelParams := make(map[string]interface{})
 	for attrKey, attr := range ir.Attributes {
@@ -239,6 +261,16 @@ func Pred(ir *codegen.PredictIR, session *pb.Session) (string, error) {
 			fmt.Sprintf("\"%s\": [%s]", target, strings.Join(perTargetFeatureColumnsCode, ",\n")))
 	}
 	isKeras, estimatorStr := isKerasModel(ir.TrainIR.Estimator)
+	labelFM := ir.TrainIR.Label.GetFieldMeta()[0]
+	if labelFM.Name == "" {
+		log.Printf("clustering model, got result table: %s, result column: %s", ir.ResultTable, ir.ResultColumn)
+		// no label in train SQL means a clustering model, generate a fieldmeta using result table's column
+		labelFM = &codegen.FieldMeta{
+			Name:  ir.ResultColumn,
+			Shape: []int{1},
+			DType: codegen.Int,
+		}
+	}
 
 	filler := predFiller{
 		DataSource:        ir.DataSource,
@@ -248,7 +280,7 @@ func Pred(ir *codegen.PredictIR, session *pb.Session) (string, error) {
 		IsKerasModel:      isKeras,
 		FieldMetas:        fieldMetas,
 		FeatureColumnCode: fmt.Sprintf("{%s}", strings.Join(featureColumnsCode, ",\n")),
-		Y:                 ir.TrainIR.Label.GetFieldMeta()[0],
+		Y:                 labelFM,
 		ModelParams:       modelParams,
 		Save:              "model_save",
 		HDFSNameNodeAddr:  session.HdfsNamenodeAddr,

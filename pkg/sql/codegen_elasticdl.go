@@ -124,8 +124,8 @@ func getElasticDLModelSpec(attrs map[string]*attribute) elasticDLModelSpec {
 	}
 }
 
-func newElasticDLTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds *trainAndValDataset) (*elasticDLFiller, error) {
-	resolved, err := resolveTrainClause(&pr.trainClause, &pr.standardSelect, nil)
+func newElasticDLTrainFiller(pr *extendedSelect, db *DB, session *pb.Session) (*elasticDLFiller, error) {
+	resolved, err := resolveTrainClause(&pr.trainClause, &pr.standardSelect)
 	if err != nil {
 		return nil, err
 	}
@@ -144,12 +144,8 @@ func newElasticDLTrainFiller(pr *extendedSelect, db *DB, session *pb.Session, ds
 		log.Warnln("COLUMN clause is ignored since ElasticDL does not support feature columns yet")
 	}
 
-	var trainInput, evalInput string
-	if ds != nil {
-		trainInput, evalInput = ds.training, ds.validation
-	} else {
-		trainInput, evalInput = pr.tables[0], pr.tables[0]
-	}
+	// TODO(weiguoz): specify evalInput by VALIDATION
+	trainInput, evalInput := pr.tables[0], ""
 	return &elasticDLFiller{
 		IsTraining:      true,
 		TrainInputTable: trainInput,
@@ -185,10 +181,10 @@ func newElasticDLPredictFiller(pr *extendedSelect, db *DB) (*elasticDLFiller, er
 	}, err
 }
 
-func elasticDLTrain(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *pb.Session, ds *trainAndValDataset) error {
+func elasticDLTrain(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *pb.Session) error {
 	// Write model definition file
 	var elasticdlProgram bytes.Buffer
-	trainFiller, err := newElasticDLTrainFiller(pr, db, session, ds)
+	trainFiller, err := newElasticDLTrainFiller(pr, db, session)
 	if err != nil {
 		return err
 	}
@@ -272,7 +268,7 @@ func elasticdlTrainCmd(cwd string, filler *elasticDLFiller) (cmd *exec.Cmd) {
 	return cmd
 }
 
-func elasticDLPredict(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *pb.Session, ds *trainAndValDataset) error {
+func elasticDLPredict(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *pb.Session) error {
 	// Write model definition file
 	var elasticdlProgram bytes.Buffer
 	predictFiller, err := newElasticDLPredictFiller(pr, db)

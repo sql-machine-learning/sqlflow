@@ -54,7 +54,7 @@ func (cc *CrossColumn) GetFieldMeta() []*FieldMeta {
 		} else if _, ok := k.(FeatureColumn); ok {
 			retKeys = append(retKeys, cc.Keys[idx].(*NumericColumn).GetFieldMeta()[0])
 		}
-		// k is not posibble to be neither string and FeatureColumn, the ir_generator should
+		// k is not possible to be neither string and FeatureColumn, the ir_generator should
 		// catch the syntax error.
 	}
 	return retKeys

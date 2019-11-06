@@ -168,7 +168,11 @@ def db_generator(driver, conn, statement,
             field_names = None if cursor.description is None \
                 else [i[0] for i in cursor.description]
         if label_column_name:
-            label_idx = field_names.index(label_column_name)
+            try:
+                label_idx = field_names.index(label_column_name)
+            except ValueError:
+                # NOTE(typhoonzero): For clustering model, label_column_name may not in field_names when predicting.
+                label_idx = None
         else:
             label_idx = None
         

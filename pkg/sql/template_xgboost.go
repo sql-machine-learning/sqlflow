@@ -67,7 +67,7 @@ def xgb_dataset(fn, dataset_sql):
             features, label = item
             row_data = [str(label[0])] + ["%d:%f" % (i, v) for i, v in enumerate(features)]
             f.write("\t".join(row_data) + "\n")
-    # TODO(yancey1989): genearte group and weight text file if necessary
+    # TODO(yancey1989): generate group and weight text file if necessary
     return xgb.DMatrix(fn)
 
 dtrain = xgb_dataset('train.txt', """{{.TrainingDatasetSQL}}""")
@@ -126,7 +126,7 @@ def xgb_dataset(fn, dataset_sql):
             features, label = item
             row_data = [str(label[0])] + ["%d:%f" % (i, v) for i, v in enumerate(features)]
             f.write("\t".join(row_data) + "\n")
-    # TODO(yancey1989): genearte group and weight text file if necessary
+    # TODO(yancey1989): generate group and weight text file if necessary
     return xgb.DMatrix(fn)
 
 dpred = xgb_dataset('predict.txt', """{{.PredictionDatasetSQL}}""")
@@ -135,7 +135,7 @@ bst = xgb.Booster({'nthread': 4})  # init model
 bst.load_model("{{.Save}}")  # load data
 preds = bst.predict(dpred)
 
-# TODO(Yancey1989): using the train parameters to decide regressoin model or classifier model
+# TODO(Yancey1989): using the train parameters to decide regression model or classifier model
 if len(preds.shape) == 2:
     # classifier result
     preds = np.argmax(np.array(preds), axis=1)

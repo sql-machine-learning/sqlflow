@@ -28,7 +28,7 @@ func TestTrainALPSFiller(t *testing.T) {
 	parser := newParser()
 
 	wndStatement := `SELECT dense, deep, wide FROM kaggle_credit_fraud_training_data 
-		TRAIN DNNLinearCombinedClassifier 
+		TO TRAIN DNNLinearCombinedClassifier 
 		WITH 
 			model.dnn_hidden_units = [10, 20],
 			train.max_steps = 1000,
@@ -47,7 +47,7 @@ func TestTrainALPSFiller(t *testing.T) {
 	r, e := parser.Parse(wndStatement)
 	a.NoError(e)
 	session := &pb.Session{UserId: "sqlflow_user"}
-	filler, e := newALPSTrainFiller(r, nil, session, nil)
+	filler, e := newALPSTrainFiller(r, nil, session)
 	a.NoError(e)
 
 	a.True(filler.IsTraining)
@@ -67,7 +67,7 @@ func TestTrainALPSEmbeddingInitializer(t *testing.T) {
 	parser := newParser()
 
 	wndStatement := `SELECT deep FROM kaggle_credit_fraud_training_data 
-		TRAIN DNNClassifier 
+		TO TRAIN DNNClassifier 
 		WITH 
 			model.dnn_hidden_units = [10, 20],
 			train.max_steps = 1000,
@@ -81,7 +81,7 @@ func TestTrainALPSEmbeddingInitializer(t *testing.T) {
 	r, e := parser.Parse(wndStatement)
 	a.NoError(e)
 	session := &pb.Session{UserId: "sqlflow_user"}
-	filler, e := newALPSTrainFiller(r, nil, session, nil)
+	filler, e := newALPSTrainFiller(r, nil, session)
 	a.NoError(e)
 	a.True(strings.Contains(filler.FeatureColumnCode, "tf.feature_column.embedding_column(tf.feature_column.categorical_column_with_identity(key=\"deep_0\", num_buckets=2000), dimension=8, combiner=\"sum\", initializer=tf.random_normal_initializer(stddev=0.001))"))
 }
@@ -93,7 +93,7 @@ func TestPredALPSFiller(t *testing.T) {
 	os.Setenv("OSS_ID", "sqlflow_id")
 	os.Setenv("OSS_ENDPOINT", "http://sqlflow-oss-endpoint")
 	predStatement := `SELECT predict_fun(concat(",", col_1, col_2)) AS (info, score) FROM db.table
-		PREDICT db.predict_result
+		TO PREDICT db.predict_result
 		USING sqlflow_model;`
 
 	r, e := parser.Parse(predStatement)

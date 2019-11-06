@@ -34,60 +34,20 @@ import json
 import xgboost as xgb
 import numpy as np
 from sqlflow_submitter.db import connect_with_data_source, db_generator, buffered_db_writer
+from sqlflow_submitter.xgboost.predict import pred
 
 feature_field_meta = json.loads('''{{.FeatureMetaJSON}}''')
 label_field_meta = json.loads('''{{.LabelMetaJSON}}''')
 
-feature_column_names = [k["name"] for k in feature_field_meta]
-label_name = label_field_meta["name"]
-
-feature_specs = {k['name']: k for k in feature_field_meta}
-
-conn = connect_with_data_source('''{{.DataSource}}''')
-
-def xgb_dataset(fn, dataset_sql):
-    gen = db_generator(conn.driver, conn, dataset_sql, feature_column_names, "", feature_specs)
-    with open(fn, 'w') as f:
-        for item in gen():
-            features, label = item
-            row_data = [str(label[0])] + ["%d:%f" % (i, v) for i, v in enumerate(features)]
-            f.write("\t".join(row_data) + "\n")
-    # TODO(yancey1989): genearte group and weight text file if necessary
-    return xgb.DMatrix(fn)
-
-dpred = xgb_dataset('predict.txt', """{{.PredSelect}}""")
-
-bst = xgb.Booster({'nthread': 4})  # init model
-bst.load_model("my_model")  # load data
-preds = bst.predict(dpred)
-
-# TODO(Yancey1989): using the train parameters to decide regressoin model or classifier model
-if len(preds.shape) == 2:
-    # classifier result
-    preds = np.argmax(np.array(preds), axis=1)
-feature_file_read = open("predict.txt", "r")
-
-result_column_names = feature_column_names
-result_column_names.append(label_name)
-line_no = 0
-with buffered_db_writer(conn.driver,
-                        conn,
-                        "{{.ResultTable}}",
-                        result_column_names,
-                        100,
-                        hdfs_namenode_addr="{{.HDFSNameNodeAddr}}",
-                        hive_location="{{.HiveLocation}}",
-                        hdfs_user="{{.HDFSUser}}",
-                        hdfs_pass="{{.HDFSPass}}") as w:
-    while True:
-        line = feature_file_read.readline()
-        if not line:
-            break
-        row = [i.split(":")[1] for i in line.replace("\n", "").split("\t")[1:]]
-        row.append(str(preds[line_no]))
-        w.write(row)
-        line_no += 1
-print("Done predicting. Predict table : {{.ResultTable}}")
+pred(datasource='''{{.DataSource}}''',
+     select='''{{.PredSelect}}''',
+     feature_field_meta=feature_field_meta,
+     label_field_meta=label_field_meta,
+     result_table='''{{.ResultTable}}''',
+     hdfs_namenode_addr='''{{.HDFSNameNodeAddr}}''',
+     hive_location='''{{.HiveLocation}}''',
+     hdfs_user='''{{.HDFSUser}}''',
+     hdfs_pass='''{{.HDFSPass}}''')
 `
 
 var predTemplate = template.Must(template.New("Pred").Parse(predTemplateText))

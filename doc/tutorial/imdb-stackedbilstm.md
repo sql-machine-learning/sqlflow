@@ -5,7 +5,7 @@ Note that the steps in this tutorial may be changed during the development
 of SQLFlow, we only provide a way that simply works for the current version.
 
 To support custom models like CNN text classification, you may check out the
-current [design](/doc/design/design_customized_model.md)
+current [design](../design/customized_model.md)
 for ongoing development.
 
 In this tutorial we use two datasets both for english and chinese text classification.
@@ -24,7 +24,7 @@ segmented by spaces. You can download the full dataset from:
     %%sqlflow
     SELECT *
     FROM imdb.train
-    TRAIN DNNClassifier
+    TO TRAIN DNNClassifier
     WITH
     model.n_classes = 2,
     model.hidden_units = [128, 64]
@@ -37,7 +37,7 @@ segmented by spaces. You can download the full dataset from:
     %%sqlflow
     SELECT *
     FROM imdb.test
-    PREDICT imdb.predict.class
+    TO PREDICT imdb.predict.class
     USING sqlflow_models.my_text_model_en;
     ```
 1. Then you can get predict result from table `imdb.predict`.
@@ -59,7 +59,7 @@ you may need to follow the below steps:
     %%sqlflow
     SELECT *
     FROM imdb.train
-    TRAIN sqlflow_models.StackedBiLSTMClassifier
+    TO TRAIN sqlflow_models.StackedBiLSTMClassifier
     WITH
     model.n_classes = 2,
     model.stack_units = [64,32],
@@ -138,7 +138,7 @@ you may need to follow the below steps:
     %%sqlflow
     SELECT *
     FROM toutiao.train_processed
-    TRAIN DNNClassifier
+    TO TRAIN DNNClassifier
     WITH
     model.n_classes = 17,
     model.hidden_units = [128, 512]
@@ -151,7 +151,7 @@ you may need to follow the below steps:
     %%sqlflow
     SELECT *
     FROM toutiao.test_processed
-    PREDICT toutiao.predict.class_id
+    TO PREDICT toutiao.predict.class_id
     USING sqlflow_models.my_text_model;
     ```
 1. Then you can get predict result from table `toutiao.predict`:

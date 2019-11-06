@@ -1,6 +1,6 @@
 # XGBoost on SQLFlow Tutorial
 
-This is a tutorial on train/predict XGBoost model in SQLFLow, you can find more SQLFlow usage from the [Language Guide](/doc/language_guide.md), in this tutorial you will learn how to:
+This is a tutorial on train/predict XGBoost model in SQLFLow, you can find more SQLFlow usage from the [Language Guide](../language_guide.md), in this tutorial you will learn how to:
 - Train a XGBoost model to fit the boston housing dataset; and
 - Predict the housing price using the trained model;
 
@@ -45,7 +45,7 @@ First, let's train an XGBoost regression model to fit the boston housing dataset
 and using `squarederror` loss function that the SQLFLow extended SQL can be like:
 
 ```
-TRAIN xgboost.gbtree
+TO TRAIN xgboost.gbtree
 WITH
     train.num_boost_round=30,
     objective="reg:squarederror"
@@ -77,7 +77,7 @@ Finally, the following is the SQLFlow Train statment of this regression task, yo
 ```sql
 %%sqlflow
 SELECT * FROM boston.train
-TRAIN xgboost.gbtree
+TO TRAIN xgboost.gbtree
 WITH
     objective="reg:squarederror",
     train.num_boost_round = 30
@@ -95,10 +95,10 @@ First, we can specify the trained model by `USING clause`:
 USING sqlflow_models.my_xgb_regression_model
 ```
 
-Than, we can specify the prediction result table by `PREDICT clause`:
+Than, we can specify the prediction result table by `TO PREDICT clause`:
 
 ```
-PREDICT boston.predict.medv
+TO PREDICT boston.predict.medv
 ```
 
 And using a standar SQL to fetch the prediction data:
@@ -112,7 +112,7 @@ Finally, the following is the SQLFLow Prediction statment:
 ```sql
 %%sqlflow
 SELECT * FROM boston.test
-PREDICT boston.predict.medv
+TO PREDICT boston.predict.medv
 USING sqlflow_models.my_xgb_regression_model;
 ```
 

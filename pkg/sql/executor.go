@@ -18,6 +18,7 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -86,8 +87,8 @@ func splitExtendedSQL(slct string) ([]string, error) {
 		if (typ[i] == TRAIN && typ[i+1] == IDENT && typ[i+2] == WITH) ||
 			(typ[i] == PREDICT && typ[i+1] == IDENT && typ[i+2] == USING) ||
 			(typ[i] == PREDICT && typ[i+1] == IDENT && typ[i+2] == WITH) ||
-			(typ[i] == ANALYZE && typ[i+1] == IDENT && typ[i+2] == WITH) ||
-			(typ[i] == ANALYZE && typ[i+1] == IDENT && typ[i+2] == USING) {
+			(typ[i] == EXPLAIN && typ[i+1] == IDENT && typ[i+2] == WITH) ||
+			(typ[i] == EXPLAIN && typ[i+1] == IDENT && typ[i+2] == USING) {
 			return []string{slct[:pos[i-1]], slct[pos[i-1]:]}, nil
 		}
 	}
@@ -95,7 +96,7 @@ func splitExtendedSQL(slct string) ([]string, error) {
 	return []string{slct}, nil
 }
 
-// SplitMultipleSQL returns a list of SQL statements if the input statements contains mutiple
+// SplitMultipleSQL returns a list of SQL statements if the input statements contains multiple
 // SQL statements separated by ;
 func SplitMultipleSQL(statements string) ([]string, error) {
 	l := newLexer(statements)
@@ -115,9 +116,9 @@ func SplitMultipleSQL(statements string) ([]string, error) {
 			break
 		}
 		if t == ';' {
-			splited := statements[splitPos:l.pos]
-			splited = strings.TrimSpace(splited)
-			sqlList = append(sqlList, splited)
+			splitted := statements[splitPos:l.pos]
+			splitted = strings.TrimSpace(splitted)
+			sqlList = append(sqlList, splitted)
 			splitPos = l.pos
 		}
 	}
@@ -186,7 +187,7 @@ func query(slct string, db *DB, wr *PipeWriter) error {
 }
 
 // parseRow calls rows.Scan to retrieve the current row, and convert
-// each cell value from {}interface to an accurary value.  It then
+// each cell value from {}interface to an accuracy value.  It then
 // writes the converted row into wr.
 func parseRow(columns []string, columnTypes []*sql.ColumnType, rows *sql.Rows, wr *PipeWriter) error {
 	// Since we don't know the table schema in advance, we create
@@ -222,7 +223,7 @@ func parseRow(columns []string, columnTypes []*sql.ColumnType, rows *sql.Rows, w
 	return nil
 }
 
-// runQeury creates a pipe before starting a goroutine that execute
+// runQuery creates a pipe before starting a goroutine that execute
 // query, which runs slct and writes retrieved rows to a pipe.
 // runQuery returns the read end of the pipe.  The caller doesn't have
 // to close the pipe because the query goroutine will close it after
@@ -252,7 +253,7 @@ func runExec(slct string, db *DB) *PipeReader {
 
 		err := func() error {
 			defer func(startAt time.Time) {
-				log.Debugf("runEexc %v finished, elapsed:%v", slct, time.Since(startAt))
+				log.Debugf("runExec %v finished, elapsed:%v", slct, time.Since(startAt))
 			}(time.Now())
 
 			res, e := db.Exec(slct)
@@ -285,7 +286,7 @@ func runExec(slct string, db *DB) *PipeReader {
 }
 
 func isUnsupervisedLearning(pr *extendedSelect) bool {
-	// TODO(Yancey1989): It's an immature way to determinate whether it's a unsupservised learning model or not.
+	// TODO(Yancey1989): It's an immature way to determinate whether it's a unsupervised learning model or not.
 	if pr.label == "" {
 		return true
 	}
@@ -321,21 +322,13 @@ func runExtendedSQL(slct string, db *DB, modelDir string, session *pb.Session) *
 
 			if pr.train {
 				if os.Getenv("SQLFLOW_submitter") == "elasticdl" {
-					return elasticDLTrain(wr, pr, db, cwd, session, nil)
-				}
-				var ds *trainAndValDataset
-				if !isUnsupervisedLearning(pr) {
-					// TODO(weiguo): fix the hard code 0.8
-					if ds, e = newTrainAndValDataset(db, pr.standardSelect.String(), pr.standardSelect.tables[0], 0.8); e != nil {
-						return e
-					}
-					defer releaseTrainAndValDataset(db, ds)
+					return elasticDLTrain(wr, pr, db, cwd, session)
 				}
 				// FIXME(weiguo): temporary branch to alps
 				if os.Getenv("SQLFLOW_submitter") == "alps" {
-					return alpsTrain(wr, pr, db, cwd, session, ds)
+					return alpsTrain(wr, pr, db, cwd, session)
 				}
-				return train(wr, pr, db, cwd, modelDir, slct, session, ds)
+				return train(wr, pr, db, cwd, modelDir, slct, session)
 			}
 
 			if pr.analyze {
@@ -346,7 +339,7 @@ func runExtendedSQL(slct string, db *DB, modelDir string, session *pb.Session) *
 			if os.Getenv("SQLFLOW_submitter") == "alps" {
 				return alpsPred(wr, pr, db, cwd, session)
 			} else if os.Getenv("SQLFLOW_submitter") == "elasticdl" {
-				return elasticDLPredict(wr, pr, db, cwd, session, nil)
+				return elasticDLPredict(wr, pr, db, cwd, session)
 			}
 			return pred(wr, pr, db, cwd, modelDir, session)
 		}()
@@ -405,66 +398,54 @@ func (cw *logChanWriter) Close() {
 	}
 }
 
-func train(wr *PipeWriter, tr *extendedSelect, db *DB, cwd string, modelDir string, slct string, session *pb.Session, ds *trainAndValDataset) error {
-	fts, e := verify(tr, db)
+func train(wr *PipeWriter, tr *extendedSelect, db *DB, cwd string, modelDir string, slct string, session *pb.Session) error {
+	_, e := verify(tr, db)
 	if e != nil {
 		return e
 	}
 	var program bytes.Buffer
 	if isXGBoostModel(tr.estimator) {
-		// FIXME(weiguoz): Remove the condition after the codegen refactor
-		if enableIR() {
-			ir, err := generateTrainIR(tr, db.String())
-			if err != nil {
-				return err
-			}
-			err = InferFeatureColumns(ir)
-			if err != nil {
-				return err
-			}
-			code, err := xgboost.Train(ir)
-			if err != nil {
-				return err
-			}
-			program.WriteString(code)
-		} else {
-			if e := genXGBoost(&program, tr, ds, fts, db, session); e != nil {
-				return fmt.Errorf("GenXGBoost %v", e)
-			}
+		ir, err := generateTrainIR(tr, db.String())
+		if err != nil {
+			return err
 		}
+		err = InferFeatureColumns(ir)
+		if err != nil {
+			return err
+		}
+		code, err := xgboost.Train(ir)
+		if err != nil {
+			return err
+		}
+		program.WriteString(code)
 	} else {
-		// FIXME(typhoonzero): Remove the condition after the codegen refactor
-		if enableIR() {
-			ir, err := generateTrainIR(tr, db.String())
-			if err != nil {
-				return err
-			}
-			err = InferFeatureColumns(ir)
-			if err != nil {
-				return err
-			}
-			// TODO(typhoonzero): change to use validation clause to fill in ir.ValidationSelect
-			ir.ValidationSelect = fmt.Sprintf("SELECT * FROM %s", ds.validation)
-			code, err := tensorflow.Train(ir)
-			if err != nil {
-				return err
-			}
-			program.WriteString(code)
-		} else {
-			if e := genTF(&program, tr, ds, fts, db, session); e != nil {
-				return fmt.Errorf("genTF %v", e)
-			}
+		ir, err := generateTrainIR(tr, db.String())
+		if err != nil {
+			return err
 		}
-	}
+		err = InferFeatureColumns(ir)
+		if err != nil {
+			return err
+		}
 
+		code, err := tensorflow.Train(ir)
+		if err != nil {
+			return err
+		}
+		program.WriteString(code)
+	}
 	cw := &logChanWriter{wr: wr}
+	var buf bytes.Buffer
+	buf.WriteString(fmt.Sprintf("\n==========Program======\n%s\n=======Program Output===========\n", program.String()))
+
+	w := io.MultiWriter(cw, &buf)
 	defer cw.Close()
 	cmd := sqlflowCmd(cwd, db.driverName)
 	cmd.Stdin = &program
-	cmd.Stdout = cw
-	cmd.Stderr = cw
+	cmd.Stdout = w
+	cmd.Stderr = w
 	if e := cmd.Run(); e != nil {
-		return fmt.Errorf("training failed %v", e)
+		return fmt.Errorf("predict failed: %v\n %s", e, buf.String())
 	}
 	m := model{workDir: cwd, TrainSelect: slct}
 	if modelDir != "" {
@@ -506,89 +487,80 @@ func loadModelMeta(pr *extendedSelect, db *DB, cwd, modelDir, modelName string) 
 }
 
 func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir string, session *pb.Session) error {
-	pr, fts, e := loadModelMeta(pr, db, cwd, modelDir, pr.model)
+	pr, _, e := loadModelMeta(pr, db, cwd, modelDir, pr.model)
 	if e != nil {
 		return fmt.Errorf("loadModelMeta %v", e)
 	}
 
-	var buf bytes.Buffer
+	var program bytes.Buffer
 	if isXGBoostModel(pr.estimator) {
-		if enableIR() {
-			ir, err := generatePredictIR(pr, db.String(), cwd, modelDir)
-			if err != nil {
-				return err
-			}
-			code, err := xgboost.Pred(ir, session)
-			if err != nil {
-				return err
-			}
-			err = createPredictionTable(pr, db, session)
-			if err != nil {
-				return err
-			}
-			buf.WriteString(code)
-		} else {
-			if e := genXGBoost(&buf, pr, nil, fts, db, session); e != nil {
-				return fmt.Errorf("genXGBoost %v", e)
-			}
+		ir, err := generatePredictIR(pr, db.String(), cwd, modelDir)
+		if err != nil {
+			return err
 		}
+		code, err := xgboost.Pred(ir, session)
+		if err != nil {
+			return err
+		}
+		err = createPredictionTable(pr, db, session)
+		if err != nil {
+			return err
+		}
+		program.WriteString(code)
 	} else {
-		if enableIR() {
-			ir, err := generatePredictIR(pr, db.String(), cwd, modelDir)
-			if err != nil {
-				return err
-			}
-			code, err := tensorflow.Pred(ir, session)
-			if err != nil {
-				return err
-			}
-			err = createPredictionTable(pr, db, session)
-			if err != nil {
-				return err
-			}
-			buf.WriteString(code)
-		} else {
-			if e := genTF(&buf, pr, nil, fts, db, session); e != nil {
-				return fmt.Errorf("genTF %v", e)
-			}
+		ir, err := generatePredictIR(pr, db.String(), cwd, modelDir)
+		if err != nil {
+			return err
 		}
+		err = InferFeatureColumns(ir.TrainIR)
+		if err != nil {
+			return err
+		}
+		code, err := tensorflow.Pred(ir, session)
+		if err != nil {
+			return err
+		}
+		err = createPredictionTable(pr, db, session)
+		if err != nil {
+			return err
+		}
+		program.WriteString(code)
 	}
 
+	var buf bytes.Buffer
+	buf.WriteString(fmt.Sprintf("\n==========Program======\n%s\n=======Program Output===========\n", program.String()))
+
 	cw := &logChanWriter{wr: wr}
+	w := io.MultiWriter(cw, &buf)
 	defer cw.Close()
 	cmd := sqlflowCmd(cwd, db.driverName)
 	cmd.Env = append(os.Environ())
-	cmd.Stdin = &buf
-	cmd.Stdout = cw
-	cmd.Stderr = cw
-	return cmd.Run()
+	cmd.Stdin = &program
+	cmd.Stdout = w
+	cmd.Stderr = w
+	if e := cmd.Run(); e != nil {
+		return fmt.Errorf("predict failed: %v\n %s", e, buf.String())
+	}
+	return nil
 }
 
 func analyze(wr *PipeWriter, pr *extendedSelect, db *DB, cwd, modelDir string) error {
 	cmd := exec.Command("python", "-u")
 	cmd.Dir = cwd
-	if enableIR() {
-		ir, err := generateAnalyzeIR(pr, db.String(), cwd, modelDir)
-		if err != nil {
-			return err
-		}
-		if !strings.HasPrefix(strings.ToUpper(ir.TrainIR.Estimator), `XGBOOST.`) {
-			return fmt.Errorf("unsupported model %s", ir.TrainIR.Estimator)
-		}
-		code, err := xgboost.Analyze(ir)
-		if err != nil {
-			return err
-		}
-		var program bytes.Buffer
-		program.WriteString(code)
-		cmd.Stdin = &program
-	} else {
-		prog, err := genAnalyzer(pr, db, cwd, modelDir)
-		if err != nil {
-			return err
-		}
-		cmd.Stdin = prog
+	ir, err := generateAnalyzeIR(pr, db.String(), cwd, modelDir)
+	if err != nil {
+		return err
 	}
+	if !strings.HasPrefix(strings.ToUpper(ir.TrainIR.Estimator), `XGBOOST.`) {
+		return fmt.Errorf("unsupported model %s", ir.TrainIR.Estimator)
+	}
+	code, err := xgboost.Analyze(ir)
+	if err != nil {
+		return err
+	}
+	var program bytes.Buffer
+	program.WriteString(code)
+	cmd.Stdin = &program
 	if _, err := cmd.CombinedOutput(); err != nil {
 		return err
 	}
@@ -649,7 +621,11 @@ func createPredictionTable(predParsed *extendedSelect, db *DB, session *pb.Sessi
 	// TODO(Yancey1989): For the current implementation, the prediction result column
 	// type is derivated by the pred-select-statement, the better way is derivating
 	// the result column type by the prediction result.
-	typ, _ := fts.get(columnName)
+	typ, ok := fts.get(columnName)
+	if !ok {
+		// NOTE(typhoonzero): Clustering model may not have label in select statement, default use INT type
+		typ = "INT"
+	}
 	stype, e := universalizeColumnType(db.driverName, typ)
 	if e != nil {
 		return e

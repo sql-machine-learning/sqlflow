@@ -8,7 +8,7 @@ SQLFlow calls Go's [standard database API](https://golang.org/pkg/database/sql/)
 
 ### Data Retrieval
 
-The basic idea of SQLFlow is to extend the SELECT statement of SQL to have the TRAIN and PREDICT clauses.  For more discussion, please refer to the [syntax design](/doc/design/design_syntax.md).  SQLFlow translates such "extended SQL statements" into submitter programs, which forward the part from SELECT to TRAIN or PREDICT, which we call the "standard part", to the SQL engine.  SQLFlow also accepts the SELECT statement without TRAIN or PREDICT clauses and would forward such "standard statements" to the engine.  It is noticeable that the "standard part" or "standard statements" are not standardized.  For example, various engines use different syntax for `FULL OUTER JOIN`.
+The basic idea of SQLFlow is to extend the SELECT statement of SQL to have the TRAIN and PREDICT clauses.  For more discussion, please refer to the [syntax design](syntax.md).  SQLFlow translates such "extended SQL statements" into submitter programs, which forward the part from SELECT to TO TRAIN or TO PREDICT, which we call the "standard part", to the SQL engine.  SQLFlow also accepts the SELECT statement without TO TRAIN or TO PREDICT clauses and would forward such "standard statements" to the engine.  It is noticeable that the "standard part" or "standard statements" are not standardized.  For example, various engines use different syntax for `FULL OUTER JOIN`.
 
 - Hive supports `FULL OUTER JOIN` directly.
 - MySQL doesn't have `FULL OUTER JOIN`. However, a user can emulates `FULL OUTER JOIN` using `LEFT JOIN`, `UNION` and `RIGHT JOIN`.
@@ -24,7 +24,7 @@ SELECT
       name,
       age,
       income 
-FROM  employee TRAIN DNNRegressor 
+FROM  employee TO TRAIN DNNRegressor 
 WITH  hidden_layers=[10,50,10] 
 COLUMN name, agee LABEL income;
 ```

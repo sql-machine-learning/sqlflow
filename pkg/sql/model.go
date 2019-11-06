@@ -32,7 +32,7 @@ type model struct {
 // save creates a sqlfs table if it doesn't yet exist, and writes the
 // train select statement into the table, followed by the tar-gzipped
 // SQLFlow working directory, which contains the TensorFlow working
-// directory and the trained TenosrFlow model.
+// directory and the trained TensorFlow model.
 func (m *model) save(db *DB, table string) (e error) {
 	sqlf, e := sqlfs.Create(db.DB, db.driverName, table)
 	if e != nil {
@@ -86,7 +86,7 @@ func loadTar(modelDir, cwd, save string) (m *model, e error) {
 
 // load reads from the given sqlfs table for the train select
 // statement, and untar the SQLFlow working directory, which contains
-// the TenosrFlow model, into directory cwd.
+// the TensorFlow model, into directory cwd.
 func load(db *DB, table, cwd string) (m *model, e error) {
 	sqlf, e := sqlfs.Open(db.DB, table)
 	if e != nil {

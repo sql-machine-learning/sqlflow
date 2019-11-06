@@ -17,7 +17,7 @@ import (
 	"errors"
 )
 
-// ErrClosedPipe will occure when manipulating an already closed pipe
+// ErrClosedPipe will occur when manipulating an already closed pipe
 var ErrClosedPipe = errors.New("pipe: write on closed pipe")
 
 // pipe follows the design at https://blog.golang.org/pipelines

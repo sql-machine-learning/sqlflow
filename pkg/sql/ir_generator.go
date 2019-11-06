@@ -59,12 +59,13 @@ func generateTrainIR(slct *extendedSelect, connStr string) (*codegen.TrainIR, er
 			Name: tc.label,
 		}}
 
-	// TODO(typhoonzero): fill in ValidationSelect using `create_train_val.go`
-	// TODO(typhoonzero): fill in ValidationSelect when VALIDATE clause is ready
+	vslct, _ := parseValidataionSelect(attrList)
 	return &codegen.TrainIR{
-		DataSource:       connStr,
-		Select:           slct.standardSelect.String(),
-		ValidationSelect: "",
+		DataSource: connStr,
+		Select:     slct.standardSelect.String(),
+		// TODO(weiguoz): This is a temporary implement. Specifying the
+		// validation dataset by keyword `VALIDATE` is the final solution.
+		ValidationSelect: vslct,
 		Estimator:        estimator,
 		Attributes:       attrList,
 		Features:         fcMap,
@@ -97,22 +98,23 @@ func generatePredictIR(slct *extendedSelect, connStr string, cwd string, modelDi
 		return nil, err
 	}
 
-	resultTable, err := parseResultTable(slct.into)
+	resultTable, resultCol, err := parseResultTable(slct.into)
 	if err != nil {
 		return nil, err
 	}
 
 	return &codegen.PredictIR{
-		DataSource:  connStr,
-		Select:      slct.standardSelect.String(),
-		ResultTable: resultTable,
-		Attributes:  attrMap,
-		TrainIR:     trainIR,
+		DataSource:   connStr,
+		Select:       slct.standardSelect.String(),
+		ResultTable:  resultTable,
+		ResultColumn: resultCol,
+		Attributes:   attrMap,
+		TrainIR:      trainIR,
 	}, nil
 }
 
 func generateAnalyzeIR(slct *extendedSelect, connStr, cwd, modelDir string) (*codegen.AnalyzeIR, error) {
-	attrs, err := generateAttributeIR(&slct.analyzeAttrs)
+	attrs, err := generateAttributeIR(&slct.explainAttrs)
 	if err != nil {
 		return nil, err
 	}
@@ -566,18 +568,40 @@ func parseShape(e *expr) ([]int, error) {
 	return shape, nil
 }
 
-// parseResultTable parse out the table name from the INTO statment
+func parseAttrsGroup(attrs map[string]interface{}, group string) map[string]interface{} {
+	g := make(map[string]interface{})
+	for k, v := range attrs {
+		if strings.HasPrefix(k, group) {
+			subk := strings.SplitN(k, group, 2)
+			if len(subk[1]) > 0 {
+				g[subk[1]] = v
+			}
+		}
+	}
+	return g
+}
+
+func parseValidataionSelect(attrs map[string]interface{}) (string, error) {
+	validation := parseAttrsGroup(attrs, "validation.")
+	ds, ok := validation["select"].(string)
+	if ok {
+		return ds, nil
+	}
+	return "", fmt.Errorf("validation.select not found")
+}
+
+// parseResultTable parse out the table name from the INTO statement
 // as the following 3 cases:
-// db.table.class_col -> db.table # cut the column name
+// db.table.class_col -> db.table, class_col # cut the column name
 // db.table -> db.table               # using the specified db
 // table -> table                     # using the default db
-func parseResultTable(intoStatement string) (string, error) {
+func parseResultTable(intoStatement string) (string, string, error) {
 	resultTableParts := strings.Split(intoStatement, ".")
 	if len(resultTableParts) == 3 {
-		return strings.Join(resultTableParts[0:2], "."), nil
+		return strings.Join(resultTableParts[0:2], "."), resultTableParts[2], nil
 	} else if len(resultTableParts) == 2 || len(resultTableParts) == 1 {
-		return intoStatement, nil
+		return intoStatement, "", nil
 	} else {
-		return "", fmt.Errorf("error result table format, should be db.table.class_col or db.table or table")
+		return "", "", fmt.Errorf("error result table format, should be db.table.class_col or db.table or table")
 	}
 }

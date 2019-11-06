@@ -100,4 +100,4 @@ command:
 go run cmd/repl/repl.go --datasource="mysql://root:root@tcp(host.docker.internal:3306)/?maxAllowedPacket=0"
 ```
 
-You should be able to see the prompt of `sqlflow>`.  Now, please follow the [REPL tutorial](/doc/run/repl.md).
+You should be able to see the prompt of `sqlflow>`.  Now, please follow the [REPL tutorial](run/repl.md).

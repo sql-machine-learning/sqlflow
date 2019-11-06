@@ -43,9 +43,9 @@ func TestTrainAndPredict(t *testing.T) {
 	}
 	code, err := Pred(pir, sess)
 
-	r, _ := regexp.Compile(`hdfs_user="(.*)"`)
+	r, _ := regexp.Compile(`hdfs_user='''(.*)'''`)
 	a.Equal(r.FindStringSubmatch(code)[1], "sqlflow_admin")
-	r, _ = regexp.Compile(`hdfs_pass="(.*)"`)
+	r, _ = regexp.Compile(`hdfs_pass='''(.*)'''`)
 	a.Equal(r.FindStringSubmatch(code)[1], "sqlflow_pass")
 
 	a.NoError(err)
@@ -69,7 +69,7 @@ func mockTrainIR() *codegen.TrainIR {
 	}
 	_ = `SELECT *
 		FROM iris.train
-	TRAIN xgboost.gbtree
+	TO TRAIN xgboost.gbtree
 	WITH
 		objective = "multi:softprob"
 		eta = 3.1,
