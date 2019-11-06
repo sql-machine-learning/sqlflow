@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+set -e
+
 # pip install mysqlclient needs GCC.
 apt-get update && apt-get install -y build-essential
 

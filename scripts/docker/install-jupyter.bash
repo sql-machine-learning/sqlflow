@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+set -e
+
 # NOTE: install-python.bash installs the Jupyter server.  Here we install only the magic command.
  
 # Load SQLFlow's Jupyter magic command automatically. c.f. https://stackoverflow.com/a/32683001.

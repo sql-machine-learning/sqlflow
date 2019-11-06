@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+set -e
+
 # We use Hadoop client to write CSV files to Hive tables.
 HADOOP_URL=https://archive.apache.org/dist/hadoop/common/hadoop-${HADOOP_VERSION}/hadoop-${HADOOP_VERSION}.tar.gz
 curl -fsSL "$HADOOP_URL" -o /tmp/hadoop.tar.gz
