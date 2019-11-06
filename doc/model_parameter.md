@@ -12,8 +12,9 @@ SQLFlow connects a SQL engine (e.g., MySQL, Hive, or MaxCompute) and TensorFlow 
 SELECT * FROM boston.train
 TRAIN xgboost.gbtree
 WITH
-    objective="reg:squarederror",
-    train.num_boost_round = 30
+    objective ="reg:squarederror",
+    train.num_boost_round = 30,
+    validation.select = "SELECT * FROM boston.train LIMIT 8"
 COLUMN crim, zn, indus, chas, nox, rm, age, dis, rad, tax, ptratio, b, lstat
 LABEL medv
 INTO sqlflow_models.my_xgb_regression_model;
@@ -46,6 +47,11 @@ INTO sqlflow_models.my_xgb_regression_model;
 	<td>train.num_boost_round</td>
 	<td>Int</td>
 	<td>[default=10]<br>The number of rounds for boosting.<br>range: [1, Infinity]</td>
+</tr>
+<tr>
+	<td>validation.select</td>
+	<td>String</td>
+	<td>[default=""]<br>Specify the dataset for validation.<br>example: "SELECT * FROM boston.train LIMIT 8"</td>
 </tr>
 </table>
 
