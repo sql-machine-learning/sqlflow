@@ -87,6 +87,25 @@ FROM iris.test
 TO PREDICT iris.predict.class
 USING sqlflow_models.my_xgboost_model;
 `
+
+	testXGBoostTrainSelectHousing = `
+SELECT *
+FROM housing.train
+TO TRAIN xgboost.gbtree
+WITH
+	objective="reg:squarederror",
+	train.num_boost_round = 30,
+	validation.select="SELECT * FROM housing.train LIMIT 20"
+COLUMN f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13
+LABEL target
+INTO sqlflow_models.my_xgb_regression_model;	
+`
+	testXGBoostPredictHousing = `
+SELECT *
+FROM housing.test
+TO PREDICT housing.xgb_predict.target
+USING sqlflow_models.my_xgb_regression_model;
+`
 )
 
 func goodStream(stream chan interface{}) (bool, string) {
@@ -166,11 +185,9 @@ func TestExecuteXGBoostRegression(t *testing.T) {
 	a := assert.New(t)
 	modelDir := ""
 	a.NotPanics(func() {
-		stream := runExtendedSQL(testXGBoostTrainSelectIris, testDB, modelDir, getDefaultSession())
+		stream := runExtendedSQL(testXGBoostTrainSelectHousing, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
-		stream = runExtendedSQL(testAnalyzeTreeModelSelectIris, testDB, modelDir, getDefaultSession())
-		a.True(goodStream(stream.ReadAll()))
-		stream = runExtendedSQL(testXGBoostPredictIris, testDB, modelDir, getDefaultSession())
+		stream = runExtendedSQL(testXGBoostPredictHousing, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
 	})
 }
