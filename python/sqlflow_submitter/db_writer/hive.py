@@ -97,9 +97,9 @@ class HiveDBWriter(BufferedDBWriter):
         if self.hdfs_pass != "":
             hdfs_envs.update({"HADOOP_USER_PASSWORD": self.hdfs_pass})
         cmd_str = "hdfs dfs -mkdir -p %s/%s/" % (hdfs_path, self.table_name)
-        subprocess.check_output(cmd_str.split(), env=hdfs_envs, shell=True)
+        subprocess.check_output(cmd_str.split(), env=hdfs_envs)
         cmd_str = "hdfs dfs -copyFromLocal %s %s/%s/" % (self.tmp_f.name, hdfs_path, self.table_name)
-        subprocess.check_output(cmd_str.split(), env=hdfs_envs, shell=True)
+        subprocess.check_output(cmd_str.split(), env=hdfs_envs)
         # load CSV into Hive
         cursor = self.conn.cursor()
         load_sql = "LOAD DATA INPATH '%s/%s/' OVERWRITE INTO TABLE %s" % (
