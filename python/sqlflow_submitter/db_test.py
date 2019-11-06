@@ -87,7 +87,7 @@ class TestDB(TestCase):
             conn.close()
 
     def _do_test_hive_specified_db(self, driver, conn, hdfs_namenode_addr="", hive_location=""):
-        create_db = '''create database if exists test_db'''
+        create_db = '''create database test_db'''
         create_tbl = '''create table test_db.tbl (features string, label int) ROW FORMAT DELIMITED FIELDS TERMINATED BY "\001"'''
         drop_tbl = '''drop table if exists test_db.tbl'''
         select_tbl = '''select * from test_db.tbl'''
