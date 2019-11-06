@@ -59,8 +59,12 @@ type FeatureColumn interface {
 	GetFieldMeta() []*FieldMeta
 }
 
-// SQLFlowIR represent all kind of IRs including: TrainIR, PredictIR, AnalyzeIR and standard SQL.
-type SQLFlowIR interface {
+// SQLProgramIR represents a parsed SQL program.
+// TODO(typhoonzero): Can generate a DAG workflow from a SQL program.
+type SQLProgramIR []SingleSQLIR
+
+// SingleSQLIR represent all kind of IRs including: TrainIR, PredictIR, AnalyzeIR and standard SQL.
+type SingleSQLIR interface {
 	// This function is used only for restrict the IR struct types
 	IsIR()
 }
@@ -72,6 +76,7 @@ type SQLFlowIR interface {
 // For prediction and analysis jobs, the sql will restore an identical working directly.
 type TrainIR struct {
 	// OriginalSQL record the original SQL statement used to get current IR result
+	// FIXME(typhoonzero): OriginalSQL is a temporary field. Can remove this when all moved to IR
 	OriginalSQL string
 	// DataSource contains the connection information. For example, "hive://root:root@localhost:10000/churn"
 	DataSource string
@@ -108,6 +113,7 @@ func (trainIR *TrainIR) IsIR() {}
 // generated Python program is responsible to create and write the result table.
 type PredictIR struct {
 	// OriginalSQL record the original SQL statement used to get current IR result
+	// FIXME(typhoonzero): OriginalSQL is a temporary field. Can remove this when all moved to IR
 	OriginalSQL string
 	// DataSource contains the connection information. For example, "hive://root:root@localhost:10000/churn"
 	DataSource string
@@ -131,6 +137,7 @@ func (predictIR *PredictIR) IsIR() {}
 // AnalyzeIR is the intermediate representation for code generation of a analysis job
 type AnalyzeIR struct {
 	// OriginalSQL record the original SQL statement used to get current IR result
+	// FIXME(typhoonzero): OriginalSQL is a temporary field. Can remove this when all moved to IR
 	OriginalSQL string
 	// DataSource contains the connection information. For example, "hive://root:root@localhost:10000/churn"
 	DataSource string

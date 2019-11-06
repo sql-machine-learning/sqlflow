@@ -63,51 +63,88 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 	}
 	defer os.RemoveAll(cwd)
 
-	irs, err := sf.ProgramToIR(sqlStatements, req.Session.DbConnStr, cwd, s.modelDir)
+	programIR, err := sf.ProgramToIR(sqlStatements, req.Session.DbConnStr, cwd, s.modelDir)
 	if err != nil {
 		return err
 	}
-	fmt.Println(irs)
+	fmt.Println(programIR)
+	rd := sf.RunIRList(programIR, db, cwd, s.modelDir, req.Session)
 
-	for _, singleSQL := range sqlStatements {
-		var pr *sf.PipeReader
-		startTime := time.Now().UnixNano()
-		pr = s.run(singleSQL, db, s.modelDir, req.Session)
-
-		defer pr.Close()
-
-		for r := range pr.ReadAll() {
-			var res *pb.Response
-			switch s := r.(type) {
-			case error:
-				return s
-			case map[string]interface{}:
-				res, err = encodeHead(s)
-			case []interface{}:
-				res, err = encodeRow(s)
-			case string:
-				res, err = encodeMessage(s)
-			default:
-				return fmt.Errorf("unrecognize run channel return type %#v", s)
+	for r := range rd.ReadAll() {
+		var res *pb.Response
+		switch s := r.(type) {
+		case error:
+			return s
+		case map[string]interface{}:
+			res, err = encodeHead(s)
+		case []interface{}:
+			res, err = encodeRow(s)
+		case string:
+			res, err = encodeMessage(s)
+		case sf.EndOfExecution:
+			if len(programIR) > 1 {
+				eoeMsg := r.(sf.EndOfExecution)
+				eoe := &pb.EndOfExecution{
+					Sql:              eoeMsg.Statement,
+					SpentTimeSeconds: eoeMsg.EndTime - eoeMsg.StartTime,
+				}
+				eoeResponse := &pb.Response{Response: &pb.Response_Eoe{Eoe: eoe}}
+				if err := stream.Send(eoeResponse); err != nil {
+					return err
+				}
+			} else {
+				continue
 			}
-			if err != nil {
-				return err
-			}
-			if err := stream.Send(res); err != nil {
-				return err
-			}
+		default:
+			return fmt.Errorf("unrecognize run channel return type %#v", s)
 		}
-		// Send EndOfExecution message if have multiple requests.
-		if len(sqlStatements) > 1 {
-			eoe := &pb.EndOfExecution{}
-			eoe.Sql = singleSQL
-			eoe.SpentTimeSeconds = time.Now().UnixNano() - startTime
-			eoeResponse := &pb.Response{Response: &pb.Response_Eoe{Eoe: eoe}}
-			if err := stream.Send(eoeResponse); err != nil {
-				return err
-			}
+		if err != nil {
+			return err
+		}
+		if err := stream.Send(res); err != nil {
+			return err
 		}
 	}
+
+	// for _, singleSQL := range sqlStatements {
+	// 	var pr *sf.PipeReader
+	// 	startTime := time.Now().UnixNano()
+	// 	pr = s.run(singleSQL, db, s.modelDir, req.Session)
+
+	// 	defer pr.Close()
+
+	// 	for r := range pr.ReadAll() {
+	// 		var res *pb.Response
+	// 		switch s := r.(type) {
+	// 		case error:
+	// 			return s
+	// 		case map[string]interface{}:
+	// 			res, err = encodeHead(s)
+	// 		case []interface{}:
+	// 			res, err = encodeRow(s)
+	// 		case string:
+	// 			res, err = encodeMessage(s)
+	// 		default:
+	// 			return fmt.Errorf("unrecognize run channel return type %#v", s)
+	// 		}
+	// 		if err != nil {
+	// 			return err
+	// 		}
+	// 		if err := stream.Send(res); err != nil {
+	// 			return err
+	// 		}
+	// 	}
+	// 	// Send EndOfExecution message if have multiple requests.
+	// 	if len(sqlStatements) > 1 {
+	// 		eoe := &pb.EndOfExecution{}
+	// 		eoe.Sql = singleSQL
+	// 		eoe.SpentTimeSeconds = time.Now().UnixNano() - startTime
+	// 		eoeResponse := &pb.Response{Response: &pb.Response_Eoe{Eoe: eoe}}
+	// 		if err := stream.Send(eoeResponse); err != nil {
+	// 			return err
+	// 		}
+	// 	}
+	// }
 	return nil
 }
 

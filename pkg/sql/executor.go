@@ -28,7 +28,6 @@ import (
 	"time"
 
 	pb "sqlflow.org/sqlflow/pkg/server/proto"
-	"sqlflow.org/sqlflow/pkg/sql/codegen"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/xgboost"
 )
@@ -49,31 +48,6 @@ func Run(slct string, db *DB, modelDir string, session *pb.Session) *PipeReader 
 		return runExtendedSQL(slct, db, modelDir, session)
 	}
 	return runStandardSQL(slct, db)
-}
-
-// RunIRList execute a list of parsed SQL statement IRs and merge the results.
-func RunIRList(irs []codegen.SQLFlowIR, db *DB) *PipeReader {
-	rd, wr := Pipe()
-	defer wr.Close()
-	for _, ir := range irs {
-		switch ir.(type) {
-		case *codegen.StandardSQLIR:
-			resultReader := runStandardSQL(string(*ir.(*codegen.StandardSQLIR)), db)
-			Copy(wr, resultReader)
-		case *codegen.TrainIR:
-			resultReader := runTrainIR()
-			Copy(wr, resultReader)
-		case *codegen.PredictIR:
-			resultReader := runPredictIR()
-			Copy(wr, resultReader)
-		case *codegen.AnalyzeIR:
-			resultReader := runAnalyzeIR()
-			Copy(wr, resultReader)
-		default:
-			wr.Write(fmt.Errorf("got error ir type: %T", ir))
-		}
-	}
-	return rd
 }
 
 // splitExtendedSQL splits an extended select statement into
@@ -319,38 +293,7 @@ func isUnsupervisedLearning(pr *extendedSelect) bool {
 	return false
 }
 
-func runTrainIR(trainIR *codegen.TrainIR, db *DB, modelDir string, session *pb.Session) *PipeReader {
-	rd, wr := Pipe()
-	go func() {
-		defer wr.Close()
-		// TODO(typhoonzero): remove below twice parse when all submitters moved to IR.
-		err := func() error {
-			pr, e := newParser().Parse(trainIR.OriginalSQL)
-			if e != nil {
-				return e
-			}
-			if os.Getenv("SQLFLOW_submitter") == "elasticdl" {
-				return elasticDLTrain(wr, pr, db, cwd, session, nil)
-			}
-			var ds *trainAndValDataset
-			if !isUnsupervisedLearning(pr) {
-				// TODO(weiguo): fix the hard code 0.8
-				if ds, e = newTrainAndValDataset(db, pr.standardSelect.String(), pr.standardSelect.tables[0], 0.8); e != nil {
-					return e
-				}
-				defer releaseTrainAndValDataset(db, ds)
-			}
-			// FIXME(weiguo): temporary branch to alps
-			if os.Getenv("SQLFLOW_submitter") == "alps" {
-				return alpsTrain(wr, pr, db, cwd, session, ds)
-			}
-			return train(wr, pr, db, cwd, modelDir, slct, session, ds)
-		}()
-
-	}()
-}
-
-func runExtendedSQL(slct string, db *DB, cwd, modelDir string, session *pb.Session) *PipeReader {
+func runExtendedSQL(slct string, db *DB, modelDir string, session *pb.Session) *PipeReader {
 	rd, wr := Pipe()
 	go func() {
 		defer wr.Close()
