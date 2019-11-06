@@ -15,7 +15,7 @@
 
 set -e
 
-apt-get update && apt-get install openjdk-8-jdk maven
+apt-get update && apt-get install -y openjdk-8-jdk maven
 
 # Install gRPC for Java as a protobuf-compiler plugin. c.f. https://stackoverflow.com/a/53982507/724872.
 wget -q http://central.maven.org/maven2/io/grpc/protoc-gen-grpc-java/1.21.0/protoc-gen-grpc-java-1.21.0-linux-x86_64.exe
