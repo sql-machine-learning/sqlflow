@@ -33,7 +33,7 @@ def train(datasource, select, model_params, train_params, feature_field_meta, la
     feature_spec = {k['name']: k for k in feature_field_meta}
 
     dtrain = xgb_dataset(conn, 'train.txt', select, feature_column_name, label_name, feature_spec)
-    watchlist = [(dtrain, "train")] 
+    watchlist = [(dtrain, "train")]
     if len(validation_select.strip()) > 0:
         dvalidate = xgb_dataset(conn, 'validate.txt', validation_select, feature_column_name, label_name, feature_spec)
         watchlist.append((dvalidate, "validate"))
@@ -41,4 +41,4 @@ def train(datasource, select, model_params, train_params, feature_field_meta, la
     re = dict()
     bst = xgb.train(model_params, dtrain, **train_params, evals=watchlist, evals_result=re)
     bst.save_model("my_model")
-    print(re)
+    print("Evaluation result: %s" % re)
