@@ -54,7 +54,6 @@ def execute(driver, conn, statement):
 class TestDB(TestCase):
 
     create_statement = "create table test_db (features text, label int)"
-    # hive_create_statement = 'create table test_db (features string, label int) ROW FORMAT DELIMITED FIELDS TERMINATED BY "\001" LOCATION "/sqlflow/test_db"'
     hive_create_statement = 'create table test_db (features string, label int) ROW FORMAT DELIMITED FIELDS TERMINATED BY "\001"'
     select_statement = "select * from test_db"
     drop_statement = "drop table if exists test_db"
@@ -84,7 +83,31 @@ class TestDB(TestCase):
 
             conn = connect_with_data_source("hive://root:root@127.0.0.1:10000/iris")
             self._do_test(driver, conn)
+            self._do_test_hive_specified_db(driver, conn, hdfs_namenode_addr="127.0.0.1:8020", hive_location="/sqlflow")
             conn.close()
+
+    def _do_test_hive_specified_db(self, driver, conn, hdfs_namenode_addr="", hive_location=""):
+        create_db = '''create database if exists test_db'''
+        create_tbl = '''create table test_db.tbl (features string, label int) ROW FORMAT DELIMITED FIELDS TERMINATED BY "\001"'''
+        drop_tbl = '''drop table if exists test_db.tbl'''
+        select_tbl = '''select * from test_db.tbl'''
+        table_schema = ["label", "features"]
+        values = [(1, '5,6,1,2')] * 10
+        execute(driver, conn, create_db)
+        execute(driver, conn, drop_tbl)
+        execute(driver, conn, create_tbl)
+        with buffered_db_writer(driver, conn, "test_db.tbl", table_schema, buff_size=10, hdfs_namenode_addr=hdfs_namenode_addr, hive_location=hive_location) as w:
+            for row in values:
+                w.write(row)
+        
+        field_names, data = execute(driver, conn, select_tbl)
+
+        expect_features = ['5,6,1,2'] * 10
+        expect_labels = [1] * 10
+
+        self.assertEqual(field_names, ['features', 'label'])
+        self.assertEqual(expect_features, data[0])
+        self.assertEqual(expect_labels, data[1])
 
     def _do_test(self, driver, conn, hdfs_namenode_addr="", hive_location=""):
         table_name = "test_db"

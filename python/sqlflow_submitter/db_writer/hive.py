@@ -78,6 +78,7 @@ class HiveDBWriter(BufferedDBWriter):
         for row in self.rows:
             data = self._ordered_row_data(row)
             self.f.write(data+'\n')
+        self.f.flush()
         self.rows = []
 
     def write_hive_table(self):
@@ -96,9 +97,9 @@ class HiveDBWriter(BufferedDBWriter):
         if self.hdfs_pass != "":
             hdfs_envs.update({"HADOOP_USER_PASSWORD": self.hdfs_pass})
         cmd_str = "hdfs dfs -mkdir -p %s/%s/" % (hdfs_path, self.table_name)
-        subprocess.check_output(cmd_str.split(), env=hdfs_envs)
+        subprocess.check_output(cmd_str.split(), env=hdfs_envs, shell=True)
         cmd_str = "hdfs dfs -copyFromLocal %s %s/%s/" % (self.tmp_f.name, hdfs_path, self.table_name)
-        subprocess.check_output(cmd_str.split(), env=hdfs_envs)
+        subprocess.check_output(cmd_str.split(), env=hdfs_envs, shell=True)
         # load CSV into Hive
         cursor = self.conn.cursor()
         load_sql = "LOAD DATA INPATH '%s/%s/' OVERWRITE INTO TABLE %s" % (
