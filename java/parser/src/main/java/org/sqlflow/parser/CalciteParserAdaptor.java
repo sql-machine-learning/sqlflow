@@ -5,11 +5,8 @@ import org.apache.calcite.sql.SqlKind;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.parser.SqlParseException;
 import org.apache.calcite.sql.parser.SqlParser;
-import org.apache.log4j.Logger;
 
 public class CalciteParserAdaptor {
-
-  static final Logger logger = Logger.getLogger(CalciteParserAdaptor.class);
 
   public CalciteParserAdaptor() {}
 
@@ -34,8 +31,6 @@ public class CalciteParserAdaptor {
       try {
         SqlParser parser = SqlParser.create(sql);
         SqlNode sqlnode = parser.parseQuery();
-        logger.debug("1 ----------------");
-        logger.debug(sql);
         parse_result.Statements.add(sql);
         return parse_result;
       } catch (SqlParseException e) {
@@ -52,9 +47,6 @@ public class CalciteParserAdaptor {
 
           // multiple SQL statements
           if (sql.charAt(epos) == ';') {
-            logger.debug("2.1 -----------------");
-            logger.debug(sql.substring(0, epos));
-
             sql = sql.substring(epos + 1);
             accumulated_position += epos + 1;
 
@@ -78,13 +70,9 @@ public class CalciteParserAdaptor {
             return parse_result;
           }
 
-          logger.debug("2.2 -----------------");
-          logger.debug(sql.substring(0, epos));
           parse_result.Position = accumulated_position + epos;
           return parse_result;
         } catch (SqlParseException ee) {
-          logger.debug("3 -----------------");
-
           // return original error
           parse_result.Statements = new ArrayList<String>();
           parse_result.Position = -1;
