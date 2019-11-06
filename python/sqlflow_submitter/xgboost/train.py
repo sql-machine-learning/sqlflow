@@ -24,7 +24,7 @@ def xgb_dataset(conn, fn, dataset_sql, feature_column_name, label_name, feature_
     # TODO(yancey1989): generate group and weight text file if necessary
     return xgb.DMatrix(fn)
 
-def train(datasource, select, model_params, train_params, feature_field_meta, label_field_meta):
+def train(datasource, select, model_params, train_params, feature_field_meta, label_field_meta, validation_select):
     conn = connect_with_data_source(datasource)
 
     # NOTE(tony): sorting is necessary to achieve consistent feature orders between training job and prediction/analysis job
@@ -33,8 +33,12 @@ def train(datasource, select, model_params, train_params, feature_field_meta, la
     feature_spec = {k['name']: k for k in feature_field_meta}
 
     dtrain = xgb_dataset(conn, 'train.txt', select, feature_column_name, label_name, feature_spec)
-    # FIXME(weiguoz): bring dtest back when VALIDATE clause is ready
-    # dtest = xgb_dataset('test.txt', '''{{.ValidationSelect}}''')
+    watchlist = [(dtrain, "train")] 
+    if len(validation_select.strip()) > 0:
+        dvalidate = xgb_dataset(conn, 'validate.txt', validation_select, feature_column_name, label_name, feature_spec)
+        watchlist.append((dvalidate, "validate"))
 
-    bst = xgb.train(model_params, dtrain, **train_params)
+    re = dict()
+    bst = xgb.train(model_params, dtrain, **train_params, evals=watchlist, evals_result=re)
     bst.save_model("my_model")
+    print(re)

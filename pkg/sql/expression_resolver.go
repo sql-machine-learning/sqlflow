@@ -60,6 +60,7 @@ type resolvedTrainClause struct {
 	CheckpointSteps               int
 	CheckpointDir                 string
 	KeepCheckpointMax             int
+	ValidationTable               string
 	EvalSteps                     int
 	EvalStartDelay                int
 	EvalThrottle                  int
@@ -147,6 +148,7 @@ func resolveTrainClause(tc *trainClause, slct *standardSelect) (*resolvedTrainCl
 	}
 	modelParams := attrFilter(attrs, "model", true)
 	engineParams := attrFilter(attrs, "engine", true)
+	validationTable := getStringAttr(attrs, "validation.table", "")
 
 	batchSize := getIntAttr(attrs, "train.batch_size", 1)
 	dropRemainder := getBoolAttr(attrs, "train.drop_remainder", true, false)
@@ -241,6 +243,7 @@ func resolveTrainClause(tc *trainClause, slct *standardSelect) (*resolvedTrainCl
 		CheckpointSteps:               checkpointSteps,
 		CheckpointDir:                 checkpointDir,
 		KeepCheckpointMax:             keepCheckpointMax,
+		ValidationTable:               validationTable,
 		EvalSteps:                     evalSteps,
 		EvalStartDelay:                evalStartDecaySecs,
 		EvalThrottle:                  evalThrottleSecs,
@@ -693,7 +696,7 @@ func resolveColumnSpec(el *exprlist, isSparse bool) (*columns.ColumnSpec, error)
 		FeatureMap: fm}, nil
 }
 
-// resolveFeatureColumn returns the acutal feature column typed struct
+// resolveFeatureColumn returns the actual feature column typed struct
 // as well as the columnSpec information.
 func resolveColumn(el *exprlist) (columns.FeatureColumn, *columns.ColumnSpec, error) {
 	head := (*el)[0].val

@@ -27,7 +27,7 @@ func TestTrainElasticDLFiller(t *testing.T) {
 	parser := newParser()
 
 	wndStatement := `SELECT * FROM iris.train
-		TRAIN ElasticDLKerasClassifier 
+		TO TRAIN ElasticDLKerasClassifier 
 		WITH
 			model.optimizer = "optimizer",
 			model.loss = "loss",
@@ -70,7 +70,7 @@ func TestTrainElasticDLFiller(t *testing.T) {
 	r, e := parser.Parse(wndStatement)
 	a.NoError(e)
 	session := &pb.Session{UserId: "sqlflow_user"}
-	filler, e := newElasticDLTrainFiller(r, testDB, session, nil)
+	filler, e := newElasticDLTrainFiller(r, testDB, session)
 	a.NoError(e)
 	a.True(filler.IsTraining)
 	a.Equal("iris.train", filler.TrainInputTable)
@@ -94,7 +94,7 @@ func TestPredElasticDLFiller(t *testing.T) {
 	a := assert.New(t)
 	parser := newParser()
 	predStatement := `SELECT sepal_length, sepal_width, petal_length, petal_width FROM iris.test
-		PREDICT prediction_results_table
+		TO PREDICT prediction_results_table
 		WITH
 			model.num_classes = 10
 		USING trained_elasticdl_keras_classifier;`

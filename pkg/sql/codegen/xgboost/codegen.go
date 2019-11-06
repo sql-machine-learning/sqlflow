@@ -37,6 +37,9 @@ range: [2, Infinity]`, attribute.IntLowerBoundChecker(2, true)},
 	"train.num_boost_round": {attribute.Int, `[default=10]
 The number of rounds for boosting.
 range: [1, Infinity]`, attribute.IntLowerBoundChecker(1, true)},
+	"validation.select": {attribute.String, `[default=""]
+Specify the dataset for validation.
+example: "SELECT * FROM boston.train LIMIT 8"`, nil},
 }
 
 func resolveModelType(estimator string) (string, error) {
@@ -48,7 +51,7 @@ func resolveModelType(estimator string) (string, error) {
 	case "XGBOOST.DART":
 		return "dart", nil
 	default:
-		return "", fmt.Errorf("unsupport model name %v, currently supports xgboost.gbtree, xgboost.gblinear, xgboost.dart", estimator)
+		return "", fmt.Errorf("unsupported model name %v, currently supports xgboost.gbtree, xgboost.gblinear, xgboost.dart", estimator)
 	}
 }
 

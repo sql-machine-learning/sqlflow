@@ -75,7 +75,7 @@ func TestVerifyColumnNameAndType(t *testing.T) {
 	a := assert.New(t)
 	trainParse, e := newParser().Parse(`SELECT gender, tenure, TotalCharges
 FROM churn.train LIMIT 10
-TRAIN DNNClassifier
+TO TRAIN DNNClassifier
 WITH
   n_classes = 3,
   hidden_units = [10, 20]
@@ -86,14 +86,14 @@ INTO sqlflow_models.my_dnn_model;`)
 
 	predParse, e := newParser().Parse(`SELECT gender, tenure, TotalCharges
 FROM churn.train LIMIT 10
-PREDICT iris.predict.class
+TO PREDICT iris.predict.class
 USING sqlflow_models.my_dnn_model;`)
 	a.NoError(e)
 	a.NoError(verifyColumnNameAndType(trainParse, predParse, testDB))
 
 	predParse, e = newParser().Parse(`SELECT gender, tenure
 FROM churn.train LIMIT 10
-PREDICT iris.predict.class
+TO PREDICT iris.predict.class
 USING sqlflow_models.my_dnn_model;`)
 	a.NoError(e)
 	a.EqualError(verifyColumnNameAndType(trainParse, predParse, testDB),

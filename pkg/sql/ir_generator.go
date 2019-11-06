@@ -59,12 +59,13 @@ func generateTrainIR(slct *extendedSelect, connStr string) (*codegen.TrainIR, er
 			Name: tc.label,
 		}}
 
-	// TODO(typhoonzero): fill in ValidationSelect using `create_train_val.go`
-	// TODO(typhoonzero): fill in ValidationSelect when VALIDATE clause is ready
+	vslct, _ := parseValidataionSelect(attrList)
 	return &codegen.TrainIR{
-		DataSource:       connStr,
-		Select:           slct.standardSelect.String(),
-		ValidationSelect: "",
+		DataSource: connStr,
+		Select:     slct.standardSelect.String(),
+		// TODO(weiguoz): This is a temporary implement. Specifying the
+		// validation dataset by keyword `VALIDATE` is the final solution.
+		ValidationSelect: vslct,
 		Estimator:        estimator,
 		Attributes:       attrList,
 		Features:         fcMap,
@@ -113,7 +114,7 @@ func generatePredictIR(slct *extendedSelect, connStr string, cwd string, modelDi
 }
 
 func generateAnalyzeIR(slct *extendedSelect, connStr, cwd, modelDir string) (*codegen.AnalyzeIR, error) {
-	attrs, err := generateAttributeIR(&slct.analyzeAttrs)
+	attrs, err := generateAttributeIR(&slct.explainAttrs)
 	if err != nil {
 		return nil, err
 	}
@@ -565,6 +566,28 @@ func parseShape(e *expr) ([]int, error) {
 		shape = append(shape, intVal)
 	}
 	return shape, nil
+}
+
+func parseAttrsGroup(attrs map[string]interface{}, group string) map[string]interface{} {
+	g := make(map[string]interface{})
+	for k, v := range attrs {
+		if strings.HasPrefix(k, group) {
+			subk := strings.SplitN(k, group, 2)
+			if len(subk[1]) > 0 {
+				g[subk[1]] = v
+			}
+		}
+	}
+	return g
+}
+
+func parseValidataionSelect(attrs map[string]interface{}) (string, error) {
+	validation := parseAttrsGroup(attrs, "validation.")
+	ds, ok := validation["select"].(string)
+	if ok {
+		return ds, nil
+	}
+	return "", fmt.Errorf("validation.select not found")
 }
 
 // parseResultTable parse out the table name from the INTO statement

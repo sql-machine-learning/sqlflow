@@ -179,18 +179,61 @@ WHERE b='20190806';`)
 	}
 }
 
+func TestTrainSQL(t *testing.T) {
+	a := assert.New(t)
+	l := newLexer(` SELECT * FROM train_table
+TO TRAIN my_model
+WITH
+  param = value
+COLUMN a, b
+LABEL c
+INTO model_table;`)
+	var n sqlSymType
+	typs := []int{
+		SELECT, '*', FROM, IDENT, TO, TRAIN, IDENT, WITH, IDENT, '=', IDENT, COLUMN, IDENT, ',', IDENT, LABEL, IDENT, INTO, IDENT, ';'}
+	vals := []string{
+		"SELECT", "*", "FROM", "train_table", "TO", "TRAIN", "my_model", "WITH", "param", "=", "value", "COLUMN", "a", ",", "b",
+		"LABEL", "c", "INTO", "model_table", ";"}
+
+	for i := range typs {
+		a.Equal(typs[i], l.Lex(&n))
+		a.Equal(vals[i], n.val)
+	}
+
+}
+
+func TestPredictSQL(t *testing.T) {
+	a := assert.New(t)
+	l := newLexer(` SELECT * FROM train_table
+TO PREDICT result_table
+WITH
+  param = value
+USING model_table;`)
+	var n sqlSymType
+	typs := []int{
+		SELECT, '*', FROM, IDENT, TO, PREDICT, IDENT, WITH, IDENT, '=', IDENT, USING, IDENT, ';'}
+	vals := []string{
+		"SELECT", "*", "FROM", "train_table", "TO", "PREDICT", "result_table", "WITH", "param", "=", "value", "USING", "model_table", ";"}
+
+	for i := range typs {
+		a.Equal(typs[i], l.Lex(&n))
+		a.Equal(vals[i], n.val)
+	}
+
+}
+
 func TestAnalysisSQL(t *testing.T) {
 	a := assert.New(t)
 	l := newLexer(` SELECT * FROM train_table
-ANALYZE my_model
+TO EXPLAIN my_model
 WITH
   plots = force
 USING TreeExplainer;`)
 	var n sqlSymType
 	typs := []int{
-		SELECT, '*', FROM, IDENT, ANALYZE, IDENT, WITH, IDENT, '=', IDENT, USING, IDENT, ';'}
+		SELECT, '*', FROM, IDENT, TO, EXPLAIN, IDENT, WITH, IDENT, '=', IDENT, USING, IDENT, ';'}
 	vals := []string{
-		"SELECT", "*", "FROM", "train_table", "ANALYZE",
+		"SELECT", "*", "FROM", "train_table", "TO", "EXPLAIN",
 		"my_model", "WITH", "plots", "=", "force", "USING", "TreeExplainer", ";"}
 
 	for i := range typs {

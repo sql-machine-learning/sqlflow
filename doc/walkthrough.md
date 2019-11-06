@@ -8,16 +8,16 @@ The following SQL statements train a TensorFlow model named `DNNClassifier`, whi
 
 ```sql
 
-SELECT * FROM a_table TRAIN DNNClassifier WITH learning_rate=0.01 INTO sqlflow_models.my_model;
+SELECT * FROM a_table TO TRAIN DNNClassifier WITH learning_rate=0.01 INTO sqlflow_models.my_model;
 ```
 
 And the following statement uses the trained model for prediction.
 
 ```sql
-SELECT * FROM b_table PREDICT b_table.predicted_label USING sqlflow_models.my_model;
+SELECT * FROM b_table TO PREDICT b_table.predicted_label USING sqlflow_models.my_model;
 ```
 
-Please be aware that the part in the above statements before the extended keyword TRAIN and PREDICT is a standard SQL statement. This feature simplifies the implementation of the SQLFlow system.
+Please be aware that the part in the above statements before the extended keyword TO TRAIN and TO PREDICT is a standard SQL statement. This feature simplifies the implementation of the SQLFlow system.
 
 ## System Implementation
 
@@ -54,7 +54,7 @@ In the minimal viable product (MVP) of SQLFlow, the code generator generates a P
 1. throw the standard SELECT part in the extended-syntax statement to MySQL via ODBC, and
 1. a loop that reads outputs from the run of the SELECT statement and trains the model (or, using a trained model to predict).
 
-The training part calls TensorFlow to update the parameters of the model specified in the TRAIN clause.
+The training part calls TensorFlow to update the parameters of the model specified in the TO TRAIN clause.
 
 ### Extensibility
 

@@ -53,7 +53,7 @@ Let's train an XGBoost model on the dataset. We prefer to train the model for `3
 and using `squarederror` loss function that the SQLFLow extended SQL can be like:
 
 ``` text
-TRAIN xgboost.gbtree
+TO TRAIN xgboost.gbtree
 WITH
     train.num_boost_round=300,
     objective="reg:squarederror"
@@ -80,13 +80,13 @@ To save the trained model, we can use `INTO clause` to specify a model name:
 INTO sqlflow_models.my_xgb_regression_model
 ```
 
-Finally, the following is the SQLFlow TRAIN statement of this regression task; you can run it in the cell:
+Finally, the following is the SQLFlow TO TRAIN statement of this regression task; you can run it in the cell:
 
 ```sql
 %%sqlflow
 SELECT *
 FROM carprice.train
-TRAIN xgboost.gbtree
+TO TRAIN xgboost.gbtree
 WITH
     objective="reg:squarederror",
     train.num_boost_round = 300,
@@ -106,10 +106,10 @@ First, we can specify the trained model by USING clause:
 USING sqlflow_models.my_xgb_regression_model
 ```
 
-Then, we can specify the prediction result table by PREDICT clause:
+Then, we can specify the prediction result table by TO PREDICT clause:
 
 ```text
-PREDICT carprice.predict.msrp
+TO PREDICT carprice.predict.msrp
 ```
 
 And using a standard SQL to fetch the prediction data.
@@ -123,7 +123,7 @@ Finally, the following is the SQLFLow Prediction statement:
 ```sql
 %%sqlflow
 SELECT * FROM carprice.test
-PREDICT carprice.predict.msrp
+TO PREDICT carprice.predict.msrp
 USING sqlflow_models.my_xgb_regression_model;
 ```
 
@@ -134,9 +134,9 @@ Let's have a glance at prediction results.
 SELECT * FROM carprice.predict limit 5;
 ```
 
-## Analyze the Trained Model
+## Explain the Trained Model
 
-We use the ANALYZE SQL to explain the trained model. Behind the scene, SQLFlow will translate the ANALYZE SQL to a Python program that reads the dataset, loads the trained model, then draws a figure using SHAP to explain the model.
+We use the EXPLAIN SQL to explain the trained model. Behind the scene, SQLFlow will translate the EXPLAIN SQL to a Python program that reads the dataset, loads the trained model, then draws a figure using SHAP to explain the model.
 
 We use the [TreeExplianer](https://github.com/slundberg/shap#tree-ensemble-example-with-treeexplainer-xgboostlightgbmcatboostscikit-learn-models) to draw a summary plot.
 
@@ -156,7 +156,7 @@ We can plot the SHAP values of every feature for every sample.
 %%sqlflow
 SELECT *
 FROM carprice.train
-ANALYZE sqlflow_models.my_xgb_regression_model
+TO EXPLAIN sqlflow_models.my_xgb_regression_model
 WITH
     shap_summary.plot_type="dot",
     shap_summary.alpha=1,
@@ -175,7 +175,7 @@ We can also take the mean absolute value of the SHAP values for each feature to 
 %%sqlflow
 SELECT *
 FROM carprice.train
-ANALYZE sqlflow_models.my_xgb_regression_model
+TO EXPLAIN sqlflow_models.my_xgb_regression_model
 WITH
     shap_summary.plot_type="bar",
     shap_summary.alpha=1,

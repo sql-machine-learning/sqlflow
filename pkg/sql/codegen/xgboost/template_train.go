@@ -40,7 +40,8 @@ train(datasource='''{{.DataSource}}''',
       model_params=model_params,
       train_params=train_params,
       feature_field_meta=feature_field_meta,
-      label_field_meta=label_field_meta)
+      label_field_meta=label_field_meta,
+      validation_select='''{{.ValidationSelect}}''')
 `
 
 var trainTemplate = template.Must(template.New("Train").Parse(trainTemplateText))

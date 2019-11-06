@@ -67,7 +67,6 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(programIR)
 	rd := sf.RunIRList(programIR, db, cwd, s.modelDir, req.Session)
 
 	for r := range rd.ReadAll() {
@@ -96,7 +95,7 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 				continue
 			}
 		default:
-			return fmt.Errorf("unrecognize run channel return type %#v", s)
+			return fmt.Errorf("unrecognized run channel return type %#v", s)
 		}
 		if err != nil {
 			return err

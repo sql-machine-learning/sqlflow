@@ -337,7 +337,7 @@ func CaseTrainTextClassificationIR(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := `SELECT news_title, class_id
 FROM text_cn.train_processed
-TRAIN DNNClassifier
+TO TRAIN DNNClassifier
 WITH model.n_classes = 17, model.hidden_units = [10, 20]
 COLUMN EMBEDDING(CATEGORY_ID(SPARSE(news_title,16000,COMMA), 16000),128,mean)
 LABEL class_id
@@ -352,7 +352,7 @@ func CaseTrainTextClassificationFeatureDerivation(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := `SELECT news_title, class_id
 FROM text_cn.train_processed
-TRAIN DNNClassifier
+TO TRAIN DNNClassifier
 WITH model.n_classes = 17, model.hidden_units = [10, 20]
 COLUMN EMBEDDING(SPARSE(news_title,16000,COMMA),128,mean)
 LABEL class_id
@@ -573,13 +573,18 @@ func CaseSelect(t *testing.T) {
 
 func CaseTrainSQL(t *testing.T) {
 	a := assert.New(t)
-	trainSQL := fmt.Sprintf(`SELECT *
-FROM %s.%s
-TRAIN DNNClassifier
-WITH model.n_classes = 3, model.hidden_units = [10, 20]
-COLUMN sepal_length, sepal_width, petal_length, petal_width
-LABEL class
-INTO sqlflow_models.my_dnn_model;`, caseDB, caseTrainTable)
+	trainSQL := fmt.Sprintf(`
+	SELECT *
+	FROM %s.%s
+	TO TRAIN DNNClassifier
+	WITH
+		model.n_classes = 3,
+		model.hidden_units = [10, 20],
+		validation.select = "SELECT * FROM %s.%s LIMIT 30"
+	COLUMN sepal_length, sepal_width, petal_length, petal_width
+	LABEL class
+	INTO sqlflow_models.my_dnn_model;
+	`, caseDB, caseTrainTable, caseDB, caseTrainTable)
 	_, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)
@@ -587,7 +592,7 @@ INTO sqlflow_models.my_dnn_model;`, caseDB, caseTrainTable)
 
 	predSQL := fmt.Sprintf(`SELECT *
 FROM %s.%s
-PREDICT %s.%s.class
+TO PREDICT %s.%s.class
 USING sqlflow_models.my_dnn_model;`, caseDB, caseTestTable, caseDB, casePredictTable)
 	_, _, err = connectAndRunSQL(predSQL)
 	if err != nil {
@@ -619,7 +624,7 @@ func CaseTrainFeatureDerevation(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`SELECT *
 FROM %s.%s
-TRAIN DNNClassifier
+TO TRAIN DNNClassifier
 WITH model.n_classes = 3, model.hidden_units = [10, 20]
 LABEL class
 INTO sqlflow_models.my_dnn_model;`, caseDB, caseTrainTable)
@@ -628,7 +633,7 @@ INTO sqlflow_models.my_dnn_model;`, caseDB, caseTrainTable)
 
 	// TODO(typhoonzero): also support string column type for training and prediction (column c6)
 	trainVaryColumnTypes := `SELECT c1, c2, c3, c4, c5, class from feature_derivation_case.train
-TRAIN DNNClassifier
+TO TRAIN DNNClassifier
 WITH model.n_classes=3, model.hidden_units=[10,10]
 COLUMN EMBEDDING(c3, 128, sum), EMBEDDING(SPARSE(c5, 10000, COMMA), 128, sum)
 LABEL class
@@ -641,7 +646,7 @@ func CaseTrainCustomModel(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := `SELECT *
 FROM iris.train
-TRAIN sqlflow_models.DNNClassifier
+TO TRAIN sqlflow_models.DNNClassifier
 WITH model.n_classes = 3, model.hidden_units = [10, 20]
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
@@ -653,7 +658,7 @@ INTO sqlflow_models.my_dnn_model_custom;`
 
 	predSQL := `SELECT *
 FROM iris.test
-PREDICT iris.predict.class
+TO PREDICT iris.predict.class
 USING sqlflow_models.my_dnn_model_custom;`
 	_, _, err = connectAndRunSQL(predSQL)
 	if err != nil {
@@ -679,7 +684,7 @@ func CaseTrainTextClassification(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := `SELECT news_title, class_id
 FROM text_cn.train_processed
-TRAIN DNNClassifier
+TO TRAIN DNNClassifier
 WITH model.n_classes = 17, model.hidden_units = [10, 20]
 COLUMN EMBEDDING(CATEGORY_ID(news_title,16000,COMMA),128,mean)
 LABEL class_id
@@ -694,7 +699,7 @@ func CaseTrainTextClassificationCustomLSTM(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := `SELECT news_title, class_id
 FROM text_cn.train_processed
-TRAIN sqlflow_models.StackedBiLSTMClassifier
+TO TRAIN sqlflow_models.StackedBiLSTMClassifier
 WITH model.n_classes = 17, model.stack_units = [16], train.epoch = 1, train.batch_size = 32
 COLUMN EMBEDDING(SEQ_CATEGORY_ID(news_title,1600,COMMA),128,mean)
 LABEL class_id
@@ -709,7 +714,7 @@ func CaseTrainSQLWithHyperParams(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := `SELECT *
 FROM iris.train
-TRAIN DNNClassifier
+TO TRAIN DNNClassifier
 WITH model.n_classes = 3, model.hidden_units = [10, 20], train.batch_size = 10, train.epoch = 2
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
@@ -724,7 +729,7 @@ func CaseTrainDeepWideModel(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := `SELECT *
 FROM iris.train
-TRAIN DNNLinearCombinedClassifier
+TO TRAIN DNNLinearCombinedClassifier
 WITH model.n_classes = 3, model.dnn_hidden_units = [10, 20], train.batch_size = 10, train.epoch = 2
 COLUMN sepal_length, sepal_width FOR linear_feature_columns
 COLUMN petal_length, petal_width FOR dnn_feature_columns
@@ -741,7 +746,7 @@ func CaseTrainCustomModelWithHyperParams(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := `SELECT *
 FROM iris.train
-TRAIN sqlflow_models.DNNClassifier
+TO TRAIN sqlflow_models.DNNClassifier
 WITH model.n_classes = 3, model.hidden_units = [10, 20], train.batch_size = 10, train.epoch=2
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
@@ -756,7 +761,7 @@ func CaseSparseFeature(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := `SELECT news_title, class_id
 FROM text_cn.train
-TRAIN DNNClassifier
+TO TRAIN DNNClassifier
 WITH model.n_classes = 3, model.hidden_units = [10, 20]
 COLUMN EMBEDDING(CATEGORY_ID(news_title,16000,COMMA),128,mean)
 LABEL class_id
@@ -772,7 +777,7 @@ func CaseTrainElasticDL(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`SELECT sepal_length, sepal_width, petal_length, petal_width, class
 FROM %s.%s
-TRAIN ElasticDLDNNClassifier
+TO TRAIN ElasticDLDNNClassifier
 WITH
 			model.optimizer = "optimizer",
 			model.loss = "loss",
@@ -821,21 +826,31 @@ INTO trained_elasticdl_keras_classifier;`, os.Getenv("MAXCOMPUTE_PROJECT"), "sql
 // CaseTrainALPS is a case for training models using ALPS with out feature_map table
 func CaseTrainALPS(t *testing.T) {
 	a := assert.New(t)
-	trainSQL := fmt.Sprintf(`SELECT deep_id, user_space_stat, user_behavior_stat, space_stat, l
-FROM %s.sparse_column_test
-LIMIT 100
-TRAIN DNNClassifier
-WITH model.n_classes = 2, model.hidden_units = [10, 20], train.batch_size = 10, engine.ps_num=0, engine.worker_num=0, engine.type=local
-COLUMN SPARSE(deep_id,15033,COMMA,int),
-       SPARSE(user_space_stat,310,COMMA,int),
-       SPARSE(user_behavior_stat,511,COMMA,int),
-       SPARSE(space_stat,418,COMMA,int),
-       EMBEDDING(CATEGORY_ID(deep_id,15033,COMMA),512,mean),
-       EMBEDDING(CATEGORY_ID(user_space_stat,310,COMMA),64,mean),
-       EMBEDDING(CATEGORY_ID(user_behavior_stat,511,COMMA),64,mean),
-       EMBEDDING(CATEGORY_ID(space_stat,418,COMMA),64,mean)
-LABEL l
-INTO model_table;`, caseDB)
+	trainSQL := fmt.Sprintf(`
+	SELECT deep_id, user_space_stat, user_behavior_stat, space_stat, l
+	FROM %s.sparse_column_test
+	LIMIT 100
+	TO TRAIN DNNClassifier
+	WITH
+	    model.n_classes = 2,
+	    model.hidden_units = [10, 20],
+	    train.batch_size = 10,
+	    engine.ps_num = 0,
+	    engine.worker_num = 0,
+	    engine.type = local,
+	    validation.table = "%s.sparse_column_test"
+	COLUMN
+	    SPARSE(deep_id,15033,COMMA,int),
+	    SPARSE(user_space_stat,310,COMMA,int),
+	    SPARSE(user_behavior_stat,511,COMMA,int),
+	    SPARSE(space_stat,418,COMMA,int),
+	    EMBEDDING(CATEGORY_ID(deep_id,15033,COMMA),512,mean),
+	    EMBEDDING(CATEGORY_ID(user_space_stat,310,COMMA),64,mean),
+	    EMBEDDING(CATEGORY_ID(user_behavior_stat,511,COMMA),64,mean),
+	    EMBEDDING(CATEGORY_ID(space_stat,418,COMMA),64,mean)
+	LABEL l
+	INTO model_table;
+	`, caseDB, caseDB)
 	_, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("run trainSQL error: %v", err)
@@ -848,8 +863,8 @@ func CaseTrainALPSRemoteModel(t *testing.T) {
 	trainSQL := fmt.Sprintf(`SELECT deep_id, user_space_stat, user_behavior_stat, space_stat, l
 FROM %s.sparse_column_test
 LIMIT 100
-TRAIN models.estimator.dnn_classifier.DNNClassifier
-WITH
+TO TRAIN models.estimator.dnn_classifier.DNNClassifier
+WITH 
 	model.n_classes = 2, model.hidden_units = [10, 20], train.batch_size = 10, engine.ps_num=0, engine.worker_num=0, engine.type=local,
 	gitlab.project = "Alps/sqlflow-models",
 	gitlab.source_root = python,
@@ -876,7 +891,7 @@ func CaseTrainALPSFeatureMap(t *testing.T) {
 	trainSQL := fmt.Sprintf(`SELECT dense, deep, item, test_sparse_with_fm.label
 FROM %s.test_sparse_with_fm
 LIMIT 32
-TRAIN alipay.SoftmaxClassifier
+TO TRAIN alipay.SoftmaxClassifier
 WITH train.max_steps = 32, eval.steps=32, train.batch_size=8, engine.ps_num=0, engine.worker_num=0, engine.type = local
 COLUMN DENSE(dense, none, comma),
        DENSE(item, 1, comma, int)
@@ -916,7 +931,7 @@ func CaseTrainRegression(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`SELECT *
 FROM housing.train
-TRAIN LinearRegressor
+TO TRAIN LinearRegressor
 WITH model.label_dimension=1
 COLUMN f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13
 LABEL target
@@ -928,7 +943,7 @@ INTO sqlflow_models.my_regression_model;`)
 
 	predSQL := fmt.Sprintf(`SELECT *
 FROM housing.test
-PREDICT housing.predict.target
+TO PREDICT housing.predict.target
 USING sqlflow_models.my_regression_model;`)
 	_, _, err = connectAndRunSQL(predSQL)
 	if err != nil {
@@ -962,11 +977,12 @@ func CaseTrainXGBoostRegression(t *testing.T) {
 	trainSQL := fmt.Sprintf(`
 SELECT *
 FROM housing.train
-TRAIN xgboost.gbtree
+TO TRAIN xgboost.gbtree
 WITH
-		objective="reg:squarederror",
-		train.num_boost_round = 30
-		COLUMN f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13
+	objective="reg:squarederror",
+	train.num_boost_round = 30,
+	validation.select="SELECT * FROM housing.train LIMIT 20"
+COLUMN f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13
 LABEL target
 INTO sqlflow_models.my_xgb_regression_model;
 `)
@@ -983,7 +999,7 @@ func CaseTrainAndAnalyzeXGBoostModel(t *testing.T) {
 	trainStmt := `
 SELECT *
 FROM housing.train
-TRAIN xgboost.gbtree
+TO TRAIN xgboost.gbtree
 WITH
 	objective="reg:squarederror",
 	train.num_boost_round = 30
@@ -994,7 +1010,7 @@ INTO sqlflow_models.my_xgb_regression_model;
 	analyzeStmt := `
 SELECT *
 FROM housing.train
-ANALYZE sqlflow_models.my_xgb_regression_model
+TO EXPLAIN sqlflow_models.my_xgb_regression_model
 WITH
     shap_summary.plot_type="bar",
     shap_summary.alpha=1,
@@ -1025,7 +1041,7 @@ func CasePredictXGBoostRegression(t *testing.T) {
 	a := assert.New(t)
 	predSQL := fmt.Sprintf(`SELECT *
 FROM housing.test
-PREDICT housing.xgb_predict.target
+TO PREDICT housing.xgb_predict.target
 USING sqlflow_models.my_xgb_regression_model;`)
 	_, _, err := connectAndRunSQL(predSQL)
 	if err != nil {

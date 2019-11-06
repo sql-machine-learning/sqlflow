@@ -10,7 +10,7 @@ To explain the benefit of integrating XGBoost with SQLFlow, let us start with an
 
 ``` sql
 SELECT * FROM train_table
-TRAIN xgboost.gbtree
+TO TRAIN xgboost.gbtree
 WITH
     objective=multi:softmax,
     train.num_boost_round=2,
@@ -24,7 +24,7 @@ The following example shows how to predict using the model `my_xgb_model`.
 
 ``` sql
 SELECT * FROM test_table
-PREDICT pred_table.result
+TO PREDICT pred_table.result
 USING my_xgb_model;
 ```
 
@@ -34,7 +34,7 @@ The the above examples,
 - In the `WITH` clause,
   - objective names an [XGBoost learning task](https://xgboost.readthedocs.io/en/latest/parameter.html#learning-task-parameters)
   - keys with the prefix `train.` identifies parameters of XGBoost API [`xgboost.train`](https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.train), and
-  - keys without any prefix identifies [XGBoost Parameters](https://xgboost.readthedocs.io/en/latest/parameter.html) except the `objective` parameter, which was specified by the identifier after the keyword `TRAIN`, as explained above.
+  - keys without any prefix identifies [XGBoost Parameters](https://xgboost.readthedocs.io/en/latest/parameter.html) except the `objective` parameter, which was specified by the identifier after the keyword `TO TRAIN`, as explained above.
 
 ## The Code Generator
 
@@ -42,4 +42,4 @@ The code generator `codegen_xgboost.go` outputs an XGBoost program in Python. It
 1. It tells the SQL engine to run the SELECT statement and retrieve the training/test data. It saves the data into a text file, which could be loaded by XGBoost using the DMatrix interface.
 1. Parse and resolve the WITH clause to fill the `xgboost.train` arguments and the XGBoost Parameters.
 1. Save the trained model on disk.
-1. For the PREDICT clause, it loads the trained model and test data and then outputs the prediction result to a SQL engine.
+1. For the TO PREDICT clause, it loads the trained model and test data and then outputs the prediction result to a SQL engine.

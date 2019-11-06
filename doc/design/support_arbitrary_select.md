@@ -36,7 +36,7 @@ Please be aware that the SQLFlow parser does not parse the nested select due to 
 
 ### Splitting the Extended SQL
 
-SQLFlow splits the extended SQL by looking for consecutive tokens returned by the lexer. If SQLFlow finds the consecutive tokens like [`TRAIN`, `IDENT`, `WITH`], [`PREDICT`, `IDENT`, `WITH`] or [`ANALYZE` `IDENT`, `WITH`], it splits the SQL string at the beginning of the first token in the list. For example, the lexer can go through the following SQL statement and find `TRAIN DNNClassifier WITH` satisfies the splitting criteria.
+SQLFlow splits the extended SQL by looking for consecutive tokens returned by the lexer. If SQLFlow finds the consecutive tokens like [`TRAIN`, `IDENT`, `WITH`], [`PREDICT`, `IDENT`, `WITH`] or [`EXPLAIN` `IDENT`, `WITH`], it splits the SQL string at the beginning of the first token in the list. For example, the lexer can go through the following SQL statement and find `TRAIN DNNClassifier WITH` satisfies the splitting criteria.
 
 ```sql
 SELECT c1, c2, id, class FROM (SELECT * FROM my_table) a

@@ -20,7 +20,7 @@ Instead of writing a Python program with a lot of boilerplate code, this can be 
 
 ```sql
 SELECT * FROM iris.train
-TRAIN DNNClassifer
+TO TRAIN DNNClassifer
 WITH hidden_units = [10, 10], n_classes = 3, EPOCHS = 10
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
@@ -40,7 +40,7 @@ SELECT select_expr [, select_expr ...]
 FROM table_references
   [WHERE where_condition]
   [LIMIT row_count]
-TRAIN model_identifier
+TO TRAIN model_identifier
 [WITH
   model_attr_expr [, model_attr_expr ...]
   [, train_attr_expr ...]]
@@ -75,15 +75,15 @@ SELECT *
 FROM iris.train
 WHERE class = 0 OR class = 1
 LIMIT 1000
-TRAIN ...
+TO TRAIN ...
 ```
 
 ### Train Clause
 
-The *train clause* describes the specific model type and the way the model is trained, e.g. `TRAIN DNNClassifer WITH hidden_units = [10, 10], n_classes = 3, EPOCHS = 10`.
+The *train clause* describes the specific model type and the way the model is trained, e.g. `TO TRAIN DNNClassifer WITH hidden_units = [10, 10], n_classes = 3, EPOCHS = 10`.
 
 ```sql
-TRAIN model_identifier
+TO TRAIN model_identifier
 WITH
   model_attr_expr [, model_attr_expr ...]
   [, train_attr_expr ...]
@@ -97,7 +97,7 @@ For example, if you want to train a `DNNClassifier`, which has two hidden layers
 
 ```sql
 SELECT ...
-TRAIN DNNClassifer
+TO TRAIN DNNClassifer
 WITH
   model.hidden_units = [10, 10],
   model.n_classes = 3,
@@ -122,7 +122,7 @@ For example, if you want to use fields `sepal_length`, `sepal_width`, `petal_len
 
 ```sql
 SELECT ...
-TRAIN ...
+TO TRAIN ...
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 ...
 ```
@@ -254,7 +254,7 @@ SELECT select_expr [, select_expr ...]
 FROM table_references
   [WHERE where_condition]
   [LIMIT row_count]
-PREDICT result_table_reference
+TO PREDICT result_table_reference
 [WITH
   attr_expr [, attr_expr ...]]
 USING model_table_reference;
@@ -266,8 +266,8 @@ The select statement syntax is the same as the select statement syntax in the tr
 
 The *predict clause* describes the result table that a prediction job should write to, the table a prediction job should load the model from, and necessary configuration attributes for a prediction job.
 
-```sql
-PREDICT result_table_reference
+```
+TO PREDICT result_table_reference
 [WITH
   attr_expr [, attr_expr ...]]
 USING model_table_reference;
@@ -281,7 +281,7 @@ For example, if we want to save the predicted result into table `iris.predict` a
 
 ```sql
 SELECT ...
-PREDICT iris.predict.class
+TO PREDICT iris.predict.class
 USING sqlflow.my_dnn_model;
 ```
 
@@ -294,7 +294,7 @@ SELECT select_expr [, select_expr ...]
 FROM table_references
   [WHERE where_condition]
   [LIMIT row_count]
-ANALYZE model_table_reference
+TO EXPLAIN model_table_reference
 [WITH
   attr_expr [, attr_expr ...]]
 USING explainer;
@@ -307,7 +307,7 @@ The select statement syntax is the same as the select statement syntax in the tr
 The *analyze clause* describes the table an analysis job should load the model from, necessary configuration attributes, and the explainer for analysis.
 
 ```sql
-ANALYZE model_table_reference
+TO EXPLAIN model_table_reference
 [WITH
   attr_expr [, attr_expr ...]]
 USING explainer;
@@ -322,7 +322,7 @@ For example, if we want to analyze the model stored at `sqlflow_models.my_xgb_re
 ```sql
 SELECT *
 FROM boston.train
-ANALYZE sqlflow_models.my_xgb_regression_model
+TO EXPLAIN sqlflow_models.my_xgb_regression_model
 WITH
     shap_summary.sort=True
 USING TreeExplainer;

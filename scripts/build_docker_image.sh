@@ -44,10 +44,8 @@ dill==0.3.0 \
 shap==0.30.1 \
 ${PIP_ADD_PACKAGES}
 
-# 1. Install Go 1.11.5
-wget --quiet https://dl.google.com/go/go1.11.5.linux-amd64.tar.gz
-tar -C /usr/local -xzf go1.11.5.linux-amd64.tar.gz
-rm go1.11.5.linux-amd64.tar.gz
+# 1. Install Go
+curl --silent https://dl.google.com/go/go1.13.4.linux-amd64.tar.gz | tar -C /usr/local -xzf -
 mkdir -p /go
 
 # 2. Install Go compile tools

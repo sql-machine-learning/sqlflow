@@ -52,7 +52,7 @@ limit 1;
 Now let's train a DNNClassifier model. This is a two-category model, we use three hidden layers and the size of hidden layers are ten, forty, ten. This can be done by specifying the training clause using SQLFlow's extended syntax.
 
 ```text
-TRAIN DNNClassifier
+TO TRAIN DNNClassifier
 WITH
     model.n_classes = 2,
     model.hidden_units = [10, 40, 10]
@@ -79,7 +79,7 @@ Putting it all together, we have our SQLFlow training statement. You can modify 
 %%sqlflow
 SELECT *
 FROM titanic.train
-TRAIN DNNClassifier
+TO TRAIN DNNClassifier
 WITH
   model.n_classes = 2,
   model.hidden_units = [10, 40, 10],
@@ -106,7 +106,7 @@ Say we want to use the model stored at `sqlflow_models.my_dnn_model`, and read t
 %%sqlflow
 SELECT *
 FROM titanic.test
-PREDICT titanic.predict.survived
+TO PREDICT titanic.predict.survived
 USING sqlflow_models.my_dnn_model;
 
 SELECT *
