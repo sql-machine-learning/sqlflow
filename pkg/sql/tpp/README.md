@@ -69,93 +69,63 @@ It is notable that MySQL doesn't provide sufficient documentation on how to call
 
 ## The External Parser Abstraction
 
-The above example program calls `sql_engine.Parse` twice before calling `SQLFlow.Parse`.  In practice, because Calcite parser is in Java, SQLFlow is a Go program, to enable SQLFlow calling Calcite parser, we have to wrap Calcite parser up into a gRPC server.  It is time-consuming to make an RPC call, so we pack the two calls to `sql_engine.Parse` into one:
+The above example program calls `sql_engine.Parse` twice before calling `SQLFlow.Parse`.  In practice, because Calcite parser is in Java, SQLFlow is a Go program, to enable SQLFlow calling Calcite parser, we have to wrap Calcite parser up into a command line tool which outputs the parsing result in JSON format.  It is time-consuming to make an Java command line call, so we pack the two calls to `sql_engine.Parse` into one and Parse the JSON response using the following struct.
 
-```protobuf
-message ParserRequest {
-  string query = 1;
-}
-
-message ParserResponse {
-  string sql = 1;
-  string extension = 2;
-  string error = 3;
-}
-
-service Parser {
-  rpc Parse (ParserRequest) returns (ParserResponse) {}
+```
+type ParseResult struct {
+	SQL      []string `json:"sql"`
+	Position int      `json:"position"`
+	Error    string   `json:"error"`
 }
 ```
 
-Some external parsers are in Go and don't need RPC.  For example, TiDB parser is in Go, and HiveQL parser is a set of AntLR grammar rules, and AntLR can generate Go code.  However, we would unify the interface to external parsers:
+Some external parsers are in Go and don't need command line call. For example, TiDB parser is in Go, and HiveQL parser is a set of AntLR grammar rules, and AntLR can generate Go code.  However, we would unify the interface to external parsers:
 
 ```go
-func external_parser(kind, sql string) (idx int, err error) {
+func external_parser(kind, sql string) ([]string, int, error) {
    switch(kind) {
-   case 'calcite':
-       r := grpc.Call("Parser.Parse", ParserRequest{sql})
-       return r.GetIndex(), r.GetError()
-   case 'mysql':
+   case "mysql":
        return tidb.Parse(sql)
+   case "calcite":
+       return calcite.Parse(sql)
    ...
    }
 }
 ```
 
-Now we can change the above exmaple program to call `external_parser` and `SQLFlow.Parse`.
+Now we can change the above example program to call `external_parser` and `SQLFlow.Parse`.
 
 ```go
-func Parse(sql string) error {
-    i, e := external_parser(sql)
-    if e != nil {
-      return e
-    }
-    
-    if i != -1 {
-      return SQLFlow.Parse(sql[i,:]) // Parse the right part.
-    }
-    return nil
+func Parse(sql_program string) (nodes, error) {
+    allNodes := make([]nodes, 0)
+    while len(sql_program) > 0 {
+        // Start parsing by the third party parser
+        nodes, err := tpp.Parse(sql_program)
+        if err != nil {
+            // Error message from a parser should contain error position.
+            pos := parseErrorPosition(err)
+            leftPart = sql[:pos]
+            rightPart = sql[pos:]
+
+            nodes, errLeft := tpp.Parse(leftPart)
+            // In this case, the SQL is not acceptable due to the syntax error
+            if errLeft != nil {
+               return nil, err
+            }
+
+            // If leftPart is acceptable, it is a legitimate  SELECT statement.
+            // We then try right part with SQLFlow parser using the extended syntax parser.
+            node, errRight := esp.Parse(rightPart)
+            if errRight != nil {
+                return false, err
+            }
+
+            // Combine the select statement and the ML clause
+            nodes[-1] = combineNode(nodes[-1], node)
+        }
+        allNodes = append(allNodes, nodes)
+        sql_program = update(sql_program, nodes)
+
+    return allNodes, nil
 }
-```
-
-The above design of `external_parser` returns `idx int`, which separate the input string `sql` into the left part, the "standard" SQL, and the right part, the SQLFlow extension.  In reality, we need it to return more than `idx`.
-
-
-## Get Prepared for Logical Verification
-
-The parser verifies the syntax of the input.  SQLFlow also needs to check the logic.  For example, have a look at the following SQLFlow statement
-
-```sql
-SELECT a, b FROM t1 TO TRAIN DNNClassifier COLUMN c LABEL b;
-```
-
-There is no syntax error in the above example; however, it has a logical mistake -- the column `c` is undefined.
-
-In the design of SQLFlow, we do verification after parsing.  The verifier would like to know the field and table named mentioned in the statement, which is supposed to be returned by `external_parser` in addition to `idx`. Both TiDB parser and Calcite parser return an abstract syntax tree; it seems that we can traverse the tree and find out the field and table names.
-
-
-## Directory Structure
-
-The [TiDB parser](https://github.com/pingcap/parser) is in Go, so SQLFlow server can make local calls to it.  Some others like [Calcite parser](https://github.com/apache/calcite/tree/master/core/src/main/java/org/apache/calcite/sql/parser) and  [Hive parser](https://github.com/apache/hive/tree/master/ql/src/java/org/apache/hadoop/hive/ql/parse) are in Java, or some other languages, and we need remote calls like gRPC.  We refer the later kind by *remote parsers*.  All remote parsers must implement the same gRPC interface defined in `remote/paser.proto`.
-
-```protobuf
-service Parser {
-  rpc Parse (Request) returns (Response) {}
-}
-```
-
-Hence, the directory structure is like the following:
-
-```
-parser/
-    tidb/
-	    tidb_parser.go
-	remote/
-	    grpc/
-		    src/main/proto/parser.proto
-	    calcite/
-		    src/main/java/org/sqlflow/parser/CalciteParserServer.java
-		hiveql/
-		    src/main/java/org/sqlflow/parser/HiveQLParserServer.java
-	    client.go
 ```
