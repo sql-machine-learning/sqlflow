@@ -648,8 +648,8 @@ func createPredictionTable(predParsed *extendedSelect, db *DB, session *pb.Sessi
 	return nil
 }
 
-// Create prediction table with appropriate column type.
-// If prediction table already exists, it will be overwritten.
+// Create prediction table using the `PredictIR`.
+// TODO(typhoonzero): remove legacy `createPredictionTable` if we moved all to IR.
 func createPredictionTableFromIR(predIR *codegen.PredictIR, db *DB, session *pb.Session) error {
 	dropStmt := fmt.Sprintf("drop table if exists %s;", predIR.ResultTable)
 	if _, e := db.Exec(dropStmt); e != nil {
