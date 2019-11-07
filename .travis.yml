@@ -3,6 +3,9 @@ language: go
 # Ref: https://docs.travis-ci.com/user/languages/go/#go-import-path
 go_import_path: sqlflow.org/sqlflow
 
+go:
+  - 1.13.x
+
 branches:
   only:
   - gh-pages
