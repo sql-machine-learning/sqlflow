@@ -21,8 +21,6 @@ package server
 
 import (
 	"fmt"
-	"io/ioutil"
-	"os"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -35,12 +33,13 @@ import (
 )
 
 // NewServer returns a server instance
-func NewServer(modelDir string) *Server {
-	return &Server{modelDir: modelDir}
+func NewServer(run func([]string, *sf.DB, string, *pb.Session) *sf.PipeReader, modelDir string) *Server {
+	return &Server{run: run, modelDir: modelDir}
 }
 
 // Server is the instance will be used to connect to DB and execute training
 type Server struct {
+	run      func(sql []string, db *sf.DB, modelDir string, session *pb.Session) *sf.PipeReader
 	modelDir string
 }
 
@@ -56,18 +55,9 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 	if err != nil {
 		return err
 	}
-	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
-	if err != nil {
-		return err
-	}
-	defer os.RemoveAll(cwd)
+	rd := s.run(sqlStatements, db, s.modelDir, req.Session)
 
-	programIR, err := sf.ProgramToIR(sqlStatements, req.Session.DbConnStr, cwd, s.modelDir)
-	if err != nil {
-		return err
-	}
-	rd := sf.RunIR(programIR, db, cwd, s.modelDir, req.Session)
-
+	grpcStreamSendErrors := []error{}
 	for r := range rd.ReadAll() {
 		var res *pb.Response
 		switch s := r.(type) {
@@ -80,8 +70,8 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 		case string:
 			res, err = encodeMessage(s)
 		case sf.EndOfExecution:
-			// if programIR have only one field, do **NOT** return EndOfExecution message.
-			if len(programIR) > 1 {
+			// if sqlStatements have only one field, do **NOT** return EndOfExecution message.
+			if len(sqlStatements) > 1 {
 				eoeMsg := r.(sf.EndOfExecution)
 				eoe := &pb.EndOfExecution{
 					Sql:              eoeMsg.Statement,
@@ -89,7 +79,7 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 				}
 				eoeResponse := &pb.Response{Response: &pb.Response_Eoe{Eoe: eoe}}
 				if err := stream.Send(eoeResponse); err != nil {
-					return err
+					grpcStreamSendErrors = append(grpcStreamSendErrors, err)
 				}
 			} else {
 				continue
@@ -101,8 +91,13 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 			return err
 		}
 		if err := stream.Send(res); err != nil {
-			return err
+			// NOTE(typhoonzero): must consume all messages in the pipe, or else the when error occurs,
+			// the server side goroutine would leak. See `TestGoroutineLeaky` for more details.
+			grpcStreamSendErrors = append(grpcStreamSendErrors, err)
 		}
+	}
+	if len(grpcStreamSendErrors) > 0 {
+		return fmt.Errorf("error sending response to client, errors: %v", grpcStreamSendErrors)
 	}
 	return nil
 }

@@ -396,57 +396,29 @@ func getDefaultSession() *pb.Session {
 	return &pb.Session{}
 }
 
-func parseAndRunSQL(sql, modelDir string, testDB *DB) *PipeReader {
-	connStr := fmt.Sprintf("%s://%s", testDB.driverName, testDB.dataSourceName)
+func errorPipe(err error) *PipeReader {
 	rd, wr := Pipe()
 	go func() {
 		defer wr.Close()
-		err := func() error {
-			cwd, err := ioutil.TempDir("/tmp", "sqlflow")
-			if err != nil {
-				return err
-			}
-			defer os.RemoveAll(cwd)
-			pr, err := newParser().Parse(sql)
-			if err != nil {
-				return err
-			}
-			if pr.train {
-				ir, err := generateTrainIR(pr, connStr)
-				ir.OriginalSQL = sql
-				if err != nil {
-					return err
-				}
-				stream := runTrainIR(ir, testDB, cwd, modelDir, getDefaultSession())
-				Copy(wr, stream)
-			} else if pr.analyze {
-				ir, err := generateAnalyzeIR(pr, connStr, cwd, modelDir)
-				ir.OriginalSQL = sql
-				if err != nil {
-					return err
-				}
-				stream := runAnalyzeIR(ir, testDB, cwd, modelDir, getDefaultSession())
-				Copy(wr, stream)
-			} else {
-				ir, err := generatePredictIR(pr, connStr, cwd, modelDir)
-				ir.OriginalSQL = sql
-				if err != nil {
-					return err
-				}
-				stream := runPredictIR(ir, testDB, cwd, modelDir, getDefaultSession())
-				Copy(wr, stream)
-			}
-			return nil
-		}()
-
-		if err != nil {
-			log.Errorf("runExtendedSQL error:%v", err)
-			if err != ErrClosedPipe {
-				if err := wr.Write(err); err != nil {
-					log.Errorf("runExtendedSQL error(piping):%v", err)
-				}
-			}
-		}
+		wr.Write(err)
 	}()
+	return rd
+}
+
+// RunSQLProgram run a raw SQL program (string list).
+func RunSQLProgram(sqlStatements []string, db *DB, modelDir string, session *pb.Session) *PipeReader {
+	connStr := fmt.Sprintf("%s://%s", db.driverName, db.dataSourceName)
+	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
+	if err != nil {
+		return errorPipe(err)
+	}
+
+	programIR, err := ProgramToIR(sqlStatements, connStr, cwd, modelDir)
+	if err != nil {
+		return errorPipe(err)
+	}
+	// should run `defer os.RemoveAll(cwd)` in the goroutine in the function RunIR to ensure
+	// the cwd is cleaned only when the job finishes.
+	rd := RunIR(programIR, db, cwd, modelDir, session)
 	return rd
 }
