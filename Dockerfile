@@ -67,10 +67,9 @@ RUN /install-jupyter.bash
 # -----------------------------------------------------------------------------------
 
 # Build SQLFlow, copy sqlflow_submitter, convert tutorial markdown to ipython notebook
-COPY . ${GOPATH}/src/sqlflow.org/sqlflow
-RUN cd /go/src/sqlflow.org/sqlflow && \
+COPY . $GOPATH/src/sqlflow.org/sqlflow
+RUN cd $GOPATH/src/sqlflow.org/sqlflow && \
 go generate ./... && \
-go get -t ./... && \
 go install -v ./... && \
 mv $GOPATH/bin/sqlflowserver /usr/local/bin && \
 mv $GOPATH/bin/repl /usr/local/bin && \
