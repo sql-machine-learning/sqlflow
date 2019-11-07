@@ -17,8 +17,6 @@ set -e
 
 curl --silent https://dl.google.com/go/go1.13.4.linux-amd64.tar.gz | tar -C /usr/local -xzf -
 
-mkdir -p /go
-
 go get github.com/golang/protobuf/protoc-gen-go
 go get golang.org/x/lint/golint
 go get golang.org/x/tools/cmd/goyacc
