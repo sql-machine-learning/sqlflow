@@ -91,6 +91,7 @@ def connect_with_data_source(driver_dsn):
                        port=int(port),
                        auth_mechanism=auth)
         conn.session_cfg = session_cfg
+        conn.default_db = database
     elif driver == "maxcompute":
         from sqlflow_submitter.maxcompute import MaxCompute
         user, passwd, address, database = parseMaxComputeDSN(dsn)
@@ -123,6 +124,7 @@ def connect(driver, database, user, password, host, port, session_cfg={}, auth="
                        host=host,
                        port=int(port),
                        auth_mechanism=auth)
+        conn.default_db = database
         conn.session_cfg = session_cfg
         return conn
     elif driver == "maxcompute":

@@ -592,16 +592,15 @@ func parseValidataionSelect(attrs map[string]interface{}) (string, error) {
 
 // parseResultTable parse out the table name from the INTO statement
 // as the following 3 cases:
-// db.table.class_col -> db.table, class_col # cut the column name
-// db.table -> db.table               # using the specified db
-// table -> table                     # using the default db
+// db.table.class_col -> db.table, class_col # cut the column name, using the specified db.
+// table.class_col -> table, class_col       # using the default db in DSN.
 func parseResultTable(intoStatement string) (string, string, error) {
 	resultTableParts := strings.Split(intoStatement, ".")
 	if len(resultTableParts) == 3 {
 		return strings.Join(resultTableParts[0:2], "."), resultTableParts[2], nil
-	} else if len(resultTableParts) == 2 || len(resultTableParts) == 1 {
-		return intoStatement, "", nil
+	} else if len(resultTableParts) == 2 {
+		return resultTableParts[0], resultTableParts[1], nil
 	} else {
-		return "", "", fmt.Errorf("error result table format, should be db.table.class_col or db.table or table")
+		return "", "", fmt.Errorf("invalied result table format, should be [db.table.class_col] or [table.class_col]")
 	}
 }

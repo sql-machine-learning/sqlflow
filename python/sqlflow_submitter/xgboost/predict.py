@@ -13,7 +13,7 @@
 
 import numpy as np
 import xgboost as xgb
-from sqlflow_submitter.db import connect_with_data_source, db_generator, buffered_db_writer
+from sqlflow_submitter.db import connect_with_data_source, buffered_db_writer
 from .train import xgb_dataset
 
 def pred(datasource,

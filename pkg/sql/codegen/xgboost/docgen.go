@@ -38,7 +38,7 @@ TRAIN xgboost.gbtree
 WITH
     objective ="reg:squarederror",
     train.num_boost_round = 30,
-    validation.select = "SELECT * FROM boston.train LIMIT 8"
+    validation.select = "SELECT * FROM boston.val LIMIT 8"
 COLUMN crim, zn, indus, chas, nox, rm, age, dis, rad, tax, ptratio, b, lstat
 LABEL medv
 INTO sqlflow_models.my_xgb_regression_model;
