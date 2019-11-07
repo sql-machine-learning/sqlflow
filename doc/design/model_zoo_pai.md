@@ -56,27 +56,78 @@ PAI requires a *PAI program* to expose several command line options to communica
 
 ### Versioning and Releasing
 
-Versioning and releasing in PAI model zoo is the same as what's described in [Model Zoo Design](model_zoo.md#Versioning-and-Releasing). The only requirement is that the base docker image of the SQLFlow model zoo should incorporate both `odpscmd`(which is already in place) and `pyodps`.  We propose to use `pyodps` at the moment because it is easier to be integrated into the new workflow framework that is in progress.
+Versioning and releasing in PAI model zoo is the same as what's described in [Model Zoo Design](model_zoo.md#Versioning-and-Releasing). The only requirement is that the base docker image of the SQLFlow model zoo should incorporate both `odpscmd`(which is already in place) and `pyodps`. We propose to use `pyodps` at the moment because it is easier to be integrated into the new workflow framework that is in progress.
 
 ### Submitter Programs of PAI Model Zoo
 
-Currently, each deployment of SQLFlow has been configured to use only one submitter. So we assume that all the tasks of the deployment of SQLFlow on PAI will be submitted to PAI.
+A [PAI program](#Concepts) of PAI model zoo may have multiple python source files and will be executed as a [PAI task](#Concepts) on PAI rather than a process in a Docker container. Take this into consideration, we propose to impose a requirement on a legal model zoo Docker image: the Docker image should specify the directory where the model source files reside, e.g., in an environment variable `SQLFLOW_MODEL_ZOO_MODEL_SOURCE`. In that case, whether or not a model is executed on PAI, its [submitter program](model_zoo.md#Submitter-Programs) can easily import the *model definition*. For example, suppose we have an environment variable `SQLFLOW_MODEL_ZOO_MODEL_SOURCE=/model_zoo/` in a model zoo Docker image and the *model definition* is a python class `MyAwesomeModel` defined in a python script `/model_zoo/my_awesome_model.py`:
 
+1. For a model zoo model that is to be executed in a Docker container, we generate **one** submitter program:
+    - `submitter.py` would run in a Docker container as described in [Submitter Programs](model_zoo.md#Submitter-Programs)
+    ```python
+	import os
+	import sys
+	sys.path += filter(None, os.getenv('SQLFLOW_MODEL_ZOO_MODEL_SOURCE'))
+	import MyAwesomeModel
+
+	# Do my stuff here ...
+	```
+
+1. For a model zoo model that is to be executed on PAI, we generate **two** programs, i.e. a submitter program and a PAI entry file:
+    - `pai_entry.py` would run on PAI
+    ```python
+	import MyAwesomeModel
+	# Define all the PAI required command line options
+	# Do my stuff here ...
+	```
+
+    - `submitter.py` would run in a Docker container as described in [Submitter Programs](model_zoo.md#Submitter-Programs)
+    ```python
+	import os
+    import tarfile
+	from odps import ODPS
+    
+	TARBALL = "/submitters/my_awesome_model.tar.gz"
+    archive = tarfile.open(tarball, "w|gz")
+
+    # '.' is always in sys.path
+    archive.add(os.getenv("SQLFLOW_MODEL_ZOO_MODEL_SOURCE"), arcname=".")
+    archive.add('/submitters/pai_entry.py', arcname=".")
+    archive.add('/submitters/requirements.txt', arcname=".")  # ** see below
+    archive.close()
+
+	# Submit the tarball to PAI
+    conn = ODPS(...)
+    inst = conn.run_xflow("tensorflow",
+                          "my_project",
+                          parameters={"script": "file://" + TARBALL,
+                                      "entry":  "pai_entry.py",
+                                      "other_param": "other_param_value" ... })
+	```
+
+    ** Considering that `MyAwesomeModel` may depend on third party python packages that are not in place on PAI, we propose to introduce a mechanism to analyze the model's dependencies automatically before submitting it to PAI. The mechanism may be simply implemented in the Docker container as a `pip list` command followed by a set subtraction command(e.g. [the comm utility](https://linux.die.net/man/1/comm)), the result file is packed into the tarball that is to be submitted to PAI.
+
+Now let's sum up. Currently, each deployment of SQLFlow has been configured to use only one platform. So we assume that all the tasks of the deployment of SQLFlow on PAI will be submitted to PAI.
 When a user submits a SELECT statement as described in [Model Zoo Background](model_zoo.md#Background), SQLFlow should take the following actions:
 
-1. SQLFlow Checks whether the entity after `TO TRAIN/PREDICT/ANALYZE` is from a SQLFlow model zoo. For example, a plain `DNNClassier` implies that the model is a premade estimator, and `"models.sqlflow.org/sqlflow/my_awesome_model"` implies that the model is from model zoo "models.sqlflow.org". The actual mechanism may be more complicated and is still under progress.
-1. Case A, the model **is not** from a model zoo:
-    - The SQLFlow server generates a submitter program with PAI-required command line options.
-	- The SQLFlow server uses `odpscmd` or `pyodps` to submit the program to PAI as [described above](#Background). 
-1. Case B: the model **is** from a model zoo:
-    - The SQLFlow server generates a submitter program from the model-zoo model with PAI-required command line options.
-    - SQLFlow pulls the Docker image and calls k8s API to launch it on a k8s cluster to execute the following command:
+1. SQLFlow Checks whether the entity after `TO TRAIN/PREDICT/ANALYZE` is from a SQLFlow model zoo. For example, `"models.sqlflow.org/sqlflow/my_awesome_model/MyAwesomeModel"` implies that the model is from model zoo `models.sqlflow.org`, and a  plain `DNNClassier` implies that the model is a premade estimator. The actual mechanism may be more complicated and is still under progress.
 
+1. Case A: the model **is not** from a model zoo:
+    - The SQLFlow server generates a submitter program and a single-file PAI program.
+	- There are no model source files. SQLFlow calls the submitter program to submit the PAI program to PAI.
+
+1. Case B: the model **is** from a model zoo:
+    - The SQLFlow server generates a submitter program and a single-file PAI program.
+    - SQLFlow pulls the Docker image and calls k8s API to launch it on a k8s cluster to execute the following command:
         ```bash
         docker run --rm -it \
           -v /var/sqlflow/submitters:/submitters sqlflow/my_awesome_model \
-            odpscmd  -e 'pai -name tensorflow -Dscript=/submitters/sqlflow/my_awesome_model.tar.gz ...'
+             python /submitters/submitter.py
         ```
+    - There are model source files. The submitter program does the following in the Docker container as the [code snippet above](#L85-L106):
+        - Analyzes model dependencies.
+        - Packs all the dependencies as well as the model source files to a tarball.
+        - Submits the tarball to PAI.
 
 ### PAI Model Zoo Data Schema
 
@@ -109,3 +160,5 @@ For example, suppose there is a model `my_first_model` that is trained by `an_an
 ### Model Publication in PAI Model Zoo
 
 For the same security reasons, in addition to `models.sqlflow.org`, we propose to deploy a private Docker registry with stricter access control for model publication. Each user can enjoy all the models authorized from both public and private repositories. Other than this, model publication in PAI model zoo is the same as [Model Zoo Model Publication](model_zoo.md#Model-Publication). 
+
+We encourage model developers to develop their models in high level TensorFlow APIs(tf.keras) to ensure TensorFlow version compatibility.
