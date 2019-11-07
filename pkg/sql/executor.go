@@ -649,7 +649,7 @@ func createPredictionTable(predParsed *extendedSelect, db *DB, session *pb.Sessi
 }
 
 // Create prediction table using the `PredictIR`.
-// TODO(typhoonzero): remove legacy `createPredictionTable` once we moved all to IR.
+// TODO(typhoonzero): remove legacy `createPredictionTable` once we change all submitters to use IR.
 func createPredictionTableFromIR(predIR *codegen.PredictIR, db *DB, session *pb.Session) error {
 	dropStmt := fmt.Sprintf("drop table if exists %s;", predIR.ResultTable)
 	if _, e := db.Exec(dropStmt); e != nil {
