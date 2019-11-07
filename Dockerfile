@@ -44,7 +44,7 @@ COPY scripts/docker/install-python.bash /
 RUN /install-python.bash
 
 # Go, goyacc, protoc-gen-go, and other Go tools
-ENV GOPATH /go
+ENV GOPATH /root/go
 ENV PATH /usr/local/go/bin:$GOPATH/bin:$PATH
 COPY scripts/docker/install-go.bash /
 RUN /install-go.bash
