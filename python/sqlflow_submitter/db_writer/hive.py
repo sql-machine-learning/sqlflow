@@ -31,11 +31,29 @@ class HiveDBWriter(BufferedDBWriter):
         self.hive_location = hive_location
         self.hdfs_user = hdfs_user
         self.hdfs_pass = hdfs_pass
+
+    def _column_list(self):
+        # NOTE(yancey1989): for the tablename: mydb.tblname, if 'mydb' is 
+        # a tablename in the default database, Hive describe STATMENT would
+        # mistake 'tblname' to a column name. 
+        cursor = self.conn.cursor()
+        table_parts = self.table_name.split(".")
+        if len(table_parts) == 2:
+            db, table_name = table_parts[0], table_parts[1]
+            cursor.execute("use %s" % db)
+            cursor.execute("describe %s" % table_name)
+        elif len(table_parts) == 1:
+            cursor.execute("describe %s" % self.table_name)
+        else:
+            raise ValueError("")
+        result = cursor.fetchall()
+        cursor.execute("use %s " % self.conn.default_db)
+        return result
     
     def _indexing_table_schema(self, table_schema):
         cursor = self.conn.cursor()
-        cursor.execute("describe %s" % self.table_name)
-        column_list = cursor.fetchall()
+        column_list = self._column_list()
+        
         schema_idx = []
         idx_map = {}
         # column list: [(col1, type, desc), (col2, type, desc)...]
@@ -60,6 +78,7 @@ class HiveDBWriter(BufferedDBWriter):
         for row in self.rows:
             data = self._ordered_row_data(row)
             self.f.write(data+'\n')
+        self.f.flush()
         self.rows = []
 
     def write_hive_table(self):
