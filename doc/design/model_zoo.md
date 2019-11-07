@@ -62,11 +62,11 @@ In SQLFlow SQL grammar, the identifiers after `TRAIN`, `USING` and `INTO` have d
 
 A key to this design is the representation of the above concepts.  It is not a straightforward solution. For example, in prior work and previous discussions, engineers proposed to represent each model definition by a Python source code file hosted on an FTP service and downloaded when some users file a model training statement. This intuitive proposal could lead to inconsistencies. Suppose that an analyst trained a model using the definition in `my_dnn_regressor.py` and got `my_first_model`; soon after that, a data scientist changed `my_dnn_regressor.py` and the analyst re-trained the model into `my_second_model` with slightly modified hyperparameter settings. The analyst might expect that both models share the same definition; however, they don't, and worse than that, there is no mechanism to remind the change of the model definition to the analyst.
 
-Such design flaw roots from the ignoring of the fact that model definitions are code that has versions. Another important aspect is that we often build the source code into some release-ready form.  Once we noticed these facts, we can use version management tools like Git and release engineering tools like Docker.  Here follows our proposal.
+Such design flaw roots from the ignoring of the fact that model definitions are code that has versions. Another important aspect is that we often build the source code into some release-ready form.  Once we noticed these facts, we can use version management tools like Git and release engineering tools like Docker. Here follows our proposal.
 
 1. A collection of model definitions is a Git repository of source files. 
 1. To describe dependencies, we require a Dockerfile at the root directory of the repository.
-1. To release a repository, we checkout the specific version and run `docker run` with the Dockerfile.
+1. To release a repository, we checkout the specific version and run `docker build` and `docker push` with the Dockerfile.
 
 ### Submitter Programs
 

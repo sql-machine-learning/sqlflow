@@ -66,7 +66,7 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 	if err != nil {
 		return err
 	}
-	rd := sf.RunIRList(programIR, db, cwd, s.modelDir, req.Session)
+	rd := sf.RunIR(programIR, db, cwd, s.modelDir, req.Session)
 
 	for r := range rd.ReadAll() {
 		var res *pb.Response

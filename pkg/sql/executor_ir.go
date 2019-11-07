@@ -38,8 +38,8 @@ type EndOfExecution struct {
 	Statement string
 }
 
-// RunIRList execute a list of parsed SQL statement IRs and merge the results.
-func RunIRList(programIR codegen.SQLProgramIR, db *DB, cwd, modelDir string, session *pb.Session) *PipeReader {
+// RunIR execute a list of parsed SQL statement IRs and merge the results.
+func RunIR(programIR codegen.SQLProgramIR, db *DB, cwd, modelDir string, session *pb.Session) *PipeReader {
 	rd, wr := Pipe()
 	go func() {
 		defer wr.Close()

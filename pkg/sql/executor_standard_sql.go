@@ -17,7 +17,6 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -131,6 +130,7 @@ func runQuery(slct string, db *DB) *PipeReader {
 	// TODO(tony): test on null table elements
 	rd, wr := Pipe()
 	go func() {
+		fmt.Println("in runQuery")
 		defer wr.Close()
 		if e := query(slct, db, wr); e != nil {
 			log.Errorf("runQuery error:%v", e)
@@ -228,10 +228,6 @@ func (cw *logChanWriter) Close() {
 // -------------------------- utilities --------------------------------------
 func isXGBoostModel(estimator string) bool {
 	return strings.HasPrefix(strings.ToUpper(estimator), `XGBOOST.`)
-}
-
-func enableIR() bool {
-	return os.Getenv("SQLFLOW_codegen") == "ir"
 }
 
 func parseTableColumn(s string) (string, string, error) {
