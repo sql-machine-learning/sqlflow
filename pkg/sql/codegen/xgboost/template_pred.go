@@ -31,9 +31,6 @@ type predFiller struct {
 
 const predTemplateText = `
 import json
-import xgboost as xgb
-import numpy as np
-from sqlflow_submitter.db import connect_with_data_source, db_generator, buffered_db_writer
 from sqlflow_submitter.xgboost.predict import pred
 
 feature_field_meta = json.loads('''{{.FeatureMetaJSON}}''')
