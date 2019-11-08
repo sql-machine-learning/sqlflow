@@ -11,21 +11,21 @@ To provide better support to programmers, SQLFlow allows programmers to specify 
 Here we use a simple example to explain the syntax of SQLFlow.  
 
 ``` sql
-SELECT * FROM train_table, test_table
-TUNE num_boost_round, max_depth
+SELECT * FROM train_table
+TRAIN xgboost.gbtree
 WITH
-    framework=katib.xgboost
-    param.model=xgboost.gbtree
-    param.objective=multi:softmax,
-    param.eta=1
-INTO my_model_hp;
+    objective=multi:softmax,
+    eta=1
+LABEL class
+INTO my_xgb_model;
 ```
 The the above examples,
-- This query tries to tune hyperparameter `num_boost_round`, `max_depth`. 
+- This query tries to tune XGBoost model. 
+- `xgboost.gtree` configures the booster used. 
 - In the `WITH` clause:
-    - `katib.xgboost`indicates to tune those hyperparameters by running XGBoost jobs on Katib. 
-    - `xgboost.gbtree`, `objective` and `eta` are parameters for XGBoost model, see: [here](https://xgboost.readthedocs.io/en/latest/parameter.html#general-parameters) for more details of XGBoost parameters.
-- `my_model_hp` file includes optimized value for `num_boost_round` and `max_depth`.
+    - `objective`indicates objective parameter in XGBoost. 
+    - `eta` indicates eta parameter in XGBoost, more details see: [here](https://xgboost.readthedocs.io/en/latest/parameter.html#general-parameters) for more details of XGBoost parameters.
+- `my_xgb_model` file includes optimized hyperparameter value.
   
 
 ## Hyperparameter Optimization in Katib
@@ -43,13 +43,14 @@ MetricsCollector container parses logs of the job containers and put training re
 ## Pipeline:
 
 1. Users input SQL queries. 
-2. Based on input SQL queries, the codegen `codegen_katib_xgboost.go` generates `katib_xgboost.py` file. This file includes all parameters for XGBoost jobs. 
+2. Based on input SQL queries, the codegen `codegen.go` generates `katib_xgboost.py` file. This file includes all parameters for XGBoost hyperparameters optimization.
 3. SQLFlow server executes `katib_xgboost.py`:
-   1. generates `katib_xgboost.yaml` file and fill it with: 
-      1. the scope of hyperparameters: now the scope of hyperparameters are constant value. Later there will be a `model_zoo` to generate optimized scope for each hyperparameters.
-      2. source of standard XGBoost Docker image.
-      3. commands to execute XGBoost job python program in the container.
-   2. executes `katib_xgboost.yaml` on kubernetes and start XGBoost jobs in Katib.
+   1. read experiment specifics from `template_katib_xgboost.yaml` file.
+   2. fill paramters for XGBoost experiment:
+      1. experiment name.
+      2. the scope of hyperparameters: now the scope of hyperparameters are constant value. Later there will be a `model_zoo` to generate optimized scope for each hyperparameters.
+      3. XGBoost model parameters.
+   3. submit XGBoost experiment to Katib.
 
    
 
