@@ -9,6 +9,7 @@
   rev: v0.1.1
   hooks:
     - id: google-style-java
+      pass_filenames: false
 - repo: local
   hooks:
     - id: copyright_checker
