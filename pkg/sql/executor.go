@@ -688,6 +688,7 @@ func createPredictionTableFromIR(predIR *codegen.PredictIR, db *DB, session *pb.
 	// typ, ok := fts.get(predIR.ResultColumn)
 	if !labelColumnTypeFound {
 		// NOTE(typhoonzero): Clustering model may not have label in select statement, default use INT type
+		labelColumnName = predIR.ResultColumn
 		labelColumnType = "INT"
 	}
 	stype, e := universalizeColumnType(db.driverName, labelColumnType)
