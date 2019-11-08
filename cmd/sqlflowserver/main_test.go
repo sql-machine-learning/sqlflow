@@ -286,51 +286,34 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseTrainXGBoostRegression", CaseTrainXGBoostRegression)
 	t.Run("CasePredictXGBoostRegression", CasePredictXGBoostRegression)
 	t.Run("CaseTrainDeepWideModel", CaseTrainDeepWideModel)
-}
 
-func TestEnd2EndMySQLIR(t *testing.T) {
-	if os.Getenv("SQLFLOW_codegen") != "ir" {
-		t.Skip("Skipping ir test")
-	}
-	testDBDriver := os.Getenv("SQLFLOW_TEST_DB")
-	// default run mysql tests
-	if len(testDBDriver) == 0 {
-		testDBDriver = "mysql"
-	}
-	if testDBDriver != "mysql" {
-		t.Skip("Skipping mysql tests")
-	}
-	dbConnStr = "mysql://root:root@tcp(localhost:3306)/?maxAllowedPacket=0"
-	modelDir := ""
-
-	tmpDir, caCrt, caKey, err := generateTempCA()
-	defer os.RemoveAll(tmpDir)
-	if err != nil {
-		t.Fatalf("failed to generate CA pair %v", err)
-	}
-
-	addr := fmt.Sprintf("localhost:%d", unitestPort)
-	if !serverIsReady(addr, 0) {
-		go start(modelDir, caCrt, caKey, unitestPort)
-		waitPortReady(addr, 0)
-	}
-	err = prepareTestData(dbConnStr)
-	if err != nil {
-		t.Fatalf("prepare test dataset failed: %v", err)
-	}
-
-	t.Run("CaseTrainSQL", CaseTrainSQL)
+	// Cases using feature derivation
 	t.Run("CaseTrainTextClassificationIR", CaseTrainTextClassificationIR)
 	t.Run("CaseTrainTextClassificationFeatureDerivation", CaseTrainTextClassificationFeatureDerivation)
-	t.Run("CaseTrainCustomModel", CaseTrainCustomModel)
-	t.Run("CaseTrainSQLWithHyperParams", CaseTrainSQLWithHyperParams)
-	t.Run("CaseTrainCustomModelWithHyperParams", CaseTrainCustomModelWithHyperParams)
-	t.Run("CaseSQLByPassLeftJoin", CaseSQLByPassLeftJoin)
-	t.Run("CaseTrainRegression", CaseTrainRegression)
-	t.Run("CaseTrainXGBoostRegressionIR", CaseTrainXGBoostRegression)
-	t.Run("CasePredictXGBoostRegressionIR", CasePredictXGBoostRegression)
+	t.Run("CaseXgboostFeatureDerivation", CaseXgboostFeatureDerivation)
 	t.Run("CaseTrainFeatureDerevation", CaseTrainFeatureDerevation)
-	t.Run("CaseAnalyzeXGBoostModel", CaseTrainAndAnalyzeXGBoostModel)
+}
+
+func CaseXgboostFeatureDerivation(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := `SELECT * FROM housing.train
+TO TRAIN xgboost.gbtree
+WITH objective="reg:squarederror",
+	 train.num_boost_round=30
+LABEL target
+INTO sqlflow_models.my_xgb_regression_model;`
+	_, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("run test error: %v", err)
+	}
+
+	predSQL := `SELECT * FROM housing.test
+TO PREDICT housing.predict.target
+USING sqlflow_models.my_xgb_regression_model;`
+	_, _, err = connectAndRunSQL(predSQL)
+	if err != nil {
+		a.Fail("run test error: %v", err)
+	}
 }
 
 func CaseTrainTextClassificationIR(t *testing.T) {
@@ -622,13 +605,20 @@ FROM %s.%s LIMIT 5;`, caseDB, casePredictTable)
 
 func CaseTrainFeatureDerevation(t *testing.T) {
 	a := assert.New(t)
-	trainSQL := fmt.Sprintf(`SELECT *
-FROM %s.%s
+	trainSQL := `SELECT *
+FROM iris.train
 TO TRAIN DNNClassifier
 WITH model.n_classes = 3, model.hidden_units = [10, 20]
 LABEL class
-INTO sqlflow_models.my_dnn_model;`, caseDB, caseTrainTable)
+INTO sqlflow_models.my_dnn_model;`
 	_, _, err := connectAndRunSQL(trainSQL)
+	a.NoError(err)
+
+	predSQL := `SELECT *
+FROM iris.test
+TO PREDICT iris.predict.class
+USING sqlflow_models.my_dnn_model;`
+	_, _, err = connectAndRunSQL(predSQL)
 	a.NoError(err)
 
 	// TODO(typhoonzero): also support string column type for training and prediction (column c6)

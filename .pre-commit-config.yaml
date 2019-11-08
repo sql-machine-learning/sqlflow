@@ -9,6 +9,7 @@
   rev: v0.1.1
   hooks:
     - id: google-style-java
+      pass_filenames: false # https://github.com/sql-machine-learning/sqlflow/issues/1152#issuecomment-551325589
 - repo: local
   hooks:
     - id: copyright_checker
