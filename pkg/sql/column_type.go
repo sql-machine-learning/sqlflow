@@ -174,7 +174,7 @@ func parseVal(val interface{}) (interface{}, error) {
 }
 
 func universalizeColumnType(driverName, dialectType string) (string, error) {
-	if driverName == "mysql" || driverName == "sqlite3" || driverName == "maxcompute" {
+	if driverName == "mysql" || driverName == "maxcompute" {
 		if dialectType == "VARCHAR" {
 			// FIXME(tony): MySQL driver DatabaseName doesn't include the type length of a field.
 			// Hardcoded to 255 for now.

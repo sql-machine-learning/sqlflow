@@ -35,8 +35,6 @@ func hasDatabaseConnector(driverName string) bool {
 		return tryRun("python", "-c", "from impala.dbapi import connect")
 	} else if driverName == "mysql" {
 		return tryRun("python", "-c", "from MySQLdb import connect")
-	} else if driverName == "sqlite3" {
-		return tryRun("python", "-c", "from sqlite3 import connect")
 	} else if driverName == "maxcompute" {
 		return tryRun("python", "-c", "from odps import ODPS")
 	}

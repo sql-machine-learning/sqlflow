@@ -36,7 +36,6 @@ To do that, SQLFlow needs to query the field names from the SQL engine.  However
 - MySQL: `DESCRIBE/DESC employee;`
 - Hive: `DESCRIBE FORMATTED employee;`
 - ODPS: `DESC employee;`
-- SQLite: `PRAGMA table_info([employee]);`
 
 The returned data format varies too. Our solution to avoid such differences is not-to-use-them; instead, SQLFlow retrieves the table schema by running a query like `SELECT * FROM employee LIMIT 1;` and inferring field types using the mechanism called [DatabaseTypeName](https://golang.org/pkg/database/sql/#ColumnType.DatabaseTypeName) provided by SQL engines drivers beneath the Go's standard database API.
 
@@ -47,7 +46,7 @@ A SQLFlow prediction job writes its prediction results into a table. It prepares
 1. Dropping previous prediction table `DROP TABLE IF EXISTS my_table;`
 2. Creating table with schema `CREATE TABLE my_table (name1, type1, name2 type2);`
 
-Most SQL engines, including MySQL, Hive, ODPS, SQLite, support both statements.
+Most SQL engines, including MySQL, Hive, ODPS, support both statements.
 
 ### Translate Database Column Type to TensorFlow Feature Column Type
 
@@ -77,7 +76,6 @@ Thanks to the Python database API, connecting to different databases follows a s
 conn = mysql.connector.connect(user='scott', password='password',
                                host='127.0.0.1',
                                database='employees')
-conn = sqlite3.connect('path/to/your/sqlite/file')
 conn = pyhive.connect('localhost')
 
 cursor = conn.cursor()
@@ -86,10 +84,10 @@ cursor.execute('select * from my_table;')
 
 ### Insert Prediction Result into Prediction Table
 
-Python database API provides `execute_many(sql, value)`  to insert multiple values at once. So one can prepare the following insertion statement. Please be aware that MySQL and SQLite use `INSERT INTO` to insert rows while Hive and ODPS use `INSERT INTO TABLE`.
+Python database API provides `execute_many(sql, value)`  to insert multiple values at once. So one can prepare the following insertion statement. Please be aware that MySQL use `INSERT INTO` to insert rows while Hive and ODPS use `INSERT INTO TABLE`.
 
 ```sql
--- MySQL, SQLite
+-- MySQL
 INSERT INTO table_name VALUES (value1, value2, value3, ...);
 -- Hive, ODPS
 INSERT INTO TABLE table_name VALUES (value1, value2, value3, ...);
