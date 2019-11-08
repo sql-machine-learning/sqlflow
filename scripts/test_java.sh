@@ -16,5 +16,11 @@
 set -e
 
 cd java/parser
-mvn test
+
+# Make downloading quiet.
+# Downloading logs is about 6k lines, which makes viewing TravisCI log difficult
+export MAVEN_OPTS=-Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+
+# -B means batch mode, looks like batch mode is required to make downloading quiet
+mvn test -B
 
