@@ -22,7 +22,6 @@ import (
 	"sqlflow.org/sqlflow/pkg/sql/testdata"
 
 	"github.com/go-sql-driver/mysql"
-	_ "github.com/mattn/go-sqlite3"
 )
 
 var (
@@ -41,20 +40,6 @@ func testMySQLDatabase() *DB {
 	assertNoErr(e)
 	_, e = db.Exec("CREATE DATABASE IF NOT EXISTS sqlflow_models;")
 	assertNoErr(e)
-	assertNoErr(testdata.Popularize(db.DB, testdata.IrisSQL))
-	assertNoErr(testdata.Popularize(db.DB, testdata.ChurnSQL))
-	assertNoErr(testdata.Popularize(db.DB, testdata.HousingSQL))
-	return db
-}
-
-func testSQLiteDatabase() *DB {
-	db, e := NewDB("sqlite3://:memory:")
-	assertNoErr(e)
-	// attach an In-Memory Database in SQLite
-	for _, name := range []string{"iris", "churn"} {
-		_, e = db.Exec(fmt.Sprintf("ATTACH DATABASE ':memory:' AS %s;", name))
-		assertNoErr(e)
-	}
 	assertNoErr(testdata.Popularize(db.DB, testdata.IrisSQL))
 	assertNoErr(testdata.Popularize(db.DB, testdata.ChurnSQL))
 	assertNoErr(testdata.Popularize(db.DB, testdata.HousingSQL))
@@ -92,8 +77,6 @@ func testMaxcompute() *DB {
 func TestMain(m *testing.M) {
 	dbms := getEnv("SQLFLOW_TEST_DB", "mysql")
 	switch dbms {
-	case "sqlite3":
-		testDB = testSQLiteDatabase()
 	case "mysql":
 		testDB = testMySQLDatabase()
 	case "hive":

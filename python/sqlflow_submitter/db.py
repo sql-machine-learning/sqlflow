@@ -113,9 +113,6 @@ def connect(driver, database, user, password, host, port, session_cfg={}, auth="
                        db=database,
                        host=host,
                        port=int(port))
-    elif driver == "sqlite3":
-        from sqlite3 import connect
-        return connect(database)
     elif driver == "hive":
         from impala.dbapi import connect
         conn = connect(user=user,
@@ -214,8 +211,6 @@ def buffered_db_writer(driver, conn, table_name, table_schema, buff_size=100, hd
         w = db_writer.MaxComputeDBWriter(conn, table_name, table_schema, buff_size)
     elif driver == "mysql":
         w = db_writer.MySQLDBWriter(conn, table_name, table_schema, buff_size)
-    elif driver == "sqlite3":
-        w = db_writer.SQLite3DBWriter(conn, table_name, table_schema, buff_size)
     elif driver == "hive":
         w = db_writer.HiveDBWriter(conn, table_name, table_schema, buff_size,
             hdfs_namenode_addr=hdfs_namenode_addr, hive_location=hive_location,
