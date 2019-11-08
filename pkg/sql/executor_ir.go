@@ -23,6 +23,7 @@ import (
 	"os/exec"
 	"path"
 	"strings"
+	"sync"
 	"time"
 
 	pb "sqlflow.org/sqlflow/pkg/server/proto"
@@ -468,6 +469,48 @@ func loadModelMeta(pr *extendedSelect, db *DB, cwd, modelDir, modelName string) 
 	}
 
 	return pr, fts, nil
+}
+
+type logChanWriter struct {
+	wr *PipeWriter
+
+	m    sync.Mutex
+	buf  bytes.Buffer
+	prev string
+}
+
+func (cw *logChanWriter) Write(p []byte) (n int, err error) {
+	// Both cmd.Stdout and cmd.Stderr are writing to cw
+	cw.m.Lock()
+	defer cw.m.Unlock()
+
+	n, err = cw.buf.Write(p)
+	if err != nil {
+		return n, err
+	}
+
+	for {
+		line, err := cw.buf.ReadString('\n')
+		cw.prev = cw.prev + line
+		// ReadString returns err != nil if and only if the returned Data
+		// does not end in delim.
+		if err != nil {
+			break
+		}
+
+		if err := cw.wr.Write(cw.prev); err != nil {
+			return len(cw.prev), err
+		}
+		cw.prev = ""
+	}
+	return n, nil
+}
+
+func (cw *logChanWriter) Close() {
+	if len(cw.prev) > 0 {
+		cw.wr.Write(cw.prev)
+		cw.prev = ""
+	}
 }
 
 // ----------------------- useful for testing --------------------------

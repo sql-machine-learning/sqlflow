@@ -101,30 +101,6 @@ func TestIsQuery(t *testing.T) {
 	a.False(isQuery("drop table"))
 }
 
-func TestLogChanWriter_Write(t *testing.T) {
-	a := assert.New(t)
-	rd, wr := Pipe()
-	go func() {
-		defer wr.Close()
-		cw := &logChanWriter{wr: wr}
-		cw.Write([]byte("hello\n世界"))
-		cw.Write([]byte("hello\n世界"))
-		cw.Write([]byte("\n"))
-		cw.Write([]byte("世界\n世界\n世界\n"))
-	}()
-
-	c := rd.ReadAll()
-
-	a.Equal("hello\n", <-c)
-	a.Equal("世界hello\n", <-c)
-	a.Equal("世界\n", <-c)
-	a.Equal("世界\n", <-c)
-	a.Equal("世界\n", <-c)
-	a.Equal("世界\n", <-c)
-	_, more := <-c
-	a.False(more)
-}
-
 func TestParseTableColumn(tg *testing.T) {
 	a := assert.New(tg)
 	t, c, e := parseTableColumn("a.b.c")
