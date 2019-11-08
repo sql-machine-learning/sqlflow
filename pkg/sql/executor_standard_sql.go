@@ -22,12 +22,11 @@ import (
 	"time"
 )
 
-func runStandardSQL(wr *PipeWriter, slct string, db *DB) {
+func runStandardSQL(wr *PipeWriter, slct string, db *DB) error {
 	if isQuery(slct) {
-		runQuery(wr, slct, db)
-	} else {
-		runExec(wr, slct, db)
+		return runQuery(wr, slct, db)
 	}
+	return runExec(wr, slct, db)
 }
 
 // TODO(weiguo): isQuery is a hacky way to decide which API to call:
@@ -49,7 +48,7 @@ func isQuery(slct string) bool {
 }
 
 // query runs slct and writes the retrieved rows into pipe wr.
-func query(slct string, db *DB, wr *PipeWriter) error {
+func runQuery(wr *PipeWriter, slct string, db *DB) error {
 	defer func(startAt time.Time) {
 		log.Debugf("runQuery %v finished, elapsed:%v", slct, time.Since(startAt))
 	}(time.Now())
@@ -119,50 +118,27 @@ func parseRow(columns []string, columnTypes []*sql.ColumnType, rows *sql.Rows, w
 	return nil
 }
 
-func runQuery(wr *PipeWriter, slct string, db *DB) {
-	// FIXME(tony): how to deal with large tables?
-	// TODO(tony): test on null table elements
-	if e := query(slct, db, wr); e != nil {
-		log.Errorf("runQuery error:%v", e)
-		if e != ErrClosedPipe {
-			if err := wr.Write(e); err != nil {
-				log.Errorf("runQuery error(piping):%v", err)
-			}
-		}
-	}
-}
+func runExec(wr *PipeWriter, slct string, db *DB) error {
+	defer func(startAt time.Time) {
+		log.Debugf("runExec %v finished, elapsed:%v", slct, time.Since(startAt))
+	}(time.Now())
 
-func runExec(wr *PipeWriter, slct string, db *DB) {
-	err := func() error {
-		defer func(startAt time.Time) {
-			log.Debugf("runExec %v finished, elapsed:%v", slct, time.Since(startAt))
-		}(time.Now())
-
-		res, e := db.Exec(slct)
-		if e != nil {
-			return fmt.Errorf("runExec failed: %v", e)
-		}
-		affected, e := res.RowsAffected()
-		if e != nil {
-			return fmt.Errorf("failed to get affected row number: %v", e)
-		}
-		if affected > 1 {
-			return wr.Write(fmt.Sprintf("%d rows affected", affected))
-		}
-		// gomaxcompute does not return affected rows number
-		if affected < 0 {
-			return wr.Write("OK")
-		}
-		return wr.Write(fmt.Sprintf("%d row affected", affected))
-	}()
-	if err != nil {
-		log.Errorf("runExec error:%v", err)
-		if err != ErrClosedPipe {
-			if err := wr.Write(err); err != nil {
-				log.Errorf("runExec error(piping):%v", err)
-			}
-		}
+	res, e := db.Exec(slct)
+	if e != nil {
+		return fmt.Errorf("runExec failed: %v", e)
 	}
+	affected, e := res.RowsAffected()
+	if e != nil {
+		return fmt.Errorf("failed to get affected row number: %v", e)
+	}
+	if affected > 1 {
+		return wr.Write(fmt.Sprintf("%d rows affected", affected))
+	}
+	// gomaxcompute does not return affected rows number
+	if affected < 0 {
+		return wr.Write("OK")
+	}
+	return wr.Write(fmt.Sprintf("%d row affected", affected))
 }
 
 type logChanWriter struct {
