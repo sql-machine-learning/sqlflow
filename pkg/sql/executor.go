@@ -28,6 +28,7 @@ import (
 	"time"
 
 	pb "sqlflow.org/sqlflow/pkg/server/proto"
+	"sqlflow.org/sqlflow/pkg/sql/codegen"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/xgboost"
 )
@@ -498,11 +499,15 @@ func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir strin
 		if err != nil {
 			return err
 		}
+		err = InferFeatureColumns(ir.TrainIR)
+		if err != nil {
+			return err
+		}
 		code, err := xgboost.Pred(ir, session)
 		if err != nil {
 			return err
 		}
-		err = createPredictionTable(pr, db, session)
+		err = createPredictionTableFromIR(ir, db, session)
 		if err != nil {
 			return err
 		}
@@ -520,7 +525,7 @@ func pred(wr *PipeWriter, pr *extendedSelect, db *DB, cwd string, modelDir strin
 		if err != nil {
 			return err
 		}
-		err = createPredictionTable(pr, db, session)
+		err = createPredictionTableFromIR(ir, db, session)
 		if err != nil {
 			return err
 		}
@@ -634,6 +639,66 @@ func createPredictionTable(predParsed *extendedSelect, db *DB, session *pb.Sessi
 		fmt.Fprintf(&b, "%s %s) ROW FORMAT DELIMITED FIELDS TERMINATED BY \"\\001\" STORED AS TEXTFILE;", columnName, stype)
 	} else {
 		fmt.Fprintf(&b, "%s %s);", columnName, stype)
+	}
+
+	createStmt := b.String()
+	if _, e := db.Exec(createStmt); e != nil {
+		return fmt.Errorf("failed executing %s: %q", createStmt, e)
+	}
+	return nil
+}
+
+// Create prediction table using the `PredictIR`.
+// TODO(typhoonzero): remove legacy `createPredictionTable` once we change all submitters to use IR.
+func createPredictionTableFromIR(predIR *codegen.PredictIR, db *DB, session *pb.Session) error {
+	dropStmt := fmt.Sprintf("drop table if exists %s;", predIR.ResultTable)
+	if _, e := db.Exec(dropStmt); e != nil {
+		return fmt.Errorf("failed executing %s: %q", dropStmt, e)
+	}
+	// FIXME(typhooznero): simply add LIMIT 1 at the end to get column types.
+	tmpSQL := fmt.Sprintf("%s LIMIT 1;", strings.TrimRight(strings.TrimSpace(predIR.Select), ";"))
+	flds, fts, e := getColumnTypes(tmpSQL, db)
+	if e != nil {
+		return e
+	}
+
+	var b bytes.Buffer
+	labelColumnTypeFound := false
+	labelColumnName := ""
+	labelColumnType := ""
+	fmt.Fprintf(&b, "create table %s (", predIR.ResultTable)
+	for idx, colType := range fts {
+		stype, e := universalizeColumnType(db.driverName, colType)
+		if e != nil {
+			return e
+		}
+		fldName := flds[idx]
+		if fldName == predIR.ResultColumn {
+			labelColumnTypeFound = true
+			labelColumnName = fldName
+			labelColumnType = stype
+			continue
+		}
+		fmt.Fprintf(&b, "%s %s, ", fldName, stype)
+	}
+
+	// TODO(Yancey1989): For the current implementation, the prediction result column
+	// type is derivated by the pred-select-statement, the better way is derivating
+	// the result column type by the prediction result.
+	// typ, ok := fts.get(predIR.ResultColumn)
+	if !labelColumnTypeFound {
+		// NOTE(typhoonzero): Clustering model may not have label in select statement, default use INT type
+		labelColumnName = predIR.ResultColumn
+		labelColumnType = "INT"
+	}
+	stype, e := universalizeColumnType(db.driverName, labelColumnType)
+	if e != nil {
+		return e
+	}
+	if db.driverName == "hive" {
+		fmt.Fprintf(&b, "%s %s) ROW FORMAT DELIMITED FIELDS TERMINATED BY \"\\001\" STORED AS TEXTFILE;", labelColumnName, stype)
+	} else {
+		fmt.Fprintf(&b, "%s %s);", labelColumnName, stype)
 	}
 
 	createStmt := b.String()

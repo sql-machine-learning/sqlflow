@@ -290,6 +290,30 @@ func TestEnd2EndMySQL(t *testing.T) {
 	// Cases using feature derivation
 	t.Run("CaseTrainTextClassificationIR", CaseTrainTextClassificationIR)
 	t.Run("CaseTrainTextClassificationFeatureDerivation", CaseTrainTextClassificationFeatureDerivation)
+	t.Run("CaseXgboostFeatureDerivation", CaseXgboostFeatureDerivation)
+	t.Run("CaseTrainFeatureDerevation", CaseTrainFeatureDerevation)
+}
+
+func CaseXgboostFeatureDerivation(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := `SELECT * FROM housing.train
+TO TRAIN xgboost.gbtree
+WITH objective="reg:squarederror",
+	 train.num_boost_round=30
+LABEL target
+INTO sqlflow_models.my_xgb_regression_model;`
+	_, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("run test error: %v", err)
+	}
+
+	predSQL := `SELECT * FROM housing.test
+TO PREDICT housing.predict.target
+USING sqlflow_models.my_xgb_regression_model;`
+	_, _, err = connectAndRunSQL(predSQL)
+	if err != nil {
+		a.Fail("run test error: %v", err)
+	}
 }
 
 func CaseTrainTextClassificationIR(t *testing.T) {
@@ -581,13 +605,20 @@ FROM %s.%s LIMIT 5;`, caseDB, casePredictTable)
 
 func CaseTrainFeatureDerevation(t *testing.T) {
 	a := assert.New(t)
-	trainSQL := fmt.Sprintf(`SELECT *
-FROM %s.%s
+	trainSQL := `SELECT *
+FROM iris.train
 TO TRAIN DNNClassifier
 WITH model.n_classes = 3, model.hidden_units = [10, 20]
 LABEL class
-INTO sqlflow_models.my_dnn_model;`, caseDB, caseTrainTable)
+INTO sqlflow_models.my_dnn_model;`
 	_, _, err := connectAndRunSQL(trainSQL)
+	a.NoError(err)
+
+	predSQL := `SELECT *
+FROM iris.test
+TO PREDICT iris.predict.class
+USING sqlflow_models.my_dnn_model;`
+	_, _, err = connectAndRunSQL(predSQL)
 	a.NoError(err)
 
 	// TODO(typhoonzero): also support string column type for training and prediction (column c6)
