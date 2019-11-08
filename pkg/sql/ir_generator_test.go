@@ -186,11 +186,7 @@ LABEL class
 INTO sqlflow_models.mymodel;`}, testDB, modelDir, nil)
 	a.True(goodStream(stream.ReadAll()))
 
-	// Test generate PredicrIR
-	cwd, e := ioutil.TempDir("/tmp", "sqlflow")
-	a.Nil(e)
-	defer os.RemoveAll(cwd)
-	predIR, err := generatePredictIR(r, connStr, cwd, modelDir)
+	predIR, err := generatePredictIR(r, connStr, modelDir)
 	a.NoError(err)
 
 	a.Equal(connStr, predIR.DataSource)
@@ -225,11 +221,6 @@ INTO sqlflow_models.my_xgboost_model;
 	a.NoError(e)
 	a.True(goodStream(stream.ReadAll()))
 
-	// Test generate AnalyzeIR
-	cwd, e := ioutil.TempDir("/tmp", "sqlflow")
-	a.Nil(e)
-	defer os.RemoveAll(cwd)
-
 	pr, e := newParser().Parse(`
 	SELECT *
 	FROM iris.train
@@ -243,7 +234,7 @@ INTO sqlflow_models.my_xgboost_model;
 	a.NoError(e)
 
 	connStr := "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
-	ir, e := generateAnalyzeIR(pr, connStr, cwd, modelDir)
+	ir, e := generateAnalyzeIR(pr, connStr, modelDir)
 	a.NoError(e)
 	a.Equal(ir.DataSource, connStr)
 	a.Equal(ir.Explainer, "TreeExplainer")

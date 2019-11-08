@@ -51,19 +51,31 @@ func goodStream(stream chan interface{}) (bool, string) {
 func TestStandardSQL(t *testing.T) {
 	a := assert.New(t)
 	a.NotPanics(func() {
-		stream := runStandardSQL(testSelectIris, testDB)
-		a.True(goodStream(stream.ReadAll()))
+		rd, wr := Pipe()
+		go func() {
+			defer wr.Close()
+			runStandardSQL(wr, testSelectIris, testDB)
+		}()
+		a.True(goodStream(rd.ReadAll()))
 	})
 	a.NotPanics(func() {
 		if getEnv("SQLFLOW_TEST_DB", "mysql") == "hive" {
 			t.Skip("hive: skip DELETE statement")
 		}
-		stream := runStandardSQL(testStandardExecutiveSQLStatement, testDB)
-		a.True(goodStream(stream.ReadAll()))
+		rd, wr := Pipe()
+		go func() {
+			defer wr.Close()
+			runStandardSQL(wr, testStandardExecutiveSQLStatement, testDB)
+		}()
+		a.True(goodStream(rd.ReadAll()))
 	})
 	a.NotPanics(func() {
-		stream := runStandardSQL("SELECT * FROM iris.iris_empty LIMIT 10;", testDB)
-		stat, _ := goodStream(stream.ReadAll())
+		rd, wr := Pipe()
+		go func() {
+			defer wr.Close()
+			runStandardSQL(wr, "SELECT * FROM iris.iris_empty LIMIT 10;", testDB)
+		}()
+		stat, _ := goodStream(rd.ReadAll())
 		a.True(stat)
 	})
 }

@@ -22,11 +22,12 @@ import (
 	"time"
 )
 
-func runStandardSQL(slct string, db *DB) *PipeReader {
+func runStandardSQL(wr *PipeWriter, slct string, db *DB) {
 	if isQuery(slct) {
-		return runQuery(slct, db)
+		runQuery(wr, slct, db)
+	} else {
+		runExec(wr, slct, db)
 	}
-	return runExec(slct, db)
 }
 
 // TODO(weiguo): isQuery is a hacky way to decide which API to call:
@@ -68,13 +69,11 @@ func query(slct string, db *DB, wr *PipeWriter) error {
 	if err != nil {
 		return fmt.Errorf("failed to get columnTypes: %v", err)
 	}
-
 	header := make(map[string]interface{})
 	header["columnNames"] = columns
 	if e := wr.Write(header); e != nil {
 		return e
 	}
-
 	for rows.Next() {
 		if e := parseRow(columns, columnTypes, rows, wr); e != nil {
 			return e
@@ -120,67 +119,50 @@ func parseRow(columns []string, columnTypes []*sql.ColumnType, rows *sql.Rows, w
 	return nil
 }
 
-// runQuery creates a pipe before starting a goroutine that execute
-// query, which runs slct and writes retrieved rows to a pipe.
-// runQuery returns the read end of the pipe.  The caller doesn't have
-// to close the pipe because the query goroutine will close it after
-// data retrieval.
-func runQuery(slct string, db *DB) *PipeReader {
+func runQuery(wr *PipeWriter, slct string, db *DB) {
 	// FIXME(tony): how to deal with large tables?
 	// TODO(tony): test on null table elements
-	rd, wr := Pipe()
-	go func() {
-		fmt.Println("in runQuery")
-		defer wr.Close()
-		if e := query(slct, db, wr); e != nil {
-			log.Errorf("runQuery error:%v", e)
-			if e != ErrClosedPipe {
-				if err := wr.Write(e); err != nil {
-					log.Errorf("runQuery error(piping):%v", err)
-				}
+	if e := query(slct, db, wr); e != nil {
+		log.Errorf("runQuery error:%v", e)
+		if e != ErrClosedPipe {
+			if err := wr.Write(e); err != nil {
+				log.Errorf("runQuery error(piping):%v", err)
 			}
 		}
-	}()
-	return rd
+	}
 }
 
-func runExec(slct string, db *DB) *PipeReader {
-	rd, wr := Pipe()
-	go func() {
-		defer wr.Close()
+func runExec(wr *PipeWriter, slct string, db *DB) {
+	err := func() error {
+		defer func(startAt time.Time) {
+			log.Debugf("runExec %v finished, elapsed:%v", slct, time.Since(startAt))
+		}(time.Now())
 
-		err := func() error {
-			defer func(startAt time.Time) {
-				log.Debugf("runExec %v finished, elapsed:%v", slct, time.Since(startAt))
-			}(time.Now())
-
-			res, e := db.Exec(slct)
-			if e != nil {
-				return fmt.Errorf("runExec failed: %v", e)
-			}
-			affected, e := res.RowsAffected()
-			if e != nil {
-				return fmt.Errorf("failed to get affected row number: %v", e)
-			}
-			if affected > 1 {
-				return wr.Write(fmt.Sprintf("%d rows affected", affected))
-			}
-			// gomaxcompute does not return affected rows number
-			if affected < 0 {
-				return wr.Write("OK")
-			}
-			return wr.Write(fmt.Sprintf("%d row affected", affected))
-		}()
-		if err != nil {
-			log.Errorf("runExec error:%v", err)
-			if err != ErrClosedPipe {
-				if err := wr.Write(err); err != nil {
-					log.Errorf("runExec error(piping):%v", err)
-				}
+		res, e := db.Exec(slct)
+		if e != nil {
+			return fmt.Errorf("runExec failed: %v", e)
+		}
+		affected, e := res.RowsAffected()
+		if e != nil {
+			return fmt.Errorf("failed to get affected row number: %v", e)
+		}
+		if affected > 1 {
+			return wr.Write(fmt.Sprintf("%d rows affected", affected))
+		}
+		// gomaxcompute does not return affected rows number
+		if affected < 0 {
+			return wr.Write("OK")
+		}
+		return wr.Write(fmt.Sprintf("%d row affected", affected))
+	}()
+	if err != nil {
+		log.Errorf("runExec error:%v", err)
+		if err != ErrClosedPipe {
+			if err := wr.Write(err); err != nil {
+				log.Errorf("runExec error(piping):%v", err)
 			}
 		}
-	}()
-	return rd
+	}
 }
 
 type logChanWriter struct {

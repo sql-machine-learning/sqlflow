@@ -15,6 +15,8 @@ package sql
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
 	"strconv"
 	"strings"
 
@@ -87,11 +89,18 @@ func generateTrainIRByModel(slct *extendedSelect, connStr, cwd, modelDir, model 
 	return generateTrainIR(slctWithTrain, connStr)
 }
 
-func generatePredictIR(slct *extendedSelect, connStr string, cwd string, modelDir string) (*codegen.PredictIR, error) {
+func generatePredictIR(slct *extendedSelect, connStr string, modelDir string) (*codegen.PredictIR, error) {
 	attrMap, err := generateAttributeIR(&slct.predAttrs)
 	if err != nil {
 		return nil, err
 	}
+
+	// cwd is used to extract saved model metas to construct the IR.
+	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
+	if err != nil {
+		return nil, err
+	}
+	defer os.RemoveAll(cwd)
 
 	trainIR, err := generateTrainIRByModel(slct, connStr, cwd, modelDir, slct.model)
 	if err != nil {
@@ -113,11 +122,18 @@ func generatePredictIR(slct *extendedSelect, connStr string, cwd string, modelDi
 	}, nil
 }
 
-func generateAnalyzeIR(slct *extendedSelect, connStr, cwd, modelDir string) (*codegen.AnalyzeIR, error) {
+func generateAnalyzeIR(slct *extendedSelect, connStr, modelDir string) (*codegen.AnalyzeIR, error) {
 	attrs, err := generateAttributeIR(&slct.explainAttrs)
 	if err != nil {
 		return nil, err
 	}
+
+	// cwd is used to extract saved model metas to construct the IR.
+	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
+	if err != nil {
+		return nil, err
+	}
+	defer os.RemoveAll(cwd)
 
 	trainIR, err := generateTrainIRByModel(slct, connStr, cwd, modelDir, slct.trainedModel)
 	if err != nil {
@@ -607,7 +623,7 @@ func parseResultTable(intoStatement string) (string, string, error) {
 }
 
 // ProgramToIR generate a list of IRs from a SQL program
-func ProgramToIR(sqls []string, connStr, cwd, modelDir string) (codegen.SQLProgramIR, error) {
+func ProgramToIR(sqls []string, connStr, modelDir string) (codegen.SQLProgramIR, error) {
 	IRs := codegen.SQLProgramIR{}
 	for _, sql := range sqls {
 		splittedSQL, err := splitExtendedSQL(sql)
@@ -627,14 +643,14 @@ func ProgramToIR(sqls []string, connStr, cwd, modelDir string) (codegen.SQLProgr
 				ir.OriginalSQL = sql
 				IRs = append(IRs, ir)
 			} else if parsed.analyze {
-				ir, err := generateAnalyzeIR(parsed, connStr, cwd, modelDir)
+				ir, err := generateAnalyzeIR(parsed, connStr, modelDir)
 				if err != nil {
 					return nil, err
 				}
 				ir.OriginalSQL = sql
 				IRs = append(IRs, ir)
 			} else {
-				ir, err := generatePredictIR(parsed, connStr, cwd, modelDir)
+				ir, err := generatePredictIR(parsed, connStr, modelDir)
 				if err != nil {
 					return nil, err
 				}

@@ -110,7 +110,6 @@ func runStmt(stmt string, isTerminal bool, modelDir string, db *sql.DB, ds strin
 	isTable, tableRendered := false, false
 	table := tablewriter.NewWriter(os.Stdout)
 
-	// stream := sql.Run(stmt, db, modelDir, nil)
 	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
 	if err != nil {
 		fmt.Println(err)
