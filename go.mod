@@ -19,3 +19,5 @@ require (
 	sqlflow.org/gohive v0.0.0-20191009030413-2b2325ce8b38
 	sqlflow.org/gomaxcompute v0.0.0-20191028113124-e214922c510c
 )
+
+go 1.13

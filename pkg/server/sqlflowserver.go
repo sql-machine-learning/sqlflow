@@ -56,8 +56,8 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 		return err
 	}
 	rd := s.run(sqlStatements, db, s.modelDir, req.Session)
+	defer rd.Close()
 
-	grpcStreamSendErrors := []error{}
 	for r := range rd.ReadAll() {
 		var res *pb.Response
 		switch s := r.(type) {
@@ -79,7 +79,7 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 				}
 				eoeResponse := &pb.Response{Response: &pb.Response_Eoe{Eoe: eoe}}
 				if err := stream.Send(eoeResponse); err != nil {
-					grpcStreamSendErrors = append(grpcStreamSendErrors, err)
+					return err
 				}
 			} else {
 				continue
@@ -91,13 +91,8 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 			return err
 		}
 		if err := stream.Send(res); err != nil {
-			// NOTE(typhoonzero): must consume all messages in the pipe, or else the when error occurs,
-			// the server side goroutine would leak. See `TestGoroutineLeaky` for more details.
-			grpcStreamSendErrors = append(grpcStreamSendErrors, err)
+			return err
 		}
-	}
-	if len(grpcStreamSendErrors) > 0 {
-		return fmt.Errorf("error sending response to client, errors: %v", grpcStreamSendErrors)
 	}
 	return nil
 }

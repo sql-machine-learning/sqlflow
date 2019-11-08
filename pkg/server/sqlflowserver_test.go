@@ -140,9 +140,6 @@ func TestSQL(t *testing.T) {
 }
 
 func TestGoroutineLeaky(t *testing.T) {
-	// NOTE(typhoonzero): the server should consume all messages in the pipe before returns error
-	// so that the server side goroutine can be properly shutdown even if the client is closed
-	// immediently after the request was sent.
 	defer leaktest.CheckTimeout(t, 10*time.Second)()
 	for i := 0; i < 50; i++ {
 		go func() {

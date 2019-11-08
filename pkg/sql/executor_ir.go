@@ -38,6 +38,24 @@ type EndOfExecution struct {
 	Statement string
 }
 
+// RunSQLProgram run a raw SQL program (string list).
+func RunSQLProgram(sqlStatements []string, db *DB, modelDir string, session *pb.Session) *PipeReader {
+	connStr := fmt.Sprintf("%s://%s", db.driverName, db.dataSourceName)
+	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
+	if err != nil {
+		return errorPipe(err)
+	}
+
+	programIR, err := ProgramToIR(sqlStatements, connStr, cwd, modelDir)
+	if err != nil {
+		return errorPipe(err)
+	}
+	// should run `defer os.RemoveAll(cwd)` in the goroutine in the function RunIR to ensure
+	// the cwd is cleaned only when the job finishes.
+	rd := RunIR(programIR, db, cwd, modelDir, session)
+	return rd
+}
+
 // RunIR execute a list of parsed SQL statement IRs and merge the results.
 func RunIR(programIR codegen.SQLProgramIR, db *DB, cwd, modelDir string, session *pb.Session) *PipeReader {
 	rd, wr := Pipe()
@@ -402,23 +420,5 @@ func errorPipe(err error) *PipeReader {
 		defer wr.Close()
 		wr.Write(err)
 	}()
-	return rd
-}
-
-// RunSQLProgram run a raw SQL program (string list).
-func RunSQLProgram(sqlStatements []string, db *DB, modelDir string, session *pb.Session) *PipeReader {
-	connStr := fmt.Sprintf("%s://%s", db.driverName, db.dataSourceName)
-	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
-	if err != nil {
-		return errorPipe(err)
-	}
-
-	programIR, err := ProgramToIR(sqlStatements, connStr, cwd, modelDir)
-	if err != nil {
-		return errorPipe(err)
-	}
-	// should run `defer os.RemoveAll(cwd)` in the goroutine in the function RunIR to ensure
-	// the cwd is cleaned only when the job finishes.
-	rd := RunIR(programIR, db, cwd, modelDir, session)
 	return rd
 }
