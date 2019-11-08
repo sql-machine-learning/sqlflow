@@ -77,14 +77,3 @@ func (w *PipeWriter) Write(item interface{}) error {
 		return ErrClosedPipe
 	}
 }
-
-// Copy data from src and write to dst.
-func Copy(dst *PipeWriter, src *PipeReader) error {
-	for r := range src.ReadAll() {
-		err := dst.Write(r)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
