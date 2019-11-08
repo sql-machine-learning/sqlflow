@@ -29,7 +29,7 @@ import (
 
 	"sqlflow.org/sqlflow/pkg/server"
 	"sqlflow.org/sqlflow/pkg/server/proto"
-	"sqlflow.org/sqlflow/pkg/sql"
+	sf "sqlflow.org/sqlflow/pkg/sql"
 )
 
 func newServer(caCrt, caKey string) (*grpc.Server, error) {
@@ -60,7 +60,7 @@ func start(modelDir, caCrt, caKey string, port int) {
 		}
 	}
 
-	proto.RegisterSQLFlowServer(s, server.NewServer(sql.Run, modelDir))
+	proto.RegisterSQLFlowServer(s, server.NewServer(sf.RunSQLProgram, modelDir))
 	listenString := fmt.Sprintf(":%d", port)
 
 	lis, err := net.Listen("tcp", listenString)
