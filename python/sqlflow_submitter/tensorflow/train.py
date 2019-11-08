@@ -96,14 +96,14 @@ def train(is_keras_model,
         return dataset.batch(batch_size)
 
     if is_keras_model:
-        classifier.compile(optimizer=classifier.default_optimizer(),
-            loss=classifier.default_loss(),
+        classifier.compile(optimizer=classifier.optimizer(),
+            loss=classifier.loss(),
             metrics=["accuracy"])
         if hasattr(classifier, 'sqlflow_train_loop'):
             classifier.sqlflow_train_loop(train_input_fn(batch_size))
         else:
             classifier.fit(train_input_fn(batch_size),
-                epochs=epochs if epochs else classifier.default_training_epochs(),
+                epochs=epochs if epochs else 1,
                 verbose=verbose)
         classifier.save_weights(save, save_format="h5")
         if label_meta["feature_name"] != "" and validate_select != "":

@@ -290,11 +290,11 @@ func TestEnd2EndMySQL(t *testing.T) {
 	// Cases using feature derivation
 	t.Run("CaseTrainTextClassificationIR", CaseTrainTextClassificationIR)
 	t.Run("CaseTrainTextClassificationFeatureDerivation", CaseTrainTextClassificationFeatureDerivation)
-	t.Run("CaseXgboostFeatureDerivation", CaseXgboostFeatureDerivation)
+	t.Run("CaseXGBoostFeatureDerivation", CaseXGBoostFeatureDerivation)
 	t.Run("CaseTrainFeatureDerevation", CaseTrainFeatureDerevation)
 }
 
-func CaseXgboostFeatureDerivation(t *testing.T) {
+func CaseXGBoostFeatureDerivation(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := `SELECT * FROM housing.train
 TO TRAIN xgboost.gbtree
