@@ -116,12 +116,12 @@ func runStmt(stmt string, isTerminal bool, modelDir string, db *sql.DB, ds strin
 		return
 	}
 	defer os.RemoveAll(cwd)
-	programIR, err := sql.ProgramToIR([]string{stmt}, ds, cwd, modelDir)
+	programIR, err := sql.ProgramToIR([]string{stmt}, ds, modelDir)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	stream := sql.RunIR(programIR, db, cwd, modelDir, &pb.Session{})
+	stream := sql.RunIR(programIR, db, modelDir, &pb.Session{})
 
 	for rsp := range stream.ReadAll() {
 		isTable = render(rsp, table)
