@@ -60,23 +60,30 @@ Versioning and releasing in PAI model zoo is the same as what's described in [Mo
 
 ### Submitter Programs of PAI Model Zoo
 
-A [PAI program](#Concepts) of PAI model zoo may have multiple python source files and will be executed as a [PAI task](#Concepts) on PAI rather than a process in a Docker container. Take this into consideration, we propose to impose a requirement on a legal model zoo Docker image: the Docker image should specify the directory where the model source files reside, e.g., in an environment variable `SQLFLOW_MODEL_ZOO_MODEL_SOURCE`. In that case, whether or not a model is executed on PAI, its [submitter program](model_zoo.md#Submitter-Programs) can easily import the *model definition*. For example, suppose we have an environment variable `SQLFLOW_MODEL_ZOO_MODEL_SOURCE=/model_zoo/` in a model zoo Docker image and the *model definition* is a python class `MyAwesomeModel` defined in a python script `/model_zoo/my_awesome_model.py`:
+We propose to require the model source directory of a model zoo Docker image to be a legal python package with the same name as the image itself, besides, the python package should expose all the model classes. In that case, whether or not a model is executed on PAI, its [submitter program](model_zoo.md#Submitter-Programs) can easily import the *model definition*s.
 
-1. For a model zoo model that is to be executed in a Docker container, we generate **one** submitter program:
+For example, if we refer to a *model definition* `MyAwesomeModel` by `sqlflow/my_awesome_model/MyAwesomeModel`, it implies that:
+- the Docker image `sqlflow/my_awesome_model` has a directory `/my_awesome_model`
+- the *model definition* is a python class `MyAwesomeModel` defined in a python script `/my_awesome_model/name_as_you_wish.py`
+- the file `/my_awesome_model/__init__.py` has a line `from .name_as_you_wish import DNNClassifier`
+
+Considering the above example, SQLFlow should:
+
+1. For a model zoo model that is to be executed in a Docker container, SQLFlow generates **one** submitter program:
     - `submitter.py` would run in a Docker container as described in [Submitter Programs](model_zoo.md#Submitter-Programs)
     ```python
 	import os
 	import sys
-	sys.path += filter(None, os.getenv('SQLFLOW_MODEL_ZOO_MODEL_SOURCE'))
-	import MyAwesomeModel
+	sys.path += ['/']
+	import my_awesome_model
 
 	# Do my stuff here ...
 	```
 
-1. For a model zoo model that is to be executed on PAI, we generate **two** programs, i.e. a submitter program and a PAI entry file:
-    - `pai_entry.py` would run on PAI
+1. For a model zoo model that is to be executed on PAI, SQLFlow generates **two** programs, i.e. a submitter program and a PAI entry file:
+    - `pai_entry.py` would run on PAI as described in [Background](#Background)
     ```python
-	import MyAwesomeModel
+	import my_awesome_model
 	# Define all the PAI required command line options
 	# Do my stuff here ...
 	```
@@ -91,7 +98,7 @@ A [PAI program](#Concepts) of PAI model zoo may have multiple python source file
     archive = tarfile.open(tarball, "w|gz")
 
     # '.' is always in sys.path
-    archive.add(os.getenv("SQLFLOW_MODEL_ZOO_MODEL_SOURCE"), arcname=".")
+    archive.add('/my_awesome_model')
     archive.add('/submitters/pai_entry.py', arcname=".")
     archive.add('/submitters/requirements.txt', arcname=".")  # ** see below
     archive.close()
