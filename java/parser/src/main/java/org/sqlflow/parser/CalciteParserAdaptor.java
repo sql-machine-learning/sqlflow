@@ -1,62 +1,14 @@
 package org.sqlflow.parser;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.util.ArrayList;
 import org.apache.calcite.sql.SqlKind;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.parser.SqlParseException;
 import org.apache.calcite.sql.parser.SqlParser;
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.DefaultParser;
-import org.apache.commons.cli.HelpFormatter;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
-import org.apache.commons.io.FileUtils;
 
 public class CalciteParserAdaptor {
 
   public CalciteParserAdaptor() {}
-
-  public static void main(String[] args) {
-    Options options = new Options();
-    options.addRequiredOption("i", "input_file", true, "input SQL file");
-    options.addRequiredOption("o", "output_file", true, "output parsed result file");
-
-    CommandLine line = null;
-    try {
-      CommandLineParser parser = new DefaultParser();
-      line = parser.parse(options, args);
-    } catch (ParseException e) {
-      HelpFormatter formatter = new HelpFormatter();
-      formatter.printHelp("Parser Command Line", options);
-      System.exit(-1);
-    }
-
-    String input_file = line.getOptionValue("i");
-    String output_file = line.getOptionValue("o");
-    String content = null;
-    try {
-      content = new String(FileUtils.readFileToByteArray(new File(input_file)));
-    } catch (IOException e) {
-      e.printStackTrace();
-      System.exit(-1);
-    }
-
-    CalciteParserAdaptor parser = new CalciteParserAdaptor();
-    String jsonString = parser.ParseAndSplit(content).toJSONString();
-
-    try {
-      FileWriter file = new FileWriter(output_file);
-      file.write(jsonString);
-      file.flush();
-    } catch (IOException e) {
-      e.printStackTrace();
-      System.exit(-1);
-    }
-  }
 
   // ParseAndSplit calls Calcite parser to parse a SQL program and returns a ParseResult.
   //
