@@ -1,49 +1,23 @@
-# Couler on SQLFlow
+# Couler and SQLFlow
 
-## Motivations
+This design is about the migration from SQLFlow submitters to use Couler.
 
-The purpose of Couler is to provide a joyful experience of writing workflows runnable on professional engines like Argo. SQLFlow translates a SQL program into a Python machine-learning program in Python.
-This architle introduces how does SQLFlow translate a SQLFlow program into a Couler workflow program.
+Couler is a compiler that translates a workflow represented by a Python program into an Argo YAML file, which can run on Argo, the Kubernetes-native workflow execution engine. Couler is also a framework that directs users to define steps and workflows as Python functions.
 
-## SQLFlow and Couler
+SQLFlow is a compiler that translates a SQL program into a Python program known as a *submitter*. Currently, SQLFlow has several compiler backends known as *codegen*s.  For example, `codegen_xgboost.go`  generates a submitter that calls ODPS for the execution of usual SQL queries and XGBoost for training and prediction models.  The Python code that calls ODPS and XGBoost deposits in the `python/` directory of the SQLFlow source code repository.
 
-The Couler core package implemented many functions like:
-1. `couler.run_container(docker_image, cmd, args)` starts a Docker contanier.
-1. `couler.run_python(python_func_name, docker_image="python:3.6")` runs a Python function in the given Docker image.
+The migration includes the following parts:
 
-For SQLFlow, we would like to implement multiple Python function to Train/Predict TensorFlow/XGBoost/... model:
+1. Converts Python source code called by submitters into Couler definitions. For example:
+   - `couler.{odps,mysql,hive}.query(sql)` run a SQL program/statement on ODPS/MySQL/Hive
+   - `couler.{odps,mysql,hive}.export(table, filename)` exports a table from ODPS/MySQL/Hive to RecordIO files
+   - `couler.{xgboost,tensorflow,elasticdl}.train(model_def, data)` trains an XGBoost/TensorFlow/ElasticDL model
+   - `couler.{xgboost,tensorflow,elasticdl}.predict(trained_model, data)` predicts using an XGBoost/TensorFlow/ElasticDL model
 
-``` python
-couler.python_run(python_func_name="xgboost.train", ir=IR)
-```
+1. Deposits some frequently reusable workflows into Couler functions. For example:
+   - `sqlflow.couler.query(db_info, sql)` calls `couler.{odps,mysql,hive}.query(sql).
+   - `sqlflow.couler.{xgboost,tensorflow,elasticdl}.train(train_ir)` calls `sqlflow.couler.query`, `sqlflow.couler.export`, and then `couler.{xgboost,tensorflow,elasticdl}.train(...)`.
 
-From the above example:
+1. Instead of having multiple codegens, let us have only one, `codegen_couler.go`, which translates the [Intermediate Representation](/doc/design/intermediate_representation.md)(IR) of a SQL program into a Couler program. Then, SQLFlow can run the Couler compiler to convert further and execute the workflow.
 
-- `xgboost.train` is a Python function which implement XGBoost training code.
-- `IR` is SQLFlow intermediate representation with JSON format.
-
-## Couler Code Generator
-
-For the current implementation, SQLFlow has multiple code generators, e.g. XGBoost, Tensorflow and EDL. With Couler,
-SQLFlow only needs to implement one `couler_codegen.go`, which generats a Couler program. The current XGBoost or Tensorflow code generator would be implemented as a Python function which accepts the IR object. For the following SQL program example:
-
-``` sql
-SELECT * FROM a ...;
-SELECT * FROM b ...;
-SELECT * FROM ... TO TRAIN xgboost.booster ...;
-SELECT * FROM ... TO PREDICT ...;
-```
-
-`couler_codegen.go` can translates the above SQL program into a Couler program:
-
-``` python
-TRAIN_IR = json.loads({{SQLFLOW_TRAIN_IR}})
-PREDICT_IR = json.loads({{SQLFLOW_PREDICT_IR}})
-
-couler.odps.run('''SELECT * FROM a...''')
-couler.odps.run('''SELECT * FROM b''')
-couler.run_python(python_func=xgboost.train, args=(TRAIN_IR,), docker_image="sqlflow/sqlflow")
-couler.run_python(python_func=xgboost.predict, args=(PREDICT_IR,), docker_image="sqlflow/sqlflow")
-```
-
-## SQLFLow Python Function
+For example, `codegen_couler.go` converts a `SELECT ... TO TRAIN` statement into the call to `sqlflow.couler.{xgboost,tensorflow.elasticdl}.train(train_ir)`, which `train_ir` is the SQLFlow IR with JSON format.
