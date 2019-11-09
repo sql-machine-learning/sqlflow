@@ -621,8 +621,8 @@ func parseResultTable(intoStatement string) (string, string, error) {
 	}
 }
 
-// ProgramToIR generate a list of IRs from a SQL program
-func ProgramToIR(sqls []string, connStr, modelDir string) (codegen.SQLProgramIR, error) {
+// programToIR generate a list of IRs from a SQL program
+func programToIR(sqls []string, connStr, modelDir string) (codegen.SQLProgramIR, error) {
 	IRs := codegen.SQLProgramIR{}
 	for _, sql := range sqls {
 		splittedSQL, err := splitExtendedSQL(sql)

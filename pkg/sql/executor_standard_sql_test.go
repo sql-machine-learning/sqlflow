@@ -54,7 +54,8 @@ func TestStandardSQL(t *testing.T) {
 		rd, wr := Pipe()
 		go func() {
 			defer wr.Close()
-			runStandardSQL(wr, testSelectIris, testDB)
+			e := runStandardSQL(wr, testSelectIris, testDB)
+			a.NoError(e)
 		}()
 		a.True(goodStream(rd.ReadAll()))
 	})
@@ -65,7 +66,8 @@ func TestStandardSQL(t *testing.T) {
 		rd, wr := Pipe()
 		go func() {
 			defer wr.Close()
-			runStandardSQL(wr, testStandardExecutiveSQLStatement, testDB)
+			e := runStandardSQL(wr, testStandardExecutiveSQLStatement, testDB)
+			a.NoError(e)
 		}()
 		a.True(goodStream(rd.ReadAll()))
 	})
@@ -73,7 +75,8 @@ func TestStandardSQL(t *testing.T) {
 		rd, wr := Pipe()
 		go func() {
 			defer wr.Close()
-			runStandardSQL(wr, "SELECT * FROM iris.iris_empty LIMIT 10;", testDB)
+			e := runStandardSQL(wr, "SELECT * FROM iris.iris_empty LIMIT 10;", testDB)
+			a.NoError(e)
 		}()
 		stat, _ := goodStream(rd.ReadAll())
 		a.True(stat)

@@ -42,280 +42,265 @@ type EndOfExecution struct {
 // RunSQLProgram run a raw SQL program (string list).
 func RunSQLProgram(sqlStatements []string, db *DB, modelDir string, session *pb.Session) *PipeReader {
 	connStr := fmt.Sprintf("%s://%s", db.driverName, db.dataSourceName)
-	programIR, err := ProgramToIR(sqlStatements, connStr, modelDir)
+	programIR, err := programToIR(sqlStatements, connStr, modelDir)
 	if err != nil {
 		return errorPipe(err)
 	}
-	// should run `defer os.RemoveAll(cwd)` in the goroutine in the function RunIR to ensure
-	// the cwd is cleaned only when the job finishes.
-	rd := RunIR(programIR, db, modelDir, session)
-	return rd
-}
-
-// RunIR execute a list of parsed SQL statement IRs and merge the results.
-func RunIR(programIR codegen.SQLProgramIR, db *DB, modelDir string, session *pb.Session) *PipeReader {
 	rd, wr := Pipe()
 	go func() {
 		defer wr.Close()
-		for _, ir := range programIR {
-			startTime := time.Now().UnixNano()
-			switch ir.(type) {
-			case *codegen.StandardSQLIR:
-				statement := string(*ir.(*codegen.StandardSQLIR))
-				runStandardSQL(wr, statement, db)
-				wr.Write(EndOfExecution{
-					StartTime: startTime,
-					EndTime:   time.Now().UnixNano(),
-					Statement: statement,
-				})
-			case *codegen.TrainIR:
-				runTrainIR(ir.(*codegen.TrainIR), wr, db, modelDir, session)
-				wr.Write(EndOfExecution{
-					StartTime: startTime,
-					EndTime:   time.Now().UnixNano(),
-					Statement: ir.(*codegen.TrainIR).OriginalSQL,
-				})
-			case *codegen.PredictIR:
-				runPredictIR(ir.(*codegen.PredictIR), wr, db, modelDir, session)
-				wr.Write(EndOfExecution{
-					StartTime: startTime,
-					EndTime:   time.Now().UnixNano(),
-					Statement: ir.(*codegen.PredictIR).OriginalSQL,
-				})
-			case *codegen.AnalyzeIR:
-				runAnalyzeIR(ir.(*codegen.AnalyzeIR), wr, db, modelDir, session)
-				wr.Write(EndOfExecution{
-					StartTime: startTime,
-					EndTime:   time.Now().UnixNano(),
-					Statement: ir.(*codegen.AnalyzeIR).OriginalSQL,
-				})
-			default:
-				wr.Write(fmt.Errorf("got error ir type: %T", ir))
+		err := runProgramIR(wr, programIR, db, modelDir, session)
+
+		if err != nil {
+			log.Errorf("runSQLProgram error:%v", err)
+			if err != ErrClosedPipe {
+				if err := wr.Write(err); err != nil {
+					log.Errorf("runSQLProgram error(piping):%v", err)
+				}
 			}
 		}
 	}()
 	return rd
 }
 
-func runTrainIR(trainIR *codegen.TrainIR, wr *PipeWriter, db *DB, modelDir string, session *pb.Session) {
-	// TODO(typhoonzero): remove below twice parse when all submitters moved to IR.
-	err := func() error {
-		pr, e := newParser().Parse(trainIR.OriginalSQL)
-		if e != nil {
+func runProgramIR(wr *PipeWriter, programIR codegen.SQLProgramIR, db *DB, modelDir string, session *pb.Session) error {
+	for _, ir := range programIR {
+		if e := runSingleSQLIR(wr, ir, db, modelDir, session); e != nil {
 			return e
-		}
-		// cwd is used to store train scripts and save output models.
-		cwd, err := ioutil.TempDir("/tmp", "sqlflow")
-		if err != nil {
-			return err
-		}
-		defer os.RemoveAll(cwd)
-
-		if os.Getenv("SQLFLOW_submitter") == "elasticdl" {
-			return elasticDLTrain(wr, pr, db, cwd, session)
-		}
-		// FIXME(weiguo): temporary branch to alps
-		if os.Getenv("SQLFLOW_submitter") == "alps" {
-			return alpsTrain(wr, pr, db, cwd, session)
-		}
-		// ---------------------- run the IR ---------------------------
-		var program bytes.Buffer
-		if isXGBoostModel(trainIR.Estimator) {
-			err := InferFeatureColumns(trainIR)
-			if err != nil {
-				return err
-			}
-			code, err := xgboost.Train(trainIR)
-			if err != nil {
-				return err
-			}
-			program.WriteString(code)
-		} else {
-			err := InferFeatureColumns(trainIR)
-			if err != nil {
-				return err
-			}
-			if trainIR.ValidationSelect == "" {
-				trainIR.ValidationSelect = trainIR.Select
-			}
-			code, err := tensorflow.Train(trainIR)
-			if err != nil {
-				return err
-			}
-			program.WriteString(code)
-		}
-		cw := &logChanWriter{wr: wr}
-		var buf bytes.Buffer
-		buf.WriteString(fmt.Sprintf("\n==========Program======\n%s\n=======Program Output===========\n", program.String()))
-
-		w := io.MultiWriter(cw, &buf)
-		defer cw.Close()
-		cmd := sqlflowCmd(cwd, db.driverName)
-		cmd.Stdin = &program
-		cmd.Stdout = w
-		cmd.Stderr = w
-		if e := cmd.Run(); e != nil {
-			return fmt.Errorf("predict failed: %v\n %s", e, buf.String())
-		}
-		m := model{workDir: cwd, TrainSelect: trainIR.OriginalSQL}
-		if modelDir != "" {
-			return m.saveTar(modelDir, pr.save)
-		}
-		return m.save(db, pr.save)
-	}()
-	if err != nil {
-		log.Errorf("runExtendedSQL error:%v", err)
-		if err != ErrClosedPipe {
-			if err := wr.Write(err); err != nil {
-				log.Errorf("runExtendedSQL error(piping):%v", err)
-			}
 		}
 	}
+
+	return nil
 }
 
-func runPredictIR(predIR *codegen.PredictIR, wr *PipeWriter, db *DB, modelDir string, session *pb.Session) {
-	// TODO(typhoonzero): remove below twice parse when all submitters moved to IR.
-	err := func() error {
-		pr, e := newParser().Parse(predIR.OriginalSQL)
+func runSingleSQLIR(wr *PipeWriter, ir codegen.SingleSQLIR, db *DB, modelDir string, session *pb.Session) (e error) {
+	startTime := time.Now().UnixNano()
+	var originalSQL string
+	defer func() {
 		if e != nil {
-			return e
+			wr.Write(EndOfExecution{
+				StartTime: startTime,
+				EndTime:   time.Now().UnixNano(),
+				Statement: originalSQL,
+			})
 		}
-		// cwd is used to load the saved model for prediction.
-		cwd, err := ioutil.TempDir("/tmp", "sqlflow")
-		if err != nil {
-			return err
-		}
-		defer os.RemoveAll(cwd)
-
-		if os.Getenv("SQLFLOW_submitter") == "alps" {
-			return alpsPred(wr, pr, db, cwd, session)
-		} else if os.Getenv("SQLFLOW_submitter") == "elasticdl" {
-			return elasticDLPredict(wr, pr, db, cwd, session)
-		}
-		// ------------------- run pred IR -----------------------
-		// TODO(typhoonzero): loadModelMeta should use IR
-		pr, _, e = loadModelMeta(pr, db, cwd, modelDir, pr.model)
-		if e != nil {
-			return fmt.Errorf("loadModelMeta %v", e)
-		}
-
-		var program bytes.Buffer
-		if isXGBoostModel(predIR.TrainIR.Estimator) {
-			err = InferFeatureColumns(predIR.TrainIR)
-			if err != nil {
-				return err
-			}
-			code, err := xgboost.Pred(predIR, session)
-			if err != nil {
-				return err
-			}
-			err = createPredictionTableFromIR(predIR, db, session)
-			if err != nil {
-				return err
-			}
-			program.WriteString(code)
-		} else {
-			err = InferFeatureColumns(predIR.TrainIR)
-			if err != nil {
-				return err
-			}
-			code, err := tensorflow.Pred(predIR, session)
-			if err != nil {
-				return err
-			}
-			err = createPredictionTableFromIR(predIR, db, session)
-			if err != nil {
-				return err
-			}
-			program.WriteString(code)
-		}
-
-		var buf bytes.Buffer
-		buf.WriteString(fmt.Sprintf("\n==========Program======\n%s\n=======Program Output===========\n", program.String()))
-
-		cw := &logChanWriter{wr: wr}
-		w := io.MultiWriter(cw, &buf)
-		defer cw.Close()
-		cmd := sqlflowCmd(cwd, db.driverName)
-		cmd.Env = append(os.Environ())
-		cmd.Stdin = &program
-		cmd.Stdout = w
-		cmd.Stderr = w
-		if e := cmd.Run(); e != nil {
-			return fmt.Errorf("predict failed: %v\n %s", e, buf.String())
-		}
-		return nil
 	}()
 
-	if err != nil {
-		log.Errorf("runExtendedSQL error:%v", err)
-		if err != ErrClosedPipe {
-			if err := wr.Write(err); err != nil {
-				log.Errorf("runExtendedSQL error(piping):%v", err)
-			}
-		}
-	}
-}
-
-func runAnalyzeIR(analyzeIR *codegen.AnalyzeIR, wr *PipeWriter, db *DB, modelDir string, session *pb.Session) {
-	err := func() error {
-		pr, e := newParser().Parse(analyzeIR.OriginalSQL)
-		if e != nil {
+	switch ir.(type) {
+	case *codegen.StandardSQLIR:
+		originalSQL = string(*ir.(*codegen.StandardSQLIR))
+		if e = runStandardSQL(wr, originalSQL, db); e != nil {
 			return e
 		}
-		// cwd is used to load the saved model for prediction.
-		cwd, err := ioutil.TempDir("/tmp", "sqlflow")
+	case *codegen.TrainIR:
+		originalSQL = ir.(*codegen.TrainIR).OriginalSQL
+		if e = runTrainIR(ir.(*codegen.TrainIR), wr, db, modelDir, session); e != nil {
+			return e
+		}
+	case *codegen.PredictIR:
+		originalSQL = ir.(*codegen.PredictIR).OriginalSQL
+		if e = runPredictIR(ir.(*codegen.PredictIR), wr, db, modelDir, session); e != nil {
+			return e
+		}
+	case *codegen.AnalyzeIR:
+		originalSQL = ir.(*codegen.AnalyzeIR).OriginalSQL
+		if e = runAnalyzeIR(ir.(*codegen.AnalyzeIR), wr, db, modelDir, session); e != nil {
+			return e
+		}
+	default:
+		return fmt.Errorf("got error ir type: %T", ir)
+	}
+
+	return nil
+}
+
+func runTrainIR(trainIR *codegen.TrainIR, wr *PipeWriter, db *DB, modelDir string, session *pb.Session) error {
+	// TODO(typhoonzero): remove below twice parse when all submitters moved to IR.
+	pr, e := newParser().Parse(trainIR.OriginalSQL)
+	if e != nil {
+		return e
+	}
+	// cwd is used to store train scripts and save output models.
+	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(cwd)
+
+	if os.Getenv("SQLFLOW_submitter") == "elasticdl" {
+		return elasticDLTrain(wr, pr, db, cwd, session)
+	}
+	// FIXME(weiguo): temporary branch to alps
+	if os.Getenv("SQLFLOW_submitter") == "alps" {
+		return alpsTrain(wr, pr, db, cwd, session)
+	}
+	// ---------------------- run the IR ---------------------------
+	var program bytes.Buffer
+	if isXGBoostModel(trainIR.Estimator) {
+		err := InferFeatureColumns(trainIR)
 		if err != nil {
 			return err
 		}
-		defer os.RemoveAll(cwd)
-		// load the model for analyze
-		pr, _, e = loadModelMeta(pr, db, cwd, modelDir, pr.trainedModel)
-		if e != nil {
-			return fmt.Errorf("loadModelMeta %v", e)
-		}
-
-		cmd := exec.Command("python", "-u")
-		cmd.Dir = cwd
-
-		if !strings.HasPrefix(strings.ToUpper(analyzeIR.TrainIR.Estimator), `XGBOOST.`) {
-			return fmt.Errorf("unsupported model %s", analyzeIR.TrainIR.Estimator)
-		}
-		code, err := xgboost.Analyze(analyzeIR)
+		code, err := xgboost.Train(trainIR)
 		if err != nil {
 			return err
 		}
-		var program bytes.Buffer
 		program.WriteString(code)
-		cmd.Stdin = &program
-		if _, err := cmd.CombinedOutput(); err != nil {
-			return err
-		}
-
-		imgFile, err := os.Open(path.Join(cwd, "summary.png"))
+	} else {
+		err := InferFeatureColumns(trainIR)
 		if err != nil {
 			return err
 		}
-		defer imgFile.Close()
-
-		imgBytes, err := ioutil.ReadAll(imgFile)
+		if trainIR.ValidationSelect == "" {
+			trainIR.ValidationSelect = trainIR.Select
+		}
+		code, err := tensorflow.Train(trainIR)
 		if err != nil {
 			return err
 		}
-		imgBase64Str := base64.StdEncoding.EncodeToString(imgBytes)
-		img2html := fmt.Sprintf("<div align='center'><img src='data:image/png;base64,%s' /></div>", imgBase64Str)
-		wr.Write(img2html)
-		return nil
-	}()
-
-	if err != nil {
-		log.Errorf("runExtendedSQL error:%v", err)
-		if err != ErrClosedPipe {
-			if err := wr.Write(err); err != nil {
-				log.Errorf("runExtendedSQL error(piping):%v", err)
-			}
-		}
+		program.WriteString(code)
 	}
+	cw := &logChanWriter{wr: wr}
+	var buf bytes.Buffer
+	buf.WriteString(fmt.Sprintf("\n==========Program======\n%s\n=======Program Output===========\n", program.String()))
+
+	w := io.MultiWriter(cw, &buf)
+	defer cw.Close()
+	cmd := sqlflowCmd(cwd, db.driverName)
+	cmd.Stdin = &program
+	cmd.Stdout = w
+	cmd.Stderr = w
+	if e := cmd.Run(); e != nil {
+		return fmt.Errorf("predict failed: %v\n %s", e, buf.String())
+	}
+	m := model{workDir: cwd, TrainSelect: trainIR.OriginalSQL}
+	if modelDir != "" {
+		return m.saveTar(modelDir, pr.save)
+	}
+	return m.save(db, pr.save)
+}
+
+func runPredictIR(predIR *codegen.PredictIR, wr *PipeWriter, db *DB, modelDir string, session *pb.Session) error {
+	// TODO(typhoonzero): remove below twice parse when all submitters moved to IR.
+	pr, e := newParser().Parse(predIR.OriginalSQL)
+	if e != nil {
+		return e
+	}
+	// cwd is used to load the saved model for prediction.
+	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(cwd)
+
+	if os.Getenv("SQLFLOW_submitter") == "alps" {
+		return alpsPred(wr, pr, db, cwd, session)
+	} else if os.Getenv("SQLFLOW_submitter") == "elasticdl" {
+		return elasticDLPredict(wr, pr, db, cwd, session)
+	}
+	// ------------------- run pred IR -----------------------
+	// TODO(typhoonzero): loadModelMeta should use IR
+	pr, _, e = loadModelMeta(pr, db, cwd, modelDir, pr.model)
+	if e != nil {
+		return fmt.Errorf("loadModelMeta %v", e)
+	}
+
+	var program bytes.Buffer
+	if isXGBoostModel(predIR.TrainIR.Estimator) {
+		err = InferFeatureColumns(predIR.TrainIR)
+		if err != nil {
+			return err
+		}
+		code, err := xgboost.Pred(predIR, session)
+		if err != nil {
+			return err
+		}
+		err = createPredictionTableFromIR(predIR, db, session)
+		if err != nil {
+			return err
+		}
+		program.WriteString(code)
+	} else {
+		err = InferFeatureColumns(predIR.TrainIR)
+		if err != nil {
+			return err
+		}
+		code, err := tensorflow.Pred(predIR, session)
+		if err != nil {
+			return err
+		}
+		err = createPredictionTableFromIR(predIR, db, session)
+		if err != nil {
+			return err
+		}
+		program.WriteString(code)
+	}
+
+	var buf bytes.Buffer
+	buf.WriteString(fmt.Sprintf("\n==========Program======\n%s\n=======Program Output===========\n", program.String()))
+
+	cw := &logChanWriter{wr: wr}
+	w := io.MultiWriter(cw, &buf)
+	defer cw.Close()
+	cmd := sqlflowCmd(cwd, db.driverName)
+	cmd.Env = append(os.Environ())
+	cmd.Stdin = &program
+	cmd.Stdout = w
+	cmd.Stderr = w
+	if e := cmd.Run(); e != nil {
+		return fmt.Errorf("predict failed: %v\n %s", e, buf.String())
+	}
+	return nil
+}
+
+func runAnalyzeIR(analyzeIR *codegen.AnalyzeIR, wr *PipeWriter, db *DB, modelDir string, session *pb.Session) error {
+	pr, e := newParser().Parse(analyzeIR.OriginalSQL)
+	if e != nil {
+		return e
+	}
+	// cwd is used to load the saved model for prediction.
+	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(cwd)
+	// load the model for analyze
+	pr, _, e = loadModelMeta(pr, db, cwd, modelDir, pr.trainedModel)
+	if e != nil {
+		return fmt.Errorf("loadModelMeta %v", e)
+	}
+
+	cmd := exec.Command("python", "-u")
+	cmd.Dir = cwd
+
+	if !strings.HasPrefix(strings.ToUpper(analyzeIR.TrainIR.Estimator), `XGBOOST.`) {
+		return fmt.Errorf("unsupported model %s", analyzeIR.TrainIR.Estimator)
+	}
+	code, err := xgboost.Analyze(analyzeIR)
+	if err != nil {
+		return err
+	}
+	var program bytes.Buffer
+	program.WriteString(code)
+	cmd.Stdin = &program
+	if _, err := cmd.CombinedOutput(); err != nil {
+		return err
+	}
+
+	imgFile, err := os.Open(path.Join(cwd, "summary.png"))
+	if err != nil {
+		return err
+	}
+	defer imgFile.Close()
+
+	imgBytes, err := ioutil.ReadAll(imgFile)
+	if err != nil {
+		return err
+	}
+	imgBase64Str := base64.StdEncoding.EncodeToString(imgBytes)
+	img2html := fmt.Sprintf("<div align='center'><img src='data:image/png;base64,%s' /></div>", imgBase64Str)
+	wr.Write(img2html)
+	return nil
 }
 
 // Create prediction table with appropriate column type.
