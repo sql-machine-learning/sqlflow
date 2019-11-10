@@ -25,7 +25,7 @@ func createTable(db *sql.DB, driver, table string) error {
 	// HIVE and ODPS don't support AUTO_INCREMENT
 	// Hive and ODPS don't support BLOB, use BINARY instead
 	var stmt string
-	if driver == "mysql" || driver == "sqlite3" {
+	if driver == "mysql" {
 		stmt = fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (id INT, block TEXT, PRIMARY KEY (id))", table)
 	} else if driver == "hive" || driver == "maxcompute" {
 		stmt = fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (id INT, block STRING)", table)

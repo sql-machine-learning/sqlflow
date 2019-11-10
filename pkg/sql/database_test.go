@@ -42,10 +42,3 @@ func TestDatabaseOpenMysql(t *testing.T) {
 	_, e = db.Exec("show databases")
 	a.NoError(e)
 }
-
-func TestDatabaseOpenSQLite3(t *testing.T) {
-	a := assert.New(t)
-	db, e := NewDB("sqlite3://test")
-	a.NoError(e)
-	defer db.Close()
-}

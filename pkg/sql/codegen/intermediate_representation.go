@@ -59,12 +59,25 @@ type FeatureColumn interface {
 	GetFieldMeta() []*FieldMeta
 }
 
+// SQLProgramIR represents a parsed SQL program.
+// TODO(typhoonzero): Can generate a DAG workflow from a SQL program.
+type SQLProgramIR []SingleSQLIR
+
+// SingleSQLIR represent all kind of IRs including: TrainIR, PredictIR, AnalyzeIR and standard SQL.
+type SingleSQLIR interface {
+	// This function is used only for restrict the IR struct types
+	IsIR()
+}
+
 // TrainIR is the intermediate representation for code generation of a training job.
 //
 // Please be aware that the TrainIR intentionally excludes the model table name in the
 // INTO clause. The sql package will save the output files of a generated Python program.
 // For prediction and analysis jobs, the sql will restore an identical working directly.
 type TrainIR struct {
+	// OriginalSQL record the original SQL statement used to get current IR result
+	// FIXME(typhoonzero): OriginalSQL is a temporary field. Can remove this when all moved to IR
+	OriginalSQL string
 	// DataSource contains the connection information. For example, "hive://root:root@localhost:10000/churn"
 	DataSource string
 	// Select specifies the query for fetching the training data. For example, "select * from iris.train;".
@@ -91,11 +104,17 @@ type TrainIR struct {
 	Label FeatureColumn
 }
 
+// IsIR is used only for restrict the IR struct types
+func (trainIR *TrainIR) IsIR() {}
+
 // PredictIR is the intermediate representation for code generation of a prediction job
 //
 // Please be aware the PredictionIR contains the result table name, so the
 // generated Python program is responsible to create and write the result table.
 type PredictIR struct {
+	// OriginalSQL record the original SQL statement used to get current IR result
+	// FIXME(typhoonzero): OriginalSQL is a temporary field. Can remove this when all moved to IR
+	OriginalSQL string
 	// DataSource contains the connection information. For example, "hive://root:root@localhost:10000/churn"
 	DataSource string
 	// Select specifies the query for fetching the prediction data. For example, "select * from iris.test;".
@@ -112,8 +131,14 @@ type PredictIR struct {
 	TrainIR *TrainIR
 }
 
+// IsIR is used only for restrict the IR struct types
+func (predictIR *PredictIR) IsIR() {}
+
 // AnalyzeIR is the intermediate representation for code generation of a analysis job
 type AnalyzeIR struct {
+	// OriginalSQL record the original SQL statement used to get current IR result
+	// FIXME(typhoonzero): OriginalSQL is a temporary field. Can remove this when all moved to IR
+	OriginalSQL string
 	// DataSource contains the connection information. For example, "hive://root:root@localhost:10000/churn"
 	DataSource string
 	// Select specifies the query for fetching the analysis data. For example, "select * from iris.test;".
@@ -127,3 +152,12 @@ type AnalyzeIR struct {
 	// TrainIR is the TrainIR used for generating the training job of the corresponding model
 	TrainIR *TrainIR
 }
+
+// IsIR is used only for restrict the IR struct types
+func (analyzeIR *AnalyzeIR) IsIR() {}
+
+// StandardSQLIR is a string of a standard SQL statement that can run on the database system.
+type StandardSQLIR string
+
+// IsIR is used only for restrict the IR struct types
+func (sql *StandardSQLIR) IsIR() {}

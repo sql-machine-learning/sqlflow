@@ -178,19 +178,15 @@ USING sqlflow_models.mymodel;`
 	modelDir, e := ioutil.TempDir("/tmp", "sqlflow_models")
 	a.Nil(e)
 	defer os.RemoveAll(modelDir)
-	stream := runExtendedSQL(`SELECT * FROM iris.train
+	stream := RunSQLProgram([]string{`SELECT * FROM iris.train
 TO TRAIN DNNClassifier
 WITH model.n_classes=3, model.hidden_units=[10,20]
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
-INTO sqlflow_models.mymodel;`, testDB, modelDir, nil)
+INTO sqlflow_models.mymodel;`}, testDB, modelDir, nil)
 	a.True(goodStream(stream.ReadAll()))
 
-	// Test generate PredicrIR
-	cwd, e := ioutil.TempDir("/tmp", "sqlflow")
-	a.Nil(e)
-	defer os.RemoveAll(cwd)
-	predIR, err := generatePredictIR(r, connStr, cwd, modelDir)
+	predIR, err := generatePredictIR(r, connStr, modelDir)
 	a.NoError(err)
 
 	a.Equal(connStr, predIR.DataSource)
@@ -211,25 +207,19 @@ func TestGenerateAnalyzeIR(t *testing.T) {
 	modelDir, e := ioutil.TempDir("/tmp", "sqlflow_models")
 	a.Nil(e)
 	defer os.RemoveAll(modelDir)
-	stream := runExtendedSQL(`
-	SELECT *
-	FROM iris.train
-	TO TRAIN xgboost.gbtree
-	WITH
-	    objective="multi:softprob",
-	    train.num_boost_round = 30,
-	    eta = 0.4,
-	    num_class = 3
-	COLUMN sepal_length, sepal_width, petal_length, petal_width
-	LABEL class
-	INTO sqlflow_models.my_xgboost_model;
-	`, testDB, modelDir, nil)
+	stream := RunSQLProgram([]string{`SELECT * FROM iris.train
+TO TRAIN xgboost.gbtree
+WITH
+	objective="multi:softprob",
+	train.num_boost_round = 30,
+	eta = 0.4,
+	num_class = 3
+COLUMN sepal_length, sepal_width, petal_length, petal_width
+LABEL class
+INTO sqlflow_models.my_xgboost_model;
+`}, testDB, modelDir, nil)
+	a.NoError(e)
 	a.True(goodStream(stream.ReadAll()))
-
-	// Test generate AnalyzeIR
-	cwd, e := ioutil.TempDir("/tmp", "sqlflow")
-	a.Nil(e)
-	defer os.RemoveAll(cwd)
 
 	pr, e := newParser().Parse(`
 	SELECT *
@@ -244,7 +234,7 @@ func TestGenerateAnalyzeIR(t *testing.T) {
 	a.NoError(e)
 
 	connStr := "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
-	ir, e := generateAnalyzeIR(pr, connStr, cwd, modelDir)
+	ir, e := generateAnalyzeIR(pr, connStr, modelDir)
 	a.NoError(e)
 	a.Equal(ir.DataSource, connStr)
 	a.Equal(ir.Explainer, "TreeExplainer")

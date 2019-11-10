@@ -8,7 +8,6 @@ require (
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/golang/protobuf v1.3.2
 	github.com/mattn/go-runewidth v0.0.6 // indirect
-	github.com/mattn/go-sqlite3 v1.11.0
 	github.com/olekukonko/tablewriter v0.0.1
 	github.com/pingcap/parser v0.0.0-20190613045206-37cc370a20a4
 	github.com/pingcap/tidb v0.0.0-20190625145607-60965b006877

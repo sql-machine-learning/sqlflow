@@ -23,7 +23,6 @@ import (
 	"testing"
 
 	"github.com/go-sql-driver/mysql"
-	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/assert"
 	_ "sqlflow.org/gohive"
 )
@@ -140,12 +139,6 @@ func TestMain(m *testing.M) {
 
 	var e error
 	switch testDriver {
-	case "sqlite3":
-		testDB, e = sql.Open("sqlite3", ":memory:")
-		assertNoErr(e)
-		_, e = testDB.Exec(fmt.Sprintf("ATTACH DATABASE ':memory:' AS %s;", testDatabaseName))
-		assertNoErr(e)
-		defer testDB.Close()
 	case "mysql":
 		cfg := &mysql.Config{
 			User:                 getEnv("SQLFLOW_TEST_DB_MYSQL_USER", "root"),
