@@ -66,7 +66,7 @@ RUN /install-jupyter.bash
 # Above Steps Should be Cached for Each CI Build if Dockerfile is not Changed.
 # -----------------------------------------------------------------------------------
 
-# Build SQLFlow, copy sqlflow_submitter, convert tutorial markdown to ipython notebook
+# Build SQLFlow, copy sqlflow_submitter, install Java parser (129 MB), convert tutorial markdown to ipython notebook
 COPY . $GOPATH/src/sqlflow.org/sqlflow
 RUN cd $GOPATH/src/sqlflow.org/sqlflow && \
 go generate ./... && \
@@ -74,6 +74,10 @@ go install -v ./... && \
 mv $GOPATH/bin/sqlflowserver /usr/local/bin && \
 mv $GOPATH/bin/repl /usr/local/bin && \
 cp -r $GOPATH/src/sqlflow.org/sqlflow/python/sqlflow_submitter /miniconda/envs/sqlflow-dev/lib/python3.6/site-packages/ && \
+cd java/parser && \
+mvn clean compile assembly:single && \
+mkdir -p /opt/sqlflow/parser && \
+cp target/parser-1.0-SNAPSHOT-jar-with-dependencies.jar /opt/sqlflow/parser && \
 cd / && \
 bash ${GOPATH}/src/sqlflow.org/sqlflow/scripts/convert_markdown_into_ipynb.sh && \
 rm -rf ${GOPATH}/src && rm -rf ${GOPATH}/bin
@@ -90,12 +94,6 @@ RUN if [ "${WITH_SQLFLOW_MODELS:-ON}" = "ON" ]; then \
   cd .. && \
   rm -rf models; \
 fi
-
-# Install Java parser, 129 MB
-RUN cd $GOPATH/src/sqlflow.org/sqlflow/java/parser && \
-mvn clean compile assembly:single && \
-mkdir -p /opt/sqlflow/parser && \
-cp target/parser-1.0-SNAPSHOT-jar-with-dependencies.jar /opt/sqlflow/parser
 
 ADD scripts/start.sh /
 CMD ["bash", "/start.sh"]
