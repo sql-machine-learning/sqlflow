@@ -91,5 +91,11 @@ RUN if [ "${WITH_SQLFLOW_MODELS:-ON}" = "ON" ]; then \
   rm -rf models; \
 fi
 
+# Install Java parser, 129 MB
+RUN cd $GOPATH/src/sqlflow.org/sqlflow/java/parser && \
+mvn clean compile assembly:single && \
+mkdir -p /opt/sqlflow/parser && \
+cp target/parser-1.0-SNAPSHOT-jar-with-dependencies.jar /opt/sqlflow/parser
+
 ADD scripts/start.sh /
 CMD ["bash", "/start.sh"]
