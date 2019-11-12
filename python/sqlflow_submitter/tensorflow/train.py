@@ -86,14 +86,15 @@ def train(is_keras_model,
     def train_input_fn(batch_size):
         dataset = input_fn(select)
         # TODO(typhoonzero): add prefetch, cache if needed.
-        dataset = dataset.shuffle(1000).batch(batch_size)
+        dataset = dataset.shuffle(1000).batch(batch_size).cache(filename="dataset_cache_train.txt")
         if not is_keras_model:
             dataset = dataset.repeat(epochs if epochs else 1)
+        
         return dataset
 
     def validate_input_fn(batch_size):
         dataset = input_fn(validate_select)
-        return dataset.batch(batch_size)
+        return dataset.batch(batch_size).cache(filename="dataset_cache_val.txt")
 
     if is_keras_model:
         classifier.compile(optimizer=classifier.default_optimizer(),
