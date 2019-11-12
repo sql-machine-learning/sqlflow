@@ -13,7 +13,9 @@
 
 package tpp
 
-import "fmt"
+import (
+	"fmt"
+)
 
 func init() {
 	tiDBInit()
@@ -33,20 +35,10 @@ func ParseAndSplit(driver, sql string) ([]string, int, error) {
 	case "mysql":
 		return tiDBParseAndSplit(sql)
 	case "hive":
-		return hiveQLParseAndSplit(sql)
+		return javaParseAndSplit("hiveql", sql)
 	case "calcite":
-		return calciteParseAndSplit(sql)
+		return javaParseAndSplit("calcite", sql)
 	default:
 		return nil, -1, fmt.Errorf("unsupported driver type %s", driver)
 	}
-}
-
-func hiveQLParseAndSplit(sql string) ([]string, int, error) {
-	// TODO(tony): call HiveQL parser via command line
-	return nil, -1, fmt.Errorf("hiveQLParseAndSplit not implemented")
-}
-
-func calciteParseAndSplit(sql string) ([]string, int, error) {
-	// TODO(tony): call Calcite parser via command line
-	return nil, -1, fmt.Errorf("calciteParseAndSplit not implemented")
 }
