@@ -18,6 +18,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import sys, json
 import tensorflow as tf
 import functools
+import random
 try:
     import sqlflow_models
 except:
@@ -85,8 +86,7 @@ def train(is_keras_model,
 
     def train_input_fn(batch_size):
         dataset = input_fn(select)
-        # TODO(typhoonzero): add prefetch, cache if needed.
-        dataset = dataset.shuffle(1000).batch(batch_size).cache(filename="dataset_cache_train.txt")
+        dataset = dataset.shuffle(1000).batch(batch_size)
         if not is_keras_model:
             dataset = dataset.repeat(epochs if epochs else 1)
         
@@ -101,9 +101,12 @@ def train(is_keras_model,
             loss=classifier.default_loss(),
             metrics=["accuracy"])
         if hasattr(classifier, 'sqlflow_train_loop'):
+            # NOTE(typhoonzero): do not cache dataset if using sqlflow_train_loop, it may use the dataset multiple times causing "tensorflow.python.framework.errors_impl.AlreadyExistsError":
+            # https://github.com/sql-machine-learning/models/blob/a3559618a013820385f43307261ad34351da2fbf/sqlflow_models/deep_embedding_cluster.py#L126
             classifier.sqlflow_train_loop(train_input_fn(batch_size))
         else:
-            classifier.fit(train_input_fn(batch_size),
+            ds = train_input_fn(batch_size).cache(filename="dataset_cache_train.txt")
+            classifier.fit(ds,
                 epochs=epochs if epochs else classifier.default_training_epochs(),
                 verbose=verbose)
         classifier.save_weights(save, save_format="h5")
