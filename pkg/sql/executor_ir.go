@@ -127,13 +127,13 @@ func runTrainIR(trainIR *codegen.TrainIR, wr *PipeWriter, db *DB, modelDir strin
 	}
 	defer os.RemoveAll(cwd)
 
-	if os.Getenv("SQLFLOW_submitter") == "elasticdl" {
-		return elasticDLTrain(wr, pr, db, cwd, session)
-	}
-	// FIXME(weiguo): temporary branch to alps
-	if os.Getenv("SQLFLOW_submitter") == "alps" {
-		return alpsTrain(wr, pr, db, cwd, session)
-	}
+	// FIXME(tony): After ALPS and EDL migrates to IR, bring back the following branch
+	// if os.Getenv("SQLFLOW_submitter") == "elasticdl" {
+	// 	return elasticDLTrain(wr, pr, db, cwd, session)
+	// }
+	// if os.Getenv("SQLFLOW_submitter") == "alps" {
+	// 	return alpsTrain(wr, pr, db, cwd, session)
+	// }
 	// ---------------------- run the IR ---------------------------
 	var program bytes.Buffer
 	if isXGBoostModel(trainIR.Estimator) {
@@ -193,11 +193,12 @@ func runPredictIR(predIR *codegen.PredictIR, wr *PipeWriter, db *DB, modelDir st
 	}
 	defer os.RemoveAll(cwd)
 
-	if os.Getenv("SQLFLOW_submitter") == "alps" {
-		return alpsPred(wr, pr, db, cwd, session)
-	} else if os.Getenv("SQLFLOW_submitter") == "elasticdl" {
-		return elasticDLPredict(wr, pr, db, cwd, session)
-	}
+	// FIXME(tony): After ALPS and EDL migrates to IR, bring back the following branch
+	// if os.Getenv("SQLFLOW_submitter") == "alps" {
+	// 	return alpsPred(wr, pr, db, cwd, session)
+	// } else if os.Getenv("SQLFLOW_submitter") == "elasticdl" {
+	// 	return elasticDLPredict(wr, pr, db, cwd, session)
+	// }
 	// ------------------- run pred IR -----------------------
 	// TODO(typhoonzero): loadModelMeta should use IR
 	pr, _, e = loadModelMeta(pr, db, cwd, modelDir, pr.model)
