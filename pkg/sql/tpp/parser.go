@@ -14,10 +14,16 @@
 package tpp
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/pingcap/parser"
 	"github.com/pingcap/parser/ast"
@@ -40,15 +46,6 @@ func tiDBInit() {
 	re = regexp.MustCompile(`.* near "([^"]+)".*`)
 }
 
-// tiDBParseAndSplit calls TiDB's parser to parse a SQL program and returns a slice of SQL statements.
-//
-// It returns <statements, -1, nil> if TiDB parser accepts the SQL program.
-//     input:  "select 1; select 1;"
-//     output: {"select 1;", "select 1;"}, -1 , nil
-// It returns <statements, idx, nil> if TiDB parser accepts part of the SQL program, indicated by idx.
-//     input:  "select 1; select 1 to train; select 1"
-//     output: {"select 1;", "select 1"}, 19, nil
-// It returns <nil, -1, error> if an error is occurred.
 func tiDBParseAndSplit(sql string) ([]string, int, error) {
 	if psr == nil || re == nil {
 		return nil, -1, fmt.Errorf("parser is not initialized")
@@ -90,4 +87,64 @@ func tiDBParseAndSplit(sql string) ([]string, int, error) {
 		sqls = append(sqls, n.Text())
 	}
 	return sqls, -1, nil
+}
+
+type parseResult struct {
+	Statements []string `json:"statements"`
+	Position   int      `json:"position"`
+	Error      string   `json:"error"`
+}
+
+func javaParseAndSplit(typ, sql string) ([]string, int, error) {
+	start := time.Now()
+	defer func(t time.Time) {
+		fmt.Printf("elapsed time %v\n", time.Since(t))
+	}(time.Now())
+
+	// cwd is used to store train scripts and save output models.
+	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
+	if err != nil {
+		return nil, -1, err
+	}
+	defer os.RemoveAll(cwd)
+
+	fmt.Printf("create temp directory %v\n", time.Since(start))
+
+	inputFile := filepath.Join(cwd, "input.sql")
+	outputFile := filepath.Join(cwd, "output.json")
+	if err := ioutil.WriteFile(inputFile, []byte(sql), 755); err != nil {
+		return nil, -1, err
+	}
+
+	fmt.Printf("create input file %v\n", time.Since(start))
+
+	cmd := exec.Command("java",
+		"-cp", "/opt/sqlflow/parser/parser-1.0-SNAPSHOT-jar-with-dependencies.jar",
+		"org.sqlflow.parser.ParserAdaptorCmd",
+		"-p", typ,
+		"-i", inputFile,
+		"-o", outputFile)
+	if err := cmd.Run(); err != nil {
+		return nil, -1, err
+	}
+
+	fmt.Printf("create output file %v\n", time.Since(start))
+
+	output, err := ioutil.ReadFile(outputFile)
+	if err != nil {
+		return nil, -1, err
+	}
+
+	var pr parseResult
+	if err = json.Unmarshal(output, &pr); err != nil {
+		return nil, -1, err
+	}
+
+	fmt.Printf("parse output file %v\n", time.Since(start))
+
+	if pr.Error != "" {
+		return nil, -1, fmt.Errorf(pr.Error)
+	}
+
+	return pr.Statements, pr.Position, nil
 }
