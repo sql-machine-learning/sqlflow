@@ -13,7 +13,6 @@
 
 package sql
 
-/*
 import (
 	"bytes"
 	"os"
@@ -122,5 +121,3 @@ func TestPredALPSFiller(t *testing.T) {
 		`CREATE TABLE IF NOT EXISTS db.predict_result AS `+
 			`SELECT predict_fun(concat(",", col_1, col_2)) AS (info, score) FROM db.table`)
 }
-
-*/

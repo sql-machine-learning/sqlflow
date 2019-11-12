@@ -13,7 +13,6 @@
 
 package sql
 
-/*
 import (
 	"bytes"
 	"fmt"
@@ -335,4 +334,3 @@ func elasticdlPredictCmd(cwd string, filler *elasticDLFiller) (cmd *exec.Cmd) {
 	}
 	return cmd
 }
-*/

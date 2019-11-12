@@ -13,7 +13,6 @@
 
 package sql
 
-/*
 import (
 	"bytes"
 	"strings"
@@ -135,4 +134,3 @@ func TestGenFeaturesDescription(t *testing.T) {
 	listCode := genFeaturesDescription([]string{"a", "b", "c"})
 	a.Equal(`"a": tf.io.FixedLenFeature([1], tf.float32), "b": tf.io.FixedLenFeature([1], tf.float32), "c": tf.io.FixedLenFeature([1], tf.float32),`, listCode)
 }
-*/

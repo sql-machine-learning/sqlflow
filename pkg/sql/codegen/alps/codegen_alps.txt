@@ -13,7 +13,6 @@
 
 package sql
 
-/*
 import (
 	"bytes"
 	"database/sql"
@@ -754,5 +753,3 @@ func (meta *metadata) getSparseColumnInfo() (map[string]*columns.ColumnSpec, err
 	}
 	return output, nil
 }
-
-*/
