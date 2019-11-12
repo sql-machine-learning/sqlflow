@@ -15,13 +15,68 @@ package sql
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
 
+	"github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"
 	pb "sqlflow.org/sqlflow/pkg/server/proto"
+	"sqlflow.org/sqlflow/pkg/sql/codegen"
 )
+
+func mockTrainIRNew() *codegen.TrainIR {
+	cfg := &mysql.Config{
+		User:                 "root",
+		Passwd:               "root",
+		Net:                  "tcp",
+		Addr:                 "127.0.0.1:3306",
+		AllowNativePasswords: true,
+	}
+	_ = `SELECT dense, deep, wide FROM kaggle_credit_fraud_training_data 
+	TRAIN DNNLinearCombinedClassifier 
+	WITH 
+		model.dnn_hidden_units = [10, 20],
+		train.max_steps = 1000,
+		engine.type = "yarn"
+	COLUMN
+		DENSE(dense, 5, comma),
+		SPARSE(deep, 2000, comma),
+		NUMERIC(dense, 5),
+		EMBEDDING(CATEGORY_ID(deep, 2000), 8, mean) FOR dnn_feature_columns
+	COLUMN
+		SPARSE(wide, 1000, comma),
+		EMBEDDING(CATEGORY_ID(wide, 1000), 16, mean) FOR linear_feature_columns
+	LABEL c3
+	INTO model_table;`
+	return &codegen.TrainIR{
+		DataSource:       fmt.Sprintf("mysql://%s", cfg.FormatDSN()),
+		Select:           "SELECT dense, deep, wide FROM kaggle_credit_fraud_training_data;",
+		ValidationSelect: "SELECT dense, deep, wide FROM kaggle_credit_fraud_testing_data;",
+		Estimator:        "DNNLinearCombinedClassifier",
+		Attributes: map[string]interface{}{
+			"engine.type":        "yarn",
+			"train.batch_size":   4,
+			"train.epoch":        3,
+			"model.hidden_units": []int{10, 20},
+			"model.n_classes":    3},
+		Features: map[string][]codegen.FeatureColumn{
+			"feature_columns": {
+				&codegen.NumericColumn{&codegen.FieldMeta{"wide", codegen.Int, ",", []int{1000}, true, nil, 0}},
+				&codegen.NumericColumn{&codegen.FieldMeta{"deep", codegen.Int, ",", []int{2000}, true, nil, 0}},
+				&codegen.NumericColumn{&codegen.FieldMeta{"dense", codegen.Float, ",", []int{5}, false, nil, 0}}}},
+		Label: &codegen.NumericColumn{&codegen.FieldMeta{"c3", codegen.Int, ",", []int{1}, false, nil, 0}}}
+}
+
+func TestTrainALPSFillerNew(t *testing.T) {
+	a := assert.New(t)
+	tir := mockTrainIRNew()
+	fmt.Println(tir)
+	session := &pb.Session{UserId: "sqlflow_user"}
+	filler, e := newALPSTrainFillerWithIR(tir, nil, session, nil)
+	a.NoError(e)
+}
 
 func TestTrainALPSFiller(t *testing.T) {
 	a := assert.New(t)

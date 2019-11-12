@@ -89,6 +89,8 @@ type TrainIR struct {
 	Features map[string][]FeatureColumn
 	// Label specifies the feature column in the LABEL clause.
 	Label FeatureColumn
+	//model name for save
+	Save string
 }
 
 // PredictIR is the intermediate representation for code generation of a prediction job

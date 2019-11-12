@@ -315,6 +315,14 @@ func newParser() *sqlSyncParser {
 	return &sqlSyncParser{sqlNewParser()}
 }
 
+func NewParser() *sqlSyncParser {
+	return &sqlSyncParser{sqlNewParser()}
+}
+
+func GetTableNames(es *extendedSelect) string {
+	return es.standardSelect.tables[0]
+}
+
 var mu sync.Mutex
 
 func (p *sqlSyncParser) Parse(s string) (r *extendedSelect, e error) {
