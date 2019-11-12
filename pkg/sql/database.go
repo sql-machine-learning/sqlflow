@@ -20,7 +20,6 @@ import (
 
 	// import drivers for heterogenous DB support
 	_ "github.com/go-sql-driver/mysql"
-	_ "github.com/mattn/go-sqlite3"
 	_ "sqlflow.org/gohive"
 	_ "sqlflow.org/gomaxcompute"
 )
@@ -48,7 +47,7 @@ func open(datasource string) (*DB, error) {
 
 	var err error
 	switch db.driverName {
-	case "sqlite3", "mysql", "hive", "maxcompute":
+	case "mysql", "hive", "maxcompute":
 		db.DB, err = sql.Open(db.driverName, db.dataSourceName)
 	default:
 		return nil, fmt.Errorf("sqlflow currently doesn't support DB %v", db.driverName)

@@ -14,23 +14,15 @@
 package sql
 
 import (
-	"container/list"
 	"fmt"
 	"io/ioutil"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	pb "sqlflow.org/sqlflow/pkg/server/proto"
 )
 
 const (
-	testStandardExecutiveSQLStatement = `DELETE FROM iris.train WHERE class = 4;`
-	testSelectIris                    = `
-SELECT *
-FROM iris.train
-`
 	testTrainSelectIris = testSelectIris + `
 TO TRAIN DNNClassifier
 WITH
@@ -87,7 +79,6 @@ FROM iris.test
 TO PREDICT iris.predict.class
 USING sqlflow_models.my_xgboost_model;
 `
-
 	testXGBoostTrainSelectHousing = `
 SELECT *
 FROM housing.train
@@ -108,75 +99,15 @@ USING sqlflow_models.my_xgb_regression_model;
 `
 )
 
-func goodStream(stream chan interface{}) (bool, string) {
-	lastResp := list.New()
-	keepSize := 10
-
-	for rsp := range stream {
-		switch rsp.(type) {
-		case error:
-			var s []string
-			for e := lastResp.Front(); e != nil; e = e.Next() {
-				s = append(s, e.Value.(string))
-			}
-			return false, strings.Join(s, "\n")
-		}
-		lastResp.PushBack(rsp)
-		if lastResp.Len() > keepSize {
-			e := lastResp.Front()
-			lastResp.Remove(e)
-		}
-	}
-	return true, ""
-}
-
-func TestSplitExtendedSQL(t *testing.T) {
-	a := assert.New(t)
-	s, err := splitExtendedSQL(`select a train b with c;`)
-	a.Equal(err, nil)
-	a.Equal(2, len(s))
-	a.Equal(`select a`, s[0])
-	a.Equal(` train b with c;`, s[1])
-
-	s, err = splitExtendedSQL(`  select a predict b using c;`)
-	a.Equal(err, nil)
-	a.Equal(2, len(s))
-	a.Equal(`  select a`, s[0])
-	a.Equal(` predict b using c;`, s[1])
-
-	s, err = splitExtendedSQL(` select a from b;`)
-	a.Equal(err, nil)
-	a.Equal(1, len(s))
-	a.Equal(` select a from b;`, s[0])
-
-	s, err = splitExtendedSQL(`train a with b;`)
-	a.Equal(err, nil)
-	a.Equal(1, len(s))
-	a.Equal(`train a with b;`, s[0])
-}
-
-func TestSplitMulipleSQL(t *testing.T) {
-	a := assert.New(t)
-	splited, err := SplitMultipleSQL(`CREATE TABLE copy_table_1 AS SELECT a,b,c FROM table_1 WHERE c<>";";
-SELECT * FROM copy_table_1;SELECT * FROM copy_table_1 TO TRAIN DNNClassifier WITH n_classes=2 INTO test_model;`)
-	a.NoError(err)
-	a.Equal("CREATE TABLE copy_table_1 AS SELECT a,b,c FROM table_1 WHERE c<>\";\";", splited[0])
-	a.Equal("SELECT * FROM copy_table_1;", splited[1])
-	a.Equal("SELECT * FROM copy_table_1 TO TRAIN DNNClassifier WITH n_classes=2 INTO test_model;", splited[2])
-}
-
-func getDefaultSession() *pb.Session {
-	return &pb.Session{}
-}
 func TestExecuteXGBoost(t *testing.T) {
 	a := assert.New(t)
 	modelDir := ""
 	a.NotPanics(func() {
-		stream := runExtendedSQL(testXGBoostTrainSelectIris, testDB, modelDir, getDefaultSession())
+		stream := RunSQLProgram([]string{testXGBoostTrainSelectIris}, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
-		stream = runExtendedSQL(testAnalyzeTreeModelSelectIris, testDB, modelDir, getDefaultSession())
+		stream = RunSQLProgram([]string{testAnalyzeTreeModelSelectIris}, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
-		stream = runExtendedSQL(testXGBoostPredictIris, testDB, modelDir, getDefaultSession())
+		stream = RunSQLProgram([]string{testXGBoostPredictIris}, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
 	})
 }
@@ -185,9 +116,11 @@ func TestExecuteXGBoostRegression(t *testing.T) {
 	a := assert.New(t)
 	modelDir := ""
 	a.NotPanics(func() {
-		stream := runExtendedSQL(testXGBoostTrainSelectHousing, testDB, modelDir, getDefaultSession())
+		stream := RunSQLProgram([]string{testXGBoostTrainSelectHousing}, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
-		stream = runExtendedSQL(testXGBoostPredictHousing, testDB, modelDir, getDefaultSession())
+		stream = RunSQLProgram([]string{testAnalyzeTreeModelSelectIris}, testDB, modelDir, getDefaultSession())
+		a.True(goodStream(stream.ReadAll()))
+		stream = RunSQLProgram([]string{testXGBoostPredictHousing}, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
 	})
 }
@@ -196,9 +129,9 @@ func TestExecutorTrainAndPredictDNN(t *testing.T) {
 	a := assert.New(t)
 	modelDir := ""
 	a.NotPanics(func() {
-		stream := runExtendedSQL(testTrainSelectIris, testDB, modelDir, getDefaultSession())
+		stream := RunSQLProgram([]string{testTrainSelectIris}, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
-		stream = runExtendedSQL(testPredictSelectIris, testDB, modelDir, getDefaultSession())
+		stream = RunSQLProgram([]string{testPredictSelectIris}, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
 	})
 }
@@ -209,9 +142,9 @@ func TestExecutorTrainAndPredictClusteringLocalFS(t *testing.T) {
 	a.Nil(e)
 	defer os.RemoveAll(modelDir)
 	a.NotPanics(func() {
-		stream := runExtendedSQL(testClusteringTrain, testDB, modelDir, getDefaultSession())
+		stream := RunSQLProgram([]string{testClusteringTrain}, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
-		stream = runExtendedSQL(testClusteringPredict, testDB, modelDir, getDefaultSession())
+		stream = RunSQLProgram([]string{testClusteringPredict}, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
 	})
 }
@@ -222,10 +155,9 @@ func TestExecutorTrainAndPredictDNNLocalFS(t *testing.T) {
 	a.Nil(e)
 	defer os.RemoveAll(modelDir)
 	a.NotPanics(func() {
-		stream := runExtendedSQL(testTrainSelectIris, testDB, modelDir, getDefaultSession())
+		stream := RunSQLProgram([]string{testTrainSelectIris}, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
-
-		stream = runExtendedSQL(testPredictSelectIris, testDB, modelDir, getDefaultSession())
+		stream = RunSQLProgram([]string{testPredictSelectIris}, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
 	})
 }
@@ -236,7 +168,7 @@ func TestExecutorTrainAndPredictionDNNClassifierDENSE(t *testing.T) {
 	}
 	a := assert.New(t)
 	a.NotPanics(func() {
-		stream := Run(`SELECT * FROM iris.train_dense
+		trainSQL := `SELECT * FROM iris.train_dense
 TO TRAIN DNNClassifier
 WITH
 model.n_classes = 3,
@@ -246,41 +178,17 @@ train.batch_size = 10,
 train.verbose = 1
 COLUMN NUMERIC(dense, 4)
 LABEL class
-INTO sqlflow_models.my_dense_dnn_model;
-`, testDB, "", getDefaultSession())
+INTO sqlflow_models.my_dense_dnn_model;`
+		stream := RunSQLProgram([]string{trainSQL}, testDB, "", getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
-		stream = Run(`SELECT * FROM iris.test_dense
+
+		predSQL := `SELECT * FROM iris.test_dense
 TO PREDICT iris.predict_dense.class
 USING sqlflow_models.my_dense_dnn_model
-;`, testDB, "", getDefaultSession())
+;`
+		stream = RunSQLProgram([]string{predSQL}, testDB, "", getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
 	})
-}
-
-func TestStandardSQL(t *testing.T) {
-	a := assert.New(t)
-	a.NotPanics(func() {
-		stream := runStandardSQL(testSelectIris, testDB)
-		a.True(goodStream(stream.ReadAll()))
-	})
-	a.NotPanics(func() {
-		if getEnv("SQLFLOW_TEST_DB", "mysql") == "hive" {
-			t.Skip("hive: skip DELETE statement")
-		}
-		stream := runStandardSQL(testStandardExecutiveSQLStatement, testDB)
-		a.True(goodStream(stream.ReadAll()))
-	})
-	a.NotPanics(func() {
-		stream := runStandardSQL("SELECT * FROM iris.iris_empty LIMIT 10;", testDB)
-		stat, _ := goodStream(stream.ReadAll())
-		a.True(stat)
-	})
-}
-
-func TestSQLLexerError(t *testing.T) {
-	a := assert.New(t)
-	stream := Run("SELECT * FROM ``?[] AS WHERE LIMIT;", testDB, "", getDefaultSession())
-	a.False(goodStream(stream.ReadAll()))
 }
 
 func TestCreatePredictionTable(t *testing.T) {
@@ -291,21 +199,6 @@ func TestCreatePredictionTable(t *testing.T) {
 	a.NoError(e)
 	predParsed.trainClause = trainParsed.trainClause
 	a.NoError(createPredictionTable(predParsed, testDB, nil))
-}
-
-func TestIsQuery(t *testing.T) {
-	a := assert.New(t)
-	a.True(isQuery("select * from iris.iris"))
-	a.True(isQuery("show create table iris.iris"))
-	a.True(isQuery("show databases"))
-	a.True(isQuery("show tables"))
-	a.True(isQuery("describe iris.iris"))
-
-	a.False(isQuery("select * from iris.iris limit 10 into iris.tmp"))
-	a.False(isQuery("insert into iris.iris values ..."))
-	a.False(isQuery("delete from iris.iris where ..."))
-	a.False(isQuery("update iris.iris where ..."))
-	a.False(isQuery("drop table"))
 }
 
 func TestLogChanWriter_Write(t *testing.T) {
@@ -330,22 +223,4 @@ func TestLogChanWriter_Write(t *testing.T) {
 	a.Equal("世界\n", <-c)
 	_, more := <-c
 	a.False(more)
-}
-
-func TestParseTableColumn(tg *testing.T) {
-	a := assert.New(tg)
-	t, c, e := parseTableColumn("a.b.c")
-	a.NoError(e)
-	a.Equal("a.b", t)
-	a.Equal("c", c)
-
-	t, c, e = parseTableColumn("a.b")
-	a.NoError(e)
-	a.Equal("a", t)
-	a.Equal("b", c)
-
-	_, _, e = parseTableColumn("a.")
-	a.Error(e)
-	_, _, e = parseTableColumn("a")
-	a.Error(e)
 }

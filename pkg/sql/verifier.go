@@ -88,6 +88,40 @@ func verify(slct *extendedSelect, db *DB) (fieldTypes, error) {
 	return ft, nil
 }
 
+// getColumnTypes is quiet like verify but accept a SQL string as input, and returns
+// an ordered list of the field types.
+func getColumnTypes(slct string, db *DB) ([]string, []string, error) {
+	rows, err := db.Query(slct)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer rows.Close()
+
+	if !rows.Next() {
+		return nil, nil, fmt.Errorf("query %s gives 0 row", slct)
+	}
+
+	if rows.Err() != nil {
+		return nil, nil, err
+	}
+
+	columnTypes, err := rows.ColumnTypes()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	ft := []string{}
+	flds := []string{}
+	for _, ct := range columnTypes {
+		_, fld := decomp(ct.Name())
+		typeName := ct.DatabaseTypeName()
+		flds = append(flds, fld)
+		ft = append(ft, typeName)
+	}
+
+	return flds, ft, nil
+}
+
 // Check train and pred clause uses has the same feature columns
 // 1. every column field in the training clause is selected in the pred clause, and they are of the same type
 func verifyColumnNameAndType(trainParsed, predParsed *extendedSelect, db *DB) error {

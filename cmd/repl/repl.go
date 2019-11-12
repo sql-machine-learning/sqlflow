@@ -18,6 +18,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"strings"
@@ -25,6 +26,7 @@ import (
 
 	"github.com/olekukonko/tablewriter"
 	"golang.org/x/crypto/ssh/terminal"
+	pb "sqlflow.org/sqlflow/pkg/server/proto"
 	"sqlflow.org/sqlflow/pkg/sql"
 )
 
@@ -81,6 +83,8 @@ func render(rsp interface{}, table *tablewriter.Table) bool {
 		isTable = true
 	case error:
 		fmt.Printf("ERROR: %v\n", s)
+	case sql.EndOfExecution:
+		return isTable
 	default:
 		fmt.Println(s)
 	}
@@ -99,14 +103,21 @@ func flagPassed(name ...string) bool {
 	return found
 }
 
-func runStmt(stmt string, isTerminal bool, modelDir string, db *sql.DB) {
+func runStmt(stmt string, isTerminal bool, modelDir string, db *sql.DB, ds string) {
 	if !isTerminal {
 		fmt.Println("sqlflow>", stmt)
 	}
 	isTable, tableRendered := false, false
 	table := tablewriter.NewWriter(os.Stdout)
 
-	stream := sql.Run(stmt, db, modelDir, nil)
+	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer os.RemoveAll(cwd)
+
+	stream := sql.RunSQLProgram([]string{stmt}, db, modelDir, &pb.Session{})
 	for rsp := range stream.ReadAll() {
 		isTable = render(rsp, table)
 
@@ -117,12 +128,12 @@ func runStmt(stmt string, isTerminal bool, modelDir string, db *sql.DB) {
 			table.ClearRows()
 		}
 	}
-	if isTable && (table.NumLines() > 0 || !tableRendered) {
+	if table.NumLines() > 0 || !tableRendered {
 		table.Render()
 	}
 }
 
-func repl(scanner *bufio.Scanner, isTerminal bool, modelDir string, db *sql.DB) {
+func repl(scanner *bufio.Scanner, isTerminal bool, modelDir string, db *sql.DB, ds string) {
 	for {
 		if isTerminal {
 			fmt.Print("sqlflow> ")
@@ -132,7 +143,7 @@ func repl(scanner *bufio.Scanner, isTerminal bool, modelDir string, db *sql.DB) 
 		if err == io.EOF && stmt == "" {
 			return
 		}
-		runStmt(stmt, isTerminal, modelDir, db)
+		runStmt(stmt, isTerminal, modelDir, db, ds)
 	}
 
 }
@@ -173,5 +184,5 @@ func main() {
 		reader = strings.NewReader(*cliStmt)
 	}
 	scanner := bufio.NewScanner(reader)
-	repl(scanner, isTerminal, *modelDir, db)
+	repl(scanner, isTerminal, *modelDir, db, *ds)
 }

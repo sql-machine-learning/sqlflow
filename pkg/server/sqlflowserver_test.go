@@ -46,11 +46,12 @@ const (
 
 var testServerAddress string
 
-func mockRun(sql string, db *sf.DB, modelDir string, session *pb.Session) *sf.PipeReader {
+func mockRun(sql []string, db *sf.DB, modelDir string, session *pb.Session) *sf.PipeReader {
 	rd, wr := sf.Pipe()
+	singleSQL := sql[0]
 	go func() {
 		defer wr.Close()
-		switch sql {
+		switch singleSQL {
 		case testErrorSQL:
 			wr.Write(fmt.Errorf("run error: %v", testErrorSQL))
 		case testQuerySQL:
@@ -68,7 +69,7 @@ func mockRun(sql string, db *sf.DB, modelDir string, session *pb.Session) *sf.Pi
 			wr.Write("log 0")
 			wr.Write("log 1")
 		default:
-			wr.Write(fmt.Errorf("unexcepted SQL: %s", sql))
+			wr.Write(fmt.Errorf("unexcepted SQL: %s", singleSQL))
 		}
 	}()
 	return rd
@@ -103,7 +104,6 @@ func createRudeClient() {
 	if err != nil {
 		log.Fatalf("Run encounts err:%v", err)
 	}
-
 	// conn closed without *any* stream.Recv(), act as rude client
 	conn.Close()
 }

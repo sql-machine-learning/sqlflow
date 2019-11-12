@@ -26,10 +26,9 @@ type trainFiller struct {
 }
 
 const trainTemplateText = `
-import xgboost as xgb
 from sqlflow_submitter.xgboost.train import train
-from sqlflow_submitter.db import connect_with_data_source, db_generator
 import json
+
 model_params = json.loads('''{{.ModelParamsJSON}}''')
 train_params = json.loads('''{{.TrainParamsJSON}}''')
 feature_field_meta = json.loads('''{{.FieldMetaJSON}}''')
