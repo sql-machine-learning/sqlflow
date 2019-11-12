@@ -31,6 +31,10 @@ func extendedSyntaxParse(sql string) (string, error) {
 
 // FIXME(tony): change the return type from []string to []parsedResult
 func parse(dbms, sqlProgram string) ([]string, error) {
+	if len(sqlProgram) == 0 {
+		return make([]string, 0), nil
+	}
+
 	sqls, i, err := tpp.ParseAndSplit(dbms, sqlProgram)
 	if err != nil {
 		return nil, err
