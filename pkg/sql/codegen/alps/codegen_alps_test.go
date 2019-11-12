@@ -76,7 +76,6 @@ func mockTrainIR() *codegen.TrainIR {
 func TestTrainALPSFiller(t *testing.T) {
 	a := assert.New(t)
 	tir := mockTrainIR()
-	fmt.Println(tir)
 	session := &pb.Session{UserId: "sqlflow_user"}
 	
 	filler, e := newALPSTrainFillerWithIR(tir, nil, session)
@@ -94,8 +93,8 @@ func TestTrainALPSFiller(t *testing.T) {
 	a.Equal(filler.UserID, "sqlflow_user")
 	var program bytes.Buffer
 	alpsTrainTemplate.Execute(&program, filler)
-	code := program.String()
-	fmt.Println(code)
+	// code := program.String()
+	// fmt.Println(code)
 
 	
 }
@@ -127,10 +126,6 @@ func TestPredALPSFiller(t *testing.T) {
 
 	filler, e := newALPSPredictFillerWithIR(pir, session)
 	a.NoError(e)
-	// var program2 bytes.Buffer
-	// alpsPredTemplate.Execute(&program2, filler)
-	// code2 := program2.String()
-	// fmt.Println(code2)
 
 	a.False(filler.IsTraining)
 	a.Equal(filler.PredictInputTable, "db.table")
@@ -143,6 +138,8 @@ func TestPredALPSFiller(t *testing.T) {
 
 	var program bytes.Buffer
 	e = alpsPredTemplate.Execute(&program, filler)
+	// code2 := program2.String()
+	// fmt.Println(code2)
 	a.NoError(e)
 
 	arr := strings.Split(program.String(), ";")
@@ -156,23 +153,11 @@ func TestPredALPSFiller(t *testing.T) {
 func TestTrainALPSEmbeddingInitializer(t *testing.T) {
 	a := assert.New(t)
 
-	// wndStatement := `SELECT deep FROM kaggle_credit_fraud_training_data 
-	// 	TO TRAIN DNNClassifier 
-	// 	WITH 
-	// 		model.dnn_hidden_units = [10, 20],
-	// 		train.max_steps = 1000,
-	// 		engine.type = "yarn"
-	// 	COLUMN
-	// 		SPARSE(deep, 2000, comma),
-	// 		EMBEDDING(CATEGORY_ID(deep, 2000), 8, "sum", "tf.random_normal_initializer(stddev=0.001)") FOR dnn_feature_columns
-	// 	LABEL class
-	// 	INTO model_table;`
 	tir := mockTrainIRALPSEmbeddingInitializer()
 	session := &pb.Session{UserId: "sqlflow_user"}
 
 	filler, e := newALPSTrainFillerWithIR(tir, nil, session)
 	a.NoError(e)
-	fmt.Println(filler.FeatureColumnCode)
 	a.True(strings.Contains(filler.FeatureColumnCode, "tf.feature_column.embedding_column(tf.feature_column.categorical_column_with_identity(key=\"deep\", num_buckets=2000), dimension=8, combiner=\"sum\", initializer=tf.random_normal_initializer(stddev=0.001))"))
 }
 
@@ -198,8 +183,7 @@ func mockTrainIRALPSEmbeddingInitializer() *codegen.TrainIR{
 		Addr:                 "127.0.0.1:3306",
 		AllowNativePasswords: true,
 	}
-	//tf.feature_column.embedding_column(tf.feature_column.categorical_column_with_identity(key=\"deep_0\", num_buckets=2000), dimension=8, combiner=\"sum\", initializer=tf.random_normal_initializer(stddev=0.001))
-	deep_embedding := &codegen.EmbeddingColumn{&codegen.CategoryIDColumn{&codegen.FieldMeta{"deep", codegen.Int, ",", []int{2000}, true, nil, 0}, 2000}, 8, "sum", "tf.random_normal_initializer(stddev=0.001)", ""}
+	deepEmbedding := &codegen.EmbeddingColumn{&codegen.CategoryIDColumn{&codegen.FieldMeta{"deep", codegen.Int, ",", []int{2000}, true, nil, 0}, 2000}, 8, "sum", "tf.random_normal_initializer(stddev=0.001)", ""}
 	return &codegen.TrainIR{
 		DataSource:       fmt.Sprintf("mysql://%s", cfg.FormatDSN()),
 		Select:           "SELECT deep FROM kaggle_credit_fraud_training_data;",
@@ -211,7 +195,7 @@ func mockTrainIRALPSEmbeddingInitializer() *codegen.TrainIR{
 			"model.dnn_hidden_units": []int{10, 20}},
 		Features: map[string][]codegen.FeatureColumn{
 			"dnn_feature_columns": {
-				deep_embedding}},
+				deepEmbedding}},
 		Save: "model_table",
 		Label: &codegen.NumericColumn{&codegen.FieldMeta{"c3", codegen.Int, ",", []int{1}, false, nil, 0}}}
 	

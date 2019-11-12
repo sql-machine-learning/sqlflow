@@ -164,7 +164,6 @@ func generateCodeWithIR(key string,value interface{}) (string, error) {
 func newALPSTrainFillerWithIR(pr *codegen.TrainIR, db *DB, session *pb.Session) (*alpsFillerWithIR, error) {
 	label := pr.Label.GetFieldMeta()[0]
 	resolved, err := resolveTrainClauseWithIR(pr)
-	fmt.Printf("resolved:%+v\n", resolved)
 	if err != nil {
 		return nil, err
 	}
