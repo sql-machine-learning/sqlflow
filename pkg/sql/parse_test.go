@@ -27,6 +27,8 @@ func isJavaParser(typ string) bool {
 func TestParse(t *testing.T) {
 	a := assert.New(t)
 
+	extendedSQL := `to predict a using b`
+
 	selectCases := []string{
 		`select 1`,
 		`select * from my_table`,
@@ -74,7 +76,8 @@ WHERE
 			s, err := parse(driver, sql)
 			a.NoError(err)
 			a.Equal(1, len(s))
-			a.Equal(sql, s[0])
+			a.Equal(sql, s[0].standard)
+			a.Nil(s[0].extended)
 		}
 
 		{ // several standard SQL statements with comments
@@ -83,56 +86,69 @@ WHERE
 			a.NoError(err)
 			a.Equal(len(selectCases), len(s))
 			for i := range s {
+				a.Nil(s[i].extended)
 				if isJavaParser(driver) {
-					a.Equal(selectCases[i], s[i])
+					a.Equal(selectCases[i], s[i].standard)
 				} else {
-					a.Equal(selectCases[i]+`;`, s[i])
+					a.Equal(selectCases[i]+`;`, s[i].standard)
 				}
 			}
 		}
 
 		// two SQL statements, the first one is extendedSQL
 		for _, sql := range selectCases {
-			sqls := fmt.Sprintf(`%s to train;%s;`, sql, sql)
+			sqls := fmt.Sprintf(`%s %s;%s;`, sql, extendedSQL, sql)
 			s, err := parse(driver, sqls)
 			a.NoError(err)
 			a.Equal(2, len(s))
-			a.Equal(sql+` to train;`, s[0])
+
+			a.NotNil(s[0].extended)
+			a.Equal(sql+` `, s[0].standard)
+
+			a.Nil(s[1].extended)
 			if isJavaParser(driver) {
-				a.Equal(sql, s[1])
+				a.Equal(sql, s[1].standard)
 			} else {
-				a.Equal(sql+`;`, s[1])
+				a.Equal(sql+`;`, s[1].standard)
 			}
 		}
 
 		// two SQL statements, the second one is extendedSQL
 		for _, sql := range selectCases {
-			sqls := fmt.Sprintf(`%s;%s to train;`, sql, sql)
+			sqls := fmt.Sprintf(`%s;%s %s;`, sql, sql, extendedSQL)
 			s, err := parse(driver, sqls)
 			a.NoError(err)
 			a.Equal(2, len(s))
+			a.Nil(s[0].extended)
+			a.NotNil(s[1].extended)
 			if isJavaParser(driver) {
-				a.Equal(sql, s[0])
+				a.Equal(sql, s[0].standard)
 			} else {
-				a.Equal(sql+`;`, s[0])
+				a.Equal(sql+`;`, s[0].standard)
 			}
-			a.Equal(sql+` to train;`, s[1])
+			a.Equal(sql+` `, s[1].standard)
 		}
 
 		// three SQL statements, the second one is extendedSQL
 		for _, sql := range selectCases {
-			sqls := fmt.Sprintf(`%s;%s to train;%s;`, sql, sql, sql)
+			sqls := fmt.Sprintf(`%s;%s %s;%s;`, sql, sql, extendedSQL, sql)
 			s, err := parse(driver, sqls)
 			a.NoError(err)
 			a.Equal(3, len(s))
-			a.Equal(sql+` to train;`, s[1])
+
+			a.Nil(s[0].extended)
+			a.NotNil(s[1].extended)
+			a.Nil(s[2].extended)
+
 			if isJavaParser(driver) {
-				a.Equal(sql, s[0])
-				a.Equal(sql, s[2])
+				a.Equal(sql, s[0].standard)
+				a.Equal(sql, s[2].standard)
 			} else {
-				a.Equal(sql+`;`, s[0])
-				a.Equal(sql+`;`, s[2])
+				a.Equal(sql+`;`, s[0].standard)
+				a.Equal(sql+`;`, s[2].standard)
 			}
+
+			a.Equal(sql+` `, s[1].standard)
 		}
 
 		{ // two SQL statements, the first standard SQL has an error.
@@ -144,14 +160,14 @@ WHERE
 
 		// two SQL statements, the second standard SQL has an error.
 		for _, sql := range selectCases {
-			sqls := fmt.Sprintf(`%s to train; select select 1;`, sql)
+			sqls := fmt.Sprintf(`%s %s; select select 1;`, sql, extendedSQL)
 			s, err := parse(driver, sqls)
 			a.NotNil(err)
 			a.Equal(0, len(s))
 		}
 
 		{ // non select statement before to train
-			sql := `describe table to train;`
+			sql := fmt.Sprintf(`describe table %s;`, extendedSQL)
 			s, err := parse(driver, sql)
 			a.NotNil(err)
 			a.Equal(0, len(s))

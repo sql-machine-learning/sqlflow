@@ -14,28 +14,49 @@
 package sql
 
 import (
-	"fmt"
 	"sqlflow.org/sqlflow/pkg/sql/tpp"
 	"strings"
 )
 
-// FIXME(tony): only supports "to train" for prototyping.
-// Substitute this function for real SQLFlow parser later.
-func extendedSyntaxParse(sql string) (string, error) {
-	extendedSyntax := "to train;"
-	if strings.HasPrefix(sql, extendedSyntax) {
-		return extendedSyntax, nil
-	}
-	return "", fmt.Errorf("SQLFlow parser error %v", sql)
+type statementParseResult struct {
+	standard string
+	extended *extendedSelect
 }
 
-// FIXME(tony): change the return type from []string to []parsedResult
-func parse(dbms, sqlProgram string) ([]string, error) {
-	if len(sqlProgram) == 0 {
-		return make([]string, 0), nil
+func extendedSyntaxParse(sql string) (*extendedSelect, int, error) {
+	// Note(tony): our parser only supports parsing one statement.
+	// So we need to extract the first statement for it.
+	s, err := SplitMultipleSQL(sql)
+	if err != nil {
+		return nil, -1, err
 	}
 
+	pr, err := newParser().Parse(s[0])
+	if err != nil {
+		return nil, -1, err
+	}
+
+	return pr, len(s[0]), nil
+}
+
+func thirdPartyParse(dbms, sqlProgram string) ([]statementParseResult, int, error) {
 	sqls, i, err := tpp.ParseAndSplit(dbms, sqlProgram)
+	if err != nil {
+		return nil, -1, err
+	}
+	spr := make([]statementParseResult, 0)
+	for _, sql := range sqls {
+		spr = append(spr, statementParseResult{standard: sql, extended: nil})
+	}
+	return spr, i, nil
+}
+
+func parse(dbms, sqlProgram string) ([]statementParseResult, error) {
+	if len(strings.TrimSpace(sqlProgram)) == 0 {
+		return make([]statementParseResult, 0), nil
+	}
+
+	sqls, i, err := thirdPartyParse(dbms, sqlProgram)
 	if err != nil {
 		return nil, err
 	}
@@ -44,13 +65,13 @@ func parse(dbms, sqlProgram string) ([]string, error) {
 	}
 
 	sqlProgram = sqlProgram[i:]
-	s, err := extendedSyntaxParse(sqlProgram)
+	extended, i, err := extendedSyntaxParse(sqlProgram)
 	if err != nil {
 		return nil, err
 	}
-	sqls[len(sqls)-1] += s
+	sqls[len(sqls)-1].extended = extended
 
-	sqlProgram = sqlProgram[len(s):]
+	sqlProgram = sqlProgram[i:]
 	nextSqls, err := parse(dbms, sqlProgram)
 	if err != nil {
 		return nil, err
