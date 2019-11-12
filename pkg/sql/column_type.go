@@ -52,6 +52,9 @@ var (
 	builtinTime    = reflect.TypeOf(time.Time{})
 )
 
+func CreateByType(rt reflect.Type) (interface{}, error) {
+	return createByType(rt)
+}
 func createByType(rt reflect.Type) (interface{}, error) {
 	switch rt {
 	case sqlNullBool:
