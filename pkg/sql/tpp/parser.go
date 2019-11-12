@@ -16,6 +16,9 @@ package tpp
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/pingcap/parser"
+	"github.com/pingcap/parser/ast"
+	_ "github.com/pingcap/tidb/types/parser_driver" // As required by https://github.com/pingcap/parser/blob/master/parser_example_test.go#L19
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -23,11 +26,6 @@ import (
 	"regexp"
 	"strings"
 	"sync"
-	"time"
-
-	"github.com/pingcap/parser"
-	"github.com/pingcap/parser/ast"
-	_ "github.com/pingcap/tidb/types/parser_driver" // As required by https://github.com/pingcap/parser/blob/master/parser_example_test.go#L19
 )
 
 var (
@@ -96,11 +94,6 @@ type parseResult struct {
 }
 
 func javaParseAndSplit(typ, sql string) ([]string, int, error) {
-	start := time.Now()
-	defer func(t time.Time) {
-		fmt.Printf("elapsed time %v\n", time.Since(t))
-	}(time.Now())
-
 	// cwd is used to store train scripts and save output models.
 	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
 	if err != nil {
@@ -108,15 +101,11 @@ func javaParseAndSplit(typ, sql string) ([]string, int, error) {
 	}
 	defer os.RemoveAll(cwd)
 
-	fmt.Printf("create temp directory %v\n", time.Since(start))
-
 	inputFile := filepath.Join(cwd, "input.sql")
 	outputFile := filepath.Join(cwd, "output.json")
 	if err := ioutil.WriteFile(inputFile, []byte(sql), 755); err != nil {
 		return nil, -1, err
 	}
-
-	fmt.Printf("create input file %v\n", time.Since(start))
 
 	cmd := exec.Command("java",
 		"-cp", "/opt/sqlflow/parser/parser-1.0-SNAPSHOT-jar-with-dependencies.jar",
@@ -128,8 +117,6 @@ func javaParseAndSplit(typ, sql string) ([]string, int, error) {
 		return nil, -1, err
 	}
 
-	fmt.Printf("create output file %v\n", time.Since(start))
-
 	output, err := ioutil.ReadFile(outputFile)
 	if err != nil {
 		return nil, -1, err
@@ -139,8 +126,6 @@ func javaParseAndSplit(typ, sql string) ([]string, int, error) {
 	if err = json.Unmarshal(output, &pr); err != nil {
 		return nil, -1, err
 	}
-
-	fmt.Printf("parse output file %v\n", time.Since(start))
 
 	if pr.Error != "" {
 		return nil, -1, fmt.Errorf(pr.Error)
