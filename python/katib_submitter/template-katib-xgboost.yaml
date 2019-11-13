@@ -1,0 +1,56 @@
+apiVersion: "kubeflow.org/v1alpha3"
+kind: Experiment
+metadata:
+  namespace: kubeflow
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: katib-xgboost-test
+spec:
+  parallelTrialCount: 3
+  maxTrialCount: 12
+  maxFailedTrialCount: 3
+  objective:
+    type: maximize
+    goal: 1.01
+    objectiveMetricName: accuracy
+  algorithm:
+    algorithmName: random
+  parameters:
+    - name: --max_depth
+      parameterType: int
+      feasibleSpace:
+        min: "2"
+        max: "10"
+    - name: --num_round
+      parameterType: int
+      feasibleSpace:
+        min: "50"
+        max: "100"
+  trialTemplate:
+    goTemplate:
+        rawTemplate: |-
+          apiVersion: batch/v1
+          kind: Job
+          metadata:
+            name: {{.Trial}}
+            namespace: {{.NameSpace}}
+          spec:
+            template:
+              spec:
+                containers:
+                - name: {{.Trial}}
+                  image: docker.io/samplise/python-xgboost:1.4
+                  command:
+                  - "python"
+                  - "/opt/bsang/hpo_xgboost_model.py"
+                  - "--select"
+                  - "--validate_select"
+                  - "--feature_names"
+                  - "--booster"
+                  - "--objective"
+                  {{- with .HyperParameters}}
+                  {{- range .}}
+                  - "{{.Name}}={{.Value}}"
+                  {{- end}}
+                  {{- end}}
+                restartPolicy: Never
