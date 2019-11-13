@@ -117,7 +117,7 @@ func runStmt(stmt string, isTerminal bool, modelDir string, db *sql.DB, ds strin
 	}
 	defer os.RemoveAll(cwd)
 
-	stream := sql.RunSQLProgram([]string{stmt}, db, modelDir, &pb.Session{})
+	stream := sql.RunSQLProgram(stmt, db, modelDir, &pb.Session{})
 	for rsp := range stream.ReadAll() {
 		isTable = render(rsp, table)
 

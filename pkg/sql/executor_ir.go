@@ -39,17 +39,12 @@ type EndOfExecution struct {
 	Statement string
 }
 
-// RunSQLProgram run a raw SQL program (string list).
-func RunSQLProgram(sqlStatements []string, db *DB, modelDir string, session *pb.Session) *PipeReader {
-	connStr := fmt.Sprintf("%s://%s", db.driverName, db.dataSourceName)
-	programIR, err := programToIR(sqlStatements, connStr, modelDir)
-	if err != nil {
-		return errorPipe(err)
-	}
+// RunSQLProgram run a SQL program.
+func RunSQLProgram(sqlProgram string, db *DB, modelDir string, session *pb.Session) *PipeReader {
 	rd, wr := Pipe()
 	go func() {
 		defer wr.Close()
-		err := runProgramIR(wr, programIR, db, modelDir, session)
+		err := runSQLProgram(wr, sqlProgram, db, modelDir, session)
 
 		if err != nil {
 			log.Errorf("runSQLProgram error:%v", err)
@@ -63,7 +58,18 @@ func RunSQLProgram(sqlStatements []string, db *DB, modelDir string, session *pb.
 	return rd
 }
 
-func runProgramIR(wr *PipeWriter, programIR codegen.SQLProgramIR, db *DB, modelDir string, session *pb.Session) error {
+func runSQLProgram(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, session *pb.Session) error {
+	sqls, err := SplitMultipleSQL(sqlProgram)
+	if err != nil {
+		return err
+	}
+
+	connStr := fmt.Sprintf("%s://%s", db.driverName, db.dataSourceName)
+	programIR, err := programToIR(sqls, connStr, modelDir)
+	if err != nil {
+		return err
+	}
+
 	for _, ir := range programIR {
 		if e := runSingleSQLIR(wr, ir, db, modelDir, session); e != nil {
 			return e

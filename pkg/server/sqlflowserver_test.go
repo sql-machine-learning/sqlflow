@@ -46,9 +46,9 @@ const (
 
 var testServerAddress string
 
-func mockRun(sql []string, db *sf.DB, modelDir string, session *pb.Session) *sf.PipeReader {
+func mockRun(sql string, db *sf.DB, modelDir string, session *pb.Session) *sf.PipeReader {
 	rd, wr := sf.Pipe()
-	singleSQL := sql[0]
+	singleSQL := sql
 	go func() {
 		defer wr.Close()
 		switch singleSQL {
@@ -125,8 +125,7 @@ func TestSQL(t *testing.T) {
 	_, err = stream.Recv()
 	a.Equal(status.Error(codes.Unknown, "Lex: Unknown problem ..."), err)
 
-	testMultipleSQL := fmt.Sprintf("%s %s", testQuerySQL, testExtendedSQL)
-	for _, s := range []string{testQuerySQL, testExecuteSQL, testExtendedSQL, testExtendedSQLWithSpace, testExtendedSQLNoSemicolon, testMultipleSQL} {
+	for _, s := range []string{testQuerySQL, testExecuteSQL, testExtendedSQL, testExtendedSQLWithSpace, testExtendedSQLNoSemicolon} {
 		stream, err := c.Run(ctx, &pb.Request{Sql: s, Session: &pb.Session{DbConnStr: mockDBConnStr}})
 		a.NoError(err)
 		for {
@@ -135,6 +134,12 @@ func TestSQL(t *testing.T) {
 				break
 			}
 			a.NoError(err)
+			// NOTE(tony): a.NoError won't terminate the function, and since it is inside a for loop,
+			// _, err := stream.Recv() could be called thousands of times with err != nil, so we need
+			// to do the following check.
+			if err != nil {
+				break
+			}
 		}
 	}
 }

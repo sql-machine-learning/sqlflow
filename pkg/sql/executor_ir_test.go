@@ -103,11 +103,11 @@ func TestExecuteXGBoost(t *testing.T) {
 	a := assert.New(t)
 	modelDir := ""
 	a.NotPanics(func() {
-		stream := RunSQLProgram([]string{testXGBoostTrainSelectIris}, testDB, modelDir, getDefaultSession())
+		stream := RunSQLProgram(testXGBoostTrainSelectIris, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
-		stream = RunSQLProgram([]string{testAnalyzeTreeModelSelectIris}, testDB, modelDir, getDefaultSession())
+		stream = RunSQLProgram(testAnalyzeTreeModelSelectIris, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
-		stream = RunSQLProgram([]string{testXGBoostPredictIris}, testDB, modelDir, getDefaultSession())
+		stream = RunSQLProgram(testXGBoostPredictIris, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
 	})
 }
@@ -116,11 +116,11 @@ func TestExecuteXGBoostRegression(t *testing.T) {
 	a := assert.New(t)
 	modelDir := ""
 	a.NotPanics(func() {
-		stream := RunSQLProgram([]string{testXGBoostTrainSelectHousing}, testDB, modelDir, getDefaultSession())
+		stream := RunSQLProgram(testXGBoostTrainSelectHousing, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
-		stream = RunSQLProgram([]string{testAnalyzeTreeModelSelectIris}, testDB, modelDir, getDefaultSession())
+		stream = RunSQLProgram(testAnalyzeTreeModelSelectIris, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
-		stream = RunSQLProgram([]string{testXGBoostPredictHousing}, testDB, modelDir, getDefaultSession())
+		stream = RunSQLProgram(testXGBoostPredictHousing, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
 	})
 }
@@ -129,9 +129,9 @@ func TestExecutorTrainAndPredictDNN(t *testing.T) {
 	a := assert.New(t)
 	modelDir := ""
 	a.NotPanics(func() {
-		stream := RunSQLProgram([]string{testTrainSelectIris}, testDB, modelDir, getDefaultSession())
+		stream := RunSQLProgram(testTrainSelectIris, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
-		stream = RunSQLProgram([]string{testPredictSelectIris}, testDB, modelDir, getDefaultSession())
+		stream = RunSQLProgram(testPredictSelectIris, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
 	})
 }
@@ -142,9 +142,9 @@ func TestExecutorTrainAndPredictClusteringLocalFS(t *testing.T) {
 	a.Nil(e)
 	defer os.RemoveAll(modelDir)
 	a.NotPanics(func() {
-		stream := RunSQLProgram([]string{testClusteringTrain}, testDB, modelDir, getDefaultSession())
+		stream := RunSQLProgram(testClusteringTrain, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
-		stream = RunSQLProgram([]string{testClusteringPredict}, testDB, modelDir, getDefaultSession())
+		stream = RunSQLProgram(testClusteringPredict, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
 	})
 }
@@ -155,9 +155,9 @@ func TestExecutorTrainAndPredictDNNLocalFS(t *testing.T) {
 	a.Nil(e)
 	defer os.RemoveAll(modelDir)
 	a.NotPanics(func() {
-		stream := RunSQLProgram([]string{testTrainSelectIris}, testDB, modelDir, getDefaultSession())
+		stream := RunSQLProgram(testTrainSelectIris, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
-		stream = RunSQLProgram([]string{testPredictSelectIris}, testDB, modelDir, getDefaultSession())
+		stream = RunSQLProgram(testPredictSelectIris, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
 	})
 }
@@ -179,14 +179,14 @@ train.verbose = 1
 COLUMN NUMERIC(dense, 4)
 LABEL class
 INTO sqlflow_models.my_dense_dnn_model;`
-		stream := RunSQLProgram([]string{trainSQL}, testDB, "", getDefaultSession())
+		stream := RunSQLProgram(trainSQL, testDB, "", getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
 
 		predSQL := `SELECT * FROM iris.test_dense
 TO PREDICT iris.predict_dense.class
 USING sqlflow_models.my_dense_dnn_model
 ;`
-		stream = RunSQLProgram([]string{predSQL}, testDB, "", getDefaultSession())
+		stream = RunSQLProgram(predSQL, testDB, "", getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
 	})
 }
