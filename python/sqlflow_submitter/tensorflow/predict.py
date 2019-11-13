@@ -86,7 +86,7 @@ def pred(is_keras_model,
 
 
     if is_keras_model:
-        def eval_input_fn(batch_size):
+        def eval_input_fn(batch_size, cache=False):
             feature_types = []
             for name in feature_column_names:
                 # NOTE: vector columns like 23,21,3,2,0,0 should use shape None
@@ -101,6 +101,8 @@ def pred(is_keras_model,
             dataset = tf.data.Dataset.from_generator(gen, (tuple(feature_types), eval("tf.%s" % label_meta["dtype"])))
             ds_mapper = functools.partial(parse_sparse_feature, feature_column_names=feature_column_names, feature_metas=feature_metas)
             dataset = dataset.map(ds_mapper).batch(batch_size)
+            if cache:
+                dataset = dataset.cache(filename="dataset_cache_predict.txt")
             return dataset
 
         # NOTE: always use batch_size=1 when predicting to get the pairs of features and predict results
@@ -112,7 +114,7 @@ def pred(is_keras_model,
         classifier.predict_on_batch(one_batch[0])
         classifier.load_weights(save)
         del pred_dataset
-        pred_dataset = eval_input_fn(1).make_one_shot_iterator()
+        pred_dataset = eval_input_fn(1, cache=True).make_one_shot_iterator()
         buff_rows = []
         column_names = feature_column_names[:]
         column_names.append(label_meta["feature_name"])
@@ -145,7 +147,7 @@ def pred(is_keras_model,
             def _inner_input_fn():
                 dataset = tf.data.Dataset.from_generator(generator, (tuple(feature_types), eval("tf.%s" % label_meta["dtype"])))
                 ds_mapper = functools.partial(parse_sparse_feature, feature_column_names=feature_column_names, feature_metas=feature_metas)
-                dataset = dataset.map(ds_mapper).batch(1)
+                dataset = dataset.map(ds_mapper).batch(1).cache(filename="dataset_cache_pred.txt")
                 iterator = dataset.make_one_shot_iterator()
                 features = iterator.get_next()
                 return features
