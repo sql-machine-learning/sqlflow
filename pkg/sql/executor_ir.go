@@ -377,7 +377,7 @@ func createPredictionTableFromIR(predIR *codegen.PredictIR, db *DB, session *pb.
 	if _, e := db.Exec(dropStmt); e != nil {
 		return fmt.Errorf("failed executing %s: %q", dropStmt, e)
 	}
-	// FIXME(typhooznero): simply add LIMIT 1 at the end to get column types.
+	// FIXME(typhoonzero): simply add LIMIT 1 at the end to get column types.
 	tmpSQL := fmt.Sprintf("%s LIMIT 1;", strings.TrimRight(strings.TrimSpace(predIR.Select), ";"))
 	flds, fts, e := getColumnTypes(tmpSQL, db)
 	if e != nil {

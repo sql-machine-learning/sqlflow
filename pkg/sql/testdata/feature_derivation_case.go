@@ -13,8 +13,8 @@
 
 package testdata
 
-// FeatureDericationCaseSQL is .sql format data samples to test feature derivation.
-var FeatureDericationCaseSQL = `CREATE DATABASE IF NOT EXISTS feature_derivation_case;
+// FeatureDerivationCaseSQL is .sql format data samples to test feature derivation.
+var FeatureDerivationCaseSQL = `CREATE DATABASE IF NOT EXISTS feature_derivation_case;
 DROP TABLE IF EXISTS feature_derivation_case.train;
 CREATE TABLE feature_derivation_case.train (
        c1 float,

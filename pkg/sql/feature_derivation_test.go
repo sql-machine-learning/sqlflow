@@ -60,7 +60,7 @@ func TestFeatureDerivation(t *testing.T) {
 	if err != nil {
 		a.Fail("error connect to mysql: %v", err)
 	}
-	err = testdata.Popularize(db.DB, testdata.FeatureDericationCaseSQL)
+	err = testdata.Popularize(db.DB, testdata.FeatureDerivationCaseSQL)
 	if err != nil {
 		a.Fail("error creating test data: %v", err)
 	}

@@ -32,6 +32,8 @@ RUN /install-protobuf.bash
 ENV JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
 COPY scripts/docker/install-java.bash /
 RUN /install-java.bash
+# Make mvn compile quiet
+ENV MAVEN_OPTS -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
 
 # Using the stable version of Hadoop
 ENV HADOOP_VERSION 3.2.1
@@ -75,7 +77,7 @@ mv $GOPATH/bin/sqlflowserver /usr/local/bin && \
 mv $GOPATH/bin/repl /usr/local/bin && \
 cp -r $GOPATH/src/sqlflow.org/sqlflow/python/sqlflow_submitter /miniconda/envs/sqlflow-dev/lib/python3.6/site-packages/ && \
 cd java/parser && \
-mvn clean compile assembly:single && \
+mvn -B clean compile assembly:single && \
 mkdir -p /opt/sqlflow/parser && \
 cp target/parser-1.0-SNAPSHOT-jar-with-dependencies.jar /opt/sqlflow/parser && \
 cd / && \

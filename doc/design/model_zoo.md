@@ -99,7 +99,11 @@ The training submitter program `my_first_model.py`, running in the model definit
 
 ### Model Zoo Data Schema
 
-The model zoo table is in a database deployed as part of the SQLFlow service. This database might not be the one that holds data sources.  The only requirement of the model zoo table is to have a particular data schema that contains at least the following fields.
+The model zoo table is in a database deployed as part of the SQLFlow service. This database might not be the one that holds data sources.  The only requirement of the model zoo database is to have two tables: the **trained models table** and the **evaluation result table**.
+
+#### Trained Models
+
+Once a training job completes, the submitter program adds/updates a row of the the trained models table, which contains (at least) the following fields.
 
 1. The model ID, specified by the INTO clause, or `my_first_model` in the above example.
 1. The creator, as defined in the INTO clause, or `an_analyst` in the above example.
@@ -126,6 +130,23 @@ SELECT DISTINCT model_zoo FROM sqlflow.trained_models WHERE creator="an_analyst"
 ```
 
 Users can checkout the model list and saved models published by `models.sqlflow.org` through the web site: https://models.sqlflow.org. Then the user can use a SQL statement like `SELECT ... TO PREDICT ... USING models.sqlflow.org/an_analyst/my_first_model` to use that saved model, just by specifying a model from `models.sqlflow.org` after `USING` clause. See below section for more details.
+
+#### The Model Evaluation Table
+
+Once an evaluation completes, the submitter program adds/updates a row of the evaluation result table, which contains the following fields:
+
+1. model ID
+1. evaluation dataset
+1. metrics
+
+Different kinds of models might use various metrics, so the field metrics might be string-typed and saves a JSON, like
+
+```json
+{
+   "recall": 0.45,
+   "precision": 0.734
+}
+```
 
 ### Model Sharing
 

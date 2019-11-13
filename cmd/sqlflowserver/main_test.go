@@ -184,7 +184,7 @@ func prepareTestData(dbStr string) error {
 		if err := testdata.Popularize(testDB.DB, testdata.HousingSQL); err != nil {
 			return err
 		}
-		if err := testdata.Popularize(testDB.DB, testdata.FeatureDericationCaseSQL); err != nil {
+		if err := testdata.Popularize(testDB.DB, testdata.FeatureDerivationCaseSQL); err != nil {
 			return err
 		}
 		return testdata.Popularize(testDB.DB, testdata.TextCNSQL)
