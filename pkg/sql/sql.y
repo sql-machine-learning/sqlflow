@@ -66,10 +66,11 @@
 	}
 
 	type standardSelect struct {
-		fields exprlist 
+		fields exprlist
 		tables []string
 		where *expr
 		limit string
+		origin string
 	}
 
 	type trainClause struct {
@@ -89,6 +90,7 @@
 	type predictClause struct {
 		predAttrs attrs
 		model  string
+		// FIXME(tony): rename into to predTable
 		into   string
 	}
 
@@ -401,6 +403,10 @@ func (e *expr) String() string {
 }
 
 func (s standardSelect) String() string {
+	if s.origin != "" {
+		return s.origin
+	}
+
 	r := "SELECT "
 	if len(s.fields) == 0 {
 		r += "*"

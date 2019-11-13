@@ -19,6 +19,7 @@ import (
 )
 
 type statementParseResult struct {
+	original string
 	standard string
 	extended *extendedSelect
 }
@@ -46,7 +47,7 @@ func thirdPartyParse(dbms, sqlProgram string) ([]statementParseResult, int, erro
 	}
 	spr := make([]statementParseResult, 0)
 	for _, sql := range sqls {
-		spr = append(spr, statementParseResult{standard: sql, extended: nil})
+		spr = append(spr, statementParseResult{original: sql, standard: sql, extended: nil})
 	}
 	return spr, i, nil
 }
@@ -70,6 +71,9 @@ func parse(dbms, sqlProgram string) ([]statementParseResult, error) {
 		return nil, err
 	}
 	sqls[len(sqls)-1].extended = extended
+	sqls[len(sqls)-1].extended.standardSelect.origin = sqls[len(sqls)-1].standard
+	// TODO(tony): make sure adding " " is necessary
+	sqls[len(sqls)-1].original = sqls[len(sqls)-1].standard + " " + sqlProgram[:i]
 
 	sqlProgram = sqlProgram[i:]
 	nextSqls, err := parse(dbms, sqlProgram)

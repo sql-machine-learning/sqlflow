@@ -59,7 +59,7 @@ func RunSQLProgram(sqlProgram string, db *DB, modelDir string, session *pb.Sessi
 }
 
 func runSQLProgram(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, session *pb.Session) error {
-	sqls, err := SplitMultipleSQL(sqlProgram)
+	sqls, err := parse(db.driverName, sqlProgram)
 	if err != nil {
 		return err
 	}
@@ -120,12 +120,24 @@ func runSingleSQLIR(wr *PipeWriter, ir codegen.SingleSQLIR, db *DB, modelDir str
 	return nil
 }
 
-func runTrainIR(trainIR *codegen.TrainIR, wr *PipeWriter, db *DB, modelDir string, session *pb.Session) error {
-	// TODO(typhoonzero): remove below twice parse when all submitters moved to IR.
-	pr, e := newParser().Parse(trainIR.OriginalSQL)
+// TODO(tony): remove the following function after all submitter has been moved to IR
+func runThirdPartySubmitterTrain(wr *PipeWriter, sql string, db *DB, cwd string, session *pb.Session) error {
+	pr, e := newParser().Parse(sql)
 	if e != nil {
 		return e
 	}
+
+	switch os.Getenv("SQLFLOW_submitter") {
+	case "elasticdl":
+		return elasticDLTrain(wr, pr, db, cwd, session)
+	case "alps":
+		return alpsTrain(wr, pr, db, cwd, session)
+	default:
+		return fmt.Errorf("unrecognized SQLFLOW_submitter %s", os.Getenv("SQLFLOW_submitter"))
+	}
+}
+
+func runTrainIR(trainIR *codegen.TrainIR, wr *PipeWriter, db *DB, modelDir string, session *pb.Session) error {
 	// cwd is used to store train scripts and save output models.
 	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
 	if err != nil {
@@ -133,13 +145,10 @@ func runTrainIR(trainIR *codegen.TrainIR, wr *PipeWriter, db *DB, modelDir strin
 	}
 	defer os.RemoveAll(cwd)
 
-	if os.Getenv("SQLFLOW_submitter") == "elasticdl" {
-		return elasticDLTrain(wr, pr, db, cwd, session)
+	if os.Getenv("SQLFLOW_submitter") != "" {
+		return runThirdPartySubmitterTrain(wr, trainIR.OriginalSQL, db, cwd, session)
 	}
-	// FIXME(weiguo): temporary branch to alps
-	if os.Getenv("SQLFLOW_submitter") == "alps" {
-		return alpsTrain(wr, pr, db, cwd, session)
-	}
+
 	// ---------------------- run the IR ---------------------------
 	var program bytes.Buffer
 	if isXGBoostModel(trainIR.Estimator) {
@@ -180,10 +189,11 @@ func runTrainIR(trainIR *codegen.TrainIR, wr *PipeWriter, db *DB, modelDir strin
 		return fmt.Errorf("predict failed: %v\n %s", e, buf.String())
 	}
 	m := model{workDir: cwd, TrainSelect: trainIR.OriginalSQL}
+	fmt.Println("TrainIR.OriginalSQL", trainIR.OriginalSQL)
 	if modelDir != "" {
-		return m.saveTar(modelDir, pr.save)
+		return m.saveTar(modelDir, trainIR.Into)
 	}
-	return m.save(db, pr.save)
+	return m.save(db, trainIR.Into)
 }
 
 func runPredictIR(predIR *codegen.PredictIR, wr *PipeWriter, db *DB, modelDir string, session *pb.Session) error {

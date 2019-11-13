@@ -72,6 +72,7 @@ func generateTrainIR(slct *extendedSelect, connStr string) (*codegen.TrainIR, er
 		Attributes:       attrList,
 		Features:         fcMap,
 		Label:            label,
+		Into:             slct.save,
 	}, nil
 }
 
@@ -622,42 +623,35 @@ func parseResultTable(intoStatement string) (string, string, error) {
 }
 
 // programToIR generate a list of IRs from a SQL program
-func programToIR(sqls []string, connStr, modelDir string) (codegen.SQLProgramIR, error) {
+func programToIR(sqls []statementParseResult, connStr, modelDir string) (codegen.SQLProgramIR, error) {
 	IRs := codegen.SQLProgramIR{}
 	for _, sql := range sqls {
-		splittedSQL, err := splitExtendedSQL(sql)
-		if err != nil {
-			return nil, err
-		}
-		if len(splittedSQL) == 2 {
-			parsed, err := newParser().Parse(sql)
-			if err != nil {
-				return nil, err
-			}
+		if sql.extended != nil {
+			parsed := sql.extended
 			if parsed.train {
 				ir, err := generateTrainIR(parsed, connStr)
 				if err != nil {
 					return nil, err
 				}
-				ir.OriginalSQL = sql
+				ir.OriginalSQL = sql.original
 				IRs = append(IRs, ir)
 			} else if parsed.analyze {
 				ir, err := generateAnalyzeIR(parsed, connStr, modelDir)
 				if err != nil {
 					return nil, err
 				}
-				ir.OriginalSQL = sql
+				ir.OriginalSQL = sql.original
 				IRs = append(IRs, ir)
 			} else {
 				ir, err := generatePredictIR(parsed, connStr, modelDir)
 				if err != nil {
 					return nil, err
 				}
-				ir.OriginalSQL = sql
+				ir.OriginalSQL = sql.original
 				IRs = append(IRs, ir)
 			}
 		} else {
-			standardSQL := codegen.StandardSQLIR(sql)
+			standardSQL := codegen.StandardSQLIR(sql.standard)
 			IRs = append(IRs, &standardSQL)
 		}
 	}

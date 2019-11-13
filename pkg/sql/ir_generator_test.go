@@ -92,10 +92,6 @@ func TestGenerateTrainIR(t *testing.T) {
 	a.Equal("c3", cc.FieldMeta.Name)
 	a.Equal(int64(512), cc.BucketSize)
 
-	l, ok := trainIR.Label.(*codegen.NumericColumn)
-	a.True(ok)
-	a.Equal("c4", l.FieldMeta.Name)
-
 	seqcc, ok := trainIR.Features["feature_columns"][3].(*codegen.SeqCategoryIDColumn)
 	a.True(ok)
 	a.Equal("c3", seqcc.FieldMeta.Name)
@@ -158,6 +154,12 @@ func TestGenerateTrainIR(t *testing.T) {
 	a.Equal("c2", catCol.FieldMeta.Name)
 	a.Equal(10000, catCol.FieldMeta.Shape[0])
 	a.Equal(",", catCol.FieldMeta.Delimiter)
+
+	l, ok := trainIR.Label.(*codegen.NumericColumn)
+	a.True(ok)
+	a.Equal("c4", l.FieldMeta.Name)
+
+	a.Equal("mymodel", trainIR.Into)
 }
 
 func TestGeneratePredictIR(t *testing.T) {
