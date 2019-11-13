@@ -88,11 +88,11 @@ ARG WITH_SQLFLOW_MODELS="ON"
 #       we can skip installing sqlflow_models if using the older Tensorflow.
 RUN if [ "${WITH_SQLFLOW_MODELS:-ON}" = "ON" ]; then \
   git clone https://github.com/typhoonzero/models-1.git && \
-  cd models && \
+  cd models-1 && \
   git checkout unify_with_elastic_dl_model_zoo && \
   bash -c "source activate sqlflow-dev && python setup.py install" && \
   cd .. && \
-  rm -rf models; \
+  rm -rf models-1; \
 fi
 
 ADD scripts/start.sh /
