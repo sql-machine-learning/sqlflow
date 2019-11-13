@@ -126,15 +126,14 @@ func TestSQL(t *testing.T) {
 	a.Equal(status.Error(codes.Unknown, "Lex: Unknown problem ..."), err)
 
 	for _, s := range []string{testQuerySQL, testExecuteSQL, testExtendedSQL, testExtendedSQLWithSpace, testExtendedSQLNoSemicolon} {
-		fmt.Println(s)
 		stream, err := c.Run(ctx, &pb.Request{Sql: s, Session: &pb.Session{DbConnStr: mockDBConnStr}})
 		a.NoError(err)
 		for {
 			_, err := stream.Recv()
-			a.NoError(err)
 			if err == io.EOF {
 				break
 			}
+			a.NoError(err)
 			// NOTE(tony): a.NoError won't terminate the function, and since it is inside a for loop,
 			// _, err := stream.Recv() could be called thousands of times with err != nil, so we need
 			// to do the following check.
