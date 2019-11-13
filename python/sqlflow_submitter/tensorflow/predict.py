@@ -83,6 +83,7 @@ def pred(is_keras_model,
         classifier = estimator(**feature_columns, **model_params, model_dir=save)
     else:
         classifier = estimator(**feature_columns, **model_params)
+        classifier_pkg = sys.modules[estimator.__module__]
 
 
     if is_keras_model:
@@ -123,7 +124,7 @@ def pred(is_keras_model,
                 except tf.errors.OutOfRangeError:
                     break
                 result = classifier.predict_on_batch(features[0])
-                result = classifier.prepare_prediction_column(result[0])
+                result = classifier_pkg.prepare_prediction_column(result[0])
                 row = []
                 for idx, name in enumerate(feature_column_names):
                     val = features[0][name].numpy()[0]
