@@ -189,7 +189,6 @@ func runTrainIR(trainIR *codegen.TrainIR, wr *PipeWriter, db *DB, modelDir strin
 		return fmt.Errorf("predict failed: %v\n %s", e, buf.String())
 	}
 	m := model{workDir: cwd, TrainSelect: trainIR.OriginalSQL}
-	fmt.Println("TrainIR.OriginalSQL", trainIR.OriginalSQL)
 	if modelDir != "" {
 		return m.saveTar(modelDir, trainIR.Into)
 	}
