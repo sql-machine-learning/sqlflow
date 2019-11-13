@@ -47,7 +47,7 @@ L:
 		}
 	}
 	if i == p.start {
-		p.start += 1
+		p.start++
 		return p.buf[i : i+1], nil
 	}
 	buf := p.buf[p.start:i]
