@@ -39,7 +39,7 @@ possible values: 0, 1`, attribute.IntChoicesChecker([]int{0, 1})},
 		attribute.EmptyChecker()},
 	"validation.select": {attribute.String, `[default=""]
 Specify the dataset for validation.
-example: "SELECT * FROM petal_length FROM iris LIMIT 100"`, nil},
+example: "SELECT * FROM iris.train LIMIT 100"`, nil},
 }
 
 func intArrayToJSONString(ia []int) string {
