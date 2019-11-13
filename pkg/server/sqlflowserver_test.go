@@ -46,9 +46,9 @@ const (
 
 var testServerAddress string
 
-func mockRun(sql []string, db *sf.DB, modelDir string, session *pb.Session) *sf.PipeReader {
+func mockRun(sql string, db *sf.DB, modelDir string, session *pb.Session) *sf.PipeReader {
 	rd, wr := sf.Pipe()
-	singleSQL := sql[0]
+	singleSQL := sql
 	go func() {
 		defer wr.Close()
 		switch singleSQL {
@@ -125,12 +125,13 @@ func TestSQL(t *testing.T) {
 	_, err = stream.Recv()
 	a.Equal(status.Error(codes.Unknown, "Lex: Unknown problem ..."), err)
 
-	testMultipleSQL := fmt.Sprintf("%s %s", testQuerySQL, testExtendedSQL)
-	for _, s := range []string{testQuerySQL, testExecuteSQL, testExtendedSQL, testExtendedSQLWithSpace, testExtendedSQLNoSemicolon, testMultipleSQL} {
+	for _, s := range []string{testQuerySQL, testExecuteSQL, testExtendedSQL, testExtendedSQLWithSpace, testExtendedSQLNoSemicolon} {
+		fmt.Println(s)
 		stream, err := c.Run(ctx, &pb.Request{Sql: s, Session: &pb.Session{DbConnStr: mockDBConnStr}})
 		a.NoError(err)
 		for {
-			_, err := stream.Recv()
+			i, err := stream.Recv()
+			fmt.Println(i, err)
 			if err == io.EOF {
 				break
 			}
