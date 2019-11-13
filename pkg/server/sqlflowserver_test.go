@@ -16,6 +16,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"os"
@@ -131,6 +132,9 @@ func TestSQL(t *testing.T) {
 		for {
 			_, err := stream.Recv()
 			a.NoError(err)
+			if err == io.EOF {
+				break
+			}
 			// NOTE(tony): a.NoError won't terminate the function, and since it is inside a for loop,
 			// _, err := stream.Recv() could be called thousands of times with err != nil, so we need
 			// to do the following check.
