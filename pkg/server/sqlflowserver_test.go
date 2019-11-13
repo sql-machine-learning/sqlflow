@@ -16,7 +16,6 @@ package server
 import (
 	"context"
 	"fmt"
-	"io"
 	"log"
 	"net"
 	"os"
@@ -130,12 +129,14 @@ func TestSQL(t *testing.T) {
 		stream, err := c.Run(ctx, &pb.Request{Sql: s, Session: &pb.Session{DbConnStr: mockDBConnStr}})
 		a.NoError(err)
 		for {
-			i, err := stream.Recv()
-			fmt.Println(i, err)
-			if err == io.EOF {
+			_, err := stream.Recv()
+			a.NoError(err)
+			// NOTE(tony): a.NoError won't terminate the function, and since it is inside a for loop,
+			// _, err := stream.Recv() could be called thousands of times with err != nil, so we need
+			// to do the following check.
+			if err != nil {
 				break
 			}
-			a.NoError(err)
 		}
 	}
 }
