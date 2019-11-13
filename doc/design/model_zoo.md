@@ -137,13 +137,13 @@ Once an evaluation completes, the submitter program adds/updates a row of the ev
 
 1. model ID
 1. evaluation dataset
-1. metrics.
+1. metrics
 
 Different kinds of models might use various metrics, so the field metrics might be string-typed and saves a JSON, like
 
 ```json
 {
-   "recall": 0.45
+   "recall": 0.45,
    "precision": 0.734
 }
 ```
