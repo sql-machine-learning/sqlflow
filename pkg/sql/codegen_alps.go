@@ -646,8 +646,8 @@ func (meta *metadata) getDenseColumnInfo(keys []string, refColumns map[string]*c
 	}
 	defer sqlDB.Close()
 	columnTypes, _ := rows.ColumnTypes()
-	columnNamess, _ := rows.Columns()
-	count := len(columnNamess)
+	columnNames, _ := rows.Columns()
+	count := len(columnNames)
 	for rows.Next() {
 		values := make([]interface{}, count)
 		for i, ct := range columnTypes {

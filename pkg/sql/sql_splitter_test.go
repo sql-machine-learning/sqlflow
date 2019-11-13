@@ -44,12 +44,12 @@ func TestSplitExtendedSQL(t *testing.T) {
 	a.Equal(`train a with b;`, s[0])
 }
 
-func TestSplitMulipleSQL(t *testing.T) {
+func TestSplitMultipleSQL(t *testing.T) {
 	a := assert.New(t)
-	splited, err := SplitMultipleSQL(`CREATE TABLE copy_table_1 AS SELECT a,b,c FROM table_1 WHERE c<>";";
+	splitted, err := SplitMultipleSQL(`CREATE TABLE copy_table_1 AS SELECT a,b,c FROM table_1 WHERE c<>";";
 SELECT * FROM copy_table_1;SELECT * FROM copy_table_1 TO TRAIN DNNClassifier WITH n_classes=2 INTO test_model;`)
 	a.NoError(err)
-	a.Equal("CREATE TABLE copy_table_1 AS SELECT a,b,c FROM table_1 WHERE c<>\";\";", splited[0])
-	a.Equal("SELECT * FROM copy_table_1;", splited[1])
-	a.Equal("SELECT * FROM copy_table_1 TO TRAIN DNNClassifier WITH n_classes=2 INTO test_model;", splited[2])
+	a.Equal("CREATE TABLE copy_table_1 AS SELECT a,b,c FROM table_1 WHERE c<>\";\";", splitted[0])
+	a.Equal("SELECT * FROM copy_table_1;", splitted[1])
+	a.Equal("SELECT * FROM copy_table_1 TO TRAIN DNNClassifier WITH n_classes=2 INTO test_model;", splitted[2])
 }
