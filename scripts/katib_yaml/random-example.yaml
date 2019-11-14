@@ -1,0 +1,61 @@
+apiVersion: "kubeflow.org/v1alpha3"
+kind: Experiment
+metadata:
+  namespace: kubeflow
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: random-example
+spec:
+  objective:
+    type: maximize
+    goal: 0.99
+    objectiveMetricName: Validation-accuracy
+    additionalMetricNames:
+      - accuracy
+  algorithm:
+    algorithmName: random
+  parallelTrialCount: 3
+  maxTrialCount: 12
+  maxFailedTrialCount: 3
+  parameters:
+    - name: --lr
+      parameterType: double
+      feasibleSpace:
+        min: "0.01"
+        max: "0.03"
+    - name: --num-layers
+      parameterType: int
+      feasibleSpace:
+        min: "2"
+        max: "5"
+    - name: --optimizer
+      parameterType: categorical
+      feasibleSpace:
+        list:
+        - sgd
+        - adam
+        - ftrl
+  trialTemplate:
+    goTemplate:
+        rawTemplate: |-
+          apiVersion: batch/v1
+          kind: Job
+          metadata:
+            name: {{.Trial}}
+            namespace: {{.NameSpace}}
+          spec:
+            template:
+              spec:
+                containers:
+                - name: {{.Trial}}
+                  image: docker.io/katib/mxnet-mnist-example
+                  command:
+                  - "python"
+                  - "/mxnet/example/image-classification/train_mnist.py"
+                  - "--batch-size=64"
+                  {{- with .HyperParameters}}
+                  {{- range .}}
+                  - "{{.Name}}={{.Value}}"
+                  {{- end}}
+                  {{- end}}
+                restartPolicy: Never
