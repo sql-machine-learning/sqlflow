@@ -830,14 +830,10 @@ func CaseTrainALPS(t *testing.T) {
 	    engine.type = local,
 	    validation.table = "%s.sparse_column_test"
 	COLUMN
-	    SPARSE(deep_id,15033,COMMA,int),
-	    SPARSE(user_space_stat,310,COMMA,int),
-	    SPARSE(user_behavior_stat,511,COMMA,int),
-	    SPARSE(space_stat,418,COMMA,int),
-	    EMBEDDING(CATEGORY_ID(deep_id,15033,COMMA),512,mean),
-	    EMBEDDING(CATEGORY_ID(user_space_stat,310,COMMA),64,mean),
-	    EMBEDDING(CATEGORY_ID(user_behavior_stat,511,COMMA),64,mean),
-	    EMBEDDING(CATEGORY_ID(space_stat,418,COMMA),64,mean)
+	    EMBEDDING(CATEGORY_ID(SPARSE(deep_id,15033,COMMA,int),15033,COMMA),512,mean),
+	    EMBEDDING(CATEGORY_ID(SPARSE(user_space_stat,310,COMMA,int),310,COMMA),64,mean),
+	    EMBEDDING(CATEGORY_ID(SPARSE(user_behavior_stat,511,COMMA,int),511,COMMA),64,mean),
+	    EMBEDDING(CATEGORY_ID(SPARSE(space_stat,418,COMMA,int),418,COMMA),64,mean)
 	LABEL l
 	INTO model_table;
 	`, caseDB, caseDB)
