@@ -64,6 +64,10 @@ jobs:
       script:
         - docker pull sqlflow/sqlflow:latest && docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile .
         - bash scripts/deploy.sh
+    - stage: katib
+      script:
+        - bash scripts/setup_katib_env.sh
+        - bash scripts/test_katib.sh
 
 env:
   global:
