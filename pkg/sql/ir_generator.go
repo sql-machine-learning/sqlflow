@@ -65,6 +65,7 @@ func generateTrainIR(slct *extendedSelect, connStr string) (*codegen.TrainIR, er
 	return &codegen.TrainIR{
 		DataSource: connStr,
 		Select:     slct.standardSelect.String(),
+		TableName: slct.standardSelect.tables[0],
 		// TODO(weiguoz): This is a temporary implement. Specifying the
 		// validation dataset by keyword `VALIDATE` is the final solution.
 		ValidationSelect: vslct,
@@ -115,6 +116,7 @@ func generatePredictIR(slct *extendedSelect, connStr string, modelDir string) (*
 	return &codegen.PredictIR{
 		DataSource:   connStr,
 		Select:       slct.standardSelect.String(),
+		TableName: slct.standardSelect.tables[0],
 		ResultTable:  resultTable,
 		ResultColumn: resultCol,
 		Attributes:   attrMap,

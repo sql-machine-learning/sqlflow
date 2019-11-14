@@ -82,6 +82,8 @@ type TrainIR struct {
 	DataSource string
 	// Select specifies the query for fetching the training data. For example, "select * from iris.train;".
 	Select string
+	// train TableName
+	TableName string
 	// ValidationSelect specifies the query for fetching the validation data. For example, "select * from iris.val;".
 	ValidationSelect string
 	// Estimator specifies the estimator type. For example, after parsing "select ... train DNNClassifier WITH ...",
@@ -121,6 +123,8 @@ type PredictIR struct {
 	DataSource string
 	// Select specifies the query for fetching the prediction data. For example, "select * from iris.test;".
 	Select string
+	// data TableName
+	TableName string
 	// ResultTable specifies the table to store the prediction result.
 	ResultTable string
 	// ResultColumn is the column to store predict result in ResultTable

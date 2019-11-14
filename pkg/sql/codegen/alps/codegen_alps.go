@@ -14,11 +14,10 @@
 package alps
 
 import (
-	// "bytes"
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
-	// "os/exec"
 	"database/sql"
 	"path/filepath"
 	"strconv"
@@ -28,7 +27,6 @@ import (
 	pb "sqlflow.org/sqlflow/pkg/server/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen"
 	"sqlflow.org/sqlflow/pkg/sql/columns"
-	sqlflow "sqlflow.org/sqlflow/pkg/sql"
 )
 
 var alpsTrainTemplate = template.Must(template.New("alps_train").Parse(alpsTrainTemplateText))
@@ -161,7 +159,7 @@ func generateCodeWithIR(key string,value interface{}) (string, error) {
 	return fmt.Sprintf("%s=%s", key, value), nil
 }
 
-func newALPSTrainFillerWithIR(pr *codegen.TrainIR, db *DB, session *pb.Session) (*alpsFillerWithIR, error) {
+func NewALPSTrainFillerWithIR(pr *codegen.TrainIR, db *DB, session *pb.Session) (*alpsFillerWithIR, error) {
 	label := pr.Label.GetFieldMeta()[0]
 	resolved, err := resolveTrainClauseWithIR(pr)
 	if err != nil {
@@ -173,14 +171,13 @@ func newALPSTrainFillerWithIR(pr *codegen.TrainIR, db *DB, session *pb.Session) 
 
 	// TODO(joyyoj) read feature mapping table's name from table attributes.
 	// TODO(joyyoj) pr may contains partition.
-	tableName,err := getTableName(pr.Select)
-	if err != nil {
-		return nil, err
+	tableName := pr.TableName
+	validationSelect := pr.ValidationSelect
+	if validationSelect == "" {
+		validationSelect = pr.Attributes["validation.select"].(string)
 	}
-	valTableName,err := getTableName(pr.ValidationSelect)
-	if err != nil {
-		return nil, err
-	}
+	valTableName := pr.Attributes["validation.table"].(string)
+	
 	var fieldMap = make(map[string]string)
 	for _,columnSpecs := range resolved.ColumnSpecs {
 		for _,columnSpec := range columnSpecs {
@@ -312,7 +309,7 @@ func newALPSTrainFillerWithIR(pr *codegen.TrainIR, db *DB, session *pb.Session) 
 		ExitOnSubmit:        exitOnSubmit}, nil
 }
 
-func newALPSPredictFillerWithIR(pr *codegen.PredictIR, session *pb.Session) (*alpsFillerWithIR, error) {
+func NewALPSPredictFillerWithIR(pr *codegen.PredictIR, session *pb.Session) (*alpsFillerWithIR, error) {
 	ossID := os.Getenv("OSS_ID")
 	ossKey := os.Getenv("OSS_KEY")
 	ossEp := os.Getenv("OSS_ENDPOINT")
@@ -320,10 +317,10 @@ func newALPSPredictFillerWithIR(pr *codegen.PredictIR, session *pb.Session) (*al
 		return nil, fmt.Errorf("Should set env OSS_ID, OSS_KEY and OSS_ENDPOINT while launch sqlflowserver")
 	}
 	modelDir := fmt.Sprintf("oss://cmps-model/sqlflow/%s/%s.tar.gz", session.UserId, pr.TrainIR.Save)
-	valTableName,err := getTableName(pr.Select)
-	if err != nil {
-		fmt.Printf("getTableName_error, %v \n",pr.Select)
-		return nil, err
+	valTableName := pr.TableName
+	if valTableName == "" {
+		fmt.Printf("getTableName_error, %v \n",pr.TableName)
+		return nil, fmt.Errorf("table_name error")
 	}
 	return &alpsFillerWithIR{
 		IsTraining:         false,
@@ -336,16 +333,6 @@ func newALPSPredictFillerWithIR(pr *codegen.PredictIR, session *pb.Session) (*al
 		OSSKey:             ossKey,
 		OSSEndpoint:        ossEp,
 	}, nil
-}
-
-func getTableName(selectSQL string) (string,error) {
-	parser := sqlflow.NewParser()
-	r, e := parser.Parse(selectSQL)
-	if e != nil {
-		return "", e
-	}
-	tableName := sqlflow.GetTableNames(r)
-	return tableName,nil
 }
 
 func generateAlpsFeatureColumnCodeWithIR(fcs []codegen.FeatureColumn, metadata *metadata) ([]string, error) {
@@ -537,7 +524,7 @@ func (meta *metadata) getDenseColumnInfo(keys []string, refColumns map[string]*c
 	for rows.Next() {
 		values := make([]interface{}, count)
 		for i, ct := range columnTypes {
-			v, e := sqlflow.CreateByType(ct.ScanType())
+			v, e := CreateByType(ct.ScanType())
 			if e != nil {
 				return output, e
 			}
@@ -597,7 +584,7 @@ func (meta *metadata) getSparseColumnInfo() (map[string]*columns.ColumnSpec, err
 	for rows.Next() {
 		values := make([]interface{}, count)
 		for i, ct := range columnTypes {
-			v, e := sqlflow.CreateByType(ct.ScanType())
+			v, e := CreateByType(ct.ScanType())
 			if e != nil {
 				return output, e
 			}
@@ -638,4 +625,18 @@ func (meta *metadata) getSparseColumnInfo() (map[string]*columns.ColumnSpec, err
 		}
 	}
 	return output, nil
+}
+
+func alpsTrain(pr *codegen.TrainIR, db *DB,session *pb.Session) (string,error) {
+	var program bytes.Buffer
+	filler, err := NewALPSTrainFillerWithIR(pr, db, session)
+	if err != nil {
+		return "",err
+	}
+
+	if err = alpsTrainTemplate.Execute(&program, filler); err != nil {
+		return "",fmt.Errorf("submitALPS: failed executing template: %v", err)
+	}
+	code := program.String()
+	return code,nil
 }

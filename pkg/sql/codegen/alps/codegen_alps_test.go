@@ -58,11 +58,13 @@ func mockTrainIR() *codegen.TrainIR {
 	return &codegen.TrainIR{
 		DataSource:       fmt.Sprintf("mysql://%s", cfg.FormatDSN()),
 		Select:           "SELECT dense, deep, wide FROM kaggle_credit_fraud_training_data;",
+		TableName: "kaggle_credit_fraud_training_data",
 		ValidationSelect: "SELECT dense, deep, wide FROM kaggle_credit_fraud_testing_data;",
 		Estimator:        "DNNLinearCombinedClassifier",
 		Attributes: map[string]interface{}{
 			"engine.type":        "yarn",
 			"train.max_steps":    1000,
+			"validation.table" : "kaggle_credit_fraud_testing_data",
 			"model.dnn_hidden_units": []int{10, 20}},
 		Features: map[string][]codegen.FeatureColumn{
 			"dnn_feature_columns": {
@@ -78,7 +80,7 @@ func TestTrainALPSFiller(t *testing.T) {
 	tir := mockTrainIR()
 	session := &pb.Session{UserId: "sqlflow_user"}
 	
-	filler, e := newALPSTrainFillerWithIR(tir, nil, session)
+	filler, e := NewALPSTrainFillerWithIR(tir, nil, session)
 	a.NoError(e)
 
 	a.True(filler.IsTraining)
@@ -103,6 +105,7 @@ func mockPredIR(trainIR *codegen.TrainIR) *codegen.PredictIR {
 	return &codegen.PredictIR{
 		DataSource:  trainIR.DataSource,
 		Select:  `SELECT predict_fun(concat(",", col_1, col_2)) AS (info, score) FROM db.table;`,
+		TableName: "db.table",
 		ResultTable: "db.predict_result",
 		ResultColumn: "score",
 		Attributes:  make(map[string]interface{}),
@@ -120,11 +123,7 @@ func TestPredALPSFiller(t *testing.T) {
 	pir := mockPredIR(tir)
 	session := &pb.Session{UserId: "sqlflow_user"}
 
-	os.Setenv("OSS_KEY", "sqlflow_key")
-	os.Setenv("OSS_ID", "sqlflow_id")
-	os.Setenv("OSS_ENDPOINT", "http://sqlflow-oss-endpoint")
-
-	filler, e := newALPSPredictFillerWithIR(pir, session)
+	filler, e := NewALPSPredictFillerWithIR(pir, session)
 	a.NoError(e)
 
 	a.False(filler.IsTraining)
@@ -156,7 +155,7 @@ func TestTrainALPSEmbeddingInitializer(t *testing.T) {
 	tir := mockTrainIRALPSEmbeddingInitializer()
 	session := &pb.Session{UserId: "sqlflow_user"}
 
-	filler, e := newALPSTrainFillerWithIR(tir, nil, session)
+	filler, e := NewALPSTrainFillerWithIR(tir, nil, session)
 	a.NoError(e)
 	a.True(strings.Contains(filler.FeatureColumnCode, "tf.feature_column.embedding_column(tf.feature_column.categorical_column_with_identity(key=\"deep\", num_buckets=2000), dimension=8, combiner=\"sum\", initializer=tf.random_normal_initializer(stddev=0.001))"))
 }
@@ -187,11 +186,13 @@ func mockTrainIRALPSEmbeddingInitializer() *codegen.TrainIR{
 	return &codegen.TrainIR{
 		DataSource:       fmt.Sprintf("mysql://%s", cfg.FormatDSN()),
 		Select:           "SELECT deep FROM kaggle_credit_fraud_training_data;",
+		TableName: "kaggle_credit_fraud_training_data",
 		ValidationSelect: "SELECT deep FROM kaggle_credit_fraud_training_data;",
 		Estimator:        "DNNClassifier",
 		Attributes: map[string]interface{}{
 			"engine.type":        "yarn",
 			"train.max_steps":    1000,
+			"validation.table" : "kaggle_credit_fraud_testing_data",
 			"model.dnn_hidden_units": []int{10, 20}},
 		Features: map[string][]codegen.FeatureColumn{
 			"dnn_feature_columns": {

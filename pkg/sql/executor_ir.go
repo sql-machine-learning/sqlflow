@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"path/filepath"
 	"os"
 	"os/exec"
 	"path"
@@ -28,6 +29,7 @@ import (
 
 	pb "sqlflow.org/sqlflow/pkg/server/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen"
+	"sqlflow.org/sqlflow/pkg/sql/codegen/alps"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/xgboost"
 )
@@ -130,10 +132,7 @@ func runTrainIR(trainIR *codegen.TrainIR, wr *PipeWriter, db *DB, modelDir strin
 	if os.Getenv("SQLFLOW_submitter") == "elasticdl" {
 		return elasticDLTrain(wr, pr, db, cwd, session)
 	}
-	// FIXME(weiguo): temporary branch to alps
-	if os.Getenv("SQLFLOW_submitter") == "alps" {
-		return alpsTrain(wr, pr, db, cwd, session)
-	}
+	
 	// ---------------------- run the IR ---------------------------
 	var program bytes.Buffer
 	if isXGBoostModel(trainIR.Estimator) {
@@ -154,7 +153,12 @@ func runTrainIR(trainIR *codegen.TrainIR, wr *PipeWriter, db *DB, modelDir strin
 		if trainIR.ValidationSelect == "" {
 			trainIR.ValidationSelect = trainIR.Select
 		}
+
+		if os.Getenv("SQLFLOW_submitter") == "alps" {
+			return alpsTrain(wr, pr, db, cwd, session)
+		}
 		code, err := tensorflow.Train(trainIR)
+		
 		if err != nil {
 			return err
 		}
@@ -511,4 +515,39 @@ func errorPipe(err error) *PipeReader {
 		wr.Write(err)
 	}()
 	return rd
+}
+
+func alpsTrainIR(w *PipeWriter, pr *codegen.TrainIR,  cwd string, session *pb.Session) error {
+	var program bytes.Buffer
+	code, err := alps.NewALPSTrainFillerWithIR(pr, nil, session)
+	cw := &logChanWriter{wr: w}
+	cmd := sqlflowCmd(cwd, "maxcompute")
+	filename := "experiment.py"
+	absfile := filepath.Join(cwd, filename)
+	f, err := os.Create(absfile)
+	if err != nil {
+		return fmt.Errorf("Create python code failed %v", err)
+	}
+	f.WriteString(program.String())
+	f.Close()
+	initRc := filepath.Join(cwd, "init.rc")
+	initf, err := os.Create(initRc)
+	if err != nil {
+		return fmt.Errorf("Create init file failed %v", err)
+	}
+	// TODO(joyyoj) Release a stable-alps to pypi.antfin-inc.com, then remove it.
+	initf.WriteString(`
+#!/bin/bash
+pip install http://091349.oss-cn-hangzhou-zmf.aliyuncs.com/alps/sqlflow/alps-2.0.3rc5-py2.py3-none-any.whl -i https://pypi.antfin-inc.com/simple
+`)
+	initf.Close()
+
+	cmd.Args = append(cmd.Args, filename)
+	cmd.Stdout = cw
+	cmd.Stderr = cw
+	if e := cmd.Run(); e != nil {
+		return fmt.Errorf("code %v failed %v", code, e)
+	}
+	// TODO(uuleon): save model to DB
+	return nil
 }

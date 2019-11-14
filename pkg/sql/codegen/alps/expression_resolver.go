@@ -209,9 +209,6 @@ func resolveTrainClauseWithIR(tc *codegen.TrainIR) (*resolvedTrainClauseWithIR, 
 		return nil
 	}()
 
-	if len(attrs) > 0 {
-		return nil, fmt.Errorf("unsupported parameters: %v", attrs)
-	}
 
 	fcMap := map[string][]codegen.FeatureColumn{}
 	csMap := map[string][]*columns.ColumnSpec{}
