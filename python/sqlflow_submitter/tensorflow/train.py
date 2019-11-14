@@ -18,6 +18,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import sys, json
 import tensorflow as tf
 import functools
+import sys
 try:
     import sqlflow_models
 except:
@@ -68,6 +69,7 @@ def train(is_keras_model,
         classifier = estimator(**feature_columns, **model_params, model_dir=save)
     else:
         classifier = estimator(**feature_columns, **model_params)
+        classifier_pkg = sys.modules[estimator.__module__]
 
     def input_fn(datasetStr):
         feature_types = []
@@ -96,8 +98,8 @@ def train(is_keras_model,
         return dataset.batch(batch_size).cache(filename="dataset_cache_val.txt")
 
     if is_keras_model:
-        classifier.compile(optimizer=classifier.default_optimizer(),
-            loss=classifier.default_loss(),
+        classifier.compile(optimizer=classifier_pkg.optimizer(),
+            loss=classifier_pkg.loss(),
             metrics=["accuracy"])
         if hasattr(classifier, 'sqlflow_train_loop'):
             # NOTE(typhoonzero): do not cache dataset if using sqlflow_train_loop, it may use the dataset multiple times causing "tensorflow.python.framework.errors_impl.AlreadyExistsError":
