@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 set -e
 
 export MINIKUBE_WANTUPDATENOTIFICATION=false
@@ -30,7 +29,6 @@ mkdir -p $HOME/.kube $HOME/.minikube
 touch $KUBECONFIG
 sudo minikube start --vm-driver=none --kubernetes-version=v$K8S_VERSION --cpus 2 --memory 6144
 sudo chown -R travis: $HOME/.minikube/
-kubectl cluster-info
 
 cd scripts/katib_yaml
 
@@ -53,8 +51,7 @@ kubectl apply -f katib-namespace.yaml
 cd crds/
 ./kustomize build . | kubectl apply -f -
 cd ../controller/
-./kustomize build . | kubectl apply -f -
+#./kustomize build . | kubectl apply -f -
+kubectl apply -f katib-controller-deployment.yaml -n kubeflow
 
 cd ../../../
-
-
