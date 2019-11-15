@@ -32,26 +32,11 @@ sudo chown -R travis: $HOME/.minikube/
 
 cd scripts/katib_yaml
 
-# Install kustomize
-curl -s https://api.github.com/repos/kubernetes-sigs/kustomize/releases |\
-  grep browser_download |\
-  grep linux |\
-  cut -d '"' -f 4 |\
-  grep /kustomize/v |\
-  sort | tail -n 1 |\
-  xargs curl -O -L
-tar xzf ./kustomize_v*_linux_amd64.tar.gz
-
-cp kustomize crds/
-cp kustomize controller/
-
 # Install katib
 kubectl apply -f katib-namespace.yaml
 
-cd crds/
-./kustomize build . | kubectl apply -f -
-cd ../controller/
-#./kustomize build . | kubectl apply -f -
-kubectl apply -f katib-controller-deployment.yaml -n kubeflow
+kubectl apply -f crds.yaml
+
+kubectl apply -f controller.yaml
 
 cd ../../../
