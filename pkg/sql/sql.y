@@ -182,6 +182,25 @@ select_stmt
 		analyze: true,
 		standardSelect: $1,
 		explainClause: $2}
+  }
+| train_clause ';' { // FIXME(tony): remove above rules that include select clause
+	parseResult = &extendedSelect{
+		extended: true,
+		train: true,
+		trainClause: $1}
+  }
+| predict_clause ';' {
+	parseResult = &extendedSelect{
+		extended: true,
+		train: false,
+		predictClause: $1}
+  }
+| explain_clause ';' {
+	parseResult = &extendedSelect{
+		extended: true,
+		train: false,
+		analyze: true,
+		explainClause: $1}
 }
 ;
 

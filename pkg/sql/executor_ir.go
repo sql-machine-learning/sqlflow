@@ -19,10 +19,10 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"path/filepath"
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -41,17 +41,12 @@ type EndOfExecution struct {
 	Statement string
 }
 
-// RunSQLProgram run a raw SQL program (string list).
-func RunSQLProgram(sqlStatements []string, db *DB, modelDir string, session *pb.Session) *PipeReader {
-	connStr := fmt.Sprintf("%s://%s", db.driverName, db.dataSourceName)
-	programIR, err := programToIR(sqlStatements, connStr, modelDir)
-	if err != nil {
-		return errorPipe(err)
-	}
+// RunSQLProgram run a SQL program.
+func RunSQLProgram(sqlProgram string, db *DB, modelDir string, session *pb.Session) *PipeReader {
 	rd, wr := Pipe()
 	go func() {
 		defer wr.Close()
-		err := runProgramIR(wr, programIR, db, modelDir, session)
+		err := runSQLProgram(wr, sqlProgram, db, modelDir, session)
 
 		if err != nil {
 			log.Errorf("runSQLProgram error:%v", err)
@@ -65,7 +60,18 @@ func RunSQLProgram(sqlStatements []string, db *DB, modelDir string, session *pb.
 	return rd
 }
 
-func runProgramIR(wr *PipeWriter, programIR codegen.SQLProgramIR, db *DB, modelDir string, session *pb.Session) error {
+func runSQLProgram(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, session *pb.Session) error {
+	sqls, err := SplitMultipleSQL(sqlProgram)
+	if err != nil {
+		return err
+	}
+
+	connStr := fmt.Sprintf("%s://%s", db.driverName, db.dataSourceName)
+	programIR, err := programToIR(sqls, connStr, modelDir)
+	if err != nil {
+		return err
+	}
+
 	for _, ir := range programIR {
 		if e := runSingleSQLIR(wr, ir, db, modelDir, session); e != nil {
 			return e
@@ -132,7 +138,7 @@ func runTrainIR(trainIR *codegen.TrainIR, wr *PipeWriter, db *DB, modelDir strin
 	if os.Getenv("SQLFLOW_submitter") == "elasticdl" {
 		return elasticDLTrain(wr, pr, db, cwd, session)
 	}
-	
+
 	// ---------------------- run the IR ---------------------------
 	var program bytes.Buffer
 	if isXGBoostModel(trainIR.Estimator) {
@@ -158,7 +164,7 @@ func runTrainIR(trainIR *codegen.TrainIR, wr *PipeWriter, db *DB, modelDir strin
 			return alpsTrain(wr, pr, db, cwd, session)
 		}
 		code, err := tensorflow.Train(trainIR)
-		
+
 		if err != nil {
 			return err
 		}
@@ -375,7 +381,7 @@ func createPredictionTableFromIR(predIR *codegen.PredictIR, db *DB, session *pb.
 	if _, e := db.Exec(dropStmt); e != nil {
 		return fmt.Errorf("failed executing %s: %q", dropStmt, e)
 	}
-	// FIXME(typhooznero): simply add LIMIT 1 at the end to get column types.
+	// FIXME(typhoonzero): simply add LIMIT 1 at the end to get column types.
 	tmpSQL := fmt.Sprintf("%s LIMIT 1;", strings.TrimRight(strings.TrimSpace(predIR.Select), ";"))
 	flds, fts, e := getColumnTypes(tmpSQL, db)
 	if e != nil {
@@ -508,16 +514,7 @@ func getDefaultSession() *pb.Session {
 	return &pb.Session{}
 }
 
-func errorPipe(err error) *PipeReader {
-	rd, wr := Pipe()
-	go func() {
-		defer wr.Close()
-		wr.Write(err)
-	}()
-	return rd
-}
-
-func alpsTrainIR(w *PipeWriter, pr *codegen.TrainIR,  cwd string, session *pb.Session) error {
+func alpsTrainIR(w *PipeWriter, pr *codegen.TrainIR, cwd string, session *pb.Session) error {
 	var program bytes.Buffer
 	code, err := alps.NewALPSTrainFillerWithIR(pr, nil, session)
 	cw := &logChanWriter{wr: w}

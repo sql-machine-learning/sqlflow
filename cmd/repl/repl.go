@@ -117,7 +117,7 @@ func runStmt(stmt string, isTerminal bool, modelDir string, db *sql.DB, ds strin
 	}
 	defer os.RemoveAll(cwd)
 
-	stream := sql.RunSQLProgram([]string{stmt}, db, modelDir, &pb.Session{})
+	stream := sql.RunSQLProgram(stmt, db, modelDir, &pb.Session{})
 	for rsp := range stream.ReadAll() {
 		isTable = render(rsp, table)
 
@@ -133,17 +133,14 @@ func runStmt(stmt string, isTerminal bool, modelDir string, db *sql.DB, ds strin
 	}
 }
 
-func repl(scanner *bufio.Scanner, isTerminal bool, modelDir string, db *sql.DB, ds string) {
+func repl(scanner *bufio.Scanner, modelDir string, db *sql.DB, ds string) {
 	for {
-		if isTerminal {
-			fmt.Print("sqlflow> ")
-		}
 		stmt, err := readStmt(scanner)
 		fmt.Println()
 		if err == io.EOF && stmt == "" {
 			return
 		}
-		runStmt(stmt, isTerminal, modelDir, db, ds)
+		runStmt(stmt, false, modelDir, db, ds)
 	}
 
 }
@@ -184,5 +181,9 @@ func main() {
 		reader = strings.NewReader(*cliStmt)
 	}
 	scanner := bufio.NewScanner(reader)
-	repl(scanner, isTerminal, *modelDir, db, *ds)
+	if isTerminal {
+		runPrompt(func(stmt string) { runStmt(stmt, true, *modelDir, db, *ds) })
+	} else {
+		repl(scanner, *modelDir, db, *ds)
+	}
 }

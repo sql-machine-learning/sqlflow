@@ -61,11 +61,11 @@ func generateTrainIR(slct *extendedSelect, connStr string) (*codegen.TrainIR, er
 			Name: tc.label,
 		}}
 
-	vslct, _ := parseValidataionSelect(attrList)
+	vslct, _ := parseValidationSelect(attrList)
 	return &codegen.TrainIR{
 		DataSource: connStr,
 		Select:     slct.standardSelect.String(),
-		TableName: slct.standardSelect.tables[0],
+		TableName:  slct.standardSelect.tables[0],
 		// TODO(weiguoz): This is a temporary implement. Specifying the
 		// validation dataset by keyword `VALIDATE` is the final solution.
 		ValidationSelect: vslct,
@@ -116,7 +116,7 @@ func generatePredictIR(slct *extendedSelect, connStr string, modelDir string) (*
 	return &codegen.PredictIR{
 		DataSource:   connStr,
 		Select:       slct.standardSelect.String(),
-		TableName: slct.standardSelect.tables[0],
+		TableName:    slct.standardSelect.tables[0],
 		ResultTable:  resultTable,
 		ResultColumn: resultCol,
 		Attributes:   attrMap,
@@ -599,7 +599,7 @@ func parseAttrsGroup(attrs map[string]interface{}, group string) map[string]inte
 	return g
 }
 
-func parseValidataionSelect(attrs map[string]interface{}) (string, error) {
+func parseValidationSelect(attrs map[string]interface{}) (string, error) {
 	validation := parseAttrsGroup(attrs, "validation.")
 	ds, ok := validation["select"].(string)
 	if ok {
@@ -619,7 +619,7 @@ func parseResultTable(intoStatement string) (string, string, error) {
 	} else if len(resultTableParts) == 2 {
 		return resultTableParts[0], resultTableParts[1], nil
 	} else {
-		return "", "", fmt.Errorf("invalied result table format, should be [db.table.class_col] or [table.class_col]")
+		return "", "", fmt.Errorf("invalid result table format, should be [db.table.class_col] or [table.class_col]")
 	}
 }
 

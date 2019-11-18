@@ -21,7 +21,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestTiDBParseAndSplit(t *testing.T) {
+func isJavaParser(typ string) bool {
+	return typ == "hiveql" || typ == "calcite"
+}
+
+func TestParseAndSplit(t *testing.T) {
 	a := assert.New(t)
 	tiDBInit()
 
@@ -66,83 +70,107 @@ WHERE
         HAVING SUM(priceEach * quantityOrdered) > 60000)`,
 	}
 
-	// one standard SQL statement
-	for _, sql := range selectCases {
-		s, idx, err := tiDBParseAndSplit(sql)
-		a.NoError(err)
-		a.Equal(-1, idx)
-		a.Equal(1, len(s))
-		a.Equal(sql, s[0])
-	}
+	for _, parserType := range []string{"mysql", "hiveql", "calcite"} {
+		var parseAndSplit func(string) ([]string, int, error)
+		if isJavaParser(parserType) {
+			parseAndSplit = func(sql string) ([]string, int, error) {
+				return javaParseAndSplit(parserType, sql)
+			}
+		} else {
+			parseAndSplit = tiDBParseAndSplit
+		}
 
-	{ // several standard SQL statements with comments
-		sqls := strings.Join(selectCases, `;`) + `;`
-		s, idx, err := tiDBParseAndSplit(sqls)
-		a.NoError(err)
-		a.Equal(-1, idx)
-		a.Equal(len(selectCases), len(s))
-		for i := range s {
-			a.Equal(selectCases[i]+`;`, s[i])
+		// one standard SQL statement
+		for _, sql := range selectCases {
+			s, idx, err := parseAndSplit(sql)
+			a.NoError(err)
+			a.Equal(-1, idx)
+			a.Equal(1, len(s))
+			a.Equal(sql, s[0])
+		}
+
+		{ // several standard SQL statements with comments
+			sqls := strings.Join(selectCases, `;`) + `;`
+			s, idx, err := parseAndSplit(sqls)
+			a.NoError(err)
+			a.Equal(-1, idx)
+			a.Equal(len(selectCases), len(s))
+			for i := range s {
+				if isJavaParser(parserType) {
+					a.Equal(selectCases[i], s[i])
+				} else {
+					a.Equal(selectCases[i]+`;`, s[i])
+				}
+			}
+		}
+
+		// two SQL statements, the first one is extendedSQL
+		for _, sql := range selectCases {
+			sqls := fmt.Sprintf(`%s to train;%s;`, sql, sql)
+			s, idx, err := parseAndSplit(sqls)
+			a.NoError(err)
+			a.Equal(len(sql)+1, idx)
+			a.Equal(1, len(s))
+			a.Equal(sql+" ", s[0])
+		}
+
+		// two SQL statements, the second one is extendedSQL
+		for _, sql := range selectCases {
+			sqls := fmt.Sprintf(`%s;%s to train;`, sql, sql)
+			s, idx, err := parseAndSplit(sqls)
+			a.NoError(err)
+			a.Equal(len(sql)+1+len(sql)+1, idx)
+			a.Equal(2, len(s))
+			if isJavaParser(parserType) {
+				a.Equal(sql, s[0])
+			} else {
+				a.Equal(sql+`;`, s[0])
+			}
+			a.Equal(sql+` `, s[1])
+		}
+
+		// three SQL statements, the second one is extendedSQL
+		for _, sql := range selectCases {
+			sqls := fmt.Sprintf(`%s;%s to train;%s;`, sql, sql, sql)
+			s, idx, err := parseAndSplit(sqls)
+			a.NoError(err)
+			a.Equal(len(sql)+1+len(sql)+1, idx)
+			a.Equal(2, len(s))
+			if isJavaParser(parserType) {
+				a.Equal(sql, s[0])
+			} else {
+				a.Equal(sql+`;`, s[0])
+			}
+			a.Equal(sql+` `, s[1])
+		}
+
+		{ // two SQL statements, the first standard SQL has an error.
+			sql := `select select 1; select 1 to train;`
+			s, idx, err := parseAndSplit(sql)
+			a.Nil(s)
+			a.Equal(-1, idx)
+			a.NotNil(err)
+		}
+
+		// two SQL statements, the second standard SQL has an error.
+		for _, sql := range selectCases {
+			sqls := fmt.Sprintf(`%s to train; select select 1;`, sql)
+			s, idx, err := parseAndSplit(sqls)
+			a.NoError(err)
+			a.Equal(len(sql)+1, idx)
+			a.Equal(1, len(s))
+			a.Equal(sql+` `, s[0])
+		}
+
+		{ // non select statement before to train
+			sql := `describe table to train;`
+			s, idx, err := parseAndSplit(sql)
+			a.NotNil(err)
+			a.Equal(0, len(s))
+			a.Equal(-1, idx)
 		}
 	}
 
-	// two SQL statements, the first one is extendedSQL
-	for _, sql := range selectCases {
-		sqls := fmt.Sprintf(`%s to train;%s;`, sql, sql)
-		s, idx, err := tiDBParseAndSplit(sqls)
-		a.NoError(err)
-		a.Equal(len(sql)+1, idx)
-		a.Equal(1, len(s))
-		a.Equal(sql+" ", s[0])
-	}
-
-	// two SQL statements, the second one is extendedSQL
-	for _, sql := range selectCases {
-		sqls := fmt.Sprintf(`%s;%s to train;`, sql, sql)
-		s, idx, err := tiDBParseAndSplit(sqls)
-		a.NoError(err)
-		a.Equal(len(sql)+1+len(sql)+1, idx)
-		a.Equal(2, len(s))
-		a.Equal(sql+`;`, s[0])
-		a.Equal(sql+` `, s[1])
-	}
-
-	// three SQL statements, the second one is extendedSQL
-	for _, sql := range selectCases {
-		sqls := fmt.Sprintf(`%s;%s to train;%s;`, sql, sql, sql)
-		s, idx, err := tiDBParseAndSplit(sqls)
-		a.NoError(err)
-		a.Equal(len(sql)+1+len(sql)+1, idx)
-		a.Equal(2, len(s))
-		a.Equal(sql+`;`, s[0])
-		a.Equal(sql+` `, s[1])
-	}
-
-	{ // two SQL statements, the first standard SQL has an error.
-		sql := `select select 1; select 1 to train;`
-		s, idx, err := tiDBParseAndSplit(sql)
-		a.Nil(s)
-		a.Equal(-1, idx)
-		a.EqualError(err, `line 1 column 13 near "select 1; select 1 to train;" `)
-	}
-
-	// two SQL statements, the second standard SQL has an error.
-	for _, sql := range selectCases {
-		sqls := fmt.Sprintf(`%s to train; select select 1;`, sql)
-		s, idx, err := tiDBParseAndSplit(sqls)
-		a.NoError(err)
-		a.Equal(len(sql)+1, idx)
-		a.Equal(1, len(s))
-		a.Equal(sql+` `, s[0])
-	}
-
-	{ // non select statement before to train
-		sql := `describe table to train;`
-		s, idx, err := tiDBParseAndSplit(sql)
-		a.EqualError(err, `line 1 column 14 near "table to train;" `)
-		a.Equal(0, len(s))
-		a.Equal(-1, idx)
-	}
 }
 
 func TestTiDBParseAndSplitIdx(t *testing.T) {

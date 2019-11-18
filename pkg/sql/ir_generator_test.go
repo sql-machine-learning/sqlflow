@@ -178,12 +178,12 @@ USING sqlflow_models.mymodel;`
 	modelDir, e := ioutil.TempDir("/tmp", "sqlflow_models")
 	a.Nil(e)
 	defer os.RemoveAll(modelDir)
-	stream := RunSQLProgram([]string{`SELECT * FROM iris.train
+	stream := RunSQLProgram(`SELECT * FROM iris.train
 TO TRAIN DNNClassifier
 WITH model.n_classes=3, model.hidden_units=[10,20]
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
-INTO sqlflow_models.mymodel;`}, testDB, modelDir, nil)
+INTO sqlflow_models.mymodel;`, testDB, modelDir, nil)
 	a.True(goodStream(stream.ReadAll()))
 
 	predIR, err := generatePredictIR(r, connStr, modelDir)
@@ -207,7 +207,7 @@ func TestGenerateAnalyzeIR(t *testing.T) {
 	modelDir, e := ioutil.TempDir("/tmp", "sqlflow_models")
 	a.Nil(e)
 	defer os.RemoveAll(modelDir)
-	stream := RunSQLProgram([]string{`SELECT * FROM iris.train
+	stream := RunSQLProgram(`SELECT * FROM iris.train
 TO TRAIN xgboost.gbtree
 WITH
 	objective="multi:softprob",
@@ -217,7 +217,7 @@ WITH
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.my_xgboost_model;
-`}, testDB, modelDir, nil)
+`, testDB, modelDir, nil)
 	a.NoError(e)
 	a.True(goodStream(stream.ReadAll()))
 
