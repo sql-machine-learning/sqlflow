@@ -47,10 +47,10 @@ func RunSQLProgram(sqlProgram string, db *DB, modelDir string, session *pb.Sessi
 		err := runSQLProgram(wr, sqlProgram, db, modelDir, session)
 
 		if err != nil {
-			log.Errorf("runSQLProgram error:%v", err)
+			log.Errorf("runSQLProgram error: %v", err)
 			if err != ErrClosedPipe {
 				if err := wr.Write(err); err != nil {
-					log.Errorf("runSQLProgram error(piping):%v", err)
+					log.Errorf("runSQLProgram error(piping): %v", err)
 				}
 			}
 		}

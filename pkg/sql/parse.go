@@ -14,6 +14,7 @@
 package sql
 
 import (
+	"fmt"
 	"sqlflow.org/sqlflow/pkg/sql/tpp"
 	"strings"
 )
@@ -43,7 +44,7 @@ func extendedSyntaxParse(sql string) (*extendedSelect, int, error) {
 func thirdPartyParse(dbms, sqlProgram string) ([]statementParseResult, int, error) {
 	sqls, i, err := tpp.ParseAndSplit(dbms, sqlProgram)
 	if err != nil {
-		return nil, -1, err
+		return nil, -1, fmt.Errorf("thirdPartyParse failed: %v", err)
 	}
 	spr := make([]statementParseResult, 0)
 	for _, sql := range sqls {
