@@ -17,6 +17,36 @@ service SQLFlow {
     // SQL statement like `SELECT ... TO TRAIN/PREDICT ...` returns a stream of
     // messages which indicates the training/predicting progress
     rpc Run (Request) returns (stream Response);
+
+    // Submit a SQLFlow Job which contains a SQL program to SQLFlow server.
+    //
+    // A SQL program contains one or more SQL statments.
+    // Each of these SQL statments can be a standard SQL like:
+    // `SELECT ... FROM ...;`, `DESCRIBE ...`,
+    // or an extended SQLFlow SQL like:
+    // `SELECT ... TO TRAIN/PREDICT/EXPLAIN ...`.
+    //
+    // Submit returns a Job message which contains the SQLFlow Job ID.
+    rpc Submit (Request) returns (Job);
+    
+    // Fetch fetchs the SQLFlow job status and logs in a polling manner.
+    rpc Fetch (Job) returns(JobStatus);
+}
+
+message Job {
+    string id = 1;
+}
+
+message JobStatus {
+    enum Code {
+        PENDING = 0;
+        RUNNING = 1;
+        SUCCEEDED = 2;
+        FAILED = 3;
+        UNKNOWN = 4;
+    }
+    // The message field indicates the job logs or error message.
+    string message = 1;
 }
 
 message Session {
