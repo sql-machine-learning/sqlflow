@@ -45,8 +45,9 @@ message JobStatus {
         FAILED = 3;
         UNKNOWN = 4;
     }
+    Code code = 1;
     // The message field indicates the job logs or error message.
-    string message = 1;
+    string message = 2;
 }
 
 message Session {
