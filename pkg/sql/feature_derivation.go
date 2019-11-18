@@ -96,15 +96,18 @@ func newRowValue(columnTypeList []*sql.ColumnType) ([]interface{}, error) {
 	rowData := make([]interface{}, len(columnTypeList))
 	for idx, ct := range columnTypeList {
 		typeName := ct.DatabaseTypeName()
+		// NOTE(typhoonzero): Hive uses typenames like "XXX_TYPE"
+		if strings.HasSuffix(typeName, "_TYPE") {
+			typeName = strings.Replace(typeName, "_TYPE", "", 1)
+		}
 		switch typeName {
 		case "VARCHAR", "TEXT":
 			rowData[idx] = new(string)
-		// XXX_TYPE is the type name used by Hive
-		case "INT", "INT_TYPE":
+		case "INT":
 			rowData[idx] = new(int32)
 		case "BIGINT", "DECIMAL":
 			rowData[idx] = new(int64)
-		case "FLOAT", "FLOAT_TYPE":
+		case "FLOAT":
 			rowData[idx] = new(float32)
 		case "DOUBLE":
 			rowData[idx] = new(float64)
