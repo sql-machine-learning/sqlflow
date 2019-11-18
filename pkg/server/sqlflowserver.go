@@ -20,6 +20,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -41,6 +42,18 @@ func NewServer(run func(string, *sf.DB, string, *pb.Session) *sf.PipeReader, mod
 type Server struct {
 	run      func(sql string, db *sf.DB, modelDir string, session *pb.Session) *sf.PipeReader
 	modelDir string
+}
+
+// Submit implements `rpc Submit (Request) returns (Job)`
+func (s *Server) Submit(ctx context.Context, in *pb.Request) (*pb.Job, error) {
+	job := &pb.Job{}
+	return job, nil
+}
+
+// Fetch implements `rpc Fetch (Job) returns(JobStatus)`
+func (s *Server) Fetch(ctx context.Context, job *pb.Job) (*pb.JobStatus, error) {
+	js := &pb.JobStatus{}
+	return js, nil
 }
 
 // Run implements `rpc Run (Request) returns (stream Response)`
