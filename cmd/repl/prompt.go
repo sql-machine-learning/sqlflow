@@ -14,7 +14,10 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
 	prompt "github.com/c-bata/go-prompt"
@@ -133,6 +136,8 @@ type promptState struct {
 	enableLivePrefix bool
 	statement        string
 	keywords         []string
+	history          []string
+	historyFileName  string
 }
 
 func (p *promptState) changeLivePrefix() (string, bool) {
@@ -144,6 +149,7 @@ func (p *promptState) execute(in string, cb func(string)) {
 	if in != "" {
 		p.statement += in
 		if strings.HasSuffix(in, ";") {
+			p.updateHistory()
 			p.enableLivePrefix = false
 			fmt.Println()
 			cb(p.statement)
@@ -164,6 +170,32 @@ func (p *promptState) initCompleter() {
 	}
 	for _, s := range withSuggestions {
 		p.keywords = append(p.keywords, s.Text)
+	}
+}
+
+func (p *promptState) initHistory() {
+	p.historyFileName = filepath.Join(os.Getenv("HOME"), ".sqlflow_history")
+	f, err := os.Open(p.historyFileName)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		p.history = append(p.history, scanner.Text())
+	}
+}
+
+func (p *promptState) updateHistory() {
+	if p.statement != "" {
+		f, err := os.OpenFile(p.historyFileName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		if err != nil {
+			return
+		}
+		defer f.Close()
+		w := bufio.NewWriter(f)
+		fmt.Fprintf(w, "%s\n", strings.ReplaceAll(p.statement, "\n", " "))
+		w.Flush()
 	}
 }
 
@@ -218,6 +250,7 @@ func newPromptState() *promptState {
 		livePrefix: "      -> ",
 	}
 	s.initCompleter()
+	s.initHistory()
 	return &s
 }
 
@@ -228,6 +261,7 @@ func runPrompt(cb func(string)) {
 		func(in prompt.Document) []prompt.Suggest { return state.completer(in) },
 		prompt.OptionAddASCIICodeBind(emacsMetaKeyBindings...),
 		prompt.OptionCompletionWordSeparator(" ."),
+		prompt.OptionHistory(state.history),
 		prompt.OptionLivePrefix(func() (string, bool) { return state.changeLivePrefix() }),
 		prompt.OptionParser(newStdinParser()),
 		prompt.OptionPrefix(state.prefix),
