@@ -26,8 +26,15 @@ except:
 from sqlflow_submitter.db import connect_with_data_source, db_generator, buffered_db_writer
 from sqlflow_submitter.tensorflow.train import get_dtype, parse_sparse_feature
 # Disable Tensorflow INFO and WARNING
-import logging
-tf.get_logger().setLevel(logging.ERROR)
+try:
+    if tf.version.VERSION > '1':
+        import logging
+        tf.get_logger().setLevel(logging.ERROR)
+    else:
+        raise ImportError
+except:
+    tf.logging.set_verbosity(tf.logging.ERROR)
+
 
 class FastPredict:
     def __init__(self, estimator, input_fn):
@@ -79,10 +86,12 @@ def pred(is_keras_model,
          hdfs_user="",
          hdfs_pass=""):
     conn = connect_with_data_source(datasource)
+    model_params.update(feature_columns)
     if not is_keras_model:
-        classifier = estimator(**feature_columns, **model_params, model_dir=save)
+        model_params['model_dir'] = save
+        classifier = estimator(**model_params)
     else:
-        classifier = estimator(**feature_columns, **model_params)
+        classifier = estimator(**model_params)
         classifier_pkg = sys.modules[estimator.__module__]
 
 
@@ -164,7 +173,7 @@ def pred(is_keras_model,
         with buffered_db_writer(conn.driver, conn, result_table, column_names, 100, hdfs_namenode_addr, hive_location, hdfs_user, hdfs_pass) as w:
             while True:
                 try:
-                    features = pred_gen.__next__()
+                    features = next(pred_gen)
                 except StopIteration:
                     break
                 result = fast_predictor.predict(features)

@@ -28,6 +28,7 @@ import (
 
 	pb "sqlflow.org/sqlflow/pkg/server/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen"
+	"sqlflow.org/sqlflow/pkg/sql/codegen/pai"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/xgboost"
 )
@@ -142,29 +143,32 @@ func runTrainIR(trainIR *codegen.TrainIR, wr *PipeWriter, db *DB, modelDir strin
 	}
 	// ---------------------- run the IR ---------------------------
 	var program bytes.Buffer
+	if err := InferFeatureColumns(trainIR); err != nil {
+		return err
+	}
+	if trainIR.ValidationSelect == "" {
+		trainIR.ValidationSelect = trainIR.Select
+	}
 	if isXGBoostModel(trainIR.Estimator) {
-		err := InferFeatureColumns(trainIR)
-		if err != nil {
-			return err
-		}
 		code, err := xgboost.Train(trainIR)
 		if err != nil {
 			return err
 		}
 		program.WriteString(code)
 	} else {
-		err := InferFeatureColumns(trainIR)
-		if err != nil {
-			return err
+		if os.Getenv("SQLFLOW_submitter") != "pai" {
+			code, err := tensorflow.Train(trainIR)
+			if err != nil {
+				return err
+			}
+			program.WriteString(code)
+		} else {
+			code, err := pai.Train(trainIR, pr.save, cwd)
+			if err != nil {
+				return err
+			}
+			program.WriteString(code)
 		}
-		if trainIR.ValidationSelect == "" {
-			trainIR.ValidationSelect = trainIR.Select
-		}
-		code, err := tensorflow.Train(trainIR)
-		if err != nil {
-			return err
-		}
-		program.WriteString(code)
 	}
 	cw := &logChanWriter{wr: wr}
 	var buf bytes.Buffer
@@ -179,11 +183,14 @@ func runTrainIR(trainIR *codegen.TrainIR, wr *PipeWriter, db *DB, modelDir strin
 	if e := cmd.Run(); e != nil {
 		return fmt.Errorf("predict failed: %v\n %s", e, buf.String())
 	}
-	m := model{workDir: cwd, TrainSelect: trainIR.OriginalSQL}
-	if modelDir != "" {
-		return m.saveTar(modelDir, pr.save)
+	if os.Getenv("SQLFLOW_submitter") != "pai" {
+		m := model{workDir: cwd, TrainSelect: trainIR.OriginalSQL}
+		if modelDir != "" {
+			return m.saveTar(modelDir, pr.save)
+		}
+		return m.save(db, pr.save)
 	}
-	return m.save(db, pr.save)
+	return nil
 }
 
 func runPredictIR(predIR *codegen.PredictIR, wr *PipeWriter, db *DB, modelDir string, session *pb.Session) error {
@@ -205,19 +212,9 @@ func runPredictIR(predIR *codegen.PredictIR, wr *PipeWriter, db *DB, modelDir st
 		return elasticDLPredict(wr, pr, db, cwd, session)
 	}
 	// ------------------- run pred IR -----------------------
-	// TODO(typhoonzero): loadModelMeta should use IR
-	pr, _, e = loadModelMeta(pr, db, cwd, modelDir, pr.model)
-	if e != nil {
-		return fmt.Errorf("loadModelMeta %v", e)
-	}
-
 	var program bytes.Buffer
-	if isXGBoostModel(predIR.TrainIR.Estimator) {
-		err = InferFeatureColumns(predIR.TrainIR)
-		if err != nil {
-			return err
-		}
-		code, err := xgboost.Pred(predIR, session)
+	if os.Getenv("SQLFLOW_submitter") == "pai" {
+		code, err := pai.Predict(predIR, pr.model, cwd)
 		if err != nil {
 			return err
 		}
@@ -225,21 +222,38 @@ func runPredictIR(predIR *codegen.PredictIR, wr *PipeWriter, db *DB, modelDir st
 		if err != nil {
 			return err
 		}
+
 		program.WriteString(code)
 	} else {
-		err = InferFeatureColumns(predIR.TrainIR)
-		if err != nil {
+		// TODO(typhoonzero): loadModelMeta should use IR
+		pr, _, e = loadModelMeta(pr, db, cwd, modelDir, pr.model)
+		if e != nil {
+			return fmt.Errorf("loadModelMeta %v", e)
+		}
+		if err := InferFeatureColumns(predIR.TrainIR); err != nil {
 			return err
 		}
-		code, err := tensorflow.Pred(predIR, session)
-		if err != nil {
-			return err
+		if isXGBoostModel(predIR.TrainIR.Estimator) {
+			code, err := xgboost.Pred(predIR, session)
+			if err != nil {
+				return err
+			}
+			err = createPredictionTableFromIR(predIR, db, session)
+			if err != nil {
+				return err
+			}
+			program.WriteString(code)
+		} else {
+			err = createPredictionTableFromIR(predIR, db, session)
+			if err != nil {
+				return err
+			}
+			code, err := tensorflow.Pred(predIR, session)
+			if err != nil {
+				return err
+			}
+			program.WriteString(code)
 		}
-		err = createPredictionTableFromIR(predIR, db, session)
-		if err != nil {
-			return err
-		}
-		program.WriteString(code)
 	}
 
 	var buf bytes.Buffer
@@ -431,6 +445,10 @@ func createPredictionTableFromIR(predIR *codegen.PredictIR, db *DB, session *pb.
 }
 
 func loadModelMeta(pr *extendedSelect, db *DB, cwd, modelDir, modelName string) (*extendedSelect, fieldTypes, error) {
+	if os.Getenv("SQLFLOW_submitter") == "pai" {
+		// load model meta data in python
+		return pr, fieldTypes{}, nil
+	}
 	var m *model
 	var e error
 	if modelDir != "" {

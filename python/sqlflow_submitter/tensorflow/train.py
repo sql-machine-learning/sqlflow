@@ -27,8 +27,14 @@ except:
 from sqlflow_submitter.db import connect_with_data_source, db_generator
 
 # Disable Tensorflow INFO and WARNING
-import logging
-tf.get_logger().setLevel(logging.ERROR)
+try:
+    if tf.version.VERSION > '1':
+        import logging
+        tf.get_logger().setLevel(logging.ERROR)
+    else:
+        raise ImportError
+except:
+    tf.logging.set_verbosity(tf.logging.ERROR)
 
 def get_dtype(type_str):
     if type_str == "float32":
@@ -65,10 +71,12 @@ def train(is_keras_model,
           epochs=1,
           verbose=0):
     conn = connect_with_data_source(datasource)
+    model_params.update(feature_columns)
     if not is_keras_model:
-        classifier = estimator(**feature_columns, **model_params, model_dir=save)
+        model_params['model_dir'] = save
+        classifier = estimator(**model_params)
     else:
-        classifier = estimator(**feature_columns, **model_params)
+        classifier = estimator(**model_params)
         classifier_pkg = sys.modules[estimator.__module__]
 
     def input_fn(datasetStr):

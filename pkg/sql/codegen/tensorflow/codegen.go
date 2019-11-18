@@ -151,7 +151,8 @@ func dtypeToString(dt codegen.FieldType) string {
 	}
 }
 
-func isKerasModel(estimator string) (bool, string) {
+// IsKerasModel returns whether an estimator is from sqlflow_models and its qualified name
+func IsKerasModel(estimator string) (bool, string) {
 	if strings.HasPrefix(estimator, "sqlflow_models.") {
 		return true, estimator
 	}
@@ -204,7 +205,7 @@ func Train(ir *codegen.TrainIR) (string, error) {
 		featureColumnsCode = append(featureColumnsCode,
 			fmt.Sprintf("\"%s\": [%s]", target, strings.Join(perTargetFeatureColumnsCode, ",\n")))
 	}
-	isKeras, estimatorStr := isKerasModel(ir.Estimator)
+	isKeras, estimatorStr := IsKerasModel(ir.Estimator)
 
 	filler := trainFiller{
 		DataSource:        ir.DataSource,
@@ -260,7 +261,7 @@ func Pred(ir *codegen.PredictIR, session *pb.Session) (string, error) {
 		featureColumnsCode = append(featureColumnsCode,
 			fmt.Sprintf("\"%s\": [%s]", target, strings.Join(perTargetFeatureColumnsCode, ",\n")))
 	}
-	isKeras, estimatorStr := isKerasModel(ir.TrainIR.Estimator)
+	isKeras, estimatorStr := IsKerasModel(ir.TrainIR.Estimator)
 	labelFM := ir.TrainIR.Label.GetFieldMeta()[0]
 	if labelFM.Name == "" {
 		log.Printf("clustering model, got result table: %s, result column: %s", ir.ResultTable, ir.ResultColumn)
