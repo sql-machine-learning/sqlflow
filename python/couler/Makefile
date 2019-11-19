@@ -1,5 +1,5 @@
 SQLFLOW_VERSION := develop
-VERSION_FILE := sqlflow/_version.py
+VERSION_FILE := couler/_version.py
 SHELL := /bin/bash
 
 setup: ## Setup virtual environment for local development
@@ -13,7 +13,7 @@ test: ## Run tests
 	python3 setup.py test
 
 clean: ## Clean up temporary folders
-	rm -rf build dist .eggs *.egg-info .pytest_cache sqlflow/proto
+	rm -rf build dist .eggs *.egg-info .pytest_cache
 
 release: ## Release new version
 	$(if $(shell git status -s), $(error "Please commit your changes or stash them before you release."))

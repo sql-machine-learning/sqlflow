@@ -77,9 +77,8 @@ setup(
     python_requires=REQUIRES_PYTHON,
     url=URL,
     packages=find_packages(exclude=('tests',)),
-    package_data={'sqlflow': ['proto/*.py']},
     entry_points={
-        'console_scripts': ['sqlflow = sqlflow.__main__:main'],
+        'console_scripts': ['couler = couler.__main__:main'],
     },
     install_requires=REQUIRED,
     setup_requires=SETUP_REQUIRED,
