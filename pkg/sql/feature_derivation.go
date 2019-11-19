@@ -97,7 +97,7 @@ func newRowValue(columnTypeList []*sql.ColumnType) ([]interface{}, error) {
 	for idx, ct := range columnTypeList {
 		typeName := ct.DatabaseTypeName()
 		switch strings.ToUpper(typeName) {
-		case "VARCHAR", "TEXT", "string":
+		case "VARCHAR", "TEXT", "STRING":
 			rowData[idx] = new(string)
 		// XXX_TYPE is the type name used by Hive
 		case "INT", "INT_TYPE":
@@ -271,6 +271,9 @@ func InferFeatureColumns(ir *codegen.TrainIR) error {
 	err = rows.Err()
 	if err != nil {
 		return err
+	}
+	for colName, fm := range fmMap {
+		log.Printf("fieldMeta after feature derivation: field: %s, %v", colName, fm)
 	}
 
 	// 1. Infer omitted category_id_column for embedding_columns

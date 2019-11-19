@@ -161,7 +161,7 @@ func runTrainIR(trainIR *codegen.TrainIR, wr *PipeWriter, db *DB, modelDir strin
 		}
 
 		if os.Getenv("SQLFLOW_submitter") == "alps" {
-			return alpsTrain(wr, pr, db, cwd, session)
+			return runALPSTrainIR(wr, trainIR, cwd, session)
 		}
 		code, err := tensorflow.Train(trainIR)
 
@@ -514,9 +514,9 @@ func getDefaultSession() *pb.Session {
 	return &pb.Session{}
 }
 
-func alpsTrainIR(w *PipeWriter, pr *codegen.TrainIR, cwd string, session *pb.Session) error {
-	var program bytes.Buffer
-	code, err := alps.NewALPSTrainFillerWithIR(pr, nil, session)
+func runALPSTrainIR(w *PipeWriter, pr *codegen.TrainIR, cwd string, session *pb.Session) error {
+	fmt.Println("in runALPSTrainIR")
+	code, err := alps.Train(pr, nil, session)
 	cw := &logChanWriter{wr: w}
 	cmd := sqlflowCmd(cwd, "maxcompute")
 	filename := "experiment.py"
@@ -525,7 +525,7 @@ func alpsTrainIR(w *PipeWriter, pr *codegen.TrainIR, cwd string, session *pb.Ses
 	if err != nil {
 		return fmt.Errorf("Create python code failed %v", err)
 	}
-	f.WriteString(program.String())
+	f.WriteString(code)
 	f.Close()
 	initRc := filepath.Join(cwd, "init.rc")
 	initf, err := os.Create(initRc)
@@ -545,6 +545,5 @@ pip install http://091349.oss-cn-hangzhou-zmf.aliyuncs.com/alps/sqlflow/alps-2.0
 	if e := cmd.Run(); e != nil {
 		return fmt.Errorf("code %v failed %v", code, e)
 	}
-	// TODO(uuleon): save model to DB
 	return nil
 }

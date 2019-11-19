@@ -15,14 +15,16 @@ package alps
 
 import (
 	"bytes"
+	"database/sql"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
-	"database/sql"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"text/template"
+
 	"sqlflow.org/gomaxcompute"
 	pb "sqlflow.org/sqlflow/pkg/server/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen"
@@ -32,8 +34,7 @@ import (
 var alpsTrainTemplate = template.Must(template.New("alps_train").Parse(alpsTrainTemplateText))
 var alpsPredTemplate = template.Must(template.New("alps_predict").Parse(alpsPredTemplateText))
 
-
-type alpsFillerWithIR struct {
+type alpsFiller struct {
 	// Training or Predicting
 	IsTraining bool
 
@@ -102,159 +103,87 @@ func engineCreatorCodeWithIR(resolved *resolvedTrainClauseWithIR) (string, error
 		engine.worker.Num), nil
 }
 
-func modelCreatorCodeWithIR(resolved *resolvedTrainClauseWithIR, args []string) (string, string, string, error) {
-	cl := make([]string, 0)
-	for key, value := range resolved.ModelConstructorParams {
-		
-		code, err := generateCodeWithIR(key,value)
-		if err != nil {
-			return "", "", "", err
-		}
-		cl = append(cl, code)
-	}
-	if args != nil {
-		for _, arg := range args {
-			cl = append(cl, arg)
-		}
-	}
-	modelName := resolved.ModelName
-	var importLib string
-	if resolved.IsPreMadeModel {
-		modelName = fmt.Sprintf("tf.estimator.%s", resolved.ModelName)
+func modelCreatorCode(trainIR *codegen.TrainIR) (string, string, string, error) {
+	estimatorNameParts := strings.Split(trainIR.Estimator, ".")
+	modelName := ""
+	importCode := ""
+	if len(estimatorNameParts) == 1 {
+		// is premade estimator
+		modelName = fmt.Sprintf("tf.estimator.%s", trainIR.Estimator)
 	} else {
-		parts := strings.Split(modelName, ".")
-		importLib = strings.Join(parts[0:len(parts)-1], ".")
-	}
-	var importCode = ""
-	if importLib != "" {
-		importCode = fmt.Sprintf("import %s", importLib)
+		modelName = estimatorNameParts[-1]
+		importCode = fmt.Sprintf("import %s",
+			strings.Join(estimatorNameParts[0:len(estimatorNameParts)-1], "."))
 	}
 
-	var remoteModuleCode = ""
-	if resolved.CustomModule != nil {
-		sha, token, sourceRoot, server := "None", "None", "None", "None"
-		customModule := resolved.CustomModule
-		if customModule.Sha != "" {
-			sha = fmt.Sprintf("\"%s\"", customModule.Sha)
-		}
-		if customModule.PrivateToken != "" {
-			token = fmt.Sprintf("\"%s\"", customModule.PrivateToken)
-		}
-		if customModule.SourceRoot != "" {
-			sourceRoot = fmt.Sprintf("\"%s\"", customModule.SourceRoot)
-		}
-		if customModule.GitLabServer != "" {
-			server = fmt.Sprintf("\"%s\"", customModule.GitLabServer)
-		}
-		remoteModuleCode = fmt.Sprintf("RemoteModule.create_module(module_name=None, project_name=\"%s\", sha=%s, private_token=%s, source_root=%s, gitlab_server=%s)()",
-			customModule.ProjectName, sha, token, sourceRoot, server)
-	}
+	// remoteModuleCode := ""
+	// gitlabAttrs := make(map[string]string)
+	// for k, v := range trainIR.Attributes {
+	// 	keyParts := strings.Split(k, ".")
+	// 	if len(keyParts) == 2 && keyParts[0] == "gitlab" {
+	// 		gitlabAttrs[keyParts[1]] = v.(string)
+	// 	}
+	// }
+	// if len(gitlabAttrs) > 1 {
+	// 	remoteModuleCode = fmt.Sprintf(`RemoteModule.create_module(module_name=None, project_name=\"%s\", sha=%s, private_token=%s, source_root=%s, gitlab_server=%s)()`,
+	// 	gitlabAttrs[""], sha, token, sourceRoot, server)
+	// }
 
-	return remoteModuleCode, importCode,
-		fmt.Sprintf("%s(%s)", modelName, strings.Join(cl, ",")), nil
+	
+	// if resolved.CustomModule != nil {
+	// 	sha, token, sourceRoot, server := "None", "None", "None", "None"
+	// 	customModule := resolved.CustomModule
+	// 	if customModule.Sha != "" {
+	// 		sha = fmt.Sprintf("\"%s\"", customModule.Sha)
+	// 	}
+	// 	if customModule.PrivateToken != "" {
+	// 		token = fmt.Sprintf("\"%s\"", customModule.PrivateToken)
+	// 	}
+	// 	if customModule.SourceRoot != "" {
+	// 		sourceRoot = fmt.Sprintf("\"%s\"", customModule.SourceRoot)
+	// 	}
+	// 	if customModule.GitLabServer != "" {
+	// 		server = fmt.Sprintf("\"%s\"", customModule.GitLabServer)
+	// 	}
+	// 	remoteModuleCode = fmt.Sprintf("RemoteModule.create_module(module_name=None, project_name=\"%s\", sha=%s, private_token=%s, source_root=%s, gitlab_server=%s)()",
+	// 		customModule.ProjectName, sha, token, sourceRoot, server)
+	// }
+
+	return importCode, modelName, nil
 }
 
-func generateCodeWithIR(key string,value interface{}) (string, error) {
+func generateCodeWithIR(key string, value interface{}) (string, error) {
 	value = attrToPythonValue(value)
 	return fmt.Sprintf("%s=%s", key, value), nil
 }
 
-func NewALPSTrainFillerWithIR(pr *codegen.TrainIR, db *DB, session *pb.Session) (*alpsFillerWithIR, error) {
-	label := pr.Label.GetFieldMeta()[0]
-	resolved, err := resolveTrainClauseWithIR(pr)
+// newALPSTrainFillerWithIR returns a "filler" for ALPS
+func newALPSTrainFillerWithIR(trainIR *codegen.TrainIR, session *pb.Session) (*alpsFiller, error) {
+	label := trainIR.Label.GetFieldMeta()[0]
+	odpsConfig, err := gomaxcompute.ParseDSN(trainIR.DataSource)
 	if err != nil {
 		return nil, err
 	}
-
-	var odpsConfig = &gomaxcompute.Config{}
-	var columnInfo map[string]*columns.ColumnSpec
-
 	// TODO(joyyoj) read feature mapping table's name from table attributes.
 	// TODO(joyyoj) pr may contains partition.
-	tableName := pr.TableName
-	validationSelect := pr.ValidationSelect
-	if validationSelect == "" {
-		validationSelect = pr.Attributes["validation.select"].(string)
+	trainTableName := trainIR.TableName
+	valTableName, ok := trainIR.Attributes["validation.table"]
+	if !ok {
+		return nil, fmt.Errorf("must specify validation.table when training using ALPS")
 	}
-	valTableName := pr.Attributes["validation.table"].(string)
-	
-	var fieldMap = make(map[string]string)
-	for _,columnSpecs := range resolved.ColumnSpecs {
-		for _,columnSpec := range columnSpecs {
-			fieldMap[columnSpec.ColumnName] = columnSpec.ColumnName
-		}
-	}
-	fieldNames := []string{}
-	for k := range fieldMap {
-		fieldNames = append(fieldNames, k)
-	}
-	fmap := columns.FeatureMap{
-		Table:     tableName + "_feature_map",
-		Partition: ""}
-	var meta metadata
-	fields := make([]string, 0)
-	if db != nil {
-		odpsConfig, err = gomaxcompute.ParseDSN(db.dataSourceName)
+	// Generate featureColumnCode, e.g. {"feature_columns": [tf.feature_column.xxx(), ...]}
+	featureColumnCodeKV := []string
+	for target, fcs := range trainIR.Features {
+		codes, err := generateAlpsFeatureColumnCode(fcs, &meta)
 		if err != nil {
 			return nil, err
 		}
-		meta = metadata{odpsConfig, tableName, &fmap, nil}
-		fields, err = getFieldsWithIR(&meta, fieldNames, label.Name)
-		if err != nil {
-			return nil, err
-		}
-		columnInfo, err = meta.getColumnInfoWithIR(resolved, fields)
-		meta.columnInfo = &columnInfo
-	} else {
-		meta = metadata{odpsConfig, tableName, nil, nil}
-		columnInfo = map[string]*columns.ColumnSpec{}
-		for _, css := range resolved.ColumnSpecs {
-			for _, cs := range css {
-				columnInfo[cs.ColumnName] = cs
-			}
-		}
-		meta.columnInfo = &columnInfo
+		perTargetCode := fmt.Sprintf("[%s]", strings.Join(codes, ",\n"))
+		featureColumnCode = append(featureColumnCode, fmt.Sprintf("%s:%s", target, perTargetCode))
 	}
-	csCode := make([]string, 0)
+	featureColumnCode := fmt.Sprintf("{%s}", strings.Join(featureColumnCodeKV, ",\n"))
 
-	if err != nil {
-		log.Fatalf("failed to get column info: %v", err)
-		return nil, err
-	}
-
-	for _, cs := range columnInfo {
-		csCode = append(csCode, cs.ToString())
-	}
-	y := &columns.ColumnSpec{
-		ColumnName: label.Name,
-		IsSparse:   false,
-		Shape:      []int{1},
-		DType:      "int",
-		Delimiter:  ","}
-	args := make([]string, 0)
-	args = append(args, "config=run_config")
-	hasFeatureColumns := false
-	for _, columns := range resolved.FeatureColumns {
-		if len(columns) > 0 {
-			hasFeatureColumns = true
-		}
-	}
-	if hasFeatureColumns {
-		args = append(args, "feature_columns=feature_columns")
-	}
-	featureColumnCode := make([]string, 0)
-	for _, fcs := range resolved.FeatureColumns {
-		codes, err := generateAlpsFeatureColumnCodeWithIR(fcs, &meta)
-		if err != nil {
-			return nil, err
-		}
-		for _, code := range codes {
-			pycode := fmt.Sprintf("feature_columns.append(%s)", code)
-			featureColumnCode = append(featureColumnCode, pycode)
-		}
-	}
-	fcCode := strings.Join(featureColumnCode, "\n        ")
-	remoteModuleCode, importCode, modelCode, err := modelCreatorCodeWithIR(resolved, args)
+	remoteModuleCode, importCode, modelCode, err := modelCreatorCode(resolved, args)
 	if err != nil {
 		return nil, err
 	}
@@ -271,7 +200,12 @@ func NewALPSTrainFillerWithIR(pr *codegen.TrainIR, db *DB, session *pb.Session) 
 		exitOnSubmit = session.ExitOnSubmit
 		userID = session.UserId
 	}
-	if resolved.EngineParams.etype == "local" {
+
+	engineType, ok := trainIR.Attributes["engine.type"]
+	if !ok {
+		engineType = "local"
+	}
+	if engineType == "local" {
 		//TODO(uuleon): the scratchDir will be deleted after model uploading
 		scratchDir, err = ioutil.TempDir("/tmp", "alps_scratch_dir_")
 		if err != nil {
@@ -284,13 +218,13 @@ func NewALPSTrainFillerWithIR(pr *codegen.TrainIR, db *DB, session *pb.Session) 
 		modelDir = fmt.Sprintf("arks://%s/%s.tar.gz", filepath.Join("sqlflow", userID), pr.Save)
 	}
 	var trainInput, evalInput string
-	trainInput, evalInput = tableName, valTableName
+	trainInput, evalInput = tableName, valTableName.(string)
 
 	log.Printf("Will save the models on: %s\n", modelDir)
 	return &alpsFillerWithIR{
 		IsTraining:          true,
-		TrainInputTable:     trainInput,
-		EvalInputTable:      evalInput,
+		TrainInputTable:     trainTableName,
+		EvalInputTable:      valTableName.(string),
 		ScratchDir:          scratchDir,
 		ModelDir:            modelDir,
 		UserID:              userID,
@@ -309,6 +243,7 @@ func NewALPSTrainFillerWithIR(pr *codegen.TrainIR, db *DB, session *pb.Session) 
 		ExitOnSubmit:        exitOnSubmit}, nil
 }
 
+// NewALPSPredictFillerWithIR returns a "filler" to generate ALPS predict program
 func NewALPSPredictFillerWithIR(pr *codegen.PredictIR, session *pb.Session) (*alpsFillerWithIR, error) {
 	ossID := os.Getenv("OSS_ID")
 	ossKey := os.Getenv("OSS_KEY")
@@ -319,7 +254,7 @@ func NewALPSPredictFillerWithIR(pr *codegen.PredictIR, session *pb.Session) (*al
 	modelDir := fmt.Sprintf("oss://cmps-model/sqlflow/%s/%s.tar.gz", session.UserId, pr.TrainIR.Save)
 	valTableName := pr.TableName
 	if valTableName == "" {
-		fmt.Printf("getTableName_error, %v \n",pr.TableName)
+		fmt.Printf("getTableName_error, %v \n", pr.TableName)
 		return nil, fmt.Errorf("table_name error")
 	}
 	return &alpsFillerWithIR{
@@ -335,10 +270,10 @@ func NewALPSPredictFillerWithIR(pr *codegen.PredictIR, session *pb.Session) (*al
 	}, nil
 }
 
-func generateAlpsFeatureColumnCodeWithIR(fcs []codegen.FeatureColumn, metadata *metadata) ([]string, error) {
+func generateAlpsFeatureColumnCode(fcs []codegen.FeatureColumn, metadata *metadata) ([]string, error) {
 	var codes = make([]string, 0, 1000)
 	for _, fc := range fcs {
-		code,err := generateFeatureColumnCode(fc)
+		code, err := generateFeatureColumnCode(fc)
 		if err != nil {
 			return nil, err
 		}
@@ -469,7 +404,6 @@ func (meta *metadata) getColumnInfoWithIR(resolved *resolvedTrainClauseWithIR, f
 	}
 	return columns, nil
 }
-
 
 func getFieldsWithIR(meta *metadata, selectFields []string, label string) ([]string, error) {
 	//selectFields := pr.standardSelect.fields.Strings()
@@ -627,16 +561,17 @@ func (meta *metadata) getSparseColumnInfo() (map[string]*columns.ColumnSpec, err
 	return output, nil
 }
 
-func alpsTrain(pr *codegen.TrainIR, db *DB,session *pb.Session) (string,error) {
+// Train returns the code generated to run ALPS training
+func Train(trainIR *codegen.TrainIR, db *DB, session *pb.Session) (string, error) {
 	var program bytes.Buffer
-	filler, err := NewALPSTrainFillerWithIR(pr, db, session)
+	filler, err := newALPSTrainFillerWithIR(trainIR, db, session)
 	if err != nil {
-		return "",err
+		return "", err
 	}
 
 	if err = alpsTrainTemplate.Execute(&program, filler); err != nil {
-		return "",fmt.Errorf("submitALPS: failed executing template: %v", err)
+		return "", fmt.Errorf("submitALPS: failed executing template: %v", err)
 	}
 	code := program.String()
-	return code,nil
+	return code, nil
 }

@@ -851,20 +851,19 @@ FROM %s.sparse_column_test
 LIMIT 100
 TO TRAIN models.estimator.dnn_classifier.DNNClassifier
 WITH 
-	model.n_classes = 2, model.hidden_units = [10, 20], train.batch_size = 10, engine.ps_num=0, engine.worker_num=0, engine.type=local,
+	model.n_classes = 2, model.hidden_units = [10, 20],
+	train.batch_size = 10, engine.ps_num=0, engine.worker_num=0, engine.type=local,
+	validation.table="%s.sparse_column_test",
 	gitlab.project = "Alps/sqlflow-models",
 	gitlab.source_root = python,
 	gitlab.token = "%s"
-COLUMN SPARSE(deep_id,15033,COMMA,int),
-       SPARSE(user_space_stat,310,COMMA,int),
-       SPARSE(user_behavior_stat,511,COMMA,int),
-       SPARSE(space_stat,418,COMMA,int),
-       EMBEDDING(CATEGORY_ID(deep_id,15033,COMMA),512,mean),
-       EMBEDDING(CATEGORY_ID(user_space_stat,310,COMMA),64,mean),
-       EMBEDDING(CATEGORY_ID(user_behavior_stat,511,COMMA),64,mean),
-       EMBEDDING(CATEGORY_ID(space_stat,418,COMMA),64,mean)
+COLUMN
+       EMBEDDING(SPARSE(deep_id,15033,COMMA,int),512,mean),
+       EMBEDDING(SPARSE(user_space_stat,310,COMMA,int),64,mean),
+       EMBEDDING(SPARSE(user_behavior_stat,511,COMMA,int),64,mean),
+       EMBEDDING(SPARSE(space_stat,418,COMMA,int),64,mean)
 LABEL l
-INTO model_table;`, caseDB, os.Getenv("GITLAB_TOKEN"))
+INTO model_table;`, caseDB, caseDB, os.Getenv("GITLAB_TOKEN"))
 	_, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("run trainSQL error: %v", err)
@@ -874,14 +873,15 @@ INTO model_table;`, caseDB, os.Getenv("GITLAB_TOKEN"))
 // CaseTrainALPSFeatureMap is a case for training models using ALPS with feature_map table
 func CaseTrainALPSFeatureMap(t *testing.T) {
 	a := assert.New(t)
-	trainSQL := fmt.Sprintf(`SELECT dense, deep, item, test_sparse_with_fm.label
+	trainSQL := fmt.Sprintf(`SELECT dense, item, test_sparse_with_fm.label
 FROM %s.test_sparse_with_fm
 LIMIT 32
 TO TRAIN alipay.SoftmaxClassifier
-WITH train.max_steps = 32, eval.steps=32, train.batch_size=8, engine.ps_num=0, engine.worker_num=0, engine.type = local
-COLUMN DENSE(dense, none, comma),
-       DENSE(item, 1, comma, int)
-LABEL "label" INTO model_table;`, caseDB)
+WITH train.max_steps = 32, eval.steps=32, train.batch_size=8,
+	 engine.ps_num=0, engine.worker_num=0, engine.type = local,
+	 validation.table=%s.test_sparse_with_fm
+COLUMN dense, item
+LABEL "label" INTO model_table;`, caseDB, caseDB)
 	_, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("run trainSQL error: %v", err)

@@ -27,6 +27,12 @@ type gitLabModule struct {
 	GitLabServer string
 }
 
+type resourceSpec struct {
+	Num    int
+	Memory int
+	Core   int
+}
+
 type engineSpec struct {
 	etype                 string
 	ps                    resourceSpec
