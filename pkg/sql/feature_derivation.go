@@ -100,7 +100,8 @@ func newRowValue(columnTypeList []*sql.ColumnType) ([]interface{}, error) {
 		if strings.HasSuffix(typeName, "_TYPE") {
 			typeName = strings.Replace(typeName, "_TYPE", "", 1)
 		}
-		switch typeName {
+		// NOTE(tony): MaxCompute type name is in lower cases
+		switch strings.ToUpper(typeName) {
 		case "VARCHAR", "TEXT":
 			rowData[idx] = new(string)
 		case "INT":
@@ -112,7 +113,7 @@ func newRowValue(columnTypeList []*sql.ColumnType) ([]interface{}, error) {
 		case "DOUBLE":
 			rowData[idx] = new(float64)
 		default:
-			return nil, fmt.Errorf("unsupported database column type: %s", typeName)
+			return nil, fmt.Errorf("newRowValue: unsupported database column type: %s", typeName)
 		}
 	}
 	return rowData, nil
@@ -207,7 +208,7 @@ func fillFieldMeta(columnTypeList []*sql.ColumnType, rowdata []interface{}, fiel
 				}
 			}
 		default:
-			return fmt.Errorf("unsupported database column type: %s", typeName)
+			return fmt.Errorf("fillFieldMeta: unsupported database column type: %s", typeName)
 		}
 	}
 	return nil
