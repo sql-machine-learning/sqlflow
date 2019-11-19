@@ -4,7 +4,8 @@ SHELL := /bin/bash
 
 setup: ## Setup virtual environment for local development
 	python3 -m venv venv
-	source venv/bin/activate
+	source venv/bin/activate \
+	&& $(MAKE) install-requirement
 
 install-requirements:
 	pip install -U -e .
