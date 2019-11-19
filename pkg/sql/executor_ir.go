@@ -518,12 +518,3 @@ func (cw *logChanWriter) Close() {
 func getDefaultSession() *pb.Session {
 	return &pb.Session{}
 }
-
-func errorPipe(err error) *PipeReader {
-	rd, wr := Pipe()
-	go func() {
-		defer wr.Close()
-		wr.Write(err)
-	}()
-	return rd
-}

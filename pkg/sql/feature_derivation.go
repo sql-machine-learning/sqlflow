@@ -96,20 +96,24 @@ func newRowValue(columnTypeList []*sql.ColumnType) ([]interface{}, error) {
 	rowData := make([]interface{}, len(columnTypeList))
 	for idx, ct := range columnTypeList {
 		typeName := ct.DatabaseTypeName()
-		switch typeName {
+		// NOTE(typhoonzero): Hive uses typenames like "XXX_TYPE"
+		if strings.HasSuffix(typeName, "_TYPE") {
+			typeName = strings.Replace(typeName, "_TYPE", "", 1)
+		}
+		// NOTE(tony): MaxCompute type name is in lower cases
+		switch strings.ToUpper(typeName) {
 		case "VARCHAR", "TEXT":
 			rowData[idx] = new(string)
-		// XXX_TYPE is the type name used by Hive
-		case "INT", "INT_TYPE":
+		case "INT":
 			rowData[idx] = new(int32)
 		case "BIGINT", "DECIMAL":
 			rowData[idx] = new(int64)
-		case "FLOAT", "FLOAT_TYPE":
+		case "FLOAT":
 			rowData[idx] = new(float32)
 		case "DOUBLE":
 			rowData[idx] = new(float64)
 		default:
-			return nil, fmt.Errorf("unsupported database column type: %s", typeName)
+			return nil, fmt.Errorf("newRowValue: unsupported database column type: %s", typeName)
 		}
 	}
 	return rowData, nil
@@ -204,7 +208,7 @@ func fillFieldMeta(columnTypeList []*sql.ColumnType, rowdata []interface{}, fiel
 				}
 			}
 		default:
-			return fmt.Errorf("unsupported database column type: %s", typeName)
+			return fmt.Errorf("fillFieldMeta: unsupported database column type: %s", typeName)
 		}
 	}
 	return nil

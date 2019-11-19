@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+set -e
+
 export SQLFLOW_TEST_DB=maxcompute
 export MAXCOMPUTE_ENDPOINT="service.cn.maxcompute.aliyun.com/api?curr_project=gomaxcompute_driver_w7u&scheme=https"
 export MAXCOMPUTE_PROJECT="gomaxcompute_driver_w7u"
