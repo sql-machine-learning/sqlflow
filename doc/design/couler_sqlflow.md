@@ -20,4 +20,51 @@ The migration includes the following parts:
 
 1. Instead of having multiple codegens, let us have only one, `codegen_couler.go`, which translates the [Intermediate Representation](/doc/design/intermediate_representation.md)(IR) of a SQL program into a Couler program. Then, SQLFlow can run the Couler compiler to convert further and execute the workflow.
 
-For example, `codegen_couler.go` converts a `SELECT ... TO TRAIN` statement into the call to `sqlflow.couler.{xgboost,tensorflow.elasticdl}.train(train_ir)`, which `train_ir` is the SQLFlow IR with JSON format.
+For example, `codegen_couler.go` converts a `SELECT ... TO TRAIN` statement into the call to `sqlflow.couler.{xgboost,tensorflow.elasticdl}.train(...)`.
+
+## Couler Step Function
+
+For example, an extended SQL `SELECT ... TO TRAIN xgboost.booster ...` would be compiled into a
+an Couler step function by `codegen_couler.go`:
+
+``` python
+couler.sqlflow.run('echo "SELECT ... TO TRAIN xgboost.booster" | sqlflow -parse | python -m sqlflow_submitter.xgboost.train', image="sqlflow/sqlflow_submitter")
+```
+
+In the above Couler function:
+
+- `sqlflow -parse` is a command-line tool which parses an extended SQL into an SQLFlow IR with JSON format, like:
+
+    ``` json
+    {
+        "dataSource": "mysql://user:pass@192.168.1.1:3306",
+        "select": "SELECT * FROM iris.train",
+        "validation_select": "SELECT * FROM iris.test",
+        "estimator": "XGBOOST.gbtree",
+        "attributes": {"train.num_boost_round": 30},
+        "features": {"sepal_length": {"type": "numeric", "shape": [1], "field_meta":{"name":"sepal_length", "dtype": "float32", "delimiter": "", "is_sparse": False}}...},
+        "label": {"class": {"type": "numeric", "shape": [1], "field_meta": ...}}
+    }
+    ```
+
+- `sqlflow_submitter.xgboost.train` is a Python module that submits an XGboost training job according to the input IR structure.
+- `sqlflow/sqlflow_submitter` is the SQLFlow submitter Docker image which packages:
+    1. the SQLFlow command-line tool to compile the SQL statement into IR structure with JSON format.
+    1. the SQLFlow submitter Python package under `python/sqlflow_submitter` directory.
+
+### Couler Step Function and Model Zoo
+
+For the custom model in [Model Zoo](/doc/design/model_zoo.md), each model would be packaged into a Docker image and
+users can specify this Dockera image in SQL:  `SELECT ... TO TRAIN regressors:v0.2/MyDNNRegressor`, the Couler step function can be like:
+
+``` python
+couler.sqlfow.run('echo "SELECT ... TO TRAIN ... | sqlflow -parse | python -m sqlflow_submitter.tensorflow.train"', image="regressors:v0.2/MyDNNRegressor")
+```
+
+The above customed model Docker image should base on `sqlflow/sqlflow_submitter`. Users can also launch the custom model Docker container on host, it's easy to debug with SQLFlow:
+
+``` bash
+> docker run --rm -it -v$PWD:/models regressors:v0.2/MyDNNRegressor bash
+> sqlflow -parse < a.sql > ir.json
+> python -m sqlflow_submitter.tensorlfow.train < ir.json
+```
