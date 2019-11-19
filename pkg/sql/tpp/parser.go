@@ -114,7 +114,6 @@ func javaParseAndSplit(typ, sql string) ([]string, int, error) {
 		"-i", inputFile,
 		"-o", outputFile)
 	if output, err := cmd.CombinedOutput(); err != nil {
-		fmt.Println(string(output))
 		return nil, -1, fmt.Errorf("%s %v", output, err)
 	}
 
