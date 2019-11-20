@@ -25,7 +25,7 @@ import (
 
 func TestTrainALPSFiller(t *testing.T) {
 	a := assert.New(t)
-	parser := newParser()
+	parser := newExtendedSyntaxParser()
 
 	wndStatement := `SELECT dense, deep, wide FROM kaggle_credit_fraud_training_data 
 		TO TRAIN DNNLinearCombinedClassifier 
@@ -64,7 +64,7 @@ func TestTrainALPSFiller(t *testing.T) {
 
 func TestTrainALPSEmbeddingInitializer(t *testing.T) {
 	a := assert.New(t)
-	parser := newParser()
+	parser := newExtendedSyntaxParser()
 
 	wndStatement := `SELECT deep FROM kaggle_credit_fraud_training_data 
 		TO TRAIN DNNClassifier 
@@ -88,7 +88,7 @@ func TestTrainALPSEmbeddingInitializer(t *testing.T) {
 
 func TestPredALPSFiller(t *testing.T) {
 	a := assert.New(t)
-	parser := newParser()
+	parser := newExtendedSyntaxParser()
 	os.Setenv("OSS_KEY", "sqlflow_key")
 	os.Setenv("OSS_ID", "sqlflow_id")
 	os.Setenv("OSS_ENDPOINT", "http://sqlflow-oss-endpoint")

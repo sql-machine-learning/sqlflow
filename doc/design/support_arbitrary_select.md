@@ -21,7 +21,7 @@ INTO my_dnn_model;
 
 SQLFlow does the following steps.
 
-1. SQLFlow splits the extended SQL statement into its select clause and its train clause. In the above example, the select clause is `SELECT ... a` and the train clause is `TRAIN DNNClassifier ... INTO my_dnn_model`. For the train clause, we check the syntax by our parser at `pkg/sql/parser.go`.
+1. SQLFlow splits the extended SQL statement into its select clause and its train clause. In the above example, the select clause is `SELECT ... a` and the train clause is `TRAIN DNNClassifier ... INTO my_dnn_model`. For the train clause, we check the syntax by our parser at `pkg/sql/extended_syntax_parser.go`.
 
 1. SQLFlow verifies the column in the train clause.
     1. SQLFlow executes the select clause and retrieves the column names and column types of the result. For example, the result of `SELECT ... a` has four columns with names `c1`, `c2`, `id`, and `class`. `c1`, and `c2` are of float types. And `id` and `class` are of integer types.

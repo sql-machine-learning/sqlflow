@@ -36,7 +36,7 @@ func ParseAndSplit(driver, sql string) ([]string, int, error) {
 		return tiDBParseAndSplit(sql)
 	case "hive":
 		return javaParseAndSplit("hiveql", sql)
-	case "calcite":
+	case "calcite", "maxcompute":
 		return javaParseAndSplit("calcite", sql)
 	default:
 		return nil, -1, fmt.Errorf("unsupported driver type %s", driver)
