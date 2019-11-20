@@ -122,7 +122,7 @@ func runSingleSQLIR(wr *PipeWriter, ir codegen.SingleSQLIR, db *DB, modelDir str
 
 // TODO(tony): remove the following function after all submitter has been moved to IR
 func runThirdPartySubmitterTrain(wr *PipeWriter, sql string, db *DB, cwd string, session *pb.Session) error {
-	pr, e := newParser().Parse(sql)
+	pr, e := newExtendedSyntaxParser().Parse(sql)
 	if e != nil {
 		return e
 	}
@@ -197,7 +197,7 @@ func runTrainIR(trainIR *codegen.TrainIR, wr *PipeWriter, db *DB, modelDir strin
 
 func runPredictIR(predIR *codegen.PredictIR, wr *PipeWriter, db *DB, modelDir string, session *pb.Session) error {
 	// TODO(typhoonzero): remove below twice parse when all submitters moved to IR.
-	pr, e := newParser().Parse(predIR.OriginalSQL)
+	pr, e := newExtendedSyntaxParser().Parse(predIR.OriginalSQL)
 	if e != nil {
 		return e
 	}
@@ -269,7 +269,7 @@ func runPredictIR(predIR *codegen.PredictIR, wr *PipeWriter, db *DB, modelDir st
 }
 
 func runAnalyzeIR(analyzeIR *codegen.AnalyzeIR, wr *PipeWriter, db *DB, modelDir string, session *pb.Session) error {
-	pr, e := newParser().Parse(analyzeIR.OriginalSQL)
+	pr, e := newExtendedSyntaxParser().Parse(analyzeIR.OriginalSQL)
 	if e != nil {
 		return e
 	}
@@ -453,7 +453,7 @@ func loadModelMeta(pr *extendedSelect, db *DB, cwd, modelDir, modelName string) 
 
 	// Parse the training SELECT statement used to train
 	// the model for the prediction.
-	tr, e := newParser().Parse(m.TrainSelect)
+	tr, e := newExtendedSyntaxParser().Parse(m.TrainSelect)
 	if e != nil {
 		return nil, nil, fmt.Errorf("parse: TrainSelect %v raise %v", m.TrainSelect, e)
 	}

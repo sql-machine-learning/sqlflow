@@ -33,7 +33,7 @@ func extendedSyntaxParse(sql string) (*extendedSelect, int, error) {
 		return nil, -1, err
 	}
 
-	pr, err := newParser().Parse(s[0])
+	pr, err := newExtendedSyntaxParser().Parse(s[0])
 	if err != nil {
 		return nil, -1, err
 	}

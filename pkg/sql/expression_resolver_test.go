@@ -41,7 +41,7 @@ func statementWithAttrs(attrs string) string {
 
 func TestExecResource(t *testing.T) {
 	a := assert.New(t)
-	parser := newParser()
+	parser := newExtendedSyntaxParser()
 	s := statementWithAttrs("exec.worker_num = 2")
 	r, e := parser.Parse(s)
 	a.NoError(e)
@@ -53,7 +53,7 @@ func TestExecResource(t *testing.T) {
 
 func TestResolveAttrs(t *testing.T) {
 	a := assert.New(t)
-	parser := newParser()
+	parser := newExtendedSyntaxParser()
 
 	s := statementWithAttrs("estimator.hidden_units = [10, 20]")
 	r, e := parser.Parse(s)
@@ -99,7 +99,7 @@ func TestResolveAttrs(t *testing.T) {
 
 func TestBucketColumn(t *testing.T) {
 	a := assert.New(t)
-	parser := newParser()
+	parser := newExtendedSyntaxParser()
 
 	normal := statementWithColumn("BUCKET(NUMERIC(c1, 10), [1, 10])")
 	badInput := statementWithColumn("BUCKET(c1, [1, 10])")
@@ -134,7 +134,7 @@ func TestBucketColumn(t *testing.T) {
 
 func TestCrossColumn(t *testing.T) {
 	a := assert.New(t)
-	parser := newParser()
+	parser := newExtendedSyntaxParser()
 
 	normal := statementWithColumn("cross([BUCKET(NUMERIC(c1, 10), [1, 10]), c5], 20)")
 	badInput := statementWithColumn("cross(c1, 20)")
@@ -173,7 +173,7 @@ func TestCrossColumn(t *testing.T) {
 
 func TestCatIdColumn(t *testing.T) {
 	a := assert.New(t)
-	parser := newParser()
+	parser := newExtendedSyntaxParser()
 
 	normal := statementWithColumn("CATEGORY_ID(c1, 100)")
 	badKey := statementWithColumn("CATEGORY_ID([100], 100)")
@@ -207,7 +207,7 @@ func TestCatIdColumn(t *testing.T) {
 
 func TestCatIdColumnWithColumnSpec(t *testing.T) {
 	a := assert.New(t)
-	parser := newParser()
+	parser := newExtendedSyntaxParser()
 
 	dense := statementWithColumn("CATEGORY_ID(DENSE(col1, 128, COMMA), 100)")
 
@@ -223,7 +223,7 @@ func TestCatIdColumnWithColumnSpec(t *testing.T) {
 
 func TestEmbeddingColumn(t *testing.T) {
 	a := assert.New(t)
-	parser := newParser()
+	parser := newExtendedSyntaxParser()
 
 	normal := statementWithColumn("EMBEDDING(CATEGORY_ID(c1, 100), 200, mean)")
 	badInput := statementWithColumn("EMBEDDING(c1, 100)")
@@ -260,7 +260,7 @@ func TestEmbeddingColumn(t *testing.T) {
 
 func TestNumericColumn(t *testing.T) {
 	a := assert.New(t)
-	parser := newParser()
+	parser := newExtendedSyntaxParser()
 
 	normal := statementWithColumn("NUMERIC(c2, [5, 10])")
 	moreArgs := statementWithColumn("NUMERIC(c1, 100, args)")
@@ -294,7 +294,7 @@ func TestNumericColumn(t *testing.T) {
 
 func TestFeatureSpec(t *testing.T) {
 	a := assert.New(t)
-	parser := newParser()
+	parser := newExtendedSyntaxParser()
 
 	denseStatement := statementWithColumn("DENSE(c2, 5, comma)")
 	sparseStatement := statementWithColumn("SPARSE(c1, 100, comma)")

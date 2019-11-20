@@ -26,7 +26,7 @@ import (
 
 func TestGenerateTrainIR(t *testing.T) {
 	a := assert.New(t)
-	parser := newParser()
+	parser := newExtendedSyntaxParser()
 
 	normal := `
 	SELECT c1, c2, c3, c4
@@ -167,7 +167,7 @@ func TestGeneratePredictIR(t *testing.T) {
 		t.Skip(fmt.Sprintf("%s: skip Hive test", getEnv("SQLFLOW_TEST_DB", "mysql")))
 	}
 	a := assert.New(t)
-	parser := newParser()
+	parser := newExtendedSyntaxParser()
 	predSQL := `SELECT * FROM iris.test
 TO PREDICT iris.predict.class
 USING sqlflow_models.mymodel;`
@@ -223,7 +223,7 @@ INTO sqlflow_models.my_xgboost_model;
 	a.NoError(e)
 	a.True(goodStream(stream.ReadAll()))
 
-	pr, e := newParser().Parse(`
+	pr, e := newExtendedSyntaxParser().Parse(`
 	SELECT *
 	FROM iris.train
 	TO EXPLAIN sqlflow_models.my_xgboost_model

@@ -65,7 +65,7 @@ func TestFeatureDerivation(t *testing.T) {
 		a.Fail("error creating test data: %v", err)
 	}
 
-	parser := newParser()
+	parser := newExtendedSyntaxParser()
 
 	normal := `select c1, c2, c3, c4, c5, c6, class from feature_derivation_case.train
 	TO TRAIN DNNClassifier
@@ -141,7 +141,7 @@ func TestFeatureDerivation(t *testing.T) {
 	COLUMN c1, c2, CROSS([c1, c2], 256)
 	LABEL class INTO model_table;`
 
-	parser = newParser()
+	parser = newExtendedSyntaxParser()
 	r, e = parser.Parse(crossSQL)
 	a.NoError(e)
 	trainIR, err = generateTrainIR(r, "mysql://root:root@tcp/?maxAllowedPacket=0")
@@ -191,7 +191,7 @@ func TestFeatureDerivationNoColumnClause(t *testing.T) {
 		a.Fail("error creating test data: %v", err)
 	}
 
-	parser := newParser()
+	parser := newExtendedSyntaxParser()
 
 	normal := `select * from iris.train
 	TO TRAIN DNNClassifier
