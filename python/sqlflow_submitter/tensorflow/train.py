@@ -30,7 +30,6 @@ from sqlflow_submitter.db import connect_with_data_source, db_generator
 import logging
 tf.get_logger().setLevel(logging.ERROR)
 
-
 def get_dtype(type_str):
     if type_str == "float32":
         return tf.float32
