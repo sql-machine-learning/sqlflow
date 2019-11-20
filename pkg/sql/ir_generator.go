@@ -23,6 +23,19 @@ import (
 	"sqlflow.org/sqlflow/pkg/sql/codegen"
 )
 
+func generateTrainIRWithInferredColumns(slct *extendedSelect, connStr string) (*codegen.TrainIR, error) {
+	trainIR, err := generateTrainIR(slct, connStr)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := InferFeatureColumns(trainIR); err != nil {
+		return nil, err
+	}
+
+	return trainIR, nil
+}
+
 func generateTrainIR(slct *extendedSelect, connStr string) (*codegen.TrainIR, error) {
 	tc := slct.trainClause
 	estimator := tc.estimator
@@ -30,7 +43,7 @@ func generateTrainIR(slct *extendedSelect, connStr string) (*codegen.TrainIR, er
 	if err != nil {
 		return nil, err
 	}
-	// TODO(typhoonzero): call feature derivation here and verify the fields are all valid.
+
 	fcMap := make(map[string][]codegen.FeatureColumn)
 	for target, columnList := range tc.columns {
 		fcList := []codegen.FeatureColumn{}
@@ -86,7 +99,7 @@ func generateTrainIRByModel(slct *extendedSelect, connStr, cwd, modelDir, model 
 	if err != nil {
 		return nil, err
 	}
-	return generateTrainIR(slctWithTrain, connStr)
+	return generateTrainIRWithInferredColumns(slctWithTrain, connStr)
 }
 
 func generatePredictIR(slct *extendedSelect, connStr string, modelDir string) (*codegen.PredictIR, error) {
@@ -635,7 +648,7 @@ func programToIR(sqls []string, connStr, modelDir string) (codegen.SQLProgramIR,
 				return nil, err
 			}
 			if parsed.train {
-				ir, err := generateTrainIR(parsed, connStr)
+				ir, err := generateTrainIRWithInferredColumns(parsed, connStr)
 				if err != nil {
 					return nil, err
 				}
