@@ -31,6 +31,27 @@ public class HiveQLParserAdaptorTest {
             + "        GROUP BY orderNumber \n"
             + "        HAVING SUM(priceEach * quantityOrdered) > 60000)");
 
+    {
+      String sql_program =
+          "SELECT *\n"
+              + "FROM iris.train\n"
+              + "TO TRAIN xgboost.gbtree\n"
+              + "WITH\n"
+              + "    objective=\"multi:softprob\",\n"
+              + "    train.num_boost_round = 30,\n"
+              + "    eta = 0.4,\n"
+              + "    num_class = 3\n"
+              + "COLUMN sepal_length, sepal_width, petal_length, petal_width\n"
+              + "LABEL class \n"
+              + "INTO sqlflow_models.my_xgboost_model;";
+      String sql = "SELECT *\n" + "FROM iris.train\n";
+      ParseResult parse_result = parser.ParseAndSplit(sql_program);
+      assertEquals(25, parse_result.Position);
+      assertEquals("", parse_result.Error);
+      assertEquals(1, parse_result.Statements.size());
+      assertEquals(sql, parse_result.Statements.get(0));
+    }
+
     // one standard SQL statement
     for (String sql : standard_select) {
       String sql_program = String.format("%s;", sql);

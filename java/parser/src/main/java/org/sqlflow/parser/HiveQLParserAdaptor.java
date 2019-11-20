@@ -61,7 +61,7 @@ public class HiveQLParserAdaptor {
           // Consider select 1 to train, Calcite parser raise error at letter t of "to",
           // while HiveQL parser raise error at the white space before "to". As a result,
           // we put `+ 1` on the `epos`.
-          epos = posToIndex(sql, re.line, re.charPositionInLine) + 1;
+          epos = posToIndex(sql, re.line, re.charPositionInLine + 1);
         } catch (Exception all) {
           return parseResultError("Cannot parse the error message from HiveQL parser");
         }

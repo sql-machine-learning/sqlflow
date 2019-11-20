@@ -40,6 +40,10 @@ type EndOfExecution struct {
 	Statement string
 }
 
+func submitter() string {
+	return os.Getenv("SQLFLOW_submitter")
+}
+
 // RunSQLProgram run a SQL program.
 func RunSQLProgram(sqlProgram string, db *DB, modelDir string, session *pb.Session) *PipeReader {
 	rd, wr := Pipe()
@@ -66,7 +70,7 @@ func runSQLProgram(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, s
 	}
 
 	connStr := fmt.Sprintf("%s://%s", db.driverName, db.dataSourceName)
-	programIR, err := programToIR(sqls, connStr, modelDir)
+	programIR, err := programToIR(sqls, connStr, modelDir, submitter() != "pai")
 	if err != nil {
 		return err
 	}
@@ -134,18 +138,15 @@ func runTrainIR(trainIR *codegen.TrainIR, wr *PipeWriter, db *DB, modelDir strin
 	}
 	defer os.RemoveAll(cwd)
 
-	if os.Getenv("SQLFLOW_submitter") == "elasticdl" {
+	if submitter() == "elasticdl" {
 		return elasticDLTrain(wr, pr, db, cwd, session)
 	}
 	// FIXME(weiguo): temporary branch to alps
-	if os.Getenv("SQLFLOW_submitter") == "alps" {
+	if submitter() == "alps" {
 		return alpsTrain(wr, pr, db, cwd, session)
 	}
 	// ---------------------- run the IR ---------------------------
 	var program bytes.Buffer
-	if err := InferFeatureColumns(trainIR); err != nil {
-		return err
-	}
 	if trainIR.ValidationSelect == "" {
 		trainIR.ValidationSelect = trainIR.Select
 	}
@@ -156,7 +157,7 @@ func runTrainIR(trainIR *codegen.TrainIR, wr *PipeWriter, db *DB, modelDir strin
 		}
 		program.WriteString(code)
 	} else {
-		if os.Getenv("SQLFLOW_submitter") != "pai" {
+		if submitter() != "pai" {
 			code, err := tensorflow.Train(trainIR)
 			if err != nil {
 				return err
@@ -183,7 +184,7 @@ func runTrainIR(trainIR *codegen.TrainIR, wr *PipeWriter, db *DB, modelDir strin
 	if e := cmd.Run(); e != nil {
 		return fmt.Errorf("predict failed: %v\n %s", e, buf.String())
 	}
-	if os.Getenv("SQLFLOW_submitter") != "pai" {
+	if submitter() != "pai" {
 		m := model{workDir: cwd, TrainSelect: trainIR.OriginalSQL}
 		if modelDir != "" {
 			return m.saveTar(modelDir, pr.save)
@@ -206,14 +207,14 @@ func runPredictIR(predIR *codegen.PredictIR, wr *PipeWriter, db *DB, modelDir st
 	}
 	defer os.RemoveAll(cwd)
 
-	if os.Getenv("SQLFLOW_submitter") == "alps" {
+	if submitter() == "alps" {
 		return alpsPred(wr, pr, db, cwd, session)
-	} else if os.Getenv("SQLFLOW_submitter") == "elasticdl" {
+	} else if submitter() == "elasticdl" {
 		return elasticDLPredict(wr, pr, db, cwd, session)
 	}
 	// ------------------- run pred IR -----------------------
 	var program bytes.Buffer
-	if os.Getenv("SQLFLOW_submitter") == "pai" {
+	if submitter() == "pai" {
 		code, err := pai.Predict(predIR, pr.model, cwd)
 		if err != nil {
 			return err
@@ -229,9 +230,6 @@ func runPredictIR(predIR *codegen.PredictIR, wr *PipeWriter, db *DB, modelDir st
 		pr, _, e = loadModelMeta(pr, db, cwd, modelDir, pr.model)
 		if e != nil {
 			return fmt.Errorf("loadModelMeta %v", e)
-		}
-		if err := InferFeatureColumns(predIR.TrainIR); err != nil {
-			return err
 		}
 		if isXGBoostModel(predIR.TrainIR.Estimator) {
 			code, err := xgboost.Pred(predIR, session)
@@ -445,10 +443,6 @@ func createPredictionTableFromIR(predIR *codegen.PredictIR, db *DB, session *pb.
 }
 
 func loadModelMeta(pr *extendedSelect, db *DB, cwd, modelDir, modelName string) (*extendedSelect, fieldTypes, error) {
-	if os.Getenv("SQLFLOW_submitter") == "pai" {
-		// load model meta data in python
-		return pr, fieldTypes{}, nil
-	}
 	var m *model
 	var e error
 	if modelDir != "" {

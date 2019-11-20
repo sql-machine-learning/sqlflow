@@ -23,6 +23,19 @@ import (
 	"sqlflow.org/sqlflow/pkg/sql/codegen"
 )
 
+func generateTrainIRWithInferredColumns(slct *extendedSelect, connStr string) (*codegen.TrainIR, error) {
+	trainIR, err := generateTrainIR(slct, connStr)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := InferFeatureColumns(trainIR); err != nil {
+		return nil, err
+	}
+
+	return trainIR, nil
+}
+
 func generateTrainIR(slct *extendedSelect, connStr string) (*codegen.TrainIR, error) {
 	tc := slct.trainClause
 	estimator := tc.estimator
@@ -30,7 +43,7 @@ func generateTrainIR(slct *extendedSelect, connStr string) (*codegen.TrainIR, er
 	if err != nil {
 		return nil, err
 	}
-	// TODO(typhoonzero): call feature derivation here and verify the fields are all valid.
+
 	fcMap := make(map[string][]codegen.FeatureColumn)
 	for target, columnList := range tc.columns {
 		fcList := []codegen.FeatureColumn{}
@@ -86,10 +99,10 @@ func generateTrainIRByModel(slct *extendedSelect, connStr, cwd, modelDir, model 
 	if err != nil {
 		return nil, err
 	}
-	return generateTrainIR(slctWithTrain, connStr)
+	return generateTrainIRWithInferredColumns(slctWithTrain, connStr)
 }
 
-func generatePredictIR(slct *extendedSelect, connStr string, modelDir string) (*codegen.PredictIR, error) {
+func generatePredictIR(slct *extendedSelect, connStr string, modelDir string, inferByModel bool) (*codegen.PredictIR, error) {
 	attrMap, err := generateAttributeIR(&slct.predAttrs)
 	if err != nil {
 		return nil, err
@@ -102,9 +115,12 @@ func generatePredictIR(slct *extendedSelect, connStr string, modelDir string) (*
 	}
 	defer os.RemoveAll(cwd)
 
-	trainIR, err := generateTrainIRByModel(slct, connStr, cwd, modelDir, slct.model)
-	if err != nil {
-		return nil, err
+	var trainIR *codegen.TrainIR
+	if inferByModel {
+		trainIR, err = generateTrainIRByModel(slct, connStr, cwd, modelDir, slct.model)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	resultTable, resultCol, err := parseResultTable(slct.into)
@@ -122,7 +138,7 @@ func generatePredictIR(slct *extendedSelect, connStr string, modelDir string) (*
 	}, nil
 }
 
-func generateAnalyzeIR(slct *extendedSelect, connStr, modelDir string) (*codegen.AnalyzeIR, error) {
+func generateAnalyzeIR(slct *extendedSelect, connStr, modelDir string, inferByModel bool) (*codegen.AnalyzeIR, error) {
 	attrs, err := generateAttributeIR(&slct.explainAttrs)
 	if err != nil {
 		return nil, err
@@ -135,9 +151,12 @@ func generateAnalyzeIR(slct *extendedSelect, connStr, modelDir string) (*codegen
 	}
 	defer os.RemoveAll(cwd)
 
-	trainIR, err := generateTrainIRByModel(slct, connStr, cwd, modelDir, slct.trainedModel)
-	if err != nil {
-		return nil, err
+	var trainIR *codegen.TrainIR
+	if inferByModel {
+		trainIR, err = generateTrainIRByModel(slct, connStr, cwd, modelDir, slct.trainedModel)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return &codegen.AnalyzeIR{
 		DataSource: connStr,
@@ -622,7 +641,7 @@ func parseResultTable(intoStatement string) (string, string, error) {
 }
 
 // programToIR generate a list of IRs from a SQL program
-func programToIR(sqls []string, connStr, modelDir string) (codegen.SQLProgramIR, error) {
+func programToIR(sqls []string, connStr, modelDir string, inferByModel bool) (codegen.SQLProgramIR, error) {
 	IRs := codegen.SQLProgramIR{}
 	for _, sql := range sqls {
 		splittedSQL, err := splitExtendedSQL(sql)
@@ -635,21 +654,21 @@ func programToIR(sqls []string, connStr, modelDir string) (codegen.SQLProgramIR,
 				return nil, err
 			}
 			if parsed.train {
-				ir, err := generateTrainIR(parsed, connStr)
+				ir, err := generateTrainIRWithInferredColumns(parsed, connStr)
 				if err != nil {
 					return nil, err
 				}
 				ir.OriginalSQL = sql
 				IRs = append(IRs, ir)
 			} else if parsed.analyze {
-				ir, err := generateAnalyzeIR(parsed, connStr, modelDir)
+				ir, err := generateAnalyzeIR(parsed, connStr, modelDir, inferByModel)
 				if err != nil {
 					return nil, err
 				}
 				ir.OriginalSQL = sql
 				IRs = append(IRs, ir)
 			} else {
-				ir, err := generatePredictIR(parsed, connStr, modelDir)
+				ir, err := generatePredictIR(parsed, connStr, modelDir, inferByModel)
 				if err != nil {
 					return nil, err
 				}
