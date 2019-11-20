@@ -96,14 +96,14 @@ func hasUnknownParameters(code string, list []string) bool {
 	return false
 }
 
-func TestSubmitCodegen(t *testing.T) {
+func TestWrapperCodegen(t *testing.T) {
 	a := assert.New(t)
 	// cwd is used to store generated scripts
 	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
 	a.NoError(err)
 	defer os.RemoveAll(cwd)
 
-	code, err := submit("", dataSource, "my_dnn_model", cwd)
+	code, err := wrapper("", dataSource, "my_dnn_model", cwd)
 	a.NoError(err)
 	a.True(strings.Contains(code, `assert driver == "maxcompute"`))
 
@@ -115,7 +115,7 @@ func TestTrainCodegen(t *testing.T) {
 	a := assert.New(t)
 	ir := mockTrainIR()
 
-	paiTfCode, err := doTrain(ir, "my_dnn_model", ".")
+	paiTfCode, err := doTrain(ir, "my_dnn_model")
 	a.NoError(err)
 
 	tfCode, err := tensorflow.Train(ir)
@@ -130,7 +130,7 @@ func TestPredictCodegen(t *testing.T) {
 	a := assert.New(t)
 	ir := mockPredIR()
 
-	paiTfCode, err := doPredict(ir, "my_dnn_model", ".")
+	paiTfCode, err := doPredict(ir, "my_dnn_model")
 	a.NoError(err)
 	a.False(hasUnknownParameters(paiTfCode, knownPredictParams))
 

@@ -26,8 +26,8 @@ import (
 
 const entryFile = "entry.py"
 
-// wrapper generates a Python program for train a TensorFlow model.
-func submit(code, dataSource, modelName, cwd string) (string, error) {
+// wrapper generates a Python program for submit TensorFlow tasks to PAI.
+func wrapper(code, dataSource, modelName, cwd string) (string, error) {
 	f, err := os.Create(filepath.Join(cwd, entryFile))
 	if err != nil {
 		return "", fmt.Errorf("Create python code failed")
@@ -35,8 +35,8 @@ func submit(code, dataSource, modelName, cwd string) (string, error) {
 	f.WriteString(code)
 	f.Close()
 
-	var tpl = template.Must(template.New("Submit").Parse(tfSubmitTmplText))
-	filler := submitFiller{
+	var tpl = template.Must(template.New("Submit").Parse(tfWrapperTmplText))
+	filler := wrapperFiller{
 		DataSource: dataSource,
 		ModelName:  modelName,
 		EntryFile:  entryFile,
@@ -51,14 +51,14 @@ func submit(code, dataSource, modelName, cwd string) (string, error) {
 
 // Train generates a Python program for train a TensorFlow model.
 func Train(ir *codegen.TrainIR, modelName, cwd string) (string, error) {
-	program, err := doTrain(ir, modelName, cwd)
+	program, err := doTrain(ir, modelName)
 	if err != nil {
 		return "", err
 	}
-	return submit(program, ir.DataSource, modelName, cwd)
+	return wrapper(program, ir.DataSource, modelName, cwd)
 }
 
-func doTrain(ir *codegen.TrainIR, modelName, cwd string) (string, error) {
+func doTrain(ir *codegen.TrainIR, modelName string) (string, error) {
 	code, err := tensorflow.Train(ir)
 	if err != nil {
 		return "", err
@@ -82,14 +82,14 @@ func doTrain(ir *codegen.TrainIR, modelName, cwd string) (string, error) {
 
 // Predict generates a Python program for train a TensorFlow model.
 func Predict(ir *codegen.PredictIR, modelName, cwd string) (string, error) {
-	program, err := doPredict(ir, modelName, cwd)
+	program, err := doPredict(ir, modelName)
 	if err != nil {
 		return "", err
 	}
-	return submit(program, ir.DataSource, modelName, cwd)
+	return wrapper(program, ir.DataSource, modelName, cwd)
 }
 
-func doPredict(ir *codegen.PredictIR, modelName, cwd string) (string, error) {
+func doPredict(ir *codegen.PredictIR, modelName string) (string, error) {
 	var tpl = template.Must(template.New("Predict").Parse(tfPredictTmplText))
 	filler := predictFiller{
 		DataSource:  ir.DataSource,

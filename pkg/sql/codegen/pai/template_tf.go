@@ -13,7 +13,7 @@
 
 package pai
 
-type submitFiller struct {
+type wrapperFiller struct {
 	DataSource string
 	EntryFile  string
 	ModelName  string
@@ -34,7 +34,7 @@ type predictFiller struct {
 	ResultTable string
 }
 
-const tfSubmitTmplText = `
+const tfWrapperTmplText = `
 import os
 import subprocess
 import tarfile
