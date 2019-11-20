@@ -84,6 +84,9 @@ type TrainIR struct {
 	Select string
 	// ValidationSelect specifies the query for fetching the validation data. For example, "select * from iris.val;".
 	ValidationSelect string
+	// ModelImage is the name of the model's Docker image, for example `TO TRAIN a_data_scientist/regressors:v0.2/MyDNNRegressor`
+	// the name "a_data_scientist/regressors:v0.2" is a Docker image.
+	ModelImage string
 	// Estimator specifies the estimator type. For example, after parsing "select ... train DNNClassifier WITH ...",
 	// the Estimator will be "DNNClassifier".
 	Estimator string
