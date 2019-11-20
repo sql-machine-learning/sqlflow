@@ -34,6 +34,9 @@ go install ./...
 # TODO(Yancey1989): enable all the unit test for the maxcompute
 SQLFLOW_log_level=debug go test -p 1 -v ./cmd/... -run TestEnd2EndMaxCompute
 
+export SQLFLOW_submitter=pai
+SQLFLOW_log_level=debug go test -p 1 -v ./cmd/... -run TestEnd2EndMaxCompute
+
 # End-to-end test for ElasticDL
 export SQLFLOW_submitter=elasticdl
 cd /elasticdl
