@@ -143,20 +143,12 @@ func runTrainIR(trainIR *codegen.TrainIR, wr *PipeWriter, db *DB, modelDir strin
 	// ---------------------- run the IR ---------------------------
 	var program bytes.Buffer
 	if isXGBoostModel(trainIR.Estimator) {
-		err := InferFeatureColumns(trainIR)
-		if err != nil {
-			return err
-		}
 		code, err := xgboost.Train(trainIR)
 		if err != nil {
 			return err
 		}
 		program.WriteString(code)
 	} else {
-		err := InferFeatureColumns(trainIR)
-		if err != nil {
-			return err
-		}
 		if trainIR.ValidationSelect == "" {
 			trainIR.ValidationSelect = trainIR.Select
 		}
@@ -213,10 +205,6 @@ func runPredictIR(predIR *codegen.PredictIR, wr *PipeWriter, db *DB, modelDir st
 
 	var program bytes.Buffer
 	if isXGBoostModel(predIR.TrainIR.Estimator) {
-		err = InferFeatureColumns(predIR.TrainIR)
-		if err != nil {
-			return err
-		}
 		code, err := xgboost.Pred(predIR, session)
 		if err != nil {
 			return err
@@ -227,10 +215,6 @@ func runPredictIR(predIR *codegen.PredictIR, wr *PipeWriter, db *DB, modelDir st
 		}
 		program.WriteString(code)
 	} else {
-		err = InferFeatureColumns(predIR.TrainIR)
-		if err != nil {
-			return err
-		}
 		code, err := tensorflow.Pred(predIR, session)
 		if err != nil {
 			return err
