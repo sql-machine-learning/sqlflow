@@ -164,7 +164,7 @@ func TestGenerateTrainIR(t *testing.T) {
 
 func TestGenerateTrainIRModelZoo(t *testing.T) {
 	a := assert.New(t)
-	parser := newParser()
+	parser := newExtendedSyntaxParser()
 
 	normal := `
 	SELECT c1, c2, c3, c4
