@@ -44,6 +44,7 @@ jobs:
         - docker pull sqlflow/sqlflow:latest && docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile .
         - docker run --rm -v $GOPATH:/go -w /go/src/sqlflow.org/sqlflow sqlflow:latest bash scripts/test_units.sh
         - docker run --rm -v $GOPATH:/go -w /go/src/sqlflow.org/sqlflow sqlflow:latest bash scripts/upload_coveralls.sh
+        - docker run --rm -v $GOPATH:/go -w /go/src/sqlflow.org/sqlflow sqlflow:latest bash scripts/test_couler.sh
     - # run more parallel tests in the same stage:
       env: SQLFLOW_TEST_DB=hive
       script:
