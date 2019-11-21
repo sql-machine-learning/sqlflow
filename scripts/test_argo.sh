@@ -14,26 +14,21 @@
 
 set -e
 
-# Set up Argo
-kubectl create namespace argo
-kubectl apply -n argo -f https://raw.githubusercontent.com/argoproj/argo/stable/manifests/install.yaml
-kubectl create rolebinding default-admin --clusterrole=admin --serviceaccount=default:default
-
 CHECK_INTERVAL_SECS=2
 MESSAGE=$(kubectl create -f https://raw.githubusercontent.com/argoproj/argo/master/examples/hello-world.yaml)
-POD_NAME=$(echo ${MESSAGE} | cut -d ' ' -f 1 | cut -d '/' -f 2)
+WORKFLOW_NAME=$(echo ${MESSAGE} | cut -d ' ' -f 1 | cut -d '/' -f 2)
 
-echo POD_NAME ${POD_NAME}
+echo WORKFLOW_NAME ${WORKFLOW_NAME}
 
 for i in {1..30}; do
-    JOB_STATUS=$(kubectl get pod ${POD_NAME} -o jsonpath='{.status.phase}')
+    WORKFLOW_STATUS=$(kubectl get wf ${WORKFLOW_NAME} -o jsonpath='{.status.phase}')
 
-    if [[ "$JOB_STATUS" == "Succeeded" ]]; then
-        echo "Argo job succeeded."
-        kubectl delete pod ${POD_NAME}
+    if [[ "$WORKFLOW_STATUS" == "Succeeded" ]]; then
+        echo "Argo workflow succeeded."
+        kubectl delete wf ${WORKFLOW_NAME}
         exit 0
     else
-        echo "Argo job ${POD_NAME} ${JOB_STATUS}"
+        echo "Argo workflow ${WORKFLOW_NAME} ${WORKFLOW_STATUS}"
         sleep ${CHECK_INTERVAL_SECS}
     fi
 done
