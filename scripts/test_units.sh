@@ -28,11 +28,11 @@ python -c "import sqlflow_submitter.db"
 
 go generate ./...
 
-echo "checking pkg/sql/parser.go is up-to-date"
+echo "checking pkg/sql/extended_syntax_parser.go is up-to-date"
 # re-add the copyright header since goyacc generates a new parser.go
-python scripts/copyright.py pkg/sql/parser.go
+python scripts/copyright.py pkg/sql/extended_syntax_parser.go
 # exits with 1 if there were differences and 0 means no differences.
-git diff --exit-code pkg/sql/parser.go
+git diff --exit-code pkg/sql/extended_syntax_parser.go
 
 go install ./...
 

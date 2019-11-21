@@ -38,7 +38,12 @@ func generateTrainIRWithInferredColumns(slct *extendedSelect, connStr string) (*
 
 func generateTrainIR(slct *extendedSelect, connStr string) (*codegen.TrainIR, error) {
 	tc := slct.trainClause
-	estimator := tc.estimator
+	modelURI := tc.estimator
+	// get model Docker image name
+	modelParts := strings.Split(modelURI, "/")
+	modelImageName := strings.Join(modelParts[0:len(modelParts)-1], "/")
+	modelName := modelParts[len(modelParts)-1]
+
 	attrList, err := generateAttributeIR(&slct.trainAttrs)
 	if err != nil {
 		return nil, err
@@ -81,10 +86,12 @@ func generateTrainIR(slct *extendedSelect, connStr string) (*codegen.TrainIR, er
 		// TODO(weiguoz): This is a temporary implement. Specifying the
 		// validation dataset by keyword `VALIDATE` is the final solution.
 		ValidationSelect: vslct,
-		Estimator:        estimator,
+		ModelImage:       modelImageName,
+		Estimator:        modelName,
 		Attributes:       attrList,
 		Features:         fcMap,
 		Label:            label,
+		Into:             slct.save,
 	}, nil
 }
 
@@ -641,42 +648,35 @@ func parseResultTable(intoStatement string) (string, string, error) {
 }
 
 // programToIR generate a list of IRs from a SQL program
-func programToIR(sqls []string, connStr, modelDir string, inferByModel bool) (codegen.SQLProgramIR, error) {
+func programToIR(sqls []statementParseResult, connStr, modelDir string, inferByModel bool) (codegen.SQLProgramIR, error) {
 	IRs := codegen.SQLProgramIR{}
 	for _, sql := range sqls {
-		splittedSQL, err := splitExtendedSQL(sql)
-		if err != nil {
-			return nil, err
-		}
-		if len(splittedSQL) == 2 {
-			parsed, err := newParser().Parse(sql)
-			if err != nil {
-				return nil, err
-			}
+		if sql.extended != nil {
+			parsed := sql.extended
 			if parsed.train {
 				ir, err := generateTrainIRWithInferredColumns(parsed, connStr)
 				if err != nil {
 					return nil, err
 				}
-				ir.OriginalSQL = sql
+				ir.OriginalSQL = sql.original
 				IRs = append(IRs, ir)
 			} else if parsed.analyze {
 				ir, err := generateAnalyzeIR(parsed, connStr, modelDir, inferByModel)
 				if err != nil {
 					return nil, err
 				}
-				ir.OriginalSQL = sql
+				ir.OriginalSQL = sql.original
 				IRs = append(IRs, ir)
 			} else {
 				ir, err := generatePredictIR(parsed, connStr, modelDir, inferByModel)
 				if err != nil {
 					return nil, err
 				}
-				ir.OriginalSQL = sql
+				ir.OriginalSQL = sql.original
 				IRs = append(IRs, ir)
 			}
 		} else {
-			standardSQL := codegen.StandardSQLIR(sql)
+			standardSQL := codegen.StandardSQLIR(sql.standard)
 			IRs = append(IRs, &standardSQL)
 		}
 	}

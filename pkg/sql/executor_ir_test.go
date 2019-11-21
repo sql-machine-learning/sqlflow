@@ -193,9 +193,9 @@ USING sqlflow_models.my_dense_dnn_model
 
 func TestCreatePredictionTable(t *testing.T) {
 	a := assert.New(t)
-	trainParsed, e := newParser().Parse(testTrainSelectIris)
+	trainParsed, e := newExtendedSyntaxParser().Parse(testTrainSelectIris)
 	a.NoError(e)
-	predParsed, e := newParser().Parse(testPredictSelectIris)
+	predParsed, e := newExtendedSyntaxParser().Parse(testPredictSelectIris)
 	a.NoError(e)
 	predParsed.trainClause = trainParsed.trainClause
 	a.NoError(createPredictionTable(predParsed, testDB, nil))

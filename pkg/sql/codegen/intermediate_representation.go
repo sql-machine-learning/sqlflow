@@ -70,10 +70,6 @@ type SingleSQLIR interface {
 }
 
 // TrainIR is the intermediate representation for code generation of a training job.
-//
-// Please be aware that the TrainIR intentionally excludes the model table name in the
-// INTO clause. The sql package will save the output files of a generated Python program.
-// For prediction and analysis jobs, the sql will restore an identical working directly.
 type TrainIR struct {
 	// OriginalSQL record the original SQL statement used to get current IR result
 	// FIXME(typhoonzero): OriginalSQL is a temporary field. Can remove this when all moved to IR
@@ -84,6 +80,9 @@ type TrainIR struct {
 	Select string
 	// ValidationSelect specifies the query for fetching the validation data. For example, "select * from iris.val;".
 	ValidationSelect string
+	// ModelImage is the name of the model's Docker image, for example `TO TRAIN a_data_scientist/regressors:v0.2/MyDNNRegressor`
+	// the name "a_data_scientist/regressors:v0.2" is a Docker image.
+	ModelImage string
 	// Estimator specifies the estimator type. For example, after parsing "select ... train DNNClassifier WITH ...",
 	// the Estimator will be "DNNClassifier".
 	Estimator string
@@ -102,6 +101,8 @@ type TrainIR struct {
 	Features map[string][]FeatureColumn
 	// Label specifies the feature column in the LABEL clause.
 	Label FeatureColumn
+	// Into specifies the table name in the INTO clause
+	Into string
 }
 
 // IsIR is used only for restrict the IR struct types

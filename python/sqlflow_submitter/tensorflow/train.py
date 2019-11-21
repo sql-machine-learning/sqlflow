@@ -70,6 +70,8 @@ def train(is_keras_model,
           batch_size=1,
           epochs=1,
           verbose=0):
+    if verbose > 0:
+        tf.get_logger().setLevel(logging.INFO)
     conn = connect_with_data_source(datasource)
     model_params.update(feature_columns)
     if not is_keras_model:
