@@ -1,0 +1,34 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: pytest-
+spec:
+  entrypoint: pytest
+  templates:
+    - name: pytest
+      steps:
+        - - name: test-resource-setup-605
+            template: test-resource-setup
+            arguments:
+              parameters:
+                - name: para-test-resource-setup-0
+                  value: 'resource test'
+    - name: test-resource-setup
+      inputs:
+        parameters:
+          - name: para-test-resource-setup-0
+      container:
+        image: docker/whalesay
+        command:
+          - bash
+          - -c
+          - cowsay
+        args:
+          - "{{inputs.parameters.para-test-resource-setup-0}}"
+        resources:
+          requests:
+            cpu: 1
+            memory: 100Mi
+          limits:
+            cpu: 1
+            memory: 100Mi

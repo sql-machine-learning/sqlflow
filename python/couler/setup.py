@@ -30,13 +30,15 @@ REQUIRES_PYTHON = '>=3.5.0'
 VERSION = None
 
 # What packages are required for this module to be executed?
-REQUIRED = []
 SETUP_REQUIRED = [
     'pytest-runner'
 ]
 TEST_REQUIRED = [
     'pytest',
 ]
+
+with open("requirements.txt") as f:
+    REQUIRED = f.read().splitlines()
 
 # What packages are optional?
 EXTRAS = {

@@ -1,0 +1,46 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: pytest-
+spec:
+  entrypoint: pytest
+  templates:
+    - name: pytest
+      steps:
+        - - name: whalesay-605
+            template: whalesay
+            arguments:
+              parameters:
+                - name: para-whalesay-0
+                  value: hello1
+          - name: heads-605
+            template: heads
+          - name: tails-605
+            template: tails
+    - name: whalesay
+      inputs:
+        parameters:
+          - name: para-whalesay-0
+      container:
+        image: docker/whalesay
+        command:
+          - bash
+          - -c
+          - cowsay
+        args:
+          - "{{inputs.parameters.para-whalesay-0}}"
+    - name: heads
+      container:
+        image: docker/whalesay
+        command:
+          - bash
+          - -c
+          - 'echo "it was heads"'
+    - name: tails
+      container:
+        image: docker/whalesay
+        command:
+          - bash
+          - -c
+          - 'echo "it was tails"'
+      
