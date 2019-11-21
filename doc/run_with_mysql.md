@@ -22,8 +22,8 @@ mysql://root:root@tcp(127.0.0.1:3306)/iris?maxAllowedPacket=0
 ```
 Using the `datasource`, you may launch an all-in-one Docker container by running:  
 ```bash
-> docker run --rm -p 8888:8888 sqlflow/sqlflow bash -c \
-"sqlflowserver --datasource='mysql://root:root@tcp(127.0.0.1:3306)/iris?maxAllowedPacket=0' &
+> docker run --rm -p 8888:8888 -p 50051:50051 sqlflow/sqlflow bash -c \
+"sqlflowserver & SQLFLOW_DATASOURCE='mysql://root:root@tcp(127.0.0.1:3306)/iris?maxAllowedPacket=0' 
 SQLFLOW_SERVER=localhost:50051 jupyter notebook --ip=0.0.0.0 --port=8888 --allow-root --NotebookApp.token=''"
 ```
 
