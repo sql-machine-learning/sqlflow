@@ -18,8 +18,10 @@ In the above format,
 Using the `datasource`, you may launch an all-in-one Docker container by running:  
 ```bash
 > docker run --rm -p 8888:8888 sqlflow/sqlflow bash -c \
-"sqlflowserver --datasource='maxcompute://{accesskey_id}:{accesskey_secret}@{endpoint}?curr_project={curr_project}&scheme={scheme}' &
-SQLFLOW_SERVER=localhost:50051 jupyter notebook --ip=0.0.0.0 --port=8888 --allow-root --NotebookApp.token=''"
+"sqlflowserver & \
+SQLFLOW_DATASOURCE='maxcompute://{accesskey_id}:{accesskey_secret}@{endpoint}?curr_project={curr_project}&scheme={scheme}' \
+SQLFLOW_SERVER=localhost:50051 \
+jupyter notebook --ip=0.0.0.0 --port=8888 --allow-root --NotebookApp.token=''"
 ```
 
 Open `localhost:8888` through a web browser, you will find there are many SQLFlow tutorials, e.g. `iris-dnn.ipynb`. Please follow the tutorials and substitute the data for your use.

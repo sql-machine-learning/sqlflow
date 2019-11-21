@@ -24,8 +24,8 @@ Using the `datasource` string, you can launch an all-in-one Docker container by 
 
 ``` bash
 docker run --rm -p 8888:8888 sqlflow/sqlflow bash -c \
-"sqlflowserver --datasource='hive://root:root@localhost:10000/iris' &
-SQLFLOW_SERVER=localhost:50051 jupyter notebook --ip=0.0.0.0 --port=8888 --allow-root --NotebookApp.token=''"
+"sqlflowserver &
+SQLFLOW_DATASOURCE='hive://root:root@localhost:10000/iris' SQLFLOW_SERVER=localhost:50051 jupyter notebook --ip=0.0.0.0 --port=8888 --allow-root --NotebookApp.token=''"
 ```
 
 Then you can open a web browser and go to `localhost:8888`. There are many SQLFlow tutorials, e.g. `tutorial_dnn_iris.ipynb`. You can follow the tutorials and substitute the data for your own use.
