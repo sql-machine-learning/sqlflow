@@ -162,6 +162,29 @@ func TestGenerateTrainIR(t *testing.T) {
 	a.Equal("mymodel", trainIR.Into)
 }
 
+func TestGenerateTrainIRModelZoo(t *testing.T) {
+	a := assert.New(t)
+	parser := newParser()
+
+	normal := `
+	SELECT c1, c2, c3, c4
+	FROM my_table
+	TO TRAIN a_data_scientist/regressors:v0.2/MyDNNRegressor
+	WITH
+		model.n_classes=2,
+		train.optimizer="adam"
+	LABEL c4
+	INTO mymodel;
+	`
+
+	r, e := parser.Parse(normal)
+	a.NoError(e)
+
+	trainIR, err := generateTrainIR(r, "mysql://root:root@tcp(127.0.0.1:3306)/iris?maxAllowedPacket=0")
+	a.NoError(err)
+	a.Equal("a_data_scientist/regressors:v0.2", trainIR.ModelImage)
+	a.Equal("MyDNNRegressor", trainIR.Estimator)
+}
 func TestGeneratePredictIR(t *testing.T) {
 	if getEnv("SQLFLOW_TEST_DB", "mysql") == "hive" {
 		t.Skip(fmt.Sprintf("%s: skip Hive test", getEnv("SQLFLOW_TEST_DB", "mysql")))

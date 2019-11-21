@@ -38,7 +38,12 @@ func generateTrainIRWithInferredColumns(slct *extendedSelect, connStr string) (*
 
 func generateTrainIR(slct *extendedSelect, connStr string) (*codegen.TrainIR, error) {
 	tc := slct.trainClause
-	estimator := tc.estimator
+	modelURI := tc.estimator
+	// get model Docker image name
+	modelParts := strings.Split(modelURI, "/")
+	modelImageName := strings.Join(modelParts[0:len(modelParts)-1], "/")
+	modelName := modelParts[len(modelParts)-1]
+
 	attrList, err := generateAttributeIR(&slct.trainAttrs)
 	if err != nil {
 		return nil, err
@@ -81,7 +86,8 @@ func generateTrainIR(slct *extendedSelect, connStr string) (*codegen.TrainIR, er
 		// TODO(weiguoz): This is a temporary implement. Specifying the
 		// validation dataset by keyword `VALIDATE` is the final solution.
 		ValidationSelect: vslct,
-		Estimator:        estimator,
+		ModelImage:       modelImageName,
+		Estimator:        modelName,
 		Attributes:       attrList,
 		Features:         fcMap,
 		Label:            label,
