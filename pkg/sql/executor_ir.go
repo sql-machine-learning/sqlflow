@@ -175,7 +175,7 @@ func runTrainIR(trainIR *codegen.TrainIR, wr *PipeWriter, db *DB, modelDir strin
 			}
 			program.WriteString(code)
 		} else {
-			code, err := pai.Train(trainIR, pr.save, cwd)
+			code, err := pai.Train(trainIR, trainIR.Into, cwd)
 			if err != nil {
 				return err
 			}
