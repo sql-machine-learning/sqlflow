@@ -23,14 +23,32 @@ import (
 	"sqlflow.org/sqlflow/pkg/sql/codegen"
 )
 
+func generateTrainIRWithInferredColumns(slct *extendedSelect, connStr string) (*codegen.TrainIR, error) {
+	trainIR, err := generateTrainIR(slct, connStr)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := InferFeatureColumns(trainIR); err != nil {
+		return nil, err
+	}
+
+	return trainIR, nil
+}
+
 func generateTrainIR(slct *extendedSelect, connStr string) (*codegen.TrainIR, error) {
 	tc := slct.trainClause
-	estimator := tc.estimator
+	modelURI := tc.estimator
+	// get model Docker image name
+	modelParts := strings.Split(modelURI, "/")
+	modelImageName := strings.Join(modelParts[0:len(modelParts)-1], "/")
+	modelName := modelParts[len(modelParts)-1]
+
 	attrList, err := generateAttributeIR(&slct.trainAttrs)
 	if err != nil {
 		return nil, err
 	}
-	// TODO(typhoonzero): call feature derivation here and verify the fields are all valid.
+
 	fcMap := make(map[string][]codegen.FeatureColumn)
 	for target, columnList := range tc.columns {
 		fcList := []codegen.FeatureColumn{}
@@ -68,10 +86,12 @@ func generateTrainIR(slct *extendedSelect, connStr string) (*codegen.TrainIR, er
 		// TODO(weiguoz): This is a temporary implement. Specifying the
 		// validation dataset by keyword `VALIDATE` is the final solution.
 		ValidationSelect: vslct,
-		Estimator:        estimator,
+		ModelImage:       modelImageName,
+		Estimator:        modelName,
 		Attributes:       attrList,
 		Features:         fcMap,
 		Label:            label,
+		Into:             slct.save,
 	}, nil
 }
 
@@ -86,7 +106,7 @@ func generateTrainIRByModel(slct *extendedSelect, connStr, cwd, modelDir, model 
 	if err != nil {
 		return nil, err
 	}
-	return generateTrainIR(slctWithTrain, connStr)
+	return generateTrainIRWithInferredColumns(slctWithTrain, connStr)
 }
 
 func generatePredictIR(slct *extendedSelect, connStr string, modelDir string) (*codegen.PredictIR, error) {
@@ -622,42 +642,35 @@ func parseResultTable(intoStatement string) (string, string, error) {
 }
 
 // programToIR generate a list of IRs from a SQL program
-func programToIR(sqls []string, connStr, modelDir string) (codegen.SQLProgramIR, error) {
+func programToIR(sqls []statementParseResult, connStr, modelDir string) (codegen.SQLProgramIR, error) {
 	IRs := codegen.SQLProgramIR{}
 	for _, sql := range sqls {
-		splittedSQL, err := splitExtendedSQL(sql)
-		if err != nil {
-			return nil, err
-		}
-		if len(splittedSQL) == 2 {
-			parsed, err := newParser().Parse(sql)
-			if err != nil {
-				return nil, err
-			}
+		if sql.extended != nil {
+			parsed := sql.extended
 			if parsed.train {
-				ir, err := generateTrainIR(parsed, connStr)
+				ir, err := generateTrainIRWithInferredColumns(parsed, connStr)
 				if err != nil {
 					return nil, err
 				}
-				ir.OriginalSQL = sql
+				ir.OriginalSQL = sql.original
 				IRs = append(IRs, ir)
 			} else if parsed.analyze {
 				ir, err := generateAnalyzeIR(parsed, connStr, modelDir)
 				if err != nil {
 					return nil, err
 				}
-				ir.OriginalSQL = sql
+				ir.OriginalSQL = sql.original
 				IRs = append(IRs, ir)
 			} else {
 				ir, err := generatePredictIR(parsed, connStr, modelDir)
 				if err != nil {
 					return nil, err
 				}
-				ir.OriginalSQL = sql
+				ir.OriginalSQL = sql.original
 				IRs = append(IRs, ir)
 			}
 		} else {
-			standardSQL := codegen.StandardSQLIR(sql)
+			standardSQL := codegen.StandardSQLIR(sql.standard)
 			IRs = append(IRs, &standardSQL)
 		}
 	}

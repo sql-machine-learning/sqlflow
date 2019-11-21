@@ -24,7 +24,7 @@ import (
 
 func TestTrainElasticDLFiller(t *testing.T) {
 	a := assert.New(t)
-	parser := newParser()
+	parser := newExtendedSyntaxParser()
 
 	wndStatement := `SELECT * FROM iris.train
 		TO TRAIN ElasticDLKerasClassifier 
@@ -92,7 +92,7 @@ func TestTrainElasticDLFiller(t *testing.T) {
 
 func TestPredElasticDLFiller(t *testing.T) {
 	a := assert.New(t)
-	parser := newParser()
+	parser := newExtendedSyntaxParser()
 	predStatement := `SELECT sepal_length, sepal_width, petal_length, petal_width FROM iris.test
 		TO PREDICT prediction_results_table
 		WITH

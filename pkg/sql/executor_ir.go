@@ -47,10 +47,10 @@ func RunSQLProgram(sqlProgram string, db *DB, modelDir string, session *pb.Sessi
 		err := runSQLProgram(wr, sqlProgram, db, modelDir, session)
 
 		if err != nil {
-			log.Errorf("runSQLProgram error:%v", err)
+			log.Errorf("runSQLProgram error: %v", err)
 			if err != ErrClosedPipe {
 				if err := wr.Write(err); err != nil {
-					log.Errorf("runSQLProgram error(piping):%v", err)
+					log.Errorf("runSQLProgram error(piping): %v", err)
 				}
 			}
 		}
@@ -59,7 +59,7 @@ func RunSQLProgram(sqlProgram string, db *DB, modelDir string, session *pb.Sessi
 }
 
 func runSQLProgram(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, session *pb.Session) error {
-	sqls, err := SplitMultipleSQL(sqlProgram)
+	sqls, err := parse(db.driverName, sqlProgram)
 	if err != nil {
 		return err
 	}
@@ -120,12 +120,24 @@ func runSingleSQLIR(wr *PipeWriter, ir codegen.SingleSQLIR, db *DB, modelDir str
 	return nil
 }
 
-func runTrainIR(trainIR *codegen.TrainIR, wr *PipeWriter, db *DB, modelDir string, session *pb.Session) error {
-	// TODO(typhoonzero): remove below twice parse when all submitters moved to IR.
-	pr, e := newParser().Parse(trainIR.OriginalSQL)
+// TODO(tony): remove the following function after all submitter has been moved to IR
+func runThirdPartySubmitterTrain(wr *PipeWriter, sql string, db *DB, cwd string, session *pb.Session) error {
+	pr, e := newExtendedSyntaxParser().Parse(sql)
 	if e != nil {
 		return e
 	}
+
+	switch os.Getenv("SQLFLOW_submitter") {
+	case "elasticdl":
+		return elasticDLTrain(wr, pr, db, cwd, session)
+	case "alps":
+		return alpsTrain(wr, pr, db, cwd, session)
+	default:
+		return fmt.Errorf("unrecognized SQLFLOW_submitter %s", os.Getenv("SQLFLOW_submitter"))
+	}
+}
+
+func runTrainIR(trainIR *codegen.TrainIR, wr *PipeWriter, db *DB, modelDir string, session *pb.Session) error {
 	// cwd is used to store train scripts and save output models.
 	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
 	if err != nil {
@@ -133,30 +145,19 @@ func runTrainIR(trainIR *codegen.TrainIR, wr *PipeWriter, db *DB, modelDir strin
 	}
 	defer os.RemoveAll(cwd)
 
-	if os.Getenv("SQLFLOW_submitter") == "elasticdl" {
-		return elasticDLTrain(wr, pr, db, cwd, session)
+	if os.Getenv("SQLFLOW_submitter") != "" {
+		return runThirdPartySubmitterTrain(wr, trainIR.OriginalSQL, db, cwd, session)
 	}
-	// FIXME(weiguo): temporary branch to alps
-	if os.Getenv("SQLFLOW_submitter") == "alps" {
-		return alpsTrain(wr, pr, db, cwd, session)
-	}
+
 	// ---------------------- run the IR ---------------------------
 	var program bytes.Buffer
 	if isXGBoostModel(trainIR.Estimator) {
-		err := InferFeatureColumns(trainIR)
-		if err != nil {
-			return err
-		}
 		code, err := xgboost.Train(trainIR)
 		if err != nil {
 			return err
 		}
 		program.WriteString(code)
 	} else {
-		err := InferFeatureColumns(trainIR)
-		if err != nil {
-			return err
-		}
 		if trainIR.ValidationSelect == "" {
 			trainIR.ValidationSelect = trainIR.Select
 		}
@@ -181,14 +182,14 @@ func runTrainIR(trainIR *codegen.TrainIR, wr *PipeWriter, db *DB, modelDir strin
 	}
 	m := model{workDir: cwd, TrainSelect: trainIR.OriginalSQL}
 	if modelDir != "" {
-		return m.saveTar(modelDir, pr.save)
+		return m.saveTar(modelDir, trainIR.Into)
 	}
-	return m.save(db, pr.save)
+	return m.save(db, trainIR.Into)
 }
 
 func runPredictIR(predIR *codegen.PredictIR, wr *PipeWriter, db *DB, modelDir string, session *pb.Session) error {
 	// TODO(typhoonzero): remove below twice parse when all submitters moved to IR.
-	pr, e := newParser().Parse(predIR.OriginalSQL)
+	pr, e := newExtendedSyntaxParser().Parse(predIR.OriginalSQL)
 	if e != nil {
 		return e
 	}
@@ -213,10 +214,6 @@ func runPredictIR(predIR *codegen.PredictIR, wr *PipeWriter, db *DB, modelDir st
 
 	var program bytes.Buffer
 	if isXGBoostModel(predIR.TrainIR.Estimator) {
-		err = InferFeatureColumns(predIR.TrainIR)
-		if err != nil {
-			return err
-		}
 		code, err := xgboost.Pred(predIR, session)
 		if err != nil {
 			return err
@@ -227,10 +224,6 @@ func runPredictIR(predIR *codegen.PredictIR, wr *PipeWriter, db *DB, modelDir st
 		}
 		program.WriteString(code)
 	} else {
-		err = InferFeatureColumns(predIR.TrainIR)
-		if err != nil {
-			return err
-		}
 		code, err := tensorflow.Pred(predIR, session)
 		if err != nil {
 			return err
@@ -260,7 +253,7 @@ func runPredictIR(predIR *codegen.PredictIR, wr *PipeWriter, db *DB, modelDir st
 }
 
 func runAnalyzeIR(analyzeIR *codegen.AnalyzeIR, wr *PipeWriter, db *DB, modelDir string, session *pb.Session) error {
-	pr, e := newParser().Parse(analyzeIR.OriginalSQL)
+	pr, e := newExtendedSyntaxParser().Parse(analyzeIR.OriginalSQL)
 	if e != nil {
 		return e
 	}
@@ -444,7 +437,7 @@ func loadModelMeta(pr *extendedSelect, db *DB, cwd, modelDir, modelName string) 
 
 	// Parse the training SELECT statement used to train
 	// the model for the prediction.
-	tr, e := newParser().Parse(m.TrainSelect)
+	tr, e := newExtendedSyntaxParser().Parse(m.TrainSelect)
 	if e != nil {
 		return nil, nil, fmt.Errorf("parse: TrainSelect %v raise %v", m.TrainSelect, e)
 	}

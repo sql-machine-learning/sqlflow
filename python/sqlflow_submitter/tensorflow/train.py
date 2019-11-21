@@ -64,6 +64,8 @@ def train(is_keras_model,
           batch_size=1,
           epochs=1,
           verbose=0):
+    if verbose > 0:
+        tf.get_logger().setLevel(logging.INFO)
     conn = connect_with_data_source(datasource)
     if not is_keras_model:
         classifier = estimator(**feature_columns, **model_params, model_dir=save)
