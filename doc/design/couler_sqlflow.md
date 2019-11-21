@@ -36,15 +36,15 @@ python -m sqlflow_submitter.xgboost.train -ir ir.proto_text'''
 )
 ```
 
-The Step Container would be run as the following two steps:
-- `sqlflow -parse` is **SQLFLow command-line tool** which compiles the input extended SQL into a IR serialized file.
-- `sqlflow_submitter.xgboost.train` is **SQLFlow submitter Python module** which accpets the IR protobuf text file and then submit a machine learning job.
-- `sqlflow/sqlflow_submitter` is a Docker image which packages the SQLFlow submitter Python module and SQLFlow command-line tool.
+From the above Couler function:
+- `sqlflow -parse` is **SQLFLow command-line tool**, which compiles the input extended SQL into an IR serialized file.
+- `sqlflow_submitter.xgboost.train` is **SQLFlow submitter Python module**, which accepts the IR protobuf text file and then submit a machine learning job.
+- `sqlflow/sqlflow_submitter` is a Docker image that packages the SQLFlow submitter Python module and SQLFlow command-line tool.
 
-### SQLFLow command-line tool
+### SQLFLow Command-line Tool
 
-`sqlflow -parse` is a command-line tool which accpets an extended SQL and outputs the SQLFlow IR with
-protobuf text format, the protobuf defination is as follows:
+`sqlflow -parse` is a command-line tool which accepts an extended SQL and outputs the SQLFlow IR with
+protobuf text format, the protobuf definition is as follows:
 
 ```protobuf
 message FeatureColumn {
@@ -69,9 +69,9 @@ message struct {
 }
 ```
 
-### SQLFLow Submitter Python module
+### SQLFLow Submitter Python Module
 
-A SQLFlow submitter Python module `sqlflow_submitter.{tensorflow,xgboost,elasticdl}.train` accepts an SQLFlow IR with protobuf text format, and then submit a Tensorflow, XGBoost or ElasticDL training job, we can call it as:
+An SQLFlow submitter Python module `sqlflow_submitter.{tensorflow,xgboost,elasticdl}.train` accepts an SQLFlow IR with protobuf text format, and then submit a Tensorflow, XGBoost or ElasticDL training job, we can call it as:
 
 ``` python
 python -m sqlflow_submitter.xgboost.train -i ir.proto_text
