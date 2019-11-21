@@ -105,7 +105,7 @@ def train(is_keras_model,
 
     def validate_input_fn(batch_size):
         dataset = input_fn(validate_select)
-        return dataset.batch(batch_size).cache(filename="dataset_cache_val.txt")
+        return dataset.batch(batch_size).cache()  # TODO(shendiaomo): cache to a filename after migrated to tf2
 
     if is_keras_model:
         classifier.compile(optimizer=classifier_pkg.optimizer(),
@@ -116,7 +116,7 @@ def train(is_keras_model,
             # https://github.com/sql-machine-learning/models/blob/a3559618a013820385f43307261ad34351da2fbf/sqlflow_models/deep_embedding_cluster.py#L126
             classifier.sqlflow_train_loop(train_input_fn(batch_size))
         else:
-            ds = train_input_fn(batch_size).cache(filename="dataset_cache_train.txt")
+            ds = train_input_fn(batch_size).cache()  # TODO(shendiaomo): cache to a filename after migrated to tf2
             classifier.fit(ds,
                 epochs=epochs if epochs else classifier.default_training_epochs(),
                 verbose=verbose)
