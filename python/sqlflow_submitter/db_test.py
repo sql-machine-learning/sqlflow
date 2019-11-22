@@ -212,6 +212,6 @@ class TestConnectWithDataSource(TestCase):
 
     def test_parse_maxcompute_dsn(self):
         self.assertEqual(
-                ("access_id", "access_key", "http://service.com/api", "test_ci"),
-            parseMaxComputeDSN("access_id:access_key@service.com/api?curr_project=test_ci&scheme=http"))
+                ("access_id", "access_key", "http://maxcompute-service.com/api", "test_ci"),
+            parseMaxComputeDSN("access_id:access_key@maxcompute-service.com/api?curr_project=test_ci&scheme=http"))
 

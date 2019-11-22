@@ -11,14 +11,3 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .base import BufferedDBWriter
-from odps import ODPS, tunnel
-
-class MaxComputeDBWriter(BufferedDBWriter):
-    def __init__(self, conn, table_name, table_schema, buff_size):
-        return super(MaxComputeDBWriter, self).__init__(conn, table_name, table_schema, buff_size)
-
-    def flush(self):
-        compress = tunnel.CompressOption.CompressAlgorithm.ODPS_ZLIB
-        self.conn.write_table(self.table_name, self.rows, compress_option=compress)
-        self.rows = []

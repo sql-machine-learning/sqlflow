@@ -28,6 +28,7 @@ import (
 
 	pb "sqlflow.org/sqlflow/pkg/server/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen"
+	"sqlflow.org/sqlflow/pkg/sql/codegen/pai"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/xgboost"
 )
@@ -37,6 +38,35 @@ type EndOfExecution struct {
 	StartTime int64
 	EndTime   int64
 	Statement string
+}
+
+var envSubmitter = os.Getenv("SQLFLOW_submitter")
+
+// SubmitterType is the type of SQLFlow submitter
+type SubmitterType int
+
+const (
+	// SubmitterPAI indicates that SQLFlow uses the PAI platform as submitter
+	SubmitterPAI = iota
+	// SubmitterEDL indicates that SQLFlow uses ElasticDL as submitter
+	SubmitterEDL
+	// SubmitterALPS indicates that SQLFlow uses ALPS as submitter
+	SubmitterALPS
+	// SubmitterDefault indicates that SQLFlow uses the default submitter
+	SubmitterDefault
+)
+
+func submitter() SubmitterType {
+	switch envSubmitter {
+	case "pai":
+		return SubmitterPAI
+	case "elasticdl":
+		return SubmitterEDL
+	case "alps":
+		return SubmitterALPS
+	default:
+		return SubmitterDefault
+	}
 }
 
 // RunSQLProgram run a SQL program.
@@ -65,7 +95,7 @@ func runSQLProgram(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, s
 	}
 
 	connStr := fmt.Sprintf("%s://%s", db.driverName, db.dataSourceName)
-	programIR, err := programToIR(sqls, connStr, modelDir)
+	programIR, err := programToIR(sqls, connStr, modelDir, submitter() != SubmitterPAI)
 	if err != nil {
 		return err
 	}
@@ -127,10 +157,10 @@ func runThirdPartySubmitterTrain(wr *PipeWriter, sql string, db *DB, cwd string,
 		return e
 	}
 
-	switch os.Getenv("SQLFLOW_submitter") {
-	case "elasticdl":
+	switch submitter() {
+	case SubmitterEDL:
 		return elasticDLTrain(wr, pr, db, cwd, session)
-	case "alps":
+	case SubmitterALPS:
 		return alpsTrain(wr, pr, db, cwd, session)
 	default:
 		return fmt.Errorf("unrecognized SQLFLOW_submitter %s", os.Getenv("SQLFLOW_submitter"))
@@ -145,12 +175,15 @@ func runTrainIR(trainIR *codegen.TrainIR, wr *PipeWriter, db *DB, modelDir strin
 	}
 	defer os.RemoveAll(cwd)
 
-	if os.Getenv("SQLFLOW_submitter") != "" {
+	if submitter() != SubmitterDefault && submitter() != SubmitterPAI {
 		return runThirdPartySubmitterTrain(wr, trainIR.OriginalSQL, db, cwd, session)
 	}
 
 	// ---------------------- run the IR ---------------------------
 	var program bytes.Buffer
+	if trainIR.ValidationSelect == "" {
+		trainIR.ValidationSelect = trainIR.Select
+	}
 	if isXGBoostModel(trainIR.Estimator) {
 		code, err := xgboost.Train(trainIR)
 		if err != nil {
@@ -158,14 +191,19 @@ func runTrainIR(trainIR *codegen.TrainIR, wr *PipeWriter, db *DB, modelDir strin
 		}
 		program.WriteString(code)
 	} else {
-		if trainIR.ValidationSelect == "" {
-			trainIR.ValidationSelect = trainIR.Select
+		if submitter() != SubmitterPAI {
+			code, err := tensorflow.Train(trainIR)
+			if err != nil {
+				return err
+			}
+			program.WriteString(code)
+		} else {
+			code, err := pai.Train(trainIR, trainIR.Into, cwd)
+			if err != nil {
+				return err
+			}
+			program.WriteString(code)
 		}
-		code, err := tensorflow.Train(trainIR)
-		if err != nil {
-			return err
-		}
-		program.WriteString(code)
 	}
 	cw := &logChanWriter{wr: wr}
 	var buf bytes.Buffer
@@ -180,11 +218,14 @@ func runTrainIR(trainIR *codegen.TrainIR, wr *PipeWriter, db *DB, modelDir strin
 	if e := cmd.Run(); e != nil {
 		return fmt.Errorf("predict failed: %v\n %s", e, buf.String())
 	}
-	m := model{workDir: cwd, TrainSelect: trainIR.OriginalSQL}
-	if modelDir != "" {
-		return m.saveTar(modelDir, trainIR.Into)
+	if submitter() != SubmitterPAI {
+		m := model{workDir: cwd, TrainSelect: trainIR.OriginalSQL}
+		if modelDir != "" {
+			return m.saveTar(modelDir, trainIR.Into)
+		}
+		return m.save(db, trainIR.Into)
 	}
-	return m.save(db, trainIR.Into)
+	return nil
 }
 
 func runPredictIR(predIR *codegen.PredictIR, wr *PipeWriter, db *DB, modelDir string, session *pb.Session) error {
@@ -200,21 +241,15 @@ func runPredictIR(predIR *codegen.PredictIR, wr *PipeWriter, db *DB, modelDir st
 	}
 	defer os.RemoveAll(cwd)
 
-	if os.Getenv("SQLFLOW_submitter") == "alps" {
+	if submitter() == SubmitterALPS {
 		return alpsPred(wr, pr, db, cwd, session)
-	} else if os.Getenv("SQLFLOW_submitter") == "elasticdl" {
+	} else if submitter() == SubmitterEDL {
 		return elasticDLPredict(wr, pr, db, cwd, session)
 	}
 	// ------------------- run pred IR -----------------------
-	// TODO(typhoonzero): loadModelMeta should use IR
-	pr, _, e = loadModelMeta(pr, db, cwd, modelDir, pr.model)
-	if e != nil {
-		return fmt.Errorf("loadModelMeta %v", e)
-	}
-
 	var program bytes.Buffer
-	if isXGBoostModel(predIR.TrainIR.Estimator) {
-		code, err := xgboost.Pred(predIR, session)
+	if submitter() == SubmitterPAI {
+		code, err := pai.Predict(predIR, pr.model, cwd)
 		if err != nil {
 			return err
 		}
@@ -222,17 +257,35 @@ func runPredictIR(predIR *codegen.PredictIR, wr *PipeWriter, db *DB, modelDir st
 		if err != nil {
 			return err
 		}
+
 		program.WriteString(code)
 	} else {
-		code, err := tensorflow.Pred(predIR, session)
-		if err != nil {
-			return err
+		// TODO(typhoonzero): loadModelMeta should use IR
+		pr, _, e = loadModelMeta(pr, db, cwd, modelDir, pr.model)
+		if e != nil {
+			return fmt.Errorf("loadModelMeta %v", e)
 		}
-		err = createPredictionTableFromIR(predIR, db, session)
-		if err != nil {
-			return err
+		if isXGBoostModel(predIR.TrainIR.Estimator) {
+			code, err := xgboost.Pred(predIR, session)
+			if err != nil {
+				return err
+			}
+			err = createPredictionTableFromIR(predIR, db, session)
+			if err != nil {
+				return err
+			}
+			program.WriteString(code)
+		} else {
+			err = createPredictionTableFromIR(predIR, db, session)
+			if err != nil {
+				return err
+			}
+			code, err := tensorflow.Pred(predIR, session)
+			if err != nil {
+				return err
+			}
+			program.WriteString(code)
 		}
-		program.WriteString(code)
 	}
 
 	var buf bytes.Buffer

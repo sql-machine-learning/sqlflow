@@ -57,7 +57,7 @@ def parseHiveDSN(dsn):
 
 def parseMaxComputeDSN(dsn):
     # access_id:access_key@service.com/api?curr_project=test_ci&scheme=http
-    user_passwd, address, config_str = re.findall("^(.*)@([.a-zA-Z0-9/]*)(\?.*)?", dsn)[0]
+    user_passwd, address, config_str = re.findall("^(.*)@([-.a-zA-Z0-9/]*)(\?.*)?", dsn)[0]
     user, passwd = user_passwd.split(":")
     config = {}
     if len(config_str) > 1:

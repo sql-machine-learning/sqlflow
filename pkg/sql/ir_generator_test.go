@@ -211,7 +211,7 @@ LABEL class
 INTO sqlflow_models.mymodel;`, testDB, modelDir, nil)
 	a.True(goodStream(stream.ReadAll()))
 
-	predIR, err := generatePredictIR(r, connStr, modelDir)
+	predIR, err := generatePredictIR(r, connStr, modelDir, true)
 	a.NoError(err)
 
 	a.Equal(connStr, predIR.DataSource)
@@ -259,7 +259,7 @@ INTO sqlflow_models.my_xgboost_model;
 	a.NoError(e)
 
 	connStr := "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
-	ir, e := generateAnalyzeIR(pr, connStr, modelDir)
+	ir, e := generateAnalyzeIR(pr, connStr, modelDir, true)
 	a.NoError(e)
 	a.Equal(ir.DataSource, connStr)
 	a.Equal(ir.Explainer, "TreeExplainer")
