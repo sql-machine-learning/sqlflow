@@ -31,3 +31,8 @@ touch $KUBECONFIG
 sudo minikube start --vm-driver=none --kubernetes-version=v$K8S_VERSION --cpus 2 --memory 6144
 sudo chown -R travis: $HOME/.minikube/
 kubectl cluster-info
+
+# Set up Argo
+kubectl create namespace argo
+kubectl apply -n argo -f https://raw.githubusercontent.com/argoproj/argo/stable/manifests/install.yaml
+kubectl create rolebinding default-admin --clusterrole=admin --serviceaccount=default:default
