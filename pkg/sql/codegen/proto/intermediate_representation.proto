@@ -57,6 +57,7 @@ message FeatureColumn {
     }
 }
 
+// TODO(typhoonzero): directly import Session from pkg/server/proto
 message Session {
     string token = 1;
     string db_conn_str = 2;
@@ -68,13 +69,17 @@ message Session {
     string hdfs_pass = 8;
 }
 
+message FeatureColumnList {
+    repeated FeatureColumn feature_columns = 1;
+}
+
 message TrainIR {
     string datasource = 1;
     string select = 2;
     string validation_select  = 3;
     string estimator = 4;
     map<string, string> attributes = 5;
-    map<string,FeatureColumn> features = 6;
+    map<string,FeatureColumnList> features = 6;
     FeatureColumn label = 7;
     Session session = 8;
 }
