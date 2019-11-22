@@ -26,6 +26,7 @@ except:
 
 from sqlflow_submitter.db import connect_with_data_source, db_generator
 
+TF_VERSION_2 = True  # TODO(shendiaomo): Remove after we fully upgrade to TF2.0
 # Disable Tensorflow INFO and WARNING
 try:
     if tf.version.VERSION > '1':
@@ -35,6 +36,7 @@ try:
         raise ImportError
 except:
     tf.logging.set_verbosity(tf.logging.ERROR)
+    TF_VERSION_2 = False
 
 def get_dtype(type_str):
     if type_str == "float32":
@@ -73,6 +75,8 @@ def train(is_keras_model,
     if verbose > 0:
         tf.get_logger().setLevel(logging.INFO)
     conn = connect_with_data_source(datasource)
+    if not os.path.exists("cache"):
+        os.mkdir("cache")  # cache directory for dataset
     model_params.update(feature_columns)
     if not is_keras_model:
         model_params['model_dir'] = save
@@ -105,7 +109,7 @@ def train(is_keras_model,
 
     def validate_input_fn(batch_size):
         dataset = input_fn(validate_select)
-        return dataset.batch(batch_size).cache()  # TODO(shendiaomo): cache to a filename after migrated to tf2
+        return dataset.batch(batch_size).cache("cache/validate" if TF_VERSION_2 else "")
 
     if is_keras_model:
         classifier.compile(optimizer=classifier_pkg.optimizer(),
@@ -116,7 +120,7 @@ def train(is_keras_model,
             # https://github.com/sql-machine-learning/models/blob/a3559618a013820385f43307261ad34351da2fbf/sqlflow_models/deep_embedding_cluster.py#L126
             classifier.sqlflow_train_loop(train_input_fn(batch_size))
         else:
-            ds = train_input_fn(batch_size).cache()  # TODO(shendiaomo): cache to a filename after migrated to tf2
+            ds = train_input_fn(batch_size).cache("cache/train" if TF_VERSION_2 else "")
             classifier.fit(ds,
                 epochs=epochs if epochs else classifier.default_training_epochs(),
                 verbose=verbose)

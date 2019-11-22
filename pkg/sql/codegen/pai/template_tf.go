@@ -61,7 +61,8 @@ subprocess.run(["odpscmd", "-u", user,
                            "-p", passwd,
                            "--project", database,
                            "--endpoint", address,
-                           "-e", pai_cmd])
+                           "-e", pai_cmd],
+               check=True)
 `
 
 const tfSaveModelTmplText = `

@@ -25,6 +25,8 @@ except:
 
 from sqlflow_submitter.db import connect_with_data_source, db_generator, buffered_db_writer
 from sqlflow_submitter.tensorflow.train import get_dtype, parse_sparse_feature
+
+TF_VERSION_2 = True  # TODO(shendiaomo): Remove after we fully upgrade to TF2.0
 # Disable Tensorflow INFO and WARNING
 try:
     if tf.version.VERSION > '1':
@@ -34,6 +36,7 @@ try:
         raise ImportError
 except:
     tf.logging.set_verbosity(tf.logging.ERROR)
+    TF_VERSION_2 = False
 
 
 class FastPredict:
@@ -86,6 +89,8 @@ def pred(is_keras_model,
          hdfs_user="",
          hdfs_pass=""):
     conn = connect_with_data_source(datasource)
+    if not os.path.exists("cache"):
+        os.mkdir("cache")  # cache directory for dataset
     model_params.update(feature_columns)
     if not is_keras_model:
         model_params['model_dir'] = save
@@ -112,7 +117,7 @@ def pred(is_keras_model,
             ds_mapper = functools.partial(parse_sparse_feature, feature_column_names=feature_column_names, feature_metas=feature_metas)
             dataset = dataset.map(ds_mapper).batch(batch_size)
             if cache:
-                dataset = dataset.cache()  # TODO(shendiaomo): cache to a filename after migrated to tf2
+                dataset = dataset.cache("cache/predict" if TF_VERSION_2 else "")
             return dataset
 
         # NOTE: always use batch_size=1 when predicting to get the pairs of features and predict results
@@ -157,7 +162,7 @@ def pred(is_keras_model,
             def _inner_input_fn():
                 dataset = tf.data.Dataset.from_generator(generator, (tuple(feature_types), eval("tf.%s" % label_meta["dtype"])))
                 ds_mapper = functools.partial(parse_sparse_feature, feature_column_names=feature_column_names, feature_metas=feature_metas)
-                dataset = dataset.map(ds_mapper).batch(1).cache()  # TODO(shendiaomo): cache to a filename after migrated to tf2
+                dataset = dataset.map(ds_mapper).batch(1).cache("cache/predict" if TF_VERSION_2 else "")
                 iterator = dataset.make_one_shot_iterator()
                 features = iterator.get_next()
                 return features

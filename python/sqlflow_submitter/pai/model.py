@@ -18,10 +18,20 @@ import odps
 import tensorflow as tf
 from sqlflow_submitter import db
 
-def save(datasource, name, model_dir, *meta):
+def save(datasource, model_name, model_dir, *meta):
+    '''
+    Save a directory and specific metadata to a MaxCompute table
+    Args:
+        datasource: a MaxCompute connection URL.
+        model_name: the MaxCompute table name to save data.
+        model_dir: the directory to be saved.
+        *meta: python objects to be saved.
+    Return:
+        None
+    '''
     o = db.connect_with_data_source(datasource)
-    o.delete_table(name, if_exists=True)
-    t = o.create_table(name, 'piece binary')
+    o.delete_table(model_name, if_exists=True)
+    t = o.create_table(model_name, 'piece binary')
     f = io.BytesIO()
     archive = tarfile.open(None, "w|gz", f)
     archive.add(model_dir)
@@ -32,9 +42,18 @@ def save(datasource, name, model_dir, *meta):
         w.write([pickle.dumps([model_dir] + list(meta))])
         w.write(list(iter(lambda:[f.read(8000000)], [b''])))
 
-def load(datasource, name):
+def load(datasource, model_name):
+    '''
+    Load and restore a directory and metadata that are saved by `model.save`
+    from a MaxCompute table
+    Args:
+        datasource: a MaxCompute connection URL.
+        model_name: the MaxCompute table name to load data from.
+    Return:
+        A list contains the saved python objects
+    '''
     o = db.connect_with_data_source(datasource)
-    t = o.get_table(name)
+    t = o.get_table(model_name)
     f = io.BytesIO()
     with t.open_reader() as r:
         meta = pickle.loads(r[0]['piece'])

@@ -109,7 +109,7 @@ func generateTrainIRByModel(slct *extendedSelect, connStr, cwd, modelDir, model 
 	return generateTrainIRWithInferredColumns(slctWithTrain, connStr)
 }
 
-func generatePredictIR(slct *extendedSelect, connStr string, modelDir string, inferByModel bool) (*codegen.PredictIR, error) {
+func generatePredictIR(slct *extendedSelect, connStr string, modelDir string, getTrainIRFromModel bool) (*codegen.PredictIR, error) {
 	attrMap, err := generateAttributeIR(&slct.predAttrs)
 	if err != nil {
 		return nil, err
@@ -123,7 +123,7 @@ func generatePredictIR(slct *extendedSelect, connStr string, modelDir string, in
 	defer os.RemoveAll(cwd)
 
 	var trainIR *codegen.TrainIR
-	if inferByModel {
+	if getTrainIRFromModel {
 		trainIR, err = generateTrainIRByModel(slct, connStr, cwd, modelDir, slct.model)
 		if err != nil {
 			return nil, err
@@ -145,7 +145,7 @@ func generatePredictIR(slct *extendedSelect, connStr string, modelDir string, in
 	}, nil
 }
 
-func generateAnalyzeIR(slct *extendedSelect, connStr, modelDir string, inferByModel bool) (*codegen.AnalyzeIR, error) {
+func generateAnalyzeIR(slct *extendedSelect, connStr, modelDir string, getTrainIRFromModel bool) (*codegen.AnalyzeIR, error) {
 	attrs, err := generateAttributeIR(&slct.explainAttrs)
 	if err != nil {
 		return nil, err
@@ -159,7 +159,7 @@ func generateAnalyzeIR(slct *extendedSelect, connStr, modelDir string, inferByMo
 	defer os.RemoveAll(cwd)
 
 	var trainIR *codegen.TrainIR
-	if inferByModel {
+	if getTrainIRFromModel {
 		trainIR, err = generateTrainIRByModel(slct, connStr, cwd, modelDir, slct.trainedModel)
 		if err != nil {
 			return nil, err
@@ -648,7 +648,7 @@ func parseResultTable(intoStatement string) (string, string, error) {
 }
 
 // programToIR generate a list of IRs from a SQL program
-func programToIR(sqls []statementParseResult, connStr, modelDir string, inferByModel bool) (codegen.SQLProgramIR, error) {
+func programToIR(sqls []statementParseResult, connStr, modelDir string, getTrainIRFromModel bool) (codegen.SQLProgramIR, error) {
 	IRs := codegen.SQLProgramIR{}
 	for _, sql := range sqls {
 		if sql.extended != nil {
@@ -661,14 +661,14 @@ func programToIR(sqls []statementParseResult, connStr, modelDir string, inferByM
 				ir.OriginalSQL = sql.original
 				IRs = append(IRs, ir)
 			} else if parsed.analyze {
-				ir, err := generateAnalyzeIR(parsed, connStr, modelDir, inferByModel)
+				ir, err := generateAnalyzeIR(parsed, connStr, modelDir, getTrainIRFromModel)
 				if err != nil {
 					return nil, err
 				}
 				ir.OriginalSQL = sql.original
 				IRs = append(IRs, ir)
 			} else {
-				ir, err := generatePredictIR(parsed, connStr, modelDir, inferByModel)
+				ir, err := generatePredictIR(parsed, connStr, modelDir, getTrainIRFromModel)
 				if err != nil {
 					return nil, err
 				}

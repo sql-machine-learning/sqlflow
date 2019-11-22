@@ -42,8 +42,26 @@ type EndOfExecution struct {
 
 var envSubmitter = os.Getenv("SQLFLOW_submitter")
 
-func submitter() string {
-	return envSubmitter
+type SubmitterType int
+
+const (
+	SubmitterPAI = iota
+	SubmitterEDL
+	SubmitterALPS
+	SubmitterDefault
+)
+
+func submitter() SubmitterType {
+	switch envSubmitter {
+	case "pai":
+		return SubmitterPAI
+	case "elasticdl":
+		return SubmitterEDL
+	case "alps":
+		return SubmitterALPS
+	default:
+		return SubmitterDefault
+	}
 }
 
 // RunSQLProgram run a SQL program.
@@ -72,7 +90,7 @@ func runSQLProgram(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, s
 	}
 
 	connStr := fmt.Sprintf("%s://%s", db.driverName, db.dataSourceName)
-	programIR, err := programToIR(sqls, connStr, modelDir, submitter() != "pai")
+	programIR, err := programToIR(sqls, connStr, modelDir, submitter() != SubmitterPAI)
 	if err != nil {
 		return err
 	}
@@ -134,10 +152,10 @@ func runThirdPartySubmitterTrain(wr *PipeWriter, sql string, db *DB, cwd string,
 		return e
 	}
 
-	switch os.Getenv("SQLFLOW_submitter") {
-	case "elasticdl":
+	switch submitter() {
+	case SubmitterEDL:
 		return elasticDLTrain(wr, pr, db, cwd, session)
-	case "alps":
+	case SubmitterALPS:
 		return alpsTrain(wr, pr, db, cwd, session)
 	default:
 		return fmt.Errorf("unrecognized SQLFLOW_submitter %s", os.Getenv("SQLFLOW_submitter"))
@@ -152,7 +170,7 @@ func runTrainIR(trainIR *codegen.TrainIR, wr *PipeWriter, db *DB, modelDir strin
 	}
 	defer os.RemoveAll(cwd)
 
-	if submitter() != "" && submitter() != "pai" {
+	if submitter() != SubmitterDefault && submitter() != SubmitterPAI {
 		return runThirdPartySubmitterTrain(wr, trainIR.OriginalSQL, db, cwd, session)
 	}
 
@@ -168,7 +186,7 @@ func runTrainIR(trainIR *codegen.TrainIR, wr *PipeWriter, db *DB, modelDir strin
 		}
 		program.WriteString(code)
 	} else {
-		if submitter() != "pai" {
+		if submitter() != SubmitterPAI {
 			code, err := tensorflow.Train(trainIR)
 			if err != nil {
 				return err
@@ -195,7 +213,7 @@ func runTrainIR(trainIR *codegen.TrainIR, wr *PipeWriter, db *DB, modelDir strin
 	if e := cmd.Run(); e != nil {
 		return fmt.Errorf("predict failed: %v\n %s", e, buf.String())
 	}
-	if submitter() != "pai" {
+	if submitter() != SubmitterPAI {
 		m := model{workDir: cwd, TrainSelect: trainIR.OriginalSQL}
 		if modelDir != "" {
 			return m.saveTar(modelDir, trainIR.Into)
@@ -218,14 +236,14 @@ func runPredictIR(predIR *codegen.PredictIR, wr *PipeWriter, db *DB, modelDir st
 	}
 	defer os.RemoveAll(cwd)
 
-	if submitter() == "alps" {
+	if submitter() == SubmitterALPS {
 		return alpsPred(wr, pr, db, cwd, session)
-	} else if submitter() == "elasticdl" {
+	} else if submitter() == SubmitterEDL {
 		return elasticDLPredict(wr, pr, db, cwd, session)
 	}
 	// ------------------- run pred IR -----------------------
 	var program bytes.Buffer
-	if submitter() == "pai" {
+	if submitter() == SubmitterPAI {
 		code, err := pai.Predict(predIR, pr.model, cwd)
 		if err != nil {
 			return err
