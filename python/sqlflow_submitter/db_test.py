@@ -201,6 +201,9 @@ class TestConnectWithDataSource(TestCase):
                 ("usr", "pswd", "hiveserver", "1000", "mydb", "PLAIN", {"mapreduce_job_quenename": "mr"}),
             parseHiveDSN("usr:pswd@hiveserver:1000/mydb?auth=PLAIN&session.mapreduce_job_quenename=mr"))
         self.assertEqual(
+                ("usr", "pswd", "hiveserver", "1000", "my_db", "PLAIN", {"mapreduce_job_quenename": "mr"}),
+            parseHiveDSN("usr:pswd@hiveserver:1000/my_db?auth=PLAIN&session.mapreduce_job_quenename=mr"))
+        self.assertEqual(
             ("root", "root", "127.0.0.1", None, "mnist", "PLAIN", {}),
             parseHiveDSN("root:root@127.0.0.1/mnist?auth=PLAIN"))
         self.assertEqual(
