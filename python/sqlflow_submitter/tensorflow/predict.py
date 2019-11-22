@@ -162,7 +162,7 @@ def pred(is_keras_model,
             def _inner_input_fn():
                 dataset = tf.data.Dataset.from_generator(generator, (tuple(feature_types), eval("tf.%s" % label_meta["dtype"])))
                 ds_mapper = functools.partial(parse_sparse_feature, feature_column_names=feature_column_names, feature_metas=feature_metas)
-                dataset = dataset.map(ds_mapper).batch(1).cache("cache/predict" if TF_VERSION_2 else "")
+                dataset = dataset.map(ds_mapper).batch(1).cache("cache/pred" if TF_VERSION_2 else "")
                 iterator = dataset.make_one_shot_iterator()
                 features = iterator.get_next()
                 return features
