@@ -43,4 +43,5 @@ sqlflow==0.7.0 \
 pre-commit==1.18.3 \
 dill==0.3.0 \
 shap==0.30.1 \
-xgboost==0.90
+xgboost==0.90 \
+pytest==5.3.0
