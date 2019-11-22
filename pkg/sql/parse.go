@@ -58,9 +58,9 @@ func parse(dbms, sqlProgram string) ([]statementParseResult, error) {
 		return make([]statementParseResult, 0), nil
 	}
 
-	// SELECT * FROM my_table TO TRAIN ...
-	//                        ^
-	//                        i
+	// SELECT ...; SELECT * FROM my_table TO TRAIN ...
+	//                                    ^
+	//                                    i
 	sqls, i, err := thirdPartyParse(dbms, sqlProgram)
 	if err != nil {
 		return nil, err
@@ -69,7 +69,7 @@ func parse(dbms, sqlProgram string) ([]statementParseResult, error) {
 		return sqls, nil
 	}
 
-	left := sqlProgram[:i]
+	left := sqls[len(sqls)-1].standard
 	sqlProgram = sqlProgram[i:]
 
 	// TO TRAIN dnn LABEL class INTO my_model; SELECT ...

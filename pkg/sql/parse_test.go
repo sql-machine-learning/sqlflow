@@ -104,6 +104,7 @@ WHERE
 
 			a.NotNil(s[0].extended)
 			a.Equal(sql+` `, s[0].standard)
+			a.Equal(fmt.Sprintf(`%s %s;`, sql, extendedSQL), s[0].original)
 
 			a.Nil(s[1].extended)
 			if isJavaParser(driver) {
@@ -127,6 +128,7 @@ WHERE
 				a.Equal(sql+`;`, s[0].standard)
 			}
 			a.Equal(sql+` `, s[1].standard)
+			a.Equal(fmt.Sprintf(`%s %s;`, sql, extendedSQL), s[1].original)
 		}
 
 		// three SQL statements, the second one is extendedSQL
@@ -149,6 +151,7 @@ WHERE
 			}
 
 			a.Equal(sql+` `, s[1].standard)
+			a.Equal(fmt.Sprintf(`%s %s;`, sql, extendedSQL), s[1].original)
 		}
 
 		{ // two SQL statements, the first standard SQL has an error.
