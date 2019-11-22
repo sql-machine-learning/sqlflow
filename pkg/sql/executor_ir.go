@@ -42,12 +42,17 @@ type EndOfExecution struct {
 
 var envSubmitter = os.Getenv("SQLFLOW_submitter")
 
+// SubmitterType is the type of SQLFlow submitter
 type SubmitterType int
 
 const (
+	// SubmitterPAI indicates that SQLFlow uses the PAI platform as submitter
 	SubmitterPAI = iota
+	// SubmitterEDL indicates that SQLFlow uses ElasticDL as submitter
 	SubmitterEDL
+	// SubmitterALPS indicates that SQLFlow uses ALPS as submitter
 	SubmitterALPS
+	// SubmitterDefault indicates that SQLFlow uses the default submitter
 	SubmitterDefault
 )
 
