@@ -23,7 +23,7 @@ func TestVerify_1(t *testing.T) {
 	a := assert.New(t)
 	r, e := newExtendedSyntaxParser().Parse(`SELECT * FROM churn.train LIMIT 10;`)
 	a.NoError(e)
-	fts, e := verify(r, testDB)
+	fts, e := verify(r.standardSelect.String(), testDB)
 	a.NoError(e)
 	a.Equal(21, len(fts))
 
@@ -32,7 +32,7 @@ func TestVerify_1(t *testing.T) {
 	}
 	r, e = newExtendedSyntaxParser().Parse(`SELECT Churn, churn.train.Partner,TotalCharges FROM churn.train LIMIT 10;`)
 	a.NoError(e)
-	fts, e = verify(r, testDB)
+	fts, e = verify(r.standardSelect.String(), testDB)
 	a.NoError(e)
 	a.Equal(3, len(fts))
 
@@ -56,7 +56,7 @@ func TestVerify_2(t *testing.T) {
 	a := assert.New(t)
 	r, e := newExtendedSyntaxParser().Parse(`SELECT Churn, churn.train.Partner FROM churn.train LIMIT 10;`)
 	a.NoError(e)
-	fts, e := verify(r, testDB)
+	fts, e := verify(r.standardSelect.String(), testDB)
 	a.NoError(e)
 	a.Equal(2, len(fts))
 	typ, ok := fts.get("churn")
@@ -104,7 +104,7 @@ func TestDescribeEmptyTables(t *testing.T) {
 	a := assert.New(t)
 	r, e := newExtendedSyntaxParser().Parse(`SELECT * FROM iris.iris_empty LIMIT 10;`)
 	a.NoError(e)
-	_, e = verify(r, testDB)
+	_, e = verify(r.standardSelect.String(), testDB)
 	a.EqualError(e, `query SELECT *
 FROM iris.iris_empty
 LIMIT 10 gives 0 row`)

@@ -260,10 +260,8 @@ func runPredictIR(predIR *codegen.PredictIR, wr *PipeWriter, db *DB, modelDir st
 
 		program.WriteString(code)
 	} else {
-		// TODO(typhoonzero): loadModelMeta should use IR
-		pr, _, e = loadModelMeta(pr, db, cwd, modelDir, pr.model)
-		if e != nil {
-			return fmt.Errorf("loadModelMeta %v", e)
+		if err := recoverModelDir(db, cwd, modelDir, predIR.TrainIR.Into); err != nil {
+			return err
 		}
 		if isXGBoostModel(predIR.TrainIR.Estimator) {
 			code, err := xgboost.Pred(predIR, session)
@@ -306,20 +304,16 @@ func runPredictIR(predIR *codegen.PredictIR, wr *PipeWriter, db *DB, modelDir st
 }
 
 func runAnalyzeIR(analyzeIR *codegen.AnalyzeIR, wr *PipeWriter, db *DB, modelDir string, session *pb.Session) error {
-	pr, e := newExtendedSyntaxParser().Parse(analyzeIR.OriginalSQL)
-	if e != nil {
-		return e
-	}
 	// cwd is used to load the saved model for prediction.
 	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
 	if err != nil {
 		return err
 	}
 	defer os.RemoveAll(cwd)
+
 	// load the model for analyze
-	pr, _, e = loadModelMeta(pr, db, cwd, modelDir, pr.trainedModel)
-	if e != nil {
-		return fmt.Errorf("loadModelMeta %v", e)
+	if err := recoverModelDir(db, cwd, modelDir, analyzeIR.TrainIR.Into); err != nil {
+		return err
 	}
 
 	cmd := exec.Command("python", "-u")
@@ -368,7 +362,7 @@ func createPredictionTable(predParsed *extendedSelect, db *DB, session *pb.Sessi
 		return fmt.Errorf("failed executing %s: %q", dropStmt, e)
 	}
 
-	fts, e := verify(predParsed, db)
+	fts, e := verify(predParsed.standardSelect.String(), db)
 	if e != nil {
 		return e
 	}
@@ -476,6 +470,16 @@ func createPredictionTableFromIR(predIR *codegen.PredictIR, db *DB, session *pb.
 	return nil
 }
 
+func recoverModelDir(db *DB, cwd, modelDir, modelName string) error {
+	if modelDir != "" {
+		_, err := loadTar(modelDir, cwd, modelName)
+		return err
+	}
+
+	_, err := load(db, modelName, cwd)
+	return err
+}
+
 func loadModelMeta(pr *extendedSelect, db *DB, cwd, modelDir, modelName string) (*extendedSelect, fieldTypes, error) {
 	var m *model
 	var e error
@@ -500,7 +504,7 @@ func loadModelMeta(pr *extendedSelect, db *DB, cwd, modelDir, modelName string) 
 	}
 
 	pr.trainClause = tr.trainClause
-	fts, e := verify(pr, db)
+	fts, e := verify(pr.standardSelect.String(), db)
 	if e != nil {
 		return nil, nil, fmt.Errorf("verify: %v", e)
 	}
