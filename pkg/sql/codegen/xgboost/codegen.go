@@ -20,8 +20,8 @@ import (
 	"strings"
 
 	pb "sqlflow.org/sqlflow/pkg/server/proto"
-	"sqlflow.org/sqlflow/pkg/sql/codegen"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/attribute"
+	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
 
 // TODO(tony): complete model parameter and training parameter list
@@ -73,30 +73,30 @@ func parseAttribute(attrs map[string]interface{}) (map[string]map[string]interfa
 	return params, nil
 }
 
-func getFieldMeta(fcs []codegen.FeatureColumn, l codegen.FeatureColumn) ([]codegen.FieldMeta, codegen.FieldMeta, error) {
-	var features []codegen.FieldMeta
+func getFieldMeta(fcs []ir.FeatureColumn, l ir.FeatureColumn) ([]ir.FieldMeta, ir.FieldMeta, error) {
+	var features []ir.FieldMeta
 	for _, fc := range fcs {
 		switch c := fc.(type) {
-		case *codegen.NumericColumn:
+		case *ir.NumericColumn:
 			features = append(features, *c.FieldMeta)
 		default:
-			return nil, codegen.FieldMeta{}, fmt.Errorf("unsupported feature column type %T on %v", c, c)
+			return nil, ir.FieldMeta{}, fmt.Errorf("unsupported feature column type %T on %v", c, c)
 		}
 	}
 
-	var label codegen.FieldMeta
+	var label ir.FieldMeta
 	switch c := l.(type) {
-	case *codegen.NumericColumn:
+	case *ir.NumericColumn:
 		label = *c.FieldMeta
 	default:
-		return nil, codegen.FieldMeta{}, fmt.Errorf("unsupported label column type %T on %v", c, c)
+		return nil, ir.FieldMeta{}, fmt.Errorf("unsupported label column type %T on %v", c, c)
 	}
 
 	return features, label, nil
 }
 
 // Train generates a Python program for train a XgBoost model.
-func Train(ir *codegen.TrainIR) (string, error) {
+func Train(ir *ir.TrainClause) (string, error) {
 	params, err := parseAttribute(ir.Attributes)
 	if err != nil {
 		return "", err
@@ -146,7 +146,7 @@ func Train(ir *codegen.TrainIR) (string, error) {
 }
 
 // Pred generates a Python program for predict a xgboost model.
-func Pred(ir *codegen.PredictIR, session *pb.Session) (string, error) {
+func Pred(ir *ir.PredictClause, session *pb.Session) (string, error) {
 	featureFieldMeta, labelFieldMeta, err := getFieldMeta(ir.TrainIR.Features["feature_columns"], ir.TrainIR.Label)
 	f, err := json.Marshal(featureFieldMeta)
 	if err != nil {
