@@ -11,6 +11,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:generate protoc -I proto intermediate_representation.proto --go_out=proto
+
 package codegen
 
 // FieldType indicates the field type of a table column

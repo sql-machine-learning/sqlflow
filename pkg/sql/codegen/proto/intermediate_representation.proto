@@ -1,0 +1,85 @@
+syntax = "proto3";
+
+package proto;
+
+message FieldMeta {
+    string name = 1;
+    string dtype = 2;
+    string delimiter = 3;
+    repeated int32 shape = 4;
+    bool is_sparse = 5;
+    map<string, string> vocabulary = 6;
+    int32 maxID = 7;
+}
+
+message NumericColumn {
+    FieldMeta field_meta = 1;
+}
+
+message BucketColumn {
+    NumericColumn source_column = 1;
+    repeated int32 boundaries = 2;
+}
+
+message CrossColumn {
+    repeated FeatureColumn keys = 1;
+    int32 hash_bucket_size = 2;
+}
+
+message CategoryIDColumn {
+    FieldMeta field_meta = 1;
+    int32 bucket_size = 2;
+}
+
+message SeqCategoryIDColumn {
+    FieldMeta field_meta = 1;
+    int32 bucket_size = 2;
+}
+
+message EmbeddingColumn {
+    oneof category_column {
+        CategoryIDColumn category_col = 1;
+        SeqCategoryIDColumn seq_category_col = 2;
+    }
+    int32 dimension = 3;
+    string combiner = 4;
+    string initializer = 5;
+}
+
+message FeatureColumn {
+    oneof feature_column {
+        NumericColumn nc = 1;
+        BucketColumn bc = 2;
+        CrossColumn cc = 3;
+        CategoryIDColumn catc = 4;
+        SeqCategoryIDColumn seqcatc = 5;
+        EmbeddingColumn embc = 6;
+    }
+}
+
+// TODO(typhoonzero): directly import Session from pkg/server/proto
+message Session {
+    string token = 1;
+    string db_conn_str = 2;
+    bool exit_on_submit = 3;
+    string user_id = 4;
+    string hive_location = 5;
+    string hdfs_namenode_addr = 6;
+    string hdfs_user = 7;
+    string hdfs_pass = 8;
+}
+
+message FeatureColumnList {
+    repeated FeatureColumn feature_columns = 1;
+}
+
+message TrainIR {
+    string datasource = 1;
+    string select = 2;
+    string validation_select  = 3;
+    string estimator = 4;
+    map<string, string> attributes = 5;
+    map<string,FeatureColumnList> features = 6;
+    FeatureColumn label = 7;
+    Session session = 8;
+}
