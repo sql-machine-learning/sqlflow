@@ -25,7 +25,7 @@ import (
 
 func TestTrainCodegen(t *testing.T) {
 	a := assert.New(t)
-	sampleTrainIR := &TrainIR{
+	sampleTrainIR := &TrainClause{
 		DataSource:       "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0",
 		Select:           "select * from iris.train;",
 		ValidationSelect: "select * from iris.test;",

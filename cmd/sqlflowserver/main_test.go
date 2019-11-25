@@ -368,6 +368,7 @@ func TestEnd2EndHive(t *testing.T) {
 	t.Run("TestShowDatabases", CaseShowDatabases)
 	t.Run("TestSelect", CaseSelect)
 	t.Run("TestTrainSQL", CaseTrainSQL)
+	t.Run("CaseTrainFeatureDerevation", CaseTrainFeatureDerevation)
 	t.Run("CaseTrainRegression", CaseTrainRegression)
 	t.Run("CaseTrainCustomModel", CaseTrainCustomModel)
 	t.Run("CaseTrainDeepWideModel", CaseTrainDeepWideModel)
