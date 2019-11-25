@@ -258,16 +258,16 @@ INTO sqlflow_models.my_xgboost_model;
 	a.NoError(e)
 
 	connStr := "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
-	ir, e := generateAnalyzeIR(pr, connStr, modelDir, true)
+	AnalyzeIR, e := generateAnalyzeIR(pr, connStr, modelDir, true)
 	a.NoError(e)
-	a.Equal(ir.DataSource, connStr)
-	a.Equal(ir.Explainer, "TreeExplainer")
-	a.Equal(len(ir.Attributes), 3)
-	a.Equal(ir.Attributes["shap_summary.sort"], true)
-	a.Equal(ir.Attributes["shap_summary.plot_type"], "bar")
-	a.Equal(ir.Attributes["shap_summary.alpha"], 1)
+	a.Equal(AnalyzeIR.DataSource, connStr)
+	a.Equal(AnalyzeIR.Explainer, "TreeExplainer")
+	a.Equal(len(AnalyzeIR.Attributes), 3)
+	a.Equal(AnalyzeIR.Attributes["shap_summary.sort"], true)
+	a.Equal(AnalyzeIR.Attributes["shap_summary.plot_type"], "bar")
+	a.Equal(AnalyzeIR.Attributes["shap_summary.alpha"], 1)
 
-	nc, ok := ir.TrainIR.Features["feature_columns"][0].(*ir.NumericColumn)
+	nc, ok := AnalyzeIR.TrainIR.Features["feature_columns"][0].(*ir.NumericColumn)
 	a.True(ok)
 	a.Equal("sepal_length", nc.FieldMeta.Name)
 }
