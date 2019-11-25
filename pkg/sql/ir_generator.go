@@ -109,18 +109,18 @@ func generateTrainIRByModel(slct *extendedSelect, connStr, cwd, modelDir, model 
 	return generateTrainIRWithInferredColumns(slctWithTrain, connStr)
 }
 
-func verifyIRWithTrainIR(ir codegen.SingleSQLIR, db *DB) error {
+func verifyIRWithTrainIR(sqlir ir.SQLStatement, db *DB) error {
 	var selectStmt string
-	var trainIR *codegen.TrainIR
-	switch s := ir.(type) {
-	case *codegen.PredictIR:
+	var trainIR *ir.TrainClause
+	switch s := sqlir.(type) {
+	case *ir.PredictClause:
 		selectStmt = s.Select
 		trainIR = s.TrainIR
-	case *codegen.AnalyzeIR:
+	case *ir.AnalyzeClause:
 		selectStmt = s.Select
 		trainIR = s.TrainIR
 	default:
-		return fmt.Errorf("loadModelMetaUsingIR doesn't support IR of type %T", ir)
+		return fmt.Errorf("loadModelMetaUsingIR doesn't support IR of type %T", sqlir)
 	}
 
 	trainFields, e := verify(selectStmt, db)
@@ -152,7 +152,7 @@ func verifyIRWithTrainIR(ir codegen.SingleSQLIR, db *DB) error {
 	return nil
 }
 
-func generatePredictIR(slct *extendedSelect, connStr string, modelDir string, getTrainIRFromModel bool) (*codegen.PredictIR, error) {
+func generatePredictIR(slct *extendedSelect, connStr string, modelDir string, getTrainIRFromModel bool) (*ir.PredictClause, error) {
 	attrMap, err := generateAttributeIR(&slct.predAttrs)
 	if err != nil {
 		return nil, err
@@ -178,7 +178,7 @@ func generatePredictIR(slct *extendedSelect, connStr string, modelDir string, ge
 		return nil, err
 	}
 
-	predIR := &codegen.PredictIR{
+	predIR := &ir.PredictClause{
 		DataSource:   connStr,
 		Select:       slct.standardSelect.String(),
 		ResultTable:  resultTable,
@@ -221,7 +221,7 @@ func generateAnalyzeIR(slct *extendedSelect, connStr, modelDir string, getTrainI
 		}
 	}
 
-	analyzeIR := &codegen.AnalyzeIR{
+	analyzeIR := &ir.AnalyzeClause{
 		DataSource: connStr,
 		Select:     slct.standardSelect.String(),
 		Attributes: attrs,

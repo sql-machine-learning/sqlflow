@@ -19,6 +19,7 @@ import (
 
 	pb "sqlflow.org/sqlflow/pkg/server/proto"
 	irpb "sqlflow.org/sqlflow/pkg/sql/codegen/proto"
+	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
 
 // FIXME(typhoonzero): copied from tensorflow/codegen.go
@@ -61,13 +62,13 @@ func attrToPythonValue(attr interface{}) string {
 }
 
 // FIXME(typhoonzero): copied from tensorflow/codegen.go
-func dtypeToString(dt FieldType) string {
+func dtypeToString(dt ir.FieldType) string {
 	switch dt {
-	case Float:
+	case ir.Float:
 		return "float32"
-	case Int:
+	case ir.Int:
 		return "int64"
-	case String:
+	case ir.String:
 		return "string"
 	default:
 		return ""
@@ -82,7 +83,7 @@ func toInt32List(il []int) []int32 {
 	return ret
 }
 
-func fieldMetaToPbMeta(fm *FieldMeta) *irpb.FieldMeta {
+func fieldMetaToPbMeta(fm *ir.FieldMeta) *irpb.FieldMeta {
 	return &irpb.FieldMeta{
 		Name:       fm.Name,
 		Dtype:      dtypeToString(fm.DType),
@@ -94,9 +95,9 @@ func fieldMetaToPbMeta(fm *FieldMeta) *irpb.FieldMeta {
 	}
 }
 
-func featureColumnToPb(fc FeatureColumn) (*irpb.FeatureColumn, error) {
+func featureColumnToPb(fc ir.FeatureColumn) (*irpb.FeatureColumn, error) {
 	switch fc.(type) {
-	case *NumericColumn:
+	case *ir.NumericColumn:
 		nc := &irpb.FeatureColumn{
 			FeatureColumn: &irpb.FeatureColumn_Nc{
 				Nc: &irpb.NumericColumn{
@@ -105,7 +106,7 @@ func featureColumnToPb(fc FeatureColumn) (*irpb.FeatureColumn, error) {
 			},
 		}
 		return nc, nil
-	case *BucketColumn:
+	case *ir.BucketColumn:
 		fm := fc.GetFieldMeta()[0]
 		bc := &irpb.FeatureColumn{
 			FeatureColumn: &irpb.FeatureColumn_Bc{
@@ -113,16 +114,16 @@ func featureColumnToPb(fc FeatureColumn) (*irpb.FeatureColumn, error) {
 					SourceColumn: &irpb.NumericColumn{
 						FieldMeta: fieldMetaToPbMeta(fm),
 					},
-					Boundaries: toInt32List(fc.(*BucketColumn).Boundaries),
+					Boundaries: toInt32List(fc.(*ir.BucketColumn).Boundaries),
 				},
 			},
 		}
 		return bc, nil
-	case *CrossColumn:
-		cc := fc.(*CrossColumn)
+	case *ir.CrossColumn:
+		cc := fc.(*ir.CrossColumn)
 		pbkeys := []*irpb.FeatureColumn{}
 		for _, key := range cc.Keys {
-			tmpfc, err := featureColumnToPb(key.(FeatureColumn))
+			tmpfc, err := featureColumnToPb(key.(ir.FeatureColumn))
 			if err != nil {
 				return nil, err
 			}
@@ -137,8 +138,8 @@ func featureColumnToPb(fc FeatureColumn) (*irpb.FeatureColumn, error) {
 			},
 		}
 		return pbcc, nil
-	case *CategoryIDColumn:
-		catc := fc.(*CategoryIDColumn)
+	case *ir.CategoryIDColumn:
+		catc := fc.(*ir.CategoryIDColumn)
 		pbcatc := &irpb.FeatureColumn{
 			FeatureColumn: &irpb.FeatureColumn_Catc{
 				Catc: &irpb.CategoryIDColumn{
@@ -148,8 +149,8 @@ func featureColumnToPb(fc FeatureColumn) (*irpb.FeatureColumn, error) {
 			},
 		}
 		return pbcatc, nil
-	case *SeqCategoryIDColumn:
-		seqcatc := fc.(*SeqCategoryIDColumn)
+	case *ir.SeqCategoryIDColumn:
+		seqcatc := fc.(*ir.SeqCategoryIDColumn)
 		pbseqcatc := &irpb.FeatureColumn{
 			FeatureColumn: &irpb.FeatureColumn_Seqcatc{
 				Seqcatc: &irpb.SeqCategoryIDColumn{
@@ -159,13 +160,13 @@ func featureColumnToPb(fc FeatureColumn) (*irpb.FeatureColumn, error) {
 			},
 		}
 		return pbseqcatc, nil
-	case *EmbeddingColumn:
-		emb := fc.(*EmbeddingColumn)
-		tmpfc, err := featureColumnToPb(emb.CategoryColumn.(FeatureColumn))
+	case *ir.EmbeddingColumn:
+		emb := fc.(*ir.EmbeddingColumn)
+		tmpfc, err := featureColumnToPb(emb.CategoryColumn.(ir.FeatureColumn))
 		if err != nil {
 			return nil, err
 		}
-		_, iscatc := emb.CategoryColumn.(*CategoryIDColumn)
+		_, iscatc := emb.CategoryColumn.(*ir.CategoryIDColumn)
 		if iscatc {
 			embcatc := &irpb.EmbeddingColumn_CategoryCol{
 				CategoryCol: tmpfc.GetCatc(),
@@ -201,7 +202,7 @@ func featureColumnToPb(fc FeatureColumn) (*irpb.FeatureColumn, error) {
 
 // TrainIRToProto convert parsed TrainIR to a protobuf format
 // TODO(typhoonzero): add PredictIR, AnalyzeIR
-func TrainIRToProto(ir *TrainIR, sess *pb.Session) (*irpb.TrainIR, error) {
+func TrainIRToProto(ir *ir.TrainClause, sess *pb.Session) (*irpb.TrainIR, error) {
 	attrs := make(map[string]string)
 	for k, v := range ir.Attributes {
 		attrs[k] = attrToPythonValue(v)

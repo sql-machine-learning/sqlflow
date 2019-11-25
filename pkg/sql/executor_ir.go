@@ -26,7 +26,6 @@ import (
 	"sync"
 	"time"
 
-	"sqlflow.org/sql-machine-learning.github.io/sqlflow/pkg/sql/codegen"
 	pb "sqlflow.org/sqlflow/pkg/server/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/pai"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
@@ -304,7 +303,7 @@ func runPredictIR(predIR *ir.PredictClause, wr *PipeWriter, db *DB, modelDir str
 	return nil
 }
 
-func runAnalyzeIR(analyzeIR *codegen.AnalyzeIR, wr *PipeWriter, db *DB, modelDir string, session *pb.Session) error {
+func runAnalyzeIR(analyzeIR *ir.AnalyzeClause, wr *PipeWriter, db *DB, modelDir string, session *pb.Session) error {
 	// cwd is used to load the saved model for prediction.
 	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
 	if err != nil {
