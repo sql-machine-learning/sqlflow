@@ -62,7 +62,7 @@ type elasticDLModelSpec struct {
 }
 
 func getFeaturesNames(pr *extendedSelect, db *DB) ([]string, error) {
-	fts, err := verify(pr, db)
+	fts, err := verify(pr.standardSelect.String(), db)
 	if err != nil {
 		return nil, err
 	}
