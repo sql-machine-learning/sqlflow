@@ -11,6 +11,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:generate protoc -I proto proto/intermediate_representation.proto --go_out=proto
+
 // Package ir is the Intermediate Representation of parsed SQL statements
 package ir
 

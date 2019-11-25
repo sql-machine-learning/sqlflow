@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package codegen
+package ir
 
 import (
 	"testing"
@@ -20,7 +20,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	pb "sqlflow.org/sqlflow/pkg/server/proto"
-	irpb "sqlflow.org/sqlflow/pkg/sql/codegen/proto"
+	irpb "sqlflow.org/sqlflow/pkg/sql/ir/proto"
 )
 
 func TestTrainCodegen(t *testing.T) {

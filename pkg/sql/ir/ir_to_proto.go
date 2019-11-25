@@ -11,15 +11,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package codegen
+package ir
 
 import (
 	"fmt"
 	"strings"
 
 	pb "sqlflow.org/sqlflow/pkg/server/proto"
-	irpb "sqlflow.org/sqlflow/pkg/sql/codegen/proto"
-	"sqlflow.org/sqlflow/pkg/sql/ir"
+	irpb "sqlflow.org/sqlflow/pkg/sql/ir/proto"
 )
 
 // FIXME(typhoonzero): copied from tensorflow/codegen.go
@@ -62,13 +61,13 @@ func attrToPythonValue(attr interface{}) string {
 }
 
 // FIXME(typhoonzero): copied from tensorflow/codegen.go
-func dtypeToString(dt ir.FieldType) string {
+func dtypeToString(dt FieldType) string {
 	switch dt {
-	case ir.Float:
+	case Float:
 		return "float32"
-	case ir.Int:
+	case Int:
 		return "int64"
-	case ir.String:
+	case String:
 		return "string"
 	default:
 		return ""
@@ -83,7 +82,7 @@ func toInt32List(il []int) []int32 {
 	return ret
 }
 
-func fieldMetaToPbMeta(fm *ir.FieldMeta) *irpb.FieldMeta {
+func fieldMetaToPbMeta(fm *FieldMeta) *irpb.FieldMeta {
 	return &irpb.FieldMeta{
 		Name:       fm.Name,
 		Dtype:      dtypeToString(fm.DType),
@@ -95,9 +94,9 @@ func fieldMetaToPbMeta(fm *ir.FieldMeta) *irpb.FieldMeta {
 	}
 }
 
-func featureColumnToPb(fc ir.FeatureColumn) (*irpb.FeatureColumn, error) {
+func featureColumnToPb(fc FeatureColumn) (*irpb.FeatureColumn, error) {
 	switch fc.(type) {
-	case *ir.NumericColumn:
+	case *NumericColumn:
 		nc := &irpb.FeatureColumn{
 			FeatureColumn: &irpb.FeatureColumn_Nc{
 				Nc: &irpb.NumericColumn{
@@ -106,7 +105,7 @@ func featureColumnToPb(fc ir.FeatureColumn) (*irpb.FeatureColumn, error) {
 			},
 		}
 		return nc, nil
-	case *ir.BucketColumn:
+	case *BucketColumn:
 		fm := fc.GetFieldMeta()[0]
 		bc := &irpb.FeatureColumn{
 			FeatureColumn: &irpb.FeatureColumn_Bc{
@@ -114,16 +113,16 @@ func featureColumnToPb(fc ir.FeatureColumn) (*irpb.FeatureColumn, error) {
 					SourceColumn: &irpb.NumericColumn{
 						FieldMeta: fieldMetaToPbMeta(fm),
 					},
-					Boundaries: toInt32List(fc.(*ir.BucketColumn).Boundaries),
+					Boundaries: toInt32List(fc.(*BucketColumn).Boundaries),
 				},
 			},
 		}
 		return bc, nil
-	case *ir.CrossColumn:
-		cc := fc.(*ir.CrossColumn)
+	case *CrossColumn:
+		cc := fc.(*CrossColumn)
 		pbkeys := []*irpb.FeatureColumn{}
 		for _, key := range cc.Keys {
-			tmpfc, err := featureColumnToPb(key.(ir.FeatureColumn))
+			tmpfc, err := featureColumnToPb(key.(FeatureColumn))
 			if err != nil {
 				return nil, err
 			}
@@ -138,8 +137,8 @@ func featureColumnToPb(fc ir.FeatureColumn) (*irpb.FeatureColumn, error) {
 			},
 		}
 		return pbcc, nil
-	case *ir.CategoryIDColumn:
-		catc := fc.(*ir.CategoryIDColumn)
+	case *CategoryIDColumn:
+		catc := fc.(*CategoryIDColumn)
 		pbcatc := &irpb.FeatureColumn{
 			FeatureColumn: &irpb.FeatureColumn_Catc{
 				Catc: &irpb.CategoryIDColumn{
@@ -149,8 +148,8 @@ func featureColumnToPb(fc ir.FeatureColumn) (*irpb.FeatureColumn, error) {
 			},
 		}
 		return pbcatc, nil
-	case *ir.SeqCategoryIDColumn:
-		seqcatc := fc.(*ir.SeqCategoryIDColumn)
+	case *SeqCategoryIDColumn:
+		seqcatc := fc.(*SeqCategoryIDColumn)
 		pbseqcatc := &irpb.FeatureColumn{
 			FeatureColumn: &irpb.FeatureColumn_Seqcatc{
 				Seqcatc: &irpb.SeqCategoryIDColumn{
@@ -160,13 +159,13 @@ func featureColumnToPb(fc ir.FeatureColumn) (*irpb.FeatureColumn, error) {
 			},
 		}
 		return pbseqcatc, nil
-	case *ir.EmbeddingColumn:
-		emb := fc.(*ir.EmbeddingColumn)
-		tmpfc, err := featureColumnToPb(emb.CategoryColumn.(ir.FeatureColumn))
+	case *EmbeddingColumn:
+		emb := fc.(*EmbeddingColumn)
+		tmpfc, err := featureColumnToPb(emb.CategoryColumn.(FeatureColumn))
 		if err != nil {
 			return nil, err
 		}
-		_, iscatc := emb.CategoryColumn.(*ir.CategoryIDColumn)
+		_, iscatc := emb.CategoryColumn.(*CategoryIDColumn)
 		if iscatc {
 			embcatc := &irpb.EmbeddingColumn_CategoryCol{
 				CategoryCol: tmpfc.GetCatc(),
@@ -202,13 +201,13 @@ func featureColumnToPb(fc ir.FeatureColumn) (*irpb.FeatureColumn, error) {
 
 // TrainIRToProto convert parsed TrainIR to a protobuf format
 // TODO(typhoonzero): add PredictIR, AnalyzeIR
-func TrainIRToProto(ir *ir.TrainClause, sess *pb.Session) (*irpb.TrainIR, error) {
+func TrainIRToProto(trainIR *TrainClause, sess *pb.Session) (*irpb.TrainIR, error) {
 	attrs := make(map[string]string)
-	for k, v := range ir.Attributes {
+	for k, v := range trainIR.Attributes {
 		attrs[k] = attrToPythonValue(v)
 	}
 	features := make(map[string]*irpb.FeatureColumnList)
-	for target, fclist := range ir.Features {
+	for target, fclist := range trainIR.Features {
 		pbfclist := &irpb.FeatureColumnList{
 			FeatureColumns: []*irpb.FeatureColumn{},
 		}
@@ -225,7 +224,7 @@ func TrainIRToProto(ir *ir.TrainClause, sess *pb.Session) (*irpb.TrainIR, error)
 		features[target] = pbfclist
 	}
 
-	labelFM := ir.Label.GetFieldMeta()[0]
+	labelFM := trainIR.Label.GetFieldMeta()[0]
 	label := &irpb.FeatureColumn{
 		FeatureColumn: &irpb.FeatureColumn_Nc{
 			Nc: &irpb.NumericColumn{
@@ -246,10 +245,10 @@ func TrainIRToProto(ir *ir.TrainClause, sess *pb.Session) (*irpb.TrainIR, error)
 	}
 
 	ret := &irpb.TrainIR{
-		Datasource:       ir.DataSource,
-		Select:           ir.Select,
-		ValidationSelect: ir.ValidationSelect,
-		Estimator:        ir.Estimator,
+		Datasource:       trainIR.DataSource,
+		Select:           trainIR.Select,
+		ValidationSelect: trainIR.ValidationSelect,
+		Estimator:        trainIR.Estimator,
 		Attributes:       attrs,
 		Features:         features,
 		Label:            label,
