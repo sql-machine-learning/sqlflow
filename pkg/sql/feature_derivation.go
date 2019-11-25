@@ -102,7 +102,7 @@ func newRowValue(columnTypeList []*sql.ColumnType) ([]interface{}, error) {
 		}
 		// NOTE(tony): MaxCompute type name is in lower cases
 		switch strings.ToUpper(typeName) {
-		case "VARCHAR", "TEXT":
+		case "VARCHAR", "TEXT", "STRING":
 			rowData[idx] = new(string)
 		case "INT":
 			rowData[idx] = new(int32)
@@ -140,14 +140,18 @@ func fillFieldMeta(columnTypeList []*sql.ColumnType, rowdata []interface{}, fiel
 		}
 		// start the feature derivation routine
 		typeName := ct.DatabaseTypeName()
-		switch typeName {
+		// NOTE(typhoonzero): Hive uses typenames like "XXX_TYPE"
+		if strings.HasSuffix(typeName, "_TYPE") {
+			typeName = strings.Replace(typeName, "_TYPE", "", 1)
+		}
+		switch strings.ToUpper(typeName) {
 		case "INT", "DECIMAL", "BIGINT":
 			fieldMetaMap[fld].DType = codegen.Int
 			fieldMetaMap[fld].Shape = []int{1}
 		case "FLOAT", "DOUBLE":
 			fieldMetaMap[fld].DType = codegen.Float
 			fieldMetaMap[fld].Shape = []int{1}
-		case "VARCHAR", "TEXT":
+		case "VARCHAR", "TEXT", "STRING":
 			cellData := rowdata[idx].(*string)
 			if csvRegex.MatchString(*cellData) {
 				// ----------------------- CSV string values -----------------------
@@ -270,7 +274,10 @@ func InferFeatureColumns(ir *codegen.TrainIR) error {
 		if err != nil {
 			return err
 		}
-		fillFieldMeta(columnTypes, rowData, fmMap)
+		err = fillFieldMeta(columnTypes, rowData, fmMap)
+		if err != nil {
+			return err
+		}
 	}
 	err = rows.Err()
 	if err != nil {

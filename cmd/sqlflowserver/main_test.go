@@ -195,6 +195,9 @@ func prepareTestData(dbStr string) error {
 		if err = testdata.Popularize(testDB.DB, testdata.ChurnHiveSQL); err != nil {
 			return err
 		}
+		if err := testdata.Popularize(testDB.DB, testdata.FeatureDerivationCaseSQLHive); err != nil {
+			return err
+		}
 		return testdata.Popularize(testDB.DB, testdata.HousingSQL)
 	case "maxcompute":
 		submitter := os.Getenv("SQLFLOW_submitter")
@@ -373,6 +376,7 @@ func TestEnd2EndHive(t *testing.T) {
 	t.Run("CaseTrainDeepWideModel", CaseTrainDeepWideModel)
 	t.Run("CaseTrainXGBoostRegression", CaseTrainXGBoostRegression)
 	t.Run("CasePredictXGBoostRegression", CasePredictXGBoostRegression)
+	t.Run("CaseTrainFeatureDerevation", CaseTrainFeatureDerevation)
 }
 
 func TestEnd2EndMaxCompute(t *testing.T) {
@@ -626,7 +630,7 @@ USING sqlflow_models.my_dnn_model;`
 	trainVaryColumnTypes := `SELECT c1, c2, c3, c4, c5, class from feature_derivation_case.train
 TO TRAIN DNNClassifier
 WITH model.n_classes=3, model.hidden_units=[10,10]
-COLUMN EMBEDDING(c3, 128, sum), EMBEDDING(SPARSE(c5, 10000, COMMA), 128, sum)
+COLUMN EMBEDDING(c3, 32, sum), EMBEDDING(SPARSE(c5, 64, COMMA), 32, sum)
 LABEL class
 INTO sqlflow_models.my_dnn_model;`
 	_, _, err = connectAndRunSQL(trainVaryColumnTypes)
