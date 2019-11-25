@@ -16,9 +16,6 @@ package tpp
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/pingcap/parser"
-	"github.com/pingcap/parser/ast"
-	_ "github.com/pingcap/tidb/types/parser_driver" // As required by https://github.com/pingcap/parser/blob/master/parser_example_test.go#L19
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -26,6 +23,10 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+
+	"github.com/pingcap/parser"
+	"github.com/pingcap/parser/ast"
+	_ "github.com/pingcap/tidb/types/parser_driver" // As required by https://github.com/pingcap/parser/blob/master/parser_example_test.go#L19
 )
 
 var (
@@ -103,7 +104,7 @@ func javaParseAndSplit(typ, sql string) ([]string, int, error) {
 
 	inputFile := filepath.Join(cwd, "input.sql")
 	outputFile := filepath.Join(cwd, "output.json")
-	if err := ioutil.WriteFile(inputFile, []byte(sql), 755); err != nil {
+	if err := ioutil.WriteFile(inputFile, []byte(sql), 0755); err != nil {
 		return nil, -1, err
 	}
 

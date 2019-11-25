@@ -31,8 +31,10 @@ go generate ./...
 echo "checking pkg/sql/extended_syntax_parser.go is up-to-date"
 # re-add the copyright header since goyacc generates a new parser.go
 python scripts/copyright.py pkg/sql/extended_syntax_parser.go
+python scripts/copyright.py pkg/sql/codegen/proto/intermediate_representation.pb.go
 # exits with 1 if there were differences and 0 means no differences.
 git diff --exit-code pkg/sql/extended_syntax_parser.go
+git diff --exit-code pkg/sql/codegen/proto/intermediate_representation.pb.go
 
 go install ./...
 

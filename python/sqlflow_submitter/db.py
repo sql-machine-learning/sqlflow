@@ -32,7 +32,7 @@ def parseMySQLDSN(dsn):
 
 def parseHiveDSN(dsn):
     # usr:pswd@hiveserver:10000/mydb?auth=PLAIN&session.mapreduce_job_quenename=mr
-    user_passwd, address_database, config_str = re.findall("^(.*)@([.a-zA-Z0-9/:]*)(\?.*)?", dsn)[0]
+    user_passwd, address_database, config_str = re.findall("^(.*)@([.a-zA-Z0-9/:_]*)(\?.*)?", dsn)[0]
     user, passwd = user_passwd.split(":")
     if len(address_database.split("/")) > 1:
         address, database = address_database.split("/")
@@ -57,7 +57,7 @@ def parseHiveDSN(dsn):
 
 def parseMaxComputeDSN(dsn):
     # access_id:access_key@service.com/api?curr_project=test_ci&scheme=http
-    user_passwd, address, config_str = re.findall("^(.*)@([.a-zA-Z0-9/]*)(\?.*)?", dsn)[0]
+    user_passwd, address, config_str = re.findall("^(.*)@([-.a-zA-Z0-9/]*)(\?.*)?", dsn)[0]
     user, passwd = user_passwd.split(":")
     config = {}
     if len(config_str) > 1:

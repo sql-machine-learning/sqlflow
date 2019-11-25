@@ -43,7 +43,7 @@ class MaxCompute:
             compress = tunnel.CompressOption.CompressAlgorithm.ODPS_ZLIB
             inst = conn.execute_sql(statement)
             if not inst.is_successful():
-                return None
+                return
 
             r = inst.open_reader(tunnel=True, compress_option=compress)
             field_names = None if r._schema.columns is None \

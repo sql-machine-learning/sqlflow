@@ -74,7 +74,7 @@ Say we want the model, previously stored at `sqlflow_models.my_dnn_model`, to re
 %%sqlflow
 SELECT *
 FROM iris.test
-predict iris.predict.class
+TO PREDICT iris.predict.class
 USING sqlflow_models.my_dnn_model;
 ```
 

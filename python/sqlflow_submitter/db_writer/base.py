@@ -11,25 +11,50 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from abc import ABC, abstractmethod
+import sys
+if sys.version > '3':
+    from abc import ABC, abstractmethod
+    class BufferedDBWriter(ABC):
+        def __init__(self, conn, table_name, table_schema, buff_size=100):
+            self.conn = conn
+            self.table_name = table_name
+            self.table_schema = table_schema
+            self.buff_size = buff_size
+            self.rows = []
+    
+        @abstractmethod
+        def flush(self):
+            return
+    
+        def write(self, value):
+            self.rows.append(value)
+            if len(self.rows) > self.buff_size:
+                self.flush()
+    
+        def close(self):
+            if len(self.rows) > 0:
+                self.flush()
+else:
+    from abc import ABCMeta, abstractmethod
 
-class BufferedDBWriter(ABC):
-    def __init__(self, conn, table_name, table_schema, buff_size=100):
-        self.conn = conn
-        self.table_name = table_name
-        self.table_schema = table_schema
-        self.buff_size = buff_size
-        self.rows = []
-
-    @abstractmethod
-    def flush(self):
-        return
-
-    def write(self, value):
-        self.rows.append(value)
-        if len(self.rows) > self.buff_size:
-            self.flush()
-
-    def close(self):
-        if len(self.rows) > 0:
-            self.flush()
+    class BufferedDBWriter():
+        __metaclass__ = ABCMeta
+        def __init__(self, conn, table_name, table_schema, buff_size=100):
+            self.conn = conn
+            self.table_name = table_name
+            self.table_schema = table_schema
+            self.buff_size = buff_size
+            self.rows = []
+    
+        @abstractmethod
+        def flush(self):
+            return
+    
+        def write(self, value):
+            self.rows.append(value)
+            if len(self.rows) > self.buff_size:
+                self.flush()
+    
+        def close(self):
+            if len(self.rows) > 0:
+                self.flush()

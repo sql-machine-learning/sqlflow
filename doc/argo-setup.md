@@ -13,7 +13,7 @@ Please be aware that, in practice, the SQLFlow container might be running on the
    ```
 1. Start a SQLFlow Docker container.
    ```bash
-   docker run --rm --net=host -it -v $GOPATH:/go -v $HOME:/root -w /go/src/sqlflow.org/sqlflow sqlflow:latest bash
+   docker run --rm --net=host -it -v $GOPATH:/go -v $HOME:/root -w /go/src/sqlflow.org/sqlflow sqlflow/sqlflow:latest bash
    ```
    We use `-v $HOME:/root` to mount the home directory on the host, `$HOME`, to the home directory in the container, `/root`, so we can access the Minikube cluster configuration files in `$HOME/.kube/` from within the container.
 
@@ -41,19 +41,26 @@ Please be aware that, in practice, the SQLFlow container might be running on the
    ```
    kubectl create rolebinding default-admin --clusterrole=admin --serviceaccount=default:default
    ```
-1. Install Argo. Skip this step if Argo has been installed.
+1. Run example workflow. Please be aware that the generated workflow name may differ between runs.
    ```
-   curl -sSL -o /usr/local/bin/argo https://github.com/argoproj/argo/releases/download/v2.3.0/argo-linux-amd64
-   chmod +x /usr/local/bin/argo
-   ```
-1. Run example workflow.
-   ```
-   argo submit --watch https://raw.githubusercontent.com/argoproj/argo/master/examples/hello-world.yaml
-   argo submit --watch https://raw.githubusercontent.com/argoproj/argo/master/examples/coinflip.yaml
-   argo submit --watch https://raw.githubusercontent.com/argoproj/argo/master/examples/loops-maps.yaml
-   argo list
-   argo get xxx-workflow-name-xxx
-   argo logs xxx-pod-name-xxx #from get command above
+   $ kubectl create -f https://raw.githubusercontent.com/argoproj/argo/master/examples/hello-world.yaml
+   workflow.argoproj.io/hello-world-hskf4 created
+
+   $ kubectl logs hello-world-hskf4 main
+      _____________
+     < hello world >
+      -------------
+         \
+          \
+           \
+                         ##        .
+                   ## ## ##       ==
+                ## ## ## ##      ===
+            /""""""""""""""""___/ ===
+       ~~~ {~~ ~~~~ ~~~ ~~~~ ~~ ~ /  ===- ~~~
+            \______ o          __/
+             \    \        __/
+               \____\______/
    ```
 
 ## Appendix

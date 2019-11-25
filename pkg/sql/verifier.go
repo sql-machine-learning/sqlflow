@@ -54,8 +54,7 @@ func decomp(ident string) (tbl string, fld string) {
 // verify checks the standard SELECT part is syntactically and logically legal.
 //
 // It returns a fieldTypes describing types of fields in SELECT.
-func verify(slct *extendedSelect, db *DB) (fieldTypes, error) {
-	q := slct.standardSelect.String()
+func verify(q string, db *DB) (fieldTypes, error) {
 	rows, err := db.Query(q)
 	if err != nil {
 		return nil, err
@@ -125,12 +124,12 @@ func getColumnTypes(slct string, db *DB) ([]string, []string, error) {
 // Check train and pred clause uses has the same feature columns
 // 1. every column field in the training clause is selected in the pred clause, and they are of the same type
 func verifyColumnNameAndType(trainParsed, predParsed *extendedSelect, db *DB) error {
-	trainFields, e := verify(trainParsed, db)
+	trainFields, e := verify(trainParsed.standardSelect.String(), db)
 	if e != nil {
 		return e
 	}
 
-	predFields, e := verify(predParsed, db)
+	predFields, e := verify(predParsed.standardSelect.String(), db)
 	if e != nil {
 		return e
 	}
