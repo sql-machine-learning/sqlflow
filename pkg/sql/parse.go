@@ -58,6 +58,9 @@ func parse(dbms, sqlProgram string) ([]statementParseResult, error) {
 		return make([]statementParseResult, 0), nil
 	}
 
+	// SELECT * FROM my_table TO TRAIN ...
+	//                        ^
+	//                        i
 	sqls, i, err := thirdPartyParse(dbms, sqlProgram)
 	if err != nil {
 		return nil, err
@@ -66,17 +69,24 @@ func parse(dbms, sqlProgram string) ([]statementParseResult, error) {
 		return sqls, nil
 	}
 
+	left := sqlProgram[:i]
 	sqlProgram = sqlProgram[i:]
-	extended, i, err := extendedSyntaxParse(sqlProgram)
+
+	// TO TRAIN dnn LABEL class INTO my_model; SELECT ...
+	//                                        ^
+	//                                        j
+	extended, j, err := extendedSyntaxParse(sqlProgram)
 	if err != nil {
 		return nil, err
 	}
-	sqls[len(sqls)-1].extended = extended
-	sqls[len(sqls)-1].extended.standardSelect.origin = sqls[len(sqls)-1].standard
-	// TODO(tony): make sure adding " " is necessary
-	sqls[len(sqls)-1].original = sqls[len(sqls)-1].standard + " " + sqlProgram[:i]
 
-	sqlProgram = sqlProgram[i:]
+	right := sqlProgram[:j]
+	sqlProgram = sqlProgram[j:]
+
+	sqls[len(sqls)-1].original = left + right
+	sqls[len(sqls)-1].extended = extended
+	sqls[len(sqls)-1].extended.standardSelect.origin = left
+
 	nextSqls, err := parse(dbms, sqlProgram)
 	if err != nil {
 		return nil, err
