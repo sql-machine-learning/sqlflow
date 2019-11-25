@@ -69,6 +69,7 @@ type SQLProgramIR []SingleSQLIR
 type SingleSQLIR interface {
 	// This function is used only for restrict the IR struct types
 	IsIR()
+	SetOriginalSQL(string)
 }
 
 // TrainIR is the intermediate representation for code generation of a training job.
@@ -110,6 +111,9 @@ type TrainIR struct {
 // IsIR is used only for restrict the IR struct types
 func (trainIR *TrainIR) IsIR() {}
 
+// SetOriginalSQL sets the original sql string
+func (trainIR *TrainIR) SetOriginalSQL(sql string) { trainIR.OriginalSQL = sql }
+
 // PredictIR is the intermediate representation for code generation of a prediction job
 //
 // Please be aware the PredictionIR contains the result table name, so the
@@ -137,6 +141,9 @@ type PredictIR struct {
 // IsIR is used only for restrict the IR struct types
 func (predictIR *PredictIR) IsIR() {}
 
+// SetOriginalSQL sets the original sql string
+func (predictIR *PredictIR) SetOriginalSQL(sql string) { predictIR.OriginalSQL = sql }
+
 // AnalyzeIR is the intermediate representation for code generation of a analysis job
 type AnalyzeIR struct {
 	// OriginalSQL record the original SQL statement used to get current IR result
@@ -159,8 +166,14 @@ type AnalyzeIR struct {
 // IsIR is used only for restrict the IR struct types
 func (analyzeIR *AnalyzeIR) IsIR() {}
 
+// SetOriginalSQL sets the original sql string
+func (analyzeIR *AnalyzeIR) SetOriginalSQL(sql string) { analyzeIR.OriginalSQL = sql }
+
 // StandardSQLIR is a string of a standard SQL statement that can run on the database system.
 type StandardSQLIR string
 
 // IsIR is used only for restrict the IR struct types
 func (sql *StandardSQLIR) IsIR() {}
+
+// SetOriginalSQL sets the original sql string
+func (sql *StandardSQLIR) SetOriginalSQL(s string) {}
