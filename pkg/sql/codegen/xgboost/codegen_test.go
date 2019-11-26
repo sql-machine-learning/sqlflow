@@ -59,6 +59,7 @@ func mockPrdcIR(trainIR *codegen.TrainIR) *codegen.PredictIR {
 		TrainIR:     trainIR,
 	}
 }
+
 func mockTrainIR() *codegen.TrainIR {
 	cfg := &mysql.Config{
 		User:                 "root",

@@ -92,16 +92,21 @@ func makeFieldMetaMap(features map[string][]codegen.FeatureColumn) FieldMetaMap 
 	return fmMap
 }
 
+func unifyDatabaseTypeName(typeName string) string {
+	// NOTE(typhoonzero): Hive uses typenames like "XXX_TYPE"
+	if strings.HasSuffix(typeName, "_TYPE") {
+		typeName = strings.Replace(typeName, "_TYPE", "", 1)
+	}
+
+	// NOTE(tony): MaxCompute type name is in lower cases
+	return strings.ToUpper(typeName)
+}
+
 func newRowValue(columnTypeList []*sql.ColumnType) ([]interface{}, error) {
 	rowData := make([]interface{}, len(columnTypeList))
 	for idx, ct := range columnTypeList {
 		typeName := ct.DatabaseTypeName()
-		// NOTE(typhoonzero): Hive uses typenames like "XXX_TYPE"
-		if strings.HasSuffix(typeName, "_TYPE") {
-			typeName = strings.Replace(typeName, "_TYPE", "", 1)
-		}
-		// NOTE(tony): MaxCompute type name is in lower cases
-		switch strings.ToUpper(typeName) {
+		switch unifyDatabaseTypeName(typeName) {
 		case "VARCHAR", "TEXT":
 			rowData[idx] = new(string)
 		case "INT":
@@ -140,7 +145,7 @@ func fillFieldMeta(columnTypeList []*sql.ColumnType, rowdata []interface{}, fiel
 		}
 		// start the feature derivation routine
 		typeName := ct.DatabaseTypeName()
-		switch typeName {
+		switch unifyDatabaseTypeName(typeName) {
 		case "INT", "DECIMAL", "BIGINT":
 			fieldMetaMap[fld].DType = codegen.Int
 			fieldMetaMap[fld].Shape = []int{1}
@@ -270,7 +275,10 @@ func InferFeatureColumns(ir *codegen.TrainIR) error {
 		if err != nil {
 			return err
 		}
-		fillFieldMeta(columnTypes, rowData, fmMap)
+		err = fillFieldMeta(columnTypes, rowData, fmMap)
+		if err != nil {
+			return err
+		}
 	}
 	err = rows.Err()
 	if err != nil {
