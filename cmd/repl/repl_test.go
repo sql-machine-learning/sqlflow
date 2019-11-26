@@ -26,7 +26,9 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	prompt "github.com/c-bata/go-prompt"
+	sf "sqlflow.org/sqlflow/pkg/sql"
 	irpb "sqlflow.org/sqlflow/pkg/sql/codegen/proto"
+	"sqlflow.org/sqlflow/pkg/sql/testdata"
 )
 
 // TODO(shendiaomo): end to end tests like sqlflowserver/main_test.go
@@ -101,7 +103,26 @@ func TestStdinParser(t *testing.T) {
 
 func TestStdinParseOnly(t *testing.T) {
 	a := assert.New(t)
-	os.Setenv("SQLFLOW_DATASOURCE", "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0")
+	dataSourceStr := ""
+	switch os.Getenv("SQLFLOW_TEST_DB") {
+	case "mysql":
+		dataSourceStr = "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
+		testdb, err := sf.NewDB(dataSourceStr)
+		a.NoError(err)
+		defer testdb.Close()
+		err = testdata.Popularize(testdb.DB, testdata.IrisSQL)
+		a.NoError(err)
+	case "hive":
+		dataSourceStr = "hive://root:root@127.0.0.1:10000/iris?auth=NOSASL"
+		testdb, err := sf.NewDB(dataSourceStr)
+		a.NoError(err)
+		defer testdb.Close()
+		err = testdata.Popularize(testdb.DB, testdata.IrisHiveSQL)
+		a.NoError(err)
+	default:
+		t.Skipf("skip TestStdinParseOnly for db type: %s", os.Getenv("SQLFLOW_TEST_DB"))
+	}
+	os.Setenv("SQLFLOW_DATASOURCE", dataSourceStr)
 	var stdin bytes.Buffer
 	stdin.Write([]byte("SELECT * from iris.train TO TRAIN DNNClassifier WITH a=1 LABEL class INTO mymodel;"))
 	pbtxt, err := parseSQLFromStdin(&stdin)
