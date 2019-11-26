@@ -19,8 +19,7 @@ import (
 	"github.com/golang/protobuf/proto"
 
 	"github.com/stretchr/testify/assert"
-	pb "sqlflow.org/sqlflow/pkg/server/proto"
-	irpb "sqlflow.org/sqlflow/pkg/sql/ir/proto"
+	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
 func TestTrainCodegen(t *testing.T) {
@@ -55,7 +54,7 @@ func TestTrainCodegen(t *testing.T) {
 	pbIR, err := TrainIRToProto(sampleTrainIR, sampleSession)
 	a.NoError(err)
 	pbtxt := proto.MarshalTextString(pbIR)
-	pbIRToTest := &irpb.TrainIR{}
+	pbIRToTest := &pb.TrainIR{}
 	err = proto.UnmarshalText(pbtxt, pbIRToTest)
 	a.NoError(err)
 	a.Equal(

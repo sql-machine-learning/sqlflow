@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package proto;
 
+import "sqlflow.proto";
+
 // Protobuf format intermediate representations for SQLFlow.
 // All structs should be exactly the same as structs defined in `pkg/sql/ir/ir.go`
 // You may refer to `ir.go` and `feature_collumn.go` for the meaning of each field.
@@ -59,18 +61,6 @@ message FeatureColumn {
         SeqCategoryIDColumn seqcatc = 5;
         EmbeddingColumn embc = 6;
     }
-}
-
-// TODO(typhoonzero): directly import Session from pkg/server/proto
-message Session {
-    string token = 1;
-    string db_conn_str = 2;
-    bool exit_on_submit = 3;
-    string user_id = 4;
-    string hive_location = 5;
-    string hdfs_namenode_addr = 6;
-    string hdfs_user = 7;
-    string hdfs_pass = 8;
 }
 
 message FeatureColumnList {
