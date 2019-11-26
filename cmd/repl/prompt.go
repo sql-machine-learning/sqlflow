@@ -15,12 +15,15 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
 	prompt "github.com/c-bata/go-prompt"
+
+	"sqlflow.org/sqlflow/pkg/sql/codegen/attribute"
 )
 
 var emacsMetaKeyBindings = []prompt.ASCIICodeBind{
@@ -72,18 +75,20 @@ var emacsMetaKeyBindings = []prompt.ASCIICodeBind{
 	{
 		ASCIICode: []byte{0x1b, 'd'},
 		Fn: func(buf *prompt.Buffer) {
-			count := buf.Document().FindEndOfCurrentWord()
+			pos1 := buf.DisplayCursorPosition()
 			prompt.GoRightWord(buf)
-			buf.DeleteBeforeCursor(count)
+			pos2 := buf.DisplayCursorPosition()
+			buf.DeleteBeforeCursor(pos2 - pos1)
 		},
 	},
 
 	{
 		ASCIICode: []byte{0x1b, 'D'},
 		Fn: func(buf *prompt.Buffer) {
-			count := buf.Document().FindEndOfCurrentWord() - len([]rune(buf.Document().TextBeforeCursor()))
+			pos1 := buf.DisplayCursorPosition()
 			prompt.GoRightWord(buf)
-			buf.DeleteBeforeCursor(count)
+			pos2 := buf.DisplayCursorPosition()
+			buf.DeleteBeforeCursor(pos2 - pos1)
 		},
 	},
 
@@ -114,6 +119,12 @@ var toSuggestions = []prompt.Suggest{
 	{"ANALYZE", "analyze using a trained model"},
 }
 
+var trainSuggestions = []prompt.Suggest{
+	{"WITH", "model parameters"},
+	{"LABEL", "label field for supervised learning tasks"},
+	{"COLUMN", "feature columns"},
+}
+
 var withSuggestions = []prompt.Suggest{
 	{"LABEL", "label for supervised learning"},
 	{"INTO", "where to save model"},
@@ -138,6 +149,8 @@ type promptState struct {
 	keywords         []string
 	history          []string
 	historyFileName  string
+	modelParamDocs   map[string][]prompt.Suggest
+	models           []prompt.Suggest
 }
 
 func (p *promptState) changeLivePrefix() (string, bool) {
@@ -171,6 +184,24 @@ func (p *promptState) initCompleter() {
 	for _, s := range withSuggestions {
 		p.keywords = append(p.keywords, s.Text)
 	}
+	var modelParams map[string]map[string]string
+	if err := json.Unmarshal([]byte(attribute.ModelParameterJSON), &modelParams); err != nil {
+		panic(err)
+	}
+
+	// initialize models and model parameters
+	p.modelParamDocs = make(map[string][]prompt.Suggest)
+	for model, params := range modelParams {
+		p.modelParamDocs[model] = attributes
+		p.models = append(p.models, prompt.Suggest{model, ""})
+		prefix := "model."
+		if strings.HasPrefix(model, "xgboost") {
+			prefix = ""
+		}
+		for param, doc := range params {
+			p.modelParamDocs[model] = append(p.modelParamDocs[model], prompt.Suggest{prefix + param, doc})
+		}
+	}
 }
 
 func (p *promptState) initHistory() {
@@ -199,22 +230,25 @@ func (p *promptState) updateHistory() {
 	}
 }
 
-// lookaheadKeyword return the last keyword and the last word in words
-func (p *promptState) lookaheadKeyword(words []string) (string, string) {
+// lookaheadKeyword return the last keyword, the word before the last keyword, and the last word in words
+func (p *promptState) lookaheadKeyword(words []string) (string, string, string) {
 	if l := len(words); l > 0 {
 		for i := l; i > 0; i-- {
 			for _, k := range p.keywords {
 				if strings.ToUpper(words[i-1]) == k {
-					return k, words[l-1]
+					if i > 2 {
+						return k, words[i-2], words[l-1]
+					}
+					return k, "", words[l-1]
 				}
 			}
 		}
-		return "", words[l-1]
+		return "", "", words[l-1]
 	}
-	return "", ""
+	return "", "", ""
 }
 
-func (p *promptState) clauseUnderCursor(in prompt.Document) (string, string) {
+func (p *promptState) clauseUnderCursor(in prompt.Document) (string, string, string) {
 	// TODO(shendiaomo): use SQLFlow lexer to replace strings.Fields
 	words := strings.Fields(p.statement + in.TextBeforeCursor())
 	return p.lookaheadKeyword(words)
@@ -222,11 +256,20 @@ func (p *promptState) clauseUnderCursor(in prompt.Document) (string, string) {
 
 func (p *promptState) completer(in prompt.Document) []prompt.Suggest {
 	w1 := in.GetWordBeforeCursor() // empty if the cursor is under whitespace
-	clause, w2 := p.clauseUnderCursor(in)
+	clause, w0, w2 := p.clauseUnderCursor(in)
 	switch clause {
 	case "TO":
 		return prompt.FilterHasPrefix(toSuggestions, w1, true)
+	case "TRAIN":
+		if w1 == "" {
+			if clause == w2 {
+				return prompt.FilterHasPrefix(p.models, w1, true)
+			}
+			return prompt.FilterHasPrefix(trainSuggestions, w1, true)
+		}
+		return prompt.FilterHasPrefix(append(p.models, trainSuggestions...), w1, true)
 	case "WITH":
+		attributes := p.modelParamDocs[w0]
 		if w1 == "" {
 			if clause == w2 || strings.HasSuffix(w2, ",") {
 				return prompt.FilterHasPrefix(attributes, w1, true)
@@ -260,7 +303,6 @@ func runPrompt(cb func(string)) {
 		func(in string) { state.execute(in, cb) },
 		func(in prompt.Document) []prompt.Suggest { return state.completer(in) },
 		prompt.OptionAddASCIICodeBind(emacsMetaKeyBindings...),
-		prompt.OptionCompletionWordSeparator(" ."),
 		prompt.OptionHistory(state.history),
 		prompt.OptionLivePrefix(func() (string, bool) { return state.changeLivePrefix() }),
 		prompt.OptionParser(newStdinParser()),
