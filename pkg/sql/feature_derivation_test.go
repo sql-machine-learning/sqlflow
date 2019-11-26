@@ -215,14 +215,14 @@ func TestHiveFeatureDerivation(t *testing.T) {
 		t.Skip("skip TestFeatureDerivationNoColumnClause for tests not using hive")
 	}
 	a := assert.New(t)
-	trainIR := &codegen.TrainIR{
+	trainIR := &ir.TrainClause{
 		DataSource:       fmt.Sprintf("%s://%s", testDB.driverName, testDB.dataSourceName),
 		Select:           "select * from iris.train",
 		ValidationSelect: "select * from iris.test",
 		Estimator:        "xgboost.gbtree",
 		Attributes:       map[string]interface{}{},
-		Features:         map[string][]codegen.FeatureColumn{},
-		Label:            &codegen.NumericColumn{&codegen.FieldMeta{"class", codegen.Int, "", []int{1}, false, nil, 0}}}
+		Features:         map[string][]ir.FeatureColumn{},
+		Label:            &ir.NumericColumn{&ir.FieldMeta{"class", ir.Int, "", []int{1}, false, nil, 0}}}
 	e := InferFeatureColumns(trainIR)
 	a.NoError(e)
 	a.Equal(4, len(trainIR.Features["feature_columns"]))
