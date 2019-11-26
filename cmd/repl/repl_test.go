@@ -27,7 +27,7 @@ import (
 
 	prompt "github.com/c-bata/go-prompt"
 	sf "sqlflow.org/sqlflow/pkg/sql"
-	irpb "sqlflow.org/sqlflow/pkg/sql/codegen/proto"
+	irpb "sqlflow.org/sqlflow/pkg/sql/ir/proto"
 	"sqlflow.org/sqlflow/pkg/sql/testdata"
 )
 
