@@ -16,6 +16,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"os"
 	"regexp"
 	"strings"
 	"testing"
@@ -100,6 +101,7 @@ func TestStdinParser(t *testing.T) {
 
 func TestStdinParseOnly(t *testing.T) {
 	a := assert.New(t)
+	os.Setenv("SQLFLOW_DATASOURCE", "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0")
 	var stdin bytes.Buffer
 	stdin.Write([]byte("SELECT * from iris.train TO TRAIN DNNClassifier WITH a=1 LABEL class INTO mymodel;"))
 	pbtxt, err := parseSQLFromStdin(&stdin)
