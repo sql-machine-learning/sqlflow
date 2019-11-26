@@ -15,16 +15,10 @@ package ir
 
 import (
 	"fmt"
-	"strings"
 
 	pb "sqlflow.org/sqlflow/pkg/server/proto"
 	irpb "sqlflow.org/sqlflow/pkg/sql/ir/proto"
 )
-
-// FIXME(typhoonzero): copied from tensorflow/codegen.go
-func intArrayToJSONString(ia []int) string {
-	return strings.Join(strings.Split(fmt.Sprint(ia), " "), ",")
-}
 
 func attrToPB(attr interface{}) (*irpb.Attribute, error) {
 	switch attr.(type) {
