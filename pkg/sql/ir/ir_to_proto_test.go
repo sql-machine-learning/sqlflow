@@ -62,4 +62,8 @@ func TestTrainCodegen(t *testing.T) {
 		sampleTrainIR.Features["feature_columns"][2].GetFieldMeta()[0].Name,
 		pbIRToTest.GetFeatures()["feature_columns"].GetFeatureColumns()[2].GetNc().GetFieldMeta().GetName(),
 	)
+	a.Equal(
+		int32(sampleTrainIR.Attributes["train.batch_size"].(int)),
+		pbIRToTest.GetAttributes()["train.batch_size"].GetI(),
+	)
 }
