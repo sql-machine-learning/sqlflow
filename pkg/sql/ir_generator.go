@@ -716,13 +716,19 @@ func parseResultTable(intoStatement string) (string, string, error) {
 }
 
 // programToIR generate a list of IRs from a SQL program
-func programToIR(sqls []statementParseResult, connStr, modelDir string, getTrainIRFromModel bool) (codegen.SQLProgramIR, error) {
+func programToIR(sqls []statementParseResult, connStr, modelDir string, getTrainIRFromModel bool, enableFeatureDerivation bool) (codegen.SQLProgramIR, error) {
 	IRs := codegen.SQLProgramIR{}
 	for _, sql := range sqls {
 		if sql.extended != nil {
 			parsed := sql.extended
 			if parsed.train {
-				ir, err := generateTrainIRWithInferredColumns(parsed, connStr)
+				var ir *codegen.TrainIR
+				var err error
+				if enableFeatureDerivation {
+					ir, err = generateTrainIRWithInferredColumns(parsed, connStr)
+				} else {
+					ir, err = generateTrainIR(parsed, connStr)
+				}
 				if err != nil {
 					return nil, err
 				}

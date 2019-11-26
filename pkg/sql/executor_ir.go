@@ -40,6 +40,11 @@ type EndOfExecution struct {
 	Statement string
 }
 
+// WorkflowJob indicates the Argo Workflow ID
+type WorkflowJob struct {
+	JobID string
+}
+
 var envSubmitter = os.Getenv("SQLFLOW_submitter")
 
 // SubmitterType is the type of SQLFlow submitter
@@ -88,6 +93,41 @@ func RunSQLProgram(sqlProgram string, db *DB, modelDir string, session *pb.Sessi
 	return rd
 }
 
+// SubmitWorkflow submits an Argo workflow
+func SubmitWorkflow(sqlProgram string, db *DB, modelDir string, session *pb.Session) *PipeReader {
+	rd, wr := Pipe()
+	go func() {
+		defer wr.Close()
+		err := submitWorkflow(wr, sqlProgram, db, modelDir, session)
+		if err != nil {
+			log.Errorf("submit Workflow error: %v", err)
+		}
+	}()
+	return rd
+}
+
+func submitWorkflow(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, session *pb.Session) error {
+	sqls, err := parse(db.driverName, sqlProgram)
+	if err != nil {
+		return err
+	}
+
+	connStr := fmt.Sprintf("%s://%s", db.driverName, db.dataSourceName)
+	_, err = programToIR(sqls, connStr, modelDir, true, false)
+	if err != nil {
+		return err
+	}
+
+	// TODO(yancey1989):
+	// 1. call codegen_couler.go to genearte Couler program.
+	// 2. compile Couler program into Argo YAML.
+	// 3. submit Argo YAML and fetch the workflow ID.
+
+	return wr.Write(WorkflowJob{
+		JobID: "sqlflow-workflow",
+	})
+}
+
 func runSQLProgram(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, session *pb.Session) error {
 	sqls, err := parse(db.driverName, sqlProgram)
 	if err != nil {
@@ -95,7 +135,7 @@ func runSQLProgram(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, s
 	}
 
 	connStr := fmt.Sprintf("%s://%s", db.driverName, db.dataSourceName)
-	programIR, err := programToIR(sqls, connStr, modelDir, submitter() != SubmitterPAI)
+	programIR, err := programToIR(sqls, connStr, modelDir, submitter() != SubmitterPAI, true /*enableFeatureDerivation = true*/)
 	if err != nil {
 		return err
 	}
