@@ -215,9 +215,9 @@ INTO sqlflow_models.mymodel;`, testDB, modelDir, nil)
 
 	a.Equal(connStr, predIR.DataSource)
 	a.Equal("iris.predict", predIR.ResultTable)
-	a.Equal("class", predIR.TrainIR.Label.GetFieldMeta()[0].Name)
-	a.Equal("DNNClassifier", predIR.TrainIR.Estimator)
-	nc, ok := predIR.TrainIR.Features["feature_columns"][0].(*ir.NumericColumn)
+	a.Equal("class", predIR.TrainClause.Label.GetFieldMeta()[0].Name)
+	a.Equal("DNNClassifier", predIR.TrainClause.Estimator)
+	nc, ok := predIR.TrainClause.Features["feature_columns"][0].(*ir.NumericColumn)
 	a.True(ok)
 	a.Equal("sepal_length", nc.FieldMeta.Name)
 }
@@ -267,7 +267,7 @@ INTO sqlflow_models.my_xgboost_model;
 	a.Equal(AnalyzeIR.Attributes["shap_summary.plot_type"], "bar")
 	a.Equal(AnalyzeIR.Attributes["shap_summary.alpha"], 1)
 
-	nc, ok := AnalyzeIR.TrainIR.Features["feature_columns"][0].(*ir.NumericColumn)
+	nc, ok := AnalyzeIR.TrainClause.Features["feature_columns"][0].(*ir.NumericColumn)
 	a.True(ok)
 	a.Equal("sepal_length", nc.FieldMeta.Name)
 }

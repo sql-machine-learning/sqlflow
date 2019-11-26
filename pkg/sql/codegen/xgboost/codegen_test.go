@@ -56,7 +56,7 @@ func mockPrdcIR(trainIR *ir.TrainClause) *ir.PredictClause {
 		DataSource:  trainIR.DataSource,
 		Select:      "select * from iris.test;",
 		ResultTable: "iris.predict",
-		TrainIR:     trainIR,
+		TrainClause: trainIR,
 	}
 }
 func mockTrainIR() *ir.TrainClause {

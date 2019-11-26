@@ -260,10 +260,10 @@ func runPredictIR(predIR *ir.PredictClause, wr *PipeWriter, db *DB, modelDir str
 
 		program.WriteString(code)
 	} else {
-		if err := recoverModelDir(db, cwd, modelDir, predIR.TrainIR.Into); err != nil {
+		if err := recoverModelDir(db, cwd, modelDir, predIR.TrainClause.Into); err != nil {
 			return err
 		}
-		if isXGBoostModel(predIR.TrainIR.Estimator) {
+		if isXGBoostModel(predIR.TrainClause.Estimator) {
 			code, err := xgboost.Pred(predIR, session)
 			if err != nil {
 				return err
@@ -312,15 +312,15 @@ func runAnalyzeIR(analyzeIR *ir.AnalyzeClause, wr *PipeWriter, db *DB, modelDir 
 	defer os.RemoveAll(cwd)
 
 	// load the model for analyze
-	if err := recoverModelDir(db, cwd, modelDir, analyzeIR.TrainIR.Into); err != nil {
+	if err := recoverModelDir(db, cwd, modelDir, analyzeIR.TrainClause.Into); err != nil {
 		return err
 	}
 
 	cmd := exec.Command("python", "-u")
 	cmd.Dir = cwd
 
-	if !strings.HasPrefix(strings.ToUpper(analyzeIR.TrainIR.Estimator), `XGBOOST.`) {
-		return fmt.Errorf("unsupported model %s", analyzeIR.TrainIR.Estimator)
+	if !strings.HasPrefix(strings.ToUpper(analyzeIR.TrainClause.Estimator), `XGBOOST.`) {
+		return fmt.Errorf("unsupported model %s", analyzeIR.TrainClause.Estimator)
 	}
 	code, err := xgboost.Analyze(analyzeIR)
 	if err != nil {

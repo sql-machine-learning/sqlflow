@@ -109,7 +109,7 @@ type TrainClause struct {
 }
 
 // IsIR is used only for restrict the IR struct types
-func (trainIR *TrainClause) IsIR() {}
+func (*TrainClause) IsIR() {}
 
 // PredictClause is the intermediate representation for code generation of a prediction job
 //
@@ -131,12 +131,12 @@ type PredictClause struct {
 	// "select ... predict ... with predict.batch_size = 32 into ...",
 	// the Attributes will be {"predict.batch_size": 32}
 	Attributes map[string]interface{}
-	// TrainIR is the TrainIR used for generating the training job of the corresponding model
-	TrainIR *TrainClause
+	// TrainClause is the TrainClause used for generating the training job of the corresponding model
+	TrainClause *TrainClause
 }
 
 // IsIR is used only for restrict the IR struct types
-func (predictIR *PredictClause) IsIR() {}
+func (*PredictClause) IsIR() {}
 
 // AnalyzeClause is the intermediate representation for code generation of a analysis job
 type AnalyzeClause struct {
@@ -153,15 +153,15 @@ type AnalyzeClause struct {
 	Attributes map[string]interface{}
 	// Explainer types. For example TreeExplainer.
 	Explainer string
-	// TrainIR is the TrainIR used for generating the training job of the corresponding model
-	TrainIR *TrainClause
+	// TrainClause is the TrainClause used for generating the training job of the corresponding model
+	TrainClause *TrainClause
 }
 
 // IsIR is used only for restrict the IR struct types
-func (analyzeIR *AnalyzeClause) IsIR() {}
+func (*AnalyzeClause) IsIR() {}
 
 // StandardSQL is a string of a standard SQL statement that can run on the database system.
 type StandardSQL string
 
 // IsIR is used only for restrict the IR struct types
-func (sql *StandardSQL) IsIR() {}
+func (*StandardSQL) IsIR() {}

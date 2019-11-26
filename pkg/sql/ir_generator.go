@@ -109,16 +109,16 @@ func generateTrainIRByModel(slct *extendedSelect, connStr, cwd, modelDir, model 
 	return generateTrainIRWithInferredColumns(slctWithTrain, connStr)
 }
 
-func verifyIRWithTrainIR(sqlir ir.SQLStatement, db *DB) error {
+func verifyIRWithTrainClause(sqlir ir.SQLStatement, db *DB) error {
 	var selectStmt string
-	var trainIR *ir.TrainClause
+	var trainCl *ir.TrainClause
 	switch s := sqlir.(type) {
 	case *ir.PredictClause:
 		selectStmt = s.Select
-		trainIR = s.TrainIR
+		trainCl = s.TrainClause
 	case *ir.AnalyzeClause:
 		selectStmt = s.Select
-		trainIR = s.TrainIR
+		trainCl = s.TrainClause
 	default:
 		return fmt.Errorf("loadModelMetaUsingIR doesn't support IR of type %T", sqlir)
 	}
@@ -128,12 +128,12 @@ func verifyIRWithTrainIR(sqlir ir.SQLStatement, db *DB) error {
 		return e
 	}
 
-	predFields, e := verify(trainIR.Select, db)
+	predFields, e := verify(trainCl.Select, db)
 	if e != nil {
 		return e
 	}
 
-	for _, fc := range trainIR.Features {
+	for _, fc := range trainCl.Features {
 		for _, field := range fc {
 			for _, fm := range field.GetFieldMeta() {
 				name := fm.Name
@@ -148,7 +148,6 @@ func verifyIRWithTrainIR(sqlir ir.SQLStatement, db *DB) error {
 			}
 		}
 	}
-
 	return nil
 }
 
@@ -184,7 +183,7 @@ func generatePredictIR(slct *extendedSelect, connStr string, modelDir string, ge
 		ResultTable:  resultTable,
 		ResultColumn: resultCol,
 		Attributes:   attrMap,
-		TrainIR:      trainIR,
+		TrainClause:  trainIR,
 	}
 
 	// FIXME(tony): change the function signature to use *DB
@@ -193,7 +192,7 @@ func generatePredictIR(slct *extendedSelect, connStr string, modelDir string, ge
 		return nil, err
 	}
 	defer db.Close()
-	if err := verifyIRWithTrainIR(predIR, db); err != nil {
+	if err := verifyIRWithTrainClause(predIR, db); err != nil {
 		return nil, err
 	}
 
@@ -222,11 +221,11 @@ func generateAnalyzeIR(slct *extendedSelect, connStr, modelDir string, getTrainI
 	}
 
 	analyzeIR := &ir.AnalyzeClause{
-		DataSource: connStr,
-		Select:     slct.standardSelect.String(),
-		Attributes: attrs,
-		Explainer:  slct.explainer,
-		TrainIR:    trainIR,
+		DataSource:  connStr,
+		Select:      slct.standardSelect.String(),
+		Attributes:  attrs,
+		Explainer:   slct.explainer,
+		TrainClause: trainIR,
 	}
 
 	// FIXME(tony): change the function signature to use *DB
@@ -235,7 +234,7 @@ func generateAnalyzeIR(slct *extendedSelect, connStr, modelDir string, getTrainI
 		return nil, err
 	}
 	defer db.Close()
-	if err := verifyIRWithTrainIR(analyzeIR, db); err != nil {
+	if err := verifyIRWithTrainClause(analyzeIR, db); err != nil {
 		return nil, err
 	}
 

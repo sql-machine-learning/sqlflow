@@ -113,7 +113,7 @@ func TestWrapperCodegen(t *testing.T) {
 
 func TestTrainCodegen(t *testing.T) {
 	a := assert.New(t)
-	ir := mockTrainIR()
+	ir := mockTrainClause()
 
 	paiTfCode, err := doTrain(ir, "my_dnn_model")
 	a.NoError(err)
@@ -152,7 +152,7 @@ func TestPredictCodegen(t *testing.T) {
 	a.False(hasUnknownParameters(tfCode, knownPredictParams))
 }
 
-func mockTrainIR() *ir.TrainClause {
+func mockTrainClause() *ir.TrainClause {
 	_ = `SELECT * FROM iris_train TO TRAIN DNNClassifier
          WITH train.batch_size=4,
 		      train.epoch=3,
@@ -190,6 +190,6 @@ func mockPredIR() *ir.PredictClause {
 		Select:      "select * from iris_test;",
 		ResultTable: "iris_predict",
 		Attributes:  make(map[string]interface{}),
-		TrainIR:     mockTrainIR(),
+		TrainClause: mockTrainClause(),
 	}
 }

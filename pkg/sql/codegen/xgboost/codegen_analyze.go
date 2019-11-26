@@ -36,7 +36,7 @@ func Analyze(ir *ir.AnalyzeClause) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	xs, y, err := getFieldMeta(ir.TrainIR.Features["feature_columns"], ir.TrainIR.Label)
+	xs, y, err := getFieldMeta(ir.TrainClause.Features["feature_columns"], ir.TrainClause.Label)
 	if err != nil {
 		return "", err
 	}

@@ -26,7 +26,7 @@ import (
 
 func TestTrainCodegen(t *testing.T) {
 	a := assert.New(t)
-	tir := mockTrainIR()
+	tir := mockTrainClause()
 	_, err := Train(tir)
 	a.NoError(err)
 
@@ -51,7 +51,7 @@ func TestTrainCodegen(t *testing.T) {
 	a.Equal(r.FindStringSubmatch(code)[1], "sqlflow_pass")
 }
 
-func mockTrainIR() *ir.TrainClause {
+func mockTrainClause() *ir.TrainClause {
 	cfg := &mysql.Config{
 		User:                 "root",
 		Passwd:               "root",
@@ -88,12 +88,12 @@ func mockTrainIR() *ir.TrainClause {
 		Label: &ir.NumericColumn{&ir.FieldMeta{"class", ir.Int, "", []int{1}, false, nil, 0}}}
 }
 
-func mockPredIR(trainIR *ir.TrainClause) *ir.PredictClause {
+func mockPredIR(trainCl *ir.TrainClause) *ir.PredictClause {
 	return &ir.PredictClause{
-		DataSource:  trainIR.DataSource,
+		DataSource:  trainCl.DataSource,
 		Select:      "select * from iris.test;",
 		ResultTable: "iris.predict",
 		Attributes:  make(map[string]interface{}),
-		TrainIR:     trainIR,
+		TrainClause: trainCl,
 	}
 }

@@ -31,7 +31,7 @@ func TestAnalyze(t *testing.T) {
 			"shap_summary.plot_type": "dot",
 			"others.type":            "bar",
 		},
-		TrainIR: tir,
+		TrainClause: tir,
 	}
 	_, err := Analyze(air)
 	a.NoError(err)
