@@ -27,10 +27,10 @@ import (
 	"time"
 
 	pb "sqlflow.org/sqlflow/pkg/server/proto"
-	"sqlflow.org/sqlflow/pkg/sql/codegen"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/pai"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/xgboost"
+	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
 
 // EndOfExecution will push to the pipe when one SQL statement execution is finished.
@@ -149,7 +149,7 @@ func runSQLProgram(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, s
 	return nil
 }
 
-func runSingleSQLIR(wr *PipeWriter, ir codegen.SingleSQLIR, db *DB, modelDir string, session *pb.Session) (e error) {
+func runSingleSQLIR(wr *PipeWriter, sqlIR ir.SQLStatement, db *DB, modelDir string, session *pb.Session) (e error) {
 	startTime := time.Now().UnixNano()
 	var originalSQL string
 	defer func() {
@@ -162,29 +162,29 @@ func runSingleSQLIR(wr *PipeWriter, ir codegen.SingleSQLIR, db *DB, modelDir str
 		}
 	}()
 
-	switch ir.(type) {
-	case *codegen.StandardSQLIR:
-		originalSQL = string(*ir.(*codegen.StandardSQLIR))
+	switch sqlIR.(type) {
+	case *ir.StandardSQL:
+		originalSQL = string(*sqlIR.(*ir.StandardSQL))
 		if e = runStandardSQL(wr, originalSQL, db); e != nil {
 			return e
 		}
-	case *codegen.TrainIR:
-		originalSQL = ir.(*codegen.TrainIR).OriginalSQL
-		if e = runTrainIR(ir.(*codegen.TrainIR), wr, db, modelDir, session); e != nil {
+	case *ir.TrainClause:
+		originalSQL = sqlIR.(*ir.TrainClause).OriginalSQL
+		if e = runTrainIR(sqlIR.(*ir.TrainClause), wr, db, modelDir, session); e != nil {
 			return e
 		}
-	case *codegen.PredictIR:
-		originalSQL = ir.(*codegen.PredictIR).OriginalSQL
-		if e = runPredictIR(ir.(*codegen.PredictIR), wr, db, modelDir, session); e != nil {
+	case *ir.PredictClause:
+		originalSQL = sqlIR.(*ir.PredictClause).OriginalSQL
+		if e = runPredictIR(sqlIR.(*ir.PredictClause), wr, db, modelDir, session); e != nil {
 			return e
 		}
-	case *codegen.AnalyzeIR:
-		originalSQL = ir.(*codegen.AnalyzeIR).OriginalSQL
-		if e = runAnalyzeIR(ir.(*codegen.AnalyzeIR), wr, db, modelDir, session); e != nil {
+	case *ir.AnalyzeClause:
+		originalSQL = sqlIR.(*ir.AnalyzeClause).OriginalSQL
+		if e = runAnalyzeIR(sqlIR.(*ir.AnalyzeClause), wr, db, modelDir, session); e != nil {
 			return e
 		}
 	default:
-		return fmt.Errorf("got error ir type: %T", ir)
+		return fmt.Errorf("got error ir type: %T", sqlIR)
 	}
 
 	return nil
@@ -207,7 +207,7 @@ func runThirdPartySubmitterTrain(wr *PipeWriter, sql string, db *DB, cwd string,
 	}
 }
 
-func runTrainIR(trainIR *codegen.TrainIR, wr *PipeWriter, db *DB, modelDir string, session *pb.Session) error {
+func runTrainIR(trainIR *ir.TrainClause, wr *PipeWriter, db *DB, modelDir string, session *pb.Session) error {
 	// cwd is used to store train scripts and save output models.
 	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
 	if err != nil {
@@ -268,7 +268,7 @@ func runTrainIR(trainIR *codegen.TrainIR, wr *PipeWriter, db *DB, modelDir strin
 	return nil
 }
 
-func runPredictIR(predIR *codegen.PredictIR, wr *PipeWriter, db *DB, modelDir string, session *pb.Session) error {
+func runPredictIR(predIR *ir.PredictClause, wr *PipeWriter, db *DB, modelDir string, session *pb.Session) error {
 	// TODO(typhoonzero): remove below twice parse when all submitters moved to IR.
 	pr, e := newExtendedSyntaxParser().Parse(predIR.OriginalSQL)
 	if e != nil {
@@ -343,7 +343,7 @@ func runPredictIR(predIR *codegen.PredictIR, wr *PipeWriter, db *DB, modelDir st
 	return nil
 }
 
-func runAnalyzeIR(analyzeIR *codegen.AnalyzeIR, wr *PipeWriter, db *DB, modelDir string, session *pb.Session) error {
+func runAnalyzeIR(analyzeIR *ir.AnalyzeClause, wr *PipeWriter, db *DB, modelDir string, session *pb.Session) error {
 	// cwd is used to load the saved model for prediction.
 	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
 	if err != nil {
@@ -450,9 +450,9 @@ func createPredictionTable(predParsed *extendedSelect, db *DB, session *pb.Sessi
 	return nil
 }
 
-// Create prediction table using the `PredictIR`.
+// Create prediction table using the `PredictClause`.
 // TODO(typhoonzero): remove legacy `createPredictionTable` once we change all submitters to use IR.
-func createPredictionTableFromIR(predIR *codegen.PredictIR, db *DB, session *pb.Session) error {
+func createPredictionTableFromIR(predIR *ir.PredictClause, db *DB, session *pb.Session) error {
 	dropStmt := fmt.Sprintf("drop table if exists %s;", predIR.ResultTable)
 	if _, e := db.Exec(dropStmt); e != nil {
 		return fmt.Errorf("failed executing %s: %q", dropStmt, e)
