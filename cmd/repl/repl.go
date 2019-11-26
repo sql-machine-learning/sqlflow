@@ -145,14 +145,58 @@ func repl(scanner *bufio.Scanner, modelDir string, db *sql.DB, ds string) {
 
 }
 
+func parseSQLFromStdin(stdin io.Reader) (string, error) {
+	scanedInput := []string{}
+	scanner := bufio.NewScanner(stdin)
+	for scanner.Scan() {
+		scanedInput = append(scanedInput, scanner.Text())
+	}
+	if err := scanner.Err(); err != nil {
+		return "", err
+	}
+	sqlflowDatasrouce := os.Getenv("SQLFLOW_DATASOURCE")
+	if sqlflowDatasrouce == "" {
+		return "", fmt.Errorf("no SQLFLOW_DATASOURCE env provided")
+	}
+
+	sess := &pb.Session{
+		Token:            os.Getenv("SQLFLOW_USER_TOKEN"),
+		DbConnStr:        os.Getenv("SQLFLOW_DATASOURCE"),
+		ExitOnSubmit:     strings.ToLower(os.Getenv("SQLFLOW_EXIT_ON_SUBMIT")) == "true",
+		UserId:           os.Getenv("SQLFLOW_USER_ID"),
+		HiveLocation:     os.Getenv("SQLFLOW_HIVE_LOCATION"),
+		HdfsNamenodeAddr: os.Getenv("SQLFLOW_HDFS_NAMENODE_ADDR"),
+		HdfsUser:         os.Getenv("JUPYTER_HADOOP_USER"),
+		HdfsPass:         os.Getenv("JUPYTER_HADOOP_PASS"),
+	}
+	pbIRStr, err := sql.ParseSQLStatement(strings.Join(scanedInput, ""), sess)
+	if err != nil {
+		return "", err
+	}
+	return pbIRStr, nil
+}
+
 func main() {
 	ds := flag.String("datasource", "", "database connect string")
 	modelDir := flag.String("model_dir", "", "model would be saved on the local dir, otherwise upload to the table.")
 	cliStmt := flag.String("execute", "", "execute SQLFlow from command line.  e.g. --execute 'select * from table1'")
 	flag.StringVar(cliStmt, "e", "", "execute SQLFlow from command line, short for --execute")
 	sqlFileName := flag.String("file", "", "execute SQLFlow from file.  e.g. --file '~/iris_dnn.sql'")
+	isParseOnly := flag.Bool("parse", false, "execute parsing only and output the parsed IR in pbtxt format")
 	flag.StringVar(sqlFileName, "f", "", "execute SQLFlow from file, short for --file")
 	flag.Parse()
+	// Read SQL from stdin and output IR in pbtxt format
+	// Assume the input is a single SQL statement
+	if *isParseOnly {
+		out, err := parseSQLFromStdin(os.Stdin)
+		if err != nil {
+			log.Fatalf("error parse SQL from stdin: %v", err)
+		}
+		fmt.Printf("%s", out)
+		// exit when parse is finished
+		os.Exit(0)
+	}
+
 	db, err := sql.NewDB(*ds)
 	if err != nil {
 		log.Fatalf("failed to open database: %v", err)

@@ -15,13 +15,17 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"regexp"
 	"strings"
 	"testing"
 
+	"github.com/golang/protobuf/proto"
+
 	"github.com/stretchr/testify/assert"
 
 	prompt "github.com/c-bata/go-prompt"
+	irpb "sqlflow.org/sqlflow/pkg/sql/codegen/proto"
 )
 
 // TODO(shendiaomo): end to end tests like sqlflowserver/main_test.go
@@ -92,6 +96,17 @@ func TestStdinParser(t *testing.T) {
 	buf, e = p.Read()
 	a.Nil(e)
 	a.Equal("test multiple", string(buf))
+}
+
+func TestStdinParseOnly(t *testing.T) {
+	a := assert.New(t)
+	var stdin bytes.Buffer
+	stdin.Write([]byte("SELECT * from iris.train TO TRAIN DNNClassifier WITH a=1 LABEL class INTO mymodel;"))
+	pbtxt, err := parseSQLFromStdin(&stdin)
+	a.NoError(err)
+	pbIRToTest := &irpb.TrainIR{}
+	proto.UnmarshalText(pbtxt, pbIRToTest)
+	a.Equal("class", pbIRToTest.GetLabel().GetNc().GetFieldMeta().GetName())
 }
 
 type testConsoleParser struct{}

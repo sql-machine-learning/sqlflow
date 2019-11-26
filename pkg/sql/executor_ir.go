@@ -26,6 +26,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/golang/protobuf/proto"
+
 	pb "sqlflow.org/sqlflow/pkg/server/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/pai"
@@ -86,6 +88,35 @@ func RunSQLProgram(sqlProgram string, db *DB, modelDir string, session *pb.Sessi
 		}
 	}()
 	return rd
+}
+
+// ParseSQLStatement parse the input SQL statement and output IR in probobuf format
+func ParseSQLStatement(sqlProgram string, session *pb.Session) (string, error) {
+	connStr := session.DbConnStr
+	driverName := strings.Split(connStr, "://")[0]
+	sqls, err := parse(driverName, sqlProgram)
+	if err != nil {
+		return "", err
+	}
+
+	// use modelDir = ""
+	programIR, err := programToIR(sqls, connStr, "", submitter() != SubmitterPAI)
+	if err != nil {
+		return "", err
+	}
+	if len(programIR) > 1 {
+		return "", fmt.Errorf("ParseSQLStatement only accept a single SQL statement")
+	}
+	// TODO(typhoonzero): add support for PredictIR and AnalyzeIR
+	trainIR, ok := programIR[0].(*codegen.TrainIR)
+	if !ok {
+		return "", fmt.Errorf("ParseSQLStatement only accept train SQL for now")
+	}
+	pbir, err := codegen.TrainIRToProto(trainIR, session)
+	if err != nil {
+		return "", err
+	}
+	return proto.MarshalTextString(pbir), nil
 }
 
 func runSQLProgram(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, session *pb.Session) error {
