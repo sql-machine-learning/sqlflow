@@ -21,7 +21,7 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"
 	pb "sqlflow.org/sqlflow/pkg/server/proto"
-	"sqlflow.org/sqlflow/pkg/sql/codegen"
+	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
 
 func TestTrainCodegen(t *testing.T) {
@@ -51,7 +51,7 @@ func TestTrainCodegen(t *testing.T) {
 	a.Equal(r.FindStringSubmatch(code)[1], "sqlflow_pass")
 }
 
-func mockTrainIR() *codegen.TrainIR {
+func mockTrainIR() *ir.TrainClause {
 	cfg := &mysql.Config{
 		User:                 "root",
 		Passwd:               "root",
@@ -69,7 +69,7 @@ func mockTrainIR() *codegen.TrainIR {
 	COLUMN sepal_length, sepal_width, petal_length, petal_width
 	LABEL class
 	INTO sqlflow_models.my_xgboost_model;`
-	return &codegen.TrainIR{
+	return &ir.TrainClause{
 		DataSource:       fmt.Sprintf("mysql://%s", cfg.FormatDSN()),
 		Select:           "select * from iris.train;",
 		ValidationSelect: "select * from iris.test;",
@@ -79,17 +79,17 @@ func mockTrainIR() *codegen.TrainIR {
 			"train.epoch":        3,
 			"model.hidden_units": []int{10, 20},
 			"model.n_classes":    3},
-		Features: map[string][]codegen.FeatureColumn{
+		Features: map[string][]ir.FeatureColumn{
 			"feature_columns": {
-				&codegen.NumericColumn{&codegen.FieldMeta{"sepal_length", codegen.Float, "", []int{1}, false, nil, 0}},
-				&codegen.NumericColumn{&codegen.FieldMeta{"sepal_width", codegen.Float, "", []int{1}, false, nil, 0}},
-				&codegen.NumericColumn{&codegen.FieldMeta{"petal_length", codegen.Float, "", []int{1}, false, nil, 0}},
-				&codegen.NumericColumn{&codegen.FieldMeta{"petal_width", codegen.Float, "", []int{1}, false, nil, 0}}}},
-		Label: &codegen.NumericColumn{&codegen.FieldMeta{"class", codegen.Int, "", []int{1}, false, nil, 0}}}
+				&ir.NumericColumn{&ir.FieldMeta{"sepal_length", ir.Float, "", []int{1}, false, nil, 0}},
+				&ir.NumericColumn{&ir.FieldMeta{"sepal_width", ir.Float, "", []int{1}, false, nil, 0}},
+				&ir.NumericColumn{&ir.FieldMeta{"petal_length", ir.Float, "", []int{1}, false, nil, 0}},
+				&ir.NumericColumn{&ir.FieldMeta{"petal_width", ir.Float, "", []int{1}, false, nil, 0}}}},
+		Label: &ir.NumericColumn{&ir.FieldMeta{"class", ir.Int, "", []int{1}, false, nil, 0}}}
 }
 
-func mockPredIR(trainIR *codegen.TrainIR) *codegen.PredictIR {
-	return &codegen.PredictIR{
+func mockPredIR(trainIR *ir.TrainClause) *ir.PredictClause {
+	return &ir.PredictClause{
 		DataSource:  trainIR.DataSource,
 		Select:      "select * from iris.test;",
 		ResultTable: "iris.predict",
