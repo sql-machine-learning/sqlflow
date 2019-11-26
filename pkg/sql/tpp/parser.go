@@ -61,7 +61,10 @@ func tiDBParseAndSplit(sql string) ([]string, int, error) {
 		}
 		idx := strings.Index(sql, matched[0][1])
 
-		nodes, _, e := psr.Parse(sql[:idx], "", "")
+		// Note(tony): MySQL statements requires adding ";" at the end of the statement.
+		// If we don't add ";", parse("select 1\n").Text() gives "select 1" without the new line character.
+		// This would cause "select 1\nto train" to become "select 1to train" during train SQL saving.
+		nodes, _, e := psr.Parse(sql[:idx]+";", "", "")
 		if e != nil || len(nodes) == 0 {
 			// return the original parsing error
 			return nil, -1, err
@@ -78,6 +81,12 @@ func tiDBParseAndSplit(sql string) ([]string, int, error) {
 		for _, n := range nodes {
 			sqls = append(sqls, n.Text())
 		}
+
+		// Note(tony): remove the last ";" since feature derivation will append "limit 1000" at the end of the statement
+		if sql := sqls[len(sqls)-1]; sql[len(sql)-1] == ';' {
+			sqls[len(sqls)-1] = sql[:len(sql)-1]
+		}
+
 		return sqls, idx, nil
 	}
 
