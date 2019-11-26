@@ -49,20 +49,24 @@ func TestPromptState(t *testing.T) {
 				model.n_classes=3
 			LABEL class INTO sqlflow_models.my_model;`
 	words := strings.Fields(sql)
-	keyword, last := s.lookaheadKeyword(words)
+	keyword, ahead, last := s.lookaheadKeyword(words)
 	a.Equal("INTO", keyword)
+	a.Equal("class", ahead)
 	a.Equal("sqlflow_models.my_model;", last)
 
-	keyword, last = s.lookaheadKeyword(words[0 : len(words)-1])
+	keyword, ahead, last = s.lookaheadKeyword(words[0 : len(words)-1])
 	a.Equal("INTO", keyword)
+	a.Equal("class", ahead)
 	a.Equal("INTO", last)
 
-	keyword, last = s.lookaheadKeyword(words[0 : len(words)-2])
+	keyword, ahead, last = s.lookaheadKeyword(words[0 : len(words)-2])
 	a.Equal("LABEL", keyword)
+	a.Equal("model.n_classes=3", ahead)
 	a.Equal("class", last)
 
-	keyword, last = s.lookaheadKeyword(words[0 : len(words)-4])
+	keyword, ahead, last = s.lookaheadKeyword(words[0 : len(words)-4])
 	a.Equal("WITH", keyword)
+	a.Equal("DNNClassifier", ahead)
 	a.Equal("model.n_classes=3", last)
 
 	var stmt string

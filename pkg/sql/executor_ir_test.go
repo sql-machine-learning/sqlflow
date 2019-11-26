@@ -252,3 +252,20 @@ func TestLogChanWriter_Write(t *testing.T) {
 	_, more := <-c
 	a.False(more)
 }
+
+func TestSubmitWorkflow(t *testing.T) {
+	a := assert.New(t)
+	modelDir := ""
+	a.NotPanics(func() {
+		rd := SubmitWorkflow(testXGBoostTrainSelectIris, testDB, modelDir, getDefaultSession())
+		for r := range rd.ReadAll() {
+			switch r.(type) {
+			case WorkflowJob:
+				job := r.(WorkflowJob)
+				a.Equal(job.JobID, "sqlflow-workflow")
+			default:
+				a.Fail("SubmitWorkflow should return JobID")
+			}
+		}
+	})
+}

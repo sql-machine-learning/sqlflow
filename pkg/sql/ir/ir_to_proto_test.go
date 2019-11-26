@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package codegen
+package ir
 
 import (
 	"testing"
@@ -20,12 +20,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	pb "sqlflow.org/sqlflow/pkg/server/proto"
-	irpb "sqlflow.org/sqlflow/pkg/sql/codegen/proto"
+	irpb "sqlflow.org/sqlflow/pkg/sql/ir/proto"
 )
 
 func TestTrainCodegen(t *testing.T) {
 	a := assert.New(t)
-	sampleTrainIR := &TrainIR{
+	sampleTrainIR := &TrainClause{
 		DataSource:       "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0",
 		Select:           "select * from iris.train;",
 		ValidationSelect: "select * from iris.test;",
@@ -61,5 +61,9 @@ func TestTrainCodegen(t *testing.T) {
 	a.Equal(
 		sampleTrainIR.Features["feature_columns"][2].GetFieldMeta()[0].Name,
 		pbIRToTest.GetFeatures()["feature_columns"].GetFeatureColumns()[2].GetNc().GetFieldMeta().GetName(),
+	)
+	a.Equal(
+		int32(sampleTrainIR.Attributes["train.batch_size"].(int)),
+		pbIRToTest.GetAttributes()["train.batch_size"].GetI(),
 	)
 }

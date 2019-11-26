@@ -20,8 +20,8 @@ import (
 	"path/filepath"
 	"text/template"
 
-	"sqlflow.org/sqlflow/pkg/sql/codegen"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
+	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
 
 const entryFile = "entry.py"
@@ -50,7 +50,7 @@ func wrapper(code, dataSource, modelName, cwd string) (string, error) {
 }
 
 // Train generates a Python program for train a TensorFlow model.
-func Train(ir *codegen.TrainIR, modelName, cwd string) (string, error) {
+func Train(ir *ir.TrainClause, modelName, cwd string) (string, error) {
 	program, err := doTrain(ir, modelName)
 	if err != nil {
 		return "", err
@@ -58,7 +58,7 @@ func Train(ir *codegen.TrainIR, modelName, cwd string) (string, error) {
 	return wrapper(program, ir.DataSource, modelName, cwd)
 }
 
-func doTrain(ir *codegen.TrainIR, modelName string) (string, error) {
+func doTrain(ir *ir.TrainClause, modelName string) (string, error) {
 	code, err := tensorflow.Train(ir)
 	if err != nil {
 		return "", err
@@ -81,7 +81,7 @@ func doTrain(ir *codegen.TrainIR, modelName string) (string, error) {
 }
 
 // Predict generates a Python program for train a TensorFlow model.
-func Predict(ir *codegen.PredictIR, modelName, cwd string) (string, error) {
+func Predict(ir *ir.PredictClause, modelName, cwd string) (string, error) {
 	program, err := doPredict(ir, modelName)
 	if err != nil {
 		return "", err
@@ -89,7 +89,7 @@ func Predict(ir *codegen.PredictIR, modelName, cwd string) (string, error) {
 	return wrapper(program, ir.DataSource, modelName, cwd)
 }
 
-func doPredict(ir *codegen.PredictIR, modelName string) (string, error) {
+func doPredict(ir *ir.PredictClause, modelName string) (string, error) {
 	var tpl = template.Must(template.New("Predict").Parse(tfPredictTmplText))
 	filler := predictFiller{
 		DataSource:  ir.DataSource,

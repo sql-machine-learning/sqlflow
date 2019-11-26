@@ -17,13 +17,13 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"sqlflow.org/sqlflow/pkg/sql/codegen"
+	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
 
 func TestAnalyze(t *testing.T) {
 	a := assert.New(t)
 	tir := mockTrainIR()
-	air := &codegen.AnalyzeIR{
+	air := &ir.AnalyzeClause{
 		DataSource: tir.DataSource,
 		Select:     "SELECT * FROM iris.train",
 		Explainer:  "TreeExplainer",

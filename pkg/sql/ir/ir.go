@@ -11,9 +11,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:generate protoc -I proto intermediate_representation.proto --go_out=proto
+//go:generate protoc -I proto proto/intermediate_representation.proto --go_out=proto
 
-package codegen
+// Package ir is the Intermediate Representation of parsed SQL statements
+package ir
 
 // FieldType indicates the field type of a table column
 type FieldType int
@@ -61,19 +62,19 @@ type FeatureColumn interface {
 	GetFieldMeta() []*FieldMeta
 }
 
-// SQLProgramIR represents a parsed SQL program.
+// SQLProgram represents a parsed SQL program.
 // TODO(typhoonzero): Can generate a DAG workflow from a SQL program.
-type SQLProgramIR []SingleSQLIR
+type SQLProgram []SQLStatement
 
-// SingleSQLIR represent all kind of IRs including: TrainIR, PredictIR, AnalyzeIR and standard SQL.
-type SingleSQLIR interface {
+// SQLStatement represent all kind of IRs including: TrainClause, PredictClause, AnalyzeClause and standard SQL.
+type SQLStatement interface {
 	// This function is used only for restrict the IR struct types
 	IsIR()
 	SetOriginalSQL(string)
 }
 
-// TrainIR is the intermediate representation for code generation of a training job.
-type TrainIR struct {
+// TrainClause is the intermediate representation for code generation of a training job.
+type TrainClause struct {
 	// OriginalSQL record the original SQL statement used to get current IR result
 	// FIXME(typhoonzero): OriginalSQL is a temporary field. Can remove this when all moved to IR
 	OriginalSQL string
@@ -109,16 +110,16 @@ type TrainIR struct {
 }
 
 // IsIR is used only for restrict the IR struct types
-func (trainIR *TrainIR) IsIR() {}
+func (trainIR *TrainClause) IsIR() {}
 
 // SetOriginalSQL sets the original sql string
-func (trainIR *TrainIR) SetOriginalSQL(sql string) { trainIR.OriginalSQL = sql }
+func (trainIR *TrainClause) SetOriginalSQL(sql string) { trainIR.OriginalSQL = sql }
 
-// PredictIR is the intermediate representation for code generation of a prediction job
+// PredictClause is the intermediate representation for code generation of a prediction job
 //
-// Please be aware the PredictionIR contains the result table name, so the
+// Please be aware the PredictClause IR contains the result table name, so the
 // generated Python program is responsible to create and write the result table.
-type PredictIR struct {
+type PredictClause struct {
 	// OriginalSQL record the original SQL statement used to get current IR result
 	// FIXME(typhoonzero): OriginalSQL is a temporary field. Can remove this when all moved to IR
 	OriginalSQL string
@@ -135,17 +136,17 @@ type PredictIR struct {
 	// the Attributes will be {"predict.batch_size": 32}
 	Attributes map[string]interface{}
 	// TrainIR is the TrainIR used for generating the training job of the corresponding model
-	TrainIR *TrainIR
+	TrainIR *TrainClause
 }
 
 // IsIR is used only for restrict the IR struct types
-func (predictIR *PredictIR) IsIR() {}
+func (predictIR *PredictClause) IsIR() {}
 
 // SetOriginalSQL sets the original sql string
-func (predictIR *PredictIR) SetOriginalSQL(sql string) { predictIR.OriginalSQL = sql }
+func (predictIR *PredictClause) SetOriginalSQL(sql string) { predictIR.OriginalSQL = sql }
 
-// AnalyzeIR is the intermediate representation for code generation of a analysis job
-type AnalyzeIR struct {
+// AnalyzeClause is the intermediate representation for code generation of a analysis job
+type AnalyzeClause struct {
 	// OriginalSQL record the original SQL statement used to get current IR result
 	// FIXME(typhoonzero): OriginalSQL is a temporary field. Can remove this when all moved to IR
 	OriginalSQL string
@@ -160,20 +161,20 @@ type AnalyzeIR struct {
 	// Explainer types. For example TreeExplainer.
 	Explainer string
 	// TrainIR is the TrainIR used for generating the training job of the corresponding model
-	TrainIR *TrainIR
+	TrainIR *TrainClause
 }
 
 // IsIR is used only for restrict the IR struct types
-func (analyzeIR *AnalyzeIR) IsIR() {}
+func (analyzeIR *AnalyzeClause) IsIR() {}
 
 // SetOriginalSQL sets the original sql string
-func (analyzeIR *AnalyzeIR) SetOriginalSQL(sql string) { analyzeIR.OriginalSQL = sql }
+func (analyzeIR *AnalyzeClause) SetOriginalSQL(sql string) { analyzeIR.OriginalSQL = sql }
 
-// StandardSQLIR is a string of a standard SQL statement that can run on the database system.
-type StandardSQLIR string
+// StandardSQL is a string of a standard SQL statement that can run on the database system.
+type StandardSQL string
 
 // IsIR is used only for restrict the IR struct types
-func (sql *StandardSQLIR) IsIR() {}
+func (sql *StandardSQL) IsIR() {}
 
 // SetOriginalSQL sets the original sql string
-func (sql *StandardSQLIR) SetOriginalSQL(s string) {}
+func (sql *StandardSQL) SetOriginalSQL(s string) {}

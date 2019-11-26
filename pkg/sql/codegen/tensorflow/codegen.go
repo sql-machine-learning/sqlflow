@@ -21,8 +21,8 @@ import (
 	"text/template"
 
 	pb "sqlflow.org/sqlflow/pkg/server/proto"
-	"sqlflow.org/sqlflow/pkg/sql/codegen"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/attribute"
+	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
 
 var attributeDictionary = attribute.Dictionary{
@@ -46,15 +46,15 @@ func intArrayToJSONString(ia []int) string {
 	return strings.Join(strings.Split(fmt.Sprint(ia), " "), ",")
 }
 
-func generateFeatureColumnCode(fc codegen.FeatureColumn) (string, error) {
+func generateFeatureColumnCode(fc ir.FeatureColumn) (string, error) {
 	switch c := fc.(type) {
-	case *codegen.NumericColumn:
-		nc := fc.(*codegen.NumericColumn)
+	case *ir.NumericColumn:
+		nc := fc.(*ir.NumericColumn)
 		return fmt.Sprintf("tf.feature_column.numeric_column(\"%s\", shape=%s)",
 			nc.FieldMeta.Name,
 			intArrayToJSONString(nc.FieldMeta.Shape)), nil
-	case *codegen.BucketColumn:
-		bc := fc.(*codegen.BucketColumn)
+	case *ir.BucketColumn:
+		bc := fc.(*ir.BucketColumn)
 		sourceCode, err := generateFeatureColumnCode(bc.SourceColumn)
 		if err != nil {
 			return "", err
@@ -63,19 +63,19 @@ func generateFeatureColumnCode(fc codegen.FeatureColumn) (string, error) {
 			"tf.feature_column.bucketized_column(%s, boundaries=%s)",
 			sourceCode,
 			intArrayToJSONString(bc.Boundaries)), nil
-	case *codegen.CategoryIDColumn:
-		cc := fc.(*codegen.CategoryIDColumn)
+	case *ir.CategoryIDColumn:
+		cc := fc.(*ir.CategoryIDColumn)
 		return fmt.Sprintf("tf.feature_column.categorical_column_with_identity(key=\"%s\", num_buckets=%d)",
 			cc.FieldMeta.Name, cc.BucketSize), nil
-	case *codegen.SeqCategoryIDColumn:
-		cc := fc.(*codegen.SeqCategoryIDColumn)
+	case *ir.SeqCategoryIDColumn:
+		cc := fc.(*ir.SeqCategoryIDColumn)
 		return fmt.Sprintf("tf.feature_column.sequence_categorical_column_with_identity(key=\"%s\", num_buckets=%d)",
 			cc.FieldMeta.Name, cc.BucketSize), nil
-	case *codegen.CrossColumn:
-		cc := fc.(*codegen.CrossColumn)
+	case *ir.CrossColumn:
+		cc := fc.(*ir.CrossColumn)
 		var keysGenerated = make([]string, len(cc.Keys))
 		for idx, key := range cc.Keys {
-			if c, ok := key.(codegen.FeatureColumn); ok {
+			if c, ok := key.(ir.FeatureColumn); ok {
 				code, err := generateFeatureColumnCode(c)
 				if err != nil {
 					return "", err
@@ -88,9 +88,9 @@ func generateFeatureColumnCode(fc codegen.FeatureColumn) (string, error) {
 		return fmt.Sprintf(
 			"tf.feature_column.crossed_column([%s], hash_bucket_size=%d)",
 			strings.Join(keysGenerated, ","), cc.HashBucketSize), nil
-	case *codegen.EmbeddingColumn:
-		ec := fc.(*codegen.EmbeddingColumn)
-		catColumn, ok := ec.CategoryColumn.(codegen.FeatureColumn)
+	case *ir.EmbeddingColumn:
+		ec := fc.(*ir.EmbeddingColumn)
+		catColumn, ok := ec.CategoryColumn.(ir.FeatureColumn)
 		if !ok {
 			return "", fmt.Errorf("embedding generate code error, input is not featureColumn: %s", ec.CategoryColumn)
 		}
@@ -138,13 +138,13 @@ func attrToPythonValue(attr interface{}) string {
 	}
 }
 
-func dtypeToString(dt codegen.FieldType) string {
+func dtypeToString(dt ir.FieldType) string {
 	switch dt {
-	case codegen.Float:
+	case ir.Float:
 		return "float32"
-	case codegen.Int:
+	case ir.Int:
 		return "int64"
-	case codegen.String:
+	case ir.String:
 		return "string"
 	default:
 		return ""
@@ -160,13 +160,13 @@ func IsKerasModel(estimator string) (bool, string) {
 }
 
 // Train generates a Python program for train a TensorFlow model.
-func Train(ir *codegen.TrainIR) (string, error) {
-	if err := attributeDictionary.Validate(ir.Attributes); err != nil {
+func Train(trainIR *ir.TrainClause) (string, error) {
+	if err := attributeDictionary.Validate(trainIR.Attributes); err != nil {
 		return "", err
 	}
 	trainParams := make(map[string]interface{})
 	modelParams := make(map[string]interface{})
-	for attrKey, attr := range ir.Attributes {
+	for attrKey, attr := range trainIR.Attributes {
 		if strings.HasPrefix(attrKey, "train.") {
 			trainParams[strings.Replace(attrKey, "train.", "", 1)] = attr
 		}
@@ -188,8 +188,8 @@ func Train(ir *codegen.TrainIR) (string, error) {
 
 	featureColumnsCode := []string{}
 	perTargetFeatureColumnsCode := []string{}
-	fieldMetas := []*codegen.FieldMeta{}
-	for target, fcList := range ir.Features {
+	fieldMetas := []*ir.FieldMeta{}
+	for target, fcList := range trainIR.Features {
 		for _, fc := range fcList {
 			fcCode, err := generateFeatureColumnCode(fc)
 			if err != nil {
@@ -205,17 +205,17 @@ func Train(ir *codegen.TrainIR) (string, error) {
 		featureColumnsCode = append(featureColumnsCode,
 			fmt.Sprintf("\"%s\": [%s]", target, strings.Join(perTargetFeatureColumnsCode, ",\n")))
 	}
-	isKeras, estimatorStr := IsKerasModel(ir.Estimator)
+	isKeras, estimatorStr := IsKerasModel(trainIR.Estimator)
 
 	filler := trainFiller{
-		DataSource:        ir.DataSource,
-		TrainSelect:       ir.Select,
-		ValidationSelect:  ir.ValidationSelect,
+		DataSource:        trainIR.DataSource,
+		TrainSelect:       trainIR.Select,
+		ValidationSelect:  trainIR.ValidationSelect,
 		Estimator:         estimatorStr,
 		IsKerasModel:      isKeras,
 		FieldMetas:        fieldMetas,
 		FeatureColumnCode: fmt.Sprintf("{%s}", strings.Join(featureColumnsCode, ",\n")),
-		Y:                 ir.Label.GetFieldMeta()[0], // TODO(typhoonzero): label only support numericColumn.
+		Y:                 trainIR.Label.GetFieldMeta()[0], // TODO(typhoonzero): label only support numericColumn.
 		ModelParams:       modelParams,
 		TrainParams:       trainParams,
 		Save:              "model_save", // TODO(typhoonzero): executor.go will save the working directory, should test later.
@@ -235,17 +235,17 @@ func Train(ir *codegen.TrainIR) (string, error) {
 }
 
 // Pred generates a Python program for predict using a TensorFlow model.
-func Pred(ir *codegen.PredictIR, session *pb.Session) (string, error) {
+func Pred(predIR *ir.PredictClause, session *pb.Session) (string, error) {
 	modelParams := make(map[string]interface{})
-	for attrKey, attr := range ir.TrainIR.Attributes {
+	for attrKey, attr := range predIR.TrainIR.Attributes {
 		if strings.HasPrefix(attrKey, "model.") {
 			modelParams[strings.Replace(attrKey, "model.", "", 1)] = attr
 		}
 	}
 	featureColumnsCode := []string{}
 	perTargetFeatureColumnsCode := []string{}
-	fieldMetas := []*codegen.FieldMeta{}
-	for target, fcList := range ir.TrainIR.Features {
+	fieldMetas := []*ir.FieldMeta{}
+	for target, fcList := range predIR.TrainIR.Features {
 		for _, fc := range fcList {
 			fcCode, err := generateFeatureColumnCode(fc)
 			if err != nil {
@@ -261,22 +261,22 @@ func Pred(ir *codegen.PredictIR, session *pb.Session) (string, error) {
 		featureColumnsCode = append(featureColumnsCode,
 			fmt.Sprintf("\"%s\": [%s]", target, strings.Join(perTargetFeatureColumnsCode, ",\n")))
 	}
-	isKeras, estimatorStr := IsKerasModel(ir.TrainIR.Estimator)
-	labelFM := ir.TrainIR.Label.GetFieldMeta()[0]
+	isKeras, estimatorStr := IsKerasModel(predIR.TrainIR.Estimator)
+	labelFM := predIR.TrainIR.Label.GetFieldMeta()[0]
 	if labelFM.Name == "" {
-		log.Printf("clustering model, got result table: %s, result column: %s", ir.ResultTable, ir.ResultColumn)
+		log.Printf("clustering model, got result table: %s, result column: %s", predIR.ResultTable, predIR.ResultColumn)
 		// no label in train SQL means a clustering model, generate a fieldmeta using result table's column
-		labelFM = &codegen.FieldMeta{
-			Name:  ir.ResultColumn,
+		labelFM = &ir.FieldMeta{
+			Name:  predIR.ResultColumn,
 			Shape: []int{1},
-			DType: codegen.Int,
+			DType: ir.Int,
 		}
 	}
 
 	filler := predFiller{
-		DataSource:        ir.DataSource,
-		Select:            ir.Select,
-		ResultTable:       ir.ResultTable,
+		DataSource:        predIR.DataSource,
+		Select:            predIR.Select,
+		ResultTable:       predIR.ResultTable,
 		Estimator:         estimatorStr,
 		IsKerasModel:      isKeras,
 		FieldMetas:        fieldMetas,

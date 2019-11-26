@@ -13,7 +13,7 @@
 
 package tensorflow
 
-import "sqlflow.org/sqlflow/pkg/sql/codegen"
+import "sqlflow.org/sqlflow/pkg/sql/ir"
 
 type predFiller struct {
 	DataSource  string
@@ -22,9 +22,9 @@ type predFiller struct {
 	// below members comes from TrainIR
 	Estimator         string
 	IsKerasModel      bool
-	FieldMetas        []*codegen.FieldMeta
+	FieldMetas        []*ir.FieldMeta
 	FeatureColumnCode string
-	Y                 *codegen.FieldMeta
+	Y                 *ir.FieldMeta
 	ModelParams       map[string]interface{}
 	Save              string
 	HDFSNameNodeAddr  string

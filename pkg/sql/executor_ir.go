@@ -27,10 +27,10 @@ import (
 	"time"
 
 	pb "sqlflow.org/sqlflow/pkg/server/proto"
-	"sqlflow.org/sqlflow/pkg/sql/codegen"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/pai"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/xgboost"
+	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
 
 // EndOfExecution will push to the pipe when one SQL statement execution is finished.
@@ -38,6 +38,11 @@ type EndOfExecution struct {
 	StartTime int64
 	EndTime   int64
 	Statement string
+}
+
+// WorkflowJob indicates the Argo Workflow ID
+type WorkflowJob struct {
+	JobID string
 }
 
 var envSubmitter = os.Getenv("SQLFLOW_submitter")
@@ -88,6 +93,46 @@ func RunSQLProgram(sqlProgram string, db *DB, modelDir string, session *pb.Sessi
 	return rd
 }
 
+// SubmitWorkflow submits an Argo workflow
+func SubmitWorkflow(sqlProgram string, db *DB, modelDir string, session *pb.Session) *PipeReader {
+	rd, wr := Pipe()
+	go func() {
+		defer wr.Close()
+		err := submitWorkflow(wr, sqlProgram, db, modelDir, session)
+		if err != nil {
+			log.Errorf("submit Workflow error: %v", err)
+		}
+	}()
+	return rd
+}
+
+func submitWorkflow(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, session *pb.Session) error {
+	sqls, err := parse(db.driverName, sqlProgram)
+	if err != nil {
+		return err
+	}
+
+	connStr := fmt.Sprintf("%s://%s", db.driverName, db.dataSourceName)
+
+	_ = sqls
+	_ = connStr
+	/*
+		_, err = programToIR(sqls, connStr, modelDir, true, false)
+		if err != nil {
+			return err
+		}
+	*/
+
+	// TODO(yancey1989):
+	// 1. call codegen_couler.go to genearte Couler program.
+	// 2. compile Couler program into Argo YAML.
+	// 3. submit Argo YAML and fetch the workflow ID.
+
+	return wr.Write(WorkflowJob{
+		JobID: "sqlflow-workflow",
+	})
+}
+
 func runSQLProgram(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, session *pb.Session) error {
 	sqls, err := parse(db.driverName, sqlProgram)
 	if err != nil {
@@ -103,26 +148,26 @@ func runSQLProgram(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, s
 	// The IR generation on the second statement would fail since it requires inspection the schema of some_table,
 	// which depends on the execution of create table some_table as (select ...);.
 	for _, sql := range sqls {
-		var ir codegen.SingleSQLIR
+		var r ir.SQLStatement
 		connStr := fmt.Sprintf("%s://%s", db.driverName, db.dataSourceName)
 		if sql.extended != nil {
 			parsed := sql.extended
 			if parsed.train {
-				ir, err = generateTrainIRWithInferredColumns(parsed, connStr)
+				r, err = generateTrainIRWithInferredColumns(parsed, connStr)
 			} else if parsed.analyze {
-				ir, err = generateAnalyzeIR(parsed, connStr, modelDir, submitter() != SubmitterPAI)
+				r, err = generateAnalyzeIR(parsed, connStr, modelDir, submitter() != SubmitterPAI)
 			} else {
-				ir, err = generatePredictIR(parsed, connStr, modelDir, submitter() != SubmitterPAI)
+				r, err = generatePredictIR(parsed, connStr, modelDir, submitter() != SubmitterPAI)
 			}
 		} else {
-			standardSQL := codegen.StandardSQLIR(sql.standard)
-			ir = &standardSQL
+			standardSQL := ir.StandardSQL(sql.standard)
+			r = &standardSQL
 		}
 		if err != nil {
 			return err
 		}
-		ir.SetOriginalSQL(sql.original)
-		if e := runSingleSQLIR(wr, ir, db, modelDir, session); e != nil {
+		r.SetOriginalSQL(sql.original)
+		if e := runSingleSQLIR(wr, r, db, modelDir, session); e != nil {
 			return e
 		}
 	}
@@ -130,7 +175,7 @@ func runSQLProgram(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, s
 	return nil
 }
 
-func runSingleSQLIR(wr *PipeWriter, ir codegen.SingleSQLIR, db *DB, modelDir string, session *pb.Session) (e error) {
+func runSingleSQLIR(wr *PipeWriter, sqlIR ir.SQLStatement, db *DB, modelDir string, session *pb.Session) (e error) {
 	startTime := time.Now().UnixNano()
 	var originalSQL string
 	defer func() {
@@ -143,29 +188,29 @@ func runSingleSQLIR(wr *PipeWriter, ir codegen.SingleSQLIR, db *DB, modelDir str
 		}
 	}()
 
-	switch ir.(type) {
-	case *codegen.StandardSQLIR:
-		originalSQL = string(*ir.(*codegen.StandardSQLIR))
+	switch sqlIR.(type) {
+	case *ir.StandardSQL:
+		originalSQL = string(*sqlIR.(*ir.StandardSQL))
 		if e = runStandardSQL(wr, originalSQL, db); e != nil {
 			return e
 		}
-	case *codegen.TrainIR:
-		originalSQL = ir.(*codegen.TrainIR).OriginalSQL
-		if e = runTrainIR(ir.(*codegen.TrainIR), wr, db, modelDir, session); e != nil {
+	case *ir.TrainClause:
+		originalSQL = sqlIR.(*ir.TrainClause).OriginalSQL
+		if e = runTrainIR(sqlIR.(*ir.TrainClause), wr, db, modelDir, session); e != nil {
 			return e
 		}
-	case *codegen.PredictIR:
-		originalSQL = ir.(*codegen.PredictIR).OriginalSQL
-		if e = runPredictIR(ir.(*codegen.PredictIR), wr, db, modelDir, session); e != nil {
+	case *ir.PredictClause:
+		originalSQL = sqlIR.(*ir.PredictClause).OriginalSQL
+		if e = runPredictIR(sqlIR.(*ir.PredictClause), wr, db, modelDir, session); e != nil {
 			return e
 		}
-	case *codegen.AnalyzeIR:
-		originalSQL = ir.(*codegen.AnalyzeIR).OriginalSQL
-		if e = runAnalyzeIR(ir.(*codegen.AnalyzeIR), wr, db, modelDir, session); e != nil {
+	case *ir.AnalyzeClause:
+		originalSQL = sqlIR.(*ir.AnalyzeClause).OriginalSQL
+		if e = runAnalyzeIR(sqlIR.(*ir.AnalyzeClause), wr, db, modelDir, session); e != nil {
 			return e
 		}
 	default:
-		return fmt.Errorf("got error ir type: %T", ir)
+		return fmt.Errorf("got error ir type: %T", sqlIR)
 	}
 
 	return nil
@@ -188,7 +233,7 @@ func runThirdPartySubmitterTrain(wr *PipeWriter, sql string, db *DB, cwd string,
 	}
 }
 
-func runTrainIR(trainIR *codegen.TrainIR, wr *PipeWriter, db *DB, modelDir string, session *pb.Session) error {
+func runTrainIR(trainIR *ir.TrainClause, wr *PipeWriter, db *DB, modelDir string, session *pb.Session) error {
 	// cwd is used to store train scripts and save output models.
 	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
 	if err != nil {
@@ -265,7 +310,7 @@ func runThirdPartySubmitterPred(wr *PipeWriter, sql string, db *DB, cwd string, 
 	return nil
 }
 
-func runPredictIR(predIR *codegen.PredictIR, wr *PipeWriter, db *DB, modelDir string, session *pb.Session) error {
+func runPredictIR(predIR *ir.PredictClause, wr *PipeWriter, db *DB, modelDir string, session *pb.Session) error {
 	// cwd is used to load the saved model for prediction.
 	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
 	if err != nil {
@@ -334,7 +379,7 @@ func runPredictIR(predIR *codegen.PredictIR, wr *PipeWriter, db *DB, modelDir st
 	return nil
 }
 
-func runAnalyzeIR(analyzeIR *codegen.AnalyzeIR, wr *PipeWriter, db *DB, modelDir string, session *pb.Session) error {
+func runAnalyzeIR(analyzeIR *ir.AnalyzeClause, wr *PipeWriter, db *DB, modelDir string, session *pb.Session) error {
 	// cwd is used to load the saved model for prediction.
 	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
 	if err != nil {
@@ -441,9 +486,9 @@ func createPredictionTable(predParsed *extendedSelect, db *DB, session *pb.Sessi
 	return nil
 }
 
-// Create prediction table using the `PredictIR`.
+// Create prediction table using the `PredictClause`.
 // TODO(typhoonzero): remove legacy `createPredictionTable` once we change all submitters to use IR.
-func createPredictionTableFromIR(predIR *codegen.PredictIR, db *DB, session *pb.Session) error {
+func createPredictionTableFromIR(predIR *ir.PredictClause, db *DB, session *pb.Session) error {
 	dropStmt := fmt.Sprintf("drop table if exists %s;", predIR.ResultTable)
 	if _, e := db.Exec(dropStmt); e != nil {
 		return fmt.Errorf("failed executing %s: %q", dropStmt, e)

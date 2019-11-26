@@ -10,27 +10,29 @@ service SQLFlow {
     // SQL statements like `SELECT ...`, `DESCRIBE ...` returns a rowset.
     // The rowset might be big. In such cases, Query returns a stream
     // of RunResponse
+    // 
+    // SQLFlow implements the Run interface with two mode:
     //
+    // 1. Local model
+    // The SQLFlow server execute the SQL statments on the local host.
+    // 
     // SQL statements like `USE database`, `DELETE` returns only a success
     // message.
     //
     // SQL statement like `SELECT ... TO TRAIN/PREDICT ...` returns a stream of
     // messages which indicates the training/predicting progress
+    // 
+    // 2. Argo Workflow mode
+    // The SQLFlow server submites an Argo workflow into a Kubernetes cluster,
+    // and returns a stream of messages indicates the WorkFlow ID and the 
+    // submiting progress.
+    //
+    // The SQLFlow gRPC client should fetch the logs of the workflow by
+    // calling the Fetch interface in a polling manner.
     rpc Run (Request) returns (stream Response);
 
-    // Submit a SQLFlow Job which contains a SQL program to SQLFlow server.
-    //
-    // A SQL program contains one or more SQL statments.
-    // Each of these SQL statments can be a standard SQL like:
-    // `SELECT ... FROM ...;`, `DESCRIBE ...`,
-    // or an extended SQLFlow SQL like:
-    // `SELECT ... TO TRAIN/PREDICT/EXPLAIN ...`.
-    //
-    // Submit returns a Job message which contains the SQLFlow Job ID.
-    rpc Submit (Request) returns (Job);
-    
     // Fetch fetchs the SQLFlow job status and logs in a polling manner.
-    rpc Fetch (Job) returns(JobStatus);
+    rpc Fetch (Job) returns (JobStatus);
 }
 
 message Job {
@@ -78,6 +80,7 @@ message Response {
         Row row = 2;
         Message message = 3;
         EndOfExecution eoe = 4;
+        Job job = 5;
     }
 }
 
