@@ -34,7 +34,8 @@ import (
 )
 
 // NewServer returns a server instance
-func NewServer(run func(string, *sf.DB, string, *pb.Session) *sf.PipeReader, modelDir string) *Server {
+func NewServer(run func(string, *sf.DB, string, *pb.Session) *sf.PipeReader,
+	modelDir string) *Server {
 	return &Server{run: run, modelDir: modelDir}
 }
 
@@ -42,12 +43,6 @@ func NewServer(run func(string, *sf.DB, string, *pb.Session) *sf.PipeReader, mod
 type Server struct {
 	run      func(sql string, db *sf.DB, modelDir string, session *pb.Session) *sf.PipeReader
 	modelDir string
-}
-
-// Submit implements `rpc Submit (Request) returns (Job)`
-func (s *Server) Submit(ctx context.Context, in *pb.Request) (*pb.Job, error) {
-	job := &pb.Job{}
-	return job, nil
 }
 
 // Fetch implements `rpc Fetch (Job) returns(JobStatus)`
@@ -59,6 +54,7 @@ func (s *Server) Fetch(ctx context.Context, job *pb.Job) (*pb.JobStatus, error) 
 // Run implements `rpc Run (Request) returns (stream Response)`
 func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 	var db *sf.DB
+
 	var err error
 	if db, err = sf.NewDB(req.Session.DbConnStr); err != nil {
 		return fmt.Errorf("create DB failed: %v", err)
@@ -82,6 +78,9 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 			res, err = encodeRow(s)
 		case string:
 			res, err = encodeMessage(s)
+		case sf.WorkflowJob:
+			job := r.(sf.WorkflowJob)
+			res = &pb.Response{Response: &pb.Response_Job{Job: &pb.Job{Id: job.JobID}}}
 		case sf.EndOfExecution:
 			// if sqlStatements have only one field, do **NOT** return EndOfExecution message.
 			if len(sqlStatements) > 1 {
