@@ -13,9 +13,7 @@
 
 package tensorflow
 
-import (
-	"sqlflow.org/sqlflow/pkg/sql/codegen"
-)
+import "sqlflow.org/sqlflow/pkg/sql/ir"
 
 type trainFiller struct {
 	DataSource        string
@@ -23,9 +21,9 @@ type trainFiller struct {
 	ValidationSelect  string
 	Estimator         string
 	IsKerasModel      bool
-	FieldMetas        []*codegen.FieldMeta
+	FieldMetas        []*ir.FieldMeta
 	FeatureColumnCode string
-	Y                 *codegen.FieldMeta
+	Y                 *ir.FieldMeta
 	ModelParams       map[string]interface{}
 	TrainParams       map[string]interface{}
 	Save              string

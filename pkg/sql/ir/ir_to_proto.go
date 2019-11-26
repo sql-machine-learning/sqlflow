@@ -11,14 +11,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package codegen
+package ir
 
 import (
 	"fmt"
 	"strings"
 
 	pb "sqlflow.org/sqlflow/pkg/server/proto"
-	irpb "sqlflow.org/sqlflow/pkg/sql/codegen/proto"
+	irpb "sqlflow.org/sqlflow/pkg/sql/ir/proto"
 )
 
 // FIXME(typhoonzero): copied from tensorflow/codegen.go
@@ -201,13 +201,13 @@ func featureColumnToPb(fc FeatureColumn) (*irpb.FeatureColumn, error) {
 
 // TrainIRToProto convert parsed TrainIR to a protobuf format
 // TODO(typhoonzero): add PredictIR, AnalyzeIR
-func TrainIRToProto(ir *TrainIR, sess *pb.Session) (*irpb.TrainIR, error) {
+func TrainIRToProto(trainIR *TrainClause, sess *pb.Session) (*irpb.TrainIR, error) {
 	attrs := make(map[string]string)
-	for k, v := range ir.Attributes {
+	for k, v := range trainIR.Attributes {
 		attrs[k] = attrToPythonValue(v)
 	}
 	features := make(map[string]*irpb.FeatureColumnList)
-	for target, fclist := range ir.Features {
+	for target, fclist := range trainIR.Features {
 		pbfclist := &irpb.FeatureColumnList{
 			FeatureColumns: []*irpb.FeatureColumn{},
 		}
@@ -224,7 +224,7 @@ func TrainIRToProto(ir *TrainIR, sess *pb.Session) (*irpb.TrainIR, error) {
 		features[target] = pbfclist
 	}
 
-	labelFM := ir.Label.GetFieldMeta()[0]
+	labelFM := trainIR.Label.GetFieldMeta()[0]
 	label := &irpb.FeatureColumn{
 		FeatureColumn: &irpb.FeatureColumn_Nc{
 			Nc: &irpb.NumericColumn{
@@ -245,10 +245,10 @@ func TrainIRToProto(ir *TrainIR, sess *pb.Session) (*irpb.TrainIR, error) {
 	}
 
 	ret := &irpb.TrainIR{
-		Datasource:       ir.DataSource,
-		Select:           ir.Select,
-		ValidationSelect: ir.ValidationSelect,
-		Estimator:        ir.Estimator,
+		Datasource:       trainIR.DataSource,
+		Select:           trainIR.Select,
+		ValidationSelect: trainIR.ValidationSelect,
+		Estimator:        trainIR.Estimator,
 		Attributes:       attrs,
 		Features:         features,
 		Label:            label,

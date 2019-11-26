@@ -31,6 +31,8 @@ func TestParse(t *testing.T) {
 
 	selectCases := []string{
 		`select 1`,
+		`select * from my_table
+`,
 		`select * from my_table`,
 		`-- this is a comment
 select
@@ -73,11 +75,15 @@ WHERE
 	for _, driver := range []string{"mysql", "hive", "calcite"} {
 		// one standard SQL statement
 		for _, sql := range selectCases {
-			s, err := parse(driver, sql)
+			s, err := parse(driver, sql+";")
 			a.NoError(err)
 			a.Equal(1, len(s))
-			a.Equal(sql, s[0].standard)
 			a.Nil(s[0].extended)
+			if isJavaParser(driver) {
+				a.Equal(sql, s[0].standard)
+			} else {
+				a.Equal(sql+`;`, s[0].standard)
+			}
 		}
 
 		{ // several standard SQL statements with comments
@@ -104,6 +110,7 @@ WHERE
 
 			a.NotNil(s[0].extended)
 			a.Equal(sql+` `, s[0].standard)
+			a.Equal(fmt.Sprintf(`%s %s;`, sql, extendedSQL), s[0].original)
 
 			a.Nil(s[1].extended)
 			if isJavaParser(driver) {
@@ -127,6 +134,7 @@ WHERE
 				a.Equal(sql+`;`, s[0].standard)
 			}
 			a.Equal(sql+` `, s[1].standard)
+			a.Equal(fmt.Sprintf(`%s %s;`, sql, extendedSQL), s[1].original)
 		}
 
 		// three SQL statements, the second one is extendedSQL
@@ -149,6 +157,7 @@ WHERE
 			}
 
 			a.Equal(sql+` `, s[1].standard)
+			a.Equal(fmt.Sprintf(`%s %s;`, sql, extendedSQL), s[1].original)
 		}
 
 		{ // two SQL statements, the first standard SQL has an error.

@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"strings"
 
-	"sqlflow.org/sqlflow/pkg/sql/codegen"
+	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
 
 const (
@@ -27,7 +27,7 @@ const (
 )
 
 // Analyze generates a Python program to analyze a trained model.
-func Analyze(ir *codegen.AnalyzeIR) (string, error) {
+func Analyze(ir *ir.AnalyzeClause) (string, error) {
 	if ir.Explainer != "TreeExplainer" {
 		return "", fmt.Errorf("unsupported explainer %s", ir.Explainer)
 	}
