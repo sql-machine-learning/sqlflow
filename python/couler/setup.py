@@ -80,7 +80,7 @@ setup(
     url=URL,
     packages=find_packages(exclude=('tests',)),
     entry_points={
-        'console_scripts': ['couler = couler.__main__:main'],
+        'console_scripts': ['couler = couler.client:main'],
     },
     install_requires=REQUIRED,
     setup_requires=SETUP_REQUIRED,
