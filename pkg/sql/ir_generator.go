@@ -20,7 +20,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/sql-machine-learning/sqlflow/sql/codegen"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
 
@@ -723,7 +722,7 @@ func programToIR(sqls []statementParseResult, connStr, modelDir string, getTrain
 		if sql.extended != nil {
 			parsed := sql.extended
 			if parsed.train {
-				var ir *codegen.TrainIR
+				var ir *ir.TrainClause
 				var err error
 				if enableFeatureDerivation {
 					ir, err = generateTrainIRWithInferredColumns(parsed, connStr)
