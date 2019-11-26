@@ -758,7 +758,7 @@ func CaseSparseFeature(t *testing.T) {
 FROM text_cn.train
 TO TRAIN DNNClassifier
 WITH model.n_classes = 3, model.hidden_units = [10, 20]
-COLUMN EMBEDDING(CATEGORY_ID(news_title,16000,COMMA),128,mean)
+COLUMN EMBEDDING(SPARSE(news_title,16000,COMMA),128,mean)
 LABEL class_id
 INTO sqlflow_models.my_dnn_model;`
 	_, _, err := connectAndRunSQL(trainSQL)
