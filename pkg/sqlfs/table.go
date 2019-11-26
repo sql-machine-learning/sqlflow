@@ -27,7 +27,9 @@ func createTable(db *sql.DB, driver, table string) error {
 	var stmt string
 	if driver == "mysql" {
 		stmt = fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (id INT, block TEXT, PRIMARY KEY (id))", table)
-	} else if driver == "hive" || driver == "maxcompute" {
+	} else if driver == "hive" {
+		stmt = fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (id INT, block STRING) ROW FORMAT DELIMITED FIELDS TERMINATED BY \"\\001\" STORED AS TEXTFILE", table)
+	} else if driver == "maxcompute" {
 		stmt = fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (id INT, block STRING)", table)
 	} else {
 		return fmt.Errorf("createTable not supported for %s", driver)

@@ -25,6 +25,7 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"
 	_ "sqlflow.org/gohive"
+	pb "sqlflow.org/sqlflow/pkg/server/proto"
 )
 
 var (
@@ -50,7 +51,7 @@ func TestWriterCreate(t *testing.T) {
 	a := assert.New(t)
 
 	fn := fmt.Sprintf("%s.unitest%d", testDatabaseName, rand.Int())
-	w, e := Create(testDB, testDriver, fn)
+	w, e := Create(testDB, testDriver, fn, getDefaultSession())
 	a.NoError(e)
 	a.NotNil(w)
 	defer w.Close()
@@ -68,7 +69,7 @@ func TestWriteAndRead(t *testing.T) {
 
 	fn := fmt.Sprintf("%s.unitest%d", testDatabaseName, rand.Int())
 
-	w, e := Create(testDB, testDriver, fn)
+	w, e := Create(testDB, testDriver, fn, getDefaultSession())
 	a.NoError(e)
 	a.NotNil(w)
 
@@ -132,6 +133,14 @@ func getEnv(key, fallback string) string {
 		return fallback
 	}
 	return value
+}
+
+func getDefaultSession() *pb.Session {
+	return &pb.Session{
+		HiveLocation: "/sqlflow",
+		HdfsUser:     "",
+		HdfsPass:     "",
+	}
 }
 
 func TestMain(m *testing.M) {

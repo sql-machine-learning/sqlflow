@@ -17,6 +17,9 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"fmt"
+	"io"
+
+	pb "sqlflow.org/sqlflow/pkg/server/proto"
 )
 
 const bufSize = 4 * 1024
@@ -31,13 +34,27 @@ type Writer struct {
 
 // Create creates a new table or truncates an existing table and
 // returns a writer.
-func Create(db *sql.DB, driver, table string) (*Writer, error) {
+func Create(db *sql.DB, driver, table string, session *pb.Session) (io.WriteCloser, error) {
 	if e := dropTable(db, table); e != nil {
 		return nil, fmt.Errorf("create: %v", e)
 	}
 	if e := createTable(db, driver, table); e != nil {
 		return nil, fmt.Errorf("create: %v", e)
 	}
+
+	if driver == "hive" {
+		// HiveWriter implement can archive better performance
+		return &HiveWriter{
+			Writer: Writer{
+				db:      db,
+				table:   table,
+				buf:     make([]byte, 0, bufSize),
+				flushID: 0,
+			},
+			csvFile: nil,
+			session: session}, nil
+	}
+	// default writer implement
 	return &Writer{db, table, make([]byte, 0, bufSize), 0}, nil
 }
 
