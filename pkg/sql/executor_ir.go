@@ -114,10 +114,8 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, 
 		return err
 	}
 
-	connStr := fmt.Sprintf("%s://%s", db.driverName, db.dataSourceName)
-	// TODO(yancey1989): using parsed result directly
-	programIR, err := programToIR(
-		sqls, connStr, modelDir,
+	spIRs, err := genSQLProgramIR(
+		sqls, db, modelDir,
 		false, /*disable feature derivation*/
 		false /*disable pred ir load from saved model*/)
 	if err != nil {
@@ -125,7 +123,7 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, 
 	}
 
 	// 1. call codegen_couler.go to genearte Couler program.
-	program, err := couler.Run(programIR)
+	program, err := couler.Run(spIRs)
 	if err != nil {
 		return fmt.Errorf("Generate Couler program error: %v", err)
 	}
@@ -163,12 +161,8 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, 
 		JobID: workflowID,
 	})
 }
-func runSQLProgram(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, session *pb.Session) error {
-	sqls, err := parse(db.driverName, sqlProgram)
-	if err != nil {
-		return err
-	}
 
+func genSQLProgramIR(sqls []statementParseResult, db *DB, modelDir string, enableInferedColumns, enableGetTrainIRFromModel bool) ([]ir.SQLStatement, error) {
 	// NOTE(tony): We generate IR and execute its translated program one-by-one since IR generation may depend on the execution
 	// of the previous statement. For example, consider a SQL program
 	//
@@ -177,6 +171,8 @@ func runSQLProgram(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, s
 	//
 	// The IR generation on the second statement would fail since it requires inspection the schema of some_table,
 	// which depends on the execution of create table some_table as (select ...);.
+	spIRs := []ir.SQLStatement{}
+	var err error
 	for _, sql := range sqls {
 		var r ir.SQLStatement
 		connStr := fmt.Sprintf("%s://%s", db.driverName, db.dataSourceName)
@@ -194,14 +190,28 @@ func runSQLProgram(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, s
 			r = &standardSQL
 		}
 		if err != nil {
-			return err
+			return nil, err
 		}
 		r.SetOriginalSQL(sql.original)
+		spIRs = append(spIRs, r)
+	}
+	return spIRs, err
+}
+
+func runSQLProgram(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, session *pb.Session) error {
+	sqls, err := parse(db.driverName, sqlProgram)
+	if err != nil {
+		return err
+	}
+	spIRs, err := genSQLProgramIR(sqls, db, modelDir, true, submitter() != SubmitterPAI)
+	if err != nil {
+		return err
+	}
+	for _, r := range spIRs {
 		if e := runSingleSQLIR(wr, r, db, modelDir, session); e != nil {
 			return e
 		}
 	}
-
 	return nil
 }
 
