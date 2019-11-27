@@ -26,7 +26,7 @@ import (
 	"text/template"
 
 	"sqlflow.org/gomaxcompute"
-	pb "sqlflow.org/sqlflow/pkg/server/proto"
+	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/columns"
 )
 

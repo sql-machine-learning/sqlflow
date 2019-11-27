@@ -13,3 +13,5 @@ sql/my_dnn_model
 coverage.out
 .vscode
 .cache
+*.pb.go
+

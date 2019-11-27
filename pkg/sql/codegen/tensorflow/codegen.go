@@ -20,7 +20,7 @@ import (
 	"strings"
 	"text/template"
 
-	pb "sqlflow.org/sqlflow/pkg/server/proto"
+	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/attribute"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
 )

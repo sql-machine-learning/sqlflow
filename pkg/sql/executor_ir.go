@@ -26,7 +26,7 @@ import (
 	"sync"
 	"time"
 
-	pb "sqlflow.org/sqlflow/pkg/server/proto"
+	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/pai"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/xgboost"
