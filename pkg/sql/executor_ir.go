@@ -22,11 +22,13 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
 
 	pb "sqlflow.org/sqlflow/pkg/server/proto"
+	"sqlflow.org/sqlflow/pkg/sql/codegen/couler"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/pai"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/xgboost"
@@ -45,7 +47,8 @@ type WorkflowJob struct {
 	JobID string
 }
 
-var envSubmitter = os.Getenv("SQLFLOW_submitter")
+// EnvSubmitter indicates the Submitter type
+var EnvSubmitter = os.Getenv("SQLFLOW_submitter")
 
 // SubmitterType is the type of SQLFlow submitter
 type SubmitterType int
@@ -62,7 +65,7 @@ const (
 )
 
 func submitter() SubmitterType {
-	switch envSubmitter {
+	switch EnvSubmitter {
 	case "pai":
 		return SubmitterPAI
 	case "elasticdl":
@@ -113,21 +116,51 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, 
 	}
 
 	connStr := fmt.Sprintf("%s://%s", db.driverName, db.dataSourceName)
-	_, err = programToIR(sqls, connStr, modelDir, true, false)
+	programIR, err := programToIR(sqls, connStr, modelDir, true, false)
 	if err != nil {
 		return err
 	}
 
 	// TODO(yancey1989):
 	// 1. call codegen_couler.go to genearte Couler program.
+	program, err := couler.Run(programIR)
+	if err != nil {
+		return fmt.Errorf("Generate Couler program error: %v", err)
+	}
+
+	coulerFile, err := ioutil.TempFile("/tmp", "sqlflow-couler*.py")
+	if err != nil {
+		return fmt.Errorf("")
+	}
+	coulerFile.Write([]byte(program))
+	defer coulerFile.Close()
+
 	// 2. compile Couler program into Argo YAML.
+	argoYaml, err := ioutil.TempFile("/tmp", "sqlflow-argo*.yaml")
+	cmd := exec.Command("couler", "run", "--mode", "argo", "--file", coulerFile.Name(), ">", argoYaml.Name())
+	if _, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("generate Argo workflow yaml error: %v", err)
+	}
+
 	// 3. submit Argo YAML and fetch the workflow ID.
+	cmd = exec.Command("kubectl", "create", "-f", argoYaml.Name())
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("submit Argo YAML error: %v", err)
+	}
+	reWorkflow := regexp.MustCompile(`.+/(.+) .+`)
+	wf := reWorkflow.FindStringSubmatch(string(output))
+	var workflowID string
+	if len(wf) == 2 {
+		workflowID = wf[1]
+	} else {
+		return fmt.Errorf("parse workflow ID error: %v", err)
+	}
 
 	return wr.Write(WorkflowJob{
-		JobID: "sqlflow-workflow",
+		JobID: workflowID,
 	})
 }
-
 func runSQLProgram(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, session *pb.Session) error {
 	sqls, err := parse(db.driverName, sqlProgram)
 	if err != nil {
