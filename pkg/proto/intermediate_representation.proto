@@ -2,6 +2,12 @@ syntax = "proto3";
 
 package proto;
 
+import "sqlflow.proto";
+
+// Protobuf format intermediate representations for SQLFlow.
+// All structs should be exactly the same as structs defined in `pkg/sql/ir/ir.go`
+// You may refer to `ir.go` and `feature_collumn.go` for the meaning of each field.
+
 message FieldMeta {
     string name = 1;
     string dtype = 2;
@@ -57,20 +63,28 @@ message FeatureColumn {
     }
 }
 
-// TODO(typhoonzero): directly import Session from pkg/server/proto
-message Session {
-    string token = 1;
-    string db_conn_str = 2;
-    bool exit_on_submit = 3;
-    string user_id = 4;
-    string hive_location = 5;
-    string hdfs_namenode_addr = 6;
-    string hdfs_user = 7;
-    string hdfs_pass = 8;
-}
-
 message FeatureColumnList {
     repeated FeatureColumn feature_columns = 1;
+}
+
+message Attribute {
+    message IntList {
+        repeated int32 il = 1;
+    }    
+    message FloatList {
+        repeated float fl = 1;
+    }
+    message StringList {
+        repeated string sl = 1;
+    }
+    oneof attribute {
+        int32 i = 1;
+        float f = 2;
+        string s = 3;
+        IntList il = 4;
+        FloatList fl = 5;
+        StringList sl = 6;
+    }
 }
 
 message TrainIR {
@@ -78,8 +92,11 @@ message TrainIR {
     string select = 2;
     string validation_select  = 3;
     string estimator = 4;
-    map<string, string> attributes = 5;
+    map<string, Attribute> attributes = 5;
     map<string,FeatureColumnList> features = 6;
     FeatureColumn label = 7;
     Session session = 8;
+    string into = 9;
 }
+
+// TODO(typhoonzero): add AnalyzeIR, PredictIR

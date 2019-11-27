@@ -19,8 +19,7 @@ import (
 	"github.com/golang/protobuf/proto"
 
 	"github.com/stretchr/testify/assert"
-	pb "sqlflow.org/sqlflow/pkg/server/proto"
-	irpb "sqlflow.org/sqlflow/pkg/sql/ir/proto"
+	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
 func TestTrainCodegen(t *testing.T) {
@@ -55,11 +54,15 @@ func TestTrainCodegen(t *testing.T) {
 	pbIR, err := TrainIRToProto(sampleTrainIR, sampleSession)
 	a.NoError(err)
 	pbtxt := proto.MarshalTextString(pbIR)
-	pbIRToTest := &irpb.TrainIR{}
+	pbIRToTest := &pb.TrainIR{}
 	err = proto.UnmarshalText(pbtxt, pbIRToTest)
 	a.NoError(err)
 	a.Equal(
 		sampleTrainIR.Features["feature_columns"][2].GetFieldMeta()[0].Name,
 		pbIRToTest.GetFeatures()["feature_columns"].GetFeatureColumns()[2].GetNc().GetFieldMeta().GetName(),
+	)
+	a.Equal(
+		int32(sampleTrainIR.Attributes["train.batch_size"].(int)),
+		pbIRToTest.GetAttributes()["train.batch_size"].GetI(),
 	)
 }

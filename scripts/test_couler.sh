@@ -1,3 +1,4 @@
+#!/bin/bash
 # Copyright 2019 The SQLFlow Authors. All rights reserved.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,7 +22,6 @@ pytest python/couler/tests
 
 ############# Run Couler e2e test #############
 CHECK_INTERVAL_SECS=2
-cd python/couler/ && python setup.py install
 cat <<EOF > /tmp/sqlflow_couler.py
 import couler.argo as couler
 couler.run_container(image="docker/whalesay", command='echo "SQLFlow bridges AI and SQL engine."')
@@ -53,6 +53,3 @@ done
 echo "Argo job timed out."
 rm -rf /tmp/sqlflow* 
 exit 1
-
-
-
