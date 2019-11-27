@@ -179,11 +179,15 @@ func genSQLProgramIR(sqls []statementParseResult, db *DB, modelDir string, enabl
 		if sql.extended != nil {
 			parsed := sql.extended
 			if parsed.train {
-				r, err = generateTrainIRWithInferredColumns(parsed, connStr)
+				if enableInferedColumns {
+					r, err = generateTrainIRWithInferredColumns(parsed, connStr)
+				} else {
+					r, err = generateTrainIR(parsed, connStr)
+				}
 			} else if parsed.analyze {
-				r, err = generateAnalyzeIR(parsed, connStr, modelDir, submitter() != SubmitterPAI)
+				r, err = generateAnalyzeIR(parsed, connStr, modelDir, enableGetTrainIRFromModel)
 			} else {
-				r, err = generatePredictIR(parsed, connStr, modelDir, submitter() != SubmitterPAI)
+				r, err = generatePredictIR(parsed, connStr, modelDir, enableGetTrainIRFromModel)
 			}
 		} else {
 			standardSQL := ir.StandardSQL(sql.standard)
@@ -195,7 +199,7 @@ func genSQLProgramIR(sqls []statementParseResult, db *DB, modelDir string, enabl
 		r.SetOriginalSQL(sql.original)
 		spIRs = append(spIRs, r)
 	}
-	return spIRs, err
+	return spIRs, nil
 }
 
 func runSQLProgram(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, session *pb.Session) error {
