@@ -26,8 +26,8 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	prompt "github.com/c-bata/go-prompt"
+	irpb "sqlflow.org/sqlflow/pkg/proto"
 	sf "sqlflow.org/sqlflow/pkg/sql"
-	irpb "sqlflow.org/sqlflow/pkg/sql/ir/proto"
 	"sqlflow.org/sqlflow/pkg/sql/testdata"
 )
 
