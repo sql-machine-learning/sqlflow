@@ -116,12 +116,15 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, 
 	}
 
 	connStr := fmt.Sprintf("%s://%s", db.driverName, db.dataSourceName)
-	programIR, err := programToIR(sqls, connStr, modelDir, true, false)
+	// TODO(yancey1989): using parsed result directly
+	programIR, err := programToIR(
+		sqls, connStr, modelDir,
+		false, /*disable feature derivation*/
+		false /*disable pred ir load from saved model*/)
 	if err != nil {
 		return err
 	}
 
-	// TODO(yancey1989):
 	// 1. call codegen_couler.go to genearte Couler program.
 	program, err := couler.Run(programIR)
 	if err != nil {

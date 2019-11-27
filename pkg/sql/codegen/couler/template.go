@@ -16,9 +16,9 @@ package couler
 import "html/template"
 
 type sqlStatment struct {
-	SQL         string
-	Extend      bool
-	DockerImage string
+	OriginalSQL   string
+	IsExtendedSQL bool
+	DockerImage   string
 }
 type coulerFiller struct {
 	dataSource    string
@@ -28,13 +28,13 @@ type coulerFiller struct {
 const coulerTemplateText = `
 import couler.argo as couler
 {{ range $ss := .SQLStatements }}
-	{{if $ss.Extend }}
-couler.run_container(command='''repl -e "{{ $ss.SQL }}"''', image="{{ $ss.DockerImage }}")
+	{{if $ss.IsExtendedSQL }}
+couler.run_container(command='''repl -e "{{ $ss.OriginalSQL }}"''', image="{{ $ss.DockerImage }}")
 	{{else}}
 # TODO(yancey1989): 
 #	using "repl -parse" to output IR and
 #	feed to "sqlflow_submitter.{submitter}.train" to submite the job
-couler.run_container(command='''repl -e "{{ $ss.SQL }}"''', image="{{ $ss.DockerImage }}")
+couler.run_container(command='''repl -e "{{ $ss.OriginalSQL }}"''', image="{{ $ss.DockerImage }}")
 	{{end}}
 {{end}}
 `
