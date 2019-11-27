@@ -21,7 +21,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	pb "sqlflow.org/sqlflow/pkg/server/proto"
+	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sqlfs"
 )
 

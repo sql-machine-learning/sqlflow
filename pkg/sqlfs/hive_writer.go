@@ -19,7 +19,7 @@ import (
 	"os"
 	"os/exec"
 
-	pb "sqlflow.org/sqlflow/pkg/server/proto"
+	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
 // HiveWriter implements io.WriteCloser.

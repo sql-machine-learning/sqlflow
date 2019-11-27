@@ -20,7 +20,7 @@ import (
 	"io"
 	"io/ioutil"
 
-	pb "sqlflow.org/sqlflow/pkg/server/proto"
+	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
 const bufSize = 4 * 1024
