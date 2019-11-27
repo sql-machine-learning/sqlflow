@@ -230,20 +230,7 @@ func InferFeatureColumns(trainIR *ir.TrainClause) error {
 	fcMap := makeFeatureColumnMap(trainIR.Features)
 	fmMap := makeFieldMetaMap(trainIR.Features)
 
-	q := trainIR.Select
-	re, err := regexp.Compile("LIMIT [0-9]+")
-	if err != nil {
-		return err
-	}
-	limitClauseIndexes := re.FindStringIndex(q)
-	if limitClauseIndexes == nil {
-		q = fmt.Sprintf("%s LIMIT %d", q, featureDerivationRows)
-	} else {
-		// TODO(typhoonzero): there may be complex SQL statements that contain multiple
-		// LIMIT clause, using regex replace will replace them all.
-		re.ReplaceAllString(q, fmt.Sprintf("LIMIT %d", featureDerivationRows))
-	}
-
+	q := fmt.Sprintf("SELECT * FROM (\n%s\n) a LIMIT %d", trainIR.Select, featureDerivationRows)
 	rows, err := db.Query(q)
 	if err != nil {
 		return err
