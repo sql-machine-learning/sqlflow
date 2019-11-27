@@ -102,7 +102,7 @@ func generateTrainIRByModel(slct *extendedSelect, connStr, cwd, modelDir, model 
 	}
 	defer db.Close()
 
-	slctWithTrain, _, err := loadModelMeta(slct, db, cwd, modelDir, model)
+	slctWithTrain, err := loadModelMeta(slct, db, cwd, modelDir, model)
 	if err != nil {
 		return nil, err
 	}
@@ -713,46 +713,4 @@ func parseResultTable(intoStatement string) (string, string, error) {
 	} else {
 		return "", "", fmt.Errorf("invalid result table format, should be [db.table.class_col] or [table.class_col]")
 	}
-}
-
-// programToIR generate a list of IRs from a SQL program
-func programToIR(sqls []statementParseResult, connStr, modelDir string, getTrainIRFromModel bool, enableFeatureDerivation bool) (ir.SQLProgram, error) {
-	IRs := ir.SQLProgram{}
-	for _, sql := range sqls {
-		if sql.extended != nil {
-			parsed := sql.extended
-			if parsed.train {
-				var ir *ir.TrainClause
-				var err error
-				if enableFeatureDerivation {
-					ir, err = generateTrainIRWithInferredColumns(parsed, connStr)
-				} else {
-					ir, err = generateTrainIR(parsed, connStr)
-				}
-				if err != nil {
-					return nil, err
-				}
-				ir.OriginalSQL = sql.original
-				IRs = append(IRs, ir)
-			} else if parsed.analyze {
-				ir, err := generateAnalyzeIR(parsed, connStr, modelDir, getTrainIRFromModel)
-				if err != nil {
-					return nil, err
-				}
-				ir.OriginalSQL = sql.original
-				IRs = append(IRs, ir)
-			} else {
-				ir, err := generatePredictIR(parsed, connStr, modelDir, getTrainIRFromModel)
-				if err != nil {
-					return nil, err
-				}
-				ir.OriginalSQL = sql.original
-				IRs = append(IRs, ir)
-			}
-		} else {
-			standardSQL := ir.StandardSQL(sql.standard)
-			IRs = append(IRs, &standardSQL)
-		}
-	}
-	return IRs, nil
 }
