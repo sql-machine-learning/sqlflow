@@ -115,7 +115,7 @@ func (s *defaultSubmitter) SaveModel(cl *ir.TrainClause) error {
 	if s.ModelDir != "" {
 		return m.saveTar(s.ModelDir, cl.Into)
 	}
-	return m.save(s.Db, cl.Into)
+	return m.save(s.Db, cl.Into, s.Session)
 }
 
 func (s *defaultSubmitter) LoadModel(cl *ir.TrainClause) error {
