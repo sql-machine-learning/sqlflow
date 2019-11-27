@@ -26,7 +26,7 @@ import (
 
 	"github.com/olekukonko/tablewriter"
 	"golang.org/x/crypto/ssh/terminal"
-	pb "sqlflow.org/sqlflow/pkg/server/proto"
+	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql"
 )
 
