@@ -84,6 +84,7 @@ func TestWriteAndRead(t *testing.T) {
 	for i := range buf {
 		buf[i] = 'x'
 	}
+	fmt.Println(len(string(buf)))
 	n, e = w.Write(buf)
 	a.NoError(e)
 	a.Equal(len(buf), n)

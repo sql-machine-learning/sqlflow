@@ -18,6 +18,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"io/ioutil"
 
 	pb "sqlflow.org/sqlflow/pkg/server/proto"
 )
@@ -44,6 +45,10 @@ func Create(db *sql.DB, driver, table string, session *pb.Session) (io.WriteClos
 
 	if driver == "hive" {
 		// HiveWriter implement can archive better performance
+		csvFile, e := ioutil.TempFile("/tmp", "sqlflow-sqlfs")
+		if e != nil {
+			return nil, fmt.Errorf("create temporary csv file failed: %v", e)
+		}
 		return &HiveWriter{
 			Writer: Writer{
 				db:      db,
@@ -51,7 +56,7 @@ func Create(db *sql.DB, driver, table string, session *pb.Session) (io.WriteClos
 				buf:     make([]byte, 0, bufSize),
 				flushID: 0,
 			},
-			csvFile: nil,
+			csvFile: csvFile,
 			session: session}, nil
 	}
 	// default writer implement

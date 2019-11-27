@@ -16,7 +16,6 @@ package sqlfs
 import (
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 
@@ -32,10 +31,7 @@ type HiveWriter struct {
 
 // Write write bytes to sqlfs and returns (num_bytes, error)
 func (w *HiveWriter) Write(p []byte) (n int, e error) {
-	w.csvFile, e = ioutil.TempFile("/tmp", "sqlflow-sqlfs")
-	if e != nil {
-		return n, fmt.Errorf("create temporary csv file failed: %v", e)
-	}
+	n = 0
 	for len(p) > 0 {
 		fill := bufSize - len(w.buf)
 		if fill > len(p) {
@@ -45,47 +41,64 @@ func (w *HiveWriter) Write(p []byte) (n int, e error) {
 		p = p[fill:]
 		n += fill
 		if len(w.buf) >= bufSize {
-			block := base64.StdEncoding.EncodeToString(w.buf)
-			w.csvFile.Write([]byte(fmt.Sprintf("%d\001%s\n", w.flushID, block)))
-			w.buf = w.buf[:0]
-			w.flushID++
+			if e := w.flush(); e != nil {
+				return 0, e
+			}
 		}
 	}
-
 	return n, nil
-}
-
-func (w *HiveWriter) hdfsPath() string {
-	return fmt.Sprintf("%s/models/%s/", w.session.HiveLocation, w.table)
 }
 
 // Close the connection of the sqlfs
 func (w *HiveWriter) Close() error {
 	defer func() {
 		w.csvFile.Close()
+		os.Remove(w.csvFile.Name())
 		w.db = nil
 	}()
 
+	if e := w.flush(); e != nil {
+		return e
+	}
+
 	// 1. create a directory on HDFS
 	cmd := exec.Command("hdfs", "dfs", "-mkdir", "-p", w.hdfsPath())
-	cmd.Env = append(os.Environ(),
-		fmt.Sprintf("HADOOP_USER_NAME=%s", w.session.HdfsUser),
-		fmt.Sprintf("HADOOP_USER_PASSWORD=%s", w.session.HdfsPass))
+	hdfsEnv := os.Environ()
+	if w.session.HdfsUser != "" {
+		hdfsEnv = append(hdfsEnv,
+			fmt.Sprintf("HADOOP_USER_NAME=%s", w.session.HdfsUser),
+			fmt.Sprintf("HADOOP_USER_PASSWORD=%s", w.session.HdfsPass))
+	}
+	cmd.Env = hdfsEnv
 	if _, err := cmd.CombinedOutput(); err != nil {
-		return err
+		return fmt.Errorf(`execute "hdfs dfs -mkdir -p %s" failed: %v `, w.hdfsPath(), err)
 	}
 	// 2. upload the local csv file to the HDFS path
 	cmd = exec.Command("hdfs", "dfs", "-copyFromLocal", w.csvFile.Name(), w.hdfsPath())
-	cmd.Env = append(os.Environ(),
-		fmt.Sprintf("HADOOP_USER_NAME=%s", w.session.HdfsUser),
-		fmt.Sprintf("HADOOP_USER_PASSWORD=%s", w.session.HdfsPass))
+	cmd.Env = hdfsEnv
 	if _, err := cmd.CombinedOutput(); err != nil {
-		return err
+		return fmt.Errorf("upload local file into hdfs error: %v", err)
 	}
 	// 3. execute a LOAD statment to load csv to Hive table
-	query := fmt.Sprintf("LOAD DATA INNPATH %s OVERWRITE INTO TABLE %s", w.hdfsPath(), w.table)
+	query := fmt.Sprintf("LOAD DATA INPATH '%s' OVERWRITE INTO TABLE %s", w.hdfsPath(), w.table)
 	if _, e := w.db.Exec(query); e != nil {
-		return fmt.Errorf("load data to %s, error:%v", w.table, e)
+		return fmt.Errorf("execute query: %s, error: %v", query, e)
+	}
+	return nil
+}
+
+func (w *HiveWriter) hdfsPath() string {
+	return fmt.Sprintf("%s/models/%s/", w.session.HiveLocation, w.table)
+}
+
+func (w *HiveWriter) flush() error {
+	if len(w.buf) > 0 {
+		block := base64.StdEncoding.EncodeToString(w.buf)
+		if _, e := w.csvFile.Write([]byte(fmt.Sprintf("%d\001%s\n", w.flushID, block))); e != nil {
+			return fmt.Errorf("flush error, %v", e)
+		}
+		w.buf = w.buf[:0]
+		w.flushID++
 	}
 	return nil
 }
