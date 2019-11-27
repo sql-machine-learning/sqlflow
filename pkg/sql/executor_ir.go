@@ -47,8 +47,7 @@ type WorkflowJob struct {
 	JobID string
 }
 
-// EnvSubmitter indicates the Submitter type
-var EnvSubmitter = os.Getenv("SQLFLOW_submitter")
+var envSubmitter = os.Getenv("SQLFLOW_submitter")
 
 // SubmitterType is the type of SQLFlow submitter
 type SubmitterType int
@@ -65,7 +64,7 @@ const (
 )
 
 func submitter() SubmitterType {
-	switch EnvSubmitter {
+	switch envSubmitter {
 	case "pai":
 		return SubmitterPAI
 	case "elasticdl":
