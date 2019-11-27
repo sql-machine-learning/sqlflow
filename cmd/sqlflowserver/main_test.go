@@ -673,6 +673,18 @@ FROM iris.predict LIMIT 5;`
 		// checking expectedPredClasses := []int64{2, 1, 0, 2, 0}
 		AssertGreaterEqualAny(a, row[4], int64(0))
 	}
+
+	trainSQL = `SELECT *
+FROM iris.train
+TO TRAIN sqlflow_models.DNNClassifier
+WITH model.n_classes = 3
+COLUMN sepal_length, sepal_width, petal_length, petal_width
+LABEL class
+INTO sqlflow_models.my_dnn_model_custom_functional;`
+	_, _, err = connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("run trainSQL error: %v", err)
+	}
 }
 
 func CaseTrainTextClassification(t *testing.T) {
