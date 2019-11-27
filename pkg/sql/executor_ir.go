@@ -103,19 +103,17 @@ func ParseSQLStatement(sqlProgram string, session *pb.Session) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
-	// use modelDir = ""
-	programIR, err := programToIR(sqls, connStr, "", submitter() != SubmitterPAI, false)
-	if err != nil {
-		return "", err
-	}
-	if len(programIR) > 1 {
+	if len(sqls) > 1 {
 		return "", fmt.Errorf("ParseSQLStatement only accept a single SQL statement")
 	}
-	// TODO(typhoonzero): add support for PredictIR and AnalyzeIR
-	trainIR, ok := programIR[0].(*ir.TrainClause)
-	if !ok {
+	parsed := sqls[0].extended
+	if !parsed.train {
 		return "", fmt.Errorf("ParseSQLStatement only accept train SQL for now")
+	}
+	// TODO(typhoonzero): add support for PredictIR and AnalyzeIR
+	trainIR, err := generateTrainIRWithInferredColumns(parsed, connStr)
+	if err != nil {
+		return "", err
 	}
 	pbir, err := ir.TrainIRToProto(trainIR, session)
 	if err != nil {
@@ -202,7 +200,6 @@ func runSQLProgram(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, s
 			return e
 		}
 	}
-
 	return nil
 }
 
