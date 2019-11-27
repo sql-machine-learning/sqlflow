@@ -1,8 +1,10 @@
 # Run SQLFlow REPL
 
+![](figures/repl.gif)
+
 In addition to buliding SQLFlow into a gRPC server, accessed via Jupyter Notebook, we could also build it into a command line program, whose `main` function reads SQL statements from the console, evaluates them by calling SQLFlow, and prints the results.  This command-line program makes it easy to debug and profile locally without starting the SQLFlow server and the Jupyter server.  We call this command-line program the REPL.
 
-The SQLFlow Docker image contains the command-line program.  We can run an example session by typing the following command on MacOS.  If you run Docker on Linux, please change `host.docker.internal:3306` to `localhost:3306`.
+REPL supports automatic code completion to ease applying the underlying powerful AI toolset of SQLFlow. The SQLFlow Docker image contains the command-line program.  We can run an example session by typing the following command on MacOS.  If you run Docker on Linux, please change `host.docker.internal:3306` to `localhost:3306`.
 
 ```
 docker run -it --rm --net=host sqlflow/sqlflow repl \
@@ -12,6 +14,8 @@ docker run -it --rm --net=host sqlflow/sqlflow repl \
 You should be able to see the following:
 
 ```
+Welcome to SQLFlow.  Commands end with ;
+
 sqlflow>
 ```
 
@@ -61,9 +65,7 @@ Done predicting. Predict table : iris.predict
 We can then check the prediction result.
 
 ```sql
-sqlflow>
-SELECT * from iris.predict limit 3;
-
+sqlflow> SELECT * from iris.predict limit 3;
 ...
 +--------------+-------------+--------------+-------------+-------+
 | SEPAL LENGTH | SEPAL WIDTH | PETAL LENGTH | PETAL WIDTH | CLASS |

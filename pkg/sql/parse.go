@@ -53,6 +53,18 @@ func thirdPartyParse(dbms, sqlProgram string) ([]statementParseResult, int, erro
 	return spr, i, nil
 }
 
+func parseOneStatement(dbms, sql string) (*statementParseResult, error) {
+	sqls, err := parse(dbms, sql)
+	if err != nil {
+		return nil, err
+	}
+	if len(sqls) != 1 {
+		return nil, fmt.Errorf("unexpect number of statements 1(expected) != %v(received)", len(sqls))
+	}
+
+	return &sqls[0], nil
+}
+
 func parse(dbms, sqlProgram string) ([]statementParseResult, error) {
 	if len(strings.TrimSpace(sqlProgram)) == 0 {
 		return make([]statementParseResult, 0), nil

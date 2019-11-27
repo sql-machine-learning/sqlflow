@@ -70,6 +70,7 @@ type SQLProgram []SQLStatement
 type SQLStatement interface {
 	// This function is used only for restrict the IR struct types
 	IsIR()
+	SetOriginalSQL(string)
 }
 
 // TrainClause is the intermediate representation for code generation of a training job.
@@ -111,6 +112,9 @@ type TrainClause struct {
 // IsIR is used only for restrict the IR struct types
 func (trainIR *TrainClause) IsIR() {}
 
+// SetOriginalSQL sets the original sql string
+func (trainIR *TrainClause) SetOriginalSQL(sql string) { trainIR.OriginalSQL = sql }
+
 // PredictClause is the intermediate representation for code generation of a prediction job
 //
 // Please be aware the PredictClause IR contains the result table name, so the
@@ -138,6 +142,9 @@ type PredictClause struct {
 // IsIR is used only for restrict the IR struct types
 func (predictIR *PredictClause) IsIR() {}
 
+// SetOriginalSQL sets the original sql string
+func (predictIR *PredictClause) SetOriginalSQL(sql string) { predictIR.OriginalSQL = sql }
+
 // AnalyzeClause is the intermediate representation for code generation of a analysis job
 type AnalyzeClause struct {
 	// OriginalSQL record the original SQL statement used to get current IR result
@@ -160,8 +167,14 @@ type AnalyzeClause struct {
 // IsIR is used only for restrict the IR struct types
 func (analyzeIR *AnalyzeClause) IsIR() {}
 
+// SetOriginalSQL sets the original sql string
+func (analyzeIR *AnalyzeClause) SetOriginalSQL(sql string) { analyzeIR.OriginalSQL = sql }
+
 // StandardSQL is a string of a standard SQL statement that can run on the database system.
 type StandardSQL string
 
 // IsIR is used only for restrict the IR struct types
 func (sql *StandardSQL) IsIR() {}
+
+// SetOriginalSQL sets the original sql string
+func (sql *StandardSQL) SetOriginalSQL(s string) {}
