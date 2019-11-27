@@ -117,7 +117,8 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, 
 	spIRs, err := genSQLProgramIR(
 		sqls, db, modelDir,
 		false, /*disable feature derivation*/
-		false /*disable pred ir load from saved model*/)
+		false /*disable load trainIR from saved model and verify with trainIR*/)
+
 	if err != nil {
 		return err
 	}
@@ -162,7 +163,8 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, 
 	})
 }
 
-func genSQLProgramIR(sqls []statementParseResult, db *DB, modelDir string, enableInferedColumns, enableGetTrainIRFromModel bool) ([]ir.SQLStatement, error) {
+func genSQLProgramIR(sqls []statementParseResult, db *DB, modelDir string,
+	enableInferedColumns, enableGetTrainIRFromModel bool) ([]ir.SQLStatement, error) {
 	// NOTE(tony): We generate IR and execute its translated program one-by-one since IR generation may depend on the execution
 	// of the previous statement. For example, consider a SQL program
 	//
