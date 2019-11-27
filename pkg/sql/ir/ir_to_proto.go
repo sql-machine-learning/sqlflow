@@ -16,24 +16,23 @@ package ir
 import (
 	"fmt"
 
-	pb "sqlflow.org/sqlflow/pkg/server/proto"
-	irpb "sqlflow.org/sqlflow/pkg/sql/ir/proto"
+	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
-func attrToPB(attr interface{}) (*irpb.Attribute, error) {
+func attrToPB(attr interface{}) (*pb.Attribute, error) {
 	switch attr.(type) {
 	case int:
-		return &irpb.Attribute{
-			Attribute: &irpb.Attribute_I{I: int32(attr.(int))},
+		return &pb.Attribute{
+			Attribute: &pb.Attribute_I{I: int32(attr.(int))},
 		}, nil
 	case float32:
-		return &irpb.Attribute{
-			Attribute: &irpb.Attribute_F{F: attr.(float32)},
+		return &pb.Attribute{
+			Attribute: &pb.Attribute_F{F: attr.(float32)},
 		}, nil
 	case []int:
-		il := &irpb.Attribute_IntList{Il: toInt32List(attr.([]int))}
-		return &irpb.Attribute{
-			Attribute: &irpb.Attribute_Il{Il: il},
+		il := &pb.Attribute_IntList{Il: toInt32List(attr.([]int))}
+		return &pb.Attribute{
+			Attribute: &pb.Attribute_Il{Il: il},
 		}, nil
 		// TODO(typhoonzero): support []float etc.
 	case []interface{}:
@@ -44,17 +43,17 @@ func attrToPB(attr interface{}) (*irpb.Attribute, error) {
 				for _, v := range tmplist {
 					intlist = append(intlist, v.(int))
 				}
-				il := &irpb.Attribute_IntList{Il: toInt32List(intlist)}
-				return &irpb.Attribute{
-					Attribute: &irpb.Attribute_Il{Il: il},
+				il := &pb.Attribute_IntList{Il: toInt32List(intlist)}
+				return &pb.Attribute{
+					Attribute: &pb.Attribute_Il{Il: il},
 				}, nil
 			}
 		}
 		// TODO(typhoonzero): support []float etc.
 		return nil, fmt.Errorf("attribute is []interface{} with len==0")
 	case string:
-		return &irpb.Attribute{
-			Attribute: &irpb.Attribute_S{S: attr.(string)},
+		return &pb.Attribute{
+			Attribute: &pb.Attribute_S{S: attr.(string)},
 		}, nil
 	default:
 		return nil, fmt.Errorf("unsupported attribute type: %T", attr)
@@ -83,8 +82,8 @@ func toInt32List(il []int) []int32 {
 	return ret
 }
 
-func fieldMetaToPBMeta(fm *FieldMeta) *irpb.FieldMeta {
-	return &irpb.FieldMeta{
+func fieldMetaToPBMeta(fm *FieldMeta) *pb.FieldMeta {
+	return &pb.FieldMeta{
 		Name:       fm.Name,
 		Dtype:      dtypeToString(fm.DType),
 		Delimiter:  fm.Delimiter,
@@ -95,12 +94,12 @@ func fieldMetaToPBMeta(fm *FieldMeta) *irpb.FieldMeta {
 	}
 }
 
-func featureColumnToPb(fc FeatureColumn) (*irpb.FeatureColumn, error) {
+func featureColumnToPb(fc FeatureColumn) (*pb.FeatureColumn, error) {
 	switch fc.(type) {
 	case *NumericColumn:
-		nc := &irpb.FeatureColumn{
-			FeatureColumn: &irpb.FeatureColumn_Nc{
-				Nc: &irpb.NumericColumn{
+		nc := &pb.FeatureColumn{
+			FeatureColumn: &pb.FeatureColumn_Nc{
+				Nc: &pb.NumericColumn{
 					FieldMeta: fieldMetaToPBMeta(fc.GetFieldMeta()[0]),
 				},
 			},
@@ -108,10 +107,10 @@ func featureColumnToPb(fc FeatureColumn) (*irpb.FeatureColumn, error) {
 		return nc, nil
 	case *BucketColumn:
 		fm := fc.GetFieldMeta()[0]
-		bc := &irpb.FeatureColumn{
-			FeatureColumn: &irpb.FeatureColumn_Bc{
-				Bc: &irpb.BucketColumn{
-					SourceColumn: &irpb.NumericColumn{
+		bc := &pb.FeatureColumn{
+			FeatureColumn: &pb.FeatureColumn_Bc{
+				Bc: &pb.BucketColumn{
+					SourceColumn: &pb.NumericColumn{
 						FieldMeta: fieldMetaToPBMeta(fm),
 					},
 					Boundaries: toInt32List(fc.(*BucketColumn).Boundaries),
@@ -121,7 +120,7 @@ func featureColumnToPb(fc FeatureColumn) (*irpb.FeatureColumn, error) {
 		return bc, nil
 	case *CrossColumn:
 		cc := fc.(*CrossColumn)
-		pbkeys := []*irpb.FeatureColumn{}
+		pbkeys := []*pb.FeatureColumn{}
 		for _, key := range cc.Keys {
 			tmpfc, err := featureColumnToPb(key.(FeatureColumn))
 			if err != nil {
@@ -129,9 +128,9 @@ func featureColumnToPb(fc FeatureColumn) (*irpb.FeatureColumn, error) {
 			}
 			pbkeys = append(pbkeys, tmpfc)
 		}
-		pbcc := &irpb.FeatureColumn{
-			FeatureColumn: &irpb.FeatureColumn_Cc{
-				Cc: &irpb.CrossColumn{
+		pbcc := &pb.FeatureColumn{
+			FeatureColumn: &pb.FeatureColumn_Cc{
+				Cc: &pb.CrossColumn{
 					Keys:           pbkeys,
 					HashBucketSize: int32(cc.HashBucketSize),
 				},
@@ -140,9 +139,9 @@ func featureColumnToPb(fc FeatureColumn) (*irpb.FeatureColumn, error) {
 		return pbcc, nil
 	case *CategoryIDColumn:
 		catc := fc.(*CategoryIDColumn)
-		pbcatc := &irpb.FeatureColumn{
-			FeatureColumn: &irpb.FeatureColumn_Catc{
-				Catc: &irpb.CategoryIDColumn{
+		pbcatc := &pb.FeatureColumn{
+			FeatureColumn: &pb.FeatureColumn_Catc{
+				Catc: &pb.CategoryIDColumn{
 					FieldMeta:  fieldMetaToPBMeta(fc.GetFieldMeta()[0]),
 					BucketSize: int32(catc.BucketSize),
 				},
@@ -151,9 +150,9 @@ func featureColumnToPb(fc FeatureColumn) (*irpb.FeatureColumn, error) {
 		return pbcatc, nil
 	case *SeqCategoryIDColumn:
 		seqcatc := fc.(*SeqCategoryIDColumn)
-		pbseqcatc := &irpb.FeatureColumn{
-			FeatureColumn: &irpb.FeatureColumn_Seqcatc{
-				Seqcatc: &irpb.SeqCategoryIDColumn{
+		pbseqcatc := &pb.FeatureColumn{
+			FeatureColumn: &pb.FeatureColumn_Seqcatc{
+				Seqcatc: &pb.SeqCategoryIDColumn{
 					FieldMeta:  fieldMetaToPBMeta(fc.GetFieldMeta()[0]),
 					BucketSize: int32(seqcatc.BucketSize),
 				},
@@ -168,12 +167,12 @@ func featureColumnToPb(fc FeatureColumn) (*irpb.FeatureColumn, error) {
 		}
 		_, iscatc := emb.CategoryColumn.(*CategoryIDColumn)
 		if iscatc {
-			embcatc := &irpb.EmbeddingColumn_CategoryCol{
+			embcatc := &pb.EmbeddingColumn_CategoryCol{
 				CategoryCol: tmpfc.GetCatc(),
 			}
-			return &irpb.FeatureColumn{
-				FeatureColumn: &irpb.FeatureColumn_Embc{
-					Embc: &irpb.EmbeddingColumn{
+			return &pb.FeatureColumn{
+				FeatureColumn: &pb.FeatureColumn_Embc{
+					Embc: &pb.EmbeddingColumn{
 						CategoryColumn: embcatc,
 						Dimension:      int32(emb.Dimension),
 						Combiner:       emb.Combiner,
@@ -182,12 +181,12 @@ func featureColumnToPb(fc FeatureColumn) (*irpb.FeatureColumn, error) {
 				},
 			}, nil
 		}
-		embseqcatc := &irpb.EmbeddingColumn_SeqCategoryCol{
+		embseqcatc := &pb.EmbeddingColumn_SeqCategoryCol{
 			SeqCategoryCol: tmpfc.GetSeqcatc(),
 		}
-		return &irpb.FeatureColumn{
-			FeatureColumn: &irpb.FeatureColumn_Embc{
-				Embc: &irpb.EmbeddingColumn{
+		return &pb.FeatureColumn{
+			FeatureColumn: &pb.FeatureColumn_Embc{
+				Embc: &pb.EmbeddingColumn{
 					CategoryColumn: embseqcatc,
 					Dimension:      int32(emb.Dimension),
 					Combiner:       emb.Combiner,
@@ -202,8 +201,8 @@ func featureColumnToPb(fc FeatureColumn) (*irpb.FeatureColumn, error) {
 
 // TrainIRToProto convert parsed TrainIR to a protobuf format
 // TODO(typhoonzero): add PredictIR, AnalyzeIR
-func TrainIRToProto(trainIR *TrainClause, sess *pb.Session) (*irpb.TrainIR, error) {
-	attrs := make(map[string]*irpb.Attribute)
+func TrainIRToProto(trainIR *TrainClause, sess *pb.Session) (*pb.TrainIR, error) {
+	attrs := make(map[string]*pb.Attribute)
 	for k, v := range trainIR.Attributes {
 		a, err := attrToPB(v)
 		if err != nil {
@@ -211,10 +210,10 @@ func TrainIRToProto(trainIR *TrainClause, sess *pb.Session) (*irpb.TrainIR, erro
 		}
 		attrs[k] = a
 	}
-	features := make(map[string]*irpb.FeatureColumnList)
+	features := make(map[string]*pb.FeatureColumnList)
 	for target, fclist := range trainIR.Features {
-		pbfclist := &irpb.FeatureColumnList{
-			FeatureColumns: []*irpb.FeatureColumn{},
+		pbfclist := &pb.FeatureColumnList{
+			FeatureColumns: []*pb.FeatureColumn{},
 		}
 		for _, fc := range fclist {
 			pbfc, err := featureColumnToPb(fc)
@@ -230,15 +229,15 @@ func TrainIRToProto(trainIR *TrainClause, sess *pb.Session) (*irpb.TrainIR, erro
 	}
 
 	labelFM := trainIR.Label.GetFieldMeta()[0]
-	label := &irpb.FeatureColumn{
-		FeatureColumn: &irpb.FeatureColumn_Nc{
-			Nc: &irpb.NumericColumn{
+	label := &pb.FeatureColumn{
+		FeatureColumn: &pb.FeatureColumn_Nc{
+			Nc: &pb.NumericColumn{
 				FieldMeta: fieldMetaToPBMeta(labelFM),
 			},
 		},
 	}
 
-	sessIR := &irpb.Session{
+	sessIR := &pb.Session{
 		Token:            sess.GetToken(),
 		DbConnStr:        sess.GetDbConnStr(),
 		ExitOnSubmit:     sess.GetExitOnSubmit(),
@@ -249,7 +248,7 @@ func TrainIRToProto(trainIR *TrainClause, sess *pb.Session) (*irpb.TrainIR, erro
 		HdfsPass:         sess.GetHdfsPass(),
 	}
 
-	ret := &irpb.TrainIR{
+	ret := &pb.TrainIR{
 		Datasource:       trainIR.DataSource,
 		Select:           trainIR.Select,
 		ValidationSelect: trainIR.ValidationSelect,

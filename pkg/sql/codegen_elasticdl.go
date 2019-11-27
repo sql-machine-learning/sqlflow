@@ -23,7 +23,7 @@ import (
 	"strings"
 	"text/template"
 
-	pb "sqlflow.org/sqlflow/pkg/server/proto"
+	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
 var elasticdlModelDefTemplate = template.Must(template.New("elasticdl_train").Parse(elasticdlModelDefTemplateText))

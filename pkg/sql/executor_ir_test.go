@@ -113,6 +113,34 @@ USING sqlflow_models.my_xgb_regression_model;
 `
 )
 
+func TestRunSQLProgram(t *testing.T) {
+	a := assert.New(t)
+	modelDir := ""
+	a.NotPanics(func() {
+		stream := RunSQLProgram(`
+SELECT sepal_length as sl, sepal_width as sw, class FROM iris.train
+TO TRAIN xgboost.gbtree
+WITH
+    objective="multi:softprob",
+    train.num_boost_round = 30,
+    eta = 0.4,
+    num_class = 3
+LABEL class
+INTO sqlflow_models.my_xgboost_model_by_program;
+
+SELECT sepal_length as sl, sepal_width as sw FROM iris.test
+TO PREDICT iris.predict.class
+USING sqlflow_models.my_xgboost_model_by_program;
+
+SELECT sepal_length as sl, sepal_width as sw, class FROM iris.train
+TO EXPLAIN sqlflow_models.my_xgboost_model_by_program
+USING TreeExplainer;
+`, testDB, modelDir, getDefaultSession())
+		a.True(goodStream(stream.ReadAll()))
+	})
+
+}
+
 func TestExecuteXGBoostClassifier(t *testing.T) {
 	a := assert.New(t)
 	modelDir := ""

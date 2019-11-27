@@ -89,6 +89,7 @@ message Response {
 message Head {
     repeated string column_names = 1;
 }
+
 message Row {
     // Null is a special marker used in Structured Query Language to indicate
     // that a data value does not exist in the database.
