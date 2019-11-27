@@ -14,6 +14,7 @@
 package sql
 
 import (
+	"fmt"
 	"os"
 	"regexp"
 	"testing"
@@ -207,4 +208,22 @@ func TestFeatureDerivationNoColumnClause(t *testing.T) {
 	fc1 := trainIR.Features["feature_columns"][0]
 	_, ok := fc1.(*ir.NumericColumn)
 	a.True(ok)
+}
+
+func TestHiveFeatureDerivation(t *testing.T) {
+	if os.Getenv("SQLFLOW_TEST_DB") != "hive" {
+		t.Skip("skip TestFeatureDerivationNoColumnClause for tests not using hive")
+	}
+	a := assert.New(t)
+	trainIR := &ir.TrainClause{
+		DataSource:       fmt.Sprintf("%s://%s", testDB.driverName, testDB.dataSourceName),
+		Select:           "select * from iris.train",
+		ValidationSelect: "select * from iris.test",
+		Estimator:        "xgboost.gbtree",
+		Attributes:       map[string]interface{}{},
+		Features:         map[string][]ir.FeatureColumn{},
+		Label:            &ir.NumericColumn{&ir.FieldMeta{"class", ir.Int, "", []int{1}, false, nil, 0}}}
+	e := InferFeatureColumns(trainIR)
+	a.NoError(e)
+	a.Equal(4, len(trainIR.Features["feature_columns"]))
 }

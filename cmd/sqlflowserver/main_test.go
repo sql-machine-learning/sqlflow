@@ -33,7 +33,7 @@ import (
 	"github.com/golang/protobuf/ptypes/any"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/stretchr/testify/assert"
-	pb "sqlflow.org/sqlflow/pkg/server/proto"
+	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql"
 	"sqlflow.org/sqlflow/pkg/sql/testdata"
 )
@@ -195,6 +195,9 @@ func prepareTestData(dbStr string) error {
 		if err = testdata.Popularize(testDB.DB, testdata.ChurnHiveSQL); err != nil {
 			return err
 		}
+		if err := testdata.Popularize(testDB.DB, testdata.FeatureDerivationCaseSQLHive); err != nil {
+			return err
+		}
 		return testdata.Popularize(testDB.DB, testdata.HousingSQL)
 	case "maxcompute":
 		submitter := os.Getenv("SQLFLOW_submitter")
@@ -265,7 +268,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 		t.Fatalf("failed to generate CA pair %v", err)
 	}
 
-	go start(modelDir, caCrt, caKey, unitestPort)
+	go start(modelDir, caCrt, caKey, unitestPort, false)
 	waitPortReady(fmt.Sprintf("localhost:%d", unitestPort), 0)
 	err = prepareTestData(dbConnStr)
 	if err != nil {
@@ -359,7 +362,7 @@ func TestEnd2EndHive(t *testing.T) {
 		t.Skip("Skipping hive tests")
 	}
 	dbConnStr = "hive://root:root@127.0.0.1:10000/iris?auth=NOSASL"
-	go start(modelDir, caCrt, caKey, unitestPort)
+	go start(modelDir, caCrt, caKey, unitestPort, false)
 	waitPortReady(fmt.Sprintf("localhost:%d", unitestPort), 0)
 	err = prepareTestData(dbConnStr)
 	if err != nil {
@@ -373,6 +376,7 @@ func TestEnd2EndHive(t *testing.T) {
 	t.Run("CaseTrainDeepWideModel", CaseTrainDeepWideModel)
 	t.Run("CaseTrainXGBoostRegression", CaseTrainXGBoostRegression)
 	t.Run("CasePredictXGBoostRegression", CasePredictXGBoostRegression)
+	t.Run("CaseTrainFeatureDerevation", CaseTrainFeatureDerevation)
 }
 
 func TestEnd2EndMaxCompute(t *testing.T) {
@@ -396,7 +400,7 @@ func TestEnd2EndMaxCompute(t *testing.T) {
 	SK := os.Getenv("MAXCOMPUTE_SK")
 	endpoint := os.Getenv("MAXCOMPUTE_ENDPOINT")
 	dbConnStr = fmt.Sprintf("maxcompute://%s:%s@%s", AK, SK, endpoint)
-	go start(modelDir, caCrt, caKey, unitestPort)
+	go start(modelDir, caCrt, caKey, unitestPort, false)
 	waitPortReady(fmt.Sprintf("localhost:%d", unitestPort), 0)
 	err = prepareTestData(dbConnStr)
 	if err != nil {
@@ -440,7 +444,7 @@ func TestEnd2EndMaxComputeALPS(t *testing.T) {
 		t.Fatalf("prepare test dataset failed: %v", err)
 	}
 
-	go start(modelDir, caCrt, caKey, unitestPort)
+	go start(modelDir, caCrt, caKey, unitestPort, false)
 	waitPortReady(fmt.Sprintf("localhost:%d", unitestPort), 0)
 
 	t.Run("CaseTrainALPS", CaseTrainALPS)
@@ -479,7 +483,7 @@ func TestEnd2EndMaxComputeElasticDL(t *testing.T) {
 		t.Fatalf("prepare test dataset failed: %v", err)
 	}
 
-	go start(modelDir, caCrt, caKey, unitestPort)
+	go start(modelDir, caCrt, caKey, unitestPort, false)
 	waitPortReady(fmt.Sprintf("localhost:%d", unitestPort), 0)
 
 	t.Run("CaseTrainElasticDL", CaseTrainElasticDL)
@@ -626,7 +630,7 @@ USING sqlflow_models.my_dnn_model;`
 	trainVaryColumnTypes := `SELECT c1, c2, c3, c4, c5, class from feature_derivation_case.train
 TO TRAIN DNNClassifier
 WITH model.n_classes=3, model.hidden_units=[10,10]
-COLUMN EMBEDDING(c3, 128, sum), EMBEDDING(SPARSE(c5, 10000, COMMA), 128, sum)
+COLUMN EMBEDDING(c3, 32, sum), EMBEDDING(SPARSE(c5, 64, COMMA), 32, sum)
 LABEL class
 INTO sqlflow_models.my_dnn_model;`
 	_, _, err = connectAndRunSQL(trainVaryColumnTypes)
@@ -754,7 +758,7 @@ func CaseSparseFeature(t *testing.T) {
 FROM text_cn.train
 TO TRAIN DNNClassifier
 WITH model.n_classes = 3, model.hidden_units = [10, 20]
-COLUMN EMBEDDING(CATEGORY_ID(news_title,16000,COMMA),128,mean)
+COLUMN EMBEDDING(SPARSE(news_title,16000,COMMA),128,mean)
 LABEL class_id
 INTO sqlflow_models.my_dnn_model;`
 	_, _, err := connectAndRunSQL(trainSQL)

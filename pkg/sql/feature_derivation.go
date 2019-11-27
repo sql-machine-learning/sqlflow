@@ -92,17 +92,22 @@ func makeFieldMetaMap(features map[string][]ir.FeatureColumn) FieldMetaMap {
 	return fmMap
 }
 
+func unifyDatabaseTypeName(typeName string) string {
+	// NOTE(typhoonzero): Hive uses typenames like "XXX_TYPE"
+	if strings.HasSuffix(typeName, "_TYPE") {
+		typeName = strings.Replace(typeName, "_TYPE", "", 1)
+	}
+
+	// NOTE(tony): MaxCompute type name is in lower cases
+	return strings.ToUpper(typeName)
+}
+
 func newRowValue(columnTypeList []*sql.ColumnType) ([]interface{}, error) {
 	rowData := make([]interface{}, len(columnTypeList))
 	for idx, ct := range columnTypeList {
 		typeName := ct.DatabaseTypeName()
-		// NOTE(typhoonzero): Hive uses typenames like "XXX_TYPE"
-		if strings.HasSuffix(typeName, "_TYPE") {
-			typeName = strings.Replace(typeName, "_TYPE", "", 1)
-		}
-		// NOTE(tony): MaxCompute type name is in lower cases
-		switch strings.ToUpper(typeName) {
-		case "VARCHAR", "TEXT":
+		switch unifyDatabaseTypeName(typeName) {
+		case "VARCHAR", "TEXT", "STRING":
 			rowData[idx] = new(string)
 		case "INT":
 			rowData[idx] = new(int32)
@@ -140,14 +145,14 @@ func fillFieldMeta(columnTypeList []*sql.ColumnType, rowdata []interface{}, fiel
 		}
 		// start the feature derivation routine
 		typeName := ct.DatabaseTypeName()
-		switch typeName {
+		switch unifyDatabaseTypeName(typeName) {
 		case "INT", "DECIMAL", "BIGINT":
 			fieldMetaMap[fld].DType = ir.Int
 			fieldMetaMap[fld].Shape = []int{1}
 		case "FLOAT", "DOUBLE":
 			fieldMetaMap[fld].DType = ir.Float
 			fieldMetaMap[fld].Shape = []int{1}
-		case "VARCHAR", "TEXT":
+		case "VARCHAR", "TEXT", "STRING":
 			cellData := rowdata[idx].(*string)
 			if csvRegex.MatchString(*cellData) {
 				// ----------------------- CSV string values -----------------------
@@ -270,7 +275,10 @@ func InferFeatureColumns(trainIR *ir.TrainClause) error {
 		if err != nil {
 			return err
 		}
-		fillFieldMeta(columnTypes, rowData, fmMap)
+		err = fillFieldMeta(columnTypes, rowData, fmMap)
+		if err != nil {
+			return err
+		}
 	}
 	err = rows.Err()
 	if err != nil {

@@ -26,7 +26,7 @@ import (
 	"sync"
 	"time"
 
-	pb "sqlflow.org/sqlflow/pkg/server/proto"
+	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/pai"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/xgboost"
@@ -38,6 +38,11 @@ type EndOfExecution struct {
 	StartTime int64
 	EndTime   int64
 	Statement string
+}
+
+// WorkflowJob indicates the Argo Workflow ID
+type WorkflowJob struct {
+	JobID string
 }
 
 var envSubmitter = os.Getenv("SQLFLOW_submitter")
@@ -88,20 +93,81 @@ func RunSQLProgram(sqlProgram string, db *DB, modelDir string, session *pb.Sessi
 	return rd
 }
 
-func runSQLProgram(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, session *pb.Session) error {
+// SubmitWorkflow submits an Argo workflow
+func SubmitWorkflow(sqlProgram string, db *DB, modelDir string, session *pb.Session) *PipeReader {
+	rd, wr := Pipe()
+	go func() {
+		defer wr.Close()
+		err := submitWorkflow(wr, sqlProgram, db, modelDir, session)
+		if err != nil {
+			log.Errorf("submit Workflow error: %v", err)
+		}
+	}()
+	return rd
+}
+
+func submitWorkflow(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, session *pb.Session) error {
 	sqls, err := parse(db.driverName, sqlProgram)
 	if err != nil {
 		return err
 	}
 
 	connStr := fmt.Sprintf("%s://%s", db.driverName, db.dataSourceName)
-	programIR, err := programToIR(sqls, connStr, modelDir, submitter() != SubmitterPAI)
+
+	_ = sqls
+	_ = connStr
+	/*
+		_, err = programToIR(sqls, connStr, modelDir, true, false)
+		if err != nil {
+			return err
+		}
+	*/
+
+	// TODO(yancey1989):
+	// 1. call codegen_couler.go to genearte Couler program.
+	// 2. compile Couler program into Argo YAML.
+	// 3. submit Argo YAML and fetch the workflow ID.
+
+	return wr.Write(WorkflowJob{
+		JobID: "sqlflow-workflow",
+	})
+}
+
+func runSQLProgram(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, session *pb.Session) error {
+	sqls, err := parse(db.driverName, sqlProgram)
 	if err != nil {
 		return err
 	}
 
-	for _, ir := range programIR {
-		if e := runSingleSQLIR(wr, ir, db, modelDir, session); e != nil {
+	// NOTE(tony): We generate IR and execute its translated program one-by-one since IR generation may depend on the execution
+	// of the previous statement. For example, consider a SQL program
+	//
+	//   create table some_table as (select ...);
+	//   select * from some_table to train ...
+	//
+	// The IR generation on the second statement would fail since it requires inspection the schema of some_table,
+	// which depends on the execution of create table some_table as (select ...);.
+	for _, sql := range sqls {
+		var r ir.SQLStatement
+		connStr := fmt.Sprintf("%s://%s", db.driverName, db.dataSourceName)
+		if sql.extended != nil {
+			parsed := sql.extended
+			if parsed.train {
+				r, err = generateTrainIRWithInferredColumns(parsed, connStr)
+			} else if parsed.analyze {
+				r, err = generateAnalyzeIR(parsed, connStr, modelDir, submitter() != SubmitterPAI)
+			} else {
+				r, err = generatePredictIR(parsed, connStr, modelDir, submitter() != SubmitterPAI)
+			}
+		} else {
+			standardSQL := ir.StandardSQL(sql.standard)
+			r = &standardSQL
+		}
+		if err != nil {
+			return err
+		}
+		r.SetOriginalSQL(sql.original)
+		if e := runSingleSQLIR(wr, r, db, modelDir, session); e != nil {
 			return e
 		}
 	}
@@ -228,12 +294,23 @@ func runTrainIR(trainIR *ir.TrainClause, wr *PipeWriter, db *DB, modelDir string
 	return nil
 }
 
-func runPredictIR(predIR *ir.PredictClause, wr *PipeWriter, db *DB, modelDir string, session *pb.Session) error {
+// TODO(tony): remove the following function after all submitter has been moved to IR
+func runThirdPartySubmitterPred(wr *PipeWriter, sql string, db *DB, cwd string, session *pb.Session) error {
 	// TODO(typhoonzero): remove below twice parse when all submitters moved to IR.
-	pr, e := newExtendedSyntaxParser().Parse(predIR.OriginalSQL)
+	pr, e := newExtendedSyntaxParser().Parse(sql)
 	if e != nil {
 		return e
 	}
+	if submitter() == SubmitterALPS {
+		return alpsPred(wr, pr, db, cwd, session)
+	} else if submitter() == SubmitterEDL {
+		return elasticDLPredict(wr, pr, db, cwd, session)
+	}
+
+	return nil
+}
+
+func runPredictIR(predIR *ir.PredictClause, wr *PipeWriter, db *DB, modelDir string, session *pb.Session) error {
 	// cwd is used to load the saved model for prediction.
 	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
 	if err != nil {
@@ -241,15 +318,14 @@ func runPredictIR(predIR *ir.PredictClause, wr *PipeWriter, db *DB, modelDir str
 	}
 	defer os.RemoveAll(cwd)
 
-	if submitter() == SubmitterALPS {
-		return alpsPred(wr, pr, db, cwd, session)
-	} else if submitter() == SubmitterEDL {
-		return elasticDLPredict(wr, pr, db, cwd, session)
+	if submitter() != SubmitterDefault && submitter() != SubmitterPAI {
+		return runThirdPartySubmitterPred(wr, predIR.OriginalSQL, db, cwd, session)
 	}
+
 	// ------------------- run pred IR -----------------------
 	var program bytes.Buffer
 	if submitter() == SubmitterPAI {
-		code, err := pai.Predict(predIR, pr.model, cwd)
+		code, err := pai.Predict(predIR, predIR.TrainIR.Into, cwd)
 		if err != nil {
 			return err
 		}
@@ -480,7 +556,7 @@ func recoverModelDir(db *DB, cwd, modelDir, modelName string) error {
 	return err
 }
 
-func loadModelMeta(pr *extendedSelect, db *DB, cwd, modelDir, modelName string) (*extendedSelect, fieldTypes, error) {
+func loadModelMeta(pr *extendedSelect, db *DB, cwd, modelDir, modelName string) (*extendedSelect, error) {
 	var m *model
 	var e error
 	if modelDir != "" {
@@ -489,27 +565,23 @@ func loadModelMeta(pr *extendedSelect, db *DB, cwd, modelDir, modelName string) 
 		m, e = load(db, modelName, cwd)
 	}
 	if e != nil {
-		return nil, nil, fmt.Errorf("load %v", e)
+		return nil, fmt.Errorf("load %v", e)
 	}
 
 	// Parse the training SELECT statement used to train
 	// the model for the prediction.
-	tr, e := newExtendedSyntaxParser().Parse(m.TrainSelect)
+	tr, e := parseOneStatement(db.driverName, m.TrainSelect)
 	if e != nil {
-		return nil, nil, fmt.Errorf("parse: TrainSelect %v raise %v", m.TrainSelect, e)
+		return nil, fmt.Errorf("parse: TrainSelect %v raise %v", m.TrainSelect, e)
 	}
 
-	if e := verifyColumnNameAndType(tr, pr, db); e != nil {
-		return nil, nil, fmt.Errorf("verifyColumnNameAndType: %v", e)
+	if e := verifyColumnNameAndType(tr.extended, pr, db); e != nil {
+		return nil, fmt.Errorf("verifyColumnNameAndType: %v", e)
 	}
 
-	pr.trainClause = tr.trainClause
-	fts, e := verify(pr.standardSelect.String(), db)
-	if e != nil {
-		return nil, nil, fmt.Errorf("verify: %v", e)
-	}
+	pr.trainClause = tr.extended.trainClause
 
-	return pr, fts, nil
+	return pr, nil
 }
 
 type logChanWriter struct {

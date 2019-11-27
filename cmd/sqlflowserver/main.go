@@ -27,8 +27,8 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 
+	"sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/server"
-	"sqlflow.org/sqlflow/pkg/server/proto"
 	sf "sqlflow.org/sqlflow/pkg/sql"
 )
 
@@ -48,7 +48,7 @@ func newServer(caCrt, caKey string) (*grpc.Server, error) {
 	return s, nil
 }
 
-func start(modelDir, caCrt, caKey string, port int) {
+func start(modelDir, caCrt, caKey string, port int, isArgoMode bool) {
 	s, err := newServer(caCrt, caKey)
 	if err != nil {
 		log.Fatalf("failed to create new gRPC Server: %v", err)
@@ -59,8 +59,12 @@ func start(modelDir, caCrt, caKey string, port int) {
 			os.Mkdir(modelDir, os.ModePerm)
 		}
 	}
+	if isArgoMode {
+		proto.RegisterSQLFlowServer(s, server.NewServer(sf.SubmitWorkflow, modelDir))
+	} else {
+		proto.RegisterSQLFlowServer(s, server.NewServer(sf.RunSQLProgram, modelDir))
+	}
 
-	proto.RegisterSQLFlowServer(s, server.NewServer(sf.RunSQLProgram, modelDir))
 	listenString := fmt.Sprintf(":%d", port)
 
 	lis, err := net.Listen("tcp", listenString)
@@ -81,6 +85,7 @@ func main() {
 	caCrt := flag.String("ca-crt", "", "CA certificate file.")
 	caKey := flag.String("ca-key", "", "CA private key file.")
 	port := flag.Int("port", 50051, "TCP port to listen on.")
+	isArgoMode := flag.Bool("argo-mode", false, "Enable Argo workflow model.")
 	flag.Parse()
-	start(*modelDir, *caCrt, *caKey, *port)
+	start(*modelDir, *caCrt, *caKey, *port, *isArgoMode)
 }
