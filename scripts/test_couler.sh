@@ -53,9 +53,9 @@ function testArgo() {
 }
 
 if testArgo; then
-    # test on Argo mode, should setup mini-kube and argo 
-    SQLFLOW_ARGO_MODE=True SQLFLOW_log_level=debug go test -v -p 1 ./...
+    exit 0
 else
     echo "Argo job timed out."
     rm -rf /tmp/sqlflow* 
     exit 1
+fi
