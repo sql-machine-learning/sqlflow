@@ -121,17 +121,20 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, 
 
 	// 2. compile Couler program into Argo YAML.
 	argoYaml, err := ioutil.TempFile("/tmp", "sqlflow-argo*.yaml")
-	cmd := exec.Command("couler", "run", "--mode", "argo", "--file", coulerFile.Name(), ">", argoYaml.Name())
+	defer argoYaml.Close()
+
+	cmd := exec.Command("couler", "run", "--mode", "argo", "--file", coulerFile.Name())
 	cmd.Env = append(os.Environ())
-	if _, err := cmd.CombinedOutput(); err != nil {
+	out, err := cmd.CombinedOutput()
+	if err != nil {
 		return fmt.Errorf("generate Argo workflow yaml error: %v", err)
 	}
+	argoYaml.Write(out)
 
 	// 3. submit Argo YAML and fetch the workflow ID.
 	cmd = exec.Command("kubectl", "create", "-f", argoYaml.Name())
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		fmt.Println(string(output))
 		return fmt.Errorf("submit Argo YAML error: %v", err)
 	}
 	reWorkflow := regexp.MustCompile(`.+/(.+) .+`)
