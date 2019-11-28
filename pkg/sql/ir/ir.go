@@ -64,11 +64,18 @@ type FeatureColumn interface {
 // TODO(typhoonzero): Can generate a DAG workflow from a SQL program.
 type SQLProgram []SQLStatement
 
+// Executor is a visitor that generates and executes code for SQLStatement
+type Executor interface {
+	ExecuteQuery(*StandardSQL) error
+	ExecuteTrain(*TrainClause) error
+	ExecutePredict(*PredictClause) error
+	ExecuteAnalyze(*AnalyzeClause) error
+}
+
 // SQLStatement represent all kind of IRs including: TrainClause, PredictClause, AnalyzeClause and standard SQL.
 type SQLStatement interface {
-	// This function is used only for restrict the IR struct types
-	IsIR()
 	SetOriginalSQL(string)
+	Execute(Executor) error
 }
 
 // TrainClause is the intermediate representation for code generation of a training job.
@@ -107,11 +114,11 @@ type TrainClause struct {
 	Into string
 }
 
-// IsIR is used only for restrict the IR struct types
-func (trainIR *TrainClause) IsIR() {}
+// Execute generates and executes code for TrainClause
+func (cl *TrainClause) Execute(s Executor) error { return s.ExecuteTrain(cl) }
 
 // SetOriginalSQL sets the original sql string
-func (trainIR *TrainClause) SetOriginalSQL(sql string) { trainIR.OriginalSQL = sql }
+func (cl *TrainClause) SetOriginalSQL(sql string) { cl.OriginalSQL = sql }
 
 // PredictClause is the intermediate representation for code generation of a prediction job
 //
@@ -137,11 +144,11 @@ type PredictClause struct {
 	TrainIR *TrainClause
 }
 
-// IsIR is used only for restrict the IR struct types
-func (predictIR *PredictClause) IsIR() {}
+// Execute generates and executes code for PredictClause
+func (cl *PredictClause) Execute(s Executor) error { return s.ExecutePredict(cl) }
 
 // SetOriginalSQL sets the original sql string
-func (predictIR *PredictClause) SetOriginalSQL(sql string) { predictIR.OriginalSQL = sql }
+func (cl *PredictClause) SetOriginalSQL(sql string) { cl.OriginalSQL = sql }
 
 // AnalyzeClause is the intermediate representation for code generation of a analysis job
 type AnalyzeClause struct {
@@ -162,17 +169,17 @@ type AnalyzeClause struct {
 	TrainIR *TrainClause
 }
 
-// IsIR is used only for restrict the IR struct types
-func (analyzeIR *AnalyzeClause) IsIR() {}
+// Execute generates and executes code for AnalyzeClause
+func (cl *AnalyzeClause) Execute(s Executor) error { return s.ExecuteAnalyze(cl) }
 
 // SetOriginalSQL sets the original sql string
-func (analyzeIR *AnalyzeClause) SetOriginalSQL(sql string) { analyzeIR.OriginalSQL = sql }
+func (cl *AnalyzeClause) SetOriginalSQL(sql string) { cl.OriginalSQL = sql }
 
 // StandardSQL is a string of a standard SQL statement that can run on the database system.
 type StandardSQL string
 
-// IsIR is used only for restrict the IR struct types
-func (sql *StandardSQL) IsIR() {}
+// Execute generates and executes code for StandardSQL
+func (sql *StandardSQL) Execute(s Executor) error { return s.ExecuteQuery(sql) }
 
 // SetOriginalSQL sets the original sql string
 func (sql *StandardSQL) SetOriginalSQL(s string) {}

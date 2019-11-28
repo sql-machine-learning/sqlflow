@@ -23,6 +23,19 @@ import (
 )
 
 const (
+	testTrainSelectWithLimit = `
+SELECT * FROM iris.train
+limit 10
+TO TRAIN xgboost.gbtree
+WITH
+    objective="multi:softprob",
+    train.num_boost_round = 30,
+    eta = 0.4,
+    num_class = 3
+COLUMN sepal_length, sepal_width, petal_length, petal_width
+LABEL class
+INTO sqlflow_models.my_xgboost_model;
+`
 	testTrainSelectIris = testSelectIris + `
 TO TRAIN DNNClassifier
 WITH
@@ -65,7 +78,7 @@ WITH
     eta = 0.4,
     num_class = 3
 COLUMN sepal_length, sepal_width, petal_length, petal_width
-LABEL class 
+LABEL class
 INTO sqlflow_models.my_xgboost_model;
 `
 	testAnalyzeTreeModelSelectIris = `
@@ -127,9 +140,15 @@ USING TreeExplainer;
 
 }
 
-func TestExecuteXGBoost(t *testing.T) {
+func TestExecuteXGBoostClassifier(t *testing.T) {
 	a := assert.New(t)
 	modelDir := ""
+	a.NotPanics(func() {
+		stream := RunSQLProgram(testTrainSelectWithLimit, testDB, modelDir, getDefaultSession())
+		a.True(goodStream(stream.ReadAll()))
+		stream = RunSQLProgram(testXGBoostPredictIris, testDB, modelDir, getDefaultSession())
+		a.True(goodStream(stream.ReadAll()))
+	})
 	a.NotPanics(func() {
 		stream := RunSQLProgram(testXGBoostTrainSelectIris, testDB, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
