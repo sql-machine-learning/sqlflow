@@ -35,27 +35,20 @@ WORKFLOW_NAME=$(echo ${MESSAGE} | cut -d ' ' -f 1 | cut -d '/' -f 2)
 
 echo WORKFLOW_NAME ${WORKFLOW_NAME}
 
-function testArgo() {
-    for i in {1..30}; do
-        WORKFLOW_STATUS=$(kubectl get wf ${WORKFLOW_NAME} -o jsonpath='{.status.phase}')
+for i in {1..30}; do
+    WORKFLOW_STATUS=$(kubectl get wf ${WORKFLOW_NAME} -o jsonpath='{.status.phase}')
 
-        if [[ "$WORKFLOW_STATUS" == "Succeeded" ]]; then
-            echo "Argo workflow succeeded."
-            kubectl delete wf ${WORKFLOW_NAME}
-            rm -rf /tmp/sqlflow* 
-            return 0
-        else
-            echo "Argo workflow ${WORKFLOW_NAME} ${WORKFLOW_STATUS}"
-            sleep ${CHECK_INTERVAL_SECS}
-        fi
-    done
-    return 1
-}
+    if [[ "$WORKFLOW_STATUS" == "Succeeded" ]]; then
+        echo "Argo workflow succeeded."
+        kubectl delete wf ${WORKFLOW_NAME}
+        rm -rf /tmp/sqlflow* 
+        exit 0
+    else
+        echo "Argo workflow ${WORKFLOW_NAME} ${WORKFLOW_STATUS}"
+        sleep ${CHECK_INTERVAL_SECS}
+    fi
+done
 
-if testArgo; then
-    exit 0
-else
-    echo "Argo job timed out."
-    rm -rf /tmp/sqlflow* 
-    exit 1
-fi
+echo "Argo job timed out."
+rm -rf /tmp/sqlflow* 
+exit 1

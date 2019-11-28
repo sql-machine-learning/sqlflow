@@ -80,6 +80,9 @@ func generateTrainIR(slct *extendedSelect, connStr string) (*ir.TrainClause, err
 		}}
 
 	vslct, _ := parseValidationSelect(attrList)
+	if vslct == "" {
+		vslct = slct.standardSelect.String()
+	}
 	return &ir.TrainClause{
 		DataSource: connStr,
 		Select:     slct.standardSelect.String(),
@@ -126,6 +129,9 @@ func verifyIRWithTrainIR(sqlir ir.SQLStatement, db *DB) error {
 	trainFields, e := verify(selectStmt, db)
 	if e != nil {
 		return e
+	}
+	if trainIR == nil { // Implies we dont' need to load model
+		return nil
 	}
 
 	predFields, e := verify(trainIR.Select, db)

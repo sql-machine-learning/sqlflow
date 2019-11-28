@@ -15,23 +15,16 @@ package sql
 
 import (
 	"bytes"
-	"encoding/base64"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"path"
 	"regexp"
 	"strings"
-	"sync"
 	"time"
 
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/couler"
-	"sqlflow.org/sqlflow/pkg/sql/codegen/pai"
-	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
-	"sqlflow.org/sqlflow/pkg/sql/codegen/xgboost"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
 
@@ -45,35 +38,6 @@ type EndOfExecution struct {
 // WorkflowJob indicates the Argo Workflow ID
 type WorkflowJob struct {
 	JobID string
-}
-
-var envSubmitter = os.Getenv("SQLFLOW_submitter")
-
-// SubmitterType is the type of SQLFlow submitter
-type SubmitterType int
-
-const (
-	// SubmitterPAI indicates that SQLFlow uses the PAI platform as submitter
-	SubmitterPAI = iota
-	// SubmitterEDL indicates that SQLFlow uses ElasticDL as submitter
-	SubmitterEDL
-	// SubmitterALPS indicates that SQLFlow uses ALPS as submitter
-	SubmitterALPS
-	// SubmitterDefault indicates that SQLFlow uses the default submitter
-	SubmitterDefault
-)
-
-func submitter() SubmitterType {
-	switch envSubmitter {
-	case "pai":
-		return SubmitterPAI
-	case "elasticdl":
-		return SubmitterEDL
-	case "alps":
-		return SubmitterALPS
-	default:
-		return SubmitterDefault
-	}
 }
 
 // RunSQLProgram run a SQL program.
@@ -205,9 +169,9 @@ func runSQLProgram(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, s
 			if parsed.train {
 				r, err = generateTrainIRWithInferredColumns(parsed, connStr)
 			} else if parsed.analyze {
-				r, err = generateAnalyzeIR(parsed, connStr, modelDir, true)
+				r, err = generateAnalyzeIR(parsed, connStr, modelDir, submitter().GetTrainIRFromModel())
 			} else {
-				r, err = generatePredictIR(parsed, connStr, modelDir, true)
+				r, err = generatePredictIR(parsed, connStr, modelDir, submitter().GetTrainIRFromModel())
 			}
 		} else {
 			standardSQL := ir.StandardSQL(sql.standard)
@@ -236,242 +200,11 @@ func runSingleSQLIR(wr *PipeWriter, sqlIR ir.SQLStatement, db *DB, modelDir stri
 			})
 		}
 	}()
-
-	switch sqlIR.(type) {
-	case *ir.StandardSQL:
-		originalSQL = string(*sqlIR.(*ir.StandardSQL))
-		if e = runStandardSQL(wr, originalSQL, db); e != nil {
-			return e
-		}
-	case *ir.TrainClause:
-		originalSQL = sqlIR.(*ir.TrainClause).OriginalSQL
-		if e = runTrainIR(sqlIR.(*ir.TrainClause), wr, db, modelDir, session); e != nil {
-			return e
-		}
-	case *ir.PredictClause:
-		originalSQL = sqlIR.(*ir.PredictClause).OriginalSQL
-		if e = runPredictIR(sqlIR.(*ir.PredictClause), wr, db, modelDir, session); e != nil {
-			return e
-		}
-	case *ir.AnalyzeClause:
-		originalSQL = sqlIR.(*ir.AnalyzeClause).OriginalSQL
-		if e = runAnalyzeIR(sqlIR.(*ir.AnalyzeClause), wr, db, modelDir, session); e != nil {
-			return e
-		}
-	default:
-		return fmt.Errorf("got error ir type: %T", sqlIR)
-	}
-
-	return nil
-}
-
-// TODO(tony): remove the following function after all submitter has been moved to IR
-func runThirdPartySubmitterTrain(wr *PipeWriter, sql string, db *DB, cwd string, session *pb.Session) error {
-	pr, e := newExtendedSyntaxParser().Parse(sql)
-	if e != nil {
+	if e := submitter().Setup(wr, db, modelDir, session); e != nil {
 		return e
 	}
-
-	switch submitter() {
-	case SubmitterEDL:
-		return elasticDLTrain(wr, pr, db, cwd, session)
-	case SubmitterALPS:
-		return alpsTrain(wr, pr, db, cwd, session)
-	default:
-		return fmt.Errorf("unrecognized SQLFLOW_submitter %s", os.Getenv("SQLFLOW_submitter"))
-	}
-}
-
-func runTrainIR(trainIR *ir.TrainClause, wr *PipeWriter, db *DB, modelDir string, session *pb.Session) error {
-	// cwd is used to store train scripts and save output models.
-	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
-	if err != nil {
-		return err
-	}
-	defer os.RemoveAll(cwd)
-
-	if submitter() != SubmitterDefault && submitter() != SubmitterPAI {
-		return runThirdPartySubmitterTrain(wr, trainIR.OriginalSQL, db, cwd, session)
-	}
-
-	// ---------------------- run the IR ---------------------------
-	var program bytes.Buffer
-	if trainIR.ValidationSelect == "" {
-		trainIR.ValidationSelect = trainIR.Select
-	}
-	if isXGBoostModel(trainIR.Estimator) {
-		code, err := xgboost.Train(trainIR)
-		if err != nil {
-			return err
-		}
-		program.WriteString(code)
-	} else {
-		if submitter() != SubmitterPAI {
-			code, err := tensorflow.Train(trainIR)
-			if err != nil {
-				return err
-			}
-			program.WriteString(code)
-		} else {
-			code, err := pai.Train(trainIR, trainIR.Into, cwd)
-			if err != nil {
-				return err
-			}
-			program.WriteString(code)
-		}
-	}
-	cw := &logChanWriter{wr: wr}
-	var buf bytes.Buffer
-	buf.WriteString(fmt.Sprintf("\n==========Program======\n%s\n=======Program Output===========\n", program.String()))
-
-	w := io.MultiWriter(cw, &buf)
-	defer cw.Close()
-	cmd := sqlflowCmd(cwd, db.driverName)
-	cmd.Stdin = &program
-	cmd.Stdout = w
-	cmd.Stderr = w
-	if e := cmd.Run(); e != nil {
-		return fmt.Errorf("predict failed: %v\n %s", e, buf.String())
-	}
-	if submitter() != SubmitterPAI {
-		m := model{workDir: cwd, TrainSelect: trainIR.OriginalSQL}
-		if modelDir != "" {
-			return m.saveTar(modelDir, trainIR.Into)
-		}
-		return m.save(db, trainIR.Into, session)
-	}
-	return nil
-}
-
-// TODO(tony): remove the following function after all submitter has been moved to IR
-func runThirdPartySubmitterPred(wr *PipeWriter, sql string, db *DB, cwd string, session *pb.Session) error {
-	// TODO(typhoonzero): remove below twice parse when all submitters moved to IR.
-	pr, e := newExtendedSyntaxParser().Parse(sql)
-	if e != nil {
-		return e
-	}
-	if submitter() == SubmitterALPS {
-		return alpsPred(wr, pr, db, cwd, session)
-	} else if submitter() == SubmitterEDL {
-		return elasticDLPredict(wr, pr, db, cwd, session)
-	}
-
-	return nil
-}
-
-func runPredictIR(predIR *ir.PredictClause, wr *PipeWriter, db *DB, modelDir string, session *pb.Session) error {
-	// cwd is used to load the saved model for prediction.
-	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
-	if err != nil {
-		return err
-	}
-	defer os.RemoveAll(cwd)
-
-	if submitter() != SubmitterDefault && submitter() != SubmitterPAI {
-		return runThirdPartySubmitterPred(wr, predIR.OriginalSQL, db, cwd, session)
-	}
-
-	// ------------------- run pred IR -----------------------
-	var program bytes.Buffer
-	if submitter() == SubmitterPAI {
-		code, err := pai.Predict(predIR, predIR.TrainIR.Into, cwd)
-		if err != nil {
-			return err
-		}
-		err = createPredictionTableFromIR(predIR, db, session)
-		if err != nil {
-			return err
-		}
-
-		program.WriteString(code)
-	} else {
-		if err := recoverModelDir(db, cwd, modelDir, predIR.TrainIR.Into); err != nil {
-			return err
-		}
-		if isXGBoostModel(predIR.TrainIR.Estimator) {
-			code, err := xgboost.Pred(predIR, session)
-			if err != nil {
-				return err
-			}
-			err = createPredictionTableFromIR(predIR, db, session)
-			if err != nil {
-				return err
-			}
-			program.WriteString(code)
-		} else {
-			err = createPredictionTableFromIR(predIR, db, session)
-			if err != nil {
-				return err
-			}
-			code, err := tensorflow.Pred(predIR, session)
-			if err != nil {
-				return err
-			}
-			program.WriteString(code)
-		}
-	}
-
-	var buf bytes.Buffer
-	buf.WriteString(fmt.Sprintf("\n==========Program======\n%s\n=======Program Output===========\n", program.String()))
-
-	cw := &logChanWriter{wr: wr}
-	w := io.MultiWriter(cw, &buf)
-	defer cw.Close()
-	cmd := sqlflowCmd(cwd, db.driverName)
-	cmd.Env = append(os.Environ())
-	cmd.Stdin = &program
-	cmd.Stdout = w
-	cmd.Stderr = w
-	if e := cmd.Run(); e != nil {
-		return fmt.Errorf("predict failed: %v\n %s", e, buf.String())
-	}
-	return nil
-}
-
-func runAnalyzeIR(analyzeIR *ir.AnalyzeClause, wr *PipeWriter, db *DB, modelDir string, session *pb.Session) error {
-	// cwd is used to load the saved model for prediction.
-	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
-	if err != nil {
-		return err
-	}
-	defer os.RemoveAll(cwd)
-
-	// load the model for analyze
-	if err := recoverModelDir(db, cwd, modelDir, analyzeIR.TrainIR.Into); err != nil {
-		return err
-	}
-
-	cmd := exec.Command("python", "-u")
-	cmd.Dir = cwd
-
-	if !strings.HasPrefix(strings.ToUpper(analyzeIR.TrainIR.Estimator), `XGBOOST.`) {
-		return fmt.Errorf("unsupported model %s", analyzeIR.TrainIR.Estimator)
-	}
-	code, err := xgboost.Analyze(analyzeIR)
-	if err != nil {
-		return err
-	}
-	var program bytes.Buffer
-	program.WriteString(code)
-	cmd.Stdin = &program
-	if _, err := cmd.CombinedOutput(); err != nil {
-		return err
-	}
-
-	imgFile, err := os.Open(path.Join(cwd, "summary.png"))
-	if err != nil {
-		return err
-	}
-	defer imgFile.Close()
-
-	imgBytes, err := ioutil.ReadAll(imgFile)
-	if err != nil {
-		return err
-	}
-	imgBase64Str := base64.StdEncoding.EncodeToString(imgBytes)
-	img2html := fmt.Sprintf("<div align='center'><img src='data:image/png;base64,%s' /></div>", imgBase64Str)
-	wr.Write(img2html)
-	return nil
+	defer submitter().Teardown()
+	return sqlIR.Execute(submitter())
 }
 
 // Create prediction table with appropriate column type.
@@ -491,7 +224,6 @@ func createPredictionTable(predParsed *extendedSelect, db *DB, session *pb.Sessi
 	if e != nil {
 		return e
 	}
-
 	var b bytes.Buffer
 	fmt.Fprintf(&b, "create table %s (", tableName)
 	for _, c := range predParsed.columns["feature_columns"] {
@@ -595,16 +327,6 @@ func createPredictionTableFromIR(predIR *ir.PredictClause, db *DB, session *pb.S
 	return nil
 }
 
-func recoverModelDir(db *DB, cwd, modelDir, modelName string) error {
-	if modelDir != "" {
-		_, err := loadTar(modelDir, cwd, modelName)
-		return err
-	}
-
-	_, err := load(db, modelName, cwd)
-	return err
-}
-
 func loadModelMeta(pr *extendedSelect, db *DB, cwd, modelDir, modelName string) (*extendedSelect, error) {
 	var m *model
 	var e error
@@ -616,7 +338,6 @@ func loadModelMeta(pr *extendedSelect, db *DB, cwd, modelDir, modelName string) 
 	if e != nil {
 		return nil, fmt.Errorf("load %v", e)
 	}
-
 	// Parse the training SELECT statement used to train
 	// the model for the prediction.
 	tr, e := parseOneStatement(db.driverName, m.TrainSelect)
@@ -633,50 +354,4 @@ func loadModelMeta(pr *extendedSelect, db *DB, cwd, modelDir, modelName string) 
 	return pr, nil
 }
 
-type logChanWriter struct {
-	wr *PipeWriter
-
-	m    sync.Mutex
-	buf  bytes.Buffer
-	prev string
-}
-
-func (cw *logChanWriter) Write(p []byte) (n int, err error) {
-	// Both cmd.Stdout and cmd.Stderr are writing to cw
-	cw.m.Lock()
-	defer cw.m.Unlock()
-
-	n, err = cw.buf.Write(p)
-	if err != nil {
-		return n, err
-	}
-
-	for {
-		line, err := cw.buf.ReadString('\n')
-		cw.prev = cw.prev + line
-		// ReadString returns err != nil if and only if the returned Data
-		// does not end in delim.
-		if err != nil {
-			break
-		}
-
-		if err := cw.wr.Write(cw.prev); err != nil {
-			return len(cw.prev), err
-		}
-		cw.prev = ""
-	}
-	return n, nil
-}
-
-func (cw *logChanWriter) Close() {
-	if len(cw.prev) > 0 {
-		cw.wr.Write(cw.prev)
-		cw.prev = ""
-	}
-}
-
-// ----------------------- useful for testing --------------------------
-
-func getDefaultSession() *pb.Session {
-	return &pb.Session{}
-}
+func getDefaultSession() *pb.Session { return &pb.Session{} } // for testing
