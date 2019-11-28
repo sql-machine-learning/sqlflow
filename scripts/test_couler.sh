@@ -35,20 +35,30 @@ WORKFLOW_NAME=$(echo ${MESSAGE} | cut -d ' ' -f 1 | cut -d '/' -f 2)
 
 echo WORKFLOW_NAME ${WORKFLOW_NAME}
 
-for i in {1..30}; do
-    WORKFLOW_STATUS=$(kubectl get wf ${WORKFLOW_NAME} -o jsonpath='{.status.phase}')
+function test_couler() {
+    for i in {1..30}; do
+        WORKFLOW_STATUS=$(kubectl get wf ${WORKFLOW_NAME} -o jsonpath='{.status.phase}')
 
-    if [[ "$WORKFLOW_STATUS" == "Succeeded" ]]; then
-        echo "Argo workflow succeeded."
-        kubectl delete wf ${WORKFLOW_NAME}
-        rm -rf /tmp/sqlflow* 
-        exit 0
-    else
-        echo "Argo workflow ${WORKFLOW_NAME} ${WORKFLOW_STATUS}"
-        sleep ${CHECK_INTERVAL_SECS}
-    fi
-done
+        if [[ "$WORKFLOW_STATUS" == "Succeeded" ]]; then
+            echo "Argo workflow succeeded."
+            kubectl delete wf ${WORKFLOW_NAME}
+            rm -rf /tmp/sqlflow* 
+            return 0
+        else
+            echo "Argo workflow ${WORKFLOW_NAME} ${WORKFLOW_STATUS}"
+            sleep ${CHECK_INTERVAL_SECS}
+        fi
+    done
+    return 1
+}
 
-echo "Argo job timed out."
-rm -rf /tmp/sqlflow* 
-exit 1
+if test_couler != 0; then
+    echo "Argo job timed out."
+    rm -rf /tmp/sqlflow* 
+    exit 1
+fi
+
+############# Run SQLFLow test with Argo Mode #############
+
+SQLFLOW_ARGO_MODE=True go test ./pkg/sql/. -run TestSubmitWorkflow -v
+

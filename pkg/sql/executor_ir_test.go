@@ -275,6 +275,7 @@ func TestLogChanWriter_Write(t *testing.T) {
 
 func TestSubmitWorkflow(t *testing.T) {
 	if os.Getenv("SQLFLOW_ARGO_MODE") != "True" {
+		// pass this TestCase if disable argo mode
 		return
 	}
 	a := assert.New(t)
