@@ -127,6 +127,38 @@ USING TreeExplainer;
 
 }
 
+func TestSubmitWorkflow(t *testing.T) {
+	if os.Getenv("SQLFLOW_ARGO_MODE") != "True" {
+		return
+	}
+
+	a := assert.New(t)
+	modelDir := ""
+	a.NotPanics(func() {
+		stream := SubmitWorkflow(`
+SELECT sepal_length as sl, sepal_width as sw, class FROM iris.train
+TO TRAIN xgboost.gbtree
+WITH
+    objective="multi:softprob",
+    train.num_boost_round = 30,
+    eta = 0.4,
+    num_class = 3
+LABEL class
+INTO sqlflow_models.my_xgboost_model_by_program;
+
+SELECT sepal_length as sl, sepal_width as sw FROM iris.test
+TO PREDICT iris.predict.class
+USING sqlflow_models.my_xgboost_model_by_program;
+
+SELECT sepal_length as sl, sepal_width as sw, class FROM iris.train
+TO EXPLAIN sqlflow_models.my_xgboost_model_by_program
+USING TreeExplainer;
+`, testDB, modelDir, getDefaultSession())
+		//TODO(yancey1989): verify the workflow ID.
+		a.True(goodStream(stream.ReadAll()))
+	})
+}
+
 func TestExecuteXGBoost(t *testing.T) {
 	a := assert.New(t)
 	modelDir := ""
@@ -251,21 +283,4 @@ func TestLogChanWriter_Write(t *testing.T) {
 	a.Equal("世界\n", <-c)
 	_, more := <-c
 	a.False(more)
-}
-
-func TestSubmitWorkflow(t *testing.T) {
-	a := assert.New(t)
-	modelDir := ""
-	a.NotPanics(func() {
-		rd := SubmitWorkflow(testXGBoostTrainSelectIris, testDB, modelDir, getDefaultSession())
-		for r := range rd.ReadAll() {
-			switch r.(type) {
-			case WorkflowJob:
-				job := r.(WorkflowJob)
-				a.Equal(job.JobID, "sqlflow-workflow")
-			default:
-				a.Fail("SubmitWorkflow should return JobID")
-			}
-		}
-	})
 }

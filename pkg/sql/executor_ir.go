@@ -113,14 +113,33 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, 
 	if err != nil {
 		return err
 	}
-
-	spIRs, err := genSQLProgramIR(
-		sqls, db, modelDir,
-		false, /*disable feature derivation*/
-		false /*disable load trainIR from saved model and verify with trainIR*/)
-
-	if err != nil {
-		return err
+	// TODO(yancey1989): seperate the IR generation to mutiple steps:
+	// For example, a TRAIN statment:
+	// 		SELECT ... TO TRAIN ...
+	// the multiple ir generator steps pipeline can be:
+	// sql -> parsed result -> infer columns -> load train ir from saved model ..
+	spIRs := []ir.SQLStatement{}
+	for _, sql := range sqls {
+		var r ir.SQLStatement
+		connStr := fmt.Sprintf("%s://%s", db.driverName, db.dataSourceName)
+		if sql.extended != nil {
+			parsed := sql.extended
+			if parsed.train {
+				r, err = generateTrainIR(parsed, connStr)
+			} else if parsed.analyze {
+				r, err = generateAnalyzeIR(parsed, connStr, modelDir, false)
+			} else {
+				r, err = generatePredictIR(parsed, connStr, modelDir, false)
+			}
+		} else {
+			standardSQL := ir.StandardSQL(sql.standard)
+			r = &standardSQL
+		}
+		if err != nil {
+			return err
+		}
+		r.SetOriginalSQL(sql.original)
+		spIRs = append(spIRs, r)
 	}
 
 	// 1. call codegen_couler.go to genearte Couler program.
@@ -139,6 +158,7 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, 
 	// 2. compile Couler program into Argo YAML.
 	argoYaml, err := ioutil.TempFile("/tmp", "sqlflow-argo*.yaml")
 	cmd := exec.Command("couler", "run", "--mode", "argo", "--file", coulerFile.Name(), ">", argoYaml.Name())
+	cmd.Env = append(os.Environ())
 	if _, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("generate Argo workflow yaml error: %v", err)
 	}
@@ -147,6 +167,7 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, 
 	cmd = exec.Command("kubectl", "create", "-f", argoYaml.Name())
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		fmt.Println(string(output))
 		return fmt.Errorf("submit Argo YAML error: %v", err)
 	}
 	reWorkflow := regexp.MustCompile(`.+/(.+) .+`)
@@ -163,8 +184,11 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, 
 	})
 }
 
-func genSQLProgramIR(sqls []statementParseResult, db *DB, modelDir string,
-	enableInferedColumns, enableGetTrainIRFromModel bool) ([]ir.SQLStatement, error) {
+func runSQLProgram(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, session *pb.Session) error {
+	sqls, err := parse(db.driverName, sqlProgram)
+	if err != nil {
+		return err
+	}
 	// NOTE(tony): We generate IR and execute its translated program one-by-one since IR generation may depend on the execution
 	// of the previous statement. For example, consider a SQL program
 	//
@@ -173,47 +197,26 @@ func genSQLProgramIR(sqls []statementParseResult, db *DB, modelDir string,
 	//
 	// The IR generation on the second statement would fail since it requires inspection the schema of some_table,
 	// which depends on the execution of create table some_table as (select ...);.
-	spIRs := []ir.SQLStatement{}
-	var err error
 	for _, sql := range sqls {
 		var r ir.SQLStatement
 		connStr := fmt.Sprintf("%s://%s", db.driverName, db.dataSourceName)
 		if sql.extended != nil {
 			parsed := sql.extended
 			if parsed.train {
-				if enableInferedColumns {
-					r, err = generateTrainIRWithInferredColumns(parsed, connStr)
-				} else {
-					r, err = generateTrainIR(parsed, connStr)
-				}
+				r, err = generateTrainIRWithInferredColumns(parsed, connStr)
 			} else if parsed.analyze {
-				r, err = generateAnalyzeIR(parsed, connStr, modelDir, enableGetTrainIRFromModel)
+				r, err = generateAnalyzeIR(parsed, connStr, modelDir, true)
 			} else {
-				r, err = generatePredictIR(parsed, connStr, modelDir, enableGetTrainIRFromModel)
+				r, err = generatePredictIR(parsed, connStr, modelDir, true)
 			}
 		} else {
 			standardSQL := ir.StandardSQL(sql.standard)
 			r = &standardSQL
 		}
 		if err != nil {
-			return nil, err
+			return err
 		}
 		r.SetOriginalSQL(sql.original)
-		spIRs = append(spIRs, r)
-	}
-	return spIRs, nil
-}
-
-func runSQLProgram(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, session *pb.Session) error {
-	sqls, err := parse(db.driverName, sqlProgram)
-	if err != nil {
-		return err
-	}
-	spIRs, err := genSQLProgramIR(sqls, db, modelDir, true, submitter() != SubmitterPAI)
-	if err != nil {
-		return err
-	}
-	for _, r := range spIRs {
 		if e := runSingleSQLIR(wr, r, db, modelDir, session); e != nil {
 			return e
 		}
