@@ -35,21 +35,21 @@ jobs:
     - stage: BuildDockerAndPreCommit
       script:
         - docker version
-        - docker run --rm -v $GOPATH/src:/go/src -w /go/src/sqlflow.org/sqlflow sqlflow/sqlflow:latest go generate ./... && go build ./... && python scripts/copyright.py pkg/sql/extended_syntax_parser.go
-        - docker run --rm -v $GOPATH/src:/go/src -w /go/src/sqlflow.org/sqlflow sqlflow/sqlflow:latest pre-commit run -a
+        - docker run --rm -v $GOPATH/src:/root/go/src -w /go/src/sqlflow.org/sqlflow sqlflow/sqlflow:latest go generate ./... && go build ./... && python scripts/copyright.py pkg/sql/extended_syntax_parser.go
+        - docker run --rm -v $GOPATH/src:/root/go/src -w /go/src/sqlflow.org/sqlflow sqlflow/sqlflow:latest pre-commit run -a
     - stage: Unitests
       # env is just used for displaying the job type in travis web page
       env: SQLFLOW_TEST_DB=mysql
       script:
         - docker pull sqlflow/sqlflow:latest && docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile .
-        - docker run --rm -v $GOPATH:/go -w /go/src/sqlflow.org/sqlflow sqlflow:latest bash scripts/test_units.sh
-        - docker run --rm -v $GOPATH:/go -w /go/src/sqlflow.org/sqlflow sqlflow:latest bash scripts/upload_coveralls.sh
+        - docker run --rm -v $GOPATH:/root/go -w /go/src/sqlflow.org/sqlflow sqlflow:latest bash scripts/test_units.sh
+        - docker run --rm -v $GOPATH:/root/go -w /go/src/sqlflow.org/sqlflow sqlflow:latest bash scripts/upload_coveralls.sh
     - # run more parallel tests in the same stage:
       env: SQLFLOW_TEST_DB=hive
       script:
         - docker pull sqlflow/sqlflow:latest && docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile .
         - docker pull sqlflow/gohive:dev && docker run -d --name=hive sqlflow/gohive:dev python3 -m http.server 8899
-        - docker run --rm -v $GOPATH:/go --net=container:hive --entrypoint bash -w /go/src/sqlflow.org/sqlflow sqlflow:latest scripts/test_hive.sh
+        - docker run --rm -v $GOPATH:/root/go --net=container:hive --entrypoint bash -w /go/src/sqlflow.org/sqlflow sqlflow:latest scripts/test_hive.sh
     - env: SQLFLOW_TEST_DB=maxcompute
       script:
         - docker pull sqlflow/sqlflow:latest && docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile .
@@ -60,7 +60,7 @@ jobs:
     - env: SQLFLOW_TEST=java
       script:
       - docker pull sqlflow/sqlflow:latest && docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile .
-      - docker run --rm -v $GOPATH:/go -w /go/src/sqlflow.org/sqlflow sqlflow:latest bash scripts/test_java.sh
+      - docker run --rm -v $GOPATH:/root/go -w /go/src/sqlflow.org/sqlflow sqlflow:latest bash scripts/test_java.sh
     - stage: deploy
       script:
         - docker pull sqlflow/sqlflow:latest && docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile .
