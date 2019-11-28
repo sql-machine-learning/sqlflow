@@ -22,20 +22,23 @@ pytest python/couler/tests
 
 ############# Run Couler e2e test #############
 CHECK_INTERVAL_SECS=2
-cat <<EOF > /tmp/sqlflow_couler.py
+
+function test_couler() {
+
+    cat <<EOF > /tmp/sqlflow_couler.py
 import couler.argo as couler
 couler.run_container(image="docker/whalesay", command='echo "SQLFlow bridges AI and SQL engine."')
 EOF
 
-couler run --mode argo --file /tmp/sqlflow_couler.py > /tmp/sqlflow_argo.yaml
 
-MESSAGE=$(kubectl create -f /tmp/sqlflow_argo.yaml)
+    couler run --mode argo --file /tmp/sqlflow_couler.py > /tmp/sqlflow_argo.yaml
 
-WORKFLOW_NAME=$(echo ${MESSAGE} | cut -d ' ' -f 1 | cut -d '/' -f 2)
+    MESSAGE=$(kubectl create -f /tmp/sqlflow_argo.yaml)
 
-echo WORKFLOW_NAME ${WORKFLOW_NAME}
+    WORKFLOW_NAME=$(echo ${MESSAGE} | cut -d ' ' -f 1 | cut -d '/' -f 2)
 
-function test_couler() {
+    echo WORKFLOW_NAME ${WORKFLOW_NAME}
+
     for i in {1..30}; do
         WORKFLOW_STATUS=$(kubectl get wf ${WORKFLOW_NAME} -o jsonpath='{.status.phase}')
 
@@ -52,7 +55,10 @@ function test_couler() {
     return 1
 }
 
-if test_couler != 0; then
+test_couler
+ret=$?
+
+if [[ "$ret" != "0" ]]; then
     echo "Argo job timed out."
     rm -rf /tmp/sqlflow* 
     exit 1
