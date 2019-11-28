@@ -21,6 +21,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sqlfs"
 )
 
@@ -33,8 +34,8 @@ type model struct {
 // train select statement into the table, followed by the tar-gzipped
 // SQLFlow working directory, which contains the TensorFlow working
 // directory and the trained TensorFlow model.
-func (m *model) save(db *DB, table string) (e error) {
-	sqlf, e := sqlfs.Create(db.DB, db.driverName, table)
+func (m *model) save(db *DB, table string, session *pb.Session) (e error) {
+	sqlf, e := sqlfs.Create(db.DB, db.driverName, table, session)
 	if e != nil {
 		return fmt.Errorf("cannot create sqlfs file %s: %v", table, e)
 	}

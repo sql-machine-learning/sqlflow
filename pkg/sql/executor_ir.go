@@ -338,7 +338,7 @@ func runTrainIR(trainIR *ir.TrainClause, wr *PipeWriter, db *DB, modelDir string
 		if modelDir != "" {
 			return m.saveTar(modelDir, trainIR.Into)
 		}
-		return m.save(db, trainIR.Into)
+		return m.save(db, trainIR.Into, session)
 	}
 	return nil
 }
