@@ -65,6 +65,8 @@ if [[ "$ret" != "0" ]]; then
 fi
 
 ############# Run SQLFLow test with Argo Mode #############
-
+service mysql start
+go generate ./...
+go install ./...
 SQLFLOW_ARGO_MODE=True go test ./pkg/sql/. -run TestSubmitWorkflow -v
 
