@@ -95,22 +95,19 @@ func RunSQLProgram(sqlProgram string, db *DB, modelDir string, session *pb.Sessi
 }
 
 // ParseSQLStatement parse the input SQL statement and output IR in probobuf format
-func ParseSQLStatement(sqlProgram string, session *pb.Session) (string, error) {
+func ParseSQLStatement(sql string, session *pb.Session) (string, error) {
 	connStr := session.DbConnStr
 	driverName := strings.Split(connStr, "://")[0]
-	sqls, err := parse(driverName, sqlProgram)
+	parsed, err := parseOneStatement(driverName, sql)
 	if err != nil {
 		return "", err
 	}
-	if len(sqls) > 1 {
-		return "", fmt.Errorf("ParseSQLStatement only accept a single SQL statement")
-	}
-	parsed := sqls[0].extended
-	if !parsed.train {
+	extended := parsed.extended
+	if !extended.train {
 		return "", fmt.Errorf("ParseSQLStatement only accept train SQL for now")
 	}
 	// TODO(typhoonzero): add support for PredictIR and AnalyzeIR
-	trainIR, err := generateTrainIRWithInferredColumns(parsed, connStr)
+	trainIR, err := generateTrainIRWithInferredColumns(extended, connStr)
 	if err != nil {
 		return "", err
 	}
