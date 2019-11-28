@@ -23,6 +23,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/couler"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
@@ -57,6 +58,30 @@ func RunSQLProgram(sqlProgram string, db *DB, modelDir string, session *pb.Sessi
 		}
 	}()
 	return rd
+}
+
+// ParseSQLStatement parse the input SQL statement and output IR in probobuf format
+func ParseSQLStatement(sql string, session *pb.Session) (string, error) {
+	connStr := session.DbConnStr
+	driverName := strings.Split(connStr, "://")[0]
+	parsed, err := parseOneStatement(driverName, sql)
+	if err != nil {
+		return "", err
+	}
+	extended := parsed.extended
+	if !extended.train {
+		return "", fmt.Errorf("ParseSQLStatement only accept train SQL for now")
+	}
+	// TODO(typhoonzero): add support for PredictIR and AnalyzeIR
+	trainIR, err := generateTrainIRWithInferredColumns(extended, connStr)
+	if err != nil {
+		return "", err
+	}
+	pbir, err := ir.TrainIRToProto(trainIR, session)
+	if err != nil {
+		return "", err
+	}
+	return proto.MarshalTextString(pbir), nil
 }
 
 // SubmitWorkflow submits an Argo workflow

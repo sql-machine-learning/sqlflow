@@ -15,13 +15,20 @@ package main
 
 import (
 	"bufio"
+	"bytes"
+	"os"
 	"regexp"
 	"strings"
 	"testing"
 
+	"github.com/golang/protobuf/proto"
+
 	"github.com/stretchr/testify/assert"
 
 	prompt "github.com/c-bata/go-prompt"
+	irpb "sqlflow.org/sqlflow/pkg/proto"
+	sf "sqlflow.org/sqlflow/pkg/sql"
+	"sqlflow.org/sqlflow/pkg/sql/testdata"
 )
 
 // TODO(shendiaomo): end to end tests like sqlflowserver/main_test.go
@@ -96,6 +103,37 @@ func TestStdinParser(t *testing.T) {
 	buf, e = p.Read()
 	a.Nil(e)
 	a.Equal("test multiple", string(buf))
+}
+
+func TestStdinParseOnly(t *testing.T) {
+	a := assert.New(t)
+	dataSourceStr := ""
+	switch os.Getenv("SQLFLOW_TEST_DB") {
+	case "mysql":
+		dataSourceStr = "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
+		testdb, err := sf.NewDB(dataSourceStr)
+		a.NoError(err)
+		defer testdb.Close()
+		err = testdata.Popularize(testdb.DB, testdata.IrisSQL)
+		a.NoError(err)
+	case "hive":
+		dataSourceStr = "hive://root:root@127.0.0.1:10000/iris?auth=NOSASL"
+		testdb, err := sf.NewDB(dataSourceStr)
+		a.NoError(err)
+		defer testdb.Close()
+		err = testdata.Popularize(testdb.DB, testdata.IrisHiveSQL)
+		a.NoError(err)
+	default:
+		t.Skipf("skip TestStdinParseOnly for db type: %s", os.Getenv("SQLFLOW_TEST_DB"))
+	}
+	os.Setenv("SQLFLOW_DATASOURCE", dataSourceStr)
+	var stdin bytes.Buffer
+	stdin.Write([]byte("SELECT * from iris.train TO TRAIN DNNClassifier WITH a=1 LABEL class INTO mymodel;"))
+	pbtxt, err := parseSQLFromStdin(&stdin)
+	a.NoError(err)
+	pbIRToTest := &irpb.TrainIR{}
+	proto.UnmarshalText(pbtxt, pbIRToTest)
+	a.Equal("class", pbIRToTest.GetLabel().GetNc().GetFieldMeta().GetName())
 }
 
 type testConsoleParser struct{}
