@@ -16,11 +16,16 @@ package sql
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"os/exec"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/golang/protobuf/proto"
 	pb "sqlflow.org/sqlflow/pkg/proto"
+	"sqlflow.org/sqlflow/pkg/sql/codegen/couler"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
 
@@ -97,25 +102,77 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, 
 	if err != nil {
 		return err
 	}
-
-	connStr := fmt.Sprintf("%s://%s", db.driverName, db.dataSourceName)
-
-	_ = sqls
-	_ = connStr
-	/*
-		_, err = programToIR(sqls, connStr, modelDir, true, false)
+	// TODO(yancey1989): seperate the IR generation to mutiple steps:
+	// For example, a TRAIN statment:
+	// 		SELECT ... TO TRAIN ...
+	// the multiple ir generator steps pipeline can be:
+	// sql -> parsed result -> infer columns -> load train ir from saved model ..
+	spIRs := []ir.SQLStatement{}
+	for _, sql := range sqls {
+		var r ir.SQLStatement
+		connStr := fmt.Sprintf("%s://%s", db.driverName, db.dataSourceName)
+		if sql.extended != nil {
+			parsed := sql.extended
+			if parsed.train {
+				r, err = generateTrainIR(parsed, connStr)
+			} else if parsed.analyze {
+				r, err = generateAnalyzeIR(parsed, connStr, modelDir, false)
+			} else {
+				r, err = generatePredictIR(parsed, connStr, modelDir, false)
+			}
+		} else {
+			standardSQL := ir.StandardSQL(sql.standard)
+			r = &standardSQL
+		}
 		if err != nil {
 			return err
 		}
-	*/
+		r.SetOriginalSQL(sql.original)
+		spIRs = append(spIRs, r)
+	}
 
-	// TODO(yancey1989):
 	// 1. call codegen_couler.go to genearte Couler program.
+	program, err := couler.Run(spIRs)
+	if err != nil {
+		return fmt.Errorf("Generate Couler program error: %v", err)
+	}
+
+	coulerFile, err := ioutil.TempFile("/tmp", "sqlflow-couler*.py")
+	if err != nil {
+		return fmt.Errorf("")
+	}
+	coulerFile.Write([]byte(program))
+	defer coulerFile.Close()
+
 	// 2. compile Couler program into Argo YAML.
+	argoYaml, err := ioutil.TempFile("/tmp", "sqlflow-argo*.yaml")
+	defer argoYaml.Close()
+
+	cmd := exec.Command("couler", "run", "--mode", "argo", "--file", coulerFile.Name())
+	cmd.Env = append(os.Environ())
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("generate Argo workflow yaml error: %v", err)
+	}
+	argoYaml.Write(out)
+
 	// 3. submit Argo YAML and fetch the workflow ID.
+	cmd = exec.Command("kubectl", "create", "-f", argoYaml.Name())
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("submit Argo YAML error: %v", err)
+	}
+	reWorkflow := regexp.MustCompile(`.+/(.+) .+`)
+	wf := reWorkflow.FindStringSubmatch(string(output))
+	var workflowID string
+	if len(wf) == 2 {
+		workflowID = wf[1]
+	} else {
+		return fmt.Errorf("parse workflow ID error: %v", err)
+	}
 
 	return wr.Write(WorkflowJob{
-		JobID: "sqlflow-workflow",
+		JobID: workflowID,
 	})
 }
 
@@ -124,7 +181,6 @@ func runSQLProgram(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, s
 	if err != nil {
 		return err
 	}
-
 	// NOTE(tony): We generate IR and execute its translated program one-by-one since IR generation may depend on the execution
 	// of the previous statement. For example, consider a SQL program
 	//

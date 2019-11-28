@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -273,6 +274,10 @@ func TestLogChanWriter_Write(t *testing.T) {
 }
 
 func TestSubmitWorkflow(t *testing.T) {
+	if os.Getenv("SQLFLOW_ARGO_MODE") != "True" {
+		// pass this TestCase if disable argo mode
+		return
+	}
 	a := assert.New(t)
 	modelDir := ""
 	a.NotPanics(func() {
@@ -281,7 +286,7 @@ func TestSubmitWorkflow(t *testing.T) {
 			switch r.(type) {
 			case WorkflowJob:
 				job := r.(WorkflowJob)
-				a.Equal(job.JobID, "sqlflow-workflow")
+				a.True(strings.HasPrefix(job.JobID, "sqlflow-couler"))
 			default:
 				a.Fail("SubmitWorkflow should return JobID")
 			}

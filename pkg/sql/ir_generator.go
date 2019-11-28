@@ -193,14 +193,16 @@ func generatePredictIR(slct *extendedSelect, connStr string, modelDir string, ge
 		TrainIR:      trainIR,
 	}
 
-	// FIXME(tony): change the function signature to use *DB
-	db, err := NewDB(connStr)
-	if err != nil {
-		return nil, err
-	}
-	defer db.Close()
-	if err := verifyIRWithTrainIR(predIR, db); err != nil {
-		return nil, err
+	if getTrainIRFromModel {
+		// FIXME(tony): change the function signature to use *DB
+		db, err := NewDB(connStr)
+		if err != nil {
+			return nil, err
+		}
+		defer db.Close()
+		if err := verifyIRWithTrainIR(predIR, db); err != nil {
+			return nil, err
+		}
 	}
 
 	return predIR, nil
@@ -235,14 +237,16 @@ func generateAnalyzeIR(slct *extendedSelect, connStr, modelDir string, getTrainI
 		TrainIR:    trainIR,
 	}
 
-	// FIXME(tony): change the function signature to use *DB
-	db, err := NewDB(connStr)
-	if err != nil {
-		return nil, err
-	}
-	defer db.Close()
-	if err := verifyIRWithTrainIR(analyzeIR, db); err != nil {
-		return nil, err
+	if getTrainIRFromModel {
+		// FIXME(tony): change the function signature to use *DB
+		db, err := NewDB(connStr)
+		if err != nil {
+			return nil, err
+		}
+		defer db.Close()
+		if err := verifyIRWithTrainIR(analyzeIR, db); err != nil {
+			return nil, err
+		}
 	}
 
 	return analyzeIR, nil
