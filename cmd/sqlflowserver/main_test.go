@@ -637,6 +637,34 @@ INTO sqlflow_models.my_dnn_model;`
 	a.NoError(err)
 }
 
+func CaseTrainOptimizer(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := `SELECT *
+FROM iris.train
+TO TRAIN DNNClassifier
+WITH model.n_classes = 3, model.hidden_units = [10, 20], model.optimizer=RMSProp
+LABEL class
+INTO sqlflow_models.my_dnn_model;`
+	_, _, err := connectAndRunSQL(trainSQL)
+	a.NoError(err)
+
+	predSQL := `SELECT *
+FROM iris.test
+TO PREDICT iris.predict.class
+USING sqlflow_models.my_dnn_model;`
+	_, _, err = connectAndRunSQL(predSQL)
+	a.NoError(err)
+
+	trainSQL = `SELECT *
+FROM iris.train
+TO TRAIN DNNClassifier
+WITH model.n_classes = 3, model.hidden_units = [10, 20], model.optimizer=NotExist
+LABEL class
+INTO sqlflow_models.my_dnn_model;`
+	_, _, err := connectAndRunSQL(trainSQL)
+	a.Error(err)
+}
+
 func CaseTrainCustomModel(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := `SELECT *
