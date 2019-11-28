@@ -661,7 +661,7 @@ TO TRAIN DNNClassifier
 WITH model.n_classes = 3, model.hidden_units = [10, 20], model.optimizer=NotExist
 LABEL class
 INTO sqlflow_models.my_dnn_model;`
-	_, _, err := connectAndRunSQL(trainSQL)
+	_, _, err = connectAndRunSQL(trainSQL)
 	a.Error(err)
 }
 
