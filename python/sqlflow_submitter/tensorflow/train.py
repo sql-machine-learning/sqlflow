@@ -79,9 +79,12 @@ def train(is_keras_model,
         os.mkdir("cache")  # cache directory for dataset
     model_params.update(feature_columns)
     if not is_keras_model:
-        model_params['model_dir'] = save
+        model_params["model_dir"] = save
         classifier = estimator(**model_params)
     else:
+        if not issubclass(estimator, tf.keras.Model):
+            # functional model need field_metas parameter
+            model_params["field_metas"] = feature_metas
         classifier = estimator(**model_params)
         classifier_pkg = sys.modules[estimator.__module__]
 
@@ -113,7 +116,7 @@ def train(is_keras_model,
 
     if is_keras_model:
         classifier.compile(optimizer=classifier_pkg.optimizer(),
-            loss=classifier_pkg.loss(),
+            loss=classifier_pkg.loss,
             metrics=["accuracy"])
         if hasattr(classifier, 'sqlflow_train_loop'):
             # NOTE(typhoonzero): do not cache dataset if using sqlflow_train_loop, it may use the dataset multiple times causing "tensorflow.python.framework.errors_impl.AlreadyExistsError":

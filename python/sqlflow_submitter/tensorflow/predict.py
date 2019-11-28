@@ -96,9 +96,11 @@ def pred(is_keras_model,
         model_params['model_dir'] = save
         classifier = estimator(**model_params)
     else:
+        if not issubclass(estimator, tf.keras.Model):
+            # functional model need field_metas parameter
+            model_params["field_metas"] = feature_metas
         classifier = estimator(**model_params)
         classifier_pkg = sys.modules[estimator.__module__]
-
 
     if is_keras_model:
         def eval_input_fn(batch_size, cache=False):
