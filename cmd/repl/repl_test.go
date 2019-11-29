@@ -16,6 +16,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"container/list"
 	"os"
 	"regexp"
 	"strings"
@@ -108,17 +109,19 @@ func TestStdinParser(t *testing.T) {
 func TestStdinParseOnly(t *testing.T) {
 	a := assert.New(t)
 	dataSourceStr := ""
+	var testdb *sf.DB
+	var err error
 	switch os.Getenv("SQLFLOW_TEST_DB") {
 	case "mysql":
 		dataSourceStr = "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
-		testdb, err := sf.NewDB(dataSourceStr)
+		testdb, err = sf.NewDB(dataSourceStr)
 		a.NoError(err)
 		defer testdb.Close()
 		err = testdata.Popularize(testdb.DB, testdata.IrisSQL)
 		a.NoError(err)
 	case "hive":
 		dataSourceStr = "hive://root:root@127.0.0.1:10000/iris?auth=NOSASL"
-		testdb, err := sf.NewDB(dataSourceStr)
+		testdb, err = sf.NewDB(dataSourceStr)
 		a.NoError(err)
 		defer testdb.Close()
 		err = testdata.Popularize(testdb.DB, testdata.IrisHiveSQL)
@@ -128,12 +131,56 @@ func TestStdinParseOnly(t *testing.T) {
 	}
 	os.Setenv("SQLFLOW_DATASOURCE", dataSourceStr)
 	var stdin bytes.Buffer
-	stdin.Write([]byte("SELECT * from iris.train TO TRAIN DNNClassifier WITH a=1 LABEL class INTO mymodel;"))
+	trainSQL := `SELECT *
+FROM iris.train
+TO TRAIN DNNClassifier
+WITH model.n_classes = 3, model.hidden_units = [10, 20], train.batch_size = 10, train.epoch = 2
+COLUMN sepal_length, sepal_width, petal_length, petal_width
+LABEL class
+INTO sqlflow_models.mymodel;`
+	stdin.Write([]byte(trainSQL))
 	pbtxt, err := parseSQLFromStdin(&stdin)
 	a.NoError(err)
-	pbIRToTest := &irpb.TrainIR{}
-	proto.UnmarshalText(pbtxt, pbIRToTest)
-	a.Equal("class", pbIRToTest.GetLabel().GetNc().GetFieldMeta().GetName())
+	pbTrain := &irpb.TrainClause{}
+	proto.UnmarshalText(pbtxt, pbTrain)
+	a.Equal("class", pbTrain.GetLabel().GetNc().GetFieldMeta().GetName())
+
+	// run one train SQL to save the model then test predict/analyze use the model
+	sess := &irpb.Session{DbConnStr: dataSourceStr}
+	stream := sf.RunSQLProgram(trainSQL, testdb, "", sess)
+	lastResp := list.New()
+	keepSize := 10
+	for rsp := range stream.ReadAll() {
+		switch rsp.(type) {
+		case error:
+			var s []string
+			for e := lastResp.Front(); e != nil; e = e.Next() {
+				s = append(s, e.Value.(string))
+			}
+			a.Fail(strings.Join(s, "\n"))
+		}
+		lastResp.PushBack(rsp)
+		if lastResp.Len() > keepSize {
+			e := lastResp.Front()
+			lastResp.Remove(e)
+		}
+	}
+
+	stdin.Reset()
+	stdin.Write([]byte("SELECT * from iris.train TO PREDICT iris.predict.class USING sqlflow_models.mymodel;"))
+	pbtxt, err = parseSQLFromStdin(&stdin)
+	a.NoError(err)
+	pbPred := &irpb.PredictClause{}
+	proto.UnmarshalText(pbtxt, pbPred)
+	a.Equal("class", pbPred.GetResultColumn())
+
+	stdin.Reset()
+	stdin.Write([]byte(`SELECT * from iris.train TO EXPLAIN sqlflow_models.mymodel WITH shap_summary.plot_type="bar" USING TreeExplainer;`))
+	pbtxt, err = parseSQLFromStdin(&stdin)
+	a.NoError(err)
+	pbAnalyze := &irpb.AnalyzeClause{}
+	proto.UnmarshalText(pbtxt, pbAnalyze)
+	a.Equal("TreeExplainer", pbAnalyze.GetExplainer())
 }
 
 type testConsoleParser struct{}

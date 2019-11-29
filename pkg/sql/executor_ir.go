@@ -69,19 +69,40 @@ func ParseSQLStatement(sql string, session *pb.Session) (string, error) {
 		return "", err
 	}
 	extended := parsed.extended
-	if !extended.train {
-		return "", fmt.Errorf("ParseSQLStatement only accept train SQL for now")
+	if extended == nil {
+		return "", fmt.Errorf("ParseSQLStatement only accept extended SQL")
 	}
-	// TODO(typhoonzero): add support for PredictIR and AnalyzeIR
-	trainIR, err := generateTrainIRWithInferredColumns(extended, connStr)
-	if err != nil {
-		return "", err
+	if extended.train {
+		trainIR, err := generateTrainIRWithInferredColumns(extended, connStr)
+		if err != nil {
+			return "", err
+		}
+		pbir, err := ir.TrainIRToProto(trainIR, session)
+		if err != nil {
+			return "", err
+		}
+		return proto.MarshalTextString(pbir), nil
+	} else if extended.analyze {
+		analyzeIR, err := generateAnalyzeIR(extended, connStr, "", true)
+		if err != nil {
+			return "", nil
+		}
+		pbir, err := ir.AnalyzeIRToProto(analyzeIR, session)
+		if err != nil {
+			return "", nil
+		}
+		return proto.MarshalTextString(pbir), nil
+	} else {
+		predIR, err := generatePredictIR(extended, connStr, "", true)
+		if err != nil {
+			return "", err
+		}
+		pbir, err := ir.PredictIRToProto(predIR, session)
+		if err != nil {
+			return "", err
+		}
+		return proto.MarshalTextString(pbir), nil
 	}
-	pbir, err := ir.TrainIRToProto(trainIR, session)
-	if err != nil {
-		return "", err
-	}
-	return proto.MarshalTextString(pbir), nil
 }
 
 // SubmitWorkflow submits an Argo workflow

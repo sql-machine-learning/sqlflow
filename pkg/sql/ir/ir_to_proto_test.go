@@ -22,9 +22,8 @@ import (
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
-func TestTrainCodegen(t *testing.T) {
-	a := assert.New(t)
-	sampleTrainIR := &TrainClause{
+func mockTrainIR() *TrainClause {
+	return &TrainClause{
 		DataSource:       "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0",
 		Select:           "select * from iris.train;",
 		ValidationSelect: "select * from iris.test;",
@@ -41,7 +40,10 @@ func TestTrainCodegen(t *testing.T) {
 				&NumericColumn{&FieldMeta{"petal_length", Float, "", []int{1}, false, nil, 0}},
 				&NumericColumn{&FieldMeta{"petal_width", Float, "", []int{1}, false, nil, 0}}}},
 		Label: &NumericColumn{&FieldMeta{"class", Int, "", []int{1}, false, nil, 0}}}
-	sampleSession := &pb.Session{
+}
+
+func mockSession() *pb.Session {
+	return &pb.Session{
 		Token:            "",
 		DbConnStr:        "",
 		ExitOnSubmit:     false,
@@ -51,10 +53,15 @@ func TestTrainCodegen(t *testing.T) {
 		HdfsUser:         "sqlflow_admin",
 		HdfsPass:         "sqlflow_pass",
 	}
-	pbIR, err := TrainIRToProto(sampleTrainIR, sampleSession)
+}
+
+func TestTrainProto(t *testing.T) {
+	a := assert.New(t)
+	sampleTrainIR := mockTrainIR()
+	pbIR, err := TrainIRToProto(sampleTrainIR, mockSession())
 	a.NoError(err)
 	pbtxt := proto.MarshalTextString(pbIR)
-	pbIRToTest := &pb.TrainIR{}
+	pbIRToTest := &pb.TrainClause{}
 	err = proto.UnmarshalText(pbtxt, pbIRToTest)
 	a.NoError(err)
 	a.Equal(
@@ -64,5 +71,48 @@ func TestTrainCodegen(t *testing.T) {
 	a.Equal(
 		int32(sampleTrainIR.Attributes["train.batch_size"].(int)),
 		pbIRToTest.GetAttributes()["train.batch_size"].GetI(),
+	)
+}
+
+func TestPredictProto(t *testing.T) {
+	a := assert.New(t)
+	samplePredIR := &PredictClause{
+		DataSource:   "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0",
+		Select:       "select * from iris.test;",
+		ResultTable:  "predict",
+		ResultColumn: "class",
+		Attributes:   make(map[string]interface{}), // empty attribute
+		TrainIR:      mockTrainIR(),
+	}
+	pbIR, err := PredictIRToProto(samplePredIR, mockSession())
+	a.NoError(err)
+	pbtxt := proto.MarshalTextString(pbIR)
+	pbIRToTest := &pb.PredictClause{}
+	err = proto.UnmarshalText(pbtxt, pbIRToTest)
+	a.NoError(err)
+	a.Equal(
+		samplePredIR.ResultTable,
+		pbIRToTest.GetResultTable(),
+	)
+}
+
+func TestAnalyzeProto(t *testing.T) {
+	a := assert.New(t)
+	sampleAnalyzeIR := &AnalyzeClause{
+		DataSource: "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0",
+		Select:     "select * from iris.train;",
+		Attributes: make(map[string]interface{}), // empty attribute
+		Explainer:  "TreeExplainer",
+		TrainIR:    mockTrainIR(),
+	}
+	pbIR, err := AnalyzeIRToProto(sampleAnalyzeIR, mockSession())
+	a.NoError(err)
+	pbtxt := proto.MarshalTextString(pbIR)
+	pbIRToTest := &pb.AnalyzeClause{}
+	err = proto.UnmarshalText(pbtxt, pbIRToTest)
+	a.NoError(err)
+	a.Equal(
+		sampleAnalyzeIR.Explainer,
+		pbIRToTest.GetExplainer(),
 	)
 }
