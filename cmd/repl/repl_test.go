@@ -138,6 +138,8 @@ WITH model.n_classes = 3, model.hidden_units = [10, 20], train.batch_size = 10, 
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.mymodel;`
+	_, err = testdb.Exec("CREATE DATABASE IF NOT EXISTS sqlflow_models;")
+	a.NoError(err)
 	stdin.Write([]byte(trainSQL))
 	pbtxt, err := parseSQLFromStdin(&stdin)
 	a.NoError(err)
