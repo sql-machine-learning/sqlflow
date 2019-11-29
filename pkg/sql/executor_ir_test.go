@@ -26,7 +26,7 @@ import (
 const (
 	testTrainSelectWithLimit = `
 SELECT * FROM iris.train
-limit 10
+liMIT 10
 TO TRAIN xgboost.gbtree
 WITH
     objective="multi:softprob",
