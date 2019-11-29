@@ -160,7 +160,7 @@ func (d Dictionary) GenerateTableInHTML() string {
 	return strings.Join(l, "\n")
 }
 
-// Update updates `d` by copyint from `other` key by key
+// Update updates `d` by copying from `other` key by key
 func (d Dictionary) Update(other Dictionary) Dictionary {
 	for k, v := range other {
 		d[k] = v
