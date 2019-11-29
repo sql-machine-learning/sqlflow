@@ -112,18 +112,19 @@ func (s *defaultSubmitter) Setup(w *PipeWriter, db *DB, modelDir string, session
 
 func (s *defaultSubmitter) SaveModel(cl *ir.TrainClause) error {
 	m := model{workDir: s.Cwd, TrainSelect: cl.OriginalSQL}
+	modelURI := cl.Into
 	if s.ModelDir != "" {
-		return m.saveTar(s.ModelDir, cl.Into)
+		modelURI = fmt.Sprintf("file://%s/%s", s.ModelDir, cl.Into)
 	}
-	return m.save(s.Db, cl.Into, s.Session)
+	return m.save(modelURI, s.Session)
 }
 
 func (s *defaultSubmitter) LoadModel(cl *ir.TrainClause) error {
+	modelURI := cl.Into
 	if s.ModelDir != "" {
-		_, err := loadTar(s.ModelDir, s.Cwd, cl.Into)
-		return err
+		modelURI = fmt.Sprintf("file://%s/%s", s.ModelDir, cl.Into)
 	}
-	_, err := load(s.Db, cl.Into, s.Cwd)
+	_, err := load(modelURI, s.Cwd, s.Db)
 	return err
 }
 
