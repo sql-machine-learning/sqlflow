@@ -18,7 +18,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"strings"
@@ -82,7 +81,9 @@ func render(rsp interface{}, table *tablewriter.Table) bool {
 		table.Append(row)
 		isTable = true
 	case error:
-		fmt.Printf("ERROR: %v\n", s)
+		if os.Getenv("SQLFLOW_log_dir") != "" { // To avoid printing duplicated error message to console
+			log.New(os.Stderr, "", 0).Printf("ERROR: %v\n", s)
+		}
 	case sql.EndOfExecution:
 		return isTable
 	default:
@@ -109,13 +110,6 @@ func runStmt(stmt string, isTerminal bool, modelDir string, db *sql.DB, ds strin
 	}
 	isTable, tableRendered := false, false
 	table := tablewriter.NewWriter(os.Stdout)
-
-	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	defer os.RemoveAll(cwd)
 
 	stream := sql.RunSQLProgram(stmt, db, modelDir, &pb.Session{})
 	for rsp := range stream.ReadAll() {
