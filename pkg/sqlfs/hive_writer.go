@@ -79,7 +79,7 @@ func (w *HiveWriter) Close() error {
 	if _, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("upload local file into hdfs error: %v", err)
 	}
-	// 3. execute a LOAD statment to load csv to Hive table
+	// 3. execute a LOAD statement to load csv to Hive table
 	query := fmt.Sprintf("LOAD DATA INPATH '%s' OVERWRITE INTO TABLE %s", w.hdfsPath(), w.table)
 	if _, e := w.db.Exec(query); e != nil {
 		return fmt.Errorf("execute query: %s, error: %v", query, e)

@@ -102,8 +102,8 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, 
 	if err != nil {
 		return err
 	}
-	// TODO(yancey1989): seperate the IR generation to mutiple steps:
-	// For example, a TRAIN statment:
+	// TODO(yancey1989): seperate the IR generation to multiple steps:
+	// For example, a TRAIN statement:
 	// 		SELECT ... TO TRAIN ...
 	// the multiple ir generator steps pipeline can be:
 	// sql -> parsed result -> infer columns -> load train ir from saved model ..

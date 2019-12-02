@@ -148,8 +148,8 @@ func parseSQLFromStdin(stdin io.Reader) (string, error) {
 	if err := scanner.Err(); err != nil {
 		return "", err
 	}
-	sqlflowDatasrouce := os.Getenv("SQLFLOW_DATASOURCE")
-	if sqlflowDatasrouce == "" {
+	sqlflowDatasource := os.Getenv("SQLFLOW_DATASOURCE")
+	if sqlflowDatasource == "" {
 		return "", fmt.Errorf("no SQLFLOW_DATASOURCE env provided")
 	}
 

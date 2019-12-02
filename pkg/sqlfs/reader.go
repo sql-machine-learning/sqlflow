@@ -55,7 +55,7 @@ func Open(db *sql.DB, table string) (*Reader, error) {
 	// Since statement like `SELECT id,block FROM tbl ORDER BY id` causes an
 	// error in hive randomly. We decide to sort results here instead of
 	// by SQL engine.
-	// Probably you would worry about the dataset is too huge to be holded in
+	// Probably you would worry about the dataset is too huge to be held in
 	// memory. It's fine due to we are going to save models to file system
 	// for a long term plan.
 	for r.rows.Next() {

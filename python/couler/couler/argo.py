@@ -37,7 +37,7 @@ _when_prefix = None
 _condition_id = None
 # '_while_steps' records the step of recursive logic
 _while_steps: OrderedDict = OrderedDict()
-# '_while_lock' indicts the recursive call start
+# '_while_lock' indicates the recursive call starts
 _while_lock = False
 
 _cluster_config = pyfunc.load_cluster_config()
