@@ -5,6 +5,7 @@ In addition to buliding SQLFlow into a gRPC server, accessed via Jupyter Noteboo
 ![](figures/repl.gif)
 
 ## Quick Start
+
 The SQLFlow Docker image contains the REPL command-line program.  We can run an example session by typing the following command on MacOS.  If you run Docker on Linux, please change `host.docker.internal:3306` to `localhost:3306`.
 
 ```
@@ -79,7 +80,7 @@ sqlflow> SELECT * from iris.predict limit 3;
 
 Congratulations! Now you have successfully completed a session using SQLFlow syntax to train model using DNNClassifier and make a quick prediction.
 
-## Command Line Options
+## Command-line Options
 
 |             Option                      | Description |
 |-----------------------------------------|-------------|
@@ -90,7 +91,7 @@ Congratulations! Now you have successfully completed a session using SQLFlow syn
 
 ## Keyboard Shortcuts
 
-### Moving the cursor
+The following shortcuts move the cursor efficiently.
 
 | Keyboard Shortcut   |                   Action                   |
 |---------------------|--------------------------------------------|
@@ -103,7 +104,7 @@ Congratulations! Now you have successfully completed a session using SQLFlow syn
 |<kbd>Ctrl + b</kbd>  | Go back one **character** (Left arrow)     |
 |<kbd>Ctrl + f</kbd>  | Go forward one **character** (Right arrow) |
 
-### Editing the statements
+The following shortcuts ease the editing of SQL statements.
 
 | Keyboard Shortcut   |                        Action                          |
 |---------------------|--------------------------------------------------------|
