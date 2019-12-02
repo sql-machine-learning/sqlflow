@@ -39,7 +39,6 @@ func (m *model) save(db *DB, table string, session *pb.Session) (e error) {
 	if e != nil {
 		return fmt.Errorf("cannot create sqlfs file %s: %v", table, e)
 	}
-	defer sqlf.Close()
 
 	// Use a bytes.Buffer as the gob message container to separate
 	// the message from the following tarball.
@@ -57,6 +56,10 @@ func (m *model) save(db *DB, table string, session *pb.Session) (e error) {
 
 	if e := cmd.Run(); e != nil {
 		return fmt.Errorf("tar stderr: %v\ntar cmd %v", errBuf.String(), e)
+	}
+
+	if e := sqlf.Close(); e != nil {
+		return fmt.Errorf("close sqlfs error: %v", e)
 	}
 	return nil
 }

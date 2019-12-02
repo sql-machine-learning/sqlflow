@@ -64,7 +64,7 @@ func header(head map[string]interface{}) ([]string, error) {
 	return cols, nil
 }
 
-func render(rsp interface{}, table *tablewriter.Table) bool {
+func render(rsp interface{}, table *tablewriter.Table) (bool, error) {
 	isTable := false
 	switch s := rsp.(type) {
 	case map[string]interface{}: // table header
@@ -81,15 +81,13 @@ func render(rsp interface{}, table *tablewriter.Table) bool {
 		table.Append(row)
 		isTable = true
 	case error:
-		if os.Getenv("SQLFLOW_log_dir") != "" { // To avoid printing duplicated error message to console
-			log.New(os.Stderr, "", 0).Printf("ERROR: %v\n", s)
-		}
+		return false, s
 	case sql.EndOfExecution:
-		return isTable
+		return isTable, nil
 	default:
 		fmt.Println(s)
 	}
-	return isTable
+	return isTable, nil
 }
 
 func flagPassed(name ...string) bool {
@@ -104,16 +102,21 @@ func flagPassed(name ...string) bool {
 	return found
 }
 
-func runStmt(stmt string, isTerminal bool, modelDir string, db *sql.DB, ds string) {
+func runStmt(stmt string, isTerminal bool, modelDir string, db *sql.DB, ds string) error {
 	if !isTerminal {
 		fmt.Println("sqlflow>", stmt)
 	}
 	isTable, tableRendered := false, false
+	var err error
 	table := tablewriter.NewWriter(os.Stdout)
+	sess := makeSessionFromEnv()
 
-	stream := sql.RunSQLProgram(stmt, db, modelDir, &pb.Session{})
+	stream := sql.RunSQLProgram(stmt, db, modelDir, sess)
 	for rsp := range stream.ReadAll() {
-		isTable = render(rsp, table)
+		isTable, err = render(rsp, table)
+		if err != nil {
+			return err
+		}
 
 		// pagination. avoid exceed memory
 		if isTable && table.NumLines() == tablePageSize {
@@ -125,6 +128,7 @@ func runStmt(stmt string, isTerminal bool, modelDir string, db *sql.DB, ds strin
 	if table.NumLines() > 0 || !tableRendered {
 		table.Render()
 	}
+	return nil
 }
 
 func repl(scanner *bufio.Scanner, modelDir string, db *sql.DB, ds string) {
@@ -134,9 +138,23 @@ func repl(scanner *bufio.Scanner, modelDir string, db *sql.DB, ds string) {
 		if err == io.EOF && stmt == "" {
 			return
 		}
-		runStmt(stmt, false, modelDir, db, ds)
+		if err := runStmt(stmt, false, modelDir, db, ds); err != nil {
+			log.Fatalf("run SQL statment failed: %v", err)
+		}
 	}
+}
 
+func makeSessionFromEnv() *pb.Session {
+	return &pb.Session{
+		Token:            os.Getenv("SQLFLOW_USER_TOKEN"),
+		DbConnStr:        os.Getenv("SQLFLOW_DATASOURCE"),
+		ExitOnSubmit:     strings.ToLower(os.Getenv("SQLFLOW_EXIT_ON_SUBMIT")) == "true",
+		UserId:           os.Getenv("SQLFLOW_USER_ID"),
+		HiveLocation:     os.Getenv("SQLFLOW_HIVE_LOCATION"),
+		HdfsNamenodeAddr: os.Getenv("SQLFLOW_HDFS_NAMENODE_ADDR"),
+		HdfsUser:         os.Getenv("JUPYTER_HADOOP_USER"),
+		HdfsPass:         os.Getenv("JUPYTER_HADOOP_PASS"),
+	}
 }
 
 func parseSQLFromStdin(stdin io.Reader) (string, error) {
@@ -152,17 +170,7 @@ func parseSQLFromStdin(stdin io.Reader) (string, error) {
 	if sqlflowDatasrouce == "" {
 		return "", fmt.Errorf("no SQLFLOW_DATASOURCE env provided")
 	}
-
-	sess := &pb.Session{
-		Token:            os.Getenv("SQLFLOW_USER_TOKEN"),
-		DbConnStr:        os.Getenv("SQLFLOW_DATASOURCE"),
-		ExitOnSubmit:     strings.ToLower(os.Getenv("SQLFLOW_EXIT_ON_SUBMIT")) == "true",
-		UserId:           os.Getenv("SQLFLOW_USER_ID"),
-		HiveLocation:     os.Getenv("SQLFLOW_HIVE_LOCATION"),
-		HdfsNamenodeAddr: os.Getenv("SQLFLOW_HDFS_NAMENODE_ADDR"),
-		HdfsUser:         os.Getenv("JUPYTER_HADOOP_USER"),
-		HdfsPass:         os.Getenv("JUPYTER_HADOOP_PASS"),
-	}
+	sess := makeSessionFromEnv()
 	pbIRStr, err := sql.ParseSQLStatement(strings.Join(scanedInput, ""), sess)
 	if err != nil {
 		return "", err
