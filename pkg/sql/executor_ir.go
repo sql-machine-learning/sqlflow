@@ -358,11 +358,11 @@ func createPredictionTableFromIR(predIR *ir.PredictClause, db *DB, session *pb.S
 func loadModelMeta(pr *extendedSelect, db *DB, cwd, modelDir, modelName string) (*extendedSelect, error) {
 	var m *model
 	var e error
+	modelURI := modelName
 	if modelDir != "" {
-		m, e = loadTar(modelDir, cwd, modelName)
-	} else {
-		m, e = load(db, modelName, cwd)
+		modelURI = fmt.Sprintf("file://%s/%s", modelDir, modelName)
 	}
+	m, e = load(modelURI, cwd, db)
 	if e != nil {
 		return nil, fmt.Errorf("load %v", e)
 	}
@@ -381,5 +381,3 @@ func loadModelMeta(pr *extendedSelect, db *DB, cwd, modelDir, modelName string) 
 
 	return pr, nil
 }
-
-func getDefaultSession() *pb.Session { return &pb.Session{} } // for testing

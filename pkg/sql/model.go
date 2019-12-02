@@ -19,22 +19,69 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
+	"strings"
 
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sqlfs"
 )
+
+const modelZooDB = "sqlflow"
+const modelZooTable = "sqlflow.trained_models"
 
 type model struct {
 	workDir     string // We don't expose and gob workDir; instead we tar it.
 	TrainSelect string
 }
 
-// save creates a sqlfs table if it doesn't yet exist, and writes the
+func (m *model) save(modelURI string, session *pb.Session) error {
+	if strings.Contains(modelURI, "://") {
+		uriParts := strings.Split(modelURI, "://")
+		if len(uriParts) == 2 {
+			// oss:// or file://
+			if uriParts[0] == "file" {
+				dir, file := path.Split(uriParts[1])
+				return m.saveTar(dir, file)
+			} else if uriParts[0] == "oss" {
+				return fmt.Errorf("save model to oss is not supported now")
+			}
+		} else {
+			return fmt.Errorf("error modelURI format: %s", modelURI)
+		}
+	}
+	db, err := NewDB(session.DbConnStr)
+	if err != nil {
+		return err
+	}
+	return m.saveDB(db, modelURI, session)
+}
+
+func load(modelURI, dst string, db *DB) (*model, error) {
+	// FIXME(typhoonzero): unify arguments with save, use session,
+	// so that can pass oss credentials too.
+	if strings.Contains(modelURI, "://") {
+		uriParts := strings.Split(modelURI, "://")
+		if len(uriParts) == 2 {
+			// oss:// or file://
+			if uriParts[0] == "file" {
+				dir, file := path.Split(uriParts[1])
+				return loadTar(dir, dst, file)
+			} else if uriParts[0] == "oss" {
+				return nil, fmt.Errorf("save model to oss is not supported now")
+			}
+		} else {
+			return nil, fmt.Errorf("error modelURI format: %s", modelURI)
+		}
+	}
+	return loadDB(db, modelURI, dst)
+}
+
+// saveDB creates a sqlfs table if it doesn't yet exist, and writes the
 // train select statement into the table, followed by the tar-gzipped
 // SQLFlow working directory, which contains the TensorFlow working
 // directory and the trained TensorFlow model.
-func (m *model) save(db *DB, table string, session *pb.Session) (e error) {
+func (m *model) saveDB(db *DB, table string, session *pb.Session) (e error) {
 	sqlf, e := sqlfs.Create(db.DB, db.driverName, table, session)
 	if e != nil {
 		return fmt.Errorf("cannot create sqlfs file %s: %v", table, e)
@@ -88,7 +135,7 @@ func loadTar(modelDir, cwd, save string) (m *model, e error) {
 // load reads from the given sqlfs table for the train select
 // statement, and untar the SQLFlow working directory, which contains
 // the TensorFlow model, into directory cwd.
-func load(db *DB, table, cwd string) (m *model, e error) {
+func loadDB(db *DB, table, cwd string) (m *model, e error) {
 	sqlf, e := sqlfs.Open(db.DB, table)
 	if e != nil {
 		return nil, fmt.Errorf("cannot open sqlfs file %s: %v", table, e)
