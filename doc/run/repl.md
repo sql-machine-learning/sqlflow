@@ -100,8 +100,8 @@ Congratulations! Now you have successfully completed a session using SQLFlow syn
 |<kbd>Ctrl + n</kbd>  | **Next** statement (Down arrow)            |
 |<kbd>Meta + b</kbd>  | Go back one **word**                       |
 |<kbd>Meta + f</kbd>  | Go forward one **word**                    |
-|<kbd>Ctrl + b</kbd>  | Go back one **character** (Left arrow)    |
-|<kbd>Ctrl + f</kbd>  | Go forward one **character** (Right arrow)    |
+|<kbd>Ctrl + b</kbd>  | Go back one **character** (Left arrow)     |
+|<kbd>Ctrl + f</kbd>  | Go forward one **character** (Right arrow) |
 
 ### Editing the statements
 
