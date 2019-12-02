@@ -136,3 +136,34 @@ func readGob(filePath string, object interface{}) error {
 	}
 	return nil
 }
+
+const modelZooTable = "sqlflow.trained_models"
+const modelZooDB = "sqlflow"
+
+// createModelZooTable create the table "sqlflow.trained_models" to save model
+// metas the saved model URI.
+func createModelZooTable(db *DB) error {
+	createDBSQL := fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s;", modelZooDB)
+	_, err := db.Exec(createDBSQL)
+	if err != nil {
+		return err
+	}
+	// schema design: https://github.com/sql-machine-learning/sqlflow/blob/a98218ef8bee57e2a45357d7ee5721e1c6dfeb35/doc/design/model_zoo.md#model-zoo-data-schema
+	// NOTE(typhoonzero): submitter program size may exceed TEXT size(64KB)
+	// NOTE(typhoonzero): train_ir_pb contains all information that how columns are processed
+	// NOTE(typhoonzero): model_uri can be:
+	//    1. file:///path/to/model/dir
+	//    2. db.table
+	//    3. oss://path/to/oss
+	createTableSQL := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s (
+model_id VARCHAR(255),
+author VARCHAR(255),
+model_image VARCHAR(255),
+model_def VARCHAR(255),
+submitter TEXT,
+train_ir_pb TEXT,
+model_uri VARCHAR(255)
+);`, modelZooTable)
+	_, err = db.Exec(createTableSQL)
+	return err
+}
