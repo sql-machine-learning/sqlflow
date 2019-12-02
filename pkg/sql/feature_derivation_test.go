@@ -76,7 +76,7 @@ func TestFeatureDerivation(t *testing.T) {
 	r, e := parser.Parse(normal)
 	a.NoError(e)
 	trainIR, err := generateTrainIR(r, "mysql://root:root@tcp/?maxAllowedPacket=0")
-	e = InferFeatureColumns(trainIR)
+	e = InferFeatureColumns(nil, trainIR)
 	a.NoError(e)
 
 	fc1 := trainIR.Features["feature_columns"][0]
@@ -145,7 +145,7 @@ func TestFeatureDerivation(t *testing.T) {
 	r, e = parser.Parse(crossSQL)
 	a.NoError(e)
 	trainIR, err = generateTrainIR(r, "mysql://root:root@tcp/?maxAllowedPacket=0")
-	e = InferFeatureColumns(trainIR)
+	e = InferFeatureColumns(nil, trainIR)
 	a.NoError(e)
 
 	fc1 = trainIR.Features["feature_columns"][0]
@@ -201,7 +201,7 @@ func TestFeatureDerivationNoColumnClause(t *testing.T) {
 	r, e := parser.Parse(normal)
 	a.NoError(e)
 	trainIR, err := generateTrainIR(r, "mysql://root:root@tcp/?maxAllowedPacket=0")
-	e = InferFeatureColumns(trainIR)
+	e = InferFeatureColumns(nil, trainIR)
 	a.NoError(e)
 
 	a.Equal(4, len(trainIR.Features["feature_columns"]))
@@ -223,7 +223,7 @@ func TestHiveFeatureDerivation(t *testing.T) {
 		Attributes:       map[string]interface{}{},
 		Features:         map[string][]ir.FeatureColumn{},
 		Label:            &ir.NumericColumn{&ir.FieldMeta{"class", ir.Int, "", []int{1}, false, nil, 0}}}
-	e := InferFeatureColumns(trainIR)
+	e := InferFeatureColumns(nil, trainIR)
 	a.NoError(e)
 	a.Equal(4, len(trainIR.Features["feature_columns"]))
 }

@@ -73,7 +73,7 @@ func ParseSQLStatement(sql string, session *pb.Session) (string, error) {
 		return "", fmt.Errorf("ParseSQLStatement only accept extended SQL")
 	}
 	if extended.train {
-		trainIR, err := generateTrainIRWithInferredColumns(extended, connStr)
+		trainIR, err := generateTrainIRWithInferredColumns(nil, extended, connStr)
 		if err != nil {
 			return "", err
 		}
@@ -216,7 +216,7 @@ func runSQLProgram(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, s
 		if sql.extended != nil {
 			parsed := sql.extended
 			if parsed.train {
-				r, err = generateTrainIRWithInferredColumns(parsed, connStr)
+				r, err = generateTrainIRWithInferredColumns(wr, parsed, connStr)
 			} else if parsed.analyze {
 				r, err = generateAnalyzeIR(parsed, connStr, modelDir, submitter().GetTrainIRFromModel())
 			} else {

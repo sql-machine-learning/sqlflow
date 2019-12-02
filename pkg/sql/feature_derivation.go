@@ -221,7 +221,8 @@ func fillFieldMeta(columnTypeList []*sql.ColumnType, rowdata []interface{}, fiel
 
 // InferFeatureColumns fill up featureColumn and columnSpec structs
 // for all fields.
-func InferFeatureColumns(trainIR *ir.TrainClause) error {
+// if wr is not nil, then write
+func InferFeatureColumns(wr *PipeWriter, trainIR *ir.TrainClause) error {
 	db, err := NewDB(trainIR.DataSource)
 	if err != nil {
 		return err
@@ -400,5 +401,16 @@ func InferFeatureColumns(trainIR *ir.TrainClause) error {
 			}
 		}
 	}
+	// Write back to client information about feature derivation result
+	if wr != nil {
+		for target, fclist := range trainIR.Features {
+			for _, fc := range fclist {
+				for _, fm := range fc.GetFieldMeta() {
+					wr.Write(fmt.Sprintf("Using column (%s) in feature column (%T) as model construct param (%s)", fm.Name, fc, target))
+				}
+			}
+		}
+	}
+	wr.Write("\n")
 	return nil
 }

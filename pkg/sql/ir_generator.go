@@ -23,13 +23,13 @@ import (
 	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
 
-func generateTrainIRWithInferredColumns(slct *extendedSelect, connStr string) (*ir.TrainClause, error) {
+func generateTrainIRWithInferredColumns(wr *PipeWriter, slct *extendedSelect, connStr string) (*ir.TrainClause, error) {
 	trainIR, err := generateTrainIR(slct, connStr)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := InferFeatureColumns(trainIR); err != nil {
+	if err := InferFeatureColumns(wr, trainIR); err != nil {
 		return nil, err
 	}
 
@@ -109,7 +109,7 @@ func generateTrainIRByModel(slct *extendedSelect, connStr, cwd, modelDir, model 
 	if err != nil {
 		return nil, err
 	}
-	return generateTrainIRWithInferredColumns(slctWithTrain, connStr)
+	return generateTrainIRWithInferredColumns(nil, slctWithTrain, connStr)
 }
 
 func verifyIRWithTrainIR(sqlir ir.SQLStatement, db *DB) error {
