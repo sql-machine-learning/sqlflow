@@ -114,7 +114,6 @@ func Train(ir *ir.TrainClause) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
 	mp, err := json.Marshal(params[""])
 	if err != nil {
 		return "", err
@@ -151,6 +150,9 @@ func Train(ir *ir.TrainClause) (string, error) {
 // Pred generates a Python program for predict a xgboost model.
 func Pred(ir *ir.PredictClause, session *pb.Session) (string, error) {
 	featureFieldMeta, labelFieldMeta, err := getFieldMeta(ir.TrainIR.Features["feature_columns"], ir.TrainIR.Label)
+	if err != nil {
+		return "", err
+	}
 	f, err := json.Marshal(featureFieldMeta)
 	if err != nil {
 		return "", err
