@@ -108,15 +108,13 @@ func runStmt(stmt string, isTerminal bool, modelDir string, db *sql.DB, ds strin
 	if !isTerminal {
 		fmt.Println("sqlflow>", stmt)
 	}
-	isTable, tableRendered := false, false
+	tableRendered := false
 	table := tablewriter.NewWriter(os.Stdout)
 
 	stream := sql.RunSQLProgram(stmt, db, modelDir, &pb.Session{})
 	for rsp := range stream.ReadAll() {
-		isTable = render(rsp, table)
-
 		// pagination. avoid exceed memory
-		if isTable && table.NumLines() == tablePageSize {
+		if render(rsp, table) && table.NumLines() == tablePageSize {
 			table.Render()
 			tableRendered = true
 			table.ClearRows()
