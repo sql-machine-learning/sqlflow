@@ -23,6 +23,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/golang/protobuf/proto"
+
+	"sqlflow.org/sqlflow/pkg/sql/ir"
+
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sqlfs"
 )
@@ -35,7 +39,7 @@ type model struct {
 	TrainSelect string
 }
 
-func (m *model) save(modelURI string, session *pb.Session) error {
+func (m *model) save(modelURI string, trainIR *ir.TrainClause, session *pb.Session) error {
 	if strings.Contains(modelURI, "://") {
 		uriParts := strings.Split(modelURI, "://")
 		if len(uriParts) == 2 {
@@ -54,7 +58,18 @@ func (m *model) save(modelURI string, session *pb.Session) error {
 	if err != nil {
 		return err
 	}
-	return m.saveDB(db, modelURI, session)
+	if err := m.saveDB(db, modelURI, session); err != nil {
+		return err
+	}
+	// TODO(typhoonzero): support hive, maxcompute saving model zoo metas.
+	if db.driverName == "mysql" {
+		// Save model metas in model zoo table
+		if err := createModelZooTable(db); err != nil {
+			return err
+		}
+		return addTrainedModelsRecord(db, trainIR, modelURI, session)
+	}
+	return nil
 }
 
 func load(modelURI, dst string, db *DB) (*model, error) {
@@ -184,9 +199,6 @@ func readGob(filePath string, object interface{}) error {
 	return nil
 }
 
-const modelZooTable = "sqlflow.trained_models"
-const modelZooDB = "sqlflow"
-
 // createModelZooTable create the table "sqlflow.trained_models" to save model
 // metas the saved model URI.
 func createModelZooTable(db *DB) error {
@@ -197,7 +209,7 @@ func createModelZooTable(db *DB) error {
 	}
 	// schema design: https://github.com/sql-machine-learning/sqlflow/blob/a98218ef8bee57e2a45357d7ee5721e1c6dfeb35/doc/design/model_zoo.md#model-zoo-data-schema
 	// NOTE(typhoonzero): submitter program size may exceed TEXT size(64KB)
-	// NOTE(typhoonzero): train_ir_pb contains all information that how columns are processed
+	// NOTE(typhoonzero): train_ir_pb contains all information how the submitter program is generated, so not saving submitter program now
 	// NOTE(typhoonzero): model_uri can be:
 	//    1. file:///path/to/model/dir
 	//    2. db.table
@@ -207,10 +219,65 @@ model_id VARCHAR(255),
 author VARCHAR(255),
 model_image VARCHAR(255),
 model_def VARCHAR(255),
-submitter TEXT,
 train_ir_pb TEXT,
 model_uri VARCHAR(255)
 );`, modelZooTable)
 	_, err = db.Exec(createTableSQL)
+	return err
+}
+
+func getTrainedModelParts(into string) (string, string, error) {
+	if strings.ContainsRune(into, '.') {
+		parts := strings.Split(into, ".")
+		if len(parts) == 2 {
+			return parts[0], parts[1], nil
+		}
+		return "", "", fmt.Errorf("error INTO format, should be like [creator.]modelID, but got %s", into)
+	}
+	return "", into, nil
+}
+
+func dbStringEscape(src string) string {
+	ret := strings.ReplaceAll(src, "\"", "\\\"")
+	return strings.ReplaceAll(ret, "'", "\\'")
+}
+
+func addTrainedModelsRecord(db *DB, trainIR *ir.TrainClause, modelURI string, sess *pb.Session) error {
+	fmt.Println("in addTrainedModelsRecord")
+	// NOTE(typhoonzero): creator can be empty, if so, the model file is saved into current database
+	// FIXME(typhoonzero): or maybe the into format should be like "creator/modelID"
+	creator, modelID, err := getTrainedModelParts(trainIR.Into)
+	q := fmt.Sprintf("SELECT * FROM %s WHERE model_id='%s'", modelZooTable, modelID)
+	fmt.Println(q)
+	res, err := db.Query(q)
+	if err != nil {
+		return err
+	}
+	defer res.Close()
+	isInsert := false
+	if !res.Next() {
+		isInsert = true
+	}
+	var sql string
+	irproto, err := ir.TrainIRToProto(trainIR, sess)
+	if err != nil {
+		return err
+	}
+	irprotoText := proto.MarshalTextString(irproto)
+	if isInsert {
+		sql = fmt.Sprintf(`INSERT INTO %s
+(model_id, author, model_image, model_def, train_ir_pb, model_uri)
+VALUES ("%s", "%s", "%s", "%s", "%s", "%s")`,
+			modelZooTable, modelID, creator, trainIR.ModelImage, trainIR.Estimator, dbStringEscape(irprotoText), modelURI)
+	} else {
+		sql = fmt.Sprintf(`UPDATE %s SET
+author="%s",
+model_image="%s",
+model_def="%s",
+train_ir_pb="%s",
+model_uri="%s"
+WHERE model_id="%s"`, modelZooTable, creator, trainIR.ModelImage, trainIR.Estimator, dbStringEscape(irprotoText), modelURI, modelID)
+	}
+	_, err = db.Exec(sql)
 	return err
 }
