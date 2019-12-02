@@ -180,14 +180,18 @@ func NewDictionary(estimator, prefix string) Dictionary {
 // PremadeModelParamsDocs stores parameters and documents of all known models
 var PremadeModelParamsDocs map[string]map[string]string
 
-func init() {
-	if err := json.Unmarshal([]byte(ModelParameterJSON), &PremadeModelParamsDocs); err != nil {
-		panic(err) // assertion
-	}
+func removeUnnecessaryParams() {
 	// The following parameters of canned estimators are already supported in the COLUMN clause.
 	for _, v := range PremadeModelParamsDocs {
 		delete(v, "feature_columns")
 		delete(v, "dnn_feature_columns")
 		delete(v, "linear_feature_columns")
 	}
+}
+
+func init() {
+	if err := json.Unmarshal([]byte(ModelParameterJSON), &PremadeModelParamsDocs); err != nil {
+		panic(err) // assertion
+	}
+	removeUnnecessaryParams()
 }

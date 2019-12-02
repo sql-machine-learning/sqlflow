@@ -130,7 +130,7 @@ func attrToPythonValue(attr interface{}) string {
 		// TODO(typhoonzero): support []float etc.
 		return "[]"
 	case string:
-		return fmt.Sprintf(`"%s"`, attr.(string))
+		return attr.(string)
 	default:
 		return ""
 	}
@@ -159,11 +159,6 @@ func IsKerasModel(estimator string) (bool, string) {
 
 func validateAttributes(trainIR *ir.TrainClause) error {
 	modelAttr := attribute.NewDictionary(trainIR.Estimator, "model.")
-	for name, attr := range modelAttr {
-		if strings.HasSuffix(name, "optimizer") {
-			attr.Type = attribute.String
-		}
-	}
 	return modelAttr.Update(commonAttributes).Validate(trainIR.Attributes)
 }
 
