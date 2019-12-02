@@ -15,7 +15,6 @@ package main
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -184,14 +183,9 @@ func (p *promptState) initCompleter() {
 	for _, s := range withSuggestions {
 		p.keywords = append(p.keywords, s.Text)
 	}
-	var modelParams map[string]map[string]string
-	if err := json.Unmarshal([]byte(attribute.ModelParameterJSON), &modelParams); err != nil {
-		panic(err)
-	}
-
 	// initialize models and model parameters
 	p.modelParamDocs = make(map[string][]prompt.Suggest)
-	for model, params := range modelParams {
+	for model, params := range attribute.PremadeModelParamsDocs {
 		p.modelParamDocs[model] = attributes
 		p.models = append(p.models, prompt.Suggest{model, ""})
 		prefix := "model."
@@ -262,7 +256,7 @@ func (p *promptState) completer(in prompt.Document) []prompt.Suggest {
 		return prompt.FilterHasPrefix(toSuggestions, w1, true)
 	case "TRAIN":
 		if w1 == "" {
-			if clause == w2 {
+			if clause == strings.ToUpper(w2) {
 				return prompt.FilterHasPrefix(p.models, w1, true)
 			}
 			return prompt.FilterHasPrefix(trainSuggestions, w1, true)
@@ -271,7 +265,7 @@ func (p *promptState) completer(in prompt.Document) []prompt.Suggest {
 	case "WITH":
 		attributes := p.modelParamDocs[w0]
 		if w1 == "" {
-			if clause == w2 || strings.HasSuffix(w2, ",") {
+			if clause == strings.ToUpper(w2) || strings.HasSuffix(w2, ",") {
 				return prompt.FilterHasPrefix(attributes, w1, true)
 			}
 			return prompt.FilterHasPrefix(withSuggestions, w1, true)
