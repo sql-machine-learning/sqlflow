@@ -87,16 +87,32 @@ message Attribute {
     }
 }
 
-message TrainIR {
+message TrainClause {
     string datasource = 1;
     string select = 2;
     string validation_select  = 3;
     string estimator = 4;
-    map<string, Attribute> attributes = 5;
-    map<string,FeatureColumnList> features = 6;
-    FeatureColumn label = 7;
-    Session session = 8;
-    string into = 9;
+    string model_image = 5;
+    map<string, Attribute> attributes = 6;
+    map<string,FeatureColumnList> features = 7;
+    FeatureColumn label = 8;
+    Session session = 9;
+    string into = 10;
 }
 
-// TODO(typhoonzero): add AnalyzeIR, PredictIR
+message PredictClause {
+    string datasource = 1;
+    string select = 2;
+    string result_table = 3;
+    string result_column = 4;
+    map<string, Attribute> attributes = 5;
+    TrainClause train_ir = 6;
+}
+
+message AnalyzeClause {
+    string datasource = 1;
+    string select = 2;
+    map<string, Attribute> attributes = 3;
+    string explainer = 4;
+    TrainClause train_ir = 5;
+}

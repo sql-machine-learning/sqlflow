@@ -163,7 +163,7 @@ func parseSQLFromStdin(stdin io.Reader) (string, error) {
 		HdfsUser:         os.Getenv("JUPYTER_HADOOP_USER"),
 		HdfsPass:         os.Getenv("JUPYTER_HADOOP_PASS"),
 	}
-	pbIRStr, err := sql.ParseSQLStatement(strings.Join(scanedInput, ""), sess)
+	pbIRStr, err := sql.ParseSQLStatement(strings.Join(scanedInput, "\n"), sess)
 	if err != nil {
 		return "", err
 	}
