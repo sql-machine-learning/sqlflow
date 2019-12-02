@@ -199,16 +199,24 @@ func featureColumnToPb(fc FeatureColumn) (*pb.FeatureColumn, error) {
 	}
 }
 
-// TrainIRToProto convert parsed TrainIR to a protobuf format
-// TODO(typhoonzero): add PredictIR, AnalyzeIR
-func TrainIRToProto(trainIR *TrainClause, sess *pb.Session) (*pb.TrainIR, error) {
+// AttributesToProto convert attributes from IR to protobuf format
+func AttributesToProto(attrsIR map[string]interface{}) (map[string]*pb.Attribute, error) {
 	attrs := make(map[string]*pb.Attribute)
-	for k, v := range trainIR.Attributes {
+	for k, v := range attrsIR {
 		a, err := attrToPB(v)
 		if err != nil {
 			return nil, err
 		}
 		attrs[k] = a
+	}
+	return attrs, nil
+}
+
+// TrainIRToProto convert parsed TrainIR to a protobuf format
+func TrainIRToProto(trainIR *TrainClause, sess *pb.Session) (*pb.TrainClause, error) {
+	attrs, err := AttributesToProto(trainIR.Attributes)
+	if err != nil {
+		return nil, err
 	}
 	features := make(map[string]*pb.FeatureColumnList)
 	for target, fclist := range trainIR.Features {
@@ -237,18 +245,7 @@ func TrainIRToProto(trainIR *TrainClause, sess *pb.Session) (*pb.TrainIR, error)
 		},
 	}
 
-	sessIR := &pb.Session{
-		Token:            sess.GetToken(),
-		DbConnStr:        sess.GetDbConnStr(),
-		ExitOnSubmit:     sess.GetExitOnSubmit(),
-		UserId:           sess.GetUserId(),
-		HiveLocation:     sess.GetHiveLocation(),
-		HdfsNamenodeAddr: sess.GetHdfsNamenodeAddr(),
-		HdfsUser:         sess.GetHdfsUser(),
-		HdfsPass:         sess.GetHdfsPass(),
-	}
-
-	ret := &pb.TrainIR{
+	ret := &pb.TrainClause{
 		Datasource:       trainIR.DataSource,
 		Select:           trainIR.Select,
 		ValidationSelect: trainIR.ValidationSelect,
@@ -256,8 +253,47 @@ func TrainIRToProto(trainIR *TrainClause, sess *pb.Session) (*pb.TrainIR, error)
 		Attributes:       attrs,
 		Features:         features,
 		Label:            label,
-		Session:          sessIR,
+		Session:          sess,
 		Into:             trainIR.Into,
 	}
 	return ret, nil
+}
+
+// PredictIRToProto convert parsed PredictIR to a protobuf format
+func PredictIRToProto(predictIR *PredictClause, sess *pb.Session) (*pb.PredictClause, error) {
+	trainIR, err := TrainIRToProto(predictIR.TrainIR, sess)
+	if err != nil {
+		return nil, err
+	}
+	attrs, err := AttributesToProto(predictIR.Attributes)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.PredictClause{
+		Datasource:   predictIR.DataSource,
+		Select:       predictIR.Select,
+		ResultTable:  predictIR.ResultTable,
+		ResultColumn: predictIR.ResultColumn,
+		Attributes:   attrs,
+		TrainIr:      trainIR,
+	}, nil
+}
+
+// AnalyzeIRToProto convert parsed AnalyzeIR to a protobuf format
+func AnalyzeIRToProto(analyzeIR *AnalyzeClause, sess *pb.Session) (*pb.AnalyzeClause, error) {
+	trainIR, err := TrainIRToProto(analyzeIR.TrainIR, sess)
+	if err != nil {
+		return nil, err
+	}
+	attrs, err := AttributesToProto(analyzeIR.Attributes)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.AnalyzeClause{
+		Datasource: analyzeIR.DataSource,
+		Select:     analyzeIR.Select,
+		Attributes: attrs,
+		Explainer:  analyzeIR.Explainer,
+		TrainIr:    trainIR,
+	}, nil
 }

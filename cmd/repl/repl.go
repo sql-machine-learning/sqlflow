@@ -171,7 +171,7 @@ func parseSQLFromStdin(stdin io.Reader) (string, error) {
 		return "", fmt.Errorf("no SQLFLOW_DATASOURCE env provided")
 	}
 	sess := makeSessionFromEnv()
-	pbIRStr, err := sql.ParseSQLStatement(strings.Join(scanedInput, ""), sess)
+	pbIRStr, err := sql.ParseSQLStatement(strings.Join(scanedInput, "\n"), sess)
 	if err != nil {
 		return "", err
 	}

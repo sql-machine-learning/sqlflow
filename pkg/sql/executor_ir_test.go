@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
 const (
@@ -112,6 +113,12 @@ TO PREDICT housing.xgb_predict.target
 USING sqlflow_models.my_xgb_regression_model;
 `
 )
+
+func getDefaultSession() *pb.Session {
+	return &pb.Session{
+		DbConnStr: fmt.Sprintf("%s://%s", testDB.driverName, testDB.dataSourceName),
+	}
+}
 
 func TestRunSQLProgram(t *testing.T) {
 	a := assert.New(t)
