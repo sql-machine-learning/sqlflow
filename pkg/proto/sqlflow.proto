@@ -14,7 +14,7 @@ service SQLFlow {
     // SQLFlow implements the Run interface with two mode:
     //
     // 1. Local model
-    // The SQLFlow server execute the SQL statments on the local host.
+    // The SQLFlow server execute the SQL statements on the local host.
     // 
     // SQL statements like `USE database`, `DELETE` returns only a success
     // message.
