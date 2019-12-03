@@ -56,7 +56,6 @@ Done predicting. Predict table : iris.predict
 
 - [Quick Start](/doc/quick_start.md)
 - [Language Guide](/doc/language_guide.md)
-- [Run Locally](/doc/run/docker.md)
 
 ## Contributions
 
