@@ -88,7 +88,7 @@ func render(rsp interface{}, table *tablewriter.Table) bool {
 		fmt.Println(s)
 		return false
 	default:
-		log.Fatal("unrecognized response type: %v", s)
+		log.Fatalf("unrecognized response type: %v", s)
 	}
 	return isTable
 }
