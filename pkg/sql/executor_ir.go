@@ -128,6 +128,41 @@ func SubmitWorkflow(sqlProgram string, modelDir string, session *pb.Session) *Pi
 	return rd
 }
 
+func writeCoulerFile(spIRs ir.SQLProgram) (string, error) {
+	program, err := couler.Run(spIRs)
+	if err != nil {
+		return "", fmt.Errorf("generate couler program error: %v", err)
+	}
+
+	coulerFile, err := ioutil.TempFile("/tmp", "sqlflow-couler*.py")
+	if err != nil {
+		return "", fmt.Errorf("")
+	}
+	defer coulerFile.Close()
+	if _, err := coulerFile.Write([]byte(program)); err != nil {
+		return "", err
+	}
+	return coulerFile.Name(), nil
+}
+
+func writeArgoFile(coulerFileName string) (string, error) {
+	argoYaml, err := ioutil.TempFile("/tmp", "sqlflow-argo*.yaml")
+	if err != nil {
+		return "", fmt.Errorf("cannot create temporary Argo YAML file: %v", err)
+	}
+	defer argoYaml.Close()
+
+	cmd := exec.Command("couler", "run", "--mode", "argo", "--file", coulerFileName)
+	cmd.Env = append(os.Environ())
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("generate Argo workflow yaml error: %v", err)
+	}
+	argoYaml.Write(out)
+
+	return argoYaml.Name(), nil
+}
+
 func submitWorkflow(wr *PipeWriter, sqlProgram string, modelDir string, session *pb.Session) error {
 	driverName, dataSourceName, err := SplitDataSource(session.DbConnStr)
 	if err != nil {
@@ -167,35 +202,19 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, modelDir string, session 
 	}
 
 	// 1. call codegen_couler.go to genearte Couler program.
-	program, err := couler.Run(spIRs)
+	coulerFileName, err := writeCoulerFile(spIRs)
 	if err != nil {
-		return fmt.Errorf("Generate Couler program error: %v", err)
+		return err
 	}
-
-	coulerFile, err := ioutil.TempFile("/tmp", "sqlflow-couler*.py")
-	if err != nil {
-		return fmt.Errorf("")
-	}
-	coulerFile.Write([]byte(program))
-	defer coulerFile.Close()
 
 	// 2. compile Couler program into Argo YAML.
-	argoYaml, err := ioutil.TempFile("/tmp", "sqlflow-argo*.yaml")
+	argoFile, err := writeArgoFile(coulerFileName)
 	if err != nil {
-		return fmt.Errorf("cannot create temporary Argo YAML file: %v", err)
+		return err
 	}
-	defer argoYaml.Close()
-
-	cmd := exec.Command("couler", "run", "--mode", "argo", "--file", coulerFile.Name())
-	cmd.Env = append(os.Environ())
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("generate Argo workflow yaml error: %v, output: %s", err, string(out))
-	}
-	argoYaml.Write(out)
 
 	// 3. submit Argo YAML and fetch the workflow ID.
-	cmd = exec.Command("kubectl", "create", "-f", argoYaml.Name())
+	cmd := exec.Command("kubectl", "create", "-f", argoFile)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("submit Argo YAML error: %v, output: %s", err, string(output))

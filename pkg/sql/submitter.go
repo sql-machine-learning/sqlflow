@@ -116,7 +116,7 @@ func (s *defaultSubmitter) SaveModel(cl *ir.TrainClause) error {
 	if s.ModelDir != "" {
 		modelURI = fmt.Sprintf("file://%s/%s", s.ModelDir, cl.Into)
 	}
-	return m.save(modelURI, s.Session)
+	return m.save(modelURI, cl, s.Session)
 }
 
 func (s *defaultSubmitter) LoadModel(cl *ir.TrainClause) error {
