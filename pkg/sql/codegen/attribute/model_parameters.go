@@ -160,6 +160,8 @@ const ModelParameterJSON = `
         "train_batch_size": "Size of batch when run train.",
         "pretrain_epochs": "Number of epochs when pre-train.",
         "pretrain_initializer": "Initialize function for autoencoder layers.",
+        "pretrain_lr": "learning rate to train the auto encoder.",
+        "train_lr": "learning rate to train the cluster network.",
         "train_max_iters": "Number of iterations when train.",
         "update_interval": "Interval between updating target distribution.",
         "tol": "tol.",

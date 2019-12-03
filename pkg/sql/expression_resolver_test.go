@@ -122,13 +122,13 @@ func TestBucketColumn(t *testing.T) {
 	r, e = parser.Parse(badInput)
 	a.NoError(e)
 	c = r.columns["feature_columns"]
-	fcs, _, e = resolveTrainColumns(&c)
+	_, _, e = resolveTrainColumns(&c)
 	a.Error(e)
 
 	r, e = parser.Parse(badBoundaries)
 	a.NoError(e)
 	c = r.columns["feature_columns"]
-	fcs, _, e = resolveTrainColumns(&c)
+	_, _, e = resolveTrainColumns(&c)
 	a.Error(e)
 }
 
@@ -161,13 +161,13 @@ func TestCrossColumn(t *testing.T) {
 	r, e = parser.Parse(badInput)
 	a.NoError(e)
 	c = r.columns["feature_columns"]
-	fcList, _, e = resolveTrainColumns(&c)
+	_, _, e = resolveTrainColumns(&c)
 	a.Error(e)
 
 	r, e = parser.Parse(badBucketSize)
 	a.NoError(e)
 	c = r.columns["feature_columns"]
-	fcList, _, e = resolveTrainColumns(&c)
+	_, _, e = resolveTrainColumns(&c)
 	a.Error(e)
 }
 
@@ -195,13 +195,13 @@ func TestCatIdColumn(t *testing.T) {
 	r, e = parser.Parse(badKey)
 	a.NoError(e)
 	c = r.columns["feature_columns"]
-	fcs, _, e = resolveTrainColumns(&c)
+	_, _, e = resolveTrainColumns(&c)
 	a.Error(e)
 
 	r, e = parser.Parse(badBucket)
 	a.NoError(e)
 	c = r.columns["feature_columns"]
-	fcs, _, e = resolveTrainColumns(&c)
+	_, _, e = resolveTrainColumns(&c)
 	a.Error(e)
 }
 
@@ -248,13 +248,13 @@ func TestEmbeddingColumn(t *testing.T) {
 	r, e = parser.Parse(badInput)
 	a.NoError(e)
 	c = r.columns["feature_columns"]
-	fcs, _, e = resolveTrainColumns(&c)
+	_, _, e = resolveTrainColumns(&c)
 	a.Error(e)
 
 	r, e = parser.Parse(badBucket)
 	a.NoError(e)
 	c = r.columns["feature_columns"]
-	fcs, _, e = resolveTrainColumns(&c)
+	_, _, e = resolveTrainColumns(&c)
 	a.Error(e)
 }
 
@@ -282,13 +282,13 @@ func TestNumericColumn(t *testing.T) {
 	r, e = parser.Parse(moreArgs)
 	a.NoError(e)
 	c = r.columns["feature_columns"]
-	fcs, _, e = resolveTrainColumns(&c)
+	_, _, e = resolveTrainColumns(&c)
 	a.Error(e)
 
 	r, e = parser.Parse(badShape)
 	a.NoError(e)
 	c = r.columns["feature_columns"]
-	fcs, _, e = resolveTrainColumns(&c)
+	_, _, e = resolveTrainColumns(&c)
 	a.Error(e)
 }
 

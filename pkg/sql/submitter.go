@@ -208,34 +208,38 @@ func (s *defaultSubmitter) ExecuteAnalyze(cl *ir.AnalyzeClause) error {
 func (s *defaultSubmitter) Teardown()                 { os.RemoveAll(s.Cwd) }
 func (s *defaultSubmitter) GetTrainIRFromModel() bool { return true }
 
-func (s *elasticdlSubmitter) ExecuteTrain(cl *ir.TrainClause) (e error) {
+func (s *elasticdlSubmitter) ExecuteTrain(cl *ir.TrainClause) error {
 	// TODO(typhoonzero): remove below twice parse when all submitters moved to IR.
-	if pr, e := newExtendedSyntaxParser().Parse(cl.OriginalSQL); e == nil {
-		e = elasticDLTrain(s.Writer, pr, s.Db, s.Cwd, s.Session)
+	pr, e := newExtendedSyntaxParser().Parse(cl.OriginalSQL)
+	if e != nil {
+		return e
 	}
-	return e
+	return elasticDLTrain(s.Writer, pr, s.Db, s.Cwd, s.Session)
 }
 
-func (s *elasticdlSubmitter) ExecutePredict(cl *ir.PredictClause) (e error) {
+func (s *elasticdlSubmitter) ExecutePredict(cl *ir.PredictClause) error {
 	// TODO(typhoonzero): remove below twice parse when all submitters moved to IR.
-	if pr, e := newExtendedSyntaxParser().Parse(cl.OriginalSQL); e == nil {
-		e = elasticDLPredict(s.Writer, pr, s.Db, s.Cwd, s.Session)
+	pr, e := newExtendedSyntaxParser().Parse(cl.OriginalSQL)
+	if e != nil {
+		return e
 	}
-	return e
+	return elasticDLPredict(s.Writer, pr, s.Db, s.Cwd, s.Session)
 }
 
-func (s *alpsSubmitter) ExecuteTrain(cl *ir.TrainClause) (e error) {
+func (s *alpsSubmitter) ExecuteTrain(cl *ir.TrainClause) error {
 	// TODO(typhoonzero): remove below twice parse when all submitters moved to IR.
-	if pr, e := newExtendedSyntaxParser().Parse(cl.OriginalSQL); e == nil {
-		e = alpsTrain(s.Writer, pr, s.Db, s.Cwd, s.Session)
+	pr, e := newExtendedSyntaxParser().Parse(cl.OriginalSQL)
+	if e != nil {
+		return e
 	}
-	return e
+	return alpsTrain(s.Writer, pr, s.Db, s.Cwd, s.Session)
 }
 
-func (s *alpsSubmitter) ExecutePredict(cl *ir.PredictClause) (e error) {
+func (s *alpsSubmitter) ExecutePredict(cl *ir.PredictClause) error {
 	// TODO(typhoonzero): remove below twice parse when all submitters moved to IR.
-	if pr, e := newExtendedSyntaxParser().Parse(cl.OriginalSQL); e == nil {
-		e = alpsPred(s.Writer, pr, s.Db, s.Cwd, s.Session)
+	pr, e := newExtendedSyntaxParser().Parse(cl.OriginalSQL)
+	if e != nil {
+		return e
 	}
-	return e
+	return alpsPred(s.Writer, pr, s.Db, s.Cwd, s.Session)
 }

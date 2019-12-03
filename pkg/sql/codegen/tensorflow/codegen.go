@@ -25,7 +25,7 @@ import (
 	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
 
-var attributeDictionary = attribute.Dictionary{
+var commonAttributes = attribute.Dictionary{
 	"train.batch_size": {attribute.Int, `[default=1]
 The training batch size.
 range: [1,Infinity]`, attribute.IntLowerBoundChecker(1, true)},
@@ -35,8 +35,6 @@ range: [1, Infinity]`, attribute.IntLowerBoundChecker(1, true)},
 	"train.verbose": {attribute.Int, `[default=0]
 Show verbose logs when training.
 possible values: 0, 1`, attribute.IntChoicesChecker([]int{0, 1})},
-	"model.*": {attribute.Unknown, `parameters defined by the model implementation, e.g. https://www.tensorflow.org/api_docs/python/tf/estimator/DNNClassifier#__init__, customized model example: https://github.com/sql-machine-learning/models/blob/develop/sqlflow_models/dnnclassifier.py#L4`,
-		attribute.EmptyChecker()},
 	"validation.select": {attribute.String, `[default=""]
 Specify the dataset for validation.
 example: "SELECT * FROM iris.train LIMIT 100"`, nil},
@@ -159,9 +157,14 @@ func IsKerasModel(estimator string) (bool, string) {
 	return false, fmt.Sprintf("tf.estimator.%s", estimator)
 }
 
+func validateAttributes(trainIR *ir.TrainClause) error {
+	modelAttr := attribute.NewDictionary(trainIR.Estimator, "model.")
+	return modelAttr.Update(commonAttributes).Validate(trainIR.Attributes)
+}
+
 // Train generates a Python program for train a TensorFlow model.
 func Train(trainIR *ir.TrainClause) (string, error) {
-	if err := attributeDictionary.Validate(trainIR.Attributes); err != nil {
+	if err := validateAttributes(trainIR); err != nil {
 		return "", err
 	}
 	trainParams := make(map[string]interface{})

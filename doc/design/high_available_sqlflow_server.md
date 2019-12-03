@@ -205,7 +205,7 @@ func (r *KubernetesJobRunner) fetch(jobID string) (*pb.Result, error) (
 ```
 
 `codegenArgo` generates an Argo multi-steps workflow from the input SQL program. Each step would execute a
-single SQL statment.
+single SQL statement.
 
 ``` yaml
 apiVersion: argoproj.io/v1alpha1

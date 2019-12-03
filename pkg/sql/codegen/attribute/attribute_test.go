@@ -16,10 +16,11 @@ package attribute
 import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
+	"reflect"
 	"testing"
 )
 
-func TestDictionary_Validate(t *testing.T) {
+func TestDictionaryValidate(t *testing.T) {
 	a := assert.New(t)
 
 	checker := func(i interface{}) error {
@@ -37,6 +38,33 @@ func TestDictionary_Validate(t *testing.T) {
 	a.EqualError(tb.Validate(map[string]interface{}{"a": -1}), "some error")
 	a.EqualError(tb.Validate(map[string]interface{}{"_a": -1}), fmt.Sprintf(errUnsupportedAttribute, "_a"))
 	a.EqualError(tb.Validate(map[string]interface{}{"a": 1.0}), fmt.Sprintf(errUnexpectedType, "a", "Int", 1.0))
+}
+
+func TestPremadeModelParamsDocs(t *testing.T) {
+	a := assert.New(t)
+
+	a.Equal(len(PremadeModelParamsDocs), 14)
+	a.Equal(len(PremadeModelParamsDocs["DNNClassifier"]), 12)
+	a.NotContains(PremadeModelParamsDocs["DNNClassifier"], "feature_columns")
+	a.Contains(PremadeModelParamsDocs["DNNClassifier"], "optimizer")
+	a.Contains(PremadeModelParamsDocs["DNNClassifier"], "hidden_units")
+	a.Contains(PremadeModelParamsDocs["DNNClassifier"], "n_classes")
+}
+
+func TestNewAndUpdateDictionary(t *testing.T) {
+	a := assert.New(t)
+
+	commonAttrs := Dictionary{"a": {Int, "attribute a", nil}}
+	specificAttrs := NewDictionary("DNNClassifier", "model.")
+	a.Equal(len(specificAttrs), 12)
+	a.Equal(len(specificAttrs.Update(specificAttrs)), 12)
+	a.Equal(len(specificAttrs.Update(commonAttrs)), 13)
+	a.Equal(len(specificAttrs), 13)
+	a.True(reflect.DeepEqual(specificAttrs["a"], commonAttrs["a"]))
+	a.Contains(specificAttrs, "model.optimizer")
+	a.Contains(specificAttrs, "model.hidden_units")
+	a.Contains(specificAttrs, "model.n_classes")
+	a.NotContains(specificAttrs, "model.feature_columns")
 }
 
 func TestDictionary_GenerateTableInHTML(t *testing.T) {
