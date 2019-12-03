@@ -628,6 +628,7 @@ USING sqlflow_models.my_dnn_model;`
 	a.NoError(err)
 
 	// TODO(typhoonzero): also support string column type for training and prediction (column c6)
+	// NOTE(typhoonzero): this test also tests saving to the same model name when saving to model zoo table (sqlflow.trained_models)
 	trainVaryColumnTypes := `SELECT c1, c2, c3, c4, c5, class from feature_derivation_case.train
 TO TRAIN DNNClassifier
 WITH model.n_classes=3, model.hidden_units=[10,10]

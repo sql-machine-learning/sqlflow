@@ -243,12 +243,10 @@ func dbStringEscape(src string) string {
 }
 
 func addTrainedModelsRecord(db *DB, trainIR *ir.TrainClause, modelURI string, sess *pb.Session) error {
-	fmt.Println("in addTrainedModelsRecord")
 	// NOTE(typhoonzero): creator can be empty, if so, the model file is saved into current database
 	// FIXME(typhoonzero): or maybe the into format should be like "creator/modelID"
 	creator, modelID, err := getTrainedModelParts(trainIR.Into)
 	q := fmt.Sprintf("SELECT * FROM %s WHERE model_id='%s'", modelZooTable, modelID)
-	fmt.Println(q)
 	res, err := db.Query(q)
 	if err != nil {
 		return err
