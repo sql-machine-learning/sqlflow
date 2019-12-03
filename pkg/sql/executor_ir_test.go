@@ -282,8 +282,7 @@ func TestLogChanWriter_Write(t *testing.T) {
 
 func TestSubmitWorkflow(t *testing.T) {
 	if os.Getenv("SQLFLOW_ARGO_MODE") != "True" {
-		// pass this TestCase if disable argo mode
-		return
+		t.Skip("argo: skip Argo tests")
 	}
 	a := assert.New(t)
 	modelDir := ""
@@ -294,6 +293,8 @@ func TestSubmitWorkflow(t *testing.T) {
 			case WorkflowJob:
 				job := r.(WorkflowJob)
 				a.True(strings.HasPrefix(job.JobID, "sqlflow-couler"))
+				// TODO(tony): wait to check if job succeeded.
+				// The workflow is currently failed since we haven't configure the data source.
 			default:
 				a.Fail("SubmitWorkflow should return JobID")
 			}
