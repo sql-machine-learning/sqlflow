@@ -115,12 +115,8 @@ func runStmt(stmt string, isTerminal bool, modelDir string, db *sql.DB, ds strin
 
 	stream := sql.RunSQLProgram(stmt, db, modelDir, sess)
 	for rsp := range stream.ReadAll() {
-		isTable, err := render(rsp, table)
-		if err != nil {
-			return err
-		}
 		// pagination. avoid exceed memory
-		if isTable && table.NumLines() == tablePageSize {
+		if render(rsp, table) && table.NumLines() == tablePageSize {
 			table.Render()
 			tableRendered = true
 			table.ClearRows()
