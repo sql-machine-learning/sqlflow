@@ -64,7 +64,7 @@ func header(head map[string]interface{}) ([]string, error) {
 	return cols, nil
 }
 
-func render(rsp interface{}, table *tablewriter.Table) (bool, error) {
+func render(rsp interface{}, table *tablewriter.Table) bool {
 	isTable := false
 	switch s := rsp.(type) {
 	case map[string]interface{}: // table header
@@ -81,17 +81,16 @@ func render(rsp interface{}, table *tablewriter.Table) (bool, error) {
 		table.Append(row)
 		isTable = true
 	case error:
-		log.Fatalf("run sql statement failed, error: %v", v)
+		log.Fatalf("run sql statement failed, error: %v", s)
 	case sql.EndOfExecution:
-		return isTable, nil
+		return isTable
 	case string:
 		fmt.Println(s)
-		return false, nil
+		return false
 	default:
-
-		fmt.Println(s)
+		log.Fatal("unrecognized response type: %v", s)
 	}
-	return isTable, nil
+	return isTable
 }
 
 func flagPassed(name ...string) bool {
@@ -118,7 +117,7 @@ func runStmt(stmt string, isTerminal bool, modelDir string, db *sql.DB, ds strin
 	for rsp := range stream.ReadAll() {
 		isTable, err := render(rsp, table)
 		if err != nil {
-			return fmt.Errorf("")
+			return err
 		}
 		// pagination. avoid exceed memory
 		if isTable && table.NumLines() == tablePageSize {
