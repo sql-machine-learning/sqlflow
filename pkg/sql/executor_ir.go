@@ -167,6 +167,9 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, 
 
 	// 2. compile Couler program into Argo YAML.
 	argoYaml, err := ioutil.TempFile("/tmp", "sqlflow-argo*.yaml")
+	if err != nil {
+		return fmt.Errorf("cannot create temporary Argo YAML file: %v", err)
+	}
 	defer argoYaml.Close()
 
 	cmd := exec.Command("couler", "run", "--mode", "argo", "--file", coulerFile.Name())
