@@ -46,7 +46,7 @@ const (
 
 var testServerAddress string
 
-func mockRun(sql string, db *sf.DB, modelDir string, session *pb.Session) *sf.PipeReader {
+func mockRun(sql string, modelDir string, session *pb.Session) *sf.PipeReader {
 	rd, wr := sf.Pipe()
 	singleSQL := sql
 	go func() {

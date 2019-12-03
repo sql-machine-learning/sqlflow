@@ -104,14 +104,14 @@ func flagPassed(name ...string) bool {
 	return found
 }
 
-func runStmt(stmt string, isTerminal bool, modelDir string, db *sql.DB, ds string) {
+func runStmt(stmt string, isTerminal bool, modelDir string, ds string) {
 	if !isTerminal {
 		fmt.Println("sqlflow>", stmt)
 	}
 	tableRendered := false
 	table := tablewriter.NewWriter(os.Stdout)
 
-	stream := sql.RunSQLProgram(stmt, db, modelDir, &pb.Session{})
+	stream := sql.RunSQLProgram(stmt, modelDir, &pb.Session{DbConnStr: ds})
 	for rsp := range stream.ReadAll() {
 		// pagination. avoid exceed memory
 		if render(rsp, table) && table.NumLines() == tablePageSize {
@@ -125,14 +125,19 @@ func runStmt(stmt string, isTerminal bool, modelDir string, db *sql.DB, ds strin
 	}
 }
 
-func repl(scanner *bufio.Scanner, modelDir string, db *sql.DB, ds string) {
+func repl(scanner *bufio.Scanner, modelDir string, ds string) {
+	db, err := sql.NewDB(ds)
+	if err != nil {
+		log.Fatalf("failed to open database: %v", err)
+	}
+	defer db.Close()
 	for {
 		stmt, err := readStmt(scanner)
 		fmt.Println()
 		if err == io.EOF && stmt == "" {
 			return
 		}
-		runStmt(stmt, false, modelDir, db, ds)
+		runStmt(stmt, false, modelDir, ds)
 	}
 
 }
@@ -189,12 +194,6 @@ func main() {
 		os.Exit(0)
 	}
 
-	db, err := sql.NewDB(*ds)
-	if err != nil {
-		log.Fatalf("failed to open database: %v", err)
-	}
-	defer db.Close()
-
 	if *modelDir != "" {
 		if _, derr := os.Stat(*modelDir); derr != nil {
 			os.Mkdir(*modelDir, os.ModePerm)
@@ -204,6 +203,7 @@ func main() {
 	isTerminal := !flagPassed("execute", "e", "file", "f") && terminal.IsTerminal(syscall.Stdin)
 
 	sqlFile := os.Stdin
+	var err error
 	if flagPassed("file", "f") {
 		sqlFile, err = os.Open(*sqlFileName)
 		if err != nil {
@@ -218,8 +218,8 @@ func main() {
 	}
 	scanner := bufio.NewScanner(reader)
 	if isTerminal {
-		runPrompt(func(stmt string) { runStmt(stmt, true, *modelDir, db, *ds) })
+		runPrompt(func(stmt string) { runStmt(stmt, true, *modelDir, *ds) })
 	} else {
-		repl(scanner, *modelDir, db, *ds)
+		repl(scanner, *modelDir, *ds)
 	}
 }

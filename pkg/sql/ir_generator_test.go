@@ -207,7 +207,7 @@ TO TRAIN DNNClassifier
 WITH model.n_classes=3, model.hidden_units=[10,20]
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
-INTO sqlflow_models.mymodel;`, testDB, modelDir, nil)
+INTO sqlflow_models.mymodel;`, modelDir, nil)
 	a.True(goodStream(stream.ReadAll()))
 
 	predIR, err := generatePredictIR(r, connStr, modelDir, true)
@@ -241,7 +241,7 @@ WITH
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.my_xgboost_model;
-`, testDB, modelDir, nil)
+`, modelDir, nil)
 	a.NoError(e)
 	a.True(goodStream(stream.ReadAll()))
 
