@@ -44,16 +44,15 @@ type WorkflowJob struct {
 // RunSQLProgram run a SQL program.
 func RunSQLProgram(sqlProgram string, modelDir string, session *pb.Session) *PipeReader {
 	rd, wr := Pipe()
-	var db *DB
-	var err error
-	if db, err = NewDB(session.DbConnStr); err != nil {
-		wr.Write(fmt.Sprintf("create DB failed: %v", err))
-		log.Errorf("create DB failed: %v", err)
-	}
-	defer db.Close()
 	go func() {
+		var db *DB
+		var err error
+		if db, err = NewDB(session.DbConnStr); err != nil {
+			wr.Write(fmt.Sprintf("create DB failed: %v", err))
+			log.Errorf("create DB failed: %v", err)
+		}
 		defer wr.Close()
-		err := runSQLProgram(wr, sqlProgram, db, modelDir, session)
+		err = runSQLProgram(wr, sqlProgram, db, modelDir, session)
 
 		if err != nil {
 			log.Errorf("runSQLProgram error: %v", err)
@@ -401,6 +400,7 @@ func loadModelMeta(pr *extendedSelect, db *DB, cwd, modelDir, modelName string) 
 	if modelDir != "" {
 		modelURI = fmt.Sprintf("file://%s/%s", modelDir, modelName)
 	}
+
 	m, e = load(modelURI, cwd, db)
 	if e != nil {
 		return nil, fmt.Errorf("load %v", e)

@@ -136,9 +136,6 @@ func loadTar(modelDir, cwd, save string) (m *model, e error) {
 // statement, and untar the SQLFlow working directory, which contains
 // the TensorFlow model, into directory cwd.
 func loadDB(db *DB, table, cwd string) (m *model, e error) {
-	fmt.Println(db.driverName)
-	fmt.Println(db.dataSourceName)
-	fmt.Println(table)
 	sqlf, e := sqlfs.Open(db.DB, table)
 	if e != nil {
 		return nil, fmt.Errorf("cannot open sqlfs file %s: %v", table, e)

@@ -65,6 +65,7 @@ func dropTable(db *sql.DB, table string) error {
 // hasTable checks if a table exists.
 func hasTable(db *sql.DB, table string) (bool, error) {
 	if _, e := db.Exec(fmt.Sprintf("SELECT 1 FROM %s LIMIT 1", table)); e != nil {
+		fmt.Println(e)
 		return false, fmt.Errorf("hasTable %s failed: %v", table, e)
 	}
 	return true, nil
