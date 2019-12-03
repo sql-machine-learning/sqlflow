@@ -386,6 +386,9 @@ func parseNumericColumn(el *exprlist) (*ir.NumericColumn, error) {
 		return nil, fmt.Errorf("bad NUMERIC key: %s, err: %s, should be like: %s", (*el)[1], err, help)
 	}
 	shape, err := parseShape((*el)[2])
+	if err != nil {
+		return nil, err
+	}
 
 	return &ir.NumericColumn{
 		FieldMeta: &ir.FieldMeta{
