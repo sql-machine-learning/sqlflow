@@ -35,7 +35,7 @@ var (
 	sqlNullString  = reflect.TypeOf(sql.NullString{})
 	mysqlNullTime  = reflect.TypeOf(mysql.NullTime{})
 	// builtin type supports sql like `select 1;` or  `select count(*) from ...`
-	builtInBytes  = reflect.TypeOf([]byte(""))
+	builtInBytes   = reflect.TypeOf([]byte(""))
 	builtinString  = reflect.TypeOf(string(""))
 	builtinInt     = reflect.TypeOf(int(0))
 	builtinInt8    = reflect.TypeOf(int8(0))
