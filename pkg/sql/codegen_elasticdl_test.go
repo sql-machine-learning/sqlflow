@@ -100,6 +100,7 @@ func TestPredElasticDLFiller(t *testing.T) {
 		USING trained_elasticdl_keras_classifier;`
 
 	r, e := parser.Parse(predStatement)
+	a.NoError(e)
 	filler, err := newElasticDLPredictFiller(r, testDB)
 	a.NoError(err)
 

@@ -97,6 +97,7 @@ func TestPredALPSFiller(t *testing.T) {
 		USING sqlflow_model;`
 
 	r, e := parser.Parse(predStatement)
+	a.NoError(e)
 	session := &pb.Session{UserId: "sqlflow_user"}
 	filler, e := newALPSPredictFiller(r, session)
 	a.NoError(e)
