@@ -410,7 +410,7 @@ func InferFeatureColumns(wr *PipeWriter, trainIR *ir.TrainClause) error {
 				}
 			}
 		}
+		wr.Write("\n")
 	}
-	wr.Write("\n")
 	return nil
 }
