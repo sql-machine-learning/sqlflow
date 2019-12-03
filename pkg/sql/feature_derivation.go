@@ -222,7 +222,7 @@ func fillFieldMeta(columnTypeList []*sql.ColumnType, rowdata []interface{}, fiel
 // InferFeatureColumns fill up featureColumn and columnSpec structs
 // for all fields.
 // if wr is not nil, then write
-func InferFeatureColumns(wr *PipeWriter, trainIR *ir.TrainClause) error {
+func InferFeatureColumns(trainIR *ir.TrainClause) error {
 	db, err := NewDB(trainIR.DataSource)
 	if err != nil {
 		return err
@@ -401,7 +401,11 @@ func InferFeatureColumns(wr *PipeWriter, trainIR *ir.TrainClause) error {
 			}
 		}
 	}
-	// Write back to client information about feature derivation result
+	return nil
+}
+
+// LogFeatureDerivationResult write messages to wr to log the feature derivation results
+func LogFeatureDerivationResult(wr *PipeWriter, trainIR *ir.TrainClause) {
 	if wr != nil {
 		for target, fclist := range trainIR.Features {
 			for _, fc := range fclist {
@@ -412,5 +416,4 @@ func InferFeatureColumns(wr *PipeWriter, trainIR *ir.TrainClause) error {
 		}
 		wr.Write("\n")
 	}
-	return nil
 }
