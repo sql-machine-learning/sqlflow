@@ -50,55 +50,80 @@ var (
 	builtinFloat32 = reflect.TypeOf(float32(0))
 	builtinFloat64 = reflect.TypeOf(float64(0))
 	builtinTime    = reflect.TypeOf(time.Time{})
+
+	instantiators = map[reflect.Type]func() interface{}{
+		sqlNullBool: func() interface{} {
+			return new(sql.NullBool)
+		},
+		sqlNullInt64: func() interface{} {
+			return new(sql.NullInt64)
+		},
+		sqlNullFloat64: func() interface{} {
+			return new(sql.NullFloat64)
+		},
+		sqlRawBytes: func() interface{} {
+			return new(sql.RawBytes)
+		},
+		sqlNullString: func() interface{} {
+			return new(sql.NullString)
+		},
+		mysqlNullTime: func() interface{} {
+			return new(mysql.NullTime)
+		},
+		builtinTime: func() interface{} {
+			return new(time.Time)
+		},
+		builtIntBytes: func() interface{} {
+			return new([]byte)
+		},
+		builtinString: func() interface{} {
+			return new(string)
+		},
+		builtinInt: func() interface{} {
+			return new(int)
+		},
+		builtinInt8: func() interface{} {
+			return new(int8)
+		},
+		builtinInt16: func() interface{} {
+			return new(int16)
+		},
+		builtinInt32: func() interface{} {
+			return new(int32)
+		},
+		builtinInt64: func() interface{} {
+			return new(int64)
+		},
+		builtinUint: func() interface{} {
+			return new(uint)
+		},
+		builtinUint8: func() interface{} {
+			return new(uint8)
+		},
+		builtinUint16: func() interface{} {
+			return new(uint16)
+		},
+		builtinUint32: func() interface{} {
+			return new(uint32)
+		},
+		builtinUint64: func() interface{} {
+			return new(uint64)
+		},
+		builtinFloat32: func() interface{} {
+			return new(float32)
+		},
+		builtinFloat64: func() interface{} {
+			return new(float64)
+		},
+	} // end of instantiators.
 )
 
 func createByType(rt reflect.Type) (interface{}, error) {
-	switch rt {
-	case sqlNullBool:
-		return new(sql.NullBool), nil
-	case sqlNullInt64:
-		return new(sql.NullInt64), nil
-	case sqlNullFloat64:
-		return new(sql.NullFloat64), nil
-	case sqlRawBytes:
-		return new(sql.RawBytes), nil
-	case sqlNullString:
-		return new(sql.NullString), nil
-	case mysqlNullTime:
-		return new(mysql.NullTime), nil
-	case builtinTime:
-		return new(time.Time), nil
-	case builtIntBytes:
-		return new([]byte), nil
-	case builtinString:
-		return new(string), nil
-	case builtinInt:
-		return new(int), nil
-	case builtinInt8:
-		return new(int8), nil
-	case builtinInt16:
-		return new(int16), nil
-	case builtinInt32:
-		return new(int32), nil
-	case builtinInt64:
-		return new(int64), nil
-	case builtinUint:
-		return new(uint), nil
-	case builtinUint8:
-		return new(uint8), nil
-	case builtinUint16:
-		return new(uint16), nil
-	case builtinUint32:
-		return new(uint32), nil
-	case builtinUint64:
-		return new(uint64), nil
-	case builtinFloat32:
-		return new(float32), nil
-	case builtinFloat64:
-		return new(float64), nil
-	default:
-		return nil, fmt.Errorf("unrecognized column scan type %v", rt)
+	f, ok := instantiators[rt]
+	if ok {
+		return f(), nil
 	}
+	return nil, fmt.Errorf("unrecognized column scan type %v", rt)
 }
 
 func parseVal(val interface{}) (interface{}, error) {
