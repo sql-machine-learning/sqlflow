@@ -72,7 +72,7 @@ Second, let's use a standar SQL to fetch the traning data from table `boston.tra
 SELECT * FROM boston.train
 ```
 
-Finally, the following is the SQLFlow Train statment of this regression task, you can run it in the cell:
+Finally, the following is the SQLFlow Train statement of this regression task, you can run it in the cell:
 
 ```sql
 %%sqlflow
@@ -107,7 +107,7 @@ And using a standar SQL to fetch the prediction data:
 SELECT * FROM boston.test
 ```
 
-Finally, the following is the SQLFLow Prediction statment:
+Finally, the following is the SQLFLow Prediction statement:
 
 ```sql
 %%sqlflow

@@ -75,7 +75,8 @@ func TestFeatureDerivation(t *testing.T) {
 
 	r, e := parser.Parse(normal)
 	a.NoError(e)
-	trainIR, err := generateTrainIR(r, "mysql://root:root@tcp/?maxAllowedPacket=0")
+	trainIR, e := generateTrainIR(r, "mysql://root:root@tcp/?maxAllowedPacket=0")
+	a.NoError(e)
 	e = InferFeatureColumns(trainIR)
 	a.NoError(e)
 
@@ -144,7 +145,8 @@ func TestFeatureDerivation(t *testing.T) {
 	parser = newExtendedSyntaxParser()
 	r, e = parser.Parse(crossSQL)
 	a.NoError(e)
-	trainIR, err = generateTrainIR(r, "mysql://root:root@tcp/?maxAllowedPacket=0")
+	trainIR, e = generateTrainIR(r, "mysql://root:root@tcp/?maxAllowedPacket=0")
+	a.NoError(e)
 	e = InferFeatureColumns(trainIR)
 	a.NoError(e)
 
@@ -200,7 +202,8 @@ func TestFeatureDerivationNoColumnClause(t *testing.T) {
 
 	r, e := parser.Parse(normal)
 	a.NoError(e)
-	trainIR, err := generateTrainIR(r, "mysql://root:root@tcp/?maxAllowedPacket=0")
+	trainIR, e := generateTrainIR(r, "mysql://root:root@tcp/?maxAllowedPacket=0")
+	a.NoError(e)
 	e = InferFeatureColumns(trainIR)
 	a.NoError(e)
 

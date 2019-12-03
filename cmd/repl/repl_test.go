@@ -86,6 +86,87 @@ func TestPromptState(t *testing.T) {
 	a.Equal("", s.statement)
 }
 
+func TestComplete(t *testing.T) {
+	a := assert.New(t)
+	s := newPromptState()
+	p := prompt.NewBuffer()
+	// Imitating the `input from console` process
+	p.InsertText(`SELECT * FROM iris.train T`, false, true)
+	c := s.completer(*p.Document())
+	a.Equal(1, len(c))
+	a.Equal("TO", c[0].Text)
+
+	p.InsertText(`O T`, false, true)
+	c = s.completer(*p.Document())
+	a.Equal(1, len(c))
+	a.Equal("TRAIN", c[0].Text)
+
+	p.InsertText(`RAIN `, false, true)
+	c = s.completer(*p.Document())
+	a.Equal(14, len(c))
+
+	p.InsertText(`DNN`, false, true)
+	c = s.completer(*p.Document())
+	a.Equal(4, len(c))
+
+	p.InsertText(`c`, false, true)
+	c = s.completer(*p.Document())
+	a.Equal(1, len(c))
+	a.Equal("DNNClassifier", c[0].Text)
+	p.DeleteBeforeCursor(1) // TODO(shendiaomo): It's sort of case sensitive at the moment
+
+	p.InsertText(`C`, false, true)
+	c = s.completer(*p.Document())
+	a.Equal(1, len(c))
+	a.Equal("DNNClassifier", c[0].Text)
+
+	p.InsertText(`lassifier w`, false, true)
+	c = s.completer(*p.Document())
+	a.Equal(1, len(c))
+	a.Equal("WITH", c[0].Text)
+
+	p.InsertText(`ith `, false, true)
+	c = s.completer(*p.Document())
+	a.Equal(15, len(c))
+
+	p.InsertText(`model.f`, false, true)
+	c = s.completer(*p.Document())
+	a.Equal(0, len(c)) // model.feature_columns removed by codegen/attibute.go
+	p.DeleteBeforeCursor(1)
+
+	p.InsertText(`h`, false, true)
+	c = s.completer(*p.Document())
+	a.Equal(1, len(c))
+	a.Equal("model.hidden_units", c[0].Text)
+
+	p.InsertText(`idden_units=[400,300], `, false, true)
+	c = s.completer(*p.Document())
+	a.Equal(15, len(c))
+
+	p.InsertText(`model.n`, false, true)
+	c = s.completer(*p.Document())
+	a.Equal(1, len(c))
+	a.Equal("model.n_classes", c[0].Text)
+
+	p.InsertText(`_classes=3 l`, false, true)
+	c = s.completer(*p.Document())
+	a.Equal(1, len(c))
+	a.Equal("LABEL", c[0].Text)
+
+	p.InsertText(`abel class i`, false, true)
+	c = s.completer(*p.Document())
+	a.Equal(1, len(c))
+	a.Equal("INTO", c[0].Text)
+
+	p.InsertText(`nto `, false, true)
+	c = s.completer(*p.Document())
+	a.Equal(0, len(c))
+
+	p.InsertText(`nto sqlflow_models.my_awesome_model;`, false, true)
+	c = s.completer(*p.Document())
+	a.Equal(0, len(c))
+}
+
 func TestStdinParser(t *testing.T) {
 	a := assert.New(t)
 	p := newTestConsoleParser()

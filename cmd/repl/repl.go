@@ -81,10 +81,14 @@ func render(rsp interface{}, table *tablewriter.Table) (bool, error) {
 		table.Append(row)
 		isTable = true
 	case error:
-		return false, s
+		log.Fatalf("run sql statement failed, error: %v", v)
 	case sql.EndOfExecution:
 		return isTable, nil
+	case string:
+		fmt.Println(s)
+		return false, nil
 	default:
+
 		fmt.Println(s)
 	}
 	return isTable, nil
@@ -106,18 +110,16 @@ func runStmt(stmt string, isTerminal bool, modelDir string, db *sql.DB, ds strin
 	if !isTerminal {
 		fmt.Println("sqlflow>", stmt)
 	}
-	isTable, tableRendered := false, false
-	var err error
+	tableRendered := false
 	table := tablewriter.NewWriter(os.Stdout)
 	sess := makeSessionFromEnv()
 
 	stream := sql.RunSQLProgram(stmt, db, modelDir, sess)
 	for rsp := range stream.ReadAll() {
-		isTable, err = render(rsp, table)
+		isTable, err := render(rsp, table)
 		if err != nil {
-			return err
+			return fmt.Errorf("")
 		}
-
 		// pagination. avoid exceed memory
 		if isTable && table.NumLines() == tablePageSize {
 			table.Render()
@@ -166,8 +168,8 @@ func parseSQLFromStdin(stdin io.Reader) (string, error) {
 	if err := scanner.Err(); err != nil {
 		return "", err
 	}
-	sqlflowDatasrouce := os.Getenv("SQLFLOW_DATASOURCE")
-	if sqlflowDatasrouce == "" {
+	sqlflowDatasource := os.Getenv("SQLFLOW_DATASOURCE")
+	if sqlflowDatasource == "" {
 		return "", fmt.Errorf("no SQLFLOW_DATASOURCE env provided")
 	}
 	sess := makeSessionFromEnv()

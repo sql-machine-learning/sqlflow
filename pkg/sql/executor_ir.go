@@ -123,8 +123,8 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, 
 	if err != nil {
 		return err
 	}
-	// TODO(yancey1989): seperate the IR generation to mutiple steps:
-	// For example, a TRAIN statment:
+	// TODO(yancey1989): separate the IR generation to multiple steps:
+	// For example, a TRAIN statement:
 	// 		SELECT ... TO TRAIN ...
 	// the multiple ir generator steps pipeline can be:
 	// sql -> parsed result -> infer columns -> load train ir from saved model ..
@@ -167,6 +167,9 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, 
 
 	// 2. compile Couler program into Argo YAML.
 	argoYaml, err := ioutil.TempFile("/tmp", "sqlflow-argo*.yaml")
+	if err != nil {
+		return fmt.Errorf("cannot create temporary Argo YAML file: %v", err)
+	}
 	defer argoYaml.Close()
 
 	cmd := exec.Command("couler", "run", "--mode", "argo", "--file", coulerFile.Name())

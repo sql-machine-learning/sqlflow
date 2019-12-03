@@ -14,6 +14,7 @@
 package attribute
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -157,4 +158,40 @@ func (d Dictionary) GenerateTableInHTML() string {
 
 	l = append(l, `</table>`)
 	return strings.Join(l, "\n")
+}
+
+// Update updates `d` by copying from `other` key by key
+func (d Dictionary) Update(other Dictionary) Dictionary {
+	for k, v := range other {
+		d[k] = v
+	}
+	return d
+}
+
+// NewDictionary create a new Dictionary according to `estimator`
+func NewDictionary(estimator, prefix string) Dictionary {
+	var d = Dictionary{}
+	for param, doc := range PremadeModelParamsDocs[estimator] {
+		d[prefix+param] = &Description{Unknown, doc, nil}
+	}
+	return d
+}
+
+// PremadeModelParamsDocs stores parameters and documents of all known models
+var PremadeModelParamsDocs map[string]map[string]string
+
+func removeUnnecessaryParams() {
+	// The following parameters of canned estimators are already supported in the COLUMN clause.
+	for _, v := range PremadeModelParamsDocs {
+		delete(v, "feature_columns")
+		delete(v, "dnn_feature_columns")
+		delete(v, "linear_feature_columns")
+	}
+}
+
+func init() {
+	if err := json.Unmarshal([]byte(ModelParameterJSON), &PremadeModelParamsDocs); err != nil {
+		panic(err) // assertion
+	}
+	removeUnnecessaryParams()
 }
