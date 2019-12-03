@@ -61,6 +61,8 @@ The environment variable `SQLFLOW_TEST_DB=mysql` specify MySQL as the SQL engine
 
 As the above `docker run` command binds the source code directory on the host computer to the container, we can edit the source code on the host using any editor, VS Code, Emacs, etc.
 
+After the editing and before you can Git commit, please install the [`pre-commit`](https://pre-commit.com/) tool.  SQLFlow needs it to run pre-commit checks.
+
 ## The Command-line REPL
 
 SQLFlow provides a command-line tool `repl` for evaluating SQL statements.  This tool makes it easy to debug.  To build it, run the following commands.
