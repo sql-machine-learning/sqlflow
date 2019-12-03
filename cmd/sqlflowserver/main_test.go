@@ -158,65 +158,54 @@ func ParseRow(stream pb.SQLFlow_RunClient) ([]string, [][]*any.Any) {
 }
 
 func prepareTestData(dbStr string) error {
-	// popularize test data
-	testDB, err := sql.NewDB(dbStr)
-	if err != nil {
-		return err
+	testDB, e := sql.NewDB(dbStr)
+	if e != nil {
+		return e
 	}
-	if os.Getenv("SQLFLOW_TEST_DB") != "maxcompute" {
-		_, err = testDB.Exec("CREATE DATABASE IF NOT EXISTS sqlflow_models;")
-		if err != nil {
-			return err
+
+	db := os.Getenv("SQLFLOW_TEST_DB")
+	if db != "maxcompute" {
+		_, e := testDB.Exec("CREATE DATABASE IF NOT EXISTS sqlflow_models;")
+		if e != nil {
+			return e
 		}
 	}
 
-	switch os.Getenv("SQLFLOW_TEST_DB") {
+	var datasets []string
+	switch db {
 	case "mysql":
-		if err := testdata.Popularize(testDB.DB, testdata.IrisSQL); err != nil {
-			return err
-		}
-		if err := testdata.Popularize(testDB.DB, testdata.ChurnSQL); err != nil {
-			return err
-		}
-		if err := testdata.Popularize(testDB.DB, testdata.StandardJoinTest); err != nil {
-			return err
-		}
-		if err := testdata.Popularize(testDB.DB, testdata.HousingSQL); err != nil {
-			return err
-		}
-		if err := testdata.Popularize(testDB.DB, testdata.FeatureDerivationCaseSQL); err != nil {
-			return err
-		}
-		return testdata.Popularize(testDB.DB, testdata.TextCNSQL)
+		datasets = []string{
+			testdata.IrisSQL,
+			testdata.ChurnSQL,
+			testdata.StandardJoinTest,
+			testdata.HousingSQL,
+			testdata.FeatureDerivationCaseSQL,
+			testdata.TextCNSQL}
 	case "hive":
-		if err := testdata.Popularize(testDB.DB, testdata.IrisHiveSQL); err != nil {
-			return err
-		}
-		if err = testdata.Popularize(testDB.DB, testdata.ChurnHiveSQL); err != nil {
-			return err
-		}
-		if err := testdata.Popularize(testDB.DB, testdata.FeatureDerivationCaseSQLHive); err != nil {
-			return err
-		}
-		return testdata.Popularize(testDB.DB, testdata.HousingSQL)
+		datasets = []string{
+			testdata.IrisHiveSQL,
+			testdata.ChurnHiveSQL,
+			testdata.FeatureDerivationCaseSQLHive,
+			testdata.HousingSQL}
 	case "maxcompute":
-		submitter := os.Getenv("SQLFLOW_submitter")
-		if submitter == "alps" {
-			if err := testdata.Popularize(testDB.DB, testdata.ODPSFeatureMapSQL); err != nil {
-				return err
-			}
-			if err := testdata.Popularize(testDB.DB, testdata.ODPSSparseColumnSQL); err != nil {
-				return err
-			}
-			return nil
+		if os.Getenv("SQLFLOW_submitter") == "alps" {
+			datasets = []string{
+				testdata.ODPSFeatureMapSQL,
+				testdata.ODPSSparseColumnSQL,
+				testdata.IrisMaxComputeSQL}
+		} else {
+			datasets = []string{testdata.IrisMaxComputeSQL}
 		}
-		if err := testdata.Popularize(testDB.DB, testdata.IrisMaxComputeSQL); err != nil {
-			return err
-		}
-		return nil
+	default:
+		return fmt.Errorf("unrecognized SQLFLOW_TEST_DB %s", db)
 	}
 
-	return fmt.Errorf("unrecognized SQLFLOW_TEST_DB %s", os.Getenv("SQLFLOW_TEST_DB"))
+	for _, dataset := range datasets {
+		if err := testdata.Popularize(testDB.DB, dataset); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func generateTempCA() (tmpDir, caCrt, caKey string, err error) {
