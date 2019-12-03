@@ -86,6 +86,7 @@ func (m *model) saveDB(db *DB, table string, session *pb.Session) (e error) {
 	if e != nil {
 		return fmt.Errorf("cannot create sqlfs file %s: %v", table, e)
 	}
+	defer sqlf.Close()
 
 	// Use a bytes.Buffer as the gob message container to separate
 	// the message from the following tarball.
