@@ -42,11 +42,17 @@ type WorkflowJob struct {
 }
 
 // RunSQLProgram run a SQL program.
-func RunSQLProgram(sqlProgram string, db *DB, modelDir string, session *pb.Session) *PipeReader {
+func RunSQLProgram(sqlProgram string, modelDir string, session *pb.Session) *PipeReader {
 	rd, wr := Pipe()
 	go func() {
+		var db *DB
+		var err error
+		if db, err = NewDB(session.DbConnStr); err != nil {
+			wr.Write(fmt.Sprintf("create DB failed: %v", err))
+			log.Errorf("create DB failed: %v", err)
+		}
 		defer wr.Close()
-		err := runSQLProgram(wr, sqlProgram, db, modelDir, session)
+		err = runSQLProgram(wr, sqlProgram, db, modelDir, session)
 
 		if err != nil {
 			log.Errorf("runSQLProgram error: %v", err)
@@ -106,11 +112,11 @@ func ParseSQLStatement(sql string, session *pb.Session) (string, error) {
 }
 
 // SubmitWorkflow submits an Argo workflow
-func SubmitWorkflow(sqlProgram string, db *DB, modelDir string, session *pb.Session) *PipeReader {
+func SubmitWorkflow(sqlProgram string, modelDir string, session *pb.Session) *PipeReader {
 	rd, wr := Pipe()
 	go func() {
 		defer wr.Close()
-		err := submitWorkflow(wr, sqlProgram, db, modelDir, session)
+		err := submitWorkflow(wr, sqlProgram, modelDir, session)
 		if err != nil {
 			if err != ErrClosedPipe {
 				if err := wr.Write(err); err != nil {
@@ -157,8 +163,12 @@ func writeArgoFile(coulerFileName string) (string, error) {
 	return argoYaml.Name(), nil
 }
 
-func submitWorkflow(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, session *pb.Session) error {
-	sqls, err := parse(db.driverName, sqlProgram)
+func submitWorkflow(wr *PipeWriter, sqlProgram string, modelDir string, session *pb.Session) error {
+	driverName, dataSourceName, err := SplitDataSource(session.DbConnStr)
+	if err != nil {
+		return err
+	}
+	sqls, err := parse(driverName, sqlProgram)
 	if err != nil {
 		return err
 	}
@@ -170,7 +180,7 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, 
 	spIRs := []ir.SQLStatement{}
 	for _, sql := range sqls {
 		var r ir.SQLStatement
-		connStr := fmt.Sprintf("%s://%s", db.driverName, db.dataSourceName)
+		connStr := fmt.Sprintf("%s://%s", driverName, dataSourceName)
 		if sql.extended != nil {
 			parsed := sql.extended
 			if parsed.train {
@@ -413,6 +423,7 @@ func loadModelMeta(pr *extendedSelect, db *DB, cwd, modelDir, modelName string) 
 	if modelDir != "" {
 		modelURI = fmt.Sprintf("file://%s/%s", modelDir, modelName)
 	}
+
 	m, e = load(modelURI, cwd, db)
 	if e != nil {
 		return nil, fmt.Errorf("load %v", e)

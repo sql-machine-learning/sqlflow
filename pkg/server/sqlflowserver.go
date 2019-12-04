@@ -32,14 +32,14 @@ import (
 )
 
 // NewServer returns a server instance
-func NewServer(run func(string, *sf.DB, string, *pb.Session) *sf.PipeReader,
+func NewServer(run func(string, string, *pb.Session) *sf.PipeReader,
 	modelDir string) *Server {
 	return &Server{run: run, modelDir: modelDir}
 }
 
 // Server is the instance will be used to connect to DB and execute training
 type Server struct {
-	run      func(sql string, db *sf.DB, modelDir string, session *pb.Session) *sf.PipeReader
+	run      func(sql string, modelDir string, session *pb.Session) *sf.PipeReader
 	modelDir string
 }
 
@@ -51,18 +51,11 @@ func (s *Server) Fetch(ctx context.Context, job *pb.Job) (*pb.JobStatus, error) 
 
 // Run implements `rpc Run (Request) returns (stream Response)`
 func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
-	var db *sf.DB
-
-	var err error
-	if db, err = sf.NewDB(req.Session.DbConnStr); err != nil {
-		return fmt.Errorf("create DB failed: %v", err)
-	}
-	defer db.Close()
 	sqlStatements, err := sf.SplitMultipleSQL(req.Sql)
 	if err != nil {
 		return err
 	}
-	rd := s.run(req.Sql, db, s.modelDir, req.Session)
+	rd := s.run(req.Sql, s.modelDir, req.Session)
 	defer rd.Close()
 
 	for r := range rd.ReadAll() {

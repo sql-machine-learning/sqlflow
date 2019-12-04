@@ -15,10 +15,12 @@ package sql
 
 import (
 	"container/list"
+	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
 const (
@@ -85,7 +87,8 @@ func TestStandardSQL(t *testing.T) {
 
 func TestSQLLexerError(t *testing.T) {
 	a := assert.New(t)
-	stream := RunSQLProgram("SELECT * FROM ``?[] AS WHERE LIMIT;", testDB, "", nil)
+	ds := fmt.Sprintf("%s://%s", testDB.driverName, testDB.dataSourceName)
+	stream := RunSQLProgram("SELECT * FROM ``?[] AS WHERE LIMIT;", "", &pb.Session{DbConnStr: ds})
 	a.False(goodStream(stream.ReadAll()))
 }
 
