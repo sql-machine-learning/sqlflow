@@ -24,7 +24,7 @@ try:
 except:
     pass
 
-from sqlflow_submitter.db import connect_with_data_source, db_generator
+from sqlflow_submitter.db import connect_with_data_source, db_generator, parseMaxComputeDSN
 
 TF_VERSION_2 = True  # TODO(shendiaomo): Remove after we fully upgrade to TF2.0
 # Disable Tensorflow INFO and WARNING
@@ -71,7 +71,9 @@ def train(is_keras_model,
           save="",
           batch_size=1,
           epochs=1,
-          verbose=0):
+          verbose=0,
+          is_pai=True,
+          pai_table=""):
     if verbose > 0:
         tf.get_logger().setLevel(logging.INFO)
     conn = connect_with_data_source(datasource)
@@ -102,12 +104,32 @@ def train(is_keras_model,
         ds_mapper = functools.partial(parse_sparse_feature, feature_column_names=feature_column_names, feature_metas=feature_metas)
         return dataset.map(ds_mapper)
 
+    def pai_maxcompute_input_fn(datasetStr):
+        driver, dsn = datasource.split("://")
+        _, _, _, database = parseMaxComputeDSN(dsn)
+        tables = ["odps://%s/tables/%s" % (database, pai_table)]
+        record_defaults = []
+        selected_cols = feature_column_names
+        selected_cols.append(label_meta["name"])
+        for name in feature_column_names:
+            dtype = get_dtype(feature_metas[name]["dtype"])
+            record_defaults.append(tf.constant(0, dtype=dtype, shape=feature_metas[name]["shape"]))
+        record_defaults.append(
+            tf.constant(0, get_dtype(label_meta["dtype"]), shape=label_meta["shape"]))
+        dataset = tf.data.TableRecordDataset(tables,
+                                     record_defaults=record_defaults,
+                                     selected_cols=selected_cols)
+        ds_mapper = functools.partial(parse_sparse_feature, feature_column_names=feature_column_names, feature_metas=feature_metas)
+        return dataset.map(ds_mapper)
+
     def train_input_fn(batch_size):
-        dataset = input_fn(select)
+        if is_pai:
+            dataset = pai_maxcompute_input_fn(select)
+        else:
+            dataset = input_fn(select)
         dataset = dataset.shuffle(1000).batch(batch_size)
         if not is_keras_model:
             dataset = dataset.repeat(epochs if epochs else 1)
-        
         return dataset
 
     def validate_input_fn(batch_size):
