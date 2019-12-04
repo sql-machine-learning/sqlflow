@@ -56,13 +56,11 @@ Done predicting. Predict table : iris.predict
 
 - [Quick Start](/doc/quick_start.md)
 - [Language Guide](/doc/language_guide.md)
-- [Docker Installation](/doc/run/docker.md)
 
 ## Contributions
 
-- [Build from source](/doc/build.md)
-- [The walkthrough of the source code](/doc/walkthrough.md)
-- [The choice of parser generator](/doc/design/sql_parser.md)
+- [Build and Test](/doc/build.md)
+- [Walkthrough the Project](/doc/walkthrough.md)
 
 ## Roadmap
 

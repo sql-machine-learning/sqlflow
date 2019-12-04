@@ -228,6 +228,7 @@ func TestGenerateAnalyzeIR(t *testing.T) {
 		t.Skip(fmt.Sprintf("%s: skip test", getEnv("SQLFLOW_TEST_DB", "mysql")))
 	}
 	a := assert.New(t)
+	connStr := "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
 
 	modelDir, e := ioutil.TempDir("/tmp", "sqlflow_models")
 	a.Nil(e)
@@ -242,7 +243,7 @@ WITH
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.my_xgboost_model;
-`, modelDir, nil)
+`, modelDir, &pb.Session{DbConnStr: connStr})
 	a.NoError(e)
 	a.True(goodStream(stream.ReadAll()))
 
@@ -258,7 +259,6 @@ INTO sqlflow_models.my_xgboost_model;
 	`)
 	a.NoError(e)
 
-	connStr := "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
 	AnalyzeIR, e := generateAnalyzeIR(pr, connStr, modelDir, true)
 	a.NoError(e)
 	a.Equal(AnalyzeIR.DataSource, connStr)

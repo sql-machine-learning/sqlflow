@@ -686,6 +686,9 @@ func resolveColumnSpec(el *exprlist, isSparse bool) (*columns.ColumnSpec, error)
 	}
 	if len(*el) >= 5 {
 		dtype, err = expression2string((*el)[4])
+		if err != nil {
+			return nil, err
+		}
 	}
 	return &columns.ColumnSpec{
 		ColumnName: name,

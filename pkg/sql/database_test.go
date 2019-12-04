@@ -42,3 +42,12 @@ func TestDatabaseOpenMysql(t *testing.T) {
 	_, e = db.Exec("show databases")
 	a.NoError(e)
 }
+
+func TestSplitDataSource(t *testing.T) {
+	a := assert.New(t)
+	ds := "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
+	driverName, datasourceName, e := SplitDataSource(ds)
+	a.EqualValues(driverName, "mysql")
+	a.EqualValues(datasourceName, "root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0")
+	a.NoError(e)
+}

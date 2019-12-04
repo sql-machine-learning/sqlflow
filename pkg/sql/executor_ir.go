@@ -285,6 +285,10 @@ func runSingleSQLIR(wr *PipeWriter, sqlIR ir.SQLStatement, db *DB, modelDir stri
 			})
 		}
 	}()
+	trainIR, ok := sqlIR.(*ir.TrainClause)
+	if ok {
+		LogFeatureDerivationResult(wr, trainIR)
+	}
 	if e := submitter().Setup(wr, db, modelDir, session); e != nil {
 		return e
 	}

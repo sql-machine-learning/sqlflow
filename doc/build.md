@@ -1,95 +1,76 @@
 # Build from Source in a Docker Container
 
-We create a canonical dev environment for Go and Python developers using Docker images.
+The source code of SQLFlow is in Go, Java, protobuf, yacc, and Python.  To build from source code, we need toolchains of all these languages.  In addition to that, we need to install MySQL, Hive, and MaxCompute client for unit tests.  To ease the software installation and configuration, we provide a `Dockerfile` that contains all the requirement software for building and testing.
 
 ## Prerequisite
 
-1. Go >= 1.13. [download here](https://golang.org/dl/)
-1. Docker CE >= 18.x. [download here](https://docs.docker.com/docker-for-mac/install/)
+1. Git for checking out the source code.
+1. [Docker CE >= 18.x](https://docs.docker.com/docker-for-mac/install/) for building the Docker image of development tools.
 
-## Building in Container
+## Checkout the Source Code
 
-We build a Docker image that contains development tools below.
-
-1. Python Interpreter
-1. Go compiler
-1. Protobuf compiler
-1. Protobuf to Go compiler extension
-1. MySQL database
-
-Because this repo contains Go code, please make sure that you have the directory structure required by Go. On my computer, I have `GOPATH` set to `$Home/go`, you can have your `$GOPATH` pointing to any directory as you like.
+We can clone the source code to any working directory, say, `~/sqlflow`.
 
 ```bash
-export GOPATH=$HOME/go
+cd ~
+git clone https://github.com/sql-machine-learning/sqlflow
 ```
 
-Now that `$GOPATH$` is set, we could git clone the source code of our project by running:
+## Build the Development Docker Image
+
+We can build the Docker image from the `Dockerfile`.
 
 ```bash
-go get sqlflow.org/sqlflow
+cd sqlflow
+docker build -t sqlflow .
 ```
 
-Change the directory to our project root by running
-
-```bash
-cd $GOPATH/src/sqlflow.org/sqlflow
-```
-
-Build the Docker image either from project `Dockerfile`.
-
-```bash
-docker build -t sqlflow:latest .
-```
-
-or SQLFlow's [official registry](https://hub.docker.com/r/sqlflow/sqlflow/tags) on DockerHub.
+Or, we can pull the Docker image [pre-built by the CI system](https://hub.docker.com/r/sqlflow/sqlflow/tags) from DockerHub.
 
 ```bash
 docker pull sqlflow/sqlflow
 docker tag sqlflow/sqlflow:latest sqlflow:latest
 ```
 
-Note it will take a while to build from Dockerfile, especially when the network is unpredictable.
+## Build and Test
 
-## Development
-
-### Build and Test
-
-We build and test the project inside the docker container. To run the container, we need to map the `$GOPATH` directory on the host into the
-`/go` directory in the container, because the Dockerfile configures `/go` as
-the `$GOPATH` in the container:
+Let us start a container running the development Docker image.
 
 ```bash
-docker run --rm -it -v $GOPATH:/go \
-    -w /go/src/sqlflow.org/sqlflow \
-    sqlflow:latest bash
+docker run --rm -it -v $HOME/sqlflow:/sqlflow -w /sqlflow sqlflow bash
 ```
 
-Inside the Docker container, start a MySQL server in the background
+In the Docker container, we need to start a MySQL server for testing.
 
 ```bash
 service mysql start
 ```
 
-run all the tests as
+Then, we can build and run tests.
 
 ```bash
 go generate ./...
 SQLFLOW_TEST_DB=mysql go test -v ./...
 ```
 
-where `go generate` invokes the `protoc` command to translate `server/sqlflow.proto` into `server/sqlflow.pb.go` and `go test -v` builds and run unit tests. The environment variable `SQLFLOW_TEST_DB=mysql` specify MySQL as the backend, you can also check [test_hive.sh](https://github.com/sql-machine-learning/sqlflow/blob/develop/scripts/test_hive.sh) and [test_maxcompute.sh](https://github.com/sql-machine-learning/sqlflow/blob/develop/scripts/test_maxcompute.sh) to run the unit tests with other backends.
+The commandline `go generate` is necessary to call `protoc` for translating gRPC interface and to call `goyacc` for generating the parser.
+
+The environment variable `SQLFLOW_TEST_DB=mysql` specify MySQL as the SQL engine during testing.  You can also choose `hive` for Apache Hive and `maxcompute` for Alibaba MaxCompute.
 
 ## Editing on Host
 
-When we use this Docker image for daily development work, the source code relies on the host computer instead of the container. The source code includes this repo and all its dependencies, for example, the Go package `google.golang.org/grpc`. Code-on-the-host allows us to run our favorite editors (Emacs, Vim, Eclipse, and more) on the host.  Please free to rely on editors add-ons to analyze the source code for auto-completion.
+As the above `docker run` command binds the source code directory on the host computer to the container, we can edit the source code on the host using any editor, VS Code, Emacs, etc.
+
+After the editing and before you can Git commit, please install the [`pre-commit`](https://pre-commit.com/) tool.  SQLFlow needs it to run pre-commit checks.
 
 ## The Command-line REPL
 
-The REPL is a binary linked with SQLFlow. In the Docker image, the sample data is already loaded in the MySQL service, you can start MySQL using `service mysql start`. To run it, type the following
-command:
+SQLFlow provides a command-line tool `repl` for evaluating SQL statements.  This tool makes it easy to debug.  To build it, run the following commands.
 
 ```bash
-go run cmd/repl/repl.go --datasource="mysql://root:root@tcp(localhost:3306)/?maxAllowedPacket=0"
+cd cmd/repl
+go install
+~/go/bin/repl --datasource="mysql://root:root@tcp(localhost:3306)/?maxAllowedPacket=0"
 ```
 
-You should be able to see the prompt of `sqlflow>`.  Now, please follow the [REPL tutorial](run/repl.md).
+Please follow the [REPL tutorial](run/repl.md) to understand what we can do with the REPL.

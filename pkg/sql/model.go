@@ -120,6 +120,10 @@ func (m *model) saveDB(db *DB, table string, session *pb.Session) (e error) {
 	if e := cmd.Run(); e != nil {
 		return fmt.Errorf("tar stderr: %v\ntar cmd %v", errBuf.String(), e)
 	}
+
+	if e := sqlf.Close(); e != nil {
+		return fmt.Errorf("close sqlfs error: %v", e)
+	}
 	return nil
 }
 
@@ -246,6 +250,10 @@ func addTrainedModelsRecord(db *DB, trainIR *ir.TrainClause, modelURI string, se
 	// NOTE(typhoonzero): creator can be empty, if so, the model file is saved into current database
 	// FIXME(typhoonzero): or maybe the into format should be like "creator/modelID"
 	creator, modelID, err := getTrainedModelParts(trainIR.Into)
+	if err != nil {
+		return err
+	}
+
 	q := fmt.Sprintf("SELECT * FROM %s WHERE model_id='%s'", modelZooTable, modelID)
 	res, err := db.Query(q)
 	if err != nil {

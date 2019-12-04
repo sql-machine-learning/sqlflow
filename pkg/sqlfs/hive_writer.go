@@ -14,8 +14,10 @@
 package sqlfs
 
 import (
+	"database/sql"
 	"encoding/base64"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 
@@ -27,6 +29,23 @@ type HiveWriter struct {
 	Writer
 	csvFile *os.File
 	session *pb.Session
+}
+
+// NewHiveWriter returns a Hive Writer object
+func NewHiveWriter(db *sql.DB, table string, session *pb.Session) (*HiveWriter, error) {
+	csvFile, e := ioutil.TempFile("/tmp", "sqlflow-sqlfs")
+	if e != nil {
+		return nil, fmt.Errorf("create temporary csv file failed: %v", e)
+	}
+	return &HiveWriter{
+		Writer: Writer{
+			db:      db,
+			table:   table,
+			buf:     make([]byte, 0, bufSize),
+			flushID: 0,
+		},
+		csvFile: csvFile,
+		session: session}, nil
 }
 
 // Write write bytes to sqlfs and returns (num_bytes, error)
@@ -51,6 +70,9 @@ func (w *HiveWriter) Write(p []byte) (n int, e error) {
 
 // Close the connection of the sqlfs
 func (w *HiveWriter) Close() error {
+	if w.db == nil {
+		return nil
+	}
 	defer func() {
 		w.csvFile.Close()
 		os.Remove(w.csvFile.Name())
