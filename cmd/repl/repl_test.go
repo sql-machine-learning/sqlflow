@@ -230,7 +230,7 @@ INTO sqlflow_models.mymodel;`
 
 	// run one train SQL to save the model then test predict/analyze use the model
 	sess := &irpb.Session{DbConnStr: dataSourceStr}
-	stream := sf.RunSQLProgram(trainSQL, testdb, "", sess)
+	stream := sf.RunSQLProgram(trainSQL, "", sess)
 	lastResp := list.New()
 	keepSize := 10
 	for rsp := range stream.ReadAll() {

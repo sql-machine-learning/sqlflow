@@ -39,13 +39,13 @@ type DB struct {
 // In addition to sql.Open, it also does the book keeping on driverName and
 // dataSourceName
 func open(datasource string) (*DB, error) {
-	dses := strings.Split(datasource, "://")
-	if len(dses) != 2 {
-		return nil, fmt.Errorf("Expecting but cannot find :// in datasource %v", datasource)
+	driverName, datasourName, err := SplitDataSource(datasource)
+	if err != nil {
+		return nil, err
 	}
-	db := &DB{driverName: dses[0], dataSourceName: dses[1]}
+	db := &DB{driverName: driverName, dataSourceName: datasourName}
 
-	err := openDB(db)
+	err = openDB(db)
 	return db, err
 }
 
@@ -61,6 +61,15 @@ func openDB(db *DB) error {
 		}
 	}
 	return fmt.Errorf("sqlflow currently doesn't support DB %s", db.driverName)
+}
+
+// SplitDataSource splits the datasource into drivername and datasource name
+func SplitDataSource(datasource string) (string, string, error) {
+	dses := strings.Split(datasource, "://")
+	if len(dses) != 2 {
+		return "", "", fmt.Errorf("Expecting but cannot find :// in datasource %v", datasource)
+	}
+	return dses[0], dses[1], nil
 }
 
 // NewDB returns a DB object with verifying the datasource name.
