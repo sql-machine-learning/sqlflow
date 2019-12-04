@@ -23,6 +23,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"strings"
 	"testing"
 	"time"
 
@@ -44,6 +45,7 @@ var caseDB = "iris"
 var caseTrainTable = "train"
 var caseTestTable = "test"
 var casePredictTable = "predict"
+var testDatasource = os.Getenv("SQLFLOW_TEST_DATASOURCE")
 
 const unitestPort = 50051
 
@@ -476,6 +478,80 @@ func TestEnd2EndMaxComputeElasticDL(t *testing.T) {
 	waitPortReady(fmt.Sprintf("localhost:%d", unitestPort), 0)
 
 	t.Run("CaseTrainElasticDL", CaseTrainElasticDL)
+}
+
+func TestEnd2EndMaxComputeWorkflow(t *testing.T) {
+	if testDatasource == "" {
+		t.Fatal("env SQLFLOW_TEST_DATASOURCE is required.")
+	}
+	driverName, _, err := sql.SplitDataSource(testDatasource)
+	if err != nil {
+		t.Fatalf("parse datasource failed, %v", err)
+	}
+
+	if driverName != "maxcompute" || os.Getenv("SQLFLOW_ARGO_MODE") != "True" {
+		t.Skip("Skipping workflow test on maxcompute")
+	}
+
+	modelDir := ""
+	tmpDir, caCrt, caKey, err := generateTempCA()
+	defer os.RemoveAll(tmpDir)
+	if err != nil {
+		t.Fatalf("failed to generate CA pair %v", err)
+	}
+
+	go start(modelDir, caCrt, caKey, unitestPort, true)
+	waitPortReady(fmt.Sprintf("localhost:%d", unitestPort), 0)
+	if err != nil {
+		t.Fatalf("prepare test dataset failed: %v", err)
+	}
+
+	t.Run("CaseSubmitSQLProgram", CaseSubmitSQLProgram)
+}
+
+func CaseSubmitSQLProgram(t *testing.T) {
+	a := assert.New(t)
+	sqlProgram := fmt.Sprintf(`
+SELECT *
+FROM %s.%s
+TO TRAIN DNNClassifier
+WITH
+	model.n_classes = 3,
+	model.hidden_units = [10, 20]
+COLUMN sepal_length, sepal_width, petal_length, petal_width
+LABEL class
+INTO sqlflow_models.my_dnn_model;
+
+SELECT *
+FROM %s.%s
+TO PREDICT %s.%s.class
+USING sqlflow_models.my_dnn_model;
+
+SELECT *
+FROM %s.%s LIMIT 5;
+	`, caseDB, caseTrainTable,
+		caseDB, caseTrainTable, caseDB, casePredictTable, caseDB, casePredictTable)
+
+	conn, err := createRPCConn()
+	if err != nil {
+		a.Fail("Create gRPC client error: %v", err)
+	}
+	defer conn.Close()
+	cli := pb.NewSQLFlowClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	defer cancel()
+	stream, err := cli.Run(ctx, &pb.Request{Sql: sqlProgram, Session: &pb.Session{DbConnStr: testDatasource}})
+	for {
+		iter, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			log.Fatalf("stream read err: %v", err)
+		}
+		a.True(strings.HasPrefix(iter.GetJob().GetId(), "sqlflow-couler"))
+	}
+	//TODO(yancey1989) implement Fetch interface to verify the workflow status
 }
 
 func CaseShowDatabases(t *testing.T) {

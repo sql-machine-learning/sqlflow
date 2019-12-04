@@ -21,15 +21,16 @@ type sqlStatment struct {
 	DockerImage   string
 }
 type coulerFiller struct {
-	dataSource    string
+	DataSource    string
 	SQLStatements []*sqlStatment
 }
 
 const coulerTemplateText = `
 import couler.argo as couler
+datasource = "{{ .DataSource }}"
 {{ range $ss := .SQLStatements }}
 	{{if $ss.IsExtendedSQL }}
-couler.run_container(command='''repl -e "{{ $ss.OriginalSQL }}"''', image="{{ $ss.DockerImage }}")
+couler.run_container(command='''repl -e "{{ $ss.OriginalSQL }}" --datasource="%s"'''%datasource, image="{{ $ss.DockerImage }}")
 	{{else}}
 # TODO(yancey1989): 
 #	using "repl -parse" to output IR and

@@ -15,17 +15,23 @@ package couler
 
 import (
 	"bytes"
+	"fmt"
 
+	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
 
+var defaultDockerImage = "sqlflow/sqlflow"
+
 // Run generates Couler program
-func Run(programIR ir.SQLProgram) (string, error) {
+func Run(programIR ir.SQLProgram, session *pb.Session) (string, error) {
 	// TODO(yancey1989): fill session as env
-	r := &coulerFiller{}
+	r := &coulerFiller{
+		DataSource: session.DbConnStr,
+	}
 	for _, sqlIR := range programIR {
 		ss := &sqlStatment{}
-		switch sqlIR.(type) {
+		switch i := sqlIR.(type) {
 		case *ir.StandardSQL:
 			ss.IsExtendedSQL = false
 			ss.OriginalSQL = string(*sqlIR.(*ir.StandardSQL))
@@ -38,9 +44,11 @@ func Run(programIR ir.SQLProgram) (string, error) {
 		case *ir.AnalyzeClause:
 			ss.IsExtendedSQL = true
 			ss.OriginalSQL = sqlIR.(*ir.AnalyzeClause).OriginalSQL
+		default:
+			return "", fmt.Errorf("uncognized IR type: %v", i)
 		}
 		// TODO(yancey1989): using the custom Docker image in model zoo
-		ss.DockerImage = "sqlflow/sqlflow"
+		ss.DockerImage = defaultDockerImage
 		r.SQLStatements = append(r.SQLStatements, ss)
 	}
 	var program bytes.Buffer

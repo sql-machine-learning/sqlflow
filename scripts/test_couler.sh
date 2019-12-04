@@ -65,8 +65,24 @@ if [[ "$ret" != "0" ]]; then
 fi
 
 ############# Run SQLFLow test with Argo Mode #############
-service mysql start
-go generate ./...
-go install ./...
-SQLFLOW_ARGO_MODE=True go test ./pkg/sql/. -run TestSubmitWorkflow -v
 
+# start a SQLFlow MySQL Pod with testdata
+kubectl run mysql --port 3306 --env="SQLFLOW_MYSQL_HOST=0.0.0.0" --env="SQLFLOW_MYSQL_PORT=3306" --image=sqlflow/sqlflow --command -- bash /start.sh mysql
+MYSQL_POD_NAME=$(kubectl get pod -l run=mysql -o jsonpath="{.items[0].metadata.name}")
+for i in {1...30}; do
+    POD_STATUS=$(kubectl get pod ${MYSQL_POD_NAME} -o jsonpath='{.status.phase}')
+    if [[ "POD_STATUS" == "Running" ]]; then
+        echo "SQLFlow MySQL Pod running."
+        go generate ./...
+        go install ./...
+        SQLFLOW_ARGO_MODE=True go test ./pkg/sql/. -run TestSubmitWorkflow -v
+        go test ./cmd/... -run TestEnd2EndMySQLArgoMode -v
+        exit 0
+    else
+        echo "Wait SQLFlow MySQL Pod ${MYSQL_POD_NAME}"
+        sleep 3
+    fi
+done
+
+echo "Start SQLFlow MySQL Pod failed."
+exit 1

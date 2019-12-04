@@ -112,14 +112,18 @@ func SubmitWorkflow(sqlProgram string, db *DB, modelDir string, session *pb.Sess
 		defer wr.Close()
 		err := submitWorkflow(wr, sqlProgram, db, modelDir, session)
 		if err != nil {
-			log.Errorf("submit Workflow error: %v", err)
+			if err != ErrClosedPipe {
+				if err := wr.Write(err); err != nil {
+					log.Errorf("submit workflow error(piping): %v", err)
+				}
+			}
 		}
 	}()
 	return rd
 }
 
-func writeCoulerFile(spIRs ir.SQLProgram) (string, error) {
-	program, err := couler.Run(spIRs)
+func writeCoulerFile(spIRs ir.SQLProgram, session *pb.Session) (string, error) {
+	program, err := couler.Run(spIRs, session)
 	if err != nil {
 		return "", fmt.Errorf("generate couler program error: %v", err)
 	}
@@ -188,7 +192,7 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, 
 	}
 
 	// 1. call codegen_couler.go to genearte Couler program.
-	coulerFileName, err := writeCoulerFile(spIRs)
+	coulerFileName, err := writeCoulerFile(spIRs, session)
 	if err != nil {
 		return err
 	}
@@ -203,7 +207,7 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, 
 	cmd := exec.Command("kubectl", "create", "-f", argoFile)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("submit Argo YAML error: %v", err)
+		return fmt.Errorf("submit Argo YAML error: %v, output: %s", err, string(output))
 	}
 	reWorkflow := regexp.MustCompile(`.+/(.+) .+`)
 	wf := reWorkflow.FindStringSubmatch(string(output))
