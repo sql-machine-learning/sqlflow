@@ -271,10 +271,8 @@ func runSingleSQLIR(wr *PipeWriter, sqlIR ir.SQLStatement, db *DB, modelDir stri
 			})
 		}
 	}()
-	trainIR, ok := sqlIR.(*ir.TrainClause)
-	if ok {
-		LogFeatureDerivationResult(wr, trainIR)
-	}
+	// TODO(typhoonzero): can run LogFeatureDerivationResult(wr, trainIR) here to send
+	// feature derivation logs to client, yet we disable if for now so that it's less annoying.
 	if e := submitter().Setup(wr, db, modelDir, session); e != nil {
 		return e
 	}
