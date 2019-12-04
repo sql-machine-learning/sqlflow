@@ -45,14 +45,22 @@ func open(datasource string) (*DB, error) {
 	}
 	db := &DB{driverName: dses[0], dataSourceName: dses[1]}
 
-	var err error
-	switch db.driverName {
-	case "mysql", "hive", "maxcompute":
-		db.DB, err = sql.Open(db.driverName, db.dataSourceName)
-	default:
-		return nil, fmt.Errorf("sqlflow currently doesn't support DB %v", db.driverName)
-	}
+	err := openDB(db)
 	return db, err
+}
+
+func openDB(db *DB) error {
+	var err error
+	for _, d := range sql.Drivers() {
+		if db.driverName == d {
+			db.DB, err = sql.Open(db.driverName, db.dataSourceName)
+			if err != nil {
+				return err
+			}
+			return nil
+		}
+	}
+	return fmt.Errorf("sqlflow currently doesn't support DB %s", db.driverName)
 }
 
 // NewDB returns a DB object with verifying the datasource name.
