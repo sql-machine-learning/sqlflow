@@ -246,6 +246,10 @@ func addTrainedModelsRecord(db *DB, trainIR *ir.TrainClause, modelURI string, se
 	// NOTE(typhoonzero): creator can be empty, if so, the model file is saved into current database
 	// FIXME(typhoonzero): or maybe the into format should be like "creator/modelID"
 	creator, modelID, err := getTrainedModelParts(trainIR.Into)
+	if err != nil {
+		return err
+	}
+
 	q := fmt.Sprintf("SELECT * FROM %s WHERE model_id='%s'", modelZooTable, modelID)
 	res, err := db.Query(q)
 	if err != nil {
