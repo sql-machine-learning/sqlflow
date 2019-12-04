@@ -205,7 +205,7 @@ func (s *defaultSubmitter) ExecuteAnalyze(cl *ir.AnalyzeClause) error {
 	s.Writer.Write(img2html)
 	return nil
 }
-func (s *defaultSubmitter) Teardown()                 { os.RemoveAll(s.Cwd) }
+func (s *defaultSubmitter) Teardown()                 {} //os.RemoveAll(s.Cwd) }
 func (s *defaultSubmitter) GetTrainIRFromModel() bool { return true }
 
 func (s *elasticdlSubmitter) ExecuteTrain(cl *ir.TrainClause) error {

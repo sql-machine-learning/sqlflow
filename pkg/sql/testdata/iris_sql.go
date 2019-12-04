@@ -325,15 +325,15 @@ CREATE TABLE iris.iris_empty (
 
 // IrisMaxComputeSQL is .sql format data sample of iris dataset in MaxCompute SQL.
 var IrisMaxComputeSQL = `
-DROP TABLE IF EXISTS gomaxcompute_driver_w7u.sqlflow_test_iris_train;
-CREATE TABLE gomaxcompute_driver_w7u.sqlflow_test_iris_train (
+DROP TABLE IF EXISTS %s.sqlflow_test_iris_train;
+CREATE TABLE %s.sqlflow_test_iris_train (
        sepal_length DOUBLE,
        sepal_width  DOUBLE,
        petal_length DOUBLE,
        petal_width  DOUBLE,
        class BIGINT);
 
-INSERT INTO gomaxcompute_driver_w7u.sqlflow_test_iris_train VALUES
+INSERT INTO %s.sqlflow_test_iris_train VALUES
 (6.4,2.8,5.6,2.2,2),
 (5.0,2.3,3.3,1.0,1),
 (4.9,2.5,4.5,1.7,2),
@@ -445,15 +445,15 @@ INSERT INTO gomaxcompute_driver_w7u.sqlflow_test_iris_train VALUES
 (5.6,2.9,3.6,1.3,1),
 (4.8,3.1,1.6,0.2,0);
 
-DROP TABLE IF EXISTS gomaxcompute_driver_w7u.sqlflow_test_iris_test;
-CREATE TABLE gomaxcompute_driver_w7u.sqlflow_test_iris_test(
+DROP TABLE IF EXISTS %s.sqlflow_test_iris_test;
+CREATE TABLE %s.sqlflow_test_iris_test(
        sepal_length DOUBLE,
        sepal_width  DOUBLE,
        petal_length DOUBLE,
        petal_width  DOUBLE,
        class BIGINT);
 
-INSERT INTO gomaxcompute_driver_w7u.sqlflow_test_iris_test VALUES
+INSERT INTO %s.sqlflow_test_iris_test VALUES
 (6.3,2.7,4.9,1.8,2),
 (5.7,2.8,4.1,1.3,1),
 (5.0,3.0,1.6,0.2,0),
@@ -465,8 +465,8 @@ INSERT INTO gomaxcompute_driver_w7u.sqlflow_test_iris_test VALUES
 (4.8,3.0,1.4,0.1,0),
 (5.5,2.4,3.7,1.0,1);
 
-DROP TABLE IF EXISTS gomaxcompute_driver_w7u.sqlflow_test_iris_empty;
-CREATE TABLE gomaxcompute_driver_w7u.sqlflow_test_iris_empty (
+DROP TABLE IF EXISTS %s.sqlflow_test_iris_empty;
+CREATE TABLE %s.sqlflow_test_iris_empty (
        sepal_length DOUBLE,
        sepal_width  DOUBLE,
        petal_length DOUBLE,
