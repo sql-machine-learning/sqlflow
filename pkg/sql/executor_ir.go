@@ -206,15 +206,17 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, modelDir string, session 
 	if err != nil {
 		return err
 	}
+	defer os.RemoveAll(coulerFileName)
 
 	// 2. compile Couler program into Argo YAML.
-	argoFile, err := writeArgoFile(coulerFileName)
+	argoFileName, err := writeArgoFile(coulerFileName)
 	if err != nil {
 		return err
 	}
+	defer os.RemoveAll(argoFileName)
 
 	// 3. submit Argo YAML and fetch the workflow ID.
-	cmd := exec.Command("kubectl", "create", "-f", argoFile)
+	cmd := exec.Command("kubectl", "create", "-f", argoFileName)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("submit Argo YAML error: %v, output: %s", err, string(output))

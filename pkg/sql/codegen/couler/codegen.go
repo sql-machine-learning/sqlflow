@@ -16,6 +16,7 @@ package couler
 import (
 	"bytes"
 	"fmt"
+	"os"
 
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
@@ -47,8 +48,13 @@ func Run(programIR ir.SQLProgram, session *pb.Session) (string, error) {
 		default:
 			return "", fmt.Errorf("uncognized IR type: %v", i)
 		}
-		// TODO(yancey1989): using the custom Docker image in model zoo
-		ss.DockerImage = defaultDockerImage
+		// NOTE(yancey1989): does not use ModelImage here since the Predict statment
+		// does not contain the ModelImage field in the current implementation.
+		if os.Getenv("SQLFLOW_WORKFLOW_DOCKER_IMAGE") != "" {
+			ss.DockerImage = os.Getenv("SQLFLOW_WORKFLOW_DOCKER_IMAGE")
+		} else {
+			ss.DockerImage = defaultDockerImage
+		}
 		r.SQLStatements = append(r.SQLStatements, ss)
 	}
 	var program bytes.Buffer

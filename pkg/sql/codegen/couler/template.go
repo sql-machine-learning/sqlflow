@@ -30,12 +30,12 @@ import couler.argo as couler
 datasource = "{{ .DataSource }}"
 {{ range $ss := .SQLStatements }}
 	{{if $ss.IsExtendedSQL }}
-couler.run_container(command='''repl -e "{{ $ss.OriginalSQL }}" --datasource="%s"'''%datasource, image="{{ $ss.DockerImage }}")
+couler.run_container(command='''repl -e "{{ $ss.OriginalSQL }}" --datasource="%s"''' % datasource, image="{{ $ss.DockerImage }}")
 	{{else}}
 # TODO(yancey1989): 
 #	using "repl -parse" to output IR and
 #	feed to "sqlflow_submitter.{submitter}.train" to submite the job
-couler.run_container(command='''repl -e "{{ $ss.OriginalSQL }}"''', image="{{ $ss.DockerImage }}")
+couler.run_container(command='''repl -e "{{ $ss.OriginalSQL }}" --datasource="%s"''' % datasource, image="{{ $ss.DockerImage }}")
 	{{end}}
 {{end}}
 `

@@ -480,7 +480,7 @@ func TestEnd2EndMaxComputeElasticDL(t *testing.T) {
 	t.Run("CaseTrainElasticDL", CaseTrainElasticDL)
 }
 
-func TestEnd2EndMaxComputeWorkflow(t *testing.T) {
+func TestEnd2EndMySQLWorkflow(t *testing.T) {
 	if testDatasource == "" {
 		t.Fatal("env SQLFLOW_TEST_DATASOURCE is required.")
 	}
@@ -489,8 +489,8 @@ func TestEnd2EndMaxComputeWorkflow(t *testing.T) {
 		t.Fatalf("parse datasource failed, %v", err)
 	}
 
-	if driverName != "maxcompute" || os.Getenv("SQLFLOW_ARGO_MODE") != "True" {
-		t.Skip("Skipping workflow test on maxcompute")
+	if driverName != "mysql" || os.Getenv("SQLFLOW_ARGO_MODE") != "True" {
+		t.Skip("Skipping workflow test on MySQL")
 	}
 
 	modelDir := ""
@@ -541,6 +541,7 @@ FROM %s.%s LIMIT 5;
 	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
 	defer cancel()
 	stream, err := cli.Run(ctx, &pb.Request{Sql: sqlProgram, Session: &pb.Session{DbConnStr: testDatasource}})
+	var workflowID string
 	for {
 		iter, err := stream.Recv()
 		if err == io.EOF {
@@ -549,9 +550,24 @@ FROM %s.%s LIMIT 5;
 		if err != nil {
 			log.Fatalf("stream read err: %v", err)
 		}
-		a.True(strings.HasPrefix(iter.GetJob().GetId(), "sqlflow-couler"))
+		workflowID = iter.GetJob().GetId()
 	}
-	//TODO(yancey1989) implement Fetch interface to verify the workflow status
+	a.True(strings.HasPrefix(workflowID, "sqlflow-couler"))
+	cmd := exec.Command("kubectl", "get", "wf", workflowID, "-o", "jsonpath='{.status.phase}'")
+	// check the workflow status in 60 seconods
+	// TODO(yancey1989): using Fetch gRPC interface to check the workflow status
+	for i := 0; i < 20; i++ {
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			log.Fatalf("get workflow status error: %v", err)
+		}
+		if string(out) == "Succeeded" {
+			return
+		}
+		time.Sleep(3 * time.Second)
+	}
+	// workflow times out
+	log.Fatalf("workflow: %s times out", workflowID)
 }
 
 func CaseShowDatabases(t *testing.T) {

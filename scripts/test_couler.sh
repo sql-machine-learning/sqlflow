@@ -66,17 +66,20 @@ fi
 
 ############# Run SQLFLow test with Argo Mode #############
 
+if [[ "${TRAVIS}" == "true" ]]; then
+    export SQLFLOW_WORKFLOW_STEP_IMAGE="sqlflow"
+fi
 # start a SQLFlow MySQL Pod with testdata
 kubectl run mysql --port 3306 --env="SQLFLOW_MYSQL_HOST=0.0.0.0" --env="SQLFLOW_MYSQL_PORT=3306" --image=sqlflow/sqlflow --command -- bash /start.sh mysql
 MYSQL_POD_NAME=$(kubectl get pod -l run=mysql -o jsonpath="{.items[0].metadata.name}")
 for i in {1...30}; do
-    POD_STATUS=$(kubectl get pod ${MYSQL_POD_NAME} -o jsonpath='{.status.phase}')
-    if [[ "POD_STATUS" == "Running" ]]; then
+    MYSQL_POD_STATUS=$(kubectl get pod ${MYSQL_POD_NAME} -o jsonpath='{.status.phase}')
+    if [[ "${MYSQL_POD_STATUS}" == "Running" ]]; then
         echo "SQLFlow MySQL Pod running."
+        MYSQL_POD_IP=$(kubectl get pod ${MYSQL_POD_NAME} -o jsonpath='{.status.podIP}')
         go generate ./...
         go install ./...
-        SQLFLOW_ARGO_MODE=True go test ./pkg/sql/. -run TestSubmitWorkflow -v
-        go test ./cmd/... -run TestEnd2EndMySQLArgoMode -v
+        SQLFLOW_TEST_DATASOURCE="mysql://root:root@tcp(${MYSQL_POD_IP}:3306)/?maxAllowedPacket=0" SQLFLOW_ARGO_MODE=True go test ./cmd/... -run TestEnd2EndMySQLWorkflow -v
         exit 0
     else
         echo "Wait SQLFlow MySQL Pod ${MYSQL_POD_NAME}"
