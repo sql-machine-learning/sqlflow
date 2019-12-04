@@ -120,6 +120,10 @@ func (m *model) saveDB(db *DB, table string, session *pb.Session) (e error) {
 	if e := cmd.Run(); e != nil {
 		return fmt.Errorf("tar stderr: %v\ntar cmd %v", errBuf.String(), e)
 	}
+
+	if e := sqlf.Close(); e != nil {
+		return fmt.Errorf("close sqlfs error: %v", e)
+	}
 	return nil
 }
 
