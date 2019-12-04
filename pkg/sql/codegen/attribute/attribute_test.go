@@ -43,12 +43,18 @@ func TestDictionaryValidate(t *testing.T) {
 func TestPremadeModelParamsDocs(t *testing.T) {
 	a := assert.New(t)
 
-	a.Equal(len(PremadeModelParamsDocs), 14)
+	a.Equal(14, len(PremadeModelParamsDocs))
 	a.Equal(len(PremadeModelParamsDocs["DNNClassifier"]), 12)
 	a.NotContains(PremadeModelParamsDocs["DNNClassifier"], "feature_columns")
 	a.Contains(PremadeModelParamsDocs["DNNClassifier"], "optimizer")
 	a.Contains(PremadeModelParamsDocs["DNNClassifier"], "hidden_units")
 	a.Contains(PremadeModelParamsDocs["DNNClassifier"], "n_classes")
+
+	a.True(reflect.DeepEqual(PremadeModelParamsDocs["xgboost.gbtree"], PremadeModelParamsDocs["xgboost.dart"]))
+	a.True(reflect.DeepEqual(PremadeModelParamsDocs["xgboost.dart"], PremadeModelParamsDocs["xgboost.gblinear"]))
+	a.Equal(23, len(PremadeModelParamsDocs["xgboost.gbtree"]))
+	a.NotContains(PremadeModelParamsDocs["DNNClassifier"], "booster")
+
 }
 
 func TestNewAndUpdateDictionary(t *testing.T) {
