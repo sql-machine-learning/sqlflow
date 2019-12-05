@@ -72,7 +72,7 @@ def train(is_keras_model,
           batch_size=1,
           epochs=1,
           verbose=0,
-          is_pai=True,
+          is_pai=False,
           pai_table=""):
     if verbose > 0:
         tf.get_logger().setLevel(logging.INFO)
