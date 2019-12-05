@@ -50,8 +50,8 @@ func Run(programIR ir.SQLProgram, session *pb.Session) (string, error) {
 		}
 		// NOTE(yancey1989): does not use ModelImage here since the Predict statment
 		// does not contain the ModelImage field in the current implementation.
-		if os.Getenv("SQLFLOW_WORKFLOW_DOCKER_IMAGE") != "" {
-			ss.DockerImage = os.Getenv("SQLFLOW_WORKFLOW_DOCKER_IMAGE")
+		if os.Getenv("SQLFLOW_WORKFLOW_STEP_IMAGE") != "" {
+			ss.DockerImage = os.Getenv("SQLFLOW_WORKFLOW_STEP_IMAGE")
 		} else {
 			ss.DockerImage = defaultDockerImage
 		}
