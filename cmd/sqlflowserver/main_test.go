@@ -481,6 +481,9 @@ func TestEnd2EndMaxComputeElasticDL(t *testing.T) {
 }
 
 func TestEnd2EndMySQLWorkflow(t *testing.T) {
+	if driverName != "mysql" || os.Getenv("SQLFLOW_ARGO_MODE") != "True" {
+		t.Skip("Skipping workflow test on MySQL")
+	}
 	if testDatasource == "" {
 		t.Fatal("env SQLFLOW_TEST_DATASOURCE is required.")
 	}
@@ -488,11 +491,6 @@ func TestEnd2EndMySQLWorkflow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse datasource failed, %v", err)
 	}
-
-	if driverName != "mysql" || os.Getenv("SQLFLOW_ARGO_MODE") != "True" {
-		t.Skip("Skipping workflow test on MySQL")
-	}
-
 	modelDir := ""
 	tmpDir, caCrt, caKey, err := generateTempCA()
 	defer os.RemoveAll(tmpDir)
