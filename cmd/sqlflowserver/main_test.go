@@ -45,7 +45,9 @@ var caseTrainTable = "train"
 var caseTestTable = "test"
 var casePredictTable = "predict"
 
-// caseInto used by CaseTrainSQL
+// caseInto is used by function CaseTrainSQL in this file. When
+// testing with MaxCompute, the project is pre-created, we only need to
+// specify the table name in that case.
 var caseInto = "sqlflow_models.my_dnn_model"
 
 const unitestPort = 50051
