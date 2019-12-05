@@ -40,8 +40,8 @@ jobs:
     - stage: Unitests
       env: SQLFLOW_TEST_WORKFLOW=true
       script:
-        - eval $(sudo minikube docker-env) && docker pull sqlflow/sqlflow:latest && docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile .
         - bash scripts/setup_k8s_env.sh
+        - eval $(sudo minikube docker-env) && docker pull sqlflow/sqlflow:latest && docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile .
         - docker run --rm --net=host -e SQLFLOW_WORKFLOW_STEP_IMAGE=sqlflow -v /var/run/docker.sock:/var/run/docker.sock -v $HOME/.kube:/root/.kube -v /home/$USER/.minikube/:/home/$USER/.minikube/ -v $GOPATH:/root/go -w /root/go/src/sqlflow.org/sqlflow sqlflow:latest bash scripts/test_couler.sh
       # env is just used for displaying the job type in travis web page
 #      env: SQLFLOW_TEST_DB=mysql
