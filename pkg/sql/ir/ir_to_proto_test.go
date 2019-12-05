@@ -22,8 +22,8 @@ import (
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
-func mockTrainIR() *TrainClause {
-	return &TrainClause{
+func mockTrainStmt() *TrainStmt {
+	return &TrainStmt{
 		DataSource:       "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0",
 		Select:           "select * from iris.train;",
 		ValidationSelect: "select * from iris.test;",
@@ -57,62 +57,62 @@ func mockSession() *pb.Session {
 
 func TestTrainProto(t *testing.T) {
 	a := assert.New(t)
-	sampleTrainIR := mockTrainIR()
-	pbIR, err := TrainIRToProto(sampleTrainIR, mockSession())
+	sampleTrainStmt := mockTrainStmt()
+	pbIR, err := TrainStmtToProto(sampleTrainStmt, mockSession())
 	a.NoError(err)
 	pbtxt := proto.MarshalTextString(pbIR)
-	pbIRToTest := &pb.TrainClause{}
+	pbIRToTest := &pb.TrainStmt{}
 	err = proto.UnmarshalText(pbtxt, pbIRToTest)
 	a.NoError(err)
 	a.Equal(
-		sampleTrainIR.Features["feature_columns"][2].GetFieldMeta()[0].Name,
+		sampleTrainStmt.Features["feature_columns"][2].GetFieldMeta()[0].Name,
 		pbIRToTest.GetFeatures()["feature_columns"].GetFeatureColumns()[2].GetNc().GetFieldMeta().GetName(),
 	)
 	a.Equal(
-		int32(sampleTrainIR.Attributes["train.batch_size"].(int)),
+		int32(sampleTrainStmt.Attributes["train.batch_size"].(int)),
 		pbIRToTest.GetAttributes()["train.batch_size"].GetI(),
 	)
 }
 
 func TestPredictProto(t *testing.T) {
 	a := assert.New(t)
-	samplePredIR := &PredictClause{
+	samplePredStmt := &PredictStmt{
 		DataSource:   "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0",
 		Select:       "select * from iris.test;",
 		ResultTable:  "predict",
 		ResultColumn: "class",
 		Attributes:   make(map[string]interface{}), // empty attribute
-		TrainIR:      mockTrainIR(),
+		TrainStmt:    mockTrainStmt(),
 	}
-	pbIR, err := PredictIRToProto(samplePredIR, mockSession())
+	pbIR, err := PredictStmtToProto(samplePredStmt, mockSession())
 	a.NoError(err)
 	pbtxt := proto.MarshalTextString(pbIR)
-	pbIRToTest := &pb.PredictClause{}
+	pbIRToTest := &pb.PredictStmt{}
 	err = proto.UnmarshalText(pbtxt, pbIRToTest)
 	a.NoError(err)
 	a.Equal(
-		samplePredIR.ResultTable,
+		samplePredStmt.ResultTable,
 		pbIRToTest.GetResultTable(),
 	)
 }
 
 func TestAnalyzeProto(t *testing.T) {
 	a := assert.New(t)
-	sampleAnalyzeIR := &AnalyzeClause{
+	sampleAnalyzeStmt := &AnalyzeStmt{
 		DataSource: "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0",
 		Select:     "select * from iris.train;",
 		Attributes: make(map[string]interface{}), // empty attribute
 		Explainer:  "TreeExplainer",
-		TrainIR:    mockTrainIR(),
+		TrainStmt:  mockTrainStmt(),
 	}
-	pbIR, err := AnalyzeIRToProto(sampleAnalyzeIR, mockSession())
+	pbIR, err := AnalyzeStmtToProto(sampleAnalyzeStmt, mockSession())
 	a.NoError(err)
 	pbtxt := proto.MarshalTextString(pbIR)
-	pbIRToTest := &pb.AnalyzeClause{}
+	pbIRToTest := &pb.AnalyzeStmt{}
 	err = proto.UnmarshalText(pbtxt, pbIRToTest)
 	a.NoError(err)
 	a.Equal(
-		sampleAnalyzeIR.Explainer,
+		sampleAnalyzeStmt.Explainer,
 		pbIRToTest.GetExplainer(),
 	)
 }

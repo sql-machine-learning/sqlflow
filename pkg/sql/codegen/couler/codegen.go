@@ -29,15 +29,15 @@ func Run(programIR ir.SQLProgram) (string, error) {
 		case *ir.StandardSQL:
 			ss.IsExtendedSQL = false
 			ss.OriginalSQL = string(*sqlIR.(*ir.StandardSQL))
-		case *ir.TrainClause:
+		case *ir.TrainStmt:
 			ss.IsExtendedSQL = true
-			ss.OriginalSQL = sqlIR.(*ir.TrainClause).OriginalSQL
-		case *ir.PredictClause:
+			ss.OriginalSQL = sqlIR.(*ir.TrainStmt).OriginalSQL
+		case *ir.PredictStmt:
 			ss.IsExtendedSQL = true
-			ss.OriginalSQL = sqlIR.(*ir.PredictClause).OriginalSQL
-		case *ir.AnalyzeClause:
+			ss.OriginalSQL = sqlIR.(*ir.PredictStmt).OriginalSQL
+		case *ir.AnalyzeStmt:
 			ss.IsExtendedSQL = true
-			ss.OriginalSQL = sqlIR.(*ir.AnalyzeClause).OriginalSQL
+			ss.OriginalSQL = sqlIR.(*ir.AnalyzeStmt).OriginalSQL
 		}
 		// TODO(yancey1989): using the custom Docker image in model zoo
 		ss.DockerImage = "sqlflow/sqlflow"

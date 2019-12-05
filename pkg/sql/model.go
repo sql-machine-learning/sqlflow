@@ -39,7 +39,7 @@ type model struct {
 	TrainSelect string
 }
 
-func (m *model) save(modelURI string, trainIR *ir.TrainClause, session *pb.Session) error {
+func (m *model) save(modelURI string, trainStmt *ir.TrainStmt, session *pb.Session) error {
 	if strings.Contains(modelURI, "://") {
 		uriParts := strings.Split(modelURI, "://")
 		if len(uriParts) == 2 {
@@ -67,7 +67,7 @@ func (m *model) save(modelURI string, trainIR *ir.TrainClause, session *pb.Sessi
 		if err := createModelZooTable(db); err != nil {
 			return err
 		}
-		return addTrainedModelsRecord(db, trainIR, modelURI, session)
+		return addTrainedModelsRecord(db, trainStmt, modelURI, session)
 	}
 	return nil
 }
@@ -246,10 +246,10 @@ func dbStringEscape(src string) string {
 	return strings.ReplaceAll(ret, "'", "\\'")
 }
 
-func addTrainedModelsRecord(db *DB, trainIR *ir.TrainClause, modelURI string, sess *pb.Session) error {
+func addTrainedModelsRecord(db *DB, trainStmt *ir.TrainStmt, modelURI string, sess *pb.Session) error {
 	// NOTE(typhoonzero): creator can be empty, if so, the model file is saved into current database
 	// FIXME(typhoonzero): or maybe the into format should be like "creator/modelID"
-	creator, modelID, err := getTrainedModelParts(trainIR.Into)
+	creator, modelID, err := getTrainedModelParts(trainStmt.Into)
 	if err != nil {
 		return err
 	}
@@ -265,7 +265,7 @@ func addTrainedModelsRecord(db *DB, trainIR *ir.TrainClause, modelURI string, se
 		isInsert = true
 	}
 	var sql string
-	irproto, err := ir.TrainIRToProto(trainIR, sess)
+	irproto, err := ir.TrainStmtToProto(trainStmt, sess)
 	if err != nil {
 		return err
 	}
@@ -274,7 +274,7 @@ func addTrainedModelsRecord(db *DB, trainIR *ir.TrainClause, modelURI string, se
 		sql = fmt.Sprintf(`INSERT INTO %s
 (model_id, author, model_image, model_def, train_ir_pb, model_uri)
 VALUES ("%s", "%s", "%s", "%s", "%s", "%s")`,
-			modelZooTable, modelID, creator, trainIR.ModelImage, trainIR.Estimator, dbStringEscape(irprotoText), modelURI)
+			modelZooTable, modelID, creator, trainStmt.ModelImage, trainStmt.Estimator, dbStringEscape(irprotoText), modelURI)
 	} else {
 		sql = fmt.Sprintf(`UPDATE %s SET
 author="%s",
@@ -282,7 +282,7 @@ model_image="%s",
 model_def="%s",
 train_ir_pb="%s",
 model_uri="%s"
-WHERE model_id="%s"`, modelZooTable, creator, trainIR.ModelImage, trainIR.Estimator, dbStringEscape(irprotoText), modelURI, modelID)
+WHERE model_id="%s"`, modelZooTable, creator, trainStmt.ModelImage, trainStmt.Estimator, dbStringEscape(irprotoText), modelURI, modelID)
 	}
 	_, err = db.Exec(sql)
 	return err

@@ -222,17 +222,17 @@ func fillFieldMeta(columnTypeList []*sql.ColumnType, rowdata []interface{}, fiel
 // InferFeatureColumns fill up featureColumn and columnSpec structs
 // for all fields.
 // if wr is not nil, then write
-func InferFeatureColumns(trainIR *ir.TrainClause) error {
-	db, err := NewDB(trainIR.DataSource)
+func InferFeatureColumns(trainStmt *ir.TrainStmt) error {
+	db, err := NewDB(trainStmt.DataSource)
 	if err != nil {
 		return err
 	}
 	// Convert feature column list to a map
-	fcMap := makeFeatureColumnMap(trainIR.Features)
-	fmMap := makeFieldMetaMap(trainIR.Features)
+	fcMap := makeFeatureColumnMap(trainStmt.Features)
+	fmMap := makeFieldMetaMap(trainStmt.Features)
 
 	// TODO(typhoonzero): find a way to using subqueries like select * from (%s) AS a LIMIT 100
-	q := trainIR.Select
+	q := trainStmt.Select
 	re, err := regexp.Compile("(?i)LIMIT [0-9]+")
 	if err != nil {
 		return err
@@ -295,8 +295,8 @@ func InferFeatureColumns(trainIR *ir.TrainClause) error {
 	//        EMBEDDING(c2) for deep
 	//        EMBEDDING(c1) for wide
 	columnTargets := []string{}
-	if len(trainIR.Features) > 0 {
-		for target := range trainIR.Features {
+	if len(trainStmt.Features) > 0 {
+		for target := range trainStmt.Features {
 			columnTargets = append(columnTargets, target)
 		}
 	} else {
@@ -304,7 +304,7 @@ func InferFeatureColumns(trainIR *ir.TrainClause) error {
 	}
 	for _, target := range columnTargets {
 		for slctKey := range selectFieldTypeMap {
-			if slctKey == trainIR.Label.GetFieldMeta()[0].Name {
+			if slctKey == trainStmt.Label.GetFieldMeta()[0].Name {
 				// skip label field
 				continue
 			}
@@ -367,15 +367,15 @@ func InferFeatureColumns(trainIR *ir.TrainClause) error {
 		}
 	}
 
-	// set back trainIR.Features in the order of select
+	// set back trainStmt.Features in the order of select
 	for _, target := range columnTargets {
 		targetFeatureColumnMap := fcMap[target]
-		trainIR.Features[target] = []ir.FeatureColumn{}
+		trainStmt.Features[target] = []ir.FeatureColumn{}
 		// append cross columns at the end of all selected fields.
 		crossColumns := []*ir.CrossColumn{}
 		for _, slctKey := range selectFieldNames {
 			// label should not be added to feature columns
-			if slctKey == trainIR.Label.GetFieldMeta()[0].Name {
+			if slctKey == trainStmt.Label.GetFieldMeta()[0].Name {
 				continue
 			}
 			for _, fc := range targetFeatureColumnMap[slctKey] {
@@ -383,7 +383,7 @@ func InferFeatureColumns(trainIR *ir.TrainClause) error {
 					crossColumns = append(crossColumns, cc)
 					continue
 				}
-				trainIR.Features[target] = append(trainIR.Features[target], fc)
+				trainStmt.Features[target] = append(trainStmt.Features[target], fc)
 			}
 		}
 		// remove duplicated CrossColumns pointers, for CROSS(c1, c2), both fcMap[c1], fcMap[c2] will
@@ -397,7 +397,7 @@ func InferFeatureColumns(trainIR *ir.TrainClause) error {
 				}
 			}
 			if !exists {
-				trainIR.Features[target] = append(trainIR.Features[target], crossColumns[i])
+				trainStmt.Features[target] = append(trainStmt.Features[target], crossColumns[i])
 			}
 		}
 	}
@@ -405,9 +405,9 @@ func InferFeatureColumns(trainIR *ir.TrainClause) error {
 }
 
 // LogFeatureDerivationResult write messages to wr to log the feature derivation results
-func LogFeatureDerivationResult(wr *PipeWriter, trainIR *ir.TrainClause) {
+func LogFeatureDerivationResult(wr *PipeWriter, trainStmt *ir.TrainStmt) {
 	if wr != nil {
-		for target, fclist := range trainIR.Features {
+		for target, fclist := range trainStmt.Features {
 			for _, fc := range fclist {
 				for _, fm := range fc.GetFieldMeta() {
 					wr.Write(fmt.Sprintf("Using column (%s) in feature column (%T) as model construct param (%s)", fm.Name, fc, target))
