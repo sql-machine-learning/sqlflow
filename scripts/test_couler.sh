@@ -67,6 +67,7 @@ fi
 ############# Run SQLFLow test with Argo Mode #############
 set -x
 set -e
+env
 if [[ "${TRAVIS}" == "true" ]]; then
     export SQLFLOW_WORKFLOW_STEP_IMAGE="sqlflow"
 fi
@@ -81,7 +82,6 @@ do
         echo "SQLFlow MySQL Pod running."
         MYSQL_POD_IP=$(kubectl get pod ${MYSQL_POD_NAME} -o jsonpath='{.status.podIP}')
         go generate ./...
-        go install ./...
         SQLFLOW_TEST_DATASOURCE="mysql://root:root@tcp(${MYSQL_POD_IP}:3306)/?maxAllowedPacket=0" SQLFLOW_ARGO_MODE=True go test ./cmd/... -run TestEnd2EndMySQLWorkflow -v
         exit 0
     else
