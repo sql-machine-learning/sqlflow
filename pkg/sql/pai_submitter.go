@@ -26,6 +26,7 @@ func (s *paiSubmitter) ExecuteTrain(cl *ir.TrainClause) (e error) {
 	}
 	return e
 }
+
 func (s *paiSubmitter) ExecutePredict(cl *ir.PredictClause) error {
 	// TODO(typhoonzero): remove below twice parse when all submitters moved to IR.
 	pr, e := newExtendedSyntaxParser().Parse(cl.OriginalSQL)
@@ -41,5 +42,6 @@ func (s *paiSubmitter) ExecutePredict(cl *ir.PredictClause) error {
 	}
 	return s.runCommand(code)
 }
+
 func (s *paiSubmitter) GetTrainIRFromModel() bool { return false }
 func init()                                       { submitterRegistry["pai"] = &paiSubmitter{&defaultSubmitter{}} }
