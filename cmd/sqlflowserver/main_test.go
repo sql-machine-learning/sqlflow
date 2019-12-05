@@ -561,10 +561,11 @@ FROM %s.%s LIMIT 5;
 	for i := 0; i < 60; i++ {
 		cmd := exec.Command("kubectl", "get", "wf", workflowID, "-o", "jsonpath='{.status.phase}'")
 		out, err := cmd.CombinedOutput()
-		fmt.Println(string(out))
 		if err != nil {
 			log.Fatalf("get workflow status error: %v", err)
 		}
+		fmt.Println(string(out))
+		fmt.Println(string(out) == "Succeeded")
 		if string(out) == "Succeeded" {
 			return
 		}
