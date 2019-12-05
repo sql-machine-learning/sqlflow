@@ -23,20 +23,20 @@ import (
 	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
 
-func generateTrainIRWithInferredColumns(slct *extendedSelect, connStr string) (*ir.TrainClause, error) {
-	trainIR, err := generateTrainIR(slct, connStr)
+func generateTrainStmtWithInferredColumns(slct *extendedSelect, connStr string) (*ir.TrainStmt, error) {
+	trainStmt, err := generateTrainStmt(slct, connStr)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := InferFeatureColumns(trainIR); err != nil {
+	if err := InferFeatureColumns(trainStmt); err != nil {
 		return nil, err
 	}
 
-	return trainIR, nil
+	return trainStmt, nil
 }
 
-func generateTrainIR(slct *extendedSelect, connStr string) (*ir.TrainClause, error) {
+func generateTrainStmt(slct *extendedSelect, connStr string) (*ir.TrainStmt, error) {
 	tc := slct.trainClause
 	modelURI := tc.estimator
 	// get model Docker image name
@@ -83,7 +83,7 @@ func generateTrainIR(slct *extendedSelect, connStr string) (*ir.TrainClause, err
 	if vslct == "" {
 		vslct = slct.standardSelect.String()
 	}
-	return &ir.TrainClause{
+	return &ir.TrainStmt{
 		DataSource: connStr,
 		Select:     slct.standardSelect.String(),
 		// TODO(weiguoz): This is a temporary implement. Specifying the
@@ -98,7 +98,7 @@ func generateTrainIR(slct *extendedSelect, connStr string) (*ir.TrainClause, err
 	}, nil
 }
 
-func generateTrainIRByModel(slct *extendedSelect, connStr, cwd, modelDir, model string) (*ir.TrainClause, error) {
+func generateTrainStmtByModel(slct *extendedSelect, connStr, cwd, modelDir, model string) (*ir.TrainStmt, error) {
 	db, err := open(connStr)
 	if err != nil {
 		return nil, err
@@ -109,19 +109,19 @@ func generateTrainIRByModel(slct *extendedSelect, connStr, cwd, modelDir, model 
 	if err != nil {
 		return nil, err
 	}
-	return generateTrainIRWithInferredColumns(slctWithTrain, connStr)
+	return generateTrainStmtWithInferredColumns(slctWithTrain, connStr)
 }
 
-func verifyIRWithTrainIR(sqlir ir.SQLStatement, db *DB) error {
+func verifyIRWithTrainStmt(sqlir ir.SQLStatement, db *DB) error {
 	var selectStmt string
-	var trainIR *ir.TrainClause
+	var trainStmt *ir.TrainStmt
 	switch s := sqlir.(type) {
-	case *ir.PredictClause:
+	case *ir.PredictStmt:
 		selectStmt = s.Select
-		trainIR = s.TrainIR
-	case *ir.AnalyzeClause:
+		trainStmt = s.TrainStmt
+	case *ir.AnalyzeStmt:
 		selectStmt = s.Select
-		trainIR = s.TrainIR
+		trainStmt = s.TrainStmt
 	default:
 		return fmt.Errorf("loadModelMetaUsingIR doesn't support IR of type %T", sqlir)
 	}
@@ -130,16 +130,16 @@ func verifyIRWithTrainIR(sqlir ir.SQLStatement, db *DB) error {
 	if e != nil {
 		return e
 	}
-	if trainIR == nil { // Implies we dont' need to load model
+	if trainStmt == nil { // Implies we dont' need to load model
 		return nil
 	}
 
-	predFields, e := verify(trainIR.Select, db)
+	predFields, e := verify(trainStmt.Select, db)
 	if e != nil {
 		return e
 	}
 
-	for _, fc := range trainIR.Features {
+	for _, fc := range trainStmt.Features {
 		for _, field := range fc {
 			for _, fm := range field.GetFieldMeta() {
 				name := fm.Name
@@ -158,7 +158,7 @@ func verifyIRWithTrainIR(sqlir ir.SQLStatement, db *DB) error {
 	return nil
 }
 
-func generatePredictIR(slct *extendedSelect, connStr string, modelDir string, getTrainIRFromModel bool) (*ir.PredictClause, error) {
+func generatePredictStmt(slct *extendedSelect, connStr string, modelDir string, getTrainStmtFromModel bool) (*ir.PredictStmt, error) {
 	attrMap, err := generateAttributeIR(&slct.predAttrs)
 	if err != nil {
 		return nil, err
@@ -171,9 +171,9 @@ func generatePredictIR(slct *extendedSelect, connStr string, modelDir string, ge
 	}
 	defer os.RemoveAll(cwd)
 
-	var trainIR *ir.TrainClause
-	if getTrainIRFromModel {
-		trainIR, err = generateTrainIRByModel(slct, connStr, cwd, modelDir, slct.model)
+	var trainStmt *ir.TrainStmt
+	if getTrainStmtFromModel {
+		trainStmt, err = generateTrainStmtByModel(slct, connStr, cwd, modelDir, slct.model)
 		if err != nil {
 			return nil, err
 		}
@@ -184,31 +184,31 @@ func generatePredictIR(slct *extendedSelect, connStr string, modelDir string, ge
 		return nil, err
 	}
 
-	predIR := &ir.PredictClause{
+	predStmt := &ir.PredictStmt{
 		DataSource:   connStr,
 		Select:       slct.standardSelect.String(),
 		ResultTable:  resultTable,
 		ResultColumn: resultCol,
 		Attributes:   attrMap,
-		TrainIR:      trainIR,
+		TrainStmt:    trainStmt,
 	}
 
-	if getTrainIRFromModel {
+	if getTrainStmtFromModel {
 		// FIXME(tony): change the function signature to use *DB
 		db, err := NewDB(connStr)
 		if err != nil {
 			return nil, err
 		}
 		defer db.Close()
-		if err := verifyIRWithTrainIR(predIR, db); err != nil {
+		if err := verifyIRWithTrainStmt(predStmt, db); err != nil {
 			return nil, err
 		}
 	}
 
-	return predIR, nil
+	return predStmt, nil
 }
 
-func generateAnalyzeIR(slct *extendedSelect, connStr, modelDir string, getTrainIRFromModel bool) (*ir.AnalyzeClause, error) {
+func generateAnalyzeStmt(slct *extendedSelect, connStr, modelDir string, getTrainStmtFromModel bool) (*ir.AnalyzeStmt, error) {
 	attrs, err := generateAttributeIR(&slct.explainAttrs)
 	if err != nil {
 		return nil, err
@@ -221,35 +221,35 @@ func generateAnalyzeIR(slct *extendedSelect, connStr, modelDir string, getTrainI
 	}
 	defer os.RemoveAll(cwd)
 
-	var trainIR *ir.TrainClause
-	if getTrainIRFromModel {
-		trainIR, err = generateTrainIRByModel(slct, connStr, cwd, modelDir, slct.trainedModel)
+	var trainStmt *ir.TrainStmt
+	if getTrainStmtFromModel {
+		trainStmt, err = generateTrainStmtByModel(slct, connStr, cwd, modelDir, slct.trainedModel)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	analyzeIR := &ir.AnalyzeClause{
+	analyzeStmt := &ir.AnalyzeStmt{
 		DataSource: connStr,
 		Select:     slct.standardSelect.String(),
 		Attributes: attrs,
 		Explainer:  slct.explainer,
-		TrainIR:    trainIR,
+		TrainStmt:  trainStmt,
 	}
 
-	if getTrainIRFromModel {
+	if getTrainStmtFromModel {
 		// FIXME(tony): change the function signature to use *DB
 		db, err := NewDB(connStr)
 		if err != nil {
 			return nil, err
 		}
 		defer db.Close()
-		if err := verifyIRWithTrainIR(analyzeIR, db); err != nil {
+		if err := verifyIRWithTrainStmt(analyzeStmt, db); err != nil {
 			return nil, err
 		}
 	}
 
-	return analyzeIR, nil
+	return analyzeStmt, nil
 }
 
 func generateAttributeIR(attrs *attrs) (map[string]interface{}, error) {

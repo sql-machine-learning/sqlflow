@@ -79,31 +79,31 @@ func ParseSQLStatement(sql string, session *pb.Session) (string, error) {
 		return "", fmt.Errorf("ParseSQLStatement only accept extended SQL")
 	}
 	if extended.train {
-		trainIR, err := generateTrainIRWithInferredColumns(extended, connStr)
+		trainStmt, err := generateTrainStmtWithInferredColumns(extended, connStr)
 		if err != nil {
 			return "", err
 		}
-		pbir, err := ir.TrainIRToProto(trainIR, session)
+		pbir, err := ir.TrainStmtToProto(trainStmt, session)
 		if err != nil {
 			return "", err
 		}
 		return proto.MarshalTextString(pbir), nil
 	} else if extended.analyze {
-		analyzeIR, err := generateAnalyzeIR(extended, connStr, "", true)
+		analyzeStmt, err := generateAnalyzeStmt(extended, connStr, "", true)
 		if err != nil {
 			return "", nil
 		}
-		pbir, err := ir.AnalyzeIRToProto(analyzeIR, session)
+		pbir, err := ir.AnalyzeStmtToProto(analyzeStmt, session)
 		if err != nil {
 			return "", nil
 		}
 		return proto.MarshalTextString(pbir), nil
 	} else {
-		predIR, err := generatePredictIR(extended, connStr, "", true)
+		predStmt, err := generatePredictStmt(extended, connStr, "", true)
 		if err != nil {
 			return "", err
 		}
-		pbir, err := ir.PredictIRToProto(predIR, session)
+		pbir, err := ir.PredictStmtToProto(predStmt, session)
 		if err != nil {
 			return "", err
 		}
@@ -184,11 +184,11 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, modelDir string, session 
 		if sql.extended != nil {
 			parsed := sql.extended
 			if parsed.train {
-				r, err = generateTrainIR(parsed, connStr)
+				r, err = generateTrainStmt(parsed, connStr)
 			} else if parsed.analyze {
-				r, err = generateAnalyzeIR(parsed, connStr, modelDir, false)
+				r, err = generateAnalyzeStmt(parsed, connStr, modelDir, false)
 			} else {
-				r, err = generatePredictIR(parsed, connStr, modelDir, false)
+				r, err = generatePredictStmt(parsed, connStr, modelDir, false)
 			}
 		} else {
 			standardSQL := ir.StandardSQL(sql.standard)
@@ -252,11 +252,11 @@ func runSQLProgram(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, s
 		if sql.extended != nil {
 			parsed := sql.extended
 			if parsed.train {
-				r, err = generateTrainIRWithInferredColumns(parsed, connStr)
+				r, err = generateTrainStmtWithInferredColumns(parsed, connStr)
 			} else if parsed.analyze {
-				r, err = generateAnalyzeIR(parsed, connStr, modelDir, submitter().GetTrainIRFromModel())
+				r, err = generateAnalyzeStmt(parsed, connStr, modelDir, submitter().GetTrainStmtFromModel())
 			} else {
-				r, err = generatePredictIR(parsed, connStr, modelDir, submitter().GetTrainIRFromModel())
+				r, err = generatePredictStmt(parsed, connStr, modelDir, submitter().GetTrainStmtFromModel())
 			}
 		} else {
 			standardSQL := ir.StandardSQL(sql.standard)
@@ -285,7 +285,7 @@ func runSingleSQLIR(wr *PipeWriter, sqlIR ir.SQLStatement, db *DB, modelDir stri
 			})
 		}
 	}()
-	// TODO(typhoonzero): can run LogFeatureDerivationResult(wr, trainIR) here to send
+	// TODO(typhoonzero): can run LogFeatureDerivationResult(wr, trainStmt) here to send
 	// feature derivation logs to client, yet we disable if for now so that it's less annoying.
 	if e := submitter().Setup(wr, db, modelDir, session); e != nil {
 		return e
@@ -354,15 +354,15 @@ func createPredictionTable(predParsed *extendedSelect, db *DB, session *pb.Sessi
 	return nil
 }
 
-// Create prediction table using the `PredictClause`.
+// Create prediction table using the `PredictStmt`.
 // TODO(typhoonzero): remove legacy `createPredictionTable` once we change all submitters to use IR.
-func createPredictionTableFromIR(predIR *ir.PredictClause, db *DB, session *pb.Session) error {
-	dropStmt := fmt.Sprintf("drop table if exists %s;", predIR.ResultTable)
+func createPredictionTableFromIR(predStmt *ir.PredictStmt, db *DB, session *pb.Session) error {
+	dropStmt := fmt.Sprintf("drop table if exists %s;", predStmt.ResultTable)
 	if _, e := db.Exec(dropStmt); e != nil {
 		return fmt.Errorf("failed executing %s: %q", dropStmt, e)
 	}
 	// FIXME(typhoonzero): simply add LIMIT 1 at the end to get column types.
-	tmpSQL := fmt.Sprintf("%s LIMIT 1;", strings.TrimRight(strings.TrimSpace(predIR.Select), ";"))
+	tmpSQL := fmt.Sprintf("%s LIMIT 1;", strings.TrimRight(strings.TrimSpace(predStmt.Select), ";"))
 	flds, fts, e := getColumnTypes(tmpSQL, db)
 	if e != nil {
 		return e
@@ -372,14 +372,14 @@ func createPredictionTableFromIR(predIR *ir.PredictClause, db *DB, session *pb.S
 	labelColumnTypeFound := false
 	labelColumnName := ""
 	labelColumnType := ""
-	fmt.Fprintf(&b, "create table %s (", predIR.ResultTable)
+	fmt.Fprintf(&b, "create table %s (", predStmt.ResultTable)
 	for idx, colType := range fts {
 		stype, e := universalizeColumnType(db.driverName, colType)
 		if e != nil {
 			return e
 		}
 		fldName := flds[idx]
-		if fldName == predIR.ResultColumn {
+		if fldName == predStmt.ResultColumn {
 			labelColumnTypeFound = true
 			labelColumnName = fldName
 			labelColumnType = stype
@@ -391,10 +391,10 @@ func createPredictionTableFromIR(predIR *ir.PredictClause, db *DB, session *pb.S
 	// TODO(Yancey1989): For the current implementation, the prediction result column
 	// type is derivated by the pred-select-statement, the better way is derivating
 	// the result column type by the prediction result.
-	// typ, ok := fts.get(predIR.ResultColumn)
+	// typ, ok := fts.get(predStmt.ResultColumn)
 	if !labelColumnTypeFound {
 		// NOTE(typhoonzero): Clustering model may not have label in select statement, default use INT type
-		labelColumnName = predIR.ResultColumn
+		labelColumnName = predStmt.ResultColumn
 		labelColumnType = "INT"
 	}
 	stype, e := universalizeColumnType(db.driverName, labelColumnType)

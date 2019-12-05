@@ -113,7 +113,7 @@ func TestWrapperCodegen(t *testing.T) {
 
 func TestTrainCodegen(t *testing.T) {
 	a := assert.New(t)
-	ir := mockTrainIR()
+	ir := mockTrainStmt()
 
 	paiTfCode, err := doTrain(ir, "my_dnn_model")
 	a.NoError(err)
@@ -128,7 +128,7 @@ func TestTrainCodegen(t *testing.T) {
 
 func TestPredictCodegen(t *testing.T) {
 	a := assert.New(t)
-	ir := mockPredIR()
+	ir := mockPredStmt()
 
 	paiTfCode, err := doPredict(ir, "my_dnn_model")
 	a.NoError(err)
@@ -152,7 +152,7 @@ func TestPredictCodegen(t *testing.T) {
 	a.False(hasUnknownParameters(tfCode, knownPredictParams))
 }
 
-func mockTrainIR() *ir.TrainClause {
+func mockTrainStmt() *ir.TrainStmt {
 	_ = `SELECT * FROM iris_train TO TRAIN DNNClassifier
          WITH train.batch_size=4,
 		      train.epoch=3,
@@ -160,7 +160,7 @@ func mockTrainIR() *ir.TrainClause {
 		      model.n_classes=3
 	     LABEL class
 	     INTO my_dnn_model;`
-	return &ir.TrainClause{
+	return &ir.TrainStmt{
 		DataSource:       dataSource,
 		Select:           "select * from iris_train;",
 		ValidationSelect: "select * from iris_test;",
@@ -183,13 +183,13 @@ func mockTrainIR() *ir.TrainClause {
 		Label: &ir.NumericColumn{&ir.FieldMeta{"class", ir.Int, "", []int{1}, false, nil, 0}}}
 }
 
-func mockPredIR() *ir.PredictClause {
+func mockPredStmt() *ir.PredictStmt {
 	_ = "SELECT * FROM iris_test TO PREDICT iris_predict.class USING my_dnn_model;"
-	return &ir.PredictClause{
+	return &ir.PredictStmt{
 		DataSource:  dataSource,
 		Select:      "select * from iris_test;",
 		ResultTable: "iris_predict",
 		Attributes:  make(map[string]interface{}),
-		TrainIR:     mockTrainIR(),
+		TrainStmt:   mockTrainStmt(),
 	}
 }

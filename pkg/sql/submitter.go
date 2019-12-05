@@ -50,7 +50,7 @@ type Submitter interface {
 	ir.Executor
 	Setup(*PipeWriter, *DB, string, *pb.Session) error
 	Teardown()
-	GetTrainIRFromModel() bool
+	GetTrainStmtFromModel() bool
 }
 
 type logChanWriter struct {
@@ -110,7 +110,7 @@ func (s *defaultSubmitter) Setup(w *PipeWriter, db *DB, modelDir string, session
 	return err
 }
 
-func (s *defaultSubmitter) SaveModel(cl *ir.TrainClause) error {
+func (s *defaultSubmitter) SaveModel(cl *ir.TrainStmt) error {
 	m := model{workDir: s.Cwd, TrainSelect: cl.OriginalSQL}
 	modelURI := cl.Into
 	if s.ModelDir != "" {
@@ -119,7 +119,7 @@ func (s *defaultSubmitter) SaveModel(cl *ir.TrainClause) error {
 	return m.save(modelURI, cl, s.Session)
 }
 
-func (s *defaultSubmitter) LoadModel(cl *ir.TrainClause) error {
+func (s *defaultSubmitter) LoadModel(cl *ir.TrainStmt) error {
 	modelURI := cl.Into
 	if s.ModelDir != "" {
 		modelURI = fmt.Sprintf("file://%s/%s", s.ModelDir, cl.Into)
@@ -145,7 +145,7 @@ func (s *defaultSubmitter) ExecuteQuery(sql *ir.StandardSQL) error {
 	return runStandardSQL(s.Writer, string(*sql), s.Db)
 }
 
-func (s *defaultSubmitter) ExecuteTrain(cl *ir.TrainClause) (e error) {
+func (s *defaultSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 	var code string
 	if isXGBoostModel(cl.Estimator) {
 		code, e = xgboost.Train(cl)
@@ -160,11 +160,11 @@ func (s *defaultSubmitter) ExecuteTrain(cl *ir.TrainClause) (e error) {
 	return e
 }
 
-func (s *defaultSubmitter) ExecutePredict(cl *ir.PredictClause) (e error) {
-	if e = s.LoadModel(cl.TrainIR); e == nil {
+func (s *defaultSubmitter) ExecutePredict(cl *ir.PredictStmt) (e error) {
+	if e = s.LoadModel(cl.TrainStmt); e == nil {
 		if e = createPredictionTableFromIR(cl, s.Db, s.Session); e == nil {
 			var code string
-			if isXGBoostModel(cl.TrainIR.Estimator) {
+			if isXGBoostModel(cl.TrainStmt.Estimator) {
 				code, e = xgboost.Pred(cl, s.Session)
 			} else {
 				code, e = tensorflow.Pred(cl, s.Session)
@@ -176,12 +176,12 @@ func (s *defaultSubmitter) ExecutePredict(cl *ir.PredictClause) (e error) {
 	}
 	return e
 }
-func (s *defaultSubmitter) ExecuteAnalyze(cl *ir.AnalyzeClause) error {
-	if err := s.LoadModel(cl.TrainIR); err != nil {
+func (s *defaultSubmitter) ExecuteAnalyze(cl *ir.AnalyzeStmt) error {
+	if err := s.LoadModel(cl.TrainStmt); err != nil {
 		return err
 	}
-	if !isXGBoostModel(cl.TrainIR.Estimator) {
-		return fmt.Errorf("unsupported model %s", cl.TrainIR.Estimator)
+	if !isXGBoostModel(cl.TrainStmt.Estimator) {
+		return fmt.Errorf("unsupported model %s", cl.TrainStmt.Estimator)
 	}
 
 	code, err := xgboost.Analyze(cl)
@@ -205,10 +205,10 @@ func (s *defaultSubmitter) ExecuteAnalyze(cl *ir.AnalyzeClause) error {
 	s.Writer.Write(img2html)
 	return nil
 }
-func (s *defaultSubmitter) Teardown()                 { os.RemoveAll(s.Cwd) }
-func (s *defaultSubmitter) GetTrainIRFromModel() bool { return true }
+func (s *defaultSubmitter) Teardown()                   { os.RemoveAll(s.Cwd) }
+func (s *defaultSubmitter) GetTrainStmtFromModel() bool { return true }
 
-func (s *elasticdlSubmitter) ExecuteTrain(cl *ir.TrainClause) error {
+func (s *elasticdlSubmitter) ExecuteTrain(cl *ir.TrainStmt) error {
 	// TODO(typhoonzero): remove below twice parse when all submitters moved to IR.
 	pr, e := newExtendedSyntaxParser().Parse(cl.OriginalSQL)
 	if e != nil {
@@ -217,7 +217,7 @@ func (s *elasticdlSubmitter) ExecuteTrain(cl *ir.TrainClause) error {
 	return elasticDLTrain(s.Writer, pr, s.Db, s.Cwd, s.Session)
 }
 
-func (s *elasticdlSubmitter) ExecutePredict(cl *ir.PredictClause) error {
+func (s *elasticdlSubmitter) ExecutePredict(cl *ir.PredictStmt) error {
 	// TODO(typhoonzero): remove below twice parse when all submitters moved to IR.
 	pr, e := newExtendedSyntaxParser().Parse(cl.OriginalSQL)
 	if e != nil {
@@ -226,7 +226,7 @@ func (s *elasticdlSubmitter) ExecutePredict(cl *ir.PredictClause) error {
 	return elasticDLPredict(s.Writer, pr, s.Db, s.Cwd, s.Session)
 }
 
-func (s *alpsSubmitter) ExecuteTrain(cl *ir.TrainClause) error {
+func (s *alpsSubmitter) ExecuteTrain(cl *ir.TrainStmt) error {
 	// TODO(typhoonzero): remove below twice parse when all submitters moved to IR.
 	pr, e := newExtendedSyntaxParser().Parse(cl.OriginalSQL)
 	if e != nil {
@@ -235,7 +235,7 @@ func (s *alpsSubmitter) ExecuteTrain(cl *ir.TrainClause) error {
 	return alpsTrain(s.Writer, pr, s.Db, s.Cwd, s.Session)
 }
 
-func (s *alpsSubmitter) ExecutePredict(cl *ir.PredictClause) error {
+func (s *alpsSubmitter) ExecutePredict(cl *ir.PredictStmt) error {
 	// TODO(typhoonzero): remove below twice parse when all submitters moved to IR.
 	pr, e := newExtendedSyntaxParser().Parse(cl.OriginalSQL)
 	if e != nil {
