@@ -17,6 +17,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 
 	pb "sqlflow.org/sqlflow/pkg/proto"
@@ -180,4 +181,26 @@ func Pred(ir *ir.PredictClause, session *pb.Session) (string, error) {
 		return "", err
 	}
 	return program.String(), nil
+}
+
+func init() {
+	re := regexp.MustCompile("[^a-z]")
+	// xgboost.gbtree, xgboost.dart, xgboost.gblinear share the same parameter set
+	modelAttrs := attribute.NewDictionary("xgboost.gbtree", "")
+	for _, v := range modelAttrs {
+		pieces := strings.SplitN(v.Doc, " ", 2)
+		maybeType := re.ReplaceAllString(pieces[0], "")
+		if maybeType == strings.ToLower(maybeType) {
+			switch maybeType {
+			case "float":
+				v.Type = attribute.Float
+			case "int":
+				v.Type = attribute.Int
+			case "string":
+				v.Type = attribute.String
+			}
+			v.Doc = pieces[1]
+		}
+	}
+	attributeDictionary = modelAttrs.Update(attributeDictionary)
 }

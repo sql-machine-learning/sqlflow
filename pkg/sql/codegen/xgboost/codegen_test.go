@@ -24,6 +24,11 @@ import (
 	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
 
+func TestAttributes(t *testing.T) {
+	a := assert.New(t)
+	a.Equal(27, len(attributeDictionary))
+}
+
 func TestTrainAndPredict(t *testing.T) {
 	a := assert.New(t)
 	tir := mockTrainIR()
