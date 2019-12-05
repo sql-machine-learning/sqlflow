@@ -1,70 +1,91 @@
-# Katib on SQLFlow
-This design is about optimizing model hyperparameters in SQLFlow by creating Katib step via couler.
+# Auto Hyperparameter Tunning
 
-## Requirements:
+SQLFlow allows the users to specify hyperparameter values via the `WITH` clause when training models.  However, most users under our survey prefer that SQLFlow could automatically estimate these hyperparameters instead.  This document is about the automatic hyperparameter estimation.
 
-Currently, SQLFlow allows programmers to use SQL queries to enable ML model training, prediction, and explanation. However, hyperparameters optimization is also a necessary function that can help users to tune hyperparamters of their models in an easy way. This function will be supported by Katib in SQLFlow.
+## Katib
 
-## Hyperparameter Optimization in Katib
+[Katib](https://github.com/kubeflow/katib) is a Kubernetes Native System for Hyperparameter Tuning and Neural Architecture Search.  The inspiration of Katib comes from Google Vizier and supports multiple machine learning frameworks, for example, TensorFlow, Apache MXNet, PyTorch, and XGBoost.  We compared Katib with some other auto hyperparameter tunning systems, and we prefer its Kubernetes-native architecture.
 
-[Katib](https://github.com/kubeflow/katib) is a Kubernetes Native System for Hyperparameter Tuning and Neural Architecture Search. The system is inspired by Google Vizier and supports multiple ML/DL frameworks (e.g. TensorFlow, Apache MXNet, PyTorch and XGBoost).
+However, Katib, or hyperparameter tuning in the academic literature, is not sufficient for our use case.
 
-A training job in Katib is called an experiment. Users need to specify or choose: 
-- parameters need to be optimized in the training. 
-- the value range for each parameter.
-- the algorithm (e.g., `random`) used to choose candidate value for training paramters.
-- objective (e.g., accuracy) which measures the model with different parameters' value.
+## The Paradox
 
-When an experiment is done, users can check objectives of each set of training parameters' value via web UI. Then users can decide the best value for those training parameters.
+To define a training job, a.k.a., *experiment*, in Katib, users need to specify the search range of each hyperparameter.
 
-## Couler and SQLFlow
+Ironically, it is an extra burden for the users to specify the above information, as our goal is to release users from specifying hyperparameters.
 
-SQLFlow does not create training jobs on Katib directly. Instead, SQLFlow creates Katib steps in a workflow via couler, and the workflow will be run by Argo on Kubernetes. More details can be found in [couler and SQLFlow](https://github.com/sql-machine-learning/sqlflow/blob/develop/doc/design/couler_sqlflow.md). 
+## Untangle the Paradox
 
-## SQLFlow Syntax
+### Boosting Tree Models
 
-In order to use Katib, programmers need to specify it is a Katib job by `TRAIN katib.{tf, pytorch, xgboost}.{...}` in SQL query. Here we use a simple example to explain the syntax of creating Katib job for XGBoost training in SQLFlow.  
+For boosting tree models, especially models with XGBoost, there is a small group of effective hyperparameter, and we can empirically determine their ranges.  We noticed that the following two are the most important.
 
-``` sql
-SELECT * FROM train_table
-TO TRAIN a_data_scientist/xgboost:v0.5/katib.xgboost.gbtree
+- `max_depth` in the range [2,10], and
+- `num_round` in the range [50, 100].
+
+With the introduction of auto hyperparameter tunning, we hope that users don't need to specify the `num_round` and `max_depth` values in the following SQL statement.
+
+```sql
+SELECT * FROM a_dataset_table
+TO TRAIN a_data_scientist/xgboost_models:v0.5/a_gbtree_model
 WITH
     objective=multi:softmax,
     eta=1,
     num_round=[20, 100],
     max_depth=[],
-    validatation_dataset="select * from test_table"
 LABEL class
 INTO my_xgb_model;
 ```
-The above example,
-- This query tries to train a XGBoost model in Katib. 
-- `a_data_scientist/xgboost:v0.5/katib.xgboost.gbtree`
-    - `a_data_scientist/xgboost:v0.5`: container image source
-    - `katib.xgboost.gtree`:
-        - `katib` indicates to create a Katib step via couler.
-        - `xgboost` indicates to train a XGBoost model.
-        - `gbtree` indicates the booster type in XGBoost model training. 
-- In the `WITH` clause:
-    - `objective` and `eta` are parameters in XGBoost. More details about XGBoost parameters see: [here](https://xgboost.readthedocs.io/en/latest/parameter.html#general-parameters). Those parameters are optional. If users do not specify them, those parameters will be filled by default value. 
-    - `num_round` and `max_depth` are parameters to be optimized. If programmers specify the value range for a parameter (e.g., `num_round`), the range will be set for this parameter during training; otherwise, programmers assign an empty list to a parameter (e.g., `max_depth`), this parameter will be assigned default range during training. If programmers do not specify any parameters to be optimized, the system will optimize default parameters for this model.   
-    - `validation_dataset` is required in Katib jobs. This indicates the data used for testing in model training in Katib.  
-- `my_xgb_model` is the name of the trained model. 
 
+### Deep Learning Models
 
-## Required update in SQLFlow Couler codegen:
+For deep learning models, the case is complicated.  Each model has its own set of hyperparameters, and their ranges might vary significantly.  Our proposed solution is to utilize the [model zoo](model_zoo.md).  In particular, users might train a model defined in the zoo with various datasets, in various experiments, with manually specified hyperparameters.  After the training, some users might publish their trained models, including the estimated parameters and the specified hyperparameters.  Given these published hyperparameter values, the [Bayesian hyperparameter optimization](https://en.wikipedia.org/wiki/Hyperparameter_optimization#Bayesian_optimization)  for hyperparameter tuning.  We are working on such a Bayesian approach that doesn't require explicit specification of hyperparameter ranges.  We plan to contribute it to Katib.
 
-In SQLFlow, Couler codegen will generate a python program from the input SQL statement. In the generated python program, it invokes Couler APIs (`couler.run_container(...)`) to create Argo steps. However, the current generated python program only calls `couler.run_container` to create a single container step, which does not work with job type steps (e.g., Katib). The container step runs a single container while a job step may launch multiple containers which will coordinate with each other. 
+### Tigger Hyperparameter Tunning
 
-Then it needs to invoke different Couler APIs according to input SQL queries. In Katib case, Couler codegen needs to check if the input SQL query is to create a Katib job. If it is, the codegen should generate codes to invoke a Couler Katib API, like `couler.run_katib(...)`
+Each model definition has a specification listing its hyperparameters.  If the user-specified values of all of them, there is no need for tunning; otherwise, SQLFlow should call Katib.
 
-## Design for `couler.run_katib(...)`
+## The System Design
 
-Considering Katib itself supports multiple models and frameworks, and more may come in the future, we use a unique API to create Katib steps in Couler. The API is as following:
+### From Submitter to Couler
 
-`couler.run_katib("model_or_framework"=None, katib_params={}, model_or_framework_params={})`
+SQLFlow has been working as converting a SQL program into a Python program known as a *submitter* before executing the submitter.  However, we recently realized that the idea of the submitter is insufficient for cloud deployment.  As Kubernetes might preempt the SQLFlow server, it could lose the status of the execution of submitters.
 
-In this API, it includes three arguments:
-- `model_or_framework`: string, indicates the model (e.g., XGBoost) or frameworks (e.g., tf or pytorch) used in model training on Katib.
-- `katib_params`: dict, configures Katib jobs. For example, users can specify max trials in model training, like `katib_params= { "max_trial_count": 10}`  
-- `model_or_framework_params`: dict, configures model or framework given in `model_or_framework`. The above XGBoost example will be: `model_or_framework_params= { "booster": "gbtree", "objective": "multi:softmax", "eta": 1, "num_round": [20, 100], max_depth: [] }`
+This observation urges us to make the following changes.
+
+1. Introducing a workflow engine, namely [Argo](http://argoproj.io/).
+1. Make SQLFlow generates a workflow instead of a Python program.
+1. SQLFlow server submits the workflow to Argo for the execution.
+1. Argo manages the status of workflow executions.
+
+Argo takes workflows in the form of YAML files, and it is error-prone to write such YAML files manually.  So, we created [Couler](/python/couler/README.md) as an intermediate programmatic representation of workflows.
+
+We need to develop a new codegen, `codegen_couler.go`, for SQLFlow.  `codegen_couler.go` converts the parsed SQL program, a.k.a., the [intermediate representation](/pkg/sql/ir), or IR, into a Couler program.
+
+### The Integration via Couler
+
+SQLFlow parses each SQL program into an IR, which is a list of statement IRs.  The `codegen_couler.go` converts the IR into a Couler program.   We need to add a Couler functions `couler.katib.train` for the calling by the generated Couler program.
+
+Consider the following example program.
+
+```sql
+SELECT * FROM a, b WHERE a.id = b.id INTO c;
+SELECT * FROM c TO TRAIN model_def WITH objective=multi:softmax, eta=1 LABEL class INTO my_xgb_model;
+```
+
+The `codegen_couler.go` might generate the following Couler program.
+
+```python
+couler.maxcompute.run("""SELECT * FROM a, b WHERE a.id = b.id INTO c;
+                         SELECT * FROM c INTO temp""")
+couler.maxcompute.export(table="temp", file="/hdfs/temp")
+couler.katib.train(model_def, data="/hdfs/temp")
+```
+
+## `couler.katib.train(...)`
+
+Considering Katib itself supports multiple models and frameworks, and more may come in the future, we introduce the following Couler function.
+
+```python
+def couler.katib.train(model_def=None, hyperparameters={})
+```
