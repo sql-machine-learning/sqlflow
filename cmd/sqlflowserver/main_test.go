@@ -482,7 +482,7 @@ func TestEnd2EndMaxComputeElasticDL(t *testing.T) {
 
 func TestEnd2EndMySQLWorkflow(t *testing.T) {
 	a := assert.New(t)
-	if os.Getenv("SQLFLOW_TEST_DATASOURCE") == "" || os.Getenv("SQLFLOW_ARGO_MODE") != "True" {
+	if os.Getenv("SQLFLOW_TEST_DATASOURCE") == "" || strings.ToLower(os.Getenv("SQLFLOW_ARGO_MODE")) != "true" {
 		t.Skip("Skipping workflow test.")
 	}
 	driverName, _, err := sql.SplitDataSource(testDatasource)
