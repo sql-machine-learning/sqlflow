@@ -44,7 +44,7 @@ func Run(programIR ir.SQLProgram, session *pb.Session) (string, error) {
 			ss.OriginalSQL = sqlIR.(*ir.PredictStmt).OriginalSQL
 		case *ir.AnalyzeStmt:
 			ss.IsExtendedSQL = true
-			ss.OriginalSQL = sqlIR.(*ir.AnalyzeClause).OriginalSQL
+			ss.OriginalSQL = sqlIR.(*ir.AnalyzeStmt).OriginalSQL
 		default:
 			return "", fmt.Errorf("uncognized IR type: %v", i)
 		}
