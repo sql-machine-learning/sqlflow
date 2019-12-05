@@ -67,6 +67,7 @@ fi
 ############# Run SQLFLow test with Argo Mode #############
 set -x
 set -e
+env
 # start a SQLFlow MySQL Pod with testdata
 kubectl run mysql --port 3306 --env="SQLFLOW_MYSQL_HOST=0.0.0.0" --env="SQLFLOW_MYSQL_PORT=3306" --image=sqlflow/sqlflow --command -- bash /start.sh mysql
 MYSQL_POD_NAME=$(kubectl get pod -l run=mysql -o jsonpath="{.items[0].metadata.name}")
