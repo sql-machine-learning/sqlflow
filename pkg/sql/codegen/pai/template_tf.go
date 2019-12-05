@@ -53,8 +53,9 @@ driver, dsn = "{{.DataSource}}".split("://")
 assert driver == "maxcompute"
 user, passwd, address, database = sqlflow_submitter.db.parseMaxComputeDSN(dsn)
 
+jobname = '_'.join(['sqlflow', '{{.ModelName}}'.replace('.', '_')])
 pai_cmd = 'pai -name %s -DjobName=%s -Dtags=%s -Dscript=file://%s -DentryFile=%s' % (
-	'tensorflow1120', 'sqlflow_' + '{{.ModelName}}', 'dnn', tarball, '{{.EntryFile}}')
+	'tensorflow1120', jobname, 'dnn', tarball, '{{.EntryFile}}')
 
 # Submit the tarball to PAI
 subprocess.run(["odpscmd", "-u", user,

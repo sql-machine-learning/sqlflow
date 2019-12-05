@@ -26,11 +26,11 @@ import (
 
 func TestTrainCodegen(t *testing.T) {
 	a := assert.New(t)
-	tir := mockTrainIR()
+	tir := mockTrainStmt()
 	_, err := Train(tir)
 	a.NoError(err)
 
-	pir := mockPredIR(tir)
+	pir := mockPredStmt(tir)
 
 	sess := &pb.Session{
 		Token:            "",
@@ -51,7 +51,7 @@ func TestTrainCodegen(t *testing.T) {
 	a.Equal(r.FindStringSubmatch(code)[1], "sqlflow_pass")
 }
 
-func mockTrainIR() *ir.TrainClause {
+func mockTrainStmt() *ir.TrainStmt {
 	cfg := &mysql.Config{
 		User:                 "root",
 		Passwd:               "root",
@@ -69,7 +69,7 @@ func mockTrainIR() *ir.TrainClause {
 	COLUMN sepal_length, sepal_width, petal_length, petal_width
 	LABEL class
 	INTO sqlflow_models.my_xgboost_model;`
-	return &ir.TrainClause{
+	return &ir.TrainStmt{
 		DataSource:       fmt.Sprintf("mysql://%s", cfg.FormatDSN()),
 		Select:           "select * from iris.train;",
 		ValidationSelect: "select * from iris.test;",
@@ -88,12 +88,12 @@ func mockTrainIR() *ir.TrainClause {
 		Label: &ir.NumericColumn{&ir.FieldMeta{"class", ir.Int, "", []int{1}, false, nil, 0}}}
 }
 
-func mockPredIR(trainIR *ir.TrainClause) *ir.PredictClause {
-	return &ir.PredictClause{
-		DataSource:  trainIR.DataSource,
+func mockPredStmt(trainStmt *ir.TrainStmt) *ir.PredictStmt {
+	return &ir.PredictStmt{
+		DataSource:  trainStmt.DataSource,
 		Select:      "select * from iris.test;",
 		ResultTable: "iris.predict",
 		Attributes:  make(map[string]interface{}),
-		TrainIR:     trainIR,
+		TrainStmt:   trainStmt,
 	}
 }

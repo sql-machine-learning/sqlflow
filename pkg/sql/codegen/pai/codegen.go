@@ -50,7 +50,7 @@ func wrapper(code, dataSource, modelName, cwd string) (string, error) {
 }
 
 // Train generates a Python program for train a TensorFlow model.
-func Train(ir *ir.TrainClause, modelName, cwd string) (string, error) {
+func Train(ir *ir.TrainStmt, modelName, cwd string) (string, error) {
 	program, err := doTrain(ir, modelName)
 	if err != nil {
 		return "", err
@@ -58,7 +58,7 @@ func Train(ir *ir.TrainClause, modelName, cwd string) (string, error) {
 	return wrapper(program, ir.DataSource, modelName, cwd)
 }
 
-func doTrain(ir *ir.TrainClause, modelName string) (string, error) {
+func doTrain(ir *ir.TrainStmt, modelName string) (string, error) {
 	code, err := tensorflow.Train(ir)
 	if err != nil {
 		return "", err
@@ -81,7 +81,7 @@ func doTrain(ir *ir.TrainClause, modelName string) (string, error) {
 }
 
 // Predict generates a Python program for train a TensorFlow model.
-func Predict(ir *ir.PredictClause, modelName, cwd string) (string, error) {
+func Predict(ir *ir.PredictStmt, modelName, cwd string) (string, error) {
 	program, err := doPredict(ir, modelName)
 	if err != nil {
 		return "", err
@@ -89,7 +89,7 @@ func Predict(ir *ir.PredictClause, modelName, cwd string) (string, error) {
 	return wrapper(program, ir.DataSource, modelName, cwd)
 }
 
-func doPredict(ir *ir.PredictClause, modelName string) (string, error) {
+func doPredict(ir *ir.PredictStmt, modelName string) (string, error) {
 	var tpl = template.Must(template.New("Predict").Parse(tfPredictTmplText))
 	filler := predictFiller{
 		DataSource:  ir.DataSource,

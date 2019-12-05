@@ -87,9 +87,9 @@ func (d Dictionary) Validate(attrs map[string]interface{}) error {
 			} else {
 				return fmt.Errorf(errUnsupportedAttribute, k)
 			}
-
 		}
-		// unknown type of attribute do not need to run validate
+
+		// Unknown type of attribute do not need to run validate.
 		if desc.Type == Unknown {
 			if desc.Checker != nil {
 				if err := desc.Checker(v); err != nil {
@@ -98,31 +98,40 @@ func (d Dictionary) Validate(attrs map[string]interface{}) error {
 			}
 			continue
 		}
-		switch v.(type) {
-		case int, int32, int64:
-			if desc.Type != Int {
-				return fmt.Errorf(errUnexpectedType, k, desc.Type.String(), v)
-			}
-		case float32, float64:
-			if desc.Type != Float {
-				return fmt.Errorf(errUnexpectedType, k, desc.Type.String(), v)
-			}
-		case string:
-			if desc.Type != String {
-				return fmt.Errorf(errUnexpectedType, k, desc.Type.String(), v)
-			}
-		case []int32, []int64:
-			if desc.Type != IntList {
-				return fmt.Errorf(errUnexpectedType, k, desc.Type.String(), v)
-			}
-		default:
-			return fmt.Errorf(errUnexpectedType, k, "one of Int/Float/String/IntList", v)
+
+		if e := declaredTypeMatchesValueType(k, v, desc); e != nil {
+			return e
 		}
+
 		if desc.Checker != nil {
 			if err := desc.Checker(v); err != nil {
 				return err
 			}
 		}
+	}
+	return nil
+}
+
+func declaredTypeMatchesValueType(k string, v interface{}, desc *Description) error {
+	switch v.(type) {
+	case int, int32, int64:
+		if desc.Type != Int {
+			return fmt.Errorf(errUnexpectedType, k, desc.Type.String(), v)
+		}
+	case float32, float64:
+		if desc.Type != Float {
+			return fmt.Errorf(errUnexpectedType, k, desc.Type.String(), v)
+		}
+	case string:
+		if desc.Type != String {
+			return fmt.Errorf(errUnexpectedType, k, desc.Type.String(), v)
+		}
+	case []int32, []int64:
+		if desc.Type != IntList {
+			return fmt.Errorf(errUnexpectedType, k, desc.Type.String(), v)
+		}
+	default:
+		return fmt.Errorf(errUnexpectedType, k, "one of Int/Float/String/IntList", v)
 	}
 	return nil
 }

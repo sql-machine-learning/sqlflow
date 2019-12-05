@@ -22,8 +22,8 @@ import (
 
 func TestAnalyze(t *testing.T) {
 	a := assert.New(t)
-	tir := mockTrainIR()
-	air := &ir.AnalyzeClause{
+	tir := mockTrainStmt()
+	astmt := &ir.AnalyzeStmt{
 		DataSource: tir.DataSource,
 		Select:     "SELECT * FROM iris.train",
 		Explainer:  "TreeExplainer",
@@ -31,8 +31,8 @@ func TestAnalyze(t *testing.T) {
 			"shap_summary.plot_type": "dot",
 			"others.type":            "bar",
 		},
-		TrainIR: tir,
+		TrainStmt: tir,
 	}
-	_, err := Analyze(air)
+	_, err := Analyze(astmt)
 	a.NoError(err)
 }

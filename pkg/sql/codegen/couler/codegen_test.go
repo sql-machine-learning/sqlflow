@@ -44,7 +44,7 @@ func mockSQLProgramIR() ir.SQLProgram {
 	standardSQL := ir.StandardSQL("SELECT * FROM iris.train limit 10;")
 	return []ir.SQLStatement{
 		&standardSQL,
-		&ir.TrainClause{
+		&ir.TrainStmt{
 			OriginalSQL: `
 SELECT *
 FROM iris.train

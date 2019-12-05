@@ -47,6 +47,9 @@ var caseTestTable = "test"
 var casePredictTable = "predict"
 var testDatasource = os.Getenv("SQLFLOW_TEST_DATASOURCE")
 
+// caseInto used by CaseTrainSQL
+var caseInto = "sqlflow_models.my_dnn_model"
+
 const unitestPort = 50051
 
 func serverIsReady(addr string, timeout time.Duration) bool {
@@ -75,7 +78,7 @@ func connectAndRunSQL(sql string) ([]string, [][]*any.Any, error) {
 	}
 	defer conn.Close()
 	cli := pb.NewSQLFlowClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 600*time.Second)
 	defer cancel()
 	stream, err := cli.Run(ctx, sqlRequest(sql))
 	if err != nil {
@@ -194,9 +197,9 @@ func prepareTestData(dbStr string) error {
 			datasets = []string{
 				testdata.ODPSFeatureMapSQL,
 				testdata.ODPSSparseColumnSQL,
-				testdata.IrisMaxComputeSQL}
+				fmt.Sprintf(testdata.IrisMaxComputeSQL, caseDB)}
 		} else {
-			datasets = []string{testdata.IrisMaxComputeSQL}
+			datasets = []string{fmt.Sprintf(testdata.IrisMaxComputeSQL, caseDB)}
 		}
 	default:
 		return fmt.Errorf("unrecognized SQLFLOW_TEST_DB %s", db)
@@ -393,14 +396,16 @@ func TestEnd2EndMaxCompute(t *testing.T) {
 	dbConnStr = fmt.Sprintf("maxcompute://%s:%s@%s", AK, SK, endpoint)
 	go start(modelDir, caCrt, caKey, unitestPort, false)
 	waitPortReady(fmt.Sprintf("localhost:%d", unitestPort), 0)
-	err = prepareTestData(dbConnStr)
-	if err != nil {
-		t.Fatalf("prepare test dataset failed: %v", err)
-	}
+
 	caseDB = os.Getenv("MAXCOMPUTE_PROJECT")
 	caseTrainTable = "sqlflow_test_iris_train"
 	caseTestTable = "sqlflow_test_iris_test"
 	casePredictTable = "sqlflow_test_iris_predict"
+	err = prepareTestData(dbConnStr)
+	if err != nil {
+		t.Fatalf("prepare test dataset failed: %v", err)
+	}
+
 	t.Run("TestTrainSQL", CaseTrainSQL)
 }
 
@@ -655,8 +660,8 @@ func CaseTrainSQL(t *testing.T) {
 		validation.select = "SELECT * FROM %s.%s LIMIT 30"
 	COLUMN sepal_length, sepal_width, petal_length, petal_width
 	LABEL class
-	INTO sqlflow_models.my_dnn_model;
-	`, caseDB, caseTrainTable, caseDB, caseTrainTable)
+	INTO %s;
+	`, caseDB, caseTrainTable, caseDB, caseTrainTable, caseInto)
 	_, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)
@@ -665,7 +670,7 @@ func CaseTrainSQL(t *testing.T) {
 	predSQL := fmt.Sprintf(`SELECT *
 FROM %s.%s
 TO PREDICT %s.%s.class
-USING sqlflow_models.my_dnn_model;`, caseDB, caseTestTable, caseDB, casePredictTable)
+USING %s;`, caseDB, caseTestTable, caseDB, casePredictTable, caseInto)
 	_, _, err = connectAndRunSQL(predSQL)
 	if err != nil {
 		a.Fail("Run predSQL error: %v", err)
@@ -1159,4 +1164,45 @@ FROM housing.xgb_predict LIMIT 5;`)
 		}
 		a.False(nilCount == 13)
 	}
+}
+
+func TestEnd2EndMaxComputePAI(t *testing.T) {
+	testDBDriver := os.Getenv("SQLFLOW_TEST_DB")
+	if testDBDriver != "maxcompute" {
+		t.Skip("Skipping non maxcompute tests")
+	}
+	if os.Getenv("SQLFLOW_submitter") != "pai" {
+		t.Skip("Skip non PAI tests")
+	}
+	AK := os.Getenv("MAXCOMPUTE_AK")
+	SK := os.Getenv("MAXCOMPUTE_SK")
+	endpoint := os.Getenv("MAXCOMPUTE_ENDPOINT")
+	dbConnStr = fmt.Sprintf("maxcompute://%s:%s@%s", AK, SK, endpoint)
+	modelDir := ""
+
+	tmpDir, caCrt, caKey, err := generateTempCA()
+	defer os.RemoveAll(tmpDir)
+	if err != nil {
+		t.Fatalf("failed to generate CA pair %v", err)
+	}
+
+	caseDB = os.Getenv("MAXCOMPUTE_PROJECT")
+	if caseDB == "" {
+		t.Fatalf("Must set env MAXCOMPUTE_PROJECT")
+	}
+	fmt.Println(caseDB)
+	caseTrainTable = "sqlflow_test_iris_train"
+	caseTestTable = "sqlflow_test_iris_test"
+	casePredictTable = "sqlflow_test_iris_predict"
+	// write model to current MaxCompute project
+	caseInto = "my_dnn_model"
+
+	go start(modelDir, caCrt, caKey, unitestPort, false)
+	waitPortReady(fmt.Sprintf("localhost:%d", unitestPort), 0)
+	err = prepareTestData(dbConnStr)
+	if err != nil {
+		t.Fatalf("prepare test dataset failed: %v", err)
+	}
+
+	t.Run("TestTrainSQL", CaseTrainSQL)
 }
