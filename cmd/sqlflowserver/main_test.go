@@ -556,7 +556,7 @@ FROM %s.%s LIMIT 5;
 	for i := 0; i < 60; i++ {
 		cmd := exec.Command("kubectl", "get", "wf", workflowID, "-o", "jsonpath='{.status.phase}'")
 		out, err := cmd.CombinedOutput()
-		fmt.Println(strnig(out))
+		fmt.Println(string(out))
 		if err != nil {
 			log.Fatalf("get workflow status error: %v", err)
 		}
@@ -564,9 +564,9 @@ FROM %s.%s LIMIT 5;
 			return
 		}
 		time.Sleep(3 * time.Second)
-		cmd := exec.Command("kubectl", "get", "wf", workflowID, "-o", "json")
-		out, err := cmd.CombinedOutput()
-		fmt.Println(strnig(out))
+		cmd = exec.Command("kubectl", "get", "wf", workflowID, "-o", "json")
+		out, err = cmd.CombinedOutput()
+		fmt.Println(string(out))
 	}
 	// workflow times out
 	log.Fatalf("workflow: %s times out", workflowID)
