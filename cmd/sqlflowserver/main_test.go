@@ -481,15 +481,15 @@ func TestEnd2EndMaxComputeElasticDL(t *testing.T) {
 }
 
 func TestEnd2EndMySQLWorkflow(t *testing.T) {
-	if driverName != "mysql" || os.Getenv("SQLFLOW_ARGO_MODE") != "True" {
-		t.Skip("Skipping workflow test on MySQL")
-	}
-	if testDatasource == "" {
-		t.Fatal("env SQLFLOW_TEST_DATASOURCE is required.")
+	a := assert.New(t)
+	if os.Getenv("SQLFLOW_TEST_DATASOURCE") == "" || os.Getenv("SQLFLOW_ARGO_MODE") != "True" {
+		t.Skip("Skipping workflow test.")
 	}
 	driverName, _, err := sql.SplitDataSource(testDatasource)
-	if err != nil {
-		t.Fatalf("parse datasource failed, %v", err)
+	a.NoError(err)
+
+	if driverName != "mysql" {
+		t.Skip("Skipping workflow test.")
 	}
 	modelDir := ""
 	tmpDir, caCrt, caKey, err := generateTempCA()
@@ -551,10 +551,10 @@ FROM %s.%s LIMIT 5;
 		workflowID = iter.GetJob().GetId()
 	}
 	a.True(strings.HasPrefix(workflowID, "sqlflow-couler"))
-	cmd := exec.Command("kubectl", "get", "wf", workflowID, "-o", "jsonpath='{.status.phase}'")
-	// check the workflow status in 60 seconods
-	// TODO(yancey1989): using Fetch gRPC interface to check the workflow status
-	for i := 0; i < 20; i++ {
+	// check the workflow status in 180 seconods
+	// TODO(yancey1989): using the Fetch gRPC interface to check the workflow status
+	for i := 0; i < 60; i++ {
+		cmd := exec.Command("kubectl", "get", "wf", workflowID, "-o", "jsonpath='{.status.phase}'")
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			log.Fatalf("get workflow status error: %v", err)

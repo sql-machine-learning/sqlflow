@@ -65,15 +65,18 @@ if [[ "$ret" != "0" ]]; then
 fi
 
 ############# Run SQLFLow test with Argo Mode #############
-
+set -x
+set -e
 if [[ "${TRAVIS}" == "true" ]]; then
     export SQLFLOW_WORKFLOW_STEP_IMAGE="sqlflow"
 fi
 # start a SQLFlow MySQL Pod with testdata
 kubectl run mysql --port 3306 --env="SQLFLOW_MYSQL_HOST=0.0.0.0" --env="SQLFLOW_MYSQL_PORT=3306" --image=sqlflow/sqlflow --command -- bash /start.sh mysql
 MYSQL_POD_NAME=$(kubectl get pod -l run=mysql -o jsonpath="{.items[0].metadata.name}")
-for i in {1...30}; do
+for i in {1..30}
+do
     MYSQL_POD_STATUS=$(kubectl get pod ${MYSQL_POD_NAME} -o jsonpath='{.status.phase}')
+    echo ${MYSQL_POD_STATUS}
     if [[ "${MYSQL_POD_STATUS}" == "Running" ]]; then
         echo "SQLFlow MySQL Pod running."
         MYSQL_POD_IP=$(kubectl get pod ${MYSQL_POD_NAME} -o jsonpath='{.status.podIP}')
@@ -83,7 +86,8 @@ for i in {1...30}; do
         exit 0
     else
         echo "Wait SQLFlow MySQL Pod ${MYSQL_POD_NAME}"
-        sleep 3
+        sleep ${CHECK_INTERVAL_SECS}
+        continue
     fi
 done
 
