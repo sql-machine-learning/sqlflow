@@ -64,33 +64,35 @@ func header(head map[string]interface{}) ([]string, error) {
 	return cols, nil
 }
 
-func render(rsp interface{}, table *tablewriter.Table) bool {
-	isTable := false
+func render(rsp interface{}, table *tablewriter.Table, isTerminal bool) bool {
 	switch s := rsp.(type) {
 	case map[string]interface{}: // table header
 		cols, e := header(s)
 		if e == nil {
 			table.SetHeader(cols)
 		}
-		isTable = true
+		return true
 	case []interface{}: // row
 		row := make([]string, len(s))
 		for i, v := range s {
 			row[i] = fmt.Sprint(v)
 		}
 		table.Append(row)
-		isTable = true
+		return true
 	case error:
-		log.Fatalf("run sql statement failed, error: %v", s)
+		if os.Getenv("SQLFLOW_log_dir") != "" { // To avoid printing duplicated error message to console
+			log.New(os.Stderr, "", 0).Printf("ERROR: %v\n", s)
+		}
+		if !isTerminal {
+			os.Exit(1)
+		}
 	case sql.EndOfExecution:
-		return isTable
 	case string:
 		fmt.Println(s)
-		return false
 	default:
 		log.Fatalf("unrecognized response type: %v", s)
 	}
-	return isTable
+	return false
 }
 
 func flagPassed(name ...string) bool {
@@ -119,7 +121,7 @@ func runStmt(stmt string, isTerminal bool, modelDir string, ds string) error {
 	stream := sql.RunSQLProgram(stmt, modelDir, sess)
 	for rsp := range stream.ReadAll() {
 		// pagination. avoid exceed memory
-		if render(rsp, table) && table.NumLines() == tablePageSize {
+		if render(rsp, table, isTerminal) && table.NumLines() == tablePageSize {
 			table.Render()
 			tableRendered = true
 			table.ClearRows()

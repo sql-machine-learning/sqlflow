@@ -651,11 +651,7 @@ func (meta *metadata) getDenseColumnInfo(keys []string, refColumns map[string]*c
 	for rows.Next() {
 		values := make([]interface{}, count)
 		for i, ct := range columnTypes {
-			v, e := createByType(ct.ScanType())
-			if e != nil {
-				return output, e
-			}
-			values[i] = v
+			values[i] = createByType(ct.ScanType())
 		}
 		if err := rows.Scan(values...); err != nil {
 			return output, err
@@ -711,11 +707,7 @@ func (meta *metadata) getSparseColumnInfo() (map[string]*columns.ColumnSpec, err
 	for rows.Next() {
 		values := make([]interface{}, count)
 		for i, ct := range columnTypes {
-			v, e := createByType(ct.ScanType())
-			if e != nil {
-				return output, e
-			}
-			values[i] = v
+			values[i] = createByType(ct.ScanType())
 		}
 
 		if err := rows.Scan(values...); err != nil {
