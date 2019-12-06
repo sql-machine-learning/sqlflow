@@ -22,7 +22,7 @@ import (
 
 func TestAnalyze(t *testing.T) {
 	a := assert.New(t)
-	tir := mockTrainStmt()
+	tir := ir.MockTrainStmt("mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0", true)
 	astmt := &ir.AnalyzeStmt{
 		DataSource: tir.DataSource,
 		Select:     "SELECT * FROM iris.train",

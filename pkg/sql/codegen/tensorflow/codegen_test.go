@@ -14,11 +14,9 @@
 package tensorflow
 
 import (
-	"fmt"
 	"regexp"
 	"testing"
 
-	"github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
@@ -26,11 +24,11 @@ import (
 
 func TestTrainCodegen(t *testing.T) {
 	a := assert.New(t)
-	tir := mockTrainStmt()
+	tir := ir.MockTrainStmt("mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0", false)
 	_, err := Train(tir)
 	a.NoError(err)
 
-	pir := mockPredStmt(tir)
+	pir := ir.MockPredStmt(tir)
 
 	sess := &pb.Session{
 		Token:            "",
@@ -49,51 +47,4 @@ func TestTrainCodegen(t *testing.T) {
 	a.Equal(r.FindStringSubmatch(code)[1], "sqlflow_admin")
 	r, _ = regexp.Compile(`hdfs_pass="(.*)"`)
 	a.Equal(r.FindStringSubmatch(code)[1], "sqlflow_pass")
-}
-
-func mockTrainStmt() *ir.TrainStmt {
-	cfg := &mysql.Config{
-		User:                 "root",
-		Passwd:               "root",
-		Net:                  "tcp",
-		Addr:                 "127.0.0.1:3306",
-		AllowNativePasswords: true,
-	}
-	_ = `SELECT *
-		FROM iris.train
-	TO TRAIN DNNClassifier
-	WITH train.batch_size=4,
-		 train.epoch=3,
-		 model.hidden_units=[10,20],
-		 model.n_classes=3
-	COLUMN sepal_length, sepal_width, petal_length, petal_width
-	LABEL class
-	INTO sqlflow_models.my_xgboost_model;`
-	return &ir.TrainStmt{
-		DataSource:       fmt.Sprintf("mysql://%s", cfg.FormatDSN()),
-		Select:           "select * from iris.train;",
-		ValidationSelect: "select * from iris.test;",
-		Estimator:        "DNNClassifier",
-		Attributes: map[string]interface{}{
-			"train.batch_size":   4,
-			"train.epoch":        3,
-			"model.hidden_units": []int{10, 20},
-			"model.n_classes":    3},
-		Features: map[string][]ir.FeatureColumn{
-			"feature_columns": {
-				&ir.NumericColumn{&ir.FieldMeta{"sepal_length", ir.Float, "", []int{1}, false, nil, 0}},
-				&ir.NumericColumn{&ir.FieldMeta{"sepal_width", ir.Float, "", []int{1}, false, nil, 0}},
-				&ir.NumericColumn{&ir.FieldMeta{"petal_length", ir.Float, "", []int{1}, false, nil, 0}},
-				&ir.NumericColumn{&ir.FieldMeta{"petal_width", ir.Float, "", []int{1}, false, nil, 0}}}},
-		Label: &ir.NumericColumn{&ir.FieldMeta{"class", ir.Int, "", []int{1}, false, nil, 0}}}
-}
-
-func mockPredStmt(trainStmt *ir.TrainStmt) *ir.PredictStmt {
-	return &ir.PredictStmt{
-		DataSource:  trainStmt.DataSource,
-		Select:      "select * from iris.test;",
-		ResultTable: "iris.predict",
-		Attributes:  make(map[string]interface{}),
-		TrainStmt:   trainStmt,
-	}
 }

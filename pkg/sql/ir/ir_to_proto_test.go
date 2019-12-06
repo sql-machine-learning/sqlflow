@@ -22,26 +22,6 @@ import (
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
-func mockTrainStmt() *TrainStmt {
-	return &TrainStmt{
-		DataSource:       "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0",
-		Select:           "select * from iris.train;",
-		ValidationSelect: "select * from iris.test;",
-		Estimator:        "DNNClassifier",
-		Attributes: map[string]interface{}{
-			"train.batch_size":   4,
-			"train.epoch":        3,
-			"model.hidden_units": []int{10, 20},
-			"model.n_classes":    3},
-		Features: map[string][]FeatureColumn{
-			"feature_columns": {
-				&NumericColumn{&FieldMeta{"sepal_length", Float, "", []int{1}, false, nil, 0}},
-				&NumericColumn{&FieldMeta{"sepal_width", Float, "", []int{1}, false, nil, 0}},
-				&NumericColumn{&FieldMeta{"petal_length", Float, "", []int{1}, false, nil, 0}},
-				&NumericColumn{&FieldMeta{"petal_width", Float, "", []int{1}, false, nil, 0}}}},
-		Label: &NumericColumn{&FieldMeta{"class", Int, "", []int{1}, false, nil, 0}}}
-}
-
 func mockSession() *pb.Session {
 	return &pb.Session{
 		Token:            "",
@@ -57,7 +37,7 @@ func mockSession() *pb.Session {
 
 func TestTrainProto(t *testing.T) {
 	a := assert.New(t)
-	sampleTrainStmt := mockTrainStmt()
+	sampleTrainStmt := MockTrainStmt("mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0", false)
 	pbIR, err := TrainStmtToProto(sampleTrainStmt, mockSession())
 	a.NoError(err)
 	pbtxt := proto.MarshalTextString(pbIR)
@@ -76,14 +56,8 @@ func TestTrainProto(t *testing.T) {
 
 func TestPredictProto(t *testing.T) {
 	a := assert.New(t)
-	samplePredStmt := &PredictStmt{
-		DataSource:   "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0",
-		Select:       "select * from iris.test;",
-		ResultTable:  "predict",
-		ResultColumn: "class",
-		Attributes:   make(map[string]interface{}), // empty attribute
-		TrainStmt:    mockTrainStmt(),
-	}
+	samplePredStmt := MockPredStmt(
+		MockTrainStmt("mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0", false))
 	pbIR, err := PredictStmtToProto(samplePredStmt, mockSession())
 	a.NoError(err)
 	pbtxt := proto.MarshalTextString(pbIR)
@@ -103,7 +77,7 @@ func TestAnalyzeProto(t *testing.T) {
 		Select:     "select * from iris.train;",
 		Attributes: make(map[string]interface{}), // empty attribute
 		Explainer:  "TreeExplainer",
-		TrainStmt:  mockTrainStmt(),
+		TrainStmt:  MockTrainStmt("mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0", true),
 	}
 	pbIR, err := AnalyzeStmtToProto(sampleAnalyzeStmt, mockSession())
 	a.NoError(err)

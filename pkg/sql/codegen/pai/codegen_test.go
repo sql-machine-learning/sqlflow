@@ -113,12 +113,12 @@ func TestWrapperCodegen(t *testing.T) {
 
 func TestTrainCodegen(t *testing.T) {
 	a := assert.New(t)
-	ir := mockTrainStmt()
+	trainStmt := ir.MockTrainStmt(dataSource, false)
 
-	paiTfCode, err := doTrain(ir, "my_dnn_model")
+	paiTfCode, err := doTrain(trainStmt, "my_dnn_model")
 	a.NoError(err)
 
-	tfCode, err := tensorflow.Train(ir)
+	tfCode, err := tensorflow.Train(trainStmt)
 	a.NoError(err)
 
 	a.True(strings.HasPrefix(paiTfCode, tfCode))
@@ -128,7 +128,7 @@ func TestTrainCodegen(t *testing.T) {
 
 func TestPredictCodegen(t *testing.T) {
 	a := assert.New(t)
-	ir := mockPredStmt()
+	ir := ir.MockPredStmt(ir.MockTrainStmt(dataSource, false))
 
 	paiTfCode, err := doPredict(ir, "my_dnn_model")
 	a.NoError(err)
@@ -150,46 +150,4 @@ func TestPredictCodegen(t *testing.T) {
 
 	a.True(hasExportedLocal(tfCode))
 	a.False(hasUnknownParameters(tfCode, knownPredictParams))
-}
-
-func mockTrainStmt() *ir.TrainStmt {
-	_ = `SELECT * FROM iris_train TO TRAIN DNNClassifier
-         WITH train.batch_size=4,
-		      train.epoch=3,
-		      model.hidden_units=[10,20],
-		      model.n_classes=3
-	     LABEL class
-	     INTO my_dnn_model;`
-	return &ir.TrainStmt{
-		DataSource:       dataSource,
-		Select:           "select * from iris_train;",
-		ValidationSelect: "select * from iris_test;",
-		Estimator:        "DNNClassifier",
-		Attributes: map[string]interface{}{
-			"train.batch_size":   4,
-			"train.epoch":        3,
-			"model.hidden_units": []int{10, 20},
-			"model.n_classes":    3},
-		Features: map[string][]ir.FeatureColumn{
-			"feature_columns": {
-				&ir.NumericColumn{&ir.FieldMeta{"sepal_length",
-					ir.Float, "", []int{1}, false, nil, 0}},
-				&ir.NumericColumn{&ir.FieldMeta{"sepal_width",
-					ir.Float, "", []int{1}, false, nil, 0}},
-				&ir.NumericColumn{&ir.FieldMeta{"petal_length",
-					ir.Float, "", []int{1}, false, nil, 0}},
-				&ir.NumericColumn{&ir.FieldMeta{"petal_width",
-					ir.Float, "", []int{1}, false, nil, 0}}}},
-		Label: &ir.NumericColumn{&ir.FieldMeta{"class", ir.Int, "", []int{1}, false, nil, 0}}}
-}
-
-func mockPredStmt() *ir.PredictStmt {
-	_ = "SELECT * FROM iris_test TO PREDICT iris_predict.class USING my_dnn_model;"
-	return &ir.PredictStmt{
-		DataSource:  dataSource,
-		Select:      "select * from iris_test;",
-		ResultTable: "iris_predict",
-		Attributes:  make(map[string]interface{}),
-		TrainStmt:   mockTrainStmt(),
-	}
 }
