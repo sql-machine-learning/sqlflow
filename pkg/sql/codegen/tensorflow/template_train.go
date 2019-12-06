@@ -27,6 +27,8 @@ type trainFiller struct {
 	ModelParams       map[string]interface{}
 	TrainParams       map[string]interface{}
 	Save              string
+	IsPAI             bool
+	PAITrainTable     string
 }
 
 const tfTrainTemplateText = `

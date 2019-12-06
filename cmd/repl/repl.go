@@ -64,33 +64,35 @@ func header(head map[string]interface{}) ([]string, error) {
 	return cols, nil
 }
 
-func render(rsp interface{}, table *tablewriter.Table) bool {
-	isTable := false
+func render(rsp interface{}, table *tablewriter.Table, isTerminal bool) bool {
 	switch s := rsp.(type) {
 	case map[string]interface{}: // table header
 		cols, e := header(s)
 		if e == nil {
 			table.SetHeader(cols)
 		}
-		isTable = true
+		return true
 	case []interface{}: // row
 		row := make([]string, len(s))
 		for i, v := range s {
 			row[i] = fmt.Sprint(v)
 		}
 		table.Append(row)
-		isTable = true
+		return true
 	case error:
-		log.Fatalf("run sql statement failed, error: %v", s)
+		if os.Getenv("SQLFLOW_log_dir") != "" { // To avoid printing duplicated error message to console
+			log.New(os.Stderr, "", 0).Printf("ERROR: %v\n", s)
+		}
+		if !isTerminal {
+			os.Exit(1)
+		}
 	case sql.EndOfExecution:
-		return isTable
 	case string:
 		fmt.Println(s)
-		return false
 	default:
 		log.Fatalf("unrecognized response type: %v", s)
 	}
-	return isTable
+	return false
 }
 
 func flagPassed(name ...string) bool {
@@ -105,18 +107,21 @@ func flagPassed(name ...string) bool {
 	return found
 }
 
-func runStmt(stmt string, isTerminal bool, modelDir string, db *sql.DB, ds string) error {
+func runStmt(stmt string, isTerminal bool, modelDir string, ds string) error {
 	if !isTerminal {
 		fmt.Println("sqlflow>", stmt)
 	}
 	tableRendered := false
 	table := tablewriter.NewWriter(os.Stdout)
 	sess := makeSessionFromEnv()
+	if ds != "" {
+		sess.DbConnStr = ds
+	}
 
-	stream := sql.RunSQLProgram(stmt, db, modelDir, sess)
+	stream := sql.RunSQLProgram(stmt, modelDir, sess)
 	for rsp := range stream.ReadAll() {
 		// pagination. avoid exceed memory
-		if render(rsp, table) && table.NumLines() == tablePageSize {
+		if render(rsp, table, isTerminal) && table.NumLines() == tablePageSize {
 			table.Render()
 			tableRendered = true
 			table.ClearRows()
@@ -128,14 +133,19 @@ func runStmt(stmt string, isTerminal bool, modelDir string, db *sql.DB, ds strin
 	return nil
 }
 
-func repl(scanner *bufio.Scanner, modelDir string, db *sql.DB, ds string) {
+func repl(scanner *bufio.Scanner, modelDir string, ds string) {
+	db, err := sql.NewDB(ds)
+	if err != nil {
+		log.Fatalf("failed to open database: %v", err)
+	}
+	defer db.Close()
 	for {
 		stmt, err := readStmt(scanner)
 		fmt.Println()
 		if err == io.EOF && stmt == "" {
 			return
 		}
-		if err := runStmt(stmt, false, modelDir, db, ds); err != nil {
+		if err := runStmt(stmt, false, modelDir, ds); err != nil {
 			log.Fatalf("run SQL statment failed: %v", err)
 		}
 	}
@@ -196,12 +206,6 @@ func main() {
 		os.Exit(0)
 	}
 
-	db, err := sql.NewDB(*ds)
-	if err != nil {
-		log.Fatalf("failed to open database: %v", err)
-	}
-	defer db.Close()
-
 	if *modelDir != "" {
 		if _, derr := os.Stat(*modelDir); derr != nil {
 			os.Mkdir(*modelDir, os.ModePerm)
@@ -211,6 +215,7 @@ func main() {
 	isTerminal := !flagPassed("execute", "e", "file", "f") && terminal.IsTerminal(syscall.Stdin)
 
 	sqlFile := os.Stdin
+	var err error
 	if flagPassed("file", "f") {
 		sqlFile, err = os.Open(*sqlFileName)
 		if err != nil {
@@ -225,8 +230,8 @@ func main() {
 	}
 	scanner := bufio.NewScanner(reader)
 	if isTerminal {
-		runPrompt(func(stmt string) { runStmt(stmt, true, *modelDir, db, *ds) })
+		runPrompt(func(stmt string) { runStmt(stmt, true, *modelDir, *ds) })
 	} else {
-		repl(scanner, *modelDir, db, *ds)
+		repl(scanner, *modelDir, *ds)
 	}
 }

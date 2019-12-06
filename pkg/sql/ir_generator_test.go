@@ -20,10 +20,11 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
 
-func TestGenerateTrainIR(t *testing.T) {
+func TestGenerateTrainStmt(t *testing.T) {
 	a := assert.New(t)
 	parser := newExtendedSyntaxParser()
 
@@ -54,13 +55,13 @@ func TestGenerateTrainIR(t *testing.T) {
 	r, e := parser.Parse(normal)
 	a.NoError(e)
 
-	trainIR, err := generateTrainIR(r, "mysql://root:root@tcp(127.0.0.1:3306)/iris?maxAllowedPacket=0")
+	trainStmt, err := generateTrainStmt(r, "mysql://root:root@tcp(127.0.0.1:3306)/iris?maxAllowedPacket=0")
 	a.NoError(err)
-	a.Equal("DNNClassifier", trainIR.Estimator)
-	a.Equal("SELECT c1, c2, c3, c4\nFROM my_table", trainIR.Select)
-	a.Equal("SELECT c1, c2, c3, c4 FROM my_table LIMIT 10", trainIR.ValidationSelect)
+	a.Equal("DNNClassifier", trainStmt.Estimator)
+	a.Equal("SELECT c1, c2, c3, c4\nFROM my_table", trainStmt.Select)
+	a.Equal("SELECT c1, c2, c3, c4 FROM my_table LIMIT 10", trainStmt.ValidationSelect)
 
-	for key, attr := range trainIR.Attributes {
+	for key, attr := range trainStmt.Attributes {
 		if key == "model.n_classes" {
 			a.Equal(2, attr.(int))
 		} else if key == "train.optimizer" {
@@ -77,36 +78,36 @@ func TestGenerateTrainIR(t *testing.T) {
 		}
 	}
 
-	nc, ok := trainIR.Features["feature_columns"][0].(*ir.NumericColumn)
+	nc, ok := trainStmt.Features["feature_columns"][0].(*ir.NumericColumn)
 	a.True(ok)
 	a.Equal([]int{1}, nc.FieldMeta.Shape)
 
-	nc, ok = trainIR.Features["feature_columns"][1].(*ir.NumericColumn)
+	nc, ok = trainStmt.Features["feature_columns"][1].(*ir.NumericColumn)
 	a.True(ok)
 	a.Equal("c2", nc.FieldMeta.Name)
 	a.Equal([]int{128, 32}, nc.FieldMeta.Shape)
 
-	cc, ok := trainIR.Features["feature_columns"][2].(*ir.CategoryIDColumn)
+	cc, ok := trainStmt.Features["feature_columns"][2].(*ir.CategoryIDColumn)
 	a.True(ok)
 	a.Equal("c3", cc.FieldMeta.Name)
 	a.Equal(int64(512), cc.BucketSize)
 
-	seqcc, ok := trainIR.Features["feature_columns"][3].(*ir.SeqCategoryIDColumn)
+	seqcc, ok := trainStmt.Features["feature_columns"][3].(*ir.SeqCategoryIDColumn)
 	a.True(ok)
 	a.Equal("c3", seqcc.FieldMeta.Name)
 
-	cross, ok := trainIR.Features["feature_columns"][4].(*ir.CrossColumn)
+	cross, ok := trainStmt.Features["feature_columns"][4].(*ir.CrossColumn)
 	a.True(ok)
 	a.Equal("c1", cross.Keys[0].(string))
 	a.Equal("c2", cross.Keys[1].(string))
 	a.Equal(64, cross.HashBucketSize)
 
-	bucket, ok := trainIR.Features["feature_columns"][5].(*ir.BucketColumn)
+	bucket, ok := trainStmt.Features["feature_columns"][5].(*ir.BucketColumn)
 	a.True(ok)
 	a.Equal(100, bucket.Boundaries[0])
 	a.Equal("c1", bucket.SourceColumn.FieldMeta.Name)
 
-	emb, ok := trainIR.Features["feature_columns"][6].(*ir.EmbeddingColumn)
+	emb, ok := trainStmt.Features["feature_columns"][6].(*ir.EmbeddingColumn)
 	a.True(ok)
 	a.Equal("mean", emb.Combiner)
 	a.Equal(128, emb.Dimension)
@@ -116,14 +117,14 @@ func TestGenerateTrainIR(t *testing.T) {
 	a.Equal(int64(512), embInner.BucketSize)
 
 	// NUMERIC(DENSE(c1, [64], COMMA), [128])
-	nc, ok = trainIR.Features["feature_columns"][7].(*ir.NumericColumn)
+	nc, ok = trainStmt.Features["feature_columns"][7].(*ir.NumericColumn)
 	a.True(ok)
 	a.Equal(64, nc.FieldMeta.Shape[0])
 	a.Equal(",", nc.FieldMeta.Delimiter)
 	a.False(nc.FieldMeta.IsSparse)
 
 	// CATEGORY_ID(SPARSE(c2, 10000, COMMA), 128),
-	cc, ok = trainIR.Features["feature_columns"][8].(*ir.CategoryIDColumn)
+	cc, ok = trainStmt.Features["feature_columns"][8].(*ir.CategoryIDColumn)
 	a.True(ok)
 	a.True(cc.FieldMeta.IsSparse)
 	a.Equal("c2", cc.FieldMeta.Name)
@@ -132,20 +133,20 @@ func TestGenerateTrainIR(t *testing.T) {
 	a.Equal(int64(128), cc.BucketSize)
 
 	// SEQ_CATEGORY_ID(SPARSE(c2, 10000, COMMA), 128)
-	scc, ok := trainIR.Features["feature_columns"][9].(*ir.SeqCategoryIDColumn)
+	scc, ok := trainStmt.Features["feature_columns"][9].(*ir.SeqCategoryIDColumn)
 	a.True(ok)
 	a.True(scc.FieldMeta.IsSparse)
 	a.Equal("c2", scc.FieldMeta.Name)
 	a.Equal(10000, scc.FieldMeta.Shape[0])
 
 	// EMBEDDING(c1, 128)
-	emb, ok = trainIR.Features["feature_columns"][10].(*ir.EmbeddingColumn)
+	emb, ok = trainStmt.Features["feature_columns"][10].(*ir.EmbeddingColumn)
 	a.True(ok)
 	a.Equal(nil, emb.CategoryColumn)
 	a.Equal(128, emb.Dimension)
 
 	// EMBEDDING(SPARSE(c2, 10000, COMMA, "int"), 128)
-	emb, ok = trainIR.Features["feature_columns"][11].(*ir.EmbeddingColumn)
+	emb, ok = trainStmt.Features["feature_columns"][11].(*ir.EmbeddingColumn)
 	a.True(ok)
 	catCol, ok := emb.CategoryColumn.(*ir.CategoryIDColumn)
 	a.True(ok)
@@ -154,14 +155,14 @@ func TestGenerateTrainIR(t *testing.T) {
 	a.Equal(10000, catCol.FieldMeta.Shape[0])
 	a.Equal(",", catCol.FieldMeta.Delimiter)
 
-	l, ok := trainIR.Label.(*ir.NumericColumn)
+	l, ok := trainStmt.Label.(*ir.NumericColumn)
 	a.True(ok)
 	a.Equal("c4", l.FieldMeta.Name)
 
-	a.Equal("mymodel", trainIR.Into)
+	a.Equal("mymodel", trainStmt.Into)
 }
 
-func TestGenerateTrainIRModelZoo(t *testing.T) {
+func TestGenerateTrainStmtModelZoo(t *testing.T) {
 	a := assert.New(t)
 	parser := newExtendedSyntaxParser()
 
@@ -179,12 +180,12 @@ func TestGenerateTrainIRModelZoo(t *testing.T) {
 	r, e := parser.Parse(normal)
 	a.NoError(e)
 
-	trainIR, err := generateTrainIR(r, "mysql://root:root@tcp(127.0.0.1:3306)/iris?maxAllowedPacket=0")
+	trainStmt, err := generateTrainStmt(r, "mysql://root:root@tcp(127.0.0.1:3306)/iris?maxAllowedPacket=0")
 	a.NoError(err)
-	a.Equal("a_data_scientist/regressors:v0.2", trainIR.ModelImage)
-	a.Equal("MyDNNRegressor", trainIR.Estimator)
+	a.Equal("a_data_scientist/regressors:v0.2", trainStmt.ModelImage)
+	a.Equal("MyDNNRegressor", trainStmt.Estimator)
 }
-func TestGeneratePredictIR(t *testing.T) {
+func TestGeneratePredictStmt(t *testing.T) {
 	if getEnv("SQLFLOW_TEST_DB", "mysql") == "hive" {
 		t.Skip(fmt.Sprintf("%s: skip Hive test", getEnv("SQLFLOW_TEST_DB", "mysql")))
 	}
@@ -207,26 +208,27 @@ TO TRAIN DNNClassifier
 WITH model.n_classes=3, model.hidden_units=[10,20]
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
-INTO sqlflow_models.mymodel;`, testDB, modelDir, nil)
+INTO sqlflow_models.mymodel;`, modelDir, &pb.Session{DbConnStr: connStr})
 	a.True(goodStream(stream.ReadAll()))
 
-	predIR, err := generatePredictIR(r, connStr, modelDir, true)
+	predStmt, err := generatePredictStmt(r, connStr, modelDir, true)
 	a.NoError(err)
 
-	a.Equal(connStr, predIR.DataSource)
-	a.Equal("iris.predict", predIR.ResultTable)
-	a.Equal("class", predIR.TrainIR.Label.GetFieldMeta()[0].Name)
-	a.Equal("DNNClassifier", predIR.TrainIR.Estimator)
-	nc, ok := predIR.TrainIR.Features["feature_columns"][0].(*ir.NumericColumn)
+	a.Equal(connStr, predStmt.DataSource)
+	a.Equal("iris.predict", predStmt.ResultTable)
+	a.Equal("class", predStmt.TrainStmt.Label.GetFieldMeta()[0].Name)
+	a.Equal("DNNClassifier", predStmt.TrainStmt.Estimator)
+	nc, ok := predStmt.TrainStmt.Features["feature_columns"][0].(*ir.NumericColumn)
 	a.True(ok)
 	a.Equal("sepal_length", nc.FieldMeta.Name)
 }
 
-func TestGenerateAnalyzeIR(t *testing.T) {
+func TestGenerateAnalyzeStmt(t *testing.T) {
 	if getEnv("SQLFLOW_TEST_DB", "mysql") != "mysql" {
 		t.Skip(fmt.Sprintf("%s: skip test", getEnv("SQLFLOW_TEST_DB", "mysql")))
 	}
 	a := assert.New(t)
+	connStr := "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
 
 	modelDir, e := ioutil.TempDir("/tmp", "sqlflow_models")
 	a.Nil(e)
@@ -241,7 +243,7 @@ WITH
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.my_xgboost_model;
-`, testDB, modelDir, nil)
+`, modelDir, &pb.Session{DbConnStr: connStr})
 	a.NoError(e)
 	a.True(goodStream(stream.ReadAll()))
 
@@ -257,17 +259,16 @@ INTO sqlflow_models.my_xgboost_model;
 	`)
 	a.NoError(e)
 
-	connStr := "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
-	AnalyzeIR, e := generateAnalyzeIR(pr, connStr, modelDir, true)
+	AnalyzeStmt, e := generateAnalyzeStmt(pr, connStr, modelDir, true)
 	a.NoError(e)
-	a.Equal(AnalyzeIR.DataSource, connStr)
-	a.Equal(AnalyzeIR.Explainer, "TreeExplainer")
-	a.Equal(len(AnalyzeIR.Attributes), 3)
-	a.Equal(AnalyzeIR.Attributes["shap_summary.sort"], true)
-	a.Equal(AnalyzeIR.Attributes["shap_summary.plot_type"], "bar")
-	a.Equal(AnalyzeIR.Attributes["shap_summary.alpha"], 1)
+	a.Equal(AnalyzeStmt.DataSource, connStr)
+	a.Equal(AnalyzeStmt.Explainer, "TreeExplainer")
+	a.Equal(len(AnalyzeStmt.Attributes), 3)
+	a.Equal(AnalyzeStmt.Attributes["shap_summary.sort"], true)
+	a.Equal(AnalyzeStmt.Attributes["shap_summary.plot_type"], "bar")
+	a.Equal(AnalyzeStmt.Attributes["shap_summary.alpha"], 1)
 
-	nc, ok := AnalyzeIR.TrainIR.Features["feature_columns"][0].(*ir.NumericColumn)
+	nc, ok := AnalyzeStmt.TrainStmt.Features["feature_columns"][0].(*ir.NumericColumn)
 	a.True(ok)
 	a.Equal("sepal_length", nc.FieldMeta.Name)
 }

@@ -42,11 +42,17 @@ type WorkflowJob struct {
 }
 
 // RunSQLProgram run a SQL program.
-func RunSQLProgram(sqlProgram string, db *DB, modelDir string, session *pb.Session) *PipeReader {
+func RunSQLProgram(sqlProgram string, modelDir string, session *pb.Session) *PipeReader {
 	rd, wr := Pipe()
 	go func() {
+		var db *DB
+		var err error
+		if db, err = NewDB(session.DbConnStr); err != nil {
+			wr.Write(fmt.Errorf("create DB failed: %v", err))
+			log.Errorf("create DB failed: %v", err)
+		}
 		defer wr.Close()
-		err := runSQLProgram(wr, sqlProgram, db, modelDir, session)
+		err = runSQLProgram(wr, sqlProgram, db, modelDir, session)
 
 		if err != nil {
 			log.Errorf("runSQLProgram error: %v", err)
@@ -73,31 +79,31 @@ func ParseSQLStatement(sql string, session *pb.Session) (string, error) {
 		return "", fmt.Errorf("ParseSQLStatement only accept extended SQL")
 	}
 	if extended.train {
-		trainIR, err := generateTrainIRWithInferredColumns(extended, connStr)
+		trainStmt, err := generateTrainStmtWithInferredColumns(extended, connStr)
 		if err != nil {
 			return "", err
 		}
-		pbir, err := ir.TrainIRToProto(trainIR, session)
+		pbir, err := ir.TrainStmtToProto(trainStmt, session)
 		if err != nil {
 			return "", err
 		}
 		return proto.MarshalTextString(pbir), nil
 	} else if extended.analyze {
-		analyzeIR, err := generateAnalyzeIR(extended, connStr, "", true)
+		analyzeStmt, err := generateAnalyzeStmt(extended, connStr, "", true)
 		if err != nil {
 			return "", nil
 		}
-		pbir, err := ir.AnalyzeIRToProto(analyzeIR, session)
+		pbir, err := ir.AnalyzeStmtToProto(analyzeStmt, session)
 		if err != nil {
 			return "", nil
 		}
 		return proto.MarshalTextString(pbir), nil
 	} else {
-		predIR, err := generatePredictIR(extended, connStr, "", true)
+		predStmt, err := generatePredictStmt(extended, connStr, "", true)
 		if err != nil {
 			return "", err
 		}
-		pbir, err := ir.PredictIRToProto(predIR, session)
+		pbir, err := ir.PredictStmtToProto(predStmt, session)
 		if err != nil {
 			return "", err
 		}
@@ -106,20 +112,24 @@ func ParseSQLStatement(sql string, session *pb.Session) (string, error) {
 }
 
 // SubmitWorkflow submits an Argo workflow
-func SubmitWorkflow(sqlProgram string, db *DB, modelDir string, session *pb.Session) *PipeReader {
+func SubmitWorkflow(sqlProgram string, modelDir string, session *pb.Session) *PipeReader {
 	rd, wr := Pipe()
 	go func() {
 		defer wr.Close()
-		err := submitWorkflow(wr, sqlProgram, db, modelDir, session)
+		err := submitWorkflow(wr, sqlProgram, modelDir, session)
 		if err != nil {
-			log.Errorf("submit Workflow error: %v", err)
+			if err != ErrClosedPipe {
+				if err := wr.Write(err); err != nil {
+					log.Errorf("submit workflow error(piping): %v", err)
+				}
+			}
 		}
 	}()
 	return rd
 }
 
-func writeCoulerFile(spIRs ir.SQLProgram) (string, error) {
-	program, err := couler.Run(spIRs)
+func writeCoulerFile(spIRs ir.SQLProgram, session *pb.Session) (string, error) {
+	program, err := couler.Run(spIRs, session)
 	if err != nil {
 		return "", fmt.Errorf("generate couler program error: %v", err)
 	}
@@ -163,8 +173,12 @@ func getWorkflowID(output string) (string, error) {
 	return wf[1], nil
 }
 
-func submitWorkflow(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, session *pb.Session) error {
-	sqls, err := parse(db.driverName, sqlProgram)
+func submitWorkflow(wr *PipeWriter, sqlProgram string, modelDir string, session *pb.Session) error {
+	driverName, dataSourceName, err := SplitDataSource(session.DbConnStr)
+	if err != nil {
+		return err
+	}
+	sqls, err := parse(driverName, sqlProgram)
 	if err != nil {
 		return err
 	}
@@ -176,15 +190,15 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, 
 	spIRs := []ir.SQLStatement{}
 	for _, sql := range sqls {
 		var r ir.SQLStatement
-		connStr := fmt.Sprintf("%s://%s", db.driverName, db.dataSourceName)
+		connStr := fmt.Sprintf("%s://%s", driverName, dataSourceName)
 		if sql.extended != nil {
 			parsed := sql.extended
 			if parsed.train {
-				r, err = generateTrainIR(parsed, connStr)
+				r, err = generateTrainStmt(parsed, connStr)
 			} else if parsed.analyze {
-				r, err = generateAnalyzeIR(parsed, connStr, modelDir, false)
+				r, err = generateAnalyzeStmt(parsed, connStr, modelDir, false)
 			} else {
-				r, err = generatePredictIR(parsed, connStr, modelDir, false)
+				r, err = generatePredictStmt(parsed, connStr, modelDir, false)
 			}
 		} else {
 			standardSQL := ir.StandardSQL(sql.standard)
@@ -198,22 +212,24 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, 
 	}
 
 	// 1. call codegen_couler.go to genearte Couler program.
-	coulerFileName, err := writeCoulerFile(spIRs)
+	coulerFileName, err := writeCoulerFile(spIRs, session)
 	if err != nil {
 		return err
 	}
+	defer os.RemoveAll(coulerFileName)
 
 	// 2. compile Couler program into Argo YAML.
-	argoFile, err := writeArgoFile(coulerFileName)
+	argoFileName, err := writeArgoFile(coulerFileName)
 	if err != nil {
 		return err
 	}
+	defer os.RemoveAll(argoFileName)
 
 	// 3. submit Argo YAML and fetch the workflow ID.
-	cmd := exec.Command("kubectl", "create", "-f", argoFile)
+	cmd := exec.Command("kubectl", "create", "-f", argoFileName)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("submit Argo YAML error: %v", err)
+		return fmt.Errorf("submit Argo YAML error: %v, output: %s", err, string(output))
 	}
 
 	workflowID, err := getWorkflowID(string(output))
@@ -245,11 +261,11 @@ func runSQLProgram(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, s
 		if sql.extended != nil {
 			parsed := sql.extended
 			if parsed.train {
-				r, err = generateTrainIRWithInferredColumns(parsed, connStr)
+				r, err = generateTrainStmtWithInferredColumns(parsed, connStr)
 			} else if parsed.analyze {
-				r, err = generateAnalyzeIR(parsed, connStr, modelDir, submitter().GetTrainIRFromModel())
+				r, err = generateAnalyzeStmt(parsed, connStr, modelDir, submitter().GetTrainStmtFromModel())
 			} else {
-				r, err = generatePredictIR(parsed, connStr, modelDir, submitter().GetTrainIRFromModel())
+				r, err = generatePredictStmt(parsed, connStr, modelDir, submitter().GetTrainStmtFromModel())
 			}
 		} else {
 			standardSQL := ir.StandardSQL(sql.standard)
@@ -278,10 +294,8 @@ func runSingleSQLIR(wr *PipeWriter, sqlIR ir.SQLStatement, db *DB, modelDir stri
 			})
 		}
 	}()
-	trainIR, ok := sqlIR.(*ir.TrainClause)
-	if ok {
-		LogFeatureDerivationResult(wr, trainIR)
-	}
+	// TODO(typhoonzero): can run LogFeatureDerivationResult(wr, trainStmt) here to send
+	// feature derivation logs to client, yet we disable if for now so that it's less annoying.
 	if e := submitter().Setup(wr, db, modelDir, session); e != nil {
 		return e
 	}
@@ -349,15 +363,15 @@ func createPredictionTable(predParsed *extendedSelect, db *DB, session *pb.Sessi
 	return nil
 }
 
-// Create prediction table using the `PredictClause`.
+// Create prediction table using the `PredictStmt`.
 // TODO(typhoonzero): remove legacy `createPredictionTable` once we change all submitters to use IR.
-func createPredictionTableFromIR(predIR *ir.PredictClause, db *DB, session *pb.Session) error {
-	dropStmt := fmt.Sprintf("drop table if exists %s;", predIR.ResultTable)
+func createPredictionTableFromIR(predStmt *ir.PredictStmt, db *DB, session *pb.Session) error {
+	dropStmt := fmt.Sprintf("drop table if exists %s;", predStmt.ResultTable)
 	if _, e := db.Exec(dropStmt); e != nil {
 		return fmt.Errorf("failed executing %s: %q", dropStmt, e)
 	}
 	// FIXME(typhoonzero): simply add LIMIT 1 at the end to get column types.
-	tmpSQL := fmt.Sprintf("%s LIMIT 1;", strings.TrimRight(strings.TrimSpace(predIR.Select), ";"))
+	tmpSQL := fmt.Sprintf("%s LIMIT 1;", strings.TrimRight(strings.TrimSpace(predStmt.Select), ";"))
 	flds, fts, e := getColumnTypes(tmpSQL, db)
 	if e != nil {
 		return e
@@ -367,14 +381,14 @@ func createPredictionTableFromIR(predIR *ir.PredictClause, db *DB, session *pb.S
 	labelColumnTypeFound := false
 	labelColumnName := ""
 	labelColumnType := ""
-	fmt.Fprintf(&b, "create table %s (", predIR.ResultTable)
+	fmt.Fprintf(&b, "create table %s (", predStmt.ResultTable)
 	for idx, colType := range fts {
 		stype, e := universalizeColumnType(db.driverName, colType)
 		if e != nil {
 			return e
 		}
 		fldName := flds[idx]
-		if fldName == predIR.ResultColumn {
+		if fldName == predStmt.ResultColumn {
 			labelColumnTypeFound = true
 			labelColumnName = fldName
 			labelColumnType = stype
@@ -386,10 +400,10 @@ func createPredictionTableFromIR(predIR *ir.PredictClause, db *DB, session *pb.S
 	// TODO(Yancey1989): For the current implementation, the prediction result column
 	// type is derivated by the pred-select-statement, the better way is derivating
 	// the result column type by the prediction result.
-	// typ, ok := fts.get(predIR.ResultColumn)
+	// typ, ok := fts.get(predStmt.ResultColumn)
 	if !labelColumnTypeFound {
 		// NOTE(typhoonzero): Clustering model may not have label in select statement, default use INT type
-		labelColumnName = predIR.ResultColumn
+		labelColumnName = predStmt.ResultColumn
 		labelColumnType = "INT"
 	}
 	stype, e := universalizeColumnType(db.driverName, labelColumnType)
@@ -416,6 +430,7 @@ func loadModelMeta(pr *extendedSelect, db *DB, cwd, modelDir, modelName string) 
 	if modelDir != "" {
 		modelURI = fmt.Sprintf("file://%s/%s", modelDir, modelName)
 	}
+
 	m, e = load(modelURI, cwd, db)
 	if e != nil {
 		return nil, fmt.Errorf("load %v", e)

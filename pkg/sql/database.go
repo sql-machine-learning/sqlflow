@@ -39,20 +39,40 @@ type DB struct {
 // In addition to sql.Open, it also does the book keeping on driverName and
 // dataSourceName
 func open(datasource string) (*DB, error) {
+	driverName, datasourName, err := SplitDataSource(datasource)
+	if err != nil {
+		return nil, err
+	}
+	db := &DB{driverName: driverName, dataSourceName: datasourName}
+
+	err = openDB(db)
+	return db, err
+}
+
+func openDB(db *DB) error {
+	var err error
+	for _, d := range sql.Drivers() {
+		if db.driverName == d {
+			db.DB, err = sql.Open(db.driverName, db.dataSourceName)
+			if err != nil {
+				return err
+			}
+			return nil
+		}
+	}
+	return fmt.Errorf("sqlflow currently doesn't support DB %s", db.driverName)
+}
+
+// SplitDataSource splits the datasource into drivername and datasource name
+func SplitDataSource(datasource string) (string, string, error) {
+	if datasource == "" {
+		return "", "", fmt.Errorf("datasource should not be an empty string")
+	}
 	dses := strings.Split(datasource, "://")
 	if len(dses) != 2 {
-		return nil, fmt.Errorf("Expecting but cannot find :// in datasource %v", datasource)
+		return "", "", fmt.Errorf("Expecting but cannot find :// in datasource %v", datasource)
 	}
-	db := &DB{driverName: dses[0], dataSourceName: dses[1]}
-
-	var err error
-	switch db.driverName {
-	case "mysql", "hive", "maxcompute":
-		db.DB, err = sql.Open(db.driverName, db.dataSourceName)
-	default:
-		return nil, fmt.Errorf("sqlflow currently doesn't support DB %v", db.driverName)
-	}
-	return db, err
+	return dses[0], dses[1], nil
 }
 
 // NewDB returns a DB object with verifying the datasource name.

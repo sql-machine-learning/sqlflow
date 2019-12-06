@@ -67,19 +67,19 @@ type SQLProgram []SQLStatement
 // Executor is a visitor that generates and executes code for SQLStatement
 type Executor interface {
 	ExecuteQuery(*StandardSQL) error
-	ExecuteTrain(*TrainClause) error
-	ExecutePredict(*PredictClause) error
-	ExecuteAnalyze(*AnalyzeClause) error
+	ExecuteTrain(*TrainStmt) error
+	ExecutePredict(*PredictStmt) error
+	ExecuteAnalyze(*AnalyzeStmt) error
 }
 
-// SQLStatement represent all kind of IRs including: TrainClause, PredictClause, AnalyzeClause and standard SQL.
+// SQLStatement represent all kind of IRs including: TrainStmt, PredictStmt, AnalyzeStmt and standard SQL.
 type SQLStatement interface {
 	SetOriginalSQL(string)
 	Execute(Executor) error
 }
 
-// TrainClause is the intermediate representation for code generation of a training job.
-type TrainClause struct {
+// TrainStmt is the intermediate representation for code generation of a training job.
+type TrainStmt struct {
 	// OriginalSQL record the original SQL statement used to get current IR result
 	// FIXME(typhoonzero): OriginalSQL is a temporary field. Can remove this when all moved to IR
 	OriginalSQL string
@@ -114,17 +114,17 @@ type TrainClause struct {
 	Into string
 }
 
-// Execute generates and executes code for TrainClause
-func (cl *TrainClause) Execute(s Executor) error { return s.ExecuteTrain(cl) }
+// Execute generates and executes code for TrainStmt
+func (cl *TrainStmt) Execute(s Executor) error { return s.ExecuteTrain(cl) }
 
 // SetOriginalSQL sets the original sql string
-func (cl *TrainClause) SetOriginalSQL(sql string) { cl.OriginalSQL = sql }
+func (cl *TrainStmt) SetOriginalSQL(sql string) { cl.OriginalSQL = sql }
 
-// PredictClause is the intermediate representation for code generation of a prediction job
+// PredictStmt is the intermediate representation for code generation of a prediction job
 //
-// Please be aware the PredictClause IR contains the result table name, so the
+// Please be aware the PredictStmt IR contains the result table name, so the
 // generated Python program is responsible to create and write the result table.
-type PredictClause struct {
+type PredictStmt struct {
 	// OriginalSQL record the original SQL statement used to get current IR result
 	// FIXME(typhoonzero): OriginalSQL is a temporary field. Can remove this when all moved to IR
 	OriginalSQL string
@@ -140,18 +140,18 @@ type PredictClause struct {
 	// "select ... predict ... with predict.batch_size = 32 into ...",
 	// the Attributes will be {"predict.batch_size": 32}
 	Attributes map[string]interface{}
-	// TrainIR is the TrainIR used for generating the training job of the corresponding model
-	TrainIR *TrainClause
+	// TrainStmt is the TrainStmt used for generating the training job of the corresponding model
+	TrainStmt *TrainStmt
 }
 
-// Execute generates and executes code for PredictClause
-func (cl *PredictClause) Execute(s Executor) error { return s.ExecutePredict(cl) }
+// Execute generates and executes code for PredictStmt
+func (cl *PredictStmt) Execute(s Executor) error { return s.ExecutePredict(cl) }
 
 // SetOriginalSQL sets the original sql string
-func (cl *PredictClause) SetOriginalSQL(sql string) { cl.OriginalSQL = sql }
+func (cl *PredictStmt) SetOriginalSQL(sql string) { cl.OriginalSQL = sql }
 
-// AnalyzeClause is the intermediate representation for code generation of a analysis job
-type AnalyzeClause struct {
+// AnalyzeStmt is the intermediate representation for code generation of a analysis job
+type AnalyzeStmt struct {
 	// OriginalSQL record the original SQL statement used to get current IR result
 	// FIXME(typhoonzero): OriginalSQL is a temporary field. Can remove this when all moved to IR
 	OriginalSQL string
@@ -165,15 +165,15 @@ type AnalyzeClause struct {
 	Attributes map[string]interface{}
 	// Explainer types. For example TreeExplainer.
 	Explainer string
-	// TrainIR is the TrainIR used for generating the training job of the corresponding model
-	TrainIR *TrainClause
+	// TrainStmt is the TrainStmt used for generating the training job of the corresponding model
+	TrainStmt *TrainStmt
 }
 
-// Execute generates and executes code for AnalyzeClause
-func (cl *AnalyzeClause) Execute(s Executor) error { return s.ExecuteAnalyze(cl) }
+// Execute generates and executes code for AnalyzeStmt
+func (cl *AnalyzeStmt) Execute(s Executor) error { return s.ExecuteAnalyze(cl) }
 
 // SetOriginalSQL sets the original sql string
-func (cl *AnalyzeClause) SetOriginalSQL(sql string) { cl.OriginalSQL = sql }
+func (cl *AnalyzeStmt) SetOriginalSQL(sql string) { cl.OriginalSQL = sql }
 
 // StandardSQL is a string of a standard SQL statement that can run on the database system.
 type StandardSQL string

@@ -24,9 +24,14 @@ import (
 	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
 
+func TestAttributes(t *testing.T) {
+	a := assert.New(t)
+	a.Equal(27, len(attributeDictionary))
+}
+
 func TestTrainAndPredict(t *testing.T) {
 	a := assert.New(t)
-	tir := mockTrainIR()
+	tir := mockTrainStmt()
 	_, err := Train(tir)
 	a.NoError(err)
 
@@ -51,15 +56,15 @@ func TestTrainAndPredict(t *testing.T) {
 	a.NoError(err)
 }
 
-func mockPrdcIR(trainIR *ir.TrainClause) *ir.PredictClause {
-	return &ir.PredictClause{
-		DataSource:  trainIR.DataSource,
+func mockPrdcIR(trainStmt *ir.TrainStmt) *ir.PredictStmt {
+	return &ir.PredictStmt{
+		DataSource:  trainStmt.DataSource,
 		Select:      "select * from iris.test;",
 		ResultTable: "iris.predict",
-		TrainIR:     trainIR,
+		TrainStmt:   trainStmt,
 	}
 }
-func mockTrainIR() *ir.TrainClause {
+func mockTrainStmt() *ir.TrainStmt {
 	cfg := &mysql.Config{
 		User:                 "root",
 		Passwd:               "root",
@@ -78,7 +83,7 @@ func mockTrainIR() *ir.TrainClause {
 	COLUMN sepal_length, sepal_width, petal_length, petal_width
 	LABEL class
 	INTO sqlflow_models.my_xgboost_model;`
-	return &ir.TrainClause{
+	return &ir.TrainStmt{
 		DataSource:       fmt.Sprintf("mysql://%s", cfg.FormatDSN()),
 		Select:           "select * from iris.train;",
 		ValidationSelect: "select * from iris.test;",

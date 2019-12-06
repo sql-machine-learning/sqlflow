@@ -27,16 +27,16 @@ const (
 )
 
 // Analyze generates a Python program to analyze a trained model.
-func Analyze(ir *ir.AnalyzeClause) (string, error) {
-	if ir.Explainer != "TreeExplainer" {
-		return "", fmt.Errorf("unsupported explainer %s", ir.Explainer)
+func Analyze(analyzeStmt *ir.AnalyzeStmt) (string, error) {
+	if analyzeStmt.Explainer != "TreeExplainer" {
+		return "", fmt.Errorf("unsupported explainer %s", analyzeStmt.Explainer)
 	}
-	summaryAttrs := resolveParams(ir.Attributes, shapSummaryAttrPrefix)
+	summaryAttrs := resolveParams(analyzeStmt.Attributes, shapSummaryAttrPrefix)
 	jsonSummary, err := json.Marshal(summaryAttrs)
 	if err != nil {
 		return "", err
 	}
-	xs, y, err := getFieldMeta(ir.TrainIR.Features["feature_columns"], ir.TrainIR.Label)
+	xs, y, err := getFieldMeta(analyzeStmt.TrainStmt.Features["feature_columns"], analyzeStmt.TrainStmt.Label)
 	if err != nil {
 		return "", err
 	}
@@ -46,8 +46,8 @@ func Analyze(ir *ir.AnalyzeClause) (string, error) {
 	}
 
 	fr := &analyzeFiller{
-		DataSource:         ir.DataSource,
-		DatasetSQL:         ir.Select,
+		DataSource:         analyzeStmt.DataSource,
+		DatasetSQL:         analyzeStmt.Select,
 		ShapSummaryParames: string(jsonSummary),
 		FieldMetaJSON:      string(fm),
 		Label:              y.Name,

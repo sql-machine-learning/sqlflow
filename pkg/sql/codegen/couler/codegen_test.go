@@ -20,13 +20,14 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"
+	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
 
 func TestCodegen(t *testing.T) {
 	a := assert.New(t)
 	sqlIR := mockSQLProgramIR()
-	code, err := Run(sqlIR)
+	code, err := Run(sqlIR, &pb.Session{})
 	a.NoError(err)
 
 	r, _ := regexp.Compile(`repl -e "(.*);"`)
@@ -43,7 +44,7 @@ func mockSQLProgramIR() ir.SQLProgram {
 	standardSQL := ir.StandardSQL("SELECT * FROM iris.train limit 10;")
 	return []ir.SQLStatement{
 		&standardSQL,
-		&ir.TrainClause{
+		&ir.TrainStmt{
 			OriginalSQL: `
 SELECT *
 FROM iris.train

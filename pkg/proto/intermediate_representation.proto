@@ -87,7 +87,7 @@ message Attribute {
     }
 }
 
-message TrainClause {
+message TrainStmt {
     string datasource = 1;
     string select = 2;
     string validation_select  = 3;
@@ -100,19 +100,19 @@ message TrainClause {
     string into = 10;
 }
 
-message PredictClause {
+message PredictStmt {
     string datasource = 1;
     string select = 2;
     string result_table = 3;
     string result_column = 4;
     map<string, Attribute> attributes = 5;
-    TrainClause train_ir = 6;
+    TrainStmt train_ir = 6;
 }
 
-message AnalyzeClause {
+message AnalyzeStmt {
     string datasource = 1;
     string select = 2;
     map<string, Attribute> attributes = 3;
     string explainer = 4;
-    TrainClause train_ir = 5;
+    TrainStmt train_ir = 5;
 }

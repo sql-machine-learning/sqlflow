@@ -224,13 +224,13 @@ INTO sqlflow_models.mymodel;`
 	stdin.Write([]byte(trainSQL))
 	pbtxt, err := parseSQLFromStdin(&stdin)
 	a.NoError(err)
-	pbTrain := &irpb.TrainClause{}
+	pbTrain := &irpb.TrainStmt{}
 	proto.UnmarshalText(pbtxt, pbTrain)
 	a.Equal("class", pbTrain.GetLabel().GetNc().GetFieldMeta().GetName())
 
 	// run one train SQL to save the model then test predict/analyze use the model
 	sess := &irpb.Session{DbConnStr: dataSourceStr}
-	stream := sf.RunSQLProgram(trainSQL, testdb, "", sess)
+	stream := sf.RunSQLProgram(trainSQL, "", sess)
 	lastResp := list.New()
 	keepSize := 10
 	for rsp := range stream.ReadAll() {
@@ -253,7 +253,7 @@ INTO sqlflow_models.mymodel;`
 	stdin.Write([]byte("SELECT * from iris.train TO PREDICT iris.predict.class USING sqlflow_models.mymodel;"))
 	pbtxt, err = parseSQLFromStdin(&stdin)
 	a.NoError(err)
-	pbPred := &irpb.PredictClause{}
+	pbPred := &irpb.PredictStmt{}
 	proto.UnmarshalText(pbtxt, pbPred)
 	a.Equal("class", pbPred.GetResultColumn())
 
@@ -261,7 +261,7 @@ INTO sqlflow_models.mymodel;`
 	stdin.Write([]byte(`SELECT * from iris.train TO EXPLAIN sqlflow_models.mymodel WITH shap_summary.plot_type="bar" USING TreeExplainer;`))
 	pbtxt, err = parseSQLFromStdin(&stdin)
 	a.NoError(err)
-	pbAnalyze := &irpb.AnalyzeClause{}
+	pbAnalyze := &irpb.AnalyzeStmt{}
 	proto.UnmarshalText(pbtxt, pbAnalyze)
 	a.Equal("TreeExplainer", pbAnalyze.GetExplainer())
 }
