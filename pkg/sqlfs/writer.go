@@ -27,9 +27,8 @@ const bufSize = 32 * 1024
 
 // Writer implements io.WriteCloser.
 type Writer struct {
-	db      *sql.DB
-	table   string
-	flushID int
+	db    *sql.DB
+	table string
 }
 
 func noopWrapUp() error { return nil }
@@ -50,7 +49,7 @@ func Create(db *sql.DB, driver, table string, session *pb.Session) (io.WriteClos
 		}
 		return newFlushWriteCloser(flushToCSV(w), uploadHDFSWrapUp(w), bufSize), nil
 	}
-	w := &Writer{db, table, 0}
+	w := &Writer{db, table}
 	return newFlushWriteCloser(flushToTable(w), noopWrapUp, bufSize), nil
 }
 
