@@ -60,7 +60,7 @@ jobs:
       script:
         - docker pull sqlflow/sqlflow:latest && docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile .
         - docker run --rm -v $GOPATH:/root/go -w /root/go/src/sqlflow.org/sqlflow sqlflow:latest bash scripts/test_java.sh
-    - env: SQLFLOW_TEST_WORKFLOW=true
+    - env: SQLFLOW_TEST=workflow
       script:
         - bash scripts/setup_k8s_env.sh
         - eval $(sudo minikube docker-env) && docker pull sqlflow/sqlflow:latest && docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile . && docker tag sqlflow:latest sqlflow:submitter

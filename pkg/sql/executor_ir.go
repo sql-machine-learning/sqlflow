@@ -48,7 +48,7 @@ func RunSQLProgram(sqlProgram string, modelDir string, session *pb.Session) *Pip
 		var db *DB
 		var err error
 		if db, err = NewDB(session.DbConnStr); err != nil {
-			wr.Write(fmt.Sprintf("create DB failed: %v", err))
+			wr.Write(fmt.Errorf("create DB failed: %v", err))
 			log.Errorf("create DB failed: %v", err)
 		}
 		defer wr.Close()
