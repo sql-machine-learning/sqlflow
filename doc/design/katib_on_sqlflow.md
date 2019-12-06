@@ -1,10 +1,10 @@
-# Auto Hyperparameter Tunning
+# Auto Hyperparameter Tuning
 
 SQLFlow allows the users to specify hyperparameter values via the `WITH` clause when training models.  However, most users under our survey prefer that SQLFlow could automatically estimate these hyperparameters instead.  This document is about the automatic hyperparameter estimation.
 
 ## Katib
 
-[Katib](https://github.com/kubeflow/katib) is a Kubernetes Native System for Hyperparameter Tuning and Neural Architecture Search.  The inspiration of Katib comes from Google Vizier and supports multiple machine learning frameworks, for example, TensorFlow, Apache MXNet, PyTorch, and XGBoost.  We compared Katib with some other auto hyperparameter tunning systems, and we prefer its Kubernetes-native architecture.
+[Katib](https://github.com/kubeflow/katib) is a Kubernetes Native System for Hyperparameter Tuning and Neural Architecture Search.  The inspiration of Katib comes from Google Vizier and supports multiple machine learning frameworks, for example, TensorFlow, Apache MXNet, PyTorch, and XGBoost.  We compared Katib with some other auto hyperparameter tuning systems, and we prefer its Kubernetes-native architecture.
 
 However, Katib, or hyperparameter tuning in the academic literature, is not sufficient for our use case.
 
@@ -23,7 +23,7 @@ For boosting tree models, especially models with XGBoost, there is a small group
 - `max_depth` in the range [2,10], and
 - `num_round` in the range [50, 100].
 
-With the introduction of auto hyperparameter tunning, we hope that users don't need to specify the `num_round` and `max_depth` values in the following SQL statement.
+With the introduction of auto hyperparameter tuning, we hope that users don't need to specify the `num_round` and `max_depth` values in the following SQL statement.
 
 ```sql
 SELECT * FROM a_dataset_table
@@ -41,9 +41,9 @@ INTO my_xgb_model;
 
 For deep learning models, the case is complicated.  Each model has its own set of hyperparameters, and their ranges might vary significantly.  Our proposed solution is to utilize the [model zoo](model_zoo.md).  In particular, users might train a model defined in the zoo with various datasets, in various experiments, with manually specified hyperparameters.  After the training, some users might publish their trained models, including the estimated parameters and the specified hyperparameters.  Given these published hyperparameter values, the [Bayesian hyperparameter optimization](https://en.wikipedia.org/wiki/Hyperparameter_optimization#Bayesian_optimization)  for hyperparameter tuning.  We are working on such a Bayesian approach that doesn't require explicit specification of hyperparameter ranges.  We plan to contribute it to Katib.
 
-### Tigger Hyperparameter Tunning
+### Trigger Hyperparameter Tuning
 
-Each model definition has a specification listing its hyperparameters.  If the user-specified values of all of them, there is no need for tunning; otherwise, SQLFlow should call Katib.
+Each model definition has a specification listing its hyperparameters.  If the user-specified values of all of them, there is no need for tuning; otherwise, SQLFlow should call Katib.
 
 ## The System Design
 
