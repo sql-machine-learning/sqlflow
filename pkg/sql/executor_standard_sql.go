@@ -91,7 +91,7 @@ func parseRow(columns []string, columnTypes []*sql.ColumnType, rows *sql.Rows, w
 	count := len(columns)
 	values := make([]interface{}, count)
 	for i, ct := range columnTypes {
-		values[i] = createByType(ct.ScanType())
+		values[i] = newZeroValue(ct.ScanType())
 	}
 
 	if err := rows.Scan(values...); err != nil {

@@ -26,7 +26,7 @@ import (
 // hive column type ends with _TYPE
 const hiveCTypeSuffix = "_TYPE"
 
-func createByType(t reflect.Type) interface{} {
+func newZeroValue(t reflect.Type) interface{} {
 	return reflect.New(t).Interface()
 }
 
