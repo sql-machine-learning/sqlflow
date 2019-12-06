@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -278,26 +277,4 @@ func TestLogChanWriter_Write(t *testing.T) {
 	a.Equal("世界\n", <-c)
 	_, more := <-c
 	a.False(more)
-}
-
-func TestSubmitWorkflow(t *testing.T) {
-	if os.Getenv("SQLFLOW_ARGO_MODE") != "True" {
-		t.Skip("argo: skip Argo tests")
-	}
-	a := assert.New(t)
-	modelDir := ""
-	a.NotPanics(func() {
-		rd := SubmitWorkflow(testXGBoostTrainSelectIris, modelDir, getDefaultSession())
-		for r := range rd.ReadAll() {
-			switch r.(type) {
-			case WorkflowJob:
-				job := r.(WorkflowJob)
-				a.True(strings.HasPrefix(job.JobID, "sqlflow-couler"))
-				// TODO(tony): wait to check if job succeeded.
-				// The workflow is currently failed since we haven't configure the data source.
-			default:
-				a.Fail("SubmitWorkflow should return JobID")
-			}
-		}
-	})
 }

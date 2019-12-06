@@ -23,6 +23,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"strings"
 	"testing"
 	"time"
 
@@ -44,6 +45,7 @@ var caseDB = "iris"
 var caseTrainTable = "train"
 var caseTestTable = "test"
 var casePredictTable = "predict"
+var testDatasource = os.Getenv("SQLFLOW_TEST_DATASOURCE")
 
 // caseInto is used by function CaseTrainSQL in this file. When
 // testing with MaxCompute, the project is pre-created, we only need to
@@ -483,6 +485,94 @@ func TestEnd2EndMaxComputeElasticDL(t *testing.T) {
 	waitPortReady(fmt.Sprintf("localhost:%d", unitestPort), 0)
 
 	t.Run("CaseTrainElasticDL", CaseTrainElasticDL)
+}
+
+func TestEnd2EndMySQLWorkflow(t *testing.T) {
+	a := assert.New(t)
+	if os.Getenv("SQLFLOW_TEST_DATASOURCE") == "" || strings.ToLower(os.Getenv("SQLFLOW_TEST")) != "workflow" {
+		t.Skip("Skipping workflow test.")
+	}
+	driverName, _, err := sql.SplitDataSource(testDatasource)
+	a.NoError(err)
+
+	if driverName != "mysql" {
+		t.Skip("Skipping workflow test.")
+	}
+	modelDir := ""
+	tmpDir, caCrt, caKey, err := generateTempCA()
+	defer os.RemoveAll(tmpDir)
+	if err != nil {
+		t.Fatalf("failed to generate CA pair %v", err)
+	}
+
+	go start(modelDir, caCrt, caKey, unitestPort, true)
+	waitPortReady(fmt.Sprintf("localhost:%d", unitestPort), 0)
+	if err != nil {
+		t.Fatalf("prepare test dataset failed: %v", err)
+	}
+
+	t.Run("CaseSubmitSQLProgram", CaseSubmitSQLProgram)
+}
+
+func CaseSubmitSQLProgram(t *testing.T) {
+	a := assert.New(t)
+	sqlProgram := fmt.Sprintf(`
+SELECT *
+FROM %s.%s
+TO TRAIN DNNClassifier
+WITH
+	model.n_classes = 3,
+	model.hidden_units = [10, 20]
+COLUMN sepal_length, sepal_width, petal_length, petal_width
+LABEL class
+INTO sqlflow_models.my_dnn_model;
+
+SELECT *
+FROM %s.%s
+TO PREDICT %s.%s.class
+USING sqlflow_models.my_dnn_model;
+
+SELECT *
+FROM %s.%s LIMIT 5;
+	`, caseDB, caseTrainTable,
+		caseDB, caseTrainTable, caseDB, casePredictTable, caseDB, casePredictTable)
+
+	conn, err := createRPCConn()
+	if err != nil {
+		a.Fail("Create gRPC client error: %v", err)
+	}
+	defer conn.Close()
+	cli := pb.NewSQLFlowClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	defer cancel()
+	stream, err := cli.Run(ctx, &pb.Request{Sql: sqlProgram, Session: &pb.Session{DbConnStr: testDatasource}})
+	var workflowID string
+	for {
+		iter, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			log.Fatalf("stream read err: %v", err)
+		}
+		workflowID = iter.GetJob().GetId()
+	}
+	a.True(strings.HasPrefix(workflowID, "sqlflow-couler"))
+	// check the workflow status in 180 seconods
+	// TODO(yancey1989): using the Fetch gRPC interface to check the workflow status
+	for i := 0; i < 60; i++ {
+		cmd := exec.Command("kubectl", "get", "wf", workflowID, "-o", "jsonpath='{.status.phase}'")
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			log.Fatalf("get workflow status error: %v", err)
+		}
+		if string(out) == "'Succeeded'" {
+			return
+		}
+		time.Sleep(3 * time.Second)
+	}
+	// workflow times out
+	log.Fatalf("workflow: %s times out", workflowID)
 }
 
 func CaseShowDatabases(t *testing.T) {

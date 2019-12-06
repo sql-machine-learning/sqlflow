@@ -48,7 +48,7 @@ func RunSQLProgram(sqlProgram string, modelDir string, session *pb.Session) *Pip
 		var db *DB
 		var err error
 		if db, err = NewDB(session.DbConnStr); err != nil {
-			wr.Write(fmt.Sprintf("create DB failed: %v", err))
+			wr.Write(fmt.Errorf("create DB failed: %v", err))
 			log.Errorf("create DB failed: %v", err)
 		}
 		defer wr.Close()
@@ -128,8 +128,8 @@ func SubmitWorkflow(sqlProgram string, modelDir string, session *pb.Session) *Pi
 	return rd
 }
 
-func writeCoulerFile(spIRs ir.SQLProgram) (string, error) {
-	program, err := couler.Run(spIRs)
+func writeCoulerFile(spIRs ir.SQLProgram, session *pb.Session) (string, error) {
+	program, err := couler.Run(spIRs, session)
 	if err != nil {
 		return "", fmt.Errorf("generate couler program error: %v", err)
 	}
@@ -202,19 +202,21 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, modelDir string, session 
 	}
 
 	// 1. call codegen_couler.go to genearte Couler program.
-	coulerFileName, err := writeCoulerFile(spIRs)
+	coulerFileName, err := writeCoulerFile(spIRs, session)
 	if err != nil {
 		return err
 	}
+	defer os.RemoveAll(coulerFileName)
 
 	// 2. compile Couler program into Argo YAML.
-	argoFile, err := writeArgoFile(coulerFileName)
+	argoFileName, err := writeArgoFile(coulerFileName)
 	if err != nil {
 		return err
 	}
+	defer os.RemoveAll(argoFileName)
 
 	// 3. submit Argo YAML and fetch the workflow ID.
-	cmd := exec.Command("kubectl", "create", "-f", argoFile)
+	cmd := exec.Command("kubectl", "create", "-f", argoFileName)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("submit Argo YAML error: %v, output: %s", err, string(output))

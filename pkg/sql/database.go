@@ -65,6 +65,9 @@ func openDB(db *DB) error {
 
 // SplitDataSource splits the datasource into drivername and datasource name
 func SplitDataSource(datasource string) (string, string, error) {
+	if datasource == "" {
+		return "", "", fmt.Errorf("datasource should not be an empty string")
+	}
 	dses := strings.Split(datasource, "://")
 	if len(dses) != 2 {
 		return "", "", fmt.Errorf("Expecting but cannot find :// in datasource %v", datasource)
