@@ -37,7 +37,7 @@ type EndOfExecution struct {
 }
 
 // WorkflowJob indicates the Argo Workflow ID
-// FIXME(tony): reuse workflow job definition is proto pakcage
+// FIXME(tony): reuse workflow job definition in proto package
 type WorkflowJob struct {
 	JobID string
 }
