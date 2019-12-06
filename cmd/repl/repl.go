@@ -133,12 +133,15 @@ func runStmt(stmt string, isTerminal bool, modelDir string, ds string) error {
 	return nil
 }
 
-func repl(scanner *bufio.Scanner, modelDir string, ds string) {
+func assertConnectable(ds string) {
 	db, err := sql.NewDB(ds)
 	if err != nil {
-		log.Fatalf("failed to open database: %v", err)
+		log.Fatal(err)
 	}
 	defer db.Close()
+}
+
+func repl(scanner *bufio.Scanner, modelDir string, ds string) {
 	for {
 		stmt, err := readStmt(scanner)
 		fmt.Println()
@@ -202,9 +205,10 @@ func main() {
 			log.Fatalf("error parse SQL from stdin: %v", err)
 		}
 		fmt.Printf("%s", out)
-		// exit when parse is finished
-		os.Exit(0)
+		return // Exit when parse is finished
 	}
+
+	assertConnectable(*ds) // Fast fail if we can't connect to the datasource
 
 	if *modelDir != "" {
 		if _, derr := os.Stat(*modelDir); derr != nil {
@@ -213,7 +217,6 @@ func main() {
 	}
 
 	isTerminal := !flagPassed("execute", "e", "file", "f") && terminal.IsTerminal(syscall.Stdin)
-
 	sqlFile := os.Stdin
 	var err error
 	if flagPassed("file", "f") {
