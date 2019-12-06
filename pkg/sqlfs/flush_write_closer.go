@@ -17,11 +17,11 @@ package sqlfs
 type flushWriteCloser struct {
 	buf     []byte
 	flushes int // record the count of flushes.
-	flush   func([]byte) error
+	flush   func([]byte, int) error
 	wrapup  func() error
 }
 
-func newFlushWriteCloser(flush func([]byte) error, wrapup func() error, flushCap int) *flushWriteCloser {
+func newFlushWriteCloser(flush func([]byte, int) error, wrapup func() error, flushCap int) *flushWriteCloser {
 	return &flushWriteCloser{
 		buf:     make([]byte, 0, flushCap),
 		flushes: 0,
@@ -41,17 +41,18 @@ func (w *flushWriteCloser) Write(p []byte) (n int, e error) {
 		p = p[fill:]
 		n += fill
 		if len(w.buf) >= cap(w.buf) {
-			if e = w.flush(w.buf); e != nil {
+			if e = w.flush(w.buf, w.flushes); e != nil {
 				return n, e
 			}
 			w.buf = w.buf[:0]
+			w.flushes++
 		}
 	}
 	return n, nil
 }
 
 func (w *flushWriteCloser) Close() error {
-	if e := w.flush(w.buf); e != nil {
+	if e := w.flush(w.buf, w.flushes); e != nil {
 		return e
 	}
 	w.buf = w.buf[:0]

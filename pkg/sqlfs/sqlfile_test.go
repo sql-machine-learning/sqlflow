@@ -84,7 +84,6 @@ func TestWriteAndRead(t *testing.T) {
 	for i := range buf {
 		buf[i] = 'x'
 	}
-	fmt.Println(len(string(buf)))
 	n, e = w.Write(buf)
 	a.NoError(e)
 	a.Equal(len(buf), n)
@@ -116,7 +115,7 @@ func TestWriteAndRead(t *testing.T) {
 	a.Equal(0, n)
 	a.NoError(r.Close())
 
-	a.NoError(dropTable(testDB, fn))
+	//a.NoError(dropTable(testDB, fn))
 }
 
 // assertNoError prints the error if there is any in TestMain, which

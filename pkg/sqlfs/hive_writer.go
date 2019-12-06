@@ -26,7 +26,8 @@ import (
 
 // HiveWriter implements io.WriteCloser.
 type HiveWriter struct {
-	Writer
+	db      *sql.DB
+	table   string
 	csvFile *os.File
 	session *pb.Session
 }
@@ -38,89 +39,60 @@ func NewHiveWriter(db *sql.DB, table string, session *pb.Session) (*HiveWriter, 
 		return nil, fmt.Errorf("create temporary csv file failed: %v", e)
 	}
 	return &HiveWriter{
-		Writer: Writer{
-			db:      db,
-			table:   table,
-			buf:     make([]byte, 0, bufSize),
-			flushID: 0,
-		},
+		db:      db,
+		table:   table,
 		csvFile: csvFile,
 		session: session}, nil
 }
 
-// Write write bytes to sqlfs and returns (num_bytes, error)
-func (w *HiveWriter) Write(p []byte) (n int, e error) {
-	n = 0
-	for len(p) > 0 {
-		fill := bufSize - len(w.buf)
-		if fill > len(p) {
-			fill = len(p)
+func uploadHDFSWrapUp(w *HiveWriter) func() error {
+	return func() error {
+		if w.db == nil {
+			return nil
 		}
-		w.buf = append(w.buf, p[:fill]...)
-		p = p[fill:]
-		n += fill
-		if len(w.buf) >= bufSize {
-			if e := w.flush(); e != nil {
-				return 0, e
-			}
-		}
-	}
-	return n, nil
-}
+		defer func() {
+			w.csvFile.Close()
+			os.Remove(w.csvFile.Name())
+			w.db = nil
+		}()
 
-// Close the connection of the sqlfs
-func (w *HiveWriter) Close() error {
-	if w.db == nil {
+		// 1. create a directory on HDFS
+		cmd := exec.Command("hdfs", "dfs", "-mkdir", "-p", w.hdfsPath())
+		hdfsEnv := os.Environ()
+		if w.session.HdfsUser != "" {
+			hdfsEnv = append(hdfsEnv,
+				fmt.Sprintf("HADOOP_USER_NAME=%s", w.session.HdfsUser),
+				fmt.Sprintf("HADOOP_USER_PASSWORD=%s", w.session.HdfsPass))
+		}
+		cmd.Env = hdfsEnv
+		if _, err := cmd.CombinedOutput(); err != nil {
+			return fmt.Errorf(`execute "hdfs dfs -mkdir -p %s" failed: %v `, w.hdfsPath(), err)
+		}
+		// 2. upload the local csv file to the HDFS path
+		cmd = exec.Command("hdfs", "dfs", "-copyFromLocal", w.csvFile.Name(), w.hdfsPath())
+		cmd.Env = hdfsEnv
+		if _, err := cmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("upload local file into hdfs error: %v", err)
+		}
+		// 3. execute a LOAD statement to load csv to Hive table
+		query := fmt.Sprintf("LOAD DATA INPATH '%s' OVERWRITE INTO TABLE %s", w.hdfsPath(), w.table)
+		if _, e := w.db.Exec(query); e != nil {
+			return fmt.Errorf("execute query: %s, error: %v", query, e)
+		}
 		return nil
 	}
-	defer func() {
-		w.csvFile.Close()
-		os.Remove(w.csvFile.Name())
-		w.db = nil
-	}()
-
-	if e := w.flush(); e != nil {
-		return e
-	}
-
-	// 1. create a directory on HDFS
-	cmd := exec.Command("hdfs", "dfs", "-mkdir", "-p", w.hdfsPath())
-	hdfsEnv := os.Environ()
-	if w.session.HdfsUser != "" {
-		hdfsEnv = append(hdfsEnv,
-			fmt.Sprintf("HADOOP_USER_NAME=%s", w.session.HdfsUser),
-			fmt.Sprintf("HADOOP_USER_PASSWORD=%s", w.session.HdfsPass))
-	}
-	cmd.Env = hdfsEnv
-	if _, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf(`execute "hdfs dfs -mkdir -p %s" failed: %v `, w.hdfsPath(), err)
-	}
-	// 2. upload the local csv file to the HDFS path
-	cmd = exec.Command("hdfs", "dfs", "-copyFromLocal", w.csvFile.Name(), w.hdfsPath())
-	cmd.Env = hdfsEnv
-	if _, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("upload local file into hdfs error: %v", err)
-	}
-	// 3. execute a LOAD statement to load csv to Hive table
-	query := fmt.Sprintf("LOAD DATA INPATH '%s' OVERWRITE INTO TABLE %s", w.hdfsPath(), w.table)
-	if _, e := w.db.Exec(query); e != nil {
-		return fmt.Errorf("execute query: %s, error: %v", query, e)
-	}
-	return nil
 }
 
 func (w *HiveWriter) hdfsPath() string {
 	return fmt.Sprintf("%s/models/%s/", w.session.HiveLocation, w.table)
 }
 
-func (w *HiveWriter) flush() error {
-	if len(w.buf) > 0 {
-		block := base64.StdEncoding.EncodeToString(w.buf)
-		if _, e := w.csvFile.Write([]byte(fmt.Sprintf("%d\001%s\n", w.flushID, block))); e != nil {
+func flushToCSV(w *HiveWriter) func([]byte, int) error {
+	return func(buf []byte, flushes int) error {
+		block := base64.StdEncoding.EncodeToString(buf)
+		if _, e := w.csvFile.Write([]byte(fmt.Sprintf("%d\001%s\n", flushes, block))); e != nil {
 			return fmt.Errorf("flush error, %v", e)
 		}
-		w.buf = w.buf[:0]
-		w.flushID++
+		return nil
 	}
-	return nil
 }

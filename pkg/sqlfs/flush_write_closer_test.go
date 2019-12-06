@@ -21,14 +21,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func flushToBytes(output *bytes.Buffer) func([]byte) error {
-	return func(buf []byte) error {
+func flushToBytes(output *bytes.Buffer) func([]byte, int) error {
+	return func(buf []byte, flushes int) error {
 		_, e := output.Write(buf)
 		return e
 	}
 }
-
-func noopWrapUp() error { return nil }
 
 func TestWriteWithSmallBuffer(t *testing.T) {
 	a := assert.New(t)
