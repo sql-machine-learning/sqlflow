@@ -37,7 +37,7 @@ func TestDictionaryValidate(t *testing.T) {
 	a.NoError(tb.Validate(map[string]interface{}{"a": 1}))
 	a.EqualError(tb.Validate(map[string]interface{}{"a": -1}), "some error")
 	a.EqualError(tb.Validate(map[string]interface{}{"_a": -1}), fmt.Sprintf(errUnsupportedAttribute, "_a"))
-	a.EqualError(tb.Validate(map[string]interface{}{"a": 1.0}), fmt.Sprintf(errUnexpectedType, "a", "Int", 1.0))
+	a.EqualError(tb.Validate(map[string]interface{}{"a": 1.0}), fmt.Sprintf(errUnexpectedType, "a", "int", 1.))
 }
 
 func TestPremadeModelParamsDocs(t *testing.T) {
@@ -89,12 +89,12 @@ doc string.`, nil},
 </tr>
 <tr>
 	<td>a</td>
-	<td>Int</td>
+	<td>int</td>
 	<td>this is a<br>multiple line<br>doc string.</td>
 </tr>
 <tr>
 	<td>世界</td>
-	<td>String</td>
+	<td>string</td>
 	<td>42</td>
 </tr>
 </table>`

@@ -16,29 +16,29 @@ package attribute
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"sort"
 	"strings"
 )
 
-// Type indicates the attribute type of an attribute in the WITH clause
-type Type int
-
 const (
 	errUnsupportedAttribute = "unsupported attribute %v"
-	errUnexpectedType       = `unexpected type on attribute %v. expect %s, received %T`
+	errUnexpectedType       = `unexpected type on attribute %v. expect %s, received %[3]v(%[3]T)`
 )
 
-const (
-	// Int indicates the corresponding attribute is an integer
-	Int Type = iota
-	// Float indicates the corresponding attribute is a float
-	Float
+type unknown struct{}
+
+var (
+	// Int indicates that the corresponding attribute is an integer
+	Int = reflect.TypeOf(0)
+	// Float indicates that the corresponding attribute is a float32
+	Float = reflect.TypeOf(float32(0.))
 	// String indicates the corresponding attribute is a string
-	String
+	String = reflect.TypeOf("")
 	// IntList indicates the corresponding attribute is a list of integers
-	IntList
+	IntList = reflect.TypeOf([]int{})
 	// Unknown type indicates that the attribute type is dynamically determined.
-	Unknown
+	Unknown = reflect.TypeOf(unknown{})
 )
 
 // Dictionary contains the description of all attributes
@@ -46,24 +46,9 @@ type Dictionary map[string]*Description
 
 // Description describes a requirement for a particular attribute
 type Description struct {
-	Type    Type
+	Type    reflect.Type
 	Doc     string
 	Checker func(i interface{}) error
-}
-
-func (t Type) String() string {
-	switch t {
-	case Int:
-		return "Int"
-	case Float:
-		return "Float"
-	case String:
-		return "String"
-	case IntList:
-		return "IntList"
-	default:
-		return "Unknown"
-	}
 }
 
 // Validate validates the attribute based on dictionary. The validation includes
@@ -89,18 +74,8 @@ func (d Dictionary) Validate(attrs map[string]interface{}) error {
 			}
 		}
 
-		// Unknown type of attribute do not need to run validate.
-		if desc.Type == Unknown {
-			if desc.Checker != nil {
-				if err := desc.Checker(v); err != nil {
-					return err
-				}
-			}
-			continue
-		}
-
-		if e := declaredTypeMatchesValueType(k, v, desc); e != nil {
-			return e
+		if desc.Type != Unknown && desc.Type != reflect.TypeOf(v) {
+			return fmt.Errorf(errUnexpectedType, k, desc.Type, v)
 		}
 
 		if desc.Checker != nil {
@@ -112,40 +87,14 @@ func (d Dictionary) Validate(attrs map[string]interface{}) error {
 	return nil
 }
 
-func declaredTypeMatchesValueType(k string, v interface{}, desc *Description) error {
-	switch v.(type) {
-	case int, int32, int64:
-		if desc.Type != Int {
-			return fmt.Errorf(errUnexpectedType, k, desc.Type.String(), v)
-		}
-	case float32, float64:
-		if desc.Type != Float {
-			return fmt.Errorf(errUnexpectedType, k, desc.Type.String(), v)
-		}
-	case string:
-		if desc.Type != String {
-			return fmt.Errorf(errUnexpectedType, k, desc.Type.String(), v)
-		}
-	case []int32, []int64:
-		if desc.Type != IntList {
-			return fmt.Errorf(errUnexpectedType, k, desc.Type.String(), v)
-		}
-	default:
-		return fmt.Errorf(errUnexpectedType, k, "one of Int/Float/String/IntList", v)
-	}
-	return nil
-}
-
 // GenerateTableInHTML generates the attribute dictionary table in HTML format
 func (d Dictionary) GenerateTableInHTML() string {
-	l := make([]string, 0)
-	l = append(l, `<table>`)
-	l = append(l, `<tr>
+	l := []string{`<table>`,
+		`<tr>
 	<td>Name</td>
 	<td>Type</td>
 	<td>Description</td>
-</tr>`)
-
+</tr>`}
 	// the rows are sorted according key names
 	keys := make([]string, 0)
 	for k := range d {
@@ -161,7 +110,7 @@ func (d Dictionary) GenerateTableInHTML() string {
 	<td>%s</td>
 </tr>`
 		// NOTE(tony): if the doc string has multiple lines, need to replace \n with <br>
-		s := fmt.Sprintf(t, k, desc.Type.String(), strings.Replace(desc.Doc, "\n", `<br>`, -1))
+		s := fmt.Sprintf(t, k, desc.Type, strings.Replace(desc.Doc, "\n", `<br>`, -1))
 		l = append(l, s)
 	}
 
