@@ -215,7 +215,7 @@ func Train(trainIR *ir.TrainClause) (string, error) {
 	paiTable := ""
 	// TODO(typhoonzero): if isPAI, create two Couler steps
 	if isPAI {
-		fromRegex, err := regexp.Compile("FROM\\s([a-z0-9_\\.]*)")
+		fromRegex, err := regexp.Compile("FROM[\\s\\n]+([\\w\\.]*)")
 		if err != nil {
 			return "", err
 		}
