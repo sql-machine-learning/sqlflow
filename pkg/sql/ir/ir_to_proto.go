@@ -212,14 +212,14 @@ func AttributesToProto(attrsIR map[string]interface{}) (map[string]*pb.Attribute
 	return attrs, nil
 }
 
-// TrainIRToProto convert parsed TrainIR to a protobuf format
-func TrainIRToProto(trainIR *TrainClause, sess *pb.Session) (*pb.TrainClause, error) {
-	attrs, err := AttributesToProto(trainIR.Attributes)
+// TrainStmtToProto convert parsed TrainStmt to a protobuf format
+func TrainStmtToProto(trainStmt *TrainStmt, sess *pb.Session) (*pb.TrainStmt, error) {
+	attrs, err := AttributesToProto(trainStmt.Attributes)
 	if err != nil {
 		return nil, err
 	}
 	features := make(map[string]*pb.FeatureColumnList)
-	for target, fclist := range trainIR.Features {
+	for target, fclist := range trainStmt.Features {
 		pbfclist := &pb.FeatureColumnList{
 			FeatureColumns: []*pb.FeatureColumn{},
 		}
@@ -236,7 +236,7 @@ func TrainIRToProto(trainIR *TrainClause, sess *pb.Session) (*pb.TrainClause, er
 		features[target] = pbfclist
 	}
 
-	labelFM := trainIR.Label.GetFieldMeta()[0]
+	labelFM := trainStmt.Label.GetFieldMeta()[0]
 	label := &pb.FeatureColumn{
 		FeatureColumn: &pb.FeatureColumn_Nc{
 			Nc: &pb.NumericColumn{
@@ -245,55 +245,55 @@ func TrainIRToProto(trainIR *TrainClause, sess *pb.Session) (*pb.TrainClause, er
 		},
 	}
 
-	ret := &pb.TrainClause{
-		Datasource:       trainIR.DataSource,
-		Select:           trainIR.Select,
-		ValidationSelect: trainIR.ValidationSelect,
-		Estimator:        trainIR.Estimator,
+	ret := &pb.TrainStmt{
+		Datasource:       trainStmt.DataSource,
+		Select:           trainStmt.Select,
+		ValidationSelect: trainStmt.ValidationSelect,
+		Estimator:        trainStmt.Estimator,
 		Attributes:       attrs,
 		Features:         features,
 		Label:            label,
 		Session:          sess,
-		Into:             trainIR.Into,
+		Into:             trainStmt.Into,
 	}
 	return ret, nil
 }
 
-// PredictIRToProto convert parsed PredictIR to a protobuf format
-func PredictIRToProto(predictIR *PredictClause, sess *pb.Session) (*pb.PredictClause, error) {
-	trainIR, err := TrainIRToProto(predictIR.TrainIR, sess)
+// PredictStmtToProto convert parsed predictStmt to a protobuf format
+func PredictStmtToProto(predictStmt *PredictStmt, sess *pb.Session) (*pb.PredictStmt, error) {
+	trainStmt, err := TrainStmtToProto(predictStmt.TrainStmt, sess)
 	if err != nil {
 		return nil, err
 	}
-	attrs, err := AttributesToProto(predictIR.Attributes)
+	attrs, err := AttributesToProto(predictStmt.Attributes)
 	if err != nil {
 		return nil, err
 	}
-	return &pb.PredictClause{
-		Datasource:   predictIR.DataSource,
-		Select:       predictIR.Select,
-		ResultTable:  predictIR.ResultTable,
-		ResultColumn: predictIR.ResultColumn,
+	return &pb.PredictStmt{
+		Datasource:   predictStmt.DataSource,
+		Select:       predictStmt.Select,
+		ResultTable:  predictStmt.ResultTable,
+		ResultColumn: predictStmt.ResultColumn,
 		Attributes:   attrs,
-		TrainIr:      trainIR,
+		TrainIr:      trainStmt,
 	}, nil
 }
 
-// AnalyzeIRToProto convert parsed AnalyzeIR to a protobuf format
-func AnalyzeIRToProto(analyzeIR *AnalyzeClause, sess *pb.Session) (*pb.AnalyzeClause, error) {
-	trainIR, err := TrainIRToProto(analyzeIR.TrainIR, sess)
+// AnalyzeStmtToProto convert parsed AnalyzeStmt to a protobuf format
+func AnalyzeStmtToProto(analyzeStmt *AnalyzeStmt, sess *pb.Session) (*pb.AnalyzeStmt, error) {
+	trainStmt, err := TrainStmtToProto(analyzeStmt.TrainStmt, sess)
 	if err != nil {
 		return nil, err
 	}
-	attrs, err := AttributesToProto(analyzeIR.Attributes)
+	attrs, err := AttributesToProto(analyzeStmt.Attributes)
 	if err != nil {
 		return nil, err
 	}
-	return &pb.AnalyzeClause{
-		Datasource: analyzeIR.DataSource,
-		Select:     analyzeIR.Select,
+	return &pb.AnalyzeStmt{
+		Datasource: analyzeStmt.DataSource,
+		Select:     analyzeStmt.Select,
 		Attributes: attrs,
-		Explainer:  analyzeIR.Explainer,
-		TrainIr:    trainIR,
+		Explainer:  analyzeStmt.Explainer,
+		TrainIr:    trainStmt,
 	}, nil
 }

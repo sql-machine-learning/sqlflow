@@ -97,21 +97,21 @@ func getFieldMeta(fcs []ir.FeatureColumn, l ir.FeatureColumn) ([]ir.FieldMeta, i
 }
 
 // Train generates a Python program for train a XgBoost model.
-func Train(ir *ir.TrainClause) (string, error) {
-	params, err := parseAttribute(ir.Attributes)
+func Train(trainStmt *ir.TrainStmt) (string, error) {
+	params, err := parseAttribute(trainStmt.Attributes)
 	if err != nil {
 		return "", err
 	}
-	booster, err := resolveModelType(ir.Estimator)
+	booster, err := resolveModelType(trainStmt.Estimator)
 	if err != nil {
 		return "", err
 	}
 	params[""]["booster"] = booster
 
-	if len(ir.Features) != 1 {
-		return "", fmt.Errorf("xgboost only support 1 feature column set, received %d", len(ir.Features))
+	if len(trainStmt.Features) != 1 {
+		return "", fmt.Errorf("xgboost only support 1 feature column set, received %d", len(trainStmt.Features))
 	}
-	featureFieldMeta, labelFieldMeta, err := getFieldMeta(ir.Features["feature_columns"], ir.Label)
+	featureFieldMeta, labelFieldMeta, err := getFieldMeta(trainStmt.Features["feature_columns"], trainStmt.Label)
 	if err != nil {
 		return "", err
 	}
@@ -132,9 +132,9 @@ func Train(ir *ir.TrainClause) (string, error) {
 		return "", err
 	}
 	r := trainFiller{
-		DataSource:       ir.DataSource,
-		TrainSelect:      ir.Select,
-		ValidationSelect: ir.ValidationSelect,
+		DataSource:       trainStmt.DataSource,
+		TrainSelect:      trainStmt.Select,
+		ValidationSelect: trainStmt.ValidationSelect,
 		ModelParamsJSON:  string(mp),
 		TrainParamsJSON:  string(tp),
 		FieldMetaJSON:    string(f),
@@ -149,8 +149,8 @@ func Train(ir *ir.TrainClause) (string, error) {
 }
 
 // Pred generates a Python program for predict a xgboost model.
-func Pred(ir *ir.PredictClause, session *pb.Session) (string, error) {
-	featureFieldMeta, labelFieldMeta, err := getFieldMeta(ir.TrainIR.Features["feature_columns"], ir.TrainIR.Label)
+func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
+	featureFieldMeta, labelFieldMeta, err := getFieldMeta(predStmt.TrainStmt.Features["feature_columns"], predStmt.TrainStmt.Label)
 	if err != nil {
 		return "", err
 	}
@@ -164,11 +164,11 @@ func Pred(ir *ir.PredictClause, session *pb.Session) (string, error) {
 	}
 
 	r := predFiller{
-		DataSource:       ir.DataSource,
-		PredSelect:       ir.Select,
+		DataSource:       predStmt.DataSource,
+		PredSelect:       predStmt.Select,
 		FeatureMetaJSON:  string(f),
 		LabelMetaJSON:    string(l),
-		ResultTable:      ir.ResultTable,
+		ResultTable:      predStmt.ResultTable,
 		HDFSNameNodeAddr: session.HdfsNamenodeAddr,
 		HiveLocation:     session.HiveLocation,
 		HDFSUser:         session.HdfsUser,

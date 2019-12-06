@@ -168,7 +168,7 @@ func parse2Any(val interface{}) (proto.Message, error) {
 		return &wrappers.BytesValue{Value: v}, nil
 	case time.Time:
 		return &pyts.Timestamp{
-			Seconds: int64(v.Second()),
+			Seconds: int64(v.Unix()),
 			Nanos:   int32(v.Nanosecond())}, nil
 	default:
 		return nil, fmt.Errorf("can't convert %#v to protobuf.Any", val)

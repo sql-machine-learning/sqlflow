@@ -19,7 +19,7 @@ type predFiller struct {
 	DataSource  string
 	Select      string
 	ResultTable string
-	// below members comes from TrainIR
+	// below members comes from trainStmt
 	Estimator         string
 	IsKerasModel      bool
 	FieldMetas        []*ir.FieldMeta

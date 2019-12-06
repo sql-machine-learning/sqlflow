@@ -159,19 +159,19 @@ func IsKerasModel(estimator string) (bool, string) {
 	return false, fmt.Sprintf("tf.estimator.%s", estimator)
 }
 
-func validateAttributes(trainIR *ir.TrainClause) error {
-	modelAttr := attribute.NewDictionary(trainIR.Estimator, "model.")
-	return modelAttr.Update(commonAttributes).Validate(trainIR.Attributes)
+func validateAttributes(trainStmt *ir.TrainStmt) error {
+	modelAttr := attribute.NewDictionary(trainStmt.Estimator, "model.")
+	return modelAttr.Update(commonAttributes).Validate(trainStmt.Attributes)
 }
 
 // Train generates a Python program for train a TensorFlow model.
-func Train(trainIR *ir.TrainClause) (string, error) {
-	if err := validateAttributes(trainIR); err != nil {
+func Train(trainStmt *ir.TrainStmt) (string, error) {
+	if err := validateAttributes(trainStmt); err != nil {
 		return "", err
 	}
 	trainParams := make(map[string]interface{})
 	modelParams := make(map[string]interface{})
-	for attrKey, attr := range trainIR.Attributes {
+	for attrKey, attr := range trainStmt.Attributes {
 		if strings.HasPrefix(attrKey, "train.") {
 			trainParams[strings.Replace(attrKey, "train.", "", 1)] = attr
 		}
@@ -194,7 +194,7 @@ func Train(trainIR *ir.TrainClause) (string, error) {
 	featureColumnsCode := []string{}
 	perTargetFeatureColumnsCode := []string{}
 	fieldMetas := []*ir.FieldMeta{}
-	for target, fcList := range trainIR.Features {
+	for target, fcList := range trainStmt.Features {
 		for _, fc := range fcList {
 			fcCode, err := generateFeatureColumnCode(fc)
 			if err != nil {
@@ -210,7 +210,7 @@ func Train(trainIR *ir.TrainClause) (string, error) {
 		featureColumnsCode = append(featureColumnsCode,
 			fmt.Sprintf("\"%s\": [%s]", target, strings.Join(perTargetFeatureColumnsCode, ",\n")))
 	}
-	isKeras, estimatorStr := IsKerasModel(trainIR.Estimator)
+	isKeras, estimatorStr := IsKerasModel(trainStmt.Estimator)
 	isPAI := os.Getenv("SQLFLOW_submitter") == "pai"
 	paiTable := ""
 	// TODO(typhoonzero): if isPAI, create two Couler steps
@@ -219,22 +219,22 @@ func Train(trainIR *ir.TrainClause) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		matches := fromRegex.FindAllStringSubmatch(trainIR.Select, -1)
+		matches := fromRegex.FindAllStringSubmatch(trainStmt.Select, -1)
 		if len(matches) != 1 {
-			return "", fmt.Errorf("only support simple SQL query, but got %s", trainIR.Select)
+			return "", fmt.Errorf("only support simple SQL query, but got %s", trainStmt.Select)
 		}
 		paiTable = matches[0][1]
 	}
 
 	filler := trainFiller{
-		DataSource:        trainIR.DataSource,
-		TrainSelect:       trainIR.Select,
-		ValidationSelect:  trainIR.ValidationSelect,
+		DataSource:        trainStmt.DataSource,
+		TrainSelect:       trainStmt.Select,
+		ValidationSelect:  trainStmt.ValidationSelect,
 		Estimator:         estimatorStr,
 		IsKerasModel:      isKeras,
 		FieldMetas:        fieldMetas,
 		FeatureColumnCode: fmt.Sprintf("{%s}", strings.Join(featureColumnsCode, ",\n")),
-		Y:                 trainIR.Label.GetFieldMeta()[0], // TODO(typhoonzero): label only support numericColumn.
+		Y:                 trainStmt.Label.GetFieldMeta()[0], // TODO(typhoonzero): label only support numericColumn.
 		ModelParams:       modelParams,
 		TrainParams:       trainParams,
 		Save:              "model_save",
@@ -255,9 +255,9 @@ func Train(trainIR *ir.TrainClause) (string, error) {
 }
 
 // Pred generates a Python program for predict using a TensorFlow model.
-func Pred(predIR *ir.PredictClause, session *pb.Session) (string, error) {
+func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 	modelParams := make(map[string]interface{})
-	for attrKey, attr := range predIR.TrainIR.Attributes {
+	for attrKey, attr := range predStmt.TrainStmt.Attributes {
 		if strings.HasPrefix(attrKey, "model.") {
 			modelParams[strings.Replace(attrKey, "model.", "", 1)] = attr
 		}
@@ -265,7 +265,7 @@ func Pred(predIR *ir.PredictClause, session *pb.Session) (string, error) {
 	featureColumnsCode := []string{}
 	perTargetFeatureColumnsCode := []string{}
 	fieldMetas := []*ir.FieldMeta{}
-	for target, fcList := range predIR.TrainIR.Features {
+	for target, fcList := range predStmt.TrainStmt.Features {
 		for _, fc := range fcList {
 			fcCode, err := generateFeatureColumnCode(fc)
 			if err != nil {
@@ -281,22 +281,22 @@ func Pred(predIR *ir.PredictClause, session *pb.Session) (string, error) {
 		featureColumnsCode = append(featureColumnsCode,
 			fmt.Sprintf("\"%s\": [%s]", target, strings.Join(perTargetFeatureColumnsCode, ",\n")))
 	}
-	isKeras, estimatorStr := IsKerasModel(predIR.TrainIR.Estimator)
-	labelFM := predIR.TrainIR.Label.GetFieldMeta()[0]
+	isKeras, estimatorStr := IsKerasModel(predStmt.TrainStmt.Estimator)
+	labelFM := predStmt.TrainStmt.Label.GetFieldMeta()[0]
 	if labelFM.Name == "" {
-		log.Printf("clustering model, got result table: %s, result column: %s", predIR.ResultTable, predIR.ResultColumn)
+		log.Printf("clustering model, got result table: %s, result column: %s", predStmt.ResultTable, predStmt.ResultColumn)
 		// no label in train SQL means a clustering model, generate a fieldmeta using result table's column
 		labelFM = &ir.FieldMeta{
-			Name:  predIR.ResultColumn,
+			Name:  predStmt.ResultColumn,
 			Shape: []int{1},
 			DType: ir.Int,
 		}
 	}
 
 	filler := predFiller{
-		DataSource:        predIR.DataSource,
-		Select:            predIR.Select,
-		ResultTable:       predIR.ResultTable,
+		DataSource:        predStmt.DataSource,
+		Select:            predStmt.Select,
+		ResultTable:       predStmt.ResultTable,
 		Estimator:         estimatorStr,
 		IsKerasModel:      isKeras,
 		FieldMetas:        fieldMetas,

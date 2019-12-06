@@ -75,12 +75,12 @@ func TestFeatureDerivation(t *testing.T) {
 
 	r, e := parser.Parse(normal)
 	a.NoError(e)
-	trainIR, e := generateTrainIR(r, "mysql://root:root@tcp/?maxAllowedPacket=0")
+	trainStmt, e := generateTrainStmt(r, "mysql://root:root@tcp/?maxAllowedPacket=0")
 	a.NoError(e)
-	e = InferFeatureColumns(trainIR)
+	e = InferFeatureColumns(trainStmt)
 	a.NoError(e)
 
-	fc1 := trainIR.Features["feature_columns"][0]
+	fc1 := trainStmt.Features["feature_columns"][0]
 	nc, ok := fc1.(*ir.NumericColumn)
 	a.True(ok)
 	a.Equal("c1", nc.FieldMeta.Name)
@@ -88,12 +88,12 @@ func TestFeatureDerivation(t *testing.T) {
 	a.Equal(ir.Float, nc.FieldMeta.DType)
 	a.False(nc.FieldMeta.IsSparse)
 
-	fc2 := trainIR.Features["feature_columns"][1]
+	fc2 := trainStmt.Features["feature_columns"][1]
 	nc2, ok := fc2.(*ir.NumericColumn)
 	a.True(ok)
 	a.Equal("c2", nc2.FieldMeta.Name)
 
-	fc3 := trainIR.Features["feature_columns"][2]
+	fc3 := trainStmt.Features["feature_columns"][2]
 	emb, ok := fc3.(*ir.EmbeddingColumn)
 	a.True(ok)
 	a.NotNil(emb.CategoryColumn)
@@ -106,7 +106,7 @@ func TestFeatureDerivation(t *testing.T) {
 	a.Equal([]int{4}, cat.FieldMeta.Shape)
 	a.Equal(ir.Int, cat.FieldMeta.DType)
 
-	fc4 := trainIR.Features["feature_columns"][3]
+	fc4 := trainStmt.Features["feature_columns"][3]
 	nc3, ok := fc4.(*ir.NumericColumn)
 	a.True(ok)
 	a.Equal("c4", nc3.FieldMeta.Name)
@@ -114,7 +114,7 @@ func TestFeatureDerivation(t *testing.T) {
 	a.Equal(ir.Float, nc3.FieldMeta.DType)
 	a.False(nc3.FieldMeta.IsSparse)
 
-	fc5 := trainIR.Features["feature_columns"][4]
+	fc5 := trainStmt.Features["feature_columns"][4]
 	emb2, ok := fc5.(*ir.EmbeddingColumn)
 	a.True(ok)
 	a.NotNil(emb2.CategoryColumn)
@@ -126,7 +126,7 @@ func TestFeatureDerivation(t *testing.T) {
 	a.Equal(ir.Int, cat2.FieldMeta.DType)
 	a.True(cat2.FieldMeta.IsSparse)
 
-	fc6 := trainIR.Features["feature_columns"][5]
+	fc6 := trainStmt.Features["feature_columns"][5]
 	cat3, ok := fc6.(*ir.CategoryIDColumn)
 	a.True(ok)
 	a.Equal(3, len(cat3.FieldMeta.Vocabulary))
@@ -134,7 +134,7 @@ func TestFeatureDerivation(t *testing.T) {
 	a.True(ok)
 	a.Equal(int64(3), cat3.BucketSize)
 
-	a.Equal(6, len(trainIR.Features["feature_columns"]))
+	a.Equal(6, len(trainStmt.Features["feature_columns"]))
 
 	crossSQL := `select c1, c2, c3, class from feature_derivation_case.train
 	TO TRAIN DNNClassifier
@@ -145,24 +145,24 @@ func TestFeatureDerivation(t *testing.T) {
 	parser = newExtendedSyntaxParser()
 	r, e = parser.Parse(crossSQL)
 	a.NoError(e)
-	trainIR, e = generateTrainIR(r, "mysql://root:root@tcp/?maxAllowedPacket=0")
+	trainStmt, e = generateTrainStmt(r, "mysql://root:root@tcp/?maxAllowedPacket=0")
 	a.NoError(e)
-	e = InferFeatureColumns(trainIR)
+	e = InferFeatureColumns(trainStmt)
 	a.NoError(e)
 
-	fc1 = trainIR.Features["feature_columns"][0]
+	fc1 = trainStmt.Features["feature_columns"][0]
 	nc, ok = fc1.(*ir.NumericColumn)
 	a.True(ok)
 
-	fc2 = trainIR.Features["feature_columns"][1]
+	fc2 = trainStmt.Features["feature_columns"][1]
 	nc, ok = fc2.(*ir.NumericColumn)
 	a.True(ok)
 
-	fc3 = trainIR.Features["feature_columns"][2]
+	fc3 = trainStmt.Features["feature_columns"][2]
 	nc, ok = fc3.(*ir.NumericColumn)
 	a.True(ok)
 
-	fc4 = trainIR.Features["feature_columns"][3]
+	fc4 = trainStmt.Features["feature_columns"][3]
 	cc, ok := fc4.(*ir.CrossColumn)
 	a.True(ok)
 	a.Equal(256, cc.HashBucketSize)
@@ -175,7 +175,7 @@ func TestFeatureDerivation(t *testing.T) {
 	a.Equal("c2", nc5.FieldMeta.Name)
 	a.Equal(ir.Float, nc5.FieldMeta.DType)
 
-	a.Equal(4, len(trainIR.Features["feature_columns"]))
+	a.Equal(4, len(trainStmt.Features["feature_columns"]))
 }
 
 func TestFeatureDerivationNoColumnClause(t *testing.T) {
@@ -202,13 +202,13 @@ func TestFeatureDerivationNoColumnClause(t *testing.T) {
 
 	r, e := parser.Parse(normal)
 	a.NoError(e)
-	trainIR, e := generateTrainIR(r, "mysql://root:root@tcp/?maxAllowedPacket=0")
+	trainStmt, e := generateTrainStmt(r, "mysql://root:root@tcp/?maxAllowedPacket=0")
 	a.NoError(e)
-	e = InferFeatureColumns(trainIR)
+	e = InferFeatureColumns(trainStmt)
 	a.NoError(e)
 
-	a.Equal(4, len(trainIR.Features["feature_columns"]))
-	fc1 := trainIR.Features["feature_columns"][0]
+	a.Equal(4, len(trainStmt.Features["feature_columns"]))
+	fc1 := trainStmt.Features["feature_columns"][0]
 	_, ok := fc1.(*ir.NumericColumn)
 	a.True(ok)
 }
@@ -218,7 +218,7 @@ func TestHiveFeatureDerivation(t *testing.T) {
 		t.Skip("skip TestFeatureDerivationNoColumnClause for tests not using hive")
 	}
 	a := assert.New(t)
-	trainIR := &ir.TrainClause{
+	trainStmt := &ir.TrainStmt{
 		DataSource:       fmt.Sprintf("%s://%s", testDB.driverName, testDB.dataSourceName),
 		Select:           "select * from iris.train",
 		ValidationSelect: "select * from iris.test",
@@ -226,7 +226,7 @@ func TestHiveFeatureDerivation(t *testing.T) {
 		Attributes:       map[string]interface{}{},
 		Features:         map[string][]ir.FeatureColumn{},
 		Label:            &ir.NumericColumn{&ir.FieldMeta{"class", ir.Int, "", []int{1}, false, nil, 0}}}
-	e := InferFeatureColumns(trainIR)
+	e := InferFeatureColumns(trainStmt)
 	a.NoError(e)
-	a.Equal(4, len(trainIR.Features["feature_columns"]))
+	a.Equal(4, len(trainStmt.Features["feature_columns"]))
 }

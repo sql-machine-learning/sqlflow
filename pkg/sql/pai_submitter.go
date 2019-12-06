@@ -20,14 +20,14 @@ import (
 
 type paiSubmitter struct{ *defaultSubmitter }
 
-func (s *paiSubmitter) ExecuteTrain(cl *ir.TrainClause) (e error) {
+func (s *paiSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 	if code, e := pai.Train(cl, cl.Into, s.Cwd); e == nil {
 		return s.runCommand(code)
 	}
 	return e
 }
 
-func (s *paiSubmitter) ExecutePredict(cl *ir.PredictClause) error {
+func (s *paiSubmitter) ExecutePredict(cl *ir.PredictStmt) error {
 	// TODO(typhoonzero): remove below twice parse when all submitters moved to IR.
 	pr, e := newExtendedSyntaxParser().Parse(cl.OriginalSQL)
 	if e != nil {
@@ -43,5 +43,5 @@ func (s *paiSubmitter) ExecutePredict(cl *ir.PredictClause) error {
 	return s.runCommand(code)
 }
 
-func (s *paiSubmitter) GetTrainIRFromModel() bool { return false }
-func init()                                       { submitterRegistry["pai"] = &paiSubmitter{&defaultSubmitter{}} }
+func (s *paiSubmitter) GetTrainStmtFromModel() bool { return false }
+func init()                                         { submitterRegistry["pai"] = &paiSubmitter{&defaultSubmitter{}} }
