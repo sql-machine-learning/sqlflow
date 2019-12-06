@@ -17,6 +17,8 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"os"
+	"regexp"
 	"strings"
 	"text/template"
 
@@ -209,6 +211,20 @@ func Train(trainStmt *ir.TrainStmt) (string, error) {
 			fmt.Sprintf("\"%s\": [%s]", target, strings.Join(perTargetFeatureColumnsCode, ",\n")))
 	}
 	isKeras, estimatorStr := IsKerasModel(trainStmt.Estimator)
+	isPAI := os.Getenv("SQLFLOW_submitter") == "pai"
+	paiTable := ""
+	// TODO(typhoonzero): if isPAI, create two Couler steps
+	if isPAI {
+		fromRegex, err := regexp.Compile("FROM[\\s\\n]+([\\w\\.]*)")
+		if err != nil {
+			return "", err
+		}
+		matches := fromRegex.FindAllStringSubmatch(trainStmt.Select, -1)
+		if len(matches) != 1 {
+			return "", fmt.Errorf("only support simple SQL query, but got %s", trainStmt.Select)
+		}
+		paiTable = matches[0][1]
+	}
 
 	filler := trainFiller{
 		DataSource:        trainStmt.DataSource,
@@ -221,8 +237,9 @@ func Train(trainStmt *ir.TrainStmt) (string, error) {
 		Y:                 trainStmt.Label.GetFieldMeta()[0], // TODO(typhoonzero): label only support numericColumn.
 		ModelParams:       modelParams,
 		TrainParams:       trainParams,
-		Save:              "model_save", // TODO(typhoonzero): executor.go will save the working directory, should test later.
-
+		Save:              "model_save",
+		IsPAI:             isPAI,
+		PAITrainTable:     paiTable,
 	}
 	var program bytes.Buffer
 	var trainTemplate = template.Must(template.New("Train").Funcs(template.FuncMap{
