@@ -37,6 +37,7 @@ type EndOfExecution struct {
 }
 
 // WorkflowJob indicates the Argo Workflow ID
+// FIXME(tony): reuse workflow job definition is proto pakcage
 type WorkflowJob struct {
 	JobID string
 }
@@ -225,6 +226,7 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, modelDir string, session 
 	}
 	defer os.RemoveAll(argoFileName)
 
+	// TODO(tony): move the following function to package workflow
 	// 3. submit Argo YAML and fetch the workflow ID.
 	cmd := exec.Command("kubectl", "create", "-f", argoFileName)
 	output, err := cmd.CombinedOutput()

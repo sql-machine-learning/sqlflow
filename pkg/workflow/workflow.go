@@ -16,7 +16,10 @@ package sql
 import (
 	"fmt"
 	"os/exec"
+	"regexp"
 	"time"
+
+	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
 // Reference: https://github.com/argoproj/argo/blob/723b3c15e55d2f8dceb86f1ac0a6dc7d1a58f10b/pkg/apis/workflow/v1alpha1/workflow_types.go#L30-L38
@@ -41,8 +44,18 @@ func isCompletedPhase(phase NodePhase) bool {
 		phase == NodeSkipped
 }
 
-func getWorkflowStatusPhase(job WorkflowJob) (string, error) {
-	cmd := exec.Command("kubectl", "get", "wf", job.JobID, "-o", "jsonpath={.status.phase}")
+func getWorkflowID(output string) (string, error) {
+	reWorkflow := regexp.MustCompile(`.+/(.+) .+`)
+	wf := reWorkflow.FindStringSubmatch(string(output))
+	if len(wf) != 2 {
+		return "", fmt.Errorf("parse workflow ID error: %v", output)
+	}
+
+	return wf[1], nil
+}
+
+func getWorkflowStatusPhase(job pb.Job) (string, error) {
+	cmd := exec.Command("kubectl", "get", "wf", job.Id, "-o", "jsonpath={.status.phase}")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("getWorkflowStatusPhase error: %v\n%v", string(output), err)
@@ -51,9 +64,9 @@ func getWorkflowStatusPhase(job WorkflowJob) (string, error) {
 	return string(output), nil
 }
 
-func getWorkflowPodName(job WorkflowJob) (string, error) {
+func getWorkflowPodName(job pb.Job) (string, error) {
 	cmd := exec.Command("kubectl", "get", "pods",
-		fmt.Sprintf(`--selector=workflows.argoproj.io/workflow=%s`, job.JobID),
+		fmt.Sprintf(`--selector=workflows.argoproj.io/workflow=%s`, job.Id),
 		"-o", "jsonpath={.items[0].metadata.name}")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -74,7 +87,7 @@ func getPodLogs(podName string) (string, error) {
 	return string(output), nil
 }
 
-func fetchWorkflowLog(job WorkflowJob) (string, error) {
+func fetchWorkflowLog(job pb.Job) (string, error) {
 	for {
 		statusPhase, err := getWorkflowStatusPhase(job)
 		if err != nil {

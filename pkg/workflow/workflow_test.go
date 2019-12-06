@@ -19,6 +19,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	pb "sqlflow.org/sqlflow/pkg/proto"
 	"testing"
 )
 
@@ -75,14 +76,14 @@ func kubectlCreateFromYAML(content string) (string, error) {
 }
 
 func TestFetchWorkflowLog(t *testing.T) {
-	if os.Getenv("SQLFLOW_ARGO_MODE") != "True" {
-		t.Skip("argo: skip Argo tests")
+	if os.Getenv("SQLFLOW_TEST") != "workflow" {
+		t.Skip("argo: skip workflow tests")
 	}
 	a := assert.New(t)
 
 	workflowID, err := kubectlCreateFromYAML(argoYAML)
 	a.NoError(err)
-	logs, err := fetchWorkflowLog(WorkflowJob{JobID: workflowID})
+	logs, err := fetchWorkflowLog(pb.Job{Id: workflowID})
 	a.NoError(err)
 	a.Equal(argoYAMLOutput, logs)
 }
