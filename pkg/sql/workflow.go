@@ -41,24 +41,58 @@ func isCompletedPhase(phase NodePhase) bool {
 		phase == NodeSkipped
 }
 
-func fetchWorkflowLog(job WorkflowJob) error {
-	fmt.Println(job.JobID)
-
-	for i := 0; i < 10; i++ {
-		cmd := exec.Command("kubectl", "get", "wf", job.JobID, "-o", "jsonpath='{.status.phase}'")
-		output, err := cmd.CombinedOutput()
-		if err != nil {
-			return fmt.Errorf("submit Argo YAML error: %v\n%v", string(output), err)
-		}
-
-		fmt.Println(i, string(output))
-		time.Sleep(time.Second)
-		// Get Pod names
-		_ = `kubectl get pods --selector=workflows.argoproj.io/workflow=sqlflow-couler898061205-xppzp -o jsonpath="{.items[0].metadata.name}"`
-		// Get container logs
-		_ = `kubectl logs sqlflow-couler898061205-xppzp-246701932 main`
-		_ = `kubectl logs sqlflow-couler898061205-xppzp-246701932 wait`
+func getWorkflowStatusPhase(job WorkflowJob) (string, error) {
+	cmd := exec.Command("kubectl", "get", "wf", job.JobID, "-o", "jsonpath={.status.phase}")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("getWorkflowStatusPhase error: %v\n%v", string(output), err)
 	}
 
-	return nil
+	return string(output), nil
+}
+
+func getWorkflowPodName(job WorkflowJob) (string, error) {
+	cmd := exec.Command("kubectl", "get", "pods",
+		fmt.Sprintf(`--selector=workflows.argoproj.io/workflow=%s`, job.JobID),
+		"-o", "jsonpath={.items[0].metadata.name}")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("getWorkflowPodName error: %v\n%v", string(output), err)
+	}
+
+	return string(output), nil
+}
+
+func getPodLogs(podName string) (string, error) {
+	// NOTE(tony): A workflow pod usually contains two container: main and wait
+	// I believe wait is used for management by Argo, so we only need to care about main.
+	cmd := exec.Command("kubectl", "logs", podName, "main")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("getPodLogs error: %v\n%v", string(output), err)
+	}
+	return string(output), nil
+}
+
+func fetchWorkflowLog(job WorkflowJob) (string, error) {
+	for {
+		statusPhase, err := getWorkflowStatusPhase(job)
+		if err != nil {
+			return "", err
+		}
+
+		// FIXME(tony): what if it is a long running job
+		if isCompletedPhase(NodePhase(statusPhase)) {
+			break
+		}
+		time.Sleep(time.Second)
+	}
+
+	// FIXME(tony): what if there are multiple pods
+	podName, err := getWorkflowPodName(job)
+	if err != nil {
+		return "", err
+	}
+
+	return getPodLogs(podName)
 }

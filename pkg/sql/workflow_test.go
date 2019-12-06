@@ -14,33 +14,75 @@
 package sql
 
 import (
+	"fmt"
 	"github.com/stretchr/testify/assert"
+	"io/ioutil"
 	"os"
-	"strings"
+	"os/exec"
 	"testing"
 )
+
+const (
+	argoYAML = `apiVersion: argoproj.io/v1alpha1
+kind: Workflow                  # new type of k8s spec
+metadata:
+  generateName: hello-world-    # name of the workflow spec
+spec:
+  entrypoint: whalesay          # invoke the whalesay template
+  templates:
+  - name: whalesay              # name of the template
+    container:
+      image: docker/whalesay
+      command: [echo]
+      args: ["hello world"]
+      resources:                # limit the resources
+        limits:
+          memory: 32Mi
+          cpu: 100m
+`
+	argoYAMLOutput = `hello world
+`
+)
+
+func createAndWriteTempFile(content string) (string, error) {
+	tmpFile, err := ioutil.TempFile("/tmp", "sqlflow-")
+	if err != nil {
+		return "", nil
+	}
+	defer tmpFile.Close()
+
+	if _, err = tmpFile.Write([]byte(content)); err != nil {
+		return "", err
+	}
+
+	return tmpFile.Name(), nil
+}
+
+func kubectlCreateFromYAML(content string) (string, error) {
+	fileName, err := createAndWriteTempFile(content)
+	if err != nil {
+		return "", err
+	}
+	defer os.Remove(fileName)
+
+	cmd := exec.Command("kubectl", "create", "-f", fileName)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("submitYAML error: %v\n%v", string(output), err)
+	}
+
+	return getWorkflowID(string(output))
+}
 
 func TestFetchWorkflowLog(t *testing.T) {
 	if os.Getenv("SQLFLOW_ARGO_MODE") != "True" {
 		t.Skip("argo: skip Argo tests")
 	}
 	a := assert.New(t)
-	modelDir := ""
-	a.NotPanics(func() {
-		rd := SubmitWorkflow(`select 1; select 1;`, testDB, modelDir, getDefaultSession())
-		for r := range rd.ReadAll() {
-			switch r.(type) {
-			case WorkflowJob:
-				job := r.(WorkflowJob)
-				a.True(strings.HasPrefix(job.JobID, "sqlflow-couler"))
-				// TODO(tony): wait to check if job succeeded.
-				// The workflow is currently failed since we haven't configure the data source.
 
-				a.NoError(fetchWorkflowLog(job))
-
-			default:
-				a.Fail("SubmitWorkflow should return JobID")
-			}
-		}
-	})
+	workflowID, err := kubectlCreateFromYAML(argoYAML)
+	a.NoError(err)
+	logs, err := fetchWorkflowLog(WorkflowJob{JobID: workflowID})
+	a.NoError(err)
+	a.Equal(argoYAMLOutput, logs)
 }

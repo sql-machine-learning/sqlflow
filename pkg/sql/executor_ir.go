@@ -153,6 +153,16 @@ func writeArgoFile(coulerFileName string) (string, error) {
 	return argoYaml.Name(), nil
 }
 
+func getWorkflowID(output string) (string, error) {
+	reWorkflow := regexp.MustCompile(`.+/(.+) .+`)
+	wf := reWorkflow.FindStringSubmatch(string(output))
+	if len(wf) != 2 {
+		return "", fmt.Errorf("parse workflow ID error: %v", output)
+	}
+
+	return wf[1], nil
+}
+
 func submitWorkflow(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, session *pb.Session) error {
 	sqls, err := parse(db.driverName, sqlProgram)
 	if err != nil {
@@ -205,13 +215,10 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, 
 	if err != nil {
 		return fmt.Errorf("submit Argo YAML error: %v", err)
 	}
-	reWorkflow := regexp.MustCompile(`.+/(.+) .+`)
-	wf := reWorkflow.FindStringSubmatch(string(output))
-	var workflowID string
-	if len(wf) == 2 {
-		workflowID = wf[1]
-	} else {
-		return fmt.Errorf("parse workflow ID error: %v", err)
+
+	workflowID, err := getWorkflowID(string(output))
+	if err != nil {
+		return err
 	}
 
 	return wr.Write(WorkflowJob{
