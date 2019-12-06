@@ -564,15 +564,10 @@ FROM %s.%s LIMIT 5;
 		if err != nil {
 			log.Fatalf("get workflow status error: %v", err)
 		}
-		fmt.Println(string(out))
-		fmt.Println(string(out) == "'Succeeded'")
 		if string(out) == "'Succeeded'" {
 			return
 		}
 		time.Sleep(3 * time.Second)
-		cmd = exec.Command("kubectl", "get", "wf", workflowID, "-o", "json")
-		out, err = cmd.CombinedOutput()
-		fmt.Println(string(out))
 	}
 	// workflow times out
 	log.Fatalf("workflow: %s times out", workflowID)
