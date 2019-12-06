@@ -565,8 +565,8 @@ FROM %s.%s LIMIT 5;
 			log.Fatalf("get workflow status error: %v", err)
 		}
 		fmt.Println(string(out))
-		fmt.Println(string(out) == "Succeeded")
-		if string(out) == "Succeeded" {
+		fmt.Println(string(out) == "'Succeeded'")
+		if string(out) == "'Succeeded'" {
 			return
 		}
 		time.Sleep(3 * time.Second)
