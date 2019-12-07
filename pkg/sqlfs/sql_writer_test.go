@@ -28,6 +28,8 @@ func TestNewSQLWriter(t *testing.T) {
 	if testDriver == "hive" {
 		return // For Hive, please use HiveWriter instead.
 	}
+	t.Logf("Confirm executed with %s", testDriver)
+
 	a := assert.New(t)
 
 	fn := fmt.Sprintf("%s.unitest%d", testDatabaseName, rand.Int())
@@ -48,6 +50,8 @@ func TestSQLWriterWriteAndRead(t *testing.T) {
 	if testDriver == "hive" {
 		return // For Hive, please use HiveWriter instead.
 	}
+	t.Logf("Confirm executed with %s", testDriver)
+
 	a := assert.New(t)
 
 	fn := fmt.Sprintf("%s.unitest%d", testDatabaseName, rand.Int())
