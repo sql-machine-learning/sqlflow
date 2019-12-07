@@ -42,16 +42,16 @@ var space = regexp.MustCompile(`\s+`)
 func testMainFastFail(t *testing.T, interactive bool) {
 	a := assert.New(t)
 	// Run the crashing code when FLAG is set
-	if os.Getenv("FLAG") == "false" {
+	if os.Getenv("SQLFLOW_TEST_REPL_FAST_FAIL_INTERACTIVE_OR_NOT") == "false" {
 		os.Args = []string{os.Args[0], "--datasource", "database://in?imagination", "-e", ";"}
 		main()
-	} else if os.Getenv("FLAG") == "true" {
+	} else if os.Getenv("SQLFLOW_TEST_REPL_FAST_FAIL_INTERACTIVE_OR_NOT") == "true" {
 		os.Args = []string{os.Args[0], "--datasource", "database://in?imagination"}
 		main()
 	}
 	// Run the test in a subprocess
 	cmd := exec.Command(os.Args[0], "-test.run=TestMainFastFail")
-	cmd.Env = append(os.Environ(), fmt.Sprintf("FLAG=%v", interactive))
+	cmd.Env = append(os.Environ(), fmt.Sprintf("SQLFLOW_TEST_REPL_FAST_FAIL_INTERACTIVE_OR_NOT=%v", interactive))
 	cmd.Start()
 
 	done := make(chan error)
