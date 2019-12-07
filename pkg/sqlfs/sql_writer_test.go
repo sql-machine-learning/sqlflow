@@ -24,6 +24,10 @@ import (
 )
 
 func TestNewSQLWriter(t *testing.T) {
+	testDriver = getEnv("SQLFLOW_TEST_DB", "mysql")
+	if testDriver == "hive" {
+		return // For Hive, please use HiveWriter instead.
+	}
 	a := assert.New(t)
 
 	fn := fmt.Sprintf("%s.unitest%d", testDatabaseName, rand.Int())
