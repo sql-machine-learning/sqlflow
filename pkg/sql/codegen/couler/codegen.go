@@ -104,7 +104,7 @@ func writeCoulerFile(programIR ir.SQLProgram, session *pb.Session) (string, erro
 // RunAndWriteArgoFile generates Argo workflow YAML file
 func RunAndWriteArgoFile(programIR ir.SQLProgram, session *pb.Session) (string, error) {
 	// 1. call codegen_couler.go to genearte Couler program.
-	coulerFileName, err := Run(programIR, session)
+	coulerFileName, err := writeCoulerFile(programIR, session)
 	if err != nil {
 		return "", err
 	}
