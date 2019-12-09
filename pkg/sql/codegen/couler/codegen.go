@@ -16,7 +16,9 @@ package couler
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"os"
+	"os/exec"
 
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
@@ -62,4 +64,56 @@ func Run(programIR ir.SQLProgram, session *pb.Session) (string, error) {
 		return "", err
 	}
 	return program.String(), nil
+}
+
+func writeArgoFile(coulerFileName string) (string, error) {
+	argoYaml, err := ioutil.TempFile("/tmp", "sqlflow-argo*.yaml")
+	if err != nil {
+		return "", fmt.Errorf("cannot create temporary Argo YAML file: %v", err)
+	}
+	defer argoYaml.Close()
+
+	cmd := exec.Command("couler", "run", "--mode", "argo", "--file", coulerFileName)
+	cmd.Env = append(os.Environ())
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("generate Argo workflow yaml error: %v", err)
+	}
+	argoYaml.Write(out)
+
+	return argoYaml.Name(), nil
+}
+
+func writeCoulerFile(programIR ir.SQLProgram, session *pb.Session) (string, error) {
+	program, err := Run(programIR, session)
+	if err != nil {
+		return "", fmt.Errorf("generate couler program error: %v", err)
+	}
+
+	coulerFile, err := ioutil.TempFile("/tmp", "sqlflow-couler*.py")
+	if err != nil {
+		return "", fmt.Errorf("")
+	}
+	defer coulerFile.Close()
+	if _, err := coulerFile.Write([]byte(program)); err != nil {
+		return "", err
+	}
+	return coulerFile.Name(), nil
+}
+
+// RunAndWriteArgoFile generates Argo workflow YAML file
+func RunAndWriteArgoFile(programIR ir.SQLProgram, session *pb.Session) (string, error) {
+	// 1. call codegen_couler.go to genearte Couler program.
+	coulerFileName, err := Run(programIR, session)
+	if err != nil {
+		return "", err
+	}
+	defer os.RemoveAll(coulerFileName)
+
+	// 2. compile Couler program into Argo YAML.
+	argoFileName, err := writeArgoFile(coulerFileName)
+	if err != nil {
+		return "", err
+	}
+	return argoFileName, nil
 }

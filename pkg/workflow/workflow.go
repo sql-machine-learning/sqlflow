@@ -109,3 +109,19 @@ func fetchWorkflowLog(job pb.Job) (string, error) {
 
 	return getPodLogs(podName)
 }
+
+// Submit the Argo workflow and returns the workflow ID
+func Submit(argoFileName string) (string, error) {
+	// submit Argo YAML and fetch the workflow ID.
+	cmd := exec.Command("kubectl", "create", "-f", argoFileName)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("submit Argo YAML error: %v, output: %s", err, string(output))
+	}
+
+	workflowID, err := getWorkflowID(string(output))
+	if err != nil {
+		return "", err
+	}
+	return workflowID, err
+}
