@@ -37,6 +37,16 @@ range: [1, Infinity]`, attribute.IntLowerBoundChecker(1, true)},
 	"train.verbose": {attribute.Int, `[default=0]
 Show verbose logs when training.
 possible values: 0, 1`, attribute.IntChoicesChecker([]int{0, 1})},
+	"train.max_steps": {attribute.Int, `[default=0]
+Max steps to run training.`, attribute.IntLowerBoundChecker(0, true)},
+	"train.save_checkpoints_steps": {attribute.Int, `[default=100]
+Steps to run between saving checkpoints.`, attribute.IntLowerBoundChecker(1, true)},
+	"train.log_every_n_iter": {attribute.Int, `[default=10]
+Print logs every n iterations`, attribute.IntLowerBoundChecker(1, true)},
+	"validation.start_delay_secs": {attribute.Int, `[default=0]
+Seconds to wait before starting validation.`, attribute.IntLowerBoundChecker(0, true)},
+	"validation.throttle_secs": {attribute.Int, `[default=0]
+Seconds to wait when need to run validation again.`, attribute.IntLowerBoundChecker(0, true)},
 	"validation.select": {attribute.String, `[default=""]
 Specify the dataset for validation.
 example: "SELECT * FROM iris.train LIMIT 100"`, nil},
@@ -170,6 +180,7 @@ func Train(trainStmt *ir.TrainStmt) (string, error) {
 		return "", err
 	}
 	trainParams := make(map[string]interface{})
+	validationParams := make(map[string]interface{})
 	modelParams := make(map[string]interface{})
 	for attrKey, attr := range trainStmt.Attributes {
 		if strings.HasPrefix(attrKey, "train.") {
@@ -177,6 +188,9 @@ func Train(trainStmt *ir.TrainStmt) (string, error) {
 		}
 		if strings.HasPrefix(attrKey, "model.") {
 			modelParams[strings.Replace(attrKey, "model.", "", 1)] = attr
+		}
+		if strings.HasPrefix(attrKey, "validation.") {
+			validationParams[strings.Replace(attrKey, "validation.", "", 1)] = attr
 		}
 	}
 	// Add default params for batch_size, epoch, verbose
@@ -189,6 +203,21 @@ func Train(trainStmt *ir.TrainStmt) (string, error) {
 	}
 	if _, ok := trainParams["verbose"]; !ok {
 		trainParams["verbose"] = 0
+	}
+	if _, ok := trainParams["max_steps"]; !ok {
+		trainParams["max_steps"] = 0 // should convert 0 to None in python code to train forever
+	}
+	if _, ok := trainParams["save_checkpoints_steps"]; !ok {
+		trainParams["save_checkpoints_steps"] = 100
+	}
+	if _, ok := trainParams["log_every_n_iter"]; !ok {
+		trainParams["log_every_n_iter"] = 10
+	}
+	if _, ok := validationParams["start_delay_secs"]; !ok {
+		validationParams["start_delay_secs"] = 0
+	}
+	if _, ok := validationParams["throttle_secs"]; !ok {
+		validationParams["throttle_secs"] = 0
 	}
 
 	featureColumnsCode := []string{}
@@ -237,6 +266,7 @@ func Train(trainStmt *ir.TrainStmt) (string, error) {
 		Y:                 trainStmt.Label.GetFieldMeta()[0], // TODO(typhoonzero): label only support numericColumn.
 		ModelParams:       modelParams,
 		TrainParams:       trainParams,
+		ValidationParams:  validationParams,
 		Save:              "model_save",
 		IsPAI:             isPAI,
 		PAITrainTable:     paiTable,

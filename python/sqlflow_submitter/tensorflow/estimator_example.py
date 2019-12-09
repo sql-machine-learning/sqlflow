@@ -13,6 +13,7 @@
 
 # NOTE: this file is used by train_predict_test.py, do **NOT** delete!
 
+import sqlflow_submitter
 from sqlflow_submitter.tensorflow.train import train
 from sqlflow_submitter.tensorflow.predict import pred
 import tensorflow as tf
@@ -69,6 +70,7 @@ label_meta = {
 }
 
 if __name__ == "__main__":
+    # tf.python.training.basic_session_run_hooks.LoggingTensorHook = sqlflow_submitter.tensorflow.train.PrintTensorsHook
     train(is_keras_model=False,
         datasource=datasource,
         estimator=tf.estimator.DNNClassifier,
@@ -81,7 +83,7 @@ if __name__ == "__main__":
         model_params={"n_classes": 3, "hidden_units":[10,20]},
         save="mymodel",
         batch_size=1,
-        epochs=1,
+        epochs=3,
         verbose=0)
     pred(is_keras_model=False,
         datasource=datasource,
