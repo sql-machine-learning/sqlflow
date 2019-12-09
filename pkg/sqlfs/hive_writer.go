@@ -17,12 +17,77 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path"
 
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
+
+func flushToCSV() (func([]byte) error, *os.File, error) {
+	csv, e := ioutil.TempFile("", "sqlflow-sqlfs")
+	if e != nil {
+		return nil, nil, fmt.Errorf("cannot create CSV file: %v", e)
+	}
+
+	row := 0
+	return func(buf []byte) error {
+		if len(buf) > 0 {
+			block := base64.StdEncoding.EncodeToString(buf)
+			_, e := csv.Write([]byte(fmt.Sprintf("%d\001%s\n", row, block)))
+			if e != nil {
+				return fmt.Errorf("cannot flush to CSV, %v", e)
+			}
+			row++
+		}
+		return nil
+	}, csv, nil
+}
+
+func uploadCSVFile(csv *os.File, db *sql.DB, hivePath, table, user, passwd string) func() error {
+	return func() error {
+		defer func() {
+			csv.Close()
+			os.Remove(csv.Name())
+		}()
+
+		hdfsPath := path.Join(hivePath, table)
+
+		hdfsEnv := os.Environ()
+		if user != "" {
+			hdfsEnv = append(hdfsEnv,
+				fmt.Sprintf("HADOOP_USER_NAME=%s", user),
+				fmt.Sprintf("HADOOP_USER_PASSWORD=%s", passwd))
+		}
+
+		cmd := exec.Command("hdfs", "dfs", "-mkdir", "-p", hdfsPath)
+		cmd.Env = hdfsEnv
+		if _, e := cmd.CombinedOutput(); e != nil {
+			return fmt.Errorf("failed %s: %v", cmd, e)
+		}
+
+		cmd = exec.Command("hdfs", "dfs", "-copyFromLocal", csv.Name(), hdfsPath)
+		cmd.Env = hdfsEnv
+		if _, e := cmd.CombinedOutput(); e != nil {
+			return fmt.Errorf("failed %s: %v", cmd, e)
+		}
+
+		_, e := db.Exec(fmt.Sprintf("LOAD DATA INPATH '%s' OVERWRITE INTO TABLE %s", hdfsPath, table))
+		return e
+	}
+}
+
+func newHiveWriter(db *sql.DB, hivePath, table, user, passwd string) (io.WriteCloser, error) {
+	flush, csv, e := flushToCSV()
+	if e != nil {
+		return nil, e
+	}
+	upload := uploadCSVFile(csv, db, hivePath, table, user, passwd)
+	const bufSize = 32 * 1024
+	return newFlushWriteCloser(flush, upload, bufSize), nil
+}
 
 // HiveWriter implements io.WriteCloser.
 type HiveWriter struct {
