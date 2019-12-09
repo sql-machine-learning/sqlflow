@@ -67,7 +67,7 @@ func RunSQLProgram(sqlProgram string, modelDir string, session *pb.Session) *Pip
 	return rd
 }
 
-// ParseSQLStatement parse the input SQL statement and output IR in probobuf format
+// ParseSQLStatement parse the input SQL statement and output IR in protobuf format
 func ParseSQLStatement(sql string, session *pb.Session) (string, error) {
 	connStr := session.DbConnStr
 	driverName := strings.Split(connStr, "://")[0]
@@ -212,7 +212,7 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, modelDir string, session 
 		spIRs = append(spIRs, r)
 	}
 
-	// 1. call codegen_couler.go to genearte Couler program.
+	// 1. call codegen_couler.go to generate Couler program.
 	coulerFileName, err := writeCoulerFile(spIRs, session)
 	if err != nil {
 		return err
