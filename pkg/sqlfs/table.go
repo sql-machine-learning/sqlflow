@@ -32,7 +32,7 @@ func createTable(db *sql.DB, driver, table string) error {
 	} else if driver == "maxcompute" {
 		stmt = fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (id INT, block STRING)", table)
 	} else {
-		return fmt.Errorf("createTable not supported for %s", driver)
+		return fmt.Errorf("createTable doesn't recognize driver %s", driver)
 	}
 	if _, e := db.Exec(stmt); e != nil {
 		return fmt.Errorf("exec:[%s] failed: %v", stmt, e)
