@@ -31,8 +31,8 @@ if __name__ == "__main__":
         model_params={"n_classes": 3, "hidden_units":[10,20]},
         save="mymodel_keras",
         batch_size=1,
-        epochs=1,
-        verbose=1)
+        epochs=3,
+        verbose=0)
     pred(is_keras_model=True,
         datasource=datasource,
         estimator=sqlflow_models.DNNClassifier,
