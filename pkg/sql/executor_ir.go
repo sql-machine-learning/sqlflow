@@ -37,6 +37,7 @@ type EndOfExecution struct {
 }
 
 // WorkflowJob indicates the Argo Workflow ID
+// FIXME(tony): reuse workflow job definition in proto package
 type WorkflowJob struct {
 	JobID string
 }
@@ -163,6 +164,16 @@ func writeArgoFile(coulerFileName string) (string, error) {
 	return argoYaml.Name(), nil
 }
 
+func getWorkflowID(output string) (string, error) {
+	reWorkflow := regexp.MustCompile(`.+/(.+) .+`)
+	wf := reWorkflow.FindStringSubmatch(string(output))
+	if len(wf) != 2 {
+		return "", fmt.Errorf("parse workflow ID error: %v", output)
+	}
+
+	return wf[1], nil
+}
+
 func submitWorkflow(wr *PipeWriter, sqlProgram string, modelDir string, session *pb.Session) error {
 	driverName, dataSourceName, err := SplitDataSource(session.DbConnStr)
 	if err != nil {
@@ -215,19 +226,17 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, modelDir string, session 
 	}
 	defer os.RemoveAll(argoFileName)
 
+	// TODO(tony): move the following function to package workflow
 	// 3. submit Argo YAML and fetch the workflow ID.
 	cmd := exec.Command("kubectl", "create", "-f", argoFileName)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("submit Argo YAML error: %v, output: %s", err, string(output))
 	}
-	reWorkflow := regexp.MustCompile(`.+/(.+) .+`)
-	wf := reWorkflow.FindStringSubmatch(string(output))
-	var workflowID string
-	if len(wf) == 2 {
-		workflowID = wf[1]
-	} else {
-		return fmt.Errorf("parse workflow ID error: %v", err)
+
+	workflowID, err := getWorkflowID(string(output))
+	if err != nil {
+		return err
 	}
 
 	return wr.Write(WorkflowJob{

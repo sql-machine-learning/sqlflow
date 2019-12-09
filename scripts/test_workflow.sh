@@ -93,3 +93,5 @@ function test_workflow() {
 
 test_workflow
 check_ret $? "Test SQLFLow workflow failed"
+
+go test -v ./pkg/workflow/
