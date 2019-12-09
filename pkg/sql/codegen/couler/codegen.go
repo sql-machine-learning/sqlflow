@@ -48,7 +48,7 @@ func Run(programIR ir.SQLProgram, session *pb.Session) (string, error) {
 		default:
 			return "", fmt.Errorf("uncognized IR type: %v", i)
 		}
-		// NOTE(yancey1989): does not use ModelImage here since the Predict statment
+		// NOTE(yancey1989): does not use ModelImage here since the Predict statement
 		// does not contain the ModelImage field in SQL Program IR.
 		if os.Getenv("SQLFLOW_WORKFLOW_STEP_IMAGE") != "" {
 			ss.DockerImage = os.Getenv("SQLFLOW_WORKFLOW_STEP_IMAGE")
