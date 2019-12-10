@@ -36,7 +36,7 @@ Number of epochs the training will run.
 range: [1, Infinity]`, attribute.IntLowerBoundChecker(1, true)},
 	"train.verbose": {attribute.Int, `[default=0]
 Show verbose logs when training.
-possible values: 0, 1`, attribute.IntChoicesChecker([]int{0, 1})},
+possible values: 0, 1`, attribute.IntLowerBoundChecker(0, true)},
 	"train.max_steps": {attribute.Int, `[default=0]
 Max steps to run training.`, attribute.IntLowerBoundChecker(0, true)},
 	"train.save_checkpoints_steps": {attribute.Int, `[default=100]
