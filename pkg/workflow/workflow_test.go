@@ -43,6 +43,43 @@ spec:
 `
 	argoYAMLOutput = `hello world
 `
+	stepYAML = `apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: steps-
+spec:
+  entrypoint: hello-hello-hello
+  templates:
+  - name: hello-hello-hello
+    steps:
+    - - name: hello1
+        template: whalesay
+        arguments:
+          parameters:
+          - name: message
+            value: "hello1"
+    - - name: hello2
+        template: whalesay
+        arguments:
+          parameters:
+          - name: message
+            value: "hello2"
+    - - name: hello3
+        template: whalesay
+        arguments:
+          parameters:
+          - name: message
+            value: "hello1"
+
+  - name: whalesay
+    inputs:
+      parameters:
+      - name: message
+    container:
+      image: docker/whalesay
+      command: [cowsay]
+      args: ["{{inputs.parameters.message}}"]
+`
 )
 
 func createAndWriteTempFile(content string) (string, error) {
@@ -86,4 +123,20 @@ func TestFetchWorkflowLog(t *testing.T) {
 	logs, err := fetchWorkflowLog(pb.Job{Id: workflowID})
 	a.NoError(err)
 	a.Equal(argoYAMLOutput, logs)
+}
+
+func TestGetStepPodNames(t *testing.T) {
+	if os.Getenv("SQLFLOW_TEST") != "workflow" {
+		t.Skip("argo: skip workflow tests")
+	}
+	a := assert.New(t)
+	workflowID, err := kubectlCreateFromYAML(stepYAML)
+	a.NoError(err)
+	err = waitUntilComplete(pb.Job{Id: workflowID})
+	a.NoError(err)
+	wf, err := getWorkflowResource(pb.Job{Id: workflowID})
+	a.NoError(err)
+	podNames, err := getStepPodNames(wf.Status.Nodes, pb.Job{Id: workflowID})
+	a.NoError(err)
+	a.Equal(3, len(podNames))
 }
