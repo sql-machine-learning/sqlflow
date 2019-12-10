@@ -35,7 +35,7 @@
         </dependency>
         <dependency>
             <groupId>org.apache.calcite</groupId>
-            <artifactId>calcite-core</artifactId>
+            <artifactId>calcite-server</artifactId>
             <version>1.19.0</version>
         </dependency>
         <dependency>
