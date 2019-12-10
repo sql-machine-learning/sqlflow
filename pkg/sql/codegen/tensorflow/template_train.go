@@ -33,8 +33,12 @@ type trainFiller struct {
 }
 
 const tfTrainTemplateText = `
-from sqlflow_submitter.tensorflow.train import train
+from sqlflow_submitter.tensorflow.train import train, TF_VERSION_2
 import tensorflow as tf
+if TF_VERSION_2:
+    from tensorflow.keras.optimizers import *
+else:
+    from tensorflow.train import *
 try:
     import sqlflow_models
 except:
