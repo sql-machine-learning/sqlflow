@@ -495,7 +495,7 @@ func TestEnd2EndMySQLWorkflow(t *testing.T) {
 	driverName, _, err := sql.SplitDataSource(testDatasource)
 	a.NoError(err)
 
-	if driverName != "mysql" {
+	if driverName != "mysql" && driverName != "maxcompute" {
 		t.Skip("Skipping workflow test.")
 	}
 	modelDir := ""

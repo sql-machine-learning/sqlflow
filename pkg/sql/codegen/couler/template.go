@@ -38,12 +38,12 @@ train_sql = '''{{ $ss.OriginalSQL }}'''
 		{{if $ss.CreateTmpTable }}
 tmp_table_name = uuid.uuid4().hex[:6].upper()
 create_sql = '''CREATE TABLE %s AS (%s)''' % (tmp_table_name, '''{{$ss.Select}}''')
-# add a step to create a temporary table
-couler.run_container(command='''repl -e "%s" --datasource="%s"''' % (create_sql, datasource), image="{{ $ss.DockerImage }}")
 # form a train SQL using the created table
-train_sql = train_sql.replace('''{{$ss.Select}}''', "SELECT * FROM %s" % tmp_table_name)
-		{{end}}
+train_sql = train_sql.replace('''{{$ss.Select}}''', "SELECT * FROM %s " % tmp_table_name)
+couler.run_container(command='''repl -e "%s" --datasource="%s" && repl -e "%s" --datasource="%s"''' % (create_sql, datasource, train_sql, datasource), image="{{ $ss.DockerImage }}")
+		{{else}}
 couler.run_container(command='''repl -e "%s" --datasource="%s"''' % (train_sql, datasource), image="{{ $ss.DockerImage }}")
+		{{end}}
 	{{else}}
 # TODO(yancey1989): 
 #	using "repl -parse" to output IR and
