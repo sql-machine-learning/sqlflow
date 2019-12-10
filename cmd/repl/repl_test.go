@@ -17,10 +17,13 @@ import (
 	"bufio"
 	"bytes"
 	"container/list"
+	"fmt"
 	"os"
+	"os/exec"
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 
@@ -35,6 +38,44 @@ import (
 // TODO(shendiaomo): end to end tests like sqlflowserver/main_test.go
 
 var space = regexp.MustCompile(`\s+`)
+
+func testMainFastFail(t *testing.T, interactive bool) {
+	a := assert.New(t)
+	// Run the crashing code when FLAG is set
+	if os.Getenv("SQLFLOW_TEST_REPL_FAST_FAIL_INTERACTIVE_OR_NOT") == "false" {
+		os.Args = []string{os.Args[0], "--datasource", "database://in?imagination", "-e", ";"}
+		main()
+	} else if os.Getenv("SQLFLOW_TEST_REPL_FAST_FAIL_INTERACTIVE_OR_NOT") == "true" {
+		os.Args = []string{os.Args[0], "--datasource", "database://in?imagination"}
+		main()
+	}
+	// Run the test in a subprocess
+	cmd := exec.Command(os.Args[0], "-test.run=TestMainFastFail")
+	cmd.Env = append(os.Environ(), fmt.Sprintf("SQLFLOW_TEST_REPL_FAST_FAIL_INTERACTIVE_OR_NOT=%v", interactive))
+	cmd.Start()
+
+	done := make(chan error)
+	go func() { done <- cmd.Wait() }()
+	timeout := time.After(2 * time.Second) // 2s are enough for **fast** fail
+
+	select {
+	case <-timeout:
+		cmd.Process.Kill()
+		assert.FailNowf(t, "subprocess main timed out", "interactive: %v", interactive)
+	case err := <-done:
+		a.Error(err)
+		// Cast the error as *exec.ExitError and compare the result
+		e, ok := err.(*exec.ExitError)
+		expectedErrorString := "exit status 1"
+		assert.Equal(t, true, ok)
+		assert.Equal(t, expectedErrorString, e.Error())
+	}
+}
+
+func TestMainFastFail(t *testing.T) {
+	testMainFastFail(t, true)
+	testMainFastFail(t, false)
+}
 
 func TestReadStmt(t *testing.T) {
 	a := assert.New(t)

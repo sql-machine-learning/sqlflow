@@ -28,8 +28,6 @@ func flushToBytes(output *bytes.Buffer) func([]byte) error {
 	}
 }
 
-func noopWrapUp() error { return nil }
-
 func TestWriteWithSmallBuffer(t *testing.T) {
 	a := assert.New(t)
 	var buf bytes.Buffer

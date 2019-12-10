@@ -18,7 +18,7 @@ import (
 	"strings"
 )
 
-// CrossColumn is the wapper of `tf.feature_column.crossed_column`
+// CrossColumn is the wrapper of `tf.feature_column.crossed_column`
 // TODO(uuleon) specify the hash_key if needed
 type CrossColumn struct {
 	Keys           []interface{}

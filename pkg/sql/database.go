@@ -39,11 +39,11 @@ type DB struct {
 // In addition to sql.Open, it also does the book keeping on driverName and
 // dataSourceName
 func open(datasource string) (*DB, error) {
-	driverName, datasourName, err := SplitDataSource(datasource)
+	driverName, dataSourceName, err := SplitDataSource(datasource)
 	if err != nil {
 		return nil, err
 	}
-	db := &DB{driverName: driverName, dataSourceName: datasourName}
+	db := &DB{driverName: driverName, dataSourceName: dataSourceName}
 
 	err = openDB(db)
 	return db, err

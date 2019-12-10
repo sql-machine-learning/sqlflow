@@ -37,7 +37,7 @@ WITH
 COLUMN
   employee.name,
   bucketize(last_name, 1000),
-  cross(embedding(emplyoee.name), bucketize(last_name, 1000))
+  cross(embedding(employee.name), bucketize(last_name, 1000))
 LABEL "employee.salary"
 INTO sqlflow_models.my_dnn_model;
 `
@@ -48,9 +48,9 @@ WITH
 COLUMN
   employee.name,
   bucketize(last_name, 1000),
-  cross(embedding(emplyoee.name), bucketize(last_name, 1000))
+  cross(embedding(employee.name), bucketize(last_name, 1000))
 COLUMN
-  cross(embedding(emplyoee.name), bucketize(last_name, 1000)) FOR C2
+  cross(embedding(employee.name), bucketize(last_name, 1000)) FOR C2
 LABEL employee.salary
 INTO sqlflow_models.my_dnn_model;
 `
@@ -96,7 +96,7 @@ func TestTrainParser(t *testing.T) {
 	a.Equal(`bucketize(last_name, 1000)`,
 		r.columns["feature_columns"][1].String())
 	a.Equal(
-		`cross(embedding(emplyoee.name), bucketize(last_name, 1000))`,
+		`cross(embedding(employee.name), bucketize(last_name, 1000))`,
 		r.columns["feature_columns"][2].String())
 	a.Equal("employee.salary", r.label)
 	a.Equal("sqlflow_models.my_dnn_model", r.save)
@@ -116,10 +116,10 @@ func TestMultiColumnTrainParser(t *testing.T) {
 	a.Equal(`bucketize(last_name, 1000)`,
 		r.columns["feature_columns"][1].String())
 	a.Equal(
-		`cross(embedding(emplyoee.name), bucketize(last_name, 1000))`,
+		`cross(embedding(employee.name), bucketize(last_name, 1000))`,
 		r.columns["feature_columns"][2].String())
 	a.Equal(
-		`cross(embedding(emplyoee.name), bucketize(last_name, 1000))`,
+		`cross(embedding(employee.name), bucketize(last_name, 1000))`,
 		r.columns["C2"][0].String())
 	a.Equal("employee.salary", r.label)
 	a.Equal("sqlflow_models.my_dnn_model", r.save)
