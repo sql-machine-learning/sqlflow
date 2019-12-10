@@ -810,7 +810,12 @@ func CaseTrainSQLWithHyperParams(t *testing.T) {
 	trainSQL := `SELECT *
 FROM iris.train
 TO TRAIN DNNClassifier
-WITH model.n_classes = 3, model.hidden_units = [10, 20], train.batch_size = 10, train.epoch = 2
+WITH model.n_classes = 3, model.hidden_units = [10, 20],
+	 train.batch_size = 10, train.epoch = 6,
+	 train.max_steps = 200,
+	 train.save_checkpoints_steps=10,
+	 train.log_every_n_iter=20,
+	 validation.start_delay_secs=10, validation.throttle_secs=10
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.my_dnn_model;`

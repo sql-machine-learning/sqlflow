@@ -30,6 +30,16 @@ public class CalciteParserAdaptorTest {
             + "        HAVING SUM(priceEach * quantityOrdered) > 60000)");
 
     {
+      String sql = "create table ttt as (select * from iris.train)";
+      String sql_program = String.format("%s;", sql);
+      ParseResult parse_result = (new CalciteParserAdaptor()).ParseAndSplit(sql_program);
+      assertEquals(-1, parse_result.Position);
+      assertEquals("", parse_result.Error);
+      assertEquals(1, parse_result.Statements.size());
+      assertEquals(sql, parse_result.Statements.get(0));
+    }
+
+    {
       String sql_program =
           "SELECT *\n"
               + "FROM iris.train\n"

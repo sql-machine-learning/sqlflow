@@ -19,29 +19,15 @@ import (
 	"regexp"
 	"time"
 
+	wfv1 "github.com/argoproj/argo/pkg/apis/workflow/v1alpha1"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
-// Reference: https://github.com/argoproj/argo/blob/723b3c15e55d2f8dceb86f1ac0a6dc7d1a58f10b/pkg/apis/workflow/v1alpha1/workflow_types.go#L30-L38
-
-// NodePhase is a label for the condition of a node at the current time.
-type NodePhase string
-
-// Workflow and node statuses
-const (
-	NodePending   NodePhase = "Pending"
-	NodeRunning   NodePhase = "Running"
-	NodeSucceeded NodePhase = "Succeeded"
-	NodeSkipped   NodePhase = "Skipped"
-	NodeFailed    NodePhase = "Failed"
-	NodeError     NodePhase = "Error"
-)
-
-func isCompletedPhase(phase NodePhase) bool {
-	return phase == NodeSucceeded ||
-		phase == NodeFailed ||
-		phase == NodeError ||
-		phase == NodeSkipped
+func isCompletedPhase(phase wfv1.NodePhase) bool {
+	return phase == wfv1.NodeSucceeded ||
+		phase == wfv1.NodeFailed ||
+		phase == wfv1.NodeError ||
+		phase == wfv1.NodeSkipped
 }
 
 func getWorkflowID(output string) (string, error) {
@@ -54,14 +40,21 @@ func getWorkflowID(output string) (string, error) {
 	return wf[1], nil
 }
 
-func getWorkflowStatusPhase(job pb.Job) (string, error) {
-	cmd := exec.Command("kubectl", "get", "wf", job.Id, "-o", "jsonpath={.status.phase}")
+func getWorkflowResource(job pb.Job) (*wfv1.Workflow, error) {
+	cmd := exec.Command("kubectl", "get", "wf", job.Id, "-o", "json")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("getWorkflowStatusPhase error: %v\n%v", string(output), err)
+		return nil, fmt.Errorf("getWorkflowResource error: %v\n%v", string(output), err)
 	}
+	return parseWorkflowResource(output)
+}
 
-	return string(output), nil
+func getWorkflowStatusPhase(job pb.Job) (wfv1.NodePhase, error) {
+	wf, err := getWorkflowResource(job)
+	if err != nil {
+		return "", fmt.Errorf("getWorkflowStatusPhase error: %v", err)
+	}
+	return wf.Status.Phase, nil
 }
 
 func getWorkflowPodName(job pb.Job) (string, error) {
@@ -95,7 +88,7 @@ func fetchWorkflowLog(job pb.Job) (string, error) {
 		}
 
 		// FIXME(tony): what if it is a long running job
-		if isCompletedPhase(NodePhase(statusPhase)) {
+		if isCompletedPhase(statusPhase) {
 			break
 		}
 		time.Sleep(time.Second)
@@ -108,4 +101,20 @@ func fetchWorkflowLog(job pb.Job) (string, error) {
 	}
 
 	return getPodLogs(podName)
+}
+
+// Submit the Argo workflow and returns the workflow ID
+func Submit(argoFileName string) (string, error) {
+	// submit Argo YAML and fetch the workflow ID.
+	cmd := exec.Command("kubectl", "create", "-f", argoFileName)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("submit Argo YAML error: %v, output: %s", err, string(output))
+	}
+
+	workflowID, err := getWorkflowID(string(output))
+	if err != nil {
+		return "", err
+	}
+	return workflowID, err
 }

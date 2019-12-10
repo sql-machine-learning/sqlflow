@@ -16,10 +16,7 @@ package sql
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
-	"os/exec"
-	"regexp"
 	"strings"
 	"time"
 
@@ -27,6 +24,7 @@ import (
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/couler"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
+	wf "sqlflow.org/sqlflow/pkg/workflow"
 )
 
 // EndOfExecution will push to the pipe when one SQL statement execution is finished.
@@ -129,51 +127,6 @@ func SubmitWorkflow(sqlProgram string, modelDir string, session *pb.Session) *Pi
 	return rd
 }
 
-func writeCoulerFile(spIRs ir.SQLProgram, session *pb.Session) (string, error) {
-	program, err := couler.Run(spIRs, session)
-	if err != nil {
-		return "", fmt.Errorf("generate couler program error: %v", err)
-	}
-
-	coulerFile, err := ioutil.TempFile("/tmp", "sqlflow-couler*.py")
-	if err != nil {
-		return "", fmt.Errorf("")
-	}
-	defer coulerFile.Close()
-	if _, err := coulerFile.Write([]byte(program)); err != nil {
-		return "", err
-	}
-	return coulerFile.Name(), nil
-}
-
-func writeArgoFile(coulerFileName string) (string, error) {
-	argoYaml, err := ioutil.TempFile("/tmp", "sqlflow-argo*.yaml")
-	if err != nil {
-		return "", fmt.Errorf("cannot create temporary Argo YAML file: %v", err)
-	}
-	defer argoYaml.Close()
-
-	cmd := exec.Command("couler", "run", "--mode", "argo", "--file", coulerFileName)
-	cmd.Env = append(os.Environ())
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return "", fmt.Errorf("generate Argo workflow yaml error: %v", err)
-	}
-	argoYaml.Write(out)
-
-	return argoYaml.Name(), nil
-}
-
-func getWorkflowID(output string) (string, error) {
-	reWorkflow := regexp.MustCompile(`.+/(.+) .+`)
-	wf := reWorkflow.FindStringSubmatch(string(output))
-	if len(wf) != 2 {
-		return "", fmt.Errorf("parse workflow ID error: %v", output)
-	}
-
-	return wf[1], nil
-}
-
 func submitWorkflow(wr *PipeWriter, sqlProgram string, modelDir string, session *pb.Session) error {
 	driverName, dataSourceName, err := SplitDataSource(session.DbConnStr)
 	if err != nil {
@@ -212,29 +165,15 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, modelDir string, session 
 		spIRs = append(spIRs, r)
 	}
 
-	// 1. call codegen_couler.go to generate Couler program.
-	coulerFileName, err := writeCoulerFile(spIRs, session)
-	if err != nil {
-		return err
-	}
-	defer os.RemoveAll(coulerFileName)
-
-	// 2. compile Couler program into Argo YAML.
-	argoFileName, err := writeArgoFile(coulerFileName)
+	// 1. call codegen_couler.go to generate Argo workflow YAML
+	argoFileName, err := couler.RunAndWriteArgoFile(spIRs, session)
 	if err != nil {
 		return err
 	}
 	defer os.RemoveAll(argoFileName)
 
-	// TODO(tony): move the following function to package workflow
-	// 3. submit Argo YAML and fetch the workflow ID.
-	cmd := exec.Command("kubectl", "create", "-f", argoFileName)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("submit Argo YAML error: %v, output: %s", err, string(output))
-	}
-
-	workflowID, err := getWorkflowID(string(output))
+	// 2. submit the argo workflow
+	workflowID, err := wf.Submit(argoFileName)
 	if err != nil {
 		return err
 	}
