@@ -33,7 +33,7 @@ func TestNewHiveWriter(t *testing.T) {
 
 	a := assert.New(t)
 
-	tbl := fmt.Sprintf("%s.unitest%d", testDatabaseName, rand.Int())
+	tbl := fmt.Sprintf("%s%d", testDatabaseName, rand.Int())
 	w, e := newHiveWriter(testDB, "/hivepath", tbl, "", "")
 	a.NoError(e)
 	a.NotNil(w)
@@ -55,7 +55,7 @@ func TestHiveWriterWriteAndRead(t *testing.T) {
 
 	a := assert.New(t)
 
-	tbl := fmt.Sprintf("%s.unitest%d", testDatabaseName, rand.Int())
+	tbl := fmt.Sprintf("%s%d", testDatabaseName, rand.Int())
 	w, e := newHiveWriter(testDB, "/hivepath", tbl, "", "")
 	a.NoError(e)
 	a.NotNil(w)
