@@ -26,6 +26,7 @@ type trainFiller struct {
 	Y                 *ir.FieldMeta
 	ModelParams       map[string]interface{}
 	TrainParams       map[string]interface{}
+	ValidationParams  map[string]interface{}
 	Save              string
 	IsPAI             bool
 	PAITrainTable     string
@@ -69,6 +70,10 @@ model_params["{{$k}}"]={{$v | attrToPythonValue}}
 
 feature_columns = {{.FeatureColumnCode}}
 
+train_max_steps = {{index .TrainParams "max_steps" | attrToPythonValue}}
+train_max_steps = None if train_max_steps == 0 else train_max_steps
+
+
 train(is_keras_model="{{.IsKerasModel}}" == "true",
     datasource="{{.DataSource}}",
     estimator={{.Estimator}},
@@ -82,5 +87,10 @@ train(is_keras_model="{{.IsKerasModel}}" == "true",
     save="{{.Save}}",
     batch_size=1,
     epochs={{index .TrainParams "epoch" | attrToPythonValue}},
-    verbose={{index .TrainParams "verbose" | attrToPythonValue}})
+    verbose={{index .TrainParams "verbose" | attrToPythonValue}},
+    train_max_steps=train_max_steps,
+    eval_start_delay_secs={{index .ValidationParams "start_delay_secs" | attrToPythonValue}},
+    eval_throttle_secs={{index .ValidationParams "throttle_secs" | attrToPythonValue}},
+    save_checkpoints_steps={{index .TrainParams "save_checkpoints_steps" | attrToPythonValue}},
+    log_every_n_iter={{index .TrainParams "log_every_n_iter" | attrToPythonValue}})
 `

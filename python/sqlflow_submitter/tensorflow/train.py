@@ -19,6 +19,7 @@ import sys, json
 import tensorflow as tf
 import functools
 import sys
+import numpy as np
 try:
     import sqlflow_models
 except:
@@ -58,6 +59,34 @@ def parse_sparse_feature(features, label, feature_column_names, feature_metas):
     return features_dict, label
 
 
+class PrintStatusHook(tf.estimator.LoggingTensorHook):
+    def __init__(self, prefix="", every_n_iter=None, every_n_secs=None,
+               at_end=False, formatter=None):
+        super().__init__([], every_n_iter=every_n_iter, every_n_secs=every_n_secs,
+            at_end=at_end, formatter=formatter)
+        self.prefix = prefix
+
+    def before_run(self, run_context):
+        self._should_trigger = self._timer.should_trigger_for_step(self._iter_count)
+        loss_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.LOSSES)
+        step_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_STEP)
+        fetch = {"loss": loss_vars[0], "step": step_vars[0]}
+        if self._should_trigger:
+            return tf.estimator.SessionRunArgs(fetch)
+        else:
+            return None
+
+    def _log_tensors(self, tensor_values):
+        elapsed_secs, _ = self._timer.update_last_triggered_step(self._iter_count)
+        stats = []
+        for k in tensor_values.keys():
+            stats.append("%s = %s" % (k, tensor_values[k]))
+        if self.prefix == "eval":
+            print("============Evaluation=============")
+        print("%s: %s" % (self.prefix, ", ".join(stats)))
+        if self.prefix == "eval":
+            print("============Evaluation End=============")
+
 def train(is_keras_model,
           datasource,
           estimator,
@@ -72,16 +101,22 @@ def train(is_keras_model,
           batch_size=1,
           epochs=1,
           verbose=0,
+          train_max_steps=None,
+          eval_start_delay_secs=0,
+          eval_throttle_secs=0,
+          save_checkpoints_steps=100,
+          log_every_n_iter=10,
           is_pai=False,
           pai_table=""):
-    if verbose > 0:
-        tf.get_logger().setLevel(logging.INFO)
+    # TODO(typhoonzero): when enable verbose levels like 0, 1, 2 to show debug logs.
+    # if verbose > 0:
+    #     tf.get_logger().setLevel(logging.INFO)
     conn = connect_with_data_source(datasource)
-    if not os.path.exists("cache"):
-        os.mkdir("cache")  # cache directory for dataset
     model_params.update(feature_columns)
     if not is_keras_model:
         model_params["model_dir"] = save
+        runconf = tf.estimator.RunConfig(save_checkpoints_steps=save_checkpoints_steps)
+        model_params["config"]= runconf
         classifier = estimator(**model_params)
     else:
         if not issubclass(estimator, tf.keras.Model):
@@ -127,36 +162,50 @@ def train(is_keras_model,
             dataset = pai_maxcompute_input_fn(select)
         else:
             dataset = input_fn(select)
-        dataset = dataset.shuffle(1000).batch(batch_size)
+        # FIXME(typhoonzero): find a way to cache to local file and avoid cache lockfile already exists issue.
+        dataset = dataset.shuffle(1000).batch(batch_size).cache()
         if not is_keras_model:
             dataset = dataset.repeat(epochs if epochs else 1)
         return dataset
 
     def validate_input_fn(batch_size):
         dataset = input_fn(validate_select)
-        return dataset.batch(batch_size).cache("cache/validate" if TF_VERSION_2 else "")
+        return dataset.batch(batch_size).cache()
 
     if is_keras_model:
         classifier.compile(optimizer=classifier_pkg.optimizer(),
             loss=classifier_pkg.loss,
             metrics=["accuracy"])
         if hasattr(classifier, 'sqlflow_train_loop'):
-            # NOTE(typhoonzero): do not cache dataset if using sqlflow_train_loop, it may use the dataset multiple times causing "tensorflow.python.framework.errors_impl.AlreadyExistsError":
-            # https://github.com/sql-machine-learning/models/blob/a3559618a013820385f43307261ad34351da2fbf/sqlflow_models/deep_embedding_cluster.py#L126
             classifier.sqlflow_train_loop(train_input_fn(batch_size))
         else:
-            ds = train_input_fn(batch_size).cache("cache/train" if TF_VERSION_2 else "")
-            classifier.fit(ds,
-                epochs=epochs if epochs else classifier.default_training_epochs(),
-                verbose=verbose)
+            ds = train_input_fn(batch_size)
+            if label_meta["feature_name"] != "" and validate_select != "":
+                history = classifier.fit(ds,
+                    epochs=epochs if epochs else classifier.default_training_epochs(),
+                    validation_data=validate_input_fn(batch_size),
+                    verbose=verbose)
+            else:
+                history = classifier.fit(ds,
+                    epochs=epochs if epochs else classifier.default_training_epochs(),
+                    verbose=verbose)
+            for k, v in history.history.items():
+                print("%s: %s" % (k, v[-1]))
         classifier.save_weights(save, save_format="h5")
-        if label_meta["feature_name"] != "" and validate_select != "":
-            eval_result = classifier.evaluate(validate_input_fn(batch_size), verbose=verbose)
-            print("Training set accuracy: {accuracy:0.5f}".format(**{"accuracy": eval_result[1]}))
     else:
-        classifier.train(input_fn=lambda:train_input_fn(batch_size))
-        if validate_select != "":
-            eval_result = classifier.evaluate(input_fn=lambda:validate_input_fn(batch_size))
-            print("Evaluation result:", eval_result)
+        if validate_select == "":
+            classifier.train(input_fn=lambda:train_input_fn(batch_size))
+        else:
+            # TODO(typhoonzero): able to config metrics by calling tf.estimators.add_metrics()
+            train_hooks = []
+            if verbose > 0:
+                train_hooks = [PrintStatusHook("train", every_n_iter=log_every_n_iter)]
+            train_spec = tf.estimator.TrainSpec(input_fn=lambda:train_input_fn(batch_size), max_steps=train_max_steps, hooks=train_hooks)
+            eval_hooks = []
+            if verbose > 0:
+                eval_hooks = [PrintStatusHook("eval", every_n_iter=log_every_n_iter)]
+            eval_spec = tf.estimator.EvalSpec(input_fn=lambda:validate_input_fn(batch_size), hooks=eval_hooks, start_delay_secs=eval_start_delay_secs, throttle_secs=eval_throttle_secs)
+            result = tf.estimator.train_and_evaluate(classifier, train_spec, eval_spec)
+            print(result[0])
 
     print("Done training")
