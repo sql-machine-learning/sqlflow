@@ -53,7 +53,7 @@ func uploadCSVFile(csv *os.File, db *sql.DB, hivePath, table, user, passwd strin
 			os.Remove(csv.Name())
 		}()
 
-		hdfsPath := path.Join(hivePath, table)
+		hdfsPath := path.Join(hivePath, "sqlfs", table)
 
 		hdfsEnv := os.Environ()
 		if user != "" {
@@ -175,7 +175,7 @@ func (w *HiveWriter) Close() error {
 }
 
 func (w *HiveWriter) hdfsPath() string {
-	return fmt.Sprintf("%s/models/%s/", w.session.HiveLocation, w.table)
+	return fmt.Sprintf("%s/sqlfs/%s/", w.session.HiveLocation, w.table)
 }
 
 func (w *HiveWriter) flush() error {

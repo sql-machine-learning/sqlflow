@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"path"
 	"strings"
 	"testing"
 
@@ -76,7 +77,7 @@ func TestHiveWriterWriteAndRead(t *testing.T) {
 
 	a.NoError(w.Close())
 
-	r, e := Open(testDB, tbl)
+	r, e := Open(testDB, path.Join("/hivepath", "sqlfs", tbl))
 	a.NoError(e)
 	a.NotNil(r)
 
