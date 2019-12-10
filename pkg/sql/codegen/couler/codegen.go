@@ -35,15 +35,25 @@ func Run(programIR ir.SQLProgram, session *pb.Session) (string, error) {
 		switch i := sqlIR.(type) {
 		case *ir.StandardSQL:
 			ss.IsExtendedSQL = false
+			ss.CreateTmpTable = false
 			ss.OriginalSQL = string(*sqlIR.(*ir.StandardSQL))
 		case *ir.TrainStmt:
 			ss.IsExtendedSQL = true
+			t := sqlIR.(*ir.TrainStmt)
+			// FIXME(typhoonzero): use unified method to get submitter type.
+			// TODO(typhoonzero): for simple select statements like select * from table, do not create tmp table.
+			if os.Getenv("SQLFLOW_submitter") == "pai" {
+				ss.CreateTmpTable = true
+			}
+			ss.Select = t.Select
 			ss.OriginalSQL = sqlIR.(*ir.TrainStmt).OriginalSQL
 		case *ir.PredictStmt:
 			ss.IsExtendedSQL = true
+			ss.CreateTmpTable = false
 			ss.OriginalSQL = sqlIR.(*ir.PredictStmt).OriginalSQL
 		case *ir.AnalyzeStmt:
 			ss.IsExtendedSQL = true
+			ss.CreateTmpTable = false
 			ss.OriginalSQL = sqlIR.(*ir.AnalyzeStmt).OriginalSQL
 		default:
 			return "", fmt.Errorf("uncognized IR type: %v", i)

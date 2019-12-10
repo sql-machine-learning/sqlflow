@@ -19,6 +19,9 @@ type sqlStatment struct {
 	OriginalSQL   string
 	IsExtendedSQL bool
 	DockerImage   string
+	// CreateTmpTable and Select are used to create a step to generate temporary table for training
+	CreateTmpTable bool
+	Select         string
 }
 type coulerFiller struct {
 	DataSource    string
@@ -27,10 +30,20 @@ type coulerFiller struct {
 
 const coulerTemplateText = `
 import couler.argo as couler
+import uuid
 datasource = "{{ .DataSource }}"
 {{ range $ss := .SQLStatements }}
 	{{if $ss.IsExtendedSQL }}
-couler.run_container(command='''repl -e "{{ $ss.OriginalSQL }}" --datasource="%s"''' % datasource, image="{{ $ss.DockerImage }}")
+train_sql = '''{{ $ss.OriginalSQL }}'''
+		{{if $ss.CreateTmpTable }}
+tmp_table_name = uuid.uuid4().hex[:6].upper()
+create_sql = '''CREATE TABLE %s AS (%s)''' % (tmp_table_name, '''{{$ss.Select}}''')
+# add a step to create a temporary table
+couler.run_container(command='''repl -e "%s" --datasource="%s"''' % (create_sql, datasource), image="{{ $ss.DockerImage }}")
+# form a train SQL using the created table
+train_sql = train_sql.replace('''{{$ss.Select}}''', "SELECT * FROM %s" % tmp_table_name)
+		{{end}}
+couler.run_container(command='''repl -e "%s" --datasource="%s"''' % (train_sql, datasource), image="{{ $ss.DockerImage }}")
 	{{else}}
 # TODO(yancey1989): 
 #	using "repl -parse" to output IR and
