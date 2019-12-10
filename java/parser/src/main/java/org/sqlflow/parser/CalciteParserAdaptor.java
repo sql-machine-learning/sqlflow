@@ -5,6 +5,7 @@ import org.apache.calcite.sql.SqlKind;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.parser.SqlParseException;
 import org.apache.calcite.sql.parser.SqlParser;
+import org.apache.calcite.sql.parser.ddl.SqlDdlParserImpl;
 
 public class CalciteParserAdaptor {
 
@@ -28,8 +29,10 @@ public class CalciteParserAdaptor {
 
     int accumulated_position = 0;
     while (true) {
+      SqlParser.Config sqlParserConfig =
+          SqlParser.configBuilder().setParserFactory(SqlDdlParserImpl.FACTORY).build();
       try {
-        SqlParser parser = SqlParser.create(sql);
+        SqlParser parser = SqlParser.create(sql, sqlParserConfig);
         SqlNode sqlnode = parser.parseQuery();
         parse_result.Statements.add(sql);
         return parse_result;
@@ -39,7 +42,7 @@ public class CalciteParserAdaptor {
         int epos = posToIndex(sql, line, column);
 
         try {
-          SqlParser parser = SqlParser.create(sql.substring(0, epos));
+          SqlParser parser = SqlParser.create(sql.substring(0, epos), sqlParserConfig);
           SqlNode sqlnode = parser.parseQuery();
 
           // parseQuery doesn't throw exception
