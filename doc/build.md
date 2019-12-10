@@ -57,6 +57,8 @@ The commandline `go generate` is necessary to call `protoc` for translating gRPC
 
 The environment variable `SQLFLOW_TEST_DB=mysql` specify MySQL as the SQL engine during testing.  You can also choose `hive` for Apache Hive and `maxcompute` for Alibaba MaxCompute.
 
+The command `go test` with `-q 1` argument is necessary to run all tests, otherwise you will encounter the same problem as this [`issue`](https://github.com/sql-machine-learning/sqlflow/issues/1283).
+
 ## Editing on Host
 
 As the above `docker run` command binds the source code directory on the host computer to the container, we can edit the source code on the host using any editor, VS Code, Emacs, etc.
