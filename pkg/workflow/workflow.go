@@ -22,6 +22,7 @@ import (
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
+// FIXME(tony): Reuse the following types
 // Reference: https://github.com/argoproj/argo/blob/723b3c15e55d2f8dceb86f1ac0a6dc7d1a58f10b/pkg/apis/workflow/v1alpha1/workflow_types.go#L30-L38
 
 // NodePhase is a label for the condition of a node at the current time.
