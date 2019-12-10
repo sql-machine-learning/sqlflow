@@ -36,7 +36,7 @@ Number of epochs the training will run.
 range: [1, Infinity]`, attribute.IntLowerBoundChecker(1, true)},
 	"train.verbose": {attribute.Int, `[default=0]
 Show verbose logs when training.
-possible values: 0, 1`, attribute.IntLowerBoundChecker(1, true)},
+possible values: 0, 1`, attribute.IntChoicesChecker([]int{0, 1)},
 	"validation.select": {attribute.String, `[default=""]
 Specify the dataset for validation.
 example: "SELECT * FROM iris.train LIMIT 100"`, nil},
