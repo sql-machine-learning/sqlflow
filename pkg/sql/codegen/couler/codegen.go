@@ -78,9 +78,8 @@ func writeArgoFile(coulerFileName string) (string, error) {
 	defer argoYaml.Close()
 
 	var cmd *exec.Cmd
-	fmt.Println(clusterConfigFile())
 	if clusterConfigFile() != "" {
-		cmd = exec.Command("couler", "run", "--mode", "argo", "--file", coulerFileName, "--cluster-config", clusterConfigFile())
+		cmd = exec.Command("couler", "run", "--mode", "argo", "--file", coulerFileName, "--cluster_config", clusterConfigFile())
 	} else {
 		cmd = exec.Command("couler", "run", "--mode", "argo", "--file", coulerFileName)
 	}

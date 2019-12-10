@@ -84,14 +84,9 @@ class K8s(object):
         pass
 
     def with_pod(self, template):
-        self._with_medadata(template)
         self._with_tolerations(template)
         return template
 
-    def _with_medadata(self, template):
-        template["metadata"] = {}
-        template["metadata"]["namespace"] = "sqlflow"
-    
     def _with_tolerations(self, template):
         template["tolerations"] = list()
         template["tolerations"].append({
@@ -104,20 +99,18 @@ class K8s(object):
 cluster = K8s()
 `
 
-var testArgoYAML = `
-apiVersion: argoproj.io/v1alpha1
+var expectedArgoYAML = `apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:
-  generateName: workflow-
-  namespace: sqlflow
+  generateName: test-sqlflow-couler-
 spec:
-  entrypoint: workflow
+  entrypoint: test-sqlflow-couler
   templates:
-    - name: workflow
+    - name: test-sqlflow-couler
       steps:
-        - - name: workflow-2-2
-            template: workflow-2
-    - name: workflow-2
+        - - name: test-sqlflow-couler-3-3
+            template: test-sqlflow-couler-3
+    - name: test-sqlflow-couler-3
       container:
         image: docker/whalesay
         command:
@@ -125,11 +118,13 @@ spec:
           - -c
           - 'echo "SQLFlow bridges AI and SQL engine."'
       tolerations:
-      - effect: NoSchedule
-        key: key
-        value: value
-        operator: Equal
+        - effect: NoSchedule
+          key: key
+          operator: Equal
+          value: value
+
 `
+
 var testCoulerProgram = `
 import couler.argo as couler
 couler.run_container(image="docker/whalesay", command='echo "SQLFlow bridges AI and SQL engine."')
@@ -137,22 +132,25 @@ couler.run_container(image="docker/whalesay", command='echo "SQLFlow bridges AI 
 
 func TestWriteArgoYamlWithClusterConfig(t *testing.T) {
 	a := assert.New(t)
-	tmpFile, e := ioutil.TempFile("/tmp", "sqlflow-couler*.py")
-	a.NoError(e)
-	_, e = tmpFile.Write([]byte(testCoulerProgram))
-	a.NoError(e)
 
-	tmpFile2, e := ioutil.TempFile("/tmp", "sqlflow-cluster*.py")
+	coulerFileName := "/tmp/test-sqlflow-couler.py"
+	e := ioutil.WriteFile(coulerFileName, []byte(testCoulerProgram), 0755)
 	a.NoError(e)
-	_, e = tmpFile2.Write([]byte(testCoulerClusterConfig))
-	a.NoError(e)
+	defer os.Remove(coulerFileName)
 
-	os.Setenv("SQLFLOW_COULER_CLUSTER_CONFIG", tmpFile2.Name())
-	argoFile, e := writeArgoFile(tmpFile.Name())
+	cfFileName := "/tmp/sqlflow-cluster.py"
+	e = ioutil.WriteFile(cfFileName, []byte(testCoulerClusterConfig), 0755)
 	a.NoError(e)
+	defer os.Remove(cfFileName)
+
+	os.Setenv("SQLFLOW_COULER_CLUSTER_CONFIG", cfFileName)
+
+	argoFile, e := writeArgoFile(coulerFileName)
+	a.NoError(e)
+	defer os.Remove(argoFile)
 
 	out, e := ioutil.ReadFile(argoFile)
 	a.NoError(e)
 
-	a.Equal(out, testArgoYAML)
+	a.Equal(string(out), expectedArgoYAML)
 }
