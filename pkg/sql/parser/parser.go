@@ -20,82 +20,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
-	"strings"
-	"sync"
-
-	"github.com/pingcap/parser"
-	"github.com/pingcap/parser/ast"
-	_ "github.com/pingcap/tidb/types/parser_driver" // As required by https://github.com/pingcap/parser/blob/master/parser_example_test.go#L19
 )
-
-var (
-	// Use the global variable to save the time of creating parser.
-	psr *parser.Parser
-	re  *regexp.Regexp
-	mu  sync.Mutex
-)
-
-// Init creates the TiDB parser instance and other resources.
-func tiDBInit() {
-	mu.Lock()
-	defer mu.Unlock()
-
-	psr = parser.New()
-	re = regexp.MustCompile(`.* near "([^"]+)".*`)
-}
-
-func tiDBParseAndSplit(sql string) ([]string, int, error) {
-	if psr == nil || re == nil {
-		return nil, -1, fmt.Errorf("parser is not initialized")
-	}
-
-	mu.Lock()
-	defer mu.Unlock()
-
-	nodes, _, err := psr.Parse(sql, "", "")
-	if err != nil {
-		matched := re.FindAllStringSubmatch(err.Error(), -1)
-		if len(matched) != 1 || len(matched[0]) != 2 {
-			return nil, -1, fmt.Errorf(`cannot match parse error "near" in "%q"`, err)
-		}
-		idx := strings.Index(sql, matched[0][1])
-
-		// Note(tony): MySQL statements requires adding ";" at the end of the statement.
-		// If we don't add ";", parse("select 1\n").Text() gives "select 1" without the new line character.
-		// This would cause "select 1\nto train" to become "select 1to train" during train SQL saving.
-		nodes, _, e := psr.Parse(sql[:idx]+";", "", "")
-		if e != nil || len(nodes) == 0 {
-			// return the original parsing error
-			return nil, -1, err
-		}
-
-		// Make sure the left hand side is a select statement, so that
-		// we can try parse the right hand side with the SQLFlow parser
-		if _, ok := nodes[len(nodes)-1].(*ast.SelectStmt); !ok {
-			// return the original parsing error
-			return nil, -1, err
-		}
-
-		sqls := make([]string, 0)
-		for _, n := range nodes {
-			sqls = append(sqls, n.Text())
-		}
-
-		// Note(tony): remove the last ";" since feature derivation will append "limit 1000" at the end of the statement
-		if sql := sqls[len(sqls)-1]; sql[len(sql)-1] == ';' {
-			sqls[len(sqls)-1] = sql[:len(sql)-1]
-		}
-
-		return sqls, idx, nil
-	}
-
-	sqls := make([]string, 0)
-	for _, n := range nodes {
-		sqls = append(sqls, n.Text())
-	}
-	return sqls, -1, nil
-}
 
 type parseResult struct {
 	Statements []string `json:"statements"`
@@ -103,7 +28,7 @@ type parseResult struct {
 	Error      string   `json:"error"`
 }
 
-func javaParseAndSplit(typ, sql string) ([]string, int, error) {
+func javaParseAndSplit(typ, program string) ([]string, int, error) {
 	// cwd is used to store train scripts and save output models.
 	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
 	if err != nil {
@@ -113,10 +38,13 @@ func javaParseAndSplit(typ, sql string) ([]string, int, error) {
 
 	inputFile := filepath.Join(cwd, "input.sql")
 	outputFile := filepath.Join(cwd, "output.json")
-	if err := ioutil.WriteFile(inputFile, []byte(sql), 0755); err != nil {
+	if err := ioutil.WriteFile(inputFile, []byte(program), 0755); err != nil {
 		return nil, -1, err
 	}
 
+	// TODO(yi): It is very expensive to start a Java process.  It
+	// slows down SQLFlow server's QPS if for every parsing
+	// operation, we'd have to start a Java process.
 	cmd := exec.Command("java",
 		"-cp", "/opt/sqlflow/parser/parser-1.0-SNAPSHOT-jar-with-dependencies.jar",
 		"org.sqlflow.parser.ParserAdaptorCmd",
