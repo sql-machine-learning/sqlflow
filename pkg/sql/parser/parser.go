@@ -22,13 +22,25 @@ import (
 	"path/filepath"
 )
 
+type javaParser struct {
+	// TODO(yi): As we are going to replace the command-line
+	// parser adaptor to gRPC servers, we will need to add gRPC
+	// clients here.
+	typ string
+}
+
+// typ should be either "hiveql" or "calcite".
+func newJavaParser(typ string) *javaParser {
+	return &javaParser{typ: typ}
+}
+
 type parseResult struct {
 	Statements []string `json:"statements"`
 	Position   int      `json:"position"`
 	Error      string   `json:"error"`
 }
 
-func javaParseAndSplit(typ, program string) ([]string, int, error) {
+func (p *javaParser) Split(program string) ([]string, int, error) {
 	// cwd is used to store train scripts and save output models.
 	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
 	if err != nil {
@@ -48,7 +60,7 @@ func javaParseAndSplit(typ, program string) ([]string, int, error) {
 	cmd := exec.Command("java",
 		"-cp", "/opt/sqlflow/parser/parser-1.0-SNAPSHOT-jar-with-dependencies.jar",
 		"org.sqlflow.parser.ParserAdaptorCmd",
-		"-p", typ,
+		"-p", p.typ,
 		"-i", inputFile,
 		"-o", outputFile)
 	if output, err := cmd.CombinedOutput(); err != nil {
