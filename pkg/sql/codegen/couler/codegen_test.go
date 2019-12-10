@@ -124,11 +124,11 @@ spec:
           - bash
           - -c
           - 'echo "SQLFlow bridges AI and SQL engine."'
-  		tolerations:
-			- effect: NoSchedule
-				key: key
-				value: value
-				operator: Equal
+      tolerations:
+      - effect: NoSchedule
+        key: key
+        value: value
+        operator: Equal
 `
 var testCoulerProgram = `
 import couler.argo as couler
