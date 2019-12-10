@@ -14,15 +14,11 @@
 package workflow
 
 import (
+	"encoding/json"
 	wfv1 "github.com/argoproj/argo/pkg/apis/workflow/v1alpha1"
 )
 
-// NOTE(tony): offical reference
-// https://github.com/argoproj/argo/blob/master/pkg/apis/workflow/v1alpha1/workflow_types.go
-type workflow struct {
-	APIVersion string              `json:"apiVersion"`
-	Kind       string              `json:"kind"`
-	Metadata   wfv1.Metadata       `json:"metadata"`
-	Spec       wfv1.WorkflowSpec   `json:"spec"`
-	Status     wfv1.WorkflowStatus `json:"status"`
+func parseWorkflowResource(b []byte) (*wfv1.Workflow, error) {
+	wf := wfv1.Workflow{}
+	return &wf, json.Unmarshal(b, &wf)
 }

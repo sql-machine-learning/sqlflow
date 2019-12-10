@@ -14,8 +14,7 @@
 package workflow
 
 import (
-	"encoding/json"
-	"github.com/argoproj/argo/pkg/apis/workflow/v1alpha1"
+	wfv1 "github.com/argoproj/argo/pkg/apis/workflow/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -329,8 +328,8 @@ const (
 func TestUnmarshal(t *testing.T) {
 	a := assert.New(t)
 	output := []byte(testWorkflowDescription)
-	wf := workflow{}
-	a.NoError(json.Unmarshal(output, &wf))
+	wf, err := parseWorkflowResource(output)
+	a.NoError(err)
 	expectedNodes := []string{
 		"steps-7lxxs-1184503397", "steps-7lxxs-1263033216", "steps-7lxxs-1288663778",
 		"steps-7lxxs-2267726410", "steps-7lxxs-43331115", "steps-7lxxs-43875568", "steps-7lxxs"}
@@ -340,5 +339,5 @@ func TestUnmarshal(t *testing.T) {
 		a.True(ok)
 	}
 
-	a.Equal(wf.Status.Phase, v1alpha1.NodePhase("Succeeded"))
+	a.Equal(wf.Status.Phase, wfv1.NodePhase("Succeeded"))
 }
