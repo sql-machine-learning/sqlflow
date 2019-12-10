@@ -108,6 +108,7 @@ def train(is_keras_model,
           log_every_n_iter=10,
           is_pai=False,
           pai_table=""):
+    # TODO(typhoonzero): when enable verbose levels like 0, 1, 2 to show debug logs.
     # if verbose > 0:
     #     tf.get_logger().setLevel(logging.INFO)
     conn = connect_with_data_source(datasource)

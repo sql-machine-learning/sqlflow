@@ -38,6 +38,7 @@ go install ./...
 
 # -p 1 is necessary since tests in different packages are sharing the same database
 # ref: https://stackoverflow.com/a/23840896
+# set test timeout to 900s since travis CI may be slow to run the case TestParse
 SQLFLOW_log_level=debug go test -v -p 1 -timeout 900s ./...  -covermode=count -coverprofile=coverage.out
 
 python -m unittest discover -v python "*_test.py"
