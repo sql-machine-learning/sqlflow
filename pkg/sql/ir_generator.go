@@ -84,14 +84,12 @@ func generateTrainStmt(slct *extendedSelect, connStr string) (*ir.TrainStmt, err
 		vslct = slct.standardSelect.String()
 	}
 	return &ir.TrainStmt{
-		DataSource: connStr,
-		Select:     slct.standardSelect.String(),
+		ExtendedSQL: ir.ExtendedSQL{slct.standardSelect.String(), connStr, attrList, ""},
 		// TODO(weiguoz): This is a temporary implement. Specifying the
 		// validation dataset by keyword `VALIDATE` is the final solution.
 		ValidationSelect: vslct,
 		ModelImage:       modelImageName,
 		Estimator:        modelName,
-		Attributes:       attrList,
 		Features:         fcMap,
 		Label:            label,
 		Into:             slct.save,
@@ -185,11 +183,9 @@ func generatePredictStmt(slct *extendedSelect, connStr string, modelDir string, 
 	}
 
 	predStmt := &ir.PredictStmt{
-		DataSource:   connStr,
-		Select:       slct.standardSelect.String(),
+		ExtendedSQL:  ir.ExtendedSQL{slct.standardSelect.String(), connStr, attrMap, ""},
 		ResultTable:  resultTable,
 		ResultColumn: resultCol,
-		Attributes:   attrMap,
 		TrainStmt:    trainStmt,
 	}
 
@@ -230,11 +226,9 @@ func generateAnalyzeStmt(slct *extendedSelect, connStr, modelDir string, getTrai
 	}
 
 	analyzeStmt := &ir.AnalyzeStmt{
-		DataSource: connStr,
-		Select:     slct.standardSelect.String(),
-		Attributes: attrs,
-		Explainer:  slct.explainer,
-		TrainStmt:  trainStmt,
+		ExtendedSQL: ir.ExtendedSQL{slct.standardSelect.String(), connStr, attrs, ""},
+		Explainer:   slct.explainer,
+		TrainStmt:   trainStmt,
 	}
 
 	if getTrainStmtFromModel {

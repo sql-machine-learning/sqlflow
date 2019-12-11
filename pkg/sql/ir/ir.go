@@ -76,17 +76,28 @@ type Executor interface {
 type SQLStatement interface {
 	SetOriginalSQL(string)
 	Execute(Executor) error
+	IsExtended() bool
+	GetOriginalSQL() string
+}
+
+// ExtendedSQL contains common information of TrainStmt, PredictStmt and AnalyzeStmt
+type ExtendedSQL struct {
+	// Select specifies the query for fetching the training data. For example, "select * from iris.train;".
+	Select string
+	// DataSource contains the connection information. For example, "hive://root:root@localhost:10000/churn"
+	DataSource string
+	// Attributes is a map of parsed attribute in the WITH Clause. For example, after parsing
+	// "select ... train ... with train.epoch = 1000, model.hidden_units = [10, 10]",
+	// the Attributes will be {"train.epoch": 1000, "model.hidden_units": [10 10]}.
+	Attributes map[string]interface{}
+	// OriginalSQL record the original SQL statement used to get current IR result
+	// FIXME(typhoonzero): OriginalSQL is a temporary field. Can remove this when all moved to IR
+	OriginalSQL string
 }
 
 // TrainStmt is the intermediate representation for code generation of a training job.
 type TrainStmt struct {
-	// OriginalSQL record the original SQL statement used to get current IR result
-	// FIXME(typhoonzero): OriginalSQL is a temporary field. Can remove this when all moved to IR
-	OriginalSQL string
-	// DataSource contains the connection information. For example, "hive://root:root@localhost:10000/churn"
-	DataSource string
-	// Select specifies the query for fetching the training data. For example, "select * from iris.train;".
-	Select string
+	ExtendedSQL
 	// ValidationSelect specifies the query for fetching the validation data. For example, "select * from iris.val;".
 	ValidationSelect string
 	// ModelImage is the name of the model's Docker image, for example `TO TRAIN a_data_scientist/regressors:v0.2/MyDNNRegressor`
@@ -95,10 +106,6 @@ type TrainStmt struct {
 	// Estimator specifies the estimator type. For example, after parsing "select ... train DNNClassifier WITH ...",
 	// the Estimator will be "DNNClassifier".
 	Estimator string
-	// Attributes is a map of parsed attribute in the WITH Clause. For example, after parsing
-	// "select ... train ... with train.epoch = 1000, model.hidden_units = [10, 10]",
-	// the Attributes will be {"train.epoch": 1000, "model.hidden_units": [10 10]}.
-	Attributes map[string]interface{}
 	// Features contain a map of a list of feature columns in the COLUMN clause.
 	// For multiple COLUMN clauses like
 	//   ```
@@ -125,21 +132,11 @@ func (cl *TrainStmt) SetOriginalSQL(sql string) { cl.OriginalSQL = sql }
 // Please be aware the PredictStmt IR contains the result table name, so the
 // generated Python program is responsible to create and write the result table.
 type PredictStmt struct {
-	// OriginalSQL record the original SQL statement used to get current IR result
-	// FIXME(typhoonzero): OriginalSQL is a temporary field. Can remove this when all moved to IR
-	OriginalSQL string
-	// DataSource contains the connection information. For example, "hive://root:root@localhost:10000/churn"
-	DataSource string
-	// Select specifies the query for fetching the prediction data. For example, "select * from iris.test;".
-	Select string
+	ExtendedSQL
 	// ResultTable specifies the table to store the prediction result.
 	ResultTable string
 	// ResultColumn is the column to store predict result in ResultTable
 	ResultColumn string
-	// Attributes is a map of parsed attribute in the WITH clause. For example, after parsing
-	// "select ... predict ... with predict.batch_size = 32 into ...",
-	// the Attributes will be {"predict.batch_size": 32}
-	Attributes map[string]interface{}
 	// TrainStmt is the TrainStmt used for generating the training job of the corresponding model
 	TrainStmt *TrainStmt
 }
@@ -152,17 +149,7 @@ func (cl *PredictStmt) SetOriginalSQL(sql string) { cl.OriginalSQL = sql }
 
 // AnalyzeStmt is the intermediate representation for code generation of a analysis job
 type AnalyzeStmt struct {
-	// OriginalSQL record the original SQL statement used to get current IR result
-	// FIXME(typhoonzero): OriginalSQL is a temporary field. Can remove this when all moved to IR
-	OriginalSQL string
-	// DataSource contains the connection information. For example, "hive://root:root@localhost:10000/churn"
-	DataSource string
-	// Select specifies the query for fetching the analysis data. For example, "select * from iris.test;".
-	Select string
-	// Attributes is a map of parsed attribute in the WITH clause. For example, after parsing
-	// "select ... analyze ... with analyze.plot_type = "bar"",
-	// the Attributes will be {"analyze.plot_type": "bar"}
-	Attributes map[string]interface{}
+	ExtendedSQL
 	// Explainer types. For example TreeExplainer.
 	Explainer string
 	// TrainStmt is the TrainStmt used for generating the training job of the corresponding model
@@ -180,6 +167,3 @@ type StandardSQL string
 
 // Execute generates and executes code for StandardSQL
 func (sql *StandardSQL) Execute(s Executor) error { return s.ExecuteQuery(sql) }
-
-// SetOriginalSQL sets the original sql string
-func (sql *StandardSQL) SetOriginalSQL(s string) {}
