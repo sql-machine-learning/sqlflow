@@ -15,14 +15,14 @@ package couler
 
 import "html/template"
 
-type sqlStatment struct {
+type sqlStatement struct {
 	OriginalSQL   string
 	IsExtendedSQL bool
 	DockerImage   string
 }
 type coulerFiller struct {
 	DataSource    string
-	SQLStatements []*sqlStatment
+	SQLStatements []*sqlStatement
 }
 
 const coulerTemplateText = `
