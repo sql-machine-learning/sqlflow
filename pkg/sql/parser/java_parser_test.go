@@ -13,20 +13,26 @@
 
 package parser
 
-// ThirdPartyParser abstract a parser of a SQL engine.  For example,
-// Hive, MySQL, TiDB, MaxCompute.
-type ThirdPartyParser interface {
-	Parse(program string) ([]string, int, error)
-	Type() string
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+func TestCommonCasesForHive(t *testing.T) {
+	a := assert.New(t)
+	p := newJavaParser("hive")
+	commonThirdPartyCases(p, a)
 }
 
-// NewThirdPartyParser instantiates a parser.
-func NewThirdPartyParser(typ string) ThirdPartyParser {
-	switch typ {
-	case "mysql", "tidb":
-		return newTiDBParser()
-	case "hive", "calcite", "maxcompute":
-		return newJavaParser(typ)
-	}
-	return nil
+func TestCommonCasesForMaxCompute(t *testing.T) {
+	a := assert.New(t)
+	p := newJavaParser("maxcompute")
+	commonThirdPartyCases(p, a)
+}
+
+func TestCommonCasesForCalcite(t *testing.T) {
+	a := assert.New(t)
+	p := newJavaParser("calcite")
+	commonThirdPartyCases(p, a)
 }

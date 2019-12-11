@@ -29,7 +29,7 @@ type javaParser struct {
 	typ string
 }
 
-// typ should be either "hiveql" or "calcite".
+// typ should be either "hive" or "calcite".
 func newJavaParser(typ string) *javaParser {
 	return &javaParser{typ: typ}
 }
@@ -40,7 +40,11 @@ type parseResult struct {
 	Error      string   `json:"error"`
 }
 
-func (p *javaParser) Split(program string) ([]string, int, error) {
+func (p *javaParser) Type() string {
+	return "java"
+}
+
+func (p *javaParser) Parse(program string) ([]string, int, error) {
 	// cwd is used to store train scripts and save output models.
 	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
 	if err != nil {

@@ -37,10 +37,14 @@ func newTiDBParser() *tidbParser {
 		re:  regexp.MustCompile(`.* near "([^"]+)".*`)}
 }
 
-// Split a SQL program into zero, one, or more statements.  In the
+func (p *tidbParser) Type() string {
+	return "tidb"
+}
+
+// Parse a SQL program into zero, one, or more statements.  In the
 // case of error, it returns the location of the parsing error in
 // program and an error message.
-func (p *tidbParser) Split(program string) ([]string, int, error) {
+func (p *tidbParser) Parse(program string) ([]string, int, error) {
 	if p.psr == nil || p.re == nil {
 		return nil, -1, fmt.Errorf("parser is not initialized")
 	}

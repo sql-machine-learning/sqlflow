@@ -43,7 +43,10 @@ func extendedSyntaxParse(sql string) (*extendedSelect, int, error) {
 }
 
 func thirdPartyParse(dbms, sqlProgram string) ([]statementParseResult, int, error) {
-	sqls, i, err := parser.ParseAndSplit(dbms, sqlProgram)
+	// TODO(yi): We are moving the current file into package
+	// parser.  Here it is a contemporary status.
+	p := parser.NewThirdPartyParser(dbms)
+	sqls, i, err := p.Parse(sqlProgram)
 	if err != nil {
 		return nil, -1, fmt.Errorf("thirdPartyParse failed: %v", err)
 	}
