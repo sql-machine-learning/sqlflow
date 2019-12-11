@@ -157,7 +157,82 @@ func waitUntilComplete(job pb.Job) error {
 	return nil
 }
 
-func fetchWorkflowLog(job pb.Job) (string, error) {
+func getPodNameByStepGroup(wf *wfv1.Workflow, stepGroupName string) (string, error) {
+	stepGroupNode, ok := wf.Status.Nodes[stepGroupName]
+	if !ok {
+		return "", fmt.Errorf("getPodNameByStepGroup: stepGroup %v doesn't exist", stepGroupName)
+	}
+	if err := checkNodeType(wfv1.NodeTypeStepGroup, stepGroupNode.Type); err != nil {
+		return "", fmt.Errorf("getPodNameByStepGroup: %v", err)
+	}
+	if l := len(stepGroupNode.Children); l != 1 {
+		return "", fmt.Errorf("getPodNameByStepGroup: unexpected len(stepGroupNode.Children) 1 != %v", l)
+	}
+	return stepGroupNode.Children[0], nil
+}
+
+func getNextStepGroup(wf *wfv1.Workflow, current string) (string, error) {
+	stepGroupNode := wf.Status.Nodes[current]
+	if err := checkNodeType(wfv1.NodeTypeStepGroup, stepGroupNode.Type); err != nil {
+		return "", fmt.Errorf("getNextStepGroup: %v", err)
+	}
+	if l := len(stepGroupNode.Children); l != 1 {
+		return "", fmt.Errorf("getNextStepGroup: unexpected len(stepGroupNode.Children) 1 != %v", l)
+	}
+	podNode := wf.Status.Nodes[stepGroupNode.Children[0]]
+	if err := checkNodeType(wfv1.NodeTypePod, podNode.Type); err != nil {
+		return "", fmt.Errorf("getNextStepGroup %v", err)
+	}
+
+	if len(podNode.Children) == 0 {
+		return "", nil
+	}
+	if l := len(podNode.Children); l != 1 {
+		return "", fmt.Errorf("getNextStepGroup: unexpected len(podNode.Children) 1 != %v", l)
+	}
+	return podNode.Children[0], nil
+}
+
+func getCurrentStepGroup(wf *wfv1.Workflow, job pb.Job) (string, error) {
+	if job.StepId == "" {
+		stepNode := wf.Status.Nodes[job.Id]
+		if err := checkNodeType(wfv1.NodeTypeSteps, stepNode.Type); err != nil {
+			return "", fmt.Errorf("getCurrentStepGroup: %v", err)
+		}
+		if l := len(stepNode.Children); l != 1 {
+			return "", fmt.Errorf("getCurrentStepGroup: unexpected len(stepNode.Children) 1 != %v", l)
+		}
+		return stepNode.Children[0], nil
+	}
+	return getNextStepGroup(wf, job.StepId)
+}
+
+func getCurrentPodName(wf *wfv1.Workflow, job pb.Job) (string, error) {
+	if err := checkNodeType(wfv1.NodeTypeSteps, wf.Status.Nodes[job.Id].Type); err != nil {
+		return "", fmt.Errorf("getPodNameByStepId error: %v", err)
+	}
+
+	stepGroupName, err := getCurrentStepGroup(wf, job)
+	if err != nil {
+		return "", err
+	}
+	if stepGroupName == "" {
+		return "", nil
+	}
+
+	return getPodNameByStepGroup(wf, stepGroupName)
+}
+
+func fetchWorkflowLog(job pb.Job) (string, pb.Job, error) {
+	// if job.step_id == "" {
+	//    NOTE(Yancey): wait mean wait for Running
+	//    my_step := first step
+	// } else {
+	//    my_step := next(job.step_id)
+	// }
+	//
+	// if my_step is pending/running, return ""
+	// if my_step is complete, return (logs, my_step_id)
 	if err := waitUntilComplete(job); err != nil {
 		return "", err
 	}

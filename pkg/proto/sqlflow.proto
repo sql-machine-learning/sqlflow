@@ -37,6 +37,7 @@ service SQLFlow {
 
 message Job {
     string id = 1;
+    string step_id = 2;
 }
 
 message JobStatus {

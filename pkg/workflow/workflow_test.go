@@ -112,19 +112,6 @@ func kubectlCreateFromYAML(content string) (string, error) {
 	return getWorkflowID(string(output))
 }
 
-func TestFetchWorkflowLog(t *testing.T) {
-	if os.Getenv("SQLFLOW_TEST") != "workflow" {
-		t.Skip("argo: skip workflow tests")
-	}
-	a := assert.New(t)
-
-	workflowID, err := kubectlCreateFromYAML(argoYAML)
-	a.NoError(err)
-	logs, err := fetchWorkflowLog(pb.Job{Id: workflowID})
-	a.NoError(err)
-	a.Equal(argoYAMLOutput, logs)
-}
-
 func TestGetStepPodNames(t *testing.T) {
 	if os.Getenv("SQLFLOW_TEST") != "workflow" {
 		t.Skip("argo: skip workflow tests")
@@ -139,4 +126,97 @@ func TestGetStepPodNames(t *testing.T) {
 	podNames, err := getStepPodNames(wf.Status.Nodes, pb.Job{Id: workflowID})
 	a.NoError(err)
 	a.Equal(3, len(podNames))
+}
+
+func TestGetCurrentStepGroup(t *testing.T) {
+	if os.Getenv("SQLFLOW_TEST") != "workflow" {
+		t.Skip("argo: skip workflow tests")
+	}
+	a := assert.New(t)
+	output := []byte(testWorkflowDescription)
+	wf, err := parseWorkflowResource(output)
+	a.NoError(err)
+
+	stepGroupNames := []string{
+		"",
+		"steps-7lxxs-1184503397",
+		"steps-7lxxs-43875568",
+		"steps-7lxxs-43331115",
+		""}
+	for i := 0; i < len(stepGroupNames)-1; i++ {
+		currentStepGroup, err := getCurrentStepGroup(wf, pb.Job{Id: "steps-7lxxs", StepId: stepGroupNames[i]})
+		a.NoError(err)
+		a.Equal(stepGroupNames[i+1], currentStepGroup)
+	}
+}
+
+func TestGetNextStepGroup(t *testing.T) {
+	if os.Getenv("SQLFLOW_TEST") != "workflow" {
+		t.Skip("argo: skip workflow tests")
+	}
+	a := assert.New(t)
+	output := []byte(testWorkflowDescription)
+	wf, err := parseWorkflowResource(output)
+	a.NoError(err)
+
+	stepGroupNames := []string{
+		"steps-7lxxs-1184503397",
+		"steps-7lxxs-43875568",
+		"steps-7lxxs-43331115",
+		""}
+	for i := 0; i < len(stepGroupNames)-1; i++ {
+		next, err := getNextStepGroup(wf, stepGroupNames[i])
+		a.NoError(err)
+		a.Equal(stepGroupNames[i+1], next)
+	}
+}
+
+func TestGetPodNameByStepGroup(t *testing.T) {
+	if os.Getenv("SQLFLOW_TEST") != "workflow" {
+		t.Skip("argo: skip workflow tests")
+	}
+	a := assert.New(t)
+	output := []byte(testWorkflowDescription)
+	wf, err := parseWorkflowResource(output)
+	a.NoError(err)
+
+	stepGroupNames := []string{
+		"steps-7lxxs-1184503397",
+		"steps-7lxxs-43875568",
+		"steps-7lxxs-43331115"}
+	podNames := []string{
+		"steps-7lxxs-2267726410",
+		"steps-7lxxs-1263033216",
+		"steps-7lxxs-1288663778"}
+	for i := 0; i < len(stepGroupNames); i++ {
+		podName, err := getPodNameByStepGroup(wf, stepGroupNames[i])
+		a.NoError(err)
+		a.Equal(podNames[i], podName)
+	}
+}
+
+func TestGetCurrentPodName(t *testing.T) {
+	if os.Getenv("SQLFLOW_TEST") != "workflow" {
+		t.Skip("argo: skip workflow tests")
+	}
+	a := assert.New(t)
+	output := []byte(testWorkflowDescription)
+	wf, err := parseWorkflowResource(output)
+	a.NoError(err)
+
+	stepIds := []string{
+		"",
+		"steps-7lxxs-1184503397",
+		"steps-7lxxs-43875568",
+		"steps-7lxxs-43331115"}
+	podNames := []string{
+		"steps-7lxxs-2267726410",
+		"steps-7lxxs-1263033216",
+		"steps-7lxxs-1288663778",
+		""}
+	for i := 0; i < len(stepIds); i++ {
+		currentPod, err := getCurrentPodName(wf, pb.Job{Id: "steps-7lxxs", StepId: stepIds[i]})
+		a.NoError(err)
+		a.Equal(podNames[i], currentPod)
+	}
 }
