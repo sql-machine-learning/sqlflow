@@ -57,16 +57,76 @@ func getWorkflowStatusPhase(job pb.Job) (wfv1.NodePhase, error) {
 	return wf.Status.Phase, nil
 }
 
-func getWorkflowPodName(job pb.Job) (string, error) {
-	cmd := exec.Command("kubectl", "get", "pods",
-		fmt.Sprintf(`--selector=workflows.argoproj.io/workflow=%s`, job.Id),
-		"-o", "jsonpath={.items[0].metadata.name}")
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return "", fmt.Errorf("getWorkflowPodName error: %v\n%v", string(output), err)
+func checkNodeType(expected, actual wfv1.NodeType) error {
+	if expected != actual {
+		return fmt.Errorf("checkNodeType failed %v(expected) != %v(actual)", expected, actual)
+	}
+	return nil
+}
+
+func getStepPodNames(nodes map[string]wfv1.NodeStatus, job pb.Job) ([]string, error) {
+	stepNode := nodes[job.Id]
+	if err := checkNodeType(wfv1.NodeTypeSteps, stepNode.Type); err != nil {
+		return nil, fmt.Errorf("getStepPodNames: %v", err)
 	}
 
-	return string(output), nil
+	if l := len(stepNode.Children); l != 1 {
+		return nil, fmt.Errorf("getStepPodNames: unexpected len(stepNode.Children) 1 != %v", l)
+	}
+	stepGroupNode := nodes[stepNode.Children[0]]
+
+	podNames := []string{}
+	for {
+		if err := checkNodeType(wfv1.NodeTypeStepGroup, stepGroupNode.Type); err != nil {
+			return nil, fmt.Errorf("getStepPodNames: %v", err)
+		}
+		if l := len(stepGroupNode.Children); l != 1 {
+			return nil, fmt.Errorf("getStepPodNames: unexpected len(stepGroupNode.Children) 1 != %v", l)
+		}
+		podNode := nodes[stepGroupNode.Children[0]]
+		if err := checkNodeType(wfv1.NodeTypePod, podNode.Type); err != nil {
+			return nil, fmt.Errorf("getStepPodNames: %v", err)
+		}
+		podNames = append(podNames, podNode.Name)
+
+		if len(podNode.Children) == 0 {
+			break
+		}
+
+		if l := len(podNode.Children); l != 1 {
+			return nil, fmt.Errorf("getStepPodNames: unexpected len(podNode.Children) 1 != %v", l)
+		}
+		stepGroupNode = nodes[podNode.Children[0]]
+	}
+
+	outBoundNodes := stepNode.OutboundNodes
+	if l := len(outBoundNodes); l != 1 {
+		return nil, fmt.Errorf("getStepPodNames: unexpected len(outBoundNodes) 1 != %v", l)
+	}
+	if outBoundNodes[0] != stepGroupNode.Children[0] {
+		return nil, fmt.Errorf("getStepPodNames: outputBoundNode %v != podNode %v", outBoundNodes[0], stepGroupNode.Children[0])
+	}
+
+	return podNames, nil
+}
+
+// NOTE(tony): Argo may reschedule a failed pod, so the pod name may change afterwards
+func getWorkflowPodName(job pb.Job) (string, error) {
+	wf, err := getWorkflowResource(job)
+	if err != nil {
+		return "", err
+	}
+
+	switch wf.Status.Nodes[job.Id].Type {
+	case wfv1.NodeTypePod:
+		return wf.Status.Nodes[job.Id].Name, nil
+	case wfv1.NodeTypeSteps:
+		// TODO(tony): return pod names
+		_, err := getStepPodNames(wf.Status.Nodes, job)
+		return "", err
+	default:
+		return "", fmt.Errorf("getWorkflowPodName: unsupported NodeType %v", wf.Status.Nodes[job.Id].Type)
+	}
 }
 
 func getPodLogs(podName string) (string, error) {
@@ -80,11 +140,11 @@ func getPodLogs(podName string) (string, error) {
 	return string(output), nil
 }
 
-func fetchWorkflowLog(job pb.Job) (string, error) {
+func waitUntilComplete(job pb.Job) error {
 	for {
 		statusPhase, err := getWorkflowStatusPhase(job)
 		if err != nil {
-			return "", err
+			return err
 		}
 
 		// FIXME(tony): what if it is a long running job
@@ -92,6 +152,14 @@ func fetchWorkflowLog(job pb.Job) (string, error) {
 			break
 		}
 		time.Sleep(time.Second)
+	}
+
+	return nil
+}
+
+func fetchWorkflowLog(job pb.Job) (string, error) {
+	if err := waitUntilComplete(job); err != nil {
+		return "", err
 	}
 
 	// FIXME(tony): what if there are multiple pods
