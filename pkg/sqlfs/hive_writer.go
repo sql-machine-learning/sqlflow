@@ -80,6 +80,13 @@ func uploadCSVFile(csv *os.File, db *sql.DB, hivePath, table, user, passwd strin
 }
 
 func newHiveWriter(db *sql.DB, hivePath, table, user, passwd string) (io.WriteCloser, error) {
+	if e := dropTable(db, table); e != nil {
+		return nil, fmt.Errorf("cannot drop table %s: %v", table, e)
+	}
+	if e := createTable(db, "hive", table); e != nil {
+		return nil, fmt.Errorf("cannot create table %s: %v", table, e)
+	}
+
 	flush, csv, e := flushToCSV()
 	if e != nil {
 		return nil, e
