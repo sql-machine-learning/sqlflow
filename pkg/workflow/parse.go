@@ -15,6 +15,7 @@ package workflow
 
 import (
 	"encoding/json"
+
 	wfv1 "github.com/argoproj/argo/pkg/apis/workflow/v1alpha1"
 )
 

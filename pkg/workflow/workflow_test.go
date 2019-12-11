@@ -15,12 +15,15 @@ package workflow
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"os"
 	"os/exec"
-	pb "sqlflow.org/sqlflow/pkg/proto"
+	"strings"
 	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
 const (
@@ -33,16 +36,18 @@ spec:
   templates:
   - name: whalesay              # name of the template
     container:
-      image: docker/whalesay
+      image: docker/whalesay:sqlflow
       command: [echo]
-      args: ["hello world"]
+      args: ["hello world L1\nhello world L2\nhello world L3"]
       resources:                # limit the resources
         limits:
           memory: 32Mi
           cpu: 100m
 `
-	argoYAMLOutput = `hello world
-`
+	argoYAMLOutput = `hello world L1
+hello world L2
+hello world L3`
+
 	stepYAML = `apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:
@@ -120,9 +125,20 @@ func TestFetchWorkflowLog(t *testing.T) {
 
 	workflowID, err := kubectlCreateFromYAML(argoYAML)
 	a.NoError(err)
-	logs, err := fetchWorkflowLog(pb.Job{Id: workflowID})
-	a.NoError(err)
-	a.Equal(argoYAMLOutput, logs)
+	var offset = ""
+	token := &pb.FetchToken{Job: &pb.Job{Id: workflowID}, LogOffset: offset}
+	messages := []string{}
+	for {
+		r, e := fetchWorkflowLog(token, 256)
+		a.NoError(e)
+		token = r.GetToken()
+		messages = append(messages, r.GetLogs().GetContent()...)
+		if token.GetNoMoreLog() {
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
+	a.Equal(argoYAMLOutput, strings.Join(messages, "\n"))
 }
 
 func TestGetStepPodNames(t *testing.T) {
@@ -132,11 +148,11 @@ func TestGetStepPodNames(t *testing.T) {
 	a := assert.New(t)
 	workflowID, err := kubectlCreateFromYAML(stepYAML)
 	a.NoError(err)
-	err = waitUntilComplete(pb.Job{Id: workflowID})
+	err = waitUntilComplete(&pb.Job{Id: workflowID})
 	a.NoError(err)
-	wf, err := getWorkflowResource(pb.Job{Id: workflowID})
+	wf, err := getWorkflowResource(&pb.Job{Id: workflowID})
 	a.NoError(err)
-	podNames, err := getStepPodNames(wf.Status.Nodes, pb.Job{Id: workflowID})
+	podNames, err := getStepPodNames(wf.Status.Nodes, &pb.Job{Id: workflowID})
 	a.NoError(err)
 	a.Equal(3, len(podNames))
 }

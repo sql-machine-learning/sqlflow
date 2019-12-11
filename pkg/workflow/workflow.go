@@ -17,11 +17,14 @@ import (
 	"fmt"
 	"os/exec"
 	"regexp"
+	"strings"
 	"time"
 
 	wfv1 "github.com/argoproj/argo/pkg/apis/workflow/v1alpha1"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
+
+var defaultFetchLogsLimitBytes = 1024
 
 func isCompletedPhase(phase wfv1.NodePhase) bool {
 	return phase == wfv1.NodeSucceeded ||
@@ -40,8 +43,8 @@ func getWorkflowID(output string) (string, error) {
 	return wf[1], nil
 }
 
-func getWorkflowResource(job pb.Job) (*wfv1.Workflow, error) {
-	cmd := exec.Command("kubectl", "get", "wf", job.Id, "-o", "json")
+func getWorkflowResource(job *pb.Job) (*wfv1.Workflow, error) {
+	cmd := exec.Command("kubectl", "get", "wf", job.GetId(), "-o", "json")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("getWorkflowResource error: %v\n%v", string(output), err)
@@ -49,7 +52,7 @@ func getWorkflowResource(job pb.Job) (*wfv1.Workflow, error) {
 	return parseWorkflowResource(output)
 }
 
-func getWorkflowStatusPhase(job pb.Job) (wfv1.NodePhase, error) {
+func getWorkflowStatusPhase(job *pb.Job) (wfv1.NodePhase, error) {
 	wf, err := getWorkflowResource(job)
 	if err != nil {
 		return "", fmt.Errorf("getWorkflowStatusPhase error: %v", err)
@@ -64,7 +67,7 @@ func checkNodeType(expected, actual wfv1.NodeType) error {
 	return nil
 }
 
-func getStepPodNames(nodes map[string]wfv1.NodeStatus, job pb.Job) ([]string, error) {
+func getStepPodNames(nodes map[string]wfv1.NodeStatus, job *pb.Job) ([]string, error) {
 	stepNode := nodes[job.Id]
 	if err := checkNodeType(wfv1.NodeTypeSteps, stepNode.Type); err != nil {
 		return nil, fmt.Errorf("getStepPodNames: %v", err)
@@ -111,7 +114,7 @@ func getStepPodNames(nodes map[string]wfv1.NodeStatus, job pb.Job) ([]string, er
 }
 
 // NOTE(tony): Argo may reschedule a failed pod, so the pod name may change afterwards
-func getWorkflowPodName(job pb.Job) (string, error) {
+func getWorkflowPodName(job *pb.Job) (string, error) {
 	wf, err := getWorkflowResource(job)
 	if err != nil {
 		return "", err
@@ -129,18 +132,19 @@ func getWorkflowPodName(job pb.Job) (string, error) {
 	}
 }
 
-func getPodLogs(podName string) (string, error) {
+func getPodLogs(podName string, offset string, limitBytes int) (string, error) {
 	// NOTE(tony): A workflow pod usually contains two container: main and wait
 	// I believe wait is used for management by Argo, so we only need to care about main.
-	cmd := exec.Command("kubectl", "logs", podName, "main")
+	cmd := exec.Command("kubectl", "logs", podName, "main", "--timestamps=true", fmt.Sprintf("--limit-bytes=%d", limitBytes), fmt.Sprintf("--since-time=%s", offset))
 	output, err := cmd.CombinedOutput()
+
 	if err != nil {
 		return "", fmt.Errorf("getPodLogs error: %v\n%v", string(output), err)
 	}
 	return string(output), nil
 }
 
-func waitUntilComplete(job pb.Job) error {
+func waitUntilComplete(job *pb.Job) error {
 	for {
 		statusPhase, err := getWorkflowStatusPhase(job)
 		if err != nil {
@@ -157,18 +161,82 @@ func waitUntilComplete(job pb.Job) error {
 	return nil
 }
 
-func fetchWorkflowLog(job pb.Job) (string, error) {
-	if err := waitUntilComplete(job); err != nil {
-		return "", err
-	}
-
-	// FIXME(tony): what if there are multiple pods
-	podName, err := getWorkflowPodName(job)
+func fetchWorkflowLog(token *pb.FetchToken, limitBytes int) (*pb.FetchResponse, error) {
+	podName, err := getWorkflowPodName(token.GetJob())
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return getPodLogs(podName)
+	// return empty job logs if the pod is pending
+	statusPhase, err := getWorkflowStatusPhase(token.GetJob())
+	if statusPhase == wfv1.NodePending {
+		return &pb.FetchResponse{}, nil
+	}
+	podLogs, err := getPodLogs(podName, token.GetLogOffset(), limitBytes)
+	content, newOffset, err := parseLastOffsetAndContent(podLogs, token.GetLogOffset())
+	if err != nil {
+		return nil, err
+	}
+
+	// there is no more log when:
+	// 1. the offset has not been updated, and
+	// 2. the pod is completed.
+	var noMoreLog = false
+	if token.GetLogOffset() == newOffset && isCompletedPhase(statusPhase) {
+		noMoreLog = true
+	}
+
+	return &pb.FetchResponse{
+		Token: &pb.FetchToken{
+			Job: &pb.Job{
+				Id: token.GetJob().GetId(),
+			},
+			LogOffset: newOffset,
+			NoMoreLog: noMoreLog,
+		},
+		Logs: &pb.FetchResponse_Logs{
+			Content: content,
+		},
+	}, nil
+}
+
+func parseLog(content string) (string, string, error) {
+	reTimestamps := regexp.MustCompile(`([^\s]+)\s(.*)$`)
+	msg := reTimestamps.FindStringSubmatch(content)
+	if len(msg) != 3 {
+		return "", "", fmt.Errorf("logs format should be `<timestamp> <content>`")
+	}
+	return msg[1], msg[2], nil
+}
+
+func parseLastOffsetAndContent(messages string, oldOffset string) ([]string, string, error) {
+	buff := []string{}
+	var offset = oldOffset
+	lastLineIsCompleted := false
+	if strings.HasSuffix(messages, "\n") {
+		lastLineIsCompleted = true
+	}
+
+	msgLines := strings.Split(strings.TrimSpace(messages), "\n")
+	// skip the current offset line
+	if oldOffset != "" {
+		msgLines = msgLines[1:]
+	}
+
+	if !lastLineIsCompleted && len(msgLines) > 0 {
+		msgLines = msgLines[:len(msgLines)-1]
+	}
+
+	// `kubectl logs --timestamps=true` returns logs with prefix RFC
+	for _, message := range msgLines {
+		newOffset, content, e := parseLog(message)
+		if e != nil {
+			continue
+		}
+		buff = append(buff, content)
+		offset = newOffset
+	}
+	return buff, offset, nil
 }
 
 // Submit the Argo workflow and returns the workflow ID
