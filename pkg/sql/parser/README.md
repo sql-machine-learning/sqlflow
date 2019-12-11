@@ -22,7 +22,7 @@ An alternative is to re-implement SQLFlow for each SQL engine as their extension
 
 We design SQLFlow as a wrapper of these SQL engines, which means that SQL statements come directly to SQLFlow and SQLFlow decides if it follows the dialect syntax of the specified SQL engine. If so, SQLFlow proxies the statement to the SQL engine, otherwise, SQLFlow translates it into a Python program, a.k.a., the submitter program, which calls the SQL engine and the AI engine to train or to predict.
 
-With this design, the key challenge becomes to judge if a SQL statement is acceptable by a SQL engine's parser. We propose the following solution: 
+With this design, the key challenge becomes to judge if a SQL statement is acceptable by a SQL engine's parser. We propose the following solution:
 
 ```go
 func Parse(sql string) (acceptable bool, err error) {
@@ -31,26 +31,26 @@ func Parse(sql string) (acceptable bool, err error) {
     if err == nil {
         return true, ni
     }
-    
+
     // Error message from a parser should contain error position.
-    pos := parseErrorPosition(err) 
+    pos := parseErrorPosition(err)
     leftPart = sql[:pos]
     rightPart = sql[pos:]
 
     errLeft := sql_engine.Parse(leftPart)
     // In this case, the SQL is not acceptable due to the syntax error
     if err != nil {
-       return false, err 
+       return false, err
     }
 
-    // If leftPart is acceptable, it is a legitimate  SELECT statement. We then try right part with SQLFlow parser. 
+    // If leftPart is acceptable, it is a legitimate  SELECT statement. We then try right part with SQLFlow parser.
     errRight := SQLFlow.Parse(rightPart)
     if err != nil {
-        return false, errRight 
+        return false, errRight
     }
 
     // The left part is a SELECT and the right part is TO TRAIN or TO PREDICT.
-    return false, nil 
+    return false, nil
 }
 ```
 
@@ -100,14 +100,14 @@ func Parse(sql_program string) (nodes, error) {
     allNodes := make([]nodes, 0)
     while len(sql_program) > 0 {
         // Start parsing by the third party parser
-        nodes, err := tpp.Parse(sql_program)
+        nodes, err := parser.Parse(sql_program)
         if err != nil {
             // Error message from a parser should contain error position.
             pos := parseErrorPosition(err)
             leftPart = sql[:pos]
             rightPart = sql[pos:]
 
-            nodes, errLeft := tpp.Parse(leftPart)
+            nodes, errLeft := parser.Parse(leftPart)
             // In this case, the SQL is not acceptable due to the syntax error
             if errLeft != nil {
                return nil, err

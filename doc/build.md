@@ -50,10 +50,12 @@ Then, we can build and run tests.
 
 ```bash
 go generate ./...
-SQLFLOW_TEST_DB=mysql go test -v -p 1 ./...
+PYTHONPATH=/sqlflow/python SQLFLOW_TEST_DB=mysql go test -v -p 1 ./...
 ```
 
 The commandline `go generate` is necessary to call `protoc` for translating gRPC interface and to call `goyacc` for generating the parser.
+
+The environment variable `PYTHONPATH=$GOPATH/src/sqlflow.org/sqlflow/python` ensures the python part of SQLFlow in the Docker image is up to date.
 
 The environment variable `SQLFLOW_TEST_DB=mysql` specify MySQL as the SQL engine during testing.  You can also choose `hive` for Apache Hive and `maxcompute` for Alibaba MaxCompute.
 

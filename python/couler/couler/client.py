@@ -38,7 +38,7 @@ def run(args):
         os.environ["couler_cluster_config"] = cluster_config_path
 
     # TODO: use mode to decide how to run
-    call(["python", args.file])
+    call(["python", args.file], env=os.environ)
 
 
 def main():

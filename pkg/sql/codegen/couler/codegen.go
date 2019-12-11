@@ -77,6 +77,10 @@ func Run(programIR ir.SQLProgram, session *pb.Session) (string, error) {
 	return program.String(), nil
 }
 
+func clusterConfigFile() string {
+	return os.Getenv("SQLFLOW_COULER_CLUSTER_CONFIG")
+}
+
 func writeArgoFile(coulerFileName string) (string, error) {
 	argoYaml, err := ioutil.TempFile("/tmp", "sqlflow-argo*.yaml")
 	if err != nil {
@@ -84,7 +88,13 @@ func writeArgoFile(coulerFileName string) (string, error) {
 	}
 	defer argoYaml.Close()
 
-	cmd := exec.Command("couler", "run", "--mode", "argo", "--file", coulerFileName)
+	var cmd *exec.Cmd
+	if clusterConfigFile() != "" {
+		cmd = exec.Command("couler", "run", "--mode", "argo", "--file", coulerFileName, "--cluster_config", clusterConfigFile())
+	} else {
+		cmd = exec.Command("couler", "run", "--mode", "argo", "--file", coulerFileName)
+	}
+
 	cmd.Env = append(os.Environ())
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -103,7 +113,7 @@ func writeCoulerFile(programIR ir.SQLProgram, session *pb.Session) (string, erro
 
 	coulerFile, err := ioutil.TempFile("/tmp", "sqlflow-couler*.py")
 	if err != nil {
-		return "", fmt.Errorf("")
+		return "", fmt.Errorf("write couler program error: %v", err)
 	}
 	defer coulerFile.Close()
 	if _, err := coulerFile.Write([]byte(program)); err != nil {
