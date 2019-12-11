@@ -26,13 +26,14 @@ For boosting tree models, especially models with XGBoost, there is a small group
 With the introduction of auto hyperparameter tuning, we hope that users don't need to specify the `num_round` and `max_depth` values in the following SQL statement.
 
 ```sql
-SELECT * FROM a_dataset_table
-TO TRAIN a_data_scientist/xgboost_models:v0.5/a_gbtree_model
+SELECT * FROM train_data_table
+TO TRAIN xgboost:gbtree
 WITH
     objective=multi:softmax,
     eta=1,
     num_round=[20, 100],
     max_depth=[],
+    validation_dataset="SELECT * FROM test_data_table"
 LABEL class
 INTO my_xgb_model;
 ```
@@ -70,16 +71,17 @@ Consider the following example program.
 
 ```sql
 SELECT * FROM a, b WHERE a.id = b.id INTO c;
-SELECT * FROM c TO TRAIN model_def WITH objective=multi:softmax, eta=1 LABEL class INTO my_xgb_model;
+SELECT * FROM c TO TRAIN model_def 
+    WITH objective=multi:softmax, eta=1, validation_dataset="select * from d;" 
+    INTO my_xgb_model;
 ```
 
 The `codegen_couler.go` might generate the following Couler program.
 
 ```python
-couler.maxcompute.run("""SELECT * FROM a, b WHERE a.id = b.id INTO c;
-                         SELECT * FROM c INTO temp""")
-couler.maxcompute.export(table="temp", file="/hdfs/temp")
-couler.katib.train(model_def, data="/hdfs/temp")
+couler.maxcompute.run("""SELECT * FROM a, b WHERE a.id = b.id INTO c;""")
+couler.katib.train(model=model_def, hyperparameters={"objective": "multi:softmax", 
+    "eta": 1},  train_data="SELECT * FROM c", validation_data="select * from d")
 ```
 
 ## `couler.katib.train(...)`
@@ -87,5 +89,24 @@ couler.katib.train(model_def, data="/hdfs/temp")
 Considering Katib itself supports multiple models and frameworks, and more may come in the future, we introduce the following Couler function.
 
 ```python
-def couler.katib.train(model_def=None, hyperparameters={})
+def couler.katib.train(model=None, hyperparameters={}, datasource=None, 
+    train_data=None, validation_data=None)
 ```
+
+The arguments in `couler.katib.train`,
+
+- `model` defines the training model, e.g., `xgboost:gbtree`.
+- `hyperparameters` specifies hyperparameters for model given in `model`.
+- `datasource` specifies the source of training and validation data.
+- `train_data` defines SQL query to fetch training data.
+- `validation_data` defines SQL query to fetch validation data.
+
+## Pipeline
+
+The pipeline from SQL statements to Argo workflow:
+
+- SQLFlow generate `IR` from input SQL statements.
+- `couler_katib_codegen.go` take this `IR` as input and obtains parameters for Katib training job.
+- `couler_katib_codegen.go` generates a Python program which invokes `couler.katib.train`. At the same time, `couler_katib_codegen.go` fills this API's arguments with Katib parameters.
+- `couler.katib.train` generates the manifest for Katib job and fills it in Argo workflow yaml as a step.
+- To execute Argo workflow on Kubernetes and Argo runs Katib job.
