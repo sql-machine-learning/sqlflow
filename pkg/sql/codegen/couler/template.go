@@ -13,15 +13,16 @@
 
 package couler
 
-import "html/template"
+import "text/template"
 
 type sqlStatment struct {
 	OriginalSQL   string
 	IsExtendedSQL bool
 	DockerImage   string
 	// CreateTmpTable and Select are used to create a step to generate temporary table for training
-	CreateTmpTable bool
-	Select         string
+	CreateTmpTable   bool
+	Select           string
+	SQLFlowSubmitter string
 }
 type coulerFiller struct {
 	DataSource    string
@@ -35,14 +36,15 @@ datasource = "{{ .DataSource }}"
 {{ range $ss := .SQLStatements }}
 	{{if $ss.IsExtendedSQL }}
 train_sql = '''{{ $ss.OriginalSQL }}'''
+# FIXME(typhoonzero): MaxCompute do not support "create table as (select..)" use "create table as select ..." for now.
 		{{if $ss.CreateTmpTable }}
-tmp_table_name = uuid.uuid4().hex[:6].upper()
-create_sql = '''CREATE TABLE %s AS (%s)''' % (tmp_table_name, '''{{$ss.Select}}''')
+tmp_table_name = "_".join(["tmp", uuid.uuid4().hex[:6].upper()])
+create_sql = '''CREATE TABLE %s AS %s''' % (tmp_table_name, '''{{$ss.Select}}'''.strip("\n"))
 # form a train SQL using the created table
 train_sql = train_sql.replace('''{{$ss.Select}}''', "SELECT * FROM %s " % tmp_table_name)
-couler.run_container(command='''repl -e "%s" --datasource="%s" && repl -e "%s" --datasource="%s"''' % (create_sql, datasource, train_sql, datasource), image="{{ $ss.DockerImage }}")
+couler.run_container(command='''repl -e "%s" --datasource="%s" && repl -e "%s" --datasource="%s"''' % (create_sql, datasource, train_sql, datasource), image="{{ $ss.DockerImage }}", env={"SQLFLOW_submitter": "{{$ss.SQLFlowSubmitter}}"})
 		{{else}}
-couler.run_container(command='''repl -e "%s" --datasource="%s"''' % (train_sql, datasource), image="{{ $ss.DockerImage }}")
+couler.run_container(command='''repl -e "%s" --datasource="%s"''' % (train_sql, datasource), image="{{ $ss.DockerImage }}", env={"SQLFLOW_submitter": "{{$ss.SQLFlowSubmitter}}"})
 		{{end}}
 	{{else}}
 # TODO(yancey1989): 

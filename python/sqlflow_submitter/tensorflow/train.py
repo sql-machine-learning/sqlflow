@@ -59,7 +59,7 @@ def parse_sparse_feature(features, label, feature_column_names, feature_metas):
     return features_dict, label
 
 
-class PrintStatusHook(tf.estimator.LoggingTensorHook):
+class PrintStatusHook(tf.compat.v1.estimator.LoggingTensorHook):
     def __init__(self, prefix="", every_n_iter=None, every_n_secs=None,
                at_end=False, formatter=None):
         super().__init__([], every_n_iter=every_n_iter, every_n_secs=every_n_secs,
@@ -111,7 +111,8 @@ def train(is_keras_model,
     # TODO(typhoonzero): when enable verbose levels like 0, 1, 2 to show debug logs.
     # if verbose > 0:
     #     tf.get_logger().setLevel(logging.INFO)
-    conn = connect_with_data_source(datasource)
+    if not is_pai:
+        conn = connect_with_data_source(datasource)
     model_params.update(feature_columns)
     if not is_keras_model:
         model_params["model_dir"] = save

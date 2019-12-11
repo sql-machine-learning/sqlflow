@@ -48,6 +48,7 @@ func Run(programIR ir.SQLProgram, session *pb.Session) (string, error) {
 				ss.CreateTmpTable = true
 			}
 			ss.Select = t.Select
+			ss.SQLFlowSubmitter = os.Getenv("SQLFLOW_submitter")
 			ss.OriginalSQL = sqlIR.(*ir.TrainStmt).OriginalSQL
 		case *ir.PredictStmt:
 			ss.IsExtendedSQL = true

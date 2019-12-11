@@ -511,6 +511,27 @@ func TestEnd2EndMySQLWorkflow(t *testing.T) {
 		t.Fatalf("prepare test dataset failed: %v", err)
 	}
 
+	if driverName == "maxcompute" {
+		AK := os.Getenv("MAXCOMPUTE_AK")
+		SK := os.Getenv("MAXCOMPUTE_SK")
+		endpoint := os.Getenv("MAXCOMPUTE_ENDPOINT")
+		dbConnStr = fmt.Sprintf("maxcompute://%s:%s@%s", AK, SK, endpoint)
+		caseDB = os.Getenv("MAXCOMPUTE_PROJECT")
+		if caseDB == "" {
+			t.Fatalf("Must set env MAXCOMPUTE_PROJECT")
+		}
+		caseTrainTable = "sqlflow_test_iris_train"
+		caseTestTable = "sqlflow_test_iris_test"
+		casePredictTable = "sqlflow_test_iris_predict"
+		// write model to current MaxCompute project
+		caseInto = "my_dnn_model"
+
+		err = prepareTestData(dbConnStr)
+		if err != nil {
+			t.Fatalf("prepare test dataset failed: %v", err)
+		}
+	}
+
 	t.Run("CaseSubmitSQLProgram", CaseSubmitSQLProgram)
 }
 
@@ -525,17 +546,18 @@ WITH
 	model.hidden_units = [10, 20]
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
-INTO sqlflow_models.my_dnn_model;
+INTO %s;
 
 SELECT *
 FROM %s.%s
 TO PREDICT %s.%s.class
-USING sqlflow_models.my_dnn_model;
+USING %s;
 
 SELECT *
 FROM %s.%s LIMIT 5;
-	`, caseDB, caseTrainTable,
-		caseDB, caseTrainTable, caseDB, casePredictTable, caseDB, casePredictTable)
+	`, caseDB, caseTrainTable, caseInto,
+		caseDB, caseTrainTable, caseDB, casePredictTable, caseInto,
+		caseDB, casePredictTable)
 
 	conn, err := createRPCConn()
 	if err != nil {
