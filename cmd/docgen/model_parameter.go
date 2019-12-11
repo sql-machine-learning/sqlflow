@@ -18,6 +18,7 @@ import (
 	"regexp"
 	"strings"
 
+	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/xgboost"
 )
 
@@ -30,6 +31,7 @@ SQLFlow connects a SQL engine (e.g., MySQL, Hive, or MaxCompute) and TensorFlow 
 
 	docGenFunc := []func() string{
 		xgboost.DocGenInMarkdown,
+		tensorflow.DocGenInMarkdown,
 	}
 
 	section := regexp.MustCompile(`^#{1,5} `)

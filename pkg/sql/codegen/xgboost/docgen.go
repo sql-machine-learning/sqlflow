@@ -34,7 +34,7 @@ const docTemplateText = `# XGBoost Parameters
 
 ` + "```SQL" + `
 SELECT * FROM boston.train
-TRAIN xgboost.gbtree
+TO TRAIN xgboost.gbtree
 WITH
     objective ="reg:squarederror",
     train.num_boost_round = 30,
