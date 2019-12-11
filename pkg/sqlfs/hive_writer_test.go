@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
-	"path"
 	"strings"
 	"testing"
 
@@ -40,8 +39,8 @@ func TestNewHiveWriter(t *testing.T) {
 	defer w.Close()
 
 	has, e1 := hasTable(testDB, tbl)
-	a.Error(e1)  // This behavior differs from that of newSQLWriter,
-	a.False(has) // because for Hive, it's the wrap-up who create the table.
+	a.NoError(e1)
+	a.True(has)
 
 	a.NoError(dropTable(testDB, tbl))
 }
@@ -77,7 +76,7 @@ func TestHiveWriterWriteAndRead(t *testing.T) {
 
 	a.NoError(w.Close())
 
-	r, e := Open(testDB, path.Join("/hivepath", "sqlfs", tbl))
+	r, e := Open(testDB, tbl)
 	a.NoError(e)
 	a.NotNil(r)
 

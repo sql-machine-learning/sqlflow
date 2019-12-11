@@ -53,7 +53,7 @@ func uploadCSVFile(csv *os.File, db *sql.DB, hivePath, table, user, passwd strin
 			os.Remove(csv.Name())
 		}()
 
-		hdfsPath := path.Join(hivePath, "sqlfs", table)
+		hdfsPath := path.Join(hivePath, table)
 
 		hdfsEnv := os.Environ()
 		if user != "" {
