@@ -13,7 +13,7 @@
 
 package parser
 
-// ThirdPartyParser abstract a parser of a SQL engine.  For example,
+// ThirdPartyParser abstract a parser of a SQL engine, for example,
 // Hive, MySQL, TiDB, MaxCompute.
 type ThirdPartyParser interface {
 	Parse(program string) ([]string, int, error)
@@ -25,8 +25,10 @@ func NewThirdPartyParser(typ string) ThirdPartyParser {
 	switch typ {
 	case "mysql", "tidb":
 		return newTiDBParser()
-	case "hive", "calcite", "maxcompute":
-		return newJavaParser(typ)
+	case "hive", "hiveql":
+		return newJavaParser("hiveql")
+	case "calcite", "maxcompute":
+		return newJavaParser("calcite")
 	}
 	return nil
 }
