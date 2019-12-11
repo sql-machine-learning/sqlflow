@@ -108,9 +108,15 @@ def train(is_keras_model,
           log_every_n_iter=10,
           is_pai=False,
           pai_table=""):
-    # TODO(typhoonzero): when enable verbose levels like 0, 1, 2 to show debug logs.
-    # if verbose > 0:
-    #     tf.get_logger().setLevel(logging.INFO)
+    if is_keras_model:
+        if verbose == 1:
+            # show keras training progress
+            tf.get_logger().setLevel(logging.INFO)
+        elif verbose >= 2:
+            tf.get_logger().setLevel(logging.DEBUG)
+    else:
+        if verbose >= 2:
+            tf.get_logger().setLevel(logging.INFO)
     conn = connect_with_data_source(datasource)
     model_params.update(feature_columns)
     if not is_keras_model:
@@ -198,11 +204,11 @@ def train(is_keras_model,
         else:
             # TODO(typhoonzero): able to config metrics by calling tf.estimators.add_metrics()
             train_hooks = []
-            if verbose > 0:
+            if verbose == 1:
                 train_hooks = [PrintStatusHook("train", every_n_iter=log_every_n_iter)]
             train_spec = tf.estimator.TrainSpec(input_fn=lambda:train_input_fn(batch_size), max_steps=train_max_steps, hooks=train_hooks)
             eval_hooks = []
-            if verbose > 0:
+            if verbose == 1:
                 eval_hooks = [PrintStatusHook("eval", every_n_iter=log_every_n_iter)]
             eval_spec = tf.estimator.EvalSpec(input_fn=lambda:validate_input_fn(batch_size), hooks=eval_hooks, start_delay_secs=eval_start_delay_secs, throttle_secs=eval_throttle_secs)
             result = tf.estimator.train_and_evaluate(classifier, train_spec, eval_spec)

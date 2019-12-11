@@ -84,7 +84,7 @@ if __name__ == "__main__":
         save="mymodel",
         batch_size=1,
         epochs=3,
-        verbose=1)
+        verbose=2)
     pred(is_keras_model=False,
         datasource=datasource,
         estimator=tf.estimator.DNNClassifier,
