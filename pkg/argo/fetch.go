@@ -24,8 +24,6 @@ import (
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
-const defaultFetchLogsLimitBytes = 1024
-
 // Fetch fetches the workflow log and status
 //
 // if token.step_id == "" {
