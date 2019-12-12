@@ -64,23 +64,19 @@ func Fetch(token pb.FetchToken) (*pb.FetchResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	logs, newOffset, err := getPodLogs(podName, token.GetLogOffset(), defaultFetchLogsLimitBytes)
+	logs, logOffset, err := getPodLogs(podName, token.GetLogOffset())
 	if err != nil {
 		return nil, err
 	}
 
-	noMoreLog := false
-	// there is no more log when:
+	finishedFetchingCurrentPod := false
+	// finishedFetchingCurrentPod = true when:
 	// 1. the offset has not been updated, and
 	// 2. the pod is completed.
-	if token.GetLogOffset() == newOffset && isCompletedPhaseWF(wf.Status.Phase) {
-		noMoreLog = true
+	if token.GetLogOffset() == logOffset && isCompletedPhaseWF(wf.Status.Phase) {
+		finishedFetchingCurrentPod = true
+		logOffset = ""
 	}
-
-	// TODO(yancey&tony): update the following constant after supporting incremental fetching
-	logOffset := ""
-	finishedFetchingCurrentPod := true
 
 	var newStepGroupName string
 	if finishedFetchingCurrentPod {
@@ -94,7 +90,7 @@ func Fetch(token pb.FetchToken) (*pb.FetchResponse, error) {
 			Job:       token.Job,
 			StepId:    newStepGroupName,
 			LogOffset: logOffset,
-			NoMoreLog: noMoreLog},
+			NoMoreLog: false},
 		Logs:  &pb.FetchResponse_Logs{Content: logs},
 		Phase: translatePhase(wf.Status.Phase)}, nil
 }
@@ -133,48 +129,40 @@ func parseOffset(content string) (string, string) {
 	return msg[1], msg[2]
 }
 
-func parseLastOffsetAndContent(messages string, oldOffset string) ([]string, string, error) {
-	buff := []string{}
-	var offset = oldOffset
-	lastLineIsCompleted := false
-	if strings.HasSuffix(messages, "\n") {
-		lastLineIsCompleted = true
-	}
-
-	msgLines := strings.Split(strings.TrimSpace(messages), "\n")
-	// skip the current offset line
-	if oldOffset != "" {
-		msgLines = msgLines[1:]
-	}
-
-	if !lastLineIsCompleted && len(msgLines) > 0 {
-		msgLines = msgLines[:len(msgLines)-1]
-	}
-
-	// `kubectl logs --timestamps=true` returns logs with prefix RFC
-	for _, message := range msgLines {
-		newOffset, content := parseOffset(message)
+func getOffsetAndContentFromLogs(logs, oldOffset string) ([]string, string, error) {
+	buffer := []string{}
+	msgLines := strings.Split(strings.TrimSpace(logs), "\n")
+	skipOlderLogs := false
+	offset := oldOffset
+	for _, msg := range msgLines {
+		newOffset, content := parseOffset(msg)
 		if newOffset == "" {
 			break
 		}
-		buff = append(buff, content)
-		offset = newOffset
+		if newOffset == oldOffset {
+			skipOlderLogs = true
+		} else {
+			if skipOlderLogs || oldOffset == "" {
+				buffer = append(buffer, content)
+				offset = newOffset
+			} else {
+				continue
+			}
+		}
 	}
-	return buff, offset, nil
+	return buffer, offset, nil
 }
 
-func getPodLogs(podName string, offset string, limitBytes int) ([]string, string, error) {
+func getPodLogs(podName string, offset string) ([]string, string, error) {
 	// NOTE(tony): A workflow pod usually contains two container: main and wait
 	// I believe wait is used for management by Argo, so we only need to care about main.
-	cmd := exec.Command("kubectl", "logs", podName, "main", "--timestamps=true", fmt.Sprintf("--limit-bytes=%d", limitBytes), fmt.Sprintf("--since-time=%s", offset))
+	cmd := exec.Command("kubectl", "logs", podName, "main", "--timestamps=true", fmt.Sprintf("--since-time=%s", offset))
 	output, err := cmd.CombinedOutput()
-
 	if err != nil {
 		return nil, "", fmt.Errorf("getPodLogs error: %v\n%v", string(output), err)
 	}
 
-	logs, newOffset, err := parseLastOffsetAndContent(string(output), offset)
-
+	logs, newOffset, err := getOffsetAndContentFromLogs(string(output), offset)
 	return logs, newOffset, nil
 }
 
