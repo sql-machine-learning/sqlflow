@@ -14,11 +14,9 @@
 package argo
 
 import (
-	"fmt"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"testing"
 	"time"
@@ -76,22 +74,6 @@ func createAndWriteTempFile(content string) (string, error) {
 	}
 
 	return tmpFile.Name(), nil
-}
-
-func kubectlCreateFromYAML(content string) (string, error) {
-	fileName, err := createAndWriteTempFile(content)
-	if err != nil {
-		return "", err
-	}
-	defer os.Remove(fileName)
-
-	cmd := exec.Command("kubectl", "create", "-f", fileName)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return "", fmt.Errorf("submitYAML error: %v\n%v", string(output), err)
-	}
-
-	return getWorkflowID(string(output))
 }
 
 func TestGetCurrentStepGroup(t *testing.T) {
@@ -187,12 +169,17 @@ func TestGetCurrentPodName(t *testing.T) {
 	}
 }
 
-func TestFetch(t *testing.T) {
+func TestSubmitAndFetch(t *testing.T) {
 	if os.Getenv("SQLFLOW_TEST") != "workflow" {
 		t.Skip("argo: skip workflow tests")
 	}
 	a := assert.New(t)
-	workflowID, err := kubectlCreateFromYAML(stepYAML)
+
+	fileName, err := createAndWriteTempFile(stepYAML)
+	a.NoError(err)
+	defer os.Remove(fileName)
+
+	workflowID, err := Submit(fileName)
 	a.NoError(err)
 
 	token := NewFetchToken(pb.Job{Id: workflowID})

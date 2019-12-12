@@ -28,11 +28,7 @@ func Submit(argoFileName string) (string, error) {
 		return "", fmt.Errorf("submit Argo YAML error: %v, output: %s", err, string(output))
 	}
 
-	workflowID, err := getWorkflowID(string(output))
-	if err != nil {
-		return "", err
-	}
-	return workflowID, err
+	return getWorkflowID(string(output))
 }
 
 func getWorkflowID(output string) (string, error) {
