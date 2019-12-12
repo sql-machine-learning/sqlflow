@@ -1215,7 +1215,6 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 	if caseDB == "" {
 		t.Fatalf("Must set env MAXCOMPUTE_PROJECT")
 	}
-	fmt.Println(caseDB)
 	caseTrainTable = "sqlflow_test_iris_train"
 	caseTestTable = "sqlflow_test_iris_test"
 	casePredictTable = "sqlflow_test_iris_predict"
