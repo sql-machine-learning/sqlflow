@@ -23,16 +23,42 @@ import (
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
-func isCompletedPhase(phase wfv1.NodePhase) bool {
+func translatePhase(nodePhase wfv1.NodePhase) pb.FetchResponse_Phase {
+	switch nodePhase {
+	case wfv1.NodePending:
+		return pb.FetchResponse_PENDING
+	case wfv1.NodeRunning:
+		return pb.FetchResponse_RUNNING
+	case wfv1.NodeSucceeded:
+		return pb.FetchResponse_SUCCEEDED
+	case wfv1.NodeSkipped:
+		return pb.FetchResponse_SKIPPED
+	case wfv1.NodeFailed:
+		return pb.FetchResponse_FAILED
+	case wfv1.NodeError:
+		return pb.FetchResponse_ERROR
+	default:
+		panic(fmt.Sprintf("unrecognized node phase %v", nodePhase))
+	}
+}
+
+func isCompletedPhaseWF(phase wfv1.NodePhase) bool {
 	return phase == wfv1.NodeSucceeded ||
 		phase == wfv1.NodeFailed ||
 		phase == wfv1.NodeError ||
 		phase == wfv1.NodeSkipped
 }
 
+func isCompletePhasePB(phase pb.FetchResponse_Phase) bool {
+	return phase == pb.FetchResponse_SUCCEEDED ||
+		phase == pb.FetchResponse_SKIPPED ||
+		phase == pb.FetchResponse_FAILED ||
+		phase == pb.FetchResponse_ERROR
+}
+
 // NewFetchToken creates a fetch token
-func NewFetchToken(job pb.Job) *pb.FetchToken {
-	return &pb.FetchToken{
+func NewFetchToken(job pb.Job) pb.FetchToken {
+	return pb.FetchToken{
 		Job:       &job,
 		StepId:    "",
 		LogOffset: "",
@@ -82,8 +108,7 @@ func waitUntilComplete(token pb.FetchToken) (wf *wfv1.Workflow, err error) {
 		if err != nil {
 			return nil, fmt.Errorf("waitUntilComplete: %v", err)
 		}
-		// FIXME(tony): what if it is a long running job
-		if isCompletedPhase(wf.Status.Phase) {
+		if isCompletedPhaseWF(wf.Status.Phase) {
 			return wf, nil
 		}
 		time.Sleep(time.Second)
@@ -156,25 +181,8 @@ func getCurrentPodName(wf *wfv1.Workflow, token pb.FetchToken) (string, error) {
 	return getPodNameByStepGroup(wf, stepGroupName)
 }
 
-func translatePhase(nodePhase wfv1.NodePhase) pb.FetchResponse_Phase {
-	switch nodePhase {
-	case wfv1.NodePending:
-		return pb.FetchResponse_PENDING
-	case wfv1.NodeRunning:
-		return pb.FetchResponse_RUNNING
-	case wfv1.NodeSucceeded:
-		return pb.FetchResponse_SUCCEEDED
-	case wfv1.NodeSkipped:
-		return pb.FetchResponse_SKIPPED
-	case wfv1.NodeFailed:
-		return pb.FetchResponse_FAILED
-	case wfv1.NodeError:
-		return pb.FetchResponse_ERROR
-	default:
-		panic(fmt.Sprintf("unrecognized node phase %v", nodePhase))
-	}
-}
-
+// Fetch fetches the workflow log and status
+//
 // if token.step_id == "" {
 //    NOTE(Yancey): wait mean wait for Running
 //    my_step := first step
@@ -184,7 +192,8 @@ func translatePhase(nodePhase wfv1.NodePhase) pb.FetchResponse_Phase {
 //
 // if my_step is pending/running, return ""
 // if my_step is complete, return (logs, my_step_id)
-func fetchWorkflowLog(token pb.FetchToken) (*pb.FetchResponse, error) {
+func Fetch(token pb.FetchToken) (*pb.FetchResponse, error) {
+	// FIXME(tony): no need to wait for the whole workflow
 	wf, err := waitUntilComplete(token)
 	if err != nil {
 		return nil, err
@@ -216,7 +225,7 @@ func fetchWorkflowLog(token pb.FetchToken) (*pb.FetchResponse, error) {
 		return nil, err
 	}
 
-	// TODO(tony): update the following constant after supporting incremental fetching
+	// TODO(yancey&tony): update the following constant after supporting incremental fetching
 	logOffset := ""
 	finishedFetchingCurrentPod := true
 

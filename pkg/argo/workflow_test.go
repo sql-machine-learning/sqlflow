@@ -21,6 +21,7 @@ import (
 	"os/exec"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"testing"
+	"time"
 )
 
 const (
@@ -50,7 +51,7 @@ spec:
         arguments:
           parameters:
           - name: message
-            value: "hello1"
+            value: "hello3"
 
   - name: whalesay
     inputs:
@@ -92,23 +93,6 @@ func kubectlCreateFromYAML(content string) (string, error) {
 
 	return getWorkflowID(string(output))
 }
-
-//
-//func TestGetStepPodNames(t *testing.T) {
-//	if os.Getenv("SQLFLOW_TEST") != "workflow" {
-//		t.Skip("argo: skip workflow tests")
-//	}
-//	a := assert.New(t)
-//	workflowID, err := kubectlCreateFromYAML(stepYAML)
-//	a.NoError(err)
-//	err = waitUntilComplete(pb.Job{Id: workflowID})
-//	a.NoError(err)
-//	wf, err := getWorkflowResource(pb.Job{Id: workflowID})
-//	a.NoError(err)
-//	podNames, err := getStepPodNames(wf.Status.Nodes, pb.Job{Id: workflowID})
-//	a.NoError(err)
-//	a.Equal(3, len(podNames))
-//}
 
 func TestGetCurrentStepGroup(t *testing.T) {
 	if os.Getenv("SQLFLOW_TEST") != "workflow" {
@@ -200,5 +184,35 @@ func TestGetCurrentPodName(t *testing.T) {
 		currentPod, err := getCurrentPodName(wf, pb.FetchToken{Job: &pb.Job{Id: "steps-7lxxs"}, StepId: stepIds[i]})
 		a.NoError(err)
 		a.Equal(podNames[i], currentPod)
+	}
+}
+
+func TestFetch(t *testing.T) {
+	if os.Getenv("SQLFLOW_TEST") != "workflow" {
+		t.Skip("argo: skip workflow tests")
+	}
+	a := assert.New(t)
+	workflowID, err := kubectlCreateFromYAML(stepYAML)
+	a.NoError(err)
+
+	token := NewFetchToken(pb.Job{Id: workflowID})
+	actualLogs := []string{}
+	for {
+		response, err := Fetch(token)
+		a.NoError(err)
+		for _, log := range response.Logs.Content {
+			actualLogs = append(actualLogs, log)
+		}
+		if isCompletePhasePB(response.Phase) && response.NewToken.NoMoreLog {
+			break
+		}
+		time.Sleep(time.Second)
+		token = *response.NewToken
+	}
+
+	expectedLogs := []string{"hello1\n", "hello2\n", "hello3\n"}
+	a.Equal(len(expectedLogs), len(actualLogs))
+	for i := range expectedLogs {
+		a.Equal(expectedLogs[i], actualLogs[i])
 	}
 }
