@@ -21,10 +21,10 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"sqlflow.org/sqlflow/pkg/argo"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/couler"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
-	wf "sqlflow.org/sqlflow/pkg/workflow"
 )
 
 // EndOfExecution will push to the pipe when one SQL statement execution is finished.
@@ -173,7 +173,7 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, modelDir string, session 
 	defer os.RemoveAll(argoFileName)
 
 	// 2. submit the argo workflow
-	workflowID, err := wf.Submit(argoFileName)
+	workflowID, err := argo.Submit(argoFileName)
 	if err != nil {
 		return err
 	}

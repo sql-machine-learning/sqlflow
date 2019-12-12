@@ -564,10 +564,16 @@ FROM %s.%s LIMIT 5;
 		a.Fail("Create gRPC client error: %v", err)
 	}
 	defer conn.Close()
+
 	cli := pb.NewSQLFlowClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
 	defer cancel()
+
 	stream, err := cli.Run(ctx, &pb.Request{Sql: sqlProgram, Session: &pb.Session{DbConnStr: testDatasource}})
+	if err != nil {
+		a.Fail("Create gRPC client error: %v", err)
+	}
+
 	var workflowID string
 	for {
 		iter, err := stream.Recv()
@@ -580,6 +586,7 @@ FROM %s.%s LIMIT 5;
 		workflowID = iter.GetJob().GetId()
 	}
 	a.True(strings.HasPrefix(workflowID, "sqlflow-couler"))
+
 	// check the workflow status in 180 seconods
 	// TODO(yancey1989): using the Fetch gRPC interface to check the workflow status
 	for i := 0; i < 60; i++ {
@@ -594,7 +601,7 @@ FROM %s.%s LIMIT 5;
 		time.Sleep(3 * time.Second)
 	}
 	// workflow times out
-	log.Fatalf("workflow: %s times out", workflowID)
+	a.Fail("workflow: %s times out", workflowID)
 }
 
 func CaseShowDatabases(t *testing.T) {

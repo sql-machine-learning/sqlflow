@@ -15,7 +15,7 @@ package couler
 
 import "text/template"
 
-type sqlStatment struct {
+type sqlStatement struct {
 	OriginalSQL   string
 	IsExtendedSQL bool
 	DockerImage   string
@@ -26,7 +26,7 @@ type sqlStatment struct {
 }
 type coulerFiller struct {
 	DataSource    string
-	SQLStatements []*sqlStatment
+	SQLStatements []*sqlStatement
 }
 
 const coulerTemplateText = `

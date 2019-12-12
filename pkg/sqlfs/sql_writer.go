@@ -34,7 +34,6 @@ func flushToSQLTable(db *sql.DB, table string) func([]byte) error {
 			if _, e := db.Exec(query); e != nil {
 				return fmt.Errorf("cannot flush to table %s: %v", table, e)
 			}
-			buf = buf[:0]
 			row++
 		}
 		return nil
