@@ -67,8 +67,9 @@ message FetchResponse {
         SUCCEEDED = 2;
         FAILED = 3;
         ERROR = 4;
+        SKIPPED = 5;
     }
-    FetchToken token = 1;
+    FetchToken new_token = 1;
     Phase phase = 2;
     Logs logs = 3;
 }
