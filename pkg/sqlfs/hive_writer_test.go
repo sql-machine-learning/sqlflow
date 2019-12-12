@@ -23,17 +23,17 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestNewSQLWriter(t *testing.T) {
-	testDriver = getEnv("SQLFLOW_TEST_DB", "mysql")
-	if testDriver == "hive" {
-		t.Skip("Skip as SQLFLOW_TEST_DB is Hive")
+func TestNewHiveWriter(t *testing.T) {
+	testDriver = getEnv("SQLFLOW_TEST_DB", "hive")
+	if testDriver != "hive" {
+		t.Skip("Skip as SQLFLOW_TEST_DB is not Hive")
 	}
 	t.Logf("Confirm executed with %s", testDriver)
 
 	a := assert.New(t)
 
-	tbl := fmt.Sprintf("%s.unitest%d", testDatabaseName, rand.Int())
-	w, e := newSQLWriter(testDB, testDriver, tbl)
+	tbl := fmt.Sprintf("%s%d", testDatabaseName, rand.Int())
+	w, e := newHiveWriter(testDB, "/hivepath", tbl, "", "")
 	a.NoError(e)
 	a.NotNil(w)
 	defer w.Close()
@@ -45,17 +45,17 @@ func TestNewSQLWriter(t *testing.T) {
 	a.NoError(dropTable(testDB, tbl))
 }
 
-func TestSQLWriterWriteAndRead(t *testing.T) {
-	testDriver = getEnv("SQLFLOW_TEST_DB", "mysql")
-	if testDriver == "hive" {
-		t.Skip("Skip as SQLFLOW_TEST_DB is Hive")
+func TestHiveWriterWriteAndRead(t *testing.T) {
+	testDriver = getEnv("SQLFLOW_TEST_DB", "hive")
+	if testDriver != "hive" {
+		t.Skip("Skip as SQLFLOW_TEST_DB is not Hive")
 	}
 	t.Logf("Confirm executed with %s", testDriver)
 
 	a := assert.New(t)
 
-	tbl := fmt.Sprintf("%s.unitest%d", testDatabaseName, rand.Int())
-	w, e := newSQLWriter(testDB, testDriver, tbl)
+	tbl := fmt.Sprintf("%s%d", testDatabaseName, rand.Int())
+	w, e := newHiveWriter(testDB, "/hivepath", tbl, "", "")
 	a.NoError(e)
 	a.NotNil(w)
 

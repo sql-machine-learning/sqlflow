@@ -33,7 +33,7 @@ func Run(programIR ir.SQLProgram, session *pb.Session) (string, error) {
 		DataSource: session.DbConnStr,
 	}
 	for _, sqlIR := range programIR {
-		ss := &sqlStatment{}
+		ss := &sqlStatement{}
 		switch i := sqlIR.(type) {
 		case *ir.StandardSQL:
 			ss.IsExtendedSQL = false
