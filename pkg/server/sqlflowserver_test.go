@@ -69,7 +69,7 @@ func mockRun(sql string, modelDir string, session *pb.Session) *sf.PipeReader {
 			wr.Write("log 0")
 			wr.Write("log 1")
 		default:
-			wr.Write(fmt.Errorf("unexcepted SQL: %s", singleSQL))
+			wr.Write(fmt.Errorf("unexpected SQL: %s", singleSQL))
 		}
 	}()
 	return rd
@@ -102,7 +102,7 @@ func createRudeClient() {
 	_, err := c.Run(ctx, &pb.Request{Sql: testQuerySQL, Session: &pb.Session{DbConnStr: mockDBConnStr}})
 
 	if err != nil {
-		log.Fatalf("Run encounts err:%v", err)
+		log.Fatalf("Run encounters err:%v", err)
 	}
 	// conn closed without *any* stream.Recv(), act as rude client
 	conn.Close()

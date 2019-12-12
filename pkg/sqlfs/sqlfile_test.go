@@ -39,7 +39,7 @@ const testDatabaseName = `sqlfs_test`
 func TestCreateHasDropTable(t *testing.T) {
 	a := assert.New(t)
 
-	fn := fmt.Sprintf("%s.unitest%d", testDatabaseName, rand.Int())
+	fn := fmt.Sprintf("%s.unittest%d", testDatabaseName, rand.Int())
 	a.NoError(createTable(testDB, testDriver, fn))
 	has, e := hasTable(testDB, fn)
 	a.NoError(e)
@@ -50,7 +50,7 @@ func TestCreateHasDropTable(t *testing.T) {
 func TestWriterCreate(t *testing.T) {
 	a := assert.New(t)
 
-	fn := fmt.Sprintf("%s.unitest%d", testDatabaseName, rand.Int())
+	fn := fmt.Sprintf("%s.unittest%d", testDatabaseName, rand.Int())
 	w, e := Create(testDB, testDriver, fn, getDefaultSession())
 	a.NoError(e)
 	a.NotNil(w)
@@ -67,7 +67,7 @@ func TestWriteAndRead(t *testing.T) {
 	testDriver = getEnv("SQLFLOW_TEST_DB", "mysql")
 	a := assert.New(t)
 
-	fn := fmt.Sprintf("%s.unitest%d", testDatabaseName, rand.Int())
+	fn := fmt.Sprintf("%s.unittest%d", testDatabaseName, rand.Int())
 
 	w, e := Create(testDB, testDriver, fn, getDefaultSession())
 	a.NoError(e)
