@@ -80,6 +80,7 @@ type SQLStatement interface {
 	GetOriginalSQL() string
 }
 
+// ExtendedSQL contains common fields of TrainStmt, PredictStmt and AnalyzeStmt
 type ExtendedSQL struct {
 	// Select specifies the query for fetching the training data. For example, "select * from iris.train;".
 	Select string
