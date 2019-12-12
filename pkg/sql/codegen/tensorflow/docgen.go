@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package xgboost
+package tensorflow
 
 import (
 	"bytes"
@@ -21,27 +21,25 @@ import (
 // DocGenInMarkdown generates the doc of the XGBoost in Markdown format.
 func DocGenInMarkdown() string {
 	var doc bytes.Buffer
-	docTemplate.Execute(&doc, attributeDictionary.GenerateTableInHTML())
+	docTemplate.Execute(&doc, commonAttributes.GenerateTableInHTML())
 
 	return doc.String()
 }
 
-const docTemplateText = `# XGBoost Parameters
+const docTemplateText = `# Tensorflow Parameters
 
 ## TRAIN
 
 ### Example
 
 ` + "```SQL" + `
-SELECT * FROM boston.train
-TO TRAIN xgboost.gbtree
+SELECT * FROM iris.train
+TO TRAIN DNNClassifier
 WITH
-    objective ="reg:squarederror",
-    train.num_boost_round = 30,
-    validation.select = "SELECT * FROM boston.val LIMIT 8"
-COLUMN crim, zn, indus, chas, nox, rm, age, dis, rad, tax, ptratio, b, lstat
-LABEL medv
-INTO sqlflow_models.my_xgb_regression_model;
+    model.n_classes = 3, model.hidden_units = [10, 20],
+    validation.select = "SELECT * FROM iris.test"
+LABEL class
+INTO sqlflow_models.my_dnn_model;
 ` + "```" + `
 
 ### Parameters
