@@ -91,6 +91,12 @@ func parseRow(columns []string, columnTypes []*sql.ColumnType, rows *sql.Rows, w
 	count := len(columns)
 	values := make([]interface{}, count)
 	for i, ct := range columnTypes {
+		// NOTE(typhoonzero): Hive TIMESTAMP_TYPE column will return string value, but ct.ScanType() returns int64
+		// https://github.com/sql-machine-learning/sqlflow/issues/1256
+		if ct.DatabaseTypeName() == "TIMESTAMP_TYPE" {
+			values[i] = new(string)
+			continue
+		}
 		values[i] = newZeroValue(ct.ScanType())
 	}
 
