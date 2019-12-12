@@ -556,7 +556,7 @@ USING %s;
 SELECT *
 FROM %s.%s LIMIT 5;
 	`, caseDB, caseTrainTable, caseInto,
-		caseDB, caseTrainTable, caseDB, casePredictTable, caseInto,
+		caseDB, caseTestTable, caseDB, casePredictTable, caseInto,
 		caseDB, casePredictTable)
 
 	conn, err := createRPCConn()

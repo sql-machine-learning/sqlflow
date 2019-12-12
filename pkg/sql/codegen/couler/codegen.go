@@ -48,7 +48,6 @@ func Run(programIR ir.SQLProgram, session *pb.Session) (string, error) {
 				ss.CreateTmpTable = true
 			}
 			ss.Select = t.Select
-			ss.SQLFlowSubmitter = os.Getenv("SQLFLOW_submitter")
 			ss.OriginalSQL = sqlIR.(*ir.TrainStmt).OriginalSQL
 		case *ir.PredictStmt:
 			ss.IsExtendedSQL = true
@@ -68,6 +67,7 @@ func Run(programIR ir.SQLProgram, session *pb.Session) (string, error) {
 		} else {
 			ss.DockerImage = defaultDockerImage
 		}
+		ss.SQLFlowSubmitter = os.Getenv("SQLFLOW_submitter")
 		r.SQLStatements = append(r.SQLStatements, ss)
 	}
 	var program bytes.Buffer
