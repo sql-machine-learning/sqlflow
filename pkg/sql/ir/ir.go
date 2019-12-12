@@ -80,7 +80,6 @@ type SQLStatement interface {
 	GetOriginalSQL() string
 }
 
-// ExtendedSQL contains common information of TrainStmt, PredictStmt and AnalyzeStmt
 type ExtendedSQL struct {
 	// Select specifies the query for fetching the training data. For example, "select * from iris.train;".
 	Select string
@@ -94,6 +93,12 @@ type ExtendedSQL struct {
 	// FIXME(typhoonzero): OriginalSQL is a temporary field. Can remove this when all moved to IR
 	OriginalSQL string
 }
+
+// IsExtended returns whether a SQLStatement is an extended SQL statement
+func (sql *ExtendedSQL) IsExtended() bool { return true }
+
+// GetOriginalSQL returns the original SQL statement used to get current IR result
+func (sql *ExtendedSQL) GetOriginalSQL() string { return sql.OriginalSQL }
 
 // TrainStmt is the intermediate representation for code generation of a training job.
 type TrainStmt struct {
@@ -167,3 +172,12 @@ type StandardSQL string
 
 // Execute generates and executes code for StandardSQL
 func (sql *StandardSQL) Execute(s Executor) error { return s.ExecuteQuery(sql) }
+
+// SetOriginalSQL sets the original sql string
+func (sql *StandardSQL) SetOriginalSQL(s string) {}
+
+// IsExtended returns whether a SQLStatement is an extended SQL statement
+func (sql *StandardSQL) IsExtended() bool { return false }
+
+// GetOriginalSQL returns the original SQL statement used to get current IR result
+func (sql *StandardSQL) GetOriginalSQL() string { return string(*sql) }
