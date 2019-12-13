@@ -186,9 +186,7 @@ func TestExecutorTrainAndPredictDNN(t *testing.T) {
 		stream := RunSQLProgram(testTrainSelectIris, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
 		stream = RunSQLProgram(testPredictSelectIris, modelDir, getDefaultSession())
-		_, output := goodStream(stream.ReadAll())
-		fmt.Println(output)
-		//a.True(goodStream(stream.ReadAll()))
+		a.True(goodStream(steram.ReadAll()))
 	})
 }
 
@@ -206,7 +204,6 @@ func TestExecutorTrainAndPredictClusteringLocalFS(t *testing.T) {
 }
 
 func TestExecutorTrainAndPredictDNNLocalFS(t *testing.T) {
-	t.Skip()
 	a := assert.New(t)
 	modelDir, e := ioutil.TempDir("/tmp", "sqlflow_models")
 	a.Nil(e)
