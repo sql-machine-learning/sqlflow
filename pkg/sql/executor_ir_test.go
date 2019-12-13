@@ -186,7 +186,7 @@ func TestExecutorTrainAndPredictDNN(t *testing.T) {
 		stream := RunSQLProgram(testTrainSelectIris, modelDir, getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
 		stream = RunSQLProgram(testPredictSelectIris, modelDir, getDefaultSession())
-		a.True(goodStream(steram.ReadAll()))
+		a.True(goodStream(stream.ReadAll()))
 	})
 }
 
