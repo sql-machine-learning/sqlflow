@@ -58,34 +58,36 @@ def parse_sparse_feature(features, label, feature_column_names, feature_metas):
             features_dict[name] = col
     return features_dict, label
 
+if TF_VERSION_2:
+    class PrintStatusHook(tf.estimator.LoggingTensorHook):
+        def __init__(self, prefix="", every_n_iter=None, every_n_secs=None,
+                at_end=False, formatter=None):
+            super().__init__([], every_n_iter=every_n_iter, every_n_secs=every_n_secs,
+                at_end=at_end, formatter=formatter)
+            self.prefix = prefix
 
-class PrintStatusHook(tf.estimator.LoggingTensorHook):
-    def __init__(self, prefix="", every_n_iter=None, every_n_secs=None,
-               at_end=False, formatter=None):
-        super().__init__([], every_n_iter=every_n_iter, every_n_secs=every_n_secs,
-            at_end=at_end, formatter=formatter)
-        self.prefix = prefix
+        def before_run(self, run_context):
+            self._should_trigger = self._timer.should_trigger_for_step(self._iter_count)
+            loss_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.LOSSES)
+            step_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_STEP)
+            fetch = {"loss": loss_vars[0], "step": step_vars[0]}
+            if self._should_trigger:
+                return tf.estimator.SessionRunArgs(fetch)
+            else:
+                return None
 
-    def before_run(self, run_context):
-        self._should_trigger = self._timer.should_trigger_for_step(self._iter_count)
-        loss_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.LOSSES)
-        step_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_STEP)
-        fetch = {"loss": loss_vars[0], "step": step_vars[0]}
-        if self._should_trigger:
-            return tf.estimator.SessionRunArgs(fetch)
-        else:
-            return None
+        def _log_tensors(self, tensor_values):
+            elapsed_secs, _ = self._timer.update_last_triggered_step(self._iter_count)
+            stats = []
+            for k in tensor_values.keys():
+                stats.append("%s = %s" % (k, tensor_values[k]))
+            if self.prefix == "eval":
+                print("============Evaluation=============")
+            print("%s: %s" % (self.prefix, ", ".join(stats)))
+            if self.prefix == "eval":
+                print("============Evaluation End=============")
 
-    def _log_tensors(self, tensor_values):
-        elapsed_secs, _ = self._timer.update_last_triggered_step(self._iter_count)
-        stats = []
-        for k in tensor_values.keys():
-            stats.append("%s = %s" % (k, tensor_values[k]))
-        if self.prefix == "eval":
-            print("============Evaluation=============")
-        print("%s: %s" % (self.prefix, ", ".join(stats)))
-        if self.prefix == "eval":
-            print("============Evaluation End=============")
+
 
 def train(is_keras_model,
           datasource,
@@ -204,11 +206,11 @@ def train(is_keras_model,
         else:
             # TODO(typhoonzero): able to config metrics by calling tf.estimators.add_metrics()
             train_hooks = []
-            if verbose == 1:
+            if verbose == 1 and TF_VERSION_2:
                 train_hooks = [PrintStatusHook("train", every_n_iter=log_every_n_iter)]
             train_spec = tf.estimator.TrainSpec(input_fn=lambda:train_input_fn(batch_size), max_steps=train_max_steps, hooks=train_hooks)
             eval_hooks = []
-            if verbose == 1:
+            if verbose == 1 and TF_VERSION_2:
                 eval_hooks = [PrintStatusHook("eval", every_n_iter=log_every_n_iter)]
             eval_spec = tf.estimator.EvalSpec(input_fn=lambda:validate_input_fn(batch_size), hooks=eval_hooks, start_delay_secs=eval_start_delay_secs, throttle_secs=eval_throttle_secs)
             result = tf.estimator.train_and_evaluate(classifier, train_spec, eval_spec)

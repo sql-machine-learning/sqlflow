@@ -30,7 +30,7 @@ function test_couler() {
 import couler.argo as couler
 couler.run_container(image="docker/whalesay", command='echo "SQLFlow bridges AI and SQL engine."')
 EOF
-    
+
     couler run --mode argo --file /tmp/sqlflow_couler.py > /tmp/sqlflow_argo.yaml
     MESSAGE=$(kubectl create -f /tmp/sqlflow_argo.yaml)
     WORKFLOW_NAME=$(echo ${MESSAGE} | cut -d ' ' -f 1 | cut -d '/' -f 2)
@@ -43,7 +43,7 @@ EOF
         if [[ "$WORKFLOW_STATUS" == "Succeeded" ]]; then
             echo "Argo workflow succeeded."
             kubectl delete wf ${WORKFLOW_NAME}
-            rm -rf /tmp/sqlflow* 
+            rm -rf /tmp/sqlflow*
             return 0
         else
             echo "Argo workflow ${WORKFLOW_NAME} ${WORKFLOW_STATUS}"
@@ -69,7 +69,7 @@ check_ret $? "Test Couler failed"
 ############# Run SQLFLow test with Argo Mode #############
 function test_workflow() {
     # start a SQLFlow MySQL Pod with testdata
-    kubectl run mysql --port 3306 --env="SQLFLOW_MYSQL_HOST=0.0.0.0" --env="SQLFLOW_MYSQL_PORT=3306" --image=sqlflow/sqlflow --command -- bash /start.sh mysql
+    kubectl run mysql --port 3306 --env="SQLFLOW_MYSQL_HOST=0.0.0.0" --env="SQLFLOW_MYSQL_PORT=3306" --image=${SQLFLOW_WORKFLOW_STEP_IMAGE} --command -- bash /start.sh mysql
     MYSQL_POD_NAME=$(kubectl get pod -l run=mysql -o jsonpath="{.items[0].metadata.name}")
 
     for i in {1..30}
@@ -93,5 +93,11 @@ function test_workflow() {
 
 test_workflow
 check_ret $? "Test SQLFLow workflow failed"
+
+# test submit pai job using argo workflow mode
+if [ $SQLFLOW_submitter == "pai" ]; then
+    SQLFLOW_submitter=pai SQLFLOW_TEST_DATASOURCE="maxcompute://${MAXCOMPUTE_AK}:${MAXCOMPUTE_SK}@${MAXCOMPUTE_ENDPOINT}" go test ./cmd/... -run TestEnd2EndMySQLWorkflow -v
+    check_ret $? "Test SQLFLow workflow failed"
+fi
 
 go test -v ./pkg/argo/
