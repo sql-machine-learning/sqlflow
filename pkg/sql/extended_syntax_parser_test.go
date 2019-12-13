@@ -84,7 +84,7 @@ func TestStandardSelect(t *testing.T) {
 
 func TestTrainParser(t *testing.T) {
 	a := assert.New(t)
-	// NOTE(tony): Ending semicolon is optional
+	// NOTE(tony): Test optional semicolon at the end of the statement
 	for _, s := range []string{``, `;`} {
 		r, e := newExtendedSyntaxParser().Parse(testTrainSelect + s)
 		a.NoError(e)
