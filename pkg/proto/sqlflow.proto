@@ -23,9 +23,9 @@ service SQLFlow {
     // messages which indicates the training/predicting progress
     // 
     // 2. Argo Workflow mode
-    // The SQLFlow server submites an Argo workflow into a Kubernetes cluster,
+    // The SQLFlow server submits an Argo workflow into a Kubernetes cluster,
     // and returns a stream of messages indicates the WorkFlow ID and the 
-    // submiting progress.
+    // submitting progress.
     //
     // The SQLFlow gRPC client should fetch the logs of the workflow by
     // calling the Fetch interface in a polling manner.

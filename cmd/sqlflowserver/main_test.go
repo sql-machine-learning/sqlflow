@@ -52,7 +52,7 @@ var testDatasource = os.Getenv("SQLFLOW_TEST_DATASOURCE")
 // specify the table name in that case.
 var caseInto = "sqlflow_models.my_dnn_model"
 
-const unitestPort = 50051
+const unitTestPort = 50051
 
 func serverIsReady(addr string, timeout time.Duration) bool {
 	conn, err := net.DialTimeout("tcp", addr, timeout)
@@ -241,9 +241,9 @@ func createRPCConn() (*grpc.ClientConn, error) {
 	caCrt := os.Getenv("SQLFLOW_CA_CRT")
 	if caCrt != "" {
 		creds, _ := credentials.NewClientTLSFromFile(caCrt, "localhost")
-		return grpc.Dial(fmt.Sprintf("localhost:%d", unitestPort), grpc.WithTransportCredentials(creds))
+		return grpc.Dial(fmt.Sprintf("localhost:%d", unitTestPort), grpc.WithTransportCredentials(creds))
 	}
-	return grpc.Dial(fmt.Sprintf("localhost:%d", unitestPort), grpc.WithInsecure())
+	return grpc.Dial(fmt.Sprintf("localhost:%d", unitTestPort), grpc.WithInsecure())
 }
 
 func TestEnd2EndMySQL(t *testing.T) {
@@ -264,8 +264,8 @@ func TestEnd2EndMySQL(t *testing.T) {
 		t.Fatalf("failed to generate CA pair %v", err)
 	}
 
-	go start(modelDir, caCrt, caKey, unitestPort, false)
-	waitPortReady(fmt.Sprintf("localhost:%d", unitestPort), 0)
+	go start(modelDir, caCrt, caKey, unitTestPort, false)
+	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 	err = prepareTestData(dbConnStr)
 	if err != nil {
 		t.Fatalf("prepare test dataset failed: %v", err)
@@ -290,7 +290,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseTrainTextClassificationIR", CaseTrainTextClassificationIR)
 	t.Run("CaseTrainTextClassificationFeatureDerivation", CaseTrainTextClassificationFeatureDerivation)
 	t.Run("CaseXgboostFeatureDerivation", CaseXgboostFeatureDerivation)
-	t.Run("CaseTrainFeatureDerevation", CaseTrainFeatureDerevation)
+	t.Run("CaseTrainFeatureDerivation", CaseTrainFeatureDerivation)
 }
 
 func CaseXgboostFeatureDerivation(t *testing.T) {
@@ -358,8 +358,8 @@ func TestEnd2EndHive(t *testing.T) {
 		t.Skip("Skipping hive tests")
 	}
 	dbConnStr = "hive://root:root@127.0.0.1:10000/iris?auth=NOSASL"
-	go start(modelDir, caCrt, caKey, unitestPort, false)
-	waitPortReady(fmt.Sprintf("localhost:%d", unitestPort), 0)
+	go start(modelDir, caCrt, caKey, unitTestPort, false)
+	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 	err = prepareTestData(dbConnStr)
 	if err != nil {
 		t.Fatalf("prepare test dataset failed: %v", err)
@@ -372,7 +372,7 @@ func TestEnd2EndHive(t *testing.T) {
 	t.Run("CaseTrainDeepWideModel", CaseTrainDeepWideModel)
 	t.Run("CaseTrainXGBoostRegression", CaseTrainXGBoostRegression)
 	t.Run("CasePredictXGBoostRegression", CasePredictXGBoostRegression)
-	t.Run("CaseTrainFeatureDerevation", CaseTrainFeatureDerevation)
+	t.Run("CaseTrainFeatureDerivation", CaseTrainFeatureDerivation)
 }
 
 func TestEnd2EndMaxCompute(t *testing.T) {
@@ -396,8 +396,8 @@ func TestEnd2EndMaxCompute(t *testing.T) {
 	SK := os.Getenv("MAXCOMPUTE_SK")
 	endpoint := os.Getenv("MAXCOMPUTE_ENDPOINT")
 	dbConnStr = fmt.Sprintf("maxcompute://%s:%s@%s", AK, SK, endpoint)
-	go start(modelDir, caCrt, caKey, unitestPort, false)
-	waitPortReady(fmt.Sprintf("localhost:%d", unitestPort), 0)
+	go start(modelDir, caCrt, caKey, unitTestPort, false)
+	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 
 	caseDB = os.Getenv("MAXCOMPUTE_PROJECT")
 	caseTrainTable = "sqlflow_test_iris_train"
@@ -442,8 +442,8 @@ func TestEnd2EndMaxComputeALPS(t *testing.T) {
 		t.Fatalf("prepare test dataset failed: %v", err)
 	}
 
-	go start(modelDir, caCrt, caKey, unitestPort, false)
-	waitPortReady(fmt.Sprintf("localhost:%d", unitestPort), 0)
+	go start(modelDir, caCrt, caKey, unitTestPort, false)
+	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 
 	t.Run("CaseTrainALPS", CaseTrainALPS)
 	t.Run("CaseTrainALPSFeatureMap", CaseTrainALPSFeatureMap)
@@ -481,8 +481,8 @@ func TestEnd2EndMaxComputeElasticDL(t *testing.T) {
 		t.Fatalf("prepare test dataset failed: %v", err)
 	}
 
-	go start(modelDir, caCrt, caKey, unitestPort, false)
-	waitPortReady(fmt.Sprintf("localhost:%d", unitestPort), 0)
+	go start(modelDir, caCrt, caKey, unitTestPort, false)
+	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 
 	t.Run("CaseTrainElasticDL", CaseTrainElasticDL)
 }
@@ -505,8 +505,8 @@ func TestEnd2EndMySQLWorkflow(t *testing.T) {
 		t.Fatalf("failed to generate CA pair %v", err)
 	}
 
-	go start(modelDir, caCrt, caKey, unitestPort, true)
-	waitPortReady(fmt.Sprintf("localhost:%d", unitestPort), 0)
+	go start(modelDir, caCrt, caKey, unitTestPort, true)
+	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 	if err != nil {
 		t.Fatalf("prepare test dataset failed: %v", err)
 	}
@@ -564,8 +564,7 @@ FROM %s.%s LIMIT 5;
 		workflowID = iter.GetJob().GetId()
 	}
 	a.True(strings.HasPrefix(workflowID, "sqlflow-couler"))
-
-	// check the workflow status in 180 seconods
+	// check the workflow status in 180 seconds
 	// TODO(yancey1989): using the Fetch gRPC interface to check the workflow status
 	for i := 0; i < 60; i++ {
 		cmd := exec.Command("kubectl", "get", "wf", workflowID, "-o", "jsonpath='{.status.phase}'")
@@ -702,7 +701,7 @@ FROM %s.%s LIMIT 5;`, caseDB, casePredictTable)
 	}
 }
 
-func CaseTrainFeatureDerevation(t *testing.T) {
+func CaseTrainFeatureDerivation(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := `SELECT *
 FROM iris.train
@@ -1207,8 +1206,8 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 	// write model to current MaxCompute project
 	caseInto = "my_dnn_model"
 
-	go start(modelDir, caCrt, caKey, unitestPort, false)
-	waitPortReady(fmt.Sprintf("localhost:%d", unitestPort), 0)
+	go start(modelDir, caCrt, caKey, unitTestPort, false)
+	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 	err = prepareTestData(dbConnStr)
 	if err != nil {
 		t.Fatalf("prepare test dataset failed: %v", err)
