@@ -140,15 +140,17 @@ func (w *HiveWriter) Write(p []byte) (n int, e error) {
 	return n, nil
 }
 
-func removeHDFSDir(hdfsPath string) error {
-	cmd := exec.Command("hdfs", "hdfs", "-rmr", "-p", hdfsPath)
-	if _, err := cmd.CombinedOutput(); err != nil {
+func removeHDFSDir(hdfsPath string, hdfsEnv []string) error {
+	cmd := exec.Command("hdfs", "dfs", "-rm", "-r", "-f", hdfsPath)
+	cmd.Env = hdfsEnv
+	if out, err := cmd.CombinedOutput(); err != nil {
+		fmt.Println(string(out))
 		return err
 	}
 	return nil
 }
 
-func hdfsEnv(username, password string) []string {
+func hdfsEnvWithCredentical(username, password string) []string {
 	hdfsEnv := os.Environ()
 	if username != "" {
 		hdfsEnv = append(hdfsEnv,
@@ -158,18 +160,18 @@ func hdfsEnv(username, password string) []string {
 	return hdfsEnv
 }
 
-func createHDFSDir(hdfsPath, username, password string) error {
+func createHDFSDir(hdfsPath string, hdfsEnv []string) error {
 	cmd := exec.Command("hdfs", "dfs", "-mkdir", "-p", hdfsPath)
-	cmd.Env = hdfsEnv(username, password)
+	cmd.Env = hdfsEnv
 	if _, err := cmd.CombinedOutput(); err != nil {
 		return err
 	}
 	return nil
 }
 
-func uploadFileToHDFS(localFilePath, hdfsPath, username, password string) error {
+func uploadFileToHDFS(localFilePath, hdfsPath string, hdfsEnv []string) error {
 	cmd := exec.Command("hdfs", "dfs", "-copyFromLocal", localFilePath, hdfsPath)
-	cmd.Env = hdfsEnv(username, password)
+	cmd.Env = hdfsEnv
 	if _, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("upload local file into hdfs error: %v", err)
 	}
@@ -198,26 +200,24 @@ func (w *HiveWriter) Close() error {
 	if e := w.flush(); e != nil {
 		return e
 	}
+	hdfsEnv := hdfsEnvWithCredentical(w.session.HdfsUser, w.session.HdfsPass)
 
 	// 1. create a directory on HDFS
-	if err := createHDFSDir(w.hdfsPath(), w.session.HdfsUser, w.session.HdfsPass); err != nil {
+	if err := createHDFSDir(w.hdfsPath(), hdfsEnv); err != nil {
 		return fmt.Errorf("create HDFDS dir: %s failed: %v", w.hdfsPath(), err)
 	}
+	defer removeHDFSDir(w.hdfsPath(), hdfsEnv)
 
 	// 2. upload the local csv file to the HDFS directory
-	if err := uploadFileToHDFS(w.csvFile.Name(), w.hdfsPath(), w.session.HdfsUser, w.session.HdfsPass); err != nil {
+	if err := uploadFileToHDFS(w.csvFile.Name(), w.hdfsPath(), hdfsEnv); err != nil {
 		return fmt.Errorf("upload local file to hdfs failed: %v", err)
 	}
 
 	// 3. load hdfs files into hive table
 	if err := loadHDFSfileIntoTable(w.db, w.hdfsPath(), w.table); err != nil {
-		return fmt.Errorf("load hdfs filie into table failed: %v", err)
+		return fmt.Errorf("load hdfs file into table failed: %v", err)
 	}
 
-	// 4. remove the uploaded csv path on HDFS
-	if err := removeHDFSDir(w.hdfsPath()); err != nil {
-		return err
-	}
 	return nil
 }
 
