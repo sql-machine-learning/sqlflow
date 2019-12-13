@@ -22,7 +22,7 @@ import (
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
-// TEXT/STRING field support 64KB maximumn storage size
+// TEXT/STRING field support 64KB maximum storage size
 const bufSize = 32 * 1024
 
 // Writer implements io.WriteCloser.

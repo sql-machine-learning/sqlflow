@@ -14,12 +14,15 @@
 package argo
 
 import (
-	"github.com/stretchr/testify/assert"
+	"fmt"
 	"io/ioutil"
 	"os"
-	pb "sqlflow.org/sqlflow/pkg/proto"
+	"os/exec"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
 const (
@@ -60,6 +63,19 @@ spec:
       command: [echo]
       args: ["{{inputs.parameters.message}}"]
 `
+
+	podYAML = `apiVersion: v1
+kind: Pod
+metadata:
+  name: sqlflow-pod
+spec:
+  restartPolicy: Never
+  containers:
+  - name: main 
+    image: docker/whalesay
+    command: [bash]
+    args: [-c, "echo 'hello1\nhello2'; sleep 2; echo 'hello3'"]
+`
 )
 
 func createAndWriteTempFile(content string) (string, error) {
@@ -74,6 +90,36 @@ func createAndWriteTempFile(content string) (string, error) {
 	}
 
 	return tmpFile.Name(), nil
+}
+
+func kubectlCreateFromYAML(content string) (string, error) {
+	fileName, err := createAndWriteTempFile(content)
+	if err != nil {
+		return "", err
+	}
+	defer os.Remove(fileName)
+
+	cmd := exec.Command("kubectl", "create", "-f", fileName)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("submitYAML error: %v\n%v", string(output), err)
+	}
+
+	return getWorkflowID(string(output))
+}
+
+func kubectlDeleteFromYAML(content string) (string, error) {
+	fileName, err := createAndWriteTempFile(content)
+	if err != nil {
+		return "", err
+	}
+	defer os.Remove(fileName)
+	cmd := exec.Command("kubectl", "delete", "-f", fileName, "--ignore-not-found")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("delete k8s resource error: %v\n%v", string(output), err)
+	}
+	return string(output), err
 }
 
 func TestGetCurrentStepGroup(t *testing.T) {
@@ -197,9 +243,65 @@ func TestSubmitAndFetch(t *testing.T) {
 		token = *response.NewToken
 	}
 
-	expectedLogs := []string{"hello1\n", "hello2\n", "hello3\n"}
+	expectedLogs := []string{"hello1", "hello2", "hello3"}
 	a.Equal(len(expectedLogs), len(actualLogs))
 	for i := range expectedLogs {
 		a.Equal(expectedLogs[i], actualLogs[i])
 	}
+}
+
+func waitUntilPodRunning(podID string) error {
+	for {
+		cmd := exec.Command("kubectl", "get", "pod", podID, "-o", "jsonpath={.status.phase}")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			return err
+		}
+		if string(output) != "Pending" {
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
+	return nil
+}
+
+func isPodCompleted(podID string) bool {
+	cmd := exec.Command("kubectl", "get", "pod", podID, "-o", "jsonpath={.status.phase}")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return false
+	}
+	if string(output) == "Succeeded" {
+		return true
+	}
+	return false
+}
+
+func TestGetPodLogs(t *testing.T) {
+	if os.Getenv("SQLFLOW_TEST") != "workflow" {
+		t.Skip("argo: skip workflow tests")
+	}
+	a := assert.New(t)
+	_, err := kubectlDeleteFromYAML(podYAML)
+	a.NoError(err)
+	podID, err := kubectlCreateFromYAML(podYAML)
+	a.NoError(err)
+
+	err = waitUntilPodRunning(podID)
+	a.NoError(err)
+	offset := ""
+	realLogs := []string{}
+	for {
+		logs, newOffset, err := getPodLogs(podID, offset)
+		a.NoError(err)
+		if len(logs) != 0 {
+			realLogs = append(realLogs, logs...)
+		}
+		if isPodCompleted(podID) && offset == newOffset {
+			break
+		}
+		offset = newOffset
+	}
+	a.Equal(realLogs, []string{"hello1", "hello2", "hello3"})
+
 }

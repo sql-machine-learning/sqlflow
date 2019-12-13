@@ -172,7 +172,7 @@ func TestComplete(t *testing.T) {
 
 	p.InsertText(`model.f`, false, true)
 	c = s.completer(*p.Document())
-	a.Equal(0, len(c)) // model.feature_columns removed by codegen/attibute.go
+	a.Equal(0, len(c)) // model.feature_columns removed by codegen/attribute.go
 	p.DeleteBeforeCursor(1)
 
 	p.InsertText(`h`, false, true)

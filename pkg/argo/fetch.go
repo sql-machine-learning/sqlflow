@@ -15,10 +15,13 @@ package argo
 
 import (
 	"fmt"
-	wfv1 "github.com/argoproj/argo/pkg/apis/workflow/v1alpha1"
 	"os/exec"
-	pb "sqlflow.org/sqlflow/pkg/proto"
+	"regexp"
+	"strings"
 	"time"
+
+	wfv1 "github.com/argoproj/argo/pkg/apis/workflow/v1alpha1"
+	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
 // Fetch fetches the workflow log and status
@@ -59,15 +62,19 @@ func Fetch(token pb.FetchToken) (*pb.FetchResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	logs, err := getPodLogs(podName)
+	logs, logOffset, err := getPodLogs(podName, token.GetLogOffset())
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO(yancey&tony): update the following constant after supporting incremental fetching
-	logOffset := ""
-	finishedFetchingCurrentPod := true
+	finishedFetchingCurrentPod := false
+	// finishedFetchingCurrentPod = true when:
+	// 1. the offset has not been updated, and
+	// 2. the pod is completed.
+	if token.GetLogOffset() == logOffset && isCompletedPhaseWF(wf.Status.Phase) {
+		finishedFetchingCurrentPod = true
+		logOffset = ""
+	}
 
 	var newStepGroupName string
 	if finishedFetchingCurrentPod {
@@ -82,7 +89,7 @@ func Fetch(token pb.FetchToken) (*pb.FetchResponse, error) {
 			StepId:    newStepGroupName,
 			LogOffset: logOffset,
 			NoMoreLog: false},
-		Logs:  &pb.FetchResponse_Logs{Content: []string{logs}},
+		Logs:  &pb.FetchResponse_Logs{Content: logs},
 		Phase: translatePhase(wf.Status.Phase)}, nil
 }
 
@@ -111,15 +118,54 @@ func checkNodeType(expected, actual wfv1.NodeType) error {
 	return nil
 }
 
-func getPodLogs(podName string) (string, error) {
+func parseOffset(content string) (string, string) {
+	reTimestamps := regexp.MustCompile(`([^\s]+)\s(.*)$`)
+	msg := reTimestamps.FindStringSubmatch(content)
+	if len(msg) != 3 {
+		return "", ""
+	}
+	return msg[1], msg[2]
+}
+
+func getOffsetAndContentFromLogs(logs, oldOffset string) ([]string, string, error) {
+	// NOTE(yancey1989): using `kubectl --since-time <offset>` to get logs
+	// from the offset which is the timestamps. the accuracy can only be achieved at the second level,
+	// `kubectl` may return some duplicated logs as the provious fetch, and we need to skip them.
+	buffer := []string{}
+	msgLines := strings.Split(strings.TrimSpace(logs), "\n")
+	skipOlderLogs := false
+	offset := oldOffset
+	for _, msg := range msgLines {
+		newOffset, content := parseOffset(msg)
+		if newOffset == "" {
+			break
+		}
+		if newOffset == oldOffset {
+			skipOlderLogs = true
+		} else {
+			if skipOlderLogs || oldOffset == "" {
+				buffer = append(buffer, content)
+				offset = newOffset
+			} else {
+				// skip the duplicated logs as the provious fetch
+				continue
+			}
+		}
+	}
+	return buffer, offset, nil
+}
+
+func getPodLogs(podName string, offset string) ([]string, string, error) {
 	// NOTE(tony): A workflow pod usually contains two container: main and wait
 	// I believe wait is used for management by Argo, so we only need to care about main.
-	cmd := exec.Command("kubectl", "logs", podName, "main")
+	cmd := exec.Command("kubectl", "logs", podName, "main", "--timestamps=true", fmt.Sprintf("--since-time=%s", offset))
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("getPodLogs error: %v\n%v", string(output), err)
+		return nil, "", fmt.Errorf("getPodLogs error: %v\n%v", string(output), err)
 	}
-	return string(output), nil
+
+	logs, newOffset, err := getOffsetAndContentFromLogs(string(output), offset)
+	return logs, newOffset, nil
 }
 
 func waitUntilComplete(token pb.FetchToken) (wf *wfv1.Workflow, err error) {

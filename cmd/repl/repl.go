@@ -149,7 +149,7 @@ func repl(scanner *bufio.Scanner, modelDir string, ds string) {
 			return
 		}
 		if err := runStmt(stmt, false, modelDir, ds); err != nil {
-			log.Fatalf("run SQL statment failed: %v", err)
+			log.Fatalf("run SQL statement failed: %v", err)
 		}
 	}
 }
@@ -168,10 +168,10 @@ func makeSessionFromEnv() *pb.Session {
 }
 
 func parseSQLFromStdin(stdin io.Reader) (string, error) {
-	scanedInput := []string{}
+	scannedInput := []string{}
 	scanner := bufio.NewScanner(stdin)
 	for scanner.Scan() {
-		scanedInput = append(scanedInput, scanner.Text())
+		scannedInput = append(scannedInput, scanner.Text())
 	}
 	if err := scanner.Err(); err != nil {
 		return "", err
@@ -181,7 +181,7 @@ func parseSQLFromStdin(stdin io.Reader) (string, error) {
 		return "", fmt.Errorf("no SQLFLOW_DATASOURCE env provided")
 	}
 	sess := makeSessionFromEnv()
-	pbIRStr, err := sql.ParseSQLStatement(strings.Join(scanedInput, "\n"), sess)
+	pbIRStr, err := sql.ParseSQLStatement(strings.Join(scannedInput, "\n"), sess)
 	if err != nil {
 		return "", err
 	}
