@@ -307,6 +307,7 @@ func createPredictionTable(predParsed *extendedSelect, db *DB, session *pb.Sessi
 // Create prediction table using the `PredictStmt`.
 // TODO(typhoonzero): remove legacy `createPredictionTable` once we change all submitters to use IR.
 func createPredictionTableFromIR(predStmt *ir.PredictStmt, db *DB, session *pb.Session) error {
+	fmt.Println("createPredictionTableFromIR")
 	dropStmt := fmt.Sprintf("drop table if exists %s;", predStmt.ResultTable)
 	if _, e := db.Exec(dropStmt); e != nil {
 		return fmt.Errorf("failed executing %s: %q", dropStmt, e)
@@ -319,8 +320,8 @@ func createPredictionTableFromIR(predStmt *ir.PredictStmt, db *DB, session *pb.S
 	}
 
 	var b bytes.Buffer
-	labelColumnTypeFound := false
-	labelColumnName := ""
+	trainLabelColumn := predStmt.TrainStmt.Label
+	labelColumnName := predStmt.ResultColumn
 	labelColumnType := ""
 	fmt.Fprintf(&b, "create table %s (", predStmt.ResultTable)
 	for idx, colType := range fts {
@@ -329,9 +330,7 @@ func createPredictionTableFromIR(predStmt *ir.PredictStmt, db *DB, session *pb.S
 			return e
 		}
 		fldName := flds[idx]
-		if fldName == predStmt.ResultColumn {
-			labelColumnTypeFound = true
-			labelColumnName = fldName
+		if trainLabelColumn != nil && trainLabelColumn.GetFieldMeta()[0].Name == fldName {
 			labelColumnType = stype
 			continue
 		}
@@ -341,10 +340,8 @@ func createPredictionTableFromIR(predStmt *ir.PredictStmt, db *DB, session *pb.S
 	// TODO(Yancey1989): For the current implementation, the prediction result column
 	// type is derivated by the pred-select-statement, the better way is derivating
 	// the result column type by the prediction result.
-	// typ, ok := fts.get(predStmt.ResultColumn)
-	if !labelColumnTypeFound {
+	if trainLabelColumn == nil {
 		// NOTE(typhoonzero): Clustering model may not have label in select statement, default use INT type
-		labelColumnName = predStmt.ResultColumn
 		labelColumnType = "INT"
 	}
 	stype, e := universalizeColumnType(db.driverName, labelColumnType)

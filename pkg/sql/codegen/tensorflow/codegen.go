@@ -312,8 +312,11 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 			fmt.Sprintf("\"%s\": [%s]", target, strings.Join(perTargetFeatureColumnsCode, ",\n")))
 	}
 	isKeras, estimatorStr := IsKerasModel(predStmt.TrainStmt.Estimator)
-	labelFM := predStmt.TrainStmt.Label.GetFieldMeta()[0]
-	if labelFM.Name == "" {
+	var labelFM *ir.FieldMeta
+	if predStmt.TrainStmt.Label != nil {
+		labelFM = predStmt.TrainStmt.Label.GetFieldMeta()[0]
+		labelFM.Name = predStmt.ResultColumn
+	} else {
 		log.Printf("clustering model, got result table: %s, result column: %s", predStmt.ResultTable, predStmt.ResultColumn)
 		// no label in train SQL means a clustering model, generate a fieldmeta using result table's column
 		labelFM = &ir.FieldMeta{

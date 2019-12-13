@@ -1049,7 +1049,7 @@ INTO sqlflow_models.my_regression_model;`)
 
 	predSQL := fmt.Sprintf(`SELECT *
 FROM housing.test
-TO PREDICT housing.predict.target
+TO PREDICT housing.predict.result
 USING sqlflow_models.my_regression_model;`)
 	_, _, err = connectAndRunSQL(predSQL)
 	if err != nil {
