@@ -39,7 +39,7 @@ COLUMN
   bucketize(last_name, 1000),
   cross(embedding(employee.name), bucketize(last_name, 1000))
 LABEL "employee.salary"
-INTO sqlflow_models.my_dnn_model;
+INTO sqlflow_models.my_dnn_model
 `
 	testMultiColumnTrainSelect = testStandardSelectStmt + `TO TRAIN DNNClassifier
 WITH
@@ -84,22 +84,25 @@ func TestStandardSelect(t *testing.T) {
 
 func TestTrainParser(t *testing.T) {
 	a := assert.New(t)
-	r, e := newExtendedSyntaxParser().Parse(testTrainSelect)
-	a.NoError(e)
-	a.True(r.extended)
-	a.True(r.train)
-	a.Equal("DNNClassifier", r.estimator)
-	a.Equal("[10, 20]", r.trainAttrs["hidden_units"].String())
-	a.Equal("3", r.trainAttrs["n_classes"].String())
-	a.Equal(`employee.name`,
-		r.columns["feature_columns"][0].String())
-	a.Equal(`bucketize(last_name, 1000)`,
-		r.columns["feature_columns"][1].String())
-	a.Equal(
-		`cross(embedding(employee.name), bucketize(last_name, 1000))`,
-		r.columns["feature_columns"][2].String())
-	a.Equal("employee.salary", r.label)
-	a.Equal("sqlflow_models.my_dnn_model", r.save)
+	// NOTE(tony): Ending semicolon is optional
+	for _, s := range []string{``, `;`} {
+		r, e := newExtendedSyntaxParser().Parse(testTrainSelect + s)
+		a.NoError(e)
+		a.True(r.extended)
+		a.True(r.train)
+		a.Equal("DNNClassifier", r.estimator)
+		a.Equal("[10, 20]", r.trainAttrs["hidden_units"].String())
+		a.Equal("3", r.trainAttrs["n_classes"].String())
+		a.Equal(`employee.name`,
+			r.columns["feature_columns"][0].String())
+		a.Equal(`bucketize(last_name, 1000)`,
+			r.columns["feature_columns"][1].String())
+		a.Equal(
+			`cross(embedding(employee.name), bucketize(last_name, 1000))`,
+			r.columns["feature_columns"][2].String())
+		a.Equal("employee.salary", r.label)
+		a.Equal("sqlflow_models.my_dnn_model", r.save)
+	}
 }
 
 func TestMultiColumnTrainParser(t *testing.T) {
