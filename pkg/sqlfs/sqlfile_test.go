@@ -36,17 +36,6 @@ var (
 
 const testDatabaseName = `sqlfs_test`
 
-func TestCreateHasDropTable(t *testing.T) {
-	a := assert.New(t)
-
-	fn := fmt.Sprintf("%s.unittest%d", testDatabaseName, rand.Int())
-	a.NoError(createTable(testDB, testDriver, fn))
-	has, e := hasTable(testDB, fn)
-	a.NoError(e)
-	a.True(has)
-	a.NoError(dropTable(testDB, fn))
-}
-
 func TestWriterCreate(t *testing.T) {
 	a := assert.New(t)
 
