@@ -21,18 +21,18 @@ import (
 
 func TestCommonCasesForHive(t *testing.T) {
 	a := assert.New(t)
-	p := newJavaParser("hive")
+	p := NewThirdPartyParser("hive")
 	commonThirdPartyCases(p, a)
 }
 
 func TestCommonCasesForMaxCompute(t *testing.T) {
 	a := assert.New(t)
-	p := newJavaParser("maxcompute")
+	p := NewThirdPartyParser("maxcompute")
 	commonThirdPartyCases(p, a)
 }
 
 func TestCommonCasesForCalcite(t *testing.T) {
 	a := assert.New(t)
-	p := newJavaParser("calcite")
+	p := NewThirdPartyParser("calcite")
 	commonThirdPartyCases(p, a)
 }
