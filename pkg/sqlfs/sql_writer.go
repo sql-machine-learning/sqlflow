@@ -44,11 +44,11 @@ func noopWrapUp() error {
 	return nil
 }
 
-func newSQLWriter(db *sql.DB, driver, table string) (io.WriteCloser, error) {
+func newSQLWriter(db *sql.DB, dbms, table string) (io.WriteCloser, error) {
 	if e := dropTable(db, table); e != nil {
 		return nil, fmt.Errorf("cannot drop table %s: %v", table, e)
 	}
-	if e := createTable(db, driver, table); e != nil {
+	if e := createTable(db, dbms, table); e != nil {
 		return nil, fmt.Errorf("cannot create table %s: %v", table, e)
 	}
 

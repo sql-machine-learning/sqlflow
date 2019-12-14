@@ -64,6 +64,8 @@ func TestWriterCreate(t *testing.T) {
 }
 
 func TestWriteAndRead(t *testing.T) {
+	const bufSize = 32 * 1024
+
 	testDriver = getEnv("SQLFLOW_TEST_DB", "mysql")
 	a := assert.New(t)
 
