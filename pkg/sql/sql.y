@@ -158,26 +158,26 @@
 %%
 
 select_stmt
-: select ';' {
+: select opt_semicolon {
 	parseResult = &extendedSelect{
 		extended: false,
 		standardSelect: $1}
   }
-| select train_clause ';' {
+| select train_clause opt_semicolon {
 	parseResult = &extendedSelect{
 		extended: true,
 		train: true,
 		standardSelect: $1,
 		trainClause: $2}
   }
-| select predict_clause ';' {
+| select predict_clause opt_semicolon {
 	parseResult = &extendedSelect{
 		extended: true,
 		train: false,
 		standardSelect: $1,
 		predictClause: $2}
   }
-| select explain_clause ';' {
+| select explain_clause opt_semicolon {
 	parseResult = &extendedSelect{
 		extended: true,
 		train: false,
@@ -185,19 +185,19 @@ select_stmt
 		standardSelect: $1,
 		explainClause: $2}
   }
-| train_clause ';' { // FIXME(tony): remove above rules that include select clause
+| train_clause opt_semicolon { // FIXME(tony): remove above rules that include select clause
 	parseResult = &extendedSelect{
 		extended: true,
 		train: true,
 		trainClause: $1}
   }
-| predict_clause ';' {
+| predict_clause opt_semicolon {
 	parseResult = &extendedSelect{
 		extended: true,
 		train: false,
 		predictClause: $1}
   }
-| explain_clause ';' {
+| explain_clause opt_semicolon {
 	parseResult = &extendedSelect{
 		extended: true,
 		train: false,
@@ -213,6 +213,11 @@ select
 	$$.where = $5
 	$$.limit = $6
 }
+;
+
+opt_semicolon
+: /* empty */ {}
+| ';'         {}
 ;
 
 opt_where
