@@ -144,9 +144,9 @@ func encodePODType(val interface{}) (proto.Message, error) {
 	case int, int64:
 		return &wrappers.Int64Value{Value: int64(reflect.ValueOf(val).Int())}, nil
 	case uint8, uint16, uint32:
-		return &wrappers.UInt32Value{Value: uint32(reflect.ValueOf(val).Int())}, nil
+		return &wrappers.UInt32Value{Value: uint32(reflect.ValueOf(val).Uint())}, nil
 	case uint, uint64:
-		return &wrappers.UInt64Value{Value: uint64(reflect.ValueOf(val).Int())}, nil
+		return &wrappers.UInt64Value{Value: uint64(reflect.ValueOf(val).Uint())}, nil
 	case float32:
 		return &wrappers.FloatValue{Value: v}, nil
 	case float64:
