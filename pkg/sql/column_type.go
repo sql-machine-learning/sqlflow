@@ -30,7 +30,7 @@ func newZeroValue(t reflect.Type) interface{} {
 	return reflect.New(t).Interface()
 }
 
-func parseVal(val interface{}) (interface{}, error) {
+func fieldValue(val interface{}) (interface{}, error) {
 	switch v := val.(type) {
 	case *sql.NullBool:
 		if (*v).Valid {
