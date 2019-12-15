@@ -77,7 +77,7 @@ func uploadCSVFile(csv *os.File, db *sql.DB, hivePath, table, user, passwd strin
 	}
 }
 
-func newHiveWriter(db *sql.DB, hivePath, table, user, passwd string) (io.WriteCloser, error) {
+func newHiveWriter(db *sql.DB, hivePath, table, user, passwd string, bufSize int) (io.WriteCloser, error) {
 	if e := dropTable(db, table); e != nil {
 		return nil, fmt.Errorf("cannot drop table %s: %v", table, e)
 	}
@@ -90,6 +90,5 @@ func newHiveWriter(db *sql.DB, hivePath, table, user, passwd string) (io.WriteCl
 		return nil, e
 	}
 	upload := uploadCSVFile(csv, db, hivePath, table, user, passwd)
-	const bufSize = 32 * 1024
 	return newFlushWriteCloser(flush, upload, bufSize), nil
 }

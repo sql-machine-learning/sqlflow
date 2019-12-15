@@ -20,11 +20,13 @@ import (
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
+const bufSize = 32 * 1024
+
 // Create creates a new table or truncates an existing table and
 // returns a writer.
 func Create(db *sql.DB, dbms, table string, session *pb.Session) (io.WriteCloser, error) {
 	if dbms == "hive" {
-		return newHiveWriter(db, session.HiveLocation, table, session.HdfsUser, session.HdfsPass)
+		return newHiveWriter(db, session.HiveLocation, table, session.HdfsUser, session.HdfsPass, bufSize)
 	}
-	return newSQLWriter(db, dbms, table)
+	return newSQLWriter(db, dbms, table, bufSize)
 }

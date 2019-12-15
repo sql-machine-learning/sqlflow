@@ -33,7 +33,7 @@ func TestNewSQLWriter(t *testing.T) {
 	a := assert.New(t)
 
 	tbl := fmt.Sprintf("%s.unittest%d", testDatabaseName, rand.Int())
-	w, e := newSQLWriter(testDB, testDriver, tbl)
+	w, e := newSQLWriter(testDB, testDriver, tbl, bufSize)
 	a.NoError(e)
 	a.NotNil(w)
 	defer w.Close()
@@ -55,7 +55,7 @@ func TestSQLWriterWriteAndRead(t *testing.T) {
 	a := assert.New(t)
 
 	tbl := fmt.Sprintf("%s.unittest%d", testDatabaseName, rand.Int())
-	w, e := newSQLWriter(testDB, testDriver, tbl)
+	w, e := newSQLWriter(testDB, testDriver, tbl, bufSize)
 	a.NoError(e)
 	a.NotNil(w)
 
