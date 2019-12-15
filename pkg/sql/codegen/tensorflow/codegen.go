@@ -174,14 +174,11 @@ func validateAttributes(trainStmt *ir.TrainStmt) error {
 	return modelAttr.Update(commonAttributes).Validate(trainStmt.Attributes)
 }
 
-// Train generates a Python program for train a TensorFlow model.
-func Train(trainStmt *ir.TrainStmt) (string, error) {
-	if err := validateAttributes(trainStmt); err != nil {
-		return "", err
-	}
-	trainParams := make(map[string]interface{})
-	validationParams := make(map[string]interface{})
-	modelParams := make(map[string]interface{})
+func categorizeAttributes(trainStmt *ir.TrainStmt) (trainParams, validateParams, modelParams map[string]interface{}) {
+	trainParams = make(map[string]interface{})
+	validateParams = make(map[string]interface{})
+	modelParams = make(map[string]interface{})
+
 	for attrKey, attr := range trainStmt.Attributes {
 		if strings.HasPrefix(attrKey, "train.") {
 			trainParams[strings.Replace(attrKey, "train.", "", 1)] = attr
@@ -190,9 +187,14 @@ func Train(trainStmt *ir.TrainStmt) (string, error) {
 			modelParams[strings.Replace(attrKey, "model.", "", 1)] = attr
 		}
 		if strings.HasPrefix(attrKey, "validation.") {
-			validationParams[strings.Replace(attrKey, "validation.", "", 1)] = attr
+			validateParams[strings.Replace(attrKey, "validation.", "", 1)] = attr
 		}
+
 	}
+	return trainParams, validateParams, modelParams
+}
+
+func setTrainParamDefaultValues(trainParams map[string]interface{}) {
 	// Add default params for batch_size, epoch, verbose
 	// TODO(typhoonzero): use feature definition dictionary.
 	if _, ok := trainParams["batch_size"]; !ok {
@@ -213,21 +215,25 @@ func Train(trainStmt *ir.TrainStmt) (string, error) {
 	if _, ok := trainParams["log_every_n_iter"]; !ok {
 		trainParams["log_every_n_iter"] = 10
 	}
-	if _, ok := validationParams["start_delay_secs"]; !ok {
-		validationParams["start_delay_secs"] = 0
-	}
-	if _, ok := validationParams["throttle_secs"]; !ok {
-		validationParams["throttle_secs"] = 0
-	}
+}
 
-	featureColumnsCode := []string{}
+func setValidateParamDefaultValues(validateParams map[string]interface{}) {
+	if _, ok := validateParams["start_delay_secs"]; !ok {
+		validateParams["start_delay_secs"] = 0
+	}
+	if _, ok := validateParams["throttle_secs"]; !ok {
+		validateParams["throttle_secs"] = 0
+	}
+}
+
+func deriveFeatureColumnCode(trainStmt *ir.TrainStmt) (featureColumnsCode []string, fieldMetas []*ir.FieldMeta, err error) {
 	perTargetFeatureColumnsCode := []string{}
-	fieldMetas := []*ir.FieldMeta{}
+
 	for target, fcList := range trainStmt.Features {
 		for _, fc := range fcList {
 			fcCode, err := generateFeatureColumnCode(fc)
 			if err != nil {
-				return "", err
+				return nil, nil, err
 			}
 			perTargetFeatureColumnsCode = append(perTargetFeatureColumnsCode, fcCode)
 			if len(fc.GetFieldMeta()) > 0 {
@@ -239,6 +245,25 @@ func Train(trainStmt *ir.TrainStmt) (string, error) {
 		featureColumnsCode = append(featureColumnsCode,
 			fmt.Sprintf("\"%s\": [%s]", target, strings.Join(perTargetFeatureColumnsCode, ",\n")))
 	}
+	return featureColumnsCode, fieldMetas, nil
+}
+
+// Train generates a Python program for train a TensorFlow model.
+func Train(trainStmt *ir.TrainStmt) (string, error) {
+	if err := validateAttributes(trainStmt); err != nil {
+		return "", err
+	}
+
+	trainParams, validateParams, modelParams := categorizeAttributes(trainStmt)
+
+	setTrainParamDefaultValues(trainParams)
+	setValidateParamDefaultValues(validateParams)
+
+	featureColumnsCode, fieldMetas, err := deriveFeatureColumnCode(trainStmt)
+	if err != nil {
+		return "", err
+	}
+
 	isKeras, estimatorStr := IsKerasModel(trainStmt.Estimator)
 	isPAI := os.Getenv("SQLFLOW_submitter") == "pai"
 	paiTable := ""
@@ -266,7 +291,7 @@ func Train(trainStmt *ir.TrainStmt) (string, error) {
 		Y:                 trainStmt.Label.GetFieldMeta()[0], // TODO(typhoonzero): label only support numericColumn.
 		ModelParams:       modelParams,
 		TrainParams:       trainParams,
-		ValidationParams:  validationParams,
+		ValidationParams:  validateParams,
 		Save:              "model_save",
 		IsPAI:             isPAI,
 		PAITrainTable:     paiTable,
