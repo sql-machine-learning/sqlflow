@@ -69,36 +69,10 @@ func parseVal(val interface{}) (interface{}, error) {
 			return nil, nil
 		}
 		return *v, nil
-	case *bool:
-		return *v, nil
-	case *string:
-		return *v, nil
-	case *int:
-		return *v, nil
-	case *int8:
-		return *v, nil
-	case *int16:
-		return *v, nil
-	case *int32:
-		return *v, nil
-	case *int64:
-		return *v, nil
-	case *uint:
-		return *v, nil
-	case *uint8:
-		return *v, nil
-	case *uint16:
-		return *v, nil
-	case *uint32:
-		return *v, nil
-	case *uint64:
-		return *v, nil
-	case *float32:
-		return *v, nil
-	case *float64:
+	case *bool, *string, *int, *int8, *int16, *int32, *int64, *uint, *uint8, *uint16, *uint32, *uint64, *float32, *float64:
 		return *v, nil
 	default:
-		return nil, fmt.Errorf("unrecognized type %v", v)
+		return nil, fmt.Errorf("unrecognized field type %v", v)
 	}
 }
 
