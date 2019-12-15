@@ -23,9 +23,6 @@ import (
 	"github.com/go-sql-driver/mysql"
 )
 
-// hive column type ends with _TYPE
-const hiveCTypeSuffix = "_TYPE"
-
 func newZeroValue(t reflect.Type) interface{} {
 	return reflect.New(t).Interface()
 }
@@ -102,24 +99,25 @@ func fieldValue(val interface{}) (interface{}, error) {
 	}
 }
 
-func universalizeColumnType(driverName, dialectType string) (string, error) {
-	if driverName == "mysql" || driverName == "maxcompute" {
-		if dialectType == "VARCHAR" {
+func fieldType(dbms, typeName string) (string, error) {
+	if dbms == "mysql" || dbms == "maxcompute" {
+		if typeName == "VARCHAR" {
 			// FIXME(tony): MySQL driver DatabaseName doesn't include the type length of a field.
 			// Hardcoded to 255 for now.
 			// ref: https://github.com/go-sql-driver/mysql/blob/877a9775f06853f611fb2d4e817d92479242d1cd/fields.go#L87
 			return "VARCHAR(255)", nil
 		}
-		return dialectType, nil
-	} else if driverName == "hive" {
-		if strings.HasSuffix(dialectType, hiveCTypeSuffix) {
-			return dialectType[:len(dialectType)-len(hiveCTypeSuffix)], nil
+		return typeName, nil
+	} else if dbms == "hive" {
+		const hiveCTypeSuffix = "_TYPE" // Hive field type names ends with _TYPE
+		if strings.HasSuffix(typeName, hiveCTypeSuffix) {
+			return typeName[:len(typeName)-len(hiveCTypeSuffix)], nil
 		}
 		// In hive, capacity is also needed when define a VARCHAR field, so we replace it with STRING.
-		if dialectType == "VARCHAR" {
+		if typeName == "VARCHAR" {
 			return "STRING", nil
 		}
-		return dialectType, nil
+		return typeName, nil
 	}
-	return "", fmt.Errorf("not support driver:%s", driverName)
+	return "", fmt.Errorf("Not supported DBMS:%s", dbms)
 }
