@@ -67,7 +67,7 @@ spec:
 	podYAML = `apiVersion: v1
 kind: Pod
 metadata:
-  name: sqlflow-pod
+	generateName: sqlflow-pod-
 spec:
   restartPolicy: Never
   containers:
@@ -285,18 +285,20 @@ func TestGetPodLogs(t *testing.T) {
 	err = waitUntilPodRunning(podID)
 	a.NoError(err)
 	offset := ""
-	realLogs := []string{}
+	actual := []string{}
+	expected := []string{"hello1", "hello2", "hello3"}
 	for {
 		logs, newOffset, err := getPodLogs(podID, offset)
 		a.NoError(err)
 		if len(logs) != 0 {
-			realLogs = append(realLogs, logs...)
+			actual = append(actual, logs...)
 		}
 		if isPodCompleted(podID) && offset == newOffset {
 			break
 		}
 		offset = newOffset
+		time.Sleep(1 * time.Second)
 	}
-	a.Equal(realLogs, []string{"hello1", "hello2", "hello3"})
+	a.Equal(expected, actual)
 
 }
