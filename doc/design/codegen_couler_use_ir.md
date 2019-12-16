@@ -19,10 +19,10 @@ To implement the single `codegen_couler.go` to support generate code that can ru
             tfFiller := TFFiller{
                 Estimator: generateTFEstimatorCode(ir),
                 FeatureColumns: generateFeatureColumnsCode(ir),
-                FieldMetas: generateFieldMetasCode(ir),
+                FieldDescs: generateFieldDescsCode(ir),
                 ...
             }
-            tfTrainTemplate = `couler.tensorflow.train(estimator="{{.Estimator}}", FeatureColumns="""{{.FeatureColumns}}""", FieldMetas={{.FieldMetas}})`
+            tfTrainTemplate = `couler.tensorflow.train(estimator="{{.Estimator}}", FeatureColumns="""{{.FeatureColumns}}""", FieldDescs={{.FieldDescs}})`
             // Do template rendering here.
         else if ir.ModelType == "XGBoost":
             ...

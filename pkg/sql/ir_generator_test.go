@@ -80,21 +80,21 @@ func TestGenerateTrainStmt(t *testing.T) {
 
 	nc, ok := trainStmt.Features["feature_columns"][0].(*ir.NumericColumn)
 	a.True(ok)
-	a.Equal([]int{1}, nc.FieldMeta.Shape)
+	a.Equal([]int{1}, nc.FieldDesc.Shape)
 
 	nc, ok = trainStmt.Features["feature_columns"][1].(*ir.NumericColumn)
 	a.True(ok)
-	a.Equal("c2", nc.FieldMeta.Name)
-	a.Equal([]int{128, 32}, nc.FieldMeta.Shape)
+	a.Equal("c2", nc.FieldDesc.Name)
+	a.Equal([]int{128, 32}, nc.FieldDesc.Shape)
 
 	cc, ok := trainStmt.Features["feature_columns"][2].(*ir.CategoryIDColumn)
 	a.True(ok)
-	a.Equal("c3", cc.FieldMeta.Name)
+	a.Equal("c3", cc.FieldDesc.Name)
 	a.Equal(int64(512), cc.BucketSize)
 
 	seqcc, ok := trainStmt.Features["feature_columns"][3].(*ir.SeqCategoryIDColumn)
 	a.True(ok)
-	a.Equal("c3", seqcc.FieldMeta.Name)
+	a.Equal("c3", seqcc.FieldDesc.Name)
 
 	cross, ok := trainStmt.Features["feature_columns"][4].(*ir.CrossColumn)
 	a.True(ok)
@@ -105,7 +105,7 @@ func TestGenerateTrainStmt(t *testing.T) {
 	bucket, ok := trainStmt.Features["feature_columns"][5].(*ir.BucketColumn)
 	a.True(ok)
 	a.Equal(100, bucket.Boundaries[0])
-	a.Equal("c1", bucket.SourceColumn.FieldMeta.Name)
+	a.Equal("c1", bucket.SourceColumn.FieldDesc.Name)
 
 	emb, ok := trainStmt.Features["feature_columns"][6].(*ir.EmbeddingColumn)
 	a.True(ok)
@@ -113,31 +113,31 @@ func TestGenerateTrainStmt(t *testing.T) {
 	a.Equal(128, emb.Dimension)
 	embInner, ok := emb.CategoryColumn.(*ir.CategoryIDColumn)
 	a.True(ok)
-	a.Equal("c3", embInner.FieldMeta.Name)
+	a.Equal("c3", embInner.FieldDesc.Name)
 	a.Equal(int64(512), embInner.BucketSize)
 
 	// NUMERIC(DENSE(c1, [64], COMMA), [128])
 	nc, ok = trainStmt.Features["feature_columns"][7].(*ir.NumericColumn)
 	a.True(ok)
-	a.Equal(64, nc.FieldMeta.Shape[0])
-	a.Equal(",", nc.FieldMeta.Delimiter)
-	a.False(nc.FieldMeta.IsSparse)
+	a.Equal(64, nc.FieldDesc.Shape[0])
+	a.Equal(",", nc.FieldDesc.Delimiter)
+	a.False(nc.FieldDesc.IsSparse)
 
 	// CATEGORY_ID(SPARSE(c2, 10000, COMMA), 128),
 	cc, ok = trainStmt.Features["feature_columns"][8].(*ir.CategoryIDColumn)
 	a.True(ok)
-	a.True(cc.FieldMeta.IsSparse)
-	a.Equal("c2", cc.FieldMeta.Name)
-	a.Equal(10000, cc.FieldMeta.Shape[0])
-	a.Equal(",", cc.FieldMeta.Delimiter)
+	a.True(cc.FieldDesc.IsSparse)
+	a.Equal("c2", cc.FieldDesc.Name)
+	a.Equal(10000, cc.FieldDesc.Shape[0])
+	a.Equal(",", cc.FieldDesc.Delimiter)
 	a.Equal(int64(128), cc.BucketSize)
 
 	// SEQ_CATEGORY_ID(SPARSE(c2, 10000, COMMA), 128)
 	scc, ok := trainStmt.Features["feature_columns"][9].(*ir.SeqCategoryIDColumn)
 	a.True(ok)
-	a.True(scc.FieldMeta.IsSparse)
-	a.Equal("c2", scc.FieldMeta.Name)
-	a.Equal(10000, scc.FieldMeta.Shape[0])
+	a.True(scc.FieldDesc.IsSparse)
+	a.Equal("c2", scc.FieldDesc.Name)
+	a.Equal(10000, scc.FieldDesc.Shape[0])
 
 	// EMBEDDING(c1, 128)
 	emb, ok = trainStmt.Features["feature_columns"][10].(*ir.EmbeddingColumn)
@@ -150,14 +150,14 @@ func TestGenerateTrainStmt(t *testing.T) {
 	a.True(ok)
 	catCol, ok := emb.CategoryColumn.(*ir.CategoryIDColumn)
 	a.True(ok)
-	a.True(catCol.FieldMeta.IsSparse)
-	a.Equal("c2", catCol.FieldMeta.Name)
-	a.Equal(10000, catCol.FieldMeta.Shape[0])
-	a.Equal(",", catCol.FieldMeta.Delimiter)
+	a.True(catCol.FieldDesc.IsSparse)
+	a.Equal("c2", catCol.FieldDesc.Name)
+	a.Equal(10000, catCol.FieldDesc.Shape[0])
+	a.Equal(",", catCol.FieldDesc.Delimiter)
 
 	l, ok := trainStmt.Label.(*ir.NumericColumn)
 	a.True(ok)
-	a.Equal("c4", l.FieldMeta.Name)
+	a.Equal("c4", l.FieldDesc.Name)
 
 	a.Equal("mymodel", trainStmt.Into)
 }
@@ -216,11 +216,11 @@ INTO sqlflow_models.mymodel;`, modelDir, &pb.Session{DbConnStr: connStr})
 
 	a.Equal(connStr, predStmt.DataSource)
 	a.Equal("iris.predict", predStmt.ResultTable)
-	a.Equal("class", predStmt.TrainStmt.Label.GetFieldMeta()[0].Name)
+	a.Equal("class", predStmt.TrainStmt.Label.GetFieldDesc()[0].Name)
 	a.Equal("DNNClassifier", predStmt.TrainStmt.Estimator)
 	nc, ok := predStmt.TrainStmt.Features["feature_columns"][0].(*ir.NumericColumn)
 	a.True(ok)
-	a.Equal("sepal_length", nc.FieldMeta.Name)
+	a.Equal("sepal_length", nc.FieldDesc.Name)
 }
 
 func TestGenerateAnalyzeStmt(t *testing.T) {
@@ -270,7 +270,7 @@ INTO sqlflow_models.my_xgboost_model;
 
 	nc, ok := AnalyzeStmt.TrainStmt.Features["feature_columns"][0].(*ir.NumericColumn)
 	a.True(ok)
-	a.Equal("sepal_length", nc.FieldMeta.Name)
+	a.Equal("sepal_length", nc.FieldDesc.Name)
 }
 
 func TestInferStringValue(t *testing.T) {

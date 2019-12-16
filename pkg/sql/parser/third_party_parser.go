@@ -11,22 +11,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sqlfs
+package parser
 
-import (
-	"database/sql"
-	"io"
+// ThirdPartyParser abstract a parser of a SQL engine, for example,
+// Hive, MySQL, TiDB, MaxCompute.
+type ThirdPartyParser interface {
+	Parse(program string) ([]string, int, error)
+	Type() string
+}
 
-	pb "sqlflow.org/sqlflow/pkg/proto"
-)
-
-const bufSize = 32 * 1024
-
-// Create creates a new table or truncates an existing table and
-// returns a writer.
-func Create(db *sql.DB, dbms, table string, session *pb.Session) (io.WriteCloser, error) {
-	if dbms == "hive" {
-		return newHiveWriter(db, session.HiveLocation, table, session.HdfsUser, session.HdfsPass, bufSize)
+// NewThirdPartyParser instantiates a parser.
+func NewThirdPartyParser(typ string) ThirdPartyParser {
+	switch typ {
+	case "mysql", "tidb":
+		return newTiDBParser()
+	case "hive", "hiveql":
+		return newJavaParser("hiveql")
+	case "calcite", "maxcompute":
+		return newJavaParser("calcite")
 	}
-	return newSQLWriter(db, dbms, table, bufSize)
+	return nil
 }

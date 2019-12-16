@@ -61,8 +61,8 @@ func generateFeatureColumnCode(fc ir.FeatureColumn) (string, error) {
 	case *ir.NumericColumn:
 		nc := fc.(*ir.NumericColumn)
 		return fmt.Sprintf("tf.feature_column.numeric_column(\"%s\", shape=%s)",
-			nc.FieldMeta.Name,
-			intArrayToJSONString(nc.FieldMeta.Shape)), nil
+			nc.FieldDesc.Name,
+			intArrayToJSONString(nc.FieldDesc.Shape)), nil
 	case *ir.BucketColumn:
 		bc := fc.(*ir.BucketColumn)
 		sourceCode, err := generateFeatureColumnCode(bc.SourceColumn)
@@ -76,11 +76,11 @@ func generateFeatureColumnCode(fc ir.FeatureColumn) (string, error) {
 	case *ir.CategoryIDColumn:
 		cc := fc.(*ir.CategoryIDColumn)
 		return fmt.Sprintf("tf.feature_column.categorical_column_with_identity(key=\"%s\", num_buckets=%d)",
-			cc.FieldMeta.Name, cc.BucketSize), nil
+			cc.FieldDesc.Name, cc.BucketSize), nil
 	case *ir.SeqCategoryIDColumn:
 		cc := fc.(*ir.SeqCategoryIDColumn)
 		return fmt.Sprintf("tf.feature_column.sequence_categorical_column_with_identity(key=\"%s\", num_buckets=%d)",
-			cc.FieldMeta.Name, cc.BucketSize), nil
+			cc.FieldDesc.Name, cc.BucketSize), nil
 	case *ir.CrossColumn:
 		cc := fc.(*ir.CrossColumn)
 		var keysGenerated = make([]string, len(cc.Keys))
@@ -174,14 +174,11 @@ func validateAttributes(trainStmt *ir.TrainStmt) error {
 	return modelAttr.Update(commonAttributes).Validate(trainStmt.Attributes)
 }
 
-// Train generates a Python program for train a TensorFlow model.
-func Train(trainStmt *ir.TrainStmt) (string, error) {
-	if err := validateAttributes(trainStmt); err != nil {
-		return "", err
-	}
-	trainParams := make(map[string]interface{})
-	validationParams := make(map[string]interface{})
-	modelParams := make(map[string]interface{})
+func categorizeAttributes(trainStmt *ir.TrainStmt) (trainParams, validateParams, modelParams map[string]interface{}) {
+	trainParams = make(map[string]interface{})
+	validateParams = make(map[string]interface{})
+	modelParams = make(map[string]interface{})
+
 	for attrKey, attr := range trainStmt.Attributes {
 		if strings.HasPrefix(attrKey, "train.") {
 			trainParams[strings.Replace(attrKey, "train.", "", 1)] = attr
@@ -190,9 +187,14 @@ func Train(trainStmt *ir.TrainStmt) (string, error) {
 			modelParams[strings.Replace(attrKey, "model.", "", 1)] = attr
 		}
 		if strings.HasPrefix(attrKey, "validation.") {
-			validationParams[strings.Replace(attrKey, "validation.", "", 1)] = attr
+			validateParams[strings.Replace(attrKey, "validation.", "", 1)] = attr
 		}
+
 	}
+	return trainParams, validateParams, modelParams
+}
+
+func setTrainParamDefaultValues(trainParams map[string]interface{}) {
 	// Add default params for batch_size, epoch, verbose
 	// TODO(typhoonzero): use feature definition dictionary.
 	if _, ok := trainParams["batch_size"]; !ok {
@@ -213,32 +215,54 @@ func Train(trainStmt *ir.TrainStmt) (string, error) {
 	if _, ok := trainParams["log_every_n_iter"]; !ok {
 		trainParams["log_every_n_iter"] = 10
 	}
-	if _, ok := validationParams["start_delay_secs"]; !ok {
-		validationParams["start_delay_secs"] = 0
-	}
-	if _, ok := validationParams["throttle_secs"]; !ok {
-		validationParams["throttle_secs"] = 0
-	}
+}
 
-	featureColumnsCode := []string{}
+func setValidateParamDefaultValues(validateParams map[string]interface{}) {
+	if _, ok := validateParams["start_delay_secs"]; !ok {
+		validateParams["start_delay_secs"] = 0
+	}
+	if _, ok := validateParams["throttle_secs"]; !ok {
+		validateParams["throttle_secs"] = 0
+	}
+}
+
+func deriveFeatureColumnCode(trainStmt *ir.TrainStmt) (featureColumnsCode []string, fieldDescs []*ir.FieldDesc, err error) {
 	perTargetFeatureColumnsCode := []string{}
-	fieldMetas := []*ir.FieldMeta{}
 	for target, fcList := range trainStmt.Features {
 		for _, fc := range fcList {
 			fcCode, err := generateFeatureColumnCode(fc)
 			if err != nil {
-				return "", err
+				return nil, nil, err
 			}
 			perTargetFeatureColumnsCode = append(perTargetFeatureColumnsCode, fcCode)
-			if len(fc.GetFieldMeta()) > 0 {
-				for _, fm := range fc.GetFieldMeta() {
-					fieldMetas = append(fieldMetas, fm)
+			if len(fc.GetFieldDesc()) > 0 {
+				for _, fm := range fc.GetFieldDesc() {
+					fieldDescs = append(fieldDescs, fm)
 				}
 			}
 		}
 		featureColumnsCode = append(featureColumnsCode,
 			fmt.Sprintf("\"%s\": [%s]", target, strings.Join(perTargetFeatureColumnsCode, ",\n")))
 	}
+	return featureColumnsCode, fieldDescs, nil
+}
+
+// Train generates a Python program for train a TensorFlow model.
+func Train(trainStmt *ir.TrainStmt) (string, error) {
+	if err := validateAttributes(trainStmt); err != nil {
+		return "", err
+	}
+
+	trainParams, validateParams, modelParams := categorizeAttributes(trainStmt)
+
+	setTrainParamDefaultValues(trainParams)
+	setValidateParamDefaultValues(validateParams)
+
+	featureColumnsCode, fieldDescs, err := deriveFeatureColumnCode(trainStmt)
+	if err != nil {
+		return "", err
+	}
+
 	isKeras, estimatorStr := IsKerasModel(trainStmt.Estimator)
 	isPAI := os.Getenv("SQLFLOW_submitter") == "pai"
 	paiTable := ""
@@ -261,12 +285,12 @@ func Train(trainStmt *ir.TrainStmt) (string, error) {
 		ValidationSelect:  trainStmt.ValidationSelect,
 		Estimator:         estimatorStr,
 		IsKerasModel:      isKeras,
-		FieldMetas:        fieldMetas,
+		FieldDescs:        fieldDescs,
 		FeatureColumnCode: fmt.Sprintf("{%s}", strings.Join(featureColumnsCode, ",\n")),
-		Y:                 trainStmt.Label.GetFieldMeta()[0], // TODO(typhoonzero): label only support numericColumn.
+		Y:                 trainStmt.Label.GetFieldDesc()[0], // TODO(typhoonzero): label only support numericColumn.
 		ModelParams:       modelParams,
 		TrainParams:       trainParams,
-		ValidationParams:  validationParams,
+		ValidationParams:  validateParams,
 		Save:              "model_save",
 		IsPAI:             isPAI,
 		PAITrainTable:     paiTable,
@@ -294,7 +318,7 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 	}
 	featureColumnsCode := []string{}
 	perTargetFeatureColumnsCode := []string{}
-	fieldMetas := []*ir.FieldMeta{}
+	fieldDescs := []*ir.FieldDesc{}
 	for target, fcList := range predStmt.TrainStmt.Features {
 		for _, fc := range fcList {
 			fcCode, err := generateFeatureColumnCode(fc)
@@ -302,9 +326,9 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 				return "", err
 			}
 			perTargetFeatureColumnsCode = append(perTargetFeatureColumnsCode, fcCode)
-			if len(fc.GetFieldMeta()) > 0 {
-				for _, fm := range fc.GetFieldMeta() {
-					fieldMetas = append(fieldMetas, fm)
+			if len(fc.GetFieldDesc()) > 0 {
+				for _, fm := range fc.GetFieldDesc() {
+					fieldDescs = append(fieldDescs, fm)
 				}
 			}
 		}
@@ -312,18 +336,18 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 			fmt.Sprintf("\"%s\": [%s]", target, strings.Join(perTargetFeatureColumnsCode, ",\n")))
 	}
 	isKeras, estimatorStr := IsKerasModel(predStmt.TrainStmt.Estimator)
-	var labelFM *ir.FieldMeta
-	if predStmt.TrainStmt.Label != nil {
-		labelFM = predStmt.TrainStmt.Label.GetFieldMeta()[0]
-		labelFM.Name = predStmt.ResultColumn
-	} else {
+	labelFM := predStmt.TrainStmt.Label.GetFieldDesc()[0]
+	if labelFM.Name == "" {
 		log.Printf("clustering model, got result table: %s, result column: %s", predStmt.ResultTable, predStmt.ResultColumn)
-		// no label in train SQL means a clustering model, generate a fieldmeta using result table's column
-		labelFM = &ir.FieldMeta{
+		// no label in train SQL means a clustering model, generate a fieldDesc using result table's column
+		labelFM = &ir.FieldDesc{
 			Name:  predStmt.ResultColumn,
 			Shape: []int{1},
 			DType: ir.Int,
 		}
+	} else {
+		// write the prediction result in the predict result column
+		labelFM.Name = predStmt.ResultColumn
 	}
 
 	filler := predFiller{
@@ -332,7 +356,7 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 		ResultTable:       predStmt.ResultTable,
 		Estimator:         estimatorStr,
 		IsKerasModel:      isKeras,
-		FieldMetas:        fieldMetas,
+		FieldDescs:        fieldDescs,
 		FeatureColumnCode: fmt.Sprintf("{%s}", strings.Join(featureColumnsCode, ",\n")),
 		Y:                 labelFM,
 		ModelParams:       modelParams,

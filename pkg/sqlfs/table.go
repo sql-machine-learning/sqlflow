@@ -21,18 +21,18 @@ import (
 // createTable creates a table, if it doesn't exist.  If the table
 // name includes the database name, e.g., "db.tbl", it creates the
 // database if necessary.
-func createTable(db *sql.DB, driver, table string) error {
+func createTable(db *sql.DB, dbms, table string) error {
 	// HIVE and ODPS don't support AUTO_INCREMENT
 	// Hive and ODPS don't support BLOB, use BINARY instead
 	var stmt string
-	if driver == "mysql" {
+	if dbms == "mysql" {
 		stmt = fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (id INT, block TEXT, PRIMARY KEY (id))", table)
-	} else if driver == "hive" {
+	} else if dbms == "hive" {
 		stmt = fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (id INT, block STRING) ROW FORMAT DELIMITED FIELDS TERMINATED BY \"\\001\" STORED AS TEXTFILE", table)
-	} else if driver == "maxcompute" {
+	} else if dbms == "maxcompute" {
 		stmt = fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (id INT, block STRING)", table)
 	} else {
-		return fmt.Errorf("createTable doesn't recognize driver %s", driver)
+		return fmt.Errorf("createTable doesn't recognize dbms %s", dbms)
 	}
 	if _, e := db.Exec(stmt); e != nil {
 		return fmt.Errorf("exec:[%s] failed: %v", stmt, e)

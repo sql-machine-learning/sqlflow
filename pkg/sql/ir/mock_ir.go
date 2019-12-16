@@ -40,11 +40,11 @@ func MockTrainStmt(datasource string, isxgboost bool) *TrainStmt {
 		Attributes:       attrs,
 		Features: map[string][]FeatureColumn{
 			"feature_columns": {
-				&NumericColumn{&FieldMeta{"sepal_length", Float, "", []int{1}, false, nil, 0}},
-				&NumericColumn{&FieldMeta{"sepal_width", Float, "", []int{1}, false, nil, 0}},
-				&NumericColumn{&FieldMeta{"petal_length", Float, "", []int{1}, false, nil, 0}},
-				&NumericColumn{&FieldMeta{"petal_width", Float, "", []int{1}, false, nil, 0}}}},
-		Label: &NumericColumn{&FieldMeta{"class", Int, "", []int{1}, false, nil, 0}}}
+				&NumericColumn{&FieldDesc{"sepal_length", Float, "", []int{1}, false, nil, 0}},
+				&NumericColumn{&FieldDesc{"sepal_width", Float, "", []int{1}, false, nil, 0}},
+				&NumericColumn{&FieldDesc{"petal_length", Float, "", []int{1}, false, nil, 0}},
+				&NumericColumn{&FieldDesc{"petal_width", Float, "", []int{1}, false, nil, 0}}}},
+		Label: &NumericColumn{&FieldDesc{"class", Int, "", []int{1}, false, nil, 0}}}
 }
 
 // MockPredStmt generates a sample PredictStmt for test.

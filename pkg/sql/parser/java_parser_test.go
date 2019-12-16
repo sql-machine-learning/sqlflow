@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package parser
 
 import (
 	"testing"
@@ -19,12 +19,20 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestSplitMultipleSQL(t *testing.T) {
+func TestCommonCasesForHive(t *testing.T) {
 	a := assert.New(t)
-	splitted, err := SplitMultipleSQL(`CREATE TABLE copy_table_1 AS SELECT a,b,c FROM table_1 WHERE c<>";";
-SELECT * FROM copy_table_1;SELECT * FROM copy_table_1 TO TRAIN DNNClassifier WITH n_classes=2 INTO test_model;`)
-	a.NoError(err)
-	a.Equal("CREATE TABLE copy_table_1 AS SELECT a,b,c FROM table_1 WHERE c<>\";\";", splitted[0])
-	a.Equal("SELECT * FROM copy_table_1;", splitted[1])
-	a.Equal("SELECT * FROM copy_table_1 TO TRAIN DNNClassifier WITH n_classes=2 INTO test_model;", splitted[2])
+	p := NewThirdPartyParser("hive")
+	commonThirdPartyCases(p, a)
+}
+
+func TestCommonCasesForMaxCompute(t *testing.T) {
+	a := assert.New(t)
+	p := NewThirdPartyParser("maxcompute")
+	commonThirdPartyCases(p, a)
+}
+
+func TestCommonCasesForCalcite(t *testing.T) {
+	a := assert.New(t)
+	p := NewThirdPartyParser("calcite")
+	commonThirdPartyCases(p, a)
 }

@@ -26,7 +26,7 @@ const (
 	String
 )
 
-// FieldMeta contains the meta information for decoding. A field is a selected column of a SQL result.
+// FieldDesc contains the meta information for decoding. A field is a selected column of a SQL result.
 //
 // Name indicates the name for a field.
 //
@@ -40,7 +40,7 @@ const (
 // will be [3].
 //
 // IsSparse indicates the type of tensor for a field. True means the tensor is a sparse tensor.
-type FieldMeta struct {
+type FieldDesc struct {
 	Name      string    `json:"name"`      // e.g. "petal_length"
 	DType     FieldType `json:"dtype"`     // e.g. "float", "int32"
 	Delimiter string    `json:"delimiter"` // e.g. ","
@@ -57,7 +57,7 @@ type FieldMeta struct {
 // FeatureColumn indicates the feature column to be applied on the field. Please refer to
 // sqlflow.org/sqlflow/pkg/sql/codegen/feature_column.go for detailed list of all feature columns.
 type FeatureColumn interface {
-	GetFieldMeta() []*FieldMeta
+	GetFieldDesc() []*FieldDesc
 }
 
 // SQLProgram represents a parsed SQL program.

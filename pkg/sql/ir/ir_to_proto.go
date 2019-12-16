@@ -82,8 +82,8 @@ func toInt32List(il []int) []int32 {
 	return ret
 }
 
-func fieldMetaToPBMeta(fm *FieldMeta) *pb.FieldMeta {
-	return &pb.FieldMeta{
+func fieldDescToPBMeta(fm *FieldDesc) *pb.FieldDesc {
+	return &pb.FieldDesc{
 		Name:       fm.Name,
 		Dtype:      dtypeToString(fm.DType),
 		Delimiter:  fm.Delimiter,
@@ -100,18 +100,18 @@ func featureColumnToPb(fc FeatureColumn) (*pb.FeatureColumn, error) {
 		nc := &pb.FeatureColumn{
 			FeatureColumn: &pb.FeatureColumn_Nc{
 				Nc: &pb.NumericColumn{
-					FieldMeta: fieldMetaToPBMeta(fc.GetFieldMeta()[0]),
+					FieldDesc: fieldDescToPBMeta(fc.GetFieldDesc()[0]),
 				},
 			},
 		}
 		return nc, nil
 	case *BucketColumn:
-		fm := fc.GetFieldMeta()[0]
+		fm := fc.GetFieldDesc()[0]
 		bc := &pb.FeatureColumn{
 			FeatureColumn: &pb.FeatureColumn_Bc{
 				Bc: &pb.BucketColumn{
 					SourceColumn: &pb.NumericColumn{
-						FieldMeta: fieldMetaToPBMeta(fm),
+						FieldDesc: fieldDescToPBMeta(fm),
 					},
 					Boundaries: toInt32List(fc.(*BucketColumn).Boundaries),
 				},
@@ -142,7 +142,7 @@ func featureColumnToPb(fc FeatureColumn) (*pb.FeatureColumn, error) {
 		pbcatc := &pb.FeatureColumn{
 			FeatureColumn: &pb.FeatureColumn_Catc{
 				Catc: &pb.CategoryIDColumn{
-					FieldMeta:  fieldMetaToPBMeta(fc.GetFieldMeta()[0]),
+					FieldDesc:  fieldDescToPBMeta(fc.GetFieldDesc()[0]),
 					BucketSize: int32(catc.BucketSize),
 				},
 			},
@@ -153,7 +153,7 @@ func featureColumnToPb(fc FeatureColumn) (*pb.FeatureColumn, error) {
 		pbseqcatc := &pb.FeatureColumn{
 			FeatureColumn: &pb.FeatureColumn_Seqcatc{
 				Seqcatc: &pb.SeqCategoryIDColumn{
-					FieldMeta:  fieldMetaToPBMeta(fc.GetFieldMeta()[0]),
+					FieldDesc:  fieldDescToPBMeta(fc.GetFieldDesc()[0]),
 					BucketSize: int32(seqcatc.BucketSize),
 				},
 			},
@@ -236,11 +236,11 @@ func TrainStmtToProto(trainStmt *TrainStmt, sess *pb.Session) (*pb.TrainStmt, er
 		features[target] = pbfclist
 	}
 
-	labelFM := trainStmt.Label.GetFieldMeta()[0]
+	labelFM := trainStmt.Label.GetFieldDesc()[0]
 	label := &pb.FeatureColumn{
 		FeatureColumn: &pb.FeatureColumn_Nc{
 			Nc: &pb.NumericColumn{
-				FieldMeta: fieldMetaToPBMeta(labelFM),
+				FieldDesc: fieldDescToPBMeta(labelFM),
 			},
 		},
 	}

@@ -106,7 +106,7 @@ func parseRow(columns []string, columnTypes []*sql.ColumnType, rows *sql.Rows, w
 
 	row := make([]interface{}, count)
 	for i, val := range values {
-		v, e := parseVal(val)
+		v, e := fieldValue(val)
 		if e != nil {
 			return e
 		}

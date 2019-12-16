@@ -15,9 +15,10 @@ package sql
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func isJavaParser(typ string) bool {

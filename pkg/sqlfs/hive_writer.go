@@ -22,8 +22,6 @@ import (
 	"os"
 	"os/exec"
 	"path"
-
-	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
 func flushToCSV() (func([]byte) error, *os.File, error) {
@@ -79,7 +77,7 @@ func uploadCSVFile(csv *os.File, db *sql.DB, hivePath, table, user, passwd strin
 	}
 }
 
-func newHiveWriter(db *sql.DB, hivePath, table, user, passwd string) (io.WriteCloser, error) {
+func newHiveWriter(db *sql.DB, hivePath, table, user, passwd string, bufSize int) (io.WriteCloser, error) {
 	if e := dropTable(db, table); e != nil {
 		return nil, fmt.Errorf("cannot drop table %s: %v", table, e)
 	}
@@ -92,107 +90,5 @@ func newHiveWriter(db *sql.DB, hivePath, table, user, passwd string) (io.WriteCl
 		return nil, e
 	}
 	upload := uploadCSVFile(csv, db, hivePath, table, user, passwd)
-	const bufSize = 32 * 1024
 	return newFlushWriteCloser(flush, upload, bufSize), nil
-}
-
-// HiveWriter implements io.WriteCloser.
-type HiveWriter struct {
-	Writer
-	csvFile *os.File
-	session *pb.Session
-}
-
-// NewHiveWriter returns a Hive Writer object
-func NewHiveWriter(db *sql.DB, table string, session *pb.Session) (*HiveWriter, error) {
-	csvFile, e := ioutil.TempFile("/tmp", "sqlflow-sqlfs")
-	if e != nil {
-		return nil, fmt.Errorf("create temporary csv file failed: %v", e)
-	}
-	return &HiveWriter{
-		Writer: Writer{
-			db:      db,
-			table:   table,
-			buf:     make([]byte, 0, bufSize),
-			flushID: 0,
-		},
-		csvFile: csvFile,
-		session: session}, nil
-}
-
-// Write write bytes to sqlfs and returns (num_bytes, error)
-func (w *HiveWriter) Write(p []byte) (n int, e error) {
-	n = 0
-	for len(p) > 0 {
-		fill := bufSize - len(w.buf)
-		if fill > len(p) {
-			fill = len(p)
-		}
-		w.buf = append(w.buf, p[:fill]...)
-		p = p[fill:]
-		n += fill
-		if len(w.buf) >= bufSize {
-			if e := w.flush(); e != nil {
-				return 0, e
-			}
-		}
-	}
-	return n, nil
-}
-
-// Close the connection of the sqlfs
-func (w *HiveWriter) Close() error {
-	if w.db == nil {
-		return nil
-	}
-	defer func() {
-		w.csvFile.Close()
-		os.Remove(w.csvFile.Name())
-		w.db = nil
-	}()
-
-	if e := w.flush(); e != nil {
-		return e
-	}
-
-	// 1. create a directory on HDFS
-	cmd := exec.Command("hdfs", "dfs", "-mkdir", "-p", w.hdfsPath())
-	hdfsEnv := os.Environ()
-	if w.session.HdfsUser != "" {
-		hdfsEnv = append(hdfsEnv,
-			fmt.Sprintf("HADOOP_USER_NAME=%s", w.session.HdfsUser),
-			fmt.Sprintf("HADOOP_USER_PASSWORD=%s", w.session.HdfsPass))
-	}
-	cmd.Env = hdfsEnv
-	if _, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf(`execute "hdfs dfs -mkdir -p %s" failed: %v `, w.hdfsPath(), err)
-	}
-	// 2. upload the local csv file to the HDFS path
-	cmd = exec.Command("hdfs", "dfs", "-copyFromLocal", w.csvFile.Name(), w.hdfsPath())
-	cmd.Env = hdfsEnv
-	if _, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("upload local file into hdfs error: %v", err)
-	}
-	// 3. execute a LOAD statement to load csv to Hive table
-	query := fmt.Sprintf("LOAD DATA INPATH '%s' OVERWRITE INTO TABLE %s", w.hdfsPath(), w.table)
-	if _, e := w.db.Exec(query); e != nil {
-		return fmt.Errorf("execute query: %s, error: %v", query, e)
-	}
-	return nil
-}
-
-func (w *HiveWriter) hdfsPath() string {
-	return fmt.Sprintf("%s/sqlfs/%s/", w.session.HiveLocation, w.table)
-}
-
-func (w *HiveWriter) flush() error {
-	if len(w.buf) > 0 {
-		block := base64.StdEncoding.EncodeToString(w.buf)
-		if _, e := w.csvFile.Write([]byte(fmt.Sprintf("%d\001%s\n", w.flushID, block))); e != nil {
-			return fmt.Errorf("flush error, %v", e)
-		}
-		w.buf = w.buf[:0]
-		w.flushID++
-	}
-	return nil
 }
