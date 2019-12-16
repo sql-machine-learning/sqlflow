@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"os"
 	"os/exec"
 	"path"
 	"strings"
@@ -35,7 +36,7 @@ func hasHDFSDir(hdfsPath string) bool {
 }
 
 func TestNewHiveWriter(t *testing.T) {
-	testDriver = getEnv("SQLFLOW_TEST_DB", "hive")
+	testDriver := os.Getenv("SQLFLOW_TEST_DB")
 	if testDriver != "hive" {
 		t.Skip("Skip as SQLFLOW_TEST_DB is not Hive")
 	}
@@ -58,7 +59,7 @@ func TestNewHiveWriter(t *testing.T) {
 }
 
 func TestHiveWriterWriteAndRead(t *testing.T) {
-	testDriver = getEnv("SQLFLOW_TEST_DB", "hive")
+	testDriver := os.Getenv("SQLFLOW_TEST_DB")
 	if testDriver != "hive" {
 		t.Skip("Skip as SQLFLOW_TEST_DB is not Hive")
 	}
