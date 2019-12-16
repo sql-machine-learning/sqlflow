@@ -33,9 +33,11 @@ func MockTrainStmt(datasource string, isxgboost bool) *TrainStmt {
 		attrs["model.n_classes"] = 3
 	}
 	return &TrainStmt{
-		ExtendedSQL:      ExtendedSQL{"select * from iris.train;", datasource, attrs, ""},
+		DataSource:       datasource,
+		Select:           "select * from iris.train;",
 		ValidationSelect: "select * from iris.test;",
 		Estimator:        estimator,
+		Attributes:       attrs,
 		Features: map[string][]FeatureColumn{
 			"feature_columns": {
 				&NumericColumn{&FieldMeta{"sepal_length", Float, "", []int{1}, false, nil, 0}},
@@ -48,8 +50,10 @@ func MockTrainStmt(datasource string, isxgboost bool) *TrainStmt {
 // MockPredStmt generates a sample PredictStmt for test.
 func MockPredStmt(trainStmt *TrainStmt) *PredictStmt {
 	return &PredictStmt{
-		ExtendedSQL: ExtendedSQL{"select * from iris.test;", trainStmt.DataSource, map[string]interface{}{}, ""},
+		DataSource:  trainStmt.DataSource,
+		Select:      "select * from iris.test;",
 		ResultTable: "iris.predict",
+		Attributes:  make(map[string]interface{}),
 		TrainStmt:   trainStmt,
 	}
 }

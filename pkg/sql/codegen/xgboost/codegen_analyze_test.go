@@ -23,11 +23,15 @@ import (
 func TestAnalyze(t *testing.T) {
 	a := assert.New(t)
 	tir := ir.MockTrainStmt("mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0", true)
-	attrs := map[string]interface{}{"shap_summary.plot_type": "dot", "others.type": "bar"}
 	astmt := &ir.AnalyzeStmt{
-		ExtendedSQL: ir.ExtendedSQL{"SELECT * FROM iris.train", tir.DataSource, attrs, ""},
-		Explainer:   "TreeExplainer",
-		TrainStmt:   tir,
+		DataSource: tir.DataSource,
+		Select:     "SELECT * FROM iris.train",
+		Explainer:  "TreeExplainer",
+		Attributes: map[string]interface{}{
+			"shap_summary.plot_type": "dot",
+			"others.type":            "bar",
+		},
+		TrainStmt: tir,
 	}
 	_, err := Analyze(astmt)
 	a.NoError(err)

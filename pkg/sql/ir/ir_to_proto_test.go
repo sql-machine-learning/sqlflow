@@ -35,11 +35,9 @@ func mockSession() *pb.Session {
 	}
 }
 
-const testDataSource = "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
-
 func TestTrainProto(t *testing.T) {
 	a := assert.New(t)
-	sampleTrainStmt := MockTrainStmt(testDataSource, false)
+	sampleTrainStmt := MockTrainStmt("mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0", false)
 	pbIR, err := TrainStmtToProto(sampleTrainStmt, mockSession())
 	a.NoError(err)
 	pbtxt := proto.MarshalTextString(pbIR)
@@ -58,7 +56,8 @@ func TestTrainProto(t *testing.T) {
 
 func TestPredictProto(t *testing.T) {
 	a := assert.New(t)
-	samplePredStmt := MockPredStmt(MockTrainStmt(testDataSource, false))
+	samplePredStmt := MockPredStmt(
+		MockTrainStmt("mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0", false))
 	pbIR, err := PredictStmtToProto(samplePredStmt, mockSession())
 	a.NoError(err)
 	pbtxt := proto.MarshalTextString(pbIR)
@@ -74,9 +73,11 @@ func TestPredictProto(t *testing.T) {
 func TestAnalyzeProto(t *testing.T) {
 	a := assert.New(t)
 	sampleAnalyzeStmt := &AnalyzeStmt{
-		ExtendedSQL: ExtendedSQL{"select * from iris.train;", testDataSource, map[string]interface{}{}, ""},
-		Explainer:   "TreeExplainer",
-		TrainStmt:   MockTrainStmt(testDataSource, true),
+		DataSource: "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0",
+		Select:     "select * from iris.train;",
+		Attributes: make(map[string]interface{}), // empty attribute
+		Explainer:  "TreeExplainer",
+		TrainStmt:  MockTrainStmt("mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0", true),
 	}
 	pbIR, err := AnalyzeStmtToProto(sampleAnalyzeStmt, mockSession())
 	a.NoError(err)

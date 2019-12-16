@@ -80,30 +80,15 @@ type SQLStatement interface {
 	GetOriginalSQL() string
 }
 
-// ExtendedSQL contains common fields of TrainStmt, PredictStmt and AnalyzeStmt
-type ExtendedSQL struct {
-	// Select specifies the query for fetching the training data. For example, "select * from iris.train;".
-	Select string
-	// DataSource contains the connection information. For example, "hive://root:root@localhost:10000/churn"
-	DataSource string
-	// Attributes is a map of parsed attribute in the WITH Clause. For example, after parsing
-	// "select ... train ... with train.epoch = 1000, model.hidden_units = [10, 10]",
-	// the Attributes will be {"train.epoch": 1000, "model.hidden_units": [10 10]}.
-	Attributes map[string]interface{}
+// TrainStmt is the intermediate representation for code generation of a training job.
+type TrainStmt struct {
 	// OriginalSQL record the original SQL statement used to get current IR result
 	// FIXME(typhoonzero): OriginalSQL is a temporary field. Can remove this when all moved to IR
 	OriginalSQL string
-}
-
-// IsExtended returns whether a SQLStatement is an extended SQL statement
-func (sql *ExtendedSQL) IsExtended() bool { return true }
-
-// GetOriginalSQL returns the original SQL statement used to get current IR result
-func (sql *ExtendedSQL) GetOriginalSQL() string { return sql.OriginalSQL }
-
-// TrainStmt is the intermediate representation for code generation of a training job.
-type TrainStmt struct {
-	ExtendedSQL
+	// DataSource contains the connection information. For example, "hive://root:root@localhost:10000/churn"
+	DataSource string
+	// Select specifies the query for fetching the training data. For example, "select * from iris.train;".
+	Select string
 	// ValidationSelect specifies the query for fetching the validation data. For example, "select * from iris.val;".
 	ValidationSelect string
 	// ModelImage is the name of the model's Docker image, for example `TO TRAIN a_data_scientist/regressors:v0.2/MyDNNRegressor`
@@ -112,6 +97,10 @@ type TrainStmt struct {
 	// Estimator specifies the estimator type. For example, after parsing "select ... train DNNClassifier WITH ...",
 	// the Estimator will be "DNNClassifier".
 	Estimator string
+	// Attributes is a map of parsed attribute in the WITH Clause. For example, after parsing
+	// "select ... train ... with train.epoch = 1000, model.hidden_units = [10, 10]",
+	// the Attributes will be {"train.epoch": 1000, "model.hidden_units": [10 10]}.
+	Attributes map[string]interface{}
 	// Features contain a map of a list of feature columns in the COLUMN clause.
 	// For multiple COLUMN clauses like
 	//   ```
@@ -133,16 +122,32 @@ func (cl *TrainStmt) Execute(s Executor) error { return s.ExecuteTrain(cl) }
 // SetOriginalSQL sets the original sql string
 func (cl *TrainStmt) SetOriginalSQL(sql string) { cl.OriginalSQL = sql }
 
+// IsExtended returns whether a SQLStatement is an extended SQL statement
+func (s *TrainStmt) IsExtended() bool { return true }
+
+// GetOriginalSQL returns the original SQL statement used to get current IR result
+func (s *TrainStmt) GetOriginalSQL() string { return s.OriginalSQL }
+
 // PredictStmt is the intermediate representation for code generation of a prediction job
 //
 // Please be aware the PredictStmt IR contains the result table name, so the
 // generated Python program is responsible to create and write the result table.
 type PredictStmt struct {
-	ExtendedSQL
+	// OriginalSQL record the original SQL statement used to get current IR result
+	// FIXME(typhoonzero): OriginalSQL is a temporary field. Can remove this when all moved to IR
+	OriginalSQL string
+	// DataSource contains the connection information. For example, "hive://root:root@localhost:10000/churn"
+	DataSource string
+	// Select specifies the query for fetching the prediction data. For example, "select * from iris.test;".
+	Select string
 	// ResultTable specifies the table to store the prediction result.
 	ResultTable string
 	// ResultColumn is the column to store predict result in ResultTable
 	ResultColumn string
+	// Attributes is a map of parsed attribute in the WITH clause. For example, after parsing
+	// "select ... predict ... with predict.batch_size = 32 into ...",
+	// the Attributes will be {"predict.batch_size": 32}
+	Attributes map[string]interface{}
 	// TrainStmt is the TrainStmt used for generating the training job of the corresponding model
 	TrainStmt *TrainStmt
 }
@@ -153,9 +158,25 @@ func (cl *PredictStmt) Execute(s Executor) error { return s.ExecutePredict(cl) }
 // SetOriginalSQL sets the original sql string
 func (cl *PredictStmt) SetOriginalSQL(sql string) { cl.OriginalSQL = sql }
 
+// IsExtended returns whether a SQLStatement is an extended SQL statement
+func (s *PredictStmt) IsExtended() bool { return true }
+
+// GetOriginalSQL returns the original SQL statement used to get current IR result
+func (s *PredictStmt) GetOriginalSQL() string { return s.OriginalSQL }
+
 // AnalyzeStmt is the intermediate representation for code generation of a analysis job
 type AnalyzeStmt struct {
-	ExtendedSQL
+	// OriginalSQL record the original SQL statement used to get current IR result
+	// FIXME(typhoonzero): OriginalSQL is a temporary field. Can remove this when all moved to IR
+	OriginalSQL string
+	// DataSource contains the connection information. For example, "hive://root:root@localhost:10000/churn"
+	DataSource string
+	// Select specifies the query for fetching the analysis data. For example, "select * from iris.test;".
+	Select string
+	// Attributes is a map of parsed attribute in the WITH clause. For example, after parsing
+	// "select ... analyze ... with analyze.plot_type = "bar"",
+	// the Attributes will be {"analyze.plot_type": "bar"}
+	Attributes map[string]interface{}
 	// Explainer types. For example TreeExplainer.
 	Explainer string
 	// TrainStmt is the TrainStmt used for generating the training job of the corresponding model
@@ -167,6 +188,12 @@ func (cl *AnalyzeStmt) Execute(s Executor) error { return s.ExecuteAnalyze(cl) }
 
 // SetOriginalSQL sets the original sql string
 func (cl *AnalyzeStmt) SetOriginalSQL(sql string) { cl.OriginalSQL = sql }
+
+// IsExtended returns whether a SQLStatement is an extended SQL statement
+func (s *AnalyzeStmt) IsExtended() bool { return true }
+
+// GetOriginalSQL returns the original SQL statement used to get current IR result
+func (s *AnalyzeStmt) GetOriginalSQL() string { return s.OriginalSQL }
 
 // StandardSQL is a string of a standard SQL statement that can run on the database system.
 type StandardSQL string
