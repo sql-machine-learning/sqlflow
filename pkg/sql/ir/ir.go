@@ -123,10 +123,10 @@ func (cl *TrainStmt) Execute(s Executor) error { return s.ExecuteTrain(cl) }
 func (cl *TrainStmt) SetOriginalSQL(sql string) { cl.OriginalSQL = sql }
 
 // IsExtended returns whether a SQLStatement is an extended SQL statement
-func (s *TrainStmt) IsExtended() bool { return true }
+func (cl *TrainStmt) IsExtended() bool { return true }
 
 // GetOriginalSQL returns the original SQL statement used to get current IR result
-func (s *TrainStmt) GetOriginalSQL() string { return s.OriginalSQL }
+func (cl *TrainStmt) GetOriginalSQL() string { return cl.OriginalSQL }
 
 // PredictStmt is the intermediate representation for code generation of a prediction job
 //
@@ -159,10 +159,10 @@ func (cl *PredictStmt) Execute(s Executor) error { return s.ExecutePredict(cl) }
 func (cl *PredictStmt) SetOriginalSQL(sql string) { cl.OriginalSQL = sql }
 
 // IsExtended returns whether a SQLStatement is an extended SQL statement
-func (s *PredictStmt) IsExtended() bool { return true }
+func (cl *PredictStmt) IsExtended() bool { return true }
 
 // GetOriginalSQL returns the original SQL statement used to get current IR result
-func (s *PredictStmt) GetOriginalSQL() string { return s.OriginalSQL }
+func (cl *PredictStmt) GetOriginalSQL() string { return cl.OriginalSQL }
 
 // AnalyzeStmt is the intermediate representation for code generation of a analysis job
 type AnalyzeStmt struct {
@@ -190,10 +190,10 @@ func (cl *AnalyzeStmt) Execute(s Executor) error { return s.ExecuteAnalyze(cl) }
 func (cl *AnalyzeStmt) SetOriginalSQL(sql string) { cl.OriginalSQL = sql }
 
 // IsExtended returns whether a SQLStatement is an extended SQL statement
-func (s *AnalyzeStmt) IsExtended() bool { return true }
+func (cl *AnalyzeStmt) IsExtended() bool { return true }
 
 // GetOriginalSQL returns the original SQL statement used to get current IR result
-func (s *AnalyzeStmt) GetOriginalSQL() string { return s.OriginalSQL }
+func (cl *AnalyzeStmt) GetOriginalSQL() string { return cl.OriginalSQL }
 
 // StandardSQL is a string of a standard SQL statement that can run on the database system.
 type StandardSQL string
