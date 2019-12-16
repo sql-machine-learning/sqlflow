@@ -18,52 +18,6 @@ import (
 	"strings"
 )
 
-// splitExtendedSQL splits an extended select statement into
-// its select clause and the rest. For example,
-//
-// input:
-//   "select ... train ... with ..."
-// output:
-//   ["select ...", "train ... with ..."].
-//
-// input:
-//   "select ... predict ... using ..."
-// output:
-//   ["select ...", "predict ... using ..."].
-//
-// input:
-//   "select ..."
-// output:
-//   ["select ..."]
-func splitExtendedSQL(slct string) ([]string, error) {
-	l := newLexer(slct)
-	var n sqlSymType
-	var typ []int
-	var pos []int
-	for {
-		t := l.Lex(&n)
-		if t < 0 {
-			return []string{}, fmt.Errorf("Lex: Unknown problem %s", slct[0-t:])
-		}
-		if t == 0 {
-			break
-		}
-		typ = append(typ, t)
-		pos = append(pos, l.pos)
-	}
-	for i := 1; i < len(typ)-2; i++ {
-		if (typ[i] == TRAIN && typ[i+1] == IDENT && typ[i+2] == WITH) ||
-			(typ[i] == PREDICT && typ[i+1] == IDENT && typ[i+2] == USING) ||
-			(typ[i] == PREDICT && typ[i+1] == IDENT && typ[i+2] == WITH) ||
-			(typ[i] == EXPLAIN && typ[i+1] == IDENT && typ[i+2] == WITH) ||
-			(typ[i] == EXPLAIN && typ[i+1] == IDENT && typ[i+2] == USING) {
-			return []string{slct[:pos[i-1]], slct[pos[i-1]:]}, nil
-		}
-	}
-
-	return []string{slct}, nil
-}
-
 // SplitMultipleSQL returns a list of SQL statements if the input statements contains multiple
 // SQL statements separated by ;
 func SplitMultipleSQL(statements string) ([]string, error) {

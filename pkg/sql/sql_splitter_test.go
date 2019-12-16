@@ -19,31 +19,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestSplitExtendedSQL(t *testing.T) {
-	a := assert.New(t)
-	s, err := splitExtendedSQL(`select a train b with c;`)
-	a.Equal(err, nil)
-	a.Equal(2, len(s))
-	a.Equal(`select a`, s[0])
-	a.Equal(` train b with c;`, s[1])
-
-	s, err = splitExtendedSQL(`  select a predict b using c;`)
-	a.Equal(err, nil)
-	a.Equal(2, len(s))
-	a.Equal(`  select a`, s[0])
-	a.Equal(` predict b using c;`, s[1])
-
-	s, err = splitExtendedSQL(` select a from b;`)
-	a.Equal(err, nil)
-	a.Equal(1, len(s))
-	a.Equal(` select a from b;`, s[0])
-
-	s, err = splitExtendedSQL(`train a with b;`)
-	a.Equal(err, nil)
-	a.Equal(1, len(s))
-	a.Equal(`train a with b;`, s[0])
-}
-
 func TestSplitMultipleSQL(t *testing.T) {
 	a := assert.New(t)
 	splitted, err := SplitMultipleSQL(`CREATE TABLE copy_table_1 AS SELECT a,b,c FROM table_1 WHERE c<>";";
