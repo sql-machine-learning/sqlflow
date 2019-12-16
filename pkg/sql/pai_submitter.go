@@ -21,10 +21,11 @@ import (
 type paiSubmitter struct{ *defaultSubmitter }
 
 func (s *paiSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {
-	if code, e := pai.Train(cl, cl.Into, s.Cwd); e == nil {
-		return s.runCommand(code)
+	code, e := pai.Train(cl, cl.Into, s.Cwd)
+	if e != nil {
+		return e
 	}
-	return e
+	return s.runCommand(code)
 }
 
 func (s *paiSubmitter) ExecutePredict(cl *ir.PredictStmt) error {

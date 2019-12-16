@@ -1197,6 +1197,30 @@ FROM housing.xgb_predict LIMIT 5;`)
 	}
 }
 
+func CaseTrainDistributedPAI(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`
+	SELECT * FROM %s.%s
+	TO TRAIN DNNClassifier
+	WITH
+		model.n_classes = 3,
+		model.hidden_units = [10, 20],
+		validation.select = "SELECT * FROM %s.%s LIMIT 30",
+		train.num_workers=2,
+		train.num_ps=2,
+		train.save_checkpoints_steps=20,
+		train.epoch=100,
+		train.batch_size=4
+	COLUMN sepal_length, sepal_width, petal_length, petal_width
+	LABEL class
+	INTO %s;
+	`, caseDB, caseTrainTable, caseDB, caseTrainTable, caseInto)
+	_, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+
+}
 func TestEnd2EndMaxComputePAI(t *testing.T) {
 	testDBDriver := os.Getenv("SQLFLOW_TEST_DB")
 	if testDBDriver != "maxcompute" {
@@ -1234,5 +1258,6 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 		t.Fatalf("prepare test dataset failed: %v", err)
 	}
 
-	t.Run("TestTrainSQL", CaseTrainSQL)
+	t.Run("CaseTrainSQL", CaseTrainSQL)
+	t.Run("CaseTrainDistributedPAI", CaseTrainDistributedPAI)
 }

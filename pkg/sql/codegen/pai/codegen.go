@@ -27,7 +27,7 @@ import (
 const entryFile = "entry.py"
 
 // wrapper generates a Python program for submit TensorFlow tasks to PAI.
-func wrapper(code, dataSource, modelName, cwd string) (string, error) {
+func wrapper(code, dataSource, modelName, cwd string, numPS, numWrokers int) (string, error) {
 	f, err := os.Create(filepath.Join(cwd, entryFile))
 	if err != nil {
 		return "", fmt.Errorf("Create python code failed")
@@ -40,22 +40,46 @@ func wrapper(code, dataSource, modelName, cwd string) (string, error) {
 		DataSource: dataSource,
 		ModelName:  modelName,
 		EntryFile:  entryFile,
+		NumPS:      numPS,
+		NumWorkers: numWrokers,
 	}
 	var program bytes.Buffer
 	if err := tpl.Execute(&program, filler); err != nil {
 		return "", err
 	}
-
+	fmt.Println(program.String())
 	return program.String(), nil
 }
 
 // Train generates a Python program for train a TensorFlow model.
 func Train(ir *ir.TrainStmt, modelName, cwd string) (string, error) {
+	var numPS int
+	var numWorkers int
+	numPSAttr, ok := ir.Attributes["train.num_ps"]
+	if !ok {
+		numPS = 0
+	} else {
+		numPS = numPSAttr.(int)
+		// delete attributes so that tensorflow codegen can run.
+		delete(ir.Attributes, "train.num_ps")
+	}
+	numWorkersAttr, ok := ir.Attributes["train.num_workers"]
+	if !ok {
+		numWorkers = 1
+	} else {
+		numWorkers = numWorkersAttr.(int)
+		// delete attributes so that tensorflow codegen can run.
+		delete(ir.Attributes, "train.num_workers")
+	}
+
 	program, err := doTrain(ir, modelName)
 	if err != nil {
+		fmt.Printf("error run doTrain: %v ", err)
 		return "", err
 	}
-	return wrapper(program, ir.DataSource, modelName, cwd)
+	fmt.Printf("generated train program: %s \n", program)
+
+	return wrapper(program, ir.DataSource, modelName, cwd, numPS, numWorkers)
 }
 
 func doTrain(ir *ir.TrainStmt, modelName string) (string, error) {
@@ -86,7 +110,7 @@ func Predict(ir *ir.PredictStmt, modelName, cwd string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return wrapper(program, ir.DataSource, modelName, cwd)
+	return wrapper(program, ir.DataSource, modelName, cwd, 0, 1)
 }
 
 func doPredict(ir *ir.PredictStmt, modelName string) (string, error) {

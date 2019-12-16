@@ -17,6 +17,8 @@ type wrapperFiller struct {
 	DataSource string
 	EntryFile  string
 	ModelName  string
+	NumPS      int
+	NumWorkers int // num_workers > 1 indicates we are running distributed training.
 }
 
 type saveModelFiller struct {
@@ -54,8 +56,14 @@ assert driver == "maxcompute"
 user, passwd, address, database = sqlflow_submitter.db.parseMaxComputeDSN(dsn)
 
 jobname = '_'.join(['sqlflow', '{{.ModelName}}'.replace('.', '_')])
+# The tags candidate list is: "cnn,dnn,rnn,bert,ctr,cvr,inception,resnet,gnn,gcn,ocr,maskrcnn,transformer,nmt,others". Use "others" if you are not sure which tags you need.
+{{if gt .NumWorkers 1}}
+pai_cmd = 'pai -name %s -DjobName=%s -Dtags=%s -Dscript=file://%s -DentryFile=%s -Dcluster=\'{\"ps\":{\"count\":{{.NumPS}}}, \"worker\":{\"count\":{{.NumWorkers}}}}\'' % (
+    'tensorflow1120', jobname, 'dnn', tarball, '{{.EntryFile}}')
+{{else}}
 pai_cmd = 'pai -name %s -DjobName=%s -Dtags=%s -Dscript=file://%s -DentryFile=%s' % (
-	'tensorflow1120', jobname, 'dnn', tarball, '{{.EntryFile}}')
+    'tensorflow1120', jobname, 'dnn', tarball, '{{.EntryFile}}')
+{{end}}
 
 # Submit the tarball to PAI
 subprocess.run(["odpscmd", "-u", user,

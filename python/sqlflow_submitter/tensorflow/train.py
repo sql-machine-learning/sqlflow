@@ -39,6 +39,49 @@ except:
     tf.logging.set_verbosity(tf.logging.ERROR)
     TF_VERSION_2 = False
 
+# for PAI distributed training
+if TF_VERSION_2:
+    tf.compat.v1.flags.DEFINE_integer("task_index", 0, "Worker task index")
+    tf.compat.v1.flags.DEFINE_string("ps_hosts", "", "ps hosts")
+    tf.compat.v1.flags.DEFINE_string("worker_hosts", "", "worker hosts")
+    tf.compat.v1.flags.DEFINE_string("job_name", 'worker', "job name: worker or ps")
+    FLAGS = tf.compat.v1.flags.FLAGS
+else:
+    tf.app.flags.DEFINE_integer("task_index", 0, "Worker task index")
+    tf.app.flags.DEFINE_string("ps_hosts", "", "ps hosts")
+    tf.app.flags.DEFINE_string("worker_hosts", "", "worker hosts")
+    tf.app.flags.DEFINE_string("job_name", 'worker', "job name: worker or ps")
+    FLAGS = tf.app.flags.FLAGS
+
+def make_distributed_info_without_evaluator():
+  worker_hosts = FLAGS.worker_hosts.split(",")
+  ps_hosts = FLAGS.ps_hosts.split(",")
+  if len(worker_hosts) > 1:
+    cluster = {"chief": [worker_hosts[0]],
+               "worker": worker_hosts[1:],
+               "ps": ps_hosts}
+  else:
+    cluster = {"chief": [worker_hosts[0]],
+               "ps": ps_hosts}
+
+  if FLAGS.job_name == "worker":
+    if FLAGS.task_index == 0:
+      task_type = "chief"
+      task_index = 0
+    else:
+      task_type = "worker"
+      task_index = FLAGS.task_index - 1
+  else:
+    task_type = "ps"
+    task_index = FLAGS.task_index
+  return cluster, task_type, task_index
+
+def dump_into_tf_config(cluster, task_type, task_index):
+  os.environ['TF_CONFIG'] = json.dumps(
+      {'cluster': cluster,
+       'task': {'type': task_type, 'index': task_index}})  
+  
+
 def get_dtype(type_str):
     if type_str == "float32":
         return tf.float32
@@ -87,8 +130,6 @@ if TF_VERSION_2:
             if self.prefix == "eval":
                 print("============Evaluation End=============")
 
-
-
 def train(is_keras_model,
           datasource,
           estimator,
@@ -121,17 +162,6 @@ def train(is_keras_model,
             tf.get_logger().setLevel(logging.INFO)
     conn = connect_with_data_source(datasource)
     model_params.update(feature_columns)
-    if not is_keras_model:
-        model_params["model_dir"] = save
-        runconf = tf.estimator.RunConfig(save_checkpoints_steps=save_checkpoints_steps)
-        model_params["config"]= runconf
-        classifier = estimator(**model_params)
-    else:
-        if not issubclass(estimator, tf.keras.Model):
-            # functional model need field_metas parameter
-            model_params["field_metas"] = feature_metas
-        classifier = estimator(**model_params)
-        classifier_pkg = sys.modules[estimator.__module__]
 
     def input_fn(datasetStr):
         feature_types = []
@@ -181,6 +211,12 @@ def train(is_keras_model,
         return dataset.batch(batch_size).cache()
 
     if is_keras_model:
+        if not issubclass(estimator, tf.keras.Model):
+            # functional model need field_metas parameter
+            model_params["field_metas"] = feature_metas
+        classifier = estimator(**model_params)
+        classifier_pkg = sys.modules[estimator.__module__]
+
         classifier.compile(optimizer=classifier_pkg.optimizer(),
             loss=classifier_pkg.loss,
             metrics=["accuracy"])
@@ -201,6 +237,25 @@ def train(is_keras_model,
                 print("%s: %s" % (k, v[-1]))
         classifier.save_weights(save, save_format="h5")
     else:
+        is_distributed = False
+        if len(FLAGS.worker_hosts.split(",")) > 1:
+            is_distributed = True
+        if is_distributed:
+            if TF_VERSION_2:
+                dist_strategy = tf.distribute.experimental.ParameterServerStrategy()
+            else:
+                dist_strategy = tf.contrib.distribute.ParameterServerStrategy()
+            run_config = tf.estimator.RunConfig(train_distribute=dist_strategy)
+        
+        model_params["model_dir"] = save
+        if is_distributed:
+            model_params["config"] = tf.estimator.RunConfig(save_checkpoints_steps=save_checkpoints_steps,
+                keep_checkpoint_max=0,
+                train_distribute=dist_strategy)
+        else:
+            model_params["config"] = tf.estimator.RunConfig(save_checkpoints_steps=save_checkpoints_steps)
+        classifier = estimator(**model_params)
+
         if validate_select == "":
             classifier.train(input_fn=lambda:train_input_fn(batch_size))
         else:
