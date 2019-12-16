@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:generate goyacc -p parser -o extended_syntax_parser.go extended_syntax_parser.y
+//go:generate goyacc -p extendedSyntax -o extended_syntax_parser.go extended_syntax_parser.y
 package parser
 
 import (
@@ -67,7 +67,7 @@ USING sqlflow_models.my_model;
 
 func TestStandardSelect(t *testing.T) {
 	a := assert.New(t)
-	r, e := newExtendedSyntaxParser().Parse(testStandardSelectStmt + ";")
+	r, e := parseSQLFlowStmt(testStandardSelectStmt + ";")
 	a.NoError(e)
 	a.False(r.extended)
 	a.Equal([]string{"employee.age", "last_name", "salary"},
@@ -86,7 +86,7 @@ func TestTrainParser(t *testing.T) {
 	a := assert.New(t)
 	// NOTE(tony): Test optional semicolon at the end of the statement
 	for _, s := range []string{``, `;`} {
-		r, e := newExtendedSyntaxParser().Parse(testTrainSelect + s)
+		r, e := parseSQLFlowStmt(testTrainSelect + s)
 		a.NoError(e)
 		a.True(r.extended)
 		a.True(r.train)
@@ -107,7 +107,7 @@ func TestTrainParser(t *testing.T) {
 
 func TestMultiColumnTrainParser(t *testing.T) {
 	a := assert.New(t)
-	r, e := newExtendedSyntaxParser().Parse(testMultiColumnTrainSelect)
+	r, e := parseSQLFlowStmt(testMultiColumnTrainSelect)
 	a.NoError(e)
 	a.True(r.extended)
 	a.True(r.train)
@@ -130,7 +130,7 @@ func TestMultiColumnTrainParser(t *testing.T) {
 
 func TestPredictParser(t *testing.T) {
 	a := assert.New(t)
-	r, e := newExtendedSyntaxParser().Parse(testPredictSelect)
+	r, e := parseSQLFlowStmt(testPredictSelect)
 	a.NoError(e)
 	a.True(r.extended)
 	a.False(r.train)
@@ -141,7 +141,7 @@ func TestPredictParser(t *testing.T) {
 func TestAnalyzeParser(t *testing.T) {
 	a := assert.New(t)
 	{
-		r, e := newExtendedSyntaxParser().Parse(`select * from mytable
+		r, e := parseSQLFlowStmt(`select * from mytable
 TO EXPLAIN my_model
 USING TreeExplainer;`)
 		a.NoError(e)
@@ -152,7 +152,7 @@ USING TreeExplainer;`)
 		a.Equal("TreeExplainer", r.explainer)
 	}
 	{
-		r, e := newExtendedSyntaxParser().Parse(`select * from mytable
+		r, e := parseSQLFlowStmt(`select * from mytable
 TO EXPLAIN my_model
 WITH
   plots = force
@@ -169,7 +169,7 @@ USING TreeExplainer;`)
 
 func TestSelectStarAndPrint(t *testing.T) {
 	a := assert.New(t)
-	r, e := newExtendedSyntaxParser().Parse(`SELECT *, b FROM a LIMIT 10;`)
+	r, e := parseSQLFlowStmt(`SELECT *, b FROM a LIMIT 10;`)
 	a.NoError(e)
 	a.Equal(2, len(r.fields.Strings()))
 	a.Equal("*", r.fields.Strings()[0])
@@ -180,7 +180,7 @@ func TestSelectStarAndPrint(t *testing.T) {
 
 func TestStandardDropTable(t *testing.T) {
 	a := assert.New(t)
-	_, e := newExtendedSyntaxParser().Parse(`DROP TABLE TO PREDICT`)
+	_, e := parseSQLFlowStmt(`DROP TABLE TO PREDICT`)
 	a.Error(e)
 	// Note: currently, our parser doesn't accept anything statements other than SELECT.
 	// It will support parsing any SQL statements and even dialects in the future.
@@ -188,13 +188,13 @@ func TestStandardDropTable(t *testing.T) {
 
 func TestDuplicatedFrom(t *testing.T) {
 	a := assert.New(t)
-	_, e := newExtendedSyntaxParser().Parse(`SELECT table.field FROM table FROM tttt;`)
+	_, e := parseSQLFlowStmt(`SELECT table.field FROM table FROM tttt;`)
 	a.Error(e)
 }
 
 func TestSelectMaxcomputeUDF(t *testing.T) {
 	a := assert.New(t)
-	r, e := newExtendedSyntaxParser().Parse(testMaxcomputeUDFPredict)
+	r, e := parseSQLFlowStmt(testMaxcomputeUDFPredict)
 	a.NoError(e)
 	a.Equal(3, len(r.fields.Strings()))
 	a.Equal(r.fields[0].String(), `predict_fun(concat(",", col_1, col_2))`)

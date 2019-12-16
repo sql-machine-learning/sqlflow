@@ -63,7 +63,7 @@ WHERE
 	}
 )
 
-func commonThirdPartyCases(p ThirdPartyParser, a *assert.Assertions) {
+func commonThirdPartyCases(p Parser, a *assert.Assertions) {
 	// one standard SQL statement
 	for _, sql := range selectCases {
 		s, idx, err := p.Parse(sql)
