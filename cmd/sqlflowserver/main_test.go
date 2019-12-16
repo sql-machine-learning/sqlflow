@@ -898,7 +898,7 @@ func CaseTrainDeepWideModelOptimizer(t *testing.T) {
 FROM iris.train
 TO TRAIN DNNLinearCombinedClassifier
 WITH model.n_classes = 3, model.dnn_hidden_units = [10, 20], train.batch_size = 10, train.epoch = 2,
-model.dnn_optimizer=RMSprop, model.dnn_optimizer.learning_rate=0.01
+model.dnn_optimizer=RMSprop, dnn_optimizer.learning_rate=0.01
 COLUMN sepal_length, sepal_width FOR linear_feature_columns
 COLUMN petal_length, petal_width FOR dnn_feature_columns
 LABEL class

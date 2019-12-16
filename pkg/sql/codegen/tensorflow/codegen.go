@@ -187,7 +187,7 @@ func setDefaultOptimizer(trainStmt *ir.TrainStmt, optimizerParamName string) {
 	case "LinearClassifier", "LinearRegressor":
 		defaultValue = "Ftrl"
 	case "DNNLinearCombinedClassifier", "DNNLinearCombinedRegressor":
-		if optimizerParamName == "model.linear_optimizer" {
+		if optimizerParamName == "linear_optimizer" {
 			defaultValue = "Ftrl"
 		}
 	}
@@ -201,16 +201,14 @@ func constructOptimizers(trainStmt *ir.TrainStmt) {
 			if optimizerArgs[k] == nil {
 				optimizerArgs[k] = map[string]interface{}{}
 			}
-
 		}
 		pieces := strings.Split(k, ".")
-		if len(pieces) == 3 {
-			paramName := strings.Join(pieces[0:2], ".")
-			if attrIsOptimizer(paramName) {
-				if optimizerArgs[paramName] == nil {
-					optimizerArgs[paramName] = map[string]interface{}{}
+		if len(pieces) == 2 {
+			if attrIsOptimizer("model." + pieces[0]) { // k is like "optimizer.learning_rate"
+				if optimizerArgs["model."+pieces[0]] == nil {
+					optimizerArgs["model."+pieces[0]] = map[string]interface{}{}
 				}
-				optimizerArgs[paramName][pieces[2]] = v
+				optimizerArgs["model."+pieces[0]][pieces[1]] = v
 				// delete these attributes because they are only used to initialized the python object
 				delete(trainStmt.Attributes, k)
 			}
@@ -231,13 +229,7 @@ func constructOptimizers(trainStmt *ir.TrainStmt) {
 
 func initializeAttributes(trainStmt *ir.TrainStmt) error {
 	modelAttr := attribute.NewDictionary(trainStmt.Estimator, "model.")
-	for k, v := range modelAttr {
-		if attrIsOptimizer(k) {
-			// TODO(shendiaomo): Restrict optimizer parameters to the available set
-			v.Type = attribute.String
-		}
-	}
-	constructOptimizers(trainStmt)
+	constructOptimizers(trainStmt) // TODO(shendiaomo): Restrict optimizer parameters to the available set
 	return modelAttr.Update(commonAttributes).Validate(trainStmt.Attributes)
 }
 

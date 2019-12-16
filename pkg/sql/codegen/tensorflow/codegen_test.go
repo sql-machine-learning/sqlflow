@@ -62,15 +62,21 @@ func TestTrainWithOptimizer(t *testing.T) {
 	a.NoError(err)
 	a.Equal(tir.Attributes["model.optimizer"], "RMSprop()")
 
+	tir.Attributes["not_optimizer.learning_rate"] = 123
+	tir.Attributes["model.optimizer"] = "RMSprop"
+	_, err = Train(tir)
+	a.Error(err)
+	a.Equal(tir.Attributes["model.optimizer"], "RMSprop()")
+
 	tir = ir.MockTrainStmt("mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0", false)
-	tir.Attributes["model.optimizer.learning_rate"] = 0.002
+	tir.Attributes["optimizer.learning_rate"] = 0.002
 	_, err = Train(tir)
 	a.NoError(err)
 	a.Equal(tir.Attributes["model.optimizer"], "Adagrad(learning_rate=0.002, )")
-	a.NotContains(tir.Attributes, "model.optimizer.learning_rate")
+	a.NotContains(tir.Attributes, "optimizer.learning_rate")
 
 	tir.Attributes["model.optimizer"] = "RMSprop"
-	tir.Attributes["model.optimizer.learning_rate"] = 0.002
+	tir.Attributes["optimizer.learning_rate"] = 0.002
 	_, err = Train(tir)
 	a.NoError(err)
 	a.Equal(tir.Attributes["model.optimizer"], "RMSprop(learning_rate=0.002, )")
