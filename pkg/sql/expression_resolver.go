@@ -18,6 +18,7 @@ import (
 	"strconv"
 	"strings"
 
+	"sqlflow.org/sqlflow/pkg/parser"
 	"sqlflow.org/sqlflow/pkg/sql/columns"
 )
 
@@ -135,10 +136,10 @@ func getStringsAttr(attrs map[string]*attribute, key string, defaultValue []stri
 	return defaultValue
 }
 
-func resolveTrainClause(tc *trainClause, slct *standardSelect) (*resolvedTrainClause, error) {
-	modelName := tc.estimator
+func resolveTrainClause(tc *parser.TrainClause, slct *parser.StandardSelect) (*resolvedTrainClause, error) {
+	modelName := tc.Estimator
 	preMadeModel := !strings.ContainsAny(modelName, ".")
-	attrs, err := resolveAttribute(&tc.trainAttrs)
+	attrs, err := resolveAttribute(&tc.TrainAttrs)
 	if err != nil {
 		return nil, err
 	}
@@ -215,7 +216,7 @@ func resolveTrainClause(tc *trainClause, slct *standardSelect) (*resolvedTrainCl
 
 	fcMap := map[string][]columns.FeatureColumn{}
 	csMap := map[string][]*columns.ColumnSpec{}
-	for target, columns := range tc.columns {
+	for target, columns := range tc.Columns {
 		fcs, css, err := resolveTrainColumns(&columns)
 		if err != nil {
 			return nil, err
@@ -256,8 +257,8 @@ func resolveTrainClause(tc *trainClause, slct *standardSelect) (*resolvedTrainCl
 	}, nil
 }
 
-func resolvePredictClause(pc *predictClause) (*resolvedPredictClause, error) {
-	attrs, err := resolveAttribute(&pc.predAttrs)
+func resolvePredictClause(pc *parser.PredictClause) (*resolvedPredictClause, error) {
+	attrs, err := resolveAttribute(&pc.PredAttrs)
 	if err != nil {
 		return nil, err
 	}
@@ -276,8 +277,8 @@ func resolvePredictClause(pc *predictClause) (*resolvedPredictClause, error) {
 	}
 
 	return &resolvedPredictClause{
-		ModelName:                 pc.model,
-		OutputTable:               pc.into,
+		ModelName:                 pc.Model,
+		OutputTable:               pc.Into,
 		ModelConstructorParams:    modelParams,
 		CheckpointFilenameForInit: checkpointFilenameForInit,
 		EngineParams:              getEngineSpec(engineParams)}, nil
@@ -285,20 +286,20 @@ func resolvePredictClause(pc *predictClause) (*resolvedPredictClause, error) {
 
 // resolveTrainColumns resolve columns from SQL statement,
 // returns featureColumn list and featureSpecs
-func resolveTrainColumns(columnExprs *exprlist) ([]columns.FeatureColumn, []*columns.ColumnSpec, error) {
+func resolveTrainColumns(columnExprs *parser.ExprList) ([]columns.FeatureColumn, []*columns.ColumnSpec, error) {
 	var fcs = make([]columns.FeatureColumn, 0)
 	var css = make([]*columns.ColumnSpec, 0)
 	for _, expr := range *columnExprs {
-		if expr.typ != 0 {
+		if expr.Type != 0 {
 			// Column identifier like "COLUMN a1,b1"
 			c := &columns.NumericColumn{
-				Key:   expr.val,
+				Key:   expr.Value,
 				Shape: []int{1},
 				Dtype: "float32",
 			}
 			fcs = append(fcs, c)
 		} else {
-			result, cs, err := resolveColumn(&expr.sexp)
+			result, cs, err := resolveColumn(&expr.Sexp)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -313,11 +314,11 @@ func resolveTrainColumns(columnExprs *exprlist) ([]columns.FeatureColumn, []*col
 	return fcs, css, nil
 }
 
-func getExpressionFieldName(expr *expr) (string, error) {
-	if expr.typ != 0 {
-		return expr.val, nil
+func getExpressionFieldName(expr *parser.Expr) (string, error) {
+	if expr.Type != 0 {
+		return expr.Value, nil
 	}
-	fc, _, err := resolveColumn(&expr.sexp)
+	fc, _, err := resolveColumn(&expr.Sexp)
 	if err != nil {
 		return "", err
 	}
@@ -332,18 +333,18 @@ func getExpressionFieldName(expr *expr) (string, error) {
 // [1,2,3,4] -> [1,2,3,4], nil, nil
 // [NUMERIC(col1), col2] -> [*numericColumn, "col2"], nil, nil
 func resolveExpression(e interface{}) (interface{}, interface{}, error) {
-	if expr, ok := e.(*expr); ok {
-		if expr.typ != 0 {
-			return expr.val, nil, nil
+	if expr, ok := e.(*parser.Expr); ok {
+		if expr.Type != 0 {
+			return expr.Value, nil, nil
 		}
-		return resolveExpression(&expr.sexp)
+		return resolveExpression(&expr.Sexp)
 	}
-	el, ok := e.(*exprlist)
+	el, ok := e.(*parser.ExprList)
 	if !ok {
-		return nil, nil, fmt.Errorf("input of resolveExpression must be `expr` or `exprlist` given %s", e)
+		return nil, nil, fmt.Errorf("input of resolveExpression must be `expr` or `parser.ExprList` given %s", e)
 	}
-	headTyp := (*el)[0].typ
-	if headTyp == IDENT {
+	headTyp := (*el)[0].Type
+	if headTyp == parser.IDENT {
 		// Expression is a function call
 		return resolveColumn(el)
 	} else if headTyp == '[' {
@@ -351,16 +352,16 @@ func resolveExpression(e interface{}) (interface{}, interface{}, error) {
 		var columnSpecList []interface{}
 		for idx, expr := range *el {
 			if idx > 0 {
-				if expr.sexp == nil {
-					intVal, err := strconv.Atoi(expr.val)
+				if expr.Sexp == nil {
+					intVal, err := strconv.Atoi(expr.Value)
 					// TODO: support list of float etc.
 					if err != nil {
-						list = append(list, expr.val)
+						list = append(list, expr.Value)
 					} else {
 						list = append(list, intVal)
 					}
 				} else {
-					value, cs, err := resolveExpression(&expr.sexp)
+					value, cs, err := resolveExpression(&expr.Sexp)
 					if err != nil {
 						return nil, nil, err
 					}
@@ -405,7 +406,7 @@ func transformToIntList(list []interface{}) ([]int, error) {
 	return b, nil
 }
 
-func resolveAttribute(attrs *attrs) (map[string]*attribute, error) {
+func resolveAttribute(attrs *parser.Attributes) (map[string]*attribute, error) {
 	ret := make(map[string]*attribute)
 	for k, v := range *attrs {
 		subs := strings.SplitN(k, ".", 2)
@@ -428,16 +429,16 @@ func resolveAttribute(attrs *attrs) (map[string]*attribute, error) {
 	return ret, nil
 }
 
-func resolveBucketColumn(el *exprlist) (*columns.BucketColumn, error) {
+func resolveBucketColumn(el *parser.ExprList) (*columns.BucketColumn, error) {
 	if len(*el) != 3 {
 		return nil, fmt.Errorf("bad BUCKET expression format: %s", *el)
 	}
 	sourceExprList := (*el)[1]
 	boundariesExprList := (*el)[2]
-	if sourceExprList.typ != 0 {
+	if sourceExprList.Type != 0 {
 		return nil, fmt.Errorf("key of BUCKET must be NUMERIC, which is %v", sourceExprList)
 	}
-	source, _, err := resolveColumn(&sourceExprList.sexp)
+	source, _, err := resolveColumn(&sourceExprList.Sexp)
 	if err != nil {
 		return nil, err
 	}
@@ -460,7 +461,7 @@ func resolveBucketColumn(el *exprlist) (*columns.BucketColumn, error) {
 		Boundaries:   b}, nil
 }
 
-func resolveSeqCategoryIDColumn(el *exprlist) (*columns.SequenceCategoryIDColumn, *columns.ColumnSpec, error) {
+func resolveSeqCategoryIDColumn(el *parser.ExprList) (*columns.SequenceCategoryIDColumn, *columns.ColumnSpec, error) {
 	key, bucketSize, delimiter, cs, err := parseCategoryIDColumnExpr(el)
 	if err != nil {
 		return nil, nil, err
@@ -473,7 +474,7 @@ func resolveSeqCategoryIDColumn(el *exprlist) (*columns.SequenceCategoryIDColumn
 		Dtype: "int64"}, cs, nil
 }
 
-func resolveCategoryIDColumn(el *exprlist) (*columns.CategoryIDColumn, *columns.ColumnSpec, error) {
+func resolveCategoryIDColumn(el *parser.ExprList) (*columns.CategoryIDColumn, *columns.ColumnSpec, error) {
 	key, bucketSize, delimiter, cs, err := parseCategoryIDColumnExpr(el)
 	if err != nil {
 		return nil, nil, err
@@ -486,17 +487,17 @@ func resolveCategoryIDColumn(el *exprlist) (*columns.CategoryIDColumn, *columns.
 		Dtype: "int64"}, cs, nil
 }
 
-func parseCategoryIDColumnExpr(el *exprlist) (string, int, string, *columns.ColumnSpec, error) {
+func parseCategoryIDColumnExpr(el *parser.ExprList) (string, int, string, *columns.ColumnSpec, error) {
 	if len(*el) != 3 && len(*el) != 4 {
 		return "", 0, "", nil, fmt.Errorf("bad CATEGORY_ID expression format: %s", *el)
 	}
 	var cs *columns.ColumnSpec
 	key := ""
 	var err error
-	if (*el)[1].typ == 0 {
+	if (*el)[1].Type == 0 {
 		// explist, maybe DENSE/SPARSE expressions
-		subExprList := (*el)[1].sexp
-		isSparse := subExprList[0].val == sparse
+		subExprList := (*el)[1].Sexp
+		isSparse := subExprList[0].Value == sparse
 		cs, err = resolveColumnSpec(&subExprList, isSparse)
 		if err != nil {
 			return "", 0, "", nil, fmt.Errorf("bad CATEGORY_ID expression format: %v", subExprList)
@@ -508,21 +509,21 @@ func parseCategoryIDColumnExpr(el *exprlist) (string, int, string, *columns.Colu
 			return "", 0, "", nil, fmt.Errorf("bad CATEGORY_ID key: %s, err: %s", (*el)[1], err)
 		}
 	}
-	bucketSize, err := strconv.Atoi((*el)[2].val)
+	bucketSize, err := strconv.Atoi((*el)[2].Value)
 	if err != nil {
-		return "", 0, "", nil, fmt.Errorf("bad CATEGORY_ID bucketSize: %s, err: %s", (*el)[2].val, err)
+		return "", 0, "", nil, fmt.Errorf("bad CATEGORY_ID bucketSize: %s, err: %s", (*el)[2].Value, err)
 	}
 	delimiter := ""
 	if len(*el) == 4 {
-		delimiter, err = resolveDelimiter((*el)[3].val)
+		delimiter, err = resolveDelimiter((*el)[3].Value)
 		if err != nil {
-			return "", 0, "", nil, fmt.Errorf("bad CATEGORY_ID delimiter: %s, %s", (*el)[3].val, err)
+			return "", 0, "", nil, fmt.Errorf("bad CATEGORY_ID delimiter: %s, %s", (*el)[3].Value, err)
 		}
 	}
 	return key, bucketSize, delimiter, cs, nil
 }
 
-func resolveCrossColumn(el *exprlist) (*columns.CrossColumn, error) {
+func resolveCrossColumn(el *parser.ExprList) (*columns.CrossColumn, error) {
 	if len(*el) != 3 {
 		return nil, fmt.Errorf("bad CROSS expression format: %s", *el)
 	}
@@ -535,16 +536,16 @@ func resolveCrossColumn(el *exprlist) (*columns.CrossColumn, error) {
 		return nil, fmt.Errorf("bad CROSS expression format: %s", *el)
 	}
 
-	bucketSize, err := strconv.Atoi((*el)[2].val)
+	bucketSize, err := strconv.Atoi((*el)[2].Value)
 	if err != nil {
-		return nil, fmt.Errorf("bad CROSS bucketSize: %s, err: %s", (*el)[2].val, err)
+		return nil, fmt.Errorf("bad CROSS bucketSize: %s, err: %s", (*el)[2].Value, err)
 	}
 	return &columns.CrossColumn{
 		Keys:           key.([]interface{}),
 		HashBucketSize: bucketSize}, nil
 }
 
-func resolveEmbeddingColumn(el *exprlist) (*columns.EmbeddingColumn, *columns.ColumnSpec, error) {
+func resolveEmbeddingColumn(el *parser.ExprList) (*columns.EmbeddingColumn, *columns.ColumnSpec, error) {
 	if len(*el) != 4 && len(*el) != 5 {
 		return nil, nil, fmt.Errorf("bad EMBEDDING expression format: %s", *el)
 	}
@@ -556,8 +557,8 @@ func resolveEmbeddingColumn(el *exprlist) (*columns.EmbeddingColumn, *columns.Co
 	var innerCategoryColumnKey string
 
 	var catColumnResult interface{}
-	if sourceExprList.typ == 0 {
-		source, cs, err = resolveColumn(&sourceExprList.sexp)
+	if sourceExprList.Type == 0 {
+		source, cs, err = resolveColumn(&sourceExprList.Sexp)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -587,12 +588,12 @@ func resolveEmbeddingColumn(el *exprlist) (*columns.EmbeddingColumn, *columns.Co
 	} else {
 		// generate a default CategoryIDColumn for later feature derivation.
 		catColumnResult = nil
-		innerCategoryColumnKey = sourceExprList.val
+		innerCategoryColumnKey = sourceExprList.Value
 	}
 
-	dimension, err := strconv.Atoi((*el)[2].val)
+	dimension, err := strconv.Atoi((*el)[2].Value)
 	if err != nil {
-		return nil, nil, fmt.Errorf("bad EMBEDDING dimension: %s, err: %s", (*el)[2].val, err)
+		return nil, nil, fmt.Errorf("bad EMBEDDING dimension: %s, err: %s", (*el)[2].Value, err)
 	}
 	combiner, err := expression2string((*el)[3])
 	if err != nil {
@@ -613,7 +614,7 @@ func resolveEmbeddingColumn(el *exprlist) (*columns.EmbeddingColumn, *columns.Co
 		Initializer:    initializer}, cs, nil
 }
 
-func resolveNumericColumn(el *exprlist) (*columns.NumericColumn, error) {
+func resolveNumericColumn(el *parser.ExprList) (*columns.NumericColumn, error) {
 	if len(*el) != 3 {
 		return nil, fmt.Errorf("bad NUMERIC expression format: %s", *el)
 	}
@@ -622,7 +623,7 @@ func resolveNumericColumn(el *exprlist) (*columns.NumericColumn, error) {
 		return nil, fmt.Errorf("bad NUMERIC key: %s, err: %s", (*el)[1], err)
 	}
 	var shape []int
-	intVal, err := strconv.Atoi((*el)[2].val)
+	intVal, err := strconv.Atoi((*el)[2].Value)
 	if err != nil {
 		list, _, err := resolveExpression((*el)[2])
 		if err != nil {
@@ -631,10 +632,10 @@ func resolveNumericColumn(el *exprlist) (*columns.NumericColumn, error) {
 		if list, ok := list.([]interface{}); ok {
 			shape, err = transformToIntList(list)
 			if err != nil {
-				return nil, fmt.Errorf("bad NUMERIC shape: %s, err: %s", (*el)[2].val, err)
+				return nil, fmt.Errorf("bad NUMERIC shape: %s, err: %s", (*el)[2].Value, err)
 			}
 		} else {
-			return nil, fmt.Errorf("bad NUMERIC shape: %s, err: %s", (*el)[2].val, err)
+			return nil, fmt.Errorf("bad NUMERIC shape: %s, err: %s", (*el)[2].Value, err)
 		}
 	} else {
 		shape = append(shape, intVal)
@@ -647,7 +648,7 @@ func resolveNumericColumn(el *exprlist) (*columns.NumericColumn, error) {
 		Dtype:     "float32"}, nil
 }
 
-func resolveColumnSpec(el *exprlist, isSparse bool) (*columns.ColumnSpec, error) {
+func resolveColumnSpec(el *parser.ExprList, isSparse bool) (*columns.ColumnSpec, error) {
 	if len(*el) < 4 {
 		return nil, fmt.Errorf("bad FeatureSpec expression format: %s", *el)
 	}
@@ -656,14 +657,14 @@ func resolveColumnSpec(el *exprlist, isSparse bool) (*columns.ColumnSpec, error)
 		return nil, fmt.Errorf("bad FeatureSpec name: %s, err: %s", (*el)[1], err)
 	}
 	var shape []int
-	intShape, err := strconv.Atoi((*el)[2].val)
+	intShape, err := strconv.Atoi((*el)[2].Value)
 	if err != nil {
 		strShape, err := expression2string((*el)[2])
 		if err != nil {
-			return nil, fmt.Errorf("bad FeatureSpec shape: %s, err: %s", (*el)[2].val, err)
+			return nil, fmt.Errorf("bad FeatureSpec shape: %s, err: %s", (*el)[2].Value, err)
 		}
 		if strShape != "none" {
-			return nil, fmt.Errorf("bad FeatureSpec shape: %s, err: %s", (*el)[2].val, err)
+			return nil, fmt.Errorf("bad FeatureSpec shape: %s, err: %s", (*el)[2].Value, err)
 		}
 	} else {
 		shape = append(shape, intShape)
@@ -701,8 +702,8 @@ func resolveColumnSpec(el *exprlist, isSparse bool) (*columns.ColumnSpec, error)
 
 // resolveFeatureColumn returns the actual feature column typed struct
 // as well as the columnSpec information.
-func resolveColumn(el *exprlist) (columns.FeatureColumn, *columns.ColumnSpec, error) {
-	head := (*el)[0].val
+func resolveColumn(el *parser.ExprList) (columns.FeatureColumn, *columns.ColumnSpec, error) {
+	head := (*el)[0].Value
 	if head == "" {
 		return nil, nil, fmt.Errorf("column description expects format like NUMERIC(key) etc, got %v", el)
 	}

@@ -40,7 +40,7 @@ type parseResult struct {
 	Error      string   `json:"error"`
 }
 
-func (p *javaParser) Type() string {
+func (p *javaParser) Dialect() string {
 	return "java"
 }
 

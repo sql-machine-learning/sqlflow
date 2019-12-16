@@ -37,7 +37,7 @@ func newTiDBParser() *tidbParser {
 		re:  regexp.MustCompile(`.* near "([^"]+)".*`)}
 }
 
-func (p *tidbParser) Type() string {
+func (p *tidbParser) Dialect() string {
 	return "tidb"
 }
 

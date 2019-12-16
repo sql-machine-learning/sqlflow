@@ -69,14 +69,14 @@ func TestStandardSelect(t *testing.T) {
 	a := assert.New(t)
 	r, e := parseSQLFlowStmt(testStandardSelectStmt + ";")
 	a.NoError(e)
-	a.False(r.extended)
+	a.False(r.Extended)
 	a.Equal([]string{"employee.age", "last_name", "salary"},
-		r.fields.Strings())
-	a.Equal([]string{"employee"}, r.tables)
+		r.Fields.Strings())
+	a.Equal([]string{"employee"}, r.Tables)
 	a.Equal("100", r.limit)
-	a.Equal(AND, r.where.sexp[0].typ)
-	a.Equal('<', rune(r.where.sexp[1].sexp[0].typ))
-	a.Equal('=', rune(r.where.sexp[2].sexp[0].typ))
+	a.Equal(AND, r.where.Sexp[0].Type)
+	a.Equal('<', rune(r.where.Sexp[1].Sexp[0].Type))
+	a.Equal('=', rune(r.where.Sexp[2].Sexp[0].Type))
 	a.Equal(`employee.age % 10 < (salary / 10000) AND `+
 		`strings.Upper(last_name) = "WANG"`,
 		r.where.String())
@@ -88,20 +88,20 @@ func TestTrainParser(t *testing.T) {
 	for _, s := range []string{``, `;`} {
 		r, e := parseSQLFlowStmt(testTrainSelect + s)
 		a.NoError(e)
-		a.True(r.extended)
-		a.True(r.train)
-		a.Equal("DNNClassifier", r.estimator)
-		a.Equal("[10, 20]", r.trainAttrs["hidden_units"].String())
-		a.Equal("3", r.trainAttrs["n_classes"].String())
+		a.True(r.Extended)
+		a.True(r.Train)
+		a.Equal("DNNClassifier", r.Estimator)
+		a.Equal("[10, 20]", r.TrainAttrs["hidden_units"].String())
+		a.Equal("3", r.TrainAttrs["n_classes"].String())
 		a.Equal(`employee.name`,
-			r.columns["feature_columns"][0].String())
+			r.Columns["feature_columns"][0].String())
 		a.Equal(`bucketize(last_name, 1000)`,
-			r.columns["feature_columns"][1].String())
+			r.Columns["feature_columns"][1].String())
 		a.Equal(
 			`cross(embedding(employee.name), bucketize(last_name, 1000))`,
-			r.columns["feature_columns"][2].String())
-		a.Equal("employee.salary", r.label)
-		a.Equal("sqlflow_models.my_dnn_model", r.save)
+			r.Columns["feature_columns"][2].String())
+		a.Equal("employee.salary", r.Label)
+		a.Equal("sqlflow_models.my_dnn_model", r.Save)
 	}
 }
 
@@ -109,47 +109,47 @@ func TestMultiColumnTrainParser(t *testing.T) {
 	a := assert.New(t)
 	r, e := parseSQLFlowStmt(testMultiColumnTrainSelect)
 	a.NoError(e)
-	a.True(r.extended)
-	a.True(r.train)
-	a.Equal("DNNClassifier", r.estimator)
-	a.Equal("[10, 20]", r.trainAttrs["hidden_units"].String())
-	a.Equal("3", r.trainAttrs["n_classes"].String())
+	a.True(r.Extended)
+	a.True(r.Train)
+	a.Equal("DNNClassifier", r.Estimator)
+	a.Equal("[10, 20]", r.TrainAttrs["hidden_units"].String())
+	a.Equal("3", r.TrainAttrs["n_classes"].String())
 	a.Equal(`employee.name`,
-		r.columns["feature_columns"][0].String())
+		r.Columns["feature_columns"][0].String())
 	a.Equal(`bucketize(last_name, 1000)`,
-		r.columns["feature_columns"][1].String())
+		r.Columns["feature_columns"][1].String())
 	a.Equal(
 		`cross(embedding(employee.name), bucketize(last_name, 1000))`,
-		r.columns["feature_columns"][2].String())
+		r.Columns["feature_columns"][2].String())
 	a.Equal(
 		`cross(embedding(employee.name), bucketize(last_name, 1000))`,
-		r.columns["C2"][0].String())
-	a.Equal("employee.salary", r.label)
-	a.Equal("sqlflow_models.my_dnn_model", r.save)
+		r.Columns["C2"][0].String())
+	a.Equal("employee.salary", r.Label)
+	a.Equal("sqlflow_models.my_dnn_model", r.Save)
 }
 
 func TestPredictParser(t *testing.T) {
 	a := assert.New(t)
 	r, e := parseSQLFlowStmt(testPredictSelect)
 	a.NoError(e)
-	a.True(r.extended)
-	a.False(r.train)
-	a.Equal("sqlflow_models.my_dnn_model", r.model)
-	a.Equal("db.table.field", r.into)
+	a.True(r.Extended)
+	a.False(r.Train)
+	a.Equal("sqlflow_models.my_dnn_model", r.Model)
+	a.Equal("db.table.field", r.Into)
 }
 
-func TestAnalyzeParser(t *testing.T) {
+func TestExplainParser(t *testing.T) {
 	a := assert.New(t)
 	{
 		r, e := parseSQLFlowStmt(`select * from mytable
 TO EXPLAIN my_model
 USING TreeExplainer;`)
 		a.NoError(e)
-		a.True(r.extended)
-		a.False(r.train)
-		a.True(r.analyze)
-		a.Equal("my_model", r.trainedModel)
-		a.Equal("TreeExplainer", r.explainer)
+		a.True(r.Extended)
+		a.False(r.Train)
+		a.True(r.Explain)
+		a.Equal("my_model", r.TrainedModel)
+		a.Equal("TreeExplainer", r.Explainer)
 	}
 	{
 		r, e := parseSQLFlowStmt(`select * from mytable
@@ -158,12 +158,12 @@ WITH
   plots = force
 USING TreeExplainer;`)
 		a.NoError(e)
-		a.True(r.extended)
-		a.False(r.train)
-		a.True(r.analyze)
-		a.Equal("my_model", r.trainedModel)
-		a.Equal("force", r.explainAttrs["plots"].String())
-		a.Equal("TreeExplainer", r.explainer)
+		a.True(r.Extended)
+		a.False(r.Train)
+		a.True(r.Explain)
+		a.Equal("my_model", r.TrainedModel)
+		a.Equal("force", r.ExplainAttrs["plots"].String())
+		a.Equal("TreeExplainer", r.Explainer)
 	}
 }
 
@@ -171,11 +171,11 @@ func TestSelectStarAndPrint(t *testing.T) {
 	a := assert.New(t)
 	r, e := parseSQLFlowStmt(`SELECT *, b FROM a LIMIT 10;`)
 	a.NoError(e)
-	a.Equal(2, len(r.fields.Strings()))
-	a.Equal("*", r.fields.Strings()[0])
-	a.False(r.extended)
-	a.False(r.train)
-	a.Equal("SELECT *, b\nFROM a\nLIMIT 10", r.standardSelect.String())
+	a.Equal(2, len(r.Fields.Strings()))
+	a.Equal("*", r.Fields.Strings()[0])
+	a.False(r.Extended)
+	a.False(r.Train)
+	a.Equal("SELECT *, b\nFROM a\nLIMIT 10", r.StandardSelect.String())
 }
 
 func TestStandardDropTable(t *testing.T) {
@@ -196,12 +196,12 @@ func TestSelectMaxcomputeUDF(t *testing.T) {
 	a := assert.New(t)
 	r, e := parseSQLFlowStmt(testMaxcomputeUDFPredict)
 	a.NoError(e)
-	a.Equal(3, len(r.fields.Strings()))
-	a.Equal(r.fields[0].String(), `predict_fun(concat(",", col_1, col_2))`)
-	a.Equal(r.fields[1].String(), `AS`)
-	a.Equal(r.fields[2].String(), `(info, score)`)
-	a.Equal(r.predictClause.into, "db.predict_result")
-	a.Equal(r.predAttrs["OSS_KEY"].String(), "a")
-	a.Equal(r.predAttrs["OSS_ID"].String(), "b")
-	a.Equal(r.predictClause.model, "sqlflow_models.my_model")
+	a.Equal(3, len(r.Fields.Strings()))
+	a.Equal(r.Fields[0].String(), `predict_fun(concat(",", col_1, col_2))`)
+	a.Equal(r.Fields[1].String(), `AS`)
+	a.Equal(r.Fields[2].String(), `(info, score)`)
+	a.Equal(r.PredictClause.Into, "db.predict_result")
+	a.Equal(r.PredAttrs["OSS_KEY"].String(), "a")
+	a.Equal(r.PredAttrs["OSS_ID"].String(), "b")
+	a.Equal(r.PredictClause.Model, "sqlflow_models.my_model")
 }

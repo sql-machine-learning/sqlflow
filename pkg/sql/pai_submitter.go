@@ -14,6 +14,7 @@
 package sql
 
 import (
+	"sqlflow.org/sqlflow/pkg/parser"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/pai"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
@@ -29,14 +30,14 @@ func (s *paiSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 
 func (s *paiSubmitter) ExecutePredict(cl *ir.PredictStmt) error {
 	// TODO(typhoonzero): remove below twice parse when all submitters moved to IR.
-	pr, e := newExtendedSyntaxParser().Parse(cl.OriginalSQL)
+	pr, e := parser.ParseOneStatement("maxcompute", cl.OriginalSQL)
 	if e != nil {
 		return e
 	}
 	if e = createPredictionTableFromIR(cl, s.Db, s.Session); e != nil {
 		return e
 	}
-	code, e := pai.Predict(cl, pr.model, s.Cwd)
+	code, e := pai.Predict(cl, pr.Extended.Model, s.Cwd)
 	if e != nil {
 		return e
 	}

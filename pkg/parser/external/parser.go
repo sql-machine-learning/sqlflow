@@ -17,12 +17,12 @@ package external
 // TiDB, MaxCompute.
 type Parser interface {
 	Parse(program string) ([]string, int, error)
-	Type() string
+	Dialect() string
 }
 
 // NewParser instantiates a parser.
-func NewParser(typ string) Parser {
-	switch typ {
+func NewParser(dialect string) Parser {
+	switch dialect {
 	case "mysql", "tidb":
 		return newTiDBParser()
 	case "hive", "hiveql":

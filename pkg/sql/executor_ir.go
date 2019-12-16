@@ -22,6 +22,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"sqlflow.org/sqlflow/pkg/argo"
+	"sqlflow.org/sqlflow/pkg/parser"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/couler"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
@@ -69,15 +70,15 @@ func RunSQLProgram(sqlProgram string, modelDir string, session *pb.Session) *Pip
 func ParseSQLStatement(sql string, session *pb.Session) (string, error) {
 	connStr := session.DbConnStr
 	driverName := strings.Split(connStr, "://")[0]
-	parsed, err := parseOneStatement(driverName, sql)
+	parsed, err := parser.ParseOneStatement(driverName, sql)
 	if err != nil {
 		return "", err
 	}
-	extended := parsed.extended
+	extended := parsed.Extended
 	if extended == nil {
 		return "", fmt.Errorf("ParseSQLStatement only accept extended SQL")
 	}
-	if extended.train {
+	if extended.Train {
 		trainStmt, err := generateTrainStmtWithInferredColumns(extended, connStr)
 		if err != nil {
 			return "", err
@@ -87,7 +88,7 @@ func ParseSQLStatement(sql string, session *pb.Session) (string, error) {
 			return "", err
 		}
 		return proto.MarshalTextString(pbir), nil
-	} else if extended.analyze {
+	} else if extended.Analyze {
 		analyzeStmt, err := generateAnalyzeStmt(extended, connStr, "", true)
 		if err != nil {
 			return "", nil
@@ -132,7 +133,7 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, modelDir string, session 
 	if err != nil {
 		return err
 	}
-	sqls, err := parse(driverName, sqlProgram)
+	sqls, err := parser.Parse(driverName, sqlProgram)
 	if err != nil {
 		return err
 	}
@@ -145,23 +146,23 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, modelDir string, session 
 	for _, sql := range sqls {
 		var r ir.SQLStatement
 		connStr := fmt.Sprintf("%s://%s", driverName, dataSourceName)
-		if sql.extended != nil {
-			parsed := sql.extended
-			if parsed.train {
+		if sql.Extended != nil {
+			parsed := sql.Extended
+			if parsed.Train {
 				r, err = generateTrainStmt(parsed, connStr)
-			} else if parsed.analyze {
+			} else if parsed.Analyze {
 				r, err = generateAnalyzeStmt(parsed, connStr, modelDir, false)
 			} else {
 				r, err = generatePredictStmt(parsed, connStr, modelDir, false)
 			}
 		} else {
-			standardSQL := ir.StandardSQL(sql.standard)
+			standardSQL := ir.StandardSQL(sql.Standard)
 			r = &standardSQL
 		}
 		if err != nil {
 			return err
 		}
-		r.SetOriginalSQL(sql.original)
+		r.SetOriginalSQL(sql.Original)
 		spIRs = append(spIRs, r)
 	}
 
@@ -184,7 +185,7 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, modelDir string, session 
 }
 
 func runSQLProgram(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, session *pb.Session) error {
-	sqls, err := parse(db.driverName, sqlProgram)
+	sqls, err := parser.Parse(db.driverName, sqlProgram)
 	if err != nil {
 		return err
 	}
@@ -199,23 +200,23 @@ func runSQLProgram(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, s
 	for _, sql := range sqls {
 		var r ir.SQLStatement
 		connStr := fmt.Sprintf("%s://%s", db.driverName, db.dataSourceName)
-		if sql.extended != nil {
-			parsed := sql.extended
-			if parsed.train {
+		if sql.Extended != nil {
+			parsed := sql.Extended
+			if parsed.Train {
 				r, err = generateTrainStmtWithInferredColumns(parsed, connStr)
-			} else if parsed.analyze {
+			} else if parsed.Analyze {
 				r, err = generateAnalyzeStmt(parsed, connStr, modelDir, submitter().GetTrainStmtFromModel())
 			} else {
 				r, err = generatePredictStmt(parsed, connStr, modelDir, submitter().GetTrainStmtFromModel())
 			}
 		} else {
-			standardSQL := ir.StandardSQL(sql.standard)
+			standardSQL := ir.StandardSQL(sql.Standard)
 			r = &standardSQL
 		}
 		if err != nil {
 			return err
 		}
-		r.SetOriginalSQL(sql.original)
+		r.SetOriginalSQL(sql.Original)
 		if e := runSingleSQLIR(wr, r, db, modelDir, session); e != nil {
 			return e
 		}
@@ -246,8 +247,8 @@ func runSingleSQLIR(wr *PipeWriter, sqlIR ir.SQLStatement, db *DB, modelDir stri
 
 // Create prediction table with appropriate column type.
 // If prediction table already exists, it will be overwritten.
-func createPredictionTable(predParsed *extendedSelect, db *DB, session *pb.Session) error {
-	tableName, columnName, e := parseTableColumn(predParsed.into)
+func createPredictionTable(predParsed *parser.SQLFlowSelectStmt, db *DB, session *pb.Session) error {
+	tableName, columnName, e := parseTableColumn(predParsed.Into)
 	if e != nil {
 		return fmt.Errorf("invalid predParsed.into, %v", e)
 	}
@@ -257,13 +258,13 @@ func createPredictionTable(predParsed *extendedSelect, db *DB, session *pb.Sessi
 		return fmt.Errorf("failed executing %s: %q", dropStmt, e)
 	}
 
-	fts, e := verify(predParsed.standardSelect.String(), db)
+	fts, e := verify(predParsed.StandardSelect.String(), db)
 	if e != nil {
 		return e
 	}
 	var b bytes.Buffer
 	fmt.Fprintf(&b, "create table %s (", tableName)
-	for _, c := range predParsed.columns["feature_columns"] {
+	for _, c := range predParsed.Columns["feature_columns"] {
 		name, err := getExpressionFieldName(c)
 		if err != nil {
 			return err
@@ -360,7 +361,7 @@ func createPredictionTableFromIR(predStmt *ir.PredictStmt, db *DB, session *pb.S
 	return nil
 }
 
-func loadModelMeta(pr *extendedSelect, db *DB, cwd, modelDir, modelName string) (*extendedSelect, error) {
+func loadModelMeta(pr *parser.SQLFlowSelectStmt, db *DB, cwd, modelDir, modelName string) (*parser.SQLFlowSelectStmt, error) {
 	var m *model
 	var e error
 	modelURI := modelName
@@ -374,16 +375,16 @@ func loadModelMeta(pr *extendedSelect, db *DB, cwd, modelDir, modelName string) 
 	}
 	// Parse the training SELECT statement used to train
 	// the model for the prediction.
-	tr, e := parseOneStatement(db.driverName, m.TrainSelect)
+	tr, e := parser.ParseOneStatement(db.driverName, m.TrainSelect)
 	if e != nil {
 		return nil, fmt.Errorf("parse: TrainSelect %v raise %v", m.TrainSelect, e)
 	}
 
-	if e := verifyColumnNameAndType(tr.extended, pr, db); e != nil {
+	if e := verifyColumnNameAndType(tr.Extended, pr, db); e != nil {
 		return nil, fmt.Errorf("verifyColumnNameAndType: %v", e)
 	}
 
-	pr.trainClause = tr.extended.trainClause
+	pr.TrainClause = tr.Extended.TrainClause
 
 	return pr, nil
 }

@@ -20,13 +20,75 @@ import (
 	"sqlflow.org/sqlflow/pkg/parser/external"
 )
 
-type statementParseResult struct {
-	original string
-	standard string
-	extended *extendedSelect
+// SQLFlowStmt represents a parsed SQL statement.  The original
+// statement is in Original.  If it is a standard SQL statement,
+// Standard has the statement as well, and Extended is nil.  Or, if it
+// is a statement with SQLFlow syntax extension, Standard is the
+// prefixed SELECT statement, and Extended is the parsed extension.
+type SQLFlowStmt struct {
+	Original string
+	Standard string
+	Extended *SQLFlowSelectStmt
 }
 
-func parseFirstSQLFlowStmt(program string) (*extendedSelect, int, error) {
+// ParseOneStatement parses a SQL program by calling Parse, and
+// asserts that this program contains one and only one statement.
+func ParseOneStatement(dialect, sql string) (*SQLFlowStmt, error) {
+	sqls, err := Parse(dialect, sql)
+	if err != nil {
+		return nil, err
+	}
+	if len(sqls) != 1 {
+		return nil, fmt.Errorf("unexpect number of statements 1(expected) != %v(received)", len(sqls))
+	}
+
+	return &sqls[0], nil
+}
+
+// Parse a SQL program in the given dialect into a list of SQL statements.
+func Parse(dialect, program string) ([]SQLFlowStmt, error) {
+	if len(strings.TrimSpace(program)) == 0 {
+		return make([]SQLFlowStmt, 0), nil
+	}
+
+	// SELECT ...; SELECT * FROM my_table TO TRAIN ...
+	//                                    ^
+	//                                    i
+	sqls, i, err := thirdPartyParse(dialect, program)
+	if err != nil {
+		return nil, err
+	}
+	if i == -1 { // The third party parser accepts all SQL statements
+		return sqls, nil
+	}
+
+	left := sqls[len(sqls)-1].Standard
+	program = program[i:]
+
+	// TO TRAIN dnn LABEL class INTO my_model; SELECT ...
+	//                                        ^
+	//                                        j
+	extended, j, err := parseFirstSQLFlowStmt(program)
+	if err != nil {
+		return nil, err
+	}
+
+	right := program[:j]
+	program = program[j:]
+
+	sqls[len(sqls)-1].Original = left + right
+	sqls[len(sqls)-1].Extended = extended
+	sqls[len(sqls)-1].Extended.StandardSelect.origin = left
+
+	nextSqls, err := Parse(dialect, program)
+	if err != nil {
+		return nil, err
+	}
+
+	return append(sqls, nextSqls...), err
+}
+
+func parseFirstSQLFlowStmt(program string) (*SQLFlowSelectStmt, int, error) {
 	// Note(tony): our parser only supports parsing one statement.
 	// So we need to extract the first statement for it.
 	s, err := SplitMultipleSQL(program)
@@ -42,69 +104,15 @@ func parseFirstSQLFlowStmt(program string) (*extendedSelect, int, error) {
 	return pr, len(s[0]), nil
 }
 
-func thirdPartyParse(dbms, sqlProgram string) ([]statementParseResult, int, error) {
-	p := external.NewParser(dbms)
-	sqls, i, err := p.Parse(sqlProgram)
+func thirdPartyParse(dialect, program string) ([]SQLFlowStmt, int, error) {
+	p := external.NewParser(dialect)
+	sqls, i, err := p.Parse(program)
 	if err != nil {
 		return nil, -1, fmt.Errorf("thirdPartyParse failed: %v", err)
 	}
-	spr := make([]statementParseResult, 0)
+	spr := make([]SQLFlowStmt, 0)
 	for _, sql := range sqls {
-		spr = append(spr, statementParseResult{original: sql, standard: sql, extended: nil})
+		spr = append(spr, SQLFlowStmt{Original: sql, Standard: sql, Extended: nil})
 	}
 	return spr, i, nil
-}
-
-func parseOneStatement(dbms, sql string) (*statementParseResult, error) {
-	sqls, err := parse(dbms, sql)
-	if err != nil {
-		return nil, err
-	}
-	if len(sqls) != 1 {
-		return nil, fmt.Errorf("unexpect number of statements 1(expected) != %v(received)", len(sqls))
-	}
-
-	return &sqls[0], nil
-}
-
-func parse(dbms, sqlProgram string) ([]statementParseResult, error) {
-	if len(strings.TrimSpace(sqlProgram)) == 0 {
-		return make([]statementParseResult, 0), nil
-	}
-
-	// SELECT ...; SELECT * FROM my_table TO TRAIN ...
-	//                                    ^
-	//                                    i
-	sqls, i, err := thirdPartyParse(dbms, sqlProgram)
-	if err != nil {
-		return nil, err
-	}
-	if i == -1 { // The third party parser accepts all SQL statements
-		return sqls, nil
-	}
-
-	left := sqls[len(sqls)-1].standard
-	sqlProgram = sqlProgram[i:]
-
-	// TO TRAIN dnn LABEL class INTO my_model; SELECT ...
-	//                                        ^
-	//                                        j
-	extended, j, err := parseFirstSQLFlowStmt(sqlProgram)
-	if err != nil {
-		return nil, err
-	}
-
-	right := sqlProgram[:j]
-	sqlProgram = sqlProgram[j:]
-
-	sqls[len(sqls)-1].original = left + right
-	sqls[len(sqls)-1].extended = extended
-	sqls[len(sqls)-1].extended.standardSelect.origin = left
-
-	nextSqls, err := parse(dbms, sqlProgram)
-	if err != nil {
-		return nil, err
-	}
-
-	return append(sqls, nextSqls...), err
 }

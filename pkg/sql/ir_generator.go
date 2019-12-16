@@ -20,10 +20,11 @@ import (
 	"strconv"
 	"strings"
 
+	"sqlflow.org/sqlflow/pkg/parser"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
 
-func generateTrainStmtWithInferredColumns(slct *extendedSelect, connStr string) (*ir.TrainStmt, error) {
+func generateTrainStmtWithInferredColumns(slct *parser.SQLFlowSelectStmt, connStr string) (*ir.TrainStmt, error) {
 	trainStmt, err := generateTrainStmt(slct, connStr)
 	if err != nil {
 		return nil, err
@@ -36,28 +37,28 @@ func generateTrainStmtWithInferredColumns(slct *extendedSelect, connStr string) 
 	return trainStmt, nil
 }
 
-func generateTrainStmt(slct *extendedSelect, connStr string) (*ir.TrainStmt, error) {
-	tc := slct.trainClause
-	modelURI := tc.estimator
+func generateTrainStmt(slct *parser.SQLFlowSelectStmt, connStr string) (*ir.TrainStmt, error) {
+	tc := slct.TrainClause
+	modelURI := tc.Estimator
 	// get model Docker image name
 	modelParts := strings.Split(modelURI, "/")
 	modelImageName := strings.Join(modelParts[0:len(modelParts)-1], "/")
 	modelName := modelParts[len(modelParts)-1]
 
-	attrList, err := generateAttributeIR(&slct.trainAttrs)
+	attrList, err := generateAttributeIR(&slct.TrainAttrs)
 	if err != nil {
 		return nil, err
 	}
 
 	fcMap := make(map[string][]ir.FeatureColumn)
-	for target, columnList := range tc.columns {
+	for target, columnList := range tc.Columns {
 		fcList := []ir.FeatureColumn{}
 		for _, colExpr := range columnList {
-			if colExpr.typ != 0 {
+			if colExpr.Type != 0 {
 				// column identifier like "COLUMN a1,b1"
 				nc := &ir.NumericColumn{
 					FieldDesc: &ir.FieldDesc{
-						Name:      colExpr.val,
+						Name:      colExpr.Value,
 						Shape:     []int{1},
 						DType:     ir.Float,
 						IsSparse:  false,
@@ -65,7 +66,7 @@ func generateTrainStmt(slct *extendedSelect, connStr string) (*ir.TrainStmt, err
 					}}
 				fcList = append(fcList, nc)
 			} else {
-				fc, err := parseFeatureColumn(&colExpr.sexp)
+				fc, err := parseFeatureColumn(&colExpr.Sexp)
 				if err != nil {
 					return nil, fmt.Errorf("parse FeatureColumn failed: %v", err)
 				}
@@ -76,16 +77,16 @@ func generateTrainStmt(slct *extendedSelect, connStr string) (*ir.TrainStmt, err
 	}
 	label := &ir.NumericColumn{
 		FieldDesc: &ir.FieldDesc{
-			Name: tc.label,
+			Name: tc.Label,
 		}}
 
 	vslct, _ := parseValidationSelect(attrList)
 	if vslct == "" {
-		vslct = slct.standardSelect.String()
+		vslct = slct.StandardSelect.String()
 	}
 	return &ir.TrainStmt{
 		DataSource: connStr,
-		Select:     slct.standardSelect.String(),
+		Select:     slct.StandardSelect.String(),
 		// TODO(weiguoz): This is a temporary implement. Specifying the
 		// validation dataset by keyword `VALIDATE` is the final solution.
 		ValidationSelect: vslct,
@@ -94,11 +95,11 @@ func generateTrainStmt(slct *extendedSelect, connStr string) (*ir.TrainStmt, err
 		Attributes:       attrList,
 		Features:         fcMap,
 		Label:            label,
-		Into:             slct.save,
+		Into:             slct.Save,
 	}, nil
 }
 
-func generateTrainStmtByModel(slct *extendedSelect, connStr, cwd, modelDir, model string) (*ir.TrainStmt, error) {
+func generateTrainStmtByModel(slct *parser.SQLFlowSelectStmt, connStr, cwd, modelDir, model string) (*ir.TrainStmt, error) {
 	db, err := open(connStr)
 	if err != nil {
 		return nil, err
@@ -158,8 +159,8 @@ func verifyIRWithTrainStmt(sqlir ir.SQLStatement, db *DB) error {
 	return nil
 }
 
-func generatePredictStmt(slct *extendedSelect, connStr string, modelDir string, getTrainStmtFromModel bool) (*ir.PredictStmt, error) {
-	attrMap, err := generateAttributeIR(&slct.predAttrs)
+func generatePredictStmt(slct *parser.SQLFlowSelectStmt, connStr string, modelDir string, getTrainStmtFromModel bool) (*ir.PredictStmt, error) {
+	attrMap, err := generateAttributeIR(&slct.PredAttrs)
 	if err != nil {
 		return nil, err
 	}
@@ -173,20 +174,20 @@ func generatePredictStmt(slct *extendedSelect, connStr string, modelDir string, 
 
 	var trainStmt *ir.TrainStmt
 	if getTrainStmtFromModel {
-		trainStmt, err = generateTrainStmtByModel(slct, connStr, cwd, modelDir, slct.model)
+		trainStmt, err = generateTrainStmtByModel(slct, connStr, cwd, modelDir, slct.Model)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	resultTable, resultCol, err := parseResultTable(slct.into)
+	resultTable, resultCol, err := parseResultTable(slct.Into)
 	if err != nil {
 		return nil, err
 	}
 
 	predStmt := &ir.PredictStmt{
 		DataSource:   connStr,
-		Select:       slct.standardSelect.String(),
+		Select:       slct.StandardSelect.String(),
 		ResultTable:  resultTable,
 		ResultColumn: resultCol,
 		Attributes:   attrMap,
@@ -208,8 +209,8 @@ func generatePredictStmt(slct *extendedSelect, connStr string, modelDir string, 
 	return predStmt, nil
 }
 
-func generateAnalyzeStmt(slct *extendedSelect, connStr, modelDir string, getTrainStmtFromModel bool) (*ir.AnalyzeStmt, error) {
-	attrs, err := generateAttributeIR(&slct.explainAttrs)
+func generateAnalyzeStmt(slct *parser.SQLFlowSelectStmt, connStr, modelDir string, getTrainStmtFromModel bool) (*ir.AnalyzeStmt, error) {
+	attrs, err := generateAttributeIR(&slct.ExplainAttrs)
 	if err != nil {
 		return nil, err
 	}
@@ -223,7 +224,7 @@ func generateAnalyzeStmt(slct *extendedSelect, connStr, modelDir string, getTrai
 
 	var trainStmt *ir.TrainStmt
 	if getTrainStmtFromModel {
-		trainStmt, err = generateTrainStmtByModel(slct, connStr, cwd, modelDir, slct.trainedModel)
+		trainStmt, err = generateTrainStmtByModel(slct, connStr, cwd, modelDir, slct.TrainedModel)
 		if err != nil {
 			return nil, err
 		}
@@ -231,9 +232,9 @@ func generateAnalyzeStmt(slct *extendedSelect, connStr, modelDir string, getTrai
 
 	analyzeStmt := &ir.AnalyzeStmt{
 		DataSource: connStr,
-		Select:     slct.standardSelect.String(),
+		Select:     slct.StandardSelect.String(),
 		Attributes: attrs,
-		Explainer:  slct.explainer,
+		Explainer:  slct.Explainer,
 		TrainStmt:  trainStmt,
 	}
 
@@ -252,7 +253,7 @@ func generateAnalyzeStmt(slct *extendedSelect, connStr, modelDir string, getTrai
 	return analyzeStmt, nil
 }
 
-func generateAttributeIR(attrs *attrs) (map[string]interface{}, error) {
+func generateAttributeIR(attrs *parser.Attributes) (map[string]interface{}, error) {
 	ret := make(map[string]interface{})
 	for k, v := range *attrs {
 		resolvedExpr, err := parseExpression(v)
@@ -277,21 +278,21 @@ func generateAttributeIR(attrs *attrs) (map[string]interface{}, error) {
 // NUMERIC(c1)       ->  &ir.NumericColumn{Key: "c1"...}
 // [NUMERIC(c1), c2] ->  [&ir.NumericColumn{Key: "c1"...}, string("c2")]
 //
-// parameter e could be type `*expr` or `*exprlist` for recursive call.
+// parameter e could be type `*expr` or `*parser.ExprList` for recursive call.
 func parseExpression(e interface{}) (interface{}, error) {
-	if expr, ok := e.(*expr); ok {
-		if expr.typ != 0 {
-			return inferStringValue(expr.val), nil
+	if expr, ok := e.(*parser.Expr); ok {
+		if expr.Type != 0 {
+			return inferStringValue(expr.Value), nil
 		}
-		return parseExpression(&expr.sexp)
+		return parseExpression(&expr.Sexp)
 	}
-	el, ok := e.(*exprlist)
+	el, ok := e.(*parser.ExprList)
 	if !ok {
-		return nil, fmt.Errorf("input of parseExpression must be `expr` or `exprlist` given %s", e)
+		return nil, fmt.Errorf("input of parseExpression must be `expr` or `parser.ExprList` given %s", e)
 	}
 
-	headTyp := (*el)[0].typ
-	if headTyp == IDENT {
+	headTyp := (*el)[0].Type
+	if headTyp == parser.IDENT {
 		// expression is a function call format like `NUMERIC(c1)`
 		return parseFeatureColumn(el)
 	} else if headTyp == '[' {
@@ -299,16 +300,16 @@ func parseExpression(e interface{}) (interface{}, error) {
 		var list []interface{}
 		for idx, expr := range *el {
 			if idx > 0 {
-				if expr.sexp == nil {
-					intVal, err := strconv.Atoi(expr.val)
+				if expr.Sexp == nil {
+					intVal, err := strconv.Atoi(expr.Value)
 					// TODO(typhoonzero): support list of float etc.
 					if err != nil {
-						list = append(list, expr.val)
+						list = append(list, expr.Value)
 					} else {
 						list = append(list, intVal)
 					}
 				} else {
-					value, err := parseExpression(&expr.sexp)
+					value, err := parseExpression(&expr.Sexp)
 					if err != nil {
 						return nil, err
 					}
@@ -343,8 +344,8 @@ func inferStringValue(expr string) interface{} {
 	return strings.Trim(retString, "'")
 }
 
-func parseFeatureColumn(el *exprlist) (ir.FeatureColumn, error) {
-	head := (*el)[0].val
+func parseFeatureColumn(el *parser.ExprList) (ir.FeatureColumn, error) {
+	head := (*el)[0].Value
 	if head == "" {
 		return nil, fmt.Errorf("column description expects format like NUMERIC(key) etc, got %v", el)
 	}
@@ -367,14 +368,14 @@ func parseFeatureColumn(el *exprlist) (ir.FeatureColumn, error) {
 	}
 }
 
-func parseNumericColumn(el *exprlist) (*ir.NumericColumn, error) {
+func parseNumericColumn(el *parser.ExprList) (*ir.NumericColumn, error) {
 	help := "NUMERIC([DENSE()|SPARSE()|col_name][, SHAPE])"
 	if len(*el) != 3 {
 		return nil, fmt.Errorf("bad NUMERIC expression format: %s, should be like: %s", *el, help)
 	}
 	// 1. NUMERIC(DENSE()/SPARSE()) phrases
-	if (*el)[1].typ == 0 {
-		fieldDesc, err := parseFieldDesc(&(*el)[1].sexp)
+	if (*el)[1].Type == 0 {
+		fieldDesc, err := parseFieldDesc(&(*el)[1].Sexp)
 		if err != nil {
 			return nil, err
 		}
@@ -400,7 +401,7 @@ func parseNumericColumn(el *exprlist) (*ir.NumericColumn, error) {
 	}, nil
 }
 
-func parseBucketColumn(el *exprlist) (*ir.BucketColumn, error) {
+func parseBucketColumn(el *parser.ExprList) (*ir.BucketColumn, error) {
 	help := "BUCKET(NUMERIC(...), BOUNDARIES)"
 	if len(*el) != 3 {
 		return nil, fmt.Errorf("bad BUCKET expression format: %s, should be like: %s", *el, help)
@@ -408,10 +409,10 @@ func parseBucketColumn(el *exprlist) (*ir.BucketColumn, error) {
 
 	sourceExprList := (*el)[1]
 	boundariesExprList := (*el)[2]
-	if sourceExprList.typ != 0 {
+	if sourceExprList.Type != 0 {
 		return nil, fmt.Errorf("key of BUCKET must be NUMERIC, which is %v", sourceExprList)
 	}
-	source, err := parseFeatureColumn(&sourceExprList.sexp)
+	source, err := parseFeatureColumn(&sourceExprList.Sexp)
 	if err != nil {
 		return nil, err
 	}
@@ -427,7 +428,7 @@ func parseBucketColumn(el *exprlist) (*ir.BucketColumn, error) {
 		Boundaries:   b}, nil
 }
 
-func parseCrossColumn(el *exprlist) (*ir.CrossColumn, error) {
+func parseCrossColumn(el *parser.ExprList) (*ir.CrossColumn, error) {
 	help := "CROSS([column_1, column_2], HASH_BUCKET_SIZE)"
 	if len(*el) != 3 {
 		return nil, fmt.Errorf("bad CROSS expression format: %s, should be like: %s", *el, help)
@@ -441,25 +442,25 @@ func parseCrossColumn(el *exprlist) (*ir.CrossColumn, error) {
 	if _, ok := key.([]interface{}); !ok {
 		return nil, fmt.Errorf("bad CROSS expression format: %s, should be like: %s", *el, help)
 	}
-	bucketSize, err := strconv.Atoi((*el)[2].val)
+	bucketSize, err := strconv.Atoi((*el)[2].Value)
 	if err != nil {
-		return nil, fmt.Errorf("bad CROSS bucketSize: %s, err: %s", (*el)[2].val, err)
+		return nil, fmt.Errorf("bad CROSS bucketSize: %s, err: %s", (*el)[2].Value, err)
 	}
 	return &ir.CrossColumn{
 		Keys:           key.([]interface{}),
 		HashBucketSize: bucketSize}, nil
 }
 
-func parseCategoryIDColumn(el *exprlist) (*ir.CategoryIDColumn, error) {
+func parseCategoryIDColumn(el *parser.ExprList) (*ir.CategoryIDColumn, error) {
 	help := "CATEGORY_ID([DENSE()|SPARSE()|col_name], BUCKET_SIZE)"
 	if len(*el) != 3 && len(*el) != 4 {
 		return nil, fmt.Errorf("bad CATEGORY_ID expression format: %s, should be like: %s", *el, help)
 	}
 	var fieldDesc *ir.FieldDesc
 	var err error
-	if (*el)[1].typ == 0 {
+	if (*el)[1].Type == 0 {
 		// CATEGORY_ID(DENSE()/SPARSE()) phrases
-		fieldDesc, err = parseFieldDesc(&(*el)[1].sexp)
+		fieldDesc, err = parseFieldDesc(&(*el)[1].Sexp)
 		if err != nil {
 			return nil, err
 		}
@@ -478,9 +479,9 @@ func parseCategoryIDColumn(el *exprlist) (*ir.CategoryIDColumn, error) {
 		}
 	}
 	// FIXME(typhoonzero): support very large bucket size (int64)
-	bucketSize, err := strconv.Atoi((*el)[2].val)
+	bucketSize, err := strconv.Atoi((*el)[2].Value)
 	if err != nil {
-		return nil, fmt.Errorf("bad CATEGORY_ID bucketSize: %s, err: %s", (*el)[2].val, err)
+		return nil, fmt.Errorf("bad CATEGORY_ID bucketSize: %s, err: %s", (*el)[2].Value, err)
 	}
 	return &ir.CategoryIDColumn{
 		FieldDesc:  fieldDesc,
@@ -488,16 +489,16 @@ func parseCategoryIDColumn(el *exprlist) (*ir.CategoryIDColumn, error) {
 	}, nil
 }
 
-func parseSeqCategoryIDColumn(el *exprlist) (*ir.SeqCategoryIDColumn, error) {
+func parseSeqCategoryIDColumn(el *parser.ExprList) (*ir.SeqCategoryIDColumn, error) {
 	help := "SEQ_CATEGORY_ID([DENSE()|SPARSE()|col_name], BUCKET_SIZE)"
 	if len(*el) != 3 && len(*el) != 4 {
 		return nil, fmt.Errorf("bad SEQ_CATEGORY_ID expression format: %s, should be like: %s", *el, help)
 	}
 	var fieldDesc *ir.FieldDesc
 	var err error
-	if (*el)[1].typ == 0 {
+	if (*el)[1].Type == 0 {
 		// CATEGORY_ID(DENSE()/SPARSE()) phrases
-		fieldDesc, err = parseFieldDesc(&(*el)[1].sexp)
+		fieldDesc, err = parseFieldDesc(&(*el)[1].Sexp)
 		if err != nil {
 			return nil, err
 		}
@@ -516,9 +517,9 @@ func parseSeqCategoryIDColumn(el *exprlist) (*ir.SeqCategoryIDColumn, error) {
 		}
 	}
 
-	bucketSize, err := strconv.Atoi((*el)[2].val)
+	bucketSize, err := strconv.Atoi((*el)[2].Value)
 	if err != nil {
-		return nil, fmt.Errorf("bad SEQ_CATEGORY_ID bucketSize: %s, err: %s", (*el)[2].val, err)
+		return nil, fmt.Errorf("bad SEQ_CATEGORY_ID bucketSize: %s, err: %s", (*el)[2].Value, err)
 	}
 	return &ir.SeqCategoryIDColumn{
 		FieldDesc:  fieldDesc,
@@ -526,7 +527,7 @@ func parseSeqCategoryIDColumn(el *exprlist) (*ir.SeqCategoryIDColumn, error) {
 	}, nil
 }
 
-func parseEmbeddingColumn(el *exprlist) (*ir.EmbeddingColumn, error) {
+func parseEmbeddingColumn(el *parser.ExprList) (*ir.EmbeddingColumn, error) {
 	help := "EMBEDDING([CATEGORY_ID(...)|col_name], SIZE, COMBINER[, INITIALIZER])"
 	if len(*el) < 4 || len(*el) > 5 {
 		return nil, fmt.Errorf("bad EMBEDDING expression format: %s, should be like: %s", *el, help)
@@ -534,17 +535,17 @@ func parseEmbeddingColumn(el *exprlist) (*ir.EmbeddingColumn, error) {
 	var catColumn interface{}
 	embColName := "" // only used when catColumn == nil
 	sourceExprList := (*el)[1]
-	if sourceExprList.typ != 0 {
+	if sourceExprList.Type != 0 {
 		// 1. key is a IDET string: EMBEDDING(col_name, size), fill a nil in CategoryColumn for later
 		// feature derivation.
 		catColumn = nil
-		embColName = sourceExprList.val
+		embColName = sourceExprList.Value
 	} else {
-		source, err := parseFeatureColumn(&sourceExprList.sexp)
+		source, err := parseFeatureColumn(&sourceExprList.Sexp)
 		if err != nil {
 			var tmpCatColumn interface{}
 			// 2. source is a FieldDesc like EMBEDDING(SPARSE(...), size)
-			fm, err := parseFieldDesc(&sourceExprList.sexp)
+			fm, err := parseFieldDesc(&sourceExprList.Sexp)
 			if err != nil {
 				return nil, err
 			}
@@ -573,9 +574,9 @@ func parseEmbeddingColumn(el *exprlist) (*ir.EmbeddingColumn, error) {
 		}
 	}
 
-	dimension, err := strconv.Atoi((*el)[2].val)
+	dimension, err := strconv.Atoi((*el)[2].Value)
 	if err != nil {
-		return nil, fmt.Errorf("bad EMBEDDING dimension: %s, err: %s", (*el)[2].val, err)
+		return nil, fmt.Errorf("bad EMBEDDING dimension: %s, err: %s", (*el)[2].Value, err)
 	}
 	combiner, err := expression2string((*el)[3])
 	if err != nil {
@@ -596,7 +597,7 @@ func parseEmbeddingColumn(el *exprlist) (*ir.EmbeddingColumn, error) {
 		Name:           embColName}, nil
 }
 
-func parseFieldDesc(el *exprlist) (*ir.FieldDesc, error) {
+func parseFieldDesc(el *parser.ExprList) (*ir.FieldDesc, error) {
 	help := "DENSE|SPARSE(col_name, SHAPE, DELIMITER[, DTYPE])"
 	if len(*el) < 4 {
 		return nil, fmt.Errorf("bad FieldDesc format: %s, should be like: %s", *el, help)
@@ -619,14 +620,14 @@ func parseFieldDesc(el *exprlist) (*ir.FieldDesc, error) {
 		return nil, fmt.Errorf("bad FieldDesc name: %s, err: %s", (*el)[1], err)
 	}
 	var shape []int
-	intShape, err := strconv.Atoi((*el)[2].val)
+	intShape, err := strconv.Atoi((*el)[2].Value)
 	if err != nil {
 		strShape, err := expression2string((*el)[2])
 		if err != nil {
-			return nil, fmt.Errorf("bad FieldDesc shape: %s, err: %s", (*el)[2].val, err)
+			return nil, fmt.Errorf("bad FieldDesc shape: %s, err: %s", (*el)[2].Value, err)
 		}
 		if strShape != "none" {
-			return nil, fmt.Errorf("bad FieldDesc shape: %s, err: %s", (*el)[2].val, err)
+			return nil, fmt.Errorf("bad FieldDesc shape: %s, err: %s", (*el)[2].Value, err)
 		}
 	} else {
 		shape = append(shape, intShape)
@@ -669,9 +670,9 @@ func parseFieldDesc(el *exprlist) (*ir.FieldDesc, error) {
 
 // -------------------------- parse utilities --------------------------------------
 
-func parseShape(e *expr) ([]int, error) {
+func parseShape(e *parser.Expr) ([]int, error) {
 	var shape []int
-	intVal, err := strconv.Atoi(e.val)
+	intVal, err := strconv.Atoi(e.Value)
 	if err != nil {
 		list, err := parseExpression(e)
 		if err != nil {
@@ -680,10 +681,10 @@ func parseShape(e *expr) ([]int, error) {
 		if list, ok := list.([]interface{}); ok {
 			shape, err = transformToIntList(list)
 			if err != nil {
-				return nil, fmt.Errorf("bad NUMERIC shape: %s, err: %s", e.val, err)
+				return nil, fmt.Errorf("bad NUMERIC shape: %s, err: %s", e.Value, err)
 			}
 		} else {
-			return nil, fmt.Errorf("bad NUMERIC shape: %s, err: %s", e.val, err)
+			return nil, fmt.Errorf("bad NUMERIC shape: %s, err: %s", e.Value, err)
 		}
 	} else {
 		shape = append(shape, intVal)
