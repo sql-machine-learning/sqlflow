@@ -74,23 +74,23 @@ func parseAttribute(attrs map[string]interface{}) (map[string]map[string]interfa
 	return params, nil
 }
 
-func getFieldMeta(fcs []ir.FeatureColumn, l ir.FeatureColumn) ([]ir.FieldMeta, ir.FieldMeta, error) {
-	var features []ir.FieldMeta
+func getFieldDesc(fcs []ir.FeatureColumn, l ir.FeatureColumn) ([]ir.FieldDesc, ir.FieldDesc, error) {
+	var features []ir.FieldDesc
 	for _, fc := range fcs {
 		switch c := fc.(type) {
 		case *ir.NumericColumn:
-			features = append(features, *c.FieldMeta)
+			features = append(features, *c.FieldDesc)
 		default:
-			return nil, ir.FieldMeta{}, fmt.Errorf("unsupported feature column type %T on %v", c, c)
+			return nil, ir.FieldDesc{}, fmt.Errorf("unsupported feature column type %T on %v", c, c)
 		}
 	}
 
-	var label ir.FieldMeta
+	var label ir.FieldDesc
 	switch c := l.(type) {
 	case *ir.NumericColumn:
-		label = *c.FieldMeta
+		label = *c.FieldDesc
 	default:
-		return nil, ir.FieldMeta{}, fmt.Errorf("unsupported label column type %T on %v", c, c)
+		return nil, ir.FieldDesc{}, fmt.Errorf("unsupported label column type %T on %v", c, c)
 	}
 
 	return features, label, nil
@@ -111,7 +111,7 @@ func Train(trainStmt *ir.TrainStmt) (string, error) {
 	if len(trainStmt.Features) != 1 {
 		return "", fmt.Errorf("xgboost only support 1 feature column set, received %d", len(trainStmt.Features))
 	}
-	featureFieldMeta, labelFieldMeta, err := getFieldMeta(trainStmt.Features["feature_columns"], trainStmt.Label)
+	featureFieldDesc, labelFieldDesc, err := getFieldDesc(trainStmt.Features["feature_columns"], trainStmt.Label)
 	if err != nil {
 		return "", err
 	}
@@ -123,11 +123,11 @@ func Train(trainStmt *ir.TrainStmt) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	f, err := json.Marshal(featureFieldMeta)
+	f, err := json.Marshal(featureFieldDesc)
 	if err != nil {
 		return "", err
 	}
-	l, err := json.Marshal(labelFieldMeta)
+	l, err := json.Marshal(labelFieldDesc)
 	if err != nil {
 		return "", err
 	}
@@ -137,7 +137,7 @@ func Train(trainStmt *ir.TrainStmt) (string, error) {
 		ValidationSelect: trainStmt.ValidationSelect,
 		ModelParamsJSON:  string(mp),
 		TrainParamsJSON:  string(tp),
-		FieldMetaJSON:    string(f),
+		FieldDescJSON:    string(f),
 		LabelJSON:        string(l)}
 
 	var program bytes.Buffer
@@ -150,15 +150,15 @@ func Train(trainStmt *ir.TrainStmt) (string, error) {
 
 // Pred generates a Python program for predict a xgboost model.
 func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
-	featureFieldMeta, labelFieldMeta, err := getFieldMeta(predStmt.TrainStmt.Features["feature_columns"], predStmt.TrainStmt.Label)
+	featureFieldDesc, labelFieldDesc, err := getFieldDesc(predStmt.TrainStmt.Features["feature_columns"], predStmt.TrainStmt.Label)
 	if err != nil {
 		return "", err
 	}
-	f, err := json.Marshal(featureFieldMeta)
+	f, err := json.Marshal(featureFieldDesc)
 	if err != nil {
 		return "", err
 	}
-	l, err := json.Marshal(labelFieldMeta)
+	l, err := json.Marshal(labelFieldDesc)
 	if err != nil {
 		return "", err
 	}

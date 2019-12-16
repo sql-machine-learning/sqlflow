@@ -83,15 +83,15 @@ func TestFeatureDerivation(t *testing.T) {
 	fc1 := trainStmt.Features["feature_columns"][0]
 	nc, ok := fc1.(*ir.NumericColumn)
 	a.True(ok)
-	a.Equal("c1", nc.FieldMeta.Name)
-	a.Equal([]int{1}, nc.FieldMeta.Shape)
-	a.Equal(ir.Float, nc.FieldMeta.DType)
-	a.False(nc.FieldMeta.IsSparse)
+	a.Equal("c1", nc.FieldDesc.Name)
+	a.Equal([]int{1}, nc.FieldDesc.Shape)
+	a.Equal(ir.Float, nc.FieldDesc.DType)
+	a.False(nc.FieldDesc.IsSparse)
 
 	fc2 := trainStmt.Features["feature_columns"][1]
 	nc2, ok := fc2.(*ir.NumericColumn)
 	a.True(ok)
-	a.Equal("c2", nc2.FieldMeta.Name)
+	a.Equal("c2", nc2.FieldDesc.Name)
 
 	fc3 := trainStmt.Features["feature_columns"][2]
 	emb, ok := fc3.(*ir.EmbeddingColumn)
@@ -102,17 +102,17 @@ func TestFeatureDerivation(t *testing.T) {
 	a.Equal("c3", emb.Name)
 	cat, ok := emb.CategoryColumn.(*ir.CategoryIDColumn)
 	a.True(ok)
-	a.Equal("c3", cat.FieldMeta.Name)
-	a.Equal([]int{4}, cat.FieldMeta.Shape)
-	a.Equal(ir.Int, cat.FieldMeta.DType)
+	a.Equal("c3", cat.FieldDesc.Name)
+	a.Equal([]int{4}, cat.FieldDesc.Shape)
+	a.Equal(ir.Int, cat.FieldDesc.DType)
 
 	fc4 := trainStmt.Features["feature_columns"][3]
 	nc3, ok := fc4.(*ir.NumericColumn)
 	a.True(ok)
-	a.Equal("c4", nc3.FieldMeta.Name)
-	a.Equal([]int{4}, nc3.FieldMeta.Shape)
-	a.Equal(ir.Float, nc3.FieldMeta.DType)
-	a.False(nc3.FieldMeta.IsSparse)
+	a.Equal("c4", nc3.FieldDesc.Name)
+	a.Equal([]int{4}, nc3.FieldDesc.Shape)
+	a.Equal(ir.Float, nc3.FieldDesc.DType)
+	a.False(nc3.FieldDesc.IsSparse)
 
 	fc5 := trainStmt.Features["feature_columns"][4]
 	emb2, ok := fc5.(*ir.EmbeddingColumn)
@@ -121,16 +121,16 @@ func TestFeatureDerivation(t *testing.T) {
 	cat2, ok := emb2.CategoryColumn.(*ir.CategoryIDColumn)
 	a.True(ok)
 	a.Equal(int64(10000), cat2.BucketSize)
-	a.Equal("c5", cat2.FieldMeta.Name)
-	a.Equal([]int{10000}, cat2.FieldMeta.Shape)
-	a.Equal(ir.Int, cat2.FieldMeta.DType)
-	a.True(cat2.FieldMeta.IsSparse)
+	a.Equal("c5", cat2.FieldDesc.Name)
+	a.Equal([]int{10000}, cat2.FieldDesc.Shape)
+	a.Equal(ir.Int, cat2.FieldDesc.DType)
+	a.True(cat2.FieldDesc.IsSparse)
 
 	fc6 := trainStmt.Features["feature_columns"][5]
 	cat3, ok := fc6.(*ir.CategoryIDColumn)
 	a.True(ok)
-	a.Equal(3, len(cat3.FieldMeta.Vocabulary))
-	_, ok = cat3.FieldMeta.Vocabulary["MALE"]
+	a.Equal(3, len(cat3.FieldDesc.Vocabulary))
+	_, ok = cat3.FieldDesc.Vocabulary["MALE"]
 	a.True(ok)
 	a.Equal(int64(3), cat3.BucketSize)
 
@@ -168,12 +168,12 @@ func TestFeatureDerivation(t *testing.T) {
 	a.Equal(256, cc.HashBucketSize)
 	nc4, ok := cc.Keys[0].(*ir.NumericColumn)
 	a.True(ok)
-	a.Equal("c1", nc4.FieldMeta.Name)
-	a.Equal(ir.Float, nc4.FieldMeta.DType)
+	a.Equal("c1", nc4.FieldDesc.Name)
+	a.Equal(ir.Float, nc4.FieldDesc.DType)
 	nc5, ok := cc.Keys[1].(*ir.NumericColumn)
 	a.True(ok)
-	a.Equal("c2", nc5.FieldMeta.Name)
-	a.Equal(ir.Float, nc5.FieldMeta.DType)
+	a.Equal("c2", nc5.FieldDesc.Name)
+	a.Equal(ir.Float, nc5.FieldDesc.DType)
 
 	a.Equal(4, len(trainStmt.Features["feature_columns"]))
 }
@@ -225,7 +225,7 @@ func TestHiveFeatureDerivation(t *testing.T) {
 		Estimator:        "xgboost.gbtree",
 		Attributes:       map[string]interface{}{},
 		Features:         map[string][]ir.FeatureColumn{},
-		Label:            &ir.NumericColumn{&ir.FieldMeta{"class", ir.Int, "", []int{1}, false, nil, 0}}}
+		Label:            &ir.NumericColumn{&ir.FieldDesc{"class", ir.Int, "", []int{1}, false, nil, 0}}}
 	e := InferFeatureColumns(trainStmt)
 	a.NoError(e)
 	a.Equal(4, len(trainStmt.Features["feature_columns"]))

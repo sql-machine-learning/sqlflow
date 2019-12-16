@@ -36,7 +36,7 @@ func Analyze(analyzeStmt *ir.AnalyzeStmt) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	xs, y, err := getFieldMeta(analyzeStmt.TrainStmt.Features["feature_columns"], analyzeStmt.TrainStmt.Label)
+	xs, y, err := getFieldDesc(analyzeStmt.TrainStmt.Features["feature_columns"], analyzeStmt.TrainStmt.Label)
 	if err != nil {
 		return "", err
 	}
@@ -49,7 +49,7 @@ func Analyze(analyzeStmt *ir.AnalyzeStmt) (string, error) {
 		DataSource:         analyzeStmt.DataSource,
 		DatasetSQL:         analyzeStmt.Select,
 		ShapSummaryParames: string(jsonSummary),
-		FieldMetaJSON:      string(fm),
+		FieldDescJSON:      string(fm),
 		Label:              y.Name,
 	}
 	var analysis bytes.Buffer

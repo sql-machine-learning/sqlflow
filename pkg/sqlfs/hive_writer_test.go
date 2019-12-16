@@ -17,11 +17,22 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"os/exec"
+	"path"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
+
+func hasHDFSDir(hdfsPath string) bool {
+	cmd := exec.Command("hdfs", "dfs", "-ls", hdfsPath)
+	out, _ := cmd.CombinedOutput()
+	if strings.Contains(string(out), "No such file or directory") {
+		return false
+	}
+	return true
+}
 
 func TestNewHiveWriter(t *testing.T) {
 	testDriver = getEnv("SQLFLOW_TEST_DB", "hive")
@@ -36,12 +47,13 @@ func TestNewHiveWriter(t *testing.T) {
 	w, e := newHiveWriter(testDB, "/hivepath", tbl, "", "", bufSize)
 	a.NoError(e)
 	a.NotNil(w)
-	defer w.Close()
 
 	has, e1 := hasTable(testDB, tbl)
 	a.NoError(e1)
 	a.True(has)
 
+	a.NoError(w.Close())
+	a.False(hasHDFSDir(path.Join("/hivepath", tbl)))
 	a.NoError(dropTable(testDB, tbl))
 }
 
