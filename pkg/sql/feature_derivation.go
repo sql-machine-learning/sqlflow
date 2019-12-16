@@ -124,7 +124,7 @@ func newRowValue(columnTypeList []*sql.ColumnType) ([]interface{}, error) {
 	return rowData, nil
 }
 
-func fillFieldDesc(columnTypeList []*sql.ColumnType, rowdata []interface{}, fieldMetaMap FieldDescMap) error {
+func fillFieldDesc(columnTypeList []*sql.ColumnType, rowdata []interface{}, fieldDescMap FieldDescMap) error {
 	csvRegex, err := regexp.Compile("(\\-?[0-9\\.]\\,)+(\\-?[0-9\\.])")
 	if err != nil {
 		return err
@@ -132,8 +132,8 @@ func fillFieldDesc(columnTypeList []*sql.ColumnType, rowdata []interface{}, fiel
 	for idx, ct := range columnTypeList {
 		_, fld := decomp(ct.Name())
 		// add a default ColumnSpec for updating.
-		if _, ok := fieldMetaMap[fld]; !ok {
-			fieldMetaMap[fld] = &ir.FieldDesc{
+		if _, ok := fieldDescMap[fld]; !ok {
+			fieldDescMap[fld] = &ir.FieldDesc{
 				Name:       fld,
 				IsSparse:   false,
 				Shape:      nil,
@@ -147,24 +147,24 @@ func fillFieldDesc(columnTypeList []*sql.ColumnType, rowdata []interface{}, fiel
 		typeName := ct.DatabaseTypeName()
 		switch unifyDatabaseTypeName(typeName) {
 		case "INT", "DECIMAL", "BIGINT":
-			fieldMetaMap[fld].DType = ir.Int
-			fieldMetaMap[fld].Shape = []int{1}
+			fieldDescMap[fld].DType = ir.Int
+			fieldDescMap[fld].Shape = []int{1}
 		case "FLOAT", "DOUBLE":
-			fieldMetaMap[fld].DType = ir.Float
-			fieldMetaMap[fld].Shape = []int{1}
+			fieldDescMap[fld].DType = ir.Float
+			fieldDescMap[fld].Shape = []int{1}
 		case "VARCHAR", "TEXT", "STRING":
 			cellData := rowdata[idx].(*string)
 			if csvRegex.MatchString(*cellData) {
 				// ----------------------- CSV string values -----------------------
 				values := strings.Split(*cellData, ",")
 				// set shape only when the column is "DENSE"
-				if fieldMetaMap[fld].IsSparse == false && fieldMetaMap[fld].Shape == nil {
-					fieldMetaMap[fld].Shape = []int{len(values)}
+				if fieldDescMap[fld].IsSparse == false && fieldDescMap[fld].Shape == nil {
+					fieldDescMap[fld].Shape = []int{len(values)}
 				}
-				if fieldMetaMap[fld].IsSparse == false && fieldMetaMap[fld].Shape[0] != len(values) {
+				if fieldDescMap[fld].IsSparse == false && fieldDescMap[fld].Shape[0] != len(values) {
 					return fmt.Errorf("column %s is csv format sparse tensor, but got DENSE column or not specified", fld)
 				}
-				fieldMetaMap[fld].Delimiter = ","
+				fieldDescMap[fld].Delimiter = ","
 				// get dtype for csv values, use int64 and float32 only
 				for _, v := range values {
 					intValue, err := strconv.ParseInt(v, 10, 64)
@@ -172,12 +172,12 @@ func fillFieldDesc(columnTypeList []*sql.ColumnType, rowdata []interface{}, fiel
 						_, err := strconv.ParseFloat(v, 32)
 						// set dtype to float32 once a float value come up
 						if err == nil {
-							fieldMetaMap[fld].DType = ir.Float
+							fieldDescMap[fld].DType = ir.Float
 						}
 					} else {
 						// if the value is integer, record maxID
-						if intValue > fieldMetaMap[fld].MaxID {
-							fieldMetaMap[fld].MaxID = intValue
+						if intValue > fieldDescMap[fld].MaxID {
+							fieldDescMap[fld].MaxID = intValue
 						}
 					}
 				}
@@ -188,27 +188,27 @@ func fillFieldDesc(columnTypeList []*sql.ColumnType, rowdata []interface{}, fiel
 					_, err := strconv.ParseFloat(*cellData, 32)
 					if err == nil {
 						// column is float value
-						if fieldMetaMap[fld].Shape == nil {
-							fieldMetaMap[fld].Shape = []int{1}
+						if fieldDescMap[fld].Shape == nil {
+							fieldDescMap[fld].Shape = []int{1}
 						}
-						fieldMetaMap[fld].DType = ir.Float
+						fieldDescMap[fld].DType = ir.Float
 					} else {
 						// neither int nor float, should deal with string dtype
 						// to form a category_id_column
-						fieldMetaMap[fld].DType = ir.String
-						if fieldMetaMap[fld].Vocabulary == nil {
+						fieldDescMap[fld].DType = ir.String
+						if fieldDescMap[fld].Vocabulary == nil {
 							// initialize the vocabulary map
-							fieldMetaMap[fld].Vocabulary = make(map[string]string)
+							fieldDescMap[fld].Vocabulary = make(map[string]string)
 						}
-						if _, ok := fieldMetaMap[fld].Vocabulary[*cellData]; !ok {
+						if _, ok := fieldDescMap[fld].Vocabulary[*cellData]; !ok {
 
-							fieldMetaMap[fld].Vocabulary[*cellData] = *cellData
+							fieldDescMap[fld].Vocabulary[*cellData] = *cellData
 						}
 					}
 				} else {
 					// column is int value
-					if fieldMetaMap[fld].Shape == nil {
-						fieldMetaMap[fld].Shape = []int{1}
+					if fieldDescMap[fld].Shape == nil {
+						fieldDescMap[fld].Shape = []int{1}
 					}
 				}
 			}
@@ -323,7 +323,7 @@ func InferFeatureColumns(trainStmt *ir.TrainStmt) error {
 								return fmt.Errorf("column not found or inferred: %s", embCol.Name)
 							}
 							// FIXME(typhoonzero): when to use sequence_category_id_column?
-							// if column fieldMeta is SPARSE, the sparse shape should be in cs.Shape[0]
+							// if column fieldDesc is SPARSE, the sparse shape should be in cs.Shape[0]
 							bucketSize := int64(cs.Shape[0])
 							// if the column is inferred as DENSE, use inferred MaxID as the
 							// categoryIDColumns's bucket_size

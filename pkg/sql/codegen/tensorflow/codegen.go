@@ -222,7 +222,7 @@ func Train(trainStmt *ir.TrainStmt) (string, error) {
 
 	featureColumnsCode := []string{}
 	perTargetFeatureColumnsCode := []string{}
-	fieldMetas := []*ir.FieldDesc{}
+	fieldDescs := []*ir.FieldDesc{}
 	for target, fcList := range trainStmt.Features {
 		for _, fc := range fcList {
 			fcCode, err := generateFeatureColumnCode(fc)
@@ -232,7 +232,7 @@ func Train(trainStmt *ir.TrainStmt) (string, error) {
 			perTargetFeatureColumnsCode = append(perTargetFeatureColumnsCode, fcCode)
 			if len(fc.GetFieldDesc()) > 0 {
 				for _, fm := range fc.GetFieldDesc() {
-					fieldMetas = append(fieldMetas, fm)
+					fieldDescs = append(fieldDescs, fm)
 				}
 			}
 		}
@@ -261,7 +261,7 @@ func Train(trainStmt *ir.TrainStmt) (string, error) {
 		ValidationSelect:  trainStmt.ValidationSelect,
 		Estimator:         estimatorStr,
 		IsKerasModel:      isKeras,
-		FieldDescs:        fieldMetas,
+		FieldDescs:        fieldDescs,
 		FeatureColumnCode: fmt.Sprintf("{%s}", strings.Join(featureColumnsCode, ",\n")),
 		Y:                 trainStmt.Label.GetFieldDesc()[0], // TODO(typhoonzero): label only support numericColumn.
 		ModelParams:       modelParams,
@@ -294,7 +294,7 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 	}
 	featureColumnsCode := []string{}
 	perTargetFeatureColumnsCode := []string{}
-	fieldMetas := []*ir.FieldDesc{}
+	fieldDescs := []*ir.FieldDesc{}
 	for target, fcList := range predStmt.TrainStmt.Features {
 		for _, fc := range fcList {
 			fcCode, err := generateFeatureColumnCode(fc)
@@ -304,7 +304,7 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 			perTargetFeatureColumnsCode = append(perTargetFeatureColumnsCode, fcCode)
 			if len(fc.GetFieldDesc()) > 0 {
 				for _, fm := range fc.GetFieldDesc() {
-					fieldMetas = append(fieldMetas, fm)
+					fieldDescs = append(fieldDescs, fm)
 				}
 			}
 		}
@@ -329,7 +329,7 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 		ResultTable:       predStmt.ResultTable,
 		Estimator:         estimatorStr,
 		IsKerasModel:      isKeras,
-		FieldDescs:        fieldMetas,
+		FieldDescs:        fieldDescs,
 		FeatureColumnCode: fmt.Sprintf("{%s}", strings.Join(featureColumnsCode, ",\n")),
 		Y:                 labelFM,
 		ModelParams:       modelParams,

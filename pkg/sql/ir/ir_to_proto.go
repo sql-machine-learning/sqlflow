@@ -82,7 +82,7 @@ func toInt32List(il []int) []int32 {
 	return ret
 }
 
-func fieldMetaToPBMeta(fm *FieldDesc) *pb.FieldDesc {
+func fieldDescToPBMeta(fm *FieldDesc) *pb.FieldDesc {
 	return &pb.FieldDesc{
 		Name:       fm.Name,
 		Dtype:      dtypeToString(fm.DType),
@@ -100,7 +100,7 @@ func featureColumnToPb(fc FeatureColumn) (*pb.FeatureColumn, error) {
 		nc := &pb.FeatureColumn{
 			FeatureColumn: &pb.FeatureColumn_Nc{
 				Nc: &pb.NumericColumn{
-					FieldDesc: fieldMetaToPBMeta(fc.GetFieldDesc()[0]),
+					FieldDesc: fieldDescToPBMeta(fc.GetFieldDesc()[0]),
 				},
 			},
 		}
@@ -111,7 +111,7 @@ func featureColumnToPb(fc FeatureColumn) (*pb.FeatureColumn, error) {
 			FeatureColumn: &pb.FeatureColumn_Bc{
 				Bc: &pb.BucketColumn{
 					SourceColumn: &pb.NumericColumn{
-						FieldDesc: fieldMetaToPBMeta(fm),
+						FieldDesc: fieldDescToPBMeta(fm),
 					},
 					Boundaries: toInt32List(fc.(*BucketColumn).Boundaries),
 				},
@@ -142,7 +142,7 @@ func featureColumnToPb(fc FeatureColumn) (*pb.FeatureColumn, error) {
 		pbcatc := &pb.FeatureColumn{
 			FeatureColumn: &pb.FeatureColumn_Catc{
 				Catc: &pb.CategoryIDColumn{
-					FieldDesc:  fieldMetaToPBMeta(fc.GetFieldDesc()[0]),
+					FieldDesc:  fieldDescToPBMeta(fc.GetFieldDesc()[0]),
 					BucketSize: int32(catc.BucketSize),
 				},
 			},
@@ -153,7 +153,7 @@ func featureColumnToPb(fc FeatureColumn) (*pb.FeatureColumn, error) {
 		pbseqcatc := &pb.FeatureColumn{
 			FeatureColumn: &pb.FeatureColumn_Seqcatc{
 				Seqcatc: &pb.SeqCategoryIDColumn{
-					FieldDesc:  fieldMetaToPBMeta(fc.GetFieldDesc()[0]),
+					FieldDesc:  fieldDescToPBMeta(fc.GetFieldDesc()[0]),
 					BucketSize: int32(seqcatc.BucketSize),
 				},
 			},
@@ -240,7 +240,7 @@ func TrainStmtToProto(trainStmt *TrainStmt, sess *pb.Session) (*pb.TrainStmt, er
 	label := &pb.FeatureColumn{
 		FeatureColumn: &pb.FeatureColumn_Nc{
 			Nc: &pb.NumericColumn{
-				FieldDesc: fieldMetaToPBMeta(labelFM),
+				FieldDesc: fieldDescToPBMeta(labelFM),
 			},
 		},
 	}

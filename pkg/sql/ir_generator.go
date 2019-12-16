@@ -374,11 +374,11 @@ func parseNumericColumn(el *exprlist) (*ir.NumericColumn, error) {
 	}
 	// 1. NUMERIC(DENSE()/SPARSE()) phrases
 	if (*el)[1].typ == 0 {
-		fieldMeta, err := parseFieldDesc(&(*el)[1].sexp)
+		fieldDesc, err := parseFieldDesc(&(*el)[1].sexp)
 		if err != nil {
 			return nil, err
 		}
-		return &ir.NumericColumn{FieldDesc: fieldMeta}, nil
+		return &ir.NumericColumn{FieldDesc: fieldDesc}, nil
 	}
 	// 1. NUMERIC(col_name, ...) phrases
 	key, err := expression2string((*el)[1])
@@ -455,11 +455,11 @@ func parseCategoryIDColumn(el *exprlist) (*ir.CategoryIDColumn, error) {
 	if len(*el) != 3 && len(*el) != 4 {
 		return nil, fmt.Errorf("bad CATEGORY_ID expression format: %s, should be like: %s", *el, help)
 	}
-	var fieldMeta *ir.FieldDesc
+	var fieldDesc *ir.FieldDesc
 	var err error
 	if (*el)[1].typ == 0 {
 		// CATEGORY_ID(DENSE()/SPARSE()) phrases
-		fieldMeta, err = parseFieldDesc(&(*el)[1].sexp)
+		fieldDesc, err = parseFieldDesc(&(*el)[1].sexp)
 		if err != nil {
 			return nil, err
 		}
@@ -470,7 +470,7 @@ func parseCategoryIDColumn(el *exprlist) (*ir.CategoryIDColumn, error) {
 		}
 		// generate a default FieldDesc
 		// TODO(typhoonzero): update default FieldDesc when doing feature derivation
-		fieldMeta = &ir.FieldDesc{
+		fieldDesc = &ir.FieldDesc{
 			Name:     key,
 			DType:    ir.Int,
 			IsSparse: false,
@@ -483,7 +483,7 @@ func parseCategoryIDColumn(el *exprlist) (*ir.CategoryIDColumn, error) {
 		return nil, fmt.Errorf("bad CATEGORY_ID bucketSize: %s, err: %s", (*el)[2].val, err)
 	}
 	return &ir.CategoryIDColumn{
-		FieldDesc:  fieldMeta,
+		FieldDesc:  fieldDesc,
 		BucketSize: int64(bucketSize),
 	}, nil
 }
@@ -493,11 +493,11 @@ func parseSeqCategoryIDColumn(el *exprlist) (*ir.SeqCategoryIDColumn, error) {
 	if len(*el) != 3 && len(*el) != 4 {
 		return nil, fmt.Errorf("bad SEQ_CATEGORY_ID expression format: %s, should be like: %s", *el, help)
 	}
-	var fieldMeta *ir.FieldDesc
+	var fieldDesc *ir.FieldDesc
 	var err error
 	if (*el)[1].typ == 0 {
 		// CATEGORY_ID(DENSE()/SPARSE()) phrases
-		fieldMeta, err = parseFieldDesc(&(*el)[1].sexp)
+		fieldDesc, err = parseFieldDesc(&(*el)[1].sexp)
 		if err != nil {
 			return nil, err
 		}
@@ -508,7 +508,7 @@ func parseSeqCategoryIDColumn(el *exprlist) (*ir.SeqCategoryIDColumn, error) {
 		}
 		// generate a default FieldDesc
 		// TODO(typhoonzero): update default FieldDesc when doing feature derivation
-		fieldMeta = &ir.FieldDesc{
+		fieldDesc = &ir.FieldDesc{
 			Name:     key,
 			DType:    ir.Int,
 			IsSparse: false,
@@ -521,7 +521,7 @@ func parseSeqCategoryIDColumn(el *exprlist) (*ir.SeqCategoryIDColumn, error) {
 		return nil, fmt.Errorf("bad SEQ_CATEGORY_ID bucketSize: %s, err: %s", (*el)[2].val, err)
 	}
 	return &ir.SeqCategoryIDColumn{
-		FieldDesc:  fieldMeta,
+		FieldDesc:  fieldDesc,
 		BucketSize: bucketSize,
 	}, nil
 }
