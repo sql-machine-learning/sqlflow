@@ -301,7 +301,7 @@ func runPrompt(cb func(string)) {
 		prompt.OptionLivePrefix(func() (string, bool) { return state.changeLivePrefix() }),
 		prompt.OptionParser(newStdinParser()),
 		prompt.OptionPrefix(state.prefix),
-		prompt.OptionPrefixTextColor(prompt.White),
+		prompt.OptionPrefixTextColor(prompt.DefaultColor),
 		prompt.OptionTitle("SQLFlow"),
 	)
 	fmt.Println("Welcome to SQLFlow.  Commands end with ;")
