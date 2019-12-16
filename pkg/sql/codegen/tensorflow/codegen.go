@@ -345,6 +345,9 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 			Shape: []int{1},
 			DType: ir.Int,
 		}
+	} else {
+		// write the prediction result in the predict result column
+		labelFM.Name = predStmt.ResultColumn
 	}
 
 	filler := predFiller{

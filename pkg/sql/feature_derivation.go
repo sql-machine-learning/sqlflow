@@ -304,7 +304,7 @@ func InferFeatureColumns(trainStmt *ir.TrainStmt) error {
 	}
 	for _, target := range columnTargets {
 		for slctKey := range selectFieldTypeMap {
-			if slctKey == trainStmt.Label.GetFieldDesc()[0].Name {
+			if trainStmt.Label.GetFieldDesc()[0].Name == slctKey {
 				// skip label field
 				continue
 			}
