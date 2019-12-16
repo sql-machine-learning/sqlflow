@@ -95,7 +95,7 @@ test_workflow
 check_ret $? "Test SQLFLow workflow failed"
 
 # test submit pai job using argo workflow mode
-if [ $SQLFLOW_submitter == "pai" ]; then
+if [ "${SQLFLOW_submitter}" == "pai" ]; then
     SQLFLOW_submitter=pai SQLFLOW_TEST_DATASOURCE="maxcompute://${MAXCOMPUTE_AK}:${MAXCOMPUTE_SK}@${MAXCOMPUTE_ENDPOINT}" go test ./cmd/... -run TestEnd2EndMySQLWorkflow -v
     check_ret $? "Test SQLFLow workflow failed"
 fi
