@@ -11,8 +11,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:generate goyacc -p sql -o extended_syntax_parser.go sql.y
-package sql
+//go:generate goyacc -p parser -o extended_syntax_parser.go extended_syntax_parser.y
+package parser
 
 import (
 	"testing"

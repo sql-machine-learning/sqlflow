@@ -1,5 +1,5 @@
 %{
-	package sql
+	package parser
 
 	import (
 		"fmt"

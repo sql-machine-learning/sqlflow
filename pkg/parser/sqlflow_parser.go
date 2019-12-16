@@ -11,13 +11,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package parser
 
 import (
 	"fmt"
 	"strings"
 
-	"sqlflow.org/sqlflow/pkg/sql/parser"
+	"sqlflow.org/sqlflow/pkg/parser/external"
 )
 
 type statementParseResult struct {
@@ -43,9 +43,7 @@ func extendedSyntaxParse(sql string) (*extendedSelect, int, error) {
 }
 
 func thirdPartyParse(dbms, sqlProgram string) ([]statementParseResult, int, error) {
-	// TODO(yi): We are moving the current file into package
-	// parser.  Here it is a contemporary status.
-	p := parser.NewThirdPartyParser(dbms)
+	p := external.NewParser(dbms)
 	sqls, i, err := p.Parse(sqlProgram)
 	if err != nil {
 		return nil, -1, fmt.Errorf("thirdPartyParse failed: %v", err)

@@ -11,17 +11,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package parser
+package external
 
-// ThirdPartyParser abstract a parser of a SQL engine, for example,
-// Hive, MySQL, TiDB, MaxCompute.
-type ThirdPartyParser interface {
+// Parser abstract a parser of a SQL engine, for example, Hive, MySQL,
+// TiDB, MaxCompute.
+type Parser interface {
 	Parse(program string) ([]string, int, error)
 	Type() string
 }
 
-// NewThirdPartyParser instantiates a parser.
-func NewThirdPartyParser(typ string) ThirdPartyParser {
+// NewParser instantiates a parser.
+func NewParser(typ string) Parser {
 	switch typ {
 	case "mysql", "tidb":
 		return newTiDBParser()
