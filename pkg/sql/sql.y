@@ -129,9 +129,9 @@
   expln explainClause
 }
 
-%type  <eslt> select_stmt
-%type  <slct> select
-%type  <val>  opt_limit
+%type  <eslt> sqlflow_select_stmt
+%type  <slct> standard_select_stmt
+%type  <val>  limit_clause
 %type  <tran> train_clause
 %type  <colc> column_clause
 %type  <labc> label_clause
@@ -139,7 +139,7 @@
 %type  <expln> explain_clause
 %type  <flds> fields
 %type  <tbls> tables
-%type  <expr> expr funcall column opt_where
+%type  <expr> expr funcall column where_clause
 %type  <expl> exprlist pythonlist columns field_clause 
 %type  <atrs> attr
 %type  <atrs> attrs
@@ -157,27 +157,27 @@
 
 %%
 
-select_stmt
-: select opt_semicolon {
+sqlflow_select_stmt
+: standard_select_stmt end_of_stmt {
 	parseResult = &extendedSelect{
 		extended: false,
 		standardSelect: $1}
   }
-| select train_clause opt_semicolon {
+| standard_select_stmt train_clause end_of_stmt {
 	parseResult = &extendedSelect{
 		extended: true,
 		train: true,
 		standardSelect: $1,
 		trainClause: $2}
   }
-| select predict_clause opt_semicolon {
+| standard_select_stmt predict_clause end_of_stmt {
 	parseResult = &extendedSelect{
 		extended: true,
 		train: false,
 		standardSelect: $1,
 		predictClause: $2}
   }
-| select explain_clause opt_semicolon {
+| standard_select_stmt explain_clause end_of_stmt {
 	parseResult = &extendedSelect{
 		extended: true,
 		train: false,
@@ -185,19 +185,19 @@ select_stmt
 		standardSelect: $1,
 		explainClause: $2}
   }
-| train_clause opt_semicolon { // FIXME(tony): remove above rules that include select clause
+| train_clause end_of_stmt { // FIXME(tony): remove above rules that include select clause
 	parseResult = &extendedSelect{
 		extended: true,
 		train: true,
 		trainClause: $1}
   }
-| predict_clause opt_semicolon {
+| predict_clause end_of_stmt {
 	parseResult = &extendedSelect{
 		extended: true,
 		train: false,
 		predictClause: $1}
   }
-| explain_clause opt_semicolon {
+| explain_clause end_of_stmt {
 	parseResult = &extendedSelect{
 		extended: true,
 		train: false,
@@ -206,8 +206,8 @@ select_stmt
 }
 ;
 
-select
-: SELECT field_clause FROM tables opt_where opt_limit {
+standard_select_stmt
+: SELECT field_clause FROM tables where_clause limit_clause {
 	$$.fields = $2
 	$$.tables = $4
 	$$.where = $5
@@ -215,17 +215,17 @@ select
 }
 ;
 
-opt_semicolon
+end_of_stmt
 : /* empty */ {}
 | ';'         {}
 ;
 
-opt_where
+where_clause
 : /* empty */ {}
 | WHERE expr  { $$ = $2 }
 ;
 
-opt_limit
+limit_clause
 : /* empty */  {}
 | LIMIT NUMBER { $$ = $2 }
 ;
