@@ -92,5 +92,7 @@ train(is_keras_model="{{.IsKerasModel}}" == "true",
     eval_start_delay_secs={{index .ValidationParams "start_delay_secs" | attrToPythonValue}},
     eval_throttle_secs={{index .ValidationParams "throttle_secs" | attrToPythonValue}},
     save_checkpoints_steps={{index .TrainParams "save_checkpoints_steps" | attrToPythonValue}},
-    log_every_n_iter={{index .TrainParams "log_every_n_iter" | attrToPythonValue}})
+    log_every_n_iter={{index .TrainParams "log_every_n_iter" | attrToPythonValue}},
+    is_pai="{{.IsPAI}}" == "true",
+    pai_table="{{.PAITrainTable}}")
 `

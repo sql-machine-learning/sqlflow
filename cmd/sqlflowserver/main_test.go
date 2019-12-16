@@ -80,7 +80,7 @@ func connectAndRunSQL(sql string) ([]string, [][]*any.Any, error) {
 	}
 	defer conn.Close()
 	cli := pb.NewSQLFlowClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), 600*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 1800*time.Second)
 	defer cancel()
 	stream, err := cli.Run(ctx, sqlRequest(sql))
 	if err != nil {
@@ -1210,7 +1210,8 @@ func CaseTrainDistributedPAI(t *testing.T) {
 		train.num_ps=2,
 		train.save_checkpoints_steps=20,
 		train.epoch=100,
-		train.batch_size=4
+		train.batch_size=4,
+		train.verbose=2
 	COLUMN sepal_length, sepal_width, petal_length, petal_width
 	LABEL class
 	INTO %s;

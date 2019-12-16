@@ -45,12 +45,14 @@ if TF_VERSION_2:
     tf.compat.v1.flags.DEFINE_string("ps_hosts", "", "ps hosts")
     tf.compat.v1.flags.DEFINE_string("worker_hosts", "", "worker hosts")
     tf.compat.v1.flags.DEFINE_string("job_name", 'worker', "job name: worker or ps")
+    tf.compat.v1.flags.DEFINE_string("checkpointDir", "", "oss info")
     FLAGS = tf.compat.v1.flags.FLAGS
 else:
     tf.app.flags.DEFINE_integer("task_index", 0, "Worker task index")
     tf.app.flags.DEFINE_string("ps_hosts", "", "ps hosts")
     tf.app.flags.DEFINE_string("worker_hosts", "", "worker hosts")
     tf.app.flags.DEFINE_string("job_name", 'worker', "job name: worker or ps")
+    tf.app.flags.DEFINE_string("checkpointDir", "", "oss info")
     FLAGS = tf.app.flags.FLAGS
 
 def make_distributed_info_without_evaluator():
@@ -159,7 +161,11 @@ def train(is_keras_model,
             tf.get_logger().setLevel(logging.DEBUG)
     else:
         if verbose >= 2:
-            tf.get_logger().setLevel(logging.INFO)
+            if TF_VERSION_2:
+                tf.get_logger().setLevel(logging.INFO)
+            else:
+                tf.logging.set_verbosity(tf.logging.INFO)
+
     conn = connect_with_data_source(datasource)
     model_params.update(feature_columns)
 
@@ -182,13 +188,14 @@ def train(is_keras_model,
         _, _, _, database = parseMaxComputeDSN(dsn)
         tables = ["odps://%s/tables/%s" % (database, pai_table)]
         record_defaults = []
-        selected_cols = feature_column_names
-        selected_cols.append(label_meta["name"])
         for name in feature_column_names:
             dtype = get_dtype(feature_metas[name]["dtype"])
             record_defaults.append(tf.constant(0, dtype=dtype, shape=feature_metas[name]["shape"]))
         record_defaults.append(
             tf.constant(0, get_dtype(label_meta["dtype"]), shape=label_meta["shape"]))
+
+        selected_cols = feature_column_names
+        selected_cols.append(label_meta["feature_name"])
         dataset = tf.data.TableRecordDataset(tables,
                                      record_defaults=record_defaults,
                                      selected_cols=selected_cols)
@@ -247,7 +254,10 @@ def train(is_keras_model,
                 dist_strategy = tf.contrib.distribute.ParameterServerStrategy()
             run_config = tf.estimator.RunConfig(train_distribute=dist_strategy)
         
-        model_params["model_dir"] = save
+        if is_pai:
+            model_params["model_dir"] = FLAGS.checkpointDir
+        else:
+            model_params["model_dir"] = save
         if is_distributed:
             model_params["config"] = tf.estimator.RunConfig(save_checkpoints_steps=save_checkpoints_steps,
                 keep_checkpoint_max=0,

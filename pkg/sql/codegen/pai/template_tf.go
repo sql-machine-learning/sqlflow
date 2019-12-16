@@ -58,7 +58,7 @@ user, passwd, address, database = sqlflow_submitter.db.parseMaxComputeDSN(dsn)
 jobname = '_'.join(['sqlflow', '{{.ModelName}}'.replace('.', '_')])
 # The tags candidate list is: "cnn,dnn,rnn,bert,ctr,cvr,inception,resnet,gnn,gcn,ocr,maskrcnn,transformer,nmt,others". Use "others" if you are not sure which tags you need.
 {{if gt .NumWorkers 1}}
-pai_cmd = 'pai -name %s -DjobName=%s -Dtags=%s -Dscript=file://%s -DentryFile=%s -Dcluster=\'{\"ps\":{\"count\":{{.NumPS}}}, \"worker\":{\"count\":{{.NumWorkers}}}}\'' % (
+pai_cmd = 'pai -name %s -DjobName=%s -Dtags=%s -Dscript=file://%s -DentryFile=%s -Dbuckets="oss://xiongmu-sqlflow/?role_arn=acs:ram::1696257213098919:role/paitf&host=cn-zhangjiakou.oss-internal.aliyun-inc.com" -DcheckpointDir="oss://xiongmu-sqlflow/?role_arn=acs:ram::1696257213098919:role/paitf&host=cn-zhangjiakou.oss-internal.aliyun-inc.com" -Dcluster=\'{\"ps\":{\"count\":{{.NumPS}}}, \"worker\":{\"count\":{{.NumWorkers}}}}\'' % (
     'tensorflow1120', jobname, 'dnn', tarball, '{{.EntryFile}}')
 {{else}}
 pai_cmd = 'pai -name %s -DjobName=%s -Dtags=%s -Dscript=file://%s -DentryFile=%s' % (
