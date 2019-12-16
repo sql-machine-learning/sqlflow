@@ -67,7 +67,7 @@ spec:
 	podYAML = `apiVersion: v1
 kind: Pod
 metadata:
-	generateName: sqlflow-pod-
+  generateName: sqlflow-pod-
 spec:
   restartPolicy: Never
   containers:
