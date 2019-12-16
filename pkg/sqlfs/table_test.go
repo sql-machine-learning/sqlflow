@@ -14,19 +14,20 @@
 package sqlfs
 
 import (
-	"database/sql"
-	"io"
+	"fmt"
+	"math/rand"
+	"testing"
 
-	pb "sqlflow.org/sqlflow/pkg/proto"
+	"github.com/stretchr/testify/assert"
 )
 
-const bufSize = 32 * 1024
+func TestCreateHasDropTable(t *testing.T) {
+	a := assert.New(t)
 
-// Create creates a new table or truncates an existing table and
-// returns a writer.
-func Create(db *sql.DB, dbms, table string, session *pb.Session) (io.WriteCloser, error) {
-	if dbms == "hive" {
-		return newHiveWriter(db, session.HiveLocation, table, session.HdfsUser, session.HdfsPass, bufSize)
-	}
-	return newSQLWriter(db, dbms, table, bufSize)
+	fn := fmt.Sprintf("%s.unittest%d", testDatabaseName, rand.Int())
+	a.NoError(createTable(testDB, testDriver, fn))
+	has, e := hasTable(testDB, fn)
+	a.NoError(e)
+	a.True(has)
+	a.NoError(dropTable(testDB, fn))
 }
