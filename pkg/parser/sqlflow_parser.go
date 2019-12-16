@@ -26,10 +26,10 @@ type statementParseResult struct {
 	extended *extendedSelect
 }
 
-func extendedSyntaxParse(sql string) (*extendedSelect, int, error) {
+func parseFirstSQLFlowStmt(program string) (*extendedSelect, int, error) {
 	// Note(tony): our parser only supports parsing one statement.
 	// So we need to extract the first statement for it.
-	s, err := SplitMultipleSQL(sql)
+	s, err := SplitMultipleSQL(program)
 	if err != nil {
 		return nil, -1, err
 	}
@@ -89,7 +89,7 @@ func parse(dbms, sqlProgram string) ([]statementParseResult, error) {
 	// TO TRAIN dnn LABEL class INTO my_model; SELECT ...
 	//                                        ^
 	//                                        j
-	extended, j, err := extendedSyntaxParse(sqlProgram)
+	extended, j, err := parseFirstSQLFlowStmt(sqlProgram)
 	if err != nil {
 		return nil, err
 	}

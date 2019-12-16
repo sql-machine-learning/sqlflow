@@ -450,6 +450,6 @@ func parseSQLFlowStmt(s string) (r *extendedSelect, e error) {
 	mu.Lock()
 	defer mu.Unlock()
 
-	extendedSyntaxNewParser().Parse(newLexer(s))
+	extendedSyntaxParse(newLexer(s))  // extendedSyntaxParse is auto generated.
 	return parseResult, nil
 }
