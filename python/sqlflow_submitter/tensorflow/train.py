@@ -20,6 +20,7 @@ import tensorflow as tf
 import functools
 import sys
 import numpy as np
+import copy
 try:
     import sqlflow_models
 except:
@@ -184,9 +185,17 @@ def train(is_keras_model,
         return dataset.map(ds_mapper)
 
     def pai_maxcompute_input_fn(datasetStr):
-        driver, dsn = datasource.split("://")
-        _, _, _, database = parseMaxComputeDSN(dsn)
-        tables = ["odps://%s/tables/%s" % (database, pai_table)]
+        table_parts = pai_table.split(".")
+        if len(table_parts) == 2:
+            database, table_name = table_parts
+        elif len(table_parts) == 1:
+            table_name = pai_table
+            driver, dsn = datasource.split("://")
+            _, _, _, database = parseMaxComputeDSN(dsn)
+        else:
+            raise ValueError("error database.table format: %s" % pai_table)
+
+        tables = ["odps://%s/tables/%s" % (database, table_name)]
         record_defaults = []
         for name in feature_column_names:
             dtype = get_dtype(feature_metas[name]["dtype"])
@@ -194,12 +203,21 @@ def train(is_keras_model,
         record_defaults.append(
             tf.constant(0, get_dtype(label_meta["dtype"]), shape=label_meta["shape"]))
 
-        selected_cols = feature_column_names
+        selected_cols = copy.copy(feature_column_names)
         selected_cols.append(label_meta["feature_name"])
         dataset = tf.data.TableRecordDataset(tables,
                                      record_defaults=record_defaults,
-                                     selected_cols=selected_cols)
-        ds_mapper = functools.partial(parse_sparse_feature, feature_column_names=feature_column_names, feature_metas=feature_metas)
+                                     selected_cols=",".join(selected_cols))
+        def tensor_to_dict(*args):
+            num_features = len(feature_column_names)
+            label = args[num_features]
+            features_dict = dict()
+            for idx in range(num_features):
+                name = feature_column_names[idx]
+                features_dict[name] = args[idx]
+            return features_dict, label
+
+        ds_mapper = functools.partial(tensor_to_dict)
         return dataset.map(ds_mapper)
 
     def train_input_fn(batch_size):
