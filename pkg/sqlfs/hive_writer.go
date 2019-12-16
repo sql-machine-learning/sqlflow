@@ -65,7 +65,6 @@ func uploadCSVFile(csv *os.File, db *sql.DB, hivePath, table, user, passwd strin
 		if _, e := cmd.CombinedOutput(); e != nil {
 			return fmt.Errorf("failed %s: %v", cmd, e)
 		}
-
 		defer func() {
 			cmd = exec.Command("hdfs", "dfs", "-rm", "-r", "-f", hdfsPath)
 			cmd.Env = hdfsEnv
@@ -78,17 +77,8 @@ func uploadCSVFile(csv *os.File, db *sql.DB, hivePath, table, user, passwd strin
 			return fmt.Errorf("failed %s: %v", cmd, e)
 		}
 
-		if _, e := db.Exec(fmt.Sprintf("LOAD DATA INPATH '%s' OVERWRITE INTO TABLE %s", hdfsPath, table)); e != nil {
-			return fmt.Errorf("failed %s: %v", cmd, e)
-		}
-
-		cmd = exec.Command("hdfs", "dfs", "-rm", "-r", "-f", hdfsPath)
-		cmd.Env = hdfsEnv
-		if _, e := cmd.CombinedOutput(); e != nil {
-			return fmt.Errorf("failed %s: %v", cmd, e)
-		}
-
-		return nil
+		_, e := db.Exec(fmt.Sprintf("LOAD DATA INPATH '%s' OVERWRITE INTO TABLE %s", hdfsPath, table))
+		return e
 	}
 }
 
