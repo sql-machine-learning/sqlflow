@@ -13,7 +13,12 @@
 
 package sqlfs
 
-// flushWriteCloser implements io.WriteCloser.
+// flushWriteCloser implements io.WriteCloser with two hooks: (1)
+// flush, which is supposed to be called by Write when the internal
+// buffer overflows, and (2) wrapup, which is to be called by Close.
+// We need flushWriteCloser to implement the SQL writer and the Hive
+// writer.  For more details, please read sql_writer.go and
+// hive_writer.go.
 type flushWriteCloser struct {
 	buf     []byte
 	flushes int // record the count of flushes.
