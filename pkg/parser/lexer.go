@@ -44,7 +44,7 @@ func (l *lexer) Error(e string) {
 	log.Panicf("start=%d, pos=%d : %s near %.10q\n", l.start, l.pos, e, l.input[l.start:])
 }
 
-func (l *lexer) emit(lval *sqlSymType, typ int) int {
+func (l *lexer) emit(lval *extendedSyntaxSymType, typ int) int {
 	lval.val = l.input[l.start:l.pos]
 	l.start = l.pos
 	return typ
@@ -77,7 +77,7 @@ func (l *lexer) skipSpaces() {
 	l.start = l.pos
 }
 
-func (l *lexer) Lex(lval *sqlSymType) int {
+func (l *lexer) Lex(lval *extendedSyntaxSymType) int {
 	l.skipSpaces()
 	r := l.peek()
 	switch {
@@ -96,7 +96,7 @@ func (l *lexer) Lex(lval *sqlSymType) int {
 	return 0 - l.start
 }
 
-func (l *lexer) lexIdentOrKeyword(lval *sqlSymType) int {
+func (l *lexer) lexIdentOrKeyword(lval *extendedSyntaxSymType) int {
 	// lexToken ensures that the first rune is a letter.
 	r := l.next()
 	for {
@@ -115,7 +115,7 @@ func (l *lexer) lexIdentOrKeyword(lval *sqlSymType) int {
 	return l.emitIdentOrKeyword(lval)
 }
 
-func (l *lexer) emitIdentOrKeyword(lval *sqlSymType) int {
+func (l *lexer) emitIdentOrKeyword(lval *extendedSyntaxSymType) int {
 	keywds := map[string]int{
 		"SELECT":  SELECT,
 		"FROM":    FROM,
@@ -146,7 +146,7 @@ var (
 	reNumber = regexp.MustCompile("[-+]?[0-9]*[.]?[0-9]+([eE][-+]?[0-9]+)?")
 )
 
-func (l *lexer) lexNumber(lval *sqlSymType) int {
+func (l *lexer) lexNumber(lval *extendedSyntaxSymType) int {
 	m := reNumber.FindStringIndex(l.input[l.pos:])
 	if m == nil || m[0] != 0 {
 		log.Panicf("Expecting a number, but see %.10q", l.input[l.pos:])
@@ -155,7 +155,7 @@ func (l *lexer) lexNumber(lval *sqlSymType) int {
 	return l.emit(lval, NUMBER)
 }
 
-func (l *lexer) lexOperator(lval *sqlSymType) int {
+func (l *lexer) lexOperator(lval *extendedSyntaxSymType) int {
 	r := l.next()
 	if r == '*' && l.peek() == '*' {
 		l.next()
@@ -176,7 +176,7 @@ func (l *lexer) lexOperator(lval *sqlSymType) int {
 	return l.emit(lval, int(r))
 }
 
-func (l *lexer) lexString(lval *sqlSymType) int {
+func (l *lexer) lexString(lval *extendedSyntaxSymType) int {
 	l.next() // the left quote
 	for r := l.next(); r != '"' && r != '\''; r = l.next() {
 		if r == '\\' {
