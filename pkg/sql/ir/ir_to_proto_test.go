@@ -45,8 +45,8 @@ func TestTrainProto(t *testing.T) {
 	err = proto.UnmarshalText(pbtxt, pbIRToTest)
 	a.NoError(err)
 	a.Equal(
-		sampleTrainStmt.Features["feature_columns"][2].GetFieldMeta()[0].Name,
-		pbIRToTest.GetFeatures()["feature_columns"].GetFeatureColumns()[2].GetNc().GetFieldMeta().GetName(),
+		sampleTrainStmt.Features["feature_columns"][2].GetFieldDesc()[0].Name,
+		pbIRToTest.GetFeatures()["feature_columns"].GetFeatureColumns()[2].GetNc().GetFieldDesc().GetName(),
 	)
 	a.Equal(
 		int32(sampleTrainStmt.Attributes["train.batch_size"].(int)),

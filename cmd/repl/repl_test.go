@@ -267,7 +267,7 @@ INTO sqlflow_models.mymodel;`
 	a.NoError(err)
 	pbTrain := &irpb.TrainStmt{}
 	proto.UnmarshalText(pbtxt, pbTrain)
-	a.Equal("class", pbTrain.GetLabel().GetNc().GetFieldMeta().GetName())
+	a.Equal("class", pbTrain.GetLabel().GetNc().GetFieldDesc().GetName())
 
 	// run one train SQL to save the model then test predict/analyze use the model
 	sess := &irpb.Session{DbConnStr: dataSourceStr}

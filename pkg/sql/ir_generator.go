@@ -56,7 +56,7 @@ func generateTrainStmt(slct *extendedSelect, connStr string) (*ir.TrainStmt, err
 			if colExpr.typ != 0 {
 				// column identifier like "COLUMN a1,b1"
 				nc := &ir.NumericColumn{
-					FieldMeta: &ir.FieldMeta{
+					FieldDesc: &ir.FieldDesc{
 						Name:      colExpr.val,
 						Shape:     []int{1},
 						DType:     ir.Float,
@@ -75,7 +75,7 @@ func generateTrainStmt(slct *extendedSelect, connStr string) (*ir.TrainStmt, err
 		fcMap[target] = fcList
 	}
 	label := &ir.NumericColumn{
-		FieldMeta: &ir.FieldMeta{
+		FieldDesc: &ir.FieldDesc{
 			Name: tc.label,
 		}}
 
@@ -141,7 +141,7 @@ func verifyIRWithTrainStmt(sqlir ir.SQLStatement, db *DB) error {
 
 	for _, fc := range trainStmt.Features {
 		for _, field := range fc {
-			for _, fm := range field.GetFieldMeta() {
+			for _, fm := range field.GetFieldDesc() {
 				name := fm.Name
 				it, ok := predFields.get(name)
 				if !ok {
@@ -374,11 +374,11 @@ func parseNumericColumn(el *exprlist) (*ir.NumericColumn, error) {
 	}
 	// 1. NUMERIC(DENSE()/SPARSE()) phrases
 	if (*el)[1].typ == 0 {
-		fieldMeta, err := parseFieldMeta(&(*el)[1].sexp)
+		fieldMeta, err := parseFieldDesc(&(*el)[1].sexp)
 		if err != nil {
 			return nil, err
 		}
-		return &ir.NumericColumn{FieldMeta: fieldMeta}, nil
+		return &ir.NumericColumn{FieldDesc: fieldMeta}, nil
 	}
 	// 1. NUMERIC(col_name, ...) phrases
 	key, err := expression2string((*el)[1])
@@ -391,7 +391,7 @@ func parseNumericColumn(el *exprlist) (*ir.NumericColumn, error) {
 	}
 
 	return &ir.NumericColumn{
-		FieldMeta: &ir.FieldMeta{
+		FieldDesc: &ir.FieldDesc{
 			Name:     key,
 			DType:    ir.Float, // default use float dtype if no DENSE()/SPARSE() provided
 			Shape:    shape,
@@ -455,11 +455,11 @@ func parseCategoryIDColumn(el *exprlist) (*ir.CategoryIDColumn, error) {
 	if len(*el) != 3 && len(*el) != 4 {
 		return nil, fmt.Errorf("bad CATEGORY_ID expression format: %s, should be like: %s", *el, help)
 	}
-	var fieldMeta *ir.FieldMeta
+	var fieldMeta *ir.FieldDesc
 	var err error
 	if (*el)[1].typ == 0 {
 		// CATEGORY_ID(DENSE()/SPARSE()) phrases
-		fieldMeta, err = parseFieldMeta(&(*el)[1].sexp)
+		fieldMeta, err = parseFieldDesc(&(*el)[1].sexp)
 		if err != nil {
 			return nil, err
 		}
@@ -468,9 +468,9 @@ func parseCategoryIDColumn(el *exprlist) (*ir.CategoryIDColumn, error) {
 		if err != nil {
 			return nil, fmt.Errorf("bad CATEGORY_ID key: %s, err: %s", (*el)[1], err)
 		}
-		// generate a default FieldMeta
-		// TODO(typhoonzero): update default FieldMeta when doing feature derivation
-		fieldMeta = &ir.FieldMeta{
+		// generate a default FieldDesc
+		// TODO(typhoonzero): update default FieldDesc when doing feature derivation
+		fieldMeta = &ir.FieldDesc{
 			Name:     key,
 			DType:    ir.Int,
 			IsSparse: false,
@@ -483,7 +483,7 @@ func parseCategoryIDColumn(el *exprlist) (*ir.CategoryIDColumn, error) {
 		return nil, fmt.Errorf("bad CATEGORY_ID bucketSize: %s, err: %s", (*el)[2].val, err)
 	}
 	return &ir.CategoryIDColumn{
-		FieldMeta:  fieldMeta,
+		FieldDesc:  fieldMeta,
 		BucketSize: int64(bucketSize),
 	}, nil
 }
@@ -493,11 +493,11 @@ func parseSeqCategoryIDColumn(el *exprlist) (*ir.SeqCategoryIDColumn, error) {
 	if len(*el) != 3 && len(*el) != 4 {
 		return nil, fmt.Errorf("bad SEQ_CATEGORY_ID expression format: %s, should be like: %s", *el, help)
 	}
-	var fieldMeta *ir.FieldMeta
+	var fieldMeta *ir.FieldDesc
 	var err error
 	if (*el)[1].typ == 0 {
 		// CATEGORY_ID(DENSE()/SPARSE()) phrases
-		fieldMeta, err = parseFieldMeta(&(*el)[1].sexp)
+		fieldMeta, err = parseFieldDesc(&(*el)[1].sexp)
 		if err != nil {
 			return nil, err
 		}
@@ -506,9 +506,9 @@ func parseSeqCategoryIDColumn(el *exprlist) (*ir.SeqCategoryIDColumn, error) {
 		if err != nil {
 			return nil, fmt.Errorf("bad SEQ_CATEGORY_ID key: %s, err: %s", (*el)[1], err)
 		}
-		// generate a default FieldMeta
-		// TODO(typhoonzero): update default FieldMeta when doing feature derivation
-		fieldMeta = &ir.FieldMeta{
+		// generate a default FieldDesc
+		// TODO(typhoonzero): update default FieldDesc when doing feature derivation
+		fieldMeta = &ir.FieldDesc{
 			Name:     key,
 			DType:    ir.Int,
 			IsSparse: false,
@@ -521,7 +521,7 @@ func parseSeqCategoryIDColumn(el *exprlist) (*ir.SeqCategoryIDColumn, error) {
 		return nil, fmt.Errorf("bad SEQ_CATEGORY_ID bucketSize: %s, err: %s", (*el)[2].val, err)
 	}
 	return &ir.SeqCategoryIDColumn{
-		FieldMeta:  fieldMeta,
+		FieldDesc:  fieldMeta,
 		BucketSize: bucketSize,
 	}, nil
 }
@@ -543,18 +543,18 @@ func parseEmbeddingColumn(el *exprlist) (*ir.EmbeddingColumn, error) {
 		source, err := parseFeatureColumn(&sourceExprList.sexp)
 		if err != nil {
 			var tmpCatColumn interface{}
-			// 2. source is a FieldMeta like EMBEDDING(SPARSE(...), size)
-			fm, err := parseFieldMeta(&sourceExprList.sexp)
+			// 2. source is a FieldDesc like EMBEDDING(SPARSE(...), size)
+			fm, err := parseFieldDesc(&sourceExprList.sexp)
 			if err != nil {
 				return nil, err
 			}
-			// generate default CategoryIDColumn according to FieldMeta, use shape[0]
+			// generate default CategoryIDColumn according to FieldDesc, use shape[0]
 			// as category_id_column bucket size.
 			if len(fm.Shape) < 1 {
-				return nil, fmt.Errorf("invalid FieldMeta Shape: %v", sourceExprList)
+				return nil, fmt.Errorf("invalid FieldDesc Shape: %v", sourceExprList)
 			}
 			tmpCatColumn = &ir.CategoryIDColumn{
-				FieldMeta:  fm,
+				FieldDesc:  fm,
 				BucketSize: int64(fm.Shape[0]),
 			}
 			catColumn = tmpCatColumn
@@ -596,14 +596,14 @@ func parseEmbeddingColumn(el *exprlist) (*ir.EmbeddingColumn, error) {
 		Name:           embColName}, nil
 }
 
-func parseFieldMeta(el *exprlist) (*ir.FieldMeta, error) {
+func parseFieldDesc(el *exprlist) (*ir.FieldDesc, error) {
 	help := "DENSE|SPARSE(col_name, SHAPE, DELIMITER[, DTYPE])"
 	if len(*el) < 4 {
-		return nil, fmt.Errorf("bad FieldMeta format: %s, should be like: %s", *el, help)
+		return nil, fmt.Errorf("bad FieldDesc format: %s, should be like: %s", *el, help)
 	}
 	call, err := expression2string((*el)[0])
 	if err != nil {
-		return nil, fmt.Errorf("bad FieldMeta format: %v, should be like: %s", err, help)
+		return nil, fmt.Errorf("bad FieldDesc format: %v, should be like: %s", err, help)
 	}
 	var isSparse bool
 	if strings.ToUpper(call) == "DENSE" {
@@ -611,29 +611,29 @@ func parseFieldMeta(el *exprlist) (*ir.FieldMeta, error) {
 	} else if strings.ToUpper(call) == "SPARSE" {
 		isSparse = true
 	} else {
-		return nil, fmt.Errorf("bad FieldMeta: %s, should be like: %s", call, help)
+		return nil, fmt.Errorf("bad FieldDesc: %s, should be like: %s", call, help)
 	}
 
 	name, err := expression2string((*el)[1])
 	if err != nil {
-		return nil, fmt.Errorf("bad FieldMeta name: %s, err: %s", (*el)[1], err)
+		return nil, fmt.Errorf("bad FieldDesc name: %s, err: %s", (*el)[1], err)
 	}
 	var shape []int
 	intShape, err := strconv.Atoi((*el)[2].val)
 	if err != nil {
 		strShape, err := expression2string((*el)[2])
 		if err != nil {
-			return nil, fmt.Errorf("bad FieldMeta shape: %s, err: %s", (*el)[2].val, err)
+			return nil, fmt.Errorf("bad FieldDesc shape: %s, err: %s", (*el)[2].val, err)
 		}
 		if strShape != "none" {
-			return nil, fmt.Errorf("bad FieldMeta shape: %s, err: %s", (*el)[2].val, err)
+			return nil, fmt.Errorf("bad FieldDesc shape: %s, err: %s", (*el)[2].val, err)
 		}
 	} else {
 		shape = append(shape, intShape)
 	}
 	unresolvedDelimiter, err := expression2string((*el)[3])
 	if err != nil {
-		return nil, fmt.Errorf("bad FieldMeta delimiter: %s, err: %s", (*el)[1], err)
+		return nil, fmt.Errorf("bad FieldDesc delimiter: %s, err: %s", (*el)[1], err)
 	}
 
 	delimiter, err := resolveDelimiter(unresolvedDelimiter)
@@ -655,10 +655,10 @@ func parseFieldMeta(el *exprlist) (*ir.FieldMeta, error) {
 		} else if dtypeStr == "int" {
 			dtype = ir.Int
 		} else {
-			return nil, fmt.Errorf("bad FieldMeta data type %s", dtypeStr)
+			return nil, fmt.Errorf("bad FieldDesc data type %s", dtypeStr)
 		}
 	}
-	return &ir.FieldMeta{
+	return &ir.FieldDesc{
 		Name:      name,
 		IsSparse:  isSparse,
 		Shape:     shape,

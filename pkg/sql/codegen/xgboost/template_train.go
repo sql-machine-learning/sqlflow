@@ -21,7 +21,7 @@ type trainFiller struct {
 	ValidationSelect string
 	ModelParamsJSON  string
 	TrainParamsJSON  string
-	FieldMetaJSON    string
+	FieldDescJSON    string
 	LabelJSON        string
 }
 
@@ -31,7 +31,7 @@ import json
 
 model_params = json.loads('''{{.ModelParamsJSON}}''')
 train_params = json.loads('''{{.TrainParamsJSON}}''')
-feature_field_meta = json.loads('''{{.FieldMetaJSON}}''')
+feature_field_meta = json.loads('''{{.FieldDescJSON}}''')
 label_field_meta = json.loads('''{{.LabelJSON}}''')
 
 train(datasource='''{{.DataSource}}''',

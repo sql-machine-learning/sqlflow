@@ -61,8 +61,8 @@ func generateFeatureColumnCode(fc ir.FeatureColumn) (string, error) {
 	case *ir.NumericColumn:
 		nc := fc.(*ir.NumericColumn)
 		return fmt.Sprintf("tf.feature_column.numeric_column(\"%s\", shape=%s)",
-			nc.FieldMeta.Name,
-			intArrayToJSONString(nc.FieldMeta.Shape)), nil
+			nc.FieldDesc.Name,
+			intArrayToJSONString(nc.FieldDesc.Shape)), nil
 	case *ir.BucketColumn:
 		bc := fc.(*ir.BucketColumn)
 		sourceCode, err := generateFeatureColumnCode(bc.SourceColumn)
@@ -76,11 +76,11 @@ func generateFeatureColumnCode(fc ir.FeatureColumn) (string, error) {
 	case *ir.CategoryIDColumn:
 		cc := fc.(*ir.CategoryIDColumn)
 		return fmt.Sprintf("tf.feature_column.categorical_column_with_identity(key=\"%s\", num_buckets=%d)",
-			cc.FieldMeta.Name, cc.BucketSize), nil
+			cc.FieldDesc.Name, cc.BucketSize), nil
 	case *ir.SeqCategoryIDColumn:
 		cc := fc.(*ir.SeqCategoryIDColumn)
 		return fmt.Sprintf("tf.feature_column.sequence_categorical_column_with_identity(key=\"%s\", num_buckets=%d)",
-			cc.FieldMeta.Name, cc.BucketSize), nil
+			cc.FieldDesc.Name, cc.BucketSize), nil
 	case *ir.CrossColumn:
 		cc := fc.(*ir.CrossColumn)
 		var keysGenerated = make([]string, len(cc.Keys))
@@ -222,7 +222,7 @@ func Train(trainStmt *ir.TrainStmt) (string, error) {
 
 	featureColumnsCode := []string{}
 	perTargetFeatureColumnsCode := []string{}
-	fieldMetas := []*ir.FieldMeta{}
+	fieldMetas := []*ir.FieldDesc{}
 	for target, fcList := range trainStmt.Features {
 		for _, fc := range fcList {
 			fcCode, err := generateFeatureColumnCode(fc)
@@ -230,8 +230,8 @@ func Train(trainStmt *ir.TrainStmt) (string, error) {
 				return "", err
 			}
 			perTargetFeatureColumnsCode = append(perTargetFeatureColumnsCode, fcCode)
-			if len(fc.GetFieldMeta()) > 0 {
-				for _, fm := range fc.GetFieldMeta() {
+			if len(fc.GetFieldDesc()) > 0 {
+				for _, fm := range fc.GetFieldDesc() {
 					fieldMetas = append(fieldMetas, fm)
 				}
 			}
@@ -261,9 +261,9 @@ func Train(trainStmt *ir.TrainStmt) (string, error) {
 		ValidationSelect:  trainStmt.ValidationSelect,
 		Estimator:         estimatorStr,
 		IsKerasModel:      isKeras,
-		FieldMetas:        fieldMetas,
+		FieldDescs:        fieldMetas,
 		FeatureColumnCode: fmt.Sprintf("{%s}", strings.Join(featureColumnsCode, ",\n")),
-		Y:                 trainStmt.Label.GetFieldMeta()[0], // TODO(typhoonzero): label only support numericColumn.
+		Y:                 trainStmt.Label.GetFieldDesc()[0], // TODO(typhoonzero): label only support numericColumn.
 		ModelParams:       modelParams,
 		TrainParams:       trainParams,
 		ValidationParams:  validationParams,
@@ -294,7 +294,7 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 	}
 	featureColumnsCode := []string{}
 	perTargetFeatureColumnsCode := []string{}
-	fieldMetas := []*ir.FieldMeta{}
+	fieldMetas := []*ir.FieldDesc{}
 	for target, fcList := range predStmt.TrainStmt.Features {
 		for _, fc := range fcList {
 			fcCode, err := generateFeatureColumnCode(fc)
@@ -302,8 +302,8 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 				return "", err
 			}
 			perTargetFeatureColumnsCode = append(perTargetFeatureColumnsCode, fcCode)
-			if len(fc.GetFieldMeta()) > 0 {
-				for _, fm := range fc.GetFieldMeta() {
+			if len(fc.GetFieldDesc()) > 0 {
+				for _, fm := range fc.GetFieldDesc() {
 					fieldMetas = append(fieldMetas, fm)
 				}
 			}
@@ -312,11 +312,11 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 			fmt.Sprintf("\"%s\": [%s]", target, strings.Join(perTargetFeatureColumnsCode, ",\n")))
 	}
 	isKeras, estimatorStr := IsKerasModel(predStmt.TrainStmt.Estimator)
-	labelFM := predStmt.TrainStmt.Label.GetFieldMeta()[0]
+	labelFM := predStmt.TrainStmt.Label.GetFieldDesc()[0]
 	if labelFM.Name == "" {
 		log.Printf("clustering model, got result table: %s, result column: %s", predStmt.ResultTable, predStmt.ResultColumn)
 		// no label in train SQL means a clustering model, generate a fieldmeta using result table's column
-		labelFM = &ir.FieldMeta{
+		labelFM = &ir.FieldDesc{
 			Name:  predStmt.ResultColumn,
 			Shape: []int{1},
 			DType: ir.Int,
@@ -329,7 +329,7 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 		ResultTable:       predStmt.ResultTable,
 		Estimator:         estimatorStr,
 		IsKerasModel:      isKeras,
-		FieldMetas:        fieldMetas,
+		FieldDescs:        fieldMetas,
 		FeatureColumnCode: fmt.Sprintf("{%s}", strings.Join(featureColumnsCode, ",\n")),
 		Y:                 labelFM,
 		ModelParams:       modelParams,
