@@ -72,7 +72,7 @@ func TestFeatureDerivation(t *testing.T) {
 	COLUMN EMBEDDING(c3, 128, sum), EMBEDDING(SPARSE(c5, 10000, COMMA), 128, sum)
 	LABEL class INTO model_table;`
 
-	r, e := parser.ParseOneStatement("mysql", normal)
+	r, e := parser.LegacyParse(normal)
 	a.NoError(e)
 	trainStmt, e := generateTrainStmt(r, "mysql://root:root@tcp/?maxAllowedPacket=0")
 	a.NoError(e)
@@ -141,7 +141,7 @@ func TestFeatureDerivation(t *testing.T) {
 	COLUMN c1, c2, CROSS([c1, c2], 256)
 	LABEL class INTO model_table;`
 
-	r, e = parser.ParseOneStatement("mysql", crossSQL)
+	r, e = parser.LegacyParse(crossSQL)
 	a.NoError(e)
 	trainStmt, e = generateTrainStmt(r, "mysql://root:root@tcp/?maxAllowedPacket=0")
 	a.NoError(e)
@@ -196,7 +196,7 @@ func TestFeatureDerivationNoColumnClause(t *testing.T) {
 	WITH model.n_classes=3, model.hidden_units=[10,10]
 	LABEL class INTO model_table;`
 
-	r, e := parser.ParseOneStatement("mysql", normal)
+	r, e := parser.LegacyParse(normal)
 	a.NoError(e)
 	trainStmt, e := generateTrainStmt(r, "mysql://root:root@tcp/?maxAllowedPacket=0")
 	a.NoError(e)

@@ -51,7 +51,7 @@ func TestGenerateTrainStmt(t *testing.T) {
 	INTO mymodel;
 	`
 
-	r, e := parser.ParseOneStatement("mysql", normal)
+	r, e := parser.LegacyParse(normal)
 	a.NoError(e)
 
 	trainStmt, err := generateTrainStmt(r, "mysql://root:root@tcp(127.0.0.1:3306)/iris?maxAllowedPacket=0")
@@ -175,7 +175,7 @@ func TestGenerateTrainStmtModelZoo(t *testing.T) {
 	INTO mymodel;
 	`
 
-	r, e := parser.ParseOneStatement("mysql", normal)
+	r, e := parser.LegacyParse(normal)
 	a.NoError(e)
 
 	trainStmt, err := generateTrainStmt(r, "mysql://root:root@tcp(127.0.0.1:3306)/iris?maxAllowedPacket=0")
@@ -193,7 +193,7 @@ func TestGeneratePredictStmt(t *testing.T) {
 	predSQL := `SELECT * FROM iris.test
 TO PREDICT iris.predict.class
 USING sqlflow_models.mymodel;`
-	r, e := parser.ParseOneStatement("mysql", predSQL)
+	r, e := parser.LegacyParse(predSQL)
 	a.NoError(e)
 
 	connStr := "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
@@ -246,7 +246,7 @@ INTO sqlflow_models.my_xgboost_model;
 	a.NoError(e)
 	a.True(goodStream(stream.ReadAll()))
 
-	pr, e := parser.ParseOneStatement("mysql", `
+	pr, e := parser.LegacyParse(`
 	SELECT *
 	FROM iris.train
 	TO EXPLAIN sqlflow_models.my_xgboost_model

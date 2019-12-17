@@ -75,7 +75,7 @@ func TestVerify_2(t *testing.T) {
 
 func TestVerifyColumnNameAndType(t *testing.T) {
 	a := assert.New(t)
-	trainParse, e := parser.ParseOneStatement("mysql", `SELECT gender, tenure, TotalCharges
+	trainParse, e := parser.LegacyParse(`SELECT gender, tenure, TotalCharges
 FROM churn.train LIMIT 10
 TO TRAIN DNNClassifier
 WITH
@@ -86,14 +86,14 @@ LABEL class
 INTO sqlflow_models.my_dnn_model;`)
 	a.NoError(e)
 
-	predParse, e := parser.ParseOneStatement("mysql", `SELECT gender, tenure, TotalCharges
+	predParse, e := parser.LegacyParse(`SELECT gender, tenure, TotalCharges
 FROM churn.train LIMIT 10
 TO PREDICT iris.predict.class
 USING sqlflow_models.my_dnn_model;`)
 	a.NoError(e)
 	a.NoError(verifyColumnNameAndType(trainParse, predParse, testDB))
 
-	predParse, e = parser.ParseOneStatement("mysql", `SELECT gender, tenure
+	predParse, e = parser.LegacyParse(`SELECT gender, tenure
 FROM churn.train LIMIT 10
 TO PREDICT iris.predict.class
 USING sqlflow_models.my_dnn_model;`)
@@ -104,7 +104,7 @@ USING sqlflow_models.my_dnn_model;`)
 
 func TestDescribeEmptyTables(t *testing.T) {
 	a := assert.New(t)
-	r, e := parser.ParseOneStatement("mysql", `SELECT * FROM iris.iris_empty LIMIT 10;`)
+	r, e := parser.LegacyParse(`SELECT * FROM iris.iris_empty LIMIT 10;`)
 	a.NoError(e)
 	_, e = verify(r.StandardSelect.String(), testDB)
 	a.EqualError(e, `query SELECT *

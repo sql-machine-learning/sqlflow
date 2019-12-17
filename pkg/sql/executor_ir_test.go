@@ -253,7 +253,7 @@ func TestCreatePredictionTable(t *testing.T) {
 	pr, e := parser.ParseOneStatement("maxcompute", testPredictSelectIris)
 	a.NoError(e)
 	pr.TrainClause = tr.TrainClause
-	a.NoError(createPredictionTable(pr, testDB, nil))
+	a.NoError(createPredictionTable(pr.SQLFlowSelectStmt, testDB, nil))
 }
 
 func TestLogChanWriter_Write(t *testing.T) {

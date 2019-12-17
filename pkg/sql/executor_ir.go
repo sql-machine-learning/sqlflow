@@ -78,7 +78,7 @@ func ParseSQLStatement(sql string, session *pb.Session) (string, error) {
 		return "", fmt.Errorf("ParseSQLStatement only accept extended SQL")
 	}
 	if parsed.Train {
-		trainStmt, err := generateTrainStmtWithInferredColumns(parsed, connStr)
+		trainStmt, err := generateTrainStmtWithInferredColumns(parsed.SQLFlowSelectStmt, connStr)
 		if err != nil {
 			return "", err
 		}
@@ -88,7 +88,7 @@ func ParseSQLStatement(sql string, session *pb.Session) (string, error) {
 		}
 		return proto.MarshalTextString(pbir), nil
 	} else if parsed.Explain {
-		analyzeStmt, err := generateAnalyzeStmt(parsed, connStr, "", true)
+		analyzeStmt, err := generateAnalyzeStmt(parsed.SQLFlowSelectStmt, connStr, "", true)
 		if err != nil {
 			return "", nil
 		}
@@ -98,7 +98,7 @@ func ParseSQLStatement(sql string, session *pb.Session) (string, error) {
 		}
 		return proto.MarshalTextString(pbir), nil
 	} else {
-		predStmt, err := generatePredictStmt(parsed, connStr, "", true)
+		predStmt, err := generatePredictStmt(parsed.SQLFlowSelectStmt, connStr, "", true)
 		if err != nil {
 			return "", err
 		}
@@ -147,11 +147,11 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, modelDir string, session 
 		connStr := fmt.Sprintf("%s://%s", driverName, dataSourceName)
 		if parser.IsExtendedSyntax(sql) {
 			if sql.Train {
-				r, err = generateTrainStmt(sql, connStr)
+				r, err = generateTrainStmt(sql.SQLFlowSelectStmt, connStr)
 			} else if sql.Explain {
-				r, err = generateAnalyzeStmt(sql, connStr, modelDir, false)
+				r, err = generateAnalyzeStmt(sql.SQLFlowSelectStmt, connStr, modelDir, false)
 			} else {
-				r, err = generatePredictStmt(sql, connStr, modelDir, false)
+				r, err = generatePredictStmt(sql.SQLFlowSelectStmt, connStr, modelDir, false)
 			}
 		} else {
 			standardSQL := ir.StandardSQL(sql.Standard)
@@ -200,11 +200,11 @@ func runSQLProgram(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, s
 		connStr := fmt.Sprintf("%s://%s", db.driverName, db.dataSourceName)
 		if parser.IsExtendedSyntax(sql) {
 			if sql.Train {
-				r, err = generateTrainStmtWithInferredColumns(sql, connStr)
+				r, err = generateTrainStmtWithInferredColumns(sql.SQLFlowSelectStmt, connStr)
 			} else if sql.Explain {
-				r, err = generateAnalyzeStmt(sql, connStr, modelDir, submitter().GetTrainStmtFromModel())
+				r, err = generateAnalyzeStmt(sql.SQLFlowSelectStmt, connStr, modelDir, submitter().GetTrainStmtFromModel())
 			} else {
-				r, err = generatePredictStmt(sql, connStr, modelDir, submitter().GetTrainStmtFromModel())
+				r, err = generatePredictStmt(sql.SQLFlowSelectStmt, connStr, modelDir, submitter().GetTrainStmtFromModel())
 			}
 		} else {
 			standardSQL := ir.StandardSQL(sql.Standard)
@@ -244,7 +244,7 @@ func runSingleSQLIR(wr *PipeWriter, sqlIR ir.SQLStatement, db *DB, modelDir stri
 
 // Create prediction table with appropriate column type.
 // If prediction table already exists, it will be overwritten.
-func createPredictionTable(predParsed *parser.SQLFlowStmt, db *DB, session *pb.Session) error {
+func createPredictionTable(predParsed *parser.SQLFlowSelectStmt, db *DB, session *pb.Session) error {
 	tableName, columnName, e := parseTableColumn(predParsed.Into)
 	if e != nil {
 		return fmt.Errorf("invalid predParsed.into, %v", e)
@@ -358,7 +358,7 @@ func createPredictionTableFromIR(predStmt *ir.PredictStmt, db *DB, session *pb.S
 	return nil
 }
 
-func loadModelMeta(pr *parser.SQLFlowStmt, db *DB, cwd, modelDir, modelName string) (*parser.SQLFlowStmt, error) {
+func loadModelMeta(pr *parser.SQLFlowSelectStmt, db *DB, cwd, modelDir, modelName string) (*parser.SQLFlowSelectStmt, error) {
 	var m *model
 	var e error
 	modelURI := modelName
@@ -377,7 +377,7 @@ func loadModelMeta(pr *parser.SQLFlowStmt, db *DB, cwd, modelDir, modelName stri
 		return nil, fmt.Errorf("parse: TrainSelect %v raise %v", m.TrainSelect, e)
 	}
 
-	if e := verifyColumnNameAndType(tr, pr, db); e != nil {
+	if e := verifyColumnNameAndType(tr.SQLFlowSelectStmt, pr, db); e != nil {
 		return nil, fmt.Errorf("verifyColumnNameAndType: %v", e)
 	}
 
