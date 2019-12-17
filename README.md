@@ -8,13 +8,11 @@ SQLFlow is a bridge that connects a SQL engine, e.g. MySQL, Hive or [MaxCompute]
 
 ![](https://github.com/sql-machine-learning/sql-machine-learning.github.io/raw/master/assets/instruction.gif)
 
-## Help Us with More CI workers!
-
-We have been working intensively to bring SQLFlow more features. You can see that we are having a steep growth in Github Stars and Git commits, which make a heavy workload for the CI. Also, we have a large CI matrix over many DBMSes (MySQL, TiDB, Apache Hive, Alibaba MaxCompute) and AI engines (TensorFlow, ElasticDL, XGBoost).  More are coming.  
-
-**Please help us to buy more Travis CI workers. Thank you!**
+## Please Help Us with More CI workers!
 
 [![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](sqlflow.org@gmail.com)
+
+We have been working intensively to bring SQLFlow more features. You can see that we are having a steep growth in Github Stars and Git commits, which make a heavy workload for the CI. Also, we have a large CI matrix over many DBMSes (MySQL, TiDB, Apache Hive, Alibaba MaxCompute) and AI engines (TensorFlow, ElasticDL, XGBoost).  More are coming.  
 
 ## Motivation
 
