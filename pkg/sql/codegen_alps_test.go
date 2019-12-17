@@ -44,7 +44,7 @@ func TestTrainALPSFiller(t *testing.T) {
 		LABEL c3
 		INTO model_table;`
 
-	r, e := parser.LegacyParse(wndStatement)
+	r, _, e := parser.LegacyParse(wndStatement)
 	a.NoError(e)
 	session := &pb.Session{UserId: "sqlflow_user"}
 	filler, e := newALPSTrainFiller(r, nil, session)
@@ -77,7 +77,7 @@ func TestTrainALPSEmbeddingInitializer(t *testing.T) {
 		LABEL class
 		INTO model_table;`
 
-	r, e := parser.LegacyParse(wndStatement)
+	r, _, e := parser.LegacyParse(wndStatement)
 	a.NoError(e)
 	session := &pb.Session{UserId: "sqlflow_user"}
 	filler, e := newALPSTrainFiller(r, nil, session)
@@ -95,7 +95,7 @@ func TestPredALPSFiller(t *testing.T) {
 		TO PREDICT db.predict_result
 		USING sqlflow_model;`
 
-	r, e := parser.LegacyParse(predStatement)
+	r, _, e := parser.LegacyParse(predStatement)
 	a.NoError(e)
 	session := &pb.Session{UserId: "sqlflow_user"}
 	filler, e := newALPSPredictFiller(r, session)

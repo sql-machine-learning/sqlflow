@@ -67,7 +67,7 @@ func TestTrainElasticDLFiller(t *testing.T) {
 		LABEL class
 		INTO trained_elasticdl_keras_classifier;`
 
-	r, e := parser.LegacyParse(wndStatement)
+	r, _, e := parser.LegacyParse(wndStatement)
 	a.NoError(e)
 	session := &pb.Session{UserId: "sqlflow_user"}
 	filler, e := newElasticDLTrainFiller(r, testDB, session)
@@ -99,7 +99,7 @@ func TestPredElasticDLFiller(t *testing.T) {
 			model.num_classes = 10
 		USING trained_elasticdl_keras_classifier;`
 
-	r, e := parser.LegacyParse(predStatement)
+	r, _, e := parser.LegacyParse(predStatement)
 	a.NoError(e)
 	filler, err := newElasticDLPredictFiller(r, testDB)
 	a.NoError(err)

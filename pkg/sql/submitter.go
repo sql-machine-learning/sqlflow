@@ -211,7 +211,7 @@ func (s *defaultSubmitter) GetTrainStmtFromModel() bool { return true }
 
 func (s *elasticdlSubmitter) ExecuteTrain(cl *ir.TrainStmt) error {
 	// TODO(typhoonzero): remove below twice parse when all submitters moved to IR.
-	pr, e := parser.LegacyParse(cl.OriginalSQL)
+	pr, _, e := parser.LegacyParse(cl.OriginalSQL)
 	if e != nil {
 		return e
 	}
@@ -220,7 +220,7 @@ func (s *elasticdlSubmitter) ExecuteTrain(cl *ir.TrainStmt) error {
 
 func (s *elasticdlSubmitter) ExecutePredict(cl *ir.PredictStmt) error {
 	// TODO(typhoonzero): remove below twice parse when all submitters moved to IR.
-	pr, e := parser.LegacyParse(cl.OriginalSQL)
+	pr, _, e := parser.LegacyParse(cl.OriginalSQL)
 	if e != nil {
 		return e
 	}
@@ -229,7 +229,7 @@ func (s *elasticdlSubmitter) ExecutePredict(cl *ir.PredictStmt) error {
 
 func (s *alpsSubmitter) ExecuteTrain(cl *ir.TrainStmt) error {
 	// TODO(typhoonzero): remove below twice parse when all submitters moved to IR.
-	pr, e := parser.LegacyParse(cl.OriginalSQL)
+	pr, _, e := parser.LegacyParse(cl.OriginalSQL)
 	if e != nil {
 		return e
 	}
@@ -238,7 +238,7 @@ func (s *alpsSubmitter) ExecuteTrain(cl *ir.TrainStmt) error {
 
 func (s *alpsSubmitter) ExecutePredict(cl *ir.PredictStmt) error {
 	// TODO(typhoonzero): remove below twice parse when all submitters moved to IR.
-	pr, e := parser.LegacyParse(cl.OriginalSQL)
+	pr, _, e := parser.LegacyParse(cl.OriginalSQL)
 	if e != nil {
 		return e
 	}
