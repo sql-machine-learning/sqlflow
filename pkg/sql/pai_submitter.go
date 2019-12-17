@@ -37,7 +37,7 @@ func (s *paiSubmitter) ExecutePredict(cl *ir.PredictStmt) error {
 	if e = createPredictionTableFromIR(cl, s.Db, s.Session); e != nil {
 		return e
 	}
-	code, e := pai.Predict(cl, pr.Extended.Model, s.Cwd)
+	code, e := pai.Predict(cl, pr.Model, s.Cwd)
 	if e != nil {
 		return e
 	}

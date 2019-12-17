@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"sqlflow.org/sqlflow/pkg/parser"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
@@ -247,12 +248,12 @@ USING sqlflow_models.my_dense_dnn_model
 
 func TestCreatePredictionTable(t *testing.T) {
 	a := assert.New(t)
-	trainParsed, e := newExtendedSyntaxParser().Parse(testTrainSelectIris)
+	tr, e := parser.ParseOneStatement("maxcompute", testTrainSelectIris)
 	a.NoError(e)
-	predParsed, e := newExtendedSyntaxParser().Parse(testPredictSelectIris)
+	pr, e := parser.ParseOneStatement("maxcompute", testPredictSelectIris)
 	a.NoError(e)
-	predParsed.trainClause = trainParsed.trainClause
-	a.NoError(createPredictionTable(predParsed, testDB, nil))
+	pr.TrainClause = tr.TrainClause
+	a.NoError(createPredictionTable(pr, testDB, nil))
 }
 
 func TestLogChanWriter_Write(t *testing.T) {

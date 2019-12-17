@@ -431,7 +431,7 @@ func (s StandardSelect) String() string {
 	if len(s.limit) > 0 {
 		r += fmt.Sprintf("\nLIMIT %s", s.limit)
 	}
-    return r
+        return r
 }
 
 var mu sync.Mutex // Protect the use of global variable parseResult.

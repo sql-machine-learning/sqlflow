@@ -28,7 +28,13 @@ import (
 type SQLFlowStmt struct {
 	Original string
 	Standard string
-	Extended *SQLFlowSelectStmt
+	*SQLFlowSelectStmt
+}
+
+// IsExtendedSyntax returns true if a parsed statement uses any
+// SQLFlow syntax extensions.
+func IsExtendedSyntax(stmt *SQLFlowStmt) bool {
+	return stmt.SQLFlowSelectStmt != nil
 }
 
 // ParseOneStatement parses a SQL program by calling Parse, and
@@ -42,13 +48,13 @@ func ParseOneStatement(dialect, sql string) (*SQLFlowStmt, error) {
 		return nil, fmt.Errorf("unexpect number of statements 1(expected) != %v(received)", len(sqls))
 	}
 
-	return &sqls[0], nil
+	return sqls[0], nil
 }
 
 // Parse a SQL program in the given dialect into a list of SQL statements.
-func Parse(dialect, program string) ([]SQLFlowStmt, error) {
+func Parse(dialect, program string) ([]*SQLFlowStmt, error) {
 	if len(strings.TrimSpace(program)) == 0 {
-		return make([]SQLFlowStmt, 0), nil
+		return nil, nil
 	}
 
 	// SELECT ...; SELECT * FROM my_table TO TRAIN ...
@@ -77,8 +83,8 @@ func Parse(dialect, program string) ([]SQLFlowStmt, error) {
 	program = program[j:]
 
 	sqls[len(sqls)-1].Original = left + right
-	sqls[len(sqls)-1].Extended = extended
-	sqls[len(sqls)-1].Extended.StandardSelect.origin = left
+	sqls[len(sqls)-1].SQLFlowSelectStmt = extended
+	sqls[len(sqls)-1].StandardSelect.origin = left
 
 	nextSqls, err := Parse(dialect, program)
 	if err != nil {
@@ -104,15 +110,23 @@ func parseFirstSQLFlowStmt(program string) (*SQLFlowSelectStmt, int, error) {
 	return pr, len(s[0]), nil
 }
 
-func thirdPartyParse(dialect, program string) ([]SQLFlowStmt, int, error) {
+func thirdPartyParse(dialect, program string) ([]*SQLFlowStmt, int, error) {
 	p := external.NewParser(dialect)
 	sqls, i, err := p.Parse(program)
 	if err != nil {
 		return nil, -1, fmt.Errorf("thirdPartyParse failed: %v", err)
 	}
-	spr := make([]SQLFlowStmt, 0)
+	var spr []*SQLFlowStmt
 	for _, sql := range sqls {
-		spr = append(spr, SQLFlowStmt{Original: sql, Standard: sql, Extended: nil})
+		spr = append(spr, &SQLFlowStmt{Original: sql, Standard: sql, SQLFlowSelectStmt: nil})
 	}
 	return spr, i, nil
+}
+
+// LegacyParse calls extended_syntax_parser.y with old rules.
+// codegen_alps.go depends on this legacy parser, which requires
+// extended_syntax_parser.y to parse not only the syntax extension,
+// but also the SELECT statement prefix.
+func LegacyParse(s string) (r *SQLFlowSelectStmt, e error) {
+	return parseSQLFlowStmt(s)
 }

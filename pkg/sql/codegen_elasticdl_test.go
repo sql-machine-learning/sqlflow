@@ -19,12 +19,12 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"sqlflow.org/sqlflow/pkg/parser"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
 func TestTrainElasticDLFiller(t *testing.T) {
 	a := assert.New(t)
-	parser := newExtendedSyntaxParser()
 
 	wndStatement := `SELECT * FROM iris.train
 		TO TRAIN ElasticDLKerasClassifier 
@@ -67,7 +67,7 @@ func TestTrainElasticDLFiller(t *testing.T) {
 		LABEL class
 		INTO trained_elasticdl_keras_classifier;`
 
-	r, e := parser.Parse(wndStatement)
+	r, e := parser.LegacyParse(wndStatement)
 	a.NoError(e)
 	session := &pb.Session{UserId: "sqlflow_user"}
 	filler, e := newElasticDLTrainFiller(r, testDB, session)
@@ -92,14 +92,14 @@ func TestTrainElasticDLFiller(t *testing.T) {
 
 func TestPredElasticDLFiller(t *testing.T) {
 	a := assert.New(t)
-	parser := newExtendedSyntaxParser()
+
 	predStatement := `SELECT sepal_length, sepal_width, petal_length, petal_width FROM iris.test
 		TO PREDICT prediction_results_table
 		WITH
 			model.num_classes = 10
 		USING trained_elasticdl_keras_classifier;`
 
-	r, e := parser.Parse(predStatement)
+	r, e := parser.LegacyParse(predStatement)
 	a.NoError(e)
 	filler, err := newElasticDLPredictFiller(r, testDB)
 	a.NoError(err)

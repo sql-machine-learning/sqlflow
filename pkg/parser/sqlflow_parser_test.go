@@ -46,7 +46,7 @@ func commonTestCases(dbms string, a *assert.Assertions) {
 		s, err := Parse(dbms, sql+";")
 		a.NoError(err)
 		a.Equal(1, len(s))
-		a.Nil(s[0].Extended)
+		a.False(IsExtendedSyntax(s[0]))
 		if isJavaParser(dbms) {
 			a.Equal(sql, s[0].Standard)
 		} else {
@@ -60,7 +60,7 @@ func commonTestCases(dbms string, a *assert.Assertions) {
 		a.NoError(err)
 		a.Equal(len(external.SelectCases), len(s))
 		for i := range s {
-			a.Nil(s[i].Extended)
+			a.False(IsExtendedSyntax(s[i]))
 			if isJavaParser(dbms) {
 				a.Equal(external.SelectCases[i], s[i].Standard)
 			} else {
@@ -76,11 +76,11 @@ func commonTestCases(dbms string, a *assert.Assertions) {
 		a.NoError(err)
 		a.Equal(2, len(s))
 
-		a.NotNil(s[0].Extended)
+		a.True(IsExtendedSyntax(s[0]))
 		a.Equal(sql+` `, s[0].Standard)
 		a.Equal(fmt.Sprintf(`%s %s;`, sql, extendedSQL), s[0].Original)
 
-		a.Nil(s[1].Extended)
+		a.False(IsExtendedSyntax(s[1]))
 		if isJavaParser(dbms) {
 			a.Equal(sql, s[1].Standard)
 		} else {
@@ -94,8 +94,8 @@ func commonTestCases(dbms string, a *assert.Assertions) {
 		s, err := Parse(dbms, sqls)
 		a.NoError(err)
 		a.Equal(2, len(s))
-		a.Nil(s[0].Extended)
-		a.NotNil(s[1].Extended)
+		a.False(IsExtendedSyntax(s[0]))
+		a.True(IsExtendedSyntax(s[1]))
 		if isJavaParser(dbms) {
 			a.Equal(sql, s[0].Standard)
 		} else {
@@ -112,9 +112,13 @@ func commonTestCases(dbms string, a *assert.Assertions) {
 		a.NoError(err)
 		a.Equal(3, len(s))
 
-		a.Nil(s[0].Extended)
-		a.NotNil(s[1].Extended)
-		a.Nil(s[2].Extended)
+		// a.False(IsExtendedSyntax(s[0]))
+		// a.True(IsExtendedSyntax(s[1]))
+		// a.False(IsExtendedSyntax(s[2]))
+
+		a.False(IsExtendedSyntax(s[0]))
+		a.True(IsExtendedSyntax(s[1]))
+		a.False(IsExtendedSyntax(s[2]))
 
 		if isJavaParser(dbms) {
 			a.Equal(sql, s[0].Standard)

@@ -74,12 +74,11 @@ func ParseSQLStatement(sql string, session *pb.Session) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	extended := parsed.Extended
-	if extended == nil {
+	if !parser.IsExtendedSyntax(parsed) {
 		return "", fmt.Errorf("ParseSQLStatement only accept extended SQL")
 	}
-	if extended.Train {
-		trainStmt, err := generateTrainStmtWithInferredColumns(extended, connStr)
+	if parsed.Train {
+		trainStmt, err := generateTrainStmtWithInferredColumns(parsed, connStr)
 		if err != nil {
 			return "", err
 		}
@@ -88,8 +87,8 @@ func ParseSQLStatement(sql string, session *pb.Session) (string, error) {
 			return "", err
 		}
 		return proto.MarshalTextString(pbir), nil
-	} else if extended.Analyze {
-		analyzeStmt, err := generateAnalyzeStmt(extended, connStr, "", true)
+	} else if parsed.Explain {
+		analyzeStmt, err := generateAnalyzeStmt(parsed, connStr, "", true)
 		if err != nil {
 			return "", nil
 		}
@@ -99,7 +98,7 @@ func ParseSQLStatement(sql string, session *pb.Session) (string, error) {
 		}
 		return proto.MarshalTextString(pbir), nil
 	} else {
-		predStmt, err := generatePredictStmt(extended, connStr, "", true)
+		predStmt, err := generatePredictStmt(parsed, connStr, "", true)
 		if err != nil {
 			return "", err
 		}
@@ -146,14 +145,13 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, modelDir string, session 
 	for _, sql := range sqls {
 		var r ir.SQLStatement
 		connStr := fmt.Sprintf("%s://%s", driverName, dataSourceName)
-		if sql.Extended != nil {
-			parsed := sql.Extended
-			if parsed.Train {
-				r, err = generateTrainStmt(parsed, connStr)
-			} else if parsed.Analyze {
-				r, err = generateAnalyzeStmt(parsed, connStr, modelDir, false)
+		if parser.IsExtendedSyntax(sql) {
+			if sql.Train {
+				r, err = generateTrainStmt(sql, connStr)
+			} else if sql.Explain {
+				r, err = generateAnalyzeStmt(sql, connStr, modelDir, false)
 			} else {
-				r, err = generatePredictStmt(parsed, connStr, modelDir, false)
+				r, err = generatePredictStmt(sql, connStr, modelDir, false)
 			}
 		} else {
 			standardSQL := ir.StandardSQL(sql.Standard)
@@ -200,14 +198,13 @@ func runSQLProgram(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, s
 	for _, sql := range sqls {
 		var r ir.SQLStatement
 		connStr := fmt.Sprintf("%s://%s", db.driverName, db.dataSourceName)
-		if sql.Extended != nil {
-			parsed := sql.Extended
-			if parsed.Train {
-				r, err = generateTrainStmtWithInferredColumns(parsed, connStr)
-			} else if parsed.Analyze {
-				r, err = generateAnalyzeStmt(parsed, connStr, modelDir, submitter().GetTrainStmtFromModel())
+		if parser.IsExtendedSyntax(sql) {
+			if sql.Train {
+				r, err = generateTrainStmtWithInferredColumns(sql, connStr)
+			} else if sql.Explain {
+				r, err = generateAnalyzeStmt(sql, connStr, modelDir, submitter().GetTrainStmtFromModel())
 			} else {
-				r, err = generatePredictStmt(parsed, connStr, modelDir, submitter().GetTrainStmtFromModel())
+				r, err = generatePredictStmt(sql, connStr, modelDir, submitter().GetTrainStmtFromModel())
 			}
 		} else {
 			standardSQL := ir.StandardSQL(sql.Standard)
@@ -247,7 +244,7 @@ func runSingleSQLIR(wr *PipeWriter, sqlIR ir.SQLStatement, db *DB, modelDir stri
 
 // Create prediction table with appropriate column type.
 // If prediction table already exists, it will be overwritten.
-func createPredictionTable(predParsed *parser.SQLFlowSelectStmt, db *DB, session *pb.Session) error {
+func createPredictionTable(predParsed *parser.SQLFlowStmt, db *DB, session *pb.Session) error {
 	tableName, columnName, e := parseTableColumn(predParsed.Into)
 	if e != nil {
 		return fmt.Errorf("invalid predParsed.into, %v", e)
@@ -361,7 +358,7 @@ func createPredictionTableFromIR(predStmt *ir.PredictStmt, db *DB, session *pb.S
 	return nil
 }
 
-func loadModelMeta(pr *parser.SQLFlowSelectStmt, db *DB, cwd, modelDir, modelName string) (*parser.SQLFlowSelectStmt, error) {
+func loadModelMeta(pr *parser.SQLFlowStmt, db *DB, cwd, modelDir, modelName string) (*parser.SQLFlowStmt, error) {
 	var m *model
 	var e error
 	modelURI := modelName
@@ -380,11 +377,11 @@ func loadModelMeta(pr *parser.SQLFlowSelectStmt, db *DB, cwd, modelDir, modelNam
 		return nil, fmt.Errorf("parse: TrainSelect %v raise %v", m.TrainSelect, e)
 	}
 
-	if e := verifyColumnNameAndType(tr.Extended, pr, db); e != nil {
+	if e := verifyColumnNameAndType(tr, pr, db); e != nil {
 		return nil, fmt.Errorf("verifyColumnNameAndType: %v", e)
 	}
 
-	pr.TrainClause = tr.Extended.TrainClause
+	pr.TrainClause = tr.TrainClause
 
 	return pr, nil
 }

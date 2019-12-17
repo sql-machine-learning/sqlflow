@@ -24,7 +24,7 @@ import (
 	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
 
-func generateTrainStmtWithInferredColumns(slct *parser.SQLFlowSelectStmt, connStr string) (*ir.TrainStmt, error) {
+func generateTrainStmtWithInferredColumns(slct *parser.SQLFlowStmt, connStr string) (*ir.TrainStmt, error) {
 	trainStmt, err := generateTrainStmt(slct, connStr)
 	if err != nil {
 		return nil, err
@@ -37,7 +37,7 @@ func generateTrainStmtWithInferredColumns(slct *parser.SQLFlowSelectStmt, connSt
 	return trainStmt, nil
 }
 
-func generateTrainStmt(slct *parser.SQLFlowSelectStmt, connStr string) (*ir.TrainStmt, error) {
+func generateTrainStmt(slct *parser.SQLFlowStmt, connStr string) (*ir.TrainStmt, error) {
 	tc := slct.TrainClause
 	modelURI := tc.Estimator
 	// get model Docker image name
@@ -99,7 +99,7 @@ func generateTrainStmt(slct *parser.SQLFlowSelectStmt, connStr string) (*ir.Trai
 	}, nil
 }
 
-func generateTrainStmtByModel(slct *parser.SQLFlowSelectStmt, connStr, cwd, modelDir, model string) (*ir.TrainStmt, error) {
+func generateTrainStmtByModel(slct *parser.SQLFlowStmt, connStr, cwd, modelDir, model string) (*ir.TrainStmt, error) {
 	db, err := open(connStr)
 	if err != nil {
 		return nil, err
@@ -159,7 +159,7 @@ func verifyIRWithTrainStmt(sqlir ir.SQLStatement, db *DB) error {
 	return nil
 }
 
-func generatePredictStmt(slct *parser.SQLFlowSelectStmt, connStr string, modelDir string, getTrainStmtFromModel bool) (*ir.PredictStmt, error) {
+func generatePredictStmt(slct *parser.SQLFlowStmt, connStr string, modelDir string, getTrainStmtFromModel bool) (*ir.PredictStmt, error) {
 	attrMap, err := generateAttributeIR(&slct.PredAttrs)
 	if err != nil {
 		return nil, err
@@ -209,7 +209,7 @@ func generatePredictStmt(slct *parser.SQLFlowSelectStmt, connStr string, modelDi
 	return predStmt, nil
 }
 
-func generateAnalyzeStmt(slct *parser.SQLFlowSelectStmt, connStr, modelDir string, getTrainStmtFromModel bool) (*ir.AnalyzeStmt, error) {
+func generateAnalyzeStmt(slct *parser.SQLFlowStmt, connStr, modelDir string, getTrainStmtFromModel bool) (*ir.AnalyzeStmt, error) {
 	attrs, err := generateAttributeIR(&slct.ExplainAttrs)
 	if err != nil {
 		return nil, err
