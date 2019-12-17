@@ -14,6 +14,8 @@
 package parser
 
 import (
+	"encoding/json"
+	"fmt"
 	"log"
 	"regexp"
 	"strings"
@@ -30,22 +32,37 @@ const (
 // It makes a significant simplification of the idea and doesn't use
 // goroutines and channels.
 type lexer struct {
-	input string // the string being scanned
-	start int    // start position of this item
-	pos   int    // current position in the input
-	width int    // width of last rune read from input
+	input  string // the string being scanned
+	start  int    // start position of this item
+	pos    int    // current position in the input
+	width  int    // width of last rune read from input
+	recent string // recently emitted
 }
 
 func newLexer(input string) *lexer {
 	return &lexer{input: input}
 }
 
+type lexerError struct {
+	Pos    int
+	Recent string
+	Near   string
+}
+
 func (l *lexer) Error(e string) {
-	log.Panicf("start=%d, pos=%d : %s near %.10q\n", l.start, l.pos, e, l.input[l.start:])
+	b, err := json.Marshal(lexerError{
+		Pos:    l.pos,
+		Recent: l.recent,
+		Near:   l.input[l.start:]})
+	if err != nil {
+		log.Panicf("Failed JSON marshal LexerError")
+	}
+	panic(fmt.Errorf("%s", b)) // parseSQLFlowStmt will recover this panic.
 }
 
 func (l *lexer) emit(lval *extendedSyntaxSymType, typ int) int {
 	lval.val = l.input[l.start:l.pos]
+	l.recent = l.input[l.start:l.pos]
 	l.start = l.pos
 	return typ
 }

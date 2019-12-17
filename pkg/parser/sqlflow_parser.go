@@ -102,12 +102,7 @@ func parseFirstSQLFlowStmt(program string) (*SQLFlowSelectStmt, int, error) {
 		return nil, -1, err
 	}
 
-	pr, err := parseSQLFlowStmt(s[0])
-	if err != nil {
-		return nil, -1, err
-	}
-
-	return pr, len(s[0]), nil
+	return parseSQLFlowStmt(s[0])
 }
 
 func thirdPartyParse(dialect, program string) ([]*SQLFlowStmt, int, error) {
@@ -127,6 +122,6 @@ func thirdPartyParse(dialect, program string) ([]*SQLFlowStmt, int, error) {
 // codegen_alps.go depends on this legacy parser, which requires
 // extended_syntax_parser.y to parse not only the syntax extension,
 // but also the SELECT statement prefix.
-func LegacyParse(s string) (r *SQLFlowSelectStmt, e error) {
+func LegacyParse(s string) (r *SQLFlowSelectStmt, idx int, e error) {
 	return parseSQLFlowStmt(s)
 }

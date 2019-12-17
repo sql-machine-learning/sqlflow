@@ -2,6 +2,7 @@
 	package parser
 
 	import (
+                "encoding/json"
 		"fmt"
                 "log"
 		"strings"
@@ -436,13 +437,19 @@ func (s StandardSelect) String() string {
 
 var mu sync.Mutex // Protect the use of global variable parseResult.
 
-func parseSQLFlowStmt(s string) (r *SQLFlowSelectStmt, e error) {
+func parseSQLFlowStmt(s string) (r *SQLFlowSelectStmt, idx int, e error) {
 	defer func() {
 		if r := recover(); r != nil {
 			var ok bool
 			e, ok = r.(error)
 			if !ok {
 				e = fmt.Errorf("%v", r)
+			}
+
+			var le lexerError
+			err := json.Unmarshal([]byte(e.Error()), &le)
+			if err == nil {
+			        idx = le.Pos - len(le.Recent)
 			}
 		}
 	}()
@@ -451,5 +458,5 @@ func parseSQLFlowStmt(s string) (r *SQLFlowSelectStmt, e error) {
 	defer mu.Unlock()
 
 	extendedSyntaxParse(newLexer(s))  // extendedSyntaxParse is auto generated.
-	return parseResult, nil
+	return parseResult, len(s), nil
 }

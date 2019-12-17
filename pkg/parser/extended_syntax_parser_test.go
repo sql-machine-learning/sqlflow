@@ -67,7 +67,7 @@ USING sqlflow_models.my_model;
 
 func TestStandardSelect(t *testing.T) {
 	a := assert.New(t)
-	r, e := parseSQLFlowStmt(testStandardSelectStmt + ";")
+	r, _, e := parseSQLFlowStmt(testStandardSelectStmt + ";")
 	a.NoError(e)
 	a.False(r.Extended)
 	a.Equal([]string{"employee.age", "last_name", "salary"},
@@ -86,7 +86,7 @@ func TestTrainParser(t *testing.T) {
 	a := assert.New(t)
 	// NOTE(tony): Test optional semicolon at the end of the statement
 	for _, s := range []string{``, `;`} {
-		r, e := parseSQLFlowStmt(testTrainSelect + s)
+		r, _, e := parseSQLFlowStmt(testTrainSelect + s)
 		a.NoError(e)
 		a.True(r.Extended)
 		a.True(r.Train)
@@ -107,7 +107,7 @@ func TestTrainParser(t *testing.T) {
 
 func TestMultiColumnTrainParser(t *testing.T) {
 	a := assert.New(t)
-	r, e := parseSQLFlowStmt(testMultiColumnTrainSelect)
+	r, _, e := parseSQLFlowStmt(testMultiColumnTrainSelect)
 	a.NoError(e)
 	a.True(r.Extended)
 	a.True(r.Train)
@@ -130,7 +130,7 @@ func TestMultiColumnTrainParser(t *testing.T) {
 
 func TestPredictParser(t *testing.T) {
 	a := assert.New(t)
-	r, e := parseSQLFlowStmt(testPredictSelect)
+	r, _, e := parseSQLFlowStmt(testPredictSelect)
 	a.NoError(e)
 	a.True(r.Extended)
 	a.False(r.Train)
@@ -141,7 +141,7 @@ func TestPredictParser(t *testing.T) {
 func TestExplainParser(t *testing.T) {
 	a := assert.New(t)
 	{
-		r, e := parseSQLFlowStmt(`select * from mytable
+		r, _, e := parseSQLFlowStmt(`select * from mytable
 TO EXPLAIN my_model
 USING TreeExplainer;`)
 		a.NoError(e)
@@ -152,7 +152,7 @@ USING TreeExplainer;`)
 		a.Equal("TreeExplainer", r.Explainer)
 	}
 	{
-		r, e := parseSQLFlowStmt(`select * from mytable
+		r, _, e := parseSQLFlowStmt(`select * from mytable
 TO EXPLAIN my_model
 WITH
   plots = force
@@ -169,7 +169,7 @@ USING TreeExplainer;`)
 
 func TestSelectStarAndPrint(t *testing.T) {
 	a := assert.New(t)
-	r, e := parseSQLFlowStmt(`SELECT *, b FROM a LIMIT 10;`)
+	r, _, e := parseSQLFlowStmt(`SELECT *, b FROM a LIMIT 10;`)
 	a.NoError(e)
 	a.Equal(2, len(r.Fields.Strings()))
 	a.Equal("*", r.Fields.Strings()[0])
@@ -180,7 +180,7 @@ func TestSelectStarAndPrint(t *testing.T) {
 
 func TestStandardDropTable(t *testing.T) {
 	a := assert.New(t)
-	_, e := parseSQLFlowStmt(`DROP TABLE TO PREDICT`)
+	_, _, e := parseSQLFlowStmt(`DROP TABLE TO PREDICT`)
 	a.Error(e)
 	// Note: currently, our parser doesn't accept anything statements other than SELECT.
 	// It will support parsing any SQL statements and even dialects in the future.
@@ -188,13 +188,13 @@ func TestStandardDropTable(t *testing.T) {
 
 func TestDuplicatedFrom(t *testing.T) {
 	a := assert.New(t)
-	_, e := parseSQLFlowStmt(`SELECT table.field FROM table FROM tttt;`)
+	_, _, e := parseSQLFlowStmt(`SELECT table.field FROM table FROM tttt;`)
 	a.Error(e)
 }
 
 func TestSelectMaxcomputeUDF(t *testing.T) {
 	a := assert.New(t)
-	r, e := parseSQLFlowStmt(testMaxcomputeUDFPredict)
+	r, _, e := parseSQLFlowStmt(testMaxcomputeUDFPredict)
 	a.NoError(e)
 	a.Equal(3, len(r.Fields.Strings()))
 	a.Equal(r.Fields[0].String(), `predict_fun(concat(",", col_1, col_2))`)

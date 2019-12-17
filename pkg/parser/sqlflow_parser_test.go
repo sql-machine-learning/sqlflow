@@ -22,6 +22,12 @@ import (
 	"sqlflow.org/sqlflow/pkg/parser/external"
 )
 
+func TestExtendedSyntaxParse(t *testing.T) {
+	a := assert.New(t)
+	_, idx, _ := parseSQLFlowStmt("select a from b;  select b from c;")
+	a.Equal(18, idx)
+}
+
 func isJavaParser(dbms string) bool {
 	return dbms == "hive" || dbms == "calcite"
 }
