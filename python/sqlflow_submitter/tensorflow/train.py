@@ -20,6 +20,7 @@ import tensorflow as tf
 import functools
 import sys
 import numpy as np
+import copy
 try:
     import sqlflow_models
 except:
@@ -38,6 +39,11 @@ try:
 except:
     tf.logging.set_verbosity(tf.logging.ERROR)
     TF_VERSION_2 = False
+
+# FLAGS only available for TF 1.x to support PAI TF training
+if not TF_VERSION_2:
+    tf.app.flags.DEFINE_string("tables", "", "tables info")
+    FLAGS = tf.app.flags.FLAGS
 
 def get_dtype(type_str):
     if type_str == "float32":
@@ -87,8 +93,6 @@ if TF_VERSION_2:
             if self.prefix == "eval":
                 print("============Evaluation End=============")
 
-
-
 def train(is_keras_model,
           datasource,
           estimator,
@@ -118,20 +122,13 @@ def train(is_keras_model,
             tf.get_logger().setLevel(logging.DEBUG)
     else:
         if verbose >= 2:
-            tf.get_logger().setLevel(logging.INFO)
-    conn = connect_with_data_source(datasource)
+            if TF_VERSION_2:
+                tf.get_logger().setLevel(logging.INFO)
+            else:
+                tf.logging.set_verbosity(tf.logging.INFO)
+    if not is_pai:
+        conn = connect_with_data_source(datasource)
     model_params.update(feature_columns)
-    if not is_keras_model:
-        model_params["model_dir"] = save
-        runconf = tf.estimator.RunConfig(save_checkpoints_steps=save_checkpoints_steps)
-        model_params["config"]= runconf
-        classifier = estimator(**model_params)
-    else:
-        if not issubclass(estimator, tf.keras.Model):
-            # functional model need field_metas parameter
-            model_params["field_metas"] = feature_metas
-        classifier = estimator(**model_params)
-        classifier_pkg = sys.modules[estimator.__module__]
 
     def input_fn(datasetStr):
         feature_types = []
@@ -148,22 +145,39 @@ def train(is_keras_model,
         return dataset.map(ds_mapper)
 
     def pai_maxcompute_input_fn(datasetStr):
-        driver, dsn = datasource.split("://")
-        _, _, _, database = parseMaxComputeDSN(dsn)
-        tables = ["odps://%s/tables/%s" % (database, pai_table)]
+        table_parts = pai_table.split(".")
+        if len(table_parts) == 2:
+            database, table_name = table_parts
+        elif len(table_parts) == 1:
+            table_name = pai_table
+            driver, dsn = datasource.split("://")
+            _, _, _, database = parseMaxComputeDSN(dsn)
+        else:
+            raise ValueError("error database.table format: %s" % pai_table)
+
+        tables = ["odps://%s/tables/%s" % (database, table_name)]
         record_defaults = []
-        selected_cols = feature_column_names
-        selected_cols.append(label_meta["name"])
         for name in feature_column_names:
             dtype = get_dtype(feature_metas[name]["dtype"])
             record_defaults.append(tf.constant(0, dtype=dtype, shape=feature_metas[name]["shape"]))
         record_defaults.append(
             tf.constant(0, get_dtype(label_meta["dtype"]), shape=label_meta["shape"]))
+
+        selected_cols = copy.copy(feature_column_names)
+        selected_cols.append(label_meta["feature_name"])
         dataset = tf.data.TableRecordDataset(tables,
                                      record_defaults=record_defaults,
-                                     selected_cols=selected_cols)
-        ds_mapper = functools.partial(parse_sparse_feature, feature_column_names=feature_column_names, feature_metas=feature_metas)
-        return dataset.map(ds_mapper)
+                                     selected_cols=",".join(selected_cols))
+        def tensor_to_dict(*args):
+            num_features = len(feature_column_names)
+            label = args[num_features]
+            features_dict = dict()
+            for idx in range(num_features):
+                name = feature_column_names[idx]
+                features_dict[name] = tf.reshape(args[idx], [-1])
+            return features_dict, label
+
+        return dataset.map(tensor_to_dict)
 
     def train_input_fn(batch_size):
         if is_pai:
@@ -181,6 +195,12 @@ def train(is_keras_model,
         return dataset.batch(batch_size).cache()
 
     if is_keras_model:
+        if not issubclass(estimator, tf.keras.Model):
+            # functional model need field_metas parameter
+            model_params["field_metas"] = feature_metas
+        classifier = estimator(**model_params)
+        classifier_pkg = sys.modules[estimator.__module__]
+
         classifier.compile(optimizer=classifier_pkg.optimizer(),
             loss=classifier_pkg.loss,
             metrics=["accuracy"])
@@ -201,6 +221,14 @@ def train(is_keras_model,
                 print("%s: %s" % (k, v[-1]))
         classifier.save_weights(save, save_format="h5")
     else:
+        # if is_pai:
+        #     print("using checkpoint dir: ", FLAGS.checkpointDir)
+        #     model_params["model_dir"] = FLAGS.checkpointDir
+        # else:
+        model_params["model_dir"] = save
+        model_params["config"] = tf.estimator.RunConfig(save_checkpoints_steps=save_checkpoints_steps)
+        classifier = estimator(**model_params)
+
         if validate_select == "":
             classifier.train(input_fn=lambda:train_input_fn(batch_size))
         else:
@@ -217,3 +245,4 @@ def train(is_keras_model,
             print(result[0])
 
     print("Done training")
+

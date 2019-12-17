@@ -45,7 +45,7 @@ func wrapper(code, dataSource, modelName, cwd string) (string, error) {
 	if err := tpl.Execute(&program, filler); err != nil {
 		return "", err
 	}
-
+	fmt.Println(program.String())
 	return program.String(), nil
 }
 
@@ -55,6 +55,8 @@ func Train(ir *ir.TrainStmt, modelName, cwd string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	fmt.Printf("generated train program: %s \n", program)
+
 	return wrapper(program, ir.DataSource, modelName, cwd)
 }
 
@@ -63,8 +65,10 @@ func doTrain(ir *ir.TrainStmt, modelName string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	isKeras, estimatorStr := tensorflow.IsKerasModel(ir.Estimator)
+
+	// saveCode not needed if we use oss
 	// append code snippet to save model
+	isKeras, estimatorStr := tensorflow.IsKerasModel(ir.Estimator)
 	var tpl = template.Must(template.New("SaveModel").Parse(tfSaveModelTmplText))
 	filler := saveModelFiller{
 		DataSource:   ir.DataSource,
@@ -78,6 +82,7 @@ func doTrain(ir *ir.TrainStmt, modelName string) (string, error) {
 		return "", err
 	}
 	return code + saveCode.String(), nil
+	// return code, nil
 }
 
 // Predict generates a Python program for train a TensorFlow model.

@@ -17,6 +17,9 @@ type wrapperFiller struct {
 	DataSource string
 	EntryFile  string
 	ModelName  string
+	NumPS      int
+	NumWorkers int // num_workers > 1 indicates we are running distributed training.
+	PAITable   string
 }
 
 type saveModelFiller struct {
@@ -54,8 +57,8 @@ assert driver == "maxcompute"
 user, passwd, address, database = sqlflow_submitter.db.parseMaxComputeDSN(dsn)
 
 jobname = '_'.join(['sqlflow', '{{.ModelName}}'.replace('.', '_')])
-pai_cmd = 'pai -name %s -DjobName=%s -Dtags=%s -Dscript=file://%s -DentryFile=%s' % (
-	'tensorflow1120', jobname, 'dnn', tarball, '{{.EntryFile}}')
+pai_cmd = 'pai -name %s -DjobName=%s -Dtags=%s -Dscript=file://%s -DentryFile=%s -DgpuRequired=\'\' -Dtables=odps://alifin_jtest_dev/tables/sqlflow_test_iris_train' % (
+    'tensorflow1120', jobname, 'dnn', tarball, '{{.EntryFile}}')
 
 # Submit the tarball to PAI
 subprocess.run(["odpscmd", "-u", user,

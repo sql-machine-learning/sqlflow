@@ -1234,5 +1234,5 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 		t.Fatalf("prepare test dataset failed: %v", err)
 	}
 
-	t.Run("TestTrainSQL", CaseTrainSQL)
+	t.Run("CaseTrainSQL", CaseTrainSQL)
 }
