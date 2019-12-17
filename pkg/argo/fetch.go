@@ -21,66 +21,77 @@ import (
 	"time"
 
 	wfv1 "github.com/argoproj/argo/pkg/apis/workflow/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
 // Fetch fetches the workflow log and status
 //
 // if token.step_id == "" {
-//    NOTE(Yancey): wait mean wait for Running
 //    my_step := first step
-// } else {
-//    my_step := next(token.step_id)
 // }
+// logs := fetch my_step log
 //
-// if my_step is pending/running, return ""
-// if my_step is complete, return (logs, my_step_id)
+// if finish fetch my_step logs:
+//    my_step = next(token.step_id)
+//
+// return (logs, my_step_id)
 func Fetch(token pb.FetchToken) (*pb.FetchResponse, error) {
-	// FIXME(tony): no need to wait for the whole workflow
-	wf, err := waitUntilComplete(token)
+	wf, err := getWorkflowResource(token)
 	if err != nil {
 		return nil, err
+	}
+	if wf.Status.Phase == wfv1.NodePending {
+		// return empty response
+		return &pb.FetchResponse{
+			NewToken: &pb.FetchToken{
+				Job:       token.Job,
+				StepId:    "",
+				LogOffset: "",
+				NoMoreLog: false,
+			},
+			Logs:  &pb.FetchResponse_Logs{},
+			Phase: translatePhase(wf.Status.Phase)}, nil
 	}
 
 	stepGroupName, err := getCurrentStepGroup(wf, token)
 	if err != nil {
 		return nil, err
 	}
-	// End of fetching, no more logs
-	if stepGroupName == "" {
-		return &pb.FetchResponse{
-			NewToken: &pb.FetchToken{
-				Job:       token.Job,
-				StepId:    stepGroupName,
-				LogOffset: "",
-				NoMoreLog: true},
-			Logs:  &pb.FetchResponse_Logs{},
-			Phase: translatePhase(wf.Status.Phase)}, nil
-	}
 
 	podName, err := getCurrentPodName(wf, token)
 	if err != nil {
 		return nil, err
 	}
-	logs, logOffset, err := getPodLogs(podName, token.GetLogOffset())
+
+	pod, err := getPodResource(podName)
+	if err != nil {
+		return nil, err
+	}
+
+	logContent, logOffset, err := getPodLogs(pod.Name, token.GetLogOffset())
 	if err != nil {
 		return nil, err
 	}
 
 	finishedFetchingCurrentPod := false
-	// finishedFetchingCurrentPod = true when:
-	// 1. the offset has not been updated, and
-	// 2. the pod is completed.
-	if token.GetLogOffset() == logOffset && isCompletedPhaseWF(wf.Status.Phase) {
+	if logOffset == token.GetLogOffset() && isCompletedPhasePod(pod.Status.Phase) {
 		finishedFetchingCurrentPod = true
-		logOffset = ""
 	}
 
-	var newStepGroupName string
+	noMoreLog := false
+	newStepGroupName := ""
 	if finishedFetchingCurrentPod {
-		newStepGroupName = stepGroupName
+		nextStepGroupName, err := getNextStepGroup(wf, token.Job.Id)
+		if err != nil {
+			return nil, err
+		}
+		// is no next step group, tag no more logs to
+		if nextStepGroupName == "" {
+			noMoreLog = true
+		}
 	} else {
-		newStepGroupName = token.StepId
+		newStepGroupName = stepGroupName
 	}
 
 	return &pb.FetchResponse{
@@ -88,8 +99,8 @@ func Fetch(token pb.FetchToken) (*pb.FetchResponse, error) {
 			Job:       token.Job,
 			StepId:    newStepGroupName,
 			LogOffset: logOffset,
-			NoMoreLog: false},
-		Logs:  &pb.FetchResponse_Logs{Content: logs},
+			NoMoreLog: noMoreLog},
+		Logs:  &pb.FetchResponse_Logs{Content: logContent},
 		Phase: translatePhase(wf.Status.Phase)}, nil
 }
 
@@ -109,6 +120,15 @@ func getWorkflowResource(token pb.FetchToken) (*wfv1.Workflow, error) {
 		return nil, fmt.Errorf("getWorkflowResource error: %v\n%v", string(output), err)
 	}
 	return parseWorkflowResource(output)
+}
+
+func getPodResource(podName string) (*corev1.Pod, error) {
+	cmd := exec.Command("kubectl", "get", "pod", podName, "-o", "json")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("failed %s, %v", cmd, err)
+	}
+	return parsePodResource(output)
 }
 
 func checkNodeType(expected, actual wfv1.NodeType) error {
@@ -227,7 +247,15 @@ func getCurrentStepGroup(wf *wfv1.Workflow, token pb.FetchToken) (string, error)
 		}
 		return stepNode.Children[0], nil
 	}
-	return getNextStepGroup(wf, token.StepId)
+
+	stepGroupNode := wf.Status.Nodes[token.StepId]
+	if err := checkNodeType(wfv1.NodeTypeStepGroup, stepGroupNode.Type); err != nil {
+		return "", fmt.Errorf("getNextStepGroup: %v", err)
+	}
+	if l := len(stepGroupNode.Children); l != 1 {
+		return "", fmt.Errorf("getNextStepGroup: unexpected len(stepGroupNode.Children) 1 != %v", l)
+	}
+	return stepGroupNode.Name, nil
 }
 
 func getCurrentPodName(wf *wfv1.Workflow, token pb.FetchToken) (string, error) {

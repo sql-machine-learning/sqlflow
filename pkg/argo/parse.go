@@ -17,9 +17,15 @@ import (
 	"encoding/json"
 
 	wfv1 "github.com/argoproj/argo/pkg/apis/workflow/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 )
 
 func parseWorkflowResource(b []byte) (*wfv1.Workflow, error) {
 	wf := wfv1.Workflow{}
 	return &wf, json.Unmarshal(b, &wf)
+}
+
+func parsePodResource(b []byte) (*corev1.Pod, error) {
+	pod := corev1.Pod{}
+	return &pod, json.Unmarshal(b, &pod)
 }

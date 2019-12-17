@@ -15,7 +15,9 @@ package argo
 
 import (
 	"fmt"
+
 	wfv1 "github.com/argoproj/argo/pkg/apis/workflow/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
@@ -43,6 +45,16 @@ func isCompletedPhaseWF(phase wfv1.NodePhase) bool {
 		phase == wfv1.NodeFailed ||
 		phase == wfv1.NodeError ||
 		phase == wfv1.NodeSkipped
+}
+
+func isPendingPhaseWF(phase wfv1.NodePhase) bool {
+	return phase == wfv1.NodePending
+}
+
+func isCompletedPhasePod(phase corev1.PodPhase) bool {
+	return phase == corev1.PodSucceeded ||
+		phase == corev1.PodFailed ||
+		phase == corev1.PodUnknown
 }
 
 func isCompletePhasePB(phase pb.FetchResponse_Phase) bool {
