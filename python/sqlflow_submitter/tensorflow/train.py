@@ -209,16 +209,19 @@ def train(is_keras_model,
                                      record_defaults=record_defaults,
                                      selected_cols=",".join(selected_cols))
         def tensor_to_dict(*args):
+            print("args: ", args)
             num_features = len(feature_column_names)
+            print("num_features:", num_features)
             label = args[num_features]
             features_dict = dict()
             for idx in range(num_features):
                 name = feature_column_names[idx]
-                features_dict[name] = args[idx]
+                features_dict[name] = tf.reshape(args[idx], [-1])
+            print(features_dict)
+            print("label: ", label)
             return features_dict, label
 
-        ds_mapper = functools.partial(tensor_to_dict)
-        return dataset.map(ds_mapper)
+        return dataset.map(tensor_to_dict)
 
     def train_input_fn(batch_size):
         if is_pai:
@@ -273,6 +276,7 @@ def train(is_keras_model,
             run_config = tf.estimator.RunConfig(train_distribute=dist_strategy)
         
         if is_pai:
+            print("using checkpoint dir: ", FLAGS.checkpointDir)
             model_params["model_dir"] = FLAGS.checkpointDir
         else:
             model_params["model_dir"] = save
