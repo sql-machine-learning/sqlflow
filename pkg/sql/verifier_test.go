@@ -22,7 +22,7 @@ import (
 
 func TestVerify_1(t *testing.T) {
 	a := assert.New(t)
-	r, e := parser.LegacyParse(`SELECT * FROM churn.train LIMIT 10;`)
+	r, _, e := parser.LegacyParse(`SELECT * FROM churn.train LIMIT 10;`)
 	a.NoError(e)
 	fts, e := verify(r.StandardSelect.String(), testDB)
 	a.NoError(e)
@@ -32,7 +32,7 @@ func TestVerify_1(t *testing.T) {
 		t.Skip("in Hive, db_name.table_name.field_name will raise error, because . operator is only supported on struct or list of struct types")
 	}
 
-	r, e = parser.LegacyParse(`SELECT Churn, churn.train.Partner,TotalCharges FROM churn.train LIMIT 10;`)
+	r, _, e = parser.LegacyParse(`SELECT Churn, churn.train.Partner,TotalCharges FROM churn.train LIMIT 10;`)
 	a.NoError(e)
 	fts, e = verify(r.StandardSelect.String(), testDB)
 	a.NoError(e)
@@ -56,7 +56,7 @@ func TestVerify_2(t *testing.T) {
 		t.Skip("in Hive, db_name.table_name.field_name will raise error, because . operator is only supported on struct or list of struct types")
 	}
 	a := assert.New(t)
-	r, e := parser.LegacyParse(`SELECT Churn, churn.train.Partner FROM churn.train LIMIT 10;`)
+	r, _, e := parser.LegacyParse(`SELECT Churn, churn.train.Partner FROM churn.train LIMIT 10;`)
 	a.NoError(e)
 	fts, e := verify(r.StandardSelect.String(), testDB)
 	a.NoError(e)
@@ -75,7 +75,7 @@ func TestVerify_2(t *testing.T) {
 
 func TestVerifyColumnNameAndType(t *testing.T) {
 	a := assert.New(t)
-	trainParse, e := parser.LegacyParse(`SELECT gender, tenure, TotalCharges
+	trainParse, _, e := parser.LegacyParse(`SELECT gender, tenure, TotalCharges
 FROM churn.train LIMIT 10
 TO TRAIN DNNClassifier
 WITH
@@ -86,14 +86,14 @@ LABEL class
 INTO sqlflow_models.my_dnn_model;`)
 	a.NoError(e)
 
-	predParse, e := parser.LegacyParse(`SELECT gender, tenure, TotalCharges
+	predParse, _, e := parser.LegacyParse(`SELECT gender, tenure, TotalCharges
 FROM churn.train LIMIT 10
 TO PREDICT iris.predict.class
 USING sqlflow_models.my_dnn_model;`)
 	a.NoError(e)
 	a.NoError(verifyColumnNameAndType(trainParse, predParse, testDB))
 
-	predParse, e = parser.LegacyParse(`SELECT gender, tenure
+	predParse, _, e = parser.LegacyParse(`SELECT gender, tenure
 FROM churn.train LIMIT 10
 TO PREDICT iris.predict.class
 USING sqlflow_models.my_dnn_model;`)
@@ -104,7 +104,7 @@ USING sqlflow_models.my_dnn_model;`)
 
 func TestDescribeEmptyTables(t *testing.T) {
 	a := assert.New(t)
-	r, e := parser.LegacyParse(`SELECT * FROM iris.iris_empty LIMIT 10;`)
+	r, _, e := parser.LegacyParse(`SELECT * FROM iris.iris_empty LIMIT 10;`)
 	a.NoError(e)
 	_, e = verify(r.StandardSelect.String(), testDB)
 	a.EqualError(e, `query SELECT *
