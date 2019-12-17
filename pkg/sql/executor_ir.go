@@ -319,7 +319,9 @@ func createPredictionTableFromIR(predStmt *ir.PredictStmt, db *DB, session *pb.S
 	}
 
 	var b bytes.Buffer
-	trainLabelColumn := predStmt.TrainStmt.Label
+	// NOTE(typhoonzero): predStmt.TrainStmt may be nil, because the model may not loaded when
+	// creating prediction table.
+	// trainLabelColumn := predStmt.TrainStmt.Label
 	labelColumnName := predStmt.ResultColumn
 	labelColumnType := ""
 	fmt.Fprintf(&b, "create table %s (", predStmt.ResultTable)
@@ -329,7 +331,7 @@ func createPredictionTableFromIR(predStmt *ir.PredictStmt, db *DB, session *pb.S
 			return e
 		}
 		fldName := flds[idx]
-		if trainLabelColumn.GetFieldDesc()[0].Name == fldName {
+		if fldName == labelColumnName {
 			labelColumnType = stype
 			continue
 		}
@@ -339,6 +341,8 @@ func createPredictionTableFromIR(predStmt *ir.PredictStmt, db *DB, session *pb.S
 	// TODO(Yancey1989): For the current implementation, the prediction result column
 	// type is derivated by the pred-select-statement, the better way is derivating
 	// the result column type by the prediction result.
+	//
+	// label column not found in predict table, create a column specified by PREDICT clause:
 	if labelColumnType == "" {
 		// NOTE(typhoonzero): Clustering model may not have label in select statement, default use INT type
 		labelColumnType = "INT"
