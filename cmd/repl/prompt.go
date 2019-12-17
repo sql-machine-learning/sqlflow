@@ -216,14 +216,19 @@ func newPromptState() *promptState {
 	return &s
 }
 
+var consoleWriter = prompt.NewStdoutWriter()
+
 func runPrompt(cb func(string)) {
 	state := newPromptState()
 	p := prompt.New(
 		func(in string) { state.execute(in, cb) },
 		func(in prompt.Document) []prompt.Suggest { return state.completer(in) },
 		prompt.OptionAddASCIICodeBind(emacsMetaKeyBindings...),
+		prompt.OptionAddKeyBind(emacsCtrlKeyBindings...),
 		prompt.OptionHistory(state.history),
 		prompt.OptionLivePrefix(func() (string, bool) { return state.changeLivePrefix() }),
+		prompt.OptionSwitchKeyBindMode(prompt.CommonKeyBind),
+		prompt.OptionWriter(consoleWriter),
 		prompt.OptionParser(newStdinParser()),
 		prompt.OptionPrefix(state.prefix),
 		prompt.OptionPrefixTextColor(prompt.DefaultColor),
