@@ -118,13 +118,13 @@ func checkNodeType(expected, actual wfv1.NodeType) error {
 	return nil
 }
 
-func parseOffset(content string) (string, string) {
+func parseOffset(content string) (string, string, error) {
 	reTimestamps := regexp.MustCompile(`([^\s]+)\s(.*)$`)
 	msg := reTimestamps.FindStringSubmatch(content)
 	if len(msg) != 3 {
-		return "", ""
+		return "", "", fmt.Errorf("Parse offset failed: %s", content)
 	}
-	return msg[1], msg[2]
+	return msg[1], msg[2], nil
 }
 
 func getOffsetAndContentFromLogs(logs, oldOffset string) ([]string, string, error) {
@@ -136,8 +136,8 @@ func getOffsetAndContentFromLogs(logs, oldOffset string) ([]string, string, erro
 	skipOlderLogs := false
 	offset := oldOffset
 	for _, msg := range msgLines {
-		newOffset, content := parseOffset(msg)
-		if newOffset == "" {
+		newOffset, content, e := parseOffset(msg)
+		if e != nil {
 			break
 		}
 		if newOffset == oldOffset {
@@ -164,8 +164,7 @@ func getPodLogs(podName string, offset string) ([]string, string, error) {
 		return nil, "", fmt.Errorf("getPodLogs error: %v\n%v", string(output), err)
 	}
 
-	logs, newOffset, err := getOffsetAndContentFromLogs(string(output), offset)
-	return logs, newOffset, nil
+	return getOffsetAndContentFromLogs(string(output), offset)
 }
 
 func waitUntilComplete(token pb.FetchToken) (wf *wfv1.Workflow, err error) {

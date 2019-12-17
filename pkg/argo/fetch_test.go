@@ -67,7 +67,7 @@ spec:
 	podYAML = `apiVersion: v1
 kind: Pod
 metadata:
-  name: sqlflow-pod
+  generateName: sqlflow-pod-
 spec:
   restartPolicy: Never
   containers:
@@ -108,18 +108,13 @@ func kubectlCreateFromYAML(content string) (string, error) {
 	return getWorkflowID(string(output))
 }
 
-func kubectlDeleteFromYAML(content string) (string, error) {
-	fileName, err := createAndWriteTempFile(content)
+func kubectlDeletePod(podID string) error {
+	cmd := exec.Command("kubectl", "delete", "pod", podID, "--ignore-not-found")
+	_, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", err
+		return fmt.Errorf("failed %s, %v", cmd, err)
 	}
-	defer os.Remove(fileName)
-	cmd := exec.Command("kubectl", "delete", "-f", fileName, "--ignore-not-found")
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return "", fmt.Errorf("delete k8s resource error: %v\n%v", string(output), err)
-	}
-	return string(output), err
+	return nil
 }
 
 func TestGetCurrentStepGroup(t *testing.T) {
@@ -277,26 +272,28 @@ func TestGetPodLogs(t *testing.T) {
 		t.Skip("argo: skip workflow tests")
 	}
 	a := assert.New(t)
-	_, err := kubectlDeleteFromYAML(podYAML)
-	a.NoError(err)
 	podID, err := kubectlCreateFromYAML(podYAML)
 	a.NoError(err)
+	defer kubectlDeletePod(podID)
 
 	err = waitUntilPodRunning(podID)
 	a.NoError(err)
 	offset := ""
-	realLogs := []string{}
+	actual := []string{}
+	expected := []string{"hello1", "hello2", "hello3"}
 	for {
+		isPodCompleted := isPodCompleted(podID)
 		logs, newOffset, err := getPodLogs(podID, offset)
 		a.NoError(err)
 		if len(logs) != 0 {
-			realLogs = append(realLogs, logs...)
+			actual = append(actual, logs...)
 		}
-		if isPodCompleted(podID) && offset == newOffset {
+		if isPodCompleted && offset == newOffset {
 			break
 		}
 		offset = newOffset
+		time.Sleep(1 * time.Second)
 	}
-	a.Equal(realLogs, []string{"hello1", "hello2", "hello3"})
+	a.Equal(expected, actual)
 
 }
