@@ -20,12 +20,12 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"sqlflow.org/sqlflow/pkg/parser"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
 func TestTrainALPSFiller(t *testing.T) {
 	a := assert.New(t)
-	parser := newExtendedSyntaxParser()
 
 	wndStatement := `SELECT dense, deep, wide FROM kaggle_credit_fraud_training_data 
 		TO TRAIN DNNLinearCombinedClassifier 
@@ -44,7 +44,7 @@ func TestTrainALPSFiller(t *testing.T) {
 		LABEL c3
 		INTO model_table;`
 
-	r, e := parser.Parse(wndStatement)
+	r, e := parser.LegacyParse(wndStatement)
 	a.NoError(e)
 	session := &pb.Session{UserId: "sqlflow_user"}
 	filler, e := newALPSTrainFiller(r, nil, session)
@@ -64,7 +64,6 @@ func TestTrainALPSFiller(t *testing.T) {
 
 func TestTrainALPSEmbeddingInitializer(t *testing.T) {
 	a := assert.New(t)
-	parser := newExtendedSyntaxParser()
 
 	wndStatement := `SELECT deep FROM kaggle_credit_fraud_training_data 
 		TO TRAIN DNNClassifier 
@@ -78,7 +77,7 @@ func TestTrainALPSEmbeddingInitializer(t *testing.T) {
 		LABEL class
 		INTO model_table;`
 
-	r, e := parser.Parse(wndStatement)
+	r, e := parser.LegacyParse(wndStatement)
 	a.NoError(e)
 	session := &pb.Session{UserId: "sqlflow_user"}
 	filler, e := newALPSTrainFiller(r, nil, session)
@@ -88,7 +87,7 @@ func TestTrainALPSEmbeddingInitializer(t *testing.T) {
 
 func TestPredALPSFiller(t *testing.T) {
 	a := assert.New(t)
-	parser := newExtendedSyntaxParser()
+
 	os.Setenv("OSS_KEY", "sqlflow_key")
 	os.Setenv("OSS_ID", "sqlflow_id")
 	os.Setenv("OSS_ENDPOINT", "http://sqlflow-oss-endpoint")
@@ -96,7 +95,7 @@ func TestPredALPSFiller(t *testing.T) {
 		TO PREDICT db.predict_result
 		USING sqlflow_model;`
 
-	r, e := parser.Parse(predStatement)
+	r, e := parser.LegacyParse(predStatement)
 	a.NoError(e)
 	session := &pb.Session{UserId: "sqlflow_user"}
 	filler, e := newALPSPredictFiller(r, session)

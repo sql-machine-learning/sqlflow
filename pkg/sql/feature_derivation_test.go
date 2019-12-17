@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"sqlflow.org/sqlflow/pkg/parser"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
 	"sqlflow.org/sqlflow/pkg/sql/testdata"
 )
@@ -65,15 +66,13 @@ func TestFeatureDerivation(t *testing.T) {
 		a.Fail("error creating test data: %v", err)
 	}
 
-	parser := newExtendedSyntaxParser()
-
 	normal := `select c1, c2, c3, c4, c5, c6, class from feature_derivation_case.train
 	TO TRAIN DNNClassifier
 	WITH model.n_classes=2
 	COLUMN EMBEDDING(c3, 128, sum), EMBEDDING(SPARSE(c5, 10000, COMMA), 128, sum)
 	LABEL class INTO model_table;`
 
-	r, e := parser.Parse(normal)
+	r, e := parser.LegacyParse(normal)
 	a.NoError(e)
 	trainStmt, e := generateTrainStmt(r, "mysql://root:root@tcp/?maxAllowedPacket=0")
 	a.NoError(e)
@@ -142,8 +141,7 @@ func TestFeatureDerivation(t *testing.T) {
 	COLUMN c1, c2, CROSS([c1, c2], 256)
 	LABEL class INTO model_table;`
 
-	parser = newExtendedSyntaxParser()
-	r, e = parser.Parse(crossSQL)
+	r, e = parser.LegacyParse(crossSQL)
 	a.NoError(e)
 	trainStmt, e = generateTrainStmt(r, "mysql://root:root@tcp/?maxAllowedPacket=0")
 	a.NoError(e)
@@ -193,14 +191,12 @@ func TestFeatureDerivationNoColumnClause(t *testing.T) {
 		a.Fail("error creating test data: %v", err)
 	}
 
-	parser := newExtendedSyntaxParser()
-
 	normal := `select * from iris.train
 	TO TRAIN DNNClassifier
 	WITH model.n_classes=3, model.hidden_units=[10,10]
 	LABEL class INTO model_table;`
 
-	r, e := parser.Parse(normal)
+	r, e := parser.LegacyParse(normal)
 	a.NoError(e)
 	trainStmt, e := generateTrainStmt(r, "mysql://root:root@tcp/?maxAllowedPacket=0")
 	a.NoError(e)
