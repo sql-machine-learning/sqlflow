@@ -24,7 +24,7 @@ import (
 )
 
 func TestNewSQLWriter(t *testing.T) {
-	testDriver = getEnv("SQLFLOW_TEST_DB", "mysql")
+	testDriver := getEnv("SQLFLOW_TEST_DB", "mysql")
 	if testDriver == "hive" {
 		t.Skip("Skip as SQLFLOW_TEST_DB is Hive")
 	}
@@ -46,7 +46,7 @@ func TestNewSQLWriter(t *testing.T) {
 }
 
 func TestSQLWriterWriteAndRead(t *testing.T) {
-	testDriver = getEnv("SQLFLOW_TEST_DB", "mysql")
+	testDriver := getEnv("SQLFLOW_TEST_DB", "mysql")
 	if testDriver == "hive" {
 		t.Skip("Skip as SQLFLOW_TEST_DB is Hive")
 	}

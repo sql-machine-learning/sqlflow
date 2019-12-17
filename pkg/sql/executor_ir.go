@@ -272,7 +272,7 @@ func createPredictionTable(predParsed *extendedSelect, db *DB, session *pb.Sessi
 		if !ok {
 			return fmt.Errorf("createPredictionTable: Cannot find type of field %s", name)
 		}
-		stype, e := universalizeColumnType(db.driverName, typ)
+		stype, e := fieldType(db.driverName, typ)
 		if e != nil {
 			return e
 		}
@@ -287,7 +287,7 @@ func createPredictionTable(predParsed *extendedSelect, db *DB, session *pb.Sessi
 		// NOTE(typhoonzero): Clustering model may not have label in select statement, default use INT type
 		typ = "INT"
 	}
-	stype, e := universalizeColumnType(db.driverName, typ)
+	stype, e := fieldType(db.driverName, typ)
 	if e != nil {
 		return e
 	}
@@ -319,19 +319,19 @@ func createPredictionTableFromIR(predStmt *ir.PredictStmt, db *DB, session *pb.S
 	}
 
 	var b bytes.Buffer
-	labelColumnTypeFound := false
-	labelColumnName := ""
+	// NOTE(typhoonzero): predStmt.TrainStmt may be nil, because the model may not loaded when
+	// creating prediction table.
+	// trainLabelColumn := predStmt.TrainStmt.Label
+	labelColumnName := predStmt.ResultColumn
 	labelColumnType := ""
 	fmt.Fprintf(&b, "create table %s (", predStmt.ResultTable)
 	for idx, colType := range fts {
-		stype, e := universalizeColumnType(db.driverName, colType)
+		stype, e := fieldType(db.driverName, colType)
 		if e != nil {
 			return e
 		}
 		fldName := flds[idx]
-		if fldName == predStmt.ResultColumn {
-			labelColumnTypeFound = true
-			labelColumnName = fldName
+		if fldName == labelColumnName {
 			labelColumnType = stype
 			continue
 		}
@@ -341,13 +341,13 @@ func createPredictionTableFromIR(predStmt *ir.PredictStmt, db *DB, session *pb.S
 	// TODO(Yancey1989): For the current implementation, the prediction result column
 	// type is derivated by the pred-select-statement, the better way is derivating
 	// the result column type by the prediction result.
-	// typ, ok := fts.get(predStmt.ResultColumn)
-	if !labelColumnTypeFound {
+	//
+	// label column not found in predict table, create a column specified by PREDICT clause:
+	if labelColumnType == "" {
 		// NOTE(typhoonzero): Clustering model may not have label in select statement, default use INT type
-		labelColumnName = predStmt.ResultColumn
 		labelColumnType = "INT"
 	}
-	stype, e := universalizeColumnType(db.driverName, labelColumnType)
+	stype, e := fieldType(db.driverName, labelColumnType)
 	if e != nil {
 		return e
 	}

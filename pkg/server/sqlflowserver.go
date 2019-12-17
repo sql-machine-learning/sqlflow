@@ -20,6 +20,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -115,7 +116,7 @@ func encodeHead(head map[string]interface{}) (*pb.Response, error) {
 func encodeRow(row []interface{}) (*pb.Response, error) {
 	encodedRow := &pb.Row{}
 	for _, element := range row {
-		pm, err := parse2Any(element)
+		pm, err := encodePODType(element)
 		if err != nil {
 			return nil, err
 		}
@@ -132,32 +133,20 @@ func encodeMessage(s string) (*pb.Response, error) {
 	return &pb.Response{Response: &pb.Response_Message{Message: &pb.Message{Message: s}}}, nil
 }
 
-func parse2Any(val interface{}) (proto.Message, error) {
+func encodePODType(val interface{}) (proto.Message, error) {
 	switch v := val.(type) {
 	case nil:
 		return &pb.Row_Null{}, nil
 	case bool:
 		return &wrappers.BoolValue{Value: v}, nil
-	case int8:
-		return &wrappers.Int32Value{Value: int32(v)}, nil
-	case int16:
-		return &wrappers.Int32Value{Value: int32(v)}, nil
-	case int32:
-		return &wrappers.Int32Value{Value: v}, nil
-	case int:
-		return &wrappers.Int64Value{Value: int64(v)}, nil
-	case int64:
-		return &wrappers.Int64Value{Value: v}, nil
-	case uint8:
-		return &wrappers.UInt32Value{Value: uint32(v)}, nil
-	case uint16:
-		return &wrappers.UInt32Value{Value: uint32(v)}, nil
-	case uint32:
-		return &wrappers.UInt32Value{Value: v}, nil
-	case uint:
-		return &wrappers.UInt64Value{Value: uint64(v)}, nil
-	case uint64:
-		return &wrappers.UInt64Value{Value: v}, nil
+	case int8, int16, int32:
+		return &wrappers.Int32Value{Value: int32(reflect.ValueOf(val).Int())}, nil
+	case int, int64:
+		return &wrappers.Int64Value{Value: int64(reflect.ValueOf(val).Int())}, nil
+	case uint8, uint16, uint32:
+		return &wrappers.UInt32Value{Value: uint32(reflect.ValueOf(val).Uint())}, nil
+	case uint, uint64:
+		return &wrappers.UInt64Value{Value: uint64(reflect.ValueOf(val).Uint())}, nil
 	case float32:
 		return &wrappers.FloatValue{Value: v}, nil
 	case float64:
@@ -171,6 +160,6 @@ func parse2Any(val interface{}) (proto.Message, error) {
 			Seconds: int64(v.Unix()),
 			Nanos:   int32(v.Nanosecond())}, nil
 	default:
-		return nil, fmt.Errorf("can't convert %#v to protobuf.Any", val)
+		return nil, fmt.Errorf("Unknown Go type %#v to be converted into protobuf.Any", val)
 	}
 }

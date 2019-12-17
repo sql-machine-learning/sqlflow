@@ -49,7 +49,7 @@ From the above Couler function:
 protobuf text format, the protobuf definition is as follows:
 
 ```protobuf
-message FieldMeta {
+message FieldDesc {
     required string name = 1;
     required FieldType dtype = 2;
     optional string delimiter = 3;
@@ -60,7 +60,7 @@ message FieldMeta {
 }
 
 message NumericColumn {
-    FieldMeta field_meta = 1;
+    FieldDesc field_meta = 1;
 }
 
 message BucketColumn {

@@ -14,12 +14,13 @@
 package pai
 
 type wrapperFiller struct {
-	DataSource string
-	EntryFile  string
-	ModelName  string
-	NumPS      int
-	NumWorkers int // num_workers > 1 indicates we are running distributed training.
-	PAITable   string
+	DataSource  string
+	EntryFile   string
+	ModelName   string
+	NumPS       int
+	NumWorkers  int // num_workers > 1 indicates we are running distributed training.
+	PAIDatabase string
+	PAITable    string
 }
 
 type saveModelFiller struct {
@@ -58,11 +59,12 @@ user, passwd, address, database = sqlflow_submitter.db.parseMaxComputeDSN(dsn)
 
 jobname = '_'.join(['sqlflow', '{{.ModelName}}'.replace('.', '_')])
 # The tags candidate list is: "cnn,dnn,rnn,bert,ctr,cvr,inception,resnet,gnn,gcn,ocr,maskrcnn,transformer,nmt,others". Use "others" if you are not sure which tags you need.
+# -Dbuckets="oss://xiongmu-sqlflow/?role_arn=acs:ram::1696257213098919:role/paitf&host=cn-zhangjiakou.oss-internal.aliyun-inc.com" -DcheckpointDir="oss://xiongmu-sqlflow/?role_arn=acs:ram::1696257213098919:role/paitf&host=cn-zhangjiakou.oss-internal.aliyun-inc.com"
 {{if gt .NumWorkers 1}}
-pai_cmd = 'pai -name %s -DjobName=%s -Dtags=%s -Dscript=file://%s -DentryFile=%s -DgpuRequired=\'\' -Dtables=odps://alifin_jtest_dev/tables/sqlflow_test_iris_train -Dbuckets="oss://xiongmu-sqlflow/?role_arn=acs:ram::1696257213098919:role/paitf&host=cn-zhangjiakou.oss-internal.aliyun-inc.com" -DcheckpointDir="oss://xiongmu-sqlflow/?role_arn=acs:ram::1696257213098919:role/paitf&host=cn-zhangjiakou.oss-internal.aliyun-inc.com" -Dcluster=\'{\"ps\":{\"count\":{{.NumPS}}}, \"worker\":{\"count\":{{.NumWorkers}}}}\'' % (
+pai_cmd = 'pai -name %s -DjobName=%s -Dtags=%s -Dscript=file://%s -DentryFile=%s -DgpuRequired=\'\' -Dtables=odps://%s/tables/%s -Dcluster=\'{\"ps\":{\"count\":{{.NumPS}}}, \"worker\":{\"count\":{{.NumWorkers}}}}\'' % (
     'tensorflow1120', jobname, 'dnn', tarball, '{{.EntryFile}}')
 {{else}}
-pai_cmd = 'pai -name %s -DjobName=%s -Dtags=%s -Dscript=file://%s -DentryFile=%s -DgpuRequired=\'\' -Dtables=odps://alifin_jtest_dev/tables/sqlflow_test_iris_train' % (
+pai_cmd = 'pai -name %s -DjobName=%s -Dtags=%s -Dscript=file://%s -DentryFile=%s -DgpuRequired=\'\' -Dtables=odps://%s/tables/%s' % (
     'tensorflow1120', jobname, 'dnn', tarball, '{{.EntryFile}}')
 {{end}}
 

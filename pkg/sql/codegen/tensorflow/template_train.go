@@ -21,9 +21,9 @@ type trainFiller struct {
 	ValidationSelect  string
 	Estimator         string
 	IsKerasModel      bool
-	FieldMetas        []*ir.FieldMeta
+	FieldDescs        []*ir.FieldDesc
 	FeatureColumnCode string
-	Y                 *ir.FieldMeta
+	Y                 *ir.FieldDesc
 	ModelParams       map[string]interface{}
 	TrainParams       map[string]interface{}
 	ValidationParams  map[string]interface{}
@@ -40,12 +40,12 @@ try:
 except:
     pass
 
-feature_column_names = [{{range .FieldMetas}}
+feature_column_names = [{{range .FieldDescs}}
 "{{.Name}}",
 {{end}}]
 
 feature_metas = dict()
-{{ range $value := .FieldMetas }}
+{{ range $value := .FieldDescs }}
 feature_metas["{{$value.Name}}"] = {
     "feature_name": "{{$value.Name}}",
     "dtype": "{{$value.DType | dtypeToString}}",
@@ -72,7 +72,6 @@ feature_columns = {{.FeatureColumnCode}}
 
 train_max_steps = {{index .TrainParams "max_steps" | attrToPythonValue}}
 train_max_steps = None if train_max_steps == 0 else train_max_steps
-
 
 train(is_keras_model="{{.IsKerasModel}}" == "true",
     datasource="{{.DataSource}}",

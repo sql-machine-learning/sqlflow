@@ -65,6 +65,11 @@ func uploadCSVFile(csv *os.File, db *sql.DB, hivePath, table, user, passwd strin
 		if _, e := cmd.CombinedOutput(); e != nil {
 			return fmt.Errorf("failed %s: %v", cmd, e)
 		}
+		defer func() {
+			cmd = exec.Command("hdfs", "dfs", "-rm", "-r", "-f", hdfsPath)
+			cmd.Env = hdfsEnv
+			cmd.CombinedOutput()
+		}()
 
 		cmd = exec.Command("hdfs", "dfs", "-copyFromLocal", csv.Name(), hdfsPath)
 		cmd.Env = hdfsEnv

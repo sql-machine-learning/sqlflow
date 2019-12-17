@@ -41,14 +41,7 @@ except:
     TF_VERSION_2 = False
 
 # for PAI distributed training
-if TF_VERSION_2:
-    tf.compat.v1.flags.DEFINE_integer("task_index", 0, "Worker task index")
-    tf.compat.v1.flags.DEFINE_string("ps_hosts", "", "ps hosts")
-    tf.compat.v1.flags.DEFINE_string("worker_hosts", "", "worker hosts")
-    tf.compat.v1.flags.DEFINE_string("job_name", 'worker', "job name: worker or ps")
-    tf.compat.v1.flags.DEFINE_string("checkpointDir", "", "oss info")
-    FLAGS = tf.compat.v1.flags.FLAGS
-else:
+if not TF_VERSION_2:
     tf.app.flags.DEFINE_integer("task_index", 0, "Worker task index")
     tf.app.flags.DEFINE_string("ps_hosts", "", "ps hosts")
     tf.app.flags.DEFINE_string("worker_hosts", "", "worker hosts")
@@ -166,8 +159,8 @@ def train(is_keras_model,
                 tf.get_logger().setLevel(logging.INFO)
             else:
                 tf.logging.set_verbosity(tf.logging.INFO)
-
-    conn = connect_with_data_source(datasource)
+    if not is_pai:
+        conn = connect_with_data_source(datasource)
     model_params.update(feature_columns)
 
     def input_fn(datasetStr):
@@ -209,16 +202,12 @@ def train(is_keras_model,
                                      record_defaults=record_defaults,
                                      selected_cols=",".join(selected_cols))
         def tensor_to_dict(*args):
-            print("args: ", args)
             num_features = len(feature_column_names)
-            print("num_features:", num_features)
             label = args[num_features]
             features_dict = dict()
             for idx in range(num_features):
                 name = feature_column_names[idx]
                 features_dict[name] = tf.reshape(args[idx], [-1])
-            print(features_dict)
-            print("label: ", label)
             return features_dict, label
 
         return dataset.map(tensor_to_dict)
@@ -235,7 +224,10 @@ def train(is_keras_model,
         return dataset
 
     def validate_input_fn(batch_size):
-        dataset = input_fn(validate_select)
+        if is_pai:
+            dataset = pai_maxcompute_input_fn(validate_select)
+        else:
+            dataset = input_fn(validate_select)
         return dataset.batch(batch_size).cache()
 
     if is_keras_model:
@@ -266,26 +258,21 @@ def train(is_keras_model,
         classifier.save_weights(save, save_format="h5")
     else:
         is_distributed = False
-        if len(FLAGS.worker_hosts.split(",")) > 1:
-            is_distributed = True
+        # only support distributed training on PAI (TF version 1.x)
+        if not TF_VERSION_2:
+            if len(FLAGS.worker_hosts.split(",")) > 1:
+                is_distributed = True
         if is_distributed:
-            if TF_VERSION_2:
-                dist_strategy = tf.distribute.experimental.ParameterServerStrategy()
-            else:
-                dist_strategy = tf.contrib.distribute.ParameterServerStrategy()
-            run_config = tf.estimator.RunConfig(train_distribute=dist_strategy)
-        
-        if is_pai:
-            print("using checkpoint dir: ", FLAGS.checkpointDir)
-            model_params["model_dir"] = FLAGS.checkpointDir
-        else:
-            model_params["model_dir"] = save
-        if is_distributed:
+            dist_strategy = tf.contrib.distribute.ParameterServerStrategy()
             model_params["config"] = tf.estimator.RunConfig(save_checkpoints_steps=save_checkpoints_steps,
-                keep_checkpoint_max=0,
                 train_distribute=dist_strategy)
         else:
             model_params["config"] = tf.estimator.RunConfig(save_checkpoints_steps=save_checkpoints_steps)
+        # if is_pai:
+        #     print("using checkpoint dir: ", FLAGS.checkpointDir)
+        #     model_params["model_dir"] = FLAGS.checkpointDir
+        # else:
+        model_params["model_dir"] = save
         classifier = estimator(**model_params)
 
         if validate_select == "":
@@ -304,3 +291,4 @@ def train(is_keras_model,
             print(result[0])
 
     print("Done training")
+
