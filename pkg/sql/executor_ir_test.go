@@ -245,16 +245,6 @@ USING sqlflow_models.my_dense_dnn_model
 	})
 }
 
-func TestCreatePredictionTable(t *testing.T) {
-	a := assert.New(t)
-	trainParsed, e := newExtendedSyntaxParser().Parse(testTrainSelectIris)
-	a.NoError(e)
-	predParsed, e := newExtendedSyntaxParser().Parse(testPredictSelectIris)
-	a.NoError(e)
-	predParsed.trainClause = trainParsed.trainClause
-	a.NoError(createPredictionTable(predParsed, testDB, nil))
-}
-
 func TestLogChanWriter_Write(t *testing.T) {
 	a := assert.New(t)
 	rd, wr := Pipe()
