@@ -18,8 +18,7 @@ var (
 	// the parser.
 	SelectCases = []string{
 		`select 1`,
-		`select * from my_table
-`,
+		`select * from my_table`,
 		`-- this is a comment
 select
 1`,
