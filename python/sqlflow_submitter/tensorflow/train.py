@@ -263,6 +263,8 @@ def train(is_keras_model,
             if len(FLAGS.worker_hosts.split(",")) > 1:
                 is_distributed = True
         if is_distributed:
+            cluster, task_type, task_index = make_distributed_info_without_evaluator()
+            dump_into_tf_config(cluster, task_type, task_index)
             dist_strategy = tf.contrib.distribute.ParameterServerStrategy()
             model_params["config"] = tf.estimator.RunConfig(save_checkpoints_steps=save_checkpoints_steps,
                 train_distribute=dist_strategy)

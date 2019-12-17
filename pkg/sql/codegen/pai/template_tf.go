@@ -62,10 +62,10 @@ jobname = '_'.join(['sqlflow', '{{.ModelName}}'.replace('.', '_')])
 # -Dbuckets="oss://xiongmu-sqlflow/?role_arn=acs:ram::1696257213098919:role/paitf&host=cn-zhangjiakou.oss-internal.aliyun-inc.com" -DcheckpointDir="oss://xiongmu-sqlflow/?role_arn=acs:ram::1696257213098919:role/paitf&host=cn-zhangjiakou.oss-internal.aliyun-inc.com"
 {{if gt .NumWorkers 1}}
 pai_cmd = 'pai -name %s -DjobName=%s -Dtags=%s -Dscript=file://%s -DentryFile=%s -DgpuRequired=\'\' -Dtables=odps://%s/tables/%s -Dcluster=\'{\"ps\":{\"count\":{{.NumPS}}}, \"worker\":{\"count\":{{.NumWorkers}}}}\'' % (
-    'tensorflow1120', jobname, 'dnn', tarball, '{{.EntryFile}}')
+    'tensorflow1120', jobname, 'dnn', tarball, '{{.EntryFile}}', '{{.PAIDatabase}}', '{{.PAITable}}')
 {{else}}
 pai_cmd = 'pai -name %s -DjobName=%s -Dtags=%s -Dscript=file://%s -DentryFile=%s -DgpuRequired=\'\' -Dtables=odps://%s/tables/%s' % (
-    'tensorflow1120', jobname, 'dnn', tarball, '{{.EntryFile}}')
+    'tensorflow1120', jobname, 'dnn', tarball, '{{.EntryFile}}', '{{.PAIDatabase}}', '{{.PAITable}}')
 {{end}}
 
 # Submit the tarball to PAI
