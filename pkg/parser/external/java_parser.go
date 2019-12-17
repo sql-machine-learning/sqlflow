@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package parser
+package external
 
 import (
 	"encoding/json"
@@ -40,7 +40,7 @@ type parseResult struct {
 	Error      string   `json:"error"`
 }
 
-func (p *javaParser) Type() string {
+func (p *javaParser) Dialect() string {
 	return "java"
 }
 

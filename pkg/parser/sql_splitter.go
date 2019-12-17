@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package parser
 
 import (
 	"fmt"
@@ -22,7 +22,7 @@ import (
 // SQL statements separated by ;
 func SplitMultipleSQL(statements string) ([]string, error) {
 	l := newLexer(statements)
-	var n sqlSymType
+	var n extendedSyntaxSymType
 	var sqlList []string
 	splitPos := 0
 	for {

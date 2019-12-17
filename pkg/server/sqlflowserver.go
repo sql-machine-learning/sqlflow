@@ -28,6 +28,7 @@ import (
 	pyts "github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/golang/protobuf/ptypes/wrappers"
 
+	"sqlflow.org/sqlflow/pkg/parser"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	sf "sqlflow.org/sqlflow/pkg/sql"
 )
@@ -52,7 +53,7 @@ func (s *Server) Fetch(ctx context.Context, job *pb.FetchToken) (*pb.FetchRespon
 
 // Run implements `rpc Run (Request) returns (stream Response)`
 func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
-	sqlStatements, err := sf.SplitMultipleSQL(req.Sql)
+	sqlStatements, err := parser.SplitMultipleSQL(req.Sql)
 	if err != nil {
 		return err
 	}

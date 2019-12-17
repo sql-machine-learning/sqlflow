@@ -26,6 +26,7 @@ import (
 	"text/template"
 
 	"sqlflow.org/gomaxcompute"
+	"sqlflow.org/sqlflow/pkg/parser"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/columns"
 )
@@ -177,8 +178,8 @@ func modelCreatorCode(resolved *resolvedTrainClause, args []string) (string, str
 		fmt.Sprintf("%s(%s)", modelName, strings.Join(cl, ",")), nil
 }
 
-func newALPSTrainFiller(pr *extendedSelect, db *DB, session *pb.Session) (*alpsFiller, error) {
-	resolved, err := resolveTrainClause(&pr.trainClause, &pr.standardSelect)
+func newALPSTrainFiller(pr *parser.SQLFlowSelectStmt, db *DB, session *pb.Session) (*alpsFiller, error) {
+	resolved, err := resolveTrainClause(&pr.TrainClause, &pr.StandardSelect)
 	if err != nil {
 		return nil, err
 	}
@@ -189,7 +190,7 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB, session *pb.Session) (*alpsF
 	// TODO(joyyoj) read feature mapping table's name from table attributes.
 	// TODO(joyyoj) pr may contains partition.
 	fmap := columns.FeatureMap{
-		Table:     pr.tables[0] + "_feature_map",
+		Table:     pr.Tables[0] + "_feature_map",
 		Partition: ""}
 	var meta metadata
 	fields := make([]string, 0)
@@ -198,7 +199,7 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB, session *pb.Session) (*alpsF
 		if err != nil {
 			return nil, err
 		}
-		meta = metadata{odpsConfig, pr.tables[0], &fmap, nil}
+		meta = metadata{odpsConfig, pr.Tables[0], &fmap, nil}
 		fields, err = getFields(&meta, pr)
 		if err != nil {
 			return nil, err
@@ -206,7 +207,7 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB, session *pb.Session) (*alpsF
 		columnInfo, err = meta.getColumnInfo(resolved, fields)
 		meta.columnInfo = &columnInfo
 	} else {
-		meta = metadata{odpsConfig, pr.tables[0], nil, nil}
+		meta = metadata{odpsConfig, pr.Tables[0], nil, nil}
 		columnInfo = map[string]*columns.ColumnSpec{}
 		for _, css := range resolved.ColumnSpecs {
 			for _, cs := range css {
@@ -226,7 +227,7 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB, session *pb.Session) (*alpsF
 		csCode = append(csCode, cs.ToString())
 	}
 	y := &columns.ColumnSpec{
-		ColumnName: pr.label,
+		ColumnName: pr.Label,
 		IsSparse:   false,
 		Shape:      []int{1},
 		DType:      "int",
@@ -281,9 +282,9 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB, session *pb.Session) (*alpsF
 	} else {
 		scratchDir = ""
 		// TODO(joyyoj) hard code currently.
-		modelDir = fmt.Sprintf("arks://%s/%s.tar.gz", filepath.Join("sqlflow", userID), pr.trainClause.save)
+		modelDir = fmt.Sprintf("arks://%s/%s.tar.gz", filepath.Join("sqlflow", userID), pr.TrainClause.Save)
 	}
-	trainTable, evalTable := pr.tables[0], resolved.ValidationTable
+	trainTable, evalTable := pr.Tables[0], resolved.ValidationTable
 	log.Printf("Will save the models on: %s\n", modelDir)
 	return &alpsFiller{
 		IsTraining:          true,
@@ -307,21 +308,21 @@ func newALPSTrainFiller(pr *extendedSelect, db *DB, session *pb.Session) (*alpsF
 		ExitOnSubmit:        exitOnSubmit}, nil
 }
 
-func newALPSPredictFiller(pr *extendedSelect, session *pb.Session) (*alpsFiller, error) {
+func newALPSPredictFiller(pr *parser.SQLFlowSelectStmt, session *pb.Session) (*alpsFiller, error) {
 	ossID := os.Getenv("OSS_ID")
 	ossKey := os.Getenv("OSS_KEY")
 	ossEp := os.Getenv("OSS_ENDPOINT")
 	if ossID == "" || ossKey == "" || ossEp == "" {
 		return nil, fmt.Errorf("Should set env OSS_ID, OSS_KEY and OSS_ENDPOINT while launch sqlflowserver")
 	}
-	modelDir := fmt.Sprintf("oss://cmps-model/sqlflow/%s/%s.tar.gz", session.UserId, pr.predictClause.model)
+	modelDir := fmt.Sprintf("oss://cmps-model/sqlflow/%s/%s.tar.gz", session.UserId, pr.PredictClause.Model)
 
 	return &alpsFiller{
 		IsTraining:         false,
-		PredictInputTable:  pr.tables[0],
-		PredictOutputTable: pr.predictClause.into,
-		PredictUDF:         strings.Join(pr.fields.Strings(), " "),
-		PredictInputModel:  pr.predictClause.model,
+		PredictInputTable:  pr.Tables[0],
+		PredictOutputTable: pr.PredictClause.Into,
+		PredictUDF:         strings.Join(pr.Fields.Strings(), " "),
+		PredictInputModel:  pr.PredictClause.Model,
 		ModelDir:           modelDir,
 		UserID:             session.UserId,
 		OSSID:              ossID,
@@ -330,7 +331,7 @@ func newALPSPredictFiller(pr *extendedSelect, session *pb.Session) (*alpsFiller,
 	}, nil
 }
 
-func alpsTrain(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *pb.Session) error {
+func alpsTrain(w *PipeWriter, pr *parser.SQLFlowSelectStmt, db *DB, cwd string, session *pb.Session) error {
 	var program bytes.Buffer
 	filler, err := newALPSTrainFiller(pr, db, session)
 	if err != nil {
@@ -373,7 +374,7 @@ pip install http://091349.oss-cn-hangzhou-zmf.aliyuncs.com/alps/sqlflow/alps-2.0
 	return nil
 }
 
-func alpsPred(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *pb.Session) error {
+func alpsPred(w *PipeWriter, pr *parser.SQLFlowSelectStmt, db *DB, cwd string, session *pb.Session) error {
 	var program bytes.Buffer
 	filler, err := newALPSPredictFiller(pr, session)
 	if err != nil {
@@ -611,8 +612,8 @@ func (meta *metadata) descTable() ([]*sql.ColumnType, error) {
 	return rows.ColumnTypes()
 }
 
-func getFields(meta *metadata, pr *extendedSelect) ([]string, error) {
-	selectFields := pr.standardSelect.fields.Strings()
+func getFields(meta *metadata, pr *parser.SQLFlowSelectStmt) ([]string, error) {
+	selectFields := pr.StandardSelect.Fields.Strings()
 	if len(selectFields) == 1 && selectFields[0] == "*" {
 		selectFields = make([]string, 0)
 		columnTypes, err := meta.descTable()
@@ -620,7 +621,7 @@ func getFields(meta *metadata, pr *extendedSelect) ([]string, error) {
 			return selectFields, err
 		}
 		for _, columnType := range columnTypes {
-			if columnType.Name() != pr.label {
+			if columnType.Name() != pr.Label {
 				selectFields = append(selectFields, columnType.Name())
 			}
 		}
@@ -628,7 +629,7 @@ func getFields(meta *metadata, pr *extendedSelect) ([]string, error) {
 	}
 	fields := make([]string, 0)
 	for _, field := range selectFields {
-		if field != pr.label {
+		if field != pr.Label {
 			fields = append(fields, field)
 		}
 	}

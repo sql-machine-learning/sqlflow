@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package parser
 
 import (
 	"testing"
@@ -22,7 +22,7 @@ import (
 func TestNewLexer(t *testing.T) {
 	a := assert.New(t)
 	l := newLexer("")
-	var n sqlSymType
+	var n extendedSyntaxSymType
 	ret := l.Lex(&n)
 	a.Equal(0, ret)
 }
@@ -54,7 +54,7 @@ func TestSkipSpaces(t *testing.T) {
 func TestLexNumber(t *testing.T) {
 	a := assert.New(t)
 	l := newLexer("123.4")
-	var n sqlSymType
+	var n extendedSyntaxSymType
 	a.Equal(NUMBER, l.Lex(&n))
 	a.Equal("123.4", n.val)
 
@@ -76,7 +76,7 @@ func TestLexNumber(t *testing.T) {
 func TestLexString(t *testing.T) {
 	a := assert.New(t)
 	l := newLexer(`  "\""  `)
-	var n sqlSymType
+	var n extendedSyntaxSymType
 	a.Equal(STRING, l.Lex(&n))
 	a.Equal(`"\""`, n.val)
 }
@@ -92,7 +92,7 @@ func TestLexOperator(t *testing.T) {
 		"+", "-", "**", "*", "/", "%", "(", ")", "[", "]",
 		"{", "}", "<", "<=", "=", ",", ";"}
 	i := 0
-	var n sqlSymType
+	var n extendedSyntaxSymType
 	for {
 		typ := l.Lex(&n)
 		if typ == 0 {
@@ -110,7 +110,7 @@ func TestLexIdentOrKeyword(t *testing.T) {
 		"and", "or", "not"}
 	typs := []int{IDENT, IDENT, IDENT, SELECT, FROM, WHERE, TRAIN, COLUMN,
 		AND, OR, NOT}
-	var n sqlSymType
+	var n extendedSyntaxSymType
 	for i, it := range vals {
 		l := newLexer(it)
 		a.Equal(typs[i], l.Lex(&n))
@@ -126,7 +126,7 @@ func TestLexSQL(t *testing.T) {
 	vals := []string{
 		"Select", "*", "from", "a_table", "where",
 		"a_table.col_1", ">", "100", ";"}
-	var n sqlSymType
+	var n extendedSyntaxSymType
 	for i := range typs {
 		a.Equal(typs[i], l.Lex(&n))
 		a.Equal(vals[i], n.val)
@@ -140,7 +140,7 @@ SELECT a,b,c,d
 FROM x.y
 WHERE c=20190806
 AND b IS NOT NULL AND b != "-" and COALESCE(d, "-")<>"-";`)
-	var n sqlSymType
+	var n extendedSyntaxSymType
 	typs := []int{
 		IDENT, IDENT, IDENT, AS,
 		SELECT, IDENT, ',', IDENT, ',', IDENT, ',', IDENT,
@@ -165,7 +165,7 @@ func TestLexSQLWithSingleQuote(t *testing.T) {
 	l := newLexer(`  SELECT a,b
 FROM x.y
 WHERE b='20190806';`)
-	var n sqlSymType
+	var n extendedSyntaxSymType
 	typs := []int{
 		SELECT, IDENT, ',', IDENT,
 		FROM, IDENT, WHERE, IDENT, '=', STRING, ';'}
@@ -188,7 +188,7 @@ WITH
 COLUMN a, b
 LABEL c
 INTO model_table;`)
-	var n sqlSymType
+	var n extendedSyntaxSymType
 	typs := []int{
 		SELECT, '*', FROM, IDENT, TO, TRAIN, IDENT, WITH, IDENT, '=', IDENT, COLUMN, IDENT, ',', IDENT, LABEL, IDENT, INTO, IDENT, ';'}
 	vals := []string{
@@ -209,7 +209,7 @@ TO PREDICT result_table
 WITH
   param = value
 USING model_table;`)
-	var n sqlSymType
+	var n extendedSyntaxSymType
 	typs := []int{
 		SELECT, '*', FROM, IDENT, TO, PREDICT, IDENT, WITH, IDENT, '=', IDENT, USING, IDENT, ';'}
 	vals := []string{
@@ -229,7 +229,7 @@ TO EXPLAIN my_model
 WITH
   plots = force
 USING TreeExplainer;`)
-	var n sqlSymType
+	var n extendedSyntaxSymType
 	typs := []int{
 		SELECT, '*', FROM, IDENT, TO, EXPLAIN, IDENT, WITH, IDENT, '=', IDENT, USING, IDENT, ';'}
 	vals := []string{

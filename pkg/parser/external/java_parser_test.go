@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package parser
+package external
 
 import (
 	"testing"
@@ -21,18 +21,18 @@ import (
 
 func TestCommonCasesForHive(t *testing.T) {
 	a := assert.New(t)
-	p := NewThirdPartyParser("hive")
+	p := NewParser("hive")
 	commonThirdPartyCases(p, a)
 }
 
 func TestCommonCasesForMaxCompute(t *testing.T) {
 	a := assert.New(t)
-	p := NewThirdPartyParser("maxcompute")
+	p := NewParser("maxcompute")
 	commonThirdPartyCases(p, a)
 }
 
 func TestCommonCasesForCalcite(t *testing.T) {
 	a := assert.New(t)
-	p := NewThirdPartyParser("calcite")
+	p := NewParser("calcite")
 	commonThirdPartyCases(p, a)
 }

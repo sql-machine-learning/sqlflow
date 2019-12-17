@@ -20,14 +20,13 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"sqlflow.org/sqlflow/pkg/parser"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
 
 func TestGenerateTrainStmt(t *testing.T) {
 	a := assert.New(t)
-	parser := newExtendedSyntaxParser()
-
 	normal := `
 	SELECT c1, c2, c3, c4
 	FROM my_table
@@ -52,7 +51,7 @@ func TestGenerateTrainStmt(t *testing.T) {
 	INTO mymodel;
 	`
 
-	r, e := parser.Parse(normal)
+	r, e := parser.LegacyParse(normal)
 	a.NoError(e)
 
 	trainStmt, err := generateTrainStmt(r, "mysql://root:root@tcp(127.0.0.1:3306)/iris?maxAllowedPacket=0")
@@ -164,7 +163,6 @@ func TestGenerateTrainStmt(t *testing.T) {
 
 func TestGenerateTrainStmtModelZoo(t *testing.T) {
 	a := assert.New(t)
-	parser := newExtendedSyntaxParser()
 
 	normal := `
 	SELECT c1, c2, c3, c4
@@ -177,7 +175,7 @@ func TestGenerateTrainStmtModelZoo(t *testing.T) {
 	INTO mymodel;
 	`
 
-	r, e := parser.Parse(normal)
+	r, e := parser.LegacyParse(normal)
 	a.NoError(e)
 
 	trainStmt, err := generateTrainStmt(r, "mysql://root:root@tcp(127.0.0.1:3306)/iris?maxAllowedPacket=0")
@@ -185,16 +183,17 @@ func TestGenerateTrainStmtModelZoo(t *testing.T) {
 	a.Equal("a_data_scientist/regressors:v0.2", trainStmt.ModelImage)
 	a.Equal("MyDNNRegressor", trainStmt.Estimator)
 }
+
 func TestGeneratePredictStmt(t *testing.T) {
 	if getEnv("SQLFLOW_TEST_DB", "mysql") == "hive" {
 		t.Skip(fmt.Sprintf("%s: skip Hive test", getEnv("SQLFLOW_TEST_DB", "mysql")))
 	}
 	a := assert.New(t)
-	parser := newExtendedSyntaxParser()
+
 	predSQL := `SELECT * FROM iris.test
 TO PREDICT iris.predict.class
 USING sqlflow_models.mymodel;`
-	r, e := parser.Parse(predSQL)
+	r, e := parser.LegacyParse(predSQL)
 	a.NoError(e)
 
 	connStr := "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
@@ -247,7 +246,7 @@ INTO sqlflow_models.my_xgboost_model;
 	a.NoError(e)
 	a.True(goodStream(stream.ReadAll()))
 
-	pr, e := newExtendedSyntaxParser().Parse(`
+	pr, e := parser.LegacyParse(`
 	SELECT *
 	FROM iris.train
 	TO EXPLAIN sqlflow_models.my_xgboost_model

@@ -17,22 +17,24 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"sqlflow.org/sqlflow/pkg/parser"
 )
 
 func TestVerify_1(t *testing.T) {
 	a := assert.New(t)
-	r, e := newExtendedSyntaxParser().Parse(`SELECT * FROM churn.train LIMIT 10;`)
+	r, e := parser.LegacyParse(`SELECT * FROM churn.train LIMIT 10;`)
 	a.NoError(e)
-	fts, e := verify(r.standardSelect.String(), testDB)
+	fts, e := verify(r.StandardSelect.String(), testDB)
 	a.NoError(e)
 	a.Equal(21, len(fts))
 
 	if getEnv("SQLFLOW_TEST_DB", "mysql") == "hive" {
 		t.Skip("in Hive, db_name.table_name.field_name will raise error, because . operator is only supported on struct or list of struct types")
 	}
-	r, e = newExtendedSyntaxParser().Parse(`SELECT Churn, churn.train.Partner,TotalCharges FROM churn.train LIMIT 10;`)
+
+	r, e = parser.LegacyParse(`SELECT Churn, churn.train.Partner,TotalCharges FROM churn.train LIMIT 10;`)
 	a.NoError(e)
-	fts, e = verify(r.standardSelect.String(), testDB)
+	fts, e = verify(r.StandardSelect.String(), testDB)
 	a.NoError(e)
 	a.Equal(3, len(fts))
 
@@ -54,9 +56,9 @@ func TestVerify_2(t *testing.T) {
 		t.Skip("in Hive, db_name.table_name.field_name will raise error, because . operator is only supported on struct or list of struct types")
 	}
 	a := assert.New(t)
-	r, e := newExtendedSyntaxParser().Parse(`SELECT Churn, churn.train.Partner FROM churn.train LIMIT 10;`)
+	r, e := parser.LegacyParse(`SELECT Churn, churn.train.Partner FROM churn.train LIMIT 10;`)
 	a.NoError(e)
-	fts, e := verify(r.standardSelect.String(), testDB)
+	fts, e := verify(r.StandardSelect.String(), testDB)
 	a.NoError(e)
 	a.Equal(2, len(fts))
 	typ, ok := fts.get("churn")
@@ -73,7 +75,7 @@ func TestVerify_2(t *testing.T) {
 
 func TestVerifyColumnNameAndType(t *testing.T) {
 	a := assert.New(t)
-	trainParse, e := newExtendedSyntaxParser().Parse(`SELECT gender, tenure, TotalCharges
+	trainParse, e := parser.LegacyParse(`SELECT gender, tenure, TotalCharges
 FROM churn.train LIMIT 10
 TO TRAIN DNNClassifier
 WITH
@@ -84,14 +86,14 @@ LABEL class
 INTO sqlflow_models.my_dnn_model;`)
 	a.NoError(e)
 
-	predParse, e := newExtendedSyntaxParser().Parse(`SELECT gender, tenure, TotalCharges
+	predParse, e := parser.LegacyParse(`SELECT gender, tenure, TotalCharges
 FROM churn.train LIMIT 10
 TO PREDICT iris.predict.class
 USING sqlflow_models.my_dnn_model;`)
 	a.NoError(e)
 	a.NoError(verifyColumnNameAndType(trainParse, predParse, testDB))
 
-	predParse, e = newExtendedSyntaxParser().Parse(`SELECT gender, tenure
+	predParse, e = parser.LegacyParse(`SELECT gender, tenure
 FROM churn.train LIMIT 10
 TO PREDICT iris.predict.class
 USING sqlflow_models.my_dnn_model;`)
@@ -102,9 +104,9 @@ USING sqlflow_models.my_dnn_model;`)
 
 func TestDescribeEmptyTables(t *testing.T) {
 	a := assert.New(t)
-	r, e := newExtendedSyntaxParser().Parse(`SELECT * FROM iris.iris_empty LIMIT 10;`)
+	r, e := parser.LegacyParse(`SELECT * FROM iris.iris_empty LIMIT 10;`)
 	a.NoError(e)
-	_, e = verify(r.standardSelect.String(), testDB)
+	_, e = verify(r.StandardSelect.String(), testDB)
 	a.EqualError(e, `query SELECT *
 FROM iris.iris_empty
 LIMIT 10 gives 0 row`)

@@ -17,6 +17,8 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
+
+	"sqlflow.org/sqlflow/pkg/parser"
 )
 
 // fieldTypes[field]type.
@@ -123,18 +125,18 @@ func getColumnTypes(slct string, db *DB) ([]string, []string, error) {
 
 // Check train and pred clause uses has the same feature columns
 // 1. every column field in the training clause is selected in the pred clause, and they are of the same type
-func verifyColumnNameAndType(trainParsed, predParsed *extendedSelect, db *DB) error {
-	trainFields, e := verify(trainParsed.standardSelect.String(), db)
+func verifyColumnNameAndType(trainParsed, predParsed *parser.SQLFlowSelectStmt, db *DB) error {
+	trainFields, e := verify(trainParsed.StandardSelect.String(), db)
 	if e != nil {
 		return e
 	}
 
-	predFields, e := verify(predParsed.standardSelect.String(), db)
+	predFields, e := verify(predParsed.StandardSelect.String(), db)
 	if e != nil {
 		return e
 	}
 
-	for _, c := range trainParsed.columns["feature_columns"] {
+	for _, c := range trainParsed.Columns["feature_columns"] {
 		name, err := getExpressionFieldName(c)
 		if err != nil {
 			return err

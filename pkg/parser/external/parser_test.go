@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package parser
+package external
 
 import (
 	"fmt"
@@ -20,52 +20,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var (
-	selectCases = []string{
-		`select 1`,
-		`select * from my_table`,
-		`-- this is a comment
-select
-1`,
-		`SELECT
-    customerNumber,
-    checkNumber,
-    amount
-FROM
-    payments
-WHERE
-    amount = (SELECT MAX(amount) FROM payments)`,
-		`SELECT
-    orderNumber,
-    SUM(priceEach * quantityOrdered) total
-FROM
-    orderdetails
-        INNER JOIN
-    orders USING (orderNumber)
-GROUP BY orderNumber
-HAVING SUM(priceEach * quantityOrdered) > 60000`,
-		`SELECT
-    customerNumber,
-    customerName
-FROM
-    customers
-WHERE
-    EXISTS( SELECT
-            orderNumber, SUM(priceEach * quantityOrdered)
-        FROM
-            orderdetails
-                INNER JOIN
-            orders USING (orderNumber)
-        WHERE
-            customerNumber = customers.customerNumber
-        GROUP BY orderNumber
-        HAVING SUM(priceEach * quantityOrdered) > 60000)`,
-	}
-)
-
-func commonThirdPartyCases(p ThirdPartyParser, a *assert.Assertions) {
+func commonThirdPartyCases(p Parser, a *assert.Assertions) {
 	// one standard SQL statement
-	for _, sql := range selectCases {
+	for _, sql := range SelectCases {
 		s, idx, err := p.Parse(sql)
 		a.NoError(err)
 		a.Equal(-1, idx)
@@ -74,22 +31,22 @@ func commonThirdPartyCases(p ThirdPartyParser, a *assert.Assertions) {
 	}
 
 	{ // several standard SQL statements with comments
-		sqls := strings.Join(selectCases, `;`) + `;`
+		sqls := strings.Join(SelectCases, `;`) + `;`
 		s, idx, err := p.Parse(sqls)
 		a.NoError(err)
 		a.Equal(-1, idx)
-		a.Equal(len(selectCases), len(s))
+		a.Equal(len(SelectCases), len(s))
 		for i := range s {
-			if p.Type() == "java" {
-				a.Equal(selectCases[i], s[i])
+			if p.Dialect() == "java" {
+				a.Equal(SelectCases[i], s[i])
 			} else {
-				a.Equal(selectCases[i]+`;`, s[i])
+				a.Equal(SelectCases[i]+`;`, s[i])
 			}
 		}
 	}
 
 	// two SQL statements, the first one is extendedSQL
-	for _, sql := range selectCases {
+	for _, sql := range SelectCases {
 		sqls := fmt.Sprintf(`%s to train;%s;`, sql, sql)
 		s, idx, err := p.Parse(sqls)
 		a.NoError(err)
@@ -99,13 +56,13 @@ func commonThirdPartyCases(p ThirdPartyParser, a *assert.Assertions) {
 	}
 
 	// two SQL statements, the second one is extendedSQL
-	for _, sql := range selectCases {
+	for _, sql := range SelectCases {
 		sqls := fmt.Sprintf(`%s;%s to train;`, sql, sql)
 		s, idx, err := p.Parse(sqls)
 		a.NoError(err)
 		a.Equal(len(sql)+1+len(sql)+1, idx)
 		a.Equal(2, len(s))
-		if p.Type() == "java" {
+		if p.Dialect() == "java" {
 			a.Equal(sql, s[0])
 		} else {
 			a.Equal(sql+`;`, s[0])
@@ -114,13 +71,13 @@ func commonThirdPartyCases(p ThirdPartyParser, a *assert.Assertions) {
 	}
 
 	// three SQL statements, the second one is extendedSQL
-	for _, sql := range selectCases {
+	for _, sql := range SelectCases {
 		sqls := fmt.Sprintf(`%s;%s to train;%s;`, sql, sql, sql)
 		s, idx, err := p.Parse(sqls)
 		a.NoError(err)
 		a.Equal(len(sql)+1+len(sql)+1, idx)
 		a.Equal(2, len(s))
-		if p.Type() == "java" {
+		if p.Dialect() == "java" {
 			a.Equal(sql, s[0])
 		} else {
 			a.Equal(sql+`;`, s[0])
@@ -137,7 +94,7 @@ func commonThirdPartyCases(p ThirdPartyParser, a *assert.Assertions) {
 	}
 
 	// two SQL statements, the second standard SQL has an error.
-	for _, sql := range selectCases {
+	for _, sql := range SelectCases {
 		sqls := fmt.Sprintf(`%s to train; select select 1;`, sql)
 		s, idx, err := p.Parse(sqls)
 		a.NoError(err)

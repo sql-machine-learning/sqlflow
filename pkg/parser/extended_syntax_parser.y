@@ -1,8 +1,9 @@
 %{
-	package sql
+	package parser
 
 	import (
 		"fmt"
+                "log"
 		"strings"
 		"sync"
 	)
@@ -11,98 +12,98 @@
            it is an atomic expression, in particular, NUMBER, IDENT,
            or STRING, defined by typ and val; otherwise, it is a
            Lisp S-expression. */
-	type expr struct {
-		typ int
-		val string
-		sexp exprlist
+	type Expr struct {
+		Type int
+		Value string
+		Sexp ExprList
 	}
 
-	type exprlist []*expr
+	type ExprList []*Expr
 
 	/* construct an atomic expr */
-	func atomic(typ int, val string) *expr {
-		return &expr{
-			typ : typ,
-			val : val,
+	func atomic(typ int, val string) *Expr {
+		return &Expr{
+			Type : typ,
+			Value : val,
 		}
 	}
 
 	/* construct a funcall expr */
-	func funcall(name string, oprd exprlist) *expr {
-		return &expr{
-			sexp : append(exprlist{atomic(IDENT, name)}, oprd...),
+	func funcall(name string, oprd ExprList) *Expr {
+		return &Expr{
+			Sexp : append(ExprList{atomic(IDENT, name)}, oprd...),
 		}
 	}
 
 	/* construct a unary expr */
-	func unary(typ int, op string, od1 *expr) *expr {
-		return &expr{
-			sexp : append(exprlist{atomic(typ, op)}, od1),
+	func unary(typ int, op string, od1 *Expr) *Expr {
+		return &Expr{
+			Sexp : append(ExprList{atomic(typ, op)}, od1),
 		}
 	}
 
 	/* construct a binary expr */
-	func binary(typ int, od1 *expr, op string, od2 *expr) *expr {
-		return &expr{
-			sexp : append(exprlist{atomic(typ, op)}, od1, od2),
+	func binary(typ int, od1 *Expr, op string, od2 *Expr) *Expr {
+		return &Expr{
+			Sexp : append(ExprList{atomic(typ, op)}, od1, od2),
 		}
 	}
 
 	/* construct a variadic expr */
-	func variadic(typ int, op string, ods exprlist) *expr {
-		return &expr{
-			sexp : append(exprlist{atomic(typ, op)}, ods...),
+	func variadic(typ int, op string, ods ExprList) *Expr {
+		return &Expr{
+			Sexp : append(ExprList{atomic(typ, op)}, ods...),
 		}
 	}
 
-	type extendedSelect struct {
-		extended bool
-		train    bool
-		analyze  bool
-		standardSelect
-		trainClause
-		predictClause
-		explainClause
+	type SQLFlowSelectStmt struct {
+		Extended bool
+		Train    bool
+		Explain  bool
+		StandardSelect
+		TrainClause
+		PredictClause
+		ExplainClause
 	}
 
-	type standardSelect struct {
-		fields exprlist
-		tables []string
-		where *expr
+	type StandardSelect struct {
+		Fields ExprList
+		Tables []string
+		where *Expr
 		limit string
 		origin string
 	}
 
-	type trainClause struct {
-		estimator string
-		trainAttrs     attrs
-		columns   columnClause
-		label     string
-		save      string
+	type TrainClause struct {
+		Estimator string
+		TrainAttrs     Attributes
+		Columns   columnClause
+		Label     string
+		Save      string
 	}
 
 	/* If no FOR in the COLUMN, the key is "" */
-	type columnClause map[string]exprlist
-	type fieldClause  exprlist
+	type columnClause map[string]ExprList
+	type fieldClause  ExprList
 
-	type attrs map[string]*expr
+	type Attributes map[string]*Expr
 
-	type predictClause struct {
-		predAttrs attrs
-		model  string
+	type PredictClause struct {
+		PredAttrs Attributes
+		Model  string
 		// FIXME(tony): rename into to predTable
-		into   string
+		Into   string
 	}
 
-	type explainClause struct {
-		explainAttrs attrs
-		trainedModel string
-		explainer    string
+	type ExplainClause struct {
+		ExplainAttrs Attributes
+		TrainedModel string
+		Explainer    string
 	}
 
-	var parseResult *extendedSelect
+	var parseResult *SQLFlowSelectStmt
 
-	func attrsUnion(as1, as2 attrs) attrs {
+	func attrsUnion(as1, as2 Attributes) Attributes {
 		for k, v := range as2 {
 			if _, ok := as1[k]; ok {
 				log.Panicf("attr %q already specified", as2)
@@ -115,18 +116,18 @@
 
 %union {
   val string  /* NUMBER, IDENT, STRING, and keywords */
-  flds exprlist
+  flds ExprList
   tbls []string
-  expr *expr
-  expl exprlist
-  atrs attrs
-  eslt extendedSelect
-  slct standardSelect
-  tran trainClause
+  expr *Expr
+  expl ExprList
+  atrs Attributes
+  eslt SQLFlowSelectStmt
+  slct StandardSelect
+  tran TrainClause
   colc columnClause
   labc string
-  infr predictClause
-  expln explainClause
+  infr PredictClause
+  expln ExplainClause
 }
 
 %type  <eslt> sqlflow_select_stmt
@@ -140,7 +141,7 @@
 %type  <flds> fields
 %type  <tbls> tables
 %type  <expr> expr funcall column where_clause
-%type  <expl> exprlist pythonlist columns field_clause 
+%type  <expl> ExprList pythonlist columns field_clause 
 %type  <atrs> attr
 %type  <atrs> attrs
 
@@ -159,57 +160,57 @@
 
 sqlflow_select_stmt
 : standard_select_stmt end_of_stmt {
-	parseResult = &extendedSelect{
-		extended: false,
-		standardSelect: $1}
+	parseResult = &SQLFlowSelectStmt{
+		Extended: false,
+		StandardSelect: $1}
   }
 | standard_select_stmt train_clause end_of_stmt {
-	parseResult = &extendedSelect{
-		extended: true,
-		train: true,
-		standardSelect: $1,
-		trainClause: $2}
+	parseResult = &SQLFlowSelectStmt{
+		Extended: true,
+		Train: true,
+		StandardSelect: $1,
+		TrainClause: $2}
   }
 | standard_select_stmt predict_clause end_of_stmt {
-	parseResult = &extendedSelect{
-		extended: true,
-		train: false,
-		standardSelect: $1,
-		predictClause: $2}
+	parseResult = &SQLFlowSelectStmt{
+		Extended: true,
+		Train: false,
+		StandardSelect: $1,
+		PredictClause: $2}
   }
 | standard_select_stmt explain_clause end_of_stmt {
-	parseResult = &extendedSelect{
-		extended: true,
-		train: false,
-		analyze: true,
-		standardSelect: $1,
-		explainClause: $2}
+	parseResult = &SQLFlowSelectStmt{
+		Extended: true,
+		Train: false,
+		Explain: true,
+		StandardSelect: $1,
+		ExplainClause: $2}
   }
 | train_clause end_of_stmt { // FIXME(tony): remove above rules that include select clause
-	parseResult = &extendedSelect{
-		extended: true,
-		train: true,
-		trainClause: $1}
+	parseResult = &SQLFlowSelectStmt{
+		Extended: true,
+		Train: true,
+		TrainClause: $1}
   }
 | predict_clause end_of_stmt {
-	parseResult = &extendedSelect{
-		extended: true,
-		train: false,
-		predictClause: $1}
+	parseResult = &SQLFlowSelectStmt{
+		Extended: true,
+		Train: false,
+		PredictClause: $1}
   }
 | explain_clause end_of_stmt {
-	parseResult = &extendedSelect{
-		extended: true,
-		train: false,
-		analyze: true,
-		explainClause: $1}
+	parseResult = &SQLFlowSelectStmt{
+		Extended: true,
+		Train: false,
+		Explain: true,
+		ExplainClause: $1}
 }
 ;
 
 standard_select_stmt
 : SELECT field_clause FROM tables where_clause limit_clause {
-	$$.fields = $2
-	$$.tables = $4
+	$$.Fields = $2
+	$$.Tables = $4
 	$$.where = $5
 	$$.limit = $6
 }
@@ -232,45 +233,45 @@ limit_clause
 
 train_clause
 : TO TRAIN IDENT WITH attrs column_clause label_clause INTO IDENT {
-	$$.estimator = $3
-	$$.trainAttrs = $5
-	$$.columns = $6
-	$$.label = $7
-	$$.save = $9
+	$$.Estimator = $3
+	$$.TrainAttrs = $5
+	$$.Columns = $6
+	$$.Label = $7
+	$$.Save = $9
   }
 | TO TRAIN IDENT WITH attrs column_clause INTO IDENT {
-	$$.estimator = $3
-	$$.trainAttrs = $5
-	$$.columns = $6
-	$$.save = $8
+	$$.Estimator = $3
+	$$.TrainAttrs = $5
+	$$.Columns = $6
+	$$.Save = $8
 }
 | TO TRAIN IDENT WITH attrs label_clause INTO IDENT {
-	$$.estimator = $3
-	$$.trainAttrs = $5
-	$$.label = $6
-	$$.save = $8
+	$$.Estimator = $3
+	$$.TrainAttrs = $5
+	$$.Label = $6
+	$$.Save = $8
 }
 ;
 
 predict_clause
-: TO PREDICT IDENT USING IDENT { $$.into = $3; $$.model = $5 }
-| TO PREDICT IDENT WITH attrs USING IDENT { $$.into = $3; $$.predAttrs = $5; $$.model = $7 }
+: TO PREDICT IDENT USING IDENT { $$.Into = $3; $$.Model = $5 }
+| TO PREDICT IDENT WITH attrs USING IDENT { $$.Into = $3; $$.PredAttrs = $5; $$.Model = $7 }
 ;
 
 explain_clause
-: TO EXPLAIN IDENT USING IDENT { $$.trainedModel = $3; $$.explainer = $5 }
-| TO EXPLAIN IDENT WITH attrs USING IDENT { $$.trainedModel = $3; $$.explainAttrs = $5; $$.explainer = $7 }
+: TO EXPLAIN IDENT USING IDENT { $$.TrainedModel = $3; $$.Explainer = $5 }
+| TO EXPLAIN IDENT WITH attrs USING IDENT { $$.TrainedModel = $3; $$.ExplainAttrs = $5; $$.Explainer = $7 }
 ;
 
 column_clause
-: COLUMN columns 				{ $$ = map[string]exprlist{"feature_columns" : $2} }
-| COLUMN columns FOR IDENT 			{ $$ = map[string]exprlist{$4 : $2} }
+: COLUMN columns 				{ $$ = map[string]ExprList{"feature_columns" : $2} }
+| COLUMN columns FOR IDENT 			{ $$ = map[string]ExprList{$4 : $2} }
 | column_clause COLUMN columns FOR IDENT 	{ $$[$5] = $3 }
 ;
 
 field_clause
-: funcall AS '(' exprlist ')' {
-		$$ = exprlist{$1, atomic(IDENT, "AS"), funcall("", $4)};
+: funcall AS '(' ExprList ')' {
+		$$ = ExprList{$1, atomic(IDENT, "AS"), funcall("", $4)};
 	}  // TODO(Yancey1989): support the general "AS" keyword: https://www.w3schools.com/sql/sql_ref_as.asp
 | fields						{ $$ = $1 }
 ;
@@ -288,7 +289,7 @@ column
 ;
 
 columns
-: column             { $$ = exprlist{$1}     }
+: column             { $$ = ExprList{$1}     }
 | columns ',' column { $$ = append($1, $3) }
 ;
 
@@ -303,7 +304,7 @@ tables
 ;
 
 attr
-: IDENT '=' expr    { $$ = attrs{$1 : $3} }
+: IDENT '=' expr    { $$ = Attributes{$1 : $3} }
 ;
 
 attrs
@@ -313,17 +314,17 @@ attrs
 
 funcall
 : IDENT '(' ')'          { $$ = funcall($1, nil) }
-| IDENT '(' exprlist ')' { $$ = funcall($1, $3)  }
+| IDENT '(' ExprList ')' { $$ = funcall($1, $3)  }
 ;
 
-exprlist
-: expr              { $$ = exprlist{$1}     }
-| exprlist ',' expr { $$ = append($1, $3) }
+ExprList
+: expr              { $$ = ExprList{$1}     }
+| ExprList ',' expr { $$ = append($1, $3) }
 ;
 
 pythonlist
 : '[' ']'           { $$ = nil }
-| '[' exprlist ']'  { $$ = $2  }
+| '[' ExprList ']'  { $$ = $2  }
 ;
 
 expr
@@ -355,97 +356,87 @@ expr
 %%
 
 /* Like Lisp's builtin function cdr. */
-func (e *expr) cdr() (r []string) {
-	for i := 1; i < len(e.sexp); i++ {
-		r = append(r, e.sexp[i].String())
+func (e *Expr) cdr() (r []string) {
+	for i := 1; i < len(e.Sexp); i++ {
+		r = append(r, e.Sexp[i].String())
 	}
 	return r
 }
 
-/* Convert exprlist to string slice. */
-func (el exprlist) Strings() (r []string) {
+/* Convert ExprList to string slice. */
+func (el ExprList) Strings() (r []string) {
 	for i := 0; i < len(el); i++ {
 		r = append(r, el[i].String())
 	}
 	return r
 }
 
-func (e *expr) String() string {
-	if e.typ == 0 { /* a compound expression */
-		switch e.sexp[0].typ {
+func (e *Expr) String() string {
+	if e.Type == 0 { /* a compound expression */
+		switch e.Sexp[0].Type {
 		case '+', '*', '/', '%', '=', '<', '>', '!', LE, GE, AND, OR:
-			if len(e.sexp) != 3 {
-				log.Panicf("Expecting binary expression, got %.10q", e.sexp)
+			if len(e.Sexp) != 3 {
+				log.Panicf("Expecting binary expression, got %.10q", e.Sexp)
 			}
-			return fmt.Sprintf("%s %s %s", e.sexp[1], e.sexp[0].val, e.sexp[2])
+			return fmt.Sprintf("%s %s %s", e.Sexp[1], e.Sexp[0].Value, e.Sexp[2])
 		case '-':
-			switch len(e.sexp) {
+			switch len(e.Sexp) {
 			case 2:
-				return fmt.Sprintf(" -%s", e.sexp[1])
+				return fmt.Sprintf(" -%s", e.Sexp[1])
 			case 3:
-				return fmt.Sprintf("%s - %s", e.sexp[1], e.sexp[2])
+				return fmt.Sprintf("%s - %s", e.Sexp[1], e.Sexp[2])
 			default:
-				log.Panicf("Expecting either unary or binary -, got %.10q", e.sexp)
+				log.Panicf("Expecting either unary or binary -, got %.10q", e.Sexp)
 			}
 		case '(':
-			if len(e.sexp) != 2 {
-				log.Panicf("Expecting ( ) as unary operator, got %.10q", e.sexp)
+			if len(e.Sexp) != 2 {
+				log.Panicf("Expecting ( ) as unary operator, got %.10q", e.Sexp)
 			}
-			return fmt.Sprintf("(%s)", e.sexp[1])
+			return fmt.Sprintf("(%s)", e.Sexp[1])
 		case '[':
 			return "[" + strings.Join(e.cdr(), ", ") + "]"
 		case NOT:
-			return fmt.Sprintf("NOT %s", e.sexp[1])
+			return fmt.Sprintf("NOT %s", e.Sexp[1])
 		case IDENT: /* function call */
-			return e.sexp[0].val + "(" + strings.Join(e.cdr(), ", ") + ")"
+			return e.Sexp[0].Value + "(" + strings.Join(e.cdr(), ", ") + ")"
 		}
 	} else {
-		return fmt.Sprintf("%s", e.val)
+		return fmt.Sprintf("%s", e.Value)
 	}
 
 	log.Panicf("Cannot print an unknown expression")
 	return ""
 }
 
-func (s standardSelect) String() string {
+func (s StandardSelect) String() string {
 	if s.origin != "" {
 		return s.origin
 	}
 
 	r := "SELECT "
-	if len(s.fields) == 0 {
+	if len(s.Fields) == 0 {
 		r += "*"
 	} else {
-		for i := 0; i < len(s.fields); i++ {
-			r += s.fields[i].String();
-			if i != len(s.fields) -1 {
+		for i := 0; i < len(s.Fields); i++ {
+			r += s.Fields[i].String();
+			if i != len(s.Fields) -1 {
 				r += ", "
 			}
 		}
 	}
-	r += "\nFROM " + strings.Join(s.tables, ", ")
+	r += "\nFROM " + strings.Join(s.Tables, ", ")
 	if s.where != nil {
 		r += fmt.Sprintf("\nWHERE %s", s.where)
 	}
 	if len(s.limit) > 0 {
 		r += fmt.Sprintf("\nLIMIT %s", s.limit)
 	}
-    return r
+        return r
 }
 
-// sqlReentrantParser makes sqlParser, generated by goyacc and using a
-// global variable parseResult to return the result, reentrant.
-type extendedSyntaxParser struct {
-	pr sqlParser
-}
+var mu sync.Mutex // Protect the use of global variable parseResult.
 
-func newExtendedSyntaxParser() *extendedSyntaxParser {
-	return &extendedSyntaxParser{sqlNewParser()}
-}
-
-var mu sync.Mutex
-
-func (p *extendedSyntaxParser) Parse(s string) (r *extendedSelect, e error) {
+func parseSQLFlowStmt(s string) (r *SQLFlowSelectStmt, e error) {
 	defer func() {
 		if r := recover(); r != nil {
 			var ok bool
@@ -459,6 +450,6 @@ func (p *extendedSyntaxParser) Parse(s string) (r *extendedSelect, e error) {
 	mu.Lock()
 	defer mu.Unlock()
 
-	p.pr.Parse(newLexer(s))
+	extendedSyntaxParse(newLexer(s))  // extendedSyntaxParse is auto generated.
 	return parseResult, nil
 }
