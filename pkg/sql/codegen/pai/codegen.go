@@ -49,7 +49,11 @@ func getTableFromSelect(dataSource, trainSelect string) (string, string, error) 
 		paiDatabase = tableParts[0]
 		paiTable = tableParts[1]
 	} else {
-		conf, err := gomaxcompute.ParseDSN(dataSource)
+		parts := strings.Split(dataSource, "://")
+		if len(parts) != 2 {
+			return "", "", fmt.Errorf("error datasource format: %s", dataSource)
+		}
+		conf, err := gomaxcompute.ParseDSN(parts[1])
 		if err != nil {
 			return "", "", err
 		}
