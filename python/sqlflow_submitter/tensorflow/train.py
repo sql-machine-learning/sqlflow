@@ -191,7 +191,10 @@ def train(is_keras_model,
         return dataset
 
     def validate_input_fn(batch_size):
-        dataset = input_fn(validate_select)
+        if is_pai:
+            dataset = pai_maxcompute_input_fn(validate_select)
+        else:
+            dataset = input_fn(validate_select)
         return dataset.batch(batch_size).cache()
 
     if is_keras_model:
