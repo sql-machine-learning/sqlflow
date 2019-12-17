@@ -37,7 +37,7 @@ func commonThirdPartyCases(p Parser, a *assert.Assertions) {
 		a.Equal(-1, idx)
 		a.Equal(len(SelectCases), len(s))
 		for i := range s {
-			if p.Type() == "java" {
+			if p.Dialect() == "java" {
 				a.Equal(SelectCases[i], s[i])
 			} else {
 				a.Equal(SelectCases[i]+`;`, s[i])
@@ -62,7 +62,7 @@ func commonThirdPartyCases(p Parser, a *assert.Assertions) {
 		a.NoError(err)
 		a.Equal(len(sql)+1+len(sql)+1, idx)
 		a.Equal(2, len(s))
-		if p.Type() == "java" {
+		if p.Dialect() == "java" {
 			a.Equal(sql, s[0])
 		} else {
 			a.Equal(sql+`;`, s[0])
@@ -77,7 +77,7 @@ func commonThirdPartyCases(p Parser, a *assert.Assertions) {
 		a.NoError(err)
 		a.Equal(len(sql)+1+len(sql)+1, idx)
 		a.Equal(2, len(s))
-		if p.Type() == "java" {
+		if p.Dialect() == "java" {
 			a.Equal(sql, s[0])
 		} else {
 			a.Equal(sql+`;`, s[0])
