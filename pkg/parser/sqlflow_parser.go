@@ -95,14 +95,7 @@ func Parse(dialect, program string) ([]*SQLFlowStmt, error) {
 }
 
 func parseFirstSQLFlowStmt(program string) (*SQLFlowSelectStmt, int, error) {
-	// Note(tony): our parser only supports parsing one statement.
-	// So we need to extract the first statement for it.
-	s, err := SplitMultipleSQL(program)
-	if err != nil {
-		return nil, -1, err
-	}
-
-	return parseSQLFlowStmt(s[0])
+	return parseSQLFlowStmt(program)
 }
 
 func thirdPartyParse(dialect, program string) ([]*SQLFlowStmt, int, error) {
