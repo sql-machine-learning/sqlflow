@@ -47,6 +47,7 @@ if not TF_VERSION_2:
     tf.app.flags.DEFINE_string("worker_hosts", "", "worker hosts")
     tf.app.flags.DEFINE_string("job_name", 'worker', "job name: worker or ps")
     tf.app.flags.DEFINE_string("checkpointDir", "", "oss info")
+    tf.app.flags.DEFINE_string('model_dir', './output', 'model directory')
     FLAGS = tf.app.flags.FLAGS
 
 def make_distributed_info_without_evaluator():
@@ -202,6 +203,7 @@ def train(is_keras_model,
                                      record_defaults=record_defaults,
                                      selected_cols=",".join(selected_cols))
         def tensor_to_dict(*args):
+            print(args)
             num_features = len(feature_column_names)
             label = args[num_features]
             features_dict = dict()
@@ -270,11 +272,11 @@ def train(is_keras_model,
                 train_distribute=dist_strategy)
         else:
             model_params["config"] = tf.estimator.RunConfig(save_checkpoints_steps=save_checkpoints_steps)
-        # if is_pai:
-        #     print("using checkpoint dir: ", FLAGS.checkpointDir)
-        #     model_params["model_dir"] = FLAGS.checkpointDir
-        # else:
-        model_params["model_dir"] = save
+        if is_pai:
+            print("using checkpoint dir: ", FLAGS.checkpointDir)
+            model_params["model_dir"] = FLAGS.checkpointDir
+        else:
+            model_params["model_dir"] = FLAGS.model_dir
         classifier = estimator(**model_params)
 
         if validate_select == "":
