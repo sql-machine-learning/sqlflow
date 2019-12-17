@@ -24,8 +24,22 @@ import (
 
 func TestExtendedSyntaxParse(t *testing.T) {
 	a := assert.New(t)
-	_, idx, _ := parseSQLFlowStmt("select a from b;  select b from c;")
+
+	_, idx, e := parseSQLFlowStmt("select a from b")
+	a.Equal(15, idx)
+	a.NoError(e)
+
+	_, idx, e = parseSQLFlowStmt("  select a from b  ")
+	a.Equal(19, idx)
+	a.NoError(e)
+
+	_, idx, e = parseSQLFlowStmt("select a from b;  select b from c;")
 	a.Equal(18, idx)
+	a.Error(e)
+
+	_, idx, e = parseSQLFlowStmt("select a from b   select b from c;")
+	a.Equal(18, idx)
+	a.Error(e)
 }
 
 func isJavaParser(dbms string) bool {
