@@ -22,7 +22,7 @@ import (
 
 func TestVerify_1(t *testing.T) {
 	a := assert.New(t)
-	r, e := parser.ParseOneStatement("mysql", `SELECT * FROM churn.train LIMIT 10;`)
+	r, e := parser.LegacyParse(`SELECT * FROM churn.train LIMIT 10;`)
 	a.NoError(e)
 	fts, e := verify(r.StandardSelect.String(), testDB)
 	a.NoError(e)
@@ -32,7 +32,7 @@ func TestVerify_1(t *testing.T) {
 		t.Skip("in Hive, db_name.table_name.field_name will raise error, because . operator is only supported on struct or list of struct types")
 	}
 
-	r, e = parser.ParseOneStatement("mysql", `SELECT Churn, churn.train.Partner,TotalCharges FROM churn.train LIMIT 10;`)
+	r, e = parser.LegacyParse(`SELECT Churn, churn.train.Partner,TotalCharges FROM churn.train LIMIT 10;`)
 	a.NoError(e)
 	fts, e = verify(r.StandardSelect.String(), testDB)
 	a.NoError(e)
@@ -56,7 +56,7 @@ func TestVerify_2(t *testing.T) {
 		t.Skip("in Hive, db_name.table_name.field_name will raise error, because . operator is only supported on struct or list of struct types")
 	}
 	a := assert.New(t)
-	r, e := parser.ParseOneStatement("mysql", `SELECT Churn, churn.train.Partner FROM churn.train LIMIT 10;`)
+	r, e := parser.LegacyParse(`SELECT Churn, churn.train.Partner FROM churn.train LIMIT 10;`)
 	a.NoError(e)
 	fts, e := verify(r.StandardSelect.String(), testDB)
 	a.NoError(e)
