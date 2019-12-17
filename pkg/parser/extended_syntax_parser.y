@@ -2,7 +2,6 @@
 	package parser
 
 	import (
-                "encoding/json"
 		"fmt"
                 "log"
 		"strings"
@@ -142,7 +141,7 @@
 %type  <flds> fields
 %type  <tbls> tables
 %type  <expr> expr funcall column where_clause
-%type  <expl> ExprList pythonlist columns field_clause 
+%type  <expl> ExprList pythonlist columns field_clause
 %type  <atrs> attr
 %type  <atrs> attrs
 
@@ -440,23 +439,16 @@ var mu sync.Mutex // Protect the use of global variable parseResult.
 func parseSQLFlowStmt(s string) (r *SQLFlowSelectStmt, idx int, e error) {
 	defer func() {
 		if r := recover(); r != nil {
-			var ok bool
-			e, ok = r.(error)
-			if !ok {
-				e = fmt.Errorf("%v", r)
-			}
-
-			var le lexerError
-			err := json.Unmarshal([]byte(e.Error()), &le)
-			if err == nil {
-			        idx = le.Pos - len(le.Recent)
-			}
+                        l := r.(*lexer)
+                        idx = l.pos - len(l.recent)
+			e = fmt.Errorf("%v", r)
 		}
 	}()
 
 	mu.Lock()
 	defer mu.Unlock()
 
+        r = parseResult // Important! In the case of extendedSyntaxParse panics.
 	extendedSyntaxParse(newLexer(s))  // extendedSyntaxParse is auto generated.
 	return parseResult, len(s), nil
 }

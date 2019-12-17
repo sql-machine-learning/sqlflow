@@ -14,8 +14,6 @@
 package parser
 
 import (
-	"encoding/json"
-	"fmt"
 	"log"
 	"regexp"
 	"strings"
@@ -43,21 +41,8 @@ func newLexer(input string) *lexer {
 	return &lexer{input: input}
 }
 
-type lexerError struct {
-	Pos    int
-	Recent string
-	Near   string
-}
-
 func (l *lexer) Error(e string) {
-	b, err := json.Marshal(lexerError{
-		Pos:    l.pos,
-		Recent: l.recent,
-		Near:   l.input[l.start:]})
-	if err != nil {
-		log.Panicf("Failed JSON marshal LexerError")
-	}
-	panic(fmt.Errorf("%s", b)) // parseSQLFlowStmt will recover this panic.
+	panic(l) // panic with the lexer itself, which contains all status.
 }
 
 func (l *lexer) emit(lval *extendedSyntaxSymType, typ int) int {

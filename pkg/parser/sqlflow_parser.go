@@ -39,16 +39,16 @@ func IsExtendedSyntax(stmt *SQLFlowStmt) bool {
 
 // ParseOneStatement parses a SQL program by calling Parse, and
 // asserts that this program contains one and only one statement.
-func ParseOneStatement(dialect, sql string) (*SQLFlowStmt, error) {
-	sqls, err := Parse(dialect, sql)
+func ParseOneStatement(dialect, program string) (*SQLFlowStmt, error) {
+	stmts, err := Parse(dialect, program)
 	if err != nil {
 		return nil, err
 	}
-	if len(sqls) != 1 {
-		return nil, fmt.Errorf("unexpect number of statements 1(expected) != %v(received)", len(sqls))
+	if len(stmts) != 1 {
+		return nil, fmt.Errorf("Program not having only one statement")
 	}
 
-	return sqls[0], nil
+	return stmts[0], nil
 }
 
 // Parse a SQL program in the given dialect into a list of SQL statements.
@@ -57,45 +57,37 @@ func Parse(dialect, program string) ([]*SQLFlowStmt, error) {
 		return nil, nil
 	}
 
-	// SELECT ...; SELECT * FROM my_table TO TRAIN ...
-	//                                    ^
-	//                                    i
-	sqls, i, err := thirdPartyParse(dialect, program)
-	if err != nil {
-		return nil, err
+	var allStmts []*SQLFlowStmt
+
+	for {
+		// thridPartyParse might accept more than one standard
+		// SQL statemetns.
+		stmts, i, err := thirdPartyParse(dialect, program)
+		if err != nil {
+			return nil, fmt.Errorf("thirdPartyParse %v", err)
+		}
+		if i == -1 {
+			// thirdPartyParse accepted the whole program.
+			allStmts = append(allStmts, stmts...)
+			break
+		}
+
+		left := stmts[len(stmts)-1].Standard
+		program = program[i:]
+
+		extension, j, err := parseSQLFlowStmt(program)
+		right := program[:j]
+		program = program[j:]
+
+		stmts[len(stmts)-1].Original = left + right
+		stmts[len(stmts)-1].SQLFlowSelectStmt = extension
+
+		allStmts = append(allStmts, stmts...)
+		if err == nil {
+			break // parseSQLFlowStmt accepted all.
+		}
 	}
-	if i == -1 { // The third party parser accepts all SQL statements
-		return sqls, nil
-	}
-
-	left := sqls[len(sqls)-1].Standard
-	program = program[i:]
-
-	// TO TRAIN dnn LABEL class INTO my_model; SELECT ...
-	//                                        ^
-	//                                        j
-	extended, j, err := parseFirstSQLFlowStmt(program)
-	if err != nil {
-		return nil, err
-	}
-
-	right := program[:j]
-	program = program[j:]
-
-	sqls[len(sqls)-1].Original = left + right
-	sqls[len(sqls)-1].SQLFlowSelectStmt = extended
-	sqls[len(sqls)-1].StandardSelect.origin = left
-
-	nextSqls, err := Parse(dialect, program)
-	if err != nil {
-		return nil, err
-	}
-
-	return append(sqls, nextSqls...), err
-}
-
-func parseFirstSQLFlowStmt(program string) (*SQLFlowSelectStmt, int, error) {
-	return parseSQLFlowStmt(program)
+	return allStmts, nil
 }
 
 func thirdPartyParse(dialect, program string) ([]*SQLFlowStmt, int, error) {
@@ -106,7 +98,10 @@ func thirdPartyParse(dialect, program string) ([]*SQLFlowStmt, int, error) {
 	}
 	var spr []*SQLFlowStmt
 	for _, sql := range sqls {
-		spr = append(spr, &SQLFlowStmt{Original: sql, Standard: sql, SQLFlowSelectStmt: nil})
+		spr = append(spr, &SQLFlowStmt{
+			Original:          sql,
+			Standard:          sql,
+			SQLFlowSelectStmt: nil})
 	}
 	return spr, i, nil
 }
