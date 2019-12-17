@@ -321,7 +321,10 @@ func createPredictionTableFromIR(predStmt *ir.PredictStmt, db *DB, session *pb.S
 	var b bytes.Buffer
 	// NOTE(typhoonzero): predStmt.TrainStmt may be nil, because the model may not loaded when
 	// creating prediction table.
-	// trainLabelColumn := predStmt.TrainStmt.Label
+	trainLabelColumn := ""
+	if predStmt.TrainStmt != nil {
+		trainLabelColumn = predStmt.TrainStmt.Label.GetFieldDesc()[0].Name
+	}
 	labelColumnName := predStmt.ResultColumn
 	labelColumnType := ""
 	fmt.Fprintf(&b, "create table %s (", predStmt.ResultTable)
@@ -331,7 +334,9 @@ func createPredictionTableFromIR(predStmt *ir.PredictStmt, db *DB, session *pb.S
 			return e
 		}
 		fldName := flds[idx]
-		if fldName == labelColumnName {
+		// When predicting use validation table, we should find the label column type
+		// using the label column name from train table.
+		if fldName == labelColumnName || fldName == trainLabelColumn {
 			labelColumnType = stype
 			continue
 		}
