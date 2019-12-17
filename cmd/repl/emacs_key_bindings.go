@@ -150,7 +150,7 @@ var emacsCtrlKeyBindings = []prompt.KeyBind{
 			buf.CursorLeft(1)
 		},
 	},
-	// Cut the Word before the cursor to  the clipboard
+	// Cut the Word before the cursor to the clipboard
 	{
 		Key: prompt.ControlW,
 		Fn: func(buf *prompt.Buffer) {
