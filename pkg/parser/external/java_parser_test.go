@@ -19,19 +19,19 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCommonCasesForHive(t *testing.T) {
+func TestExternalParserCommonCasesForHive(t *testing.T) {
 	a := assert.New(t)
 	p := NewParser("hive")
 	commonThirdPartyCases(p, a)
 }
 
-func TestCommonCasesForMaxCompute(t *testing.T) {
+func TestExternalParserCommonCasesForMaxCompute(t *testing.T) {
 	a := assert.New(t)
 	p := NewParser("maxcompute")
 	commonThirdPartyCases(p, a)
 }
 
-func TestCommonCasesForCalcite(t *testing.T) {
+func TestExternalParserCommonCasesForCalcite(t *testing.T) {
 	a := assert.New(t)
 	p := NewParser("calcite")
 	commonThirdPartyCases(p, a)

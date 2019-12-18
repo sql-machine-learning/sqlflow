@@ -19,13 +19,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCommonCasesForMySQL(t *testing.T) {
+func TestExternalParserCommonCasesForMySQL(t *testing.T) {
 	a := assert.New(t)
 	p := NewParser("mysql")
 	commonThirdPartyCases(p, a)
 }
 
-func TestCommonCasesForTiDB(t *testing.T) {
+func TestExternalParserCommonCasesForTiDB(t *testing.T) {
 	a := assert.New(t)
 	p := NewParser("tidb")
 	commonThirdPartyCases(p, a)
