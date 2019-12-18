@@ -53,10 +53,13 @@ func (s *Server) Fetch(ctx context.Context, job *pb.FetchToken) (*pb.FetchRespon
 
 // Run implements `rpc Run (Request) returns (stream Response)`
 func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
-	sqlStatements, err := parser.SplitMultipleSQL(req.Sql)
+	// TODO(wangkuiyi): "mysql" is an ad-hoc value. Should be
+	// replaced by some configured values.
+	stmts, err := parser.Parse("mysql", req.Sql)
 	if err != nil {
 		return err
 	}
+
 	rd := s.run(req.Sql, s.modelDir, req.Session)
 	defer rd.Close()
 
@@ -76,7 +79,7 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 			res = &pb.Response{Response: &pb.Response_Job{Job: &pb.Job{Id: job.JobID}}}
 		case sf.EndOfExecution:
 			// if sqlStatements have only one field, do **NOT** return EndOfExecution message.
-			if len(sqlStatements) > 1 {
+			if len(stmts) > 1 {
 				eoeMsg := r.(sf.EndOfExecution)
 				eoe := &pb.EndOfExecution{
 					Sql:              eoeMsg.Statement,
