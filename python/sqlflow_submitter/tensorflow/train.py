@@ -40,38 +40,43 @@ except:
     tf.logging.set_verbosity(tf.logging.ERROR)
     TF_VERSION_2 = False
 
+FLAGS = None
+
 # ----------------- For PAI distributed training -----------------
-if not TF_VERSION_2:
-    tf.app.flags.DEFINE_integer("task_index", 0, "Worker task index")
-    tf.app.flags.DEFINE_string("ps_hosts", "", "ps hosts")
-    tf.app.flags.DEFINE_string("worker_hosts", "", "worker hosts")
-    tf.app.flags.DEFINE_string("job_name", 'worker', "job name: worker or ps")
-    tf.app.flags.DEFINE_string("checkpointDir", "", "oss info")
-    tf.app.flags.DEFINE_string('model_dir', './output', 'model directory')
-    FLAGS = tf.app.flags.FLAGS
+def define_tf_flags():
+    global FLAGS
+    if not TF_VERSION_2:
+        tf.app.flags.DEFINE_integer("task_index", 0, "Worker task index")
+        tf.app.flags.DEFINE_string("ps_hosts", "", "ps hosts")
+        tf.app.flags.DEFINE_string("worker_hosts", "", "worker hosts")
+        tf.app.flags.DEFINE_string("job_name", 'worker', "job name: worker or ps")
+        tf.app.flags.DEFINE_string("checkpointDir", "", "oss info")
+        tf.app.flags.DEFINE_string('model_dir', './output', 'model directory')
+        FLAGS = tf.app.flags.FLAGS
 
 def make_distributed_info_without_evaluator():
-  worker_hosts = FLAGS.worker_hosts.split(",")
-  ps_hosts = FLAGS.ps_hosts.split(",")
-  if len(worker_hosts) > 1:
-    cluster = {"chief": [worker_hosts[0]],
+    global FLAGS
+    worker_hosts = FLAGS.worker_hosts.split(",")
+    ps_hosts = FLAGS.ps_hosts.split(",")
+    if len(worker_hosts) > 1:
+        cluster = {"chief": [worker_hosts[0]],
                "worker": worker_hosts[1:],
                "ps": ps_hosts}
-  else:
-    cluster = {"chief": [worker_hosts[0]],
+    else:
+        cluster = {"chief": [worker_hosts[0]],
                "ps": ps_hosts}
 
-  if FLAGS.job_name == "worker":
-    if FLAGS.task_index == 0:
-      task_type = "chief"
-      task_index = 0
+    if FLAGS.job_name == "worker":
+        if FLAGS.task_index == 0:
+            task_type = "chief"
+            task_index = 0
+        else:
+            task_type = "worker"
+            task_index = FLAGS.task_index - 1
     else:
-      task_type = "worker"
-      task_index = FLAGS.task_index - 1
-  else:
-    task_type = "ps"
-    task_index = FLAGS.task_index
-  return cluster, task_type, task_index
+        task_type = "ps"
+        task_index = FLAGS.task_index
+    return cluster, task_type, task_index
 
 def dump_into_tf_config(cluster, task_type, task_index):
   os.environ['TF_CONFIG'] = json.dumps(
@@ -148,6 +153,8 @@ def train(is_keras_model,
           log_every_n_iter=10,
           is_pai=False,
           pai_table=""):
+    global FLAGS
+    define_tf_flags()
     if is_keras_model:
         if verbose == 1:
             # show keras training progress
@@ -199,6 +206,8 @@ def train(is_keras_model,
 
         selected_cols = copy.copy(feature_column_names)
         selected_cols.append(label_meta["feature_name"])
+        if num_workers == 0:
+            num_workers = 1
         dataset = tf.data.TableRecordDataset(tables,
                                      record_defaults=record_defaults,
                                      selected_cols=",".join(selected_cols),
