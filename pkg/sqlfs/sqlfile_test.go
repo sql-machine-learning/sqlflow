@@ -28,16 +28,47 @@ import (
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
-var (
-	testCfg    *mysql.Config
-	testDB     *sql.DB
-	testDriver string
-)
-
 const testDatabaseName = `sqlfs_test`
+
+func newTestDB() (string, *sql.DB, error) {
+	testDriver := getEnv("SQLFLOW_TEST_DB", "mysql")
+	var testDB *sql.DB
+
+	var e error
+	switch testDriver {
+	case "mysql":
+		cfg := &mysql.Config{
+			User:                 getEnv("SQLFLOW_TEST_DB_MYSQL_USER", "root"),
+			Passwd:               getEnv("SQLFLOW_TEST_DB_MYSQL_PASSWD", "root"),
+			Net:                  getEnv("SQLFLOW_TEST_DB_MYSQL_NET", "tcp"),
+			Addr:                 getEnv("SQLFLOW_TEST_DB_MYSQL_ADDR", "127.0.0.1:3306"),
+			AllowNativePasswords: true,
+		}
+		if testDB, e = sql.Open("mysql", cfg.FormatDSN()); e != nil {
+			return "", nil, e
+		}
+		if _, e = testDB.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s;", testDatabaseName)); e != nil {
+			return "", nil, e
+		}
+		return testDriver, testDB, nil
+	case "hive":
+		if testDB, e = sql.Open("hive", "root:root@localhost:10000/churn"); e != nil {
+			return "", nil, e
+		}
+		if _, e = testDB.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s;", testDatabaseName)); e != nil {
+			return "", nil, e
+		}
+		return testDriver, testDB, nil
+	default:
+		return "", nil, fmt.Errorf("unrecognized environment variable SQLFLOW_TEST_DB %s", testDriver)
+
+	}
+}
 
 func TestWriterCreate(t *testing.T) {
 	a := assert.New(t)
+	testDriver, testDB, e := newTestDB()
+	a.NoError(e)
 
 	fn := fmt.Sprintf("%s.unittest%d", testDatabaseName, rand.Int())
 	w, e := Create(testDB, testDriver, fn, getDefaultSession())
@@ -53,10 +84,11 @@ func TestWriterCreate(t *testing.T) {
 }
 
 func TestWriteAndRead(t *testing.T) {
+	a := assert.New(t)
 	const bufSize = 32 * 1024
 
-	testDriver = getEnv("SQLFLOW_TEST_DB", "mysql")
-	a := assert.New(t)
+	testDriver, testDB, e := newTestDB()
+	a.NoError(e)
 
 	fn := fmt.Sprintf("%s.unittest%d", testDatabaseName, rand.Int())
 
@@ -132,34 +164,4 @@ func getDefaultSession() *pb.Session {
 		HdfsUser:     "",
 		HdfsPass:     "",
 	}
-}
-
-func TestMain(m *testing.M) {
-	testDriver = getEnv("SQLFLOW_TEST_DB", "mysql")
-
-	var e error
-	switch testDriver {
-	case "mysql":
-		cfg := &mysql.Config{
-			User:                 getEnv("SQLFLOW_TEST_DB_MYSQL_USER", "root"),
-			Passwd:               getEnv("SQLFLOW_TEST_DB_MYSQL_PASSWD", "root"),
-			Net:                  getEnv("SQLFLOW_TEST_DB_MYSQL_NET", "tcp"),
-			Addr:                 getEnv("SQLFLOW_TEST_DB_MYSQL_ADDR", "127.0.0.1:3306"),
-			AllowNativePasswords: true,
-		}
-		testDB, e = sql.Open("mysql", cfg.FormatDSN())
-		assertNoErr(e)
-		_, e = testDB.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s;", testDatabaseName))
-		assertNoErr(e)
-		defer testDB.Close()
-	case "hive":
-		testDB, e = sql.Open("hive", "root:root@localhost:10000/churn")
-		assertNoErr(e)
-		_, e = testDB.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s;", testDatabaseName))
-		assertNoErr(e)
-		defer testDB.Close()
-	default:
-		assertNoErr(fmt.Errorf("unrecognized environment variable SQLFLOW_TEST_DB %s", testDriver))
-	}
-	os.Exit(m.Run())
 }
