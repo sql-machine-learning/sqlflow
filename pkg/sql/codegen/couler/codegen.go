@@ -29,46 +29,22 @@ var defaultDockerImage = "sqlflow/sqlflow"
 // Run generates Couler program
 func Run(programIR ir.SQLProgram, session *pb.Session) (string, error) {
 	// TODO(yancey1989): fill session as env
-	r := &coulerFiller{
-		DataSource: session.DbConnStr,
+	r := &coulerFiller{DataSource: session.DbConnStr}
+	// NOTE(yancey1989): does not use ModelImage here since the Predict statement
+	// does not contain the ModelImage field in SQL Program IR.
+	if os.Getenv("SQLFLOW_WORKFLOW_STEP_IMAGE") != "" {
+		defaultDockerImage = os.Getenv("SQLFLOW_WORKFLOW_STEP_IMAGE")
 	}
 	for _, sqlIR := range programIR {
-		ss := &sqlStatement{}
-		switch i := sqlIR.(type) {
-		case *ir.StandardSQL:
-			ss.IsExtendedSQL = false
-			ss.CreateTmpTable = false
-			ss.OriginalSQL = string(*sqlIR.(*ir.StandardSQL))
-		case *ir.TrainStmt:
-			ss.IsExtendedSQL = true
-			t := sqlIR.(*ir.TrainStmt)
-			// FIXME(typhoonzero): use unified method to get submitter type.
-			// TODO(typhoonzero): for simple select statements like select * from table, do not create tmp table.
-			if os.Getenv("SQLFLOW_submitter") == "pai" {
-				ss.CreateTmpTable = true
-			}
-			ss.Select = t.Select
-			ss.OriginalSQL = sqlIR.(*ir.TrainStmt).OriginalSQL
-		case *ir.PredictStmt:
-			ss.IsExtendedSQL = true
-			ss.CreateTmpTable = false
-			ss.OriginalSQL = sqlIR.(*ir.PredictStmt).OriginalSQL
-		case *ir.AnalyzeStmt:
-			ss.IsExtendedSQL = true
-			ss.CreateTmpTable = false
-			ss.OriginalSQL = sqlIR.(*ir.AnalyzeStmt).OriginalSQL
-		default:
-			return "", fmt.Errorf("uncognized IR type: %v", i)
+		sqlStmt := &sqlStatement{
+			OriginalSQL: sqlIR.GetOriginalSQL(), IsExtendedSQL: sqlIR.IsExtended(),
+			DockerImage: defaultDockerImage, SQLFlowSubmitter: os.Getenv("SQLFLOW_submitter")}
+		// FIXME(typhoonzero): use unified method to get submitter type.
+		// TODO(typhoonzero): for simple select statements like select * from table, do not create tmp table.
+		if t, ok := sqlIR.(*ir.TrainStmt); ok && sqlStmt.SQLFlowSubmitter == "pai" {
+			sqlStmt.CreateTmpTable, sqlStmt.Select = true, t.Select
 		}
-		// NOTE(yancey1989): does not use ModelImage here since the Predict statement
-		// does not contain the ModelImage field in SQL Program IR.
-		if os.Getenv("SQLFLOW_WORKFLOW_STEP_IMAGE") != "" {
-			ss.DockerImage = os.Getenv("SQLFLOW_WORKFLOW_STEP_IMAGE")
-		} else {
-			ss.DockerImage = defaultDockerImage
-		}
-		ss.SQLFlowSubmitter = os.Getenv("SQLFLOW_submitter")
-		r.SQLStatements = append(r.SQLStatements, ss)
+		r.SQLStatements = append(r.SQLStatements, sqlStmt)
 	}
 	var program bytes.Buffer
 	if err := coulerTemplate.Execute(&program, r); err != nil {

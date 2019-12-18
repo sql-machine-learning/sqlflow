@@ -277,6 +277,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("TestTextClassification", CaseTrainTextClassification)
 	t.Run("CaseTrainTextClassificationCustomLSTM", CaseTrainTextClassificationCustomLSTM)
 	t.Run("CaseTrainCustomModel", CaseTrainCustomModel)
+	t.Run("CaseTrainOptimizer", CaseTrainOptimizer)
 	t.Run("CaseTrainSQLWithHyperParams", CaseTrainSQLWithHyperParams)
 	t.Run("CaseTrainCustomModelWithHyperParams", CaseTrainCustomModelWithHyperParams)
 	t.Run("CaseSparseFeature", CaseSparseFeature)
@@ -285,6 +286,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseTrainXGBoostRegression", CaseTrainXGBoostRegression)
 	t.Run("CasePredictXGBoostRegression", CasePredictXGBoostRegression)
 	t.Run("CaseTrainDeepWideModel", CaseTrainDeepWideModel)
+	t.Run("CaseTrainDeepWideModelOptimizer", CaseTrainDeepWideModelOptimizer)
 
 	// Cases using feature derivation
 	t.Run("CaseTrainTextClassificationIR", CaseTrainTextClassificationIR)
@@ -369,7 +371,9 @@ func TestEnd2EndHive(t *testing.T) {
 	t.Run("TestTrainSQL", CaseTrainSQL)
 	t.Run("CaseTrainRegression", CaseTrainRegression)
 	t.Run("CaseTrainCustomModel", CaseTrainCustomModel)
+	t.Run("CaseTrainOptimizer", CaseTrainOptimizer)
 	t.Run("CaseTrainDeepWideModel", CaseTrainDeepWideModel)
+	t.Run("CaseTrainDeepWideModelOptimizer", CaseTrainDeepWideModelOptimizer)
 	t.Run("CaseTrainXGBoostRegression", CaseTrainXGBoostRegression)
 	t.Run("CasePredictXGBoostRegression", CasePredictXGBoostRegression)
 	t.Run("CaseTrainFeatureDerivation", CaseTrainFeatureDerivation)
@@ -753,6 +757,25 @@ INTO sqlflow_models.my_dnn_model;`
 	a.NoError(err)
 }
 
+func CaseTrainOptimizer(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := `SELECT *
+FROM iris.train
+TO TRAIN DNNClassifier
+WITH model.n_classes = 3, model.hidden_units = [10, 20], model.optimizer=RMSprop
+LABEL class
+INTO sqlflow_models.my_dnn_model;`
+	_, _, err := connectAndRunSQL(trainSQL)
+	a.NoError(err)
+
+	predSQL := `SELECT *
+FROM iris.test
+TO PREDICT iris.predict.class
+USING sqlflow_models.my_dnn_model;`
+	_, _, err = connectAndRunSQL(predSQL)
+	a.NoError(err)
+}
+
 func CaseTrainCustomModel(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := `SELECT *
@@ -859,6 +882,23 @@ func CaseTrainDeepWideModel(t *testing.T) {
 FROM iris.train
 TO TRAIN DNNLinearCombinedClassifier
 WITH model.n_classes = 3, model.dnn_hidden_units = [10, 20], train.batch_size = 10, train.epoch = 2
+COLUMN sepal_length, sepal_width FOR linear_feature_columns
+COLUMN petal_length, petal_width FOR dnn_feature_columns
+LABEL class
+INTO sqlflow_models.my_dnn_linear_model;`
+	_, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("run trainSQL error: %v", err)
+	}
+}
+
+func CaseTrainDeepWideModelOptimizer(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := `SELECT *
+FROM iris.train
+TO TRAIN DNNLinearCombinedClassifier
+WITH model.n_classes = 3, model.dnn_hidden_units = [10, 20], train.batch_size = 10, train.epoch = 2,
+model.dnn_optimizer=RMSprop, dnn_optimizer.learning_rate=0.01
 COLUMN sepal_length, sepal_width FOR linear_feature_columns
 COLUMN petal_length, petal_width FOR dnn_feature_columns
 LABEL class

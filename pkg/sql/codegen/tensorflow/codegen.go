@@ -169,8 +169,67 @@ func IsKerasModel(estimator string) (bool, string) {
 	return false, fmt.Sprintf("tf.estimator.%s", estimator)
 }
 
-func validateAttributes(trainStmt *ir.TrainStmt) error {
+// TODO(shendiaomo): Make the optimizer related code more general and exported in `attribute.go` if other frameworks
+// than TensorFlow have to support python objects as model attributes.
+
+func attrIsOptimizer(attrKey string) bool {
+	switch attrKey {
+	case "model.optimizer", "model.dnn_optimizer", "model.linear_optimizer":
+		return true
+	}
+	return false
+}
+
+func setDefaultOptimizer(trainStmt *ir.TrainStmt, optimizerParamName string) {
+	// TODO(shendiaomo): Try to get the default value from the python `inspect` module instead of hard coding
+	defaultValue := "Adagrad" // Defaults to DNN with a single optimizer parameter
+	switch trainStmt.Estimator {
+	case "LinearClassifier", "LinearRegressor":
+		defaultValue = "Ftrl"
+	case "DNNLinearCombinedClassifier", "DNNLinearCombinedRegressor":
+		if optimizerParamName == "linear_optimizer" {
+			defaultValue = "Ftrl"
+		}
+	}
+	trainStmt.Attributes[optimizerParamName] = defaultValue
+}
+
+func constructOptimizers(trainStmt *ir.TrainStmt) {
+	optimizerArgs := map[string]map[string]interface{}{}
+	for k, v := range trainStmt.Attributes {
+		if attrIsOptimizer(k) {
+			if optimizerArgs[k] == nil {
+				optimizerArgs[k] = map[string]interface{}{}
+			}
+		}
+		pieces := strings.Split(k, ".")
+		if len(pieces) == 2 {
+			if attrIsOptimizer("model." + pieces[0]) { // k is like "optimizer.learning_rate"
+				if optimizerArgs["model."+pieces[0]] == nil {
+					optimizerArgs["model."+pieces[0]] = map[string]interface{}{}
+				}
+				optimizerArgs["model."+pieces[0]][pieces[1]] = v
+				// delete these attributes because they are only used to initialized the python object
+				delete(trainStmt.Attributes, k)
+			}
+		}
+	}
+	for optimizerParamName, args := range optimizerArgs {
+		if _, ok := trainStmt.Attributes[optimizerParamName]; !ok {
+			setDefaultOptimizer(trainStmt, optimizerParamName)
+		}
+		optimizerInitPyCode := fmt.Sprintf("%v(", trainStmt.Attributes[optimizerParamName])
+		for k, v := range args {
+			optimizerInitPyCode += fmt.Sprintf("%s=%v, ", k, v)
+		}
+		optimizerInitPyCode += ")"
+		trainStmt.Attributes[optimizerParamName] = optimizerInitPyCode
+	}
+}
+
+func initializeAttributes(trainStmt *ir.TrainStmt) error {
 	modelAttr := attribute.NewDictionary(trainStmt.Estimator, "model.")
+	constructOptimizers(trainStmt) // TODO(shendiaomo): Restrict optimizer parameters to the available set
 	return modelAttr.Update(commonAttributes).Validate(trainStmt.Attributes)
 }
 
@@ -249,7 +308,7 @@ func deriveFeatureColumnCode(trainStmt *ir.TrainStmt) (featureColumnsCode []stri
 
 // Train generates a Python program for train a TensorFlow model.
 func Train(trainStmt *ir.TrainStmt) (string, error) {
-	if err := validateAttributes(trainStmt); err != nil {
+	if err := initializeAttributes(trainStmt); err != nil {
 		return "", err
 	}
 

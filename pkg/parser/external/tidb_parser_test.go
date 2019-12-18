@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package parser
+package external
 
 import (
 	"testing"
@@ -21,13 +21,13 @@ import (
 
 func TestCommonCasesForMySQL(t *testing.T) {
 	a := assert.New(t)
-	p := NewThirdPartyParser("mysql")
+	p := NewParser("mysql")
 	commonThirdPartyCases(p, a)
 }
 
 func TestCommonCasesForTiDB(t *testing.T) {
 	a := assert.New(t)
-	p := NewThirdPartyParser("tidb")
+	p := NewParser("tidb")
 	commonThirdPartyCases(p, a)
 }
 

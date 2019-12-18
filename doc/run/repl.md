@@ -109,11 +109,12 @@ The following shortcuts ease the editing of SQL statements.
 | Keyboard Shortcut   |                        Action                          |
 |---------------------|--------------------------------------------------------|
 |<kbd>Ctrl + l</kbd>  | Clear the screen                                       |
-|<kbd>Meta + Del</kbd>| Delete the **word before** the cursor                  |
-|<kbd>Meta + d</kbd>  | Delete the **word after** the cursor                   |
-|<kbd>Ctrl + w</kbd>  | Delete the **word before** the cursor                  |
+|<kbd>Meta + Del</kbd>| Cut the **word before** the cursor to the clipboard    |
+|<kbd>Meta + d</kbd>  | Cut the **word after** the cursor to the clipboard     |
+|<kbd>Ctrl + w</kbd>  | Cut the **word before** the cursor to the clipboard    |
 |<kbd>Ctrl + d</kbd>  | Delete the **character under** the cursor              |
 |<kbd>Ctrl + h</kbd>  | Delete the **character before** the cursor (Backspace) |
-|<kbd>Ctrl + k</kbd>  | Delete the **line after** the cursor                   |
-|<kbd>Ctrl + u</kbd>  | Delete the **line before** the cursor                  |
+|<kbd>Ctrl + k</kbd>  | Cut the **line after** the cursor to the clipboard     |
+|<kbd>Ctrl + u</kbd>  | Cut the **line before** the cursor to the clipboard    |
+|<kbd>Ctrl + y</kbd>  | Paste the last thing to be cut (yank)                  |
 |<kbd>  TAB   </kbd>  | Auto completion for model/attributes names             |

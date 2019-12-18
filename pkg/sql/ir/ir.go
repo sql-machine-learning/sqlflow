@@ -76,6 +76,8 @@ type Executor interface {
 type SQLStatement interface {
 	SetOriginalSQL(string)
 	Execute(Executor) error
+	IsExtended() bool
+	GetOriginalSQL() string
 }
 
 // TrainStmt is the intermediate representation for code generation of a training job.
@@ -120,6 +122,12 @@ func (cl *TrainStmt) Execute(s Executor) error { return s.ExecuteTrain(cl) }
 // SetOriginalSQL sets the original sql string
 func (cl *TrainStmt) SetOriginalSQL(sql string) { cl.OriginalSQL = sql }
 
+// IsExtended returns whether a SQLStatement is an extended SQL statement
+func (cl *TrainStmt) IsExtended() bool { return true }
+
+// GetOriginalSQL returns the original SQL statement used to get current IR result
+func (cl *TrainStmt) GetOriginalSQL() string { return cl.OriginalSQL }
+
 // PredictStmt is the intermediate representation for code generation of a prediction job
 //
 // Please be aware the PredictStmt IR contains the result table name, so the
@@ -150,6 +158,12 @@ func (cl *PredictStmt) Execute(s Executor) error { return s.ExecutePredict(cl) }
 // SetOriginalSQL sets the original sql string
 func (cl *PredictStmt) SetOriginalSQL(sql string) { cl.OriginalSQL = sql }
 
+// IsExtended returns whether a SQLStatement is an extended SQL statement
+func (cl *PredictStmt) IsExtended() bool { return true }
+
+// GetOriginalSQL returns the original SQL statement used to get current IR result
+func (cl *PredictStmt) GetOriginalSQL() string { return cl.OriginalSQL }
+
 // AnalyzeStmt is the intermediate representation for code generation of a analysis job
 type AnalyzeStmt struct {
 	// OriginalSQL record the original SQL statement used to get current IR result
@@ -175,6 +189,12 @@ func (cl *AnalyzeStmt) Execute(s Executor) error { return s.ExecuteAnalyze(cl) }
 // SetOriginalSQL sets the original sql string
 func (cl *AnalyzeStmt) SetOriginalSQL(sql string) { cl.OriginalSQL = sql }
 
+// IsExtended returns whether a SQLStatement is an extended SQL statement
+func (cl *AnalyzeStmt) IsExtended() bool { return true }
+
+// GetOriginalSQL returns the original SQL statement used to get current IR result
+func (cl *AnalyzeStmt) GetOriginalSQL() string { return cl.OriginalSQL }
+
 // StandardSQL is a string of a standard SQL statement that can run on the database system.
 type StandardSQL string
 
@@ -183,3 +203,9 @@ func (sql *StandardSQL) Execute(s Executor) error { return s.ExecuteQuery(sql) }
 
 // SetOriginalSQL sets the original sql string
 func (sql *StandardSQL) SetOriginalSQL(s string) {}
+
+// IsExtended returns whether a SQLStatement is an extended SQL statement
+func (sql *StandardSQL) IsExtended() bool { return false }
+
+// GetOriginalSQL returns the original SQL statement used to get current IR result
+func (sql *StandardSQL) GetOriginalSQL() string { return string(*sql) }

@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"sqlflow.org/sqlflow/pkg/parser"
 	"sqlflow.org/sqlflow/pkg/sql/columns"
 )
 
@@ -41,11 +42,9 @@ func statementWithAttrs(attrs string) string {
 
 func TestExecResource(t *testing.T) {
 	a := assert.New(t)
-	parser := newExtendedSyntaxParser()
-	s := statementWithAttrs("exec.worker_num = 2")
-	r, e := parser.Parse(s)
+	r, e := parser.ParseOneStatement("mysql", statementWithAttrs("exec.worker_num = 2"))
 	a.NoError(e)
-	attrs, err := resolveAttribute(&r.trainAttrs)
+	attrs, err := resolveAttribute(&r.TrainAttrs)
 	a.NoError(err)
 	attr := attrs["exec.worker_num"]
 	a.Equal(attr.Value, "2")
@@ -53,42 +52,37 @@ func TestExecResource(t *testing.T) {
 
 func TestResolveAttrs(t *testing.T) {
 	a := assert.New(t)
-	parser := newExtendedSyntaxParser()
 
-	s := statementWithAttrs("estimator.hidden_units = [10, 20]")
-	r, e := parser.Parse(s)
+	r, e := parser.ParseOneStatement("mysql", statementWithAttrs("estimator.hidden_units = [10, 20]"))
 	a.NoError(e)
-	attrs, err := resolveAttribute(&r.trainAttrs)
+	attrs, err := resolveAttribute(&r.TrainAttrs)
 	a.NoError(err)
 	attr := attrs["estimator.hidden_units"]
 	a.Equal("estimator", attr.Prefix)
 	a.Equal("hidden_units", attr.Name)
 	a.Equal([]interface{}([]interface{}{10, 20}), attr.Value)
 
-	s = statementWithAttrs("dataset.name = hello")
-	r, e = parser.Parse(s)
+	r, e = parser.ParseOneStatement("mysql", statementWithAttrs("dataset.name = hello"))
 	a.NoError(e)
-	attrs, err = resolveAttribute(&r.trainAttrs)
+	attrs, err = resolveAttribute(&r.TrainAttrs)
 	a.NoError(err)
 	attr = attrs["dataset.name"]
 	a.Equal("dataset", attr.Prefix)
 	a.Equal("name", attr.Name)
 	a.Equal("hello", attr.Value)
 
-	s = statementWithAttrs("optimizer.learning_rate = 0.01")
-	r, e = parser.Parse(s)
+	r, e = parser.ParseOneStatement("mysql", statementWithAttrs("optimizer.learning_rate = 0.01"))
 	a.NoError(e)
-	attrs, err = resolveAttribute(&r.trainAttrs)
+	attrs, err = resolveAttribute(&r.TrainAttrs)
 	a.NoError(err)
 	attr = attrs["optimizer.learning_rate"]
 	a.Equal("optimizer", attr.Prefix)
 	a.Equal("learning_rate", attr.Name)
 	a.Equal("0.01", attr.Value)
 
-	s = statementWithAttrs("model.n_classes = 2")
-	r, e = parser.Parse(s)
+	r, e = parser.ParseOneStatement("mysql", statementWithAttrs("model.n_classes = 2"))
 	a.NoError(e)
-	attrs, err = resolveAttribute(&r.trainAttrs)
+	attrs, err = resolveAttribute(&r.TrainAttrs)
 	a.NoError(err)
 	attr = attrs["model.n_classes"]
 	a.Equal("model", attr.Prefix)
@@ -99,15 +93,14 @@ func TestResolveAttrs(t *testing.T) {
 
 func TestBucketColumn(t *testing.T) {
 	a := assert.New(t)
-	parser := newExtendedSyntaxParser()
 
 	normal := statementWithColumn("BUCKET(NUMERIC(c1, 10), [1, 10])")
 	badInput := statementWithColumn("BUCKET(c1, [1, 10])")
 	badBoundaries := statementWithColumn("BUCKET(NUMERIC(c1, 10), 100)")
 
-	r, e := parser.Parse(normal)
+	r, e := parser.ParseOneStatement("mysql", normal)
 	a.NoError(e)
-	c := r.columns["feature_columns"]
+	c := r.Columns["feature_columns"]
 	fcs, _, e := resolveTrainColumns(&c)
 	a.NoError(e)
 	bc, ok := fcs[0].(*columns.BucketColumn)
@@ -119,30 +112,29 @@ func TestBucketColumn(t *testing.T) {
 	a.Equal([]int{1, 10}, bc.Boundaries)
 	a.Equal("tf.feature_column.bucketized_column(tf.feature_column.numeric_column(\"c1\", shape=[10]), boundaries=[1,10])", code[0])
 
-	r, e = parser.Parse(badInput)
+	r, e = parser.ParseOneStatement("mysql", badInput)
 	a.NoError(e)
-	c = r.columns["feature_columns"]
+	c = r.Columns["feature_columns"]
 	_, _, e = resolveTrainColumns(&c)
 	a.Error(e)
 
-	r, e = parser.Parse(badBoundaries)
+	r, e = parser.ParseOneStatement("mysql", badBoundaries)
 	a.NoError(e)
-	c = r.columns["feature_columns"]
+	c = r.Columns["feature_columns"]
 	_, _, e = resolveTrainColumns(&c)
 	a.Error(e)
 }
 
 func TestCrossColumn(t *testing.T) {
 	a := assert.New(t)
-	parser := newExtendedSyntaxParser()
 
 	normal := statementWithColumn("cross([BUCKET(NUMERIC(c1, 10), [1, 10]), c5], 20)")
 	badInput := statementWithColumn("cross(c1, 20)")
 	badBucketSize := statementWithColumn("cross([BUCKET(NUMERIC(c1, 10), [1, 10]), c5], bad)")
 
-	r, e := parser.Parse(normal)
+	r, e := parser.ParseOneStatement("mysql", normal)
 	a.NoError(e)
-	c := r.columns["feature_columns"]
+	c := r.Columns["feature_columns"]
 	fcList, _, e := resolveTrainColumns(&c)
 	a.NoError(e)
 	cc, ok := fcList[0].(*columns.CrossColumn)
@@ -158,30 +150,29 @@ func TestCrossColumn(t *testing.T) {
 	a.Equal(20, cc.HashBucketSize)
 	a.Equal("tf.feature_column.crossed_column([tf.feature_column.bucketized_column(tf.feature_column.numeric_column(\"c1\", shape=[10]), boundaries=[1,10]),\"c5\"], hash_bucket_size=20)", code[0])
 
-	r, e = parser.Parse(badInput)
+	r, e = parser.ParseOneStatement("mysql", badInput)
 	a.NoError(e)
-	c = r.columns["feature_columns"]
+	c = r.Columns["feature_columns"]
 	_, _, e = resolveTrainColumns(&c)
 	a.Error(e)
 
-	r, e = parser.Parse(badBucketSize)
+	r, e = parser.ParseOneStatement("mysql", badBucketSize)
 	a.NoError(e)
-	c = r.columns["feature_columns"]
+	c = r.Columns["feature_columns"]
 	_, _, e = resolveTrainColumns(&c)
 	a.Error(e)
 }
 
 func TestCatIdColumn(t *testing.T) {
 	a := assert.New(t)
-	parser := newExtendedSyntaxParser()
 
 	normal := statementWithColumn("CATEGORY_ID(c1, 100)")
 	badKey := statementWithColumn("CATEGORY_ID([100], 100)")
 	badBucket := statementWithColumn("CATEGORY_ID(c1, bad)")
 
-	r, e := parser.Parse(normal)
+	r, e := parser.ParseOneStatement("mysql", normal)
 	a.NoError(e)
-	c := r.columns["feature_columns"]
+	c := r.Columns["feature_columns"]
 	fcs, _, e := resolveTrainColumns(&c)
 	a.NoError(e)
 	cc, ok := fcs[0].(*columns.CategoryIDColumn)
@@ -192,28 +183,27 @@ func TestCatIdColumn(t *testing.T) {
 	a.Equal(100, cc.BucketSize)
 	a.Equal("tf.feature_column.categorical_column_with_identity(key=\"c1\", num_buckets=100)", code[0])
 
-	r, e = parser.Parse(badKey)
+	r, e = parser.ParseOneStatement("mysql", badKey)
 	a.NoError(e)
-	c = r.columns["feature_columns"]
+	c = r.Columns["feature_columns"]
 	_, _, e = resolveTrainColumns(&c)
 	a.Error(e)
 
-	r, e = parser.Parse(badBucket)
+	r, e = parser.ParseOneStatement("mysql", badBucket)
 	a.NoError(e)
-	c = r.columns["feature_columns"]
+	c = r.Columns["feature_columns"]
 	_, _, e = resolveTrainColumns(&c)
 	a.Error(e)
 }
 
 func TestCatIdColumnWithColumnSpec(t *testing.T) {
 	a := assert.New(t)
-	parser := newExtendedSyntaxParser()
 
 	dense := statementWithColumn("CATEGORY_ID(DENSE(col1, 128, COMMA), 100)")
 
-	r, e := parser.Parse(dense)
+	r, e := parser.ParseOneStatement("mysql", dense)
 	a.NoError(e)
-	c := r.columns["feature_columns"]
+	c := r.Columns["feature_columns"]
 	fcs, css, e := resolveTrainColumns(&c)
 	a.NoError(e)
 	_, ok := fcs[0].(*columns.CategoryIDColumn)
@@ -223,15 +213,14 @@ func TestCatIdColumnWithColumnSpec(t *testing.T) {
 
 func TestEmbeddingColumn(t *testing.T) {
 	a := assert.New(t)
-	parser := newExtendedSyntaxParser()
 
 	normal := statementWithColumn("EMBEDDING(CATEGORY_ID(c1, 100), 200, mean)")
 	badInput := statementWithColumn("EMBEDDING(c1, 100)")
 	badBucket := statementWithColumn("EMBEDDING(CATEGORY_ID(c1, 100), bad, mean)")
 
-	r, e := parser.Parse(normal)
+	r, e := parser.ParseOneStatement("mysql", normal)
 	a.NoError(e)
-	c := r.columns["feature_columns"]
+	c := r.Columns["feature_columns"]
 	fcs, _, e := resolveTrainColumns(&c)
 	a.NoError(e)
 	ec, ok := fcs[0].(*columns.EmbeddingColumn)
@@ -245,30 +234,29 @@ func TestEmbeddingColumn(t *testing.T) {
 	a.Equal(200, ec.Dimension)
 	a.Equal("tf.feature_column.embedding_column(tf.feature_column.categorical_column_with_identity(key=\"c1\", num_buckets=100), dimension=200, combiner=\"mean\")", code[0])
 
-	r, e = parser.Parse(badInput)
+	r, e = parser.ParseOneStatement("mysql", badInput)
 	a.NoError(e)
-	c = r.columns["feature_columns"]
+	c = r.Columns["feature_columns"]
 	_, _, e = resolveTrainColumns(&c)
 	a.Error(e)
 
-	r, e = parser.Parse(badBucket)
+	r, e = parser.ParseOneStatement("mysql", badBucket)
 	a.NoError(e)
-	c = r.columns["feature_columns"]
+	c = r.Columns["feature_columns"]
 	_, _, e = resolveTrainColumns(&c)
 	a.Error(e)
 }
 
 func TestNumericColumn(t *testing.T) {
 	a := assert.New(t)
-	parser := newExtendedSyntaxParser()
 
 	normal := statementWithColumn("NUMERIC(c2, [5, 10])")
 	moreArgs := statementWithColumn("NUMERIC(c1, 100, args)")
 	badShape := statementWithColumn("NUMERIC(c1, bad)")
 
-	r, e := parser.Parse(normal)
+	r, e := parser.ParseOneStatement("mysql", normal)
 	a.NoError(e)
-	c := r.columns["feature_columns"]
+	c := r.Columns["feature_columns"]
 	fcs, _, e := resolveTrainColumns(&c)
 	a.NoError(e)
 	nc, ok := fcs[0].(*columns.NumericColumn)
@@ -279,30 +267,29 @@ func TestNumericColumn(t *testing.T) {
 	a.Equal([]int{5, 10}, nc.Shape)
 	a.Equal("tf.feature_column.numeric_column(\"c2\", shape=[5,10])", code[0])
 
-	r, e = parser.Parse(moreArgs)
+	r, e = parser.ParseOneStatement("mysql", moreArgs)
 	a.NoError(e)
-	c = r.columns["feature_columns"]
+	c = r.Columns["feature_columns"]
 	_, _, e = resolveTrainColumns(&c)
 	a.Error(e)
 
-	r, e = parser.Parse(badShape)
+	r, e = parser.ParseOneStatement("mysql", badShape)
 	a.NoError(e)
-	c = r.columns["feature_columns"]
+	c = r.Columns["feature_columns"]
 	_, _, e = resolveTrainColumns(&c)
 	a.Error(e)
 }
 
 func TestFeatureSpec(t *testing.T) {
 	a := assert.New(t)
-	parser := newExtendedSyntaxParser()
 
 	denseStatement := statementWithColumn("DENSE(c2, 5, comma)")
 	sparseStatement := statementWithColumn("SPARSE(c1, 100, comma)")
 	badStatement := statementWithColumn("DENSE(c3, bad, comma)")
 
-	r, e := parser.Parse(denseStatement)
+	r, e := parser.ParseOneStatement("mysql", denseStatement)
 	a.NoError(e)
-	c := r.columns["feature_columns"]
+	c := r.Columns["feature_columns"]
 	_, css, e := resolveTrainColumns(&c)
 	a.NoError(e)
 	cs := css[0]
@@ -312,9 +299,9 @@ func TestFeatureSpec(t *testing.T) {
 	a.Equal(false, cs.IsSparse)
 	a.Equal("DenseColumn(name=\"c2\", shape=[5], dtype=\"float\", separator=\",\")", cs.ToString())
 
-	r, e = parser.Parse(sparseStatement)
+	r, e = parser.ParseOneStatement("mysql", sparseStatement)
 	a.NoError(e)
-	c = r.columns["feature_columns"]
+	c = r.Columns["feature_columns"]
 	_, css, e = resolveTrainColumns(&c)
 	a.NoError(e)
 	cs = css[0]
@@ -323,9 +310,9 @@ func TestFeatureSpec(t *testing.T) {
 	a.Equal(true, cs.IsSparse)
 	a.Equal("SparseColumn(name=\"c1\", shape=[100], dtype=\"int\")", cs.ToString())
 
-	r, e = parser.Parse(badStatement)
+	r, e = parser.ParseOneStatement("mysql", badStatement)
 	a.NoError(e)
-	c = r.columns["feature_columns"]
+	c = r.Columns["feature_columns"]
 	_, _, e = resolveTrainColumns(&c)
 	a.Error(e)
 

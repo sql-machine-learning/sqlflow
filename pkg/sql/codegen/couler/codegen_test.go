@@ -44,38 +44,8 @@ func mockSQLProgramIR() ir.SQLProgram {
 		AllowNativePasswords: true,
 	}
 	standardSQL := ir.StandardSQL("SELECT * FROM iris.train limit 10;")
-	return []ir.SQLStatement{
-		&standardSQL,
-		&ir.TrainStmt{
-			OriginalSQL: `
-SELECT *
-FROM iris.train
-TO TRAIN DNNClassifier
-WITH
-	train.batch_size=4,
-	train.epoch=3,
-	model.hidden_units=[10,20],
-	model.n_classes=3
-COLUMN sepal_length, sepal_width, petal_length, petal_width
-LABEL class
-INTO sqlflow_models.my_xgboost_model;
-`,
-			DataSource: fmt.Sprintf("mysql://%s", cfg.FormatDSN()),
-			Select:     "select * from iris.train;",
-			Estimator:  "DNNClassifier",
-			Attributes: map[string]interface{}{
-				"train.batch_size":   4,
-				"train.epoch":        3,
-				"model.hidden_units": []int{10, 20},
-				"model.n_classes":    3},
-			Features: map[string][]ir.FeatureColumn{
-				"feature_columns": {
-					&ir.NumericColumn{&ir.FieldDesc{"sepal_length", ir.Float, "", []int{1}, false, nil, 0}},
-					&ir.NumericColumn{&ir.FieldDesc{"sepal_width", ir.Float, "", []int{1}, false, nil, 0}},
-					&ir.NumericColumn{&ir.FieldDesc{"petal_length", ir.Float, "", []int{1}, false, nil, 0}},
-					&ir.NumericColumn{&ir.FieldDesc{"petal_width", ir.Float, "", []int{1}, false, nil, 0}}}},
-			Label: &ir.NumericColumn{&ir.FieldDesc{"class", ir.Int, "", []int{1}, false, nil, 0}}},
-	}
+	trainStmt := ir.MockTrainStmt(fmt.Sprintf("mysql://%s", cfg.FormatDSN()), false)
+	return []ir.SQLStatement{&standardSQL, trainStmt}
 }
 
 var testCoulerClusterConfig = `

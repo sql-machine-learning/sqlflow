@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package parser
+package external
 
 import (
 	"fmt"
@@ -37,7 +37,7 @@ func newTiDBParser() *tidbParser {
 		re:  regexp.MustCompile(`.* near "([^"]+)".*`)}
 }
 
-func (p *tidbParser) Type() string {
+func (p *tidbParser) Dialect() string {
 	return "tidb"
 }
 

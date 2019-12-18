@@ -185,7 +185,7 @@ def train(is_keras_model,
         elif len(table_parts) == 1:
             table_name = pai_table
             driver, dsn = datasource.split("://")
-            _, _, _, database = parseMaxComputeDSN(dsn)
+            database = parseMaxComputeDSN(dsn)[-1]
         else:
             raise ValueError("error database.table format: %s" % pai_table)
 
@@ -297,3 +297,4 @@ def train(is_keras_model,
                 print(result[0])
 
     print("Done training")
+

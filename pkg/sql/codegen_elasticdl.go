@@ -23,6 +23,7 @@ import (
 	"strings"
 	"text/template"
 
+	"sqlflow.org/sqlflow/pkg/parser"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
@@ -61,15 +62,15 @@ type elasticDLModelSpec struct {
 	NumClasses int
 }
 
-func getFeaturesNames(pr *extendedSelect, db *DB) ([]string, error) {
-	fts, err := verify(pr.standardSelect.String(), db)
+func getFeaturesNames(pr *parser.SQLFlowSelectStmt, db *DB) ([]string, error) {
+	fts, err := verify(pr.StandardSelect.String(), db)
 	if err != nil {
 		return nil, err
 	}
 
 	featureNames := make([]string, 0, len(fts))
 	for featureName := range fts {
-		if featureName != pr.label {
+		if featureName != pr.Label {
 			featureNames = append(featureNames, featureName)
 		}
 	}
@@ -110,8 +111,8 @@ func getElasticDLModelSpec(attrs map[string]*attribute) elasticDLModelSpec {
 	}
 }
 
-func newElasticDLTrainFiller(pr *extendedSelect, db *DB, session *pb.Session) (*elasticDLFiller, error) {
-	resolved, err := resolveTrainClause(&pr.trainClause, &pr.standardSelect)
+func newElasticDLTrainFiller(pr *parser.SQLFlowSelectStmt, db *DB, session *pb.Session) (*elasticDLFiller, error) {
+	resolved, err := resolveTrainClause(&pr.TrainClause, &pr.StandardSelect)
 	if err != nil {
 		return nil, err
 	}
@@ -131,22 +132,22 @@ func newElasticDLTrainFiller(pr *extendedSelect, db *DB, session *pb.Session) (*
 	}
 
 	// TODO(weiguoz): specify evalInput by VALIDATION
-	trainInput, evalInput := pr.tables[0], ""
+	trainInput, evalInput := pr.Tables[0], ""
 	return &elasticDLFiller{
 		IsTraining:      true,
 		TrainInputTable: trainInput,
 		EvalInputTable:  evalInput,
-		FeaturesList:    makePythonListCode(append(featureNames, pr.label)),
-		LabelColName:    pr.label,
+		FeaturesList:    makePythonListCode(append(featureNames, pr.Label)),
+		LabelColName:    pr.Label,
 		TrainClause:     resolved,
-		ModelDir:        pr.trainClause.save,
+		ModelDir:        pr.TrainClause.Save,
 		InputShape:      len(featureNames),
 		OutputShape:     getElasticDLModelSpec(resolved.ModelConstructorParams).NumClasses,
 	}, err
 }
 
-func newElasticDLPredictFiller(pr *extendedSelect, db *DB) (*elasticDLFiller, error) {
-	resolved, err := resolvePredictClause(&pr.predictClause)
+func newElasticDLPredictFiller(pr *parser.SQLFlowSelectStmt, db *DB) (*elasticDLFiller, error) {
+	resolved, err := resolvePredictClause(&pr.PredictClause)
 	if err != nil {
 		return nil, err
 	}
@@ -157,17 +158,17 @@ func newElasticDLPredictFiller(pr *extendedSelect, db *DB) (*elasticDLFiller, er
 	}
 	return &elasticDLFiller{
 		IsTraining:         false,
-		PredictInputTable:  pr.tables[0],
+		PredictInputTable:  pr.Tables[0],
 		PredictOutputTable: resolved.OutputTable,
 		PredictInputModel:  resolved.ModelName,
 		OutputShape:        getElasticDLModelSpec(resolved.ModelConstructorParams).NumClasses,
-		FeaturesList:       makePythonListCode(append(featureNames, pr.label)),
+		FeaturesList:       makePythonListCode(append(featureNames, pr.Label)),
 		InputShape:         len(featureNames),
 		PredictClause:      resolved,
 	}, err
 }
 
-func elasticDLTrain(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *pb.Session) error {
+func elasticDLTrain(w *PipeWriter, pr *parser.SQLFlowSelectStmt, db *DB, cwd string, session *pb.Session) error {
 	// Write model definition file
 	var elasticdlProgram bytes.Buffer
 	trainFiller, err := newElasticDLTrainFiller(pr, db, session)
@@ -254,7 +255,7 @@ func elasticdlTrainCmd(cwd string, filler *elasticDLFiller) (cmd *exec.Cmd) {
 	return cmd
 }
 
-func elasticDLPredict(w *PipeWriter, pr *extendedSelect, db *DB, cwd string, session *pb.Session) error {
+func elasticDLPredict(w *PipeWriter, pr *parser.SQLFlowSelectStmt, db *DB, cwd string, session *pb.Session) error {
 	// Write model definition file
 	var elasticdlProgram bytes.Buffer
 	predictFiller, err := newElasticDLPredictFiller(pr, db)

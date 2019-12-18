@@ -22,6 +22,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"sqlflow.org/sqlflow/pkg/argo"
+	"sqlflow.org/sqlflow/pkg/parser"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/couler"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
@@ -69,16 +70,15 @@ func RunSQLProgram(sqlProgram string, modelDir string, session *pb.Session) *Pip
 func ParseSQLStatement(sql string, session *pb.Session) (string, error) {
 	connStr := session.DbConnStr
 	driverName := strings.Split(connStr, "://")[0]
-	parsed, err := parseOneStatement(driverName, sql)
+	parsed, err := parser.ParseOneStatement(driverName, sql)
 	if err != nil {
 		return "", err
 	}
-	extended := parsed.extended
-	if extended == nil {
+	if !parser.IsExtendedSyntax(parsed) {
 		return "", fmt.Errorf("ParseSQLStatement only accept extended SQL")
 	}
-	if extended.train {
-		trainStmt, err := generateTrainStmtWithInferredColumns(extended, connStr)
+	if parsed.Train {
+		trainStmt, err := generateTrainStmtWithInferredColumns(parsed.SQLFlowSelectStmt, connStr)
 		if err != nil {
 			return "", err
 		}
@@ -87,8 +87,8 @@ func ParseSQLStatement(sql string, session *pb.Session) (string, error) {
 			return "", err
 		}
 		return proto.MarshalTextString(pbir), nil
-	} else if extended.analyze {
-		analyzeStmt, err := generateAnalyzeStmt(extended, connStr, "", true)
+	} else if parsed.Explain {
+		analyzeStmt, err := generateAnalyzeStmt(parsed.SQLFlowSelectStmt, connStr, "", true)
 		if err != nil {
 			return "", nil
 		}
@@ -98,7 +98,7 @@ func ParseSQLStatement(sql string, session *pb.Session) (string, error) {
 		}
 		return proto.MarshalTextString(pbir), nil
 	} else {
-		predStmt, err := generatePredictStmt(extended, connStr, "", true)
+		predStmt, err := generatePredictStmt(parsed.SQLFlowSelectStmt, connStr, "", true)
 		if err != nil {
 			return "", err
 		}
@@ -132,7 +132,7 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, modelDir string, session 
 	if err != nil {
 		return err
 	}
-	sqls, err := parse(driverName, sqlProgram)
+	sqls, err := parser.Parse(driverName, sqlProgram)
 	if err != nil {
 		return err
 	}
@@ -145,23 +145,22 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, modelDir string, session 
 	for _, sql := range sqls {
 		var r ir.SQLStatement
 		connStr := fmt.Sprintf("%s://%s", driverName, dataSourceName)
-		if sql.extended != nil {
-			parsed := sql.extended
-			if parsed.train {
-				r, err = generateTrainStmt(parsed, connStr)
-			} else if parsed.analyze {
-				r, err = generateAnalyzeStmt(parsed, connStr, modelDir, false)
+		if parser.IsExtendedSyntax(sql) {
+			if sql.Train {
+				r, err = generateTrainStmt(sql.SQLFlowSelectStmt, connStr)
+			} else if sql.Explain {
+				r, err = generateAnalyzeStmt(sql.SQLFlowSelectStmt, connStr, modelDir, false)
 			} else {
-				r, err = generatePredictStmt(parsed, connStr, modelDir, false)
+				r, err = generatePredictStmt(sql.SQLFlowSelectStmt, connStr, modelDir, false)
 			}
 		} else {
-			standardSQL := ir.StandardSQL(sql.standard)
+			standardSQL := ir.StandardSQL(sql.Standard)
 			r = &standardSQL
 		}
 		if err != nil {
 			return err
 		}
-		r.SetOriginalSQL(sql.original)
+		r.SetOriginalSQL(sql.Original)
 		spIRs = append(spIRs, r)
 	}
 
@@ -184,7 +183,7 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, modelDir string, session 
 }
 
 func runSQLProgram(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, session *pb.Session) error {
-	sqls, err := parse(db.driverName, sqlProgram)
+	sqls, err := parser.Parse(db.driverName, sqlProgram)
 	if err != nil {
 		return err
 	}
@@ -199,23 +198,22 @@ func runSQLProgram(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, s
 	for _, sql := range sqls {
 		var r ir.SQLStatement
 		connStr := fmt.Sprintf("%s://%s", db.driverName, db.dataSourceName)
-		if sql.extended != nil {
-			parsed := sql.extended
-			if parsed.train {
-				r, err = generateTrainStmtWithInferredColumns(parsed, connStr)
-			} else if parsed.analyze {
-				r, err = generateAnalyzeStmt(parsed, connStr, modelDir, submitter().GetTrainStmtFromModel())
+		if parser.IsExtendedSyntax(sql) {
+			if sql.Train {
+				r, err = generateTrainStmtWithInferredColumns(sql.SQLFlowSelectStmt, connStr)
+			} else if sql.Explain {
+				r, err = generateAnalyzeStmt(sql.SQLFlowSelectStmt, connStr, modelDir, submitter().GetTrainStmtFromModel())
 			} else {
-				r, err = generatePredictStmt(parsed, connStr, modelDir, submitter().GetTrainStmtFromModel())
+				r, err = generatePredictStmt(sql.SQLFlowSelectStmt, connStr, modelDir, submitter().GetTrainStmtFromModel())
 			}
 		} else {
-			standardSQL := ir.StandardSQL(sql.standard)
+			standardSQL := ir.StandardSQL(sql.Standard)
 			r = &standardSQL
 		}
 		if err != nil {
 			return err
 		}
-		r.SetOriginalSQL(sql.original)
+		r.SetOriginalSQL(sql.Original)
 		if e := runSingleSQLIR(wr, r, db, modelDir, session); e != nil {
 			return e
 		}
@@ -244,68 +242,7 @@ func runSingleSQLIR(wr *PipeWriter, sqlIR ir.SQLStatement, db *DB, modelDir stri
 	return sqlIR.Execute(submitter())
 }
 
-// Create prediction table with appropriate column type.
-// If prediction table already exists, it will be overwritten.
-func createPredictionTable(predParsed *extendedSelect, db *DB, session *pb.Session) error {
-	tableName, columnName, e := parseTableColumn(predParsed.into)
-	if e != nil {
-		return fmt.Errorf("invalid predParsed.into, %v", e)
-	}
-
-	dropStmt := fmt.Sprintf("drop table if exists %s;", tableName)
-	if _, e := db.Exec(dropStmt); e != nil {
-		return fmt.Errorf("failed executing %s: %q", dropStmt, e)
-	}
-
-	fts, e := verify(predParsed.standardSelect.String(), db)
-	if e != nil {
-		return e
-	}
-	var b bytes.Buffer
-	fmt.Fprintf(&b, "create table %s (", tableName)
-	for _, c := range predParsed.columns["feature_columns"] {
-		name, err := getExpressionFieldName(c)
-		if err != nil {
-			return err
-		}
-		typ, ok := fts.get(name)
-		if !ok {
-			return fmt.Errorf("createPredictionTable: Cannot find type of field %s", name)
-		}
-		stype, e := fieldType(db.driverName, typ)
-		if e != nil {
-			return e
-		}
-		fmt.Fprintf(&b, "%s %s, ", name, stype)
-	}
-
-	// TODO(Yancey1989): For the current implementation, the prediction result column
-	// type is derivated by the pred-select-statement, the better way is derivating
-	// the result column type by the prediction result.
-	typ, ok := fts.get(columnName)
-	if !ok {
-		// NOTE(typhoonzero): Clustering model may not have label in select statement, default use INT type
-		typ = "INT"
-	}
-	stype, e := fieldType(db.driverName, typ)
-	if e != nil {
-		return e
-	}
-	if db.driverName == "hive" {
-		fmt.Fprintf(&b, "%s %s) ROW FORMAT DELIMITED FIELDS TERMINATED BY \"\\001\" STORED AS TEXTFILE;", columnName, stype)
-	} else {
-		fmt.Fprintf(&b, "%s %s);", columnName, stype)
-	}
-
-	createStmt := b.String()
-	if _, e := db.Exec(createStmt); e != nil {
-		return fmt.Errorf("failed executing %s: %q", createStmt, e)
-	}
-	return nil
-}
-
 // Create prediction table using the `PredictStmt`.
-// TODO(typhoonzero): remove legacy `createPredictionTable` once we change all submitters to use IR.
 func createPredictionTableFromIR(predStmt *ir.PredictStmt, db *DB, session *pb.Session) error {
 	dropStmt := fmt.Sprintf("drop table if exists %s;", predStmt.ResultTable)
 	if _, e := db.Exec(dropStmt); e != nil {
@@ -321,7 +258,10 @@ func createPredictionTableFromIR(predStmt *ir.PredictStmt, db *DB, session *pb.S
 	var b bytes.Buffer
 	// NOTE(typhoonzero): predStmt.TrainStmt may be nil, because the model may not loaded when
 	// creating prediction table.
-	// trainLabelColumn := predStmt.TrainStmt.Label
+	trainLabelColumn := ""
+	if predStmt.TrainStmt != nil {
+		trainLabelColumn = predStmt.TrainStmt.Label.GetFieldDesc()[0].Name
+	}
 	labelColumnName := predStmt.ResultColumn
 	labelColumnType := ""
 	fmt.Fprintf(&b, "create table %s (", predStmt.ResultTable)
@@ -331,7 +271,9 @@ func createPredictionTableFromIR(predStmt *ir.PredictStmt, db *DB, session *pb.S
 			return e
 		}
 		fldName := flds[idx]
-		if fldName == labelColumnName {
+		// When predicting use validation table, we should find the label column type
+		// using the label column name from train table.
+		if fldName == labelColumnName || fldName == trainLabelColumn {
 			labelColumnType = stype
 			continue
 		}
@@ -364,7 +306,7 @@ func createPredictionTableFromIR(predStmt *ir.PredictStmt, db *DB, session *pb.S
 	return nil
 }
 
-func loadModelMeta(pr *extendedSelect, db *DB, cwd, modelDir, modelName string) (*extendedSelect, error) {
+func loadModelMeta(pr *parser.SQLFlowSelectStmt, db *DB, cwd, modelDir, modelName string) (*parser.SQLFlowSelectStmt, error) {
 	var m *model
 	var e error
 	modelURI := modelName
@@ -378,16 +320,16 @@ func loadModelMeta(pr *extendedSelect, db *DB, cwd, modelDir, modelName string) 
 	}
 	// Parse the training SELECT statement used to train
 	// the model for the prediction.
-	tr, e := parseOneStatement(db.driverName, m.TrainSelect)
+	tr, e := parser.ParseOneStatement(db.driverName, m.TrainSelect)
 	if e != nil {
 		return nil, fmt.Errorf("parse: TrainSelect %v raise %v", m.TrainSelect, e)
 	}
 
-	if e := verifyColumnNameAndType(tr.extended, pr, db); e != nil {
+	if e := verifyColumnNameAndType(tr.SQLFlowSelectStmt, pr, db); e != nil {
 		return nil, fmt.Errorf("verifyColumnNameAndType: %v", e)
 	}
 
-	pr.trainClause = tr.extended.trainClause
+	pr.TrainClause = tr.TrainClause
 
 	return pr, nil
 }
