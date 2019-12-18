@@ -72,7 +72,7 @@ USING sqlflow_models.my_model;
 // parse "standard" select.
 func TestExtendedSyntaxParseStandardSelect(t *testing.T) {
 	a := assert.New(t)
-	r, _, e := parseSQLFlowStmt(testStandardSelect + ";")
+	r, e := parseSQLFlowStmt(testStandardSelect + ";")
 	a.NoError(e)
 	a.False(r.Extended)
 	a.Equal([]string{"employee.age", "last_name", "salary"},
@@ -93,7 +93,7 @@ func TestExtendedSyntaxParseSelectToTrain(t *testing.T) {
 	a := assert.New(t)
 	// NOTE(tony): Test optional semicolon at the end of the statement
 	for _, s := range []string{``, `;`} {
-		r, _, e := parseSQLFlowStmt(testSelectToTrain + s)
+		r, e := parseSQLFlowStmt(testSelectToTrain + s)
 		a.NoError(e)
 		a.True(r.Extended)
 		a.True(r.Train)
@@ -116,7 +116,7 @@ func TestExtendedSyntaxParseSelectToTrain(t *testing.T) {
 // parse "standard" select.
 func TestExtendedSyntaxParseSelectToTrainWithMultiColumns(t *testing.T) {
 	a := assert.New(t)
-	r, _, e := parseSQLFlowStmt(testSelectToTrainWithMultiColumns)
+	r, e := parseSQLFlowStmt(testSelectToTrainWithMultiColumns)
 	a.NoError(e)
 	a.True(r.Extended)
 	a.True(r.Train)
@@ -141,7 +141,7 @@ func TestExtendedSyntaxParseSelectToTrainWithMultiColumns(t *testing.T) {
 // parse "standard" select.
 func TestExtendedSyntaxParseSelectToPredict(t *testing.T) {
 	a := assert.New(t)
-	r, _, e := parseSQLFlowStmt(testSelectToPredict)
+	r, e := parseSQLFlowStmt(testSelectToPredict)
 	a.NoError(e)
 	a.True(r.Extended)
 	a.False(r.Train)
@@ -154,7 +154,7 @@ func TestExtendedSyntaxParseSelectToPredict(t *testing.T) {
 func TestExtendedSyntaxParseSelectToExplain(t *testing.T) {
 	a := assert.New(t)
 	{
-		r, _, e := parseSQLFlowStmt(`select * from mytable
+		r, e := parseSQLFlowStmt(`select * from mytable
 TO EXPLAIN my_model
 USING TreeExplainer;`)
 		a.NoError(e)
@@ -165,7 +165,7 @@ USING TreeExplainer;`)
 		a.Equal("TreeExplainer", r.Explainer)
 	}
 	{
-		r, _, e := parseSQLFlowStmt(`select * from mytable
+		r, e := parseSQLFlowStmt(`select * from mytable
 TO EXPLAIN my_model
 WITH
   plots = force
@@ -182,7 +182,7 @@ USING TreeExplainer;`)
 
 func TestExtendedSyntaxParseSelectStarAndPrint(t *testing.T) {
 	a := assert.New(t)
-	r, _, e := parseSQLFlowStmt(`SELECT *, b FROM a LIMIT 10;`)
+	r, e := parseSQLFlowStmt(`SELECT *, b FROM a LIMIT 10;`)
 	a.NoError(e)
 	a.Equal(2, len(r.Fields.Strings()))
 	a.Equal("*", r.Fields.Strings()[0])
@@ -207,7 +207,7 @@ func TestExtendedSyntaxParseSelectWithDuplicatedFromClauses(t *testing.T) {
 
 func TestExtendedSyntaxParseSelectToPredictWithMaxcomputeUDF(t *testing.T) {
 	a := assert.New(t)
-	r, _, e := parseSQLFlowStmt(testSelectToPredictWithMaxComputeUDF)
+	r, e := parseSQLFlowStmt(testSelectToPredictWithMaxComputeUDF)
 	a.NoError(e)
 	a.Equal(3, len(r.Fields.Strings()))
 	a.Equal(r.Fields[0].String(), `predict_fun(concat(",", col_1, col_2))`)
