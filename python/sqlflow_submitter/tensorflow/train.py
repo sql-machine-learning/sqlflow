@@ -151,7 +151,7 @@ def train(is_keras_model,
         elif len(table_parts) == 1:
             table_name = pai_table
             driver, dsn = datasource.split("://")
-            _, _, _, database = parseMaxComputeDSN(dsn)
+            database = parseMaxComputeDSN(dsn)[-1]
         else:
             raise ValueError("error database.table format: %s" % pai_table)
 
@@ -224,10 +224,6 @@ def train(is_keras_model,
                 print("%s: %s" % (k, v[-1]))
         classifier.save_weights(save, save_format="h5")
     else:
-        # if is_pai:
-        #     print("using checkpoint dir: ", FLAGS.checkpointDir)
-        #     model_params["model_dir"] = FLAGS.checkpointDir
-        # else:
         model_params["model_dir"] = save
         model_params["config"] = tf.estimator.RunConfig(save_checkpoints_steps=save_checkpoints_steps)
         classifier = estimator(**model_params)

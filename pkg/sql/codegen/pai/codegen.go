@@ -41,13 +41,13 @@ func getTableFromSelect(dataSource, trainSelect string) (string, string, error) 
 	if len(matches) != 1 {
 		return "", "", fmt.Errorf("only support simple SQL query, but got %s", trainSelect)
 	}
-	paiTableFull := matches[0][1]
-	paiDatabase := ""
-	paiTable := ""
-	tableParts := strings.Split(paiTableFull, ".")
+	tableFull := matches[0][1]
+	database := ""
+	tableName := ""
+	tableParts := strings.Split(tableFull, ".")
 	if len(tableParts) == 2 {
-		paiDatabase = tableParts[0]
-		paiTable = tableParts[1]
+		database = tableParts[0]
+		tableName = tableParts[1]
 	} else {
 		parts := strings.Split(dataSource, "://")
 		if len(parts) != 2 {
@@ -57,10 +57,10 @@ func getTableFromSelect(dataSource, trainSelect string) (string, string, error) 
 		if err != nil {
 			return "", "", err
 		}
-		paiDatabase = conf.Project
-		paiTable = paiTableFull
+		database = conf.Project
+		tableName = tableFull
 	}
-	return paiDatabase, paiTable, nil
+	return database, tableName, nil
 }
 
 // wrapper generates a Python program for submit TensorFlow tasks to PAI.
@@ -71,7 +71,7 @@ func wrapper(code, dataSource, modelName, cwd string, trainSelect string) (strin
 	}
 	f.WriteString(code)
 	f.Close()
-	paiDatabase, paiTable, err := getTableFromSelect(dataSource, trainSelect)
+	database, tableName, err := getTableFromSelect(dataSource, trainSelect)
 	if err != nil {
 		return "", err
 	}
@@ -81,8 +81,8 @@ func wrapper(code, dataSource, modelName, cwd string, trainSelect string) (strin
 		DataSource:  dataSource,
 		ModelName:   modelName,
 		EntryFile:   entryFile,
-		PAIDatabase: paiDatabase,
-		PAITable:    paiTable,
+		PAIDatabase: database,
+		PAITable:    tableName,
 	}
 	var program bytes.Buffer
 	if err := tpl.Execute(&program, filler); err != nil {
