@@ -16,51 +16,45 @@ import pickle
 import tarfile
 import odps
 import tensorflow as tf
+from tensorflow.python.platform import gfile
 from sqlflow_submitter import db
+import os
 
-def save(datasource, model_name, model_dir, *meta):
+def save(oss_model_dir, *meta):
     '''
-    Save a directory and specific metadata to a MaxCompute table
+    Save model descriptions like the training SQL statements to OSS directory.
+    Data are saved using pickle.
     Args:
-        datasource: a MaxCompute connection URL.
-        model_name: the MaxCompute table name to save data.
-        model_dir: the directory to be saved.
+        oss_model_dir: OSS URI that the model will be saved to.
         *meta: python objects to be saved.
     Return:
         None
     '''
-    o = db.connect_with_data_source(datasource)
-    o.delete_table(model_name, if_exists=True)
-    t = o.create_table(model_name, 'piece binary')
-    f = io.BytesIO()
-    archive = tarfile.open(None, "w|gz", f)
-    archive.add(model_dir)
-    archive.close()
-    f.seek(0)
+    buf = pickle.dumps(list(meta))
+    uri_parts = oss_model_dir.split("?")
+    if len(uri_parts) != 2:
+        raise ValueError("error oss_model_dir: ", oss_model_dir)
+    oss_path = "/".join([uri_parts[0].rstrip("/"), "sqlflow_model_desc"])
+    writer = gfile.GFile(oss_path, mode='w')
+    writer.write(buf)
+    writer.flush()
+    writer.close()
 
-    with t.open_writer() as w:
-        w.write([pickle.dumps([model_dir] + list(meta))])
-        w.write(list(iter(lambda:[f.read(8000000)], [b''])))
-
-def load(datasource, model_name):
+def load(oss_model_dir):
     '''
     Load and restore a directory and metadata that are saved by `model.save`
     from a MaxCompute table
     Args:
-        datasource: a MaxCompute connection URL.
-        model_name: the MaxCompute table name to load data from.
+        oss_model_dir: OSS URI that the model will be saved to.
     Return:
         A list contains the saved python objects
     '''
-    o = db.connect_with_data_source(datasource)
-    t = o.get_table(model_name)
-    f = io.BytesIO()
-    with t.open_reader() as r:
-        meta = pickle.loads(r[0]['piece'])
-        for record in r[1:]:
-            f.write(record['piece'])
-    f.seek(0)
-    archive = tarfile.open(None, "r|gz", f)
-    archive.extractall()
-    archive.close()
-    return meta
+    uri_parts = oss_model_dir.split("?")
+    if len(uri_parts) != 2:
+        raise ValueError("error oss_model_dir: ", oss_model_dir)
+    oss_path = "/".join([uri_parts[0].rstrip("/"), "sqlflow_model_desc"])
+
+    reader = gfile.GFile(oss_path, mode='r')
+    read_content = reader.read()
+    return pickle.loads(read_content)
+

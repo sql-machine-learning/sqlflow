@@ -40,7 +40,7 @@ except:
     tf.logging.set_verbosity(tf.logging.ERROR)
     TF_VERSION_2 = False
 
-# for PAI distributed training
+# ----------------- For PAI distributed training -----------------
 if not TF_VERSION_2:
     tf.app.flags.DEFINE_integer("task_index", 0, "Worker task index")
     tf.app.flags.DEFINE_string("ps_hosts", "", "ps hosts")
@@ -77,7 +77,7 @@ def dump_into_tf_config(cluster, task_type, task_index):
   os.environ['TF_CONFIG'] = json.dumps(
       {'cluster': cluster,
        'task': {'type': task_type, 'index': task_index}})  
-  
+# ----------------- For PAI distributed training -----------------
 
 def get_dtype(type_str):
     if type_str == "float32":
@@ -178,7 +178,7 @@ def train(is_keras_model,
         ds_mapper = functools.partial(parse_sparse_feature, feature_column_names=feature_column_names, feature_metas=feature_metas)
         return dataset.map(ds_mapper)
 
-    def pai_maxcompute_input_fn(datasetStr):
+    def pai_maxcompute_input_fn(datasetStr, num_workers=1, worker_id=0):
         table_parts = pai_table.split(".")
         if len(table_parts) == 2:
             database, table_name = table_parts
@@ -201,9 +201,10 @@ def train(is_keras_model,
         selected_cols.append(label_meta["feature_name"])
         dataset = tf.data.TableRecordDataset(tables,
                                      record_defaults=record_defaults,
-                                     selected_cols=",".join(selected_cols))
+                                     selected_cols=",".join(selected_cols),
+                                     slice_id=worker_id,
+                                     slice_count=num_workers)
         def tensor_to_dict(*args):
-            print(args)
             num_features = len(feature_column_names)
             label = args[num_features]
             features_dict = dict()
@@ -216,7 +217,7 @@ def train(is_keras_model,
 
     def train_input_fn(batch_size):
         if is_pai:
-            dataset = pai_maxcompute_input_fn(select)
+            dataset = pai_maxcompute_input_fn(select, len(FLAGS.worker_hosts), FLAGS.task_index)
         else:
             dataset = input_fn(select)
         # FIXME(typhoonzero): find a way to cache to local file and avoid cache lockfile already exists issue.
@@ -227,7 +228,7 @@ def train(is_keras_model,
 
     def validate_input_fn(batch_size):
         if is_pai:
-            dataset = pai_maxcompute_input_fn(validate_select)
+            dataset = pai_maxcompute_input_fn(validate_select, len(FLAGS.worker_hosts), FLAGS.task_index)
         else:
             dataset = input_fn(validate_select)
         return dataset.batch(batch_size).cache()
@@ -273,10 +274,9 @@ def train(is_keras_model,
         else:
             model_params["config"] = tf.estimator.RunConfig(save_checkpoints_steps=save_checkpoints_steps)
         if is_pai:
-            print("using checkpoint dir: ", FLAGS.checkpointDir)
             model_params["model_dir"] = FLAGS.checkpointDir
         else:
-            model_params["model_dir"] = FLAGS.model_dir
+            model_params["model_dir"] = save
         classifier = estimator(**model_params)
 
         if validate_select == "":
@@ -292,7 +292,8 @@ def train(is_keras_model,
                 eval_hooks = [PrintStatusHook("eval", every_n_iter=log_every_n_iter)]
             eval_spec = tf.estimator.EvalSpec(input_fn=lambda:validate_input_fn(batch_size), hooks=eval_hooks, start_delay_secs=eval_start_delay_secs, throttle_secs=eval_throttle_secs)
             result = tf.estimator.train_and_evaluate(classifier, train_spec, eval_spec)
-            print(result[0])
+            # FIXME(typhoonzero): find out why pai will have result == None
+            if not is_pai:
+                print(result[0])
 
     print("Done training")
-

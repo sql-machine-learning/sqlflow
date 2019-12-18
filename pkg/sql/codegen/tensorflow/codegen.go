@@ -350,6 +350,21 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 		labelFM.Name = predStmt.ResultColumn
 	}
 
+	isPAI := os.Getenv("SQLFLOW_submitter") == "pai"
+	paiTable := ""
+	// TODO(typhoonzero): if isPAI, create two Couler steps
+	if isPAI {
+		fromRegex, err := regexp.Compile("FROM[\\s\\n]+([\\w\\.]*)")
+		if err != nil {
+			return "", err
+		}
+		matches := fromRegex.FindAllStringSubmatch(predStmt.Select, -1)
+		if len(matches) != 1 {
+			return "", fmt.Errorf("only support simple SQL query, but got %s", predStmt.Select)
+		}
+		paiTable = matches[0][1]
+	}
+
 	filler := predFiller{
 		DataSource:        predStmt.DataSource,
 		Select:            predStmt.Select,
@@ -365,6 +380,8 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 		HiveLocation:      session.HiveLocation,
 		HDFSUser:          session.HdfsUser,
 		HDFSPass:          session.HdfsPass,
+		IsPAI:             isPAI,
+		PAIPredictTable:   paiTable,
 	}
 	var program bytes.Buffer
 	var predTemplate = template.Must(template.New("Pred").Funcs(template.FuncMap{

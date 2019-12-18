@@ -59,6 +59,21 @@ func getTableFromSelect(dataSource, trainSelect string) (string, string, error) 
 	return paiDatabase, paiTable, nil
 }
 
+func formatCkptDir(modelName string) (string, error) {
+	ossCkptDir := os.Getenv("SQLFLOW_OSS_CHECKPOINT_DIR")
+	if ossCkptDir == "" {
+		return "", fmt.Errorf("must specify SQLFLOW_OSS_CHECKPOINT_DIR when training with PAI, e.g. oss://bucket/?role_arn=xxx&host=xxx")
+	}
+	ossURIParts := strings.Split(ossCkptDir, "?") // ossCkptDir: oss://bucket/your/path/?args=...
+	if len(ossURIParts) != 2 {
+		return "", fmt.Errorf("SQLFLOW_OSS_CHECKPOINT_DIR must be of format: oss://bucket/?role_arn=xxx&host=xxx")
+	}
+	ossDir := strings.Join([]string{strings.TrimRight(ossURIParts[0], "/"), modelName}, "/")
+	// Form URI like: oss://bucket/your/path/modelname/?args=...
+	ossCkptDir = strings.Join([]string{ossDir + "/", ossURIParts[1]}, "?")
+	return ossCkptDir, nil
+}
+
 // wrapper generates a Python program for submit TensorFlow tasks to PAI.
 func wrapper(code, dataSource, modelName, cwd string, trainSelect string, numPS, numWrokers int) (string, error) {
 	f, err := os.Create(filepath.Join(cwd, entryFile))
@@ -71,22 +86,26 @@ func wrapper(code, dataSource, modelName, cwd string, trainSelect string, numPS,
 	if err != nil {
 		return "", err
 	}
+	ossCkptDir, err := formatCkptDir(modelName)
+	if err != nil {
+		return "", err
+	}
 
 	var tpl = template.Must(template.New("Submit").Parse(tfWrapperTmplText))
 	filler := wrapperFiller{
-		DataSource:  dataSource,
-		ModelName:   modelName,
-		EntryFile:   entryFile,
-		NumPS:       numPS,
-		NumWorkers:  numWrokers,
-		PAIDatabase: paiDatabase,
-		PAITable:    paiTable,
+		DataSource:       dataSource,
+		ModelName:        modelName,
+		EntryFile:        entryFile,
+		NumPS:            numPS,
+		NumWorkers:       numWrokers,
+		PAIDatabase:      paiDatabase,
+		PAITable:         paiTable,
+		OSSCheckpointDir: ossCkptDir,
 	}
 	var program bytes.Buffer
 	if err := tpl.Execute(&program, filler); err != nil {
 		return "", err
 	}
-	fmt.Println(program.String())
 	return program.String(), nil
 }
 
@@ -110,18 +129,14 @@ func Train(ir *ir.TrainStmt, modelName, cwd string) (string, error) {
 		// delete attributes so that tensorflow codegen can run.
 		delete(ir.Attributes, "train.num_workers")
 	}
-
-	program, err := doTrain(ir, modelName)
+	program, err := tfTrainAndSave(ir, modelName)
 	if err != nil {
-		fmt.Printf("error run doTrain: %v ", err)
 		return "", err
 	}
-	fmt.Printf("generated train program: %s \n", program)
-
 	return wrapper(program, ir.DataSource, modelName, cwd, ir.Select, numPS, numWorkers)
 }
 
-func doTrain(ir *ir.TrainStmt, modelName string) (string, error) {
+func tfTrainAndSave(ir *ir.TrainStmt, modelName string) (string, error) {
 	code, err := tensorflow.Train(ir)
 	if err != nil {
 		return "", err
@@ -130,10 +145,12 @@ func doTrain(ir *ir.TrainStmt, modelName string) (string, error) {
 	// append code snippet to save model
 	isKeras, estimatorStr := tensorflow.IsKerasModel(ir.Estimator)
 	var tpl = template.Must(template.New("SaveModel").Parse(tfSaveModelTmplText))
+	ckptDir, err := formatCkptDir(ir.Into)
+	if err != nil {
+		return "", err
+	}
 	filler := saveModelFiller{
-		DataSource:   ir.DataSource,
-		ModelName:    modelName,
-		Save:         "model_save",
+		OSSModelDir:  ckptDir,
 		Estimator:    estimatorStr,
 		IsKerasModel: isKeras,
 	}
@@ -146,18 +163,22 @@ func doTrain(ir *ir.TrainStmt, modelName string) (string, error) {
 
 // Predict generates a Python program for train a TensorFlow model.
 func Predict(ir *ir.PredictStmt, modelName, cwd string) (string, error) {
-	program, err := doPredict(ir, modelName)
+	program, err := tfLoadAndPredict(ir, modelName)
 	if err != nil {
 		return "", err
 	}
 	return wrapper(program, ir.DataSource, modelName, cwd, ir.Select, 0, 1)
 }
 
-func doPredict(ir *ir.PredictStmt, modelName string) (string, error) {
+func tfLoadAndPredict(ir *ir.PredictStmt, modelName string) (string, error) {
 	var tpl = template.Must(template.New("Predict").Parse(tfPredictTmplText))
+	ossModelDir, err := formatCkptDir(modelName)
+	if err != nil {
+		return "", err
+	}
 	filler := predictFiller{
+		OSSModelDir: ossModelDir,
 		DataSource:  ir.DataSource,
-		ModelName:   modelName,
 		Select:      ir.Select,
 		ResultTable: ir.ResultTable,
 	}
