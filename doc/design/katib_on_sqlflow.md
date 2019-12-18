@@ -70,8 +70,8 @@ Consider the following example program.
 
 ```sql
 SELECT * FROM a, b WHERE a.id = b.id INTO c;
-SELECT * FROM c TO TRAIN model_def 
-    WITH objective=multi:softmax, eta=1, validation_dataset="select * from d;" 
+SELECT * FROM c TO TRAIN data_scientist/xgboost:v0.5/xgboost:gbtree 
+    WITH objective=multi:softmax, eta=0.1, validation_dataset="select * from d;" 
     INTO my_xgb_model;
 ```
 
@@ -79,9 +79,9 @@ The `codegen_couler.go` might generate the following Couler program.
 
 ```python
 couler.maxcompute.run("""SELECT * FROM a, b WHERE a.id = b.id INTO c;""")
-couler.katib.train(model=model_def, hyperparameters={"objective": "multi:softmax", 
-    "eta": 1},  image="data_scientist/xgboost:v0.5",
-    sql="select * from c to train model_def ... ")
+couler.katib.train(model="xgboost:gbtree", hyperparameters={"objective": "multi:softmax", 
+    "eta": 0.1},  image="data_scientist/xgboost:v0.5",
+    sql="select * from c to train data_scientist/xgboost:v0.5/xgboost:gbtree ... ")
 ```
 
 ## `couler.sqlflow.train(...)`
@@ -105,7 +105,7 @@ In each Katib tuning job, users need to define tuning parameters (i.e., the hype
 
 For SQLFlow, each Katib pod will execute the following command:
 
-`repl -m "select * from c to train model_def ... "; python katib_xgb_submitter.py ...`
+`repl -m "select * from c to train ... "; python katib_xgb_submitter.py ...`
 
 
 ## Pipeline
