@@ -120,7 +120,9 @@ func TestSQL(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	stream, err := c.Run(ctx, &pb.Request{Sql: testErrorSQL, Session: &pb.Session{DbConnStr: mockDBConnStr}})
+	stream, err := c.Run(ctx, &pb.Request{
+		Sql:     testErrorSQL,
+		Session: &pb.Session{DbConnStr: mockDBConnStr}})
 	a.NoError(err)
 	_, err = stream.Recv()
 	a.Equal(status.Error(codes.Unknown, "Lex: Unknown problem ..."), err)

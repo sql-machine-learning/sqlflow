@@ -247,6 +247,7 @@ func InferFeatureColumns(trainStmt *ir.TrainStmt) error {
 	}
 	rows, err := db.Query(q)
 	if err != nil {
+		fmt.Println("Query failed", err, "with ", q)
 		return err
 	}
 	defer rows.Close()

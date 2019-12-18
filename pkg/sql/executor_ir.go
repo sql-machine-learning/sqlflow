@@ -70,16 +70,20 @@ func RunSQLProgram(sqlProgram string, modelDir string, session *pb.Session) *Pip
 func ParseSQLStatement(sql string, session *pb.Session) (string, error) {
 	connStr := session.DbConnStr
 	driverName := strings.Split(connStr, "://")[0]
+	fmt.Println("parsing with ", driverName)
 	parsed, err := parser.ParseOneStatement(driverName, sql)
 	if err != nil {
+		fmt.Println("parsing error")
 		return "", err
 	}
 	if !parser.IsExtendedSyntax(parsed) {
+		fmt.Println("parsing not extended syntax")
 		return "", fmt.Errorf("ParseSQLStatement only accept extended SQL")
 	}
 	if parsed.Train {
 		trainStmt, err := generateTrainStmtWithInferredColumns(parsed.SQLFlowSelectStmt, connStr)
 		if err != nil {
+			fmt.Println("training error")
 			return "", err
 		}
 		pbir, err := ir.TrainStmtToProto(trainStmt, session)

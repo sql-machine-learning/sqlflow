@@ -27,10 +27,12 @@ import (
 func generateTrainStmtWithInferredColumns(slct *parser.SQLFlowSelectStmt, connStr string) (*ir.TrainStmt, error) {
 	trainStmt, err := generateTrainStmt(slct, connStr)
 	if err != nil {
+		fmt.Println("generateTrainStmt failed")
 		return nil, err
 	}
 
 	if err := InferFeatureColumns(trainStmt); err != nil {
+		fmt.Println("InferFeatureColumns failed")
 		return nil, err
 	}
 
