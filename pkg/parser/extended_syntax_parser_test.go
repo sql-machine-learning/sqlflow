@@ -59,13 +59,6 @@ INTO sqlflow_models.my_dnn_model;
 	testToPredict                     = `TO PREDICT db.table.field
 USING sqlflow_models.my_dnn_model;`
 	testSelectToPredict = testStandardSelect + testToPredict
-
-	testSelectToPredictWithMaxComputeUDF = `
-SELECT predict_fun(concat(",", col_1, col_2)) AS (info, score) FROM db.table
-TO PREDICT db.predict_result
-WITH OSS_KEY=a, OSS_ID=b
-USING sqlflow_models.my_model;
-	`
 )
 
 // TODO(wangkuiyi): Remove this test after we remove the rules to
@@ -112,11 +105,56 @@ func TestExtendedSyntaxParseSelectToTrain(t *testing.T) {
 	}
 }
 
+func TestExtendedSyntaxParseToTrain(t *testing.T) {
+	a := assert.New(t)
+	for _, eos := range []string{``, `;`} {
+		r, e := parseSQLFlowStmt(testToTrain + eos)
+		a.NoError(e)
+		a.True(r.Extended)
+		a.True(r.Train)
+		a.Equal("DNNClassifier", r.Estimator)
+		a.Equal("[10, 20]", r.TrainAttrs["hidden_units"].String())
+		a.Equal("3", r.TrainAttrs["n_classes"].String())
+		a.Equal(`employee.name`,
+			r.Columns["feature_columns"][0].String())
+		a.Equal(`bucketize(last_name, 1000)`,
+			r.Columns["feature_columns"][1].String())
+		a.Equal(
+			`cross(embedding(employee.name), bucketize(last_name, 1000))`,
+			r.Columns["feature_columns"][2].String())
+		a.Equal("employee.salary", r.Label)
+		a.Equal("sqlflow_models.my_dnn_model", r.Save)
+	}
+}
+
 // TODO(wangkuiyi): Remove this test after we remove the rules to
 // parse "standard" select.
 func TestExtendedSyntaxParseSelectToTrainWithMultiColumns(t *testing.T) {
 	a := assert.New(t)
 	r, e := parseSQLFlowStmt(testSelectToTrainWithMultiColumns)
+	a.NoError(e)
+	a.True(r.Extended)
+	a.True(r.Train)
+	a.Equal("DNNClassifier", r.Estimator)
+	a.Equal("[10, 20]", r.TrainAttrs["hidden_units"].String())
+	a.Equal("3", r.TrainAttrs["n_classes"].String())
+	a.Equal(`employee.name`,
+		r.Columns["feature_columns"][0].String())
+	a.Equal(`bucketize(last_name, 1000)`,
+		r.Columns["feature_columns"][1].String())
+	a.Equal(
+		`cross(embedding(employee.name), bucketize(last_name, 1000))`,
+		r.Columns["feature_columns"][2].String())
+	a.Equal(
+		`cross(embedding(employee.name), bucketize(last_name, 1000))`,
+		r.Columns["C2"][0].String())
+	a.Equal("employee.salary", r.Label)
+	a.Equal("sqlflow_models.my_dnn_model", r.Save)
+}
+
+func TestExtendedSyntaxParseToTrainWithMultiColumns(t *testing.T) {
+	a := assert.New(t)
+	r, e := parseSQLFlowStmt(testToTrainWithMultiColumns)
 	a.NoError(e)
 	a.True(r.Extended)
 	a.True(r.Train)
@@ -149,35 +187,46 @@ func TestExtendedSyntaxParseSelectToPredict(t *testing.T) {
 	a.Equal("db.table.field", r.Into)
 }
 
+func TestExtendedSyntaxParseToPredict(t *testing.T) {
+	a := assert.New(t)
+	r, e := parseSQLFlowStmt(testToPredict)
+	a.NoError(e)
+	a.True(r.Extended)
+	a.False(r.Train)
+	a.Equal("sqlflow_models.my_dnn_model", r.Model)
+	a.Equal("db.table.field", r.Into)
+}
+
 // TODO(wangkuiyi): Remove this test after we remove the rules to
 // parse "standard" select.
 func TestExtendedSyntaxParseSelectToExplain(t *testing.T) {
 	a := assert.New(t)
-	{
-		r, e := parseSQLFlowStmt(`select * from mytable
-TO EXPLAIN my_model
-USING TreeExplainer;`)
-		a.NoError(e)
-		a.True(r.Extended)
-		a.False(r.Train)
-		a.True(r.Explain)
-		a.Equal("my_model", r.TrainedModel)
-		a.Equal("TreeExplainer", r.Explainer)
-	}
-	{
-		r, e := parseSQLFlowStmt(`select * from mytable
+	r, e := parseSQLFlowStmt(`select * from mytable
 TO EXPLAIN my_model
 WITH
   plots = force
 USING TreeExplainer;`)
-		a.NoError(e)
-		a.True(r.Extended)
-		a.False(r.Train)
-		a.True(r.Explain)
-		a.Equal("my_model", r.TrainedModel)
-		a.Equal("force", r.ExplainAttrs["plots"].String())
-		a.Equal("TreeExplainer", r.Explainer)
-	}
+	a.NoError(e)
+	a.True(r.Extended)
+	a.False(r.Train)
+	a.True(r.Explain)
+	a.Equal("my_model", r.TrainedModel)
+	a.Equal("force", r.ExplainAttrs["plots"].String())
+	a.Equal("TreeExplainer", r.Explainer)
+}
+
+func TestExtendedSyntaxParseToExplain(t *testing.T) {
+	a := assert.New(t)
+	r, e := parseSQLFlowStmt(`TO EXPLAIN my_model
+WITH plots = force
+USING TreeExplainer;`)
+	a.NoError(e)
+	a.True(r.Extended)
+	a.False(r.Train)
+	a.True(r.Explain)
+	a.Equal("my_model", r.TrainedModel)
+	a.Equal("force", r.ExplainAttrs["plots"].String())
+	a.Equal("TreeExplainer", r.Explainer)
 }
 
 func TestExtendedSyntaxParseSelectStarAndPrint(t *testing.T) {
@@ -207,6 +256,12 @@ func TestExtendedSyntaxParseSelectWithDuplicatedFromClauses(t *testing.T) {
 
 func TestExtendedSyntaxParseSelectToPredictWithMaxcomputeUDF(t *testing.T) {
 	a := assert.New(t)
+	testSelectToPredictWithMaxComputeUDF := `
+SELECT predict_fun(concat(",", col_1, col_2)) AS (info, score) FROM db.table
+TO PREDICT db.predict_result
+WITH OSS_KEY=a, OSS_ID=b
+USING sqlflow_models.my_model;
+	`
 	r, e := parseSQLFlowStmt(testSelectToPredictWithMaxComputeUDF)
 	a.NoError(e)
 	a.Equal(3, len(r.Fields.Strings()))
