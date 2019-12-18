@@ -41,6 +41,7 @@ func testMySQLDatabase() *DB {
 	_, e = db.Exec("CREATE DATABASE IF NOT EXISTS sqlflow_models;")
 	assertNoErr(e)
 	assertNoErr(testdata.Popularize(db.DB, testdata.IrisSQL))
+	assertNoErr(testdata.Popularize(db.DB, testdata.SanityCheckSQL))
 	assertNoErr(testdata.Popularize(db.DB, testdata.ChurnSQL))
 	assertNoErr(testdata.Popularize(db.DB, testdata.HousingSQL))
 	return db
