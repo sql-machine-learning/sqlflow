@@ -219,9 +219,11 @@ USING TreeExplainer;`
 
 func TestExtendedSyntaxParseToExplain(t *testing.T) {
 	a := assert.New(t)
-	r, e := parseSQLFlowStmt(`TO EXPLAIN my_model
+	s := `TO EXPLAIN my_model
 WITH plots = force
-USING TreeExplainer;`)
+USING TreeExplainer;`
+	r, idx, e := parseSQLFlowStmt(s)
+	a.Equal(len(s), idx) // right before ; due to the end_of_stmt syntax rule.
 	a.NoError(e)
 	a.True(r.Extended)
 	a.False(r.Train)
