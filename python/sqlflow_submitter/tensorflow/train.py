@@ -197,8 +197,19 @@ def train(is_keras_model,
                 history = classifier.fit(ds,
                     epochs=epochs if epochs else classifier.default_training_epochs(),
                     verbose=verbose)
-            for k, v in history.history.items():
-                print("%s: %s" % (k, v[-1]))
+            train_keys = []
+            val_keys = []
+            for k in history.history.keys():
+                if k.startswith("val_"):
+                    val_keys.append(k)
+                else:
+                    train_keys.append(k)
+            print("====== Result for training set: ======")
+            for k in train_keys:
+                print("%s: %s" % (k, history.history[k][-1]))
+            print("====== Result for validation set: ======")
+            for k in val_keys:
+                print("%s: %s" % (k, history.history[k][-1]))
         classifier.save_weights(save, save_format="h5")
     else:
         if validate_select == "":
