@@ -193,7 +193,7 @@ func TestExtendedSyntaxParseSelectStarAndPrint(t *testing.T) {
 
 func TestExtendedSyntaxParseStandardDropTable(t *testing.T) {
 	a := assert.New(t)
-	_, _, e := parseSQLFlowStmt(`DROP TABLE TO PREDICT`)
+	_, e := parseSQLFlowStmt(`DROP TABLE TO PREDICT`)
 	a.Error(e)
 	// Note: currently, our parser doesn't accept anything statements other than SELECT.
 	// It will support parsing any SQL statements and even dialects in the future.
@@ -201,7 +201,7 @@ func TestExtendedSyntaxParseStandardDropTable(t *testing.T) {
 
 func TestExtendedSyntaxParseSelectWithDuplicatedFromClauses(t *testing.T) {
 	a := assert.New(t)
-	_, _, e := parseSQLFlowStmt(`SELECT table.field FROM table FROM tttt;`)
+	_, e := parseSQLFlowStmt(`SELECT table.field FROM table FROM tttt;`)
 	a.Error(e)
 }
 
