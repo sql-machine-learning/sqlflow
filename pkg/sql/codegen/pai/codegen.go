@@ -18,7 +18,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 	"text/template"
+
+	"sqlflow.org/gomaxcompute"
 
 	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
@@ -26,26 +30,64 @@ import (
 
 const entryFile = "entry.py"
 
+func getTableFromSelect(dataSource, trainSelect string) (string, string, error) {
+	// FIXME(typhoonzero): copied from tensorflow/codegen.go, should remove this and use the temp table
+	// in the workflow
+	fromRegex, err := regexp.Compile("FROM[\\s\\n]+([\\w\\.]*)")
+	if err != nil {
+		return "", "", err
+	}
+	matches := fromRegex.FindAllStringSubmatch(trainSelect, -1)
+	if len(matches) != 1 {
+		return "", "", fmt.Errorf("only support simple SQL query, but got %s", trainSelect)
+	}
+	tableFull := matches[0][1]
+	database := ""
+	tableName := ""
+	tableParts := strings.Split(tableFull, ".")
+	if len(tableParts) == 2 {
+		database = tableParts[0]
+		tableName = tableParts[1]
+	} else {
+		parts := strings.Split(dataSource, "://")
+		if len(parts) != 2 {
+			return "", "", fmt.Errorf("error datasource format: %s", dataSource)
+		}
+		conf, err := gomaxcompute.ParseDSN(parts[1])
+		if err != nil {
+			return "", "", err
+		}
+		database = conf.Project
+		tableName = tableFull
+	}
+	return database, tableName, nil
+}
+
 // wrapper generates a Python program for submit TensorFlow tasks to PAI.
-func wrapper(code, dataSource, modelName, cwd string) (string, error) {
+func wrapper(code, dataSource, modelName, cwd string, trainSelect string) (string, error) {
 	f, err := os.Create(filepath.Join(cwd, entryFile))
 	if err != nil {
 		return "", fmt.Errorf("Create python code failed")
 	}
 	f.WriteString(code)
 	f.Close()
+	database, tableName, err := getTableFromSelect(dataSource, trainSelect)
+	if err != nil {
+		return "", err
+	}
 
 	var tpl = template.Must(template.New("Submit").Parse(tfWrapperTmplText))
 	filler := wrapperFiller{
-		DataSource: dataSource,
-		ModelName:  modelName,
-		EntryFile:  entryFile,
+		DataSource:  dataSource,
+		ModelName:   modelName,
+		EntryFile:   entryFile,
+		PAIDatabase: database,
+		PAITable:    tableName,
 	}
 	var program bytes.Buffer
 	if err := tpl.Execute(&program, filler); err != nil {
 		return "", err
 	}
-
 	return program.String(), nil
 }
 
@@ -55,7 +97,7 @@ func Train(ir *ir.TrainStmt, modelName, cwd string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return wrapper(program, ir.DataSource, modelName, cwd)
+	return wrapper(program, ir.DataSource, modelName, cwd, ir.Select)
 }
 
 func doTrain(ir *ir.TrainStmt, modelName string) (string, error) {
@@ -63,8 +105,9 @@ func doTrain(ir *ir.TrainStmt, modelName string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	isKeras, estimatorStr := tensorflow.IsKerasModel(ir.Estimator)
+
 	// append code snippet to save model
+	isKeras, estimatorStr := tensorflow.IsKerasModel(ir.Estimator)
 	var tpl = template.Must(template.New("SaveModel").Parse(tfSaveModelTmplText))
 	filler := saveModelFiller{
 		DataSource:   ir.DataSource,
@@ -86,7 +129,7 @@ func Predict(ir *ir.PredictStmt, modelName, cwd string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return wrapper(program, ir.DataSource, modelName, cwd)
+	return wrapper(program, ir.DataSource, modelName, cwd, ir.Select)
 }
 
 func doPredict(ir *ir.PredictStmt, modelName string) (string, error) {

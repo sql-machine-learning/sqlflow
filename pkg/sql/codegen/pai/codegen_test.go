@@ -103,7 +103,7 @@ func TestWrapperCodegen(t *testing.T) {
 	a.NoError(err)
 	defer os.RemoveAll(cwd)
 
-	code, err := wrapper("", dataSource, "my_dnn_model", cwd)
+	code, err := wrapper("", dataSource, "my_dnn_model", cwd, "SELECT * FROM my_table")
 	a.NoError(err)
 	a.True(strings.Contains(code, `assert driver == "maxcompute"`))
 
