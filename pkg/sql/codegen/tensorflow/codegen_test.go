@@ -48,3 +48,36 @@ func TestTrainCodegen(t *testing.T) {
 	r, _ = regexp.Compile(`hdfs_pass="(.*)"`)
 	a.Equal(r.FindStringSubmatch(code)[1], "sqlflow_pass")
 }
+
+func TestTrainWithOptimizer(t *testing.T) {
+	a := assert.New(t)
+	tir := ir.MockTrainStmt("mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0", false)
+	a.NotContains(tir.Attributes, "model.optimizer")
+	_, err := Train(tir)
+	a.NoError(err)
+	a.NotContains(tir.Attributes, "model.optimizer")
+
+	tir.Attributes["model.optimizer"] = "RMSprop"
+	_, err = Train(tir)
+	a.NoError(err)
+	a.Equal(tir.Attributes["model.optimizer"], "RMSprop()")
+
+	tir.Attributes["not_optimizer.learning_rate"] = 123
+	tir.Attributes["model.optimizer"] = "RMSprop"
+	_, err = Train(tir)
+	a.Error(err)
+	a.Equal(tir.Attributes["model.optimizer"], "RMSprop()")
+
+	tir = ir.MockTrainStmt("mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0", false)
+	tir.Attributes["optimizer.learning_rate"] = 0.002
+	_, err = Train(tir)
+	a.NoError(err)
+	a.Equal(tir.Attributes["model.optimizer"], "Adagrad(learning_rate=0.002, )")
+	a.NotContains(tir.Attributes, "optimizer.learning_rate")
+
+	tir.Attributes["model.optimizer"] = "RMSprop"
+	tir.Attributes["optimizer.learning_rate"] = 0.002
+	_, err = Train(tir)
+	a.NoError(err)
+	a.Equal(tir.Attributes["model.optimizer"], "RMSprop(learning_rate=0.002, )")
+}
