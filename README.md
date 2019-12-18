@@ -8,6 +8,12 @@ SQLFlow is a bridge that connects a SQL engine, e.g. MySQL, Hive or [MaxCompute]
 
 ![](https://github.com/sql-machine-learning/sql-machine-learning.github.io/raw/master/assets/instruction.gif)
 
+## Please Help Us with More CI workers!
+
+[![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](sqlflow.org@gmail.com)
+
+We have been working intensively to bring SQLFlow more features. You can see that we are having a steep growth in Github Stars and Git commits, which make a heavy workload for the CI. Also, we have a large CI matrix over many DBMSes (MySQL, TiDB, Apache Hive, Alibaba MaxCompute) and AI engines (TensorFlow, ElasticDL, XGBoost).  More are coming.  
+
 ## Motivation
 
 The current experience of development ML based applications requires a team of data engineers, data scientists, business analysts as well as a proliferation of advanced languages and programming tools like Python, SQL, SAS, SASS, Julia, R. The fragmentation of tooling and development environment brings additional difficulties in engineering to model trainning/tunning. What if we marry the most widely used data management/processing language SQL with ML/system capabilities and let engineers with SQL skills develop advanced ML based applications?
