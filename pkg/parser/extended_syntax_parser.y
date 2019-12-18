@@ -450,8 +450,12 @@ func parseSQLFlowStmt(s string) (r *SQLFlowSelectStmt, idx int, e error) {
 	mu.Lock()
 	defer mu.Unlock()
 
+	parseResult = nil // Important! Clear out result from previous call.
 	lex := newLexer(s)
 	extendedSyntaxParse(lex)  // extendedSyntaxParse is auto generated.
-	return parseResult, lex.previous, lex.err
-        // return parseResult, lex.start - len(lex.recent), lex.err
+        idx = lex.pos
+	if lex.err != nil {
+	        idx = lex.previous
+	}
+	return parseResult, idx, lex.err
 }
