@@ -24,6 +24,9 @@ import (
 func TestCreateHasDropTable(t *testing.T) {
 	a := assert.New(t)
 
+	testDriver, testDB, e := newTestDB()
+	a.NoError(e)
+
 	fn := fmt.Sprintf("%s.unittest%d", testDatabaseName, rand.Int())
 	a.NoError(createTable(testDB, testDriver, fn))
 	has, e := hasTable(testDB, fn)
