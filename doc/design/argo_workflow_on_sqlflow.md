@@ -7,15 +7,15 @@ SQLFlow translates a SQL program, perhaps with extended SQL syntax for AI, into 
 When SQLFLow server receives a gRPC `Run` request that contains a SQL program, it:
 
 1. Translates the SQL program to an Argo YAML file.
-1. Submits the YAML file to Kubernetes and receives an Argo workflow ID.(1)
+1. Submits the YAML file to Kubernetes and receives an Argo workflow ID. `<---(1)`
 1. Returns the workflow ID as a job token to the client.
 
 When SQLFLow server receives a gRPC `Fetch` request contains a job token, it:
 
-1. Looks up the associated Argo workflow and fetches most recent logs.(2)
+1. Looks up the associated Argo workflow and fetches most recent logs. `<---(2)`
 1. Returns the fetched logs with a updated job token to the client.
 
-The (1) and (2) are implemented by `pkg/argo` as `Submit` and `Fetch` respectively.
+The package `pkg/argo` contains two functions `Submit` and `Fetch` corresponding to the above steps marked (1) and (2) respectively.
 
 ## API Design
 
