@@ -10,7 +10,12 @@ SQLFlow is a bridge that connects a SQL engine, e.g. MySQL, Hive or [MaxCompute]
 
 ## Please Help Us with More CI workers!
 
-[![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](sqlflow.org@gmail.com)
+<form action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_top">
+<input type="hidden" name="cmd" value="_s-xclick" />
+<input type="hidden" name="hosted_button_id" value="XQFHSEFE86PMJ" />
+<input type="image" src="https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif" border="0" name="submit" title="PayPal - The safer, easier way to pay online!" alt="Donate with PayPal button" />
+<img alt="" border="0" src="https://www.paypal.com/en_US/i/scr/pixel.gif" width="1" height="1" />
+</form>
 
 We have been working intensively to bring SQLFlow more features. You can see that we are having a steep growth in Github Stars and Git commits, which make a heavy workload for the CI. Also, we have a large CI matrix over many DBMSes (MySQL, TiDB, Apache Hive, Alibaba MaxCompute) and AI engines (TensorFlow, ElasticDL, XGBoost).  More are coming.  
 
