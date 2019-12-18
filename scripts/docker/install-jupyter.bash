@@ -26,12 +26,10 @@ echo 'get_ipython().magic(u"%autoreload 2")' >> $IPYTHON_STARTUP/00-first.py
 
 # Enable highlighting, see https://stackoverflow.com/questions/43641362
 mkdir -p $HOME/.jupyter/custom/
-echo '
-require(['notebook/js/codecell'], function(codecell) {
+echo "require(['notebook/js/codecell'], function(codecell) {
   codecell.CodeCell.options_default.highlight_modes['magic_text/x-mysql'] = {'reg':[/^%%sqlflow/]} ;
   Jupyter.notebook.events.one('kernel_ready.Kernel', function(){
   Jupyter.notebook.get_cells().map(function(cell){
       if (cell.cell_type == 'code'){ cell.auto_highlight(); } }) ;
   });
-});
-' > $HOME/.jupyter/custom/custom.js
+});" > $HOME/.jupyter/custom/custom.js
