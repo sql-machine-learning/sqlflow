@@ -436,12 +436,12 @@ func (s StandardSelect) String() string {
 
 var mu sync.Mutex // Protect the use of global variable parseResult.
 
-func parseSQLFlowStmt(s string) (r *SQLFlowSelectStmt, e error) {
+func parseSQLFlowStmt(s string) (r *SQLFlowSelectStmt, idx int, e error) {
 	defer func() {
 		if r := recover(); r != nil {
-			var ok bool
-			e, ok = r.(error)
-			if !ok {
+			if err, ok := r.(error); ok {
+			        e = err
+                        } else {
 				e = fmt.Errorf("%v", r)
 			}
 		}
@@ -450,6 +450,7 @@ func parseSQLFlowStmt(s string) (r *SQLFlowSelectStmt, e error) {
 	mu.Lock()
 	defer mu.Unlock()
 
-	extendedSyntaxParse(newLexer(s))  // extendedSyntaxParse is auto generated.
-	return parseResult, nil
+	lex := newLexer(s)
+	extendedSyntaxParse(lex)  // extendedSyntaxParse is auto generated.
+	return parseResult, lex.start, lex.err
 }

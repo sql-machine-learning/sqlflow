@@ -65,7 +65,7 @@ USING sqlflow_models.my_dnn_model;`
 // parse "standard" select.
 func TestExtendedSyntaxParseStandardSelect(t *testing.T) {
 	a := assert.New(t)
-	r, e := parseSQLFlowStmt(testStandardSelect + ";")
+	r, _, e := parseSQLFlowStmt(testStandardSelect + ";")
 	a.NoError(e)
 	a.False(r.Extended)
 	a.Equal([]string{"employee.age", "last_name", "salary"},
@@ -86,7 +86,7 @@ func TestExtendedSyntaxParseSelectToTrain(t *testing.T) {
 	a := assert.New(t)
 	// NOTE(tony): Test optional semicolon at the end of the statement
 	for _, s := range []string{``, `;`} {
-		r, e := parseSQLFlowStmt(testSelectToTrain + s)
+		r, _, e := parseSQLFlowStmt(testSelectToTrain + s)
 		a.NoError(e)
 		a.True(r.Extended)
 		a.True(r.Train)
@@ -131,7 +131,7 @@ func TestExtendedSyntaxParseToTrain(t *testing.T) {
 // parse "standard" select.
 func TestExtendedSyntaxParseSelectToTrainWithMultiColumns(t *testing.T) {
 	a := assert.New(t)
-	r, e := parseSQLFlowStmt(testSelectToTrainWithMultiColumns)
+	r, _, e := parseSQLFlowStmt(testSelectToTrainWithMultiColumns)
 	a.NoError(e)
 	a.True(r.Extended)
 	a.True(r.Train)
@@ -179,7 +179,7 @@ func TestExtendedSyntaxParseToTrainWithMultiColumns(t *testing.T) {
 // parse "standard" select.
 func TestExtendedSyntaxParseSelectToPredict(t *testing.T) {
 	a := assert.New(t)
-	r, e := parseSQLFlowStmt(testSelectToPredict)
+	r, _, e := parseSQLFlowStmt(testSelectToPredict)
 	a.NoError(e)
 	a.True(r.Extended)
 	a.False(r.Train)
@@ -201,12 +201,14 @@ func TestExtendedSyntaxParseToPredict(t *testing.T) {
 // parse "standard" select.
 func TestExtendedSyntaxParseSelectToExplain(t *testing.T) {
 	a := assert.New(t)
-	r, e := parseSQLFlowStmt(`select * from mytable
+	s := `select * from mytable
 TO EXPLAIN my_model
 WITH
   plots = force
-USING TreeExplainer;`)
+USING TreeExplainer;`
+	r, idx, e := parseSQLFlowStmt(s)
 	a.NoError(e)
+	a.Equal(len(s), idx)
 	a.True(r.Extended)
 	a.False(r.Train)
 	a.True(r.Explain)
@@ -231,7 +233,7 @@ USING TreeExplainer;`)
 
 func TestExtendedSyntaxParseSelectStarAndPrint(t *testing.T) {
 	a := assert.New(t)
-	r, e := parseSQLFlowStmt(`SELECT *, b FROM a LIMIT 10;`)
+	r, _, e := parseSQLFlowStmt(`SELECT *, b FROM a LIMIT 10;`)
 	a.NoError(e)
 	a.Equal(2, len(r.Fields.Strings()))
 	a.Equal("*", r.Fields.Strings()[0])
@@ -242,7 +244,7 @@ func TestExtendedSyntaxParseSelectStarAndPrint(t *testing.T) {
 
 func TestExtendedSyntaxParseStandardDropTable(t *testing.T) {
 	a := assert.New(t)
-	_, e := parseSQLFlowStmt(`DROP TABLE TO PREDICT`)
+	_, _, e := parseSQLFlowStmt(`DROP TABLE TO PREDICT`)
 	a.Error(e)
 	// Note: currently, our parser doesn't accept anything statements other than SELECT.
 	// It will support parsing any SQL statements and even dialects in the future.
@@ -250,7 +252,7 @@ func TestExtendedSyntaxParseStandardDropTable(t *testing.T) {
 
 func TestExtendedSyntaxParseSelectWithDuplicatedFromClauses(t *testing.T) {
 	a := assert.New(t)
-	_, e := parseSQLFlowStmt(`SELECT table.field FROM table FROM tttt;`)
+	_, _, e := parseSQLFlowStmt(`SELECT table.field FROM table FROM tttt;`)
 	a.Error(e)
 }
 
@@ -262,8 +264,9 @@ TO PREDICT db.predict_result
 WITH OSS_KEY=a, OSS_ID=b
 USING sqlflow_models.my_model;
 	`
-	r, e := parseSQLFlowStmt(testSelectToPredictWithMaxComputeUDF)
+	r, idx, e := parseSQLFlowStmt(testSelectToPredictWithMaxComputeUDF)
 	a.NoError(e)
+	a.Equal(len(testSelectToPredictWithMaxComputeUDF), idx)
 	a.Equal(3, len(r.Fields.Strings()))
 	a.Equal(r.Fields[0].String(), `predict_fun(concat(",", col_1, col_2))`)
 	a.Equal(r.Fields[1].String(), `AS`)

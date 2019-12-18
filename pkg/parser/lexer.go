@@ -14,6 +14,7 @@
 package parser
 
 import (
+	"fmt"
 	"log"
 	"regexp"
 	"strings"
@@ -34,14 +35,17 @@ type lexer struct {
 	start int    // start position of this item
 	pos   int    // current position in the input
 	width int    // width of last rune read from input
+	err   error
 }
 
 func newLexer(input string) *lexer {
 	return &lexer{input: input}
 }
 
+// Error records e in lexer.err so that parseSQLFlowStmt could return.
 func (l *lexer) Error(e string) {
-	log.Panicf("start=%d, pos=%d : %s near %.10q\n", l.start, l.pos, e, l.input[l.start:])
+	l.err = fmt.Errorf("syntax error %v at the %d-th rune near %.10q",
+		e, l.start, l.input[l.start:])
 }
 
 func (l *lexer) emit(lval *extendedSyntaxSymType, typ int) int {
