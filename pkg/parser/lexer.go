@@ -31,11 +31,12 @@ const (
 // It makes a significant simplification of the idea and doesn't use
 // goroutines and channels.
 type lexer struct {
-	input string // the string being scanned
-	start int    // start position of this item
-	pos   int    // current position in the input
-	width int    // width of last rune read from input
-	err   error
+	input    string // the string being scanned
+	start    int    // start position of this item
+	pos      int    // current position in the input
+	width    int    // width of last rune read from input
+	err      error  // the parser could return the error
+	previous int    // previous start, recorded for error position
 }
 
 func newLexer(input string) *lexer {
@@ -44,12 +45,13 @@ func newLexer(input string) *lexer {
 
 // Error records e in lexer.err so that parseSQLFlowStmt could return.
 func (l *lexer) Error(e string) {
-	l.err = fmt.Errorf("syntax error %v at the %d-th rune near %.10q",
-		e, l.start, l.input[l.start:])
+	l.err = fmt.Errorf("%v: at (%d ~ %d)-th runes near %.10q",
+		e, l.start, l.pos, l.input[l.start:])
 }
 
 func (l *lexer) emit(lval *extendedSyntaxSymType, typ int) int {
 	lval.val = l.input[l.start:l.pos]
+	l.previous = l.start
 	l.start = l.pos
 	return typ
 }

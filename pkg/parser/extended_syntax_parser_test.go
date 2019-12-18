@@ -233,7 +233,8 @@ USING TreeExplainer;`)
 
 func TestExtendedSyntaxParseSelectStarAndPrint(t *testing.T) {
 	a := assert.New(t)
-	r, _, e := parseSQLFlowStmt(`SELECT *, b FROM a LIMIT 10;`)
+	r, idx, e := parseSQLFlowStmt(`SELECT *, b FROM a LIMIT 10  ;  `)
+	a.Equal(29, idx) // right before ; due to the end_of_stmt syntax rule.
 	a.NoError(e)
 	a.Equal(2, len(r.Fields.Strings()))
 	a.Equal("*", r.Fields.Strings()[0])
@@ -242,18 +243,34 @@ func TestExtendedSyntaxParseSelectStarAndPrint(t *testing.T) {
 	a.Equal("SELECT *, b\nFROM a\nLIMIT 10", r.StandardSelect.String())
 }
 
-func TestExtendedSyntaxParseStandardDropTable(t *testing.T) {
+func TestExtendedSyntaxParseNonSelectStmt(t *testing.T) {
 	a := assert.New(t)
-	_, _, e := parseSQLFlowStmt(`DROP TABLE TO PREDICT`)
-	a.Error(e)
-	// Note: currently, our parser doesn't accept anything statements other than SELECT.
-	// It will support parsing any SQL statements and even dialects in the future.
+	{
+		r, idx, e := parseSQLFlowStmt(`DROP TABLE TO PREDICT`)
+		a.Nil(r)
+		a.Equal(0, idx)
+		a.Error(e)
+	}
+	{
+		r, idx, e := parseSQLFlowStmt(`   DROP TABLE TO PREDICT`)
+		a.Nil(r)
+		a.Equal(0, idx)
+		a.Error(e)
+	}
 }
 
 func TestExtendedSyntaxParseSelectWithDuplicatedFromClauses(t *testing.T) {
 	a := assert.New(t)
-	_, _, e := parseSQLFlowStmt(`SELECT table.field FROM table FROM tttt;`)
+	r, idx, e := parseSQLFlowStmt(`SELECT table.field FROM table   FROM tttt;`)
 	a.Error(e)
+	// TODO(wangkuiyi): After removing the syntax rules parsing
+	// the "standard" SELECT prefix, we will need to adjust the
+	// following values.
+	a.Equal(32, idx)
+	a.False(r.Extended)
+	a.False(r.Train)
+	a.False(r.Explain)
+	a.NotNil(r.StandardSelect)
 }
 
 func TestExtendedSyntaxParseSelectToPredictWithMaxcomputeUDF(t *testing.T) {
