@@ -70,7 +70,7 @@ Consider the following example program.
 
 ```sql
 SELECT * FROM a, b WHERE a.id = b.id INTO c;
-SELECT * FROM c TO TRAIN data_scientist/xgboost:v0.5/xgboost:gbtree 
+SELECT * FROM c TO TRAIN model_def 
     WITH objective=multi:softmax, eta=0.1, validation_dataset="select * from d;" 
     INTO my_xgb_model;
 ```
