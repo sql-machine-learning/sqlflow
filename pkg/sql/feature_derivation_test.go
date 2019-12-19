@@ -14,7 +14,6 @@
 package sql
 
 import (
-	"fmt"
 	"os"
 	"regexp"
 	"testing"
@@ -216,7 +215,7 @@ func TestHiveFeatureDerivation(t *testing.T) {
 	}
 	a := assert.New(t)
 	trainStmt := &ir.TrainStmt{
-		DataSource:       fmt.Sprintf("%s://%s", testDB.driverName, testDB.dataSourceName),
+		DataSource:       database.GetTestingDBSingleton().URL(),
 		Select:           "select * from iris.train",
 		ValidationSelect: "select * from iris.test",
 		Estimator:        "xgboost.gbtree",

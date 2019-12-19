@@ -15,12 +15,11 @@ package sql
 
 import (
 	"container/list"
-	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	pb "sqlflow.org/sqlflow/pkg/proto"
+	"sqlflow.org/sqlflow/pkg/database"
 )
 
 const (
@@ -56,7 +55,7 @@ func TestStandardSQL(t *testing.T) {
 		rd, wr := Pipe()
 		go func() {
 			defer wr.Close()
-			e := runStandardSQL(wr, testSelectIris, testDB)
+			e := runStandardSQL(wr, testSelectIris, database.GetTestingDBSingleton())
 			a.NoError(e)
 		}()
 		a.True(goodStream(rd.ReadAll()))
@@ -68,7 +67,7 @@ func TestStandardSQL(t *testing.T) {
 		rd, wr := Pipe()
 		go func() {
 			defer wr.Close()
-			e := runStandardSQL(wr, testStandardExecutiveSQLStatement, testDB)
+			e := runStandardSQL(wr, testStandardExecutiveSQLStatement, database.GetTestingDBSingleton())
 			a.NoError(e)
 		}()
 		a.True(goodStream(rd.ReadAll()))
@@ -77,7 +76,7 @@ func TestStandardSQL(t *testing.T) {
 		rd, wr := Pipe()
 		go func() {
 			defer wr.Close()
-			e := runStandardSQL(wr, "SELECT * FROM iris.iris_empty LIMIT 10;", testDB)
+			e := runStandardSQL(wr, "SELECT * FROM iris.iris_empty LIMIT 10;", database.GetTestingDBSingleton())
 			a.NoError(e)
 		}()
 		stat, _ := goodStream(rd.ReadAll())
@@ -87,8 +86,7 @@ func TestStandardSQL(t *testing.T) {
 
 func TestSQLLexerError(t *testing.T) {
 	a := assert.New(t)
-	ds := fmt.Sprintf("%s://%s", testDB.driverName, testDB.dataSourceName)
-	stream := RunSQLProgram("SELECT * FROM ``?[] AS WHERE LIMIT;", "", &pb.Session{DbConnStr: ds})
+	stream := RunSQLProgram("SELECT * FROM ``?[] AS WHERE LIMIT;", "", getSessionFromTestingDB())
 	a.False(goodStream(stream.ReadAll()))
 }
 

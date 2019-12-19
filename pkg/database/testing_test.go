@@ -14,15 +14,10 @@
 package database
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
-
-func unparseURL(driver, source string) string {
-	return fmt.Sprintf("%s://%s", driver, source)
-}
 
 func TestGetTestingDBSingleton(t *testing.T) {
 	db := GetTestingDBSingleton()
@@ -30,11 +25,11 @@ func TestGetTestingDBSingleton(t *testing.T) {
 
 	switch dbms := getEnv("SQLFLOW_TEST_DB", "mysql"); dbms {
 	case "mysql":
-		a.Equal(testingMySQLURL(), unparseURL(db.DriverName, db.DataSourceName))
+		a.Equal(testingMySQLURL(), UnparseURL(db.DriverName, db.DataSourceName))
 	case "hive":
-		a.Equal(testingHiveURL(), unparseURL(db.DriverName, db.DataSourceName))
+		a.Equal(testingHiveURL(), UnparseURL(db.DriverName, db.DataSourceName))
 	case "maxcompute":
-		a.Equal(testingMaxComputeURL(), unparseURL(db.DriverName, db.DataSourceName))
+		a.Equal(testingMaxComputeURL(), UnparseURL(db.DriverName, db.DataSourceName))
 	default:
 		a.Fail("Unrecognized environment variable SQLFLOW_TEST_DB %s", dbms)
 	}

@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/parser"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
@@ -70,7 +71,7 @@ func TestTrainElasticDLFiller(t *testing.T) {
 	r, e := parser.LegacyParse(wndStatement)
 	a.NoError(e)
 	session := &pb.Session{UserId: "sqlflow_user"}
-	filler, e := newElasticDLTrainFiller(r, testDB, session)
+	filler, e := newElasticDLTrainFiller(r, database.GetTestingDBSingleton(), session)
 	a.NoError(e)
 	a.True(filler.IsTraining)
 	a.Equal("iris.train", filler.TrainInputTable)
@@ -101,7 +102,7 @@ func TestPredElasticDLFiller(t *testing.T) {
 
 	r, e := parser.LegacyParse(predStatement)
 	a.NoError(e)
-	filler, err := newElasticDLPredictFiller(r, testDB)
+	filler, err := newElasticDLPredictFiller(r, database.GetTestingDBSingleton())
 	a.NoError(err)
 
 	a.False(filler.IsTraining)
