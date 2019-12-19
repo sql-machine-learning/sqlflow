@@ -203,10 +203,18 @@ def train(is_keras_model,
             model_params["field_metas"] = feature_metas
         classifier = estimator(**model_params)
         classifier_pkg = sys.modules[estimator.__module__]
+        if hasattr(classifier_pkg, "eval_metrics_fn"):
+            metrics_functions = classifier_pkg.eval_metrics_fn()
+            metrics = []
+            for key, func in metrics_functions.items():
+                func.__name__ = key
+                metrics.append(func)
+        else:
+            metrics = ["accuracy"]
 
         classifier.compile(optimizer=classifier_pkg.optimizer(),
             loss=classifier_pkg.loss,
-            metrics=["accuracy"])
+            metrics=metrics)
         if hasattr(classifier, 'sqlflow_train_loop'):
             classifier.sqlflow_train_loop(train_input_fn(batch_size))
         else:
