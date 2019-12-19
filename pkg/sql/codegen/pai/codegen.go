@@ -49,7 +49,11 @@ func getTableFromSelect(dataSource, trainSelect string) (string, string, error) 
 		database = tableParts[0]
 		tableName = tableParts[1]
 	} else {
-		conf, err := gomaxcompute.ParseDSN(dataSource)
+		dsParts := strings.Split(dataSource, "://")
+		if len(dsParts) != 2 {
+			return "", "", fmt.Errorf("error datasource format, should be maxcompute://u:p@uri, but got: %s", dataSource)
+		}
+		conf, err := gomaxcompute.ParseDSN(dsParts[1])
 		if err != nil {
 			return "", "", err
 		}
