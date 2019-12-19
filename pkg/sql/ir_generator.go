@@ -20,6 +20,7 @@ import (
 	"strconv"
 	"strings"
 
+	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/parser"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
@@ -113,7 +114,7 @@ func generateTrainStmtByModel(slct *parser.SQLFlowSelectStmt, connStr, cwd, mode
 	return generateTrainStmtWithInferredColumns(slctWithTrain, connStr)
 }
 
-func verifyIRWithTrainStmt(sqlir ir.SQLStatement, db *DB) error {
+func verifyIRWithTrainStmt(sqlir ir.SQLStatement, db *database.DB) error {
 	var selectStmt string
 	var trainStmt *ir.TrainStmt
 	switch s := sqlir.(type) {
@@ -195,7 +196,7 @@ func generatePredictStmt(slct *parser.SQLFlowSelectStmt, connStr string, modelDi
 	}
 
 	if getTrainStmtFromModel {
-		// FIXME(tony): change the function signature to use *DB
+		// FIXME(tony): change the function signature to use *database.DB
 		db, err := NewDB(connStr)
 		if err != nil {
 			return nil, err
@@ -239,7 +240,7 @@ func generateAnalyzeStmt(slct *parser.SQLFlowSelectStmt, connStr, modelDir strin
 	}
 
 	if getTrainStmtFromModel {
-		// FIXME(tony): change the function signature to use *DB
+		// FIXME(tony): change the function signature to use *database.DB
 		db, err := NewDB(connStr)
 		if err != nil {
 			return nil, err
