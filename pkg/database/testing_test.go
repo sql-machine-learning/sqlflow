@@ -39,3 +39,8 @@ func TestGetTestingDBSingleton(t *testing.T) {
 		a.Fail("Unrecognized environment variable SQLFLOW_TEST_DB %s", dbms)
 	}
 }
+
+func TestTestingMySQLURL(t *testing.T) {
+	a := assert.New(t)
+	a.Equal("mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0", testingMySQLURL())
+}
