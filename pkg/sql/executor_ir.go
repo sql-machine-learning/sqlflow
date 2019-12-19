@@ -129,7 +129,7 @@ func SubmitWorkflow(sqlProgram string, modelDir string, session *pb.Session) *Pi
 }
 
 func submitWorkflow(wr *PipeWriter, sqlProgram string, modelDir string, session *pb.Session) error {
-	driverName, dataSourceName, err := SplitDataSource(session.DbConnStr)
+	driverName, dataSourceName, err := SplitDataSourceName(session.DbConnStr)
 	if err != nil {
 		return err
 	}
@@ -184,7 +184,7 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, modelDir string, session 
 }
 
 func runSQLProgram(wr *PipeWriter, sqlProgram string, db *database.DB, modelDir string, session *pb.Session) error {
-	sqls, err := parser.Parse(db.driverName, sqlProgram)
+	sqls, err := parser.Parse(db.DriverName, sqlProgram)
 	if err != nil {
 		return err
 	}
@@ -198,7 +198,7 @@ func runSQLProgram(wr *PipeWriter, sqlProgram string, db *database.DB, modelDir 
 	// which depends on the execution of create table some_table as (select ...);.
 	for _, sql := range sqls {
 		var r ir.SQLStatement
-		connStr := fmt.Sprintf("%s://%s", db.driverName, db.dataSourceName)
+		connStr := fmt.Sprintf("%s://%s", db.DriverName, db.DataSourceName)
 		if parser.IsExtendedSyntax(sql) {
 			if sql.Train {
 				r, err = generateTrainStmtWithInferredColumns(sql.SQLFlowSelectStmt, connStr)
@@ -267,7 +267,7 @@ func createPredictionTableFromIR(predStmt *ir.PredictStmt, db *database.DB, sess
 	labelColumnType := ""
 	fmt.Fprintf(&b, "create table %s (", predStmt.ResultTable)
 	for idx, colType := range fts {
-		stype, e := fieldType(db.driverName, colType)
+		stype, e := fieldType(db.DriverName, colType)
 		if e != nil {
 			return e
 		}
@@ -290,11 +290,11 @@ func createPredictionTableFromIR(predStmt *ir.PredictStmt, db *database.DB, sess
 		// NOTE(typhoonzero): Clustering model may not have label in select statement, default use INT type
 		labelColumnType = "INT"
 	}
-	stype, e := fieldType(db.driverName, labelColumnType)
+	stype, e := fieldType(db.DriverName, labelColumnType)
 	if e != nil {
 		return e
 	}
-	if db.driverName == "hive" {
+	if db.DriverName == "hive" {
 		fmt.Fprintf(&b, "%s %s) ROW FORMAT DELIMITED FIELDS TERMINATED BY \"\\001\" STORED AS TEXTFILE;", labelColumnName, stype)
 	} else {
 		fmt.Fprintf(&b, "%s %s);", labelColumnName, stype)
@@ -321,7 +321,7 @@ func loadModelMeta(pr *parser.SQLFlowSelectStmt, db *database.DB, cwd, modelDir,
 	}
 	// Parse the training SELECT statement used to train
 	// the model for the prediction.
-	tr, e := parser.ParseOneStatement(db.driverName, m.TrainSelect)
+	tr, e := parser.ParseOneStatement(db.DriverName, m.TrainSelect)
 	if e != nil {
 		return nil, fmt.Errorf("parse: TrainSelect %v raise %v", m.TrainSelect, e)
 	}

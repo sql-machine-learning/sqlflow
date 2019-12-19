@@ -32,10 +32,10 @@ type DB struct {
 	*sql.DB
 }
 
-// OpenURL open a dataabase identified by an URL.  It calls ParseURL
+// OpenDB open a dataabase identified by an URL.  It calls ParseURL
 // to get the driver and data source name.  In addition to opening the
 // database, it also verifies the driver is loaded.
-func OpenURL(url string) (*DB, error) {
+func OpenDB(url string) (*DB, error) {
 	driver, dataSource, err := ParseURL(url)
 	if err != nil {
 		return nil, err
@@ -66,11 +66,11 @@ func ParseURL(url string) (string, string, error) {
 	return ss[0], ss[1], nil
 }
 
-// NewDB calls OpenURL to open a database specified by an URL.  In
-// additon to opening, it also call database.DB.Ping to ensure a
-// connection to the database.
-func NewDB(url string) (*DB, error) {
-	db, err := OpenURL(url)
+// OpenAndConnectDB calls OpenDB to open a database specified by an
+// URL.  In additon to opening, it also call database.DB.Ping to
+// ensure a connection to the database.
+func OpenAndConnectDB(url string) (*DB, error) {
+	db, err := OpenDB(url)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %v", err)
 	}

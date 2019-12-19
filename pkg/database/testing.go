@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sync"
 
 	"sqlflow.org/gomaxcompute"
 	"sqlflow.org/sqlflow/pkg/sql/testdata"
@@ -24,25 +25,42 @@ import (
 	"github.com/go-sql-driver/mysql"
 )
 
-// MustOpenTestDB opens a database with driver specified in the
-// environment variable "SQLFLOW_TEST_DB".  By default, the driver is
-// "mysql".  It also creates some tables in the opened database, and
-// popularize data.  For any error, MustOpenTestDB panics.
+var (
+	muTestingDBSingleton sync.Mutex
+	testingDBSingleton   *DB
+)
+
+// GetTestingDBSingleton returns the testing DB singleton.
+func GetTestingDBSingleton() *DB {
+	muTestingDBSingleton.Lock()
+	defer muTestingDBSingleton.Unlock()
+
+	if testingDBSingleton == nil {
+		testingDBSingleton = createTestingDB()
+	}
+	return testingDBSingleton
+}
+
+// createTestingDB opens a database with parameters specified in the
+// environment variables with prefix name "SQLFLOW_TEST_DB".  By
+// default, the database driver is "mysql".  It also creates some
+// tables in the opened database, and popularize data.  For any error,
+// createTestingDB panics.
 //
 // NOTE: It is the caller's responsibility to close the databased.  In
 // order to do it, users migth want to define TestMain and call
-// MustOpenTestDB and defer db.Close in it.
-func MustOpenTestDB() *DB {
-	dbms := getEnv("SQLFLOW_TEST_DB", "mysql")
-	switch dbms {
+// createTestingDB and defer db.Close in it.
+func createTestingDB() *DB {
+	switch dbms := getEnv("SQLFLOW_TEST_DB", "mysql"); dbms {
 	case "mysql":
-		return testMySQLDatabase()
+		return createTestingMySQLDB()
 	case "hive":
-		return testHiveDatabase()
+		return createTestingHiveDB()
 	case "maxcompute":
-		return testMaxcompute()
+		return createTestingMaxComputeDB()
+	default:
+		log.Panicf("Unrecognized environment variable SQLFLOW_TEST_DB %s", dbms)
 	}
-	log.Panicf("Unrecognized environment variable SQLFLOW_TEST_DB %s", dbms)
 	return nil
 }
 
@@ -53,15 +71,22 @@ func getEnv(env, value string) string {
 	return value
 }
 
-func testMySQLDatabase() *DB {
-	cfg := &mysql.Config{
+func testingMySQLConfig() *mysql.Config {
+	return &mysql.Config{
 		User:                 getEnv("SQLFLOW_TEST_DB_MYSQL_USER", "root"),
 		Passwd:               getEnv("SQLFLOW_TEST_DB_MYSQL_PASSWD", "root"),
 		Net:                  getEnv("SQLFLOW_TEST_DB_MYSQL_NET", "tcp"),
 		Addr:                 getEnv("SQLFLOW_TEST_DB_MYSQL_ADDR", "127.0.0.1:3306"),
 		AllowNativePasswords: true,
 	}
-	db, e := NewDB(fmt.Sprintf("mysql://%s", cfg.FormatDSN()))
+}
+
+func testingMySQLURL() string {
+	return fmt.Sprintf("mysql://%s", testingMySQLConfig().FormatDSN())
+}
+
+func createTestingMySQLDB() *DB {
+	db, e := OpenAndConnectDB(testingMySQLURL())
 	assertNoErr(e)
 	_, e = db.Exec("CREATE DATABASE IF NOT EXISTS sqlflow_models;")
 	assertNoErr(e)
@@ -72,10 +97,14 @@ func testMySQLDatabase() *DB {
 	return db
 }
 
-func testHiveDatabase() *DB {
+func testingHiveURL() string {
 	// NOTE: sample dataset is written in
 	// https://github.com/sql-machine-learning/gohive/blob/develop/docker/entrypoint.sh#L123
-	db, e := NewDB("hive://root:root@localhost:10000/churn")
+	return "hive://root:root@localhost:10000/churn"
+}
+
+func createTestingHiveDB() *DB {
+	db, e := OpenAndConnectDB(testingHiveURL())
 	assertNoErr(e)
 	_, e = db.Exec("CREATE DATABASE IF NOT EXISTS sqlflow_models;")
 	assertNoErr(e)
@@ -85,18 +114,24 @@ func testHiveDatabase() *DB {
 	return db
 }
 
-func testMaxcompute() *DB {
-	cfg := &gomaxcompute.Config{
+func testingMaxComputeConfig() *gomaxcompute.Config {
+	return &gomaxcompute.Config{
 		AccessID:  os.Getenv("MAXCOMPUTE_AK"),
 		AccessKey: os.Getenv("MAXCOMPUTE_SK"),
 		Project:   os.Getenv("MAXCOMPUTE_PROJECT"),
 		Endpoint:  os.Getenv("MAXCOMPUTE_ENDPOINT"),
 	}
+}
 
-	db, e := NewDB(fmt.Sprintf("maxcompute://%s", cfg.FormatDSN()))
+func testingMaxComputeURL() string {
+	return fmt.Sprintf("maxcompute://%s", testingMaxComputeConfig().FormatDSN())
+}
+
+func createTestingMaxComputeDB() *DB {
+	db, e := OpenAndConnectDB(testingMaxComputeURL())
 	assertNoErr(e)
 	// Note: We do not popularize the test data here intentionally since
-	// it will take up quite some time on Maxcompute.
+	// it will take up quite some time on MaxCompute.
 	return db
 }
 

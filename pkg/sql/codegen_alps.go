@@ -196,7 +196,7 @@ func newALPSTrainFiller(pr *parser.SQLFlowSelectStmt, db *database.DB, session *
 	var meta metadata
 	fields := make([]string, 0)
 	if db != nil {
-		odpsConfig, err = gomaxcompute.ParseDSN(db.dataSourceName)
+		odpsConfig, err = gomaxcompute.ParseDSN(db.DataSourceName)
 		if err != nil {
 			return nil, err
 		}
@@ -399,7 +399,7 @@ func alpsPred(w *PipeWriter, pr *parser.SQLFlowSelectStmt, db *database.DB, cwd 
 	if !ok {
 		return fmt.Errorf("Alps Predict Job only supports Maxcompute database driver")
 	}
-	cfg, err := gomaxcompute.ParseDSN(db.dataSourceName)
+	cfg, err := gomaxcompute.ParseDSN(db.DataSourceName)
 	if err != nil {
 		return fmt.Errorf("Parse Maxcompute DSN failed: %v", err)
 	}

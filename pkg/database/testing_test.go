@@ -14,16 +14,28 @@
 package database
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func TestDatabaseParseURL(t *testing.T) {
+func unparseURL(driver, source string) string {
+	return fmt.Sprintf("%s://%s", driver, source)
+}
+
+func TestGetTestingDBSingleton(t *testing.T) {
+	db := GetTestingDBSingleton()
 	a := assert.New(t)
-	ds := "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
-	driver, dataSource, e := ParseURL(ds)
-	a.EqualValues(driver, "mysql")
-	a.EqualValues(dataSource, "root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0")
-	a.NoError(e)
+
+	switch dbms := getEnv("SQLFLOW_TEST_DB", "mysql"); dbms {
+	case "mysql":
+		a.Equal(testingMySQLURL(), unparseURL(db.DriverName, db.DataSourceName))
+	case "hive":
+		a.Equal(testingHiveURL(), unparseURL(db.DriverName, db.DataSourceName))
+	case "maxcompute":
+		a.Equal(testingMaxComputeURL(), unparseURL(db.DriverName, db.DataSourceName))
+	default:
+		a.Fail("Unrecognized environment variable SQLFLOW_TEST_DB %s", dbms)
+	}
 }
