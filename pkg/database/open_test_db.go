@@ -24,9 +24,27 @@ import (
 	"github.com/go-sql-driver/mysql"
 )
 
-var (
-	testDB *DB
-)
+// MustOpenTestDB opens a database with driver specified in the
+// environment variable "SQLFLOW_TEST_DB".  By default, the driver is
+// "mysql".  It also creates some tables in the opened database, and
+// popularize data.  For any error, MustOpenTestDB panics.
+//
+// NOTE: It is the caller's responsibility to close the databased.  In
+// order to do it, users migth want to define TestMain and call
+// MustOpenTestDB and defer db.Close in it.
+func MustOpenTestDB() *DB {
+	dbms := getEnv("SQLFLOW_TEST_DB", "mysql")
+	switch dbms {
+	case "mysql":
+		return testMySQLDatabase()
+	case "hive":
+		return testHiveDatabase()
+	case "maxcompute":
+		return testMaxcompute()
+	}
+	log.Panicf("Unrecognized environment variable SQLFLOW_TEST_DB %s", dbms)
+	return nil
+}
 
 func getEnv(env, value string) string {
 	if env := os.Getenv(env); len(env) != 0 {
@@ -80,28 +98,6 @@ func testMaxcompute() *DB {
 	// Note: We do not popularize the test data here intentionally since
 	// it will take up quite some time on Maxcompute.
 	return db
-}
-
-// OpenTestDB opens a database with driver specified in the
-// environment variable "SQLFLOW_TEST_DB".  By default, the driver is
-// "mysql".  It also creates some tables in the opened database, and
-// popularize data.
-//
-// NOTE: It is the caller's responsibility to close the databased.  In
-// order to do it, users migth want to define TestMain and call
-// OpenTestDB and defer db.Close in it.
-func OpenTestDB() *DB {
-	dbms := getEnv("SQLFLOW_TEST_DB", "mysql")
-	switch dbms {
-	case "mysql":
-		return testMySQLDatabase()
-	case "hive":
-		return testHiveDatabase()
-	case "maxcompute":
-		return testMaxcompute()
-	}
-	log.Panicf("Unrecognized environment variable SQLFLOW_TEST_DB %s", dbms)
-	return nil
 }
 
 // assertNoError prints the error if there is any in TestMain, which
