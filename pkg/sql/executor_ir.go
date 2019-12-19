@@ -48,7 +48,7 @@ func RunSQLProgram(sqlProgram string, modelDir string, session *pb.Session) *Pip
 	go func() {
 		var db *database.DB
 		var err error
-		if db, err = database.NewDB(session.DbConnStr); err != nil {
+		if db, err = database.OpenAndConnectDB(session.DbConnStr); err != nil {
 			wr.Write(fmt.Errorf("create DB failed: %v", err))
 			log.Errorf("create DB failed: %v", err)
 		}
@@ -129,7 +129,7 @@ func SubmitWorkflow(sqlProgram string, modelDir string, session *pb.Session) *Pi
 }
 
 func submitWorkflow(wr *PipeWriter, sqlProgram string, modelDir string, session *pb.Session) error {
-	driverName, dataSourceName, err := SplitDataSourceName(session.DbConnStr)
+	driverName, dataSourceName, err := database.ParseURL(session.DbConnStr)
 	if err != nil {
 		return err
 	}

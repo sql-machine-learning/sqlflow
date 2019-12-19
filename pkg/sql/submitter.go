@@ -135,7 +135,7 @@ func (s *defaultSubmitter) runCommand(program string) error {
 	var output bytes.Buffer
 	w := io.MultiWriter(cw, &output)
 	defer cw.Close()
-	cmd := sqlflowCmd(s.Cwd, s.Db.driverName)
+	cmd := sqlflowCmd(s.Cwd, s.Db.DriverName)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = bytes.NewBufferString(program), w, w
 	if e := cmd.Run(); e != nil {
 		return fmt.Errorf("failed: %v\n%sProgram%[2]s\n%s\n%[2]sOutput%[2]s\n%[4]v", e, "==========", program, output.String())

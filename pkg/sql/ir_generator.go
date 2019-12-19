@@ -101,7 +101,7 @@ func generateTrainStmt(slct *parser.SQLFlowSelectStmt, connStr string) (*ir.Trai
 }
 
 func generateTrainStmtByModel(slct *parser.SQLFlowSelectStmt, connStr, cwd, modelDir, model string) (*ir.TrainStmt, error) {
-	db, err := open(connStr)
+	db, err := database.OpenDB(connStr)
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +197,7 @@ func generatePredictStmt(slct *parser.SQLFlowSelectStmt, connStr string, modelDi
 
 	if getTrainStmtFromModel {
 		// FIXME(tony): change the function signature to use *database.DB
-		db, err := NewDB(connStr)
+		db, err := database.OpenAndConnectDB(connStr)
 		if err != nil {
 			return nil, err
 		}
@@ -241,7 +241,7 @@ func generateAnalyzeStmt(slct *parser.SQLFlowSelectStmt, connStr, modelDir strin
 
 	if getTrainStmtFromModel {
 		// FIXME(tony): change the function signature to use *database.DB
-		db, err := NewDB(connStr)
+		db, err := database.OpenAndConnectDB(connStr)
 		if err != nil {
 			return nil, err
 		}

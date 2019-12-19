@@ -55,7 +55,7 @@ func (m *model) save(modelURI string, trainStmt *ir.TrainStmt, session *pb.Sessi
 			return fmt.Errorf("error modelURI format: %s", modelURI)
 		}
 	}
-	db, err := NewDB(session.DbConnStr)
+	db, err := database.OpenAndConnectDB(session.DbConnStr)
 	if err != nil {
 		return err
 	}
@@ -63,7 +63,7 @@ func (m *model) save(modelURI string, trainStmt *ir.TrainStmt, session *pb.Sessi
 		return err
 	}
 	// TODO(typhoonzero): support hive, maxcompute saving model zoo metas.
-	if db.driverName == "mysql" {
+	if db.DriverName == "mysql" {
 		// Save model metas in model zoo table
 		if err := createModelZooTable(db); err != nil {
 			return err
@@ -98,7 +98,7 @@ func load(modelURI, dst string, db *database.DB) (*model, error) {
 // SQLFlow working directory, which contains the TensorFlow working
 // directory and the trained TensorFlow model.
 func (m *model) saveDB(db *database.DB, table string, session *pb.Session) (e error) {
-	sqlf, e := sqlfs.Create(db.DB, db.driverName, table, session)
+	sqlf, e := sqlfs.Create(db.DB, db.DriverName, table, session)
 	if e != nil {
 		return fmt.Errorf("cannot create sqlfs file %s: %v", table, e)
 	}
