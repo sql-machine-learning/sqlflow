@@ -103,7 +103,9 @@ func TestWrapperCodegen(t *testing.T) {
 	a.NoError(err)
 	defer os.RemoveAll(cwd)
 
-	code, err := wrapper("", dataSource, "my_dnn_model", cwd, "SELECT * FROM my_table")
+	os.Setenv("SQLFLOW_OSS_CHECKPOINT_DIR", "oss://bucket/?role_arn=xxx&host=xxx")
+	defer os.Unsetenv("SQLFLOW_OSS_CHECKPOINT_DIR")
+	code, err := wrapper("", dataSource, "my_dnn_model", cwd, "SELECT * FROM my_table", 0, 1)
 	a.NoError(err)
 	a.True(strings.Contains(code, `assert driver == "maxcompute"`))
 
@@ -115,7 +117,10 @@ func TestTrainCodegen(t *testing.T) {
 	a := assert.New(t)
 	trainStmt := ir.MockTrainStmt(dataSource, false)
 
-	paiTfCode, err := doTrain(trainStmt, "my_dnn_model")
+	os.Setenv("SQLFLOW_OSS_CHECKPOINT_DIR", "oss://bucket/?role_arn=xxx&host=xxx")
+	defer os.Unsetenv("SQLFLOW_OSS_CHECKPOINT_DIR")
+
+	paiTfCode, err := tfTrainAndSave(trainStmt, "my_dnn_model")
 	a.NoError(err)
 
 	tfCode, err := tensorflow.Train(trainStmt)
@@ -130,7 +135,10 @@ func TestPredictCodegen(t *testing.T) {
 	a := assert.New(t)
 	ir := ir.MockPredStmt(ir.MockTrainStmt(dataSource, false))
 
-	paiTfCode, err := doPredict(ir, "my_dnn_model")
+	os.Setenv("SQLFLOW_OSS_CHECKPOINT_DIR", "oss://bucket/?role_arn=xxx&host=xxx")
+	defer os.Unsetenv("SQLFLOW_OSS_CHECKPOINT_DIR")
+
+	paiTfCode, err := tfLoadAndPredict(ir, "my_dnn_model")
 	a.NoError(err)
 	a.False(hasUnknownParameters(paiTfCode, knownPredictParams))
 
