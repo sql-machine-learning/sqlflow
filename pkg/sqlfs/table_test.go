@@ -19,18 +19,19 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"sqlflow.org/sqlflow/pkg/database"
 )
 
 func TestCreateHasDropTable(t *testing.T) {
+	createSQLFSTestingDatabaseOnce.Do(createSQLFSTestingDatabase)
+	db := database.GetTestingDBSingleton()
+
 	a := assert.New(t)
 
-	testDriver, testDB, e := newTestDB()
-	a.NoError(e)
-
-	fn := fmt.Sprintf("%s.unittest%d", testDatabaseName, rand.Int())
-	a.NoError(createTable(testDB, testDriver, fn))
-	has, e := hasTable(testDB, fn)
+	tbl := fmt.Sprintf("%s.unittest%d", testDatabaseName, rand.Int())
+	a.NoError(createTable(db.DB, db.DriverName, tbl))
+	has, e := hasTable(db.DB, tbl)
 	a.NoError(e)
 	a.True(has)
-	a.NoError(dropTable(testDB, fn))
+	a.NoError(dropTable(db.DB, tbl))
 }

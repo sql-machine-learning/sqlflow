@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"sqlflow.org/sqlflow/pkg/database"
 )
 
 func hasHDFSDir(hdfsPath string) bool {
@@ -35,43 +36,41 @@ func hasHDFSDir(hdfsPath string) bool {
 }
 
 func TestNewHiveWriter(t *testing.T) {
+	createSQLFSTestingDatabaseOnce.Do(createSQLFSTestingDatabase)
+	db := database.GetTestingDBSingleton()
 	a := assert.New(t)
 
-	testDriver, testDB, e := newTestDB()
-	a.NoError(e)
-
-	if testDriver != "hive" {
+	if db.DriverName != "hive" {
 		t.Skip("Skip as SQLFLOW_TEST_DB is not Hive")
 	}
-	t.Logf("Confirm executed with %s", testDriver)
+	t.Logf("Confirm executed with %s", db.DriverName)
 
 	tbl := fmt.Sprintf("%s%d", testDatabaseName, rand.Int())
-	w, e := newHiveWriter(testDB, "/hivepath", tbl, "", "", bufSize)
+	w, e := newHiveWriter(db.DB, "/hivepath", tbl, "", "", bufSize)
 	a.NoError(e)
 	a.NotNil(w)
 
-	has, e1 := hasTable(testDB, tbl)
+	has, e1 := hasTable(db.DB, tbl)
 	a.NoError(e1)
 	a.True(has)
 
 	a.NoError(w.Close())
 	a.False(hasHDFSDir(path.Join("/hivepath", tbl)))
-	a.NoError(dropTable(testDB, tbl))
+	a.NoError(dropTable(db.DB, tbl))
 }
 
 func TestHiveWriterWriteAndRead(t *testing.T) {
+	createSQLFSTestingDatabaseOnce.Do(createSQLFSTestingDatabase)
+	db := database.GetTestingDBSingleton()
 	a := assert.New(t)
 
-	testDriver, testDB, e := newTestDB()
-	a.NoError(e)
-
-	if testDriver != "hive" {
+	if db.DriverName != "hive" {
 		t.Skip("Skip as SQLFLOW_TEST_DB is not Hive")
 	}
-	t.Logf("Confirm executed with %s", testDriver)
+	t.Logf("Confirm executed with %s", db.DriverName)
 
 	tbl := fmt.Sprintf("%s%d", testDatabaseName, rand.Int())
-	w, e := newHiveWriter(testDB, "/hivepath", tbl, "", "", bufSize)
+	w, e := newHiveWriter(db.DB, "/hivepath", tbl, "", "", bufSize)
 	a.NoError(e)
 	a.NotNil(w)
 
@@ -92,7 +91,7 @@ func TestHiveWriterWriteAndRead(t *testing.T) {
 
 	a.NoError(w.Close())
 
-	r, e := Open(testDB, tbl)
+	r, e := Open(db.DB, tbl)
 	a.NoError(e)
 	a.NotNil(r)
 
@@ -117,5 +116,5 @@ func TestHiveWriterWriteAndRead(t *testing.T) {
 	a.Equal(0, n)
 	a.NoError(r.Close())
 
-	a.NoError(dropTable(testDB, tbl))
+	a.NoError(dropTable(db.DB, tbl))
 }

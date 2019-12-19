@@ -44,11 +44,10 @@ func createSQLFSTestingDatabase() {
 }
 
 func TestWriterCreate(t *testing.T) {
+	createSQLFSTestingDatabaseOnce.Do(createSQLFSTestingDatabase)
+	db := database.GetTestingDBSingleton()
 	a := assert.New(t)
 
-	createSQLFSTestingDatabaseOnce.Do(createSQLFSTestingDatabase)
-
-	db := database.GetTestingDBSingleton()
 	tbl := fmt.Sprintf("%s.unittest%d", testDatabaseName, rand.Int())
 	w, e := Create(db.DB, db.DriverName, tbl, getDefaultSession())
 	a.NoError(e)
@@ -93,7 +92,7 @@ func TestWriteAndRead(t *testing.T) {
 
 	a.NoError(w.Close())
 
-	r, e := Open(testDB, tbl)
+	r, e := Open(db.DB, tbl)
 	a.NoError(e)
 	a.NotNil(r)
 
