@@ -65,8 +65,9 @@ USING sqlflow_models.my_dnn_model;`
 // parse "standard" select.
 func TestExtendedSyntaxParseStandardSelect(t *testing.T) {
 	a := assert.New(t)
-	r, e := parseSQLFlowStmt(testStandardSelect + ";")
+	r, idx, e := parseSQLFlowStmt(testStandardSelect)
 	a.NoError(e)
+	a.Equal(len(testStandardSelect), idx)
 	a.False(r.Extended)
 	a.Equal([]string{"employee.age", "last_name", "salary"},
 		r.Fields.Strings())
@@ -84,55 +85,53 @@ func TestExtendedSyntaxParseStandardSelect(t *testing.T) {
 // parse "standard" select.
 func TestExtendedSyntaxParseSelectToTrain(t *testing.T) {
 	a := assert.New(t)
-	// NOTE(tony): Test optional semicolon at the end of the statement
-	for _, s := range []string{``, `;`} {
-		r, e := parseSQLFlowStmt(testSelectToTrain + s)
-		a.NoError(e)
-		a.True(r.Extended)
-		a.True(r.Train)
-		a.Equal("DNNClassifier", r.Estimator)
-		a.Equal("[10, 20]", r.TrainAttrs["hidden_units"].String())
-		a.Equal("3", r.TrainAttrs["n_classes"].String())
-		a.Equal(`employee.name`,
-			r.Columns["feature_columns"][0].String())
-		a.Equal(`bucketize(last_name, 1000)`,
-			r.Columns["feature_columns"][1].String())
-		a.Equal(
-			`cross(embedding(employee.name), bucketize(last_name, 1000))`,
-			r.Columns["feature_columns"][2].String())
-		a.Equal("employee.salary", r.Label)
-		a.Equal("sqlflow_models.my_dnn_model", r.Save)
-	}
+	r, idx, e := parseSQLFlowStmt(testSelectToTrain)
+	a.NoError(e)
+	a.Equal(len(testSelectToTrain), idx)
+	a.True(r.Extended)
+	a.True(r.Train)
+	a.Equal("DNNClassifier", r.Estimator)
+	a.Equal("[10, 20]", r.TrainAttrs["hidden_units"].String())
+	a.Equal("3", r.TrainAttrs["n_classes"].String())
+	a.Equal(`employee.name`,
+		r.Columns["feature_columns"][0].String())
+	a.Equal(`bucketize(last_name, 1000)`,
+		r.Columns["feature_columns"][1].String())
+	a.Equal(
+		`cross(embedding(employee.name), bucketize(last_name, 1000))`,
+		r.Columns["feature_columns"][2].String())
+	a.Equal("employee.salary", r.Label)
+	a.Equal("sqlflow_models.my_dnn_model", r.Save)
 }
 
 func TestExtendedSyntaxParseToTrain(t *testing.T) {
 	a := assert.New(t)
-	for _, eos := range []string{``, `;`} {
-		r, e := parseSQLFlowStmt(testToTrain + eos)
-		a.NoError(e)
-		a.True(r.Extended)
-		a.True(r.Train)
-		a.Equal("DNNClassifier", r.Estimator)
-		a.Equal("[10, 20]", r.TrainAttrs["hidden_units"].String())
-		a.Equal("3", r.TrainAttrs["n_classes"].String())
-		a.Equal(`employee.name`,
-			r.Columns["feature_columns"][0].String())
-		a.Equal(`bucketize(last_name, 1000)`,
-			r.Columns["feature_columns"][1].String())
-		a.Equal(
-			`cross(embedding(employee.name), bucketize(last_name, 1000))`,
-			r.Columns["feature_columns"][2].String())
-		a.Equal("employee.salary", r.Label)
-		a.Equal("sqlflow_models.my_dnn_model", r.Save)
-	}
+	r, idx, e := parseSQLFlowStmt(testToTrain)
+	a.NoError(e)
+	a.Equal(len(testToTrain), idx)
+	a.True(r.Extended)
+	a.True(r.Train)
+	a.Equal("DNNClassifier", r.Estimator)
+	a.Equal("[10, 20]", r.TrainAttrs["hidden_units"].String())
+	a.Equal("3", r.TrainAttrs["n_classes"].String())
+	a.Equal(`employee.name`,
+		r.Columns["feature_columns"][0].String())
+	a.Equal(`bucketize(last_name, 1000)`,
+		r.Columns["feature_columns"][1].String())
+	a.Equal(
+		`cross(embedding(employee.name), bucketize(last_name, 1000))`,
+		r.Columns["feature_columns"][2].String())
+	a.Equal("employee.salary", r.Label)
+	a.Equal("sqlflow_models.my_dnn_model", r.Save)
 }
 
 // TODO(wangkuiyi): Remove this test after we remove the rules to
 // parse "standard" select.
 func TestExtendedSyntaxParseSelectToTrainWithMultiColumns(t *testing.T) {
 	a := assert.New(t)
-	r, e := parseSQLFlowStmt(testSelectToTrainWithMultiColumns)
+	r, idx, e := parseSQLFlowStmt(testSelectToTrainWithMultiColumns)
 	a.NoError(e)
+	a.Equal(len(testSelectToTrainWithMultiColumns), idx)
 	a.True(r.Extended)
 	a.True(r.Train)
 	a.Equal("DNNClassifier", r.Estimator)
@@ -154,8 +153,9 @@ func TestExtendedSyntaxParseSelectToTrainWithMultiColumns(t *testing.T) {
 
 func TestExtendedSyntaxParseToTrainWithMultiColumns(t *testing.T) {
 	a := assert.New(t)
-	r, e := parseSQLFlowStmt(testToTrainWithMultiColumns)
+	r, idx, e := parseSQLFlowStmt(testToTrainWithMultiColumns)
 	a.NoError(e)
+	a.Equal(len(testToTrainWithMultiColumns), idx)
 	a.True(r.Extended)
 	a.True(r.Train)
 	a.Equal("DNNClassifier", r.Estimator)
@@ -179,8 +179,9 @@ func TestExtendedSyntaxParseToTrainWithMultiColumns(t *testing.T) {
 // parse "standard" select.
 func TestExtendedSyntaxParseSelectToPredict(t *testing.T) {
 	a := assert.New(t)
-	r, e := parseSQLFlowStmt(testSelectToPredict)
+	r, idx, e := parseSQLFlowStmt(testSelectToPredict)
 	a.NoError(e)
+	a.Equal(len(testSelectToPredict), idx)
 	a.True(r.Extended)
 	a.False(r.Train)
 	a.Equal("sqlflow_models.my_dnn_model", r.Model)
@@ -189,8 +190,9 @@ func TestExtendedSyntaxParseSelectToPredict(t *testing.T) {
 
 func TestExtendedSyntaxParseToPredict(t *testing.T) {
 	a := assert.New(t)
-	r, e := parseSQLFlowStmt(testToPredict)
+	r, idx, e := parseSQLFlowStmt(testToPredict)
 	a.NoError(e)
+	a.Equal(len(testToPredict), idx)
 	a.True(r.Extended)
 	a.False(r.Train)
 	a.Equal("sqlflow_models.my_dnn_model", r.Model)
@@ -201,12 +203,14 @@ func TestExtendedSyntaxParseToPredict(t *testing.T) {
 // parse "standard" select.
 func TestExtendedSyntaxParseSelectToExplain(t *testing.T) {
 	a := assert.New(t)
-	r, e := parseSQLFlowStmt(`select * from mytable
+	s := `select * from mytable
 TO EXPLAIN my_model
 WITH
   plots = force
-USING TreeExplainer;`)
+USING TreeExplainer;`
+	r, idx, e := parseSQLFlowStmt(s)
 	a.NoError(e)
+	a.Equal(len(s), idx)
 	a.True(r.Extended)
 	a.False(r.Train)
 	a.True(r.Explain)
@@ -217,9 +221,11 @@ USING TreeExplainer;`)
 
 func TestExtendedSyntaxParseToExplain(t *testing.T) {
 	a := assert.New(t)
-	r, e := parseSQLFlowStmt(`TO EXPLAIN my_model
+	s := `TO EXPLAIN my_model
 WITH plots = force
-USING TreeExplainer;`)
+USING TreeExplainer;`
+	r, idx, e := parseSQLFlowStmt(s)
+	a.Equal(len(s), idx) // right before ; due to the end_of_stmt syntax rule.
 	a.NoError(e)
 	a.True(r.Extended)
 	a.False(r.Train)
@@ -231,7 +237,9 @@ USING TreeExplainer;`)
 
 func TestExtendedSyntaxParseSelectStarAndPrint(t *testing.T) {
 	a := assert.New(t)
-	r, e := parseSQLFlowStmt(`SELECT *, b FROM a LIMIT 10;`)
+	s := `SELECT *, b FROM a LIMIT 10  ;  `
+	r, idx, e := parseSQLFlowStmt(s)
+	a.Equal(len(s), idx) // right before ; due to the end_of_stmt syntax rule.
 	a.NoError(e)
 	a.Equal(2, len(r.Fields.Strings()))
 	a.Equal("*", r.Fields.Strings()[0])
@@ -240,18 +248,34 @@ func TestExtendedSyntaxParseSelectStarAndPrint(t *testing.T) {
 	a.Equal("SELECT *, b\nFROM a\nLIMIT 10", r.StandardSelect.String())
 }
 
-func TestExtendedSyntaxParseStandardDropTable(t *testing.T) {
+func TestExtendedSyntaxParseNonSelectStmt(t *testing.T) {
 	a := assert.New(t)
-	_, e := parseSQLFlowStmt(`DROP TABLE TO PREDICT`)
-	a.Error(e)
-	// Note: currently, our parser doesn't accept anything statements other than SELECT.
-	// It will support parsing any SQL statements and even dialects in the future.
+	{
+		r, idx, e := parseSQLFlowStmt(`DROP TABLE TO PREDICT`)
+		a.Nil(r)
+		a.Equal(0, idx)
+		a.Error(e)
+	}
+	{
+		r, idx, e := parseSQLFlowStmt(`   DROP TABLE TO PREDICT`)
+		a.Nil(r)
+		a.Equal(3, idx) // right before DROP as there was an error.
+		a.Error(e)
+	}
 }
 
 func TestExtendedSyntaxParseSelectWithDuplicatedFromClauses(t *testing.T) {
 	a := assert.New(t)
-	_, e := parseSQLFlowStmt(`SELECT table.field FROM table FROM tttt;`)
+	r, idx, e := parseSQLFlowStmt(`SELECT table.field FROM table   FROM tttt;`)
 	a.Error(e)
+	// TODO(wangkuiyi): After removing the syntax rules parsing
+	// the "standard" SELECT prefix, we will need to adjust the
+	// following values.
+	a.Equal(32, idx)
+	a.False(r.Extended)
+	a.False(r.Train)
+	a.False(r.Explain)
+	a.NotNil(r.StandardSelect)
 }
 
 func TestExtendedSyntaxParseSelectToPredictWithMaxcomputeUDF(t *testing.T) {
@@ -262,8 +286,9 @@ TO PREDICT db.predict_result
 WITH OSS_KEY=a, OSS_ID=b
 USING sqlflow_models.my_model;
 	`
-	r, e := parseSQLFlowStmt(testSelectToPredictWithMaxComputeUDF)
+	r, idx, e := parseSQLFlowStmt(testSelectToPredictWithMaxComputeUDF)
 	a.NoError(e)
+	a.Equal(len(testSelectToPredictWithMaxComputeUDF), idx)
 	a.Equal(3, len(r.Fields.Strings()))
 	a.Equal(r.Fields[0].String(), `predict_fun(concat(",", col_1, col_2))`)
 	a.Equal(r.Fields[1].String(), `AS`)
