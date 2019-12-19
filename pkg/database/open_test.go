@@ -11,19 +11,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package database
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestDatabaseOpenMysql(t *testing.T) {
-	if getEnv("SQLFLOW_TEST_DB", "mysql") == "hive" {
-		t.Skip("hive: skip MySQL test")
+func TestDatabaseOpenMySQL(t *testing.T) {
+	if os.Getenv("SQLFLOW_TEST_DB") != "mysql" {
+		t.Skip("Skip TestDatabaseOpenMySQL")
 	}
 	a := assert.New(t)
 	cfg := &mysql.Config{
