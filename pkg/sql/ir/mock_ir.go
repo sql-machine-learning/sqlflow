@@ -17,7 +17,7 @@ package ir
 func MockTrainStmt(datasource string, isxgboost bool) *TrainStmt {
 	// SELECT * FROM iris_train TO TRAIN DNNClassifier
 	// WITH train.batch_size=4, train.epoch=3, model.hidden_units=[10,20], model.n_classes=3
-	// LABEL clas INTO my_dnn_model;
+	// LABEL class INTO my_dnn_model;
 	attrs := map[string]interface{}{}
 	estimator := "DNNClassifier"
 	if isxgboost {

@@ -205,6 +205,14 @@ def train(is_keras_model,
             model_params["field_metas"] = feature_metas
         classifier = estimator(**model_params)
         classifier_pkg = sys.modules[estimator.__module__]
+        if hasattr(classifier_pkg, "eval_metrics_fn"):
+            metrics_functions = classifier_pkg.eval_metrics_fn()
+            metrics = []
+            for key, func in metrics_functions.items():
+                func.__name__ = key
+                metrics.append(func)
+        else:
+            metrics = ["accuracy"]
 
         keras_metrics = metrics.get_keras_metrics(metric_names)
         classifier.compile(optimizer=classifier_pkg.optimizer(),
