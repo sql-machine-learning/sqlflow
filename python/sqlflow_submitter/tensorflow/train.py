@@ -54,6 +54,9 @@ def define_tf_flags():
         tf.app.flags.DEFINE_string('model_dir', './output', 'model directory')
         FLAGS = tf.app.flags.FLAGS
 
+# make_distributed_info_without_evaluator and dump_into_tf_config are used to dump
+# distributed configurations into environment variable TF_CONFIG so that Tensorflow
+# can recognize it.
 def make_distributed_info_without_evaluator():
     global FLAGS
     worker_hosts = FLAGS.worker_hosts.split(",")

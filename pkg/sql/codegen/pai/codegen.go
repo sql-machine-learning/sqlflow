@@ -121,7 +121,16 @@ func Train(ir *ir.TrainStmt, modelName, cwd string) (string, error) {
 	if !ok {
 		numPS = 0
 	} else {
-		numPS = numPSAttr.(int)
+		numPS, ok = numPSAttr.(int)
+		// NOTE(typhoonzero): pai/codegen.go only deal with train.num_ps and train.num_workers
+		// calling attribute validator will also validate attributes defined by tensorflow/codegen.go
+		// wich may cause "unsupported attribute", so just manually check in here.
+		if !ok {
+			return "", fmt.Errorf("train.num_ps should be an integer")
+		}
+		if numPS < 0 {
+			return "", fmt.Errorf("train.num_ps should >= 0")
+		}
 		// delete attributes so that tensorflow codegen can run.
 		delete(ir.Attributes, "train.num_ps")
 	}
@@ -129,7 +138,13 @@ func Train(ir *ir.TrainStmt, modelName, cwd string) (string, error) {
 	if !ok {
 		numWorkers = 1
 	} else {
-		numWorkers = numWorkersAttr.(int)
+		numWorkers, ok = numWorkersAttr.(int)
+		if !ok {
+			return "", fmt.Errorf("train.num_workers should be an integer")
+		}
+		if numWorkers < 0 {
+			return "", fmt.Errorf("train.num_workers should >= 0")
+		}
 		// delete attributes so that tensorflow codegen can run.
 		delete(ir.Attributes, "train.num_workers")
 	}

@@ -30,13 +30,12 @@ def save(oss_model_dir, *meta):
     Return:
         None
     '''
-    buf = pickle.dumps(list(meta))
     uri_parts = oss_model_dir.split("?")
     if len(uri_parts) != 2:
         raise ValueError("error oss_model_dir: ", oss_model_dir)
     oss_path = "/".join([uri_parts[0].rstrip("/"), "sqlflow_model_desc"])
     writer = gfile.GFile(oss_path, mode='w')
-    writer.write(buf)
+    pickle.dump(list(meta), writer)
     writer.flush()
     writer.close()
 
@@ -55,6 +54,4 @@ def load(oss_model_dir):
     oss_path = "/".join([uri_parts[0].rstrip("/"), "sqlflow_model_desc"])
 
     reader = gfile.GFile(oss_path, mode='r')
-    read_content = reader.read()
-    return pickle.loads(read_content)
-
+    return pickle.load(reader)
