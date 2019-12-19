@@ -17,21 +17,16 @@ def tf_classification_metrics(labels, predictions):
     print(predictions)
     accuracy = tf.keras.metrics.Accuracy(name="accuracy")
     accuracy.update_state(y_true=labels, y_pred=predictions['class_ids'])
-
-    precision = tf.keras.metrics.Precision(name="precision")
-    precision.update_state(y_true=labels, y_pred=predictions['class_ids'])
-
-    # recall = tf.keras.metrics.Recall(name="recall")
-    # recall.update_state(y_true=labels, y_pred=predictions['all_class_ids'])
     
-    # auc = tf.keras.metrics.AUC(name="auc")
-    # auc.update_state(y_true=labels, y_pred=predictions['probabilities'])
+    auc = tf.keras.metrics.AUC(name="auc", num_thresholds=2000)
+    auc.update_state(y_true=labels, y_pred=predictions['probabilities'])
 
-    return {"accuracy": accuracy, "precision": precision}#, "recall": recall, "auc": auc} 
+    # TODO(typhoonzero): precision & recall is defined for a specific class
+    # since we may encounter multi-class classification here, we do not calculate
+    # precision by default. We need find a way to determine whether
+    # the job is binary classificaion.
+    return {"accuracy": accuracy, "auc": auc}
 
-def keras_classification_metrics():
-    return [tf.keras.metrics.Accuracy(), tf.keras.metrics.Precision(),
-        tf.keras.metrics.Recall(), tf.keras.metrics.AUC()]
 
 def tf_regression_metrics(labels, predictions):
     rmse = tf.keras.metrics.RootMeanSquaredError(name="rmse")
@@ -45,7 +40,28 @@ def tf_regression_metrics(labels, predictions):
 
     return {"rmse": rmse, "mae": mae, "mape": mape}
 
-def keras_regression_metrics():
-    return [tf.keras.metrics.RootMeanSquaredError(),
-        tf.keras.metrics.MeanAbsoluteError(),
-        tf.keras.metrics.MeanAbsolutePercentageError()]
+metric_names_use_class_id = ["Accuracy", "Precision", "Recall", "TruePositives", "TrueNegatives", "FalsePositives", "FalseNegatives"]
+metric_names_use_probabilities = ["BinaryAccuracy", "CategoricalAccuracy", "TopKCategoricalAccuracy", "AUC"]
+metric_names_use_logits = ["MeanAbsoluteError", "MeanAbsolutePercentageError", "MeanSquaredError", "RootMeanSquaredError"]
+supported_metrics = metric_names_use_class_id + metric_names_use_probabilities + metric_names_use_logits
+
+def get_tf_metrics(metrics):
+    def tf_metrics_func(labels, predictions):
+        metric_dict = {}
+        for mn in metrics:
+            metric = eval("tf.keras.metrics.%s()" % mn)
+            if mn in metric_names_use_class_id:
+                metric.update_state(y_true=labels, y_pred=predictions["class_ids"])
+            elif mn in metric_names_use_probabilities:
+                metric.update_state(y_true=labels, y_pred=predictions["probabilities"])
+            elif mn in metric_names_use_logits:
+                metric.update_state(y_true=labels, y_pred=predictions["logits"])
+            metric_dict[mn] = metric
+        return metric_dict
+    return tf_metrics_func
+
+def get_keras_metrics(metrics):
+    m = []
+    for mn in metrics:
+        m.append(eval("tf.keras.metrics.%s()" % mn))
+    return m

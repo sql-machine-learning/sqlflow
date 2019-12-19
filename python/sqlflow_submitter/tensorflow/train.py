@@ -104,6 +104,7 @@ def train(is_keras_model,
           feature_metas={},
           label_meta={},
           model_params={},
+          metric_names=["Accuracy"],
           save="",
           batch_size=1,
           epochs=1,
@@ -204,11 +205,8 @@ def train(is_keras_model,
             model_params["field_metas"] = feature_metas
         classifier = estimator(**model_params)
         classifier_pkg = sys.modules[estimator.__module__]
-        if label_meta["dtype"].lower().startswith("float"):
-            keras_metrics = metrics.keras_regression_metrics()
-        else:
-            keras_metrics = metrics.keras_classification_metrics()
 
+        keras_metrics = metrics.get_keras_metrics(metric_names)
         classifier.compile(optimizer=classifier_pkg.optimizer(),
             loss=classifier_pkg.loss,
             metrics=keras_metrics)
@@ -250,10 +248,7 @@ def train(is_keras_model,
             print("validation select not empty")
             # TODO(typhoonzero): able to config metrics by calling tf.estimators.add_metrics()
             if TF_VERSION_2:
-                if label_meta["dtype"].lower().startswith("float"):
-                    classifier = tf.estimator.add_metrics(classifier, metrics.tf_regression_metrics)
-                else:    
-                    classifier = tf.estimator.add_metrics(classifier, metrics.tf_classification_metrics)
+                classifier = tf.estimator.add_metrics(classifier, metrics.get_tf_metrics(metric_names))
             train_hooks = []
             if verbose == 1 and TF_VERSION_2:
                 train_hooks = [PrintStatusHook("train", every_n_iter=log_every_n_iter)]
