@@ -25,6 +25,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
+	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
 
 	pb "sqlflow.org/sqlflow/pkg/proto"
@@ -72,7 +73,7 @@ func (m *model) save(modelURI string, trainStmt *ir.TrainStmt, session *pb.Sessi
 	return nil
 }
 
-func load(modelURI, dst string, db *DB) (*model, error) {
+func load(modelURI, dst string, db *database.DB) (*model, error) {
 	// FIXME(typhoonzero): unify arguments with save, use session,
 	// so that can pass oss credentials too.
 	if strings.Contains(modelURI, "://") {
@@ -96,7 +97,7 @@ func load(modelURI, dst string, db *DB) (*model, error) {
 // train select statement into the table, followed by the tar-gzipped
 // SQLFlow working directory, which contains the TensorFlow working
 // directory and the trained TensorFlow model.
-func (m *model) saveDB(db *DB, table string, session *pb.Session) (e error) {
+func (m *model) saveDB(db *database.DB, table string, session *pb.Session) (e error) {
 	sqlf, e := sqlfs.Create(db.DB, db.driverName, table, session)
 	if e != nil {
 		return fmt.Errorf("cannot create sqlfs file %s: %v", table, e)
@@ -154,7 +155,7 @@ func loadTar(modelDir, cwd, save string) (m *model, e error) {
 // load reads from the given sqlfs table for the train select
 // statement, and untar the SQLFlow working directory, which contains
 // the TensorFlow model, into directory cwd.
-func loadDB(db *DB, table, cwd string) (m *model, e error) {
+func loadDB(db *database.DB, table, cwd string) (m *model, e error) {
 	sqlf, e := sqlfs.Open(db.DB, table)
 	if e != nil {
 		return nil, fmt.Errorf("cannot open sqlfs file %s: %v", table, e)
@@ -205,7 +206,7 @@ func readGob(filePath string, object interface{}) error {
 
 // createModelZooTable create the table "sqlflow.trained_models" to save model
 // metas the saved model URI.
-func createModelZooTable(db *DB) error {
+func createModelZooTable(db *database.DB) error {
 	createDBSQL := fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s;", modelZooDB)
 	_, err := db.Exec(createDBSQL)
 	if err != nil {
@@ -246,7 +247,7 @@ func dbStringEscape(src string) string {
 	return strings.ReplaceAll(ret, "'", "\\'")
 }
 
-func addTrainedModelsRecord(db *DB, trainStmt *ir.TrainStmt, modelURI string, sess *pb.Session) error {
+func addTrainedModelsRecord(db *database.DB, trainStmt *ir.TrainStmt, modelURI string, sess *pb.Session) error {
 	// NOTE(typhoonzero): creator can be empty, if so, the model file is saved into current database
 	// FIXME(typhoonzero): or maybe the into format should be like "creator/modelID"
 	creator, modelID, err := getTrainedModelParts(trainStmt.Into)

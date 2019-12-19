@@ -23,6 +23,7 @@ import (
 	"path"
 	"sync"
 
+	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/parser"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
@@ -49,7 +50,7 @@ func submitter() Submitter {
 // Submitter extends ir.Executor
 type Submitter interface {
 	ir.Executor
-	Setup(*PipeWriter, *DB, string, *pb.Session) error
+	Setup(*PipeWriter, *database.DB, string, *pb.Session) error
 	Teardown()
 	GetTrainStmtFromModel() bool
 }
@@ -95,7 +96,7 @@ func (cw *logChanWriter) Close() {
 
 type defaultSubmitter struct {
 	Writer   *PipeWriter
-	Db       *DB
+	Db       *database.DB
 	ModelDir string
 	Cwd      string
 	Session  *pb.Session
@@ -104,7 +105,7 @@ type defaultSubmitter struct {
 type elasticdlSubmitter struct{ *defaultSubmitter }
 type alpsSubmitter struct{ *defaultSubmitter }
 
-func (s *defaultSubmitter) Setup(w *PipeWriter, db *DB, modelDir string, session *pb.Session) error {
+func (s *defaultSubmitter) Setup(w *PipeWriter, db *database.DB, modelDir string, session *pb.Session) error {
 	// cwd is used to store train scripts and save output models.
 	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
 	s.Writer, s.Db, s.ModelDir, s.Cwd, s.Session = w, db, modelDir, cwd, session

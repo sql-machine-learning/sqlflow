@@ -22,6 +22,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"sqlflow.org/sqlflow/pkg/argo"
+	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/parser"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/couler"
@@ -45,7 +46,7 @@ type WorkflowJob struct {
 func RunSQLProgram(sqlProgram string, modelDir string, session *pb.Session) *PipeReader {
 	rd, wr := Pipe()
 	go func() {
-		var db *DB
+		var db *database.DB
 		var err error
 		if db, err = NewDB(session.DbConnStr); err != nil {
 			wr.Write(fmt.Errorf("create DB failed: %v", err))
@@ -182,7 +183,7 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, modelDir string, session 
 	})
 }
 
-func runSQLProgram(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, session *pb.Session) error {
+func runSQLProgram(wr *PipeWriter, sqlProgram string, db *database.DB, modelDir string, session *pb.Session) error {
 	sqls, err := parser.Parse(db.driverName, sqlProgram)
 	if err != nil {
 		return err
@@ -221,7 +222,7 @@ func runSQLProgram(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, s
 	return nil
 }
 
-func runSingleSQLIR(wr *PipeWriter, sqlIR ir.SQLStatement, db *DB, modelDir string, session *pb.Session) (e error) {
+func runSingleSQLIR(wr *PipeWriter, sqlIR ir.SQLStatement, db *database.DB, modelDir string, session *pb.Session) (e error) {
 	startTime := time.Now().UnixNano()
 	var originalSQL string
 	defer func() {
@@ -243,7 +244,7 @@ func runSingleSQLIR(wr *PipeWriter, sqlIR ir.SQLStatement, db *DB, modelDir stri
 }
 
 // Create prediction table using the `PredictStmt`.
-func createPredictionTableFromIR(predStmt *ir.PredictStmt, db *DB, session *pb.Session) error {
+func createPredictionTableFromIR(predStmt *ir.PredictStmt, db *database.DB, session *pb.Session) error {
 	dropStmt := fmt.Sprintf("drop table if exists %s;", predStmt.ResultTable)
 	if _, e := db.Exec(dropStmt); e != nil {
 		return fmt.Errorf("failed executing %s: %q", dropStmt, e)
@@ -306,7 +307,7 @@ func createPredictionTableFromIR(predStmt *ir.PredictStmt, db *DB, session *pb.S
 	return nil
 }
 
-func loadModelMeta(pr *parser.SQLFlowSelectStmt, db *DB, cwd, modelDir, modelName string) (*parser.SQLFlowSelectStmt, error) {
+func loadModelMeta(pr *parser.SQLFlowSelectStmt, db *database.DB, cwd, modelDir, modelName string) (*parser.SQLFlowSelectStmt, error) {
 	var m *model
 	var e error
 	modelURI := modelName

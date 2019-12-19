@@ -23,6 +23,7 @@ import (
 	"strings"
 	"text/template"
 
+	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/parser"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
@@ -62,7 +63,7 @@ type elasticDLModelSpec struct {
 	NumClasses int
 }
 
-func getFeaturesNames(pr *parser.SQLFlowSelectStmt, db *DB) ([]string, error) {
+func getFeaturesNames(pr *parser.SQLFlowSelectStmt, db *database.DB) ([]string, error) {
 	fts, err := verify(pr.StandardSelect.String(), db)
 	if err != nil {
 		return nil, err
@@ -111,7 +112,7 @@ func getElasticDLModelSpec(attrs map[string]*attribute) elasticDLModelSpec {
 	}
 }
 
-func newElasticDLTrainFiller(pr *parser.SQLFlowSelectStmt, db *DB, session *pb.Session) (*elasticDLFiller, error) {
+func newElasticDLTrainFiller(pr *parser.SQLFlowSelectStmt, db *database.DB, session *pb.Session) (*elasticDLFiller, error) {
 	resolved, err := resolveTrainClause(&pr.TrainClause, &pr.StandardSelect)
 	if err != nil {
 		return nil, err
@@ -146,7 +147,7 @@ func newElasticDLTrainFiller(pr *parser.SQLFlowSelectStmt, db *DB, session *pb.S
 	}, err
 }
 
-func newElasticDLPredictFiller(pr *parser.SQLFlowSelectStmt, db *DB) (*elasticDLFiller, error) {
+func newElasticDLPredictFiller(pr *parser.SQLFlowSelectStmt, db *database.DB) (*elasticDLFiller, error) {
 	resolved, err := resolvePredictClause(&pr.PredictClause)
 	if err != nil {
 		return nil, err
@@ -168,7 +169,7 @@ func newElasticDLPredictFiller(pr *parser.SQLFlowSelectStmt, db *DB) (*elasticDL
 	}, err
 }
 
-func elasticDLTrain(w *PipeWriter, pr *parser.SQLFlowSelectStmt, db *DB, cwd string, session *pb.Session) error {
+func elasticDLTrain(w *PipeWriter, pr *parser.SQLFlowSelectStmt, db *database.DB, cwd string, session *pb.Session) error {
 	// Write model definition file
 	var elasticdlProgram bytes.Buffer
 	trainFiller, err := newElasticDLTrainFiller(pr, db, session)
@@ -255,7 +256,7 @@ func elasticdlTrainCmd(cwd string, filler *elasticDLFiller) (cmd *exec.Cmd) {
 	return cmd
 }
 
-func elasticDLPredict(w *PipeWriter, pr *parser.SQLFlowSelectStmt, db *DB, cwd string, session *pb.Session) error {
+func elasticDLPredict(w *PipeWriter, pr *parser.SQLFlowSelectStmt, db *database.DB, cwd string, session *pb.Session) error {
 	// Write model definition file
 	var elasticdlProgram bytes.Buffer
 	predictFiller, err := newElasticDLPredictFiller(pr, db)

@@ -26,6 +26,7 @@ import (
 	"text/template"
 
 	"sqlflow.org/gomaxcompute"
+	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/parser"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/columns"
@@ -178,7 +179,7 @@ func modelCreatorCode(resolved *resolvedTrainClause, args []string) (string, str
 		fmt.Sprintf("%s(%s)", modelName, strings.Join(cl, ",")), nil
 }
 
-func newALPSTrainFiller(pr *parser.SQLFlowSelectStmt, db *DB, session *pb.Session) (*alpsFiller, error) {
+func newALPSTrainFiller(pr *parser.SQLFlowSelectStmt, db *database.DB, session *pb.Session) (*alpsFiller, error) {
 	resolved, err := resolveTrainClause(&pr.TrainClause, &pr.StandardSelect)
 	if err != nil {
 		return nil, err
@@ -331,7 +332,7 @@ func newALPSPredictFiller(pr *parser.SQLFlowSelectStmt, session *pb.Session) (*a
 	}, nil
 }
 
-func alpsTrain(w *PipeWriter, pr *parser.SQLFlowSelectStmt, db *DB, cwd string, session *pb.Session) error {
+func alpsTrain(w *PipeWriter, pr *parser.SQLFlowSelectStmt, db *database.DB, cwd string, session *pb.Session) error {
 	var program bytes.Buffer
 	filler, err := newALPSTrainFiller(pr, db, session)
 	if err != nil {
@@ -374,7 +375,7 @@ pip install http://091349.oss-cn-hangzhou-zmf.aliyuncs.com/alps/sqlflow/alps-2.0
 	return nil
 }
 
-func alpsPred(w *PipeWriter, pr *parser.SQLFlowSelectStmt, db *DB, cwd string, session *pb.Session) error {
+func alpsPred(w *PipeWriter, pr *parser.SQLFlowSelectStmt, db *database.DB, cwd string, session *pb.Session) error {
 	var program bytes.Buffer
 	filler, err := newALPSPredictFiller(pr, session)
 	if err != nil {
