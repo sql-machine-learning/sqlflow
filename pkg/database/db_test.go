@@ -22,7 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestDatabaseOpenMySQL(t *testing.T) {
+func TestDatabaseNewDBWithMySQL(t *testing.T) {
 	if os.Getenv("SQLFLOW_TEST_DB") != "mysql" {
 		t.Skip("Skip TestDatabaseOpenMySQL")
 	}
@@ -44,10 +44,10 @@ func TestDatabaseOpenMySQL(t *testing.T) {
 	a.NoError(e)
 }
 
-func TestSplitDataSource(t *testing.T) {
+func TestDatabaseParseURL(t *testing.T) {
 	a := assert.New(t)
 	ds := "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
-	driver, dataSource, e := SplitDataSource(ds)
+	driver, dataSource, e := ParseURL(ds)
 	a.EqualValues(driver, "mysql")
 	a.EqualValues(dataSource, "root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0")
 	a.NoError(e)

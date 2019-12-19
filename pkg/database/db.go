@@ -24,61 +24,53 @@ import (
 	_ "sqlflow.org/gomaxcompute"
 )
 
-// DB extends sql.DB, while keeping the two parameters, Driver and
+// DB extends sql.DB, while keeping the two parameters, DriverName and
 // DataSoruce, to database/sql.Open reaccessible.
 type DB struct {
-	Driver     string
-	DataSource string
+	DriverName     string // NOTE: Don't name it Driver, because Driver is a method of sql.DB.
+	DataSourceName string
 	*sql.DB
 }
 
-// open passes a DataSource string into driver name and DataSource name,
-// then opens a database specified by the driver name and a driver-specific
-// data source name, usually consisting of at least a database name and
-// connection information.
-//
-// In addition to sql.Open, it also does the book keeping on driver and
-// DataSource
-func open(dataSource string) (*DB, error) {
-	driver, dataSource, err := SplitDataSource(dataSource)
+// OpenURL open a dataabase identified by an URL.  It calls ParseURL
+// to get the driver and data source name.  In addition to opening the
+// database, it also verifies the driver is loaded.
+func OpenURL(url string) (*DB, error) {
+	driver, dataSource, err := ParseURL(url)
 	if err != nil {
 		return nil, err
 	}
-	db := &DB{Driver: driver, DataSource: dataSource}
+	db := &DB{DriverName: driver, DataSourceName: dataSource}
 
-	err = openDB(db)
-	return db, err
-}
-
-func openDB(db *DB) error {
-	var err error
 	for _, d := range sql.Drivers() {
-		if db.Driver == d {
-			db.DB, err = sql.Open(db.Driver, db.DataSource)
+		if db.DriverName == d {
+			db.DB, err = sql.Open(db.DriverName, db.DataSourceName)
 			if err != nil {
-				return err
+				return db, err
 			}
-			return nil
+			return db, nil
 		}
 	}
-	return fmt.Errorf("sqlflow currently doesn't support DB %s", db.Driver)
+	return db, fmt.Errorf("sqlflow currently doesn't support DB %s", db.DriverName)
 }
 
-// SplitDataSource splits the DataSource into drivername and DataSource name
-func SplitDataSource(dataSource string) (string, string, error) {
-	if dataSource == "" {
+// ParseURL splits the URL into Drivername and DataSourceName.
+func ParseURL(url string) (string, string, error) {
+	if url == "" {
 		return "", "", fmt.Errorf("dataSource should not be an empty string")
 	}
-	dses := strings.Split(dataSource, "://")
-	if len(dses) != 2 {
-		return "", "", fmt.Errorf("Expecting but cannot find :// in dataSource %v", dataSource)
+	ss := strings.Split(url, "://")
+	if len(ss) != 2 {
+		return "", "", fmt.Errorf("Expecting but cannot find :// in dataSource %v", url)
 	}
-	return dses[0], dses[1], nil
+	return ss[0], ss[1], nil
 }
 
-// NewDB returns a DB object with verifying the dataSource name.
-func NewDB(dataSource string) (*DB, error) {
-	db, err := open(dataSource)
+// NewDB calls OpenURL to open a database specified by an URL.  In
+// additon to opening, it also call database.DB.Ping to ensure a
+// connection to the database.
+func NewDB(url string) (*DB, error) {
+	db, err := OpenURL(url)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %v", err)
 	}
@@ -89,5 +81,5 @@ func NewDB(dataSource string) (*DB, error) {
 }
 
 func (db *DB) String() string {
-	return db.Driver + "://" + db.DataSource
+	return db.DriverName + "://" + db.DataSourceName
 }
