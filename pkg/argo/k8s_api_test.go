@@ -14,12 +14,21 @@
 package argo
 
 import (
-	"encoding/json"
+	"os"
+	"strings"
+	"testing"
 
-	wfv1 "github.com/argoproj/argo/pkg/apis/workflow/v1alpha1"
+	"github.com/stretchr/testify/assert"
 )
 
-func parseWorkflowResource(b []byte) (*wfv1.Workflow, error) {
-	wf := wfv1.Workflow{}
-	return &wf, json.Unmarshal(b, &wf)
+func TestCreateResource(t *testing.T) {
+	a := assert.New(t)
+
+	fileName, err := createAndWriteTempFile(podYAML)
+	a.NoError(err)
+	defer os.Remove(fileName)
+
+	id, err := k8sCreateResource(fileName)
+	a.NoError(err)
+	a.Equal(strings.HasPrefix(id, "sqlflow-pod-"), true)
 }

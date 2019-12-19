@@ -34,44 +34,39 @@ service SQLFlow {
     // Fetch fetches the SQLFlow job phase and logs in a polling manner. A corresponding
     // client can be implemented as
     //
-    // job = c.run(request).job
-    // token = fetch_token(job=job)
-    // while True:
-    //     r = c.fetch(token)
-    //     print(r.logs.content)
-    //     if r.phase == SUCCEEDED/FAILED/ERROR and r.logs.no_more_log:
-    //         break
-    //     token = r.token
-    rpc Fetch (FetchToken) returns (FetchResponse);
+    // wfJob := Submit(argoYAML)
+    // req := newFetchRequest(wfJob)
+    // for {
+    //   res := Fetch(req)
+    //   fmt.Println(res.Logs)
+    //   if isComplete(res) {
+    //     break
+    //   }
+    //   req = res.NewFetchRequest
+    //   time.Sleep(time.Second)
+    // }
+    //
+    rpc Fetch (FetchRequest) returns (FetchResponse);
 }
 
 message Job {
     string id = 1;
 }
 
-message FetchToken {
+message FetchRequest {
     Job job = 1;
     // the following fields keep the fetching state
     string step_id = 2;
     string log_offset = 3;
-    bool no_more_log = 4;  // True if no more logs
+    bool finish_fetching = 4;  // True if no more logs
 }
 
 message FetchResponse {
     message Logs {
         repeated string content = 1;
     }
-    enum Phase {
-        PENDING = 0;
-        RUNNING = 1;
-        SUCCEEDED = 2;
-        FAILED = 3;
-        ERROR = 4;
-        SKIPPED = 5;
-    }
-    FetchToken new_token = 1;
-    Phase phase = 2;
-    Logs logs = 3;
+    FetchRequest new_request = 1;
+    Logs logs = 2;
 }
 
 message Session {
