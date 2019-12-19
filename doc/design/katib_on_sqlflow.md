@@ -27,11 +27,12 @@ With the introduction of auto hyperparameter tuning, we hope that users don't ne
 
 ```sql
 SELECT * FROM train_data_table
-TO TRAIN a_data_scientist/xgbooost:v2/gbtree
+TO TRAIN a_data_scientist/xgbooost:v2/xgboost.gbtree
 WITH
     objective=multi:softmax,
     eta=0.1,
-    num_round=[20, 100],
+    range.num_round=[50, 100],
+    range.max_depth=[2, 8],
     validation_dataset="SELECT * FROM test_data_table;"
 LABEL class
 INTO my_xgb_model;
@@ -70,7 +71,7 @@ Consider the following example program.
 
 ```sql
 SELECT * FROM a, b WHERE a.id = b.id INTO c;
-SELECT * FROM c TO TRAIN model_def 
+SELECT * FROM c TO TRAIN data_scientist/xgboost:v0.5/xgboost.gbtree 
     WITH objective=multi:softmax, eta=0.1, validation_dataset="select * from d;" 
     INTO my_xgb_model;
 ```
@@ -79,9 +80,10 @@ The `codegen_couler.go` might generate the following Couler program.
 
 ```python
 couler.maxcompute.run("""SELECT * FROM a, b WHERE a.id = b.id INTO c;""")
-couler.katib.train(model="xgboost:gbtree", hyperparameters={"objective": "multi:softmax", 
+couler.sqlflow.train(model="xgboost.gbtree", hyperparameters={"objective": "multi:softmax", 
     "eta": 0.1},  image="data_scientist/xgboost:v0.5",
-    sql="select * from c to train data_scientist/xgboost:v0.5/xgboost:gbtree ... ")
+    sql="select * from c to train data_scientist/xgboost:v0.5/xgboost.gbtree ... ",
+    datasource="mysql://..." )
 ```
 
 ## `couler.sqlflow.train(...)`
@@ -89,7 +91,7 @@ couler.katib.train(model="xgboost:gbtree", hyperparameters={"objective": "multi:
 Considering Katib itself supports multiple models and frameworks, and more may come in the future, we introduce the following Couler function.
 
 ```python
-def couler.sqlflow.train(model=None, hyperparameters={}, image=None, sql=None)
+def couler.sqlflow.train(model=None, hyperparameters={}, image=None, sql=None, datasource=None)
 ```
 
 The arguments in `couler.sqlflow.train`,
@@ -98,6 +100,7 @@ The arguments in `couler.sqlflow.train`,
 - `hyperparameters` specifies hyperparameters for model given in `model`.
 - `image` specifies the container image source for the Katib tuning job.
 - `sql` sql statement input by users.
+- `datasource` train and validation data source 
 
 ## Run Tuning Job on Katib
 
@@ -105,8 +108,9 @@ In each Katib tuning job, users need to define tuning parameters (i.e., the hype
 
 For SQLFlow, each Katib pod will execute the following command:
 
-`repl -m "select * from c to train ... "; python katib_xgb_submitter.py ...`
+`repl -m "select * from c to train ... " | python sqlflow_submitter/couler/katib/xgboost_train.py ...`
 
+Program `xgboost_train.py` will received the value for `num_round` and `max_depth` from Katib, and read train and validation data from the data source at first. Then this program trains the model and output the measurement for this model. Based on the output, Katib will choose the next set of value for `num_round` and `max_depth` and starts new pods for training.
 
 ## Pipeline
 
