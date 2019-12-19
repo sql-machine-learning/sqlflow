@@ -14,85 +14,65 @@
 package sqlfs
 
 import (
-	"database/sql"
 	"fmt"
 	"io"
+	"log"
 	"math/rand"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 
-	"github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"
 	_ "sqlflow.org/gohive"
+	"sqlflow.org/sqlflow/pkg/database"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
 const testDatabaseName = `sqlfs_test`
 
-func newTestDB() (string, *sql.DB, error) {
-	testDriver := getEnv("SQLFLOW_TEST_DB", "mysql")
-	var testDB *sql.DB
+var (
+	createSQLFSTestingDatabaseOnce sync.Once
+)
 
-	var e error
-	switch testDriver {
-	case "mysql":
-		cfg := &mysql.Config{
-			User:                 getEnv("SQLFLOW_TEST_DB_MYSQL_USER", "root"),
-			Passwd:               getEnv("SQLFLOW_TEST_DB_MYSQL_PASSWD", "root"),
-			Net:                  getEnv("SQLFLOW_TEST_DB_MYSQL_NET", "tcp"),
-			Addr:                 getEnv("SQLFLOW_TEST_DB_MYSQL_ADDR", "127.0.0.1:3306"),
-			AllowNativePasswords: true,
-		}
-		if testDB, e = sql.Open("mysql", cfg.FormatDSN()); e != nil {
-			return "", nil, e
-		}
-		if _, e = testDB.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s;", testDatabaseName)); e != nil {
-			return "", nil, e
-		}
-		return testDriver, testDB, nil
-	case "hive":
-		if testDB, e = sql.Open("hive", "root:root@localhost:10000/churn"); e != nil {
-			return "", nil, e
-		}
-		if _, e = testDB.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s;", testDatabaseName)); e != nil {
-			return "", nil, e
-		}
-		return testDriver, testDB, nil
-	default:
-		return "", nil, fmt.Errorf("unrecognized environment variable SQLFLOW_TEST_DB %s", testDriver)
-
+func createSQLFSTestingDatabase() {
+	db := database.GetTestingDBSingleton()
+	stmt := fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s;", testDatabaseName)
+	if _, e := db.Exec(stmt); e != nil {
+		log.Fatalf("Cannot create sqlfs testing database %s: %v", testDatabaseName, e)
 	}
 }
 
 func TestWriterCreate(t *testing.T) {
 	a := assert.New(t)
-	testDriver, testDB, e := newTestDB()
-	a.NoError(e)
 
-	fn := fmt.Sprintf("%s.unittest%d", testDatabaseName, rand.Int())
-	w, e := Create(testDB, testDriver, fn, getDefaultSession())
+	createSQLFSTestingDatabaseOnce.Do(createSQLFSTestingDatabase)
+
+	db := database.GetTestingDBSingleton()
+	tbl := fmt.Sprintf("%s.unittest%d", testDatabaseName, rand.Int())
+	w, e := Create(db.DB, db.DriverName, tbl, getDefaultSession())
 	a.NoError(e)
 	a.NotNil(w)
 	defer w.Close()
 
-	has, e1 := hasTable(testDB, fn)
+	has, e1 := hasTable(db.DB, tbl)
 	a.NoError(e1)
 	a.True(has)
 
-	a.NoError(dropTable(testDB, fn))
+	a.NoError(dropTable(db.DB, tbl))
 }
 
 func TestWriteAndRead(t *testing.T) {
 	a := assert.New(t)
 	const bufSize = 32 * 1024
 
-	testDriver, testDB, e := newTestDB()
-	a.NoError(e)
+	createSQLFSTestingDatabaseOnce.Do(createSQLFSTestingDatabase)
 
-	fn := fmt.Sprintf("%s.unittest%d", testDatabaseName, rand.Int())
+	db := database.GetTestingDBSingleton()
 
-	w, e := Create(testDB, testDriver, fn, getDefaultSession())
+	tbl := fmt.Sprintf("%s.unittest%d", testDatabaseName, rand.Int())
+
+	w, e := Create(db.DB, db.DriverName, tbl, getDefaultSession())
 	a.NoError(e)
 	a.NotNil(w)
 
@@ -113,7 +93,7 @@ func TestWriteAndRead(t *testing.T) {
 
 	a.NoError(w.Close())
 
-	r, e := Open(testDB, fn)
+	r, e := Open(testDB, tbl)
 	a.NoError(e)
 	a.NotNil(r)
 
@@ -138,7 +118,7 @@ func TestWriteAndRead(t *testing.T) {
 	a.Equal(0, n)
 	a.NoError(r.Close())
 
-	a.NoError(dropTable(testDB, fn))
+	a.NoError(dropTable(db.DB, tbl))
 }
 
 // assertNoError prints the error if there is any in TestMain, which
