@@ -22,6 +22,9 @@ import (
 )
 
 func TestCreateResource(t *testing.T) {
+	if os.Getenv("SQLFLOW_TEST") != "workflow" {
+		t.Skip("argo: skip workflow tests")
+	}
 	a := assert.New(t)
 
 	fileName, err := createAndWriteTempFile(podYAML)
