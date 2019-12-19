@@ -27,6 +27,7 @@ except:
     pass
 
 from sqlflow_submitter.db import connect_with_data_source, db_generator, parseMaxComputeDSN
+from . import metrics
 
 TF_VERSION_2 = True  # TODO(shendiaomo): Remove after we fully upgrade to TF2.0
 # Disable Tensorflow INFO and WARNING
@@ -203,10 +204,14 @@ def train(is_keras_model,
             model_params["field_metas"] = feature_metas
         classifier = estimator(**model_params)
         classifier_pkg = sys.modules[estimator.__module__]
+        if label_meta["dtype"].lower().startswith("float"):
+            keras_metrics = metrics.keras_regression_metrics()
+        else:
+            keras_metrics = metrics.keras_classification_metrics()
 
         classifier.compile(optimizer=classifier_pkg.optimizer(),
             loss=classifier_pkg.loss,
-            metrics=["accuracy"])
+            metrics=keras_metrics)
         if hasattr(classifier, 'sqlflow_train_loop'):
             classifier.sqlflow_train_loop(train_input_fn(batch_size))
         else:
@@ -242,7 +247,13 @@ def train(is_keras_model,
         if validate_select == "":
             classifier.train(input_fn=lambda:train_input_fn(batch_size))
         else:
+            print("validation select not empty")
             # TODO(typhoonzero): able to config metrics by calling tf.estimators.add_metrics()
+            if TF_VERSION_2:
+                if label_meta["dtype"].lower().startswith("float"):
+                    classifier = tf.estimator.add_metrics(classifier, metrics.tf_regression_metrics)
+                else:    
+                    classifier = tf.estimator.add_metrics(classifier, metrics.tf_classification_metrics)
             train_hooks = []
             if verbose == 1 and TF_VERSION_2:
                 train_hooks = [PrintStatusHook("train", every_n_iter=log_every_n_iter)]
@@ -252,6 +263,7 @@ def train(is_keras_model,
                 eval_hooks = [PrintStatusHook("eval", every_n_iter=log_every_n_iter)]
             eval_spec = tf.estimator.EvalSpec(input_fn=lambda:validate_input_fn(batch_size), hooks=eval_hooks, start_delay_secs=eval_start_delay_secs, throttle_secs=eval_throttle_secs)
             result = tf.estimator.train_and_evaluate(classifier, train_spec, eval_spec)
+            print(result)
             print(result[0])
 
     print("Done training")
