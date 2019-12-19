@@ -26,8 +26,8 @@ import (
 
 // DB extends sql.DB
 type DB struct {
-	driverName     string
-	dataSourceName string
+	driver     string
+	dataSource string
 	*sql.DB
 }
 
@@ -36,14 +36,14 @@ type DB struct {
 // data source name, usually consisting of at least a database name and
 // connection information.
 //
-// In addition to sql.Open, it also does the book keeping on driverName and
-// dataSourceName
+// In addition to sql.Open, it also does the book keeping on driver and
+// dataSource
 func open(datasource string) (*DB, error) {
-	driverName, dataSourceName, err := SplitDataSource(datasource)
+	driver, dataSource, err := SplitDataSource(datasource)
 	if err != nil {
 		return nil, err
 	}
-	db := &DB{driverName: driverName, dataSourceName: dataSourceName}
+	db := &DB{driver: driver, dataSource: dataSource}
 
 	err = openDB(db)
 	return db, err
@@ -52,15 +52,15 @@ func open(datasource string) (*DB, error) {
 func openDB(db *DB) error {
 	var err error
 	for _, d := range sql.Drivers() {
-		if db.driverName == d {
-			db.DB, err = sql.Open(db.driverName, db.dataSourceName)
+		if db.driver == d {
+			db.DB, err = sql.Open(db.driver, db.dataSource)
 			if err != nil {
 				return err
 			}
 			return nil
 		}
 	}
-	return fmt.Errorf("sqlflow currently doesn't support DB %s", db.driverName)
+	return fmt.Errorf("sqlflow currently doesn't support DB %s", db.driver)
 }
 
 // SplitDataSource splits the datasource into drivername and datasource name
@@ -88,5 +88,5 @@ func NewDB(datasource string) (*DB, error) {
 }
 
 func (db *DB) String() string {
-	return db.driverName + "://" + db.dataSourceName
+	return db.driver + "://" + db.dataSource
 }
