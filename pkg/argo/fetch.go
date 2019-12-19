@@ -22,20 +22,20 @@ import (
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
-func newFetchRequest(workflowID, stepID, logOffset string, finishFetching bool) *pb.FetchRequest {
+func newFetchRequest(workflowID, stepID, logOffset string) *pb.FetchRequest {
 	return &pb.FetchRequest{
 		Job: &pb.Job{
 			Id: workflowID,
 		},
-		StepId:         stepID,
-		LogOffset:      logOffset,
-		FinishFetching: finishFetching,
+		StepId:    stepID,
+		LogOffset: logOffset,
 	}
 }
 
-func newFetchResponse(newReq *pb.FetchRequest, logs []string) *pb.FetchResponse {
+func newFetchResponse(newReq *pb.FetchRequest, eof bool, logs []string) *pb.FetchResponse {
 	return &pb.FetchResponse{
 		NewRequest: newReq,
+		Eof:        eof,
 		Logs: &pb.FetchResponse_Logs{
 			Content: logs,
 		},
@@ -57,7 +57,7 @@ func Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 	}
 	// End of fetching, no more logs
 	if stepGroupName == "" {
-		return newFetchResponse(newFetchRequest(req.Job.Id, "", "", true), []string{}), nil
+		return newFetchResponse(newFetchRequest(req.Job.Id, "", ""), true, []string{}), nil
 	}
 
 	logOffset := req.GetLogOffset()
@@ -76,7 +76,7 @@ func Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 		return nil, err
 	}
 
-	return newFetchResponse(newFetchRequest(req.Job.Id, stepGroupName, newLogOffset, false), logs), nil
+	return newFetchResponse(newFetchRequest(req.Job.Id, stepGroupName, newLogOffset), false, logs), nil
 }
 
 func parseOffset(content string) (string, string, error) {

@@ -58,7 +58,6 @@ message FetchRequest {
     // the following fields keep the fetching state
     string step_id = 2;
     string log_offset = 3;
-    bool finish_fetching = 4;  // True if no more logs
 }
 
 message FetchResponse {
@@ -66,7 +65,8 @@ message FetchResponse {
         repeated string content = 1;
     }
     FetchRequest new_request = 1;
-    Logs logs = 2;
+    bool eof = 2;
+    Logs logs = 3;
 }
 
 message Session {

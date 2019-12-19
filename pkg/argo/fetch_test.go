@@ -106,7 +106,7 @@ func TestFetch(t *testing.T) {
 	a := assert.New(t)
 	workflowID, err := kubectlCreateFromYAML(stepYAML)
 	a.NoError(err)
-	req := newFetchRequest(workflowID, "", "", false)
+	req := newFetchRequest(workflowID, "", "")
 	actualLogs := []string{}
 	for {
 		response, err := Fetch(req)
@@ -114,7 +114,7 @@ func TestFetch(t *testing.T) {
 		for _, log := range response.Logs.Content {
 			actualLogs = append(actualLogs, log)
 		}
-		if response.NewRequest.FinishFetching {
+		if response.Eof {
 			break
 		}
 		time.Sleep(time.Second)
