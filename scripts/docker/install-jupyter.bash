@@ -25,8 +25,8 @@ echo 'get_ipython().magic(u"%reload_ext autoreload")' >> $IPYTHON_STARTUP/00-fir
 echo 'get_ipython().magic(u"%autoreload 2")' >> $IPYTHON_STARTUP/00-first.py
 
 # Enable highlighting, see https://stackoverflow.com/questions/43641362
-mkdir -p $HOME/.jupyter/custom/
-cp scripts/docker/js/custom.js $HOME/.jupyter/custom/
 CODE_MIRROR_MODE_PATH=`python -c "print(__import__('notebook').__path__[0])"`/static/components/codemirror/mode
+mkdir -p $HOME/.jupyter/custom/
 mkdir -p $CODE_MIRROR_MODE_PATH/sqlflow
-cp scripts/docker/js/sqlflow.js $CODE_MIRROR_MODE_PATH/sqlflow/
+cp js/custom.js $HOME/.jupyter/custom/
+cp js/sqlflow.js $CODE_MIRROR_MODE_PATH/sqlflow/
