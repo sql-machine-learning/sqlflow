@@ -130,7 +130,7 @@ func parseOffset(content string) (string, string, error) {
 func getOffsetAndContentFromLogs(logs, oldOffset string) ([]string, string, error) {
 	// NOTE(yancey1989): using `kubectl --since-time <offset>` to get logs
 	// from the offset which is the timestamps. the accuracy can only be achieved at the second level,
-	// `kubectl` may return some duplicated logs as the provious fetch, and we need to skip them.
+	// `kubectl` may return some duplicated logs as the previous fetch, and we need to skip them.
 	buffer := []string{}
 	msgLines := strings.Split(strings.TrimSpace(logs), "\n")
 	skipOlderLogs := false
@@ -147,7 +147,7 @@ func getOffsetAndContentFromLogs(logs, oldOffset string) ([]string, string, erro
 				buffer = append(buffer, content)
 				offset = newOffset
 			} else {
-				// skip the duplicated logs as the provious fetch
+				// skip the duplicated logs as the previous fetch
 				continue
 			}
 		}
