@@ -11,12 +11,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package database
 
 import (
 	"fmt"
+	"log"
 	"os"
-	"testing"
 
 	"sqlflow.org/gomaxcompute"
 	"sqlflow.org/sqlflow/pkg/sql/testdata"
@@ -27,6 +27,13 @@ import (
 var (
 	testDB *DB
 )
+
+func getEnv(env, value string) string {
+	if env := os.Getenv(env); len(env) != 0 {
+		return env
+	}
+	return value
+}
 
 func testMySQLDatabase() *DB {
 	cfg := &mysql.Config{
@@ -75,25 +82,26 @@ func testMaxcompute() *DB {
 	return db
 }
 
-func TestMain(m *testing.M) {
+// OpenTestDB opens a database with driver specified in the
+// environment variable "SQLFLOW_TEST_DB".  By default, the driver is
+// "mysql".  It also creates some tables in the opened database, and
+// popularize data.
+//
+// NOTE: It is the caller's responsibility to close the databased.  In
+// order to do it, users migth want to define TestMain and call
+// OpenTestDB and defer db.Close in it.
+func OpenTestDB() *DB {
 	dbms := getEnv("SQLFLOW_TEST_DB", "mysql")
 	switch dbms {
 	case "mysql":
-		testDB = testMySQLDatabase()
+		return testMySQLDatabase()
 	case "hive":
-		testDB = testHiveDatabase()
+		return testHiveDatabase()
 	case "maxcompute":
-		testDB = testMaxcompute()
-	default:
-		e := fmt.Errorf("unrecognized environment variable SQLFLOW_TEST_DB %s", dbms)
-		assertNoErr(e)
+		return testMaxcompute()
 	}
-
-	if testDB != nil {
-		defer testDB.Close()
-	}
-
-	os.Exit(m.Run())
+	log.Panicf("Unrecognized environment variable SQLFLOW_TEST_DB %s", dbms)
+	return nil
 }
 
 // assertNoError prints the error if there is any in TestMain, which
