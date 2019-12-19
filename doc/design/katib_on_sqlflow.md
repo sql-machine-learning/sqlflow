@@ -91,12 +91,12 @@ couler.sqlflow.train(model="xgboost.gbtree", hyperparameters={"objective": "mult
 Considering Katib itself supports multiple models and frameworks, and more may come in the future, we introduce the following Couler function.
 
 ```python
-def couler.sqlflow.train(model=None, hyperparameters={}, image=None, sql=None, datasource=None)
+def couler.sqlflow.train(model=None, hyperparameters={}, image=None, sql=None,datasource=None)
 ```
 
 The arguments in `couler.sqlflow.train`,
 
-- `model` defines the training model, e.g., `xgboost:gbtree`.
+- `model` defines the training model, e.g., `xgboost`.
 - `hyperparameters` specifies hyperparameters for model given in `model`.
 - `image` specifies the container image source for the Katib tuning job.
 - `sql` sql statement input by users.
