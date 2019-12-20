@@ -38,16 +38,19 @@ SQLFLOW_log_level=debug go test -p 1 -v ./cmd/... -run TestEnd2EndMaxCompute
 # export SQLFLOW_submitter=pai
 # SQLFLOW_log_level=debug go test -p 1 -v ./cmd/... -run TestEnd2EndMaxCompute
 
-# End-to-end test for ElasticDL
-export SQLFLOW_submitter=elasticdl
-cd /elasticdl
-# Build base images for ElasticDL jobs
-docker build -t elasticdl:dev -f elasticdl/docker/Dockerfile.dev .
-docker build -t elasticdl:ci -f elasticdl/docker/Dockerfile.ci .
-# Set up necessary RBAC roles for k8s cluster
-kubectl apply -f elasticdl/manifests/examples/elasticdl-rbac.yaml
-cd -
-SQLFLOW_log_level=debug go test -p 1 -v ./cmd/... -run TestEnd2EndMaxComputeElasticDL
+function test_end2end_elasticdl() {
+  export SQLFLOW_submitter=elasticdl
+  cd /elasticdl
+  # Build base images for ElasticDL jobs
+  docker build -t elasticdl:dev -f elasticdl/docker/Dockerfile.dev .
+  docker build -t elasticdl:ci -f elasticdl/docker/Dockerfile.ci .
+  # Set up necessary RBAC roles for k8s cluster
+  kubectl apply -f elasticdl/manifests/examples/elasticdl-rbac.yaml
+  cd -
+  SQLFLOW_log_level=debug go test -p 1 -v ./cmd/... -run TestEnd2EndMaxComputeElasticDL
 
-cd /elasticdl
-bash scripts/validate_job_status.sh odps
+  cd /elasticdl
+  bash scripts/validate_job_status.sh odps
+}
+# uncomment the below line to enable end-to-end test for ElasticDL.
+# test_end2end_elasticdl
