@@ -21,7 +21,7 @@ import (
 // We train a DNNClassifier on five data points and let it reaches 100 percent accuracy.
 // Then we do a prediction on the same data points. We expect the prediction accuracy
 // also be 100 percent.
-func TestConvergenceAnd(t *testing.T) {
+func TestConvergenceAndAccuracy(t *testing.T) {
 	if testDB.driverName != "mysql" {
 		t.Skip("only run convergence test with MySQL")
 	}
