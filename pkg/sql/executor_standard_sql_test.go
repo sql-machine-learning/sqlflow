@@ -15,6 +15,7 @@ package sql
 
 import (
 	"container/list"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -28,17 +29,20 @@ const (
 )
 
 func goodStream(stream chan interface{}) (bool, string) {
+	fmt.Println("goodStream...")
 	lastResp := list.New()
 	keepSize := 10
 
 	for rsp := range stream {
 		switch rsp.(type) {
 		case error:
-			var s []string
+			var ss []string
 			for e := lastResp.Front(); e != nil; e = e.Next() {
-				s = append(s, e.Value.(string))
+				if s, ok := e.Value.(string); ok {
+					ss = append(ss, s)
+				}
 			}
-			return false, strings.Join(s, "\n")
+			return false, fmt.Sprintf("%v: %s", rsp, strings.Join(ss, "\n"))
 		}
 		lastResp.PushBack(rsp)
 		if lastResp.Len() > keepSize {

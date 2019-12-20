@@ -184,6 +184,8 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, modelDir string, session 
 }
 
 func runSQLProgram(wr *PipeWriter, sqlProgram string, db *database.DB, modelDir string, session *pb.Session) error {
+	fmt.Println("runSQLProgram ...\n", sqlProgram)
+
 	sqls, err := parser.Parse(db.DriverName, sqlProgram)
 	if err != nil {
 		return err
@@ -198,7 +200,9 @@ func runSQLProgram(wr *PipeWriter, sqlProgram string, db *database.DB, modelDir 
 	// which depends on the execution of create table some_table as (select ...);.
 	for _, sql := range sqls {
 		var r ir.SQLStatement
-		connStr := fmt.Sprintf("%s://%s", db.DriverName, db.DataSourceName)
+		connStr := db.URL()
+		fmt.Println("connStr=", connStr)
+
 		if parser.IsExtendedSyntax(sql) {
 			if sql.Train {
 				r, err = generateTrainStmtWithInferredColumns(sql.SQLFlowSelectStmt, connStr)
@@ -212,8 +216,10 @@ func runSQLProgram(wr *PipeWriter, sqlProgram string, db *database.DB, modelDir 
 			r = &standardSQL
 		}
 		if err != nil {
+			fmt.Println("runProgram early stopped")
 			return err
 		}
+
 		r.SetOriginalSQL(sql.Original)
 		if e := runSingleSQLIR(wr, r, db, modelDir, session); e != nil {
 			return e
@@ -223,6 +229,7 @@ func runSQLProgram(wr *PipeWriter, sqlProgram string, db *database.DB, modelDir 
 }
 
 func runSingleSQLIR(wr *PipeWriter, sqlIR ir.SQLStatement, db *database.DB, modelDir string, session *pb.Session) (e error) {
+	fmt.Println("runSingleSQLIR...")
 	startTime := time.Now().UnixNano()
 	var originalSQL string
 	defer func() {

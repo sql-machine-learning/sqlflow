@@ -115,6 +115,7 @@ USING sqlflow_models.my_xgb_regression_model;
 )
 
 func getSessionFromTestingDB() *pb.Session {
+	database.GetTestingDBSingleton() // Make sure that the testing database is well setup.
 	return &pb.Session{
 		DbConnStr: database.GetTestingDBSingleton().URL()}
 }
