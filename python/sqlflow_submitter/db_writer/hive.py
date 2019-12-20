@@ -20,7 +20,7 @@ import subprocess
 CSV_DELIMITER = '\001'
 
 class HiveDBWriter(BufferedDBWriter):
-    def __init__(self, conn, table_name, table_schema, buff_size=10000, 
+    def __init__(self, conn, table_name, table_schema, buff_size=10000,
                  hdfs_namenode_addr="", hive_location="",
                  hdfs_user="", hdfs_pass=""):
         super().__init__(conn, table_name, table_schema, buff_size)
@@ -33,9 +33,9 @@ class HiveDBWriter(BufferedDBWriter):
         self.hdfs_pass = hdfs_pass
 
     def _column_list(self):
-        # NOTE(yancey1989): for the tablename: mydb.tblname, if 'mydb' is 
+        # NOTE(yancey1989): for the tablename: mydb.tblname, if 'mydb' is
         # a tablename in the default database, Hive describe STATMENT would
-        # mistake 'tblname' to a column name. 
+        # mistake 'tblname' to a column name.
         cursor = self.conn.cursor()
         table_parts = self.table_name.split(".")
         if len(table_parts) == 2:
@@ -49,11 +49,11 @@ class HiveDBWriter(BufferedDBWriter):
         result = cursor.fetchall()
         cursor.execute("use %s " % self.conn.default_db)
         return result
-    
+
     def _indexing_table_schema(self, table_schema):
         cursor = self.conn.cursor()
         column_list = self._column_list()
-        
+
         schema_idx = []
         idx_map = {}
         # column list: [(col1, type, desc), (col2, type, desc)...]
@@ -96,9 +96,14 @@ class HiveDBWriter(BufferedDBWriter):
             hdfs_envs.update({"HADOOP_USER_NAME": self.hdfs_user})
         if self.hdfs_pass != "":
             hdfs_envs.update({"HADOOP_USER_PASSWORD": self.hdfs_pass})
-        cmd_str = "hdfs dfs -mkdir -p %s/%s/" % (hdfs_path, self.table_name)
+        # if namenode_addr is not set, use local hdfs command's configuration.
+        if namenode_addr != "":
+            cmd_namenode_str = "-fs hdfs://%s" % (namenode_addr)
+        else:
+            cmd_namenode_str = ""
+        cmd_str = "hdfs dfs %s -mkdir -p %s/%s/" % (cmd_namenode_str, hdfs_path, self.table_name)
         subprocess.check_output(cmd_str.split(), env=hdfs_envs)
-        cmd_str = "hdfs dfs -copyFromLocal %s %s/%s/" % (self.tmp_f.name, hdfs_path, self.table_name)
+        cmd_str = "hdfs dfs %s -copyFromLocal %s %s/%s/" % (cmd_namenode_str, self.tmp_f.name, hdfs_path, self.table_name)
         subprocess.check_output(cmd_str.split(), env=hdfs_envs)
         # load CSV into Hive
         cursor = self.conn.cursor()
@@ -120,4 +125,4 @@ class HiveDBWriter(BufferedDBWriter):
         finally:
             self.f.close()
             self.tmp_f.close()
-        
+

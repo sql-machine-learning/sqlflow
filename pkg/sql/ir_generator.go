@@ -25,6 +25,19 @@ import (
 	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
 
+const (
+	sparse        = "SPARSE"
+	numeric       = "NUMERIC"
+	cross         = "CROSS"
+	categoryID    = "CATEGORY_ID"
+	seqCategoryID = "SEQ_CATEGORY_ID"
+	embedding     = "EMBEDDING"
+	bucket        = "BUCKET"
+	square        = "SQUARE"
+	dense         = "DENSE"
+	comma         = "COMMA"
+)
+
 func generateTrainStmtWithInferredColumns(slct *parser.SQLFlowSelectStmt, connStr string) (*ir.TrainStmt, error) {
 	trainStmt, err := generateTrainStmt(slct, connStr)
 	if err != nil {
@@ -728,4 +741,44 @@ func parseResultTable(intoStatement string) (string, string, error) {
 	} else {
 		return "", "", fmt.Errorf("invalid result table format, should be [db.table.class_col] or [table.class_col]")
 	}
+}
+
+func resolveDelimiter(delimiter string) (string, error) {
+	if strings.EqualFold(delimiter, comma) {
+		return ",", nil
+	}
+	return "", fmt.Errorf("unsolved delimiter: %s", delimiter)
+}
+
+func expression2string(e interface{}) (string, error) {
+	// resolved, _, err := resolveExpression(e)
+	if expr, ok := e.(*parser.Expr); ok {
+		if expr.Type != 0 {
+			return strings.Trim(expr.Value, "\""), nil
+		}
+	}
+	return "", fmt.Errorf("expression expected to be string, actual: %s", e)
+}
+
+func transformToIntList(list []interface{}) ([]int, error) {
+	var b = make([]int, len(list))
+	for idx, item := range list {
+		if intVal, ok := item.(int); ok {
+			b[idx] = intVal
+		} else {
+			return nil, fmt.Errorf("type is not int: %s", item)
+		}
+	}
+	return b, nil
+}
+
+func getExpressionFieldName(expr *parser.Expr) (string, error) {
+	if expr.Type != 0 {
+		return expr.Value, nil
+	}
+	if len(expr.Sexp) < 2 {
+		return "", fmt.Errorf("error column clause format: %s, expected FEATURE_COLUMN(key, ...)", expr.Sexp)
+	}
+	fcNameExpr := expr.Sexp[1]
+	return fcNameExpr.Value, nil
 }

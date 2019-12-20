@@ -49,7 +49,7 @@ couler.run_container(command='''repl -e "%s" --datasource="%s"''' % (train_sql, 
 	{{else}}
 # TODO(yancey1989): 
 #	using "repl -parse" to output IR and
-#	feed to "sqlflow_submitter.{submitter}.train" to submite the job
+#	feed to "sqlflow_submitter.{submitter}.train" to submit the job
 couler.run_container(command='''repl -e "{{ $ss.OriginalSQL }}" --datasource="%s"''' % datasource, image="{{ $ss.DockerImage }}", env={"SQLFLOW_submitter": "{{$ss.SQLFlowSubmitter}}"})
 	{{end}}
 {{end}}

@@ -23,8 +23,11 @@ import (
 	"path"
 	"sync"
 
+<<<<<<< HEAD
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/parser"
+=======
+>>>>>>> 251c1e2ec34b23594305ab33e4caf8cd19bdc31b
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/xgboost"
@@ -34,9 +37,8 @@ import (
 var envSubmitter = os.Getenv("SQLFLOW_submitter")
 
 var submitterRegistry = map[string](Submitter){
-	"default":   &defaultSubmitter{},
-	"alps":      &alpsSubmitter{&defaultSubmitter{}},
-	"elasticdl": &elasticdlSubmitter{&defaultSubmitter{}},
+	"default": &defaultSubmitter{},
+	// add submitters like alps, elasticdl
 }
 
 func submitter() Submitter {
@@ -102,10 +104,14 @@ type defaultSubmitter struct {
 	Session  *pb.Session
 }
 
+<<<<<<< HEAD
 type elasticdlSubmitter struct{ *defaultSubmitter }
 type alpsSubmitter struct{ *defaultSubmitter }
 
 func (s *defaultSubmitter) Setup(w *PipeWriter, db *database.DB, modelDir string, session *pb.Session) error {
+=======
+func (s *defaultSubmitter) Setup(w *PipeWriter, db *DB, modelDir string, session *pb.Session) error {
+>>>>>>> 251c1e2ec34b23594305ab33e4caf8cd19bdc31b
 	// cwd is used to store train scripts and save output models.
 	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
 	s.Writer, s.Db, s.ModelDir, s.Cwd, s.Session = w, db, modelDir, cwd, session
@@ -209,39 +215,3 @@ func (s *defaultSubmitter) ExecuteAnalyze(cl *ir.AnalyzeStmt) error {
 }
 func (s *defaultSubmitter) Teardown()                   { os.RemoveAll(s.Cwd) }
 func (s *defaultSubmitter) GetTrainStmtFromModel() bool { return true }
-
-func (s *elasticdlSubmitter) ExecuteTrain(cl *ir.TrainStmt) error {
-	// TODO(typhoonzero): remove below twice parse when all submitters moved to IR.
-	pr, e := parser.LegacyParse(cl.OriginalSQL)
-	if e != nil {
-		return e
-	}
-	return elasticDLTrain(s.Writer, pr, s.Db, s.Cwd, s.Session)
-}
-
-func (s *elasticdlSubmitter) ExecutePredict(cl *ir.PredictStmt) error {
-	// TODO(typhoonzero): remove below twice parse when all submitters moved to IR.
-	pr, e := parser.LegacyParse(cl.OriginalSQL)
-	if e != nil {
-		return e
-	}
-	return elasticDLPredict(s.Writer, pr, s.Db, s.Cwd, s.Session)
-}
-
-func (s *alpsSubmitter) ExecuteTrain(cl *ir.TrainStmt) error {
-	// TODO(typhoonzero): remove below twice parse when all submitters moved to IR.
-	pr, e := parser.LegacyParse(cl.OriginalSQL)
-	if e != nil {
-		return e
-	}
-	return alpsTrain(s.Writer, pr, s.Db, s.Cwd, s.Session)
-}
-
-func (s *alpsSubmitter) ExecutePredict(cl *ir.PredictStmt) error {
-	// TODO(typhoonzero): remove below twice parse when all submitters moved to IR.
-	pr, e := parser.LegacyParse(cl.OriginalSQL)
-	if e != nil {
-		return e
-	}
-	return alpsPred(s.Writer, pr, s.Db, s.Cwd, s.Session)
-}
