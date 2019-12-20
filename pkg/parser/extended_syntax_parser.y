@@ -1,117 +1,117 @@
 %{
-	package parser
+package parser
 
-	import (
-		"fmt"
-                "log"
-		"strings"
-		"sync"
-	)
+import (
+	"fmt"
+	"log"
+	"strings"
+	"sync"
+)
 
-	/* expr defines an expression as a Lisp list.  If len(val)>0,
-           it is an atomic expression, in particular, NUMBER, IDENT,
-           or STRING, defined by typ and val; otherwise, it is a
-           Lisp S-expression. */
-	type Expr struct {
-		Type int
-		Value string
-		Sexp ExprList
+/* expr defines an expression as a Lisp list.  If len(val)>0,
+   it is an atomic expression, in particular, NUMBER, IDENT,
+   or STRING, defined by typ and val; otherwise, it is a
+   Lisp S-expression. */
+type Expr struct {
+	Type  int
+	Value string
+	Sexp  ExprList
+}
+
+type ExprList []*Expr
+
+/* construct an atomic expr */
+func atomic(typ int, val string) *Expr {
+	return &Expr{
+		Type:  typ,
+		Value: val,
 	}
+}
 
-	type ExprList []*Expr
+/* construct a funcall expr */
+func funcall(name string, oprd ExprList) *Expr {
+	return &Expr{
+		Sexp: append(ExprList{atomic(IDENT, name)}, oprd...),
+	}
+}
 
-	/* construct an atomic expr */
-	func atomic(typ int, val string) *Expr {
-		return &Expr{
-			Type : typ,
-			Value : val,
+/* construct a unary expr */
+func unary(typ int, op string, od1 *Expr) *Expr {
+	return &Expr{
+		Sexp: append(ExprList{atomic(typ, op)}, od1),
+	}
+}
+
+/* construct a binary expr */
+func binary(typ int, od1 *Expr, op string, od2 *Expr) *Expr {
+	return &Expr{
+		Sexp: append(ExprList{atomic(typ, op)}, od1, od2),
+	}
+}
+
+/* construct a variadic expr */
+func variadic(typ int, op string, ods ExprList) *Expr {
+	return &Expr{
+		Sexp: append(ExprList{atomic(typ, op)}, ods...),
+	}
+}
+
+type SQLFlowSelectStmt struct {
+	Extended bool
+	Train    bool
+	Explain  bool
+	StandardSelect
+	TrainClause
+	PredictClause
+	ExplainClause
+}
+
+type StandardSelect struct {
+	Fields ExprList
+	Tables []string
+	where  *Expr
+	limit  string
+	origin string
+}
+
+type TrainClause struct {
+	Estimator  string
+	TrainAttrs Attributes
+	Columns    columnClause
+	Label      string
+	Save       string
+}
+
+/* If no FOR in the COLUMN, the key is "" */
+type columnClause map[string]ExprList
+type fieldClause ExprList
+
+type Attributes map[string]*Expr
+
+type PredictClause struct {
+	PredAttrs Attributes
+	Model     string
+	// FIXME(tony): rename into to predTable
+	Into string
+}
+
+type ExplainClause struct {
+	ExplainAttrs Attributes
+	TrainedModel string
+	Explainer    string
+}
+
+var parseResult *SQLFlowSelectStmt
+
+func attrsUnion(as1, as2 Attributes) Attributes {
+	for k, v := range as2 {
+		if _, ok := as1[k]; ok {
+			log.Panicf("attr %q already specified", as2)
 		}
+		as1[k] = v
 	}
-
-	/* construct a funcall expr */
-	func funcall(name string, oprd ExprList) *Expr {
-		return &Expr{
-			Sexp : append(ExprList{atomic(IDENT, name)}, oprd...),
-		}
-	}
-
-	/* construct a unary expr */
-	func unary(typ int, op string, od1 *Expr) *Expr {
-		return &Expr{
-			Sexp : append(ExprList{atomic(typ, op)}, od1),
-		}
-	}
-
-	/* construct a binary expr */
-	func binary(typ int, od1 *Expr, op string, od2 *Expr) *Expr {
-		return &Expr{
-			Sexp : append(ExprList{atomic(typ, op)}, od1, od2),
-		}
-	}
-
-	/* construct a variadic expr */
-	func variadic(typ int, op string, ods ExprList) *Expr {
-		return &Expr{
-			Sexp : append(ExprList{atomic(typ, op)}, ods...),
-		}
-	}
-
-	type SQLFlowSelectStmt struct {
-		Extended bool
-		Train    bool
-		Explain  bool
-		StandardSelect
-		TrainClause
-		PredictClause
-		ExplainClause
-	}
-
-	type StandardSelect struct {
-		Fields ExprList
-		Tables []string
-		where *Expr
-		limit string
-		origin string
-	}
-
-	type TrainClause struct {
-		Estimator string
-		TrainAttrs     Attributes
-		Columns   columnClause
-		Label     string
-		Save      string
-	}
-
-	/* If no FOR in the COLUMN, the key is "" */
-	type columnClause map[string]ExprList
-	type fieldClause  ExprList
-
-	type Attributes map[string]*Expr
-
-	type PredictClause struct {
-		PredAttrs Attributes
-		Model  string
-		// FIXME(tony): rename into to predTable
-		Into   string
-	}
-
-	type ExplainClause struct {
-		ExplainAttrs Attributes
-		TrainedModel string
-		Explainer    string
-	}
-
-	var parseResult *SQLFlowSelectStmt
-
-	func attrsUnion(as1, as2 Attributes) Attributes {
-		for k, v := range as2 {
-			if _, ok := as1[k]; ok {
-				log.Panicf("attr %q already specified", as2)
-			}
-			as1[k] = v
-		}
-		return as1
-	}
+	return as1
+}
 %}
 
 %union {
@@ -418,8 +418,8 @@ func (s StandardSelect) String() string {
 		r += "*"
 	} else {
 		for i := 0; i < len(s.Fields); i++ {
-			r += s.Fields[i].String();
-			if i != len(s.Fields) -1 {
+			r += s.Fields[i].String()
+			if i != len(s.Fields)-1 {
 				r += ", "
 			}
 		}
@@ -431,17 +431,17 @@ func (s StandardSelect) String() string {
 	if len(s.limit) > 0 {
 		r += fmt.Sprintf("\nLIMIT %s", s.limit)
 	}
-        return r
+	return r
 }
 
 var mu sync.Mutex // Protect the use of global variable parseResult.
 
-func parseSQLFlowStmt(s string) (r *SQLFlowSelectStmt, e error) {
+func parseSQLFlowStmt(s string) (r *SQLFlowSelectStmt, idx int, e error) {
 	defer func() {
 		if r := recover(); r != nil {
-			var ok bool
-			e, ok = r.(error)
-			if !ok {
+			if err, ok := r.(error); ok {
+				e = err
+			} else {
 				e = fmt.Errorf("%v", r)
 			}
 		}
@@ -450,6 +450,12 @@ func parseSQLFlowStmt(s string) (r *SQLFlowSelectStmt, e error) {
 	mu.Lock()
 	defer mu.Unlock()
 
-	extendedSyntaxParse(newLexer(s))  // extendedSyntaxParse is auto generated.
-	return parseResult, nil
+	parseResult = nil // Important! Clear out result from previous call.
+	lex := newLexer(s)
+	extendedSyntaxParse(lex) // extendedSyntaxParse is auto generated.
+	idx = lex.pos
+	if lex.err != nil {
+		idx = lex.previous
+	}
+	return parseResult, idx, lex.err
 }

@@ -11,26 +11,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sqlfs
-
-import (
-	"fmt"
-	"math/rand"
-	"testing"
-
-	"github.com/stretchr/testify/assert"
-)
-
-func TestCreateHasDropTable(t *testing.T) {
-	a := assert.New(t)
-
-	testDriver, testDB, e := newTestDB()
-	a.NoError(e)
-
-	fn := fmt.Sprintf("%s.unittest%d", testDatabaseName, rand.Int())
-	a.NoError(createTable(testDB, testDriver, fn))
-	has, e := hasTable(testDB, fn)
-	a.NoError(e)
-	a.True(has)
-	a.NoError(dropTable(testDB, fn))
-}
+require(['notebook/js/codecell', "codemirror/lib/codemirror"], function(codecell, CodeMirror) {
+    CodeMirror.modeInfo.push({name: "MySQLFlow", mime: "text/x-mysqlflow", mode: "sqlflow"})
+    codecell.CodeCell.options_default.highlight_modes['magic_text/x-mysqlflow'] = {'reg':[/^%%sqlflow/]} ;
+    Jupyter.notebook.events.one('kernel_ready.Kernel', function(){
+        Jupyter.notebook.get_cells().map(function(cell){
+            if (cell.cell_type == 'code'){
+                cell.auto_highlight();
+            }
+        });
+    });
+});

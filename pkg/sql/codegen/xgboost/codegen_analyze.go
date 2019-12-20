@@ -46,11 +46,11 @@ func Analyze(analyzeStmt *ir.AnalyzeStmt) (string, error) {
 	}
 
 	fr := &analyzeFiller{
-		DataSource:         analyzeStmt.DataSource,
-		DatasetSQL:         analyzeStmt.Select,
-		ShapSummaryParames: string(jsonSummary),
-		FieldDescJSON:      string(fm),
-		Label:              y.Name,
+		DataSource:        analyzeStmt.DataSource,
+		DatasetSQL:        analyzeStmt.Select,
+		ShapSummaryParams: string(jsonSummary),
+		FieldDescJSON:     string(fm),
+		Label:             y.Name,
 	}
 	var analysis bytes.Buffer
 	if err := analyzeTemplate.Execute(&analysis, fr); err != nil {

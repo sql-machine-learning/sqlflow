@@ -28,7 +28,7 @@ def train(datasource, select, model_params, train_params, feature_field_meta, la
     conn = connect_with_data_source(datasource)
 
     # NOTE(tony): sorting is necessary to achieve consistent feature orders between training job and prediction/analysis job
-    feature_column_name = sorted([k["name"] for k in feature_field_meta])
+    feature_column_name = [k["name"] for k in feature_field_meta]
     label_name = label_field_meta["name"]
     feature_spec = {k['name']: k for k in feature_field_meta}
 

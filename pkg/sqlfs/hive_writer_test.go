@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
-	"os"
 	"os/exec"
 	"path"
 	"strings"
@@ -36,13 +35,15 @@ func hasHDFSDir(hdfsPath string) bool {
 }
 
 func TestNewHiveWriter(t *testing.T) {
-	testDriver := os.Getenv("SQLFLOW_TEST_DB")
+	a := assert.New(t)
+
+	testDriver, testDB, e := newTestDB()
+	a.NoError(e)
+
 	if testDriver != "hive" {
 		t.Skip("Skip as SQLFLOW_TEST_DB is not Hive")
 	}
 	t.Logf("Confirm executed with %s", testDriver)
-
-	a := assert.New(t)
 
 	tbl := fmt.Sprintf("%s%d", testDatabaseName, rand.Int())
 	w, e := newHiveWriter(testDB, "/hivepath", tbl, "", "", bufSize)
@@ -59,13 +60,15 @@ func TestNewHiveWriter(t *testing.T) {
 }
 
 func TestHiveWriterWriteAndRead(t *testing.T) {
-	testDriver := os.Getenv("SQLFLOW_TEST_DB")
+	a := assert.New(t)
+
+	testDriver, testDB, e := newTestDB()
+	a.NoError(e)
+
 	if testDriver != "hive" {
 		t.Skip("Skip as SQLFLOW_TEST_DB is not Hive")
 	}
 	t.Logf("Confirm executed with %s", testDriver)
-
-	a := assert.New(t)
 
 	tbl := fmt.Sprintf("%s%d", testDatabaseName, rand.Int())
 	w, e := newHiveWriter(testDB, "/hivepath", tbl, "", "", bufSize)
