@@ -62,6 +62,7 @@ RUN /install-elasticdl.bash
 # The SQLFlow magic command for Jupyter.
 ENV IPYTHON_STARTUP /root/.ipython/profile_default/startup/
 COPY scripts/docker/install-jupyter.bash /
+COPY scripts/docker/js /js
 RUN /install-jupyter.bash
 
 # -----------------------------------------------------------------------------------
