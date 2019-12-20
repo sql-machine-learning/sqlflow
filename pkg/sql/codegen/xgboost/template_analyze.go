@@ -18,11 +18,11 @@ import (
 )
 
 type analyzeFiller struct {
-	DataSource         string
-	DatasetSQL         string
-	ShapSummaryParames string
-	FieldDescJSON      string
-	Label              string
+	DataSource        string
+	DatasetSQL        string
+	ShapSummaryParams string
+	FieldDescJSON     string
+	Label             string
 }
 
 const analyzeTemplateText = `
@@ -42,7 +42,7 @@ feature_spec = {k['name']: k for k in feature_field_meta}
 conn = connect_with_data_source('''{{.DataSource}}''')
 label_name = "{{.Label}}"
 
-summaryAttrs = json.loads('''{{.ShapSummaryParames}}''')
+summaryAttrs = json.loads('''{{.ShapSummaryParams}}''')
 
 def analyzer_dataset():
     stream = db_generator(conn.driver, conn, """{{.DatasetSQL}}""", feature_column_name, label_name, feature_spec)

@@ -18,12 +18,13 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import sys, json
 import tensorflow as tf
 import functools
+import copy
 try:
     import sqlflow_models
 except:
     pass
 
-from sqlflow_submitter.db import connect_with_data_source, db_generator, buffered_db_writer
+from sqlflow_submitter.db import connect_with_data_source, db_generator, buffered_db_writer, parseMaxComputeDSN
 from sqlflow_submitter.tensorflow.train import get_dtype, parse_sparse_feature
 
 TF_VERSION_2 = True  # TODO(shendiaomo): Remove after we fully upgrade to TF2.0
@@ -38,6 +39,13 @@ except:
     tf.logging.set_verbosity(tf.logging.ERROR)
     TF_VERSION_2 = False
 
+FLAGS = None
+# ----------------- For PAI predicting -----------------
+def define_tf_flags():
+    global FLAGS
+    if not TF_VERSION_2:
+        tf.app.flags.DEFINE_string("checkpointDir", "", "oss info")
+        FLAGS = tf.app.flags.FLAGS
 
 class FastPredict:
     def __init__(self, estimator, input_fn):
@@ -87,20 +95,22 @@ def pred(is_keras_model,
          hdfs_namenode_addr="",
          hive_location="",
          hdfs_user="",
-         hdfs_pass=""):
-    conn = connect_with_data_source(datasource)
+         hdfs_pass="",
+         is_pai=False,
+         pai_table=""):
+    global FLAGS
+    define_tf_flags()
+    if not is_pai:
+        conn = connect_with_data_source(datasource)
     model_params.update(feature_columns)
-    if not is_keras_model:
-        model_params['model_dir'] = save
-        classifier = estimator(**model_params)
-    else:
+
+    if is_keras_model:
         if not issubclass(estimator, tf.keras.Model):
             # functional model need field_metas parameter
             model_params["field_metas"] = feature_metas
         classifier = estimator(**model_params)
         classifier_pkg = sys.modules[estimator.__module__]
 
-    if is_keras_model:
         def eval_input_fn(batch_size, cache=False):
             feature_types = []
             for name in feature_column_names:
@@ -150,6 +160,42 @@ def pred(is_keras_model,
         del pred_dataset
 
     else:
+        if is_pai:
+            model_params["model_dir"] = FLAGS.checkpointDir
+        else:
+            model_params['model_dir'] = save
+        classifier = estimator(**model_params)
+
+        # FIXME(typhoonzero): copied from train.py
+        def pai_maxcompute_input_fn():
+            table_parts = pai_table.split(".")
+            if len(table_parts) == 2:
+                database, table_name = table_parts
+            elif len(table_parts) == 1:
+                table_name = pai_table
+                driver, dsn = datasource.split("://")
+                database = parseMaxComputeDSN(dsn)[-1]
+            else:
+                raise ValueError("error database.table format: %s" % pai_table)
+
+            tables = ["odps://%s/tables/%s" % (database, table_name)]
+            record_defaults = []
+            for name in feature_column_names:
+                dtype = get_dtype(feature_metas[name]["dtype"])
+                record_defaults.append(tf.constant(0, dtype=dtype, shape=feature_metas[name]["shape"]))
+
+            dataset = tf.data.TableRecordDataset(tables,
+                                        record_defaults=record_defaults,
+                                        selected_cols=",".join(feature_column_names))
+            def tensor_to_dict(*args):
+                num_features = len(feature_column_names)
+                features_dict = dict()
+                for idx in range(num_features):
+                    name = feature_column_names[idx]
+                    features_dict[name] = tf.reshape(args[idx], [-1])
+                return features_dict
+
+            return dataset.map(tensor_to_dict)
 
         def fast_input_fn(generator):
             feature_types = []
@@ -160,9 +206,13 @@ def pred(is_keras_model,
                     feature_types.append(get_dtype(feature_metas[name]["dtype"]))
 
             def _inner_input_fn():
-                dataset = tf.data.Dataset.from_generator(generator, (tuple(feature_types), eval("tf.%s" % label_meta["dtype"])))
-                ds_mapper = functools.partial(parse_sparse_feature, feature_column_names=feature_column_names, feature_metas=feature_metas)
-                dataset = dataset.map(ds_mapper).batch(1).cache()
+                if is_pai:
+                    dataset = pai_maxcompute_input_fn()
+                else:
+                    dataset = tf.data.Dataset.from_generator(generator, (tuple(feature_types), eval("tf.%s" % label_meta["dtype"])))
+                    ds_mapper = functools.partial(parse_sparse_feature, feature_column_names=feature_column_names, feature_metas=feature_metas)
+                    dataset = dataset.map(ds_mapper)
+                dataset = dataset.batch(1).cache()
                 iterator = dataset.make_one_shot_iterator()
                 features = iterator.get_next()
                 return features
