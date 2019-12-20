@@ -101,15 +101,17 @@ def estimator_train_and_save(estimator, model_params, save,
                              log_every_n_iter, train_max_steps, eval_start_delay_secs, eval_throttle_secs):
     classifier = estimator(**model_params)
 
-    # FIXME(typhoonzero): find a way to cache to local file and avoid cache lockfile already exists issue.
-    if is_pai:
-        train_dataset = pai_maxcompute_input_fn(select, datasource,
-            feature_column_names, feature_metas, label_meta,
-            len(FLAGS.worker_hosts), FLAGS.task_index)
-    else:
-        conn = connect_with_data_source(datasource)
-        train_dataset = input_fn(select, conn, feature_column_names, feature_metas, label_meta)
-    train_dataset = train_dataset.shuffle(SHUFFLE_SIZE).batch(batch_size).cache().repeat(epochs if epochs else 1)
+    def train_input_fn():
+        # FIXME(typhoonzero): find a way to cache to local file and avoid cache lockfile already exists issue.
+        if is_pai:
+            train_dataset = pai_maxcompute_input_fn(select, datasource,
+                feature_column_names, feature_metas, label_meta,
+                len(FLAGS.worker_hosts), FLAGS.task_index)
+        else:
+            conn = connect_with_data_source(datasource)
+            train_dataset = input_fn(select, conn, feature_column_names, feature_metas, label_meta)
+        train_dataset = train_dataset.shuffle(SHUFFLE_SIZE).batch(batch_size).cache().repeat(epochs if epochs else 1)
+        return train_dataset
 
     if validate_select == "":
         classifier.train(input_fn=lambda:train_dataset)
@@ -118,18 +120,21 @@ def estimator_train_and_save(estimator, model_params, save,
         train_hooks = []
         if verbose == 1 and TF_VERSION_2:
             train_hooks = [PrintStatusHook("train", every_n_iter=log_every_n_iter)]
-        train_spec = tf.estimator.TrainSpec(input_fn=lambda:train_dataset, max_steps=train_max_steps, hooks=train_hooks)
+        train_spec = tf.estimator.TrainSpec(input_fn=lambda:train_input_fn(), max_steps=train_max_steps, hooks=train_hooks)
         eval_hooks = []
         if verbose == 1 and TF_VERSION_2:
             eval_hooks = [PrintStatusHook("eval", every_n_iter=log_every_n_iter)]
-        if is_pai:
-            validate_dataset = pai_maxcompute_input_fn(pai_table, datasource,
-                feature_column_names, feature_metas, label_meta,
-                len(FLAGS.worker_hosts), FLAGS.task_index)
-        else:
-            validate_dataset = input_fn(validate_select, conn, feature_column_names, feature_metas, label_meta)
-        validate_dataset = validate_dataset.batch(batch_size).cache()
-        eval_spec = tf.estimator.EvalSpec(input_fn=lambda:validate_dataset, hooks=eval_hooks, start_delay_secs=eval_start_delay_secs, throttle_secs=eval_throttle_secs)
+        def validate_input_fn():
+            if is_pai:
+                validate_dataset = pai_maxcompute_input_fn(pai_table, datasource,
+                    feature_column_names, feature_metas, label_meta,
+                    len(FLAGS.worker_hosts), FLAGS.task_index)
+            else:
+                conn = connect_with_data_source(datasource)
+                validate_dataset = input_fn(validate_select, conn, feature_column_names, feature_metas, label_meta)
+            validate_dataset = validate_dataset.batch(batch_size).cache()
+            return validate_dataset
+        eval_spec = tf.estimator.EvalSpec(input_fn=lambda:validate_input_fn(), hooks=eval_hooks, start_delay_secs=eval_start_delay_secs, throttle_secs=eval_throttle_secs)
         result = tf.estimator.train_and_evaluate(classifier, train_spec, eval_spec)
         # FIXME(typhoonzero): find out why pai will have result == None
         if not is_pai:

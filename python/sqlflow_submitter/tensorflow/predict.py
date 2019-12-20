@@ -192,6 +192,6 @@ def pred(is_keras_model,
                 feature_column_names, feature_metas, label_meta,
                 datasource, select,
                 hdfs_namenode_addr, hive_location, hdfs_user, hdfs_pass,
-                is_pai)
+                is_pai, pai_table)
 
     print("Done predicting. Predict table : %s" % result_table)
