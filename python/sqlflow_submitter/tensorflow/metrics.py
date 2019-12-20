@@ -13,10 +13,10 @@
 
 import tensorflow as tf
 
-metric_names_use_class_id = ["Accuracy", "Precision", "Recall", "TruePositives", "TrueNegatives", "FalsePositives", "FalseNegatives"]
-metric_names_use_probabilities = ["BinaryAccuracy", "CategoricalAccuracy", "TopKCategoricalAccuracy", "AUC"]
-metric_names_use_logits = ["MeanAbsoluteError", "MeanAbsolutePercentageError", "MeanSquaredError", "RootMeanSquaredError"]
-supported_metrics = metric_names_use_class_id + metric_names_use_probabilities + metric_names_use_logits
+metric_names_use_class_id = ["Accuracy", "Precision", "Recall",  "AUC", "TruePositives", "TrueNegatives", "FalsePositives", "FalseNegatives"]
+metric_names_use_probabilities = ["BinaryAccuracy", "CategoricalAccuracy", "TopKCategoricalAccuracy"]
+metric_names_use_predictions = ["MeanAbsoluteError", "MeanAbsolutePercentageError", "MeanSquaredError", "RootMeanSquaredError"]
+supported_metrics = metric_names_use_class_id + metric_names_use_probabilities + metric_names_use_predictions
 
 def check_supported(metrics):
     for mn in metrics:
@@ -33,8 +33,8 @@ def get_tf_metrics(metrics):
                 metric.update_state(y_true=labels, y_pred=predictions["class_ids"])
             elif mn in metric_names_use_probabilities:
                 metric.update_state(y_true=labels, y_pred=predictions["probabilities"])
-            elif mn in metric_names_use_logits:
-                metric.update_state(y_true=labels, y_pred=predictions["logits"])
+            elif mn in metric_names_use_predictions:
+                metric.update_state(y_true=labels, y_pred=predictions["predictions"])
             metric_dict[mn] = metric
         return metric_dict
     return tf_metrics_func
@@ -43,5 +43,8 @@ def get_keras_metrics(metrics):
     check_supported(metrics)
     m = []
     for mn in metrics:
-        m.append(eval("tf.keras.metrics.%s()" % mn))
+        if mn == "AUC":
+            m.append(eval("tf.keras.metrics.%s(num_thresholds=2000)" % mn))
+        else:
+            m.append(eval("tf.keras.metrics.%s()" % mn))
     return m

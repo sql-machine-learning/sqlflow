@@ -205,16 +205,21 @@ def train(is_keras_model,
             model_params["field_metas"] = feature_metas
         classifier = estimator(**model_params)
         classifier_pkg = sys.modules[estimator.__module__]
+        model_metrics = []
         if hasattr(classifier_pkg, "eval_metrics_fn"):
             metrics_functions = classifier_pkg.eval_metrics_fn()
-            metrics = []
             for key, func in metrics_functions.items():
                 func.__name__ = key
-                metrics.append(func)
+                model_metrics.append(func)
+        # use WITH specified metrics if it's not default.
+        if metric_names != ["Accuracy"]:
+            keras_metrics = metrics.get_keras_metrics(metric_names)
         else:
-            metrics = ["accuracy"]
-
-        keras_metrics = metrics.get_keras_metrics(metric_names)
+            if len(model_metrics) > 0:
+                keras_metrics = model_metrics
+            else:
+                # default
+                keras_metrics = metrics.get_keras_metrics(["Accuracy"])
         classifier.compile(optimizer=classifier_pkg.optimizer(),
             loss=classifier_pkg.loss,
             metrics=keras_metrics)
@@ -253,9 +258,10 @@ def train(is_keras_model,
         if validate_select == "":
             classifier.train(input_fn=lambda:train_input_fn(batch_size))
         else:
-            print("validation select not empty")
-            # TODO(typhoonzero): able to config metrics by calling tf.estimators.add_metrics()
-            if TF_VERSION_2:
+            # do not add default Accuracy metric when using estimator to train, it will fail
+            # when the estimator is a regressor, and estimator seems automatically add some
+            # metrics. Only add additional metrics when user specified with `WITH`.
+            if TF_VERSION_2 and metric_names != ["Accuracy"]:
                 classifier = tf.estimator.add_metrics(classifier, metrics.get_tf_metrics(metric_names))
             train_hooks = []
             if verbose == 1 and TF_VERSION_2:
@@ -266,7 +272,6 @@ def train(is_keras_model,
                 eval_hooks = [PrintStatusHook("eval", every_n_iter=log_every_n_iter)]
             eval_spec = tf.estimator.EvalSpec(input_fn=lambda:validate_input_fn(batch_size), hooks=eval_hooks, start_delay_secs=eval_start_delay_secs, throttle_secs=eval_throttle_secs)
             result = tf.estimator.train_and_evaluate(classifier, train_spec, eval_spec)
-            print(result)
             print(result[0])
 
     print("Done training")
