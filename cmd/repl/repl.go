@@ -78,6 +78,13 @@ func imageCat(s string, isTerminal bool) bool {
 		if e != nil {
 			return false
 		}
+		if it2Check == false {
+			fmt.Println("data:text/html,", s)
+			fmt.Println()
+			fmt.Println("To view the image, paste the above url to a web browser or use iTerm2 as terminal.")
+			return true
+		}
+
 		tmpfile, err := ioutil.TempFile("/tmp", "sqlflow")
 		if err != nil {
 			return false
@@ -91,15 +98,7 @@ func imageCat(s string, isTerminal bool) bool {
 		if err := tmpfile.Close(); err != nil {
 			return false
 		}
-		cmd := exec.Command("it2check")
-		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
-		if cmd.Run() != nil {
-			fmt.Println("data:text/html,", s)
-			fmt.Println("To view the image, paste the above url to a web browser or use iTerm2 as terminal.")
-			return true
-		}
-		cmd = exec.Command("gosr", tmpfile.Name())
+		cmd := exec.Command("gosr", tmpfile.Name())
 		cmd.Stdout = os.Stdout
 		if cmd.Run() != nil {
 			return false
@@ -108,6 +107,17 @@ func imageCat(s string, isTerminal bool) bool {
 	}
 	return true
 }
+
+var it2Check = func() bool {
+	// `it2check` and `go-prompt` both set terminal to raw mode, we has to call `it2check` only once
+	cmd := exec.Command("it2check")
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	if cmd.Run() != nil {
+		return false
+	}
+	return true
+}()
 
 func render(rsp interface{}, table *tablewriter.Table, isTerminal bool) bool {
 	switch s := rsp.(type) {
@@ -136,6 +146,7 @@ func render(rsp interface{}, table *tablewriter.Table, isTerminal bool) bool {
 		if !imageCat(s, isTerminal) {
 			fmt.Println(s)
 		}
+		os.Stdout.Sync()
 	default:
 		log.Fatalf("unrecognized response type: %v", s)
 	}
