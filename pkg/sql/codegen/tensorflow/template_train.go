@@ -33,8 +33,12 @@ type trainFiller struct {
 }
 
 const tfTrainTemplateText = `
-from sqlflow_submitter.tensorflow.train import train
+from sqlflow_submitter.tensorflow.train import train, TF_VERSION_2
 import tensorflow as tf
+if TF_VERSION_2:
+    from tensorflow.keras.optimizers import *
+else:
+    from tensorflow.train import *
 try:
     import sqlflow_models
 except:
@@ -73,7 +77,6 @@ feature_columns = {{.FeatureColumnCode}}
 train_max_steps = {{index .TrainParams "max_steps" | attrToPythonValue}}
 train_max_steps = None if train_max_steps == 0 else train_max_steps
 
-
 train(is_keras_model="{{.IsKerasModel}}" == "true",
     datasource="{{.DataSource}}",
     estimator={{.Estimator}},
@@ -92,5 +95,7 @@ train(is_keras_model="{{.IsKerasModel}}" == "true",
     eval_start_delay_secs={{index .ValidationParams "start_delay_secs" | attrToPythonValue}},
     eval_throttle_secs={{index .ValidationParams "throttle_secs" | attrToPythonValue}},
     save_checkpoints_steps={{index .TrainParams "save_checkpoints_steps" | attrToPythonValue}},
-    log_every_n_iter={{index .TrainParams "log_every_n_iter" | attrToPythonValue}})
+    log_every_n_iter={{index .TrainParams "log_every_n_iter" | attrToPythonValue}},
+    is_pai="{{.IsPAI}}" == "true",
+    pai_table="{{.PAITrainTable}}")
 `

@@ -14,22 +14,25 @@
 package pai
 
 type wrapperFiller struct {
-	DataSource string
-	EntryFile  string
-	ModelName  string
+	DataSource       string
+	EntryFile        string
+	ModelName        string
+	NumPS            int
+	NumWorkers       int // num_workers > 1 indicates we are running distributed training.
+	PAIDatabase      string
+	PAITable         string
+	OSSCheckpointDir string // uri for PAI to save checkpoints on OSS, e.g. oss://bucket/dir/?role_arn=xxx&host=xxx
 }
 
 type saveModelFiller struct {
-	DataSource   string
-	ModelName    string
+	OSSModelDir  string
 	Estimator    string
-	Save         string
 	IsKerasModel bool
 }
 
 type predictFiller struct {
+	OSSModelDir string
 	DataSource  string
-	ModelName   string
 	Select      string
 	ResultTable string
 }
@@ -54,8 +57,16 @@ assert driver == "maxcompute"
 user, passwd, address, database = sqlflow_submitter.db.parseMaxComputeDSN(dsn)
 
 jobname = '_'.join(['sqlflow', '{{.ModelName}}'.replace('.', '_')])
-pai_cmd = 'pai -name %s -DjobName=%s -Dtags=%s -Dscript=file://%s -DentryFile=%s' % (
-	'tensorflow1120', jobname, 'dnn', tarball, '{{.EntryFile}}')
+# The tags candidate list is: "cnn,dnn,rnn,bert,ctr,cvr,inception,resnet,gnn,gcn,ocr,maskrcnn,transformer,nmt,others". Use "others" if you are not sure which tags you need.
+# Need to add arguments -Dbuckets="oss://..." -DcheckpointDir="oss://..." for distributed training.
+{{if gt .NumWorkers 1}}
+print("saving model to: {{.OSSCheckpointDir}}")
+pai_cmd = 'pai -name %s -DjobName=%s -Dtags=%s -Dscript=file://%s -DentryFile=%s -DgpuRequired=\'\' -Dtables=odps://%s/tables/%s -DcheckpointDir=\'{{.OSSCheckpointDir}}\' -Dcluster=\'{\"ps\":{\"count\":{{.NumPS}}}, \"worker\":{\"count\":{{.NumWorkers}}}}\'' % (
+    'tensorflow1120', jobname, 'dnn', tarball, '{{.EntryFile}}', '{{.PAIDatabase}}', '{{.PAITable}}')
+{{else}}
+pai_cmd = 'pai -name %s -DjobName=%s -Dtags=%s -Dscript=file://%s -DentryFile=%s -DgpuRequired=\'\' -Dtables=odps://%s/tables/%s -DcheckpointDir=\'{{.OSSCheckpointDir}}\'' % (
+    'tensorflow1120', jobname, 'dnn', tarball, '{{.EntryFile}}', '{{.PAIDatabase}}', '{{.PAITable}}')
+{{end}}
 
 # Submit the tarball to PAI
 subprocess.run(["odpscmd", "-u", user,
@@ -68,8 +79,7 @@ subprocess.run(["odpscmd", "-u", user,
 
 const tfSaveModelTmplText = `
 from sqlflow_submitter.pai import model
-model.save("{{.DataSource}}", "{{.ModelName}}",
-           "{{.Save}}",
+model.save("{{.OSSModelDir}}",
            "{{.Estimator}}",
            "{{.IsKerasModel}}" == "true",
            feature_column_names,
@@ -88,14 +98,13 @@ try:
 except:
     pass
 
-(save,
- estimator,
+(estimator,
  is_keras_model,
  feature_column_names,
  feature_metas,
  label_meta,
  model_params,
- feature_columns) = model.load("{{.DataSource}}", "{{.ModelName}}")
+ feature_columns) = model.load("{{.OSSModelDir}}")
 
 predict.pred(is_keras_model=is_keras_model,
     datasource="{{.DataSource}}",
@@ -107,6 +116,6 @@ predict.pred(is_keras_model=is_keras_model,
     feature_metas=feature_metas,
     label_meta=label_meta,
     model_params=model_params,
-    save=save,
+    save="{{.OSSModelDir}}",
     batch_size=1)
 `

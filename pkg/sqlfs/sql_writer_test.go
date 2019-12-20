@@ -24,13 +24,15 @@ import (
 )
 
 func TestNewSQLWriter(t *testing.T) {
-	testDriver := getEnv("SQLFLOW_TEST_DB", "mysql")
+	a := assert.New(t)
+
+	testDriver, testDB, e := newTestDB()
+	a.NoError(e)
+
 	if testDriver == "hive" {
 		t.Skip("Skip as SQLFLOW_TEST_DB is Hive")
 	}
 	t.Logf("Confirm executed with %s", testDriver)
-
-	a := assert.New(t)
 
 	tbl := fmt.Sprintf("%s.unittest%d", testDatabaseName, rand.Int())
 	w, e := newSQLWriter(testDB, testDriver, tbl, bufSize)
@@ -46,13 +48,15 @@ func TestNewSQLWriter(t *testing.T) {
 }
 
 func TestSQLWriterWriteAndRead(t *testing.T) {
-	testDriver := getEnv("SQLFLOW_TEST_DB", "mysql")
+	a := assert.New(t)
+
+	testDriver, testDB, e := newTestDB()
+	a.NoError(e)
+
 	if testDriver == "hive" {
 		t.Skip("Skip as SQLFLOW_TEST_DB is Hive")
 	}
 	t.Logf("Confirm executed with %s", testDriver)
-
-	a := assert.New(t)
 
 	tbl := fmt.Sprintf("%s.unittest%d", testDatabaseName, rand.Int())
 	w, e := newSQLWriter(testDB, testDriver, tbl, bufSize)

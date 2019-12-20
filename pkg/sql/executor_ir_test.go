@@ -20,7 +20,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"sqlflow.org/sqlflow/pkg/parser"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
@@ -244,16 +243,6 @@ USING sqlflow_models.my_dense_dnn_model
 		stream = RunSQLProgram(predSQL, "", getDefaultSession())
 		a.True(goodStream(stream.ReadAll()))
 	})
-}
-
-func TestCreatePredictionTable(t *testing.T) {
-	a := assert.New(t)
-	tr, e := parser.ParseOneStatement("maxcompute", testTrainSelectIris)
-	a.NoError(e)
-	pr, e := parser.ParseOneStatement("maxcompute", testPredictSelectIris)
-	a.NoError(e)
-	pr.TrainClause = tr.TrainClause
-	a.NoError(createPredictionTable(pr.SQLFlowSelectStmt, testDB, nil))
 }
 
 func TestLogChanWriter_Write(t *testing.T) {

@@ -31,11 +31,18 @@ type predFiller struct {
 	HiveLocation      string
 	HDFSUser          string
 	HDFSPass          string
+	IsPAI             bool
+	PAIPredictTable   string
 }
 
 const tfPredTemplateText = `
 from sqlflow_submitter.tensorflow.predict import pred
+from sqlflow_submitter.tensorflow.train import TF_VERSION_2
 import tensorflow as tf
+if TF_VERSION_2:
+    from tensorflow.keras.optimizers import *
+else:
+    from tensorflow.train import *
 try:
     import sqlflow_models
 except:
@@ -86,5 +93,7 @@ pred(is_keras_model="{{.IsKerasModel}}" == "true",
     hdfs_namenode_addr="{{.HDFSNameNodeAddr}}",
     hive_location="{{.HiveLocation}}",
     hdfs_user="{{.HDFSUser}}",
-    hdfs_pass="{{.HDFSPass}}")
+    hdfs_pass="{{.HDFSPass}}",
+    is_pai="{{.IsPAI}}" == "true",
+    pai_table="{{.PAIPredictTable}}")
 `

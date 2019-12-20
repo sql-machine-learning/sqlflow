@@ -25,81 +25,6 @@ import (
 	"sqlflow.org/sqlflow/pkg/sql/codegen/attribute"
 )
 
-var emacsMetaKeyBindings = []prompt.ASCIICodeBind{
-	// Meta b/B/<-: Move cursor left by word.
-	{
-		ASCIICode: []byte{0x1b, 'b'},
-		Fn: func(buf *prompt.Buffer) {
-			prompt.GoLeftWord(buf)
-		},
-	},
-
-	{
-		ASCIICode: []byte{0x1b, 'B'},
-		Fn: func(buf *prompt.Buffer) {
-			prompt.GoLeftWord(buf)
-		},
-	},
-
-	{
-		ASCIICode: []byte{0x1b, 0x1b, 0x5b, 0x44},
-		Fn: func(buf *prompt.Buffer) {
-			prompt.GoLeftWord(buf)
-		},
-	},
-
-	// Meta f/F/->: Move cursor right by word.
-	{
-		ASCIICode: []byte{0x1b, 'f'},
-		Fn: func(buf *prompt.Buffer) {
-			prompt.GoRightWord(buf)
-		},
-	},
-
-	{
-		ASCIICode: []byte{0x1b, 'F'},
-		Fn: func(buf *prompt.Buffer) {
-			prompt.GoRightWord(buf)
-		},
-	},
-
-	{
-		ASCIICode: []byte{0x1b, 0x1b, 0x5b, 0x43},
-		Fn: func(buf *prompt.Buffer) {
-			prompt.GoLeftWord(buf)
-		},
-	},
-
-	// Meta d/D: Delete word after the cursor
-	{
-		ASCIICode: []byte{0x1b, 'd'},
-		Fn: func(buf *prompt.Buffer) {
-			pos1 := buf.DisplayCursorPosition()
-			prompt.GoRightWord(buf)
-			pos2 := buf.DisplayCursorPosition()
-			buf.DeleteBeforeCursor(pos2 - pos1)
-		},
-	},
-
-	{
-		ASCIICode: []byte{0x1b, 'D'},
-		Fn: func(buf *prompt.Buffer) {
-			pos1 := buf.DisplayCursorPosition()
-			prompt.GoRightWord(buf)
-			pos2 := buf.DisplayCursorPosition()
-			buf.DeleteBeforeCursor(pos2 - pos1)
-		},
-	},
-
-	// Meta Backspace: Delete word before the cursor
-	{
-		ASCIICode: []byte{0x1b, 0x7f},
-		Fn: func(buf *prompt.Buffer) {
-			prompt.DeleteWord(buf)
-		},
-	},
-}
-
 var defaultSuggestions = []prompt.Suggest{
 	{"SELECT", ""},
 	{"FROM", ""},
@@ -291,14 +216,19 @@ func newPromptState() *promptState {
 	return &s
 }
 
+var consoleWriter = prompt.NewStdoutWriter()
+
 func runPrompt(cb func(string)) {
 	state := newPromptState()
 	p := prompt.New(
 		func(in string) { state.execute(in, cb) },
 		func(in prompt.Document) []prompt.Suggest { return state.completer(in) },
 		prompt.OptionAddASCIICodeBind(emacsMetaKeyBindings...),
+		prompt.OptionAddKeyBind(emacsCtrlKeyBindings...),
 		prompt.OptionHistory(state.history),
 		prompt.OptionLivePrefix(func() (string, bool) { return state.changeLivePrefix() }),
+		prompt.OptionSwitchKeyBindMode(prompt.CommonKeyBind),
+		prompt.OptionWriter(consoleWriter),
 		prompt.OptionParser(newStdinParser()),
 		prompt.OptionPrefix(state.prefix),
 		prompt.OptionPrefixTextColor(prompt.DefaultColor),

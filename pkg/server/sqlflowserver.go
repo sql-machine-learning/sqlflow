@@ -46,7 +46,7 @@ type Server struct {
 }
 
 // Fetch implements `rpc Fetch (Job) returns(JobStatus)`
-func (s *Server) Fetch(ctx context.Context, job *pb.FetchToken) (*pb.FetchResponse, error) {
+func (s *Server) Fetch(ctx context.Context, job *pb.FetchRequest) (*pb.FetchResponse, error) {
 	res := &pb.FetchResponse{}
 	return res, nil
 }

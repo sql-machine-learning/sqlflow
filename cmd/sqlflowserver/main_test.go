@@ -80,7 +80,7 @@ func connectAndRunSQL(sql string) ([]string, [][]*any.Any, error) {
 	}
 	defer conn.Close()
 	cli := pb.NewSQLFlowClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), 600*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 1800*time.Second)
 	defer cancel()
 	stream, err := cli.Run(ctx, sqlRequest(sql))
 	if err != nil {
@@ -277,6 +277,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("TestTextClassification", CaseTrainTextClassification)
 	t.Run("CaseTrainTextClassificationCustomLSTM", CaseTrainTextClassificationCustomLSTM)
 	t.Run("CaseTrainCustomModel", CaseTrainCustomModel)
+	t.Run("CaseTrainOptimizer", CaseTrainOptimizer)
 	t.Run("CaseTrainSQLWithHyperParams", CaseTrainSQLWithHyperParams)
 	t.Run("CaseTrainCustomModelWithHyperParams", CaseTrainCustomModelWithHyperParams)
 	t.Run("CaseSparseFeature", CaseSparseFeature)
@@ -285,6 +286,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseTrainXGBoostRegression", CaseTrainXGBoostRegression)
 	t.Run("CasePredictXGBoostRegression", CasePredictXGBoostRegression)
 	t.Run("CaseTrainDeepWideModel", CaseTrainDeepWideModel)
+	t.Run("CaseTrainDeepWideModelOptimizer", CaseTrainDeepWideModelOptimizer)
 
 	// Cases using feature derivation
 	t.Run("CaseTrainTextClassificationIR", CaseTrainTextClassificationIR)
@@ -369,7 +371,9 @@ func TestEnd2EndHive(t *testing.T) {
 	t.Run("TestTrainSQL", CaseTrainSQL)
 	t.Run("CaseTrainRegression", CaseTrainRegression)
 	t.Run("CaseTrainCustomModel", CaseTrainCustomModel)
+	t.Run("CaseTrainOptimizer", CaseTrainOptimizer)
 	t.Run("CaseTrainDeepWideModel", CaseTrainDeepWideModel)
+	t.Run("CaseTrainDeepWideModelOptimizer", CaseTrainDeepWideModelOptimizer)
 	t.Run("CaseTrainXGBoostRegression", CaseTrainXGBoostRegression)
 	t.Run("CasePredictXGBoostRegression", CasePredictXGBoostRegression)
 	t.Run("CaseTrainFeatureDerivation", CaseTrainFeatureDerivation)
@@ -753,6 +757,25 @@ INTO sqlflow_models.my_dnn_model;`
 	a.NoError(err)
 }
 
+func CaseTrainOptimizer(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := `SELECT *
+FROM iris.train
+TO TRAIN DNNClassifier
+WITH model.n_classes = 3, model.hidden_units = [10, 20], model.optimizer=RMSprop
+LABEL class
+INTO sqlflow_models.my_dnn_model;`
+	_, _, err := connectAndRunSQL(trainSQL)
+	a.NoError(err)
+
+	predSQL := `SELECT *
+FROM iris.test
+TO PREDICT iris.predict.class
+USING sqlflow_models.my_dnn_model;`
+	_, _, err = connectAndRunSQL(predSQL)
+	a.NoError(err)
+}
+
 func CaseTrainCustomModel(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := `SELECT *
@@ -859,6 +882,23 @@ func CaseTrainDeepWideModel(t *testing.T) {
 FROM iris.train
 TO TRAIN DNNLinearCombinedClassifier
 WITH model.n_classes = 3, model.dnn_hidden_units = [10, 20], train.batch_size = 10, train.epoch = 2
+COLUMN sepal_length, sepal_width FOR linear_feature_columns
+COLUMN petal_length, petal_width FOR dnn_feature_columns
+LABEL class
+INTO sqlflow_models.my_dnn_linear_model;`
+	_, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("run trainSQL error: %v", err)
+	}
+}
+
+func CaseTrainDeepWideModelOptimizer(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := `SELECT *
+FROM iris.train
+TO TRAIN DNNLinearCombinedClassifier
+WITH model.n_classes = 3, model.dnn_hidden_units = [10, 20], train.batch_size = 10, train.epoch = 2,
+model.dnn_optimizer=RMSprop, dnn_optimizer.learning_rate=0.01
 COLUMN sepal_length, sepal_width FOR linear_feature_columns
 COLUMN petal_length, petal_width FOR dnn_feature_columns
 LABEL class
@@ -1197,6 +1237,39 @@ FROM housing.xgb_predict LIMIT 5;`)
 	}
 }
 
+func CaseTrainDistributedPAI(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`
+	SELECT * FROM %s.%s
+	TO TRAIN DNNClassifier
+	WITH
+		model.n_classes = 3,
+		model.hidden_units = [10, 20],
+		validation.select = "SELECT * FROM %s.%s LIMIT 30",
+		train.num_workers=2,
+		train.num_ps=2,
+		train.save_checkpoints_steps=20,
+		train.epoch=10,
+		train.batch_size=4,
+		train.verbose=2
+	COLUMN sepal_length, sepal_width, petal_length, petal_width
+	LABEL class
+	INTO %s;
+	`, caseDB, caseTrainTable, caseDB, caseTrainTable, caseInto)
+	_, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+	predSQL := fmt.Sprintf(`SELECT *
+FROM %s.%s
+TO PREDICT %s.%s.class
+USING %s;`, caseDB, caseTestTable, caseDB, casePredictTable, caseInto)
+	_, _, err = connectAndRunSQL(predSQL)
+	if err != nil {
+		a.Fail("Run predSQL error: %v", err)
+	}
+
+}
 func TestEnd2EndMaxComputePAI(t *testing.T) {
 	testDBDriver := os.Getenv("SQLFLOW_TEST_DB")
 	if testDBDriver != "maxcompute" {
@@ -1234,5 +1307,6 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 		t.Fatalf("prepare test dataset failed: %v", err)
 	}
 
-	t.Run("TestTrainSQL", CaseTrainSQL)
+	t.Run("CaseTrainSQL", CaseTrainSQL)
+	t.Run("CaseTrainDistributedPAI", CaseTrainDistributedPAI)
 }

@@ -242,68 +242,7 @@ func runSingleSQLIR(wr *PipeWriter, sqlIR ir.SQLStatement, db *DB, modelDir stri
 	return sqlIR.Execute(submitter())
 }
 
-// Create prediction table with appropriate column type.
-// If prediction table already exists, it will be overwritten.
-func createPredictionTable(predParsed *parser.SQLFlowSelectStmt, db *DB, session *pb.Session) error {
-	tableName, columnName, e := parseTableColumn(predParsed.Into)
-	if e != nil {
-		return fmt.Errorf("invalid predParsed.into, %v", e)
-	}
-
-	dropStmt := fmt.Sprintf("drop table if exists %s;", tableName)
-	if _, e := db.Exec(dropStmt); e != nil {
-		return fmt.Errorf("failed executing %s: %q", dropStmt, e)
-	}
-
-	fts, e := verify(predParsed.StandardSelect.String(), db)
-	if e != nil {
-		return e
-	}
-	var b bytes.Buffer
-	fmt.Fprintf(&b, "create table %s (", tableName)
-	for _, c := range predParsed.Columns["feature_columns"] {
-		name, err := getExpressionFieldName(c)
-		if err != nil {
-			return err
-		}
-		typ, ok := fts.get(name)
-		if !ok {
-			return fmt.Errorf("createPredictionTable: Cannot find type of field %s", name)
-		}
-		stype, e := fieldType(db.driverName, typ)
-		if e != nil {
-			return e
-		}
-		fmt.Fprintf(&b, "%s %s, ", name, stype)
-	}
-
-	// TODO(Yancey1989): For the current implementation, the prediction result column
-	// type is derivated by the pred-select-statement, the better way is derivating
-	// the result column type by the prediction result.
-	typ, ok := fts.get(columnName)
-	if !ok {
-		// NOTE(typhoonzero): Clustering model may not have label in select statement, default use INT type
-		typ = "INT"
-	}
-	stype, e := fieldType(db.driverName, typ)
-	if e != nil {
-		return e
-	}
-	if db.driverName == "hive" {
-		fmt.Fprintf(&b, "%s %s) ROW FORMAT DELIMITED FIELDS TERMINATED BY \"\\001\" STORED AS TEXTFILE;", columnName, stype)
-	} else {
-		fmt.Fprintf(&b, "%s %s);", columnName, stype)
-	}
-
-	createStmt := b.String()
-	if _, e := db.Exec(createStmt); e != nil {
-		return fmt.Errorf("failed executing %s: %q", createStmt, e)
-	}
-	return nil
-}
-
 // Create prediction table using the `PredictStmt`.
-// TODO(typhoonzero): remove legacy `createPredictionTable` once we change all submitters to use IR.
 func createPredictionTableFromIR(predStmt *ir.PredictStmt, db *DB, session *pb.Session) error {
 	dropStmt := fmt.Sprintf("drop table if exists %s;", predStmt.ResultTable)
 	if _, e := db.Exec(dropStmt); e != nil {
@@ -317,7 +256,12 @@ func createPredictionTableFromIR(predStmt *ir.PredictStmt, db *DB, session *pb.S
 	}
 
 	var b bytes.Buffer
-	trainLabelColumn := predStmt.TrainStmt.Label
+	// NOTE(typhoonzero): predStmt.TrainStmt may be nil, because the model may not loaded when
+	// creating prediction table.
+	trainLabelColumn := ""
+	if predStmt.TrainStmt != nil {
+		trainLabelColumn = predStmt.TrainStmt.Label.GetFieldDesc()[0].Name
+	}
 	labelColumnName := predStmt.ResultColumn
 	labelColumnType := ""
 	fmt.Fprintf(&b, "create table %s (", predStmt.ResultTable)
@@ -327,7 +271,9 @@ func createPredictionTableFromIR(predStmt *ir.PredictStmt, db *DB, session *pb.S
 			return e
 		}
 		fldName := flds[idx]
-		if trainLabelColumn.GetFieldDesc()[0].Name == fldName {
+		// When predicting use validation table, we should find the label column type
+		// using the label column name from train table.
+		if fldName == labelColumnName || fldName == trainLabelColumn {
 			labelColumnType = stype
 			continue
 		}
@@ -337,6 +283,8 @@ func createPredictionTableFromIR(predStmt *ir.PredictStmt, db *DB, session *pb.S
 	// TODO(Yancey1989): For the current implementation, the prediction result column
 	// type is derivated by the pred-select-statement, the better way is derivating
 	// the result column type by the prediction result.
+	//
+	// label column not found in predict table, create a column specified by PREDICT clause:
 	if labelColumnType == "" {
 		// NOTE(typhoonzero): Clustering model may not have label in select statement, default use INT type
 		labelColumnType = "INT"
