@@ -18,7 +18,7 @@ Ironically, it is an extra burden for the users to specify the above information
 
 ### Boosting Tree Models
 
-For boosting tree models, especially models with XGBoost, there is a small group of effective hyperparameter, and we can empirically determine their ranges.  We noticed that the following two are the most important.
+For boosting tree models, especially models with XGBoost, there is a small group of effective hyperparameters, and we can empirically determine their ranges.  We noticed that the following two are the most important.
 
 - `max_depth` in the range [2,10], and
 - `num_round` in the range [50, 100].
@@ -104,20 +104,63 @@ The arguments in `couler.sqlflow.train`,
 
 ## Run Tuning Job on Katib
 
-In each Katib tuning job, users need to define tuning parameters (i.e., the hyperparameter's name, type and range) in a model at first. Then Katib will start multiple parallel Pods, which will take different value of those hyperparameters, to train and measure the model.
+In each Katib tuning job, users need to define tuning parameters (i.e., the hyperparameter's name, type, and range) in a model at first. During runtime, the Katib will pick up different values for those hyperparameters and start a single Pod for each value set. Then the tuning job Pods, which are running customized container image, must follow the Katib input format and take those hyperparameters' values from Katib, to train and measure the model.
 
-For SQLFlow, each Katib pod will execute the following command:
+For example, users may define the following command for tuning job Pod:
 
-`repl -m "select * from c to train ... " | python sqlflow_submitter/couler/katib/xgboost_train.py ...`
+`python -m sqlflow_submitter.couler.katib.xgboost_train`
 
-Program `xgboost_train.py` will received the value for `num_round` and `max_depth` from Katib, and read train and validation data from the data source at first. Then this program trains the model and output the measurement for this model. Based on the output, Katib will choose the next set of value for `num_round` and `max_depth` and starts new pods for training.
+The actual command during runtime will be:
+
+`python -m sqlflow_submitter.couler.katib.xgboost_train --max_depth 5 ...`, hyperparameter `max_depth` is added by Katib.
+
+We have proposed two different designs here. Assuming users have input the following SQL statement:
+
+```sql
+SELECT * FROM a, b WHERE a.id = b.id INTO c;
+SELECT * FROM c TO TRAIN data_scientist/xgboost:v0.5/xgboost.gbtree 
+    WITH objective=multi:softmax, eta=0.1, range.max_depth=[2, 10],validation_dataset="select * from d;" 
+    INTO my_xgb_model;
+```
+
+### Pass all parameters to the tuning Pod command
+
+In this design, SQLFlow parses the input SQL statement and extract all parameters, for example, model parameters, train and validation data select, etc. Then SQLFlow transforms all those parameters to strings and passes them to `couler.sqlflow.train`. 
+
+In the SQLFlow submitter, it invokes `couler.sqlflow.train`:
+
+`couler.sqlflow.train(model="xgboost", hyperparameters={"objective": ... }, params={"select": ..., "features": ...}, datasource=... )`
+
+Then in tuning Pod, it executes the following command:
+
+`python -m xgb_train --select "select ..." --features "{...}" ... --max_depth 5 ...`
+
+### Pass SQL to tuning Pod and extract parameters in the Pods
+
+In this design, SQLFlow parses the input SQL statement but only extract tuning hyperparameters. Then SQLFlow passes the whole SQL statement to `couler.sqlflow.train`. 
+
+In the SQLFlow submitter, it invokes `couler.sqlflow.train`:
+
+`couler.sqlflow.train(model="xgboost", hyperparameters={"objective": ... }, sql="select ...", datasource= ... )`
+
+Then in tuning Pod, it executes following command:
+
+`python -m xgb_train --max_depth 5`
+
+In xgb_train.py, it runs following codes:
+
+```python
+setenv("MAX_DEPTH", 5)
+run_cmd("repl -m \"select * ...\" ")
+
+```
 
 ## Pipeline
 
 The pipeline from SQL statements to Argo workflow:
 
-- SQLFlow generate `IR` from input SQL statements.
-- `couler_katib_codegen.go` take this `IR` as input and obtains parameters for Katib training job.
+- SQLFlow generates `IR` from input SQL statements.
+- `couler_katib_codegen.go` takes this `IR` as input and obtains parameters for Katib training job.
 - `couler_katib_codegen.go` generates a Python program which invokes `couler.sqlflow.train`. At the same time, `couler_katib_codegen.go` fills this API's arguments with Katib parameters.
 - `couler.sqlflow.train` generates the manifest for Katib job and fills it in Argo workflow yaml as a step.
 - To execute Argo workflow on Kubernetes and Argo runs Katib job.
