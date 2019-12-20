@@ -23,11 +23,7 @@ import (
 	"path"
 	"sync"
 
-<<<<<<< HEAD
 	"sqlflow.org/sqlflow/pkg/database"
-	"sqlflow.org/sqlflow/pkg/parser"
-=======
->>>>>>> 251c1e2ec34b23594305ab33e4caf8cd19bdc31b
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/xgboost"
@@ -104,14 +100,7 @@ type defaultSubmitter struct {
 	Session  *pb.Session
 }
 
-<<<<<<< HEAD
-type elasticdlSubmitter struct{ *defaultSubmitter }
-type alpsSubmitter struct{ *defaultSubmitter }
-
 func (s *defaultSubmitter) Setup(w *PipeWriter, db *database.DB, modelDir string, session *pb.Session) error {
-=======
-func (s *defaultSubmitter) Setup(w *PipeWriter, db *DB, modelDir string, session *pb.Session) error {
->>>>>>> 251c1e2ec34b23594305ab33e4caf8cd19bdc31b
 	// cwd is used to store train scripts and save output models.
 	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
 	s.Writer, s.Db, s.ModelDir, s.Cwd, s.Session = w, db, modelDir, cwd, session
