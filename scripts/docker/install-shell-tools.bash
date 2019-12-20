@@ -14,5 +14,5 @@
 # limitations under the License.
 
 set -e
-wget https://iterm2.com/utilities/it2check -D /usr/local/sbin/
+wget https://iterm2.com/utilities/it2check -P /usr/local/sbin/
 chmod +x  /usr/local/sbin/it2check

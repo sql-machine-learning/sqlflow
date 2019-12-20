@@ -99,7 +99,7 @@ func imageCat(s string, isTerminal bool) bool {
 			fmt.Println("To view the image, paste the above url to a web browser or use iTerm2 as terminal.")
 			return true
 		}
-		cmd := exec.Command("gosr", tmpfile.Name())
+		cmd = exec.Command("gosr", tmpfile.Name())
 		cmd.Stdout = os.Stdout
 		if cmd.Run() != nil {
 			return false

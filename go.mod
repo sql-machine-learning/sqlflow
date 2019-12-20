@@ -1,6 +1,7 @@
 module sqlflow.org/sqlflow
 
 require (
+	github.com/BurntSushi/graphics-go v0.0.0-20160129215708-b43f31a4a966 // indirect
 	github.com/apache/thrift v0.13.0 // indirect
 	github.com/argoproj/argo v2.4.3+incompatible
 	github.com/asaskevich/govalidator v0.0.0-20190424111038-f61b66f89f4a
@@ -17,6 +18,7 @@ require (
 	github.com/mattn/go-colorable v0.1.4 // indirect
 	github.com/mattn/go-isatty v0.0.10 // indirect
 	github.com/mattn/go-runewidth v0.0.6 // indirect
+	github.com/mattn/go-sixel v0.0.1 // indirect
 	github.com/olekukonko/tablewriter v0.0.1
 	github.com/peterh/liner v1.1.0 // indirect
 	github.com/pingcap/parser v0.0.0-20190613045206-37cc370a20a4
@@ -24,6 +26,7 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/pkg/term v0.0.0-20190109203006-aa71e9d9e942
 	github.com/sirupsen/logrus v1.4.2
+	github.com/soniakeys/quant v1.0.0 // indirect
 	github.com/spf13/cobra v0.0.5 // indirect
 	github.com/stretchr/testify v1.4.0
 	go.starlark.net v0.0.0-20191127154833-698e61cae82e // indirect
