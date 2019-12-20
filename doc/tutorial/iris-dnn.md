@@ -57,24 +57,22 @@ LABEL class
 INTO sqlflow_models.my_dnn_model;
 ```
 
-Under normal conditions, the training statement will complete after several minutes.
-
-## Tune
-
-Typically, the above training statement will output something like:
+The above training statement usually takes a few minutes to run, and the outputs look like the following:
 
 ```python
 {'accuracy': 0.4, 'average_loss': 1.0920922, 'loss': 1.0920922, 'global_step': 1100}
-
 ```
-which seems to be not ideal. 
+
+As we've seen, the average loss of the above training statement doesn't look very good; an ideal value for the *Iris flower dataset* should be less 0.4. Let us see what we can do to improve model quality.
+
+## Tune
 
 In order to improve the model performance, we can tune the [hyperparameters](https://en.wikipedia.org/wiki/Hyperparameter_(machine_learning)) manually.
 > In machine learning, a hyperparameter is a parameter whose value is set before the learning process begins. By contrast, the values of other parameters are derived via training.
 
 According to the [Universal approximation theorem](https://en.wikipedia.org/wiki/Universal_approximation_theorem), the architecture of a multilayer [feed-forward network](https://en.wikipedia.org/wiki/Feedforward_neural_network) (such as our `DNNClassifier`) gives the neural network the potential of being a universal approximator.
 
-Our first _performance improvement plan_ is to tune the architecture of our model by increasing the `hidden_units` of each layer to 100 because the width of feed-forward networks matters in the theorem.
+Our first *performance improvement trial* is to tune the architecture of our model by increasing the `hidden_units` of each layer to 100 because the width of feed-forward networks matters in the theorem.
 
 ```sql
 %%sqlflow
@@ -94,7 +92,7 @@ The above statement will give a better result like:
 
 However, DNNs are highly expressive models, for our tiny dataset, we still have a lot of room for improvement.
 
-Our second _performance improvement plan_ is to enlarge the [learning rate](https://en.wikipedia.org/wiki/Learning_rate) of the underlying optimizer of `DNNClassifier` to speed up the learning process. Optimizers and the learning rate are the the most crucial hyperparameters in DNNs. The default optimizer of `DNNClassifier` is [Adagrad](https://en.wikipedia.org/wiki/Stochastic_gradient_descent#AdaGrad) with a default learning rate of 0.001.
+Our second *performance improvement trial* is to enlarge the [learning rate](https://en.wikipedia.org/wiki/Learning_rate) of the underlying optimizer of `DNNClassifier` to speed up the learning process. Optimizers and the learning rate are the the most important hyperparameters in DNNs. The default optimizer of `DNNClassifier` is [Adagrad](https://en.wikipedia.org/wiki/Stochastic_gradient_descent#AdaGrad) with a default learning rate of 0.001.
 
 Theoretically speaking, the learning rate of Adagrad should be set as large as possible, but no larger. Practically speaking, a slightly larger learning rate always makes Adagrad perform slightly better as long as the [dying neuron problem](https://en.wikipedia.org/wiki/Rectifier_(neural_networks)#Potential_problems) doesn't arise. Let us increase the learning rate by 10 times:
 
@@ -116,7 +114,7 @@ The above statement will give a decent result like:
 
 ```
 
-That's all you need to know about tuning in this tutorial. In fact, tuning is the most important and most time-consuming work of a machine learning engineer. Adjusting hyperparameters in a production environment is quite subtle. 
+That's all you have to know about tuning models in this tutorial. In fact, tuning is very crucial to make machine learning work and usually takes a large fraction of the working hours of data scientists and machine learning engineers. The SQLFlow team plans to support [automatic hyperparameter tuning](https://en.wikipedia.org/wiki/Automated_machine_learning#Hyperparameter_optimization_and_model_selection) and [neural architecture search](https://en.wikipedia.org/wiki/Neural_architecture_search) in the near future.
 
 ## Predict
 
