@@ -118,7 +118,7 @@ func TestFetch(t *testing.T) {
 			break
 		}
 		time.Sleep(time.Second)
-		req = response.NewRequest
+		req = response.UpdatedFetchSince
 	}
 
 	expectedLogs := []string{"hello1", "hello2", "hello3"}

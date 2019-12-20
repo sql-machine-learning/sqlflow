@@ -34,8 +34,8 @@ func newFetchRequest(workflowID, stepID, logOffset string) *pb.FetchRequest {
 
 func newFetchResponse(newReq *pb.FetchRequest, eof bool, logs []string) *pb.FetchResponse {
 	return &pb.FetchResponse{
-		NewRequest: newReq,
-		Eof:        eof,
+		UpdatedFetchSince: newReq,
+		Eof:               eof,
 		Logs: &pb.FetchResponse_Logs{
 			Content: logs,
 		},

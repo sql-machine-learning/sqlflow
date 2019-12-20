@@ -35,14 +35,16 @@ service SQLFlow {
     // client can be implemented as
     //
     // wfJob := Submit(argoYAML)
-    // req := newFetchRequest(wfJob)
+    // req := &FetchRequest {
+    //   Job : { Id: wfJob },
+    // }
     // for {
     //   res := Fetch(req)
     //   fmt.Println(res.Logs)
     //   if isComplete(res) {
     //     break
     //   }
-    //   req = res.NewFetchRequest
+    //   req = res.UpdatedFetchSince
     //   time.Sleep(time.Second)
     // }
     //
@@ -64,7 +66,7 @@ message FetchResponse {
     message Logs {
         repeated string content = 1;
     }
-    FetchRequest new_request = 1;
+    FetchRequest updated_fetch_since = 1;
     bool eof = 2;
     Logs logs = 3;
 }
