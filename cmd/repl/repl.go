@@ -95,7 +95,7 @@ func imageCat(s string, isTerminal bool) bool {
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		if cmd.Run() != nil {
-			fmt.Println("data:text/html", s)
+			fmt.Println("data:text/html,", s)
 			fmt.Println("To view the image, paste the above url to a web browser or use iTerm2 as terminal.")
 			return true
 		}
