@@ -15,11 +15,15 @@ package main
 
 import (
 	"bufio"
+	"encoding/base64"
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
+	"os/exec"
+	"regexp"
 	"strings"
 	"syscall"
 
@@ -64,6 +68,47 @@ func header(head map[string]interface{}) ([]string, error) {
 	return cols, nil
 }
 
+func imageCat(s string, isTerminal bool) bool {
+	if !(isTerminal && strings.HasPrefix(s, "<div")) {
+		return false
+	}
+	match := regexp.MustCompile(`base64,(.*)'`).FindStringSubmatch(s)
+	if len(match) == 2 {
+		image, e := base64.StdEncoding.DecodeString(match[1])
+		if e != nil {
+			return false
+		}
+		tmpfile, err := ioutil.TempFile("/tmp", "sqlflow")
+		if err != nil {
+			return false
+		}
+		defer os.Remove(tmpfile.Name()) // clean up
+
+		if _, err := tmpfile.Write(image); err != nil {
+			tmpfile.Close()
+			return false
+		}
+		if err := tmpfile.Close(); err != nil {
+			return false
+		}
+		cmd := exec.Command("it2check")
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		if cmd.Run() != nil {
+			fmt.Println("data:text/html", s)
+			fmt.Println("To view the image, paste the above url to a web browser or use iTerm2 as terminal.")
+			return true
+		}
+		cmd := exec.Command("gosr", tmpfile.Name())
+		cmd.Stdout = os.Stdout
+		if cmd.Run() != nil {
+			return false
+		}
+		fmt.Println()
+	}
+	return true
+}
+
 func render(rsp interface{}, table *tablewriter.Table, isTerminal bool) bool {
 	switch s := rsp.(type) {
 	case map[string]interface{}: // table header
@@ -88,7 +133,9 @@ func render(rsp interface{}, table *tablewriter.Table, isTerminal bool) bool {
 		}
 	case sql.EndOfExecution:
 	case string:
-		fmt.Println(s)
+		if !imageCat(s, isTerminal) {
+			fmt.Println(s)
+		}
 	default:
 		log.Fatalf("unrecognized response type: %v", s)
 	}
