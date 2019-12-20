@@ -241,7 +241,6 @@ def train(is_keras_model,
                 eval_hooks = [PrintStatusHook("eval", every_n_iter=log_every_n_iter)]
             eval_spec = tf.estimator.EvalSpec(input_fn=lambda:validate_input_fn(batch_size), hooks=eval_hooks, start_delay_secs=eval_start_delay_secs, throttle_secs=eval_throttle_secs)
             result = tf.estimator.train_and_evaluate(classifier, train_spec, eval_spec)
-            print(result[0])
 
     print("Done training")
 
