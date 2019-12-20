@@ -952,7 +952,6 @@ WITH
 			model.eval_metrics_fn = "eval_metrics_fn",
 			model.num_classes = 3,
 			model.dataset_fn = "dataset_fn",
-			train.shuffle = 120,
 			train.epoch = 2,
 			train.grads_to_wait = 2,
 			train.tensorboard_log_dir = "",

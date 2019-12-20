@@ -25,7 +25,6 @@ class TestSQLFlowMagic(unittest.TestCase):
 		TO TRAIN ElasticDLKerasClassifier 
 		WITH
 			model.num_classes = 10,
-			train.shuffle = 120,
 			train.epoch = 2,
 			train.grads_to_wait = 2,
 			train.tensorboard_log_dir = "",
