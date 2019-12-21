@@ -36,7 +36,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"sqlflow.org/sqlflow/pkg/database"
 	pb "sqlflow.org/sqlflow/pkg/proto"
-	"sqlflow.org/sqlflow/pkg/sql"
 	"sqlflow.org/sqlflow/pkg/sql/testdata"
 )
 
@@ -497,7 +496,7 @@ func TestEnd2EndMySQLWorkflow(t *testing.T) {
 	if os.Getenv("SQLFLOW_TEST_DATASOURCE") == "" || strings.ToLower(os.Getenv("SQLFLOW_TEST")) != "workflow" {
 		t.Skip("Skipping workflow test.")
 	}
-	driverName, _, err := sql.SplitDataSource(testDatasource)
+	driverName, _, err := database.ParseURL(testDatasource)
 	a.NoError(err)
 
 	if driverName != "mysql" && driverName != "maxcompute" {
