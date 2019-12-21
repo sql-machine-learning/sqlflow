@@ -9,9 +9,13 @@ deb http://us.archive.ubuntu.com/ubuntu/ xenial-proposed main restricted univers
 deb http://us.archive.ubuntu.com/ubuntu/ xenial-backports main restricted universe multiverse \n\
 ' > /etc/apt/sources.list
 
-# Install wget, curl, unzip, bzip2, git.
+# Install wget, curl, unzip, bzip2, git
 COPY scripts/docker/install-download-tools.bash /
 RUN /install-download-tools.bash
+
+# Install it2check
+COPY scripts/docker/install-shell-tools.bash /
+RUN /install-shell-tools.bash
 
 # MySQL server and client
 COPY scripts/docker/install-mysql.bash /
@@ -28,7 +32,7 @@ VOLUME /var/lib/mysql
 COPY scripts/docker/install-protobuf.bash /
 RUN /install-protobuf.bash
 
-# Need Java SDK to build remote parsers.
+# Need Java SDK to build remote parsers
 ENV JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
 COPY scripts/docker/install-java.bash /
 RUN /install-java.bash
