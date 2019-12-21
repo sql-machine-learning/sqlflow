@@ -15,6 +15,7 @@ package sql
 
 import (
 	"fmt"
+	"log"
 	"os/exec"
 )
 
@@ -59,14 +60,12 @@ func hasDockerImage(image string) bool {
 
 func sqlflowCmd(cwd, driverName string) (cmd *exec.Cmd) {
 	if hasPython() && hasTensorFlow() && hasDatabaseConnector(driverName) {
-		log.Printf("sqlflowCmd: run locally")
 		cmd = exec.Command("python", "-u")
 		cmd.Dir = cwd
 	} else if hasDocker() {
-		log.Printf("sqlflowCmd: run in Docker container")
 		const tfImg = "sqlflow/sqlflow"
 		if !hasDockerImage(tfImg) {
-			log.Printf("No local Docker image %s.  It will take a long time to pull.", tfImg)
+			log.Printf("sqlflowCmd: No local Docker image %s.  It will take a long time to pull.", tfImg)
 		}
 		cmd = exec.Command("docker", "run", "--rm",
 			fmt.Sprintf("-v%s:/work", cwd),

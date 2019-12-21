@@ -17,7 +17,6 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
-	"time"
 )
 
 func runStandardSQL(wr *PipeWriter, slct string, db *DB) error {
@@ -47,10 +46,6 @@ func isQuery(slct string) bool {
 
 // query runs slct and writes the retrieved rows into pipe wr.
 func runQuery(wr *PipeWriter, slct string, db *DB) error {
-	defer func(startAt time.Time) {
-		log.Debugf("runQuery %v finished, elapsed:%v", slct, time.Since(startAt))
-	}(time.Now())
-
 	rows, err := db.Query(slct)
 	if err != nil {
 		return fmt.Errorf("runQuery failed: %v", err)
@@ -119,10 +114,6 @@ func parseRow(columns []string, columnTypes []*sql.ColumnType, rows *sql.Rows, w
 }
 
 func runExec(wr *PipeWriter, slct string, db *DB) error {
-	defer func(startAt time.Time) {
-		log.Debugf("runExec %v finished, elapsed:%v", slct, time.Since(startAt))
-	}(time.Now())
-
 	res, e := db.Exec(slct)
 	if e != nil {
 		return fmt.Errorf("runExec failed: %v", e)

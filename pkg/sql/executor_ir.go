@@ -16,6 +16,7 @@ package sql
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 	"time"
@@ -42,6 +43,9 @@ type WorkflowJob struct {
 }
 
 // RunSQLProgram run a SQL program.
+//
+// TODO(wangkuiyi): Make RunSQLProgram return an error in addition to
+// *PipeReader, and remove the calls to log.Printf.
 func RunSQLProgram(sqlProgram string, modelDir string, session *pb.Session) *PipeReader {
 	rd, wr := Pipe()
 	go func() {
@@ -49,16 +53,16 @@ func RunSQLProgram(sqlProgram string, modelDir string, session *pb.Session) *Pip
 		var err error
 		if db, err = NewDB(session.DbConnStr); err != nil {
 			wr.Write(fmt.Errorf("create DB failed: %v", err))
-			log.Errorf("create DB failed: %v", err)
+			log.Printf("create DB failed: %v", err)
 		}
 		defer wr.Close()
 		err = runSQLProgram(wr, sqlProgram, db, modelDir, session)
 
 		if err != nil {
-			log.Errorf("runSQLProgram error: %v", err)
+			log.Printf("runSQLProgram error: %v", err)
 			if err != ErrClosedPipe {
 				if err := wr.Write(err); err != nil {
-					log.Errorf("runSQLProgram error(piping): %v", err)
+					log.Printf("runSQLProgram error(piping): %v", err)
 				}
 			}
 		}
@@ -111,6 +115,9 @@ func ParseSQLStatement(sql string, session *pb.Session) (string, error) {
 }
 
 // SubmitWorkflow submits an Argo workflow
+//
+// TODO(wangkuiyi): Make RunSQLProgram return an error in addition to
+// *PipeReader, and remove the calls to log.Printf.
 func SubmitWorkflow(sqlProgram string, modelDir string, session *pb.Session) *PipeReader {
 	rd, wr := Pipe()
 	go func() {
@@ -119,7 +126,7 @@ func SubmitWorkflow(sqlProgram string, modelDir string, session *pb.Session) *Pi
 		if err != nil {
 			if err != ErrClosedPipe {
 				if err := wr.Write(err); err != nil {
-					log.Errorf("submit workflow error(piping): %v", err)
+					log.Printf("submit workflow error(piping): %v", err)
 				}
 			}
 		}
