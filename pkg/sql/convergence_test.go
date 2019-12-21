@@ -25,7 +25,7 @@ import (
 // also be 100 percent.
 func TestConvergenceAndAccuracy(t *testing.T) {
 	testDB := database.GetTestingDBSingleton()
-	if testDB.driverName != "mysql" {
+	if testDB.DriverName != "mysql" {
 		t.Skip("only run convergence test with MySQL")
 	}
 	a := assert.New(t)
