@@ -34,6 +34,7 @@ import (
 	"github.com/golang/protobuf/ptypes/any"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/stretchr/testify/assert"
+	"sqlflow.org/sqlflow/pkg/database"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql"
 	"sqlflow.org/sqlflow/pkg/sql/testdata"
@@ -165,7 +166,7 @@ func ParseRow(stream pb.SQLFlow_RunClient) ([]string, [][]*any.Any) {
 }
 
 func prepareTestData(dbStr string) error {
-	testDB, e := sql.NewDB(dbStr)
+	testDB, e := database.OpenAndConnectDB(dbStr)
 	if e != nil {
 		return e
 	}

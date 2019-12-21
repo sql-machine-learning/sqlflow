@@ -30,6 +30,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	prompt "github.com/c-bata/go-prompt"
+	"sqlflow.org/sqlflow/pkg/database"
 	irpb "sqlflow.org/sqlflow/pkg/proto"
 	sf "sqlflow.org/sqlflow/pkg/sql"
 	"sqlflow.org/sqlflow/pkg/sql/testdata"
@@ -231,19 +232,19 @@ func TestStdinParser(t *testing.T) {
 func TestStdinParseOnly(t *testing.T) {
 	a := assert.New(t)
 	dataSourceStr := ""
-	var testdb *sf.DB
+	var testdb *database.DB
 	var err error
 	switch os.Getenv("SQLFLOW_TEST_DB") {
 	case "mysql":
 		dataSourceStr = "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
-		testdb, err = sf.NewDB(dataSourceStr)
+		testdb, err = database.OpenAndConnectDB(dataSourceStr)
 		a.NoError(err)
 		defer testdb.Close()
 		err = testdata.Popularize(testdb.DB, testdata.IrisSQL)
 		a.NoError(err)
 	case "hive":
 		dataSourceStr = "hive://root:root@127.0.0.1:10000/iris?auth=NOSASL"
-		testdb, err = sf.NewDB(dataSourceStr)
+		testdb, err = database.OpenAndConnectDB(dataSourceStr)
 		a.NoError(err)
 		defer testdb.Close()
 		err = testdata.Popularize(testdb.DB, testdata.IrisHiveSQL)
