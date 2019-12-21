@@ -18,7 +18,7 @@ require (
 	github.com/mattn/go-colorable v0.1.4 // indirect
 	github.com/mattn/go-isatty v0.0.11 // indirect
 	github.com/mattn/go-runewidth v0.0.7 // indirect
-	github.com/mattn/go-sixel v0.0.1 // indirect
+	github.com/mattn/go-sixel v0.0.1
 	github.com/olekukonko/tablewriter v0.0.1
 	github.com/peterh/liner v1.1.0 // indirect
 	github.com/pingcap/parser v0.0.0-20190613045206-37cc370a20a4

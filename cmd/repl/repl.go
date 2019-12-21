@@ -15,11 +15,14 @@ package main
 
 import (
 	"bufio"
+	"bytes"
+	"image"
+	_ "image/png"
+
 	"encoding/base64"
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -27,6 +30,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/mattn/go-sixel"
 	"github.com/olekukonko/tablewriter"
 	"golang.org/x/crypto/ssh/terminal"
 	pb "sqlflow.org/sqlflow/pkg/proto"
@@ -68,56 +72,39 @@ func header(head map[string]interface{}) ([]string, error) {
 	return cols, nil
 }
 
-func imageCat(s string, isTerminal bool) bool {
-	if !(isTerminal && strings.HasPrefix(s, "<div")) {
-		return false
-	}
-	match := regexp.MustCompile(`base64,(.*)'`).FindStringSubmatch(s)
-	if len(match) == 2 {
-		image, e := base64.StdEncoding.DecodeString(match[1])
-		if e != nil {
-			return false
-		}
-		if it2Check == false {
-			fmt.Println("data:text/html,", s)
-			fmt.Println()
-			fmt.Println("To view the image, paste the above url to a web browser or use iTerm2 as terminal.")
-			return true
-		}
-
-		tmpfile, err := ioutil.TempFile("/tmp", "sqlflow")
-		if err != nil {
-			return false
-		}
-		defer os.Remove(tmpfile.Name()) // clean up
-
-		if _, err := tmpfile.Write(image); err != nil {
-			tmpfile.Close()
-			return false
-		}
-		if err := tmpfile.Close(); err != nil {
-			return false
-		}
-		cmd := exec.Command("gosr", tmpfile.Name())
-		cmd.Stdout = os.Stdout
-		if cmd.Run() != nil {
-			return false
-		}
-		fmt.Println()
-	}
-	return true
+func isHTMLSnippet(s string) bool {
+	// TODO(shendiaomo): more accurate checks later
+	return strings.HasPrefix(s, "<div")
 }
 
-var it2Check = func() bool {
-	// `it2check` and `go-prompt` both set terminal to raw mode, we has to call `it2check` only once
-	cmd := exec.Command("it2check")
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	if cmd.Run() != nil {
-		return false
+func printAsDataURL(s string) {
+	fmt.Println("data:text/html,", s)
+	fmt.Println()
+	fmt.Println("To view the content, paste the above data url to a web browser.")
+}
+
+func getBase64EncodedImage(s string) ([]byte, error) {
+	match := regexp.MustCompile(`base64,(.*)'`).FindStringSubmatch(s)
+	if len(match) == 2 {
+		return base64.StdEncoding.DecodeString(match[1])
 	}
-	return true
-}()
+	return []byte{}, fmt.Errorf("no images in the HTML")
+}
+
+func imageCat(imageBytes []byte) error {
+	img, _, err := image.Decode(bytes.NewReader(imageBytes))
+	if err != nil {
+		return err
+	}
+	err = sixel.NewEncoder(os.Stdout).Encode(img)
+	if err != nil {
+		return err
+	}
+	fmt.Println()
+	return nil
+}
+
+var it2Check = false
 
 func render(rsp interface{}, table *tablewriter.Table, isTerminal bool) bool {
 	switch s := rsp.(type) {
@@ -143,10 +130,23 @@ func render(rsp interface{}, table *tablewriter.Table, isTerminal bool) bool {
 		}
 	case sql.EndOfExecution:
 	case string:
-		if !imageCat(s, isTerminal) {
+		if isHTMLSnippet(s) {
+			if !isTerminal {
+				printAsDataURL(s)
+				break
+			}
+			if image, e := getBase64EncodedImage(s); e != nil {
+				printAsDataURL(s)
+			} else if !it2Check {
+				printAsDataURL(s)
+				fmt.Println("Or use iTerm2 as your terminal to view images.")
+			} else if e = imageCat(image); e != nil {
+				log.New(os.Stderr, "", 0).Printf("ERROR: %v\n", e)
+				printAsDataURL(s)
+			}
+		} else {
 			fmt.Println(s)
 		}
-		os.Stdout.Sync()
 	default:
 		log.Fatalf("unrecognized response type: %v", s)
 	}
@@ -246,6 +246,11 @@ func parseSQLFromStdin(stdin io.Reader) (string, error) {
 	return pbIRStr, nil
 }
 
+func commandExists(cmd string) bool {
+	_, err := exec.LookPath(cmd)
+	return err == nil
+}
+
 func main() {
 	ds := flag.String("datasource", "", "database connect string")
 	modelDir := flag.String("model_dir", "", "model would be saved on the local dir, otherwise upload to the table.")
@@ -291,8 +296,21 @@ func main() {
 	}
 	scanner := bufio.NewScanner(reader)
 	if isTerminal {
+		if !commandExists("it2check") {
+			fmt.Println("Warning: defaults to non-sixel mode")
+		}
 		runPrompt(func(stmt string) { runStmt(stmt, true, *modelDir, *ds) })
 	} else {
 		repl(scanner, *modelDir, *ds)
+	}
+}
+
+func init() {
+	// `it2check` and `go-prompt` both set terminal to raw mode, we has to call `it2check` only once
+	cmd := exec.Command("it2check")
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	if cmd.Run() == nil {
+		it2Check = true
 	}
 }
