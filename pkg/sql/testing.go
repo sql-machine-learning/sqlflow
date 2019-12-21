@@ -16,7 +16,7 @@ package sql
 import "os"
 
 func getEnv(env, value string) string {
-	if v := os.Getenv("SQLFLOW_TEST_DB"); len(v) > 0 {
+	if v := os.Getenv(env); len(v) > 0 {
 		return v
 	}
 	return value
