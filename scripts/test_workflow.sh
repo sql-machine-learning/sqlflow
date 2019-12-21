@@ -80,7 +80,7 @@ function test_workflow() {
             echo "SQLFlow MySQL Pod running."
             MYSQL_POD_IP=$(kubectl get pod ${MYSQL_POD_NAME} -o jsonpath='{.status.podIP}')
             go generate ./...
-            SQLFLOW_TEST_DATASOURCE="mysql://root:root@tcp(${MYSQL_POD_IP}:3306)/?maxAllowedPacket=0" go test ./cmd/... -run TestEnd2EndMySQLWorkflow -v
+            SQLFLOW_TEST_DATASOURCE="mysql://root:root@tcp(${MYSQL_POD_IP}:3306)/?maxAllowedPacket=0" gotest ./cmd/... -run TestEnd2EndMySQLWorkflow -v
             return 0
         else
             echo "Wait SQLFlow MySQL Pod ${MYSQL_POD_NAME}"
@@ -96,8 +96,8 @@ check_ret $? "Test SQLFLow workflow failed"
 
 # test submit pai job using argo workflow mode
 if [ "${SQLFLOW_submitter}" == "pai" ]; then
-    SQLFLOW_submitter=pai SQLFLOW_TEST_DATASOURCE="maxcompute://${MAXCOMPUTE_AK}:${MAXCOMPUTE_SK}@${MAXCOMPUTE_ENDPOINT}" go test ./cmd/... -run TestEnd2EndMySQLWorkflow -v
+    SQLFLOW_submitter=pai SQLFLOW_TEST_DATASOURCE="maxcompute://${MAXCOMPUTE_AK}:${MAXCOMPUTE_SK}@${MAXCOMPUTE_ENDPOINT}" gotest ./cmd/... -run TestEnd2EndMySQLWorkflow -v
     check_ret $? "Test SQLFLow workflow failed"
 fi
 
-go test -v ./pkg/argo/
+gotest -v ./pkg/argo/

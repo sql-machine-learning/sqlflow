@@ -50,7 +50,7 @@ Then, we can build and run tests.
 
 ```bash
 go generate ./...
-PYTHONPATH=/sqlflow/python SQLFLOW_TEST_DB=mysql go test -v -p 1 ./...
+PYTHONPATH=/sqlflow/python SQLFLOW_TEST_DB=mysql gotest -v -p 1 ./...
 ```
 
 The commandline `go generate` is necessary to call `protoc` for translating gRPC interface and to call `goyacc` for generating the parser.
@@ -59,7 +59,7 @@ The environment variable `PYTHONPATH=$GOPATH/src/sqlflow.org/sqlflow/python` ens
 
 The environment variable `SQLFLOW_TEST_DB=mysql` specify MySQL as the SQL engine during testing.  You can also choose `hive` for Apache Hive and `maxcompute` for Alibaba MaxCompute.
 
-The command `go test` with `-p 1` argument is necessary to run all tests, otherwise you will encounter the same problem as this [`issue`](https://github.com/sql-machine-learning/sqlflow/issues/1283).
+The command `gotest` with `-p 1` argument is necessary to run all tests, otherwise you will encounter the same problem as this [`issue`](https://github.com/sql-machine-learning/sqlflow/issues/1283).   Please feel free to use `go test` instead of `gotest`.  We use the latter one for colorized output.
 
 ## Editing on Host
 

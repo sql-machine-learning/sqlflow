@@ -32,11 +32,11 @@ go install ./...
 # -p 1 is necessary since tests in different packages are sharing the same database
 # ref: https://stackoverflow.com/a/23840896
 # TODO(Yancey1989): enable all the unit test for the maxcompute
-SQLFLOW_log_level=debug go test -p 1 -v ./cmd/... -run TestEnd2EndMaxCompute
+SQLFLOW_log_level=debug gotest -p 1 -v ./cmd/... -run TestEnd2EndMaxCompute
 
 # TODO(shendiaomo): fix CI after the PAI service initiated in the MaxCompute project
 # export SQLFLOW_submitter=pai
-# SQLFLOW_log_level=debug go test -p 1 -v ./cmd/... -run TestEnd2EndMaxCompute
+# SQLFLOW_log_level=debug gotest -p 1 -v ./cmd/... -run TestEnd2EndMaxCompute
 
 function test_end2end_elasticdl() {
   export SQLFLOW_submitter=elasticdl
@@ -47,7 +47,7 @@ function test_end2end_elasticdl() {
   # Set up necessary RBAC roles for k8s cluster
   kubectl apply -f elasticdl/manifests/examples/elasticdl-rbac.yaml
   cd -
-  SQLFLOW_log_level=debug go test -p 1 -v ./cmd/... -run TestEnd2EndMaxComputeElasticDL
+  SQLFLOW_log_level=debug gotest -p 1 -v ./cmd/... -run TestEnd2EndMaxComputeElasticDL
 
   cd /elasticdl
   bash scripts/validate_job_status.sh odps
