@@ -26,7 +26,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	_ "sqlflow.org/gohive"
 	"sqlflow.org/sqlflow/pkg/database"
-	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
 const testDatabaseName = `sqlfs_test`
@@ -49,7 +48,7 @@ func TestWriterCreate(t *testing.T) {
 	a := assert.New(t)
 
 	tbl := fmt.Sprintf("%s.unittest%d", testDatabaseName, rand.Int())
-	w, e := Create(db.DB, db.DriverName, tbl, getDefaultSession())
+	w, e := Create(db.DB, db.DriverName, tbl, database.GetSessionFromTestingDB())
 	a.NoError(e)
 	a.NotNil(w)
 	defer w.Close()
@@ -71,7 +70,7 @@ func TestWriteAndRead(t *testing.T) {
 
 	tbl := fmt.Sprintf("%s.unittest%d", testDatabaseName, rand.Int())
 
-	w, e := Create(db.DB, db.DriverName, tbl, getDefaultSession())
+	w, e := Create(db.DB, db.DriverName, tbl, database.GetSessionFromTestingDB())
 	a.NoError(e)
 	a.NotNil(w)
 
@@ -134,12 +133,4 @@ func getEnv(key, fallback string) string {
 		return fallback
 	}
 	return value
-}
-
-func getDefaultSession() *pb.Session {
-	return &pb.Session{
-		HiveLocation: "/sqlflow",
-		HdfsUser:     "",
-		HdfsPass:     "",
-	}
 }

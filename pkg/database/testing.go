@@ -23,6 +23,7 @@ import (
 	"sqlflow.org/sqlflow/pkg/sql/testdata"
 
 	"github.com/go-sql-driver/mysql"
+	"sqlflow.org/sqlflow/pkg/proto"
 )
 
 var (
@@ -141,4 +142,15 @@ func assertNoErr(e error) {
 	if e != nil {
 		log.Fatal(e)
 	}
+}
+
+// GetSessionFromTestingDB construct a proto message Session
+// representing the testing database configuration.
+func GetSessionFromTestingDB() *proto.Session {
+	db := GetTestingDBSingleton()
+	return &proto.Session{
+		DbConnStr:    db.URL(),
+		HiveLocation: "/sqlflow",
+		HdfsUser:     "",
+		HdfsPass:     ""}
 }

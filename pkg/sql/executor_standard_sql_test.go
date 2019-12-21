@@ -89,7 +89,7 @@ func TestStandardSQL(t *testing.T) {
 
 func TestSQLLexerError(t *testing.T) {
 	a := assert.New(t)
-	stream := RunSQLProgram("SELECT * FROM ``?[] AS WHERE LIMIT;", "", getSessionFromTestingDB())
+	stream := RunSQLProgram("SELECT * FROM ``?[] AS WHERE LIMIT;", "", database.GetSessionFromTestingDB())
 	a.False(goodStream(stream.ReadAll()))
 }
 

@@ -42,7 +42,7 @@ WITH
 	validation.select="SELECT * FROM sanity_check.train"
 LABEL class
 INTO sqlflow_models.my_dnn_model;
-`, modelDir, getDefaultSession())
+`, modelDir, database.GetSessionFromTestingDB())
 		a.True(goodStream(stream.ReadAll()))
 	})
 	a.NotPanics(func() {
@@ -50,7 +50,7 @@ INTO sqlflow_models.my_dnn_model;
 SELECT * FROM sanity_check.train
 TO PREDICT sanity_check.predict.class
 USING sqlflow_models.my_dnn_model;
-`, modelDir, getDefaultSession())
+`, modelDir, database.GetSessionFromTestingDB())
 		a.True(goodStream(stream.ReadAll()))
 	})
 	a.NotPanics(func() {
