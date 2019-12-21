@@ -50,35 +50,15 @@ def define_tf_flags():
 class FastPredict:
     def __init__(self, estimator, input_fn):
         self.estimator = estimator
-        self.first_run = True
-        self.closed = False
         self.input_fn = input_fn
 
-    def _create_generator(self):
-        while not self.closed:
-            yield self.next_features[0], self.next_features[1]
-
-    def predict(self, feature_batch):
-        self.next_features = feature_batch
-        if self.first_run:
-            self.batch_size = len(feature_batch)
-            self.predictions = self.estimator.predict(
-                input_fn=self.input_fn(self._create_generator))
-            self.first_run = False
-        elif self.batch_size != len(feature_batch):
-            raise ValueError("All batches must be of the same size. First-batch:" + str(self.batch_size) + " This-batch:" + str(len(feature_batch)))
-
-        results = []
-        for _ in range(self.batch_size):
-            results.append(next(self.predictions))
-        return results
-
-    def close(self):
-        self.closed = True
-        try:
-            next(self.predictions)
-        except Exception as e:
-            print("Exception in fast_predict. This is probably OK: %s" % e)
+    def predict(self, feature_and_label):
+        def inner_func():
+            # FIXME(tony): don't yield label
+            feature, label = feature_and_label[0], feature_and_label[1]
+            yield feature, label
+        predictions = self.estimator.predict(input_fn=self.input_fn(inner_func))
+        return [n for n in predictions]
 
 def pred(is_keras_model,
          datasource,
@@ -122,7 +102,6 @@ def pred(is_keras_model,
 
             gen = db_generator(conn.driver, conn, select,
                 feature_column_names, label_meta["feature_name"], feature_metas)
-                
             dataset = tf.data.Dataset.from_generator(gen, (tuple(feature_types), eval("tf.%s" % label_meta["dtype"])))
             ds_mapper = functools.partial(parse_sparse_feature, feature_column_names=feature_column_names, feature_metas=feature_metas)
             dataset = dataset.map(ds_mapper).batch(batch_size)
@@ -158,7 +137,6 @@ def pred(is_keras_model,
                 row.append(str(result))
                 w.write(row)
         del pred_dataset
-
     else:
         if is_pai:
             model_params["model_dir"] = FLAGS.checkpointDir
@@ -242,6 +220,5 @@ def pred(is_keras_model,
                     # regression predictions
                     row.append(str(list(result)[0]["predictions"][0]))
                 w.write(row)
-        fast_predictor.close()
 
     print("Done predicting. Predict table : %s" % result_table)

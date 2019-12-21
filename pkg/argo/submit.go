@@ -13,34 +13,7 @@
 
 package argo
 
-import (
-	"fmt"
-	"os/exec"
-	"regexp"
-)
-
 // Submit the Argo workflow and returns the workflow ID
 func Submit(argoFileName string) (string, error) {
-	// submit Argo YAML and fetch the workflow ID.
-	cmd := exec.Command("kubectl", "create", "-f", argoFileName)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return "", fmt.Errorf("submit Argo YAML error: %v, output: %s", err, string(output))
-	}
-
-	workflowID, err := getWorkflowID(string(output))
-	if err != nil {
-		return "", err
-	}
-	return workflowID, err
-}
-
-func getWorkflowID(output string) (string, error) {
-	reWorkflow := regexp.MustCompile(`.+/(.+) .+`)
-	wf := reWorkflow.FindStringSubmatch(string(output))
-	if len(wf) != 2 {
-		return "", fmt.Errorf("parse workflow ID error: %v", output)
-	}
-
-	return wf[1], nil
+	return k8sCreateResource(argoFileName)
 }

@@ -34,7 +34,7 @@ var envSubmitter = os.Getenv("SQLFLOW_submitter")
 
 var submitterRegistry = map[string](Submitter){
 	"default": &defaultSubmitter{},
-	// add submitters like alps, elasticdl
+	// TODO(typhoonzero): add submitters like alps, elasticdl
 }
 
 func submitter() Submitter {
