@@ -14,14 +14,17 @@
 package sql
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"sqlflow.org/sqlflow/pkg/database"
 )
 
 // We train a DNNClassifier on five data points and let it reaches 100 percent accuracy.
 // Then we do a prediction on the same data points. We expect the prediction accuracy
 // also be 100 percent.
 func TestConvergenceAndAccuracy(t *testing.T) {
+	testDB := database.GetTestingDBSingleton()
 	if testDB.driverName != "mysql" {
 		t.Skip("only run convergence test with MySQL")
 	}
