@@ -139,7 +139,6 @@ func createTestingMaxComputeDB() *DB {
 // log doesn't work.
 func assertNoErr(e error) {
 	if e != nil {
-		fmt.Println(e)
-		os.Exit(-1)
+		log.Fatal(e)
 	}
 }

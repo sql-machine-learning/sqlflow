@@ -29,7 +29,6 @@ const (
 )
 
 func goodStream(stream chan interface{}) (bool, string) {
-	fmt.Println("goodStream...")
 	lastResp := list.New()
 	keepSize := 10
 
