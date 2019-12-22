@@ -25,11 +25,11 @@ func TestGetTestingDBSingleton(t *testing.T) {
 
 	switch dbms := getEnv("SQLFLOW_TEST_DB", "mysql"); dbms {
 	case "mysql":
-		a.Equal(testingMySQLURL(), UnparseURL(db.DriverName, db.DataSourceName))
+		a.Equal(testingMySQLURL(), db.URL())
 	case "hive":
-		a.Equal(testingHiveURL(), UnparseURL(db.DriverName, db.DataSourceName))
+		a.Equal(testingHiveURL(), db.URL())
 	case "maxcompute":
-		a.Equal(testingMaxComputeURL(), UnparseURL(db.DriverName, db.DataSourceName))
+		a.Equal(testingMaxComputeURL(), db.URL())
 	default:
 		a.Fail("Unrecognized environment variable SQLFLOW_TEST_DB %s", dbms)
 	}
