@@ -15,4 +15,4 @@
 
 set -e
 wget https://iterm2.com/utilities/it2check -P /usr/local/bin/
-chmod +x  /usr/local/sbin/it2check
+chmod +x  /usr/local/bin/it2check
