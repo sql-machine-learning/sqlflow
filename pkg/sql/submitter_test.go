@@ -21,10 +21,8 @@ import (
 
 func TestSubmitterRegistry(t *testing.T) {
 	a := assert.New(t)
-	a.Equal(4, len(submitterRegistry))
+	a.Equal(2, len(submitterRegistry))
 	a.NotNil(submitterRegistry["pai"])
 	a.NotNil(submitterRegistry["default"])
-	a.NotNil(submitterRegistry["elasticdl"])
-	a.NotNil(submitterRegistry["alps"])
 	a.Equal(submitter(), submitterRegistry["default"])
 }

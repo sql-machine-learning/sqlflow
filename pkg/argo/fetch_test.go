@@ -14,7 +14,6 @@
 package argo
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -22,7 +21,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
 const (
@@ -98,116 +96,7 @@ func kubectlCreateFromYAML(content string) (string, error) {
 		return "", err
 	}
 	defer os.Remove(fileName)
-
-	cmd := exec.Command("kubectl", "create", "-f", fileName)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return "", fmt.Errorf("submitYAML error: %v\n%v", string(output), err)
-	}
-
-	return getWorkflowID(string(output))
-}
-
-func kubectlDeletePod(podID string) error {
-	cmd := exec.Command("kubectl", "delete", "pod", podID, "--ignore-not-found")
-	_, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("failed %s, %v", cmd, err)
-	}
-	return nil
-}
-
-func TestGetCurrentStepGroup(t *testing.T) {
-	if os.Getenv("SQLFLOW_TEST") != "workflow" {
-		t.Skip("argo: skip workflow tests")
-	}
-	a := assert.New(t)
-	output := []byte(testWorkflowDescription)
-	wf, err := parseWorkflowResource(output)
-	a.NoError(err)
-
-	stepGroupNames := []string{
-		"",
-		"steps-7lxxs-1184503397",
-		"steps-7lxxs-43875568",
-		"steps-7lxxs-43331115",
-		""}
-	for i := 0; i < len(stepGroupNames)-1; i++ {
-		currentStepGroup, err := getCurrentStepGroup(wf, pb.FetchToken{Job: &pb.Job{Id: "steps-7lxxs"}, StepId: stepGroupNames[i]})
-		a.NoError(err)
-		a.Equal(stepGroupNames[i+1], currentStepGroup)
-	}
-}
-
-func TestGetNextStepGroup(t *testing.T) {
-	if os.Getenv("SQLFLOW_TEST") != "workflow" {
-		t.Skip("argo: skip workflow tests")
-	}
-	a := assert.New(t)
-	output := []byte(testWorkflowDescription)
-	wf, err := parseWorkflowResource(output)
-	a.NoError(err)
-
-	stepGroupNames := []string{
-		"steps-7lxxs-1184503397",
-		"steps-7lxxs-43875568",
-		"steps-7lxxs-43331115",
-		""}
-	for i := 0; i < len(stepGroupNames)-1; i++ {
-		next, err := getNextStepGroup(wf, stepGroupNames[i])
-		a.NoError(err)
-		a.Equal(stepGroupNames[i+1], next)
-	}
-}
-
-func TestGetPodNameByStepGroup(t *testing.T) {
-	if os.Getenv("SQLFLOW_TEST") != "workflow" {
-		t.Skip("argo: skip workflow tests")
-	}
-	a := assert.New(t)
-	output := []byte(testWorkflowDescription)
-	wf, err := parseWorkflowResource(output)
-	a.NoError(err)
-
-	stepGroupNames := []string{
-		"steps-7lxxs-1184503397",
-		"steps-7lxxs-43875568",
-		"steps-7lxxs-43331115"}
-	podNames := []string{
-		"steps-7lxxs-2267726410",
-		"steps-7lxxs-1263033216",
-		"steps-7lxxs-1288663778"}
-	for i := 0; i < len(stepGroupNames); i++ {
-		podName, err := getPodNameByStepGroup(wf, stepGroupNames[i])
-		a.NoError(err)
-		a.Equal(podNames[i], podName)
-	}
-}
-
-func TestGetCurrentPodName(t *testing.T) {
-	if os.Getenv("SQLFLOW_TEST") != "workflow" {
-		t.Skip("argo: skip workflow tests")
-	}
-	a := assert.New(t)
-	output := []byte(testWorkflowDescription)
-	wf, err := parseWorkflowResource(output)
-	a.NoError(err)
-
-	stepIds := []string{
-		"",
-		"steps-7lxxs-1184503397",
-		"steps-7lxxs-43875568",
-		"steps-7lxxs-43331115"}
-	podNames := []string{
-		"steps-7lxxs-2267726410",
-		"steps-7lxxs-1263033216",
-		"steps-7lxxs-1288663778",
-		""}
-	for i := 0; i < len(stepIds); i++ {
-		currentPod, err := getCurrentPodName(wf, pb.FetchToken{Job: &pb.Job{Id: "steps-7lxxs"}, StepId: stepIds[i]})
-		a.NoError(err)
-		a.Equal(podNames[i], currentPod)
-	}
+	return k8sCreateResource(fileName)
 }
 
 func TestFetch(t *testing.T) {
@@ -217,20 +106,19 @@ func TestFetch(t *testing.T) {
 	a := assert.New(t)
 	workflowID, err := kubectlCreateFromYAML(stepYAML)
 	a.NoError(err)
-
-	token := NewFetchToken(pb.Job{Id: workflowID})
+	req := newFetchRequest(workflowID, "", "")
 	actualLogs := []string{}
 	for {
-		response, err := Fetch(token)
+		response, err := Fetch(req)
 		a.NoError(err)
 		for _, log := range response.Logs.Content {
 			actualLogs = append(actualLogs, log)
 		}
-		if isCompletePhasePB(response.Phase) && response.NewToken.NoMoreLog {
+		if response.Eof {
 			break
 		}
 		time.Sleep(time.Second)
-		token = *response.NewToken
+		req = response.UpdatedFetchSince
 	}
 
 	expectedLogs := []string{"hello1", "hello2", "hello3"}
@@ -274,7 +162,7 @@ func TestGetPodLogs(t *testing.T) {
 	a := assert.New(t)
 	podID, err := kubectlCreateFromYAML(podYAML)
 	a.NoError(err)
-	defer kubectlDeletePod(podID)
+	defer k8sDeletePod(podID)
 
 	err = waitUntilPodRunning(podID)
 	a.NoError(err)
