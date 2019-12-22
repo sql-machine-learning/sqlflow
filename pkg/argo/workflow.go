@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	wfv1 "github.com/argoproj/argo/pkg/apis/workflow/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 )
 
 func parseWorkflowResource(b []byte) (*wfv1.Workflow, error) {
@@ -25,11 +26,22 @@ func parseWorkflowResource(b []byte) (*wfv1.Workflow, error) {
 	return &wf, json.Unmarshal(b, &wf)
 }
 
-func isCompletedPhase(wf *wfv1.Workflow) bool {
-	return wf.Status.Phase == wfv1.NodeSucceeded ||
-		wf.Status.Phase == wfv1.NodeFailed ||
-		wf.Status.Phase == wfv1.NodeError ||
-		wf.Status.Phase == wfv1.NodeSkipped
+func parsePodResource(b []byte) (*corev1.Pod, error) {
+	wf := corev1.Pod{}
+	return &wf, json.Unmarshal(b, &wf)
+}
+
+func isPodCompleted(pod *corev1.Pod) bool {
+	return pod.Status.Phase == corev1.PodSucceeded ||
+		pod.Status.Phase == corev1.PodFailed
+}
+
+func isPodPending(pod *corev1.Pod) bool {
+	return pod.Status.Phase == corev1.PodPending
+}
+
+func isWorkflowPending(wf *wfv1.Workflow) bool {
+	return wf.Status.Phase == wfv1.NodePending
 }
 
 func getPodNameByStepGroup(wf *wfv1.Workflow, stepGroupName string) (string, error) {
@@ -44,6 +56,14 @@ func getPodNameByStepGroup(wf *wfv1.Workflow, stepGroupName string) (string, err
 		return "", fmt.Errorf("getPodNameByStepGroup: unexpected len(stepGroupNode.Children) 1 != %v", l)
 	}
 	return stepGroupNode.Children[0], nil
+}
+
+func getPodByStepGroup(wf *wfv1.Workflow, stepGroupName string) (*corev1.Pod, error) {
+	podName, err := getPodNameByStepGroup(wf, stepGroupName)
+	if err != nil {
+		return nil, err
+	}
+	return k8sReadPod(podName)
 }
 
 func getNextStepGroup(wf *wfv1.Workflow, current string) (string, error) {
@@ -79,27 +99,11 @@ func getFirstStepGroup(wf *wfv1.Workflow, workflowID string) (string, error) {
 	return stepNode.Children[0], nil
 }
 
-func getCurrentStepGroup(wf *wfv1.Workflow, workflowID, stepID string) (string, error) {
+func getStepGroup(wf *wfv1.Workflow, workflowID, stepID string) (string, error) {
 	if stepID == "" {
 		return getFirstStepGroup(wf, workflowID)
 	}
-	return getNextStepGroup(wf, stepID)
-}
-
-func getCurrentPodName(wf *wfv1.Workflow, workflowID, stepID string) (string, error) {
-	if err := checkNodeType(wfv1.NodeTypeSteps, wf.Status.Nodes[workflowID].Type); err != nil {
-		return "", fmt.Errorf("getPodNameByStepId error: %v", err)
-	}
-
-	stepGroupName, err := getCurrentStepGroup(wf, workflowID, stepID)
-	if err != nil {
-		return "", err
-	}
-	if stepGroupName == "" {
-		return "", nil
-	}
-
-	return getPodNameByStepGroup(wf, stepGroupName)
+	return stepID, nil
 }
 
 func checkNodeType(expected, actual wfv1.NodeType) error {

@@ -14,7 +14,6 @@
 package argo
 
 import (
-	"encoding/json"
 	"os"
 	"strings"
 	"testing"
@@ -35,9 +34,4 @@ func TestCreateResource(t *testing.T) {
 	id, err := k8sCreateResource(fileName)
 	a.NoError(err)
 	a.Equal(strings.HasPrefix(id, "sqlflow-pod-"), true)
-}
-
-func parsePodResource(b []byte) (*corev1.Pod, error) {
-	pod := corev1.Pod{}
-	return &pod, json.Unmarshal(b, &pod)
 }
