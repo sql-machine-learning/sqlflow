@@ -14,12 +14,12 @@
 package sql
 
 import (
-	"fmt"
 	"os"
 	"regexp"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/parser"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
 	"sqlflow.org/sqlflow/pkg/sql/testdata"
@@ -57,7 +57,7 @@ func TestCSVRegex(t *testing.T) {
 func TestFeatureDerivation(t *testing.T) {
 	a := assert.New(t)
 	// Prepare feature derivation test table in MySQL.
-	db, err := NewDB("mysql://root:root@tcp/?maxAllowedPacket=0")
+	db, err := database.OpenAndConnectDB("mysql://root:root@tcp/?maxAllowedPacket=0")
 	if err != nil {
 		a.Fail("error connect to mysql: %v", err)
 	}
@@ -182,7 +182,7 @@ func TestFeatureDerivationNoColumnClause(t *testing.T) {
 	}
 	a := assert.New(t)
 	// Prepare feature derivation test table in MySQL.
-	db, err := NewDB("mysql://root:root@tcp/?maxAllowedPacket=0")
+	db, err := database.OpenAndConnectDB("mysql://root:root@tcp/?maxAllowedPacket=0")
 	if err != nil {
 		a.Fail("error connect to mysql: %v", err)
 	}
@@ -215,7 +215,7 @@ func TestHiveFeatureDerivation(t *testing.T) {
 	}
 	a := assert.New(t)
 	trainStmt := &ir.TrainStmt{
-		DataSource:       fmt.Sprintf("%s://%s", testDB.driverName, testDB.dataSourceName),
+		DataSource:       database.GetTestingDBSingleton().URL(),
 		Select:           "select * from iris.train",
 		ValidationSelect: "select * from iris.test",
 		Estimator:        "xgboost.gbtree",

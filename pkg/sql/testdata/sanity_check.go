@@ -18,11 +18,11 @@ package testdata
 var SanityCheckSQL = `CREATE DATABASE IF NOT EXISTS sanity_check;
 DROP TABLE IF EXISTS sanity_check.train;
 CREATE TABLE sanity_check.train (
-	c0 float,
-	c1 float,
-	c2 float,
-	c3 float,
-	c4 float,
+	c0 int,
+	c1 int,
+	c2 int,
+	c3 int,
+	c4 int,
 	class int);
 INSERT INTO sanity_check.train VALUES
 (1, 0, 0, 0, 0, 0),
@@ -34,11 +34,11 @@ INSERT INTO sanity_check.train VALUES
 DROP TABLE IF EXISTS sanity_check.test;
 CREATE TABLE sanity_check.test (
 	id int,
-	c0 float,
-	c1 float,
-	c2 float,
-	c3 float,
-	c4 float,
+	c0 int,
+	c1 int,
+	c2 int,
+	c3 int,
+	c4 int,
 	class int);
 INSERT INTO sanity_check.test VALUES
 (0, 1, 0, 0, 0, 0, 0),

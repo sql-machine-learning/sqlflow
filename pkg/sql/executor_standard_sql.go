@@ -18,9 +18,11 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"sqlflow.org/sqlflow/pkg/database"
 )
 
-func runStandardSQL(wr *PipeWriter, slct string, db *DB) error {
+func runStandardSQL(wr *PipeWriter, slct string, db *database.DB) error {
 	if isQuery(slct) {
 		return runQuery(wr, slct, db)
 	}
@@ -46,7 +48,7 @@ func isQuery(slct string) bool {
 }
 
 // query runs slct and writes the retrieved rows into pipe wr.
-func runQuery(wr *PipeWriter, slct string, db *DB) error {
+func runQuery(wr *PipeWriter, slct string, db *database.DB) error {
 	defer func(startAt time.Time) {
 		log.Debugf("runQuery %v finished, elapsed:%v", slct, time.Since(startAt))
 	}(time.Now())
@@ -118,7 +120,7 @@ func parseRow(columns []string, columnTypes []*sql.ColumnType, rows *sql.Rows, w
 	return nil
 }
 
-func runExec(wr *PipeWriter, slct string, db *DB) error {
+func runExec(wr *PipeWriter, slct string, db *database.DB) error {
 	defer func(startAt time.Time) {
 		log.Debugf("runExec %v finished, elapsed:%v", slct, time.Since(startAt))
 	}(time.Now())

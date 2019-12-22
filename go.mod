@@ -1,6 +1,7 @@
 module sqlflow.org/sqlflow
 
 require (
+	github.com/BurntSushi/graphics-go v0.0.0-20160129215708-b43f31a4a966 // indirect
 	github.com/apache/thrift v0.13.0 // indirect
 	github.com/argoproj/argo v2.4.3+incompatible
 	github.com/asaskevich/govalidator v0.0.0-20190424111038-f61b66f89f4a
@@ -15,8 +16,9 @@ require (
 	github.com/golang/protobuf v1.3.2
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/mattn/go-colorable v0.1.4 // indirect
-	github.com/mattn/go-isatty v0.0.10 // indirect
-	github.com/mattn/go-runewidth v0.0.6 // indirect
+	github.com/mattn/go-isatty v0.0.11 // indirect
+	github.com/mattn/go-runewidth v0.0.7 // indirect
+	github.com/mattn/go-sixel v0.0.1
 	github.com/olekukonko/tablewriter v0.0.1
 	github.com/peterh/liner v1.1.0 // indirect
 	github.com/pingcap/parser v0.0.0-20190613045206-37cc370a20a4
@@ -24,13 +26,14 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/pkg/term v0.0.0-20190109203006-aa71e9d9e942
 	github.com/sirupsen/logrus v1.4.2
+	github.com/soniakeys/quant v1.0.0 // indirect
 	github.com/spf13/cobra v0.0.5 // indirect
 	github.com/stretchr/testify v1.4.0
-	go.starlark.net v0.0.0-20191127154833-698e61cae82e // indirect
+	go.starlark.net v0.0.0-20191218235703-9fcb808a6221 // indirect
 	golang.org/x/arch v0.0.0-20191126211547-368ea8f32fff // indirect
 	golang.org/x/crypto v0.0.0-20190611184440-5c40567a22f8
 	golang.org/x/lint v0.0.0-20191125180803-fdd1cda4f05f // indirect
-	golang.org/x/sys v0.0.0-20191128015809-6d18c012aee9
+	golang.org/x/sys v0.0.0-20191220142924-d4481acd189f
 	google.golang.org/grpc v1.24.0
 	gopkg.in/yaml.v2 v2.2.7 // indirect
 	k8s.io/api v0.0.0-20191004102349-159aefb8556b
