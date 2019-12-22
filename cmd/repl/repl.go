@@ -33,6 +33,7 @@ import (
 	"github.com/mattn/go-sixel"
 	"github.com/olekukonko/tablewriter"
 	"golang.org/x/crypto/ssh/terminal"
+	"sqlflow.org/sqlflow/pkg/database"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql"
 )
@@ -192,7 +193,7 @@ func runStmt(stmt string, isTerminal bool, modelDir string, ds string) error {
 }
 
 func assertConnectable(ds string) {
-	db, err := sql.NewDB(ds)
+	db, err := database.OpenAndConnectDB(ds)
 	if err != nil {
 		log.Fatal(err)
 	}

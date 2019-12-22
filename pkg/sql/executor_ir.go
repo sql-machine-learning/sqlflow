@@ -22,6 +22,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"sqlflow.org/sqlflow/pkg/argo"
+	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/parser"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/couler"
@@ -45,9 +46,9 @@ type WorkflowJob struct {
 func RunSQLProgram(sqlProgram string, modelDir string, session *pb.Session) *PipeReader {
 	rd, wr := Pipe()
 	go func() {
-		var db *DB
+		var db *database.DB
 		var err error
-		if db, err = NewDB(session.DbConnStr); err != nil {
+		if db, err = database.OpenAndConnectDB(session.DbConnStr); err != nil {
 			wr.Write(fmt.Errorf("create DB failed: %v", err))
 			log.Errorf("create DB failed: %v", err)
 		}
@@ -128,7 +129,7 @@ func SubmitWorkflow(sqlProgram string, modelDir string, session *pb.Session) *Pi
 }
 
 func submitWorkflow(wr *PipeWriter, sqlProgram string, modelDir string, session *pb.Session) error {
-	driverName, dataSourceName, err := SplitDataSource(session.DbConnStr)
+	driverName, dataSourceName, err := database.ParseURL(session.DbConnStr)
 	if err != nil {
 		return err
 	}
@@ -182,8 +183,8 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, modelDir string, session 
 	})
 }
 
-func runSQLProgram(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, session *pb.Session) error {
-	sqls, err := parser.Parse(db.driverName, sqlProgram)
+func runSQLProgram(wr *PipeWriter, sqlProgram string, db *database.DB, modelDir string, session *pb.Session) error {
+	sqls, err := parser.Parse(db.DriverName, sqlProgram)
 	if err != nil {
 		return err
 	}
@@ -197,7 +198,7 @@ func runSQLProgram(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, s
 	// which depends on the execution of create table some_table as (select ...);.
 	for _, sql := range sqls {
 		var r ir.SQLStatement
-		connStr := fmt.Sprintf("%s://%s", db.driverName, db.dataSourceName)
+		connStr := db.URL()
 		if parser.IsExtendedSyntax(sql) {
 			if sql.Train {
 				r, err = generateTrainStmtWithInferredColumns(sql.SQLFlowSelectStmt, connStr)
@@ -213,6 +214,7 @@ func runSQLProgram(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, s
 		if err != nil {
 			return err
 		}
+
 		r.SetOriginalSQL(sql.Original)
 		if e := runSingleSQLIR(wr, r, db, modelDir, session); e != nil {
 			return e
@@ -221,7 +223,7 @@ func runSQLProgram(wr *PipeWriter, sqlProgram string, db *DB, modelDir string, s
 	return nil
 }
 
-func runSingleSQLIR(wr *PipeWriter, sqlIR ir.SQLStatement, db *DB, modelDir string, session *pb.Session) (e error) {
+func runSingleSQLIR(wr *PipeWriter, sqlIR ir.SQLStatement, db *database.DB, modelDir string, session *pb.Session) (e error) {
 	startTime := time.Now().UnixNano()
 	var originalSQL string
 	defer func() {
@@ -243,7 +245,7 @@ func runSingleSQLIR(wr *PipeWriter, sqlIR ir.SQLStatement, db *DB, modelDir stri
 }
 
 // Create prediction table using the `PredictStmt`.
-func createPredictionTableFromIR(predStmt *ir.PredictStmt, db *DB, session *pb.Session) error {
+func createPredictionTableFromIR(predStmt *ir.PredictStmt, db *database.DB, session *pb.Session) error {
 	dropStmt := fmt.Sprintf("drop table if exists %s;", predStmt.ResultTable)
 	if _, e := db.Exec(dropStmt); e != nil {
 		return fmt.Errorf("failed executing %s: %q", dropStmt, e)
@@ -266,7 +268,7 @@ func createPredictionTableFromIR(predStmt *ir.PredictStmt, db *DB, session *pb.S
 	labelColumnType := ""
 	fmt.Fprintf(&b, "create table %s (", predStmt.ResultTable)
 	for idx, colType := range fts {
-		stype, e := fieldType(db.driverName, colType)
+		stype, e := fieldType(db.DriverName, colType)
 		if e != nil {
 			return e
 		}
@@ -289,11 +291,11 @@ func createPredictionTableFromIR(predStmt *ir.PredictStmt, db *DB, session *pb.S
 		// NOTE(typhoonzero): Clustering model may not have label in select statement, default use INT type
 		labelColumnType = "INT"
 	}
-	stype, e := fieldType(db.driverName, labelColumnType)
+	stype, e := fieldType(db.DriverName, labelColumnType)
 	if e != nil {
 		return e
 	}
-	if db.driverName == "hive" {
+	if db.DriverName == "hive" {
 		fmt.Fprintf(&b, "%s %s) ROW FORMAT DELIMITED FIELDS TERMINATED BY \"\\001\" STORED AS TEXTFILE;", labelColumnName, stype)
 	} else {
 		fmt.Fprintf(&b, "%s %s);", labelColumnName, stype)
@@ -306,7 +308,7 @@ func createPredictionTableFromIR(predStmt *ir.PredictStmt, db *DB, session *pb.S
 	return nil
 }
 
-func loadModelMeta(pr *parser.SQLFlowSelectStmt, db *DB, cwd, modelDir, modelName string) (*parser.SQLFlowSelectStmt, error) {
+func loadModelMeta(pr *parser.SQLFlowSelectStmt, db *database.DB, cwd, modelDir, modelName string) (*parser.SQLFlowSelectStmt, error) {
 	var m *model
 	var e error
 	modelURI := modelName
@@ -320,7 +322,7 @@ func loadModelMeta(pr *parser.SQLFlowSelectStmt, db *DB, cwd, modelDir, modelNam
 	}
 	// Parse the training SELECT statement used to train
 	// the model for the prediction.
-	tr, e := parser.ParseOneStatement(db.driverName, m.TrainSelect)
+	tr, e := parser.ParseOneStatement(db.DriverName, m.TrainSelect)
 	if e != nil {
 		return nil, fmt.Errorf("parse: TrainSelect %v raise %v", m.TrainSelect, e)
 	}

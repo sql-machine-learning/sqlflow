@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	pb "sqlflow.org/sqlflow/pkg/proto"
+	"sqlflow.org/sqlflow/pkg/database"
 )
 
 const (
@@ -35,11 +35,13 @@ func goodStream(stream chan interface{}) (bool, string) {
 	for rsp := range stream {
 		switch rsp.(type) {
 		case error:
-			var s []string
+			var ss []string
 			for e := lastResp.Front(); e != nil; e = e.Next() {
-				s = append(s, e.Value.(string))
+				if s, ok := e.Value.(string); ok {
+					ss = append(ss, s)
+				}
 			}
-			return false, strings.Join(s, "\n")
+			return false, fmt.Sprintf("%v: %s", rsp, strings.Join(ss, "\n"))
 		}
 		lastResp.PushBack(rsp)
 		if lastResp.Len() > keepSize {
@@ -56,7 +58,7 @@ func TestStandardSQL(t *testing.T) {
 		rd, wr := Pipe()
 		go func() {
 			defer wr.Close()
-			e := runStandardSQL(wr, testSelectIris, testDB)
+			e := runStandardSQL(wr, testSelectIris, database.GetTestingDBSingleton())
 			a.NoError(e)
 		}()
 		a.True(goodStream(rd.ReadAll()))
@@ -68,7 +70,7 @@ func TestStandardSQL(t *testing.T) {
 		rd, wr := Pipe()
 		go func() {
 			defer wr.Close()
-			e := runStandardSQL(wr, testStandardExecutiveSQLStatement, testDB)
+			e := runStandardSQL(wr, testStandardExecutiveSQLStatement, database.GetTestingDBSingleton())
 			a.NoError(e)
 		}()
 		a.True(goodStream(rd.ReadAll()))
@@ -77,7 +79,7 @@ func TestStandardSQL(t *testing.T) {
 		rd, wr := Pipe()
 		go func() {
 			defer wr.Close()
-			e := runStandardSQL(wr, "SELECT * FROM iris.iris_empty LIMIT 10;", testDB)
+			e := runStandardSQL(wr, "SELECT * FROM iris.iris_empty LIMIT 10;", database.GetTestingDBSingleton())
 			a.NoError(e)
 		}()
 		stat, _ := goodStream(rd.ReadAll())
@@ -87,8 +89,7 @@ func TestStandardSQL(t *testing.T) {
 
 func TestSQLLexerError(t *testing.T) {
 	a := assert.New(t)
-	ds := fmt.Sprintf("%s://%s", testDB.driverName, testDB.dataSourceName)
-	stream := RunSQLProgram("SELECT * FROM ``?[] AS WHERE LIMIT;", "", &pb.Session{DbConnStr: ds})
+	stream := RunSQLProgram("SELECT * FROM ``?[] AS WHERE LIMIT;", "", database.GetSessionFromTestingDB())
 	a.False(goodStream(stream.ReadAll()))
 }
 
