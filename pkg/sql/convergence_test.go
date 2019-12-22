@@ -14,15 +14,18 @@
 package sql
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"sqlflow.org/sqlflow/pkg/database"
 )
 
 // We train a DNNClassifier on five data points and let it reaches 100 percent accuracy.
 // Then we do a prediction on the same data points. We expect the prediction accuracy
 // also be 100 percent.
 func TestConvergenceAndAccuracy(t *testing.T) {
-	if testDB.driverName != "mysql" {
+	testDB := database.GetTestingDBSingleton()
+	if testDB.DriverName != "mysql" {
 		t.Skip("only run convergence test with MySQL")
 	}
 	a := assert.New(t)
@@ -39,7 +42,7 @@ WITH
 	validation.select="SELECT * FROM sanity_check.train"
 LABEL class
 INTO sqlflow_models.my_dnn_model;
-`, modelDir, getDefaultSession())
+`, modelDir, database.GetSessionFromTestingDB())
 		a.True(goodStream(stream.ReadAll()))
 	})
 	a.NotPanics(func() {
@@ -47,7 +50,7 @@ INTO sqlflow_models.my_dnn_model;
 SELECT * FROM sanity_check.train
 TO PREDICT sanity_check.predict.class
 USING sqlflow_models.my_dnn_model;
-`, modelDir, getDefaultSession())
+`, modelDir, database.GetSessionFromTestingDB())
 		a.True(goodStream(stream.ReadAll()))
 	})
 	a.NotPanics(func() {

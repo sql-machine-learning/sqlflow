@@ -20,6 +20,7 @@ import (
 	"strconv"
 	"strings"
 
+	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/parser"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
@@ -113,7 +114,7 @@ func generateTrainStmt(slct *parser.SQLFlowSelectStmt, connStr string) (*ir.Trai
 }
 
 func generateTrainStmtByModel(slct *parser.SQLFlowSelectStmt, connStr, cwd, modelDir, model string) (*ir.TrainStmt, error) {
-	db, err := open(connStr)
+	db, err := database.OpenDB(connStr)
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +127,7 @@ func generateTrainStmtByModel(slct *parser.SQLFlowSelectStmt, connStr, cwd, mode
 	return generateTrainStmtWithInferredColumns(slctWithTrain, connStr)
 }
 
-func verifyIRWithTrainStmt(sqlir ir.SQLStatement, db *DB) error {
+func verifyIRWithTrainStmt(sqlir ir.SQLStatement, db *database.DB) error {
 	var selectStmt string
 	var trainStmt *ir.TrainStmt
 	switch s := sqlir.(type) {
@@ -208,8 +209,8 @@ func generatePredictStmt(slct *parser.SQLFlowSelectStmt, connStr string, modelDi
 	}
 
 	if getTrainStmtFromModel {
-		// FIXME(tony): change the function signature to use *DB
-		db, err := NewDB(connStr)
+		// FIXME(tony): change the function signature to use *database.DB
+		db, err := database.OpenAndConnectDB(connStr)
 		if err != nil {
 			return nil, err
 		}
@@ -252,8 +253,8 @@ func generateAnalyzeStmt(slct *parser.SQLFlowSelectStmt, connStr, modelDir strin
 	}
 
 	if getTrainStmtFromModel {
-		// FIXME(tony): change the function signature to use *DB
-		db, err := NewDB(connStr)
+		// FIXME(tony): change the function signature to use *database.DB
+		db, err := database.OpenAndConnectDB(connStr)
 		if err != nil {
 			return nil, err
 		}

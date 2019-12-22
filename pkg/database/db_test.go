@@ -11,27 +11,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sqlfs
+package database
 
 import (
-	"fmt"
-	"math/rand"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"sqlflow.org/sqlflow/pkg/database"
 )
 
-func TestCreateHasDropTable(t *testing.T) {
-	createSQLFSTestingDatabaseOnce.Do(createSQLFSTestingDatabase)
-	db := database.GetTestingDBSingleton()
-
+func TestDatabaseParseURL(t *testing.T) {
 	a := assert.New(t)
-
-	tbl := fmt.Sprintf("%s.unittest%d", testDatabaseName, rand.Int())
-	a.NoError(createTable(db.DB, db.DriverName, tbl))
-	has, e := hasTable(db.DB, tbl)
+	ds := "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
+	driver, dataSource, e := ParseURL(ds)
+	a.EqualValues(driver, "mysql")
+	a.EqualValues(dataSource, "root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0")
 	a.NoError(e)
-	a.True(has)
-	a.NoError(dropTable(db.DB, tbl))
 }

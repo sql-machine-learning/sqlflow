@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strings"
 
+	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/parser"
 )
 
@@ -56,7 +57,7 @@ func decomp(ident string) (tbl string, fld string) {
 // verify checks the standard SELECT part is syntactically and logically legal.
 //
 // It returns a fieldTypes describing types of fields in SELECT.
-func verify(q string, db *DB) (fieldTypes, error) {
+func verify(q string, db *database.DB) (fieldTypes, error) {
 	rows, err := db.Query(q)
 	if err != nil {
 		return nil, err
@@ -91,7 +92,7 @@ func verify(q string, db *DB) (fieldTypes, error) {
 
 // getColumnTypes is quiet like verify but accept a SQL string as input, and returns
 // an ordered list of the field types.
-func getColumnTypes(slct string, db *DB) ([]string, []string, error) {
+func getColumnTypes(slct string, db *database.DB) ([]string, []string, error) {
 	rows, err := db.Query(slct)
 	if err != nil {
 		return nil, nil, err
@@ -125,7 +126,7 @@ func getColumnTypes(slct string, db *DB) ([]string, []string, error) {
 
 // Check train and pred clause uses has the same feature columns
 // 1. every column field in the training clause is selected in the pred clause, and they are of the same type
-func verifyColumnNameAndType(trainParsed, predParsed *parser.SQLFlowSelectStmt, db *DB) error {
+func verifyColumnNameAndType(trainParsed, predParsed *parser.SQLFlowSelectStmt, db *database.DB) error {
 	trainFields, e := verify(trainParsed.StandardSelect.String(), db)
 	if e != nil {
 		return e
