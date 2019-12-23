@@ -32,7 +32,7 @@ Jupyter Notebook          ---(SQL statements)-->       SQLFlow gRPC server
 (SQLFlow magic command)   <--(a stream of messages)--
 ```
 
-The protobuf definition of the gRPC service is at [/server/proto/sqlflow.proto](https://github.com/sql-machine-learning/sqlflow/tree/develop/pkg/server/proto/sqlflow.proto).  The return of the method `SQLFlow.Run` is a stream of `Reponse`s, where each represents either a table header, a row, or a log message.  The header and rows are usually from a standard SQL statement, for example, SELECT or DESCRIBE, and the log messages are usually from the running of a generated Python program.
+The protobuf definition of the gRPC service is at [/server/proto/sqlflow.proto](https://github.com/sql-machine-learning/sqlflow/tree/develop/pkg/server/proto/sqlflow.proto).  The return of the method `SQLFlow.Run` is a stream of `Response`s, where each represents either a table header, a row, or a log message.  The header and rows are usually from a standard SQL statement, for example, SELECT or DESCRIBE, and the log messages are usually from the running of a generated Python program.
 
 ### SQLFlow in the gRPC Server
 

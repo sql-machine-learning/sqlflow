@@ -92,9 +92,9 @@ The above statement will give a better result like:
 
 However, DNNs are highly expressive models, for our tiny dataset, we still have a lot of room for improvement.
 
-Our second *performance improvement trial* is to enlarge the [learning rate](https://en.wikipedia.org/wiki/Learning_rate) of the underlying optimizer of `DNNClassifier` to speed up the learning process. Optimizers and the learning rate are the the most important hyperparameters in DNNs. The default optimizer of `DNNClassifier` is [Adagrad](https://en.wikipedia.org/wiki/Stochastic_gradient_descent#AdaGrad) with a default learning rate of 0.001.
+Our second *performance improvement trial* is to enlarge the [learning rate](https://en.wikipedia.org/wiki/Learning_rate) of the underlying optimizer of `DNNClassifier` to speed up the learning process. Optimizers and the learning rate are the the most important hyperparameters in DNNs. The default optimizer of `DNNClassifier` is [AdaGrad](https://en.wikipedia.org/wiki/Stochastic_gradient_descent#AdaGrad) with a default learning rate of 0.001.
 
-Theoretically speaking, the learning rate of Adagrad should be set as large as possible, but no larger. Practically speaking, a slightly larger learning rate always makes Adagrad perform slightly better as long as the [dying neuron problem](https://en.wikipedia.org/wiki/Rectifier_(neural_networks)#Potential_problems) doesn't arise. Let us increase the learning rate by 10 times:
+Theoretically speaking, the learning rate of AdaGrad should be set as large as possible, but no larger. Practically speaking, a slightly larger learning rate always makes AdaGrad perform slightly better as long as the [dying neuron problem](https://en.wikipedia.org/wiki/Rectifier_(neural_networks)#Potential_problems) doesn't arise. Let us increase the learning rate by 10 times:
 
 ```sql
 %%sqlflow
