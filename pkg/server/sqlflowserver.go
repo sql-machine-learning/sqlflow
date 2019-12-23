@@ -33,16 +33,20 @@ import (
 	sf "sqlflow.org/sqlflow/pkg/sql"
 )
 
-// NewServer returns a server instance
-func NewServer(run func(string, string, *pb.Session) *sf.PipeReader,
-	modelDir string) *Server {
-	return &Server{run: run, modelDir: modelDir}
-}
-
 // Server is the instance will be used to connect to DB and execute training
 type Server struct {
-	run      func(sql string, modelDir string, session *pb.Session) *sf.PipeReader
-	modelDir string
+	// TODO(typhoonzero): should pass `Server` struct to run function, so that we can get
+	// server-side configurations together with client side session in the run context.
+	// To do this we need to refactor current pkg structure, so that we will not have circular dependency.
+	run        func(sql string, modelDir string, isArgoMode bool, session *pb.Session) *sf.PipeReader
+	modelDir   string
+	isArgoMode bool
+}
+
+// NewServer returns a server instance
+func NewServer(run func(string, string, bool, *pb.Session) *sf.PipeReader,
+	modelDir string, isArgoMode bool) *Server {
+	return &Server{run: run, modelDir: modelDir, isArgoMode: isArgoMode}
 }
 
 // Fetch implements `rpc Fetch (Job) returns(JobStatus)`
@@ -57,7 +61,7 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 	if err != nil {
 		return err
 	}
-	rd := s.run(req.Sql, s.modelDir, req.Session)
+	rd := s.run(req.Sql, s.modelDir, s.isArgoMode, req.Session)
 	defer rd.Close()
 
 	for r := range rd.ReadAll() {

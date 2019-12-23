@@ -19,8 +19,8 @@ type wrapperFiller struct {
 	ModelName        string
 	NumPS            int
 	NumWorkers       int // num_workers > 1 indicates we are running distributed training.
-	PAIDatabase      string
-	PAITable         string
+	PAITrainTable    string
+	PAIValidateTable string
 	OSSCheckpointDir string // uri for PAI to save checkpoints on OSS, e.g. oss://bucket/dir/?role_arn=xxx&host=xxx
 }
 

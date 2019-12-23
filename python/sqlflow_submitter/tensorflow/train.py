@@ -94,7 +94,7 @@ def keras_train_and_save(estimator, model_params, save,
     classifier.save_weights(save, save_format="h5")
 
 def estimator_train_and_save(estimator, model_params, save,
-                             is_pai, FLAGS, pai_table,
+                             is_pai, FLAGS, pai_table, pai_val_table,
                              feature_column_names, feature_metas, label_meta,
                              datasource, select, validate_select,
                              batch_size, epochs, verbose,
@@ -104,7 +104,7 @@ def estimator_train_and_save(estimator, model_params, save,
     def train_input_fn():
         # FIXME(typhoonzero): find a way to cache to local file and avoid cache lockfile already exists issue.
         if is_pai:
-            train_dataset = pai_maxcompute_input_fn(select, datasource,
+            train_dataset = pai_maxcompute_input_fn(pai_table, datasource,
                 feature_column_names, feature_metas, label_meta,
                 len(FLAGS.worker_hosts), FLAGS.task_index)
         else:
@@ -126,7 +126,7 @@ def estimator_train_and_save(estimator, model_params, save,
             eval_hooks = [PrintStatusHook("eval", every_n_iter=log_every_n_iter)]
         def validate_input_fn():
             if is_pai:
-                validate_dataset = pai_maxcompute_input_fn(pai_table, datasource,
+                validate_dataset = pai_maxcompute_input_fn(pai_val_table, datasource,
                     feature_column_names, feature_metas, label_meta,
                     len(FLAGS.worker_hosts), FLAGS.task_index)
             else:
@@ -160,7 +160,8 @@ def train(is_keras_model,
           save_checkpoints_steps=100,
           log_every_n_iter=10,
           is_pai=False,
-          pai_table=""):
+          pai_table="",
+          pai_val_table=""):
     if is_keras_model:
         if verbose == 1:
             # show keras training progress

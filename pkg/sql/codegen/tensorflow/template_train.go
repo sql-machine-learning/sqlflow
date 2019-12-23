@@ -30,6 +30,7 @@ type trainFiller struct {
 	Save              string
 	IsPAI             bool
 	PAITrainTable     string
+	PAIValidateTable  string
 }
 
 const tfTrainTemplateText = `
@@ -97,5 +98,6 @@ train(is_keras_model="{{.IsKerasModel}}" == "true",
     save_checkpoints_steps={{index .TrainParams "save_checkpoints_steps" | attrToPythonValue}},
     log_every_n_iter={{index .TrainParams "log_every_n_iter" | attrToPythonValue}},
     is_pai="{{.IsPAI}}" == "true",
-    pai_table="{{.PAITrainTable}}")
+    pai_table="{{.PAITrainTable}}",
+    pai_val_table="{{.PAIValidateTable}}")
 `

@@ -323,19 +323,13 @@ func Train(trainStmt *ir.TrainStmt) (string, error) {
 	}
 
 	isKeras, estimatorStr := IsKerasModel(trainStmt.Estimator)
-	isPAI := os.Getenv("SQLFLOW_submitter") == "pai"
-	paiTable := ""
-	// TODO(typhoonzero): if isPAI, create two Couler steps
-	if isPAI {
-		fromRegex, err := regexp.Compile("FROM[\\s\\n]+([\\w\\.]*)")
-		if err != nil {
-			return "", err
-		}
-		matches := fromRegex.FindAllStringSubmatch(trainStmt.Select, -1)
-		if len(matches) != 1 {
-			return "", fmt.Errorf("only support simple SQL query, but got %s", trainStmt.Select)
-		}
-		paiTable = matches[0][1]
+
+	// Need to create tmp table for train/validate when using PAI
+	paiTrainTable := ""
+	paiValidateTable := ""
+	if trainStmt.NeedCreateTmpTable() && trainStmt.TmpTrainTable != "" {
+		paiTrainTable = trainStmt.TmpTrainTable
+		paiValidateTable = trainStmt.TmpValidateTable
 	}
 
 	filler := trainFiller{
@@ -351,8 +345,10 @@ func Train(trainStmt *ir.TrainStmt) (string, error) {
 		TrainParams:       trainParams,
 		ValidationParams:  validateParams,
 		Save:              "model_save",
-		IsPAI:             isPAI,
-		PAITrainTable:     paiTable,
+		// NOTE(typhoonzero): NeedCreateTmpTable will be set to true only when using PAI for now.
+		IsPAI:            trainStmt.NeedCreateTmpTable(),
+		PAITrainTable:    paiTrainTable,
+		PAIValidateTable: paiValidateTable,
 	}
 	var program bytes.Buffer
 	var trainTemplate = template.Must(template.New("Train").Funcs(template.FuncMap{

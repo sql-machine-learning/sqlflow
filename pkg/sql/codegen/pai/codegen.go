@@ -18,50 +18,14 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"text/template"
-
-	"sqlflow.org/gomaxcompute"
 
 	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
 
 const entryFile = "entry.py"
-
-func getTableFromSelect(dataSource, trainSelect string) (string, string, error) {
-	// FIXME(typhoonzero): copied from tensorflow/codegen.go, should remove this and use the temp table
-	// in the workflow
-	fromRegex, err := regexp.Compile("FROM[\\s\\n]+([\\w\\.]*)")
-	if err != nil {
-		return "", "", err
-	}
-	matches := fromRegex.FindAllStringSubmatch(trainSelect, -1)
-	if len(matches) != 1 {
-		return "", "", fmt.Errorf("only support simple SQL query, but got %s", trainSelect)
-	}
-	tableFull := matches[0][1]
-	database := ""
-	tableName := ""
-	tableParts := strings.Split(tableFull, ".")
-	if len(tableParts) == 2 {
-		database = tableParts[0]
-		tableName = tableParts[1]
-	} else {
-		dsParts := strings.Split(dataSource, "://")
-		if len(dsParts) != 2 {
-			return "", "", fmt.Errorf("error datasource format, should be maxcompute://u:p@uri, but got: %s", dataSource)
-		}
-		conf, err := gomaxcompute.ParseDSN(dsParts[1])
-		if err != nil {
-			return "", "", err
-		}
-		database = conf.Project
-		tableName = tableFull
-	}
-	return database, tableName, nil
-}
 
 func formatCkptDir(modelName string) (string, error) {
 	ossCkptDir := os.Getenv("SQLFLOW_OSS_CHECKPOINT_DIR")
@@ -79,16 +43,14 @@ func formatCkptDir(modelName string) (string, error) {
 }
 
 // wrapper generates a Python program for submit TensorFlow tasks to PAI.
-func wrapper(code, dataSource, modelName, cwd string, trainSelect string, numPS, numWrokers int) (string, error) {
+func wrapper(code, dataSource, modelName, cwd, tmpTrainTable, tmpValTable string, numPS, numWrokers int) (string, error) {
 	f, err := os.Create(filepath.Join(cwd, entryFile))
 	if err != nil {
 		return "", fmt.Errorf("Create python code failed")
 	}
 	f.WriteString(code)
 	f.Close()
-	// Create a temp table here if not using argo mode.
-	// In Argo mode the temp table will create the table in the training step.
-	database, tableName, err := getTableFromSelect(dataSource, trainSelect)
+
 	if err != nil {
 		return "", err
 	}
@@ -104,8 +66,8 @@ func wrapper(code, dataSource, modelName, cwd string, trainSelect string, numPS,
 		EntryFile:        entryFile,
 		NumPS:            numPS,
 		NumWorkers:       numWrokers,
-		PAIDatabase:      database,
-		PAITable:         tableName,
+		PAITrainTable:    tmpTrainTable,
+		PAIValidateTable: tmpValTable,
 		OSSCheckpointDir: ossCkptDir,
 	}
 	var program bytes.Buffer
@@ -154,7 +116,8 @@ func Train(ir *ir.TrainStmt, modelName, cwd string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return wrapper(program, ir.DataSource, modelName, cwd, ir.Select, numPS, numWorkers)
+	return wrapper(program, ir.DataSource, modelName, cwd,
+		ir.TmpTrainTable, ir.TmpValidateTable, numPS, numWorkers)
 }
 
 func tfTrainAndSave(ir *ir.TrainStmt, modelName string) (string, error) {
@@ -183,12 +146,13 @@ func tfTrainAndSave(ir *ir.TrainStmt, modelName string) (string, error) {
 }
 
 // Predict generates a Python program for train a TensorFlow model.
-func Predict(ir *ir.PredictStmt, modelName, cwd string) (string, error) {
+func Predict(ir *ir.PredictStmt, modelName, cwd string, isArgoMode bool) (string, error) {
 	program, err := tfLoadAndPredict(ir, modelName)
 	if err != nil {
 		return "", err
 	}
-	return wrapper(program, ir.DataSource, modelName, cwd, ir.Select, 0, 1)
+	return wrapper(program, ir.DataSource, modelName, cwd,
+		ir.Select, "", 0, 1)
 }
 
 func tfLoadAndPredict(ir *ir.PredictStmt, modelName string) (string, error) {

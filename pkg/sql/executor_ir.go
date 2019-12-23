@@ -223,14 +223,14 @@ func runSQLProgram(wr *PipeWriter, sqlProgram string, db *database.DB, modelDir 
 		}
 
 		r.SetOriginalSQL(sql.Original)
-		if e := runSingleSQLIR(wr, r, db, modelDir, session); e != nil {
+		if e := runSingleSQLIR(wr, r, db, modelDir, false, session); e != nil {
 			return e
 		}
 	}
 	return nil
 }
 
-func runSingleSQLIR(wr *PipeWriter, sqlIR ir.SQLStatement, db *database.DB, modelDir string, session *pb.Session) (e error) {
+func runSingleSQLIR(wr *PipeWriter, sqlIR ir.SQLStatement, db *database.DB, modelDir string, isArgoMode bool, session *pb.Session) (e error) {
 	startTime := time.Now().UnixNano()
 	var originalSQL string
 	defer func() {
@@ -244,7 +244,7 @@ func runSingleSQLIR(wr *PipeWriter, sqlIR ir.SQLStatement, db *database.DB, mode
 	}()
 	// TODO(typhoonzero): can run LogFeatureDerivationResult(wr, trainStmt) here to send
 	// feature derivation logs to client, yet we disable if for now so that it's less annoying.
-	if e := submitter().Setup(wr, db, modelDir, session); e != nil {
+	if e := submitter().Setup(wr, db, modelDir, isArgoMode, session); e != nil {
 		return e
 	}
 	defer submitter().Teardown()

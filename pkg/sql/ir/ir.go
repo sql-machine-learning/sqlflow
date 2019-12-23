@@ -122,6 +122,8 @@ type TrainStmt struct {
 	// NOTE(typhoonzero):
 	// Currently we CreateTmpTableFromSelect is set to true only when using PAI Tensorflow.
 	CreateTmpTableFromSelect bool
+	TmpTrainTable            string
+	TmpValidateTable         string
 }
 
 // Execute generates and executes code for TrainStmt
@@ -167,6 +169,7 @@ type PredictStmt struct {
 	// Whether to create a tmp table for predicting, like
 	// CREATE TABLE tmp AS ([ir.Select]).
 	CreateTmpTableFromSelect bool
+	TmpPredictTable          string
 }
 
 // Execute generates and executes code for PredictStmt

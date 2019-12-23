@@ -48,7 +48,7 @@ func submitter() Submitter {
 // Submitter extends ir.Executor
 type Submitter interface {
 	ir.Executor
-	Setup(*PipeWriter, *database.DB, string, *pb.Session) error
+	Setup(*PipeWriter, *database.DB, string, bool, *pb.Session) error
 	Teardown()
 	GetTrainStmtFromModel() bool
 }
@@ -93,17 +93,18 @@ func (cw *logChanWriter) Close() {
 }
 
 type defaultSubmitter struct {
-	Writer   *PipeWriter
-	Db       *database.DB
-	ModelDir string
-	Cwd      string
-	Session  *pb.Session
+	Writer     *PipeWriter
+	Db         *database.DB
+	ModelDir   string
+	Cwd        string
+	isArgoMode bool
+	Session    *pb.Session
 }
 
-func (s *defaultSubmitter) Setup(w *PipeWriter, db *database.DB, modelDir string, session *pb.Session) error {
+func (s *defaultSubmitter) Setup(w *PipeWriter, db *database.DB, modelDir string, isArgoMode bool, session *pb.Session) error {
 	// cwd is used to store train scripts and save output models.
 	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
-	s.Writer, s.Db, s.ModelDir, s.Cwd, s.Session = w, db, modelDir, cwd, session
+	s.Writer, s.Db, s.ModelDir, s.Cwd, s.isArgoMode, s.Session = w, db, modelDir, cwd, isArgoMode, session
 	return err
 }
 
