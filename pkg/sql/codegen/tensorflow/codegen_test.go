@@ -18,29 +18,18 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	pb "sqlflow.org/sqlflow/pkg/proto"
+	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
 
 func TestTrainCodegen(t *testing.T) {
 	a := assert.New(t)
-	tir := ir.MockTrainStmt("mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0", false)
+	tir := ir.MockTrainStmt(database.MockURL(), false)
 	_, err := Train(tir)
 	a.NoError(err)
 
 	pir := ir.MockPredStmt(tir)
-
-	sess := &pb.Session{
-		Token:            "",
-		DbConnStr:        "",
-		ExitOnSubmit:     false,
-		UserId:           "",
-		HiveLocation:     "/sqlflowtmp",
-		HdfsNamenodeAddr: "192.168.1.1:8020",
-		HdfsUser:         "sqlflow_admin",
-		HdfsPass:         "sqlflow_pass",
-	}
-	code, err := Pred(pir, sess)
+	code, err := Pred(pir, database.MockSession())
 	a.NoError(err)
 
 	r, _ := regexp.Compile(`hdfs_user="(.*)"`)
@@ -51,7 +40,7 @@ func TestTrainCodegen(t *testing.T) {
 
 func TestTrainWithOptimizer(t *testing.T) {
 	a := assert.New(t)
-	tir := ir.MockTrainStmt("mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0", false)
+	tir := ir.MockTrainStmt(database.MockURL(), false)
 	a.NotContains(tir.Attributes, "model.optimizer")
 	_, err := Train(tir)
 	a.NoError(err)
@@ -68,7 +57,7 @@ func TestTrainWithOptimizer(t *testing.T) {
 	a.Error(err)
 	a.Equal(tir.Attributes["model.optimizer"], "RMSprop()")
 
-	tir = ir.MockTrainStmt("mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0", false)
+	tir = ir.MockTrainStmt(database.MockURL(), false)
 	tir.Attributes["optimizer.learning_rate"] = 0.002
 	_, err = Train(tir)
 	a.NoError(err)

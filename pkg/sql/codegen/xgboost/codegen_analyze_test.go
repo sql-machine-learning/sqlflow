@@ -17,12 +17,13 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
 
 func TestAnalyze(t *testing.T) {
 	a := assert.New(t)
-	tir := ir.MockTrainStmt("mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0", true)
+	tir := ir.MockTrainStmt(database.MockURL(), true)
 	astmt := &ir.AnalyzeStmt{
 		DataSource: tir.DataSource,
 		Select:     "SELECT * FROM iris.train",

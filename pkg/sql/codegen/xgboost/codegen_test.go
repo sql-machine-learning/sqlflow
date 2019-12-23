@@ -18,7 +18,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	pb "sqlflow.org/sqlflow/pkg/proto"
+	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
 
@@ -29,22 +29,12 @@ func TestAttributes(t *testing.T) {
 
 func TestTrainAndPredict(t *testing.T) {
 	a := assert.New(t)
-	tir := ir.MockTrainStmt("mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0", true)
+	tir := ir.MockTrainStmt(database.MockURL(), true)
 	_, err := Train(tir)
 	a.NoError(err)
 
 	pir := ir.MockPredStmt(tir)
-	sess := &pb.Session{
-		Token:            "",
-		DbConnStr:        "",
-		ExitOnSubmit:     false,
-		UserId:           "",
-		HiveLocation:     "/sqlflowtmp",
-		HdfsNamenodeAddr: "192.168.1.1:8020",
-		HdfsUser:         "sqlflow_admin",
-		HdfsPass:         "sqlflow_pass",
-	}
-	code, err := Pred(pir, sess)
+	code, err := Pred(pir, database.MockSession())
 
 	r, _ := regexp.Compile(`hdfs_user='''(.*)'''`)
 	a.Equal(r.FindStringSubmatch(code)[1], "sqlflow_admin")

@@ -154,3 +154,22 @@ func GetSessionFromTestingDB() *proto.Session {
 		HdfsUser:     "",
 		HdfsPass:     ""}
 }
+
+// MockURL returns a valid database connection URL.
+func MockURL() string {
+	return testingMySQLURL()
+}
+
+// MockSession returns a mock session.
+func MockSession() *proto.Session {
+	return &proto.Session{
+		Token:            "",
+		DbConnStr:        "",
+		ExitOnSubmit:     false,
+		UserId:           "",
+		HiveLocation:     "/sqlflowtmp",
+		HdfsNamenodeAddr: "192.168.1.1:8020",
+		HdfsUser:         "sqlflow_admin",
+		HdfsPass:         "sqlflow_pass",
+	}
+}

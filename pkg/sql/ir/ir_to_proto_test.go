@@ -19,26 +19,14 @@ import (
 	"github.com/golang/protobuf/proto"
 
 	"github.com/stretchr/testify/assert"
+	"sqlflow.org/sqlflow/pkg/database"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
-func mockSession() *pb.Session {
-	return &pb.Session{
-		Token:            "",
-		DbConnStr:        "",
-		ExitOnSubmit:     false,
-		UserId:           "",
-		HiveLocation:     "/sqlflowtmp",
-		HdfsNamenodeAddr: "192.168.1.1:8020",
-		HdfsUser:         "sqlflow_admin",
-		HdfsPass:         "sqlflow_pass",
-	}
-}
-
 func TestTrainProto(t *testing.T) {
 	a := assert.New(t)
-	sampleTrainStmt := MockTrainStmt("mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0", false)
-	pbIR, err := TrainStmtToProto(sampleTrainStmt, mockSession())
+	sampleTrainStmt := MockTrainStmt(database.MockURL(), false)
+	pbIR, err := TrainStmtToProto(sampleTrainStmt, database.MockSession())
 	a.NoError(err)
 	pbtxt := proto.MarshalTextString(pbIR)
 	pbIRToTest := &pb.TrainStmt{}
@@ -56,9 +44,8 @@ func TestTrainProto(t *testing.T) {
 
 func TestPredictProto(t *testing.T) {
 	a := assert.New(t)
-	samplePredStmt := MockPredStmt(
-		MockTrainStmt("mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0", false))
-	pbIR, err := PredictStmtToProto(samplePredStmt, mockSession())
+	samplePredStmt := MockPredStmt(MockTrainStmt(database.MockURL(), false))
+	pbIR, err := PredictStmtToProto(samplePredStmt, database.MockSession())
 	a.NoError(err)
 	pbtxt := proto.MarshalTextString(pbIR)
 	pbIRToTest := &pb.PredictStmt{}
@@ -73,13 +60,13 @@ func TestPredictProto(t *testing.T) {
 func TestAnalyzeProto(t *testing.T) {
 	a := assert.New(t)
 	sampleAnalyzeStmt := &AnalyzeStmt{
-		DataSource: "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0",
+		DataSource: database.MockURL(),
 		Select:     "select * from iris.train;",
 		Attributes: make(map[string]interface{}), // empty attribute
 		Explainer:  "TreeExplainer",
-		TrainStmt:  MockTrainStmt("mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0", true),
+		TrainStmt:  MockTrainStmt(database.MockURL(), true),
 	}
-	pbIR, err := AnalyzeStmtToProto(sampleAnalyzeStmt, mockSession())
+	pbIR, err := AnalyzeStmtToProto(sampleAnalyzeStmt, database.MockSession())
 	a.NoError(err)
 	pbtxt := proto.MarshalTextString(pbIR)
 	pbIRToTest := &pb.AnalyzeStmt{}

@@ -14,7 +14,6 @@
 package sql
 
 import (
-	"os"
 	"regexp"
 	"testing"
 
@@ -56,14 +55,14 @@ func TestCSVRegex(t *testing.T) {
 
 func TestFeatureDerivation(t *testing.T) {
 	a := assert.New(t)
-	// Prepare feature derivation test table in MySQL.
-	db, err := database.OpenAndConnectDB("mysql://root:root@tcp/?maxAllowedPacket=0")
-	if err != nil {
-		a.Fail("error connect to mysql: %v", err)
+
+	db := database.GetTestingDBSingleton()
+	if db.DriverName != "mysql" {
+		t.Skip("Skip TestFeatureDerivation, which works only with mysql")
 	}
-	err = testdata.Popularize(db.DB, testdata.FeatureDerivationCaseSQL)
-	if err != nil {
-		a.Fail("error creating test data: %v", err)
+
+	if e := testdata.Popularize(db.DB, testdata.FeatureDerivationCaseSQL); e != nil {
+		a.Fail("TestFeatureDerivation %v", e)
 	}
 
 	normal := `select c1, c2, c3, c4, c5, c6, class from feature_derivation_case.train
@@ -74,7 +73,7 @@ func TestFeatureDerivation(t *testing.T) {
 
 	r, e := parser.LegacyParse(normal)
 	a.NoError(e)
-	trainStmt, e := generateTrainStmt(r, "mysql://root:root@tcp/?maxAllowedPacket=0")
+	trainStmt, e := generateTrainStmt(r, db.URL())
 	a.NoError(e)
 	e = InferFeatureColumns(trainStmt)
 	a.NoError(e)
@@ -143,7 +142,7 @@ func TestFeatureDerivation(t *testing.T) {
 
 	r, e = parser.LegacyParse(crossSQL)
 	a.NoError(e)
-	trainStmt, e = generateTrainStmt(r, "mysql://root:root@tcp/?maxAllowedPacket=0")
+	trainStmt, e = generateTrainStmt(r, db.URL())
 	a.NoError(e)
 	e = InferFeatureColumns(trainStmt)
 	a.NoError(e)
@@ -177,18 +176,14 @@ func TestFeatureDerivation(t *testing.T) {
 }
 
 func TestFeatureDerivationNoColumnClause(t *testing.T) {
-	if os.Getenv("SQLFLOW_TEST_DB") != "" && os.Getenv("SQLFLOW_TEST_DB") != "mysql" {
-		t.Skip("skip TestFeatureDerivationNoColumnClause for tests not using mysql")
+	db := database.GetTestingDBSingleton()
+	if db.DriverName != "mysql" {
+		t.Skip("Skip TestFeatureDerivationNoColumnClause which only works with mysql")
 	}
+
 	a := assert.New(t)
-	// Prepare feature derivation test table in MySQL.
-	db, err := database.OpenAndConnectDB("mysql://root:root@tcp/?maxAllowedPacket=0")
-	if err != nil {
-		a.Fail("error connect to mysql: %v", err)
-	}
-	err = testdata.Popularize(db.DB, testdata.IrisSQL)
-	if err != nil {
-		a.Fail("error creating test data: %v", err)
+	if e := testdata.Popularize(db.DB, testdata.IrisSQL); e != nil {
+		a.Fail("TestFeatureDerivationNoColumnClause %v", e)
 	}
 
 	normal := `select * from iris.train
@@ -198,7 +193,7 @@ func TestFeatureDerivationNoColumnClause(t *testing.T) {
 
 	r, e := parser.LegacyParse(normal)
 	a.NoError(e)
-	trainStmt, e := generateTrainStmt(r, "mysql://root:root@tcp/?maxAllowedPacket=0")
+	trainStmt, e := generateTrainStmt(r, db.URL())
 	a.NoError(e)
 	e = InferFeatureColumns(trainStmt)
 	a.NoError(e)
@@ -210,12 +205,13 @@ func TestFeatureDerivationNoColumnClause(t *testing.T) {
 }
 
 func TestHiveFeatureDerivation(t *testing.T) {
-	if os.Getenv("SQLFLOW_TEST_DB") != "hive" {
-		t.Skip("skip TestFeatureDerivationNoColumnClause for tests not using hive")
+	db := database.GetTestingDBSingleton()
+	if db.DriverName != "hive" {
+		t.Skip("Skip TestFeatureDerivationNoColumnClause which works only with hive")
 	}
 	a := assert.New(t)
 	trainStmt := &ir.TrainStmt{
-		DataSource:       database.GetTestingDBSingleton().URL(),
+		DataSource:       db.URL(),
 		Select:           "select * from iris.train",
 		ValidationSelect: "select * from iris.test",
 		Estimator:        "xgboost.gbtree",

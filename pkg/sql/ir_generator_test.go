@@ -20,8 +20,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/parser"
-	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
 
@@ -54,7 +54,7 @@ func TestGenerateTrainStmt(t *testing.T) {
 	r, e := parser.LegacyParse(normal)
 	a.NoError(e)
 
-	trainStmt, err := generateTrainStmt(r, "mysql://root:root@tcp(127.0.0.1:3306)/iris?maxAllowedPacket=0")
+	trainStmt, err := generateTrainStmt(r, database.MockURL())
 	a.NoError(err)
 	a.Equal("DNNClassifier", trainStmt.Estimator)
 	a.Equal("SELECT c1, c2, c3, c4\nFROM my_table", trainStmt.Select)
@@ -178,16 +178,18 @@ func TestGenerateTrainStmtModelZoo(t *testing.T) {
 	r, e := parser.LegacyParse(normal)
 	a.NoError(e)
 
-	trainStmt, err := generateTrainStmt(r, "mysql://root:root@tcp(127.0.0.1:3306)/iris?maxAllowedPacket=0")
+	trainStmt, err := generateTrainStmt(r, database.MockURL())
 	a.NoError(err)
 	a.Equal("a_data_scientist/regressors:v0.2", trainStmt.ModelImage)
 	a.Equal("MyDNNRegressor", trainStmt.Estimator)
 }
 
 func TestGeneratePredictStmt(t *testing.T) {
-	if getEnv("SQLFLOW_TEST_DB", "mysql") == "hive" {
-		t.Skip(fmt.Sprintf("%s: skip Hive test", getEnv("SQLFLOW_TEST_DB", "mysql")))
+	db := database.GetTestingDBSingleton()
+	if db.DriverName != "mysql" {
+		t.Skip("TestGeneratePredictStmt which works only with mysql")
 	}
+
 	a := assert.New(t)
 
 	predSQL := `SELECT * FROM iris.test
@@ -196,7 +198,6 @@ USING sqlflow_models.mymodel;`
 	r, e := parser.LegacyParse(predSQL)
 	a.NoError(e)
 
-	connStr := "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
 	// need to save a model first because predict SQL will read the train SQL
 	// from saved model
 	modelDir, e := ioutil.TempDir("/tmp", "sqlflow_models")
@@ -207,13 +208,13 @@ TO TRAIN DNNClassifier
 WITH model.n_classes=3, model.hidden_units=[10,20]
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
-INTO sqlflow_models.mymodel;`, modelDir, &pb.Session{DbConnStr: connStr})
+INTO sqlflow_models.mymodel;`, modelDir, database.GetSessionFromTestingDB())
 	a.True(goodStream(stream.ReadAll()))
 
-	predStmt, err := generatePredictStmt(r, connStr, modelDir, true)
+	predStmt, err := generatePredictStmt(r, db.URL(), modelDir, true)
 	a.NoError(err)
 
-	a.Equal(connStr, predStmt.DataSource)
+	a.Equal(db.URL(), predStmt.DataSource)
 	a.Equal("iris.predict", predStmt.ResultTable)
 	a.Equal("class", predStmt.TrainStmt.Label.GetFieldDesc()[0].Name)
 	a.Equal("DNNClassifier", predStmt.TrainStmt.Estimator)
@@ -223,11 +224,12 @@ INTO sqlflow_models.mymodel;`, modelDir, &pb.Session{DbConnStr: connStr})
 }
 
 func TestGenerateAnalyzeStmt(t *testing.T) {
-	if getEnv("SQLFLOW_TEST_DB", "mysql") != "mysql" {
-		t.Skip(fmt.Sprintf("%s: skip test", getEnv("SQLFLOW_TEST_DB", "mysql")))
+	db := database.GetTestingDBSingleton()
+	if db.DriverName != "mysql" {
+		t.Skip("Skip TestGenerateAnalyzeStmt which works only with mysql")
 	}
+
 	a := assert.New(t)
-	connStr := "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
 
 	modelDir, e := ioutil.TempDir("/tmp", "sqlflow_models")
 	a.Nil(e)
@@ -242,7 +244,7 @@ WITH
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.my_xgboost_model;
-`, modelDir, &pb.Session{DbConnStr: connStr})
+`, modelDir, database.GetSessionFromTestingDB())
 	a.NoError(e)
 	a.True(goodStream(stream.ReadAll()))
 
@@ -258,9 +260,9 @@ INTO sqlflow_models.my_xgboost_model;
 	`)
 	a.NoError(e)
 
-	AnalyzeStmt, e := generateAnalyzeStmt(pr, connStr, modelDir, true)
+	AnalyzeStmt, e := generateAnalyzeStmt(pr, db.URL(), modelDir, true)
 	a.NoError(e)
-	a.Equal(AnalyzeStmt.DataSource, connStr)
+	a.Equal(db.URL(), AnalyzeStmt.DataSource)
 	a.Equal(AnalyzeStmt.Explainer, "TreeExplainer")
 	a.Equal(len(AnalyzeStmt.Attributes), 3)
 	a.Equal(AnalyzeStmt.Attributes["shap_summary.sort"], true)
