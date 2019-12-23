@@ -14,8 +14,8 @@
 import tensorflow as tf
 
 # NOTE(typhoonzero): tf.estimator.LoggingTensorHook is only availble using
-# Tensorflow version > 2.0.
-
+# Tensorflow version >= 2.0.
+# PrintStatusHook will be used in tensorflow/train.py only if installed Tensorflow version >= 2.0.
 class PrintStatusHook(tf.estimator.LoggingTensorHook):
     def __init__(self, prefix="", every_n_iter=None, every_n_secs=None,
             at_end=False, formatter=None):
