@@ -39,7 +39,7 @@ func createSQLFSTestingDatabase() {
 	}
 }
 
-func TestWriterCreate(t *testing.T) {
+func TestSQLFSWriterCreate(t *testing.T) {
 	createSQLFSTestingDatabaseOnce.Do(createSQLFSTestingDatabase)
 	db := database.GetTestingDBSingleton()
 	a := assert.New(t)

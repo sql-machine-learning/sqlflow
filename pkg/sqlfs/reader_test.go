@@ -25,7 +25,7 @@ import (
 	"sqlflow.org/sqlflow/pkg/database"
 )
 
-func TestWriteAndRead(t *testing.T) {
+func TestSQLFSWriteAndRead(t *testing.T) {
 	a := assert.New(t)
 	const bufSize = 32 * 1024
 

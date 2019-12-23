@@ -22,7 +22,7 @@ import (
 	"sqlflow.org/sqlflow/pkg/database"
 )
 
-func TestCreateHasDropTable(t *testing.T) {
+func TestSQLFSCreateHasDropTable(t *testing.T) {
 	createSQLFSTestingDatabaseOnce.Do(createSQLFSTestingDatabase)
 	db := database.GetTestingDBSingleton()
 

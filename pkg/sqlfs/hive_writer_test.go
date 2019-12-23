@@ -35,7 +35,7 @@ func hasHDFSDir(hdfsPath string) bool {
 	return true
 }
 
-func TestNewHiveWriter(t *testing.T) {
+func TestSQLFSNewHiveWriter(t *testing.T) {
 	createSQLFSTestingDatabaseOnce.Do(createSQLFSTestingDatabase)
 	db := database.GetTestingDBSingleton()
 	a := assert.New(t)
@@ -59,7 +59,7 @@ func TestNewHiveWriter(t *testing.T) {
 	a.NoError(dropTable(db.DB, tbl))
 }
 
-func TestHiveWriterWriteAndRead(t *testing.T) {
+func TestSQLFSHiveWriterWriteAndRead(t *testing.T) {
 	createSQLFSTestingDatabaseOnce.Do(createSQLFSTestingDatabase)
 	db := database.GetTestingDBSingleton()
 	a := assert.New(t)
