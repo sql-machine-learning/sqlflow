@@ -29,7 +29,7 @@ You can use this Docker image for either local trying out or production deployme
 ## Connect to Your Own Database
 
 
-If you have your own database setup, below steps enables running a seperated
+If you have your own database setup, below steps enables running a separated
 SQLFlow server and Jupyter Notebook which connects to your own database service.
 
 For MySQL, please refer to [run_with_mysql](../run_with_mysql.md).

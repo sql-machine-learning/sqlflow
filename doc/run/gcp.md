@@ -14,7 +14,7 @@ This tutorial will walk you through the steps of:
 
 1. You need to have a valid Google Cloud Platform project ([instruction for creation](https://medium.com/google-cloud/how-to-create-cloud-platform-projects-using-the-google-cloud-platform-console-e6f2cb95b467))
    with [billing enabled](https://cloud.google.com/billing/docs/how-to/manage-billing-account).
-1. For your GPC project, you need to have [Kubernetes Engine API](https://console.cloud.google.com/apis/library/container.googleapis.com?q=Kunertenes),
+1. For your GPC project, you need to have [Kubernetes Engine API](https://console.cloud.google.com/apis/library/container.googleapis.com?q=Kubernetes),
    [Cloud SQL Admin API](https://console.cloud.google.com/apis/library/sqladmin.googleapis.com?q=Cloud%20SQL%20Admin)
    and [Service Networking API](https://console.cloud.google.com/apis/library/servicenetworking.googleapis.com?q=Service%20Networking)
    enabled.

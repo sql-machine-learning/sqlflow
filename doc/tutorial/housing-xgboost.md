@@ -66,7 +66,7 @@ To save the trained model, we can use `INTO clause` to specify a model name:
 INTO sqlflow_models.my_xgb_regression_model
 ```
 
-Second, let's use a standar SQL to fetch the traning data from table `boston.train`:
+Second, let's use a standard SQL to fetch the training data from table `boston.train`:
 
 ```
 SELECT * FROM boston.train
@@ -101,7 +101,7 @@ Than, we can specify the prediction result table by `TO PREDICT clause`:
 TO PREDICT boston.predict.medv
 ```
 
-And using a standar SQL to fetch the prediction data:
+And using a standard SQL to fetch the prediction data:
 
 ```
 SELECT * FROM boston.test

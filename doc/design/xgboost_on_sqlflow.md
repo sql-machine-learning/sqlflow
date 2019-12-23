@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This design explains how SQLFlow calls [XGBoost](https://xgboost.ai/) for training models and prediciton.
+This design explains how SQLFlow calls [XGBoost](https://xgboost.ai/) for training models and prediction.
 
 ## Usage
 
