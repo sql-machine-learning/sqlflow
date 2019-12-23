@@ -274,6 +274,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("TestShowDatabases", CaseShowDatabases)
 	t.Run("TestSelect", CaseSelect)
 	t.Run("TestTrainSQL", CaseTrainSQL)
+	t.Run("CaseTrainSQLWithMetrics", CaseTrainSQLWithMetrics)
 	t.Run("TestTextClassification", CaseTrainTextClassification)
 	t.Run("CaseTrainTextClassificationCustomLSTM", CaseTrainTextClassificationCustomLSTM)
 	t.Run("CaseTrainCustomModel", CaseTrainCustomModel)
@@ -369,6 +370,7 @@ func TestEnd2EndHive(t *testing.T) {
 	t.Run("TestShowDatabases", CaseShowDatabases)
 	t.Run("TestSelect", CaseSelect)
 	t.Run("TestTrainSQL", CaseTrainSQL)
+	t.Run("CaseTrainSQLWithMetrics", CaseTrainSQLWithMetrics)
 	t.Run("CaseTrainRegression", CaseTrainRegression)
 	t.Run("CaseTrainCustomModel", CaseTrainCustomModel)
 	t.Run("CaseTrainOptimizer", CaseTrainOptimizer)
@@ -724,6 +726,59 @@ FROM %s.%s LIMIT 5;`, caseDB, casePredictTable)
 		for ; nilCount < 4 && row[nilCount] == nil; nilCount++ {
 		}
 		a.False(nilCount == 4)
+	}
+}
+
+func CaseTrainSQLWithMetrics(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`
+	SELECT * FROM iris.train WHERE class!=2
+	TO TRAIN DNNClassifier
+	WITH
+		model.n_classes = 2,
+		model.hidden_units = [10, 10],
+		train.batch_size = 4,
+		validation.select = "SELECT * FROM iris.test WHERE class!=2"
+		validation.metrics = "Accuracy,AUC"
+	LABEL class
+	INTO sqlflow_models.mytest_model;
+	`, caseDB, caseTrainTable, caseDB, caseTestTable, caseInto)
+	_, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+
+	kerasTrainSQL := fmt.Sprintf(`
+	SELECT * FROM iris.train WHERE class!=2
+	TO TRAIN sqlflow_models.DNNClassifier
+	WITH
+		model.n_classes = 2,
+		model.hidden_units = [10, 10],
+		train.batch_size = 4,
+		validation.select = "SELECT * FROM iris.test"
+		validation.metrics = "Accuracy,AUC,Precision,Recall"
+	LABEL class
+	INTO %s;
+	`, caseDB, caseTrainTable, caseDB, caseTestTable, caseInto)
+	_, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+
+	regressionTrainSQL := fmt.Sprintf(`
+	SELECT * FROM housing.train
+	TO TRAIN DNNRegressor
+	WITH
+		model.hidden_units = [10, 10],
+		train.batch_size = 4,
+		validation.select = "SELECT * FROM housing.test"
+		validation.metrics = "MeanAbsoluteError,MeanAbsolutePercentageError,MeanSquaredError"
+	LABEL target
+	INTO sqlflow_models.myreg_model;
+	`, caseDB, caseTrainTable, caseDB, caseTestTable, caseInto)
+	_, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
 	}
 }
 
