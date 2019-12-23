@@ -16,9 +16,7 @@ package argo
 import (
 	"fmt"
 	"regexp"
-	"time"
 
-	wfv1 "github.com/argoproj/argo/pkg/apis/workflow/v1alpha1"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
@@ -45,38 +43,57 @@ func newFetchResponse(newReq *pb.FetchRequest, eof bool, logs []string) *pb.Fetc
 // Fetch fetches the workflow log and status,
 // design doc: https://github.com/sql-machine-learning/sqlflow/blob/develop/doc/design/argo_workflow_on_sqlflow.md
 func Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
-	// TODO(yancey1989): fetching running workflow logs
-	wf, err := waitUntilComplete(req)
+	wf, err := k8sReadWorkflow(req.Job.Id)
 	if err != nil {
 		return nil, err
 	}
 
-	stepGroupName, err := getCurrentStepGroup(wf, req.Job.Id, req.StepId)
-	if err != nil {
-		return nil, err
-	}
-	// End of fetching, no more logs
-	if stepGroupName == "" {
-		return newFetchResponse(newFetchRequest(req.Job.Id, "", ""), true, []string{}), nil
+	if isWorkflowPending(wf) {
+		return newFetchResponse(req, false, []string{}), nil
 	}
 
-	logOffset := req.GetLogOffset()
-	// if fetching the next step logs, reset the log offset
-	if stepGroupName != req.StepId {
-		logOffset = ""
-	}
-
-	podName, err := getCurrentPodName(wf, req.Job.Id, req.StepId)
+	stepGroupName, err := getStepGroup(wf, req.Job.Id, req.StepId)
 	if err != nil {
 		return nil, err
 	}
 
-	logs, newLogOffset, err := getPodLogs(podName, logOffset)
+	pod, err := getPodByStepGroup(wf, stepGroupName)
 	if err != nil {
 		return nil, err
 	}
 
-	return newFetchResponse(newFetchRequest(req.Job.Id, stepGroupName, newLogOffset), false, logs), nil
+	if isPodPending(pod) {
+		return newFetchResponse(req, false, []string{}), nil
+	}
+
+	logs, newLogOffset, err := getPodLogs(pod.Name, req.LogOffset)
+	if err != nil {
+		return nil, err
+	}
+
+	finishFetchingCurrentPod := false // true if finish fetching the current pod logs
+	eof := false                      // true if finish fetching the workflow logs
+
+	// finish fetching the current pod logs when:
+	// 1. the Pod is completed(succeed/failed/error).
+	// 2. no updated logs.
+	if req.LogOffset == newLogOffset && isPodCompleted(pod) {
+		finishFetchingCurrentPod = true
+	}
+
+	if finishFetchingCurrentPod {
+		if stepGroupName, err = getNextStepGroup(wf, stepGroupName); err != nil {
+			return nil, err
+		}
+		newLogOffset = ""
+
+		// set the EOF to true if no next step in the workflow
+		if stepGroupName == "" {
+			eof = true
+		}
+	}
+
+	return newFetchResponse(newFetchRequest(req.Job.Id, stepGroupName, newLogOffset), eof, logs), nil
 }
 
 func parseOffset(content string) (string, string, error) {
@@ -124,17 +141,4 @@ func getPodLogs(podName string, offset string) ([]string, string, error) {
 	}
 
 	return getOffsetAndContentFromLogs(logs, offset)
-}
-
-func waitUntilComplete(token *pb.FetchRequest) (wf *wfv1.Workflow, err error) {
-	for {
-		wf, err := k8sReadWorkflow(token.Job.Id)
-		if err != nil {
-			return nil, fmt.Errorf("waitUntilComplete: %v", err)
-		}
-		if isCompletedPhase(wf) {
-			return wf, nil
-		}
-		time.Sleep(time.Second)
-	}
 }

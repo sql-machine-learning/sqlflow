@@ -344,7 +344,7 @@ func TestUnmarshal(t *testing.T) {
 	a.Equal(wf.Status.Phase, wfv1.NodePhase("Succeeded"))
 }
 
-func TestGetCurrentStepGroup(t *testing.T) {
+func TestGetStepGroup(t *testing.T) {
 	if os.Getenv("SQLFLOW_TEST") != "workflow" {
 		t.Skip("argo: skip workflow tests")
 	}
@@ -357,12 +357,15 @@ func TestGetCurrentStepGroup(t *testing.T) {
 		"",
 		"steps-7lxxs-1184503397",
 		"steps-7lxxs-43875568",
-		"steps-7lxxs-43331115",
-		""}
+		"steps-7lxxs-43331115"}
 	for i := 0; i < len(stepGroupNames)-1; i++ {
-		currentStepGroup, err := getCurrentStepGroup(wf, "steps-7lxxs", stepGroupNames[i])
+		stepGroupName, err := getStepGroup(wf, "steps-7lxxs", stepGroupNames[i])
 		a.NoError(err)
-		a.Equal(stepGroupNames[i+1], currentStepGroup)
+		if stepGroupNames[i] == "" {
+			a.Equal(stepGroupNames[i+1], stepGroupName)
+		} else {
+			a.Equal(stepGroupNames[i], stepGroupName)
+		}
 	}
 }
 
@@ -408,31 +411,5 @@ func TestGetPodNameByStepGroup(t *testing.T) {
 		podName, err := getPodNameByStepGroup(wf, stepGroupNames[i])
 		a.NoError(err)
 		a.Equal(podNames[i], podName)
-	}
-}
-
-func TestGetCurrentPodName(t *testing.T) {
-	if os.Getenv("SQLFLOW_TEST") != "workflow" {
-		t.Skip("argo: skip workflow tests")
-	}
-	a := assert.New(t)
-	output := []byte(testWorkflowDescription)
-	wf, err := parseWorkflowResource(output)
-	a.NoError(err)
-
-	stepIds := []string{
-		"",
-		"steps-7lxxs-1184503397",
-		"steps-7lxxs-43875568",
-		"steps-7lxxs-43331115"}
-	podNames := []string{
-		"steps-7lxxs-2267726410",
-		"steps-7lxxs-1263033216",
-		"steps-7lxxs-1288663778",
-		""}
-	for i := 0; i < len(stepIds); i++ {
-		currentPod, err := getCurrentPodName(wf, "steps-7lxxs", stepIds[i])
-		a.NoError(err)
-		a.Equal(podNames[i], currentPod)
 	}
 }
