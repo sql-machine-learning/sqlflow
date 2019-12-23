@@ -103,13 +103,14 @@ func generateTrainStmt(slct *parser.SQLFlowSelectStmt, connStr string) (*ir.Trai
 		Select:     slct.StandardSelect.String(),
 		// TODO(weiguoz): This is a temporary implement. Specifying the
 		// validation dataset by keyword `VALIDATE` is the final solution.
-		ValidationSelect: vslct,
-		ModelImage:       modelImageName,
-		Estimator:        modelName,
-		Attributes:       attrList,
-		Features:         fcMap,
-		Label:            label,
-		Into:             slct.Save,
+		ValidationSelect:         vslct,
+		ModelImage:               modelImageName,
+		Estimator:                modelName,
+		Attributes:               attrList,
+		Features:                 fcMap,
+		Label:                    label,
+		Into:                     slct.Save,
+		CreateTmpTableFromSelect: os.Getenv("SQLFLOW_submitter") == "pai",
 	}, nil
 }
 

@@ -38,12 +38,8 @@ func Run(programIR ir.SQLProgram, session *pb.Session) (string, error) {
 	for _, sqlIR := range programIR {
 		sqlStmt := &sqlStatement{
 			OriginalSQL: sqlIR.GetOriginalSQL(), IsExtendedSQL: sqlIR.IsExtended(),
-			DockerImage: defaultDockerImage, SQLFlowSubmitter: os.Getenv("SQLFLOW_submitter")}
-		// FIXME(typhoonzero): use unified method to get submitter type.
-		// TODO(typhoonzero): for simple select statements like select * from table, do not create tmp table.
-		if t, ok := sqlIR.(*ir.TrainStmt); ok && sqlStmt.SQLFlowSubmitter == "pai" {
-			sqlStmt.CreateTmpTable, sqlStmt.Select = true, t.Select
-		}
+			DockerImage: defaultDockerImage, SQLFlowSubmitter: os.Getenv("SQLFLOW_submitter"),
+			CreateTmpTable: sqlIR.NeedCreateTmpTable(), Select: sqlIR.GetSelect()}
 		r.SQLStatements = append(r.SQLStatements, sqlStmt)
 	}
 	var program bytes.Buffer

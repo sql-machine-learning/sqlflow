@@ -86,6 +86,8 @@ func wrapper(code, dataSource, modelName, cwd string, trainSelect string, numPS,
 	}
 	f.WriteString(code)
 	f.Close()
+	// Create a temp table here if not using argo mode.
+	// In Argo mode the temp table will create the table in the training step.
 	database, tableName, err := getTableFromSelect(dataSource, trainSelect)
 	if err != nil {
 		return "", err
