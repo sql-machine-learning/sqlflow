@@ -28,7 +28,7 @@ func flushToBytes(output *bytes.Buffer) func([]byte) error {
 	}
 }
 
-func TestWriteWithSmallBuffer(t *testing.T) {
+func TestSQLFSWriteWithSmallBuffer(t *testing.T) {
 	a := assert.New(t)
 	var buf bytes.Buffer
 	f := newFlushWriteCloser(flushToBytes(&buf), noopWrapUp, 1)
@@ -37,7 +37,7 @@ func TestWriteWithSmallBuffer(t *testing.T) {
 	a.Equal("Hello World!", buf.String())
 }
 
-func TestWriteNothing(t *testing.T) {
+func TestSQLFSWriteNothing(t *testing.T) {
 	a := assert.New(t)
 	var buf bytes.Buffer
 	f := newFlushWriteCloser(flushToBytes(&buf), noopWrapUp, 1)
@@ -47,7 +47,7 @@ func TestWriteNothing(t *testing.T) {
 	a.Equal("", buf.String())
 }
 
-func TestWriteRecordSizeEqualToBufferSize(t *testing.T) {
+func TestSQLFSWriteRecordSizeEqualToBufferSize(t *testing.T) {
 	a := assert.New(t)
 	var buf bytes.Buffer
 	f := newFlushWriteCloser(flushToBytes(&buf), noopWrapUp, 1)

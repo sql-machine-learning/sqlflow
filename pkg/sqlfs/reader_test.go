@@ -17,60 +17,25 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
-	"os/exec"
-	"path"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	_ "sqlflow.org/gohive"
 	"sqlflow.org/sqlflow/pkg/database"
 )
 
-func hasHDFSDir(hdfsPath string) bool {
-	cmd := exec.Command("hdfs", "dfs", "-ls", hdfsPath)
-	out, _ := cmd.CombinedOutput()
-	if strings.Contains(string(out), "No such file or directory") {
-		return false
-	}
-	return true
-}
-
-func TestSQLFSNewHiveWriter(t *testing.T) {
-	createSQLFSTestingDatabaseOnce.Do(createSQLFSTestingDatabase)
-	db := database.GetTestingDBSingleton()
+func TestSQLFSWriteAndRead(t *testing.T) {
 	a := assert.New(t)
+	const bufSize = 32 * 1024
 
-	if db.DriverName != "hive" {
-		t.Skip("Skip as SQLFLOW_TEST_DB is not Hive")
-	}
-	t.Logf("Confirm executed with %s", db.DriverName)
-
-	tbl := fmt.Sprintf("%s%d", testDatabaseName, rand.Int())
-	w, e := newHiveWriter(db.DB, "/hivepath", tbl, "", "", bufSize)
-	a.NoError(e)
-	a.NotNil(w)
-
-	has, e1 := hasTable(db.DB, tbl)
-	a.NoError(e1)
-	a.True(has)
-
-	a.NoError(w.Close())
-	a.False(hasHDFSDir(path.Join("/hivepath", tbl)))
-	a.NoError(dropTable(db.DB, tbl))
-}
-
-func TestSQLFSHiveWriterWriteAndRead(t *testing.T) {
 	createSQLFSTestingDatabaseOnce.Do(createSQLFSTestingDatabase)
+
 	db := database.GetTestingDBSingleton()
-	a := assert.New(t)
 
-	if db.DriverName != "hive" {
-		t.Skip("Skip as SQLFLOW_TEST_DB is not Hive")
-	}
-	t.Logf("Confirm executed with %s", db.DriverName)
+	tbl := fmt.Sprintf("%s.unittest%d", testDatabaseName, rand.Int())
 
-	tbl := fmt.Sprintf("%s%d", testDatabaseName, rand.Int())
-	w, e := newHiveWriter(db.DB, "/hivepath", tbl, "", "", bufSize)
+	w, e := Create(db.DB, db.DriverName, tbl, database.GetSessionFromTestingDB())
 	a.NoError(e)
 	a.NotNil(w)
 
