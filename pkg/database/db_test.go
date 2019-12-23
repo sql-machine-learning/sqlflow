@@ -21,9 +21,8 @@ import (
 
 func TestDatabaseParseURL(t *testing.T) {
 	a := assert.New(t)
-	ds := "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
-	driver, dataSource, e := ParseURL(ds)
+	driver, dataSource, e := ParseURL(testingMySQLURL())
 	a.EqualValues(driver, "mysql")
-	a.EqualValues(dataSource, "root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0")
+	a.EqualValues(dataSource, testingMySQLURL())
 	a.NoError(e)
 }

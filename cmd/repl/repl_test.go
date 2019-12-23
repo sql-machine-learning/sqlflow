@@ -33,7 +33,6 @@ import (
 	"sqlflow.org/sqlflow/pkg/database"
 	irpb "sqlflow.org/sqlflow/pkg/proto"
 	sf "sqlflow.org/sqlflow/pkg/sql"
-	"sqlflow.org/sqlflow/pkg/sql/testdata"
 )
 
 // TODO(shendiaomo): end to end tests like sqlflowserver/main_test.go
@@ -243,28 +242,12 @@ func TestStdinParser(t *testing.T) {
 
 func TestStdinParseOnly(t *testing.T) {
 	a := assert.New(t)
-	dataSourceStr := ""
-	var testdb *database.DB
-	var err error
-	switch os.Getenv("SQLFLOW_TEST_DB") {
-	case "mysql":
-		dataSourceStr = "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
-		testdb, err = database.OpenAndConnectDB(dataSourceStr)
-		a.NoError(err)
-		defer testdb.Close()
-		err = testdata.Popularize(testdb.DB, testdata.IrisSQL)
-		a.NoError(err)
-	case "hive":
-		dataSourceStr = "hive://root:root@127.0.0.1:10000/iris?auth=NOSASL"
-		testdb, err = database.OpenAndConnectDB(dataSourceStr)
-		a.NoError(err)
-		defer testdb.Close()
-		err = testdata.Popularize(testdb.DB, testdata.IrisHiveSQL)
-		a.NoError(err)
-	default:
-		t.Skipf("skip TestStdinParseOnly for db type: %s", os.Getenv("SQLFLOW_TEST_DB"))
+
+	db := database.GetTestingDBSingleton()
+	if db.DriverName != "mysql" && db.DriverName != "hive" {
+		t.Skipf("Skip TestStdinParseOnly for %s", db.DriverName)
 	}
-	os.Setenv("SQLFLOW_DATASOURCE", dataSourceStr)
+	os.Setenv("SQLFLOW_DATASOURCE", db.URL())
 	var stdin bytes.Buffer
 	trainSQL := `SELECT *
 FROM iris.train
@@ -273,7 +256,7 @@ WITH model.n_classes = 3, model.hidden_units = [10, 20], train.batch_size = 10, 
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.mymodel;`
-	_, err = testdb.Exec("CREATE DATABASE IF NOT EXISTS sqlflow_models;")
+	_, err := db.Exec("CREATE DATABASE IF NOT EXISTS sqlflow_models;")
 	a.NoError(err)
 	stdin.Write([]byte(trainSQL))
 	pbtxt, err := parseSQLFromStdin(&stdin)
@@ -283,8 +266,7 @@ INTO sqlflow_models.mymodel;`
 	a.Equal("class", pbTrain.GetLabel().GetNc().GetFieldDesc().GetName())
 
 	// run one train SQL to save the model then test predict/analyze use the model
-	sess := &irpb.Session{DbConnStr: dataSourceStr}
-	stream := sf.RunSQLProgram(trainSQL, "", sess)
+	stream := sf.RunSQLProgram(trainSQL, "", database.GetSessionFromTestingDB())
 	lastResp := list.New()
 	keepSize := 10
 	for rsp := range stream.ReadAll() {
