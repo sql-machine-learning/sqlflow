@@ -32,7 +32,7 @@ if __name__ == "__main__":
         save="mymodel_keras",
         batch_size=1,
         epochs=3,
-        verbose=2)
+        verbose=0)
     pred(is_keras_model=True,
         datasource=datasource,
         estimator=sqlflow_models.DNNClassifier,
