@@ -30,6 +30,7 @@ import (
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 
+	"sqlflow.org/sqlflow/pkg/database"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	sf "sqlflow.org/sqlflow/pkg/sql"
 )
@@ -41,7 +42,6 @@ const (
 	testExtendedSQL            = "SELECT * FROM some_table TO TRAIN SomeModel;"
 	testExtendedSQLNoSemicolon = "SELECT * FROM some_table TO TRAIN SomeModel"
 	testExtendedSQLWithSpace   = "SELECT * FROM some_table TO TRAIN SomeModel; \n\t"
-	mockDBConnStr              = "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
 )
 
 var testServerAddress string
@@ -99,7 +99,7 @@ func createRudeClient() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	_, err := c.Run(ctx, &pb.Request{Sql: testQuerySQL, Session: &pb.Session{DbConnStr: mockDBConnStr}})
+	_, err := c.Run(ctx, &pb.Request{Sql: testQuerySQL, Session: database.GetSessionFromTestingDB()})
 
 	if err != nil {
 		log.Fatalf("Run encounters err:%v", err)
@@ -120,13 +120,13 @@ func TestSQL(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	stream, err := c.Run(ctx, &pb.Request{Sql: testErrorSQL, Session: &pb.Session{DbConnStr: mockDBConnStr}})
+	stream, err := c.Run(ctx, &pb.Request{Sql: testErrorSQL, Session: database.GetSessionFromTestingDB()})
 	a.NoError(err)
 	_, err = stream.Recv()
 	a.Equal(status.Error(codes.Unknown, "Lex: Unknown problem ..."), err)
 
 	for _, s := range []string{testQuerySQL, testExecuteSQL, testExtendedSQL, testExtendedSQLWithSpace, testExtendedSQLNoSemicolon} {
-		stream, err := c.Run(ctx, &pb.Request{Sql: s, Session: &pb.Session{DbConnStr: mockDBConnStr}})
+		stream, err := c.Run(ctx, &pb.Request{Sql: s, Session: database.GetSessionFromTestingDB()})
 		a.NoError(err)
 		for {
 			_, err := stream.Recv()
