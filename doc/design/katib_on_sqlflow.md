@@ -160,7 +160,7 @@ run_cmd("repl -m \"select * ...\" ")
 The pipeline from SQL statements to Argo workflow:
 
 - SQLFlow generates `IR` from input SQL statements.
-- `couler_katib_codegen.go` takes this `IR` as input and obtains parameters for Katib training job.
-- `couler_katib_codegen.go` generates a Python program which invokes `couler.sqlflow.train`. At the same time, `couler_katib_codegen.go` fills this API's arguments with Katib parameters.
+- `couler_codegen.go` takes this `IR` as input and obtains parameters for Katib training job.
+- `couler_codegen.go` generates a Python program which invokes `couler.sqlflow.train`. At the same time, `couler_codegen.go` fills this API's arguments with Katib parameters.
 - `couler.sqlflow.train` generates the manifest for Katib job and fills it in Argo workflow yaml as a step.
 - To execute Argo workflow on Kubernetes and Argo runs Katib job.
