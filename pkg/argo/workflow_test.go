@@ -14,9 +14,11 @@
 package argo
 
 import (
+	"os"
+	"testing"
+
 	wfv1 "github.com/argoproj/argo/pkg/apis/workflow/v1alpha1"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 const (
@@ -340,4 +342,74 @@ func TestUnmarshal(t *testing.T) {
 	}
 
 	a.Equal(wf.Status.Phase, wfv1.NodePhase("Succeeded"))
+}
+
+func TestGetStepGroup(t *testing.T) {
+	if os.Getenv("SQLFLOW_TEST") != "workflow" {
+		t.Skip("argo: skip workflow tests")
+	}
+	a := assert.New(t)
+	output := []byte(testWorkflowDescription)
+	wf, err := parseWorkflowResource(output)
+	a.NoError(err)
+
+	stepGroupNames := []string{
+		"",
+		"steps-7lxxs-1184503397",
+		"steps-7lxxs-43875568",
+		"steps-7lxxs-43331115"}
+	for i := 0; i < len(stepGroupNames)-1; i++ {
+		stepGroupName, err := getStepGroup(wf, "steps-7lxxs", stepGroupNames[i])
+		a.NoError(err)
+		if stepGroupNames[i] == "" {
+			a.Equal(stepGroupNames[i+1], stepGroupName)
+		} else {
+			a.Equal(stepGroupNames[i], stepGroupName)
+		}
+	}
+}
+
+func TestGetNextStepGroup(t *testing.T) {
+	if os.Getenv("SQLFLOW_TEST") != "workflow" {
+		t.Skip("argo: skip workflow tests")
+	}
+	a := assert.New(t)
+	output := []byte(testWorkflowDescription)
+	wf, err := parseWorkflowResource(output)
+	a.NoError(err)
+
+	stepGroupNames := []string{
+		"steps-7lxxs-1184503397",
+		"steps-7lxxs-43875568",
+		"steps-7lxxs-43331115",
+		""}
+	for i := 0; i < len(stepGroupNames)-1; i++ {
+		next, err := getNextStepGroup(wf, stepGroupNames[i])
+		a.NoError(err)
+		a.Equal(stepGroupNames[i+1], next)
+	}
+}
+
+func TestGetPodNameByStepGroup(t *testing.T) {
+	if os.Getenv("SQLFLOW_TEST") != "workflow" {
+		t.Skip("argo: skip workflow tests")
+	}
+	a := assert.New(t)
+	output := []byte(testWorkflowDescription)
+	wf, err := parseWorkflowResource(output)
+	a.NoError(err)
+
+	stepGroupNames := []string{
+		"steps-7lxxs-1184503397",
+		"steps-7lxxs-43875568",
+		"steps-7lxxs-43331115"}
+	podNames := []string{
+		"steps-7lxxs-2267726410",
+		"steps-7lxxs-1263033216",
+		"steps-7lxxs-1288663778"}
+	for i := 0; i < len(stepGroupNames); i++ {
+		podName, err := getPodNameByStepGroup(wf, stepGroupNames[i])
+		a.NoError(err)
+		a.Equal(podNames[i], podName)
+	}
 }

@@ -11,18 +11,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package argo
 
 import (
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func TestSubmitterRegistry(t *testing.T) {
+func TestCreateResource(t *testing.T) {
+	if os.Getenv("SQLFLOW_TEST") != "workflow" {
+		t.Skip("argo: skip workflow tests")
+	}
 	a := assert.New(t)
-	a.Equal(2, len(submitterRegistry))
-	a.NotNil(submitterRegistry["pai"])
-	a.NotNil(submitterRegistry["default"])
-	a.Equal(submitter(), submitterRegistry["default"])
+
+	fileName, err := createAndWriteTempFile(podYAML)
+	a.NoError(err)
+	defer os.Remove(fileName)
+
+	id, err := k8sCreateResource(fileName)
+	a.NoError(err)
+	a.Equal(strings.HasPrefix(id, "sqlflow-pod-"), true)
 }

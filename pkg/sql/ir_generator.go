@@ -20,8 +20,22 @@ import (
 	"strconv"
 	"strings"
 
+	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/parser"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
+)
+
+const (
+	sparse        = "SPARSE"
+	numeric       = "NUMERIC"
+	cross         = "CROSS"
+	categoryID    = "CATEGORY_ID"
+	seqCategoryID = "SEQ_CATEGORY_ID"
+	embedding     = "EMBEDDING"
+	bucket        = "BUCKET"
+	square        = "SQUARE"
+	dense         = "DENSE"
+	comma         = "COMMA"
 )
 
 func generateTrainStmtWithInferredColumns(slct *parser.SQLFlowSelectStmt, connStr string) (*ir.TrainStmt, error) {
@@ -100,7 +114,7 @@ func generateTrainStmt(slct *parser.SQLFlowSelectStmt, connStr string) (*ir.Trai
 }
 
 func generateTrainStmtByModel(slct *parser.SQLFlowSelectStmt, connStr, cwd, modelDir, model string) (*ir.TrainStmt, error) {
-	db, err := open(connStr)
+	db, err := database.OpenDB(connStr)
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +127,7 @@ func generateTrainStmtByModel(slct *parser.SQLFlowSelectStmt, connStr, cwd, mode
 	return generateTrainStmtWithInferredColumns(slctWithTrain, connStr)
 }
 
-func verifyIRWithTrainStmt(sqlir ir.SQLStatement, db *DB) error {
+func verifyIRWithTrainStmt(sqlir ir.SQLStatement, db *database.DB) error {
 	var selectStmt string
 	var trainStmt *ir.TrainStmt
 	switch s := sqlir.(type) {
@@ -195,8 +209,8 @@ func generatePredictStmt(slct *parser.SQLFlowSelectStmt, connStr string, modelDi
 	}
 
 	if getTrainStmtFromModel {
-		// FIXME(tony): change the function signature to use *DB
-		db, err := NewDB(connStr)
+		// FIXME(tony): change the function signature to use *database.DB
+		db, err := database.OpenAndConnectDB(connStr)
 		if err != nil {
 			return nil, err
 		}
@@ -239,8 +253,8 @@ func generateAnalyzeStmt(slct *parser.SQLFlowSelectStmt, connStr, modelDir strin
 	}
 
 	if getTrainStmtFromModel {
-		// FIXME(tony): change the function signature to use *DB
-		db, err := NewDB(connStr)
+		// FIXME(tony): change the function signature to use *database.DB
+		db, err := database.OpenAndConnectDB(connStr)
 		if err != nil {
 			return nil, err
 		}
@@ -727,4 +741,44 @@ func parseResultTable(intoStatement string) (string, string, error) {
 	} else {
 		return "", "", fmt.Errorf("invalid result table format, should be [db.table.class_col] or [table.class_col]")
 	}
+}
+
+func resolveDelimiter(delimiter string) (string, error) {
+	if strings.EqualFold(delimiter, comma) {
+		return ",", nil
+	}
+	return "", fmt.Errorf("unsolved delimiter: %s", delimiter)
+}
+
+func expression2string(e interface{}) (string, error) {
+	// resolved, _, err := resolveExpression(e)
+	if expr, ok := e.(*parser.Expr); ok {
+		if expr.Type != 0 {
+			return strings.Trim(expr.Value, "\""), nil
+		}
+	}
+	return "", fmt.Errorf("expression expected to be string, actual: %s", e)
+}
+
+func transformToIntList(list []interface{}) ([]int, error) {
+	var b = make([]int, len(list))
+	for idx, item := range list {
+		if intVal, ok := item.(int); ok {
+			b[idx] = intVal
+		} else {
+			return nil, fmt.Errorf("type is not int: %s", item)
+		}
+	}
+	return b, nil
+}
+
+func getExpressionFieldName(expr *parser.Expr) (string, error) {
+	if expr.Type != 0 {
+		return expr.Value, nil
+	}
+	if len(expr.Sexp) < 2 {
+		return "", fmt.Errorf("error column clause format: %s, expected FEATURE_COLUMN(key, ...)", expr.Sexp)
+	}
+	fcNameExpr := expr.Sexp[1]
+	return fcNameExpr.Value, nil
 }

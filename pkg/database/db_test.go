@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package database
 
 import (
 	"testing"
@@ -19,10 +19,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestSubmitterRegistry(t *testing.T) {
+func TestDatabaseParseURL(t *testing.T) {
 	a := assert.New(t)
-	a.Equal(2, len(submitterRegistry))
-	a.NotNil(submitterRegistry["pai"])
-	a.NotNil(submitterRegistry["default"])
-	a.Equal(submitter(), submitterRegistry["default"])
+	ds := "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
+	driver, dataSource, e := ParseURL(ds)
+	a.EqualValues(driver, "mysql")
+	a.EqualValues(dataSource, "root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0")
+	a.NoError(e)
 }

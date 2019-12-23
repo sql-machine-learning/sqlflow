@@ -11,15 +11,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package argo
+package sql
 
-import (
-	"encoding/json"
+import "os"
 
-	wfv1 "github.com/argoproj/argo/pkg/apis/workflow/v1alpha1"
-)
-
-func parseWorkflowResource(b []byte) (*wfv1.Workflow, error) {
-	wf := wfv1.Workflow{}
-	return &wf, json.Unmarshal(b, &wf)
+func getEnv(env, value string) string {
+	if v := os.Getenv(env); len(v) > 0 {
+		return v
+	}
+	return value
 }

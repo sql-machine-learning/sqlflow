@@ -17,6 +17,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/parser"
 )
 
@@ -24,7 +25,7 @@ func TestVerify_1(t *testing.T) {
 	a := assert.New(t)
 	r, e := parser.LegacyParse(`SELECT * FROM churn.train LIMIT 10;`)
 	a.NoError(e)
-	fts, e := verify(r.StandardSelect.String(), testDB)
+	fts, e := verify(r.StandardSelect.String(), database.GetTestingDBSingleton())
 	a.NoError(e)
 	a.Equal(21, len(fts))
 
@@ -34,7 +35,7 @@ func TestVerify_1(t *testing.T) {
 
 	r, e = parser.LegacyParse(`SELECT Churn, churn.train.Partner,TotalCharges FROM churn.train LIMIT 10;`)
 	a.NoError(e)
-	fts, e = verify(r.StandardSelect.String(), testDB)
+	fts, e = verify(r.StandardSelect.String(), database.GetTestingDBSingleton())
 	a.NoError(e)
 	a.Equal(3, len(fts))
 
@@ -58,7 +59,7 @@ func TestVerify_2(t *testing.T) {
 	a := assert.New(t)
 	r, e := parser.LegacyParse(`SELECT Churn, churn.train.Partner FROM churn.train LIMIT 10;`)
 	a.NoError(e)
-	fts, e := verify(r.StandardSelect.String(), testDB)
+	fts, e := verify(r.StandardSelect.String(), database.GetTestingDBSingleton())
 	a.NoError(e)
 	a.Equal(2, len(fts))
 	typ, ok := fts.get("churn")
@@ -91,14 +92,14 @@ FROM churn.train LIMIT 10
 TO PREDICT iris.predict.class
 USING sqlflow_models.my_dnn_model;`)
 	a.NoError(e)
-	a.NoError(verifyColumnNameAndType(trainParse, predParse, testDB))
+	a.NoError(verifyColumnNameAndType(trainParse, predParse, database.GetTestingDBSingleton()))
 
 	predParse, e = parser.LegacyParse(`SELECT gender, tenure
 FROM churn.train LIMIT 10
 TO PREDICT iris.predict.class
 USING sqlflow_models.my_dnn_model;`)
 	a.NoError(e)
-	a.EqualError(verifyColumnNameAndType(trainParse, predParse, testDB),
+	a.EqualError(verifyColumnNameAndType(trainParse, predParse, database.GetTestingDBSingleton()),
 		"predFields doesn't contain column totalcharges")
 }
 
@@ -106,7 +107,7 @@ func TestDescribeEmptyTables(t *testing.T) {
 	a := assert.New(t)
 	r, e := parser.LegacyParse(`SELECT * FROM iris.iris_empty LIMIT 10;`)
 	a.NoError(e)
-	_, e = verify(r.StandardSelect.String(), testDB)
+	_, e = verify(r.StandardSelect.String(), database.GetTestingDBSingleton())
 	a.EqualError(e, `query SELECT *
 FROM iris.iris_empty
 LIMIT 10 gives 0 row`)

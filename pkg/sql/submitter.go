@@ -23,7 +23,7 @@ import (
 	"path"
 	"sync"
 
-	"sqlflow.org/sqlflow/pkg/parser"
+	"sqlflow.org/sqlflow/pkg/database"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/xgboost"
@@ -33,9 +33,8 @@ import (
 var envSubmitter = os.Getenv("SQLFLOW_submitter")
 
 var submitterRegistry = map[string](Submitter){
-	"default":   &defaultSubmitter{},
-	"alps":      &alpsSubmitter{&defaultSubmitter{}},
-	"elasticdl": &elasticdlSubmitter{&defaultSubmitter{}},
+	"default": &defaultSubmitter{},
+	// TODO(typhoonzero): add submitters like alps, elasticdl
 }
 
 func submitter() Submitter {
@@ -49,7 +48,7 @@ func submitter() Submitter {
 // Submitter extends ir.Executor
 type Submitter interface {
 	ir.Executor
-	Setup(*PipeWriter, *DB, string, *pb.Session) error
+	Setup(*PipeWriter, *database.DB, string, *pb.Session) error
 	Teardown()
 	GetTrainStmtFromModel() bool
 }
@@ -95,16 +94,13 @@ func (cw *logChanWriter) Close() {
 
 type defaultSubmitter struct {
 	Writer   *PipeWriter
-	Db       *DB
+	Db       *database.DB
 	ModelDir string
 	Cwd      string
 	Session  *pb.Session
 }
 
-type elasticdlSubmitter struct{ *defaultSubmitter }
-type alpsSubmitter struct{ *defaultSubmitter }
-
-func (s *defaultSubmitter) Setup(w *PipeWriter, db *DB, modelDir string, session *pb.Session) error {
+func (s *defaultSubmitter) Setup(w *PipeWriter, db *database.DB, modelDir string, session *pb.Session) error {
 	// cwd is used to store train scripts and save output models.
 	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
 	s.Writer, s.Db, s.ModelDir, s.Cwd, s.Session = w, db, modelDir, cwd, session
@@ -134,7 +130,7 @@ func (s *defaultSubmitter) runCommand(program string) error {
 	var output bytes.Buffer
 	w := io.MultiWriter(cw, &output)
 	defer cw.Close()
-	cmd := sqlflowCmd(s.Cwd, s.Db.driverName)
+	cmd := sqlflowCmd(s.Cwd, s.Db.DriverName)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = bytes.NewBufferString(program), w, w
 	if e := cmd.Run(); e != nil {
 		return fmt.Errorf("failed: %v\n%sProgram%[2]s\n%s\n%[2]sOutput%[2]s\n%[4]v", e, "==========", program, output.String())
@@ -208,39 +204,3 @@ func (s *defaultSubmitter) ExecuteAnalyze(cl *ir.AnalyzeStmt) error {
 }
 func (s *defaultSubmitter) Teardown()                   { os.RemoveAll(s.Cwd) }
 func (s *defaultSubmitter) GetTrainStmtFromModel() bool { return true }
-
-func (s *elasticdlSubmitter) ExecuteTrain(cl *ir.TrainStmt) error {
-	// TODO(typhoonzero): remove below twice parse when all submitters moved to IR.
-	pr, e := parser.LegacyParse(cl.OriginalSQL)
-	if e != nil {
-		return e
-	}
-	return elasticDLTrain(s.Writer, pr, s.Db, s.Cwd, s.Session)
-}
-
-func (s *elasticdlSubmitter) ExecutePredict(cl *ir.PredictStmt) error {
-	// TODO(typhoonzero): remove below twice parse when all submitters moved to IR.
-	pr, e := parser.LegacyParse(cl.OriginalSQL)
-	if e != nil {
-		return e
-	}
-	return elasticDLPredict(s.Writer, pr, s.Db, s.Cwd, s.Session)
-}
-
-func (s *alpsSubmitter) ExecuteTrain(cl *ir.TrainStmt) error {
-	// TODO(typhoonzero): remove below twice parse when all submitters moved to IR.
-	pr, e := parser.LegacyParse(cl.OriginalSQL)
-	if e != nil {
-		return e
-	}
-	return alpsTrain(s.Writer, pr, s.Db, s.Cwd, s.Session)
-}
-
-func (s *alpsSubmitter) ExecutePredict(cl *ir.PredictStmt) error {
-	// TODO(typhoonzero): remove below twice parse when all submitters moved to IR.
-	pr, e := parser.LegacyParse(cl.OriginalSQL)
-	if e != nil {
-		return e
-	}
-	return alpsPred(s.Writer, pr, s.Db, s.Cwd, s.Session)
-}

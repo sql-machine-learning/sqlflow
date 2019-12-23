@@ -21,45 +21,44 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"sqlflow.org/sqlflow/pkg/database"
 )
 
 func TestNewSQLWriter(t *testing.T) {
+	createSQLFSTestingDatabaseOnce.Do(createSQLFSTestingDatabase)
+	db := database.GetTestingDBSingleton()
 	a := assert.New(t)
 
-	testDriver, testDB, e := newTestDB()
-	a.NoError(e)
-
-	if testDriver == "hive" {
+	if db.DriverName == "hive" {
 		t.Skip("Skip as SQLFLOW_TEST_DB is Hive")
 	}
-	t.Logf("Confirm executed with %s", testDriver)
+	t.Logf("Confirm executed with %s", db.DriverName)
 
 	tbl := fmt.Sprintf("%s.unittest%d", testDatabaseName, rand.Int())
-	w, e := newSQLWriter(testDB, testDriver, tbl, bufSize)
+	w, e := newSQLWriter(db.DB, db.DriverName, tbl, bufSize)
 	a.NoError(e)
 	a.NotNil(w)
 	defer w.Close()
 
-	has, e1 := hasTable(testDB, tbl)
+	has, e1 := hasTable(db.DB, tbl)
 	a.NoError(e1)
 	a.True(has)
 
-	a.NoError(dropTable(testDB, tbl))
+	a.NoError(dropTable(db.DB, tbl))
 }
 
 func TestSQLWriterWriteAndRead(t *testing.T) {
+	createSQLFSTestingDatabaseOnce.Do(createSQLFSTestingDatabase)
+	db := database.GetTestingDBSingleton()
 	a := assert.New(t)
 
-	testDriver, testDB, e := newTestDB()
-	a.NoError(e)
-
-	if testDriver == "hive" {
+	if db.DriverName == "hive" {
 		t.Skip("Skip as SQLFLOW_TEST_DB is Hive")
 	}
-	t.Logf("Confirm executed with %s", testDriver)
+	t.Logf("Confirm executed with %s", db.DriverName)
 
 	tbl := fmt.Sprintf("%s.unittest%d", testDatabaseName, rand.Int())
-	w, e := newSQLWriter(testDB, testDriver, tbl, bufSize)
+	w, e := newSQLWriter(db.DB, db.DriverName, tbl, bufSize)
 	a.NoError(e)
 	a.NotNil(w)
 
@@ -80,7 +79,7 @@ func TestSQLWriterWriteAndRead(t *testing.T) {
 
 	a.NoError(w.Close())
 
-	r, e := Open(testDB, tbl)
+	r, e := Open(db.DB, tbl)
 	a.NoError(e)
 	a.NotNil(r)
 
@@ -105,5 +104,5 @@ func TestSQLWriterWriteAndRead(t *testing.T) {
 	a.Equal(0, n)
 	a.NoError(r.Close())
 
-	a.NoError(dropTable(testDB, tbl))
+	a.NoError(dropTable(db.DB, tbl))
 }

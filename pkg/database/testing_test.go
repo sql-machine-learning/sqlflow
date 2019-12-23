@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package database
 
 import (
 	"testing"
@@ -19,10 +19,23 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestSubmitterRegistry(t *testing.T) {
+func TestGetTestingDBSingleton(t *testing.T) {
+	db := GetTestingDBSingleton()
 	a := assert.New(t)
-	a.Equal(2, len(submitterRegistry))
-	a.NotNil(submitterRegistry["pai"])
-	a.NotNil(submitterRegistry["default"])
-	a.Equal(submitter(), submitterRegistry["default"])
+
+	switch dbms := getEnv("SQLFLOW_TEST_DB", "mysql"); dbms {
+	case "mysql":
+		a.Equal(testingMySQLURL(), db.URL())
+	case "hive":
+		a.Equal(testingHiveURL(), db.URL())
+	case "maxcompute":
+		a.Equal(testingMaxComputeURL(), db.URL())
+	default:
+		a.Fail("Unrecognized environment variable SQLFLOW_TEST_DB %s", dbms)
+	}
+}
+
+func TestTestingMySQLURL(t *testing.T) {
+	a := assert.New(t)
+	a.Equal("mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0", testingMySQLURL())
 }

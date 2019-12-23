@@ -20,6 +20,7 @@ import (
 	"strconv"
 	"strings"
 
+	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
 
@@ -223,7 +224,7 @@ func fillFieldDesc(columnTypeList []*sql.ColumnType, rowdata []interface{}, fiel
 // for all fields.
 // if wr is not nil, then write
 func InferFeatureColumns(trainStmt *ir.TrainStmt) error {
-	db, err := NewDB(trainStmt.DataSource)
+	db, err := database.OpenAndConnectDB(trainStmt.DataSource)
 	if err != nil {
 		return err
 	}
