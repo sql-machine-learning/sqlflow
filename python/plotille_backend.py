@@ -124,7 +124,7 @@ class FigureCanvasPlotille(FigureCanvasAgg):
         upper_margin = '⠀' * 128 + '\n'
         while txt.startswith(upper_margin):
             txt = txt[len(upper_margin):]
-        return txt.rstrip('⠀ \n')
+        return txt.rstrip('⠀ \n')  # Remove bottom margin
 
 color_map = {}
 
