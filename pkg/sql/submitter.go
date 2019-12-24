@@ -45,6 +45,7 @@ func submitter() Submitter {
 	return s
 }
 
+// Figures contains analyzed figures as strings
 type Figures struct {
 	Image string
 	Text  string
