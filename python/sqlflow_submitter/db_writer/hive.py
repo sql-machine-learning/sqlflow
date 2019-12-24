@@ -116,6 +116,10 @@ class HiveDBWriter(BufferedDBWriter):
         self.conn.commit()
         cursor.close()
 
+        # remove the temporary dir on hdfs
+        cmd_str = "hdfs dfs %s -rm -r -f %s/%s/" % (cmd_namenode_str, hdfs_path, self.table_name)
+        subprocess.check_output(cmd_str.split(), env=hdfs_envs)
+
     def close(self):
         try:
             if len(self.rows) > 0:
