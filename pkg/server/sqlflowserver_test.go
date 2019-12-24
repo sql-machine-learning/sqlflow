@@ -113,20 +113,20 @@ func TestSQL(t *testing.T) {
 	// Set up a connection to the server.
 	conn, err := grpc.Dial(testServerAddress, grpc.WithInsecure())
 	if err != nil {
-		log.Fatalf("did not connect: %v", err)
+		a.FailNowf("TestSQL", "cannot connect: %v", err)
 	}
 	defer conn.Close()
 	c := pb.NewSQLFlowClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	stream, err := c.Run(ctx, &pb.Request{Sql: testErrorSQL, Session: database.GetSessionFromTestingDB()})
+	stream, err := c.Run(ctx, &pb.Request{Sql: testErrorSQL, Session: database.MockSession()})
 	a.NoError(err)
 	_, err = stream.Recv()
 	a.Equal(status.Error(codes.Unknown, "Lex: Unknown problem ..."), err)
 
 	for _, s := range []string{testQuerySQL, testExecuteSQL, testExtendedSQL, testExtendedSQLWithSpace, testExtendedSQLNoSemicolon} {
-		stream, err := c.Run(ctx, &pb.Request{Sql: s, Session: database.GetSessionFromTestingDB()})
+		stream, err := c.Run(ctx, &pb.Request{Sql: s, Session: database.MockSession()})
 		a.NoError(err)
 		for {
 			_, err := stream.Recv()

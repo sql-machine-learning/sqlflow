@@ -164,7 +164,7 @@ func MockURL() string {
 func MockSession() *proto.Session {
 	return &proto.Session{
 		Token:            "",
-		DbConnStr:        "",
+		DbConnStr:        MockURL(),
 		ExitOnSubmit:     false,
 		UserId:           "",
 		HiveLocation:     "/sqlflowtmp",
