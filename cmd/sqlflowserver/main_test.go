@@ -542,7 +542,7 @@ func TestEnd2EndMaxComputeALPS(t *testing.T) {
 // 		a.Fail("run trainSQL error: %v", err)
 // 	}
 // }
-func TestEnd2EndMySQLWorkflow(t *testing.T) {
+func TestEnd2EndWorkflow(t *testing.T) {
 	a := assert.New(t)
 	if os.Getenv("SQLFLOW_TEST_DATASOURCE") == "" || strings.ToLower(os.Getenv("SQLFLOW_TEST")) != "workflow" {
 		t.Skip("Skipping workflow test.")
