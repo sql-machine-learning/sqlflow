@@ -100,6 +100,7 @@ func kubectlCreateFromYAML(content string) (string, error) {
 }
 
 func TestFetch(t *testing.T) {
+	t.Skip("temporary disable FetchTest")
 	if os.Getenv("SQLFLOW_TEST") != "workflow" {
 		t.Skip("argo: skip workflow tests")
 	}
