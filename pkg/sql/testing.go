@@ -11,27 +11,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sqlfs
+package sql
 
-import (
-	"fmt"
-	"math/rand"
-	"testing"
+import "os"
 
-	"github.com/stretchr/testify/assert"
-	"sqlflow.org/sqlflow/pkg/database"
-)
-
-func TestSQLFSCreateHasDropTable(t *testing.T) {
-	createSQLFSTestingDatabaseOnce.Do(createSQLFSTestingDatabase)
-	db := database.GetTestingDBSingleton()
-
-	a := assert.New(t)
-
-	tbl := fmt.Sprintf("%s.unittest%d", testDatabaseName, rand.Int())
-	a.NoError(createTable(db.DB, db.DriverName, tbl))
-	has, e := hasTable(db.DB, tbl)
-	a.NoError(e)
-	a.True(has)
-	a.NoError(dropTable(db.DB, tbl))
+func getEnv(env, value string) string {
+	if v := os.Getenv(env); len(v) > 0 {
+		return v
+	}
+	return value
 }

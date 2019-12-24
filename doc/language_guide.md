@@ -188,7 +188,7 @@ Error:
 
 CATEGORY_ID(field, n[, delimiter=comma])
 /*
-CATEGORY_ID splits the input field by delimiter and returns identiy values
+CATEGORY_ID splits the input field by delimiter and returns identity values
     field:
         A string specifying the field name of the standard select result.
         e.g. title, id, column1.
@@ -209,7 +209,7 @@ Error:
 
 SEQ_CATEGORY_ID(field, n[, delimiter=comma])
 /*
-SEQ_CATEGORY_ID splits the input field by delimiter and returns identiy values
+SEQ_CATEGORY_ID splits the input field by delimiter and returns identity values
     field:
         A string specifying the field name of the standard select result.
         e.g. title, id, column1.

@@ -166,4 +166,4 @@ where an `ODPSWriter` will be instantiated with necessary information on ODPS ac
 
 #### Differentiate Run-time Configurations
 
-We need to differentiate between the run-time configuration parameters (e.g. `num_workers`, `num_epochs`, etc.) and the model construction parameters (e.g. `optimizer`, `loss`, `num_classes`, etc.). In this MVP, we can add different prefixes to different types of parameters, such as addding "runtime." to run-time configuration parameters.
+We need to differentiate between the run-time configuration parameters (e.g. `num_workers`, `num_epochs`, etc.) and the model construction parameters (e.g. `optimizer`, `loss`, `num_classes`, etc.). In this MVP, we can add different prefixes to different types of parameters, such as adding "runtime." to run-time configuration parameters.

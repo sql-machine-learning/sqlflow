@@ -130,5 +130,5 @@ The above customed model Docker image should base on `sqlflow/sqlflow_submitter`
 ``` bash
 > docker run --rm -it -v$PWD:/models regressors:v0.2/MyDNNRegressor bash
 > sqlflow -parse < a.sql > ir.json
-> python -m sqlflow_submitter.tensorlfow.train < ir.json
+> python -m sqlflow_submitter.tensorflow.train < ir.json
 ```

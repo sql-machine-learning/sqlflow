@@ -7,7 +7,7 @@ The [Analyzer](../design/analyzer.md) is designed to explain the machine learnin
 
 You can find more SQLFlow usages from the [Language Guide](../language_guide.md).
 
-We implement the analyzer based on [SHAP](https://github.com/slundberg/shap). By SQLFlow, an EXPLAIN SQL will be translated to the SHAP code. SQLFlow enables the code to read the dataset and load the trained model, then draws a figure to explain the model. At this stage, SQLFlow supports using the [TreeExplianer](https://github.com/slundberg/shap#tree-ensemble-example-with-treeexplainer-xgboostlightgbmcatboostscikit-learn-models) to draw a summary plot.
+We implement the analyzer based on [SHAP](https://github.com/slundberg/shap). By SQLFlow, an EXPLAIN SQL will be translated to the SHAP code. SQLFlow enables the code to read the dataset and load the trained model, then draws a figure to explain the model. At this stage, SQLFlow supports using the [TreeExplainer](https://github.com/slundberg/shap#tree-ensemble-example-with-treeexplainer-xgboostlightgbmcatboostscikit-learn-models) to draw a summary plot.
 
 ## Syntax
 

@@ -66,8 +66,8 @@ func ParseURL(url string) (string, string, error) {
 	return ss[0], ss[1], nil
 }
 
-// UnparseURL returns a URL forming of driver and source.
-func UnparseURL(driver, source string) string {
+// unparseURL returns a URL forming of driver and source.
+func unparseURL(driver, source string) string {
 	return fmt.Sprintf("%s://%s", driver, source)
 }
 
@@ -85,8 +85,8 @@ func OpenAndConnectDB(url string) (*DB, error) {
 	return db, nil
 }
 
-// URL calls UnparseURL to build the URL from DriverName and
+// URL calls unparseURL to build the URL from DriverName and
 // DataSourceName.
 func (db *DB) URL() string {
-	return UnparseURL(db.DriverName, db.DataSourceName)
+	return unparseURL(db.DriverName, db.DataSourceName)
 }

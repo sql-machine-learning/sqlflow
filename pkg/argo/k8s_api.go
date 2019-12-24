@@ -20,20 +20,11 @@ import (
 	"strings"
 
 	wfv1 "github.com/argoproj/argo/pkg/apis/workflow/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 )
 
-func getWorkflowID(output string) (string, error) {
-	reWorkflow := regexp.MustCompile(`.+/(.+) .+`)
-	wf := reWorkflow.FindStringSubmatch(string(output))
-	if len(wf) != 2 {
-		return "", fmt.Errorf("parse workflow ID error: %v", output)
-	}
-
-	return wf[1], nil
-}
-
 func k8sCreateResource(yamlFileName string) (string, error) {
-	// create source and fetch the resource ID
+	// create Kubernetes resource and fetch the resource ID
 	cmd := exec.Command("kubectl", "create", "-f", yamlFileName)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -57,6 +48,15 @@ func k8sReadWorkflow(workflowID string) (*wfv1.Workflow, error) {
 	return parseWorkflowResource(output)
 }
 
+func k8sReadPod(podName string) (*corev1.Pod, error) {
+	cmd := exec.Command("kubectl", "get", "pod", podName, "-o", "json")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("cmd: %s failed: %v", cmd, err)
+	}
+	return parsePodResource(output)
+}
+
 func k8sReadPodLogs(podName, containerName, sinceTime string) ([]string, error) {
 	cmd := exec.Command("kubectl", "logs", podName, "main", "--timestamps=true", fmt.Sprintf("--since-time=%s", sinceTime))
 	output, err := cmd.CombinedOutput()
@@ -68,6 +68,15 @@ func k8sReadPodLogs(podName, containerName, sinceTime string) ([]string, error) 
 
 func k8sDeletePod(podID string) error {
 	cmd := exec.Command("kubectl", "delete", "pod", podID, "--ignore-not-found")
+	_, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed %s, %v", cmd, err)
+	}
+	return nil
+}
+
+func k8sDeleteWorkflow(workflowID string) error {
+	cmd := exec.Command("kubectl", "delete", "workflow", workflowID, "--ignore-not-found")
 	_, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed %s, %v", cmd, err)

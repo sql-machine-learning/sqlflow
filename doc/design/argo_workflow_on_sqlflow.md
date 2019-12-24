@@ -64,7 +64,7 @@ func Submit(argoYAML string) *Job {
 
 where
 
-- `createWorkflowFromYAML` calls [Kubernetes Create Resrouce API](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.10/#resource-operations) to submit the workflow YAML file.
+- `createWorkflowFromYAML` calls [Kubernetes Create Resource API](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.10/#resource-operations) to submit the workflow YAML file.
 
 - `newJob` packages the `workflowID` into a `Job` structure:
 
@@ -76,7 +76,7 @@ where
 
 ### Fetch API
 
-We implement the `Fetch` API as the following pseduo-code:
+We implement the `Fetch` API as the following pseudo-code:
 
 ``` go
 func Fetch(req *FetchRequest) *FetchResponse {
@@ -90,7 +90,7 @@ func Fetch(req *FetchRequest) *FetchResponse {
 
   newReq := newFetchRequest(wf, req.stepId, newLogOffset, isFinished)
 
-  return newFetchReponse(logs, newReq)
+  return newFetchResponse(logs, newReq)
 }
 ```
 
@@ -103,7 +103,7 @@ where
       Job job = 1;
       string step_id = 2;       // fetching step id in workflow
       string log_offset = 3;    // fetching logs offset
-      bool finish_fetching = 4; // True if fethcing is completion
+      bool finish_fetching = 4; // True if fetching is completion
     }
 
     message FetchResponse {
