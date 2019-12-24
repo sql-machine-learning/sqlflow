@@ -112,8 +112,12 @@ type TrainStmt struct {
 	Features map[string][]FeatureColumn
 	// Label specifies the feature column in the LABEL clause.
 	Label FeatureColumn
-	// Into specifies the table name in the INTO clause
+	// Into specifies the table name in the INTO clause.
 	Into string
+	// When SQLFLOW_submitter == "pai", tmp tables will be created for training task
+	// see: pai_submitter.go
+	TmpTrainTable    string
+	TmpValidateTable string
 }
 
 // Execute generates and executes code for TrainStmt
@@ -150,6 +154,9 @@ type PredictStmt struct {
 	Attributes map[string]interface{}
 	// TrainStmt is the TrainStmt used for generating the training job of the corresponding model
 	TrainStmt *TrainStmt
+	// When SQLFLOW_submitter == "pai", tmp tables will be created for predicting task
+	// see: pai_submitter.go
+	TmpPredictTable string
 }
 
 // Execute generates and executes code for PredictStmt

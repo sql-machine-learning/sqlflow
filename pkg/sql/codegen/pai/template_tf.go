@@ -19,8 +19,8 @@ type wrapperFiller struct {
 	ModelName        string
 	NumPS            int
 	NumWorkers       int // num_workers > 1 indicates we are running distributed training.
-	PAIDatabase      string
-	PAITable         string
+	PAITrainTable    string
+	PAIValidateTable string
 	OSSCheckpointDir string // uri for PAI to save checkpoints on OSS, e.g. oss://bucket/dir/?role_arn=xxx&host=xxx
 }
 
@@ -59,13 +59,22 @@ user, passwd, address, database = sqlflow_submitter.db.parseMaxComputeDSN(dsn)
 jobname = '_'.join(['sqlflow', '{{.ModelName}}'.replace('.', '_')])
 # The tags candidate list is: "cnn,dnn,rnn,bert,ctr,cvr,inception,resnet,gnn,gcn,ocr,maskrcnn,transformer,nmt,others". Use "others" if you are not sure which tags you need.
 # Need to add arguments -Dbuckets="oss://..." -DcheckpointDir="oss://..." for distributed training.
+
+train_table_parts = "{{.PAITrainTable}}".split(".")
+val_table = "{{.PAIValidateTable}}"
+if val_table == "":
+    submit_tables = "odps://%s/tables/%s" % (train_table_parts[0], train_table_parts[1])
+else:
+    val_table_parts = val_table.split(".")
+    submit_tables = "odps://%s/tables/%s,odps://%s/tables/%s" % (train_table_parts[0], train_table_parts[1], val_table_parts[0], val_table_parts[1])
+
 {{if gt .NumWorkers 1}}
 print("saving model to: {{.OSSCheckpointDir}}")
-pai_cmd = 'pai -name %s -DjobName=%s -Dtags=%s -Dscript=file://%s -DentryFile=%s -DgpuRequired=\'\' -Dtables=odps://%s/tables/%s -DcheckpointDir=\'{{.OSSCheckpointDir}}\' -Dcluster=\'{\"ps\":{\"count\":{{.NumPS}}}, \"worker\":{\"count\":{{.NumWorkers}}}}\'' % (
-    'tensorflow1120', jobname, 'dnn', tarball, '{{.EntryFile}}', '{{.PAIDatabase}}', '{{.PAITable}}')
+pai_cmd = 'pai -name %s -DjobName=%s -Dtags=%s -Dscript=file://%s -DentryFile=%s -DgpuRequired=\'\' -Dtables=%s -DcheckpointDir=\'{{.OSSCheckpointDir}}\' -Dcluster=\'{\"ps\":{\"count\":{{.NumPS}}}, \"worker\":{\"count\":{{.NumWorkers}}}}\'' % (
+    'tensorflow1120', jobname, 'dnn', tarball, '{{.EntryFile}}', submit_tables)
 {{else}}
-pai_cmd = 'pai -name %s -DjobName=%s -Dtags=%s -Dscript=file://%s -DentryFile=%s -DgpuRequired=\'\' -Dtables=odps://%s/tables/%s -DcheckpointDir=\'{{.OSSCheckpointDir}}\'' % (
-    'tensorflow1120', jobname, 'dnn', tarball, '{{.EntryFile}}', '{{.PAIDatabase}}', '{{.PAITable}}')
+pai_cmd = 'pai -name %s -DjobName=%s -Dtags=%s -Dscript=file://%s -DentryFile=%s -DgpuRequired=\'\' -Dtables=%s -DcheckpointDir=\'{{.OSSCheckpointDir}}\'' % (
+    'tensorflow1120', jobname, 'dnn', tarball, '{{.EntryFile}}', submit_tables)
 {{end}}
 
 # Submit the tarball to PAI

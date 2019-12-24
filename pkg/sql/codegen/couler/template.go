@@ -36,16 +36,7 @@ datasource = "{{ .DataSource }}"
 {{ range $ss := .SQLStatements }}
 	{{if $ss.IsExtendedSQL }}
 train_sql = '''{{ $ss.OriginalSQL }}'''
-# FIXME(typhoonzero): MaxCompute do not support "create table as (select..)" use "create table as select ..." for now.
-		{{if $ss.CreateTmpTable }}
-tmp_table_name = "_".join(["tmp", uuid.uuid4().hex[:6].upper()])
-create_sql = '''CREATE TABLE %s AS %s''' % (tmp_table_name, '''{{$ss.Select}}'''.strip("\n"))
-# form a train SQL using the created table
-train_sql = train_sql.replace('''{{$ss.Select}}''', "SELECT * FROM %s " % tmp_table_name)
-couler.run_container(command='''repl -e "%s" --datasource="%s" && repl -e "%s" --datasource="%s"''' % (create_sql, datasource, train_sql, datasource), image="{{ $ss.DockerImage }}", env={"SQLFLOW_submitter": "{{$ss.SQLFlowSubmitter}}"})
-		{{else}}
 couler.run_container(command='''repl -e "%s" --datasource="%s"''' % (train_sql, datasource), image="{{ $ss.DockerImage }}", env={"SQLFLOW_submitter": "{{$ss.SQLFlowSubmitter}}"})
-		{{end}}
 	{{else}}
 # TODO(yancey1989): 
 #	using "repl -parse" to output IR and

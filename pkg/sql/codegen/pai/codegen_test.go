@@ -105,7 +105,8 @@ func TestWrapperCodegen(t *testing.T) {
 
 	os.Setenv("SQLFLOW_OSS_CHECKPOINT_DIR", "oss://bucket/?role_arn=xxx&host=xxx")
 	defer os.Unsetenv("SQLFLOW_OSS_CHECKPOINT_DIR")
-	code, err := wrapper("", dataSource, "my_dnn_model", cwd, "SELECT * FROM my_table", 0, 1)
+	// code, dataSource, modelName, cwd, tmpTrainTable, tmpValTable string, numPS, numWrokers int
+	code, err := wrapper("", dataSource, "my_dnn_model", cwd, "tmpTrainTable", "tmpValTable", 0, 1)
 	a.NoError(err)
 	a.True(strings.Contains(code, `assert driver == "maxcompute"`))
 

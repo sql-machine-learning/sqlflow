@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"regexp"
 	"strings"
 	"text/template"
 
@@ -328,19 +327,14 @@ func Train(trainStmt *ir.TrainStmt) (string, error) {
 	}
 
 	isKeras, estimatorStr := IsKerasModel(trainStmt.Estimator)
+
+	// Need to create tmp table for train/validate when using PAI
+	paiTrainTable := ""
+	paiValidateTable := ""
 	isPAI := os.Getenv("SQLFLOW_submitter") == "pai"
-	paiTable := ""
-	// TODO(typhoonzero): if isPAI, create two Couler steps
-	if isPAI {
-		fromRegex, err := regexp.Compile("FROM[\\s\\n]+([\\w\\.]*)")
-		if err != nil {
-			return "", err
-		}
-		matches := fromRegex.FindAllStringSubmatch(trainStmt.Select, -1)
-		if len(matches) != 1 {
-			return "", fmt.Errorf("only support simple SQL query, but got %s", trainStmt.Select)
-		}
-		paiTable = matches[0][1]
+	if isPAI && trainStmt.TmpTrainTable != "" {
+		paiTrainTable = trainStmt.TmpTrainTable
+		paiValidateTable = trainStmt.TmpValidateTable
 	}
 
 	filler := trainFiller{
@@ -357,7 +351,8 @@ func Train(trainStmt *ir.TrainStmt) (string, error) {
 		ValidationParams:  validateParams,
 		Save:              "model_save",
 		IsPAI:             isPAI,
-		PAITrainTable:     paiTable,
+		PAITrainTable:     paiTrainTable,
+		PAIValidateTable:  paiValidateTable,
 	}
 	var program bytes.Buffer
 	var trainTemplate = template.Must(template.New("Train").Funcs(template.FuncMap{
@@ -415,18 +410,9 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 	}
 
 	isPAI := os.Getenv("SQLFLOW_submitter") == "pai"
-	paiTable := ""
-	// TODO(typhoonzero): if isPAI, create two Couler steps
-	if isPAI {
-		fromRegex, err := regexp.Compile("FROM[\\s\\n]+([\\w\\.]*)")
-		if err != nil {
-			return "", err
-		}
-		matches := fromRegex.FindAllStringSubmatch(predStmt.Select, -1)
-		if len(matches) != 1 {
-			return "", fmt.Errorf("only support simple SQL query, but got %s", predStmt.Select)
-		}
-		paiTable = matches[0][1]
+	paiPredictTable := ""
+	if isPAI && predStmt.TmpPredictTable != "" {
+		paiPredictTable = predStmt.TmpPredictTable
 	}
 
 	filler := predFiller{
@@ -445,7 +431,7 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 		HDFSUser:          session.HdfsUser,
 		HDFSPass:          session.HdfsPass,
 		IsPAI:             isPAI,
-		PAIPredictTable:   paiTable,
+		PAIPredictTable:   paiPredictTable,
 	}
 	var program bytes.Buffer
 	var predTemplate = template.Must(template.New("Pred").Funcs(template.FuncMap{

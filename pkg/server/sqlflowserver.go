@@ -33,16 +33,19 @@ import (
 	sf "sqlflow.org/sqlflow/pkg/sql"
 )
 
+// Server is the instance will be used to connect to DB and execute training
+type Server struct {
+	// TODO(typhoonzero): should pass `Server` struct to run function, so that we can get
+	// server-side configurations together with client side session in the run context.
+	// To do this we need to refactor current pkg structure, so that we will not have circular dependency.
+	run      func(sql string, modelDir string, session *pb.Session) *sf.PipeReader
+	modelDir string
+}
+
 // NewServer returns a server instance
 func NewServer(run func(string, string, *pb.Session) *sf.PipeReader,
 	modelDir string) *Server {
 	return &Server{run: run, modelDir: modelDir}
-}
-
-// Server is the instance will be used to connect to DB and execute training
-type Server struct {
-	run      func(sql string, modelDir string, session *pb.Session) *sf.PipeReader
-	modelDir string
 }
 
 // Fetch implements `rpc Fetch (Job) returns(JobStatus)`
