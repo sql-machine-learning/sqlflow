@@ -29,6 +29,7 @@ const analyzeTemplateText = `
 import xgboost
 import shap
 import json
+import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
 
@@ -61,6 +62,13 @@ bst.load_model("my_model")
 explainer = shap.TreeExplainer(bst)
 shap_values = explainer.shap_values(X)
 shap.summary_plot(shap_values, X, show=False, **summaryAttrs)
+plt.savefig('summary', bbox_inches='tight')
+
+matplotlib.use('module://plotille_backend')
+import matplotlib.pyplot as plt
+shap.summary_plot(shap_values, X, show=False, **summaryAttrs)
+import sys
+sys.stdout.isatty = lambda:True
 plt.savefig('summary', bbox_inches='tight')
 `
 

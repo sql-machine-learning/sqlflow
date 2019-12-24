@@ -45,4 +45,5 @@ dill==0.3.0 \
 shap==0.30.1 \
 xgboost==0.90 \
 pytest==5.3.0 \
-oss2==2.9.0
+oss2==2.9.0 \
+plotille==3.7

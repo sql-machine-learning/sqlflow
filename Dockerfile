@@ -81,6 +81,7 @@ go install -v ./... && \
 mv $GOPATH/bin/sqlflowserver /usr/local/bin && \
 mv $GOPATH/bin/repl /usr/local/bin && \
 cp -r $GOPATH/src/sqlflow.org/sqlflow/python/sqlflow_submitter /miniconda/envs/sqlflow-dev/lib/python3.6/site-packages/ && \
+cp $GOPATH/src/sqlflow.org/sqlflow/python/plotille_backend.py /miniconda/envs/sqlflow-dev/lib/python3.6/site-packages/ && \
 (cd python/couler && python setup.py install) && \
 cd java/parser && \
 mvn -B clean compile assembly:single && \
