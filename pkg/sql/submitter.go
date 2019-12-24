@@ -45,6 +45,11 @@ func submitter() Submitter {
 	return s
 }
 
+type Figures struct {
+	Image string
+	Text  string
+}
+
 // Submitter extends ir.Executor
 type Submitter interface {
 	ir.Executor
@@ -173,6 +178,7 @@ func (s *defaultSubmitter) ExecutePredict(cl *ir.PredictStmt) (e error) {
 	}
 	return e
 }
+
 func (s *defaultSubmitter) ExecuteAnalyze(cl *ir.AnalyzeStmt) error {
 	if err := s.LoadModel(cl.TrainStmt); err != nil {
 		return err
@@ -199,8 +205,13 @@ func (s *defaultSubmitter) ExecuteAnalyze(cl *ir.AnalyzeStmt) error {
 	}
 	imgBase64Str := base64.StdEncoding.EncodeToString(imgBytes)
 	img2html := fmt.Sprintf("<div align='center'><img src='data:image/png;base64,%s' /></div>", imgBase64Str)
-	s.Writer.Write(img2html)
+	termFigure, err := ioutil.ReadFile(path.Join(s.Cwd, "summary.txt"))
+	if err != nil {
+		return err
+	}
+	s.Writer.Write(Figures{img2html, string(termFigure)})
 	return nil
 }
+
 func (s *defaultSubmitter) Teardown()                   { os.RemoveAll(s.Cwd) }
 func (s *defaultSubmitter) GetTrainStmtFromModel() bool { return true }

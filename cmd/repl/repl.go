@@ -130,24 +130,28 @@ func render(rsp interface{}, table *tablewriter.Table, isTerminal bool) bool {
 			os.Exit(1)
 		}
 	case sql.EndOfExecution:
-	case string:
-		if isHTMLSnippet(s) {
+	case sql.Figures:
+		if isHTMLSnippet(s.Image) {
 			if !isTerminal {
-				printAsDataURL(s)
+				printAsDataURL(s.Image)
 				break
 			}
-			if image, e := getBase64EncodedImage(s); e != nil {
-				printAsDataURL(s)
+			if image, e := getBase64EncodedImage(s.Image); e != nil {
+				printAsDataURL(s.Image)
 			} else if !it2Check {
-				printAsDataURL(s)
+				printAsDataURL(s.Image)
 				fmt.Println("Or use iTerm2 as your terminal to view images.")
+				fmt.Println(s.Text)
 			} else if e = imageCat(image); e != nil {
 				log.New(os.Stderr, "", 0).Printf("ERROR: %v\n", e)
-				printAsDataURL(s)
+				printAsDataURL(s.Image)
+				fmt.Println(s.Text)
 			}
 		} else {
 			fmt.Println(s)
 		}
+	case string:
+		fmt.Println(s)
 	default:
 		log.Fatalf("unrecognized response type: %v", s)
 	}
