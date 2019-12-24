@@ -69,7 +69,7 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 			res, err = encodeHead(s)
 		case []interface{}:
 			res, err = encodeRow(s)
-		case Figures:
+		case sf.Figures:
 			res, err = encodeMessage(s.Image)
 		case string:
 			res, err = encodeMessage(s)
