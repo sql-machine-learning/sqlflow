@@ -99,12 +99,17 @@ func kubectlCreateFromYAML(content string) (string, error) {
 	return k8sCreateResource(fileName)
 }
 
-func TestFetch(t *testing.T) {
+func TestSubmitAndFetch(t *testing.T) {
 	if os.Getenv("SQLFLOW_TEST") != "workflow" {
 		t.Skip("argo: skip workflow tests")
 	}
 	a := assert.New(t)
-	workflowID, err := kubectlCreateFromYAML(stepYAML)
+
+	fileName, err := createAndWriteTempFile(stepYAML)
+	a.NoError(err)
+	defer os.Remove(fileName)
+
+	workflowID, err := Submit(fileName)
 	a.NoError(err)
 	defer k8sDeleteWorkflow(workflowID)
 	req := newFetchRequest(workflowID, "", "")
