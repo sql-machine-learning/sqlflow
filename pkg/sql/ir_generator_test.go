@@ -22,7 +22,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"sqlflow.org/sqlflow/pkg/parser"
 	pb "sqlflow.org/sqlflow/pkg/proto"
-	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
 
 func TestGenerateTrainStmt(t *testing.T) {
@@ -77,53 +76,53 @@ func TestGenerateTrainStmt(t *testing.T) {
 		}
 	}
 
-	nc, ok := trainStmt.Features["feature_columns"][0].(*ir.NumericColumn)
+	nc, ok := trainStmt.Features["feature_columns"][0].(*NumericColumn)
 	a.True(ok)
 	a.Equal([]int{1}, nc.FieldDesc.Shape)
 
-	nc, ok = trainStmt.Features["feature_columns"][1].(*ir.NumericColumn)
+	nc, ok = trainStmt.Features["feature_columns"][1].(*NumericColumn)
 	a.True(ok)
 	a.Equal("c2", nc.FieldDesc.Name)
 	a.Equal([]int{128, 32}, nc.FieldDesc.Shape)
 
-	cc, ok := trainStmt.Features["feature_columns"][2].(*ir.CategoryIDColumn)
+	cc, ok := trainStmt.Features["feature_columns"][2].(*CategoryIDColumn)
 	a.True(ok)
 	a.Equal("c3", cc.FieldDesc.Name)
 	a.Equal(int64(512), cc.BucketSize)
 
-	seqcc, ok := trainStmt.Features["feature_columns"][3].(*ir.SeqCategoryIDColumn)
+	seqcc, ok := trainStmt.Features["feature_columns"][3].(*SeqCategoryIDColumn)
 	a.True(ok)
 	a.Equal("c3", seqcc.FieldDesc.Name)
 
-	cross, ok := trainStmt.Features["feature_columns"][4].(*ir.CrossColumn)
+	cross, ok := trainStmt.Features["feature_columns"][4].(*CrossColumn)
 	a.True(ok)
 	a.Equal("c1", cross.Keys[0].(string))
 	a.Equal("c2", cross.Keys[1].(string))
 	a.Equal(64, cross.HashBucketSize)
 
-	bucket, ok := trainStmt.Features["feature_columns"][5].(*ir.BucketColumn)
+	bucket, ok := trainStmt.Features["feature_columns"][5].(*BucketColumn)
 	a.True(ok)
 	a.Equal(100, bucket.Boundaries[0])
 	a.Equal("c1", bucket.SourceColumn.FieldDesc.Name)
 
-	emb, ok := trainStmt.Features["feature_columns"][6].(*ir.EmbeddingColumn)
+	emb, ok := trainStmt.Features["feature_columns"][6].(*EmbeddingColumn)
 	a.True(ok)
 	a.Equal("mean", emb.Combiner)
 	a.Equal(128, emb.Dimension)
-	embInner, ok := emb.CategoryColumn.(*ir.CategoryIDColumn)
+	embInner, ok := emb.CategoryColumn.(*CategoryIDColumn)
 	a.True(ok)
 	a.Equal("c3", embInner.FieldDesc.Name)
 	a.Equal(int64(512), embInner.BucketSize)
 
 	// NUMERIC(DENSE(c1, [64], COMMA), [128])
-	nc, ok = trainStmt.Features["feature_columns"][7].(*ir.NumericColumn)
+	nc, ok = trainStmt.Features["feature_columns"][7].(*NumericColumn)
 	a.True(ok)
 	a.Equal(64, nc.FieldDesc.Shape[0])
 	a.Equal(",", nc.FieldDesc.Delimiter)
 	a.False(nc.FieldDesc.IsSparse)
 
 	// CATEGORY_ID(SPARSE(c2, 10000, COMMA), 128),
-	cc, ok = trainStmt.Features["feature_columns"][8].(*ir.CategoryIDColumn)
+	cc, ok = trainStmt.Features["feature_columns"][8].(*CategoryIDColumn)
 	a.True(ok)
 	a.True(cc.FieldDesc.IsSparse)
 	a.Equal("c2", cc.FieldDesc.Name)
@@ -132,29 +131,29 @@ func TestGenerateTrainStmt(t *testing.T) {
 	a.Equal(int64(128), cc.BucketSize)
 
 	// SEQ_CATEGORY_ID(SPARSE(c2, 10000, COMMA), 128)
-	scc, ok := trainStmt.Features["feature_columns"][9].(*ir.SeqCategoryIDColumn)
+	scc, ok := trainStmt.Features["feature_columns"][9].(*SeqCategoryIDColumn)
 	a.True(ok)
 	a.True(scc.FieldDesc.IsSparse)
 	a.Equal("c2", scc.FieldDesc.Name)
 	a.Equal(10000, scc.FieldDesc.Shape[0])
 
 	// EMBEDDING(c1, 128)
-	emb, ok = trainStmt.Features["feature_columns"][10].(*ir.EmbeddingColumn)
+	emb, ok = trainStmt.Features["feature_columns"][10].(*EmbeddingColumn)
 	a.True(ok)
 	a.Equal(nil, emb.CategoryColumn)
 	a.Equal(128, emb.Dimension)
 
 	// EMBEDDING(SPARSE(c2, 10000, COMMA, "int"), 128)
-	emb, ok = trainStmt.Features["feature_columns"][11].(*ir.EmbeddingColumn)
+	emb, ok = trainStmt.Features["feature_columns"][11].(*EmbeddingColumn)
 	a.True(ok)
-	catCol, ok := emb.CategoryColumn.(*ir.CategoryIDColumn)
+	catCol, ok := emb.CategoryColumn.(*CategoryIDColumn)
 	a.True(ok)
 	a.True(catCol.FieldDesc.IsSparse)
 	a.Equal("c2", catCol.FieldDesc.Name)
 	a.Equal(10000, catCol.FieldDesc.Shape[0])
 	a.Equal(",", catCol.FieldDesc.Delimiter)
 
-	l, ok := trainStmt.Label.(*ir.NumericColumn)
+	l, ok := trainStmt.Label.(*NumericColumn)
 	a.True(ok)
 	a.Equal("c4", l.FieldDesc.Name)
 
@@ -217,7 +216,7 @@ INTO sqlflow_models.mymodel;`, modelDir, &pb.Session{DbConnStr: connStr})
 	a.Equal("iris.predict", predStmt.ResultTable)
 	a.Equal("class", predStmt.TrainStmt.Label.GetFieldDesc()[0].Name)
 	a.Equal("DNNClassifier", predStmt.TrainStmt.Estimator)
-	nc, ok := predStmt.TrainStmt.Features["feature_columns"][0].(*ir.NumericColumn)
+	nc, ok := predStmt.TrainStmt.Features["feature_columns"][0].(*NumericColumn)
 	a.True(ok)
 	a.Equal("sepal_length", nc.FieldDesc.Name)
 }
@@ -267,7 +266,7 @@ INTO sqlflow_models.my_xgboost_model;
 	a.Equal(AnalyzeStmt.Attributes["shap_summary.plot_type"], "bar")
 	a.Equal(AnalyzeStmt.Attributes["shap_summary.alpha"], 1)
 
-	nc, ok := AnalyzeStmt.TrainStmt.Features["feature_columns"][0].(*ir.NumericColumn)
+	nc, ok := AnalyzeStmt.TrainStmt.Features["feature_columns"][0].(*NumericColumn)
 	a.True(ok)
 	a.Equal("sepal_length", nc.FieldDesc.Name)
 }

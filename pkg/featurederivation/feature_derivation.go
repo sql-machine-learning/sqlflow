@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package featurederivation
 
 import (
 	"database/sql"
@@ -21,10 +21,26 @@ import (
 	"strings"
 
 	"sqlflow.org/sqlflow/pkg/database"
+	"sqlflow.org/sqlflow/pkg/pipe"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
 
 const featureDerivationRows = 1000
+
+// TODO(typhoonzero): fieldTypes are copied from verifier.go, need refactor.
+type fieldTypes map[string]string
+
+// TODO(typhoonzero): decomp is copied from verifier.go, need to refactor the structure to avoid copying.
+func decomp(ident string) (tbl string, fld string) {
+	// Note: Hive driver represents field names in lower cases, so we convert all identifier
+	// to lower case
+	ident = strings.ToLower(ident)
+	idx := strings.LastIndex(ident, ".")
+	if idx == -1 {
+		return "", ident
+	}
+	return ident[0:idx], ident[idx+1:]
+}
 
 // FeatureColumnMap is like: target -> key -> []FeatureColumn
 // one column's data can be used by multiple feature columns, e.g.
@@ -406,7 +422,7 @@ func InferFeatureColumns(trainStmt *ir.TrainStmt) error {
 }
 
 // LogFeatureDerivationResult write messages to wr to log the feature derivation results
-func LogFeatureDerivationResult(wr *PipeWriter, trainStmt *ir.TrainStmt) {
+func LogFeatureDerivationResult(wr *pipe.PipeWriter, trainStmt *ir.TrainStmt) {
 	if wr != nil {
 		for target, fclist := range trainStmt.Features {
 			for _, fc := range fclist {

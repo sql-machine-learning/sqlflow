@@ -21,8 +21,10 @@ import (
 	"strings"
 
 	"sqlflow.org/sqlflow/pkg/database"
+	"sqlflow.org/sqlflow/pkg/featurederivation"
 	"sqlflow.org/sqlflow/pkg/parser"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
+	"sqlflow.org/sqlflow/pkg/verifier"
 )
 
 const (
@@ -44,7 +46,7 @@ func generateTrainStmtWithInferredColumns(slct *parser.SQLFlowSelectStmt, connSt
 		return nil, err
 	}
 
-	if err := InferFeatureColumns(trainStmt); err != nil {
+	if err := featurederivation.InferFeatureColumns(trainStmt); err != nil {
 		return nil, err
 	}
 
@@ -71,10 +73,10 @@ func generateTrainStmt(slct *parser.SQLFlowSelectStmt, connStr string) (*ir.Trai
 			if colExpr.Type != 0 {
 				// column identifier like "COLUMN a1,b1"
 				nc := &ir.NumericColumn{
-					FieldDesc: &ir.FieldDesc{
+					FieldDesc: &FieldDesc{
 						Name:      colExpr.Value,
 						Shape:     []int{1},
-						DType:     ir.Float,
+						DType:     Float,
 						IsSparse:  false,
 						Delimiter: "",
 					}}
@@ -90,7 +92,7 @@ func generateTrainStmt(slct *parser.SQLFlowSelectStmt, connStr string) (*ir.Trai
 		fcMap[target] = fcList
 	}
 	label := &ir.NumericColumn{
-		FieldDesc: &ir.FieldDesc{
+		FieldDesc: &FieldDesc{
 			Name: tc.Label,
 		}}
 
@@ -141,7 +143,7 @@ func verifyIRWithTrainStmt(sqlir ir.SQLStatement, db *database.DB) error {
 		return fmt.Errorf("loadModelMetaUsingIR doesn't support IR of type %T", sqlir)
 	}
 
-	trainFields, e := verify(selectStmt, db)
+	trainFields, e := verifier.Verify(selectStmt, db)
 	if e != nil {
 		return e
 	}
@@ -149,7 +151,7 @@ func verifyIRWithTrainStmt(sqlir ir.SQLStatement, db *database.DB) error {
 		return nil
 	}
 
-	predFields, e := verify(trainStmt.Select, db)
+	predFields, e := verifier.Verify(trainStmt.Select, db)
 	if e != nil {
 		return e
 	}
@@ -158,11 +160,11 @@ func verifyIRWithTrainStmt(sqlir ir.SQLStatement, db *database.DB) error {
 		for _, field := range fc {
 			for _, fm := range field.GetFieldDesc() {
 				name := fm.Name
-				it, ok := predFields.get(name)
+				it, ok := predFields.Get(name)
 				if !ok {
 					return fmt.Errorf("predFields doesn't contain column %s", name)
 				}
-				tt, _ := trainFields.get(name)
+				tt, _ := trainFields.Get(name)
 				if it != tt {
 					return fmt.Errorf("field %s type dismatch %v(pred) vs %v(train)", name, it, tt)
 				}
@@ -770,15 +772,4 @@ func transformToIntList(list []interface{}) ([]int, error) {
 		}
 	}
 	return b, nil
-}
-
-func getExpressionFieldName(expr *parser.Expr) (string, error) {
-	if expr.Type != 0 {
-		return expr.Value, nil
-	}
-	if len(expr.Sexp) < 2 {
-		return "", fmt.Errorf("error column clause format: %s, expected FEATURE_COLUMN(key, ...)", expr.Sexp)
-	}
-	fcNameExpr := expr.Sexp[1]
-	return fcNameExpr.Value, nil
 }

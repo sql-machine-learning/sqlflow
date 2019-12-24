@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package featurederivation
 
 import (
 	"os"
@@ -74,7 +74,7 @@ func TestFeatureDerivation(t *testing.T) {
 
 	r, e := parser.LegacyParse(normal)
 	a.NoError(e)
-	trainStmt, e := generateTrainStmt(r, "mysql://root:root@tcp/?maxAllowedPacket=0")
+	trainStmt, e := sf.generateTrainStmt(r, "mysql://root:root@tcp/?maxAllowedPacket=0")
 	a.NoError(e)
 	e = InferFeatureColumns(trainStmt)
 	a.NoError(e)

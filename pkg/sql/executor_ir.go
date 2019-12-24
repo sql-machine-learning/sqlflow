@@ -25,6 +25,7 @@ import (
 	"sqlflow.org/sqlflow/pkg/argo"
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/parser"
+	"sqlflow.org/sqlflow/pkg/pipe"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/couler"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
@@ -46,9 +47,9 @@ type WorkflowJob struct {
 // RunSQLProgram run a SQL program.
 //
 // TODO(wangkuiyi): Make RunSQLProgram return an error in addition to
-// *PipeReader, and remove the calls to log.Printf.
-func RunSQLProgram(sqlProgram string, modelDir string, session *pb.Session) *PipeReader {
-	rd, wr := Pipe()
+// *pipe.PipeReader, and remove the calls to log.Printf.
+func RunSQLProgram(sqlProgram string, modelDir string, session *pb.Session) *pipe.PipeReader {
+	rd, wr := pipe.Pipe()
 	go func() {
 		var db *database.DB
 		var err error
@@ -61,7 +62,7 @@ func RunSQLProgram(sqlProgram string, modelDir string, session *pb.Session) *Pip
 
 		if err != nil {
 			log.Printf("runSQLProgram error: %v", err)
-			if err != ErrClosedPipe {
+			if err != pipe.ErrClosedPipe {
 				if err := wr.Write(err); err != nil {
 					log.Printf("runSQLProgram error(piping): %v", err)
 				}
@@ -118,14 +119,14 @@ func ParseSQLStatement(sql string, session *pb.Session) (string, error) {
 // SubmitWorkflow submits an Argo workflow
 //
 // TODO(wangkuiyi): Make RunSQLProgram return an error in addition to
-// *PipeReader, and remove the calls to log.Printf.
-func SubmitWorkflow(sqlProgram string, modelDir string, session *pb.Session) *PipeReader {
-	rd, wr := Pipe()
+// *pipe.PipeReader, and remove the calls to log.Printf.
+func SubmitWorkflow(sqlProgram string, modelDir string, session *pb.Session) *pipe.PipeReader {
+	rd, wr := pipe.Pipe()
 	go func() {
 		defer wr.Close()
 		err := submitWorkflow(wr, sqlProgram, modelDir, session)
 		if err != nil {
-			if err != ErrClosedPipe {
+			if err != pipe.ErrClosedPipe {
 				if err := wr.Write(err); err != nil {
 					log.Printf("submit workflow error(piping): %v", err)
 				}
@@ -135,7 +136,7 @@ func SubmitWorkflow(sqlProgram string, modelDir string, session *pb.Session) *Pi
 	return rd
 }
 
-func submitWorkflow(wr *PipeWriter, sqlProgram string, modelDir string, session *pb.Session) error {
+func submitWorkflow(wr *pipe.PipeWriter, sqlProgram string, modelDir string, session *pb.Session) error {
 	driverName, dataSourceName, err := database.ParseURL(session.DbConnStr)
 	if err != nil {
 		return err
@@ -190,7 +191,7 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, modelDir string, session 
 	})
 }
 
-func runSQLProgram(wr *PipeWriter, sqlProgram string, db *database.DB, modelDir string, session *pb.Session) error {
+func runSQLProgram(wr *pipe.PipeWriter, sqlProgram string, db *database.DB, modelDir string, session *pb.Session) error {
 	sqls, err := parser.Parse(db.DriverName, sqlProgram)
 	if err != nil {
 		return err
@@ -230,7 +231,7 @@ func runSQLProgram(wr *PipeWriter, sqlProgram string, db *database.DB, modelDir 
 	return nil
 }
 
-func runSingleSQLIR(wr *PipeWriter, sqlIR ir.SQLStatement, db *database.DB, modelDir string, session *pb.Session) (e error) {
+func runSingleSQLIR(wr *pipe.PipeWriter, sqlIR ir.SQLStatement, db *database.DB, modelDir string, session *pb.Session) (e error) {
 	startTime := time.Now().UnixNano()
 	var originalSQL string
 	defer func() {
