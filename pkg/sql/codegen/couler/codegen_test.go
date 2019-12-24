@@ -115,3 +115,43 @@ func TestWriteArgoYamlWithClusterConfig(t *testing.T) {
 
 	a.Equal(string(out), expectedArgoYAML)
 }
+
+func TestKatibCodegen(t *testing.T) {
+	a := assert.New(t)
+
+	cfg := &mysql.Config{
+		User:                 "root",
+		Passwd:               "root",
+		Net:                  "tcp",
+		Addr:                 "127.0.0.1:3306",
+		AllowNativePasswords: true,
+	}
+
+	sqlIR := MockKatibTrainStmt(fmt.Sprintf("mysql://%s", cfg.FormatDSN()))
+	_, err := RunKatib(sqlIR, &pb.Session{})
+
+	a.NoError(err)
+}
+
+func MockKatibTrainStmt(datasource string) ir.TrainStmt {
+	attrs := map[string]interface{}{}
+
+	attrs["objective"] = "multi:softprob"
+	attrs["eta"] = float32(0.1)
+	attrs["range.max_depth"] = []int{2, 10}
+	estimator := "xgboost.gbtree"
+
+	return ir.TrainStmt{
+		DataSource:       datasource,
+		Select:           "select * from iris.train;",
+		ValidationSelect: "select * from iris.test;",
+		Estimator:        estimator,
+		Attributes:       attrs,
+		Features: map[string][]ir.FeatureColumn{
+			"feature_columns": {
+				&ir.NumericColumn{&ir.FieldDesc{"sepal_length", ir.Float, "", []int{1}, false, nil, 0}},
+				&ir.NumericColumn{&ir.FieldDesc{"sepal_width", ir.Float, "", []int{1}, false, nil, 0}},
+				&ir.NumericColumn{&ir.FieldDesc{"petal_length", ir.Float, "", []int{1}, false, nil, 0}},
+				&ir.NumericColumn{&ir.FieldDesc{"petal_width", ir.Float, "", []int{1}, false, nil, 0}}}},
+		Label: &ir.NumericColumn{&ir.FieldDesc{"class", ir.Int, "", []int{1}, false, nil, 0}}}
+}
