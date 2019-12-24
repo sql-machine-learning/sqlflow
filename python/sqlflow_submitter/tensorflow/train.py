@@ -68,8 +68,7 @@ def keras_train_and_save(estimator, model_params, save,
     # FIXME(typhoonzero): find a way to cache to local file and avoid cache lockfile already exists issue.
     train_dataset = input_fn(select, conn, feature_column_names, feature_metas, label_meta)
     train_dataset = train_dataset.shuffle(SHUFFLE_SIZE).batch(batch_size).cache()
-    if validate_select != "":
-        validate_dataset = input_fn(validate_select, conn, feature_column_names, feature_metas, label_meta).batch(batch_size).cache()
+    validate_dataset = input_fn(validate_select, conn, feature_column_names, feature_metas, label_meta).batch(batch_size).cache()
 
     classifier.compile(optimizer=classifier_pkg.optimizer(),
         loss=classifier_pkg.loss,
@@ -77,7 +76,7 @@ def keras_train_and_save(estimator, model_params, save,
     if hasattr(classifier, 'sqlflow_train_loop'):
         classifier.sqlflow_train_loop(train_dataset)
     else:
-        if label_meta["feature_name"] != "" and validate_select != "":
+        if label_meta["feature_name"] != "":
             history = classifier.fit(train_dataset,
                 epochs=epochs if epochs else classifier.default_training_epochs(),
                 validation_data=validate_dataset,
@@ -122,37 +121,34 @@ def estimator_train_and_save(estimator, model_params, save,
         train_dataset = train_dataset.shuffle(SHUFFLE_SIZE).batch(batch_size).cache().repeat(epochs if epochs else 1)
         return train_dataset
 
-    if validate_select == "":
-        classifier.train(input_fn=lambda:train_dataset)
-    else:
-        # do not add default Accuracy metric when using estimator to train, it will fail
-        # when the estimator is a regressor, and estimator seems automatically add some
-        # metrics. Only add additional metrics when user specified with `WITH`.
-        if TF_VERSION_2 and metric_names != ["Accuracy"]:
-            classifier = tf.estimator.add_metrics(classifier, metrics.get_tf_metrics(metric_names))
+    # do not add default Accuracy metric when using estimator to train, it will fail
+    # when the estimator is a regressor, and estimator seems automatically add some
+    # metrics. Only add additional metrics when user specified with `WITH`.
+    if TF_VERSION_2 and metric_names != ["Accuracy"]:
+        classifier = tf.estimator.add_metrics(classifier, metrics.get_tf_metrics(metric_names))
 
-        train_hooks = []
-        if verbose == 1 and TF_VERSION_2:
-            train_hooks = [PrintStatusHook("train", every_n_iter=log_every_n_iter)]
-        train_spec = tf.estimator.TrainSpec(input_fn=lambda:train_input_fn(), max_steps=train_max_steps, hooks=train_hooks)
-        eval_hooks = []
-        if verbose == 1 and TF_VERSION_2:
-            eval_hooks = [PrintStatusHook("eval", every_n_iter=log_every_n_iter)]
-        def validate_input_fn():
-            if is_pai:
-                validate_dataset = pai_maxcompute_input_fn(pai_val_table, datasource,
-                    feature_column_names, feature_metas, label_meta,
-                    len(FLAGS.worker_hosts), FLAGS.task_index)
-            else:
-                conn = connect_with_data_source(datasource)
-                validate_dataset = input_fn(validate_select, conn, feature_column_names, feature_metas, label_meta)
-            validate_dataset = validate_dataset.batch(batch_size).cache()
-            return validate_dataset
-        eval_spec = tf.estimator.EvalSpec(input_fn=lambda:validate_input_fn(), hooks=eval_hooks, start_delay_secs=eval_start_delay_secs, throttle_secs=eval_throttle_secs)
-        result = tf.estimator.train_and_evaluate(classifier, train_spec, eval_spec)
-        # FIXME(typhoonzero): find out why pai will have result == None
-        if not is_pai:
-            print(result[0])
+    train_hooks = []
+    if verbose == 1 and TF_VERSION_2:
+        train_hooks = [PrintStatusHook("train", every_n_iter=log_every_n_iter)]
+    train_spec = tf.estimator.TrainSpec(input_fn=lambda:train_input_fn(), max_steps=train_max_steps, hooks=train_hooks)
+    eval_hooks = []
+    if verbose == 1 and TF_VERSION_2:
+        eval_hooks = [PrintStatusHook("eval", every_n_iter=log_every_n_iter)]
+    def validate_input_fn():
+        if is_pai:
+            validate_dataset = pai_maxcompute_input_fn(pai_val_table, datasource,
+                feature_column_names, feature_metas, label_meta,
+                len(FLAGS.worker_hosts), FLAGS.task_index)
+        else:
+            conn = connect_with_data_source(datasource)
+            validate_dataset = input_fn(validate_select, conn, feature_column_names, feature_metas, label_meta)
+        validate_dataset = validate_dataset.batch(batch_size).cache()
+        return validate_dataset
+    eval_spec = tf.estimator.EvalSpec(input_fn=lambda:validate_input_fn(), hooks=eval_hooks, start_delay_secs=eval_start_delay_secs, throttle_secs=eval_throttle_secs)
+    result = tf.estimator.train_and_evaluate(classifier, train_spec, eval_spec)
+    # FIXME(typhoonzero): find out why pai will have result == None
+    if not is_pai:
+        print(result[0])
 
 def train(is_keras_model,
           datasource,
@@ -177,10 +173,10 @@ def train(is_keras_model,
           is_pai=False,
           pai_table="",
           pai_val_table=""):
+    assert validate_select != "":
     if is_keras_model:
         if verbose == 1:
-            # show keras training progress
-            tf.get_logger().setLevel(logging.INFO)
+            tf.get_logger().setLevel(logging.INFO)  # show keras training progress
         elif verbose >= 2:
             tf.get_logger().setLevel(logging.DEBUG)
     else:
