@@ -4,7 +4,7 @@ SQLFlow enables SQL programs to call deep learning models defined in Python. Thi
 
 ## Keras v.s. Estimator
 
-Many deep leareners define models using Keras API or as an Estimator derived class.
+Many deep learners define models using Keras API or as an Estimator derived class.
 We prefer [Keras](https://keras.io/) over [Estimator](https://www.tensorflow.org/api_docs/python/tf/estimator/Estimator) for some reasons:
 
 1. [TensorFlow Dev Summit 2019](https://www.youtube.com/watch?v=k5c-vg4rjBw) announced that TensorFlow 2.x will closely integrate with Keras.

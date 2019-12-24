@@ -115,7 +115,7 @@ We see the redundancy of `*` in two clauses: `SELECT` and `COLUMN`.  The followi
 
 ```sql
 SELECT *                  /* raw features or the label? */
-       cross(v1, v9, v28) /* derived featuers */
+       cross(v1, v9, v28) /* derived features */
 FROM kaggle_credit_fraud_training_data
 ```
 

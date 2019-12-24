@@ -1,6 +1,6 @@
 # Run SQLFlow REPL
 
-In addition to buliding SQLFlow into a gRPC server, accessed via Jupyter Notebook, we could also build it into a command line program, whose `main` function reads SQL statements from the console, evaluates them by calling SQLFlow, and prints the results.  This command-line program makes it easy to debug and profile locally without starting the SQLFlow server and the Jupyter server.  We call this command-line program the SQLFlow REPL. SQLFlow REPL supports automatic code completion to ease applying the underlying powerful AI toolset of SQLFlow.
+In addition to building SQLFlow into a gRPC server, accessed via Jupyter Notebook, we could also build it into a command line program, whose `main` function reads SQL statements from the console, evaluates them by calling SQLFlow, and prints the results.  This command-line program makes it easy to debug and profile locally without starting the SQLFlow server and the Jupyter server.  We call this command-line program the SQLFlow REPL. SQLFlow REPL supports automatic code completion to ease applying the underlying powerful AI toolset of SQLFlow.
 
 ![](figures/repl.gif)
 

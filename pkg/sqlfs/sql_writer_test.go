@@ -24,7 +24,7 @@ import (
 	"sqlflow.org/sqlflow/pkg/database"
 )
 
-func TestNewSQLWriter(t *testing.T) {
+func TestSQLFSNewSQLWriter(t *testing.T) {
 	createSQLFSTestingDatabaseOnce.Do(createSQLFSTestingDatabase)
 	db := database.GetTestingDBSingleton()
 	a := assert.New(t)
@@ -47,7 +47,7 @@ func TestNewSQLWriter(t *testing.T) {
 	a.NoError(dropTable(db.DB, tbl))
 }
 
-func TestSQLWriterWriteAndRead(t *testing.T) {
+func TestSQLFSSQLWriterWriteAndRead(t *testing.T) {
 	createSQLFSTestingDatabaseOnce.Do(createSQLFSTestingDatabase)
 	db := database.GetTestingDBSingleton()
 	a := assert.New(t)

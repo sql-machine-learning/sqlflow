@@ -28,7 +28,7 @@ Docker image](../build.md).
     > kubectl create -f k8s/sqlflow-mysql.yaml
     ```
     The above command deploys a Pod, a MySQL server instance, a SQLFlow gRPC server and the Jupyter Notebook server runs in this Pod. You can also use
-    your custom Docker image by editting the `image` field of the yaml file: [k8s/sqlflow-all-in-one.yaml](https://github.com/sql-machine-learning/sqlflow/tree/develop/doc/k8s/sqlflow-all-in-one.yaml)
+    your custom Docker image by editing the `image` field of the yaml file: [k8s/sqlflow-all-in-one.yaml](https://github.com/sql-machine-learning/sqlflow/tree/develop/doc/k8s/sqlflow-all-in-one.yaml)
     ``` yaml
     spec:
         ...
@@ -83,7 +83,7 @@ and easy to scale up/down the SQLFlow gRPC server according to workload.
     kubectl create -f k8s/sqlflow-jhub.yaml
     ```
 
-    **NOTE**: Should grant all the remote hosts can access to the MySQL server if you want to use the custorm MySQL Docker image, the grant command like:
+    **NOTE**: Should grant all the remote hosts can access to the MySQL server if you want to use the custom MySQL Docker image, the grant command like:
     ``` text 
     GRANT ALL PRIVILEGES ON *.* TO 'root'@'' IDENTIFIED BY 'root' WITH GRANT OPTION;
     ```
