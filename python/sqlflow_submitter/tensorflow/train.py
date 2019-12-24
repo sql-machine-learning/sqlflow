@@ -23,6 +23,7 @@ try:
 except:
     pass
 from sqlflow_submitter.db import connect_with_data_source, db_generator, parseMaxComputeDSN
+from . import metrics
 from .input_fn import input_fn, pai_maxcompute_input_fn
 
 SHUFFLE_SIZE = 1000
@@ -44,17 +45,24 @@ else:
 def keras_train_and_save(estimator, model_params, save,
                          feature_column_names, feature_metas, label_meta,
                          datasource, select, validate_select,
-                         batch_size, epochs, verbose):
+                         batch_size, epochs, verbose, metric_names):
     classifier = estimator(**model_params)
     classifier_pkg = sys.modules[estimator.__module__]
+    model_metrics = []
     if hasattr(classifier_pkg, "eval_metrics_fn"):
         metrics_functions = classifier_pkg.eval_metrics_fn()
-        metrics = []
         for key, func in metrics_functions.items():
             func.__name__ = key
-            metrics.append(func)
+            model_metrics.append(func)
+    # use WITH specified metrics if it's not default.
+    if metric_names != ["Accuracy"]:
+        keras_metrics = metrics.get_keras_metrics(metric_names)
     else:
-        metrics = ["accuracy"]
+        if len(model_metrics) > 0:
+            keras_metrics = model_metrics
+        else:
+            # default
+            keras_metrics = metrics.get_keras_metrics(["Accuracy"])
 
     conn = connect_with_data_source(datasource)
     # FIXME(typhoonzero): find a way to cache to local file and avoid cache lockfile already exists issue.
@@ -65,7 +73,7 @@ def keras_train_and_save(estimator, model_params, save,
 
     classifier.compile(optimizer=classifier_pkg.optimizer(),
         loss=classifier_pkg.loss,
-        metrics=metrics)
+        metrics=keras_metrics)
     if hasattr(classifier, 'sqlflow_train_loop'):
         classifier.sqlflow_train_loop(train_dataset)
     else:
@@ -98,7 +106,8 @@ def estimator_train_and_save(estimator, model_params, save,
                              feature_column_names, feature_metas, label_meta,
                              datasource, select, validate_select,
                              batch_size, epochs, verbose,
-                             log_every_n_iter, train_max_steps, eval_start_delay_secs, eval_throttle_secs):
+                             log_every_n_iter, train_max_steps, eval_start_delay_secs, eval_throttle_secs,
+                             metric_names):
     classifier = estimator(**model_params)
 
     def train_input_fn():
@@ -116,7 +125,12 @@ def estimator_train_and_save(estimator, model_params, save,
     if validate_select == "":
         classifier.train(input_fn=lambda:train_dataset)
     else:
-        # TODO(typhoonzero): able to config metrics by calling tf.estimators.add_metrics()
+        # do not add default Accuracy metric when using estimator to train, it will fail
+        # when the estimator is a regressor, and estimator seems automatically add some
+        # metrics. Only add additional metrics when user specified with `WITH`.
+        if TF_VERSION_2 and metric_names != ["Accuracy"]:
+            classifier = tf.estimator.add_metrics(classifier, metrics.get_tf_metrics(metric_names))
+
         train_hooks = []
         if verbose == 1 and TF_VERSION_2:
             train_hooks = [PrintStatusHook("train", every_n_iter=log_every_n_iter)]
@@ -150,6 +164,7 @@ def train(is_keras_model,
           feature_metas={},
           label_meta={},
           model_params={},
+          metric_names=["Accuracy"],
           save="",
           batch_size=1,
           epochs=1,
@@ -182,7 +197,7 @@ def train(is_keras_model,
         keras_train_and_save(estimator, model_params, save,
                          feature_column_names, feature_metas, label_meta,
                          datasource, select, validate_select,
-                         batch_size, epochs, verbose)
+                         batch_size, epochs, verbose, metric_names)
     else:
         is_distributed = False
         FLAGS = None
@@ -208,7 +223,8 @@ def train(is_keras_model,
                              feature_column_names, feature_metas, label_meta,
                              datasource, select, validate_select,
                              batch_size, epochs, verbose,
-                             log_every_n_iter, train_max_steps, eval_start_delay_secs, eval_throttle_secs)
+                             log_every_n_iter, train_max_steps, eval_start_delay_secs, eval_throttle_secs,
+                             metric_names)
 
     print("Done training")
 

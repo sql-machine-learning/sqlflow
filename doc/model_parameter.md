@@ -228,6 +228,11 @@ INTO sqlflow_models.my_dnn_model;
 	<td>[default=0]<br>Show verbose logs when training.<br>possible values: 0, 1</td>
 </tr>
 <tr>
+	<td>validation.metrics</td>
+	<td>string</td>
+	<td>[default=""]<br>Specify metrics when training and evaluating.<br>example: "Accuracy,AUC"</td>
+</tr>
+<tr>
 	<td>validation.select</td>
 	<td>string</td>
 	<td>[default=""]<br>Specify the dataset for validation.<br>example: "SELECT * FROM iris.train LIMIT 100"</td>

@@ -47,6 +47,9 @@ Print logs every n iterations`, attribute.IntLowerBoundChecker(1, true)},
 Seconds to wait before starting validation.`, attribute.IntLowerBoundChecker(0, true)},
 	"validation.throttle_secs": {attribute.Int, `[default=0]
 Seconds to wait when need to run validation again.`, attribute.IntLowerBoundChecker(0, true)},
+	"validation.metrics": {attribute.String, `[default=""]
+Specify metrics when training and evaluating.
+example: "Accuracy,AUC"`, nil},
 	"validation.select": {attribute.String, `[default=""]
 Specify the dataset for validation.
 example: "SELECT * FROM iris.train LIMIT 100"`, nil},
@@ -248,7 +251,6 @@ func categorizeAttributes(trainStmt *ir.TrainStmt) (trainParams, validateParams,
 		if strings.HasPrefix(attrKey, "validation.") {
 			validateParams[strings.Replace(attrKey, "validation.", "", 1)] = attr
 		}
-
 	}
 	return trainParams, validateParams, modelParams
 }
@@ -282,6 +284,9 @@ func setValidateParamDefaultValues(validateParams map[string]interface{}) {
 	}
 	if _, ok := validateParams["throttle_secs"]; !ok {
 		validateParams["throttle_secs"] = 0
+	}
+	if _, ok := validateParams["metrics"]; !ok {
+		validateParams["metrics"] = "Accuracy"
 	}
 }
 
