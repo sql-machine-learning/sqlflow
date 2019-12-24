@@ -38,8 +38,7 @@ func Run(programIR ir.SQLProgram, session *pb.Session) (string, error) {
 	for _, sqlIR := range programIR {
 		sqlStmt := &sqlStatement{
 			OriginalSQL: sqlIR.GetOriginalSQL(), IsExtendedSQL: sqlIR.IsExtended(),
-			DockerImage: defaultDockerImage, SQLFlowSubmitter: os.Getenv("SQLFLOW_submitter"),
-			CreateTmpTable: sqlIR.NeedCreateTmpTable(), Select: sqlIR.GetSelect()}
+			DockerImage: defaultDockerImage, SQLFlowSubmitter: os.Getenv("SQLFLOW_submitter")}
 		r.SQLStatements = append(r.SQLStatements, sqlStmt)
 	}
 	var program bytes.Buffer

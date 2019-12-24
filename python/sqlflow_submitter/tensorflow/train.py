@@ -205,7 +205,7 @@ def train(is_keras_model,
         else:
             model_params["model_dir"] = save
         estimator_train_and_save(estimator, model_params, save,
-                             is_pai, FLAGS, pai_table,
+                             is_pai, FLAGS, pai_table, pai_val_table,
                              feature_column_names, feature_metas, label_meta,
                              datasource, select, validate_select,
                              batch_size, epochs, verbose,

@@ -78,9 +78,6 @@ type SQLStatement interface {
 	Execute(Executor) error
 	IsExtended() bool
 	GetOriginalSQL() string
-	NeedCreateTmpTable() bool
-	// Get select SQL statement before extended SQL
-	GetSelect() string
 }
 
 // TrainStmt is the intermediate representation for code generation of a training job.
@@ -117,13 +114,10 @@ type TrainStmt struct {
 	Label FeatureColumn
 	// Into specifies the table name in the INTO clause.
 	Into string
-	// Whether to create a tmp table for training and validating, like
-	// CREATE TABLE tmp AS ([ir.Select]).
-	// NOTE(typhoonzero):
-	// Currently we CreateTmpTableFromSelect is set to true only when using PAI Tensorflow.
-	CreateTmpTableFromSelect bool
-	TmpTrainTable            string
-	TmpValidateTable         string
+	// When SQLFLOW_submitter == "pai", tmp tables will be created for training task
+	// see: pai_submitter.go
+	TmpTrainTable    string
+	TmpValidateTable string
 }
 
 // Execute generates and executes code for TrainStmt
@@ -137,12 +131,6 @@ func (cl *TrainStmt) IsExtended() bool { return true }
 
 // GetOriginalSQL returns the original SQL statement used to get current IR result
 func (cl *TrainStmt) GetOriginalSQL() string { return cl.OriginalSQL }
-
-// NeedCreateTmpTable returns CreateTmpTableFromSelect
-func (cl *TrainStmt) NeedCreateTmpTable() bool { return cl.CreateTmpTableFromSelect }
-
-// GetSelect returns select statement before TO TRAIN
-func (cl *TrainStmt) GetSelect() string { return cl.Select }
 
 // PredictStmt is the intermediate representation for code generation of a prediction job
 //
@@ -166,10 +154,9 @@ type PredictStmt struct {
 	Attributes map[string]interface{}
 	// TrainStmt is the TrainStmt used for generating the training job of the corresponding model
 	TrainStmt *TrainStmt
-	// Whether to create a tmp table for predicting, like
-	// CREATE TABLE tmp AS ([ir.Select]).
-	CreateTmpTableFromSelect bool
-	TmpPredictTable          string
+	// When SQLFLOW_submitter == "pai", tmp tables will be created for predicting task
+	// see: pai_submitter.go
+	TmpPredictTable string
 }
 
 // Execute generates and executes code for PredictStmt
@@ -183,12 +170,6 @@ func (cl *PredictStmt) IsExtended() bool { return true }
 
 // GetOriginalSQL returns the original SQL statement used to get current IR result
 func (cl *PredictStmt) GetOriginalSQL() string { return cl.OriginalSQL }
-
-// NeedCreateTmpTable returns CreateTmpTableFromSelect
-func (cl *PredictStmt) NeedCreateTmpTable() bool { return cl.CreateTmpTableFromSelect }
-
-// GetSelect returns select statement before TO PREDICT
-func (cl *PredictStmt) GetSelect() string { return cl.Select }
 
 // AnalyzeStmt is the intermediate representation for code generation of a analysis job
 type AnalyzeStmt struct {
@@ -221,12 +202,6 @@ func (cl *AnalyzeStmt) IsExtended() bool { return true }
 // GetOriginalSQL returns the original SQL statement used to get current IR result
 func (cl *AnalyzeStmt) GetOriginalSQL() string { return cl.OriginalSQL }
 
-// NeedCreateTmpTable for AnalyzeStmt always return false
-func (cl *AnalyzeStmt) NeedCreateTmpTable() bool { return false }
-
-// GetSelect returns select statement before TO EXPLAIN
-func (cl *AnalyzeStmt) GetSelect() string { return cl.Select }
-
 // StandardSQL is a string of a standard SQL statement that can run on the database system.
 type StandardSQL string
 
@@ -241,9 +216,3 @@ func (sql *StandardSQL) IsExtended() bool { return false }
 
 // GetOriginalSQL returns the original SQL statement used to get current IR result
 func (sql *StandardSQL) GetOriginalSQL() string { return string(*sql) }
-
-// NeedCreateTmpTable for StandardSQL always return false
-func (sql *StandardSQL) NeedCreateTmpTable() bool { return false }
-
-// GetSelect returns the standard select statement
-func (sql *StandardSQL) GetSelect() string { return string(*sql) }

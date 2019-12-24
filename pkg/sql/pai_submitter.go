@@ -16,7 +16,7 @@ package sql
 import (
 	"fmt"
 	"log"
-	"regexp"
+	"math/rand"
 	"strings"
 
 	"sqlflow.org/gomaxcompute"
@@ -28,20 +28,49 @@ import (
 
 type paiSubmitter struct{ *defaultSubmitter }
 
+func randStringRunes(n int) string {
+	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	const lettersAndDigits = letters + "0123456789"
+	b := make([]byte, n)
+	// do not start from digit
+	b[0] = letters[rand.Intn(len(letters))]
+	for i := 1; i < len(b); i++ {
+		b[i] = lettersAndDigits[rand.Intn(len(lettersAndDigits))]
+	}
+	return string(b)
+}
+
 func createTmpTableFromSelect(selectStmt, dataSource string) (string, string, error) {
 	db, err := database.OpenAndConnectDB(dataSource)
 	defer db.Close()
 	if err != nil {
 		return "", "", err
 	}
-	tableName = "xxxx_wuyi"
+	tableName := randStringRunes(16)
 	// FIXME(typhoonzero): only work if specify database name in connect string.
-	databaseName, err = getDatabaseNameFromDSN(dataSource)
-
+	databaseName, err := getDatabaseNameFromDSN(dataSource)
+	// NOTE(typhoonzero): MaxCompute do not support "CREATE	TABLE XXX AS (SELECT ...)"
 	createSQL := fmt.Sprintf("CREATE TABLE %s AS %s", tableName, selectStmt)
 	log.Printf(createSQL)
 	_, err = db.Exec(createSQL)
 	return databaseName, tableName, err
+}
+
+func dropTmpTables(tableNames []string, dataSource string) error {
+	db, err := database.OpenAndConnectDB(dataSource)
+	defer db.Close()
+	if err != nil {
+		return err
+	}
+	for _, tbName := range tableNames {
+		if tbName != "" {
+			_, err = db.Exec("DROP TABLE %s", tbName)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func getDatabaseNameFromDSN(dataSource string) (string, error) {
@@ -56,62 +85,27 @@ func getDatabaseNameFromDSN(dataSource string) (string, error) {
 	return conf.Project, nil
 }
 
-// getTableFromSelect get the database name and table name from simple select statement:
-// SELECT * FROM db.table
-func getTableFromSelect(dataSource, trainSelect string) (string, string, error) {
-	fromRegex, err := regexp.Compile("SELECT\\s\\*\\sFROM[\\s\\n]+([\\w\\.]*)")
-	if err != nil {
-		return "", "", err
-	}
-	matches := fromRegex.FindAllStringSubmatch(trainSelect, -1)
-	if len(matches) != 1 {
-		return "", "", fmt.Errorf("only support simple SQL query, but got %s", trainSelect)
-	}
-	tableFull := matches[0][1]
-	databaseName := ""
-	tableName := ""
-	tableParts := strings.Split(tableFull, ".")
-	if len(tableParts) == 2 {
-		databaseName = tableParts[0]
-		tableName = tableParts[1]
-	} else {
-		databaseName, err = getDatabaseNameFromDSN(dataSource)
-		if err != nil {
-			return "", "", err
-		}
-		tableName = tableFull
-	}
-	return databaseName, tableName, nil
-}
+// Possible situations:
+//
+// 1. argo mode server: generate a step running: repl -e "repl -e \"select * from xx to train\""
+// 2. non-argo mode server | repl -e: create tmp table in go, and use it to train
 
 func (s *paiSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {
-	if cl.NeedCreateTmpTable() {
-		if s.isArgoMode {
-			// In argo mode the temp table will create the table in the training step,
-			// and the train SQL is always like "SELECT * FROM db.table TO TRAIN ..." (see couler/template.go)
-			// so parse the table name from "SELECT * FROM db.table"
-			db, tb, err := getTableFromSelect(cl.DataSource, cl.Select)
-			cl.TmpTrainTable = strings.Join([]string{db, tb}, ".")
-			if cl.ValidationSelect != "" {
-				db, tb, err := getTableFromSelect(cl.DataSource, cl.ValidationSelect)
-				cl.TmpValidateTable = strings.Join([]string{db, tb}, ".")
-			}
-		} else {
-			// Create a temp table here if not using argo mode.
-			dbName, tableName, err := createTmpTableFromSelect(cl.Select, cl.DataSource)
-			if err != nil {
-				return err
-			}
-			cl.TmpTrainTable = strings.Join([]string{dbName, tableName}, ".")
-			if cl.ValidationSelect != "" {
-				dbName, tableName, err := createTmpTableFromSelect(cl.ValidationSelect, cl.DataSource)
-				if err != nil {
-					return err
-				}
-				cl.TmpValidateTable = strings.Join([]string{dbName, tableName}, ".")
-			}
-		}
+	// TODO(typhoonzero): Do **NOT** create tmp table when the select statement is like:
+	// "SELECT fields,... FROM table"
+	dbName, tableName, err := createTmpTableFromSelect(cl.Select, cl.DataSource)
+	if err != nil {
+		return err
 	}
+	cl.TmpTrainTable = strings.Join([]string{dbName, tableName}, ".")
+	if cl.ValidationSelect != "" {
+		dbName, tableName, err := createTmpTableFromSelect(cl.ValidationSelect, cl.DataSource)
+		if err != nil {
+			return err
+		}
+		cl.TmpValidateTable = strings.Join([]string{dbName, tableName}, ".")
+	}
+	defer dropTmpTables([]string{cl.TmpTrainTable, cl.TmpValidateTable}, cl.DataSource)
 
 	code, e := pai.Train(cl, cl.Into, s.Cwd)
 	if e != nil {
@@ -121,6 +115,15 @@ func (s *paiSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 }
 
 func (s *paiSubmitter) ExecutePredict(cl *ir.PredictStmt) error {
+	// TODO(typhoonzero): Do **NOT** create tmp table when the select statement is like:
+	// "SELECT fields,... FROM table"
+	dbName, tableName, err := createTmpTableFromSelect(cl.Select, cl.DataSource)
+	if err != nil {
+		return err
+	}
+	cl.TmpPredictTable = strings.Join([]string{dbName, tableName}, ".")
+	defer dropTmpTables([]string{cl.TmpPredictTable}, cl.DataSource)
+
 	// TODO(typhoonzero): remove below twice parse when all submitters moved to IR.
 	pr, e := parser.ParseOneStatement("maxcompute", cl.OriginalSQL)
 	if e != nil {

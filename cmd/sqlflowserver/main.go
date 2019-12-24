@@ -60,9 +60,9 @@ func start(modelDir, caCrt, caKey string, port int, isArgoMode bool) {
 		}
 	}
 	if isArgoMode {
-		proto.RegisterSQLFlowServer(s, server.NewServer(sf.SubmitWorkflow, modelDir, true))
+		proto.RegisterSQLFlowServer(s, server.NewServer(sf.SubmitWorkflow, modelDir))
 	} else {
-		proto.RegisterSQLFlowServer(s, server.NewServer(sf.RunSQLProgram, modelDir, false))
+		proto.RegisterSQLFlowServer(s, server.NewServer(sf.RunSQLProgram, modelDir))
 	}
 
 	listenString := fmt.Sprintf(":%d", port)

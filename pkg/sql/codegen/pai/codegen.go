@@ -146,13 +146,13 @@ func tfTrainAndSave(ir *ir.TrainStmt, modelName string) (string, error) {
 }
 
 // Predict generates a Python program for train a TensorFlow model.
-func Predict(ir *ir.PredictStmt, modelName, cwd string, isArgoMode bool) (string, error) {
+func Predict(ir *ir.PredictStmt, modelName, cwd string) (string, error) {
 	program, err := tfLoadAndPredict(ir, modelName)
 	if err != nil {
 		return "", err
 	}
 	return wrapper(program, ir.DataSource, modelName, cwd,
-		ir.Select, "", 0, 1)
+		ir.TmpPredictTable, "", 0, 1)
 }
 
 func tfLoadAndPredict(ir *ir.PredictStmt, modelName string) (string, error) {
