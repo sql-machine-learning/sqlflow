@@ -679,6 +679,7 @@ func CaseShowDatabases(t *testing.T) {
 		"feature_derivation_case": "",
 		"housing":                 "",
 		"iris":                    "",
+		"sanity_check":            "",
 		"mysql":                   "",
 		"performance_schema":      "",
 		"sqlflow_models":          "",
