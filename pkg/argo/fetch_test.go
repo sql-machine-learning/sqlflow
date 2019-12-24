@@ -17,6 +17,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"strconv"
 	"testing"
 	"time"
 
@@ -69,10 +70,23 @@ metadata:
 spec:
   restartPolicy: Never
   containers:
-  - name: main 
+  - name: main
     image: docker/whalesay
     command: [bash]
     args: [-c, "echo 'hello1\nhello2'; sleep 2; echo 'hello3'"]
+`
+
+	podYAML2 = `apiVersion: v1
+kind: Pod
+metadata:
+  generateName: sqlflow-pod-
+spec:
+  restartPolicy: Never
+  containers:
+  - name: main
+    image: docker/whalesay
+    command: [bash]
+    args: [-c, "for i in {0..1000}; do   echo $i;   sleep 0.00$((RANDOM % 100)); done"]
 `
 )
 
@@ -175,5 +189,39 @@ func TestGetPodLogs(t *testing.T) {
 		time.Sleep(1 * time.Second)
 	}
 	a.Equal(expected, actual)
+}
 
+func TestGetPodLogs2(t *testing.T) {
+	if os.Getenv("SQLFLOW_TEST") != "workflow" {
+		t.Skip("argo: skip workflow tests")
+	}
+	a := assert.New(t)
+	podID, err := kubectlCreateFromYAML(podYAML2)
+	a.NoError(err)
+	defer k8sDeletePod(podID)
+
+	err = waitUntilPodRunning(podID)
+	a.NoError(err)
+	offset := ""
+	actual := []string{}
+	for {
+		pod, err := k8sReadPod(podID)
+		a.NoError(err)
+		isPodCompleted := isPodCompleted(pod)
+		logs, newOffset, err := getPodLogs(pod.Name, offset)
+		a.NoError(err)
+		if len(logs) != 0 {
+			actual = append(actual, logs...)
+		}
+		if isPodCompleted && offset == newOffset {
+			break
+		}
+		offset = newOffset
+		time.Sleep(1 * time.Second)
+	}
+	expected := []string{}
+	for i := 0; i <= 1000; i++ {
+		expected = append(expected, strconv.FormatInt(int64(i), 10))
+	}
+	a.Equal(expected, actual)
 }
