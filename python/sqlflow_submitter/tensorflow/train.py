@@ -173,7 +173,7 @@ def train(is_keras_model,
           is_pai=False,
           pai_table="",
           pai_val_table=""):
-    assert validate_select != "":
+    assert validate_select != ""
     if is_keras_model:
         if verbose == 1:
             tf.get_logger().setLevel(logging.INFO)  # show keras training progress
