@@ -587,10 +587,10 @@ func TestEnd2EndMySQLWorkflow(t *testing.T) {
 		}
 	}
 
-	t.Run("CaseSubmitSQLProgram", CaseSubmitSQLProgram)
+	t.Run("CaseWorkflowTrainAndPredictDNN", CaseWorkflowTrainAndPredictDNN)
 }
 
-func CaseSubmitSQLProgram(t *testing.T) {
+func CaseWorkflowTrainAndPredictDNN(t *testing.T) {
 	a := assert.New(t)
 	sqlProgram := fmt.Sprintf(`
 SELECT *
@@ -641,21 +641,22 @@ FROM %s.%s LIMIT 5;
 		workflowID = iter.GetJob().GetId()
 	}
 	a.True(strings.HasPrefix(workflowID, "sqlflow-couler"))
-	// check the workflow status in 180 seconds
-	// TODO(yancey1989): using the Fetch gRPC interface to check the workflow status
-	for i := 0; i < 60; i++ {
-		cmd := exec.Command("kubectl", "get", "wf", workflowID, "-o", "jsonpath='{.status.phase}'")
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			log.Fatalf("get workflow status error: %v", err)
-		}
-		if string(out) == "'Succeeded'" {
+
+	req := &pb.FetchRequest{
+		Job: &pb.Job{Id: workflowID},
+	}
+
+	for i := 0; i < 120; i++ {
+		res, err := cli.Fetch(ctx, req)
+		a.NoError(err)
+		if res.Eof {
+			// pass the test case
 			return
 		}
+		req = res.UpdatedFetchSince
 		time.Sleep(3 * time.Second)
 	}
-	// workflow times out
-	a.Fail("workflow: %s times out", workflowID)
+	a.Fail("workflow times out")
 }
 
 func CaseShowDatabases(t *testing.T) {
