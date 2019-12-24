@@ -29,7 +29,9 @@ var defaultDockerImage = "sqlflow/sqlflow"
 // Run generates Couler program
 func Run(programIR ir.SQLProgram, session *pb.Session) (string, error) {
 	// TODO(yancey1989): fill session as env
-	r := &coulerFiller{DataSource: session.DbConnStr}
+	r := &coulerFiller{DataSource: session.DbConnStr,
+		SQLFlowSubmitter: os.Getenv("SQLFLOW_submitter"),
+		SQLFlowOSSDir:    os.Getenv("SQLFLOW_OSS_CHECKPOINT_DIR")}
 	// NOTE(yancey1989): does not use ModelImage here since the Predict statement
 	// does not contain the ModelImage field in SQL Program IR.
 	if os.Getenv("SQLFLOW_WORKFLOW_STEP_IMAGE") != "" {
@@ -38,13 +40,14 @@ func Run(programIR ir.SQLProgram, session *pb.Session) (string, error) {
 	for _, sqlIR := range programIR {
 		sqlStmt := &sqlStatement{
 			OriginalSQL: sqlIR.GetOriginalSQL(), IsExtendedSQL: sqlIR.IsExtended(),
-			DockerImage: defaultDockerImage, SQLFlowSubmitter: os.Getenv("SQLFLOW_submitter")}
+			DockerImage: defaultDockerImage}
 		r.SQLStatements = append(r.SQLStatements, sqlStmt)
 	}
 	var program bytes.Buffer
 	if err := coulerTemplate.Execute(&program, r); err != nil {
 		return "", err
 	}
+	fmt.Println(program.String())
 	return program.String(), nil
 }
 
