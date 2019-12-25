@@ -98,7 +98,7 @@ func generateTrainStmt(slct *parser.SQLFlowSelectStmt, connStr string) (*ir.Trai
 	if vslct == "" {
 		vslct = slct.StandardSelect.String()
 	}
-	return &ir.TrainStmt{
+	trainStmt := &ir.TrainStmt{
 		DataSource: connStr,
 		Select:     slct.StandardSelect.String(),
 		// TODO(weiguoz): This is a temporary implement. Specifying the
@@ -110,7 +110,17 @@ func generateTrainStmt(slct *parser.SQLFlowSelectStmt, connStr string) (*ir.Trai
 		Features:         fcMap,
 		Label:            label,
 		Into:             slct.Save,
-	}, nil
+	}
+	db, err := database.OpenAndConnectDB(connStr)
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+	err = verifyTrainStmt(trainStmt, db)
+	if err != nil {
+		return nil, err
+	}
+	return trainStmt, nil
 }
 
 func generateTrainStmtByModel(slct *parser.SQLFlowSelectStmt, connStr, cwd, modelDir, model string) (*ir.TrainStmt, error) {
@@ -125,6 +135,31 @@ func generateTrainStmtByModel(slct *parser.SQLFlowSelectStmt, connStr, cwd, mode
 		return nil, err
 	}
 	return generateTrainStmtWithInferredColumns(slctWithTrain, connStr)
+}
+
+func verifyTrainStmt(trainStmt *ir.TrainStmt, db *database.DB) error {
+	trainFields, e := verify(trainStmt.Select, db)
+	if e != nil {
+		return e
+	}
+
+	for _, fc := range trainStmt.Features {
+		for _, field := range fc {
+			for _, fm := range field.GetFieldDesc() {
+				name := fm.Name
+				_, ok := trainFields.get(name)
+				if !ok {
+					return fmt.Errorf("Feature field not exist in database: %s", name)
+				}
+			}
+		}
+	}
+	labelFieldName := trainStmt.Label.GetFieldDesc()[0].Name
+	_, ok := trainFields.get(labelFieldName)
+	if !ok {
+		return fmt.Errorf("Label field not exist in database: %s", labelFieldName)
+	}
+	return nil
 }
 
 func verifyIRWithTrainStmt(sqlir ir.SQLStatement, db *database.DB) error {
