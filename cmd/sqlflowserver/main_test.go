@@ -1331,10 +1331,10 @@ FROM %s.%s LIMIT 5;
 	if err != nil {
 		a.Fail("Create gRPC client error: %v", err)
 	}
-	checkWorkflow(stream)
+	a.NoError(checkWorkflow(ctx, cli, stream))
 }
 
-func checkWorkflow(stream pb.SQLFlow_RunClient) error {
+func checkWorkflow(ctx context.Context, cli pb.SQLFlowClient, stream pb.SQLFlow_RunClient) error {
 	var workflowID string
 	for {
 		iter, err := stream.Recv()
@@ -1349,51 +1349,22 @@ func checkWorkflow(stream pb.SQLFlow_RunClient) error {
 	if !strings.HasPrefix(workflowID, "sqlflow-couler") {
 		return fmt.Errorf("workflow not started with sqlflow-couler")
 	}
-
-}
-
-func CaseSubmitSQLProgram(t *testing.T) {
-	a := assert.New(t)
-	sqlProgram := fmt.Sprintf(`
-SELECT *
-FROM %s.%s
-TO TRAIN DNNClassifier
-WITH
-	model.n_classes = 3,
-	model.hidden_units = [10, 20],
-	train.epoch=10,
-	train.batch_size=4,
-	train.verbose=1
-COLUMN sepal_length, sepal_width, petal_length, petal_width
-LABEL class
-INTO %s;
-
-SELECT *
-FROM %s.%s
-TO PREDICT %s.%s.class
-USING %s;
-
-SELECT *
-FROM %s.%s LIMIT 5;
-	`, caseDB, caseTrainTable, caseInto,
-		caseDB, caseTestTable, caseDB, casePredictTable, caseInto,
-		caseDB, casePredictTable)
-
-	conn, err := createRPCConn()
-	if err != nil {
-		a.Fail("Create gRPC client error: %v", err)
+	req := &pb.FetchRequest{
+		Job: &pb.Job{Id: workflowID},
 	}
-	defer conn.Close()
-
-	cli := pb.NewSQLFlowClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
-	defer cancel()
-
-	stream, err := cli.Run(ctx, &pb.Request{Sql: sqlProgram, Session: &pb.Session{DbConnStr: testDatasource}})
-	if err != nil {
-		a.Fail("Create gRPC client error: %v", err)
+	for i := 0; i < 120; i++ {
+		res, err := cli.Fetch(ctx, req)
+		if err != nil {
+			return err
+		}
+		if res.Eof {
+			// pass the test case
+			return nil
+		}
+		req = res.UpdatedFetchSince
+		time.Sleep(3 * time.Second)
 	}
-	checkWorkflow(stream)
+	return fmt.Errorf("workflow times out")
 }
 
 func CaseTrainDistributedPAIArgo(t *testing.T) {
@@ -1434,5 +1405,5 @@ USING %s;
 	if err != nil {
 		a.Fail("Create gRPC client error: %v", err)
 	}
-	checkWorkflow(stream)
+	a.NoError(checkWorkflow(ctx, cli, stream))
 }
