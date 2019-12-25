@@ -91,7 +91,7 @@ couler.sqlflow.katib.train(model="xgboost", hyperparameters={ "booster": "gbtree
 Considering Katib itself supports multiple models and frameworks, and more may come in the future, we introduce the following Couler function.
 
 ```python
-def couler.sqlflow.train(model=None, hyperparameters={}, image=None, sql=None,datasource=None)
+def couler.sqlflow.katib.train(model=None, hyperparameters={}, image=None, sql=None,datasource=None)
 ```
 
 The arguments in `couler.sqlflow.katib.train`,
@@ -132,8 +132,16 @@ run_cmd("repl -m \"select * ...\" ")
 
 ## TODO
 
-- To implement codes in `couler_codegen.go` to invoke `couler.sqlflow.katib.train` for Katib training job.
-- To implement `couler.sqlflow.katib.train` API in Couler.
-- To implement `xgb_train.py`.
-- To implement `katib_xgboost_submitter.py` (or update existing `xgboost_submiiter.py`), whose output follows Katib required format.
+- [] SQLFlow parser:
+  - [] Parse SQL statement and generate `IR` for Katib training job.
+- [] Katib codegen:
+  - [] Add Katib codegen codes in `couler_codegen.go`.
+  - [] Implement `katib.go`.
+- [] Implement `couler.sqlflow.katib.train` API in Couler.
+- [] Implement `xgb_train.py`.
+  - [] Put parameters' value in the environment.
+- [] Implement `katib_xgboost_submitter.py` (or update existing `xgboost_submiiter.py`): 
+  - [] Make the output format be compatible with Katib requirements.
+- [] Log collection for Katib:
+  - [] Identify the major Pods in a Katib job and collect logs from them.
 
