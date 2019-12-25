@@ -118,15 +118,6 @@ func (s *defaultSubmitter) SaveModel(cl *ir.TrainStmt) error {
 	return m.save(modelURI, cl, s.Session)
 }
 
-func (s *defaultSubmitter) LoadModel(cl *ir.TrainStmt) error {
-	modelURI := cl.Into
-	if s.ModelDir != "" {
-		modelURI = fmt.Sprintf("file://%s/%s", s.ModelDir, cl.Into)
-	}
-	_, err := load(modelURI, s.Cwd, s.Db)
-	return err
-}
-
 func (s *defaultSubmitter) runCommand(program string) error {
 	cw := &logChanWriter{wr: s.Writer}
 	var output bytes.Buffer
