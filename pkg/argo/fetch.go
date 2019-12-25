@@ -51,7 +51,6 @@ func Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 	if isWorkflowPending(wf) {
 		return newFetchResponse(req, false, []string{}), nil
 	}
-
 	stepGroupName, err := getStepGroup(wf, req.Job.Id, req.StepId)
 	if err != nil {
 		return nil, err

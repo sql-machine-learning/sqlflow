@@ -28,6 +28,7 @@ import (
 	pyts "github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/golang/protobuf/ptypes/wrappers"
 
+	sfargo "sqlflow.org/sqlflow/pkg/argo"
 	"sqlflow.org/sqlflow/pkg/parser"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	sf "sqlflow.org/sqlflow/pkg/sql"
@@ -50,8 +51,7 @@ func NewServer(run func(string, string, *pb.Session) *sf.PipeReader,
 
 // Fetch implements `rpc Fetch (Job) returns(JobStatus)`
 func (s *Server) Fetch(ctx context.Context, job *pb.FetchRequest) (*pb.FetchResponse, error) {
-	res := &pb.FetchResponse{}
-	return res, nil
+	return sfargo.Fetch(job)
 }
 
 // Run implements `rpc Run (Request) returns (stream Response)`
@@ -72,6 +72,8 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 			res, err = encodeHead(s)
 		case []interface{}:
 			res, err = encodeRow(s)
+		case sf.Figures:
+			res, err = encodeMessage(s.Image)
 		case string:
 			res, err = encodeMessage(s)
 		case sf.WorkflowJob:

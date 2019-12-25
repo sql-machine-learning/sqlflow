@@ -1289,8 +1289,49 @@ func TestEnd2EndWorkflow(t *testing.T) {
 		}
 	}
 
-	t.Run("CaseSubmitSQLProgram", CaseSubmitSQLProgram)
+	t.Run("CaseWorkflowTrainAndPredictDNN", CaseWorkflowTrainAndPredictDNN)
 	t.Run("CaseTrainDistributedPAIArgo", CaseTrainDistributedPAIArgo)
+}
+
+func CaseWorkflowTrainAndPredictDNN(t *testing.T) {
+	a := assert.New(t)
+	sqlProgram := fmt.Sprintf(`
+SELECT *
+FROM %s.%s
+TO TRAIN DNNClassifier
+WITH
+	model.n_classes = 3,
+	model.hidden_units = [10, 20]
+COLUMN sepal_length, sepal_width, petal_length, petal_width
+LABEL class
+INTO %s;
+
+SELECT *
+FROM %s.%s
+TO PREDICT %s.%s.class
+USING %s;
+
+SELECT *
+FROM %s.%s LIMIT 5;
+	`, caseDB, caseTrainTable, caseInto,
+		caseDB, caseTestTable, caseDB, casePredictTable, caseInto,
+		caseDB, casePredictTable)
+
+	conn, err := createRPCConn()
+	if err != nil {
+		a.Fail("Create gRPC client error: %v", err)
+	}
+	defer conn.Close()
+
+	cli := pb.NewSQLFlowClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	defer cancel()
+
+	stream, err := cli.Run(ctx, &pb.Request{Sql: sqlProgram, Session: &pb.Session{DbConnStr: testDatasource}})
+	if err != nil {
+		a.Fail("Create gRPC client error: %v", err)
+	}
+	checkWorkflow(stream)
 }
 
 func checkWorkflow(stream pb.SQLFlow_RunClient) {
