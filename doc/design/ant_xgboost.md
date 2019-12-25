@@ -1,6 +1,6 @@
 # Ant-XGBoost on SQLFlow
 
-**NOTE: ant-xgboost on SQLFlow has moved to [backup_antxgboot_work branch](https://github.com/sql-machine-learning/sqlflow/tree/backup_antxgboost_work)**
+**NOTE: ant-xgboost on SQLFlow has moved to [backup_antxgboost_work branch](https://github.com/sql-machine-learning/sqlflow/tree/backup_antxgboost_work)**
 
 ## Overview
 
@@ -148,7 +148,7 @@ So, we propose a cloud-native approach: running xgboost directly on `k8s cluster
  
 As `xgblauncher` is scalable and docker-friendly, xgblauncher-based containers can be easily orchestrated by [xgboost operator](https://github.com/kubeflow/xgboost-operator),
 a specific kubernetes controller for (distributed) xgboost jobs.
-With the help of `xgboost operator`, it is easy to handle `XGBoostJob` via `kuberentes API`, a kubernetes' custom resource defined by `xgboost operator`. 
+With the help of `xgboost operator`, it is easy to handle `XGBoostJob` via `kubernetes API`, a kubernetes' custom resource defined by `xgboost operator`. 
 
 `XGBoostJob` building and tracking will be integrated to `xgblauncher` in near future. 
 After that, we can generate python codes with an option to decide whether running xgboost job locally or submitting it to remote k8s cluster.

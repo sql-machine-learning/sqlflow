@@ -100,7 +100,7 @@ message IR {
 }
 ```
 
-Note: You can check more details about the IR defination from [intermediate_representation.go](/pkg/sql/codegen/intermediate_representation.go).
+Note: You can check more details about the IR definition from [intermediate_representation.go](/pkg/sql/codegen/intermediate_representation.go).
 
 ### SQLFLow Submitter Python Module
 
@@ -113,10 +113,10 @@ cat ir.proto_text | python -m sqlflow_submitter.xgboost.train
 ### Couler Step Function and Model Zoo
 
 For a custom model in [Model Zoo](/doc/design/model_zoo.md), each model would be packaged into a Docker image and
-users can specify this Dockera image in SQL:  `SELECT ... TO TRAIN regressors:v0.2/MyDNNRegressor ...`, the Couler step function can be like:
+users can specify this Docker image in SQL:  `SELECT ... TO TRAIN regressors:v0.2/MyDNNRegressor ...`, the Couler step function can be like:
 
 ``` python
-couler.sqlfow.run('''
+couler.sqlflow.run('''
 echo "SELECT ... TO TRAIN regressors:v0.2/MyDNNRegressor ..." |
 sqlflow -parse |
 python -m sqlflow_submitter.xgboost.train
@@ -125,7 +125,7 @@ python -m sqlflow_submitter.xgboost.train
     image="regressors:v0.2")
 ```
 
-The above customed model Docker image should base on `sqlflow/sqlflow_submitter`. Users can also launch the custom model Docker container on host, it's easy to debug with SQLFlow:
+The above customized model Docker image should base on `sqlflow/sqlflow_submitter`. Users can also launch the custom model Docker container on host, it's easy to debug with SQLFlow:
 
 ``` bash
 > docker run --rm -it -v$PWD:/models regressors:v0.2/MyDNNRegressor bash
