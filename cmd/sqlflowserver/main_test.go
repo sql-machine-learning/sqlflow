@@ -544,122 +544,6 @@ func TestEnd2EndMaxComputeALPS(t *testing.T) {
 // 		a.Fail("run trainSQL error: %v", err)
 // 	}
 // }
-func TestEnd2EndWorkflow(t *testing.T) {
-	a := assert.New(t)
-	if os.Getenv("SQLFLOW_TEST_DATASOURCE") == "" || strings.ToLower(os.Getenv("SQLFLOW_TEST")) != "workflow" {
-		t.Skip("Skipping workflow test.")
-	}
-	driverName, _, err := database.ParseURL(testDatasource)
-	a.NoError(err)
-
-	if driverName != "mysql" && driverName != "maxcompute" {
-		t.Skip("Skipping workflow test.")
-	}
-	modelDir := ""
-	tmpDir, caCrt, caKey, err := generateTempCA()
-	defer os.RemoveAll(tmpDir)
-	if err != nil {
-		t.Fatalf("failed to generate CA pair %v", err)
-	}
-
-	go start(modelDir, caCrt, caKey, unitTestPort, true)
-	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
-	if err != nil {
-		t.Fatalf("prepare test dataset failed: %v", err)
-	}
-
-	if driverName == "maxcompute" {
-		AK := os.Getenv("MAXCOMPUTE_AK")
-		SK := os.Getenv("MAXCOMPUTE_SK")
-		endpoint := os.Getenv("MAXCOMPUTE_ENDPOINT")
-		dbConnStr = fmt.Sprintf("maxcompute://%s:%s@%s", AK, SK, endpoint)
-		caseDB = os.Getenv("MAXCOMPUTE_PROJECT")
-		if caseDB == "" {
-			t.Fatalf("Must set env MAXCOMPUTE_PROJECT")
-		}
-		caseTrainTable = "sqlflow_test_iris_train"
-		caseTestTable = "sqlflow_test_iris_test"
-		casePredictTable = "sqlflow_test_iris_predict"
-		// write model to current MaxCompute project
-		caseInto = "my_dnn_model"
-
-		err = prepareTestData(dbConnStr)
-		if err != nil {
-			t.Fatalf("prepare test dataset failed: %v", err)
-		}
-	}
-
-	t.Run("CaseWorkflowTrainAndPredictDNN", CaseWorkflowTrainAndPredictDNN)
-}
-
-func CaseWorkflowTrainAndPredictDNN(t *testing.T) {
-	a := assert.New(t)
-	sqlProgram := fmt.Sprintf(`
-SELECT *
-FROM %s.%s
-TO TRAIN DNNClassifier
-WITH
-	model.n_classes = 3,
-	model.hidden_units = [10, 20]
-COLUMN sepal_length, sepal_width, petal_length, petal_width
-LABEL class
-INTO %s;
-
-SELECT *
-FROM %s.%s
-TO PREDICT %s.%s.class
-USING %s;
-
-SELECT *
-FROM %s.%s LIMIT 5;
-	`, caseDB, caseTrainTable, caseInto,
-		caseDB, caseTestTable, caseDB, casePredictTable, caseInto,
-		caseDB, casePredictTable)
-
-	conn, err := createRPCConn()
-	if err != nil {
-		a.Fail("Create gRPC client error: %v", err)
-	}
-	defer conn.Close()
-
-	cli := pb.NewSQLFlowClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
-	defer cancel()
-
-	stream, err := cli.Run(ctx, &pb.Request{Sql: sqlProgram, Session: &pb.Session{DbConnStr: testDatasource}})
-	if err != nil {
-		a.Fail("Create gRPC client error: %v", err)
-	}
-
-	var workflowID string
-	for {
-		iter, err := stream.Recv()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			log.Fatalf("stream read err: %v", err)
-		}
-		workflowID = iter.GetJob().GetId()
-	}
-	a.True(strings.HasPrefix(workflowID, "sqlflow-couler"))
-
-	req := &pb.FetchRequest{
-		Job: &pb.Job{Id: workflowID},
-	}
-
-	for i := 0; i < 120; i++ {
-		res, err := cli.Fetch(ctx, req)
-		a.NoError(err)
-		if res.Eof {
-			// pass the test case
-			return
-		}
-		req = res.UpdatedFetchSince
-		time.Sleep(3 * time.Second)
-	}
-	a.Fail("workflow times out")
-}
 
 func CaseShowDatabases(t *testing.T) {
 	a := assert.New(t)
@@ -1295,7 +1179,6 @@ func CaseTrainDistributedPAI(t *testing.T) {
 	WITH
 		model.n_classes = 3,
 		model.hidden_units = [10, 20],
-		validation.select = "SELECT * FROM %s.%s LIMIT 30",
 		train.num_workers=2,
 		train.num_ps=2,
 		train.save_checkpoints_steps=20,
@@ -1305,7 +1188,7 @@ func CaseTrainDistributedPAI(t *testing.T) {
 	COLUMN sepal_length, sepal_width, petal_length, petal_width
 	LABEL class
 	INTO %s;
-	`, caseDB, caseTrainTable, caseDB, caseTrainTable, caseInto)
+	`, caseDB, caseTrainTable, caseInto)
 	_, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)
@@ -1359,4 +1242,168 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 
 	t.Run("CaseTrainSQL", CaseTrainSQL)
 	t.Run("CaseTrainDistributedPAI", CaseTrainDistributedPAI)
+}
+
+func TestEnd2EndWorkflow(t *testing.T) {
+	a := assert.New(t)
+	if os.Getenv("SQLFLOW_TEST_DATASOURCE") == "" || strings.ToLower(os.Getenv("SQLFLOW_TEST")) != "workflow" {
+		t.Skip("Skipping workflow test.")
+	}
+	driverName, _, err := database.ParseURL(testDatasource)
+	a.NoError(err)
+
+	if driverName != "mysql" && driverName != "maxcompute" {
+		t.Skip("Skipping workflow test.")
+	}
+	modelDir := ""
+	tmpDir, caCrt, caKey, err := generateTempCA()
+	defer os.RemoveAll(tmpDir)
+	if err != nil {
+		t.Fatalf("failed to generate CA pair %v", err)
+	}
+
+	go start(modelDir, caCrt, caKey, unitTestPort, true)
+	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
+	if err != nil {
+		t.Fatalf("prepare test dataset failed: %v", err)
+	}
+
+	if driverName == "maxcompute" {
+		AK := os.Getenv("MAXCOMPUTE_AK")
+		SK := os.Getenv("MAXCOMPUTE_SK")
+		endpoint := os.Getenv("MAXCOMPUTE_ENDPOINT")
+		dbConnStr = fmt.Sprintf("maxcompute://%s:%s@%s", AK, SK, endpoint)
+		caseDB = os.Getenv("MAXCOMPUTE_PROJECT")
+		if caseDB == "" {
+			t.Fatalf("Must set env MAXCOMPUTE_PROJECT")
+		}
+		caseTrainTable = "sqlflow_test_iris_train"
+		caseTestTable = "sqlflow_test_iris_test"
+		casePredictTable = "sqlflow_test_iris_predict"
+		// write model to current MaxCompute project
+		caseInto = "my_dnn_model"
+
+		err = prepareTestData(dbConnStr)
+		if err != nil {
+			t.Fatalf("prepare test dataset failed: %v", err)
+		}
+	}
+
+	t.Run("CaseWorkflowTrainAndPredictDNN", CaseWorkflowTrainAndPredictDNN)
+	t.Run("CaseTrainDistributedPAIArgo", CaseTrainDistributedPAIArgo)
+}
+
+func CaseWorkflowTrainAndPredictDNN(t *testing.T) {
+	a := assert.New(t)
+	sqlProgram := fmt.Sprintf(`
+SELECT *
+FROM %s.%s
+TO TRAIN DNNClassifier
+WITH
+	model.n_classes = 3,
+	model.hidden_units = [10, 20]
+COLUMN sepal_length, sepal_width, petal_length, petal_width
+LABEL class
+INTO %s;
+
+SELECT *
+FROM %s.%s
+TO PREDICT %s.%s.class
+USING %s;
+
+SELECT *
+FROM %s.%s LIMIT 5;
+	`, caseDB, caseTrainTable, caseInto,
+		caseDB, caseTestTable, caseDB, casePredictTable, caseInto,
+		caseDB, casePredictTable)
+
+	conn, err := createRPCConn()
+	if err != nil {
+		a.Fail("Create gRPC client error: %v", err)
+	}
+	defer conn.Close()
+
+	cli := pb.NewSQLFlowClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	defer cancel()
+
+	stream, err := cli.Run(ctx, &pb.Request{Sql: sqlProgram, Session: &pb.Session{DbConnStr: testDatasource}})
+	if err != nil {
+		a.Fail("Create gRPC client error: %v", err)
+	}
+	a.NoError(checkWorkflow(ctx, cli, stream))
+}
+
+func checkWorkflow(ctx context.Context, cli pb.SQLFlowClient, stream pb.SQLFlow_RunClient) error {
+	var workflowID string
+	for {
+		iter, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("stream read err: %v", err)
+		}
+		workflowID = iter.GetJob().GetId()
+	}
+	if !strings.HasPrefix(workflowID, "sqlflow-couler") {
+		return fmt.Errorf("workflow not started with sqlflow-couler")
+	}
+	req := &pb.FetchRequest{
+		Job: &pb.Job{Id: workflowID},
+	}
+	for i := 0; i < 120; i++ {
+		res, err := cli.Fetch(ctx, req)
+		if err != nil {
+			return err
+		}
+		if res.Eof {
+			// pass the test case
+			return nil
+		}
+		req = res.UpdatedFetchSince
+		time.Sleep(3 * time.Second)
+	}
+	return fmt.Errorf("workflow times out")
+}
+
+func CaseTrainDistributedPAIArgo(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`
+	SELECT * FROM %s.%s
+	TO TRAIN DNNClassifier
+	WITH
+		model.n_classes = 3,
+		model.hidden_units = [10, 20],
+		train.num_workers=2,
+		train.num_ps=2,
+		train.save_checkpoints_steps=20,
+		train.epoch=10,
+		train.batch_size=4,
+		train.verbose=2
+	COLUMN sepal_length, sepal_width, petal_length, petal_width
+	LABEL class
+	INTO %s;
+
+	SELECT *
+FROM %s.%s
+TO PREDICT %s.%s.class
+USING %s;
+	`, caseDB, caseTrainTable, caseInto, caseDB, caseTestTable, caseDB, casePredictTable, caseInto)
+
+	conn, err := createRPCConn()
+	if err != nil {
+		a.Fail("Create gRPC client error: %v", err)
+	}
+	defer conn.Close()
+
+	cli := pb.NewSQLFlowClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	defer cancel()
+
+	stream, err := cli.Run(ctx, &pb.Request{Sql: trainSQL, Session: &pb.Session{DbConnStr: testDatasource}})
+	if err != nil {
+		a.Fail("Create gRPC client error: %v", err)
+	}
+	a.NoError(checkWorkflow(ctx, cli, stream))
 }
