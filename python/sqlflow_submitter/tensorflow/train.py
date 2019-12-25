@@ -67,9 +67,9 @@ def keras_train_and_save(estimator, model_params, save,
     conn = connect_with_data_source(datasource)
     # FIXME(typhoonzero): find a way to cache to local file and avoid cache lockfile already exists issue.
     train_dataset = input_fn(select, conn, feature_column_names, feature_metas, label_meta)
-    train_dataset = train_dataset.shuffle(SHUFFLE_SIZE).batch(batch_size).cache()
+    train_dataset = train_dataset.shuffle(SHUFFLE_SIZE).batch(batch_size)
     if validate_select != "":
-        validate_dataset = input_fn(validate_select, conn, feature_column_names, feature_metas, label_meta).batch(batch_size).cache()
+        validate_dataset = input_fn(validate_select, conn, feature_column_names, feature_metas, label_meta).batch(batch_size)
 
     classifier.compile(optimizer=classifier_pkg.optimizer(),
         loss=classifier_pkg.loss,
@@ -146,7 +146,7 @@ def estimator_train_and_save(estimator, model_params, save,
             else:
                 conn = connect_with_data_source(datasource)
                 validate_dataset = input_fn(validate_select, conn, feature_column_names, feature_metas, label_meta)
-            validate_dataset = validate_dataset.batch(batch_size).cache()
+            validate_dataset = validate_dataset.batch(batch_size)
             return validate_dataset
         eval_spec = tf.estimator.EvalSpec(input_fn=lambda:validate_input_fn(), hooks=eval_hooks, start_delay_secs=eval_start_delay_secs, throttle_secs=eval_throttle_secs)
         result = tf.estimator.train_and_evaluate(classifier, train_spec, eval_spec)
