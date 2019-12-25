@@ -49,5 +49,5 @@ The **Analyze SQL** would display the visualization image on Jupyter like:
 
 ## Note
 
-- For the current milestone, SQLFlow only supports DeepExplainer for the Keras Model, and TreeExaplainer for the XGboost, more abundant Explainer and Model type will be supported in the future.
+- For the current milestone, SQLFlow only supports DeepExplainer for the Keras Model, and TreeExplainer for XGBoost, more abundant Explainer and Model type will be supported in the future.
 - We don't use the more relevant keyword `Explain` just because `Explain` is [used throughout various SQL databases](https://dzone.com/articles/understanding-mysql-queries-with-explain).
