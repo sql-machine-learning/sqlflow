@@ -191,7 +191,7 @@ func TestGetPodLogs(t *testing.T) {
 	a.Equal(expected, actual)
 }
 
-func TestGetPodLogs2(t *testing.T) {
+func TestGetPodLogsStress(t *testing.T) {
 	if os.Getenv("SQLFLOW_TEST") != "workflow" {
 		t.Skip("argo: skip workflow tests")
 	}
