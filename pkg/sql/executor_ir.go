@@ -16,6 +16,7 @@ package sql
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"strings"
@@ -93,17 +94,27 @@ func ParseSQLStatement(sql string, session *pb.Session) (string, error) {
 		}
 		return proto.MarshalTextString(pbir), nil
 	} else if parsed.Explain {
-		analyzeStmt, err := generateAnalyzeStmt(parsed.SQLFlowSelectStmt, connStr, "", true)
+		cwd, err := ioutil.TempDir("/tmp", "sqlflow_models")
 		if err != nil {
-			return "", nil
+			return "", err
+		}
+		defer os.RemoveAll(cwd)
+		analyzeStmt, err := generateAnalyzeStmt(parsed.SQLFlowSelectStmt, connStr, "", cwd, true)
+		if err != nil {
+			return "", err
 		}
 		pbir, err := ir.AnalyzeStmtToProto(analyzeStmt, session)
 		if err != nil {
-			return "", nil
+			return "", err
 		}
 		return proto.MarshalTextString(pbir), nil
 	} else {
-		predStmt, err := generatePredictStmt(parsed.SQLFlowSelectStmt, connStr, "", true)
+		cwd, err := ioutil.TempDir("/tmp", "sqlflow_models")
+		if err != nil {
+			return "", err
+		}
+		defer os.RemoveAll(cwd)
+		predStmt, err := generatePredictStmt(parsed.SQLFlowSelectStmt, connStr, "", cwd, true)
 		if err != nil {
 			return "", err
 		}
@@ -157,9 +168,10 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, modelDir string, session 
 			if sql.Train {
 				r, err = generateTrainStmt(sql.SQLFlowSelectStmt, connStr)
 			} else if sql.Explain {
-				r, err = generateAnalyzeStmt(sql.SQLFlowSelectStmt, connStr, modelDir, false)
+				// since getTrainStmtFromModel is false, use empty cwd is fine.
+				r, err = generateAnalyzeStmt(sql.SQLFlowSelectStmt, connStr, modelDir, "", false)
 			} else {
-				r, err = generatePredictStmt(sql.SQLFlowSelectStmt, connStr, modelDir, false)
+				r, err = generatePredictStmt(sql.SQLFlowSelectStmt, connStr, modelDir, "", false)
 			}
 		} else {
 			standardSQL := ir.StandardSQL(sql.Standard)
@@ -203,6 +215,11 @@ func runSQLProgram(wr *PipeWriter, sqlProgram string, db *database.DB, modelDir 
 	//
 	// The IR generation on the second statement would fail since it requires inspection the schema of some_table,
 	// which depends on the execution of create table some_table as (select ...);.
+	cwd, err := ioutil.TempDir("/tmp", "sqlflow_models")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(cwd)
 	for _, sql := range sqls {
 		var r ir.SQLStatement
 		connStr := db.URL()
@@ -210,9 +227,9 @@ func runSQLProgram(wr *PipeWriter, sqlProgram string, db *database.DB, modelDir 
 			if sql.Train {
 				r, err = generateTrainStmtWithInferredColumns(sql.SQLFlowSelectStmt, connStr)
 			} else if sql.Explain {
-				r, err = generateAnalyzeStmt(sql.SQLFlowSelectStmt, connStr, modelDir, submitter().GetTrainStmtFromModel())
+				r, err = generateAnalyzeStmt(sql.SQLFlowSelectStmt, connStr, modelDir, cwd, submitter().GetTrainStmtFromModel())
 			} else {
-				r, err = generatePredictStmt(sql.SQLFlowSelectStmt, connStr, modelDir, submitter().GetTrainStmtFromModel())
+				r, err = generatePredictStmt(sql.SQLFlowSelectStmt, connStr, modelDir, cwd, submitter().GetTrainStmtFromModel())
 			}
 		} else {
 			standardSQL := ir.StandardSQL(sql.Standard)
@@ -223,14 +240,14 @@ func runSQLProgram(wr *PipeWriter, sqlProgram string, db *database.DB, modelDir 
 		}
 
 		r.SetOriginalSQL(sql.Original)
-		if e := runSingleSQLIR(wr, r, db, modelDir, session); e != nil {
+		if e := runSingleSQLIR(wr, r, db, modelDir, cwd, session); e != nil {
 			return e
 		}
 	}
 	return nil
 }
 
-func runSingleSQLIR(wr *PipeWriter, sqlIR ir.SQLStatement, db *database.DB, modelDir string, session *pb.Session) (e error) {
+func runSingleSQLIR(wr *PipeWriter, sqlIR ir.SQLStatement, db *database.DB, modelDir string, cwd string, session *pb.Session) (e error) {
 	startTime := time.Now().UnixNano()
 	var originalSQL string
 	defer func() {
@@ -244,10 +261,7 @@ func runSingleSQLIR(wr *PipeWriter, sqlIR ir.SQLStatement, db *database.DB, mode
 	}()
 	// TODO(typhoonzero): can run LogFeatureDerivationResult(wr, trainStmt) here to send
 	// feature derivation logs to client, yet we disable if for now so that it's less annoying.
-	if e := submitter().Setup(wr, db, modelDir, session); e != nil {
-		return e
-	}
-	defer submitter().Teardown()
+	submitter().Setup(wr, db, modelDir, cwd, session)
 	return sqlIR.Execute(submitter())
 }
 

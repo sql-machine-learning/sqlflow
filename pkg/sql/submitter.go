@@ -54,8 +54,7 @@ type Figures struct {
 // Submitter extends ir.Executor
 type Submitter interface {
 	ir.Executor
-	Setup(*PipeWriter, *database.DB, string, *pb.Session) error
-	Teardown()
+	Setup(*PipeWriter, *database.DB, string, string, *pb.Session)
 	GetTrainStmtFromModel() bool
 }
 
@@ -106,11 +105,8 @@ type defaultSubmitter struct {
 	Session  *pb.Session
 }
 
-func (s *defaultSubmitter) Setup(w *PipeWriter, db *database.DB, modelDir string, session *pb.Session) error {
-	// cwd is used to store train scripts and save output models.
-	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
+func (s *defaultSubmitter) Setup(w *PipeWriter, db *database.DB, modelDir string, cwd string, session *pb.Session) {
 	s.Writer, s.Db, s.ModelDir, s.Cwd, s.Session = w, db, modelDir, cwd, session
-	return err
 }
 
 func (s *defaultSubmitter) SaveModel(cl *ir.TrainStmt) error {
@@ -164,17 +160,16 @@ func (s *defaultSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 }
 
 func (s *defaultSubmitter) ExecutePredict(cl *ir.PredictStmt) (e error) {
-	if e = s.LoadModel(cl.TrainStmt); e == nil {
-		if e = createPredictionTableFromIR(cl, s.Db, s.Session); e == nil {
-			var code string
-			if isXGBoostModel(cl.TrainStmt.Estimator) {
-				code, e = xgboost.Pred(cl, s.Session)
-			} else {
-				code, e = tensorflow.Pred(cl, s.Session)
-			}
-			if e == nil {
-				e = s.runCommand(code)
-			}
+	// NOTE(typhoonzero): model is already loaded under s.Cwd
+	if e = createPredictionTableFromIR(cl, s.Db, s.Session); e == nil {
+		var code string
+		if isXGBoostModel(cl.TrainStmt.Estimator) {
+			code, e = xgboost.Pred(cl, s.Session)
+		} else {
+			code, e = tensorflow.Pred(cl, s.Session)
+		}
+		if e == nil {
+			e = s.runCommand(code)
 		}
 	}
 	return e
@@ -214,5 +209,4 @@ func (s *defaultSubmitter) ExecuteAnalyze(cl *ir.AnalyzeStmt) error {
 	return nil
 }
 
-func (s *defaultSubmitter) Teardown()                   { os.RemoveAll(s.Cwd) }
 func (s *defaultSubmitter) GetTrainStmtFromModel() bool { return true }

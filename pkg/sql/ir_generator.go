@@ -15,8 +15,6 @@ package sql
 
 import (
 	"fmt"
-	"io/ioutil"
-	"os"
 	"strconv"
 	"strings"
 
@@ -173,18 +171,11 @@ func verifyIRWithTrainStmt(sqlir ir.SQLStatement, db *database.DB) error {
 	return nil
 }
 
-func generatePredictStmt(slct *parser.SQLFlowSelectStmt, connStr string, modelDir string, getTrainStmtFromModel bool) (*ir.PredictStmt, error) {
+func generatePredictStmt(slct *parser.SQLFlowSelectStmt, connStr string, modelDir string, cwd string, getTrainStmtFromModel bool) (*ir.PredictStmt, error) {
 	attrMap, err := generateAttributeIR(&slct.PredAttrs)
 	if err != nil {
 		return nil, err
 	}
-
-	// cwd is used to extract saved model metas to construct the IR.
-	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
-	if err != nil {
-		return nil, err
-	}
-	defer os.RemoveAll(cwd)
 
 	var trainStmt *ir.TrainStmt
 	if getTrainStmtFromModel {
@@ -223,18 +214,11 @@ func generatePredictStmt(slct *parser.SQLFlowSelectStmt, connStr string, modelDi
 	return predStmt, nil
 }
 
-func generateAnalyzeStmt(slct *parser.SQLFlowSelectStmt, connStr, modelDir string, getTrainStmtFromModel bool) (*ir.AnalyzeStmt, error) {
+func generateAnalyzeStmt(slct *parser.SQLFlowSelectStmt, connStr, modelDir string, cwd string, getTrainStmtFromModel bool) (*ir.AnalyzeStmt, error) {
 	attrs, err := generateAttributeIR(&slct.ExplainAttrs)
 	if err != nil {
 		return nil, err
 	}
-
-	// cwd is used to extract saved model metas to construct the IR.
-	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
-	if err != nil {
-		return nil, err
-	}
-	defer os.RemoveAll(cwd)
 
 	var trainStmt *ir.TrainStmt
 	if getTrainStmtFromModel {
