@@ -38,13 +38,23 @@ const (
 	comma         = "COMMA"
 )
 
-func generateTrainStmtWithInferredColumns(slct *parser.SQLFlowSelectStmt, connStr string) (*ir.TrainStmt, error) {
+func generateTrainStmtWithInferredColumns(slct *parser.SQLFlowSelectStmt, connStr string, verifyLabel bool) (*ir.TrainStmt, error) {
 	trainStmt, err := generateTrainStmt(slct, connStr)
 	if err != nil {
 		return nil, err
 	}
 
 	if err := InferFeatureColumns(trainStmt); err != nil {
+		return nil, err
+	}
+
+	db, err := database.OpenAndConnectDB(connStr)
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+	err = verifyTrainStmt(trainStmt, db, verifyLabel)
+	if err != nil {
 		return nil, err
 	}
 
@@ -111,15 +121,7 @@ func generateTrainStmt(slct *parser.SQLFlowSelectStmt, connStr string) (*ir.Trai
 		Label:            label,
 		Into:             slct.Save,
 	}
-	db, err := database.OpenAndConnectDB(connStr)
-	if err != nil {
-		return nil, err
-	}
-	defer db.Close()
-	err = verifyTrainStmt(trainStmt, db)
-	if err != nil {
-		return nil, err
-	}
+
 	return trainStmt, nil
 }
 
@@ -134,10 +136,10 @@ func generateTrainStmtByModel(slct *parser.SQLFlowSelectStmt, connStr, cwd, mode
 	if err != nil {
 		return nil, err
 	}
-	return generateTrainStmtWithInferredColumns(slctWithTrain, connStr)
+	return generateTrainStmtWithInferredColumns(slctWithTrain, connStr, false)
 }
 
-func verifyTrainStmt(trainStmt *ir.TrainStmt, db *database.DB) error {
+func verifyTrainStmt(trainStmt *ir.TrainStmt, db *database.DB, verifyLabel bool) error {
 	trainFields, e := verify(trainStmt.Select, db)
 	if e != nil {
 		return e
@@ -149,15 +151,21 @@ func verifyTrainStmt(trainStmt *ir.TrainStmt, db *database.DB) error {
 				name := fm.Name
 				_, ok := trainFields.get(name)
 				if !ok {
-					return fmt.Errorf("Feature field not exist in database: %s", name)
+					return fmt.Errorf("feature field does not exist in database: %s", name)
 				}
 			}
 		}
 	}
-	labelFieldName := trainStmt.Label.GetFieldDesc()[0].Name
-	_, ok := trainFields.get(labelFieldName)
-	if !ok {
-		return fmt.Errorf("Label field not exist in database: %s", labelFieldName)
+	if verifyLabel {
+		labelFieldName := trainStmt.Label.GetFieldDesc()[0].Name
+		if labelFieldName == "" {
+			// empty labelFieldName means clustering model.
+			return nil
+		}
+		_, ok := trainFields.get(labelFieldName)
+		if !ok {
+			return fmt.Errorf("label field does not exist in database: %s", labelFieldName)
+		}
 	}
 	return nil
 }

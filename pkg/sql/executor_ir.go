@@ -83,7 +83,7 @@ func ParseSQLStatement(sql string, session *pb.Session) (string, error) {
 		return "", fmt.Errorf("ParseSQLStatement only accept extended SQL")
 	}
 	if parsed.Train {
-		trainStmt, err := generateTrainStmtWithInferredColumns(parsed.SQLFlowSelectStmt, connStr)
+		trainStmt, err := generateTrainStmtWithInferredColumns(parsed.SQLFlowSelectStmt, connStr, true)
 		if err != nil {
 			return "", err
 		}
@@ -208,7 +208,7 @@ func runSQLProgram(wr *PipeWriter, sqlProgram string, db *database.DB, modelDir 
 		connStr := db.URL()
 		if parser.IsExtendedSyntax(sql) {
 			if sql.Train {
-				r, err = generateTrainStmtWithInferredColumns(sql.SQLFlowSelectStmt, connStr)
+				r, err = generateTrainStmtWithInferredColumns(sql.SQLFlowSelectStmt, connStr, true)
 			} else if sql.Explain {
 				r, err = generateAnalyzeStmt(sql.SQLFlowSelectStmt, connStr, modelDir, submitter().GetTrainStmtFromModel())
 			} else {
