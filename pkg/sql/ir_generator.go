@@ -73,10 +73,10 @@ func generateTrainStmt(slct *parser.SQLFlowSelectStmt, connStr string) (*ir.Trai
 			if colExpr.Type != 0 {
 				// column identifier like "COLUMN a1,b1"
 				nc := &ir.NumericColumn{
-					FieldDesc: &FieldDesc{
+					FieldDesc: &ir.FieldDesc{
 						Name:      colExpr.Value,
 						Shape:     []int{1},
-						DType:     Float,
+						DType:     ir.Float,
 						IsSparse:  false,
 						Delimiter: "",
 					}}
@@ -92,7 +92,7 @@ func generateTrainStmt(slct *parser.SQLFlowSelectStmt, connStr string) (*ir.Trai
 		fcMap[target] = fcList
 	}
 	label := &ir.NumericColumn{
-		FieldDesc: &FieldDesc{
+		FieldDesc: &ir.FieldDesc{
 			Name: tc.Label,
 		}}
 
@@ -113,6 +113,34 @@ func generateTrainStmt(slct *parser.SQLFlowSelectStmt, connStr string) (*ir.Trai
 		Label:            label,
 		Into:             slct.Save,
 	}, nil
+}
+
+func loadModelMeta(pr *parser.SQLFlowSelectStmt, db *database.DB, cwd, modelDir, modelName string) (*parser.SQLFlowSelectStmt, error) {
+	var m *model
+	var e error
+	modelURI := modelName
+	if modelDir != "" {
+		modelURI = fmt.Sprintf("file://%s/%s", modelDir, modelName)
+	}
+
+	m, e = load(modelURI, cwd, db)
+	if e != nil {
+		return nil, fmt.Errorf("load %v", e)
+	}
+	// Parse the training SELECT statement used to train
+	// the model for the prediction.
+	tr, e := parser.ParseOneStatement(db.DriverName, m.TrainSelect)
+	if e != nil {
+		return nil, fmt.Errorf("parse: TrainSelect %v raise %v", m.TrainSelect, e)
+	}
+
+	if e := verifier.VerifyColumnNameAndType(tr.SQLFlowSelectStmt, pr, db); e != nil {
+		return nil, fmt.Errorf("VerifyColumnNameAndType: %v", e)
+	}
+
+	pr.TrainClause = tr.TrainClause
+
+	return pr, nil
 }
 
 func generateTrainStmtByModel(slct *parser.SQLFlowSelectStmt, connStr, cwd, modelDir, model string) (*ir.TrainStmt, error) {

@@ -422,7 +422,7 @@ func InferFeatureColumns(trainStmt *ir.TrainStmt) error {
 }
 
 // LogFeatureDerivationResult write messages to wr to log the feature derivation results
-func LogFeatureDerivationResult(wr *pipe.PipeWriter, trainStmt *ir.TrainStmt) {
+func LogFeatureDerivationResult(wr *pipe.Writer, trainStmt *ir.TrainStmt) {
 	if wr != nil {
 		for target, fclist := range trainStmt.Features {
 			for _, fc := range fclist {

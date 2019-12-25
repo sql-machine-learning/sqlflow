@@ -49,13 +49,13 @@ func submitter() Submitter {
 // Submitter extends ir.Executor
 type Submitter interface {
 	ir.Executor
-	Setup(*pipe.PipeWriter, *database.DB, string, *pb.Session) error
+	Setup(*pipe.Writer, *database.DB, string, *pb.Session) error
 	Teardown()
 	GetTrainStmtFromModel() bool
 }
 
 type logChanWriter struct {
-	wr   *pipe.PipeWriter
+	wr   *pipe.Writer
 	m    sync.Mutex
 	buf  bytes.Buffer
 	prev string
@@ -94,14 +94,14 @@ func (cw *logChanWriter) Close() {
 }
 
 type defaultSubmitter struct {
-	Writer   *pipe.PipeWriter
+	Writer   *pipe.Writer
 	Db       *database.DB
 	ModelDir string
 	Cwd      string
 	Session  *pb.Session
 }
 
-func (s *defaultSubmitter) Setup(w *pipe.PipeWriter, db *database.DB, modelDir string, session *pb.Session) error {
+func (s *defaultSubmitter) Setup(w *pipe.Writer, db *database.DB, modelDir string, session *pb.Session) error {
 	// cwd is used to store train scripts and save output models.
 	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
 	s.Writer, s.Db, s.ModelDir, s.Cwd, s.Session = w, db, modelDir, cwd, session

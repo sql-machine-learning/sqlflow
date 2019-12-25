@@ -22,7 +22,7 @@ import (
 	"sqlflow.org/sqlflow/pkg/pipe"
 )
 
-func runStandardSQL(wr *pipe.PipeWriter, slct string, db *database.DB) error {
+func runStandardSQL(wr *pipe.Writer, slct string, db *database.DB) error {
 	if isQuery(slct) {
 		return runQuery(wr, slct, db)
 	}
@@ -48,7 +48,7 @@ func isQuery(slct string) bool {
 }
 
 // query runs slct and writes the retrieved rows into pipe wr.
-func runQuery(wr *pipe.PipeWriter, slct string, db *database.DB) error {
+func runQuery(wr *pipe.Writer, slct string, db *database.DB) error {
 	rows, err := db.Query(slct)
 	if err != nil {
 		return fmt.Errorf("runQuery failed: %v", err)
@@ -80,7 +80,7 @@ func runQuery(wr *pipe.PipeWriter, slct string, db *database.DB) error {
 // parseRow calls rows.Scan to retrieve the current row, and convert
 // each cell value from {}interface to an accuracy value.  It then
 // writes the converted row into wr.
-func parseRow(columns []string, columnTypes []*sql.ColumnType, rows *sql.Rows, wr *pipe.PipeWriter) error {
+func parseRow(columns []string, columnTypes []*sql.ColumnType, rows *sql.Rows, wr *pipe.Writer) error {
 	// Since we don't know the table schema in advance, we create
 	// a slice of empty interface and add column types at
 	// runtime. Some databases support dynamic types between rows,
@@ -116,7 +116,7 @@ func parseRow(columns []string, columnTypes []*sql.ColumnType, rows *sql.Rows, w
 	return nil
 }
 
-func runExec(wr *pipe.PipeWriter, slct string, db *database.DB) error {
+func runExec(wr *pipe.Writer, slct string, db *database.DB) error {
 	res, e := db.Exec(slct)
 	if e != nil {
 		return fmt.Errorf("runExec failed: %v", e)
