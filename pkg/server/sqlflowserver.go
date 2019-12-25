@@ -29,6 +29,7 @@ import (
 	"github.com/golang/protobuf/ptypes/wrappers"
 
 	"sqlflow.org/sqlflow/pkg/parser"
+	"sqlflow.org/sqlflow/pkg/pipe"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	sf "sqlflow.org/sqlflow/pkg/sql"
 )
@@ -38,12 +39,12 @@ type Server struct {
 	// TODO(typhoonzero): should pass `Server` struct to run function, so that we can get
 	// server-side configurations together with client side session in the run context.
 	// To do this we need to refactor current pkg structure, so that we will not have circular dependency.
-	run      func(sql string, modelDir string, session *pb.Session) *sf.PipeReader
+	run      func(sql string, modelDir string, session *pb.Session) *pipe.Reader
 	modelDir string
 }
 
 // NewServer returns a server instance
-func NewServer(run func(string, string, *pb.Session) *sf.PipeReader,
+func NewServer(run func(string, string, *pb.Session) *pipe.Reader,
 	modelDir string) *Server {
 	return &Server{run: run, modelDir: modelDir}
 }
