@@ -39,7 +39,7 @@ type Session struct {
     Token          int64   // User token granted after login
     ClientEndpoint string  // ip:port from the client
     DBConnStr      string  // mysql://AK:SK@127.0.0.1:3306
-    // cached connection to database for current session, can point to a global connecion map
+    // cached connection to database for current session, can point to a global connection map
     DBConn         *sql.DB
     K8SAK          string  // AK or username for accessing kubernetes
     K8SSK          string  // SK or secret for accessing kubernetes
@@ -58,7 +58,7 @@ should be expired within some time and deleted on the server memory.
 The Database connection string also contains credential information
 follow the format like `mysql://AK:SK@127.0.0.1:3306`.
 
-To submit to clusters like Kubrenetes, we also need to store credentials
+To submit to clusters like Kubernetes, we also need to store credentials
 to access Kubernetes API server, so `K8SAK, K8SSK` is also stored in
 the session.
 
