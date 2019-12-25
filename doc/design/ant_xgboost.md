@@ -123,7 +123,7 @@ class ModelSource:
 ``` 
 
 
-With the help of xgblauncher, we can launch xgboost from sqlflow AST via a lightweight python `code template` and a corrsponding `filler`.
+With the help of xgblauncher, we can launch xgboost from sqlflow AST via a lightweight python `code template` and a corresponding `filler`.
 The `code template` roughly includes components as follows: 
 
 * `TFDataSource` that is responsible for fetching and pre-processing data via tf.feature_columns API.
@@ -132,7 +132,7 @@ The `code template` roughly includes components as follows:
 * `DBDataSource` that is responsible for writing prediction results into specific data base.
    The writing action can be implemented via `sqlflow_submitter.db.insert_values`.
 
-* `LocalModelSource` that is responsible for reading/writing _gboost models on local file system.
+* `LocalModelSource` that is responsible for reading/writing xgboost models on local file system.
 
 * Configure template building and entry point of xgblauncher.
 

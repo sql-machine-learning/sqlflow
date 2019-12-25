@@ -123,14 +123,14 @@ func (s *Server) Fetch (ctx context.Context, jobID *pb.JobID) (*pb.Responses, er
 }
 
 func main() {
-  // registe `LocalJobRunner` or `KubernetesJobRunner` according to the env variable `SQLFLOW_JOB_RUNNER`
-  server.RegisteJobRunner(os.getenv("SQLFLOW_JOB_RUNNER"))
+  // register `LocalJobRunner` or `KubernetesJobRunner` according to the env variable `SQLFLOW_JOB_RUNNER`
+  server.RegisterJobRunner(os.getenv("SQLFLOW_JOB_RUNNER"))
 }
 ```
 
 ### LocalJobRunner
 
-Upon processing a `Run` request, the server generates, bookkeeps, and returns the job ID to the client.
+Upon processing a `Run` request, the server generates bookkeepers and returns the job ID to the client.
 Upon processing a `Fetch` request, the server looks up the result channel and returns the most recent result.
 
 ```go
@@ -156,7 +156,7 @@ func (r *LocalJobRunner) run(sql *req.SQL, pr *PipeReader, pw *PipeWriter) (stri
 }
 
 func (r *LocalJobRunner) fetch(jobID string) (*pb.Responses, error) (
-  responses := &pb.Responsts{}
+  responses := &pb.Responses{}
   pr, ok := r.jobs[jobID]
   if !ok {
       return nil, fmt.Errorf("unrecognized jobID %s", jobID)
