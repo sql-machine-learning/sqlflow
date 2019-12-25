@@ -1349,9 +1349,9 @@ func checkWorkflow(stream pb.SQLFlow_RunClient) {
 	if !strings.HasPrefix(workflowID, "sqlflow-couler") {
 		log.Fatalf("workflow not started with sqlflow-couler")
 	}
-	// check the workflow status in 180 seconds
+	// check the workflow status in 300 seconds
 	// TODO(yancey1989): using the Fetch gRPC interface to check the workflow status
-	for i := 0; i < 60; i++ {
+	for i := 0; i < 100; i++ {
 		cmd := exec.Command("kubectl", "get", "wf", workflowID, "-o", "jsonpath='{.status.phase}'")
 		out, err := cmd.CombinedOutput()
 		if err != nil {
