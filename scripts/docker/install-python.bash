@@ -46,4 +46,5 @@ shap==0.30.1 \
 xgboost==0.90 \
 pytest==5.3.0 \
 oss2==2.9.0 \
-plotille==3.7
+plotille==3.7 \
+seaborn==0.9.0

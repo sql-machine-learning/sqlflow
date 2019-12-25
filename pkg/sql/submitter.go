@@ -170,11 +170,14 @@ func (s *defaultSubmitter) ExecutePredict(cl *ir.PredictStmt) (e error) {
 
 func (s *defaultSubmitter) ExecuteAnalyze(cl *ir.AnalyzeStmt) error {
 	// NOTE(typhoonzero): model is already loaded under s.Cwd
-	if !isXGBoostModel(cl.TrainStmt.Estimator) {
-		return fmt.Errorf("unsupported model %s", cl.TrainStmt.Estimator)
+	var code string
+	var err error
+	if isXGBoostModel(cl.TrainStmt.Estimator) {
+		code, err = xgboost.Analyze(cl)
+	} else {
+		code, err = tensorflow.Analyze(cl)
 	}
 
-	code, err := xgboost.Analyze(cl)
 	if err != nil {
 		return err
 	}

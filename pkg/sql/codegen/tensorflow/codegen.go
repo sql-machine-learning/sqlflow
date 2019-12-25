@@ -15,6 +15,7 @@ package tensorflow
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -447,4 +448,79 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 	}
 
 	return program.String(), nil
+}
+
+// Analyze generates a Python program to analyze a trained model.
+func Analyze(analyzeStmt *ir.AnalyzeStmt) (string, error) {
+	if !strings.HasPrefix(analyzeStmt.TrainStmt.Estimator, "BoostedTrees") {
+		return "", fmt.Errorf("unsupported model %s", analyzeStmt.TrainStmt.Estimator)
+	}
+	modelParams := make(map[string]interface{})
+	for attrKey, attr := range analyzeStmt.TrainStmt.Attributes {
+		if strings.HasPrefix(attrKey, "model.") {
+			modelParams[strings.Replace(attrKey, "model.", "", 1)] = attr
+		}
+	}
+	featureColumnsCode := []string{}
+	perTargetFeatureColumnsCode := []string{}
+	fieldDescs := []*ir.FieldDesc{}
+	for target, fcList := range analyzeStmt.TrainStmt.Features {
+		for _, fc := range fcList {
+			fcCode, err := generateFeatureColumnCode(fc)
+			if err != nil {
+				return "", err
+			}
+			perTargetFeatureColumnsCode = append(perTargetFeatureColumnsCode, fcCode)
+			if len(fc.GetFieldDesc()) > 0 {
+				for _, fm := range fc.GetFieldDesc() {
+					fieldDescs = append(fieldDescs, fm)
+				}
+			}
+		}
+		featureColumnsCode = append(featureColumnsCode,
+			fmt.Sprintf("\"%s\": [%s]", target, strings.Join(perTargetFeatureColumnsCode, ",\n")))
+	}
+	_, estimatorStr := IsKerasModel(analyzeStmt.TrainStmt.Estimator)
+	labelFM := analyzeStmt.TrainStmt.Label.GetFieldDesc()[0]
+
+	const summaryAttrPrefix = "summary."
+	summaryAttrs := resolveParams(analyzeStmt.Attributes, summaryAttrPrefix)
+	jsonSummary, err := json.Marshal(summaryAttrs)
+	if err != nil {
+		return "", err
+	}
+
+	filler := analyzeFiller{
+		DataSource:        analyzeStmt.DataSource,
+		Select:            analyzeStmt.Select,
+		SummaryParams:     string(jsonSummary),
+		EstimatorClass:    estimatorStr,
+		FieldDescs:        fieldDescs,
+		FeatureColumnCode: fmt.Sprintf("{%s}", strings.Join(featureColumnsCode, ",\n")),
+		Y:                 labelFM,
+		ModelParams:       modelParams,
+		Save:              "model_save",
+	}
+	var program bytes.Buffer
+	var tmpl = template.Must(template.New("Analyze").Funcs(template.FuncMap{
+		"intArrayToJSONString": intArrayToJSONString,
+		"attrToPythonValue":    attrToPythonValue,
+		"dtypeToString":        dtypeToString,
+	}).Parse(boostedTreesAnalyzeTemplateText))
+	if err := tmpl.Execute(&program, filler); err != nil {
+		return "", err
+	}
+
+	return program.String(), nil
+}
+
+// make a exported function in outer package
+func resolveParams(attrs map[string]interface{}, group string) map[string]interface{} {
+	sp := make(map[string]interface{})
+	for k, v := range attrs {
+		if strings.HasPrefix(k, group) {
+			sp[k[len(group):]] = v
+		}
+	}
+	return sp
 }
