@@ -1334,7 +1334,7 @@ FROM %s.%s LIMIT 5;
 	checkWorkflow(stream)
 }
 
-func checkWorkflow(stream pb.SQLFlow_RunClient) {
+func checkWorkflow(stream pb.SQLFlow_RunClient) error {
 	var workflowID string
 	for {
 		iter, err := stream.Recv()
@@ -1342,28 +1342,14 @@ func checkWorkflow(stream pb.SQLFlow_RunClient) {
 			break
 		}
 		if err != nil {
-			log.Fatalf("stream read err: %v", err)
+			return fmt.Errorf("stream read err: %v", err)
 		}
 		workflowID = iter.GetJob().GetId()
 	}
 	if !strings.HasPrefix(workflowID, "sqlflow-couler") {
-		log.Fatalf("workflow not started with sqlflow-couler")
+		return fmt.Errorf("workflow not started with sqlflow-couler")
 	}
-	// check the workflow status in 300 seconds
-	// TODO(yancey1989): using the Fetch gRPC interface to check the workflow status
-	for i := 0; i < 100; i++ {
-		cmd := exec.Command("kubectl", "get", "wf", workflowID, "-o", "jsonpath='{.status.phase}'")
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			log.Fatalf("get workflow status error: %v", err)
-		}
-		if string(out) == "'Succeeded'" {
-			return
-		}
-		time.Sleep(3 * time.Second)
-	}
-	// workflow times out
-	log.Fatalf("workflow: %s times out", workflowID)
+
 }
 
 func CaseSubmitSQLProgram(t *testing.T) {
