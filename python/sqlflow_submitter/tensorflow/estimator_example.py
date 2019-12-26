@@ -65,7 +65,7 @@ label_meta = {
     "feature_name": "class",
     "dtype": "int64",
     "delimiter": "",
-    "shape": [1],
+    "shape": [],
     "is_sparse": "false" == "true"
 }
 
