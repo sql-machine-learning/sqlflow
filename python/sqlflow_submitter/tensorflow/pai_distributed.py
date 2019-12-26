@@ -13,6 +13,7 @@
 
 import tensorflow as tf
 import json
+import os
 
 # This module contain utilities for PAI distributed training.
 # Note that currently PAI only support Tensorflow 1.x versions

@@ -20,28 +20,31 @@ type sqlStatement struct {
 	IsExtendedSQL bool
 	DockerImage   string
 	// CreateTmpTable and Select are used to create a step to generate temporary table for training
-	CreateTmpTable   bool
-	Select           string
-	SQLFlowSubmitter string
+	CreateTmpTable bool
+	Select         string
 }
 type coulerFiller struct {
-	DataSource    string
-	SQLStatements []*sqlStatement
+	DataSource       string
+	SQLStatements    []*sqlStatement
+	SQLFlowSubmitter string
+	SQLFlowOSSDir    string
 }
 
 const coulerTemplateText = `
 import couler.argo as couler
 import uuid
 datasource = "{{ .DataSource }}"
+envs = {"SQLFLOW_submitter": "{{.SQLFlowSubmitter}}",
+        "SQLFLOW_OSS_CHECKPOINT_DIR": "{{.SQLFlowOSSDir}}"}
 {{ range $ss := .SQLStatements }}
 	{{if $ss.IsExtendedSQL }}
 train_sql = '''{{ $ss.OriginalSQL }}'''
-couler.run_container(command='''repl -e "%s" --datasource="%s"''' % (train_sql, datasource), image="{{ $ss.DockerImage }}", env={"SQLFLOW_submitter": "{{$ss.SQLFlowSubmitter}}"})
+couler.run_container(command='''repl -e "%s" --datasource="%s"''' % (train_sql, datasource), image="{{ $ss.DockerImage }}", env=envs)
 	{{else}}
 # TODO(yancey1989): 
 #	using "repl -parse" to output IR and
 #	feed to "sqlflow_submitter.{submitter}.train" to submit the job
-couler.run_container(command='''repl -e "{{ $ss.OriginalSQL }}" --datasource="%s"''' % datasource, image="{{ $ss.DockerImage }}", env={"SQLFLOW_submitter": "{{$ss.SQLFlowSubmitter}}"})
+couler.run_container(command='''repl -e "{{ $ss.OriginalSQL }}" --datasource="%s"''' % datasource, image="{{ $ss.DockerImage }}", env=envs)
 	{{end}}
 {{end}}
 `

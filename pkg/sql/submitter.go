@@ -24,6 +24,7 @@ import (
 	"sync"
 
 	"sqlflow.org/sqlflow/pkg/database"
+	"sqlflow.org/sqlflow/pkg/pipe"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/xgboost"
@@ -45,16 +46,22 @@ func submitter() Submitter {
 	return s
 }
 
+// Figures contains analyzed figures as strings
+type Figures struct {
+	Image string
+	Text  string
+}
+
 // Submitter extends ir.Executor
 type Submitter interface {
 	ir.Executor
-	Setup(*PipeWriter, *database.DB, string, *pb.Session) error
+	Setup(*pipe.Writer, *database.DB, string, *pb.Session) error
 	Teardown()
 	GetTrainStmtFromModel() bool
 }
 
 type logChanWriter struct {
-	wr   *PipeWriter
+	wr   *pipe.Writer
 	m    sync.Mutex
 	buf  bytes.Buffer
 	prev string
@@ -93,14 +100,14 @@ func (cw *logChanWriter) Close() {
 }
 
 type defaultSubmitter struct {
-	Writer   *PipeWriter
+	Writer   *pipe.Writer
 	Db       *database.DB
 	ModelDir string
 	Cwd      string
 	Session  *pb.Session
 }
 
-func (s *defaultSubmitter) Setup(w *PipeWriter, db *database.DB, modelDir string, session *pb.Session) error {
+func (s *defaultSubmitter) Setup(w *pipe.Writer, db *database.DB, modelDir string, session *pb.Session) error {
 	// cwd is used to store train scripts and save output models.
 	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
 	s.Writer, s.Db, s.ModelDir, s.Cwd, s.Session = w, db, modelDir, cwd, session
@@ -173,6 +180,7 @@ func (s *defaultSubmitter) ExecutePredict(cl *ir.PredictStmt) (e error) {
 	}
 	return e
 }
+
 func (s *defaultSubmitter) ExecuteAnalyze(cl *ir.AnalyzeStmt) error {
 	if err := s.LoadModel(cl.TrainStmt); err != nil {
 		return err
@@ -199,8 +207,13 @@ func (s *defaultSubmitter) ExecuteAnalyze(cl *ir.AnalyzeStmt) error {
 	}
 	imgBase64Str := base64.StdEncoding.EncodeToString(imgBytes)
 	img2html := fmt.Sprintf("<div align='center'><img src='data:image/png;base64,%s' /></div>", imgBase64Str)
-	s.Writer.Write(img2html)
+	termFigure, err := ioutil.ReadFile(path.Join(s.Cwd, "summary.txt"))
+	if err != nil {
+		return err
+	}
+	s.Writer.Write(Figures{img2html, string(termFigure)})
 	return nil
 }
+
 func (s *defaultSubmitter) Teardown()                   { os.RemoveAll(s.Cwd) }
 func (s *defaultSubmitter) GetTrainStmtFromModel() bool { return true }

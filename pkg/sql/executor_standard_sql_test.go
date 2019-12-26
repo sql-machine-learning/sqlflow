@@ -21,6 +21,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"sqlflow.org/sqlflow/pkg/database"
+	"sqlflow.org/sqlflow/pkg/pipe"
 )
 
 const (
@@ -55,7 +56,7 @@ func goodStream(stream chan interface{}) (bool, string) {
 func TestStandardSQL(t *testing.T) {
 	a := assert.New(t)
 	a.NotPanics(func() {
-		rd, wr := Pipe()
+		rd, wr := pipe.Pipe()
 		go func() {
 			defer wr.Close()
 			e := runStandardSQL(wr, testSelectIris, database.GetTestingDBSingleton())
@@ -67,7 +68,7 @@ func TestStandardSQL(t *testing.T) {
 		if getEnv("SQLFLOW_TEST_DB", "mysql") == "hive" {
 			t.Skip("hive: skip DELETE statement")
 		}
-		rd, wr := Pipe()
+		rd, wr := pipe.Pipe()
 		go func() {
 			defer wr.Close()
 			e := runStandardSQL(wr, testStandardExecutiveSQLStatement, database.GetTestingDBSingleton())
@@ -76,7 +77,7 @@ func TestStandardSQL(t *testing.T) {
 		a.True(goodStream(rd.ReadAll()))
 	})
 	a.NotPanics(func() {
-		rd, wr := Pipe()
+		rd, wr := pipe.Pipe()
 		go func() {
 			defer wr.Close()
 			e := runStandardSQL(wr, "SELECT * FROM iris.iris_empty LIMIT 10;", database.GetTestingDBSingleton())

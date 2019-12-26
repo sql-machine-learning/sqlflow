@@ -11,9 +11,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package verifier
 
 import (
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -25,52 +26,52 @@ func TestVerify_1(t *testing.T) {
 	a := assert.New(t)
 	r, e := parser.LegacyParse(`SELECT * FROM churn.train LIMIT 10;`)
 	a.NoError(e)
-	fts, e := verify(r.StandardSelect.String(), database.GetTestingDBSingleton())
+	fts, e := Verify(r.StandardSelect.String(), database.GetTestingDBSingleton())
 	a.NoError(e)
 	a.Equal(21, len(fts))
 
-	if getEnv("SQLFLOW_TEST_DB", "mysql") == "hive" {
+	if os.Getenv("SQLFLOW_TEST_DB") == "hive" {
 		t.Skip("in Hive, db_name.table_name.field_name will raise error, because . operator is only supported on struct or list of struct types")
 	}
 
 	r, e = parser.LegacyParse(`SELECT Churn, churn.train.Partner,TotalCharges FROM churn.train LIMIT 10;`)
 	a.NoError(e)
-	fts, e = verify(r.StandardSelect.String(), database.GetTestingDBSingleton())
+	fts, e = Verify(r.StandardSelect.String(), database.GetTestingDBSingleton())
 	a.NoError(e)
 	a.Equal(3, len(fts))
 
-	typ, ok := fts.get("churn")
+	typ, ok := fts.Get("churn")
 	a.True(ok)
 	a.Contains([]string{"VARCHAR(255)", "VARCHAR"}, typ)
 
-	typ, ok = fts.get("partner")
+	typ, ok = fts.Get("partner")
 	a.True(ok)
 	a.Contains([]string{"VARCHAR(255)", "VARCHAR"}, typ)
 
-	typ, ok = fts.get("totalcharges")
+	typ, ok = fts.Get("totalcharges")
 	a.True(ok)
 	a.Equal("FLOAT", typ)
 }
 
 func TestVerify_2(t *testing.T) {
-	if getEnv("SQLFLOW_TEST_DB", "mysql") == "hive" {
+	if os.Getenv("SQLFLOW_TEST_DB") == "hive" {
 		t.Skip("in Hive, db_name.table_name.field_name will raise error, because . operator is only supported on struct or list of struct types")
 	}
 	a := assert.New(t)
 	r, e := parser.LegacyParse(`SELECT Churn, churn.train.Partner FROM churn.train LIMIT 10;`)
 	a.NoError(e)
-	fts, e := verify(r.StandardSelect.String(), database.GetTestingDBSingleton())
+	fts, e := Verify(r.StandardSelect.String(), database.GetTestingDBSingleton())
 	a.NoError(e)
 	a.Equal(2, len(fts))
-	typ, ok := fts.get("churn")
+	typ, ok := fts.Get("churn")
 	a.Equal(true, ok)
 	a.Contains([]string{"VARCHAR(255)", "VARCHAR"}, typ)
 
-	typ, ok = fts.get("partner")
+	typ, ok = fts.Get("partner")
 	a.Equal(true, ok)
 	a.Contains([]string{"VARCHAR(255)", "VARCHAR"}, typ)
 
-	_, ok = fts.get("gender")
+	_, ok = fts.Get("gender")
 	a.Equal(false, ok)
 }
 
@@ -92,14 +93,14 @@ FROM churn.train LIMIT 10
 TO PREDICT iris.predict.class
 USING sqlflow_models.my_dnn_model;`)
 	a.NoError(e)
-	a.NoError(verifyColumnNameAndType(trainParse, predParse, database.GetTestingDBSingleton()))
+	a.NoError(VerifyColumnNameAndType(trainParse, predParse, database.GetTestingDBSingleton()))
 
 	predParse, e = parser.LegacyParse(`SELECT gender, tenure
 FROM churn.train LIMIT 10
 TO PREDICT iris.predict.class
 USING sqlflow_models.my_dnn_model;`)
 	a.NoError(e)
-	a.EqualError(verifyColumnNameAndType(trainParse, predParse, database.GetTestingDBSingleton()),
+	a.EqualError(VerifyColumnNameAndType(trainParse, predParse, database.GetTestingDBSingleton()),
 		"predFields doesn't contain column totalcharges")
 }
 
@@ -107,7 +108,7 @@ func TestDescribeEmptyTables(t *testing.T) {
 	a := assert.New(t)
 	r, e := parser.LegacyParse(`SELECT * FROM iris.iris_empty LIMIT 10;`)
 	a.NoError(e)
-	_, e = verify(r.StandardSelect.String(), database.GetTestingDBSingleton())
+	_, e = Verify(r.StandardSelect.String(), database.GetTestingDBSingleton())
 	a.EqualError(e, `query SELECT *
 FROM iris.iris_empty
 LIMIT 10 gives 0 row`)

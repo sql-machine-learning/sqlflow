@@ -28,7 +28,9 @@ import (
 	pyts "github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/golang/protobuf/ptypes/wrappers"
 
+	sfargo "sqlflow.org/sqlflow/pkg/argo"
 	"sqlflow.org/sqlflow/pkg/parser"
+	"sqlflow.org/sqlflow/pkg/pipe"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	sf "sqlflow.org/sqlflow/pkg/sql"
 )
@@ -38,20 +40,19 @@ type Server struct {
 	// TODO(typhoonzero): should pass `Server` struct to run function, so that we can get
 	// server-side configurations together with client side session in the run context.
 	// To do this we need to refactor current pkg structure, so that we will not have circular dependency.
-	run      func(sql string, modelDir string, session *pb.Session) *sf.PipeReader
+	run      func(sql string, modelDir string, session *pb.Session) *pipe.Reader
 	modelDir string
 }
 
 // NewServer returns a server instance
-func NewServer(run func(string, string, *pb.Session) *sf.PipeReader,
+func NewServer(run func(string, string, *pb.Session) *pipe.Reader,
 	modelDir string) *Server {
 	return &Server{run: run, modelDir: modelDir}
 }
 
 // Fetch implements `rpc Fetch (Job) returns(JobStatus)`
 func (s *Server) Fetch(ctx context.Context, job *pb.FetchRequest) (*pb.FetchResponse, error) {
-	res := &pb.FetchResponse{}
-	return res, nil
+	return sfargo.Fetch(job)
 }
 
 // Run implements `rpc Run (Request) returns (stream Response)`
@@ -72,6 +73,8 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 			res, err = encodeHead(s)
 		case []interface{}:
 			res, err = encodeRow(s)
+		case sf.Figures:
+			res, err = encodeMessage(s.Image)
 		case string:
 			res, err = encodeMessage(s)
 		case sf.WorkflowJob:
