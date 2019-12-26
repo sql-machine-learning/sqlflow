@@ -48,8 +48,8 @@ func GetTestingDBSingleton() *DB {
 // tables in the opened database, and popularize data.  For any error,
 // createTestingDB panics.
 //
-// NOTE: It is the caller's responsibility to close the databased.  In
-// order to do it, users migth want to define TestMain and call
+// NOTE: It is the caller's responsibility to close the database.  In
+// order to do it, users might want to define TestMain and call
 // createTestingDB and defer db.Close in it.
 func createTestingDB() *DB {
 	switch dbms := getEnv("SQLFLOW_TEST_DB", "mysql"); dbms {

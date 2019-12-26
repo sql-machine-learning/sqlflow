@@ -25,14 +25,14 @@ import (
 )
 
 // DB extends sql.DB, while keeping the two parameters, DriverName and
-// DataSoruce, to database/sql.Open reaccessible.
+// DataSource, to database/sql.Open reaccessible.
 type DB struct {
 	DriverName     string // NOTE: Don't name it Driver, because Driver is a method of sql.DB.
 	DataSourceName string
 	*sql.DB
 }
 
-// OpenDB open a dataabase identified by an URL.  It calls ParseURL
+// OpenDB open a database identified by an URL.  It calls ParseURL
 // to get the driver and data source name.  In addition to opening the
 // database, it also verifies the driver is loaded.
 func OpenDB(url string) (*DB, error) {
@@ -72,7 +72,7 @@ func unparseURL(driver, source string) string {
 }
 
 // OpenAndConnectDB calls OpenDB to open a database specified by an
-// URL.  In additon to opening, it also call database.DB.Ping to
+// URL.  In addition to opening, it also call database.DB.Ping to
 // ensure a connection to the database.
 func OpenAndConnectDB(url string) (*DB, error) {
 	db, err := OpenDB(url)
