@@ -170,7 +170,7 @@ func generateTrainStmtByModel(slct *parser.SQLFlowSelectStmt, connStr, cwd, mode
 }
 
 func verifyTrainStmt(trainStmt *ir.TrainStmt, db *database.DB, verifyLabel bool) error {
-	trainFields, e := verify(trainStmt.Select, db)
+	trainFields, e := verifier.Verify(trainStmt.Select, db)
 	if e != nil {
 		return e
 	}
@@ -179,7 +179,7 @@ func verifyTrainStmt(trainStmt *ir.TrainStmt, db *database.DB, verifyLabel bool)
 		for _, field := range fc {
 			for _, fm := range field.GetFieldDesc() {
 				name := fm.Name
-				_, ok := trainFields.get(name)
+				_, ok := trainFields.Get(name)
 				if !ok {
 					return fmt.Errorf("feature field does not exist in database: %s", name)
 				}
@@ -192,7 +192,7 @@ func verifyTrainStmt(trainStmt *ir.TrainStmt, db *database.DB, verifyLabel bool)
 			// empty labelFieldName means clustering model.
 			return nil
 		}
-		_, ok := trainFields.get(labelFieldName)
+		_, ok := trainFields.Get(labelFieldName)
 		if !ok {
 			return fmt.Errorf("label field does not exist in database: %s", labelFieldName)
 		}
