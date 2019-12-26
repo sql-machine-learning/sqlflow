@@ -217,13 +217,18 @@ func runSQLProgram(wr *pipe.Writer, sqlProgram string, db *database.DB, modelDir
 	//
 	// The IR generation on the second statement would fail since it requires inspection the schema of some_table,
 	// which depends on the execution of create table some_table as (select ...);.
-
 	for _, sql := range sqls {
 		cwd, err := ioutil.TempDir("/tmp", "sqlflow_models")
 		if err != nil {
 			return err
 		}
-
+		// NOTE(typhoonzero): must call "cleanCwd" when end processing current SQL or before
+		// returning error, we can not use "defer" because if we have many SQL statements in
+		// the SQL program, we may overflow the defer stack.
+		// For more information: https://blog.learngoprogramming.com/gotchas-of-defer-in-go-1-8d070894cb01
+		cleanCwd := func(cwd string) error {
+			return os.RemoveAll(cwd)
+		}
 		var r ir.SQLStatement
 		connStr := db.URL()
 		if parser.IsExtendedSyntax(sql) {
@@ -239,16 +244,21 @@ func runSQLProgram(wr *pipe.Writer, sqlProgram string, db *database.DB, modelDir
 			r = &standardSQL
 		}
 		if err != nil {
+			if e := cleanCwd(cwd); e != nil {
+				return fmt.Errorf("encounter %v when dealwith error: %s", e, err)
+			}
 			return err
 		}
 
 		r.SetOriginalSQL(sql.Original)
-		if e := runSingleSQLIR(wr, r, db, modelDir, cwd, session); e != nil {
-			return e
-		}
-		err = os.RemoveAll(cwd)
-		if err != nil {
+		if err := runSingleSQLIR(wr, r, db, modelDir, cwd, session); err != nil {
+			if e := cleanCwd(cwd); e != nil {
+				return fmt.Errorf("encounter %v when dealwith error: %s", e, err)
+			}
 			return err
+		}
+		if e := cleanCwd(cwd); e != nil {
+			return fmt.Errorf("encounter %v when dealwith error: %s", e, err)
 		}
 	}
 	return nil
