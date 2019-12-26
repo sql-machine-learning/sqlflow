@@ -142,7 +142,7 @@ def estimator_predict(estimator, model_params, save, result_table,
             result = fast_predictor.predict(features)
             row = []
             for idx, _ in enumerate(feature_column_names):
-                val = features[0][idx]
+                val = features[0][idx][0]
                 row.append(str(val))
             if "class_ids" in list(result)[0]:
                 row.append(str(list(result)[0]["class_ids"][0]))
