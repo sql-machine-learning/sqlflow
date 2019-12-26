@@ -58,9 +58,11 @@ func RunSQLProgram(sqlProgram string, modelDir string, session *pb.Session) *pip
 			wr.Write(fmt.Errorf("create DB failed: %v", err))
 			log.Printf("create DB failed: %v", err)
 		}
+		defer db.Close()
 		defer wr.Close()
-		err = runSQLProgram(wr, sqlProgram, db, modelDir, session)
-
+		req := newRequest(wr, sqlProgram, session, db, modelDir)
+		defer req.close()
+		err = runSQLProgram(req)
 		if err != nil {
 			log.Printf("runSQLProgram error: %v", err)
 			if err != pipe.ErrClosedPipe {
@@ -192,8 +194,8 @@ func submitWorkflow(wr *pipe.Writer, sqlProgram string, modelDir string, session
 	})
 }
 
-func runSQLProgram(wr *pipe.Writer, sqlProgram string, db *database.DB, modelDir string, session *pb.Session) error {
-	sqls, err := parser.Parse(db.DriverName, sqlProgram)
+func runSQLProgram(req *requestContext) (e error) {
+	sqls, err := parser.Parse(req.Conn.DriverName, req.SQLProgram)
 	if err != nil {
 		return err
 	}
@@ -207,14 +209,14 @@ func runSQLProgram(wr *pipe.Writer, sqlProgram string, db *database.DB, modelDir
 	// which depends on the execution of create table some_table as (select ...);.
 	for _, sql := range sqls {
 		var r ir.SQLStatement
-		connStr := db.URL()
+		connStr := req.Conn.URL()
 		if parser.IsExtendedSyntax(sql) {
 			if sql.Train {
 				r, err = generateTrainStmtWithInferredColumns(sql.SQLFlowSelectStmt, connStr)
 			} else if sql.Explain {
-				r, err = generateAnalyzeStmt(sql.SQLFlowSelectStmt, connStr, modelDir, submitter().GetTrainStmtFromModel())
+				r, err = generateAnalyzeStmt(sql.SQLFlowSelectStmt, connStr, req.ModelSaveDir, req.Submitter.GetTrainStmtFromModel())
 			} else {
-				r, err = generatePredictStmt(sql.SQLFlowSelectStmt, connStr, modelDir, submitter().GetTrainStmtFromModel())
+				r, err = generatePredictStmt(sql.SQLFlowSelectStmt, connStr, req.ModelSaveDir, req.Submitter.GetTrainStmtFromModel())
 			}
 		} else {
 			standardSQL := ir.StandardSQL(sql.Standard)
@@ -223,34 +225,25 @@ func runSQLProgram(wr *pipe.Writer, sqlProgram string, db *database.DB, modelDir
 		if err != nil {
 			return err
 		}
-
 		r.SetOriginalSQL(sql.Original)
-		if e := runSingleSQLIR(wr, r, db, modelDir, session); e != nil {
+		// TODO(typhoonzero): can run LogFeatureDerivationResult(wr, trainStmt) here to send
+		// feature derivation logs to client, yet we disable if for now so that it's less annoying.
+		startTime := time.Now().UnixNano()
+		defer func() {
+			if e != nil {
+				req.Wr.Write(EndOfExecution{
+					StartTime: startTime,
+					EndTime:   time.Now().UnixNano(),
+					Statement: r.GetOriginalSQL(),
+				})
+			}
+		}()
+
+		if e := req.executeSQL(r); e != nil {
 			return e
 		}
 	}
 	return nil
-}
-
-func runSingleSQLIR(wr *pipe.Writer, sqlIR ir.SQLStatement, db *database.DB, modelDir string, session *pb.Session) (e error) {
-	startTime := time.Now().UnixNano()
-	var originalSQL string
-	defer func() {
-		if e != nil {
-			wr.Write(EndOfExecution{
-				StartTime: startTime,
-				EndTime:   time.Now().UnixNano(),
-				Statement: originalSQL,
-			})
-		}
-	}()
-	// TODO(typhoonzero): can run LogFeatureDerivationResult(wr, trainStmt) here to send
-	// feature derivation logs to client, yet we disable if for now so that it's less annoying.
-	if e := submitter().Setup(wr, db, modelDir, session); e != nil {
-		return e
-	}
-	defer submitter().Teardown()
-	return sqlIR.Execute(submitter())
 }
 
 // getColumnTypes is quiet like verify but accept a SQL string as input, and returns

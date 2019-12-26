@@ -90,7 +90,7 @@ func getDatabaseNameFromDSN(dataSource string) (string, error) {
 // 1. argo mode server: generate a step running: repl -e "repl -e \"select * from xx to train\""
 // 2. non-argo mode server | repl -e: create tmp table in go, and use it to train
 
-func (s *paiSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {
+func (s *paiSubmitter) ExecuteTrain(cl *ir.TrainStmt, req *requestContext) (e error) {
 	// TODO(typhoonzero): Do **NOT** create tmp table when the select statement is like:
 	// "SELECT fields,... FROM table"
 	dbName, tableName, err := createTmpTableFromSelect(cl.Select, cl.DataSource)
@@ -107,14 +107,14 @@ func (s *paiSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 	}
 	defer dropTmpTables([]string{cl.TmpTrainTable, cl.TmpValidateTable}, cl.DataSource)
 
-	code, e := pai.Train(cl, cl.Into, s.Cwd)
+	code, e := pai.Train(cl, cl.Into, req.Cwd)
 	if e != nil {
 		return e
 	}
-	return s.runCommand(code)
+	return s.runCommand(code, req)
 }
 
-func (s *paiSubmitter) ExecutePredict(cl *ir.PredictStmt) error {
+func (s *paiSubmitter) ExecutePredict(cl *ir.PredictStmt, req *requestContext) error {
 	// TODO(typhoonzero): Do **NOT** create tmp table when the select statement is like:
 	// "SELECT fields,... FROM table"
 	dbName, tableName, err := createTmpTableFromSelect(cl.Select, cl.DataSource)
@@ -129,14 +129,14 @@ func (s *paiSubmitter) ExecutePredict(cl *ir.PredictStmt) error {
 	if e != nil {
 		return e
 	}
-	if e = createPredictionTableFromIR(cl, s.Db, s.Session); e != nil {
+	if e = createPredictionTableFromIR(cl, req.Conn, req.Session); e != nil {
 		return e
 	}
-	code, e := pai.Predict(cl, pr.Model, s.Cwd)
+	code, e := pai.Predict(cl, pr.Model, req.Cwd)
 	if e != nil {
 		return e
 	}
-	return s.runCommand(code)
+	return s.runCommand(code, req)
 }
 
 func (s *paiSubmitter) GetTrainStmtFromModel() bool { return false }

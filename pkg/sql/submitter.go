@@ -23,9 +23,7 @@ import (
 	"path"
 	"sync"
 
-	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/pipe"
-	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/xgboost"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
@@ -38,7 +36,16 @@ var submitterRegistry = map[string](Submitter){
 	// TODO(typhoonzero): add submitters like alps, elasticdl
 }
 
-func submitter() Submitter {
+// Submitter is a visitor that generates and executes code for SQLStatement
+type Submitter interface {
+	ExecuteQuery(*ir.StandardSQL, *requestContext) error
+	ExecuteTrain(*ir.TrainStmt, *requestContext) error
+	ExecutePredict(*ir.PredictStmt, *requestContext) error
+	ExecuteAnalyze(*ir.AnalyzeStmt, *requestContext) error
+	GetTrainStmtFromModel() bool
+}
+
+func getSubmitter() Submitter {
 	s := submitterRegistry[envSubmitter]
 	if s == nil {
 		s = submitterRegistry["default"]
@@ -50,14 +57,6 @@ func submitter() Submitter {
 type Figures struct {
 	Image string
 	Text  string
-}
-
-// Submitter extends ir.Executor
-type Submitter interface {
-	ir.Executor
-	Setup(*pipe.Writer, *database.DB, string, *pb.Session) error
-	Teardown()
-	GetTrainStmtFromModel() bool
 }
 
 type logChanWriter struct {
@@ -99,45 +98,32 @@ func (cw *logChanWriter) Close() {
 	}
 }
 
-type defaultSubmitter struct {
-	Writer   *pipe.Writer
-	Db       *database.DB
-	ModelDir string
-	Cwd      string
-	Session  *pb.Session
+type defaultSubmitter struct{}
+
+func (s *defaultSubmitter) SaveModel(cl *ir.TrainStmt, req *requestContext) error {
+	m := model{workDir: req.Cwd, TrainSelect: cl.OriginalSQL}
+	modelURI := cl.Into
+	if req.ModelSaveDir != "" {
+		modelURI = fmt.Sprintf("file://%s/%s", req.ModelSaveDir, cl.Into)
+	}
+	return m.save(modelURI, cl, req.Session)
 }
 
-func (s *defaultSubmitter) Setup(w *pipe.Writer, db *database.DB, modelDir string, session *pb.Session) error {
-	// cwd is used to store train scripts and save output models.
-	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
-	s.Writer, s.Db, s.ModelDir, s.Cwd, s.Session = w, db, modelDir, cwd, session
+func (s *defaultSubmitter) LoadModel(cl *ir.TrainStmt, req *requestContext) error {
+	modelURI := cl.Into
+	if req.ModelSaveDir != "" {
+		modelURI = fmt.Sprintf("file://%s/%s", req.ModelSaveDir, cl.Into)
+	}
+	_, err := load(modelURI, req.Cwd, req.Conn)
 	return err
 }
 
-func (s *defaultSubmitter) SaveModel(cl *ir.TrainStmt) error {
-	m := model{workDir: s.Cwd, TrainSelect: cl.OriginalSQL}
-	modelURI := cl.Into
-	if s.ModelDir != "" {
-		modelURI = fmt.Sprintf("file://%s/%s", s.ModelDir, cl.Into)
-	}
-	return m.save(modelURI, cl, s.Session)
-}
-
-func (s *defaultSubmitter) LoadModel(cl *ir.TrainStmt) error {
-	modelURI := cl.Into
-	if s.ModelDir != "" {
-		modelURI = fmt.Sprintf("file://%s/%s", s.ModelDir, cl.Into)
-	}
-	_, err := load(modelURI, s.Cwd, s.Db)
-	return err
-}
-
-func (s *defaultSubmitter) runCommand(program string) error {
-	cw := &logChanWriter{wr: s.Writer}
+func (s *defaultSubmitter) runCommand(program string, req *requestContext) error {
+	cw := &logChanWriter{wr: req.Wr}
 	var output bytes.Buffer
 	w := io.MultiWriter(cw, &output)
 	defer cw.Close()
-	cmd := sqlflowCmd(s.Cwd, s.Db.DriverName)
+	cmd := sqlflowCmd(req.Cwd, req.Conn.DriverName)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = bytes.NewBufferString(program), w, w
 	if e := cmd.Run(); e != nil {
 		return fmt.Errorf("failed: %v\n%sProgram%[2]s\n%s\n%[2]sOutput%[2]s\n%[4]v", e, "==========", program, output.String())
@@ -145,11 +131,11 @@ func (s *defaultSubmitter) runCommand(program string) error {
 	return nil
 }
 
-func (s *defaultSubmitter) ExecuteQuery(sql *ir.StandardSQL) error {
-	return runStandardSQL(s.Writer, string(*sql), s.Db)
+func (s *defaultSubmitter) ExecuteQuery(sql *ir.StandardSQL, req *requestContext) error {
+	return runStandardSQL(req.Wr, string(*sql), req.Conn)
 }
 
-func (s *defaultSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {
+func (s *defaultSubmitter) ExecuteTrain(cl *ir.TrainStmt, req *requestContext) (e error) {
 	var code string
 	if isXGBoostModel(cl.Estimator) {
 		code, e = xgboost.Train(cl)
@@ -157,32 +143,32 @@ func (s *defaultSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 		code, e = tensorflow.Train(cl)
 	}
 	if e == nil {
-		if e = s.runCommand(code); e == nil {
-			e = s.SaveModel(cl)
+		if e = s.runCommand(code, req); e == nil {
+			e = s.SaveModel(cl, req)
 		}
 	}
 	return e
 }
 
-func (s *defaultSubmitter) ExecutePredict(cl *ir.PredictStmt) (e error) {
-	if e = s.LoadModel(cl.TrainStmt); e == nil {
-		if e = createPredictionTableFromIR(cl, s.Db, s.Session); e == nil {
+func (s *defaultSubmitter) ExecutePredict(cl *ir.PredictStmt, req *requestContext) (e error) {
+	if e = s.LoadModel(cl.TrainStmt, req); e == nil {
+		if e = createPredictionTableFromIR(cl, req.Conn, req.Session); e == nil {
 			var code string
 			if isXGBoostModel(cl.TrainStmt.Estimator) {
-				code, e = xgboost.Pred(cl, s.Session)
+				code, e = xgboost.Pred(cl, req.Session)
 			} else {
-				code, e = tensorflow.Pred(cl, s.Session)
+				code, e = tensorflow.Pred(cl, req.Session)
 			}
 			if e == nil {
-				e = s.runCommand(code)
+				e = s.runCommand(code, req)
 			}
 		}
 	}
 	return e
 }
 
-func (s *defaultSubmitter) ExecuteAnalyze(cl *ir.AnalyzeStmt) error {
-	if err := s.LoadModel(cl.TrainStmt); err != nil {
+func (s *defaultSubmitter) ExecuteAnalyze(cl *ir.AnalyzeStmt, req *requestContext) error {
+	if err := s.LoadModel(cl.TrainStmt, req); err != nil {
 		return err
 	}
 	if !isXGBoostModel(cl.TrainStmt.Estimator) {
@@ -193,10 +179,10 @@ func (s *defaultSubmitter) ExecuteAnalyze(cl *ir.AnalyzeStmt) error {
 	if err != nil {
 		return err
 	}
-	if err = s.runCommand(code); err != nil {
+	if err = s.runCommand(code, req); err != nil {
 		return err
 	}
-	imgFile, err := os.Open(path.Join(s.Cwd, "summary.png"))
+	imgFile, err := os.Open(path.Join(req.Cwd, "summary.png"))
 	if err != nil {
 		return err
 	}
@@ -207,13 +193,12 @@ func (s *defaultSubmitter) ExecuteAnalyze(cl *ir.AnalyzeStmt) error {
 	}
 	imgBase64Str := base64.StdEncoding.EncodeToString(imgBytes)
 	img2html := fmt.Sprintf("<div align='center'><img src='data:image/png;base64,%s' /></div>", imgBase64Str)
-	termFigure, err := ioutil.ReadFile(path.Join(s.Cwd, "summary.txt"))
+	termFigure, err := ioutil.ReadFile(path.Join(req.Cwd, "summary.txt"))
 	if err != nil {
 		return err
 	}
-	s.Writer.Write(Figures{img2html, string(termFigure)})
+	req.Wr.Write(Figures{img2html, string(termFigure)})
 	return nil
 }
 
-func (s *defaultSubmitter) Teardown()                   { os.RemoveAll(s.Cwd) }
 func (s *defaultSubmitter) GetTrainStmtFromModel() bool { return true }

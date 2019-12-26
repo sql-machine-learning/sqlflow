@@ -64,18 +64,10 @@ type FeatureColumn interface {
 // TODO(typhoonzero): Can generate a DAG workflow from a SQL program.
 type SQLProgram []SQLStatement
 
-// Executor is a visitor that generates and executes code for SQLStatement
-type Executor interface {
-	ExecuteQuery(*StandardSQL) error
-	ExecuteTrain(*TrainStmt) error
-	ExecutePredict(*PredictStmt) error
-	ExecuteAnalyze(*AnalyzeStmt) error
-}
-
 // SQLStatement represent all kind of IRs including: TrainStmt, PredictStmt, AnalyzeStmt and standard SQL.
 type SQLStatement interface {
 	SetOriginalSQL(string)
-	Execute(Executor) error
+	// Execute(Executor) error
 	IsExtended() bool
 	GetOriginalSQL() string
 }
@@ -120,9 +112,6 @@ type TrainStmt struct {
 	TmpValidateTable string
 }
 
-// Execute generates and executes code for TrainStmt
-func (cl *TrainStmt) Execute(s Executor) error { return s.ExecuteTrain(cl) }
-
 // SetOriginalSQL sets the original sql string
 func (cl *TrainStmt) SetOriginalSQL(sql string) { cl.OriginalSQL = sql }
 
@@ -159,9 +148,6 @@ type PredictStmt struct {
 	TmpPredictTable string
 }
 
-// Execute generates and executes code for PredictStmt
-func (cl *PredictStmt) Execute(s Executor) error { return s.ExecutePredict(cl) }
-
 // SetOriginalSQL sets the original sql string
 func (cl *PredictStmt) SetOriginalSQL(sql string) { cl.OriginalSQL = sql }
 
@@ -190,9 +176,6 @@ type AnalyzeStmt struct {
 	TrainStmt *TrainStmt
 }
 
-// Execute generates and executes code for AnalyzeStmt
-func (cl *AnalyzeStmt) Execute(s Executor) error { return s.ExecuteAnalyze(cl) }
-
 // SetOriginalSQL sets the original sql string
 func (cl *AnalyzeStmt) SetOriginalSQL(sql string) { cl.OriginalSQL = sql }
 
@@ -204,9 +187,6 @@ func (cl *AnalyzeStmt) GetOriginalSQL() string { return cl.OriginalSQL }
 
 // StandardSQL is a string of a standard SQL statement that can run on the database system.
 type StandardSQL string
-
-// Execute generates and executes code for StandardSQL
-func (sql *StandardSQL) Execute(s Executor) error { return s.ExecuteQuery(sql) }
 
 // SetOriginalSQL sets the original sql string
 func (sql *StandardSQL) SetOriginalSQL(s string) {}
