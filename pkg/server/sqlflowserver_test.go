@@ -30,8 +30,8 @@ import (
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 
+	"sqlflow.org/sqlflow/pkg/pipe"
 	pb "sqlflow.org/sqlflow/pkg/proto"
-	sf "sqlflow.org/sqlflow/pkg/sql"
 )
 
 const (
@@ -46,8 +46,8 @@ const (
 
 var testServerAddress string
 
-func mockRun(sql string, modelDir string, session *pb.Session) *sf.PipeReader {
-	rd, wr := sf.Pipe()
+func mockRun(sql string, modelDir string, session *pb.Session) *pipe.Reader {
+	rd, wr := pipe.Pipe()
 	singleSQL := sql
 	go func() {
 		defer wr.Close()
