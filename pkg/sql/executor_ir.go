@@ -215,12 +215,13 @@ func runSQLProgram(wr *PipeWriter, sqlProgram string, db *database.DB, modelDir 
 	//
 	// The IR generation on the second statement would fail since it requires inspection the schema of some_table,
 	// which depends on the execution of create table some_table as (select ...);.
-	cwd, err := ioutil.TempDir("/tmp", "sqlflow_models")
-	if err != nil {
-		return err
-	}
-	defer os.RemoveAll(cwd)
+
 	for _, sql := range sqls {
+		cwd, err := ioutil.TempDir("/tmp", "sqlflow_models")
+		if err != nil {
+			return err
+		}
+
 		var r ir.SQLStatement
 		connStr := db.URL()
 		if parser.IsExtendedSyntax(sql) {
@@ -242,6 +243,10 @@ func runSQLProgram(wr *PipeWriter, sqlProgram string, db *database.DB, modelDir 
 		r.SetOriginalSQL(sql.Original)
 		if e := runSingleSQLIR(wr, r, db, modelDir, cwd, session); e != nil {
 			return e
+		}
+		err = os.RemoveAll(cwd)
+		if err != nil {
+			return err
 		}
 	}
 	return nil

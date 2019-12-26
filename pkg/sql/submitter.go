@@ -167,9 +167,7 @@ func (s *defaultSubmitter) ExecutePredict(cl *ir.PredictStmt) (e error) {
 }
 
 func (s *defaultSubmitter) ExecuteAnalyze(cl *ir.AnalyzeStmt) error {
-	if err := s.LoadModel(cl.TrainStmt); err != nil {
-		return err
-	}
+	// NOTE(typhoonzero): model is already loaded under s.Cwd
 	if !isXGBoostModel(cl.TrainStmt.Estimator) {
 		return fmt.Errorf("unsupported model %s", cl.TrainStmt.Estimator)
 	}
