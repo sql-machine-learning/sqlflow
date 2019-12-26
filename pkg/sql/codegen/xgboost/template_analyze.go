@@ -51,7 +51,7 @@ def analyzer_dataset():
     ys = pd.DataFrame(columns=[label_name])
     i = 0
     for row in stream():
-        xs.loc[i] = row[0]
+        xs.loc[i] = [item[0] for item in row[0]]
         ys.loc[i] = row[1]
         i += 1
     return xs, ys
