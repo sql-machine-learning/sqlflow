@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package featurederivation
 
 import (
 	"os"
@@ -20,7 +20,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"sqlflow.org/sqlflow/pkg/database"
-	"sqlflow.org/sqlflow/pkg/parser"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
 	"sqlflow.org/sqlflow/pkg/sql/testdata"
 )
@@ -54,6 +53,118 @@ func TestCSVRegex(t *testing.T) {
 	}
 }
 
+func mockTrainStmtNormal() *ir.TrainStmt {
+	attrs := make(map[string]interface{})
+	attrs["model.nclasses"] = 2
+	features := make(map[string][]ir.FeatureColumn)
+	features["feature_columns"] = []ir.FeatureColumn{
+		&ir.EmbeddingColumn{CategoryColumn: nil, Dimension: 128, Combiner: "sum", Name: "c3"},
+		&ir.EmbeddingColumn{
+			CategoryColumn: &ir.CategoryIDColumn{
+				FieldDesc:  &ir.FieldDesc{Name: "c5", DType: ir.Int, Shape: []int{10000}, Delimiter: ",", IsSparse: true},
+				BucketSize: 10000,
+			},
+			Dimension: 128,
+			Combiner:  "sum",
+			Name:      "c5"},
+	}
+	label := &ir.NumericColumn{FieldDesc: &ir.FieldDesc{Name: "class", DType: ir.Int, Shape: []int{1}, Delimiter: "", IsSparse: false}}
+
+	return &ir.TrainStmt{
+		DataSource: "mysql://root:root@tcp/?maxAllowedPacket=0",
+		OriginalSQL: `select c1, c2, c3, c4, c5, c6, class from feature_derivation_case.train
+TO TRAIN DNNClassifier
+WITH model.n_classes=2
+COLUMN EMBEDDING(c3, 128, sum), EMBEDDING(SPARSE(c5, 10000, COMMA), 128, sum)
+LABEL class INTO model_table;`,
+		Select:           "select c1, c2, c3, c4, c5, c6, class from feature_derivation_case.train",
+		ValidationSelect: "",
+		ModelImage:       "",
+		Estimator:        "tf.estimator.DNNClassifier",
+		Attributes:       attrs,
+		Features:         features,
+		Label:            label,
+		Into:             "model_table",
+	}
+}
+
+func mockTrainStmtCross() *ir.TrainStmt {
+	attrs := make(map[string]interface{})
+	attrs["model.nclasses"] = 2
+	features := make(map[string][]ir.FeatureColumn)
+	c1 := &ir.NumericColumn{
+		FieldDesc: &ir.FieldDesc{Name: "c1", DType: ir.Int, Shape: []int{1}, Delimiter: "", IsSparse: false},
+	}
+	c2 := &ir.NumericColumn{
+		FieldDesc: &ir.FieldDesc{Name: "c2", DType: ir.Int, Shape: []int{1}, Delimiter: "", IsSparse: false},
+	}
+	features["feature_columns"] = []ir.FeatureColumn{
+		c1, c2,
+		&ir.CrossColumn{
+			Keys: []interface{}{
+				c1,
+				c2,
+			},
+			HashBucketSize: 256,
+		},
+	}
+	label := &ir.NumericColumn{FieldDesc: &ir.FieldDesc{
+		Name:      "class",
+		DType:     ir.Int,
+		Shape:     []int{1},
+		Delimiter: "",
+		IsSparse:  false,
+	}}
+
+	return &ir.TrainStmt{
+		DataSource: "mysql://root:root@tcp/?maxAllowedPacket=0",
+		OriginalSQL: `select c1, c2, c3, class from feature_derivation_case.train
+TO TRAIN DNNClassifier
+WITH model.n_classes=2
+COLUMN c1, c2, CROSS([c1, c2], 256)
+LABEL class INTO model_table;`,
+		Select:           "select c1, c2, c3, class from feature_derivation_case.train",
+		ValidationSelect: "",
+		ModelImage:       "",
+		Estimator:        "tf.estimator.DNNClassifier",
+		Attributes:       attrs,
+		Features:         features,
+		Label:            label,
+		Into:             "model_table",
+	}
+
+}
+
+func mockTrainStmtIrisNoColumnClause() *ir.TrainStmt {
+	attrs := make(map[string]interface{})
+	attrs["model.nclasses"] = 3
+	attrs["model.hidden_units"] = []int{10, 10}
+	features := make(map[string][]ir.FeatureColumn)
+	label := &ir.NumericColumn{FieldDesc: &ir.FieldDesc{
+		Name:      "class",
+		DType:     ir.Int,
+		Shape:     []int{1},
+		Delimiter: "",
+		IsSparse:  false,
+	}}
+	return &ir.TrainStmt{
+		DataSource: "mysql://root:root@tcp/?maxAllowedPacket=0",
+		OriginalSQL: `select * from iris.train
+TO TRAIN DNNClassifier
+WITH model.n_classes=3, model.hidden_units=[10,10]
+LABEL class INTO model_table;`,
+		Select:           "select * from iris.train",
+		ValidationSelect: "",
+		ModelImage:       "",
+		Estimator:        "tf.estimator.DNNClassifier",
+		Attributes:       attrs,
+		Features:         features,
+		Label:            label,
+		Into:             "model_table",
+	}
+
+}
+
 func TestFeatureDerivation(t *testing.T) {
 	a := assert.New(t)
 	// Prepare feature derivation test table in MySQL.
@@ -66,17 +177,8 @@ func TestFeatureDerivation(t *testing.T) {
 		a.Fail("error creating test data: %v", err)
 	}
 
-	normal := `select c1, c2, c3, c4, c5, c6, class from feature_derivation_case.train
-	TO TRAIN DNNClassifier
-	WITH model.n_classes=2
-	COLUMN EMBEDDING(c3, 128, sum), EMBEDDING(SPARSE(c5, 10000, COMMA), 128, sum)
-	LABEL class INTO model_table;`
-
-	r, e := parser.LegacyParse(normal)
-	a.NoError(e)
-	trainStmt, e := generateTrainStmt(r, "mysql://root:root@tcp/?maxAllowedPacket=0")
-	a.NoError(e)
-	e = InferFeatureColumns(trainStmt)
+	trainStmt := mockTrainStmtNormal()
+	e := InferFeatureColumns(trainStmt)
 	a.NoError(e)
 
 	fc1 := trainStmt.Features["feature_columns"][0]
@@ -135,16 +237,7 @@ func TestFeatureDerivation(t *testing.T) {
 
 	a.Equal(6, len(trainStmt.Features["feature_columns"]))
 
-	crossSQL := `select c1, c2, c3, class from feature_derivation_case.train
-	TO TRAIN DNNClassifier
-	WITH model.n_classes=2
-	COLUMN c1, c2, CROSS([c1, c2], 256)
-	LABEL class INTO model_table;`
-
-	r, e = parser.LegacyParse(crossSQL)
-	a.NoError(e)
-	trainStmt, e = generateTrainStmt(r, "mysql://root:root@tcp/?maxAllowedPacket=0")
-	a.NoError(e)
+	trainStmt = mockTrainStmtCross()
 	e = InferFeatureColumns(trainStmt)
 	a.NoError(e)
 
@@ -191,16 +284,8 @@ func TestFeatureDerivationNoColumnClause(t *testing.T) {
 		a.Fail("error creating test data: %v", err)
 	}
 
-	normal := `select * from iris.train
-	TO TRAIN DNNClassifier
-	WITH model.n_classes=3, model.hidden_units=[10,10]
-	LABEL class INTO model_table;`
-
-	r, e := parser.LegacyParse(normal)
-	a.NoError(e)
-	trainStmt, e := generateTrainStmt(r, "mysql://root:root@tcp/?maxAllowedPacket=0")
-	a.NoError(e)
-	e = InferFeatureColumns(trainStmt)
+	trainStmt := mockTrainStmtIrisNoColumnClause()
+	e := InferFeatureColumns(trainStmt)
 	a.NoError(e)
 
 	a.Equal(4, len(trainStmt.Features["feature_columns"]))

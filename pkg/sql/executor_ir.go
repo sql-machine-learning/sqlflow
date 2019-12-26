@@ -26,9 +26,11 @@ import (
 	"sqlflow.org/sqlflow/pkg/argo"
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/parser"
+	"sqlflow.org/sqlflow/pkg/pipe"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/couler"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
+	"sqlflow.org/sqlflow/pkg/verifier"
 )
 
 // EndOfExecution will push to the pipe when one SQL statement execution is finished.
@@ -47,9 +49,9 @@ type WorkflowJob struct {
 // RunSQLProgram run a SQL program.
 //
 // TODO(wangkuiyi): Make RunSQLProgram return an error in addition to
-// *PipeReader, and remove the calls to log.Printf.
-func RunSQLProgram(sqlProgram string, modelDir string, session *pb.Session) *PipeReader {
-	rd, wr := Pipe()
+// *pipe.Reader, and remove the calls to log.Printf.
+func RunSQLProgram(sqlProgram string, modelDir string, session *pb.Session) *pipe.Reader {
+	rd, wr := pipe.Pipe()
 	go func() {
 		var db *database.DB
 		var err error
@@ -62,7 +64,7 @@ func RunSQLProgram(sqlProgram string, modelDir string, session *pb.Session) *Pip
 
 		if err != nil {
 			log.Printf("runSQLProgram error: %v", err)
-			if err != ErrClosedPipe {
+			if err != pipe.ErrClosedPipe {
 				if err := wr.Write(err); err != nil {
 					log.Printf("runSQLProgram error(piping): %v", err)
 				}
@@ -129,14 +131,14 @@ func ParseSQLStatement(sql string, session *pb.Session) (string, error) {
 // SubmitWorkflow submits an Argo workflow
 //
 // TODO(wangkuiyi): Make RunSQLProgram return an error in addition to
-// *PipeReader, and remove the calls to log.Printf.
-func SubmitWorkflow(sqlProgram string, modelDir string, session *pb.Session) *PipeReader {
-	rd, wr := Pipe()
+// *pipe.Reader, and remove the calls to log.Printf.
+func SubmitWorkflow(sqlProgram string, modelDir string, session *pb.Session) *pipe.Reader {
+	rd, wr := pipe.Pipe()
 	go func() {
 		defer wr.Close()
 		err := submitWorkflow(wr, sqlProgram, modelDir, session)
 		if err != nil {
-			if err != ErrClosedPipe {
+			if err != pipe.ErrClosedPipe {
 				if err := wr.Write(err); err != nil {
 					log.Printf("submit workflow error(piping): %v", err)
 				}
@@ -146,7 +148,7 @@ func SubmitWorkflow(sqlProgram string, modelDir string, session *pb.Session) *Pi
 	return rd
 }
 
-func submitWorkflow(wr *PipeWriter, sqlProgram string, modelDir string, session *pb.Session) error {
+func submitWorkflow(wr *pipe.Writer, sqlProgram string, modelDir string, session *pb.Session) error {
 	driverName, dataSourceName, err := database.ParseURL(session.DbConnStr)
 	if err != nil {
 		return err
@@ -202,7 +204,7 @@ func submitWorkflow(wr *PipeWriter, sqlProgram string, modelDir string, session 
 	})
 }
 
-func runSQLProgram(wr *PipeWriter, sqlProgram string, db *database.DB, modelDir string, session *pb.Session) error {
+func runSQLProgram(wr *pipe.Writer, sqlProgram string, db *database.DB, modelDir string, session *pb.Session) error {
 	sqls, err := parser.Parse(db.DriverName, sqlProgram)
 	if err != nil {
 		return err
@@ -252,7 +254,7 @@ func runSQLProgram(wr *PipeWriter, sqlProgram string, db *database.DB, modelDir 
 	return nil
 }
 
-func runSingleSQLIR(wr *PipeWriter, sqlIR ir.SQLStatement, db *database.DB, modelDir string, cwd string, session *pb.Session) (e error) {
+func runSingleSQLIR(wr *pipe.Writer, sqlIR ir.SQLStatement, db *database.DB, modelDir string, cwd string, session *pb.Session) (e error) {
 	startTime := time.Now().UnixNano()
 	var originalSQL string
 	defer func() {
@@ -268,6 +270,40 @@ func runSingleSQLIR(wr *PipeWriter, sqlIR ir.SQLStatement, db *database.DB, mode
 	// feature derivation logs to client, yet we disable if for now so that it's less annoying.
 	submitter().Setup(wr, db, modelDir, cwd, session)
 	return sqlIR.Execute(submitter())
+}
+
+// getColumnTypes is quiet like verify but accept a SQL string as input, and returns
+// an ordered list of the field types.
+func getColumnTypes(slct string, db *database.DB) ([]string, []string, error) {
+	rows, err := db.Query(slct)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer rows.Close()
+
+	if !rows.Next() {
+		return nil, nil, fmt.Errorf("query %s gives 0 row", slct)
+	}
+
+	if rows.Err() != nil {
+		return nil, nil, err
+	}
+
+	columnTypes, err := rows.ColumnTypes()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	ft := []string{}
+	flds := []string{}
+	for _, ct := range columnTypes {
+		_, fld := verifier.Decomp(ct.Name())
+		typeName := ct.DatabaseTypeName()
+		flds = append(flds, fld)
+		ft = append(ft, typeName)
+	}
+
+	return flds, ft, nil
 }
 
 // Create prediction table using the `PredictStmt`.
@@ -332,32 +368,4 @@ func createPredictionTableFromIR(predStmt *ir.PredictStmt, db *database.DB, sess
 		return fmt.Errorf("failed executing %s: %q", createStmt, e)
 	}
 	return nil
-}
-
-func loadModelMeta(pr *parser.SQLFlowSelectStmt, db *database.DB, cwd, modelDir, modelName string) (*parser.SQLFlowSelectStmt, error) {
-	var m *model
-	var e error
-	modelURI := modelName
-	if modelDir != "" {
-		modelURI = fmt.Sprintf("file://%s/%s", modelDir, modelName)
-	}
-
-	m, e = load(modelURI, cwd, db)
-	if e != nil {
-		return nil, fmt.Errorf("load %v", e)
-	}
-	// Parse the training SELECT statement used to train
-	// the model for the prediction.
-	tr, e := parser.ParseOneStatement(db.DriverName, m.TrainSelect)
-	if e != nil {
-		return nil, fmt.Errorf("parse: TrainSelect %v raise %v", m.TrainSelect, e)
-	}
-
-	if e := verifyColumnNameAndType(tr.SQLFlowSelectStmt, pr, db); e != nil {
-		return nil, fmt.Errorf("verifyColumnNameAndType: %v", e)
-	}
-
-	pr.TrainClause = tr.TrainClause
-
-	return pr, nil
 }
