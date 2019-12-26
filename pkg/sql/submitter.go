@@ -55,8 +55,7 @@ type Figures struct {
 // Submitter extends ir.Executor
 type Submitter interface {
 	ir.Executor
-	Setup(*pipe.Writer, *database.DB, string, *pb.Session) error
-	Teardown()
+	Setup(*pipe.Writer, *database.DB, string, string, *pb.Session)
 	GetTrainStmtFromModel() bool
 }
 
@@ -107,11 +106,9 @@ type defaultSubmitter struct {
 	Session  *pb.Session
 }
 
-func (s *defaultSubmitter) Setup(w *pipe.Writer, db *database.DB, modelDir string, session *pb.Session) error {
+func (s *defaultSubmitter) Setup(w *pipe.Writer, db *database.DB, modelDir string, cwd string, session *pb.Session) {
 	// cwd is used to store train scripts and save output models.
-	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
 	s.Writer, s.Db, s.ModelDir, s.Cwd, s.Session = w, db, modelDir, cwd, session
-	return err
 }
 
 func (s *defaultSubmitter) SaveModel(cl *ir.TrainStmt) error {
@@ -121,15 +118,6 @@ func (s *defaultSubmitter) SaveModel(cl *ir.TrainStmt) error {
 		modelURI = fmt.Sprintf("file://%s/%s", s.ModelDir, cl.Into)
 	}
 	return m.save(modelURI, cl, s.Session)
-}
-
-func (s *defaultSubmitter) LoadModel(cl *ir.TrainStmt) error {
-	modelURI := cl.Into
-	if s.ModelDir != "" {
-		modelURI = fmt.Sprintf("file://%s/%s", s.ModelDir, cl.Into)
-	}
-	_, err := load(modelURI, s.Cwd, s.Db)
-	return err
 }
 
 func (s *defaultSubmitter) runCommand(program string) error {
@@ -165,26 +153,23 @@ func (s *defaultSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 }
 
 func (s *defaultSubmitter) ExecutePredict(cl *ir.PredictStmt) (e error) {
-	if e = s.LoadModel(cl.TrainStmt); e == nil {
-		if e = createPredictionTableFromIR(cl, s.Db, s.Session); e == nil {
-			var code string
-			if isXGBoostModel(cl.TrainStmt.Estimator) {
-				code, e = xgboost.Pred(cl, s.Session)
-			} else {
-				code, e = tensorflow.Pred(cl, s.Session)
-			}
-			if e == nil {
-				e = s.runCommand(code)
-			}
+	// NOTE(typhoonzero): model is already loaded under s.Cwd
+	if e = createPredictionTableFromIR(cl, s.Db, s.Session); e == nil {
+		var code string
+		if isXGBoostModel(cl.TrainStmt.Estimator) {
+			code, e = xgboost.Pred(cl, s.Session)
+		} else {
+			code, e = tensorflow.Pred(cl, s.Session)
+		}
+		if e == nil {
+			e = s.runCommand(code)
 		}
 	}
 	return e
 }
 
 func (s *defaultSubmitter) ExecuteAnalyze(cl *ir.AnalyzeStmt) error {
-	if err := s.LoadModel(cl.TrainStmt); err != nil {
-		return err
-	}
+	// NOTE(typhoonzero): model is already loaded under s.Cwd
 	if !isXGBoostModel(cl.TrainStmt.Estimator) {
 		return fmt.Errorf("unsupported model %s", cl.TrainStmt.Estimator)
 	}
@@ -215,5 +200,4 @@ func (s *defaultSubmitter) ExecuteAnalyze(cl *ir.AnalyzeStmt) error {
 	return nil
 }
 
-func (s *defaultSubmitter) Teardown()                   { os.RemoveAll(s.Cwd) }
 func (s *defaultSubmitter) GetTrainStmtFromModel() bool { return true }

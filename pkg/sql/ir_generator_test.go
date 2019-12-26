@@ -199,9 +199,10 @@ USING sqlflow_models.mymodel;`
 	connStr := "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
 	// need to save a model first because predict SQL will read the train SQL
 	// from saved model
-	modelDir, e := ioutil.TempDir("/tmp", "sqlflow_models")
+	cwd, e := ioutil.TempDir("/tmp", "sqlflow_models")
 	a.Nil(e)
-	defer os.RemoveAll(modelDir)
+	defer os.RemoveAll(cwd)
+	modelDir := ""
 	stream := RunSQLProgram(`SELECT * FROM iris.train
 TO TRAIN DNNClassifier
 WITH model.n_classes=3, model.hidden_units=[10,20]
@@ -210,7 +211,7 @@ LABEL class
 INTO sqlflow_models.mymodel;`, modelDir, &pb.Session{DbConnStr: connStr})
 	a.True(goodStream(stream.ReadAll()))
 
-	predStmt, err := generatePredictStmt(r, connStr, modelDir, true)
+	predStmt, err := generatePredictStmt(r, connStr, modelDir, cwd, true)
 	a.NoError(err)
 
 	a.Equal(connStr, predStmt.DataSource)
@@ -229,9 +230,10 @@ func TestGenerateAnalyzeStmt(t *testing.T) {
 	a := assert.New(t)
 	connStr := "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
 
-	modelDir, e := ioutil.TempDir("/tmp", "sqlflow_models")
+	cwd, e := ioutil.TempDir("/tmp", "sqlflow_models")
 	a.Nil(e)
-	defer os.RemoveAll(modelDir)
+	defer os.RemoveAll(cwd)
+	modelDir := ""
 	stream := RunSQLProgram(`SELECT * FROM iris.train
 TO TRAIN xgboost.gbtree
 WITH
@@ -258,7 +260,7 @@ INTO sqlflow_models.my_xgboost_model;
 	`)
 	a.NoError(e)
 
-	AnalyzeStmt, e := generateAnalyzeStmt(pr, connStr, modelDir, true)
+	AnalyzeStmt, e := generateAnalyzeStmt(pr, connStr, modelDir, cwd, true)
 	a.NoError(e)
 	a.Equal(AnalyzeStmt.DataSource, connStr)
 	a.Equal(AnalyzeStmt.Explainer, "TreeExplainer")
