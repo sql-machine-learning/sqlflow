@@ -128,7 +128,7 @@ WITH
 LABEL class
 INTO sqlflow_models.my_xgboost_model_by_program;
 
-SELECT sepal_length as sl, sepal_width as sw, class FROM iris.test
+SELECT sepal_length as sl, sepal_width as sw FROM iris.test
 TO PREDICT iris.predict.class
 USING sqlflow_models.my_xgboost_model_by_program;
 
@@ -138,7 +138,6 @@ USING TreeExplainer;
 `, modelDir, database.GetSessionFromTestingDB())
 		a.True(goodStream(stream.ReadAll()))
 	})
-
 }
 
 func TestExecuteXGBoostClassifier(t *testing.T) {
