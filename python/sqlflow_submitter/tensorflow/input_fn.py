@@ -43,9 +43,10 @@ def input_fn(select, conn, feature_column_names, feature_metas, label_meta):
         # NOTE: vector columns like 23,21,3,2,0,0 should use shape None
         if feature_metas[name]["is_sparse"]:
             feature_types.append((tf.int64, tf.int32, tf.int64))
+            shapes.append((None, None, None))
         else:
             feature_types.append(get_dtype(feature_metas[name]["dtype"]))
-        shapes.append(feature_metas[name]["shape"])
+            shapes.append(feature_metas[name]["shape"])
 
     gen = db_generator(conn.driver, conn, select, feature_column_names, label_meta["feature_name"], feature_metas)
     dataset = tf.data.Dataset.from_generator(gen,

@@ -30,11 +30,11 @@ def get_tf_metrics(metrics):
         for mn in metrics:
             metric = eval("tf.keras.metrics.%s()" % mn)
             if mn in metric_names_use_class_id:
-                metric.update_state(y_true=labels, y_pred=predictions["class_ids"])
+                metric.update_state(y_true=[labels], y_pred=predictions["class_ids"])
             elif mn in metric_names_use_probabilities:
-                metric.update_state(y_true=labels, y_pred=predictions["probabilities"])
+                metric.update_state(y_true=[labels], y_pred=predictions["probabilities"])
             elif mn in metric_names_use_predictions:
-                metric.update_state(y_true=labels, y_pred=predictions["predictions"])
+                metric.update_state(y_true=[labels], y_pred=predictions["predictions"])
             metric_dict[mn] = metric
         return metric_dict
     return tf_metrics_func

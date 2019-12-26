@@ -675,7 +675,7 @@ func CaseTrainBoostedTreesEstimator(t *testing.T) {
 		model.n_batches_per_layer=300
 	LABEL class
 	INTO %s;
-	`, caseDB, caseTrainTable, caseDB)
+	`, caseDB, caseTrainTable, caseInto)
 	_, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)
