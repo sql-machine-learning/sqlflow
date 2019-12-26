@@ -21,6 +21,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"sqlflow.org/sqlflow/pkg/database"
+	"sqlflow.org/sqlflow/pkg/pipe"
 )
 
 const (
@@ -240,7 +241,7 @@ USING sqlflow_models.my_dense_dnn_model
 
 func TestLogChanWriter_Write(t *testing.T) {
 	a := assert.New(t)
-	rd, wr := Pipe()
+	rd, wr := pipe.Pipe()
 	go func() {
 		defer wr.Close()
 		cw := &logChanWriter{wr: wr}

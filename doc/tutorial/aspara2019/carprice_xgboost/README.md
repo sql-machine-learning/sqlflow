@@ -138,7 +138,7 @@ SELECT * FROM carprice.predict limit 5;
 
 We use the EXPLAIN SQL to explain the trained model. Behind the scene, SQLFlow will translate the EXPLAIN SQL to a Python program that reads the dataset, loads the trained model, then draws a figure using SHAP to explain the model.
 
-We use the [TreeExplianer](https://github.com/slundberg/shap#tree-ensemble-example-with-treeexplainer-xgboostlightgbmcatboostscikit-learn-models) to draw a summary plot.
+We use the [TreeExplainer](https://github.com/slundberg/shap#tree-ensemble-example-with-treeexplainer-xgboostlightgbmcatboostscikit-learn-models) to draw a summary plot.
 
 We can set the parameters of SHAP like:
 

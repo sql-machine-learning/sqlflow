@@ -25,6 +25,7 @@ require (
 	github.com/pingcap/tidb v0.0.0-20190625145607-60965b006877
 	github.com/pkg/errors v0.8.1
 	github.com/pkg/term v0.0.0-20190109203006-aa71e9d9e942
+	github.com/rakyll/gotest v0.0.0-20191108192113-45d501058f2a // indirect
 	github.com/sirupsen/logrus v1.4.2
 	github.com/soniakeys/quant v1.0.0 // indirect
 	github.com/spf13/cobra v0.0.5 // indirect
@@ -33,7 +34,7 @@ require (
 	golang.org/x/arch v0.0.0-20191126211547-368ea8f32fff // indirect
 	golang.org/x/crypto v0.0.0-20190611184440-5c40567a22f8
 	golang.org/x/lint v0.0.0-20191125180803-fdd1cda4f05f // indirect
-	golang.org/x/sys v0.0.0-20191220142924-d4481acd189f
+	golang.org/x/sys v0.0.0-20191224085550-c709ea063b76
 	google.golang.org/grpc v1.24.0
 	gopkg.in/yaml.v2 v2.2.7 // indirect
 	k8s.io/api v0.0.0-20191004102349-159aefb8556b
