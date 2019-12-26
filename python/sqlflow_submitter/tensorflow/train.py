@@ -74,7 +74,11 @@ def keras_train_and_save(estimator, model_params, save,
         loss=classifier_pkg.loss,
         metrics=keras_metrics)
     if hasattr(classifier, 'sqlflow_train_loop'):
-        classifier.sqlflow_train_loop(train_dataset)
+        def flatten(feature, label):  # TODO(shendiaomo): This is temporary
+            for k in feature:
+                feature[k] = feature[k][0]
+            return feature, [label]
+        classifier.sqlflow_train_loop(train_dataset.map(flatten))
     else:
         if label_meta["feature_name"] != "":
             history = classifier.fit(train_dataset,
