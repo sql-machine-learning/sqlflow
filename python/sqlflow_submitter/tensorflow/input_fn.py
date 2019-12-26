@@ -38,15 +38,19 @@ def get_dtype(type_str):
 
 def input_fn(select, conn, feature_column_names, feature_metas, label_meta):
     feature_types = []
+    shapes = []
     for name in feature_column_names:
         # NOTE: vector columns like 23,21,3,2,0,0 should use shape None
         if feature_metas[name]["is_sparse"]:
             feature_types.append((tf.int64, tf.int32, tf.int64))
         else:
             feature_types.append(get_dtype(feature_metas[name]["dtype"]))
+        shapes.append(feature_metas[name]["shape"])
 
     gen = db_generator(conn.driver, conn, select, feature_column_names, label_meta["feature_name"], feature_metas)
-    dataset = tf.data.Dataset.from_generator(gen, (tuple(feature_types), eval("tf.%s" % label_meta["dtype"])))
+    dataset = tf.data.Dataset.from_generator(gen,
+                                             (tuple(feature_types), eval("tf.%s" % label_meta["dtype"])),
+                                             (tuple(shapes), label_meta["shape"]))
     ds_mapper = functools.partial(parse_sparse_feature, feature_column_names=feature_column_names, feature_metas=feature_metas)
     return dataset.map(ds_mapper)
 

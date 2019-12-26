@@ -189,8 +189,8 @@ def db_generator(driver, conn, statement,
                 features = []
                 for name in feature_column_names:
                     feature = read_feature(row[field_names.index(name)], feature_specs[name], name)
-                    features.append(feature)
-                yield (tuple(features), [label])
+                    features.append([feature])
+                yield tuple(features), label
             if len(rows) < fetch_size:
                 break
         cursor.close()
