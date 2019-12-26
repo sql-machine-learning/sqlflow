@@ -292,7 +292,9 @@ INTO sqlflow_models.mymodel;`
 		case error:
 			var s []string
 			for e := lastResp.Front(); e != nil; e = e.Next() {
-				s = append(s, e.Value.(string))
+				if ss, ok := e.Value.(string); ok {
+					s = append(s, ss)
+				}
 			}
 			a.Fail(strings.Join(s, "\n"))
 		}
