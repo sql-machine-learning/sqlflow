@@ -208,7 +208,7 @@ def train(is_keras_model,
             dump_into_tf_config(cluster, task_type, task_index)
             dist_strategy = tf.contrib.distribute.ParameterServerStrategy()
             model_params["config"] = tf.estimator.RunConfig(save_checkpoints_steps=save_checkpoints_steps,
-                train_distribute=dist_strategy)
+                train_distribute=dist_strategy, session_config=tf.ConfigProto(log_device_placement=True))
         else:
             model_params["config"] = tf.estimator.RunConfig(save_checkpoints_steps=save_checkpoints_steps)
         if is_pai:
