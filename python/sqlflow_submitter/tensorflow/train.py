@@ -74,7 +74,7 @@ def keras_train_and_save(estimator, model_params, save,
         loss=classifier_pkg.loss,
         metrics=keras_metrics)
     if hasattr(classifier, 'sqlflow_train_loop'):
-        def flatten(feature, label):  # TODO(shendiaomo): This is temporary
+        def flatten(feature, label):  # TODO(shendiaomo): Modify the cluster model to adapt the new input structure
             for k in feature:
                 feature[k] = feature[k][0]
             return feature, [label]
