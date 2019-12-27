@@ -91,7 +91,7 @@ def keras_predict(estimator, model_params, save, result_table,
             result = classifier_pkg.prepare_prediction_column(result[0])
             row = []
             for idx, name in enumerate(feature_column_names):
-                val = features[0][name].numpy()[0]
+                val = features[0][name].numpy()[0][0]
                 row.append(str(val))
             row.append(str(result))
             w.write(row)
@@ -142,7 +142,7 @@ def estimator_predict(estimator, model_params, save, result_table,
             result = fast_predictor.predict(features)
             row = []
             for idx, _ in enumerate(feature_column_names):
-                val = features[0][idx]
+                val = features[0][idx][0]
                 row.append(str(val))
             if "class_ids" in list(result)[0]:
                 row.append(str(list(result)[0]["class_ids"][0]))

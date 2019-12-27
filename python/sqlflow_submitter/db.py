@@ -152,7 +152,7 @@ def db_generator(driver, conn, statement,
                 else:
                     raise ValueError('unrecognize dtype {}'.format(feature_spec[feature_name]["dtype"]))
             else:
-                return raw_val
+                return (raw_val,)
 
     def reader():
         if driver == "hive":
@@ -190,7 +190,7 @@ def db_generator(driver, conn, statement,
                 for name in feature_column_names:
                     feature = read_feature(row[field_names.index(name)], feature_specs[name], name)
                     features.append(feature)
-                yield (tuple(features), [label])
+                yield tuple(features), label
             if len(rows) < fetch_size:
                 break
         cursor.close()

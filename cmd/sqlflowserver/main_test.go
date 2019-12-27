@@ -274,6 +274,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("TestShowDatabases", CaseShowDatabases)
 	t.Run("TestSelect", CaseSelect)
 	t.Run("TestTrainSQL", CaseTrainSQL)
+	t.Run("TestTrainBoostedTreesEstimator", CaseTrainBoostedTreesEstimator)
 	t.Run("CaseTrainSQLWithMetrics", CaseTrainSQLWithMetrics)
 	t.Run("TestTextClassification", CaseTrainTextClassification)
 	t.Run("CaseTrainTextClassificationCustomLSTM", CaseTrainTextClassificationCustomLSTM)
@@ -663,6 +664,21 @@ FROM %s.%s LIMIT 5;`, caseDB, casePredictTable)
 		for ; nilCount < 4 && row[nilCount] == nil; nilCount++ {
 		}
 		a.False(nilCount == 4)
+	}
+}
+
+func CaseTrainBoostedTreesEstimator(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`
+	SELECT * FROM %s.%s TO TRAIN BoostedTreesRegressor
+	WITH
+		model.n_batches_per_layer=300
+	LABEL class
+	INTO %s;
+	`, caseDB, caseTrainTable, caseInto)
+	_, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
 	}
 }
 
