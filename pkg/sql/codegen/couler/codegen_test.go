@@ -118,6 +118,7 @@ func TestWriteArgoYamlWithClusterConfig(t *testing.T) {
 
 func TestKatibCodegen(t *testing.T) {
 	a := assert.New(t)
+	os.Setenv("SQLFLOW_submitter", "katib")
 
 	cfg := &mysql.Config{
 		User:                 "root",
@@ -127,8 +128,12 @@ func TestKatibCodegen(t *testing.T) {
 		AllowNativePasswords: true,
 	}
 
+	standardSQL := ir.StandardSQL("SELECT * FROM iris.train limit 10;")
 	sqlIR := MockKatibTrainStmt(fmt.Sprintf("mysql://%s", cfg.FormatDSN()))
-	_, err := RunKatib(sqlIR, &pb.Session{})
+
+	program := []ir.SQLStatement{&standardSQL, &sqlIR}
+
+	_, err := Run(program, &pb.Session{})
 
 	a.NoError(err)
 }

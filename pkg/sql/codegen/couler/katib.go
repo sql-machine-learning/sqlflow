@@ -14,12 +14,10 @@
 package couler
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"strings"
 
-	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/attribute"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
@@ -71,76 +69,30 @@ func parseAttribute(attrs map[string]interface{}) (map[string]interface{}, error
 	return params["range."], nil
 }
 
-func getFieldDesc(fcs []ir.FeatureColumn, l ir.FeatureColumn) ([]ir.FieldDesc, ir.FieldDesc, error) {
-	var features []ir.FieldDesc
-	for _, fc := range fcs {
-		switch c := fc.(type) {
-		case *ir.NumericColumn:
-			features = append(features, *c.FieldDesc)
-		default:
-			return nil, ir.FieldDesc{}, fmt.Errorf("unsupported feature column type %T on %v", c, c)
-		}
-	}
-
-	var label ir.FieldDesc
-	switch c := l.(type) {
-	case *ir.NumericColumn:
-		label = *c.FieldDesc
-	default:
-		return nil, ir.FieldDesc{}, fmt.Errorf("unsupported label column type %T on %v", c, c)
-	}
-
-	return features, label, nil
-}
-
 // RunKatib generates Couler Katib program
-func RunKatib(t ir.TrainStmt, session *pb.Session) (string, error) {
-	ss := &coulerKatibFiller{}
-	ss.IsExtendedSQL = true
+func RunKatib(t *ir.TrainStmt) (*sqlStatement, error) {
+	ss := &sqlStatement{}
+	ss.IsKatibTrain = true
 
-	ss.Select = t.Select
-	ss.Validation = t.ValidationSelect
 	ss.OriginalSQL = t.OriginalSQL
 
 	params, err := parseAttribute(t.Attributes)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	model, booster, err := resolveModelType(t.Estimator)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	params["booster"] = booster
+	ss.Model = model
 
 	hps, err := json.Marshal(params)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	ss.ModelParamsJSON = string(hps)
+	ss.Parameters = string(hps)
 
-	featureFieldDesc, labelFieldDesc, err := getFieldDesc(t.Features["feature_columns"], t.Label)
-	if err != nil {
-		return "", err
-	}
-
-	f, err := json.Marshal(featureFieldDesc)
-	if err != nil {
-		return "", err
-	}
-	l, err := json.Marshal(labelFieldDesc)
-	if err != nil {
-		return "", err
-	}
-
-	ss.FieldDescJSON = string(f)
-	ss.LabelJSON = string(l)
-	ss.Model = model
-
-	var program bytes.Buffer
-	if err := coulerKatibTemplate.Execute(&program, ss); err != nil {
-		return "", err
-	}
-	fmt.Printf(program.String())
-	return program.String(), nil
+	return ss, nil
 }
