@@ -37,7 +37,7 @@ class MaxCompute:
                 if feature_spec["delimiter"] != "":
                     return np.fromstring(raw_val, dtype=int, sep=feature_spec["delimiter"])
                 else:
-                    return raw_val
+                    return (raw_val,)
 
         def reader():
             compress = tunnel.CompressOption.CompressAlgorithm.ODPS_ZLIB
@@ -62,7 +62,7 @@ class MaxCompute:
                     for name in feature_column_names:
                         feature = read_feature(row[field_names.index(name)], feature_specs[name])
                         features.append(feature)
-                    yield (tuple(features), [label])
+                    yield tuple(features), label
                 i += expected
 
         return reader
