@@ -71,7 +71,7 @@ def keras_predict(estimator, model_params, save, result_table,
     # NOTE: always use batch_size=1 when predicting to get the pairs of features and predict results
     #       to insert into result table.
     pred_dataset = eval_input_fn(1)
-    one_batch = next(pred_dataset)
+    one_batch = next(iter(pred_dataset))
     # NOTE: must run predict one batch to initialize parameters
     # see: https://www.tensorflow.org/alpha/guide/keras/saving_and_serializing#saving_subclassed_models
     classifier.predict_on_batch(one_batch[0])

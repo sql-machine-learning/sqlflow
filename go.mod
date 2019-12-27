@@ -26,6 +26,7 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/pkg/term v0.0.0-20190109203006-aa71e9d9e942
 	github.com/rakyll/gotest v0.0.0-20191108192113-45d501058f2a // indirect
+	github.com/sbinet/go-python v0.0.0-20190615090516-46d882be3991 // indirect
 	github.com/sirupsen/logrus v1.4.2
 	github.com/soniakeys/quant v1.0.0 // indirect
 	github.com/spf13/cobra v0.0.5 // indirect
