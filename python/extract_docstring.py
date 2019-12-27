@@ -84,11 +84,6 @@ if __name__ == "__main__":
     for cls in tf_estimators:
         param_doc[cls] = parse_ctor_args(eval(cls))
 
-    # SQLFlow premade models
-    sf_models = filter(lambda m: inspect.isclass(m[1]), inspect.getmembers(sqlflow_models))
-    for name, cls in sf_models:
-        param_doc['sqlflow_models.' + name] = parse_ctor_args(cls, ':param')
-
     # xgboost models:  gbtree, gblinear or dart
     param_doc['xgboost.gbtree'] = parse_ctor_args(xgboost.XGBModel)
     del param_doc['xgboost.gbtree']['booster']  # booster specified as an estimator
