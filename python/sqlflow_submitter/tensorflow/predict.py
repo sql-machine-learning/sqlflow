@@ -71,22 +71,17 @@ def keras_predict(estimator, model_params, save, result_table,
     # NOTE: always use batch_size=1 when predicting to get the pairs of features and predict results
     #       to insert into result table.
     pred_dataset = eval_input_fn(1)
-    one_batch = pred_dataset.__iter__().next()
+    one_batch = next(pred_dataset)
     # NOTE: must run predict one batch to initialize parameters
     # see: https://www.tensorflow.org/alpha/guide/keras/saving_and_serializing#saving_subclassed_models
     classifier.predict_on_batch(one_batch[0])
     classifier.load_weights(save)
-    del pred_dataset
     pred_dataset = eval_input_fn(1, cache=True).make_one_shot_iterator()
     buff_rows = []
     column_names = feature_column_names[:]
     column_names.append(label_meta["feature_name"])
     with buffered_db_writer(conn.driver, conn, result_table, column_names, 100, hdfs_namenode_addr, hive_location, hdfs_user, hdfs_pass) as w:
-        while True:
-            try:
-                features = pred_dataset.get_next()
-            except tf.errors.OutOfRangeError:
-                break
+        for features in pred_dataset:
             result = classifier.predict_on_batch(features[0])
             result = classifier_pkg.prepare_prediction_column(result[0])
             row = []
@@ -130,15 +125,10 @@ def estimator_predict(estimator, model_params, save, result_table,
 
     column_names = feature_column_names[:]
     column_names.append(label_meta["feature_name"])
-    pred_gen = db_generator(conn.driver, conn, select, feature_column_names, label_meta["feature_name"], feature_metas)()
     fast_predictor = FastPredict(classifier, fast_input_fn)
 
     with buffered_db_writer(conn.driver, conn, result_table, column_names, 100, hdfs_namenode_addr, hive_location, hdfs_user, hdfs_pass) as w:
-        while True:
-            try:
-                features = next(pred_gen)
-            except StopIteration:
-                break
+        for features in db_generator(conn.driver, conn, select, feature_column_names, label_meta["feature_name"], feature_metas)():
             result = fast_predictor.predict(features)
             row = []
             for idx, _ in enumerate(feature_column_names):
