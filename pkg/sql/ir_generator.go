@@ -15,8 +15,6 @@ package sql
 
 import (
 	"fmt"
-	"io/ioutil"
-	"os"
 	"strconv"
 	"strings"
 
@@ -40,13 +38,23 @@ const (
 	comma         = "COMMA"
 )
 
-func generateTrainStmtWithInferredColumns(slct *parser.SQLFlowSelectStmt, connStr string) (*ir.TrainStmt, error) {
+func generateTrainStmtWithInferredColumns(slct *parser.SQLFlowSelectStmt, connStr string, verifyLabel bool) (*ir.TrainStmt, error) {
 	trainStmt, err := generateTrainStmt(slct, connStr)
 	if err != nil {
 		return nil, err
 	}
 
 	if err := featurederivation.InferFeatureColumns(trainStmt); err != nil {
+		return nil, err
+	}
+
+	db, err := database.OpenAndConnectDB(connStr)
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+	err = verifyTrainStmt(trainStmt, db, verifyLabel)
+	if err != nil {
 		return nil, err
 	}
 
@@ -100,7 +108,7 @@ func generateTrainStmt(slct *parser.SQLFlowSelectStmt, connStr string) (*ir.Trai
 	if vslct == "" {
 		vslct = slct.StandardSelect.String()
 	}
-	return &ir.TrainStmt{
+	trainStmt := &ir.TrainStmt{
 		DataSource: connStr,
 		Select:     slct.StandardSelect.String(),
 		// TODO(weiguoz): This is a temporary implement. Specifying the
@@ -112,7 +120,9 @@ func generateTrainStmt(slct *parser.SQLFlowSelectStmt, connStr string) (*ir.Trai
 		Features:         fcMap,
 		Label:            label,
 		Into:             slct.Save,
-	}, nil
+	}
+
+	return trainStmt, nil
 }
 
 func loadModelMeta(pr *parser.SQLFlowSelectStmt, db *database.DB, cwd, modelDir, modelName string) (*parser.SQLFlowSelectStmt, error) {
@@ -154,7 +164,38 @@ func generateTrainStmtByModel(slct *parser.SQLFlowSelectStmt, connStr, cwd, mode
 	if err != nil {
 		return nil, err
 	}
-	return generateTrainStmtWithInferredColumns(slctWithTrain, connStr)
+	return generateTrainStmtWithInferredColumns(slctWithTrain, connStr, false)
+}
+
+func verifyTrainStmt(trainStmt *ir.TrainStmt, db *database.DB, verifyLabel bool) error {
+	trainFields, e := verifier.Verify(trainStmt.Select, db)
+	if e != nil {
+		return e
+	}
+
+	for _, fc := range trainStmt.Features {
+		for _, field := range fc {
+			for _, fm := range field.GetFieldDesc() {
+				name := fm.Name
+				_, ok := trainFields.Get(name)
+				if !ok {
+					return fmt.Errorf("feature field does not exist in database: %s", name)
+				}
+			}
+		}
+	}
+	if verifyLabel {
+		labelFieldName := trainStmt.Label.GetFieldDesc()[0].Name
+		if labelFieldName == "" {
+			// empty labelFieldName means clustering model.
+			return nil
+		}
+		_, ok := trainFields.Get(labelFieldName)
+		if !ok {
+			return fmt.Errorf("label field does not exist in database: %s", labelFieldName)
+		}
+	}
+	return nil
 }
 
 func verifyIRWithTrainStmt(sqlir ir.SQLStatement, db *database.DB) error {
@@ -203,18 +244,11 @@ func verifyIRWithTrainStmt(sqlir ir.SQLStatement, db *database.DB) error {
 	return nil
 }
 
-func generatePredictStmt(slct *parser.SQLFlowSelectStmt, connStr string, modelDir string, getTrainStmtFromModel bool) (*ir.PredictStmt, error) {
+func generatePredictStmt(slct *parser.SQLFlowSelectStmt, connStr string, modelDir string, cwd string, getTrainStmtFromModel bool) (*ir.PredictStmt, error) {
 	attrMap, err := generateAttributeIR(&slct.PredAttrs)
 	if err != nil {
 		return nil, err
 	}
-
-	// cwd is used to extract saved model metas to construct the IR.
-	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
-	if err != nil {
-		return nil, err
-	}
-	defer os.RemoveAll(cwd)
 
 	var trainStmt *ir.TrainStmt
 	if getTrainStmtFromModel {
@@ -253,18 +287,11 @@ func generatePredictStmt(slct *parser.SQLFlowSelectStmt, connStr string, modelDi
 	return predStmt, nil
 }
 
-func generateAnalyzeStmt(slct *parser.SQLFlowSelectStmt, connStr, modelDir string, getTrainStmtFromModel bool) (*ir.AnalyzeStmt, error) {
+func generateAnalyzeStmt(slct *parser.SQLFlowSelectStmt, connStr, modelDir string, cwd string, getTrainStmtFromModel bool) (*ir.AnalyzeStmt, error) {
 	attrs, err := generateAttributeIR(&slct.ExplainAttrs)
 	if err != nil {
 		return nil, err
 	}
-
-	// cwd is used to extract saved model metas to construct the IR.
-	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
-	if err != nil {
-		return nil, err
-	}
-	defer os.RemoveAll(cwd)
 
 	var trainStmt *ir.TrainStmt
 	if getTrainStmtFromModel {

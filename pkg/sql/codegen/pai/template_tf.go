@@ -14,11 +14,10 @@
 package pai
 
 type wrapperFiller struct {
+	clusterConfig
 	DataSource       string
 	EntryFile        string
 	ModelName        string
-	NumPS            int
-	NumWorkers       int // num_workers > 1 indicates we are running distributed training.
 	PAITrainTable    string
 	PAIValidateTable string
 	OSSCheckpointDir string // uri for PAI to save checkpoints on OSS, e.g. oss://bucket/dir/?role_arn=xxx&host=xxx
@@ -70,10 +69,10 @@ else:
 
 {{if gt .NumWorkers 1}}
 print("saving model to: {{.OSSCheckpointDir}}")
-pai_cmd = 'pai -name %s -DjobName=%s -Dtags=%s -Dscript=file://%s -DentryFile=%s -DgpuRequired=\'\' -Dtables=%s -DcheckpointDir=\'{{.OSSCheckpointDir}}\' -Dcluster=\'{\"ps\":{\"count\":{{.NumPS}}}, \"worker\":{\"count\":{{.NumWorkers}}}}\'' % (
+pai_cmd = 'pai -name %s -DjobName=%s -Dtags=%s -Dscript=file://%s -DentryFile=%s -Dtables=%s -DcheckpointDir=\'{{.OSSCheckpointDir}}\' -Dcluster=\'{\"ps\":{\"count\":{{.NumPS}}, \"gpu\": {{.PSGPU}}, \"cpu\": {{.PSCPU}} }, \"worker\":{\"count\":{{.NumWorkers}}, \"gpu\": {{.WorkerGPU}}, \"cpu\": {{.WorkerCPU}}}}\'' % (
     'tensorflow1120', jobname, 'dnn', tarball, '{{.EntryFile}}', submit_tables)
 {{else}}
-pai_cmd = 'pai -name %s -DjobName=%s -Dtags=%s -Dscript=file://%s -DentryFile=%s -DgpuRequired=\'\' -Dtables=%s -DcheckpointDir=\'{{.OSSCheckpointDir}}\'' % (
+pai_cmd = 'pai -name %s -DjobName=%s -Dtags=%s -Dscript=file://%s -DentryFile=%s -DgpuRequired=\'0\' -Dtables=%s -DcheckpointDir=\'{{.OSSCheckpointDir}}\'' % (
     'tensorflow1120', jobname, 'dnn', tarball, '{{.EntryFile}}', submit_tables)
 {{end}}
 

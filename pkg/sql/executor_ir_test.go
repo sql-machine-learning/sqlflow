@@ -139,7 +139,6 @@ USING TreeExplainer;
 `, modelDir, database.GetSessionFromTestingDB())
 		a.True(goodStream(stream.ReadAll()))
 	})
-
 }
 
 func TestExecuteXGBoostClassifier(t *testing.T) {

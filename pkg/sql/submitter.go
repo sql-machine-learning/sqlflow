@@ -109,15 +109,6 @@ func (s *defaultSubmitter) SaveModel(cl *ir.TrainStmt, req *requestContext) erro
 	return m.save(modelURI, cl, req.Session)
 }
 
-func (s *defaultSubmitter) LoadModel(cl *ir.TrainStmt, req *requestContext) error {
-	modelURI := cl.Into
-	if req.ModelSaveDir != "" {
-		modelURI = fmt.Sprintf("file://%s/%s", req.ModelSaveDir, cl.Into)
-	}
-	_, err := load(modelURI, req.Cwd, req.Conn)
-	return err
-}
-
 func (s *defaultSubmitter) runCommand(program string, req *requestContext) error {
 	cw := &logChanWriter{wr: req.Wr}
 	var output bytes.Buffer
@@ -151,26 +142,23 @@ func (s *defaultSubmitter) ExecuteTrain(cl *ir.TrainStmt, req *requestContext) (
 }
 
 func (s *defaultSubmitter) ExecutePredict(cl *ir.PredictStmt, req *requestContext) (e error) {
-	if e = s.LoadModel(cl.TrainStmt, req); e == nil {
-		if e = createPredictionTableFromIR(cl, req.Conn, req.Session); e == nil {
-			var code string
-			if isXGBoostModel(cl.TrainStmt.Estimator) {
-				code, e = xgboost.Pred(cl, req.Session)
-			} else {
-				code, e = tensorflow.Pred(cl, req.Session)
-			}
-			if e == nil {
-				e = s.runCommand(code, req)
-			}
+	// NOTE(typhoonzero): model is already loaded under req.Cwd
+	if e = createPredictionTableFromIR(cl, req.Conn, req.Session); e == nil {
+		var code string
+		if isXGBoostModel(cl.TrainStmt.Estimator) {
+			code, e = xgboost.Pred(cl, req.Session)
+		} else {
+			code, e = tensorflow.Pred(cl, req.Session)
+		}
+		if e == nil {
+			e = s.runCommand(code, req)
 		}
 	}
 	return e
 }
 
 func (s *defaultSubmitter) ExecuteAnalyze(cl *ir.AnalyzeStmt, req *requestContext) error {
-	if err := s.LoadModel(cl.TrainStmt, req); err != nil {
-		return err
-	}
+	// NOTE(typhoonzero): model is already loaded under s.Cwd
 	if !isXGBoostModel(cl.TrainStmt.Estimator) {
 		return fmt.Errorf("unsupported model %s", cl.TrainStmt.Estimator)
 	}

@@ -27,6 +27,15 @@ import (
 
 const entryFile = "entry.py"
 
+type clusterConfig struct {
+	NumPS      int
+	NumWorkers int
+	PSCPU      int
+	PSGPU      int
+	WorkerCPU  int
+	WorkerGPU  int
+}
+
 func formatCkptDir(modelName string) (string, error) {
 	ossCkptDir := os.Getenv("SQLFLOW_OSS_CHECKPOINT_DIR")
 	if ossCkptDir == "" {
@@ -43,7 +52,7 @@ func formatCkptDir(modelName string) (string, error) {
 }
 
 // wrapper generates a Python program for submit TensorFlow tasks to PAI.
-func wrapper(code, dataSource, modelName, cwd, tmpTrainTable, tmpValTable string, numPS, numWrokers int) (string, error) {
+func wrapper(code, dataSource, modelName, cwd, tmpTrainTable, tmpValTable string, cc *clusterConfig) (string, error) {
 	f, err := os.Create(filepath.Join(cwd, entryFile))
 	if err != nil {
 		return "", fmt.Errorf("Create python code failed")
@@ -61,11 +70,10 @@ func wrapper(code, dataSource, modelName, cwd, tmpTrainTable, tmpValTable string
 
 	var tpl = template.Must(template.New("Submit").Parse(tfWrapperTmplText))
 	filler := wrapperFiller{
+		clusterConfig:    *cc,
 		DataSource:       dataSource,
 		ModelName:        modelName,
 		EntryFile:        entryFile,
-		NumPS:            numPS,
-		NumWorkers:       numWrokers,
 		PAITrainTable:    tmpTrainTable,
 		PAIValidateTable: tmpValTable,
 		OSSCheckpointDir: ossCkptDir,
@@ -77,47 +85,45 @@ func wrapper(code, dataSource, modelName, cwd, tmpTrainTable, tmpValTable string
 	return program.String(), nil
 }
 
+func getClusterConfig(attrs map[string]interface{}) (*clusterConfig, error) {
+	defaultMap := map[string]int{
+		"train.num_ps":      0,
+		"train.num_workers": 1,
+		"train.worker_cpu":  400,
+		"train.worker_gpu":  0,
+		"train.ps_cpu":      200,
+		"train.ps_gpu":      0,
+	}
+	for k := range defaultMap {
+		attrValue, ok := attrs[k]
+		if ok {
+			intValue, intok := attrValue.(int)
+			if !intok {
+				return nil, fmt.Errorf("attribute %s must be int, got: %s", k, attrValue)
+			}
+			defaultMap[k] = intValue
+			delete(attrs, k)
+		}
+	}
+	return &clusterConfig{
+		NumPS:      defaultMap["train.num_ps"],
+		NumWorkers: defaultMap["train.num_workers"],
+		PSCPU:      defaultMap["train.ps_cpu"],
+		PSGPU:      defaultMap["train.ps_gpu"],
+		WorkerCPU:  defaultMap["train.worker_cpu"],
+		WorkerGPU:  defaultMap["train.worker_gpu"],
+	}, nil
+}
+
 // Train generates a Python program for train a TensorFlow model.
 func Train(ir *ir.TrainStmt, modelName, cwd string) (string, error) {
-	var numPS int
-	var numWorkers int
-	numPSAttr, ok := ir.Attributes["train.num_ps"]
-	if !ok {
-		numPS = 0
-	} else {
-		numPS, ok = numPSAttr.(int)
-		// NOTE(typhoonzero): pai/codegen.go only deal with train.num_ps and train.num_workers
-		// calling attribute validator will also validate attributes defined by tensorflow/codegen.go
-		// wich may cause "unsupported attribute", so just manually check in here.
-		if !ok {
-			return "", fmt.Errorf("train.num_ps should be an integer")
-		}
-		if numPS < 0 {
-			return "", fmt.Errorf("train.num_ps should >= 0")
-		}
-		// delete attributes so that tensorflow codegen can run.
-		delete(ir.Attributes, "train.num_ps")
-	}
-	numWorkersAttr, ok := ir.Attributes["train.num_workers"]
-	if !ok {
-		numWorkers = 1
-	} else {
-		numWorkers, ok = numWorkersAttr.(int)
-		if !ok {
-			return "", fmt.Errorf("train.num_workers should be an integer")
-		}
-		if numWorkers < 0 {
-			return "", fmt.Errorf("train.num_workers should >= 0")
-		}
-		// delete attributes so that tensorflow codegen can run.
-		delete(ir.Attributes, "train.num_workers")
-	}
+	cc, err := getClusterConfig(ir.Attributes)
 	program, err := tfTrainAndSave(ir, modelName)
 	if err != nil {
 		return "", err
 	}
 	return wrapper(program, ir.DataSource, modelName, cwd,
-		ir.TmpTrainTable, ir.TmpValidateTable, numPS, numWorkers)
+		ir.TmpTrainTable, ir.TmpValidateTable, cc)
 }
 
 func tfTrainAndSave(ir *ir.TrainStmt, modelName string) (string, error) {
@@ -147,12 +153,16 @@ func tfTrainAndSave(ir *ir.TrainStmt, modelName string) (string, error) {
 
 // Predict generates a Python program for train a TensorFlow model.
 func Predict(ir *ir.PredictStmt, modelName, cwd string) (string, error) {
+	cc, err := getClusterConfig(ir.Attributes)
+	if err != nil {
+		return "", err
+	}
 	program, err := tfLoadAndPredict(ir, modelName)
 	if err != nil {
 		return "", err
 	}
 	return wrapper(program, ir.DataSource, modelName, cwd,
-		ir.TmpPredictTable, "", 0, 1)
+		ir.TmpPredictTable, "", cc)
 }
 
 func tfLoadAndPredict(ir *ir.PredictStmt, modelName string) (string, error) {
