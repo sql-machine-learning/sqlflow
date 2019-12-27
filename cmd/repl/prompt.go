@@ -35,7 +35,6 @@ var defaultSuggestions = []prompt.Suggest{
 	{"USING", ""},
 	{"WITH", ""},
 	{"TO", ""},
-	{"LABEL", ""},
 }
 
 var toSuggestions = []prompt.Suggest{
