@@ -33,15 +33,16 @@ var envSubmitter = os.Getenv("SQLFLOW_submitter")
 
 var submitterRegistry = map[string](Submitter){
 	"default": &defaultSubmitter{},
+	"pai":     &paiSubmitter{&defaultSubmitter{}},
 	// TODO(typhoonzero): add submitters like alps, elasticdl
 }
 
 // Submitter is a visitor that generates and executes code for SQLStatement
 type Submitter interface {
-	ExecuteQuery(*ir.StandardSQL, *requestContext) error
-	ExecuteTrain(*ir.TrainStmt, *requestContext) error
-	ExecutePredict(*ir.PredictStmt, *requestContext) error
-	ExecuteAnalyze(*ir.AnalyzeStmt, *requestContext) error
+	ExecuteQuery(*ir.StandardSQL, *RequestContext, string) error
+	ExecuteTrain(*ir.TrainStmt, *RequestContext, string) error
+	ExecutePredict(*ir.PredictStmt, *RequestContext, string) error
+	ExecuteAnalyze(*ir.AnalyzeStmt, *RequestContext, string) error
 	GetTrainStmtFromModel() bool
 }
 
@@ -100,8 +101,8 @@ func (cw *logChanWriter) Close() {
 
 type defaultSubmitter struct{}
 
-func (s *defaultSubmitter) SaveModel(cl *ir.TrainStmt, req *requestContext) error {
-	m := model{workDir: req.Cwd, TrainSelect: cl.OriginalSQL}
+func (s *defaultSubmitter) SaveModel(cl *ir.TrainStmt, req *RequestContext, cwd string) error {
+	m := model{workDir: cwd, TrainSelect: cl.OriginalSQL}
 	modelURI := cl.Into
 	if req.ModelSaveDir != "" {
 		modelURI = fmt.Sprintf("file://%s/%s", req.ModelSaveDir, cl.Into)
@@ -109,12 +110,12 @@ func (s *defaultSubmitter) SaveModel(cl *ir.TrainStmt, req *requestContext) erro
 	return m.save(modelURI, cl, req.Session)
 }
 
-func (s *defaultSubmitter) runCommand(program string, req *requestContext) error {
+func (s *defaultSubmitter) runCommand(program string, req *RequestContext, cwd string) error {
 	cw := &logChanWriter{wr: req.Wr}
 	var output bytes.Buffer
 	w := io.MultiWriter(cw, &output)
 	defer cw.Close()
-	cmd := sqlflowCmd(req.Cwd, req.Conn.DriverName)
+	cmd := sqlflowCmd(cwd, req.Conn.DriverName)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = bytes.NewBufferString(program), w, w
 	if e := cmd.Run(); e != nil {
 		return fmt.Errorf("failed: %v\n%sProgram%[2]s\n%s\n%[2]sOutput%[2]s\n%[4]v", e, "==========", program, output.String())
@@ -122,11 +123,11 @@ func (s *defaultSubmitter) runCommand(program string, req *requestContext) error
 	return nil
 }
 
-func (s *defaultSubmitter) ExecuteQuery(sql *ir.StandardSQL, req *requestContext) error {
+func (s *defaultSubmitter) ExecuteQuery(sql *ir.StandardSQL, req *RequestContext, cwd string) error {
 	return runStandardSQL(req.Wr, string(*sql), req.Conn)
 }
 
-func (s *defaultSubmitter) ExecuteTrain(cl *ir.TrainStmt, req *requestContext) (e error) {
+func (s *defaultSubmitter) ExecuteTrain(cl *ir.TrainStmt, req *RequestContext, cwd string) (e error) {
 	var code string
 	if isXGBoostModel(cl.Estimator) {
 		code, e = xgboost.Train(cl)
@@ -134,15 +135,15 @@ func (s *defaultSubmitter) ExecuteTrain(cl *ir.TrainStmt, req *requestContext) (
 		code, e = tensorflow.Train(cl)
 	}
 	if e == nil {
-		if e = s.runCommand(code, req); e == nil {
-			e = s.SaveModel(cl, req)
+		if e = s.runCommand(code, req, cwd); e == nil {
+			e = s.SaveModel(cl, req, cwd)
 		}
 	}
 	return e
 }
 
-func (s *defaultSubmitter) ExecutePredict(cl *ir.PredictStmt, req *requestContext) (e error) {
-	// NOTE(typhoonzero): model is already loaded under req.Cwd
+func (s *defaultSubmitter) ExecutePredict(cl *ir.PredictStmt, req *RequestContext, cwd string) (e error) {
+	// NOTE(typhoonzero): model is already loaded under cwd when generating ir.PredictStmt
 	if e = createPredictionTableFromIR(cl, req.Conn, req.Session); e == nil {
 		var code string
 		if isXGBoostModel(cl.TrainStmt.Estimator) {
@@ -151,13 +152,13 @@ func (s *defaultSubmitter) ExecutePredict(cl *ir.PredictStmt, req *requestContex
 			code, e = tensorflow.Pred(cl, req.Session)
 		}
 		if e == nil {
-			e = s.runCommand(code, req)
+			e = s.runCommand(code, req, cwd)
 		}
 	}
 	return e
 }
 
-func (s *defaultSubmitter) ExecuteAnalyze(cl *ir.AnalyzeStmt, req *requestContext) error {
+func (s *defaultSubmitter) ExecuteAnalyze(cl *ir.AnalyzeStmt, req *RequestContext, cwd string) error {
 	// NOTE(typhoonzero): model is already loaded under s.Cwd
 	if !isXGBoostModel(cl.TrainStmt.Estimator) {
 		return fmt.Errorf("unsupported model %s", cl.TrainStmt.Estimator)
@@ -167,10 +168,10 @@ func (s *defaultSubmitter) ExecuteAnalyze(cl *ir.AnalyzeStmt, req *requestContex
 	if err != nil {
 		return err
 	}
-	if err = s.runCommand(code, req); err != nil {
+	if err = s.runCommand(code, req, cwd); err != nil {
 		return err
 	}
-	imgFile, err := os.Open(path.Join(req.Cwd, "summary.png"))
+	imgFile, err := os.Open(path.Join(cwd, "summary.png"))
 	if err != nil {
 		return err
 	}
@@ -181,7 +182,7 @@ func (s *defaultSubmitter) ExecuteAnalyze(cl *ir.AnalyzeStmt, req *requestContex
 	}
 	imgBase64Str := base64.StdEncoding.EncodeToString(imgBytes)
 	img2html := fmt.Sprintf("<div align='center'><img src='data:image/png;base64,%s' /></div>", imgBase64Str)
-	termFigure, err := ioutil.ReadFile(path.Join(req.Cwd, "summary.txt"))
+	termFigure, err := ioutil.ReadFile(path.Join(cwd, "summary.txt"))
 	if err != nil {
 		return err
 	}

@@ -284,10 +284,12 @@ INTO sqlflow_models.mymodel;`
 
 	// run one train SQL to save the model then test predict/analyze use the model
 	sess := &irpb.Session{DbConnStr: dataSourceStr}
-	stream := sf.RunSQLProgram(trainSQL, "", sess)
+	req, err := sf.NewRequestContext(trainSQL, sess, "")
+	a.NoError(err)
+	sf.RunSQLProgram(req)
 	lastResp := list.New()
 	keepSize := 10
-	for rsp := range stream.ReadAll() {
+	for rsp := range req.Rd.ReadAll() {
 		switch rsp.(type) {
 		case error:
 			var s []string

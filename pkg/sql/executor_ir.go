@@ -50,30 +50,18 @@ type WorkflowJob struct {
 //
 // TODO(wangkuiyi): Make RunSQLProgram return an error in addition to
 // *pipe.Reader, and remove the calls to log.Printf.
-func RunSQLProgram(sqlProgram string, modelDir string, session *pb.Session) *pipe.Reader {
-	rd, wr := pipe.Pipe()
+func RunSQLProgram(req *RequestContext) {
 	go func() {
-		var db *database.DB
-		var err error
-		if db, err = database.OpenAndConnectDB(session.DbConnStr); err != nil {
-			wr.Write(fmt.Errorf("create DB failed: %v", err))
-			log.Printf("create DB failed: %v", err)
-		}
-		defer db.Close()
-		defer wr.Close()
-		req := newRequest(wr, sqlProgram, session, db, modelDir)
-		defer req.close()
-		err = runSQLProgram(req)
+		err := runSQLProgram(req)
 		if err != nil {
 			log.Printf("runSQLProgram error: %v", err)
 			if err != pipe.ErrClosedPipe {
-				if err := wr.Write(err); err != nil {
+				if err := req.Wr.Write(err); err != nil {
 					log.Printf("runSQLProgram error(piping): %v", err)
 				}
 			}
 		}
 	}()
-	return rd
 }
 
 // ParseSQLStatement parse the input SQL statement and output IR in protobuf format
@@ -134,28 +122,25 @@ func ParseSQLStatement(sql string, session *pb.Session) (string, error) {
 //
 // TODO(wangkuiyi): Make RunSQLProgram return an error in addition to
 // *pipe.Reader, and remove the calls to log.Printf.
-func SubmitWorkflow(sqlProgram string, modelDir string, session *pb.Session) *pipe.Reader {
-	rd, wr := pipe.Pipe()
+func SubmitWorkflow(req *RequestContext) {
 	go func() {
-		defer wr.Close()
-		err := submitWorkflow(wr, sqlProgram, modelDir, session)
+		err := submitWorkflow(req)
 		if err != nil {
 			if err != pipe.ErrClosedPipe {
-				if err := wr.Write(err); err != nil {
+				if err := req.Wr.Write(err); err != nil {
 					log.Printf("submit workflow error(piping): %v", err)
 				}
 			}
 		}
 	}()
-	return rd
 }
 
-func submitWorkflow(wr *pipe.Writer, sqlProgram string, modelDir string, session *pb.Session) error {
-	driverName, dataSourceName, err := database.ParseURL(session.DbConnStr)
+func submitWorkflow(req *RequestContext) error {
+	driverName, dataSourceName, err := database.ParseURL(req.Session.DbConnStr)
 	if err != nil {
 		return err
 	}
-	sqls, err := parser.Parse(driverName, sqlProgram)
+	sqls, err := parser.Parse(driverName, req.SQLProgram)
 	if err != nil {
 		return err
 	}
@@ -173,9 +158,9 @@ func submitWorkflow(wr *pipe.Writer, sqlProgram string, modelDir string, session
 				r, err = generateTrainStmt(sql.SQLFlowSelectStmt, connStr)
 			} else if sql.Explain {
 				// since getTrainStmtFromModel is false, use empty cwd is fine.
-				r, err = generateAnalyzeStmt(sql.SQLFlowSelectStmt, connStr, modelDir, "", false)
+				r, err = generateAnalyzeStmt(sql.SQLFlowSelectStmt, connStr, req.ModelSaveDir, "", false)
 			} else {
-				r, err = generatePredictStmt(sql.SQLFlowSelectStmt, connStr, modelDir, "", false)
+				r, err = generatePredictStmt(sql.SQLFlowSelectStmt, connStr, req.ModelSaveDir, "", false)
 			}
 		} else {
 			standardSQL := ir.StandardSQL(sql.Standard)
@@ -189,7 +174,7 @@ func submitWorkflow(wr *pipe.Writer, sqlProgram string, modelDir string, session
 	}
 
 	// 1. call codegen_couler.go to generate Argo workflow YAML
-	argoFileName, err := couler.RunAndWriteArgoFile(spIRs, session)
+	argoFileName, err := couler.RunAndWriteArgoFile(spIRs, req.Session)
 	if err != nil {
 		return err
 	}
@@ -201,12 +186,12 @@ func submitWorkflow(wr *pipe.Writer, sqlProgram string, modelDir string, session
 		return err
 	}
 
-	return wr.Write(WorkflowJob{
+	return req.Wr.Write(WorkflowJob{
 		JobID: workflowID,
 	})
 }
 
-func runSQLProgram(req *requestContext) (e error) {
+func runSQLProgram(req *RequestContext) (e error) {
 	sqls, err := parser.Parse(req.Conn.DriverName, req.SQLProgram)
 	if err != nil {
 		return err
@@ -265,11 +250,31 @@ func runSQLProgram(req *requestContext) (e error) {
 			}
 		}()
 
-		if e := req.executeSQL(r); e != nil {
+		if e := executeSingleSQL(r, req, cwd); e != nil {
+			return e
+		}
+		if e := cleanCwd(cwd); e != nil {
 			return e
 		}
 	}
 	return nil
+}
+
+func executeSingleSQL(sqlIR ir.SQLStatement, req *RequestContext, cwd string) error {
+	var err error
+	switch sqlIR.(type) {
+	case *ir.TrainStmt:
+		err = req.Submitter.ExecuteTrain(sqlIR.(*ir.TrainStmt), req, cwd)
+	case *ir.PredictStmt:
+		err = req.Submitter.ExecutePredict(sqlIR.(*ir.PredictStmt), req, cwd)
+	case *ir.AnalyzeStmt:
+		err = req.Submitter.ExecuteAnalyze(sqlIR.(*ir.AnalyzeStmt), req, cwd)
+	case *ir.StandardSQL:
+		err = req.Submitter.ExecuteQuery(sqlIR.(*ir.StandardSQL), req, cwd)
+	default:
+		return fmt.Errorf("not supported ir.SQLStatement: %v", sqlIR)
+	}
+	return err
 }
 
 // getColumnTypes is quiet like verify but accept a SQL string as input, and returns

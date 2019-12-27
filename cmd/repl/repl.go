@@ -181,8 +181,12 @@ func runStmt(stmt string, isTerminal bool, modelDir string, ds string) error {
 		sess.DbConnStr = ds
 	}
 
-	stream := sql.RunSQLProgram(stmt, modelDir, sess)
-	for rsp := range stream.ReadAll() {
+	req, err := sql.NewRequestContext(stmt, sess, modelDir)
+	if err != nil {
+		return err
+	}
+	sql.RunSQLProgram(req)
+	for rsp := range req.Rd.ReadAll() {
 		// pagination. avoid exceed memory
 		if render(rsp, table, isTerminal) && table.NumLines() == tablePageSize {
 			table.Render()

@@ -30,7 +30,6 @@ import (
 
 	sfargo "sqlflow.org/sqlflow/pkg/argo"
 	"sqlflow.org/sqlflow/pkg/parser"
-	"sqlflow.org/sqlflow/pkg/pipe"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	sf "sqlflow.org/sqlflow/pkg/sql"
 )
@@ -40,13 +39,12 @@ type Server struct {
 	// TODO(typhoonzero): should pass `Server` struct to run function, so that we can get
 	// server-side configurations together with client side session in the run context.
 	// To do this we need to refactor current pkg structure, so that we will not have circular dependency.
-	run      func(sql string, modelDir string, session *pb.Session) *pipe.Reader
+	run      func(*sf.RequestContext)
 	modelDir string
 }
 
 // NewServer returns a server instance
-func NewServer(run func(string, string, *pb.Session) *pipe.Reader,
-	modelDir string) *Server {
+func NewServer(run func(*sf.RequestContext), modelDir string) *Server {
 	return &Server{run: run, modelDir: modelDir}
 }
 
@@ -61,10 +59,15 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 	if err != nil {
 		return err
 	}
-	rd := s.run(req.Sql, s.modelDir, req.Session)
-	defer rd.Close()
 
-	for r := range rd.ReadAll() {
+	reqContext, err := sf.NewRequestContext(req.Sql, req.Session, s.modelDir)
+	if err != nil {
+		return err
+	}
+	defer reqContext.Close()
+
+	s.run(reqContext)
+	for r := range reqContext.Rd.ReadAll() {
 		var res *pb.Response
 		switch s := r.(type) {
 		case error:

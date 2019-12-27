@@ -14,62 +14,56 @@
 package sql
 
 import (
-	"fmt"
-	"os"
-
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/pipe"
 	pb "sqlflow.org/sqlflow/pkg/proto"
-	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
 
-type requestContext struct {
+// RequestContext records all resources that one request may carry.
+type RequestContext struct {
 	SQLProgram string
 	Session    *pb.Session
-
-	ModelSaveDir string // directory for save/load model, empty if we are going to save model to db
-
-	Wr            *pipe.Writer
-	ProgramIR     ir.SQLProgram // parsed
-	Conn          *database.DB  // connection to database for current request
-	Cwd           string        // current working directory, will generate python code, save model, load model to this path
-	IsModelLoaded bool          // true if model is loaded into Cwd
-
-	Submitter Submitter // a proper submitter for current request
+	// Directory for save/load model, empty if we are going to save model to db
+	ModelSaveDir string
+	// Pipe for write back results when processing current request
+	Wr *pipe.Writer
+	Rd *pipe.Reader
+	// Connection to the database for each request, will be closed when request is closed.
+	Conn *database.DB
+	// current working directory, will generate python code, save model, load model to this path
+	// Cwd string
+	// Will set to true if model/checkpoint is loaded into Cwd
+	// IsModelLoaded bool
+	// a proper submitter for current request, e.g. Tensorflow/PAI/Elasticdl
+	Submitter Submitter
 }
 
-func newRequest(wr *pipe.Writer, sqlProgram string, session *pb.Session, conn *database.DB, modelSaveDir string) *requestContext {
+// NewRequestContext construct a new RequestContext object.
+func NewRequestContext(sqlProgram string, session *pb.Session, modelSaveDir string) (*RequestContext, error) {
 	submitter := getSubmitter()
-	req := &requestContext{
+	conn, err := database.OpenAndConnectDB(session.GetDbConnStr())
+	if err != nil {
+		return nil, err
+	}
+	rd, wr := pipe.Pipe()
+	req := &RequestContext{
 		SQLProgram:   sqlProgram,
-		Conn:         conn,
 		Session:      session,
 		ModelSaveDir: modelSaveDir,
+		Wr:           wr,
+		Rd:           rd,
+		Conn:         conn,
 		Submitter:    submitter,
 	}
-	return req
+	return req, nil
 }
 
-func (req *requestContext) close() error {
-	if err := os.RemoveAll(req.Cwd); err != nil {
+// Close release all resources of the current request.
+func (req *RequestContext) Close() error {
+	req.Wr.Close()
+	req.Rd.Close()
+	if err := req.Conn.Close(); err != nil {
 		return err
 	}
 	return nil
-}
-
-func (req *requestContext) executeSQL(sqlIR ir.SQLStatement) error {
-	var err error
-	switch sqlIR.(type) {
-	case *ir.TrainStmt:
-		err = req.Submitter.ExecuteTrain(sqlIR.(*ir.TrainStmt), req)
-	case *ir.PredictStmt:
-		err = req.Submitter.ExecutePredict(sqlIR.(*ir.PredictStmt), req)
-	case *ir.AnalyzeStmt:
-		err = req.Submitter.ExecuteAnalyze(sqlIR.(*ir.AnalyzeStmt), req)
-	case *ir.StandardSQL:
-		err = req.Submitter.ExecuteQuery(sqlIR.(*ir.StandardSQL), req)
-	default:
-		return fmt.Errorf("not supported ir.SQLStatement: %v", sqlIR)
-	}
-	return err
 }
