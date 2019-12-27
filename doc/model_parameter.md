@@ -198,6 +198,11 @@ INTO sqlflow_models.my_dnn_model;
 	<td>Description</td>
 </tr>
 <tr>
+	<td>model.*</td>
+	<td>attribute.unknown</td>
+	<td>Any model parameters defined in custom models</td>
+</tr>
+<tr>
 	<td>train.batch_size</td>
 	<td>int</td>
 	<td>[default=1]<br>The training batch size.<br>range: [1,Infinity]</td>

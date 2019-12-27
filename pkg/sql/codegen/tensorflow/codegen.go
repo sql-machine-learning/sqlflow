@@ -52,6 +52,7 @@ example: "Accuracy,AUC"`, nil},
 	"validation.select": {attribute.String, `[default=""]
 Specify the dataset for validation.
 example: "SELECT * FROM iris.train LIMIT 100"`, nil},
+	"model.*": {attribute.Unknown, "Any model parameters defined in custom models", nil},
 }
 
 func intArrayToJSONString(ia []int) string {
