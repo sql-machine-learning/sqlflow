@@ -101,6 +101,8 @@ func TestIsQuery(t *testing.T) {
 	a.True(isQuery("show databases"))
 	a.True(isQuery("show tables"))
 	a.True(isQuery("describe iris.iris"))
+	a.True(isQuery("desc iris.iris"))
+	a.True(isQuery("explain select 1"))
 
 	a.False(isQuery("select * from iris.iris limit 10 into iris.tmp"))
 	a.False(isQuery("insert into iris.iris values ..."))
