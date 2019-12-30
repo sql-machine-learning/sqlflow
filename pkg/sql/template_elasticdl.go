@@ -107,16 +107,16 @@ class PredictionOutputsProcessor(BasePredictionOutputsProcessor):
         if all(
             k in os.environ
             for k in (
-                "MAXCOMPUTE_PROJECT",
-                "MAXCOMPUTE_AK",
-                "MAXCOMPUTE_SK",
+                "SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT",
+                "SQLFLOW_TEST_DB_MAXCOMPUTE_AK",
+                "SQLFLOW_TEST_DB_MAXCOMPUTE_SK",
             )
         ):
             self.odps_writer = ODPSWriter(
-                os.environ["MAXCOMPUTE_PROJECT"],
-                os.environ["MAXCOMPUTE_AK"],
-                os.environ["MAXCOMPUTE_SK"],
-                os.environ.get("MAXCOMPUTE_ENDPOINT", None),
+                os.environ["SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT"],
+                os.environ["SQLFLOW_TEST_DB_MAXCOMPUTE_AK"],
+                os.environ["SQLFLOW_TEST_DB_MAXCOMPUTE_SK"],
+                os.environ.get("SQLFLOW_TEST_DB_MAXCOMPUTE_ENDPOINT", None),
                 table="{{.PredictOutputTable}}",
                 columns=["pred_" + str(i) for i in range({{.OutputShape}})],
                 column_types=["double" for _ in range({{.OutputShape}})],

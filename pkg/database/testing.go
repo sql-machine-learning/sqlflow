@@ -117,10 +117,10 @@ func createTestingHiveDB() *DB {
 
 func testingMaxComputeConfig() *gomaxcompute.Config {
 	return &gomaxcompute.Config{
-		AccessID:  getEnv("MAXCOMPUTE_AK", "test"),
-		AccessKey: getEnv("MAXCOMPUTE_SK", "test"),
-		Project:   getEnv("MAXCOMPUTE_PROJECT", "test"),
-		Endpoint:  getEnv("MAXCOMPUTE_ENDPOINT", "http://service-maxcompute.com/api"),
+		AccessID:  getEnv("SQLFLOW_TEST_DB_MAXCOMPUTE_AK", "test"),
+		AccessKey: getEnv("SQLFLOW_TEST_DB_MAXCOMPUTE_SK", "test"),
+		Project:   getEnv("SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT", "test"),
+		Endpoint:  getEnv("SQLFLOW_TEST_DB_MAXCOMPUTE_ENDPOINT", "http://service-maxcompute.com/api"),
 	}
 }
 
