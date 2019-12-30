@@ -700,12 +700,13 @@ INTO sqlflow_models.mytest_model;`
 		a.Fail("Run trainSQL error: %v", err)
 	}
 
+	// TODO(shendiaomo): sqlflow_models.DNNClassifier.eval_metrics_fn only works when batch_size is 1
 	kerasTrainSQL := `SELECT * FROM iris.train WHERE class!=2
 TO TRAIN sqlflow_models.DNNClassifier
 WITH
 	model.n_classes = 2,
 	model.hidden_units = [10, 10],
-	train.batch_size = 4,
+	train.batch_size = 1,
 	validation.select = "SELECT * FROM iris.test WHERE class!=2",
 	validation.metrics = "Accuracy,AUC,Precision,Recall"
 LABEL class

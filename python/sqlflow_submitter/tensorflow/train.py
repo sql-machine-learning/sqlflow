@@ -85,13 +85,13 @@ def keras_train_and_save(estimator, model_params, save,
     else:
         if label_meta["feature_name"] != "":
             history = classifier.fit(train_dataset,
-                epochs=epochs if epochs else classifier.default_training_epochs(),
-                validation_data=validate_dataset,
-                verbose=verbose)
+                                     epochs=epochs if epochs else classifier.default_training_epochs(),
+                                     validation_data=validate_dataset,
+                                     verbose=verbose)
         else:
             history = classifier.fit(train_dataset,
-                epochs=epochs if epochs else classifier.default_training_epochs(),
-                verbose=verbose)
+                                     epochs=epochs if epochs else classifier.default_training_epochs(),
+                                     verbose=verbose)
         train_keys = []
         val_keys = []
         for k in history.history.keys():
