@@ -373,30 +373,9 @@ func Train(trainStmt *ir.TrainStmt) (string, error) {
 
 // Pred generates a Python program for predict using a TensorFlow model.
 func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
-	modelParams := make(map[string]interface{})
-	for attrKey, attr := range predStmt.TrainStmt.Attributes {
-		if strings.HasPrefix(attrKey, "model.") {
-			modelParams[strings.Replace(attrKey, "model.", "", 1)] = attr
-		}
-	}
-	featureColumnsCode := []string{}
-	perTargetFeatureColumnsCode := []string{}
-	fieldDescs := []*ir.FieldDesc{}
-	for target, fcList := range predStmt.TrainStmt.Features {
-		for _, fc := range fcList {
-			fcCode, err := generateFeatureColumnCode(fc)
-			if err != nil {
-				return "", err
-			}
-			perTargetFeatureColumnsCode = append(perTargetFeatureColumnsCode, fcCode)
-			if len(fc.GetFieldDesc()) > 0 {
-				for _, fm := range fc.GetFieldDesc() {
-					fieldDescs = append(fieldDescs, fm)
-				}
-			}
-		}
-		featureColumnsCode = append(featureColumnsCode,
-			fmt.Sprintf("\"%s\": [%s]", target, strings.Join(perTargetFeatureColumnsCode, ",\n")))
+	modelParams, featureColumnsCode, fieldDescs, err := restoreModel(predStmt.TrainStmt)
+	if err != nil {
+		return "", err
 	}
 	isKeras, estimatorStr := IsKerasModel(predStmt.TrainStmt.Estimator)
 	labelFM := predStmt.TrainStmt.Label.GetFieldDesc()[0]
@@ -455,30 +434,10 @@ func Analyze(analyzeStmt *ir.AnalyzeStmt) (string, error) {
 	if !strings.HasPrefix(analyzeStmt.TrainStmt.Estimator, "BoostedTrees") {
 		return "", fmt.Errorf("unsupported model %s", analyzeStmt.TrainStmt.Estimator)
 	}
-	modelParams := make(map[string]interface{})
-	for attrKey, attr := range analyzeStmt.TrainStmt.Attributes {
-		if strings.HasPrefix(attrKey, "model.") {
-			modelParams[strings.Replace(attrKey, "model.", "", 1)] = attr
-		}
-	}
-	featureColumnsCode := []string{}
-	perTargetFeatureColumnsCode := []string{}
-	fieldDescs := []*ir.FieldDesc{}
-	for target, fcList := range analyzeStmt.TrainStmt.Features {
-		for _, fc := range fcList {
-			fcCode, err := generateFeatureColumnCode(fc)
-			if err != nil {
-				return "", err
-			}
-			perTargetFeatureColumnsCode = append(perTargetFeatureColumnsCode, fcCode)
-			if len(fc.GetFieldDesc()) > 0 {
-				for _, fm := range fc.GetFieldDesc() {
-					fieldDescs = append(fieldDescs, fm)
-				}
-			}
-		}
-		featureColumnsCode = append(featureColumnsCode,
-			fmt.Sprintf("\"%s\": [%s]", target, strings.Join(perTargetFeatureColumnsCode, ",\n")))
+
+	modelParams, featureColumnsCode, fieldDescs, err := restoreModel(analyzeStmt.TrainStmt)
+	if err != nil {
+		return "", err
 	}
 	_, estimatorStr := IsKerasModel(analyzeStmt.TrainStmt.Estimator)
 	labelFM := analyzeStmt.TrainStmt.Label.GetFieldDesc()[0]
@@ -512,6 +471,34 @@ func Analyze(analyzeStmt *ir.AnalyzeStmt) (string, error) {
 	}
 
 	return program.String(), nil
+}
+
+// restoreModel reconstruct necessary python objects from TrainStmt
+func restoreModel(stmt *ir.TrainStmt) (modelParams map[string]interface{}, featureColumnsCode []string, fieldDescs []*ir.FieldDesc, err error) {
+	modelParams = make(map[string]interface{})
+	for attrKey, attr := range stmt.Attributes {
+		if strings.HasPrefix(attrKey, "model.") {
+			modelParams[strings.Replace(attrKey, "model.", "", 1)] = attr
+		}
+	}
+	perTargetFeatureColumnsCode := []string{}
+	for target, fcList := range stmt.Features {
+		for _, fc := range fcList {
+			fcCode, err := generateFeatureColumnCode(fc)
+			if err != nil {
+				return nil, nil, nil, err
+			}
+			perTargetFeatureColumnsCode = append(perTargetFeatureColumnsCode, fcCode)
+			if len(fc.GetFieldDesc()) > 0 {
+				for _, fm := range fc.GetFieldDesc() {
+					fieldDescs = append(fieldDescs, fm)
+				}
+			}
+		}
+		featureColumnsCode = append(featureColumnsCode,
+			fmt.Sprintf("\"%s\": [%s]", target, strings.Join(perTargetFeatureColumnsCode, ",\n")))
+	}
+	return
 }
 
 // make a exported function in outer package
