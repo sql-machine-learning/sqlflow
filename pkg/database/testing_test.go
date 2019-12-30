@@ -19,7 +19,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGetTestingDBSingleton(t *testing.T) {
+func TestDatabaseGetTestingDBSingleton(t *testing.T) {
 	db := GetTestingDBSingleton()
 	a := assert.New(t)
 
@@ -35,7 +35,26 @@ func TestGetTestingDBSingleton(t *testing.T) {
 	}
 }
 
-func TestTestingMySQLURL(t *testing.T) {
+func TestDatabaseTestingMySQLURL(t *testing.T) {
 	a := assert.New(t)
 	a.Equal("mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0", testingMySQLURL())
+	if db := GetTestingDBSingleton(); db.DriverName == "mysql" {
+		a.Equal(testingMySQLURL(), db.URL())
+	}
+}
+
+func TestDatabaseTestingHiveURL(t *testing.T) {
+	a := assert.New(t)
+	a.Equal("hive://root:root@localhost:10000/churn", testingHiveURL())
+	if db := GetTestingDBSingleton(); db.DriverName == "hive" {
+		a.Equal(testingHiveURL(), db.URL())
+	}
+}
+
+func TestDatabaseTestingMaxComputeURL(t *testing.T) {
+	a := assert.New(t)
+	a.Equal("maxcompute://test:test@service-maxcompute.com/api?curr_project=test&scheme=http", testingMaxComputeURL())
+	if db := GetTestingDBSingleton(); db.DriverName == "maxcompute" {
+		a.Equal(testingMaxComputeURL(), db.URL())
+	}
 }
