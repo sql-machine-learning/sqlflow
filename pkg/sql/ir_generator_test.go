@@ -202,16 +202,19 @@ USING sqlflow_models.mymodel;`
 	cwd, e := ioutil.TempDir("/tmp", "sqlflow_models")
 	a.Nil(e)
 	defer os.RemoveAll(cwd)
-	modelDir := ""
-	stream := RunSQLProgram(`SELECT * FROM iris.train
+
+	req, err := NewRequestContext(`SELECT * FROM iris.train
 TO TRAIN DNNClassifier
 WITH model.n_classes=3, model.hidden_units=[10,20]
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
-INTO sqlflow_models.mymodel;`, modelDir, &pb.Session{DbConnStr: connStr})
-	a.True(goodStream(stream.ReadAll()))
+INTO sqlflow_models.mymodel;`, &pb.Session{DbConnStr: connStr}, "")
+	a.NoError(err)
+	defer req.Close()
+	RunSQLProgram(req)
+	a.True(goodStream(req.Rd.ReadAll()))
 
-	predStmt, err := generatePredictStmt(r, connStr, modelDir, cwd, true)
+	predStmt, err := generatePredictStmt(r, connStr, "", cwd, true)
 	a.NoError(err)
 
 	a.Equal(connStr, predStmt.DataSource)
@@ -233,8 +236,7 @@ func TestGenerateAnalyzeStmt(t *testing.T) {
 	cwd, e := ioutil.TempDir("/tmp", "sqlflow_models")
 	a.Nil(e)
 	defer os.RemoveAll(cwd)
-	modelDir := ""
-	stream := RunSQLProgram(`SELECT * FROM iris.train
+	req, err := NewRequestContext(`SELECT * FROM iris.train
 TO TRAIN xgboost.gbtree
 WITH
 	objective="multi:softprob",
@@ -243,10 +245,12 @@ WITH
 	num_class = 3
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
-INTO sqlflow_models.my_xgboost_model;
-`, modelDir, &pb.Session{DbConnStr: connStr})
+INTO sqlflow_models.my_xgboost_model;`, &pb.Session{DbConnStr: connStr}, "")
+	a.NoError(err)
+	defer req.Close()
+	RunSQLProgram(req)
 	a.NoError(e)
-	a.True(goodStream(stream.ReadAll()))
+	a.True(goodStream(req.Rd.ReadAll()))
 
 	pr, e := parser.LegacyParse(`
 	SELECT *
@@ -260,7 +264,7 @@ INTO sqlflow_models.my_xgboost_model;
 	`)
 	a.NoError(e)
 
-	AnalyzeStmt, e := generateAnalyzeStmt(pr, connStr, modelDir, cwd, true)
+	AnalyzeStmt, e := generateAnalyzeStmt(pr, connStr, "", cwd, true)
 	a.NoError(e)
 	a.Equal(AnalyzeStmt.DataSource, connStr)
 	a.Equal(AnalyzeStmt.Explainer, "TreeExplainer")

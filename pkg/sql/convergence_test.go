@@ -31,7 +31,7 @@ func TestConvergenceAndAccuracy(t *testing.T) {
 	a := assert.New(t)
 	modelDir := ""
 	a.NotPanics(func() {
-		stream := RunSQLProgram(`
+		stream := RunSQLTestCase(`
 SELECT * FROM sanity_check.train
 TO TRAIN DNNClassifier
 WITH
@@ -46,7 +46,7 @@ INTO sqlflow_models.my_dnn_model;
 		a.True(goodStream(stream.ReadAll()))
 	})
 	a.NotPanics(func() {
-		stream := RunSQLProgram(`
+		stream := RunSQLTestCase(`
 SELECT * FROM sanity_check.train
 TO PREDICT sanity_check.predict.class
 USING sqlflow_models.my_dnn_model;

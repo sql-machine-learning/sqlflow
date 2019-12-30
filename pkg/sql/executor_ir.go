@@ -196,6 +196,7 @@ func runSQLProgram(req *RequestContext) (e error) {
 	if err != nil {
 		return err
 	}
+	defer req.Wr.Close()
 	// NOTE(tony): We generate IR and execute its translated program one-by-one since IR generation may depend on the execution
 	// of the previous statement. For example, consider a SQL program
 	//
@@ -249,7 +250,6 @@ func runSQLProgram(req *RequestContext) (e error) {
 			EndTime:   time.Now().UnixNano(),
 			Statement: r.GetOriginalSQL(),
 		})
-		defer req.Wr.Close()
 		if e := cleanCwd(cwd); e != nil {
 			return e
 		}
