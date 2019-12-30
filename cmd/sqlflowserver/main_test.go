@@ -274,7 +274,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("TestShowDatabases", CaseShowDatabases)
 	t.Run("TestSelect", CaseSelect)
 	t.Run("TestTrainSQL", CaseTrainSQL)
-	t.Run("TestTrainBoostedTreesEstimator", CaseTrainBoostedTreesEstimator)
+	t.Run("CaseTrainBoostedTreesEstimator", CaseTrainBoostedTreesEstimator)
 	t.Run("CaseTrainSQLWithMetrics", CaseTrainSQLWithMetrics)
 	t.Run("TestTextClassification", CaseTrainTextClassification)
 	t.Run("CaseTrainTextClassificationCustomLSTM", CaseTrainTextClassificationCustomLSTM)
@@ -672,7 +672,8 @@ func CaseTrainBoostedTreesEstimator(t *testing.T) {
 	trainSQL := fmt.Sprintf(`
 	SELECT * FROM %s.%s TO TRAIN BoostedTreesRegressor
 	WITH
-		model.n_batches_per_layer=300
+		model.n_batches_per_layer=300,
+		model.center_bias=True
 	LABEL class
 	INTO %s;
 	`, caseDB, caseTrainTable, caseInto)

@@ -21,6 +21,10 @@ import (
 
 func attrToPB(attr interface{}) (*pb.Attribute, error) {
 	switch attr.(type) {
+	case bool:
+		return &pb.Attribute{
+			Attribute: &pb.Attribute_B{B: attr.(bool)},
+		}, nil
 	case int:
 		return &pb.Attribute{
 			Attribute: &pb.Attribute_I{I: int32(attr.(int))},
