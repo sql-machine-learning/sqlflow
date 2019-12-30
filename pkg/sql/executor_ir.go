@@ -240,19 +240,16 @@ func runSQLProgram(req *RequestContext) (e error) {
 		// TODO(typhoonzero): can run LogFeatureDerivationResult(wr, trainStmt) here to send
 		// feature derivation logs to client, yet we disable if for now so that it's less annoying.
 		startTime := time.Now().UnixNano()
-		defer func() {
-			if e != nil {
-				req.Wr.Write(EndOfExecution{
-					StartTime: startTime,
-					EndTime:   time.Now().UnixNano(),
-					Statement: r.GetOriginalSQL(),
-				})
-			}
-		}()
 
 		if e := executeSingleSQL(r, req, cwd); e != nil {
 			return e
 		}
+		req.Wr.Write(EndOfExecution{
+			StartTime: startTime,
+			EndTime:   time.Now().UnixNano(),
+			Statement: r.GetOriginalSQL(),
+		})
+		defer req.Wr.Close()
 		if e := cleanCwd(cwd); e != nil {
 			return e
 		}

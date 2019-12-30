@@ -60,7 +60,7 @@ func NewRequestContext(sqlProgram string, session *pb.Session, modelSaveDir stri
 
 // Close release all resources of the current request.
 func (req *RequestContext) Close() error {
-	req.Wr.Close()
+	// Wr should be closed when the writing is finished
 	req.Rd.Close()
 	if err := req.Conn.Close(); err != nil {
 		return err
