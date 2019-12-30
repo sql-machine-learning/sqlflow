@@ -29,7 +29,7 @@ const (
 type unknown struct{}
 
 var (
-	// Bool indicates that the corresponding attribute is an boolean
+	// Bool indicates that the corresponding attribute is a boolean
 	Bool = reflect.TypeOf(true)
 	// Int indicates that the corresponding attribute is an integer
 	Int = reflect.TypeOf(0)
