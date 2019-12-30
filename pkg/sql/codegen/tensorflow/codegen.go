@@ -120,6 +120,8 @@ func generateFeatureColumnCode(fc ir.FeatureColumn) (string, error) {
 
 func attrToPythonValue(attr interface{}) string {
 	switch attr.(type) {
+	case bool:
+		return strings.Title(fmt.Sprintf("%v", attr.(bool)))
 	case int:
 		return fmt.Sprintf("%d", attr.(int))
 	case int64:

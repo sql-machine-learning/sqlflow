@@ -84,6 +84,7 @@ message Attribute {
         IntList il = 4;
         FloatList fl = 5;
         StringList sl = 6;
+		bool b = 7;
     }
 }
 
