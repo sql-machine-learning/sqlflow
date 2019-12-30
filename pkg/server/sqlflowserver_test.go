@@ -30,8 +30,8 @@ import (
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 
-	"sqlflow.org/sqlflow/pkg/pipe"
 	pb "sqlflow.org/sqlflow/pkg/proto"
+	"sqlflow.org/sqlflow/pkg/sql"
 )
 
 const (
@@ -46,33 +46,31 @@ const (
 
 var testServerAddress string
 
-func mockRun(sql string, modelDir string, session *pb.Session) *pipe.Reader {
-	rd, wr := pipe.Pipe()
-	singleSQL := sql
+func mockRun(req *sql.RequestContext) {
+	singleSQL := req.SQLProgram
 	go func() {
-		defer wr.Close()
+		defer req.Wr.Close()
 		switch singleSQL {
 		case testErrorSQL:
-			wr.Write(fmt.Errorf("run error: %v", testErrorSQL))
+			req.Wr.Write(fmt.Errorf("run error: %v", testErrorSQL))
 		case testQuerySQL:
 			m := make(map[string]interface{})
 			m["columnNames"] = []string{"X", "Y"}
-			wr.Write(m)
-			wr.Write([]interface{}{true, false, "hello", []byte("world")})
-			wr.Write([]interface{}{int8(1), int16(1), int32(1), int(1), int64(1)})
-			wr.Write([]interface{}{uint8(1), uint16(1), uint32(1), uint(1), uint64(1)})
-			wr.Write([]interface{}{float32(1), float64(1)})
-			wr.Write([]interface{}{time.Now(), nil})
+			req.Wr.Write(m)
+			req.Wr.Write([]interface{}{true, false, "hello", []byte("world")})
+			req.Wr.Write([]interface{}{int8(1), int16(1), int32(1), int(1), int64(1)})
+			req.Wr.Write([]interface{}{uint8(1), uint16(1), uint32(1), uint(1), uint64(1)})
+			req.Wr.Write([]interface{}{float32(1), float64(1)})
+			req.Wr.Write([]interface{}{time.Now(), nil})
 		case testExecuteSQL:
-			wr.Write("success; 0 rows affected")
+			req.Wr.Write("success; 0 rows affected")
 		case testExtendedSQL, testExtendedSQLNoSemicolon, testExtendedSQLWithSpace:
-			wr.Write("log 0")
-			wr.Write("log 1")
+			req.Wr.Write("log 0")
+			req.Wr.Write("log 1")
 		default:
-			wr.Write(fmt.Errorf("unexpected SQL: %s", singleSQL))
+			req.Wr.Write(fmt.Errorf("unexpected SQL: %s", singleSQL))
 		}
 	}()
-	return rd
 }
 
 func startServer(done chan bool) {
