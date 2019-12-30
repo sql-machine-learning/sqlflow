@@ -96,6 +96,7 @@ check_ret $? "Test SQLFLow workflow failed"
 
 # test submit pai job using argo workflow mode
 if [ "${SQLFLOW_submitter}" == "pai" ]; then
+    # TDOO(wangkuiyi): rename MAXCOMPUTE_AK to SQLFLOW_TEST_DB_MAXCOMPUTE_ASK later after rename the Travis CI env settings.
     SQLFLOW_submitter=pai SQLFLOW_TEST_DATASOURCE="maxcompute://${MAXCOMPUTE_AK}:${MAXCOMPUTE_SK}@${MAXCOMPUTE_ENDPOINT}" gotest ./cmd/... -run TestEnd2EndMySQLWorkflow -v
     check_ret $? "Test SQLFLow workflow failed"
 fi

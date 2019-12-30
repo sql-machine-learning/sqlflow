@@ -399,14 +399,14 @@ func TestEnd2EndMaxCompute(t *testing.T) {
 	if testDBDriver != "maxcompute" {
 		t.Skip("Skip maxcompute tests")
 	}
-	AK := os.Getenv("MAXCOMPUTE_AK")
-	SK := os.Getenv("MAXCOMPUTE_SK")
-	endpoint := os.Getenv("MAXCOMPUTE_ENDPOINT")
+	AK := os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_AK")
+	SK := os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_SK")
+	endpoint := os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_ENDPOINT")
 	dbConnStr = fmt.Sprintf("maxcompute://%s:%s@%s", AK, SK, endpoint)
 	go start(modelDir, caCrt, caKey, unitTestPort, false)
 	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 
-	caseDB = os.Getenv("MAXCOMPUTE_PROJECT")
+	caseDB = os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT")
 	caseTrainTable = "sqlflow_test_iris_train"
 	caseTestTable = "sqlflow_test_iris_test"
 	casePredictTable = "sqlflow_test_iris_predict"
@@ -435,14 +435,14 @@ func TestEnd2EndMaxComputeALPS(t *testing.T) {
 	if testDBDriver != "maxcompute" {
 		t.Skip("Skip maxcompute tests")
 	}
-	AK := os.Getenv("MAXCOMPUTE_AK")
-	SK := os.Getenv("MAXCOMPUTE_SK")
-	endpoint := os.Getenv("MAXCOMPUTE_ENDPOINT")
+	AK := os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_AK")
+	SK := os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_SK")
+	endpoint := os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_ENDPOINT")
 	dbConnStr = fmt.Sprintf("maxcompute://%s:%s@%s", AK, SK, endpoint)
 
-	caseDB = os.Getenv("MAXCOMPUTE_PROJECT")
+	caseDB = os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT")
 	if caseDB == "" {
-		t.Fatalf("Must set env MAXCOMPUTE_PROJECT when testing ALPS cases (SQLFLOW_submitter=alps)!!")
+		t.Fatalf("Must set env SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT when testing ALPS cases (SQLFLOW_submitter=alps)!!")
 	}
 	err = prepareTestData(dbConnStr)
 	if err != nil {
@@ -475,14 +475,14 @@ func TestEnd2EndMaxComputeALPS(t *testing.T) {
 // 	if testDBDriver != "maxcompute" {
 // 		t.Skip("Skip maxcompute tests")
 // 	}
-// 	AK := os.Getenv("MAXCOMPUTE_AK")
-// 	SK := os.Getenv("MAXCOMPUTE_SK")
-// 	endpoint := os.Getenv("MAXCOMPUTE_ENDPOINT")
+// 	AK := os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_AK")
+// 	SK := os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_SK")
+// 	endpoint := os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_ENDPOINT")
 // 	dbConnStr = fmt.Sprintf("maxcompute://%s:%s@%s", AK, SK, endpoint)
 
-// 	caseDB = os.Getenv("MAXCOMPUTE_PROJECT")
+// 	caseDB = os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT")
 // 	if caseDB == "" {
-// 		t.Fatalf("Must set env MAXCOMPUTE_PROJECT when testing ElasticDL cases (SQLFLOW_submitter=elasticdl)!!")
+// 		t.Fatalf("Must set env SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT when testing ElasticDL cases (SQLFLOW_submitter=elasticdl)!!")
 // 	}
 // 	err = prepareTestData(dbConnStr)
 // 	if err != nil {
@@ -539,7 +539,7 @@ func TestEnd2EndMaxComputeALPS(t *testing.T) {
 // COLUMN
 // 			sepal_length, sepal_width, petal_length, petal_width
 // LABEL class
-// INTO trained_elasticdl_keras_classifier;`, os.Getenv("MAXCOMPUTE_PROJECT"), "sqlflow_test_iris_train")
+// INTO trained_elasticdl_keras_classifier;`, os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT"), "sqlflow_test_iris_train")
 // 	_, _, err := connectAndRunSQL(trainSQL)
 // 	if err != nil {
 // 		a.Fail("run trainSQL error: %v", err)
@@ -1230,9 +1230,9 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 	if os.Getenv("SQLFLOW_submitter") != "pai" {
 		t.Skip("Skip non PAI tests")
 	}
-	AK := os.Getenv("MAXCOMPUTE_AK")
-	SK := os.Getenv("MAXCOMPUTE_SK")
-	endpoint := os.Getenv("MAXCOMPUTE_ENDPOINT")
+	AK := os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_AK")
+	SK := os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_SK")
+	endpoint := os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_ENDPOINT")
 	dbConnStr = fmt.Sprintf("maxcompute://%s:%s@%s", AK, SK, endpoint)
 	modelDir := ""
 
@@ -1242,9 +1242,9 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 		t.Fatalf("failed to generate CA pair %v", err)
 	}
 
-	caseDB = os.Getenv("MAXCOMPUTE_PROJECT")
+	caseDB = os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT")
 	if caseDB == "" {
-		t.Fatalf("Must set env MAXCOMPUTE_PROJECT")
+		t.Fatalf("Must set env SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT")
 	}
 	caseTrainTable = "sqlflow_test_iris_train"
 	caseTestTable = "sqlflow_test_iris_test"
@@ -1288,13 +1288,13 @@ func TestEnd2EndWorkflow(t *testing.T) {
 	}
 
 	if driverName == "maxcompute" {
-		AK := os.Getenv("MAXCOMPUTE_AK")
-		SK := os.Getenv("MAXCOMPUTE_SK")
-		endpoint := os.Getenv("MAXCOMPUTE_ENDPOINT")
+		AK := os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_AK")
+		SK := os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_SK")
+		endpoint := os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_ENDPOINT")
 		dbConnStr = fmt.Sprintf("maxcompute://%s:%s@%s", AK, SK, endpoint)
-		caseDB = os.Getenv("MAXCOMPUTE_PROJECT")
+		caseDB = os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT")
 		if caseDB == "" {
-			t.Fatalf("Must set env MAXCOMPUTE_PROJECT")
+			t.Fatalf("Must set env SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT")
 		}
 		caseTrainTable = "sqlflow_test_iris_train"
 		caseTestTable = "sqlflow_test_iris_test"

@@ -15,10 +15,12 @@
 set -e
 
 export SQLFLOW_TEST_DB=maxcompute
-export MAXCOMPUTE_ENDPOINT="service.cn.maxcompute.aliyun.com/api?curr_project=gomaxcompute_driver_w7u&scheme=https"
-export MAXCOMPUTE_PROJECT="gomaxcompute_driver_w7u"
-if [ "$MAXCOMPUTE_AK" = "" ] || [ "$MAXCOMPUTE_SK" == "" ]; then
-  echo "skip maxcompute test because the env MAXCOMPUTE_AK or MAXCOMPUTE_SK is empty"
+export SQLFLOW_TEST_DB_MAXCOMPUTE_ENDPOINT="service.cn.maxcompute.aliyun.com/api?curr_project=gomaxcompute_driver_w7u&scheme=https"
+export SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT="gomaxcompute_driver_w7u"
+export SQLFLOW_TEST_DB_MAXCOMPUTE_AK=$MAXCOMPUTE_AK # TODO(wangkuiyi): Remove after rename env variable in Travis CI.
+export SQLFLOW_TEST_DB_MAXCOMPUTE_SK=$MAXCOMPUTE_SK
+if [ "$SQLFLOW_TEST_DB_MAXCOMPUTE_AK" = "" ] || [ "$SQLFLOW_TEST_DB_MAXCOMPUTE_SK" == "" ]; then
+  echo "skip maxcompute test because the env SQLFLOW_TEST_DB_MAXCOMPUTE_AK or SQLFLOW_TEST_DB_MAXCOMPUTE_SK is empty"
   exit 0
 fi
 # NOTE: we have already installed sqlflow_submitter under python installation path
