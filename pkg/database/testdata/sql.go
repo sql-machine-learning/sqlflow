@@ -17,15 +17,15 @@ import "fmt"
 
 // Works with MySQL and Hive.  MaxCompute doesn't have the concept of database.
 func createDatabase(db string) string {
-	return fmt.Sprintf(`CREATE DATABASE IF NOT EXISTS %s;`, db)
+	return fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s;\n", db)
 }
 
 func dropTableIfExists(tbl string) string {
-	return fmt.Sprintf(`DROP TABLE IF EXISTS %s;`, tbl)
+	return fmt.Sprintf("DROP TABLE IF EXISTS %s;\n", tbl)
 }
 
 func createTable(tbl, schema string) string {
-	return fmt.Sprintf(`CREATE TABLE %s (%s);`, tbl, schema)
+	return fmt.Sprintf("CREATE TABLE %s (%s);\n", tbl, schema)
 }
 
 func recreateTable(tbl, schema string) string {
@@ -35,10 +35,10 @@ func recreateTable(tbl, schema string) string {
 
 // Works with MySQL and MaxCompute.
 func insertData(tbl, data string) string {
-	return fmt.Sprintf(`INSERT INTO %s VALUES %s;`, tbl, data)
+	return fmt.Sprintf("INSERT INTO %s VALUES%s;\n", tbl, data)
 }
 
 // Works with Hive
 func insertDataHive(tbl, data string) string {
-	return fmt.Sprintf(`INSERT INTO TABLE %s VALUES %s;`, tbl, data)
+	return fmt.Sprintf("INSERT INTO TABLE %s VALUES%s;\n", tbl, data)
 }
