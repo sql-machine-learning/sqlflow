@@ -168,7 +168,7 @@ func (s *defaultSubmitter) ExecutePredict(cl *ir.PredictStmt) (e error) {
 	return e
 }
 
-func (s *defaultSubmitter) ExecuteAnalyze(cl *ir.AnalyzeStmt) error {
+func (s *defaultSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 	// NOTE(typhoonzero): model is already loaded under s.Cwd
 	var code string
 	var err error
@@ -178,6 +178,7 @@ func (s *defaultSubmitter) ExecuteAnalyze(cl *ir.AnalyzeStmt) error {
 		code, err = tensorflow.Explain(cl)
 	}
 
+	code, err := xgboost.Explain(cl)
 	if err != nil {
 		return err
 	}

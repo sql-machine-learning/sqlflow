@@ -116,7 +116,7 @@ func submitWorkflow(wr *pipe.Writer, sqlProgram string, modelDir string, session
 				r, err = generateTrainStmt(sql.SQLFlowSelectStmt, connStr)
 			} else if sql.Explain {
 				// since getTrainStmtFromModel is false, use empty cwd is fine.
-				r, err = generateAnalyzeStmt(sql.SQLFlowSelectStmt, connStr, modelDir, "", false)
+				r, err = generateExplainStmt(sql.SQLFlowSelectStmt, connStr, modelDir, "", false)
 			} else {
 				r, err = generatePredictStmt(sql.SQLFlowSelectStmt, connStr, modelDir, "", false)
 			}
@@ -180,7 +180,7 @@ func runSQLProgram(wr *pipe.Writer, sqlProgram string, db *database.DB, modelDir
 			if sql.Train {
 				r, err = generateTrainStmtWithInferredColumns(sql.SQLFlowSelectStmt, connStr, true)
 			} else if sql.Explain {
-				r, err = generateAnalyzeStmt(sql.SQLFlowSelectStmt, connStr, modelDir, cwd, submitter().GetTrainStmtFromModel())
+				r, err = generateExplainStmt(sql.SQLFlowSelectStmt, connStr, modelDir, cwd, submitter().GetTrainStmtFromModel())
 			} else {
 				r, err = generatePredictStmt(sql.SQLFlowSelectStmt, connStr, modelDir, cwd, submitter().GetTrainStmtFromModel())
 			}
