@@ -30,6 +30,7 @@ set -e
 hdfs dfs -rm -r -f hdfs://localhost:8020/sqlflow
 hdfs dfs -mkdir -p hdfs://localhost:8020/sqlflow
 export SQLFLOW_HIVE_LOCATION_ROOT_PATH=/sqlflow
+export SQLFLOW_TEST_NAMENODE_ADDR="127.0.0.1:8020"
 
 export SQLFLOW_TEST_DB=hive
 # NOTE: we have already installed sqlflow_submitter under python installation path
