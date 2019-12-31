@@ -168,14 +168,14 @@ func (s *defaultSubmitter) ExecutePredict(cl *ir.PredictStmt) (e error) {
 	return e
 }
 
-func (s *defaultSubmitter) ExecuteAnalyze(cl *ir.AnalyzeStmt) error {
+func (s *defaultSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 	// NOTE(typhoonzero): model is already loaded under s.Cwd
 	var code string
 	var err error
 	if isXGBoostModel(cl.TrainStmt.Estimator) {
-		code, err = xgboost.Analyze(cl)
+		code, err = xgboost.Explain(cl)
 	} else {
-		code, err = tensorflow.Analyze(cl)
+		code, err = tensorflow.Explain(cl)
 	}
 
 	if err != nil {

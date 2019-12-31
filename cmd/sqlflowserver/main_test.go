@@ -1117,9 +1117,9 @@ INTO sqlflow_models.my_xgb_regression_model;
 	}
 }
 
-// CaseTrainAndAnalyzeXGBoostModel is used to test training a xgboost model,
-// then analyze it
-func CaseTrainAndAnalyzeXGBoostModel(t *testing.T) {
+// CaseTrainAndExplainXGBoostModel is used to test training a xgboost model,
+// then explain it
+func CaseTrainAndExplainXGBoostModel(t *testing.T) {
 	a := assert.New(t)
 	trainStmt := `
 SELECT *
@@ -1132,7 +1132,7 @@ WITH
 LABEL target
 INTO sqlflow_models.my_xgb_regression_model;
 	`
-	analyzeStmt := `
+	explainStmt := `
 SELECT *
 FROM housing.train
 TO EXPLAIN sqlflow_models.my_xgb_regression_model
@@ -1155,7 +1155,7 @@ USING TreeExplainer;
 		a.Fail("Check if the server started successfully. %v", err)
 	}
 	ParseRow(stream)
-	stream, err = cli.Run(ctx, sqlRequest(analyzeStmt))
+	stream, err = cli.Run(ctx, sqlRequest(explainStmt))
 	if err != nil {
 		a.Fail("Check if the server started successfully. %v", err)
 	}
