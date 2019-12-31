@@ -430,7 +430,7 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 }
 
 // Explain generates a Python program to explain a trained model.
-func Explain(stmt *ir.AnalyzeStmt) (string, error) {
+func Explain(stmt *ir.ExplainStmt) (string, error) {
 	if !strings.HasPrefix(stmt.TrainStmt.Estimator, "BoostedTrees") {
 		return "", fmt.Errorf("unsupported model %s", stmt.TrainStmt.Estimator)
 	}

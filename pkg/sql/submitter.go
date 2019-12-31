@@ -173,12 +173,11 @@ func (s *defaultSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 	var code string
 	var err error
 	if isXGBoostModel(cl.TrainStmt.Estimator) {
-		code, err = xgboost.Analyze(cl)
+		code, err = xgboost.Explain(cl)
 	} else {
 		code, err = tensorflow.Explain(cl)
 	}
 
-	code, err := xgboost.Explain(cl)
 	if err != nil {
 		return err
 	}
