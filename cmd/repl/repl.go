@@ -230,27 +230,6 @@ func makeSessionFromEnv() *pb.Session {
 	}
 }
 
-func parseSQLFromStdin(stdin io.Reader) (string, error) {
-	scannedInput := []string{}
-	scanner := bufio.NewScanner(stdin)
-	for scanner.Scan() {
-		scannedInput = append(scannedInput, scanner.Text())
-	}
-	if err := scanner.Err(); err != nil {
-		return "", err
-	}
-	sqlflowDatasource := os.Getenv("SQLFLOW_DATASOURCE")
-	if sqlflowDatasource == "" {
-		return "", fmt.Errorf("no SQLFLOW_DATASOURCE env provided")
-	}
-	sess := makeSessionFromEnv()
-	pbIRStr, err := sql.ParseSQLStatement(strings.Join(scannedInput, "\n"), sess)
-	if err != nil {
-		return "", err
-	}
-	return pbIRStr, nil
-}
-
 func commandExists(cmd string) bool {
 	_, err := exec.LookPath(cmd)
 	return err == nil
@@ -262,19 +241,8 @@ func main() {
 	cliStmt := flag.String("execute", "", "execute SQLFlow from command line.  e.g. --execute 'select * from table1'")
 	flag.StringVar(cliStmt, "e", "", "execute SQLFlow from command line, short for --execute")
 	sqlFileName := flag.String("file", "", "execute SQLFlow from file.  e.g. --file '~/iris_dnn.sql'")
-	isParseOnly := flag.Bool("parse", false, "execute parsing only and output the parsed IR in pbtxt format")
 	flag.StringVar(sqlFileName, "f", "", "execute SQLFlow from file, short for --file")
 	flag.Parse()
-	// Read SQL from stdin and output IR in pbtxt format
-	// Assume the input is a single SQL statement
-	if *isParseOnly {
-		out, err := parseSQLFromStdin(os.Stdin)
-		if err != nil {
-			log.Fatalf("error parse SQL from stdin: %v", err)
-		}
-		fmt.Printf("%s", out)
-		return // Exit when parse is finished
-	}
 
 	assertConnectable(*ds) // Fast fail if we can't connect to the datasource
 

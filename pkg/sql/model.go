@@ -23,8 +23,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/golang/protobuf/proto"
-
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
 
@@ -266,16 +264,14 @@ func addTrainedModelsRecord(db *database.DB, trainStmt *ir.TrainStmt, modelURI s
 		isInsert = true
 	}
 	var sql string
-	irproto, err := ir.TrainStmtToProto(trainStmt, sess)
-	if err != nil {
-		return err
-	}
-	irprotoText := proto.MarshalTextString(irproto)
+
+	// TODO(typhoonzero): generate irJSON from trainStmt to recored the training information.
+	irJSON := ""
 	if isInsert {
 		sql = fmt.Sprintf(`INSERT INTO %s
 (model_id, author, model_image, model_def, train_ir_pb, model_uri)
 VALUES ("%s", "%s", "%s", "%s", "%s", "%s")`,
-			modelZooTable, modelID, creator, trainStmt.ModelImage, trainStmt.Estimator, dbStringEscape(irprotoText), modelURI)
+			modelZooTable, modelID, creator, trainStmt.ModelImage, trainStmt.Estimator, dbStringEscape(irJSON), modelURI)
 	} else {
 		sql = fmt.Sprintf(`UPDATE %s SET
 author="%s",
@@ -283,7 +279,7 @@ model_image="%s",
 model_def="%s",
 train_ir_pb="%s",
 model_uri="%s"
-WHERE model_id="%s"`, modelZooTable, creator, trainStmt.ModelImage, trainStmt.Estimator, dbStringEscape(irprotoText), modelURI, modelID)
+WHERE model_id="%s"`, modelZooTable, creator, trainStmt.ModelImage, trainStmt.Estimator, dbStringEscape(irJSON), modelURI, modelID)
 	}
 	_, err = db.Exec(sql)
 	return err
