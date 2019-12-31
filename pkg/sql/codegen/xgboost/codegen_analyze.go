@@ -26,17 +26,17 @@ const (
 	shapSummaryAttrPrefix = "shap_summary."
 )
 
-// Analyze generates a Python program to analyze a trained model.
-func Analyze(analyzeStmt *ir.AnalyzeStmt) (string, error) {
-	if analyzeStmt.Explainer != "TreeExplainer" {
-		return "", fmt.Errorf("unsupported explainer %s", analyzeStmt.Explainer)
+// Explain generates a Python program to explain a trained model.
+func Explain(explainStmt *ir.ExplainStmt) (string, error) {
+	if explainStmt.Explainer != "TreeExplainer" {
+		return "", fmt.Errorf("unsupported explainer %s", explainStmt.Explainer)
 	}
-	summaryAttrs := resolveParams(analyzeStmt.Attributes, shapSummaryAttrPrefix)
+	summaryAttrs := resolveParams(explainStmt.Attributes, shapSummaryAttrPrefix)
 	jsonSummary, err := json.Marshal(summaryAttrs)
 	if err != nil {
 		return "", err
 	}
-	xs, y, err := getFieldDesc(analyzeStmt.TrainStmt.Features["feature_columns"], analyzeStmt.TrainStmt.Label)
+	xs, y, err := getFieldDesc(explainStmt.TrainStmt.Features["feature_columns"], explainStmt.TrainStmt.Label)
 	if err != nil {
 		return "", err
 	}
@@ -45,15 +45,15 @@ func Analyze(analyzeStmt *ir.AnalyzeStmt) (string, error) {
 		return "", err
 	}
 
-	fr := &analyzeFiller{
-		DataSource:        analyzeStmt.DataSource,
-		DatasetSQL:        analyzeStmt.Select,
+	fr := &explainFiller{
+		DataSource:        explainStmt.DataSource,
+		DatasetSQL:        explainStmt.Select,
 		ShapSummaryParams: string(jsonSummary),
 		FieldDescJSON:     string(fm),
 		Label:             y.Name,
 	}
 	var analysis bytes.Buffer
-	if err := analyzeTemplate.Execute(&analysis, fr); err != nil {
+	if err := explainTemplate.Execute(&analysis, fr); err != nil {
 		return "", err
 	}
 	return analysis.String(), nil

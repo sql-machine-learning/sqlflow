@@ -70,23 +70,23 @@ func TestPredictProto(t *testing.T) {
 	)
 }
 
-func TestAnalyzeProto(t *testing.T) {
+func TestExplainProto(t *testing.T) {
 	a := assert.New(t)
-	sampleAnalyzeStmt := &AnalyzeStmt{
+	sampleExplainStmt := &ExplainStmt{
 		DataSource: "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0",
 		Select:     "select * from iris.train;",
 		Attributes: make(map[string]interface{}), // empty attribute
 		Explainer:  "TreeExplainer",
 		TrainStmt:  MockTrainStmt("mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0", true),
 	}
-	pbIR, err := AnalyzeStmtToProto(sampleAnalyzeStmt, mockSession())
+	pbIR, err := ExplainStmtToProto(sampleExplainStmt, mockSession())
 	a.NoError(err)
 	pbtxt := proto.MarshalTextString(pbIR)
-	pbIRToTest := &pb.AnalyzeStmt{}
+	pbIRToTest := &pb.ExplainStmt{}
 	err = proto.UnmarshalText(pbtxt, pbIRToTest)
 	a.NoError(err)
 	a.Equal(
-		sampleAnalyzeStmt.Explainer,
+		sampleExplainStmt.Explainer,
 		pbIRToTest.GetExplainer(),
 	)
 }

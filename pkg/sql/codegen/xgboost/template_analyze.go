@@ -17,7 +17,7 @@ import (
 	"text/template"
 )
 
-type analyzeFiller struct {
+type explainFiller struct {
 	DataSource        string
 	DatasetSQL        string
 	ShapSummaryParams string
@@ -25,7 +25,7 @@ type analyzeFiller struct {
 	Label             string
 }
 
-const analyzeTemplateText = `
+const explainTemplateText = `
 import xgboost
 import shap
 import json
@@ -45,7 +45,7 @@ label_name = "{{.Label}}"
 
 summaryAttrs = json.loads('''{{.ShapSummaryParams}}''')
 
-def analyzer_dataset():
+def explainr_dataset():
     stream = db_generator(conn.driver, conn, """{{.DatasetSQL}}""", feature_column_name, label_name, feature_spec)
     xs = pd.DataFrame(columns=feature_column_name)
     ys = pd.DataFrame(columns=[label_name])
@@ -56,7 +56,7 @@ def analyzer_dataset():
         i += 1
     return xs, ys
 
-X,y = analyzer_dataset()
+X,y = explainr_dataset()
 bst = xgboost.Booster()
 bst.load_model("my_model")
 explainer = shap.TreeExplainer(bst)
@@ -72,4 +72,4 @@ sys.stdout.isatty = lambda:True
 plt.savefig('summary', bbox_inches='tight')
 `
 
-var analyzeTemplate = template.Must(template.New("analyze").Parse(analyzeTemplateText))
+var explainTemplate = template.Must(template.New("explain").Parse(explainTemplateText))

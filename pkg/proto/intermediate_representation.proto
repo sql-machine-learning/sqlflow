@@ -110,7 +110,7 @@ message PredictStmt {
     TrainStmt train_ir = 6;
 }
 
-message AnalyzeStmt {
+message ExplainStmt {
     string datasource = 1;
     string select = 2;
     map<string, Attribute> attributes = 3;

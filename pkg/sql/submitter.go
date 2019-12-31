@@ -168,13 +168,13 @@ func (s *defaultSubmitter) ExecutePredict(cl *ir.PredictStmt) (e error) {
 	return e
 }
 
-func (s *defaultSubmitter) ExecuteAnalyze(cl *ir.AnalyzeStmt) error {
+func (s *defaultSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 	// NOTE(typhoonzero): model is already loaded under s.Cwd
 	if !isXGBoostModel(cl.TrainStmt.Estimator) {
 		return fmt.Errorf("unsupported model %s", cl.TrainStmt.Estimator)
 	}
 
-	code, err := xgboost.Analyze(cl)
+	code, err := xgboost.Explain(cl)
 	if err != nil {
 		return err
 	}

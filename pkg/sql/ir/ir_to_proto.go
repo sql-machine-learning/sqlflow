@@ -283,21 +283,21 @@ func PredictStmtToProto(predictStmt *PredictStmt, sess *pb.Session) (*pb.Predict
 	}, nil
 }
 
-// AnalyzeStmtToProto convert parsed AnalyzeStmt to a protobuf format
-func AnalyzeStmtToProto(analyzeStmt *AnalyzeStmt, sess *pb.Session) (*pb.AnalyzeStmt, error) {
-	trainStmt, err := TrainStmtToProto(analyzeStmt.TrainStmt, sess)
+// ExplainStmtToProto convert parsed ExplainStmt to a protobuf format
+func ExplainStmtToProto(explainStmt *ExplainStmt, sess *pb.Session) (*pb.ExplainStmt, error) {
+	trainStmt, err := TrainStmtToProto(explainStmt.TrainStmt, sess)
 	if err != nil {
 		return nil, err
 	}
-	attrs, err := AttributesToProto(analyzeStmt.Attributes)
+	attrs, err := AttributesToProto(explainStmt.Attributes)
 	if err != nil {
 		return nil, err
 	}
-	return &pb.AnalyzeStmt{
-		Datasource: analyzeStmt.DataSource,
-		Select:     analyzeStmt.Select,
+	return &pb.ExplainStmt{
+		Datasource: explainStmt.DataSource,
+		Select:     explainStmt.Select,
 		Attributes: attrs,
-		Explainer:  analyzeStmt.Explainer,
+		Explainer:  explainStmt.Explainer,
 		TrainIr:    trainStmt,
 	}, nil
 }
