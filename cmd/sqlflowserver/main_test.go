@@ -1401,7 +1401,7 @@ func CaseTrainDistributedPAIArgo(t *testing.T) {
 		train.num_workers=2,
 		train.num_ps=2,
 		train.save_checkpoints_steps=20,
-		train.epoch=10,
+		train.epoch=2,
 		train.batch_size=4,
 		train.verbose=2
 	COLUMN sepal_length, sepal_width, petal_length, petal_width
