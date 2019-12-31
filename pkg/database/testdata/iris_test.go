@@ -14,7 +14,6 @@
 package testdata
 
 import (
-	"io/ioutil"
 	"regexp"
 	"testing"
 
@@ -42,9 +41,6 @@ func TestDatabaseTestDataIrisMaxCompute(t *testing.T) {
 	a := assert.New(t)
 	a.Equal(removeBlankLines(old.IrisMaxComputeSQL+"\n"),
 		IrisMaxCompute(`%[1]s`))
-
-	writeFile("/sqlflow/a.txt", removeBlankLines(old.IrisMaxComputeSQL+"\n"))
-	writeFile("/sqlflow/b.txt", IrisMaxCompute(`%[1]s`))
 }
 
 func removeBlankLines(s string) string {
@@ -53,8 +49,4 @@ func removeBlankLines(s string) string {
 		return ""
 	}
 	return regex.ReplaceAllString(s, "\n")
-}
-
-func writeFile(fn, content string) {
-	ioutil.WriteFile(fn, []byte(content), 0644)
 }
