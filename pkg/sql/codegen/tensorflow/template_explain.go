@@ -15,7 +15,7 @@ package tensorflow
 
 import "sqlflow.org/sqlflow/pkg/sql/ir"
 
-type analyzeFiller struct {
+type explainFiller struct {
 	DataSource    string
 	Select        string
 	SummaryParams string
@@ -30,8 +30,8 @@ type analyzeFiller struct {
 	IsPAI             bool
 }
 
-const boostedTreesAnalyzeTemplateText = `
-from sqlflow_submitter.tensorflow import analyze
+const boostedTreesExplainTemplateText = `
+from sqlflow_submitter.tensorflow import explain
 import tensorflow as tf
 try:
     import sqlflow_models
@@ -71,7 +71,7 @@ feature_columns = {{.FeatureColumnCode}}
 import json
 summaryAttrs = json.loads('''{{.SummaryParams}}''')
 
-analyze.analyze(datasource="{{.DataSource}}",
+explain.explain(datasource="{{.DataSource}}",
                 estimator_cls={{.EstimatorClass}},
                 select="""{{.Select}}""",
                 feature_columns=feature_columns,

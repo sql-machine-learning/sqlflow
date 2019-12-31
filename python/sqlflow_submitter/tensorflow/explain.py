@@ -43,7 +43,7 @@ else:
     tf.logging.set_verbosity(tf.logging.ERROR)
     from .pai_distributed import define_tf_flags
 
-def analyze(datasource, estimator_cls, select, feature_columns, feature_column_names,
+def explain(datasource, estimator_cls, select, feature_columns, feature_column_names,
             feature_metas={}, label_meta={}, model_params={}, save="", is_pai=False, plot_type='bar'):
     if is_pai:
         FLAGS = define_tf_flags()
