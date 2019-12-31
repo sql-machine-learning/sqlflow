@@ -282,7 +282,7 @@ INTO sqlflow_models.mymodel;`
 	proto.UnmarshalText(pbtxt, pbTrain)
 	a.Equal("class", pbTrain.GetLabel().GetNc().GetFieldDesc().GetName())
 
-	// run one train SQL to save the model then test predict/analyze use the model
+	// run one train SQL to save the model then test predict/explain use the model
 	sess := &irpb.Session{DbConnStr: dataSourceStr}
 	stream := sf.RunSQLProgram(trainSQL, "", sess)
 	lastResp := list.New()
@@ -317,9 +317,9 @@ INTO sqlflow_models.mymodel;`
 	stdin.Write([]byte(`SELECT * from iris.train TO EXPLAIN sqlflow_models.mymodel WITH shap_summary.plot_type="bar" USING TreeExplainer;`))
 	pbtxt, err = parseSQLFromStdin(&stdin)
 	a.NoError(err)
-	pbAnalyze := &irpb.AnalyzeStmt{}
-	proto.UnmarshalText(pbtxt, pbAnalyze)
-	a.Equal("TreeExplainer", pbAnalyze.GetExplainer())
+	pbExplain := &irpb.ExplainStmt{}
+	proto.UnmarshalText(pbtxt, pbExplain)
+	a.Equal("TreeExplainer", pbExplain.GetExplainer())
 }
 
 type testConsoleParser struct{}
