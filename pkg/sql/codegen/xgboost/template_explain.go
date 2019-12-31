@@ -38,7 +38,7 @@ from sqlflow_submitter.db import connect_with_data_source, db_generator
 shap.initjs()
 
 feature_field_meta = json.loads('''{{.FieldDescJSON}}''')
-feature_column_name = sorted([k["name"] for k in feature_field_meta])
+feature_column_name = [k["name"] for k in feature_field_meta]
 feature_spec = {k['name']: k for k in feature_field_meta}
 conn = connect_with_data_source('''{{.DataSource}}''')
 label_name = "{{.Label}}"

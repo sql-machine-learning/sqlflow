@@ -22,7 +22,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"sqlflow.org/sqlflow/pkg/argo"
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/parser"
@@ -72,60 +71,6 @@ func RunSQLProgram(sqlProgram string, modelDir string, session *pb.Session) *pip
 		}
 	}()
 	return rd
-}
-
-// ParseSQLStatement parse the input SQL statement and output IR in protobuf format
-func ParseSQLStatement(sql string, session *pb.Session) (string, error) {
-	connStr := session.DbConnStr
-	driverName := strings.Split(connStr, "://")[0]
-	parsed, err := parser.ParseOneStatement(driverName, sql)
-	if err != nil {
-		return "", err
-	}
-	if !parser.IsExtendedSyntax(parsed) {
-		return "", fmt.Errorf("ParseSQLStatement only accept extended SQL")
-	}
-	if parsed.Train {
-		trainStmt, err := generateTrainStmtWithInferredColumns(parsed.SQLFlowSelectStmt, connStr, true)
-		if err != nil {
-			return "", err
-		}
-		pbir, err := ir.TrainStmtToProto(trainStmt, session)
-		if err != nil {
-			return "", err
-		}
-		return proto.MarshalTextString(pbir), nil
-	} else if parsed.Explain {
-		cwd, err := ioutil.TempDir("/tmp", "sqlflow_models")
-		if err != nil {
-			return "", err
-		}
-		defer os.RemoveAll(cwd)
-		explainStmt, err := generateExplainStmt(parsed.SQLFlowSelectStmt, connStr, "", cwd, true)
-		if err != nil {
-			return "", err
-		}
-		pbir, err := ir.ExplainStmtToProto(explainStmt, session)
-		if err != nil {
-			return "", err
-		}
-		return proto.MarshalTextString(pbir), nil
-	} else {
-		cwd, err := ioutil.TempDir("/tmp", "sqlflow_models")
-		if err != nil {
-			return "", err
-		}
-		defer os.RemoveAll(cwd)
-		predStmt, err := generatePredictStmt(parsed.SQLFlowSelectStmt, connStr, "", cwd, true)
-		if err != nil {
-			return "", err
-		}
-		pbir, err := ir.PredictStmtToProto(predStmt, session)
-		if err != nil {
-			return "", err
-		}
-		return proto.MarshalTextString(pbir), nil
-	}
 }
 
 // SubmitWorkflow submits an Argo workflow

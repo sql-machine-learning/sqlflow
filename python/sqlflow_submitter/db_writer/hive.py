@@ -86,10 +86,7 @@ class HiveDBWriter(BufferedDBWriter):
             hdfs_path = os.getenv("SQLFLOW_HIVE_LOCATION_ROOT_PATH", "/sqlflow")
         else:
             hdfs_path = self.hive_location
-        if self.hdfs_namenode_addr == "":
-            namenode_addr = os.getenv("SQLFLOW_HDFS_NAMENODE_ADDR", "127.0.0.1:8020")
-        else:
-            namenode_addr = self.hdfs_namenode_addr
+        
         # upload CSV to HDFS
         hdfs_envs = os.environ.copy()
         if self.hdfs_user != "":
@@ -97,8 +94,8 @@ class HiveDBWriter(BufferedDBWriter):
         if self.hdfs_pass != "":
             hdfs_envs.update({"HADOOP_USER_PASSWORD": self.hdfs_pass})
         # if namenode_addr is not set, use local hdfs command's configuration.
-        if namenode_addr != "":
-            cmd_namenode_str = "-fs hdfs://%s" % (namenode_addr)
+        if self.hdfs_namenode_addr != "":
+            cmd_namenode_str = "-fs hdfs://%s" % (self.hdfs_namenode_addr)
         else:
             cmd_namenode_str = ""
         cmd_str = "hdfs dfs %s -mkdir -p %s/%s/" % (cmd_namenode_str, hdfs_path, self.table_name)

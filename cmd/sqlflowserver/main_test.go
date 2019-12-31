@@ -91,7 +91,11 @@ func connectAndRunSQL(sql string) ([]string, [][]*any.Any, error) {
 }
 
 func sqlRequest(sql string) *pb.Request {
-	se := &pb.Session{Token: "user-unittest", DbConnStr: dbConnStr}
+	se := &pb.Session{
+		Token:            "user-unittest",
+		DbConnStr:        dbConnStr,
+		HdfsNamenodeAddr: os.Getenv("SQLFLOW_TEST_NAMENODE_ADDR"),
+	}
 	return &pb.Request{Sql: sql, Session: se}
 }
 

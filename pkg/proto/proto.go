@@ -11,7 +11,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-//go:generate protoc --go_out=. intermediate_representation.proto
 //go:generate protoc --go_out=plugins=grpc:. sqlflow.proto
 
 package proto
