@@ -168,7 +168,7 @@ func (s *defaultSubmitter) ExecutePredict(cl *ir.PredictStmt) (e error) {
 	return e
 }
 
-func (s *defaultSubmitter) ExecuteExplain(cl *ir.AnalyzeStmt) error {
+func (s *defaultSubmitter) ExecuteAnalyze(cl *ir.AnalyzeStmt) error {
 	// NOTE(typhoonzero): model is already loaded under s.Cwd
 	var code string
 	var err error
