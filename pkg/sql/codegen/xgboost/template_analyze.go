@@ -45,7 +45,7 @@ label_name = "{{.Label}}"
 
 summaryAttrs = json.loads('''{{.ShapSummaryParams}}''')
 
-def explainr_dataset():
+def explainer_dataset():
     stream = db_generator(conn.driver, conn, """{{.DatasetSQL}}""", feature_column_name, label_name, feature_spec)
     xs = pd.DataFrame(columns=feature_column_name)
     ys = pd.DataFrame(columns=[label_name])
@@ -56,7 +56,7 @@ def explainr_dataset():
         i += 1
     return xs, ys
 
-X,y = explainr_dataset()
+X,y = explainer_dataset()
 bst = xgboost.Booster()
 bst.load_model("my_model")
 explainer = shap.TreeExplainer(bst)
