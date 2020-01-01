@@ -1117,9 +1117,9 @@ INTO sqlflow_models.my_xgb_regression_model;
 	}
 }
 
-// CaseTrainAndAnalyzeXGBoostModel is used to test training a xgboost model,
-// then analyze it
-func CaseTrainAndAnalyzeXGBoostModel(t *testing.T) {
+// CaseTrainAndExplainXGBoostModel is used to test training a xgboost model,
+// then explain it
+func CaseTrainAndExplainXGBoostModel(t *testing.T) {
 	a := assert.New(t)
 	trainStmt := `
 SELECT *
@@ -1132,7 +1132,7 @@ WITH
 LABEL target
 INTO sqlflow_models.my_xgb_regression_model;
 	`
-	analyzeStmt := `
+	explainStmt := `
 SELECT *
 FROM housing.train
 TO EXPLAIN sqlflow_models.my_xgb_regression_model
@@ -1155,7 +1155,7 @@ USING TreeExplainer;
 		a.Fail("Check if the server started successfully. %v", err)
 	}
 	ParseRow(stream)
-	stream, err = cli.Run(ctx, sqlRequest(analyzeStmt))
+	stream, err = cli.Run(ctx, sqlRequest(explainStmt))
 	if err != nil {
 		a.Fail("Check if the server started successfully. %v", err)
 	}
@@ -1347,7 +1347,7 @@ FROM %s.%s LIMIT 5;
 	defer conn.Close()
 
 	cli := pb.NewSQLFlowClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 1800*time.Second)
 	defer cancel()
 
 	stream, err := cli.Run(ctx, &pb.Request{Sql: sqlProgram, Session: &pb.Session{DbConnStr: testDatasource}})
@@ -1375,7 +1375,9 @@ func checkWorkflow(ctx context.Context, cli pb.SQLFlowClient, stream pb.SQLFlow_
 	req := &pb.FetchRequest{
 		Job: &pb.Job{Id: workflowID},
 	}
-	for i := 0; i < 120; i++ {
+	// wait 30min for the workflow execution since it may take time to allocate enough nodes.
+	// each loop waits 3 seconds, total 600 * 3 = 1800 seconds
+	for i := 0; i < 600; i++ {
 		res, err := cli.Fetch(ctx, req)
 		if err != nil {
 			return err
@@ -1401,7 +1403,7 @@ func CaseTrainDistributedPAIArgo(t *testing.T) {
 		train.num_workers=2,
 		train.num_ps=2,
 		train.save_checkpoints_steps=20,
-		train.epoch=10,
+		train.epoch=2,
 		train.batch_size=4,
 		train.verbose=2
 	COLUMN sepal_length, sepal_width, petal_length, petal_width
@@ -1421,7 +1423,8 @@ USING %s;
 	defer conn.Close()
 
 	cli := pb.NewSQLFlowClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	// wait 30min for the workflow execution since it may take time to allocate enough nodes.
+	ctx, cancel := context.WithTimeout(context.Background(), 1800*time.Second)
 	defer cancel()
 
 	stream, err := cli.Run(ctx, &pb.Request{Sql: trainSQL, Session: &pb.Session{DbConnStr: testDatasource}})

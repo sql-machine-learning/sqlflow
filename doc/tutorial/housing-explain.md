@@ -1,13 +1,13 @@
 # Analyzing Model on SQLFlow Tutorial
 
-The [Analyzer](../design/analyzer.md) is designed to explain the machine learning model in SQLFlow. In this tutorial, you will learn how to,
+The [Explainer](../design/explainer.md) is designed to explain the machine learning model in SQLFlow. In this tutorial, you will learn how to,
 
 - [Train an XGBoost](housing-xgboost.md) tree model on [the Boston housing dataset](https://www.kaggle.com/c/boston-housing).
-- Analyze the trained model using `TO EXPLAIN` SQL statements.
+- Explain the trained model using `TO EXPLAIN` SQL statements.
 
 You can find more SQLFlow usages from the [Language Guide](../language_guide.md).
 
-We implement the analyzer based on [SHAP](https://github.com/slundberg/shap). By SQLFlow, an EXPLAIN SQL will be translated to the SHAP code. SQLFlow enables the code to read the dataset and load the trained model, then draws a figure to explain the model. At this stage, SQLFlow supports using the [TreeExplainer](https://github.com/slundberg/shap#tree-ensemble-example-with-treeexplainer-xgboostlightgbmcatboostscikit-learn-models) to draw a summary plot.
+We implement the explainer based on [SHAP](https://github.com/slundberg/shap). By SQLFlow, an EXPLAIN SQL will be translated to the SHAP code. SQLFlow enables the code to read the dataset and load the trained model, then draws a figure to explain the model. At this stage, SQLFlow supports using the [TreeExplainer](https://github.com/slundberg/shap#tree-ensemble-example-with-treeexplainer-xgboostlightgbmcatboostscikit-learn-models) to draw a summary plot.
 
 ## Syntax
 
@@ -44,7 +44,7 @@ LABEL medv
 INTO sqlflow_models.my_xgb_regression_model;
 ```
 
-## Analyze the Model
+## Explain the Model
 
 We can plot the SHAP values of every feature for every sample.
 

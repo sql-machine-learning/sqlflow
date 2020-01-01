@@ -17,7 +17,7 @@ import (
 	"text/template"
 )
 
-type analyzeFiller struct {
+type explainFiller struct {
 	DataSource           string
 	DatasetSQL           string
 	ShapSummaryParams    string
@@ -25,7 +25,7 @@ type analyzeFiller struct {
 	LabelName            string
 }
 
-const analyzeTemplateText = `
+const explainTemplateText = `
 import json
 from sqlflow_submitter.xgboost.explain import explain
 
@@ -41,4 +41,4 @@ explain(
     summary_params=summary_params)
 `
 
-var analyzeTemplate = template.Must(template.New("analyze").Parse(analyzeTemplateText))
+var explainTemplate = template.Must(template.New("explain").Parse(explainTemplateText))

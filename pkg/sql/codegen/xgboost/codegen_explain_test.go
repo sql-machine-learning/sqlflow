@@ -23,7 +23,7 @@ import (
 func TestExplain(t *testing.T) {
 	a := assert.New(t)
 	tir := ir.MockTrainStmt("mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0", true)
-	astmt := &ir.AnalyzeStmt{
+	astmt := &ir.ExplainStmt{
 		DataSource: tir.DataSource,
 		Select:     "SELECT * FROM iris.train",
 		Explainer:  "TreeExplainer",

@@ -429,29 +429,29 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 	return program.String(), nil
 }
 
-// Analyze generates a Python program to analyze a trained model.
-func Analyze(analyzeStmt *ir.AnalyzeStmt) (string, error) {
-	if !strings.HasPrefix(analyzeStmt.TrainStmt.Estimator, "BoostedTrees") {
-		return "", fmt.Errorf("unsupported model %s", analyzeStmt.TrainStmt.Estimator)
+// Explain generates a Python program to explain a trained model.
+func Explain(stmt *ir.ExplainStmt) (string, error) {
+	if !strings.HasPrefix(stmt.TrainStmt.Estimator, "BoostedTrees") {
+		return "", fmt.Errorf("unsupported model %s", stmt.TrainStmt.Estimator)
 	}
 
-	modelParams, featureColumnsCode, fieldDescs, err := restoreModel(analyzeStmt.TrainStmt)
+	modelParams, featureColumnsCode, fieldDescs, err := restoreModel(stmt.TrainStmt)
 	if err != nil {
 		return "", err
 	}
-	_, estimatorStr := IsKerasModel(analyzeStmt.TrainStmt.Estimator)
-	labelFM := analyzeStmt.TrainStmt.Label.GetFieldDesc()[0]
+	_, estimatorStr := IsKerasModel(stmt.TrainStmt.Estimator)
+	labelFM := stmt.TrainStmt.Label.GetFieldDesc()[0]
 
 	const summaryAttrPrefix = "summary."
-	summaryAttrs := resolveParams(analyzeStmt.Attributes, summaryAttrPrefix)
+	summaryAttrs := resolveParams(stmt.Attributes, summaryAttrPrefix)
 	jsonSummary, err := json.Marshal(summaryAttrs)
 	if err != nil {
 		return "", err
 	}
 
-	filler := analyzeFiller{
-		DataSource:        analyzeStmt.DataSource,
-		Select:            analyzeStmt.Select,
+	filler := explainFiller{
+		DataSource:        stmt.DataSource,
+		Select:            stmt.Select,
 		SummaryParams:     string(jsonSummary),
 		EstimatorClass:    estimatorStr,
 		FieldDescs:        fieldDescs,
@@ -461,11 +461,11 @@ func Analyze(analyzeStmt *ir.AnalyzeStmt) (string, error) {
 		Save:              "model_save",
 	}
 	var program bytes.Buffer
-	var tmpl = template.Must(template.New("Analyze").Funcs(template.FuncMap{
+	var tmpl = template.Must(template.New("Explain").Funcs(template.FuncMap{
 		"intArrayToJSONString": intArrayToJSONString,
 		"attrToPythonValue":    attrToPythonValue,
 		"dtypeToString":        dtypeToString,
-	}).Parse(boostedTreesAnalyzeTemplateText))
+	}).Parse(boostedTreesExplainTemplateText))
 	if err := tmpl.Execute(&program, filler); err != nil {
 		return "", err
 	}
