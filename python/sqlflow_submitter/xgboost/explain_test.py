@@ -60,6 +60,7 @@ class ExplainXGBModeTestCase(TestCase):
 
         shap_values = xgb_shap_values(x)
         expected_features=['chas', 'zn', 'rad', 'indus', 'b', 'tax', 'ptratio', 'age', 'nox', 'crim', 'dis', 'rm', 'lstat']
+        
         actural_features=[x.columns[idx] for idx in np.argsort(np.abs(shap_values).mean(0))]
 
         self.assertEqual(expected_features, actural_features)
