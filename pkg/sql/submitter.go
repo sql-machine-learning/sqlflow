@@ -189,7 +189,6 @@ func (s *defaultSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 		return err
 	}
 	defer imgFile.Close()
-	fmt.Println("debug1")
 	imgBytes, err := ioutil.ReadAll(imgFile)
 	if err != nil {
 		return err
@@ -197,9 +196,7 @@ func (s *defaultSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 	imgBase64Str := base64.StdEncoding.EncodeToString(imgBytes)
 	img2html := fmt.Sprintf("<div align='center'><img src='data:image/png;base64,%s' /></div>", imgBase64Str)
 	termFigure, err := ioutil.ReadFile(path.Join(s.Cwd, "summary.txt"))
-	fmt.Println("debug2")
 	if err != nil {
-		fmt.Println(err)
 		return err
 	}
 	s.Writer.Write(Figures{img2html, string(termFigure)})
