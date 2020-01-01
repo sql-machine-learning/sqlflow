@@ -16,6 +16,7 @@ from unittest import TestCase
 import subprocess
 import os
 
+
 class TestALPSTrain(TestCase):
     # NOTE: we must test tensorflow training and predicting in separated processes, or
     # TensorFlow will raise error "Graph is finalized."
@@ -24,11 +25,12 @@ class TestALPSTrain(TestCase):
             return
         try:
             # should run this test under directory $GOPATH/sqlflow.org/sqlflow
-            ret = subprocess.run(["/miniconda/envs/sqlflow-dev/bin/python", "python/sqlflow_submitter/alps/train_example.py"],
-                env={"PYTHONPATH": "python"})
+            ret = subprocess.run(["python", "python/sqlflow_submitter/alps/train_example.py"],
+                                 env={"PYTHONPATH": "python"})
             self.assertEqual(ret.returncode, 0)
         except:
             self.fail("%s" % ret.stderr)
+
 
 if __name__ == '__main__':
     unittest.main()

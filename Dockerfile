@@ -41,11 +41,11 @@ ENV MAVEN_OPTS -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jM
 
 # Using the stable version of Hadoop
 ENV HADOOP_VERSION 3.2.1
-ENV PATH /opt/hadoop-${HADOOP_VERSION}/bin:/miniconda/envs/sqlflow-dev/bin:/miniconda/bin:/usr/local/go/bin:/go/bin:$PATH
+ENV PATH /opt/hadoop-${HADOOP_VERSION}/bin:/usr/local/go/bin:/go/bin:$PATH
 COPY scripts/docker/install-hadoop.bash /
 RUN /install-hadoop.bash
 
-# Miniconda, Python 3.6, TensorFlow 2.0.0, etc
+# Python 3, TensorFlow 2.0.0, etc
 COPY scripts/docker/install-python.bash /
 RUN /install-python.bash
 
@@ -74,14 +74,14 @@ RUN /install-jupyter.bash
 # -----------------------------------------------------------------------------------
 
 # Build SQLFlow, copy sqlflow_submitter, install Java parser (129 MB), convert tutorial markdown to ipython notebook
-COPY . $GOPATH/src/sqlflow.org/sqlflow
-RUN cd $GOPATH/src/sqlflow.org/sqlflow && \
+ENV SQLFLOWPATH $GOPATH/src/sqlflow.org/sqlflow
+ENV PYTHONPATH $SQLFLOWPATH/python
+COPY . $SQLFLOWPATH
+RUN cd $SQLFLOWPATH && \
 go generate ./... && \
 go install -v ./... && \
 mv $GOPATH/bin/sqlflowserver /usr/local/bin && \
 mv $GOPATH/bin/repl /usr/local/bin && \
-cp -r $GOPATH/src/sqlflow.org/sqlflow/python/sqlflow_submitter /miniconda/envs/sqlflow-dev/lib/python3.6/site-packages/ && \
-cp $GOPATH/src/sqlflow.org/sqlflow/python/plotille_backend.py /miniconda/envs/sqlflow-dev/lib/python3.6/site-packages/ && \
 (cd python/couler && python setup.py install) && \
 cd java/parser && \
 mvn -B clean compile assembly:single && \
