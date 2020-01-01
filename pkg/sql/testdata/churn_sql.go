@@ -162,7 +162,7 @@ INSERT INTO churn.test VALUES("2424-WVHPL","Male","1","No","No","1","Yes","No","
 // ChurnHiveSQL is .sql format data sample of churn dataset in Hive SQL.
 var ChurnHiveSQL = `CREATE DATABASE IF NOT EXISTS churn;
 DROP TABLE IF EXISTS churn.train;
-CREATE TABLE  churn.train (
+CREATE TABLE churn.train (
 	customerID VARCHAR(255),
 	gender VARCHAR(255),
 	SeniorCitizen TINYINT,
@@ -270,7 +270,7 @@ INSERT INTO TABLE churn.train VALUES
 ("8108-UXRQN","Female","0","Yes","Yes","11","No","No phone service","DSL","Yes","No","No","No","Yes","Yes","Month-to-month","No","Electronic check","50.55","565.35","No");
 
 DROP TABLE IF EXISTS churn.test;
-CREATE TABLE  churn.test (
+CREATE TABLE churn.test (
 	customerID VARCHAR(255),
 	gender VARCHAR(255),
 	SeniorCitizen TINYINT,
