@@ -2,11 +2,11 @@ FROM ubuntu:16.04
 
 # The default source archive.ubuntu.com is busy and slow. We use the following source makes docker build running faster.
 RUN echo '\n\
-deb http://cn.archive.ubuntu.com/ubuntu/ xenial main restricted universe multiverse \n\
-deb http://cn.archive.ubuntu.com/ubuntu/ xenial-security main restricted universe multiverse \n\
-deb http://cn.archive.ubuntu.com/ubuntu/ xenial-updates main restricted universe multiverse \n\
-deb http://cn.archive.ubuntu.com/ubuntu/ xenial-proposed main restricted universe multiverse \n\
-deb http://cn.archive.ubuntu.com/ubuntu/ xenial-backports main restricted universe multiverse \n\
+deb http://cn.archive.ubuntu.com/ubuntu/ bionic main restricted universe multiverse \n\
+deb http://cn.archive.ubuntu.com/ubuntu/ bionic-security main restricted universe multiverse \n\
+deb http://cn.archive.ubuntu.com/ubuntu/ bionic-updates main restricted universe multiverse \n\
+deb http://cn.archive.ubuntu.com/ubuntu/ bionic-proposed main restricted universe multiverse \n\
+deb http://cn.archive.ubuntu.com/ubuntu/ bionic-backports main restricted universe multiverse \n\
 ' > /etc/apt/sources.list
 
 RUN apt-get update && apt-get install -y openjdk-8-jdk maven
