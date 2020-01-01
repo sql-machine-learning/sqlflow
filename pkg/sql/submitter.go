@@ -169,11 +169,12 @@ func (s *defaultSubmitter) ExecutePredict(cl *ir.PredictStmt) (e error) {
 }
 
 func (s *defaultSubmitter) ExecuteAnalyze(cl *ir.AnalyzeStmt) error {
+	fmt.Println("ExecuteAnalyze")
 	// NOTE(typhoonzero): model is already loaded under s.Cwd
 	var code string
 	var err error
 	if isXGBoostModel(cl.TrainStmt.Estimator) {
-		code, err = xgboost.Analyze(cl)
+		code, err = xgboost.Explain(cl)
 	} else {
 		code, err = tensorflow.Analyze(cl)
 	}
@@ -189,6 +190,7 @@ func (s *defaultSubmitter) ExecuteAnalyze(cl *ir.AnalyzeStmt) error {
 		return err
 	}
 	defer imgFile.Close()
+	fmt.Println("debug1")
 	imgBytes, err := ioutil.ReadAll(imgFile)
 	if err != nil {
 		return err
@@ -196,7 +198,9 @@ func (s *defaultSubmitter) ExecuteAnalyze(cl *ir.AnalyzeStmt) error {
 	imgBase64Str := base64.StdEncoding.EncodeToString(imgBytes)
 	img2html := fmt.Sprintf("<div align='center'><img src='data:image/png;base64,%s' /></div>", imgBase64Str)
 	termFigure, err := ioutil.ReadFile(path.Join(s.Cwd, "summary.txt"))
+	fmt.Println("debug2")
 	if err != nil {
+		fmt.Println(err)
 		return err
 	}
 	s.Writer.Write(Figures{img2html, string(termFigure)})

@@ -26,13 +26,13 @@ const (
 	shapSummaryAttrPrefix = "shap_summary."
 )
 
-// Analyze generates a Python program to analyze a trained model.
-func Analyze(analyzeStmt *ir.AnalyzeStmt) (string, error) {
+// Explain generates a Python program to explain a trained model.
+func Explain(analyzeStmt *ir.AnalyzeStmt) (string, error) {
 	if analyzeStmt.Explainer != "TreeExplainer" {
 		return "", fmt.Errorf("unsupported explainer %s", analyzeStmt.Explainer)
 	}
-	summaryAttrs := resolveParams(analyzeStmt.Attributes, shapSummaryAttrPrefix)
-	jsonSummary, err := json.Marshal(summaryAttrs)
+	summaryParams := resolveParams(analyzeStmt.Attributes, shapSummaryAttrPrefix)
+	jsonSummary, err := json.Marshal(summaryParams)
 	if err != nil {
 		return "", err
 	}
@@ -46,11 +46,11 @@ func Analyze(analyzeStmt *ir.AnalyzeStmt) (string, error) {
 	}
 
 	fr := &analyzeFiller{
-		DataSource:        analyzeStmt.DataSource,
-		DatasetSQL:        analyzeStmt.Select,
-		ShapSummaryParams: string(jsonSummary),
-		FieldDescJSON:     string(fm),
-		Label:             y.Name,
+		DataSource:           analyzeStmt.DataSource,
+		DatasetSQL:           analyzeStmt.Select,
+		ShapSummaryParams:    string(jsonSummary),
+		FeatureFieldMetaJSON: string(fm),
+		LabelName:            y.Name,
 	}
 	var analysis bytes.Buffer
 	if err := analyzeTemplate.Execute(&analysis, fr); err != nil {

@@ -20,7 +20,7 @@ import (
 	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
 
-func TestAnalyze(t *testing.T) {
+func TestExplain(t *testing.T) {
 	a := assert.New(t)
 	tir := ir.MockTrainStmt("mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0", true)
 	astmt := &ir.AnalyzeStmt{
@@ -33,6 +33,6 @@ func TestAnalyze(t *testing.T) {
 		},
 		TrainStmt: tir,
 	}
-	_, err := Analyze(astmt)
+	_, err := Explain(astmt)
 	a.NoError(err)
 }
