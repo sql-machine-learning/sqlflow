@@ -15,10 +15,12 @@
 
 set -e
 
+apt-get install -y python3 python3-pip # Install /usr/bin/python3 and /usr/bin/pip3
+ln -s /usr/bin/python3 /usr/local/bin/python
+pip3 install --upgrade pip # Upgrade and creates /usr/local/bin/pip
+
 # pip install mysqlclient needs GCC.
-apt-get update && apt-get install -y build-essential python3 python3-pip
-ln -s /usr/bin/python3 /usr/bin/python
-ln -s /usr/bin/pip3 /usr/bin/pip
+apt-get install -y build-essential
 
 # keras.datasets.imdb only works with numpy==1.16.1
 # NOTE: shap == 0.30.1 depends on dill but not include dill as it's dependency, need to install manually.
