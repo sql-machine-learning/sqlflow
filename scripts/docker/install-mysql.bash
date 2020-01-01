@@ -15,14 +15,10 @@
 
 set -e
 
-apt-get update 
-
-apt-get install -y libmysqlclient-dev
-
 # Install MySQL server without a password prompt
 echo 'mysql-server mysql-server/root_password password root' | debconf-set-selections
 echo 'mysql-server mysql-server/root_password_again password root' | debconf-set-selections
-apt-get update && apt-get install -y mysql-server
+apt-get install -y libmysqlclient-dev mysql-server
 mkdir -p /var/run/mysqld
 mkdir -p /var/lib/mysql
 chown mysql:mysql /var/run/mysqld

@@ -16,7 +16,7 @@
 set -e
 
 # pip install mysqlclient needs GCC.
-apt-get update && apt-get install -y build-essential
+apt-get install -y build-essential
 
 # We use miniconda to maintain the Python environment so we can install SQLFlow's submitter 
 # template Python files to the canonical path /miniconda/envs/sqlflow-dev/lib/python3.6/site-packages/.
