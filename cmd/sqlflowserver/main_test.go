@@ -1347,7 +1347,7 @@ FROM %s.%s LIMIT 5;
 	defer conn.Close()
 
 	cli := pb.NewSQLFlowClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 1800*time.Second)
 	defer cancel()
 
 	stream, err := cli.Run(ctx, &pb.Request{Sql: sqlProgram, Session: &pb.Session{DbConnStr: testDatasource}})
@@ -1376,7 +1376,8 @@ func checkWorkflow(ctx context.Context, cli pb.SQLFlowClient, stream pb.SQLFlow_
 		Job: &pb.Job{Id: workflowID},
 	}
 	// wait 30min for the workflow execution since it may take time to allocate enough nodes.
-	for i := 0; i < 1800; i++ {
+	// each loop waits 3 seconds, total 600 * 3 = 1800 seconds
+	for i := 0; i < 600; i++ {
 		res, err := cli.Fetch(ctx, req)
 		if err != nil {
 			return err
