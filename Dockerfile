@@ -9,6 +9,8 @@ deb http://us.archive.ubuntu.com/ubuntu/ xenial-proposed main restricted univers
 deb http://us.archive.ubuntu.com/ubuntu/ xenial-backports main restricted universe multiverse \n\
 ' > /etc/apt/sources.list
 
+RUN apt-get update && apt-get upgrade -y
+
 # Install wget, curl, unzip, bzip2, git
 COPY scripts/docker/install-download-tools.bash /
 RUN /install-download-tools.bash
