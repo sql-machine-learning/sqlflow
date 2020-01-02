@@ -315,7 +315,7 @@ func deriveFeatureColumnCode(trainStmt *ir.TrainStmt) (featureColumnsCode []stri
 }
 
 // Train generates a Python program for train a TensorFlow model.
-func Train(trainStmt *ir.TrainStmt) (string, error) {
+func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 	if err := initializeAttributes(trainStmt); err != nil {
 		return "", err
 	}
@@ -342,7 +342,7 @@ func Train(trainStmt *ir.TrainStmt) (string, error) {
 	}
 
 	filler := trainFiller{
-		DataSource:        trainStmt.DataSource,
+		DataSource:        session.DbConnStr,
 		TrainSelect:       trainStmt.Select,
 		ValidationSelect:  trainStmt.ValidationSelect,
 		Estimator:         estimatorStr,
@@ -399,7 +399,7 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 	}
 
 	filler := predFiller{
-		DataSource:        predStmt.DataSource,
+		DataSource:        session.DbConnStr,
 		Select:            predStmt.Select,
 		ResultTable:       predStmt.ResultTable,
 		Estimator:         estimatorStr,
@@ -430,7 +430,7 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 }
 
 // Explain generates a Python program to explain a trained model.
-func Explain(stmt *ir.ExplainStmt) (string, error) {
+func Explain(stmt *ir.ExplainStmt, session *pb.Session) (string, error) {
 	if !strings.HasPrefix(stmt.TrainStmt.Estimator, "BoostedTrees") {
 		return "", fmt.Errorf("unsupported model %s", stmt.TrainStmt.Estimator)
 	}
@@ -450,7 +450,7 @@ func Explain(stmt *ir.ExplainStmt) (string, error) {
 	}
 
 	filler := explainFiller{
-		DataSource:        stmt.DataSource,
+		DataSource:        session.DbConnStr,
 		Select:            stmt.Select,
 		SummaryParams:     string(jsonSummary),
 		EstimatorClass:    estimatorStr,

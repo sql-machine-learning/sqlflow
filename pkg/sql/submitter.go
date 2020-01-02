@@ -141,9 +141,9 @@ func (s *defaultSubmitter) ExecuteQuery(sql *ir.StandardSQL) error {
 func (s *defaultSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 	var code string
 	if isXGBoostModel(cl.Estimator) {
-		code, e = xgboost.Train(cl)
+		code, e = xgboost.Train(cl, s.Session)
 	} else {
-		code, e = tensorflow.Train(cl)
+		code, e = tensorflow.Train(cl, s.Session)
 	}
 	if e == nil {
 		if e = s.runCommand(code); e == nil {
@@ -174,9 +174,9 @@ func (s *defaultSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 	var code string
 	var err error
 	if isXGBoostModel(cl.TrainStmt.Estimator) {
-		code, err = xgboost.Explain(cl)
+		code, err = xgboost.Explain(cl, s.Session)
 	} else {
-		code, err = tensorflow.Explain(cl)
+		code, err = tensorflow.Explain(cl, s.Session)
 	}
 
 	if err != nil {

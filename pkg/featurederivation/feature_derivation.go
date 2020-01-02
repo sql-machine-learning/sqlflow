@@ -239,8 +239,8 @@ func fillFieldDesc(columnTypeList []*sql.ColumnType, rowdata []interface{}, fiel
 // InferFeatureColumns fill up featureColumn and columnSpec structs
 // for all fields.
 // if wr is not nil, then write
-func InferFeatureColumns(trainStmt *ir.TrainStmt) error {
-	db, err := database.OpenAndConnectDB(trainStmt.DataSource)
+func InferFeatureColumns(trainStmt *ir.TrainStmt, dataSource string) error {
+	db, err := database.OpenAndConnectDB(dataSource)
 	if err != nil {
 		return err
 	}

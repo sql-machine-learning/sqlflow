@@ -97,7 +97,7 @@ func getFieldDesc(fcs []ir.FeatureColumn, l ir.FeatureColumn) ([]ir.FieldDesc, i
 }
 
 // Train generates a Python program for train a XgBoost model.
-func Train(trainStmt *ir.TrainStmt) (string, error) {
+func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 	params, err := parseAttribute(trainStmt.Attributes)
 	if err != nil {
 		return "", err
@@ -132,7 +132,7 @@ func Train(trainStmt *ir.TrainStmt) (string, error) {
 		return "", err
 	}
 	r := trainFiller{
-		DataSource:       trainStmt.DataSource,
+		DataSource:       session.DbConnStr,
 		TrainSelect:      trainStmt.Select,
 		ValidationSelect: trainStmt.ValidationSelect,
 		ModelParamsJSON:  string(mp),
@@ -164,7 +164,7 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 	}
 
 	r := predFiller{
-		DataSource:       predStmt.DataSource,
+		DataSource:       session.DbConnStr,
 		PredSelect:       predStmt.Select,
 		FeatureMetaJSON:  string(f),
 		LabelMetaJSON:    string(l),

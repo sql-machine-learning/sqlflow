@@ -71,7 +71,6 @@ func mockTrainStmtNormal() *ir.TrainStmt {
 	label := &ir.NumericColumn{FieldDesc: &ir.FieldDesc{Name: "class", DType: ir.Int, Shape: []int{1}, Delimiter: "", IsSparse: false}}
 
 	return &ir.TrainStmt{
-		DataSource: "mysql://root:root@tcp/?maxAllowedPacket=0",
 		OriginalSQL: `select c1, c2, c3, c4, c5, c6, class from feature_derivation_case.train
 TO TRAIN DNNClassifier
 WITH model.n_classes=2
@@ -117,7 +116,6 @@ func mockTrainStmtCross() *ir.TrainStmt {
 	}}
 
 	return &ir.TrainStmt{
-		DataSource: "mysql://root:root@tcp/?maxAllowedPacket=0",
 		OriginalSQL: `select c1, c2, c3, class from feature_derivation_case.train
 TO TRAIN DNNClassifier
 WITH model.n_classes=2
@@ -148,7 +146,6 @@ func mockTrainStmtIrisNoColumnClause() *ir.TrainStmt {
 		IsSparse:  false,
 	}}
 	return &ir.TrainStmt{
-		DataSource: "mysql://root:root@tcp/?maxAllowedPacket=0",
 		OriginalSQL: `select * from iris.train
 TO TRAIN DNNClassifier
 WITH model.n_classes=3, model.hidden_units=[10,10]
@@ -167,8 +164,9 @@ LABEL class INTO model_table;`,
 
 func TestFeatureDerivation(t *testing.T) {
 	a := assert.New(t)
+	dataSource := "mysql://root:root@tcp/?maxAllowedPacket=0"
 	// Prepare feature derivation test table in MySQL.
-	db, err := database.OpenAndConnectDB("mysql://root:root@tcp/?maxAllowedPacket=0")
+	db, err := database.OpenAndConnectDB(dataSource)
 	if err != nil {
 		a.Fail("error connect to mysql: %v", err)
 	}
@@ -178,7 +176,7 @@ func TestFeatureDerivation(t *testing.T) {
 	}
 
 	trainStmt := mockTrainStmtNormal()
-	e := InferFeatureColumns(trainStmt)
+	e := InferFeatureColumns(trainStmt, dataSource)
 	a.NoError(e)
 
 	fc1 := trainStmt.Features["feature_columns"][0]
@@ -238,7 +236,7 @@ func TestFeatureDerivation(t *testing.T) {
 	a.Equal(6, len(trainStmt.Features["feature_columns"]))
 
 	trainStmt = mockTrainStmtCross()
-	e = InferFeatureColumns(trainStmt)
+	e = InferFeatureColumns(trainStmt, dataSource)
 	a.NoError(e)
 
 	fc1 = trainStmt.Features["feature_columns"][0]
@@ -274,8 +272,9 @@ func TestFeatureDerivationNoColumnClause(t *testing.T) {
 		t.Skip("skip TestFeatureDerivationNoColumnClause for tests not using mysql")
 	}
 	a := assert.New(t)
+	dataSource := "mysql://root:root@tcp/?maxAllowedPacket=0"
 	// Prepare feature derivation test table in MySQL.
-	db, err := database.OpenAndConnectDB("mysql://root:root@tcp/?maxAllowedPacket=0")
+	db, err := database.OpenAndConnectDB(dataSource)
 	if err != nil {
 		a.Fail("error connect to mysql: %v", err)
 	}
@@ -285,7 +284,7 @@ func TestFeatureDerivationNoColumnClause(t *testing.T) {
 	}
 
 	trainStmt := mockTrainStmtIrisNoColumnClause()
-	e := InferFeatureColumns(trainStmt)
+	e := InferFeatureColumns(trainStmt, dataSource)
 	a.NoError(e)
 
 	a.Equal(4, len(trainStmt.Features["feature_columns"]))
@@ -300,14 +299,13 @@ func TestHiveFeatureDerivation(t *testing.T) {
 	}
 	a := assert.New(t)
 	trainStmt := &ir.TrainStmt{
-		DataSource:       database.GetTestingDBSingleton().URL(),
 		Select:           "select * from iris.train",
 		ValidationSelect: "select * from iris.test",
 		Estimator:        "xgboost.gbtree",
 		Attributes:       map[string]interface{}{},
 		Features:         map[string][]ir.FeatureColumn{},
 		Label:            &ir.NumericColumn{&ir.FieldDesc{"class", ir.Int, "", []int{1}, false, nil, 0}}}
-	e := InferFeatureColumns(trainStmt)
+	e := InferFeatureColumns(trainStmt, "mysql://root:root@tcp/?maxAllowedPacket=0")
 	a.NoError(e)
 	a.Equal(4, len(trainStmt.Features["feature_columns"]))
 }

@@ -107,6 +107,10 @@ func mockClusterConfig() *clusterConfig {
 	}
 }
 
+func mockSession() *pb.Session {
+	return &pb.Session{DbConnStr: "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"}
+}
+
 func TestWrapperCodegen(t *testing.T) {
 	a := assert.New(t)
 	// cwd is used to store generated scripts
@@ -127,15 +131,16 @@ func TestWrapperCodegen(t *testing.T) {
 
 func TestTrainCodegen(t *testing.T) {
 	a := assert.New(t)
-	trainStmt := ir.MockTrainStmt(dataSource, false)
+	trainStmt := ir.MockTrainStmt(false)
 
 	os.Setenv("SQLFLOW_OSS_CHECKPOINT_DIR", "oss://bucket/?role_arn=xxx&host=xxx")
 	defer os.Unsetenv("SQLFLOW_OSS_CHECKPOINT_DIR")
 
-	paiTfCode, err := tfTrainAndSave(trainStmt, "my_dnn_model")
+	sess := mockSession()
+	paiTfCode, err := tfTrainAndSave(trainStmt, sess, "my_dnn_model")
 	a.NoError(err)
 
-	tfCode, err := tensorflow.Train(trainStmt)
+	tfCode, err := tensorflow.Train(trainStmt, sess)
 	a.NoError(err)
 
 	a.True(strings.HasPrefix(paiTfCode, tfCode))
@@ -145,12 +150,12 @@ func TestTrainCodegen(t *testing.T) {
 
 func TestPredictCodegen(t *testing.T) {
 	a := assert.New(t)
-	ir := ir.MockPredStmt(ir.MockTrainStmt(dataSource, false))
+	ir := ir.MockPredStmt(ir.MockTrainStmt(false))
 
 	os.Setenv("SQLFLOW_OSS_CHECKPOINT_DIR", "oss://bucket/?role_arn=xxx&host=xxx")
 	defer os.Unsetenv("SQLFLOW_OSS_CHECKPOINT_DIR")
-
-	paiTfCode, err := tfLoadAndPredict(ir, "my_dnn_model")
+	sess := mockSession()
+	paiTfCode, err := tfLoadAndPredict(ir, sess, "my_dnn_model")
 	a.NoError(err)
 	a.False(hasUnknownParameters(paiTfCode, knownPredictParams))
 

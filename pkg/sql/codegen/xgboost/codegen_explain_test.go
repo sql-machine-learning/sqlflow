@@ -22,17 +22,16 @@ import (
 
 func TestExplain(t *testing.T) {
 	a := assert.New(t)
-	tir := ir.MockTrainStmt("mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0", true)
+	tir := ir.MockTrainStmt(true)
 	astmt := &ir.ExplainStmt{
-		DataSource: tir.DataSource,
-		Select:     "SELECT * FROM iris.train",
-		Explainer:  "TreeExplainer",
+		Select:    "SELECT * FROM iris.train",
+		Explainer: "TreeExplainer",
 		Attributes: map[string]interface{}{
 			"shap_summary.plot_type": "dot",
 			"others.type":            "bar",
 		},
 		TrainStmt: tir,
 	}
-	_, err := Explain(astmt)
+	_, err := Explain(astmt, mockSession())
 	a.NoError(err)
 }
