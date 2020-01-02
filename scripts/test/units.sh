@@ -36,6 +36,6 @@ go install ./...
 SQLFLOW_log_level=debug gotest -v -p 1 -timeout 900s ./...  -covermode=count -coverprofile=coverage.out
 
 for f in /docker-entrypoint-initdb.d/*; do
-  cat $f | mysql -uroot -proot --host ${SQLFLOW_MYSQL_HOST} --port ${SQLFLOW_MYSQL_PORT}
+  cat $f | mysql -uroot -proot --host 127.0.0.1 --port 3306
 done
 python -m unittest discover -v python "*_test.py"
