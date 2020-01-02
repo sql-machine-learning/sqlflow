@@ -1,4 +1,4 @@
-FROM ubuntu:16.04
+FROM ubuntu:18.04
 
 # The default source archive.ubuntu.com is busy and slow. We use the following source makes docker build running faster.
 RUN echo '\n\
