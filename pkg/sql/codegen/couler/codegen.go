@@ -44,6 +44,16 @@ func Run(programIR ir.SQLProgram, session *pb.Session) (string, error) {
 				OriginalSQL: sqlIR.GetOriginalSQL(), IsExtendedSQL: sqlIR.IsExtended(),
 				DockerImage: defaultDockerImage}
 			r.SQLStatements = append(r.SQLStatements, sqlStmt)
+		case *ir.PredictStmt:
+			sqlStmt := &sqlStatement{
+				OriginalSQL: sqlIR.GetOriginalSQL(), IsExtendedSQL: sqlIR.IsExtended(),
+				DockerImage: defaultDockerImage}
+			r.SQLStatements = append(r.SQLStatements, sqlStmt)
+		case *ir.AnalyzeStmt:
+			sqlStmt := &sqlStatement{
+				OriginalSQL: sqlIR.GetOriginalSQL(), IsExtendedSQL: sqlIR.IsExtended(),
+				DockerImage: defaultDockerImage}
+			r.SQLStatements = append(r.SQLStatements, sqlStmt)
 		case *ir.TrainStmt:
 			if r.SQLFlowSubmitter == "katib" {
 				sqlStmt, err := RunKatib(sqlIR.(*ir.TrainStmt))

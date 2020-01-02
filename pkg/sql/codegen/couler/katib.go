@@ -69,7 +69,7 @@ func parseAttribute(attrs map[string]interface{}) (map[string]interface{}, error
 	return params["range."], nil
 }
 
-// RunKatib generates Couler Katib program
+// RunKatib generates Couler Katib step
 func RunKatib(t *ir.TrainStmt) (*sqlStatement, error) {
 	ss := &sqlStatement{}
 	ss.IsKatibTrain = true
