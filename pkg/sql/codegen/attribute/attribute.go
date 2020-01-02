@@ -49,8 +49,22 @@ type Dictionary map[string]*Description
 // Description describes a requirement for a particular attribute
 type Description struct {
 	Type    reflect.Type
+	Default interface{}
 	Doc     string
 	Checker func(i interface{}) error
+}
+
+// FillDefaults fills default values defined in Dictionary to attrs.
+func (d Dictionary) FillDefaults(attrs map[string]interface{}) {
+	for k, v := range d {
+		if v.Type == Unknown {
+			continue
+		}
+		_, ok := attrs[k]
+		if !ok {
+			attrs[k] = v.Default
+		}
+	}
 }
 
 // Validate validates the attribute based on dictionary. The validation includes
@@ -128,11 +142,11 @@ func (d Dictionary) Update(other Dictionary) Dictionary {
 	return d
 }
 
-// NewDictionary create a new Dictionary according to `estimator`
-func NewDictionary(estimator, prefix string) Dictionary {
+// NewDictionaryFromModelDefinition create a new Dictionary according to pre-made estimators or XGBoost model types.
+func NewDictionaryFromModelDefinition(estimator, prefix string) Dictionary {
 	var d = Dictionary{}
 	for param, doc := range PremadeModelParamsDocs[estimator] {
-		d[prefix+param] = &Description{Unknown, doc, nil}
+		d[prefix+param] = &Description{Unknown, nil, doc, nil}
 	}
 	return d
 }

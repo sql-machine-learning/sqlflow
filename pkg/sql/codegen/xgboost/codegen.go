@@ -29,19 +29,20 @@ import (
 // model parameter list: https://xgboost.readthedocs.io/en/latest/parameter.html#general-parameters
 // training parameter list: https://github.com/dmlc/xgboost/blob/b61d53447203ca7a321d72f6bdd3f553a3aa06c4/python-package/xgboost/training.py#L115-L117
 var attributeDictionary = attribute.Dictionary{
-	"eta": {attribute.Float, `[default=0.3, alias: learning_rate]
+	"eta": {attribute.Float, float32(0.3), `[default=0.3, alias: learning_rate]
 Step size shrinkage used in update to prevents overfitting. After each boosting step, we can directly get the weights of new features, and eta shrinks the feature weights to make the boosting process more conservative.
 range: [0,1]`, attribute.Float32RangeChecker(0, 1, true, true)},
-	"num_class": {attribute.Int, `Number of classes.
+	"num_class": {attribute.Int, 2, `Number of classes.
 range: [2, Infinity]`, attribute.IntLowerBoundChecker(2, true)},
-	"objective": {attribute.String, `Learning objective`, nil},
-	"train.num_boost_round": {attribute.Int, `[default=10]
+	"objective": {attribute.String, "", `Learning objective`, nil},
+	"train.num_boost_round": {attribute.Int, 10, `[default=10]
 The number of rounds for boosting.
 range: [1, Infinity]`, attribute.IntLowerBoundChecker(1, true)},
-	"validation.select": {attribute.String, `[default=""]
+	"validation.select": {attribute.String, "", `[default=""]
 Specify the dataset for validation.
 example: "SELECT * FROM boston.train LIMIT 8"`, nil},
 }
+var modelAttrs = attribute.Dictionary{}
 
 func resolveModelType(estimator string) (string, error) {
 	switch strings.ToUpper(estimator) {
@@ -57,7 +58,9 @@ func resolveModelType(estimator string) (string, error) {
 }
 
 func parseAttribute(attrs map[string]interface{}) (map[string]map[string]interface{}, error) {
-	if err := attributeDictionary.Validate(attrs); err != nil {
+	attributeDictionary.FillDefaults(attrs)
+	validator := modelAttrs.Update(attributeDictionary)
+	if err := validator.Validate(attrs); err != nil {
 		return nil, err
 	}
 
@@ -186,7 +189,7 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 func init() {
 	re := regexp.MustCompile("[^a-z]")
 	// xgboost.gbtree, xgboost.dart, xgboost.gblinear share the same parameter set
-	modelAttrs := attribute.NewDictionary("xgboost.gbtree", "")
+	modelAttrs := attribute.NewDictionaryFromModelDefinition("xgboost.gbtree", "")
 	for _, v := range modelAttrs {
 		pieces := strings.SplitN(v.Doc, " ", 2)
 		maybeType := re.ReplaceAllString(pieces[0], "")
@@ -202,5 +205,4 @@ func init() {
 			v.Doc = pieces[1]
 		}
 	}
-	attributeDictionary = modelAttrs.Update(attributeDictionary)
 }
