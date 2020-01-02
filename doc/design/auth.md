@@ -41,8 +41,8 @@ type Session struct {
     DBConnStr      string  // mysql://AK:SK@127.0.0.1:3306
     // cached connection to database for current session, can point to a global connection map
     DBConn         *sql.DB
-    K8SAK          string  // AK or username for accessing kubernetes
-    K8SSK          string  // SK or secret for accessing kubernetes
+    K8SAK          string  // AK or username for accessing Kubernetes
+    K8SSK          string  // SK or secret for accessing Kubernetes
 }
 ```
 
