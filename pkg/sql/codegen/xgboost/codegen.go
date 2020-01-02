@@ -189,7 +189,7 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 func init() {
 	re := regexp.MustCompile("[^a-z]")
 	// xgboost.gbtree, xgboost.dart, xgboost.gblinear share the same parameter set
-	modelAttrs := attribute.NewDictionaryFromModelDefinition("xgboost.gbtree", "")
+	modelAttrs = attribute.NewDictionaryFromModelDefinition("xgboost.gbtree", "")
 	for _, v := range modelAttrs {
 		pieces := strings.SplitN(v.Doc, " ", 2)
 		maybeType := re.ReplaceAllString(pieces[0], "")
