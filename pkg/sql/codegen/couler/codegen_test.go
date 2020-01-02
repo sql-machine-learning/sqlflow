@@ -14,13 +14,11 @@
 package couler
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"regexp"
 	"testing"
 
-	"github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
@@ -36,15 +34,8 @@ func TestCodegen(t *testing.T) {
 	a.Equal(r.FindStringSubmatch(code)[1], "SELECT * FROM iris.train limit 10")
 }
 func mockSQLProgramIR() ir.SQLProgram {
-	cfg := &mysql.Config{
-		User:                 "root",
-		Passwd:               "root",
-		Net:                  "tcp",
-		Addr:                 "127.0.0.1:3306",
-		AllowNativePasswords: true,
-	}
 	standardSQL := ir.StandardSQL("SELECT * FROM iris.train limit 10;")
-	trainStmt := ir.MockTrainStmt(fmt.Sprintf("mysql://%s", cfg.FormatDSN()), false)
+	trainStmt := ir.MockTrainStmt(false)
 	return []ir.SQLStatement{&standardSQL, trainStmt}
 }
 

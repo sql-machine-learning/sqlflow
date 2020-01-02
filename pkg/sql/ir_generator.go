@@ -39,12 +39,12 @@ const (
 )
 
 func generateTrainStmtWithInferredColumns(slct *parser.SQLFlowSelectStmt, connStr string, verifyLabel bool) (*ir.TrainStmt, error) {
-	trainStmt, err := generateTrainStmt(slct, connStr)
+	trainStmt, err := generateTrainStmt(slct)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := featurederivation.InferFeatureColumns(trainStmt); err != nil {
+	if err := featurederivation.InferFeatureColumns(trainStmt, connStr); err != nil {
 		return nil, err
 	}
 
@@ -61,7 +61,7 @@ func generateTrainStmtWithInferredColumns(slct *parser.SQLFlowSelectStmt, connSt
 	return trainStmt, nil
 }
 
-func generateTrainStmt(slct *parser.SQLFlowSelectStmt, connStr string) (*ir.TrainStmt, error) {
+func generateTrainStmt(slct *parser.SQLFlowSelectStmt) (*ir.TrainStmt, error) {
 	tc := slct.TrainClause
 	modelURI := tc.Estimator
 	// get model Docker image name
@@ -109,8 +109,7 @@ func generateTrainStmt(slct *parser.SQLFlowSelectStmt, connStr string) (*ir.Trai
 		vslct = slct.StandardSelect.String()
 	}
 	trainStmt := &ir.TrainStmt{
-		DataSource: connStr,
-		Select:     slct.StandardSelect.String(),
+		Select: slct.StandardSelect.String(),
 		// TODO(weiguoz): This is a temporary implement. Specifying the
 		// validation dataset by keyword `VALIDATE` is the final solution.
 		ValidationSelect: vslct,
@@ -264,7 +263,6 @@ func generatePredictStmt(slct *parser.SQLFlowSelectStmt, connStr string, modelDi
 	}
 
 	predStmt := &ir.PredictStmt{
-		DataSource:   connStr,
 		Select:       slct.StandardSelect.String(),
 		ResultTable:  resultTable,
 		ResultColumn: resultCol,
@@ -302,7 +300,6 @@ func generateExplainStmt(slct *parser.SQLFlowSelectStmt, connStr, modelDir strin
 	}
 
 	explainStmt := &ir.ExplainStmt{
-		DataSource: connStr,
 		Select:     slct.StandardSelect.String(),
 		Attributes: attrs,
 		Explainer:  slct.Explainer,

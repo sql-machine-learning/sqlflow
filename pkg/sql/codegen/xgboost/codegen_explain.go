@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"strings"
 
+	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
 
@@ -27,7 +28,7 @@ const (
 )
 
 // Explain generates a Python program to explain a trained model.
-func Explain(explainStmt *ir.ExplainStmt) (string, error) {
+func Explain(explainStmt *ir.ExplainStmt, session *pb.Session) (string, error) {
 	if explainStmt.Explainer != "TreeExplainer" {
 		return "", fmt.Errorf("unsupported explainer %s", explainStmt.Explainer)
 	}
@@ -46,7 +47,7 @@ func Explain(explainStmt *ir.ExplainStmt) (string, error) {
 	}
 
 	fr := &explainFiller{
-		DataSource:           explainStmt.DataSource,
+		DataSource:           session.DbConnStr,
 		DatasetSQL:           explainStmt.Select,
 		ShapSummaryParams:    string(jsonSummary),
 		FeatureFieldMetaJSON: string(fm),

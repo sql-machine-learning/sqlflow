@@ -93,21 +93,21 @@ func getDatabaseNameFromDSN(dataSource string) (string, error) {
 func (s *paiSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 	// TODO(typhoonzero): Do **NOT** create tmp table when the select statement is like:
 	// "SELECT fields,... FROM table"
-	dbName, tableName, err := createTmpTableFromSelect(cl.Select, cl.DataSource)
+	dbName, tableName, err := createTmpTableFromSelect(cl.Select, s.Session.DbConnStr)
 	if err != nil {
 		return err
 	}
 	cl.TmpTrainTable = strings.Join([]string{dbName, tableName}, ".")
 	if cl.ValidationSelect != "" {
-		dbName, tableName, err := createTmpTableFromSelect(cl.ValidationSelect, cl.DataSource)
+		dbName, tableName, err := createTmpTableFromSelect(cl.ValidationSelect, s.Session.DbConnStr)
 		if err != nil {
 			return err
 		}
 		cl.TmpValidateTable = strings.Join([]string{dbName, tableName}, ".")
 	}
-	defer dropTmpTables([]string{cl.TmpTrainTable, cl.TmpValidateTable}, cl.DataSource)
+	defer dropTmpTables([]string{cl.TmpTrainTable, cl.TmpValidateTable}, s.Session.DbConnStr)
 
-	code, e := pai.Train(cl, cl.Into, s.Cwd)
+	code, e := pai.Train(cl, s.Session, cl.Into, s.Cwd)
 	if e != nil {
 		return e
 	}
@@ -117,12 +117,12 @@ func (s *paiSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 func (s *paiSubmitter) ExecutePredict(cl *ir.PredictStmt) error {
 	// TODO(typhoonzero): Do **NOT** create tmp table when the select statement is like:
 	// "SELECT fields,... FROM table"
-	dbName, tableName, err := createTmpTableFromSelect(cl.Select, cl.DataSource)
+	dbName, tableName, err := createTmpTableFromSelect(cl.Select, s.Session.DbConnStr)
 	if err != nil {
 		return err
 	}
 	cl.TmpPredictTable = strings.Join([]string{dbName, tableName}, ".")
-	defer dropTmpTables([]string{cl.TmpPredictTable}, cl.DataSource)
+	defer dropTmpTables([]string{cl.TmpPredictTable}, s.Session.DbConnStr)
 
 	// TODO(typhoonzero): remove below twice parse when all submitters moved to IR.
 	pr, e := parser.ParseOneStatement("maxcompute", cl.OriginalSQL)
@@ -132,7 +132,7 @@ func (s *paiSubmitter) ExecutePredict(cl *ir.PredictStmt) error {
 	if e = createPredictionTableFromIR(cl, s.Db, s.Session); e != nil {
 		return e
 	}
-	code, e := pai.Predict(cl, pr.Model, s.Cwd)
+	code, e := pai.Predict(cl, s.Session, pr.Model, s.Cwd)
 	if e != nil {
 		return e
 	}

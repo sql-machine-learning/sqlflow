@@ -54,7 +54,7 @@ func TestGenerateTrainStmt(t *testing.T) {
 	r, e := parser.LegacyParse(normal)
 	a.NoError(e)
 
-	trainStmt, err := generateTrainStmt(r, "mysql://root:root@tcp(127.0.0.1:3306)/iris?maxAllowedPacket=0")
+	trainStmt, err := generateTrainStmt(r)
 	a.NoError(err)
 	a.Equal("DNNClassifier", trainStmt.Estimator)
 	a.Equal("SELECT c1, c2, c3, c4\nFROM my_table", trainStmt.Select)
@@ -178,7 +178,7 @@ func TestGenerateTrainStmtModelZoo(t *testing.T) {
 	r, e := parser.LegacyParse(normal)
 	a.NoError(e)
 
-	trainStmt, err := generateTrainStmt(r, "mysql://root:root@tcp(127.0.0.1:3306)/iris?maxAllowedPacket=0")
+	trainStmt, err := generateTrainStmt(r)
 	a.NoError(err)
 	a.Equal("a_data_scientist/regressors:v0.2", trainStmt.ModelImage)
 	a.Equal("MyDNNRegressor", trainStmt.Estimator)
@@ -214,7 +214,6 @@ INTO sqlflow_models.mymodel;`, modelDir, &pb.Session{DbConnStr: connStr})
 	predStmt, err := generatePredictStmt(r, connStr, modelDir, cwd, true)
 	a.NoError(err)
 
-	a.Equal(connStr, predStmt.DataSource)
 	a.Equal("iris.predict", predStmt.ResultTable)
 	a.Equal("class", predStmt.TrainStmt.Label.GetFieldDesc()[0].Name)
 	a.Equal("DNNClassifier", predStmt.TrainStmt.Estimator)
@@ -262,7 +261,6 @@ INTO sqlflow_models.my_xgboost_model;
 
 	ExplainStmt, e := generateExplainStmt(pr, connStr, modelDir, cwd, true)
 	a.NoError(e)
-	a.Equal(ExplainStmt.DataSource, connStr)
 	a.Equal(ExplainStmt.Explainer, "TreeExplainer")
 	a.Equal(len(ExplainStmt.Attributes), 3)
 	a.Equal(ExplainStmt.Attributes["shap_summary.sort"], true)
