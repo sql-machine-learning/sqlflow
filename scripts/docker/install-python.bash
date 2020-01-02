@@ -20,7 +20,7 @@ ln -s /usr/bin/python3 /usr/local/bin/python
 pip3 install --upgrade pip # Upgrade and creates /usr/local/bin/pip
 
 # pip install mysqlclient needs GCC.
-apt-get install -y build-essential
+apt-get install -y build-essential  libssl-dev # for building mysqlclient pip
 
 # keras.datasets.imdb only works with numpy==1.16.1
 # NOTE: shap == 0.30.1 depends on dill but not include dill as it's dependency, need to install manually.
