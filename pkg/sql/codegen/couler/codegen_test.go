@@ -149,6 +149,18 @@ func MockKatibTrainStmt(datasource string) ir.TrainStmt {
 	estimator := "xgboost.gbtree"
 
 	return ir.TrainStmt{
+		OriginalSQL: `
+SELECT *
+FROM iris.train
+TO TRAIN xgboost.gbtree
+WITH
+	objective = "multi:softprob"
+	eta = 0.1
+	max_depth = [2, 10]
+COLUMN sepal_length, sepal_width, petal_length, petal_width
+LABEL class
+INTO sqlflow_models.my_xgboost_model;
+`,
 		Select:           "select * from iris.train;",
 		ValidationSelect: "select * from iris.test;",
 		Estimator:        estimator,
