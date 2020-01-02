@@ -49,6 +49,11 @@ INTO sqlflow_models.my_xgb_regression_model;
 	<td>Subsample ratio of columns when constructing each tree.</td>
 </tr>
 <tr>
+	<td>eta</td>
+	<td>float32</td>
+	<td>[default=0.3, alias: learning_rate]<br>Step size shrinkage used in update to prevents overfitting. After each boosting step, we can directly get the weights of new features, and eta shrinks the feature weights to make the boosting process more conservative.<br>range: [0,1]</td>
+</tr>
+<tr>
 	<td>gamma</td>
 	<td>float32</td>
 	<td>Minimum loss reduction required to make a further partition on a leaf node of the tree.</td>
@@ -99,9 +104,14 @@ INTO sqlflow_models.my_xgb_regression_model;
 	<td>Number of parallel threads used to run xgboost. (Deprecated, please use ''n_jobs'')</td>
 </tr>
 <tr>
+	<td>num_class</td>
+	<td>int</td>
+	<td>Number of classes.<br>range: [2, Infinity]</td>
+</tr>
+<tr>
 	<td>objective</td>
 	<td>string</td>
-	<td>or callable Specify the learning task and the corresponding learning objective or a custom objective function to be used (see note below).</td>
+	<td>Learning objective</td>
 </tr>
 <tr>
 	<td>random_state</td>
@@ -137,6 +147,16 @@ INTO sqlflow_models.my_xgb_regression_model;
 	<td>subsample</td>
 	<td>float32</td>
 	<td>Subsample ratio of the training instance.</td>
+</tr>
+<tr>
+	<td>train.num_boost_round</td>
+	<td>int</td>
+	<td>[default=10]<br>The number of rounds for boosting.<br>range: [1, Infinity]</td>
+</tr>
+<tr>
+	<td>validation.select</td>
+	<td>string</td>
+	<td>[default=""]<br>Specify the dataset for validation.<br>example: "SELECT * FROM boston.train LIMIT 8"</td>
 </tr>
 <tr>
 	<td>verbosity</td>

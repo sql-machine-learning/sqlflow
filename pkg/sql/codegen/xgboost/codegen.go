@@ -42,7 +42,7 @@ range: [1, Infinity]`, attribute.IntLowerBoundChecker(1, true)},
 Specify the dataset for validation.
 example: "SELECT * FROM boston.train LIMIT 8"`, nil},
 }
-var modelAttrs = attribute.Dictionary{}
+var fullAttrValidator = attribute.Dictionary{}
 
 func resolveModelType(estimator string) (string, error) {
 	switch strings.ToUpper(estimator) {
@@ -59,8 +59,7 @@ func resolveModelType(estimator string) (string, error) {
 
 func parseAttribute(attrs map[string]interface{}) (map[string]map[string]interface{}, error) {
 	attributeDictionary.FillDefaults(attrs)
-	validator := modelAttrs.Update(attributeDictionary)
-	if err := validator.Validate(attrs); err != nil {
+	if err := fullAttrValidator.Validate(attrs); err != nil {
 		return nil, err
 	}
 
@@ -189,8 +188,8 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 func init() {
 	re := regexp.MustCompile("[^a-z]")
 	// xgboost.gbtree, xgboost.dart, xgboost.gblinear share the same parameter set
-	modelAttrs = attribute.NewDictionaryFromModelDefinition("xgboost.gbtree", "")
-	for _, v := range modelAttrs {
+	fullAttrValidator = attribute.NewDictionaryFromModelDefinition("xgboost.gbtree", "")
+	for _, v := range fullAttrValidator {
 		pieces := strings.SplitN(v.Doc, " ", 2)
 		maybeType := re.ReplaceAllString(pieces[0], "")
 		if maybeType == strings.ToLower(maybeType) {
@@ -205,4 +204,5 @@ func init() {
 			v.Doc = pieces[1]
 		}
 	}
+	fullAttrValidator.Update(attributeDictionary)
 }
