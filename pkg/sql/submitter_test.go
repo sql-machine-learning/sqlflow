@@ -24,5 +24,5 @@ func TestSubmitterRegistry(t *testing.T) {
 	a.Equal(2, len(submitterRegistry))
 	a.NotNil(submitterRegistry["pai"])
 	a.NotNil(submitterRegistry["default"])
-	a.Equal(submitter(), submitterRegistry["default"])
+	a.Equal(GetSubmitter(), submitterRegistry["default"])
 }

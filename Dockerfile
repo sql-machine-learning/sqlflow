@@ -1,13 +1,15 @@
-FROM ubuntu:16.04
+FROM ubuntu:18.04
 
 # The default source archive.ubuntu.com is busy and slow. We use the following source makes docker build running faster.
 RUN echo '\n\
-deb http://us.archive.ubuntu.com/ubuntu/ xenial main restricted universe multiverse \n\
-deb http://us.archive.ubuntu.com/ubuntu/ xenial-security main restricted universe multiverse \n\
-deb http://us.archive.ubuntu.com/ubuntu/ xenial-updates main restricted universe multiverse \n\
-deb http://us.archive.ubuntu.com/ubuntu/ xenial-proposed main restricted universe multiverse \n\
-deb http://us.archive.ubuntu.com/ubuntu/ xenial-backports main restricted universe multiverse \n\
+deb http://us.archive.ubuntu.com/ubuntu/ bionic main restricted universe multiverse \n\
+deb http://us.archive.ubuntu.com/ubuntu/ bionic-security main restricted universe multiverse \n\
+deb http://us.archive.ubuntu.com/ubuntu/ bionic-updates main restricted universe multiverse \n\
+deb http://us.archive.ubuntu.com/ubuntu/ bionic-proposed main restricted universe multiverse \n\
+deb http://us.archive.ubuntu.com/ubuntu/ bionic-backports main restricted universe multiverse \n\
 ' > /etc/apt/sources.list
+
+RUN apt-get update
 
 # Install wget, curl, unzip, bzip2, git
 COPY scripts/docker/install-download-tools.bash /

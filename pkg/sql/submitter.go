@@ -38,7 +38,8 @@ var submitterRegistry = map[string](Submitter){
 	// TODO(typhoonzero): add submitters like alps, elasticdl
 }
 
-func submitter() Submitter {
+// GetSubmitter returns a proper Submitter from configuations in environment variables.
+func GetSubmitter() Submitter {
 	s := submitterRegistry[envSubmitter]
 	if s == nil {
 		s = submitterRegistry["default"]
