@@ -180,9 +180,9 @@ func runSQLProgram(wr *pipe.Writer, sqlProgram string, db *database.DB, modelDir
 			if sql.Train {
 				r, err = generateTrainStmtWithInferredColumns(sql.SQLFlowSelectStmt, connStr, true)
 			} else if sql.Explain {
-				r, err = generateExplainStmt(sql.SQLFlowSelectStmt, connStr, modelDir, cwd, submitter().GetTrainStmtFromModel())
+				r, err = generateExplainStmt(sql.SQLFlowSelectStmt, connStr, modelDir, cwd, GetSubmitter().GetTrainStmtFromModel())
 			} else {
-				r, err = generatePredictStmt(sql.SQLFlowSelectStmt, connStr, modelDir, cwd, submitter().GetTrainStmtFromModel())
+				r, err = generatePredictStmt(sql.SQLFlowSelectStmt, connStr, modelDir, cwd, GetSubmitter().GetTrainStmtFromModel())
 			}
 		} else {
 			standardSQL := ir.StandardSQL(sql.Standard)
@@ -223,8 +223,8 @@ func runSingleSQLIR(wr *pipe.Writer, sqlIR ir.SQLStatement, db *database.DB, mod
 	}()
 	// TODO(typhoonzero): can run LogFeatureDerivationResult(wr, trainStmt) here to send
 	// feature derivation logs to client, yet we disable if for now so that it's less annoying.
-	submitter().Setup(wr, db, modelDir, cwd, session)
-	return sqlIR.Execute(submitter())
+	GetSubmitter().Setup(wr, db, modelDir, cwd, session)
+	return sqlIR.Execute(GetSubmitter())
 }
 
 // getColumnTypes is quiet like verify but accept a SQL string as input, and returns
