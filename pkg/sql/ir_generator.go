@@ -205,7 +205,7 @@ func verifyIRWithTrainStmt(sqlir ir.SQLStatement, db *database.DB) error {
 	case *ir.PredictStmt:
 		selectStmt = s.Select
 		trainStmt = s.TrainStmt
-	case *ir.AnalyzeStmt:
+	case *ir.ExplainStmt:
 		selectStmt = s.Select
 		trainStmt = s.TrainStmt
 	default:
@@ -287,7 +287,7 @@ func generatePredictStmt(slct *parser.SQLFlowSelectStmt, connStr string, modelDi
 	return predStmt, nil
 }
 
-func generateAnalyzeStmt(slct *parser.SQLFlowSelectStmt, connStr, modelDir string, cwd string, getTrainStmtFromModel bool) (*ir.AnalyzeStmt, error) {
+func generateExplainStmt(slct *parser.SQLFlowSelectStmt, connStr, modelDir string, cwd string, getTrainStmtFromModel bool) (*ir.ExplainStmt, error) {
 	attrs, err := generateAttributeIR(&slct.ExplainAttrs)
 	if err != nil {
 		return nil, err
@@ -301,7 +301,7 @@ func generateAnalyzeStmt(slct *parser.SQLFlowSelectStmt, connStr, modelDir strin
 		}
 	}
 
-	analyzeStmt := &ir.AnalyzeStmt{
+	explainStmt := &ir.ExplainStmt{
 		DataSource: connStr,
 		Select:     slct.StandardSelect.String(),
 		Attributes: attrs,
@@ -316,12 +316,12 @@ func generateAnalyzeStmt(slct *parser.SQLFlowSelectStmt, connStr, modelDir strin
 			return nil, err
 		}
 		defer db.Close()
-		if err := verifyIRWithTrainStmt(analyzeStmt, db); err != nil {
+		if err := verifyIRWithTrainStmt(explainStmt, db); err != nil {
 			return nil, err
 		}
 	}
 
-	return analyzeStmt, nil
+	return explainStmt, nil
 }
 
 func generateAttributeIR(attrs *parser.Attributes) (map[string]interface{}, error) {

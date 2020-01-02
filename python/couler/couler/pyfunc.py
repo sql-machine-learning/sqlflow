@@ -12,7 +12,7 @@
 # limitations under the License.
 
 import base64
-import importlib
+import importlib.util
 import inspect
 import os
 import re

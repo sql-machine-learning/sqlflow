@@ -143,35 +143,6 @@ const ModelParameterJSON = `
         "batch_norm": "Whether to use batch normalization after each hidden layer.",
         "linear_sparse_combiner": "A string specifying how to reduce the linear model if a categorical column is multivalent. One of \"mean\", \"sqrtn\", and \"sum\" -- these are effectively different ways to do example-level normalization, which can be useful for bag-of-words features. For more details, see 'tf.feature_column.linear_model'. Raises: ValueError: If both linear_feature_columns and dnn_features_columns are empty at the same time."
     },
-    "sqlflow_models.DNNClassifier": {
-        "feature_columns": "feature columns. :type feature_columns: list[tf.feature_column].",
-        "hidden_units": "number of hidden units. :type hidden_units: list[int].",
-        "n_classes": "List of hidden units per layer. :type n_classes: int."
-    },
-    "sqlflow_models.DeepEmbeddingClusterModel": {
-        "feature_columns": "a list of tf.feature_column",
-		"n_clusters": "Number of clusters.",
-        "kmeans_init": "Number of running K-Means to get best choice of centroids.",
-        "run_pretrain": "Run pre-train process or not.",
-        "existed_pretrain_model": "Path of existed pre-train model. Not used now.",
-        "pretrain_dims": "Dims of layers which is used for build autoencoder.",
-        "pretrain_activation_func": "Active function of autoencoder layers.",
-        "pretrain_batch_size": "Size of batch when pre-train.",
-        "train_batch_size": "Size of batch when run train.",
-        "pretrain_epochs": "Number of epochs when pre-train.",
-        "pretrain_initializer": "Initialize function for autoencoder layers.",
-        "pretrain_lr": "learning rate to train the auto encoder.",
-        "train_lr": "learning rate to train the cluster network.",
-        "train_max_iters": "Number of iterations when train.",
-        "update_interval": "Interval between updating target distribution.",
-        "tol": "tol.",
-        "loss": "Default 'kld' when init."
-    },
-    "sqlflow_models.StackedBiLSTMClassifier": {
-        "feature_columns": "All columns must be embedding of sequence column with same sequence_length. :type feature_columns: list[tf.embedding_column].",
-        "stack_units": "Units for LSTM layer. :type stack_units: vector of ints.",
-        "n_classes": "Target number of classes. :type n_classes: int."
-    },
     "xgboost.gbtree": {
         "max_depth": "int Maximum tree depth for base learners.",
         "learning_rate": "float Boosting learning rate (xgb's \"eta\")",

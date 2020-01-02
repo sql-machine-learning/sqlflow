@@ -117,7 +117,7 @@ Considering the above example, SQLFlow should:
 Now let's sum up. Currently, each deployment of SQLFlow has been configured to use only one platform. So we assume that all the tasks of the deployment of SQLFlow on PAI will be submitted to PAI.
 When a user submits a SELECT statement as described in [Model Zoo Background](model_zoo.md#Background), SQLFlow should take the following actions:
 
-1. SQLFlow Checks whether the entity after `TO TRAIN/PREDICT/ANALYZE` is from a SQLFlow model zoo. For example, `"models.sqlflow.org/sqlflow/my_awesome_model/MyAwesomeModel"` implies that the model is from model zoo `models.sqlflow.org`, and a  plain `DNNClassier` implies that the model is a premade estimator. The actual mechanism may be more complicated and is still under progress.
+1. SQLFlow Checks whether the entity after `TO TRAIN/PREDICT/EXPLAIN` is from a SQLFlow model zoo. For example, `"models.sqlflow.org/sqlflow/my_awesome_model/MyAwesomeModel"` implies that the model is from model zoo `models.sqlflow.org`, and a  plain `DNNClassier` implies that the model is a premade estimator. The actual mechanism may be more complicated and is still under progress.
 
 1. Case A: the model **is not** from a model zoo:
     - The SQLFlow server generates a submitter program and a single-file PAI program.

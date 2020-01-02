@@ -42,7 +42,7 @@ CREATE TABLE feature_derivation_case.train (
        c5 STRING,
        c6 STRING,
        class int);
-INSERT INTO feature_derivation_case.train VALUES
+INSERT INTO TABLE feature_derivation_case.train VALUES
 (6.4,2.8, '1,4,2,3', '1,3,2,6', '3,140', 'MALE', 0),
 (5.0,2.3, '1,3,8,3', '3,2,5,3', '93,12,1,392,49,13,398', 'FEMALE', 1),
 (4.9,2.5, '9,2,2,2', '1.2,4.8,3.2,1', '10,11,32,32,1', 'FEMALE', 1),

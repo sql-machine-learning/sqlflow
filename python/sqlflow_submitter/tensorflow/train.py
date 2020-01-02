@@ -12,6 +12,9 @@
 # limitations under the License.
 
 import os
+# Disable Tensorflow INFO and WARNING logs
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
 import sys, json
 import tensorflow as tf
 import functools
@@ -37,7 +40,6 @@ if int(TF_VERSION_PARTS[0]) == 1:
 if TF_VERSION_2:
     import logging
     tf.get_logger().setLevel(logging.ERROR)
-    from .hooks import PrintStatusHook
 else:
     tf.logging.set_verbosity(tf.logging.ERROR)
     from .pai_distributed import define_tf_flags, make_distributed_info_without_evaluator, dump_into_tf_config
@@ -74,17 +76,21 @@ def keras_train_and_save(estimator, model_params, save,
         loss=classifier_pkg.loss,
         metrics=keras_metrics)
     if hasattr(classifier, 'sqlflow_train_loop'):
-        classifier.sqlflow_train_loop(train_dataset)
+        def flatten(feature, label):  # TODO(shendiaomo): Modify the cluster model to adapt the new input structure
+            for k in feature:
+                feature[k] = feature[k][0]
+            return feature, [label]
+        classifier.sqlflow_train_loop(train_dataset.map(flatten))
     else:
         if label_meta["feature_name"] != "":
             history = classifier.fit(train_dataset,
-                epochs=epochs if epochs else classifier.default_training_epochs(),
-                validation_data=validate_dataset,
-                verbose=verbose)
+                                     epochs=epochs if epochs else classifier.default_training_epochs(),
+                                     validation_data=validate_dataset,
+                                     verbose=verbose)
         else:
             history = classifier.fit(train_dataset,
-                epochs=epochs if epochs else classifier.default_training_epochs(),
-                verbose=verbose)
+                                     epochs=epochs if epochs else classifier.default_training_epochs(),
+                                     verbose=verbose)
         train_keys = []
         val_keys = []
         for k in history.history.keys():
@@ -127,13 +133,7 @@ def estimator_train_and_save(estimator, model_params, save,
     if TF_VERSION_2 and metric_names != ["Accuracy"]:
         classifier = tf.estimator.add_metrics(classifier, metrics.get_tf_metrics(metric_names))
 
-    train_hooks = []
-    if verbose == 1 and TF_VERSION_2:
-        train_hooks = [PrintStatusHook("train", every_n_iter=log_every_n_iter)]
-    train_spec = tf.estimator.TrainSpec(input_fn=lambda:train_input_fn(), max_steps=train_max_steps, hooks=train_hooks)
-    eval_hooks = []
-    if verbose == 1 and TF_VERSION_2:
-        eval_hooks = [PrintStatusHook("eval", every_n_iter=log_every_n_iter)]
+    train_spec = tf.estimator.TrainSpec(input_fn=lambda:train_input_fn(), max_steps=train_max_steps)
     def validate_input_fn():
         if is_pai:
             validate_dataset = pai_maxcompute_input_fn(pai_val_table, datasource,
@@ -144,7 +144,7 @@ def estimator_train_and_save(estimator, model_params, save,
             validate_dataset = input_fn(validate_select, conn, feature_column_names, feature_metas, label_meta)
         validate_dataset = validate_dataset.batch(batch_size)
         return validate_dataset
-    eval_spec = tf.estimator.EvalSpec(input_fn=lambda:validate_input_fn(), hooks=eval_hooks, start_delay_secs=eval_start_delay_secs, throttle_secs=eval_throttle_secs)
+    eval_spec = tf.estimator.EvalSpec(input_fn=lambda:validate_input_fn(), start_delay_secs=eval_start_delay_secs, throttle_secs=eval_throttle_secs)
     result = tf.estimator.train_and_evaluate(classifier, train_spec, eval_spec)
     # FIXME(typhoonzero): find out why pai will have result == None
     if not is_pai:
@@ -174,16 +174,15 @@ def train(is_keras_model,
           pai_table="",
           pai_val_table=""):
     assert validate_select != ""
+    assert verbose >=0 and verbose <= 3
     if is_keras_model:
         if verbose == 1:
-            tf.get_logger().setLevel(logging.INFO)  # show keras training progress
-        elif verbose >= 2:
-            tf.get_logger().setLevel(logging.DEBUG)
+            tf.get_logger().setLevel((4-verbose) * 10)  # logging.INFO levels range from 10~40
     else:
-        if verbose >= 2:
-            if TF_VERSION_2:
-                tf.get_logger().setLevel(logging.INFO)
-            else:
+        if TF_VERSION_2:
+                tf.get_logger().setLevel((4-verbose) * 10)
+        else:
+            if verbose >= 2:
                 tf.logging.set_verbosity(tf.logging.INFO)
     model_params.update(feature_columns)
 

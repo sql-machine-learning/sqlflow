@@ -40,7 +40,7 @@ var defaultSuggestions = []prompt.Suggest{
 var toSuggestions = []prompt.Suggest{
 	{"TRAIN", "train a model"},
 	{"PREDICT", "predict using a trained model"},
-	{"ANALYZE", "analyze using a trained model"},
+	{"EXPLAIN", "explain using a trained model"},
 }
 
 var trainSuggestions = []prompt.Suggest{

@@ -163,9 +163,9 @@ class TestGenerator(TestCase):
             idx = 0
             for d in gen():
                 if idx == 0:
-                    self.assertEqual(d, ((1.0,), [0]))
+                    self.assertEqual(d, (((1.0,),), 0))
                 elif idx == 1:
-                    self.assertEqual(d, ((2.0,), [1]))
+                    self.assertEqual(d, (((2.0,),), 1))
                 idx += 1
             self.assertEqual(idx, 2)
 

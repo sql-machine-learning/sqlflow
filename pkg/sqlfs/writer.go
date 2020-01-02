@@ -26,7 +26,7 @@ const bufSize = 32 * 1024
 // returns a writer.
 func Create(db *sql.DB, dbms, table string, session *pb.Session) (io.WriteCloser, error) {
 	if dbms == "hive" {
-		return newHiveWriter(db, session.HiveLocation, table, session.HdfsUser, session.HdfsPass, bufSize)
+		return newHiveWriter(db, session.HiveLocation, table, session.HdfsUser, session.HdfsPass, session.HdfsNamenodeAddr, bufSize)
 	}
 	return newSQLWriter(db, dbms, table, bufSize)
 }

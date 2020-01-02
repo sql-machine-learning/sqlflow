@@ -91,7 +91,11 @@ func connectAndRunSQL(sql string) ([]string, [][]*any.Any, error) {
 }
 
 func sqlRequest(sql string) *pb.Request {
-	se := &pb.Session{Token: "user-unittest", DbConnStr: dbConnStr}
+	se := &pb.Session{
+		Token:            "user-unittest",
+		DbConnStr:        dbConnStr,
+		HdfsNamenodeAddr: os.Getenv("SQLFLOW_TEST_NAMENODE_ADDR"),
+	}
 	return &pb.Request{Sql: sql, Session: se}
 }
 
@@ -274,6 +278,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("TestShowDatabases", CaseShowDatabases)
 	t.Run("TestSelect", CaseSelect)
 	t.Run("TestTrainSQL", CaseTrainSQL)
+	t.Run("CaseTrainBoostedTreesEstimator", CaseTrainBoostedTreesEstimator)
 	t.Run("CaseTrainSQLWithMetrics", CaseTrainSQLWithMetrics)
 	t.Run("TestTextClassification", CaseTrainTextClassification)
 	t.Run("CaseTrainTextClassificationCustomLSTM", CaseTrainTextClassificationCustomLSTM)
@@ -398,14 +403,14 @@ func TestEnd2EndMaxCompute(t *testing.T) {
 	if testDBDriver != "maxcompute" {
 		t.Skip("Skip maxcompute tests")
 	}
-	AK := os.Getenv("MAXCOMPUTE_AK")
-	SK := os.Getenv("MAXCOMPUTE_SK")
-	endpoint := os.Getenv("MAXCOMPUTE_ENDPOINT")
+	AK := os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_AK")
+	SK := os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_SK")
+	endpoint := os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_ENDPOINT")
 	dbConnStr = fmt.Sprintf("maxcompute://%s:%s@%s", AK, SK, endpoint)
 	go start(modelDir, caCrt, caKey, unitTestPort, false)
 	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 
-	caseDB = os.Getenv("MAXCOMPUTE_PROJECT")
+	caseDB = os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT")
 	caseTrainTable = "sqlflow_test_iris_train"
 	caseTestTable = "sqlflow_test_iris_test"
 	casePredictTable = "sqlflow_test_iris_predict"
@@ -434,14 +439,14 @@ func TestEnd2EndMaxComputeALPS(t *testing.T) {
 	if testDBDriver != "maxcompute" {
 		t.Skip("Skip maxcompute tests")
 	}
-	AK := os.Getenv("MAXCOMPUTE_AK")
-	SK := os.Getenv("MAXCOMPUTE_SK")
-	endpoint := os.Getenv("MAXCOMPUTE_ENDPOINT")
+	AK := os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_AK")
+	SK := os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_SK")
+	endpoint := os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_ENDPOINT")
 	dbConnStr = fmt.Sprintf("maxcompute://%s:%s@%s", AK, SK, endpoint)
 
-	caseDB = os.Getenv("MAXCOMPUTE_PROJECT")
+	caseDB = os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT")
 	if caseDB == "" {
-		t.Fatalf("Must set env MAXCOMPUTE_PROJECT when testing ALPS cases (SQLFLOW_submitter=alps)!!")
+		t.Fatalf("Must set env SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT when testing ALPS cases (SQLFLOW_submitter=alps)!!")
 	}
 	err = prepareTestData(dbConnStr)
 	if err != nil {
@@ -474,14 +479,14 @@ func TestEnd2EndMaxComputeALPS(t *testing.T) {
 // 	if testDBDriver != "maxcompute" {
 // 		t.Skip("Skip maxcompute tests")
 // 	}
-// 	AK := os.Getenv("MAXCOMPUTE_AK")
-// 	SK := os.Getenv("MAXCOMPUTE_SK")
-// 	endpoint := os.Getenv("MAXCOMPUTE_ENDPOINT")
+// 	AK := os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_AK")
+// 	SK := os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_SK")
+// 	endpoint := os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_ENDPOINT")
 // 	dbConnStr = fmt.Sprintf("maxcompute://%s:%s@%s", AK, SK, endpoint)
 
-// 	caseDB = os.Getenv("MAXCOMPUTE_PROJECT")
+// 	caseDB = os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT")
 // 	if caseDB == "" {
-// 		t.Fatalf("Must set env MAXCOMPUTE_PROJECT when testing ElasticDL cases (SQLFLOW_submitter=elasticdl)!!")
+// 		t.Fatalf("Must set env SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT when testing ElasticDL cases (SQLFLOW_submitter=elasticdl)!!")
 // 	}
 // 	err = prepareTestData(dbConnStr)
 // 	if err != nil {
@@ -538,7 +543,7 @@ func TestEnd2EndMaxComputeALPS(t *testing.T) {
 // COLUMN
 // 			sepal_length, sepal_width, petal_length, petal_width
 // LABEL class
-// INTO trained_elasticdl_keras_classifier;`, os.Getenv("MAXCOMPUTE_PROJECT"), "sqlflow_test_iris_train")
+// INTO trained_elasticdl_keras_classifier;`, os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT"), "sqlflow_test_iris_train")
 // 	_, _, err := connectAndRunSQL(trainSQL)
 // 	if err != nil {
 // 		a.Fail("run trainSQL error: %v", err)
@@ -666,6 +671,22 @@ FROM %s.%s LIMIT 5;`, caseDB, casePredictTable)
 	}
 }
 
+func CaseTrainBoostedTreesEstimator(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`
+	SELECT * FROM %s.%s TO TRAIN BoostedTreesRegressor
+	WITH
+		model.n_batches_per_layer=300,
+		model.center_bias=True
+	LABEL class
+	INTO %s;
+	`, caseDB, caseTrainTable, caseInto)
+	_, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+}
+
 func CaseTrainSQLWithMetrics(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := `SELECT * FROM iris.train WHERE class!=2
@@ -683,12 +704,13 @@ INTO sqlflow_models.mytest_model;`
 		a.Fail("Run trainSQL error: %v", err)
 	}
 
+	// TODO(shendiaomo): sqlflow_models.DNNClassifier.eval_metrics_fn only works when batch_size is 1
 	kerasTrainSQL := `SELECT * FROM iris.train WHERE class!=2
 TO TRAIN sqlflow_models.DNNClassifier
 WITH
 	model.n_classes = 2,
 	model.hidden_units = [10, 10],
-	train.batch_size = 4,
+	train.batch_size = 1,
 	validation.select = "SELECT * FROM iris.test WHERE class!=2",
 	validation.metrics = "Accuracy,AUC,Precision,Recall"
 LABEL class
@@ -1095,9 +1117,9 @@ INTO sqlflow_models.my_xgb_regression_model;
 	}
 }
 
-// CaseTrainAndAnalyzeXGBoostModel is used to test training a xgboost model,
-// then analyze it
-func CaseTrainAndAnalyzeXGBoostModel(t *testing.T) {
+// CaseTrainAndExplainXGBoostModel is used to test training a xgboost model,
+// then explain it
+func CaseTrainAndExplainXGBoostModel(t *testing.T) {
 	a := assert.New(t)
 	trainStmt := `
 SELECT *
@@ -1110,7 +1132,7 @@ WITH
 LABEL target
 INTO sqlflow_models.my_xgb_regression_model;
 	`
-	analyzeStmt := `
+	explainStmt := `
 SELECT *
 FROM housing.train
 TO EXPLAIN sqlflow_models.my_xgb_regression_model
@@ -1133,7 +1155,7 @@ USING TreeExplainer;
 		a.Fail("Check if the server started successfully. %v", err)
 	}
 	ParseRow(stream)
-	stream, err = cli.Run(ctx, sqlRequest(analyzeStmt))
+	stream, err = cli.Run(ctx, sqlRequest(explainStmt))
 	if err != nil {
 		a.Fail("Check if the server started successfully. %v", err)
 	}
@@ -1212,9 +1234,9 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 	if os.Getenv("SQLFLOW_submitter") != "pai" {
 		t.Skip("Skip non PAI tests")
 	}
-	AK := os.Getenv("MAXCOMPUTE_AK")
-	SK := os.Getenv("MAXCOMPUTE_SK")
-	endpoint := os.Getenv("MAXCOMPUTE_ENDPOINT")
+	AK := os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_AK")
+	SK := os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_SK")
+	endpoint := os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_ENDPOINT")
 	dbConnStr = fmt.Sprintf("maxcompute://%s:%s@%s", AK, SK, endpoint)
 	modelDir := ""
 
@@ -1224,9 +1246,9 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 		t.Fatalf("failed to generate CA pair %v", err)
 	}
 
-	caseDB = os.Getenv("MAXCOMPUTE_PROJECT")
+	caseDB = os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT")
 	if caseDB == "" {
-		t.Fatalf("Must set env MAXCOMPUTE_PROJECT")
+		t.Fatalf("Must set env SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT")
 	}
 	caseTrainTable = "sqlflow_test_iris_train"
 	caseTestTable = "sqlflow_test_iris_test"
@@ -1270,13 +1292,13 @@ func TestEnd2EndWorkflow(t *testing.T) {
 	}
 
 	if driverName == "maxcompute" {
-		AK := os.Getenv("MAXCOMPUTE_AK")
-		SK := os.Getenv("MAXCOMPUTE_SK")
-		endpoint := os.Getenv("MAXCOMPUTE_ENDPOINT")
+		AK := os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_AK")
+		SK := os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_SK")
+		endpoint := os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_ENDPOINT")
 		dbConnStr = fmt.Sprintf("maxcompute://%s:%s@%s", AK, SK, endpoint)
-		caseDB = os.Getenv("MAXCOMPUTE_PROJECT")
+		caseDB = os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT")
 		if caseDB == "" {
-			t.Fatalf("Must set env MAXCOMPUTE_PROJECT")
+			t.Fatalf("Must set env SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT")
 		}
 		caseTrainTable = "sqlflow_test_iris_train"
 		caseTestTable = "sqlflow_test_iris_test"
@@ -1325,7 +1347,7 @@ FROM %s.%s LIMIT 5;
 	defer conn.Close()
 
 	cli := pb.NewSQLFlowClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 1800*time.Second)
 	defer cancel()
 
 	stream, err := cli.Run(ctx, &pb.Request{Sql: sqlProgram, Session: &pb.Session{DbConnStr: testDatasource}})
@@ -1353,7 +1375,9 @@ func checkWorkflow(ctx context.Context, cli pb.SQLFlowClient, stream pb.SQLFlow_
 	req := &pb.FetchRequest{
 		Job: &pb.Job{Id: workflowID},
 	}
-	for i := 0; i < 120; i++ {
+	// wait 30min for the workflow execution since it may take time to allocate enough nodes.
+	// each loop waits 3 seconds, total 600 * 3 = 1800 seconds
+	for i := 0; i < 600; i++ {
 		res, err := cli.Fetch(ctx, req)
 		if err != nil {
 			return err
@@ -1379,7 +1403,7 @@ func CaseTrainDistributedPAIArgo(t *testing.T) {
 		train.num_workers=2,
 		train.num_ps=2,
 		train.save_checkpoints_steps=20,
-		train.epoch=10,
+		train.epoch=2,
 		train.batch_size=4,
 		train.verbose=2
 	COLUMN sepal_length, sepal_width, petal_length, petal_width
@@ -1399,7 +1423,8 @@ USING %s;
 	defer conn.Close()
 
 	cli := pb.NewSQLFlowClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	// wait 30min for the workflow execution since it may take time to allocate enough nodes.
+	ctx, cancel := context.WithTimeout(context.Background(), 1800*time.Second)
 	defer cancel()
 
 	stream, err := cli.Run(ctx, &pb.Request{Sql: trainSQL, Session: &pb.Session{DbConnStr: testDatasource}})

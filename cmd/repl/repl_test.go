@@ -15,8 +15,6 @@ package main
 
 import (
 	"bufio"
-	"bytes"
-	"container/list"
 	"fmt"
 	"os"
 	"os/exec"
@@ -25,15 +23,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-
 	"github.com/stretchr/testify/assert"
 
 	prompt "github.com/c-bata/go-prompt"
-	"sqlflow.org/sqlflow/pkg/database"
-	irpb "sqlflow.org/sqlflow/pkg/proto"
-	sf "sqlflow.org/sqlflow/pkg/sql"
-	"sqlflow.org/sqlflow/pkg/sql/testdata"
 )
 
 // TODO(shendiaomo): end to end tests like sqlflowserver/main_test.go
@@ -145,7 +137,7 @@ func TestComplete(t *testing.T) {
 
 	p.InsertText(`RAIN `, false, true)
 	c = s.completer(*p.Document())
-	a.Equal(14, len(c))
+	a.Equal(11, len(c))
 
 	p.InsertText(`DNN`, false, true)
 	c = s.completer(*p.Document())
@@ -239,87 +231,6 @@ func TestStdinParser(t *testing.T) {
 	buf, e = p.Read()
 	a.Nil(e)
 	a.Equal("test multiple", string(buf))
-}
-
-func TestStdinParseOnly(t *testing.T) {
-	a := assert.New(t)
-	dataSourceStr := ""
-	var testdb *database.DB
-	var err error
-	switch os.Getenv("SQLFLOW_TEST_DB") {
-	case "mysql":
-		dataSourceStr = "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
-		testdb, err = database.OpenAndConnectDB(dataSourceStr)
-		a.NoError(err)
-		defer testdb.Close()
-		err = testdata.Popularize(testdb.DB, testdata.IrisSQL)
-		a.NoError(err)
-	case "hive":
-		dataSourceStr = "hive://root:root@127.0.0.1:10000/iris?auth=NOSASL"
-		testdb, err = database.OpenAndConnectDB(dataSourceStr)
-		a.NoError(err)
-		defer testdb.Close()
-		err = testdata.Popularize(testdb.DB, testdata.IrisHiveSQL)
-		a.NoError(err)
-	default:
-		t.Skipf("skip TestStdinParseOnly for db type: %s", os.Getenv("SQLFLOW_TEST_DB"))
-	}
-	os.Setenv("SQLFLOW_DATASOURCE", dataSourceStr)
-	var stdin bytes.Buffer
-	trainSQL := `SELECT *
-FROM iris.train
-TO TRAIN DNNClassifier
-WITH model.n_classes = 3, model.hidden_units = [10, 20], train.batch_size = 10, train.epoch = 2
-COLUMN sepal_length, sepal_width, petal_length, petal_width
-LABEL class
-INTO sqlflow_models.mymodel;`
-	_, err = testdb.Exec("CREATE DATABASE IF NOT EXISTS sqlflow_models;")
-	a.NoError(err)
-	stdin.Write([]byte(trainSQL))
-	pbtxt, err := parseSQLFromStdin(&stdin)
-	a.NoError(err)
-	pbTrain := &irpb.TrainStmt{}
-	proto.UnmarshalText(pbtxt, pbTrain)
-	a.Equal("class", pbTrain.GetLabel().GetNc().GetFieldDesc().GetName())
-
-	// run one train SQL to save the model then test predict/analyze use the model
-	sess := &irpb.Session{DbConnStr: dataSourceStr}
-	stream := sf.RunSQLProgram(trainSQL, "", sess)
-	lastResp := list.New()
-	keepSize := 10
-	for rsp := range stream.ReadAll() {
-		switch rsp.(type) {
-		case error:
-			var s []string
-			for e := lastResp.Front(); e != nil; e = e.Next() {
-				if ss, ok := e.Value.(string); ok {
-					s = append(s, ss)
-				}
-			}
-			a.Fail(strings.Join(s, "\n"))
-		}
-		lastResp.PushBack(rsp)
-		if lastResp.Len() > keepSize {
-			e := lastResp.Front()
-			lastResp.Remove(e)
-		}
-	}
-
-	stdin.Reset()
-	stdin.Write([]byte("SELECT * from iris.train TO PREDICT iris.predict.class USING sqlflow_models.mymodel;"))
-	pbtxt, err = parseSQLFromStdin(&stdin)
-	a.NoError(err)
-	pbPred := &irpb.PredictStmt{}
-	proto.UnmarshalText(pbtxt, pbPred)
-	a.Equal("class", pbPred.GetResultColumn())
-
-	stdin.Reset()
-	stdin.Write([]byte(`SELECT * from iris.train TO EXPLAIN sqlflow_models.mymodel WITH shap_summary.plot_type="bar" USING TreeExplainer;`))
-	pbtxt, err = parseSQLFromStdin(&stdin)
-	a.NoError(err)
-	pbAnalyze := &irpb.AnalyzeStmt{}
-	proto.UnmarshalText(pbtxt, pbAnalyze)
-	a.Equal("TreeExplainer", pbAnalyze.GetExplainer())
 }
 
 type testConsoleParser struct{}

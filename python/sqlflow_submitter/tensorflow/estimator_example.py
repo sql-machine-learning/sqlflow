@@ -21,6 +21,8 @@ import tensorflow as tf
 datasource = "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
 select = "SELECT * FROM iris.train;"
 validate_select = "SELECT * FROM iris.test;"
+select_binary = "SELECT * FROM iris.train WHERE class!=2;"
+validate_select_binary = "SELECT * FROM iris.test WHERE class!=2;"
 feature_column_names = [
 "sepal_length",
 "sepal_width",
@@ -65,7 +67,7 @@ label_meta = {
     "feature_name": "class",
     "dtype": "int64",
     "delimiter": "",
-    "shape": [1],
+    "shape": [],
     "is_sparse": "false" == "true"
 }
 
@@ -84,7 +86,21 @@ if __name__ == "__main__":
         save="mymodel",
         batch_size=1,
         epochs=3,
-        verbose=2)
+        verbose=0)
+    train(is_keras_model=False,
+        datasource=datasource,
+        estimator=tf.estimator.DNNClassifier,
+        select=select_binary,
+        validate_select=validate_select_binary,
+        feature_columns=feature_columns,
+        feature_column_names=feature_column_names,
+        feature_metas=feature_metas,
+        label_meta=label_meta,
+        model_params={"n_classes": 2, "hidden_units":[10,20]},
+        save="mymodel_binary",
+        batch_size=1,
+        epochs=3,
+        verbose=1)
     pred(is_keras_model=False,
         datasource=datasource,
         estimator=tf.estimator.DNNClassifier,

@@ -38,7 +38,8 @@ var submitterRegistry = map[string](Submitter){
 	// TODO(typhoonzero): add submitters like alps, elasticdl
 }
 
-func submitter() Submitter {
+// GetSubmitter returns a proper Submitter from configuations in environment variables.
+func GetSubmitter() Submitter {
 	s := submitterRegistry[envSubmitter]
 	if s == nil {
 		s = submitterRegistry["default"]
@@ -168,13 +169,16 @@ func (s *defaultSubmitter) ExecutePredict(cl *ir.PredictStmt) (e error) {
 	return e
 }
 
-func (s *defaultSubmitter) ExecuteAnalyze(cl *ir.AnalyzeStmt) error {
+func (s *defaultSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 	// NOTE(typhoonzero): model is already loaded under s.Cwd
-	if !isXGBoostModel(cl.TrainStmt.Estimator) {
-		return fmt.Errorf("unsupported model %s", cl.TrainStmt.Estimator)
+	var code string
+	var err error
+	if isXGBoostModel(cl.TrainStmt.Estimator) {
+		code, err = xgboost.Explain(cl)
+	} else {
+		code, err = tensorflow.Explain(cl)
 	}
 
-	code, err := xgboost.Analyze(cl)
 	if err != nil {
 		return err
 	}

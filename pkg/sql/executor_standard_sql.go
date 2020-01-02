@@ -41,7 +41,7 @@ func isQuery(slct string) bool {
 	if strings.HasPrefix(s, "SHOW") && (has(s, "CREATE") || has(s, "DATABASES") || has(s, "TABLES")) {
 		return true
 	}
-	if strings.HasPrefix(s, "DESCRIBE") {
+	if strings.HasPrefix(s, "DESC") || strings.HasPrefix(s, "EXPLAIN") {
 		return true
 	}
 	return false

@@ -83,7 +83,7 @@ COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.my_xgboost_model;
 `
-	testAnalyzeTreeModelSelectIris = `
+	testExplainTreeModelSelectIris = `
 SELECT * FROM iris.train
 TO EXPLAIN sqlflow_models.my_xgboost_model
 USING TreeExplainer;
@@ -153,7 +153,7 @@ func TestExecuteXGBoostClassifier(t *testing.T) {
 	a.NotPanics(func() {
 		stream := RunSQLProgram(testXGBoostTrainSelectIris, modelDir, database.GetSessionFromTestingDB())
 		a.True(goodStream(stream.ReadAll()))
-		stream = RunSQLProgram(testAnalyzeTreeModelSelectIris, modelDir, database.GetSessionFromTestingDB())
+		stream = RunSQLProgram(testExplainTreeModelSelectIris, modelDir, database.GetSessionFromTestingDB())
 		a.True(goodStream(stream.ReadAll()))
 		stream = RunSQLProgram(testXGBoostPredictIris, modelDir, database.GetSessionFromTestingDB())
 		a.True(goodStream(stream.ReadAll()))
@@ -166,7 +166,7 @@ func TestExecuteXGBoostRegression(t *testing.T) {
 	a.NotPanics(func() {
 		stream := RunSQLProgram(testXGBoostTrainSelectHousing, modelDir, database.GetSessionFromTestingDB())
 		a.True(goodStream(stream.ReadAll()))
-		stream = RunSQLProgram(testAnalyzeTreeModelSelectIris, modelDir, database.GetSessionFromTestingDB())
+		stream = RunSQLProgram(testExplainTreeModelSelectIris, modelDir, database.GetSessionFromTestingDB())
 		a.True(goodStream(stream.ReadAll()))
 		stream = RunSQLProgram(testXGBoostPredictHousing, modelDir, database.GetSessionFromTestingDB())
 		a.True(goodStream(stream.ReadAll()))
