@@ -32,9 +32,9 @@ var attributeDictionary = attribute.Dictionary{
 	"eta": {attribute.Float, float32(0.3), `[default=0.3, alias: learning_rate]
 Step size shrinkage used in update to prevents overfitting. After each boosting step, we can directly get the weights of new features, and eta shrinks the feature weights to make the boosting process more conservative.
 range: [0,1]`, attribute.Float32RangeChecker(0, 1, true, true)},
-	"num_class": {attribute.Int, 2, `Number of classes.
+	"num_class": {attribute.Int, nil, `Number of classes.
 range: [2, Infinity]`, attribute.IntLowerBoundChecker(2, true)},
-	"objective": {attribute.String, "", `Learning objective`, nil},
+	"objective": {attribute.String, nil, `Learning objective`, nil},
 	"train.num_boost_round": {attribute.Int, 10, `[default=10]
 The number of rounds for boosting.
 range: [1, Infinity]`, attribute.IntLowerBoundChecker(1, true)},

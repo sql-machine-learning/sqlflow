@@ -57,7 +57,11 @@ type Description struct {
 // FillDefaults fills default values defined in Dictionary to attrs.
 func (d Dictionary) FillDefaults(attrs map[string]interface{}) {
 	for k, v := range d {
+		// Do not fill default value for unknown type, and with nil default values.
 		if v.Type == Unknown {
+			continue
+		}
+		if v.Default == nil {
 			continue
 		}
 		_, ok := attrs[k]
