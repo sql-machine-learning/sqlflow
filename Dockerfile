@@ -26,6 +26,7 @@ COPY doc/datasets/popularize_churn.sql \
      doc/datasets/popularize_iris.sql \
      doc/datasets/popularize_boston.sql \
      doc/datasets/popularize_creditcardfraud.sql \
+     doc/datasets/popularize_imdb.sql \
      doc/datasets/create_model_db.sql \
      /docker-entrypoint-initdb.d/
 VOLUME /var/lib/mysql
