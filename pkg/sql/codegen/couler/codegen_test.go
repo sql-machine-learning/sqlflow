@@ -14,11 +14,13 @@
 package couler
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"regexp"
 	"testing"
 
+	"github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
@@ -147,7 +149,6 @@ func MockKatibTrainStmt(datasource string) ir.TrainStmt {
 	estimator := "xgboost.gbtree"
 
 	return ir.TrainStmt{
-		DataSource:       datasource,
 		Select:           "select * from iris.train;",
 		ValidationSelect: "select * from iris.test;",
 		Estimator:        estimator,

@@ -49,7 +49,7 @@ func Run(programIR ir.SQLProgram, session *pb.Session) (string, error) {
 				OriginalSQL: sqlIR.GetOriginalSQL(), IsExtendedSQL: sqlIR.IsExtended(),
 				DockerImage: defaultDockerImage}
 			r.SQLStatements = append(r.SQLStatements, sqlStmt)
-		case *ir.AnalyzeStmt:
+		case *ir.ExplainStmt:
 			sqlStmt := &sqlStatement{
 				OriginalSQL: sqlIR.GetOriginalSQL(), IsExtendedSQL: sqlIR.IsExtended(),
 				DockerImage: defaultDockerImage}
