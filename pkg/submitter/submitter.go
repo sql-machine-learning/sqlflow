@@ -14,6 +14,7 @@
 package submitter
 
 import (
+	"fmt"
 	"sort"
 
 	"sqlflow.org/sqlflow/pkg/database"
@@ -25,11 +26,21 @@ import (
 
 var submitterRegistry = make(map[string]Submitter)
 
-// Submitter submites the generated program by code generator
+// Submitter submites the Python program by code generator: `pkg/sql/codegen`
 type Submitter interface {
 	ir.Executor
-	Setup(*pipe.Writer, *database.DB, string, string, *pb.Session)
+	setup(*pipe.Writer, *database.DB, string, string, *pb.Session)
 	GetTrainStmtFromModel() bool
+}
+
+// New returns a registered submitter implementation
+func New(name string, w *pipe.Writer, db *database.DB, modelDir, cwd string, session *pb.Session) (Submitter, error) {
+	submitter, ok := submitterRegistry[name]
+	if !ok {
+		return nil, fmt.Errorf("submittter: %s has not been registered", name)
+	}
+	submitter.setup(w, db, modelDir, cwd, session)
+	return submitter, nil
 }
 
 // Register makes a submitter available by the providing name,

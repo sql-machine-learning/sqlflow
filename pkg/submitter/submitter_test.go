@@ -30,7 +30,7 @@ func (s *TestSubmitter) ExecuteTrain(cl *ir.TrainStmt) error     { return nil }
 func (s *TestSubmitter) ExecutePredict(cl *ir.PredictStmt) error { return nil }
 func (s *TestSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error { return nil }
 func (s *TestSubmitter) GetTrainStmtFromModel() bool             { return true }
-func (s *TestSubmitter) Setup(w *pipe.Writer, db *database.DB, modelDir string, cwd string, session *pb.Session) {
+func (s *TestSubmitter) setup(w *pipe.Writer, db *database.DB, modelDir string, cwd string, session *pb.Session) {
 }
 
 func TestRegister(t *testing.T) {
@@ -49,4 +49,10 @@ func TestRegister(t *testing.T) {
 
 	expected := []string{"test"}
 	a.Equal(expected, Submitters())
+
+	s, err := New("test", nil, nil, "", "", nil)
+	a.NoError(err)
+
+	_, ok := s.(*TestSubmitter)
+	a.True(ok)
 }
