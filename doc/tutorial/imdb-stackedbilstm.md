@@ -17,9 +17,9 @@ segmented by spaces. You can download the full dataset from:
 
 # Steps to Process and Train With IMDB Dataset
 
-1. Use [this](https://gist.github.com/typhoonzero/8ba94e204a1a0fb7a3348e7f5cc4c204) script
-   to download, preprocess and insert data into MySQL database.
-1. Then use the following statements to train and predict using SQLFlow:
+1. The `imdb` database is already loaded in our Docker image, or you can use [this](https://gist.github.com/typhoonzero/8ba94e204a1a0fb7a3348e7f5cc4c204) script
+   to download, preprocess and insert data into your own MySQL database.
+1. Use the following statements to train and predict using SQLFlow:
     ```sql
     %%sqlflow
     SELECT *
