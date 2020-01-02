@@ -31,8 +31,8 @@ func Explain(explainStmt *ir.ExplainStmt) (string, error) {
 	if explainStmt.Explainer != "TreeExplainer" {
 		return "", fmt.Errorf("unsupported explainer %s", explainStmt.Explainer)
 	}
-	summaryAttrs := resolveParams(explainStmt.Attributes, shapSummaryAttrPrefix)
-	jsonSummary, err := json.Marshal(summaryAttrs)
+	summaryParams := resolveParams(explainStmt.Attributes, shapSummaryAttrPrefix)
+	jsonSummary, err := json.Marshal(summaryParams)
 	if err != nil {
 		return "", err
 	}
@@ -46,11 +46,11 @@ func Explain(explainStmt *ir.ExplainStmt) (string, error) {
 	}
 
 	fr := &explainFiller{
-		DataSource:        explainStmt.DataSource,
-		DatasetSQL:        explainStmt.Select,
-		ShapSummaryParams: string(jsonSummary),
-		FieldDescJSON:     string(fm),
-		Label:             y.Name,
+		DataSource:           explainStmt.DataSource,
+		DatasetSQL:           explainStmt.Select,
+		ShapSummaryParams:    string(jsonSummary),
+		FeatureFieldMetaJSON: string(fm),
+		LabelName:            y.Name,
 	}
 	var analysis bytes.Buffer
 	if err := explainTemplate.Execute(&analysis, fr); err != nil {

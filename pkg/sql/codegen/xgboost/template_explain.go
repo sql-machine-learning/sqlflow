@@ -18,58 +18,27 @@ import (
 )
 
 type explainFiller struct {
-	DataSource        string
-	DatasetSQL        string
-	ShapSummaryParams string
-	FieldDescJSON     string
-	Label             string
+	DataSource           string
+	DatasetSQL           string
+	ShapSummaryParams    string
+	FeatureFieldMetaJSON string
+	LabelName            string
 }
 
 const explainTemplateText = `
-import xgboost
-import shap
 import json
-import matplotlib
-import matplotlib.pyplot as plt
-import pandas as pd
+from sqlflow_submitter.xgboost.explain import explain
 
-from sqlflow_submitter.db import connect_with_data_source, db_generator
+feature_field_meta = json.loads('''{{.FeatureFieldMetaJSON}}''')
+label_name = '''{{.LabelName}}'''
+summary_params = json.loads('''{{.ShapSummaryParams}}''')
 
-shap.initjs()
-
-feature_field_meta = json.loads('''{{.FieldDescJSON}}''')
-feature_column_name = [k["name"] for k in feature_field_meta]
-feature_spec = {k['name']: k for k in feature_field_meta}
-conn = connect_with_data_source('''{{.DataSource}}''')
-label_name = "{{.Label}}"
-
-summaryAttrs = json.loads('''{{.ShapSummaryParams}}''')
-
-def explainer_dataset():
-    stream = db_generator(conn.driver, conn, """{{.DatasetSQL}}""", feature_column_name, label_name, feature_spec)
-    xs = pd.DataFrame(columns=feature_column_name)
-    ys = pd.DataFrame(columns=[label_name])
-    i = 0
-    for row in stream():
-        xs.loc[i] = [item[0] for item in row[0]]
-        ys.loc[i] = row[1]
-        i += 1
-    return xs, ys
-
-X,y = explainer_dataset()
-bst = xgboost.Booster()
-bst.load_model("my_model")
-explainer = shap.TreeExplainer(bst)
-shap_values = explainer.shap_values(X)
-shap.summary_plot(shap_values, X, show=False, **summaryAttrs)
-plt.savefig('summary', bbox_inches='tight')
-
-matplotlib.use('module://plotille_backend')
-import matplotlib.pyplot as plt
-shap.summary_plot(shap_values, X, show=False, **summaryAttrs)
-import sys
-sys.stdout.isatty = lambda:True
-plt.savefig('summary', bbox_inches='tight')
+explain(
+    datasource='''{{.DataSource}}''',
+    select='''{{.DatasetSQL}}''',
+    feature_field_meta=feature_field_meta,
+    label_name=label_name,
+    summary_params=summary_params)
 `
 
 var explainTemplate = template.Must(template.New("explain").Parse(explainTemplateText))
