@@ -305,7 +305,7 @@ func TestHiveFeatureDerivation(t *testing.T) {
 		Attributes:       map[string]interface{}{},
 		Features:         map[string][]ir.FeatureColumn{},
 		Label:            &ir.NumericColumn{&ir.FieldDesc{"class", ir.Int, "", []int{1}, false, nil, 0}}}
-	e := InferFeatureColumns(trainStmt, "mysql://root:root@tcp/?maxAllowedPacket=0")
+	e := InferFeatureColumns(trainStmt, database.GetTestingDBSingleton().URL())
 	a.NoError(e)
 	a.Equal(4, len(trainStmt.Features["feature_columns"]))
 }
