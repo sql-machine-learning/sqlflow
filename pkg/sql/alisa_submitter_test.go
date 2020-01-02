@@ -1,4 +1,4 @@
-// Copyright 2019 The SQLFlow Authors. All rights reserved.
+// Copyright 2020 The SQLFlow Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -11,25 +11,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package database
+package sql
 
 import (
-	"database/sql"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func TestDatabaseParseURL(t *testing.T) {
+func TestAlisaSubmitter(t *testing.T) {
 	a := assert.New(t)
-	driver, dataSource, e := ParseURL(testingMySQLURL())
-	a.EqualValues(driver, "mysql")
-	a.EqualValues(dataSource, "root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0")
-	a.NoError(e)
-}
-
-func TestDriverList(t *testing.T) {
-	a := assert.New(t)
-	expected := []string{"alisa", "hive", "maxcompute", "mysql"}
-	a.EqualValues(expected, sql.Drivers())
+	os.Setenv("SQLFLOW_submitter", "alisa")
+	defer os.Setenv("SQLFLOW_submitter", "")
+	_, ok := GetSubmitter().(*alisaSubmitter)
+	a.True(ok)
 }
