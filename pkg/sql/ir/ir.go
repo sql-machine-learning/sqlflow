@@ -186,6 +186,8 @@ type ExplainStmt struct {
 	Attributes map[string]interface{}
 	// Explainer types. For example TreeExplainer.
 	Explainer string
+	// Into stores the model explain result. Note that this field is optional.
+	Into string
 	// TrainStmt is the TrainStmt used for generating the training job of the corresponding model
 	TrainStmt *TrainStmt
 }

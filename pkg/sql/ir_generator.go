@@ -307,6 +307,7 @@ func generateExplainStmt(slct *parser.SQLFlowSelectStmt, connStr, modelDir strin
 		Attributes: attrs,
 		Explainer:  slct.Explainer,
 		TrainStmt:  trainStmt,
+		Into:       slct.Into,
 	}
 
 	if getTrainStmtFromModel {
