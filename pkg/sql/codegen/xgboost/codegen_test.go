@@ -25,6 +25,7 @@ import (
 func TestAttributes(t *testing.T) {
 	a := assert.New(t)
 	a.Equal(5, len(attributeDictionary))
+	a.Equal(27, len(fullAttrValidator))
 }
 
 func TestTrainAndPredict(t *testing.T) {
