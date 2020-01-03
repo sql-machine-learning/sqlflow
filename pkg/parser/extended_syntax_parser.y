@@ -99,7 +99,7 @@ type ExplainClause struct {
 	ExplainAttrs Attributes
 	TrainedModel string
 	Explainer    string
-	Into         string
+	ExplainInto         string
 }
 
 var parseResult *SQLFlowSelectStmt
@@ -261,9 +261,9 @@ predict_clause
 
 explain_clause
 : TO EXPLAIN IDENT USING IDENT { $$.TrainedModel = $3; $$.Explainer = $5 }
-| TO EXPLAIN IDENT USING IDENT INTO IDENT { $$.TrainedModel = $3; $$.Explainer = $5; $$.Into = $7 }
+| TO EXPLAIN IDENT USING IDENT INTO IDENT { $$.TrainedModel = $3; $$.Explainer = $5; $$.ExplainInto = $7 }
 | TO EXPLAIN IDENT WITH attrs USING IDENT { $$.TrainedModel = $3; $$.ExplainAttrs = $5; $$.Explainer = $7 }
-| TO EXPLAIN IDENT WITH attrs USING IDENT INTO IDENT { $$.TrainedModel = $3; $$.ExplainAttrs = $5; $$.Explainer = $7; $$.Into = $9 }
+| TO EXPLAIN IDENT WITH attrs USING IDENT INTO IDENT { $$.TrainedModel = $3; $$.ExplainAttrs = $5; $$.Explainer = $7; $$.ExplainInto = $9 }
 ;
 
 column_clause
