@@ -21,7 +21,7 @@ import (
 // DocGenInMarkdown generates the doc of the XGBoost in Markdown format.
 func DocGenInMarkdown() string {
 	var doc bytes.Buffer
-	docTemplate.Execute(&doc, attributeDictionary.GenerateTableInHTML())
+	docTemplate.Execute(&doc, fullAttrValidator.GenerateTableInHTML())
 
 	return doc.String()
 }

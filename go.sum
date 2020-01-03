@@ -129,6 +129,7 @@ github.com/google/gofuzz v1.0.0 h1:A8PeW59pxE9IoFRqBp37U+mSNaQoZ46F1f0f863XSXw=
 github.com/google/gofuzz v1.0.0/go.mod h1:dBl0BpW6vV/+mYPU4Po3pmUjxk6FQPldtuIdl/M65Eg=
 github.com/google/shlex v0.0.0-20181106134648-c34317bd91bf/go.mod h1:RpwtwJQFrIEPstU94h88MWPXP2ektJZ8cZ0YntAmXiE=
 github.com/google/uuid v1.0.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
+github.com/google/uuid v1.1.1 h1:Gkbcsh/GbpXz7lPftLA3P6TYMwjCLYm83jiFQZF/3gY=
 github.com/google/uuid v1.1.1/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/googleapis/gnostic v0.0.0-20170729233727-0c5108395e2d/go.mod h1:sJBsCZ4ayReDTBIg8b9dl28c5xFWyhBTVRp3pOg5EKY=
 github.com/gorilla/context v0.0.0-20160226214623-1ea25387ff6f/go.mod h1:kBGZzfjB9CEq2AlWe17Uuf7NDRt0dE0s8S51q0aT7Yg=
@@ -489,6 +490,8 @@ sigs.k8s.io/structured-merge-diff v0.0.0-20190525122527-15d366b2352e/go.mod h1:w
 sigs.k8s.io/yaml v1.1.0/go.mod h1:UJmg0vDUVViEyp3mgSv9WPwZCDxu4rQW1olrI1uml+o=
 sourcegraph.com/sourcegraph/appdash v0.0.0-20180531100431-4c381bd170b4/go.mod h1:hI742Nqp5OhwiqlzhgfbWU4mW4yO10fP+LoT9WOswdU=
 sourcegraph.com/sourcegraph/appdash-data v0.0.0-20151005221446-73f23eafcf67/go.mod h1:L5q+DGLGOQFpo1snNEkLOJT2d1YTW66rWNzatr3He1k=
+sqlflow.org/goalisa v0.0.0-20200102084343-1d6bdf1016f5 h1:O2LQOgzRYWTg5zeWEBQxJDJttYz1pw6l85Pd+BkzTs4=
+sqlflow.org/goalisa v0.0.0-20200102084343-1d6bdf1016f5/go.mod h1:LV+g0REt+Th85EutzxbJa1W2GAH0IhNcXT9VLco7eVo=
 sqlflow.org/gohive v0.0.0-20191009030413-2b2325ce8b38 h1:AIJwoPuFBMLtiivuvZdqvdvFQ+xTo22WJAymcG6FX50=
 sqlflow.org/gohive v0.0.0-20191009030413-2b2325ce8b38/go.mod h1:IudT38uGbK5q+Ztx2AsZDzjc04yBsIOUtIDMh/WSJkk=
 sqlflow.org/gomaxcompute v0.0.0-20191028113124-e214922c510c h1:rbxu1RC8cU8zkEr5CE8Oc6kmvMyXcGoaMr0J5gOARMw=

@@ -29,19 +29,20 @@ import (
 // model parameter list: https://xgboost.readthedocs.io/en/latest/parameter.html#general-parameters
 // training parameter list: https://github.com/dmlc/xgboost/blob/b61d53447203ca7a321d72f6bdd3f553a3aa06c4/python-package/xgboost/training.py#L115-L117
 var attributeDictionary = attribute.Dictionary{
-	"eta": {attribute.Float, `[default=0.3, alias: learning_rate]
+	"eta": {attribute.Float, float32(0.3), `[default=0.3, alias: learning_rate]
 Step size shrinkage used in update to prevents overfitting. After each boosting step, we can directly get the weights of new features, and eta shrinks the feature weights to make the boosting process more conservative.
 range: [0,1]`, attribute.Float32RangeChecker(0, 1, true, true)},
-	"num_class": {attribute.Int, `Number of classes.
+	"num_class": {attribute.Int, nil, `Number of classes.
 range: [2, Infinity]`, attribute.IntLowerBoundChecker(2, true)},
-	"objective": {attribute.String, `Learning objective`, nil},
-	"train.num_boost_round": {attribute.Int, `[default=10]
+	"objective": {attribute.String, nil, `Learning objective`, nil},
+	"train.num_boost_round": {attribute.Int, 10, `[default=10]
 The number of rounds for boosting.
 range: [1, Infinity]`, attribute.IntLowerBoundChecker(1, true)},
-	"validation.select": {attribute.String, `[default=""]
+	"validation.select": {attribute.String, "", `[default=""]
 Specify the dataset for validation.
 example: "SELECT * FROM boston.train LIMIT 8"`, nil},
 }
+var fullAttrValidator = attribute.Dictionary{}
 
 func resolveModelType(estimator string) (string, error) {
 	switch strings.ToUpper(estimator) {
@@ -57,7 +58,8 @@ func resolveModelType(estimator string) (string, error) {
 }
 
 func parseAttribute(attrs map[string]interface{}) (map[string]map[string]interface{}, error) {
-	if err := attributeDictionary.Validate(attrs); err != nil {
+	attributeDictionary.FillDefaults(attrs)
+	if err := fullAttrValidator.Validate(attrs); err != nil {
 		return nil, err
 	}
 
@@ -97,7 +99,7 @@ func getFieldDesc(fcs []ir.FeatureColumn, l ir.FeatureColumn) ([]ir.FieldDesc, i
 }
 
 // Train generates a Python program for train a XgBoost model.
-func Train(trainStmt *ir.TrainStmt) (string, error) {
+func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 	params, err := parseAttribute(trainStmt.Attributes)
 	if err != nil {
 		return "", err
@@ -132,7 +134,7 @@ func Train(trainStmt *ir.TrainStmt) (string, error) {
 		return "", err
 	}
 	r := trainFiller{
-		DataSource:       trainStmt.DataSource,
+		DataSource:       session.DbConnStr,
 		TrainSelect:      trainStmt.Select,
 		ValidationSelect: trainStmt.ValidationSelect,
 		ModelParamsJSON:  string(mp),
@@ -164,7 +166,7 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 	}
 
 	r := predFiller{
-		DataSource:       predStmt.DataSource,
+		DataSource:       session.DbConnStr,
 		PredSelect:       predStmt.Select,
 		FeatureMetaJSON:  string(f),
 		LabelMetaJSON:    string(l),
@@ -186,8 +188,8 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 func init() {
 	re := regexp.MustCompile("[^a-z]")
 	// xgboost.gbtree, xgboost.dart, xgboost.gblinear share the same parameter set
-	modelAttrs := attribute.NewDictionary("xgboost.gbtree", "")
-	for _, v := range modelAttrs {
+	fullAttrValidator = attribute.NewDictionaryFromModelDefinition("xgboost.gbtree", "")
+	for _, v := range fullAttrValidator {
 		pieces := strings.SplitN(v.Doc, " ", 2)
 		maybeType := re.ReplaceAllString(pieces[0], "")
 		if maybeType == strings.ToLower(maybeType) {
@@ -202,5 +204,5 @@ func init() {
 			v.Doc = pieces[1]
 		}
 	}
-	attributeDictionary = modelAttrs.Update(attributeDictionary)
+	fullAttrValidator.Update(attributeDictionary)
 }

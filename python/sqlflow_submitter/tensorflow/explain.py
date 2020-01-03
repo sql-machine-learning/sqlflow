@@ -43,6 +43,7 @@ else:
     tf.logging.set_verbosity(tf.logging.ERROR)
     from .pai_distributed import define_tf_flags
 
+
 def explain(datasource, estimator_cls, select, feature_columns, feature_column_names,
             feature_metas={}, label_meta={}, model_params={}, save="", is_pai=False, plot_type='bar'):
     if is_pai:
@@ -53,61 +54,69 @@ def explain(datasource, estimator_cls, select, feature_columns, feature_column_n
 
     def _input_fn():
         if is_pai:
-            dataset = pai_maxcompute_input_fn(pai_table, datasource, feature_column_names, feature_metas, label_meta)
+            dataset = pai_maxcompute_input_fn(
+                pai_table, datasource, feature_column_names, feature_metas, label_meta)
         else:
             conn = connect_with_data_source(datasource)
-            dataset = input_fn(select, conn, feature_column_names, feature_metas, label_meta)
+            dataset = input_fn(
+                select, conn, feature_column_names, feature_metas, label_meta)
         return dataset.batch(1).cache()
 
     model_params.update(feature_columns)
     estimator = estimator_cls(**model_params)
-    result = estimator.experimental_predict_with_explanations(lambda:_input_fn())
+    result = estimator.experimental_predict_with_explanations(
+        lambda: _input_fn())
     pred_dicts = list(result)
     df_dfc = pd.DataFrame([pred['dfc'] for pred in pred_dicts])
     eval(plot_type)(df_dfc)
 
 # The following code is generally base on
 # https://www.tensorflow.org/tutorials/estimator/boosted_trees_model_understanding
+
+
 def bar(df_dfc):
     import matplotlib.pyplot as plt
 
     # Plot.
     dfc_mean = df_dfc.abs().mean()
     N = 8  # View top 8 features.
-    sorted_ix = dfc_mean.abs().sort_values()[-N:].index  # Average and sort by absolute.
+    # Average and sort by absolute.
+    sorted_ix = dfc_mean.abs().sort_values()[-N:].index
     ax = dfc_mean[sorted_ix].plot(kind='barh',
                                   color=sns_colors[1],
                                   title='Mean |directional feature contributions|',
                                   figsize=(15, 9))
     ax.grid(False, axis='y')
 
-    plt.savefig('summary', bbox_inches='tight') 
+    plt.savefig('summary', bbox_inches='tight')
 
-    matplotlib.use('module://plotille_backend')
+    matplotlib.use('module://plotille_text_backend')
     import matplotlib.pyplot as plt
     import sys
-    sys.stdout.isatty = lambda:True
+    sys.stdout.isatty = lambda: True
     plt.savefig('summary', bbox_inches='tight')
+
 
 def violin(df_dfc):
     import matplotlib.pyplot as plt
 
     # Initialize plot.
     fig, ax = plt.subplots(1, 1, figsize=(15, 9))
-  
+
     # Plot.
     dfc_mean = df_dfc.abs().mean()
     N = 10  # View top 8 features.
-    sorted_ix = dfc_mean.abs().sort_values()[-N:].index  # Average and sort by absolute.
-  
+    # Average and sort by absolute.
+    sorted_ix = dfc_mean.abs().sort_values()[-N:].index
+
     # Add contributions of entire distribution.
-    parts=ax.violinplot([df_dfc[w] for w in sorted_ix],
-                        vert=False,
-                        showextrema=False,
-                        showmeans=False,
-                        showmedians=False,
-                        widths=0.7,
-                        positions=np.arange(len(sorted_ix)))
+    parts = ax.violinplot([df_dfc[w] for w in sorted_ix],
+                          vert=False,
+                          showextrema=False,
+                          showmeans=False,
+                          showmedians=False,
+                          widths=0.7,
+                          positions=np.arange(len(sorted_ix)))
     plt.setp(parts['bodies'], facecolor='darkblue', edgecolor='black')
     ax.set_yticks(np.arange(len(sorted_ix)))
     ax.set_yticklabels(sorted_ix, size=16)
@@ -115,12 +124,12 @@ def violin(df_dfc):
     ax.grid(False, axis='y')
     ax.grid(True, axis='x')
 
-    plt.savefig('summary', bbox_inches='tight') 
+    plt.savefig('summary', bbox_inches='tight')
 
-    matplotlib.use('module://plotille_backend')
+    matplotlib.use('module://plotille_text_backend')
     import matplotlib.pyplot as plt
     import sys
-    sys.stdout.isatty = lambda:True
+    sys.stdout.isatty = lambda: True
     plt.savefig('summary', bbox_inches='tight')
 
 
@@ -128,8 +137,10 @@ def violin(df_dfc):
 def _get_color(value):
     """To make positive DFCs plot green, negative DFCs plot red."""
     green, red = sns.color_palette()[2:4]
-    if value >= 0: return green
+    if value >= 0:
+        return green
     return red
+
 
 def _add_feature_values(feature_values, ax):
     """Display feature's values on left of plot."""
@@ -142,4 +153,4 @@ def _add_feature_values(feature_values, ax):
     font = FontProperties()
     font.set_weight('bold')
     t = plt.text(x_coord, y_coord + 1 - OFFSET, 'feature\nvalue',
-    fontproperties=font, size=12)
+                 fontproperties=font, size=12)

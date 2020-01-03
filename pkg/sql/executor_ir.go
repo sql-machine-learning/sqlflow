@@ -94,7 +94,7 @@ func SubmitWorkflow(sqlProgram string, modelDir string, session *pb.Session) *pi
 }
 
 func submitWorkflow(wr *pipe.Writer, sqlProgram string, modelDir string, session *pb.Session) error {
-	driverName, dataSourceName, err := database.ParseURL(session.DbConnStr)
+	driverName, _, err := database.ParseURL(session.DbConnStr)
 	if err != nil {
 		return err
 	}
@@ -110,15 +110,14 @@ func submitWorkflow(wr *pipe.Writer, sqlProgram string, modelDir string, session
 	spIRs := []ir.SQLStatement{}
 	for _, sql := range sqls {
 		var r ir.SQLStatement
-		connStr := fmt.Sprintf("%s://%s", driverName, dataSourceName)
 		if parser.IsExtendedSyntax(sql) {
 			if sql.Train {
-				r, err = generateTrainStmt(sql.SQLFlowSelectStmt, connStr)
+				r, err = generateTrainStmt(sql.SQLFlowSelectStmt)
 			} else if sql.Explain {
 				// since getTrainStmtFromModel is false, use empty cwd is fine.
-				r, err = generateExplainStmt(sql.SQLFlowSelectStmt, connStr, modelDir, "", false)
+				r, err = generateExplainStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, "", false)
 			} else {
-				r, err = generatePredictStmt(sql.SQLFlowSelectStmt, connStr, modelDir, "", false)
+				r, err = generatePredictStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, "", false)
 			}
 		} else {
 			standardSQL := ir.StandardSQL(sql.Standard)
@@ -175,14 +174,13 @@ func runSQLProgram(wr *pipe.Writer, sqlProgram string, db *database.DB, modelDir
 			return os.RemoveAll(cwd)
 		}
 		var r ir.SQLStatement
-		connStr := db.URL()
 		if parser.IsExtendedSyntax(sql) {
 			if sql.Train {
-				r, err = generateTrainStmtWithInferredColumns(sql.SQLFlowSelectStmt, connStr, true)
+				r, err = generateTrainStmtWithInferredColumns(sql.SQLFlowSelectStmt, session.DbConnStr, true)
 			} else if sql.Explain {
-				r, err = generateExplainStmt(sql.SQLFlowSelectStmt, connStr, modelDir, cwd, GetSubmitter().GetTrainStmtFromModel())
+				r, err = generateExplainStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, GetSubmitter().GetTrainStmtFromModel())
 			} else {
-				r, err = generatePredictStmt(sql.SQLFlowSelectStmt, connStr, modelDir, cwd, GetSubmitter().GetTrainStmtFromModel())
+				r, err = generatePredictStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, GetSubmitter().GetTrainStmtFromModel())
 			}
 		} else {
 			standardSQL := ir.StandardSQL(sql.Standard)

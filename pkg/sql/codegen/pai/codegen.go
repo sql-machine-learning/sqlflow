@@ -21,6 +21,7 @@ import (
 	"strings"
 	"text/template"
 
+	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
@@ -116,18 +117,18 @@ func getClusterConfig(attrs map[string]interface{}) (*clusterConfig, error) {
 }
 
 // Train generates a Python program for train a TensorFlow model.
-func Train(ir *ir.TrainStmt, modelName, cwd string) (string, error) {
+func Train(ir *ir.TrainStmt, session *pb.Session, modelName, cwd string) (string, error) {
 	cc, err := getClusterConfig(ir.Attributes)
-	program, err := tfTrainAndSave(ir, modelName)
+	program, err := tfTrainAndSave(ir, session, modelName)
 	if err != nil {
 		return "", err
 	}
-	return wrapper(program, ir.DataSource, modelName, cwd,
+	return wrapper(program, session.DbConnStr, modelName, cwd,
 		ir.TmpTrainTable, ir.TmpValidateTable, cc)
 }
 
-func tfTrainAndSave(ir *ir.TrainStmt, modelName string) (string, error) {
-	code, err := tensorflow.Train(ir)
+func tfTrainAndSave(ir *ir.TrainStmt, session *pb.Session, modelName string) (string, error) {
+	code, err := tensorflow.Train(ir, session)
 	if err != nil {
 		return "", err
 	}
@@ -152,20 +153,20 @@ func tfTrainAndSave(ir *ir.TrainStmt, modelName string) (string, error) {
 }
 
 // Predict generates a Python program for train a TensorFlow model.
-func Predict(ir *ir.PredictStmt, modelName, cwd string) (string, error) {
+func Predict(ir *ir.PredictStmt, session *pb.Session, modelName, cwd string) (string, error) {
 	cc, err := getClusterConfig(ir.Attributes)
 	if err != nil {
 		return "", err
 	}
-	program, err := tfLoadAndPredict(ir, modelName)
+	program, err := tfLoadAndPredict(ir, session, modelName)
 	if err != nil {
 		return "", err
 	}
-	return wrapper(program, ir.DataSource, modelName, cwd,
+	return wrapper(program, session.DbConnStr, modelName, cwd,
 		ir.TmpPredictTable, "", cc)
 }
 
-func tfLoadAndPredict(ir *ir.PredictStmt, modelName string) (string, error) {
+func tfLoadAndPredict(ir *ir.PredictStmt, session *pb.Session, modelName string) (string, error) {
 	var tpl = template.Must(template.New("Predict").Parse(tfPredictTmplText))
 	ossModelDir, err := formatCkptDir(modelName)
 	if err != nil {
@@ -173,7 +174,7 @@ func tfLoadAndPredict(ir *ir.PredictStmt, modelName string) (string, error) {
 	}
 	filler := predictFiller{
 		OSSModelDir: ossModelDir,
-		DataSource:  ir.DataSource,
+		DataSource:  session.DbConnStr,
 		Select:      ir.Select,
 		ResultTable: ir.ResultTable,
 	}

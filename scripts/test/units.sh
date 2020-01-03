@@ -35,4 +35,7 @@ go install ./...
 # set test timeout to 900s since travis CI may be slow to run the case TestParse
 SQLFLOW_log_level=debug gotest -v -p 1 -timeout 900s ./...  -covermode=count -coverprofile=coverage.out
 
+for f in /docker-entrypoint-initdb.d/*; do
+  cat $f | mysql -uroot -proot --host 127.0.0.1 --port 3306
+done
 python -m unittest discover -v python "*_test.py"

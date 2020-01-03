@@ -20,6 +20,7 @@ import (
 
 	// import drivers for heterogenous DB support
 	_ "github.com/go-sql-driver/mysql"
+	_ "sqlflow.org/goalisa"
 	_ "sqlflow.org/gohive"
 	_ "sqlflow.org/gomaxcompute"
 )

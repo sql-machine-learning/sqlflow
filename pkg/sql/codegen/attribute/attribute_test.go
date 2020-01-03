@@ -33,7 +33,7 @@ func TestDictionaryValidate(t *testing.T) {
 		}
 		return nil
 	}
-	tb := Dictionary{"a": {Int, "attribute a", checker}}
+	tb := Dictionary{"a": {Int, 1, "attribute a", checker}}
 	a.NoError(tb.Validate(map[string]interface{}{"a": 1}))
 	a.EqualError(tb.Validate(map[string]interface{}{"a": -1}), "some error")
 	a.EqualError(tb.Validate(map[string]interface{}{"_a": -1}), fmt.Sprintf(errUnsupportedAttribute, "_a"))
@@ -60,8 +60,8 @@ func TestPremadeModelParamsDocs(t *testing.T) {
 func TestNewAndUpdateDictionary(t *testing.T) {
 	a := assert.New(t)
 
-	commonAttrs := Dictionary{"a": {Int, "attribute a", nil}}
-	specificAttrs := NewDictionary("DNNClassifier", "model.")
+	commonAttrs := Dictionary{"a": {Int, 1, "attribute a", nil}}
+	specificAttrs := NewDictionaryFromModelDefinition("DNNClassifier", "model.")
 	a.Equal(len(specificAttrs), 12)
 	a.Equal(len(specificAttrs.Update(specificAttrs)), 12)
 	a.Equal(len(specificAttrs.Update(commonAttrs)), 13)
@@ -76,10 +76,10 @@ func TestNewAndUpdateDictionary(t *testing.T) {
 func TestDictionary_GenerateTableInHTML(t *testing.T) {
 	a := assert.New(t)
 	tb := Dictionary{
-		"a": {Int, `this is a
+		"a": {Int, 1, `this is a
 multiple line
 doc string.`, nil},
-		"世界": {String, `42`, nil},
+		"世界": {String, "", `42`, nil},
 	}
 	expected := `<table>
 <tr>
