@@ -1,4 +1,4 @@
-// Copyright 2019 The SQLFlow Authors. All rights reserved.
+// Copyright 2020 The SQLFlow Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -14,16 +14,16 @@
 package sql
 
 import (
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func TestSubmitterRegistry(t *testing.T) {
+func TestAlisaSubmitter(t *testing.T) {
 	a := assert.New(t)
-	a.Equal(3, len(submitterRegistry))
-	a.NotNil(submitterRegistry["pai"])
-	a.NotNil(submitterRegistry["default"])
-	a.NotNil(submitterRegistry["alisa"])
-	a.Equal(GetSubmitter(), submitterRegistry["default"])
+	os.Setenv("SQLFLOW_submitter", "alisa")
+	defer os.Setenv("SQLFLOW_submitter", "")
+	_, ok := GetSubmitter().(*alisaSubmitter)
+	a.True(ok)
 }
