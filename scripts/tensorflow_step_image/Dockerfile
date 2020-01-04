@@ -9,7 +9,7 @@ deb http://cn.archive.ubuntu.com/ubuntu/ bionic-proposed main restricted univers
 deb http://cn.archive.ubuntu.com/ubuntu/ bionic-backports main restricted universe multiverse \n\
 ' > /etc/apt/sources.list
 
-RUN apt-get -qq update && apt-get -qq install -y openjdk-8-jdk maven wget unzip
+RUN apt-get -qq update && apt-get install -y openjdk-8-jdk maven wget unzip > /dev/null
 
 RUN wget -q http://docs-aliyun.cn-hangzhou.oss.aliyun-inc.com/assets/attach/119096/cn_zh/1557995455961/odpscmd_public.zip && \
 unzip -qq odpscmd_public.zip -d /usr/local/odpscmd && \
@@ -21,12 +21,11 @@ ADD parser-1.0-SNAPSHOT-jar-with-dependencies.jar /opt/sqlflow/parser/
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN ln -sf /usr/share/zoneinfo/Etc/UTC /etc/localtime && \
-apt-get -qq install -y tzdata && \
+apt-get install -y tzdata > /dev/null && \
 dpkg-reconfigure --frontend noninteractive tzdata
 
 # install python
-RUN apt-get -qq install -y build-essential
-RUN apt-get -qq install -y curl
+RUN apt-get install -y build-essential curl > /dev/null
 
 RUN curl -sL https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -o mconda-install.sh && \
 bash -x mconda-install.sh -b -p miniconda && \
@@ -36,7 +35,7 @@ RUN /miniconda/bin/conda create -y -q -n sqlflow-dev python=3.6 && \
 echo ". /miniconda/etc/profile.d/conda.sh" >> ~/.bashrc && \
 echo "source activate sqlflow-dev" >> ~/.bashrc
 
-RUN apt-get -qq install -y libmysqlclient-dev
+RUN apt-get install -y libmysqlclient-dev > /dev/null
 
 RUN bash -c "source /miniconda/bin/activate sqlflow-dev && python -m pip install numpy==1.16.1 tensorflow==2.0.0b1 mysqlclient==1.4.4 impyla==0.16.0 pyodps==0.8.3"
 ENV PATH /miniconda/envs/sqlflow-dev/bin:/miniconda/bin:$PATH
