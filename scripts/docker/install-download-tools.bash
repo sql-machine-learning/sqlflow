@@ -15,4 +15,4 @@
 
 set -e
 
-apt-get install -y curl wget unzip git
+apt-get -qq install -y curl wget unzip git

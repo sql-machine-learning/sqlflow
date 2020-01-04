@@ -15,5 +15,5 @@
 
 set -e
 
-apt-get update && apt-get install -y openjdk-8-jdk maven
+apt-get -qq update && apt-get -qq install -y openjdk-8-jdk maven
 

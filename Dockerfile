@@ -9,7 +9,7 @@ deb http://us.archive.ubuntu.com/ubuntu/ bionic-proposed main restricted univers
 deb http://us.archive.ubuntu.com/ubuntu/ bionic-backports main restricted universe multiverse \n\
 ' > /etc/apt/sources.list
 
-RUN apt-get update
+RUN apt-get -qq update
 
 # Install wget, curl, unzip, bzip2, git
 COPY scripts/docker/install-download-tools.bash /

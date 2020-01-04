@@ -5,6 +5,6 @@
 # Docker image from Ubuntu instead of Oracle Linux.
 FROM ubuntu:18.04
 
-RUN apt-get update && apt-get install -y openjdk-8-jdk maven openjfx
+RUN apt-get -qq update && apt-get -qq install -y openjdk-8-jdk maven openjfx
 ENV JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
 
