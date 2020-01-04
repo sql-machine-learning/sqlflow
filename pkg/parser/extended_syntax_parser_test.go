@@ -235,6 +235,35 @@ USING TreeExplainer;`
 	a.Equal("TreeExplainer", r.Explainer)
 }
 
+func TestExtendedSyntaxParseToExplainInto(t *testing.T) {
+	a := assert.New(t)
+	s := `TO EXPLAIN my_model
+WITH plots = force
+USING TreeExplainer
+INTO db.table;`
+	r, idx, e := parseSQLFlowStmt(s)
+	a.Equal(len(s), idx) // right before ; due to the end_of_stmt syntax rule.
+	a.NoError(e)
+	a.True(r.Extended)
+	a.True(r.Explain)
+	a.Equal("db.table", r.ExplainInto)
+	a.Equal("TreeExplainer", r.Explainer)
+}
+
+func TestExtendedSyntaxParseToExplainIntoNoWith(t *testing.T) {
+	a := assert.New(t)
+	s := `TO EXPLAIN my_model
+USING TreeExplainer
+INTO db.table;`
+	r, idx, e := parseSQLFlowStmt(s)
+	a.Equal(len(s), idx) // right before ; due to the end_of_stmt syntax rule.
+	a.NoError(e)
+	a.True(r.Extended)
+	a.True(r.Explain)
+	a.Equal("db.table", r.ExplainInto)
+	a.Equal("TreeExplainer", r.Explainer)
+}
+
 func TestExtendedSyntaxParseSelectStarAndPrint(t *testing.T) {
 	a := assert.New(t)
 	s := `SELECT *, b FROM a LIMIT 10  ;  `

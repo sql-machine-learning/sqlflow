@@ -270,6 +270,25 @@ INTO sqlflow_models.my_xgboost_model;
 	nc, ok := ExplainStmt.TrainStmt.Features["feature_columns"][0].(*ir.NumericColumn)
 	a.True(ok)
 	a.Equal("sepal_length", nc.FieldDesc.Name)
+
+	pr, e = parser.LegacyParse(`
+	SELECT *
+	FROM iris.train
+	TO EXPLAIN sqlflow_models.my_xgboost_model
+	WITH
+	    shap_summary.plot_type="bar",
+	    shap_summary.alpha=1,
+	    shap_summary.sort=True
+	USING TreeExplainer
+	INTO db.explain_result;
+	`)
+	a.NoError(e)
+
+	ExplainIntoStmt, e := generateExplainStmt(pr, connStr, modelDir, cwd, true)
+	a.NoError(e)
+	a.Equal(ExplainIntoStmt.Explainer, "TreeExplainer")
+	a.Equal(len(ExplainIntoStmt.Attributes), 3)
+	a.Equal("db.explain_result", ExplainIntoStmt.Into)
 }
 
 func TestInferStringValue(t *testing.T) {
