@@ -28,7 +28,7 @@ func TestDatabaseParseURL(t *testing.T) {
 	a.NoError(e)
 }
 
-func TestDriverList(t *testing.T) {
+func TestDatabaseDriverList(t *testing.T) {
 	a := assert.New(t)
 	expected := []string{"alisa", "hive", "maxcompute", "mysql"}
 	a.EqualValues(expected, sql.Drivers())
