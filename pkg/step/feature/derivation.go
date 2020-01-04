@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package featurederivation
+package feature
 
 import (
 	"database/sql"
@@ -42,18 +42,18 @@ func decomp(ident string) (tbl string, fld string) {
 	return ident[0:idx], ident[idx+1:]
 }
 
-// FeatureColumnMap is like: target -> key -> []FeatureColumn
+// ColumnMap is like: target -> key -> []FeatureColumn
 // one column's data can be used by multiple feature columns, e.g.
 // EMBEDDING(c1), CROSS(c1, c2)
-type FeatureColumnMap map[string]map[string][]ir.FeatureColumn
+type ColumnMap map[string]map[string][]ir.FeatureColumn
 
 // FieldDescMap is a mapping from column name to ColumnSpec struct
 type FieldDescMap map[string]*ir.FieldDesc
 
-// makeFeatureColumnMap returns a map from column key to FeatureColumn
+// makeColumnMap returns a map from column key to FeatureColumn
 // NOTE that the target is not important for analyzing feature derivation.
-func makeFeatureColumnMap(parsedFeatureColumns map[string][]ir.FeatureColumn) FeatureColumnMap {
-	fcMap := make(FeatureColumnMap)
+func makeColumnMap(parsedFeatureColumns map[string][]ir.FeatureColumn) ColumnMap {
+	fcMap := make(ColumnMap)
 	for target, fcList := range parsedFeatureColumns {
 		fcMap[target] = make(map[string][]ir.FeatureColumn)
 		for _, fc := range fcList {
@@ -245,7 +245,7 @@ func InferFeatureColumns(trainStmt *ir.TrainStmt, dataSource string) error {
 		return err
 	}
 	// Convert feature column list to a map
-	fcMap := makeFeatureColumnMap(trainStmt.Features)
+	fcMap := makeColumnMap(trainStmt.Features)
 	fmMap := makeFieldDescMap(trainStmt.Features)
 
 	// TODO(typhoonzero): find a way to using subqueries like select * from (%s) AS a LIMIT 100
@@ -386,7 +386,7 @@ func InferFeatureColumns(trainStmt *ir.TrainStmt, dataSource string) error {
 
 	// set back trainStmt.Features in the order of select
 	for _, target := range columnTargets {
-		targetFeatureColumnMap := fcMap[target]
+		targetColumnMap := fcMap[target]
 		trainStmt.Features[target] = []ir.FeatureColumn{}
 		// append cross columns at the end of all selected fields.
 		crossColumns := []*ir.CrossColumn{}
@@ -395,7 +395,7 @@ func InferFeatureColumns(trainStmt *ir.TrainStmt, dataSource string) error {
 			if slctKey == trainStmt.Label.GetFieldDesc()[0].Name {
 				continue
 			}
-			for _, fc := range targetFeatureColumnMap[slctKey] {
+			for _, fc := range targetColumnMap[slctKey] {
 				if cc, ok := fc.(*ir.CrossColumn); ok {
 					crossColumns = append(crossColumns, cc)
 					continue
