@@ -22,10 +22,13 @@ import (
 	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
 
+func mockSession() *pb.Session {
+	return &pb.Session{DbConnStr: "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"}
+}
 func TestTrainCodegen(t *testing.T) {
 	a := assert.New(t)
-	tir := ir.MockTrainStmt("mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0", false)
-	_, err := Train(tir)
+	tir := ir.MockTrainStmt(false)
+	_, err := Train(tir, mockSession())
 	a.NoError(err)
 
 	pir := ir.MockPredStmt(tir)
@@ -51,33 +54,33 @@ func TestTrainCodegen(t *testing.T) {
 
 func TestTrainWithOptimizer(t *testing.T) {
 	a := assert.New(t)
-	tir := ir.MockTrainStmt("mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0", false)
+	tir := ir.MockTrainStmt(false)
 	a.NotContains(tir.Attributes, "model.optimizer")
-	_, err := Train(tir)
+	_, err := Train(tir, mockSession())
 	a.NoError(err)
 	a.NotContains(tir.Attributes, "model.optimizer")
 
 	tir.Attributes["model.optimizer"] = "RMSprop"
-	_, err = Train(tir)
+	_, err = Train(tir, mockSession())
 	a.NoError(err)
 	a.Equal(tir.Attributes["model.optimizer"], "RMSprop()")
 
 	tir.Attributes["not_optimizer.learning_rate"] = 123
 	tir.Attributes["model.optimizer"] = "RMSprop"
-	_, err = Train(tir)
+	_, err = Train(tir, mockSession())
 	a.Error(err)
 	a.Equal(tir.Attributes["model.optimizer"], "RMSprop()")
 
-	tir = ir.MockTrainStmt("mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0", false)
+	tir = ir.MockTrainStmt(false)
 	tir.Attributes["optimizer.learning_rate"] = 0.002
-	_, err = Train(tir)
+	_, err = Train(tir, mockSession())
 	a.NoError(err)
 	a.Equal(tir.Attributes["model.optimizer"], "Adagrad(learning_rate=0.002, )")
 	a.NotContains(tir.Attributes, "optimizer.learning_rate")
 
 	tir.Attributes["model.optimizer"] = "RMSprop"
 	tir.Attributes["optimizer.learning_rate"] = 0.002
-	_, err = Train(tir)
+	_, err = Train(tir, mockSession())
 	a.NoError(err)
 	a.Equal(tir.Attributes["model.optimizer"], "RMSprop(learning_rate=0.002, )")
 }

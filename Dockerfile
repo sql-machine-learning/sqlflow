@@ -26,6 +26,7 @@ COPY doc/datasets/popularize_churn.sql \
      doc/datasets/popularize_iris.sql \
      doc/datasets/popularize_boston.sql \
      doc/datasets/popularize_creditcardfraud.sql \
+     doc/datasets/popularize_imdb.sql \
      doc/datasets/create_model_db.sql \
      /docker-entrypoint-initdb.d/
 VOLUME /var/lib/mysql
@@ -86,7 +87,7 @@ mv $GOPATH/bin/sqlflowserver /usr/local/bin && \
 mv $GOPATH/bin/repl /usr/local/bin && \
 (cd python/couler && python setup.py install) && \
 cd java/parser && \
-mvn -B clean compile assembly:single && \
+mvn -B -q clean compile assembly:single && \
 mkdir -p /opt/sqlflow/parser && \
 cp target/parser-1.0-SNAPSHOT-jar-with-dependencies.jar /opt/sqlflow/parser && \
 cd / && \
@@ -101,7 +102,7 @@ RUN if [ "${WITH_SQLFLOW_MODELS:-ON}" = "ON" ]; then \
   git clone https://github.com/sql-machine-learning/models.git && \
   cd models && \
   git checkout 4af6f567ba2dfda57a99d7a5985bfe11314582db && \
-  bash -c "source activate sqlflow-dev && python setup.py install" && \
+  bash -c "python setup.py install" && \
   cd .. && \
   rm -rf models; \
 fi

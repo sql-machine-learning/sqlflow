@@ -85,8 +85,6 @@ type TrainStmt struct {
 	// OriginalSQL record the original SQL statement used to get current IR result
 	// FIXME(typhoonzero): OriginalSQL is a temporary field. Can remove this when all moved to IR
 	OriginalSQL string
-	// DataSource contains the connection information. For example, "hive://root:root@localhost:10000/churn"
-	DataSource string
 	// Select specifies the query for fetching the training data. For example, "select * from iris.train;".
 	Select string
 	// ValidationSelect specifies the query for fetching the validation data. For example, "select * from iris.val;".
@@ -140,8 +138,6 @@ type PredictStmt struct {
 	// OriginalSQL record the original SQL statement used to get current IR result
 	// FIXME(typhoonzero): OriginalSQL is a temporary field. Can remove this when all moved to IR
 	OriginalSQL string
-	// DataSource contains the connection information. For example, "hive://root:root@localhost:10000/churn"
-	DataSource string
 	// Select specifies the query for fetching the prediction data. For example, "select * from iris.test;".
 	Select string
 	// ResultTable specifies the table to store the prediction result.
@@ -176,8 +172,6 @@ type ExplainStmt struct {
 	// OriginalSQL record the original SQL statement used to get current IR result
 	// FIXME(typhoonzero): OriginalSQL is a temporary field. Can remove this when all moved to IR
 	OriginalSQL string
-	// DataSource contains the connection information. For example, "hive://root:root@localhost:10000/churn"
-	DataSource string
 	// Select specifies the query for fetching the analysis data. For example, "select * from iris.test;".
 	Select string
 	// Attributes is a map of parsed attribute in the WITH clause. For example, after parsing
@@ -186,6 +180,8 @@ type ExplainStmt struct {
 	Attributes map[string]interface{}
 	// Explainer types. For example TreeExplainer.
 	Explainer string
+	// Into stores the model explain result. Note that this field is optional.
+	Into string
 	// TrainStmt is the TrainStmt used for generating the training job of the corresponding model
 	TrainStmt *TrainStmt
 }

@@ -24,11 +24,11 @@ func Popularize(db *sql.DB, sqlcontent string) error {
 	// TODO(typhoonzero): Should consider .sql files like VALUES "a;b;c";
 	sqlQueries := strings.Split(sqlcontent, ";")
 	for _, sql := range sqlQueries {
-		trimedSQL := strings.Trim(sql, " \n")
-		if trimedSQL == "" {
+		trimmedSQL := strings.Trim(sql, " \n")
+		if trimmedSQL == "" {
 			continue
 		}
-		_, e := db.Exec(trimedSQL)
+		_, e := db.Exec(trimmedSQL)
 		if e != nil {
 			return e
 		}

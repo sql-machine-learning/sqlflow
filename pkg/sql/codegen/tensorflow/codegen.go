@@ -28,32 +28,32 @@ import (
 )
 
 var commonAttributes = attribute.Dictionary{
-	"train.batch_size": {attribute.Int, `[default=1]
+	"train.batch_size": {attribute.Int, 1, `[default=1]
 The training batch size.
 range: [1,Infinity]`, attribute.IntLowerBoundChecker(1, true)},
-	"train.epoch": {attribute.Int, `[default=1]
+	"train.epoch": {attribute.Int, 1, `[default=1]
 Number of epochs the training will run.
 range: [1, Infinity]`, attribute.IntLowerBoundChecker(1, true)},
-	"train.verbose": {attribute.Int, `[default=0]
+	"train.verbose": {attribute.Int, 0, `[default=0]
 Show verbose logs when training.
 possible values: 0, 1`, attribute.IntChoicesChecker([]int{0, 1, 2})},
-	"train.max_steps": {attribute.Int, `[default=0]
+	"train.max_steps": {attribute.Int, 0, `[default=0]
 Max steps to run training.`, attribute.IntLowerBoundChecker(0, true)},
-	"train.save_checkpoints_steps": {attribute.Int, `[default=100]
+	"train.save_checkpoints_steps": {attribute.Int, 100, `[default=100]
 Steps to run between saving checkpoints.`, attribute.IntLowerBoundChecker(1, true)},
-	"train.log_every_n_iter": {attribute.Int, `[default=10]
+	"train.log_every_n_iter": {attribute.Int, 10, `[default=10]
 Print logs every n iterations`, attribute.IntLowerBoundChecker(1, true)},
-	"validation.start_delay_secs": {attribute.Int, `[default=0]
+	"validation.start_delay_secs": {attribute.Int, 0, `[default=0]
 Seconds to wait before starting validation.`, attribute.IntLowerBoundChecker(0, true)},
-	"validation.throttle_secs": {attribute.Int, `[default=0]
+	"validation.throttle_secs": {attribute.Int, 0, `[default=0]
 Seconds to wait when need to run validation again.`, attribute.IntLowerBoundChecker(0, true)},
-	"validation.metrics": {attribute.String, `[default=""]
+	"validation.metrics": {attribute.String, "Accuracy", `[default=""]
 Specify metrics when training and evaluating.
 example: "Accuracy,AUC"`, nil},
-	"validation.select": {attribute.String, `[default=""]
+	"validation.select": {attribute.String, "", `[default=""]
 Specify the dataset for validation.
 example: "SELECT * FROM iris.train LIMIT 100"`, nil},
-	"model.*": {attribute.Unknown, "Any model parameters defined in custom models", nil},
+	"model.*": {attribute.Unknown, "", "Any model parameters defined in custom models", nil},
 }
 
 func intArrayToJSONString(ia []int) string {
@@ -234,9 +234,12 @@ func constructOptimizers(trainStmt *ir.TrainStmt) {
 }
 
 func initializeAttributes(trainStmt *ir.TrainStmt) error {
-	modelAttr := attribute.NewDictionary(trainStmt.Estimator, "model.")
+	commonAttributes.FillDefaults(trainStmt.Attributes)
+
+	modelAttr := attribute.NewDictionaryFromModelDefinition(trainStmt.Estimator, "model.")
 	constructOptimizers(trainStmt) // TODO(shendiaomo): Restrict optimizer parameters to the available set
-	return modelAttr.Update(commonAttributes).Validate(trainStmt.Attributes)
+	attrValidator := modelAttr.Update(commonAttributes)
+	return attrValidator.Validate(trainStmt.Attributes)
 }
 
 func categorizeAttributes(trainStmt *ir.TrainStmt) (trainParams, validateParams, modelParams map[string]interface{}) {
@@ -256,41 +259,6 @@ func categorizeAttributes(trainStmt *ir.TrainStmt) (trainParams, validateParams,
 		}
 	}
 	return trainParams, validateParams, modelParams
-}
-
-func setTrainParamDefaultValues(trainParams map[string]interface{}) {
-	// Add default params for batch_size, epoch, verbose
-	// TODO(typhoonzero): use feature definition dictionary.
-	if _, ok := trainParams["batch_size"]; !ok {
-		trainParams["batch_size"] = 1
-	}
-	if _, ok := trainParams["epoch"]; !ok {
-		trainParams["epoch"] = 1
-	}
-	if _, ok := trainParams["verbose"]; !ok {
-		trainParams["verbose"] = 0
-	}
-	if _, ok := trainParams["max_steps"]; !ok {
-		trainParams["max_steps"] = 0 // should convert 0 to None in python code to train forever
-	}
-	if _, ok := trainParams["save_checkpoints_steps"]; !ok {
-		trainParams["save_checkpoints_steps"] = 100
-	}
-	if _, ok := trainParams["log_every_n_iter"]; !ok {
-		trainParams["log_every_n_iter"] = 10
-	}
-}
-
-func setValidateParamDefaultValues(validateParams map[string]interface{}) {
-	if _, ok := validateParams["start_delay_secs"]; !ok {
-		validateParams["start_delay_secs"] = 0
-	}
-	if _, ok := validateParams["throttle_secs"]; !ok {
-		validateParams["throttle_secs"] = 0
-	}
-	if _, ok := validateParams["metrics"]; !ok {
-		validateParams["metrics"] = "Accuracy"
-	}
 }
 
 func deriveFeatureColumnCode(trainStmt *ir.TrainStmt) (featureColumnsCode []string, fieldDescs []*ir.FieldDesc, err error) {
@@ -315,15 +283,12 @@ func deriveFeatureColumnCode(trainStmt *ir.TrainStmt) (featureColumnsCode []stri
 }
 
 // Train generates a Python program for train a TensorFlow model.
-func Train(trainStmt *ir.TrainStmt) (string, error) {
+func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 	if err := initializeAttributes(trainStmt); err != nil {
 		return "", err
 	}
 
 	trainParams, validateParams, modelParams := categorizeAttributes(trainStmt)
-
-	setTrainParamDefaultValues(trainParams)
-	setValidateParamDefaultValues(validateParams)
 
 	featureColumnsCode, fieldDescs, err := deriveFeatureColumnCode(trainStmt)
 	if err != nil {
@@ -342,7 +307,7 @@ func Train(trainStmt *ir.TrainStmt) (string, error) {
 	}
 
 	filler := trainFiller{
-		DataSource:        trainStmt.DataSource,
+		DataSource:        session.DbConnStr,
 		TrainSelect:       trainStmt.Select,
 		ValidationSelect:  trainStmt.ValidationSelect,
 		Estimator:         estimatorStr,
@@ -399,7 +364,7 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 	}
 
 	filler := predFiller{
-		DataSource:        predStmt.DataSource,
+		DataSource:        session.DbConnStr,
 		Select:            predStmt.Select,
 		ResultTable:       predStmt.ResultTable,
 		Estimator:         estimatorStr,
@@ -430,7 +395,7 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 }
 
 // Explain generates a Python program to explain a trained model.
-func Explain(stmt *ir.ExplainStmt) (string, error) {
+func Explain(stmt *ir.ExplainStmt, session *pb.Session) (string, error) {
 	if !strings.HasPrefix(stmt.TrainStmt.Estimator, "BoostedTrees") {
 		return "", fmt.Errorf("unsupported model %s", stmt.TrainStmt.Estimator)
 	}
@@ -450,7 +415,7 @@ func Explain(stmt *ir.ExplainStmt) (string, error) {
 	}
 
 	filler := explainFiller{
-		DataSource:        stmt.DataSource,
+		DataSource:        session.DbConnStr,
 		Select:            stmt.Select,
 		SummaryParams:     string(jsonSummary),
 		EstimatorClass:    estimatorStr,

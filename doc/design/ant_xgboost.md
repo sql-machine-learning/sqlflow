@@ -147,8 +147,8 @@ However, specific computing frameworks are not always available in production en
 So, we propose a cloud-native approach: running xgboost directly on `k8s cluster`. 
  
 As `xgblauncher` is scalable and docker-friendly, xgblauncher-based containers can be easily orchestrated by [xgboost operator](https://github.com/kubeflow/xgboost-operator),
-a specific kubernetes controller for (distributed) xgboost jobs.
-With the help of `xgboost operator`, it is easy to handle `XGBoostJob` via `kubernetes API`, a kubernetes' custom resource defined by `xgboost operator`. 
+a specific Kubernetes controller for (distributed) xgboost jobs.
+With the help of `xgboost operator`, it is easy to handle `XGBoostJob` via `Kubernetes API`, a Kubernetes' custom resource defined by `xgboost operator`. 
 
 `XGBoostJob` building and tracking will be integrated to `xgblauncher` in near future. 
 After that, we can generate python codes with an option to decide whether running xgboost job locally or submitting it to remote k8s cluster.
