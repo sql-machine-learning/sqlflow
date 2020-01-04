@@ -31,14 +31,25 @@ import (
 	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
 
-var envSubmitter = os.Getenv("SQLFLOW_submitter")
-
 var submitterRegistry = map[string](Submitter){
 	"default": &defaultSubmitter{},
 	// TODO(typhoonzero): add submitters like alps, elasticdl
 }
 
-func submitter() Submitter {
+// SubmitterRegister registes a submitter
+func SubmitterRegister(name string, submitter Submitter) {
+	if submitter == nil {
+		panic("submitter: Register submitter twice")
+	}
+	if _, dup := submitterRegistry[name]; dup {
+		panic("submitter: Register called twice")
+	}
+	submitterRegistry[name] = submitter
+}
+
+// GetSubmitter returns a proper Submitter from configuations in environment variables.
+func GetSubmitter() Submitter {
+	envSubmitter := os.Getenv("SQLFLOW_submitter")
 	s := submitterRegistry[envSubmitter]
 	if s == nil {
 		s = submitterRegistry["default"]
@@ -140,9 +151,9 @@ func (s *defaultSubmitter) ExecuteQuery(sql *ir.StandardSQL) error {
 func (s *defaultSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 	var code string
 	if isXGBoostModel(cl.Estimator) {
-		code, e = xgboost.Train(cl)
+		code, e = xgboost.Train(cl, s.Session)
 	} else {
-		code, e = tensorflow.Train(cl)
+		code, e = tensorflow.Train(cl, s.Session)
 	}
 	if e == nil {
 		if e = s.runCommand(code); e == nil {
@@ -168,13 +179,16 @@ func (s *defaultSubmitter) ExecutePredict(cl *ir.PredictStmt) (e error) {
 	return e
 }
 
-func (s *defaultSubmitter) ExecuteAnalyze(cl *ir.AnalyzeStmt) error {
+func (s *defaultSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 	// NOTE(typhoonzero): model is already loaded under s.Cwd
-	if !isXGBoostModel(cl.TrainStmt.Estimator) {
-		return fmt.Errorf("unsupported model %s", cl.TrainStmt.Estimator)
+	var code string
+	var err error
+	if isXGBoostModel(cl.TrainStmt.Estimator) {
+		code, err = xgboost.Explain(cl, s.Session)
+	} else {
+		code, err = tensorflow.Explain(cl, s.Session)
 	}
 
-	code, err := xgboost.Analyze(cl)
 	if err != nil {
 		return err
 	}

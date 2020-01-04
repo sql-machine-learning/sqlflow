@@ -22,6 +22,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"strings"
 )
 
 func flushToCSV() (func([]byte) error, *os.File, error) {
@@ -44,7 +45,29 @@ func flushToCSV() (func([]byte) error, *os.File, error) {
 	}, csv, nil
 }
 
-func uploadCSVFile(csv *os.File, db *sql.DB, hivePath, table, user, passwd string) func() error {
+func hdfsCmd(hdfsCmd, user, passwd, namenodeAddr string) *exec.Cmd {
+	hdfsEnv := os.Environ()
+	if user != "" {
+		hdfsEnv = append(hdfsEnv,
+			fmt.Sprintf("HADOOP_USER_NAME=%s", user),
+			fmt.Sprintf("HADOOP_USER_PASSWORD=%s", passwd))
+	}
+	// hdfs command prefix: hdfs dfs ....
+	cmdStr := "hdfs dfs"
+	// use the specified namenode addr by `-fs hdfs://<ip>:<port>`
+	// or use the hdfs-cli configuration file without `-fs` argument
+	if namenodeAddr != "" {
+		cmdStr = fmt.Sprintf("%s -fs hdfs://%s", cmdStr, namenodeAddr)
+	}
+	cmdStr = fmt.Sprintf("%s %s", cmdStr, hdfsCmd)
+
+	command := strings.Split(cmdStr, " ")
+	cmd := exec.Command(command[0], command[1:]...)
+	cmd.Env = hdfsEnv
+	return cmd
+}
+
+func uploadCSVFile(csv *os.File, db *sql.DB, hivePath, table, user, passwd, namenodeAddr string) func() error {
 	return func() error {
 		defer func() {
 			csv.Close()
@@ -53,26 +76,17 @@ func uploadCSVFile(csv *os.File, db *sql.DB, hivePath, table, user, passwd strin
 
 		hdfsPath := path.Join(hivePath, table)
 
-		hdfsEnv := os.Environ()
-		if user != "" {
-			hdfsEnv = append(hdfsEnv,
-				fmt.Sprintf("HADOOP_USER_NAME=%s", user),
-				fmt.Sprintf("HADOOP_USER_PASSWORD=%s", passwd))
-		}
-
-		cmd := exec.Command("hdfs", "dfs", "-mkdir", "-p", hdfsPath)
-		cmd.Env = hdfsEnv
+		cmd := hdfsCmd(fmt.Sprintf("-mkdir -p %s", hdfsPath), user, passwd, namenodeAddr)
 		if _, e := cmd.CombinedOutput(); e != nil {
 			return fmt.Errorf("failed %s: %v", cmd, e)
 		}
+
 		defer func() {
-			cmd = exec.Command("hdfs", "dfs", "-rm", "-r", "-f", hdfsPath)
-			cmd.Env = hdfsEnv
+			cmd := hdfsCmd(fmt.Sprintf("-rm -r -f %s", hdfsPath), user, passwd, namenodeAddr)
 			cmd.CombinedOutput()
 		}()
 
-		cmd = exec.Command("hdfs", "dfs", "-copyFromLocal", csv.Name(), hdfsPath)
-		cmd.Env = hdfsEnv
+		cmd = hdfsCmd(fmt.Sprintf("-copyFromLocal %s %s", csv.Name(), hdfsPath), user, passwd, namenodeAddr)
 		if _, e := cmd.CombinedOutput(); e != nil {
 			return fmt.Errorf("failed %s: %v", cmd, e)
 		}
@@ -82,7 +96,7 @@ func uploadCSVFile(csv *os.File, db *sql.DB, hivePath, table, user, passwd strin
 	}
 }
 
-func newHiveWriter(db *sql.DB, hivePath, table, user, passwd string, bufSize int) (io.WriteCloser, error) {
+func newHiveWriter(db *sql.DB, hivePath, table, user, passwd, namenodeAddr string, bufSize int) (io.WriteCloser, error) {
 	if e := dropTable(db, table); e != nil {
 		return nil, fmt.Errorf("cannot drop table %s: %v", table, e)
 	}
@@ -94,6 +108,6 @@ func newHiveWriter(db *sql.DB, hivePath, table, user, passwd string, bufSize int
 	if e != nil {
 		return nil, e
 	}
-	upload := uploadCSVFile(csv, db, hivePath, table, user, passwd)
+	upload := uploadCSVFile(csv, db, hivePath, table, user, passwd, namenodeAddr)
 	return newFlushWriteCloser(flush, upload, bufSize), nil
 }

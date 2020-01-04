@@ -39,12 +39,12 @@ const (
 )
 
 func generateTrainStmtWithInferredColumns(slct *parser.SQLFlowSelectStmt, connStr string, verifyLabel bool) (*ir.TrainStmt, error) {
-	trainStmt, err := generateTrainStmt(slct, connStr)
+	trainStmt, err := generateTrainStmt(slct)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := featurederivation.InferFeatureColumns(trainStmt); err != nil {
+	if err := featurederivation.InferFeatureColumns(trainStmt, connStr); err != nil {
 		return nil, err
 	}
 
@@ -61,7 +61,7 @@ func generateTrainStmtWithInferredColumns(slct *parser.SQLFlowSelectStmt, connSt
 	return trainStmt, nil
 }
 
-func generateTrainStmt(slct *parser.SQLFlowSelectStmt, connStr string) (*ir.TrainStmt, error) {
+func generateTrainStmt(slct *parser.SQLFlowSelectStmt) (*ir.TrainStmt, error) {
 	tc := slct.TrainClause
 	modelURI := tc.Estimator
 	// get model Docker image name
@@ -109,8 +109,7 @@ func generateTrainStmt(slct *parser.SQLFlowSelectStmt, connStr string) (*ir.Trai
 		vslct = slct.StandardSelect.String()
 	}
 	trainStmt := &ir.TrainStmt{
-		DataSource: connStr,
-		Select:     slct.StandardSelect.String(),
+		Select: slct.StandardSelect.String(),
 		// TODO(weiguoz): This is a temporary implement. Specifying the
 		// validation dataset by keyword `VALIDATE` is the final solution.
 		ValidationSelect: vslct,
@@ -205,7 +204,7 @@ func verifyIRWithTrainStmt(sqlir ir.SQLStatement, db *database.DB) error {
 	case *ir.PredictStmt:
 		selectStmt = s.Select
 		trainStmt = s.TrainStmt
-	case *ir.AnalyzeStmt:
+	case *ir.ExplainStmt:
 		selectStmt = s.Select
 		trainStmt = s.TrainStmt
 	default:
@@ -264,7 +263,6 @@ func generatePredictStmt(slct *parser.SQLFlowSelectStmt, connStr string, modelDi
 	}
 
 	predStmt := &ir.PredictStmt{
-		DataSource:   connStr,
 		Select:       slct.StandardSelect.String(),
 		ResultTable:  resultTable,
 		ResultColumn: resultCol,
@@ -287,7 +285,7 @@ func generatePredictStmt(slct *parser.SQLFlowSelectStmt, connStr string, modelDi
 	return predStmt, nil
 }
 
-func generateAnalyzeStmt(slct *parser.SQLFlowSelectStmt, connStr, modelDir string, cwd string, getTrainStmtFromModel bool) (*ir.AnalyzeStmt, error) {
+func generateExplainStmt(slct *parser.SQLFlowSelectStmt, connStr, modelDir string, cwd string, getTrainStmtFromModel bool) (*ir.ExplainStmt, error) {
 	attrs, err := generateAttributeIR(&slct.ExplainAttrs)
 	if err != nil {
 		return nil, err
@@ -301,12 +299,12 @@ func generateAnalyzeStmt(slct *parser.SQLFlowSelectStmt, connStr, modelDir strin
 		}
 	}
 
-	analyzeStmt := &ir.AnalyzeStmt{
-		DataSource: connStr,
+	explainStmt := &ir.ExplainStmt{
 		Select:     slct.StandardSelect.String(),
 		Attributes: attrs,
 		Explainer:  slct.Explainer,
 		TrainStmt:  trainStmt,
+		Into:       slct.ExplainInto,
 	}
 
 	if getTrainStmtFromModel {
@@ -316,12 +314,12 @@ func generateAnalyzeStmt(slct *parser.SQLFlowSelectStmt, connStr, modelDir strin
 			return nil, err
 		}
 		defer db.Close()
-		if err := verifyIRWithTrainStmt(analyzeStmt, db); err != nil {
+		if err := verifyIRWithTrainStmt(explainStmt, db); err != nil {
 			return nil, err
 		}
 	}
 
-	return analyzeStmt, nil
+	return explainStmt, nil
 }
 
 func generateAttributeIR(attrs *parser.Attributes) (map[string]interface{}, error) {

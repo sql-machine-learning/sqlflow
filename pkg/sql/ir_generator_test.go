@@ -54,7 +54,7 @@ func TestGenerateTrainStmt(t *testing.T) {
 	r, e := parser.LegacyParse(normal)
 	a.NoError(e)
 
-	trainStmt, err := generateTrainStmt(r, "mysql://root:root@tcp(127.0.0.1:3306)/iris?maxAllowedPacket=0")
+	trainStmt, err := generateTrainStmt(r)
 	a.NoError(err)
 	a.Equal("DNNClassifier", trainStmt.Estimator)
 	a.Equal("SELECT c1, c2, c3, c4\nFROM my_table", trainStmt.Select)
@@ -178,7 +178,7 @@ func TestGenerateTrainStmtModelZoo(t *testing.T) {
 	r, e := parser.LegacyParse(normal)
 	a.NoError(e)
 
-	trainStmt, err := generateTrainStmt(r, "mysql://root:root@tcp(127.0.0.1:3306)/iris?maxAllowedPacket=0")
+	trainStmt, err := generateTrainStmt(r)
 	a.NoError(err)
 	a.Equal("a_data_scientist/regressors:v0.2", trainStmt.ModelImage)
 	a.Equal("MyDNNRegressor", trainStmt.Estimator)
@@ -214,7 +214,6 @@ INTO sqlflow_models.mymodel;`, modelDir, &pb.Session{DbConnStr: connStr})
 	predStmt, err := generatePredictStmt(r, connStr, modelDir, cwd, true)
 	a.NoError(err)
 
-	a.Equal(connStr, predStmt.DataSource)
 	a.Equal("iris.predict", predStmt.ResultTable)
 	a.Equal("class", predStmt.TrainStmt.Label.GetFieldDesc()[0].Name)
 	a.Equal("DNNClassifier", predStmt.TrainStmt.Estimator)
@@ -223,7 +222,7 @@ INTO sqlflow_models.mymodel;`, modelDir, &pb.Session{DbConnStr: connStr})
 	a.Equal("sepal_length", nc.FieldDesc.Name)
 }
 
-func TestGenerateAnalyzeStmt(t *testing.T) {
+func TestGenerateExplainStmt(t *testing.T) {
 	if getEnv("SQLFLOW_TEST_DB", "mysql") != "mysql" {
 		t.Skip(fmt.Sprintf("%s: skip test", getEnv("SQLFLOW_TEST_DB", "mysql")))
 	}
@@ -260,16 +259,15 @@ INTO sqlflow_models.my_xgboost_model;
 	`)
 	a.NoError(e)
 
-	AnalyzeStmt, e := generateAnalyzeStmt(pr, connStr, modelDir, cwd, true)
+	ExplainStmt, e := generateExplainStmt(pr, connStr, modelDir, cwd, true)
 	a.NoError(e)
-	a.Equal(AnalyzeStmt.DataSource, connStr)
-	a.Equal(AnalyzeStmt.Explainer, "TreeExplainer")
-	a.Equal(len(AnalyzeStmt.Attributes), 3)
-	a.Equal(AnalyzeStmt.Attributes["shap_summary.sort"], true)
-	a.Equal(AnalyzeStmt.Attributes["shap_summary.plot_type"], "bar")
-	a.Equal(AnalyzeStmt.Attributes["shap_summary.alpha"], 1)
+	a.Equal(ExplainStmt.Explainer, "TreeExplainer")
+	a.Equal(len(ExplainStmt.Attributes), 3)
+	a.Equal(ExplainStmt.Attributes["shap_summary.sort"], true)
+	a.Equal(ExplainStmt.Attributes["shap_summary.plot_type"], "bar")
+	a.Equal(ExplainStmt.Attributes["shap_summary.alpha"], 1)
 
-	nc, ok := AnalyzeStmt.TrainStmt.Features["feature_columns"][0].(*ir.NumericColumn)
+	nc, ok := ExplainStmt.TrainStmt.Features["feature_columns"][0].(*ir.NumericColumn)
 	a.True(ok)
 	a.Equal("sepal_length", nc.FieldDesc.Name)
 }

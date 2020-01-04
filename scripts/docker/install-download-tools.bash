@@ -15,5 +15,4 @@
 
 set -e
 
-apt-get update
-apt-get install -y curl wget bzip2 unzip git
+apt-get install -y curl wget unzip git

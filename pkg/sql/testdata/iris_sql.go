@@ -324,8 +324,7 @@ CREATE TABLE iris.iris_empty (
        class int);`
 
 // IrisMaxComputeSQL is .sql format data sample of iris dataset in MaxCompute SQL.
-var IrisMaxComputeSQL = `
-DROP TABLE IF EXISTS %[1]s.sqlflow_test_iris_train;
+var IrisMaxComputeSQL = `DROP TABLE IF EXISTS %[1]s.sqlflow_test_iris_train;
 CREATE TABLE %[1]s.sqlflow_test_iris_train (
        sepal_length DOUBLE,
        sepal_width  DOUBLE,
@@ -446,7 +445,7 @@ INSERT INTO %[1]s.sqlflow_test_iris_train VALUES
 (4.8,3.1,1.6,0.2,0);
 
 DROP TABLE IF EXISTS %[1]s.sqlflow_test_iris_test;
-CREATE TABLE %[1]s.sqlflow_test_iris_test(
+CREATE TABLE %[1]s.sqlflow_test_iris_test (
        sepal_length DOUBLE,
        sepal_width  DOUBLE,
        petal_length DOUBLE,

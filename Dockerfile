@@ -1,13 +1,15 @@
-FROM ubuntu:16.04
+FROM ubuntu:18.04
 
 # The default source archive.ubuntu.com is busy and slow. We use the following source makes docker build running faster.
 RUN echo '\n\
-deb http://us.archive.ubuntu.com/ubuntu/ xenial main restricted universe multiverse \n\
-deb http://us.archive.ubuntu.com/ubuntu/ xenial-security main restricted universe multiverse \n\
-deb http://us.archive.ubuntu.com/ubuntu/ xenial-updates main restricted universe multiverse \n\
-deb http://us.archive.ubuntu.com/ubuntu/ xenial-proposed main restricted universe multiverse \n\
-deb http://us.archive.ubuntu.com/ubuntu/ xenial-backports main restricted universe multiverse \n\
+deb http://us.archive.ubuntu.com/ubuntu/ bionic main restricted universe multiverse \n\
+deb http://us.archive.ubuntu.com/ubuntu/ bionic-security main restricted universe multiverse \n\
+deb http://us.archive.ubuntu.com/ubuntu/ bionic-updates main restricted universe multiverse \n\
+deb http://us.archive.ubuntu.com/ubuntu/ bionic-proposed main restricted universe multiverse \n\
+deb http://us.archive.ubuntu.com/ubuntu/ bionic-backports main restricted universe multiverse \n\
 ' > /etc/apt/sources.list
+
+RUN apt-get update
 
 # Install wget, curl, unzip, bzip2, git
 COPY scripts/docker/install-download-tools.bash /
@@ -24,6 +26,7 @@ COPY doc/datasets/popularize_churn.sql \
      doc/datasets/popularize_iris.sql \
      doc/datasets/popularize_boston.sql \
      doc/datasets/popularize_creditcardfraud.sql \
+     doc/datasets/popularize_imdb.sql \
      doc/datasets/create_model_db.sql \
      /docker-entrypoint-initdb.d/
 VOLUME /var/lib/mysql
@@ -81,10 +84,10 @@ go install -v ./... && \
 mv $GOPATH/bin/sqlflowserver /usr/local/bin && \
 mv $GOPATH/bin/repl /usr/local/bin && \
 cp -r $GOPATH/src/sqlflow.org/sqlflow/python/sqlflow_submitter /miniconda/envs/sqlflow-dev/lib/python3.6/site-packages/ && \
-cp $GOPATH/src/sqlflow.org/sqlflow/python/plotille_backend.py /miniconda/envs/sqlflow-dev/lib/python3.6/site-packages/ && \
+cp $GOPATH/src/sqlflow.org/sqlflow/python/plotille_text_backend.py /miniconda/envs/sqlflow-dev/lib/python3.6/site-packages/ && \
 (cd python/couler && python setup.py install) && \
 cd java/parser && \
-mvn -B clean compile assembly:single && \
+mvn -B -q clean compile assembly:single && \
 mkdir -p /opt/sqlflow/parser && \
 cp target/parser-1.0-SNAPSHOT-jar-with-dependencies.jar /opt/sqlflow/parser && \
 cd / && \

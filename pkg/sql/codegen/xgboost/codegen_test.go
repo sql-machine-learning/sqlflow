@@ -24,13 +24,18 @@ import (
 
 func TestAttributes(t *testing.T) {
 	a := assert.New(t)
-	a.Equal(27, len(attributeDictionary))
+	a.Equal(5, len(attributeDictionary))
+	a.Equal(27, len(fullAttrValidator))
+}
+
+func mockSession() *pb.Session {
+	return &pb.Session{DbConnStr: "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"}
 }
 
 func TestTrainAndPredict(t *testing.T) {
 	a := assert.New(t)
-	tir := ir.MockTrainStmt("mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0", true)
-	_, err := Train(tir)
+	tir := ir.MockTrainStmt(true)
+	_, err := Train(tir, mockSession())
 	a.NoError(err)
 
 	pir := ir.MockPredStmt(tir)

@@ -69,10 +69,10 @@ type Executor interface {
 	ExecuteQuery(*StandardSQL) error
 	ExecuteTrain(*TrainStmt) error
 	ExecutePredict(*PredictStmt) error
-	ExecuteAnalyze(*AnalyzeStmt) error
+	ExecuteExplain(*ExplainStmt) error
 }
 
-// SQLStatement represent all kind of IRs including: TrainStmt, PredictStmt, AnalyzeStmt and standard SQL.
+// SQLStatement represent all kind of IRs including: TrainStmt, PredictStmt, ExplainStmt and standard SQL.
 type SQLStatement interface {
 	SetOriginalSQL(string)
 	Execute(Executor) error
@@ -85,8 +85,6 @@ type TrainStmt struct {
 	// OriginalSQL record the original SQL statement used to get current IR result
 	// FIXME(typhoonzero): OriginalSQL is a temporary field. Can remove this when all moved to IR
 	OriginalSQL string
-	// DataSource contains the connection information. For example, "hive://root:root@localhost:10000/churn"
-	DataSource string
 	// Select specifies the query for fetching the training data. For example, "select * from iris.train;".
 	Select string
 	// ValidationSelect specifies the query for fetching the validation data. For example, "select * from iris.val;".
@@ -140,8 +138,6 @@ type PredictStmt struct {
 	// OriginalSQL record the original SQL statement used to get current IR result
 	// FIXME(typhoonzero): OriginalSQL is a temporary field. Can remove this when all moved to IR
 	OriginalSQL string
-	// DataSource contains the connection information. For example, "hive://root:root@localhost:10000/churn"
-	DataSource string
 	// Select specifies the query for fetching the prediction data. For example, "select * from iris.test;".
 	Select string
 	// ResultTable specifies the table to store the prediction result.
@@ -171,36 +167,36 @@ func (cl *PredictStmt) IsExtended() bool { return true }
 // GetOriginalSQL returns the original SQL statement used to get current IR result
 func (cl *PredictStmt) GetOriginalSQL() string { return cl.OriginalSQL }
 
-// AnalyzeStmt is the intermediate representation for code generation of a analysis job
-type AnalyzeStmt struct {
+// ExplainStmt is the intermediate representation for code generation of a analysis job
+type ExplainStmt struct {
 	// OriginalSQL record the original SQL statement used to get current IR result
 	// FIXME(typhoonzero): OriginalSQL is a temporary field. Can remove this when all moved to IR
 	OriginalSQL string
-	// DataSource contains the connection information. For example, "hive://root:root@localhost:10000/churn"
-	DataSource string
 	// Select specifies the query for fetching the analysis data. For example, "select * from iris.test;".
 	Select string
 	// Attributes is a map of parsed attribute in the WITH clause. For example, after parsing
-	// "select ... analyze ... with analyze.plot_type = "bar"",
-	// the Attributes will be {"analyze.plot_type": "bar"}
+	// "select ... explain ... with explain.plot_type = "bar"",
+	// the Attributes will be {"explain.plot_type": "bar"}
 	Attributes map[string]interface{}
 	// Explainer types. For example TreeExplainer.
 	Explainer string
+	// Into stores the model explain result. Note that this field is optional.
+	Into string
 	// TrainStmt is the TrainStmt used for generating the training job of the corresponding model
 	TrainStmt *TrainStmt
 }
 
-// Execute generates and executes code for AnalyzeStmt
-func (cl *AnalyzeStmt) Execute(s Executor) error { return s.ExecuteAnalyze(cl) }
+// Execute generates and executes code for ExplainStmt
+func (cl *ExplainStmt) Execute(s Executor) error { return s.ExecuteExplain(cl) }
 
 // SetOriginalSQL sets the original sql string
-func (cl *AnalyzeStmt) SetOriginalSQL(sql string) { cl.OriginalSQL = sql }
+func (cl *ExplainStmt) SetOriginalSQL(sql string) { cl.OriginalSQL = sql }
 
 // IsExtended returns whether a SQLStatement is an extended SQL statement
-func (cl *AnalyzeStmt) IsExtended() bool { return true }
+func (cl *ExplainStmt) IsExtended() bool { return true }
 
 // GetOriginalSQL returns the original SQL statement used to get current IR result
-func (cl *AnalyzeStmt) GetOriginalSQL() string { return cl.OriginalSQL }
+func (cl *ExplainStmt) GetOriginalSQL() string { return cl.OriginalSQL }
 
 // StandardSQL is a string of a standard SQL statement that can run on the database system.
 type StandardSQL string

@@ -45,7 +45,7 @@ func ParseOneStatement(dialect, sql string) (*SQLFlowStmt, error) {
 		return nil, err
 	}
 	if len(sqls) != 1 {
-		return nil, fmt.Errorf("unexpect number of statements 1(expected) != %v(received)", len(sqls))
+		return nil, fmt.Errorf("unexpected number of statements 1(expected) != %v(received)", len(sqls))
 	}
 
 	return sqls[0], nil

@@ -14,6 +14,7 @@
 package database
 
 import (
+	"database/sql"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -25,4 +26,10 @@ func TestDatabaseParseURL(t *testing.T) {
 	a.EqualValues(driver, "mysql")
 	a.EqualValues(dataSource, "root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0")
 	a.NoError(e)
+}
+
+func TestDatabaseDriverList(t *testing.T) {
+	a := assert.New(t)
+	expected := []string{"alisa", "hive", "maxcompute", "mysql"}
+	a.EqualValues(expected, sql.Drivers())
 }

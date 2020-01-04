@@ -40,7 +40,6 @@ if int(TF_VERSION_PARTS[0]) == 1:
 if TF_VERSION_2:
     import logging
     tf.get_logger().setLevel(logging.ERROR)
-    from .hooks import PrintStatusHook
 else:
     tf.logging.set_verbosity(tf.logging.ERROR)
     from .pai_distributed import define_tf_flags, make_distributed_info_without_evaluator, dump_into_tf_config
@@ -134,13 +133,7 @@ def estimator_train_and_save(estimator, model_params, save,
     if TF_VERSION_2 and metric_names != ["Accuracy"]:
         classifier = tf.estimator.add_metrics(classifier, metrics.get_tf_metrics(metric_names))
 
-    train_hooks = []
-    if verbose == 1 and TF_VERSION_2:
-        train_hooks = [PrintStatusHook("train", every_n_iter=log_every_n_iter)]
-    train_spec = tf.estimator.TrainSpec(input_fn=lambda:train_input_fn(), max_steps=train_max_steps, hooks=train_hooks)
-    eval_hooks = []
-    if verbose == 1 and TF_VERSION_2:
-        eval_hooks = [PrintStatusHook("eval", every_n_iter=log_every_n_iter)]
+    train_spec = tf.estimator.TrainSpec(input_fn=lambda:train_input_fn(), max_steps=train_max_steps)
     def validate_input_fn():
         if is_pai:
             validate_dataset = pai_maxcompute_input_fn(pai_val_table, datasource,
@@ -151,7 +144,7 @@ def estimator_train_and_save(estimator, model_params, save,
             validate_dataset = input_fn(validate_select, conn, feature_column_names, feature_metas, label_meta)
         validate_dataset = validate_dataset.batch(batch_size)
         return validate_dataset
-    eval_spec = tf.estimator.EvalSpec(input_fn=lambda:validate_input_fn(), hooks=eval_hooks, start_delay_secs=eval_start_delay_secs, throttle_secs=eval_throttle_secs)
+    eval_spec = tf.estimator.EvalSpec(input_fn=lambda:validate_input_fn(), start_delay_secs=eval_start_delay_secs, throttle_secs=eval_throttle_secs)
     result = tf.estimator.train_and_evaluate(classifier, train_spec, eval_spec)
     # FIXME(typhoonzero): find out why pai will have result == None
     if not is_pai:
@@ -181,16 +174,15 @@ def train(is_keras_model,
           pai_table="",
           pai_val_table=""):
     assert validate_select != ""
+    assert verbose >=0 and verbose <= 3
     if is_keras_model:
         if verbose == 1:
-            tf.get_logger().setLevel(logging.INFO)  # show keras training progress
-        elif verbose >= 2:
-            tf.get_logger().setLevel(logging.DEBUG)
+            tf.get_logger().setLevel((4-verbose) * 10)  # logging.INFO levels range from 10~40
     else:
-        if verbose >= 2:
-            if TF_VERSION_2:
-                tf.get_logger().setLevel(logging.INFO)
-            else:
+        if TF_VERSION_2:
+                tf.get_logger().setLevel((4-verbose) * 10)
+        else:
+            if verbose >= 2:
                 tf.logging.set_verbosity(tf.logging.INFO)
     model_params.update(feature_columns)
 

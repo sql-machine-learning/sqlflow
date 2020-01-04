@@ -14,7 +14,7 @@
 package ir
 
 // MockTrainStmt generates a sample TrainStmt for test.
-func MockTrainStmt(datasource string, isxgboost bool) *TrainStmt {
+func MockTrainStmt(isxgboost bool) *TrainStmt {
 	// SELECT * FROM iris_train TO TRAIN DNNClassifier
 	// WITH train.batch_size=4, train.epoch=3, model.hidden_units=[10,20], model.n_classes=3
 	// LABEL class INTO my_dnn_model;
@@ -33,7 +33,6 @@ func MockTrainStmt(datasource string, isxgboost bool) *TrainStmt {
 		attrs["model.n_classes"] = 3
 	}
 	return &TrainStmt{
-		DataSource:       datasource,
 		Select:           "select * from iris.train;",
 		ValidationSelect: "select * from iris.test;",
 		Estimator:        estimator,
@@ -50,7 +49,6 @@ func MockTrainStmt(datasource string, isxgboost bool) *TrainStmt {
 // MockPredStmt generates a sample PredictStmt for test.
 func MockPredStmt(trainStmt *TrainStmt) *PredictStmt {
 	return &PredictStmt{
-		DataSource:  trainStmt.DataSource,
 		Select:      "select * from iris.test;",
 		ResultTable: "iris.predict",
 		Attributes:  make(map[string]interface{}),

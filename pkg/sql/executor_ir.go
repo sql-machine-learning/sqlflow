@@ -22,7 +22,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"sqlflow.org/sqlflow/pkg/argo"
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/parser"
@@ -74,60 +73,6 @@ func RunSQLProgram(sqlProgram string, modelDir string, session *pb.Session) *pip
 	return rd
 }
 
-// ParseSQLStatement parse the input SQL statement and output IR in protobuf format
-func ParseSQLStatement(sql string, session *pb.Session) (string, error) {
-	connStr := session.DbConnStr
-	driverName := strings.Split(connStr, "://")[0]
-	parsed, err := parser.ParseOneStatement(driverName, sql)
-	if err != nil {
-		return "", err
-	}
-	if !parser.IsExtendedSyntax(parsed) {
-		return "", fmt.Errorf("ParseSQLStatement only accept extended SQL")
-	}
-	if parsed.Train {
-		trainStmt, err := generateTrainStmtWithInferredColumns(parsed.SQLFlowSelectStmt, connStr, true)
-		if err != nil {
-			return "", err
-		}
-		pbir, err := ir.TrainStmtToProto(trainStmt, session)
-		if err != nil {
-			return "", err
-		}
-		return proto.MarshalTextString(pbir), nil
-	} else if parsed.Explain {
-		cwd, err := ioutil.TempDir("/tmp", "sqlflow_models")
-		if err != nil {
-			return "", err
-		}
-		defer os.RemoveAll(cwd)
-		analyzeStmt, err := generateAnalyzeStmt(parsed.SQLFlowSelectStmt, connStr, "", cwd, true)
-		if err != nil {
-			return "", err
-		}
-		pbir, err := ir.AnalyzeStmtToProto(analyzeStmt, session)
-		if err != nil {
-			return "", err
-		}
-		return proto.MarshalTextString(pbir), nil
-	} else {
-		cwd, err := ioutil.TempDir("/tmp", "sqlflow_models")
-		if err != nil {
-			return "", err
-		}
-		defer os.RemoveAll(cwd)
-		predStmt, err := generatePredictStmt(parsed.SQLFlowSelectStmt, connStr, "", cwd, true)
-		if err != nil {
-			return "", err
-		}
-		pbir, err := ir.PredictStmtToProto(predStmt, session)
-		if err != nil {
-			return "", err
-		}
-		return proto.MarshalTextString(pbir), nil
-	}
-}
-
 // SubmitWorkflow submits an Argo workflow
 //
 // TODO(wangkuiyi): Make RunSQLProgram return an error in addition to
@@ -149,7 +94,7 @@ func SubmitWorkflow(sqlProgram string, modelDir string, session *pb.Session) *pi
 }
 
 func submitWorkflow(wr *pipe.Writer, sqlProgram string, modelDir string, session *pb.Session) error {
-	driverName, dataSourceName, err := database.ParseURL(session.DbConnStr)
+	driverName, _, err := database.ParseURL(session.DbConnStr)
 	if err != nil {
 		return err
 	}
@@ -165,15 +110,14 @@ func submitWorkflow(wr *pipe.Writer, sqlProgram string, modelDir string, session
 	spIRs := []ir.SQLStatement{}
 	for _, sql := range sqls {
 		var r ir.SQLStatement
-		connStr := fmt.Sprintf("%s://%s", driverName, dataSourceName)
 		if parser.IsExtendedSyntax(sql) {
 			if sql.Train {
-				r, err = generateTrainStmt(sql.SQLFlowSelectStmt, connStr)
+				r, err = generateTrainStmt(sql.SQLFlowSelectStmt)
 			} else if sql.Explain {
 				// since getTrainStmtFromModel is false, use empty cwd is fine.
-				r, err = generateAnalyzeStmt(sql.SQLFlowSelectStmt, connStr, modelDir, "", false)
+				r, err = generateExplainStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, "", false)
 			} else {
-				r, err = generatePredictStmt(sql.SQLFlowSelectStmt, connStr, modelDir, "", false)
+				r, err = generatePredictStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, "", false)
 			}
 		} else {
 			standardSQL := ir.StandardSQL(sql.Standard)
@@ -230,14 +174,13 @@ func runSQLProgram(wr *pipe.Writer, sqlProgram string, db *database.DB, modelDir
 			return os.RemoveAll(cwd)
 		}
 		var r ir.SQLStatement
-		connStr := db.URL()
 		if parser.IsExtendedSyntax(sql) {
 			if sql.Train {
-				r, err = generateTrainStmtWithInferredColumns(sql.SQLFlowSelectStmt, connStr, true)
+				r, err = generateTrainStmtWithInferredColumns(sql.SQLFlowSelectStmt, session.DbConnStr, true)
 			} else if sql.Explain {
-				r, err = generateAnalyzeStmt(sql.SQLFlowSelectStmt, connStr, modelDir, cwd, submitter().GetTrainStmtFromModel())
+				r, err = generateExplainStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, GetSubmitter().GetTrainStmtFromModel())
 			} else {
-				r, err = generatePredictStmt(sql.SQLFlowSelectStmt, connStr, modelDir, cwd, submitter().GetTrainStmtFromModel())
+				r, err = generatePredictStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, GetSubmitter().GetTrainStmtFromModel())
 			}
 		} else {
 			standardSQL := ir.StandardSQL(sql.Standard)
@@ -278,8 +221,8 @@ func runSingleSQLIR(wr *pipe.Writer, sqlIR ir.SQLStatement, db *database.DB, mod
 	}()
 	// TODO(typhoonzero): can run LogFeatureDerivationResult(wr, trainStmt) here to send
 	// feature derivation logs to client, yet we disable if for now so that it's less annoying.
-	submitter().Setup(wr, db, modelDir, cwd, session)
-	return sqlIR.Execute(submitter())
+	GetSubmitter().Setup(wr, db, modelDir, cwd, session)
+	return sqlIR.Execute(GetSubmitter())
 }
 
 // getColumnTypes is quiet like verify but accept a SQL string as input, and returns
