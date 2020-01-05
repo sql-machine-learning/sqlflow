@@ -85,7 +85,7 @@ mv $GOPATH/bin/sqlflowserver /usr/local/bin && \
 mv $GOPATH/bin/repl /usr/local/bin && \
 cp -r $GOPATH/src/sqlflow.org/sqlflow/python/sqlflow_submitter /miniconda/envs/sqlflow-dev/lib/python3.6/site-packages/ && \
 cp $GOPATH/src/sqlflow.org/sqlflow/python/plotille_text_backend.py /miniconda/envs/sqlflow-dev/lib/python3.6/site-packages/ && \
-(cd python/couler && python setup.py install) && \
+(cd python/couler && python setup.py -q install) && \
 cd java/parser && \
 mvn -B -q clean compile assembly:single && \
 mkdir -p /opt/sqlflow/parser && \
@@ -102,7 +102,7 @@ RUN if [ "${WITH_SQLFLOW_MODELS:-ON}" = "ON" ]; then \
   git clone https://github.com/sql-machine-learning/models.git && \
   cd models && \
   git checkout 4af6f567ba2dfda57a99d7a5985bfe11314582db && \
-  bash -c "source activate sqlflow-dev && python setup.py install" && \
+  bash -c "source activate sqlflow-dev && python setup.py -q install" && \
   cd .. && \
   rm -rf models; \
 fi
