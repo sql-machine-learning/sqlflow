@@ -31,7 +31,7 @@ class TestALPSTrain(TestCase):
                                  env={"PYTHONPATH": "python"},
                                  check=True)
             self.assertEqual(ret.returncode, 0)
-        finally:
+        except:
             self.fail("%s" % ret.stderr)
 
 

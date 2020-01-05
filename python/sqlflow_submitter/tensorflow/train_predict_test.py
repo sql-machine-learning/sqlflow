@@ -28,7 +28,7 @@ class TestEstimatorModels(TestCase):
                                  env={"PYTHONPATH": "python"},
                                  check=True)
             self.assertEqual(ret.returncode, 0)
-        finally:
+        except:
             self.fail("%s" % ret.stderr)
 
     def test_keras(self):
@@ -39,7 +39,7 @@ class TestEstimatorModels(TestCase):
                                  env={"PYTHONPATH": "python"},
                                  check=True)
             self.assertEqual(ret.returncode, 0)
-        finally:
+        except:
             self.fail("%s" % ret.stderr)
 
 
