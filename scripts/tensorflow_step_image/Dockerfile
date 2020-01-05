@@ -9,8 +9,7 @@ deb http://cn.archive.ubuntu.com/ubuntu/ bionic-proposed main restricted univers
 deb http://cn.archive.ubuntu.com/ubuntu/ bionic-backports main restricted universe multiverse \n\
 ' > /etc/apt/sources.list
 
-RUN apt-get update && apt-get install -y openjdk-8-jdk maven
-RUN apt-get install -y wget unzip
+RUN apt-get -qq update && apt-get install -y openjdk-8-jdk maven wget unzip > /dev/null
 
 RUN wget -q http://docs-aliyun.cn-hangzhou.oss.aliyun-inc.com/assets/attach/119096/cn_zh/1557995455961/odpscmd_public.zip && \
 unzip -qq odpscmd_public.zip -d /usr/local/odpscmd && \
@@ -22,14 +21,10 @@ ADD parser-1.0-SNAPSHOT-jar-with-dependencies.jar /opt/sqlflow/parser/
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN ln -sf /usr/share/zoneinfo/Etc/UTC /etc/localtime && \
-apt-get install -y tzdata && \
+apt-get install -y tzdata > /dev/null && \
 dpkg-reconfigure --frontend noninteractive tzdata
 
-# install python
-RUN apt-get install -y build-essential
-RUN apt-get install -y curl
-
-RUN apt-get install -y libmysqlclient-dev
+RUN apt-get install -y build-essential libmysqlclient-dev > /dev/null
 
 RUN apt-get install python3 python3-pip
 RUN ln -s /usr/bin/python3 /usr/bin/python
