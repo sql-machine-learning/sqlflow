@@ -24,19 +24,11 @@ RUN ln -sf /usr/share/zoneinfo/Etc/UTC /etc/localtime && \
 apt-get install -y tzdata > /dev/null && \
 dpkg-reconfigure --frontend noninteractive tzdata
 
-# install python
-RUN apt-get install -y build-essential curl > /dev/null
+RUN apt-get install -y build-essential libmysqlclient-dev > /dev/null
 
-RUN curl -sL https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -o mconda-install.sh && \
-bash mconda-install.sh -b -p miniconda && \
-rm mconda-install.sh
+RUN apt-get install python3 python3-pip
+RUN ln -s /usr/bin/python3 /usr/bin/python
+RUN ln -s /usr/bin/pip3 /usr/bin/pip
 
-RUN /miniconda/bin/conda create -y -q -n sqlflow-dev python=3.6 && \
-echo ". /miniconda/etc/profile.d/conda.sh" >> ~/.bashrc && \
-echo "source activate sqlflow-dev" >> ~/.bashrc
-
-RUN apt-get install -y libmysqlclient-dev > /dev/null
-
-RUN bash -c "source /miniconda/bin/activate sqlflow-dev && python -m pip install numpy==1.16.1 tensorflow==2.0.0b1 mysqlclient==1.4.4 impyla==0.16.0 pyodps==0.8.3"
-ENV PATH /miniconda/envs/sqlflow-dev/bin:/miniconda/bin:$PATH
-ADD sqlflow_submitter /miniconda/envs/sqlflow-dev/lib/python3.6/site-packages/sqlflow_submitter
+RUN bash -c "pip install numpy==1.16.1 tensorflow==2.0.0b1 mysqlclient==1.4.4 impyla==0.16.0 pyodps==0.8.3"
+ADD sqlflow_submitter $SQLFLOWPATH/python/
