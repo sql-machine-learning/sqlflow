@@ -28,7 +28,7 @@ dpkg-reconfigure --frontend noninteractive tzdata
 RUN apt-get install -y build-essential curl > /dev/null
 
 RUN curl -sL https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -o mconda-install.sh && \
-bash -x mconda-install.sh -b -p miniconda && \
+bash mconda-install.sh -b -p miniconda && \
 rm mconda-install.sh
 
 RUN /miniconda/bin/conda create -y -q -n sqlflow-dev python=3.6 && \
