@@ -91,8 +91,7 @@ mvn -B -q clean compile assembly:single && \
 mkdir -p /opt/sqlflow/parser && \
 cp target/parser-1.0-SNAPSHOT-jar-with-dependencies.jar /opt/sqlflow/parser && \
 cd / && \
-bash ${GOPATH}/src/sqlflow.org/sqlflow/scripts/convert_markdown_into_ipynb.sh && \
-rm -rf ${GOPATH}/src && rm -rf ${GOPATH}/bin
+bash ${GOPATH}/src/sqlflow.org/sqlflow/scripts/convert_markdown_into_ipynb.sh
 
 ARG WITH_SQLFLOW_MODELS="ON"
 # Install latest sqlflow_models for testing custom models, see main_test.go:CaseTrainCustomModel

@@ -17,24 +17,29 @@ import subprocess
 
 
 class TestEstimatorModels(TestCase):
-    # NOTE: we must test tensorflow training and predicting in separated processes, or
-    # TensorFlow will raise error "Graph is finalized."
+    '''NOTE: we must test tensorflow training and predicting in separated
+    processes, or TensorFlow will raise error "Graph is finalized.'''
+
     def test_estimator(self):
         try:
             # should run this test under directory $GOPATH/sqlflow.org/sqlflow
-            ret = subprocess.run(["/usr/local/bin/python", "python/sqlflow_submitter/tensorflow/estimator_example.py"],
-                                 env={"PYTHONPATH": "python"})
+            ret = subprocess.run(["/usr/local/bin/python",
+                                  "python/sqlflow_submitter/tensorflow/estimator_example.py"],
+                                 env={"PYTHONPATH": "python"},
+                                 check=True)
             self.assertEqual(ret.returncode, 0)
-        except:
+        finally:
             self.fail("%s" % ret.stderr)
 
     def test_keras(self):
         try:
             # should run this test under directory $GOPATH/sqlflow.org/sqlflow
-            ret = subprocess.run(["/usr/local/bin/python", "python/sqlflow_submitter/tensorflow/keras_example.py"],
-                                 env={"PYTHONPATH": "python"})
+            ret = subprocess.run(["/usr/local/bin/python",
+                                  "python/sqlflow_submitter/tensorflow/keras_example.py"],
+                                 env={"PYTHONPATH": "python"},
+                                 check=True)
             self.assertEqual(ret.returncode, 0)
-        except:
+        finally:
             self.fail("%s" % ret.stderr)
 
 
