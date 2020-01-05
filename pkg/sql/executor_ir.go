@@ -170,9 +170,9 @@ func runSQLProgram(wr *pipe.Writer, sqlProgram string, db *database.DB, modelDir
 		// returning error, we can not use "defer" because if we have many SQL statements in
 		// the SQL program, we may overflow the defer stack.
 		// For more information: https://blog.learngoprogramming.com/gotchas-of-defer-in-go-1-8d070894cb01
-		cleanCwd := func(cwd string) error {
-			return os.RemoveAll(cwd)
-		}
+		//cleanCwd := func(cwd string) error {
+		//	return os.RemoveAll(cwd)
+		//}
 		var r ir.SQLStatement
 		if parser.IsExtendedSyntax(sql) {
 			if sql.Train {
@@ -186,23 +186,26 @@ func runSQLProgram(wr *pipe.Writer, sqlProgram string, db *database.DB, modelDir
 			standardSQL := ir.StandardSQL(sql.Standard)
 			r = &standardSQL
 		}
+		/**
 		if err != nil {
 			if e := cleanCwd(cwd); e != nil {
 				return fmt.Errorf("encounter %v when dealwith error: %s", e, err)
 			}
 			return err
 		}
-
+		**/
 		r.SetOriginalSQL(sql.Original)
 		if err := runSingleSQLIR(wr, r, db, modelDir, cwd, session); err != nil {
+			/**
 			if e := cleanCwd(cwd); e != nil {
 				return fmt.Errorf("encounter %v when dealwith error: %s", e, err)
-			}
+			}**/
 			return err
 		}
+		/**
 		if e := cleanCwd(cwd); e != nil {
 			return fmt.Errorf("encounter %v when dealwith error: %s", e, err)
-		}
+		}**/
 	}
 	return nil
 }
@@ -221,6 +224,7 @@ func runSingleSQLIR(wr *pipe.Writer, sqlIR ir.SQLStatement, db *database.DB, mod
 	}()
 	// TODO(typhoonzero): can run LogFeatureDerivationResult(wr, trainStmt) here to send
 	// feature derivation logs to client, yet we disable if for now so that it's less annoying.
+	fmt.Println(GetSubmitter())
 	GetSubmitter().Setup(wr, db, modelDir, cwd, session)
 	return sqlIR.Execute(GetSubmitter())
 }

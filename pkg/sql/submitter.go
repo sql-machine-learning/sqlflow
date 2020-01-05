@@ -51,9 +51,11 @@ func SubmitterRegister(name string, submitter Submitter) {
 func GetSubmitter() Submitter {
 	envSubmitter := os.Getenv("SQLFLOW_submitter")
 	s := submitterRegistry[envSubmitter]
+	fmt.Println(envSubmitter, submitterRegistry)
 	if s == nil {
 		s = submitterRegistry["default"]
 	}
+	fmt.Println("return", s, submitterRegistry["default"], submitterRegistry["pai"])
 	return s
 }
 
@@ -118,6 +120,7 @@ type defaultSubmitter struct {
 }
 
 func (s *defaultSubmitter) Setup(w *pipe.Writer, db *database.DB, modelDir string, cwd string, session *pb.Session) {
+	fmt.Println("call setup", s)
 	// cwd is used to store train scripts and save output models.
 	s.Writer, s.Db, s.ModelDir, s.Cwd, s.Session = w, db, modelDir, cwd, session
 }

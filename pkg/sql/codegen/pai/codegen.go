@@ -15,9 +15,11 @@ package pai
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -28,13 +30,24 @@ import (
 
 const entryFile = "entry.py"
 
-type clusterConfig struct {
-	NumPS      int
-	NumWorkers int
-	PSCPU      int
-	PSGPU      int
-	WorkerCPU  int
-	WorkerGPU  int
+// PSConfig implicates Prameter Server Config
+type PSConfig struct {
+	Count int `json:"count"`
+	GPU   int `json:"gpu"`
+	CPU   int `json:"cpu"`
+}
+
+// WorkerConfig implicates Worker Config
+type WorkerConfig struct {
+	Count int `json:"count`
+	GPU   int `json:"gpu"`
+	CPU   int `json:"cpu"`
+}
+
+// ClusterConfig implicits PAI distributed task meta
+type ClusterConfig struct {
+	PS     PSConfig     `json:"ps"`
+	Worker WorkerConfig `json:"worker"`
 }
 
 func formatCkptDir(modelName string) (string, error) {
@@ -53,7 +66,7 @@ func formatCkptDir(modelName string) (string, error) {
 }
 
 // wrapper generates a Python program for submit TensorFlow tasks to PAI.
-func wrapper(code, dataSource, modelName, cwd, tmpTrainTable, tmpValTable string, cc *clusterConfig) (string, error) {
+func wrapper(code, dataSource, modelName, cwd, tmpTrainTable, tmpValTable string, cc *ClusterConfig) (string, error) {
 	f, err := os.Create(filepath.Join(cwd, entryFile))
 	if err != nil {
 		return "", fmt.Errorf("Create python code failed")
@@ -70,8 +83,13 @@ func wrapper(code, dataSource, modelName, cwd, tmpTrainTable, tmpValTable string
 	}
 
 	var tpl = template.Must(template.New("Submit").Parse(tfWrapperTmplText))
+	cfString, err := json.Marshal(cc)
+	if err != nil {
+		return "", err
+	}
+
 	filler := wrapperFiller{
-		clusterConfig:    *cc,
+		CFJSONString:     strconv.Quote(string(cfString)),
 		DataSource:       dataSource,
 		ModelName:        modelName,
 		EntryFile:        entryFile,
@@ -83,10 +101,12 @@ func wrapper(code, dataSource, modelName, cwd, tmpTrainTable, tmpValTable string
 	if err := tpl.Execute(&program, filler); err != nil {
 		return "", err
 	}
+	fmt.Println(program.String())
 	return program.String(), nil
 }
 
-func getClusterConfig(attrs map[string]interface{}) (*clusterConfig, error) {
+// GetClusterConfig returns ClusterConfig object comes from WITH clause
+func GetClusterConfig(attrs map[string]interface{}) (*ClusterConfig, error) {
 	defaultMap := map[string]int{
 		"train.num_ps":      0,
 		"train.num_workers": 1,
@@ -106,19 +126,23 @@ func getClusterConfig(attrs map[string]interface{}) (*clusterConfig, error) {
 			delete(attrs, k)
 		}
 	}
-	return &clusterConfig{
-		NumPS:      defaultMap["train.num_ps"],
-		NumWorkers: defaultMap["train.num_workers"],
-		PSCPU:      defaultMap["train.ps_cpu"],
-		PSGPU:      defaultMap["train.ps_gpu"],
-		WorkerCPU:  defaultMap["train.worker_cpu"],
-		WorkerGPU:  defaultMap["train.worker_gpu"],
+	return &ClusterConfig{
+		PS: PSConfig{
+			Count: defaultMap["train.num_ps"],
+			CPU:   defaultMap["train.ps_cpu"],
+			GPU:   defaultMap["train.ps_gpu"],
+		},
+		Worker: WorkerConfig{
+			Count: defaultMap["train.num_workers"],
+			CPU:   defaultMap["train.worker_cpu"],
+			GPU:   defaultMap["train.worker_gpu"],
+		},
 	}, nil
 }
 
 // Train generates a Python program for train a TensorFlow model.
 func Train(ir *ir.TrainStmt, session *pb.Session, modelName, cwd string) (string, error) {
-	cc, err := getClusterConfig(ir.Attributes)
+	cc, err := GetClusterConfig(ir.Attributes)
 	program, err := tfTrainAndSave(ir, session, modelName)
 	if err != nil {
 		return "", err
@@ -154,7 +178,7 @@ func tfTrainAndSave(ir *ir.TrainStmt, session *pb.Session, modelName string) (st
 
 // Predict generates a Python program for train a TensorFlow model.
 func Predict(ir *ir.PredictStmt, session *pb.Session, modelName, cwd string) (string, error) {
-	cc, err := getClusterConfig(ir.Attributes)
+	cc, err := GetClusterConfig(ir.Attributes)
 	if err != nil {
 		return "", err
 	}

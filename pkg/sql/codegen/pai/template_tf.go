@@ -14,7 +14,7 @@
 package pai
 
 type wrapperFiller struct {
-	clusterConfig
+	CFJSONString     string
 	DataSource       string
 	EntryFile        string
 	ModelName        string
@@ -69,8 +69,8 @@ else:
 
 {{if gt .NumWorkers 1}}
 print("saving model to: {{.OSSCheckpointDir}}")
-pai_cmd = 'pai -name %s -DjobName=%s -Dtags=%s -Dscript=file://%s -DentryFile=%s -Dtables=%s -DcheckpointDir=\'{{.OSSCheckpointDir}}\' -Dcluster=\'{\"ps\":{\"count\":{{.NumPS}}, \"gpu\": {{.PSGPU}}, \"cpu\": {{.PSCPU}} }, \"worker\":{\"count\":{{.NumWorkers}}, \"gpu\": {{.WorkerGPU}}, \"cpu\": {{.WorkerCPU}}}}\'' % (
-    'tensorflow1120', jobname, 'dnn', tarball, '{{.EntryFile}}', submit_tables)
+pai_cmd = 'pai -name %s -DjobName=%s -Dtags=%s -Dscript=file://%s -DentryFile=%s -Dtables=%s -DcheckpointDir=\'{{.OSSCheckpointDir}}\' -Dcluster=\'%s\'' % (
+    'tensorflow1120', jobname, 'dnn', tarball, '{{.EntryFile}}', submit_tables, '{{.CFJSONString}}')
 {{else}}
 pai_cmd = 'pai -name %s -DjobName=%s -Dtags=%s -Dscript=file://%s -DentryFile=%s -DgpuRequired=\'0\' -Dtables=%s -DcheckpointDir=\'{{.OSSCheckpointDir}}\'' % (
     'tensorflow1120', jobname, 'dnn', tarball, '{{.EntryFile}}', submit_tables)

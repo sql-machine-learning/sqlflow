@@ -140,4 +140,5 @@ func (s *paiSubmitter) ExecutePredict(cl *ir.PredictStmt) error {
 }
 
 func (s *paiSubmitter) GetTrainStmtFromModel() bool { return false }
-func init()                                         { SubmitterRegister("pai", &paiSubmitter{}) }
+
+func init() { SubmitterRegister("pai", &paiSubmitter{&defaultSubmitter{}}) }
