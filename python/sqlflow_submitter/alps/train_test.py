@@ -25,7 +25,7 @@ class TestALPSTrain(TestCase):
             return
         try:
             # should run this test under directory $GOPATH/sqlflow.org/sqlflow
-            ret = subprocess.run(["python", "python/sqlflow_submitter/alps/train_example.py"],
+            ret = subprocess.run(["/usr/local/bin/python", "python/sqlflow_submitter/alps/train_example.py"],
                                  env={"PYTHONPATH": "python"})
             self.assertEqual(ret.returncode, 0)
         except:
