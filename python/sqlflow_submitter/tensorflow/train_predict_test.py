@@ -35,7 +35,7 @@ class TestEstimatorModels(TestCase):
     def test_explain(self):
         try:
             # should run this test under directory $GOPATH/sqlflow.org/sqlflow
-            ret = subprocess.run(["/miniconda/envs/sqlflow-dev/bin/python", 
+            ret = subprocess.run(["/usr/local/bin/python", 
                                   "python/sqlflow_submitter/tensorflow/explain_example.py"],
                                  env={"PYTHONPATH": "python"},
                                  check=True)
