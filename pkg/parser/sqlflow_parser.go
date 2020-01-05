@@ -57,57 +57,35 @@ func Parse(dialect, program string) ([]*SQLFlowStmt, error) {
 		return nil, nil
 	}
 
-	// SELECT ...; SELECT * FROM my_table TO TRAIN ...
-	//                                    ^
-	//                                    i
-	sqls, i, err := thirdPartyParse(dialect, program)
-	if err != nil {
-		return nil, err
+	var stmts []*SQLFlowStmt
+	for {
+		ss, i, e := thirdPartyParse(dialect, program)
+		if e != nil {
+			return nil, e
+		}
+		if i == -1 {
+			// The third party parser accepts all SQL statements
+			stmts = append(stmts, ss...)
+			return stmts, nil
+		}
+
+		left := ss[len(ss)-1].Standard
+		program = program[i:]
+
+		extended, j, err := parseSQLFlowStmt(program)
+		right := program[:j]
+		program = program[j:]
+
+		ss[len(ss)-1].Original = left + right
+		ss[len(ss)-1].SQLFlowSelectStmt = extended
+		ss[len(ss)-1].StandardSelect.origin = left
+
+		stmts = append(stmts, ss...)
+		if err == nil {
+			break // parseSQLFlowStmt accepted all
+		}
 	}
-	if i == -1 { // The third party parser accepts all SQL statements
-		return sqls, nil
-	}
-
-	left := sqls[len(sqls)-1].Standard
-	program = program[i:]
-
-	// TO TRAIN dnn LABEL class INTO my_model; SELECT ...
-	//                                        ^
-	//                                        j
-	extended, j, err := parseFirstSQLFlowStmt(program)
-	if err != nil {
-		return nil, err
-	}
-
-	right := program[:j]
-	program = program[j:]
-
-	sqls[len(sqls)-1].Original = left + right
-	sqls[len(sqls)-1].SQLFlowSelectStmt = extended
-	sqls[len(sqls)-1].StandardSelect.origin = left
-
-	nextSqls, err := Parse(dialect, program)
-	if err != nil {
-		return nil, err
-	}
-
-	return append(sqls, nextSqls...), err
-}
-
-func parseFirstSQLFlowStmt(program string) (*SQLFlowSelectStmt, int, error) {
-	// Note(tony): our parser only supports parsing one statement.
-	// So we need to extract the first statement for it.
-	s, err := SplitMultipleSQL(program)
-	if err != nil {
-		return nil, -1, err
-	}
-
-	pr, _, err := parseSQLFlowStmt(s[0])
-	if err != nil {
-		return nil, -1, err
-	}
-
-	return pr, len(s[0]), nil
+	return stmts, nil
 }
 
 func thirdPartyParse(dialect, program string) ([]*SQLFlowStmt, int, error) {
@@ -118,7 +96,10 @@ func thirdPartyParse(dialect, program string) ([]*SQLFlowStmt, int, error) {
 	}
 	var spr []*SQLFlowStmt
 	for _, sql := range sqls {
-		spr = append(spr, &SQLFlowStmt{Original: sql, Standard: sql, SQLFlowSelectStmt: nil})
+		spr = append(spr, &SQLFlowStmt{
+			Original:          sql,
+			Standard:          sql,
+			SQLFlowSelectStmt: nil})
 	}
 	return spr, i, nil
 }
