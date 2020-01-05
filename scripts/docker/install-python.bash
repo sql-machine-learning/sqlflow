@@ -20,7 +20,7 @@ ln -s /usr/bin/python3 /usr/local/bin/python
 
 # Upgrade pip would creates /usr/local/bin/pip.  Update setuptools
 # because https://github.com/red-hat-storage/ocs-ci/pull/971/files
-pip3 install --upgrade pip setuptools 
+pip3 install --upgrade pip setuptools six
 
 # pip install mysqlclient needs GCC.
 apt-get install -y build-essential  libssl-dev # for building mysqlclient pip
