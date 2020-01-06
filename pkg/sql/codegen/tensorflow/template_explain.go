@@ -28,6 +28,11 @@ type explainFiller struct {
 	ModelParams       map[string]interface{}
 	Save              string
 	IsPAI             bool
+	ResultTable       string
+	HDFSNameNodeAddr  string
+	HiveLocation      string
+	HDFSUser          string
+	HDFSPass          string
 }
 
 const boostedTreesExplainTemplateText = `
@@ -79,5 +84,11 @@ explain.explain(datasource="{{.DataSource}}",
                 feature_metas=feature_metas,
                 label_meta=label_meta,
                 model_params=model_params,
-                save="{{.Save}}", **summaryAttrs)
+                save="{{.Save}}",
+                result_table="{{.ResultTable}}",
+                hdfs_namenode_addr="{{.HDFSNameNodeAddr}}",
+                hive_location="{{.HiveLocation}}",
+                hdfs_user="{{.HDFSUser}}",
+                hdfs_pass="{{.HDFSPass}}",
+                **summaryAttrs)
 `

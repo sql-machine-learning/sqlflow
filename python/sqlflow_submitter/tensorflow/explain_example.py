@@ -43,4 +43,5 @@ if __name__ == "__main__":
         model_params={"n_batches_per_layer": 8, "n_classes": 2, "n_trees": 50, "center_bias": True},
         save="btmodel",
         is_pai=False,
-        plot_type='bar')
+        plot_type='bar',
+        result_table="iris.explain_result")
