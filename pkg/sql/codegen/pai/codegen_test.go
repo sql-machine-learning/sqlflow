@@ -96,14 +96,18 @@ func hasUnknownParameters(code string, list []string) bool {
 	return false
 }
 
-func mockClusterConfig() *clusterConfig {
-	return &clusterConfig{
-		NumPS:      0,
-		NumWorkers: 1,
-		PSCPU:      200,
-		PSGPU:      0,
-		WorkerCPU:  200,
-		WorkerGPU:  0,
+func mockClusterConfig() *ClusterConfig {
+	return &ClusterConfig{
+		PS: PSConfig{
+			Count: 0,
+			CPU:   200,
+			GPU:   0,
+		},
+		Worker: WorkerConfig{
+			Count: 0,
+			CPU:   200,
+			GPU:   0,
+		},
 	}
 }
 

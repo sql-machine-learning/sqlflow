@@ -63,9 +63,9 @@ func (s *alisaSubmitter) getPAIcmd(ts *ir.TrainStmt, tarball string) (string, er
 	cfQuote := strconv.Quote(string(cfString))
 
 	if cf.Worker.Count > 1 {
-		return fmt.Sprintf("pai -name tensorflow1120 -DjobName=%s -Dtags=dnn -Dscript=file://@@train.tar.gz -DentryFile=entry.py -Dtables=%s -DcheckpointDir=%s -Dcluster=%s", jobName, tarball, ts.TmpTrainTable, "", cfQuote), nil
+		return fmt.Sprintf("pai -name tensorflow1120 -DjobName=%s -Dtags=dnn -Dscript=file://@@%s -DentryFile=entry.py -Dtables=%s -DcheckpointDir=%s -Dcluster=%s", jobName, tarball, ts.TmpTrainTable, "", cfQuote), nil
 	}
-	return fmt.Sprintf("pai -name tensorflow1120 -DjobName=%s -Dtags=dnn -Dscript=file://@@train.tar.gz -DentryFile=entry.py -Dtables=%s -DcheckpointDir=%s", jobName, tarball, ts.TmpTrainTable, "", cfQuote), nil
+	return fmt.Sprintf("pai -name tensorflow1120 -DjobName=%s -Dtags=dnn -Dscript=file://@@%s -DentryFile=entry.py -Dtables=%s -DcheckpointDir=%s", jobName, tarball, ts.TmpTrainTable, "", cfQuote), nil
 }
 
 func (s *alisaSubmitter) submitAlisaTask(code, resourceName string) error {
