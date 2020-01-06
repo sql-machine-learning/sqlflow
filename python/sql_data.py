@@ -17,7 +17,7 @@ from MySQLdb import connect
 
 def connect(user, passwd, host, port):
     """connect is a convenient shortcut to mysql.connector.connect. Also,
-    it makes it reaonable to import mysql.connector in this file, so
+    it makes it reasonable to import mysql.connector in this file, so
     to make it self-complete as a template.
 
     """
