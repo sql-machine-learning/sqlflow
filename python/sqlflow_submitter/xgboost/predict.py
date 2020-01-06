@@ -38,7 +38,7 @@ def pred(datasource,
     bst.load_model("my_model")  # load data
     preds = bst.predict(dpred)
 
-    # TODO(Yancey1989): using the train parameters to decide regressoin model or classifier model
+    # TODO(Yancey1989): using the train parameters to decide regression model or classifier model
     if len(preds.shape) == 2:
         # classifier result
         preds = np.argmax(np.array(preds), axis=1)
