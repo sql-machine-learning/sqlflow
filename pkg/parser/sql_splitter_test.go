@@ -21,10 +21,8 @@ import (
 
 func TestSplitMultipleSQL(t *testing.T) {
 	a := assert.New(t)
-	splitted, err := splitMultipleSQL(`CREATE TABLE copy_table_1 AS SELECT a,b,c FROM table_1 WHERE c<>";";
+	n, err := NumberOfStatements(`mysql`, `CREATE TABLE copy_table_1 AS SELECT a,b,c FROM table_1 WHERE c<>";";
 SELECT * FROM copy_table_1;SELECT * FROM copy_table_1 TO TRAIN DNNClassifier WITH n_classes=2 INTO test_model;`)
 	a.NoError(err)
-	a.Equal("CREATE TABLE copy_table_1 AS SELECT a,b,c FROM table_1 WHERE c<>\";\";", splitted[0])
-	a.Equal("SELECT * FROM copy_table_1;", splitted[1])
-	a.Equal("SELECT * FROM copy_table_1 TO TRAIN DNNClassifier WITH n_classes=2 INTO test_model;", splitted[2])
+	a.Equal(n, 3)
 }

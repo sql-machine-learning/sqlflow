@@ -13,45 +13,11 @@
 
 package parser
 
-import (
-	"fmt"
-	"strings"
-)
-
 // NumberOfStatements returns the number of SQL statement given a SQL program
-func NumberOfStatements(statements string) (int, error) {
-	sqls, err := splitMultipleSQL(statements)
+func NumberOfStatements(dialect, statements string) (int, error) {
+	sqls, err := Parse(dialect, statements)
 	if err != nil {
 		return -1, err
 	}
 	return len(sqls), nil
-}
-
-// splitMultipleSQL returns a list of SQL statements if the input statements contains multiple
-// SQL statements separated by ;
-func splitMultipleSQL(statements string) ([]string, error) {
-	l := newLexer(statements)
-	var n extendedSyntaxSymType
-	var sqlList []string
-	splitPos := 0
-	for {
-		t := l.Lex(&n)
-		if t < 0 {
-			return []string{}, fmt.Errorf("Lex: Unknown problem %s", statements[0-t:])
-		}
-		if t == 0 {
-			if len(sqlList) == 0 {
-				// NOTE: this line support executing SQL statement without a trailing ";"
-				sqlList = append(sqlList, statements)
-			}
-			break
-		}
-		if t == ';' {
-			splitted := statements[splitPos:l.pos]
-			splitted = strings.TrimSpace(splitted)
-			sqlList = append(sqlList, splitted)
-			splitPos = l.pos
-		}
-	}
-	return sqlList, nil
 }

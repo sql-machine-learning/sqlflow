@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"sqlflow.org/sqlflow/pkg/database"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -57,7 +58,11 @@ func (s *Server) Fetch(ctx context.Context, job *pb.FetchRequest) (*pb.FetchResp
 
 // Run implements `rpc Run (Request) returns (stream Response)`
 func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
-	n, err := parser.NumberOfStatements(req.Sql)
+	dialect, _, err := database.ParseURL(req.Session.DbConnStr)
+	if err != nil {
+		return err
+	}
+	n, err := parser.NumberOfStatements(dialect, req.Sql)
 	if err != nil {
 		return err
 	}
