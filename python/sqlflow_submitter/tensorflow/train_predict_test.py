@@ -31,6 +31,19 @@ class TestEstimatorModels(TestCase):
         except:
             self.fail("%s" % ret.stderr)
 
+    
+    def test_explain(self):
+        try:
+            # should run this test under directory $GOPATH/sqlflow.org/sqlflow
+            ret = subprocess.run(["/usr/local/bin/python", 
+                                  "python/sqlflow_submitter/tensorflow/explain_example.py"],
+                                 env={"PYTHONPATH": "python"},
+                                 check=True)
+            self.assertEqual(ret.returncode, 0)
+        except:
+            self.fail("%s" % ret.stderr)
+    
+
     def test_keras(self):
         try:
             # should run this test under directory $GOPATH/sqlflow.org/sqlflow
