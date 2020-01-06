@@ -22,17 +22,17 @@ import (
 	"sqlflow.org/sqlflow/pkg/parser"
 )
 
-func TestVerify_1(t *testing.T) {
+func TestVerify(t *testing.T) {
+	if os.Getenv("SQLFLOW_TEST_DB") == "hive" {
+		t.Skip("in Hive, db_name.table_name.field_name will raise error, because . operator is only supported on struct or list of struct types")
+	}
+
 	a := assert.New(t)
 	r, e := parser.LegacyParse(`SELECT * FROM churn.train LIMIT 10;`)
 	a.NoError(e)
 	fts, e := Verify(r.StandardSelect.String(), database.GetTestingDBSingleton())
 	a.NoError(e)
 	a.Equal(21, len(fts))
-
-	if os.Getenv("SQLFLOW_TEST_DB") == "hive" {
-		t.Skip("in Hive, db_name.table_name.field_name will raise error, because . operator is only supported on struct or list of struct types")
-	}
 
 	r, e = parser.LegacyParse(`SELECT Churn, churn.train.Partner,TotalCharges FROM churn.train LIMIT 10;`)
 	a.NoError(e)
@@ -51,28 +51,6 @@ func TestVerify_1(t *testing.T) {
 	typ, ok = fts.Get("totalcharges")
 	a.True(ok)
 	a.Equal("FLOAT", typ)
-}
-
-func TestVerify_2(t *testing.T) {
-	if os.Getenv("SQLFLOW_TEST_DB") == "hive" {
-		t.Skip("in Hive, db_name.table_name.field_name will raise error, because . operator is only supported on struct or list of struct types")
-	}
-	a := assert.New(t)
-	r, e := parser.LegacyParse(`SELECT Churn, churn.train.Partner FROM churn.train LIMIT 10;`)
-	a.NoError(e)
-	fts, e := Verify(r.StandardSelect.String(), database.GetTestingDBSingleton())
-	a.NoError(e)
-	a.Equal(2, len(fts))
-	typ, ok := fts.Get("churn")
-	a.Equal(true, ok)
-	a.Contains([]string{"VARCHAR(255)", "VARCHAR"}, typ)
-
-	typ, ok = fts.Get("partner")
-	a.Equal(true, ok)
-	a.Contains([]string{"VARCHAR(255)", "VARCHAR"}, typ)
-
-	_, ok = fts.Get("gender")
-	a.Equal(false, ok)
 }
 
 func TestVerifyColumnNameAndType(t *testing.T) {
