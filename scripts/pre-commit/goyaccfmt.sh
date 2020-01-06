@@ -1,5 +1,4 @@
 #!/bin/bash
-
 # Copyright 2019 The SQLFlow Authors. All rights reserved.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,16 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+
 set -e
-
-curl --silent https://dl.google.com/go/go1.13.4.linux-amd64.tar.gz | tar -C /usr/local -xzf -
-
-go get github.com/golang/protobuf/protoc-gen-go
-go get golang.org/x/lint/golint
-go get golang.org/x/tools/cmd/goyacc
-go get golang.org/x/tools/cmd/cover
-go get github.com/mattn/goveralls
-go get github.com/rakyll/gotest
-go get github.com/wangkuiyi/goyaccfmt
-
-cp $GOPATH/bin/* /usr/local/bin/
+goyaccfmt -w $(find . -name *.y)

@@ -99,7 +99,7 @@ type ExplainClause struct {
 	ExplainAttrs Attributes
 	TrainedModel string
 	Explainer    string
-	ExplainInto         string
+	ExplainInto  string
 }
 
 var parseResult *SQLFlowSelectStmt
