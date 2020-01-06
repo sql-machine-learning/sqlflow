@@ -22,9 +22,8 @@ import (
 	"strconv"
 	"strings"
 
+	"sqlflow.org/goalisa"
 	"sqlflow.org/sqlflow/pkg/database"
-	"sqlflow.org/sqlflow/pkg/pipe"
-	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/pai"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
@@ -33,8 +32,8 @@ type alisaSubmitter struct {
 	*defaultSubmitter
 }
 
-func (s *alisaSubmitter) ExecuteQuery(cl *ir.StandardSQL) error {
-	return nil
+func (s *alisaSubmitter) ExecuteQuery(sql *ir.StandardSQL) error {
+	return runStandardSQL(s.Writer, string(*sql), s.Db)
 }
 
 func createTarball(files []string, target string) error {
@@ -64,9 +63,27 @@ func (s *alisaSubmitter) getPAIcmd(ts *ir.TrainStmt, tarball string) (string, er
 	cfQuote := strconv.Quote(string(cfString))
 
 	if cf.Worker.Count > 1 {
-		return fmt.Sprintf("pai -name tensorflow1120 -DjobName=%s -Dtags=dnn -Dscript=file://%s -DentryFile=entry.py -Dtables=%s -DcheckpointDir=%s -Dcluster=%s", jobName, tarball, ts.TmpTrainTable, "", cfQuote), nil
+		return fmt.Sprintf("pai -name tensorflow1120 -DjobName=%s -Dtags=dnn -Dscript=file://@@train.tar.gz -DentryFile=entry.py -Dtables=%s -DcheckpointDir=%s -Dcluster=%s", jobName, tarball, ts.TmpTrainTable, "", cfQuote), nil
 	}
-	return fmt.Sprintf("pai -name tensorflow1120 -DjobName=%s -Dtags=dnn -Dscript=file://%s -DentryFile=entry.py -Dtables=%s -DcheckpointDir=%s", jobName, tarball, ts.TmpTrainTable, "", cfQuote), nil
+	return fmt.Sprintf("pai -name tensorflow1120 -DjobName=%s -Dtags=dnn -Dscript=file://@@train.tar.gz -DentryFile=entry.py -Dtables=%s -DcheckpointDir=%s", jobName, tarball, ts.TmpTrainTable, "", cfQuote), nil
+}
+
+func (s *alisaSubmitter) submitAlisaTask(code, resourceName string) error {
+	cfg, e := goalisa.ParseDSN(s.Session.DbConnStr)
+	if e != nil {
+		return e
+	}
+
+	cfg.Env["RES_DOWNLOAD_URL"] = fmt.Sprintf(`[{\"downloadUrl\":\"https://pai-tf-job.oss-cn-beijing.aliyuncs.com/%s\", \"resourceName\":\train.tar.gz\"}]`, resourceName)
+	cfg.Verbose = true
+	newDSN := cfg.FormatDSN()
+
+	alisa, e := database.OpenDB(newDSN)
+	if e != nil {
+		return e
+	}
+	_, e = alisa.Exec(code)
+	return e
 }
 
 func (s *alisaSubmitter) ExecuteTrain(cl *ir.TrainStmt) error {
@@ -96,25 +113,22 @@ func (s *alisaSubmitter) ExecuteTrain(cl *ir.TrainStmt) error {
 
 	// upload a temporary file to oss, used for alisa task
 	// should fill the oss configuration in file `~/.ossutilconfig`
-	cmd := exec.Command("ossutil", "cp", "train.tar.gz", "oss://pai-tf/train.tar.gz")
+	resourceName := randStringRunes(16)
+	cmd := exec.Command("ossutil", "cp", "train.tar.gz", fmt.Sprintf("oss://pai-tf/%s", resourceName))
 	if _, e := cmd.CombinedOutput(); e != nil {
 		return fmt.Errorf("failed %s, %v", cmd, e)
 	}
 	defer func() {
-		exec.Command("ossutil", "rm", "oss://pai-tf/train.tar.gz")
+		exec.Command("ossutil", "rm", fmt.Sprintf("oss://pai-tf/%s", resourceName))
 		cmd.CombinedOutput()
 	}()
 
-	//TODO(yancey1989): call goalisa to create task and print logs
-	/**
-		code, err := s.getPAIcmd(cl, tarball)
-		if err != nil {
-			return err
-		}
-		alisa := goalisa.NewAlisaFromEnv()
-		alisa.Execute(paicmd)
-	**/
-	return nil
+	paiCmd, e := s.getPAIcmd(cl, tarball)
+	if e != nil {
+		return e
+	}
+
+	return s.submitAlisaTask(paiCmd, resourceName)
 }
 
 func (s *alisaSubmitter) ExecutePredict(cl *ir.PredictStmt) error {
@@ -125,8 +139,5 @@ func (s *alisaSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 	return fmt.Errorf("Alisa submitter does not support EXPLAIN clause")
 }
 
-func (s *alisaSubmitter) Setup(w *pipe.Writer, db *database.DB, modelDir string, cwd string, session *pb.Session) {
-}
-
 func (s *alisaSubmitter) GetTrainStmtFromModel() bool { return false }
-func init()                                           { SubmitterRegister("alisa", &alisaSubmitter{}) }
+func init()                                           { SubmitterRegister("alisa", &alisaSubmitter{&defaultSubmitter{}}) }
