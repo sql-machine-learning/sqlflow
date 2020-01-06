@@ -154,3 +154,25 @@ func commonTestCases(dbms string, a *assert.Assertions) {
 		a.Equal(0, len(s))
 	}
 }
+
+func TestFindNextSQLStatement(t *testing.T) {
+	a := assert.New(t)
+
+	{
+		s, e := findNextSQLStatement(`select * from table; some other statement`)
+		a.Equal(`select * from table;`, s)
+		a.NoError(e)
+	}
+
+	{
+		s, e := findNextSQLStatement(`select * from table;`)
+		a.Equal(`select * from table;`, s)
+		a.NoError(e)
+	}
+
+	{
+		s, e := findNextSQLStatement(`select * from table`)
+		a.Equal(`select * from table`, s)
+		a.NoError(e)
+	}
+}
