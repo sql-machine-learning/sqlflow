@@ -19,7 +19,7 @@ spec:
         name: sqlflow-server
         imagePullPolicy: Always
         command: ["sqlflowserver"]
-        args: ["--enable-session"]
+        #args: ["--enable-session"]
         ports:
         - containerPort: 50051
           name: sqlflow-server
