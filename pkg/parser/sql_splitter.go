@@ -18,9 +18,18 @@ import (
 	"strings"
 )
 
-// SplitMultipleSQL returns a list of SQL statements if the input statements contains multiple
+// NumberOfStatements returns the number of SQL statement given a SQL program
+func NumberOfStatements(statements string) (int, error) {
+	sqls, err := splitMultipleSQL(statements)
+	if err != nil {
+		return -1, err
+	}
+	return len(sqls), nil
+}
+
+// splitMultipleSQL returns a list of SQL statements if the input statements contains multiple
 // SQL statements separated by ;
-func SplitMultipleSQL(statements string) ([]string, error) {
+func splitMultipleSQL(statements string) ([]string, error) {
 	l := newLexer(statements)
 	var n extendedSyntaxSymType
 	var sqlList []string
