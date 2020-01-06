@@ -19,9 +19,9 @@ import (
 	"strings"
 
 	"sqlflow.org/sqlflow/pkg/database"
-	"sqlflow.org/sqlflow/pkg/featurederivation"
 	"sqlflow.org/sqlflow/pkg/parser"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
+	"sqlflow.org/sqlflow/pkg/step/feature"
 	"sqlflow.org/sqlflow/pkg/verifier"
 )
 
@@ -44,7 +44,7 @@ func generateTrainStmtWithInferredColumns(slct *parser.SQLFlowSelectStmt, connSt
 		return nil, err
 	}
 
-	if err := featurederivation.InferFeatureColumns(trainStmt, connStr); err != nil {
+	if err := feature.InferFeatureColumns(trainStmt, connStr); err != nil {
 		return nil, err
 	}
 
