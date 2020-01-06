@@ -83,7 +83,7 @@ def create_explain_result_table(conn, result_table):
         column_clause = "(feature VARCHAR(255), dfc float)"
     else:
         column_clause = "(feature STRING, dfc float)"
-    sql = "CREATE TABLE IF NOT EXISTS %s (feature VARCHAR(255), dfc float)" % (result_table)
+    sql = "CREATE TABLE IF NOT EXISTS %s %s" % (result_table, column_clause)
     cursor = conn.cursor()
     try:
         cursor.execute("DROP TABLE IF EXISTS %s" % result_table)
@@ -99,7 +99,6 @@ def write_dfc_result(dfc_mean, result_table, conn,
     with buffered_db_writer(conn.driver, conn, result_table, ["feature", "dfc"], 100, hdfs_namenode_addr, hive_location, hdfs_user, hdfs_pass) as w:
         for row_name in feature_column_names:
             w.write([row_name, dfc_mean.loc[row_name]])
-            print(row_name, dfc_mean.loc[row_name])
 
 
 # The following code is generally base on
