@@ -85,25 +85,34 @@ func getDatabaseNameFromDSN(dataSource string) (string, error) {
 	return conf.Project, nil
 }
 
+func createTempTrainAndValTable(trainSelect, valideSelect, datasource string) (string, string, error) {
+	// TODO(typhoonzero): Do **NOT** create tmp table when the select statement is like:
+	// "SELECT fields,... FROM table"
+	dbName, tableName, err := createTmpTableFromSelect(trainSelect, datasource)
+	if err != nil {
+		return "", "", err
+	}
+	tmpTrainTable := strings.Join([]string{dbName, tableName}, ".")
+	tmpValTable := ""
+	if valideSelect != "" {
+		dbName, tableName, err := createTmpTableFromSelect(valideSelect, datasource)
+		if err != nil {
+			return "", "", err
+		}
+		tmpValTable = strings.Join([]string{dbName, tableName}, ".")
+	}
+	return tmpTrainTable, tmpValTable, nil
+}
+
 // Possible situations:
 //
 // 1. argo mode server: generate a step running: repl -e "repl -e \"select * from xx to train\""
 // 2. non-argo mode server | repl -e: create tmp table in go, and use it to train
 
 func (s *paiSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {
-	// TODO(typhoonzero): Do **NOT** create tmp table when the select statement is like:
-	// "SELECT fields,... FROM table"
-	dbName, tableName, err := createTmpTableFromSelect(cl.Select, s.Session.DbConnStr)
-	if err != nil {
-		return err
-	}
-	cl.TmpTrainTable = strings.Join([]string{dbName, tableName}, ".")
-	if cl.ValidationSelect != "" {
-		dbName, tableName, err := createTmpTableFromSelect(cl.ValidationSelect, s.Session.DbConnStr)
-		if err != nil {
-			return err
-		}
-		cl.TmpValidateTable = strings.Join([]string{dbName, tableName}, ".")
+	cl.TmpTrainTable, cl.TmpValidateTable, e = createTempTrainAndValTable(cl.Select, cl.ValidationSelect, s.Session.DbConnStr)
+	if e != nil {
+		return
 	}
 	defer dropTmpTables([]string{cl.TmpTrainTable, cl.TmpValidateTable}, s.Session.DbConnStr)
 

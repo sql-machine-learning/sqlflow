@@ -70,19 +70,10 @@ func (s *alisaSubmitter) getPAIcmd(ts *ir.TrainStmt, tarball string) (string, er
 }
 
 func (s *alisaSubmitter) ExecuteTrain(cl *ir.TrainStmt) error {
-	// TODO(typhoonzero): Do **NOT** create tmp table when the select statement is like:
-	// "SELECT fields,... FROM table"
-	dbName, tableName, err := createTmpTableFromSelect(cl.Select, s.Session.DbConnStr)
-	if err != nil {
-		return err
-	}
-	cl.TmpTrainTable = strings.Join([]string{dbName, tableName}, ".")
-	if cl.ValidationSelect != "" {
-		dbName, tableName, err := createTmpTableFromSelect(cl.ValidationSelect, s.Session.DbConnStr)
-		if err != nil {
-			return err
-		}
-		cl.TmpValidateTable = strings.Join([]string{dbName, tableName}, ".")
+	var e error
+	cl.TmpTrainTable, cl.TmpValidateTable, e = createTempTrainAndValTable(cl.Select, cl.ValidationSelect, s.Session.DbConnStr)
+	if e != nil {
+		return e
 	}
 	defer dropTmpTables([]string{cl.TmpTrainTable, cl.TmpValidateTable}, s.Session.DbConnStr)
 
@@ -104,6 +95,7 @@ func (s *alisaSubmitter) ExecuteTrain(cl *ir.TrainStmt) error {
 	}
 
 	// upload a temporary file to oss, used for alisa task
+	// should fill the oss configuration in file `~/.ossutilconfig`
 	cmd := exec.Command("ossutil", "cp", "train.tar.gz", "oss://pai-tf/train.tar.gz")
 	if _, e := cmd.CombinedOutput(); e != nil {
 		return fmt.Errorf("failed %s, %v", cmd, e)
@@ -120,7 +112,7 @@ func (s *alisaSubmitter) ExecuteTrain(cl *ir.TrainStmt) error {
 			return err
 		}
 		alisa := goalisa.NewAlisaFromEnv()
-		taskID, status, err := alisa.CreateTask(paiCmd)
+		alisa.Execute(paicmd)
 	**/
 	return nil
 }
