@@ -386,7 +386,7 @@ func InferFeatureColumns(trainStmt *ir.TrainStmt, dataSource string) error {
 
 	// set back trainStmt.Features in the order of select
 	for _, target := range columnTargets {
-		targetColumnMap := fcMap[target]
+		targetFeatureColumnMap := fcMap[target]
 		trainStmt.Features[target] = []ir.FeatureColumn{}
 		// append cross columns at the end of all selected fields.
 		crossColumns := []*ir.CrossColumn{}
@@ -395,7 +395,7 @@ func InferFeatureColumns(trainStmt *ir.TrainStmt, dataSource string) error {
 			if slctKey == trainStmt.Label.GetFieldDesc()[0].Name {
 				continue
 			}
-			for _, fc := range targetColumnMap[slctKey] {
+			for _, fc := range targetFeatureColumnMap[slctKey] {
 				if cc, ok := fc.(*ir.CrossColumn); ok {
 					crossColumns = append(crossColumns, cc)
 					continue
