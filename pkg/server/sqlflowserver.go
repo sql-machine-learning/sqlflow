@@ -62,7 +62,7 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 	if err != nil {
 		return err
 	}
-	n, err := parser.NumberOfStatements(dialect, req.Sql)
+	sqls, err := parser.Parse(dialect, req.Sql)
 	if err != nil {
 		return err
 	}
@@ -87,7 +87,7 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 			res = &pb.Response{Response: &pb.Response_Job{Job: &pb.Job{Id: job.JobID}}}
 		case sf.EndOfExecution:
 			// if sqlStatements have only one field, do **NOT** return EndOfExecution message.
-			if n > 1 {
+			if len(sqls) > 1 {
 				eoeMsg := r.(sf.EndOfExecution)
 				eoe := &pb.EndOfExecution{
 					Sql:              eoeMsg.Statement,

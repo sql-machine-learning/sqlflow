@@ -95,19 +95,19 @@ func Parse(dialect, program string) ([]*SQLFlowStmt, error) {
 }
 
 func parseFirstSQLFlowStmt(program string) (*SQLFlowSelectStmt, int, error) {
-	// Note(tony): our parser only supports parsing one statement.
-	// So we need to extract the first statement for it.
-	s, err := findNextSQLStatement(program)
+	pr, idx, err := parseSQLFlowStmt(program)
+
 	if err != nil {
-		return nil, -1, err
+		var e error
+		pr, idx, e = parseSQLFlowStmt(program[:idx])
+		if e != nil {
+			// return the original error since it saw the entire program
+			return nil, -1, err
+		}
+		return pr, idx, nil
 	}
 
-	pr, _, err := parseSQLFlowStmt(s)
-	if err != nil {
-		return nil, -1, err
-	}
-
-	return pr, len(s), nil
+	return pr, idx, nil
 }
 
 func thirdPartyParse(dialect, program string) ([]*SQLFlowStmt, int, error) {
@@ -121,24 +121,6 @@ func thirdPartyParse(dialect, program string) ([]*SQLFlowStmt, int, error) {
 		spr = append(spr, &SQLFlowStmt{Original: sql, Standard: sql, SQLFlowSelectStmt: nil})
 	}
 	return spr, i, nil
-}
-
-func findNextSQLStatement(statements string) (string, error) {
-	l := newLexer(statements)
-	for {
-		var n extendedSyntaxSymType
-		t := l.Lex(&n)
-		if t < 0 {
-			return "", fmt.Errorf("lex: unknown token in near %s", statements[l.pos:])
-		}
-		if t == 0 { // eof
-			break
-		}
-		if t == ';' {
-			return statements[:l.pos], nil
-		}
-	}
-	return statements, nil
 }
 
 // LegacyParse calls extended_syntax_parser.y with old rules.
