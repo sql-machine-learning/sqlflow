@@ -84,7 +84,6 @@ type TrainClause struct {
 
 /* If no FOR in the COLUMN, the key is "" */
 type columnClause map[string]ExprList
-type fieldClause ExprList
 
 type Attributes map[string]*Expr
 
@@ -132,17 +131,13 @@ func attrsUnion(as1, as2 Attributes) Attributes {
 }
 
 %type  <eslt> sqlflow_select_stmt
-%type  <slct> standard_select_stmt
-%type  <val>  limit_clause
 %type  <tran> train_clause
 %type  <colc> column_clause
 %type  <labc> label_clause
 %type  <infr> predict_clause
 %type  <expln> explain_clause
-%type  <flds> fields
-%type  <tbls> tables
-%type  <expr> expr funcall column where_clause
-%type  <expl> ExprList pythonlist columns field_clause 
+%type  <expr> expr funcall column
+%type  <expl> ExprList pythonlist columns
 %type  <atrs> attr
 %type  <atrs> attrs
 
@@ -160,34 +155,7 @@ func attrsUnion(as1, as2 Attributes) Attributes {
 %%
 
 sqlflow_select_stmt
-: standard_select_stmt end_of_stmt {
-	parseResult = &SQLFlowSelectStmt{
-		Extended: false,
-		StandardSelect: $1}
-  }
-| standard_select_stmt train_clause end_of_stmt {
-	parseResult = &SQLFlowSelectStmt{
-		Extended: true,
-		Train: true,
-		StandardSelect: $1,
-		TrainClause: $2}
-  }
-| standard_select_stmt predict_clause end_of_stmt {
-	parseResult = &SQLFlowSelectStmt{
-		Extended: true,
-		Train: false,
-		StandardSelect: $1,
-		PredictClause: $2}
-  }
-| standard_select_stmt explain_clause end_of_stmt {
-	parseResult = &SQLFlowSelectStmt{
-		Extended: true,
-		Train: false,
-		Explain: true,
-		StandardSelect: $1,
-		ExplainClause: $2}
-  }
-| train_clause end_of_stmt { // FIXME(tony): remove above rules that include select clause
+: train_clause end_of_stmt {
 	parseResult = &SQLFlowSelectStmt{
 		Extended: true,
 		Train: true,
@@ -208,28 +176,9 @@ sqlflow_select_stmt
 }
 ;
 
-standard_select_stmt
-: SELECT field_clause FROM tables where_clause limit_clause {
-	$$.Fields = $2
-	$$.Tables = $4
-	$$.where = $5
-	$$.limit = $6
-}
-;
-
 end_of_stmt
 : /* empty */ {}
 | ';'         {}
-;
-
-where_clause
-: /* empty */ {}
-| WHERE expr  { $$ = $2 }
-;
-
-limit_clause
-: /* empty */  {}
-| LIMIT NUMBER { $$ = $2 }
 ;
 
 train_clause
@@ -272,19 +221,6 @@ column_clause
 | column_clause COLUMN columns FOR IDENT 	{ $$[$5] = $3 }
 ;
 
-field_clause
-: funcall AS '(' ExprList ')' {
-		$$ = ExprList{$1, atomic(IDENT, "AS"), funcall("", $4)};
-	}  // TODO(Yancey1989): support the general "AS" keyword: https://www.w3schools.com/sql/sql_ref_as.asp
-| fields						{ $$ = $1 }
-;
-
-fields
-: '*'              { $$ = append($$, atomic(IDENT, "*")) }
-| IDENT            { $$ = append($$, atomic(IDENT, $1)) }
-| fields ',' IDENT { $$ = append($1, atomic(IDENT, $3)) }
-;
-
 column
 : '*'     { $$ = atomic(IDENT, "*") }
 | IDENT   { $$ = atomic(IDENT, $1)  }
@@ -299,11 +235,6 @@ columns
 label_clause
 : LABEL IDENT  { $$ = $2 }
 | LABEL STRING { $$ = $2[1:len($2)-1] }
-;
-
-tables
-: IDENT            { $$ = []string{$1} }
-| tables ',' IDENT { $$ = append($1, $3) }
 ;
 
 attr
