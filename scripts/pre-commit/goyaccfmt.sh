@@ -15,4 +15,6 @@
 
 
 set -e
-goyaccfmt -w $(find . -name *.y)
+if git diff --name-only HEAD..develop|grep '[.]y$'; then
+    goyaccfmt -w $(find . -name *.y)
+fi
