@@ -23,7 +23,7 @@ Docker image](../build.md).
 
 ## Deploy the All-in-One With MySQL:
 
-1. Deploy the All-in-One SQLFlow with MYSQL Pod on Kubernetes
+1. Deploy the all-in-One SQLFlow with MySQL Pod on Kubernetes
     ``` bash
     > kubectl create -f k8s/sqlflow-all-in-one.yaml
     ```
