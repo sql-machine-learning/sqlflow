@@ -687,6 +687,16 @@ func CaseTrainBoostedTreesEstimator(t *testing.T) {
 	}
 }
 
+func CaseTrainLinearClassifier(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`SELECT * FROM iris.train WHERE class !=2
+TO TRAIN LinearClassifier LABEL class INTO %s;`, caseInto)
+	_, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+}
+
 func CaseTrainSQLWithMetrics(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := `SELECT * FROM iris.train WHERE class!=2

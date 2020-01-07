@@ -252,6 +252,15 @@ train_clause
 	$$.Label = $6
 	$$.Save = $8
 }
+| TO TRAIN IDENT label_clause INTO IDENT {
+	$$.Estimator = $3
+	$$.Label = $4
+	$$.Save = $6
+}
+| TO TRAIN IDENT WITH attrs INTO IDENT {
+	$$.Estimator = $3
+	$$.Save = $5
+}
 ;
 
 predict_clause
