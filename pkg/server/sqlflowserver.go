@@ -58,19 +58,12 @@ func (s *Server) Fetch(ctx context.Context, job *pb.FetchRequest) (*pb.FetchResp
 
 // Run implements `rpc Run (Request) returns (stream Response)`
 func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
-	dialect, _, err := database.ParseURL(req.Session.DbConnStr)
-	if err != nil {
-		return err
-	}
-	sqls, err := parser.Parse(dialect, req.Sql)
-	if err != nil {
-		return err
-	}
 	rd := s.run(req.Sql, s.modelDir, req.Session)
 	defer rd.Close()
 
 	for r := range rd.ReadAll() {
 		var res *pb.Response
+		var err error
 		switch s := r.(type) {
 		case error:
 			return s
@@ -86,6 +79,14 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 			job := r.(sf.WorkflowJob)
 			res = &pb.Response{Response: &pb.Response_Job{Job: &pb.Job{Id: job.JobID}}}
 		case sf.EndOfExecution:
+			dialect, _, err := database.ParseURL(req.Session.DbConnStr)
+			if err != nil {
+				return err
+			}
+			sqls, err := parser.Parse(dialect, req.Sql)
+			if err != nil {
+				return err
+			}
 			// if sqlStatements have only one field, do **NOT** return EndOfExecution message.
 			if len(sqls) > 1 {
 				eoeMsg := r.(sf.EndOfExecution)
