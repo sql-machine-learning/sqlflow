@@ -259,7 +259,8 @@ train_clause
 }
 | TO TRAIN IDENT WITH attrs INTO IDENT {
 	$$.Estimator = $3
-	$$.Save = $5
+	$$.TrainAttrs = $5
+	$$.Save = $7
 }
 ;
 
