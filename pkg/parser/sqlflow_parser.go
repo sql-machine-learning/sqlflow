@@ -78,7 +78,7 @@ func Parse(dialect, program string) ([]*SQLFlowStmt, error) {
 
 		ss[len(ss)-1].Original = left + right
 		ss[len(ss)-1].SQLFlowSelectStmt = extended
-		ss[len(ss)-1].StandardSelect.origin = left
+		// ss[len(ss)-1].StandardSelect.origin = left
 
 		stmts = append(stmts, ss...)
 		if err == nil {

@@ -154,3 +154,23 @@ func commonTestCases(dbms string, a *assert.Assertions) {
 		a.Equal(0, len(s))
 	}
 }
+
+func TestParserParse(t *testing.T) {
+	a := assert.New(t)
+
+	stmts := []string{
+		";",
+		"use some_database;",
+		"select * from normal_table;",
+		"select feature, label from train_data to train some_model into m1;",
+		"select feature, from predict_data to predict label using m1;",
+		"select * from evaluation_data to evaluate m1;",
+		"select * from explanation_data to explain m1;"}
+	for i := 0; i < len(stmts); i++ {
+		prog := strings.Join(stmts[:i], "\n")
+		fmt.Println("prog=", prog)
+		pstmts, e := Parse("mysql", prog)
+		a.NoError(e)
+		fmt.Println(i, len(pstmts))
+	}
+}
