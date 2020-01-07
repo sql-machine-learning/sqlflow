@@ -67,10 +67,6 @@ type SQLFlowSelectStmt struct {
 }
 
 type StandardSelect struct {
-	Fields ExprList
-	Tables []string
-	where  *Expr
-	limit  string
 	origin string
 }
 
@@ -343,29 +339,7 @@ func (e *Expr) String() string {
 }
 
 func (s StandardSelect) String() string {
-	if s.origin != "" {
-		return s.origin
-	}
-
-	r := "SELECT "
-	if len(s.Fields) == 0 {
-		r += "*"
-	} else {
-		for i := 0; i < len(s.Fields); i++ {
-			r += s.Fields[i].String()
-			if i != len(s.Fields)-1 {
-				r += ", "
-			}
-		}
-	}
-	r += "\nFROM " + strings.Join(s.Tables, ", ")
-	if s.where != nil {
-		r += fmt.Sprintf("\nWHERE %s", s.where)
-	}
-	if len(s.limit) > 0 {
-		r += fmt.Sprintf("\nLIMIT %s", s.limit)
-	}
-	return r
+	return s.origin
 }
 
 var mu sync.Mutex // Protect the use of global variable parseResult.
