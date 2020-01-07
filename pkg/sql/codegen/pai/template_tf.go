@@ -36,6 +36,13 @@ type predictFiller struct {
 	ResultTable string
 }
 
+type explainFiller struct {
+	OSSModelDir string
+	DataSource  string
+	Select      string
+	ResultTable string
+}
+
 const tfWrapperTmplText = `
 import os
 import subprocess
@@ -126,4 +133,39 @@ predict.pred(is_keras_model=is_keras_model,
     model_params=model_params,
     save="{{.OSSModelDir}}",
     batch_size=1)
+`
+
+const tfExplainTmplText = `
+import tensorflow as tf
+from sqlflow_submitter.pai import model
+from sqlflow_submitter.tensorflow import explain
+try:
+    tf.enable_eager_execution()
+except:
+    pass
+
+(estimator,
+ is_keras_model,
+ feature_column_names,
+ feature_metas,
+ label_meta,
+ model_params,
+ feature_columns) = model.load("{{.OSSModelDir}}")
+
+ explain.explain(datasource="{{.DataSource}}",
+    estimator=eval(estimator),
+    select="""{{.Select}}""",
+    feature_columns=feature_columns,
+    feature_column_names=feature_column_names,
+    feature_metas=feature_metas,
+    label_meta=label_meta,
+    model_params=model_params,
+    save="{{.OSSModelDir}}",
+    is_pai=True,
+    plot_type="bar",
+    result_table="{{.ResultTable}}",
+    hdfs_namenode_addr="",
+    hive_location="",
+    hdfs_user="",
+    hdfs_pass="")
 `

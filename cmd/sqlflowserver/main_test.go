@@ -1246,6 +1246,32 @@ USING %s;`, caseDB, caseTestTable, caseDB, casePredictTable, caseInto)
 	}
 
 }
+
+func CaseTrainAndExplainBoostedTrees(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`SELECT * FROM %s.%s WHERE class<>2
+	TO TRAIN BoostedTreesClassifier
+	WITH
+		model.n_batches_per_layer=8,
+		model.n_trees=50,
+		model.n_classes=2,
+		model.center_bias=True,
+		train.batch_size=8,
+		train.epoch=20,
+		validation.select="SELECT * FROM %s.%s WHERE class<>2"
+	LABEL class
+	INTO %s;`, caseDB, caseTrainTable, caseDB, caseTestTable, caseInto)
+	_, _, err := connectAndRunSQL(trainSQL)
+	a.NoError(err)
+
+	explainSQL := `SELECT * FROM iris.test
+	TO EXPLAIN boosted_trees_model
+	USING TreeExplainer
+	INTO boosted_trees_explain_result;`
+	_, _, err = connectAndRunSQL(explainSQL)
+	a.NoError(err)
+}
+
 func TestEnd2EndMaxComputePAI(t *testing.T) {
 	testDBDriver := os.Getenv("SQLFLOW_TEST_DB")
 	if testDBDriver != "maxcompute" {
@@ -1284,6 +1310,7 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 	}
 
 	t.Run("CaseTrainSQL", CaseTrainSQL)
+	t.Run("CaseTrainAndExplainBoostedTrees", CaseTrainAndExplainBoostedTrees)
 	t.Run("CaseTrainDistributedPAI", CaseTrainDistributedPAI)
 }
 

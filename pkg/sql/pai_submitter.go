@@ -139,5 +139,27 @@ func (s *paiSubmitter) ExecutePredict(cl *ir.PredictStmt) error {
 	return s.runCommand(code)
 }
 
+func (s *paiSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
+	// TODO(typhoonzero): Do **NOT** create tmp table when the select statement is like:
+	// "SELECT fields,... FROM table"
+	dbName, tableName, err := createTmpTableFromSelect(cl.Select, s.Session.DbConnStr)
+	if err != nil {
+		return err
+	}
+	cl.TmpExplainTable = strings.Join([]string{dbName, tableName}, ".")
+	defer dropTmpTables([]string{cl.TmpExplainTable}, s.Session.DbConnStr)
+
+	// TODO(typhoonzero): remove below twice parse when all submitters moved to IR.
+	pr, e := parser.ParseOneStatement("maxcompute", cl.OriginalSQL)
+	if e != nil {
+		return e
+	}
+	code, e := pai.Explain(cl, s.Session, pr.Model, s.Cwd)
+	if e != nil {
+		return e
+	}
+	return s.runCommand(code)
+}
+
 func (s *paiSubmitter) GetTrainStmtFromModel() bool { return false }
 func init()                                         { SubmitterRegister("pai", &paiSubmitter{}) }

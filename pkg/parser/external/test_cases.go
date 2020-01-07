@@ -19,6 +19,7 @@ var (
 	SelectCases = []string{
 		`select 1`,
 		`select * from my_table`,
+		`select * from my_table where class<>2`,
 		`-- this is a comment
 select
 1`,

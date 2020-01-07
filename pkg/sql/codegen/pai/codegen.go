@@ -152,7 +152,7 @@ func tfTrainAndSave(ir *ir.TrainStmt, session *pb.Session, modelName string) (st
 	return code + saveCode.String(), nil
 }
 
-// Predict generates a Python program for train a TensorFlow model.
+// Predict generates a Python program to predict a TensorFlow model.
 func Predict(ir *ir.PredictStmt, session *pb.Session, modelName, cwd string) (string, error) {
 	cc, err := getClusterConfig(ir.Attributes)
 	if err != nil {
@@ -177,6 +177,39 @@ func tfLoadAndPredict(ir *ir.PredictStmt, session *pb.Session, modelName string)
 		DataSource:  session.DbConnStr,
 		Select:      ir.Select,
 		ResultTable: ir.ResultTable,
+	}
+	var code bytes.Buffer
+	if err := tpl.Execute(&code, filler); err != nil {
+		return "", err
+	}
+	return code.String(), nil
+}
+
+// Explain generates a Python program to explain a TensorFlow model.
+func Explain(ir *ir.ExplainStmt, session *pb.Session, modelName, cwd string) (string, error) {
+	cc, err := getClusterConfig(ir.Attributes)
+	if err != nil {
+		return "", err
+	}
+	program, err := tfLoadAndExplain(ir, session, modelName)
+	if err != nil {
+		return "", err
+	}
+	return wrapper(program, session.DbConnStr, modelName, cwd,
+		ir.TmpExplainTable, "", cc)
+}
+
+func tfLoadAndExplain(ir *ir.ExplainStmt, session *pb.Session, modelName string) (string, error) {
+	var tpl = template.Must(template.New("Explain").Parse(tfExplainTmplText))
+	ossModelDir, err := formatCkptDir(modelName)
+	if err != nil {
+		return "", err
+	}
+	filler := explainFiller{
+		OSSModelDir: ossModelDir,
+		DataSource:  session.DbConnStr,
+		Select:      ir.Select,
+		ResultTable: ir.Into,
 	}
 	var code bytes.Buffer
 	if err := tpl.Execute(&code, filler); err != nil {

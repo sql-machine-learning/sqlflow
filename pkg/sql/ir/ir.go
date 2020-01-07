@@ -184,6 +184,9 @@ type ExplainStmt struct {
 	Into string
 	// TrainStmt is the TrainStmt used for generating the training job of the corresponding model
 	TrainStmt *TrainStmt
+	// When SQLFLOW_submitter == "pai", tmp tables will be created for predicting task
+	// see: pai_submitter.go
+	TmpExplainTable string
 }
 
 // Execute generates and executes code for ExplainStmt

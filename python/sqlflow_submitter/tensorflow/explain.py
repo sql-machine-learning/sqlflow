@@ -73,14 +73,15 @@ def explain(datasource, estimator_cls, select, feature_columns, feature_column_n
     dfc_mean = df_dfc.abs().mean()
     if result_table != "":
         conn = connect_with_data_source(datasource)
+        gain = estimator.experimental_feature_importances(normalize=True)
         create_explain_result_table(conn, result_table)
-        write_dfc_result(dfc_mean, result_table, conn, feature_column_names, hdfs_namenode_addr, hive_location, hdfs_user, hdfs_pass)
+        write_dfc_result(dfc_mean, gain, result_table, conn, feature_column_names, hdfs_namenode_addr, hive_location, hdfs_user, hdfs_pass)
     eval(plot_type)(df_dfc)
 
 def create_explain_result_table(conn, result_table):
     column_clause = ""
     if conn.driver == "mysql":
-        column_clause = "(feature VARCHAR(255), dfc float)"
+        column_clause = "(feature VARCHAR(255), dfc float, gain float)"
     else:
         column_clause = "(feature STRING, dfc float)"
     sql = "CREATE TABLE IF NOT EXISTS %s %s" % (result_table, column_clause)
@@ -92,13 +93,14 @@ def create_explain_result_table(conn, result_table):
     finally:
         cursor.close()
 
-def write_dfc_result(dfc_mean, result_table, conn,
+def write_dfc_result(dfc_mean, gain,
+                     result_table, conn,
                      feature_column_names,
                      hdfs_namenode_addr, hive_location,
                      hdfs_user, hdfs_pass):
-    with buffered_db_writer(conn.driver, conn, result_table, ["feature", "dfc"], 100, hdfs_namenode_addr, hive_location, hdfs_user, hdfs_pass) as w:
+    with buffered_db_writer(conn.driver, conn, result_table, ["feature", "dfc", "gain"], 100, hdfs_namenode_addr, hive_location, hdfs_user, hdfs_pass) as w:
         for row_name in feature_column_names:
-            w.write([row_name, dfc_mean.loc[row_name]])
+            w.write([row_name, dfc_mean.loc[row_name], gain[row_name]])
 
 
 # The following code is generally base on
