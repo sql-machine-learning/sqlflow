@@ -141,7 +141,7 @@ func TestTrainCodegen(t *testing.T) {
 	defer os.Unsetenv("SQLFLOW_OSS_CHECKPOINT_DIR")
 
 	sess := mockSession()
-	paiTfCode, err := tfTrainAndSave(trainStmt, sess, "my_dnn_model")
+	paiTfCode, err := TFTrainAndSave(trainStmt, sess, "my_dnn_model")
 	a.NoError(err)
 
 	tfCode, err := tensorflow.Train(trainStmt, sess)

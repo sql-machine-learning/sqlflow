@@ -19,6 +19,7 @@ import (
 	"math/rand"
 	"strings"
 
+	"sqlflow.org/goalisa"
 	"sqlflow.org/gomaxcompute"
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/parser"
@@ -64,7 +65,7 @@ func dropTmpTables(tableNames []string, dataSource string) error {
 	}
 	for _, tbName := range tableNames {
 		if tbName != "" {
-			_, err = db.Exec("DROP TABLE %s", tbName)
+			_, err = db.Exec(fmt.Sprintf("DROP TABLE %s", tbName))
 			if err != nil {
 				return err
 			}
@@ -72,17 +73,29 @@ func dropTmpTables(tableNames []string, dataSource string) error {
 	}
 	return nil
 }
-
 func getDatabaseNameFromDSN(dataSource string) (string, error) {
-	dsParts := strings.Split(dataSource, "://")
-	if len(dsParts) != 2 {
-		return "", fmt.Errorf("error datasource format, should be maxcompute://u:p@uri, but got: %s", dataSource)
-	}
-	conf, err := gomaxcompute.ParseDSN(dsParts[1])
+	driverName, datasourceName, err := database.ParseURL(dataSource)
 	if err != nil {
 		return "", err
 	}
-	return conf.Project, nil
+	if driverName == "maxcompute" {
+		cfg, err := gomaxcompute.ParseDSN(datasourceName)
+		if err != nil {
+			return "", err
+		}
+		return cfg.Project, nil
+	} else if driverName == "alisa" {
+		cfg, err := goalisa.ParseDSN(datasourceName)
+		if err != nil {
+			return "", err
+		}
+		project := cfg.Env["SKYNET_PACKAGEID"]
+		if v, ok := cfg.Env["SKYNET_SYSTEMID"]; ok {
+			project = project + "_" + v
+		}
+		return project, nil
+	}
+	return "", fmt.Errorf("driver should be in ['maxcompute', 'alisa']")
 }
 
 func createTempTrainAndValTable(trainSelect, valideSelect, datasource string) (string, string, error) {
@@ -108,7 +121,6 @@ func createTempTrainAndValTable(trainSelect, valideSelect, datasource string) (s
 //
 // 1. argo mode server: generate a step running: repl -e "repl -e \"select * from xx to train\""
 // 2. non-argo mode server | repl -e: create tmp table in go, and use it to train
-
 func (s *paiSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 	cl.TmpTrainTable, cl.TmpValidateTable, e = createTempTrainAndValTable(cl.Select, cl.ValidationSelect, s.Session.DbConnStr)
 	if e != nil {

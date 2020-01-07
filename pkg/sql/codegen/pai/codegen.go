@@ -39,7 +39,7 @@ type PSConfig struct {
 
 // WorkerConfig implicates Worker Config
 type WorkerConfig struct {
-	Count int `json:"count`
+	Count int `json:"count"`
 	GPU   int `json:"gpu"`
 	CPU   int `json:"cpu"`
 }
@@ -50,7 +50,8 @@ type ClusterConfig struct {
 	Worker WorkerConfig `json:"worker"`
 }
 
-func formatCkptDir(modelName string) (string, error) {
+// FormatCkptDir returns the saved model path on OSS
+func FormatCkptDir(modelName string) (string, error) {
 	ossCkptDir := os.Getenv("SQLFLOW_OSS_CHECKPOINT_DIR")
 	if ossCkptDir == "" {
 		return "", fmt.Errorf("must specify SQLFLOW_OSS_CHECKPOINT_DIR when training with PAI, e.g. oss://bucket/?role_arn=xxx&host=xxx")
@@ -77,7 +78,7 @@ func wrapper(code, dataSource, modelName, cwd, tmpTrainTable, tmpValTable string
 	if err != nil {
 		return "", err
 	}
-	ossCkptDir, err := formatCkptDir(modelName)
+	ossCkptDir, err := FormatCkptDir(modelName)
 	if err != nil {
 		return "", err
 	}
@@ -146,7 +147,7 @@ func GetClusterConfig(attrs map[string]interface{}) (*ClusterConfig, error) {
 // Train generates a Python program for train a TensorFlow model.
 func Train(ir *ir.TrainStmt, session *pb.Session, modelName, cwd string) (string, error) {
 	cc, err := GetClusterConfig(ir.Attributes)
-	program, err := tfTrainAndSave(ir, session, modelName)
+	program, err := TFTrainAndSave(ir, session, modelName)
 	if err != nil {
 		return "", err
 	}
@@ -154,7 +155,8 @@ func Train(ir *ir.TrainStmt, session *pb.Session, modelName, cwd string) (string
 		ir.TmpTrainTable, ir.TmpValidateTable, cc)
 }
 
-func tfTrainAndSave(ir *ir.TrainStmt, session *pb.Session, modelName string) (string, error) {
+// TFTrainAndSave generates PAI-TF code
+func TFTrainAndSave(ir *ir.TrainStmt, session *pb.Session, modelName string) (string, error) {
 	code, err := tensorflow.Train(ir, session)
 	if err != nil {
 		return "", err
@@ -163,7 +165,7 @@ func tfTrainAndSave(ir *ir.TrainStmt, session *pb.Session, modelName string) (st
 	// append code snippet to save model
 	isKeras, estimatorStr := tensorflow.IsKerasModel(ir.Estimator)
 	var tpl = template.Must(template.New("SaveModel").Parse(tfSaveModelTmplText))
-	ckptDir, err := formatCkptDir(ir.Into)
+	ckptDir, err := FormatCkptDir(ir.Into)
 	if err != nil {
 		return "", err
 	}
@@ -195,7 +197,7 @@ func Predict(ir *ir.PredictStmt, session *pb.Session, modelName, cwd string) (st
 
 func tfLoadAndPredict(ir *ir.PredictStmt, session *pb.Session, modelName string) (string, error) {
 	var tpl = template.Must(template.New("Predict").Parse(tfPredictTmplText))
-	ossModelDir, err := formatCkptDir(modelName)
+	ossModelDir, err := FormatCkptDir(modelName)
 	if err != nil {
 		return "", err
 	}
