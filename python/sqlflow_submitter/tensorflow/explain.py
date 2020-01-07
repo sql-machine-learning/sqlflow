@@ -17,7 +17,7 @@ import seaborn as sns
 import pandas as pd
 import numpy as np
 import tensorflow as tf
-from sqlflow_submitter.db import connect_with_data_source
+from sqlflow_submitter.db import connect_with_data_source, buffered_db_writer
 from .input_fn import input_fn, pai_maxcompute_input_fn
 sns_colors = sns.color_palette('colorblind')
 # Disable Tensorflow INFO and WARNING logs
@@ -45,7 +45,9 @@ else:
 
 
 def explain(datasource, estimator_cls, select, feature_columns, feature_column_names,
-            feature_metas={}, label_meta={}, model_params={}, save="", is_pai=False, plot_type='bar'):
+            feature_metas={}, label_meta={}, model_params={}, save="",
+            is_pai=False, plot_type='bar', result_table="",
+            hdfs_namenode_addr="", hive_location="", hdfs_user="", hdfs_pass=""):
     if is_pai:
         FLAGS = define_tf_flags()
         model_params["model_dir"] = FLAGS.checkpointDir
@@ -68,12 +70,39 @@ def explain(datasource, estimator_cls, select, feature_columns, feature_column_n
         lambda: _input_fn())
     pred_dicts = list(result)
     df_dfc = pd.DataFrame([pred['dfc'] for pred in pred_dicts])
+    dfc_mean = df_dfc.abs().mean()
+    if result_table != "":
+        conn = connect_with_data_source(datasource)
+        create_explain_result_table(conn, result_table)
+        write_dfc_result(dfc_mean, result_table, conn, feature_column_names, hdfs_namenode_addr, hive_location, hdfs_user, hdfs_pass)
     eval(plot_type)(df_dfc)
+
+def create_explain_result_table(conn, result_table):
+    column_clause = ""
+    if conn.driver == "mysql":
+        column_clause = "(feature VARCHAR(255), dfc float)"
+    else:
+        column_clause = "(feature STRING, dfc float)"
+    sql = "CREATE TABLE IF NOT EXISTS %s %s" % (result_table, column_clause)
+    cursor = conn.cursor()
+    try:
+        cursor.execute("DROP TABLE IF EXISTS %s" % result_table)
+        cursor.execute(sql)
+        conn.commit()
+    finally:
+        cursor.close()
+
+def write_dfc_result(dfc_mean, result_table, conn,
+                     feature_column_names,
+                     hdfs_namenode_addr, hive_location,
+                     hdfs_user, hdfs_pass):
+    with buffered_db_writer(conn.driver, conn, result_table, ["feature", "dfc"], 100, hdfs_namenode_addr, hive_location, hdfs_user, hdfs_pass) as w:
+        for row_name in feature_column_names:
+            w.write([row_name, dfc_mean.loc[row_name]])
+
 
 # The following code is generally base on
 # https://www.tensorflow.org/tutorials/estimator/boosted_trees_model_understanding
-
-
 def bar(df_dfc):
     import matplotlib.pyplot as plt
 

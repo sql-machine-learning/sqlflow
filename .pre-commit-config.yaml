@@ -14,14 +14,14 @@
   hooks:
     - id: copyright_checker
       name: copyright_checker
-      entry: python ./scripts/copyright.py
+      entry: python ./scripts/pre-commit/copyright.py
       language: system
       files: \.(go|py|sh)$
 - repo: local
   hooks:
     - id: documentation_checker
       name: documentation_checker
-      entry: bash ./scripts/docgen.sh
+      entry: bash ./scripts/pre-commit/docgen.sh
       language: system
 - repo: local
   hooks:

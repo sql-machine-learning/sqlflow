@@ -24,7 +24,7 @@ class TestSQLFlowMagic(unittest.TestCase):
     import random
     random.seed()
     temp_database = "e2e_{}".format(random.randint(0, 1<<32))
-    # the stander SQL statement
+    # the standard SQL statement
     create_database_statement = "create database if not exists {}".format(temp_database)
     create_statement = "create table {}.test_table_float_fea (features float, label int)".format(temp_database)
     insert_statement = "insert into {}.test_table_float_fea (features,label) values(1.0, 0), (2.0, 1)".format(temp_database)
@@ -38,7 +38,7 @@ class TestSQLFlowMagic(unittest.TestCase):
     def tearDown(self):
         pass
 
-    def test_stander_sql(self):
+    def test_standard_sql(self):
         ret = ipython.run_cell_magic("sqlflow", "", self.select_statement)
         ret_list = [r for r in ret.get(0).rows()]
         self.assertEqual(len(ret_list), 1)

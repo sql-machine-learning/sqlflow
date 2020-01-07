@@ -102,4 +102,4 @@ else:
     model.load_weights('my_model')
     prediction = model.predict(test_ds)
     print(model.prepare_prediction_column(prediction))
-    print("Done predictiing.")
+    print("Done predicting.")
