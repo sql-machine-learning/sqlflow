@@ -15,6 +15,7 @@ package pai
 
 type wrapperFiller struct {
 	CFJSONString     string
+	IsDistributed    bool
 	DataSource       string
 	EntryFile        string
 	ModelName        string
@@ -67,7 +68,7 @@ else:
     val_table_parts = val_table.split(".")
     submit_tables = "odps://%s/tables/%s,odps://%s/tables/%s" % (train_table_parts[0], train_table_parts[1], val_table_parts[0], val_table_parts[1])
 
-{{if gt .NumWorkers 1}}
+{{ if .IsDistributed }}
 print("saving model to: {{.OSSCheckpointDir}}")
 pai_cmd = 'pai -name %s -DjobName=%s -Dtags=%s -Dscript=file://%s -DentryFile=%s -Dtables=%s -DcheckpointDir=\'{{.OSSCheckpointDir}}\' -Dcluster=\'%s\'' % (
     'tensorflow1120', jobname, 'dnn', tarball, '{{.EntryFile}}', submit_tables, '{{.CFJSONString}}')

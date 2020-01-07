@@ -87,9 +87,13 @@ func wrapper(code, dataSource, modelName, cwd, tmpTrainTable, tmpValTable string
 	if err != nil {
 		return "", err
 	}
-
+	isDistributed := false
+	if cc.Worker.Count > 1 {
+		isDistributed = true
+	}
 	filler := wrapperFiller{
 		CFJSONString:     strconv.Quote(string(cfString)),
+		IsDistributed:    isDistributed,
 		DataSource:       dataSource,
 		ModelName:        modelName,
 		EntryFile:        entryFile,
