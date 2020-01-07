@@ -22,8 +22,6 @@ import sys
 
 from sqlflow_submitter.db import connect_with_data_source, db_generator
 
-shap.initjs()
-
 def xgb_shap_dataset(datasource, select, feature_column_names, label_name, feature_specs):
     conn = connect_with_data_source(datasource)
     stream = db_generator(conn.driver, conn, select, feature_column_names, label_name, feature_specs)
