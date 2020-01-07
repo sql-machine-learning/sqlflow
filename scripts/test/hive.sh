@@ -16,7 +16,7 @@
 # is a status port indicates the hive server container
 # is ready, see .travis.yml for the details
 while true; do
-  curl http://localhost:8899 2>/dev/null
+  curl -s http://localhost:8899 2>/dev/null
   if [ $? -eq 0 ]; then
     break
   else

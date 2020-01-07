@@ -23,5 +23,6 @@ go get golang.org/x/tools/cmd/goyacc
 go get golang.org/x/tools/cmd/cover
 go get github.com/mattn/goveralls
 go get github.com/rakyll/gotest
+go get github.com/wangkuiyi/goyaccfmt
 
 cp $GOPATH/bin/* /usr/local/bin/

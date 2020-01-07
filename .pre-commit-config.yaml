@@ -14,12 +14,18 @@
   hooks:
     - id: copyright_checker
       name: copyright_checker
-      entry: python ./scripts/copyright.py
+      entry: python ./scripts/pre-commit/copyright.py
       language: system
       files: \.(go|py|sh)$
 - repo: local
   hooks:
     - id: documentation_checker
       name: documentation_checker
-      entry: bash ./scripts/docgen.sh
+      entry: bash ./scripts/pre-commit/docgen.sh
+      language: system
+- repo: local
+  hooks:
+    - id: goyaccfmt
+      name: goyaccfmt
+      entry: bash ./scripts/pre-commit/goyaccfmt.sh # TODO(wangkuiyi): Remove this script after making goyaccfmt accept ./...
       language: system

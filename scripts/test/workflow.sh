@@ -16,7 +16,7 @@ set -e
 
 export SQLFLOW_TEST=workflow
 ############# Run Couler unit tests #############
-pip install -r python/couler/requirements.txt
+pip -q install -r python/couler/requirements.txt
 
 pytest python/couler/tests
 

@@ -34,7 +34,7 @@ class HiveDBWriter(BufferedDBWriter):
 
     def _column_list(self):
         # NOTE(yancey1989): for the tablename: mydb.tblname, if 'mydb' is
-        # a tablename in the default database, Hive describe STATMENT would
+        # a tablename in the default database, Hive describe STATEMENT would
         # mistake 'tblname' to a column name.
         cursor = self.conn.cursor()
         table_parts = self.table_name.split(".")

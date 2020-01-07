@@ -38,10 +38,38 @@ func Run(programIR ir.SQLProgram, session *pb.Session) (string, error) {
 		defaultDockerImage = os.Getenv("SQLFLOW_WORKFLOW_STEP_IMAGE")
 	}
 	for _, sqlIR := range programIR {
-		sqlStmt := &sqlStatement{
-			OriginalSQL: sqlIR.GetOriginalSQL(), IsExtendedSQL: sqlIR.IsExtended(),
-			DockerImage: defaultDockerImage}
-		r.SQLStatements = append(r.SQLStatements, sqlStmt)
+		switch i := sqlIR.(type) {
+		case *ir.StandardSQL:
+			sqlStmt := &sqlStatement{
+				OriginalSQL: sqlIR.GetOriginalSQL(), IsExtendedSQL: sqlIR.IsExtended(),
+				DockerImage: defaultDockerImage}
+			r.SQLStatements = append(r.SQLStatements, sqlStmt)
+		case *ir.PredictStmt:
+			sqlStmt := &sqlStatement{
+				OriginalSQL: sqlIR.GetOriginalSQL(), IsExtendedSQL: sqlIR.IsExtended(),
+				DockerImage: defaultDockerImage}
+			r.SQLStatements = append(r.SQLStatements, sqlStmt)
+		case *ir.ExplainStmt:
+			sqlStmt := &sqlStatement{
+				OriginalSQL: sqlIR.GetOriginalSQL(), IsExtendedSQL: sqlIR.IsExtended(),
+				DockerImage: defaultDockerImage}
+			r.SQLStatements = append(r.SQLStatements, sqlStmt)
+		case *ir.TrainStmt:
+			if r.SQLFlowSubmitter == "katib" {
+				sqlStmt, err := RunKatib(sqlIR.(*ir.TrainStmt))
+				if err != nil {
+					return "", fmt.Errorf("Fail to parse Katib train statement %s", sqlIR.GetOriginalSQL())
+				}
+				r.SQLStatements = append(r.SQLStatements, sqlStmt)
+			} else {
+				sqlStmt := &sqlStatement{
+					OriginalSQL: sqlIR.GetOriginalSQL(), IsExtendedSQL: sqlIR.IsExtended(),
+					DockerImage: defaultDockerImage}
+				r.SQLStatements = append(r.SQLStatements, sqlStmt)
+			}
+		default:
+			return "", fmt.Errorf("uncognized IR type: %v", i)
+		}
 	}
 	var program bytes.Buffer
 	if err := coulerTemplate.Execute(&program, r); err != nil {
