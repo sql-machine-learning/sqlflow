@@ -21,9 +21,9 @@ to interact with the Kubernetes cluster.
 1. Make sure the Kubernetes nodes can pull the official SQLFlow Docker image [sqlflow/sqlflow] or your [custom
 Docker image](../build.md).
 
-## Deploy the All-in-One With MYSQL:
+## Deploy the All-in-One With MySQL:
 
-1. Deploy the All-in-One SQLFLOW with MYSQL Pod on Kubernetes
+1. Deploy the All-in-One SQLFlow with MYSQL Pod on Kubernetes
     ``` bash
     > kubectl create -f k8s/sqlflow-all-in-one.yaml
     ```
