@@ -278,7 +278,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("TestShowDatabases", CaseShowDatabases)
 	t.Run("TestSelect", CaseSelect)
 	t.Run("TestTrainSQL", CaseTrainSQL)
-	t.Run("CaseTrainBoostedTreesEstimator", CaseTrainBoostedTreesEstimator)
+	t.Run("CaseTrainBoostedTreesEstimatorAndExplain", CaseTrainBoostedTreesEstimatorAndExplain)
 	t.Run("CaseTrainSQLWithMetrics", CaseTrainSQLWithMetrics)
 	t.Run("TestTextClassification", CaseTrainTextClassification)
 	t.Run("CaseTrainTextClassificationCustomLSTM", CaseTrainTextClassificationCustomLSTM)
@@ -671,19 +671,39 @@ FROM %s.%s LIMIT 5;`, caseDB, casePredictTable)
 	}
 }
 
-func CaseTrainBoostedTreesEstimator(t *testing.T) {
+func CaseTrainBoostedTreesEstimatorAndExplain(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`
-	SELECT * FROM %s.%s TO TRAIN BoostedTreesRegressor
+	SELECT * FROM iris.train WHERE class!=2
+	TO TRAIN BoostedTreesClassifier
 	WITH
-		model.n_batches_per_layer=300,
-		model.center_bias=True
+		model.n_batches_per_layer=8,
+		model.n_trees=50,
+		model.n_classes=2,
+		model.center_bias=True,
+		train.batch_size=8,
+		train.epoch=20,
+		validation.select="SELECT * FROM iris.test where class!=2"
 	LABEL class
 	INTO %s;
-	`, caseDB, caseTrainTable, caseInto)
+	`, caseInto)
 	_, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)
+	}
+
+	explainSQL := fmt.Sprintf(`SELECT * FROM iris.test WHERE class!=2
+	TO EXPLAIN %s
+	USING TreeExplainer
+	INTO iris.explain_result;`, caseInto)
+	_, _, err = connectAndRunSQL(explainSQL)
+	a.NoError(err)
+
+	getExplainResult := `SELECT * FROM iris.explain_result;`
+	_, rows, err := connectAndRunSQL(getExplainResult)
+	a.NoError(err)
+	for _, row := range rows {
+		AssertGreaterEqualAny(a, row[1], float32(0))
 	}
 }
 
