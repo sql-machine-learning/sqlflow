@@ -122,12 +122,3 @@ func thirdPartyParse(dialect, program string) ([]*SQLFlowStmt, int, error) {
 	}
 	return spr, i, nil
 }
-
-// LegacyParse calls extended_syntax_parser.y with old rules.
-// codegen_alps.go depends on this legacy parser, which requires
-// extended_syntax_parser.y to parse not only the syntax extension,
-// but also the SELECT statement prefix.
-func LegacyParse(s string) (*SQLFlowSelectStmt, error) {
-	r, _, e := parseSQLFlowStmt(s)
-	return r, e
-}
