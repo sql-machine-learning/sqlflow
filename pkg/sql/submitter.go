@@ -33,6 +33,8 @@ import (
 
 var submitterRegistry = map[string](Submitter){
 	"default": &defaultSubmitter{},
+	"pai":     &paiSubmitter{&defaultSubmitter{}},
+	"alisa":   &alisaSubmitter{},
 	// TODO(typhoonzero): add submitters like alps, elasticdl
 }
 

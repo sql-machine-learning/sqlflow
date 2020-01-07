@@ -52,4 +52,3 @@ func (s *alisaSubmitter) Setup(w *pipe.Writer, db *database.DB, modelDir string,
 }
 
 func (s *alisaSubmitter) GetTrainStmtFromModel() bool { return false }
-func init()                                           { SubmitterRegister("alisa", &alisaSubmitter{}) }
