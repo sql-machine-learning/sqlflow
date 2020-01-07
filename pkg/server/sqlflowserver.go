@@ -53,6 +53,8 @@ func NewServer(run func(string, string, *pb.Session) *pipe.Reader,
 
 // Fetch implements `rpc Fetch (Job) returns(JobStatus)`
 func (s *Server) Fetch(ctx context.Context, job *pb.FetchRequest) (*pb.FetchResponse, error) {
+	// FIXME(tony): to make function fetch easily to mock, we should decouple server package
+	// with argo package by introducing s.fetch
 	return sfargo.Fetch(job)
 }
 
@@ -79,6 +81,7 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 			job := r.(sf.WorkflowJob)
 			res = &pb.Response{Response: &pb.Response_Job{Job: &pb.Job{Id: job.JobID}}}
 		case sf.EndOfExecution:
+			// FIXME(tony): decouple server package with sql package by introducing s.numberOfStatement
 			dialect, _, err := database.ParseURL(req.Session.DbConnStr)
 			if err != nil {
 				return err
