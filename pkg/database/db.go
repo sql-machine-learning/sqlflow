@@ -33,6 +33,11 @@ type DB struct {
 	*sql.DB
 }
 
+// ConnectionString returns the connection string in driver_type://data_source_name format
+func (db *DB) ConnectionString() string {
+	return fmt.Sprintf(`%s://%s`, db.DriverName, db.DataSourceName)
+}
+
 // OpenDB open a database identified by an URL.  It calls ParseURL
 // to get the driver and data source name.  In addition to opening the
 // database, it also verifies the driver is loaded.

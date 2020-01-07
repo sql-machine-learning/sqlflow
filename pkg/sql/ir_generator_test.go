@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"sqlflow.org/sqlflow/pkg/database"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -25,11 +26,21 @@ import (
 	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
 
+func parseOneStatement(statement string) (*parser.SQLFlowSelectStmt, error) {
+	sqls, err := parser.Parse("mysql", statement)
+	if err != nil {
+		return nil, err
+	}
+	if len(sqls) != 1 {
+		return nil, fmt.Errorf(`len(sqls) != 1, actual %d`, len(sqls))
+	}
+
+	return sqls[0].SQLFlowSelectStmt, nil
+}
+
 func TestGenerateTrainStmt(t *testing.T) {
 	a := assert.New(t)
-	normal := `
-	SELECT c1, c2, c3, c4
-	FROM my_table
+	normal := `SELECT c1, c2, c3, c4 FROM my_table
 	TO TRAIN DNNClassifier
 	WITH
 		model.n_classes=2,
@@ -51,13 +62,14 @@ func TestGenerateTrainStmt(t *testing.T) {
 	INTO mymodel;
 	`
 
-	r, e := parser.LegacyParse(normal)
+	r, e := parseOneStatement(normal)
 	a.NoError(e)
 
 	trainStmt, err := generateTrainStmt(r)
 	a.NoError(err)
 	a.Equal("DNNClassifier", trainStmt.Estimator)
-	a.Equal("SELECT c1, c2, c3, c4\nFROM my_table", trainStmt.Select)
+	a.Equal(`SELECT c1, c2, c3, c4 FROM my_table
+	`, trainStmt.Select)
 	a.Equal("SELECT c1, c2, c3, c4 FROM my_table LIMIT 10", trainStmt.ValidationSelect)
 
 	for key, attr := range trainStmt.Attributes {
@@ -175,7 +187,7 @@ func TestGenerateTrainStmtModelZoo(t *testing.T) {
 	INTO mymodel;
 	`
 
-	r, e := parser.LegacyParse(normal)
+	r, e := parseOneStatement(normal)
 	a.NoError(e)
 
 	trainStmt, err := generateTrainStmt(r)
@@ -193,10 +205,9 @@ func TestGeneratePredictStmt(t *testing.T) {
 	predSQL := `SELECT * FROM iris.test
 TO PREDICT iris.predict.class
 USING sqlflow_models.mymodel;`
-	r, e := parser.LegacyParse(predSQL)
+	r, e := parseOneStatement(predSQL)
 	a.NoError(e)
 
-	connStr := "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
 	// need to save a model first because predict SQL will read the train SQL
 	// from saved model
 	cwd, e := ioutil.TempDir("/tmp", "sqlflow_models")
@@ -208,10 +219,10 @@ TO TRAIN DNNClassifier
 WITH model.n_classes=3, model.hidden_units=[10,20]
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
-INTO sqlflow_models.mymodel;`, modelDir, &pb.Session{DbConnStr: connStr})
+INTO sqlflow_models.mymodel;`, modelDir, &pb.Session{DbConnStr: database.GetTestingDBSingleton().ConnectionString()})
 	a.True(goodStream(stream.ReadAll()))
 
-	predStmt, err := generatePredictStmt(r, connStr, modelDir, cwd, true)
+	predStmt, err := generatePredictStmt(r, database.GetTestingDBSingleton().ConnectionString(), modelDir, cwd, true)
 	a.NoError(err)
 
 	a.Equal("iris.predict", predStmt.ResultTable)
@@ -247,7 +258,7 @@ INTO sqlflow_models.my_xgboost_model;
 	a.NoError(e)
 	a.True(goodStream(stream.ReadAll()))
 
-	pr, e := parser.LegacyParse(`
+	pr, e := parseOneStatement(`
 	SELECT *
 	FROM iris.train
 	TO EXPLAIN sqlflow_models.my_xgboost_model
@@ -271,7 +282,7 @@ INTO sqlflow_models.my_xgboost_model;
 	a.True(ok)
 	a.Equal("sepal_length", nc.FieldDesc.Name)
 
-	pr, e = parser.LegacyParse(`
+	pr, e = parseOneStatement(`
 	SELECT *
 	FROM iris.train
 	TO EXPLAIN sqlflow_models.my_xgboost_model
