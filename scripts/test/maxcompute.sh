@@ -14,6 +14,10 @@
 
 set -e
 
+if [[ $(git diff --name-only HEAD..develop|awk -F. '{print $NF}'|uniq) == md ]]; then
+  exit
+fi
+
 export SQLFLOW_TEST_DB=maxcompute
 export SQLFLOW_TEST_DB_MAXCOMPUTE_ENDPOINT="service.cn.maxcompute.aliyun.com/api?curr_project=gomaxcompute_driver_w7u&scheme=https"
 export SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT="gomaxcompute_driver_w7u"

@@ -15,6 +15,13 @@
 # Wait until hive test server is ready, port 8899
 # is a status port indicates the hive server container
 # is ready, see .travis.yml for the details
+
+set -e
+
+if [[ $(git diff --name-only HEAD..develop|awk -F. '{print $NF}'|uniq) == md ]]; then
+  exit
+fi
+
 while true; do
   curl -s http://localhost:8899 2>/dev/null
   if [ $? -eq 0 ]; then
