@@ -135,7 +135,6 @@ func (s *alisaSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 }
 
 func (s *alisaSubmitter) GetTrainStmtFromModel() bool { return false }
-func init()                                           { SubmitterRegister("alisa", &alisaSubmitter{&defaultSubmitter{}}) }
 
 func (s *alisaSubmitter) achieveResource(entryCode, tarball string) error {
 	if err := writeFile(filepath.Join(s.Cwd, entryFile), entryCode); err != nil {
