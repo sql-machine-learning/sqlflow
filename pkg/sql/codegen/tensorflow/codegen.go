@@ -424,6 +424,11 @@ func Explain(stmt *ir.ExplainStmt, session *pb.Session) (string, error) {
 		Y:                 labelFM,
 		ModelParams:       modelParams,
 		Save:              "model_save",
+		ResultTable:       stmt.Into,
+		HDFSNameNodeAddr:  session.HdfsNamenodeAddr,
+		HiveLocation:      session.HiveLocation,
+		HDFSUser:          session.HdfsUser,
+		HDFSPass:          session.HdfsPass,
 	}
 	var program bytes.Buffer
 	var tmpl = template.Must(template.New("Explain").Funcs(template.FuncMap{

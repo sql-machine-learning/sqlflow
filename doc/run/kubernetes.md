@@ -21,11 +21,11 @@ to interact with the Kubernetes cluster.
 1. Make sure the Kubernetes nodes can pull the official SQLFlow Docker image [sqlflow/sqlflow] or your [custom
 Docker image](../build.md).
 
-## Deploy the All-in-One SQLFlow
+## Deploy the All-in-One With MySQL:
 
-1. Deploy the SQLFlow Pod on Kubernetes
+1. Deploy the all-in-One SQLFlow with MySQL Pod on Kubernetes
     ``` bash
-    > kubectl create -f k8s/sqlflow-mysql.yaml
+    > kubectl create -f k8s/sqlflow-all-in-one.yaml
     ```
     The above command deploys a Pod, a MySQL server instance, a SQLFlow gRPC server and the Jupyter Notebook server runs in this Pod. You can also use
     your custom Docker image by editing the `image` field of the yaml file: [k8s/sqlflow-all-in-one.yaml](https://github.com/sql-machine-learning/sqlflow/tree/develop/doc/k8s/sqlflow-all-in-one.yaml)

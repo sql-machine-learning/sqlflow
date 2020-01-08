@@ -154,3 +154,30 @@ func commonTestCases(dbms string, a *assert.Assertions) {
 		a.Equal(0, len(s))
 	}
 }
+
+func TestParseFirstSQLStatement(t *testing.T) {
+	a := assert.New(t)
+
+	{
+		pr, idx, e := parseFirstSQLFlowStmt(`to train a with b = c label d into e; select a from b;`)
+		a.NotNil(pr)
+		a.Equal(len(`to train a with b = c label d into e; `), idx)
+		a.NoError(e)
+	}
+
+	{
+		pr, idx, e := parseFirstSQLFlowStmt(`to train a with b =?? c label d into e ...`)
+		a.Nil(pr)
+		a.Equal(-1, idx)
+		a.Error(e)
+	}
+
+	{
+		// FIXME(tony): need to update extended syntax parser to make `;` required so that the following case will raise error.
+		// ref: https://github.com/sql-machine-learning/sqlflow/pull/1626/files#r363577134
+		pr, idx, e := parseFirstSQLFlowStmt(`to train a with b = c label d into e select a from b;`)
+		a.NotNil(pr)
+		a.Equal(len(`to train a with b = c label d into e `), idx)
+		a.NoError(e)
+	}
+}
