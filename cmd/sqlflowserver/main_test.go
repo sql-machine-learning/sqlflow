@@ -812,6 +812,15 @@ TO PREDICT iris.predict.class
 USING sqlflow_models.my_dnn_model;`
 	_, _, err = connectAndRunSQL(predSQL)
 	a.NoError(err)
+
+	trainKerasSQL := `SELECT *
+FROM iris.train
+TO TRAIN sqlflow_models.DNNClassifier
+WITH model.n_classes = 3, model.hidden_units = [10, 20], model.optimizer=RMSprop, optimizer.learning_rate=0.1
+LABEL class
+INTO sqlflow_models.my_dnn_model;`
+	_, _, err = connectAndRunSQL(trainKerasSQL)
+	a.NoError(err)
 }
 
 func CaseTrainCustomModel(t *testing.T) {
