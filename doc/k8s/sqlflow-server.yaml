@@ -12,7 +12,7 @@ spec:
   template:
     metadata:
       labels:
-        app: sqlflow-server
+        app: sqlflow-server:latest
     spec:
       containers:
       - image: sqlflow/sqlflow
