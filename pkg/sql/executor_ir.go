@@ -186,13 +186,13 @@ func runSQLProgram(wr *pipe.Writer, sqlProgram string, db *database.DB, modelDir
 			standardSQL := ir.StandardSQL(sql.Standard)
 			r = &standardSQL
 		}
+
 		if err != nil {
 			if e := cleanCwd(cwd); e != nil {
 				return fmt.Errorf("encounter %v when dealwith error: %s", e, err)
 			}
 			return err
 		}
-
 		r.SetOriginalSQL(sql.Original)
 		if err := runSingleSQLIR(wr, r, db, modelDir, cwd, session); err != nil {
 			if e := cleanCwd(cwd); e != nil {

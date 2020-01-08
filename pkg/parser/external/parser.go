@@ -27,7 +27,7 @@ func NewParser(dialect string) Parser {
 		return newTiDBParser()
 	case "hive", "hiveql":
 		return newJavaParser("hiveql")
-	case "calcite", "maxcompute":
+	case "calcite", "maxcompute", "alisa":
 		return newJavaParser("calcite")
 	}
 	return nil

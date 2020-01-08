@@ -15,9 +15,11 @@ package pai
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -28,16 +30,28 @@ import (
 
 const entryFile = "entry.py"
 
-type clusterConfig struct {
-	NumPS      int
-	NumWorkers int
-	PSCPU      int
-	PSGPU      int
-	WorkerCPU  int
-	WorkerGPU  int
+// PSConfig implicates Prameter Server Config
+type PSConfig struct {
+	Count int `json:"count"`
+	GPU   int `json:"gpu"`
+	CPU   int `json:"cpu"`
 }
 
-func formatCkptDir(modelName string) (string, error) {
+// WorkerConfig implicates Worker Config
+type WorkerConfig struct {
+	Count int `json:"count"`
+	GPU   int `json:"gpu"`
+	CPU   int `json:"cpu"`
+}
+
+// ClusterConfig implicits PAI distributed task meta
+type ClusterConfig struct {
+	PS     PSConfig     `json:"ps"`
+	Worker WorkerConfig `json:"worker"`
+}
+
+// FormatCkptDir returns the saved model path on OSS
+func FormatCkptDir(modelName string) (string, error) {
 	ossCkptDir := os.Getenv("SQLFLOW_OSS_CHECKPOINT_DIR")
 	if ossCkptDir == "" {
 		return "", fmt.Errorf("must specify SQLFLOW_OSS_CHECKPOINT_DIR when training with PAI, e.g. oss://bucket/?role_arn=xxx&host=xxx")
@@ -53,7 +67,7 @@ func formatCkptDir(modelName string) (string, error) {
 }
 
 // wrapper generates a Python program for submit TensorFlow tasks to PAI.
-func wrapper(code, dataSource, modelName, cwd, tmpTrainTable, tmpValTable string, cc *clusterConfig) (string, error) {
+func wrapper(code, dataSource, modelName, cwd, tmpTrainTable, tmpValTable string, cc *ClusterConfig) (string, error) {
 	f, err := os.Create(filepath.Join(cwd, entryFile))
 	if err != nil {
 		return "", fmt.Errorf("Create python code failed")
@@ -64,20 +78,29 @@ func wrapper(code, dataSource, modelName, cwd, tmpTrainTable, tmpValTable string
 	if err != nil {
 		return "", err
 	}
-	ossCkptDir, err := formatCkptDir(modelName)
+	ossCkptDir, err := FormatCkptDir(modelName)
 	if err != nil {
 		return "", err
 	}
 
 	var tpl = template.Must(template.New("Submit").Parse(tfWrapperTmplText))
+	cfString, err := json.Marshal(cc)
+	if err != nil {
+		return "", err
+	}
+	isDistributed := false
+	if cc.Worker.Count > 1 {
+		isDistributed = true
+	}
 	filler := wrapperFiller{
-		clusterConfig:    *cc,
-		DataSource:       dataSource,
-		ModelName:        modelName,
-		EntryFile:        entryFile,
-		PAITrainTable:    tmpTrainTable,
-		PAIValidateTable: tmpValTable,
-		OSSCheckpointDir: ossCkptDir,
+		ClusterConfigJSON: strconv.Quote(string(cfString)),
+		IsDistributed:     isDistributed,
+		DataSource:        dataSource,
+		ModelName:         modelName,
+		EntryFile:         entryFile,
+		PAITrainTable:     tmpTrainTable,
+		PAIValidateTable:  tmpValTable,
+		OSSCheckpointDir:  ossCkptDir,
 	}
 	var program bytes.Buffer
 	if err := tpl.Execute(&program, filler); err != nil {
@@ -86,7 +109,8 @@ func wrapper(code, dataSource, modelName, cwd, tmpTrainTable, tmpValTable string
 	return program.String(), nil
 }
 
-func getClusterConfig(attrs map[string]interface{}) (*clusterConfig, error) {
+// GetClusterConfig returns ClusterConfig object comes from WITH clause
+func GetClusterConfig(attrs map[string]interface{}) (*ClusterConfig, error) {
 	defaultMap := map[string]int{
 		"train.num_ps":      0,
 		"train.num_workers": 1,
@@ -106,20 +130,24 @@ func getClusterConfig(attrs map[string]interface{}) (*clusterConfig, error) {
 			delete(attrs, k)
 		}
 	}
-	return &clusterConfig{
-		NumPS:      defaultMap["train.num_ps"],
-		NumWorkers: defaultMap["train.num_workers"],
-		PSCPU:      defaultMap["train.ps_cpu"],
-		PSGPU:      defaultMap["train.ps_gpu"],
-		WorkerCPU:  defaultMap["train.worker_cpu"],
-		WorkerGPU:  defaultMap["train.worker_gpu"],
+	return &ClusterConfig{
+		PS: PSConfig{
+			Count: defaultMap["train.num_ps"],
+			CPU:   defaultMap["train.ps_cpu"],
+			GPU:   defaultMap["train.ps_gpu"],
+		},
+		Worker: WorkerConfig{
+			Count: defaultMap["train.num_workers"],
+			CPU:   defaultMap["train.worker_cpu"],
+			GPU:   defaultMap["train.worker_gpu"],
+		},
 	}, nil
 }
 
 // Train generates a Python program for train a TensorFlow model.
 func Train(ir *ir.TrainStmt, session *pb.Session, modelName, cwd string) (string, error) {
-	cc, err := getClusterConfig(ir.Attributes)
-	program, err := tfTrainAndSave(ir, session, modelName)
+	cc, err := GetClusterConfig(ir.Attributes)
+	program, err := TFTrainAndSave(ir, session, modelName)
 	if err != nil {
 		return "", err
 	}
@@ -127,7 +155,8 @@ func Train(ir *ir.TrainStmt, session *pb.Session, modelName, cwd string) (string
 		ir.TmpTrainTable, ir.TmpValidateTable, cc)
 }
 
-func tfTrainAndSave(ir *ir.TrainStmt, session *pb.Session, modelName string) (string, error) {
+// TFTrainAndSave generates PAI-TF code
+func TFTrainAndSave(ir *ir.TrainStmt, session *pb.Session, modelName string) (string, error) {
 	code, err := tensorflow.Train(ir, session)
 	if err != nil {
 		return "", err
@@ -136,7 +165,7 @@ func tfTrainAndSave(ir *ir.TrainStmt, session *pb.Session, modelName string) (st
 	// append code snippet to save model
 	isKeras, estimatorStr := tensorflow.IsKerasModel(ir.Estimator)
 	var tpl = template.Must(template.New("SaveModel").Parse(tfSaveModelTmplText))
-	ckptDir, err := formatCkptDir(ir.Into)
+	ckptDir, err := FormatCkptDir(ir.Into)
 	if err != nil {
 		return "", err
 	}
@@ -154,7 +183,7 @@ func tfTrainAndSave(ir *ir.TrainStmt, session *pb.Session, modelName string) (st
 
 // Predict generates a Python program for train a TensorFlow model.
 func Predict(ir *ir.PredictStmt, session *pb.Session, modelName, cwd string) (string, error) {
-	cc, err := getClusterConfig(ir.Attributes)
+	cc, err := GetClusterConfig(ir.Attributes)
 	if err != nil {
 		return "", err
 	}
@@ -168,7 +197,7 @@ func Predict(ir *ir.PredictStmt, session *pb.Session, modelName, cwd string) (st
 
 func tfLoadAndPredict(ir *ir.PredictStmt, session *pb.Session, modelName string) (string, error) {
 	var tpl = template.Must(template.New("Predict").Parse(tfPredictTmplText))
-	ossModelDir, err := formatCkptDir(modelName)
+	ossModelDir, err := FormatCkptDir(modelName)
 	if err != nil {
 		return "", err
 	}
