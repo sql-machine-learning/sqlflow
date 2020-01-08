@@ -38,17 +38,6 @@ var submitterRegistry = map[string](Submitter){
 	// TODO(typhoonzero): add submitters like alps, elasticdl
 }
 
-// SubmitterRegister registes a submitter
-func SubmitterRegister(name string, submitter Submitter) {
-	if submitter == nil {
-		panic("submitter: Register submitter twice")
-	}
-	if _, dup := submitterRegistry[name]; dup {
-		panic("submitter: Register called twice")
-	}
-	submitterRegistry[name] = submitter
-}
-
 // GetSubmitter returns a proper Submitter from configuations in environment variables.
 func GetSubmitter() Submitter {
 	envSubmitter := os.Getenv("SQLFLOW_submitter")
