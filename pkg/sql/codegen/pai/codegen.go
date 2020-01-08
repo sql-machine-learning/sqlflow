@@ -93,14 +93,14 @@ func wrapper(code, dataSource, modelName, cwd, tmpTrainTable, tmpValTable string
 		isDistributed = true
 	}
 	filler := wrapperFiller{
-		CFJSONString:     strconv.Quote(string(cfString)),
-		IsDistributed:    isDistributed,
-		DataSource:       dataSource,
-		ModelName:        modelName,
-		EntryFile:        entryFile,
-		PAITrainTable:    tmpTrainTable,
-		PAIValidateTable: tmpValTable,
-		OSSCheckpointDir: ossCkptDir,
+		ClusterConfigJSON: strconv.Quote(string(cfString)),
+		IsDistributed:     isDistributed,
+		DataSource:        dataSource,
+		ModelName:         modelName,
+		EntryFile:         entryFile,
+		PAITrainTable:     tmpTrainTable,
+		PAIValidateTable:  tmpValTable,
+		OSSCheckpointDir:  ossCkptDir,
 	}
 	var program bytes.Buffer
 	if err := tpl.Execute(&program, filler); err != nil {

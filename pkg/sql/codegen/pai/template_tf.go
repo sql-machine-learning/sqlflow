@@ -14,14 +14,14 @@
 package pai
 
 type wrapperFiller struct {
-	CFJSONString     string
-	IsDistributed    bool
-	DataSource       string
-	EntryFile        string
-	ModelName        string
-	PAITrainTable    string
-	PAIValidateTable string
-	OSSCheckpointDir string // uri for PAI to save checkpoints on OSS, e.g. oss://bucket/dir/?role_arn=xxx&host=xxx
+	ClusterConfigJSON string
+	IsDistributed     bool
+	DataSource        string
+	EntryFile         string
+	ModelName         string
+	PAITrainTable     string
+	PAIValidateTable  string
+	OSSCheckpointDir  string // uri for PAI to save checkpoints on OSS, e.g. oss://bucket/dir/?role_arn=xxx&host=xxx
 }
 
 type saveModelFiller struct {
@@ -71,7 +71,7 @@ else:
 {{ if .IsDistributed }}
 print("saving model to: {{.OSSCheckpointDir}}")
 pai_cmd = 'pai -name %s -DjobName=%s -Dtags=%s -Dscript=file://%s -DentryFile=%s -Dtables=%s -DcheckpointDir=\'{{.OSSCheckpointDir}}\' -Dcluster=\'%s\'' % (
-    'tensorflow1120', jobname, 'dnn', tarball, '{{.EntryFile}}', submit_tables, '{{.CFJSONString}}')
+    'tensorflow1120', jobname, 'dnn', tarball, '{{.EntryFile}}', submit_tables, '{{.ClusterConfigJSON}}')
 {{else}}
 pai_cmd = 'pai -name %s -DjobName=%s -Dtags=%s -Dscript=file://%s -DentryFile=%s -DgpuRequired=\'0\' -Dtables=%s -DcheckpointDir=\'{{.OSSCheckpointDir}}\'' % (
     'tensorflow1120', jobname, 'dnn', tarball, '{{.EntryFile}}', submit_tables)
