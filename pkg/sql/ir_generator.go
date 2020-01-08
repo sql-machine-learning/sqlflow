@@ -267,6 +267,7 @@ func generatePredictStmt(slct *parser.SQLFlowSelectStmt, connStr string, modelDi
 		ResultTable:  resultTable,
 		ResultColumn: resultCol,
 		Attributes:   attrMap,
+		Using:        slct.Model,
 		TrainStmt:    trainStmt,
 	}
 
