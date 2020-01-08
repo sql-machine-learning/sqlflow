@@ -46,7 +46,7 @@ func Run(programIR ir.SQLProgram, session *pb.Session) (string, error) {
 			r.SQLStatements = append(r.SQLStatements, sqlStmt)
 		case *ir.TrainStmt:
 			if r.SQLFlowSubmitter == "katib" {
-				sqlStmt, err := parseKatibSQL(sqlIR.(*ir.TrainStmt))
+				sqlStmt, err := ParseKatibSQL(sqlIR.(*ir.TrainStmt))
 				if err != nil {
 					return "", fmt.Errorf("Fail to parse Katib train statement %s", sqlIR.GetOriginalSQL())
 				}

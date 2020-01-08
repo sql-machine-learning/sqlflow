@@ -69,8 +69,8 @@ func parseAttribute(attrs map[string]interface{}) (map[string]interface{}, error
 	return params["range."], nil
 }
 
-// RunKatib generates Couler Katib step
-func parseKatibSQL(t *ir.TrainStmt) (*sqlStatement, error) {
+// ParseKatibSQL generates Couler Katib step
+func ParseKatibSQL(t *ir.TrainStmt) (*sqlStatement, error) {
 	ss := &sqlStatement{}
 	ss.IsKatibTrain = true
 
