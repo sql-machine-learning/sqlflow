@@ -15,7 +15,7 @@ spec:
     spec:
       volumes:
       containers:
-      - image: sqlflow/sqlflow
+      - image: sqlflow/sqlflow:latest
         name: mysql
         imagePullPolicy: Always
         env:
