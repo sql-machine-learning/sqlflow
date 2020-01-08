@@ -21,7 +21,6 @@ import (
 
 	"sqlflow.org/gomaxcompute"
 	"sqlflow.org/sqlflow/pkg/database"
-	"sqlflow.org/sqlflow/pkg/parser"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/pai"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
@@ -124,15 +123,10 @@ func (s *paiSubmitter) ExecutePredict(cl *ir.PredictStmt) error {
 	cl.TmpPredictTable = strings.Join([]string{dbName, tableName}, ".")
 	defer dropTmpTables([]string{cl.TmpPredictTable}, s.Session.DbConnStr)
 
-	// TODO(typhoonzero): remove below twice parse when all submitters moved to IR.
-	pr, e := parser.ParseOneStatement("maxcompute", cl.OriginalSQL)
-	if e != nil {
+	if e := createPredictionTableFromIR(cl, s.Db, s.Session); e != nil {
 		return e
 	}
-	if e = createPredictionTableFromIR(cl, s.Db, s.Session); e != nil {
-		return e
-	}
-	code, e := pai.Predict(cl, s.Session, pr.Model, s.Cwd)
+	code, e := pai.Predict(cl, s.Session, cl.Using, s.Cwd)
 	if e != nil {
 		return e
 	}

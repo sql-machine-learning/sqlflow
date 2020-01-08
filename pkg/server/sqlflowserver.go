@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"sqlflow.org/sqlflow/pkg/database"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -52,20 +53,19 @@ func NewServer(run func(string, string, *pb.Session) *pipe.Reader,
 
 // Fetch implements `rpc Fetch (Job) returns(JobStatus)`
 func (s *Server) Fetch(ctx context.Context, job *pb.FetchRequest) (*pb.FetchResponse, error) {
+	// FIXME(tony): to make function fetch easily to mock, we should decouple server package
+	// with argo package by introducing s.fetch
 	return sfargo.Fetch(job)
 }
 
 // Run implements `rpc Run (Request) returns (stream Response)`
 func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
-	sqlStatements, err := parser.SplitMultipleSQL(req.Sql)
-	if err != nil {
-		return err
-	}
 	rd := s.run(req.Sql, s.modelDir, req.Session)
 	defer rd.Close()
 
 	for r := range rd.ReadAll() {
 		var res *pb.Response
+		var err error
 		switch s := r.(type) {
 		case error:
 			return s
@@ -81,8 +81,17 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 			job := r.(sf.WorkflowJob)
 			res = &pb.Response{Response: &pb.Response_Job{Job: &pb.Job{Id: job.JobID}}}
 		case sf.EndOfExecution:
+			// FIXME(tony): decouple server package with sql package by introducing s.numberOfStatement
+			dialect, _, err := database.ParseURL(req.Session.DbConnStr)
+			if err != nil {
+				return err
+			}
+			sqls, err := parser.Parse(dialect, req.Sql)
+			if err != nil {
+				return err
+			}
 			// if sqlStatements have only one field, do **NOT** return EndOfExecution message.
-			if len(sqlStatements) > 1 {
+			if len(sqls) > 1 {
 				eoeMsg := r.(sf.EndOfExecution)
 				eoe := &pb.EndOfExecution{
 					Sql:              eoeMsg.Statement,
