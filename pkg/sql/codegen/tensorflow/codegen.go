@@ -300,7 +300,7 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 	// Need to create tmp table for train/validate when using PAI
 	paiTrainTable := ""
 	paiValidateTable := ""
-	isPAI := os.Getenv("SQLFLOW_submitter") == "pai"
+	isPAI := (os.Getenv("SQLFLOW_submitter") == "pai" || os.Getenv("SQLFLOW_submitter") == "alisa")
 	if isPAI && trainStmt.TmpTrainTable != "" {
 		paiTrainTable = trainStmt.TmpTrainTable
 		paiValidateTable = trainStmt.TmpValidateTable
