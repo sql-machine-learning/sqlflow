@@ -26,18 +26,6 @@ import (
 	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
 
-func parseOneStatement(statement string) (*parser.SQLFlowSelectStmt, error) {
-	sqls, err := parser.Parse("mysql", statement)
-	if err != nil {
-		return nil, err
-	}
-	if len(sqls) != 1 {
-		return nil, fmt.Errorf(`len(sqls) != 1, actual %d`, len(sqls))
-	}
-
-	return sqls[0].SQLFlowSelectStmt, nil
-}
-
 func TestGenerateTrainStmt(t *testing.T) {
 	a := assert.New(t)
 	normal := `SELECT c1, c2, c3, c4 FROM my_table
@@ -62,10 +50,10 @@ func TestGenerateTrainStmt(t *testing.T) {
 	INTO mymodel;
 	`
 
-	r, e := parseOneStatement(normal)
+	r, e := parser.ParseOneStatement("mysql", normal)
 	a.NoError(e)
 
-	trainStmt, err := generateTrainStmt(r)
+	trainStmt, err := generateTrainStmt(r.SQLFlowSelectStmt)
 	a.NoError(err)
 	a.Equal("DNNClassifier", trainStmt.Estimator)
 	a.Equal(`SELECT c1, c2, c3, c4 FROM my_table
@@ -187,10 +175,10 @@ func TestGenerateTrainStmtModelZoo(t *testing.T) {
 	INTO mymodel;
 	`
 
-	r, e := parseOneStatement(normal)
+	r, e := parser.ParseOneStatement("mysql", normal)
 	a.NoError(e)
 
-	trainStmt, err := generateTrainStmt(r)
+	trainStmt, err := generateTrainStmt(r.SQLFlowSelectStmt)
 	a.NoError(err)
 	a.Equal("a_data_scientist/regressors:v0.2", trainStmt.ModelImage)
 	a.Equal("MyDNNRegressor", trainStmt.Estimator)
@@ -205,7 +193,7 @@ func TestGeneratePredictStmt(t *testing.T) {
 	predSQL := `SELECT * FROM iris.test
 TO PREDICT iris.predict.class
 USING sqlflow_models.mymodel;`
-	r, e := parseOneStatement(predSQL)
+	r, e := parser.ParseOneStatement("mysql", predSQL)
 	a.NoError(e)
 
 	// need to save a model first because predict SQL will read the train SQL
@@ -222,7 +210,7 @@ LABEL class
 INTO sqlflow_models.mymodel;`, modelDir, &pb.Session{DbConnStr: database.GetTestingDBSingleton().ConnectionString()})
 	a.True(goodStream(stream.ReadAll()))
 
-	predStmt, err := generatePredictStmt(r, database.GetTestingDBSingleton().ConnectionString(), modelDir, cwd, true)
+	predStmt, err := generatePredictStmt(r.SQLFlowSelectStmt, database.GetTestingDBSingleton().ConnectionString(), modelDir, cwd, true)
 	a.NoError(err)
 
 	a.Equal("iris.predict", predStmt.ResultTable)
@@ -258,7 +246,7 @@ INTO sqlflow_models.my_xgboost_model;
 	a.NoError(e)
 	a.True(goodStream(stream.ReadAll()))
 
-	pr, e := parseOneStatement(`
+	pr, e := parser.ParseOneStatement("mysql", `
 	SELECT *
 	FROM iris.train
 	TO EXPLAIN sqlflow_models.my_xgboost_model
@@ -270,7 +258,7 @@ INTO sqlflow_models.my_xgboost_model;
 	`)
 	a.NoError(e)
 
-	ExplainStmt, e := generateExplainStmt(pr, connStr, modelDir, cwd, true)
+	ExplainStmt, e := generateExplainStmt(pr.SQLFlowSelectStmt, connStr, modelDir, cwd, true)
 	a.NoError(e)
 	a.Equal(ExplainStmt.Explainer, "TreeExplainer")
 	a.Equal(len(ExplainStmt.Attributes), 3)
@@ -282,7 +270,7 @@ INTO sqlflow_models.my_xgboost_model;
 	a.True(ok)
 	a.Equal("sepal_length", nc.FieldDesc.Name)
 
-	pr, e = parseOneStatement(`
+	pr, e = parser.ParseOneStatement("mysql", `
 	SELECT *
 	FROM iris.train
 	TO EXPLAIN sqlflow_models.my_xgboost_model
@@ -295,7 +283,7 @@ INTO sqlflow_models.my_xgboost_model;
 	`)
 	a.NoError(e)
 
-	ExplainIntoStmt, e := generateExplainStmt(pr, connStr, modelDir, cwd, true)
+	ExplainIntoStmt, e := generateExplainStmt(pr.SQLFlowSelectStmt, connStr, modelDir, cwd, true)
 	a.NoError(e)
 	a.Equal(ExplainIntoStmt.Explainer, "TreeExplainer")
 	a.Equal(len(ExplainIntoStmt.Attributes), 3)
