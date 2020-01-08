@@ -89,11 +89,7 @@ func getDatabaseNameFromDSN(dataSource string) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		project := cfg.Env["SKYNET_PACKAGEID"]
-		if v, ok := cfg.Env["SKYNET_SYSTEMID"]; ok {
-			project = project + "_" + v
-		}
-		return project, nil
+		return cfg.Project, nil
 	}
 	return "", fmt.Errorf("driver should be in ['maxcompute', 'alisa']")
 }

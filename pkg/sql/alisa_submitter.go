@@ -174,11 +174,7 @@ func getBucket(bucketName string) (*oss.Bucket, error) {
 	if err != nil {
 		return nil, err
 	}
-	bucket, err := cli.Bucket(bucketName)
-	if err != nil {
-		return nil, err
-	}
-	return bucket, nil
+	return cli.Bucket(bucketName)
 }
 
 func writeFile(filePath, program string) error {
@@ -186,6 +182,7 @@ func writeFile(filePath, program string) error {
 	if err != nil {
 		return fmt.Errorf("create python code failed")
 	}
+	defer f.Close()
 	f.WriteString(program)
-	return f.Close()
+	return nil
 }
