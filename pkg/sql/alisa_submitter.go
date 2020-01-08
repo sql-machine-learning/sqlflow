@@ -36,10 +36,6 @@ type alisaSubmitter struct {
 	*defaultSubmitter
 }
 
-func (s *alisaSubmitter) ExecuteQuery(sql *ir.StandardSQL) error {
-	return runStandardSQL(s.Writer, string(*sql), s.Db)
-}
-
 func (s *alisaSubmitter) getPAIcmd(ts *ir.TrainStmt) (string, error) {
 	cf, err := pai.GetClusterConfig(ts.Attributes)
 	if err != nil {
