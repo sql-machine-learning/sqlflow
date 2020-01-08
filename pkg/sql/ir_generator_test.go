@@ -207,10 +207,10 @@ TO TRAIN DNNClassifier
 WITH model.n_classes=3, model.hidden_units=[10,20]
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
-INTO sqlflow_models.mymodel;`, modelDir, &pb.Session{DbConnStr: database.GetTestingDBSingleton().ConnectionString()})
+INTO sqlflow_models.mymodel;`, modelDir, &pb.Session{DbConnStr: database.GetTestingDBSingleton().URL()})
 	a.True(goodStream(stream.ReadAll()))
 
-	predStmt, err := generatePredictStmt(r.SQLFlowSelectStmt, database.GetTestingDBSingleton().ConnectionString(), modelDir, cwd, true)
+	predStmt, err := generatePredictStmt(r.SQLFlowSelectStmt, database.GetTestingDBSingleton().URL(), modelDir, cwd, true)
 	a.NoError(err)
 
 	a.Equal("iris.predict", predStmt.ResultTable)
