@@ -14,26 +14,13 @@
 package verifier
 
 import (
-	"fmt"
 	"os"
+	"sqlflow.org/sqlflow/pkg/parser"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"sqlflow.org/sqlflow/pkg/database"
-	"sqlflow.org/sqlflow/pkg/parser"
 )
-
-func parseOneStatement(statement string) (*parser.SQLFlowSelectStmt, error) {
-	sqls, err := parser.Parse("mysql", statement)
-	if err != nil {
-		return nil, err
-	}
-	if len(sqls) != 1 {
-		return nil, fmt.Errorf(`len(sqls) != 1, actual %d`, len(sqls))
-	}
-
-	return sqls[0].SQLFlowSelectStmt, nil
-}
 
 func TestVerify(t *testing.T) {
 	if os.Getenv("SQLFLOW_TEST_DB") == "hive" {
@@ -69,7 +56,7 @@ func TestVerify(t *testing.T) {
 
 func TestVerifyColumnNameAndType(t *testing.T) {
 	a := assert.New(t)
-	trainParse, e := parseOneStatement(`SELECT gender, tenure, TotalCharges
+	trainParse, e := parser.ParseOneStatement("mysql", `SELECT gender, tenure, TotalCharges
 FROM churn.train LIMIT 10
 TO TRAIN DNNClassifier
 WITH
@@ -80,19 +67,19 @@ LABEL class
 INTO sqlflow_models.my_dnn_model;`)
 	a.NoError(e)
 
-	predParse, e := parseOneStatement(`SELECT gender, tenure, TotalCharges
+	predParse, e := parser.ParseOneStatement("mysql", `SELECT gender, tenure, TotalCharges
 FROM churn.train LIMIT 10
 TO PREDICT iris.predict.class
 USING sqlflow_models.my_dnn_model;`)
 	a.NoError(e)
-	a.NoError(VerifyColumnNameAndType(trainParse, predParse, database.GetTestingDBSingleton()))
+	a.NoError(VerifyColumnNameAndType(trainParse.SQLFlowSelectStmt, predParse.SQLFlowSelectStmt, database.GetTestingDBSingleton()))
 
-	predParse, e = parseOneStatement(`SELECT gender, tenure
+	predParse, e = parser.ParseOneStatement("mysql", `SELECT gender, tenure
 FROM churn.train LIMIT 10
 TO PREDICT iris.predict.class
 USING sqlflow_models.my_dnn_model;`)
 	a.NoError(e)
-	a.EqualError(VerifyColumnNameAndType(trainParse, predParse, database.GetTestingDBSingleton()),
+	a.EqualError(VerifyColumnNameAndType(trainParse.SQLFlowSelectStmt, predParse.SQLFlowSelectStmt, database.GetTestingDBSingleton()),
 		"predFields doesn't contain column totalcharges")
 }
 
