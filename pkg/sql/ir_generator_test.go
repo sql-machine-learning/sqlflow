@@ -220,6 +220,7 @@ INTO sqlflow_models.mymodel;`, modelDir, &pb.Session{DbConnStr: connStr})
 	nc, ok := predStmt.TrainStmt.Features["feature_columns"][0].(*ir.NumericColumn)
 	a.True(ok)
 	a.Equal("sepal_length", nc.FieldDesc.Name)
+	a.Equal("sqlflow_models.mymodel", predStmt.Using)
 }
 
 func TestGenerateExplainStmt(t *testing.T) {

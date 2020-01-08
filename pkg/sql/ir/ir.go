@@ -148,6 +148,8 @@ type PredictStmt struct {
 	// "select ... predict ... with predict.batch_size = 32 into ...",
 	// the Attributes will be {"predict.batch_size": 32}
 	Attributes map[string]interface{}
+	// Using is the model specified by USING clause.
+	Using string
 	// TrainStmt is the TrainStmt used for generating the training job of the corresponding model
 	TrainStmt *TrainStmt
 	// When SQLFLOW_submitter == "pai", tmp tables will be created for predicting task
