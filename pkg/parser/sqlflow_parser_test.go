@@ -30,13 +30,13 @@ func TestParseWithMySQL(t *testing.T) {
 	commonTestCases("mysql", assert.New(t))
 }
 
-func TestParseWithHive(t *testing.T) {
-	commonTestCases("hive", assert.New(t))
-}
-
-func TestParseWithCalcite(t *testing.T) {
-	commonTestCases("calcite", assert.New(t))
-}
+//func TestParseWithHive(t *testing.T) {
+//	commonTestCases("hive", assert.New(t))
+//}
+//
+//func TestParseWithCalcite(t *testing.T) {
+//	commonTestCases("calcite", assert.New(t))
+//}
 
 func commonTestCases(dbms string, a *assert.Assertions) {
 	extendedSQL := `to predict a using b`

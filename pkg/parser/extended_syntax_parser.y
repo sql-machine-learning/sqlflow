@@ -218,8 +218,7 @@ standard_select_stmt
 ;
 
 end_of_stmt
-: /* empty */ {}
-| ';'         {}
+: ';'         {}
 ;
 
 where_clause
