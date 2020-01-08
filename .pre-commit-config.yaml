@@ -23,9 +23,3 @@
       name: documentation_checker
       entry: bash ./scripts/pre-commit/docgen.sh
       language: system
-- repo: local
-  hooks:
-    - id: goyaccfmt
-      name: goyaccfmt
-      entry: bash ./scripts/pre-commit/goyaccfmt.sh # TODO(wangkuiyi): Remove this script after making goyaccfmt accept ./...
-      language: system
