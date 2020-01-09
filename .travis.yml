@@ -14,6 +14,8 @@ branches:
   - "/^v\\d+\\.\\d+(\\.\\d+)?(-\\S*)?$/"
 service:
   - docker
+# NOTE(typhoonzero): `sudo: required` fixes "maven build fails with ACCESS DENIED".
+# ref: https://github.com/travis-ci/travis-ci/issues/6593#issuecomment-417752102
 sudo: required
 
 # Note(tony): Update to newer version of Docker to allow
