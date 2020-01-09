@@ -182,21 +182,21 @@ def train(datasource,
           pai_val_table=""):
     assert validate_select != ""
     assert 0 <= verbose <= 3
-    is_keras_model = not issubclass(estimator, (tf.estimator.Estimator, tf.estimator.BoostedTreesClassifier, tf.estimator.BoostedTreesRegressor))
-    if is_keras_model and verbose == 1 or TF_VERSION_2:
+    is_estimator = issubclass(estimator, (tf.estimator.Estimator, tf.estimator.BoostedTreesClassifier, tf.estimator.BoostedTreesRegressor))
+    if not is_estimator and verbose == 1 or TF_VERSION_2:
         tf.get_logger().setLevel((4-verbose) * 10)  # logging.INFO levels range from 10~40
     elif verbose >= 2:
         tf.logging.set_verbosity(tf.logging.INFO)
     model_params.update(feature_columns)
 
-    if is_keras_model:
+    if not is_estimator:  # keras
         if not issubclass(estimator, tf.keras.Model):
             # functional model need field_metas parameter
             model_params["field_metas"] = feature_metas
         keras_train_and_save(estimator, model_params, save,
-                         feature_column_names, feature_metas, label_meta,
-                         datasource, select, validate_select,
-                         batch_size, epochs, verbose, metric_names)
+                             feature_column_names, feature_metas, label_meta,
+                             datasource, select, validate_select,
+                             batch_size, epochs, verbose, metric_names)
     else:
         is_distributed = False
         FLAGS = None
