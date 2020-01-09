@@ -158,8 +158,7 @@ def estimator_train_and_save(estimator, model_params, save,
     if not is_pai:
         print(result[0])
 
-def train(is_keras_model,
-          datasource,
+def train(datasource,
           estimator,
           select,
           validate_select,
@@ -182,16 +181,12 @@ def train(is_keras_model,
           pai_table="",
           pai_val_table=""):
     assert validate_select != ""
-    assert verbose >=0 and verbose <= 3
-    if is_keras_model:
-        if verbose == 1:
-            tf.get_logger().setLevel((4-verbose) * 10)  # logging.INFO levels range from 10~40
-    else:
-        if TF_VERSION_2:
-                tf.get_logger().setLevel((4-verbose) * 10)
-        else:
-            if verbose >= 2:
-                tf.logging.set_verbosity(tf.logging.INFO)
+    assert 0 <= verbose <= 3
+    is_keras_model = not issubclass(estimator, (tf.estimator.Estimator, tf.estimator.BoostedTreesEstimator))
+    if is_keras_model and verbose == 1 or TF_VERSION_2:
+        tf.get_logger().setLevel((4-verbose) * 10)  # logging.INFO levels range from 10~40
+    elif verbose >= 2:
+        tf.logging.set_verbosity(tf.logging.INFO)
     model_params.update(feature_columns)
 
     if is_keras_model:

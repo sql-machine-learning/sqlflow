@@ -141,8 +141,7 @@ def estimator_predict(estimator, model_params, save, result_table,
                 row.append(str(list(result)[0]["predictions"][0]))
             w.write(row)
 
-def pred(is_keras_model,
-         datasource,
+def pred(datasource,
          estimator,
          select,
          result_table,
@@ -163,6 +162,7 @@ def pred(is_keras_model,
         conn = connect_with_data_source(datasource)
     model_params.update(feature_columns)
 
+    is_keras_model = not issubclass(estimator, (tf.estimator.Estimator, tf.estimator.BoostedTreesEstimator))
     if is_keras_model:
         if not issubclass(estimator, tf.keras.Model):
             # functional model need field_metas parameter

@@ -25,9 +25,8 @@ type wrapperFiller struct {
 }
 
 type saveModelFiller struct {
-	OSSModelDir  string
-	Estimator    string
-	IsKerasModel bool
+	OSSModelDir string
+	Estimator   string
 }
 
 type predictFiller struct {
@@ -90,7 +89,6 @@ const tfSaveModelTmplText = `
 from sqlflow_submitter.pai import model
 model.save("{{.OSSModelDir}}",
            "{{.Estimator}}",
-           "{{.IsKerasModel}}" == "true",
            feature_column_names,
            feature_metas,
            label_meta,
@@ -99,7 +97,7 @@ model.save("{{.OSSModelDir}}",
 `
 
 const tfPredictTmplText = `
-import tensorflow as tf
+from tensorflow.estimator import DNNClassifier, DNNRegressor, LinearClassifier, LinearRegressor, BoostedTreesClassifier, BoostedTreesRegressor, DNNLinearCombinedClassifier, DNNLinearCombinedRegressor
 from sqlflow_submitter.pai import model
 from sqlflow_submitter.tensorflow import predict
 try:
@@ -108,23 +106,21 @@ except:
     pass
 
 (estimator,
- is_keras_model,
  feature_column_names,
  feature_metas,
  label_meta,
  model_params,
  feature_columns) = model.load("{{.OSSModelDir}}")
 
-predict.pred(is_keras_model=is_keras_model,
-    datasource="{{.DataSource}}",
-    estimator=eval(estimator),
-    select="""{{.Select}}""",
-    result_table="{{.ResultTable}}",
-    feature_columns=feature_columns,
-    feature_column_names=feature_column_names,
-    feature_metas=feature_metas,
-    label_meta=label_meta,
-    model_params=model_params,
-    save="{{.OSSModelDir}}",
-    batch_size=1)
+predict.pred(datasource="{{.DataSource}}",
+             estimator=eval(estimator),
+             select="""{{.Select}}""",
+             result_table="{{.ResultTable}}",
+             feature_columns=feature_columns,
+             feature_column_names=feature_column_names,
+             feature_metas=feature_metas,
+             label_meta=label_meta,
+             model_params=model_params,
+             save="{{.OSSModelDir}}",
+             batch_size=1)
 `

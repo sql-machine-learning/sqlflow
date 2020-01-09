@@ -21,7 +21,6 @@ type predFiller struct {
 	ResultTable string
 	// below members comes from trainStmt
 	Estimator         string
-	IsKerasModel      bool
 	FieldDescs        []*ir.FieldDesc
 	FeatureColumnCode string
 	Y                 *ir.FieldDesc
@@ -38,7 +37,7 @@ type predFiller struct {
 const tfPredTemplateText = `
 from sqlflow_submitter.tensorflow.predict import pred
 from sqlflow_submitter.tensorflow.train import TF_VERSION_2
-import tensorflow as tf
+from tensorflow.estimator import DNNClassifier, DNNRegressor, LinearClassifier, LinearRegressor, BoostedTreesClassifier, BoostedTreesRegressor, DNNLinearCombinedClassifier, DNNLinearCombinedRegressor
 if TF_VERSION_2:
     from tensorflow.keras.optimizers import *
 else:
@@ -78,22 +77,21 @@ model_params["{{$k}}"]={{$v | attrToPythonValue}}
 
 feature_columns = {{.FeatureColumnCode}}
 
-pred(is_keras_model="{{.IsKerasModel}}" == "true",
-    datasource="{{.DataSource}}",
-    estimator={{.Estimator}},
-    select="""{{.Select}}""",
-    result_table="{{.ResultTable}}",
-    feature_columns=feature_columns,
-    feature_column_names=feature_column_names,
-    feature_metas=feature_metas,
-    label_meta=label_meta,
-    model_params=model_params,
-    save="{{.Save}}",
-    batch_size=1,
-    hdfs_namenode_addr="{{.HDFSNameNodeAddr}}",
-    hive_location="{{.HiveLocation}}",
-    hdfs_user="{{.HDFSUser}}",
-    hdfs_pass="{{.HDFSPass}}",
-    is_pai="{{.IsPAI}}" == "true",
-    pai_table="{{.PAIPredictTable}}")
+pred(datasource="{{.DataSource}}",
+     estimator={{.Estimator}},
+     select="""{{.Select}}""",
+     result_table="{{.ResultTable}}",
+     feature_columns=feature_columns,
+     feature_column_names=feature_column_names,
+     feature_metas=feature_metas,
+     label_meta=label_meta,
+     model_params=model_params,
+     save="{{.Save}}",
+     batch_size=1,
+     hdfs_namenode_addr="{{.HDFSNameNodeAddr}}",
+     hive_location="{{.HiveLocation}}",
+     hdfs_user="{{.HDFSUser}}",
+     hdfs_pass="{{.HDFSPass}}",
+     is_pai="{{.IsPAI}}" == "true",
+     pai_table="{{.PAIPredictTable}}")
 `

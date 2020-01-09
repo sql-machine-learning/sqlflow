@@ -21,7 +21,6 @@ type explainFiller struct {
 	SummaryParams string
 	// below members comes from trainStmt
 	EstimatorClass    string
-	IsKerasModel      bool
 	FieldDescs        []*ir.FieldDesc
 	FeatureColumnCode string
 	Y                 *ir.FieldDesc
@@ -37,7 +36,7 @@ type explainFiller struct {
 
 const boostedTreesExplainTemplateText = `
 from sqlflow_submitter.tensorflow import explain
-import tensorflow as tf
+from tensorflow.estimator import DNNClassifier, DNNRegressor, LinearClassifier, LinearRegressor, BoostedTreesClassifier, BoostedTreesRegressor, DNNLinearCombinedClassifier, DNNLinearCombinedRegressor
 try:
     import sqlflow_models
 except:
