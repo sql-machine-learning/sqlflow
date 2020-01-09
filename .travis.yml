@@ -33,49 +33,33 @@ install:
 jobs:
   include:
     - stage: BuildDockerAndPreCommit
+      env: TEST_MAVEN=test1
       script:
         - set -e
         - docker pull sqlflow/sqlflow:latest && docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile .
         - docker run --rm -v $GOPATH/src:/root/go/src -w /root/go/src/sqlflow.org/sqlflow sqlflow:latest go generate ./... && go build ./...
         - docker run --rm -v $GOPATH/src:/root/go/src -w /root/go/src/sqlflow.org/sqlflow sqlflow:latest pre-commit run -a
-    - stage: Unitests
-      # env is just used for displaying the job type in travis web page
-      env: SQLFLOW_TEST_DB=mysql
-      script:
-        - set -e
-        - docker pull sqlflow/sqlflow:latest && docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile .
-        - docker run --rm -v $GOPATH:/root/go -w /root/go/src/sqlflow.org/sqlflow sqlflow:latest bash scripts/test/units.sh
-        - docker run --rm -v $GOPATH:/root/go -w /root/go/src/sqlflow.org/sqlflow sqlflow:latest bash scripts/upload_coveralls.sh
     - # run more parallel tests in the same stage:
-      env: SQLFLOW_TEST_DB=hive
+      env: TEST_MAVEN=test2
       script:
-        - set -e
-        - docker pull sqlflow/sqlflow:latest && docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile .
-        - docker pull sqlflow/gohive:dev && docker run -d --name=hive sqlflow/gohive:dev python3 -m http.server 8899
-        - docker run --rm -v $GOPATH:/root/go --net=container:hive --entrypoint bash -w /root/go/src/sqlflow.org/sqlflow sqlflow:latest scripts/test/hive.sh
-    - env: SQLFLOW_TEST_DB=maxcompute
+      - set -e
+      - docker pull sqlflow/sqlflow:latest && docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile .
+      - docker run --rm -v $GOPATH/src:/root/go/src -w /root/go/src/sqlflow.org/sqlflow sqlflow:latest go generate ./... && go build ./...
+      - docker run --rm -v $GOPATH/src:/root/go/src -w /root/go/src/sqlflow.org/sqlflow sqlflow:latest pre-commit run -a
+    - # run more parallel tests in the same stage:
+      env: TEST_MAVEN=test3
       script:
-        - set -e
-        - docker pull sqlflow/sqlflow:latest && docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile .
-        - bash scripts/test/setup_k8s_env.sh
-        - docker run --rm --net=host -v /var/run/docker.sock:/var/run/docker.sock -v $HOME/.kube:/root/.kube -v /home/$USER/.minikube/:/home/$USER/.minikube/ -v $GOPATH:/root/go -w /root/go/src/sqlflow.org/sqlflow sqlflow:latest bash scripts/test/ipython.sh
-        - docker run -e SQLFLOW_TEST_DB_MAXCOMPUTE_AK=$MAXCOMPUTE_AK -e SQLFLOW_TEST_DB_MAXCOMPUTE_SK=$MAXCOMPUTE_SK --rm --net=host -v /var/run/docker.sock:/var/run/docker.sock -v $HOME/.kube:/root/.kube -v /home/$USER/.minikube/:/home/$USER/.minikube/ -v $GOPATH:/root/go -w /root/go/src/sqlflow.org/sqlflow sqlflow:latest bash scripts/test/maxcompute.sh
-    - env: SQLFLOW_TEST=java
+      - set -e
+      - docker pull sqlflow/sqlflow:latest && docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile .
+      - docker run --rm -v $GOPATH/src:/root/go/src -w /root/go/src/sqlflow.org/sqlflow sqlflow:latest go generate ./... && go build ./...
+      - docker run --rm -v $GOPATH/src:/root/go/src -w /root/go/src/sqlflow.org/sqlflow sqlflow:latest pre-commit run -a
+    - # run more parallel tests in the same stage:
+      env: TEST_MAVEN=test4
       script:
-        - set -e
-        - docker pull sqlflow/sqlflow:latest && docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile .
-        - docker run --rm -v $GOPATH:/root/go -w /root/go/src/sqlflow.org/sqlflow sqlflow:latest bash scripts/test/java.sh
-    - env: SQLFLOW_TEST=workflow
-      script:
-        - set -e
-        - bash scripts/test/setup_k8s_env.sh
-        - eval $(sudo minikube docker-env) && docker pull sqlflow/sqlflow:latest && docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile . && docker tag sqlflow:latest sqlflow:submitter
-        - docker run --rm --net=host -e SQLFLOW_WORKFLOW_STEP_IMAGE=sqlflow:submitter -v /var/run/docker.sock:/var/run/docker.sock -v $HOME/.kube:/root/.kube -v /home/$USER/.minikube/:/home/$USER/.minikube/ -v $GOPATH:/root/go -w /root/go/src/sqlflow.org/sqlflow sqlflow:latest bash scripts/test/workflow.sh
-    - stage: deploy
-      script:
-        - set -e
-        - docker pull sqlflow/sqlflow:latest && docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile .
-        - bash scripts/deploy.sh
+      - set -e
+      - docker pull sqlflow/sqlflow:latest && docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile .
+      - docker run --rm -v $GOPATH/src:/root/go/src -w /root/go/src/sqlflow.org/sqlflow sqlflow:latest go generate ./... && go build ./...
+      - docker run --rm -v $GOPATH/src:/root/go/src -w /root/go/src/sqlflow.org/sqlflow sqlflow:latest pre-commit run -a
 
 env:
   global:
