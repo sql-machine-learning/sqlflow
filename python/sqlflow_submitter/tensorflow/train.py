@@ -48,6 +48,11 @@ def keras_train_and_save(estimator, model_params, save,
                          feature_column_names, feature_metas, label_meta,
                          datasource, select, validate_select,
                          batch_size, epochs, verbose, metric_names):
+    # remove optimizer param from model_params and use it when call "compile()"
+    optimizer = None
+    if "optimizer" in model_params:
+        optimizer = model_params["optimizer"]
+        del model_params["optimizer"]
     classifier = estimator(**model_params)
     classifier_pkg = sys.modules[estimator.__module__]
     model_metrics = []
@@ -72,7 +77,10 @@ def keras_train_and_save(estimator, model_params, save,
     train_dataset = train_dataset.shuffle(SHUFFLE_SIZE).batch(batch_size)
     validate_dataset = input_fn(validate_select, conn, feature_column_names, feature_metas, label_meta).batch(batch_size)
 
-    classifier.compile(optimizer=classifier_pkg.optimizer(),
+    if optimizer is None:
+        # use keras model default optimizer if optimizer is not specified in WITH clause.
+        optimizer = classifier_pkg.optimizer()
+    classifier.compile(optimizer=optimizer,
         loss=classifier_pkg.loss,
         metrics=keras_metrics)
     if hasattr(classifier, 'sqlflow_train_loop'):
