@@ -38,8 +38,10 @@ from sqlflow_submitter.tensorflow.train import train, TF_VERSION_2
 import tensorflow as tf
 if TF_VERSION_2:
     from tensorflow.keras.optimizers import *
+    from tensorflow.keras.losses import *
 else:
     from tensorflow.train import *
+    from tensorflow.keras.losses import *
 try:
     import sqlflow_models
 except:

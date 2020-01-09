@@ -50,9 +50,13 @@ def keras_train_and_save(estimator, model_params, save,
                          batch_size, epochs, verbose, metric_names):
     # remove optimizer param from model_params and use it when call "compile()"
     optimizer = None
+    loss = None
     if "optimizer" in model_params:
         optimizer = model_params["optimizer"]
         del model_params["optimizer"]
+    if "loss" in model_params:
+        loss = model_params["loss"]
+        del model_params["loss"]
     classifier = estimator(**model_params)
     classifier_pkg = sys.modules[estimator.__module__]
     model_metrics = []
@@ -80,8 +84,10 @@ def keras_train_and_save(estimator, model_params, save,
     if optimizer is None:
         # use keras model default optimizer if optimizer is not specified in WITH clause.
         optimizer = classifier_pkg.optimizer()
+    if loss is None:
+        loss = classifier_pkg.loss
     classifier.compile(optimizer=optimizer,
-        loss=classifier_pkg.loss,
+        loss=loss,
         metrics=keras_metrics)
     if hasattr(classifier, 'sqlflow_train_loop'):
         def flatten(feature, label):  # TODO(shendiaomo): Modify the cluster model to adapt the new input structure

@@ -200,6 +200,12 @@ func setDefaultOptimizer(trainStmt *ir.TrainStmt, optimizerParamName string) {
 	trainStmt.Attributes[optimizerParamName] = defaultValue
 }
 
+// constructOptimizers generate a python optimizer function call using:
+// model.optimizer = "OptimizerName"
+// optimizer.arg1 = 1
+// optimizer.arg2 = "2"
+// To:
+// model.optimizer = "OptimizerName(arg1=1, arg2=\"2\")"
 func constructOptimizers(trainStmt *ir.TrainStmt) {
 	optimizerArgs := map[string]map[string]interface{}{}
 	for k, v := range trainStmt.Attributes {
@@ -233,11 +239,39 @@ func constructOptimizers(trainStmt *ir.TrainStmt) {
 	}
 }
 
+// constructLosses generate a python loss function call using:
+// model.loss = "LossName"
+// loss.arg1 = 1
+// loss.arg2 = "2"
+// To:
+// model.loss = "LossName(arg1=1, arg2=\"2\")"
+func constructLosses(trainStmt *ir.TrainStmt) {
+	lossFunction := ""
+	lossArgs := []string{}
+	for k, v := range trainStmt.Attributes {
+		attrParts := strings.Split(k, ".")
+		if k == "model.loss" {
+			lossFunction = v.(string)
+			continue
+		}
+		if attrParts[0] == "loss" {
+			lossArgs = append(lossArgs, fmt.Sprintf("%s=%v", attrParts[1], v))
+			// NOTE(typhoonzero): delete keys in loop is safe:
+			// https://stackoverflow.com/questions/23229975/is-it-safe-to-remove-selected-keys-from-map-within-a-range-loop
+			delete(trainStmt.Attributes, k)
+		}
+	}
+	lossCode := fmt.Sprintf("%s(%s)", lossFunction, strings.Join(lossArgs, ","))
+	trainStmt.Attributes["model.loss"] = lossCode
+}
+
 func initializeAttributes(trainStmt *ir.TrainStmt) error {
 	commonAttributes.FillDefaults(trainStmt.Attributes)
 
 	modelAttr := attribute.NewDictionaryFromModelDefinition(trainStmt.Estimator, "model.")
-	constructOptimizers(trainStmt) // TODO(shendiaomo): Restrict optimizer parameters to the available set
+	// TODO(shendiaomo): Restrict optimizer parameters to the available set
+	constructOptimizers(trainStmt)
+	constructLosses(trainStmt)
 	attrValidator := modelAttr.Update(commonAttributes)
 	return attrValidator.Validate(trainStmt.Attributes)
 }
