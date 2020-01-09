@@ -162,7 +162,7 @@ def pred(datasource,
         conn = connect_with_data_source(datasource)
     model_params.update(feature_columns)
 
-    is_keras_model = not issubclass(estimator, (tf.estimator.Estimator, tf.estimator.BoostedTreesEstimator))
+    is_keras_model = not issubclass(estimator, (tf.estimator.Estimator, tf.estimator.BoostedTreesClassifier, tf.estimator.BoostedTreesRegressor))
     if is_keras_model:
         if not issubclass(estimator, tf.keras.Model):
             # functional model need field_metas parameter
