@@ -41,7 +41,7 @@ require (
 	gopkg.in/yaml.v2 v2.2.7 // indirect
 	k8s.io/api v0.0.0-20191004102349-159aefb8556b
 	k8s.io/apimachinery v0.17.0 // indirect
-	sqlflow.org/goalisa v0.0.0-20200108071859-502faa6a5009
+	sqlflow.org/goalisa v0.0.0-20200109080603-b2f185e0cbb1
 	sqlflow.org/gohive v0.0.0-20191009030413-2b2325ce8b38
 	sqlflow.org/gomaxcompute v0.0.0-20191028113124-e214922c510c
 )
