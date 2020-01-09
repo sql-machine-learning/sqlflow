@@ -88,6 +88,7 @@ mv $GOPATH/bin/repl /usr/local/bin && \
 (cd python/couler && python setup.py -q install) && \
 cd java/parser && \
 mvn -B -q clean compile assembly:single && \
+rm -rf /root/m2/reponsitory && \
 mkdir -p /opt/sqlflow/parser && \
 cp target/parser-1.0-SNAPSHOT-jar-with-dependencies.jar /opt/sqlflow/parser && \
 cd / && \
