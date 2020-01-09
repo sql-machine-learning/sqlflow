@@ -1,0 +1,40 @@
+// Copyright 2019 The SQLFlow Authors. All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+option java_package = "org.sqlflow.parser";
+option java_outer_classname = "ParserProto";
+option go_package = "proto";
+
+message ParserRequest {
+  // The sql_program represents a SQL program that contains possible more than
+  // one SQL statements. For example, `select * from my_table; select * from another_table to train ...`.
+  string sql_program = 1;
+}
+
+message ParserResponse {
+  // The sql_statements represent part of the sql_program accepted by the parser.
+  // For example, if the ParserRequest is `select 1; select 2 to train ...`.
+  // The ParserResponse contains two statements, `select 1;` and `select 2 `
+  repeated string sql_statements = 1;
+  // The index indicates where we might want to split ParserRequest.sql_program
+  // into a standard SELECT statement and the SQLFlow extension TO TRAIN/PREDICT/EXPLAIN
+  int32 index = 2;
+  // The error represents the error message during parsing
+  string error = 3;
+}
+
+service Parser {
+  rpc Parse (ParserRequest) returns (ParserResponse) {}
+}
