@@ -20,8 +20,8 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"
+	"sqlflow.org/sqlflow/pkg/database"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
@@ -122,13 +122,7 @@ func TestKatibCodegen(t *testing.T) {
 	a := assert.New(t)
 	os.Setenv("SQLFLOW_submitter", "katib")
 
-	cfg := &mysql.Config{
-		User:                 "root",
-		Passwd:               "root",
-		Net:                  "tcp",
-		Addr:                 "127.0.0.1:3306",
-		AllowNativePasswords: true,
-	}
+	cfg := database.GetTestingMySQLConfig()
 
 	standardSQL := ir.StandardSQL("SELECT * FROM iris.train limit 10;")
 	sqlIR := MockKatibTrainStmt(fmt.Sprintf("mysql://%s", cfg.FormatDSN()))

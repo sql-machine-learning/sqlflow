@@ -22,8 +22,6 @@ import (
 	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
 
-var defaultKatibDockerImage = "sqlflow/sqlflow"
-
 var attributeDictionary = attribute.Dictionary{
 	"eta": {attribute.Float, float32(0.3), `[default=0.3, alias: learning_rate]
 Step size shrinkage used in update to prevents overfitting. After each boosting step, we can directly get the weights of new features, and eta shrinks the feature weights to make the boosting process more conservative.
