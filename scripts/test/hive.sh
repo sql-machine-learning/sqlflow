@@ -16,8 +16,6 @@
 # is a status port indicates the hive server container
 # is ready, see .travis.yml for the details
 
-set -e
-
 if [[ $(git diff --name-only HEAD..develop|awk -F. '{print $NF}'|uniq) == md ]]; then
   exit
 fi
