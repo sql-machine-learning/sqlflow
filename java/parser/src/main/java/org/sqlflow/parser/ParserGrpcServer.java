@@ -57,6 +57,7 @@ public class ParserGrpcServer {
   static class ParserImpl extends ParserGrpc.ParserImplBase {
     @Override
     public void parse(ParserRequest request, StreamObserver<ParserResponse> responseObserver) {
+      // TODO(tony): Implement this function to call actual parsers
       ParserResponse response = ParserResponse.newBuilder().setIndex(1).build();
       responseObserver.onNext(response);
       responseObserver.onCompleted();
