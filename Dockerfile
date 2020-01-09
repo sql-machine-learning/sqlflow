@@ -80,6 +80,19 @@ RUN /install-jupyter.bash
 ENV SQLFLOWPATH $GOPATH/src/sqlflow.org/sqlflow
 ENV PYTHONPATH $SQLFLOWPATH/python
 COPY . $SQLFLOWPATH
+RUN echo '\n\
+<settings> \n\
+  <mirrors> \n\
+    <mirror> \n\
+      <id>google-maven-central</id> \n\
+      <name>GCS Maven Central mirror</name> \n\
+      <url>https://maven-central.storage-download.googleapis.com/maven2/</url> \n\
+      <mirrorOf>central</mirrorOf> \n\
+    </mirror> \n\
+  </mirrors> \n\
+</settings> \n\
+ ' > /root/.m2/settings.xml
+RUN cat /root/.m2/settings.xml
 RUN cd $SQLFLOWPATH && \
 go generate ./... && \
 go install -v ./... && \
