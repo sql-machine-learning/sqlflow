@@ -253,8 +253,10 @@ func constructLosses(trainStmt *ir.TrainStmt) {
 			delete(trainStmt.Attributes, k)
 		}
 	}
-	lossCode := fmt.Sprintf("%s(%s)", lossFunction, strings.Join(lossArgs, ","))
-	trainStmt.Attributes["model.loss"] = lossCode
+	if lossFunction != "" {
+		lossCode := fmt.Sprintf("%s(%s)", lossFunction, strings.Join(lossArgs, ","))
+		trainStmt.Attributes["model.loss"] = lossCode
+	}
 }
 
 func initializeAttributes(trainStmt *ir.TrainStmt) error {
