@@ -17,3 +17,17 @@ set -e
 
 apt-get -qq update && apt-get install -y openjdk-8-jdk maven > /dev/null
 
+# Use GCS based maven-central mirror.
+# Travis CI occasionally fails on the default maven central repo.
+# Ref: https://github.com/sql-machine-learning/sqlflow/issues/1654
+mkdir -p /root/.m2/
+echo '<settings>
+  <mirrors>
+    <mirror>
+      <id>google-maven-central</id>
+      <name>GCS Maven Central mirror</name>
+      <url>https://maven-central.storage-download.googleapis.com/maven2/</url>
+      <mirrorOf>central</mirrorOf>
+    </mirror>
+  </mirrors>
+</settings>' > /root/.m2/settings.xml
