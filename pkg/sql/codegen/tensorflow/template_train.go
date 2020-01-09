@@ -33,6 +33,7 @@ type trainFiller struct {
 }
 
 const tfTrainTemplateText = `
+import tensorflow as tf
 from sqlflow_submitter.tensorflow.train import train, TF_VERSION_2
 from tensorflow.estimator import DNNClassifier, DNNRegressor, LinearClassifier, LinearRegressor, BoostedTreesClassifier, BoostedTreesRegressor, DNNLinearCombinedClassifier, DNNLinearCombinedRegressor
 if TF_VERSION_2:
