@@ -163,16 +163,14 @@ func TFTrainAndSave(ir *ir.TrainStmt, session *pb.Session, modelName string) (st
 	}
 
 	// append code snippet to save model
-	isKeras, estimatorStr := tensorflow.IsKerasModel(ir.Estimator)
 	var tpl = template.Must(template.New("SaveModel").Parse(tfSaveModelTmplText))
 	ckptDir, err := FormatCkptDir(ir.Into)
 	if err != nil {
 		return "", err
 	}
 	filler := saveModelFiller{
-		OSSModelDir:  ckptDir,
-		Estimator:    estimatorStr,
-		IsKerasModel: isKeras,
+		OSSModelDir: ckptDir,
+		Estimator:   ir.Estimator,
 	}
 	var saveCode bytes.Buffer
 	if err = tpl.Execute(&saveCode, filler); err != nil {

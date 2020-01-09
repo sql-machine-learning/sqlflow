@@ -167,14 +167,6 @@ func dtypeToString(dt ir.FieldType) string {
 	}
 }
 
-// IsKerasModel returns whether an estimator is from sqlflow_models and its qualified name
-func IsKerasModel(estimator string) (bool, string) {
-	if strings.HasPrefix(estimator, "sqlflow_models.") {
-		return true, estimator
-	}
-	return false, fmt.Sprintf("tf.estimator.%s", estimator)
-}
-
 // TODO(shendiaomo): Make the optimizer related code more general and exported in `attribute.go` if other frameworks
 // than TensorFlow have to support python objects as model attributes.
 
@@ -329,8 +321,6 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 		return "", err
 	}
 
-	isKeras, estimatorStr := IsKerasModel(trainStmt.Estimator)
-
 	// Need to create tmp table for train/validate when using PAI
 	paiTrainTable := ""
 	paiValidateTable := ""
@@ -344,8 +334,7 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 		DataSource:        session.DbConnStr,
 		TrainSelect:       trainStmt.Select,
 		ValidationSelect:  trainStmt.ValidationSelect,
-		Estimator:         estimatorStr,
-		IsKerasModel:      isKeras,
+		Estimator:         trainStmt.Estimator,
 		FieldDescs:        fieldDescs,
 		FeatureColumnCode: fmt.Sprintf("{%s}", strings.Join(featureColumnsCode, ",\n")),
 		Y:                 trainStmt.Label.GetFieldDesc()[0], // TODO(typhoonzero): label only support numericColumn.
@@ -376,7 +365,6 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	isKeras, estimatorStr := IsKerasModel(predStmt.TrainStmt.Estimator)
 	labelFM := predStmt.TrainStmt.Label.GetFieldDesc()[0]
 	if labelFM.Name == "" {
 		log.Printf("clustering model, got result table: %s, result column: %s", predStmt.ResultTable, predStmt.ResultColumn)
@@ -401,8 +389,7 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 		DataSource:        session.DbConnStr,
 		Select:            predStmt.Select,
 		ResultTable:       predStmt.ResultTable,
-		Estimator:         estimatorStr,
-		IsKerasModel:      isKeras,
+		Estimator:         predStmt.TrainStmt.Estimator,
 		FieldDescs:        fieldDescs,
 		FeatureColumnCode: fmt.Sprintf("{%s}", strings.Join(featureColumnsCode, ",\n")),
 		Y:                 labelFM,
@@ -438,7 +425,6 @@ func Explain(stmt *ir.ExplainStmt, session *pb.Session) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	_, estimatorStr := IsKerasModel(stmt.TrainStmt.Estimator)
 	labelFM := stmt.TrainStmt.Label.GetFieldDesc()[0]
 
 	const summaryAttrPrefix = "summary."
@@ -452,7 +438,7 @@ func Explain(stmt *ir.ExplainStmt, session *pb.Session) (string, error) {
 		DataSource:        session.DbConnStr,
 		Select:            stmt.Select,
 		SummaryParams:     string(jsonSummary),
-		EstimatorClass:    estimatorStr,
+		EstimatorClass:    stmt.TrainStmt.Estimator,
 		FieldDescs:        fieldDescs,
 		FeatureColumnCode: fmt.Sprintf("{%s}", strings.Join(featureColumnsCode, ",\n")),
 		Y:                 labelFM,
