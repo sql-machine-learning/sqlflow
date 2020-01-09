@@ -1,6 +1,5 @@
 # SQLFlow
 
-
 [![Build Status](https://travis-ci.com/sql-machine-learning/sqlflow.svg?branch=develop)](https://travis-ci.com/sql-machine-learning/sqlflow) [![Coverage Status](https://coveralls.io/repos/github/sql-machine-learning/sqlflow/badge.svg?branch=HEAD)](https://coveralls.io/github/sql-machine-learning/sqlflow?branch=HEAD) [![GoDoc](https://godoc.org/github.com/sql-machine-learning/sqlflow?status.svg)](https://godoc.org/github.com/sql-machine-learning/sqlflow) [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](LICENSE) [![Go Report Card](https://goreportcard.com/badge/github.com/sql-machine-learning/sqlflow)](https://goreportcard.com/report/github.com/sql-machine-learning/sqlflow)
 
 ## What is SQLFlow
