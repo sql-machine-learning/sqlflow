@@ -30,6 +30,8 @@ if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then
     exit 0
 fi
 
+docker pull sqlflow/sqlflow:latest && docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile .
+
 if [[ "$TRAVIS_BRANCH" == "develop" ]]; then
     if [[ "$TRAVIS_EVENT_TYPE" == "cron" ]]; then
         DOCKER_TAG="nightly"
