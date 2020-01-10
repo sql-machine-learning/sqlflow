@@ -21,6 +21,7 @@ type wrapperFiller struct {
 	ModelName         string
 	PAITrainTable     string
 	PAIValidateTable  string
+	ResultTable       string
 	OSSCheckpointDir  string // uri for PAI to save checkpoints on OSS, e.g. oss://bucket/dir/?role_arn=xxx&host=xxx
 }
 
@@ -67,13 +68,20 @@ else:
     val_table_parts = val_table.split(".")
     submit_tables = "odps://%s/tables/%s,odps://%s/tables/%s" % (train_table_parts[0], train_table_parts[1], val_table_parts[0], val_table_parts[1])
 
+if "{{.ResultTable}}" != "":
+    result_table_parts = "{{.ResultTable}}".split(".")
+    submit_result_tables = "-Doutputs=odps://%s/tables/%s" % (result_table_parts[0], result_table_parts[1])
+else:
+    # when training we do not need write result to a table.
+    submit_result_tables = ""
+
 {{ if .IsDistributed }}
 print("saving model to: {{.OSSCheckpointDir}}")
-pai_cmd = 'pai -name %s -DjobName=%s -Dtags=%s -Dscript=file://%s -DentryFile=%s -Dtables=%s -DcheckpointDir=\'{{.OSSCheckpointDir}}\' -Dcluster=\'%s\'' % (
-    'tensorflow1120', jobname, 'dnn', tarball, '{{.EntryFile}}', submit_tables, '{{.ClusterConfigJSON}}')
+pai_cmd = 'pai -name %s -DjobName=%s -Dtags=%s -Dscript=file://%s -DentryFile=%s -Dtables=%s %s -DcheckpointDir=\'{{.OSSCheckpointDir}}\' -Dcluster=\'%s\'' % (
+    'tensorflow1120', jobname, 'dnn', tarball, '{{.EntryFile}}', submit_tables, submit_result_tables, '{{.ClusterConfigJSON}}')
 {{else}}
-pai_cmd = 'pai -name %s -DjobName=%s -Dtags=%s -Dscript=file://%s -DentryFile=%s -DgpuRequired=\'0\' -Dtables=%s -DcheckpointDir=\'{{.OSSCheckpointDir}}\'' % (
-    'tensorflow1120', jobname, 'dnn', tarball, '{{.EntryFile}}', submit_tables)
+pai_cmd = 'pai -name %s -DjobName=%s -Dtags=%s -Dscript=file://%s -DentryFile=%s -DgpuRequired=\'0\' -Dtables=%s %s -DcheckpointDir=\'{{.OSSCheckpointDir}}\'' % (
+    'tensorflow1120', jobname, 'dnn', tarball, '{{.EntryFile}}', submit_tables, submit_result_tables)
 {{end}}
 
 # Submit the tarball to PAI

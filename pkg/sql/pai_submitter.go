@@ -140,6 +140,16 @@ func (s *paiSubmitter) ExecutePredict(cl *ir.PredictStmt) error {
 	cl.TmpPredictTable = strings.Join([]string{dbName, tableName}, ".")
 	defer dropTmpTables([]string{cl.TmpPredictTable}, s.Session.DbConnStr)
 
+	// format resultTable name to "db.table" to let the codegen form a submitting
+	// argument of format "odps://project/tables/table_name"
+	resultTableParts := strings.Split(cl.ResultTable, ".")
+	if len(resultTableParts) == 1 {
+		dbName, err := getDatabaseNameFromDSN(s.Session.DbConnStr)
+		if err != nil {
+			return err
+		}
+		cl.ResultTable = fmt.Sprintf("%s.%s", dbName, cl.ResultTable)
+	}
 	if e := createPredictionTableFromIR(cl, s.Db, s.Session); e != nil {
 		return e
 	}
