@@ -200,11 +200,18 @@ func tfLoadAndPredict(ir *ir.PredictStmt, session *pb.Session, modelName string)
 	if err != nil {
 		return "", err
 	}
+	isPAI := (os.Getenv("SQLFLOW_submitter") == "pai" || os.Getenv("SQLFLOW_submitter") == "alisa")
+	paiPredictTable := ""
+	if isPAI && ir.TmpPredictTable != "" {
+		paiPredictTable = ir.TmpPredictTable
+	}
 	filler := predictFiller{
 		OSSModelDir: ossModelDir,
 		DataSource:  session.DbConnStr,
 		Select:      ir.Select,
 		ResultTable: ir.ResultTable,
+		IsPAI:       isPAI,
+		PAITable:    paiPredictTable,
 	}
 	var code bytes.Buffer
 	if err := tpl.Execute(&code, filler); err != nil {

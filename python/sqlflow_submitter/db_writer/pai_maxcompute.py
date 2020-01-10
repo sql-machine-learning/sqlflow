@@ -17,7 +17,7 @@ import tensorflow as tf
 
 class PAIMaxComputeDBWriter(BufferedDBWriter):
     def __init__(self, table_name, table_schema, buff_size):
-        return super(PAIMaxComputeDBWriter, self).__init__(None, table_name, table_schema, buff_size)
+        super(PAIMaxComputeDBWriter, self).__init__(None, table_name, table_schema, buff_size)
         table_name_parts = table_name.split(".")
         assert len(table_name_parts) == 2
         table_name_formated = "odps://%s/tables/%s" % (table_name_parts[0], table_name_parts[1])

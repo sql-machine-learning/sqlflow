@@ -35,6 +35,8 @@ type predictFiller struct {
 	DataSource  string
 	Select      string
 	ResultTable string
+	IsPAI       bool
+	PAITable    string
 }
 
 const tfWrapperTmplText = `
@@ -130,5 +132,7 @@ predict.pred(datasource="{{.DataSource}}",
              label_meta=label_meta,
              model_params=model_params,
              save="{{.OSSModelDir}}",
-             batch_size=1)
+             batch_size=1,
+             is_pai="{{.IsPAI}}" == "true",
+             pai_table="{{.PAITable}}")
 `

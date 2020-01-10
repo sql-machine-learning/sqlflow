@@ -670,14 +670,14 @@ FROM %s.%s LIMIT 5;`, caseDB, casePredictTable)
 		a.False(nilCount == 4)
 	}
 
-	predSQLResultTableNoDB := fmt.Sprintf(`SELECT *
-FROM %s.%s
-TO PREDICT %s.class
-USING %s;`, caseDB, caseTestTable, casePredictTable, caseInto)
-	_, _, err = connectAndRunSQL(predSQLResultTableNoDB)
-	if err != nil {
-		a.Fail("Run predSQLResultTableNoDB error: %v", err)
-	}
+	// 	predSQLResultTableNoDB := fmt.Sprintf(`SELECT *
+	// FROM %s.%s
+	// TO PREDICT %s.class
+	// USING %s;`, caseDB, caseTestTable, casePredictTable, caseInto)
+	// 	_, _, err = connectAndRunSQL(predSQLResultTableNoDB)
+	// 	if err != nil {
+	// 		a.Fail("Run predSQLResultTableNoDB error: %v", err)
+	// 	}
 }
 
 func CaseTrainBoostedTreesEstimatorAndExplain(t *testing.T) {

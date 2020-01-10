@@ -25,7 +25,7 @@ except:
     pass
 
 from sqlflow_submitter.db import connect_with_data_source, db_generator, buffered_db_writer, parseMaxComputeDSN
-from .input_fn import get_dtype, parse_sparse_feature, pai_maxcompute_input_fn
+from .input_fn import get_dtype, parse_sparse_feature, pai_maxcompute_input_fn, pai_maxcompute_db_generator
 from .fast_predict import FastPredict
 
 # TODO(shendiaomo): Remove after we fully upgrade to TF2.0
@@ -127,9 +127,9 @@ def estimator_predict(estimator, model_params, save, result_table,
     if is_pai:
         driver = "pai_maxcompute"
         conn = None
-        pai_dataset = pai_maxcompute_input_fn(pai_table, datasource,
-                    feature_column_names, feature_metas, label_meta)
-        predict_generator = pai_dataset.batch(1).cache().make_one_shot_iterator()
+        pai_table_parts = pai_table.split(".")
+        formated_pai_table = "odps://%s/tables/%s" % (pai_table_parts[0], pai_table_parts[1])
+        predict_generator = pai_maxcompute_db_generator(formated_pai_table, feature_column_names, label_meta["feature_name"], feature_metas)()
     else:
         driver = conn.driver
         predict_generator = db_generator(conn.driver, conn, select, feature_column_names, label_meta["feature_name"], feature_metas)()

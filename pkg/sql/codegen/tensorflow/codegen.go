@@ -345,7 +345,7 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 		labelFM.Name = predStmt.ResultColumn
 	}
 
-	isPAI := os.Getenv("SQLFLOW_submitter") == "pai"
+	isPAI := (os.Getenv("SQLFLOW_submitter") == "pai" || os.Getenv("SQLFLOW_submitter") == "alisa")
 	paiPredictTable := ""
 	if isPAI && predStmt.TmpPredictTable != "" {
 		paiPredictTable = predStmt.TmpPredictTable
