@@ -29,38 +29,34 @@ import (
 	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
 
-var tarball = "train.tar.gz"
+var tarball = "task.tar.gz"
 var entryFile = "entry.py"
 
 type alisaSubmitter struct {
 	*defaultSubmitter
 }
 
-func (s *alisaSubmitter) getPAIcmd(ts *ir.TrainStmt) (string, error) {
-	cf, err := pai.GetClusterConfig(ts.Attributes)
-	if err != nil {
-		return "", err
-	}
+func (s *alisaSubmitter) getPAIcmd(cc *pai.ClusterConfig, modelName, trainTable, valTable string) (string, error) {
 
-	jobName := strings.Replace(strings.Join([]string{"sqlflow", ts.Into}, "_"), ".", "_", 0)
-	cfString, err := json.Marshal(cf)
+	jobName := strings.Replace(strings.Join([]string{"sqlflow", modelName}, "_"), ".", "_", 0)
+	cfString, err := json.Marshal(cc)
 	if err != nil {
 		return "", err
 	}
 	cfQuote := strconv.Quote(string(cfString))
-	ckpDir, err := pai.FormatCkptDir(ts.Into)
+	ckpDir, err := pai.FormatCkptDir(modelName)
 	if err != nil {
 		return "", err
 	}
 
 	// submit table should format as: odps://<project>/tables/<table>,odps://<project>/tables/<table>...
-	parts := strings.Split(ts.TmpTrainTable, ".")
+	parts := strings.Split(trainTable, ".")
 	submitTables := fmt.Sprintf("odps://%s/tables/%s", parts[0], parts[1])
-	if ts.TmpValidateTable != ts.TmpTrainTable {
-		parts = strings.Split(ts.TmpValidateTable, ".")
+	if trainTable != valTable && valTable != "" {
+		parts = strings.Split(valTable, ".")
 		submitTables = fmt.Sprintf("%s,odps://%s/tables/%s", submitTables, parts[0], parts[1])
 	}
-	if cf.Worker.Count > 1 {
+	if cc.Worker.Count > 1 {
 		return fmt.Sprintf("pai -name tensorflow1120 -DjobName=%s -Dtags=dnn -Dscript=file://@@%s -DentryFile=entry.py -Dtables=%s -DcheckpointDir=\"%s\" -Dcluster=%s", jobName, tarball, submitTables, ckpDir, cfQuote), nil
 	}
 	return fmt.Sprintf("pai -name tensorflow1120 -DjobName=%s -Dtags=dnn -Dscript=file://@@%s -DentryFile=entry.py -Dtables=%s -DcheckpointDir=\"%s\"", jobName, tarball, submitTables, ckpDir), nil
@@ -76,7 +72,7 @@ func (s *alisaSubmitter) submitAlisaTask(code, resourceName string) error {
 		return e
 	}
 
-	ossURL := os.Getenv("SQLFLOW_ALISA_OSS_HTTP_ENDPOINT")
+	ossURL := fmt.Sprintf("https://%s.%s", os.Getenv("SQLFLOW_ALISA_OSS_BUCKET"), os.Getenv("SQLFLOW_ALISA_OSS_ENDPOINT"))
 	cfg.Env["RES_DOWNLOAD_URL"] = fmt.Sprintf(`[{\"downloadUrl\":\"%s/%s\", \"resourceName\":\"%s\"}]`, ossURL, resourceName, tarball)
 	cfg.Verbose = true
 	newDatasource := cfg.FormatDSN()
@@ -89,24 +85,33 @@ func (s *alisaSubmitter) submitAlisaTask(code, resourceName string) error {
 	return e
 }
 
-func (s *alisaSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {
-	cl.TmpTrainTable, cl.TmpValidateTable, e = createTempTrainAndValTable(cl.Select, cl.ValidationSelect, s.Session.DbConnStr)
+func (s *alisaSubmitter) ExecuteTrain(ts *ir.TrainStmt) (e error) {
+	ts.TmpTrainTable, ts.TmpValidateTable, e = createTempTrainAndValTable(ts.Select, ts.ValidationSelect, s.Session.DbConnStr)
 	if e != nil {
 		return e
 	}
-	defer dropTmpTables([]string{cl.TmpTrainTable, cl.TmpValidateTable}, s.Session.DbConnStr)
+	defer dropTmpTables([]string{ts.TmpTrainTable, ts.TmpValidateTable}, s.Session.DbConnStr)
 
-	paiCmd, e := s.getPAIcmd(cl)
-	if e != nil {
-		return e
-	}
-
-	code, e := pai.TFTrainAndSave(cl, s.Session, cl.Into)
+	cc, e := pai.GetClusterConfig(ts.Attributes)
 	if e != nil {
 		return e
 	}
 
-	if e = s.achieveResource(code, tarball); e != nil {
+	paiCmd, e := s.getPAIcmd(cc, ts.Into, ts.TmpTrainTable, ts.TmpValidateTable)
+	if e != nil {
+		return e
+	}
+
+	code, e := pai.TFTrainAndSave(ts, s.Session, ts.Into)
+	if e != nil {
+		return e
+	}
+
+	return s.submit(code, paiCmd)
+}
+
+func (s *alisaSubmitter) submit(program, alisaCode string) error {
+	if e := s.achieveResource(program, tarball); e != nil {
 		return e
 	}
 
@@ -116,18 +121,43 @@ func (s *alisaSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 	if err != nil {
 		return err
 	}
-	if e = bucket.PutObjectFromFile(resourceName, filepath.Join(s.Cwd, tarball)); e != nil {
+	if e := bucket.PutObjectFromFile(resourceName, filepath.Join(s.Cwd, tarball)); e != nil {
 		return err
 	}
 	defer func() {
 		bucket.DeleteObject(resourceName)
 	}()
 
-	return s.submitAlisaTask(paiCmd, resourceName)
+	return s.submitAlisaTask(alisaCode, resourceName)
 }
 
-func (s *alisaSubmitter) ExecutePredict(cl *ir.PredictStmt) error {
-	return nil
+func (s *alisaSubmitter) ExecutePredict(ps *ir.PredictStmt) error {
+	dbName, tableName, err := createTmpTableFromSelect(ps.Select, s.Session.DbConnStr)
+	if err != nil {
+		return err
+	}
+	ps.TmpPredictTable = strings.Join([]string{dbName, tableName}, ".")
+	defer dropTmpTables([]string{ps.TmpPredictTable}, s.Session.DbConnStr)
+
+	if e := createPredictionTableFromIR(ps, s.Db, s.Session); e != nil {
+		return e
+	}
+
+	cc, e := pai.GetClusterConfig(ps.Attributes)
+	if e != nil {
+		return e
+	}
+
+	paiCmd, e := s.getPAIcmd(cc, ps.Using, ps.TmpPredictTable, "")
+	if e != nil {
+		return e
+	}
+
+	code, e := pai.TFLoadAndPredict(ps, s.Session, ps.Using)
+	if e != nil {
+		return e
+	}
+	return s.submit(code, paiCmd)
 }
 
 func (s *alisaSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {

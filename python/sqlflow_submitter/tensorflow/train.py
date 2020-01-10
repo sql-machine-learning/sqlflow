@@ -48,6 +48,11 @@ def keras_train_and_save(estimator, model_params, save,
                          feature_column_names, feature_metas, label_meta,
                          datasource, select, validate_select,
                          batch_size, epochs, verbose, metric_names):
+    # remove optimizer param from model_params and use it when call "compile()"
+    optimizer = None
+    if "optimizer" in model_params:
+        optimizer = model_params["optimizer"]
+        del model_params["optimizer"]
     classifier = estimator(**model_params)
     classifier_pkg = sys.modules[estimator.__module__]
     model_metrics = []
@@ -72,7 +77,10 @@ def keras_train_and_save(estimator, model_params, save,
     train_dataset = train_dataset.shuffle(SHUFFLE_SIZE).batch(batch_size)
     validate_dataset = input_fn(validate_select, conn, feature_column_names, feature_metas, label_meta).batch(batch_size)
 
-    classifier.compile(optimizer=classifier_pkg.optimizer(),
+    if optimizer is None:
+        # use keras model default optimizer if optimizer is not specified in WITH clause.
+        optimizer = classifier_pkg.optimizer()
+    classifier.compile(optimizer=optimizer,
         loss=classifier_pkg.loss,
         metrics=keras_metrics)
     if hasattr(classifier, 'sqlflow_train_loop'):
@@ -150,8 +158,7 @@ def estimator_train_and_save(estimator, model_params, save,
     if not is_pai:
         print(result[0])
 
-def train(is_keras_model,
-          datasource,
+def train(datasource,
           estimator,
           select,
           validate_select,
@@ -174,26 +181,22 @@ def train(is_keras_model,
           pai_table="",
           pai_val_table=""):
     assert validate_select != ""
-    assert verbose >=0 and verbose <= 3
-    if is_keras_model:
-        if verbose == 1:
-            tf.get_logger().setLevel((4-verbose) * 10)  # logging.INFO levels range from 10~40
-    else:
-        if TF_VERSION_2:
-                tf.get_logger().setLevel((4-verbose) * 10)
-        else:
-            if verbose >= 2:
-                tf.logging.set_verbosity(tf.logging.INFO)
+    assert 0 <= verbose <= 3
+    is_estimator = issubclass(estimator, (tf.estimator.Estimator, tf.estimator.BoostedTreesClassifier, tf.estimator.BoostedTreesRegressor))
+    if not is_estimator and verbose == 1 or TF_VERSION_2:
+        tf.get_logger().setLevel((4-verbose) * 10)  # logging.INFO levels range from 10~40
+    elif verbose >= 2:
+        tf.logging.set_verbosity(tf.logging.INFO)
     model_params.update(feature_columns)
 
-    if is_keras_model:
+    if not is_estimator:  # keras
         if not issubclass(estimator, tf.keras.Model):
             # functional model need field_metas parameter
             model_params["field_metas"] = feature_metas
         keras_train_and_save(estimator, model_params, save,
-                         feature_column_names, feature_metas, label_meta,
-                         datasource, select, validate_select,
-                         batch_size, epochs, verbose, metric_names)
+                             feature_column_names, feature_metas, label_meta,
+                             datasource, select, validate_select,
+                             batch_size, epochs, verbose, metric_names)
     else:
         is_distributed = False
         FLAGS = None

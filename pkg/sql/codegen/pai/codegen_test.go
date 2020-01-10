@@ -159,7 +159,7 @@ func TestPredictCodegen(t *testing.T) {
 	os.Setenv("SQLFLOW_OSS_CHECKPOINT_DIR", "oss://bucket/?role_arn=xxx&host=xxx")
 	defer os.Unsetenv("SQLFLOW_OSS_CHECKPOINT_DIR")
 	sess := mockSession()
-	paiTfCode, err := tfLoadAndPredict(ir, sess, "my_dnn_model")
+	paiTfCode, err := TFLoadAndPredict(ir, sess, "my_dnn_model")
 	a.NoError(err)
 	a.False(hasUnknownParameters(paiTfCode, knownPredictParams))
 

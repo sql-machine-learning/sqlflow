@@ -155,7 +155,7 @@ func Train(ir *ir.TrainStmt, session *pb.Session, modelName, cwd string) (string
 		ir.TmpTrainTable, ir.TmpValidateTable, cc)
 }
 
-// TFTrainAndSave generates PAI-TF code
+// TFTrainAndSave generates PAI-TF train program.
 func TFTrainAndSave(ir *ir.TrainStmt, session *pb.Session, modelName string) (string, error) {
 	code, err := tensorflow.Train(ir, session)
 	if err != nil {
@@ -163,16 +163,14 @@ func TFTrainAndSave(ir *ir.TrainStmt, session *pb.Session, modelName string) (st
 	}
 
 	// append code snippet to save model
-	isKeras, estimatorStr := tensorflow.IsKerasModel(ir.Estimator)
 	var tpl = template.Must(template.New("SaveModel").Parse(tfSaveModelTmplText))
 	ckptDir, err := FormatCkptDir(ir.Into)
 	if err != nil {
 		return "", err
 	}
 	filler := saveModelFiller{
-		OSSModelDir:  ckptDir,
-		Estimator:    estimatorStr,
-		IsKerasModel: isKeras,
+		OSSModelDir: ckptDir,
+		Estimator:   ir.Estimator,
 	}
 	var saveCode bytes.Buffer
 	if err = tpl.Execute(&saveCode, filler); err != nil {
@@ -187,7 +185,7 @@ func Predict(ir *ir.PredictStmt, session *pb.Session, modelName, cwd string) (st
 	if err != nil {
 		return "", err
 	}
-	program, err := tfLoadAndPredict(ir, session, modelName)
+	program, err := TFLoadAndPredict(ir, session, modelName)
 	if err != nil {
 		return "", err
 	}
@@ -195,7 +193,8 @@ func Predict(ir *ir.PredictStmt, session *pb.Session, modelName, cwd string) (st
 		ir.TmpPredictTable, "", cc)
 }
 
-func tfLoadAndPredict(ir *ir.PredictStmt, session *pb.Session, modelName string) (string, error) {
+// TFLoadAndPredict generates PAI-TF prediction program.
+func TFLoadAndPredict(ir *ir.PredictStmt, session *pb.Session, modelName string) (string, error) {
 	var tpl = template.Must(template.New("Predict").Parse(tfPredictTmplText))
 	ossModelDir, err := FormatCkptDir(modelName)
 	if err != nil {
