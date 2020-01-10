@@ -146,7 +146,6 @@ def estimator_predict(estimator, model_params, save, result_table,
                 # regression predictions
                 row.append(str(list(result)[0]["predictions"][0]))
             w.write(row)
-    w.close()
 
 def pred(datasource,
          estimator,
