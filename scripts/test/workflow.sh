@@ -14,6 +14,10 @@
 
 set -e
 
+if [[ $(git diff --name-only HEAD..develop|awk -F. '{print $NF}'|uniq) == md ]]; then
+  exit
+fi
+
 export SQLFLOW_TEST=workflow
 ############# Run Couler unit tests #############
 pip -q install -r python/couler/requirements.txt
