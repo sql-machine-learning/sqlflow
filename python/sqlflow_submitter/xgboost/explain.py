@@ -21,6 +21,7 @@ import pandas as pd
 import sys
 
 from sqlflow_submitter.db import connect_with_data_source, db_generator
+from sqlflow_submitter import explainer
 
 def xgb_shap_dataset(datasource, select, feature_column_names, label_name, feature_specs):
     conn = connect_with_data_source(datasource)
@@ -40,14 +41,6 @@ def xgb_shap_values(x):
     explainer = shap.TreeExplainer(bst)
     return explainer.shap_values(x)
 
-def plot_with_text_backend(fn, shap_values, features, summary_params):
-    # save {fn}.txt using the plotille text backend 
-    matplotlib.use('module://plotille_text_backend')
-    import matplotlib.pyplot as plt_text_backend
-    shap.summary_plot(shap_values, features, show=False, **summary_params)
-    sys.stdout.isatty = lambda:True
-    plt_text_backend.savefig(fn, bbox_inches='tight')
-
 def explain(datasource,
             select,
             feature_field_meta,
@@ -60,8 +53,4 @@ def explain(datasource,
     shap_values = xgb_shap_values(x)
 
     # save summary.png using the default backend
-    shap.summary_plot(shap_values, x, show=False, **summary_params)
-    plt.savefig('summary', bbox_inches='tight')
-
-    # save summary.txt using the plotille text backend 
-    plot_with_text_backend('summary', shap_values, x, summary_params)
+    explainer.plot_and_save(lambda: shap.summary_plot(shap_values, x, show=False, **summary_params))
