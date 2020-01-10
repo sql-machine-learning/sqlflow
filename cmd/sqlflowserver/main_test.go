@@ -278,7 +278,6 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("TestShowDatabases", CaseShowDatabases)
 	t.Run("TestSelect", CaseSelect)
 	t.Run("TestTrainSQL", CaseTrainSQL)
-	t.Run("CaseTrainBoostedTreesEstimatorAndExplain", CaseTrainBoostedTreesEstimatorAndExplain)
 	t.Run("CaseTrainSQLWithMetrics", CaseTrainSQLWithMetrics)
 	t.Run("TestTextClassification", CaseTrainTextClassification)
 	t.Run("CaseTrainTextClassificationCustomLSTM", CaseTrainTextClassificationCustomLSTM)
@@ -299,6 +298,9 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseTrainTextClassificationFeatureDerivation", CaseTrainTextClassificationFeatureDerivation)
 	t.Run("CaseXgboostFeatureDerivation", CaseXgboostFeatureDerivation)
 	t.Run("CaseTrainFeatureDerivation", CaseTrainFeatureDerivation)
+
+	// FIXME(shendiaomo): the folowing test case is unstable on CI.
+	//t.Run("CaseTrainBoostedTreesEstimatorAndExplain", CaseTrainBoostedTreesEstimatorAndExplain)
 }
 
 func CaseXgboostFeatureDerivation(t *testing.T) {
