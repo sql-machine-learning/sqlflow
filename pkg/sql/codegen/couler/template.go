@@ -22,6 +22,9 @@ type sqlStatement struct {
 	// CreateTmpTable and Select are used to create a step to generate temporary table for training
 	CreateTmpTable bool
 	Select         string
+	Model          string
+	Parameters     string
+	IsKatibTrain   bool
 }
 type coulerFiller struct {
 	DataSource       string
@@ -46,6 +49,13 @@ step_envs["{{$k}}"] = "{{$v}}"
 	{{if $ss.IsExtendedSQL }}
 train_sql = '''{{ $ss.OriginalSQL }}'''
 couler.run_container(command='''repl -e "%s" --datasource="%s"''' % (train_sql, datasource), image="{{ $ss.DockerImage }}", env=step_envs)
+	{{else if $ss.IsKatibTrain}}
+import couler.sqlflow.katib as auto
+
+model = "{{ $ss.Model }}"
+params = json.loads('''{{ $ss.Parameters }}''')
+train_sql = '''{{ $ss.OriginalSQL }}'''
+auto.train(model=model, params=params, sql=train_sql, datasource=datasource)
 	{{else}}
 # TODO(yancey1989): 
 #	using "repl -parse" to output IR and
