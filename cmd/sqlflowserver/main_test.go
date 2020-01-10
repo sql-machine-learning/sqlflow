@@ -378,6 +378,7 @@ func TestEnd2EndHive(t *testing.T) {
 	t.Run("CaseTrainSQLWithMetrics", CaseTrainSQLWithMetrics)
 	t.Run("CaseTrainRegression", CaseTrainRegression)
 	t.Run("CaseTrainCustomModel", CaseTrainCustomModel)
+	t.Run("CaseTrainAdaNet", CaseTrainAdaNet)
 	t.Run("CaseTrainOptimizer", CaseTrainOptimizer)
 	t.Run("CaseTrainDeepWideModel", CaseTrainDeepWideModel)
 	t.Run("CaseTrainDeepWideModelOptimizer", CaseTrainDeepWideModelOptimizer)
@@ -933,6 +934,18 @@ COLUMN sepal_length, sepal_width FOR linear_feature_columns
 COLUMN petal_length, petal_width FOR dnn_feature_columns
 LABEL class
 INTO sqlflow_models.my_dnn_linear_model;`
+	_, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("run trainSQL error: %v", err)
+	}
+}
+
+func CaseTrainAdaNet(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := `SELECT * FROM iris.train
+TO TRAIN sqlflow_models.AutoClassifier WITH model.n_classes = 3
+LABEL class
+INTO sqlflow_models.my_adanet_model;`
 	_, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("run trainSQL error: %v", err)
