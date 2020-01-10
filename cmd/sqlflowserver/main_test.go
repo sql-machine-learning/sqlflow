@@ -677,11 +677,10 @@ func CaseTrainBoostedTreesEstimatorAndExplain(t *testing.T) {
 	SELECT * FROM iris.train WHERE class!=2
 	TO TRAIN BoostedTreesClassifier
 	WITH
-		model.n_batches_per_layer=10,
-		model.n_trees=50,
+		model.n_batches_per_layer=1,
 		model.center_bias=True,
-		train.batch_size=10,
-		train.epoch=20,
+		train.batch_size=100,
+		train.epoch=10,
 		validation.select="SELECT * FROM iris.test where class!=2"
 	LABEL class
 	INTO %s;
