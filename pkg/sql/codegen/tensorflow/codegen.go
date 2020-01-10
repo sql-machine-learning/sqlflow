@@ -178,6 +178,10 @@ func attrIsOptimizer(attrKey string) bool {
 	return false
 }
 
+func isPAI() bool {
+	return os.Getenv("SQLFLOW_submitter") == "pai" || os.Getenv("SQLFLOW_submitter") == "alisa"
+}
+
 func setDefaultOptimizer(trainStmt *ir.TrainStmt, optimizerParamName string) {
 	// TODO(shendiaomo): Try to get the default value from the python `inspect` module instead of hard coding
 	defaultValue := "Adagrad" // Defaults to DNN with a single optimizer parameter
@@ -290,8 +294,7 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 	// Need to create tmp table for train/validate when using PAI
 	paiTrainTable := ""
 	paiValidateTable := ""
-	isPAI := (os.Getenv("SQLFLOW_submitter") == "pai" || os.Getenv("SQLFLOW_submitter") == "alisa")
-	if isPAI && trainStmt.TmpTrainTable != "" {
+	if isPAI() && trainStmt.TmpTrainTable != "" {
 		paiTrainTable = trainStmt.TmpTrainTable
 		paiValidateTable = trainStmt.TmpValidateTable
 	}
@@ -308,7 +311,7 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 		TrainParams:       trainParams,
 		ValidationParams:  validateParams,
 		Save:              "model_save",
-		IsPAI:             isPAI,
+		IsPAI:             isPAI(),
 		PAITrainTable:     paiTrainTable,
 		PAIValidateTable:  paiValidateTable,
 	}
@@ -345,9 +348,8 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 		labelFM.Name = predStmt.ResultColumn
 	}
 
-	isPAI := os.Getenv("SQLFLOW_submitter") == "pai"
 	paiPredictTable := ""
-	if isPAI && predStmt.TmpPredictTable != "" {
+	if isPAI() && predStmt.TmpPredictTable != "" {
 		paiPredictTable = predStmt.TmpPredictTable
 	}
 
@@ -365,7 +367,7 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 		HiveLocation:      session.HiveLocation,
 		HDFSUser:          session.HdfsUser,
 		HDFSPass:          session.HdfsPass,
-		IsPAI:             isPAI,
+		IsPAI:             isPAI(),
 		PAIPredictTable:   paiPredictTable,
 	}
 	var program bytes.Buffer
