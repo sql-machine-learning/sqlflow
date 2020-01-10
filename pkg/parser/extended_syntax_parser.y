@@ -173,8 +173,7 @@ sqlflow_select_stmt
 ;
 
 end_of_stmt
-: /* empty */ {}
-| ';'         {}
+: ';'         {}
 ;
 
 train_clause
