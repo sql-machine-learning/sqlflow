@@ -28,6 +28,7 @@ type coulerFiller struct {
 	SQLStatements    []*sqlStatement
 	SQLFlowSubmitter string
 	SQLFlowOSSDir    string
+	StepEnvs         map[string]string
 }
 
 const coulerTemplateText = `
@@ -35,8 +36,9 @@ import couler.argo as couler
 import uuid
 datasource = "{{ .DataSource }}"
 envs = {"SQLFLOW_submitter": "{{.SQLFlowSubmitter}}",
-        "SQLFLOW_OSS_CHECKPOINT_DIR": "{{.SQLFlowOSSDir}}"}
-{{ range $ss := .SQLStatements }}
+				"SQLFLOW_OSS_CHECKPOINT_DIR": "{{.SQLFlowOSSDir}}"}
+
+				{{ range $ss := .SQLStatements }}
 	{{if $ss.IsExtendedSQL }}
 train_sql = '''{{ $ss.OriginalSQL }}'''
 couler.run_container(command='''repl -e "%s" --datasource="%s"''' % (train_sql, datasource), image="{{ $ss.DockerImage }}", env=envs)
