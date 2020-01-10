@@ -14,6 +14,7 @@
 import functools
 import copy
 import tensorflow as tf
+import numpy as np
 from sqlflow_submitter.db import connect_with_data_source, db_generator, parseMaxComputeDSN
 
 def parse_sparse_feature(features, label, feature_column_names, feature_metas):
@@ -57,7 +58,7 @@ def input_fn(select, conn, feature_column_names, feature_metas, label_meta):
 
 def pai_maxcompute_input_fn(pai_table, datasource,
                             feature_column_names, feature_metas, label_meta,
-                            num_workers=1, worker_id=0):
+                            num_workers=1, worker_id=0, map_to_dict=True):
     # NOTE(typhoonzero): datasource is only used to get current selected maxcompute project(database).
     table_parts = pai_table.split(".")
     if len(table_parts) == 2:
@@ -94,5 +95,69 @@ def pai_maxcompute_input_fn(pai_table, datasource,
             name = feature_column_names[idx]
             features_dict[name] = tf.reshape(args[idx], [-1])
         return features_dict, label
+    
+    def tensor_to_list(*args):
+        num_features = len(feature_column_names)
+        label = args[num_features]
+        feature_list = []
+        for f in args[:num_features]:
+            feature_list.append(f.eval())
+        return feature_list, label.eval()
 
-    return dataset.map(tensor_to_dict)
+    if map_to_dict:
+        return dataset.map(tensor_to_dict)
+    else:
+        return dataset.as_numpy().map(tensor_to_list)
+
+def pai_maxcompute_db_generator(table,
+            feature_column_names, label_column_name,
+            feature_specs, fetch_size=128):
+    def read_feature(raw_val, feature_spec, feature_name):
+        # FIXME(typhoonzero): Should use correct dtype here.
+        if feature_spec["is_sparse"]:
+            indices = np.fromstring(raw_val, dtype=int, sep=feature_spec["delimiter"])
+            indices = indices.reshape(indices.size, 1)
+            values = np.ones([indices.size], dtype=np.int32)
+            dense_shape = np.array(feature_spec["shape"], dtype=np.int64)
+            return (indices, values, dense_shape)
+        else:
+            # Dense string vector
+            if feature_spec["delimiter"] != "":
+                if feature_spec["dtype"] == "float32":
+                    return np.fromstring(raw_val, dtype=float, sep=feature_spec["delimiter"])
+                elif feature_spec["dtype"] == "int64":
+                    return np.fromstring(raw_val, dtype=int, sep=feature_spec["delimiter"])
+                else:
+                    raise ValueError('unrecognize dtype {}'.format(feature_spec[feature_name]["dtype"]))
+            else:
+                return (raw_val,)
+
+    def reader():
+        selected_cols = copy.copy(feature_column_names)
+        if label_column_name:
+            selected_cols.append(label_column_name)
+            try:
+                label_idx = selected_cols.index(label_column_name)
+            except ValueError:
+                # NOTE(typhoonzero): For clustering model, label_column_name may not in field_names when predicting.
+                label_idx = None
+        else:
+            label_idx = None
+        reader = tf.python_io.TableReader(table,
+                                  selected_cols=",".join(selected_cols),
+                                  slice_id=0,
+                                  slice_count=1)
+        while True:
+            try:
+                row = reader.read(num_records=1)[0]
+                label = row[label_idx] if label_idx is not None else -1
+                features = []
+                for name in feature_column_names:
+                    feature = read_feature(row[selected_cols.index(name)], feature_specs[name], name)
+                    features.append(feature)
+                yield tuple(features), label
+            except Exception as e:
+                reader.close()
+                break
+
+    return reader

@@ -178,7 +178,8 @@ func attrIsOptimizer(attrKey string) bool {
 	return false
 }
 
-func isPAI() bool {
+// IsPAI tells if we are using PAI platform currently
+func IsPAI() bool {
 	return os.Getenv("SQLFLOW_submitter") == "pai" || os.Getenv("SQLFLOW_submitter") == "alisa"
 }
 
@@ -330,7 +331,7 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 	// Need to create tmp table for train/validate when using PAI
 	paiTrainTable := ""
 	paiValidateTable := ""
-	if isPAI() && trainStmt.TmpTrainTable != "" {
+	if IsPAI() && trainStmt.TmpTrainTable != "" {
 		paiTrainTable = trainStmt.TmpTrainTable
 		paiValidateTable = trainStmt.TmpValidateTable
 	}
@@ -347,7 +348,7 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 		TrainParams:       trainParams,
 		ValidationParams:  validateParams,
 		Save:              "model_save",
-		IsPAI:             isPAI(),
+		IsPAI:             IsPAI(),
 		PAITrainTable:     paiTrainTable,
 		PAIValidateTable:  paiValidateTable,
 	}
@@ -385,7 +386,7 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 	}
 
 	paiPredictTable := ""
-	if isPAI() && predStmt.TmpPredictTable != "" {
+	if IsPAI() && predStmt.TmpPredictTable != "" {
 		paiPredictTable = predStmt.TmpPredictTable
 	}
 
@@ -403,7 +404,7 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 		HiveLocation:      session.HiveLocation,
 		HDFSUser:          session.HdfsUser,
 		HDFSPass:          session.HdfsPass,
-		IsPAI:             isPAI(),
+		IsPAI:             IsPAI(),
 		PAIPredictTable:   paiPredictTable,
 	}
 	var program bytes.Buffer

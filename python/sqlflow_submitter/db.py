@@ -215,6 +215,8 @@ def buffered_db_writer(driver, conn, table_name, table_schema, buff_size=100, hd
         w = db_writer.HiveDBWriter(conn, table_name, table_schema, buff_size,
             hdfs_namenode_addr=hdfs_namenode_addr, hive_location=hive_location,
             hdfs_user=hdfs_user, hdfs_pass=hdfs_pass)
+    elif driver == "pai_maxcompute":
+        w = db_writer.PAIMaxComputeDBWriter(table_name, table_schema, buff_size)
     else:
         raise ValueError("unrecognized database driver: %s" % driver)
 
