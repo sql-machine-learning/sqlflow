@@ -100,7 +100,7 @@ func fieldValue(val interface{}) (interface{}, error) {
 }
 
 func fieldType(dbms, typeName string) (string, error) {
-	if dbms == "mysql" || dbms == "maxcompute" {
+	if dbms == "mysql" || dbms == "maxcompute" || dbms == "alisa" {
 		if typeName == "VARCHAR" {
 			// FIXME(tony): MySQL driver DatabaseName doesn't include the type length of a field.
 			// Hardcoded to 255 for now.
