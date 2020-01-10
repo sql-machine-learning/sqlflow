@@ -157,7 +157,6 @@ def pai_maxcompute_db_generator(table,
                     features.append(feature)
                 yield tuple(features), label
             except Exception as e:
-                print("may read to end: %s" % e)
                 reader.close()
                 break
 
