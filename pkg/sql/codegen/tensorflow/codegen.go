@@ -178,6 +178,11 @@ func attrIsOptimizer(attrKey string) bool {
 	return false
 }
 
+// IsPAI tells if we are using PAI platform currently
+func IsPAI() bool {
+	return os.Getenv("SQLFLOW_submitter") == "pai" || os.Getenv("SQLFLOW_submitter") == "alisa"
+}
+
 func setDefaultOptimizer(trainStmt *ir.TrainStmt, optimizerParamName string) {
 	// TODO(shendiaomo): Try to get the default value from the python `inspect` module instead of hard coding
 	defaultValue := "Adagrad" // Defaults to DNN with a single optimizer parameter
@@ -290,8 +295,7 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 	// Need to create tmp table for train/validate when using PAI
 	paiTrainTable := ""
 	paiValidateTable := ""
-	isPAI := (os.Getenv("SQLFLOW_submitter") == "pai" || os.Getenv("SQLFLOW_submitter") == "alisa")
-	if isPAI && trainStmt.TmpTrainTable != "" {
+	if IsPAI() && trainStmt.TmpTrainTable != "" {
 		paiTrainTable = trainStmt.TmpTrainTable
 		paiValidateTable = trainStmt.TmpValidateTable
 	}
@@ -308,7 +312,7 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 		TrainParams:       trainParams,
 		ValidationParams:  validateParams,
 		Save:              "model_save",
-		IsPAI:             isPAI,
+		IsPAI:             IsPAI(),
 		PAITrainTable:     paiTrainTable,
 		PAIValidateTable:  paiValidateTable,
 	}
@@ -345,9 +349,8 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 		labelFM.Name = predStmt.ResultColumn
 	}
 
-	isPAI := (os.Getenv("SQLFLOW_submitter") == "pai" || os.Getenv("SQLFLOW_submitter") == "alisa")
 	paiPredictTable := ""
-	if isPAI && predStmt.TmpPredictTable != "" {
+	if IsPAI() && predStmt.TmpPredictTable != "" {
 		paiPredictTable = predStmt.TmpPredictTable
 	}
 
@@ -365,7 +368,7 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 		HiveLocation:      session.HiveLocation,
 		HDFSUser:          session.HdfsUser,
 		HDFSPass:          session.HdfsPass,
-		IsPAI:             isPAI,
+		IsPAI:             IsPAI(),
 		PAIPredictTable:   paiPredictTable,
 	}
 	var program bytes.Buffer

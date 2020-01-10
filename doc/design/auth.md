@@ -13,7 +13,7 @@ the SQLFlow server needs permissions to access databases and to submit machine l
 clusters like Kubernetes.
 
 When we deploy SQLFlow server as a Kubernetes service with horizontal auto-scaling enabled, many clients
-might connect to each SQLFlow server instance.  For authetication and authorization, we must securely store a mapping
+might connect to each SQLFlow server instance.  For authentication and authorization, we must securely store a mapping
 from the user's ID to the user's credentials for accessing the database and the
 cluster. With authentication and authorization, we will be able to implement *sessions*, which means that each SQL statement in a SQL program might be handled by different SQLFlow server instances in the Kubernetes service; however, the user wouldn't notice that.
 

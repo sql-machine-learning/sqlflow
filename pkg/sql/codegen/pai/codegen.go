@@ -156,7 +156,7 @@ func Train(ir *ir.TrainStmt, session *pb.Session, modelName, cwd string) (string
 		ir.TmpTrainTable, ir.TmpValidateTable, "", cc)
 }
 
-// TFTrainAndSave generates PAI-TF code
+// TFTrainAndSave generates PAI-TF train program.
 func TFTrainAndSave(ir *ir.TrainStmt, session *pb.Session, modelName string) (string, error) {
 	code, err := tensorflow.Train(ir, session)
 	if err != nil {
@@ -186,7 +186,7 @@ func Predict(ir *ir.PredictStmt, session *pb.Session, modelName, cwd string) (st
 	if err != nil {
 		return "", err
 	}
-	program, err := tfLoadAndPredict(ir, session, modelName)
+	program, err := TFLoadAndPredict(ir, session, modelName)
 	if err != nil {
 		return "", err
 	}
@@ -194,15 +194,15 @@ func Predict(ir *ir.PredictStmt, session *pb.Session, modelName, cwd string) (st
 		ir.TmpPredictTable, "", ir.ResultTable, cc)
 }
 
-func tfLoadAndPredict(ir *ir.PredictStmt, session *pb.Session, modelName string) (string, error) {
+// TFLoadAndPredict generates PAI-TF prediction program.
+func TFLoadAndPredict(ir *ir.PredictStmt, session *pb.Session, modelName string) (string, error) {
 	var tpl = template.Must(template.New("Predict").Parse(tfPredictTmplText))
 	ossModelDir, err := FormatCkptDir(modelName)
 	if err != nil {
 		return "", err
 	}
-	isPAI := (os.Getenv("SQLFLOW_submitter") == "pai" || os.Getenv("SQLFLOW_submitter") == "alisa")
 	paiPredictTable := ""
-	if isPAI && ir.TmpPredictTable != "" {
+	if tensorflow.IsPAI() && ir.TmpPredictTable != "" {
 		paiPredictTable = ir.TmpPredictTable
 	}
 	filler := predictFiller{
@@ -210,7 +210,7 @@ func tfLoadAndPredict(ir *ir.PredictStmt, session *pb.Session, modelName string)
 		DataSource:  session.DbConnStr,
 		Select:      ir.Select,
 		ResultTable: ir.ResultTable,
-		IsPAI:       isPAI,
+		IsPAI:       tensorflow.IsPAI(),
 		PAITable:    paiPredictTable,
 	}
 	var code bytes.Buffer
