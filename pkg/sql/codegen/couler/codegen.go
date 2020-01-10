@@ -32,12 +32,12 @@ func getStepEnvs() (map[string]string, error) {
 	envs["SQLFLOW_submitter"] = os.Getenv("SQLFLOW_submitter")
 	envs["SQLFLOW_OSS_CHECKPOINT_DIR"] = os.Getenv("SQLFLOW_OSS_CHECKPOINT_DIR")
 	for _, env := range os.Environ() {
-		parts := strings.Split(env, "=")
-		if len(parts) != 2 {
+		pair := strings.SplitN(env, "=", 2)
+		if len(pair) != 2 {
 			return nil, fmt.Errorf("env: %s should format key=value", env)
 		}
-		if strings.HasPrefix(parts[0], "SQLFLOW_ALISA_") {
-			envs[parts[0]] = parts[1]
+		if strings.HasPrefix(pair[0], "SQLFLOW_ALISA_") {
+			envs[pair[0]] = pair[1]
 		}
 	}
 	return envs, nil

@@ -17,6 +17,7 @@ import (
 	"io/ioutil"
 	"os"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -27,12 +28,17 @@ import (
 func TestCodegen(t *testing.T) {
 	a := assert.New(t)
 	sqlIR := mockSQLProgramIR()
+	os.Setenv("SQLFLOW_ALISA_OSS_AK", "oss_key")
+	defer os.Unsetenv("SQLFLOW_ALISA_OSS_AK")
 	code, err := Run(sqlIR, &pb.Session{})
 	a.NoError(err)
 
 	r, _ := regexp.Compile(`repl -e "(.*);"`)
 	a.Equal(r.FindStringSubmatch(code)[1], "SELECT * FROM iris.train limit 10")
+
+	a.True(strings.Contains(code, `step_envs["SQLFLOW_ALISA_OSS_AK"] = "oss_key"`))
 }
+
 func mockSQLProgramIR() ir.SQLProgram {
 	standardSQL := ir.StandardSQL("SELECT * FROM iris.train limit 10;")
 	trainStmt := ir.MockTrainStmt(false)

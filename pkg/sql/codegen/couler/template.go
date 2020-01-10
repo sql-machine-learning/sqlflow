@@ -35,13 +35,17 @@ const coulerTemplateText = `
 import couler.argo as couler
 import uuid
 datasource = "{{ .DataSource }}"
-envs = {"SQLFLOW_submitter": "{{.SQLFlowSubmitter}}",
-				"SQLFLOW_OSS_CHECKPOINT_DIR": "{{.SQLFlowOSSDir}}"}
 
-				{{ range $ss := .SQLStatements }}
+step_envs = dict()
+{{range $k, $v := .StepEnvs}}
+step_envs["{{$k}}"] = "{{$v}}"
+{{end}}
+
+
+{{ range $ss := .SQLStatements }}
 	{{if $ss.IsExtendedSQL }}
 train_sql = '''{{ $ss.OriginalSQL }}'''
-couler.run_container(command='''repl -e "%s" --datasource="%s"''' % (train_sql, datasource), image="{{ $ss.DockerImage }}", env=envs)
+couler.run_container(command='''repl -e "%s" --datasource="%s"''' % (train_sql, datasource), image="{{ $ss.DockerImage }}", env=step_envs)
 	{{else}}
 # TODO(yancey1989): 
 #	using "repl -parse" to output IR and
