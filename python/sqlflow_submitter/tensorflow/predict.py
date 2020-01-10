@@ -25,7 +25,7 @@ except:
     pass
 
 from sqlflow_submitter.db import connect_with_data_source, db_generator, buffered_db_writer, parseMaxComputeDSN
-from .input_fn import get_dtype, parse_sparse_feature, pai_maxcompute_input_fn
+from .input_fn import get_dtype, parse_sparse_feature, pai_maxcompute_input_fn, pai_maxcompute_db_generator
 from .fast_predict import FastPredict
 
 # TODO(shendiaomo): Remove after we fully upgrade to TF2.0
@@ -98,7 +98,8 @@ def estimator_predict(estimator, model_params, save, result_table,
                   hdfs_namenode_addr, hive_location, hdfs_user, hdfs_pass,
                   is_pai, pai_table):
     classifier = estimator(**model_params)
-    conn = connect_with_data_source(datasource)
+    if not is_pai:
+        conn = connect_with_data_source(datasource)
 
     def fast_input_fn(generator):
         feature_types = []
@@ -109,13 +110,9 @@ def estimator_predict(estimator, model_params, save, result_table,
                 feature_types.append(get_dtype(feature_metas[name]["dtype"]))
 
         def _inner_input_fn():
-            if is_pai:
-                dataset = pai_maxcompute_input_fn(pai_table, datasource,
-                            feature_column_names, feature_metas, label_meta)
-            else:
-                dataset = tf.data.Dataset.from_generator(generator, (tuple(feature_types), eval("tf.%s" % label_meta["dtype"])))
-                ds_mapper = functools.partial(parse_sparse_feature, feature_column_names=feature_column_names, feature_metas=feature_metas)
-                dataset = dataset.map(ds_mapper)
+            dataset = tf.data.Dataset.from_generator(generator, (tuple(feature_types), eval("tf.%s" % label_meta["dtype"])))
+            ds_mapper = functools.partial(parse_sparse_feature, feature_column_names=feature_column_names, feature_metas=feature_metas)
+            dataset = dataset.map(ds_mapper)
             dataset = dataset.batch(1).cache()
             iterator = dataset.make_one_shot_iterator()
             features = iterator.get_next()
@@ -127,8 +124,17 @@ def estimator_predict(estimator, model_params, save, result_table,
     column_names.append(label_meta["feature_name"])
     fast_predictor = FastPredict(classifier, fast_input_fn)
 
-    with buffered_db_writer(conn.driver, conn, result_table, column_names, 100, hdfs_namenode_addr, hive_location, hdfs_user, hdfs_pass) as w:
-        for features in db_generator(conn.driver, conn, select, feature_column_names, label_meta["feature_name"], feature_metas)():
+    if is_pai:
+        driver = "pai_maxcompute"
+        conn = None
+        pai_table_parts = pai_table.split(".")
+        formated_pai_table = "odps://%s/tables/%s" % (pai_table_parts[0], pai_table_parts[1])
+        predict_generator = pai_maxcompute_db_generator(formated_pai_table, feature_column_names, label_meta["feature_name"], feature_metas)()
+    else:
+        driver = conn.driver
+        predict_generator = db_generator(conn.driver, conn, select, feature_column_names, label_meta["feature_name"], feature_metas)()
+    with buffered_db_writer(driver, conn, result_table, column_names, 100, hdfs_namenode_addr, hive_location, hdfs_user, hdfs_pass) as w:
+        for features in predict_generator:
             result = fast_predictor.predict(features)
             row = []
             for idx, _ in enumerate(feature_column_names):

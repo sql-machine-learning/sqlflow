@@ -178,7 +178,8 @@ func attrIsOptimizer(attrKey string) bool {
 	return false
 }
 
-func isPAI() bool {
+// IsPAI tells if we are using PAI platform currently
+func IsPAI() bool {
 	return os.Getenv("SQLFLOW_submitter") == "pai" || os.Getenv("SQLFLOW_submitter") == "alisa"
 }
 
@@ -196,6 +197,12 @@ func setDefaultOptimizer(trainStmt *ir.TrainStmt, optimizerParamName string) {
 	trainStmt.Attributes[optimizerParamName] = defaultValue
 }
 
+// constructOptimizers generate a python optimizer function call using:
+// model.optimizer = "OptimizerName"
+// optimizer.arg1 = 1
+// optimizer.arg2 = "2"
+// To:
+// model.optimizer = "OptimizerName(arg1=1, arg2=\"2\")"
 func constructOptimizers(trainStmt *ir.TrainStmt) {
 	optimizerArgs := map[string]map[string]interface{}{}
 	for k, v := range trainStmt.Attributes {
@@ -229,11 +236,41 @@ func constructOptimizers(trainStmt *ir.TrainStmt) {
 	}
 }
 
+// constructLosses generate a python loss function call using:
+// model.loss = "LossName"
+// loss.arg1 = 1
+// loss.arg2 = "2"
+// To:
+// model.loss = "LossName(arg1=1, arg2=\"2\")"
+func constructLosses(trainStmt *ir.TrainStmt) {
+	lossFunction := ""
+	lossArgs := []string{}
+	for k, v := range trainStmt.Attributes {
+		attrParts := strings.Split(k, ".")
+		if k == "model.loss" {
+			lossFunction = v.(string)
+			continue
+		}
+		if attrParts[0] == "loss" {
+			lossArgs = append(lossArgs, fmt.Sprintf("%s=%v", attrParts[1], v))
+			// NOTE(typhoonzero): delete keys in loop is safe:
+			// https://stackoverflow.com/questions/23229975/is-it-safe-to-remove-selected-keys-from-map-within-a-range-loop
+			delete(trainStmt.Attributes, k)
+		}
+	}
+	if lossFunction != "" {
+		lossCode := fmt.Sprintf("%s(%s)", lossFunction, strings.Join(lossArgs, ","))
+		trainStmt.Attributes["model.loss"] = lossCode
+	}
+}
+
 func initializeAttributes(trainStmt *ir.TrainStmt) error {
 	commonAttributes.FillDefaults(trainStmt.Attributes)
 
 	modelAttr := attribute.NewDictionaryFromModelDefinition(trainStmt.Estimator, "model.")
-	constructOptimizers(trainStmt) // TODO(shendiaomo): Restrict optimizer parameters to the available set
+	// TODO(shendiaomo): Restrict optimizer parameters to the available set
+	constructOptimizers(trainStmt)
+	constructLosses(trainStmt)
 	attrValidator := modelAttr.Update(commonAttributes)
 	return attrValidator.Validate(trainStmt.Attributes)
 }
@@ -294,7 +331,7 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 	// Need to create tmp table for train/validate when using PAI
 	paiTrainTable := ""
 	paiValidateTable := ""
-	if isPAI() && trainStmt.TmpTrainTable != "" {
+	if IsPAI() && trainStmt.TmpTrainTable != "" {
 		paiTrainTable = trainStmt.TmpTrainTable
 		paiValidateTable = trainStmt.TmpValidateTable
 	}
@@ -311,7 +348,7 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 		TrainParams:       trainParams,
 		ValidationParams:  validateParams,
 		Save:              "model_save",
-		IsPAI:             isPAI(),
+		IsPAI:             IsPAI(),
 		PAITrainTable:     paiTrainTable,
 		PAIValidateTable:  paiValidateTable,
 	}
@@ -349,7 +386,7 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 	}
 
 	paiPredictTable := ""
-	if isPAI() && predStmt.TmpPredictTable != "" {
+	if IsPAI() && predStmt.TmpPredictTable != "" {
 		paiPredictTable = predStmt.TmpPredictTable
 	}
 
@@ -367,7 +404,7 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 		HiveLocation:      session.HiveLocation,
 		HDFSUser:          session.HdfsUser,
 		HDFSPass:          session.HdfsPass,
-		IsPAI:             isPAI(),
+		IsPAI:             IsPAI(),
 		PAIPredictTable:   paiPredictTable,
 	}
 	var program bytes.Buffer

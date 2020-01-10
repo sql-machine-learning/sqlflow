@@ -14,4 +14,5 @@
 from .mysql import MySQLDBWriter
 from .hive import HiveDBWriter
 from .maxcompute import MaxComputeDBWriter
-__all__=["MySQLDBWriter", "HiveDBWriter", "MaxComputeDBWriter"]
+from .pai_maxcompute import PAIMaxComputeDBWriter
+__all__=["MySQLDBWriter", "HiveDBWriter", "MaxComputeDBWriter", "PAIMaxComputeDBWriter"]

@@ -67,7 +67,7 @@ func FormatCkptDir(modelName string) (string, error) {
 }
 
 // wrapper generates a Python program for submit TensorFlow tasks to PAI.
-func wrapper(code, dataSource, modelName, cwd, tmpTrainTable, tmpValTable string, cc *ClusterConfig) (string, error) {
+func wrapper(code, dataSource, modelName, cwd, tmpTrainTable, tmpValTable string, resultTable string, cc *ClusterConfig) (string, error) {
 	f, err := os.Create(filepath.Join(cwd, entryFile))
 	if err != nil {
 		return "", fmt.Errorf("Create python code failed")
@@ -100,6 +100,7 @@ func wrapper(code, dataSource, modelName, cwd, tmpTrainTable, tmpValTable string
 		EntryFile:         entryFile,
 		PAITrainTable:     tmpTrainTable,
 		PAIValidateTable:  tmpValTable,
+		ResultTable:       resultTable,
 		OSSCheckpointDir:  ossCkptDir,
 	}
 	var program bytes.Buffer
@@ -152,7 +153,7 @@ func Train(ir *ir.TrainStmt, session *pb.Session, modelName, cwd string) (string
 		return "", err
 	}
 	return wrapper(program, session.DbConnStr, modelName, cwd,
-		ir.TmpTrainTable, ir.TmpValidateTable, cc)
+		ir.TmpTrainTable, ir.TmpValidateTable, "", cc)
 }
 
 // TFTrainAndSave generates PAI-TF train program.
@@ -190,7 +191,7 @@ func Predict(ir *ir.PredictStmt, session *pb.Session, modelName, cwd string) (st
 		return "", err
 	}
 	return wrapper(program, session.DbConnStr, modelName, cwd,
-		ir.TmpPredictTable, "", cc)
+		ir.TmpPredictTable, "", ir.ResultTable, cc)
 }
 
 // TFLoadAndPredict generates PAI-TF prediction program.
@@ -200,11 +201,17 @@ func TFLoadAndPredict(ir *ir.PredictStmt, session *pb.Session, modelName string)
 	if err != nil {
 		return "", err
 	}
+	paiPredictTable := ""
+	if tensorflow.IsPAI() && ir.TmpPredictTable != "" {
+		paiPredictTable = ir.TmpPredictTable
+	}
 	filler := predictFiller{
 		OSSModelDir: ossModelDir,
 		DataSource:  session.DbConnStr,
 		Select:      ir.Select,
 		ResultTable: ir.ResultTable,
+		IsPAI:       tensorflow.IsPAI(),
+		PAITable:    paiPredictTable,
 	}
 	var code bytes.Buffer
 	if err := tpl.Execute(&code, filler); err != nil {

@@ -73,8 +73,6 @@ jobs:
         - docker run --rm --net=host -e SQLFLOW_WORKFLOW_STEP_IMAGE=sqlflow:submitter -v /var/run/docker.sock:/var/run/docker.sock -v $HOME/.kube:/root/.kube -v /home/$USER/.minikube/:/home/$USER/.minikube/ -v $GOPATH:/root/go -w /root/go/src/sqlflow.org/sqlflow sqlflow:latest bash scripts/test/workflow.sh
     - stage: deploy
       script:
-        - set -e
-        - docker pull sqlflow/sqlflow:latest && docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile .
         - bash scripts/deploy.sh
 
 env:

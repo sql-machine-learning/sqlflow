@@ -677,12 +677,10 @@ func CaseTrainBoostedTreesEstimatorAndExplain(t *testing.T) {
 	SELECT * FROM iris.train WHERE class!=2
 	TO TRAIN BoostedTreesClassifier
 	WITH
-		model.n_batches_per_layer=8,
-		model.n_trees=50,
-		model.n_classes=2,
+		model.n_batches_per_layer=1,
 		model.center_bias=True,
-		train.batch_size=8,
-		train.epoch=20,
+		train.batch_size=100,
+		train.epoch=10,
 		validation.select="SELECT * FROM iris.test where class!=2"
 	LABEL class
 	INTO %s;
@@ -816,7 +814,9 @@ USING sqlflow_models.my_dnn_model;`
 	trainKerasSQL := `SELECT *
 FROM iris.train
 TO TRAIN sqlflow_models.DNNClassifier
-WITH model.n_classes = 3, model.hidden_units = [10, 20], model.optimizer=RMSprop, optimizer.learning_rate=0.1
+WITH model.n_classes = 3, model.hidden_units = [10, 20],
+	 model.optimizer=RMSprop, optimizer.learning_rate=0.1,
+	 model.loss=SparseCategoricalCrossentropy
 LABEL class
 INTO sqlflow_models.my_dnn_model;`
 	_, _, err = connectAndRunSQL(trainKerasSQL)
