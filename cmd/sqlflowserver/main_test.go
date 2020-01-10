@@ -818,7 +818,7 @@ FROM iris.train
 TO TRAIN sqlflow_models.DNNClassifier
 WITH model.n_classes = 3, model.hidden_units = [10, 20],
 	 model.optimizer=RMSprop, optimizer.learning_rate=0.1,
-	 model.loss=CategoricalCrossentropy, loss.label_smoothing=0
+	 model.loss=SparseCategoricalCrossentropy
 LABEL class
 INTO sqlflow_models.my_dnn_model;`
 	_, _, err = connectAndRunSQL(trainKerasSQL)
