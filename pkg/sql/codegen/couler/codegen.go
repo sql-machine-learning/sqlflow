@@ -19,6 +19,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"strings"
 
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
@@ -26,12 +27,33 @@ import (
 
 var defaultDockerImage = "sqlflow/sqlflow"
 
+func getStepEnvs() (map[string]string, error) {
+	envs := make(map[string]string)
+	envs["SQLFLOW_submitter"] = os.Getenv("SQLFLOW_submitter")
+	envs["SQLFLOW_OSS_CHECKPOINT_DIR"] = os.Getenv("SQLFLOW_OSS_CHECKPOINT_DIR")
+	for _, env := range os.Environ() {
+		pair := strings.SplitN(env, "=", 2)
+		if len(pair) != 2 {
+			return nil, fmt.Errorf("env: %s should format key=value", env)
+		}
+		if strings.HasPrefix(pair[0], "SQLFLOW_ALISA_") {
+			envs[pair[0]] = pair[1]
+		}
+	}
+	return envs, nil
+}
+
 // Run generates Couler program
 func Run(programIR ir.SQLProgram, session *pb.Session) (string, error) {
 	// TODO(yancey1989): fill session as env
-	r := &coulerFiller{DataSource: session.DbConnStr,
-		SQLFlowSubmitter: os.Getenv("SQLFLOW_submitter"),
-		SQLFlowOSSDir:    os.Getenv("SQLFLOW_OSS_CHECKPOINT_DIR")}
+	stepEnvs, err := getStepEnvs()
+	if err != nil {
+		return "", err
+	}
+	r := &coulerFiller{
+		DataSource: session.DbConnStr,
+		StepEnvs:   stepEnvs,
+	}
 	// NOTE(yancey1989): does not use ModelImage here since the Predict statement
 	// does not contain the ModelImage field in SQL Program IR.
 	if os.Getenv("SQLFLOW_WORKFLOW_STEP_IMAGE") != "" {
