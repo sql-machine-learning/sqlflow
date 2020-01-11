@@ -67,7 +67,7 @@ func parseAttribute(attrs map[string]interface{}) (map[string]interface{}, error
 	return params["range."], nil
 }
 
-// ParseKatibSQL generates Couler Katib step, which will be filled in a Argo YAML
+// ParseKatibSQL generates Couler Katib step
 func ParseKatibSQL(t *ir.TrainStmt) (*sqlStatement, error) {
 	ss := &sqlStatement{}
 	ss.IsKatibTrain = true
