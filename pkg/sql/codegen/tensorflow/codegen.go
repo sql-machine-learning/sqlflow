@@ -79,6 +79,16 @@ func generateFeatureColumnCode(fc ir.FeatureColumn) (string, error) {
 			intArrayToJSONString(bc.Boundaries)), nil
 	case *ir.CategoryIDColumn:
 		cc := fc.(*ir.CategoryIDColumn)
+		fm := cc.GetFieldDesc()[0]
+		if len(fm.Vocabulary) > 0 {
+			vocabList := []string{}
+			for k := range fm.Vocabulary {
+				vocabList = append(vocabList, fmt.Sprintf("\"%s\"", k))
+			}
+			vocabCode := strings.Join(vocabList, ",")
+			return fmt.Sprintf("tf.feature_column.categorical_column_with_vocabulary_list(key=\"%s\", vocabulary_list=[%s])",
+				cc.FieldDesc.Name, vocabCode), nil
+		}
 		return fmt.Sprintf("tf.feature_column.categorical_column_with_identity(key=\"%s\", num_buckets=%d)",
 			cc.FieldDesc.Name, cc.BucketSize), nil
 	case *ir.SeqCategoryIDColumn:

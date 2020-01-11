@@ -33,6 +33,8 @@ def get_dtype(type_str):
         return tf.float32
     elif type_str == "int64":
         return tf.int64
+    elif type_str == "string":
+        return tf.string
     else:
         raise TypeError("not supported dtype: %s" % type_str)
 
