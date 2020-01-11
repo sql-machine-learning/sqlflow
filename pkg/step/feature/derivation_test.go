@@ -226,12 +226,13 @@ func TestFeatureDerivation(t *testing.T) {
 	a.True(cat2.FieldDesc.IsSparse)
 
 	fc6 := trainStmt.Features["feature_columns"][5]
-	cat3, ok := fc6.(*ir.CategoryIDColumn)
+	cat3, ok := fc6.(*ir.EmbeddingColumn)
 	a.True(ok)
-	a.Equal(3, len(cat3.FieldDesc.Vocabulary))
-	_, ok = cat3.FieldDesc.Vocabulary["MALE"]
+	vocab := cat3.CategoryColumn.(*ir.CategoryIDColumn).FieldDesc.Vocabulary
+	a.Equal(3, len(vocab))
+	_, ok = vocab["MALE"]
 	a.True(ok)
-	a.Equal(int64(3), cat3.BucketSize)
+	a.Equal(int64(3), cat3.CategoryColumn.(*ir.CategoryIDColumn).BucketSize)
 
 	a.Equal(6, len(trainStmt.Features["feature_columns"]))
 
