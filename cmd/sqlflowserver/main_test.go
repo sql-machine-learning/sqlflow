@@ -1473,7 +1473,3 @@ USING %s;
 	}
 	a.NoError(checkWorkflow(ctx, cli, stream))
 }
-
-func fullTableName(dbName, tableName string) string {
-	return fmt.Sprintf("%s.%s", dbName, tableName)
-}
