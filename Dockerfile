@@ -100,7 +100,7 @@ ARG WITH_SQLFLOW_MODELS="ON"
 RUN if [ "${WITH_SQLFLOW_MODELS:-ON}" = "ON" ]; then \
   git clone https://github.com/sql-machine-learning/models.git && \
   cd models && \
-  git checkout 14fa3d2534459a9dd5d66dc002e61999071873e3 && \
+  git checkout 148749096acb9b7a0e3e70987fb7fc64728a59c9 && \
   bash -c "python setup.py -q install" && \
   cd .. && \
   rm -rf models; \
