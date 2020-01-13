@@ -31,6 +31,7 @@ apt-get install -y build-essential  libssl-dev # for building mysqlclient pip
 # NOTE: mysqlclient depends on apt-get install mysqlclient in install-mysql.bash.
 pip install \
 yapf==0.29.0 \
+isort==4.3.21 \
 numpy==1.16.2 \
 tensorflow==2.0.0 \
 mysqlclient==1.4.4 \
