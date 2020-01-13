@@ -114,7 +114,34 @@ The above statement will give a decent result like:
 
 ```
 
-That's all you have to know about tuning models in this tutorial. In fact, tuning is very crucial to make machine learning work and usually takes a large fraction of the working hours of data scientists and machine learning engineers. The SQLFlow team plans to support [automatic hyperparameter tuning](https://en.wikipedia.org/wiki/Automated_machine_learning#Hyperparameter_optimization_and_model_selection) and [neural architecture search](https://en.wikipedia.org/wiki/Neural_architecture_search) in the near future.
+That's all you have to know about tuning models in this tutorial. In fact, tuning is very crucial to make machine learning work and usually takes a large fraction of the working hours of data scientists and machine learning engineers.
+
+
+## Automated tuning
+
+If you feel that tuning models manually is time-consuming and tedious (it is indeed), [automated machine learning](https://en.wikipedia.org/wiki/Automated_machine_learning) (AutoML) can be a fine alternative.
+
+SQLFlow supports automated [neural architecture search](https://en.wikipedia.org/wiki/Neural_architecture_search) (NAS) via specific estimators. To improve model performance, we can use `sqlflow_models.AutoClassifier` instead of `DNNClassifier`. We don't need to specify the `hidden_units` in the `WITH` clause in the above example because `sqlflow_models.AutoClassifier` will automatically search for the architecture.
+```sql
+%%sqlflow
+SELECT * FROM iris.train TO TRAIN sqlflow_models.AutoClassifier WITH
+  model.n_classes = 3,
+  train.epoch = 10
+COLUMN sepal_length, sepal_width, petal_length, petal_width
+LABEL class
+INTO sqlflow_models.my_dnn_model;
+```
+The above training statement will take longer to run because the `AutoClassifier` has to search for the most appropriate neural architectures. The statement will give a result like:
+
+```python
+{'accuracy': 0.98, 'average_loss': 0.08678584, 'loss': 0.08678584, 'global_step': 1000}
+
+```
+
+Although this seems to be very close to the manually tuned version in the last section, because the training process of `DNNClassifier` and `AutoClassifier` is somewhat stochastic, it may give an average loss slightly large or smaller than the manually tuned version.
+
+The SQLFlow team plans to support more NAS models as well as other AutoML technics like [automatic hyperparameter tuning](https://en.wikipedia.org/wiki/Automated_machine_learning#Hyperparameter_optimization_and_model_selection) in the near future.
+
 
 ## Predict
 
