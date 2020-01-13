@@ -41,7 +41,7 @@ type Context struct {
 
 // NewRequestContext construct a new RequestContext object.
 func NewRequestContext(sqlProgram string, session *pb.Session, modelSaveDir string) (*Context, error) {
-	submitter := sql.GetSubmitter()
+	submitter := sql.GetSubmitter(session.Submitter)
 	conn, err := database.OpenAndConnectDB(session.GetDbConnStr())
 	if err != nil {
 		return nil, err

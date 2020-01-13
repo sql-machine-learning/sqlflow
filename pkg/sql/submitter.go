@@ -39,9 +39,11 @@ var submitterRegistry = map[string](Submitter){
 }
 
 // GetSubmitter returns a proper Submitter from configuations in environment variables.
-func GetSubmitter() Submitter {
-	envSubmitter := os.Getenv("SQLFLOW_submitter")
-	s := submitterRegistry[envSubmitter]
+func GetSubmitter(submitter string) Submitter {
+	if submitter == "" {
+		submitter = os.Getenv("SQLFLOW_submitter")
+	}
+	s := submitterRegistry[submitter]
 	if s == nil {
 		s = submitterRegistry["default"]
 	}

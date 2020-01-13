@@ -178,9 +178,9 @@ func runSQLProgram(wr *pipe.Writer, sqlProgram string, db *database.DB, modelDir
 			if sql.Train {
 				r, err = generateTrainStmtWithInferredColumns(sql.SQLFlowSelectStmt, session.DbConnStr, true)
 			} else if sql.Explain {
-				r, err = generateExplainStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, GetSubmitter().GetTrainStmtFromModel())
+				r, err = generateExplainStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, GetSubmitter(session.Submitter).GetTrainStmtFromModel())
 			} else {
-				r, err = generatePredictStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, GetSubmitter().GetTrainStmtFromModel())
+				r, err = generatePredictStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, GetSubmitter(session.Submitter).GetTrainStmtFromModel())
 			}
 		} else {
 			standardSQL := ir.StandardSQL(sql.Standard)
@@ -221,8 +221,8 @@ func runSingleSQLIR(wr *pipe.Writer, sqlIR ir.SQLStatement, db *database.DB, mod
 	}()
 	// TODO(typhoonzero): can run feature.LogDerivationResult(wr, trainStmt) here to send
 	// feature derivation logs to client, yet we disable if for now so that it's less annoying.
-	GetSubmitter().Setup(wr, db, modelDir, cwd, session)
-	return sqlIR.Execute(GetSubmitter())
+	GetSubmitter(session.Submitter).Setup(wr, db, modelDir, cwd, session)
+	return sqlIR.Execute(GetSubmitter(session.Submitter))
 }
 
 // getColumnTypes is quiet like verify but accept a SQL string as input, and returns
