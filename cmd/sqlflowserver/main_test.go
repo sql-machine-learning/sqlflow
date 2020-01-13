@@ -1273,8 +1273,8 @@ func CaseTrainPAIRandomForests(t *testing.T) {
 	TO TRAIN randomforests
 	WITH tree_num = 3
 	LABEL class
-	INTO %s;
-	`, caseDB, caseTrainTable, caseInto)
+	INTO my_rf_model;
+	`, caseDB, caseTrainTable)
 	_, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)

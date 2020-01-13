@@ -36,8 +36,8 @@ column_names = []
 {{ range $colname := .FeatureColumns }}
 column_names.append("{{$colname}}")
 {{ end }}
-pai_cmd = 'pai -name randomforests -project %s -DinputTableName="{{.TmpTrainTable}}" -DmodelName="{{.Save}}" -DlabelColName="{{.LabelColumn}}" -DfeatureColNames="%s" -DtreeNum="{{.TreeNum}}" ' % (
-    database, ",".join(column_names)
+pai_cmd = 'pai -name randomforests -project algo_public -DinputTableName="{{.TmpTrainTable}}" -DmodelName="{{.Save}}" -DlabelColName="{{.LabelColumn}}" -DfeatureColNames="%s" -DtreeNum="{{.TreeNum}}" ' % (
+    ",".join(column_names)
 )
 
 # Submit the tarball to PAI
