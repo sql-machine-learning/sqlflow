@@ -145,8 +145,42 @@ func GetClusterConfig(attrs map[string]interface{}) (*ClusterConfig, error) {
 	}, nil
 }
 
+func trainRandomForests(ir *ir.TrainStmt, session *pb.Session) (string, error) {
+	// default use numTrees = 1
+	treeNum := 1
+	treeNumAttr, ok := ir.Attributes["tree_num"]
+	if ok {
+		treeNum = treeNumAttr.(int)
+	}
+	featureCols := []string{}
+	for _, fclist := range ir.Features {
+		for _, fc := range fclist {
+			featureCols = append(featureCols, fc.GetFieldDesc()[0].Name)
+		}
+	}
+	filler := &randomForestsTrainFiller{
+		DataSource:     session.DbConnStr,
+		Select:         ir.Select,
+		TmpTrainTable:  ir.TmpTrainTable,
+		FeatureColumns: featureCols,
+		LabelColumn:    ir.Label.GetFieldDesc()[0].Name,
+		Save:           ir.Into,
+		TreeNum:        treeNum,
+	}
+	var tpl = template.Must(template.New("RandomForestsTrain").Parse(randomForestsTrainTemplate))
+	var rfCode bytes.Buffer
+	if err := tpl.Execute(&rfCode, filler); err != nil {
+		return "", err
+	}
+	fmt.Println(rfCode.String())
+	return rfCode.String(), nil
+}
+
 // Train generates a Python program for train a TensorFlow model.
 func Train(ir *ir.TrainStmt, session *pb.Session, modelName, cwd string) (string, error) {
+	if strings.ToLower(ir.Estimator) == "randomforests" {
+		return trainRandomForests(ir, session)
+	}
 	cc, err := GetClusterConfig(ir.Attributes)
 	program, err := TFTrainAndSave(ir, session, modelName)
 	if err != nil {
