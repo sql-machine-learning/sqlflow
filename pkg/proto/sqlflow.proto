@@ -81,6 +81,7 @@ message Session {
     string hdfs_namenode_addr = 6;
     string hdfs_user = 7;
     string hdfs_pass = 8;
+    string submitter = 9;
 }
 
 // SQL statements to run

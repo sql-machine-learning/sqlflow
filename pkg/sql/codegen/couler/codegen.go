@@ -50,6 +50,9 @@ func Run(programIR ir.SQLProgram, session *pb.Session) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if session.Submitter != "" {
+		stepEnvs["SQLFLOW_submitter"] = session.Submitter
+	}
 	r := &coulerFiller{
 		DataSource: session.DbConnStr,
 		StepEnvs:   stepEnvs,
