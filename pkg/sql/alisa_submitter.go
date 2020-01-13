@@ -36,32 +36,6 @@ type alisaSubmitter struct {
 	*defaultSubmitter
 }
 
-func (s *alisaSubmitter) getPAIcmd(cc *pai.ClusterConfig, modelName, trainTable, valTable string) (string, error) {
-
-	jobName := strings.Replace(strings.Join([]string{"sqlflow", modelName}, "_"), ".", "_", 0)
-	cfString, err := json.Marshal(cc)
-	if err != nil {
-		return "", err
-	}
-	cfQuote := strconv.Quote(string(cfString))
-	ckpDir, err := pai.FormatCkptDir(modelName)
-	if err != nil {
-		return "", err
-	}
-
-	// submit table should format as: odps://<project>/tables/<table>,odps://<project>/tables/<table>...
-	parts := strings.Split(trainTable, ".")
-	submitTables := fmt.Sprintf("odps://%s/tables/%s", parts[0], parts[1])
-	if trainTable != valTable && valTable != "" {
-		parts = strings.Split(valTable, ".")
-		submitTables = fmt.Sprintf("%s,odps://%s/tables/%s", submitTables, parts[0], parts[1])
-	}
-	if cc.Worker.Count > 1 {
-		return fmt.Sprintf("pai -name tensorflow1120 -DjobName=%s -Dtags=dnn -Dscript=file://@@%s -DentryFile=entry.py -Dtables=%s -DcheckpointDir=\"%s\" -Dcluster=%s", jobName, tarball, submitTables, ckpDir, cfQuote), nil
-	}
-	return fmt.Sprintf("pai -name tensorflow1120 -DjobName=%s -Dtags=dnn -Dscript=file://@@%s -DentryFile=entry.py -Dtables=%s -DcheckpointDir=\"%s\"", jobName, tarball, submitTables, ckpDir), nil
-}
-
 func (s *alisaSubmitter) submitAlisaTask(code, resourceName string) error {
 	_, dSName, err := database.ParseURL(s.Session.DbConnStr)
 	if err != nil {
@@ -97,7 +71,7 @@ func (s *alisaSubmitter) ExecuteTrain(ts *ir.TrainStmt) (e error) {
 		return e
 	}
 
-	paiCmd, e := s.getPAIcmd(cc, ts.Into, ts.TmpTrainTable, ts.TmpValidateTable)
+	paiCmd, e := getPAIcmd(cc, ts.Into, ts.TmpTrainTable, ts.TmpValidateTable, "")
 	if e != nil {
 		return e
 	}
@@ -148,7 +122,7 @@ func (s *alisaSubmitter) ExecutePredict(ps *ir.PredictStmt) error {
 		return e
 	}
 
-	paiCmd, e := s.getPAIcmd(cc, ps.Using, ps.TmpPredictTable, "")
+	paiCmd, e := getPAIcmd(cc, ps.Using, ps.TmpPredictTable, "", ps.ResultTable)
 	if e != nil {
 		return e
 	}
@@ -214,4 +188,50 @@ func writeFile(filePath, program string) error {
 	defer f.Close()
 	f.WriteString(program)
 	return nil
+}
+
+func odpsTables(table string) (string, error) {
+	parts := strings.Split(table, ".")
+	if len(parts) != 2 {
+		return "", fmt.Errorf("odps table: %s should be format db.table", table)
+	}
+	return fmt.Sprintf("odps://%s/tables/%s", parts[0], parts[1]), nil
+}
+
+func getPAIcmd(cc *pai.ClusterConfig, modelName, trainTable, valTable, resTable string) (string, error) {
+	jobName := strings.Replace(strings.Join([]string{"sqlflow", modelName}, "_"), ".", "_", 0)
+	cfString, err := json.Marshal(cc)
+	if err != nil {
+		return "", err
+	}
+	cfQuote := strconv.Quote(string(cfString))
+	ckpDir, err := pai.FormatCkptDir(modelName)
+	if err != nil {
+		return "", err
+	}
+
+	// submit table should format as: odps://<project>/tables/<table>,odps://<project>/tables/<table>...
+	submitTables, err := odpsTables(trainTable)
+	if err != nil {
+		return "", err
+	}
+	if trainTable != valTable && valTable != "" {
+		valTable, err := odpsTables(valTable)
+		if err != nil {
+			return "", err
+		}
+		submitTables = fmt.Sprintf("%s,%s", submitTables, valTable)
+	}
+	outputTables := ""
+	if resTable != "" {
+		table, err := odpsTables(resTable)
+		if err != nil {
+			return "", err
+		}
+		outputTables = fmt.Sprintf("-Doutputs=%s", table)
+	}
+	if cc.Worker.Count > 1 {
+		return fmt.Sprintf("pai -name tensorflow1120 -DjobName=%s -Dtags=dnn -Dscript=file://@@%s -DentryFile=entry.py -Dtables=%s %s -DcheckpointDir=\"%s\" -Dcluster=%s", jobName, tarball, submitTables, outputTables, ckpDir, cfQuote), nil
+	}
+	return fmt.Sprintf("pai -name tensorflow1120 -DjobName=%s -Dtags=dnn -Dscript=file://@@%s -DentryFile=entry.py -Dtables=%s %s -DcheckpointDir=\"%s\"", jobName, tarball, submitTables, outputTables, ckpDir), nil
 }

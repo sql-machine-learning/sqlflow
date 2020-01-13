@@ -6,6 +6,7 @@ require (
 	github.com/apache/thrift v0.13.0 // indirect
 	github.com/argoproj/argo v2.4.3+incompatible
 	github.com/asaskevich/govalidator v0.0.0-20190424111038-f61b66f89f4a
+	github.com/baiyubin/aliyun-sts-go-sdk v0.0.0-20180326062324-cfa1a18b161f // indirect
 	github.com/beltran/gohive v1.0.0 // indirect
 	github.com/c-bata/go-prompt v0.0.0-20190826134812-0f95e1d1de2e
 	github.com/cosiner/argv v0.0.1 // indirect
@@ -27,6 +28,7 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/pkg/term v0.0.0-20190109203006-aa71e9d9e942
 	github.com/rakyll/gotest v0.0.0-20191108192113-45d501058f2a // indirect
+	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/sbinet/go-python v0.0.0-20190615090516-46d882be3991 // indirect
 	github.com/sirupsen/logrus v1.4.2
 	github.com/soniakeys/quant v1.0.0 // indirect
