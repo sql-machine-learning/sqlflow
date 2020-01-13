@@ -46,7 +46,7 @@ func newLexer(input string) *lexer {
 // Error records e in lexer.err so that parseSQLFlowStmt could return.
 func (l *lexer) Error(e string) {
 	l.err = fmt.Errorf("%v: at (%d ~ %d)-th runes near %.10q",
-		e, l.start, l.pos, l.input[l.start:])
+		e, l.previous, l.pos, l.input[l.previous:])
 }
 
 func (l *lexer) emit(lval *extendedSyntaxSymType, typ int) int {
