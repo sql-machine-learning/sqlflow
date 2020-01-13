@@ -23,3 +23,7 @@
       name: documentation_checker
       entry: bash ./scripts/pre-commit/docgen.sh
       language: system
+-   repo: https://github.com/pre-commit/mirrors-isort
+    rev: v4.3.21
+    hooks:
+    -   id: isort
