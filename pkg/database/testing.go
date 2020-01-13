@@ -72,7 +72,8 @@ func getEnv(env, value string) string {
 	return value
 }
 
-func testingMySQLConfig() *mysql.Config {
+// GetTestingMySQLConfig construct a MySQL config
+func GetTestingMySQLConfig() *mysql.Config {
 	return &mysql.Config{
 		User:                 getEnv("SQLFLOW_TEST_DB_MYSQL_USER", "root"),
 		Passwd:               getEnv("SQLFLOW_TEST_DB_MYSQL_PASSWD", "root"),
@@ -83,7 +84,7 @@ func testingMySQLConfig() *mysql.Config {
 }
 
 func testingMySQLURL() string {
-	return fmt.Sprintf("mysql://%s", testingMySQLConfig().FormatDSN())
+	return fmt.Sprintf("mysql://%s", GetTestingMySQLConfig().FormatDSN())
 }
 
 func createTestingMySQLDB() *DB {

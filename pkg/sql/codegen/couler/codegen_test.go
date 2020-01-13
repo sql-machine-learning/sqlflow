@@ -14,12 +14,15 @@
 package couler
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"sqlflow.org/sqlflow/pkg/database"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
@@ -27,12 +30,17 @@ import (
 func TestCodegen(t *testing.T) {
 	a := assert.New(t)
 	sqlIR := mockSQLProgramIR()
+	os.Setenv("SQLFLOW_ALISA_OSS_AK", "oss_key")
+	defer os.Unsetenv("SQLFLOW_ALISA_OSS_AK")
 	code, err := Run(sqlIR, &pb.Session{})
 	a.NoError(err)
 
 	r, _ := regexp.Compile(`repl -e "(.*);"`)
 	a.Equal(r.FindStringSubmatch(code)[1], "SELECT * FROM iris.train limit 10")
+
+	a.True(strings.Contains(code, `step_envs["SQLFLOW_ALISA_OSS_AK"] = "oss_key"`))
 }
+
 func mockSQLProgramIR() ir.SQLProgram {
 	standardSQL := ir.StandardSQL("SELECT * FROM iris.train limit 10;")
 	trainStmt := ir.MockTrainStmt(false)
@@ -114,4 +122,54 @@ func TestWriteArgoYamlWithClusterConfig(t *testing.T) {
 	a.NoError(e)
 
 	a.Equal(string(out), expectedArgoYAML)
+}
+
+func TestKatibCodegen(t *testing.T) {
+	a := assert.New(t)
+	os.Setenv("SQLFLOW_submitter", "katib")
+
+	cfg := database.GetTestingMySQLConfig()
+
+	standardSQL := ir.StandardSQL("SELECT * FROM iris.train limit 10;")
+	sqlIR := MockKatibTrainStmt(fmt.Sprintf("mysql://%s", cfg.FormatDSN()))
+
+	program := []ir.SQLStatement{&standardSQL, &sqlIR}
+
+	_, err := Run(program, &pb.Session{})
+
+	a.NoError(err)
+}
+
+func MockKatibTrainStmt(datasource string) ir.TrainStmt {
+	attrs := map[string]interface{}{}
+
+	attrs["objective"] = "multi:softprob"
+	attrs["eta"] = float32(0.1)
+	attrs["range.max_depth"] = []int{2, 10}
+	estimator := "xgboost.gbtree"
+
+	return ir.TrainStmt{
+		OriginalSQL: `
+SELECT *
+FROM iris.train
+TO TRAIN xgboost.gbtree
+WITH
+	objective = "multi:softprob"
+	eta = 0.1
+	max_depth = [2, 10]
+COLUMN sepal_length, sepal_width, petal_length, petal_width
+LABEL class
+INTO sqlflow_models.my_xgboost_model;
+`,
+		Select:           "select * from iris.train;",
+		ValidationSelect: "select * from iris.test;",
+		Estimator:        estimator,
+		Attributes:       attrs,
+		Features: map[string][]ir.FeatureColumn{
+			"feature_columns": {
+				&ir.NumericColumn{&ir.FieldDesc{"sepal_length", ir.Float, "", []int{1}, false, nil, 0}},
+				&ir.NumericColumn{&ir.FieldDesc{"sepal_width", ir.Float, "", []int{1}, false, nil, 0}},
+				&ir.NumericColumn{&ir.FieldDesc{"petal_length", ir.Float, "", []int{1}, false, nil, 0}},
+				&ir.NumericColumn{&ir.FieldDesc{"petal_width", ir.Float, "", []int{1}, false, nil, 0}}}},
+		Label: &ir.NumericColumn{&ir.FieldDesc{"class", ir.Int, "", []int{1}, false, nil, 0}}}
 }

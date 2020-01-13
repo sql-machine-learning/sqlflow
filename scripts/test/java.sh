@@ -21,6 +21,9 @@ cd java/parser
 # Downloading logs is about 6k lines, which makes viewing TravisCI log difficult
 export MAVEN_OPTS=-Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
 
+# Generate GRPC & Protocol Buffer files
+protoc --java_out=src/main/java --grpc-java_out=src/main/java/ --proto_path=src/main/proto/ src/main/proto/Parser.proto
+
 # -B means batch mode, looks like batch mode is required to make downloading quiet
 mvn test -B
 

@@ -12,11 +12,13 @@
 # limitations under the License.
 
 import os
-import matplotlib
 import seaborn as sns
 import pandas as pd
 import numpy as np
 import tensorflow as tf
+import matplotlib
+import matplotlib.pyplot as plt
+from sqlflow_submitter import explainer
 from sqlflow_submitter.db import connect_with_data_source, buffered_db_writer
 from .input_fn import input_fn, pai_maxcompute_input_fn
 sns_colors = sns.color_palette('colorblind')
@@ -76,7 +78,7 @@ def explain(datasource, estimator_cls, select, feature_columns, feature_column_n
         gain = estimator.experimental_feature_importances(normalize=True)
         create_explain_result_table(conn, result_table)
         write_dfc_result(dfc_mean, gain, result_table, conn, feature_column_names, hdfs_namenode_addr, hive_location, hdfs_user, hdfs_pass)
-    eval(plot_type)(df_dfc)
+    explainer.plot_and_save(lambda: eval(plot_type)(df_dfc))
 
 def create_explain_result_table(conn, result_table):
     column_clause = ""
@@ -102,12 +104,10 @@ def write_dfc_result(dfc_mean, gain,
         for row_name in feature_column_names:
             w.write([row_name, dfc_mean.loc[row_name], gain[row_name]])
 
-
 # The following code is generally base on
 # https://www.tensorflow.org/tutorials/estimator/boosted_trees_model_understanding
-def bar(df_dfc):
-    import matplotlib.pyplot as plt
 
+def bar(df_dfc):
     # Plot.
     dfc_mean = df_dfc.abs().mean()
     N = 8  # View top 8 features.
@@ -119,18 +119,7 @@ def bar(df_dfc):
                                   figsize=(15, 9))
     ax.grid(False, axis='y')
 
-    plt.savefig('summary', bbox_inches='tight')
-
-    matplotlib.use('module://plotille_text_backend')
-    import matplotlib.pyplot as plt
-    import sys
-    sys.stdout.isatty = lambda: True
-    plt.savefig('summary', bbox_inches='tight')
-
-
 def violin(df_dfc):
-    import matplotlib.pyplot as plt
-
     # Initialize plot.
     fig, ax = plt.subplots(1, 1, figsize=(15, 9))
 
@@ -154,15 +143,6 @@ def violin(df_dfc):
     ax.set_xlabel('Contribution to predicted probability', size=18)
     ax.grid(False, axis='y')
     ax.grid(True, axis='x')
-
-    plt.savefig('summary', bbox_inches='tight')
-
-    matplotlib.use('module://plotille_text_backend')
-    import matplotlib.pyplot as plt
-    import sys
-    sys.stdout.isatty = lambda: True
-    plt.savefig('summary', bbox_inches='tight')
-
 
 # Boilerplate code for plotting :)
 def _get_color(value):

@@ -87,6 +87,7 @@ mv $GOPATH/bin/sqlflowserver /usr/local/bin && \
 mv $GOPATH/bin/repl /usr/local/bin && \
 (cd python/couler && python setup.py -q install) && \
 cd java/parser && \
+protoc --java_out=src/main/java --grpc-java_out=src/main/java/ --proto_path=src/main/proto/ src/main/proto/Parser.proto && \
 mvn -B -q clean compile assembly:single && \
 mkdir -p /opt/sqlflow/parser && \
 cp target/parser-1.0-SNAPSHOT-jar-with-dependencies.jar /opt/sqlflow/parser && \
@@ -100,7 +101,7 @@ ARG WITH_SQLFLOW_MODELS="ON"
 RUN if [ "${WITH_SQLFLOW_MODELS:-ON}" = "ON" ]; then \
   git clone https://github.com/sql-machine-learning/models.git && \
   cd models && \
-  git checkout 14fa3d2534459a9dd5d66dc002e61999071873e3 && \
+  git checkout 148749096acb9b7a0e3e70987fb7fc64728a59c9 && \
   bash -c "python setup.py -q install" && \
   cd .. && \
   rm -rf models; \

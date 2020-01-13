@@ -22,29 +22,45 @@ type sqlStatement struct {
 	// CreateTmpTable and Select are used to create a step to generate temporary table for training
 	CreateTmpTable bool
 	Select         string
+	Model          string
+	Parameters     string
+	IsKatibTrain   bool
 }
 type coulerFiller struct {
 	DataSource       string
 	SQLStatements    []*sqlStatement
 	SQLFlowSubmitter string
 	SQLFlowOSSDir    string
+	StepEnvs         map[string]string
 }
 
 const coulerTemplateText = `
 import couler.argo as couler
 import uuid
 datasource = "{{ .DataSource }}"
-envs = {"SQLFLOW_submitter": "{{.SQLFlowSubmitter}}",
-        "SQLFLOW_OSS_CHECKPOINT_DIR": "{{.SQLFlowOSSDir}}"}
+
+step_envs = dict()
+{{range $k, $v := .StepEnvs}}
+step_envs["{{$k}}"] = "{{$v}}"
+{{end}}
+
+
 {{ range $ss := .SQLStatements }}
 	{{if $ss.IsExtendedSQL }}
 train_sql = '''{{ $ss.OriginalSQL }}'''
-couler.run_container(command='''repl -e "%s" --datasource="%s"''' % (train_sql, datasource), image="{{ $ss.DockerImage }}", env=envs)
+couler.run_container(command='''repl -e "%s" --datasource="%s"''' % (train_sql, datasource), image="{{ $ss.DockerImage }}", env=step_envs)
+	{{else if $ss.IsKatibTrain}}
+import couler.sqlflow.katib as auto
+
+model = "{{ $ss.Model }}"
+params = json.loads('''{{ $ss.Parameters }}''')
+train_sql = '''{{ $ss.OriginalSQL }}'''
+auto.train(model=model, params=params, sql=train_sql, datasource=datasource)
 	{{else}}
 # TODO(yancey1989): 
 #	using "repl -parse" to output IR and
 #	feed to "sqlflow_submitter.{submitter}.train" to submit the job
-couler.run_container(command='''repl -e "{{ $ss.OriginalSQL }}" --datasource="%s"''' % datasource, image="{{ $ss.DockerImage }}", env=envs)
+couler.run_container(command='''repl -e "{{ $ss.OriginalSQL }}" --datasource="%s"''' % datasource, image="{{ $ss.DockerImage }}", env=step_envs)
 	{{end}}
 {{end}}
 `
