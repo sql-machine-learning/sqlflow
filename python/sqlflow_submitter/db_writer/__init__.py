@@ -11,8 +11,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .mysql import MySQLDBWriter
 from .hive import HiveDBWriter
 from .maxcompute import MaxComputeDBWriter
+from .mysql import MySQLDBWriter
 from .pai_maxcompute import PAIMaxComputeDBWriter
-__all__=["MySQLDBWriter", "HiveDBWriter", "MaxComputeDBWriter", "PAIMaxComputeDBWriter"]
+
+__all__ = [
+    "MySQLDBWriter", "HiveDBWriter", "MaxComputeDBWriter",
+    "PAIMaxComputeDBWriter"
+]

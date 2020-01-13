@@ -17,9 +17,10 @@ from subprocess import call
 
 
 def add_run_params(parser):
-    parser.add_argument(
-        "--mode", type=str, help="python or argo", required=True
-    )
+    parser.add_argument("--mode",
+                        type=str,
+                        help="python or argo",
+                        required=True)
     # TODO: can skip --file, directly run as "couler run file1.py"
     parser.add_argument("--file", type=str, required=True)
 

@@ -21,10 +21,7 @@ def connect(user, passwd, host, port):
     to make it self-complete as a template.
 
     """
-    return connect(user=user,
-                   passwd=passwd,
-                   host=host,
-                   port=port)
+    return connect(user=user, passwd=passwd, host=host, port=port)
 
 
 def load(db, slct, label, features):

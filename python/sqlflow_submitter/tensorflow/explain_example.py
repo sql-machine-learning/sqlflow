@@ -12,11 +12,13 @@
 # limitations under the License.
 
 import sqlflow_submitter
-from sqlflow_submitter.tensorflow.train import train
-from sqlflow_submitter.tensorflow.predict import pred
-from sqlflow_submitter.tensorflow.explain import explain
-from estimator_example import datasource, select_binary, validate_select_binary, feature_column_names, feature_columns, feature_metas, label_meta
 import tensorflow as tf
+from estimator_example import (datasource, feature_column_names,
+                               feature_columns, feature_metas, label_meta,
+                               select_binary, validate_select_binary)
+from sqlflow_submitter.tensorflow.explain import explain
+from sqlflow_submitter.tensorflow.predict import pred
+from sqlflow_submitter.tensorflow.train import train
 
 if __name__ == "__main__":
     train(datasource=datasource,
@@ -27,7 +29,12 @@ if __name__ == "__main__":
           feature_column_names=feature_column_names,
           feature_metas=feature_metas,
           label_meta=label_meta,
-          model_params={"n_batches_per_layer": 1, "n_classes": 2, "n_trees": 50, "center_bias": True},
+          model_params={
+              "n_batches_per_layer": 1,
+              "n_classes": 2,
+              "n_trees": 50,
+              "center_bias": True
+          },
           save="btmodel",
           batch_size=100,
           epochs=20,
@@ -39,7 +46,12 @@ if __name__ == "__main__":
             feature_column_names=feature_column_names,
             feature_metas=feature_metas,
             label_meta=label_meta,
-            model_params={"n_batches_per_layer": 1, "n_classes": 2, "n_trees": 50, "center_bias": True},
+            model_params={
+                "n_batches_per_layer": 1,
+                "n_classes": 2,
+                "n_trees": 50,
+                "center_bias": True
+            },
             save="btmodel",
             is_pai=False,
             plot_type='bar',

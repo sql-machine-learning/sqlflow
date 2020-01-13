@@ -12,13 +12,15 @@
 # limitations under the License.
 
 import io
+import os
 import pickle
 import tarfile
+
 import odps
 import tensorflow as tf
-from tensorflow.python.platform import gfile
 from sqlflow_submitter import db
-import os
+from tensorflow.python.platform import gfile
+
 
 def save(oss_model_dir, *meta):
     '''
@@ -38,6 +40,7 @@ def save(oss_model_dir, *meta):
     pickle.dump(list(meta), writer)
     writer.flush()
     writer.close()
+
 
 def load(oss_model_dir):
     '''

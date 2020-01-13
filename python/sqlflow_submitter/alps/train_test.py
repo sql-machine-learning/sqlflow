@@ -11,23 +11,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import subprocess
 import unittest
 from unittest import TestCase
-import subprocess
-import os
 
 
 class TestALPSTrain(TestCase):
     '''NOTE: we must test tensorflow training and predicting in separated processes, or
     TensorFlow will raise error "Graph is finalized.'''
-
     def test_train(self):
         if os.getenv("SQLFLOW_submitter") != "alps":
             return
         try:
             # should run this test under directory $GOPATH/sqlflow.org/sqlflow
-            ret = subprocess.run(["/usr/local/bin/python",
-                                  "python/sqlflow_submitter/alps/train_example.py"],
+            ret = subprocess.run([
+                "/usr/local/bin/python",
+                "python/sqlflow_submitter/alps/train_example.py"
+            ],
                                  env={"PYTHONPATH": "python"},
                                  check=True)
             self.assertEqual(ret.returncode, 0)

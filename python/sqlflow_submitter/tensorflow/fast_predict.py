@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 # NOTE(typhoonzero): FastPredict is used for predicting with Tensorflow Estimator,
 # for more details, please checkout this blog: https://guillaumegenthial.github.io/serving-tensorflow-estimator.html
 # Yet that implement may cause predict accuracy error, see: https://github.com/sql-machine-learning/sqlflow/issues/1397
@@ -25,5 +26,7 @@ class FastPredict:
             # FIXME(tony): don't yield label
             feature, label = feature_and_label[0], feature_and_label[1]
             yield feature, label
-        predictions = self.estimator.predict(input_fn=self.input_fn(inner_func))
+
+        predictions = self.estimator.predict(
+            input_fn=self.input_fn(inner_func))
         return [n for n in predictions]

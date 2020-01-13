@@ -13,10 +13,12 @@
 
 # NOTE: this file is used by train_predict_test.py, do **NOT** delete!
 
-from sqlflow_submitter.tensorflow.estimator_example import datasource, select, validate_select, feature_column_names, feature_columns, feature_metas, label_meta
-from sqlflow_submitter.tensorflow.train import train
-from sqlflow_submitter.tensorflow.predict import pred
 import sqlflow_models
+from sqlflow_submitter.tensorflow.estimator_example import (
+    datasource, feature_column_names, feature_columns, feature_metas,
+    label_meta, select, validate_select)
+from sqlflow_submitter.tensorflow.predict import pred
+from sqlflow_submitter.tensorflow.train import train
 
 if __name__ == "__main__":
     train(datasource=datasource,
@@ -27,7 +29,10 @@ if __name__ == "__main__":
           feature_column_names=feature_column_names,
           feature_metas=feature_metas,
           label_meta=label_meta,
-          model_params={"n_classes": 3, "hidden_units":[10,20]},
+          model_params={
+              "n_classes": 3,
+              "hidden_units": [10, 20]
+          },
           save="mymodel_keras",
           batch_size=1,
           epochs=3,
@@ -40,7 +45,9 @@ if __name__ == "__main__":
          feature_column_names=feature_column_names,
          feature_metas=feature_metas,
          label_meta=label_meta,
-         model_params={"n_classes": 3, "hidden_units":[10,20]},
+         model_params={
+             "n_classes": 3,
+             "hidden_units": [10, 20]
+         },
          save="mymodel_keras",
          batch_size=1)
-
