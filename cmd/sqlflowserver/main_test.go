@@ -642,16 +642,16 @@ func CaseTrainSQL(t *testing.T) {
 	}
 
 	predSQL := fmt.Sprintf(`SELECT *
-FROM %s.%s
-TO PREDICT %s.%s.class
-USING %s;`, caseDB, caseTestTable, caseDB, casePredictTable, caseInto)
+FROM %s
+TO PREDICT %s.class
+USING %s;`, caseTestTable, casePredictTable, caseInto)
 	_, _, err = connectAndRunSQL(predSQL)
 	if err != nil {
 		a.Fail("Run predSQL error: %v", err)
 	}
 
 	showPred := fmt.Sprintf(`SELECT *
-FROM %s.%s LIMIT 5;`, caseDB, casePredictTable)
+FROM %s LIMIT 5;`, casePredictTable)
 	_, rows, err := connectAndRunSQL(showPred)
 	if err != nil {
 		a.Fail("Run showPred error: %v", err)
