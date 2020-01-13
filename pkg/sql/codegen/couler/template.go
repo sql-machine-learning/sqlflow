@@ -60,7 +60,7 @@ auto.train(model=model, params=params, sql=train_sql, datasource=datasource)
 # TODO(yancey1989): 
 #	using "repl -parse" to output IR and
 #	feed to "sqlflow_submitter.{submitter}.train" to submit the job
-couler.run_container(command='''repl -e "{{ $ss.OriginalSQL }}" --datasource="%s"''' % datasource, image="{{ $ss.DockerImage }}", env=envs)
+couler.run_container(command='''repl -e "{{ $ss.OriginalSQL }}" --datasource="%s"''' % datasource, image="{{ $ss.DockerImage }}", env=step_envs)
 	{{end}}
 {{end}}
 `
