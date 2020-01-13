@@ -17,6 +17,11 @@ set -e
 
 apt-get -qq update && apt-get install -y openjdk-8-jdk maven > /dev/null
 
+# Install gRPC for Java as a protobuf-compiler plugin. c.f. https://stackoverflow# .com/a/53982507/724872.
+wget -q http://central.maven.org/maven2/io/grpc/protoc-gen-grpc-java/1.21.0/protoc-gen-grpc-java-1.21.0-linux-x86_64.exe
+mv protoc-gen-grpc-java-1.21.0-linux-x86_64.exe /usr/local/bin/protoc-gen-grpc-java
+chmod +x /usr/local/bin/protoc-gen-grpc-java
+
 # Use GCS based maven-central mirror.
 # Travis CI occasionally fails on the default maven central repo.
 # Ref: https://github.com/sql-machine-learning/sqlflow/issues/1654
