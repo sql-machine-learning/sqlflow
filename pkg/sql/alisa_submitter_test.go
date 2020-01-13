@@ -24,9 +24,7 @@ import (
 
 func TestAlisaSubmitter(t *testing.T) {
 	a := assert.New(t)
-	os.Setenv("SQLFLOW_submitter", "alisa")
-	defer os.Setenv("SQLFLOW_submitter", "")
-	_, ok := GetSubmitter().(*alisaSubmitter)
+	_, ok := GetSubmitter("alisa").(*alisaSubmitter)
 	a.True(ok)
 }
 
