@@ -948,7 +948,7 @@ TO TRAIN sqlflow_models.AutoClassifier WITH model.n_classes = 3 LABEL class INTO
 	if err != nil {
 		a.Fail("run trainSQL error: %v", err)
 	}
-	explainSQL := fmt.Sprintf(`SELECT * FROM iris.test LIMIT 10 TO EXPLAIN sqlflow_models.my_adanet_model;`)
+	explainSQL := `SELECT * FROM iris.test LIMIT 10 TO EXPLAIN sqlflow_models.my_adanet_model;`
 	_, _, err = connectAndRunSQL(explainSQL)
 	a.NoError(err)
 }
