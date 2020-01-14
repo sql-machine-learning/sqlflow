@@ -67,7 +67,7 @@ func Parse(dialect, program string) ([]*SQLFlowStmt, error) {
 			return all, nil
 		}
 
-		left := sqls[len(sqls)-1].Standard
+		left := all[len(all)-1].Standard
 		program = program[i:]
 
 		// TO TRAIN dnn LABEL class INTO my_model; SELECT ...
@@ -81,9 +81,9 @@ func Parse(dialect, program string) ([]*SQLFlowStmt, error) {
 		right := program[:j]
 		program = program[j:]
 
-		all[len(sqls)-1].Original = left + right
-		all[len(sqls)-1].SQLFlowSelectStmt = extended
-		all[len(sqls)-1].StandardSelect.origin = left
+		all[len(all)-1].Original = left + right
+		all[len(all)-1].SQLFlowSelectStmt = extended
+		all[len(all)-1].StandardSelect.origin = left
 
 		if len(strings.TrimSpace(program)) == 0 {
 			return all, nil
