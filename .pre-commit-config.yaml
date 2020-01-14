@@ -5,11 +5,6 @@
     - id: go-lint
     - id: validate-toml
     - id: no-go-testing
-- repo: https://github.com/wangkuiyi/google-style-precommit-hook
-  rev: v0.1.1
-  hooks:
-    - id: google-style-java
-      pass_filenames: false # https://github.com/sql-machine-learning/sqlflow/issues/1152#issuecomment-551325589
 - repo: local
   hooks:
     - id: copyright_checker
@@ -31,3 +26,10 @@
     rev: v4.3.21
     hooks:
     -   id: isort
+- repo: local
+  hooks:
+      - id: google_style_java
+        name: google_style_java
+        entry: bash ./scripts/pre-commit/google_java_format.sh
+        language: system
+        files: \.(java)$

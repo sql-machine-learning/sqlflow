@@ -285,9 +285,9 @@ TO PREDICT iris.predict.class
 USING sqlflow.my_dnn_model;
 ```
 
-## Analysis Syntax
+## Explain Syntax
 
-A SQLFlow prediction statement consists of a sequence of select, analyze, and using clauses.
+A SQLFlow explanation statement consists of a sequence of select, explain, and using clauses.
 
 ```sql
 SELECT select_expr [, select_expr ...]
@@ -297,14 +297,14 @@ FROM table_references
 TO EXPLAIN model_table_reference
 [WITH
   attr_expr [, attr_expr ...]]
-USING explainer;
+[USING explainer];
 ```
 
 The select statement syntax is the same as the select statement syntax in the training syntax. SQLFlow uses the column name to guarantee the analysis data has the same order as the training data. For example, if we have used `c1`, `c2`, `c3` and `label` column to train a model, the select statement in the analysis job should also retrieve columns that contain the same names.
 
-### Analyze and Using Clause
+### Explain and Using Clause
 
-The *analyze clause* describes the table an analysis job should load the model from, necessary configuration attributes, and the explainer for analysis.
+The *explain clause* describes the table an analysis job should load the model from, necessary configuration attributes, and the explainer for explanation.
 
 ```sql
 TO EXPLAIN model_table_reference
@@ -317,7 +317,7 @@ USING explainer;
 - *attr_expr* indicates the configuration attributes, e.g. `shap_summary.plot_type="bar"`.
 - *explainer* indicates the type of the explainer, e.g. `TreeExplainer`.
 
-For example, if we want to analyze the model stored at `sqlflow_models.my_xgb_regression_model` using the tree explainer and plot the analysis results in sorted order. We can write the following statement:
+For example, if we want to explain the model stored at `sqlflow_models.my_xgb_regression_model` using the tree explainer and plot the analysis results in sorted order. We can write the following statement:
 
 ```sql
 SELECT *
