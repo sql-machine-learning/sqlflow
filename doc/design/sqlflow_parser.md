@@ -88,7 +88,7 @@ So we choose the second proposal two over the first proposal.
 
 ## Implementation Details
 
-### Change `TRAIN/PREDICT/ANALYZE` to `TO TRAIN/TO PREDICT/TO EXPLAIN`
+### Change `TRAIN/PREDICT/EXPLAIN` to `TO TRAIN/TO PREDICT/TO EXPLAIN`
 
 SQLFlow syntax should be compatible with the standard SQL syntax. During our earlier experiments, we found using `TRAIN` along to denote the SQL extension is not enough. In cases like
 1. `select * from mytable train dnn ...`, the SQL syntax will treat `train` as an alias of `mytable`.

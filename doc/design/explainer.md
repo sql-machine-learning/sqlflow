@@ -1,14 +1,14 @@
-# Analyze the Machine Learning Model in SQLFlow
+# Explain the Machine Learning Model in SQLFlow
 
 ## Concept
 
 Although the machine learning model is widely used in many fields, it remains mostly a black box. [SHAP](https://github.com/slundberg/shap) is widely used by data scientists to explain the output of any machine learning model.
 
-This design doc introduces how to support the `Analyze SQL` in SQLFlow with SHAP as the backend and display the visualization image to the user.
+This design doc introduces how to support the `Explain SQL` in SQLFlow with SHAP as the backend and display the visualization image to the user.
 
 ## User Interface
 
-Users usually use a **TO TRAIN SQL** to train a model and then analyze the model using an **TO EXPLAIN SQL**, the simple pipeline like:
+Users usually use a **TO TRAIN SQL** to train a model and then explain the model using an **TO EXPLAIN SQL**, the simple pipeline like:
 
 Train SQL:
 
@@ -22,7 +22,7 @@ LABEL y
 INTO my_model;
 ```
 
-Analyze SQL:
+Explain SQL:
 
 ``` sql
 SELECT * FROM train_table
@@ -38,14 +38,14 @@ where:
 - `force` and `summary` is the visualized method.
 - `TreeExplainer` is the [explain type](https://github.com/slundberg/shap#sample-notebooks).
 
-The **Analyze SQL** would display the visualization image on Jupyter like:
+The **Explain SQL** would display the visualization image on Jupyter like:
 <img src="https://raw.githubusercontent.com/slundberg/shap/master/docs/artwork/boston_dataset.png">
 
 ## Implement Details
 
-- Enhance the SQLFlow parser to support the `Analyze` keyword.
+- Enhance the SQLFlow parser to support the `Explain` keyword.
 - Implement the `codegen_shap.go` to generate a SHAP Python program. The Python program would be executed by SQLFlow `Executor` module and prints the visualization image in HTML format to stdout. The stdout will be captured by the Go program using [CombinedOutput](https://golang.org/pkg/os/exec/#Cmd.CombinedOutput).
-- For each `Analyze SQL` request from the SQLFlow magic command, the SQLFlow server would response the HTML text as a single message, and then display the visualization image on Jupyter Notebook
+- For each `Explain SQL` request from the SQLFlow magic command, the SQLFlow server would response the HTML text as a single message, and then display the visualization image on Jupyter Notebook
 
 ## Note
 
