@@ -124,7 +124,6 @@ func attrsUnion(as1, as2 Attributes) Attributes {
   labc string
   infr PredictClause
   expln ExplainClause
-  optus string
 }
 
 %type  <eslt> sqlflow_select_stmt
@@ -133,7 +132,7 @@ func attrsUnion(as1, as2 Attributes) Attributes {
 %type  <labc> label_clause
 %type  <infr> predict_clause
 %type  <expln> explain_clause
-%type  <optus> optional_using 
+%type  <val> optional_using
 %type  <expr> expr funcall column
 %type  <expl> ExprList pythonlist columns
 %type  <atrs> attr
