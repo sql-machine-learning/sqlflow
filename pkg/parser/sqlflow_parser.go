@@ -22,12 +22,11 @@ import (
 
 // SQLFlowStmt represents a parsed SQL statement.  The original
 // statement is in Original.  If it is a standard SQL statement,
-// Standard has the statement as well, and Extended is nil.  Or, if it
-// is a statement with SQLFlow syntax extension, Standard is the
-// prefixed SELECT statement, and Extended is the parsed extension.
+// Original has the statement as well, and Extended is nil.  Or, if it
+// is a statement with SQLFlow syntax extension, Original is the whole
+// statement and Extended is the parsed extension.
 type SQLFlowStmt struct {
 	Original string
-	Standard string
 	*SQLFlowSelectStmt
 }
 
@@ -68,7 +67,7 @@ func Parse(dialect, program string) ([]*SQLFlowStmt, error) {
 		return sqls, nil
 	}
 
-	left := sqls[len(sqls)-1].Standard
+	left := sqls[len(sqls)-1].Original
 	program = program[i:]
 
 	// TO TRAIN dnn LABEL class INTO my_model; SELECT ...
@@ -118,7 +117,7 @@ func thirdPartyParse(dialect, program string) ([]*SQLFlowStmt, int, error) {
 	}
 	var spr []*SQLFlowStmt
 	for _, sql := range sqls {
-		spr = append(spr, &SQLFlowStmt{Original: sql, Standard: sql, SQLFlowSelectStmt: nil})
+		spr = append(spr, &SQLFlowStmt{Original: sql, SQLFlowSelectStmt: nil})
 	}
 	return spr, i, nil
 }
