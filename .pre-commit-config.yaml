@@ -31,3 +31,10 @@
     rev: v4.3.21
     hooks:
     -   id: isort
+- repo: local
+  hooks:
+      - id: google_style_java
+        name: google_style_java
+        entry: bash ./scripts/pre-commit/google_java_format.sh
+        language: system
+        files: \.(java)$

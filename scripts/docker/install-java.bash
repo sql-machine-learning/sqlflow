@@ -36,3 +36,5 @@ echo '<settings>
     </mirror>
   </mirrors>
 </settings>' > /root/.m2/settings.xml
+
+curl -sLJ "https://github.com/google/google-java-format/releases/download/google-java-format-1.6/google-java-format-1.6-all-deps.jar" -o /usr/loca/bin/google-java-format-1.6-all-deps.jar
