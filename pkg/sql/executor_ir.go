@@ -79,28 +79,29 @@ func RunSQLProgram(sqlProgram string, modelDir string, session *pb.Session) *pip
 // *pipe.Reader, and remove the calls to log.Printf.
 func SubmitWorkflow(sqlProgram string, modelDir string, session *pb.Session) *pipe.Reader {
 	rd, wr := pipe.Pipe()
+	startTime := time.Now().Second()
 	go func() {
 		defer wr.Close()
-		err := submitWorkflow(wr, sqlProgram, modelDir, session)
-		if err != nil {
-			if err != pipe.ErrClosedPipe {
-				if err := wr.Write(err); err != nil {
-					log.Printf("submit workflow error(piping): %v", err)
-				}
+		wfID, err := submitWorkflow(wr, sqlProgram, modelDir, session)
+		defer log.Printf("Submit SQL program: %s\nuserID: %s\nworkflowID: %s\nspent: %d\nerror:%v", sqlProgram, session.UserId, wfID, time.Now().Second()-startTime, err)
+		if err != nil && err != pipe.ErrClosedPipe {
+			if err := wr.Write(err); err != nil {
+				log.Printf("submit workflow error(piping): %v", err)
 			}
 		}
+
 	}()
 	return rd
 }
 
-func submitWorkflow(wr *pipe.Writer, sqlProgram string, modelDir string, session *pb.Session) error {
+func submitWorkflow(wr *pipe.Writer, sqlProgram string, modelDir string, session *pb.Session) (string, error) {
 	driverName, _, err := database.ParseURL(session.DbConnStr)
 	if err != nil {
-		return err
+		return "", err
 	}
 	sqls, err := parser.Parse(driverName, sqlProgram)
 	if err != nil {
-		return err
+		return "", err
 	}
 	// TODO(yancey1989): separate the IR generation to multiple steps:
 	// For example, a TRAIN statement:
@@ -124,7 +125,7 @@ func submitWorkflow(wr *pipe.Writer, sqlProgram string, modelDir string, session
 			r = &standardSQL
 		}
 		if err != nil {
-			return err
+			return "", err
 		}
 		r.SetOriginalSQL(sql.Original)
 		spIRs = append(spIRs, r)
@@ -133,17 +134,17 @@ func submitWorkflow(wr *pipe.Writer, sqlProgram string, modelDir string, session
 	// 1. call codegen_couler.go to generate Argo workflow YAML
 	argoFileName, err := couler.RunAndWriteArgoFile(spIRs, session)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer os.RemoveAll(argoFileName)
 
 	// 2. submit the argo workflow
 	workflowID, err := argo.Submit(argoFileName)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	return wr.Write(WorkflowJob{
+	return workflowID, wr.Write(WorkflowJob{
 		JobID: workflowID,
 	})
 }
