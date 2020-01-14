@@ -40,6 +40,10 @@ func isPodPending(pod *corev1.Pod) bool {
 	return pod.Status.Phase == corev1.PodPending
 }
 
+func isPodFailed(pod *corev1.Pod) bool {
+	return pod.Status.Phase == corev1.PodFailed
+}
+
 func isWorkflowPending(wf *wfv1.Workflow) bool {
 	return wf.Status.Phase == wfv1.NodePending
 }
