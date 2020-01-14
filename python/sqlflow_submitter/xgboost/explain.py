@@ -11,12 +11,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import xgboost as xgb
-import shap
 import pandas as pd
-
-from sqlflow_submitter.db import connect_with_data_source, db_generator
+import shap
+import xgboost as xgb
 from sqlflow_submitter import explainer
+from sqlflow_submitter.db import connect_with_data_source, db_generator
 
 
 def xgb_shap_dataset(datasource, select, feature_column_names, label_name,
