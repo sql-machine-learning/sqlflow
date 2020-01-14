@@ -53,45 +53,42 @@ func ParseOneStatement(dialect, sql string) (*SQLFlowStmt, error) {
 
 // Parse a SQL program in the given dialect into a list of SQL statements.
 func Parse(dialect, program string) ([]*SQLFlowStmt, error) {
-	if len(strings.TrimSpace(program)) == 0 {
-		return nil, nil
+	all := []*SQLFlowStmt{}
+	for {
+		// SELECT ...; SELECT * FROM my_table TO TRAIN ...
+		//                                    ^
+		//                                    i
+		sqls, i, err := thirdPartyParse(dialect, program)
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, sqls...)
+		if i == -1 { // The third party parser accepts all SQL statements
+			return all, nil
+		}
+
+		left := sqls[len(sqls)-1].Standard
+		program = program[i:]
+
+		// TO TRAIN dnn LABEL class INTO my_model; SELECT ...
+		//                                        ^
+		//                                        j
+		extended, j, err := parseFirstSQLFlowStmt(program)
+		if err != nil {
+			return nil, err
+		}
+
+		right := program[:j]
+		program = program[j:]
+
+		all[len(sqls)-1].Original = left + right
+		all[len(sqls)-1].SQLFlowSelectStmt = extended
+		all[len(sqls)-1].StandardSelect.origin = left
+
+		if len(strings.TrimSpace(program)) == 0 {
+			return all, nil
+		}
 	}
-
-	// SELECT ...; SELECT * FROM my_table TO TRAIN ...
-	//                                    ^
-	//                                    i
-	sqls, i, err := thirdPartyParse(dialect, program)
-	if err != nil {
-		return nil, err
-	}
-	if i == -1 { // The third party parser accepts all SQL statements
-		return sqls, nil
-	}
-
-	left := sqls[len(sqls)-1].Standard
-	program = program[i:]
-
-	// TO TRAIN dnn LABEL class INTO my_model; SELECT ...
-	//                                        ^
-	//                                        j
-	extended, j, err := parseFirstSQLFlowStmt(program)
-	if err != nil {
-		return nil, err
-	}
-
-	right := program[:j]
-	program = program[j:]
-
-	sqls[len(sqls)-1].Original = left + right
-	sqls[len(sqls)-1].SQLFlowSelectStmt = extended
-	sqls[len(sqls)-1].StandardSelect.origin = left
-
-	nextSqls, err := Parse(dialect, program)
-	if err != nil {
-		return nil, err
-	}
-
-	return append(sqls, nextSqls...), err
 }
 
 func parseFirstSQLFlowStmt(program string) (*SQLFlowSelectStmt, int, error) {
