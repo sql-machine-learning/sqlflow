@@ -265,7 +265,7 @@ func addTrainedModelsRecord(db *database.DB, trainStmt *ir.TrainStmt, modelURI s
 	}
 	var sql string
 
-	// TODO(typhoonzero): generate irJSON from trainStmt to recored the training information.
+	// TODO(typhoonzero): generate irJSON from trainStmt to record the training information.
 	irJSON := ""
 	if isInsert {
 		sql = fmt.Sprintf(`INSERT INTO %s

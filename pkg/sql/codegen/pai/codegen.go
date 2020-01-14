@@ -30,7 +30,7 @@ import (
 
 const entryFile = "entry.py"
 
-// PSConfig implicates Prameter Server Config
+// PSConfig implicates Parameter Server Config
 type PSConfig struct {
 	Count int `json:"count"`
 	GPU   int `json:"gpu"`
@@ -44,7 +44,7 @@ type WorkerConfig struct {
 	CPU   int `json:"cpu"`
 }
 
-// ClusterConfig implicits PAI distributed task meta
+// ClusterConfig implicates PAI distributed task meta
 type ClusterConfig struct {
 	PS     PSConfig     `json:"ps"`
 	Worker WorkerConfig `json:"worker"`

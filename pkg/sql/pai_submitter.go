@@ -93,7 +93,7 @@ func getDatabaseNameFromDSN(dataSource string) (string, error) {
 	return "", fmt.Errorf("driver should be in ['maxcompute', 'alisa']")
 }
 
-func createTempTrainAndValTable(trainSelect, valideSelect, datasource string) (string, string, error) {
+func createTempTrainAndValTable(trainSelect, validSelect, datasource string) (string, string, error) {
 	// TODO(typhoonzero): Do **NOT** create tmp table when the select statement is like:
 	// "SELECT fields,... FROM table"
 	dbName, tableName, err := createTmpTableFromSelect(trainSelect, datasource)
@@ -102,8 +102,8 @@ func createTempTrainAndValTable(trainSelect, valideSelect, datasource string) (s
 	}
 	tmpTrainTable := strings.Join([]string{dbName, tableName}, ".")
 	tmpValTable := ""
-	if valideSelect != "" {
-		dbName, tableName, err := createTmpTableFromSelect(valideSelect, datasource)
+	if validSelect != "" {
+		dbName, tableName, err := createTmpTableFromSelect(validSelect, datasource)
 		if err != nil {
 			return "", "", err
 		}
