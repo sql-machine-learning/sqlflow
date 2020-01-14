@@ -14,6 +14,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -1279,16 +1280,62 @@ USING %s;`, caseTestTable, casePredictTable, caseInto)
 
 }
 
+func dropPAIModel(dataSource, modelName string) error {
+	code := fmt.Sprintf(`import subprocess
+import sqlflow_submitter.db
+
+driver, dsn = "%s".split("://")
+assert driver == "maxcompute"
+user, passwd, address, database = sqlflow_submitter.db.parseMaxComputeDSN(dsn)
+
+cmd = "drop offlinemodel if exists %s"
+subprocess.run(["odpscmd", "-u", user,
+                           "-p", passwd,
+                           "--project", database,
+                           "--endpoint", address,
+                           "-e", cmd],
+               check=True)	
+	`, dataSource, modelName)
+	cmd := exec.Command("python", "-u")
+	cmd.Stdin = bytes.NewBufferString(code)
+	if e := cmd.Run(); e != nil {
+		return e
+	}
+	return nil
+}
+
 func CaseTrainPAIRandomForests(t *testing.T) {
 	a := assert.New(t)
-	trainSQL := fmt.Sprintf(`
-	SELECT * FROM %s.%s
+	err := dropPAIModel(dbConnStr, "my_rf_model")
+	a.NoError(err)
+
+	trainSQL := fmt.Sprintf(`SELECT * FROM %s
 	TO TRAIN randomforests
 	WITH tree_num = 3
 	LABEL class
 	INTO my_rf_model;
-	`, caseDB, caseTrainTable)
-	_, _, err := connectAndRunSQL(trainSQL)
+	`, caseTrainTable)
+	_, _, err = connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+
+	predSQL := fmt.Sprintf(`SELECT * FROM %s
+	TO PREDICT %s.class
+	USING my_rf_model;
+	`, caseTestTable, casePredictTable)
+	_, _, err = connectAndRunSQL(predSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+
+	explainSQL := fmt.Sprintf(`SELECT * FROM %s
+	TO EXPLAIN my_rf_model
+	WITH label_column = class
+	USING TreeExplainer
+	INTO %s.rf_model_explain;
+	`, caseTestTable, caseDB)
+	_, _, err = connectAndRunSQL(explainSQL)
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)
 	}

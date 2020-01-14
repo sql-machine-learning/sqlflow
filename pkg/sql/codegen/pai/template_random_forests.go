@@ -15,12 +15,28 @@ package pai
 
 type randomForestsTrainFiller struct {
 	DataSource     string
-	Select         string
 	TmpTrainTable  string
 	FeatureColumns []string
 	LabelColumn    string
 	Save           string
 	TreeNum        int
+}
+
+type randomForestsPredictFiller struct {
+	DataSource      string
+	TmpPredictTable string
+	FeatureColumns  []string
+	Save            string
+	ResultTable     string
+}
+
+type randomForestsExplainFiller struct {
+	DataSource      string
+	TmpExplainTable string
+	FeatureColumns  []string
+	LabelColumn     string
+	Save            string
+	ResultTable     string
 }
 
 const randomForestsTrainTemplate = `
@@ -37,6 +53,58 @@ column_names = []
 column_names.append("{{$colname}}")
 {{ end }}
 pai_cmd = 'pai -name randomforests -project algo_public -DinputTableName="{{.TmpTrainTable}}" -DmodelName="{{.Save}}" -DlabelColName="{{.LabelColumn}}" -DfeatureColNames="%s" -DtreeNum="{{.TreeNum}}" ' % (
+    ",".join(column_names)
+)
+
+# Submit the tarball to PAI
+subprocess.run(["odpscmd", "-u", user,
+                           "-p", passwd,
+                           "--project", database,
+                           "--endpoint", address,
+                           "-e", pai_cmd],
+               check=True)
+`
+
+const randomForestsPredictTemplate = `
+import os
+import subprocess
+import sqlflow_submitter.db
+
+driver, dsn = "{{.DataSource}}".split("://")
+assert driver == "maxcompute"
+user, passwd, address, database = sqlflow_submitter.db.parseMaxComputeDSN(dsn)
+
+column_names = []
+{{ range $colname := .FeatureColumns }}
+column_names.append("{{$colname}}")
+{{ end }}
+pai_cmd = 'pai -name prediction -project algo_public -DmodelName="{{.Save}}" -DinputTableName="{{.TmpPredictTable}}"  -DoutputTableName="{{.ResultTable}}" -DfeatureColNames="%s" ' % (
+    ",".join(column_names)
+)
+
+# Submit the tarball to PAI
+subprocess.run(["odpscmd", "-u", user,
+                           "-p", passwd,
+                           "--project", database,
+                           "--endpoint", address,
+                           "-e", pai_cmd],
+               check=True)
+`
+
+const randomForestsExplainTemplate = `
+import os
+import subprocess
+import sqlflow_submitter.db
+
+driver, dsn = "{{.DataSource}}".split("://")
+assert driver == "maxcompute"
+user, passwd, address, database = sqlflow_submitter.db.parseMaxComputeDSN(dsn)
+
+column_names = []
+{{ range $colname := .FeatureColumns }}
+column_names.append("{{$colname}}")
+{{ end }}
+pai_cmd = 'pai -name feature_importance -project algo_public -DmodelName="{{.Save}}" -DinputTableName="{{.TmpExplainTable}}"  -DoutputTableName="{{.ResultTable}}" -DlabelColName="{{.LabelColumn}}" -DfeatureColNames="%s" ' % (
     ",".join(column_names)
 )
 
