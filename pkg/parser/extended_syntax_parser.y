@@ -218,6 +218,10 @@ explain_clause
 | TO EXPLAIN IDENT USING IDENT INTO IDENT { $$.TrainedModel = $3; $$.Explainer = $5; $$.ExplainInto = $7 }
 | TO EXPLAIN IDENT WITH attrs USING IDENT { $$.TrainedModel = $3; $$.ExplainAttrs = $5; $$.Explainer = $7 }
 | TO EXPLAIN IDENT WITH attrs USING IDENT INTO IDENT { $$.TrainedModel = $3; $$.ExplainAttrs = $5; $$.Explainer = $7; $$.ExplainInto = $9 }
+| TO EXPLAIN IDENT { $$.TrainedModel = $3; }
+| TO EXPLAIN IDENT INTO IDENT { $$.TrainedModel = $3; $$.ExplainInto = $5 }
+| TO EXPLAIN IDENT WITH attrs { $$.TrainedModel = $3; $$.ExplainAttrs = $5; }
+| TO EXPLAIN IDENT WITH attrs INTO IDENT { $$.TrainedModel = $3; $$.ExplainAttrs = $5; $$.ExplainInto = $7 }
 ;
 
 column_clause

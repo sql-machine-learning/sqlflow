@@ -693,7 +693,6 @@ func CaseTrainBoostedTreesEstimatorAndExplain(t *testing.T) {
 
 	explainSQL := fmt.Sprintf(`SELECT * FROM iris.test WHERE class!=2
 	TO EXPLAIN %s
-	USING TreeExplainer
 	INTO iris.explain_result;`, caseInto)
 	_, _, err = connectAndRunSQL(explainSQL)
 	a.NoError(err)

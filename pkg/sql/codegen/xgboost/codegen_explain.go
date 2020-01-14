@@ -16,7 +16,6 @@ package xgboost
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"strings"
 
 	pb "sqlflow.org/sqlflow/pkg/proto"
@@ -29,9 +28,6 @@ const (
 
 // Explain generates a Python program to explain a trained model.
 func Explain(explainStmt *ir.ExplainStmt, session *pb.Session) (string, error) {
-	if explainStmt.Explainer != "TreeExplainer" {
-		return "", fmt.Errorf("unsupported explainer %s", explainStmt.Explainer)
-	}
 	summaryParams := resolveParams(explainStmt.Attributes, shapSummaryAttrPrefix)
 	jsonSummary, err := json.Marshal(summaryParams)
 	if err != nil {
