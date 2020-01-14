@@ -87,8 +87,9 @@ def explain(datasource,
     if estimator_cls in (tf.estimator.BoostedTreesClassifier,
                          tf.estimator.BoostedTreesRegressor):
         explain_boosted_trees(datasource, estimator, _input_fn, plot_type,
-                              result_table, hdfs_namenode_addr, hive_location,
-                              hdfs_user, hdfs_pass)
+                              result_table, feature_column_names,
+                              hdfs_namenode_addr, hive_location, hdfs_user,
+                              hdfs_pass)
     else:
         shap_dataset = pd.DataFrame(columns=feature_column_names)
         for i, (features, label) in enumerate(_input_fn()):
@@ -96,13 +97,14 @@ def explain(datasource,
                 item.numpy()[0][0] for item in features.values()
             ]
         explain_dnns(datasource, estimator, shap_dataset, plot_type,
-                     result_table, hdfs_namenode_addr, hive_location,
-                     hdfs_user, hdfs_pass)
+                     result_table, feature_column_names, hdfs_namenode_addr,
+                     hive_location, hdfs_user, hdfs_pass)
 
 
 def explain_boosted_trees(datasource, estimator, input_fn, plot_type,
-                          result_table, hdfs_namenode_addr, hive_location,
-                          hdfs_user, hdfs_pass):
+                          result_table, feature_column_names,
+                          hdfs_namenode_addr, hive_location, hdfs_user,
+                          hdfs_pass):
     result = estimator.experimental_predict_with_explanations(input_fn)
     pred_dicts = list(result)
     df_dfc = pd.DataFrame([pred['dfc'] for pred in pred_dicts])
@@ -118,7 +120,8 @@ def explain_boosted_trees(datasource, estimator, input_fn, plot_type,
 
 
 def explain_dnns(datasource, estimator, shap_dataset, plot_type, result_table,
-                 hdfs_namenode_addr, hive_location, hdfs_user, hdfs_pass):
+                 feature_column_names, hdfs_namenode_addr, hive_location,
+                 hdfs_user, hdfs_pass):
     def predict(d):
         def input_fn():
             return tf.data.Dataset.from_tensor_slices(
