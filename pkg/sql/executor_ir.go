@@ -120,7 +120,7 @@ func submitWorkflow(wr *pipe.Writer, sqlProgram string, modelDir string, session
 				r, err = generatePredictStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, "", false)
 			}
 		} else {
-			standardSQL := ir.StandardSQL(sql.Original)
+			standardSQL := ir.StandardSQL(sql.Standard)
 			r = &standardSQL
 		}
 		if err != nil {
@@ -183,7 +183,7 @@ func runSQLProgram(wr *pipe.Writer, sqlProgram string, db *database.DB, modelDir
 				r, err = generatePredictStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, GetSubmitter(session.Submitter).GetTrainStmtFromModel())
 			}
 		} else {
-			standardSQL := ir.StandardSQL(sql.Original)
+			standardSQL := ir.StandardSQL(sql.Standard)
 			r = &standardSQL
 		}
 
