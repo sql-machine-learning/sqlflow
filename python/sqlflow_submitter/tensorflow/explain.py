@@ -86,22 +86,23 @@ def explain(datasource,
     estimator = estimator_cls(**model_params)
     if estimator_cls in (tf.estimator.BoostedTreesClassifier,
                          tf.estimator.BoostedTreesRegressor):
-        explain_boosted_trees(estimator, _input_fn, plot_type, result_table,
-                              hdfs_namenode_addr, hive_location, hdfs_user,
-                              hdfs_pass)
+        explain_boosted_trees(datasource, estimator, _input_fn, plot_type,
+                              result_table, hdfs_namenode_addr, hive_location,
+                              hdfs_user, hdfs_pass)
     else:
         shap_dataset = pd.DataFrame(columns=feature_column_names)
         for i, (features, label) in enumerate(_input_fn()):
             shap_dataset.loc[i] = [
                 item.numpy()[0][0] for item in features.values()
             ]
-        explain_dnns(estimator, shap_dataset, plot_type, result_table,
-                     hdfs_namenode_addr, hive_location, hdfs_user, hdfs_pass)
+        explain_dnns(datasource, estimator, shap_dataset, plot_type,
+                     result_table, hdfs_namenode_addr, hive_location,
+                     hdfs_user, hdfs_pass)
 
 
-def explain_boosted_trees(estimator, input_fn, plot_type, result_table,
-                          hdfs_namenode_addr, hive_location, hdfs_user,
-                          hdfs_pass):
+def explain_boosted_trees(datasource, estimator, input_fn, plot_type,
+                          result_table, hdfs_namenode_addr, hive_location,
+                          hdfs_user, hdfs_pass):
     result = estimator.experimental_predict_with_explanations(input_fn)
     pred_dicts = list(result)
     df_dfc = pd.DataFrame([pred['dfc'] for pred in pred_dicts])
@@ -116,7 +117,7 @@ def explain_boosted_trees(estimator, input_fn, plot_type, result_table,
     explainer.plot_and_save(lambda: eval(plot_type)(df_dfc))
 
 
-def explain_dnns(estimator, shap_dataset, plot_type, result_table,
+def explain_dnns(datasource, estimator, shap_dataset, plot_type, result_table,
                  hdfs_namenode_addr, hive_location, hdfs_user, hdfs_pass):
     def predict(d):
         def input_fn():
