@@ -11,12 +11,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
-import sys
-
-import matplotlib
-import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 import shap
 import xgboost as xgb

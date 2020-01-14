@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+import shap
 import tensorflow as tf
 from sqlflow_submitter import explainer
 from sqlflow_submitter.db import buffered_db_writer, connect_with_data_source
@@ -83,8 +84,28 @@ def explain(datasource,
 
     model_params.update(feature_columns)
     estimator = estimator_cls(**model_params)
-    result = estimator.experimental_predict_with_explanations(
-        lambda: _input_fn())
+    if estimator_cls in (tf.estimator.BoostedTreesClassifier,
+                         tf.estimator.BoostedTreesRegressor):
+        explain_boosted_trees(datasource, estimator, _input_fn, plot_type,
+                              result_table, feature_column_names,
+                              hdfs_namenode_addr, hive_location, hdfs_user,
+                              hdfs_pass)
+    else:
+        shap_dataset = pd.DataFrame(columns=feature_column_names)
+        for i, (features, label) in enumerate(_input_fn()):
+            shap_dataset.loc[i] = [
+                item.numpy()[0][0] for item in features.values()
+            ]
+        explain_dnns(datasource, estimator, shap_dataset, plot_type,
+                     result_table, feature_column_names, hdfs_namenode_addr,
+                     hive_location, hdfs_user, hdfs_pass)
+
+
+def explain_boosted_trees(datasource, estimator, input_fn, plot_type,
+                          result_table, feature_column_names,
+                          hdfs_namenode_addr, hive_location, hdfs_user,
+                          hdfs_pass):
+    result = estimator.experimental_predict_with_explanations(input_fn)
     pred_dicts = list(result)
     df_dfc = pd.DataFrame([pred['dfc'] for pred in pred_dicts])
     dfc_mean = df_dfc.abs().mean()
@@ -96,6 +117,23 @@ def explain(datasource,
                          feature_column_names, hdfs_namenode_addr,
                          hive_location, hdfs_user, hdfs_pass)
     explainer.plot_and_save(lambda: eval(plot_type)(df_dfc))
+
+
+def explain_dnns(datasource, estimator, shap_dataset, plot_type, result_table,
+                 feature_column_names, hdfs_namenode_addr, hive_location,
+                 hdfs_user, hdfs_pass):
+    def predict(d):
+        def input_fn():
+            return tf.data.Dataset.from_tensor_slices(
+                dict(pd.DataFrame(d, columns=shap_dataset.columns))).batch(1)
+
+        return np.array(
+            [p['probabilities'][0] for p in estimator.predict(input_fn)])
+
+    shap_values = shap.KernelExplainer(predict,
+                                       shap_dataset).shap_values(shap_dataset)
+    explainer.plot_and_save(lambda: shap.summary_plot(
+        shap_values, shap_dataset, show=False, plot_type=plot_type))
 
 
 def create_explain_result_table(conn, result_table):
