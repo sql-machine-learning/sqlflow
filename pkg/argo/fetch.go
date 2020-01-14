@@ -90,6 +90,10 @@ func Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 		if stepGroupName == "" {
 			eof = true
 		}
+
+		if isPodFailed(pod) {
+			return newFetchResponse(newFetchRequest(req.Job.Id, stepGroupName, newLogOffset), eof, logs), fmt.Errorf("workflow step failed")
+		}
 	}
 
 	return newFetchResponse(newFetchRequest(req.Job.Id, stepGroupName, newLogOffset), eof, logs), nil
