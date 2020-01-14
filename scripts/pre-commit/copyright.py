@@ -12,10 +12,12 @@
 # limitations under the License.
 
 import argparse
-import io, re
-import sys, os
-import subprocess
+import io
+import os
 import platform
+import re
+import subprocess
+import sys
 
 COPYRIGHT = '''
 Copyright 2019 The SQLFlow Authors. All rights reserved.
@@ -58,7 +60,7 @@ def generate_copyright(template, lang='go'):
     ans = LANG_COMMENT_MARK + BLANK + COPYRIGHT_HEADER + NEW_LINE_MARK
     for lino, line in enumerate(lines):
         if lino == 0 or lino == 1 or lino == len(lines) - 1: continue
-        if len(line)  == 0:
+        if len(line) == 0:
             BLANK = ""
         else:
             BLANK = " "
@@ -109,22 +111,22 @@ def main(argv=None):
         if PYTHON_ENCODE.match(first_line) != None:
             skip_one = True
 
-        original_content_lines = io.open(filename, encoding="utf-8").read().split("\n")
+        original_content_lines = io.open(filename,
+                                         encoding="utf-8").read().split("\n")
         copyright_string = generate_copyright(COPYRIGHT, lang_type(filename))
         if skip_one:
             new_contents = "\n".join(
-                [original_content_lines[0],
-                copyright_string] + original_content_lines[1:]
-            )
+                [original_content_lines[0], copyright_string] +
+                original_content_lines[1:])
         elif skip_two:
-            new_contents = "\n".join(
-                [original_content_lines[0],
-                original_content_lines[1],
-                copyright_string] + original_content_lines[2:]
-            )
+            new_contents = "\n".join([
+                original_content_lines[0], original_content_lines[1],
+                copyright_string
+            ] + original_content_lines[2:])
         else:
             new_contents = generate_copyright(
-                COPYRIGHT, lang_type(filename)) + "\n".join(original_content_lines)
+                COPYRIGHT,
+                lang_type(filename)) + "\n".join(original_content_lines)
         print('Auto Insert Copyright Header {}'.format(filename))
         with io.open(filename, 'w', encoding='utf8') as output_file:
             output_file.write(new_contents)

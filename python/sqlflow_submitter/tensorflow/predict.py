@@ -11,22 +11,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
+import functools
+import json
 import os
+import sys
+
+import tensorflow as tf
+from sqlflow_submitter.db import (buffered_db_writer, connect_with_data_source,
+                                  db_generator, parseMaxComputeDSN)
+
+from .fast_predict import FastPredict
+from .input_fn import (get_dtype, pai_maxcompute_db_generator,
+                       pai_maxcompute_input_fn, parse_sparse_feature)
+
 # Disable Tensorflow INFO and WARNING logs
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
-import sys, json
-import tensorflow as tf
-import functools
-import copy
 try:
     import sqlflow_models
 except:
     pass
-
-from sqlflow_submitter.db import connect_with_data_source, db_generator, buffered_db_writer, parseMaxComputeDSN
-from .input_fn import get_dtype, parse_sparse_feature, pai_maxcompute_input_fn, pai_maxcompute_db_generator
-from .fast_predict import FastPredict
 
 # TODO(shendiaomo): Remove after we fully upgrade to TF2.0
 TF_VERSION_2 = True
@@ -42,14 +47,16 @@ else:
     tf.logging.set_verbosity(tf.logging.ERROR)
     from .pai_distributed import define_tf_flags, make_distributed_info_without_evaluator, dump_into_tf_config
 
+
 def keras_predict(estimator, model_params, save, result_table,
-                  feature_column_names, feature_metas, label_meta,
-                  datasource, select,
-                  hdfs_namenode_addr, hive_location, hdfs_user, hdfs_pass):
+                  feature_column_names, feature_metas, label_meta, datasource,
+                  select, hdfs_namenode_addr, hive_location, hdfs_user,
+                  hdfs_pass):
     classifier = estimator(**model_params)
     classifier_pkg = sys.modules[estimator.__module__]
 
     conn = connect_with_data_source(datasource)
+
     def eval_input_fn(batch_size, cache=False):
         feature_types = []
         for name in feature_column_names:
@@ -59,10 +66,14 @@ def keras_predict(estimator, model_params, save, result_table,
             else:
                 feature_types.append(get_dtype(feature_metas[name]["dtype"]))
 
-        gen = db_generator(conn.driver, conn, select,
-            feature_column_names, label_meta["feature_name"], feature_metas)
-        dataset = tf.data.Dataset.from_generator(gen, (tuple(feature_types), eval("tf.%s" % label_meta["dtype"])))
-        ds_mapper = functools.partial(parse_sparse_feature, feature_column_names=feature_column_names, feature_metas=feature_metas)
+        gen = db_generator(conn.driver, conn, select, feature_column_names,
+                           label_meta["feature_name"], feature_metas)
+        dataset = tf.data.Dataset.from_generator(
+            gen, (tuple(feature_types), eval("tf.%s" % label_meta["dtype"])))
+        ds_mapper = functools.partial(
+            parse_sparse_feature,
+            feature_column_names=feature_column_names,
+            feature_metas=feature_metas)
         dataset = dataset.map(ds_mapper).batch(batch_size)
         if cache:
             dataset = dataset.cache()
@@ -80,7 +91,9 @@ def keras_predict(estimator, model_params, save, result_table,
     buff_rows = []
     column_names = feature_column_names[:]
     column_names.append(label_meta["feature_name"])
-    with buffered_db_writer(conn.driver, conn, result_table, column_names, 100, hdfs_namenode_addr, hive_location, hdfs_user, hdfs_pass) as w:
+    with buffered_db_writer(conn.driver, conn, result_table, column_names, 100,
+                            hdfs_namenode_addr, hive_location, hdfs_user,
+                            hdfs_pass) as w:
         for features in pred_dataset:
             result = classifier.predict_on_batch(features[0])
             result = classifier_pkg.prepare_prediction_column(result[0])
@@ -92,11 +105,11 @@ def keras_predict(estimator, model_params, save, result_table,
             w.write(row)
     del pred_dataset
 
+
 def estimator_predict(estimator, model_params, save, result_table,
-                  feature_column_names, feature_metas, label_meta,
-                  datasource, select,
-                  hdfs_namenode_addr, hive_location, hdfs_user, hdfs_pass,
-                  is_pai, pai_table):
+                      feature_column_names, feature_metas, label_meta,
+                      datasource, select, hdfs_namenode_addr, hive_location,
+                      hdfs_user, hdfs_pass, is_pai, pai_table):
     classifier = estimator(**model_params)
     if not is_pai:
         conn = connect_with_data_source(datasource)
@@ -110,8 +123,13 @@ def estimator_predict(estimator, model_params, save, result_table,
                 feature_types.append(get_dtype(feature_metas[name]["dtype"]))
 
         def _inner_input_fn():
-            dataset = tf.data.Dataset.from_generator(generator, (tuple(feature_types), eval("tf.%s" % label_meta["dtype"])))
-            ds_mapper = functools.partial(parse_sparse_feature, feature_column_names=feature_column_names, feature_metas=feature_metas)
+            dataset = tf.data.Dataset.from_generator(
+                generator,
+                (tuple(feature_types), eval("tf.%s" % label_meta["dtype"])))
+            ds_mapper = functools.partial(
+                parse_sparse_feature,
+                feature_column_names=feature_column_names,
+                feature_metas=feature_metas)
             dataset = dataset.map(ds_mapper)
             dataset = dataset.batch(1).cache()
             iterator = dataset.make_one_shot_iterator()
@@ -128,12 +146,20 @@ def estimator_predict(estimator, model_params, save, result_table,
         driver = "pai_maxcompute"
         conn = None
         pai_table_parts = pai_table.split(".")
-        formated_pai_table = "odps://%s/tables/%s" % (pai_table_parts[0], pai_table_parts[1])
-        predict_generator = pai_maxcompute_db_generator(formated_pai_table, feature_column_names, label_meta["feature_name"], feature_metas)()
+        formated_pai_table = "odps://%s/tables/%s" % (pai_table_parts[0],
+                                                      pai_table_parts[1])
+        predict_generator = pai_maxcompute_db_generator(
+            formated_pai_table, feature_column_names,
+            label_meta["feature_name"], feature_metas)()
     else:
         driver = conn.driver
-        predict_generator = db_generator(conn.driver, conn, select, feature_column_names, label_meta["feature_name"], feature_metas)()
-    with buffered_db_writer(driver, conn, result_table, column_names, 100, hdfs_namenode_addr, hive_location, hdfs_user, hdfs_pass) as w:
+        predict_generator = db_generator(conn.driver, conn, select,
+                                         feature_column_names,
+                                         label_meta["feature_name"],
+                                         feature_metas)()
+    with buffered_db_writer(driver, conn, result_table, column_names, 100,
+                            hdfs_namenode_addr, hive_location, hdfs_user,
+                            hdfs_pass) as w:
         for features in predict_generator:
             result = fast_predictor.predict(features)
             row = []
@@ -146,6 +172,7 @@ def estimator_predict(estimator, model_params, save, result_table,
                 # regression predictions
                 row.append(str(list(result)[0]["predictions"][0]))
             w.write(row)
+
 
 def pred(datasource,
          estimator,
@@ -168,15 +195,18 @@ def pred(datasource,
         conn = connect_with_data_source(datasource)
     model_params.update(feature_columns)
 
-    is_estimator = issubclass(estimator, (tf.estimator.Estimator, tf.estimator.BoostedTreesClassifier, tf.estimator.BoostedTreesRegressor))
+    is_estimator = issubclass(
+        estimator,
+        (tf.estimator.Estimator, tf.estimator.BoostedTreesClassifier,
+         tf.estimator.BoostedTreesRegressor))
     if not is_estimator:
         if not issubclass(estimator, tf.keras.Model):
             # functional model need field_metas parameter
             model_params["field_metas"] = feature_metas
         keras_predict(estimator, model_params, save, result_table,
-            feature_column_names, feature_metas, label_meta,
-            datasource, select,
-            hdfs_namenode_addr, hive_location, hdfs_user, hdfs_pass)
+                      feature_column_names, feature_metas, label_meta,
+                      datasource, select, hdfs_namenode_addr, hive_location,
+                      hdfs_user, hdfs_pass)
     else:
         if is_pai:
             FLAGS = define_tf_flags()
@@ -184,9 +214,9 @@ def pred(datasource,
         else:
             model_params['model_dir'] = save
         estimator_predict(estimator, model_params, save, result_table,
-                feature_column_names, feature_metas, label_meta,
-                datasource, select,
-                hdfs_namenode_addr, hive_location, hdfs_user, hdfs_pass,
-                is_pai, pai_table)
+                          feature_column_names, feature_metas, label_meta,
+                          datasource, select, hdfs_namenode_addr,
+                          hive_location, hdfs_user, hdfs_pass, is_pai,
+                          pai_table)
 
     print("Done predicting. Predict table : %s" % result_table)

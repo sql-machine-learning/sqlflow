@@ -14,9 +14,15 @@
 # Configuration file for jupyterhub.
 # shutdown the server after no activity for an hour
 import os
+
 c.NotebookApp.shutdown_no_activity_timeout = 60 * 60
 c.LocalProcessSpawner.environment = {
-    "SQLFLOW_DATASOURCE": "mysql://root:root@tcp(%s:%s)/?maxAllowedPacket=0" % (os.getenv("SQLFLOW_MYSQL_SERVICE_HOST", ""), os.getenv("SQLFLOW_MYSQL_SERVICE_PORT", "3306")),
-    "SQLFLOW_SERVER": "%s:%s" % (os.getenv("SQLFLOW_SERVER_SERVICE_HOST", ""), os.getenv("SQLFLOW_SERVER_SERVICE_PORT", ""))
+    "SQLFLOW_DATASOURCE":
+    "mysql://root:root@tcp(%s:%s)/?maxAllowedPacket=0" %
+    (os.getenv("SQLFLOW_MYSQL_SERVICE_HOST",
+               ""), os.getenv("SQLFLOW_MYSQL_SERVICE_PORT", "3306")),
+    "SQLFLOW_SERVER":
+    "%s:%s" % (os.getenv("SQLFLOW_SERVER_SERVICE_HOST",
+                         ""), os.getenv("SQLFLOW_SERVER_SERVICE_PORT", ""))
 }
 c.LocalProcessSpawner.cmd = ["jupyterhub-singleuser"]

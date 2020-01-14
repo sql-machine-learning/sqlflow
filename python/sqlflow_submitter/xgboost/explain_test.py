@@ -14,54 +14,158 @@
 import os
 import unittest
 from unittest import TestCase
+
 import numpy as np
-from sqlflow_submitter.xgboost.explain import explain as xgb_explain 
-from sqlflow_submitter.xgboost.explain import xgb_shap_values, xgb_shap_dataset
+from sqlflow_submitter.xgboost.explain import explain as xgb_explain
+from sqlflow_submitter.xgboost.explain import xgb_shap_dataset, xgb_shap_values
 from sqlflow_submitter.xgboost.train import train as xgb_train
 
 datasource = "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
 select = "SELECT * FROM boston.train;"
 
-feature_field_meta=[
-  {'name': 'crim', 'dtype': 1, 'delimiter': '', 'shape': [1], 'is_sparse': False, 'vocabulary': None, 'MaxID': 0},
-  {'name': 'zn', 'dtype': 1, 'delimiter': '', 'shape': [1], 'is_sparse': False, 'vocabulary': None, 'MaxID': 0},
-  {'name': 'indus', 'dtype': 1, 'delimiter': '', 'shape': [1], 'is_sparse': False, 'vocabulary': None, 'MaxID': 0},
-  {'name': 'chas', 'dtype': 0, 'delimiter': '', 'shape': [1], 'is_sparse': False, 'vocabulary': None, 'MaxID': 0},
-  {'name': 'nox', 'dtype': 1, 'delimiter': '', 'shape': [1], 'is_sparse': False, 'vocabulary': None, 'MaxID': 0},
-  {'name': 'rm', 'dtype': 1, 'delimiter': '', 'shape': [1], 'is_sparse': False, 'vocabulary': None, 'MaxID': 0},
-  {'name': 'age', 'dtype': 1, 'delimiter': '', 'shape': [1], 'is_sparse': False, 'vocabulary': None, 'MaxID': 0},
-  {'name': 'dis', 'dtype': 1, 'delimiter': '', 'shape': [1], 'is_sparse': False, 'vocabulary': None, 'MaxID': 0},
-  {'name': 'rad', 'dtype': 0, 'delimiter': '', 'shape': [1], 'is_sparse': False, 'vocabulary': None, 'MaxID': 0},
-  {'name': 'tax', 'dtype': 0, 'delimiter': '', 'shape': [1], 'is_sparse': False, 'vocabulary': None, 'MaxID': 0},
-  {'name': 'ptratio', 'dtype': 1, 'delimiter': '', 'shape': [1], 'is_sparse': False, 'vocabulary': None, 'MaxID': 0},
-  {'name': 'b', 'dtype': 1, 'delimiter': '', 'shape': [1], 'is_sparse': False, 'vocabulary': None, 'MaxID': 0},
-  {'name': 'lstat', 'dtype': 1, 'delimiter': '', 'shape': [1], 'is_sparse': False, 'vocabulary': None, 'MaxID': 0}
-]
+feature_field_meta = [{
+    'name': 'crim',
+    'dtype': 1,
+    'delimiter': '',
+    'shape': [1],
+    'is_sparse': False,
+    'vocabulary': None,
+    'MaxID': 0
+}, {
+    'name': 'zn',
+    'dtype': 1,
+    'delimiter': '',
+    'shape': [1],
+    'is_sparse': False,
+    'vocabulary': None,
+    'MaxID': 0
+}, {
+    'name': 'indus',
+    'dtype': 1,
+    'delimiter': '',
+    'shape': [1],
+    'is_sparse': False,
+    'vocabulary': None,
+    'MaxID': 0
+}, {
+    'name': 'chas',
+    'dtype': 0,
+    'delimiter': '',
+    'shape': [1],
+    'is_sparse': False,
+    'vocabulary': None,
+    'MaxID': 0
+}, {
+    'name': 'nox',
+    'dtype': 1,
+    'delimiter': '',
+    'shape': [1],
+    'is_sparse': False,
+    'vocabulary': None,
+    'MaxID': 0
+}, {
+    'name': 'rm',
+    'dtype': 1,
+    'delimiter': '',
+    'shape': [1],
+    'is_sparse': False,
+    'vocabulary': None,
+    'MaxID': 0
+}, {
+    'name': 'age',
+    'dtype': 1,
+    'delimiter': '',
+    'shape': [1],
+    'is_sparse': False,
+    'vocabulary': None,
+    'MaxID': 0
+}, {
+    'name': 'dis',
+    'dtype': 1,
+    'delimiter': '',
+    'shape': [1],
+    'is_sparse': False,
+    'vocabulary': None,
+    'MaxID': 0
+}, {
+    'name': 'rad',
+    'dtype': 0,
+    'delimiter': '',
+    'shape': [1],
+    'is_sparse': False,
+    'vocabulary': None,
+    'MaxID': 0
+}, {
+    'name': 'tax',
+    'dtype': 0,
+    'delimiter': '',
+    'shape': [1],
+    'is_sparse': False,
+    'vocabulary': None,
+    'MaxID': 0
+}, {
+    'name': 'ptratio',
+    'dtype': 1,
+    'delimiter': '',
+    'shape': [1],
+    'is_sparse': False,
+    'vocabulary': None,
+    'MaxID': 0
+}, {
+    'name': 'b',
+    'dtype': 1,
+    'delimiter': '',
+    'shape': [1],
+    'is_sparse': False,
+    'vocabulary': None,
+    'MaxID': 0
+}, {
+    'name': 'lstat',
+    'dtype': 1,
+    'delimiter': '',
+    'shape': [1],
+    'is_sparse': False,
+    'vocabulary': None,
+    'MaxID': 0
+}]
 
-label_field_meta= {'name': 'medv', 'dtype': 1, 'delimiter': '', 'shape': [1], 'is_sparse': False, 'vocabulary': None, 'MaxID': 0}
+label_field_meta = {
+    'name': 'medv',
+    'dtype': 1,
+    'delimiter': '',
+    'shape': [1],
+    'is_sparse': False,
+    'vocabulary': None,
+    'MaxID': 0
+}
+
 
 class ExplainXGBModeTestCase(TestCase):
     def tearDown(self):
         os.remove('my_model')
 
     def test_explain(self):
-        xgb_train(
-          datasource=datasource,
-          select=select,
-          model_params={"objective":"reg:squarederror"},
-          train_params={"num_boost_round": 30},
-          feature_field_meta=feature_field_meta,
-          label_field_meta=label_field_meta,
-          validation_select=""
-        )
+        xgb_train(datasource=datasource,
+                  select=select,
+                  model_params={"objective": "reg:squarederror"},
+                  train_params={"num_boost_round": 30},
+                  feature_field_meta=feature_field_meta,
+                  label_field_meta=label_field_meta,
+                  validation_select="")
         feature_column_names = [k["name"] for k in feature_field_meta]
         feature_specs = {k['name']: k for k in feature_field_meta}
-        x = xgb_shap_dataset(datasource, select, feature_column_names, label_field_meta['name'], feature_specs)
+        x = xgb_shap_dataset(datasource, select, feature_column_names,
+                             label_field_meta['name'], feature_specs)
 
         shap_values = xgb_shap_values(x)
-        expected_features=['chas', 'zn', 'rad', 'indus', 'b', 'tax', 'ptratio', 'age', 'nox', 'crim', 'dis', 'rm', 'lstat']
-        
-        actual_features=[x.columns[idx] for idx in np.argsort(np.abs(shap_values).mean(0))]
+        expected_features = [
+            'chas', 'zn', 'rad', 'indus', 'b', 'tax', 'ptratio', 'age', 'nox',
+            'crim', 'dis', 'rm', 'lstat'
+        ]
+
+        actual_features = [
+            x.columns[idx] for idx in np.argsort(np.abs(shap_values).mean(0))
+        ]
 
         self.assertEqual(expected_features, actual_features)
 

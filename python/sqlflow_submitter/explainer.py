@@ -19,6 +19,7 @@ import matplotlib.pyplot as plt
 # TODO(shendiaomo): extract common code from tensorflow/explain.py and xgboost/explain.py
 # TODO(shendiaomo): add a unit test for this file later
 
+
 def plot_and_save(plotfunc, filename='summary'):
     '''
     plot_and_save plots and saves matplotlib figures using different backends
@@ -29,14 +30,13 @@ def plot_and_save(plotfunc, filename='summary'):
         None
     '''
 
-    # The default backend 
+    # The default backend
     plotfunc()
     plt.savefig(filename, bbox_inches='tight')
 
-    # The plotille text backend 
+    # The plotille text backend
     matplotlib.use('module://plotille_text_backend')
     import matplotlib.pyplot as plt_text_backend
-    sys.stdout.isatty = lambda:True
+    sys.stdout.isatty = lambda: True
     plotfunc()
     plt_text_backend.savefig(filename, bbox_inches='tight')
-

@@ -12,10 +12,10 @@
 # limitations under the License.
 
 import sys
-from io import StringIO
-from IPython import get_ipython
 import unittest
+from io import StringIO
 
+from IPython import get_ipython
 
 ipython = get_ipython()
 

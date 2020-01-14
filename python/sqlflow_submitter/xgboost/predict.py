@@ -13,8 +13,10 @@
 
 import numpy as np
 import xgboost as xgb
-from sqlflow_submitter.db import connect_with_data_source, buffered_db_writer
+from sqlflow_submitter.db import buffered_db_writer, connect_with_data_source
+
 from .train import xgb_dataset
+
 
 def pred(datasource,
          select,
@@ -32,7 +34,8 @@ def pred(datasource,
 
     feature_specs = {k['name']: k for k in feature_field_meta}
 
-    dpred = xgb_dataset(conn, 'predict.txt', select, feature_column_names, label_name, feature_specs)
+    dpred = xgb_dataset(conn, 'predict.txt', select, feature_column_names,
+                        label_name, feature_specs)
 
     bst = xgb.Booster({'nthread': 4})  # init model
     bst.load_model("my_model")  # load data
@@ -60,7 +63,9 @@ def pred(datasource,
             line = feature_file_read.readline()
             if not line:
                 break
-            row = [i.split(":")[1] for i in line.replace("\n", "").split("\t")[1:]]
+            row = [
+                i.split(":")[1] for i in line.replace("\n", "").split("\t")[1:]
+            ]
             row.append(str(preds[line_no]))
             w.write(row)
             line_no += 1

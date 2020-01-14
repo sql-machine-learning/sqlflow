@@ -11,21 +11,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import xgboost as xgb
-import shap
 import json
-import matplotlib
-import matplotlib.pyplot as plt
-import pandas as pd
 import sys
 
-from sqlflow_submitter.db import connect_with_data_source, db_generator
+import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import shap
+import xgboost as xgb
 from sqlflow_submitter import explainer
+from sqlflow_submitter.db import connect_with_data_source, db_generator
 
-def xgb_shap_dataset(datasource, select, feature_column_names, label_name, feature_specs):
+
+def xgb_shap_dataset(datasource, select, feature_column_names, label_name,
+                     feature_specs):
     conn = connect_with_data_source(datasource)
-    stream = db_generator(conn.driver, conn, select, feature_column_names, label_name, feature_specs)
+    stream = db_generator(conn.driver, conn, select, feature_column_names,
+                          label_name, feature_specs)
     xs = pd.DataFrame(columns=feature_column_names)
     ys = pd.DataFrame(columns=[label_name])
     i = 0
@@ -35,22 +38,23 @@ def xgb_shap_dataset(datasource, select, feature_column_names, label_name, featu
         i += 1
     return xs
 
+
 def xgb_shap_values(x):
     bst = xgb.Booster()
     bst.load_model("my_model")
     explainer = shap.TreeExplainer(bst)
     return explainer.shap_values(x)
 
-def explain(datasource,
-            select,
-            feature_field_meta,
-            label_name,
+
+def explain(datasource, select, feature_field_meta, label_name,
             summary_params):
     feature_column_names = [k["name"] for k in feature_field_meta]
     feature_specs = {k['name']: k for k in feature_field_meta}
-    x = xgb_shap_dataset(datasource, select, feature_column_names, label_name, feature_specs)
+    x = xgb_shap_dataset(datasource, select, feature_column_names, label_name,
+                         feature_specs)
 
     shap_values = xgb_shap_values(x)
 
     # save summary.png using the default backend
-    explainer.plot_and_save(lambda: shap.summary_plot(shap_values, x, show=False, **summary_params))
+    explainer.plot_and_save(lambda: shap.summary_plot(
+        shap_values, x, show=False, **summary_params))

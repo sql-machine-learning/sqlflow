@@ -14,9 +14,9 @@
 # NOTE: this file is used by train_predict_test.py, do **NOT** delete!
 
 import sqlflow_submitter
-from sqlflow_submitter.tensorflow.train import train
-from sqlflow_submitter.tensorflow.predict import pred
 import tensorflow as tf
+from sqlflow_submitter.tensorflow.predict import pred
+from sqlflow_submitter.tensorflow.train import train
 
 datasource = "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
 select = "SELECT * FROM iris.train;"
@@ -24,15 +24,17 @@ validate_select = "SELECT * FROM iris.test;"
 select_binary = "SELECT * FROM iris.train WHERE class!=2;"
 validate_select_binary = "SELECT * FROM iris.test WHERE class!=2;"
 feature_column_names = [
-"sepal_length",
-"sepal_width",
-"petal_length",
-"petal_width"]
+    "sepal_length", "sepal_width", "petal_length", "petal_width"
+]
 
-feature_columns={"feature_columns": [tf.feature_column.numeric_column("sepal_length", shape=[1]),
-tf.feature_column.numeric_column("sepal_width", shape=[1]),
-tf.feature_column.numeric_column("petal_length", shape=[1]),
-tf.feature_column.numeric_column("petal_width", shape=[1])]}
+feature_columns = {
+    "feature_columns": [
+        tf.feature_column.numeric_column("sepal_length", shape=[1]),
+        tf.feature_column.numeric_column("sepal_width", shape=[1]),
+        tf.feature_column.numeric_column("petal_length", shape=[1]),
+        tf.feature_column.numeric_column("petal_width", shape=[1])
+    ]
+}
 
 feature_metas = {
     "sepal_length": {
@@ -42,7 +44,7 @@ feature_metas = {
         "shape": [1],
         "is_sparse": "false" == "true"
     },
-        "sepal_width": {
+    "sepal_width": {
         "feature_name": "sepal_width",
         "dtype": "float32",
         "delimiter": "",
@@ -62,7 +64,8 @@ feature_metas = {
         "delimiter": "",
         "shape": [1],
         "is_sparse": "false" == "true"
-    }}
+    }
+}
 label_meta = {
     "feature_name": "class",
     "dtype": "int64",
@@ -81,7 +84,10 @@ if __name__ == "__main__":
           feature_column_names=feature_column_names,
           feature_metas=feature_metas,
           label_meta=label_meta,
-          model_params={"n_classes": 3, "hidden_units":[10,20]},
+          model_params={
+              "n_classes": 3,
+              "hidden_units": [10, 20]
+          },
           save="mymodel",
           batch_size=1,
           epochs=3,
@@ -94,7 +100,10 @@ if __name__ == "__main__":
           feature_column_names=feature_column_names,
           feature_metas=feature_metas,
           label_meta=label_meta,
-          model_params={"n_classes": 2, "hidden_units":[10,20]},
+          model_params={
+              "n_classes": 2,
+              "hidden_units": [10, 20]
+          },
           save="mymodel_binary",
           batch_size=1,
           epochs=3,
@@ -107,6 +116,9 @@ if __name__ == "__main__":
          feature_column_names=feature_column_names,
          feature_metas=feature_metas,
          label_meta=label_meta,
-         model_params={"n_classes": 3, "hidden_units":[10,20]},
+         model_params={
+             "n_classes": 3,
+             "hidden_units": [10, 20]
+         },
          save="mymodel",
          batch_size=1)
