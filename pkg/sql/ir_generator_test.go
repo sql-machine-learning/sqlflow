@@ -289,6 +289,13 @@ INTO sqlflow_models.my_xgboost_model;
 	a.Equal(ExplainIntoStmt.Explainer, "TreeExplainer")
 	a.Equal(len(ExplainIntoStmt.Attributes), 3)
 	a.Equal("db.explain_result", ExplainIntoStmt.Into)
+
+	pr, e = parser.ParseOneStatement("mysql", `SELECT * FROM iris.train TO EXPLAIN sqlflow_models.my_xgboost_model;`)
+	a.NoError(e)
+	shortExplainStmt, e := generateExplainStmt(pr.SQLFlowSelectStmt, connStr, modelDir, cwd, true)
+	a.NoError(e)
+	a.Equal(shortExplainStmt.Explainer, "")
+	a.Equal(len(shortExplainStmt.Attributes), 0)
 }
 
 func TestInferStringValue(t *testing.T) {

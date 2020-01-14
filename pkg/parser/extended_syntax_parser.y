@@ -124,6 +124,7 @@ func attrsUnion(as1, as2 Attributes) Attributes {
   labc string
   infr PredictClause
   expln ExplainClause
+  optus string
 }
 
 %type  <eslt> sqlflow_select_stmt
@@ -132,6 +133,7 @@ func attrsUnion(as1, as2 Attributes) Attributes {
 %type  <labc> label_clause
 %type  <infr> predict_clause
 %type  <expln> explain_clause
+%type  <optus> optional_using 
 %type  <expr> expr funcall column
 %type  <expl> ExprList pythonlist columns
 %type  <atrs> attr
@@ -214,10 +216,15 @@ predict_clause
 ;
 
 explain_clause
-: TO EXPLAIN IDENT USING IDENT { $$.TrainedModel = $3; $$.Explainer = $5 }
-| TO EXPLAIN IDENT USING IDENT INTO IDENT { $$.TrainedModel = $3; $$.Explainer = $5; $$.ExplainInto = $7 }
-| TO EXPLAIN IDENT WITH attrs USING IDENT { $$.TrainedModel = $3; $$.ExplainAttrs = $5; $$.Explainer = $7 }
-| TO EXPLAIN IDENT WITH attrs USING IDENT INTO IDENT { $$.TrainedModel = $3; $$.ExplainAttrs = $5; $$.Explainer = $7; $$.ExplainInto = $9 }
+: TO EXPLAIN IDENT optional_using { $$.TrainedModel = $3; $$.Explainer = $4 }
+| TO EXPLAIN IDENT optional_using INTO IDENT { $$.TrainedModel = $3; $$.Explainer = $4; $$.ExplainInto = $6 }
+| TO EXPLAIN IDENT WITH attrs optional_using { $$.TrainedModel = $3; $$.ExplainAttrs = $5; $$.Explainer = $6 }
+| TO EXPLAIN IDENT WITH attrs optional_using INTO IDENT { $$.TrainedModel = $3; $$.ExplainAttrs = $5; $$.Explainer = $6; $$.ExplainInto = $8 }
+;
+
+optional_using
+: /* empty */  {}
+| USING IDENT  { $$ = $2 }
 ;
 
 column_clause
