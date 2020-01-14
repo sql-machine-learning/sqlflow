@@ -34,6 +34,21 @@ def parse_sparse_feature(features, label, feature_column_names, feature_metas):
     return features_dict, label
 
 
+def parse_sparse_feature_predict(features, feature_column_names,
+                                 feature_metas):
+    features_dict = dict()
+    for idx, col in enumerate(features):
+        name = feature_column_names[idx]
+        if feature_metas[name]["is_sparse"]:
+            i, v, s = col
+            features_dict[name] = tf.SparseTensor(indices=i,
+                                                  values=v,
+                                                  dense_shape=s)
+        else:
+            features_dict[name] = col
+    return features_dict
+
+
 def get_dtype(type_str):
     if type_str == "float32":
         return tf.float32

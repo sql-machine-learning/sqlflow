@@ -21,11 +21,12 @@ class FastPredict:
         self.estimator = estimator
         self.input_fn = input_fn
 
-    def predict(self, feature_and_label):
+    def predict(self, features):
+        print("in predict:", features)
+
         def inner_func():
-            # FIXME(tony): don't yield label
-            feature, label = feature_and_label[0], feature_and_label[1]
-            yield feature, label
+            print("inner_func yield:", features)
+            yield features
 
         predictions = self.estimator.predict(
             input_fn=self.input_fn(inner_func))

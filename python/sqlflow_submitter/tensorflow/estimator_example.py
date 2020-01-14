@@ -114,8 +114,8 @@ if __name__ == "__main__":
          result_table="iris.predict",
          feature_columns=feature_columns,
          feature_column_names=feature_column_names,
+         result_col_name=label_meta["feature_name"],
          feature_metas=feature_metas,
-         label_meta=label_meta,
          model_params={
              "n_classes": 3,
              "hidden_units": [10, 20]
