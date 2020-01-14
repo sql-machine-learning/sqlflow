@@ -83,7 +83,7 @@ func Run(programIR ir.SQLProgram, session *pb.Session) (string, error) {
 				r.SQLStatements = append(r.SQLStatements, sqlStmt)
 			}
 		default:
-			return "", fmt.Errorf("uncognized IR type: %v", i)
+			return "", fmt.Errorf("unrecognized IR type: %v", i)
 		}
 	}
 	var program bytes.Buffer
