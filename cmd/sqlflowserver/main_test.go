@@ -293,6 +293,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CasePredictXGBoostRegression", CasePredictXGBoostRegression)
 	t.Run("CaseTrainDeepWideModel", CaseTrainDeepWideModel)
 	t.Run("CaseTrainDeepWideModelOptimizer", CaseTrainDeepWideModelOptimizer)
+	t.Run("CaseTrainAdaNetAndExplain", CaseTrainAdaNetAndExplain)
 
 	// Cases using feature derivation
 	t.Run("CaseTrainTextClassificationIR", CaseTrainTextClassificationIR)
@@ -378,7 +379,7 @@ func TestEnd2EndHive(t *testing.T) {
 	t.Run("CaseTrainSQLWithMetrics", CaseTrainSQLWithMetrics)
 	t.Run("CaseTrainRegression", CaseTrainRegression)
 	t.Run("CaseTrainCustomModel", CaseTrainCustomModel)
-	t.Run("CaseTrainAdaNet", CaseTrainAdaNet)
+	t.Run("CaseTrainAdaNetAndExplain", CaseTrainAdaNetAndExplain)
 	t.Run("CaseTrainOptimizer", CaseTrainOptimizer)
 	t.Run("CaseTrainDeepWideModel", CaseTrainDeepWideModel)
 	t.Run("CaseTrainDeepWideModelOptimizer", CaseTrainDeepWideModelOptimizer)
@@ -939,16 +940,17 @@ INTO sqlflow_models.my_dnn_linear_model;`
 	}
 }
 
-func CaseTrainAdaNet(t *testing.T) {
+func CaseTrainAdaNetAndExplain(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := `SELECT * FROM iris.train
-TO TRAIN sqlflow_models.AutoClassifier WITH model.n_classes = 3
-LABEL class
-INTO sqlflow_models.my_adanet_model;`
+TO TRAIN sqlflow_models.AutoClassifier WITH model.n_classes = 3 LABEL class INTO sqlflow_models.my_adanet_model;`
 	_, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("run trainSQL error: %v", err)
 	}
+	explainSQL := fmt.Sprintf(`SELECT * FROM iris.test LIMIT 10 TO EXPLAIN sqlflow_models.my_adanet_model;`)
+	_, _, err = connectAndRunSQL(explainSQL)
+	a.NoError(err)
 }
 
 func CaseTrainDeepWideModelOptimizer(t *testing.T) {
