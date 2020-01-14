@@ -69,7 +69,7 @@ def keras_predict(estimator, model_params, save, result_table,
 
         gen = db_generator(conn.driver, conn, select, feature_column_names,
                            None, feature_metas)
-        dataset = tf.data.Dataset.from_generator(gen, tuple(feature_types))
+        dataset = tf.data.Dataset.from_generator(gen, (tuple(feature_types), ))
         ds_mapper = functools.partial(
             parse_sparse_feature_predict,
             feature_column_names=feature_column_names,
@@ -85,7 +85,7 @@ def keras_predict(estimator, model_params, save, result_table,
     one_batch = next(iter(pred_dataset))
     # NOTE: must run predict one batch to initialize parameters
     # see: https://www.tensorflow.org/alpha/guide/keras/saving_and_serializing#saving_subclassed_models
-    classifier.predict_on_batch(one_batch[0])
+    classifier.predict_on_batch(one_batch)
     classifier.load_weights(save)
     pred_dataset = eval_input_fn(1, cache=True).make_one_shot_iterator()
     buff_rows = []
@@ -95,11 +95,11 @@ def keras_predict(estimator, model_params, save, result_table,
                             hdfs_namenode_addr, hive_location, hdfs_user,
                             hdfs_pass) as w:
         for features in pred_dataset:
-            result = classifier.predict_on_batch(features[0])
+            result = classifier.predict_on_batch(features)
             result = classifier_pkg.prepare_prediction_column(result[0])
             row = []
             for idx, name in enumerate(feature_column_names):
-                val = features[0][name].numpy()[0][0]
+                val = features[name].numpy()[0][0]
                 row.append(str(val))
             row.append(str(result))
             w.write(row)
@@ -123,11 +123,8 @@ def estimator_predict(estimator, model_params, save, result_table,
                 feature_types.append(get_dtype(feature_metas[name]["dtype"]))
 
         def _inner_input_fn():
-            print("before from_generator", feature_column_names)
-            for d in generator():
-                print(d)
             dataset = tf.data.Dataset.from_generator(generator,
-                                                     tuple(feature_types))
+                                                     (tuple(feature_types), ))
             ds_mapper = functools.partial(
                 parse_sparse_feature_predict,
                 feature_column_names=feature_column_names,
@@ -161,7 +158,6 @@ def estimator_predict(estimator, model_params, save, result_table,
                             hdfs_namenode_addr, hive_location, hdfs_user,
                             hdfs_pass) as w:
         for features in predict_generator:
-            print(features)
             result = fast_predictor.predict(features)
             row = []
             for idx, _ in enumerate(feature_column_names):

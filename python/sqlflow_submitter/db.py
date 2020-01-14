@@ -217,7 +217,7 @@ def db_generator(driver,
                                            feature_specs[name], name)
                     features.append(feature)
                 if label_idx is None:
-                    yield tuple(features)
+                    yield (tuple(features), )
                 else:
                     yield tuple(features), label
             if len(rows) < fetch_size:

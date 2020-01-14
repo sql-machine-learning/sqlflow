@@ -22,10 +22,7 @@ class FastPredict:
         self.input_fn = input_fn
 
     def predict(self, features):
-        print("in predict:", features)
-
         def inner_func():
-            print("inner_func yield:", features)
             yield features
 
         predictions = self.estimator.predict(
