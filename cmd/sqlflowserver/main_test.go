@@ -1278,6 +1278,22 @@ USING %s;`, caseTestTable, casePredictTable, caseInto)
 	}
 
 }
+
+func CaseTrainPAIRandomForests(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`
+	SELECT * FROM %s.%s
+	TO TRAIN randomforests
+	WITH tree_num = 3
+	LABEL class
+	INTO my_rf_model;
+	`, caseDB, caseTrainTable)
+	_, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+}
+
 func TestEnd2EndMaxComputePAI(t *testing.T) {
 	testDBDriver := os.Getenv("SQLFLOW_TEST_DB")
 	if testDBDriver != "maxcompute" {
@@ -1316,6 +1332,7 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 	}
 
 	t.Run("CaseTrainSQL", CaseTrainSQL)
+	t.Run("CaseTrainPAIRandomForests", CaseTrainPAIRandomForests)
 	t.Run("CaseTrainDistributedPAI", CaseTrainDistributedPAI)
 }
 
