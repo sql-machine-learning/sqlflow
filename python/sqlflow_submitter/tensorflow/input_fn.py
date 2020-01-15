@@ -74,12 +74,22 @@ def input_fn(select, conn, feature_column_names, feature_metas, label_meta):
 
     gen = db_generator(conn.driver, conn, select, feature_column_names,
                        label_meta["feature_name"], feature_metas)
-    dataset = tf.data.Dataset.from_generator(
-        gen, (tuple(feature_types), eval("tf.%s" % label_meta["dtype"])),
-        (tuple(shapes), label_meta["shape"]))
-    ds_mapper = functools.partial(parse_sparse_feature,
-                                  feature_column_names=feature_column_names,
-                                  feature_metas=feature_metas)
+    # Clustering model do not have label
+    if label_meta["feature_name"] == "":
+        dataset = tf.data.Dataset.from_generator(gen, (tuple(feature_types), ),
+                                                 (tuple(shapes), ))
+        ds_mapper = functools.partial(
+            parse_sparse_feature_predict,
+            feature_column_names=feature_column_names,
+            feature_metas=feature_metas)
+    else:
+        dataset = tf.data.Dataset.from_generator(
+            gen, (tuple(feature_types), eval("tf.%s" % label_meta["dtype"])),
+            (tuple(shapes), label_meta["shape"]))
+        ds_mapper = functools.partial(
+            parse_sparse_feature,
+            feature_column_names=feature_column_names,
+            feature_metas=feature_metas)
     return dataset.map(ds_mapper)
 
 
