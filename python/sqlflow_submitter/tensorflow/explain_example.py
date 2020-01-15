@@ -21,6 +21,7 @@ from sqlflow_submitter.tensorflow.predict import pred
 from sqlflow_submitter.tensorflow.train import train
 
 if __name__ == "__main__":
+    # Train and explain BoostedTreesClassifier
     train(datasource=datasource,
           estimator=tf.estimator.BoostedTreesClassifier,
           select="SELECT * FROM iris.train where class!=2",
@@ -39,6 +40,7 @@ if __name__ == "__main__":
           batch_size=100,
           epochs=20,
           verbose=0)
+
     explain(datasource=datasource,
             estimator_cls=tf.estimator.BoostedTreesClassifier,
             select="SELECT * FROM iris.test where class!=2",
@@ -53,6 +55,40 @@ if __name__ == "__main__":
                 "center_bias": True
             },
             save="btmodel",
+            is_pai=False,
+            plot_type='bar',
+            result_table="iris.explain_result")
+
+    # Train and explain DNNClassifier
+    train(datasource=datasource,
+          estimator=tf.estimator.DNNClassifier,
+          select="SELECT * FROM iris.train",
+          validate_select="SELECT * FROM iris.test",
+          feature_columns=feature_columns,
+          feature_column_names=feature_column_names,
+          feature_metas=feature_metas,
+          label_meta=label_meta,
+          model_params={
+              "n_classes": 3,
+              "hidden_units": [100, 100],
+          },
+          save="dnnmodel",
+          batch_size=100,
+          epochs=20,
+          verbose=0)
+
+    explain(datasource=datasource,
+            estimator_cls=tf.estimator.DNNClassifier,
+            select="SELECT * FROM iris.test LIMIT 10",
+            feature_columns=feature_columns,
+            feature_column_names=feature_column_names,
+            feature_metas=feature_metas,
+            label_meta=label_meta,
+            model_params={
+                "n_classes": 3,
+                "hidden_units": [100, 100],
+            },
+            save="dnnmodel",
             is_pai=False,
             plot_type='bar',
             result_table="iris.explain_result")
