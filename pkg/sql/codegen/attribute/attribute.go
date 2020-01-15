@@ -16,6 +16,8 @@ package attribute
 import (
 	"encoding/json"
 	"fmt"
+	"log"
+	"os/exec"
 	"reflect"
 	"sort"
 	"strings"
@@ -158,6 +160,18 @@ func NewDictionaryFromModelDefinition(estimator, prefix string) Dictionary {
 // PremadeModelParamsDocs stores parameters and documents of all known models
 var PremadeModelParamsDocs map[string]map[string]string
 
+// ExtractDocString extracts parameter documents from python doc strings
+func ExtractDocString(module ...string) {
+	cmd := exec.Command("python", "-uc", fmt.Sprintf("__import__('extract_docstring').print_param_doc('%s')", strings.Join(module, "', '")))
+	output, e := cmd.CombinedOutput()
+	if e != nil {
+		log.Println("ExtractDocString failed: ", e, string(output))
+	}
+	if e := json.Unmarshal(output, &PremadeModelParamsDocs); e != nil {
+		log.Println("ExtractDocString failed:", e, string(output))
+	}
+}
+
 func removeUnnecessaryParams() {
 	// The following parameters of canned estimators are already supported in the COLUMN clause.
 	for _, v := range PremadeModelParamsDocs {
@@ -171,5 +185,6 @@ func init() {
 	if err := json.Unmarshal([]byte(ModelParameterJSON), &PremadeModelParamsDocs); err != nil {
 		panic(err) // assertion
 	}
+	ExtractDocString("sqlflow_models")
 	removeUnnecessaryParams()
 }
