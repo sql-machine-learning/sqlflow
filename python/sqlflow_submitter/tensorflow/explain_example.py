@@ -13,13 +13,13 @@
 
 import sqlflow_submitter
 import tensorflow as tf
-from sqlflow_submitter.tensorflow.explain import explain
-from sqlflow_submitter.tensorflow.predict import pred
-from sqlflow_submitter.tensorflow.train import train
 
 from estimator_example import (datasource, feature_column_names,
                                feature_columns, feature_metas, label_meta,
                                select_binary, validate_select_binary)
+from sqlflow_submitter.tensorflow.explain import explain
+from sqlflow_submitter.tensorflow.predict import pred
+from sqlflow_submitter.tensorflow.train import train
 
 if __name__ == "__main__":
     train(datasource=datasource,
