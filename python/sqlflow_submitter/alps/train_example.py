@@ -15,7 +15,6 @@ import os
 import shutil
 
 import tensorflow as tf
-
 from alps.framework.column.column import (DenseColumn, GroupedSparseColumn,
                                           SparseColumn)
 from alps.framework.engine import LocalEngine

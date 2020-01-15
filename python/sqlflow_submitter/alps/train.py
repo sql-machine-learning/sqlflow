@@ -17,7 +17,6 @@ from __future__ import absolute_import, division, print_function
 import os
 
 import tensorflow as tf
-
 from alps.client.base import run_experiment, submit_experiment
 from alps.conf.closure import Closure
 from alps.framework.column.column import (DenseColumn, GroupedSparseColumn,

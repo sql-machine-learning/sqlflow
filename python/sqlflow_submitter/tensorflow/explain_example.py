@@ -13,7 +13,6 @@
 
 import sqlflow_submitter
 import tensorflow as tf
-
 from estimator_example import (datasource, feature_column_names,
                                feature_columns, feature_metas, label_meta,
                                select_binary, validate_select_binary)
