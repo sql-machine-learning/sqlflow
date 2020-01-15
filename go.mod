@@ -12,10 +12,11 @@ require (
 
 	github.com/fortytw2/leaktest v1.3.0
 	github.com/go-delve/delve v1.3.2 // indirect
-	github.com/go-openapi/spec v0.19.4 // indirect
+	github.com/go-openapi/spec v0.19.5 // indirect
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/golang/protobuf v1.3.2
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
+	github.com/kr/pty v1.1.5 // indirect
 	github.com/mattn/go-colorable v0.1.4 // indirect
 	github.com/mattn/go-isatty v0.0.11 // indirect
 	github.com/mattn/go-runewidth v0.0.7 // indirect
@@ -31,6 +32,7 @@ require (
 	github.com/sirupsen/logrus v1.4.2
 	github.com/soniakeys/quant v1.0.0 // indirect
 	github.com/spf13/cobra v0.0.5 // indirect
+	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/stretchr/testify v1.4.0
 	go.starlark.net v0.0.0-20191218235703-9fcb808a6221 // indirect
 	golang.org/x/arch v0.0.0-20191126211547-368ea8f32fff // indirect

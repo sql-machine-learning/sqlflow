@@ -50,9 +50,9 @@ func TestGetPAICmd(t *testing.T) {
 	}
 	os.Setenv("SQLFLOW_OSS_CHECKPOINT_DIR", "oss://bucket/?role_arn=xxx&host=xxx")
 	defer os.Unsetenv("SQLFLOW_OSS_CHECKPOINT_DIR")
-	paiCmd, err := getPAIcmd(cc, "my_model", "testdb.test", "", "testdb.result")
+	paiCmd, err := getPAIcmd(cc, "my_model", "project/12345/my_model", "testdb.test", "", "testdb.result")
 	a.NoError(err)
-	ckpDir, err := pai.FormatCkptDir("my_model")
+	ckpDir, err := pai.FormatCkptDir("project/12345/my_model")
 	a.NoError(err)
 	expected := fmt.Sprintf("pai -name tensorflow1120 -DjobName=sqlflow_my_model -Dtags=dnn -Dscript=file://@@task.tar.gz -DentryFile=entry.py -Dtables=odps://testdb/tables/test -Doutputs=odps://testdb/tables/result -DcheckpointDir=\"%s\"", ckpDir)
 	a.Equal(expected, paiCmd)
