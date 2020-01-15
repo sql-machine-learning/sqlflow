@@ -182,8 +182,13 @@ type ExplainStmt struct {
 	Attributes map[string]interface{}
 	// Explainer types. For example TreeExplainer.
 	Explainer string
+	// ModelName is the model to be explained, e.g. TO EXPLAIN model_name
+	ModelName string
 	// Into stores the model explain result. Note that this field is optional.
 	Into string
+	// When SQLFLOW_submitter == "pai", tmp tables will be created for predicting task
+	// see: pai_submitter.go
+	TmpExplainTable string
 	// TrainStmt is the TrainStmt used for generating the training job of the corresponding model
 	TrainStmt *TrainStmt
 }

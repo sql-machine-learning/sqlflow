@@ -17,15 +17,19 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"text/template"
 
+	"github.com/aliyun/aliyun-oss-go-sdk/oss"
+	"sqlflow.org/sqlflow/pkg/database"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
+	"sqlflow.org/sqlflow/pkg/verifier"
 )
 
 const entryFile = "entry.py"
@@ -160,7 +164,6 @@ func trainRandomForests(ir *ir.TrainStmt, session *pb.Session) (string, error) {
 	}
 	filler := &randomForestsTrainFiller{
 		DataSource:     session.DbConnStr,
-		Select:         ir.Select,
 		TmpTrainTable:  ir.TmpTrainTable,
 		FeatureColumns: featureCols,
 		LabelColumn:    ir.Label.GetFieldDesc()[0].Name,
@@ -172,8 +175,42 @@ func trainRandomForests(ir *ir.TrainStmt, session *pb.Session) (string, error) {
 	if err := tpl.Execute(&rfCode, filler); err != nil {
 		return "", err
 	}
-	fmt.Println(rfCode.String())
 	return rfCode.String(), nil
+}
+
+// getColumnTypes is quiet like verify but accept a SQL string as input, and returns
+// an ordered list of the field types.
+// FIXME(typhoonzero): copied from executor_ir.go
+func getColumnTypes(slct string, db *database.DB) ([]string, []string, error) {
+	rows, err := db.Query(slct)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer rows.Close()
+
+	if !rows.Next() {
+		return nil, nil, fmt.Errorf("query %s gives 0 row", slct)
+	}
+
+	if rows.Err() != nil {
+		return nil, nil, err
+	}
+
+	columnTypes, err := rows.ColumnTypes()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	ft := []string{}
+	flds := []string{}
+	for _, ct := range columnTypes {
+		_, fld := verifier.Decomp(ct.Name())
+		typeName := ct.DatabaseTypeName()
+		flds = append(flds, fld)
+		ft = append(ft, typeName)
+	}
+
+	return flds, ft, nil
 }
 
 // Train generates a Python program for train a TensorFlow model.
@@ -214,8 +251,74 @@ func TFTrainAndSave(ir *ir.TrainStmt, session *pb.Session, modelName string) (st
 	return code + saveCode.String(), nil
 }
 
+func ossFileExists(modelName string) (bool, error) {
+	endpoint := os.Getenv("SQLFLOW_OSS_ENDPOINT")
+	ak := os.Getenv("SQLFLOW_OSS_AK")
+	sk := os.Getenv("SQLFLOW_OSS_SK")
+	// NOTE(typhoonzero): PAI Tensorflow need SQLFLOW_OSS_CHECKPOINT_DIR, get bucket name from it
+	ossCheckpointDir := os.Getenv("SQLFLOW_OSS_CHECKPOINT_DIR")
+	ckptParts := strings.Split(ossCheckpointDir, "?")
+	if len(ckptParts) != 2 {
+		return false, fmt.Errorf("SQLFLOW_OSS_CHECKPOINT_DIR got wrong format")
+	}
+	urlParts := strings.Split(ckptParts[0], "://")
+	if len(urlParts) != 2 {
+		return false, fmt.Errorf("SQLFLOW_OSS_CHECKPOINT_DIR got wrong format")
+	}
+	bucketName := strings.Split(urlParts[1], "/")[0]
+
+	cli, err := oss.New(endpoint, ak, sk)
+	if err != nil {
+		return false, err
+	}
+	bucket, err := cli.Bucket(bucketName)
+	if err != nil {
+		return false, err
+	}
+	return bucket.IsObjectExist(modelName + "/sqlflow_model_desc")
+}
+
+func predictRandomForests(ir *ir.PredictStmt, session *pb.Session) (string, error) {
+	// NOTE(typhoonzero): for PAI random forests predicting, we can not load the TrainStmt
+	// since the model saving is fully done by PAI. We directly use the columns in SELECT
+	// statement for prediction, error will be reported by PAI job if the columns not match.
+	db, err := database.OpenAndConnectDB(session.DbConnStr)
+	if err != nil {
+		return "", err
+	}
+	flds, _, err := getColumnTypes(ir.Select, db)
+	if err != nil {
+		return "", err
+	}
+	// drop result table if exists
+	db.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s;", ir.ResultTable))
+	filler := &randomForestsPredictFiller{
+		DataSource:      session.DbConnStr,
+		TmpPredictTable: ir.TmpPredictTable,
+		FeatureColumns:  flds,
+		Save:            ir.Using,
+		ResultTable:     ir.ResultTable,
+	}
+	var tpl = template.Must(template.New("RandomForestsPredict").Parse(randomForestsPredictTemplate))
+	var rfCode bytes.Buffer
+	if err := tpl.Execute(&rfCode, filler); err != nil {
+		return "", err
+	}
+	return rfCode.String(), nil
+}
+
 // Predict generates a Python program for train a TensorFlow model.
 func Predict(ir *ir.PredictStmt, session *pb.Session, modelName, cwd string) (string, error) {
+	// FIXME(typhoonzero): if the model not exist on OSS, assume it's a random forest model
+	// should use a general method to fetch the model and see the model type.
+	exists, err := ossFileExists(modelName)
+	if err != nil {
+		return "", err
+	}
+	if !exists {
+		log.Printf("predicting using pai random forests")
+		return predictRandomForests(ir, session)
+	}
 	cc, err := GetClusterConfig(ir.Attributes)
 	if err != nil {
 		return "", err
@@ -252,4 +355,54 @@ func TFLoadAndPredict(ir *ir.PredictStmt, session *pb.Session, modelName string)
 		return "", err
 	}
 	return code.String(), nil
+}
+
+func explainRandomForests(ir *ir.ExplainStmt, session *pb.Session) (string, error) {
+	// NOTE(typhoonzero): for PAI random forests predicting, we can not load the TrainStmt
+	// since the model saving is fully done by PAI. We directly use the columns in SELECT
+	// statement for prediction, error will be reported by PAI job if the columns not match.
+	db, err := database.OpenAndConnectDB(session.DbConnStr)
+	if err != nil {
+		return "", err
+	}
+	flds, _, err := getColumnTypes(ir.Select, db)
+	if err != nil {
+		return "", err
+	}
+	// drop result table if exists
+	db.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s;", ir.Into))
+	labelCol, ok := ir.Attributes["label_column"]
+	if !ok {
+		return "", fmt.Errorf("must specify WITH label_column when using pai random forest to explain models")
+	}
+	featureFileds := []string{}
+	for _, f := range flds {
+		if f != labelCol {
+			featureFileds = append(featureFileds, f)
+		}
+	}
+
+	filler := &randomForestsExplainFiller{
+		DataSource:      session.DbConnStr,
+		TmpExplainTable: ir.TmpExplainTable,
+		FeatureColumns:  featureFileds,
+		LabelColumn:     labelCol.(string),
+		Save:            ir.ModelName,
+		ResultTable:     ir.Into,
+	}
+	var tpl = template.Must(template.New("RandomForestsExplain").Parse(randomForestsExplainTemplate))
+	var rfCode bytes.Buffer
+	if err := tpl.Execute(&rfCode, filler); err != nil {
+		return "", err
+	}
+	return rfCode.String(), nil
+}
+
+// Explain generates a Python program for train a TensorFlow model.
+func Explain(ir *ir.ExplainStmt, session *pb.Session, modelName, cwd string) (string, error) {
+	// NOTE(typhoonzero): only support random forests explain.
+	if ir.Into == "" {
+		return "", fmt.Errorf("explain PAI random forests model need INTO clause to output the explain result to a table")
+	}
+	return explainRandomForests(ir, session)
 }
