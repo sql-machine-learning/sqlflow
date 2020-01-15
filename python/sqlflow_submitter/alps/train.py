@@ -17,6 +17,9 @@ from __future__ import absolute_import, division, print_function
 import os
 
 import tensorflow as tf
+from tensorflow.python.saved_model.signature_constants import \
+    DEFAULT_SERVING_SIGNATURE_DEF_KEY
+
 from alps.client.base import run_experiment, submit_experiment
 from alps.conf.closure import Closure
 from alps.framework.column.column import (DenseColumn, GroupedSparseColumn,
@@ -33,8 +36,6 @@ from alps.io import DatasetX
 from alps.io.base import FeatureMap, OdpsConf
 from alps.io.reader.odps_reader import OdpsReader
 from alps.util.remote_module import RemoteModule
-from tensorflow.python.saved_model.signature_constants import \
-    DEFAULT_SERVING_SIGNATURE_DEF_KEY
 
 # for debug usage.
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
