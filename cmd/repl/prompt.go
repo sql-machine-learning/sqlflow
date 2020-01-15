@@ -70,6 +70,7 @@ type promptState struct {
 	livePrefix       string
 	enableLivePrefix bool
 	statement        string
+	lastStatement    string
 	keywords         []string
 	history          []string
 	historyFileName  string
@@ -90,6 +91,7 @@ func (p *promptState) execute(in string, cb func(string)) {
 			p.enableLivePrefix = false
 			fmt.Println()
 			cb(p.statement)
+			p.lastStatement = p.statement
 			p.statement = ""
 			return
 		}
@@ -137,7 +139,7 @@ func (p *promptState) initHistory() {
 }
 
 func (p *promptState) updateHistory() {
-	if p.statement != "" {
+	if p.statement != "" && p.statement != p.lastStatement {
 		f, err := os.OpenFile(p.historyFileName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 		if err != nil {
 			return
