@@ -10,7 +10,7 @@ SQLFlow is a bridge that connects a SQL engine, e.g. MySQL, Hive or [MaxCompute]
 
 | Please Help Us with More CI workers! | PayPal | WeChat | Alipay |
 |--------------------------------------|--------|--------|--------|
-| We have been working intensively to bring SQLFlow more features. You can see that we are having a steep growth in Github Stars and Git commits, which make a heavy workload for the CI. Also, we have a large CI matrix over many DBMSes (MySQL, TiDB, Apache Hive, Alibaba MaxCompute) and AI engines (TensorFlow, ElasticDL, XGBoost).  More are coming. | ![](doc/figures/donate_paypal.png) | ![](doc/figures/donate_wechat.png) | ![](doc/figures/donate_alipay.png) |
+| We have been working intensively to bring SQLFlow more features. You can see that we are having a steep growth in GitHub Stars and Git commits, which make a heavy workload for the CI. Also, we have a large CI matrix over many DBMSes (MySQL, TiDB, Apache Hive, Alibaba MaxCompute) and AI engines (TensorFlow, ElasticDL, XGBoost).  More are coming. | ![](doc/figures/donate_paypal.png) | ![](doc/figures/donate_wechat.png) | ![](doc/figures/donate_alipay.png) |
 
 ## Motivation
 
@@ -72,7 +72,7 @@ SQLFlow will love to support as many mainstream ML frameworks and data sources a
 
 ## Feedback
 
-Your feedback is our motivation to move on. Please let us know your questions, concerns, and issues by [filing Github Issues](https://github.com/sql-machine-learning/sqlflow/issues).
+Your feedback is our motivation to move on. Please let us know your questions, concerns, and issues by [filing GitHub Issues](https://github.com/sql-machine-learning/sqlflow/issues).
 
 ## License
 
