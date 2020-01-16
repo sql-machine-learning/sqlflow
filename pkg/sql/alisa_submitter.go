@@ -97,7 +97,7 @@ func (s *alisaSubmitter) ExecuteTrain(ts *ir.TrainStmt) (e error) {
 		return e
 	}
 
-	code, e := pai.TFTrainAndSave(ts, s.Session, modelPath)
+	code, e := pai.TFTrainAndSave(ts, s.Session, modelPath, cc)
 	if e != nil {
 		return e
 	}
