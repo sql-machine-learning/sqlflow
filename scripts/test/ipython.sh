@@ -45,6 +45,7 @@ DATASOURCE="mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
 export PYTHONPATH=$GOPATH/src/sqlflow.org/sqlflow/python
 
 sqlflowserver &
+sleep 10
 # e2e test for standard SQL
 SQLFLOW_DATASOURCE=${DATASOURCE} SQLFLOW_SERVER=localhost:50051 ipython python/test_magic.py
 # TODO(yi): Re-enable the end-to-end test of Ant XGBoost after accelerating Travis CI.

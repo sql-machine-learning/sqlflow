@@ -74,6 +74,16 @@ def parse_ctor_args(f, prefix=''):
             [' '.join(doc.split()).replace("`", "'") for doc in total[2::2]]))
 
 
+def print_param_doc(*modules):
+    param_doc = {}  # { "class_names": {"parameters": "splitted docstrings"} }
+    for module in modules:
+        models = filter(lambda m: inspect.isclass(m[1]),
+                        inspect.getmembers(__import__(module)))
+        for name, cls in models:
+            param_doc[f'{module}.{name}'] = parse_ctor_args(cls, ':param')
+    print(json.dumps(param_doc))
+
+
 if __name__ == "__main__":
     param_doc = {}  # { "class_names": {"parameters": "splitted docstrings"} }
 
