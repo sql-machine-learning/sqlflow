@@ -97,7 +97,10 @@ func (d Dictionary) Validate(attrs map[string]interface{}) error {
 		}
 
 		if desc.Type != Unknown && desc.Type != reflect.TypeOf(v) {
-			return fmt.Errorf(errUnexpectedType, k, desc.Type, v)
+			// Allow implicit converstion from int to float to ease typing
+			if !(desc.Type == Float && reflect.TypeOf(v) == Int) {
+				return fmt.Errorf(errUnexpectedType, k, desc.Type, v)
+			}
 		}
 
 		if desc.Checker != nil {
