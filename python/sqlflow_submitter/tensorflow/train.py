@@ -96,14 +96,25 @@ def keras_train_and_save(estimator, model_params, save, feature_column_names,
     classifier.compile(optimizer=optimizer, loss=loss, metrics=keras_metrics)
     if hasattr(classifier, 'sqlflow_train_loop'):
 
-        def flatten(
-            feature, label
-        ):  # TODO(shendiaomo): Modify the cluster model to adapt the new input structure
+        def flatten(feature, label):
+            # TODO(shendiaomo): Modify the cluster model to adapt the new input structure
             for k in feature:
                 feature[k] = feature[k][0]
             return feature, [label]
 
-        classifier.sqlflow_train_loop(train_dataset.map(flatten))
+        def flatten_feature_only(feature):
+            print(feature)
+            for k in feature:
+                feature[k] = feature[k][0]
+            return feature
+
+        if label_meta["feature_name"] == "":
+            # Clustering model do not have label
+            train_dataset = train_dataset.map(flatten_feature_only)
+        else:
+            train_dataset = train_dataset.map(flatten)
+
+        classifier.sqlflow_train_loop(train_dataset)
     else:
         if label_meta["feature_name"] != "":
             history = classifier.fit(train_dataset,

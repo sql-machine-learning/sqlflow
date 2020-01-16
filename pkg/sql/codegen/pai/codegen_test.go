@@ -35,7 +35,6 @@ var exportedLocal = []string{
 	"feature_columns",
 	"feature_column_names",
 	"feature_metas",
-	"label_meta",
 	"model_params",
 }
 

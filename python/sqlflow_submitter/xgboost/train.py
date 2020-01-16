@@ -21,10 +21,13 @@ def xgb_dataset(conn, fn, dataset_sql, feature_column_name, label_name,
                        label_name, feature_spec)
     with open(fn, 'w') as f:
         for item in gen():
-            features, label = item
-            row_data = [str(label)] + [
-                "%d:%f" % (i, v[0]) for i, v in enumerate(features)
-            ]
+            if label_name is None:
+                row_data = ["%d:%f" % (i, v[0]) for i, v in enumerate(item[0])]
+            else:
+                features, label = item
+                row_data = [str(label)] + [
+                    "%d:%f" % (i, v[0]) for i, v in enumerate(features)
+                ]
             f.write("\t".join(row_data) + "\n")
     # TODO(yancey1989): generate group and weight text file if necessary
     return xgb.DMatrix(fn)
