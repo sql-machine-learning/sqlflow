@@ -167,6 +167,7 @@ func ExtractDocString(module ...string) {
 	if e != nil {
 		log.Println("ExtractDocString failed: ", e, string(output))
 	}
+	// json.Unmarshal extends the map rather than reallocate a new one, see golang.org/pkg/encoding/json/#Unmarshal
 	if e := json.Unmarshal(output, &PremadeModelParamsDocs); e != nil {
 		log.Println("ExtractDocString failed:", e, string(output))
 	}
