@@ -37,11 +37,11 @@ type alisaSubmitter struct {
 }
 
 func (s *alisaSubmitter) submitAlisaTask(code, resourceName string) error {
-	_, dSName, err := database.ParseURL(s.Session.DbConnStr)
+	_, dsName, err := database.ParseURL(s.Session.DbConnStr)
 	if err != nil {
 		return err
 	}
-	cfg, e := goalisa.ParseDSN(dSName)
+	cfg, e := goalisa.ParseDSN(dsName)
 	if e != nil {
 		return e
 	}
@@ -59,6 +59,22 @@ func (s *alisaSubmitter) submitAlisaTask(code, resourceName string) error {
 	return e
 }
 
+func (s *alisaSubmitter) getModelPath(modelName string) (string, error) {
+	_, dsName, err := database.ParseURL(s.Session.DbConnStr)
+	if err != nil {
+		return "", err
+	}
+	cfg, err := goalisa.ParseDSN(dsName)
+	if err != nil {
+		return "", err
+	}
+	userID := s.Session.UserId
+	if userID == "" {
+		userID = "unkown"
+	}
+	return strings.Join([]string{cfg.Project, userID, modelName}, "/"), nil
+}
+
 func (s *alisaSubmitter) ExecuteTrain(ts *ir.TrainStmt) (e error) {
 	ts.TmpTrainTable, ts.TmpValidateTable, e = createTempTrainAndValTable(ts.Select, ts.ValidationSelect, s.Session.DbConnStr)
 	if e != nil {
@@ -71,12 +87,17 @@ func (s *alisaSubmitter) ExecuteTrain(ts *ir.TrainStmt) (e error) {
 		return e
 	}
 
-	paiCmd, e := getPAIcmd(cc, ts.Into, ts.TmpTrainTable, ts.TmpValidateTable, "")
+	modelPath, e := s.getModelPath(ts.Into)
 	if e != nil {
 		return e
 	}
 
-	code, e := pai.TFTrainAndSave(ts, s.Session, ts.Into, cc)
+	paiCmd, e := getPAIcmd(cc, ts.Into, modelPath, ts.TmpTrainTable, ts.TmpValidateTable, "")
+	if e != nil {
+		return e
+	}
+
+	code, e := pai.TFTrainAndSave(ts, s.Session, modelPath, cc)
 	if e != nil {
 		return e
 	}
@@ -121,13 +142,15 @@ func (s *alisaSubmitter) ExecutePredict(ps *ir.PredictStmt) error {
 	if e != nil {
 		return e
 	}
-
-	paiCmd, e := getPAIcmd(cc, ps.Using, ps.TmpPredictTable, "", ps.ResultTable)
+	modelPath, e := s.getModelPath(ps.Using)
 	if e != nil {
 		return e
 	}
-
-	code, e := pai.TFLoadAndPredict(ps, s.Session, ps.Using)
+	paiCmd, e := getPAIcmd(cc, ps.Using, modelPath, ps.TmpPredictTable, "", ps.ResultTable)
+	if e != nil {
+		return e
+	}
+	code, e := pai.TFLoadAndPredict(ps, s.Session, modelPath)
 	if e != nil {
 		return e
 	}
@@ -198,14 +221,14 @@ func odpsTables(table string) (string, error) {
 	return fmt.Sprintf("odps://%s/tables/%s", parts[0], parts[1]), nil
 }
 
-func getPAIcmd(cc *pai.ClusterConfig, modelName, trainTable, valTable, resTable string) (string, error) {
+func getPAIcmd(cc *pai.ClusterConfig, modelName, ossModelPath, trainTable, valTable, resTable string) (string, error) {
 	jobName := strings.Replace(strings.Join([]string{"sqlflow", modelName}, "_"), ".", "_", 0)
 	cfString, err := json.Marshal(cc)
 	if err != nil {
 		return "", err
 	}
 	cfQuote := strconv.Quote(string(cfString))
-	ckpDir, err := pai.FormatCkptDir(modelName)
+	ckpDir, err := pai.FormatCkptDir(ossModelPath)
 	if err != nil {
 		return "", err
 	}

@@ -66,8 +66,7 @@ func FormatCkptDir(modelName string) (string, error) {
 	}
 	ossDir := strings.Join([]string{strings.TrimRight(ossURIParts[0], "/"), modelName}, "/")
 	// Form URI like: oss://bucket/your/path/modelname/?args=...
-	ossCkptDir = strings.Join([]string{ossDir + "/", ossURIParts[1]}, "?")
-	return ossCkptDir, nil
+	return strings.Join([]string{ossDir + "/", ossURIParts[1]}, "?"), nil
 }
 
 // wrapper generates a Python program for submit TensorFlow tasks to PAI.
@@ -231,7 +230,7 @@ func Train(ir *ir.TrainStmt, session *pb.Session, modelName, cwd string) (string
 }
 
 // TFTrainAndSave generates PAI-TF train program.
-func TFTrainAndSave(ir *ir.TrainStmt, session *pb.Session, modelName string, cc *ClusterConfig) (string, error) {
+func TFTrainAndSave(ir *ir.TrainStmt, session *pb.Session, modelPath string, cc *ClusterConfig) (string, error) {
 	code, err := tensorflow.Train(ir, session)
 	if err != nil {
 		return "", err
@@ -239,7 +238,7 @@ func TFTrainAndSave(ir *ir.TrainStmt, session *pb.Session, modelName string, cc 
 
 	// append code snippet to save model
 	var tpl = template.Must(template.New("SaveModel").Parse(tfSaveModelTmplText))
-	ckptDir, err := FormatCkptDir(ir.Into)
+	ckptDir, err := FormatCkptDir(modelPath)
 	if err != nil {
 		return "", err
 	}
@@ -336,9 +335,9 @@ func Predict(ir *ir.PredictStmt, session *pb.Session, modelName, cwd string) (st
 }
 
 // TFLoadAndPredict generates PAI-TF prediction program.
-func TFLoadAndPredict(ir *ir.PredictStmt, session *pb.Session, modelName string) (string, error) {
+func TFLoadAndPredict(ir *ir.PredictStmt, session *pb.Session, modelPath string) (string, error) {
 	var tpl = template.Must(template.New("Predict").Parse(tfPredictTmplText))
-	ossModelDir, err := FormatCkptDir(modelName)
+	ossModelDir, err := FormatCkptDir(modelPath)
 	if err != nil {
 		return "", err
 	}
