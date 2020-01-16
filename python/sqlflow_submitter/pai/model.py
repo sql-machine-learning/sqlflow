@@ -22,7 +22,7 @@ from sqlflow_submitter import db
 from tensorflow.python.platform import gfile
 
 
-def save(oss_model_dir, *meta):
+def save(oss_model_dir, num_workers, *meta):
     '''
     Save model descriptions like the training SQL statements to OSS directory.
     Data are saved using pickle.
@@ -32,6 +32,11 @@ def save(oss_model_dir, *meta):
     Return:
         None
     '''
+    if num_workers > 1:
+        FLAGS = tf.app.flags.FLAGS
+        if FLAGS.task_index != 0:
+            print("skip saving model desc on workers other than worker 0")
+            return
     uri_parts = oss_model_dir.split("?")
     if len(uri_parts) != 2:
         raise ValueError("error oss_model_dir: ", oss_model_dir)

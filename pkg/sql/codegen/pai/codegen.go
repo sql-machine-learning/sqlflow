@@ -219,7 +219,10 @@ func Train(ir *ir.TrainStmt, session *pb.Session, modelName, cwd string) (string
 		return trainRandomForests(ir, session)
 	}
 	cc, err := GetClusterConfig(ir.Attributes)
-	program, err := TFTrainAndSave(ir, session, modelName)
+	if err != nil {
+		return "", err
+	}
+	program, err := TFTrainAndSave(ir, session, modelName, cc)
 	if err != nil {
 		return "", err
 	}
@@ -228,7 +231,7 @@ func Train(ir *ir.TrainStmt, session *pb.Session, modelName, cwd string) (string
 }
 
 // TFTrainAndSave generates PAI-TF train program.
-func TFTrainAndSave(ir *ir.TrainStmt, session *pb.Session, modelName string) (string, error) {
+func TFTrainAndSave(ir *ir.TrainStmt, session *pb.Session, modelName string, cc *ClusterConfig) (string, error) {
 	code, err := tensorflow.Train(ir, session)
 	if err != nil {
 		return "", err
@@ -243,6 +246,7 @@ func TFTrainAndSave(ir *ir.TrainStmt, session *pb.Session, modelName string) (st
 	filler := saveModelFiller{
 		OSSModelDir: ckptDir,
 		Estimator:   ir.Estimator,
+		NumWorkers:  cc.Worker.Count,
 	}
 	var saveCode bytes.Buffer
 	if err = tpl.Execute(&saveCode, filler); err != nil {

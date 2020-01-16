@@ -28,6 +28,7 @@ type wrapperFiller struct {
 type saveModelFiller struct {
 	OSSModelDir string
 	Estimator   string
+	NumWorkers  int // used to determine whether is distributed training.
 }
 
 type predictFiller struct {
@@ -77,12 +78,12 @@ else:
     # when training we do not need write result to a table.
     submit_result_tables = ""
 
-{{ if .IsDistributed }}
 print("saving model to: {{.OSSCheckpointDir}}")
-pai_cmd = 'pai -name %s -DjobName=%s -Dtags=%s -Dscript=file://%s -DentryFile=%s -Dtables=%s %s -DcheckpointDir=\'{{.OSSCheckpointDir}}\' -Dcluster=\'%s\'' % (
-    'tensorflow1120', jobname, 'dnn', tarball, '{{.EntryFile}}', submit_tables, submit_result_tables, '{{.ClusterConfigJSON}}')
+{{ if .IsDistributed }}
+pai_cmd = "pai -name %s -DjobName=%s -Dtags=%s -Dscript=file://%s -DentryFile=%s -Dtables=%s %s -DcheckpointDir=\"{{.OSSCheckpointDir}}\" -Dcluster=\"%s\"" % (
+    'tensorflow1120', jobname, 'dnn', tarball, '{{.EntryFile}}', submit_tables, submit_result_tables, {{.ClusterConfigJSON}}.replace("\"", "\\\""))
 {{else}}
-pai_cmd = 'pai -name %s -DjobName=%s -Dtags=%s -Dscript=file://%s -DentryFile=%s -DgpuRequired=\'0\' -Dtables=%s %s -DcheckpointDir=\'{{.OSSCheckpointDir}}\'' % (
+pai_cmd = "pai -name %s -DjobName=%s -Dtags=%s -Dscript=file://%s -DentryFile=%s -DgpuRequired=\"0\" -Dtables=%s %s -DcheckpointDir=\"{{.OSSCheckpointDir}}\"" % (
     'tensorflow1120', jobname, 'dnn', tarball, '{{.EntryFile}}', submit_tables, submit_result_tables)
 {{end}}
 
@@ -98,6 +99,7 @@ subprocess.run(["odpscmd", "-u", user,
 const tfSaveModelTmplText = `
 from sqlflow_submitter.pai import model
 model.save("{{.OSSModelDir}}",
+           {{.NumWorkers}},
            "{{.Estimator}}",
            feature_column_names,
            feature_metas,

@@ -1262,7 +1262,6 @@ func CaseTrainDistributedPAI(t *testing.T) {
 		train.epoch=10,
 		train.batch_size=4,
 		train.verbose=2
-	COLUMN sepal_length, sepal_width, petal_length, petal_width
 	LABEL class
 	INTO %s;
 	`, caseTrainTable, caseInto)
@@ -1270,8 +1269,7 @@ func CaseTrainDistributedPAI(t *testing.T) {
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)
 	}
-	predSQL := fmt.Sprintf(`SELECT *
-FROM %ss
+	predSQL := fmt.Sprintf(`SELECT * FROM %s
 TO PREDICT %s.class
 USING %s;`, caseTestTable, casePredictTable, caseInto)
 	_, _, err = connectAndRunSQL(predSQL)
