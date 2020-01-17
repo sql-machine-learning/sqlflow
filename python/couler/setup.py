@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2019 The SQLFlow Authors. All rights reserved.
+# Copyright 2020 The SQLFlow Authors. All rights reserved.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 
 # -*- coding: utf-8 -*-
 
@@ -30,9 +29,7 @@ REQUIRES_PYTHON = '>=3.5.0'
 VERSION = None
 
 # What packages are required for this module to be executed?
-SETUP_REQUIRED = [
-    'pytest-runner'
-]
+SETUP_REQUIRED = ['pytest-runner']
 TEST_REQUIRED = [
     'pytest',
 ]
@@ -41,8 +38,7 @@ with open("requirements.txt") as f:
     REQUIRED = f.read().splitlines()
 
 # What packages are optional?
-EXTRAS = {
-}
+EXTRAS = {}
 
 # The rest you shouldn't have to touch too much :)
 # ------------------------------------------------
@@ -78,7 +74,7 @@ setup(
     author_email=EMAIL,
     python_requires=REQUIRES_PYTHON,
     url=URL,
-    packages=find_packages(exclude=('tests',)),
+    packages=find_packages(exclude=('tests', )),
     entry_points={
         'console_scripts': ['couler = couler.client:main'],
     },

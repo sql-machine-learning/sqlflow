@@ -1,4 +1,4 @@
-// Copyright 2019 The SQLFlow Authors. All rights reserved.
+// Copyright 2020 The SQLFlow Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -19,9 +19,9 @@ import (
 	"math/rand"
 	"strings"
 
+	"sqlflow.org/goalisa"
 	"sqlflow.org/gomaxcompute"
 	"sqlflow.org/sqlflow/pkg/database"
-	"sqlflow.org/sqlflow/pkg/parser"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/pai"
 	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
@@ -64,7 +64,7 @@ func dropTmpTables(tableNames []string, dataSource string) error {
 	}
 	for _, tbName := range tableNames {
 		if tbName != "" {
-			_, err = db.Exec("DROP TABLE %s", tbName)
+			_, err = db.Exec(fmt.Sprintf("DROP TABLE %s", tbName))
 			if err != nil {
 				return err
 			}
@@ -72,38 +72,54 @@ func dropTmpTables(tableNames []string, dataSource string) error {
 	}
 	return nil
 }
-
 func getDatabaseNameFromDSN(dataSource string) (string, error) {
-	dsParts := strings.Split(dataSource, "://")
-	if len(dsParts) != 2 {
-		return "", fmt.Errorf("error datasource format, should be maxcompute://u:p@uri, but got: %s", dataSource)
-	}
-	conf, err := gomaxcompute.ParseDSN(dsParts[1])
+	driverName, datasourceName, err := database.ParseURL(dataSource)
 	if err != nil {
 		return "", err
 	}
-	return conf.Project, nil
+	if driverName == "maxcompute" {
+		cfg, err := gomaxcompute.ParseDSN(datasourceName)
+		if err != nil {
+			return "", err
+		}
+		return cfg.Project, nil
+	} else if driverName == "alisa" {
+		cfg, err := goalisa.ParseDSN(datasourceName)
+		if err != nil {
+			return "", err
+		}
+		return cfg.Project, nil
+	}
+	return "", fmt.Errorf("driver should be in ['maxcompute', 'alisa']")
+}
+
+func createTempTrainAndValTable(trainSelect, validSelect, datasource string) (string, string, error) {
+	// TODO(typhoonzero): Do **NOT** create tmp table when the select statement is like:
+	// "SELECT fields,... FROM table"
+	dbName, tableName, err := createTmpTableFromSelect(trainSelect, datasource)
+	if err != nil {
+		return "", "", err
+	}
+	tmpTrainTable := strings.Join([]string{dbName, tableName}, ".")
+	tmpValTable := ""
+	if validSelect != "" {
+		dbName, tableName, err := createTmpTableFromSelect(validSelect, datasource)
+		if err != nil {
+			return "", "", err
+		}
+		tmpValTable = strings.Join([]string{dbName, tableName}, ".")
+	}
+	return tmpTrainTable, tmpValTable, nil
 }
 
 // Possible situations:
 //
 // 1. argo mode server: generate a step running: repl -e "repl -e \"select * from xx to train\""
 // 2. non-argo mode server | repl -e: create tmp table in go, and use it to train
-
 func (s *paiSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {
-	// TODO(typhoonzero): Do **NOT** create tmp table when the select statement is like:
-	// "SELECT fields,... FROM table"
-	dbName, tableName, err := createTmpTableFromSelect(cl.Select, s.Session.DbConnStr)
-	if err != nil {
-		return err
-	}
-	cl.TmpTrainTable = strings.Join([]string{dbName, tableName}, ".")
-	if cl.ValidationSelect != "" {
-		dbName, tableName, err := createTmpTableFromSelect(cl.ValidationSelect, s.Session.DbConnStr)
-		if err != nil {
-			return err
-		}
-		cl.TmpValidateTable = strings.Join([]string{dbName, tableName}, ".")
+	cl.TmpTrainTable, cl.TmpValidateTable, e = createTempTrainAndValTable(cl.Select, cl.ValidationSelect, s.Session.DbConnStr)
+	if e != nil {
+		return
 	}
 	defer dropTmpTables([]string{cl.TmpTrainTable, cl.TmpValidateTable}, s.Session.DbConnStr)
 
@@ -124,15 +140,47 @@ func (s *paiSubmitter) ExecutePredict(cl *ir.PredictStmt) error {
 	cl.TmpPredictTable = strings.Join([]string{dbName, tableName}, ".")
 	defer dropTmpTables([]string{cl.TmpPredictTable}, s.Session.DbConnStr)
 
-	// TODO(typhoonzero): remove below twice parse when all submitters moved to IR.
-	pr, e := parser.ParseOneStatement("maxcompute", cl.OriginalSQL)
+	// format resultTable name to "db.table" to let the codegen form a submitting
+	// argument of format "odps://project/tables/table_name"
+	resultTableParts := strings.Split(cl.ResultTable, ".")
+	if len(resultTableParts) == 1 {
+		dbName, err := getDatabaseNameFromDSN(s.Session.DbConnStr)
+		if err != nil {
+			return err
+		}
+		cl.ResultTable = fmt.Sprintf("%s.%s", dbName, cl.ResultTable)
+	}
+	if e := createPredictionTableFromIR(cl, s.Db, s.Session); e != nil {
+		return e
+	}
+	code, e := pai.Predict(cl, s.Session, cl.Using, s.Cwd)
 	if e != nil {
 		return e
 	}
-	if e = createPredictionTableFromIR(cl, s.Db, s.Session); e != nil {
-		return e
+	return s.runCommand(code)
+}
+
+func (s *paiSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
+	// TODO(typhoonzero): Do **NOT** create tmp table when the select statement is like:
+	// "SELECT fields,... FROM table"
+	dbName, tableName, err := createTmpTableFromSelect(cl.Select, s.Session.DbConnStr)
+	if err != nil {
+		return err
 	}
-	code, e := pai.Predict(cl, s.Session, pr.Model, s.Cwd)
+	cl.TmpExplainTable = strings.Join([]string{dbName, tableName}, ".")
+	defer dropTmpTables([]string{cl.TmpExplainTable}, s.Session.DbConnStr)
+
+	// format resultTable name to "db.table" to let the codegen form a submitting
+	// argument of format "odps://project/tables/table_name"
+	resultTableParts := strings.Split(cl.Into, ".")
+	if len(resultTableParts) == 1 {
+		dbName, err := getDatabaseNameFromDSN(s.Session.DbConnStr)
+		if err != nil {
+			return err
+		}
+		cl.Into = fmt.Sprintf("%s.%s", dbName, cl.Into)
+	}
+	code, e := pai.Explain(cl, s.Session, cl.ModelName, s.Cwd)
 	if e != nil {
 		return e
 	}
@@ -140,4 +188,3 @@ func (s *paiSubmitter) ExecutePredict(cl *ir.PredictStmt) error {
 }
 
 func (s *paiSubmitter) GetTrainStmtFromModel() bool { return false }
-func init()                                         { SubmitterRegister("pai", &paiSubmitter{}) }

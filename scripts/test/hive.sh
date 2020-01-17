@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2019 The SQLFlow Authors. All rights reserved.
+# Copyright 2020 The SQLFlow Authors. All rights reserved.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -15,6 +15,11 @@
 # Wait until hive test server is ready, port 8899
 # is a status port indicates the hive server container
 # is ready, see .travis.yml for the details
+
+if [[ $(git diff --name-only HEAD..develop|awk -F. '{print $NF}'|uniq) == md ]]; then
+  exit
+fi
+
 while true; do
   curl -s http://localhost:8899 2>/dev/null
   if [ $? -eq 0 ]; then

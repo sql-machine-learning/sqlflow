@@ -14,16 +14,46 @@
 package sql
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"sqlflow.org/sqlflow/pkg/sql/codegen/pai"
 )
 
 func TestAlisaSubmitter(t *testing.T) {
 	a := assert.New(t)
-	os.Setenv("SQLFLOW_submitter", "alisa")
-	defer os.Setenv("SQLFLOW_submitter", "")
-	_, ok := GetSubmitter().(*alisaSubmitter)
+	_, ok := GetSubmitter("alisa").(*alisaSubmitter)
 	a.True(ok)
+}
+
+func TestFindPyModulePath(t *testing.T) {
+	a := assert.New(t)
+	_, err := findPyModulePath("sqlflow_submitter")
+	a.NoError(err)
+}
+
+func TestGetPAICmd(t *testing.T) {
+	a := assert.New(t)
+	cc := &pai.ClusterConfig{
+		Worker: pai.WorkerConfig{
+			Count: 1,
+			CPU:   2,
+			GPU:   0,
+		},
+		PS: pai.PSConfig{
+			Count: 2,
+			CPU:   4,
+			GPU:   0,
+		},
+	}
+	os.Setenv("SQLFLOW_OSS_CHECKPOINT_DIR", "oss://bucket/?role_arn=xxx&host=xxx")
+	defer os.Unsetenv("SQLFLOW_OSS_CHECKPOINT_DIR")
+	paiCmd, err := getPAIcmd(cc, "my_model", "project/12345/my_model", "testdb.test", "", "testdb.result")
+	a.NoError(err)
+	ckpDir, err := pai.FormatCkptDir("project/12345/my_model")
+	a.NoError(err)
+	expected := fmt.Sprintf("pai -name tensorflow1120 -DjobName=sqlflow_my_model -Dtags=dnn -Dscript=file://@@task.tar.gz -DentryFile=entry.py -Dtables=odps://testdb/tables/test -Doutputs=odps://testdb/tables/result -DcheckpointDir=\"%s\"", ckpDir)
+	a.Equal(expected, paiCmd)
 }

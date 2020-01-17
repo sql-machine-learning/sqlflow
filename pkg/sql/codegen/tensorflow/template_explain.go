@@ -1,4 +1,4 @@
-// Copyright 2019 The SQLFlow Authors. All rights reserved.
+// Copyright 2020 The SQLFlow Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -21,7 +21,6 @@ type explainFiller struct {
 	SummaryParams string
 	// below members comes from trainStmt
 	EstimatorClass    string
-	IsKerasModel      bool
 	FieldDescs        []*ir.FieldDesc
 	FeatureColumnCode string
 	Y                 *ir.FieldDesc
@@ -36,8 +35,9 @@ type explainFiller struct {
 }
 
 const boostedTreesExplainTemplateText = `
-from sqlflow_submitter.tensorflow import explain
 import tensorflow as tf
+from sqlflow_submitter.tensorflow import explain
+from tensorflow.estimator import DNNClassifier, DNNRegressor, LinearClassifier, LinearRegressor, BoostedTreesClassifier, BoostedTreesRegressor, DNNLinearCombinedClassifier, DNNLinearCombinedRegressor
 try:
     import sqlflow_models
 except:

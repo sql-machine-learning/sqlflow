@@ -1,4 +1,4 @@
-// Copyright 2019 The SQLFlow Authors. All rights reserved.
+// Copyright 2020 The SQLFlow Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -14,6 +14,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -42,9 +43,9 @@ import (
 var dbConnStr string
 
 var caseDB = "iris"
-var caseTrainTable = "train"
-var caseTestTable = "test"
-var casePredictTable = "predict"
+var caseTrainTable = caseDB + ".train"
+var caseTestTable = caseDB + ".test"
+var casePredictTable = caseDB + ".predict"
 var testDatasource = os.Getenv("SQLFLOW_TEST_DATASOURCE")
 
 // caseInto is used by function CaseTrainSQL in this file. When
@@ -293,6 +294,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CasePredictXGBoostRegression", CasePredictXGBoostRegression)
 	t.Run("CaseTrainDeepWideModel", CaseTrainDeepWideModel)
 	t.Run("CaseTrainDeepWideModelOptimizer", CaseTrainDeepWideModelOptimizer)
+	t.Run("CaseTrainAdaNetAndExplain", CaseTrainAdaNetAndExplain)
 
 	// Cases using feature derivation
 	t.Run("CaseTrainTextClassificationIR", CaseTrainTextClassificationIR)
@@ -378,6 +380,7 @@ func TestEnd2EndHive(t *testing.T) {
 	t.Run("CaseTrainSQLWithMetrics", CaseTrainSQLWithMetrics)
 	t.Run("CaseTrainRegression", CaseTrainRegression)
 	t.Run("CaseTrainCustomModel", CaseTrainCustomModel)
+	t.Run("CaseTrainAdaNetAndExplain", CaseTrainAdaNetAndExplain)
 	t.Run("CaseTrainOptimizer", CaseTrainOptimizer)
 	t.Run("CaseTrainDeepWideModel", CaseTrainDeepWideModel)
 	t.Run("CaseTrainDeepWideModelOptimizer", CaseTrainDeepWideModelOptimizer)
@@ -592,7 +595,7 @@ func CaseShowDatabases(t *testing.T) {
 
 func CaseSelect(t *testing.T) {
 	a := assert.New(t)
-	cmd := fmt.Sprintf("select * from %s.%s limit 2;", caseDB, caseTrainTable)
+	cmd := fmt.Sprintf("select * from %s limit 2;", caseTrainTable)
 	head, rows, err := connectAndRunSQL(cmd)
 	if err != nil {
 		a.Fail("Check if the server started successfully. %v", err)
@@ -626,32 +629,32 @@ func CaseTrainSQL(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`
 	SELECT *
-	FROM %s.%s
+	FROM %s
 	TO TRAIN DNNClassifier
 	WITH
 		model.n_classes = 3,
 		model.hidden_units = [10, 20],
-		validation.select = "SELECT * FROM %s.%s LIMIT 30"
+		validation.select = "SELECT * FROM %s LIMIT 30"
 	COLUMN sepal_length, sepal_width, petal_length, petal_width
 	LABEL class
 	INTO %s;
-	`, caseDB, caseTrainTable, caseDB, caseTrainTable, caseInto)
+	`, caseTrainTable, caseTrainTable, caseInto)
 	_, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)
 	}
 
 	predSQL := fmt.Sprintf(`SELECT *
-FROM %s.%s
-TO PREDICT %s.%s.class
-USING %s;`, caseDB, caseTestTable, caseDB, casePredictTable, caseInto)
+FROM %s
+TO PREDICT %s.class
+USING %s;`, caseTestTable, casePredictTable, caseInto)
 	_, _, err = connectAndRunSQL(predSQL)
 	if err != nil {
 		a.Fail("Run predSQL error: %v", err)
 	}
 
 	showPred := fmt.Sprintf(`SELECT *
-FROM %s.%s LIMIT 5;`, caseDB, casePredictTable)
+FROM %s LIMIT 5;`, casePredictTable)
 	_, rows, err := connectAndRunSQL(showPred)
 	if err != nil {
 		a.Fail("Run showPred error: %v", err)
@@ -677,12 +680,10 @@ func CaseTrainBoostedTreesEstimatorAndExplain(t *testing.T) {
 	SELECT * FROM iris.train WHERE class!=2
 	TO TRAIN BoostedTreesClassifier
 	WITH
-		model.n_batches_per_layer=8,
-		model.n_trees=50,
-		model.n_classes=2,
+		model.n_batches_per_layer=1,
 		model.center_bias=True,
-		train.batch_size=8,
-		train.epoch=20,
+		train.batch_size=100,
+		train.epoch=10,
 		validation.select="SELECT * FROM iris.test where class!=2"
 	LABEL class
 	INTO %s;
@@ -694,7 +695,6 @@ func CaseTrainBoostedTreesEstimatorAndExplain(t *testing.T) {
 
 	explainSQL := fmt.Sprintf(`SELECT * FROM iris.test WHERE class!=2
 	TO EXPLAIN %s
-	USING TreeExplainer
 	INTO iris.explain_result;`, caseInto)
 	_, _, err = connectAndRunSQL(explainSQL)
 	a.NoError(err)
@@ -812,6 +812,17 @@ TO PREDICT iris.predict.class
 USING sqlflow_models.my_dnn_model;`
 	_, _, err = connectAndRunSQL(predSQL)
 	a.NoError(err)
+
+	trainKerasSQL := `SELECT *
+FROM iris.train
+TO TRAIN sqlflow_models.DNNClassifier
+WITH model.n_classes = 3, model.hidden_units = [10, 20],
+	 model.optimizer=RMSprop, optimizer.learning_rate=0.1,
+	 model.loss=SparseCategoricalCrossentropy
+LABEL class
+INTO sqlflow_models.my_dnn_model;`
+	_, _, err = connectAndRunSQL(trainKerasSQL)
+	a.NoError(err)
 }
 
 func CaseTrainCustomModel(t *testing.T) {
@@ -928,6 +939,19 @@ INTO sqlflow_models.my_dnn_linear_model;`
 	if err != nil {
 		a.Fail("run trainSQL error: %v", err)
 	}
+}
+
+func CaseTrainAdaNetAndExplain(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := `SELECT * FROM iris.train
+TO TRAIN sqlflow_models.AutoClassifier WITH model.n_classes = 3 LABEL class INTO sqlflow_models.my_adanet_model;`
+	_, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("run trainSQL error: %v", err)
+	}
+	explainSQL := `SELECT * FROM iris.test LIMIT 10 TO EXPLAIN sqlflow_models.my_adanet_model;`
+	_, _, err = connectAndRunSQL(explainSQL)
+	a.NoError(err)
 }
 
 func CaseTrainDeepWideModelOptimizer(t *testing.T) {
@@ -1135,6 +1159,7 @@ FROM housing.train
 TO TRAIN xgboost.gbtree
 WITH
 	objective="reg:squarederror",
+	scale_pos_weight=2,
 	train.num_boost_round = 30,
 	validation.select="SELECT * FROM housing.train LIMIT 20"
 COLUMN f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13
@@ -1227,7 +1252,7 @@ FROM housing.xgb_predict LIMIT 5;`)
 func CaseTrainDistributedPAI(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`
-	SELECT * FROM %s.%s
+	SELECT * FROM %s
 	TO TRAIN DNNClassifier
 	WITH
 		model.n_classes = 3,
@@ -1238,24 +1263,84 @@ func CaseTrainDistributedPAI(t *testing.T) {
 		train.epoch=10,
 		train.batch_size=4,
 		train.verbose=2
-	COLUMN sepal_length, sepal_width, petal_length, petal_width
 	LABEL class
 	INTO %s;
-	`, caseDB, caseTrainTable, caseInto)
+	`, caseTrainTable, caseInto)
 	_, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)
 	}
-	predSQL := fmt.Sprintf(`SELECT *
-FROM %s.%s
-TO PREDICT %s.%s.class
-USING %s;`, caseDB, caseTestTable, caseDB, casePredictTable, caseInto)
+	predSQL := fmt.Sprintf(`SELECT * FROM %s
+TO PREDICT %s.class
+USING %s;`, caseTestTable, casePredictTable, caseInto)
 	_, _, err = connectAndRunSQL(predSQL)
 	if err != nil {
 		a.Fail("Run predSQL error: %v", err)
 	}
 
 }
+
+func dropPAIModel(dataSource, modelName string) error {
+	code := fmt.Sprintf(`import subprocess
+import sqlflow_submitter.db
+
+driver, dsn = "%s".split("://")
+assert driver == "maxcompute"
+user, passwd, address, database = sqlflow_submitter.db.parseMaxComputeDSN(dsn)
+
+cmd = "drop offlinemodel if exists %s"
+subprocess.run(["odpscmd", "-u", user,
+                           "-p", passwd,
+                           "--project", database,
+                           "--endpoint", address,
+                           "-e", cmd],
+               check=True)	
+	`, dataSource, modelName)
+	cmd := exec.Command("python", "-u")
+	cmd.Stdin = bytes.NewBufferString(code)
+	if e := cmd.Run(); e != nil {
+		return e
+	}
+	return nil
+}
+
+func CaseTrainPAIRandomForests(t *testing.T) {
+	a := assert.New(t)
+	err := dropPAIModel(dbConnStr, "my_rf_model")
+	a.NoError(err)
+
+	trainSQL := fmt.Sprintf(`SELECT * FROM %s
+	TO TRAIN randomforests
+	WITH tree_num = 3
+	LABEL class
+	INTO my_rf_model;
+	`, caseTrainTable)
+	_, _, err = connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+
+	predSQL := fmt.Sprintf(`SELECT * FROM %s
+	TO PREDICT %s.class
+	USING my_rf_model;
+	`, caseTestTable, casePredictTable)
+	_, _, err = connectAndRunSQL(predSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+
+	explainSQL := fmt.Sprintf(`SELECT * FROM %s
+	TO EXPLAIN my_rf_model
+	WITH label_column = class
+	USING TreeExplainer
+	INTO %s.rf_model_explain;
+	`, caseTestTable, caseDB)
+	_, _, err = connectAndRunSQL(explainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+}
+
 func TestEnd2EndMaxComputePAI(t *testing.T) {
 	testDBDriver := os.Getenv("SQLFLOW_TEST_DB")
 	if testDBDriver != "maxcompute" {
@@ -1280,9 +1365,9 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 	if caseDB == "" {
 		t.Fatalf("Must set env SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT")
 	}
-	caseTrainTable = "sqlflow_test_iris_train"
-	caseTestTable = "sqlflow_test_iris_test"
-	casePredictTable = "sqlflow_test_iris_predict"
+	caseTrainTable = caseDB + ".sqlflow_test_iris_train"
+	caseTestTable = caseDB + ".sqlflow_test_iris_test"
+	casePredictTable = caseDB + ".sqlflow_test_iris_predict"
 	// write model to current MaxCompute project
 	caseInto = "my_dnn_model"
 
@@ -1294,6 +1379,7 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 	}
 
 	t.Run("CaseTrainSQL", CaseTrainSQL)
+	t.Run("CaseTrainPAIRandomForests", CaseTrainPAIRandomForests)
 	t.Run("CaseTrainDistributedPAI", CaseTrainDistributedPAI)
 }
 
@@ -1330,9 +1416,9 @@ func TestEnd2EndWorkflow(t *testing.T) {
 		if caseDB == "" {
 			t.Fatalf("Must set env SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT")
 		}
-		caseTrainTable = "sqlflow_test_iris_train"
-		caseTestTable = "sqlflow_test_iris_test"
-		casePredictTable = "sqlflow_test_iris_predict"
+		caseTrainTable = caseDB + ".sqlflow_test_iris_train"
+		caseTestTable = caseDB + ".sqlflow_test_iris_test"
+		casePredictTable = caseDB + ".sqlflow_test_iris_predict"
 		// write model to current MaxCompute project
 		caseInto = "my_dnn_model"
 
@@ -1348,9 +1434,12 @@ func TestEnd2EndWorkflow(t *testing.T) {
 
 func CaseWorkflowTrainAndPredictDNN(t *testing.T) {
 	a := assert.New(t)
+
 	sqlProgram := fmt.Sprintf(`
+SELECT * FROM %s LIMIT 10;
+
 SELECT *
-FROM %s.%s
+FROM %s
 TO TRAIN DNNClassifier
 WITH
 	model.n_classes = 3,
@@ -1360,15 +1449,13 @@ LABEL class
 INTO %s;
 
 SELECT *
-FROM %s.%s
-TO PREDICT %s.%s.class
+FROM %s
+TO PREDICT %s.class
 USING %s;
 
 SELECT *
-FROM %s.%s LIMIT 5;
-	`, caseDB, caseTrainTable, caseInto,
-		caseDB, caseTestTable, caseDB, casePredictTable, caseInto,
-		caseDB, casePredictTable)
+FROM %s LIMIT 5;
+	`, caseTrainTable, caseTrainTable, caseInto, caseTestTable, casePredictTable, caseInto, casePredictTable)
 
 	conn, err := createRPCConn()
 	if err != nil {
@@ -1425,7 +1512,7 @@ func checkWorkflow(ctx context.Context, cli pb.SQLFlowClient, stream pb.SQLFlow_
 func CaseTrainDistributedPAIArgo(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`
-	SELECT * FROM %s.%s
+	SELECT * FROM %s
 	TO TRAIN DNNClassifier
 	WITH
 		model.n_classes = 3,
@@ -1441,10 +1528,10 @@ func CaseTrainDistributedPAIArgo(t *testing.T) {
 	INTO %s;
 
 	SELECT *
-FROM %s.%s
-TO PREDICT %s.%s.class
+FROM %s
+TO PREDICT %s.class
 USING %s;
-	`, caseDB, caseTrainTable, caseInto, caseDB, caseTestTable, caseDB, casePredictTable, caseInto)
+	`, caseTrainTable, caseInto, caseTestTable, casePredictTable, caseInto)
 
 	conn, err := createRPCConn()
 	if err != nil {

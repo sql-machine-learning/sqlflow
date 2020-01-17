@@ -1,4 +1,4 @@
-# Copyright 2019 The SQLFlow Authors. All rights reserved.
+# Copyright 2020 The SQLFlow Authors. All rights reserved.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -14,9 +14,9 @@
 # NOTE: this file is used by train_predict_test.py, do **NOT** delete!
 
 import sqlflow_submitter
-from sqlflow_submitter.tensorflow.train import train
-from sqlflow_submitter.tensorflow.predict import pred
 import tensorflow as tf
+from sqlflow_submitter.tensorflow.predict import pred
+from sqlflow_submitter.tensorflow.train import train
 
 datasource = "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
 select = "SELECT * FROM iris.train;"
@@ -24,15 +24,17 @@ validate_select = "SELECT * FROM iris.test;"
 select_binary = "SELECT * FROM iris.train WHERE class!=2;"
 validate_select_binary = "SELECT * FROM iris.test WHERE class!=2;"
 feature_column_names = [
-"sepal_length",
-"sepal_width",
-"petal_length",
-"petal_width"]
+    "sepal_length", "sepal_width", "petal_length", "petal_width"
+]
 
-feature_columns={"feature_columns": [tf.feature_column.numeric_column("sepal_length", shape=[1]),
-tf.feature_column.numeric_column("sepal_width", shape=[1]),
-tf.feature_column.numeric_column("petal_length", shape=[1]),
-tf.feature_column.numeric_column("petal_width", shape=[1])]}
+feature_columns = {
+    "feature_columns": [
+        tf.feature_column.numeric_column("sepal_length", shape=[1]),
+        tf.feature_column.numeric_column("sepal_width", shape=[1]),
+        tf.feature_column.numeric_column("petal_length", shape=[1]),
+        tf.feature_column.numeric_column("petal_width", shape=[1])
+    ]
+}
 
 feature_metas = {
     "sepal_length": {
@@ -42,7 +44,7 @@ feature_metas = {
         "shape": [1],
         "is_sparse": "false" == "true"
     },
-        "sepal_width": {
+    "sepal_width": {
         "feature_name": "sepal_width",
         "dtype": "float32",
         "delimiter": "",
@@ -62,7 +64,8 @@ feature_metas = {
         "delimiter": "",
         "shape": [1],
         "is_sparse": "false" == "true"
-    }}
+    }
+}
 label_meta = {
     "feature_name": "class",
     "dtype": "int64",
@@ -73,43 +76,49 @@ label_meta = {
 
 if __name__ == "__main__":
     # tf.python.training.basic_session_run_hooks.LoggingTensorHook = sqlflow_submitter.tensorflow.train.PrintTensorsHook
-    train(is_keras_model=False,
-        datasource=datasource,
-        estimator=tf.estimator.DNNClassifier,
-        select=select,
-        validate_select=validate_select,
-        feature_columns=feature_columns,
-        feature_column_names=feature_column_names,
-        feature_metas=feature_metas,
-        label_meta=label_meta,
-        model_params={"n_classes": 3, "hidden_units":[10,20]},
-        save="mymodel",
-        batch_size=1,
-        epochs=3,
-        verbose=0)
-    train(is_keras_model=False,
-        datasource=datasource,
-        estimator=tf.estimator.DNNClassifier,
-        select=select_binary,
-        validate_select=validate_select_binary,
-        feature_columns=feature_columns,
-        feature_column_names=feature_column_names,
-        feature_metas=feature_metas,
-        label_meta=label_meta,
-        model_params={"n_classes": 2, "hidden_units":[10,20]},
-        save="mymodel_binary",
-        batch_size=1,
-        epochs=3,
-        verbose=1)
-    pred(is_keras_model=False,
-        datasource=datasource,
-        estimator=tf.estimator.DNNClassifier,
-        select=select,
-        result_table="iris.predict",
-        feature_columns=feature_columns,
-        feature_column_names=feature_column_names,
-        feature_metas=feature_metas,
-        label_meta=label_meta,
-        model_params={"n_classes": 3, "hidden_units":[10,20]},
-        save="mymodel",
-        batch_size=1)
+    train(datasource=datasource,
+          estimator=tf.estimator.DNNClassifier,
+          select=select,
+          validate_select=validate_select,
+          feature_columns=feature_columns,
+          feature_column_names=feature_column_names,
+          feature_metas=feature_metas,
+          label_meta=label_meta,
+          model_params={
+              "n_classes": 3,
+              "hidden_units": [10, 20]
+          },
+          save="mymodel",
+          batch_size=1,
+          epochs=3,
+          verbose=0)
+    train(datasource=datasource,
+          estimator=tf.estimator.DNNClassifier,
+          select=select_binary,
+          validate_select=validate_select_binary,
+          feature_columns=feature_columns,
+          feature_column_names=feature_column_names,
+          feature_metas=feature_metas,
+          label_meta=label_meta,
+          model_params={
+              "n_classes": 2,
+              "hidden_units": [10, 20]
+          },
+          save="mymodel_binary",
+          batch_size=1,
+          epochs=3,
+          verbose=1)
+    pred(datasource=datasource,
+         estimator=tf.estimator.DNNClassifier,
+         select=select,
+         result_table="iris.predict",
+         feature_columns=feature_columns,
+         feature_column_names=feature_column_names,
+         result_col_name=label_meta["feature_name"],
+         feature_metas=feature_metas,
+         model_params={
+             "n_classes": 3,
+             "hidden_units": [10, 20]
+         },
+         save="mymodel",
+         batch_size=1)

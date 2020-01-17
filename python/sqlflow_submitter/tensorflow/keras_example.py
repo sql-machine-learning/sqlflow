@@ -1,4 +1,4 @@
-# Copyright 2019 The SQLFlow Authors. All rights reserved.
+# Copyright 2020 The SQLFlow Authors. All rights reserved.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -13,36 +13,41 @@
 
 # NOTE: this file is used by train_predict_test.py, do **NOT** delete!
 
-from sqlflow_submitter.tensorflow.estimator_example import datasource, select, validate_select, feature_column_names, feature_columns, feature_metas, label_meta
-from sqlflow_submitter.tensorflow.train import train
-from sqlflow_submitter.tensorflow.predict import pred
 import sqlflow_models
+from sqlflow_submitter.tensorflow.estimator_example import (
+    datasource, feature_column_names, feature_columns, feature_metas,
+    label_meta, select, validate_select)
+from sqlflow_submitter.tensorflow.predict import pred
+from sqlflow_submitter.tensorflow.train import train
 
 if __name__ == "__main__":
-    train(is_keras_model=True,
-        datasource=datasource,
-        estimator=sqlflow_models.DNNClassifier,
-        select=select,
-        validate_select=validate_select,
-        feature_columns=feature_columns,
-        feature_column_names=feature_column_names,
-        feature_metas=feature_metas,
-        label_meta=label_meta,
-        model_params={"n_classes": 3, "hidden_units":[10,20]},
-        save="mymodel_keras",
-        batch_size=1,
-        epochs=3,
-        verbose=0)
-    pred(is_keras_model=True,
-        datasource=datasource,
-        estimator=sqlflow_models.DNNClassifier,
-        select=select,
-        result_table="iris.predict",
-        feature_columns=feature_columns,
-        feature_column_names=feature_column_names,
-        feature_metas=feature_metas,
-        label_meta=label_meta,
-        model_params={"n_classes": 3, "hidden_units":[10,20]},
-        save="mymodel_keras",
-        batch_size=1)
-
+    train(datasource=datasource,
+          estimator=sqlflow_models.DNNClassifier,
+          select=select,
+          validate_select=validate_select,
+          feature_columns=feature_columns,
+          feature_column_names=feature_column_names,
+          feature_metas=feature_metas,
+          label_meta=label_meta,
+          model_params={
+              "n_classes": 3,
+              "hidden_units": [10, 20]
+          },
+          save="mymodel_keras",
+          batch_size=1,
+          epochs=3,
+          verbose=0)
+    pred(datasource=datasource,
+         estimator=sqlflow_models.DNNClassifier,
+         select=select,
+         result_table="iris.predict",
+         feature_columns=feature_columns,
+         feature_column_names=feature_column_names,
+         result_col_name=label_meta["feature_name"],
+         feature_metas=feature_metas,
+         model_params={
+             "n_classes": 3,
+             "hidden_units": [10, 20]
+         },
+         save="mymodel_keras",
+         batch_size=1)

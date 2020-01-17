@@ -1,4 +1,4 @@
-// Copyright 2019 The SQLFlow Authors. All rights reserved.
+// Copyright 2020 The SQLFlow Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -213,6 +213,7 @@ func fillFieldDesc(columnTypeList []*sql.ColumnType, rowdata []interface{}, fiel
 						// neither int nor float, should deal with string dtype
 						// to form a category_id_column
 						fieldDescMap[fld].DType = ir.String
+						fieldDescMap[fld].Shape = []int{1}
 						if fieldDescMap[fld].Vocabulary == nil {
 							// initialize the vocabulary map
 							fieldDescMap[fld].Vocabulary = make(map[string]string)
@@ -375,10 +376,16 @@ func InferFeatureColumns(trainStmt *ir.TrainStmt, dataSource string) error {
 				} else {
 					// FIXME(typhoonzero): need full test case for string numeric columns
 					fcMap[target][slctKey] = append(fcMap[target][slctKey],
-						&ir.CategoryIDColumn{
-							FieldDesc:  cs,
-							BucketSize: int64(len(cs.Vocabulary)),
+						&ir.EmbeddingColumn{
+							CategoryColumn: &ir.CategoryIDColumn{
+								FieldDesc:  cs,
+								BucketSize: int64(len(cs.Vocabulary)),
+							},
+							// NOTE(typhoonzero): a default embedding size of 128 is enough for most cases.
+							Dimension: 128,
+							Combiner:  "sum",
 						})
+
 				}
 			}
 		}

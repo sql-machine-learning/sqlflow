@@ -1,4 +1,4 @@
-// Copyright 2019 The SQLFlow Authors. All rights reserved.
+// Copyright 2020 The SQLFlow Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -46,7 +46,7 @@ func newLexer(input string) *lexer {
 // Error records e in lexer.err so that parseSQLFlowStmt could return.
 func (l *lexer) Error(e string) {
 	l.err = fmt.Errorf("%v: at (%d ~ %d)-th runes near %.10q",
-		e, l.start, l.pos, l.input[l.start:])
+		e, l.previous, l.pos, l.input[l.previous:])
 }
 
 func (l *lexer) emit(lval *extendedSyntaxSymType, typ int) int {

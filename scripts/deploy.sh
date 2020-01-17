@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2019 The SQLFlow Authors. All rights reserved.
+# Copyright 2020 The SQLFlow Authors. All rights reserved.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -29,6 +29,8 @@ if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then
     echo "skip deployment on pull request"
     exit 0
 fi
+
+docker pull sqlflow/sqlflow:latest && docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile .
 
 if [[ "$TRAVIS_BRANCH" == "develop" ]]; then
     if [[ "$TRAVIS_EVENT_TYPE" == "cron" ]]; then

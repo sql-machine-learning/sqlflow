@@ -1,4 +1,4 @@
-// Copyright 2019 The SQLFlow Authors. All rights reserved.
+// Copyright 2020 The SQLFlow Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -35,7 +35,6 @@ var exportedLocal = []string{
 	"feature_columns",
 	"feature_column_names",
 	"feature_metas",
-	"label_meta",
 	"model_params",
 }
 
@@ -96,14 +95,18 @@ func hasUnknownParameters(code string, list []string) bool {
 	return false
 }
 
-func mockClusterConfig() *clusterConfig {
-	return &clusterConfig{
-		NumPS:      0,
-		NumWorkers: 1,
-		PSCPU:      200,
-		PSGPU:      0,
-		WorkerCPU:  200,
-		WorkerGPU:  0,
+func mockClusterConfig() *ClusterConfig {
+	return &ClusterConfig{
+		PS: PSConfig{
+			Count: 0,
+			CPU:   200,
+			GPU:   0,
+		},
+		Worker: WorkerConfig{
+			Count: 0,
+			CPU:   200,
+			GPU:   0,
+		},
 	}
 }
 
@@ -121,7 +124,7 @@ func TestWrapperCodegen(t *testing.T) {
 	os.Setenv("SQLFLOW_OSS_CHECKPOINT_DIR", "oss://bucket/?role_arn=xxx&host=xxx")
 	defer os.Unsetenv("SQLFLOW_OSS_CHECKPOINT_DIR")
 	// code, dataSource, modelName, cwd, tmpTrainTable, tmpValTable string, numPS, numWrokers int
-	code, err := wrapper("", dataSource, "my_dnn_model", cwd, "tmpTrainTable", "tmpValTable", mockClusterConfig())
+	code, err := wrapper("", dataSource, "my_dnn_model", cwd, "tmpTrainTable", "tmpValTable", "", mockClusterConfig())
 	a.NoError(err)
 	a.True(strings.Contains(code, `assert driver == "maxcompute"`))
 
@@ -137,7 +140,7 @@ func TestTrainCodegen(t *testing.T) {
 	defer os.Unsetenv("SQLFLOW_OSS_CHECKPOINT_DIR")
 
 	sess := mockSession()
-	paiTfCode, err := tfTrainAndSave(trainStmt, sess, "my_dnn_model")
+	paiTfCode, err := TFTrainAndSave(trainStmt, sess, "my_dnn_model", mockClusterConfig())
 	a.NoError(err)
 
 	tfCode, err := tensorflow.Train(trainStmt, sess)
@@ -155,7 +158,7 @@ func TestPredictCodegen(t *testing.T) {
 	os.Setenv("SQLFLOW_OSS_CHECKPOINT_DIR", "oss://bucket/?role_arn=xxx&host=xxx")
 	defer os.Unsetenv("SQLFLOW_OSS_CHECKPOINT_DIR")
 	sess := mockSession()
-	paiTfCode, err := tfLoadAndPredict(ir, sess, "my_dnn_model")
+	paiTfCode, err := TFLoadAndPredict(ir, sess, "my_dnn_model")
 	a.NoError(err)
 	a.False(hasUnknownParameters(paiTfCode, knownPredictParams))
 

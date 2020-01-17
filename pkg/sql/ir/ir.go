@@ -1,4 +1,4 @@
-// Copyright 2019 The SQLFlow Authors. All rights reserved.
+// Copyright 2020 The SQLFlow Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -148,6 +148,8 @@ type PredictStmt struct {
 	// "select ... predict ... with predict.batch_size = 32 into ...",
 	// the Attributes will be {"predict.batch_size": 32}
 	Attributes map[string]interface{}
+	// Using is the model specified by USING clause.
+	Using string
 	// TrainStmt is the TrainStmt used for generating the training job of the corresponding model
 	TrainStmt *TrainStmt
 	// When SQLFLOW_submitter == "pai", tmp tables will be created for predicting task
@@ -180,8 +182,13 @@ type ExplainStmt struct {
 	Attributes map[string]interface{}
 	// Explainer types. For example TreeExplainer.
 	Explainer string
+	// ModelName is the model to be explained, e.g. TO EXPLAIN model_name
+	ModelName string
 	// Into stores the model explain result. Note that this field is optional.
 	Into string
+	// When SQLFLOW_submitter == "pai", tmp tables will be created for predicting task
+	// see: pai_submitter.go
+	TmpExplainTable string
 	// TrainStmt is the TrainStmt used for generating the training job of the corresponding model
 	TrainStmt *TrainStmt
 }

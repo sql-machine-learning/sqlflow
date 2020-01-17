@@ -1,4 +1,4 @@
-// Copyright 2019 The SQLFlow Authors. All rights reserved.
+// Copyright 2020 The SQLFlow Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -16,7 +16,6 @@ package xgboost
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"strings"
 
 	pb "sqlflow.org/sqlflow/pkg/proto"
@@ -29,9 +28,6 @@ const (
 
 // Explain generates a Python program to explain a trained model.
 func Explain(explainStmt *ir.ExplainStmt, session *pb.Session) (string, error) {
-	if explainStmt.Explainer != "TreeExplainer" {
-		return "", fmt.Errorf("unsupported explainer %s", explainStmt.Explainer)
-	}
 	summaryParams := resolveParams(explainStmt.Attributes, shapSummaryAttrPrefix)
 	jsonSummary, err := json.Marshal(summaryParams)
 	if err != nil {

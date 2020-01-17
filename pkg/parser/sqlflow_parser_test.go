@@ -1,4 +1,4 @@
-// Copyright 2019 The SQLFlow Authors. All rights reserved.
+// Copyright 2020 The SQLFlow Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -48,9 +48,9 @@ func commonTestCases(dbms string, a *assert.Assertions) {
 		a.Equal(1, len(s))
 		a.False(IsExtendedSyntax(s[0]))
 		if isJavaParser(dbms) {
-			a.Equal(sql, s[0].Standard)
+			a.Equal(sql, s[0].Original)
 		} else {
-			a.Equal(sql+`;`, s[0].Standard)
+			a.Equal(sql+`;`, s[0].Original)
 		}
 	}
 
@@ -62,9 +62,9 @@ func commonTestCases(dbms string, a *assert.Assertions) {
 		for i := range s {
 			a.False(IsExtendedSyntax(s[i]))
 			if isJavaParser(dbms) {
-				a.Equal(external.SelectCases[i], s[i].Standard)
+				a.Equal(external.SelectCases[i], s[i].Original)
 			} else {
-				a.Equal(external.SelectCases[i]+`;`, s[i].Standard)
+				a.Equal(external.SelectCases[i]+`;`, s[i].Original)
 			}
 		}
 	}
@@ -77,14 +77,14 @@ func commonTestCases(dbms string, a *assert.Assertions) {
 		a.Equal(2, len(s))
 
 		a.True(IsExtendedSyntax(s[0]))
-		a.Equal(sql+` `, s[0].Standard)
+		a.Equal(sql+` `, s[0].StandardSelect.String())
 		a.Equal(fmt.Sprintf(`%s %s;`, sql, extendedSQL), s[0].Original)
 
 		a.False(IsExtendedSyntax(s[1]))
 		if isJavaParser(dbms) {
-			a.Equal(sql, s[1].Standard)
+			a.Equal(sql, s[1].Original)
 		} else {
-			a.Equal(sql+`;`, s[1].Standard)
+			a.Equal(sql+`;`, s[1].Original)
 		}
 	}
 
@@ -97,11 +97,11 @@ func commonTestCases(dbms string, a *assert.Assertions) {
 		a.False(IsExtendedSyntax(s[0]))
 		a.True(IsExtendedSyntax(s[1]))
 		if isJavaParser(dbms) {
-			a.Equal(sql, s[0].Standard)
+			a.Equal(sql, s[0].Original)
 		} else {
-			a.Equal(sql+`;`, s[0].Standard)
+			a.Equal(sql+`;`, s[0].Original)
 		}
-		a.Equal(sql+` `, s[1].Standard)
+		a.Equal(sql+` `, s[1].StandardSelect.String())
 		a.Equal(fmt.Sprintf(`%s %s;`, sql, extendedSQL), s[1].Original)
 	}
 
@@ -121,14 +121,14 @@ func commonTestCases(dbms string, a *assert.Assertions) {
 		a.False(IsExtendedSyntax(s[2]))
 
 		if isJavaParser(dbms) {
-			a.Equal(sql, s[0].Standard)
-			a.Equal(sql, s[2].Standard)
+			a.Equal(sql, s[0].Original)
+			a.Equal(sql, s[2].Original)
 		} else {
-			a.Equal(sql+`;`, s[0].Standard)
-			a.Equal(sql+`;`, s[2].Standard)
+			a.Equal(sql+`;`, s[0].Original)
+			a.Equal(sql+`;`, s[2].Original)
 		}
 
-		a.Equal(sql+` `, s[1].Standard)
+		a.Equal(sql+` `, s[1].StandardSelect.String())
 		a.Equal(fmt.Sprintf(`%s %s;`, sql, extendedSQL), s[1].Original)
 	}
 
@@ -153,4 +153,37 @@ func commonTestCases(dbms string, a *assert.Assertions) {
 		a.NotNil(err)
 		a.Equal(0, len(s))
 	}
+}
+
+func TestParseFirstSQLStatement(t *testing.T) {
+	a := assert.New(t)
+
+	{
+		pr, idx, e := parseFirstSQLFlowStmt(`to train a with b = c label d into e; select a from b;`)
+		a.NotNil(pr)
+		a.Equal(len(`to train a with b = c label d into e; `), idx)
+		a.NoError(e)
+	}
+
+	{
+		pr, idx, e := parseFirstSQLFlowStmt(`to train a with b =?? c label d into e ...`)
+		a.Nil(pr)
+		a.Equal(-1, idx)
+		a.Error(e)
+	}
+
+	{
+		pr, idx, e := parseFirstSQLFlowStmt(`to train a with b = c label d into e select a from b;`)
+		a.Nil(pr)
+		a.Equal(-1, idx)
+		a.Error(e)
+	}
+}
+
+func TestParserErrorMessage(t *testing.T) {
+	a := assert.New(t)
+	pr, idx, e := parseFirstSQLFlowStmt(`to train a select b from c;`)
+	a.Nil(pr)
+	a.Equal(-1, idx)
+	a.Equal(`syntax error: at (11 ~ 17)-th runes near "select b f"`, e.Error())
 }

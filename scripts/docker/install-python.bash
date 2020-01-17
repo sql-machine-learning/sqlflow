@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2019 The SQLFlow Authors. All rights reserved.
+# Copyright 2020 The SQLFlow Authors. All rights reserved.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -30,8 +30,10 @@ apt-get install -y build-essential  libssl-dev # for building mysqlclient pip
 # NOTE: shap == 0.30.1 depends on dill but not include dill as it's dependency, need to install manually.
 # NOTE: mysqlclient depends on apt-get install mysqlclient in install-mysql.bash.
 pip install \
-numpy==1.16.1 \
-tensorflow==2.0.0b1 \
+yapf==0.29.0 \
+isort==4.3.21 \
+numpy==1.16.2 \
+tensorflow==2.0.0 \
 mysqlclient==1.4.4 \
 impyla==0.16.0 \
 pyodps==0.8.3 \

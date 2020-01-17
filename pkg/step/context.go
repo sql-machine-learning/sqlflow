@@ -1,4 +1,4 @@
-// Copyright 2019 The SQLFlow Authors. All rights reserved.
+// Copyright 2020 The SQLFlow Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -41,7 +41,7 @@ type Context struct {
 
 // NewRequestContext construct a new RequestContext object.
 func NewRequestContext(sqlProgram string, session *pb.Session, modelSaveDir string) (*Context, error) {
-	submitter := sql.GetSubmitter()
+	submitter := sql.GetSubmitter(session.Submitter)
 	conn, err := database.OpenAndConnectDB(session.GetDbConnStr())
 	if err != nil {
 		return nil, err

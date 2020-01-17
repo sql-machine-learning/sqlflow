@@ -1,4 +1,4 @@
-# Copyright 2019 The SQLFlow Authors. All rights reserved.
+# Copyright 2020 The SQLFlow Authors. All rights reserved.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -13,15 +13,15 @@
 
 from .base import BufferedDBWriter
 
+
 class MySQLDBWriter(BufferedDBWriter):
     def __init__(self, conn, table_name, table_schema, buff_size):
         return super().__init__(conn, table_name, table_schema, buff_size)
 
     def flush(self):
         statement = '''insert into {} ({}) values({})'''.format(
-                self.table_name,
-                ", ".join(self.table_schema),
-                ", ".join(["%s"] * len(self.table_schema)))
+            self.table_name, ", ".join(self.table_schema),
+            ", ".join(["%s"] * len(self.table_schema)))
         cursor = self.conn.cursor()
         try:
             cursor.executemany(statement, self.rows)

@@ -1,5 +1,5 @@
-#!/bin/bash
-# Copyright 2019 The SQLFlow Authors. All rights reserved.
+#!/usr/bin/env sh
+# Copyright 2020 The SQLFlow Authors. All rights reserved.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -14,7 +14,6 @@
 
 
 
-set -e
-if git diff --name-only HEAD..develop|grep '[.]y$'; then
-    goyaccfmt -w $(find . -name *.y)
-fi
+changed_java_files=$(git diff --cached --name-only --diff-filter=ACMR | grep ".*java$" )
+echo $changed_java_files
+java -jar /usr/local/bin/google-java-format-1.6-all-deps.jar --replace $changed_java_files

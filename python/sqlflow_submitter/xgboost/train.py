@@ -1,4 +1,4 @@
-# Copyright 2019 The SQLFlow Authors. All rights reserved.
+# Copyright 2020 The SQLFlow Authors. All rights reserved.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -14,17 +14,27 @@
 import xgboost as xgb
 from sqlflow_submitter.db import connect_with_data_source, db_generator
 
-def xgb_dataset(conn, fn, dataset_sql, feature_column_name, label_name, feature_spec):
-    gen = db_generator(conn.driver, conn, dataset_sql, feature_column_name, label_name, feature_spec)
+
+def xgb_dataset(conn, fn, dataset_sql, feature_column_name, label_name,
+                feature_spec):
+    gen = db_generator(conn.driver, conn, dataset_sql, feature_column_name,
+                       label_name, feature_spec)
     with open(fn, 'w') as f:
         for item in gen():
-            features, label = item
-            row_data = [str(label)] + ["%d:%f" % (i, v[0]) for i, v in enumerate(features)]
+            if label_name is None:
+                row_data = ["%d:%f" % (i, v[0]) for i, v in enumerate(item[0])]
+            else:
+                features, label = item
+                row_data = [str(label)] + [
+                    "%d:%f" % (i, v[0]) for i, v in enumerate(features)
+                ]
             f.write("\t".join(row_data) + "\n")
     # TODO(yancey1989): generate group and weight text file if necessary
     return xgb.DMatrix(fn)
 
-def train(datasource, select, model_params, train_params, feature_field_meta, label_field_meta, validation_select):
+
+def train(datasource, select, model_params, train_params, feature_field_meta,
+          label_field_meta, validation_select):
     conn = connect_with_data_source(datasource)
 
     # NOTE(tony): sorting is necessary to achieve consistent feature orders between training job and prediction/analysis job
@@ -32,13 +42,19 @@ def train(datasource, select, model_params, train_params, feature_field_meta, la
     label_name = label_field_meta["name"]
     feature_spec = {k['name']: k for k in feature_field_meta}
 
-    dtrain = xgb_dataset(conn, 'train.txt', select, feature_column_name, label_name, feature_spec)
+    dtrain = xgb_dataset(conn, 'train.txt', select, feature_column_name,
+                         label_name, feature_spec)
     watchlist = [(dtrain, "train")]
     if len(validation_select.strip()) > 0:
-        dvalidate = xgb_dataset(conn, 'validate.txt', validation_select, feature_column_name, label_name, feature_spec)
+        dvalidate = xgb_dataset(conn, 'validate.txt', validation_select,
+                                feature_column_name, label_name, feature_spec)
         watchlist.append((dvalidate, "validate"))
 
     re = dict()
-    bst = xgb.train(model_params, dtrain, **train_params, evals=watchlist, evals_result=re)
+    bst = xgb.train(model_params,
+                    dtrain,
+                    **train_params,
+                    evals=watchlist,
+                    evals_result=re)
     bst.save_model("my_model")
     print("Evaluation result: %s" % re)

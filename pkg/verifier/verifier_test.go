@@ -1,4 +1,4 @@
-// Copyright 2019 The SQLFlow Authors. All rights reserved.
+// Copyright 2020 The SQLFlow Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -15,11 +15,11 @@ package verifier
 
 import (
 	"os"
+	"sqlflow.org/sqlflow/pkg/parser"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"sqlflow.org/sqlflow/pkg/database"
-	"sqlflow.org/sqlflow/pkg/parser"
 )
 
 func TestVerify(t *testing.T) {
@@ -28,34 +28,35 @@ func TestVerify(t *testing.T) {
 	}
 
 	a := assert.New(t)
-	r, e := parser.LegacyParse(`SELECT * FROM churn.train LIMIT 10;`)
-	a.NoError(e)
-	fts, e := Verify(r.StandardSelect.String(), database.GetTestingDBSingleton())
-	a.NoError(e)
-	a.Equal(21, len(fts))
 
-	r, e = parser.LegacyParse(`SELECT Churn, churn.train.Partner,TotalCharges FROM churn.train LIMIT 10;`)
-	a.NoError(e)
-	fts, e = Verify(r.StandardSelect.String(), database.GetTestingDBSingleton())
-	a.NoError(e)
-	a.Equal(3, len(fts))
+	{
+		fts, e := Verify(`SELECT * FROM churn.train LIMIT 10;`, database.GetTestingDBSingleton())
+		a.NoError(e)
+		a.Equal(21, len(fts))
+	}
 
-	typ, ok := fts.Get("churn")
-	a.True(ok)
-	a.Contains([]string{"VARCHAR(255)", "VARCHAR"}, typ)
+	{
+		fts, e := Verify(`SELECT Churn, churn.train.Partner,TotalCharges FROM churn.train LIMIT 10;`, database.GetTestingDBSingleton())
+		a.NoError(e)
+		a.Equal(3, len(fts))
 
-	typ, ok = fts.Get("partner")
-	a.True(ok)
-	a.Contains([]string{"VARCHAR(255)", "VARCHAR"}, typ)
+		typ, ok := fts.Get("churn")
+		a.True(ok)
+		a.Contains([]string{"VARCHAR(255)", "VARCHAR"}, typ)
 
-	typ, ok = fts.Get("totalcharges")
-	a.True(ok)
-	a.Equal("FLOAT", typ)
+		typ, ok = fts.Get("partner")
+		a.True(ok)
+		a.Contains([]string{"VARCHAR(255)", "VARCHAR"}, typ)
+
+		typ, ok = fts.Get("totalcharges")
+		a.True(ok)
+		a.Equal("FLOAT", typ)
+	}
 }
 
 func TestVerifyColumnNameAndType(t *testing.T) {
 	a := assert.New(t)
-	trainParse, e := parser.LegacyParse(`SELECT gender, tenure, TotalCharges
+	trainParse, e := parser.ParseOneStatement("mysql", `SELECT gender, tenure, TotalCharges
 FROM churn.train LIMIT 10
 TO TRAIN DNNClassifier
 WITH
@@ -66,28 +67,24 @@ LABEL class
 INTO sqlflow_models.my_dnn_model;`)
 	a.NoError(e)
 
-	predParse, e := parser.LegacyParse(`SELECT gender, tenure, TotalCharges
+	predParse, e := parser.ParseOneStatement("mysql", `SELECT gender, tenure, TotalCharges
 FROM churn.train LIMIT 10
 TO PREDICT iris.predict.class
 USING sqlflow_models.my_dnn_model;`)
 	a.NoError(e)
-	a.NoError(VerifyColumnNameAndType(trainParse, predParse, database.GetTestingDBSingleton()))
+	a.NoError(VerifyColumnNameAndType(trainParse.SQLFlowSelectStmt, predParse.SQLFlowSelectStmt, database.GetTestingDBSingleton()))
 
-	predParse, e = parser.LegacyParse(`SELECT gender, tenure
+	predParse, e = parser.ParseOneStatement("mysql", `SELECT gender, tenure
 FROM churn.train LIMIT 10
 TO PREDICT iris.predict.class
 USING sqlflow_models.my_dnn_model;`)
 	a.NoError(e)
-	a.EqualError(VerifyColumnNameAndType(trainParse, predParse, database.GetTestingDBSingleton()),
+	a.EqualError(VerifyColumnNameAndType(trainParse.SQLFlowSelectStmt, predParse.SQLFlowSelectStmt, database.GetTestingDBSingleton()),
 		"predFields doesn't contain column totalcharges")
 }
 
 func TestDescribeEmptyTables(t *testing.T) {
 	a := assert.New(t)
-	r, e := parser.LegacyParse(`SELECT * FROM iris.iris_empty LIMIT 10;`)
-	a.NoError(e)
-	_, e = Verify(r.StandardSelect.String(), database.GetTestingDBSingleton())
-	a.EqualError(e, `query SELECT *
-FROM iris.iris_empty
-LIMIT 10 gives 0 row`)
+	_, e := Verify(`SELECT * FROM iris.iris_empty LIMIT 10;`, database.GetTestingDBSingleton())
+	a.EqualError(e, `query SELECT * FROM iris.iris_empty LIMIT 10; gives 0 row`)
 }

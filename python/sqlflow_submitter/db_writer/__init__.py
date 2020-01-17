@@ -1,4 +1,4 @@
-# Copyright 2019 The SQLFlow Authors. All rights reserved.
+# Copyright 2020 The SQLFlow Authors. All rights reserved.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -11,7 +11,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .mysql import MySQLDBWriter
 from .hive import HiveDBWriter
 from .maxcompute import MaxComputeDBWriter
-__all__=["MySQLDBWriter", "HiveDBWriter", "MaxComputeDBWriter"]
+from .mysql import MySQLDBWriter
+from .pai_maxcompute import PAIMaxComputeDBWriter
+
+__all__ = [
+    "MySQLDBWriter", "HiveDBWriter", "MaxComputeDBWriter",
+    "PAIMaxComputeDBWriter"
+]

@@ -1,4 +1,4 @@
-# Analyzing Model on SQLFlow Tutorial
+# Explaining Model on SQLFlow Tutorial
 
 The [Explainer](../design/explainer.md) is designed to explain the machine learning model in SQLFlow. In this tutorial, you will learn how to,
 

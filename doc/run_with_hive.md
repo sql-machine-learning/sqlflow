@@ -15,7 +15,7 @@ In the above format,
 - `user:password` is the username and password of hiveserver2.
 - `ip:port` is the endpoint which the hiveserver2 instance listened on.
 - `dbname` is the default database name.
-- `auth_mechanism` is the authentication mechanism of hiveserver2, can be `NOSASL` for unsecurest transport or `PLAIN` for SASL transport.
+- `auth_mechanism` is the authentication mechanism of hiveserver2, can be `NOSASL` for unsecured transport or `PLAIN` for SASL transport.
 - parameters with prefix `session.` is the session configuration of Hive Thrift API, such as `session.mapreduce.job.queuename=mr` implies `mapreduce.job.queuename=mr`.
 
 You can find more details at [gohive](https://github.com/sql-machine-learning/gohive).

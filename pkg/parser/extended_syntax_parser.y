@@ -67,10 +67,6 @@ type SQLFlowSelectStmt struct {
 }
 
 type StandardSelect struct {
-	Fields ExprList
-	Tables []string
-	where  *Expr
-	limit  string
 	origin string
 }
 
@@ -84,7 +80,6 @@ type TrainClause struct {
 
 /* If no FOR in the COLUMN, the key is "" */
 type columnClause map[string]ExprList
-type fieldClause ExprList
 
 type Attributes map[string]*Expr
 
@@ -132,17 +127,14 @@ func attrsUnion(as1, as2 Attributes) Attributes {
 }
 
 %type  <eslt> sqlflow_select_stmt
-%type  <slct> standard_select_stmt
-%type  <val>  limit_clause
 %type  <tran> train_clause
 %type  <colc> column_clause
 %type  <labc> label_clause
 %type  <infr> predict_clause
 %type  <expln> explain_clause
-%type  <flds> fields
-%type  <tbls> tables
-%type  <expr> expr funcall column where_clause
-%type  <expl> ExprList pythonlist columns field_clause 
+%type  <val> optional_using
+%type  <expr> expr funcall column
+%type  <expl> ExprList pythonlist columns
 %type  <atrs> attr
 %type  <atrs> attrs
 
@@ -160,34 +152,7 @@ func attrsUnion(as1, as2 Attributes) Attributes {
 %%
 
 sqlflow_select_stmt
-: standard_select_stmt end_of_stmt {
-	parseResult = &SQLFlowSelectStmt{
-		Extended: false,
-		StandardSelect: $1}
-  }
-| standard_select_stmt train_clause end_of_stmt {
-	parseResult = &SQLFlowSelectStmt{
-		Extended: true,
-		Train: true,
-		StandardSelect: $1,
-		TrainClause: $2}
-  }
-| standard_select_stmt predict_clause end_of_stmt {
-	parseResult = &SQLFlowSelectStmt{
-		Extended: true,
-		Train: false,
-		StandardSelect: $1,
-		PredictClause: $2}
-  }
-| standard_select_stmt explain_clause end_of_stmt {
-	parseResult = &SQLFlowSelectStmt{
-		Extended: true,
-		Train: false,
-		Explain: true,
-		StandardSelect: $1,
-		ExplainClause: $2}
-  }
-| train_clause end_of_stmt { // FIXME(tony): remove above rules that include select clause
+: train_clause end_of_stmt {
 	parseResult = &SQLFlowSelectStmt{
 		Extended: true,
 		Train: true,
@@ -208,28 +173,8 @@ sqlflow_select_stmt
 }
 ;
 
-standard_select_stmt
-: SELECT field_clause FROM tables where_clause limit_clause {
-	$$.Fields = $2
-	$$.Tables = $4
-	$$.where = $5
-	$$.limit = $6
-}
-;
-
 end_of_stmt
-: /* empty */ {}
-| ';'         {}
-;
-
-where_clause
-: /* empty */ {}
-| WHERE expr  { $$ = $2 }
-;
-
-limit_clause
-: /* empty */  {}
-| LIMIT NUMBER { $$ = $2 }
+: ';'         {}
 ;
 
 train_clause
@@ -270,29 +215,21 @@ predict_clause
 ;
 
 explain_clause
-: TO EXPLAIN IDENT USING IDENT { $$.TrainedModel = $3; $$.Explainer = $5 }
-| TO EXPLAIN IDENT USING IDENT INTO IDENT { $$.TrainedModel = $3; $$.Explainer = $5; $$.ExplainInto = $7 }
-| TO EXPLAIN IDENT WITH attrs USING IDENT { $$.TrainedModel = $3; $$.ExplainAttrs = $5; $$.Explainer = $7 }
-| TO EXPLAIN IDENT WITH attrs USING IDENT INTO IDENT { $$.TrainedModel = $3; $$.ExplainAttrs = $5; $$.Explainer = $7; $$.ExplainInto = $9 }
+: TO EXPLAIN IDENT optional_using { $$.TrainedModel = $3; $$.Explainer = $4 }
+| TO EXPLAIN IDENT optional_using INTO IDENT { $$.TrainedModel = $3; $$.Explainer = $4; $$.ExplainInto = $6 }
+| TO EXPLAIN IDENT WITH attrs optional_using { $$.TrainedModel = $3; $$.ExplainAttrs = $5; $$.Explainer = $6 }
+| TO EXPLAIN IDENT WITH attrs optional_using INTO IDENT { $$.TrainedModel = $3; $$.ExplainAttrs = $5; $$.Explainer = $6; $$.ExplainInto = $8 }
+;
+
+optional_using
+: /* empty */  {}
+| USING IDENT  { $$ = $2 }
 ;
 
 column_clause
 : COLUMN columns 				{ $$ = map[string]ExprList{"feature_columns" : $2} }
 | COLUMN columns FOR IDENT 			{ $$ = map[string]ExprList{$4 : $2} }
 | column_clause COLUMN columns FOR IDENT 	{ $$[$5] = $3 }
-;
-
-field_clause
-: funcall AS '(' ExprList ')' {
-		$$ = ExprList{$1, atomic(IDENT, "AS"), funcall("", $4)};
-	}  // TODO(Yancey1989): support the general "AS" keyword: https://www.w3schools.com/sql/sql_ref_as.asp
-| fields						{ $$ = $1 }
-;
-
-fields
-: '*'              { $$ = append($$, atomic(IDENT, "*")) }
-| IDENT            { $$ = append($$, atomic(IDENT, $1)) }
-| fields ',' IDENT { $$ = append($1, atomic(IDENT, $3)) }
 ;
 
 column
@@ -309,11 +246,6 @@ columns
 label_clause
 : LABEL IDENT  { $$ = $2 }
 | LABEL STRING { $$ = $2[1:len($2)-1] }
-;
-
-tables
-: IDENT            { $$ = []string{$1} }
-| tables ',' IDENT { $$ = append($1, $3) }
 ;
 
 attr
@@ -422,29 +354,7 @@ func (e *Expr) String() string {
 }
 
 func (s StandardSelect) String() string {
-	if s.origin != "" {
-		return s.origin
-	}
-
-	r := "SELECT "
-	if len(s.Fields) == 0 {
-		r += "*"
-	} else {
-		for i := 0; i < len(s.Fields); i++ {
-			r += s.Fields[i].String()
-			if i != len(s.Fields)-1 {
-				r += ", "
-			}
-		}
-	}
-	r += "\nFROM " + strings.Join(s.Tables, ", ")
-	if s.where != nil {
-		r += fmt.Sprintf("\nWHERE %s", s.where)
-	}
-	if len(s.limit) > 0 {
-		r += fmt.Sprintf("\nLIMIT %s", s.limit)
-	}
-	return r
+	return s.origin
 }
 
 var mu sync.Mutex // Protect the use of global variable parseResult.

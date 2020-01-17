@@ -1,4 +1,4 @@
-# Copyright 2019 The SQLFlow Authors. All rights reserved.
+# Copyright 2020 The SQLFlow Authors. All rights reserved.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -12,10 +12,10 @@
 # limitations under the License.
 
 import sys
-from io import StringIO
-from IPython import get_ipython
 import unittest
+from io import StringIO
 
+from IPython import get_ipython
 
 ipython = get_ipython()
 
@@ -23,12 +23,16 @@ ipython = get_ipython()
 class TestSQLFlowMagic(unittest.TestCase):
     import random
     random.seed()
-    temp_database = "e2e_{}".format(random.randint(0, 1<<32))
+    temp_database = "e2e_{}".format(random.randint(0, 1 << 32))
     # the standard SQL statement
-    create_database_statement = "create database if not exists {}".format(temp_database)
-    create_statement = "create table {}.test_table_float_fea (features float, label int)".format(temp_database)
-    insert_statement = "insert into {}.test_table_float_fea (features,label) values(1.0, 0), (2.0, 1)".format(temp_database)
-    select_statement = "select * from {}.test_table_float_fea limit 1;".format(temp_database)
+    create_database_statement = "create database if not exists {}".format(
+        temp_database)
+    create_statement = "create table {}.test_table_float_fea (features float, label int)".format(
+        temp_database)
+    insert_statement = "insert into {}.test_table_float_fea (features,label) values(1.0, 0), (2.0, 1)".format(
+        temp_database)
+    select_statement = "select * from {}.test_table_float_fea limit 1;".format(
+        temp_database)
 
     def setUp(self):
         ipython.run_cell_magic("sqlflow", "", self.create_database_statement)

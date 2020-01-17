@@ -1,4 +1,4 @@
-# Copyright 2019 The SQLFlow Authors. All rights reserved.
+# Copyright 2020 The SQLFlow Authors. All rights reserved.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -11,17 +11,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import re
-import os
 import contextlib
+import os
+import re
+
 import numpy as np
-import tensorflow as tf
 import sqlflow_submitter.db_writer as db_writer
+import tensorflow as tf
 
 
 def parseMySQLDSN(dsn):
     # [username[:password]@][protocol[(address)]]/dbname[?param1=value1&...&paramN=valueN]
-    user, passwd, host, port, database, config_str = re.findall("^(\w*):(\w*)@tcp\(([.a-zA-Z0-9]*):([0-9]*)\)/(\w*)(\?.*)?$", dsn)[0]
+    user, passwd, host, port, database, config_str = re.findall(
+        "^(\w*):(\w*)@tcp\(([.a-zA-Z0-9]*):([0-9]*)\)/(\w*)(\?.*)?$", dsn)[0]
     config = {}
     if len(config_str) > 1:
         for c in config_str[1:].split("&"):
@@ -32,7 +34,8 @@ def parseMySQLDSN(dsn):
 
 def parseHiveDSN(dsn):
     # usr:pswd@hiveserver:10000/mydb?auth=PLAIN&session.mapreduce_job_quenename=mr
-    user_passwd, address_database, config_str = re.findall("^(.*)@([.a-zA-Z0-9/:_]*)(\?.*)?", dsn)[0]
+    user_passwd, address_database, config_str = re.findall(
+        "^(.*)@([.a-zA-Z0-9/:_]*)(\?.*)?", dsn)[0]
     user, passwd = user_passwd.split(":")
     if len(address_database.split("/")) > 1:
         address, database = address_database.split("/")
@@ -57,7 +60,8 @@ def parseHiveDSN(dsn):
 
 def parseMaxComputeDSN(dsn):
     # access_id:access_key@service.com/api?curr_project=test_ci&scheme=http
-    user_passwd, address, config_str = re.findall("^(.*)@([-.a-zA-Z0-9/]*)(\?.*)?", dsn)[0]
+    user_passwd, address, config_str = re.findall(
+        "^(.*)@([-.a-zA-Z0-9/]*)(\?.*)?", dsn)[0]
     user, passwd = user_passwd.split(":")
     config = {}
     if len(config_str) > 1:
@@ -83,7 +87,8 @@ def connect_with_data_source(driver_dsn):
                        port=int(port))
     elif driver == "hive":
         from impala.dbapi import connect
-        user, passwd, host, port, database, auth, session_cfg = parseHiveDSN(dsn)
+        user, passwd, host, port, database, auth, session_cfg = parseHiveDSN(
+            dsn)
         conn = connect(user=user,
                        password=passwd,
                        database=database,
@@ -97,13 +102,22 @@ def connect_with_data_source(driver_dsn):
         user, passwd, address, database = parseMaxComputeDSN(dsn)
         conn = MaxCompute.connect(database, user, passwd, address)
     else:
-        raise ValueError("connect_with_data_source doesn't support driver type {}".format(driver))
+        raise ValueError(
+            "connect_with_data_source doesn't support driver type {}".format(
+                driver))
 
     conn.driver = driver
     return conn
 
 
-def connect(driver, database, user, password, host, port, session_cfg={}, auth=""):
+def connect(driver,
+            database,
+            user,
+            password,
+            host,
+            port,
+            session_cfg={},
+            auth=""):
     if driver == "mysql":
         # NOTE: use MySQLdb to avoid bugs like infinite reading:
         # https://bugs.mysql.com/bug.php?id=91971
@@ -130,14 +144,20 @@ def connect(driver, database, user, password, host, port, session_cfg={}, auth="
 
     raise ValueError("unrecognized database driver: %s" % driver)
 
-def db_generator(driver, conn, statement,
-                 feature_column_names, label_column_name,
-                 feature_specs, fetch_size=128):
 
+def db_generator(driver,
+                 conn,
+                 statement,
+                 feature_column_names,
+                 label_column_name,
+                 feature_specs,
+                 fetch_size=128):
     def read_feature(raw_val, feature_spec, feature_name):
         # FIXME(typhoonzero): Should use correct dtype here.
         if feature_spec["is_sparse"]:
-            indices = np.fromstring(raw_val, dtype=int, sep=feature_spec["delimiter"])
+            indices = np.fromstring(raw_val,
+                                    dtype=int,
+                                    sep=feature_spec["delimiter"])
             indices = indices.reshape(indices.size, 1)
             values = np.ones([indices.size], dtype=np.int32)
             dense_shape = np.array(feature_spec["shape"], dtype=np.int64)
@@ -146,13 +166,18 @@ def db_generator(driver, conn, statement,
             # Dense string vector
             if feature_spec["delimiter"] != "":
                 if feature_spec["dtype"] == "float32":
-                    return np.fromstring(raw_val, dtype=float, sep=feature_spec["delimiter"])
+                    return np.fromstring(raw_val,
+                                         dtype=float,
+                                         sep=feature_spec["delimiter"])
                 elif feature_spec["dtype"] == "int64":
-                    return np.fromstring(raw_val, dtype=int, sep=feature_spec["delimiter"])
+                    return np.fromstring(raw_val,
+                                         dtype=int,
+                                         sep=feature_spec["delimiter"])
                 else:
-                    raise ValueError('unrecognize dtype {}'.format(feature_spec[feature_name]["dtype"]))
+                    raise ValueError('unrecognize dtype {}'.format(
+                        feature_spec[feature_name]["dtype"]))
             else:
-                return (raw_val,)
+                return (raw_val, )
 
     def reader():
         if driver == "hive":
@@ -174,23 +199,27 @@ def db_generator(driver, conn, statement,
                 label_idx = None
         else:
             label_idx = None
-        
+
         while True:
-            rows = cursor.fetchmany(size = fetch_size)
+            rows = cursor.fetchmany(size=fetch_size)
             if not rows:
                 break
             # NOTE: keep the connection while training or connection will lost if no activities appear.
             if driver == "mysql":
                 conn.ping(True)
             for row in rows:
-                # NOTE: If there is no label clause in the extened SQL, the default label value would 
+                # NOTE: If there is no label clause in the extened SQL, the default label value would
                 # be -1, the Model implementation can determine use it or not.
                 label = row[label_idx] if label_idx is not None else -1
                 features = []
                 for name in feature_column_names:
-                    feature = read_feature(row[field_names.index(name)], feature_specs[name], name)
+                    feature = read_feature(row[field_names.index(name)],
+                                           feature_specs[name], name)
                     features.append(feature)
-                yield tuple(features), label
+                if label_idx is None:
+                    yield (tuple(features), )
+                else:
+                    yield tuple(features), label
             if len(rows) < fetch_size:
                 break
         cursor.close()
@@ -198,7 +227,8 @@ def db_generator(driver, conn, statement,
     if driver == "maxcompute":
         from sqlflow_submitter.maxcompute import MaxCompute
         return MaxCompute.db_generator(conn, statement, feature_column_names,
-                label_column_name, feature_specs, fetch_size)
+                                       label_column_name, feature_specs,
+                                       fetch_size)
     if driver == "hive":
         # trip the suffix ';' to avoid the ParseException in hive
         statement = statement.rstrip(';')
@@ -206,15 +236,32 @@ def db_generator(driver, conn, statement,
 
 
 @contextlib.contextmanager
-def buffered_db_writer(driver, conn, table_name, table_schema, buff_size=100, hdfs_namenode_addr="", hive_location="", hdfs_user="", hdfs_pass=""):
+def buffered_db_writer(driver,
+                       conn,
+                       table_name,
+                       table_schema,
+                       buff_size=100,
+                       hdfs_namenode_addr="",
+                       hive_location="",
+                       hdfs_user="",
+                       hdfs_pass=""):
     if driver == "maxcompute":
-        w = db_writer.MaxComputeDBWriter(conn, table_name, table_schema, buff_size)
+        w = db_writer.MaxComputeDBWriter(conn, table_name, table_schema,
+                                         buff_size)
     elif driver == "mysql":
         w = db_writer.MySQLDBWriter(conn, table_name, table_schema, buff_size)
     elif driver == "hive":
-        w = db_writer.HiveDBWriter(conn, table_name, table_schema, buff_size,
-            hdfs_namenode_addr=hdfs_namenode_addr, hive_location=hive_location,
-            hdfs_user=hdfs_user, hdfs_pass=hdfs_pass)
+        w = db_writer.HiveDBWriter(conn,
+                                   table_name,
+                                   table_schema,
+                                   buff_size,
+                                   hdfs_namenode_addr=hdfs_namenode_addr,
+                                   hive_location=hive_location,
+                                   hdfs_user=hdfs_user,
+                                   hdfs_pass=hdfs_pass)
+    elif driver == "pai_maxcompute":
+        w = db_writer.PAIMaxComputeDBWriter(table_name, table_schema,
+                                            buff_size)
     else:
         raise ValueError("unrecognized database driver: %s" % driver)
 

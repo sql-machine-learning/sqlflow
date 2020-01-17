@@ -1,4 +1,4 @@
-// Copyright 2019 The SQLFlow Authors. All rights reserved.
+// Copyright 2020 The SQLFlow Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -79,6 +79,16 @@ func generateFeatureColumnCode(fc ir.FeatureColumn) (string, error) {
 			intArrayToJSONString(bc.Boundaries)), nil
 	case *ir.CategoryIDColumn:
 		cc := fc.(*ir.CategoryIDColumn)
+		fm := cc.GetFieldDesc()[0]
+		if len(fm.Vocabulary) > 0 {
+			vocabList := []string{}
+			for k := range fm.Vocabulary {
+				vocabList = append(vocabList, fmt.Sprintf("\"%s\"", k))
+			}
+			vocabCode := strings.Join(vocabList, ",")
+			return fmt.Sprintf("tf.feature_column.categorical_column_with_vocabulary_list(key=\"%s\", vocabulary_list=[%s])",
+				cc.FieldDesc.Name, vocabCode), nil
+		}
 		return fmt.Sprintf("tf.feature_column.categorical_column_with_identity(key=\"%s\", num_buckets=%d)",
 			cc.FieldDesc.Name, cc.BucketSize), nil
 	case *ir.SeqCategoryIDColumn:
@@ -167,14 +177,6 @@ func dtypeToString(dt ir.FieldType) string {
 	}
 }
 
-// IsKerasModel returns whether an estimator is from sqlflow_models and its qualified name
-func IsKerasModel(estimator string) (bool, string) {
-	if strings.HasPrefix(estimator, "sqlflow_models.") {
-		return true, estimator
-	}
-	return false, fmt.Sprintf("tf.estimator.%s", estimator)
-}
-
 // TODO(shendiaomo): Make the optimizer related code more general and exported in `attribute.go` if other frameworks
 // than TensorFlow have to support python objects as model attributes.
 
@@ -184,6 +186,11 @@ func attrIsOptimizer(attrKey string) bool {
 		return true
 	}
 	return false
+}
+
+// IsPAI tells if we are using PAI platform currently
+func IsPAI() bool {
+	return os.Getenv("SQLFLOW_submitter") == "pai" || os.Getenv("SQLFLOW_submitter") == "alisa"
 }
 
 func setDefaultOptimizer(trainStmt *ir.TrainStmt, optimizerParamName string) {
@@ -200,6 +207,12 @@ func setDefaultOptimizer(trainStmt *ir.TrainStmt, optimizerParamName string) {
 	trainStmt.Attributes[optimizerParamName] = defaultValue
 }
 
+// constructOptimizers generate a python optimizer function call using:
+// model.optimizer = "OptimizerName"
+// optimizer.arg1 = 1
+// optimizer.arg2 = "2"
+// To:
+// model.optimizer = "OptimizerName(arg1=1, arg2=\"2\")"
 func constructOptimizers(trainStmt *ir.TrainStmt) {
 	optimizerArgs := map[string]map[string]interface{}{}
 	for k, v := range trainStmt.Attributes {
@@ -233,11 +246,41 @@ func constructOptimizers(trainStmt *ir.TrainStmt) {
 	}
 }
 
+// constructLosses generate a python loss function call using:
+// model.loss = "LossName"
+// loss.arg1 = 1
+// loss.arg2 = "2"
+// To:
+// model.loss = "LossName(arg1=1, arg2=\"2\")"
+func constructLosses(trainStmt *ir.TrainStmt) {
+	lossFunction := ""
+	lossArgs := []string{}
+	for k, v := range trainStmt.Attributes {
+		attrParts := strings.Split(k, ".")
+		if k == "model.loss" {
+			lossFunction = v.(string)
+			continue
+		}
+		if attrParts[0] == "loss" {
+			lossArgs = append(lossArgs, fmt.Sprintf("%s=%v", attrParts[1], v))
+			// NOTE(typhoonzero): delete keys in loop is safe:
+			// https://stackoverflow.com/questions/23229975/is-it-safe-to-remove-selected-keys-from-map-within-a-range-loop
+			delete(trainStmt.Attributes, k)
+		}
+	}
+	if lossFunction != "" {
+		lossCode := fmt.Sprintf("%s(%s)", lossFunction, strings.Join(lossArgs, ","))
+		trainStmt.Attributes["model.loss"] = lossCode
+	}
+}
+
 func initializeAttributes(trainStmt *ir.TrainStmt) error {
 	commonAttributes.FillDefaults(trainStmt.Attributes)
 
 	modelAttr := attribute.NewDictionaryFromModelDefinition(trainStmt.Estimator, "model.")
-	constructOptimizers(trainStmt) // TODO(shendiaomo): Restrict optimizer parameters to the available set
+	// TODO(shendiaomo): Restrict optimizer parameters to the available set
+	constructOptimizers(trainStmt)
+	constructLosses(trainStmt)
 	attrValidator := modelAttr.Update(commonAttributes)
 	return attrValidator.Validate(trainStmt.Attributes)
 }
@@ -295,13 +338,10 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 		return "", err
 	}
 
-	isKeras, estimatorStr := IsKerasModel(trainStmt.Estimator)
-
 	// Need to create tmp table for train/validate when using PAI
 	paiTrainTable := ""
 	paiValidateTable := ""
-	isPAI := os.Getenv("SQLFLOW_submitter") == "pai"
-	if isPAI && trainStmt.TmpTrainTable != "" {
+	if IsPAI() && trainStmt.TmpTrainTable != "" {
 		paiTrainTable = trainStmt.TmpTrainTable
 		paiValidateTable = trainStmt.TmpValidateTable
 	}
@@ -310,8 +350,7 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 		DataSource:        session.DbConnStr,
 		TrainSelect:       trainStmt.Select,
 		ValidationSelect:  trainStmt.ValidationSelect,
-		Estimator:         estimatorStr,
-		IsKerasModel:      isKeras,
+		Estimator:         trainStmt.Estimator,
 		FieldDescs:        fieldDescs,
 		FeatureColumnCode: fmt.Sprintf("{%s}", strings.Join(featureColumnsCode, ",\n")),
 		Y:                 trainStmt.Label.GetFieldDesc()[0], // TODO(typhoonzero): label only support numericColumn.
@@ -319,7 +358,7 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 		TrainParams:       trainParams,
 		ValidationParams:  validateParams,
 		Save:              "model_save",
-		IsPAI:             isPAI,
+		IsPAI:             IsPAI(),
 		PAITrainTable:     paiTrainTable,
 		PAIValidateTable:  paiValidateTable,
 	}
@@ -342,7 +381,6 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	isKeras, estimatorStr := IsKerasModel(predStmt.TrainStmt.Estimator)
 	labelFM := predStmt.TrainStmt.Label.GetFieldDesc()[0]
 	if labelFM.Name == "" {
 		log.Printf("clustering model, got result table: %s, result column: %s", predStmt.ResultTable, predStmt.ResultColumn)
@@ -357,9 +395,8 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 		labelFM.Name = predStmt.ResultColumn
 	}
 
-	isPAI := os.Getenv("SQLFLOW_submitter") == "pai"
 	paiPredictTable := ""
-	if isPAI && predStmt.TmpPredictTable != "" {
+	if IsPAI() && predStmt.TmpPredictTable != "" {
 		paiPredictTable = predStmt.TmpPredictTable
 	}
 
@@ -367,8 +404,7 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 		DataSource:        session.DbConnStr,
 		Select:            predStmt.Select,
 		ResultTable:       predStmt.ResultTable,
-		Estimator:         estimatorStr,
-		IsKerasModel:      isKeras,
+		Estimator:         predStmt.TrainStmt.Estimator,
 		FieldDescs:        fieldDescs,
 		FeatureColumnCode: fmt.Sprintf("{%s}", strings.Join(featureColumnsCode, ",\n")),
 		Y:                 labelFM,
@@ -378,7 +414,7 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 		HiveLocation:      session.HiveLocation,
 		HDFSUser:          session.HdfsUser,
 		HDFSPass:          session.HdfsPass,
-		IsPAI:             isPAI,
+		IsPAI:             IsPAI(),
 		PAIPredictTable:   paiPredictTable,
 	}
 	var program bytes.Buffer
@@ -396,15 +432,10 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 
 // Explain generates a Python program to explain a trained model.
 func Explain(stmt *ir.ExplainStmt, session *pb.Session) (string, error) {
-	if !strings.HasPrefix(stmt.TrainStmt.Estimator, "BoostedTrees") {
-		return "", fmt.Errorf("unsupported model %s", stmt.TrainStmt.Estimator)
-	}
-
 	modelParams, featureColumnsCode, fieldDescs, err := restoreModel(stmt.TrainStmt)
 	if err != nil {
 		return "", err
 	}
-	_, estimatorStr := IsKerasModel(stmt.TrainStmt.Estimator)
 	labelFM := stmt.TrainStmt.Label.GetFieldDesc()[0]
 
 	const summaryAttrPrefix = "summary."
@@ -418,7 +449,7 @@ func Explain(stmt *ir.ExplainStmt, session *pb.Session) (string, error) {
 		DataSource:        session.DbConnStr,
 		Select:            stmt.Select,
 		SummaryParams:     string(jsonSummary),
-		EstimatorClass:    estimatorStr,
+		EstimatorClass:    stmt.TrainStmt.Estimator,
 		FieldDescs:        fieldDescs,
 		FeatureColumnCode: fmt.Sprintf("{%s}", strings.Join(featureColumnsCode, ",\n")),
 		Y:                 labelFM,

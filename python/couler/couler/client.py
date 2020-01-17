@@ -1,4 +1,4 @@
-# Copyright 2019 The SQLFlow Authors. All rights reserved.
+# Copyright 2020 The SQLFlow Authors. All rights reserved.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -17,9 +17,10 @@ from subprocess import call
 
 
 def add_run_params(parser):
-    parser.add_argument(
-        "--mode", type=str, help="python or argo", required=True
-    )
+    parser.add_argument("--mode",
+                        type=str,
+                        help="python or argo",
+                        required=True)
     # TODO: can skip --file, directly run as "couler run file1.py"
     parser.add_argument("--file", type=str, required=True)
 

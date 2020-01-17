@@ -1,4 +1,4 @@
-# Copyright 2019 The SQLFlow Authors. All rights reserved.
+# Copyright 2020 The SQLFlow Authors. All rights reserved.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -12,15 +12,17 @@
 # limitations under the License.
 
 import io
+import os
 import pickle
 import tarfile
+
 import odps
 import tensorflow as tf
-from tensorflow.python.platform import gfile
 from sqlflow_submitter import db
-import os
+from tensorflow.python.platform import gfile
 
-def save(oss_model_dir, *meta):
+
+def save(oss_model_dir, num_workers, *meta):
     '''
     Save model descriptions like the training SQL statements to OSS directory.
     Data are saved using pickle.
@@ -30,6 +32,11 @@ def save(oss_model_dir, *meta):
     Return:
         None
     '''
+    if num_workers > 1:
+        FLAGS = tf.app.flags.FLAGS
+        if FLAGS.task_index != 0:
+            print("skip saving model desc on workers other than worker 0")
+            return
     uri_parts = oss_model_dir.split("?")
     if len(uri_parts) != 2:
         raise ValueError("error oss_model_dir: ", oss_model_dir)
@@ -38,6 +45,7 @@ def save(oss_model_dir, *meta):
     pickle.dump(list(meta), writer)
     writer.flush()
     writer.close()
+
 
 def load(oss_model_dir):
     '''

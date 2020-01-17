@@ -1,4 +1,4 @@
-// Copyright 2019 The SQLFlow Authors. All rights reserved.
+// Copyright 2020 The SQLFlow Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -20,7 +20,6 @@ type trainFiller struct {
 	TrainSelect       string
 	ValidationSelect  string
 	Estimator         string
-	IsKerasModel      bool
 	FieldDescs        []*ir.FieldDesc
 	FeatureColumnCode string
 	Y                 *ir.FieldDesc
@@ -34,12 +33,15 @@ type trainFiller struct {
 }
 
 const tfTrainTemplateText = `
-from sqlflow_submitter.tensorflow.train import train, TF_VERSION_2
 import tensorflow as tf
+from sqlflow_submitter.tensorflow.train import train, TF_VERSION_2
+from tensorflow.estimator import DNNClassifier, DNNRegressor, LinearClassifier, LinearRegressor, BoostedTreesClassifier, BoostedTreesRegressor, DNNLinearCombinedClassifier, DNNLinearCombinedRegressor
 if TF_VERSION_2:
     from tensorflow.keras.optimizers import *
+    from tensorflow.keras.losses import *
 else:
     from tensorflow.train import *
+    from tensorflow.keras.losses import *
 try:
     import sqlflow_models
 except:
@@ -78,27 +80,26 @@ feature_columns = {{.FeatureColumnCode}}
 train_max_steps = {{index .TrainParams "max_steps" | attrToPythonValue}}
 train_max_steps = None if train_max_steps == 0 else train_max_steps
 
-train(is_keras_model="{{.IsKerasModel}}" == "true",
-    datasource="{{.DataSource}}",
-    estimator={{.Estimator}},
-    select="""{{.TrainSelect}}""",
-    validate_select="""{{.ValidationSelect}}""",
-    feature_columns=feature_columns,
-    feature_column_names=feature_column_names,
-    feature_metas=feature_metas,
-    label_meta=label_meta,
-    model_params=model_params,
-    metric_names="{{index .ValidationParams "metrics"}}".split(","),
-    save="{{.Save}}",
-    batch_size={{index .TrainParams "batch_size" | attrToPythonValue}},
-    epochs={{index .TrainParams "epoch" | attrToPythonValue}},
-    verbose={{index .TrainParams "verbose" | attrToPythonValue}},
-    train_max_steps=train_max_steps,
-    eval_start_delay_secs={{index .ValidationParams "start_delay_secs" | attrToPythonValue}},
-    eval_throttle_secs={{index .ValidationParams "throttle_secs" | attrToPythonValue}},
-    save_checkpoints_steps={{index .TrainParams "save_checkpoints_steps" | attrToPythonValue}},
-    log_every_n_iter={{index .TrainParams "log_every_n_iter" | attrToPythonValue}},
-    is_pai="{{.IsPAI}}" == "true",
-    pai_table="{{.PAITrainTable}}",
-    pai_val_table="{{.PAIValidateTable}}")
+train(datasource="{{.DataSource}}",
+      estimator={{.Estimator}},
+      select="""{{.TrainSelect}}""",
+      validate_select="""{{.ValidationSelect}}""",
+      feature_columns=feature_columns,
+      feature_column_names=feature_column_names,
+      feature_metas=feature_metas,
+      label_meta=label_meta,
+      model_params=model_params,
+      metric_names="{{index .ValidationParams "metrics"}}".split(","),
+      save="{{.Save}}",
+      batch_size={{index .TrainParams "batch_size" | attrToPythonValue}},
+      epochs={{index .TrainParams "epoch" | attrToPythonValue}},
+      verbose={{index .TrainParams "verbose" | attrToPythonValue}},
+      train_max_steps=train_max_steps,
+      eval_start_delay_secs={{index .ValidationParams "start_delay_secs" | attrToPythonValue}},
+      eval_throttle_secs={{index .ValidationParams "throttle_secs" | attrToPythonValue}},
+      save_checkpoints_steps={{index .TrainParams "save_checkpoints_steps" | attrToPythonValue}},
+      log_every_n_iter={{index .TrainParams "log_every_n_iter" | attrToPythonValue}},
+      is_pai="{{.IsPAI}}" == "true",
+      pai_table="{{.PAITrainTable}}",
+      pai_val_table="{{.PAIValidateTable}}")
 `

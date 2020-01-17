@@ -1,4 +1,4 @@
-// Copyright 2019 The SQLFlow Authors. All rights reserved.
+// Copyright 2020 The SQLFlow Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -33,24 +33,17 @@ import (
 
 var submitterRegistry = map[string](Submitter){
 	"default": &defaultSubmitter{},
+	"pai":     &paiSubmitter{&defaultSubmitter{}},
+	"alisa":   &alisaSubmitter{&defaultSubmitter{}},
 	// TODO(typhoonzero): add submitters like alps, elasticdl
 }
 
-// SubmitterRegister registes a submitter
-func SubmitterRegister(name string, submitter Submitter) {
-	if submitter == nil {
-		panic("submitter: Register submitter twice")
-	}
-	if _, dup := submitterRegistry[name]; dup {
-		panic("submitter: Register called twice")
-	}
-	submitterRegistry[name] = submitter
-}
-
 // GetSubmitter returns a proper Submitter from configuations in environment variables.
-func GetSubmitter() Submitter {
-	envSubmitter := os.Getenv("SQLFLOW_submitter")
-	s := submitterRegistry[envSubmitter]
+func GetSubmitter(submitter string) Submitter {
+	if submitter == "" {
+		submitter = os.Getenv("SQLFLOW_submitter")
+	}
+	s := submitterRegistry[submitter]
 	if s == nil {
 		s = submitterRegistry["default"]
 	}

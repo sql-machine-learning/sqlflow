@@ -1,4 +1,4 @@
-# Copyright 2019 The SQLFlow Authors. All rights reserved.
+# Copyright 2020 The SQLFlow Authors. All rights reserved.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -64,7 +64,7 @@ def body(func_obj):
         return None
     code = inspect.getsource(func_obj)
     # Remove function signature
-    code = code[code.find(":") + 1 :]  # noqa: E203
+    code = code[code.find(":") + 1:]  # noqa: E203
     # Function might be defined in some indented scope
     # (e.g. in another function).
     # We need to handle this and properly dedent the function source code

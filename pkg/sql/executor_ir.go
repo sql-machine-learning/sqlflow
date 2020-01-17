@@ -1,4 +1,4 @@
-// Copyright 2019 The SQLFlow Authors. All rights reserved.
+// Copyright 2020 The SQLFlow Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -54,13 +54,13 @@ func RunSQLProgram(sqlProgram string, modelDir string, session *pb.Session) *pip
 	go func() {
 		var db *database.DB
 		var err error
+		defer wr.Close()
 		if db, err = database.OpenAndConnectDB(session.DbConnStr); err != nil {
 			wr.Write(fmt.Errorf("create DB failed: %v", err))
 			log.Printf("create DB failed: %v", err)
+			return
 		}
-		defer wr.Close()
 		err = runSQLProgram(wr, sqlProgram, db, modelDir, session)
-
 		if err != nil {
 			log.Printf("runSQLProgram error: %v", err)
 			if err != pipe.ErrClosedPipe {
@@ -79,28 +79,29 @@ func RunSQLProgram(sqlProgram string, modelDir string, session *pb.Session) *pip
 // *pipe.Reader, and remove the calls to log.Printf.
 func SubmitWorkflow(sqlProgram string, modelDir string, session *pb.Session) *pipe.Reader {
 	rd, wr := pipe.Pipe()
+	startTime := time.Now().Second()
 	go func() {
 		defer wr.Close()
-		err := submitWorkflow(wr, sqlProgram, modelDir, session)
-		if err != nil {
-			if err != pipe.ErrClosedPipe {
-				if err := wr.Write(err); err != nil {
-					log.Printf("submit workflow error(piping): %v", err)
-				}
+		wfID, err := submitWorkflow(wr, sqlProgram, modelDir, session)
+		defer log.Printf("Submit SQL program: %s\nuserID: %s\nworkflowID: %s\nspent: %d\nerror:%v", sqlProgram, session.UserId, wfID, time.Now().Second()-startTime, err)
+		if err != nil && err != pipe.ErrClosedPipe {
+			if err := wr.Write(err); err != nil {
+				log.Printf("submit workflow error(piping): %v", err)
 			}
 		}
+
 	}()
 	return rd
 }
 
-func submitWorkflow(wr *pipe.Writer, sqlProgram string, modelDir string, session *pb.Session) error {
+func submitWorkflow(wr *pipe.Writer, sqlProgram string, modelDir string, session *pb.Session) (string, error) {
 	driverName, _, err := database.ParseURL(session.DbConnStr)
 	if err != nil {
-		return err
+		return "", err
 	}
 	sqls, err := parser.Parse(driverName, sqlProgram)
 	if err != nil {
-		return err
+		return "", err
 	}
 	// TODO(yancey1989): separate the IR generation to multiple steps:
 	// For example, a TRAIN statement:
@@ -120,11 +121,11 @@ func submitWorkflow(wr *pipe.Writer, sqlProgram string, modelDir string, session
 				r, err = generatePredictStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, "", false)
 			}
 		} else {
-			standardSQL := ir.StandardSQL(sql.Standard)
+			standardSQL := ir.StandardSQL(sql.Original)
 			r = &standardSQL
 		}
 		if err != nil {
-			return err
+			return "", err
 		}
 		r.SetOriginalSQL(sql.Original)
 		spIRs = append(spIRs, r)
@@ -133,17 +134,17 @@ func submitWorkflow(wr *pipe.Writer, sqlProgram string, modelDir string, session
 	// 1. call codegen_couler.go to generate Argo workflow YAML
 	argoFileName, err := couler.RunAndWriteArgoFile(spIRs, session)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer os.RemoveAll(argoFileName)
 
 	// 2. submit the argo workflow
 	workflowID, err := argo.Submit(argoFileName)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	return wr.Write(WorkflowJob{
+	return workflowID, wr.Write(WorkflowJob{
 		JobID: workflowID,
 	})
 }
@@ -178,21 +179,21 @@ func runSQLProgram(wr *pipe.Writer, sqlProgram string, db *database.DB, modelDir
 			if sql.Train {
 				r, err = generateTrainStmtWithInferredColumns(sql.SQLFlowSelectStmt, session.DbConnStr, true)
 			} else if sql.Explain {
-				r, err = generateExplainStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, GetSubmitter().GetTrainStmtFromModel())
+				r, err = generateExplainStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, GetSubmitter(session.Submitter).GetTrainStmtFromModel())
 			} else {
-				r, err = generatePredictStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, GetSubmitter().GetTrainStmtFromModel())
+				r, err = generatePredictStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, GetSubmitter(session.Submitter).GetTrainStmtFromModel())
 			}
 		} else {
-			standardSQL := ir.StandardSQL(sql.Standard)
+			standardSQL := ir.StandardSQL(sql.Original)
 			r = &standardSQL
 		}
+
 		if err != nil {
 			if e := cleanCwd(cwd); e != nil {
 				return fmt.Errorf("encounter %v when dealwith error: %s", e, err)
 			}
 			return err
 		}
-
 		r.SetOriginalSQL(sql.Original)
 		if err := runSingleSQLIR(wr, r, db, modelDir, cwd, session); err != nil {
 			if e := cleanCwd(cwd); e != nil {
@@ -221,8 +222,8 @@ func runSingleSQLIR(wr *pipe.Writer, sqlIR ir.SQLStatement, db *database.DB, mod
 	}()
 	// TODO(typhoonzero): can run feature.LogDerivationResult(wr, trainStmt) here to send
 	// feature derivation logs to client, yet we disable if for now so that it's less annoying.
-	GetSubmitter().Setup(wr, db, modelDir, cwd, session)
-	return sqlIR.Execute(GetSubmitter())
+	GetSubmitter(session.Submitter).Setup(wr, db, modelDir, cwd, session)
+	return sqlIR.Execute(GetSubmitter(session.Submitter))
 }
 
 // getColumnTypes is quiet like verify but accept a SQL string as input, and returns

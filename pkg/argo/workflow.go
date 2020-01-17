@@ -1,4 +1,4 @@
-// Copyright 2019 The SQLFlow Authors. All rights reserved.
+// Copyright 2020 The SQLFlow Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -38,6 +38,10 @@ func isPodCompleted(pod *corev1.Pod) bool {
 
 func isPodPending(pod *corev1.Pod) bool {
 	return pod.Status.Phase == corev1.PodPending
+}
+
+func isPodFailed(pod *corev1.Pod) bool {
+	return pod.Status.Phase == corev1.PodFailed
 }
 
 func isWorkflowPending(wf *wfv1.Workflow) bool {

@@ -1,4 +1,4 @@
-// Copyright 2019 The SQLFlow Authors. All rights reserved.
+// Copyright 2020 The SQLFlow Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -100,7 +100,7 @@ func fieldValue(val interface{}) (interface{}, error) {
 }
 
 func fieldType(dbms, typeName string) (string, error) {
-	if dbms == "mysql" || dbms == "maxcompute" {
+	if dbms == "mysql" || dbms == "maxcompute" || dbms == "alisa" {
 		if typeName == "VARCHAR" {
 			// FIXME(tony): MySQL driver DatabaseName doesn't include the type length of a field.
 			// Hardcoded to 255 for now.

@@ -1,4 +1,4 @@
-# Copyright 2019 The SQLFlow Authors. All rights reserved.
+# Copyright 2020 The SQLFlow Authors. All rights reserved.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -11,14 +11,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import tensorflow as tf
 import json
 import os
+
+import tensorflow as tf
 
 # This module contain utilities for PAI distributed training.
 # Note that currently PAI only support Tensorflow 1.x versions
 # importing this module should make sure that currently installed
 # tensorflow is version 1.x.
+
 
 def define_tf_flags():
     tf.app.flags.DEFINE_integer("task_index", 0, "Worker task index")
@@ -29,6 +31,7 @@ def define_tf_flags():
     FLAGS = tf.app.flags.FLAGS
     return FLAGS
 
+
 # make_distributed_info_without_evaluator and dump_into_tf_config are used to dump
 # distributed configurations into environment variable TF_CONFIG so that Tensorflow
 # can recognize it.
@@ -36,12 +39,13 @@ def make_distributed_info_without_evaluator(FLAGS):
     worker_hosts = FLAGS.worker_hosts.split(",")
     ps_hosts = FLAGS.ps_hosts.split(",")
     if len(worker_hosts) > 1:
-        cluster = {"chief": [worker_hosts[0]],
-                   "worker": worker_hosts[1:],
-                   "ps": ps_hosts}
+        cluster = {
+            "chief": [worker_hosts[0]],
+            "worker": worker_hosts[1:],
+            "ps": ps_hosts
+        }
     else:
-        cluster = {"chief": [worker_hosts[0]],
-                   "ps": ps_hosts}
+        cluster = {"chief": [worker_hosts[0]], "ps": ps_hosts}
 
     if FLAGS.job_name == "worker":
         if FLAGS.task_index == 0:
@@ -55,7 +59,12 @@ def make_distributed_info_without_evaluator(FLAGS):
         task_index = FLAGS.task_index
     return cluster, task_type, task_index
 
+
 def dump_into_tf_config(cluster, task_type, task_index):
-  os.environ['TF_CONFIG'] = json.dumps(
-      {'cluster': cluster,
-       'task': {'type': task_type, 'index': task_index}})  
+    os.environ['TF_CONFIG'] = json.dumps({
+        'cluster': cluster,
+        'task': {
+            'type': task_type,
+            'index': task_index
+        }
+    })

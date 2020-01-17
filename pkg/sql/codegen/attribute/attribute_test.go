@@ -1,4 +1,4 @@
-// Copyright 2019 The SQLFlow Authors. All rights reserved.
+// Copyright 2020 The SQLFlow Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -33,17 +33,19 @@ func TestDictionaryValidate(t *testing.T) {
 		}
 		return nil
 	}
-	tb := Dictionary{"a": {Int, 1, "attribute a", checker}}
+	tb := Dictionary{"a": {Int, 1, "attribute a", checker}, "b": {Float, 1, "attribute b", nil}}
 	a.NoError(tb.Validate(map[string]interface{}{"a": 1}))
 	a.EqualError(tb.Validate(map[string]interface{}{"a": -1}), "some error")
 	a.EqualError(tb.Validate(map[string]interface{}{"_a": -1}), fmt.Sprintf(errUnsupportedAttribute, "_a"))
 	a.EqualError(tb.Validate(map[string]interface{}{"a": 1.0}), fmt.Sprintf(errUnexpectedType, "a", "int", 1.))
+	a.NoError(tb.Validate(map[string]interface{}{"b": float32(1.0)}))
+	a.NoError(tb.Validate(map[string]interface{}{"b": 1}))
 }
 
 func TestPremadeModelParamsDocs(t *testing.T) {
 	a := assert.New(t)
 
-	a.Equal(11, len(PremadeModelParamsDocs))
+	a.Equal(18, len(PremadeModelParamsDocs))
 	a.Equal(len(PremadeModelParamsDocs["DNNClassifier"]), 12)
 	a.NotContains(PremadeModelParamsDocs["DNNClassifier"], "feature_columns")
 	a.Contains(PremadeModelParamsDocs["DNNClassifier"], "optimizer")

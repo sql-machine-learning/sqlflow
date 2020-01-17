@@ -1,4 +1,4 @@
-// Copyright 2019 The SQLFlow Authors. All rights reserved.
+// Copyright 2020 The SQLFlow Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -49,7 +49,7 @@ func testMainFastFail(t *testing.T, interactive bool) {
 
 	done := make(chan error)
 	go func() { done <- cmd.Wait() }()
-	timeout := time.After(2 * time.Second) // 2s are enough for **fast** fail
+	timeout := time.After(4 * time.Second) // 4s are enough for **fast** fail
 
 	select {
 	case <-timeout:
@@ -137,7 +137,7 @@ func TestComplete(t *testing.T) {
 
 	p.InsertText(`RAIN `, false, true)
 	c = s.completer(*p.Document())
-	a.Equal(11, len(c))
+	a.Equal(18, len(c))
 
 	p.InsertText(`DNN`, false, true)
 	c = s.completer(*p.Document())

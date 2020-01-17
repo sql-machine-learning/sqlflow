@@ -1,4 +1,4 @@
-# Copyright 2019 The SQLFlow Authors. All rights reserved.
+# Copyright 2020 The SQLFlow Authors. All rights reserved.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -14,9 +14,15 @@
 # Configuration file for jupyterhub.
 # shutdown the server after no activity for an hour
 import os
+
 c.NotebookApp.shutdown_no_activity_timeout = 60 * 60
 c.LocalProcessSpawner.environment = {
-    "SQLFLOW_DATASOURCE": "mysql://root:root@tcp(%s:%s)/?maxAllowedPacket=0" % (os.getenv("SQLFLOW_MYSQL_SERVICE_HOST", ""), os.getenv("SQLFLOW_MYSQL_SERVICE_PORT", "3306")),
-    "SQLFLOW_SERVER": "%s:%s" % (os.getenv("SQLFLOW_SERVER_SERVICE_HOST", ""), os.getenv("SQLFLOW_SERVER_SERVICE_PORT", ""))
+    "SQLFLOW_DATASOURCE":
+    "mysql://root:root@tcp(%s:%s)/?maxAllowedPacket=0" %
+    (os.getenv("SQLFLOW_MYSQL_SERVICE_HOST",
+               ""), os.getenv("SQLFLOW_MYSQL_SERVICE_PORT", "3306")),
+    "SQLFLOW_SERVER":
+    "%s:%s" % (os.getenv("SQLFLOW_SERVER_SERVICE_HOST",
+                         ""), os.getenv("SQLFLOW_SERVER_SERVICE_PORT", ""))
 }
 c.LocalProcessSpawner.cmd = ["jupyterhub-singleuser"]

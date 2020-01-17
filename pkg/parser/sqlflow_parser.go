@@ -1,4 +1,4 @@
-// Copyright 2019 The SQLFlow Authors. All rights reserved.
+// Copyright 2020 The SQLFlow Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -22,12 +22,11 @@ import (
 
 // SQLFlowStmt represents a parsed SQL statement.  The original
 // statement is in Original.  If it is a standard SQL statement,
-// Standard has the statement as well, and Extended is nil.  Or, if it
-// is a statement with SQLFlow syntax extension, Standard is the
-// prefixed SELECT statement, and Extended is the parsed extension.
+// Original has the statement as well, and Extended is nil.  Or, if it
+// is a statement with SQLFlow syntax extension, Original is the whole
+// statement and Extended is the parsed extension.
 type SQLFlowStmt struct {
 	Original string
-	Standard string
 	*SQLFlowSelectStmt
 }
 
@@ -53,61 +52,58 @@ func ParseOneStatement(dialect, sql string) (*SQLFlowStmt, error) {
 
 // Parse a SQL program in the given dialect into a list of SQL statements.
 func Parse(dialect, program string) ([]*SQLFlowStmt, error) {
-	if len(strings.TrimSpace(program)) == 0 {
-		return nil, nil
+	all := []*SQLFlowStmt{}
+	for {
+		// SELECT ...; SELECT * FROM my_table TO TRAIN ...
+		//                                    ^
+		//                                    i
+		sqls, i, err := thirdPartyParse(dialect, program)
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, sqls...)
+		if i == -1 { // The third party parser accepts all SQL statements
+			return all, nil
+		}
+
+		left := all[len(all)-1].Original
+		program = program[i:]
+
+		// TO TRAIN dnn LABEL class INTO my_model; SELECT ...
+		//                                        ^
+		//                                        j
+		extended, j, err := parseFirstSQLFlowStmt(program)
+		if err != nil {
+			return nil, err
+		}
+
+		right := program[:j]
+		program = program[j:]
+
+		all[len(all)-1].Original = left + right
+		all[len(all)-1].SQLFlowSelectStmt = extended
+		all[len(all)-1].StandardSelect.origin = left
+
+		if len(strings.TrimSpace(program)) == 0 {
+			return all, nil
+		}
 	}
-
-	// SELECT ...; SELECT * FROM my_table TO TRAIN ...
-	//                                    ^
-	//                                    i
-	sqls, i, err := thirdPartyParse(dialect, program)
-	if err != nil {
-		return nil, err
-	}
-	if i == -1 { // The third party parser accepts all SQL statements
-		return sqls, nil
-	}
-
-	left := sqls[len(sqls)-1].Standard
-	program = program[i:]
-
-	// TO TRAIN dnn LABEL class INTO my_model; SELECT ...
-	//                                        ^
-	//                                        j
-	extended, j, err := parseFirstSQLFlowStmt(program)
-	if err != nil {
-		return nil, err
-	}
-
-	right := program[:j]
-	program = program[j:]
-
-	sqls[len(sqls)-1].Original = left + right
-	sqls[len(sqls)-1].SQLFlowSelectStmt = extended
-	sqls[len(sqls)-1].StandardSelect.origin = left
-
-	nextSqls, err := Parse(dialect, program)
-	if err != nil {
-		return nil, err
-	}
-
-	return append(sqls, nextSqls...), err
 }
 
 func parseFirstSQLFlowStmt(program string) (*SQLFlowSelectStmt, int, error) {
-	// Note(tony): our parser only supports parsing one statement.
-	// So we need to extract the first statement for it.
-	s, err := SplitMultipleSQL(program)
+	pr, idx, err := parseSQLFlowStmt(program)
+
 	if err != nil {
-		return nil, -1, err
+		var e error
+		pr, idx, e = parseSQLFlowStmt(program[:idx])
+		if e != nil {
+			// return the original error since it saw the entire program
+			return nil, -1, err
+		}
+		return pr, idx, nil
 	}
 
-	pr, _, err := parseSQLFlowStmt(s[0])
-	if err != nil {
-		return nil, -1, err
-	}
-
-	return pr, len(s[0]), nil
+	return pr, idx, nil
 }
 
 func thirdPartyParse(dialect, program string) ([]*SQLFlowStmt, int, error) {
@@ -118,16 +114,7 @@ func thirdPartyParse(dialect, program string) ([]*SQLFlowStmt, int, error) {
 	}
 	var spr []*SQLFlowStmt
 	for _, sql := range sqls {
-		spr = append(spr, &SQLFlowStmt{Original: sql, Standard: sql, SQLFlowSelectStmt: nil})
+		spr = append(spr, &SQLFlowStmt{Original: sql, SQLFlowSelectStmt: nil})
 	}
 	return spr, i, nil
-}
-
-// LegacyParse calls extended_syntax_parser.y with old rules.
-// codegen_alps.go depends on this legacy parser, which requires
-// extended_syntax_parser.y to parse not only the syntax extension,
-// but also the SELECT statement prefix.
-func LegacyParse(s string) (*SQLFlowSelectStmt, error) {
-	r, _, e := parseSQLFlowStmt(s)
-	return r, e
 }
