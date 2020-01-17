@@ -227,8 +227,7 @@ func makeSessionFromEnv() *pb.Session {
 		HdfsNamenodeAddr: os.Getenv("SQLFLOW_HDFS_NAMENODE_ADDR"),
 		HdfsUser:         os.Getenv("SQLFLOW_HADOOP_USER"),
 		HdfsPass:         os.Getenv("SQLFLOW_HADOOP_PASS"),
-		Submitter:        os.Getenv("SQLFLOW_submitter"),
-	}
+		Submitter:        os.Getenv("SQLFLOW_submitter")}
 }
 
 func commandExists(cmd string) bool {
