@@ -265,7 +265,7 @@ func main() {
 	scanner := bufio.NewScanner(reader)
 	if isTerminal {
 		if !it2Check {
-			fmt.Println("Mode: non-sixel")
+			fmt.Println("The terminal doesn't support sixel, explanation statements will show ASCII figures.")
 		}
 		runPrompt(func(stmt string) { runStmt(stmt, true, *modelDir, *ds) })
 	} else {
