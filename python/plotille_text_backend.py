@@ -81,7 +81,7 @@ class FigureCanvasPlotille(FigureCanvasAgg):
 
         w, h = i.size
 
-        can = Canvas(128, 64, color_mode='byte')
+        can = Canvas(128, int(80 / w * h), color_mode='byte')
 
         for y in range(h):
             for x in range(w):
