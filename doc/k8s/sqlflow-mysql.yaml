@@ -15,7 +15,7 @@ spec:
     spec:
       volumes:
       containers:
-      - image: sqlflow/sqlflow:latest
+      - image: sqlflow/sqlflow@sha256:863f135258fc2c824570a8e17c705bc70c5ce033499a9151e8cc0dca42df6df1
         name: mysql
         imagePullPolicy: Always
         env:
