@@ -19,6 +19,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -31,6 +32,7 @@ import (
 
 var tarball = "task.tar.gz"
 var entryFile = "entry.py"
+var reCkpBucket = regexp.MustCompile(`oss://([^/]+)`)
 
 type alisaSubmitter struct {
 	*defaultSubmitter
@@ -102,6 +104,10 @@ func (s *alisaSubmitter) ExecuteTrain(ts *ir.TrainStmt) (e error) {
 		return e
 	}
 
+	if e := s.cleanUpModel(modelPath); e != nil {
+		return e
+	}
+
 	return s.submit(code, paiCmd)
 }
 
@@ -119,11 +125,25 @@ func (s *alisaSubmitter) submit(program, alisaCode string) error {
 	if e := bucket.PutObjectFromFile(resourceName, filepath.Join(s.Cwd, tarball)); e != nil {
 		return err
 	}
-	defer func() {
-		bucket.DeleteObject(resourceName)
-	}()
+	defer bucket.DeleteObject(resourceName)
 
 	return s.submitAlisaTask(alisaCode, resourceName)
+}
+
+func (s *alisaSubmitter) cleanUpModel(modelPath string) error {
+	ossCkptDir := os.Getenv("SQLFLOW_OSS_CHECKPOINT_DIR")
+	sub := reCkpBucket.FindStringSubmatch(ossCkptDir)
+	if len(sub) != 2 {
+		return fmt.Errorf("SQLFLOW_OSS_CHECKPOINT_DIR should be format: oss://bucket/?role_arn=xxx&host=xxx")
+	}
+	bucket, e := getBucket(sub[1])
+	if e != nil {
+		return e
+	}
+	if e := bucket.DeleteObject(modelPath); e != nil {
+		return e
+	}
+	return nil
 }
 
 func (s *alisaSubmitter) ExecutePredict(ps *ir.PredictStmt) error {
