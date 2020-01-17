@@ -32,7 +32,7 @@ import (
 
 var tarball = "task.tar.gz"
 var entryFile = "entry.py"
-var reCkpBucket = regexp.MustCompile(`oss://([^/]+)`)
+var reOSS = regexp.MustCompile(`oss://([^/]+).*host=([^&]+)`)
 
 type alisaSubmitter struct {
 	*defaultSubmitter
@@ -48,7 +48,7 @@ func (s *alisaSubmitter) submitAlisaTask(code, resourceName string) error {
 		return e
 	}
 
-	ossURL := fmt.Sprintf("https://%s.%s", os.Getenv("SQLFLOW_ALISA_OSS_BUCKET"), os.Getenv("SQLFLOW_ALISA_OSS_ENDPOINT"))
+	ossURL := fmt.Sprintf("https://%s.%s", os.Getenv("SQLFLOW_OSS_BUCKET"), os.Getenv("SQLFLOW_OSS_ENDPOINT"))
 	cfg.Env["RES_DOWNLOAD_URL"] = fmt.Sprintf(`[{\"downloadUrl\":\"%s/%s\", \"resourceName\":\"%s\"}]`, ossURL, resourceName, tarball)
 	cfg.Verbose = true
 	newDatasource := cfg.FormatDSN()
@@ -118,7 +118,8 @@ func (s *alisaSubmitter) submit(program, alisaCode string) error {
 
 	// upload Alisa resource file to OSS
 	resourceName := randStringRunes(16)
-	bucket, err := getBucket(os.Getenv("SQLFLOW_ALISA_OSS_BUCKET"))
+	bucket, err := getBucket(os.Getenv("SQLFLOW_OSS_ENDPOINT"),
+		os.Getenv("SQLFLOW_OSS_AK"), os.Getenv("SQLFLOW_OSS_SK"), os.Getenv("SQLFLOW_OSS_BUCKET"))
 	if err != nil {
 		return err
 	}
@@ -132,11 +133,11 @@ func (s *alisaSubmitter) submit(program, alisaCode string) error {
 
 func (s *alisaSubmitter) cleanUpModel(modelPath string) error {
 	ossCkptDir := os.Getenv("SQLFLOW_OSS_CHECKPOINT_DIR")
-	sub := reCkpBucket.FindStringSubmatch(ossCkptDir)
-	if len(sub) != 2 {
+	sub := reOSS.FindStringSubmatch(ossCkptDir)
+	if len(sub) != 3 {
 		return fmt.Errorf("SQLFLOW_OSS_CHECKPOINT_DIR should be format: oss://bucket/?role_arn=xxx&host=xxx")
 	}
-	bucket, e := getBucket(sub[1])
+	bucket, e := getBucket(sub[2], os.Getenv("SQLFLOW_OSS_AK"), os.Getenv("SQLFLOW_OSS_SK"), sub[1])
 	if e != nil {
 		return e
 	}
@@ -215,8 +216,8 @@ func findPyModulePath(pyModuleName string) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
-func getBucket(bucketName string) (*oss.Bucket, error) {
-	cli, err := oss.New(os.Getenv("SQLFLOW_ALISA_OSS_ENDPOINT"), os.Getenv("SQLFLOW_ALISA_OSS_AK"), os.Getenv("SQLFLOW_ALISA_OSS_SK"))
+func getBucket(endpoint, ak, sk, bucketName string) (*oss.Bucket, error) {
+	cli, err := oss.New(endpoint, ak, sk)
 	if err != nil {
 		return nil, err
 	}

@@ -30,13 +30,12 @@ var defaultDockerImage = "sqlflow/sqlflow"
 func getStepEnvs() (map[string]string, error) {
 	envs := make(map[string]string)
 	envs["SQLFLOW_submitter"] = os.Getenv("SQLFLOW_submitter")
-	envs["SQLFLOW_OSS_CHECKPOINT_DIR"] = os.Getenv("SQLFLOW_OSS_CHECKPOINT_DIR")
 	for _, env := range os.Environ() {
 		pair := strings.SplitN(env, "=", 2)
 		if len(pair) != 2 {
 			return nil, fmt.Errorf("env: %s should format key=value", env)
 		}
-		if strings.HasPrefix(pair[0], "SQLFLOW_ALISA_") {
+		if strings.HasPrefix(pair[0], "SQLFLOW_OSS_") {
 			envs[pair[0]] = pair[1]
 		}
 	}
