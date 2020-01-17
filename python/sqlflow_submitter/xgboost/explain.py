@@ -50,7 +50,7 @@ def explain(datasource, select, feature_field_meta, label_name,
 
     shap_values, shap_interaction_values, expected_value = xgb_shap_values(x)
 
-    if summary_params["plot_type"] == "decision":
+    if summary_params.get("plot_type") == "decision":
         explainer.plot_and_save(lambda: shap.decision_plot(
             expected_value,
             shap_interaction_values,
