@@ -230,11 +230,6 @@ func makeSessionFromEnv() *pb.Session {
 	}
 }
 
-func commandExists(cmd string) bool {
-	_, err := exec.LookPath(cmd)
-	return err == nil
-}
-
 func main() {
 	ds := flag.String("datasource", "", "database connect string")
 	modelDir := flag.String("model_dir", "", "model would be saved on the local dir, otherwise upload to the table.")
@@ -269,8 +264,8 @@ func main() {
 	}
 	scanner := bufio.NewScanner(reader)
 	if isTerminal {
-		if !commandExists("it2check") {
-			fmt.Println("Warning: defaults to non-sixel mode")
+		if !it2Check {
+			fmt.Println("The terminal doesn't support sixel, explanation statements will show ASCII figures.")
 		}
 		runPrompt(func(stmt string) { runStmt(stmt, true, *modelDir, *ds) })
 	} else {

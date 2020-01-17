@@ -203,11 +203,12 @@ func TestComplete(t *testing.T) {
 
 func TestTerminalCheck(t *testing.T) {
 	a := assert.New(t)
-	a.True(commandExists("it2check"))
+	_, err := exec.LookPath("it2check")
+	a.Nil(err)
 	a.False(it2Check)
 
 	a.True(isHTMLSnippet("<div></div>"))
-	_, err := getBase64EncodedImage("")
+	_, err = getBase64EncodedImage("")
 	a.Error(err)
 	image, err := getBase64EncodedImage(testImageHTML)
 	a.Nil(err)
