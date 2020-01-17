@@ -40,6 +40,15 @@ type predictFiller struct {
 	PAITable    string
 }
 
+type explainFiller struct {
+	OSSModelDir string
+	DataSource  string
+	Select      string
+	ResultTable string
+	IsPAI       bool
+	PAITable    string
+}
+
 const tfWrapperTmplText = `
 import os
 import subprocess
@@ -50,9 +59,14 @@ import sqlflow_submitter.db
 tarball = "/%s/sqlflow_model.tar.gz" % os.getcwd()
 archive = tarfile.open(tarball, "w|gz")
 
+with open("requirements.txt", "w") as req_fn:
+    req_fn.write("shap==0.28.5\n")
+    req_fn.write("seaborn==0.9.0\n")
+
 # '.' is always in sys.path
 archive.add(sqlflow_submitter.__path__[0], arcname='sqlflow_submitter')
 archive.add('{{.EntryFile}}')
+archive.add('requirements.txt')
 archive.close()
 
 driver, dsn = "{{.DataSource}}".split("://")
@@ -109,6 +123,7 @@ model.save("{{.OSSModelDir}}",
 `
 
 const tfPredictTmplText = `
+import tensorflow as tf
 from tensorflow.estimator import DNNClassifier, DNNRegressor, LinearClassifier, LinearRegressor, BoostedTreesClassifier, BoostedTreesRegressor, DNNLinearCombinedClassifier, DNNLinearCombinedRegressor
 from sqlflow_submitter.pai import model
 from sqlflow_submitter.tensorflow import predict
@@ -137,4 +152,36 @@ predict.pred(datasource="{{.DataSource}}",
              batch_size=1,
              is_pai="{{.IsPAI}}" == "true",
              pai_table="{{.PAITable}}")
+`
+
+const tfExplainTmplText = `
+import json
+import sys
+import tensorflow as tf
+from tensorflow.estimator import DNNClassifier, DNNRegressor, LinearClassifier, LinearRegressor, BoostedTreesClassifier, BoostedTreesRegressor, DNNLinearCombinedClassifier, DNNLinearCombinedRegressor
+from sqlflow_submitter.pai import model
+from sqlflow_submitter.tensorflow import explain
+try:
+    tf.enable_eager_execution()
+except Exception as e:
+    sys.stderr.write("warning: failed to enable_eager_execution: %s" % e)
+    pass
+
+(estimator,
+feature_column_names,
+feature_metas,
+label_meta,
+model_params,
+feature_columns) = model.load("{{.OSSModelDir}}")
+ 
+explain.explain(datasource="{{.DataSource}}",
+                estimator_cls=eval(estimator),
+                select="""{{.Select}}""",
+                feature_columns=feature_columns,
+                feature_column_names=feature_column_names,
+                feature_metas=feature_metas,
+                label_meta=label_meta,
+                model_params=model_params,
+                save="{{.OSSModelDir}}",
+                result_table="{{.ResultTable}}")
 `

@@ -172,13 +172,15 @@ func (s *paiSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 
 	// format resultTable name to "db.table" to let the codegen form a submitting
 	// argument of format "odps://project/tables/table_name"
-	resultTableParts := strings.Split(cl.Into, ".")
-	if len(resultTableParts) == 1 {
-		dbName, err := getDatabaseNameFromDSN(s.Session.DbConnStr)
-		if err != nil {
-			return err
+	if cl.Into != "" {
+		resultTableParts := strings.Split(cl.Into, ".")
+		if len(resultTableParts) == 1 {
+			dbName, err := getDatabaseNameFromDSN(s.Session.DbConnStr)
+			if err != nil {
+				return err
+			}
+			cl.Into = fmt.Sprintf("%s.%s", dbName, cl.Into)
 		}
-		cl.Into = fmt.Sprintf("%s.%s", dbName, cl.Into)
 	}
 	code, e := pai.Explain(cl, s.Session, cl.ModelName, s.Cwd)
 	if e != nil {

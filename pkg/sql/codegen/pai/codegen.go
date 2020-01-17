@@ -401,11 +401,55 @@ func explainRandomForests(ir *ir.ExplainStmt, session *pb.Session) (string, erro
 	return rfCode.String(), nil
 }
 
+// TFLoadAndExplain generates PAI-TF explain program.
+func TFLoadAndExplain(ir *ir.ExplainStmt, session *pb.Session, modelPath string) (string, error) {
+	var tpl = template.Must(template.New("Explain").Parse(tfExplainTmplText))
+	ossModelDir, err := FormatCkptDir(modelPath)
+	if err != nil {
+		return "", err
+	}
+	paiExplainTable := ""
+	if tensorflow.IsPAI() && ir.TmpExplainTable != "" {
+		paiExplainTable = ir.TmpExplainTable
+	}
+	filler := explainFiller{
+		OSSModelDir: ossModelDir,
+		DataSource:  session.DbConnStr,
+		Select:      ir.Select,
+		ResultTable: ir.Into,
+		IsPAI:       tensorflow.IsPAI(),
+		PAITable:    paiExplainTable,
+	}
+	var code bytes.Buffer
+	if err := tpl.Execute(&code, filler); err != nil {
+		return "", err
+	}
+	return code.String(), nil
+}
+
 // Explain generates a Python program for train a TensorFlow model.
 func Explain(ir *ir.ExplainStmt, session *pb.Session, modelName, cwd string) (string, error) {
 	// NOTE(typhoonzero): only support random forests explain.
-	if ir.Into == "" {
-		return "", fmt.Errorf("explain PAI random forests model need INTO clause to output the explain result to a table")
+	// if ir.Into == "" {
+	// 	return "", fmt.Errorf("explain PAI random forests model need INTO clause to output the explain result to a table")
+	// }
+	exists, err := ossFileExists(modelName)
+	if err != nil {
+		return "", err
 	}
-	return explainRandomForests(ir, session)
+	if !exists {
+		log.Printf("predicting using pai random forests")
+		return explainRandomForests(ir, session)
+	}
+	// run explain PAI TF
+	program, err := TFLoadAndExplain(ir, session, modelName)
+	if err != nil {
+		return "", err
+	}
+	cc, err := GetClusterConfig(ir.Attributes)
+	if err != nil {
+		return "", err
+	}
+	return wrapper(program, session.DbConnStr, modelName, cwd,
+		ir.TmpExplainTable, "", ir.Into, cc)
 }

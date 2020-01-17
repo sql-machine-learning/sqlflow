@@ -110,6 +110,8 @@ def explain_boosted_trees(datasource, estimator, input_fn, plot_type,
     df_dfc = pd.DataFrame([pred['dfc'] for pred in pred_dicts])
     dfc_mean = df_dfc.abs().mean()
     if result_table != "":
+        # FIXME(typhoonzero): creating explain result table in python.
+        # current approach may not work with PAI.
         conn = connect_with_data_source(datasource)
         gain = estimator.experimental_feature_importances(normalize=True)
         create_explain_result_table(conn, result_table)
@@ -132,8 +134,18 @@ def explain_dnns(datasource, estimator, shap_dataset, plot_type, result_table,
 
     shap_values = shap.KernelExplainer(predict,
                                        shap_dataset).shap_values(shap_dataset)
-    explainer.plot_and_save(lambda: shap.summary_plot(
-        shap_values, shap_dataset, show=False, plot_type=plot_type))
+    print(shap_values)
+    print(type(shap_values))
+    if result_table != "":
+        conn = connect_with_data_source(datasource)
+        gain = estimator.experimental_feature_importances(normalize=True)
+        create_explain_result_table(conn, result_table)
+        write_dfc_result(dfc_mean, gain, result_table, conn,
+                         feature_column_names, hdfs_namenode_addr,
+                         hive_location, hdfs_user, hdfs_pass)
+    else:
+        explainer.plot_and_save(lambda: shap.summary_plot(
+            shap_values, shap_dataset, show=False, plot_type=plot_type))
 
 
 def create_explain_result_table(conn, result_table):
