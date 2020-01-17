@@ -225,8 +225,9 @@ func makeSessionFromEnv() *pb.Session {
 		UserId:           os.Getenv("SQLFLOW_USER_ID"),
 		HiveLocation:     os.Getenv("SQLFLOW_HIVE_LOCATION"),
 		HdfsNamenodeAddr: os.Getenv("SQLFLOW_HDFS_NAMENODE_ADDR"),
-		HdfsUser:         os.Getenv("JUPYTER_HADOOP_USER"),
-		HdfsPass:         os.Getenv("JUPYTER_HADOOP_PASS"),
+		HdfsUser:         os.Getenv("SQLFLOW_HADOOP_USER"),
+		HdfsPass:         os.Getenv("SQLFLOW_HADOOP_PASS"),
+		Submitter:        os.Getenv("SQLFLOW_submitter"),
 	}
 }
 
