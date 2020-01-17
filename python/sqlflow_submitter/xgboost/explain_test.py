@@ -157,7 +157,7 @@ class ExplainXGBModeTestCase(TestCase):
         x = xgb_shap_dataset(datasource, select, feature_column_names,
                              label_field_meta['name'], feature_specs)
 
-        shap_values = xgb_shap_values(x)
+        shap_values = xgb_shap_values(x)[0]
         expected_features = [
             'chas', 'zn', 'rad', 'indus', 'b', 'tax', 'ptratio', 'age', 'nox',
             'crim', 'dis', 'rm', 'lstat'
