@@ -33,11 +33,13 @@ func TestDictionaryValidate(t *testing.T) {
 		}
 		return nil
 	}
-	tb := Dictionary{"a": {Int, 1, "attribute a", checker}}
+	tb := Dictionary{"a": {Int, 1, "attribute a", checker}, "b": {Float, 1, "attribute b", nil}}
 	a.NoError(tb.Validate(map[string]interface{}{"a": 1}))
 	a.EqualError(tb.Validate(map[string]interface{}{"a": -1}), "some error")
 	a.EqualError(tb.Validate(map[string]interface{}{"_a": -1}), fmt.Sprintf(errUnsupportedAttribute, "_a"))
 	a.EqualError(tb.Validate(map[string]interface{}{"a": 1.0}), fmt.Sprintf(errUnexpectedType, "a", "int", 1.))
+	a.NoError(tb.Validate(map[string]interface{}{"b": float32(1.0)}))
+	a.NoError(tb.Validate(map[string]interface{}{"b": 1}))
 }
 
 func TestPremadeModelParamsDocs(t *testing.T) {
