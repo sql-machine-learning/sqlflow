@@ -17,7 +17,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"sqlflow.org/sqlflow/pkg/sql/ir"
+	"sqlflow.org/sqlflow/pkg/ir"
 )
 
 func TestExplain(t *testing.T) {

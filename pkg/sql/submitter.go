@@ -24,11 +24,11 @@ import (
 	"sync"
 
 	"sqlflow.org/sqlflow/pkg/database"
+	"sqlflow.org/sqlflow/pkg/ir"
 	"sqlflow.org/sqlflow/pkg/pipe"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/xgboost"
-	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
 
 var submitterRegistry = map[string](Submitter){

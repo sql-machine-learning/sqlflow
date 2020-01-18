@@ -21,8 +21,8 @@ import (
 	"strings"
 
 	"sqlflow.org/sqlflow/pkg/database"
+	"sqlflow.org/sqlflow/pkg/ir"
 	"sqlflow.org/sqlflow/pkg/pipe"
-	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
 
 const featureDerivationRows = 1000
