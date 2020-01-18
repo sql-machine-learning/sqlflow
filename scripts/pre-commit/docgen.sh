@@ -15,4 +15,5 @@
 
 set -e
 
-go run cmd/docgen/model_parameter.go > doc/model_parameter.md
+go install ./cmd/docgen
+$GOPATH/bin/docgen > doc/model_parameter.md
