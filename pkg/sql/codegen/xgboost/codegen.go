@@ -20,9 +20,9 @@ import (
 	"regexp"
 	"strings"
 
+	"sqlflow.org/sqlflow/pkg/ir"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/attribute"
-	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
 
 // TODO(tony): complete model parameter and training parameter list

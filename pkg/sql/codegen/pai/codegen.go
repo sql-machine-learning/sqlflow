@@ -26,9 +26,9 @@ import (
 
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
 	"sqlflow.org/sqlflow/pkg/database"
+	"sqlflow.org/sqlflow/pkg/ir"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
-	"sqlflow.org/sqlflow/pkg/sql/ir"
 	"sqlflow.org/sqlflow/pkg/verifier"
 )
 

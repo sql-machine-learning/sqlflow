@@ -24,11 +24,11 @@ import (
 
 	"sqlflow.org/sqlflow/pkg/argo"
 	"sqlflow.org/sqlflow/pkg/database"
+	"sqlflow.org/sqlflow/pkg/ir"
 	"sqlflow.org/sqlflow/pkg/parser"
 	"sqlflow.org/sqlflow/pkg/pipe"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/couler"
-	"sqlflow.org/sqlflow/pkg/sql/ir"
 	"sqlflow.org/sqlflow/pkg/verifier"
 )
 

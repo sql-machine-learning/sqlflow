@@ -20,7 +20,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"sqlflow.org/sqlflow/pkg/database"
-	"sqlflow.org/sqlflow/pkg/sql/ir"
+	"sqlflow.org/sqlflow/pkg/ir"
 	"sqlflow.org/sqlflow/pkg/sql/testdata"
 )
 

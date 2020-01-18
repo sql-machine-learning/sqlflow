@@ -21,8 +21,8 @@ import (
 	"os/exec"
 	"strings"
 
+	"sqlflow.org/sqlflow/pkg/ir"
 	pb "sqlflow.org/sqlflow/pkg/proto"
-	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
 
 var defaultDockerImage = "sqlflow/sqlflow"
