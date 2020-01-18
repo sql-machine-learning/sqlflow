@@ -225,14 +225,9 @@ func makeSessionFromEnv() *pb.Session {
 		UserId:           os.Getenv("SQLFLOW_USER_ID"),
 		HiveLocation:     os.Getenv("SQLFLOW_HIVE_LOCATION"),
 		HdfsNamenodeAddr: os.Getenv("SQLFLOW_HDFS_NAMENODE_ADDR"),
-		HdfsUser:         os.Getenv("JUPYTER_HADOOP_USER"),
-		HdfsPass:         os.Getenv("JUPYTER_HADOOP_PASS"),
-	}
-}
-
-func commandExists(cmd string) bool {
-	_, err := exec.LookPath(cmd)
-	return err == nil
+		HdfsUser:         os.Getenv("SQLFLOW_HADOOP_USER"),
+		HdfsPass:         os.Getenv("SQLFLOW_HADOOP_PASS"),
+		Submitter:        os.Getenv("SQLFLOW_submitter")}
 }
 
 func main() {
@@ -269,8 +264,8 @@ func main() {
 	}
 	scanner := bufio.NewScanner(reader)
 	if isTerminal {
-		if !commandExists("it2check") {
-			fmt.Println("Warning: defaults to non-sixel mode")
+		if !it2Check {
+			fmt.Println("The terminal doesn't support sixel, explanation statements will show ASCII figures.")
 		}
 		runPrompt(func(stmt string) { runStmt(stmt, true, *modelDir, *ds) })
 	} else {

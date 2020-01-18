@@ -27,9 +27,33 @@ import (
 
 var defaultDockerImage = "sqlflow/sqlflow"
 
-func getStepEnvs() (map[string]string, error) {
+func fillMapIfValueNotEmpty(m map[string]string, key, value string) {
+	if value != "" {
+		(*m)[key] = value
+	}
+}
+
+func newSessionFromProto(session *pb.Session) map[string]string {
 	envs := make(map[string]string)
-	envs["SQLFLOW_submitter"] = os.Getenv("SQLFLOW_submitter")
+	fillMapIfValueNotEmpty(envs, "SQLFLOW_USER_TOKEN", session.Token)
+	fillMapIfValueNotEmpty(envs, "SQLFLOW_DATASOURCE", session.DbConnStr)
+	if session.ExitOnSubmit {
+		fillMapIfValueNotEmpty(envs, "SQLFLOW_EXIT_ON_SUBMIT", "true")
+	} else {
+		fillMapIfValueNotEmpty(envs, "SQLFLOW_EXIT_ON_SUBMIT", "false")
+	}
+	fillMapIfValueNotEmpty(envs, "SQLFLOW_USER_ID", session.UserId)
+	fillMapIfValueNotEmpty(envs, "SQLFLOW_HIVE_LOCATION", session.HiveLocation)
+	fillMapIfValueNotEmpty(envs, "SQLFLOW_HDFS_NAMENODE_ADDR", session.HdfsNamenodeAddr)
+	fillMapIfValueNotEmpty(envs, "SQLFLOW_HADOOP_USER", session.HdfsUser)
+	fillMapIfValueNotEmpty(envs, "SQLFLOW_HADOOP_PASS", session.HdfsUser)
+	fillMapIfValueNotEmpty(envs, "SQLFLOW_submitter", session.Submitter)
+	return envs
+}
+
+func getStepEnvs(session *pb.Session) (map[string]string, error) {
+	envs := newSessionFromProto(session)
+	envs["SQLFLOW_OSS_CHECKPOINT_DIR"] = os.Getenv("SQLFLOW_OSS_CHECKPOINT_DIR")
 	for _, env := range os.Environ() {
 		pair := strings.SplitN(env, "=", 2)
 		if len(pair) != 2 {
@@ -39,18 +63,17 @@ func getStepEnvs() (map[string]string, error) {
 			envs[pair[0]] = pair[1]
 		}
 	}
+	if _, ok := envs["SQLFLOW_submitter"]; !ok {
+		envs["SQLFLOW_submitter"] = os.Getenv("SQLFLOW_submitter")
+	}
 	return envs, nil
 }
 
 // Run generates Couler program
 func Run(programIR ir.SQLProgram, session *pb.Session) (string, error) {
-	// TODO(yancey1989): fill session as env
-	stepEnvs, err := getStepEnvs()
+	stepEnvs, err := getStepEnvs(session)
 	if err != nil {
 		return "", err
-	}
-	if session.Submitter != "" {
-		stepEnvs["SQLFLOW_submitter"] = session.Submitter
 	}
 	r := &coulerFiller{
 		DataSource: session.DbConnStr,
