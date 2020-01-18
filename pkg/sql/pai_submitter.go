@@ -17,8 +17,10 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"os"
 	"strings"
 
+	"github.com/aliyun/aliyun-oss-go-sdk/oss"
 	"sqlflow.org/goalisa"
 	"sqlflow.org/gomaxcompute"
 	"sqlflow.org/sqlflow/pkg/database"
@@ -153,7 +155,11 @@ func (s *paiSubmitter) ExecutePredict(cl *ir.PredictStmt) error {
 	if e := createPredictionTableFromIR(cl, s.Db, s.Session); e != nil {
 		return e
 	}
-	code, e := pai.Predict(cl, s.Session, cl.Using, s.Cwd)
+	isDeepModel, err := ossModelFileExists(cl.Using)
+	if err != nil {
+		return err
+	}
+	code, e := pai.Predict(cl, s.Session, cl.Using, s.Cwd, isDeepModel)
 	if e != nil {
 		return e
 	}
@@ -170,6 +176,10 @@ func (s *paiSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 	cl.TmpExplainTable = strings.Join([]string{dbName, tableName}, ".")
 	defer dropTmpTables([]string{cl.TmpExplainTable}, s.Session.DbConnStr)
 
+	isDeepModel, err := ossModelFileExists(cl.ModelName)
+	if err != nil {
+		return err
+	}
 	// format resultTable name to "db.table" to let the codegen form a submitting
 	// argument of format "odps://project/tables/table_name"
 	if cl.Into != "" {
@@ -181,12 +191,93 @@ func (s *paiSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 			}
 			cl.Into = fmt.Sprintf("%s.%s", dbName, cl.Into)
 		}
+		db, err := database.OpenAndConnectDB(s.Session.DbConnStr)
+		if err != nil {
+			return err
+		}
+		err = createExplainResultTable(db, cl, cl.Into, isDeepModel)
+		if err != nil {
+			return err
+		}
 	}
-	code, e := pai.Explain(cl, s.Session, cl.ModelName, s.Cwd)
+
+	code, e := pai.Explain(cl, s.Session, cl.ModelName, s.Cwd, isDeepModel)
 	if e != nil {
 		return e
 	}
 	return s.runCommand(code)
+}
+
+func ossModelFileExists(modelName string) (bool, error) {
+	// FIXME(typhoonzero): if the model not exist on OSS, assume it's a random forest model
+	// should use a general method to fetch the model and see the model type.
+	endpoint := os.Getenv("SQLFLOW_OSS_ENDPOINT")
+	ak := os.Getenv("SQLFLOW_OSS_AK")
+	sk := os.Getenv("SQLFLOW_OSS_SK")
+	if endpoint == "" || ak == "" || sk == "" {
+		return false, fmt.Errorf("must define SQLFLOW_OSS_ENDPOINT, SQLFLOW_OSS_AK, SQLFLOW_OSS_SK when using submitter pai")
+	}
+	// NOTE(typhoonzero): PAI Tensorflow need SQLFLOW_OSS_CHECKPOINT_DIR, get bucket name from it
+	ossCheckpointDir := os.Getenv("SQLFLOW_OSS_CHECKPOINT_DIR")
+	ckptParts := strings.Split(ossCheckpointDir, "?")
+	if len(ckptParts) != 2 {
+		return false, fmt.Errorf("SQLFLOW_OSS_CHECKPOINT_DIR got wrong format")
+	}
+	urlParts := strings.Split(ckptParts[0], "://")
+	if len(urlParts) != 2 {
+		return false, fmt.Errorf("SQLFLOW_OSS_CHECKPOINT_DIR got wrong format")
+	}
+	bucketName := strings.Split(urlParts[1], "/")[0]
+
+	cli, err := oss.New(endpoint, ak, sk)
+	if err != nil {
+		return false, err
+	}
+	bucket, err := cli.Bucket(bucketName)
+	if err != nil {
+		return false, err
+	}
+	ret, err := bucket.IsObjectExist(modelName + "/sqlflow_model_desc")
+	return ret, err
+}
+
+func createExplainResultTable(db *database.DB, ir *ir.ExplainStmt, tableName string, isDeepModel bool) error {
+	dropStmt := fmt.Sprintf(`DROP TABLE IF EXISTS %s;`, tableName)
+	if _, e := db.Exec(dropStmt); e != nil {
+		return fmt.Errorf("failed executing %s: %q", dropStmt, e)
+	}
+	createStmt := ""
+	if !isDeepModel {
+		columnDef := ""
+		if db.DriverName == "mysql" {
+			columnDef = "(feature VARCHAR(255), dfc VARCHAR(255), gain VARCHAR(255))"
+		} else {
+			// Hive & MaxCompute
+			columnDef = "(feature STRING, dfc STRING, gain STRING)"
+		}
+		createStmt = fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s %s;`, tableName, columnDef)
+	} else {
+		// create table to record shap values for every feature for each sample.
+		flds, _, err := getColumnTypes(ir.Select, db)
+		if err != nil {
+			return err
+		}
+		columnDefList := []string{}
+		labelCol, ok := ir.Attributes["label_col"]
+		if !ok {
+			return fmt.Errorf("need to specify WITH label_col=lable_col_name when explaining deep models")
+		}
+		for _, fieldName := range flds {
+			if fieldName != labelCol {
+				columnDefList = append(columnDefList, fmt.Sprintf("%s STRING", fieldName))
+			}
+		}
+		createStmt = fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s (%s);`, tableName, strings.Join(columnDefList, ","))
+	}
+	if _, e := db.Exec(createStmt); e != nil {
+		return fmt.Errorf("failed executing %s: %q", createStmt, e)
+	}
+	return nil
 }
 
 func (s *paiSubmitter) GetTrainStmtFromModel() bool { return false }

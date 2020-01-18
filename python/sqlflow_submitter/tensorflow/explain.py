@@ -59,6 +59,7 @@ def explain(datasource,
             model_params={},
             save="",
             is_pai=False,
+            pai_table="",
             plot_type='bar',
             result_table="",
             hdfs_namenode_addr="",
@@ -87,9 +88,9 @@ def explain(datasource,
     if estimator_cls in (tf.estimator.BoostedTreesClassifier,
                          tf.estimator.BoostedTreesRegressor):
         explain_boosted_trees(datasource, estimator, _input_fn, plot_type,
-                              result_table, feature_column_names,
-                              hdfs_namenode_addr, hive_location, hdfs_user,
-                              hdfs_pass)
+                              result_table, feature_column_names, is_pai,
+                              pai_table, hdfs_namenode_addr, hive_location,
+                              hdfs_user, hdfs_pass)
     else:
         shap_dataset = pd.DataFrame(columns=feature_column_names)
         for i, (features, label) in enumerate(_input_fn()):
@@ -97,33 +98,33 @@ def explain(datasource,
                 item.numpy()[0][0] for item in features.values()
             ]
         explain_dnns(datasource, estimator, shap_dataset, plot_type,
-                     result_table, feature_column_names, hdfs_namenode_addr,
-                     hive_location, hdfs_user, hdfs_pass)
+                     result_table, feature_column_names, is_pai, pai_table,
+                     hdfs_namenode_addr, hive_location, hdfs_user, hdfs_pass)
 
 
 def explain_boosted_trees(datasource, estimator, input_fn, plot_type,
-                          result_table, feature_column_names,
-                          hdfs_namenode_addr, hive_location, hdfs_user,
-                          hdfs_pass):
+                          result_table, feature_column_names, is_pai,
+                          pai_table, hdfs_namenode_addr, hive_location,
+                          hdfs_user, hdfs_pass):
     result = estimator.experimental_predict_with_explanations(input_fn)
     pred_dicts = list(result)
     df_dfc = pd.DataFrame([pred['dfc'] for pred in pred_dicts])
     dfc_mean = df_dfc.abs().mean()
     if result_table != "":
-        # FIXME(typhoonzero): creating explain result table in python.
-        # current approach may not work with PAI.
-        conn = connect_with_data_source(datasource)
-        gain = estimator.experimental_feature_importances(normalize=True)
-        create_explain_result_table(conn, result_table)
-        write_dfc_result(dfc_mean, gain, result_table, conn,
-                         feature_column_names, hdfs_namenode_addr,
-                         hive_location, hdfs_user, hdfs_pass)
+        if is_pai:
+            raise
+        else:
+            conn = connect_with_data_source(datasource)
+            gain = estimator.experimental_feature_importances(normalize=True)
+            write_dfc_result(dfc_mean, gain, result_table, conn.driver, conn,
+                             feature_column_names, hdfs_namenode_addr,
+                             hive_location, hdfs_user, hdfs_pass)
     explainer.plot_and_save(lambda: eval(plot_type)(df_dfc))
 
 
 def explain_dnns(datasource, estimator, shap_dataset, plot_type, result_table,
-                 feature_column_names, hdfs_namenode_addr, hive_location,
-                 hdfs_user, hdfs_pass):
+                 feature_column_names, is_pai, pai_table, hdfs_namenode_addr,
+                 hive_location, hdfs_user, hdfs_pass):
     def predict(d):
         def input_fn():
             return tf.data.Dataset.from_tensor_slices(
@@ -135,14 +136,20 @@ def explain_dnns(datasource, estimator, shap_dataset, plot_type, result_table,
     shap_values = shap.KernelExplainer(predict,
                                        shap_dataset).shap_values(shap_dataset)
     print(shap_values)
-    print(type(shap_values))
+    for row in shap_values:
+        print(list(row))
+        print(len(list(row)))
     if result_table != "":
-        conn = connect_with_data_source(datasource)
-        gain = estimator.experimental_feature_importances(normalize=True)
-        create_explain_result_table(conn, result_table)
-        write_dfc_result(dfc_mean, gain, result_table, conn,
-                         feature_column_names, hdfs_namenode_addr,
-                         hive_location, hdfs_user, hdfs_pass)
+        if is_pai:
+            write_shap_values(shap_values, "pai_maxcompute", None,
+                              result_table, feature_column_names,
+                              hdfs_namenode_addr, hive_location, hdfs_user,
+                              hdfs_pass)
+        else:
+            conn = connect_with_data_source(datasource)
+            write_shap_values(shap_values, conn.driver, conn, result_table,
+                              feature_column_names, hdfs_namenode_addr,
+                              hive_location, hdfs_user, hdfs_pass)
     else:
         explainer.plot_and_save(lambda: shap.summary_plot(
             shap_values, shap_dataset, show=False, plot_type=plot_type))
@@ -164,9 +171,20 @@ def create_explain_result_table(conn, result_table):
         cursor.close()
 
 
-def write_dfc_result(dfc_mean, gain, result_table, conn, feature_column_names,
-                     hdfs_namenode_addr, hive_location, hdfs_user, hdfs_pass):
-    with buffered_db_writer(conn.driver, conn, result_table,
+def write_shap_values(shap_values, driver, conn, result_table,
+                      feature_column_names, hdfs_namenode_addr, hive_location,
+                      hdfs_user, hdfs_pass):
+    with buffered_db_writer(driver, conn, result_table, feature_column_names,
+                            100, hdfs_namenode_addr, hive_location, hdfs_user,
+                            hdfs_pass) as w:
+        for row in shap_values:
+            w.write(list(row))
+
+
+def write_dfc_result(dfc_mean, gain, result_table, driver, conn,
+                     feature_column_names, hdfs_namenode_addr, hive_location,
+                     hdfs_user, hdfs_pass):
+    with buffered_db_writer(driver, conn, result_table,
                             ["feature", "dfc", "gain"], 100,
                             hdfs_namenode_addr, hive_location, hdfs_user,
                             hdfs_pass) as w:

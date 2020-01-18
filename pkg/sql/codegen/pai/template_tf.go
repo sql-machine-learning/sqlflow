@@ -183,5 +183,7 @@ explain.explain(datasource="{{.DataSource}}",
                 label_meta=label_meta,
                 model_params=model_params,
                 save="{{.OSSModelDir}}",
-                result_table="{{.ResultTable}}")
+                result_table="{{.ResultTable}}",
+                is_pai="{{.IsPAI}}" == "true",
+                pai_table="{{.PAITable}}")
 `
