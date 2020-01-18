@@ -13,6 +13,33 @@
 
 package ir
 
+// FeatureColumn corresponds to the COLUMN clause in TO TRAIN.
+type FeatureColumn interface {
+	GetFieldDesc() []*FieldDesc
+}
+
+// FieldDesc describes a field used as the input to a feature column.
+type FieldDesc struct {
+	Name      string `json:"name"`      // the name for a field, e.g. "petal_length"
+	DType     int    `json:"dtype"`     // e.g. "float", "int32"
+	Delimiter string `json:"delimiter"` // Needs to be "," if the field saves strings like "1,23,42".
+	Shape     []int  `json:"shape"`     // [3] if the field saves strings of three numbers like "1,23,42".
+	IsSparse  bool   `json:"is_sparse"` // If the field saves a sparse tensor.
+	// Vocabulary stores all possible enumerate values if the column type is string,
+	// e.g. the column values are: "MALE", "FEMALE", "NULL"
+	Vocabulary map[string]string `json:"vocabulary"` // use a map to generate a list without duplication
+	// if the column data is used as embedding(category_column()), the `num_buckets` should use the maxID
+	// appeared in the sample data. if error still occurs, users should set `num_buckets` manually.
+	MaxID int64
+}
+
+// Possible DType values in FieldDesc
+const (
+	Int int = iota
+	Float
+	String
+)
+
 // NumericColumn represents a dense tensor for the model input
 //
 // FieldDesc indicates the meta information for decoding the field. Please be aware
