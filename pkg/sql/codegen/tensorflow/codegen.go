@@ -164,7 +164,7 @@ func attrToPythonValue(attr interface{}) string {
 	}
 }
 
-func dtypeToString(dt ir.FieldType) string {
+func dtypeToString(dt int) string {
 	switch dt {
 	case ir.Float:
 		return "float32"
