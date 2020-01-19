@@ -26,27 +26,27 @@ import (
 
 var defaultDockerImage = "sqlflow/sqlflow"
 
-func fillMapIfValueNotEmpty(m *map[string]string, key, value string) {
+func fillMapIfValueNotEmpty(m map[string]string, key, value string) {
 	if value != "" {
-		(*m)[key] = value
+		m[key] = value
 	}
 }
 
 func newSessionFromProto(session *pb.Session) map[string]string {
 	envs := make(map[string]string)
-	fillMapIfValueNotEmpty(&envs, "SQLFLOW_USER_TOKEN", session.Token)
-	fillMapIfValueNotEmpty(&envs, "SQLFLOW_DATASOURCE", session.DbConnStr)
+	fillMapIfValueNotEmpty(envs, "SQLFLOW_USER_TOKEN", session.Token)
+	fillMapIfValueNotEmpty(envs, "SQLFLOW_DATASOURCE", session.DbConnStr)
 	if session.ExitOnSubmit {
-		fillMapIfValueNotEmpty(&envs, "SQLFLOW_EXIT_ON_SUBMIT", "true")
+		fillMapIfValueNotEmpty(envs, "SQLFLOW_EXIT_ON_SUBMIT", "true")
 	} else {
-		fillMapIfValueNotEmpty(&envs, "SQLFLOW_EXIT_ON_SUBMIT", "false")
+		fillMapIfValueNotEmpty(envs, "SQLFLOW_EXIT_ON_SUBMIT", "false")
 	}
-	fillMapIfValueNotEmpty(&envs, "SQLFLOW_USER_ID", session.UserId)
-	fillMapIfValueNotEmpty(&envs, "SQLFLOW_HIVE_LOCATION", session.HiveLocation)
-	fillMapIfValueNotEmpty(&envs, "SQLFLOW_HDFS_NAMENODE_ADDR", session.HdfsNamenodeAddr)
-	fillMapIfValueNotEmpty(&envs, "SQLFLOW_HADOOP_USER", session.HdfsUser)
-	fillMapIfValueNotEmpty(&envs, "SQLFLOW_HADOOP_PASS", session.HdfsUser)
-	fillMapIfValueNotEmpty(&envs, "SQLFLOW_submitter", session.Submitter)
+	fillMapIfValueNotEmpty(envs, "SQLFLOW_USER_ID", session.UserId)
+	fillMapIfValueNotEmpty(envs, "SQLFLOW_HIVE_LOCATION", session.HiveLocation)
+	fillMapIfValueNotEmpty(envs, "SQLFLOW_HDFS_NAMENODE_ADDR", session.HdfsNamenodeAddr)
+	fillMapIfValueNotEmpty(envs, "SQLFLOW_HADOOP_USER", session.HdfsUser)
+	fillMapIfValueNotEmpty(envs, "SQLFLOW_HADOOP_PASS", session.HdfsUser)
+	fillMapIfValueNotEmpty(envs, "SQLFLOW_submitter", session.Submitter)
 	return envs
 }
 
@@ -58,7 +58,7 @@ func getStepEnvs(session *pb.Session) (map[string]string, error) {
 		if len(pair) != 2 {
 			return nil, fmt.Errorf("env: %s should format key=value", env)
 		}
-		if strings.HasPrefix(pair[0], "SQLFLOW_ALISA_") {
+		if strings.HasPrefix(pair[0], "SQLFLOW_OSS_") {
 			envs[pair[0]] = pair[1]
 		}
 	}
