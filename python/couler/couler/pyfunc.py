@@ -47,7 +47,7 @@ def invocation_location():
     if len(stack) < 4:
         line_number = stack[len(stack) - 1][2]
         func_name = "%s-%d" % (
-            _argo_safe_name(workflow_filename()),
+            _argo_safe_name(workflow_name()),
             line_number,
         )
     else:
@@ -71,9 +71,12 @@ def body(func_obj):
     return textwrap.dedent(code)
 
 
-def workflow_filename():
-    """Return the Python file that defines the workflow.
+def workflow_name():
+    """Return the workflow name that defines the workflow.
     """
+    wf_name = os.getenv("workflow_name")
+    if wf_name != "":
+        return wf_name
     stacks = inspect.stack()
     frame = inspect.stack()[len(stacks) - 1]
     full_path = frame[0].f_code.co_filename

@@ -14,6 +14,6 @@
 package argo
 
 // Submit the Argo workflow and returns the workflow ID
-func Submit(argoFileName string) (string, error) {
-	return k8sCreateResource(argoFileName)
+func Submit(argoYAMLContent string) (string, error) {
+	return k8sCreateResource(argoYAMLContent)
 }

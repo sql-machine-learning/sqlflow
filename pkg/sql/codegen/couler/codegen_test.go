@@ -71,15 +71,15 @@ cluster = K8s()
 var expectedArgoYAML = `apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:
-  generateName: test-sqlflow-couler-
+  generateName: sqlflow-
 spec:
-  entrypoint: test-sqlflow-couler
+  entrypoint: sqlflow
   templates:
-    - name: test-sqlflow-couler
+    - name: sqlflow
       steps:
-        - - name: test-sqlflow-couler-3-3
-            template: test-sqlflow-couler-3
-    - name: test-sqlflow-couler-3
+        - - name: sqlflow-3-3
+            template: sqlflow-3
+    - name: sqlflow-3
       container:
         image: docker/whalesay
         command:
@@ -99,29 +99,21 @@ import couler.argo as couler
 couler.run_container(image="docker/whalesay", command='echo "SQLFlow bridges AI and SQL engine."')
 `
 
-func TestWriteArgoYamlWithClusterConfig(t *testing.T) {
+func TestCompileCoulerProgram(t *testing.T) {
 	a := assert.New(t)
 
-	coulerFileName := "/tmp/test-sqlflow-couler.py"
-	e := ioutil.WriteFile(coulerFileName, []byte(testCoulerProgram), 0755)
-	a.NoError(e)
-	defer os.Remove(coulerFileName)
-
 	cfFileName := "/tmp/sqlflow-cluster.py"
-	e = ioutil.WriteFile(cfFileName, []byte(testCoulerClusterConfig), 0755)
+	e := ioutil.WriteFile(cfFileName, []byte(testCoulerClusterConfig), 0755)
 	a.NoError(e)
 	defer os.Remove(cfFileName)
 
 	os.Setenv("SQLFLOW_COULER_CLUSTER_CONFIG", cfFileName)
+	defer os.Unsetenv("SQLFLOW_COULER_CLUSTER_CONFIG")
 
-	argoFile, e := writeArgoFile(coulerFileName)
-	a.NoError(e)
-	defer os.Remove(argoFile)
-
-	out, e := ioutil.ReadFile(argoFile)
+	out, e := Compile(testCoulerProgram)
 	a.NoError(e)
 
-	a.Equal(string(out), expectedArgoYAML)
+	a.Equal(out, expectedArgoYAML)
 }
 
 func TestKatibCodegen(t *testing.T) {
@@ -172,11 +164,4 @@ INTO sqlflow_models.my_xgboost_model;
 				&ir.NumericColumn{&ir.FieldDesc{"petal_length", ir.Float, "", []int{1}, false, nil, 0}},
 				&ir.NumericColumn{&ir.FieldDesc{"petal_width", ir.Float, "", []int{1}, false, nil, 0}}}},
 		Label: &ir.NumericColumn{&ir.FieldDesc{"class", ir.Int, "", []int{1}, false, nil, 0}}}
-}
-
-func TestCompile(t *testing.T) {
-	a := assert.New(t)
-	out, err := Compile(testCoulerProgram)
-	a.NoError(err)
-	a.Equal(out, expectedArgoYAML)
 }

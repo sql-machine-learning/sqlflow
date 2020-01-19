@@ -23,9 +23,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-func k8sCreateResource(yamlFileName string) (string, error) {
+func k8sCreateResource(yamlContent string) (string, error) {
 	// create Kubernetes resource and fetch the resource ID
-	cmd := exec.Command("kubectl", "create", "-f", yamlFileName)
+	cmd := exec.Command("kubectl", "create", "-f", "-")
+	cmd.Stdin = strings.NewReader(yamlContent)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("submit Argo YAML error: %v, output: %s", err, string(output))

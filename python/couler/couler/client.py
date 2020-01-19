@@ -23,7 +23,7 @@ def add_run_params(parser):
                         required=True)
     # TODO: can skip --file, directly run as "couler run file1.py"
     parser.add_argument("--file", type=str, required=True)
-
+    parser.add_argument("--workflow_name", type=str, default='sqlflow')
     parser.add_argument(
         "--cluster_config",
         default=None,
@@ -37,6 +37,8 @@ def run(args):
     if args.cluster_config is not None:
         cluster_config_path = args.cluster_config
         os.environ["couler_cluster_config"] = cluster_config_path
+
+    os.environ["workflow_name"] = args.workflow_name
 
     # TODO: use mode to decide how to run
     call(["python", args.file], env=os.environ)
