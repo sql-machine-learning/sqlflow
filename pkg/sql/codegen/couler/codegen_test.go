@@ -32,7 +32,7 @@ func TestCodegen(t *testing.T) {
 	sqlIR := mockSQLProgramIR()
 	os.Setenv("SQLFLOW_ALISA_OSS_AK", "oss_key")
 	defer os.Unsetenv("SQLFLOW_ALISA_OSS_AK")
-	code, err := Run(sqlIR, &pb.Session{})
+	code, err := GenCode(sqlIR, &pb.Session{})
 	a.NoError(err)
 
 	r, _ := regexp.Compile(`repl -e "(.*);"`)
@@ -127,7 +127,7 @@ func TestKatibCodegen(t *testing.T) {
 
 	program := []ir.SQLStatement{&standardSQL, &sqlIR}
 
-	_, err := Run(program, &pb.Session{})
+	_, err := GenCode(program, &pb.Session{})
 
 	a.NoError(err)
 }
