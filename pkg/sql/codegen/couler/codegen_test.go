@@ -173,3 +173,10 @@ INTO sqlflow_models.my_xgboost_model;
 				&ir.NumericColumn{&ir.FieldDesc{"petal_width", ir.Float, "", []int{1}, false, nil, 0}}}},
 		Label: &ir.NumericColumn{&ir.FieldDesc{"class", ir.Int, "", []int{1}, false, nil, 0}}}
 }
+
+func TestCompile(t *testing.T) {
+	a := assert.New(t)
+	out, err := Compile(testCoulerProgram)
+	a.NoError(err)
+	a.Equal(out, expectedArgoYAML)
+}

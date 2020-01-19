@@ -119,6 +119,25 @@ func clusterConfigFile() string {
 	return os.Getenv("SQLFLOW_COULER_CLUSTER_CONFIG")
 }
 
+// Compile Couler program into Argo YAML
+func Compile(coulerProgram string) (string, error) {
+	buf := bytes.Buffer{}
+	buf.WriteString("couler run --mode argo ")
+	if clusterConfigFile() != "" {
+		buf.WriteString(fmt.Sprintf("--cluster_coonfig %s ", clusterConfigFile()))
+	}
+	buf.WriteString("--file -")
+	coulerExec := strings.Split(buf.String(), " ")
+	cmd := exec.Command(coulerExec[0], coulerExec[1:]...)
+	cmd.Env = append(os.Environ())
+	cmd.Stdin = strings.NewReader(coulerProgram)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("failed %s, %v", cmd, err)
+	}
+	return string(out), nil
+}
+
 func writeArgoFile(coulerFileName string) (string, error) {
 	argoYaml, err := ioutil.TempFile("/tmp", "sqlflow-argo*.yaml")
 	if err != nil {
