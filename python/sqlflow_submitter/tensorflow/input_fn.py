@@ -73,7 +73,7 @@ def input_fn(select, conn, feature_column_names, feature_metas, label_meta):
             shapes.append(feature_metas[name]["shape"])
 
     gen = db_generator(conn.driver, conn, select, feature_column_names,
-                       label_meta["feature_name"], feature_metas)
+                       label_meta, feature_metas)
     # Clustering model do not have label
     if label_meta["feature_name"] == "":
         dataset = tf.data.Dataset.from_generator(gen, (tuple(feature_types), ),

@@ -425,6 +425,10 @@ func InferFeatureColumns(trainStmt *ir.TrainStmt, dataSource string) error {
 			}
 		}
 	}
+	// update label field meta
+	trainStmt.Label = &ir.NumericColumn{
+		FieldDesc: fmMap[trainStmt.Label.GetFieldDesc()[0].Name],
+	}
 	return nil
 }
 
