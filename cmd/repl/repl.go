@@ -45,6 +45,9 @@ const tablePageSize = 1000
 func readStmt(scn *bufio.Scanner) (string, error) {
 	stmt := ""
 	for scn.Scan() {
+		if stmt == "" && strings.HasPrefix(strings.TrimSpace(scn.Text()), "-- ") {
+			continue
+		}
 		stmt += scn.Text()
 		// FIXME(tonyyang-svail): It is hacky and buggy to assume that
 		// SQL statements are separated by substrings ";\n".  We need

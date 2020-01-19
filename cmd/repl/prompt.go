@@ -84,7 +84,7 @@ func (p *promptState) changeLivePrefix() (string, bool) {
 
 func (p *promptState) execute(in string, cb func(string)) {
 	in = strings.TrimRight(in, " \t")
-	if in != "" {
+	if in != "" && !(p.statement == "" && strings.HasPrefix(strings.TrimSpace(in), "-- ")) {
 		p.statement += in
 		if strings.HasSuffix(in, ";") {
 			p.updateHistory()
