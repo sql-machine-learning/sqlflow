@@ -32,6 +32,31 @@ import (
 
 var space = regexp.MustCompile(`\s+`)
 
+func testGetDataSource(t *testing.T, dataSource, databaseName string) {
+	a := assert.New(t)
+	a.Equal(dataSource, getDataSource(dataSource, databaseName))
+	a.Equal(databaseName, getDatabaseName(dataSource))
+	a.NotEqual(dataSource, getDataSource(dataSource, databaseName+"test"))
+	a.Equal(databaseName+"test", getDatabaseName(getDataSource(dataSource, databaseName+"test")))
+}
+func TestGetDataSource(t *testing.T) {
+	a := assert.New(t)
+	a.Equal("", getDatabaseName("maxcompute://test:test@service.cn.maxcompute.aliyun.com/api"))
+	testGetDataSource(t, "maxcompute://test:test@service.cn.maxcompute.aliyun.com/api?curr_project=iris&scheme=https", "iris")
+	testGetDataSource(t, "maxcompute://test:test@service.cn.maxcompute.aliyun.com/api?curr_project=&scheme=https", "")
+
+	testGetDataSource(t, "mysql://root:root@tcp(127.0.0.1:3306)/", "")
+	testGetDataSource(t, "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0", "")
+	testGetDataSource(t, "mysql://root:root@tcp(127.0.0.1:3306)/iris", "iris")
+	testGetDataSource(t, "mysql://root:root@tcp(127.0.0.1:3306)/iris?maxAllowedPacket=0", "iris")
+
+	testGetDataSource(t, "hive://root:root@localhost:10000/", "")
+	testGetDataSource(t, "hive://root:root@127.0.0.1:10000/?auth=NOSASL", "")
+	testGetDataSource(t, "hive://root:root@localhost:10000/churn", "churn")
+	testGetDataSource(t, "hive://root:root@127.0.0.1:10000/iris?auth=NOSASL", "iris")
+
+}
+
 func testMainFastFail(t *testing.T, interactive bool) {
 	a := assert.New(t)
 	// Run the crashing code when FLAG is set
