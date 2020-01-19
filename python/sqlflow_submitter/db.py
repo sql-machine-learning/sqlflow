@@ -211,7 +211,7 @@ def db_generator(driver,
                 # NOTE: If there is no label clause in the extened SQL, the default label value would
                 # be -1, the Model implementation can determine use it or not.
                 label = row[label_idx] if label_idx is not None else -1
-                if label_spec["delimiter"] != "":
+                if label_spec and label_spec["delimiter"] != "":
                     if label_spec["dtype"] == "float32":
                         label = np.fromstring(label,
                                               dtype=float,

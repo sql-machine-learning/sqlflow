@@ -429,6 +429,11 @@ func InferFeatureColumns(trainStmt *ir.TrainStmt, dataSource string) error {
 	trainStmt.Label = &ir.NumericColumn{
 		FieldDesc: fmMap[trainStmt.Label.GetFieldDesc()[0].Name],
 	}
+	// use shape [] if label shape is [1] for Tensorflow scalar label shape should be [].
+	shape := trainStmt.Label.GetFieldDesc()[0].Shape
+	if len(shape) == 1 && shape[0] == 1 {
+		trainStmt.Label.GetFieldDesc()[0].Shape = []int{}
+	}
 	return nil
 }
 
