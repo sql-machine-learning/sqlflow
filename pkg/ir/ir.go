@@ -14,52 +14,6 @@
 // Package ir is the Intermediate Representation of parsed SQL statements
 package ir
 
-// FieldType indicates the field type of a table column
-type FieldType int
-
-const (
-	// Int indicates the corresponding table column is an integer
-	Int FieldType = iota
-	// Float indicates the corresponding table column is a float
-	Float
-	// String indicates the corresponding table column is a string
-	String
-)
-
-// FieldDesc contains the meta information for decoding. A field is a selected column of a SQL result.
-//
-// Name indicates the name for a field.
-//
-// DType indicates the data type for a field. For example: Int, Float, String.
-//
-// Delimiter indicates the decoding method of a field. For example, the field may
-// contain a string like "1,23,42" which represent a 3-D tensor [1, 23, 42].
-//
-// Shape indicates the shape of the tensor represented for a field. For example, the
-// field may contain a string like "1,23,42" which represent a 3-D tensor, the shape
-// will be [3].
-//
-// IsSparse indicates the type of tensor for a field. True means the tensor is a sparse tensor.
-type FieldDesc struct {
-	Name      string    `json:"name"`      // e.g. "petal_length"
-	DType     FieldType `json:"dtype"`     // e.g. "float", "int32"
-	Delimiter string    `json:"delimiter"` // e.g. ","
-	Shape     []int     `json:"shape"`     // e.g. [1], [1 2 3]
-	IsSparse  bool      `json:"is_sparse"` // e.g. false
-	// Vocabulary stores all possible enumerate values if the column type is string,
-	// e.g. the column values are: "MALE", "FEMALE", "NULL"
-	Vocabulary map[string]string `json:"vocabulary"` // use a map to generate a list without duplication
-	// if the column data is used as embedding(category_column()), the `num_buckets` should use the maxID
-	// appeared in the sample data. if error still occurs, users should set `num_buckets` manually.
-	MaxID int64
-}
-
-// FeatureColumn indicates the feature column to be applied on the field. Please refer to
-// sqlflow.org/sqlflow/pkg/sql/codegen/feature_column.go for detailed list of all feature columns.
-type FeatureColumn interface {
-	GetFieldDesc() []*FieldDesc
-}
-
 // SQLProgram represents a parsed SQL program.
 // TODO(typhoonzero): Can generate a DAG workflow from a SQL program.
 type SQLProgram []SQLStatement

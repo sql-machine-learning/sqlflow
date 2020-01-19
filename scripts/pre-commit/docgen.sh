@@ -15,4 +15,13 @@
 
 set -e
 
-go run cmd/docgen/model_parameter.go > doc/model_parameter.md
+# Don't use go run; instead, use go install and run the built
+# executable file.  Otherwise, we'd get the following error as
+# described in https://github.com/golang/go/issues/27215
+#
+# build sqlflow.org/sqlflow/cmd/docgen: cannot load
+# sqlflow.org/sqlflow/pkg/sql/ir: no matching versions for query
+# "latest"
+#
+go install ./cmd/docgen
+$GOPATH/bin/docgen > doc/model_parameter.md

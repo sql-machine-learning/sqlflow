@@ -13,7 +13,7 @@
 
 package tensorflow
 
-import "sqlflow.org/sqlflow/pkg/sql/ir"
+import "sqlflow.org/sqlflow/pkg/ir"
 
 type predFiller struct {
 	DataSource  string

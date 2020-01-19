@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package model
 
 import (
 	"bytes"
@@ -24,7 +24,7 @@ import (
 	"strings"
 
 	"sqlflow.org/sqlflow/pkg/database"
-	"sqlflow.org/sqlflow/pkg/sql/ir"
+	"sqlflow.org/sqlflow/pkg/ir"
 
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sqlfs"
@@ -33,12 +33,21 @@ import (
 const modelZooDB = "sqlflow"
 const modelZooTable = "sqlflow.trained_models"
 
-type model struct {
+// Model represent a trained model, which could be saved to a filesystem or sqlfs.
+type Model struct {
 	workDir     string // We don't expose and gob workDir; instead we tar it.
-	TrainSelect string
+	TrainSelect string // TrainSelect is gob-encoded during I/O.
 }
 
-func (m *model) save(modelURI string, trainStmt *ir.TrainStmt, session *pb.Session) error {
+// New an empty model.
+func New(cwd, trainSelect string) *Model {
+	return &Model{
+		workDir:     cwd,
+		TrainSelect: trainSelect}
+}
+
+// Save all files in workDir as a tarball to a filesystem or sqlfs.
+func (m *Model) Save(modelURI string, trainStmt *ir.TrainStmt, session *pb.Session) error {
 	if strings.Contains(modelURI, "://") {
 		uriParts := strings.Split(modelURI, "://")
 		if len(uriParts) == 2 {
@@ -71,7 +80,8 @@ func (m *model) save(modelURI string, trainStmt *ir.TrainStmt, session *pb.Sessi
 	return nil
 }
 
-func load(modelURI, dst string, db *database.DB) (*model, error) {
+// Load untar a saved model to a directory on the local filesystem.
+func Load(modelURI, dst string, db *database.DB) (*Model, error) {
 	// FIXME(typhoonzero): unify arguments with save, use session,
 	// so that can pass oss credentials too.
 	if strings.Contains(modelURI, "://") {
@@ -95,7 +105,7 @@ func load(modelURI, dst string, db *database.DB) (*model, error) {
 // train select statement into the table, followed by the tar-gzipped
 // SQLFlow working directory, which contains the TensorFlow working
 // directory and the trained TensorFlow model.
-func (m *model) saveDB(db *database.DB, table string, session *pb.Session) (e error) {
+func (m *Model) saveDB(db *database.DB, table string, session *pb.Session) (e error) {
 	sqlf, e := sqlfs.Create(db.DB, db.DriverName, table, session)
 	if e != nil {
 		return fmt.Errorf("cannot create sqlfs file %s: %v", table, e)
@@ -126,7 +136,7 @@ func (m *model) saveDB(db *database.DB, table string, session *pb.Session) (e er
 	return nil
 }
 
-func (m *model) saveTar(modelDir, save string) (e error) {
+func (m *Model) saveTar(modelDir, save string) (e error) {
 	gobFile := filepath.Join(m.workDir, save+".gob")
 	if e := writeGob(gobFile, m); e != nil {
 		return e
@@ -136,14 +146,14 @@ func (m *model) saveTar(modelDir, save string) (e error) {
 	return cmd.Run()
 }
 
-func loadTar(modelDir, cwd, save string) (m *model, e error) {
+func loadTar(modelDir, cwd, save string) (m *Model, e error) {
 	tarFile := filepath.Join(modelDir, save+".tar.gz")
 	cmd := exec.Command("tar", "zxf", tarFile, "-C", cwd)
 	if e = cmd.Run(); e != nil {
 		return nil, fmt.Errorf("load tar file(%s) failed: %v", tarFile, e)
 	}
 	gobFile := filepath.Join(cwd, save+".gob")
-	m = &model{}
+	m = &Model{}
 	if e = readGob(gobFile, m); e != nil {
 		return nil, e
 	}
@@ -153,7 +163,7 @@ func loadTar(modelDir, cwd, save string) (m *model, e error) {
 // load reads from the given sqlfs table for the train select
 // statement, and untar the SQLFlow working directory, which contains
 // the TensorFlow model, into directory cwd.
-func loadDB(db *database.DB, table, cwd string) (m *model, e error) {
+func loadDB(db *database.DB, table, cwd string) (m *Model, e error) {
 	sqlf, e := sqlfs.Open(db.DB, table)
 	if e != nil {
 		return nil, fmt.Errorf("cannot open sqlfs file %s: %v", table, e)
@@ -164,7 +174,7 @@ func loadDB(db *database.DB, table, cwd string) (m *model, e error) {
 	if _, e := buf.ReadFrom(sqlf); e != nil {
 		return nil, fmt.Errorf("buf.ReadFrom %v", e)
 	}
-	m = &model{}
+	m = &Model{}
 	if e := gob.NewDecoder(&buf).Decode(m); e != nil {
 		return nil, fmt.Errorf("gob-decoding train select failed: %v", e)
 	}

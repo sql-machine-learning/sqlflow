@@ -17,13 +17,14 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"sqlflow.org/sqlflow/pkg/database"
 	"testing"
 
+	"sqlflow.org/sqlflow/pkg/database"
+
 	"github.com/stretchr/testify/assert"
+	"sqlflow.org/sqlflow/pkg/ir"
 	"sqlflow.org/sqlflow/pkg/parser"
 	pb "sqlflow.org/sqlflow/pkg/proto"
-	"sqlflow.org/sqlflow/pkg/sql/ir"
 )
 
 func TestGenerateTrainStmt(t *testing.T) {
