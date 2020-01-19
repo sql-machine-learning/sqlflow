@@ -250,7 +250,7 @@ func createExplainResultTable(db *database.DB, ir *ir.ExplainStmt, tableName str
 	if !isDeepModel {
 		columnDef := ""
 		if db.DriverName == "mysql" {
-			columnDef = "(feature VARCHAR(255), dfc VARCHAR(255), gain VARCHAR(255))"
+			columnDef = "(feature VARCHAR(255), dfc FLOAT, gain FLOAT)"
 		} else {
 			// Hive & MaxCompute
 			columnDef = "(feature STRING, dfc STRING, gain STRING)"
