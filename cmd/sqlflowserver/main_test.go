@@ -294,6 +294,8 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseTrainRegression", CaseTrainRegression)
 	t.Run("CaseTrainXGBoostRegression", CaseTrainXGBoostRegression)
 	t.Run("CasePredictXGBoostRegression", CasePredictXGBoostRegression)
+	t.Run("CaseTrainAndExplainXGBoostModel", CaseTrainAndExplainXGBoostModel)
+
 	t.Run("CaseTrainDeepWideModel", CaseTrainDeepWideModel)
 	t.Run("CaseTrainDeepWideModelOptimizer", CaseTrainDeepWideModelOptimizer)
 	t.Run("CaseTrainAdaNetAndExplain", CaseTrainAdaNetAndExplain)
