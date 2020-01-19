@@ -29,7 +29,7 @@ var defaultDockerImage = "sqlflow/sqlflow"
 
 func fillMapIfValueNotEmpty(m map[string]string, key, value string) {
 	if value != "" {
-		(*m)[key] = value
+		m[key] = value
 	}
 }
 
