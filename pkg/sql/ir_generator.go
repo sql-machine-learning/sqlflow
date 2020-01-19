@@ -20,6 +20,7 @@ import (
 
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/ir"
+	"sqlflow.org/sqlflow/pkg/model"
 	"sqlflow.org/sqlflow/pkg/parser"
 	"sqlflow.org/sqlflow/pkg/step/feature"
 	"sqlflow.org/sqlflow/pkg/verifier"
@@ -125,14 +126,12 @@ func generateTrainStmt(slct *parser.SQLFlowSelectStmt) (*ir.TrainStmt, error) {
 }
 
 func loadModelMeta(pr *parser.SQLFlowSelectStmt, db *database.DB, cwd, modelDir, modelName string) (*parser.SQLFlowSelectStmt, error) {
-	var m *model
-	var e error
 	modelURI := modelName
 	if modelDir != "" {
 		modelURI = fmt.Sprintf("file://%s/%s", modelDir, modelName)
 	}
 
-	m, e = load(modelURI, cwd, db)
+	m, e := model.Load(modelURI, cwd, db)
 	if e != nil {
 		return nil, fmt.Errorf("load %v", e)
 	}

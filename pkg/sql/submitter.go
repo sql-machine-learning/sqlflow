@@ -25,6 +25,7 @@ import (
 
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/ir"
+	"sqlflow.org/sqlflow/pkg/model"
 	"sqlflow.org/sqlflow/pkg/pipe"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
@@ -116,12 +117,12 @@ func (s *defaultSubmitter) Setup(w *pipe.Writer, db *database.DB, modelDir strin
 }
 
 func (s *defaultSubmitter) SaveModel(cl *ir.TrainStmt) error {
-	m := model{workDir: s.Cwd, TrainSelect: cl.OriginalSQL}
+	m := model.New(s.Cwd, cl.OriginalSQL)
 	modelURI := cl.Into
 	if s.ModelDir != "" {
 		modelURI = fmt.Sprintf("file://%s/%s", s.ModelDir, cl.Into)
 	}
-	return m.save(modelURI, cl, s.Session)
+	return m.Save(modelURI, cl, s.Session)
 }
 
 func (s *defaultSubmitter) runCommand(program string) error {
