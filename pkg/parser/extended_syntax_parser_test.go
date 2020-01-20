@@ -166,3 +166,13 @@ func TestExtendedSyntaxParseNonSelectStmt(t *testing.T) {
 		a.Error(e)
 	}
 }
+
+func TestExtendedSyntaxParseUnmatchedQuotation(t *testing.T) {
+	a := assert.New(t)
+	{
+		r, idx, e := parseSQLFlowStmt(`TO TRAIN "some_thing`)
+		a.Error(e)
+		a.Equal(9, idx)
+		a.Nil(r)
+	}
+}
