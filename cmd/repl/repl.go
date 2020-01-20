@@ -40,12 +40,20 @@ import (
 
 const tablePageSize = 1000
 
+func lineIsComment(line string) bool {
+	line = strings.TrimSpace(line)
+	if line == "--" || strings.HasPrefix(line, "-- ") {
+		return true
+	}
+	return false
+}
+
 // readStmt reads a SQL statement from the scanner.  A statement could have
 // multiple lines and ends at a semicolon at the end of the last line.
 func readStmt(scn *bufio.Scanner) (string, error) {
 	stmt := ""
 	for scn.Scan() {
-		if stmt == "" && strings.HasPrefix(strings.TrimSpace(scn.Text()), "-- ") {
+		if stmt == "" && lineIsComment(scn.Text()) {
 			continue
 		}
 		stmt += scn.Text()
