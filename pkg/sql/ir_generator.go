@@ -125,7 +125,7 @@ func generateTrainStmt(slct *parser.SQLFlowSelectStmt) (*ir.TrainStmt, error) {
 	return trainStmt, nil
 }
 
-func loadModelMeta(pr *parser.SQLFlowSelectStmt, db *database.DB, cwd, modelDir, modelName string) (*parser.SQLFlowSelectStmt, error) {
+func loadModelMeta(pr *parser.SQLFlowSelectStmt, db *database.DB, cwd, modelDir, modelName string) (*parser.SQLFlowSelectStmt, *parser.SQLFlowSelectStmt, error) {
 	modelURI := modelName
 	if modelDir != "" {
 		modelURI = fmt.Sprintf("file://%s/%s", modelDir, modelName)
@@ -133,22 +133,22 @@ func loadModelMeta(pr *parser.SQLFlowSelectStmt, db *database.DB, cwd, modelDir,
 
 	m, e := model.Load(modelURI, cwd, db)
 	if e != nil {
-		return nil, fmt.Errorf("load %v", e)
+		return nil, nil, fmt.Errorf("load %v", e)
 	}
 	// Parse the training SELECT statement used to train
 	// the model for the prediction.
 	tr, e := parser.ParseOneStatement(db.DriverName, m.TrainSelect)
 	if e != nil {
-		return nil, fmt.Errorf("parse: TrainSelect %v raise %v", m.TrainSelect, e)
+		return nil, nil, fmt.Errorf("parse: TrainSelect %v raise %v", m.TrainSelect, e)
 	}
 
 	if e := verifier.VerifyColumnNameAndType(tr.SQLFlowSelectStmt, pr, db); e != nil {
-		return nil, fmt.Errorf("VerifyColumnNameAndType: %v", e)
+		return nil, nil, fmt.Errorf("VerifyColumnNameAndType: %v", e)
 	}
 
 	pr.TrainClause = tr.TrainClause
 
-	return pr, nil
+	return pr, tr.SQLFlowSelectStmt, nil
 }
 
 func generateTrainStmtByModel(slct *parser.SQLFlowSelectStmt, connStr, cwd, modelDir, model string) (*ir.TrainStmt, error) {
@@ -158,11 +158,11 @@ func generateTrainStmtByModel(slct *parser.SQLFlowSelectStmt, connStr, cwd, mode
 	}
 	defer db.Close()
 
-	slctWithTrain, err := loadModelMeta(slct, db, cwd, modelDir, model)
+	_, trainSlct, err := loadModelMeta(slct, db, cwd, modelDir, model)
 	if err != nil {
 		return nil, err
 	}
-	return generateTrainStmtWithInferredColumns(slctWithTrain, connStr, false)
+	return generateTrainStmtWithInferredColumns(trainSlct, connStr, false)
 }
 
 func verifyTrainStmt(trainStmt *ir.TrainStmt, db *database.DB, verifyLabel bool) error {
