@@ -24,7 +24,6 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/aliyun/aliyun-oss-go-sdk/oss"
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/ir"
 	pb "sqlflow.org/sqlflow/pkg/proto"
@@ -254,33 +253,6 @@ func TFTrainAndSave(ir *ir.TrainStmt, session *pb.Session, modelPath string, cc 
 	return code + saveCode.String(), nil
 }
 
-func ossFileExists(modelName string) (bool, error) {
-	endpoint := os.Getenv("SQLFLOW_OSS_ENDPOINT")
-	ak := os.Getenv("SQLFLOW_OSS_AK")
-	sk := os.Getenv("SQLFLOW_OSS_SK")
-	// NOTE(typhoonzero): PAI Tensorflow need SQLFLOW_OSS_CHECKPOINT_DIR, get bucket name from it
-	ossCheckpointDir := os.Getenv("SQLFLOW_OSS_CHECKPOINT_DIR")
-	ckptParts := strings.Split(ossCheckpointDir, "?")
-	if len(ckptParts) != 2 {
-		return false, fmt.Errorf("SQLFLOW_OSS_CHECKPOINT_DIR got wrong format")
-	}
-	urlParts := strings.Split(ckptParts[0], "://")
-	if len(urlParts) != 2 {
-		return false, fmt.Errorf("SQLFLOW_OSS_CHECKPOINT_DIR got wrong format")
-	}
-	bucketName := strings.Split(urlParts[1], "/")[0]
-
-	cli, err := oss.New(endpoint, ak, sk)
-	if err != nil {
-		return false, err
-	}
-	bucket, err := cli.Bucket(bucketName)
-	if err != nil {
-		return false, err
-	}
-	return bucket.IsObjectExist(modelName + "/sqlflow_model_desc")
-}
-
 func predictRandomForests(ir *ir.PredictStmt, session *pb.Session) (string, error) {
 	// NOTE(typhoonzero): for PAI random forests predicting, we can not load the TrainStmt
 	// since the model saving is fully done by PAI. We directly use the columns in SELECT
@@ -311,14 +283,8 @@ func predictRandomForests(ir *ir.PredictStmt, session *pb.Session) (string, erro
 }
 
 // Predict generates a Python program for train a TensorFlow model.
-func Predict(ir *ir.PredictStmt, session *pb.Session, modelName, cwd string) (string, error) {
-	// FIXME(typhoonzero): if the model not exist on OSS, assume it's a random forest model
-	// should use a general method to fetch the model and see the model type.
-	exists, err := ossFileExists(modelName)
-	if err != nil {
-		return "", err
-	}
-	if !exists {
+func Predict(ir *ir.PredictStmt, session *pb.Session, modelName, cwd string, isDeepModel bool) (string, error) {
+	if !isDeepModel {
 		log.Printf("predicting using pai random forests")
 		return predictRandomForests(ir, session)
 	}
@@ -401,11 +367,50 @@ func explainRandomForests(ir *ir.ExplainStmt, session *pb.Session) (string, erro
 	return rfCode.String(), nil
 }
 
+// TFLoadAndExplain generates PAI-TF explain program.
+func TFLoadAndExplain(ir *ir.ExplainStmt, session *pb.Session, modelPath string) (string, error) {
+	var tpl = template.Must(template.New("Explain").Parse(tfExplainTmplText))
+	ossModelDir, err := FormatCkptDir(modelPath)
+	if err != nil {
+		return "", err
+	}
+	paiExplainTable := ""
+	if tensorflow.IsPAI() && ir.TmpExplainTable != "" {
+		paiExplainTable = ir.TmpExplainTable
+	}
+	filler := explainFiller{
+		OSSModelDir: ossModelDir,
+		DataSource:  session.DbConnStr,
+		Select:      ir.Select,
+		ResultTable: ir.Into,
+		IsPAI:       tensorflow.IsPAI(),
+		PAITable:    paiExplainTable,
+	}
+	var code bytes.Buffer
+	if err := tpl.Execute(&code, filler); err != nil {
+		return "", err
+	}
+	return code.String(), nil
+}
+
 // Explain generates a Python program for train a TensorFlow model.
-func Explain(ir *ir.ExplainStmt, session *pb.Session, modelName, cwd string) (string, error) {
-	// NOTE(typhoonzero): only support random forests explain.
+func Explain(ir *ir.ExplainStmt, session *pb.Session, modelName, cwd string, isDeepModel bool) (string, error) {
 	if ir.Into == "" {
 		return "", fmt.Errorf("explain PAI random forests model need INTO clause to output the explain result to a table")
 	}
-	return explainRandomForests(ir, session)
+	if !isDeepModel {
+		log.Printf("predicting using pai random forests")
+		return explainRandomForests(ir, session)
+	}
+	// run explain PAI TF
+	program, err := TFLoadAndExplain(ir, session, modelName)
+	if err != nil {
+		return "", err
+	}
+	cc, err := GetClusterConfig(ir.Attributes)
+	if err != nil {
+		return "", err
+	}
+	return wrapper(program, session.DbConnStr, modelName, cwd,
+		ir.TmpExplainTable, "", ir.Into, cc)
 }

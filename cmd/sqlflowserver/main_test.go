@@ -1358,6 +1358,29 @@ func CaseTrainPAIRandomForests(t *testing.T) {
 	}
 }
 
+func CaseTrainDNNAndExplain(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`SELECT * FROM %s
+	TO TRAIN DNNClassifier
+	WITH model.n_classes = 3, model.hidden_units = [10, 20]
+	LABEL class
+	INTO %s;`, caseTrainTable, caseInto)
+	_, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+
+	predSQL := fmt.Sprintf(`SELECT * FROM %s
+TO EXPLAIN %s
+WITH label_col=class
+USING TreeExplainer
+INTO %s.explain_result;`, caseTestTable, caseInto, caseDB)
+	_, _, err = connectAndRunSQL(predSQL)
+	if err != nil {
+		a.Fail("Run predSQL error: %v", err)
+	}
+}
+
 func TestEnd2EndMaxComputePAI(t *testing.T) {
 	testDBDriver := os.Getenv("SQLFLOW_TEST_DB")
 	if testDBDriver != "maxcompute" {
@@ -1396,6 +1419,7 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 	}
 
 	t.Run("CaseTrainSQL", CaseTrainSQL)
+	t.Run("CaseTrainDNNAndExplain", CaseTrainDNNAndExplain)
 	t.Run("CaseTrainPAIRandomForests", CaseTrainPAIRandomForests)
 	t.Run("CaseTrainDistributedPAI", CaseTrainDistributedPAI)
 }
