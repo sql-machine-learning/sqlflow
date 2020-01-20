@@ -16,7 +16,6 @@ package couler
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"strings"
@@ -53,7 +52,6 @@ func newSessionFromProto(session *pb.Session) map[string]string {
 
 func getStepEnvs(session *pb.Session) (map[string]string, error) {
 	envs := newSessionFromProto(session)
-	envs["SQLFLOW_OSS_CHECKPOINT_DIR"] = os.Getenv("SQLFLOW_OSS_CHECKPOINT_DIR")
 	for _, env := range os.Environ() {
 		pair := strings.SplitN(env, "=", 2)
 		if len(pair) != 2 {
@@ -69,8 +67,8 @@ func getStepEnvs(session *pb.Session) (map[string]string, error) {
 	return envs, nil
 }
 
-// Run generates Couler program
-func Run(programIR ir.SQLProgram, session *pb.Session) (string, error) {
+// GenCode generates Couler program
+func GenCode(programIR ir.SQLProgram, session *pb.Session) (string, error) {
 	stepEnvs, err := getStepEnvs(session)
 	if err != nil {
 		return "", err
@@ -119,60 +117,23 @@ func clusterConfigFile() string {
 	return os.Getenv("SQLFLOW_COULER_CLUSTER_CONFIG")
 }
 
-func writeArgoFile(coulerFileName string) (string, error) {
-	argoYaml, err := ioutil.TempFile("/tmp", "sqlflow-argo*.yaml")
-	if err != nil {
-		return "", fmt.Errorf("cannot create temporary Argo YAML file: %v", err)
-	}
-	defer argoYaml.Close()
-
-	var cmd *exec.Cmd
+// Compile Couler program into Argo YAML
+func Compile(coulerProgram string) (string, error) {
+	buf := bytes.Buffer{}
+	buf.WriteString("couler run --mode argo --workflow_name sqlflow ")
 	if clusterConfigFile() != "" {
-		cmd = exec.Command("couler", "run", "--mode", "argo", "--file", coulerFileName, "--cluster_config", clusterConfigFile())
-	} else {
-		cmd = exec.Command("couler", "run", "--mode", "argo", "--file", coulerFileName)
+		buf.WriteString(fmt.Sprintf("--cluster_config %s ", clusterConfigFile()))
 	}
+	buf.WriteString("--file -")
 
+	coulerExec := strings.Split(buf.String(), " ")
+	// execute command: `cat couler-program | couler run --mode argo --workflow_name sqlflow --file -`
+	cmd := exec.Command(coulerExec[0], coulerExec[1:]...)
 	cmd.Env = append(os.Environ())
+	cmd.Stdin = strings.NewReader(coulerProgram)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("generate Argo workflow yaml error: %v", err)
+		return "", fmt.Errorf("failed %s, %v", cmd, err)
 	}
-	argoYaml.Write(out)
-
-	return argoYaml.Name(), nil
-}
-
-func writeCoulerFile(programIR ir.SQLProgram, session *pb.Session) (string, error) {
-	program, err := Run(programIR, session)
-	if err != nil {
-		return "", fmt.Errorf("generate couler program error: %v", err)
-	}
-
-	coulerFile, err := ioutil.TempFile("/tmp", "sqlflow-couler*.py")
-	if err != nil {
-		return "", fmt.Errorf("write couler program error: %v", err)
-	}
-	defer coulerFile.Close()
-	if _, err := coulerFile.Write([]byte(program)); err != nil {
-		return "", err
-	}
-	return coulerFile.Name(), nil
-}
-
-// RunAndWriteArgoFile generates Argo workflow YAML file
-func RunAndWriteArgoFile(programIR ir.SQLProgram, session *pb.Session) (string, error) {
-	// 1. call codegen_couler.go to generate Couler program.
-	coulerFileName, err := writeCoulerFile(programIR, session)
-	if err != nil {
-		return "", err
-	}
-	defer os.RemoveAll(coulerFileName)
-
-	// 2. compile Couler program into Argo YAML.
-	argoFileName, err := writeArgoFile(coulerFileName)
-	if err != nil {
-		return "", err
-	}
-	return argoFileName, nil
+	return string(out), nil
 }

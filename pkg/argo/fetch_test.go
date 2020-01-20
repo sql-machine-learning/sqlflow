@@ -104,22 +104,13 @@ func createAndWriteTempFile(content string) (string, error) {
 	return tmpFile.Name(), nil
 }
 
-func kubectlCreateFromYAML(content string) (string, error) {
-	fileName, err := createAndWriteTempFile(content)
-	if err != nil {
-		return "", err
-	}
-	defer os.Remove(fileName)
-	return k8sCreateResource(fileName)
-}
-
 func TestFetch(t *testing.T) {
 	t.Skip("temporary disable FetchTest")
 	if os.Getenv("SQLFLOW_TEST") != "workflow" {
 		t.Skip("argo: skip workflow tests")
 	}
 	a := assert.New(t)
-	workflowID, err := kubectlCreateFromYAML(stepYAML)
+	workflowID, err := k8sCreateResource(stepYAML)
 	a.NoError(err)
 	defer k8sDeleteWorkflow(workflowID)
 	req := newFetchRequest(workflowID, "", "")
@@ -164,7 +155,7 @@ func TestGetPodLogs(t *testing.T) {
 		t.Skip("argo: skip workflow tests")
 	}
 	a := assert.New(t)
-	podID, err := kubectlCreateFromYAML(podYAML)
+	podID, err := k8sCreateResource(podYAML)
 	a.NoError(err)
 	defer k8sDeletePod(podID)
 
@@ -196,7 +187,7 @@ func TestGetPodLogsStress(t *testing.T) {
 		t.Skip("argo: skip workflow tests")
 	}
 	a := assert.New(t)
-	podID, err := kubectlCreateFromYAML(podYAML2)
+	podID, err := k8sCreateResource(podYAML2)
 	a.NoError(err)
 	defer k8sDeletePod(podID)
 

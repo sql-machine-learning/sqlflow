@@ -132,14 +132,14 @@ func submitWorkflow(wr *pipe.Writer, sqlProgram string, modelDir string, session
 	}
 
 	// 1. call codegen_couler.go to generate Argo workflow YAML
-	argoFileName, err := couler.RunAndWriteArgoFile(spIRs, session)
+	coulerProg, err := couler.GenCode(spIRs, session)
 	if err != nil {
 		return "", err
 	}
-	defer os.RemoveAll(argoFileName)
+	workflowYAML, err := couler.Compile(coulerProg)
 
 	// 2. submit the argo workflow
-	workflowID, err := argo.Submit(argoFileName)
+	workflowID, err := argo.Submit(workflowYAML)
 	if err != nil {
 		return "", err
 	}

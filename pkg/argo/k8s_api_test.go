@@ -27,11 +27,7 @@ func TestCreateResource(t *testing.T) {
 	}
 	a := assert.New(t)
 
-	fileName, err := createAndWriteTempFile(podYAML)
-	a.NoError(err)
-	defer os.Remove(fileName)
-
-	id, err := k8sCreateResource(fileName)
+	id, err := k8sCreateResource(podYAML)
 	a.NoError(err)
 	a.Equal(strings.HasPrefix(id, "sqlflow-pod-"), true)
 }

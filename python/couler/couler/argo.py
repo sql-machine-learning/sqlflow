@@ -28,7 +28,7 @@ _run_concurrent_lock = False
 _concurrent_func_line = -1
 # We need to fetch the name before triggering atexit, as the atexit handlers
 # cannot get the original Python filename.
-_wf_name = pyfunc.workflow_filename()
+_wf_name = pyfunc.workflow_name()
 # '_when_prefix' represents 'when' prefix in Argo YAML. For example,
 # https://github.com/argoproj/argo/blob/master/examples/README.md#conditionals
 _when_prefix = None
