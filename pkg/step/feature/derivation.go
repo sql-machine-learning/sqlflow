@@ -489,8 +489,13 @@ func setBackToIR(trainStmt *ir.TrainStmt, fcMap ColumnMap, columnTargets []strin
 
 // setBackToLabel update label field meta
 func setBackToLabel(trainStmt *ir.TrainStmt, fmMap FieldDescMap) {
+	// NOTE: clustering model may not specify Label
+	labelName := trainStmt.Label.GetFieldDesc()[0].Name
+	if labelName == "" {
+		return
+	}
 	trainStmt.Label = &ir.NumericColumn{
-		FieldDesc: fmMap[trainStmt.Label.GetFieldDesc()[0].Name],
+		FieldDesc: fmMap[labelName],
 	}
 	// use shape [] if label shape is [1] for Tensorflow scalar label shape should be [].
 	shape := trainStmt.Label.GetFieldDesc()[0].Shape
