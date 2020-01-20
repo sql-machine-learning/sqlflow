@@ -57,7 +57,7 @@ if __name__ == "__main__":
             save="btmodel",
             is_pai=False,
             plot_type='bar',
-            result_table="iris.explain_result")
+            result_table="")
 
     # Train and explain DNNClassifier
     train(datasource=datasource,
@@ -91,4 +91,4 @@ if __name__ == "__main__":
             save="dnnmodel",
             is_pai=False,
             plot_type='bar',
-            result_table="iris.explain_result")
+            result_table="")

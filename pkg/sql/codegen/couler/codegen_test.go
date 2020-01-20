@@ -37,7 +37,6 @@ func TestCoulerCodegen(t *testing.T) {
 
 	r, _ := regexp.Compile(`repl -e "(.*);"`)
 	a.Equal(r.FindStringSubmatch(code)[1], "SELECT * FROM iris.train limit 10")
-	fmt.Println(code)
 	a.True(strings.Contains(code, `step_envs["SQLFLOW_OSS_AK"] = "oss_key"`))
 }
 
