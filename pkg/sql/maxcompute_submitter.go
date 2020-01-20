@@ -18,6 +18,8 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
@@ -28,7 +30,7 @@ import (
 	"sqlflow.org/sqlflow/pkg/sql/codegen/pai"
 )
 
-type paiSubmitter struct{ *defaultSubmitter }
+type maxcomputeSubmitter struct{ *defaultSubmitter }
 
 func randStringRunes(n int) string {
 	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -114,25 +116,90 @@ func createTempTrainAndValTable(trainSelect, validSelect, datasource string) (st
 	return tmpTrainTable, tmpValTable, nil
 }
 
+func (s *maxcomputeSubmitter) getModelPath(modelName string) (string, error) {
+	_, dsName, err := database.ParseURL(s.Session.DbConnStr)
+	if err != nil {
+		return "", err
+	}
+	cfg, err := goalisa.ParseDSN(dsName)
+	if err != nil {
+		return "", err
+	}
+	userID := s.Session.UserId
+	if userID == "" {
+		userID = "unkown"
+	}
+	return strings.Join([]string{cfg.Project, userID, modelName}, "/"), nil
+}
+
 // Possible situations:
 //
 // 1. argo mode server: generate a step running: repl -e "repl -e \"select * from xx to train\""
 // 2. non-argo mode server | repl -e: create tmp table in go, and use it to train
-func (s *paiSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {
+func (s *maxcomputeSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 	cl.TmpTrainTable, cl.TmpValidateTable, e = createTempTrainAndValTable(cl.Select, cl.ValidationSelect, s.Session.DbConnStr)
 	if e != nil {
 		return
 	}
 	defer dropTmpTables([]string{cl.TmpTrainTable, cl.TmpValidateTable}, s.Session.DbConnStr)
 
-	code, e := pai.Train(cl, s.Session, cl.Into, s.Cwd)
+	ossModelPath, e := s.getModelPath(cl.Into)
 	if e != nil {
 		return e
 	}
-	return s.runCommand(code)
+
+	code, paiCmd, e := pai.Train(cl, s.Session, cl.Into, ossModelPath, s.Cwd)
+	if e != nil {
+		return e
+	}
+	return s.maxcomputeCmd(code, paiCmd)
 }
 
-func (s *paiSubmitter) ExecutePredict(cl *ir.PredictStmt) error {
+func (s *maxcomputeSubmitter) achieveResource(entryCode, tarball string) error {
+	if err := writeFile(filepath.Join(s.Cwd, entryFile), entryCode); err != nil {
+		return err
+	}
+
+	path, err := findPyModulePath("sqlflow_submitter")
+	if err != nil {
+		return err
+	}
+	cmd := exec.Command("cp", "-r", path, ".")
+	cmd.Dir = s.Cwd
+	if _, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed %s, %v", cmd, err)
+	}
+
+	cmd = exec.Command("tar", "czf", tarball, "./sqlflow_submitter", entryFile)
+	cmd.Dir = s.Cwd
+	if _, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed %s, %v", cmd, err)
+	}
+	return nil
+}
+
+func (s *maxcomputeSubmitter) maxcomputeCmd(code, paiCmd string) error {
+	if e := s.achieveResource(code, tarball); e != nil {
+		return e
+	}
+	_, datasourceName, e := database.ParseURL(s.Session.DbConnStr)
+	if e != nil {
+		return e
+	}
+	cfg, e := gomaxcompute.ParseDSN(datasourceName)
+	if e != nil {
+		return e
+	}
+
+	odpsCmd := strings.Split(fmt.Sprintf("odpscmd -u %s -p %s --project %s --endpoint %s -e %s", cfg.AccessID, cfg.AccessKey, cfg.Project, cfg.Endpoint, paiCmd), " ")
+	cmd := exec.Command(odpsCmd[0], odpsCmd[1:]...)
+	if _, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed %s, %v", cmd, err)
+	}
+	return nil
+}
+
+func (s *maxcomputeSubmitter) ExecutePredict(cl *ir.PredictStmt) error {
 	// TODO(typhoonzero): Do **NOT** create tmp table when the select statement is like:
 	// "SELECT fields,... FROM table"
 	dbName, tableName, err := createTmpTableFromSelect(cl.Select, s.Session.DbConnStr)
@@ -155,18 +222,24 @@ func (s *paiSubmitter) ExecutePredict(cl *ir.PredictStmt) error {
 	if e := createPredictionTableFromIR(cl, s.Db, s.Session); e != nil {
 		return e
 	}
+	// note(yancey1989): Why the oss model exists indicates it's a deep model?
 	isDeepModel, err := ossModelFileExists(cl.Using)
 	if err != nil {
 		return err
 	}
-	code, e := pai.Predict(cl, s.Session, cl.Using, s.Cwd, isDeepModel)
+
+	ossModelPath, e := s.getModelPath(cl.Using)
 	if e != nil {
 		return e
 	}
-	return s.runCommand(code)
+	code, paiCmd, e := pai.Predict(cl, s.Session, cl.Using, ossModelPath, s.Cwd, isDeepModel)
+	if e != nil {
+		return e
+	}
+	return s.maxcomputeCmd(code, paiCmd)
 }
 
-func (s *paiSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
+func (s *maxcomputeSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 	// TODO(typhoonzero): Do **NOT** create tmp table when the select statement is like:
 	// "SELECT fields,... FROM table"
 	dbName, tableName, err := createTmpTableFromSelect(cl.Select, s.Session.DbConnStr)
@@ -176,7 +249,12 @@ func (s *paiSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 	cl.TmpExplainTable = strings.Join([]string{dbName, tableName}, ".")
 	defer dropTmpTables([]string{cl.TmpExplainTable}, s.Session.DbConnStr)
 
-	isDeepModel, err := ossModelFileExists(cl.ModelName)
+	ossModelPath, e := s.getModelPath(cl.ModelName)
+	if e != nil {
+		return e
+	}
+
+	isDeepModel, err := ossModelFileExists(ossModelPath)
 	if err != nil {
 		return err
 	}
@@ -201,11 +279,11 @@ func (s *paiSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 		}
 	}
 
-	code, e := pai.Explain(cl, s.Session, cl.ModelName, s.Cwd, isDeepModel)
+	code, paiCmd, e := pai.Explain(cl, s.Session, cl.ModelName, ossModelPath, s.Cwd, isDeepModel)
 	if e != nil {
 		return e
 	}
-	return s.runCommand(code)
+	return s.maxcomputeCmd(code, paiCmd)
 }
 
 func ossModelFileExists(modelName string) (bool, error) {
@@ -280,4 +358,4 @@ func createExplainResultTable(db *database.DB, ir *ir.ExplainStmt, tableName str
 	return nil
 }
 
-func (s *paiSubmitter) GetTrainStmtFromModel() bool { return false }
+func (s *maxcomputeSubmitter) GetTrainStmtFromModel() bool { return false }
