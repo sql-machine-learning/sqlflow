@@ -22,13 +22,11 @@ segmented by spaces. You can download the full dataset from:
 1. Use the following statements to train and predict using SQLFlow:
     ```sql
     %%sqlflow
-    SELECT *
-    FROM imdb.train
+    SELECT content, class FROM imdb.train
     TO TRAIN DNNClassifier
     WITH
     model.n_classes = 2,
     model.hidden_units = [128, 64]
-    COLUMN content
     LABEL class
     INTO sqlflow_models.my_text_model_en;
     ```
@@ -57,8 +55,8 @@ you may need to follow the below steps:
 
     ```sql
     %%sqlflow
-    SELECT *
-    FROM imdb.train
+    SELECT content, class
+    FROM imdb.train limit 100
     TO TRAIN sqlflow_models.StackedBiLSTMClassifier
     WITH
     model.n_classes = 2,
@@ -66,7 +64,7 @@ you may need to follow the below steps:
     model.hidden_size = 64,
     train.epoch = 10,
     train.batch_size = 64
-    COLUMN content
+    column EMBEDDING(SEQ_CATEGORY_ID(content, 16000), 128, sum)
     LABEL class
     INTO sqlflow_models.my_custom_model;
     ```
@@ -136,13 +134,12 @@ you may need to follow the below steps:
 1. Then use the following statements to train and predict using SQLFlow:
     ```sql
     %%sqlflow
-    SELECT *
+    SELECT news_title, class_id
     FROM toutiao.train_processed
     TO TRAIN DNNClassifier
     WITH
     model.n_classes = 17,
     model.hidden_units = [128, 512]
-    COLUMN news_title
     LABEL class_id
     INTO sqlflow_models.my_text_model;
     ```
