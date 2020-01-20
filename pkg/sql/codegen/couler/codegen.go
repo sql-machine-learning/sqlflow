@@ -52,13 +52,12 @@ func newSessionFromProto(session *pb.Session) map[string]string {
 
 func getStepEnvs(session *pb.Session) (map[string]string, error) {
 	envs := newSessionFromProto(session)
-	envs["SQLFLOW_OSS_CHECKPOINT_DIR"] = os.Getenv("SQLFLOW_OSS_CHECKPOINT_DIR")
 	for _, env := range os.Environ() {
 		pair := strings.SplitN(env, "=", 2)
 		if len(pair) != 2 {
 			return nil, fmt.Errorf("env: %s should format key=value", env)
 		}
-		if strings.HasPrefix(pair[0], "SQLFLOW_ALISA_") {
+		if strings.HasPrefix(pair[0], "SQLFLOW_OSS") {
 			envs[pair[0]] = pair[1]
 		}
 	}

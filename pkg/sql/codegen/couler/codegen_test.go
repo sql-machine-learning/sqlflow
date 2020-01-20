@@ -27,18 +27,18 @@ import (
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
-func TestCodegen(t *testing.T) {
+func TestCoulerCodegen(t *testing.T) {
 	a := assert.New(t)
 	sqlIR := mockSQLProgramIR()
-	os.Setenv("SQLFLOW_ALISA_OSS_AK", "oss_key")
-	defer os.Unsetenv("SQLFLOW_ALISA_OSS_AK")
+	os.Setenv("SQLFLOW_OSS_AK", "oss_key")
+	defer os.Unsetenv("SQLFLOW_OSS_AK")
 	code, err := GenCode(sqlIR, &pb.Session{})
 	a.NoError(err)
 
 	r, _ := regexp.Compile(`repl -e "(.*);"`)
 	a.Equal(r.FindStringSubmatch(code)[1], "SELECT * FROM iris.train limit 10")
-
-	a.True(strings.Contains(code, `step_envs["SQLFLOW_ALISA_OSS_AK"] = "oss_key"`))
+	fmt.Println(code)
+	a.True(strings.Contains(code, `step_envs["SQLFLOW_OSS_AK"] = "oss_key"`))
 }
 
 func mockSQLProgramIR() ir.SQLProgram {
