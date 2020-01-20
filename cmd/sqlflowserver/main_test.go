@@ -1510,7 +1510,7 @@ func checkWorkflow(ctx context.Context, cli pb.SQLFlowClient, stream pb.SQLFlow_
 		}
 		workflowID = iter.GetJob().GetId()
 	}
-	if !strings.HasPrefix(workflowID, "sqlflow-couler") {
+	if !strings.HasPrefix(workflowID, "sqlflow") {
 		return fmt.Errorf("workflow not started with sqlflow-couler")
 	}
 	req := &pb.FetchRequest{
