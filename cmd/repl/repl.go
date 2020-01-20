@@ -255,9 +255,15 @@ func getDatabaseName(datasource string) string {
 	if e != nil {
 		log.Fatalf("unrecognized data source '%s'", datasource)
 	}
-	re := regexp.MustCompile(`[^/]*/(\w*).*`) // mysql and hive
+	// The data source string of MySQL and Hive have similar patterns
+	// with the database name as a pathname under root. For example:
+	// mysql://root:root@tcp(127.0.0.1:3306)/iris?maxAllowedPacket=0
+	// hive://root:root@127.0.0.1:10000/iris?auth=NOSASL
+	re := regexp.MustCompile(`[^/]*/(\w*).*`) // Extract the database name of MySQL and Hive
 	switch driver {
 	case "maxcompute":
+		// The database name in data source string of MaxCompute is the argument to parameter
+		// `curr_project`
 		re = regexp.MustCompile(`[^/].*/api[?].*curr_project=(\w*).*`)
 	case "mysql":
 	case "hive":
@@ -270,6 +276,7 @@ func getDatabaseName(datasource string) string {
 	return ""
 }
 
+// getDataSource generates a data source string that is using database `db` from the original dataSource
 func getDataSource(dataSource, db string) string {
 	driver, other, e := database.ParseURL(dataSource)
 	if e != nil {
