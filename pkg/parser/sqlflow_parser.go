@@ -44,7 +44,7 @@ func ParseStatement(dialect, program string) (*SQLFlowStmt, error) {
 		return nil, err
 	}
 	if len(stmts) != 1 {
-		return nil, fmt.Errorf("expecting one statement, got %s", len(stmts))
+		return nil, fmt.Errorf("expecting one statement, got %d", len(stmts))
 	}
 
 	return stmts[0], nil
