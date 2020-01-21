@@ -378,6 +378,7 @@ func parseSQLFlowStmt(s string) (r *SQLFlowSelectStmt, idx int, e error) {
 	extendedSyntaxParse(lex) // extendedSyntaxParse is auto generated.
 	idx = lex.pos
 	if lex.err != nil {
+		parseResult = nil
 		idx = lex.previous
 	}
 	return parseResult, idx, lex.err
