@@ -79,13 +79,17 @@ func addLineToStmt(line string, inQuotedString, isSingleQuoted *bool, statements
 		case ';':
 			if !*inQuotedString { // We found a statement
 				if i-start != 1 { // Ignore empty statement that has only a ';'
-					(*statements)[len(*statements)-1] += line[start:i]
-					*statements = append(*statements, "")
+					(*statements)[len(*statements)-1] += line[start : i+1]
 				}
 				for i+1 < len(line) && isSpace(line[i+1]) {
 					i++ // Ignore leading whitespaces of the next statement
 				}
 				start = i + 1
+				if start == len(line) {
+					return true // All done, the last character in the line is the end of a statement
+				}
+				*statements = append(*statements, "") // Prepare for searching the next statement
+
 			}
 		case '-':
 			if !*inQuotedString {
@@ -94,8 +98,8 @@ func addLineToStmt(line string, inQuotedString, isSingleQuoted *bool, statements
 						// Note: `--` comment doens't interfere with quoted-string and `;`
 						(*statements)[len(*statements)-1] += strings.TrimSpace(line[start:i])
 						if len(*statements) == 1 && (*statements)[0] == "" {
-							*statements = []string{} // The whole line is a comment
-							return true
+							*statements = []string{}
+							return true // The whole line is an empty statement that has only a `-- comment`,
 						}
 						return false
 					}
@@ -103,11 +107,7 @@ func addLineToStmt(line string, inQuotedString, isSingleQuoted *bool, statements
 			}
 		}
 	}
-	if start == i {
-		fmt.Println(*statements)
-		return true // All done, the last character in the line is the end of a statement
-	}
-	(*statements) = append(*statements, line[start:]) // Prepare for searching the next statement
+	(*statements)[len(*statements)-1] += line[start:]
 	return false
 }
 

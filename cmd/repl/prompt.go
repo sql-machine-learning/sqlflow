@@ -172,7 +172,7 @@ func (p *promptState) lookaheadKeyword(words []string) (string, string, string) 
 
 func (p *promptState) clauseUnderCursor(in prompt.Document) (string, string, string) {
 	// TODO(shendiaomo): use SQLFlow lexer to replace strings.Fields
-	words := strings.Fields(strings.Join(p.statements, " ") + in.TextBeforeCursor())
+	words := strings.Fields(strings.Join(p.statements, " ") + " " + in.TextBeforeCursor())
 	return p.lookaheadKeyword(words)
 }
 
