@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/url"
 	"os"
 	"os/exec"
 	"regexp"
@@ -177,21 +178,29 @@ func runStmt(stmt string, isTerminal bool, modelDir string, ds string) error {
 	tableRendered := false
 	table := tablewriter.NewWriter(os.Stdout)
 	sess := makeSessionFromEnv()
-	if ds != "" {
-		sess.DbConnStr = ds
-	}
-
-	stream := sql.RunSQLProgram(stmt, modelDir, sess)
-	for rsp := range stream.ReadAll() {
-		// pagination. avoid exceed memory
-		if render(rsp, table, isTerminal) && table.NumLines() == tablePageSize {
-			table.Render()
-			tableRendered = true
-			table.ClearRows()
+	sess.DbConnStr = getDataSource(ds, currentDB)
+	statements := strings.Split(stmt, ";")
+	for _, stmt := range statements {
+		if stmt == "" {
+			continue
 		}
-	}
-	if table.NumLines() > 0 || !tableRendered {
-		table.Render()
+		parts := strings.Fields(stmt)
+		if len(parts) == 2 && strings.ToUpper(parts[0]) == "USE" {
+			switchDatabase(parts[1], sess)
+			continue
+		}
+		stream := sql.RunSQLProgram(stmt+";", modelDir, sess)
+		for rsp := range stream.ReadAll() {
+			// pagination. avoid exceed memory
+			if render(rsp, table, isTerminal) && table.NumLines() == tablePageSize {
+				table.Render()
+				tableRendered = true
+				table.ClearRows()
+			}
+		}
+		if table.NumLines() > 0 || !tableRendered {
+			table.Render()
+		}
 	}
 	return nil
 }
@@ -230,6 +239,73 @@ func makeSessionFromEnv() *pb.Session {
 		Submitter:        os.Getenv("SQLFLOW_submitter")}
 }
 
+func switchDatabase(db string, session *pb.Session) {
+	stream := sql.RunSQLProgram("USE "+db, "", session)
+	r := <-stream.ReadAll()
+	switch r.(type) {
+	case string:
+		session.DbConnStr = getDataSource(session.DbConnStr, db)
+		fmt.Println("Database changed to", db)
+		currentDB = db
+	}
+}
+
+func getDatabaseName(datasource string) string {
+	driver, other, e := database.ParseURL(datasource)
+	if e != nil {
+		log.Fatalf("unrecognized data source '%s'", datasource)
+	}
+	// The data source string of MySQL and Hive have similar patterns
+	// with the database name as a pathname under root. For example:
+	// mysql://root:root@tcp(127.0.0.1:3306)/iris?maxAllowedPacket=0
+	// hive://root:root@127.0.0.1:10000/iris?auth=NOSASL
+	re := regexp.MustCompile(`[^/]*/(\w*).*`) // Extract the database name of MySQL and Hive
+	switch driver {
+	case "maxcompute":
+		// The database name in data source string of MaxCompute is the argument to parameter
+		// `curr_project`
+		re = regexp.MustCompile(`[^/].*/api[?].*curr_project=(\w*).*`)
+	case "mysql":
+	case "hive":
+	default:
+		log.Fatalf("unknown database '%s' in data source'%s'", driver, datasource)
+	}
+	if group := re.FindStringSubmatch(other); group != nil {
+		return group[1]
+	}
+	return ""
+}
+
+// getDataSource generates a data source string that is using database `db` from the original dataSource
+func getDataSource(dataSource, db string) string {
+	driver, other, e := database.ParseURL(dataSource)
+	if e != nil {
+		log.Fatalf("unrecognized data source '%s'", dataSource)
+	}
+	pieces := strings.Split(other, "?")
+	switch driver {
+	case "maxcompute":
+		var v url.Values = url.Values{}
+		if len(pieces) == 2 {
+			v, e = url.ParseQuery(pieces[1])
+			if e != nil {
+				log.Fatalf("unrecognized data source '%s'", dataSource)
+			}
+		}
+		v["curr_project"] = []string{db}
+		return fmt.Sprintf("maxcompute://%s?%s", pieces[0], v.Encode())
+	case "mysql":
+		fallthrough
+	case "hive":
+		pieces[0] = strings.Split(pieces[0], "/")[0] + "/" + db
+		return fmt.Sprintf("%s://%s", driver, strings.Join(pieces, "?"))
+	}
+	log.Fatalf("unknown database '%s' in data source'%s'", driver, dataSource)
+	return ""
+}
+
+var currentDB string
+
 func main() {
 	ds := flag.String("datasource", "", "database connect string")
 	modelDir := flag.String("model_dir", "", "model would be saved on the local dir, otherwise upload to the table.")
@@ -240,6 +316,7 @@ func main() {
 	flag.Parse()
 
 	assertConnectable(*ds) // Fast fail if we can't connect to the datasource
+	currentDB = getDatabaseName(*ds)
 
 	if *modelDir != "" {
 		if _, derr := os.Stat(*modelDir); derr != nil {
