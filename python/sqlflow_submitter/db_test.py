@@ -209,7 +209,7 @@ class TestGenerator(TestCase):
             label_spec = {
                 "feature_name": "label",
                 "shape": [],
-                "delemiter": ""
+                "delimiter": ""
             }
             gen = db_generator(driver, conn,
                                "SELECT * FROM test_table_float_fea",
@@ -247,7 +247,7 @@ class TestGenerator(TestCase):
             label_spec = {
                 "feature_name": "label",
                 "shape": [],
-                "delemiter": ""
+                "delimiter": ""
             }
             gen = db_generator(driver,
                                conn,
