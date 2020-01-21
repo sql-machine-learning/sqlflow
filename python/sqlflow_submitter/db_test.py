@@ -206,9 +206,10 @@ class TestGenerator(TestCase):
                     "shape": []
                 }
             }
+            label_spec = {"feature_name": "label", "shape": []}
             gen = db_generator(driver, conn,
                                "SELECT * FROM test_table_float_fea",
-                               ["features"], "label", column_name_to_type)
+                               ["features"], label_spec, column_name_to_type)
             idx = 0
             for d in gen():
                 if idx == 0:
@@ -239,11 +240,12 @@ class TestGenerator(TestCase):
                     "shape": []
                 }
             }
+            label_spec = {"feature_name": "label", "shape": []}
             gen = db_generator(driver,
                                conn,
                                'SELECT * FROM iris.train limit 10',
                                ["sepal_length"],
-                               "class",
+                               label_spec,
                                column_name_to_type,
                                fetch_size=4)
             self.assertEqual(len([g for g in gen()]), 10)
