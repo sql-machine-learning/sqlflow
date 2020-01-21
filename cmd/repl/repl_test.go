@@ -95,6 +95,16 @@ func TestMainFastFail(t *testing.T) {
 	testMainFastFail(t, false)
 }
 
+func TestLineIsComment(t *testing.T) {
+	a := assert.New(t)
+	sql := `-- 1. test`
+	a.True(lineIsComment(sql))
+	sql = `--`
+	a.True(lineIsComment(sql))
+	sql = `SHOW databases`
+	a.False(lineIsComment(sql))
+}
+
 func TestReadStmt(t *testing.T) {
 	a := assert.New(t)
 	sql := `SELECT * FROM iris.train TO TRAIN DNNClassifier WITH
@@ -103,6 +113,16 @@ func TestReadStmt(t *testing.T) {
 			LABEL class INTO sqlflow_models.my_model;`
 	scanner := bufio.NewScanner(strings.NewReader(sql))
 	stmt, err := readStmt(scanner)
+	a.Nil(err)
+	a.Equal(space.ReplaceAllString(stmt, " "), space.ReplaceAllString(sql, " "))
+
+	sql2 := `-- 1. test
+             SELECT * FROM iris.train TO TRAIN DNNClassifier WITH
+				model.hidden_units=[10,20],
+				model.n_classes=3
+             LABEL class INTO sqlflow_models.my_model;`
+	scanner = bufio.NewScanner(strings.NewReader(sql2))
+	stmt, err = readStmt(scanner)
 	a.Nil(err)
 	a.Equal(space.ReplaceAllString(stmt, " "), space.ReplaceAllString(sql, " "))
 }
@@ -143,6 +163,18 @@ func TestPromptState(t *testing.T) {
 	}
 	a.Equal(space.ReplaceAllString(stmt, " "), space.ReplaceAllString(sql, " "))
 	a.Equal("", s.statement)
+
+	sql2 := `-- 1. test
+             SELECT * FROM iris.train TO TRAIN DNNClassifier WITH
+				model.hidden_units=[10,20],
+				model.n_classes=3
+             LABEL class INTO sqlflow_models.my_model;`
+	scanner = bufio.NewScanner(strings.NewReader(sql2))
+	for scanner.Scan() {
+		s.execute(scanner.Text(), func(s string) { stmt = s })
+	}
+	a.Equal(strings.TrimSpace(space.ReplaceAllString(stmt, " ")), strings.TrimSpace(space.ReplaceAllString(sql, " ")))
+
 }
 
 func TestComplete(t *testing.T) {
