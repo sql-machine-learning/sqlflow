@@ -27,7 +27,7 @@ With the introduction of auto hyperparameter tuning, we hope that users don't ne
 
 ```sql
 SELECT * FROM train_data_table
-TO TRAIN a_data_scientist/xgbooost:v2/xgboost.gbtree
+TO TRAIN a_data_scientist/xgboost:v2/xgboost.gbtree
 WITH
     objective=multi:softmax,
     eta=0.1,
