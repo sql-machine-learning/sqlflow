@@ -22,7 +22,7 @@ import (
 func TestSubmitterRegistry(t *testing.T) {
 	a := assert.New(t)
 	a.Equal(3, len(submitterRegistry))
-	a.NotNil(submitterRegistry["pai"])
+	a.NotNil(submitterRegistry["maxcompute"])
 	a.NotNil(submitterRegistry["default"])
 	a.NotNil(submitterRegistry["alisa"])
 	a.Equal(GetSubmitter(""), submitterRegistry["default"])

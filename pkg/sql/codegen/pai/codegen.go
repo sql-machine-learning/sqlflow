@@ -167,7 +167,7 @@ func getTrainRandomForestsPAICmd(ir *ir.TrainStmt, session *pb.Session) (string,
 		return "", e
 	}
 
-	return fmt.Sprintf(`pai -name randomforests -DinputTableName="%s" -DmodelName="%s" -DlabelColName="%s" -DfeatureColNames="%s" -DtreeNum="%s"`,
+	return fmt.Sprintf(`pai -name randomforests -DinputTableName="%s" -DmodelName="%s" -DlabelColName="%s" -DfeatureColNames="%s" -DtreeNum="%d"`,
 		inputTables, ir.Into, ir.Label.GetFieldDesc()[0].Name, strings.Join(featureCols, ","), treeNum), nil
 }
 
@@ -285,7 +285,7 @@ func Predict(ir *ir.PredictStmt, session *pb.Session, tarball, modelName, ossMod
 		if err != nil {
 			return code, paiCmd, err
 		}
-		if code, e = TFLoadAndPredict(ir, session, modelName); e != nil {
+		if code, e = TFLoadAndPredict(ir, session, ossModelPath); e != nil {
 			return
 		}
 		if paiCmd, e = getTFPAICmd(cc, tarball, modelName, ossModelPath, ir.TmpPredictTable, "", ir.ResultTable); e != nil {

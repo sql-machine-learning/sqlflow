@@ -135,7 +135,6 @@ func (s *maxcomputeSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 	}
 	scriptPath := fmt.Sprintf("file://%s/%s", s.Cwd, tarball)
 	code, paiCmd, e := pai.Train(cl, s.Session, scriptPath, cl.Into, ossModelPath, s.Cwd)
-	fmt.Println(code)
 	if e != nil {
 		return e
 	}
