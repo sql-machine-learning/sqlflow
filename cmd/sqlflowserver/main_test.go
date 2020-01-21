@@ -1364,6 +1364,37 @@ INTO %s.explain_result;`, caseTestTable, caseInto, caseDB)
 	}
 }
 
+func CaseTrainXGBoostOnPAI(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`SELECT * FROM %s
+	TO TRAIN xgboost.gbtree
+	WITH
+		objective="multi:softprob",
+		train.num_boost_round = 30,
+		eta = 0.4,
+		num_class = 3
+	LABEL class
+	INTO my_xgb_classi_model;`, caseTrainTable)
+	_, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+
+	// TODO(typhoonzero): add predict and explain test
+}
+
+// TestEnd2EndMaxComputePAI test cases that runs on PAI. Need to set below
+// environment variables to run the test:
+// SQLFLOW_submitter=pai
+// SQLFLOW_TEST_DB=maxcompute
+// SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT="xxx"
+// SQLFLOW_TEST_DB_MAXCOMPUTE_ENDPOINT="xxx"
+// SQLFLOW_TEST_DB_MAXCOMPUTE_AK="xxx"
+// SQLFLOW_TEST_DB_MAXCOMPUTE_SK="xxx"
+// SQLFLOW_OSS_CHECKPOINT_DIR="xxx"
+// SQLFLOW_OSS_ENDPOINT="xxx"
+// SQLFLOW_OSS_AK="xxx"
+// SQLFLOW_OSS_SK="xxx"
 func TestEnd2EndMaxComputePAI(t *testing.T) {
 	testDBDriver := os.Getenv("SQLFLOW_TEST_DB")
 	if testDBDriver != "maxcompute" {
@@ -1404,6 +1435,7 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 	t.Run("CaseTrainSQL", CaseTrainSQL)
 	t.Run("CaseTrainDNNAndExplain", CaseTrainDNNAndExplain)
 	t.Run("CaseTrainPAIRandomForests", CaseTrainPAIRandomForests)
+	t.Run("CaseTrainXGBoostOnPAI", CaseTrainXGBoostOnPAI)
 	t.Run("CaseTrainDistributedPAI", CaseTrainDistributedPAI)
 }
 

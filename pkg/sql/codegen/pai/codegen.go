@@ -28,6 +28,7 @@ import (
 	"sqlflow.org/sqlflow/pkg/ir"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
+	"sqlflow.org/sqlflow/pkg/sql/codegen/xgboost"
 	"sqlflow.org/sqlflow/pkg/verifier"
 )
 
@@ -69,7 +70,7 @@ func FormatCkptDir(modelName string) (string, error) {
 }
 
 // wrapper generates a Python program for submit TensorFlow tasks to PAI.
-func wrapper(code, dataSource, modelName, cwd, tmpTrainTable, tmpValTable string, resultTable string, cc *ClusterConfig) (string, error) {
+func genSubmitter(code, dataSource, modelName, cwd, tmpTrainTable, tmpValTable string, resultTable string, cc *ClusterConfig, isXgboost bool) (string, error) {
 	f, err := os.Create(filepath.Join(cwd, entryFile))
 	if err != nil {
 		return "", fmt.Errorf("Create python code failed")
@@ -104,6 +105,7 @@ func wrapper(code, dataSource, modelName, cwd, tmpTrainTable, tmpValTable string
 		PAIValidateTable:  tmpValTable,
 		ResultTable:       resultTable,
 		OSSCheckpointDir:  ossCkptDir,
+		IsXgboost:         isXgboost,
 	}
 	var program bytes.Buffer
 	if err := tpl.Execute(&program, filler); err != nil {
@@ -220,12 +222,31 @@ func Train(ir *ir.TrainStmt, session *pb.Session, modelName, cwd string) (string
 	if err != nil {
 		return "", err
 	}
+
+	if strings.HasPrefix(strings.ToLower(ir.Estimator), "xgboost") {
+		return XGBoostTrainAndSave(ir, session, modelName, cwd, cc)
+	}
+
 	program, err := TFTrainAndSave(ir, session, modelName, cc)
 	if err != nil {
 		return "", err
 	}
-	return wrapper(program, session.DbConnStr, modelName, cwd,
-		ir.TmpTrainTable, ir.TmpValidateTable, "", cc)
+	return genSubmitter(program, session.DbConnStr, modelName, cwd,
+		ir.TmpTrainTable, ir.TmpValidateTable, "", cc, false)
+}
+
+// XGBoostTrainAndSave generates XGBoost program running on PAI.
+func XGBoostTrainAndSave(ir *ir.TrainStmt, session *pb.Session, modelName string, cwd string, cc *ClusterConfig) (string, error) {
+	// run xgboost on PAI platform
+	code, err := xgboost.Train(ir, session)
+	if err != nil {
+		return "", err
+	}
+	if cc.Worker.Count > 1 {
+		return "", fmt.Errorf("when running xgboost on PAI, we only support run with one worker")
+	}
+	return genSubmitter(code, session.DbConnStr, modelName,
+		cwd, ir.TmpTrainTable, ir.TmpValidateTable, "", cc, true)
 }
 
 // TFTrainAndSave generates PAI-TF train program.
@@ -296,8 +317,8 @@ func Predict(ir *ir.PredictStmt, session *pb.Session, modelName, cwd string, isD
 	if err != nil {
 		return "", err
 	}
-	return wrapper(program, session.DbConnStr, modelName, cwd,
-		ir.TmpPredictTable, "", ir.ResultTable, cc)
+	return genSubmitter(program, session.DbConnStr, modelName, cwd,
+		ir.TmpPredictTable, "", ir.ResultTable, cc, false)
 }
 
 // TFLoadAndPredict generates PAI-TF prediction program.
@@ -411,6 +432,6 @@ func Explain(ir *ir.ExplainStmt, session *pb.Session, modelName, cwd string, isD
 	if err != nil {
 		return "", err
 	}
-	return wrapper(program, session.DbConnStr, modelName, cwd,
-		ir.TmpExplainTable, "", ir.Into, cc)
+	return genSubmitter(program, session.DbConnStr, modelName, cwd,
+		ir.TmpExplainTable, "", ir.Into, cc, false)
 }

@@ -23,6 +23,7 @@ type wrapperFiller struct {
 	PAIValidateTable  string
 	ResultTable       string
 	OSSCheckpointDir  string // uri for PAI to save checkpoints on OSS, e.g. oss://bucket/dir/?role_arn=xxx&host=xxx
+	IsXgboost         bool
 }
 
 type saveModelFiller struct {
@@ -62,6 +63,9 @@ archive = tarfile.open(tarball, "w|gz")
 with open("requirements.txt", "w") as req_fn:
     req_fn.write("shap==0.28.5\n")
     req_fn.write("seaborn==0.9.0\n")
+{{if .IsXgboost}}
+    req_fn.write("xgboost==0.82\n")
+{{end}}
 
 # '.' is always in sys.path
 archive.add(sqlflow_submitter.__path__[0], arcname='sqlflow_submitter')
