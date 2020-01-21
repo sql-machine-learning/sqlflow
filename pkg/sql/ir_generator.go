@@ -196,7 +196,7 @@ func verifyTrainStmt(trainStmt *ir.TrainStmt, db *database.DB, verifyLabel bool)
 	return nil
 }
 
-func verifyIRWithTrainStmt(sqlir ir.SQLStatement, db *database.DB) error {
+func verifyIRWithTrainStmt(sqlir ir.SQLFlowStmt, db *database.DB) error {
 	var selectStmt string
 	var trainStmt *ir.TrainStmt
 	switch s := sqlir.(type) {

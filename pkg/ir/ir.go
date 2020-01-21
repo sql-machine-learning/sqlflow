@@ -14,11 +14,7 @@
 // Package ir is the Intermediate Representation of parsed SQL statements
 package ir
 
-// SQLProgram represents a parsed SQL program.
-// TODO(typhoonzero): Can generate a DAG workflow from a SQL program.
-type SQLProgram []SQLStatement
-
-// Executor is a visitor that generates and executes code for SQLStatement
+// Executor is a visitor that generates and executes code for SQLFlowStmt
 type Executor interface {
 	ExecuteQuery(*StandardSQL) error
 	ExecuteTrain(*TrainStmt) error
@@ -26,8 +22,8 @@ type Executor interface {
 	ExecuteExplain(*ExplainStmt) error
 }
 
-// SQLStatement represent all kind of IRs including: TrainStmt, PredictStmt, ExplainStmt and standard SQL.
-type SQLStatement interface {
+// SQLFlowStmt has multiple implementations: TrainStmt, PredictStmt, ExplainStmt and standard SQL.
+type SQLFlowStmt interface {
 	SetOriginalSQL(string)
 	Execute(Executor) error
 	IsExtended() bool
@@ -78,7 +74,7 @@ func (cl *TrainStmt) Execute(s Executor) error { return s.ExecuteTrain(cl) }
 // SetOriginalSQL sets the original sql string
 func (cl *TrainStmt) SetOriginalSQL(sql string) { cl.OriginalSQL = sql }
 
-// IsExtended returns whether a SQLStatement is an extended SQL statement
+// IsExtended returns whether a SQLFlowStmt is an extended SQL statement
 func (cl *TrainStmt) IsExtended() bool { return true }
 
 // GetOriginalSQL returns the original SQL statement used to get current IR result
@@ -117,7 +113,7 @@ func (cl *PredictStmt) Execute(s Executor) error { return s.ExecutePredict(cl) }
 // SetOriginalSQL sets the original sql string
 func (cl *PredictStmt) SetOriginalSQL(sql string) { cl.OriginalSQL = sql }
 
-// IsExtended returns whether a SQLStatement is an extended SQL statement
+// IsExtended returns whether a SQLFlowStmt is an extended SQL statement
 func (cl *PredictStmt) IsExtended() bool { return true }
 
 // GetOriginalSQL returns the original SQL statement used to get current IR result
@@ -153,7 +149,7 @@ func (cl *ExplainStmt) Execute(s Executor) error { return s.ExecuteExplain(cl) }
 // SetOriginalSQL sets the original sql string
 func (cl *ExplainStmt) SetOriginalSQL(sql string) { cl.OriginalSQL = sql }
 
-// IsExtended returns whether a SQLStatement is an extended SQL statement
+// IsExtended returns whether a SQLFlowStmt is an extended SQL statement
 func (cl *ExplainStmt) IsExtended() bool { return true }
 
 // GetOriginalSQL returns the original SQL statement used to get current IR result
@@ -168,7 +164,7 @@ func (sql *StandardSQL) Execute(s Executor) error { return s.ExecuteQuery(sql) }
 // SetOriginalSQL sets the original sql string
 func (sql *StandardSQL) SetOriginalSQL(s string) {}
 
-// IsExtended returns whether a SQLStatement is an extended SQL statement
+// IsExtended returns whether a SQLFlowStmt is an extended SQL statement
 func (sql *StandardSQL) IsExtended() bool { return false }
 
 // GetOriginalSQL returns the original SQL statement used to get current IR result
