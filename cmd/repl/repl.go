@@ -249,7 +249,7 @@ func runStmt(stmt string, isTerminal bool, modelDir string, ds string) error {
 	if len(parts) == 2 && strings.ToUpper(parts[0]) == "USE" {
 		return switchDatabase(parts[1], sess)
 	}
-	stream := sql.RunSQLProgram(stmt+";", modelDir, sess)
+	stream := sql.RunSQLProgram(stmt, modelDir, sess)
 	for rsp := range stream.ReadAll() {
 		// pagination. avoid exceed memory
 		if render(rsp, table, isTerminal) && table.NumLines() == tablePageSize {

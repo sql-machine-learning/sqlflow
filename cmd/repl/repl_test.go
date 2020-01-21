@@ -252,7 +252,6 @@ func TestReadStmt(t *testing.T) {
 	stmt, err = readStmt(scanner)
 	a.Nil(err)
 	a.Equal(1, len(stmt))
-	fmt.Println(stmt)
 	a.Equal(stmt[0], sql3)
 
 	sql3 = `SELECT * FROM tbl WHERE a==-- " \";
@@ -268,7 +267,7 @@ func TestReadStmt(t *testing.T) {
             use iris; show
             tables; --
 			select * from tbl where a not like '-- %'
-	        ;` // Test multiple statements
+	        ;` // Test multiple statements in multiple lines
 	scanner = bufio.NewScanner(strings.NewReader(sql3))
 	stmt, err = readStmt(scanner)
 	a.Nil(err)
@@ -283,6 +282,13 @@ func TestReadStmt(t *testing.T) {
 	a.Equal("show tables;", space.ReplaceAllString(stmt[1], " "))
 	a.Equal(" select * from tbl where a not like '-- %' ;", space.ReplaceAllString(stmt[2], " "))
 
+	sql3 = `use iris; show tables;` // Test multiple statements in single line
+	scanner = bufio.NewScanner(strings.NewReader(sql3))
+	stmt, err = readStmt(scanner)
+	a.Nil(err)
+	a.Equal(2, len(stmt))
+	a.Equal("use iris;", stmt[0])
+	a.Equal("show tables;", space.ReplaceAllString(stmt[1], " "))
 }
 
 func TestPromptState(t *testing.T) {

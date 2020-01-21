@@ -138,8 +138,8 @@ func (p *promptState) initHistory() {
 }
 
 func (p *promptState) updateHistory() {
-	input := strings.Join(p.statements, "; ")
-	lastInput := strings.Join(p.lastStatements, "; ")
+	input := strings.Join(p.statements, " ")
+	lastInput := strings.Join(p.lastStatements, " ")
 	if len(p.statements) != 0 && input != lastInput {
 		f, err := os.OpenFile(p.historyFileName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 		if err != nil {
