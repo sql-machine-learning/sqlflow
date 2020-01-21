@@ -1370,7 +1370,9 @@ func CaseTrainXGBoostOnPAI(t *testing.T) {
 	TO TRAIN xgboost.gbtree
 	WITH
 		objective="multi:softprob",
-		train.num_boost_round = 30
+		train.num_boost_round = 30,
+		eta = 0.4,
+		num_class = 3
 	LABEL class
 	INTO my_xgb_classi_model;`, caseTrainTable)
 	_, _, err := connectAndRunSQL(trainSQL)

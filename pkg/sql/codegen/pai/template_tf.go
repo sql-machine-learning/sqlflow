@@ -64,7 +64,7 @@ with open("requirements.txt", "w") as req_fn:
     req_fn.write("shap==0.28.5\n")
     req_fn.write("seaborn==0.9.0\n")
 {{if .IsXgboost}}
-    req_fn.write("xgboost==0.90\n")
+    req_fn.write("xgboost==0.82\n")
 {{end}}
 
 # '.' is always in sys.path

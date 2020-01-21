@@ -54,6 +54,7 @@ def train(datasource, select, model_params, train_params, feature_field_meta,
     bst = xgb.train(model_params,
                     dtrain,
                     evals=watchlist,
-                    evals_result=re**train_params)
+                    evals_result=re,
+                    **train_params)
     bst.save_model("my_model")
     print("Evaluation result: %s" % re)
