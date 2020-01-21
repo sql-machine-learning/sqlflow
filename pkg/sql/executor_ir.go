@@ -99,7 +99,7 @@ func submitWorkflow(wr *pipe.Writer, sqlProgram string, modelDir string, session
 	if err != nil {
 		return "", err
 	}
-	sqls, err := parser.Parse(driverName, sqlProgram)
+	stmts, err := parser.Parse(driverName, sqlProgram)
 	if err != nil {
 		return "", err
 	}
@@ -109,9 +109,9 @@ func submitWorkflow(wr *pipe.Writer, sqlProgram string, modelDir string, session
 	// the multiple ir generator steps pipeline can be:
 	// sql -> parsed result -> infer columns -> load train ir from saved model ..
 	spIRs := []ir.SQLFlowStmt{}
-	for _, sql := range sqls {
+	for _, sql := range stmts {
 		var r ir.SQLFlowStmt
-		if parser.IsExtendedSyntax(sql) {
+		if sql.IsExtendedSyntax() {
 			if sql.Train {
 				r, err = generateTrainStmt(sql.SQLFlowSelectStmt)
 			} else if sql.Explain {
@@ -150,7 +150,7 @@ func submitWorkflow(wr *pipe.Writer, sqlProgram string, modelDir string, session
 }
 
 func runSQLProgram(wr *pipe.Writer, sqlProgram string, db *database.DB, modelDir string, session *pb.Session) error {
-	sqls, err := parser.Parse(db.DriverName, sqlProgram)
+	stmts, err := parser.Parse(db.DriverName, sqlProgram)
 	if err != nil {
 		return err
 	}
@@ -162,7 +162,7 @@ func runSQLProgram(wr *pipe.Writer, sqlProgram string, db *database.DB, modelDir
 	//
 	// The IR generation on the second statement would fail since it requires inspection the schema of some_table,
 	// which depends on the execution of create table some_table as (select ...);.
-	for _, sql := range sqls {
+	for _, sql := range stmts {
 		cwd, err := ioutil.TempDir("/tmp", "sqlflow_models")
 		if err != nil {
 			return err
@@ -175,7 +175,7 @@ func runSQLProgram(wr *pipe.Writer, sqlProgram string, db *database.DB, modelDir
 			return os.RemoveAll(cwd)
 		}
 		var r ir.SQLFlowStmt
-		if parser.IsExtendedSyntax(sql) {
+		if sql.IsExtendedSyntax() {
 			if sql.Train {
 				r, err = generateTrainStmtWithInferredColumns(sql.SQLFlowSelectStmt, session.DbConnStr, true)
 			} else if sql.Explain {

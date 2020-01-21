@@ -51,7 +51,7 @@ func TestGenerateTrainStmt(t *testing.T) {
 	INTO mymodel;
 	`
 
-	r, e := parser.ParseOneStatement("mysql", normal)
+	r, e := parser.ParseStatement("mysql", normal)
 	a.NoError(e)
 
 	trainStmt, err := generateTrainStmt(r.SQLFlowSelectStmt)
@@ -176,7 +176,7 @@ func TestGenerateTrainStmtModelZoo(t *testing.T) {
 	INTO mymodel;
 	`
 
-	r, e := parser.ParseOneStatement("mysql", normal)
+	r, e := parser.ParseStatement("mysql", normal)
 	a.NoError(e)
 
 	trainStmt, err := generateTrainStmt(r.SQLFlowSelectStmt)
@@ -194,7 +194,7 @@ func TestGeneratePredictStmt(t *testing.T) {
 	predSQL := `SELECT * FROM iris.test
 TO PREDICT iris.predict.class
 USING sqlflow_models.mymodel;`
-	r, e := parser.ParseOneStatement("mysql", predSQL)
+	r, e := parser.ParseStatement("mysql", predSQL)
 	a.NoError(e)
 
 	// need to save a model first because predict SQL will read the train SQL
@@ -248,7 +248,7 @@ INTO sqlflow_models.my_xgboost_model;
 	a.NoError(e)
 	a.True(goodStream(stream.ReadAll()))
 
-	pr, e := parser.ParseOneStatement("mysql", `
+	pr, e := parser.ParseStatement("mysql", `
 	SELECT *
 	FROM iris.train
 	TO EXPLAIN sqlflow_models.my_xgboost_model
@@ -272,7 +272,7 @@ INTO sqlflow_models.my_xgboost_model;
 	a.True(ok)
 	a.Equal("sepal_length", nc.FieldDesc.Name)
 
-	pr, e = parser.ParseOneStatement("mysql", `
+	pr, e = parser.ParseStatement("mysql", `
 	SELECT *
 	FROM iris.train
 	TO EXPLAIN sqlflow_models.my_xgboost_model
@@ -291,7 +291,7 @@ INTO sqlflow_models.my_xgboost_model;
 	a.Equal(len(ExplainIntoStmt.Attributes), 3)
 	a.Equal("db.explain_result", ExplainIntoStmt.Into)
 
-	pr, e = parser.ParseOneStatement("mysql", `SELECT * FROM iris.train TO EXPLAIN sqlflow_models.my_xgboost_model;`)
+	pr, e = parser.ParseStatement("mysql", `SELECT * FROM iris.train TO EXPLAIN sqlflow_models.my_xgboost_model;`)
 	a.NoError(e)
 	shortExplainStmt, e := generateExplainStmt(pr.SQLFlowSelectStmt, connStr, modelDir, cwd, true)
 	a.NoError(e)

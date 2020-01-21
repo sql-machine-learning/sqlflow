@@ -137,7 +137,7 @@ func loadModelMeta(pr *parser.SQLFlowSelectStmt, db *database.DB, cwd, modelDir,
 	}
 	// Parse the training SELECT statement used to train
 	// the model for the prediction.
-	tr, e := parser.ParseOneStatement(db.DriverName, m.TrainSelect)
+	tr, e := parser.ParseStatement(db.DriverName, m.TrainSelect)
 	if e != nil {
 		return nil, fmt.Errorf("parse: TrainSelect %v raise %v", m.TrainSelect, e)
 	}

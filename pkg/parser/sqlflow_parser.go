@@ -32,22 +32,22 @@ type SQLFlowStmt struct {
 
 // IsExtendedSyntax returns true if a parsed statement uses any
 // SQLFlow syntax extensions.
-func IsExtendedSyntax(stmt *SQLFlowStmt) bool {
+func (stmt *SQLFlowStmt) IsExtendedSyntax() bool {
 	return stmt.SQLFlowSelectStmt != nil
 }
 
-// ParseOneStatement parses a SQL program by calling Parse, and
+// ParseStatement parses a SQL program by calling Parse, and
 // asserts that this program contains one and only one statement.
-func ParseOneStatement(dialect, sql string) (*SQLFlowStmt, error) {
-	sqls, err := Parse(dialect, sql)
+func ParseStatement(dialect, program string) (*SQLFlowStmt, error) {
+	stmts, err := Parse(dialect, program)
 	if err != nil {
 		return nil, err
 	}
-	if len(sqls) != 1 {
-		return nil, fmt.Errorf("unexpected number of statements 1(expected) != %v(received)", len(sqls))
+	if len(stmts) != 1 {
+		return nil, fmt.Errorf("expecting one statement, got %s", len(stmts))
 	}
 
-	return sqls[0], nil
+	return stmts[0], nil
 }
 
 // Parse a SQL program in the given dialect into a list of SQL statements.
