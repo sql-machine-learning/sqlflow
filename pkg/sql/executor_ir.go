@@ -108,9 +108,9 @@ func submitWorkflow(wr *pipe.Writer, sqlProgram string, modelDir string, session
 	// 		SELECT ... TO TRAIN ...
 	// the multiple ir generator steps pipeline can be:
 	// sql -> parsed result -> infer columns -> load train ir from saved model ..
-	spIRs := []ir.SQLStatement{}
+	spIRs := []ir.SQLFlowStmt{}
 	for _, sql := range sqls {
-		var r ir.SQLStatement
+		var r ir.SQLFlowStmt
 		if parser.IsExtendedSyntax(sql) {
 			if sql.Train {
 				r, err = generateTrainStmt(sql.SQLFlowSelectStmt)
@@ -174,7 +174,7 @@ func runSQLProgram(wr *pipe.Writer, sqlProgram string, db *database.DB, modelDir
 		cleanCwd := func(cwd string) error {
 			return os.RemoveAll(cwd)
 		}
-		var r ir.SQLStatement
+		var r ir.SQLFlowStmt
 		if parser.IsExtendedSyntax(sql) {
 			if sql.Train {
 				r, err = generateTrainStmtWithInferredColumns(sql.SQLFlowSelectStmt, session.DbConnStr, true)
@@ -208,7 +208,7 @@ func runSQLProgram(wr *pipe.Writer, sqlProgram string, db *database.DB, modelDir
 	return nil
 }
 
-func runSingleSQLIR(wr *pipe.Writer, sqlIR ir.SQLStatement, db *database.DB, modelDir string, cwd string, session *pb.Session) (e error) {
+func runSingleSQLIR(wr *pipe.Writer, sqlIR ir.SQLFlowStmt, db *database.DB, modelDir string, cwd string, session *pb.Session) (e error) {
 	startTime := time.Now().UnixNano()
 	var originalSQL string
 	defer func() {

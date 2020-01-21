@@ -63,7 +63,7 @@ func getStepEnvs(session *pb.Session) (map[string]string, error) {
 }
 
 // GenCode generates Couler program
-func GenCode(programIR ir.SQLProgram, session *pb.Session) (string, error) {
+func GenCode(programIR []ir.SQLFlowStmt, session *pb.Session) (string, error) {
 	stepEnvs, err := getStepEnvs(session)
 	if err != nil {
 		return "", err
