@@ -66,16 +66,16 @@ var attributes = []prompt.Suggest{
 }
 
 type promptState struct {
-	prefix           string
-	livePrefix       string
-	enableLivePrefix bool
-	statement        string
-	lastStatement    string
-	keywords         []string
-	history          []string
-	historyFileName  string
-	modelParamDocs   map[string][]prompt.Suggest
-	models           []prompt.Suggest
+	prefix                         string
+	livePrefix                     string
+	enableLivePrefix               bool
+	keywords                       []string
+	history                        []string
+	historyFileName                string
+	modelParamDocs                 map[string][]prompt.Suggest
+	models                         []prompt.Suggest
+	statements, lastStatements     []string
+	inQuotedString, isSingleQuoted bool
 }
 
 func (p *promptState) changeLivePrefix() (string, bool) {
@@ -83,19 +83,18 @@ func (p *promptState) changeLivePrefix() (string, bool) {
 }
 
 func (p *promptState) execute(in string, cb func(string)) {
-	in = strings.TrimRight(in, " \t")
-	if in != "" && !(p.statement == "" && lineIsComment(in)) {
-		p.statement += in
-		if strings.HasSuffix(in, ";") {
+	if in != "" {
+		if addLineToStmt(in, &p.inQuotedString, &p.isSingleQuoted, &p.statements) {
 			p.updateHistory()
 			p.enableLivePrefix = false
 			fmt.Println()
-			cb(p.statement)
-			p.lastStatement = p.statement
-			p.statement = ""
+			for _, stmt := range p.statements {
+				cb(stmt)
+			}
+			p.lastStatements = p.statements
+			p.statements = []string{}
 			return
 		}
-		p.statement += "\n"
 		p.enableLivePrefix = true
 	}
 }
@@ -139,14 +138,16 @@ func (p *promptState) initHistory() {
 }
 
 func (p *promptState) updateHistory() {
-	if p.statement != "" && p.statement != p.lastStatement {
+	input := strings.Join(p.statements, "; ")
+	lastInput := strings.Join(p.lastStatements, "; ")
+	if len(p.statements) != 0 && input != lastInput {
 		f, err := os.OpenFile(p.historyFileName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 		if err != nil {
 			return
 		}
 		defer f.Close()
 		w := bufio.NewWriter(f)
-		fmt.Fprintf(w, "%s\n", strings.ReplaceAll(p.statement, "\n", " "))
+		fmt.Fprintf(w, "%s\n", strings.ReplaceAll(input, "\n", " "))
 		w.Flush()
 	}
 }
@@ -171,7 +172,7 @@ func (p *promptState) lookaheadKeyword(words []string) (string, string, string) 
 
 func (p *promptState) clauseUnderCursor(in prompt.Document) (string, string, string) {
 	// TODO(shendiaomo): use SQLFlow lexer to replace strings.Fields
-	words := strings.Fields(p.statement + in.TextBeforeCursor())
+	words := strings.Fields(strings.Join(p.statements, " ") + in.TextBeforeCursor())
 	return p.lookaheadKeyword(words)
 }
 

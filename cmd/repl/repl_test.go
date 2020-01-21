@@ -127,6 +127,18 @@ func TestReadStmt(t *testing.T) {
 	a.Equal(space.ReplaceAllString(stmt, " "), space.ReplaceAllString(sql, " "))
 }
 
+func TestReadStmt(t *testing.T) {
+	a := assert.New(t)
+	sql := `SELECT * FROM iris.train TO TRAIN DNNClassifier WITH
+				model.hidden_units=[10,20],
+				model.n_classes=3
+			LABEL class INTO sqlflow_models.my_model;`
+	scanner := bufio.NewScanner(strings.NewReader(sql))
+	stmt, err := readStmt(scanner)
+	a.Nil(err)
+	a.Equal(space.ReplaceAllString(stmt, " "), space.ReplaceAllString(sql, " "))
+}
+
 func TestPromptState(t *testing.T) {
 	a := assert.New(t)
 	s := newPromptState()
