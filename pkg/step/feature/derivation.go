@@ -451,6 +451,7 @@ func newFeatureColumn(fcTargetMap map[string][]ir.FeatureColumn, fmMap FieldDesc
 	return nil
 }
 
+// setBackToIR set derived feature column information back to the original IR structure.
 func setBackToIR(trainStmt *ir.TrainStmt, fcMap ColumnMap, columnTargets []string, selectFieldNames []string) {
 	for _, target := range columnTargets {
 		targetFeatureColumnMap := fcMap[target]
@@ -487,12 +488,11 @@ func setBackToIR(trainStmt *ir.TrainStmt, fcMap ColumnMap, columnTargets []strin
 	}
 }
 
-// setBackToLabel update label field meta
+// setBackToLabel set derived label FieldDesc information back to the original IR structure.
 func setBackToLabel(trainStmt *ir.TrainStmt, fmMap FieldDescMap) {
-	// NOTE: clustering model may not specify Label
 	labelName := trainStmt.Label.GetFieldDesc()[0].Name
 	if labelName == "" {
-		return
+		return // NOTE: clustering model may not specify Label
 	}
 	trainStmt.Label = &ir.NumericColumn{
 		FieldDesc: fmMap[labelName],
