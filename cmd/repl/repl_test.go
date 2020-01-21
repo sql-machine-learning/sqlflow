@@ -262,6 +262,27 @@ func TestReadStmt(t *testing.T) {
 	a.Equal(io.EOF, err)
 	a.Equal(1, len(stmt))
 	a.Equal(space.ReplaceAllString(stmt[0], " "), `SELECT * FROM tbl WHERE a== '";`)
+
+	sql3 = `--
+            -- 1. test
+            use iris; show
+            tables; --
+			select * from tbl where a not like '-- %'
+	        ;` // Test multiple statements
+	scanner = bufio.NewScanner(strings.NewReader(sql3))
+	stmt, err = readStmt(scanner)
+	a.Nil(err)
+	a.Equal(0, len(stmt))
+	stmt, err = readStmt(scanner)
+	a.Nil(err)
+	a.Equal(0, len(stmt))
+	stmt, err = readStmt(scanner)
+	a.Nil(err)
+	a.Equal(3, len(stmt))
+	a.Equal("use iris;", stmt[0])
+	a.Equal("show tables;", space.ReplaceAllString(stmt[1], " "))
+	a.Equal(" select * from tbl where a not like '-- %' ;", space.ReplaceAllString(stmt[2], " "))
+
 }
 
 func TestPromptState(t *testing.T) {
