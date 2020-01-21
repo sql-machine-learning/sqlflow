@@ -36,11 +36,6 @@ func newSessionFromProto(session *pb.Session) map[string]string {
 	envs := make(map[string]string)
 	fillMapIfValueNotEmpty(envs, "SQLFLOW_USER_TOKEN", session.Token)
 	fillMapIfValueNotEmpty(envs, "SQLFLOW_DATASOURCE", session.DbConnStr)
-	if session.ExitOnSubmit {
-		fillMapIfValueNotEmpty(envs, "SQLFLOW_EXIT_ON_SUBMIT", "true")
-	} else {
-		fillMapIfValueNotEmpty(envs, "SQLFLOW_EXIT_ON_SUBMIT", "false")
-	}
 	fillMapIfValueNotEmpty(envs, "SQLFLOW_USER_ID", session.UserId)
 	fillMapIfValueNotEmpty(envs, "SQLFLOW_HIVE_LOCATION", session.HiveLocation)
 	fillMapIfValueNotEmpty(envs, "SQLFLOW_HDFS_NAMENODE_ADDR", session.HdfsNamenodeAddr)
