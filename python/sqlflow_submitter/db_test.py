@@ -206,7 +206,11 @@ class TestGenerator(TestCase):
                     "shape": []
                 }
             }
-            label_spec = {"feature_name": "label", "shape": []}
+            label_spec = {
+                "feature_name": "label",
+                "shape": [],
+                "delemiter": ""
+            }
             gen = db_generator(driver, conn,
                                "SELECT * FROM test_table_float_fea",
                                ["features"], label_spec, column_name_to_type)
@@ -240,7 +244,11 @@ class TestGenerator(TestCase):
                     "shape": []
                 }
             }
-            label_spec = {"feature_name": "label", "shape": []}
+            label_spec = {
+                "feature_name": "label",
+                "shape": [],
+                "delemiter": ""
+            }
             gen = db_generator(driver,
                                conn,
                                'SELECT * FROM iris.train limit 10',
