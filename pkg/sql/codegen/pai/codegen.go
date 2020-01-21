@@ -31,7 +31,6 @@ import (
 )
 
 const entryFile = "entry.py"
-const tarball = "pai-tf-job.tar.gz"
 
 // PSConfig implicates Parameter Server Config
 type PSConfig struct {
@@ -111,7 +110,7 @@ func formatODPSTables(table string) (string, error) {
 	return fmt.Sprintf("odps://%s/tables/%s", parts[0], parts[1]), nil
 }
 
-func getTFPAICmd(cc *ClusterConfig, modelName, ossModelPath, trainTable, valTable, resTable string) (string, error) {
+func getTFPAICmd(cc *ClusterConfig, tarball, modelName, ossModelPath, trainTable, valTable, resTable string) (string, error) {
 	jobName := strings.Replace(strings.Join([]string{"sqlflow", modelName}, "_"), ".", "_", 0)
 	cfString, err := json.Marshal(cc)
 	if err != nil {
@@ -144,9 +143,9 @@ func getTFPAICmd(cc *ClusterConfig, modelName, ossModelPath, trainTable, valTabl
 		outputTables = fmt.Sprintf("-Doutputs=%s", table)
 	}
 	if cc.Worker.Count > 1 {
-		return fmt.Sprintf("pai -name %s -DjobName=%s -Dtags=dnn -Dscript=file://@@%s -DentryFile=entry.py -Dtables=%s %s -DcheckpointDir=\"%s\" -Dcluster=%s", jobName, tarball, submitTables, outputTables, ckpDir, cfQuote), nil
+		return fmt.Sprintf("pai -name tensorflow1120 -DjobName=%s -Dtags=dnn -Dscript=%s -DentryFile=entry.py -Dtables=%s %s -DcheckpointDir=\"%s\" -Dcluster=%s", jobName, tarball, submitTables, outputTables, ckpDir, cfQuote), nil
 	}
-	return fmt.Sprintf("pai -name %s -DjobName=%s -Dtags=dnn -Dscript=file://@@%s -DentryFile=entry.py -Dtables=%s %s -DcheckpointDir=\"%s\"", jobName, tarball, submitTables, outputTables, ckpDir), nil
+	return fmt.Sprintf("pai -name tensorflow1120 -DjobName=%s -Dtags=dnn -Dscript=%s -DentryFile=entry.py -Dtables=%s %s -DcheckpointDir=\"%s\"", jobName, tarball, submitTables, outputTables, ckpDir), nil
 }
 
 func getTrainRandomForestsPAICmd(ir *ir.TrainStmt, session *pb.Session) (string, error) {
@@ -208,7 +207,7 @@ func getColumnTypes(slct string, db *database.DB) ([]string, []string, error) {
 }
 
 // Train generates a Python program a PAI command arguments to train a Tensorflow model.
-func Train(ir *ir.TrainStmt, session *pb.Session, modelName, ossModelPath, cwd string) (code string, paiCmd string, e error) {
+func Train(ir *ir.TrainStmt, session *pb.Session, tarball, modelName, ossModelPath, cwd string) (code string, paiCmd string, e error) {
 	if strings.ToLower(ir.Estimator) == "randomforests" {
 		if paiCmd, e = getTrainRandomForestsPAICmd(ir, session); e != nil {
 			return "", "", e
@@ -219,11 +218,11 @@ func Train(ir *ir.TrainStmt, session *pb.Session, modelName, ossModelPath, cwd s
 			return "", "", e
 		}
 
-		code, e = TFTrainAndSave(ir, session, modelName, cc)
+		code, e = TFTrainAndSave(ir, session, ossModelPath, cc)
 		if e != nil {
 			return "", "", e
 		}
-		if paiCmd, e = getTFPAICmd(cc, modelName, ossModelPath, ir.TmpTrainTable, ir.TmpValidateTable, ""); e != nil {
+		if paiCmd, e = getTFPAICmd(cc, tarball, modelName, ossModelPath, ir.TmpTrainTable, ir.TmpValidateTable, ""); e != nil {
 			return "", "", e
 		}
 	}
@@ -275,7 +274,7 @@ func getPredictRandomForestsPAICmd(ir *ir.PredictStmt, session *pb.Session) (str
 }
 
 // Predict generates a Python program for train a TensorFlow model.
-func Predict(ir *ir.PredictStmt, session *pb.Session, modelName, ossModelPath, cwd string, isDeepModel bool) (code, paiCmd string, e error) {
+func Predict(ir *ir.PredictStmt, session *pb.Session, tarball, modelName, ossModelPath, cwd string, isDeepModel bool) (code, paiCmd string, e error) {
 	if !isDeepModel {
 		log.Printf("predicting using pai random forests")
 		if paiCmd, e = getPredictRandomForestsPAICmd(ir, session); e != nil {
@@ -289,7 +288,7 @@ func Predict(ir *ir.PredictStmt, session *pb.Session, modelName, ossModelPath, c
 		if code, e = TFLoadAndPredict(ir, session, modelName); e != nil {
 			return
 		}
-		if paiCmd, e = getTFPAICmd(cc, modelName, ossModelPath, "", "", ir.ResultTable); e != nil {
+		if paiCmd, e = getTFPAICmd(cc, tarball, modelName, ossModelPath, ir.TmpPredictTable, "", ir.ResultTable); e != nil {
 			return
 		}
 	}
@@ -377,7 +376,7 @@ func TFLoadAndExplain(ir *ir.ExplainStmt, session *pb.Session, modelPath string)
 }
 
 // Explain generates a Python program for train a TensorFlow model.
-func Explain(ir *ir.ExplainStmt, session *pb.Session, modelName, ossModelPath, cwd string, isDeepModel bool) (code, paiCmd string, e error) {
+func Explain(ir *ir.ExplainStmt, session *pb.Session, tarball, modelName, ossModelPath, cwd string, isDeepModel bool) (code, paiCmd string, e error) {
 	if ir.Into == "" {
 		return "", "", fmt.Errorf("explain PAI random forests model need INTO clause to output the explain result to a table")
 	}
@@ -395,7 +394,7 @@ func Explain(ir *ir.ExplainStmt, session *pb.Session, modelName, ossModelPath, c
 		if err != nil {
 			return code, paiCmd, err
 		}
-		if paiCmd, e = getTFPAICmd(cc, modelName, ossModelPath, ir.TmpExplainTable, "", ir.Into); e != nil {
+		if paiCmd, e = getTFPAICmd(cc, modelName, tarball, ossModelPath, ir.TmpExplainTable, "", ir.Into); e != nil {
 			return
 		}
 	}

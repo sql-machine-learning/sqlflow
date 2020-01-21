@@ -14,23 +14,23 @@
 package sql
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
 	"sqlflow.org/goalisa"
+	"sqlflow.org/gomaxcompute"
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/ir"
+	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/pai"
 )
 
-var tarball = "task.tar.gz"
+var resourceName = "job.tar.gz"
 var entryFile = "entry.py"
 var reOSS = regexp.MustCompile(`oss://([^/]+).*host=([^&]+)`)
 
@@ -38,7 +38,7 @@ type alisaSubmitter struct {
 	*defaultSubmitter
 }
 
-func (s *alisaSubmitter) submitAlisaTask(code, resourceName string) error {
+func (s *alisaSubmitter) submitAlisaTask(code, resourceURL string) error {
 	_, dsName, err := database.ParseURL(s.Session.DbConnStr)
 	if err != nil {
 		return err
@@ -48,8 +48,7 @@ func (s *alisaSubmitter) submitAlisaTask(code, resourceName string) error {
 		return e
 	}
 
-	ossURL := fmt.Sprintf("https://%s.%s", os.Getenv("SQLFLOW_OSS_BUCKET"), os.Getenv("SQLFLOW_OSS_ENDPOINT"))
-	cfg.Env["RES_DOWNLOAD_URL"] = fmt.Sprintf(`[{\"downloadUrl\":\"%s/%s\", \"resourceName\":\"%s\"}]`, ossURL, resourceName, tarball)
+	cfg.Env["RES_DOWNLOAD_URL"] = fmt.Sprintf(`[{\"downloadUrl\":\"%s\", \"resourceName\":\"%s\"}]`, resourceURL, resourceName)
 	cfg.Verbose = true
 	newDatasource := cfg.FormatDSN()
 
@@ -61,22 +60,6 @@ func (s *alisaSubmitter) submitAlisaTask(code, resourceName string) error {
 	return e
 }
 
-func (s *alisaSubmitter) getModelPath(modelName string) (string, error) {
-	_, dsName, err := database.ParseURL(s.Session.DbConnStr)
-	if err != nil {
-		return "", err
-	}
-	cfg, err := goalisa.ParseDSN(dsName)
-	if err != nil {
-		return "", err
-	}
-	userID := s.Session.UserId
-	if userID == "" {
-		userID = "unkown"
-	}
-	return strings.Join([]string{cfg.Project, userID, modelName}, "/"), nil
-}
-
 func (s *alisaSubmitter) ExecuteTrain(ts *ir.TrainStmt) (e error) {
 	ts.TmpTrainTable, ts.TmpValidateTable, e = createTempTrainAndValTable(ts.Select, ts.ValidationSelect, s.Session.DbConnStr)
 	if e != nil {
@@ -84,51 +67,51 @@ func (s *alisaSubmitter) ExecuteTrain(ts *ir.TrainStmt) (e error) {
 	}
 	defer dropTmpTables([]string{ts.TmpTrainTable, ts.TmpValidateTable}, s.Session.DbConnStr)
 
-	cc, e := pai.GetClusterConfig(ts.Attributes)
+	ossModelPath, e := getModelPath(ts.Into, s.Session)
 	if e != nil {
 		return e
 	}
 
-	modelPath, e := s.getModelPath(ts.Into)
+	if e = s.cleanUpModel(ossModelPath); e != nil {
+		return e
+	}
+	// upload Alisa resource file to OSS
+	ossObjectName := randStringRunes(16)
+	// Alisa resource should be prefix with @@, alisa source would replace it with the RES_DOWN_URL.resourceName in alisa env.
+	scriptPath := fmt.Sprintf("file://@@%s", resourceName)
+	code, paiCmd, e := pai.Train(ts, s.Session, scriptPath, ts.Into, ossModelPath, s.Cwd)
 	if e != nil {
 		return e
 	}
-
-	paiCmd, e := getPAIcmd(cc, ts.Into, modelPath, ts.TmpTrainTable, ts.TmpValidateTable, "")
-	if e != nil {
-		return e
-	}
-
-	code, e := pai.TFTrainAndSave(ts, s.Session, modelPath, cc)
-	if e != nil {
-		return e
-	}
-
-	if e := s.cleanUpModel(modelPath); e != nil {
-		return e
-	}
-
-	return s.submit(code, paiCmd)
+	return s.alisaCmd(code, paiCmd, ossObjectName)
 }
 
-func (s *alisaSubmitter) submit(program, alisaCode string) error {
-	if e := s.achieveResource(program, tarball); e != nil {
+func (s *alisaSubmitter) alisaCmd(program, alisaCode, ossObjectName string) error {
+	tarball := "job.tar.gz"
+	ep := os.Getenv("SQLFLOW_OSS_ALISA_ENDPOINT")
+	ak := os.Getenv("SQLFLOW_OSS_AK")
+	sk := os.Getenv("SQLFLOW_OSS_SK")
+	bucketName := os.Getenv("SQLFLOW_OSS_ALISA_BUCKET")
+
+	if ep == "" || ak == "" || sk == "" || bucketName == "" {
+		return fmt.Errorf("should define SQLFLOW_OSS_ALISA_ENDPOINT, SQLFLOW_OSS_ALISA_BUCKET, SQLFLOW_OSS_AK, SQLFLOW_OSS_SK when using submitter alisa")
+	}
+	resourceURL := fmt.Sprintf("https://%s.%s/%s", bucketName, ep, ossObjectName)
+
+	if e := achieveResource(s.Cwd, program, tarball); e != nil {
 		return e
 	}
 
-	// upload Alisa resource file to OSS
-	resourceName := randStringRunes(16)
-	bucket, err := getBucket(os.Getenv("SQLFLOW_OSS_ENDPOINT"),
-		os.Getenv("SQLFLOW_OSS_AK"), os.Getenv("SQLFLOW_OSS_SK"), os.Getenv("SQLFLOW_OSS_BUCKET"))
+	bucket, err := getBucket(ep, ak, sk, bucketName)
 	if err != nil {
 		return err
 	}
-	if e := bucket.PutObjectFromFile(resourceName, filepath.Join(s.Cwd, tarball)); e != nil {
+	if e := bucket.PutObjectFromFile(ossObjectName, filepath.Join(s.Cwd, tarball)); e != nil {
 		return err
 	}
-	defer bucket.DeleteObject(resourceName)
+	defer bucket.DeleteObject(ossObjectName)
 
-	return s.submitAlisaTask(alisaCode, resourceName)
+	return s.submitAlisaTask(alisaCode, resourceURL)
 }
 
 func (s *alisaSubmitter) cleanUpModel(modelPath string) error {
@@ -137,10 +120,12 @@ func (s *alisaSubmitter) cleanUpModel(modelPath string) error {
 	if len(sub) != 3 {
 		return fmt.Errorf("SQLFLOW_OSS_CHECKPOINT_DIR should be format: oss://bucket/?role_arn=xxx&host=xxx")
 	}
-	bucket, e := getBucket(sub[2], os.Getenv("SQLFLOW_OSS_AK"), os.Getenv("SQLFLOW_OSS_SK"), sub[1])
+	fmt.Println(os.Getenv("SQLFLOW_OSS_MODEL_ENDPOINT"), os.Getenv("SQLFLOW_OSS_AK"), os.Getenv("SQLFLOW_OSS_SK"), sub[1])
+	bucket, e := getBucket(os.Getenv("SQLFLOW_OSS_MODEL_ENDPOINT"), os.Getenv("SQLFLOW_OSS_AK"), os.Getenv("SQLFLOW_OSS_SK"), sub[1])
 	if e != nil {
 		return e
 	}
+	fmt.Println("delete oss", modelPath)
 	if e := bucket.DeleteObject(modelPath); e != nil {
 		return e
 	}
@@ -159,23 +144,22 @@ func (s *alisaSubmitter) ExecutePredict(ps *ir.PredictStmt) error {
 		return e
 	}
 
-	cc, e := pai.GetClusterConfig(ps.Attributes)
+	ossModelPath, e := getModelPath(ps.Using, s.Session)
 	if e != nil {
 		return e
 	}
-	modelPath, e := s.getModelPath(ps.Using)
+	isDeepModel, e := ossModelFileExists(ossModelPath)
 	if e != nil {
 		return e
 	}
-	paiCmd, e := getPAIcmd(cc, ps.Using, modelPath, ps.TmpPredictTable, "", ps.ResultTable)
+
+	ossObjectName := randStringRunes(16)
+	scriptPath := fmt.Sprintf("file://@@%s", resourceName)
+	code, paiCmd, e := pai.Predict(ps, s.Session, scriptPath, ps.Using, ossModelPath, s.Cwd, isDeepModel)
 	if e != nil {
 		return e
 	}
-	code, e := pai.TFLoadAndPredict(ps, s.Session, modelPath)
-	if e != nil {
-		return e
-	}
-	return s.submit(code, paiCmd)
+	return s.alisaCmd(code, paiCmd, ossObjectName)
 }
 
 func (s *alisaSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
@@ -183,29 +167,6 @@ func (s *alisaSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 }
 
 func (s *alisaSubmitter) GetTrainStmtFromModel() bool { return false }
-
-func (s *alisaSubmitter) achieveResource(entryCode, tarball string) error {
-	if err := writeFile(filepath.Join(s.Cwd, entryFile), entryCode); err != nil {
-		return err
-	}
-
-	path, err := findPyModulePath("sqlflow_submitter")
-	if err != nil {
-		return err
-	}
-	cmd := exec.Command("cp", "-r", path, ".")
-	cmd.Dir = s.Cwd
-	if _, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed %s, %v", cmd, err)
-	}
-
-	cmd = exec.Command("tar", "czf", tarball, "./sqlflow_submitter", entryFile)
-	cmd.Dir = s.Cwd
-	if _, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed %s, %v", cmd, err)
-	}
-	return nil
-}
 
 func findPyModulePath(pyModuleName string) (string, error) {
 	cmd := exec.Command("python", "-c", fmt.Sprintf(`import %s;print(%s.__path__[0])`, pyModuleName, pyModuleName))
@@ -234,48 +195,28 @@ func writeFile(filePath, program string) error {
 	return nil
 }
 
-func odpsTables(table string) (string, error) {
-	parts := strings.Split(table, ".")
-	if len(parts) != 2 {
-		return "", fmt.Errorf("odps table: %s should be format db.table", table)
+func getModelPath(modelName string, session *pb.Session) (string, error) {
+	driverName, dsName, e := database.ParseURL(session.DbConnStr)
+	if e != nil {
+		return "", e
 	}
-	return fmt.Sprintf("odps://%s/tables/%s", parts[0], parts[1]), nil
-}
-
-func getPAIcmd(cc *pai.ClusterConfig, modelName, ossModelPath, trainTable, valTable, resTable string) (string, error) {
-	jobName := strings.Replace(strings.Join([]string{"sqlflow", modelName}, "_"), ".", "_", 0)
-	cfString, err := json.Marshal(cc)
-	if err != nil {
-		return "", err
-	}
-	cfQuote := strconv.Quote(string(cfString))
-	ckpDir, err := pai.FormatCkptDir(ossModelPath)
-	if err != nil {
-		return "", err
-	}
-
-	// submit table should format as: odps://<project>/tables/<table>,odps://<project>/tables/<table>...
-	submitTables, err := odpsTables(trainTable)
-	if err != nil {
-		return "", err
-	}
-	if trainTable != valTable && valTable != "" {
-		valTable, err := odpsTables(valTable)
-		if err != nil {
-			return "", err
+	userID := session.UserId
+	var projectName string
+	if driverName == "maxcompute" {
+		cfg, e := gomaxcompute.ParseDSN(dsName)
+		if e != nil {
+			return "", e
 		}
-		submitTables = fmt.Sprintf("%s,%s", submitTables, valTable)
-	}
-	outputTables := ""
-	if resTable != "" {
-		table, err := odpsTables(resTable)
-		if err != nil {
-			return "", err
+		projectName = cfg.Project
+	} else if driverName == "alisa" {
+		cfg, e := goalisa.ParseDSN(dsName)
+		if e != nil {
+			return "", e
 		}
-		outputTables = fmt.Sprintf("-Doutputs=%s", table)
+		projectName = cfg.Project
 	}
-	if cc.Worker.Count > 1 {
-		return fmt.Sprintf("pai -name tensorflow1120 -DjobName=%s -Dtags=dnn -Dscript=file://@@%s -DentryFile=entry.py -Dtables=%s %s -DcheckpointDir=\"%s\" -Dcluster=%s", jobName, tarball, submitTables, outputTables, ckpDir, cfQuote), nil
+	if userID == "" {
+		userID = "unkown"
 	}
-	return fmt.Sprintf("pai -name tensorflow1120 -DjobName=%s -Dtags=dnn -Dscript=file://@@%s -DentryFile=entry.py -Dtables=%s %s -DcheckpointDir=\"%s\"", jobName, tarball, submitTables, outputTables, ckpDir), nil
+	return strings.Join([]string{projectName, userID, modelName}, "/"), nil
 }

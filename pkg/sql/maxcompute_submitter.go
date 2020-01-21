@@ -30,6 +30,8 @@ import (
 	"sqlflow.org/sqlflow/pkg/sql/codegen/pai"
 )
 
+var tarball = "job.tar.gz"
+
 type maxcomputeSubmitter struct{ *defaultSubmitter }
 
 func randStringRunes(n int) string {
@@ -116,22 +118,6 @@ func createTempTrainAndValTable(trainSelect, validSelect, datasource string) (st
 	return tmpTrainTable, tmpValTable, nil
 }
 
-func (s *maxcomputeSubmitter) getModelPath(modelName string) (string, error) {
-	_, dsName, err := database.ParseURL(s.Session.DbConnStr)
-	if err != nil {
-		return "", err
-	}
-	cfg, err := goalisa.ParseDSN(dsName)
-	if err != nil {
-		return "", err
-	}
-	userID := s.Session.UserId
-	if userID == "" {
-		userID = "unkown"
-	}
-	return strings.Join([]string{cfg.Project, userID, modelName}, "/"), nil
-}
-
 // Possible situations:
 //
 // 1. argo mode server: generate a step running: repl -e "repl -e \"select * from xx to train\""
@@ -143,43 +129,21 @@ func (s *maxcomputeSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 	}
 	defer dropTmpTables([]string{cl.TmpTrainTable, cl.TmpValidateTable}, s.Session.DbConnStr)
 
-	ossModelPath, e := s.getModelPath(cl.Into)
+	ossModelPath, e := getModelPath(cl.Into, s.Session)
 	if e != nil {
 		return e
 	}
-
-	code, paiCmd, e := pai.Train(cl, s.Session, cl.Into, ossModelPath, s.Cwd)
+	scriptPath := fmt.Sprintf("file://%s/%s", s.Cwd, tarball)
+	code, paiCmd, e := pai.Train(cl, s.Session, scriptPath, cl.Into, ossModelPath, s.Cwd)
+	fmt.Println(code)
 	if e != nil {
 		return e
 	}
 	return s.maxcomputeCmd(code, paiCmd)
 }
 
-func (s *maxcomputeSubmitter) achieveResource(entryCode, tarball string) error {
-	if err := writeFile(filepath.Join(s.Cwd, entryFile), entryCode); err != nil {
-		return err
-	}
-
-	path, err := findPyModulePath("sqlflow_submitter")
-	if err != nil {
-		return err
-	}
-	cmd := exec.Command("cp", "-r", path, ".")
-	cmd.Dir = s.Cwd
-	if _, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed %s, %v", cmd, err)
-	}
-
-	cmd = exec.Command("tar", "czf", tarball, "./sqlflow_submitter", entryFile)
-	cmd.Dir = s.Cwd
-	if _, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed %s, %v", cmd, err)
-	}
-	return nil
-}
-
 func (s *maxcomputeSubmitter) maxcomputeCmd(code, paiCmd string) error {
-	if e := s.achieveResource(code, tarball); e != nil {
+	if e := achieveResource(s.Cwd, code, tarball); e != nil {
 		return e
 	}
 	_, datasourceName, e := database.ParseURL(s.Session.DbConnStr)
@@ -191,10 +155,9 @@ func (s *maxcomputeSubmitter) maxcomputeCmd(code, paiCmd string) error {
 		return e
 	}
 
-	odpsCmd := strings.Split(fmt.Sprintf("odpscmd -u %s -p %s --project %s --endpoint %s -e %s", cfg.AccessID, cfg.AccessKey, cfg.Project, cfg.Endpoint, paiCmd), " ")
-	cmd := exec.Command(odpsCmd[0], odpsCmd[1:]...)
-	if _, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed %s, %v", cmd, err)
+	cmd := exec.Command("odpscmd", "-u", cfg.AccessID, "-p", cfg.AccessKey, "--project", cfg.Project, "--endpoint", cfg.Endpoint, "-e", paiCmd)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed %s, %s, %v", cmd, out, err)
 	}
 	return nil
 }
@@ -228,11 +191,12 @@ func (s *maxcomputeSubmitter) ExecutePredict(cl *ir.PredictStmt) error {
 		return err
 	}
 
-	ossModelPath, e := s.getModelPath(cl.Using)
+	ossModelPath, e := getModelPath(cl.Using, s.Session)
 	if e != nil {
 		return e
 	}
-	code, paiCmd, e := pai.Predict(cl, s.Session, cl.Using, ossModelPath, s.Cwd, isDeepModel)
+	scriptPath := fmt.Sprintf("file://%s/%s", s.Cwd, tarball)
+	code, paiCmd, e := pai.Predict(cl, s.Session, scriptPath, cl.Using, ossModelPath, s.Cwd, isDeepModel)
 	if e != nil {
 		return e
 	}
@@ -249,7 +213,7 @@ func (s *maxcomputeSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 	cl.TmpExplainTable = strings.Join([]string{dbName, tableName}, ".")
 	defer dropTmpTables([]string{cl.TmpExplainTable}, s.Session.DbConnStr)
 
-	ossModelPath, e := s.getModelPath(cl.ModelName)
+	ossModelPath, e := getModelPath(cl.ModelName, s.Session)
 	if e != nil {
 		return e
 	}
@@ -278,8 +242,8 @@ func (s *maxcomputeSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 			return err
 		}
 	}
-
-	code, paiCmd, e := pai.Explain(cl, s.Session, cl.ModelName, ossModelPath, s.Cwd, isDeepModel)
+	scriptPath := fmt.Sprintf("file://%s/%s", s.Cwd, tarball)
+	code, paiCmd, e := pai.Explain(cl, s.Session, scriptPath, cl.ModelName, ossModelPath, s.Cwd, isDeepModel)
 	if e != nil {
 		return e
 	}
@@ -289,11 +253,11 @@ func (s *maxcomputeSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 func ossModelFileExists(modelName string) (bool, error) {
 	// FIXME(typhoonzero): if the model not exist on OSS, assume it's a random forest model
 	// should use a general method to fetch the model and see the model type.
-	endpoint := os.Getenv("SQLFLOW_OSS_ENDPOINT")
+	endpoint := os.Getenv("SQLFLOW_OSS_MODEL_ENDPOINT")
 	ak := os.Getenv("SQLFLOW_OSS_AK")
 	sk := os.Getenv("SQLFLOW_OSS_SK")
 	if endpoint == "" || ak == "" || sk == "" {
-		return false, fmt.Errorf("must define SQLFLOW_OSS_ENDPOINT, SQLFLOW_OSS_AK, SQLFLOW_OSS_SK when using submitter pai")
+		return false, fmt.Errorf("must define SQLFLOW_OSS_MODEL_ENDPOINT, SQLFLOW_OSS_AK, SQLFLOW_OSS_SK when using submitter maxcompute")
 	}
 	// NOTE(typhoonzero): PAI Tensorflow need SQLFLOW_OSS_CHECKPOINT_DIR, get bucket name from it
 	ossCheckpointDir := os.Getenv("SQLFLOW_OSS_CHECKPOINT_DIR")
@@ -354,6 +318,29 @@ func createExplainResultTable(db *database.DB, ir *ir.ExplainStmt, tableName str
 	}
 	if _, e := db.Exec(createStmt); e != nil {
 		return fmt.Errorf("failed executing %s: %q", createStmt, e)
+	}
+	return nil
+}
+
+func achieveResource(cwd, entryCode, tarball string) error {
+	if err := writeFile(filepath.Join(cwd, entryFile), entryCode); err != nil {
+		return err
+	}
+
+	path, err := findPyModulePath("sqlflow_submitter")
+	if err != nil {
+		return err
+	}
+	cmd := exec.Command("cp", "-r", path, ".")
+	cmd.Dir = cwd
+	if _, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed %s, %v", cmd, err)
+	}
+
+	cmd = exec.Command("tar", "czf", tarball, "./sqlflow_submitter", entryFile)
+	cmd.Dir = cwd
+	if _, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed %s, %v", cmd, err)
 	}
 	return nil
 }
