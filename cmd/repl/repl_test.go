@@ -15,6 +15,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -26,12 +27,142 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	prompt "github.com/c-bata/go-prompt"
+	"github.com/c-bata/go-prompt"
+	"sqlflow.org/sqlflow/pkg/database"
+	"sqlflow.org/sqlflow/pkg/sql/testdata"
 )
 
-// TODO(shendiaomo): end to end tests like sqlflowserver/main_test.go
-
 var space = regexp.MustCompile(`\s+`)
+var dbConnStr = "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
+var testDBDriver = os.Getenv("SQLFLOW_TEST_DB")
+var session = makeSessionFromEnv()
+
+func prepareTestDataOrSkip(t *testing.T) error {
+	assertConnectable(dbConnStr)
+	testDB, _ := database.OpenAndConnectDB(dbConnStr)
+	if testDBDriver == "mysql" {
+		_, e := testDB.Exec("CREATE DATABASE IF NOT EXISTS sqlflow_models;")
+		if e != nil {
+			return e
+		}
+		return testdata.Popularize(testDB.DB, testdata.IrisSQL)
+	}
+	t.Skip("Skipping mysql tests")
+	return nil
+}
+
+func getStdout(f func() error) (out string, e error) {
+	oldStdout, oldStderr := os.Stdout, os.Stderr // keep backup of the real stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	os.Stderr = w
+	e = f() // f prints to stdout
+	outC := make(chan string)
+	go func() { // copy the output in a separate goroutine so printing can't block indefinitely
+		var buf bytes.Buffer
+		io.Copy(&buf, r)
+		outC <- buf.String()
+	}()
+	w.Close()                                   // Cancel redirection
+	os.Stdout, os.Stderr = oldStdout, oldStderr // restoring the real stdout and stderr
+	out = <-outC
+	return
+}
+
+func TestRunStmt(t *testing.T) {
+	prepareTestDataOrSkip(t)
+	a := assert.New(t)
+	os.Setenv("SQLFLOW_log_dir", "/tmp/")
+	session.DbConnStr = dbConnStr
+	currentDB = ""
+	output, err := getStdout(func() error { return runStmt("show tables", true, "", dbConnStr) })
+	a.Nil(err)
+	a.Contains(output, "Error 1046: No database selected")
+
+	output, err = getStdout(func() error { return runStmt("use iris", true, "", dbConnStr) })
+	a.Nil(err)
+	a.Contains(output, "Database changed to iris")
+
+	output, err = getStdout(func() error { return runStmt("show tables", true, "", dbConnStr) })
+	a.Nil(err)
+	a.Contains(output, "| TABLES IN IRIS |")
+
+	output, err = getStdout(func() error {
+		return runStmt("select * from train to train DNNClassifier WITH model.hidden_units=[10,10], model.n_classes=3 label class INTO sqlflow_models.repl_dnn_model;", true, "", dbConnStr)
+	})
+	a.Nil(err)
+	a.Contains(output, "'global_step': 110")
+
+	output, err = getStdout(func() error {
+		return runStmt("select * from train to train xgboost.gbtree WITH objective=reg:squarederror label class INTO sqlflow_models.repl_xgb_model;", true, "", dbConnStr)
+	})
+	a.Nil(err)
+	a.Contains(output, "Evaluation result: ")
+
+	output, err = getStdout(func() error {
+		return runStmt("select * from train to explain sqlflow_models.repl_xgb_model;", true, "", dbConnStr)
+	})
+	a.Nil(err)
+	a.Contains(output, "data:text/html, <div align='center'><img src='data:image/png;base64")
+	a.Contains(output, "⣿") //non sixel with ascii art
+}
+
+func TestRepl(t *testing.T) {
+	prepareTestDataOrSkip(t)
+	a := assert.New(t)
+	session.DbConnStr = dbConnStr
+	sql := `
+--
+use iris; --
+-- 1
+show tables; -- 2
+select * from train to train DNNClassifier
+WITH model.hidden_units=[10,10], model.n_classes=3
+label class
+INTO sqlflow_models.repl_dnn_model;
+use sqlflow_models;
+show tables`
+	scanner := bufio.NewScanner(strings.NewReader(sql))
+	output, err := getStdout(func() error { repl(scanner, "", dbConnStr); return nil })
+	a.Nil(err)
+	a.Contains(output, "Database changed to iris")
+	a.Contains(output, `
++----------------+
+| TABLES IN IRIS |
++----------------+
+| iris_empty     |
+| test           |
+| test_dense     |
+| train          |
+| train_dense    |
++----------------+`)
+	a.Contains(output, `
+select * from train to train DNNClassifier
+WITH model.hidden_units=[10,10], model.n_classes=3
+label class
+INTO sqlflow_models.repl_dnn_model;`)
+	a.Contains(output, "'global_step': 110")
+	a.Contains(output, "Database changed to sqlflow_models")
+	a.Contains(output, "| TABLES IN SQLFLOW MODELS |")
+	a.Contains(output, "| repl_dnn_model           |")
+}
+
+func TestMain(t *testing.T) {
+	prepareTestDataOrSkip(t)
+	os.Args = append(os.Args, "--datasource", dbConnStr, "-e", "use iris; show tables")
+	output, _ := getStdout(func() error { main(); return nil })
+	a := assert.New(t)
+	a.Contains(output, `
++----------------+
+| TABLES IN IRIS |
++----------------+
+| iris_empty     |
+| test           |
+| test_dense     |
+| train          |
+| train_dense    |
++----------------+`)
+}
 
 func testGetDataSource(t *testing.T, dataSource, databaseName string) {
 	a := assert.New(t)
@@ -55,7 +186,6 @@ func TestGetDataSource(t *testing.T) {
 	testGetDataSource(t, "hive://root:root@127.0.0.1:10000/?auth=NOSASL", "")
 	testGetDataSource(t, "hive://root:root@localhost:10000/churn", "churn")
 	testGetDataSource(t, "hive://root:root@127.0.0.1:10000/iris?auth=NOSASL", "iris")
-
 }
 
 func testMainFastFail(t *testing.T, interactive bool) {
@@ -445,7 +575,7 @@ func TestTerminalCheck(t *testing.T) {
 	a.Error(err)
 	image, err := getBase64EncodedImage(testImageHTML)
 	a.Nil(err)
-	a.Nil(imageCat(image))
+	a.Nil(imageCat(image)) // sixel mode
 }
 func TestStdinParser(t *testing.T) {
 	a := assert.New(t)
