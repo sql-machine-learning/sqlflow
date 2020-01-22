@@ -22,7 +22,7 @@ import (
 	"sqlflow.org/sqlflow/pkg/pipe"
 )
 
-func runStandardSQL(wr *pipe.Writer, slct string, db *database.DB) error {
+func runNormalStmt(wr *pipe.Writer, slct string, db *database.DB) error {
 	if isQuery(slct) {
 		return runQuery(wr, slct, db)
 	}
