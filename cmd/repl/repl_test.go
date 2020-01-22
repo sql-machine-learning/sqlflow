@@ -70,8 +70,8 @@ func getStdout(f func() error) (out string, e error) {
 }
 
 func TestRunStmt(t *testing.T) {
-	prepareTestDataOrSkip(t)
 	a := assert.New(t)
+	a.Nil(prepareTestDataOrSkip(t))
 	os.Setenv("SQLFLOW_log_dir", "/tmp/")
 	session.DbConnStr = dbConnStr
 	currentDB = ""
@@ -108,8 +108,8 @@ func TestRunStmt(t *testing.T) {
 }
 
 func TestRepl(t *testing.T) {
-	prepareTestDataOrSkip(t)
 	a := assert.New(t)
+	a.Nil(prepareTestDataOrSkip(t))
 	session.DbConnStr = dbConnStr
 	sql := `
 --
@@ -148,10 +148,10 @@ INTO sqlflow_models.repl_dnn_model;`)
 }
 
 func TestMain(t *testing.T) {
-	prepareTestDataOrSkip(t)
+	a := assert.New(t)
+	a.Nil(prepareTestDataOrSkip(t))
 	os.Args = append(os.Args, "--datasource", dbConnStr, "-e", "use iris; show tables")
 	output, _ := getStdout(func() error { main(); return nil })
-	a := assert.New(t)
 	a.Contains(output, `
 +----------------+
 | TABLES IN IRIS |
