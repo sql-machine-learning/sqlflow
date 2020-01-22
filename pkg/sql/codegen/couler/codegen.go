@@ -108,21 +108,17 @@ func GenCode(programIR []ir.SQLFlowStmt, session *pb.Session) (string, error) {
 	return program.String(), nil
 }
 
-func clusterConfigFile() string {
-	return os.Getenv("SQLFLOW_COULER_CLUSTER_CONFIG")
-}
-
 // Compile Couler program into Argo YAML
 func Compile(coulerProgram string) (string, error) {
-	buf := bytes.Buffer{}
-	buf.WriteString("couler run --mode argo --workflow_name sqlflow ")
-	if clusterConfigFile() != "" {
-		buf.WriteString(fmt.Sprintf("--cluster_config %s ", clusterConfigFile()))
+	cmdline := bytes.Buffer{}
+	fmt.Fprintf(&cmdline, "couler run --mode argo --workflow_name sqlflow ")
+	if c := os.Getenv("SQLFLOW_COULER_CLUSTER_CONFIG"); len(c) > 0 {
+		fmt.Fprintf(&cmdline, "--cluster_config %s ", c)
 	}
-	buf.WriteString("--file -")
+	fmt.Fprintf(&cmdline, "--file -")
 
-	coulerExec := strings.Split(buf.String(), " ")
-	// execute command: `cat couler-program | couler run --mode argo --workflow_name sqlflow --file -`
+	coulerExec := strings.Split(cmdline.String(), " ")
+	// execute command: `cat sqlflow.couler | couler run --mode argo --workflow_name sqlflow --file -`
 	cmd := exec.Command(coulerExec[0], coulerExec[1:]...)
 	cmd.Env = append(os.Environ())
 	cmd.Stdin = strings.NewReader(coulerProgram)

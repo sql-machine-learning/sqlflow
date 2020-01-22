@@ -112,7 +112,7 @@ func TestCompileCoulerProgram(t *testing.T) {
 	out, e := Compile(testCoulerProgram)
 	a.NoError(e)
 
-	a.Equal(out, expectedArgoYAML)
+	a.Equal(expectedArgoYAML, out)
 }
 
 func TestKatibCodegen(t *testing.T) {
