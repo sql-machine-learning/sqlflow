@@ -31,8 +31,6 @@ import (
 	"sqlflow.org/sqlflow/pkg/sql"
 )
 
-// TODO(shendiaomo): end to end tests like sqlflowserver/main_test.go
-
 var space = regexp.MustCompile(`\s+`)
 var dbConnStr = "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
 var testDBDriver = os.Getenv("SQLFLOW_TEST_DB")
