@@ -149,7 +149,7 @@ def db_generator(driver,
                  conn,
                  statement,
                  feature_column_names,
-                 label_column_name,
+                 label_spec,
                  feature_specs,
                  fetch_size=128):
     def read_feature(raw_val, feature_spec, feature_name):
@@ -191,9 +191,9 @@ def db_generator(driver,
         else:
             field_names = None if cursor.description is None \
                 else [i[0] for i in cursor.description]
-        if label_column_name:
+        if label_spec:
             try:
-                label_idx = field_names.index(label_column_name)
+                label_idx = field_names.index(label_spec["feature_name"])
             except ValueError:
                 # NOTE(typhoonzero): For clustering model, label_column_name may not in field_names when predicting.
                 label_idx = None
@@ -211,6 +211,15 @@ def db_generator(driver,
                 # NOTE: If there is no label clause in the extened SQL, the default label value would
                 # be -1, the Model implementation can determine use it or not.
                 label = row[label_idx] if label_idx is not None else -1
+                if label_spec and label_spec["delimiter"] != "":
+                    if label_spec["dtype"] == "float32":
+                        label = np.fromstring(label,
+                                              dtype=float,
+                                              sep=label_spec["delimiter"])
+                    elif label_spec["dtype"] == "int64":
+                        label = np.fromstring(label,
+                                              dtype=int,
+                                              sep=label_spec["delimiter"])
                 features = []
                 for name in feature_column_names:
                     feature = read_feature(row[field_names.index(name)],

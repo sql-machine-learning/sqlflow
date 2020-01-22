@@ -155,7 +155,7 @@ class ExplainXGBModeTestCase(TestCase):
         feature_column_names = [k["name"] for k in feature_field_meta]
         feature_specs = {k['name']: k for k in feature_field_meta}
         x = xgb_shap_dataset(datasource, select, feature_column_names,
-                             label_field_meta['name'], feature_specs)
+                             label_field_meta, feature_specs)
 
         shap_values = xgb_shap_values(x)[0]
         expected_features = [

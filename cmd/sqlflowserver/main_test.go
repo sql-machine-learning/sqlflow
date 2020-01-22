@@ -276,9 +276,11 @@ func TestEnd2EndMySQL(t *testing.T) {
 		t.Fatalf("prepare test dataset failed: %v", err)
 	}
 
-	t.Run("TestShowDatabases", CaseShowDatabases)
-	t.Run("TestSelect", CaseSelect)
-	t.Run("TestTrainSQL", CaseTrainSQL)
+	t.Run("CaseShowDatabases", CaseShowDatabases)
+	t.Run("CaseSelect", CaseSelect)
+	t.Run("CaseTrainSQL", CaseTrainSQL)
+	t.Run("CaseTrainWithCSVLabel", CaseTrainWithCSVLabel)
+
 	t.Run("CaseTrainBoostedTreesEstimatorAndExplain", CaseTrainBoostedTreesEstimatorAndExplain)
 	t.Run("CaseTrainSQLWithMetrics", CaseTrainSQLWithMetrics)
 	t.Run("TestTextClassification", CaseTrainTextClassification)
@@ -292,6 +294,8 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseTrainRegression", CaseTrainRegression)
 	t.Run("CaseTrainXGBoostRegression", CaseTrainXGBoostRegression)
 	t.Run("CasePredictXGBoostRegression", CasePredictXGBoostRegression)
+	t.Run("CaseTrainAndExplainXGBoostModel", CaseTrainAndExplainXGBoostModel)
+
 	t.Run("CaseTrainDeepWideModel", CaseTrainDeepWideModel)
 	t.Run("CaseTrainDeepWideModelOptimizer", CaseTrainDeepWideModelOptimizer)
 	t.Run("CaseTrainAdaNetAndExplain", CaseTrainAdaNetAndExplain)
@@ -870,6 +874,19 @@ COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.my_dnn_model_custom_functional;`
 	_, _, err = connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("run trainSQL error: %v", err)
+	}
+}
+
+func CaseTrainWithCSVLabel(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := `select f1,f2,f3,CONCAT(f13,",", target) as class from housing.train
+TO TRAIN sqlflow_models.DNNRegressor
+WITH model.hidden_units = [10, 20]
+LABEL class
+INTO sqlflow_models.my_dnn_model_csvlabel;`
+	_, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("run trainSQL error: %v", err)
 	}

@@ -11,6 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import shutil
+
 import sqlflow_submitter
 import tensorflow as tf
 from estimator_example import (datasource, feature_column_names,
@@ -58,6 +60,7 @@ if __name__ == "__main__":
             is_pai=False,
             plot_type='bar',
             result_table="")
+    shutil.rmtree("btmodel")
 
     # Train and explain DNNClassifier
     train(datasource=datasource,
@@ -92,3 +95,4 @@ if __name__ == "__main__":
             is_pai=False,
             plot_type='bar',
             result_table="")
+    shutil.rmtree("dnnmodel")

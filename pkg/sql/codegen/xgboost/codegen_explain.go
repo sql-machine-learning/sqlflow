@@ -41,13 +41,17 @@ func Explain(explainStmt *ir.ExplainStmt, session *pb.Session) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	l, err := json.Marshal(y)
+	if err != nil {
+		return "", err
+	}
 
 	fr := &explainFiller{
 		DataSource:           session.DbConnStr,
 		DatasetSQL:           explainStmt.Select,
 		ShapSummaryParams:    string(jsonSummary),
 		FeatureFieldMetaJSON: string(fm),
-		LabelName:            y.Name,
+		LabelJSON:            string(l),
 	}
 	var analysis bytes.Buffer
 	if err := explainTemplate.Execute(&analysis, fr); err != nil {
