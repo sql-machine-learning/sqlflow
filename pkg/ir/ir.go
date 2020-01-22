@@ -155,7 +155,7 @@ func (cl *ExplainStmt) IsExtended() bool { return true }
 // GetOriginalSQL returns the original SQL statement used to get current IR result
 func (cl *ExplainStmt) GetOriginalSQL() string { return cl.OriginalSQL }
 
-// NormalStmt is a string of a standard SQL statement that can run on the database system.
+// NormalStmt is a SQL statement without using SQLFlow syntax extension.
 type NormalStmt string
 
 // Execute generates and executes code for NormalStmt
