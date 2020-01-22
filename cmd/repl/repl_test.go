@@ -28,7 +28,9 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/c-bata/go-prompt"
+	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/sql"
+	"sqlflow.org/sqlflow/pkg/sql/testdata"
 )
 
 var space = regexp.MustCompile(`\s+`)
@@ -36,41 +38,18 @@ var dbConnStr = "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
 var testDBDriver = os.Getenv("SQLFLOW_TEST_DB")
 var session = makeSessionFromEnv()
 
-func TestSwitchDatabase(t *testing.T) {
-	if testDBDriver != "mysql" {
-		t.Skip("Skipping mysql tests")
-	}
-	a := assert.New(t)
+func prepareTestData(t *testing.T) error {
 	assertConnectable(dbConnStr)
-	session.DbConnStr = dbConnStr
-	results := []interface{}{}
-	for r := range sql.RunSQLProgram("show tables", "", session).ReadAll() {
-		results = append(results, r)
+	testDB, _ := database.OpenAndConnectDB(dbConnStr)
+	if testDBDriver == "mysql" {
+		_, e := testDB.Exec("CREATE DATABASE IF NOT EXISTS sqlflow_models;")
+		if e != nil {
+			return e
+		}
+		return testdata.Popularize(testDB.DB, testdata.IrisSQL)
 	}
-	a.Equal(2, len(results))
-	a.NotNil(results[0].(sql.EndOfExecution))
-	a.Error(results[1].(error))
-
-	results = []interface{}{}
-	a.Nil(switchDatabase("iris", session))
-	for r := range sql.RunSQLProgram("show tables", "", session).ReadAll() {
-		results = append(results, r)
-	}
-	a.Equal(3, len(results))
-	a.NotNil(results[0].(map[string]interface{}))
-	a.Equal("test", results[1].([]interface{})[0].(string))
-	a.Equal("train", results[2].([]interface{})[0].(string))
-
-	results = []interface{}{}
-	a.Nil(switchDatabase("mysql", session))
-	for r := range sql.RunSQLProgram("show tables", "", session).ReadAll() {
-		results = append(results, r)
-	}
-	a.Equal(32, len(results))
-	a.NotNil(results[0].(map[string]interface{}))
-	a.Equal("columns_priv", results[1].([]interface{})[0].(string))
-	a.Equal("user", results[31].([]interface{})[0].(string))
-
+	t.Skip("Skipping mysql tests")
+	return nil
 }
 
 func getStdout(f func() error) (out string, e error) {
@@ -91,14 +70,51 @@ func getStdout(f func() error) (out string, e error) {
 	return
 }
 
-func TestRunStmt(t *testing.T) {
-	if testDBDriver != "mysql" {
-		t.Skip("Skipping mysql tests")
+func TestSwitchDatabase(t *testing.T) {
+	a := assert.New(t)
+	prepareTestData(t)
+	session.DbConnStr = dbConnStr
+	results := []interface{}{}
+	for r := range sql.RunSQLProgram("show tables", "", session).ReadAll() {
+		results = append(results, r)
 	}
+	a.Equal(2, len(results))
+	a.NotNil(results[0].(sql.EndOfExecution))
+	a.Error(results[1].(error))
+	a.Contains(results[1].(error).Error(), "Error 1046: No database selected")
+
+	results = []interface{}{}
+	output, err := getStdout(func() error { return switchDatabase("iris", session) })
+	a.Nil(err)
+	a.Equal("Database changed to iris\n", output)
+	for r := range sql.RunSQLProgram("show tables", "", session).ReadAll() {
+		results = append(results, r)
+	}
+	a.Equal(6, len(results))
+	a.NotNil(results[0].(map[string]interface{}))
+	a.Equal("iris_empty", results[1].([]interface{})[0].(string))
+	a.Equal("train_dense", results[5].([]interface{})[0].(string))
+
+	results = []interface{}{}
+	output, err = getStdout(func() error { return switchDatabase("mysql", session) })
+	a.Nil(err)
+	a.Equal("Database changed to mysql\n", output)
+	for r := range sql.RunSQLProgram("show tables", "", session).ReadAll() {
+		results = append(results, r)
+	}
+	a.Equal(32, len(results))
+	a.NotNil(results[0].(map[string]interface{}))
+	a.Equal("columns_priv", results[1].([]interface{})[0].(string))
+	a.Equal("user", results[31].([]interface{})[0].(string))
+
+}
+
+func TestRunStmt(t *testing.T) {
+	prepareTestData(t)
 	a := assert.New(t)
 	os.Setenv("SQLFLOW_log_dir", "/tmp/")
-	assertConnectable(dbConnStr)
 	session.DbConnStr = dbConnStr
+	currentDB = ""
 	output, err := getStdout(func() error { return runStmt("show tables", true, "", dbConnStr) })
 	a.Nil(err)
 	a.Contains(output, "Error 1046: No database selected")
@@ -132,11 +148,8 @@ func TestRunStmt(t *testing.T) {
 }
 
 func TestRepl(t *testing.T) {
-	if testDBDriver != "mysql" {
-		t.Skip("Skipping mysql tests")
-	}
+	prepareTestData(t)
 	a := assert.New(t)
-	assertConnectable(dbConnStr)
 	session.DbConnStr = dbConnStr
 	sql := `
 --
@@ -156,15 +169,17 @@ show tables`
 	a.Contains(output, `
 | TABLES IN IRIS |
 +----------------+
+| iris_empty     |
 | test           |
+| test_dense     |
 | train          |
+| train_dense    |
 +----------------+`)
 	a.Contains(output, `
 select * from train to train DNNClassifier
 WITH model.hidden_units=[10,10], model.n_classes=3
 label class
-INTO sqlflow_models.repl_dnn_model;
-	`)
+INTO sqlflow_models.repl_dnn_model;`)
 	a.Contains(output, "'global_step': 110")
 	a.Contains(output, "Database changed to sqlflow_models")
 	a.Contains(output, "| TABLES IN SQLFLOW MODELS |")
