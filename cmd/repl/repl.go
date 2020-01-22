@@ -41,36 +41,91 @@ import (
 
 const tablePageSize = 1000
 
-func lineIsComment(line string) bool {
-	line = strings.TrimSpace(line)
-	if line == "--" || strings.HasPrefix(line, "-- ") {
-		return true
+func isSpace(c byte) bool {
+	return len(bytes.TrimSpace([]byte{c})) == 0
+}
+
+// addLineToStmt scans lines into statements, the last four parameters are both input/output.
+// A user must initialize `inQuotedString` and `isSingleQuoted` to false and `statements` to []
+// at the first call
+func addLineToStmt(line string, inQuotedString, isSingleQuoted *bool, statements *[]string) bool {
+	if len(*statements) == 0 { // First line of the statements
+		*statements = append(*statements, "")
+		line = strings.TrimLeft(line, "\t ")
+	} else {
+		(*statements)[len(*statements)-1] += "\n"
 	}
+	var isEscape bool // Escaping in quoted string cannot cross lines
+	var start, i int
+	for i = 0; i < len(line); i++ {
+		if isEscape {
+			isEscape = false
+			continue
+		}
+		switch line[i] {
+		case '\\':
+			if *inQuotedString {
+				isEscape = true
+			}
+		case '"', '\'':
+			if *inQuotedString {
+				if *isSingleQuoted == (line[i] == '\'') {
+					*inQuotedString = false // We found the end of a quoted string
+				}
+			} else { // The start of a quoted string
+				*inQuotedString = true
+				*isSingleQuoted = (line[i] == '\'')
+			}
+		case ';':
+			if !*inQuotedString { // We found a statement
+				if i-start != 1 { // Ignore empty statement that has only a ';'
+					(*statements)[len(*statements)-1] += line[start : i+1]
+				}
+				for i+1 < len(line) && isSpace(line[i+1]) {
+					i++ // Ignore leading whitespaces of the next statement
+				}
+				start = i + 1
+				if start == len(line) {
+					return true // All done, the last character in the line is the end of a statement
+				}
+				*statements = append(*statements, "") // Prepare for searching the next statement
+
+			}
+		case '-':
+			if !*inQuotedString {
+				if i+1 < len(line) && line[i+1] == '-' {
+					if i+2 == len(line) || isSpace(line[i+2]) { // We found a line comment
+						// Note: `--` comment doens't interfere with quoted-string and `;`
+						(*statements)[len(*statements)-1] += strings.TrimSpace(line[start:i])
+						if len(*statements) == 1 && (*statements)[0] == "" {
+							*statements = []string{}
+							return true // The whole line is an empty statement that has only a `-- comment`,
+						}
+						return false
+					}
+				}
+			}
+		}
+	}
+	(*statements)[len(*statements)-1] += line[start:]
 	return false
 }
 
 // readStmt reads a SQL statement from the scanner.  A statement could have
 // multiple lines and ends at a semicolon at the end of the last line.
-func readStmt(scn *bufio.Scanner) (string, error) {
-	stmt := ""
+func readStmt(scn *bufio.Scanner) ([]string, error) {
+	stmt := []string{}
+	var inQuotedString, isSingleQuoted bool
 	for scn.Scan() {
-		if stmt == "" && lineIsComment(scn.Text()) {
-			continue
+		if addLineToStmt(scn.Text(), &inQuotedString, &isSingleQuoted, &stmt) {
+			return stmt, nil
 		}
-		stmt += scn.Text()
-		// FIXME(tonyyang-svail): It is hacky and buggy to assume that
-		// SQL statements are separated by substrings ";\n".  We need
-		// to call the SQLFlow parser to retrieve statements and run
-		// them one-by-one in a REPL.
-		if strings.HasSuffix(strings.TrimSpace(scn.Text()), ";") {
-			return strings.TrimSpace(stmt), nil
-		}
-		stmt += "\n"
 	}
+	// If the the file doen't ends with ';', we consider the remaining content as a statement
 	if scn.Err() == nil {
 		return stmt, io.EOF
 	}
-	return "", scn.Err()
+	return stmt, scn.Err()
 }
 
 func header(head map[string]interface{}) ([]string, error) {
@@ -190,28 +245,21 @@ func runStmt(stmt string, isTerminal bool, modelDir string, ds string) error {
 	table := tablewriter.NewWriter(os.Stdout)
 	sess := makeSessionFromEnv()
 	sess.DbConnStr = getDataSource(ds, currentDB)
-	statements := strings.Split(stmt, ";")
-	for _, stmt := range statements {
-		if stmt == "" {
-			continue
-		}
-		parts := strings.Fields(stmt)
-		if len(parts) == 2 && strings.ToUpper(parts[0]) == "USE" {
-			switchDatabase(parts[1], sess)
-			continue
-		}
-		stream := sql.RunSQLProgram(stmt+";", modelDir, sess)
-		for rsp := range stream.ReadAll() {
-			// pagination. avoid exceed memory
-			if render(rsp, table, isTerminal) && table.NumLines() == tablePageSize {
-				table.Render()
-				tableRendered = true
-				table.ClearRows()
-			}
-		}
-		if table.NumLines() > 0 || !tableRendered {
+	parts := strings.Fields(strings.ReplaceAll(stmt, ";", ""))
+	if len(parts) == 2 && strings.ToUpper(parts[0]) == "USE" {
+		return switchDatabase(parts[1], sess)
+	}
+	stream := sql.RunSQLProgram(stmt, modelDir, sess)
+	for rsp := range stream.ReadAll() {
+		// pagination. avoid exceed memory
+		if render(rsp, table, isTerminal) && table.NumLines() == tablePageSize {
 			table.Render()
+			tableRendered = true
+			table.ClearRows()
 		}
+	}
+	if table.NumLines() > 0 || !tableRendered {
+		table.Render()
 	}
 	return nil
 }
@@ -226,13 +274,15 @@ func assertConnectable(ds string) {
 
 func repl(scanner *bufio.Scanner, modelDir string, ds string) {
 	for {
-		stmt, err := readStmt(scanner)
+		statements, err := readStmt(scanner)
 		fmt.Println()
-		if err == io.EOF && stmt == "" {
+		if err == io.EOF && len(statements) == 0 {
 			return
 		}
-		if err := runStmt(stmt, false, modelDir, ds); err != nil {
-			log.Fatalf("run SQL statement failed: %v", err)
+		for _, stmt := range statements {
+			if err := runStmt(stmt, false, modelDir, ds); err != nil {
+				log.Fatalf("run SQL statement failed: %v", err)
+			}
 		}
 	}
 }
@@ -250,7 +300,7 @@ func makeSessionFromEnv() *pb.Session {
 		Submitter:        os.Getenv("SQLFLOW_submitter")}
 }
 
-func switchDatabase(db string, session *pb.Session) {
+func switchDatabase(db string, session *pb.Session) error {
 	stream := sql.RunSQLProgram("USE "+db, "", session)
 	r := <-stream.ReadAll()
 	switch r.(type) {
@@ -258,7 +308,10 @@ func switchDatabase(db string, session *pb.Session) {
 		session.DbConnStr = getDataSource(session.DbConnStr, db)
 		fmt.Println("Database changed to", db)
 		currentDB = db
+	case error:
+		fmt.Println(r)
 	}
+	return nil
 }
 
 func getDatabaseName(datasource string) string {

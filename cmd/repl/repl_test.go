@@ -16,6 +16,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"regexp"
@@ -95,16 +96,6 @@ func TestMainFastFail(t *testing.T) {
 	testMainFastFail(t, false)
 }
 
-func TestLineIsComment(t *testing.T) {
-	a := assert.New(t)
-	sql := `-- 1. test`
-	a.True(lineIsComment(sql))
-	sql = `--`
-	a.True(lineIsComment(sql))
-	sql = `SHOW databases`
-	a.False(lineIsComment(sql))
-}
-
 func TestReadStmt(t *testing.T) {
 	a := assert.New(t)
 	sql := `SELECT * FROM iris.train TO TRAIN DNNClassifier WITH
@@ -114,7 +105,8 @@ func TestReadStmt(t *testing.T) {
 	scanner := bufio.NewScanner(strings.NewReader(sql))
 	stmt, err := readStmt(scanner)
 	a.Nil(err)
-	a.Equal(space.ReplaceAllString(stmt, " "), space.ReplaceAllString(sql, " "))
+	a.Equal(1, len(stmt))
+	a.Equal(space.ReplaceAllString(stmt[0], " "), space.ReplaceAllString(sql, " "))
 
 	sql2 := `-- 1. test
              SELECT * FROM iris.train TO TRAIN DNNClassifier WITH
@@ -124,7 +116,179 @@ func TestReadStmt(t *testing.T) {
 	scanner = bufio.NewScanner(strings.NewReader(sql2))
 	stmt, err = readStmt(scanner)
 	a.Nil(err)
-	a.Equal(space.ReplaceAllString(stmt, " "), space.ReplaceAllString(sql, " "))
+	a.Equal(0, len(stmt)) // The leading one-line comment is considered an empty statement
+	stmt, err = readStmt(scanner)
+	a.Nil(err)
+	a.Equal(1, len(stmt))
+	a.Equal(space.ReplaceAllString(stmt[0], " "), space.ReplaceAllString(sql, " "))
+
+	sql2 = `-- 1. test`
+	scanner = bufio.NewScanner(strings.NewReader(sql2))
+	stmt, err = readStmt(scanner)
+	a.Nil(err)
+	a.Equal(0, len(stmt))
+
+	sql2 = `--`
+	scanner = bufio.NewScanner(strings.NewReader(sql2))
+	stmt, err = readStmt(scanner)
+	a.Nil(err)
+	a.Equal(0, len(stmt))
+
+	sql2 = `--1. test`
+	scanner = bufio.NewScanner(strings.NewReader(sql2))
+	stmt, err = readStmt(scanner)
+	a.Equal(io.EOF, err) // Don't support standard comment
+	a.Equal(1, len(stmt))
+	a.Equal(sql2, stmt[0])
+
+	sql2 = `SHOW databases;`
+	scanner = bufio.NewScanner(strings.NewReader(sql2))
+	stmt, err = readStmt(scanner)
+	a.Nil(err)
+	a.Equal(1, len(stmt))
+
+	sql2 = `SHOW databases`
+	scanner = bufio.NewScanner(strings.NewReader(sql2))
+	stmt, err = readStmt(scanner)
+	a.Equal(err, io.EOF) // EOF is considered the same as ';'
+	a.Equal(1, len(stmt))
+
+	sql3 := `SELECT
+           *
+		   FROM
+		   iris.train
+		   TO
+		   TRAIN
+		   DNNClassifier
+		   WITH
+		   model.hidden_units=[10,20],
+		   model.n_classes=3
+		   LABEL
+		   class
+		   INTO
+		   sqlflow_models.my_model;`
+	scanner = bufio.NewScanner(strings.NewReader(sql3))
+	stmt, err = readStmt(scanner)
+	a.Nil(err)
+	a.Equal(1, len(stmt))
+	a.Equal(space.ReplaceAllString(stmt[0], " "), space.ReplaceAllString(sql, " "))
+
+	sql3 = `SELECT --
+           * -- comment
+		   FROM -- comment;
+		   iris.train -- comment ;
+		   TO -- comment         ;      TRAIN
+		   TRAIN
+		   DNNClassifier
+		   WITH
+		   model.hidden_units=[10,20],
+		   model.n_classes=3
+		   LABEL
+		   class
+		   INTO
+		   sqlflow_models.my_model;`
+	scanner = bufio.NewScanner(strings.NewReader(sql3))
+	stmt, err = readStmt(scanner)
+	a.Equal(1, len(stmt))
+	a.Equal(space.ReplaceAllString(stmt[0], " "), space.ReplaceAllString(sql, " "))
+
+	sql3 = `SELECT * FROM tbl WHERE a==";";`
+	scanner = bufio.NewScanner(strings.NewReader(sql3))
+	stmt, err = readStmt(scanner)
+	a.Nil(err)
+	a.Equal(1, len(stmt))
+	a.Equal(stmt[0], sql3)
+
+	sql3 = `SELECT * FROM tbl WHERE a==";\"';` // Test unclosed quote
+	scanner = bufio.NewScanner(strings.NewReader(sql3))
+	stmt, err = readStmt(scanner)
+	a.Equal(io.EOF, err)
+	a.Equal(1, len(stmt))
+	a.Equal(stmt[0], sql3)
+
+	sql3 = `SELECT * FROM tbl WHERE a==";
+	        ";` // Test cross-line quoted string
+	scanner = bufio.NewScanner(strings.NewReader(sql3))
+	stmt, err = readStmt(scanner)
+	a.Nil(err)
+	a.Equal(1, len(stmt))
+	a.Equal(stmt[0], sql3)
+
+	sql3 = `SELECT * FROM tbl WHERE a=="\";
+	        ";` // Test Escaping
+	scanner = bufio.NewScanner(strings.NewReader(sql3))
+	stmt, err = readStmt(scanner)
+	a.Nil(err)
+	a.Equal(1, len(stmt))
+	a.Equal(stmt[0], sql3)
+
+	sql3 = `SELECT * FROM tbl WHERE a=="';
+	        ";` // Test single quote in double-quoted string
+	scanner = bufio.NewScanner(strings.NewReader(sql3))
+	stmt, err = readStmt(scanner)
+	a.Nil(err)
+	a.Equal(1, len(stmt))
+	a.Equal(stmt[0], sql3)
+
+	sql3 = `SELECT * FROM tbl WHERE a=='";
+	        ';` // Test double quote in single-quoted string
+	scanner = bufio.NewScanner(strings.NewReader(sql3))
+	stmt, err = readStmt(scanner)
+	a.Nil(err)
+	a.Equal(1, len(stmt))
+	a.Equal(stmt[0], sql3)
+
+	sql3 = `SELECT * FROM tbl WHERE a=="-- \";
+	        ";` // Test double dash in quoted string
+	scanner = bufio.NewScanner(strings.NewReader(sql3))
+	stmt, err = readStmt(scanner)
+	a.Nil(err)
+	a.Equal(1, len(stmt))
+	a.Equal(stmt[0], sql3)
+
+	sql3 = `SELECT * FROM tbl WHERE a==--" \";
+	        '";` // Test quoted string in standard comment (not comment actually )
+	scanner = bufio.NewScanner(strings.NewReader(sql3))
+	stmt, err = readStmt(scanner)
+	a.Nil(err)
+	a.Equal(1, len(stmt))
+	a.Equal(stmt[0], sql3)
+
+	sql3 = `SELECT * FROM tbl WHERE a==-- " \";
+	        '";` // Test quoted string in comment, note that the quoted string is unclosed
+	scanner = bufio.NewScanner(strings.NewReader(sql3))
+	stmt, err = readStmt(scanner)
+	a.Equal(io.EOF, err)
+	a.Equal(1, len(stmt))
+	a.Equal(space.ReplaceAllString(stmt[0], " "), `SELECT * FROM tbl WHERE a== '";`)
+
+	sql3 = `--
+            -- 1. test
+            use iris; show
+            tables; --
+			select * from tbl where a not like '-- %'
+	        ;` // Test multiple statements in multiple lines
+	scanner = bufio.NewScanner(strings.NewReader(sql3))
+	stmt, err = readStmt(scanner)
+	a.Nil(err)
+	a.Equal(0, len(stmt))
+	stmt, err = readStmt(scanner)
+	a.Nil(err)
+	a.Equal(0, len(stmt))
+	stmt, err = readStmt(scanner)
+	a.Nil(err)
+	a.Equal(3, len(stmt))
+	a.Equal("use iris;", stmt[0])
+	a.Equal("show tables;", space.ReplaceAllString(stmt[1], " "))
+	a.Equal(" select * from tbl where a not like '-- %' ;", space.ReplaceAllString(stmt[2], " "))
+
+	sql3 = `use iris; show tables;` // Test multiple statements in single line
+	scanner = bufio.NewScanner(strings.NewReader(sql3))
+	stmt, err = readStmt(scanner)
+	a.Nil(err)
+	a.Equal(2, len(stmt))
+	a.Equal("use iris;", stmt[0])
+	a.Equal("show tables;", space.ReplaceAllString(stmt[1], " "))
 }
 
 func TestPromptState(t *testing.T) {
@@ -156,14 +320,17 @@ func TestPromptState(t *testing.T) {
 	a.Equal("DNNClassifier", ahead)
 	a.Equal("model.n_classes=3", last)
 
-	var stmt string
+	var stmt []string
+	a.Equal(0, len(s.statements))
 	scanner := bufio.NewScanner(strings.NewReader(sql))
 	for scanner.Scan() {
-		s.execute(scanner.Text(), func(s string) { stmt = s })
+		s.execute(scanner.Text(), func(s string) { stmt = append(stmt, s) })
 	}
-	a.Equal(space.ReplaceAllString(stmt, " "), space.ReplaceAllString(sql, " "))
-	a.Equal("", s.statement)
+	a.Equal(1, len(stmt))
+	a.Equal(space.ReplaceAllString(stmt[0], " "), space.ReplaceAllString(sql, " "))
+	a.Equal(0, len(s.statements))
 
+	stmt = []string{}
 	sql2 := `-- 1. test
              SELECT * FROM iris.train TO TRAIN DNNClassifier WITH
 				model.hidden_units=[10,20],
@@ -171,10 +338,10 @@ func TestPromptState(t *testing.T) {
              LABEL class INTO sqlflow_models.my_model;`
 	scanner = bufio.NewScanner(strings.NewReader(sql2))
 	for scanner.Scan() {
-		s.execute(scanner.Text(), func(s string) { stmt = s })
+		s.execute(scanner.Text(), func(s string) { stmt = append(stmt, s) })
 	}
-	a.Equal(strings.TrimSpace(space.ReplaceAllString(stmt, " ")), strings.TrimSpace(space.ReplaceAllString(sql, " ")))
-
+	a.Equal(1, len(stmt))
+	a.Equal(space.ReplaceAllString(stmt[0], " "), space.ReplaceAllString(sql, " "))
 }
 
 func TestComplete(t *testing.T) {
@@ -256,6 +423,15 @@ func TestComplete(t *testing.T) {
 	p.InsertText(`nto sqlflow_models.my_awesome_model;`, false, true)
 	c = s.completer(*p.Document())
 	a.Equal(0, len(c))
+
+	// Test cross line completion
+	s = newPromptState()
+	s.statements = []string{"TO"}
+	p = prompt.NewBuffer()
+	p.InsertText("t", false, true)
+	c = s.completer(*p.Document())
+	a.Equal(1, len(c))
+	a.Equal("TRAIN", c[0].Text)
 }
 
 func TestTerminalCheck(t *testing.T) {
