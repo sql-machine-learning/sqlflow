@@ -138,8 +138,8 @@ func (s *defaultSubmitter) runCommand(program string) error {
 	return nil
 }
 
-func (s *defaultSubmitter) ExecuteQuery(sql *ir.StandardSQL) error {
-	return runStandardSQL(s.Writer, string(*sql), s.Db)
+func (s *defaultSubmitter) ExecuteQuery(sql *ir.NormalStmt) error {
+	return runNormalStmt(s.Writer, string(*sql), s.Db)
 }
 
 func (s *defaultSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {

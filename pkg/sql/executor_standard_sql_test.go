@@ -53,13 +53,13 @@ func goodStream(stream chan interface{}) (bool, string) {
 	return true, ""
 }
 
-func TestStandardSQL(t *testing.T) {
+func TestNormalStmt(t *testing.T) {
 	a := assert.New(t)
 	a.NotPanics(func() {
 		rd, wr := pipe.Pipe()
 		go func() {
 			defer wr.Close()
-			e := runStandardSQL(wr, testSelectIris, database.GetTestingDBSingleton())
+			e := runNormalStmt(wr, testSelectIris, database.GetTestingDBSingleton())
 			a.NoError(e)
 		}()
 		a.True(goodStream(rd.ReadAll()))
@@ -71,7 +71,7 @@ func TestStandardSQL(t *testing.T) {
 		rd, wr := pipe.Pipe()
 		go func() {
 			defer wr.Close()
-			e := runStandardSQL(wr, testStandardExecutiveSQLStatement, database.GetTestingDBSingleton())
+			e := runNormalStmt(wr, testStandardExecutiveSQLStatement, database.GetTestingDBSingleton())
 			a.NoError(e)
 		}()
 		a.True(goodStream(rd.ReadAll()))
@@ -80,7 +80,7 @@ func TestStandardSQL(t *testing.T) {
 		rd, wr := pipe.Pipe()
 		go func() {
 			defer wr.Close()
-			e := runStandardSQL(wr, "SELECT * FROM iris.iris_empty LIMIT 10;", database.GetTestingDBSingleton())
+			e := runNormalStmt(wr, "SELECT * FROM iris.iris_empty LIMIT 10;", database.GetTestingDBSingleton())
 			a.NoError(e)
 		}()
 		stat, _ := goodStream(rd.ReadAll())

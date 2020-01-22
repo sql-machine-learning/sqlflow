@@ -41,7 +41,7 @@ func TestCoulerCodegen(t *testing.T) {
 }
 
 func mockSQLProgramIR() []ir.SQLFlowStmt {
-	standardSQL := ir.StandardSQL("SELECT * FROM iris.train limit 10;")
+	standardSQL := ir.NormalStmt("SELECT * FROM iris.train limit 10;")
 	trainStmt := ir.MockTrainStmt(false)
 	return []ir.SQLFlowStmt{&standardSQL, trainStmt}
 }
@@ -121,7 +121,7 @@ func TestKatibCodegen(t *testing.T) {
 
 	cfg := database.GetTestingMySQLConfig()
 
-	standardSQL := ir.StandardSQL("SELECT * FROM iris.train limit 10;")
+	standardSQL := ir.NormalStmt("SELECT * FROM iris.train limit 10;")
 	sqlIR := MockKatibTrainStmt(fmt.Sprintf("mysql://%s", cfg.FormatDSN()))
 
 	program := []ir.SQLFlowStmt{&standardSQL, &sqlIR}

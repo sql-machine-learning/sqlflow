@@ -79,7 +79,7 @@ func GenCode(programIR []ir.SQLFlowStmt, session *pb.Session) (string, error) {
 	}
 	for _, sqlIR := range programIR {
 		switch i := sqlIR.(type) {
-		case *ir.StandardSQL, *ir.PredictStmt, *ir.ExplainStmt:
+		case *ir.NormalStmt, *ir.PredictStmt, *ir.ExplainStmt:
 			sqlStmt := &sqlStatement{
 				OriginalSQL: sqlIR.GetOriginalSQL(), IsExtendedSQL: sqlIR.IsExtended(),
 				DockerImage: defaultDockerImage}

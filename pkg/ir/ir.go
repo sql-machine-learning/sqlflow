@@ -16,7 +16,7 @@ package ir
 
 // Executor is a visitor that generates and executes code for SQLFlowStmt
 type Executor interface {
-	ExecuteQuery(*StandardSQL) error
+	ExecuteQuery(*NormalStmt) error
 	ExecuteTrain(*TrainStmt) error
 	ExecutePredict(*PredictStmt) error
 	ExecuteExplain(*ExplainStmt) error
@@ -155,17 +155,17 @@ func (cl *ExplainStmt) IsExtended() bool { return true }
 // GetOriginalSQL returns the original SQL statement used to get current IR result
 func (cl *ExplainStmt) GetOriginalSQL() string { return cl.OriginalSQL }
 
-// StandardSQL is a string of a standard SQL statement that can run on the database system.
-type StandardSQL string
+// NormalStmt is a string of a standard SQL statement that can run on the database system.
+type NormalStmt string
 
-// Execute generates and executes code for StandardSQL
-func (sql *StandardSQL) Execute(s Executor) error { return s.ExecuteQuery(sql) }
+// Execute generates and executes code for NormalStmt
+func (sql *NormalStmt) Execute(s Executor) error { return s.ExecuteQuery(sql) }
 
 // SetOriginalSQL sets the original sql string
-func (sql *StandardSQL) SetOriginalSQL(s string) {}
+func (sql *NormalStmt) SetOriginalSQL(s string) {}
 
 // IsExtended returns whether a SQLFlowStmt is an extended SQL statement
-func (sql *StandardSQL) IsExtended() bool { return false }
+func (sql *NormalStmt) IsExtended() bool { return false }
 
 // GetOriginalSQL returns the original SQL statement used to get current IR result
-func (sql *StandardSQL) GetOriginalSQL() string { return string(*sql) }
+func (sql *NormalStmt) GetOriginalSQL() string { return string(*sql) }
