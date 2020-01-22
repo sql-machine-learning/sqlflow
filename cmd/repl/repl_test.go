@@ -29,7 +29,6 @@ import (
 
 	"github.com/c-bata/go-prompt"
 	"sqlflow.org/sqlflow/pkg/database"
-	"sqlflow.org/sqlflow/pkg/sql"
 	"sqlflow.org/sqlflow/pkg/sql/testdata"
 )
 
@@ -38,7 +37,7 @@ var dbConnStr = "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
 var testDBDriver = os.Getenv("SQLFLOW_TEST_DB")
 var session = makeSessionFromEnv()
 
-func prepareTestData(t *testing.T) error {
+func prepareTestDataOrSkip(t *testing.T) error {
 	assertConnectable(dbConnStr)
 	testDB, _ := database.OpenAndConnectDB(dbConnStr)
 	if testDBDriver == "mysql" {
@@ -70,47 +69,8 @@ func getStdout(f func() error) (out string, e error) {
 	return
 }
 
-func TestSwitchDatabase(t *testing.T) {
-	a := assert.New(t)
-	prepareTestData(t)
-	session.DbConnStr = dbConnStr
-	results := []interface{}{}
-	for r := range sql.RunSQLProgram("show tables", "", session).ReadAll() {
-		results = append(results, r)
-	}
-	a.Equal(2, len(results))
-	a.NotNil(results[0].(sql.EndOfExecution))
-	a.Error(results[1].(error))
-	a.Contains(results[1].(error).Error(), "Error 1046: No database selected")
-
-	results = []interface{}{}
-	output, err := getStdout(func() error { return switchDatabase("iris", session) })
-	a.Nil(err)
-	a.Equal("Database changed to iris\n", output)
-	for r := range sql.RunSQLProgram("show tables", "", session).ReadAll() {
-		results = append(results, r)
-	}
-	a.Equal(6, len(results))
-	a.NotNil(results[0].(map[string]interface{}))
-	a.Equal("iris_empty", results[1].([]interface{})[0].(string))
-	a.Equal("train_dense", results[5].([]interface{})[0].(string))
-
-	results = []interface{}{}
-	output, err = getStdout(func() error { return switchDatabase("mysql", session) })
-	a.Nil(err)
-	a.Equal("Database changed to mysql\n", output)
-	for r := range sql.RunSQLProgram("show tables", "", session).ReadAll() {
-		results = append(results, r)
-	}
-	a.Equal(32, len(results))
-	a.NotNil(results[0].(map[string]interface{}))
-	a.Equal("columns_priv", results[1].([]interface{})[0].(string))
-	a.Equal("user", results[31].([]interface{})[0].(string))
-
-}
-
 func TestRunStmt(t *testing.T) {
-	prepareTestData(t)
+	prepareTestDataOrSkip(t)
 	a := assert.New(t)
 	os.Setenv("SQLFLOW_log_dir", "/tmp/")
 	session.DbConnStr = dbConnStr
@@ -148,7 +108,7 @@ func TestRunStmt(t *testing.T) {
 }
 
 func TestRepl(t *testing.T) {
-	prepareTestData(t)
+	prepareTestDataOrSkip(t)
 	a := assert.New(t)
 	session.DbConnStr = dbConnStr
 	sql := `
@@ -167,6 +127,7 @@ show tables`
 	a.Nil(err)
 	a.Contains(output, "Database changed to iris")
 	a.Contains(output, `
++----------------+
 | TABLES IN IRIS |
 +----------------+
 | iris_empty     |
@@ -184,6 +145,23 @@ INTO sqlflow_models.repl_dnn_model;`)
 	a.Contains(output, "Database changed to sqlflow_models")
 	a.Contains(output, "| TABLES IN SQLFLOW MODELS |")
 	a.Contains(output, "| repl_dnn_model           |")
+}
+
+func TestMain(t *testing.T) {
+	prepareTestDataOrSkip(t)
+	os.Args = append(os.Args, "--datasource", dbConnStr, "-e", "use iris; show tables")
+	output, _ := getStdout(func() error { main(); return nil })
+	a := assert.New(t)
+	a.Contains(output, `
++----------------+
+| TABLES IN IRIS |
++----------------+
+| iris_empty     |
+| test           |
+| test_dense     |
+| train          |
+| train_dense    |
++----------------+`)
 }
 
 func testGetDataSource(t *testing.T, dataSource, databaseName string) {
