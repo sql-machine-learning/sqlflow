@@ -15,8 +15,9 @@ package verifier
 
 import (
 	"os"
-	"sqlflow.org/sqlflow/pkg/parser"
 	"testing"
+
+	"sqlflow.org/sqlflow/pkg/parser"
 
 	"github.com/stretchr/testify/assert"
 	"sqlflow.org/sqlflow/pkg/database"
@@ -56,7 +57,7 @@ func TestVerify(t *testing.T) {
 
 func TestVerifyColumnNameAndType(t *testing.T) {
 	a := assert.New(t)
-	trainParse, e := parser.ParseOneStatement("mysql", `SELECT gender, tenure, TotalCharges
+	trainParse, e := parser.ParseStatement("mysql", `SELECT gender, tenure, TotalCharges
 FROM churn.train LIMIT 10
 TO TRAIN DNNClassifier
 WITH
@@ -67,14 +68,14 @@ LABEL class
 INTO sqlflow_models.my_dnn_model;`)
 	a.NoError(e)
 
-	predParse, e := parser.ParseOneStatement("mysql", `SELECT gender, tenure, TotalCharges
+	predParse, e := parser.ParseStatement("mysql", `SELECT gender, tenure, TotalCharges
 FROM churn.train LIMIT 10
 TO PREDICT iris.predict.class
 USING sqlflow_models.my_dnn_model;`)
 	a.NoError(e)
 	a.NoError(VerifyColumnNameAndType(trainParse.SQLFlowSelectStmt, predParse.SQLFlowSelectStmt, database.GetTestingDBSingleton()))
 
-	predParse, e = parser.ParseOneStatement("mysql", `SELECT gender, tenure
+	predParse, e = parser.ParseStatement("mysql", `SELECT gender, tenure
 FROM churn.train LIMIT 10
 TO PREDICT iris.predict.class
 USING sqlflow_models.my_dnn_model;`)
