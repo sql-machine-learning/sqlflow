@@ -15,7 +15,7 @@ Splitting the training table into training data and validation data is the key p
 ```SQL
 SELECT col1, col2, col3
 FROM mytable
-TO TRAIN ...​
+TO TRAIN ...
 ```
 
 The data comes from the standard select part `SELECT col1, col2, col3 FROM mytable`, and let's say the query result looks like the following
@@ -72,27 +72,27 @@ We can generate the corresponding SQL using the following code template
 ```SQL
 CREATE TABLE {.TempTableName} AS
     SELECT *, RAND() AS sqlflow_random FROM (
-        {.StandardSQL}
+        {.NormalStmt}
     )
 ```
 
-**Naming temporary table**  
+**Naming temporary table**
 
 Because multi-users run SQLFlow with their own isolated data set at the same time, SQLFlow generates an elaborate name for the temporary table to avoid conflict.
-- For Maxcompute  
-SQLFlow saves the temporary table into the current project which must be specified by the user. 
+- For Maxcompute
+SQLFlow saves the temporary table into the current project which must be specified by the user.
 Meanwhile, we specify the [LIFECYCLE](https://www.alibabacloud.com/help/en/doc-detail/55297.htm) to 14 days to release the temporary table automatically.
 
-- For common databases, like MySQL, Hive   
-SQLFlow creates an own database as workspace, like `sqlflow_workspace`, then creates the temporary table in `sqlflow_workspace`.    
+- For common databases, like MySQL, Hive
+SQLFlow creates an own database as workspace, like `sqlflow_workspace`, then creates the temporary table in `sqlflow_workspace`.
 
-  Notice: Why doesn't SQLFlow [create TEMPORARY table](https://dev.mysql.com/doc/refman/8.0/en/create-temporary-table.html) to act the *TempTable*?   
+  Notice: Why doesn't SQLFlow [create TEMPORARY table](https://dev.mysql.com/doc/refman/8.0/en/create-temporary-table.html) to act the *TempTable*?
   Because SQLFlow creates *TempTable* in Go and read the contents in Python. They are different sessions, which means the *TempTable* is invisible to each other.
 
 ## How to Split
 
-**We fetch the training/validation data using two different queries respectively.** 
-   
+**We fetch the training/validation data using two different queries respectively.**
+
 The query for training data can be written as `SELECT * FROM temp_table WHERE sqlflow_random < 0.8`, which fetches row1 and row3 etc.. The query for validation data can be written as `SELECT * FROM temp_table WHERE sqlflow_random >= 0.8`, which fetches the rest of the rows.
 
 In SQLFlow, we modify the user-specific data set to our temp_table restricted to `sqlflow_random >= 0.8` to train a model, then restricted the temp_table to `sqlflow_random < 0.8` to validate that model. This context is built after the temporary data set accomplished, passed to `runExtendedSQL`  in `extendedSelect`.
@@ -109,12 +109,12 @@ type extendedSelect struct {
 For TensorFlow submitter, SQLFlow generate training data set and validation data set according to `extendedSelect.training` and `extendedSelect.validation`.
 
 ## Release the Temporary Table
-In the end, SQLFlow remove the temporary table to release resources. 
+In the end, SQLFlow remove the temporary table to release resources.
 
-- For Maxcompute  
+- For Maxcompute
   SQLFlow specify the [LIFECYCLE](https://www.alibabacloud.com/help/en/doc-detail/55297.htm) to 14 days in the create statement, so as to release the temporary table automatically.
 
-- For common databases, like MySQL, Hive   
+- For common databases, like MySQL, Hive
   After the training job, SQLFlow release the temporary table by
   ```SQL
   drop table if exists {temporary_table_name}
@@ -123,6 +123,6 @@ In the end, SQLFlow remove the temporary table to release resources.
 
 ## Notes
 
-- If the column sqlflow_random already exists, SQLFlow chooses to quit   
+- If the column sqlflow_random already exists, SQLFlow chooses to quit
   Notice, *column name started with an underscore is invalid in the hive*
 - Any discussion to implement a better splitting is welcomed

@@ -13,7 +13,7 @@ digraph G {
       label = "run locally";
       node [style=filled, shape=box];
       graph[style=dotted];
-      codegen -> executor [label="TF/Pytorch code"];
+      codegen -> executor [label="TF/PyTorch code"];
     }
 
     subgraph cluster_11 {

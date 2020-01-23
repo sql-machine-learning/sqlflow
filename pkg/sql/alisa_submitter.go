@@ -72,64 +72,23 @@ func (s *alisaSubmitter) ExecuteTrain(ts *ir.TrainStmt) (e error) {
 		return e
 	}
 
-	if e = s.cleanUpModel(ossModelPath); e != nil {
+	// cleanup saved model on OSS before training
+	modelBucket, e := getModelBucket()
+	if e != nil {
 		return e
 	}
-	// upload Alisa resource file to OSS
-	ossObjectName := randStringRunes(16)
+	if e := modelBucket.DeleteObject(ossModelPath); e != nil {
+		return e
+	}
+
 	// Alisa resource should be prefix with @@, alisa source would replace it with the RES_DOWN_URL.resourceName in alisa env.
 	scriptPath := fmt.Sprintf("file://@@%s", resourceName)
-	code, paiCmd, e := pai.Train(ts, s.Session, scriptPath, ts.Into, ossModelPath, s.Cwd)
+	code, paiCmd, requirements, e := pai.Train(ts, s.Session, scriptPath, ts.Into, ossModelPath, s.Cwd)
 	if e != nil {
 		return e
 	}
-	return s.alisaCmd(code, paiCmd, ossObjectName)
-}
-
-func (s *alisaSubmitter) alisaCmd(program, alisaCode, ossObjectName string) error {
-	tarball := "job.tar.gz"
-	ep := os.Getenv("SQLFLOW_OSS_ALISA_ENDPOINT")
-	ak := os.Getenv("SQLFLOW_OSS_AK")
-	sk := os.Getenv("SQLFLOW_OSS_SK")
-	bucketName := os.Getenv("SQLFLOW_OSS_ALISA_BUCKET")
-
-	if ep == "" || ak == "" || sk == "" || bucketName == "" {
-		return fmt.Errorf("should define SQLFLOW_OSS_ALISA_ENDPOINT, SQLFLOW_OSS_ALISA_BUCKET, SQLFLOW_OSS_AK, SQLFLOW_OSS_SK when using submitter alisa")
-	}
-	resourceURL := fmt.Sprintf("https://%s.%s/%s", bucketName, ep, ossObjectName)
-
-	if e := achieveResource(s.Cwd, program, tarball); e != nil {
-		return e
-	}
-
-	bucket, err := getBucket(ep, ak, sk, bucketName)
-	if err != nil {
-		return err
-	}
-	if e := bucket.PutObjectFromFile(ossObjectName, filepath.Join(s.Cwd, tarball)); e != nil {
-		return err
-	}
-	defer bucket.DeleteObject(ossObjectName)
-
-	return s.submitAlisaTask(alisaCode, resourceURL)
-}
-
-func (s *alisaSubmitter) cleanUpModel(modelPath string) error {
-	ossCkptDir := os.Getenv("SQLFLOW_OSS_CHECKPOINT_DIR")
-	sub := reOSS.FindStringSubmatch(ossCkptDir)
-	if len(sub) != 3 {
-		return fmt.Errorf("SQLFLOW_OSS_CHECKPOINT_DIR should be format: oss://bucket/?role_arn=xxx&host=xxx")
-	}
-	fmt.Println(os.Getenv("SQLFLOW_OSS_MODEL_ENDPOINT"), os.Getenv("SQLFLOW_OSS_AK"), os.Getenv("SQLFLOW_OSS_SK"), sub[1])
-	bucket, e := getBucket(os.Getenv("SQLFLOW_OSS_MODEL_ENDPOINT"), os.Getenv("SQLFLOW_OSS_AK"), os.Getenv("SQLFLOW_OSS_SK"), sub[1])
-	if e != nil {
-		return e
-	}
-	fmt.Println("delete oss", modelPath)
-	if e := bucket.DeleteObject(modelPath); e != nil {
-		return e
-	}
-	return nil
+	// upload generated program to OSS and submit an Alisa task.
+	return s.uploadResourceAndSubmitAlisaTask(code, requirements, paiCmd)
 }
 
 func (s *alisaSubmitter) ExecutePredict(ps *ir.PredictStmt) error {
@@ -153,13 +112,28 @@ func (s *alisaSubmitter) ExecutePredict(ps *ir.PredictStmt) error {
 		return e
 	}
 
-	ossObjectName := randStringRunes(16)
 	scriptPath := fmt.Sprintf("file://@@%s", resourceName)
-	code, paiCmd, e := pai.Predict(ps, s.Session, scriptPath, ps.Using, ossModelPath, s.Cwd, isDeepModel)
+	code, paiCmd, requirements, e := pai.Predict(ps, s.Session, scriptPath, ps.Using, ossModelPath, s.Cwd, isDeepModel)
 	if e != nil {
 		return e
 	}
-	return s.alisaCmd(code, paiCmd, ossObjectName)
+	return s.uploadResourceAndSubmitAlisaTask(code, requirements, paiCmd)
+}
+
+func (s *alisaSubmitter) uploadResourceAndSubmitAlisaTask(entryCode, requirements, alisaExecCode string) error {
+	// achieve and upload alisa Resource
+	ossObjectName := randStringRunes(16)
+	alisaBucket, e := getAlisaBucket()
+	if e != nil {
+		return e
+	}
+	resourceURL, e := tarAndUploadResource(s.Cwd, entryCode, requirements, ossObjectName, alisaBucket)
+	if e != nil {
+		return e
+	}
+	defer alisaBucket.DeleteObject(ossObjectName)
+	// upload generated program to OSS and submit an Alisa task.
+	return s.submitAlisaTask(alisaExecCode, resourceURL)
 }
 
 func (s *alisaSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
@@ -177,8 +151,38 @@ func findPyModulePath(pyModuleName string) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
-func getBucket(endpoint, ak, sk, bucketName string) (*oss.Bucket, error) {
-	cli, err := oss.New(endpoint, ak, sk)
+func getModelBucket() (*oss.Bucket, error) {
+	ossCkptDir := os.Getenv("SQLFLOW_OSS_CHECKPOINT_DIR")
+	ak := os.Getenv("SQLFLOW_OSS_AK")
+	sk := os.Getenv("SQLFLOW_OSS_SK")
+	ep := os.Getenv("SQLFLOW_OSS_MODEL_ENDPOINT")
+	if ak == "" || sk == "" || ep == "" || ossCkptDir == "" {
+		return nil, fmt.Errorf("should define SQLFLOW_OSS_MODEL_ENDPOINT, SQLFLOW_OSS_CHECKPOINT_DIR, SQLFLOW_OSS_AK, SQLFLOW_OSS_SK when using submitter alisa")
+	}
+
+	sub := reOSS.FindStringSubmatch(ossCkptDir)
+	if len(sub) != 3 {
+		return nil, fmt.Errorf("SQLFLOW_OSS_CHECKPOINT_DIR should be format: oss://bucket/?role_arn=xxx&host=xxx")
+	}
+	bucketName := sub[1]
+	cli, e := oss.New(ep, ak, sk)
+	if e != nil {
+		return nil, e
+	}
+	return cli.Bucket(bucketName)
+}
+
+func getAlisaBucket() (*oss.Bucket, error) {
+	ep := os.Getenv("SQLFLOW_OSS_ALISA_ENDPOINT")
+	ak := os.Getenv("SQLFLOW_OSS_AK")
+	sk := os.Getenv("SQLFLOW_OSS_SK")
+	bucketName := os.Getenv("SQLFLOW_OSS_ALISA_BUCKET")
+
+	if ep == "" || ak == "" || sk == "" {
+		return nil, fmt.Errorf("should define SQLFLOW_OSS_ALISA_ENDPOINT, SQLFLOW_OSS_ALISA_BUCKET, SQLFLOW_OSS_AK, SQLFLOW_OSS_SK when using submitter alisa")
+	}
+
+	cli, err := oss.New(ep, ak, sk)
 	if err != nil {
 		return nil, err
 	}
@@ -219,4 +223,17 @@ func getModelPath(modelName string, session *pb.Session) (string, error) {
 		userID = "unkown"
 	}
 	return strings.Join([]string{projectName, userID, modelName}, "/"), nil
+}
+
+func tarAndUploadResource(cwd, entryCode, requirements, ossObjectName string, bucket *oss.Bucket) (string, error) {
+	tarball := "job.tar.gz"
+	if e := achieveResource(cwd, entryCode, requirements, tarball); e != nil {
+		return "", e
+	}
+	resourceURL := fmt.Sprintf("https://%s.%s/%s", bucket.BucketName, bucket.Client.Config.Endpoint, ossObjectName)
+
+	if e := bucket.PutObjectFromFile(ossObjectName, filepath.Join(cwd, tarball)); e != nil {
+		return "", e
+	}
+	return resourceURL, nil
 }

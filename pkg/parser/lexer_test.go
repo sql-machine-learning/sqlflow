@@ -242,3 +242,16 @@ USING TreeExplainer;`)
 	}
 
 }
+
+func TestLexerUnmatchedQuotation(t *testing.T) {
+	a := assert.New(t)
+	l := newLexer(`TO TRAIN "some_thing`)
+
+	typs := []int{TO, TRAIN, -9}
+	vals := []string{"TO", "TRAIN", "TRAIN"}
+	var n extendedSyntaxSymType
+	for i := range typs {
+		a.Equal(typs[i], l.Lex(&n))
+		a.Equal(vals[i], n.val)
+	}
+}

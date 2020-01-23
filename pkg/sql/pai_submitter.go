@@ -32,7 +32,7 @@ import (
 
 var tarball = "job.tar.gz"
 
-type maxcomputeSubmitter struct{ *defaultSubmitter }
+type paiSubmitter struct{ *defaultSubmitter }
 
 func randStringRunes(n int) string {
 	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -122,7 +122,7 @@ func createTempTrainAndValTable(trainSelect, validSelect, datasource string) (st
 //
 // 1. argo mode server: generate a step running: repl -e "repl -e \"select * from xx to train\""
 // 2. non-argo mode server | repl -e: create tmp table in go, and use it to train
-func (s *maxcomputeSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {
+func (s *paiSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 	cl.TmpTrainTable, cl.TmpValidateTable, e = createTempTrainAndValTable(cl.Select, cl.ValidationSelect, s.Session.DbConnStr)
 	if e != nil {
 		return
@@ -134,15 +134,15 @@ func (s *maxcomputeSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 		return e
 	}
 	scriptPath := fmt.Sprintf("file://%s/%s", s.Cwd, tarball)
-	code, paiCmd, e := pai.Train(cl, s.Session, scriptPath, cl.Into, ossModelPath, s.Cwd)
+	code, paiCmd, requirements, e := pai.Train(cl, s.Session, scriptPath, cl.Into, ossModelPath, s.Cwd)
 	if e != nil {
 		return e
 	}
-	return s.maxcomputeCmd(code, paiCmd)
+	return s.submitPAITask(code, paiCmd, requirements)
 }
 
-func (s *maxcomputeSubmitter) maxcomputeCmd(code, paiCmd string) error {
-	if e := achieveResource(s.Cwd, code, tarball); e != nil {
+func (s *paiSubmitter) submitPAITask(code, paiCmd, requirements string) error {
+	if e := achieveResource(s.Cwd, code, requirements, tarball); e != nil {
 		return e
 	}
 	_, datasourceName, e := database.ParseURL(s.Session.DbConnStr)
@@ -161,7 +161,7 @@ func (s *maxcomputeSubmitter) maxcomputeCmd(code, paiCmd string) error {
 	return nil
 }
 
-func (s *maxcomputeSubmitter) ExecutePredict(cl *ir.PredictStmt) error {
+func (s *paiSubmitter) ExecutePredict(cl *ir.PredictStmt) error {
 	// TODO(typhoonzero): Do **NOT** create tmp table when the select statement is like:
 	// "SELECT fields,... FROM table"
 	dbName, tableName, err := createTmpTableFromSelect(cl.Select, s.Session.DbConnStr)
@@ -195,14 +195,14 @@ func (s *maxcomputeSubmitter) ExecutePredict(cl *ir.PredictStmt) error {
 		return e
 	}
 	scriptPath := fmt.Sprintf("file://%s/%s", s.Cwd, tarball)
-	code, paiCmd, e := pai.Predict(cl, s.Session, scriptPath, cl.Using, ossModelPath, s.Cwd, isDeepModel)
+	code, paiCmd, requirements, e := pai.Predict(cl, s.Session, scriptPath, cl.Using, ossModelPath, s.Cwd, isDeepModel)
 	if e != nil {
 		return e
 	}
-	return s.maxcomputeCmd(code, paiCmd)
+	return s.submitPAITask(code, paiCmd, requirements)
 }
 
-func (s *maxcomputeSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
+func (s *paiSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 	// TODO(typhoonzero): Do **NOT** create tmp table when the select statement is like:
 	// "SELECT fields,... FROM table"
 	dbName, tableName, err := createTmpTableFromSelect(cl.Select, s.Session.DbConnStr)
@@ -242,11 +242,11 @@ func (s *maxcomputeSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 		}
 	}
 	scriptPath := fmt.Sprintf("file://%s/%s", s.Cwd, tarball)
-	code, paiCmd, e := pai.Explain(cl, s.Session, scriptPath, cl.ModelName, ossModelPath, s.Cwd, isDeepModel)
+	code, paiCmd, requirements, e := pai.Explain(cl, s.Session, scriptPath, cl.ModelName, ossModelPath, s.Cwd, isDeepModel)
 	if e != nil {
 		return e
 	}
-	return s.maxcomputeCmd(code, paiCmd)
+	return s.submitPAITask(code, paiCmd, requirements)
 }
 
 func ossModelFileExists(modelName string) (bool, error) {
@@ -321,8 +321,11 @@ func createExplainResultTable(db *database.DB, ir *ir.ExplainStmt, tableName str
 	return nil
 }
 
-func achieveResource(cwd, entryCode, tarball string) error {
+func achieveResource(cwd, entryCode, requirements, tarball string) error {
 	if err := writeFile(filepath.Join(cwd, entryFile), entryCode); err != nil {
+		return err
+	}
+	if err := writeFile(filepath.Join(cwd, "requirements.txt"), requirements); err != nil {
 		return err
 	}
 
@@ -336,7 +339,7 @@ func achieveResource(cwd, entryCode, tarball string) error {
 		return fmt.Errorf("failed %s, %v", cmd, err)
 	}
 
-	cmd = exec.Command("tar", "czf", tarball, "./sqlflow_submitter", entryFile)
+	cmd = exec.Command("tar", "czf", tarball, "./sqlflow_submitter", entryFile, "requirements.txt")
 	cmd.Dir = cwd
 	if _, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("failed %s, %v", cmd, err)
@@ -344,4 +347,4 @@ func achieveResource(cwd, entryCode, tarball string) error {
 	return nil
 }
 
-func (s *maxcomputeSubmitter) GetTrainStmtFromModel() bool { return false }
+func (s *paiSubmitter) GetTrainStmtFromModel() bool { return false }

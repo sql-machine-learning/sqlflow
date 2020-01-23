@@ -22,7 +22,7 @@ type explainFiller struct {
 	DatasetSQL           string
 	ShapSummaryParams    string
 	FeatureFieldMetaJSON string
-	LabelName            string
+	LabelJSON            string
 }
 
 const explainTemplateText = `
@@ -30,14 +30,14 @@ import json
 from sqlflow_submitter.xgboost.explain import explain
 
 feature_field_meta = json.loads('''{{.FeatureFieldMetaJSON}}''')
-label_name = '''{{.LabelName}}'''
+label_spec = json.loads('''{{.LabelJSON}}''')
 summary_params = json.loads('''{{.ShapSummaryParams}}''')
 
 explain(
     datasource='''{{.DataSource}}''',
     select='''{{.DatasetSQL}}''',
     feature_field_meta=feature_field_meta,
-    label_name=label_name,
+    label_spec=label_spec,
     summary_params=summary_params)
 `
 

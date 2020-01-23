@@ -40,10 +40,10 @@ func TestCoulerCodegen(t *testing.T) {
 	a.True(strings.Contains(code, `step_envs["SQLFLOW_OSS_AK"] = "oss_key"`))
 }
 
-func mockSQLProgramIR() ir.SQLProgram {
-	standardSQL := ir.StandardSQL("SELECT * FROM iris.train limit 10;")
+func mockSQLProgramIR() []ir.SQLFlowStmt {
+	standardSQL := ir.NormalStmt("SELECT * FROM iris.train limit 10;")
 	trainStmt := ir.MockTrainStmt(false)
-	return []ir.SQLStatement{&standardSQL, trainStmt}
+	return []ir.SQLFlowStmt{&standardSQL, trainStmt}
 }
 
 var testCoulerClusterConfig = `
@@ -112,7 +112,7 @@ func TestCompileCoulerProgram(t *testing.T) {
 	out, e := Compile(testCoulerProgram)
 	a.NoError(e)
 
-	a.Equal(out, expectedArgoYAML)
+	a.Equal(expectedArgoYAML, out)
 }
 
 func TestKatibCodegen(t *testing.T) {
@@ -121,10 +121,10 @@ func TestKatibCodegen(t *testing.T) {
 
 	cfg := database.GetTestingMySQLConfig()
 
-	standardSQL := ir.StandardSQL("SELECT * FROM iris.train limit 10;")
+	standardSQL := ir.NormalStmt("SELECT * FROM iris.train limit 10;")
 	sqlIR := MockKatibTrainStmt(fmt.Sprintf("mysql://%s", cfg.FormatDSN()))
 
-	program := []ir.SQLStatement{&standardSQL, &sqlIR}
+	program := []ir.SQLFlowStmt{&standardSQL, &sqlIR}
 
 	_, err := GenCode(program, &pb.Session{})
 

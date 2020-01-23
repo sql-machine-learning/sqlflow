@@ -185,6 +185,11 @@ func (l *lexer) lexOperator(lval *extendedSyntaxSymType) int {
 func (l *lexer) lexString(lval *extendedSyntaxSymType) int {
 	l.next() // the left quote
 	for r := l.next(); r != '"' && r != '\''; r = l.next() {
+		if r == eof {
+			l.previous = l.start
+			// return error position
+			return -l.start
+		}
 		if r == '\\' {
 			l.next()
 		}

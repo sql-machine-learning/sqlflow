@@ -276,9 +276,11 @@ func TestEnd2EndMySQL(t *testing.T) {
 		t.Fatalf("prepare test dataset failed: %v", err)
 	}
 
-	t.Run("TestShowDatabases", CaseShowDatabases)
-	t.Run("TestSelect", CaseSelect)
-	t.Run("TestTrainSQL", CaseTrainSQL)
+	t.Run("CaseShowDatabases", CaseShowDatabases)
+	t.Run("CaseSelect", CaseSelect)
+	t.Run("CaseTrainSQL", CaseTrainSQL)
+	t.Run("CaseTrainWithCSVLabel", CaseTrainWithCSVLabel)
+
 	t.Run("CaseTrainBoostedTreesEstimatorAndExplain", CaseTrainBoostedTreesEstimatorAndExplain)
 	t.Run("CaseTrainSQLWithMetrics", CaseTrainSQLWithMetrics)
 	t.Run("TestTextClassification", CaseTrainTextClassification)
@@ -292,6 +294,8 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseTrainRegression", CaseTrainRegression)
 	t.Run("CaseTrainXGBoostRegression", CaseTrainXGBoostRegression)
 	t.Run("CasePredictXGBoostRegression", CasePredictXGBoostRegression)
+	t.Run("CaseTrainAndExplainXGBoostModel", CaseTrainAndExplainXGBoostModel)
+
 	t.Run("CaseTrainDeepWideModel", CaseTrainDeepWideModel)
 	t.Run("CaseTrainDeepWideModelOptimizer", CaseTrainDeepWideModelOptimizer)
 	t.Run("CaseTrainAdaNetAndExplain", CaseTrainAdaNetAndExplain)
@@ -875,6 +879,19 @@ INTO sqlflow_models.my_dnn_model_custom_functional;`
 	}
 }
 
+func CaseTrainWithCSVLabel(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := `select f1,f2,f3,CONCAT(f13,",", target) as class from housing.train
+TO TRAIN sqlflow_models.DNNRegressor
+WITH model.hidden_units = [10, 20]
+LABEL class
+INTO sqlflow_models.my_dnn_model_csvlabel;`
+	_, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("run trainSQL error: %v", err)
+	}
+}
+
 func CaseTrainTextClassification(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := `SELECT news_title, class_id
@@ -1364,6 +1381,37 @@ INTO %s.explain_result;`, caseTestTable, caseInto, caseDB)
 	}
 }
 
+func CaseTrainXGBoostOnPAI(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`SELECT * FROM %s
+	TO TRAIN xgboost.gbtree
+	WITH
+		objective="multi:softprob",
+		train.num_boost_round = 30,
+		eta = 0.4,
+		num_class = 3
+	LABEL class
+	INTO my_xgb_classi_model;`, caseTrainTable)
+	_, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+
+	// TODO(typhoonzero): add predict and explain test
+}
+
+// TestEnd2EndMaxComputePAI test cases that runs on PAI. Need to set below
+// environment variables to run the test:
+// SQLFLOW_submitter=pai
+// SQLFLOW_TEST_DB=maxcompute
+// SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT="xxx"
+// SQLFLOW_TEST_DB_MAXCOMPUTE_ENDPOINT="xxx"
+// SQLFLOW_TEST_DB_MAXCOMPUTE_AK="xxx"
+// SQLFLOW_TEST_DB_MAXCOMPUTE_SK="xxx"
+// SQLFLOW_OSS_CHECKPOINT_DIR="xxx"
+// SQLFLOW_OSS_ENDPOINT="xxx"
+// SQLFLOW_OSS_AK="xxx"
+// SQLFLOW_OSS_SK="xxx"
 func TestEnd2EndMaxComputePAI(t *testing.T) {
 	testDBDriver := os.Getenv("SQLFLOW_TEST_DB")
 	if testDBDriver != "maxcompute" {
@@ -1404,6 +1452,7 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 	t.Run("CaseTrainSQL", CaseTrainSQL)
 	t.Run("CaseTrainDNNAndExplain", CaseTrainDNNAndExplain)
 	t.Run("CaseTrainPAIRandomForests", CaseTrainPAIRandomForests)
+	t.Run("CaseTrainXGBoostOnPAI", CaseTrainXGBoostOnPAI)
 	t.Run("CaseTrainDistributedPAI", CaseTrainDistributedPAI)
 }
 
@@ -1510,7 +1559,7 @@ func checkWorkflow(ctx context.Context, cli pb.SQLFlowClient, stream pb.SQLFlow_
 		}
 		workflowID = iter.GetJob().GetId()
 	}
-	if !strings.HasPrefix(workflowID, "sqlflow-couler") {
+	if !strings.HasPrefix(workflowID, "sqlflow") {
 		return fmt.Errorf("workflow not started with sqlflow-couler")
 	}
 	req := &pb.FetchRequest{

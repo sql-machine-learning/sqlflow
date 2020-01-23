@@ -29,8 +29,8 @@ class TestEstimatorModels(TestCase):
                                  env={"PYTHONPATH": "python"},
                                  check=True)
             self.assertEqual(ret.returncode, 0)
-        except:
-            self.fail("%s" % ret.stderr)
+        except Exception as e:
+            self.fail("%s" % e)
 
     def test_explain(self):
         try:
@@ -42,8 +42,8 @@ class TestEstimatorModels(TestCase):
                                  env={"PYTHONPATH": "python"},
                                  check=True)
             self.assertEqual(ret.returncode, 0)
-        except:
-            self.fail("%s" % ret.stderr)
+        except Exception as e:
+            self.fail("%s" % e)
 
     def test_keras(self):
         try:
@@ -55,8 +55,8 @@ class TestEstimatorModels(TestCase):
                                  env={"PYTHONPATH": "python"},
                                  check=True)
             self.assertEqual(ret.returncode, 0)
-        except:
-            self.fail("%s" % ret.stderr)
+        except Exception as e:
+            self.fail("%s" % e)
 
 
 if __name__ == '__main__':

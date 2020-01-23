@@ -18,13 +18,14 @@ from sqlflow_submitter import explainer
 from sqlflow_submitter.db import connect_with_data_source, db_generator
 
 
-def xgb_shap_dataset(datasource, select, feature_column_names, label_name,
+def xgb_shap_dataset(datasource, select, feature_column_names, label_spec,
                      feature_specs):
+    label_spec["feature_name"] = label_spec["name"]
     conn = connect_with_data_source(datasource)
     stream = db_generator(conn.driver, conn, select, feature_column_names,
-                          label_name, feature_specs)
+                          label_spec, feature_specs)
     xs = pd.DataFrame(columns=feature_column_names)
-    ys = pd.DataFrame(columns=[label_name])
+    ys = pd.DataFrame(columns=[label_spec["name"]])
     i = 0
     for row in stream():
         xs.loc[i] = [item[0] for item in row[0]]
@@ -41,11 +42,11 @@ def xgb_shap_values(x):
         x), explainer.expected_value
 
 
-def explain(datasource, select, feature_field_meta, label_name,
+def explain(datasource, select, feature_field_meta, label_spec,
             summary_params):
     feature_column_names = [k["name"] for k in feature_field_meta]
     feature_specs = {k['name']: k for k in feature_field_meta}
-    x = xgb_shap_dataset(datasource, select, feature_column_names, label_name,
+    x = xgb_shap_dataset(datasource, select, feature_column_names, label_spec,
                          feature_specs)
 
     shap_values, shap_interaction_values, expected_value = xgb_shap_values(x)

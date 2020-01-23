@@ -12,6 +12,7 @@
 # limitations under the License.
 
 # NOTE: this file is used by train_predict_test.py, do **NOT** delete!
+import shutil
 
 import sqlflow_submitter
 import tensorflow as tf
@@ -122,3 +123,5 @@ if __name__ == "__main__":
          },
          save="mymodel",
          batch_size=1)
+    shutil.rmtree("mymodel")
+    shutil.rmtree("mymodel_binary")

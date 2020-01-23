@@ -37,6 +37,10 @@ type explainFiller struct {
 	PAITable    string
 }
 
+type requirementsFiller struct {
+	IsXGBoost bool
+}
+
 const tfSaveModelTmplText = `
 from sqlflow_submitter.pai import model
 model.save("{{.OSSModelDir}}",
@@ -47,6 +51,14 @@ model.save("{{.OSSModelDir}}",
            label_meta,
            model_params,
            feature_columns)
+`
+
+const paiRequirementsTmplText = `
+shap==0.28.5
+seaborn==0.9.0
+{{if .IsXGboost}}
+xgboost==0.82
+{{end}}
 `
 
 const tfPredictTmplText = `

@@ -15,7 +15,9 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"regexp"
@@ -25,12 +27,166 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	prompt "github.com/c-bata/go-prompt"
+	"github.com/c-bata/go-prompt"
+	"sqlflow.org/sqlflow/pkg/database"
+	"sqlflow.org/sqlflow/pkg/sql/testdata"
 )
 
-// TODO(shendiaomo): end to end tests like sqlflowserver/main_test.go
-
 var space = regexp.MustCompile(`\s+`)
+var dbConnStr = "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
+var testDBDriver = os.Getenv("SQLFLOW_TEST_DB")
+var session = makeSessionFromEnv()
+
+func prepareTestDataOrSkip(t *testing.T) error {
+	assertConnectable(dbConnStr)
+	testDB, _ := database.OpenAndConnectDB(dbConnStr)
+	if testDBDriver == "mysql" {
+		_, e := testDB.Exec("CREATE DATABASE IF NOT EXISTS sqlflow_models;")
+		if e != nil {
+			return e
+		}
+		return testdata.Popularize(testDB.DB, testdata.IrisSQL)
+	}
+	t.Skip("Skipping mysql tests")
+	return nil
+}
+
+func getStdout(f func() error) (out string, e error) {
+	oldStdout, oldStderr := os.Stdout, os.Stderr // keep backup of the real stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	os.Stderr = w
+	e = f() // f prints to stdout
+	outC := make(chan string)
+	go func() { // copy the output in a separate goroutine so printing can't block indefinitely
+		var buf bytes.Buffer
+		io.Copy(&buf, r)
+		outC <- buf.String()
+	}()
+	w.Close()                                   // Cancel redirection
+	os.Stdout, os.Stderr = oldStdout, oldStderr // restoring the real stdout and stderr
+	out = <-outC
+	return
+}
+
+func TestRunStmt(t *testing.T) {
+	prepareTestDataOrSkip(t)
+	a := assert.New(t)
+	os.Setenv("SQLFLOW_log_dir", "/tmp/")
+	session.DbConnStr = dbConnStr
+	currentDB = ""
+	output, err := getStdout(func() error { return runStmt("show tables", true, "", dbConnStr) })
+	a.Nil(err)
+	a.Contains(output, "Error 1046: No database selected")
+
+	output, err = getStdout(func() error { return runStmt("use iris", true, "", dbConnStr) })
+	a.Nil(err)
+	a.Contains(output, "Database changed to iris")
+
+	output, err = getStdout(func() error { return runStmt("show tables", true, "", dbConnStr) })
+	a.Nil(err)
+	a.Contains(output, "| TABLES IN IRIS |")
+
+	output, err = getStdout(func() error {
+		return runStmt("select * from train to train DNNClassifier WITH model.hidden_units=[10,10], model.n_classes=3 label class INTO sqlflow_models.repl_dnn_model;", true, "", dbConnStr)
+	})
+	a.Nil(err)
+	a.Contains(output, "'global_step': 110")
+
+	output, err = getStdout(func() error {
+		return runStmt("select * from train to train xgboost.gbtree WITH objective=reg:squarederror label class INTO sqlflow_models.repl_xgb_model;", true, "", dbConnStr)
+	})
+	a.Nil(err)
+	a.Contains(output, "Evaluation result: ")
+
+	output, err = getStdout(func() error {
+		return runStmt("select * from train to explain sqlflow_models.repl_xgb_model;", true, "", dbConnStr)
+	})
+	a.Nil(err)
+	a.Contains(output, "data:text/html, <div align='center'><img src='data:image/png;base64")
+	a.Contains(output, "⣿") //non sixel with ascii art
+}
+
+func TestRepl(t *testing.T) {
+	prepareTestDataOrSkip(t)
+	a := assert.New(t)
+	session.DbConnStr = dbConnStr
+	sql := `
+--
+use iris; --
+-- 1
+show tables; -- 2
+select * from train to train DNNClassifier
+WITH model.hidden_units=[10,10], model.n_classes=3
+label class
+INTO sqlflow_models.repl_dnn_model;
+use sqlflow_models;
+show tables`
+	scanner := bufio.NewScanner(strings.NewReader(sql))
+	output, err := getStdout(func() error { repl(scanner, "", dbConnStr); return nil })
+	a.Nil(err)
+	a.Contains(output, "Database changed to iris")
+	a.Contains(output, `
++----------------+
+| TABLES IN IRIS |
++----------------+
+| iris_empty     |
+| test           |
+| test_dense     |
+| train          |
+| train_dense    |
++----------------+`)
+	a.Contains(output, `
+select * from train to train DNNClassifier
+WITH model.hidden_units=[10,10], model.n_classes=3
+label class
+INTO sqlflow_models.repl_dnn_model;`)
+	a.Contains(output, "'global_step': 110")
+	a.Contains(output, "Database changed to sqlflow_models")
+	a.Contains(output, "| TABLES IN SQLFLOW MODELS |")
+	a.Contains(output, "| repl_dnn_model           |")
+}
+
+func TestMain(t *testing.T) {
+	prepareTestDataOrSkip(t)
+	os.Args = append(os.Args, "--datasource", dbConnStr, "-e", "use iris; show tables")
+	output, _ := getStdout(func() error { main(); return nil })
+	a := assert.New(t)
+	a.Contains(output, `
++----------------+
+| TABLES IN IRIS |
++----------------+
+| iris_empty     |
+| test           |
+| test_dense     |
+| train          |
+| train_dense    |
++----------------+`)
+}
+
+func testGetDataSource(t *testing.T, dataSource, databaseName string) {
+	a := assert.New(t)
+	a.Equal(dataSource, getDataSource(dataSource, databaseName))
+	a.Equal(databaseName, getDatabaseName(dataSource))
+	a.NotEqual(dataSource, getDataSource(dataSource, databaseName+"test"))
+	a.Equal(databaseName+"test", getDatabaseName(getDataSource(dataSource, databaseName+"test")))
+}
+func TestGetDataSource(t *testing.T) {
+	a := assert.New(t)
+	a.Equal("", getDatabaseName("maxcompute://test:test@service.cn.maxcompute.aliyun.com/api"))
+	testGetDataSource(t, "maxcompute://test:test@service.cn.maxcompute.aliyun.com/api?curr_project=iris&scheme=https", "iris")
+	testGetDataSource(t, "maxcompute://test:test@service.cn.maxcompute.aliyun.com/api?curr_project=&scheme=https", "")
+
+	testGetDataSource(t, "mysql://root:root@tcp(127.0.0.1:3306)/", "")
+	testGetDataSource(t, "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0", "")
+	testGetDataSource(t, "mysql://root:root@tcp(127.0.0.1:3306)/iris", "iris")
+	testGetDataSource(t, "mysql://root:root@tcp(127.0.0.1:3306)/iris?maxAllowedPacket=0", "iris")
+
+	testGetDataSource(t, "hive://root:root@localhost:10000/", "")
+	testGetDataSource(t, "hive://root:root@127.0.0.1:10000/?auth=NOSASL", "")
+	testGetDataSource(t, "hive://root:root@localhost:10000/churn", "churn")
+	testGetDataSource(t, "hive://root:root@127.0.0.1:10000/iris?auth=NOSASL", "iris")
+}
 
 func testMainFastFail(t *testing.T, interactive bool) {
 	a := assert.New(t)
@@ -79,7 +235,190 @@ func TestReadStmt(t *testing.T) {
 	scanner := bufio.NewScanner(strings.NewReader(sql))
 	stmt, err := readStmt(scanner)
 	a.Nil(err)
-	a.Equal(space.ReplaceAllString(stmt, " "), space.ReplaceAllString(sql, " "))
+	a.Equal(1, len(stmt))
+	a.Equal(space.ReplaceAllString(stmt[0], " "), space.ReplaceAllString(sql, " "))
+
+	sql2 := `-- 1. test
+             SELECT * FROM iris.train TO TRAIN DNNClassifier WITH
+				model.hidden_units=[10,20],
+				model.n_classes=3
+             LABEL class INTO sqlflow_models.my_model;`
+	scanner = bufio.NewScanner(strings.NewReader(sql2))
+	stmt, err = readStmt(scanner)
+	a.Nil(err)
+	a.Equal(0, len(stmt)) // The leading one-line comment is considered an empty statement
+	stmt, err = readStmt(scanner)
+	a.Nil(err)
+	a.Equal(1, len(stmt))
+	a.Equal(space.ReplaceAllString(stmt[0], " "), space.ReplaceAllString(sql, " "))
+
+	sql2 = `-- 1. test`
+	scanner = bufio.NewScanner(strings.NewReader(sql2))
+	stmt, err = readStmt(scanner)
+	a.Nil(err)
+	a.Equal(0, len(stmt))
+
+	sql2 = `--`
+	scanner = bufio.NewScanner(strings.NewReader(sql2))
+	stmt, err = readStmt(scanner)
+	a.Nil(err)
+	a.Equal(0, len(stmt))
+
+	sql2 = `--1. test`
+	scanner = bufio.NewScanner(strings.NewReader(sql2))
+	stmt, err = readStmt(scanner)
+	a.Equal(io.EOF, err) // Don't support standard comment
+	a.Equal(1, len(stmt))
+	a.Equal(sql2, stmt[0])
+
+	sql2 = `SHOW databases;`
+	scanner = bufio.NewScanner(strings.NewReader(sql2))
+	stmt, err = readStmt(scanner)
+	a.Nil(err)
+	a.Equal(1, len(stmt))
+
+	sql2 = `SHOW databases`
+	scanner = bufio.NewScanner(strings.NewReader(sql2))
+	stmt, err = readStmt(scanner)
+	a.Equal(err, io.EOF) // EOF is considered the same as ';'
+	a.Equal(1, len(stmt))
+
+	sql3 := `SELECT
+           *
+		   FROM
+		   iris.train
+		   TO
+		   TRAIN
+		   DNNClassifier
+		   WITH
+		   model.hidden_units=[10,20],
+		   model.n_classes=3
+		   LABEL
+		   class
+		   INTO
+		   sqlflow_models.my_model;`
+	scanner = bufio.NewScanner(strings.NewReader(sql3))
+	stmt, err = readStmt(scanner)
+	a.Nil(err)
+	a.Equal(1, len(stmt))
+	a.Equal(space.ReplaceAllString(stmt[0], " "), space.ReplaceAllString(sql, " "))
+
+	sql3 = `SELECT --
+           * -- comment
+		   FROM -- comment;
+		   iris.train -- comment ;
+		   TO -- comment         ;      TRAIN
+		   TRAIN
+		   DNNClassifier
+		   WITH
+		   model.hidden_units=[10,20],
+		   model.n_classes=3
+		   LABEL
+		   class
+		   INTO
+		   sqlflow_models.my_model;`
+	scanner = bufio.NewScanner(strings.NewReader(sql3))
+	stmt, err = readStmt(scanner)
+	a.Equal(1, len(stmt))
+	a.Equal(space.ReplaceAllString(stmt[0], " "), space.ReplaceAllString(sql, " "))
+
+	sql3 = `SELECT * FROM tbl WHERE a==";";`
+	scanner = bufio.NewScanner(strings.NewReader(sql3))
+	stmt, err = readStmt(scanner)
+	a.Nil(err)
+	a.Equal(1, len(stmt))
+	a.Equal(stmt[0], sql3)
+
+	sql3 = `SELECT * FROM tbl WHERE a==";\"';` // Test unclosed quote
+	scanner = bufio.NewScanner(strings.NewReader(sql3))
+	stmt, err = readStmt(scanner)
+	a.Equal(io.EOF, err)
+	a.Equal(1, len(stmt))
+	a.Equal(stmt[0], sql3)
+
+	sql3 = `SELECT * FROM tbl WHERE a==";
+	        ";` // Test cross-line quoted string
+	scanner = bufio.NewScanner(strings.NewReader(sql3))
+	stmt, err = readStmt(scanner)
+	a.Nil(err)
+	a.Equal(1, len(stmt))
+	a.Equal(stmt[0], sql3)
+
+	sql3 = `SELECT * FROM tbl WHERE a=="\";
+	        ";` // Test Escaping
+	scanner = bufio.NewScanner(strings.NewReader(sql3))
+	stmt, err = readStmt(scanner)
+	a.Nil(err)
+	a.Equal(1, len(stmt))
+	a.Equal(stmt[0], sql3)
+
+	sql3 = `SELECT * FROM tbl WHERE a=="';
+	        ";` // Test single quote in double-quoted string
+	scanner = bufio.NewScanner(strings.NewReader(sql3))
+	stmt, err = readStmt(scanner)
+	a.Nil(err)
+	a.Equal(1, len(stmt))
+	a.Equal(stmt[0], sql3)
+
+	sql3 = `SELECT * FROM tbl WHERE a=='";
+	        ';` // Test double quote in single-quoted string
+	scanner = bufio.NewScanner(strings.NewReader(sql3))
+	stmt, err = readStmt(scanner)
+	a.Nil(err)
+	a.Equal(1, len(stmt))
+	a.Equal(stmt[0], sql3)
+
+	sql3 = `SELECT * FROM tbl WHERE a=="-- \";
+	        ";` // Test double dash in quoted string
+	scanner = bufio.NewScanner(strings.NewReader(sql3))
+	stmt, err = readStmt(scanner)
+	a.Nil(err)
+	a.Equal(1, len(stmt))
+	a.Equal(stmt[0], sql3)
+
+	sql3 = `SELECT * FROM tbl WHERE a==--" \";
+	        '";` // Test quoted string in standard comment (not comment actually )
+	scanner = bufio.NewScanner(strings.NewReader(sql3))
+	stmt, err = readStmt(scanner)
+	a.Nil(err)
+	a.Equal(1, len(stmt))
+	a.Equal(stmt[0], sql3)
+
+	sql3 = `SELECT * FROM tbl WHERE a==-- " \";
+	        '";` // Test quoted string in comment, note that the quoted string is unclosed
+	scanner = bufio.NewScanner(strings.NewReader(sql3))
+	stmt, err = readStmt(scanner)
+	a.Equal(io.EOF, err)
+	a.Equal(1, len(stmt))
+	a.Equal(space.ReplaceAllString(stmt[0], " "), `SELECT * FROM tbl WHERE a== '";`)
+
+	sql3 = `--
+            -- 1. test
+            use iris; show
+            tables; --
+			select * from tbl where a not like '-- %'
+	        ;` // Test multiple statements in multiple lines
+	scanner = bufio.NewScanner(strings.NewReader(sql3))
+	stmt, err = readStmt(scanner)
+	a.Nil(err)
+	a.Equal(0, len(stmt))
+	stmt, err = readStmt(scanner)
+	a.Nil(err)
+	a.Equal(0, len(stmt))
+	stmt, err = readStmt(scanner)
+	a.Nil(err)
+	a.Equal(3, len(stmt))
+	a.Equal("use iris;", stmt[0])
+	a.Equal("show tables;", space.ReplaceAllString(stmt[1], " "))
+	a.Equal(" select * from tbl where a not like '-- %' ;", space.ReplaceAllString(stmt[2], " "))
+
+	sql3 = `use iris; show tables;` // Test multiple statements in single line
+	scanner = bufio.NewScanner(strings.NewReader(sql3))
+	stmt, err = readStmt(scanner)
+	a.Nil(err)
+	a.Equal(2, len(stmt))
+	a.Equal("use iris;", stmt[0])
+	a.Equal("show tables;", space.ReplaceAllString(stmt[1], " "))
 }
 
 func TestPromptState(t *testing.T) {
@@ -111,13 +450,28 @@ func TestPromptState(t *testing.T) {
 	a.Equal("DNNClassifier", ahead)
 	a.Equal("model.n_classes=3", last)
 
-	var stmt string
+	var stmt []string
+	a.Equal(0, len(s.statements))
 	scanner := bufio.NewScanner(strings.NewReader(sql))
 	for scanner.Scan() {
-		s.execute(scanner.Text(), func(s string) { stmt = s })
+		s.execute(scanner.Text(), func(s string) { stmt = append(stmt, s) })
 	}
-	a.Equal(space.ReplaceAllString(stmt, " "), space.ReplaceAllString(sql, " "))
-	a.Equal("", s.statement)
+	a.Equal(1, len(stmt))
+	a.Equal(space.ReplaceAllString(stmt[0], " "), space.ReplaceAllString(sql, " "))
+	a.Equal(0, len(s.statements))
+
+	stmt = []string{}
+	sql2 := `-- 1. test
+             SELECT * FROM iris.train TO TRAIN DNNClassifier WITH
+				model.hidden_units=[10,20],
+				model.n_classes=3
+             LABEL class INTO sqlflow_models.my_model;`
+	scanner = bufio.NewScanner(strings.NewReader(sql2))
+	for scanner.Scan() {
+		s.execute(scanner.Text(), func(s string) { stmt = append(stmt, s) })
+	}
+	a.Equal(1, len(stmt))
+	a.Equal(space.ReplaceAllString(stmt[0], " "), space.ReplaceAllString(sql, " "))
 }
 
 func TestComplete(t *testing.T) {
@@ -199,6 +553,15 @@ func TestComplete(t *testing.T) {
 	p.InsertText(`nto sqlflow_models.my_awesome_model;`, false, true)
 	c = s.completer(*p.Document())
 	a.Equal(0, len(c))
+
+	// Test cross line completion
+	s = newPromptState()
+	s.statements = []string{"TO"}
+	p = prompt.NewBuffer()
+	p.InsertText("t", false, true)
+	c = s.completer(*p.Document())
+	a.Equal(1, len(c))
+	a.Equal("TRAIN", c[0].Text)
 }
 
 func TestTerminalCheck(t *testing.T) {
@@ -212,7 +575,7 @@ func TestTerminalCheck(t *testing.T) {
 	a.Error(err)
 	image, err := getBase64EncodedImage(testImageHTML)
 	a.Nil(err)
-	a.Nil(imageCat(image))
+	a.Nil(imageCat(image)) // sixel mode
 }
 func TestStdinParser(t *testing.T) {
 	a := assert.New(t)

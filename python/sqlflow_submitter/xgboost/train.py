@@ -15,13 +15,15 @@ import xgboost as xgb
 from sqlflow_submitter.db import connect_with_data_source, db_generator
 
 
-def xgb_dataset(conn, fn, dataset_sql, feature_column_name, label_name,
+def xgb_dataset(conn, fn, dataset_sql, feature_column_name, label_spec,
                 feature_spec):
+    if label_spec:
+        label_spec["feature_name"] = label_spec["name"]
     gen = db_generator(conn.driver, conn, dataset_sql, feature_column_name,
-                       label_name, feature_spec)
+                       label_spec, feature_spec)
     with open(fn, 'w') as f:
         for item in gen():
-            if label_name is None:
+            if label_spec is None:
                 row_data = ["%d:%f" % (i, v[0]) for i, v in enumerate(item[0])]
             else:
                 features, label = item
@@ -39,22 +41,22 @@ def train(datasource, select, model_params, train_params, feature_field_meta,
 
     # NOTE(tony): sorting is necessary to achieve consistent feature orders between training job and prediction/analysis job
     feature_column_name = [k["name"] for k in feature_field_meta]
-    label_name = label_field_meta["name"]
     feature_spec = {k['name']: k for k in feature_field_meta}
 
     dtrain = xgb_dataset(conn, 'train.txt', select, feature_column_name,
-                         label_name, feature_spec)
+                         label_field_meta, feature_spec)
     watchlist = [(dtrain, "train")]
     if len(validation_select.strip()) > 0:
         dvalidate = xgb_dataset(conn, 'validate.txt', validation_select,
-                                feature_column_name, label_name, feature_spec)
+                                feature_column_name, label_field_meta,
+                                feature_spec)
         watchlist.append((dvalidate, "validate"))
 
     re = dict()
     bst = xgb.train(model_params,
                     dtrain,
-                    **train_params,
                     evals=watchlist,
-                    evals_result=re)
+                    evals_result=re,
+                    **train_params)
     bst.save_model("my_model")
     print("Evaluation result: %s" % re)

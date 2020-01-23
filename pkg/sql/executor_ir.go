@@ -99,7 +99,7 @@ func submitWorkflow(wr *pipe.Writer, sqlProgram string, modelDir string, session
 	if err != nil {
 		return "", err
 	}
-	sqls, err := parser.Parse(driverName, sqlProgram)
+	stmts, err := parser.Parse(driverName, sqlProgram)
 	if err != nil {
 		return "", err
 	}
@@ -108,10 +108,10 @@ func submitWorkflow(wr *pipe.Writer, sqlProgram string, modelDir string, session
 	// 		SELECT ... TO TRAIN ...
 	// the multiple ir generator steps pipeline can be:
 	// sql -> parsed result -> infer columns -> load train ir from saved model ..
-	spIRs := []ir.SQLStatement{}
-	for _, sql := range sqls {
-		var r ir.SQLStatement
-		if parser.IsExtendedSyntax(sql) {
+	spIRs := []ir.SQLFlowStmt{}
+	for _, sql := range stmts {
+		var r ir.SQLFlowStmt
+		if sql.IsExtendedSyntax() {
 			if sql.Train {
 				r, err = generateTrainStmt(sql.SQLFlowSelectStmt)
 			} else if sql.Explain {
@@ -121,7 +121,7 @@ func submitWorkflow(wr *pipe.Writer, sqlProgram string, modelDir string, session
 				r, err = generatePredictStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, "", false)
 			}
 		} else {
-			standardSQL := ir.StandardSQL(sql.Original)
+			standardSQL := ir.NormalStmt(sql.Original)
 			r = &standardSQL
 		}
 		if err != nil {
@@ -150,7 +150,7 @@ func submitWorkflow(wr *pipe.Writer, sqlProgram string, modelDir string, session
 }
 
 func runSQLProgram(wr *pipe.Writer, sqlProgram string, db *database.DB, modelDir string, session *pb.Session) error {
-	sqls, err := parser.Parse(db.DriverName, sqlProgram)
+	stmts, err := parser.Parse(db.DriverName, sqlProgram)
 	if err != nil {
 		return err
 	}
@@ -162,7 +162,7 @@ func runSQLProgram(wr *pipe.Writer, sqlProgram string, db *database.DB, modelDir
 	//
 	// The IR generation on the second statement would fail since it requires inspection the schema of some_table,
 	// which depends on the execution of create table some_table as (select ...);.
-	for _, sql := range sqls {
+	for _, sql := range stmts {
 		cwd, err := ioutil.TempDir("/tmp", "sqlflow_models")
 		if err != nil {
 			return err
@@ -174,8 +174,8 @@ func runSQLProgram(wr *pipe.Writer, sqlProgram string, db *database.DB, modelDir
 		cleanCwd := func(cwd string) error {
 			return os.RemoveAll(cwd)
 		}
-		var r ir.SQLStatement
-		if parser.IsExtendedSyntax(sql) {
+		var r ir.SQLFlowStmt
+		if sql.IsExtendedSyntax() {
 			if sql.Train {
 				r, err = generateTrainStmtWithInferredColumns(sql.SQLFlowSelectStmt, session.DbConnStr, true)
 			} else if sql.Explain {
@@ -184,7 +184,7 @@ func runSQLProgram(wr *pipe.Writer, sqlProgram string, db *database.DB, modelDir
 				r, err = generatePredictStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, GetSubmitter(session.Submitter).GetTrainStmtFromModel())
 			}
 		} else {
-			standardSQL := ir.StandardSQL(sql.Original)
+			standardSQL := ir.NormalStmt(sql.Original)
 			r = &standardSQL
 		}
 
@@ -208,7 +208,7 @@ func runSQLProgram(wr *pipe.Writer, sqlProgram string, db *database.DB, modelDir
 	return nil
 }
 
-func runSingleSQLIR(wr *pipe.Writer, sqlIR ir.SQLStatement, db *database.DB, modelDir string, cwd string, session *pb.Session) (e error) {
+func runSingleSQLIR(wr *pipe.Writer, sqlIR ir.SQLFlowStmt, db *database.DB, modelDir string, cwd string, session *pb.Session) (e error) {
 	startTime := time.Now().UnixNano()
 	var originalSQL string
 	defer func() {

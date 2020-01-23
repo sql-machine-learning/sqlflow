@@ -292,8 +292,9 @@ func InferFeatureColumns(trainStmt *ir.TrainStmt, dataSource string) error {
 
 	columnTargets := getFeatureColumnTargets(trainStmt)
 	err = deriveFeatureColumn(fcMap, columnTargets, fmMap, selectFieldTypeMap, trainStmt)
-	// set back trainStmt.Features in the order of select
+	// set back trainStmt.Features in the order of select and update trainStmt.Label
 	setBackToIR(trainStmt, fcMap, columnTargets, selectFieldNames)
+	setBackToLabel(trainStmt, fmMap)
 	return nil
 }
 
@@ -450,6 +451,7 @@ func newFeatureColumn(fcTargetMap map[string][]ir.FeatureColumn, fmMap FieldDesc
 	return nil
 }
 
+// setBackToIR set derived feature column information back to the original IR structure.
 func setBackToIR(trainStmt *ir.TrainStmt, fcMap ColumnMap, columnTargets []string, selectFieldNames []string) {
 	for _, target := range columnTargets {
 		targetFeatureColumnMap := fcMap[target]
@@ -483,6 +485,22 @@ func setBackToIR(trainStmt *ir.TrainStmt, fcMap ColumnMap, columnTargets []strin
 				trainStmt.Features[target] = append(trainStmt.Features[target], crossColumns[i])
 			}
 		}
+	}
+}
+
+// setBackToLabel set derived label FieldDesc information back to the original IR structure.
+func setBackToLabel(trainStmt *ir.TrainStmt, fmMap FieldDescMap) {
+	labelName := trainStmt.Label.GetFieldDesc()[0].Name
+	if labelName == "" {
+		return // NOTE: clustering model may not specify Label
+	}
+	trainStmt.Label = &ir.NumericColumn{
+		FieldDesc: fmMap[labelName],
+	}
+	// use shape [] if label shape is [1] for Tensorflow scalar label shape should be [].
+	shape := trainStmt.Label.GetFieldDesc()[0].Shape
+	if len(shape) == 1 && shape[0] == 1 {
+		trainStmt.Label.GetFieldDesc()[0].Shape = []int{}
 	}
 }
 

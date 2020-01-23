@@ -36,11 +36,6 @@ func newSessionFromProto(session *pb.Session) map[string]string {
 	envs := make(map[string]string)
 	fillMapIfValueNotEmpty(envs, "SQLFLOW_USER_TOKEN", session.Token)
 	fillMapIfValueNotEmpty(envs, "SQLFLOW_DATASOURCE", session.DbConnStr)
-	if session.ExitOnSubmit {
-		fillMapIfValueNotEmpty(envs, "SQLFLOW_EXIT_ON_SUBMIT", "true")
-	} else {
-		fillMapIfValueNotEmpty(envs, "SQLFLOW_EXIT_ON_SUBMIT", "false")
-	}
 	fillMapIfValueNotEmpty(envs, "SQLFLOW_USER_ID", session.UserId)
 	fillMapIfValueNotEmpty(envs, "SQLFLOW_HIVE_LOCATION", session.HiveLocation)
 	fillMapIfValueNotEmpty(envs, "SQLFLOW_HDFS_NAMENODE_ADDR", session.HdfsNamenodeAddr)
@@ -68,7 +63,7 @@ func getStepEnvs(session *pb.Session) (map[string]string, error) {
 }
 
 // GenCode generates Couler program
-func GenCode(programIR ir.SQLProgram, session *pb.Session) (string, error) {
+func GenCode(programIR []ir.SQLFlowStmt, session *pb.Session) (string, error) {
 	stepEnvs, err := getStepEnvs(session)
 	if err != nil {
 		return "", err
@@ -84,7 +79,7 @@ func GenCode(programIR ir.SQLProgram, session *pb.Session) (string, error) {
 	}
 	for _, sqlIR := range programIR {
 		switch i := sqlIR.(type) {
-		case *ir.StandardSQL, *ir.PredictStmt, *ir.ExplainStmt:
+		case *ir.NormalStmt, *ir.PredictStmt, *ir.ExplainStmt:
 			sqlStmt := &sqlStatement{
 				OriginalSQL: sqlIR.GetOriginalSQL(), IsExtendedSQL: sqlIR.IsExtended(),
 				DockerImage: defaultDockerImage}
@@ -113,21 +108,17 @@ func GenCode(programIR ir.SQLProgram, session *pb.Session) (string, error) {
 	return program.String(), nil
 }
 
-func clusterConfigFile() string {
-	return os.Getenv("SQLFLOW_COULER_CLUSTER_CONFIG")
-}
-
 // Compile Couler program into Argo YAML
 func Compile(coulerProgram string) (string, error) {
-	buf := bytes.Buffer{}
-	buf.WriteString("couler run --mode argo --workflow_name sqlflow ")
-	if clusterConfigFile() != "" {
-		buf.WriteString(fmt.Sprintf("--cluster_config %s ", clusterConfigFile()))
+	cmdline := bytes.Buffer{}
+	fmt.Fprintf(&cmdline, "couler run --mode argo --workflow_name sqlflow ")
+	if c := os.Getenv("SQLFLOW_COULER_CLUSTER_CONFIG"); len(c) > 0 {
+		fmt.Fprintf(&cmdline, "--cluster_config %s ", c)
 	}
-	buf.WriteString("--file -")
+	fmt.Fprintf(&cmdline, "--file -")
 
-	coulerExec := strings.Split(buf.String(), " ")
-	// execute command: `cat couler-program | couler run --mode argo --workflow_name sqlflow --file -`
+	coulerExec := strings.Split(cmdline.String(), " ")
+	// execute command: `cat sqlflow.couler | couler run --mode argo --workflow_name sqlflow --file -`
 	cmd := exec.Command(coulerExec[0], coulerExec[1:]...)
 	cmd.Env = append(os.Environ())
 	cmd.Stdin = strings.NewReader(coulerProgram)

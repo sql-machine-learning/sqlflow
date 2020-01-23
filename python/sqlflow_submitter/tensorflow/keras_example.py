@@ -11,7 +11,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 # NOTE: this file is used by train_predict_test.py, do **NOT** delete!
+import shutil
 
 import sqlflow_models
 from sqlflow_submitter.tensorflow.estimator_example import (
@@ -51,3 +53,4 @@ if __name__ == "__main__":
          },
          save="mymodel_keras",
          batch_size=1)
+    os.unlink("mymodel_keras")
