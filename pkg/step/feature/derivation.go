@@ -293,8 +293,8 @@ func InferFeatureColumns(trainStmt *ir.TrainStmt, dataSource string) error {
 	columnTargets := getFeatureColumnTargets(trainStmt)
 	err = deriveFeatureColumn(fcMap, columnTargets, fmMap, selectFieldTypeMap, trainStmt)
 	// set back trainStmt.Features in the order of select and update trainStmt.Label
-	setBackToIR(trainStmt, fcMap, columnTargets, selectFieldNames)
-	setBackToLabel(trainStmt, fmMap)
+	setDerivedFeatureColumnToIR(trainStmt, fcMap, columnTargets, selectFieldNames)
+	deriveLabel(trainStmt, fmMap)
 	return nil
 }
 
@@ -451,8 +451,8 @@ func newFeatureColumn(fcTargetMap map[string][]ir.FeatureColumn, fmMap FieldDesc
 	return nil
 }
 
-// setBackToIR set derived feature column information back to the original IR structure.
-func setBackToIR(trainStmt *ir.TrainStmt, fcMap ColumnMap, columnTargets []string, selectFieldNames []string) {
+// setDerivedFeatureColumnToIR set derived feature column information back to the original IR structure.
+func setDerivedFeatureColumnToIR(trainStmt *ir.TrainStmt, fcMap ColumnMap, columnTargets []string, selectFieldNames []string) {
 	for _, target := range columnTargets {
 		targetFeatureColumnMap := fcMap[target]
 		trainStmt.Features[target] = []ir.FeatureColumn{}
@@ -488,8 +488,8 @@ func setBackToIR(trainStmt *ir.TrainStmt, fcMap ColumnMap, columnTargets []strin
 	}
 }
 
-// setBackToLabel set derived label FieldDesc information back to the original IR structure.
-func setBackToLabel(trainStmt *ir.TrainStmt, fmMap FieldDescMap) {
+// deriveLabel set derived label FieldDesc information back to the original IR structure.
+func deriveLabel(trainStmt *ir.TrainStmt, fmMap FieldDescMap) {
 	labelName := trainStmt.Label.GetFieldDesc()[0].Name
 	if labelName == "" {
 		return // NOTE: clustering model may not specify Label
