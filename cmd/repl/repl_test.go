@@ -70,8 +70,8 @@ func getStdout(f func() error) (out string, e error) {
 }
 
 func TestRunStmt(t *testing.T) {
-	prepareTestDataOrSkip(t)
 	a := assert.New(t)
+	a.Nil(prepareTestDataOrSkip(t))
 	os.Setenv("SQLFLOW_log_dir", "/tmp/")
 	session.DbConnStr = dbConnStr
 	currentDB = ""
@@ -108,8 +108,8 @@ func TestRunStmt(t *testing.T) {
 }
 
 func TestRepl(t *testing.T) {
-	prepareTestDataOrSkip(t)
 	a := assert.New(t)
+	a.Nil(prepareTestDataOrSkip(t))
 	session.DbConnStr = dbConnStr
 	sql := `
 --
@@ -148,10 +148,10 @@ INTO sqlflow_models.repl_dnn_model;`)
 }
 
 func TestMain(t *testing.T) {
-	prepareTestDataOrSkip(t)
-	os.Args = append(os.Args, "--datasource", dbConnStr, "-e", "use iris; show tables")
-	output, _ := getStdout(func() error { main(); return nil })
 	a := assert.New(t)
+	a.Nil(prepareTestDataOrSkip(t))
+	os.Args = append(os.Args, "-datasource", dbConnStr, "-e", "use iris; show tables", "-model_dir", "/tmp/repl_test")
+	output, _ := getStdout(func() error { main(); return nil })
 	a.Contains(output, `
 +----------------+
 | TABLES IN IRIS |
@@ -577,6 +577,153 @@ func TestTerminalCheck(t *testing.T) {
 	a.Nil(err)
 	a.Nil(imageCat(image)) // sixel mode
 }
+
+func applyEmacsMetaKeyBinding(buf *prompt.Buffer, key []byte) {
+	for _, binding := range emacsMetaKeyBindings {
+		if bytes.Compare(binding.ASCIICode, key) == 0 {
+			binding.Fn(buf)
+		}
+	}
+}
+
+func applyEmacsControlKeyBinding(buf *prompt.Buffer, key prompt.Key) {
+	for _, binding := range emacsCtrlKeyBindings {
+		if binding.Key == key {
+			binding.Fn(buf)
+		}
+	}
+}
+
+func TestEmacsKeyBindings(t *testing.T) {
+	a := assert.New(t)
+	buf := prompt.NewBuffer()
+	buf.InsertText("USE iris", false, true)
+	a.Equal(8, buf.DisplayCursorPosition())
+
+	applyEmacsControlKeyBinding(buf, prompt.ControlA)
+	a.Equal(0, buf.DisplayCursorPosition())
+
+	applyEmacsControlKeyBinding(buf, prompt.ControlE)
+	a.Equal(8, buf.DisplayCursorPosition())
+
+	applyEmacsControlKeyBinding(buf, prompt.ControlB)
+	a.Equal(7, buf.DisplayCursorPosition())
+	a.Equal("iri", buf.Document().GetWordBeforeCursorWithSpace())
+	a.Equal("s", buf.Document().GetWordAfterCursorWithSpace())
+
+	applyEmacsControlKeyBinding(buf, prompt.ControlF)
+	a.Equal(8, buf.DisplayCursorPosition())
+
+	applyEmacsControlKeyBinding(buf, prompt.ControlH) // Delete the character before cursor ('s')
+	a.Equal(7, buf.DisplayCursorPosition())
+	a.Equal("iri", buf.Document().GetWordBeforeCursorWithSpace())
+	a.Equal("", buf.Document().GetWordAfterCursorWithSpace())
+
+	applyEmacsControlKeyBinding(buf, prompt.ControlW) // Cut the word before cursor ('iri') to the clipboard
+	a.Equal(4, buf.DisplayCursorPosition())
+	a.Equal("USE ", buf.Document().GetWordBeforeCursorWithSpace())
+	a.Equal("", buf.Document().GetWordAfterCursorWithSpace())
+
+	applyEmacsControlKeyBinding(buf, prompt.ControlY) // Paste ('iri') back
+	a.Equal(7, buf.DisplayCursorPosition())
+	a.Equal("iri", buf.Document().GetWordBeforeCursorWithSpace())
+	a.Equal("", buf.Document().GetWordAfterCursorWithSpace())
+
+	applyEmacsControlKeyBinding(buf, prompt.ControlB) // Move back a character (between 'ir' and 'i')
+	applyEmacsControlKeyBinding(buf, prompt.ControlK) // Cut the line after the cursor to the clipboard ('i')
+	a.Equal(6, buf.DisplayCursorPosition())
+	a.Equal("ir", buf.Document().GetWordBeforeCursorWithSpace())
+	a.Equal("", buf.Document().GetWordAfterCursorWithSpace())
+
+	applyEmacsControlKeyBinding(buf, prompt.ControlY) // Paste ('i') back
+	a.Equal(7, buf.DisplayCursorPosition())
+	a.Equal("iri", buf.Document().GetWordBeforeCursorWithSpace())
+	a.Equal("", buf.Document().GetWordAfterCursorWithSpace())
+
+	applyEmacsControlKeyBinding(buf, prompt.ControlU) // Cut the line before the cursor to the clipboard ('USE iri')
+	a.Equal(0, buf.DisplayCursorPosition())
+	a.Equal("", buf.Document().GetWordBeforeCursorWithSpace())
+	a.Equal("", buf.Document().GetWordAfterCursorWithSpace())
+
+	applyEmacsControlKeyBinding(buf, prompt.ControlY) // Paste ('USE iri') back
+	a.Equal(7, buf.DisplayCursorPosition())
+	a.Equal("iri", buf.Document().GetWordBeforeCursorWithSpace())
+	a.Equal("", buf.Document().GetWordAfterCursorWithSpace())
+
+	applyEmacsControlKeyBinding(buf, prompt.ControlB) // Move back a character (between 'ir' and 'i')
+	applyEmacsControlKeyBinding(buf, prompt.ControlD) // Delete the word under the cursor ('i')
+	a.Equal(6, buf.DisplayCursorPosition())
+	a.Equal("ir", buf.Document().GetWordBeforeCursorWithSpace())
+	a.Equal("", buf.Document().GetWordAfterCursorWithSpace())
+
+	applyEmacsMetaKeyBinding(buf, []byte{0x1b, 'b'}) // Move cursor left by a word (at 'i')
+	a.Equal(4, buf.DisplayCursorPosition())
+	a.Equal("USE ", buf.Document().GetWordBeforeCursorWithSpace())
+	a.Equal("ir", buf.Document().GetWordAfterCursorWithSpace())
+
+	applyEmacsMetaKeyBinding(buf, []byte{0x1b, 'f'}) // Move back
+	a.Equal(6, buf.DisplayCursorPosition())
+	a.Equal("ir", buf.Document().GetWordBeforeCursorWithSpace())
+	a.Equal("", buf.Document().GetWordAfterCursorWithSpace())
+
+	applyEmacsMetaKeyBinding(buf, []byte{0x1b, 'B'}) // Meta B/F
+	a.Equal(4, buf.DisplayCursorPosition())
+	a.Equal("USE ", buf.Document().GetWordBeforeCursorWithSpace())
+	a.Equal("ir", buf.Document().GetWordAfterCursorWithSpace())
+
+	applyEmacsMetaKeyBinding(buf, []byte{0x1b, 'F'})
+	a.Equal(6, buf.DisplayCursorPosition())
+	a.Equal("ir", buf.Document().GetWordBeforeCursorWithSpace())
+	a.Equal("", buf.Document().GetWordAfterCursorWithSpace())
+
+	applyEmacsMetaKeyBinding(buf, []byte{0x1b, 0x1b, 0x5b, 0x44}) // Meta <-/->
+	a.Equal(4, buf.DisplayCursorPosition())
+	a.Equal("USE ", buf.Document().GetWordBeforeCursorWithSpace())
+	a.Equal("ir", buf.Document().GetWordAfterCursorWithSpace())
+
+	applyEmacsMetaKeyBinding(buf, []byte{0x1b, 0x1b, 0x5b, 0x43})
+	a.Equal(6, buf.DisplayCursorPosition())
+	a.Equal("ir", buf.Document().GetWordBeforeCursorWithSpace())
+	a.Equal("", buf.Document().GetWordAfterCursorWithSpace())
+
+	applyEmacsMetaKeyBinding(buf, []byte{0x1b, 0x7f}) // Cut the word before cursor ('ir') to the clipboard
+	a.Equal(4, buf.DisplayCursorPosition())
+	a.Equal("USE ", buf.Document().GetWordBeforeCursorWithSpace())
+	a.Equal("", buf.Document().GetWordAfterCursorWithSpace())
+
+	applyEmacsControlKeyBinding(buf, prompt.ControlY) // Paste ('ir') back
+	a.Equal(6, buf.DisplayCursorPosition())
+	a.Equal("ir", buf.Document().GetWordBeforeCursorWithSpace())
+	a.Equal("", buf.Document().GetWordAfterCursorWithSpace())
+
+	applyEmacsMetaKeyBinding(buf, []byte{0x1b, 'b'}) // Move cursor left by a word (at 'i')
+	applyEmacsMetaKeyBinding(buf, []byte{0x1b, 'd'}) // Cut the word after cursor ('ir') to the clipboard
+	a.Equal(4, buf.DisplayCursorPosition())
+	a.Equal("USE ", buf.Document().GetWordBeforeCursorWithSpace())
+	a.Equal("", buf.Document().GetWordAfterCursorWithSpace())
+
+	applyEmacsControlKeyBinding(buf, prompt.ControlY) // Paste ('ir') back
+	a.Equal(6, buf.DisplayCursorPosition())
+	a.Equal("ir", buf.Document().GetWordBeforeCursorWithSpace())
+	a.Equal("", buf.Document().GetWordAfterCursorWithSpace())
+
+	applyEmacsMetaKeyBinding(buf, []byte{0x1b, 'b'}) // Move cursor left by a word (at 'i')
+	applyEmacsMetaKeyBinding(buf, []byte{0x1b, 'D'}) // Cut the word after cursor ('ir') to the clipboard
+	a.Equal(4, buf.DisplayCursorPosition())
+	a.Equal("USE ", buf.Document().GetWordBeforeCursorWithSpace())
+	a.Equal("", buf.Document().GetWordAfterCursorWithSpace())
+
+	applyEmacsControlKeyBinding(buf, prompt.ControlY) // Paste ('ir') back
+	a.Equal(6, buf.DisplayCursorPosition())
+	a.Equal("ir", buf.Document().GetWordBeforeCursorWithSpace())
+	a.Equal("", buf.Document().GetWordAfterCursorWithSpace())
+
+	applyEmacsControlKeyBinding(buf, prompt.ControlL) // cls
+	a.Equal(6, buf.DisplayCursorPosition())
+	a.Equal("ir", buf.Document().GetWordBeforeCursorWithSpace())
+	a.Equal("", buf.Document().GetWordAfterCursorWithSpace())
+}
+
 func TestStdinParser(t *testing.T) {
 	a := assert.New(t)
 	p := newTestConsoleParser()

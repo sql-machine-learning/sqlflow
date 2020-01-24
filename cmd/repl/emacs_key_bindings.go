@@ -56,7 +56,7 @@ var emacsMetaKeyBindings = []prompt.ASCIICodeBind{
 	{
 		ASCIICode: []byte{0x1b, 0x1b, 0x5b, 0x43},
 		Fn: func(buf *prompt.Buffer) {
-			prompt.GoLeftWord(buf)
+			prompt.GoRightWord(buf)
 		},
 	},
 	// Meta d/D: Cut the word after the cursor to the clipboard
