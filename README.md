@@ -61,7 +61,7 @@ Done predicting. Predict table : iris.predict
 - [Quick Start](/doc/quick_start.md)
 - [Language Guide](/doc/language_guide.md)
 
-## Contributions
+## Contributing Guidelines
 
 - [Build and Test](/doc/build.md)
 - [Walkthrough the Project](/doc/walkthrough.md)
