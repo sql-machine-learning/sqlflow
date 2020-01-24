@@ -331,6 +331,7 @@ func getDatabaseName(datasource string) string {
 		re = regexp.MustCompile(`[^/].*/api[?].*curr_project=(\w*).*`)
 	case "mysql":
 	case "hive":
+	case "alisa": // TODO(yaney1989): using go drivers to parse the database
 	default:
 		log.Fatalf("unknown database '%s' in data source'%s'", driver, datasource)
 	}
@@ -348,7 +349,7 @@ func getDataSource(dataSource, db string) string {
 	}
 	pieces := strings.Split(other, "?")
 	switch driver {
-	case "maxcompute":
+	case "maxcompute", "alisa":
 		var v url.Values = url.Values{}
 		if len(pieces) == 2 {
 			v, e = url.ParseQuery(pieces[1])

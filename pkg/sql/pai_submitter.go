@@ -18,6 +18,8 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
@@ -27,6 +29,8 @@ import (
 	"sqlflow.org/sqlflow/pkg/ir"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/pai"
 )
+
+var tarball = "job.tar.gz"
 
 type paiSubmitter struct{ *defaultSubmitter }
 
@@ -125,11 +129,36 @@ func (s *paiSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 	}
 	defer dropTmpTables([]string{cl.TmpTrainTable, cl.TmpValidateTable}, s.Session.DbConnStr)
 
-	code, e := pai.Train(cl, s.Session, cl.Into, s.Cwd)
+	ossModelPath, e := getModelPath(cl.Into, s.Session)
 	if e != nil {
 		return e
 	}
-	return s.runCommand(code)
+	scriptPath := fmt.Sprintf("file://%s/%s", s.Cwd, tarball)
+	code, paiCmd, requirements, e := pai.Train(cl, s.Session, scriptPath, cl.Into, ossModelPath, s.Cwd)
+	if e != nil {
+		return e
+	}
+	return s.submitPAITask(code, paiCmd, requirements)
+}
+
+func (s *paiSubmitter) submitPAITask(code, paiCmd, requirements string) error {
+	if e := achieveResource(s.Cwd, code, requirements, tarball); e != nil {
+		return e
+	}
+	_, datasourceName, e := database.ParseURL(s.Session.DbConnStr)
+	if e != nil {
+		return e
+	}
+	cfg, e := gomaxcompute.ParseDSN(datasourceName)
+	if e != nil {
+		return e
+	}
+
+	cmd := exec.Command("odpscmd", "-u", cfg.AccessID, "-p", cfg.AccessKey, "--project", cfg.Project, "--endpoint", cfg.Endpoint, "-e", paiCmd)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed %s, %s, %v", cmd, out, err)
+	}
+	return nil
 }
 
 func (s *paiSubmitter) ExecutePredict(cl *ir.PredictStmt) error {
@@ -155,15 +184,22 @@ func (s *paiSubmitter) ExecutePredict(cl *ir.PredictStmt) error {
 	if e := createPredictionTableFromIR(cl, s.Db, s.Session); e != nil {
 		return e
 	}
+	// note(yancey1989): Why the oss model exists indicates it's a deep model?
 	isDeepModel, err := ossModelFileExists(cl.Using)
 	if err != nil {
 		return err
 	}
-	code, e := pai.Predict(cl, s.Session, cl.Using, s.Cwd, isDeepModel)
+
+	ossModelPath, e := getModelPath(cl.Using, s.Session)
 	if e != nil {
 		return e
 	}
-	return s.runCommand(code)
+	scriptPath := fmt.Sprintf("file://%s/%s", s.Cwd, tarball)
+	code, paiCmd, requirements, e := pai.Predict(cl, s.Session, scriptPath, cl.Using, ossModelPath, s.Cwd, isDeepModel)
+	if e != nil {
+		return e
+	}
+	return s.submitPAITask(code, paiCmd, requirements)
 }
 
 func (s *paiSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
@@ -176,7 +212,12 @@ func (s *paiSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 	cl.TmpExplainTable = strings.Join([]string{dbName, tableName}, ".")
 	defer dropTmpTables([]string{cl.TmpExplainTable}, s.Session.DbConnStr)
 
-	isDeepModel, err := ossModelFileExists(cl.ModelName)
+	ossModelPath, e := getModelPath(cl.ModelName, s.Session)
+	if e != nil {
+		return e
+	}
+
+	isDeepModel, err := ossModelFileExists(ossModelPath)
 	if err != nil {
 		return err
 	}
@@ -200,22 +241,22 @@ func (s *paiSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 			return err
 		}
 	}
-
-	code, e := pai.Explain(cl, s.Session, cl.ModelName, s.Cwd, isDeepModel)
+	scriptPath := fmt.Sprintf("file://%s/%s", s.Cwd, tarball)
+	code, paiCmd, requirements, e := pai.Explain(cl, s.Session, scriptPath, cl.ModelName, ossModelPath, s.Cwd, isDeepModel)
 	if e != nil {
 		return e
 	}
-	return s.runCommand(code)
+	return s.submitPAITask(code, paiCmd, requirements)
 }
 
 func ossModelFileExists(modelName string) (bool, error) {
 	// FIXME(typhoonzero): if the model not exist on OSS, assume it's a random forest model
 	// should use a general method to fetch the model and see the model type.
-	endpoint := os.Getenv("SQLFLOW_OSS_ENDPOINT")
+	endpoint := os.Getenv("SQLFLOW_OSS_MODEL_ENDPOINT")
 	ak := os.Getenv("SQLFLOW_OSS_AK")
 	sk := os.Getenv("SQLFLOW_OSS_SK")
 	if endpoint == "" || ak == "" || sk == "" {
-		return false, fmt.Errorf("must define SQLFLOW_OSS_ENDPOINT, SQLFLOW_OSS_AK, SQLFLOW_OSS_SK when using submitter pai")
+		return false, fmt.Errorf("must define SQLFLOW_OSS_MODEL_ENDPOINT, SQLFLOW_OSS_AK, SQLFLOW_OSS_SK when using submitter maxcompute")
 	}
 	// NOTE(typhoonzero): PAI Tensorflow need SQLFLOW_OSS_CHECKPOINT_DIR, get bucket name from it
 	ossCheckpointDir := os.Getenv("SQLFLOW_OSS_CHECKPOINT_DIR")
@@ -276,6 +317,32 @@ func createExplainResultTable(db *database.DB, ir *ir.ExplainStmt, tableName str
 	}
 	if _, e := db.Exec(createStmt); e != nil {
 		return fmt.Errorf("failed executing %s: %q", createStmt, e)
+	}
+	return nil
+}
+
+func achieveResource(cwd, entryCode, requirements, tarball string) error {
+	if err := writeFile(filepath.Join(cwd, entryFile), entryCode); err != nil {
+		return err
+	}
+	if err := writeFile(filepath.Join(cwd, "requirements.txt"), requirements); err != nil {
+		return err
+	}
+
+	path, err := findPyModulePath("sqlflow_submitter")
+	if err != nil {
+		return err
+	}
+	cmd := exec.Command("cp", "-r", path, ".")
+	cmd.Dir = cwd
+	if _, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed %s, %v", cmd, err)
+	}
+
+	cmd = exec.Command("tar", "czf", tarball, "./sqlflow_submitter", entryFile, "requirements.txt")
+	cmd.Dir = cwd
+	if _, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed %s, %v", cmd, err)
 	}
 	return nil
 }

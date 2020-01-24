@@ -15,9 +15,7 @@ package pai
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -114,22 +112,28 @@ func mockSession() *pb.Session {
 	return &pb.Session{DbConnStr: "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"}
 }
 
-func TestWrapperCodegen(t *testing.T) {
+func TestGetPAICmd(t *testing.T) {
 	a := assert.New(t)
-	// cwd is used to store generated scripts
-	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
-	a.NoError(err)
-	defer os.RemoveAll(cwd)
-
+	cc := &ClusterConfig{
+		Worker: WorkerConfig{
+			Count: 1,
+			CPU:   2,
+			GPU:   0,
+		},
+		PS: PSConfig{
+			Count: 2,
+			CPU:   4,
+			GPU:   0,
+		},
+	}
 	os.Setenv("SQLFLOW_OSS_CHECKPOINT_DIR", "oss://bucket/?role_arn=xxx&host=xxx")
 	defer os.Unsetenv("SQLFLOW_OSS_CHECKPOINT_DIR")
-	// code, dataSource, modelName, cwd, tmpTrainTable, tmpValTable string, numPS, numWrokers int
-	code, err := genSubmitter("", dataSource, "my_dnn_model", cwd, "tmpTrainTable", "tmpValTable", "", mockClusterConfig(), false)
+	paiCmd, err := getTFPAICmd(cc, "file:///tmp/task.tar.gz", "my_model", "project/12345/my_model", "testdb.test", "", "testdb.result")
 	a.NoError(err)
-	a.True(strings.Contains(code, `assert driver == "maxcompute"`))
-
-	_, err = os.Stat(filepath.Join(cwd, entryFile))
+	ckpDir, err := FormatCkptDir("project/12345/my_model")
 	a.NoError(err)
+	expected := fmt.Sprintf("pai -name tensorflow1120 -DjobName=sqlflow_my_model -Dtags=dnn -Dscript=file:///tmp/task.tar.gz -DentryFile=entry.py -Dtables=odps://testdb/tables/test -Doutputs=odps://testdb/tables/result -DcheckpointDir=\"%s\"", ckpDir)
+	a.Equal(expected, paiCmd)
 }
 
 func TestTrainCodegen(t *testing.T) {
