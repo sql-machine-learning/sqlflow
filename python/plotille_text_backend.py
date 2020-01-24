@@ -121,8 +121,8 @@ class FigureCanvasPlotille(FigureCanvasAgg):
         def set_text(canvas, x, y, text):
             x_idx = canvas._transform_x(x)
             y_idx = canvas._transform_y(y)
-            x_c = x_idx // 2
-            y_c = y_idx // 4
+            x_c = max(x_idx // 2, 0)
+            y_c = max(y_idx // 4, 0)
 
             for i, c in enumerate(text):
                 canvas._canvas[y_c][x_c + i] = c
