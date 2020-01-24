@@ -279,7 +279,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseShowDatabases", CaseShowDatabases)
 	t.Run("CaseSelect", CaseSelect)
 	t.Run("CaseTrainSQL", CaseTrainSQL)
-	t.Run("CaseTrainWithCSVLabel", CaseTrainWithCSVLabel)
+	t.Run("CaseTrainWithCommaSeparatedLabel", CaseTrainWithCommaSeparatedLabel)
 
 	t.Run("CaseTrainBoostedTreesEstimatorAndExplain", CaseTrainBoostedTreesEstimatorAndExplain)
 	t.Run("CaseTrainSQLWithMetrics", CaseTrainSQLWithMetrics)
@@ -879,7 +879,7 @@ INTO sqlflow_models.my_dnn_model_custom_functional;`
 	}
 }
 
-func CaseTrainWithCSVLabel(t *testing.T) {
+func CaseTrainWithCommaSeparatedLabel(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := `select f1,f2,f3,CONCAT(f13,",", target) as class from housing.train
 TO TRAIN sqlflow_models.DNNRegressor
