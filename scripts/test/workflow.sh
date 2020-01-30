@@ -54,6 +54,7 @@ EOF
             sleep ${CHECK_INTERVAL_SECS}
         fi
     done
+    echo "end of test_couler"
     return 1
 }
 
