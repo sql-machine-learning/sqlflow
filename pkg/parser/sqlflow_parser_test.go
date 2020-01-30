@@ -162,6 +162,21 @@ func TestParseFirstSQLStatement(t *testing.T) {
 	}
 
 	{
+		// corner case: no space between two statements
+		pr, idx, e := parseFirstSQLFlowStmt(`to train a with b = c label d into e;select a from b;`)
+		a.NotNil(pr)
+		a.Equal(len(`to train a with b = c label d into e;`), idx)
+		a.NoError(e)
+	}
+
+	{
+		pr, idx, e := parseFirstSQLFlowStmt(`to train a with b = c label d into e;"`)
+		a.NotNil(pr)
+		a.Equal(len(`to train a with b = c label d into e;`), idx)
+		a.NoError(e)
+	}
+
+	{
 		pr, idx, e := parseFirstSQLFlowStmt(`to train a with b =?? c label d into e ...`)
 		a.Nil(pr)
 		a.Equal(-1, idx)

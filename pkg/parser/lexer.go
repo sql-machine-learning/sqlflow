@@ -187,7 +187,7 @@ func (l *lexer) lexString(lval *extendedSyntaxSymType) int {
 	for r := l.next(); r != '"' && r != '\''; r = l.next() {
 		if r == eof {
 			l.previous = l.start
-			// return error position
+			l.err = fmt.Errorf("unmatched quotation")
 			return -l.start
 		}
 		if r == '\\' {

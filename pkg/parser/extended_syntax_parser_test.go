@@ -170,9 +170,17 @@ func TestExtendedSyntaxParseNonSelectStmt(t *testing.T) {
 func TestExtendedSyntaxParseUnmatchedQuotation(t *testing.T) {
 	a := assert.New(t)
 	{
+		// unmatched quotation within a statement
 		r, idx, e := parseSQLFlowStmt(`TO TRAIN "some_thing`)
 		a.Error(e)
 		a.Equal(9, idx)
+		a.Nil(r)
+	}
+	{
+		// unmatched quotation right after the statement
+		r, idx, e := parseSQLFlowStmt(`to train a with b = c label d into e;"`)
+		a.Error(e)
+		a.Equal(len(`to train a with b = c label d into e;`), idx)
 		a.Nil(r)
 	}
 }
