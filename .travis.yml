@@ -33,61 +33,61 @@ install:
 jobs:
   include:
     - stage: Unitests
-      env: SQLFLOW_TEST=workflow
+      env: SQLFLOW_TEST=workflow0
       script:
         - set -e
         - bash scripts/test/setup_k8s_env.sh
         - eval $(sudo minikube docker-env) && docker pull sqlflow/sqlflow:latest && docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile . && docker tag sqlflow:latest sqlflow:submitter
         - docker run --rm --net=host -e SQLFLOW_WORKFLOW_STEP_IMAGE=sqlflow:submitter -v /var/run/docker.sock:/var/run/docker.sock -v $HOME/.kube:/root/.kube -v /home/$USER/.minikube/:/home/$USER/.minikube/ -v $GOPATH:/root/go -w /root/go/src/sqlflow.org/sqlflow sqlflow:latest bash scripts/test/workflow.sh
-    - env: SQLFLOW_TEST=workflow
+    - env: SQLFLOW_TEST=workflow1
       script:
         - set -e
         - bash scripts/test/setup_k8s_env.sh
         - eval $(sudo minikube docker-env) && docker pull sqlflow/sqlflow:latest && docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile . && docker tag sqlflow:latest sqlflow:submitter
         - docker run --rm --net=host -e SQLFLOW_WORKFLOW_STEP_IMAGE=sqlflow:submitter -v /var/run/docker.sock:/var/run/docker.sock -v $HOME/.kube:/root/.kube -v /home/$USER/.minikube/:/home/$USER/.minikube/ -v $GOPATH:/root/go -w /root/go/src/sqlflow.org/sqlflow sqlflow:latest bash scripts/test/workflow.sh
-    - env: SQLFLOW_TEST=workflow
+    - env: SQLFLOW_TEST=workflow2
       script:
         - set -e
         - bash scripts/test/setup_k8s_env.sh
         - eval $(sudo minikube docker-env) && docker pull sqlflow/sqlflow:latest && docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile . && docker tag sqlflow:latest sqlflow:submitter
         - docker run --rm --net=host -e SQLFLOW_WORKFLOW_STEP_IMAGE=sqlflow:submitter -v /var/run/docker.sock:/var/run/docker.sock -v $HOME/.kube:/root/.kube -v /home/$USER/.minikube/:/home/$USER/.minikube/ -v $GOPATH:/root/go -w /root/go/src/sqlflow.org/sqlflow sqlflow:latest bash scripts/test/workflow.sh
-    - env: SQLFLOW_TEST=workflow
+    - env: SQLFLOW_TEST=workflow3
       script:
         - set -e
         - bash scripts/test/setup_k8s_env.sh
         - eval $(sudo minikube docker-env) && docker pull sqlflow/sqlflow:latest && docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile . && docker tag sqlflow:latest sqlflow:submitter
         - docker run --rm --net=host -e SQLFLOW_WORKFLOW_STEP_IMAGE=sqlflow:submitter -v /var/run/docker.sock:/var/run/docker.sock -v $HOME/.kube:/root/.kube -v /home/$USER/.minikube/:/home/$USER/.minikube/ -v $GOPATH:/root/go -w /root/go/src/sqlflow.org/sqlflow sqlflow:latest bash scripts/test/workflow.sh
-    - env: SQLFLOW_TEST=workflow
+    - env: SQLFLOW_TEST=workflow4
       script:
         - set -e
         - bash scripts/test/setup_k8s_env.sh
         - eval $(sudo minikube docker-env) && docker pull sqlflow/sqlflow:latest && docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile . && docker tag sqlflow:latest sqlflow:submitter
         - docker run --rm --net=host -e SQLFLOW_WORKFLOW_STEP_IMAGE=sqlflow:submitter -v /var/run/docker.sock:/var/run/docker.sock -v $HOME/.kube:/root/.kube -v /home/$USER/.minikube/:/home/$USER/.minikube/ -v $GOPATH:/root/go -w /root/go/src/sqlflow.org/sqlflow sqlflow:latest bash scripts/test/workflow.sh
-    - env: SQLFLOW_TEST=workflow
+    - env: SQLFLOW_TEST=workflow5
       script:
         - set -e
         - bash scripts/test/setup_k8s_env.sh
         - eval $(sudo minikube docker-env) && docker pull sqlflow/sqlflow:latest && docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile . && docker tag sqlflow:latest sqlflow:submitter
         - docker run --rm --net=host -e SQLFLOW_WORKFLOW_STEP_IMAGE=sqlflow:submitter -v /var/run/docker.sock:/var/run/docker.sock -v $HOME/.kube:/root/.kube -v /home/$USER/.minikube/:/home/$USER/.minikube/ -v $GOPATH:/root/go -w /root/go/src/sqlflow.org/sqlflow sqlflow:latest bash scripts/test/workflow.sh
-    - env: SQLFLOW_TEST=workflow
+    - env: SQLFLOW_TEST=workflow6
       script:
         - set -e
         - bash scripts/test/setup_k8s_env.sh
         - eval $(sudo minikube docker-env) && docker pull sqlflow/sqlflow:latest && docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile . && docker tag sqlflow:latest sqlflow:submitter
         - docker run --rm --net=host -e SQLFLOW_WORKFLOW_STEP_IMAGE=sqlflow:submitter -v /var/run/docker.sock:/var/run/docker.sock -v $HOME/.kube:/root/.kube -v /home/$USER/.minikube/:/home/$USER/.minikube/ -v $GOPATH:/root/go -w /root/go/src/sqlflow.org/sqlflow sqlflow:latest bash scripts/test/workflow.sh
-    - env: SQLFLOW_TEST=workflow
+    - env: SQLFLOW_TEST=workflow7
       script:
         - set -e
         - bash scripts/test/setup_k8s_env.sh
         - eval $(sudo minikube docker-env) && docker pull sqlflow/sqlflow:latest && docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile . && docker tag sqlflow:latest sqlflow:submitter
         - docker run --rm --net=host -e SQLFLOW_WORKFLOW_STEP_IMAGE=sqlflow:submitter -v /var/run/docker.sock:/var/run/docker.sock -v $HOME/.kube:/root/.kube -v /home/$USER/.minikube/:/home/$USER/.minikube/ -v $GOPATH:/root/go -w /root/go/src/sqlflow.org/sqlflow sqlflow:latest bash scripts/test/workflow.sh
-    - env: SQLFLOW_TEST=workflow
+    - env: SQLFLOW_TEST=workflow8
       script:
         - set -e
         - bash scripts/test/setup_k8s_env.sh
         - eval $(sudo minikube docker-env) && docker pull sqlflow/sqlflow:latest && docker build --cache-from sqlflow/sqlflow:latest -t sqlflow:latest -f Dockerfile . && docker tag sqlflow:latest sqlflow:submitter
         - docker run --rm --net=host -e SQLFLOW_WORKFLOW_STEP_IMAGE=sqlflow:submitter -v /var/run/docker.sock:/var/run/docker.sock -v $HOME/.kube:/root/.kube -v /home/$USER/.minikube/:/home/$USER/.minikube/ -v $GOPATH:/root/go -w /root/go/src/sqlflow.org/sqlflow sqlflow:latest bash scripts/test/workflow.sh
-    - env: SQLFLOW_TEST=workflow
+    - env: SQLFLOW_TEST=workflow9
       script:
         - set -e
         - bash scripts/test/setup_k8s_env.sh
