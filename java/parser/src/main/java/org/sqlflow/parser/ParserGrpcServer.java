@@ -57,9 +57,31 @@ public class ParserGrpcServer {
   static class ParserImpl extends ParserGrpc.ParserImplBase {
     @Override
     public void parse(ParserRequest request, StreamObserver<ParserResponse> responseObserver) {
-      // TODO(tony): Implement this function to call actual parsers
-      ParserResponse response = ParserResponse.newBuilder().setIndex(1).build();
-      responseObserver.onNext(response);
+      if (!(request.getDialect().equals("calcite") || request.getDialect().equals("hiveql"))) {
+        ParserResponse response =
+            ParserResponse.newBuilder()
+                .setError(String.format("unrecognized dialect %s", request.getDialect()))
+                .build();
+        responseObserver.onNext(response);
+        responseObserver.onCompleted();
+        return;
+      }
+
+      ParseResult parse_result;
+      if (request.getDialect().equals("calcite")) {
+        CalciteParserAdaptor parser = new CalciteParserAdaptor();
+        parse_result = parser.ParseAndSplit(request.getSqlProgram());
+      } else {
+        HiveQLParserAdaptor parser = new HiveQLParserAdaptor();
+        parse_result = parser.ParseAndSplit(request.getSqlProgram());
+      }
+
+      ParserResponse.Builder response_builder = ParserResponse.newBuilder();
+      response_builder.addAllSqlStatements(parse_result.Statements);
+      response_builder.setIndex(parse_result.Position);
+      response_builder.setError(parse_result.Error);
+
+      responseObserver.onNext(response_builder.build());
       responseObserver.onCompleted();
     }
   }
