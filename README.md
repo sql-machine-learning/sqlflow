@@ -77,3 +77,11 @@ Your feedback is our motivation to move on. Please let us know your questions, c
 ## License
 
 [Apache License 2.0](https://github.com/sql-machine-learning/sqlflow/blob/develop/LICENSE)
+
+## Published
+
+- An arXiv paper at https://arxiv.org/abs/2001.06846
+- Demo Videos
+  1. 01/19/2020: https://www.youtube.com/watch?v=qUjQn7ePbto
+  1. 10/04/2019: https://www.youtube.com/watch?v=zIkwOQ_davw
+  1. 04/01/2019: https://www.youtube.com/watch?v=zIkwOQ_davw
