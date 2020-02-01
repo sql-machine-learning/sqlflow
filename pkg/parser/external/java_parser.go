@@ -14,18 +14,16 @@
 package external
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
-	"io/ioutil"
+	"google.golang.org/grpc"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"sqlflow.org/sqlflow/pkg/proto"
+	"time"
 )
 
 type javaParser struct {
-	// TODO(yi): As we are going to replace the command-line
-	// parser adaptor to gRPC servers, we will need to add gRPC
-	// clients here.
 	typ string
 }
 
@@ -34,56 +32,69 @@ func newJavaParser(typ string) *javaParser {
 	return &javaParser{typ: typ}
 }
 
-type parseResult struct {
-	Statements []string `json:"statements"`
-	Position   int      `json:"position"`
-	Error      string   `json:"error"`
+func getServerAddress() string {
+	ip := getEnv("SQLFLOW_EXTERNAL_PARSER_IP", "localhost")
+	port := getEnv("SQLFLOW_EXTERNAL_PARSER_PORT", "12345")
+	return fmt.Sprintf("%s:%s", ip, port)
 }
 
-func (p *javaParser) Dialect() string {
-	return "java"
+func isServerUp(address string) bool {
+	cmd := exec.Command("curl", "-v", address)
+	if err := cmd.Run(); err != nil {
+		return false
+	}
+	return true
+}
+
+func startServerIfNotUp() error {
+	address := getServerAddress()
+	if isServerUp(address) {
+		return nil
+	}
+
+	port := getEnv("SQLFLOW_EXTERNAL_PARSER_PORT", "12345")
+	cmd := exec.Command("java",
+		"-cp", "/opt/sqlflow/parser/parser-1.0-SNAPSHOT-jar-with-dependencies.jar",
+		"org.sqlflow.parser.ParserGrpcServer",
+		"-p", port)
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+
+	for i := 0; i < 3; i++ {
+		time.Sleep(time.Second)
+		if isServerUp(address) {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("unable to start external parser service")
 }
 
 func (p *javaParser) Parse(program string) ([]string, int, error) {
-	// cwd is used to store train scripts and save output models.
-	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
+	if err := startServerIfNotUp(); err != nil {
+		return nil, -1, err
+	}
+
+	c, err := grpc.Dial(getServerAddress(), grpc.WithInsecure())
 	if err != nil {
 		return nil, -1, err
 	}
-	defer os.RemoveAll(cwd)
+	defer c.Close()
 
-	inputFile := filepath.Join(cwd, "input.sql")
-	outputFile := filepath.Join(cwd, "output.json")
-	if err := ioutil.WriteFile(inputFile, []byte(program), 0755); err != nil {
-		return nil, -1, err
-	}
-
-	// TODO(yi): It is very expensive to start a Java process.  It
-	// slows down SQLFlow server's QPS if for every parsing
-	// operation, we'd have to start a Java process.
-	cmd := exec.Command("java",
-		"-cp", "/opt/sqlflow/parser/parser-1.0-SNAPSHOT-jar-with-dependencies.jar",
-		"org.sqlflow.parser.ParserAdaptorCmd",
-		"-p", p.typ,
-		"-i", inputFile,
-		"-o", outputFile)
-	if output, err := cmd.CombinedOutput(); err != nil {
-		return nil, -1, fmt.Errorf("%s %v", output, err)
-	}
-
-	output, err := ioutil.ReadFile(outputFile)
+	r, err := proto.NewParserClient(c).Parse(context.Background(), &proto.ParserRequest{Dialect: p.typ, SqlProgram: program})
 	if err != nil {
 		return nil, -1, err
 	}
-
-	var pr parseResult
-	if err = json.Unmarshal(output, &pr); err != nil {
-		return nil, -1, err
+	if r.Error != "" {
+		return nil, -1, fmt.Errorf(r.Error)
 	}
+	return r.SqlStatements, int(r.Index), nil
+}
 
-	if pr.Error != "" {
-		return nil, -1, fmt.Errorf(pr.Error)
+func getEnv(name, fallback string) string {
+	if os.Getenv(name) != "" {
+		return os.Getenv(name)
 	}
-
-	return pr.Statements, pr.Position, nil
+	return fallback
 }

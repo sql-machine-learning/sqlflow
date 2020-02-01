@@ -6,6 +6,7 @@ import io.grpc.stub.StreamObserver;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
+import org.apache.commons.cli.*;
 import org.sqlflow.parser.ParserProto.ParserRequest;
 import org.sqlflow.parser.ParserProto.ParserResponse;
 
@@ -83,6 +84,30 @@ public class ParserGrpcServer {
 
       responseObserver.onNext(response_builder.build());
       responseObserver.onCompleted();
+    }
+  }
+
+  public static void main(String[] args) {
+    Options options = new Options();
+    options.addRequiredOption("p", "port", true, "port number");
+
+    CommandLine line = null;
+    try {
+      CommandLineParser parser = new DefaultParser();
+      line = parser.parse(options, args);
+    } catch (ParseException e) {
+      HelpFormatter formatter = new HelpFormatter();
+      formatter.printHelp("Parser Command Line", options);
+      System.exit(1);
+    }
+
+    try {
+      ParserGrpcServer server = new ParserGrpcServer(Integer.parseInt(line.getOptionValue("p")));
+      server.start();
+      server.blockUntilShutdown();
+    } catch (Exception e) {
+      System.err.println("start server failed");
+      System.exit(1);
     }
   }
 }

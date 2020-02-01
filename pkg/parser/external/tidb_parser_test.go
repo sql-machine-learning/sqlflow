@@ -21,13 +21,13 @@ import (
 
 func TestExternalParserCommonCasesForMySQL(t *testing.T) {
 	a := assert.New(t)
-	p := NewParser("mysql")
+	p, _ := NewParser("mysql")
 	commonThirdPartyCases(p, a)
 }
 
 func TestExternalParserCommonCasesForTiDB(t *testing.T) {
 	a := assert.New(t)
-	p := NewParser("tidb")
+	p, _ := NewParser("tidb")
 	commonThirdPartyCases(p, a)
 }
 
