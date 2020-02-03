@@ -70,6 +70,7 @@ func dropTmpTables(tableNames []string, dataSource string) error {
 		return err
 	}
 	for _, tbName := range tableNames {
+		log.Printf("drop tmp table %s", tbName)
 		if tbName != "" {
 			_, err = db.Exec(fmt.Sprintf("DROP TABLE %s", tbName))
 			if err != nil {
@@ -223,7 +224,9 @@ func (s *paiSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 	}
 	// format resultTable name to "db.table" to let the codegen form a submitting
 	// argument of format "odps://project/tables/table_name"
-	if cl.Into != "" {
+	// ModelTypeRandomForests do not need to create explain result manually, PAI will
+	// create the result table.
+	if cl.Into != "" && modelType != pai.ModelTypeRandomForests {
 		resultTableParts := strings.Split(cl.Into, ".")
 		if len(resultTableParts) == 1 {
 			dbName, err := getDatabaseNameFromDSN(s.Session.DbConnStr)
@@ -345,6 +348,8 @@ func createExplainResultTable(db *database.DB, ir *ir.ExplainStmt, tableName str
 			}
 			createStmt = fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s (%s);`, tableName, strings.Join(columnDefList, ","))
 		}
+	} else {
+		return fmt.Errorf("not supported modelType %d for creating Explain result table", modelType)
 	}
 	if _, e := db.Exec(createStmt); e != nil {
 		return fmt.Errorf("failed executing %s: %q", createStmt, e)

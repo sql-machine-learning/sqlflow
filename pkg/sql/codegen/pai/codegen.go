@@ -172,13 +172,8 @@ func getTrainRandomForestsPAICmd(ir *ir.TrainStmt, session *pb.Session) (string,
 		}
 	}
 
-	inputTables, e := formatODPSTables(ir.TmpTrainTable)
-	if e != nil {
-		return "", e
-	}
-
 	return fmt.Sprintf(`pai -name randomforests -DinputTableName="%s" -DmodelName="%s" -DlabelColName="%s" -DfeatureColNames="%s" -DtreeNum="%d"`,
-		inputTables, ir.Into, ir.Label.GetFieldDesc()[0].Name, strings.Join(featureCols, ","), treeNum), nil
+		ir.TmpTrainTable, ir.Into, ir.Label.GetFieldDesc()[0].Name, strings.Join(featureCols, ","), treeNum), nil
 }
 
 // getColumnTypes is quiet like verify but accept a SQL string as input, and returns
@@ -308,7 +303,7 @@ func getPredictRandomForestsPAICmd(ir *ir.PredictStmt, session *pb.Session) (str
 	// drop result table if exists
 	db.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s;", ir.ResultTable))
 
-	return fmt.Sprintf(`pai -name prediction -DmodelName="%s" -DinputTableName="%s" -DoutputTable="%s" -DfeatureColNames="%s"`,
+	return fmt.Sprintf(`pai -name prediction -DmodelName="%s" -DinputTableName="%s" -DoutputTableName="%s" -DfeatureColNames="%s"`,
 		ir.Using, ir.TmpPredictTable, ir.ResultTable, strings.Join(flds, ",")), nil
 }
 
@@ -437,16 +432,19 @@ func Explain(ir *ir.ExplainStmt, session *pb.Session, tarball, modelName, ossMod
 		return "", "", "", err
 	}
 	if modelType == ModelTypeRandomForests {
-		log.Printf("predicting using pai random forests")
+		requirements, e = genRequirements(false)
+		log.Printf("explain using pai random forests")
 		if paiCmd, e = getExplainRandomForestsPAICmd(ir, session); e != nil {
 			return
 		}
 	} else if modelType == ModelTypeXGBoost {
+		requirements, e = genRequirements(true)
+		log.Printf("explain using pai xgboost")
 		if code, e = xgboost.Explain(ir, session); e != nil {
 			return
 		}
-		cc, err := GetClusterConfig(ir.Attributes)
-		if err != nil {
+		cc, e = GetClusterConfig(ir.Attributes)
+		if e != nil {
 			return
 		}
 		// NOTE(typhoonzero): submit a PAI TF job to install xgboost and run.
@@ -454,14 +452,14 @@ func Explain(ir *ir.ExplainStmt, session *pb.Session, tarball, modelName, ossMod
 			return
 		}
 	} else {
+		requirements, e = genRequirements(false)
 		// run explain PAI TF
-		if code, e = TFLoadAndExplain(ir, session, modelName); e != nil {
+		if code, e = TFLoadAndExplain(ir, session, ossModelPath); e != nil {
 			return
 		}
-		if paiCmd, e = getTFPAICmd(cc, modelName, tarball, ossModelPath, ir.TmpExplainTable, "", ir.Into); e != nil {
+		if paiCmd, e = getTFPAICmd(cc, tarball, modelName, ossModelPath, ir.TmpExplainTable, "", ir.Into); e != nil {
 			return
 		}
 	}
-	requirements, e = genRequirements(false)
 	return
 }
