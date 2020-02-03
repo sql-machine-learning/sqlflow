@@ -109,31 +109,10 @@ func mockClusterConfig() *ClusterConfig {
 }
 
 func mockSession() *pb.Session {
-	return &pb.Session{DbConnStr: "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"}
-}
-
-func TestGetPAICmd(t *testing.T) {
-	a := assert.New(t)
-	cc := &ClusterConfig{
-		Worker: WorkerConfig{
-			Count: 1,
-			CPU:   2,
-			GPU:   0,
-		},
-		PS: PSConfig{
-			Count: 2,
-			CPU:   4,
-			GPU:   0,
-		},
+	return &pb.Session{
+		DbConnStr: "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0",
+		UserId:    "sqlflow",
 	}
-	os.Setenv("SQLFLOW_OSS_CHECKPOINT_DIR", "oss://bucket/?role_arn=xxx&host=xxx")
-	defer os.Unsetenv("SQLFLOW_OSS_CHECKPOINT_DIR")
-	paiCmd, err := getTFPAICmd(cc, "file:///tmp/task.tar.gz", "my_model", "project/12345/my_model", "testdb.test", "", "testdb.result")
-	a.NoError(err)
-	ckpDir, err := FormatCkptDir("project/12345/my_model")
-	a.NoError(err)
-	expected := fmt.Sprintf("pai -name tensorflow1120 -DjobName=sqlflow_my_model -Dtags=dnn -Dscript=file:///tmp/task.tar.gz -DentryFile=entry.py -Dtables=odps://testdb/tables/test -Doutputs=odps://testdb/tables/result -DcheckpointDir=\"%s\"", ckpDir)
-	a.Equal(expected, paiCmd)
 }
 
 func TestTrainCodegen(t *testing.T) {
@@ -144,15 +123,23 @@ func TestTrainCodegen(t *testing.T) {
 	defer os.Unsetenv("SQLFLOW_OSS_CHECKPOINT_DIR")
 
 	sess := mockSession()
-	paiTfCode, err := TFTrainAndSave(trainStmt, sess, "my_dnn_model", mockClusterConfig())
-	a.NoError(err)
+	ossModelPath := "iris/sqlflow/my_dnn_model"
+	scriptPath := "file:///tmp/task.tar.gz"
+	paiTFCode, paiCmd, _, e := Train(trainStmt, sess, scriptPath, "my_dnn_model", ossModelPath, "")
+	a.NoError(e)
 
 	tfCode, err := tensorflow.Train(trainStmt, sess)
 	a.NoError(err)
 
-	a.True(strings.HasPrefix(paiTfCode, tfCode))
+	a.True(strings.HasPrefix(paiTFCode, tfCode))
 	a.True(hasExportedLocal(tfCode))
-	a.False(hasUnknownParameters(paiTfCode, knownTrainParams))
+	a.False(hasUnknownParameters(paiTFCode, knownTrainParams))
+
+	// check pai command string
+	ckpDir, err := FormatCkptDir(ossModelPath)
+	a.NoError(err)
+	expectedPAICmd := fmt.Sprintf("pai -name tensorflow1120 -DjobName=sqlflow_my_dnn_model -Dtags=dnn -Dscript=%s -DentryFile=entry.py -Dtables=odps://iris/tables/train,odps://iris/tables/test  -DcheckpointDir=\"%s\"", scriptPath, ckpDir)
+	a.Equal(expectedPAICmd, paiCmd)
 }
 
 func TestPredictCodegen(t *testing.T) {
@@ -162,24 +149,18 @@ func TestPredictCodegen(t *testing.T) {
 	os.Setenv("SQLFLOW_OSS_CHECKPOINT_DIR", "oss://bucket/?role_arn=xxx&host=xxx")
 	defer os.Unsetenv("SQLFLOW_OSS_CHECKPOINT_DIR")
 	sess := mockSession()
-	paiTfCode, err := TFLoadAndPredict(ir, sess, "my_dnn_model")
+	ossModelPath := "iris/sqlflow/my_dnn_model"
+	scriptPath := "file:///tmp/task.tar.gz"
+	ckpDir, err := FormatCkptDir(ossModelPath)
 	a.NoError(err)
-	a.False(hasUnknownParameters(paiTfCode, knownPredictParams))
-
-	session := &pb.Session{
-		Token:            "",
-		DbConnStr:        "",
-		ExitOnSubmit:     false,
-		UserId:           "",
-		HiveLocation:     "/sqlflowtmp",
-		HdfsNamenodeAddr: "192.168.1.1:8020",
-		HdfsUser:         "sqlflow_admin",
-		HdfsPass:         "sqlflow_pass",
-	}
-
-	tfCode, err := tensorflow.Pred(ir, session)
+	paiTFCode, paiCmd, _, e := Predict(ir, sess, scriptPath, "my_dnn_model", ossModelPath, "", true)
+	a.NoError(e)
+	a.False(hasUnknownParameters(paiTFCode, knownPredictParams))
+	tfCode, err := tensorflow.Pred(ir, sess)
 	a.NoError(err)
 
 	a.True(hasExportedLocal(tfCode))
 	a.False(hasUnknownParameters(tfCode, knownPredictParams))
+	expectedPAICmd := fmt.Sprintf("pai -name tensorflow1120 -DjobName=sqlflow_my_dnn_model -Dtags=dnn -Dscript=%s -DentryFile=entry.py -Dtables=odps://iris/tables/predict -Doutputs=odps://iris/tables/predict -DcheckpointDir=\"%s\"", scriptPath, ckpDir)
+	a.Equal(expectedPAICmd, paiCmd)
 }
