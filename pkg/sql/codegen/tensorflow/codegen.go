@@ -275,6 +275,7 @@ func constructLosses(trainStmt *ir.TrainStmt) {
 }
 
 func initializeAttributes(trainStmt *ir.TrainStmt) error {
+	attribute.ExtractDocStringsOnce()
 	commonAttributes.FillDefaults(trainStmt.Attributes)
 
 	modelAttr := attribute.NewDictionaryFromModelDefinition(trainStmt.Estimator, "model.")

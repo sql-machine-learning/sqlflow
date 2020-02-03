@@ -45,6 +45,8 @@ func TestDictionaryValidate(t *testing.T) {
 func TestPremadeModelParamsDocs(t *testing.T) {
 	a := assert.New(t)
 
+	a.Equal(11, len(PremadeModelParamsDocs))
+	ExtractDocStringsOnce()
 	a.Equal(18, len(PremadeModelParamsDocs))
 	a.Equal(len(PremadeModelParamsDocs["DNNClassifier"]), 12)
 	a.NotContains(PremadeModelParamsDocs["DNNClassifier"], "feature_columns")
