@@ -16,12 +16,7 @@ package external
 import (
 	"context"
 	"fmt"
-	"github.com/prometheus/common/log"
-	"google.golang.org/grpc"
-	"os"
-	"os/exec"
 	"sqlflow.org/sqlflow/pkg/proto"
-	"time"
 )
 
 type javaParser struct {
@@ -33,59 +28,11 @@ func newJavaParser(typ string) *javaParser {
 	return &javaParser{typ: typ}
 }
 
-func getServerPort() string {
-	port := os.Getenv("SQLFLOW_PARSER_SERVER_PORT")
-	if port == "" {
-		log.Fatal("undefined environment variable SQLFLOW_PARSER_SERVER_PORT")
-	}
-	return port
-}
-
-func getServerAddress() string {
-	return fmt.Sprintf(":%s", getServerPort())
-}
-
-func isServerUp() bool {
-	cmd := exec.Command("curl", "-v", fmt.Sprintf("localhost:%s", getServerPort()))
-	if err := cmd.Run(); err != nil {
-		return false
-	}
-	return true
-}
-
-func startServerIfNotUp() error {
-	if isServerUp() {
-		return nil
-	}
-
-	cmd := exec.Command("java",
-		"-cp", "/opt/sqlflow/parser/parser-1.0-SNAPSHOT-jar-with-dependencies.jar",
-		"org.sqlflow.parser.ParserGrpcServer",
-		"-p", getServerPort())
-	if err := cmd.Start(); err != nil {
-		return err
-	}
-
-	for i := 0; i < 3; i++ {
-		time.Sleep(time.Second)
-		if isServerUp() {
-			return nil
-		}
-	}
-
-	return fmt.Errorf("unable to start external parser service")
-}
-
 func (p *javaParser) Parse(program string) ([]string, int, error) {
-	if err := startServerIfNotUp(); err != nil {
-		return nil, -1, err
-	}
-
-	c, err := grpc.Dial(getServerAddress(), grpc.WithInsecure())
+	c, err := connectToServer()
 	if err != nil {
 		return nil, -1, err
 	}
-	defer c.Close()
 
 	r, err := proto.NewParserClient(c).Parse(context.Background(), &proto.ParserRequest{Dialect: p.typ, SqlProgram: program})
 	if err != nil {
