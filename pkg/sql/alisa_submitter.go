@@ -107,13 +107,13 @@ func (s *alisaSubmitter) ExecutePredict(ps *ir.PredictStmt) error {
 	if e != nil {
 		return e
 	}
-	isDeepModel, e := ossModelFileExists(ossModelPath)
+	modelType, _, e := getOSSSavedModelType(ossModelPath)
 	if e != nil {
 		return e
 	}
 
 	scriptPath := fmt.Sprintf("file://@@%s", resourceName)
-	code, paiCmd, requirements, e := pai.Predict(ps, s.Session, scriptPath, ps.Using, ossModelPath, s.Cwd, isDeepModel)
+	code, paiCmd, requirements, e := pai.Predict(ps, s.Session, scriptPath, ps.Using, ossModelPath, s.Cwd, modelType)
 	if e != nil {
 		return e
 	}

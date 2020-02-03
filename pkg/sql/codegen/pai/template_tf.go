@@ -43,8 +43,9 @@ type requirementsFiller struct {
 
 const tfSaveModelTmplText = `
 from sqlflow_submitter.pai import model
-model.save("{{.OSSModelDir}}",
+model.save_metas("{{.OSSModelDir}}",
            {{.NumWorkers}},
+           "tensorflow_model_desc",
            "{{.Estimator}}",
            feature_column_names,
            feature_metas,
@@ -56,7 +57,7 @@ model.save("{{.OSSModelDir}}",
 const paiRequirementsTmplText = `
 shap==0.28.5
 seaborn==0.9.0
-{{if .IsXGboost}}
+{{if .IsXGBoost}}
 xgboost==0.82
 {{end}}
 `
@@ -76,7 +77,7 @@ except:
  feature_metas,
  label_meta,
  model_params,
- feature_columns) = model.load("{{.OSSModelDir}}")
+ feature_columns) = model.load_metas("{{.OSSModelDir}}", "tensorflow_model_desc")
 
 predict.pred(datasource="{{.DataSource}}",
              estimator=eval(estimator),
@@ -110,7 +111,7 @@ feature_column_names,
 feature_metas,
 label_meta,
 model_params,
-feature_columns) = model.load("{{.OSSModelDir}}")
+feature_columns) = model.load_metas("{{.OSSModelDir}}", "tensorflow_model_desc")
  
 explain.explain(datasource="{{.DataSource}}",
                 estimator_cls=eval(estimator),

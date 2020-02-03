@@ -31,6 +31,15 @@ import (
 	"sqlflow.org/sqlflow/pkg/verifier"
 )
 
+const (
+	// ModelTypeTF is the mode type that trained by PAI Tensorflow.
+	ModelTypeTF = iota
+	// ModelTypeRandomForests is the model type that trained by PAI random forests.
+	ModelTypeRandomForests
+	// ModelTypeXGBoost is the model type that use PAI Tensorflow to train XGBoost models.
+	ModelTypeXGBoost
+)
+
 const entryFile = "entry.py"
 
 // PSConfig implicates Parameter Server Config
@@ -146,7 +155,7 @@ func getTFPAICmd(cc *ClusterConfig, tarball, modelName, ossModelPath, trainTable
 	if cc.Worker.Count > 1 {
 		return fmt.Sprintf("pai -name tensorflow1120 -DjobName=%s -Dtags=dnn -Dscript=%s -DentryFile=entry.py -Dtables=%s %s -DcheckpointDir=\"%s\" -Dcluster=%s", jobName, tarball, submitTables, outputTables, ckpDir, cfQuote), nil
 	}
-	return fmt.Sprintf("pai -name tensorflow1120 -DjobName=%s -Dtags=dnn -Dscript=%s -DentryFile=entry.py -Dtables=%s %s -DcheckpointDir=\"%s\"", jobName, tarball, submitTables, outputTables, ckpDir), nil
+	return fmt.Sprintf("pai -name tensorflow1120 -DjobName=%s -Dtags=dnn -DgpuRequired='' -Dscript=%s -DentryFile=entry.py -Dtables=%s %s -DcheckpointDir=\"%s\"", jobName, tarball, submitTables, outputTables, ckpDir), nil
 }
 
 func getTrainRandomForestsPAICmd(ir *ir.TrainStmt, session *pb.Session) (string, error) {
@@ -229,11 +238,16 @@ func Train(ir *ir.TrainStmt, session *pb.Session, tarball, modelName, ossModelPa
 		if paiCmd, e = getTrainRandomForestsPAICmd(ir, session); e != nil {
 			return
 		}
-		requirements, e = genRequirements(false)
 	} else if strings.HasPrefix(strings.ToLower(ir.Estimator), "xgboost") {
 		if code, e = xgboost.Train(ir, session); e != nil {
 			return
 		}
+		var tpl = template.Must(template.New("xgbSaveModel").Parse(xgbSaveModelTmplText))
+		var saveCode bytes.Buffer
+		if e = tpl.Execute(&saveCode, &xgbSaveModelFiller{OSSModelDir: ossModelPath}); e != nil {
+			return
+		}
+		code = code + saveCode.String()
 		if cc.Worker.Count > 1 {
 			return "", "", "", fmt.Errorf("when running xgboost on PAI, we only support run with one worker")
 		}
@@ -299,10 +313,22 @@ func getPredictRandomForestsPAICmd(ir *ir.PredictStmt, session *pb.Session) (str
 }
 
 // Predict generates a Python program for train a TensorFlow model.
-func Predict(ir *ir.PredictStmt, session *pb.Session, tarball, modelName, ossModelPath, cwd string, isDeepModel bool) (code, paiCmd, requirements string, e error) {
-	if !isDeepModel {
+func Predict(ir *ir.PredictStmt, session *pb.Session, tarball, modelName, ossModelPath, cwd string, modelType int) (code, paiCmd, requirements string, e error) {
+	if modelType == ModelTypeRandomForests {
 		log.Printf("predicting using pai random forests")
 		if paiCmd, e = getPredictRandomForestsPAICmd(ir, session); e != nil {
+			return
+		}
+	} else if modelType == ModelTypeXGBoost {
+		if code, e = xgboost.Pred(ir, session); e != nil {
+			return
+		}
+		cc, err := GetClusterConfig(ir.Attributes)
+		if err != nil {
+			return
+		}
+		// NOTE(typhoonzero): submit a PAI TF job to install xgboost and run.
+		if paiCmd, e = getTFPAICmd(cc, tarball, modelName, ossModelPath, ir.TmpPredictTable, "", ir.ResultTable); e != nil {
 			return
 		}
 	} else {
@@ -402,7 +428,7 @@ func TFLoadAndExplain(ir *ir.ExplainStmt, session *pb.Session, modelPath string)
 }
 
 // Explain generates a Python program for train a TensorFlow model.
-func Explain(ir *ir.ExplainStmt, session *pb.Session, tarball, modelName, ossModelPath, cwd string, isDeepModel bool) (code, paiCmd, requirements string, e error) {
+func Explain(ir *ir.ExplainStmt, session *pb.Session, tarball, modelName, ossModelPath, cwd string, modelType int) (code, paiCmd, requirements string, e error) {
 	if ir.Into == "" {
 		return "", "", "", fmt.Errorf("explain PAI random forests model need INTO clause to output the explain result to a table")
 	}
@@ -410,9 +436,21 @@ func Explain(ir *ir.ExplainStmt, session *pb.Session, tarball, modelName, ossMod
 	if err != nil {
 		return "", "", "", err
 	}
-	if !isDeepModel {
+	if modelType == ModelTypeRandomForests {
 		log.Printf("predicting using pai random forests")
 		if paiCmd, e = getExplainRandomForestsPAICmd(ir, session); e != nil {
+			return
+		}
+	} else if modelType == ModelTypeXGBoost {
+		if code, e = xgboost.Explain(ir, session); e != nil {
+			return
+		}
+		cc, err := GetClusterConfig(ir.Attributes)
+		if err != nil {
+			return
+		}
+		// NOTE(typhoonzero): submit a PAI TF job to install xgboost and run.
+		if paiCmd, e = getTFPAICmd(cc, tarball, modelName, ossModelPath, ir.TmpExplainTable, "", ir.Into); e != nil {
 			return
 		}
 	} else {
