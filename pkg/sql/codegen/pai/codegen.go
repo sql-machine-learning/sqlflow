@@ -237,9 +237,13 @@ func Train(ir *ir.TrainStmt, session *pb.Session, tarball, modelName, ossModelPa
 		if code, e = xgboost.Train(ir, session); e != nil {
 			return
 		}
+		var ossURI string
+		if ossURI, e = FormatCkptDir(ossModelPath); e != nil {
+			return
+		}
 		var tpl = template.Must(template.New("xgbSaveModel").Parse(xgbSaveModelTmplText))
 		var saveCode bytes.Buffer
-		if e = tpl.Execute(&saveCode, &xgbSaveModelFiller{OSSModelDir: ossModelPath}); e != nil {
+		if e = tpl.Execute(&saveCode, &xgbSaveModelFiller{OSSModelDir: ossURI}); e != nil {
 			return
 		}
 		code = code + saveCode.String()

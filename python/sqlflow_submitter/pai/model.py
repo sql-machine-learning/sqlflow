@@ -34,7 +34,11 @@ def save_file(oss_model_dir, file_name):
     '''
     Save the local file to OSS direcotory using GFile.
     '''
+    print("creating oss dirs: %s" % oss_model_dir)
     oss_path = get_oss_path_from_uri(oss_model_dir, file_name)
+    oss_dir = oss_model_dir.split("?")[0]
+    print("creating oss dirs: %s" % oss_dir)
+    gfile.MakeDirs(oss_dir)
     fn = open(file_name, "r")
     writer = gfile.GFile(oss_path, mode='w')
     while True:

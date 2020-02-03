@@ -24,6 +24,7 @@ model.save_file("{{.OSSModelDir}}", "my_model")
 model.save_metas("{{.OSSModelDir}}",
 		   1,
 		   "xgboost_model_desc",
+		   "", # estimator = ""
            model_params,
            train_params,
            feature_field_meta,
@@ -31,9 +32,27 @@ model.save_metas("{{.OSSModelDir}}",
 `
 
 const xgbLoadModelTmplText = `
+
+`
+
+const predTemplateText = `
+import json
+from sqlflow_submitter.xgboost.predict import pred
 from sqlflow_submitter.pai import model
+
 # NOTE(typhoonzero): the xgboost model file "my_model" is hard coded in xgboost/train.py
 model.load_file("{{.OSSModelDir}}", "my_model")
-model_params, train_params,
+estimator, model_params, train_params,
 feature_field_meta, label_field_meta = model.load_metas("{{.OSSModelDir}}", "xgboost_model_desc")
+
+
+pred(datasource='''{{.DataSource}}''',
+     select='''{{.PredSelect}}''',
+     feature_field_meta=feature_field_meta,
+     label_field_meta=label_field_meta,
+     result_table='''{{.ResultTable}}''',
+     hdfs_namenode_addr='''{{.HDFSNameNodeAddr}}''',
+     hive_location='''{{.HiveLocation}}''',
+     hdfs_user='''{{.HDFSUser}}''',
+     hdfs_pass='''{{.HDFSPass}}''')
 `
