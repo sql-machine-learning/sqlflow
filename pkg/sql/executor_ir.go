@@ -95,7 +95,7 @@ func SubmitWorkflow(sqlProgram string, modelDir string, session *pb.Session) *pi
 }
 
 // ResolveSQLProgram accepts parse result from parser and returns a list of SQLFlowStmt
-func ResolveSQLProgram(sqlStmts []*parser.SQLFlowStmt, datasource, modelDir string, loadModel bool) ([]ir.SQLFlowStmt, error) {
+func ResolveSQLProgram(sqlStmts []*parser.SQLFlowStmt) ([]ir.SQLFlowStmt, error) {
 	spIRs := []ir.SQLFlowStmt{}
 	var err error
 	for _, sql := range sqlStmts {
@@ -105,9 +105,9 @@ func ResolveSQLProgram(sqlStmts []*parser.SQLFlowStmt, datasource, modelDir stri
 				r, err = generateTrainStmt(sql.SQLFlowSelectStmt)
 			} else if sql.Explain {
 				// since getTrainStmtFromModel is false, use empty cwd is fine.
-				r, err = generateExplainStmt(sql.SQLFlowSelectStmt, datasource, modelDir, "", loadModel)
+				r, err = generateExplainStmt(sql.SQLFlowSelectStmt, "", "", "", false)
 			} else {
-				r, err = generatePredictStmt(sql.SQLFlowSelectStmt, datasource, modelDir, "", loadModel)
+				r, err = generatePredictStmt(sql.SQLFlowSelectStmt, "", "", "", false)
 			}
 		} else {
 			standardSQL := ir.NormalStmt(sql.Original)
@@ -131,7 +131,7 @@ func submitWorkflow(wr *pipe.Writer, sqlProgram string, modelDir string, session
 	if err != nil {
 		return "", err
 	}
-	spIRs, err := ResolveSQLProgram(stmts, session.DbConnStr, modelDir, false)
+	spIRs, err := ResolveSQLProgram(stmts)
 	if err != nil {
 		return "", err
 	}

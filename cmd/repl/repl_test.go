@@ -29,13 +29,14 @@ import (
 
 	"github.com/c-bata/go-prompt"
 	"sqlflow.org/sqlflow/pkg/database"
+	"sqlflow.org/sqlflow/pkg/sql"
 	"sqlflow.org/sqlflow/pkg/sql/testdata"
 )
 
 var space = regexp.MustCompile(`\s+`)
 var dbConnStr = "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
 var testDBDriver = os.Getenv("SQLFLOW_TEST_DB")
-var session = makeSessionFromEnv()
+var session = sql.MakeSessionFromEnv()
 
 func prepareTestDataOrSkip(t *testing.T) error {
 	assertConnectable(dbConnStr)

@@ -36,7 +36,7 @@ func compile(cgName, sqlProgram, datasource string) (string, error) {
 	}
 	switch cgName {
 	case "couler":
-		spIRs, err := sql.ResolveSQLProgram(stmts, datasource, "", false)
+		spIRs, err := sql.ResolveSQLProgram(stmts)
 		if err != nil {
 			return "", err
 		}
