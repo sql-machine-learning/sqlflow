@@ -79,6 +79,7 @@ RUN /install-jupyter.bash
 # Build SQLFlow, copy sqlflow_submitter, install Java parser (129 MB), convert tutorial markdown to ipython notebook
 ENV SQLFLOWPATH $GOPATH/src/sqlflow.org/sqlflow
 ENV PYTHONPATH $SQLFLOWPATH/python
+ENV SQLFLOW_PARSER_SERVER_PORT 12300
 COPY . $SQLFLOWPATH
 RUN cd $SQLFLOWPATH && \
 go generate ./... && \

@@ -16,6 +16,7 @@ package external
 import (
 	"context"
 	"fmt"
+	"github.com/prometheus/common/log"
 	"google.golang.org/grpc"
 	"os"
 	"os/exec"
@@ -32,14 +33,20 @@ func newJavaParser(typ string) *javaParser {
 	return &javaParser{typ: typ}
 }
 
-func getServerAddress() string {
-	ip := getEnv("SQLFLOW_EXTERNAL_PARSER_IP", "localhost")
-	port := getEnv("SQLFLOW_EXTERNAL_PARSER_PORT", "12345")
-	return fmt.Sprintf("%s:%s", ip, port)
+func getServerPort() string {
+	port := os.Getenv("SQLFLOW_PARSER_SERVER_PORT")
+	if port == "" {
+		log.Fatal("undefined environment variable SQLFLOW_PARSER_SERVER_PORT")
+	}
+	return port
 }
 
-func isServerUp(address string) bool {
-	cmd := exec.Command("curl", "-v", address)
+func getServerAddress() string {
+	return fmt.Sprintf(":%s", getServerPort())
+}
+
+func isServerUp() bool {
+	cmd := exec.Command("curl", "-v", fmt.Sprintf("localhost:%s", getServerPort()))
 	if err := cmd.Run(); err != nil {
 		return false
 	}
@@ -47,23 +54,21 @@ func isServerUp(address string) bool {
 }
 
 func startServerIfNotUp() error {
-	address := getServerAddress()
-	if isServerUp(address) {
+	if isServerUp() {
 		return nil
 	}
 
-	port := getEnv("SQLFLOW_EXTERNAL_PARSER_PORT", "12345")
 	cmd := exec.Command("java",
 		"-cp", "/opt/sqlflow/parser/parser-1.0-SNAPSHOT-jar-with-dependencies.jar",
 		"org.sqlflow.parser.ParserGrpcServer",
-		"-p", port)
+		"-p", getServerPort())
 	if err := cmd.Start(); err != nil {
 		return err
 	}
 
 	for i := 0; i < 3; i++ {
 		time.Sleep(time.Second)
-		if isServerUp(address) {
+		if isServerUp() {
 			return nil
 		}
 	}
@@ -90,11 +95,4 @@ func (p *javaParser) Parse(program string) ([]string, int, error) {
 		return nil, -1, fmt.Errorf(r.Error)
 	}
 	return r.SqlStatements, int(r.Index), nil
-}
-
-func getEnv(name, fallback string) string {
-	if os.Getenv(name) != "" {
-		return os.Getenv(name)
-	}
-	return fallback
 }
