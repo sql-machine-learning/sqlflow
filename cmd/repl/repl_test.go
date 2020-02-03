@@ -491,7 +491,7 @@ func TestComplete(t *testing.T) {
 
 	p.InsertText(`RAIN `, false, true)
 	c = s.completer(*p.Document())
-	a.Equal(18, len(c))
+	a.Equal(11, len(c))
 
 	p.InsertText(`DNN`, false, true)
 	c = s.completer(*p.Document())
