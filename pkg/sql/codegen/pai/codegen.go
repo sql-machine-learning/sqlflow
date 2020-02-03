@@ -420,7 +420,7 @@ func Explain(ir *ir.ExplainStmt, session *pb.Session, tarball, modelName, ossMod
 		if code, e = TFLoadAndExplain(ir, session, modelName); e != nil {
 			return
 		}
-		if paiCmd, e = getTFPAICmd(cc, modelName, tarball, ossModelPath, ir.TmpExplainTable, "", ir.Into); e != nil {
+		if paiCmd, e = getTFPAICmd(cc, tarball, modelName, ossModelPath, ir.TmpExplainTable, "", ir.Into); e != nil {
 			return
 		}
 	}
