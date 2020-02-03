@@ -243,7 +243,7 @@ func runStmt(stmt string, isTerminal bool, modelDir string, ds string) error {
 	}
 	tableRendered := false
 	table := tablewriter.NewWriter(os.Stdout)
-	sess := makeSessionFromEnv()
+	sess := sql.MakeSessionFromEnv()
 	sess.DbConnStr = getDataSource(ds, currentDB)
 	parts := strings.Fields(strings.ReplaceAll(stmt, ";", ""))
 	if len(parts) == 2 && strings.ToUpper(parts[0]) == "USE" {
@@ -285,19 +285,6 @@ func repl(scanner *bufio.Scanner, modelDir string, ds string) {
 			}
 		}
 	}
-}
-
-func makeSessionFromEnv() *pb.Session {
-	return &pb.Session{
-		Token:            os.Getenv("SQLFLOW_USER_TOKEN"),
-		DbConnStr:        os.Getenv("SQLFLOW_DATASOURCE"),
-		ExitOnSubmit:     strings.ToLower(os.Getenv("SQLFLOW_EXIT_ON_SUBMIT")) == "true",
-		UserId:           os.Getenv("SQLFLOW_USER_ID"),
-		HiveLocation:     os.Getenv("SQLFLOW_HIVE_LOCATION"),
-		HdfsNamenodeAddr: os.Getenv("SQLFLOW_HDFS_NAMENODE_ADDR"),
-		HdfsUser:         os.Getenv("SQLFLOW_HADOOP_USER"),
-		HdfsPass:         os.Getenv("SQLFLOW_HADOOP_PASS"),
-		Submitter:        os.Getenv("SQLFLOW_submitter")}
 }
 
 func switchDatabase(db string, session *pb.Session) error {
