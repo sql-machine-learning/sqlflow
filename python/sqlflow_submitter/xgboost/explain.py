@@ -61,7 +61,6 @@ def explain(datasource,
                          feature_specs)
 
     shap_values, shap_interaction_values, expected_value = xgb_shap_values(x)
-    print("shape %s, len %s" % (np.array(shap_values).shape, len(shap_values)))
 
     if result_table != "":
         if is_pai:
