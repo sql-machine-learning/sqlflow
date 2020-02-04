@@ -44,6 +44,7 @@ func compile(cgName, sqlProgram, datasource string) (string, error) {
 		sess.DbConnStr = datasource
 		return couler.GenCode(spIRs, sess)
 	default:
+		// TODO(yancey1989): support other codegen, e.g, tensorflow, xgboost.
 		return "", fmt.Errorf("sqlflow compiler has not support codegen: %s", cgName)
 	}
 }
