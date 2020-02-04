@@ -143,10 +143,11 @@ func getTFPAICmd(cc *ClusterConfig, tarball, modelName, ossModelPath, trainTable
 		}
 		outputTables = fmt.Sprintf("-Doutputs=%s", table)
 	}
+	cmd := fmt.Sprintf("pai -name tensorflow1150 -DjobName=%s -Dtags=dnn -Dscript=%s -DentryFile=entry.py -Dtables=%s %s -DcheckpointDir=\"%s\"", jobName, tarball, submitTables, outputTables, ckpDir)
 	if cc.Worker.Count > 1 {
-		return fmt.Sprintf("pai -name tensorflow1120 -DjobName=%s -Dtags=dnn -Dscript=%s -DentryFile=entry.py -Dtables=%s %s -DcheckpointDir=\"%s\" -Dcluster=%s", jobName, tarball, submitTables, outputTables, ckpDir, cfQuote), nil
+		cmd = fmt.Sprintf("%s -Dcluster=%s", cmd, cfQuote)
 	}
-	return fmt.Sprintf("pai -name tensorflow1120 -DjobName=%s -Dtags=dnn -Dscript=%s -DentryFile=entry.py -Dtables=%s %s -DcheckpointDir=\"%s\"", jobName, tarball, submitTables, outputTables, ckpDir), nil
+	return cmd, nil
 }
 
 func getTrainRandomForestsPAICmd(ir *ir.TrainStmt, session *pb.Session) (string, error) {
