@@ -37,6 +37,7 @@ import (
 	"sqlflow.org/sqlflow/pkg/database"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql"
+	"sqlflow.org/sqlflow/pkg/sql/codegen/attribute"
 )
 
 const tablePageSize = 1000
@@ -365,6 +366,7 @@ func main() {
 	flag.StringVar(cliStmt, "e", "", "execute SQLFlow from command line, short for --execute")
 	sqlFileName := flag.String("file", "", "execute SQLFlow from file.  e.g. --file '~/iris_dnn.sql'")
 	flag.StringVar(sqlFileName, "f", "", "execute SQLFlow from file, short for --file")
+	noAutoCompletion := flag.Bool("A", false, "No auto completion for sqlflow models. This gives a quicker start.")
 	flag.Parse()
 
 	assertConnectable(*ds) // Fast fail if we can't connect to the datasource
@@ -395,6 +397,9 @@ func main() {
 	if isTerminal {
 		if !it2Check {
 			fmt.Println("The terminal doesn't support sixel, explanation statements will show ASCII figures.")
+		}
+		if !*noAutoCompletion {
+			attribute.ExtractDocStringsOnce()
 		}
 		runPrompt(func(stmt string) { runStmt(stmt, true, *modelDir, *ds) })
 	} else {

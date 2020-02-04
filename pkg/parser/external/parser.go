@@ -13,22 +13,24 @@
 
 package external
 
+import "fmt"
+
 // Parser abstract a parser of a SQL engine, for example, Hive, MySQL,
 // TiDB, MaxCompute.
 type Parser interface {
 	Parse(program string) ([]string, int, error)
-	Dialect() string
 }
 
 // NewParser instantiates a parser.
-func NewParser(dialect string) Parser {
+func NewParser(dialect string) (Parser, error) {
 	switch dialect {
 	case "mysql", "tidb":
-		return newTiDBParser()
+		return newTiDBParser(), nil
 	case "hive", "hiveql":
-		return newJavaParser("hiveql")
+		return newJavaParser("hiveql"), nil
 	case "calcite", "maxcompute", "alisa":
-		return newJavaParser("calcite")
+		return newJavaParser("calcite"), nil
+	default:
+		return nil, fmt.Errorf("unrecognized dialect %s", dialect)
 	}
-	return nil
 }

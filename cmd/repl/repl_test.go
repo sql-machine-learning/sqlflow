@@ -30,6 +30,7 @@ import (
 	"github.com/c-bata/go-prompt"
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/sql"
+	"sqlflow.org/sqlflow/pkg/sql/codegen/attribute"
 	"sqlflow.org/sqlflow/pkg/sql/testdata"
 )
 
@@ -476,6 +477,7 @@ func TestPromptState(t *testing.T) {
 }
 
 func TestComplete(t *testing.T) {
+	attribute.ExtractDocStringsOnce()
 	a := assert.New(t)
 	s := newPromptState()
 	p := prompt.NewBuffer()

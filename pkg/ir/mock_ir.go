@@ -37,6 +37,8 @@ func MockTrainStmt(isxgboost bool) *TrainStmt {
 		ValidationSelect: "select * from iris.test;",
 		Estimator:        estimator,
 		Attributes:       attrs,
+		TmpTrainTable:    "iris.train",
+		TmpValidateTable: "iris.test",
 		Features: map[string][]FeatureColumn{
 			"feature_columns": {
 				&NumericColumn{&FieldDesc{"sepal_length", Float, "", []int{1}, false, nil, 0}},
@@ -49,9 +51,10 @@ func MockTrainStmt(isxgboost bool) *TrainStmt {
 // MockPredStmt generates a sample PredictStmt for test.
 func MockPredStmt(trainStmt *TrainStmt) *PredictStmt {
 	return &PredictStmt{
-		Select:      "select * from iris.test;",
-		ResultTable: "iris.predict",
-		Attributes:  make(map[string]interface{}),
-		TrainStmt:   trainStmt,
+		Select:          "select * from iris.test;",
+		ResultTable:     "iris.predict",
+		Attributes:      make(map[string]interface{}),
+		TrainStmt:       trainStmt,
+		TmpPredictTable: "iris.predict",
 	}
 }

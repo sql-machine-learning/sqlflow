@@ -107,7 +107,10 @@ func parseFirstSQLFlowStmt(program string) (*SQLFlowSelectStmt, int, error) {
 }
 
 func thirdPartyParse(dialect, program string) ([]*SQLFlowStmt, int, error) {
-	p := external.NewParser(dialect)
+	p, err := external.NewParser(dialect)
+	if err != nil {
+		return nil, -1, fmt.Errorf("thirdPartyParse failed: %v", err)
+	}
 	sqls, i, err := p.Parse(program)
 	if err != nil {
 		return nil, -1, fmt.Errorf("thirdPartyParse failed: %v", err)

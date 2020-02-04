@@ -14,18 +14,12 @@
 package external
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
-	"io/ioutil"
-	"os"
-	"os/exec"
-	"path/filepath"
+	"sqlflow.org/sqlflow/pkg/proto"
 )
 
 type javaParser struct {
-	// TODO(yi): As we are going to replace the command-line
-	// parser adaptor to gRPC servers, we will need to add gRPC
-	// clients here.
 	typ string
 }
 
@@ -34,56 +28,18 @@ func newJavaParser(typ string) *javaParser {
 	return &javaParser{typ: typ}
 }
 
-type parseResult struct {
-	Statements []string `json:"statements"`
-	Position   int      `json:"position"`
-	Error      string   `json:"error"`
-}
-
-func (p *javaParser) Dialect() string {
-	return "java"
-}
-
 func (p *javaParser) Parse(program string) ([]string, int, error) {
-	// cwd is used to store train scripts and save output models.
-	cwd, err := ioutil.TempDir("/tmp", "sqlflow")
-	if err != nil {
-		return nil, -1, err
-	}
-	defer os.RemoveAll(cwd)
-
-	inputFile := filepath.Join(cwd, "input.sql")
-	outputFile := filepath.Join(cwd, "output.json")
-	if err := ioutil.WriteFile(inputFile, []byte(program), 0755); err != nil {
-		return nil, -1, err
-	}
-
-	// TODO(yi): It is very expensive to start a Java process.  It
-	// slows down SQLFlow server's QPS if for every parsing
-	// operation, we'd have to start a Java process.
-	cmd := exec.Command("java",
-		"-cp", "/opt/sqlflow/parser/parser-1.0-SNAPSHOT-jar-with-dependencies.jar",
-		"org.sqlflow.parser.ParserAdaptorCmd",
-		"-p", p.typ,
-		"-i", inputFile,
-		"-o", outputFile)
-	if output, err := cmd.CombinedOutput(); err != nil {
-		return nil, -1, fmt.Errorf("%s %v", output, err)
-	}
-
-	output, err := ioutil.ReadFile(outputFile)
+	c, err := connectToServer()
 	if err != nil {
 		return nil, -1, err
 	}
 
-	var pr parseResult
-	if err = json.Unmarshal(output, &pr); err != nil {
+	r, err := proto.NewParserClient(c).Parse(context.Background(), &proto.ParserRequest{Dialect: p.typ, SqlProgram: program})
+	if err != nil {
 		return nil, -1, err
 	}
-
-	if pr.Error != "" {
-		return nil, -1, fmt.Errorf(pr.Error)
+	if r.Error != "" {
+		return nil, -1, fmt.Errorf(r.Error)
 	}
-
-	return pr.Statements, pr.Position, nil
+	return r.SqlStatements, int(r.Index), nil
 }
