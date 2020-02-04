@@ -220,3 +220,65 @@ const ModelParameterJSON = `
     }
 }
 `
+
+const OptimizerParameterJSON = `
+{
+    "Adadelta": {
+        "learning_rate": "A 'Tensor' or a floating point value. The learning rate. To match the exact form in the original paper use 1.0.",
+        "rho": "A 'Tensor' or a floating point value. The decay rate.",
+        "epsilon": "A 'Tensor' or a floating point value. A constant epsilon used to better conditioning the grad update.",
+        "name": "Optional name prefix for the operations created when applying gradients. Defaults to \"Adadelta\"."
+    },
+    "Adagrad": {
+        "learning_rate": "A 'Tensor' or a floating point value. The learning rate.",
+        "initial_accumulator_value": "A floating point value. Starting value for the accumulators, must be positive.",
+        "epsilon": "A floating point value. Starting value for the accumulators, must be positive.",
+        "name": "Optional name prefix for the operations created when applying gradients. Defaults to \"Adagrad\"."
+    },
+    "Adam": {
+        "learning_rate": "A Tensor or a floating point value. The learning rate.",
+        "beta_1": "A float value or a constant float tensor. The exponential decay rate for the 1st moment estimates.",
+        "beta_2": "A float value or a constant float tensor. The exponential decay rate for the 2nd moment estimates.",
+        "epsilon": "A small constant for numerical stability. This epsilon is \"epsilon hat\" in the Kingma and Ba paper (in the formula just before Section 2.1), not the epsilon in Algorithm 1 of the paper.",
+        "amsgrad": "boolean. Whether to apply AMSGrad variant of this algorithm from the paper \"On the Convergence of Adam and beyond\".",
+        "name": "Optional name for the operations created when applying gradients. Defaults to \"Adam\". @compatibility(eager) When eager execution is enabled, 'learning_rate', 'beta_1', 'beta_2', and 'epsilon' can each be a callable that takes no arguments and returns the actual value to use. This can be useful for changing these values across different invocations of optimizer functions. @end_compatibility"
+    },
+    "Adamax": {
+        "learning_rate": "A Tensor or a floating point value. The learning rate.",
+        "beta_1": "A float value or a constant float tensor. The exponential decay rate for the 1st moment estimates.",
+        "beta_2": "A float value or a constant float tensor. The exponential decay rate for the exponentially weighted infinity norm.",
+        "epsilon": "A small constant for numerical stability.",
+        "name": "Optional name for the operations created when applying gradients. Defaults to \"Adamax\"."
+    },
+    "Ftrl": {
+        "learning_rate": "A float value or a constant float 'Tensor'.",
+        "learning_rate_power": "A float value, must be less or equal to zero. Controls how the learning rate decreases during training. Use zero for a fixed learning rate.",
+        "initial_accumulator_value": "The starting value for accumulators. Only zero or positive values are allowed.",
+        "l1_regularization_strength": "A float value, must be greater than or equal to zero.",
+        "l2_regularization_strength": "A float value, must be greater than or equal to zero.",
+        "name": "Optional name prefix for the operations created when applying gradients. Defaults to \"Ftrl\".",
+        "l2_shrinkage_regularization_strength": "A float value, must be greater than or equal to zero. This differs from L2 above in that the L2 above is a stabilization penalty, whereas this L2 shrinkage is a magnitude penalty. The FTRL formulation can be written as: w_{t+1} = argmin_w(\\hat{g}_{1:t}w + L1*||w||_1 + L2*||w||_2^2), where \\hat{g} = g + (2*L2_shrinkage*w), and g is the gradient of the loss function w.r.t. the weights w. Specifically, in the absence of L1 regularization, it is equivalent to the following update rule: w_{t+1} = w_t - lr_t / (1 + 2*L2*lr_t) * g_t - 2*L2_shrinkage*lr_t / (1 + 2*L2*lr_t) * w_t where lr_t is the learning rate at t. When input is sparse shrinkage will only happen on the active weights.\\"
+    },
+    "Nadam": {
+        "learning_rate": "A Tensor or a floating point value. The learning rate.",
+        "beta_1": "A float value or a constant float tensor. The exponential decay rate for the 1st moment estimates.",
+        "beta_2": "A float value or a constant float tensor. The exponential decay rate for the exponentially weighted infinity norm.",
+        "epsilon": "A small constant for numerical stability.",
+        "name": "Optional name for the operations created when applying gradients. Defaults to \"Adamax\"."
+    },
+    "RMSprop": {
+        "learning_rate": "A Tensor or a floating point value. The learning rate.",
+        "rho": "Discounting factor for the history/coming gradient",
+        "momentum": "A scalar tensor.",
+        "epsilon": "Small value to avoid zero denominator.",
+        "centered": "If True, gradients are normalized by the estimated variance of the gradient; if False, by the uncentered second moment. Setting this to True may help with training, but is slightly more expensive in terms of computation and memory. Defaults to False.",
+        "name": "Optional name prefix for the operations created when applying gradients. Defaults to \"RMSprop\". @compatibility(eager) When eager execution is enabled, 'learning_rate', 'decay', 'momentum', and 'epsilon' can each be a callable that takes no arguments and returns the actual value to use. This can be useful for changing these values across different invocations of optimizer functions. @end_compatibility"
+    },
+    "SGD": {
+        "learning_rate": "float hyperparameter >= 0. Learning rate.",
+        "momentum": "float hyperparameter >= 0 that accelerates SGD in the relevant direction and dampens oscillations.",
+        "nesterov": "boolean. Whether to apply Nesterov momentum.",
+        "name": "Optional name prefix for the operations created when applying gradients. Defaults to 'SGD'."
+    }
+}
+`
