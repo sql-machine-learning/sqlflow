@@ -23,10 +23,12 @@ def pred(datasource,
          feature_field_meta,
          label_field_meta,
          result_table,
+         is_pai=False,
          hdfs_namenode_addr="",
          hive_location="",
          hdfs_user="",
          hdfs_pass=""):
+    # TODO(typhoonzero): support running on PAI without MaxCompute AK/SK connection.
     conn = connect_with_data_source(datasource)
 
     feature_column_names = [k["name"] for k in feature_field_meta]
@@ -50,7 +52,12 @@ def pred(datasource,
     result_column_names = feature_column_names
     result_column_names.append(label_name)
     line_no = 0
-    with buffered_db_writer(conn.driver,
+    if is_pai:
+        driver = "pai_maxcompute"
+        conn = None
+    else:
+        driver = conn.driver
+    with buffered_db_writer(driver,
                             conn,
                             result_table,
                             result_column_names,

@@ -311,17 +311,37 @@ func getPredictRandomForestsPAICmd(ir *ir.PredictStmt, session *pb.Session) (str
 		ir.Using, ir.TmpPredictTable, ir.ResultTable, strings.Join(flds, ",")), nil
 }
 
-// Predict generates a Python program for train a TensorFlow model.
+// Predict generates a Python program for predict data on PAI.
 func Predict(ir *ir.PredictStmt, session *pb.Session, tarball, modelName, ossModelPath, cwd string, modelType int) (code, paiCmd, requirements string, e error) {
 	if modelType == ModelTypeRandomForests {
+		requirements, e = genRequirements(false)
 		log.Printf("predicting using pai random forests")
 		if paiCmd, e = getPredictRandomForestsPAICmd(ir, session); e != nil {
 			return
 		}
 	} else if modelType == ModelTypeXGBoost {
-		if code, e = xgboost.Pred(ir, session); e != nil {
+		requirements, e = genRequirements(true)
+		var ossURI string
+		if ossURI, e = FormatCkptDir(ossModelPath); e != nil {
 			return
 		}
+		var xgbPredCode bytes.Buffer
+		var tpl = template.Must(template.New("xgbPredTemplate").Parse(xgbPredTemplateText))
+		filler := &xgbPredictFiller{
+			OSSModelDir:      ossURI,
+			DataSource:       session.DbConnStr,
+			PredSelect:       ir.Select,
+			ResultTable:      ir.ResultTable,
+			HDFSNameNodeAddr: session.HdfsNamenodeAddr,
+			HiveLocation:     session.HiveLocation,
+			HDFSUser:         session.HdfsUser,
+			HDFSPass:         session.HdfsPass,
+		}
+		if e = tpl.Execute(&xgbPredCode, filler); e != nil {
+			return
+		}
+		code = xgbPredCode.String()
+
 		cc, err := GetClusterConfig(ir.Attributes)
 		if err != nil {
 			return
@@ -331,6 +351,7 @@ func Predict(ir *ir.PredictStmt, session *pb.Session, tarball, modelName, ossMod
 			return
 		}
 	} else {
+		requirements, e = genRequirements(false)
 		cc, err := GetClusterConfig(ir.Attributes)
 		if err != nil {
 			return
@@ -342,7 +363,6 @@ func Predict(ir *ir.PredictStmt, session *pb.Session, tarball, modelName, ossMod
 			return
 		}
 	}
-	requirements, e = genRequirements(false)
 	return
 }
 
@@ -444,11 +464,29 @@ func Explain(ir *ir.ExplainStmt, session *pb.Session, tarball, modelName, ossMod
 	} else if modelType == ModelTypeXGBoost {
 		requirements, e = genRequirements(true)
 		log.Printf("explain using pai xgboost")
-		if code, e = xgboost.Explain(ir, session); e != nil {
+		var ossURI string
+		if ossURI, e = FormatCkptDir(ossModelPath); e != nil {
 			return
 		}
-		cc, e = GetClusterConfig(ir.Attributes)
-		if e != nil {
+		var xgbPredCode bytes.Buffer
+		var tpl = template.Must(template.New("xgbExplainTemplate").Parse(xgbExplainTemplateText))
+		filler := &xgbExplainFiller{
+			OSSModelDir:      ossURI,
+			DataSource:       session.DbConnStr,
+			DatasetSQL:       ir.Select,
+			ResultTable:      ir.Into,
+			HDFSNameNodeAddr: session.HdfsNamenodeAddr,
+			HiveLocation:     session.HiveLocation,
+			HDFSUser:         session.HdfsUser,
+			HDFSPass:         session.HdfsPass,
+		}
+		if e = tpl.Execute(&xgbPredCode, filler); e != nil {
+			return
+		}
+		code = xgbPredCode.String()
+
+		var cc *ClusterConfig
+		if cc, e = GetClusterConfig(ir.Attributes); e != nil {
 			return
 		}
 		// NOTE(typhoonzero): submit a PAI TF job to install xgboost and run.

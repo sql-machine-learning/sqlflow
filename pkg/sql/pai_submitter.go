@@ -314,9 +314,26 @@ func getOSSSavedModelType(modelName string) (modelType int, estimator string, er
 	return
 }
 
+func getCreateShapResultSQL(db *database.DB, tableName string, selectStmt string, labelCol string) (string, error) {
+	// create table to record shap values for every feature for each sample.
+	flds, _, err := getColumnTypes(selectStmt, db)
+	if err != nil {
+		return "", err
+	}
+	columnDefList := []string{}
+	for _, fieldName := range flds {
+		if fieldName != labelCol {
+			columnDefList = append(columnDefList, fmt.Sprintf("%s STRING", fieldName))
+		}
+	}
+	createStmt := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s (%s);`, tableName, strings.Join(columnDefList, ","))
+	return createStmt, nil
+}
+
 func createExplainResultTable(db *database.DB, ir *ir.ExplainStmt, tableName string, modelType int, estimator string) error {
 	dropStmt := fmt.Sprintf(`DROP TABLE IF EXISTS %s;`, tableName)
-	if _, e := db.Exec(dropStmt); e != nil {
+	var e error
+	if _, e = db.Exec(dropStmt); e != nil {
 		return fmt.Errorf("failed executing %s: %q", dropStmt, e)
 	}
 	createStmt := ""
@@ -331,26 +348,28 @@ func createExplainResultTable(db *database.DB, ir *ir.ExplainStmt, tableName str
 			}
 			createStmt = fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s %s;`, tableName, columnDef)
 		} else {
-			// create table to record shap values for every feature for each sample.
-			flds, _, err := getColumnTypes(ir.Select, db)
-			if err != nil {
-				return err
-			}
-			columnDefList := []string{}
 			labelCol, ok := ir.Attributes["label_col"]
 			if !ok {
 				return fmt.Errorf("need to specify WITH label_col=lable_col_name when explaining deep models")
 			}
-			for _, fieldName := range flds {
-				if fieldName != labelCol {
-					columnDefList = append(columnDefList, fmt.Sprintf("%s STRING", fieldName))
-				}
+			createStmt, e = getCreateShapResultSQL(db, tableName, ir.Select, labelCol.(string))
+			if e != nil {
+				return e
 			}
-			createStmt = fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s (%s);`, tableName, strings.Join(columnDefList, ","))
+		}
+	} else if modelType == pai.ModelTypeXGBoost {
+		labelCol, ok := ir.Attributes["label_col"]
+		if !ok {
+			return fmt.Errorf("need to specify WITH label_col=lable_col_name when explaining xgboost models")
+		}
+		createStmt, e = getCreateShapResultSQL(db, tableName, ir.Select, labelCol.(string))
+		if e != nil {
+			return e
 		}
 	} else {
 		return fmt.Errorf("not supported modelType %d for creating Explain result table", modelType)
 	}
+
 	if _, e := db.Exec(createStmt); e != nil {
 		return fmt.Errorf("failed executing %s: %q", createStmt, e)
 	}
