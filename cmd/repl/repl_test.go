@@ -517,7 +517,7 @@ func TestComplete(t *testing.T) {
 
 	p.InsertText(`ith `, false, true)
 	c = s.completer(*p.Document())
-	a.Equal(15, len(c))
+	a.Equal(20, len(c))
 
 	p.InsertText(`model.f`, false, true)
 	c = s.completer(*p.Document())
@@ -531,9 +531,30 @@ func TestComplete(t *testing.T) {
 
 	p.InsertText(`idden_units=[400,300], `, false, true)
 	c = s.completer(*p.Document())
-	a.Equal(15, len(c))
+	a.Equal(20, len(c))
 
-	p.InsertText(`model.n`, false, true)
+	p.InsertText(`o`, false, true)
+	c = s.completer(*p.Document())
+	a.Equal(5, len(c)) // Adagrad has 5 parameters
+	p.DeleteBeforeCursor(1)
+
+	p.InsertText(`model.optimizer=`, false, true)
+	c = s.completer(*p.Document())
+	a.Equal(8, len(c))
+
+	p.InsertText(`R`, false, true)
+	c = s.completer(*p.Document())
+	a.Equal(1, len(c))
+	a.Equal("RMSprop", c[0].Text)
+
+	p.InsertText(`MSprop,`, false, true)
+	c = s.completer(*p.Document())
+	p.InsertText(` o`, false, true) // FIXME(shendiaomo): copy-n-paste doen't work here
+	c = s.completer(*p.Document())
+	a.Equal(7, len(c)) // RMSprop has 7 parameters
+	a.Equal("optimizer", c[0].Text)
+
+	p.InsertText(`ptimizer.learing_rate=0.02, model.n`, false, true)
 	c = s.completer(*p.Document())
 	a.Equal(1, len(c))
 	a.Equal("model.n_classes", c[0].Text)
