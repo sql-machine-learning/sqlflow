@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+	"sync"
 )
 
 const (
@@ -162,8 +163,9 @@ func NewDictionaryFromModelDefinition(estimator, prefix string) Dictionary {
 
 // PremadeModelParamsDocs stores parameters and documents of all known models
 var PremadeModelParamsDocs map[string]map[string]string
+var extractDocStringsOnce sync.Once
 
-// ExtractDocString extracts parameter documents from python doc strings
+// ExtractDocString extracts parameter documents of Python modules from doc strings
 func ExtractDocString(module ...string) {
 	cmd := exec.Command("python", "-uc", fmt.Sprintf("__import__('extract_docstring').print_param_doc('%s')", strings.Join(module, "', '")))
 	output, e := cmd.CombinedOutput()
@@ -174,6 +176,11 @@ func ExtractDocString(module ...string) {
 	if e := json.Unmarshal(output, &PremadeModelParamsDocs); e != nil {
 		log.Println("ExtractDocString failed:", e, string(output))
 	}
+}
+
+// ExtractDocStringsOnce extracts parameter documents from python doc strings using sync.Once
+func ExtractDocStringsOnce() {
+	extractDocStringsOnce.Do(func() { ExtractDocString("sqlflow_models") })
 }
 
 func removeUnnecessaryParams() {
@@ -189,6 +196,5 @@ func init() {
 	if err := json.Unmarshal([]byte(ModelParameterJSON), &PremadeModelParamsDocs); err != nil {
 		panic(err) // assertion
 	}
-	ExtractDocString("sqlflow_models")
 	removeUnnecessaryParams()
 }

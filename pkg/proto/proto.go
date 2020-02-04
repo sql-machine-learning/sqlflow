@@ -12,5 +12,6 @@
 // limitations under the License.
 //
 //go:generate protoc --go_out=plugins=grpc:. sqlflow.proto
+//go:generate protoc --go_out=plugins=grpc:. Parser.proto
 
 package proto

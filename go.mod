@@ -2,6 +2,7 @@ module sqlflow.org/sqlflow
 
 require (
 	github.com/BurntSushi/graphics-go v0.0.0-20160129215708-b43f31a4a966 // indirect
+	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/aliyun/aliyun-oss-go-sdk v2.0.5+incompatible
 	github.com/apache/thrift v0.13.0 // indirect
 	github.com/argoproj/argo v2.4.3+incompatible
@@ -28,6 +29,7 @@ require (
 	github.com/pingcap/tidb v0.0.0-20190625145607-60965b006877
 	github.com/pkg/errors v0.8.1
 	github.com/pkg/term v0.0.0-20190109203006-aa71e9d9e942
+	github.com/prometheus/common v0.0.0-20181020173914-7e9e6cabbd39
 	github.com/rakyll/gotest v0.0.0-20191108192113-45d501058f2a // indirect
 	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/sbinet/go-python v0.0.0-20190615090516-46d882be3991 // indirect
@@ -42,6 +44,7 @@ require (
 	golang.org/x/lint v0.0.0-20191125180803-fdd1cda4f05f // indirect
 	golang.org/x/sys v0.0.0-20191224085550-c709ea063b76
 	google.golang.org/grpc v1.24.0
+	gopkg.in/alecthomas/kingpin.v2 v2.2.6 // indirect
 	gopkg.in/yaml.v2 v2.2.7 // indirect
 	k8s.io/api v0.0.0-20191004102349-159aefb8556b
 	k8s.io/apimachinery v0.17.0 // indirect
