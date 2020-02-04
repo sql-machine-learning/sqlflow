@@ -15,8 +15,10 @@ package argo
 
 import (
 	"fmt"
+	"os"
 	"regexp"
 
+	"github.com/argoproj/argo/pkg/apis/workflow/v1alpha1"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
@@ -40,6 +42,18 @@ func newFetchResponse(newReq *pb.FetchRequest, eof bool, logs []string) *pb.Fetc
 	}
 }
 
+func getStepIdx(wf *v1alpha1.Workflow, stepGroup string) (int, int) {
+	return 3, 1
+}
+
+func logViewURL(wfID, stepID string) (string, error) {
+	ep := os.Getenv("SQLFLOW_ARGO_UI_ENDPOINT")
+	if ep == "" {
+		return "", fmt.Errorf("should set SQLFLOW_ARGO_UI_ENDPOINT if enable Argo mode")
+	}
+	return fmt.Sprintf("%s/%s/%s/log", ep, wfID, stepID), nil
+}
+
 // Fetch fetches the workflow log and status,
 // design doc: https://github.com/sql-machine-learning/sqlflow/blob/develop/doc/design/argo_workflow_on_sqlflow.md
 func Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
@@ -56,47 +70,50 @@ func Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 		return nil, err
 	}
 
+	cnt, idx := getStepIdx(wf, stepGroupName)
+
 	pod, err := getPodByStepGroup(wf, stepGroupName)
 	if err != nil {
 		return nil, err
 	}
 
+	eof := false // true if finish fetching the workflow logs
+	var log string
+
+	// An example log content:
+	// Step [1/3] Execute Code:
+	// repl -e "SELECT * FROM iris.train"
+	// Step [1/3] Status: Running >> Log view: http://<argo-ui>/<workflow-id>/<step-id>/log
+	// Step [1/3] Status: Done/Failed
 	if isPodPending(pod) {
 		return newFetchResponse(req, false, []string{}), nil
-	}
-
-	logs, newLogOffset, err := getPodLogs(pod.Name, req.LogOffset)
-	if err != nil {
-		return nil, err
-	}
-
-	finishFetchingCurrentPod := false // true if finish fetching the current pod logs
-	eof := false                      // true if finish fetching the workflow logs
-
-	// finish fetching the current pod logs when:
-	// 1. the Pod is completed(succeed/failed/error).
-	// 2. no updated logs.
-	if req.LogOffset == newLogOffset && isPodCompleted(pod) {
-		finishFetchingCurrentPod = true
-	}
-
-	if finishFetchingCurrentPod {
+	} else if isPodCompleted(pod) {
 		if stepGroupName, err = getNextStepGroup(wf, stepGroupName); err != nil {
 			return nil, err
 		}
-		newLogOffset = ""
-
 		// set the EOF to true if no next step in the workflow
 		if stepGroupName == "" {
 			eof = true
 		}
-
-		if isPodFailed(pod) {
-			return newFetchResponse(newFetchRequest(req.Job.Id, stepGroupName, newLogOffset), eof, logs), fmt.Errorf("workflow step failed")
+		log = fmt.Sprintf("Status: %s", pod.Status.Phase)
+	} else if isPodRunning(pod) {
+		if req.StepId != stepGroupName {
+			// output the log view url if the first fetching action for the current step.
+			url, e := logViewURL(wf.ObjectMeta.Name, stepGroupName)
+			if e != nil {
+				return nil, e
+			}
+			log = fmt.Sprintf("Status: Running >> Log view: %s", url)
+		} else {
+			return newFetchResponse(newFetchRequest(req.Job.Id, stepGroupName, ""), eof, []string{}), nil
 		}
+	} else {
+		return nil, fmt.Errorf("unkonwn pod phase: %s", pod.Status.String())
 	}
 
-	return newFetchResponse(newFetchRequest(req.Job.Id, stepGroupName, newLogOffset), eof, logs), nil
+	log = fmt.Sprintf("Step: [%d/%d] %s", cnt, idx, log)
+
+	return newFetchResponse(newFetchRequest(req.Job.Id, stepGroupName, ""), eof, []string{log}), nil
 }
 
 func parseOffset(content string) (string, string, error) {

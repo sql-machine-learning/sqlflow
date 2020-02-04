@@ -36,6 +36,10 @@ func isPodCompleted(pod *corev1.Pod) bool {
 		pod.Status.Phase == corev1.PodFailed
 }
 
+func isPodRunning(pod *corev1.Pod) bool {
+	return pod.Status.Phase == corev1.PodRunning
+}
+
 func isPodPending(pod *corev1.Pod) bool {
 	return pod.Status.Phase == corev1.PodPending
 }
