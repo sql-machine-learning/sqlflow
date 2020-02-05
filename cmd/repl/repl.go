@@ -96,7 +96,7 @@ func addLineToStmt(line string, inQuotedString, isSingleQuoted *bool, statements
 			if !*inQuotedString {
 				if i+1 < len(line) && line[i+1] == '-' {
 					if i+2 == len(line) || isSpace(line[i+2]) { // We found a line comment
-						// Note: `--` comment doens't interfere with quoted-string and `;`
+						// Note: `--` comment doesn't interfere with quoted-string and `;`
 						(*statements)[len(*statements)-1] += strings.TrimSpace(line[start:i])
 						if len(*statements) == 1 && (*statements)[0] == "" {
 							*statements = []string{}
@@ -122,7 +122,7 @@ func readStmt(scn *bufio.Scanner) ([]string, error) {
 			return stmt, nil
 		}
 	}
-	// If the the file doen't ends with ';', we consider the remaining content as a statement
+	// If the the file doesn't ends with ';', we consider the remaining content as a statement
 	if scn.Err() == nil {
 		return stmt, io.EOF
 	}

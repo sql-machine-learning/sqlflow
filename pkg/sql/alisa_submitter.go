@@ -220,7 +220,7 @@ func getModelPath(modelName string, session *pb.Session) (string, error) {
 		projectName = cfg.Project
 	}
 	if userID == "" {
-		userID = "unkown"
+		userID = "unknown"
 	}
 	return strings.Join([]string{projectName, userID, modelName}, "/"), nil
 }
