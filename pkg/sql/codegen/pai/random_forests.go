@@ -82,12 +82,12 @@ func getExplainRandomForestsPAICmd(ir *ir.ExplainStmt, session *pb.Session) (str
 	if !ok {
 		return "", fmt.Errorf("must specify WITH label_column when using pai random forest to explain models")
 	}
-	featureFileds := []string{}
+	featureFields := []string{}
 	for _, f := range flds {
 		if f != labelCol {
-			featureFileds = append(featureFileds, f)
+			featureFields = append(featureFields, f)
 		}
 	}
 	return fmt.Sprintf(`pai -name feature_importance -project algo_public -DmodelName="%s" -DinputTableName="%s"  -DoutputTableName="%s" -DlabelColName="%s" -DfeatureColNames="%s"`,
-		ir.ModelName, ir.TmpExplainTable, ir.Into, labelCol.(string), strings.Join(featureFileds, ",")), nil
+		ir.ModelName, ir.TmpExplainTable, ir.Into, labelCol.(string), strings.Join(featureFields, ",")), nil
 }
