@@ -40,14 +40,12 @@ def save_file(oss_model_dir, file_name):
     print("creating oss dirs: %s" % oss_dir)
     gfile.MakeDirs(oss_dir)
     fn = open(file_name, "r")
-    writer = gfile.GFile(oss_path, mode='w')
-    while True:
-        buf = fn.read(4096)
-        if not buf:
-            break
-        writer.write(buf)
-    writer.flush()
-    writer.close()
+    with gfile.GFile(oss_path, mode='w') as f:
+        while True:
+            buf = fn.read(4096)
+            if not buf:
+                break
+            f.write(buf)
     fn.close()
 
 
@@ -83,18 +81,14 @@ def save_metas(oss_model_dir, num_workers, file_name, *meta):
             print("skip saving model desc on workers other than worker 0")
             return
     oss_path = get_oss_path_from_uri(oss_model_dir, file_name)
-    writer = gfile.GFile(oss_path, mode='w')
-    pickle.dump(list(meta), writer)
-    writer.flush()
-    writer.close()
+    with gfile.GFile(oss_path, mode='w') as f:
+        pickle.dump(list(meta), f)
     # write a file "file_name_estimator" to store the estimator name, so we
     # can determine if the estimator is BoostedTrees* when explaining the model.
     oss_path = get_oss_path_from_uri(oss_model_dir,
                                      "_".join([file_name, "estimator"]))
-    writer = gfile.GFile(oss_path, mode='w')
-    writer.write(meta[0])
-    writer.flush()
-    writer.close()
+    with gfile.GFile(oss_path, mode='w') as f:
+        f.write(meta[0])
 
 
 def load_metas(oss_model_dir, file_name):

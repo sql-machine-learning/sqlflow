@@ -150,7 +150,6 @@ func (s *defaultSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 	} else {
 		code, e = tensorflow.Train(cl, s.Session)
 	}
-	fmt.Println(code)
 	if e == nil {
 		if e = s.runCommand(code); e == nil {
 			e = s.SaveModel(cl)
