@@ -15,51 +15,24 @@ package pai
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
-	"strconv"
 	"strings"
 	"text/template"
 
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/ir"
 	pb "sqlflow.org/sqlflow/pkg/proto"
-	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/xgboost"
 	"sqlflow.org/sqlflow/pkg/verifier"
 )
 
 const entryFile = "entry.py"
 
-// PSConfig implicates Parameter Server Config
-type PSConfig struct {
-	Count int `json:"count"`
-	GPU   int `json:"gpu"`
-	CPU   int `json:"cpu"`
-}
-
-// WorkerConfig implicates Worker Config
-type WorkerConfig struct {
-	Count int `json:"count"`
-	GPU   int `json:"gpu"`
-	CPU   int `json:"cpu"`
-}
-
-// ClusterConfig implicates PAI distributed task meta
-type ClusterConfig struct {
-	PS     PSConfig     `json:"ps"`
-	Worker WorkerConfig `json:"worker"`
-}
-
-// FormatCkptDir returns the saved model path on OSS
-func FormatCkptDir(modelName string) (string, error) {
-	ossCkptDir := os.Getenv("SQLFLOW_OSS_CHECKPOINT_DIR")
-	if ossCkptDir == "" {
-		return "", fmt.Errorf("must specify SQLFLOW_OSS_CHECKPOINT_DIR when training with PAI, e.g. oss://bucket/?role_arn=xxx&host=xxx")
-	}
-	ossURIParts := strings.Split(ossCkptDir, "?") // ossCkptDir: oss://bucket/your/path/?args=...
+// checkpointURL returns the saved model path on OSS
+func checkpointURL(modelName string) (string, error) {
+	ossURIParts := strings.Split(os.Getenv("SQLFLOW_OSS_CHECKPOINT_DIR"), "?")
 	if len(ossURIParts) != 2 {
 		return "", fmt.Errorf("SQLFLOW_OSS_CHECKPOINT_DIR must be of format: oss://bucket/?role_arn=xxx&host=xxx")
 	}
@@ -68,108 +41,12 @@ func FormatCkptDir(modelName string) (string, error) {
 	return strings.Join([]string{ossDir + "/", ossURIParts[1]}, "?"), nil
 }
 
-// GetClusterConfig returns ClusterConfig object comes from WITH clause
-func GetClusterConfig(attrs map[string]interface{}) (*ClusterConfig, error) {
-	defaultMap := map[string]int{
-		"train.num_ps":      0,
-		"train.num_workers": 1,
-		"train.worker_cpu":  400,
-		"train.worker_gpu":  0,
-		"train.ps_cpu":      200,
-		"train.ps_gpu":      0,
-	}
-	for k := range defaultMap {
-		attrValue, ok := attrs[k]
-		if ok {
-			intValue, intok := attrValue.(int)
-			if !intok {
-				return nil, fmt.Errorf("attribute %s must be int, got: %s", k, attrValue)
-			}
-			defaultMap[k] = intValue
-			delete(attrs, k)
-		}
-	}
-	return &ClusterConfig{
-		PS: PSConfig{
-			Count: defaultMap["train.num_ps"],
-			CPU:   defaultMap["train.ps_cpu"],
-			GPU:   defaultMap["train.ps_gpu"],
-		},
-		Worker: WorkerConfig{
-			Count: defaultMap["train.num_workers"],
-			CPU:   defaultMap["train.worker_cpu"],
-			GPU:   defaultMap["train.worker_gpu"],
-		},
-	}, nil
-}
-
-func formatODPSTables(table string) (string, error) {
+func maxComputeTableURL(table string) (string, error) {
 	parts := strings.Split(table, ".")
 	if len(parts) != 2 {
 		return "", fmt.Errorf("odps table: %s should be format db.table", table)
 	}
 	return fmt.Sprintf("odps://%s/tables/%s", parts[0], parts[1]), nil
-}
-
-func getTFPAICmd(cc *ClusterConfig, tarball, modelName, ossModelPath, trainTable, valTable, resTable string) (string, error) {
-	jobName := strings.Replace(strings.Join([]string{"sqlflow", modelName}, "_"), ".", "_", 0)
-	cfString, err := json.Marshal(cc)
-	if err != nil {
-		return "", err
-	}
-	cfQuote := strconv.Quote(string(cfString))
-	ckpDir, err := FormatCkptDir(ossModelPath)
-	if err != nil {
-		return "", err
-	}
-
-	// submit table should format as: odps://<project>/tables/<table>,odps://<project>/tables/<table>...
-	submitTables, err := formatODPSTables(trainTable)
-	if err != nil {
-		return "", err
-	}
-	if trainTable != valTable && valTable != "" {
-		valTable, err := formatODPSTables(valTable)
-		if err != nil {
-			return "", err
-		}
-		submitTables = fmt.Sprintf("%s,%s", submitTables, valTable)
-	}
-	outputTables := ""
-	if resTable != "" {
-		table, err := formatODPSTables(resTable)
-		if err != nil {
-			return "", err
-		}
-		outputTables = fmt.Sprintf("-Doutputs=%s", table)
-	}
-	if cc.Worker.Count > 1 {
-		return fmt.Sprintf("pai -name tensorflow1120 -DjobName=%s -Dtags=dnn -Dscript=%s -DentryFile=entry.py -Dtables=%s %s -DcheckpointDir=\"%s\" -Dcluster=%s", jobName, tarball, submitTables, outputTables, ckpDir, cfQuote), nil
-	}
-	return fmt.Sprintf("pai -name tensorflow1120 -DjobName=%s -Dtags=dnn -Dscript=%s -DentryFile=entry.py -Dtables=%s %s -DcheckpointDir=\"%s\"", jobName, tarball, submitTables, outputTables, ckpDir), nil
-}
-
-func getTrainRandomForestsPAICmd(ir *ir.TrainStmt, session *pb.Session) (string, error) {
-	// default use numTrees = 1
-	treeNum := 1
-	treeNumAttr, ok := ir.Attributes["tree_num"]
-	if ok {
-		treeNum = treeNumAttr.(int)
-	}
-	featureCols := []string{}
-	for _, fclist := range ir.Features {
-		for _, fc := range fclist {
-			featureCols = append(featureCols, fc.GetFieldDesc()[0].Name)
-		}
-	}
-
-	inputTables, e := formatODPSTables(ir.TmpTrainTable)
-	if e != nil {
-		return "", e
-	}
-
-	return fmt.Sprintf(`pai -name randomforests -DinputTableName="%s" -DmodelName="%s" -DlabelColName="%s" -DfeatureColNames="%s" -DtreeNum="%d"`,
-		inputTables, ir.Into, ir.Label.GetFieldDesc()[0].Name, strings.Join(featureCols, ","), treeNum), nil
 }
 
 // getColumnTypes is quiet like verify but accept a SQL string as input, and returns
@@ -254,50 +131,6 @@ func Train(ir *ir.TrainStmt, session *pb.Session, tarball, modelName, ossModelPa
 	return
 }
 
-// TFTrainAndSave generates PAI-TF train program.
-func TFTrainAndSave(ir *ir.TrainStmt, session *pb.Session, modelPath string, cc *ClusterConfig) (string, error) {
-	code, err := tensorflow.Train(ir, session)
-	if err != nil {
-		return "", err
-	}
-
-	// append code snippet to save model
-	var tpl = template.Must(template.New("SaveModel").Parse(tfSaveModelTmplText))
-	ckptDir, err := FormatCkptDir(modelPath)
-	if err != nil {
-		return "", err
-	}
-	filler := saveModelFiller{
-		OSSModelDir: ckptDir,
-		Estimator:   ir.Estimator,
-		NumWorkers:  cc.Worker.Count,
-	}
-	var saveCode bytes.Buffer
-	if err = tpl.Execute(&saveCode, filler); err != nil {
-		return "", err
-	}
-	return code + saveCode.String(), nil
-}
-
-func getPredictRandomForestsPAICmd(ir *ir.PredictStmt, session *pb.Session) (string, error) {
-	// NOTE(typhoonzero): for PAI random forests predicting, we can not load the TrainStmt
-	// since the model saving is fully done by PAI. We directly use the columns in SELECT
-	// statement for prediction, error will be reported by PAI job if the columns not match.
-	db, err := database.OpenAndConnectDB(session.DbConnStr)
-	if err != nil {
-		return "", err
-	}
-	flds, _, err := getColumnTypes(ir.Select, db)
-	if err != nil {
-		return "", err
-	}
-	// drop result table if exists
-	db.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s;", ir.ResultTable))
-
-	return fmt.Sprintf(`pai -name prediction -DmodelName="%s" -DinputTableName="%s" -DoutputTable="%s" -DfeatureColNames="%s"`,
-		ir.Using, ir.TmpPredictTable, ir.ResultTable, strings.Join(flds, ",")), nil
-}
-
 // Predict generates a Python program for train a TensorFlow model.
 func Predict(ir *ir.PredictStmt, session *pb.Session, tarball, modelName, ossModelPath, cwd string, isDeepModel bool) (code, paiCmd, requirements string, e error) {
 	if !isDeepModel {
@@ -319,86 +152,6 @@ func Predict(ir *ir.PredictStmt, session *pb.Session, tarball, modelName, ossMod
 	}
 	requirements, e = genRequirements(false)
 	return
-}
-
-// TFLoadAndPredict generates PAI-TF prediction program.
-func TFLoadAndPredict(ir *ir.PredictStmt, session *pb.Session, modelPath string) (string, error) {
-	var tpl = template.Must(template.New("Predict").Parse(tfPredictTmplText))
-	ossModelDir, err := FormatCkptDir(modelPath)
-	if err != nil {
-		return "", err
-	}
-	paiPredictTable := ""
-	if tensorflow.IsPAI() && ir.TmpPredictTable != "" {
-		paiPredictTable = ir.TmpPredictTable
-	}
-	filler := predictFiller{
-		OSSModelDir: ossModelDir,
-		DataSource:  session.DbConnStr,
-		Select:      ir.Select,
-		ResultTable: ir.ResultTable,
-		IsPAI:       tensorflow.IsPAI(),
-		PAITable:    paiPredictTable,
-	}
-	var code bytes.Buffer
-	if err := tpl.Execute(&code, filler); err != nil {
-		return "", err
-	}
-	return code.String(), nil
-}
-
-func getExplainRandomForestsPAICmd(ir *ir.ExplainStmt, session *pb.Session) (string, error) {
-	// NOTE(typhoonzero): for PAI random forests predicting, we can not load the TrainStmt
-	// since the model saving is fully done by PAI. We directly use the columns in SELECT
-	// statement for prediction, error will be reported by PAI job if the columns not match.
-	db, err := database.OpenAndConnectDB(session.DbConnStr)
-	if err != nil {
-		return "", err
-	}
-	flds, _, err := getColumnTypes(ir.Select, db)
-	if err != nil {
-		return "", err
-	}
-	// drop result table if exists
-	db.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s;", ir.Into))
-	labelCol, ok := ir.Attributes["label_column"]
-	if !ok {
-		return "", fmt.Errorf("must specify WITH label_column when using pai random forest to explain models")
-	}
-	featureFileds := []string{}
-	for _, f := range flds {
-		if f != labelCol {
-			featureFileds = append(featureFileds, f)
-		}
-	}
-	return fmt.Sprintf(`pai -name feature_importance -project algo_public -DmodelName="%s" -DinputTableName="%s"  -DoutputTableName="%s" -DlabelColName="%s" -DfeatureColNames="%s"`,
-		ir.ModelName, ir.TmpExplainTable, ir.Into, labelCol.(string), strings.Join(featureFileds, ",")), nil
-}
-
-// TFLoadAndExplain generates PAI-TF explain program.
-func TFLoadAndExplain(ir *ir.ExplainStmt, session *pb.Session, modelPath string) (string, error) {
-	var tpl = template.Must(template.New("Explain").Parse(tfExplainTmplText))
-	ossModelDir, err := FormatCkptDir(modelPath)
-	if err != nil {
-		return "", err
-	}
-	paiExplainTable := ""
-	if tensorflow.IsPAI() && ir.TmpExplainTable != "" {
-		paiExplainTable = ir.TmpExplainTable
-	}
-	filler := explainFiller{
-		OSSModelDir: ossModelDir,
-		DataSource:  session.DbConnStr,
-		Select:      ir.Select,
-		ResultTable: ir.Into,
-		IsPAI:       tensorflow.IsPAI(),
-		PAITable:    paiExplainTable,
-	}
-	var code bytes.Buffer
-	if err := tpl.Execute(&code, filler); err != nil {
-		return "", err
-	}
-	return code.String(), nil
 }
 
 // Explain generates a Python program for train a TensorFlow model.
