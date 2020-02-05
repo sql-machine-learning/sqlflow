@@ -30,13 +30,9 @@ import (
 
 const entryFile = "entry.py"
 
-// FormatCkptDir returns the saved model path on OSS
-func FormatCkptDir(modelName string) (string, error) {
-	ossCkptDir := os.Getenv("SQLFLOW_OSS_CHECKPOINT_DIR")
-	if ossCkptDir == "" {
-		return "", fmt.Errorf("must specify SQLFLOW_OSS_CHECKPOINT_DIR when training with PAI, e.g. oss://bucket/?role_arn=xxx&host=xxx")
-	}
-	ossURIParts := strings.Split(ossCkptDir, "?") // ossCkptDir: oss://bucket/your/path/?args=...
+// checkpointURL returns the saved model path on OSS
+func checkpointURL(modelName string) (string, error) {
+	ossURIParts := strings.Split(os.Getenv("SQLFLOW_OSS_CHECKPOINT_DIR"), "?")
 	if len(ossURIParts) != 2 {
 		return "", fmt.Errorf("SQLFLOW_OSS_CHECKPOINT_DIR must be of format: oss://bucket/?role_arn=xxx&host=xxx")
 	}
@@ -45,7 +41,7 @@ func FormatCkptDir(modelName string) (string, error) {
 	return strings.Join([]string{ossDir + "/", ossURIParts[1]}, "?"), nil
 }
 
-func formatODPSTables(table string) (string, error) {
+func maxComputeTableURL(table string) (string, error) {
 	parts := strings.Split(table, ".")
 	if len(parts) != 2 {
 		return "", fmt.Errorf("odps table: %s should be format db.table", table)
