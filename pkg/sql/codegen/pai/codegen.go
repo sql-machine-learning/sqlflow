@@ -170,7 +170,7 @@ func Explain(ir *ir.ExplainStmt, session *pb.Session, tarball, modelName, ossMod
 		}
 	} else {
 		// run explain PAI TF
-		if code, e = TFLoadAndExplain(ir, session, modelName); e != nil {
+		if code, e = TFLoadAndExplain(ir, session, ossModelPath); e != nil {
 			return
 		}
 		if paiCmd, e = getTFPAICmd(cc, tarball, modelName, ossModelPath, ir.TmpExplainTable, "", ir.Into); e != nil {
