@@ -15,10 +15,14 @@ import copy
 import functools
 
 import numpy as np
-import paiio
 import tensorflow as tf
 from sqlflow_submitter.db import (connect_with_data_source, db_generator,
                                   parseMaxComputeDSN)
+
+try:
+    import paiio
+except:
+    pass
 
 
 def parse_sparse_feature(features, label, feature_column_names, feature_metas):

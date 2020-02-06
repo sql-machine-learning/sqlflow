@@ -11,7 +11,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paiio
+try:
+    import paiio
+except:
+    pass
 import tensorflow as tf
 from odps import ODPS, tunnel
 
