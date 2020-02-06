@@ -135,6 +135,9 @@ func Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 			eof = true
 		}
 		newOffset = ""
+		if isPodFailed(pod) {
+			return newFetchResponse(newFetchRequest(req.Job.Id, stepGroupName, newOffset), eof, logs), fmt.Errorf("step failed")
+		}
 	}
 
 	return newFetchResponse(newFetchRequest(req.Job.Id, stepGroupName, newOffset), eof, logs), nil
