@@ -63,9 +63,6 @@ func getStepIdx(wf *v1alpha1.Workflow, targetStepGroup string) (int, error) {
 
 func logViewURL(ns, wfID, stepID string) (string, error) {
 	ep := os.Getenv("SQLFLOW_ARGO_UI_ENDPOINT")
-	if ep == "" {
-		return "", fmt.Errorf("should set SQLFLOW_ARGO_UI_ENDPOINT if enable Argo mode")
-	}
 	return fmt.Sprintf("%s/workflows/%s/%s?nodeId=%s", ep, ns, wfID, stepID), nil
 }
 
@@ -130,14 +127,18 @@ func Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 			return newFetchResponse(newFetchRequest(req.Job.Id, stepGroupName, newOffset), eof, logs), fmt.Errorf("step failed")
 		}
 		// move to the next step
-		if stepGroupName, err = getNextStepGroup(wf, stepGroupName); err != nil {
+		nextStepGroup, err := getNextStepGroup(wf, stepGroupName)
+		if err != nil {
 			return nil, err
 		}
 		// set the EOF to true if no next step in the workflow
-		if stepGroupName == "" {
+		if nextStepGroup == "" && stepIdx == stepCnt {
 			eof = true
 		}
-		newOffset = ""
+		if nextStepGroup != "" {
+			newOffset = ""
+			stepGroupName = nextStepGroup
+		}
 	}
 
 	return newFetchResponse(newFetchRequest(req.Job.Id, stepGroupName, newOffset), eof, logs), nil
