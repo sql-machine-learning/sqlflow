@@ -101,7 +101,12 @@ def keras_predict(estimator, model_params, save, result_table,
             for idx, name in enumerate(feature_column_names):
                 val = features[name].numpy()[0][0]
                 row.append(str(val))
-            row.append(str(result))
+            if len(result) > 1:
+                # NOTE(typhoonzero): if the output dimension > 1, format output tensor
+                # using a comma separated string.
+                row.append(",".join([str(i) for i in result]))
+            else:
+                row.append(str(result))
             w.write(row)
     del pred_dataset
 
