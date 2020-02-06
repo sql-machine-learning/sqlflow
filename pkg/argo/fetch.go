@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strings"
 
 	"github.com/argoproj/argo/pkg/apis/workflow/v1alpha1"
 	pb "sqlflow.org/sqlflow/pkg/proto"
@@ -42,16 +43,30 @@ func newFetchResponse(newReq *pb.FetchRequest, eof bool, logs []string) *pb.Fetc
 	}
 }
 
-func getStepIdx(wf *v1alpha1.Workflow, stepGroup string) (int, int) {
-	return 3, 1
+func getStepIdx(wf *v1alpha1.Workflow, targetStepGroup string) (int, error) {
+	stepIdx := 1
+	stepGroupName, e := getFirstStepGroup(wf, wf.ObjectMeta.Name)
+	if e != nil {
+		return -1, e
+	}
+	for {
+		if stepGroupName == targetStepGroup {
+			return stepIdx, nil
+		}
+		stepGroupName, e = getNextStepGroup(wf, stepGroupName)
+		stepIdx++
+		if e != nil {
+			return -1, e
+		}
+	}
 }
 
-func logViewURL(wfID, stepID string) (string, error) {
+func logViewURL(ns, wfID, stepID string) (string, error) {
 	ep := os.Getenv("SQLFLOW_ARGO_UI_ENDPOINT")
 	if ep == "" {
 		return "", fmt.Errorf("should set SQLFLOW_ARGO_UI_ENDPOINT if enable Argo mode")
 	}
-	return fmt.Sprintf("%s/%s/%s/log", ep, wfID, stepID), nil
+	return fmt.Sprintf("%s/workflows/%s/%s?nodeId=%s", ep, ns, wfID, stepID), nil
 }
 
 // Fetch fetches the workflow log and status,
@@ -69,25 +84,49 @@ func Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	cnt, idx := getStepIdx(wf, stepGroupName)
+	stepCnt := len(wf.Spec.Templates[0].Steps)
+	stepIdx, err := getStepIdx(wf, stepGroupName)
+	if err != nil {
+		return nil, err
+	}
 
 	pod, err := getPodByStepGroup(wf, stepGroupName)
 	if err != nil {
 		return nil, err
 	}
-
 	eof := false // true if finish fetching the workflow logs
-	var log string
+	logs := []string{}
 
 	// An example log content:
 	// Step [1/3] Execute Code:
 	// repl -e "SELECT * FROM iris.train"
-	// Step [1/3] Status: Running >> Log view: http://<argo-ui>/<workflow-id>/<step-id>/log
-	// Step [1/3] Status: Done/Failed
-	if isPodPending(pod) {
-		return newFetchResponse(req, false, []string{}), nil
-	} else if isPodCompleted(pod) {
+	// Step [1/3] Log view: http://localhost:8001/workflows/default/steps-bdpff
+	// Step [1/3] Status: Pending
+	// Step [1/3] Status: Running
+	// Step [1/3] Status: ...
+	// Step [1/3] Status: Succeed/Failed
+	// ..
+	newOffset := req.LogOffset
+	if req.LogOffset == "" {
+		// return the log view url for the first call of step
+		url, e := logViewURL(wf.ObjectMeta.Namespace, wf.ObjectMeta.Name, stepGroupName)
+		if e != nil {
+			return nil, e
+		}
+		// the 1-th container execute `argoexec wait` to wait the preiority step, so package the 2-th container's command code.
+		execCode := fmt.Sprintf("%s %s", strings.Join(pod.Spec.Containers[1].Command, " "), strings.Join(pod.Spec.Containers[1].Args, " "))
+		logs = append(logs, fmt.Sprintf("Step: [%d/%d] Execute Code: %s", stepIdx, stepCnt, execCode))
+		logs = append(logs, fmt.Sprintf("Step: [%d/%d] Log View: %s", stepIdx, stepCnt, url))
+	}
+
+	// output the refreshed status if the Pod Phase changed.
+	if req.LogOffset != string(pod.Status.Phase) {
+		logs = append(logs, fmt.Sprintf("Step: [%d/%d] Status: %s", stepIdx, stepCnt, pod.Status.Phase))
+		newOffset = string(pod.Status.Phase)
+	}
+
+	if isPodCompleted(pod) {
+		// move to the next step
 		if stepGroupName, err = getNextStepGroup(wf, stepGroupName); err != nil {
 			return nil, err
 		}
@@ -95,25 +134,10 @@ func Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 		if stepGroupName == "" {
 			eof = true
 		}
-		log = fmt.Sprintf("Status: %s", pod.Status.Phase)
-	} else if isPodRunning(pod) {
-		if req.StepId != stepGroupName {
-			// output the log view url if the first fetching action for the current step.
-			url, e := logViewURL(wf.ObjectMeta.Name, stepGroupName)
-			if e != nil {
-				return nil, e
-			}
-			log = fmt.Sprintf("Status: Running >> Log view: %s", url)
-		} else {
-			return newFetchResponse(newFetchRequest(req.Job.Id, stepGroupName, ""), eof, []string{}), nil
-		}
-	} else {
-		return nil, fmt.Errorf("unkonwn pod phase: %s", pod.Status.String())
+		newOffset = ""
 	}
 
-	log = fmt.Sprintf("Step: [%d/%d] %s", cnt, idx, log)
-
-	return newFetchResponse(newFetchRequest(req.Job.Id, stepGroupName, ""), eof, []string{log}), nil
+	return newFetchResponse(newFetchRequest(req.Job.Id, stepGroupName, newOffset), eof, logs), nil
 }
 
 func parseOffset(content string) (string, string, error) {
