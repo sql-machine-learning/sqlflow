@@ -98,14 +98,14 @@ func Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 	logs := []string{}
 
 	// An example log content:
-	// Step [1/3] Execute Code:
-	// repl -e "SELECT * FROM iris.train"
-	// Step [1/3] Log view: http://localhost:8001/workflows/default/steps-bdpff
+	// Step [1/3] Execute Code: echo hello1
+	// Step [1/3] Log view: http://localhost:8001/workflows/default/steps-bdpff?nodeId=steps-bdpff-xx1
 	// Step [1/3] Status: Pending
 	// Step [1/3] Status: Running
-	// Step [1/3] Status: ...
 	// Step [1/3] Status: Succeed/Failed
-	// ..
+	// Step [2/3] Execute Code: echo hello2
+	// Step [2/3] Log view: http://localhost:8001/workflows/default/steps-bdpff?nodeId=steps-bdpff-xx2
+	// ...
 	newOffset := req.LogOffset
 	if req.LogOffset == "" {
 		// return the log view url for the first call of step
@@ -119,13 +119,16 @@ func Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 		logs = append(logs, fmt.Sprintf("Step: [%d/%d] Log View: %s", stepIdx, stepCnt, url))
 	}
 
-	// output the refreshed status if the Pod Phase changed.
+	// note(yancey1989): use the Pod phase as the offset to avoid output the large duplicated logs.
 	if req.LogOffset != string(pod.Status.Phase) {
 		logs = append(logs, fmt.Sprintf("Step: [%d/%d] Status: %s", stepIdx, stepCnt, pod.Status.Phase))
 		newOffset = string(pod.Status.Phase)
 	}
 
 	if isPodCompleted(pod) {
+		if isPodFailed(pod) {
+			return newFetchResponse(newFetchRequest(req.Job.Id, stepGroupName, newOffset), eof, logs), fmt.Errorf("step failed")
+		}
 		// move to the next step
 		if stepGroupName, err = getNextStepGroup(wf, stepGroupName); err != nil {
 			return nil, err
@@ -135,9 +138,6 @@ func Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 			eof = true
 		}
 		newOffset = ""
-		if isPodFailed(pod) {
-			return newFetchResponse(newFetchRequest(req.Job.Id, stepGroupName, newOffset), eof, logs), fmt.Errorf("step failed")
-		}
 	}
 
 	return newFetchResponse(newFetchRequest(req.Job.Id, stepGroupName, newOffset), eof, logs), nil
