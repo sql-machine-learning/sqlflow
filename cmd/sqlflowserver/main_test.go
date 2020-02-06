@@ -145,6 +145,17 @@ func AssertContainsAny(a *assert.Assertions, all map[string]string, actual *any.
 	}
 }
 
+func AssertIsSubStringAny(a *assert.Assertions, substring string, actual *any.Any) {
+	switch actual.TypeUrl {
+	case "type.googleapis.com/google.protobuf.StringValue":
+		b := wrappers.StringValue{}
+		ptypes.UnmarshalAny(actual, &b)
+		if !strings.Contains(b.Value, substring) {
+			a.Failf("", "%s have no sub string: %s", b.Value, substring)
+		}
+	}
+}
+
 func ParseRow(stream pb.SQLFlow_RunClient) ([]string, [][]*any.Any) {
 	var rows [][]*any.Any
 	var columns []string
@@ -881,14 +892,35 @@ INTO sqlflow_models.my_dnn_model_custom_functional;`
 
 func CaseTrainWithCommaSeparatedLabel(t *testing.T) {
 	a := assert.New(t)
-	trainSQL := `select f1,f2,f3,CONCAT(f13,",", target) as class from housing.train
-TO TRAIN sqlflow_models.DNNRegressor
-WITH model.hidden_units = [10, 20]
-LABEL class
-INTO sqlflow_models.my_dnn_model_csvlabel;`
+	trainSQL := `SELECT sepal_length, sepal_width, petal_length, concat(petal_width,',',class) as class FROM iris.train 
+	TO TRAIN sqlflow_models.LSTMBasedTimeSeriesModel WITH
+	  model.n_in=3,
+	  model.stack_units = [10, 10],
+	  model.n_out=2,
+	  validation.metrics= "MeanAbsoluteError,MeanSquaredError"
+	LABEL class
+	INTO sqlflow_models.my_dnn_regts_model_2;`
 	_, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("run trainSQL error: %v", err)
+	}
+
+	predSQL := `SELECT sepal_length, sepal_width, petal_length, concat(petal_width,',',class) as class FROM iris.test 
+	TO PREDICT iris.predict_ts_2.class USING sqlflow_models.my_dnn_regts_model_2;`
+	_, _, err = connectAndRunSQL(predSQL)
+	if err != nil {
+		a.Fail("run trainSQL error: %v", err)
+	}
+
+	showPred := `SELECT * FROM iris.predict_ts_2 LIMIT 5;`
+	_, rows, err := connectAndRunSQL(showPred)
+	if err != nil {
+		a.Fail("Run showPred error: %v", err)
+	}
+
+	for _, row := range rows {
+		// NOTE: Ensure that the predict result contains comma
+		AssertIsSubStringAny(a, ",", row[3])
 	}
 }
 
