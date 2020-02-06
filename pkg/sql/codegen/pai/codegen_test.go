@@ -153,7 +153,7 @@ func TestPredictCodegen(t *testing.T) {
 	scriptPath := "file:///tmp/task.tar.gz"
 	ckpDir, err := checkpointURL(ossModelPath)
 	a.NoError(err)
-	paiTFCode, paiCmd, _, e := Predict(ir, sess, scriptPath, "my_dnn_model", ossModelPath, "", true)
+	paiTFCode, paiCmd, _, e := Predict(ir, sess, scriptPath, "my_dnn_model", ossModelPath, "", ModelTypeTF)
 	a.NoError(e)
 	a.False(hasUnknownParameters(paiTFCode, knownPredictParams))
 	tfCode, err := tensorflow.Pred(ir, sess)

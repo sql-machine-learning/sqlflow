@@ -28,6 +28,15 @@ import (
 	"sqlflow.org/sqlflow/pkg/verifier"
 )
 
+const (
+	// ModelTypeTF is the mode type that trained by PAI Tensorflow.
+	ModelTypeTF = iota
+	// ModelTypeRandomForests is the model type that trained by PAI random forests.
+	ModelTypeRandomForests
+	// ModelTypeXGBoost is the model type that use PAI Tensorflow to train XGBoost models.
+	ModelTypeXGBoost
+)
+
 const entryFile = "entry.py"
 
 // checkpointURL returns the saved model path on OSS
@@ -106,11 +115,20 @@ func Train(ir *ir.TrainStmt, session *pb.Session, tarball, modelName, ossModelPa
 		if paiCmd, e = getTrainRandomForestsPAICmd(ir, session); e != nil {
 			return
 		}
-		requirements, e = genRequirements(false)
 	} else if strings.HasPrefix(strings.ToLower(ir.Estimator), "xgboost") {
 		if code, e = xgboost.Train(ir, session); e != nil {
 			return
 		}
+		var ossURI string
+		if ossURI, e = checkpointURL(ossModelPath); e != nil {
+			return
+		}
+		var tpl = template.Must(template.New("xgbSaveModel").Parse(xgbSaveModelTmplText))
+		var saveCode bytes.Buffer
+		if e = tpl.Execute(&saveCode, &xgbSaveModelFiller{OSSModelDir: ossURI}); e != nil {
+			return
+		}
+		code = code + saveCode.String()
 		if cc.Worker.Count > 1 {
 			return "", "", "", fmt.Errorf("when running xgboost on PAI, we only support run with one worker")
 		}
@@ -132,13 +150,45 @@ func Train(ir *ir.TrainStmt, session *pb.Session, tarball, modelName, ossModelPa
 }
 
 // Predict generates a Python program for train a TensorFlow model.
-func Predict(ir *ir.PredictStmt, session *pb.Session, tarball, modelName, ossModelPath, cwd string, isDeepModel bool) (code, paiCmd, requirements string, e error) {
-	if !isDeepModel {
+func Predict(ir *ir.PredictStmt, session *pb.Session, tarball, modelName, ossModelPath, cwd string, modelType int) (code, paiCmd, requirements string, e error) {
+	if modelType == ModelTypeRandomForests {
 		log.Printf("predicting using pai random forests")
 		if paiCmd, e = getPredictRandomForestsPAICmd(ir, session); e != nil {
 			return
 		}
+	} else if modelType == ModelTypeXGBoost {
+		requirements, e = genRequirements(true)
+		var ossURI string
+		if ossURI, e = checkpointURL(ossModelPath); e != nil {
+			return
+		}
+		var xgbPredCode bytes.Buffer
+		var tpl = template.Must(template.New("xgbPredTemplate").Parse(xgbPredTemplateText))
+		filler := &xgbPredictFiller{
+			OSSModelDir:      ossURI,
+			DataSource:       session.DbConnStr,
+			PredSelect:       ir.Select,
+			ResultTable:      ir.ResultTable,
+			HDFSNameNodeAddr: session.HdfsNamenodeAddr,
+			HiveLocation:     session.HiveLocation,
+			HDFSUser:         session.HdfsUser,
+			HDFSPass:         session.HdfsPass,
+		}
+		if e = tpl.Execute(&xgbPredCode, filler); e != nil {
+			return
+		}
+		code = xgbPredCode.String()
+
+		cc, err := GetClusterConfig(ir.Attributes)
+		if err != nil {
+			return
+		}
+		// NOTE(typhoonzero): submit a PAI TF job to install xgboost and run.
+		if paiCmd, e = getTFPAICmd(cc, tarball, modelName, ossModelPath, ir.TmpPredictTable, "", ir.ResultTable); e != nil {
+			return
+		}
 	} else {
+		requirements, e = genRequirements(false)
 		cc, err := GetClusterConfig(ir.Attributes)
 		if err != nil {
 			return
@@ -150,12 +200,11 @@ func Predict(ir *ir.PredictStmt, session *pb.Session, tarball, modelName, ossMod
 			return
 		}
 	}
-	requirements, e = genRequirements(false)
 	return
 }
 
 // Explain generates a Python program for train a TensorFlow model.
-func Explain(ir *ir.ExplainStmt, session *pb.Session, tarball, modelName, ossModelPath, cwd string, isDeepModel bool) (code, paiCmd, requirements string, e error) {
+func Explain(ir *ir.ExplainStmt, session *pb.Session, tarball, modelName, ossModelPath, cwd string, modelType int) (code, paiCmd, requirements string, e error) {
 	if ir.Into == "" {
 		return "", "", "", fmt.Errorf("explain PAI random forests model need INTO clause to output the explain result to a table")
 	}
@@ -163,20 +212,53 @@ func Explain(ir *ir.ExplainStmt, session *pb.Session, tarball, modelName, ossMod
 	if err != nil {
 		return "", "", "", err
 	}
-	if !isDeepModel {
-		log.Printf("predicting using pai random forests")
+	if modelType == ModelTypeRandomForests {
+		requirements, e = genRequirements(false)
+		log.Printf("explain using pai random forests")
 		if paiCmd, e = getExplainRandomForestsPAICmd(ir, session); e != nil {
 			return
 		}
+	} else if modelType == ModelTypeXGBoost {
+		requirements, e = genRequirements(true)
+		log.Printf("explain using pai xgboost")
+		var ossURI string
+		if ossURI, e = checkpointURL(ossModelPath); e != nil {
+			return
+		}
+		var xgbPredCode bytes.Buffer
+		var tpl = template.Must(template.New("xgbExplainTemplate").Parse(xgbExplainTemplateText))
+		filler := &xgbExplainFiller{
+			OSSModelDir:      ossURI,
+			DataSource:       session.DbConnStr,
+			DatasetSQL:       ir.Select,
+			ResultTable:      ir.Into,
+			HDFSNameNodeAddr: session.HdfsNamenodeAddr,
+			HiveLocation:     session.HiveLocation,
+			HDFSUser:         session.HdfsUser,
+			HDFSPass:         session.HdfsPass,
+		}
+		if e = tpl.Execute(&xgbPredCode, filler); e != nil {
+			return
+		}
+		code = xgbPredCode.String()
+
+		var cc *ClusterConfig
+		if cc, e = GetClusterConfig(ir.Attributes); e != nil {
+			return
+		}
+		// NOTE(typhoonzero): submit a PAI TF job to install xgboost and run.
+		if paiCmd, e = getTFPAICmd(cc, tarball, modelName, ossModelPath, ir.TmpExplainTable, "", ir.Into); e != nil {
+			return
+		}
 	} else {
+		requirements, e = genRequirements(false)
 		// run explain PAI TF
-		if code, e = TFLoadAndExplain(ir, session, modelName); e != nil {
+		if code, e = TFLoadAndExplain(ir, session, ossModelPath); e != nil {
 			return
 		}
 		if paiCmd, e = getTFPAICmd(cc, tarball, modelName, ossModelPath, ir.TmpExplainTable, "", ir.Into); e != nil {
 			return
 		}
 	}
-	requirements, e = genRequirements(false)
 	return
 }

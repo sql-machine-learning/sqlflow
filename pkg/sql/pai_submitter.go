@@ -15,6 +15,7 @@ package sql
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"os"
@@ -69,6 +70,7 @@ func dropTmpTables(tableNames []string, dataSource string) error {
 		return err
 	}
 	for _, tbName := range tableNames {
+		log.Printf("drop tmp table %s", tbName)
 		if tbName != "" {
 			_, err = db.Exec(fmt.Sprintf("DROP TABLE %s", tbName))
 			if err != nil {
@@ -184,18 +186,17 @@ func (s *paiSubmitter) ExecutePredict(cl *ir.PredictStmt) error {
 	if e := createPredictionTableFromIR(cl, s.Db, s.Session); e != nil {
 		return e
 	}
-	// note(yancey1989): Why the oss model exists indicates it's a deep model?
-	isDeepModel, err := ossModelFileExists(cl.Using)
-	if err != nil {
-		return err
-	}
 
 	ossModelPath, e := getModelPath(cl.Using, s.Session)
 	if e != nil {
 		return e
 	}
+	modelType, _, err := getOSSSavedModelType(ossModelPath)
+	if err != nil {
+		return err
+	}
 	scriptPath := fmt.Sprintf("file://%s/%s", s.Cwd, tarball)
-	code, paiCmd, requirements, e := pai.Predict(cl, s.Session, scriptPath, cl.Using, ossModelPath, s.Cwd, isDeepModel)
+	code, paiCmd, requirements, e := pai.Predict(cl, s.Session, scriptPath, cl.Using, ossModelPath, s.Cwd, modelType)
 	if e != nil {
 		return e
 	}
@@ -217,13 +218,15 @@ func (s *paiSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 		return e
 	}
 
-	isDeepModel, err := ossModelFileExists(ossModelPath)
+	modelType, estimator, err := getOSSSavedModelType(ossModelPath)
 	if err != nil {
 		return err
 	}
 	// format resultTable name to "db.table" to let the codegen form a submitting
 	// argument of format "odps://project/tables/table_name"
-	if cl.Into != "" {
+	// ModelTypeRandomForests do not need to create explain result manually, PAI will
+	// create the result table.
+	if cl.Into != "" && modelType != pai.ModelTypeRandomForests {
 		resultTableParts := strings.Split(cl.Into, ".")
 		if len(resultTableParts) == 1 {
 			dbName, err := getDatabaseNameFromDSN(s.Session.DbConnStr)
@@ -236,85 +239,137 @@ func (s *paiSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 		if err != nil {
 			return err
 		}
-		err = createExplainResultTable(db, cl, cl.Into, isDeepModel)
+		err = createExplainResultTable(db, cl, cl.Into, modelType, estimator)
 		if err != nil {
 			return err
 		}
 	}
 	scriptPath := fmt.Sprintf("file://%s/%s", s.Cwd, tarball)
-	code, paiCmd, requirements, e := pai.Explain(cl, s.Session, scriptPath, cl.ModelName, ossModelPath, s.Cwd, isDeepModel)
+	code, paiCmd, requirements, e := pai.Explain(cl, s.Session, scriptPath, cl.ModelName, ossModelPath, s.Cwd, modelType)
 	if e != nil {
 		return e
 	}
 	return s.submitPAITask(code, paiCmd, requirements)
 }
 
-func ossModelFileExists(modelName string) (bool, error) {
+// getOSSSavedModelType returns the saved model type when training, can be:
+// 1. randomforests: model is saved by pai
+// 2. xgboost: on OSS with model file xgboost_model_desx
+// 3. PAI tensorflow models: on OSS with meta file: tensorflow_model_desc
+func getOSSSavedModelType(modelName string) (modelType int, estimator string, err error) {
 	// FIXME(typhoonzero): if the model not exist on OSS, assume it's a random forest model
 	// should use a general method to fetch the model and see the model type.
 	endpoint := os.Getenv("SQLFLOW_OSS_MODEL_ENDPOINT")
 	ak := os.Getenv("SQLFLOW_OSS_AK")
 	sk := os.Getenv("SQLFLOW_OSS_SK")
 	if endpoint == "" || ak == "" || sk == "" {
-		return false, fmt.Errorf("must define SQLFLOW_OSS_MODEL_ENDPOINT, SQLFLOW_OSS_AK, SQLFLOW_OSS_SK when using submitter maxcompute")
+		err = fmt.Errorf("must define SQLFLOW_OSS_MODEL_ENDPOINT, SQLFLOW_OSS_AK, SQLFLOW_OSS_SK when using submitter maxcompute")
+		return
 	}
 	// NOTE(typhoonzero): PAI Tensorflow need SQLFLOW_OSS_CHECKPOINT_DIR, get bucket name from it
 	ossCheckpointDir := os.Getenv("SQLFLOW_OSS_CHECKPOINT_DIR")
 	ckptParts := strings.Split(ossCheckpointDir, "?")
 	if len(ckptParts) != 2 {
-		return false, fmt.Errorf("SQLFLOW_OSS_CHECKPOINT_DIR got wrong format")
+		err = fmt.Errorf("SQLFLOW_OSS_CHECKPOINT_DIR got wrong format")
+		return
 	}
 	urlParts := strings.Split(ckptParts[0], "://")
 	if len(urlParts) != 2 {
-		return false, fmt.Errorf("SQLFLOW_OSS_CHECKPOINT_DIR got wrong format")
+		err = fmt.Errorf("SQLFLOW_OSS_CHECKPOINT_DIR got wrong format")
 	}
 	bucketName := strings.Split(urlParts[1], "/")[0]
 
 	cli, err := oss.New(endpoint, ak, sk)
 	if err != nil {
-		return false, err
+		return
 	}
 	bucket, err := cli.Bucket(bucketName)
 	if err != nil {
-		return false, err
+		return
 	}
-	ret, err := bucket.IsObjectExist(modelName + "/sqlflow_model_desc")
-	return ret, err
+	ret, err := bucket.IsObjectExist(modelName + "/tensorflow_model_desc")
+	if err != nil {
+		return
+	}
+	if ret {
+		modelType = pai.ModelTypeTF
+		var buf []byte
+		err = bucket.GetObjectToFile(modelName+"/tensorflow_model_desc_estimator", "tmp_estimator_name")
+		if err != nil {
+			return
+		}
+		buf, err = ioutil.ReadFile("tmp_estimator_name")
+		estimator = string(buf)
+		return
+	}
+	ret, err = bucket.IsObjectExist(modelName + "/xgboost_model_desc")
+	if err != nil {
+		return
+	}
+	if ret {
+		modelType = pai.ModelTypeXGBoost
+		return
+	}
+	modelType = pai.ModelTypeRandomForests
+	return
 }
 
-func createExplainResultTable(db *database.DB, ir *ir.ExplainStmt, tableName string, isDeepModel bool) error {
+func getCreateShapResultSQL(db *database.DB, tableName string, selectStmt string, labelCol string) (string, error) {
+	// create table to record shap values for every feature for each sample.
+	flds, _, err := getColumnTypes(selectStmt, db)
+	if err != nil {
+		return "", err
+	}
+	columnDefList := []string{}
+	for _, fieldName := range flds {
+		if fieldName != labelCol {
+			columnDefList = append(columnDefList, fmt.Sprintf("%s STRING", fieldName))
+		}
+	}
+	createStmt := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s (%s);`, tableName, strings.Join(columnDefList, ","))
+	return createStmt, nil
+}
+
+func createExplainResultTable(db *database.DB, ir *ir.ExplainStmt, tableName string, modelType int, estimator string) error {
 	dropStmt := fmt.Sprintf(`DROP TABLE IF EXISTS %s;`, tableName)
-	if _, e := db.Exec(dropStmt); e != nil {
+	var e error
+	if _, e = db.Exec(dropStmt); e != nil {
 		return fmt.Errorf("failed executing %s: %q", dropStmt, e)
 	}
 	createStmt := ""
-	if !isDeepModel {
-		columnDef := ""
-		if db.DriverName == "mysql" {
-			columnDef = "(feature VARCHAR(255), dfc FLOAT, gain FLOAT)"
+	if modelType == pai.ModelTypeTF {
+		if strings.HasPrefix(estimator, "BoostedTrees") {
+			columnDef := ""
+			if db.DriverName == "mysql" {
+				columnDef = "(feature VARCHAR(255), dfc FLOAT, gain FLOAT)"
+			} else {
+				// Hive & MaxCompute
+				columnDef = "(feature STRING, dfc STRING, gain STRING)"
+			}
+			createStmt = fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s %s;`, tableName, columnDef)
 		} else {
-			// Hive & MaxCompute
-			columnDef = "(feature STRING, dfc STRING, gain STRING)"
-		}
-		createStmt = fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s %s;`, tableName, columnDef)
-	} else {
-		// create table to record shap values for every feature for each sample.
-		flds, _, err := getColumnTypes(ir.Select, db)
-		if err != nil {
-			return err
-		}
-		columnDefList := []string{}
-		labelCol, ok := ir.Attributes["label_col"]
-		if !ok {
-			return fmt.Errorf("need to specify WITH label_col=lable_col_name when explaining deep models")
-		}
-		for _, fieldName := range flds {
-			if fieldName != labelCol {
-				columnDefList = append(columnDefList, fmt.Sprintf("%s STRING", fieldName))
+			labelCol, ok := ir.Attributes["label_col"]
+			if !ok {
+				return fmt.Errorf("need to specify WITH label_col=lable_col_name when explaining deep models")
+			}
+			createStmt, e = getCreateShapResultSQL(db, tableName, ir.Select, labelCol.(string))
+			if e != nil {
+				return e
 			}
 		}
-		createStmt = fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s (%s);`, tableName, strings.Join(columnDefList, ","))
+	} else if modelType == pai.ModelTypeXGBoost {
+		labelCol, ok := ir.Attributes["label_col"]
+		if !ok {
+			return fmt.Errorf("need to specify WITH label_col=lable_col_name when explaining xgboost models")
+		}
+		createStmt, e = getCreateShapResultSQL(db, tableName, ir.Select, labelCol.(string))
+		if e != nil {
+			return e
+		}
+	} else {
+		return fmt.Errorf("not supported modelType %d for creating Explain result table", modelType)
 	}
+
 	if _, e := db.Exec(createStmt); e != nil {
 		return fmt.Errorf("failed executing %s: %q", createStmt, e)
 	}
