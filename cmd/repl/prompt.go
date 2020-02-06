@@ -87,7 +87,6 @@ func (p *promptState) execute(in string, cb func(string)) {
 		if addLineToStmt(in, &p.inQuotedString, &p.isSingleQuoted, &p.statements) {
 			p.updateHistory()
 			p.enableLivePrefix = false
-			fmt.Println()
 			for _, stmt := range p.statements {
 				cb(stmt)
 			}

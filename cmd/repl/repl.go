@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"image"
 	_ "image/png"
+	"time"
 
 	"encoding/base64"
 	"flag"
@@ -175,21 +176,21 @@ func imageCat(imageBytes []byte) error {
 
 var it2Check = false
 
-func render(rsp interface{}, table *tablewriter.Table, isTerminal bool) bool {
+func render(rsp interface{}, table *tablewriter.Table, isTerminal bool) (bool, error) {
 	switch s := rsp.(type) {
 	case map[string]interface{}: // table header
 		cols, e := header(s)
 		if e == nil {
 			table.SetHeader(cols)
 		}
-		return true
+		return true, nil
 	case []interface{}: // row
 		row := make([]string, len(s))
 		for i, v := range s {
 			row[i] = fmt.Sprint(v)
 		}
 		table.Append(row)
-		return true
+		return true, nil
 	case error:
 		if os.Getenv("SQLFLOW_log_dir") != "" { // To avoid printing duplicated error message to console
 			log.New(os.Stderr, "", 0).Printf("ERROR: %v\n", s)
@@ -197,6 +198,7 @@ func render(rsp interface{}, table *tablewriter.Table, isTerminal bool) bool {
 		if !isTerminal {
 			os.Exit(1)
 		}
+		return false, s
 	case sql.EndOfExecution:
 	case sql.Figures:
 		if isHTMLSnippet(s.Image) {
@@ -223,7 +225,7 @@ func render(rsp interface{}, table *tablewriter.Table, isTerminal bool) bool {
 	default:
 		log.Fatalf("unrecognized response type: %v", s)
 	}
-	return false
+	return false, nil
 }
 
 func flagPassed(name ...string) bool {
@@ -239,6 +241,7 @@ func flagPassed(name ...string) bool {
 }
 
 func runStmt(stmt string, isTerminal bool, modelDir string, ds string) error {
+	startTime := time.Now().UnixNano()
 	if !isTerminal {
 		fmt.Println("sqlflow>", stmt)
 	}
@@ -251,16 +254,29 @@ func runStmt(stmt string, isTerminal bool, modelDir string, ds string) error {
 		return switchDatabase(parts[1], sess)
 	}
 	stream := sql.RunSQLProgram(stmt, modelDir, sess)
+	var isTable bool
+	var err error
 	for rsp := range stream.ReadAll() {
 		// pagination. avoid exceed memory
-		if render(rsp, table, isTerminal) && table.NumLines() == tablePageSize {
+		isTable, err = render(rsp, table, isTerminal)
+		if err != nil {
+			break
+		}
+		if isTable && table.NumLines() == tablePageSize {
 			table.Render()
 			tableRendered = true
 			table.ClearRows()
 		}
 	}
-	if table.NumLines() > 0 || !tableRendered {
+	if table.NumLines() > 0 && !tableRendered {
 		table.Render()
+	}
+	if err == nil {
+		if isTable {
+			fmt.Printf("%d rows in set ", table.NumLines())
+		}
+		fmt.Printf("(%.2f sec)\n", float64(time.Now().UnixNano()-startTime)/1e9)
+		fmt.Println()
 	}
 	return nil
 }
@@ -276,7 +292,6 @@ func assertConnectable(ds string) {
 func repl(scanner *bufio.Scanner, modelDir string, ds string) {
 	for {
 		statements, err := readStmt(scanner)
-		fmt.Println()
 		if err == io.EOF && len(statements) == 0 {
 			return
 		}
