@@ -136,7 +136,7 @@ func getTFPAICmd(cc *ClusterConfig, tarball, modelName, ossModelPath, trainTable
 		outputTables = fmt.Sprintf("-Doutputs=%s", table)
 	}
 
-	cmd := fmt.Sprintf("pai -name tensorflow1120 -DjobName=%s -Dtags=dnn -Dscript=%s -DentryFile=entry.py -Dtables=%s %s -DcheckpointDir=\"%s\"", jobName, tarball, submitTables, outputTables, ckpDir)
+	cmd := fmt.Sprintf("pai -name tensorflow1150 -project algo_public_dev -DgpuRequired='0' -DjobName=%s -Dtags=dnn -Dscript=%s -DentryFile=entry.py -Dtables=%s %s -DcheckpointDir=\"%s\"", jobName, tarball, submitTables, outputTables, ckpDir)
 	if cc.Worker.Count > 1 {
 		cmd = fmt.Sprintf("%s -Dcluster=%s", cmd, cfQuote)
 	}

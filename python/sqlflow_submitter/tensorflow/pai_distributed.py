@@ -28,6 +28,8 @@ def define_tf_flags():
     tf.app.flags.DEFINE_string("worker_hosts", "", "worker hosts")
     tf.app.flags.DEFINE_string("job_name", 'worker', "job name: worker or ps")
     tf.app.flags.DEFINE_string("checkpointDir", "", "oss info")
+    tf.app.flags.DEFINE_string("tables", "", "required by PAI-TF 1.15")
+    tf.app.flags.DEFINE_string("outputs", "", "required by PAI-TF 1.15")
     FLAGS = tf.app.flags.FLAGS
     return FLAGS
 

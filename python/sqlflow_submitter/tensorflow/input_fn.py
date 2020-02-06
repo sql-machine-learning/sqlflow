@@ -19,6 +19,11 @@ import tensorflow as tf
 from sqlflow_submitter.db import (connect_with_data_source, db_generator,
                                   parseMaxComputeDSN)
 
+try:
+    import paiio
+except:
+    pass
+
 
 def parse_sparse_feature(features, label, feature_column_names, feature_metas):
     features_dict = dict()
@@ -127,11 +132,11 @@ def pai_maxcompute_input_fn(pai_table,
     selected_cols.append(label_meta["feature_name"])
     if num_workers == 0:
         num_workers = 1
-    dataset = tf.data.TableRecordDataset(tables,
-                                         record_defaults=record_defaults,
-                                         selected_cols=",".join(selected_cols),
-                                         slice_id=worker_id,
-                                         slice_count=num_workers)
+    dataset = paiio.TableRecordDataset(tables,
+                                       record_defaults=record_defaults,
+                                       selected_cols=",".join(selected_cols),
+                                       slice_id=worker_id,
+                                       slice_count=num_workers)
 
     def tensor_to_dict(*args):
         num_features = len(feature_column_names)
@@ -199,11 +204,10 @@ def pai_maxcompute_db_generator(table,
                 label_idx = None
         else:
             label_idx = None
-        reader = tf.python_io.TableReader(
-            table,
-            selected_cols=",".join(selected_cols),
-            slice_id=0,
-            slice_count=1)
+        reader = paiio.TableReader(table,
+                                   selected_cols=",".join(selected_cols),
+                                   slice_id=0,
+                                   slice_count=1)
         while True:
             try:
                 row = reader.read(num_records=1)[0]

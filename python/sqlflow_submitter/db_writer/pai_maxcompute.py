@@ -11,6 +11,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+try:
+    import paiio
+except:
+    pass
 import tensorflow as tf
 from odps import ODPS, tunnel
 
@@ -25,7 +29,7 @@ class PAIMaxComputeDBWriter(BufferedDBWriter):
         assert len(table_name_parts) == 2
         table_name_formated = "odps://%s/tables/%s" % (table_name_parts[0],
                                                        table_name_parts[1])
-        self.writer = tf.python_io.TableWriter(table_name_formated, slice_id=0)
+        self.writer = paiio.TableWriter(table_name_formated, slice_id=0)
         self.writer_indices = range(len(table_schema))
 
     def flush(self):
