@@ -138,7 +138,7 @@ func TestTrainCodegen(t *testing.T) {
 	// check pai command string
 	ckpDir, err := checkpointURL(ossModelPath)
 	a.NoError(err)
-	expectedPAICmd := fmt.Sprintf("pai -name tensorflow1120 -DjobName=sqlflow_my_dnn_model -Dtags=dnn -Dscript=%s -DentryFile=entry.py -Dtables=odps://iris/tables/train,odps://iris/tables/test  -DcheckpointDir=\"%s\"", scriptPath, ckpDir)
+	expectedPAICmd := fmt.Sprintf("pai -name tensorflow1150 -project algo_public_dev -DgpuRequired='0' -DjobName=sqlflow_my_dnn_model -Dtags=dnn -Dscript=%s -DentryFile=entry.py -Dtables=odps://iris/tables/train,odps://iris/tables/test  -DcheckpointDir=\"%s\"", scriptPath, ckpDir)
 	a.Equal(expectedPAICmd, paiCmd)
 }
 
@@ -161,6 +161,6 @@ func TestPredictCodegen(t *testing.T) {
 
 	a.True(hasExportedLocal(tfCode))
 	a.False(hasUnknownParameters(tfCode, knownPredictParams))
-	expectedPAICmd := fmt.Sprintf("pai -name tensorflow1120 -DjobName=sqlflow_my_dnn_model -Dtags=dnn -Dscript=%s -DentryFile=entry.py -Dtables=odps://iris/tables/predict -Doutputs=odps://iris/tables/predict -DcheckpointDir=\"%s\"", scriptPath, ckpDir)
+	expectedPAICmd := fmt.Sprintf("pai -name tensorflow1150 -project algo_public_dev -DgpuRequired='0' -DjobName=sqlflow_my_dnn_model -Dtags=dnn -Dscript=%s -DentryFile=entry.py -Dtables=odps://iris/tables/predict -Doutputs=odps://iris/tables/predict -DcheckpointDir=\"%s\"", scriptPath, ckpDir)
 	a.Equal(expectedPAICmd, paiCmd)
 }
