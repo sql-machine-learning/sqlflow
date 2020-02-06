@@ -28,6 +28,7 @@ import (
 	"sqlflow.org/sqlflow/pkg/model"
 	"sqlflow.org/sqlflow/pkg/pipe"
 	pb "sqlflow.org/sqlflow/pkg/proto"
+	"sqlflow.org/sqlflow/pkg/sql/codegen/pai"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/xgboost"
 )
@@ -187,12 +188,7 @@ func (s *defaultSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 	} else {
 		code, err = tensorflow.Explain(cl, s.Session)
 		if cl.Into != "" {
-			isDeepModel := true
-			// FIXME(typhoonzero): Not sure checking the estimator name is sufficient to determine the model type.
-			if cl.TrainStmt.Estimator == "BoostedTreesClassifier" || cl.TrainStmt.Estimator == "BoostedTreesRegressor" {
-				isDeepModel = false
-			}
-			err := createExplainResultTable(db, cl, cl.Into, isDeepModel)
+			err := createExplainResultTable(db, cl, cl.Into, pai.ModelTypeTF, cl.TrainStmt.Estimator)
 			if err != nil {
 				return err
 			}

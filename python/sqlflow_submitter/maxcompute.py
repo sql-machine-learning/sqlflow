@@ -23,7 +23,7 @@ class MaxCompute:
         return ODPS(user, password, project=database, endpoint=host)
 
     @staticmethod
-    def db_generator(conn, statement, feature_column_names, label_column_name,
+    def db_generator(conn, statement, feature_column_names, label_spec,
                      feature_specs, fetch_size):
         def read_feature(raw_val, feature_spec):
             if feature_spec["is_sparse"]:
@@ -53,8 +53,12 @@ class MaxCompute:
             r = inst.open_reader(tunnel=True, compress_option=compress)
             field_names = None if r._schema.columns is None \
                 else [col.name for col in r._schema.columns]
-            if label_column_name:
-                label_idx = field_names.index(label_column_name)
+            if label_spec:
+                try:
+                    label_idx = field_names.index(label_spec["feature_name"])
+                except ValueError:
+                    # NOTE(typhoonzero): For clustering model, label_column_name may not in field_names when predicting.
+                    label_idx = None
             else:
                 label_idx = None
 
@@ -62,13 +66,27 @@ class MaxCompute:
             while i < r.count:
                 expected = r.count - i if r.count - i < fetch_size else fetch_size
                 for row in [[v[1] for v in rec] for rec in r[i:i + expected]]:
+                    # NOTE: If there is no label clause in the extened SQL, the default label value would
+                    # be -1, the Model implementation can determine use it or not.
                     label = row[label_idx] if label_idx is not None else None
+                    if label_spec and label_spec["delimiter"] != "":
+                        if label_spec["dtype"] == "float32":
+                            label = np.fromstring(label,
+                                                  dtype=float,
+                                                  sep=label_spec["delimiter"])
+                        elif label_spec["dtype"] == "int64":
+                            label = np.fromstring(label,
+                                                  dtype=int,
+                                                  sep=label_spec["delimiter"])
                     features = []
                     for name in feature_column_names:
                         feature = read_feature(row[field_names.index(name)],
                                                feature_specs[name])
                         features.append(feature)
-                    yield tuple(features), label
+                    if label_idx is None:
+                        yield (tuple(features), )
+                    else:
+                        yield tuple(features), label
                 i += expected
 
         return reader

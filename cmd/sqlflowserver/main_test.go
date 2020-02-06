@@ -1397,7 +1397,23 @@ func CaseTrainXGBoostOnPAI(t *testing.T) {
 		a.Fail("Run trainSQL error: %v", err)
 	}
 
-	// TODO(typhoonzero): add predict and explain test
+	predSQL := fmt.Sprintf(`SELECT * FROM %s
+	TO PREDICT %s.class
+	USING my_xgb_classi_model;`, caseTestTable, casePredictTable)
+	_, _, err = connectAndRunSQL(predSQL)
+	if err != nil {
+		a.Fail("Run predSQL error: %v", err)
+	}
+
+	explainSQL := fmt.Sprintf(`SELECT * FROM %s
+	TO EXPLAIN my_xgb_classi_model
+	WITH label_col=class
+	USING TreeExplainer
+	INTO my_xgb_explain_result;`, caseTrainTable)
+	_, _, err = connectAndRunSQL(explainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
 }
 
 // TestEnd2EndMaxComputePAI test cases that runs on PAI. Need to set below
