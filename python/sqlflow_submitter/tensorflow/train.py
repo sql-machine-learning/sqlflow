@@ -196,6 +196,21 @@ def estimator_train_and_save(
     # FIXME(typhoonzero): find out why pai will have result == None
     if not is_pai:
         print(result[0])
+    # export saved model for prediction
+    if "feature_columns" in model_params:
+        all_feature_columns = model_params["feature_columns"]
+    elif "linear_feature_columns" in model_params and "dnn_feature_columns" in model_params:
+        import copy
+        all_feature_columns = copy.copy(model_params["linear_feature_columns"])
+        all_feature_columns.extend(model_params["dnn_feature_columns"])
+    else:
+        raise Exception("No expected feature columns in model params")
+    serving_input_fn = tf.estimator.export.build_parsing_serving_input_receiver_fn(
+        tf.feature_column.make_parse_example_spec(all_feature_columns))
+    export_path = classifier.export_saved_model(save, serving_input_fn)
+    # write the path under checkpoint directory
+    with open(os.path.join(save, "exported_path"), "w") as fn:
+        fn.write(str(export_path.decode("utf-8")))
 
 
 def train(datasource,
