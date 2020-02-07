@@ -384,6 +384,7 @@ func achieveResource(cwd, entryCode, requirements, tarball string) error {
 		return err
 	}
 
+	// add sqlflow_submitter
 	path, err := findPyModulePath("sqlflow_submitter")
 	if err != nil {
 		return err
@@ -394,7 +395,18 @@ func achieveResource(cwd, entryCode, requirements, tarball string) error {
 		return fmt.Errorf("failed %s, %v", cmd, err)
 	}
 
-	cmd = exec.Command("tar", "czf", tarball, "./sqlflow_submitter", entryFile, "requirements.txt")
+	// add sqlflow_models
+	path, err = findPyModulePath("sqlflow_models")
+	if err != nil {
+		return err
+	}
+	cmd = exec.Command("cp", "-r", path, ".")
+	cmd.Dir = cwd
+	if _, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed %s, %v", cmd, err)
+	}
+
+	cmd = exec.Command("tar", "czf", tarball, "./sqlflow_submitter", "./sqlflow_models", entryFile, "requirements.txt")
 	cmd.Dir = cwd
 	if _, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("failed %s, %v", cmd, err)

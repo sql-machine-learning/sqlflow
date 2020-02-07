@@ -842,29 +842,26 @@ INTO sqlflow_models.my_dnn_model;`
 
 func CaseTrainCustomModel(t *testing.T) {
 	a := assert.New(t)
-	trainSQL := `SELECT *
-FROM iris.train
+	trainSQL := fmt.Sprintf(`SELECT * FROM %s
 TO TRAIN sqlflow_models.DNNClassifier
 WITH model.n_classes = 3, model.hidden_units = [10, 20]
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
-INTO sqlflow_models.my_dnn_model_custom;`
+INTO %s;`, caseTrainTable, caseInto)
 	_, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("run trainSQL error: %v", err)
 	}
 
-	predSQL := `SELECT *
-FROM iris.test
-TO PREDICT iris.predict.class
-USING sqlflow_models.my_dnn_model_custom;`
+	predSQL := fmt.Sprintf(`SELECT * FROM %s
+TO PREDICT %s.class
+USING %s;`, caseTestTable, casePredictTable, caseInto)
 	_, _, err = connectAndRunSQL(predSQL)
 	if err != nil {
 		a.Fail("run predSQL error: %v", err)
 	}
 
-	showPred := `SELECT *
-FROM iris.predict LIMIT 5;`
+	showPred := fmt.Sprintf(`SELECT * FROM %s LIMIT 5;`, casePredictTable)
 	_, rows, err := connectAndRunSQL(showPred)
 	if err != nil {
 		a.Fail("run showPred error: %v", err)
@@ -877,13 +874,12 @@ FROM iris.predict LIMIT 5;`
 		AssertGreaterEqualAny(a, row[4], int64(0))
 	}
 
-	trainSQL = `SELECT *
-FROM iris.train
-TO TRAIN sqlflow_models.DNNClassifier
+	trainSQL = fmt.Sprintf(`SELECT * FROM %s
+TO TRAIN sqlflow_models.dnnclassifier_functional_model
 WITH model.n_classes = 3
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
-INTO sqlflow_models.my_dnn_model_custom_functional;`
+INTO %s;`, caseTrainTable, caseInto)
 	_, _, err = connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("run trainSQL error: %v", err)
@@ -1499,6 +1495,7 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 
 	t.Run("CaseTrainSQL", CaseTrainSQL)
 	t.Run("CaseTrainDNNAndExplain", CaseTrainDNNAndExplain)
+	t.Run("CaseTrainCustomModel", CaseTrainCustomModel)
 	t.Run("CaseTrainPAIRandomForests", CaseTrainPAIRandomForests)
 	t.Run("CaseTrainXGBoostOnPAI", CaseTrainXGBoostOnPAI)
 	t.Run("CaseTrainDistributedPAI", CaseTrainDistributedPAI)
