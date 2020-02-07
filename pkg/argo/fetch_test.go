@@ -14,7 +14,6 @@
 package argo
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -124,7 +123,6 @@ func TestFetch(t *testing.T) {
 		a.NoError(err)
 		for _, log := range response.Logs.Content {
 			actualLogs = append(actualLogs, log)
-			fmt.Println(log)
 		}
 		if response.Eof {
 			break
