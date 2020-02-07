@@ -143,7 +143,7 @@ def run_script(image, command=None, source=None, env=None, resources=None):
                                 if command.lower() == "python" else source)
 
             if env is not None:
-                script["env"] = _convert_dict_to_list(env)
+                script["env"] = _convert_dict_to_env_list(env)
 
             if resources is not None:
                 script["resources"] = _resources(resources)
@@ -209,7 +209,7 @@ def run_container(
                 container["args"].append(arg_yaml)
 
         if env is not None:
-            container["env"] = _convert_dict_to_list(env)
+            container["env"] = _convert_dict_to_env_list(env)
 
         if secret is not None:
             env_secrets = _convert_secret_to_list(secret)
@@ -623,6 +623,28 @@ def _convert_dict_to_list(d):
     env_list = []
     for k, v in d.items():
         env_list.append({"name": str(k), "value": str(v)})
+    return env_list
+
+
+def _convert_dict_to_env_list(d):
+    """This is to convert a Python dictionary to a list, where
+    each list item is a dict with `name` and `value` keys.
+    """
+    if not isinstance(d, dict):
+        raise TypeError("The input parameter `d` is not a dict.")
+
+    env_list = []
+    for k, v in d.items():
+        if isinstance(v, bool):
+            value = "'%s'" % v
+            env_list.append({"name": str(k), "value": value})
+        elif k == "secrets":
+            if not isinstance(v, list):
+                raise TypeError("The environment secrets should be a list.")
+            for s in v:
+                env_list.append(s)
+        else:
+            env_list.append({"name": str(k), "value": str(v)})
     return env_list
 
 
