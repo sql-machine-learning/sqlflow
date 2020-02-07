@@ -41,6 +41,7 @@ def pred(datasource,
 
     bst = xgb.Booster({'nthread': 4})  # init model
     bst.load_model("my_model")  # load data
+    print("Start predicting XGBoost model...")
     preds = bst.predict(dpred)
 
     # TODO(Yancey1989): using the train parameters to decide regression model or classifier model
