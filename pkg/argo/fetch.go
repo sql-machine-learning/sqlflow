@@ -23,13 +23,13 @@ import (
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
-func newFetchRequest(workflowID, stepID, logOffset string) *pb.FetchRequest {
+func newFetchRequest(workflowID, stepID, stepPhase string) *pb.FetchRequest {
 	return &pb.FetchRequest{
 		Job: &pb.Job{
 			Id: workflowID,
 		},
 		StepId:    stepID,
-		LogOffset: logOffset,
+		StepPhase: stepPhase,
 	}
 }
 
@@ -103,8 +103,8 @@ func Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 	// Step [2/3] Execute Code: echo hello2
 	// Step [2/3] Log view: http://localhost:8001/workflows/default/steps-bdpff?nodeId=steps-bdpff-xx2
 	// ...
-	newOffset := req.LogOffset
-	if req.LogOffset == "" {
+	newStepPhase := req.StepPhase
+	if req.StepPhase == "" {
 		// return the log view url for the first call of step
 		url, e := logViewURL(wf.ObjectMeta.Namespace, wf.ObjectMeta.Name, stepGroupName)
 		if e != nil {
@@ -116,15 +116,15 @@ func Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 		logs = append(logs, fmt.Sprintf("Step: [%d/%d] Log View: %s", stepIdx, stepCnt, url))
 	}
 
-	// note(yancey1989): use the Pod phase as the offset to avoid output the large duplicated logs.
-	if req.LogOffset != string(pod.Status.Phase) {
+	// note(yancey1989): record the Pod phase to avoid output the duplicated logs at the next fetch request.
+	if req.StepPhase != string(pod.Status.Phase) {
 		logs = append(logs, fmt.Sprintf("Step: [%d/%d] Status: %s", stepIdx, stepCnt, pod.Status.Phase))
-		newOffset = string(pod.Status.Phase)
+		newStepPhase = string(pod.Status.Phase)
 	}
 
 	if isPodCompleted(pod) {
 		if isPodFailed(pod) {
-			return newFetchResponse(newFetchRequest(req.Job.Id, stepGroupName, newOffset), eof, logs), fmt.Errorf("step failed")
+			return newFetchResponse(newFetchRequest(req.Job.Id, stepGroupName, newStepPhase), eof, logs), fmt.Errorf("step failed")
 		}
 		// move to the next step
 		nextStepGroup, err := getNextStepGroup(wf, stepGroupName)
@@ -136,12 +136,12 @@ func Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 			eof = true
 		}
 		if nextStepGroup != "" {
-			newOffset = ""
+			newStepPhase = ""
 			stepGroupName = nextStepGroup
 		}
 	}
 
-	return newFetchResponse(newFetchRequest(req.Job.Id, stepGroupName, newOffset), eof, logs), nil
+	return newFetchResponse(newFetchRequest(req.Job.Id, stepGroupName, newStepPhase), eof, logs), nil
 }
 
 func parseOffset(content string) (string, string, error) {
