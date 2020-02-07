@@ -13,14 +13,30 @@
 
 import xgboost as xgb
 from sqlflow_submitter.db import connect_with_data_source, db_generator
+from sqlflow_submitter.tensorflow.input_fn import pai_maxcompute_input_fn
 
 
-def xgb_dataset(conn, fn, dataset_sql, feature_column_name, label_spec,
-                feature_spec):
+def xgb_dataset(datasource,
+                fn,
+                dataset_sql,
+                feature_field_meta,
+                label_spec,
+                is_pai=False,
+                pai_table=""):
+
     if label_spec:
         label_spec["feature_name"] = label_spec["name"]
-    gen = db_generator(conn.driver, conn, dataset_sql, feature_column_name,
-                       label_spec, feature_spec)
+    feature_column_name = [k["name"] for k in feature_field_meta]
+    feature_spec = {k['name']: k for k in feature_field_meta}
+
+    if is_pai:
+        conn = connect_with_data_source(datasource)
+        gen = db_generator(conn.driver, conn, dataset_sql, feature_column_name,
+                           label_spec, feature_spec)
+    else:
+        gen = pai_maxcompute_input_fn(pai_table, datasource,
+                                      feature_column_names, feature_field_meta,
+                                      label_spec)
     with open(fn, 'w') as f:
         for item in gen():
             if label_spec is None:
@@ -35,21 +51,25 @@ def xgb_dataset(conn, fn, dataset_sql, feature_column_name, label_spec,
     return xgb.DMatrix(fn)
 
 
-def train(datasource, select, model_params, train_params, feature_field_meta,
-          label_field_meta, validation_select):
-    conn = connect_with_data_source(datasource)
+def train(datasource,
+          select,
+          model_params,
+          train_params,
+          feature_field_meta,
+          label_field_meta,
+          validation_select,
+          is_pai=False,
+          pai_train_table="",
+          pai_validate_table=""):
 
-    # NOTE(tony): sorting is necessary to achieve consistent feature orders between training job and prediction/analysis job
-    feature_column_name = [k["name"] for k in feature_field_meta]
-    feature_spec = {k['name']: k for k in feature_field_meta}
-
-    dtrain = xgb_dataset(conn, 'train.txt', select, feature_column_name,
-                         label_field_meta, feature_spec)
+    dtrain = xgb_dataset(datasource, 'train.txt', select, feature_field_meta,
+                         label_field_meta, is_pai, pai_train_table)
     watchlist = [(dtrain, "train")]
+
     if len(validation_select.strip()) > 0:
-        dvalidate = xgb_dataset(conn, 'validate.txt', validation_select,
-                                feature_column_name, label_field_meta,
-                                feature_spec)
+        dvalidate = xgb_dataset(datasource, 'validate.txt', select,
+                                feature_field_meta, label_field_meta, is_pai,
+                                pai_validate_table)
         watchlist.append((dvalidate, "validate"))
 
     re = dict()

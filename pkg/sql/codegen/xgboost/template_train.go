@@ -23,6 +23,9 @@ type trainFiller struct {
 	TrainParamsJSON  string
 	FieldDescJSON    string
 	LabelJSON        string
+	IsPAI            bool
+	PAITrainTable    string
+	PAIValidateTable string
 }
 
 const trainTemplateText = `
@@ -40,7 +43,11 @@ train(datasource='''{{.DataSource}}''',
       train_params=train_params,
       feature_field_meta=feature_field_meta,
       label_field_meta=label_field_meta,
-      validation_select='''{{.ValidationSelect}}''')
+			validation_select='''{{.ValidationSelect}}''',
+			is_pai="{{.IsPAI}}" == "true",
+			pai_train_table="{{.PAITrainTable}}",
+			pai_validate_table="{{.PAIValidateTable}}"
+			)
 `
 
 var trainTemplate = template.Must(template.New("Train").Parse(trainTemplateText))

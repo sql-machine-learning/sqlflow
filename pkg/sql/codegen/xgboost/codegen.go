@@ -23,6 +23,7 @@ import (
 	"sqlflow.org/sqlflow/pkg/ir"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/attribute"
+	tf "sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
 )
 
 // TODO(tony): complete model parameter and training parameter list
@@ -133,6 +134,14 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	paiTrainTable := ""
+	paiValidateTable := ""
+	if tf.IsPAI() && trainStmt.TmpTrainTable != "" {
+		paiTrainTable = trainStmt.TmpTrainTable
+		paiValidateTable = trainStmt.TmpValidateTable
+	}
+
 	r := trainFiller{
 		DataSource:       session.DbConnStr,
 		TrainSelect:      trainStmt.Select,
@@ -140,7 +149,10 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 		ModelParamsJSON:  string(mp),
 		TrainParamsJSON:  string(tp),
 		FieldDescJSON:    string(f),
-		LabelJSON:        string(l)}
+		LabelJSON:        string(l),
+		IsPAI:            tf.IsPAI(),
+		PAITrainTable:    paiTrainTable,
+		PAIValidateTable: paiValidateTable}
 
 	var program bytes.Buffer
 	if err := trainTemplate.Execute(&program, r); err != nil {
@@ -165,6 +177,11 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 		return "", err
 	}
 
+	paiPredictTable := ""
+	if tf.IsPAI() && predStmt.TmpPredictTable != "" {
+		paiPredictTable = predStmt.TmpPredictTable
+	}
+
 	r := predFiller{
 		DataSource:       session.DbConnStr,
 		PredSelect:       predStmt.Select,
@@ -175,6 +192,8 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 		HiveLocation:     session.HiveLocation,
 		HDFSUser:         session.HdfsUser,
 		HDFSPass:         session.HdfsPass,
+		IsPAI:            tf.IsPAI(),
+		PAITable:         paiPredictTable,
 	}
 
 	var program bytes.Buffer
