@@ -17,6 +17,7 @@ import json
 import os
 import sys
 
+import numpy as np
 import tensorflow as tf
 from sqlflow_submitter.db import (buffered_db_writer, connect_with_data_source,
                                   db_generator, parseMaxComputeDSN)
@@ -101,7 +102,12 @@ def keras_predict(estimator, model_params, save, result_table,
             for idx, name in enumerate(feature_column_names):
                 val = features[name].numpy()[0][0]
                 row.append(str(val))
-            row.append(str(result))
+            if isinstance(result, np.ndarray) and len(result) > 1:
+                # NOTE(typhoonzero): if the output dimension > 1, format output tensor
+                # using a comma separated string. Only available for keras models.
+                row.append(",".join([str(i) for i in result]))
+            else:
+                row.append(str(result))
             w.write(row)
     del pred_dataset
 
