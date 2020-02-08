@@ -130,7 +130,6 @@ def explain_dnns(datasource, estimator, shap_dataset, plot_type, result_table,
             return tf.data.Dataset.from_tensor_slices(
                 dict(pd.DataFrame(d, columns=shap_dataset.columns))).batch(1000)
 
-        print(end="\r") 
         return np.array(
             [p['probabilities'][-1] for p in estimator.predict(input_fn)])
 
