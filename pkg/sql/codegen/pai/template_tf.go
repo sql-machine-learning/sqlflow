@@ -58,7 +58,7 @@ const paiRequirementsTmplText = `
 shap==0.28.5
 seaborn==0.9.0
 adanet==0.8.0
-pandas==0.25.1
+pandas==0.24.2
 numpy==1.16.2
 scikit-learn==0.20.0
 {{if .IsXGBoost }}
