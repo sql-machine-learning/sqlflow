@@ -128,13 +128,14 @@ def explain_dnns(datasource, estimator, shap_dataset, plot_type, result_table,
     def predict(d):
         def input_fn():
             return tf.data.Dataset.from_tensor_slices(
-                dict(pd.DataFrame(d, columns=shap_dataset.columns))).batch(1000)
+                dict(pd.DataFrame(d,
+                                  columns=shap_dataset.columns))).batch(1000)
 
         return np.array(
             [p['probabilities'][-1] for p in estimator.predict(input_fn)])
 
     if len(shap_dataset) > 100:
-        # Reduce to 16 weighted samples to speed up 
+        # Reduce to 16 weighted samples to speed up
         shap_dataset_summary = shap.kmeans(shap_dataset, 16)
     else:
         shap_dataset_summary = shap_dataset
