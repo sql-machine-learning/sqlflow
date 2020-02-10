@@ -35,6 +35,9 @@ import (
 	"github.com/mattn/go-sixel"
 	"github.com/olekukonko/tablewriter"
 	"golang.org/x/crypto/ssh/terminal"
+	"sqlflow.org/goalisa"
+	"sqlflow.org/gohive"
+	"sqlflow.org/gomaxcompute"
 	"sqlflow.org/sqlflow/pkg/database"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql"
@@ -249,6 +252,7 @@ func runStmt(stmt string, isTerminal bool, modelDir string, ds string) error {
 	table := tablewriter.NewWriter(os.Stdout)
 	sess := makeSessionFromEnv()
 	sess.DbConnStr = getDataSource(ds, currentDB)
+	fmt.Println("session.DBConnStr:", sess.DbConnStr)
 	parts := strings.Fields(strings.ReplaceAll(stmt, ";", ""))
 	if len(parts) == 2 && strings.ToUpper(parts[0]) == "USE" {
 		return switchDatabase(parts[1], sess)
@@ -331,28 +335,40 @@ func switchDatabase(db string, session *pb.Session) error {
 }
 
 func getDatabaseName(datasource string) string {
-	driver, other, e := database.ParseURL(datasource)
+	driver, dsName, e := database.ParseURL(datasource)
 	if e != nil {
 		log.Fatalf("unrecognized data source '%s'", datasource)
 	}
-	// The data source string of MySQL and Hive have similar patterns
-	// with the database name as a pathname under root. For example:
-	// mysql://root:root@tcp(127.0.0.1:3306)/iris?maxAllowedPacket=0
-	// hive://root:root@127.0.0.1:10000/iris?auth=NOSASL
-	re := regexp.MustCompile(`[^/]*/(\w*).*`) // Extract the database name of MySQL and Hive
 	switch driver {
 	case "maxcompute":
-		// The database name in data source string of MaxCompute is the argument to parameter
-		// `curr_project`
-		re = regexp.MustCompile(`[^/].*/api[?].*curr_project=(\w*).*`)
+		// maxcompute://root:root@odps.com?curr_project=my_project
+		cfg, e := gomaxcompute.ParseDSN(dsName)
+		if e != nil {
+			log.Fatalf("parsing maxcompute DSN failed, %v", e)
+		}
+		return cfg.Project
+	case "alisa":
+		// alisa://root:root@dataworks.com?curr_project=my_project
+		cfg, e := goalisa.ParseDSN(dsName)
+		if e != nil {
+			log.Fatalf("parseing alisa DSN failed, %v", e)
+		}
+		return cfg.Project
 	case "mysql":
+		// mysql://root:root@tcp(127.0.0.1:3306)/iris?maxAllowedPacket=0
+		re := regexp.MustCompile(`[^/]*/(\w*).*`) // Extract the database name of MySQL and Hive
+		if group := re.FindStringSubmatch(dsName); group != nil {
+			return group[1]
+		}
 	case "hive":
-	case "alisa": // TODO(yaney1989): using go drivers to parse the database
+		// hive://root:root@127.0.0.1:10000/iris?auth=NOSASL
+		cfg, e := gohive.ParseDSN(dsName)
+		if e != nil {
+			log.Fatalf("parsing mysql DSN failed, %v", e)
+		}
+		return cfg.DBName
 	default:
 		log.Fatalf("unknown database '%s' in data source'%s'", driver, datasource)
-	}
-	if group := re.FindStringSubmatch(other); group != nil {
-		return group[1]
 	}
 	return ""
 }
@@ -374,7 +390,7 @@ func getDataSource(dataSource, db string) string {
 			}
 		}
 		v["curr_project"] = []string{db}
-		return fmt.Sprintf("maxcompute://%s?%s", pieces[0], v.Encode())
+		return fmt.Sprintf("%s://%s?%s", driver, pieces[0], v.Encode())
 	case "mysql":
 		fallthrough
 	case "hive":
@@ -396,9 +412,9 @@ func main() {
 	flag.StringVar(sqlFileName, "f", "", "execute SQLFlow from file, short for --file")
 	noAutoCompletion := flag.Bool("A", false, "No auto completion for sqlflow models. This gives a quicker start.")
 	flag.Parse()
-
 	assertConnectable(*ds) // Fast fail if we can't connect to the datasource
 	currentDB = getDatabaseName(*ds)
+	fmt.Println("currentDB: ", currentDB)
 
 	if *modelDir != "" {
 		if _, derr := os.Stat(*modelDir); derr != nil {
