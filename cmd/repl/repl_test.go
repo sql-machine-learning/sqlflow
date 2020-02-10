@@ -496,6 +496,7 @@ func TestComplete(t *testing.T) {
 	p.InsertText(`RAIN `, false, true)
 	c = s.completer(*p.Document())
 	a.Equal(18, len(c))
+	a.Equal("BoostedTreesClassifier", c[0].Text)
 
 	p.InsertText(`DNN`, false, true)
 	c = s.completer(*p.Document())
@@ -543,6 +544,7 @@ func TestComplete(t *testing.T) {
 	p.InsertText(`model.optimizer=`, false, true)
 	c = s.completer(*p.Document())
 	a.Equal(8, len(c))
+	a.Equal("Adadelta", c[0].Text)
 
 	p.InsertText(`R`, false, true)
 	c = s.completer(*p.Document())
