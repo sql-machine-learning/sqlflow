@@ -519,7 +519,6 @@ def yaml():
 
     if _workflow_ttl_cleaned is not None:
         wf["spec"]["ttlSecondsAfterFinished"] = _workflow_ttl_cleaned
-    
     return wf
 
 
