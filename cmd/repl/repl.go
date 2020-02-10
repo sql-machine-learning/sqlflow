@@ -252,7 +252,6 @@ func runStmt(stmt string, isTerminal bool, modelDir string, ds string) error {
 	table := tablewriter.NewWriter(os.Stdout)
 	sess := makeSessionFromEnv()
 	sess.DbConnStr = getDataSource(ds, currentDB)
-	fmt.Println("session.DBConnStr:", sess.DbConnStr)
 	parts := strings.Fields(strings.ReplaceAll(stmt, ";", ""))
 	if len(parts) == 2 && strings.ToUpper(parts[0]) == "USE" {
 		return switchDatabase(parts[1], sess)
@@ -414,7 +413,6 @@ func main() {
 	flag.Parse()
 	assertConnectable(*ds) // Fast fail if we can't connect to the datasource
 	currentDB = getDatabaseName(*ds)
-	fmt.Println("currentDB: ", currentDB)
 
 	if *modelDir != "" {
 		if _, derr := os.Stat(*modelDir); derr != nil {
