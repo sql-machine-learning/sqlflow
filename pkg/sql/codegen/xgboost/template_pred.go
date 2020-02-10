@@ -18,30 +18,31 @@ import (
 )
 
 type predFiller struct {
-	DataSource       string
-	PredSelect       string
-	FeatureMetaJSON  string
-	LabelMetaJSON    string
-	ResultTable      string
-	HDFSNameNodeAddr string
-	HiveLocation     string
-	HDFSUser         string
-	HDFSPass         string
-	IsPAI            bool
-	PAITable         string
+	DataSource         string
+	PredSelect         string
+	FeatureMetaJSON    string
+	LabelMetaJSON      string
+	FeatureColumnNames []string
+	ResultTable        string
+	HDFSNameNodeAddr   string
+	HiveLocation       string
+	HDFSUser           string
+	HDFSPass           string
+	IsPAI              bool
+	PAITable           string
 }
 
 const predTemplateText = `
 import json
 from sqlflow_submitter.xgboost.predict import pred
 
-feature_field_meta = json.loads('''{{.FeatureMetaJSON}}''')
-label_field_meta = json.loads('''{{.LabelMetaJSON}}''')
-
+feature_meta = json.loads('''{{.FeatureMetaJSON}}''')
+label_meta = json.loads('''{{.LabelMetaJSON}}''')
+feature_column_names =
 pred(datasource='''{{.DataSource}}''',
      select='''{{.PredSelect}}''',
-     feature_field_meta=feature_field_meta,
-     label_field_meta=label_field_meta,
+     feature_metas=feature_meta,
+     label_meta=label_meta,
      result_table='''{{.ResultTable}}''',
      hdfs_namenode_addr='''{{.HDFSNameNodeAddr}}''',
      hive_location='''{{.HiveLocation}}''',

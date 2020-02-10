@@ -1448,6 +1448,71 @@ func CaseTrainXGBoostOnPAI(t *testing.T) {
 	}
 }
 
+func CaseTrainXGBoostOnAlisa(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`SELECT * FROM %s
+	TO TRAIN xgboost.gbtree
+	WITH
+		objective="multi:softprob",
+		train.num_boost_round = 30,
+		eta = 0.4,
+		num_class = 3
+	LABEL class
+	INTO my_xgb_classi_model;`, caseTrainTable)
+	_, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+
+	predSQL := fmt.Sprintf(`SELECT * FROM %s
+	TO PREDICT %s.class
+	USING my_xgb_classi_model;`, caseTestTable, casePredictTable)
+	_, _, err = connectAndRunSQL(predSQL)
+	if err != nil {
+		a.Fail("Run predSQL error: %v", err)
+	}
+}
+
+// TestEnd2EndAlisa test cases that run on Alisa, Need to set the
+// below environment variables to run them:
+// SQLFLOW_submitter=alisa
+// SQLFLOW_TEST_DATASOURCE="xxx"
+// SQLFLOW_OSS_CHECKPOINT_DIR="xxx"
+// SQLFLOW_OSS_ALISA_ENDPOINT="xxx"
+// SQLFLOW_OSS_AK="xxx"
+// SQLFLOW_OSS_SK="xxx"
+// SQLFLOW_OSS_HTTP_ENDPOINT="xxx"
+// SQLFLOW_OSS_ALISA_BUCKET="xxx"
+// SQLFLOW_OSS_MODEL_ENDPOINT="xxx"
+func TestEnd2EndAlisa(t *testing.T) {
+	if os.Getenv("SQLFLOW_submitter") != "alisa" {
+		t.Skip("Skip non Alisa tests")
+	}
+	dbConnStr = os.Getenv("SQLFLOW_TEST_DATASOURCE")
+	tmpDir, caCrt, caKey, err := generateTempCA()
+	defer os.RemoveAll(tmpDir)
+	if err != nil {
+		t.Fatalf("failed to generate CA pair %v", err)
+	}
+	caseDB = os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT")
+	if caseDB == "" {
+		t.Fatalf("Must set env SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT")
+	}
+	caseTrainTable = caseDB + ".sqlflow_test_iris_train"
+	caseTestTable = caseDB + ".sqlflow_test_iris_test"
+	casePredictTable = caseDB + ".sqlflow_test_iris_predict"
+	// write model to current MaxCompute project
+	caseInto = "my_alisa_model"
+
+	go start("", caCrt, caKey, unitTestPort, false)
+	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
+	err = prepareTestData(dbConnStr)
+	if err != nil {
+		t.Fatalf("prepare test dataset failed: %v", err)
+	}
+	t.Run("CaseTrainXGBoostOnAlisa", CaseTrainXGBoostOnAlisa)
+}
+
 // TestEnd2EndMaxComputePAI test cases that runs on PAI. Need to set below
 // environment variables to run the test:
 // SQLFLOW_submitter=pai

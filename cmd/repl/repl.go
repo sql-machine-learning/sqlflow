@@ -35,6 +35,7 @@ import (
 	"github.com/mattn/go-sixel"
 	"github.com/olekukonko/tablewriter"
 	"golang.org/x/crypto/ssh/terminal"
+	"sqlflow.org/goalisa"
 	"sqlflow.org/sqlflow/pkg/database"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql"
@@ -348,6 +349,13 @@ func getDatabaseName(datasource string) string {
 	case "mysql":
 	case "hive":
 	case "alisa": // TODO(yaney1989): using go drivers to parse the database
+		// hive://root:root@127.0.0.1:10000/iris?auth=NOSASL
+		cfg, e := goalisa.ParseDSN(other)
+		if e != nil {
+			log.Fatalf("parseing alisa DSN failed, %v", e)
+		}
+		return cfg.Project
+
 	default:
 		log.Fatalf("unknown database '%s' in data source'%s'", driver, datasource)
 	}
@@ -374,7 +382,7 @@ func getDataSource(dataSource, db string) string {
 			}
 		}
 		v["curr_project"] = []string{db}
-		return fmt.Sprintf("maxcompute://%s?%s", pieces[0], v.Encode())
+		return fmt.Sprintf("%s://%s?%s", driver, pieces[0], v.Encode())
 	case "mysql":
 		fallthrough
 	case "hive":

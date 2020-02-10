@@ -74,6 +74,7 @@ def input_fn(select, conn, feature_column_names, feature_metas, label_meta):
             feature_types.append((tf.int64, tf.int32, tf.int64))
             shapes.append((None, None, None))
         else:
+            print(name, feature_metas[name]["dtype"])
             feature_types.append(get_dtype(feature_metas[name]["dtype"]))
             shapes.append(feature_metas[name]["shape"])
 

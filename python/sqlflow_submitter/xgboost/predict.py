@@ -20,8 +20,9 @@ from .train import xgb_dataset
 
 def pred(datasource,
          select,
-         feature_field_meta,
-         label_field_meta,
+         feature_metas,
+         feature_column_names,
+         label_meta,
          result_table,
          is_pai=False,
          hdfs_namenode_addr="",
@@ -32,8 +33,8 @@ def pred(datasource,
     # TODO(typhoonzero): support running on PAI without MaxCompute AK/SK connection.
     conn = connect_with_data_source(datasource)
 
-    dpred = xgb_dataset(datasource, 'predict.txt', select, feature_field_meta,
-                        None, is_pai, pai_table)
+    dpred = xgb_dataset(datasource, 'predict.txt', select, feature_metas,
+                        feature_column_names, None, is_pai, pai_table)
 
     bst = xgb.Booster({'nthread': 4})  # init model
     bst.load_model("my_model")  # load data
