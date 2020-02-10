@@ -16,6 +16,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"os"
@@ -173,8 +174,6 @@ func testGetDataSource(t *testing.T, dataSource, databaseName string) {
 	a.Equal(databaseName+"test", getDatabaseName(getDataSource(dataSource, databaseName+"test")))
 }
 func TestGetDataSource(t *testing.T) {
-	a := assert.New(t)
-	a.Equal("", getDatabaseName("maxcompute://test:test@service.cn.maxcompute.aliyun.com/api"))
 	testGetDataSource(t, "maxcompute://test:test@service.cn.maxcompute.aliyun.com/api?curr_project=iris&scheme=https", "iris")
 	testGetDataSource(t, "maxcompute://test:test@service.cn.maxcompute.aliyun.com/api?curr_project=&scheme=https", "")
 
@@ -187,6 +186,9 @@ func TestGetDataSource(t *testing.T) {
 	testGetDataSource(t, "hive://root:root@127.0.0.1:10000/?auth=NOSASL", "")
 	testGetDataSource(t, "hive://root:root@localhost:10000/churn", "churn")
 	testGetDataSource(t, "hive://root:root@127.0.0.1:10000/iris?auth=NOSASL", "iris")
+
+	b64v := base64.RawURLEncoding.EncodeToString([]byte("{\"a\":\"b\"}"))
+	testGetDataSource(t, fmt.Sprintf("alisa://admin:admin@dataworks.aliyun.com?curr_project=iris&env=%s&schema=http&with=%s", b64v, b64v), "iris")
 }
 
 func testMainFastFail(t *testing.T, interactive bool) {
