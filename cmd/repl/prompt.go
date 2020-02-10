@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	prompt "github.com/c-bata/go-prompt"
@@ -101,6 +102,10 @@ func (p *promptState) execute(in string, cb func(string)) {
 	}
 }
 
+func sortPromptSuggest(suggests []prompt.Suggest) {
+	sort.Slice(suggests, func(i, j int) bool { return suggests[i].Text < suggests[j].Text })
+}
+
 func (p *promptState) initCompleter() {
 	for _, s := range defaultSuggestions {
 		p.keywords = append(p.keywords, s.Text)
@@ -123,7 +128,9 @@ func (p *promptState) initCompleter() {
 		for param, doc := range params {
 			p.modelParamDocs[model] = append(p.modelParamDocs[model], prompt.Suggest{prefix + param, doc})
 		}
+		sortPromptSuggest(p.modelParamDocs[model])
 	}
+	sortPromptSuggest(p.models)
 	p.optimizers = make(map[string]string) // Optimizers cannot be initilized beforehand
 }
 
@@ -180,7 +187,7 @@ func (p *promptState) clauseUnderCursor(in prompt.Document) (string, string, str
 }
 
 func getOptimizerSuggestion(estimatorCls string, optimizers map[string]string) (r []prompt.Suggest) {
-	if strings.HasPrefix(estimatorCls, "xgboost") {
+	if strings.HasPrefix(estimatorCls, "xgboost") || strings.HasPrefix(estimatorCls, "BoostedTrees") {
 		return
 	}
 	if len(optimizers) == 0 {
@@ -205,6 +212,7 @@ func getOptimizerSuggestion(estimatorCls string, optimizers map[string]string) (
 			}
 		}
 	}
+	sortPromptSuggest(r)
 	return
 }
 
@@ -250,6 +258,7 @@ func (p *promptState) completer(in prompt.Document) []prompt.Suggest {
 				for opt := range attribute.OptimizerParamsDocs {
 					optimizerSuggest = append(optimizerSuggest, prompt.Suggest{opt, ""})
 				}
+				sortPromptSuggest(optimizerSuggest)
 				return prompt.FilterHasPrefix(optimizerSuggest, attr[1], true)
 			}
 		}
