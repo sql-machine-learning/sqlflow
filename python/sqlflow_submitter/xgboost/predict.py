@@ -31,7 +31,9 @@ def pred(datasource,
          hdfs_pass="",
          pai_table=""):
     # TODO(typhoonzero): support running on PAI without MaxCompute AK/SK connection.
-    conn = connect_with_data_source(datasource)
+    if not is_pai:
+        conn = connect_with_data_source(datasource)
+    label_name = label_meta["feature_name"]
 
     dpred = xgb_dataset(datasource, 'predict.txt', select, feature_metas,
                         feature_column_names, None, is_pai, pai_table)

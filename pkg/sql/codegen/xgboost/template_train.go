@@ -43,17 +43,16 @@ feature_column_names = [{{range .FeatureColumnNames}}
 {{end}}]
 
 train(datasource='''{{.DataSource}}''',
-      select='''{{.TrainSelect}}''',
-      model_params=model_params,
-      train_params=train_params,
-			feature_metas=feature_metas,
-			feature_column_names=feature_column_names,
-      label_meta=label_meta,
-			validation_select='''{{.ValidationSelect}}''',
-			is_pai="{{.IsPAI}}" == "true",
-			pai_train_table="{{.PAITrainTable}}",
-			pai_validate_table="{{.PAIValidateTable}}"
-			)
+        select='''{{.TrainSelect}}''',
+        model_params=model_params,
+				train_params=train_params,
+        feature_metas=feature_metas,
+        feature_column_names=feature_column_names,
+        label_meta=label_meta,
+        validation_select='''{{.ValidationSelect}}''',
+        is_pai="{{.IsPAI}}" == "true",
+        pai_train_table="{{.PAITrainTable}}",
+        pai_validate_table="{{.PAIValidateTable}}")
 `
 
 var trainTemplate = template.Must(template.New("Train").Parse(trainTemplateText))

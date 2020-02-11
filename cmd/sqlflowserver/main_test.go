@@ -187,7 +187,7 @@ func prepareTestData(dbStr string) error {
 	}
 
 	db := os.Getenv("SQLFLOW_TEST_DB")
-	if db != "maxcompute" {
+	if db != "maxcompute" && db != "alisa" {
 		_, e := testDB.Exec("CREATE DATABASE IF NOT EXISTS sqlflow_models;")
 		if e != nil {
 			return e
@@ -210,7 +210,7 @@ func prepareTestData(dbStr string) error {
 			testdata.ChurnHiveSQL,
 			testdata.FeatureDerivationCaseSQLHive,
 			testdata.HousingSQL}
-	case "maxcompute":
+	case "maxcompute", "alisa":
 		if os.Getenv("SQLFLOW_submitter") == "alps" {
 			datasets = []string{
 				testdata.ODPSFeatureMapSQL,
@@ -1481,10 +1481,13 @@ func CaseTrainXGBoostOnAlisa(t *testing.T) {
 // SQLFLOW_OSS_ALISA_ENDPOINT="xxx"
 // SQLFLOW_OSS_AK="xxx"
 // SQLFLOW_OSS_SK="xxx"
-// SQLFLOW_OSS_HTTP_ENDPOINT="xxx"
 // SQLFLOW_OSS_ALISA_BUCKET="xxx"
 // SQLFLOW_OSS_MODEL_ENDPOINT="xxx"
 func TestEnd2EndAlisa(t *testing.T) {
+	testDBDriver := os.Getenv("SQLFLOW_TEST_DB")
+	if testDBDriver != "alisa" {
+		t.Skip("Skipping non alisa tests")
+	}
 	if os.Getenv("SQLFLOW_submitter") != "alisa" {
 		t.Skip("Skip non Alisa tests")
 	}
@@ -1510,6 +1513,7 @@ func TestEnd2EndAlisa(t *testing.T) {
 	if err != nil {
 		t.Fatalf("prepare test dataset failed: %v", err)
 	}
+	// TODO(Yancey1989): reuse CaseTrainXGBoostOnPAI if support explain XGBoost model
 	t.Run("CaseTrainXGBoostOnAlisa", CaseTrainXGBoostOnAlisa)
 }
 

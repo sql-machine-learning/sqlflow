@@ -30,10 +30,13 @@ def xgb_dataset(datasource,
         pai_table_parts = pai_table.split(".")
         formated_pai_table = "odps://%s/tables/%s" % (pai_table_parts[0],
                                                       pai_table_parts[1])
+        if label_meta:
+            label_column_name = label_meta['feature_name']
+        else:
+            label_column_name = None
         gen = pai_maxcompute_db_generator(formated_pai_table,
                                           feature_column_names,
-                                          label_meta['feature_name'],
-                                          feature_metas)
+                                          label_column_name, feature_metas)
     else:
         conn = connect_with_data_source(datasource)
         gen = db_generator(conn.driver, conn, dataset_sql,
