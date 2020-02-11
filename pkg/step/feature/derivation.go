@@ -294,8 +294,7 @@ func InferFeatureColumns(trainStmt *ir.TrainStmt, dataSource string) error {
 	err = deriveFeatureColumn(fcMap, columnTargets, fmMap, selectFieldTypeMap, trainStmt)
 	// set back trainStmt.Features in the order of select and update trainStmt.Label
 	setDerivedFeatureColumnToIR(trainStmt, fcMap, columnTargets, selectFieldNames)
-	deriveLabel(trainStmt, fmMap)
-	return nil
+	return deriveLabel(trainStmt, fmMap)
 }
 
 // getFeatureColumnTargets returns the list of strings, which will be used as
@@ -380,6 +379,7 @@ func fetchSamples(dataSource string, query string) (*sql.Rows, error) {
 }
 
 func fillFieldDescs(rows *sql.Rows, columnTypes []*sql.ColumnType, fmMap FieldDescMap) error {
+	rowCount := 0
 	for rows.Next() {
 		rowData, err := newRowValue(columnTypes)
 		if err != nil {
@@ -393,6 +393,10 @@ func fillFieldDescs(rows *sql.Rows, columnTypes []*sql.ColumnType, fmMap FieldDe
 		if err != nil {
 			return err
 		}
+		rowCount++
+	}
+	if rowCount == 0 && rows.Err() == nil {
+		return fmt.Errorf("fillFieldDesc: empty dataset")
 	}
 	return rows.Err()
 }
@@ -489,10 +493,13 @@ func setDerivedFeatureColumnToIR(trainStmt *ir.TrainStmt, fcMap ColumnMap, colum
 }
 
 // deriveLabel set derived label FieldDesc information back to the original IR structure.
-func deriveLabel(trainStmt *ir.TrainStmt, fmMap FieldDescMap) {
+func deriveLabel(trainStmt *ir.TrainStmt, fmMap FieldDescMap) error {
 	labelName := trainStmt.Label.GetFieldDesc()[0].Name
 	if labelName == "" {
-		return // NOTE: clustering model may not specify Label
+		return nil // NOTE: clustering model may not specify Label
+	}
+	if fmMap[labelName] == nil {
+		return fmt.Errorf("deriveLabel: LABEL COLUMN '%s' not found", labelName)
 	}
 	trainStmt.Label = &ir.NumericColumn{
 		FieldDesc: fmMap[labelName],
@@ -502,6 +509,7 @@ func deriveLabel(trainStmt *ir.TrainStmt, fmMap FieldDescMap) {
 	if len(shape) == 1 && shape[0] == 1 {
 		trainStmt.Label.GetFieldDesc()[0].Shape = []int{}
 	}
+	return nil
 }
 
 // LogDerivationResult write messages to wr to log the feature derivation results

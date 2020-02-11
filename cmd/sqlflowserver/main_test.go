@@ -74,6 +74,25 @@ func waitPortReady(addr string, timeout time.Duration) {
 	}
 }
 
+func connectAndRunSQLShouldError(sql string) {
+	conn, err := createRPCConn()
+	if err != nil {
+		log.Fatalf("connectAndRunSQLShouldError: %v", err)
+	}
+	defer conn.Close()
+	cli := pb.NewSQLFlowClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), 1800*time.Second)
+	defer cancel()
+	stream, err := cli.Run(ctx, sqlRequest(sql))
+	if err != nil {
+		log.Fatalf("connectAndRunSQLShouldError: %v", err)
+	}
+	_, err = stream.Recv()
+	if err == nil {
+		log.Fatalf("connectAndRunSQLShouldError: the statement should error")
+	}
+}
+
 func connectAndRunSQL(sql string) ([]string, [][]*any.Any, error) {
 	conn, err := createRPCConn()
 	if err != nil {
@@ -289,6 +308,8 @@ func TestEnd2EndMySQL(t *testing.T) {
 
 	t.Run("CaseShowDatabases", CaseShowDatabases)
 	t.Run("CaseSelect", CaseSelect)
+	t.Run("CaseEmptyDataset", CaseEmptyDataset)
+	t.Run("CaseLabelColumnNotExist", CaseLabelColumnNotExist)
 	t.Run("CaseTrainSQL", CaseTrainSQL)
 	t.Run("CaseTrainWithCommaSeparatedLabel", CaseTrainWithCommaSeparatedLabel)
 
@@ -316,6 +337,22 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseTrainTextClassificationFeatureDerivation", CaseTrainTextClassificationFeatureDerivation)
 	t.Run("CaseXgboostFeatureDerivation", CaseXgboostFeatureDerivation)
 	t.Run("CaseTrainFeatureDerivation", CaseTrainFeatureDerivation)
+}
+
+func CaseEmptyDataset(t *testing.T) {
+	trainSQL := `SELECT * FROM iris.train LIMIT 0 TO TRAIN xgboost.gbtree
+WITH objective="reg:squarederror"
+LABEL class 
+INTO sqlflow_models.my_xgb_regression_model;`
+	connectAndRunSQLShouldError(trainSQL)
+}
+
+func CaseLabelColumnNotExist(t *testing.T) {
+	trainSQL := `SELECT * FROM iris.train WHERE class=2 TO TRAIN xgboost.gbtree
+WITH objective="reg:squarederror"
+LABEL target
+INTO sqlflow_models.my_xgb_regression_model;`
+	connectAndRunSQLShouldError(trainSQL)
 }
 
 func CaseXgboostFeatureDerivation(t *testing.T) {
