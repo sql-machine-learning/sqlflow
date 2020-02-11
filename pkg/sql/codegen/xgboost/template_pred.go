@@ -36,21 +36,26 @@ const predTemplateText = `
 import json
 from sqlflow_submitter.xgboost.predict import pred
 
-feature_meta = json.loads('''{{.FeatureMetaJSON}}''')
+feature_metas = json.loads('''{{.FeatureMetaJSON}}''')
 label_meta = json.loads('''{{.LabelMetaJSON}}''')
-feature_column_names =
+
+feature_column_names = [{{range .FeatureColumnNames}}
+"{{.}}",
+{{end}}]
+
 pred(datasource='''{{.DataSource}}''',
      select='''{{.PredSelect}}''',
-     feature_metas=feature_meta,
+		 feature_metas=feature_metas,
+		 feature_column_names=feature_column_names,
      label_meta=label_meta,
      result_table='''{{.ResultTable}}''',
      hdfs_namenode_addr='''{{.HDFSNameNodeAddr}}''',
      hive_location='''{{.HiveLocation}}''',
      hdfs_user='''{{.HDFSUser}}''',
-		 hdfs_pass='''{{.HDFSPass}}''',
-		 is_pai="{{.IsPAI}}" == "true",
-		 pai_table="{{.PAITable}}"
-		 )
+     hdfs_pass='''{{.HDFSPass}}''',
+     is_pai="{{.IsPAI}}" == "true",
+		 pai_table="{{.PAITable}}")
+
 `
 
 var predTemplate = template.Must(template.New("Pred").Parse(predTemplateText))

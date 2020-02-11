@@ -199,11 +199,11 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	f, err := json.Marshal(featureFieldDesc)
+	f, fs, err := resolveFeatureMeta(featureFieldDesc)
 	if err != nil {
 		return "", err
 	}
-	l, err := json.Marshal(labelFieldDesc)
+	l, err := json.Marshal(resolveFieldMeta(&labelFieldDesc))
 	if err != nil {
 		return "", err
 	}
@@ -214,17 +214,18 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 	}
 
 	r := predFiller{
-		DataSource:       session.DbConnStr,
-		PredSelect:       predStmt.Select,
-		FeatureMetaJSON:  string(f),
-		LabelMetaJSON:    string(l),
-		ResultTable:      predStmt.ResultTable,
-		HDFSNameNodeAddr: session.HdfsNamenodeAddr,
-		HiveLocation:     session.HiveLocation,
-		HDFSUser:         session.HdfsUser,
-		HDFSPass:         session.HdfsPass,
-		IsPAI:            tf.IsPAI(),
-		PAITable:         paiPredictTable,
+		DataSource:         session.DbConnStr,
+		PredSelect:         predStmt.Select,
+		FeatureMetaJSON:    string(f),
+		FeatureColumnNames: fs,
+		LabelMetaJSON:      string(l),
+		ResultTable:        predStmt.ResultTable,
+		HDFSNameNodeAddr:   session.HdfsNamenodeAddr,
+		HiveLocation:       session.HiveLocation,
+		HDFSUser:           session.HdfsUser,
+		HDFSPass:           session.HdfsPass,
+		IsPAI:              tf.IsPAI(),
+		PAITable:           paiPredictTable,
 	}
 
 	var program bytes.Buffer
