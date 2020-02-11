@@ -17,6 +17,7 @@ import json
 import os
 import sys
 
+import numpy as np
 import tensorflow as tf
 from sqlflow_submitter.db import (buffered_db_writer, connect_with_data_source,
                                   db_generator, parseMaxComputeDSN)
@@ -101,7 +102,15 @@ def keras_predict(estimator, model_params, save, result_table,
             for idx, name in enumerate(feature_column_names):
                 val = features[name].numpy()[0][0]
                 row.append(str(val))
-            row.append(str(result))
+            if isinstance(result, np.ndarray):
+                if len(result) > 1:
+                    # NOTE(typhoonzero): if the output dimension > 1, format output tensor
+                    # using a comma separated string. Only available for keras models.
+                    row.append(",".join([str(i) for i in result]))
+                else:
+                    row.append(str(result[0]))
+            else:
+                row.append(str(result))
             w.write(row)
     del pred_dataset
 
@@ -116,15 +125,19 @@ def estimator_predict(estimator, model_params, save, result_table,
 
     def fast_input_fn(generator):
         feature_types = []
+        shapes = []
         for name in feature_column_names:
             if feature_metas[name]["is_sparse"]:
                 feature_types.append((tf.int64, tf.int32, tf.int64))
+                shapes.append((None, None, None))
             else:
                 feature_types.append(get_dtype(feature_metas[name]["dtype"]))
+                shapes.append(feature_metas[name]["shape"])
 
         def _inner_input_fn():
             dataset = tf.data.Dataset.from_generator(generator,
-                                                     (tuple(feature_types), ))
+                                                     (tuple(feature_types), ),
+                                                     (tuple(shapes), ))
             ds_mapper = functools.partial(
                 parse_sparse_feature_predict,
                 feature_column_names=feature_column_names,

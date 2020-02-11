@@ -231,6 +231,8 @@ def train(datasource,
             (4 - verbose) * 10)  # logging.INFO levels range from 10~40
     elif verbose >= 2:
         tf.logging.set_verbosity(tf.logging.INFO)
+    if is_pai:  # always use verbose == 1 when using PAI to get more logs
+        tf.logging.set_verbosity(tf.logging.INFO)
     model_params.update(feature_columns)
 
     if not is_estimator:  # keras

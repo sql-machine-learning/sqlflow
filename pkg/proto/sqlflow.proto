@@ -59,7 +59,7 @@ message FetchRequest {
     Job job = 1;
     // the following fields keep the fetching state
     string step_id = 2;
-    string log_offset = 3;
+    string step_phase = 4;
 }
 
 message FetchResponse {

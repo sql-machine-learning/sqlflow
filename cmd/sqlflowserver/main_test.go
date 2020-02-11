@@ -74,6 +74,25 @@ func waitPortReady(addr string, timeout time.Duration) {
 	}
 }
 
+func connectAndRunSQLShouldError(sql string) {
+	conn, err := createRPCConn()
+	if err != nil {
+		log.Fatalf("connectAndRunSQLShouldError: %v", err)
+	}
+	defer conn.Close()
+	cli := pb.NewSQLFlowClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), 1800*time.Second)
+	defer cancel()
+	stream, err := cli.Run(ctx, sqlRequest(sql))
+	if err != nil {
+		log.Fatalf("connectAndRunSQLShouldError: %v", err)
+	}
+	_, err = stream.Recv()
+	if err == nil {
+		log.Fatalf("connectAndRunSQLShouldError: the statement should error")
+	}
+}
+
 func connectAndRunSQL(sql string) ([]string, [][]*any.Any, error) {
 	conn, err := createRPCConn()
 	if err != nil {
@@ -145,6 +164,17 @@ func AssertContainsAny(a *assert.Assertions, all map[string]string, actual *any.
 	}
 }
 
+func AssertIsSubStringAny(a *assert.Assertions, substring string, actual *any.Any) {
+	switch actual.TypeUrl {
+	case "type.googleapis.com/google.protobuf.StringValue":
+		b := wrappers.StringValue{}
+		ptypes.UnmarshalAny(actual, &b)
+		if !strings.Contains(b.Value, substring) {
+			a.Failf("", "%s have no sub string: %s", b.Value, substring)
+		}
+	}
+}
+
 func ParseRow(stream pb.SQLFlow_RunClient) ([]string, [][]*any.Any) {
 	var rows [][]*any.Any
 	var columns []string
@@ -176,7 +206,7 @@ func prepareTestData(dbStr string) error {
 	}
 
 	db := os.Getenv("SQLFLOW_TEST_DB")
-	if db != "maxcompute" {
+	if db != "maxcompute" && db != "alisa" {
 		_, e := testDB.Exec("CREATE DATABASE IF NOT EXISTS sqlflow_models;")
 		if e != nil {
 			return e
@@ -199,7 +229,7 @@ func prepareTestData(dbStr string) error {
 			testdata.ChurnHiveSQL,
 			testdata.FeatureDerivationCaseSQLHive,
 			testdata.HousingSQL}
-	case "maxcompute":
+	case "maxcompute", "alisa":
 		if os.Getenv("SQLFLOW_submitter") == "alps" {
 			datasets = []string{
 				testdata.ODPSFeatureMapSQL,
@@ -278,6 +308,8 @@ func TestEnd2EndMySQL(t *testing.T) {
 
 	t.Run("CaseShowDatabases", CaseShowDatabases)
 	t.Run("CaseSelect", CaseSelect)
+	t.Run("CaseEmptyDataset", CaseEmptyDataset)
+	t.Run("CaseLabelColumnNotExist", CaseLabelColumnNotExist)
 	t.Run("CaseTrainSQL", CaseTrainSQL)
 	t.Run("CaseTrainWithCommaSeparatedLabel", CaseTrainWithCommaSeparatedLabel)
 
@@ -305,6 +337,22 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseTrainTextClassificationFeatureDerivation", CaseTrainTextClassificationFeatureDerivation)
 	t.Run("CaseXgboostFeatureDerivation", CaseXgboostFeatureDerivation)
 	t.Run("CaseTrainFeatureDerivation", CaseTrainFeatureDerivation)
+}
+
+func CaseEmptyDataset(t *testing.T) {
+	trainSQL := `SELECT * FROM iris.train LIMIT 0 TO TRAIN xgboost.gbtree
+WITH objective="reg:squarederror"
+LABEL class 
+INTO sqlflow_models.my_xgb_regression_model;`
+	connectAndRunSQLShouldError(trainSQL)
+}
+
+func CaseLabelColumnNotExist(t *testing.T) {
+	trainSQL := `SELECT * FROM iris.train WHERE class=2 TO TRAIN xgboost.gbtree
+WITH objective="reg:squarederror"
+LABEL target
+INTO sqlflow_models.my_xgb_regression_model;`
+	connectAndRunSQLShouldError(trainSQL)
 }
 
 func CaseXgboostFeatureDerivation(t *testing.T) {
@@ -881,14 +929,35 @@ INTO sqlflow_models.my_dnn_model_custom_functional;`
 
 func CaseTrainWithCommaSeparatedLabel(t *testing.T) {
 	a := assert.New(t)
-	trainSQL := `select f1,f2,f3,CONCAT(f13,",", target) as class from housing.train
-TO TRAIN sqlflow_models.DNNRegressor
-WITH model.hidden_units = [10, 20]
-LABEL class
-INTO sqlflow_models.my_dnn_model_csvlabel;`
+	trainSQL := `SELECT sepal_length, sepal_width, petal_length, concat(petal_width,',',class) as class FROM iris.train 
+	TO TRAIN sqlflow_models.LSTMBasedTimeSeriesModel WITH
+	  model.n_in=3,
+	  model.stack_units = [10, 10],
+	  model.n_out=2,
+	  validation.metrics= "MeanAbsoluteError,MeanSquaredError"
+	LABEL class
+	INTO sqlflow_models.my_dnn_regts_model_2;`
 	_, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("run trainSQL error: %v", err)
+	}
+
+	predSQL := `SELECT sepal_length, sepal_width, petal_length, concat(petal_width,',',class) as class FROM iris.test 
+	TO PREDICT iris.predict_ts_2.class USING sqlflow_models.my_dnn_regts_model_2;`
+	_, _, err = connectAndRunSQL(predSQL)
+	if err != nil {
+		a.Fail("run trainSQL error: %v", err)
+	}
+
+	showPred := `SELECT * FROM iris.predict_ts_2 LIMIT 5;`
+	_, rows, err := connectAndRunSQL(showPred)
+	if err != nil {
+		a.Fail("Run showPred error: %v", err)
+	}
+
+	for _, row := range rows {
+		// NOTE: Ensure that the predict result contains comma
+		AssertIsSubStringAny(a, ",", row[3])
 	}
 }
 
@@ -1416,6 +1485,95 @@ func CaseTrainXGBoostOnPAI(t *testing.T) {
 	}
 }
 
+func CaseTrainDenseCol(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := `select label, f1, f2 from alifin_jtest_dev.sqlflow_ctr_train_part
+TO TRAIN DNNClassifier
+WITH model.hidden_units=[10,10]
+LABEL 'label'
+INTO some_testmodel;`
+	_, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+	predSQL := `SELECT f1,f2 FROM alifin_jtest_dev.sqlflow_ctr_test_part
+TO PREDICT alifin_jtest_dev.sqlflow_ctr_predict.class
+USING some_testmodel;`
+	_, _, err = connectAndRunSQL(predSQL)
+	if err != nil {
+		a.Fail("Run predSQL error: %v", err)
+	}
+}
+
+func CaseTrainXGBoostOnAlisa(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`SELECT * FROM %s
+	TO TRAIN xgboost.gbtree
+	WITH
+		objective="multi:softprob",
+		train.num_boost_round = 30,
+		eta = 0.4,
+		num_class = 3
+	LABEL class
+	INTO my_xgb_classi_model;`, caseTrainTable)
+	_, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+
+	predSQL := fmt.Sprintf(`SELECT * FROM %s
+	TO PREDICT %s.class
+	USING my_xgb_classi_model;`, caseTestTable, casePredictTable)
+	_, _, err = connectAndRunSQL(predSQL)
+	if err != nil {
+		a.Fail("Run predSQL error: %v", err)
+	}
+}
+
+// TestEnd2EndAlisa test cases that run on Alisa, Need to set the
+// below environment variables to run them:
+// SQLFLOW_submitter=alisa
+// SQLFLOW_TEST_DATASOURCE="xxx"
+// SQLFLOW_OSS_CHECKPOINT_DIR="xxx"
+// SQLFLOW_OSS_ALISA_ENDPOINT="xxx"
+// SQLFLOW_OSS_AK="xxx"
+// SQLFLOW_OSS_SK="xxx"
+// SQLFLOW_OSS_ALISA_BUCKET="xxx"
+// SQLFLOW_OSS_MODEL_ENDPOINT="xxx"
+func TestEnd2EndAlisa(t *testing.T) {
+	testDBDriver := os.Getenv("SQLFLOW_TEST_DB")
+	if testDBDriver != "alisa" {
+		t.Skip("Skipping non alisa tests")
+	}
+	if os.Getenv("SQLFLOW_submitter") != "alisa" {
+		t.Skip("Skip non Alisa tests")
+	}
+	dbConnStr = os.Getenv("SQLFLOW_TEST_DATASOURCE")
+	tmpDir, caCrt, caKey, err := generateTempCA()
+	defer os.RemoveAll(tmpDir)
+	if err != nil {
+		t.Fatalf("failed to generate CA pair %v", err)
+	}
+	caseDB = os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT")
+	if caseDB == "" {
+		t.Fatalf("Must set env SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT")
+	}
+	caseTrainTable = caseDB + ".sqlflow_test_iris_train"
+	caseTestTable = caseDB + ".sqlflow_test_iris_test"
+	casePredictTable = caseDB + ".sqlflow_test_iris_predict"
+	// write model to current MaxCompute project
+	caseInto = "my_alisa_model"
+
+	go start("", caCrt, caKey, unitTestPort, false)
+	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
+	err = prepareTestData(dbConnStr)
+	if err != nil {
+		t.Fatalf("prepare test dataset failed: %v", err)
+	}
+	// TODO(Yancey1989): reuse CaseTrainXGBoostOnPAI if support explain XGBoost model
+	t.Run("CaseTrainXGBoostOnAlisa", CaseTrainXGBoostOnAlisa)
+}
+
 // TestEnd2EndMaxComputePAI test cases that runs on PAI. Need to set below
 // environment variables to run the test:
 // SQLFLOW_submitter=pai
@@ -1467,6 +1625,7 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 
 	t.Run("CaseTrainSQL", CaseTrainSQL)
 	t.Run("CaseTrainDNNAndExplain", CaseTrainDNNAndExplain)
+	t.Run("CaseTrainDenseCol", CaseTrainDenseCol)
 	t.Run("CaseTrainPAIRandomForests", CaseTrainPAIRandomForests)
 	t.Run("CaseTrainXGBoostOnPAI", CaseTrainXGBoostOnPAI)
 	t.Run("CaseTrainDistributedPAI", CaseTrainDistributedPAI)

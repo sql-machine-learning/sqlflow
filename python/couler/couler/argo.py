@@ -38,6 +38,8 @@ _condition_id = None
 _while_steps: OrderedDict = OrderedDict()
 # '_while_lock' indicates the recursive call starts
 _while_lock = False
+# TTL_cleaned for the workflow
+_workflow_ttl_cleaned = None
 
 _cluster_config = pyfunc.load_cluster_config()
 
@@ -143,7 +145,7 @@ def run_script(image, command=None, source=None, env=None, resources=None):
                                 if command.lower() == "python" else source)
 
             if env is not None:
-                script["env"] = _convert_dict_to_list(env)
+                script["env"] = _convert_dict_to_env_list(env)
 
             if resources is not None:
                 script["resources"] = _resources(resources)
@@ -209,7 +211,7 @@ def run_container(
                 container["args"].append(arg_yaml)
 
         if env is not None:
-            container["env"] = _convert_dict_to_list(env)
+            container["env"] = _convert_dict_to_env_list(env)
 
         if secret is not None:
             env_secrets = _convert_secret_to_list(secret)
@@ -514,6 +516,9 @@ def yaml():
     ts.extend(_templates.values())
 
     wf["spec"] = {"entrypoint": entrypoint, "templates": ts}
+
+    if _workflow_ttl_cleaned is not None:
+        wf["spec"]["ttlSecondsAfterFinished"] = _workflow_ttl_cleaned
     return wf
 
 
@@ -626,6 +631,28 @@ def _convert_dict_to_list(d):
     return env_list
 
 
+def _convert_dict_to_env_list(d):
+    """This is to convert a Python dictionary to a list, where
+    each list item is a dict with `name` and `value` keys.
+    """
+    if not isinstance(d, dict):
+        raise TypeError("The input parameter `d` is not a dict.")
+
+    env_list = []
+    for k, v in d.items():
+        if isinstance(v, bool):
+            value = "'%s'" % v
+            env_list.append({"name": str(k), "value": value})
+        elif k == "secrets":
+            if not isinstance(v, list):
+                raise TypeError("The environment secrets should be a list.")
+            for s in v:
+                env_list.append(s)
+        else:
+            env_list.append({"name": str(k), "value": str(v)})
+    return env_list
+
+
 def _convert_secret_to_list(secret):
     """Convert a couler.Secret object to a list, where
     each list item is a dict with `name` and `valueFrom` keys.
@@ -699,6 +726,11 @@ def _update_pod_config(template):
 
 def secret(secret_data):
     return Secret(secret_data)
+
+
+def clean_workflow_after_seconds_finished(seconds):
+    global _workflow_ttl_cleaned
+    _workflow_ttl_cleaned = seconds
 
 
 class Secret:
