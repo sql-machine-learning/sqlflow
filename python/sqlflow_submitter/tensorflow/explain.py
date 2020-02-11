@@ -128,13 +128,19 @@ def explain_dnns(datasource, estimator, shap_dataset, plot_type, result_table,
     def predict(d):
         def input_fn():
             return tf.data.Dataset.from_tensor_slices(
-                dict(pd.DataFrame(d, columns=shap_dataset.columns))).batch(1)
+                dict(pd.DataFrame(d,
+                                  columns=shap_dataset.columns))).batch(1000)
 
         return np.array(
-            [p['probabilities'][0] for p in estimator.predict(input_fn)])
+            [p['probabilities'][-1] for p in estimator.predict(input_fn)])
 
-    shap_values = shap.KernelExplainer(predict,
-                                       shap_dataset).shap_values(shap_dataset)
+    if len(shap_dataset) > 100:
+        # Reduce to 16 weighted samples to speed up
+        shap_dataset_summary = shap.kmeans(shap_dataset, 16)
+    else:
+        shap_dataset_summary = shap_dataset
+    shap_values = shap.KernelExplainer(
+        predict, shap_dataset_summary).shap_values(shap_dataset, l1_reg="aic")
     if result_table != "":
         if is_pai:
             write_shap_values(shap_values, "pai_maxcompute", None,
