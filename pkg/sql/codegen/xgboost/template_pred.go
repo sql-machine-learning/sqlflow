@@ -45,8 +45,8 @@ feature_column_names = [{{range .FeatureColumnNames}}
 
 pred(datasource='''{{.DataSource}}''',
      select='''{{.PredSelect}}''',
-		 feature_metas=feature_metas,
-		 feature_column_names=feature_column_names,
+     feature_metas=feature_metas,
+     feature_column_names=feature_column_names,
      label_meta=label_meta,
      result_table='''{{.ResultTable}}''',
      hdfs_namenode_addr='''{{.HDFSNameNodeAddr}}''',
@@ -54,7 +54,7 @@ pred(datasource='''{{.DataSource}}''',
      hdfs_user='''{{.HDFSUser}}''',
      hdfs_pass='''{{.HDFSPass}}''',
      is_pai="{{.IsPAI}}" == "true",
-		 pai_table="{{.PAITable}}")
+     pai_table="{{.PAITable}}")
 
 `
 
