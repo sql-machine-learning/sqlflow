@@ -1450,15 +1450,15 @@ func CaseTrainXGBoostOnPAI(t *testing.T) {
 
 func CaseTrainDenseCol(t *testing.T) {
 	a := assert.New(t)
-	// 	trainSQL := `select label, f1, f2 from alifin_jtest_dev.sqlflow_ctr_train_part
-	// TO TRAIN DNNClassifier
-	// WITH model.hidden_units=[10,10]
-	// LABEL 'label'
-	// INTO some_testmodel;`
-	// 	_, _, err := connectAndRunSQL(trainSQL)
-	// 	if err != nil {
-	// 		a.Fail("Run trainSQL error: %v", err)
-	// 	}
+	trainSQL := `select label, f1, f2 from alifin_jtest_dev.sqlflow_ctr_train_part
+TO TRAIN DNNClassifier
+WITH model.hidden_units=[10,10]
+LABEL 'label'
+INTO some_testmodel;`
+	_, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
 
 	predSQL := `SELECT f1,f2 FROM alifin_jtest_dev.sqlflow_ctr_test_part
 TO PREDICT alifin_jtest_dev.sqlflow_ctr_predict.class
