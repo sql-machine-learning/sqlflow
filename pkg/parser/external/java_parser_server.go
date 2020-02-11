@@ -37,8 +37,8 @@ func getServerPort() string {
 	return port
 }
 
-func isServerUp() bool {
-	conn, err := net.Dial("tcp", fmt.Sprintf(":%s", getServerPort()))
+func isServerUp(address string) bool {
+	conn, err := net.DialTimeout("tcp", address, time.Second)
 	defer func() {
 		if conn != nil {
 			conn.Close()
@@ -51,7 +51,7 @@ func isServerUp() bool {
 }
 
 func startServerIfNotUp() error {
-	if isServerUp() {
+	if isServerUp(fmt.Sprintf(":%s", getServerPort())) {
 		return nil
 	}
 
@@ -65,7 +65,7 @@ func startServerIfNotUp() error {
 
 	for i := 0; i < 3; i++ {
 		time.Sleep(time.Second)
-		if isServerUp() {
+		if isServerUp(fmt.Sprintf(":%s", getServerPort())) {
 			return nil
 		}
 	}
