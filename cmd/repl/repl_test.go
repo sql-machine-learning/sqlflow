@@ -16,6 +16,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"os"
@@ -29,6 +30,7 @@ import (
 
 	"github.com/c-bata/go-prompt"
 	"sqlflow.org/sqlflow/pkg/database"
+	"sqlflow.org/sqlflow/pkg/sql/codegen/attribute"
 	"sqlflow.org/sqlflow/pkg/sql/testdata"
 )
 
@@ -172,8 +174,6 @@ func testGetDataSource(t *testing.T, dataSource, databaseName string) {
 	a.Equal(databaseName+"test", getDatabaseName(getDataSource(dataSource, databaseName+"test")))
 }
 func TestGetDataSource(t *testing.T) {
-	a := assert.New(t)
-	a.Equal("", getDatabaseName("maxcompute://test:test@service.cn.maxcompute.aliyun.com/api"))
 	testGetDataSource(t, "maxcompute://test:test@service.cn.maxcompute.aliyun.com/api?curr_project=iris&scheme=https", "iris")
 	testGetDataSource(t, "maxcompute://test:test@service.cn.maxcompute.aliyun.com/api?curr_project=&scheme=https", "")
 
@@ -186,6 +186,9 @@ func TestGetDataSource(t *testing.T) {
 	testGetDataSource(t, "hive://root:root@127.0.0.1:10000/?auth=NOSASL", "")
 	testGetDataSource(t, "hive://root:root@localhost:10000/churn", "churn")
 	testGetDataSource(t, "hive://root:root@127.0.0.1:10000/iris?auth=NOSASL", "iris")
+
+	b64v := base64.RawURLEncoding.EncodeToString([]byte("{\"a\":\"b\"}"))
+	testGetDataSource(t, fmt.Sprintf("alisa://admin:admin@dataworks.aliyun.com?curr_project=iris&env=%s&schema=http&with=%s", b64v, b64v), "iris")
 }
 
 func testMainFastFail(t *testing.T, interactive bool) {
@@ -475,6 +478,7 @@ func TestPromptState(t *testing.T) {
 }
 
 func TestComplete(t *testing.T) {
+	attribute.ExtractDocStringsOnce()
 	a := assert.New(t)
 	s := newPromptState()
 	p := prompt.NewBuffer()
@@ -492,6 +496,7 @@ func TestComplete(t *testing.T) {
 	p.InsertText(`RAIN `, false, true)
 	c = s.completer(*p.Document())
 	a.Equal(18, len(c))
+	a.Equal("BoostedTreesClassifier", c[0].Text)
 
 	p.InsertText(`DNN`, false, true)
 	c = s.completer(*p.Document())
@@ -515,7 +520,7 @@ func TestComplete(t *testing.T) {
 
 	p.InsertText(`ith `, false, true)
 	c = s.completer(*p.Document())
-	a.Equal(15, len(c))
+	a.Equal(20, len(c))
 
 	p.InsertText(`model.f`, false, true)
 	c = s.completer(*p.Document())
@@ -529,9 +534,31 @@ func TestComplete(t *testing.T) {
 
 	p.InsertText(`idden_units=[400,300], `, false, true)
 	c = s.completer(*p.Document())
-	a.Equal(15, len(c))
+	a.Equal(20, len(c))
 
-	p.InsertText(`model.n`, false, true)
+	p.InsertText(`o`, false, true)
+	c = s.completer(*p.Document())
+	a.Equal(5, len(c)) // Adagrad has 5 parameters
+	p.DeleteBeforeCursor(1)
+
+	p.InsertText(`model.optimizer=`, false, true)
+	c = s.completer(*p.Document())
+	a.Equal(8, len(c))
+	a.Equal("Adadelta", c[0].Text)
+
+	p.InsertText(`R`, false, true)
+	c = s.completer(*p.Document())
+	a.Equal(1, len(c))
+	a.Equal("RMSprop", c[0].Text)
+
+	p.InsertText(`MSprop,`, false, true)
+	c = s.completer(*p.Document())
+	p.InsertText(` o`, false, true) // FIXME(shendiaomo): copy-n-paste doen't work here
+	c = s.completer(*p.Document())
+	a.Equal(7, len(c)) // RMSprop has 7 parameters
+	a.Equal("optimizer", c[0].Text)
+
+	p.InsertText(`ptimizer.learing_rate=0.02, model.n`, false, true)
 	c = s.completer(*p.Document())
 	a.Equal(1, len(c))
 	a.Equal("model.n_classes", c[0].Text)

@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	prompt "github.com/c-bata/go-prompt"
@@ -72,8 +73,10 @@ type promptState struct {
 	keywords                       []string
 	history                        []string
 	historyFileName                string
+	estimatorCls                   string
 	modelParamDocs                 map[string][]prompt.Suggest
 	models                         []prompt.Suggest
+	optimizers                     map[string]string
 	statements, lastStatements     []string
 	inQuotedString, isSingleQuoted bool
 }
@@ -87,16 +90,20 @@ func (p *promptState) execute(in string, cb func(string)) {
 		if addLineToStmt(in, &p.inQuotedString, &p.isSingleQuoted, &p.statements) {
 			p.updateHistory()
 			p.enableLivePrefix = false
-			fmt.Println()
 			for _, stmt := range p.statements {
 				cb(stmt)
 			}
 			p.lastStatements = p.statements
 			p.statements = []string{}
+			p.optimizers = make(map[string]string)
 			return
 		}
 		p.enableLivePrefix = true
 	}
+}
+
+func sortPromptSuggest(suggests []prompt.Suggest) {
+	sort.Slice(suggests, func(i, j int) bool { return suggests[i].Text < suggests[j].Text })
 }
 
 func (p *promptState) initCompleter() {
@@ -121,7 +128,10 @@ func (p *promptState) initCompleter() {
 		for param, doc := range params {
 			p.modelParamDocs[model] = append(p.modelParamDocs[model], prompt.Suggest{prefix + param, doc})
 		}
+		sortPromptSuggest(p.modelParamDocs[model])
 	}
+	sortPromptSuggest(p.models)
+	p.optimizers = make(map[string]string) // Optimizers cannot be initilized beforehand
 }
 
 func (p *promptState) initHistory() {
@@ -176,6 +186,36 @@ func (p *promptState) clauseUnderCursor(in prompt.Document) (string, string, str
 	return p.lookaheadKeyword(words)
 }
 
+func getOptimizerSuggestion(estimatorCls string, optimizers map[string]string) (r []prompt.Suggest) {
+	if strings.HasPrefix(estimatorCls, "xgboost") || strings.HasPrefix(estimatorCls, "BoostedTrees") {
+		return
+	}
+	if len(optimizers) == 0 {
+		// Specify default optimizers
+		// TODO(shendiaomo): Try to get the default value from the python `inspect` module instead of hard coding
+		switch estimatorCls {
+		case "LinearClassifier", "LinearRegressor":
+			optimizers["optimizer"] = "Ftrl"
+		case "DNNLinearCombinedClassifier", "DNNLinearCombinedRegressor":
+			optimizers["dnn_optimizer"] = "Adagrad"
+			optimizers["linear_optimizer"] = "Ftrl"
+		default:
+			optimizers["optimizer"] = "Adagrad"
+		}
+	}
+	for key, opt := range optimizers {
+		if params, ok := attribute.OptimizerParamsDocs[opt]; ok {
+			// Construct suggections for the specified optimizer
+			r = append(r, prompt.Suggest{key, ""})
+			for param, doc := range params {
+				r = append(r, prompt.Suggest{key + "." + param, doc})
+			}
+		}
+	}
+	sortPromptSuggest(r)
+	return
+}
+
 func (p *promptState) completer(in prompt.Document) []prompt.Suggest {
 	w1 := in.GetWordBeforeCursor() // empty if the cursor is under whitespace
 	clause, w0, w2 := p.clauseUnderCursor(in)
@@ -192,11 +232,35 @@ func (p *promptState) completer(in prompt.Document) []prompt.Suggest {
 		return prompt.FilterHasPrefix(append(p.models, trainSuggestions...), w1, true)
 	case "WITH":
 		attributes := p.modelParamDocs[w0]
+		if w0 != p.estimatorCls {
+			p.estimatorCls = w0
+			p.optimizers = make(map[string]string)
+		}
+		if len(attributes) != 0 {
+			attributes = append(attributes, getOptimizerSuggestion(w0, p.optimizers)...)
+		}
 		if w1 == "" {
 			if clause == strings.ToUpper(w2) || strings.HasSuffix(w2, ",") {
 				return prompt.FilterHasPrefix(attributes, w1, true)
 			}
 			return prompt.FilterHasPrefix(withSuggestions, w1, true)
+		}
+		// The attribute is under editing
+		attr := strings.Split(w1, "=")
+		if len(attr) == 2 { // FIXME(shendiaomo): copy-n-paste doen't work here
+			switch attr[0] {
+			case "model.optimizer", "model.dnn_optimizer", "model.linear_optimizer":
+				if strings.HasSuffix(attr[1], ",") {
+					paramName := strings.Split(attr[0], ".")[1]
+					p.optimizers[paramName] = attr[1][0 : len(attr[1])-1] // cache the optimizer specified
+				}
+				var optimizerSuggest []prompt.Suggest
+				for opt := range attribute.OptimizerParamsDocs {
+					optimizerSuggest = append(optimizerSuggest, prompt.Suggest{opt, ""})
+				}
+				sortPromptSuggest(optimizerSuggest)
+				return prompt.FilterHasPrefix(optimizerSuggest, attr[1], true)
+			}
 		}
 		return prompt.FilterHasPrefix(append(withSuggestions, attributes...), w1, true)
 	case "LABEL":
@@ -236,6 +300,7 @@ func runPrompt(cb func(string)) {
 		prompt.OptionPrefix(state.prefix),
 		prompt.OptionPrefixTextColor(prompt.DefaultColor),
 		prompt.OptionTitle("SQLFlow"),
+		prompt.OptionCompletionWordSeparator(" ="),
 	)
 	fmt.Println("Welcome to SQLFlow.  Commands end with ;")
 	fmt.Println()

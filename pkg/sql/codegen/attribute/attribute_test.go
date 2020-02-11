@@ -42,9 +42,11 @@ func TestDictionaryValidate(t *testing.T) {
 	a.NoError(tb.Validate(map[string]interface{}{"b": 1}))
 }
 
-func TestPremadeModelParamsDocs(t *testing.T) {
+func TestParamsDocs(t *testing.T) {
 	a := assert.New(t)
 
+	a.Equal(11, len(PremadeModelParamsDocs))
+	ExtractDocStringsOnce()
 	a.Equal(18, len(PremadeModelParamsDocs))
 	a.Equal(len(PremadeModelParamsDocs["DNNClassifier"]), 12)
 	a.NotContains(PremadeModelParamsDocs["DNNClassifier"], "feature_columns")
@@ -57,6 +59,7 @@ func TestPremadeModelParamsDocs(t *testing.T) {
 	a.Equal(23, len(PremadeModelParamsDocs["xgboost.gbtree"]))
 	a.NotContains(PremadeModelParamsDocs["DNNClassifier"], "booster")
 
+	a.Equal(8, len(OptimizerParamsDocs))
 }
 
 func TestNewAndUpdateDictionary(t *testing.T) {

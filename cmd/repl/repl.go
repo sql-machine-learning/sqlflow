@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"image"
 	_ "image/png"
+	"time"
 
 	"encoding/base64"
 	"flag"
@@ -34,9 +35,13 @@ import (
 	"github.com/mattn/go-sixel"
 	"github.com/olekukonko/tablewriter"
 	"golang.org/x/crypto/ssh/terminal"
+	"sqlflow.org/goalisa"
+	"sqlflow.org/gohive"
+	"sqlflow.org/gomaxcompute"
 	"sqlflow.org/sqlflow/pkg/database"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql"
+	"sqlflow.org/sqlflow/pkg/sql/codegen/attribute"
 )
 
 const tablePageSize = 1000
@@ -95,7 +100,7 @@ func addLineToStmt(line string, inQuotedString, isSingleQuoted *bool, statements
 			if !*inQuotedString {
 				if i+1 < len(line) && line[i+1] == '-' {
 					if i+2 == len(line) || isSpace(line[i+2]) { // We found a line comment
-						// Note: `--` comment doens't interfere with quoted-string and `;`
+						// Note: `--` comment doesn't interfere with quoted-string and `;`
 						(*statements)[len(*statements)-1] += strings.TrimSpace(line[start:i])
 						if len(*statements) == 1 && (*statements)[0] == "" {
 							*statements = []string{}
@@ -121,7 +126,7 @@ func readStmt(scn *bufio.Scanner) ([]string, error) {
 			return stmt, nil
 		}
 	}
-	// If the the file doen't ends with ';', we consider the remaining content as a statement
+	// If the the file doesn't ends with ';', we consider the remaining content as a statement
 	if scn.Err() == nil {
 		return stmt, io.EOF
 	}
@@ -174,21 +179,21 @@ func imageCat(imageBytes []byte) error {
 
 var it2Check = false
 
-func render(rsp interface{}, table *tablewriter.Table, isTerminal bool) bool {
+func render(rsp interface{}, table *tablewriter.Table, isTerminal bool) (bool, error) {
 	switch s := rsp.(type) {
 	case map[string]interface{}: // table header
 		cols, e := header(s)
 		if e == nil {
 			table.SetHeader(cols)
 		}
-		return true
+		return true, nil
 	case []interface{}: // row
 		row := make([]string, len(s))
 		for i, v := range s {
 			row[i] = fmt.Sprint(v)
 		}
 		table.Append(row)
-		return true
+		return true, nil
 	case error:
 		if os.Getenv("SQLFLOW_log_dir") != "" { // To avoid printing duplicated error message to console
 			log.New(os.Stderr, "", 0).Printf("ERROR: %v\n", s)
@@ -196,6 +201,7 @@ func render(rsp interface{}, table *tablewriter.Table, isTerminal bool) bool {
 		if !isTerminal {
 			os.Exit(1)
 		}
+		return false, s
 	case sql.EndOfExecution:
 	case sql.Figures:
 		if isHTMLSnippet(s.Image) {
@@ -222,7 +228,7 @@ func render(rsp interface{}, table *tablewriter.Table, isTerminal bool) bool {
 	default:
 		log.Fatalf("unrecognized response type: %v", s)
 	}
-	return false
+	return false, nil
 }
 
 func flagPassed(name ...string) bool {
@@ -238,6 +244,7 @@ func flagPassed(name ...string) bool {
 }
 
 func runStmt(stmt string, isTerminal bool, modelDir string, ds string) error {
+	startTime := time.Now().UnixNano()
 	if !isTerminal {
 		fmt.Println("sqlflow>", stmt)
 	}
@@ -250,16 +257,29 @@ func runStmt(stmt string, isTerminal bool, modelDir string, ds string) error {
 		return switchDatabase(parts[1], sess)
 	}
 	stream := sql.RunSQLProgram(stmt, modelDir, sess)
+	var isTable bool
+	var err error
 	for rsp := range stream.ReadAll() {
 		// pagination. avoid exceed memory
-		if render(rsp, table, isTerminal) && table.NumLines() == tablePageSize {
+		isTable, err = render(rsp, table, isTerminal)
+		if err != nil {
+			break
+		}
+		if isTable && table.NumLines() == tablePageSize {
 			table.Render()
 			tableRendered = true
 			table.ClearRows()
 		}
 	}
-	if table.NumLines() > 0 || !tableRendered {
+	if table.NumLines() > 0 && !tableRendered {
 		table.Render()
+	}
+	if err == nil {
+		if isTable {
+			fmt.Printf("%d rows in set ", table.NumLines())
+		}
+		fmt.Printf("(%.2f sec)\n", float64(time.Now().UnixNano()-startTime)/1e9)
+		fmt.Println()
 	}
 	return nil
 }
@@ -275,7 +295,6 @@ func assertConnectable(ds string) {
 func repl(scanner *bufio.Scanner, modelDir string, ds string) {
 	for {
 		statements, err := readStmt(scanner)
-		fmt.Println()
 		if err == io.EOF && len(statements) == 0 {
 			return
 		}
@@ -315,28 +334,40 @@ func switchDatabase(db string, session *pb.Session) error {
 }
 
 func getDatabaseName(datasource string) string {
-	driver, other, e := database.ParseURL(datasource)
+	driver, dsName, e := database.ParseURL(datasource)
 	if e != nil {
 		log.Fatalf("unrecognized data source '%s'", datasource)
 	}
-	// The data source string of MySQL and Hive have similar patterns
-	// with the database name as a pathname under root. For example:
-	// mysql://root:root@tcp(127.0.0.1:3306)/iris?maxAllowedPacket=0
-	// hive://root:root@127.0.0.1:10000/iris?auth=NOSASL
-	re := regexp.MustCompile(`[^/]*/(\w*).*`) // Extract the database name of MySQL and Hive
 	switch driver {
 	case "maxcompute":
-		// The database name in data source string of MaxCompute is the argument to parameter
-		// `curr_project`
-		re = regexp.MustCompile(`[^/].*/api[?].*curr_project=(\w*).*`)
+		// maxcompute://root:root@odps.com?curr_project=my_project
+		cfg, e := gomaxcompute.ParseDSN(dsName)
+		if e != nil {
+			log.Fatalf("parsing maxcompute DSN failed, %v", e)
+		}
+		return cfg.Project
+	case "alisa":
+		// alisa://root:root@dataworks.com?curr_project=my_project
+		cfg, e := goalisa.ParseDSN(dsName)
+		if e != nil {
+			log.Fatalf("parseing alisa DSN failed, %v", e)
+		}
+		return cfg.Project
 	case "mysql":
+		// mysql://root:root@tcp(127.0.0.1:3306)/iris?maxAllowedPacket=0
+		re := regexp.MustCompile(`[^/]*/(\w*).*`) // Extract the database name of MySQL and Hive
+		if group := re.FindStringSubmatch(dsName); group != nil {
+			return group[1]
+		}
 	case "hive":
-	case "alisa": // TODO(yaney1989): using go drivers to parse the database
+		// hive://root:root@127.0.0.1:10000/iris?auth=NOSASL
+		cfg, e := gohive.ParseDSN(dsName)
+		if e != nil {
+			log.Fatalf("parsing mysql DSN failed, %v", e)
+		}
+		return cfg.DBName
 	default:
 		log.Fatalf("unknown database '%s' in data source'%s'", driver, datasource)
-	}
-	if group := re.FindStringSubmatch(other); group != nil {
-		return group[1]
 	}
 	return ""
 }
@@ -358,7 +389,7 @@ func getDataSource(dataSource, db string) string {
 			}
 		}
 		v["curr_project"] = []string{db}
-		return fmt.Sprintf("maxcompute://%s?%s", pieces[0], v.Encode())
+		return fmt.Sprintf("%s://%s?%s", driver, pieces[0], v.Encode())
 	case "mysql":
 		fallthrough
 	case "hive":
@@ -378,8 +409,8 @@ func main() {
 	flag.StringVar(cliStmt, "e", "", "execute SQLFlow from command line, short for --execute")
 	sqlFileName := flag.String("file", "", "execute SQLFlow from file.  e.g. --file '~/iris_dnn.sql'")
 	flag.StringVar(sqlFileName, "f", "", "execute SQLFlow from file, short for --file")
+	noAutoCompletion := flag.Bool("A", false, "No auto completion for sqlflow models. This gives a quicker start.")
 	flag.Parse()
-
 	assertConnectable(*ds) // Fast fail if we can't connect to the datasource
 	currentDB = getDatabaseName(*ds)
 
@@ -408,6 +439,9 @@ func main() {
 	if isTerminal {
 		if !it2Check {
 			fmt.Println("The terminal doesn't support sixel, explanation statements will show ASCII figures.")
+		}
+		if !*noAutoCompletion {
+			attribute.ExtractDocStringsOnce()
 		}
 		runPrompt(func(stmt string) { runStmt(stmt, true, *modelDir, *ds) })
 	} else {

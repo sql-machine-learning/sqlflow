@@ -135,10 +135,6 @@ def explain_dnns(datasource, estimator, shap_dataset, plot_type, result_table,
 
     shap_values = shap.KernelExplainer(predict,
                                        shap_dataset).shap_values(shap_dataset)
-    print(shap_values)
-    for row in shap_values:
-        print(list(row))
-        print(len(list(row)))
     if result_table != "":
         if is_pai:
             write_shap_values(shap_values, "pai_maxcompute", None,

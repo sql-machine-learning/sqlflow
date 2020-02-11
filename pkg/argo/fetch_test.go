@@ -18,6 +18,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -58,7 +59,7 @@ spec:
       parameters:
       - name: message
     container:
-      image: docker/whalesay
+      image: docker/whalesay@sha256:178598e51a26abbc958b8a2e48825c90bc22e641de3d31e18aaf55f3258ba93b
       command: [echo]
       args: ["{{inputs.parameters.message}}"]
 `
@@ -105,13 +106,15 @@ func createAndWriteTempFile(content string) (string, error) {
 }
 
 func TestFetch(t *testing.T) {
-	t.Skip("temporary disable FetchTest")
 	if os.Getenv("SQLFLOW_TEST") != "workflow" {
 		t.Skip("argo: skip workflow tests")
 	}
+	os.Setenv("SQLFLOW_ARGO_UI_ENDPOINT", "http://localhost:8001")
+	defer os.Unsetenv("SQLFLOW_ARGO_UI_ENDPOINT")
 	a := assert.New(t)
 	workflowID, err := k8sCreateResource(stepYAML)
 	a.NoError(err)
+
 	defer k8sDeleteWorkflow(workflowID)
 	req := newFetchRequest(workflowID, "", "")
 	actualLogs := []string{}
@@ -128,11 +131,11 @@ func TestFetch(t *testing.T) {
 		req = response.UpdatedFetchSince
 	}
 
-	expectedLogs := []string{"hello1", "hello2", "hello3"}
-	a.Equal(len(expectedLogs), len(actualLogs))
-	for i := range expectedLogs {
-		a.Equal(expectedLogs[i], actualLogs[i])
-	}
+	concatedLogs := strings.Join(actualLogs, "\n")
+
+	a.Contains(concatedLogs, "Step: [1/3] Status: Succeeded")
+	a.Contains(concatedLogs, "Step: [2/3] Status: Succeeded")
+	a.Contains(concatedLogs, "Step: [3/3] Status: Succeeded")
 }
 
 func waitUntilPodRunning(podID string) error {

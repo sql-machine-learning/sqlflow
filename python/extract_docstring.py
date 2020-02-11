@@ -18,6 +18,7 @@ import sys
 
 import six
 import sqlflow_models
+import tensorflow as tf
 import xgboost
 from tensorflow.estimator import *
 
@@ -113,6 +114,27 @@ if __name__ == "__main__":
     )
     print()
     print('package attribute')
+    print()
     print('const ModelParameterJSON = `')
+    print(json.dumps(param_doc, indent=4))
+    print('`')
+
+    # TensorFlow optimizers
+    tf_optimizers = [
+        "Adadelta",
+        "Adagrad",
+        "Adam",
+        "Adamax",
+        "Ftrl",
+        "Nadam",
+        "RMSprop",
+        "SGD",
+    ]
+    param_doc.clear()
+    for cls in tf_optimizers:
+        param_doc[cls] = parse_ctor_args(eval(f'tf.optimizers.{cls}'))
+
+    print()
+    print('const OptimizerParameterJSON = `')
     print(json.dumps(param_doc, indent=4))
     print('`')
