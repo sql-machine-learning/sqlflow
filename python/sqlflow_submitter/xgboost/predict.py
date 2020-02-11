@@ -20,24 +20,23 @@ from .train import xgb_dataset
 
 def pred(datasource,
          select,
-         feature_field_meta,
-         label_field_meta,
+         feature_metas,
+         feature_column_names,
+         label_meta,
          result_table,
          is_pai=False,
          hdfs_namenode_addr="",
          hive_location="",
          hdfs_user="",
-         hdfs_pass=""):
+         hdfs_pass="",
+         pai_table=""):
     # TODO(typhoonzero): support running on PAI without MaxCompute AK/SK connection.
-    conn = connect_with_data_source(datasource)
+    if not is_pai:
+        conn = connect_with_data_source(datasource)
+    label_name = label_meta["feature_name"]
 
-    feature_column_names = [k["name"] for k in feature_field_meta]
-    label_name = label_field_meta["name"]
-
-    feature_specs = {k['name']: k for k in feature_field_meta}
-
-    dpred = xgb_dataset(conn, 'predict.txt', select, feature_column_names,
-                        None, feature_specs)
+    dpred = xgb_dataset(datasource, 'predict.txt', select, feature_metas,
+                        feature_column_names, None, is_pai, pai_table)
 
     bst = xgb.Booster({'nthread': 4})  # init model
     bst.load_model("my_model")  # load data

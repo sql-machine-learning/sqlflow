@@ -55,7 +55,7 @@ feature_metas = dict()
 {{ range $value := .FieldDescs }}
 feature_metas["{{$value.Name}}"] = {
     "feature_name": "{{$value.Name}}",
-    "dtype": "{{$value.DType | dtypeToString}}",
+    "dtype": "{{$value.DType | DTypeToString}}",
     "delimiter": "{{$value.Delimiter}}",
     "shape": {{$value.Shape | intArrayToJSONString}},
     "is_sparse": "{{$value.IsSparse}}" == "true"
@@ -64,7 +64,7 @@ feature_metas["{{$value.Name}}"] = {
 
 label_meta = {
     "feature_name": "{{.Y.Name}}",
-    "dtype": "{{.Y.DType | dtypeToString}}",
+    "dtype": "{{.Y.DType | DTypeToString}}",
     "delimiter": "{{.Y.Delimiter}}",
     "shape": {{.Y.Shape | intArrayToJSONString}},
     "is_sparse": "{{.Y.IsSparse}}" == "true"

@@ -121,8 +121,12 @@ def pai_maxcompute_input_fn(pai_table,
     record_defaults = []
     for name in feature_column_names:
         dtype = get_dtype(feature_metas[name]["dtype"])
-        record_defaults.append(
-            tf.constant(0, dtype=dtype, shape=feature_metas[name]["shape"]))
+        if feature_metas[name]["delimiter"] != "":
+            record_defaults.append(tf.constant("", dtype=tf.string, shape=[1]))
+        else:
+            record_defaults.append(
+                tf.constant(0, dtype=dtype,
+                            shape=[1]))  #shape=feature_metas[name]["shape"]))
     record_defaults.append(
         tf.constant(0,
                     get_dtype(label_meta["dtype"]),
@@ -144,7 +148,18 @@ def pai_maxcompute_input_fn(pai_table,
         features_dict = dict()
         for idx in range(num_features):
             name = feature_column_names[idx]
-            features_dict[name] = tf.reshape(args[idx], [-1])
+            field_meta = feature_metas[name]
+            if field_meta["delimiter"] != "":  # process as CSV
+                dtype = get_dtype(feature_metas[name]["dtype"])
+                # FIXME(typhoonzero): when shape has multiple dimentions, do not use field_meta["shape"][0]
+                t = tf.io.decode_csv(args[idx], [
+                    tf.constant(0, dtype=dtype, shape=[1])
+                    for i in range(field_meta["shape"][0])
+                ],
+                                     field_delim=field_meta["delimiter"])
+            else:
+                t = tf.reshape(args[idx], [-1])
+            features_dict[name] = t
         return features_dict, label
 
     def tensor_to_list(*args):
@@ -217,7 +232,10 @@ def pai_maxcompute_db_generator(table,
                     feature = read_feature(row[selected_cols.index(name)],
                                            feature_specs[name], name)
                     features.append(feature)
-                yield tuple(features), label
+                if label_column_name:
+                    yield tuple(features), label
+                else:
+                    yield (tuple(features), )
             except Exception as e:
                 reader.close()
                 break

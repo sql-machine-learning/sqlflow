@@ -24,7 +24,7 @@ datasource = "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
 select = "SELECT * FROM boston.train;"
 
 feature_field_meta = [{
-    'name': 'crim',
+    'feature_name': 'crim',
     'dtype': 1,
     'delimiter': '',
     'shape': [1],
@@ -32,7 +32,7 @@ feature_field_meta = [{
     'vocabulary': None,
     'MaxID': 0
 }, {
-    'name': 'zn',
+    'feature_name': 'zn',
     'dtype': 1,
     'delimiter': '',
     'shape': [1],
@@ -40,7 +40,7 @@ feature_field_meta = [{
     'vocabulary': None,
     'MaxID': 0
 }, {
-    'name': 'indus',
+    'feature_name': 'indus',
     'dtype': 1,
     'delimiter': '',
     'shape': [1],
@@ -48,7 +48,7 @@ feature_field_meta = [{
     'vocabulary': None,
     'MaxID': 0
 }, {
-    'name': 'chas',
+    'feature_name': 'chas',
     'dtype': 0,
     'delimiter': '',
     'shape': [1],
@@ -56,7 +56,7 @@ feature_field_meta = [{
     'vocabulary': None,
     'MaxID': 0
 }, {
-    'name': 'nox',
+    'feature_name': 'nox',
     'dtype': 1,
     'delimiter': '',
     'shape': [1],
@@ -64,7 +64,7 @@ feature_field_meta = [{
     'vocabulary': None,
     'MaxID': 0
 }, {
-    'name': 'rm',
+    'feature_name': 'rm',
     'dtype': 1,
     'delimiter': '',
     'shape': [1],
@@ -72,7 +72,7 @@ feature_field_meta = [{
     'vocabulary': None,
     'MaxID': 0
 }, {
-    'name': 'age',
+    'feature_name': 'age',
     'dtype': 1,
     'delimiter': '',
     'shape': [1],
@@ -80,7 +80,7 @@ feature_field_meta = [{
     'vocabulary': None,
     'MaxID': 0
 }, {
-    'name': 'dis',
+    'feature_name': 'dis',
     'dtype': 1,
     'delimiter': '',
     'shape': [1],
@@ -88,7 +88,7 @@ feature_field_meta = [{
     'vocabulary': None,
     'MaxID': 0
 }, {
-    'name': 'rad',
+    'feature_name': 'rad',
     'dtype': 0,
     'delimiter': '',
     'shape': [1],
@@ -96,7 +96,7 @@ feature_field_meta = [{
     'vocabulary': None,
     'MaxID': 0
 }, {
-    'name': 'tax',
+    'feature_name': 'tax',
     'dtype': 0,
     'delimiter': '',
     'shape': [1],
@@ -104,7 +104,7 @@ feature_field_meta = [{
     'vocabulary': None,
     'MaxID': 0
 }, {
-    'name': 'ptratio',
+    'feature_name': 'ptratio',
     'dtype': 1,
     'delimiter': '',
     'shape': [1],
@@ -112,7 +112,7 @@ feature_field_meta = [{
     'vocabulary': None,
     'MaxID': 0
 }, {
-    'name': 'b',
+    'feature_name': 'b',
     'dtype': 1,
     'delimiter': '',
     'shape': [1],
@@ -120,7 +120,7 @@ feature_field_meta = [{
     'vocabulary': None,
     'MaxID': 0
 }, {
-    'name': 'lstat',
+    'feature_name': 'lstat',
     'dtype': 1,
     'delimiter': '',
     'shape': [1],
@@ -130,7 +130,7 @@ feature_field_meta = [{
 }]
 
 label_field_meta = {
-    'name': 'medv',
+    'feature_name': 'medv',
     'dtype': 1,
     'delimiter': '',
     'shape': [1],
@@ -145,17 +145,20 @@ class ExplainXGBModeTestCase(TestCase):
         os.remove('my_model')
 
     def test_explain(self):
+        feature_column_names = [k["feature_name"] for k in feature_field_meta]
+        feature_metas = {k['feature_name']: k for k in feature_field_meta}
         xgb_train(datasource=datasource,
                   select=select,
                   model_params={"objective": "reg:squarederror"},
                   train_params={"num_boost_round": 30},
-                  feature_field_meta=feature_field_meta,
-                  label_field_meta=label_field_meta,
+                  feature_metas=feature_metas,
+                  feature_column_names=feature_column_names,
+                  label_meta=label_field_meta,
                   validation_select="")
-        feature_column_names = [k["name"] for k in feature_field_meta]
-        feature_specs = {k['name']: k for k in feature_field_meta}
+        # TODO(Yancey1989): keep shap codegen consistant with XGBoost
+        label_field_meta['name'] = label_field_meta['feature_name']
         x = xgb_shap_dataset(datasource, select, feature_column_names,
-                             label_field_meta, feature_specs)
+                             label_field_meta, feature_metas)
 
         shap_values = xgb_shap_values(x)[0]
         expected_features = [
