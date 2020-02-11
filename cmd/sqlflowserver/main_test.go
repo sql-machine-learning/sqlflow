@@ -1463,7 +1463,7 @@ INTO some_testmodel;`
 	predSQL := `SELECT f1,f2 FROM alifin_jtest_dev.sqlflow_ctr_test_part
 TO PREDICT alifin_jtest_dev.sqlflow_ctr_predict.class
 USING some_testmodel;`
-	_, _, err := connectAndRunSQL(predSQL)
+	_, _, err = connectAndRunSQL(predSQL)
 	if err != nil {
 		a.Fail("Run predSQL error: %v", err)
 	}
