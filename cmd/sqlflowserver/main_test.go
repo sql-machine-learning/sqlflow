@@ -1448,6 +1448,26 @@ func CaseTrainXGBoostOnPAI(t *testing.T) {
 	}
 }
 
+func CaseTrainDenseCol(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := `select label, f1, f2 from alifin_jtest_dev.sqlflow_ctr_train_part
+TO TRAIN DNNClassifier
+WITH model.hidden_units=[10,10]
+LABEL 'label'
+INTO some_testmodel;`
+	_, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+	predSQL := `SELECT f1,f2 FROM alifin_jtest_dev.sqlflow_ctr_test_part
+TO PREDICT alifin_jtest_dev.sqlflow_ctr_predict.class
+USING some_testmodel;`
+	_, _, err = connectAndRunSQL(predSQL)
+	if err != nil {
+		a.Fail("Run predSQL error: %v", err)
+	}
+}
+
 func CaseTrainXGBoostOnAlisa(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`SELECT * FROM %s
@@ -1568,6 +1588,7 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 
 	t.Run("CaseTrainSQL", CaseTrainSQL)
 	t.Run("CaseTrainDNNAndExplain", CaseTrainDNNAndExplain)
+	t.Run("CaseTrainDenseCol", CaseTrainDenseCol)
 	t.Run("CaseTrainPAIRandomForests", CaseTrainPAIRandomForests)
 	t.Run("CaseTrainXGBoostOnPAI", CaseTrainXGBoostOnPAI)
 	t.Run("CaseTrainDistributedPAI", CaseTrainDistributedPAI)

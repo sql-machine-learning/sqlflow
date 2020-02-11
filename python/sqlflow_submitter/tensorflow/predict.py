@@ -125,15 +125,19 @@ def estimator_predict(estimator, model_params, save, result_table,
 
     def fast_input_fn(generator):
         feature_types = []
+        shapes = []
         for name in feature_column_names:
             if feature_metas[name]["is_sparse"]:
                 feature_types.append((tf.int64, tf.int32, tf.int64))
+                shapes.append((None, None, None))
             else:
                 feature_types.append(get_dtype(feature_metas[name]["dtype"]))
+                shapes.append(feature_metas[name]["shape"])
 
         def _inner_input_fn():
             dataset = tf.data.Dataset.from_generator(generator,
-                                                     (tuple(feature_types), ))
+                                                     (tuple(feature_types), ),
+                                                     (tuple(shapes), ))
             ds_mapper = functools.partial(
                 parse_sparse_feature_predict,
                 feature_column_names=feature_column_names,
