@@ -27,8 +27,9 @@ model.save_metas("{{.OSSModelDir}}",
 		   "", # estimator = ""
            model_params,
            train_params,
-           feature_field_meta,
-           label_field_meta)
+					 feature_metas,
+					 feature_column_names,
+           label_meta)
 `
 
 const xgbLoadModelTmplText = `
@@ -44,6 +45,7 @@ type xgbPredictFiller struct {
 	HiveLocation     string
 	HDFSUser         string
 	HDFSPass         string
+	PAIPredictTable  string
 }
 
 const xgbPredTemplateText = `
@@ -54,18 +56,20 @@ from sqlflow_submitter.pai import model
 # NOTE(typhoonzero): the xgboost model file "my_model" is hard coded in xgboost/train.py
 model.load_file("{{.OSSModelDir}}", "my_model")
 estimator, model_params, train_params, \
-feature_field_meta, label_field_meta = model.load_metas("{{.OSSModelDir}}", "xgboost_model_desc")
+feature_metas, feature_column_names, label_meta = model.load_metas("{{.OSSModelDir}}", "xgboost_model_desc")
 
 pred(datasource='''{{.DataSource}}''',
-     select='''{{.PredSelect}}''',
-     feature_field_meta=feature_field_meta,
-     label_field_meta=label_field_meta,
-	 result_table='''{{.ResultTable}}''',
-	 is_pai=True,
-     hdfs_namenode_addr='''{{.HDFSNameNodeAddr}}''',
-     hive_location='''{{.HiveLocation}}''',
-     hdfs_user='''{{.HDFSUser}}''',
-     hdfs_pass='''{{.HDFSPass}}''')
+    select='''{{.PredSelect}}''',
+    feature_metas=feature_metas,
+    feature_column_names=feature_column_names,
+    label_meta=label_meta,
+    result_table='''{{.ResultTable}}''',
+    is_pai=True,
+    hdfs_namenode_addr='''{{.HDFSNameNodeAddr}}''',
+    hive_location='''{{.HiveLocation}}''',
+    hdfs_user='''{{.HDFSUser}}''',
+    hdfs_pass='''{{.HDFSPass}}''',
+    pai_table='''{{.PAIPredictTable}}''')
 `
 
 type xgbExplainFiller struct {
