@@ -1353,6 +1353,31 @@ subprocess.run(["odpscmd", "-u", user,
 	return nil
 }
 
+func CaseTrainPAIKMeans(t *testing.T) {
+	a := assert.New(t)
+
+	trainSQL := fmt.Sprintf(`SELECT sepal_length,sepal_width,petal_length,petal_width FROM %s
+	TO TRAIN kmeans 
+	WITH
+		center_count=3,
+		idx_table_name=%s
+	INTO %s;
+	`, caseTrainTable, caseTrainTable+"_output_idx_test", caseInto)
+	_, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+
+	predSQL := fmt.Sprintf(`SELECT sepal_length,sepal_width,petal_length,petal_width FROM %s
+	TO PREDICT %s.class
+	USING %s;
+	`, caseTestTable, casePredictTable, caseInto)
+	_, _, err = connectAndRunSQL(predSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+}
+
 func CaseTrainPAIRandomForests(t *testing.T) {
 	a := assert.New(t)
 	err := dropPAIModel(dbConnStr, "my_rf_model")
@@ -1505,7 +1530,7 @@ func TestEnd2EndAlisa(t *testing.T) {
 	caseTestTable = caseDB + ".sqlflow_test_iris_test"
 	casePredictTable = caseDB + ".sqlflow_test_iris_predict"
 	// write model to current MaxCompute project
-	caseInto = "my_alisa_model"
+	caseInto = "sqlflow_test_kmeans_model"
 
 	go start("", caCrt, caKey, unitTestPort, false)
 	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
@@ -1515,6 +1540,7 @@ func TestEnd2EndAlisa(t *testing.T) {
 	}
 	// TODO(Yancey1989): reuse CaseTrainXGBoostOnPAI if support explain XGBoost model
 	t.Run("CaseTrainXGBoostOnAlisa", CaseTrainXGBoostOnAlisa)
+	t.Run("CaseTrainPAIKMeans", CaseTrainPAIKMeans)
 }
 
 // TestEnd2EndMaxComputePAI test cases that runs on PAI. Need to set below

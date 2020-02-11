@@ -156,7 +156,9 @@ func (s *paiSubmitter) submitPAITask(code, paiCmd, requirements string) error {
 		return e
 	}
 	cmd := exec.Command("odpscmd", "-u", cfg.AccessID, "-p", cfg.AccessKey, "--project", cfg.Project, "--endpoint", cfg.Endpoint, "-e", paiCmd)
-	if out, err := cmd.CombinedOutput(); err != nil {
+	out, err := cmd.CombinedOutput()
+	fmt.Println(string(out))
+	if err != nil {
 		return fmt.Errorf("failed %s, %s, %v", cmd, out, err)
 	}
 	return nil
@@ -223,9 +225,9 @@ func (s *paiSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 	}
 	// format resultTable name to "db.table" to let the codegen form a submitting
 	// argument of format "odps://project/tables/table_name"
-	// ModelTypeRandomForests do not need to create explain result manually, PAI will
+	// ModelTypePAIML do not need to create explain result manually, PAI will
 	// create the result table.
-	if cl.Into != "" && modelType != pai.ModelTypeRandomForests {
+	if cl.Into != "" && modelType != pai.ModelTypePAIML {
 		resultTableParts := strings.Split(cl.Into, ".")
 		if len(resultTableParts) == 1 {
 			dbName, err := getDatabaseNameFromDSN(s.Session.DbConnStr)
@@ -309,7 +311,7 @@ func getOSSSavedModelType(modelName string) (modelType int, estimator string, er
 		modelType = pai.ModelTypeXGBoost
 		return
 	}
-	modelType = pai.ModelTypeRandomForests
+	modelType = pai.ModelTypePAIML
 	return
 }
 
