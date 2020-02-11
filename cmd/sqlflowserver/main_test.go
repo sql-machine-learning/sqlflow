@@ -1362,7 +1362,7 @@ func CaseTrainPAIKMeans(t *testing.T) {
 		center_count=3,
 		idx_table_name=%s
 	INTO %s;
-	`, caseTrainTable, caseTrainTable+"_output_idx_test", caseInto)
+	`, caseTrainTable, caseTrainTable+"_test_output_idx", caseInto)
 	_, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)

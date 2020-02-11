@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"strings"
 
+	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/ir"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
@@ -36,6 +37,14 @@ func getTrainKMeansPAICmd(ir *ir.TrainStmt, session *pb.Session) (string, error)
 	idxTableName, ok := ir.Attributes["idx_table_name"]
 	if !ok {
 		return "", fmt.Errorf(`should set "idx_table_name" in WITH clause`)
+	}
+	db, err := database.OpenAndConnectDB(session.DbConnStr)
+	if err != nil {
+		return "", err
+	}
+	_, e := db.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s;", idxTableName))
+	if e != nil {
+		return "", e
 	}
 
 	return fmt.Sprintf(`pai -name kmeans -project algo_public -DinputTableName=%s -DcenterCount=%d -DmodelName %s -DidxTableName=%s -DselectedColNames=%s -DappendColNames="%s"`,
