@@ -24,6 +24,7 @@ import (
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/ir"
 	pb "sqlflow.org/sqlflow/pkg/proto"
+	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/xgboost"
 	"sqlflow.org/sqlflow/pkg/verifier"
 )
@@ -164,6 +165,10 @@ func Predict(ir *ir.PredictStmt, session *pb.Session, tarball, modelName, ossMod
 		}
 		var xgbPredCode bytes.Buffer
 		var tpl = template.Must(template.New("xgbPredTemplate").Parse(xgbPredTemplateText))
+		paiPredictTable := ""
+		if tensorflow.IsPAI() && ir.TmpPredictTable != "" {
+			paiPredictTable = ir.TmpPredictTable
+		}
 		filler := &xgbPredictFiller{
 			OSSModelDir:      ossURI,
 			DataSource:       session.DbConnStr,
@@ -173,6 +178,7 @@ func Predict(ir *ir.PredictStmt, session *pb.Session, tarball, modelName, ossMod
 			HiveLocation:     session.HiveLocation,
 			HDFSUser:         session.HdfsUser,
 			HDFSPass:         session.HdfsPass,
+			PAIPredictTable:  paiPredictTable,
 		}
 		if e = tpl.Execute(&xgbPredCode, filler); e != nil {
 			return

@@ -164,7 +164,8 @@ func attrToPythonValue(attr interface{}) string {
 	}
 }
 
-func dtypeToString(dt int) string {
+// DTypeToString returns string value of dtype
+func DTypeToString(dt int) string {
 	switch dt {
 	case ir.Float:
 		return "float32"
@@ -367,7 +368,7 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 	var trainTemplate = template.Must(template.New("Train").Funcs(template.FuncMap{
 		"intArrayToJSONString": intArrayToJSONString,
 		"attrToPythonValue":    attrToPythonValue,
-		"dtypeToString":        dtypeToString,
+		"DTypeToString":        DTypeToString,
 	}).Parse(tfTrainTemplateText))
 	if err := trainTemplate.Execute(&program, filler); err != nil {
 		return "", err
@@ -422,7 +423,7 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 	var predTemplate = template.Must(template.New("Pred").Funcs(template.FuncMap{
 		"intArrayToJSONString": intArrayToJSONString,
 		"attrToPythonValue":    attrToPythonValue,
-		"dtypeToString":        dtypeToString,
+		"DTypeToString":        DTypeToString,
 	}).Parse(tfPredTemplateText))
 	if err := predTemplate.Execute(&program, filler); err != nil {
 		return "", err
@@ -466,7 +467,7 @@ func Explain(stmt *ir.ExplainStmt, session *pb.Session) (string, error) {
 	var tmpl = template.Must(template.New("Explain").Funcs(template.FuncMap{
 		"intArrayToJSONString": intArrayToJSONString,
 		"attrToPythonValue":    attrToPythonValue,
-		"dtypeToString":        dtypeToString,
+		"DTypeToString":        DTypeToString,
 	}).Parse(boostedTreesExplainTemplateText))
 	if err := tmpl.Execute(&program, filler); err != nil {
 		return "", err

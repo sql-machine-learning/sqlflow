@@ -38,6 +38,8 @@ _condition_id = None
 _while_steps: OrderedDict = OrderedDict()
 # '_while_lock' indicates the recursive call starts
 _while_lock = False
+# TTL_cleaned for the workflow
+_workflow_ttl_cleaned = None
 
 _cluster_config = pyfunc.load_cluster_config()
 
@@ -514,6 +516,9 @@ def yaml():
     ts.extend(_templates.values())
 
     wf["spec"] = {"entrypoint": entrypoint, "templates": ts}
+
+    if _workflow_ttl_cleaned is not None:
+        wf["spec"]["ttlSecondsAfterFinished"] = _workflow_ttl_cleaned
     return wf
 
 
@@ -721,6 +726,11 @@ def _update_pod_config(template):
 
 def secret(secret_data):
     return Secret(secret_data)
+
+
+def clean_workflow_after_seconds_finished(seconds):
+    global _workflow_ttl_cleaned
+    _workflow_ttl_cleaned = seconds
 
 
 class Secret:

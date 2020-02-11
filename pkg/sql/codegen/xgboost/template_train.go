@@ -16,13 +16,17 @@ package xgboost
 import "text/template"
 
 type trainFiller struct {
-	DataSource       string
-	TrainSelect      string
-	ValidationSelect string
-	ModelParamsJSON  string
-	TrainParamsJSON  string
-	FieldDescJSON    string
-	LabelJSON        string
+	DataSource         string
+	TrainSelect        string
+	ValidationSelect   string
+	ModelParamsJSON    string
+	TrainParamsJSON    string
+	FieldDescJSON      string
+	FeatureColumnNames []string
+	LabelJSON          string
+	IsPAI              bool
+	PAITrainTable      string
+	PAIValidateTable   string
 }
 
 const trainTemplateText = `
@@ -31,16 +35,24 @@ import json
 
 model_params = json.loads('''{{.ModelParamsJSON}}''')
 train_params = json.loads('''{{.TrainParamsJSON}}''')
-feature_field_meta = json.loads('''{{.FieldDescJSON}}''')
-label_field_meta = json.loads('''{{.LabelJSON}}''')
+feature_metas = json.loads('''{{.FieldDescJSON}}''')
+label_meta = json.loads('''{{.LabelJSON}}''')
+
+feature_column_names = [{{range .FeatureColumnNames}}
+"{{.}}",
+{{end}}]
 
 train(datasource='''{{.DataSource}}''',
-      select='''{{.TrainSelect}}''',
-      model_params=model_params,
-      train_params=train_params,
-      feature_field_meta=feature_field_meta,
-      label_field_meta=label_field_meta,
-      validation_select='''{{.ValidationSelect}}''')
+        select='''{{.TrainSelect}}''',
+        model_params=model_params,
+				train_params=train_params,
+        feature_metas=feature_metas,
+        feature_column_names=feature_column_names,
+        label_meta=label_meta,
+        validation_select='''{{.ValidationSelect}}''',
+        is_pai="{{.IsPAI}}" == "true",
+        pai_train_table="{{.PAITrainTable}}",
+        pai_validate_table="{{.PAIValidateTable}}")
 `
 
 var trainTemplate = template.Must(template.New("Train").Parse(trainTemplateText))
