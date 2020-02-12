@@ -24,8 +24,8 @@ import (
 
 func TestAttributes(t *testing.T) {
 	a := assert.New(t)
-	a.Equal(5, len(attributeDictionary))
-	a.Equal(27, len(fullAttrValidator))
+	a.Equal(6, len(attributeDictionary))
+	a.Equal(28, len(fullAttrValidator))
 }
 
 func mockSession() *pb.Session {
