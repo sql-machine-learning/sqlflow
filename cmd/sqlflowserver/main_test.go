@@ -1487,21 +1487,21 @@ func CaseTrainXGBoostOnPAI(t *testing.T) {
 
 func CaseTrainDenseCol(t *testing.T) {
 	a := assert.New(t)
-	trainSQL := `select label, f1, f2 from alifin_jtest_dev.sqlflow_ctr_train_part
-TO TRAIN DNNLinearCombinedClassifier
-WITH model.dnn_hidden_units=[10,10], train.batch_size=1
-COLUMN NUMERIC(f1, 13) FOR linear_feature_columns
-COLUMN EMBEDDING(CATEGORY_HASH(SPARSE(f2, 26, COMMA, int), 1000), 16, "sum") FOR dnn_feature_columns
-LABEL 'label'
-INTO my_ctr_test_model;`
-	_, _, err := connectAndRunSQL(trainSQL)
-	if err != nil {
-		a.Fail("Run trainSQL error: %v", err)
-	}
+	// 	trainSQL := `select label, f1, f2 from alifin_jtest_dev.sqlflow_ctr_train_part
+	// TO TRAIN DNNLinearCombinedClassifier
+	// WITH model.dnn_hidden_units=[10,10], train.batch_size=1
+	// COLUMN NUMERIC(f1, 13) FOR linear_feature_columns
+	// COLUMN EMBEDDING(CATEGORY_HASH(SPARSE(f2, 26, COMMA, int), 1000), 16, "sum") FOR dnn_feature_columns
+	// LABEL 'label'
+	// INTO my_ctr_test_model;`
+	// 	_, _, err := connectAndRunSQL(trainSQL)
+	// 	if err != nil {
+	// 		a.Fail("Run trainSQL error: %v", err)
+	// 	}
 	predSQL := `SELECT f1,f2 FROM alifin_jtest_dev.sqlflow_ctr_test_part
 TO PREDICT alifin_jtest_dev.sqlflow_ctr_predict.class
 USING my_ctr_test_model;`
-	_, _, err = connectAndRunSQL(predSQL)
+	_, _, err := connectAndRunSQL(predSQL)
 	if err != nil {
 		a.Fail("Run predSQL error: %v", err)
 	}

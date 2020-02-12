@@ -30,6 +30,19 @@ def get_oss_path_from_uri(oss_model_dir, file_name):
     return oss_path
 
 
+def save_dir(oss_model_dir, local_dir):
+    oss_dir = oss_model_dir.split("?")[0]
+    for (root, dirs, files) in os.walk(local_dir, topdown=True):
+        dst_dir = "/".join([oss_dir, root])
+        gfile.MakeDirs(dst_dir)
+        for file_name in files:
+            curr_file_path = os.path.join(root, file_name)
+            remote_file_path = "/".join([dst_dir, file_name])
+            print("copy %s -> %s" % (curr_file_path, remote_file_path))
+            gfile.Copy(curr_file_path, remote_file_path)
+    # oss://bucket/path/to/checkpoint   <-   my_model/exported_path
+
+
 def save_file(oss_model_dir, file_name):
     '''
     Save the local file to OSS direcotory using GFile.

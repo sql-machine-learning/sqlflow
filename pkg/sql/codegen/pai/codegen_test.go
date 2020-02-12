@@ -128,7 +128,7 @@ func TestTrainCodegen(t *testing.T) {
 	paiTFCode, paiCmd, _, e := Train(trainStmt, sess, scriptPath, "my_dnn_model", ossModelPath, "")
 	a.NoError(e)
 
-	tfCode, err := tensorflow.Train(trainStmt, sess, "some_oss_model_path")
+	tfCode, err := tensorflow.Train(trainStmt, sess)
 	a.NoError(err)
 
 	a.True(strings.HasPrefix(paiTFCode, tfCode))

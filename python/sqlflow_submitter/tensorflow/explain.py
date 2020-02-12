@@ -81,7 +81,7 @@ def explain(datasource,
                                datasource,
                                feature_column_names,
                                feature_metas,
-                               label_meta["feature_name"],
+                               label_meta,
                                is_pai=True,
                                pai_table=pai_table)
         else:

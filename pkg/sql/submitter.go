@@ -148,7 +148,7 @@ func (s *defaultSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 	if isXGBoostModel(cl.Estimator) {
 		code, e = xgboost.Train(cl, s.Session)
 	} else {
-		code, e = tensorflow.Train(cl, s.Session, "model_save")
+		code, e = tensorflow.Train(cl, s.Session)
 	}
 	if e == nil {
 		if e = s.runCommand(code); e == nil {

@@ -333,7 +333,7 @@ func deriveFeatureColumnCode(trainStmt *ir.TrainStmt) (featureColumnsCode []stri
 }
 
 // Train generates a Python program for train a TensorFlow model.
-func Train(trainStmt *ir.TrainStmt, session *pb.Session, save string) (string, error) {
+func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 	if err := initializeAttributes(trainStmt); err != nil {
 		return "", err
 	}
@@ -364,7 +364,7 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session, save string) (string, e
 		ModelParams:       modelParams,
 		TrainParams:       trainParams,
 		ValidationParams:  validateParams,
-		Save:              save,
+		Save:              "model_save",
 		IsPAI:             IsPAI(),
 		PAITrainTable:     paiTrainTable,
 		PAIValidateTable:  paiValidateTable,

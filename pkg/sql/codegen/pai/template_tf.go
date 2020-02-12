@@ -47,6 +47,10 @@ const tfSaveModelTmplText = `
 from sqlflow_submitter.pai import model
 from shutil import copyfile
 
+with open("exported_path", "r") as fn:
+    saved_model_path = fn.read()
+
+model.save_dir("{{.OSSModelDir}}", saved_model_path)
 model.save_file("{{.OSSModelDir}}", "exported_path")
 model.save_metas("{{.OSSModelDir}}",
            {{.NumWorkers}},

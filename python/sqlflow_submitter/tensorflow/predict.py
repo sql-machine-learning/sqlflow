@@ -141,8 +141,7 @@ def estimator_predict(estimator, model_params, save, result_table,
         with open("exported_path", "r") as fn:
             export_path = fn.read()
         parts = save.split("?")
-        export_path_oss = "?".join([parts[0] + export_path + "/", parts[1]])
-        print("loading from %s" % export_path_oss)
+        export_path_oss = parts[0] + export_path
         if TF_VERSION_2:
             imported = tf.saved_model.load(export_path_oss)
         else:
@@ -150,7 +149,6 @@ def estimator_predict(estimator, model_params, save, result_table,
     else:
         with open("exported_path", "r") as fn:
             export_path = fn.read()
-        print("loading from %s" % export_path)
         if TF_VERSION_2:
             imported = tf.saved_model.load(export_path)
         else:
@@ -161,12 +159,23 @@ def estimator_predict(estimator, model_params, save, result_table,
         for i in range(len(feature_column_names)):
             feature_name = feature_column_names[i]
             dtype_str = feature_metas[feature_name]["dtype"]
-            if dtype_str == "float32" or dtype_str == "float64":
+            # if dtype_str == "float32" or dtype_str == "float64":
+            if feature_metas[feature_name]["delimiter"] != "":
+                print(x[0][i])
+                if dtype_str == "float32" or dtype_str == "float64":
+                    example.features.feature[
+                        feature_name].float_list.value.extend(
+                            list(x[0][i].flatten()))
+                elif dtype_str == "int32" or dtype_str == "int64":
+                    example.features.feature[
+                        feature_name].int64_list.value.extend(
+                            list(x[0][i].flatten()))
+            else:
                 example.features.feature[feature_name].float_list.value.extend(
                     x[0][i])
-            elif dtype_str == "int32" or dtype_str == "int64":
-                example.features.feature[feature_name].int_list.value.extend(
-                    x[0][i])
+            # elif dtype_str == "int32" or dtype_str == "int64":
+            #     example.features.feature[feature_name].int64_list.value.extend(
+            #         x[0][i])
         return imported.signatures["predict"](
             examples=tf.constant([example.SerializeToString()]))
 

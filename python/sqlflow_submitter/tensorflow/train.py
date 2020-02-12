@@ -153,11 +153,6 @@ def estimator_train_and_save(
     def train_input_fn():
         # FIXME(typhoonzero): find a way to cache to local file and avoid cache lockfile already exists issue.
         if is_pai:
-            # train_dataset = pai_maxcompute_input_fn(pai_table, datasource,
-            #                                         feature_column_names,
-            #                                         feature_metas, label_meta,
-            #                                         len(FLAGS.worker_hosts),
-            #                                         FLAGS.task_index)
             train_dataset = input_fn("",
                                      None,
                                      feature_column_names,
@@ -185,9 +180,6 @@ def estimator_train_and_save(
 
     def validate_input_fn():
         if is_pai:
-            # validate_dataset = pai_maxcompute_input_fn(
-            #     pai_val_table, datasource, feature_column_names, feature_metas,
-            #     label_meta, len(FLAGS.worker_hosts), FLAGS.task_index)
             validate_dataset = input_fn("",
                                         None,
                                         feature_column_names,
@@ -220,11 +212,9 @@ def estimator_train_and_save(
         raise Exception("No expected feature columns in model params")
     serving_input_fn = tf.estimator.export.build_parsing_serving_input_receiver_fn(
         tf.feature_column.make_parse_example_spec(all_feature_columns))
-    if save.startswith("oss://"):
-        save_uri = save.split("?")[0]
-    else:
-        save_uri = save
-    export_path = classifier.export_saved_model(save_uri, serving_input_fn)
+    export_path = classifier.export_saved_model(save, serving_input_fn)
+    print("after export model to local: %s, exported path: %s" %
+          (os.listdir(export_path), export_path))
     # write the path under current directory
     with open("exported_path", "w") as fn:
         fn.write(str(export_path.decode("utf-8")))

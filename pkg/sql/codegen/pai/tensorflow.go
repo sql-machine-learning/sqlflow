@@ -33,7 +33,7 @@ func TFTrainAndSave(ir *ir.TrainStmt, session *pb.Session, modelPath string, cc 
 		return "", err
 	}
 
-	code, err := tensorflow.Train(ir, session, ckptDir)
+	code, err := tensorflow.Train(ir, session)
 	if err != nil {
 		return "", err
 	}
