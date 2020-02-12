@@ -17,7 +17,8 @@ set -e
 
 curl --silent https://dl.google.com/go/go1.13.4.linux-amd64.tar.gz | tar -C /usr/local -xzf -
 
-go get github.com/golang/protobuf/protoc-gen-go
+export GO111MODULE="on"
+go get github.com/golang/protobuf/protoc-gen-go@v1.3.2 # higher protoc-gen failed on gRPC v1.24.0
 go get golang.org/x/lint/golint
 go get golang.org/x/tools/cmd/goyacc
 go get golang.org/x/tools/cmd/cover
