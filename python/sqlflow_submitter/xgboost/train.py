@@ -79,6 +79,7 @@ def train(datasource,
         watchlist.append((dvalidate, "validate"))
 
     re = dict()
+    print("Start training XGBoost model...")
     bst = xgb.train(model_params,
                     dtrain,
                     evals=watchlist,

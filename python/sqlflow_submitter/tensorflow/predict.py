@@ -198,6 +198,7 @@ def pred(datasource,
         if not issubclass(estimator, tf.keras.Model):
             # functional model need field_metas parameter
             model_params["field_metas"] = feature_metas
+        print("Start predicting using keras model...")
         keras_predict(estimator, model_params, save, result_table,
                       feature_column_names, feature_metas, result_col_name,
                       datasource, select, hdfs_namenode_addr, hive_location,
@@ -208,6 +209,7 @@ def pred(datasource,
             model_params["model_dir"] = FLAGS.checkpointDir
         else:
             model_params['model_dir'] = save
+        print("Start predicting using estimator model...")
         estimator_predict(estimator, model_params, save, result_table,
                           feature_column_names, feature_metas, result_col_name,
                           datasource, select, hdfs_namenode_addr,

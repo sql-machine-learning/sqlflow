@@ -254,6 +254,7 @@ def train(datasource,
         if not issubclass(estimator, tf.keras.Model):
             # functional model need field_metas parameter
             model_params["field_metas"] = feature_metas
+        print("Start training using keras model...")
         keras_train_and_save(estimator, model_params, save,
                              feature_column_names, feature_metas, label_meta,
                              datasource, select, validate_select, batch_size,
@@ -282,6 +283,7 @@ def train(datasource,
             model_params["model_dir"] = FLAGS.checkpointDir
         else:
             model_params["model_dir"] = save
+        print("Start training using estimator model...")
         estimator_train_and_save(
             estimator, model_params, save, is_pai, FLAGS, pai_table,
             pai_val_table, feature_column_names, feature_metas, label_meta,
