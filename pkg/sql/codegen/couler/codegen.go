@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 
 	"sqlflow.org/sqlflow/pkg/ir"
@@ -25,6 +26,7 @@ import (
 )
 
 var defaultDockerImage = "sqlflow/sqlflow"
+var workflowTTL = 24 * 3600
 
 func fillMapIfValueNotEmpty(m map[string]string, key, value string) {
 	if value != "" {
@@ -68,15 +70,23 @@ func GenCode(programIR []ir.SQLFlowStmt, session *pb.Session) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if os.Getenv("SQLFLOW_WORKFLOW_TTL") != "" {
+		workflowTTL, err = strconv.Atoi(os.Getenv("SQLFLOW_WORKFLOW_TTL"))
+		if err != nil {
+			return "", fmt.Errorf("SQLFLOW_WORKFLOW_TTL: %s should be int", os.Getenv("SQLFLOW_WORKFLOW_TTL"))
+		}
+	}
 	r := &coulerFiller{
-		DataSource: session.DbConnStr,
-		StepEnvs:   stepEnvs,
+		DataSource:  session.DbConnStr,
+		StepEnvs:    stepEnvs,
+		WorkflowTTL: workflowTTL,
 	}
 	// NOTE(yancey1989): does not use ModelImage here since the Predict statement
 	// does not contain the ModelImage field in SQL Program IR.
 	if os.Getenv("SQLFLOW_WORKFLOW_STEP_IMAGE") != "" {
 		defaultDockerImage = os.Getenv("SQLFLOW_WORKFLOW_STEP_IMAGE")
 	}
+
 	for _, sqlIR := range programIR {
 		switch i := sqlIR.(type) {
 		case *ir.NormalStmt, *ir.PredictStmt, *ir.ExplainStmt:
