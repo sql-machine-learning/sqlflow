@@ -103,7 +103,6 @@ def keras_train_and_save(estimator, model_params, save, feature_column_names,
             return feature, [label]
 
         def flatten_feature_only(feature):
-            print(feature)
             for k in feature:
                 feature[k] = feature[k][0]
             return feature
@@ -213,8 +212,6 @@ def estimator_train_and_save(
     serving_input_fn = tf.estimator.export.build_parsing_serving_input_receiver_fn(
         tf.feature_column.make_parse_example_spec(all_feature_columns))
     export_path = classifier.export_saved_model(save, serving_input_fn)
-    print("after export model to local: %s, exported path: %s" %
-          (os.listdir(export_path), export_path))
     # write the path under current directory
     with open("exported_path", "w") as fn:
         fn.write(str(export_path.decode("utf-8")))

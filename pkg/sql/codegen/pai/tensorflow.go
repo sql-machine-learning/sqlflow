@@ -50,7 +50,6 @@ func TFTrainAndSave(ir *ir.TrainStmt, session *pb.Session, modelPath string, cc 
 	if err = tpl.Execute(&saveCode, filler); err != nil {
 		return "", err
 	}
-	fmt.Println(code + saveCode.String())
 	return code + saveCode.String(), nil
 }
 

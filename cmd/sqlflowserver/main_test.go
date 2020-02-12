@@ -53,7 +53,7 @@ var testDatasource = os.Getenv("SQLFLOW_TEST_DATASOURCE")
 // specify the table name in that case.
 var caseInto = "sqlflow_models.my_dnn_model"
 
-const unitTestPort = 50052
+const unitTestPort = 50051
 
 func serverIsReady(addr string, timeout time.Duration) bool {
 	conn, err := net.DialTimeout("tcp", addr, timeout)

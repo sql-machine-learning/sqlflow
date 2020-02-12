@@ -38,7 +38,6 @@ def save_dir(oss_model_dir, local_dir):
         for file_name in files:
             curr_file_path = os.path.join(root, file_name)
             remote_file_path = "/".join([dst_dir, file_name])
-            print("copy %s -> %s" % (curr_file_path, remote_file_path))
             gfile.Copy(curr_file_path, remote_file_path)
     # oss://bucket/path/to/checkpoint   <-   my_model/exported_path
 

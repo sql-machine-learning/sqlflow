@@ -378,7 +378,6 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 	if err := trainTemplate.Execute(&program, filler); err != nil {
 		return "", err
 	}
-
 	return program.String(), nil
 }
 
