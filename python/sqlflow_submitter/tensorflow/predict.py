@@ -186,7 +186,14 @@ def estimator_predict(estimator, model_params, save, result_table,
             result = predict(features)
             row = []
             for idx, _ in enumerate(feature_column_names):
-                val = features[0][idx][0]
+                per_feature = features[0][idx]
+                if isinstance(per_feature, tuple) or isinstance(
+                        per_feature, list):
+                    # is sparse feature: tuple (indices, values, shape) or scalar
+                    val = per_feature[0]
+                elif isinstance(per_feature, np.ndarray):
+                    val = per_feature
+                # val = features[0][idx][0]
                 row.append(str(val))
             if "class_ids" in result:
                 row.append(str(result["class_ids"].numpy()[0][0]))
