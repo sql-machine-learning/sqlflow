@@ -1392,6 +1392,10 @@ subprocess.run(["odpscmd", "-u", user,
 
 func CaseTrainPAIKMeans(t *testing.T) {
 	a := assert.New(t)
+	testDB, e := database.OpenAndConnectDB(dbConnStr)
+	a.NoError(e)
+	_, e = testDB.Exec("drop offlinemodel if exists " + caseInto)
+	a.NoError(e)
 
 	trainSQL := fmt.Sprintf(`SELECT sepal_length,sepal_width,petal_length,petal_width FROM %s
 	TO TRAIN kmeans 
@@ -1591,10 +1595,6 @@ func TestEnd2EndAlisa(t *testing.T) {
 
 	go start("", caCrt, caKey, unitTestPort, false)
 	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
-	err = prepareTestData(dbConnStr)
-	if err != nil {
-		t.Fatalf("prepare test dataset failed: %v", err)
-	}
 	// TODO(Yancey1989): reuse CaseTrainXGBoostOnPAI if support explain XGBoost model
 	t.Run("CaseTrainXGBoostOnAlisa", CaseTrainXGBoostOnAlisa)
 	t.Run("CaseTrainPAIKMeans", CaseTrainPAIKMeans)
