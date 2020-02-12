@@ -32,10 +32,10 @@ import (
 const (
 	// ModelTypeTF is the mode type that trained by PAI Tensorflow.
 	ModelTypeTF = iota
-	// ModelTypeRandomForests is the model type that trained by PAI random forests.
-	ModelTypeRandomForests
 	// ModelTypeXGBoost is the model type that use PAI Tensorflow to train XGBoost models.
 	ModelTypeXGBoost
+	// ModelTypePAIML is the model type that trained by PAI machine learing algorithm tookit
+	ModelTypePAIML
 )
 
 const entryFile = "entry.py"
@@ -116,6 +116,10 @@ func Train(ir *ir.TrainStmt, session *pb.Session, tarball, modelName, ossModelPa
 		if paiCmd, e = getTrainRandomForestsPAICmd(ir, session); e != nil {
 			return
 		}
+	} else if strings.ToLower(ir.Estimator) == "kmeans" {
+		if paiCmd, e = getTrainKMeansPAICmd(ir, session); e != nil {
+			return
+		}
 	} else if strings.HasPrefix(strings.ToLower(ir.Estimator), "xgboost") {
 		if code, e = xgboost.Train(ir, session); e != nil {
 			return
@@ -152,9 +156,9 @@ func Train(ir *ir.TrainStmt, session *pb.Session, tarball, modelName, ossModelPa
 
 // Predict generates a Python program for train a TensorFlow model.
 func Predict(ir *ir.PredictStmt, session *pb.Session, tarball, modelName, ossModelPath, cwd string, modelType int) (code, paiCmd, requirements string, e error) {
-	if modelType == ModelTypeRandomForests {
-		log.Printf("predicting using pai random forests")
-		if paiCmd, e = getPredictRandomForestsPAICmd(ir, session); e != nil {
+	if modelType == ModelTypePAIML {
+		log.Printf("predicting using pai prediction tookit")
+		if paiCmd, e = getPAIPredictCmd(ir, session); e != nil {
 			return
 		}
 	} else if modelType == ModelTypeXGBoost {
@@ -218,7 +222,7 @@ func Explain(ir *ir.ExplainStmt, session *pb.Session, tarball, modelName, ossMod
 	if err != nil {
 		return "", "", "", err
 	}
-	if modelType == ModelTypeRandomForests {
+	if modelType == ModelTypePAIML {
 		requirements, e = genRequirements(false)
 		log.Printf("explain using pai random forests")
 		if paiCmd, e = getExplainRandomForestsPAICmd(ir, session); e != nil {
