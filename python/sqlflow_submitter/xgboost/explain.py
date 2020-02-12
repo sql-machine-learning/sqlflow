@@ -18,20 +18,29 @@ import xgboost as xgb
 from sqlflow_submitter import explainer
 from sqlflow_submitter.db import (buffered_db_writer, connect_with_data_source,
                                   db_generator)
+from sqlflow_submitter.tensorflow.input_fn import pai_maxcompute_db_generator
 
 
 def xgb_shap_dataset(datasource, select, feature_column_names, label_spec,
-                     feature_specs):
-    label_spec["feature_name"] = label_spec["name"]
-    conn = connect_with_data_source(datasource)
-    stream = db_generator(conn.driver, conn, select, feature_column_names,
-                          label_spec, feature_specs)
+                     feature_specs, is_pai, pai_explain_table):
+    label_column_name = label_spec["name"]
+    if is_pai:
+        pai_table_parts = pai_explain_table.split(".")
+        formated_pai_table = "odps://%s/tables/%s" % (pai_table_parts[0],
+                                                      pai_table_parts[1])
+        stream = pai_maxcompute_db_generator(formated_pai_table,
+                                             feature_column_names,
+                                             label_column_name, feature_specs)
+    else:
+        label_spec["feature_name"] = label_column_name
+        conn = connect_with_data_source(datasource)
+        stream = db_generator(conn.driver, conn, select, feature_column_names,
+                              label_spec, feature_specs)
+
     xs = pd.DataFrame(columns=feature_column_names)
-    ys = pd.DataFrame(columns=[label_spec["name"]])
     i = 0
     for row in stream():
         xs.loc[i] = [item[0] for item in row[0]]
-        ys.loc[i] = row[1]
         i += 1
     return xs
 
@@ -49,8 +58,9 @@ def explain(datasource,
             feature_field_meta,
             label_spec,
             summary_params,
-            result_table="",
             is_pai=False,
+            pai_explain_table="",
+            result_table="",
             hdfs_namenode_addr="",
             hive_location="",
             hdfs_user="",
@@ -58,7 +68,7 @@ def explain(datasource,
     feature_column_names = [k["name"] for k in feature_field_meta]
     feature_specs = {k['name']: k for k in feature_field_meta}
     x = xgb_shap_dataset(datasource, select, feature_column_names, label_spec,
-                         feature_specs)
+                         feature_specs, is_pai, pai_explain_table)
 
     shap_values, shap_interaction_values, expected_value = xgb_shap_values(x)
 

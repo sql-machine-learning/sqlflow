@@ -23,6 +23,8 @@ type explainFiller struct {
 	ShapSummaryParams    string
 	FeatureFieldMetaJSON string
 	LabelJSON            string
+	IsPAI                bool
+	PAIExplainTable      string
 }
 
 const explainTemplateText = `
@@ -38,7 +40,9 @@ explain(
     select='''{{.DatasetSQL}}''',
     feature_field_meta=feature_field_meta,
     label_spec=label_spec,
-    summary_params=summary_params)
+    summary_params=summary_params,
+    is_pai="{{.IsPAI}}" == "true",
+    pai_explain_table="{{.PAIExplainTable}}")
 `
 
 var explainTemplate = template.Must(template.New("explain").Parse(explainTemplateText))
