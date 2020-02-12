@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"google.golang.org/grpc"
 	"log"
+	"net"
 	"os"
 	"os/exec"
 	"sync"
@@ -36,16 +37,21 @@ func getServerPort() string {
 	return port
 }
 
-func isServerUp() bool {
-	cmd := exec.Command("curl", "-v", fmt.Sprintf("localhost:%s", getServerPort()))
-	if err := cmd.Run(); err != nil {
+func isServerUp(address string) bool {
+	conn, err := net.DialTimeout("tcp", address, time.Second)
+	defer func() {
+		if conn != nil {
+			conn.Close()
+		}
+	}()
+	if err != nil {
 		return false
 	}
 	return true
 }
 
 func startServerIfNotUp() error {
-	if isServerUp() {
+	if isServerUp(fmt.Sprintf(":%s", getServerPort())) {
 		return nil
 	}
 
@@ -59,7 +65,7 @@ func startServerIfNotUp() error {
 
 	for i := 0; i < 3; i++ {
 		time.Sleep(time.Second)
-		if isServerUp() {
+		if isServerUp(fmt.Sprintf(":%s", getServerPort())) {
 			return nil
 		}
 	}
