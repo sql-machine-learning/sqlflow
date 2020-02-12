@@ -35,7 +35,8 @@ Step size shrinkage used in update to prevents overfitting. After each boosting 
 range: [0,1]`, attribute.Float32RangeChecker(0, 1, true, true)},
 	"num_class": {attribute.Int, nil, `Number of classes.
 range: [2, Infinity]`, attribute.IntLowerBoundChecker(2, true)},
-	"objective": {attribute.String, nil, `Learning objective`, nil},
+	"objective":   {attribute.String, nil, `Learning objective`, nil},
+	"eval_metric": {attribute.String, nil, `eval metric`, nil},
 	"train.num_boost_round": {attribute.Int, 10, `[default=10]
 The number of rounds for boosting.
 range: [1, Infinity]`, attribute.IntLowerBoundChecker(1, true)},
