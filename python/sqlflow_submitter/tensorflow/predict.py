@@ -22,7 +22,6 @@ import tensorflow as tf
 from sqlflow_submitter.db import (buffered_db_writer, connect_with_data_source,
                                   db_generator, parseMaxComputeDSN)
 
-from .fast_predict import FastPredict
 from .input_fn import (get_dtype, pai_maxcompute_db_generator,
                        pai_maxcompute_input_fn, parse_sparse_feature,
                        parse_sparse_feature_predict)
@@ -119,40 +118,11 @@ def estimator_predict(estimator, model_params, save, result_table,
                       feature_column_names, feature_metas, result_col_name,
                       datasource, select, hdfs_namenode_addr, hive_location,
                       hdfs_user, hdfs_pass, is_pai, pai_table):
-    classifier = estimator(**model_params)
     if not is_pai:
         conn = connect_with_data_source(datasource)
 
-    def fast_input_fn(generator):
-        feature_types = []
-        shapes = []
-        for name in feature_column_names:
-            if feature_metas[name]["is_sparse"]:
-                feature_types.append((tf.int64, tf.int32, tf.int64))
-                shapes.append((None, None, None))
-            else:
-                feature_types.append(get_dtype(feature_metas[name]["dtype"]))
-                shapes.append(feature_metas[name]["shape"])
-
-        def _inner_input_fn():
-            dataset = tf.data.Dataset.from_generator(generator,
-                                                     (tuple(feature_types), ),
-                                                     (tuple(shapes), ))
-            ds_mapper = functools.partial(
-                parse_sparse_feature_predict,
-                feature_column_names=feature_column_names,
-                feature_metas=feature_metas)
-            dataset = dataset.map(ds_mapper)
-            dataset = dataset.batch(1).cache()
-            iterator = dataset.make_one_shot_iterator()
-            features = iterator.get_next()
-            return features
-
-        return _inner_input_fn
-
     column_names = feature_column_names[:]
     column_names.append(result_col_name)
-    fast_predictor = FastPredict(classifier, fast_input_fn)
 
     if is_pai:
         driver = "pai_maxcompute"
@@ -167,20 +137,35 @@ def estimator_predict(estimator, model_params, save, result_table,
         predict_generator = db_generator(conn.driver, conn, select,
                                          feature_column_names, None,
                                          feature_metas)()
+    # load from the exported model
+    with open(os.path.join(save, "exported_path"), "r") as fn:
+        export_path = fn.read()
+
+    imported = tf.saved_model.load(export_path)
+
+    def predict(x):
+        example = tf.train.Example()
+        for i in range(len(feature_column_names)):
+            feature_name = feature_column_names[i]
+            example.features.feature[feature_name].float_list.value.extend(
+                x[0][i])
+        return imported.signatures["predict"](
+            examples=tf.constant([example.SerializeToString()]))
+
     with buffered_db_writer(driver, conn, result_table, column_names, 100,
                             hdfs_namenode_addr, hive_location, hdfs_user,
                             hdfs_pass) as w:
         for features in predict_generator:
-            result = fast_predictor.predict(features)
+            result = predict(features)
             row = []
             for idx, _ in enumerate(feature_column_names):
                 val = features[0][idx][0]
                 row.append(str(val))
-            if "class_ids" in list(result)[0]:
-                row.append(str(list(result)[0]["class_ids"][0]))
+            if "class_ids" in result:
+                row.append(str(result["class_ids"].numpy()[0][0]))
             else:
                 # regression predictions
-                row.append(str(list(result)[0]["predictions"][0]))
+                row.append(str(result["predictions"].numpy()[0][0]))
             w.write(row)
 
 

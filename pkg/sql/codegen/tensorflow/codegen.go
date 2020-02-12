@@ -307,8 +307,8 @@ func categorizeAttributes(trainStmt *ir.TrainStmt) (trainParams, validateParams,
 }
 
 func deriveFeatureColumnCode(trainStmt *ir.TrainStmt) (featureColumnsCode []string, fieldDescs []*ir.FieldDesc, err error) {
-	perTargetFeatureColumnsCode := []string{}
 	for target, fcList := range trainStmt.Features {
+		perTargetFeatureColumnsCode := []string{}
 		for _, fc := range fcList {
 			fcCode, err := generateFeatureColumnCode(fc)
 			if err != nil {
