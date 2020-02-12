@@ -28,26 +28,29 @@ import (
 
 // TFTrainAndSave generates PAI-TF train program.
 func TFTrainAndSave(ir *ir.TrainStmt, session *pb.Session, modelPath string, cc *ClusterConfig) (string, error) {
-	code, err := tensorflow.Train(ir, session)
+	ckptDir, err := checkpointURL(modelPath)
+	if err != nil {
+		return "", err
+	}
+
+	code, err := tensorflow.Train(ir, session, ckptDir)
 	if err != nil {
 		return "", err
 	}
 
 	// append code snippet to save model
 	var tpl = template.Must(template.New("SaveModel").Parse(tfSaveModelTmplText))
-	ckptDir, err := checkpointURL(modelPath)
-	if err != nil {
-		return "", err
-	}
 	filler := saveModelFiller{
 		OSSModelDir: ckptDir,
 		Estimator:   ir.Estimator,
 		NumWorkers:  cc.Worker.Count,
+		Save:        "model_save", // hard coded local save path, see: tensorflow/codegen.go:Train()
 	}
 	var saveCode bytes.Buffer
 	if err = tpl.Execute(&saveCode, filler); err != nil {
 		return "", err
 	}
+	fmt.Println(code + saveCode.String())
 	return code + saveCode.String(), nil
 }
 
@@ -69,6 +72,7 @@ func TFLoadAndPredict(ir *ir.PredictStmt, session *pb.Session, modelPath string)
 		ResultTable: ir.ResultTable,
 		IsPAI:       tensorflow.IsPAI(),
 		PAITable:    paiPredictTable,
+		Save:        "model_save", // hard coded local save path, see: tensorflow/codegen.go:Train()
 	}
 	var code bytes.Buffer
 	if err := tpl.Execute(&code, filler); err != nil {

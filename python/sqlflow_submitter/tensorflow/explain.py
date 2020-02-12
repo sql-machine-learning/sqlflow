@@ -23,7 +23,7 @@ import tensorflow as tf
 from sqlflow_submitter import explainer
 from sqlflow_submitter.db import buffered_db_writer, connect_with_data_source
 
-from .input_fn import input_fn, pai_maxcompute_input_fn
+from .input_fn import input_fn
 
 sns_colors = sns.color_palette('colorblind')
 # Disable Tensorflow INFO and WARNING logs
@@ -74,12 +74,18 @@ def explain(datasource,
 
     def _input_fn():
         if is_pai:
-            dataset = pai_maxcompute_input_fn(pai_table, datasource,
-                                              feature_column_names,
-                                              feature_metas, label_meta)
+            # dataset = pai_maxcompute_input_fn(pai_table, datasource,
+            #                                   feature_column_names,
+            #                                   feature_metas, label_meta)
+            dataset = input_fn("",
+                               datasource,
+                               feature_column_names,
+                               feature_metas,
+                               label_meta["feature_name"],
+                               is_pai=True,
+                               pai_table=pai_table)
         else:
-            conn = connect_with_data_source(datasource)
-            dataset = input_fn(select, conn, feature_column_names,
+            dataset = input_fn(select, datasource, feature_column_names,
                                feature_metas, label_meta)
         return dataset.batch(1).cache()
 

@@ -17,6 +17,7 @@ type saveModelFiller struct {
 	OSSModelDir string
 	Estimator   string
 	NumWorkers  int // used to determine whether is distributed training.
+	Save        string
 }
 
 type predictFiller struct {
@@ -26,6 +27,7 @@ type predictFiller struct {
 	ResultTable string
 	IsPAI       bool
 	PAITable    string
+	Save        string
 }
 
 type explainFiller struct {
@@ -43,6 +45,9 @@ type requirementsFiller struct {
 
 const tfSaveModelTmplText = `
 from sqlflow_submitter.pai import model
+from shutil import copyfile
+
+model.save_file("{{.OSSModelDir}}", "exported_path")
 model.save_metas("{{.OSSModelDir}}",
            {{.NumWorkers}},
            "tensorflow_model_desc",
@@ -63,6 +68,7 @@ xgboost==0.82
 `
 
 const tfPredictTmplText = `
+import os
 import tensorflow as tf
 from tensorflow.estimator import DNNClassifier, DNNRegressor, LinearClassifier, LinearRegressor, BoostedTreesClassifier, BoostedTreesRegressor, DNNLinearCombinedClassifier, DNNLinearCombinedRegressor
 from sqlflow_submitter.pai import model
@@ -71,6 +77,8 @@ try:
     tf.enable_eager_execution()
 except:
     pass
+
+model.load_file("{{.OSSModelDir}}", "exported_path")
 
 (estimator,
  feature_column_names,

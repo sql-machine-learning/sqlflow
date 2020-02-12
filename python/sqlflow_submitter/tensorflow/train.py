@@ -23,7 +23,7 @@ from sqlflow_submitter.db import (connect_with_data_source, db_generator,
                                   parseMaxComputeDSN)
 
 from . import metrics
-from .input_fn import input_fn, pai_maxcompute_input_fn
+from .input_fn import input_fn
 
 # Disable Tensorflow INFO and WARNING logs
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -80,13 +80,13 @@ def keras_train_and_save(estimator, model_params, save, feature_column_names,
             # default
             keras_metrics = metrics.get_keras_metrics(["Accuracy"])
 
-    conn = connect_with_data_source(datasource)
     # FIXME(typhoonzero): find a way to cache to local file and avoid cache lockfile already exists issue.
-    train_dataset = input_fn(select, conn, feature_column_names, feature_metas,
-                             label_meta)
+    train_dataset = input_fn(select, datasource, feature_column_names,
+                             feature_metas, label_meta)
     train_dataset = train_dataset.shuffle(SHUFFLE_SIZE).batch(batch_size)
-    validate_dataset = input_fn(validate_select, conn, feature_column_names,
-                                feature_metas, label_meta).batch(batch_size)
+    validate_dataset = input_fn(validate_select, datasource,
+                                feature_column_names, feature_metas,
+                                label_meta).batch(batch_size)
 
     if optimizer is None:
         # use keras model default optimizer if optimizer is not specified in WITH clause.
@@ -153,14 +153,21 @@ def estimator_train_and_save(
     def train_input_fn():
         # FIXME(typhoonzero): find a way to cache to local file and avoid cache lockfile already exists issue.
         if is_pai:
-            train_dataset = pai_maxcompute_input_fn(pai_table, datasource,
-                                                    feature_column_names,
-                                                    feature_metas, label_meta,
-                                                    len(FLAGS.worker_hosts),
-                                                    FLAGS.task_index)
+            # train_dataset = pai_maxcompute_input_fn(pai_table, datasource,
+            #                                         feature_column_names,
+            #                                         feature_metas, label_meta,
+            #                                         len(FLAGS.worker_hosts),
+            #                                         FLAGS.task_index)
+            train_dataset = input_fn("",
+                                     None,
+                                     feature_column_names,
+                                     feature_metas,
+                                     label_meta,
+                                     is_pai=True,
+                                     pai_table=pai_table)
         else:
-            conn = connect_with_data_source(datasource)
-            train_dataset = input_fn(select, conn, feature_column_names,
+
+            train_dataset = input_fn(select, datasource, feature_column_names,
                                      feature_metas, label_meta)
         train_dataset = train_dataset.shuffle(SHUFFLE_SIZE).batch(
             batch_size).cache().repeat(epochs if epochs else 1)
@@ -178,12 +185,18 @@ def estimator_train_and_save(
 
     def validate_input_fn():
         if is_pai:
-            validate_dataset = pai_maxcompute_input_fn(
-                pai_val_table, datasource, feature_column_names, feature_metas,
-                label_meta, len(FLAGS.worker_hosts), FLAGS.task_index)
+            # validate_dataset = pai_maxcompute_input_fn(
+            #     pai_val_table, datasource, feature_column_names, feature_metas,
+            #     label_meta, len(FLAGS.worker_hosts), FLAGS.task_index)
+            validate_dataset = input_fn("",
+                                        None,
+                                        feature_column_names,
+                                        feature_metas,
+                                        label_meta,
+                                        is_pai=True,
+                                        pai_table=pai_val_table)
         else:
-            conn = connect_with_data_source(datasource)
-            validate_dataset = input_fn(validate_select, conn,
+            validate_dataset = input_fn(validate_select, datasource,
                                         feature_column_names, feature_metas,
                                         label_meta)
         validate_dataset = validate_dataset.batch(batch_size)
@@ -207,9 +220,13 @@ def estimator_train_and_save(
         raise Exception("No expected feature columns in model params")
     serving_input_fn = tf.estimator.export.build_parsing_serving_input_receiver_fn(
         tf.feature_column.make_parse_example_spec(all_feature_columns))
-    export_path = classifier.export_saved_model(save, serving_input_fn)
-    # write the path under checkpoint directory
-    with open(os.path.join(save, "exported_path"), "w") as fn:
+    if save.startswith("oss://"):
+        save_uri = save.split("?")[0]
+    else:
+        save_uri = save
+    export_path = classifier.export_saved_model(save_uri, serving_input_fn)
+    # write the path under current directory
+    with open("exported_path", "w") as fn:
         fn.write(str(export_path.decode("utf-8")))
 
 

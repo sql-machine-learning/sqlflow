@@ -155,7 +155,7 @@ func (s *paiSubmitter) submitPAITask(code, paiCmd, requirements string) error {
 	if e != nil {
 		return e
 	}
-	cmd := exec.Command("odpscmd", "-u", cfg.AccessID, "-p", cfg.AccessKey, "--project", cfg.Project, "--endpoint", cfg.Endpoint, "-e", paiCmd)
+	cmd := exec.Command("odpscmd", "--instance-priority", "9", "-u", cfg.AccessID, "-p", cfg.AccessKey, "--project", cfg.Project, "--endpoint", cfg.Endpoint, "-e", paiCmd)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("failed %s, %s, %v", cmd, out, err)
 	}

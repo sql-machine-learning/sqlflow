@@ -23,8 +23,7 @@ from sqlflow_submitter.db import (buffered_db_writer, connect_with_data_source,
                                   db_generator, parseMaxComputeDSN)
 
 from .input_fn import (get_dtype, pai_maxcompute_db_generator,
-                       pai_maxcompute_input_fn, parse_sparse_feature,
-                       parse_sparse_feature_predict)
+                       parse_sparse_feature, parse_sparse_feature_predict)
 
 # Disable Tensorflow INFO and WARNING logs
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -138,17 +137,36 @@ def estimator_predict(estimator, model_params, save, result_table,
                                          feature_column_names, None,
                                          feature_metas)()
     # load from the exported model
-    with open(os.path.join(save, "exported_path"), "r") as fn:
-        export_path = fn.read()
-
-    imported = tf.saved_model.load(export_path)
+    if save.startswith("oss://"):
+        with open("exported_path", "r") as fn:
+            export_path = fn.read()
+        parts = save.split("?")
+        export_path_oss = "?".join([parts[0] + export_path + "/", parts[1]])
+        print("loading from %s" % export_path_oss)
+        if TF_VERSION_2:
+            imported = tf.saved_model.load(export_path_oss)
+        else:
+            imported = tf.saved_model.load_v2(export_path_oss)
+    else:
+        with open("exported_path", "r") as fn:
+            export_path = fn.read()
+        print("loading from %s" % export_path)
+        if TF_VERSION_2:
+            imported = tf.saved_model.load(export_path)
+        else:
+            imported = tf.saved_model.load_v2(export_path)
 
     def predict(x):
         example = tf.train.Example()
         for i in range(len(feature_column_names)):
             feature_name = feature_column_names[i]
-            example.features.feature[feature_name].float_list.value.extend(
-                x[0][i])
+            dtype_str = feature_metas[feature_name]["dtype"]
+            if dtype_str == "float32" or dtype_str == "float64":
+                example.features.feature[feature_name].float_list.value.extend(
+                    x[0][i])
+            elif dtype_str == "int32" or dtype_str == "int64":
+                example.features.feature[feature_name].int_list.value.extend(
+                    x[0][i])
         return imported.signatures["predict"](
             examples=tf.constant([example.SerializeToString()]))
 
