@@ -61,6 +61,7 @@ func getStepEnvs(session *pb.Session) (map[string]string, error) {
 	if _, ok := envs["SQLFLOW_submitter"]; !ok {
 		envs["SQLFLOW_submitter"] = os.Getenv("SQLFLOW_submitter")
 	}
+	envs["SQLFLOW_PARSER_SERVER_PORT"] = os.Getenv("SQLFLOW_PARSER_SERVER_PORT")
 	return envs, nil
 }
 
