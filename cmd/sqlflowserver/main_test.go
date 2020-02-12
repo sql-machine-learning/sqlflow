@@ -1536,6 +1536,7 @@ USING some_testmodel;`
 
 func CaseTrainXGBoostOnAlisa(t *testing.T) {
 	a := assert.New(t)
+	model := "my_xgb_class_model"
 	trainSQL := fmt.Sprintf(`SELECT * FROM %s
 	TO TRAIN xgboost.gbtree
 	WITH
@@ -1544,17 +1545,24 @@ func CaseTrainXGBoostOnAlisa(t *testing.T) {
 		eta = 0.4,
 		num_class = 3
 	LABEL class
-	INTO my_xgb_classi_model;`, caseTrainTable)
-	_, _, err := connectAndRunSQL(trainSQL)
-	if err != nil {
+	INTO %s;`, caseTrainTable, model)
+	if _, _, err := connectAndRunSQL(trainSQL); err != nil {
 		a.Fail("Run trainSQL error: %v", err)
 	}
 
 	predSQL := fmt.Sprintf(`SELECT * FROM %s
 	TO PREDICT %s.class
-	USING my_xgb_classi_model;`, caseTestTable, casePredictTable)
-	_, _, err = connectAndRunSQL(predSQL)
-	if err != nil {
+	USING %s;`, caseTestTable, casePredictTable, model)
+	if _, _, err := connectAndRunSQL(predSQL); err != nil {
+		a.Fail("Run predSQL error: %v", err)
+	}
+
+	explainSQL := fmt.Sprintf(`SELECT * FROM %s
+	TO EXPLAIN %s
+	WITH label_col=class
+	USING TreeExplainer
+	INTO my_xgb_explain_result;`, caseTrainTable, model)
+	if _, _, err := connectAndRunSQL(explainSQL); err != nil {
 		a.Fail("Run predSQL error: %v", err)
 	}
 }
