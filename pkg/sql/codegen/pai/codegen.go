@@ -34,8 +34,6 @@ const (
 	ModelTypeTF = iota
 	// ModelTypeXGBoost is the model type that use PAI Tensorflow to train XGBoost models.
 	ModelTypeXGBoost
-	// ModelTypeKMeans is the model type that trained by PAI KMeans
-	ModelTypeKMeans
 	// ModelTypePAIML is the model type that trained by PAI machine learing algorithm tookit
 	ModelTypePAIML
 )
@@ -273,23 +271,4 @@ func Explain(ir *ir.ExplainStmt, session *pb.Session, tarball, modelName, ossMod
 		}
 	}
 	return
-}
-
-func getPAIPredictCmd(ir *ir.PredictStmt, session *pb.Session) (string, error) {
-	// NOTE(typhoonzero): for PAI machine learning tookit predicting, we can not load the TrainStmt
-	// since the model saving is fully done by PAI. We directly use the columns in SELECT
-	// statement for prediction, error will be reported by PAI job if the columns not match.
-	db, err := database.OpenAndConnectDB(session.DbConnStr)
-	if err != nil {
-		return "", err
-	}
-	flds, _, err := getColumnTypes(ir.Select, db)
-	if err != nil {
-		return "", err
-	}
-	// drop result table if exists
-	db.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s;", ir.ResultTable))
-
-	return fmt.Sprintf(`pai -name prediction -DmodelName="%s" -DinputTableName="%s" -DoutputTableName="%s" -DfeatureColNames="%s" -DappendColNames="%s"`,
-		ir.Using, ir.TmpPredictTable, ir.ResultTable, strings.Join(flds, ","), strings.Join(flds, ",")), nil
 }
