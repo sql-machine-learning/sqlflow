@@ -215,14 +215,14 @@ func Predict(ir *ir.PredictStmt, session *pb.Session, tarball, modelName, ossMod
 
 // Explain generates a Python program for train a TensorFlow model.
 func Explain(ir *ir.ExplainStmt, session *pb.Session, tarball, modelName, ossModelPath, cwd string, modelType int) (code, paiCmd, requirements string, e error) {
-	if ir.Into == "" {
-		return "", "", "", fmt.Errorf("explain PAI random forests model need INTO clause to output the explain result to a table")
-	}
 	cc, err := GetClusterConfig(ir.Attributes)
 	if err != nil {
 		return "", "", "", err
 	}
 	if modelType == ModelTypePAIML {
+		if ir.Into == "" {
+			return "", "", "", fmt.Errorf("explain PAI random forests model need INTO clause to output the explain result to a table")
+		}
 		requirements, e = genRequirements(false)
 		log.Printf("explain using pai random forests")
 		if paiCmd, e = getExplainRandomForestsPAICmd(ir, session); e != nil {

@@ -152,8 +152,10 @@ func (s *alisaSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 	if e != nil {
 		return e
 	}
-	if e := createExplainResultTable(s.Db, cl, cl.Into, modelType, estimator); e != nil {
-		return e
+	if cl.Into != "" {
+		if e := createExplainResultTable(s.Db, cl, cl.Into, modelType, estimator); e != nil {
+			return e
+		}
 	}
 
 	scriptPath := fmt.Sprintf("file://@@%s", resourceName)
