@@ -77,6 +77,8 @@ type xgbExplainFiller struct {
 	DataSource       string
 	DatasetSQL       string
 	ResultTable      string
+	IsPAI            bool
+	PAIExplainTable  string
 	HDFSNameNodeAddr string
 	HiveLocation     string
 	HDFSUser         string
@@ -100,7 +102,8 @@ explain(
 	label_spec=label_field_meta,
 	summary_params={},
 	result_table='''{{.ResultTable}}''',
-	is_pai=True,
+	is_pai="{{.IsPAI}}" == "true",
+	pai_explain_table="{{.PAIExplainTable}}",
 	hdfs_namenode_addr='''{{.HDFSNameNodeAddr}}''',
 	hive_location='''{{.HiveLocation}}''',
 	hdfs_user='''{{.HDFSUser}}''',
