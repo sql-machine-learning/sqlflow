@@ -336,6 +336,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseTrainTextClassificationIR", CaseTrainTextClassificationIR)
 	t.Run("CaseTrainTextClassificationFeatureDerivation", CaseTrainTextClassificationFeatureDerivation)
 	t.Run("CaseXgboostFeatureDerivation", CaseXgboostFeatureDerivation)
+	t.Run("CaseXgboostEvalMetric", CaseXgboostEvalMetric)
 	t.Run("CaseTrainFeatureDerivation", CaseTrainFeatureDerivation)
 }
 
@@ -371,6 +372,25 @@ INTO sqlflow_models.my_xgb_regression_model;`
 	predSQL := `SELECT * FROM housing.test
 TO PREDICT housing.predict.target
 USING sqlflow_models.my_xgb_regression_model;`
+	_, _, err = connectAndRunSQL(predSQL)
+	if err != nil {
+		a.Fail("run test error: %v", err)
+	}
+}
+
+func CaseXgboostEvalMetric(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := `SELECT * FROM iris.train WHERE class in (0, 1) TO TRAIN xgboost.gbtree
+WITH objective="binary:logistic", eval_metric=auc
+LABEL class
+INTO sqlflow_models.my_xgb_binary_classification_model;`
+	_, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("run test error: %v", err)
+	}
+
+	predSQL := `SELECT * FROM iris.test TO PREDICT iris.predict.class
+USING sqlflow_models.my_xgb_binary_classification_model;`
 	_, _, err = connectAndRunSQL(predSQL)
 	if err != nil {
 		a.Fail("run test error: %v", err)
