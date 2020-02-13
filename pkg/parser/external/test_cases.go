@@ -54,6 +54,6 @@ WHERE
         WHERE
             customerNumber = customers.customerNumber
         GROUP BY orderNumber
-        HAVING SUM(priceEach * quantityOrdered) > 60000)`,
+        HAVING SUM(priceEach * quantityOrdered) > 60000) LIMIT 0`,
 	}
 )
