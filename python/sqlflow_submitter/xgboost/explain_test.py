@@ -158,7 +158,7 @@ class ExplainXGBModeTestCase(TestCase):
         # TODO(Yancey1989): keep shap codegen consistant with XGBoost
         label_field_meta['name'] = label_field_meta['feature_name']
         x = xgb_shap_dataset(datasource, select, feature_column_names,
-                             label_field_meta, feature_metas)
+                             label_field_meta, feature_metas, False, "")
 
         shap_values = xgb_shap_values(x)[0]
         expected_features = [
