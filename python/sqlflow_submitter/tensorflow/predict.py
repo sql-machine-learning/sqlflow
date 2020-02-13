@@ -182,7 +182,6 @@ def estimator_predict(estimator, model_params, save, result_table,
                             hdfs_namenode_addr, hive_location, hdfs_user,
                             hdfs_pass) as w:
         for features in predict_generator:
-            print("predicting:", features)
             result = predict(features)
             row = []
             for idx, _ in enumerate(feature_column_names):

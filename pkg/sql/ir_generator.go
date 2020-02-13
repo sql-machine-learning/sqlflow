@@ -45,7 +45,6 @@ func generateTrainStmtWithInferredColumns(slct *parser.SQLFlowSelectStmt, connSt
 	if err != nil {
 		return nil, err
 	}
-
 	if err := feature.InferFeatureColumns(trainStmt, connStr); err != nil {
 		return nil, err
 	}
@@ -545,7 +544,7 @@ func parseCategoryIDColumn(el *parser.ExprList) (*ir.CategoryIDColumn, error) {
 		// generate a default FieldDesc
 		// TODO(typhoonzero): update default FieldDesc when doing feature derivation
 		fieldDesc = &ir.FieldDesc{
-			Name:     key,
+			Name:     strings.ToLower(key),
 			DType:    ir.Int,
 			IsSparse: false,
 			MaxID:    0,
@@ -583,7 +582,7 @@ func parseSeqCategoryIDColumn(el *parser.ExprList) (*ir.SeqCategoryIDColumn, err
 		// generate a default FieldDesc
 		// TODO(typhoonzero): update default FieldDesc when doing feature derivation
 		fieldDesc = &ir.FieldDesc{
-			Name:     key,
+			Name:     strings.ToLower(key),
 			DType:    ir.Int,
 			IsSparse: false,
 			MaxID:    0,
@@ -621,7 +620,7 @@ func parseCategoryHashColumn(el *parser.ExprList) (*ir.CategoryHashColumn, error
 		// generate a default FieldDesc
 		// TODO(typhoonzero): update default FieldDesc when doing feature derivation
 		fieldDesc = &ir.FieldDesc{
-			Name:     key,
+			Name:     strings.ToLower(key),
 			DType:    ir.Int,
 			IsSparse: false,
 			MaxID:    0,
