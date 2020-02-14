@@ -66,7 +66,7 @@ public class CalciteParserAdaptor {
           // Make sure the left hand side is a query, so that
           // we can try parse the right hand side with the SQLFlow parser
           // SqlKind.QUERY is {SELECT, EXCEPT, INTERSECT, UNION, VALUES, ORDER_BY, EXPLICIT_TABLE}
-          if (!SqlKind.QUERY.contains(sqlnode.getKind())) {
+          if (!SqlKind.QUERY.contains(sqlnode.getKind()) && sqlnode.getKind() != SqlKind.UNION) {
             // return original error
             parse_result.Statements = new ArrayList<String>();
             parse_result.Position = -1;
