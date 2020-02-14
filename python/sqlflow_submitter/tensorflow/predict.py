@@ -23,8 +23,7 @@ from sqlflow_submitter.db import (buffered_db_writer, connect_with_data_source,
                                   db_generator, parseMaxComputeDSN)
 
 from .input_fn import (get_dtype, pai_maxcompute_db_generator,
-                       pai_maxcompute_input_fn, parse_sparse_feature,
-                       parse_sparse_feature_predict)
+                       parse_sparse_feature, parse_sparse_feature_predict)
 
 # Disable Tensorflow INFO and WARNING logs
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -138,17 +137,44 @@ def estimator_predict(estimator, model_params, save, result_table,
                                          feature_column_names, None,
                                          feature_metas)()
     # load from the exported model
-    with open(os.path.join(save, "exported_path"), "r") as fn:
-        export_path = fn.read()
-
-    imported = tf.saved_model.load(export_path)
+    if save.startswith("oss://"):
+        with open("exported_path", "r") as fn:
+            export_path = fn.read()
+        parts = save.split("?")
+        export_path_oss = parts[0] + export_path
+        if TF_VERSION_2:
+            imported = tf.saved_model.load(export_path_oss)
+        else:
+            imported = tf.saved_model.load_v2(export_path_oss)
+    else:
+        with open("exported_path", "r") as fn:
+            export_path = fn.read()
+        if TF_VERSION_2:
+            imported = tf.saved_model.load(export_path)
+        else:
+            imported = tf.saved_model.load_v2(export_path)
 
     def predict(x):
         example = tf.train.Example()
         for i in range(len(feature_column_names)):
             feature_name = feature_column_names[i]
-            example.features.feature[feature_name].float_list.value.extend(
-                x[0][i])
+            dtype_str = feature_metas[feature_name]["dtype"]
+            if feature_metas[feature_name]["delimiter"] != "":
+                if feature_metas[feature_name]["is_sparse"]:
+                    # NOTE(typhoonzero): sparse feature will get (indices,values,shape) here, use indices only
+                    values = x[0][i][0].flatten()
+                else:
+                    values = x[0][i].flatten()
+                if dtype_str == "float32" or dtype_str == "float64":
+                    example.features.feature[
+                        feature_name].float_list.value.extend(list(values))
+                elif dtype_str == "int32" or dtype_str == "int64":
+                    example.features.feature[
+                        feature_name].int64_list.value.extend(list(values))
+            else:
+                # FIXME(typhoonzero): figure out why scalar feature values always be float type
+                example.features.feature[feature_name].float_list.value.extend(
+                    x[0][i])
         return imported.signatures["predict"](
             examples=tf.constant([example.SerializeToString()]))
 
@@ -159,7 +185,14 @@ def estimator_predict(estimator, model_params, save, result_table,
             result = predict(features)
             row = []
             for idx, _ in enumerate(feature_column_names):
-                val = features[0][idx][0]
+                per_feature = features[0][idx]
+                if isinstance(per_feature, tuple) or isinstance(
+                        per_feature, list):
+                    # is sparse feature: tuple (indices, values, shape) or scalar
+                    val = per_feature[0]
+                elif isinstance(per_feature, np.ndarray):
+                    val = per_feature
+                # val = features[0][idx][0]
                 row.append(str(val))
             if "class_ids" in result:
                 row.append(str(result["class_ids"].numpy()[0][0]))

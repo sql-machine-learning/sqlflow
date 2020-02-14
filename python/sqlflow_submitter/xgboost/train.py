@@ -13,8 +13,7 @@
 
 import xgboost as xgb
 from sqlflow_submitter.db import connect_with_data_source, db_generator
-from sqlflow_submitter.tensorflow.input_fn import (pai_maxcompute_db_generator,
-                                                   pai_maxcompute_input_fn)
+from sqlflow_submitter.tensorflow.input_fn import pai_maxcompute_db_generator
 
 
 def xgb_dataset(datasource,

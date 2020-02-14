@@ -65,7 +65,13 @@ def get_dtype(type_str):
         raise TypeError("not supported dtype: %s" % type_str)
 
 
-def input_fn(select, conn, feature_column_names, feature_metas, label_meta):
+def input_fn(select,
+             datasource,
+             feature_column_names,
+             feature_metas,
+             label_meta,
+             is_pai=False,
+             pai_table=""):
     feature_types = []
     shapes = []
     for name in feature_column_names:
@@ -76,9 +82,18 @@ def input_fn(select, conn, feature_column_names, feature_metas, label_meta):
         else:
             feature_types.append(get_dtype(feature_metas[name]["dtype"]))
             shapes.append(feature_metas[name]["shape"])
-
-    gen = db_generator(conn.driver, conn, select, feature_column_names,
-                       label_meta, feature_metas)
+    if is_pai:
+        pai_table_parts = pai_table.split(".")
+        formated_pai_table = "odps://%s/tables/%s" % (pai_table_parts[0],
+                                                      pai_table_parts[1])
+        gen = pai_maxcompute_db_generator(formated_pai_table,
+                                          feature_column_names,
+                                          label_meta["feature_name"],
+                                          feature_metas)
+    else:
+        conn = connect_with_data_source(datasource)
+        gen = db_generator(conn.driver, conn, select, feature_column_names,
+                           label_meta, feature_metas)
     # Clustering model do not have label
     if label_meta["feature_name"] == "":
         dataset = tf.data.Dataset.from_generator(gen, (tuple(feature_types), ),

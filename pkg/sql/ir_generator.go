@@ -32,6 +32,7 @@ const (
 	cross         = "CROSS"
 	categoryID    = "CATEGORY_ID"
 	seqCategoryID = "SEQ_CATEGORY_ID"
+	categoryHash  = "CATEGORY_HASH"
 	embedding     = "EMBEDDING"
 	bucket        = "BUCKET"
 	square        = "SQUARE"
@@ -44,7 +45,6 @@ func generateTrainStmtWithInferredColumns(slct *parser.SQLFlowSelectStmt, connSt
 	if err != nil {
 		return nil, err
 	}
-
 	if err := feature.InferFeatureColumns(trainStmt, connStr); err != nil {
 		return nil, err
 	}
@@ -431,6 +431,8 @@ func parseFeatureColumn(el *parser.ExprList) (ir.FeatureColumn, error) {
 		return parseCategoryIDColumn(el)
 	case seqCategoryID:
 		return parseSeqCategoryIDColumn(el)
+	case categoryHash:
+		return parseCategoryHashColumn(el)
 	case embedding:
 		return parseEmbeddingColumn(el)
 	default:
@@ -542,7 +544,7 @@ func parseCategoryIDColumn(el *parser.ExprList) (*ir.CategoryIDColumn, error) {
 		// generate a default FieldDesc
 		// TODO(typhoonzero): update default FieldDesc when doing feature derivation
 		fieldDesc = &ir.FieldDesc{
-			Name:     key,
+			Name:     strings.ToLower(key),
 			DType:    ir.Int,
 			IsSparse: false,
 			MaxID:    0,
@@ -580,7 +582,7 @@ func parseSeqCategoryIDColumn(el *parser.ExprList) (*ir.SeqCategoryIDColumn, err
 		// generate a default FieldDesc
 		// TODO(typhoonzero): update default FieldDesc when doing feature derivation
 		fieldDesc = &ir.FieldDesc{
-			Name:     key,
+			Name:     strings.ToLower(key),
 			DType:    ir.Int,
 			IsSparse: false,
 			MaxID:    0,
@@ -594,6 +596,43 @@ func parseSeqCategoryIDColumn(el *parser.ExprList) (*ir.SeqCategoryIDColumn, err
 	return &ir.SeqCategoryIDColumn{
 		FieldDesc:  fieldDesc,
 		BucketSize: bucketSize,
+	}, nil
+}
+
+func parseCategoryHashColumn(el *parser.ExprList) (*ir.CategoryHashColumn, error) {
+	help := "CATEGORY_HASH([DENSE()|SPARSE()|col_name], BUCKET_SIZE)"
+	if len(*el) != 3 && len(*el) != 4 {
+		return nil, fmt.Errorf("bad CATEGORY_HASH expression format: %s, should be like: %s", *el, help)
+	}
+	var fieldDesc *ir.FieldDesc
+	var err error
+	if (*el)[1].Type == 0 {
+		// CATEGORY_ID(DENSE()/SPARSE()) phrases
+		fieldDesc, err = parseFieldDesc(&(*el)[1].Sexp)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		key, err := expression2string((*el)[1])
+		if err != nil {
+			return nil, fmt.Errorf("bad CATEGORY_HASH key: %s, err: %s", (*el)[1], err)
+		}
+		// generate a default FieldDesc
+		// TODO(typhoonzero): update default FieldDesc when doing feature derivation
+		fieldDesc = &ir.FieldDesc{
+			Name:     strings.ToLower(key),
+			DType:    ir.Int,
+			IsSparse: false,
+			MaxID:    0,
+		}
+	}
+	bucketSize, err := strconv.Atoi((*el)[2].Value)
+	if err != nil {
+		return nil, fmt.Errorf("bad CATEGORY_HASH bucketSize: %s, err: %s", (*el)[2].Value, err)
+	}
+	return &ir.CategoryHashColumn{
+		FieldDesc:  fieldDesc,
+		BucketSize: int64(bucketSize),
 	}, nil
 }
 
@@ -632,12 +671,14 @@ func parseEmbeddingColumn(el *parser.ExprList) (*ir.EmbeddingColumn, error) {
 		} else {
 			var tmpCatColumn interface{}
 			// 3. source is a FeatureColumn like EMBEDDING(CATEGORY_ID(...), size)
-			// TODO(uuleon) support other kinds of categorical column in the future
 			tmpCatColumn, ok := source.(*ir.CategoryIDColumn)
 			if !ok {
 				tmpCatColumn, ok = source.(*ir.SeqCategoryIDColumn)
 				if !ok {
-					return nil, fmt.Errorf("key of EMBEDDING must be categorical column")
+					tmpCatColumn, ok = source.(*ir.CategoryHashColumn)
+					if !ok {
+						return nil, fmt.Errorf("key of EMBEDDING must be categorical column")
+					}
 				}
 			}
 			catColumn = tmpCatColumn

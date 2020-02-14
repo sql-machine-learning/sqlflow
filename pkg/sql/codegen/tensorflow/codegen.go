@@ -95,6 +95,11 @@ func generateFeatureColumnCode(fc ir.FeatureColumn) (string, error) {
 		cc := fc.(*ir.SeqCategoryIDColumn)
 		return fmt.Sprintf("tf.feature_column.sequence_categorical_column_with_identity(key=\"%s\", num_buckets=%d)",
 			cc.FieldDesc.Name, cc.BucketSize), nil
+	case *ir.CategoryHashColumn:
+		cc := fc.(*ir.CategoryHashColumn)
+		// FIXME(typhoonzero): do we need to support dtype other than int64?
+		return fmt.Sprintf("tf.feature_column.categorical_column_with_hash_bucket(key=\"%s\", hash_bucket_size=%d, dtype=tf.dtypes.int64)",
+			cc.FieldDesc.Name, cc.BucketSize), nil
 	case *ir.CrossColumn:
 		cc := fc.(*ir.CrossColumn)
 		var keysGenerated = make([]string, len(cc.Keys))
@@ -373,7 +378,6 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 	if err := trainTemplate.Execute(&program, filler); err != nil {
 		return "", err
 	}
-
 	return program.String(), nil
 }
 
