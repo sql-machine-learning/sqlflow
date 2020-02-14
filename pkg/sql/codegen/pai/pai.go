@@ -43,13 +43,13 @@ func getPAIPredictCmd(ir *ir.PredictStmt, session *pb.Session) (string, error) {
 
 // CleanupPAIModel can drop saved PAI model
 func CleanupPAIModel(ir *ir.TrainStmt, session *pb.Session) error {
-	db, err := database.OpenAndConnectDB(session.DbConnStr)
-	if err != nil {
-		return err
-	}
+	// note: other model does not save PAI model.
 	if ir.Estimator == "kmeans" || ir.Estimator == "randomforests" {
-		_, err := db.Exec(fmt.Sprintf("drop offlinemodel if EXISTS %s", ir.Into))
+		db, err := database.OpenAndConnectDB(session.DbConnStr)
 		if err != nil {
+			return err
+		}
+		if _, err := db.Exec(fmt.Sprintf("DROP OFFLINEMODEL IF EXISTS %s", ir.Into)); err != nil {
 			return err
 		}
 	}
