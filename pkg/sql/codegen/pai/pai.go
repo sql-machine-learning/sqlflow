@@ -40,3 +40,18 @@ func getPAIPredictCmd(ir *ir.PredictStmt, session *pb.Session) (string, error) {
 	return fmt.Sprintf(`pai -name prediction -DmodelName="%s" -DinputTableName="%s" -DoutputTableName="%s" -DfeatureColNames="%s" -DappendColNames="%s"`,
 		ir.Using, ir.TmpPredictTable, ir.ResultTable, strings.Join(flds, ","), strings.Join(flds, ",")), nil
 }
+
+// CleanupBeforeTrain can cleanup saved model
+func CleanupBeforeTrain(ir *ir.TrainStmt, session *pb.Session) error {
+	db, err := database.OpenAndConnectDB(session.DbConnStr)
+	if err != nil {
+		return err
+	}
+	if ir.Estimator == "kmeans" || ir.Estimator == "randomforests" {
+		_, err := db.Exec(fmt.Sprintf("drop offlinemodel if EXISTS %s", ir.Into))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
