@@ -71,7 +71,8 @@ type promptState struct {
 	livePrefix                     string
 	enableLivePrefix               bool
 	keywords                       []string
-	history                        []string
+	history                        []prompt.Suggest
+	inSearching                    bool
 	historyFileName                string
 	estimatorCls                   string
 	modelParamDocs                 map[string][]prompt.Suggest
@@ -86,6 +87,7 @@ func (p *promptState) changeLivePrefix() (string, bool) {
 }
 
 func (p *promptState) execute(in string, cb func(string)) {
+	stopSearching()
 	if in != "" {
 		if addLineToStmt(in, &p.inQuotedString, &p.isSingleQuoted, &p.statements) {
 			p.updateHistory()
@@ -143,7 +145,25 @@ func (p *promptState) initHistory() {
 	defer f.Close()
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
-		p.history = append(p.history, scanner.Text())
+		p.history = append([]prompt.Suggest{prompt.Suggest{Text: scanner.Text()}}, p.history...)
+	}
+	startSearching = func() { p.searchHistory() }
+}
+
+func (p *promptState) searchHistory() {
+	oldLivePrefix := p.livePrefix
+	oldEnableLivePrefix := p.enableLivePrefix
+	if !p.inSearching {
+		p.inSearching = true
+		p.livePrefix = "(search-history): "
+		p.enableLivePrefix = true
+		stopSearching = func() {
+			if p.inSearching {
+				p.inSearching = false
+				p.livePrefix = oldLivePrefix
+				p.enableLivePrefix = oldEnableLivePrefix
+			}
+		}
 	}
 }
 
@@ -157,8 +177,10 @@ func (p *promptState) updateHistory() {
 		}
 		defer f.Close()
 		w := bufio.NewWriter(f)
-		fmt.Fprintf(w, "%s\n", strings.ReplaceAll(input, "\n", " "))
+		stmt := strings.ReplaceAll(input, "\n", " ")
+		fmt.Fprintf(w, "%s\n", stmt)
 		w.Flush()
+		p.history = append([]prompt.Suggest{prompt.Suggest{Text: stmt}}, p.history...)
 	}
 }
 
@@ -217,6 +239,9 @@ func getOptimizerSuggestion(estimatorCls string, optimizers map[string]string) (
 }
 
 func (p *promptState) completer(in prompt.Document) []prompt.Suggest {
+	if p.inSearching {
+		return prompt.FilterFuzzy(p.history, in.Text, true)
+	}
 	w1 := in.GetWordBeforeCursor() // empty if the cursor is under whitespace
 	clause, w0, w2 := p.clauseUnderCursor(in)
 	switch clause {
@@ -287,12 +312,16 @@ var consoleWriter = prompt.NewStdoutWriter()
 
 func runPrompt(cb func(string)) {
 	state := newPromptState()
+	history := []string{}
+	for _, h := range state.history {
+		history = append([]string{h.Text}, history...)
+	}
 	p := prompt.New(
 		func(in string) { state.execute(in, cb) },
 		func(in prompt.Document) []prompt.Suggest { return state.completer(in) },
 		prompt.OptionAddASCIICodeBind(emacsMetaKeyBindings...),
 		prompt.OptionAddKeyBind(emacsCtrlKeyBindings...),
-		prompt.OptionHistory(state.history),
+		prompt.OptionHistory(history),
 		prompt.OptionLivePrefix(func() (string, bool) { return state.changeLivePrefix() }),
 		prompt.OptionSwitchKeyBindMode(prompt.CommonKeyBind),
 		prompt.OptionWriter(consoleWriter),
@@ -301,6 +330,7 @@ func runPrompt(cb func(string)) {
 		prompt.OptionPrefixTextColor(prompt.DefaultColor),
 		prompt.OptionTitle("SQLFlow"),
 		prompt.OptionCompletionWordSeparator(" ="),
+		prompt.OptionMaxSuggestion(10),
 	)
 	fmt.Println("Welcome to SQLFlow.  Commands end with ;")
 	fmt.Println()
