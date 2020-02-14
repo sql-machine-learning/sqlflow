@@ -1298,9 +1298,9 @@ SELECT *
 FROM housing.train
 TO EXPLAIN sqlflow_models.my_xgb_regression_model
 WITH
-    shap_summary.plot_type="bar",
-    shap_summary.alpha=1,
-    shap_summary.sort=True
+    summary.plot_type="bar",
+    summary.alpha=1,
+    summary.sort=True
 USING TreeExplainer;
 	`
 	conn, err := createRPCConn()
