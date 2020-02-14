@@ -154,27 +154,37 @@ def estimator_predict(estimator, model_params, save, result_table,
         else:
             imported = tf.saved_model.load_v2(export_path)
 
+    def add_to_example(example, x, i):
+        feature_name = feature_column_names[i]
+        dtype_str = feature_metas[feature_name]["dtype"]
+        if feature_metas[feature_name]["delimiter"] != "":
+            if feature_metas[feature_name]["is_sparse"]:
+                # NOTE(typhoonzero): sparse feature will get (indices,values,shape) here, use indices only
+                values = x[0][i][0].flatten()
+            else:
+                values = x[0][i].flatten()
+            if dtype_str == "float32" or dtype_str == "float64":
+                example.features.feature[feature_name].float_list.value.extend(
+                    list(values))
+            elif dtype_str == "int32" or dtype_str == "int64":
+                example.features.feature[feature_name].int64_list.value.extend(
+                    list(values))
+        else:
+            if dtype_str == "float32" or dtype_str == "float64":
+                # need to pass a tuple(float, )
+                example.features.feature[feature_name].float_list.value.extend(
+                    (float(x[0][i][0]), ))
+            elif dtype_str == "int32" or dtype_str == "int64":
+                example.features.feature[feature_name].int64_list.value.extend(
+                    (int(x[0][i][0]), ))
+            elif dtype_str == "string":
+                example.features.feature[feature_name].bytes_list.value.extend(
+                    x[0][i])
+
     def predict(x):
         example = tf.train.Example()
         for i in range(len(feature_column_names)):
-            feature_name = feature_column_names[i]
-            dtype_str = feature_metas[feature_name]["dtype"]
-            if feature_metas[feature_name]["delimiter"] != "":
-                if feature_metas[feature_name]["is_sparse"]:
-                    # NOTE(typhoonzero): sparse feature will get (indices,values,shape) here, use indices only
-                    values = x[0][i][0].flatten()
-                else:
-                    values = x[0][i].flatten()
-                if dtype_str == "float32" or dtype_str == "float64":
-                    example.features.feature[
-                        feature_name].float_list.value.extend(list(values))
-                elif dtype_str == "int32" or dtype_str == "int64":
-                    example.features.feature[
-                        feature_name].int64_list.value.extend(list(values))
-            else:
-                # FIXME(typhoonzero): figure out why scalar feature values always be float type
-                example.features.feature[feature_name].float_list.value.extend(
-                    x[0][i])
+            add_to_example(example, x, i)
         return imported.signatures["predict"](
             examples=tf.constant([example.SerializeToString()]))
 

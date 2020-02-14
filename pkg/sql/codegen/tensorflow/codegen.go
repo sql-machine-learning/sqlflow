@@ -386,7 +386,6 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 	if err := trainTemplate.Execute(&program, filler); err != nil {
 		return "", err
 	}
-	fmt.Println(program.String())
 	return program.String(), nil
 }
 
@@ -485,7 +484,6 @@ func Explain(stmt *ir.ExplainStmt, session *pb.Session) (string, error) {
 	if err := tmpl.Execute(&program, filler); err != nil {
 		return "", err
 	}
-	fmt.Println(program.String())
 	return program.String(), nil
 }
 

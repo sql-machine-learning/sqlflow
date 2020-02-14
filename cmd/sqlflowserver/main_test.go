@@ -1536,23 +1536,96 @@ func CaseTrainXGBoostOnPAI(t *testing.T) {
 
 func CaseTrainDenseCol(t *testing.T) {
 	a := assert.New(t)
-	trainSQL := `select label, f1, f2 from alifin_jtest_dev.sqlflow_ctr_train_part
+
+	// Test train and predict using preprocessed table contains origin raw category strings
+	trainSQL := `select label,COALESCE(NULLIF(l1, ''),0) AS ll1,COALESCE(NULLIF(l2, ''),0) AS ll2,COALESCE(NULLIF(l3, ''),0) AS ll3,COALESCE(NULLIF(l4, ''),0) AS ll4,COALESCE(NULLIF(l5, ''),0) AS ll5,COALESCE(NULLIF(l6, ''),0) AS ll6,COALESCE(NULLIF(l7, ''),0) AS ll7,COALESCE(NULLIF(l8, ''),0) AS ll8,COALESCE(NULLIF(l9, ''),0) AS ll9,COALESCE(NULLIF(l10, ''),0) AS ll10,COALESCE(NULLIF(l11, ''),0) AS ll11,COALESCE(NULLIF(l12, ''),0) AS ll12,COALESCE(NULLIF(l13, ''),0) AS ll13,C1,C2,C3,C4,C5,C6,C7,C8,C9,C10,C11,C12,C13,C14,C15,C16,C17,C18,C19,C20,C21,C22,C23,C24,C25,C26 from alifin_jtest_dev.sqlflow_ctr_train_raw
 TO TRAIN DNNLinearCombinedClassifier
-WITH model.dnn_hidden_units=[10,10], train.batch_size=1
-COLUMN NUMERIC(f1, 13) FOR linear_feature_columns
-COLUMN EMBEDDING(CATEGORY_HASH(SPARSE(f2, 26, COMMA, int), 1000), 16, "sum") FOR dnn_feature_columns
+WITH model.dnn_hidden_units=[64,32], train.batch_size=32, validation.throttle_secs=300
+COLUMN NUMERIC(ll1, 1),NUMERIC(ll2, 1),NUMERIC(ll3, 1),NUMERIC(ll4, 1),NUMERIC(ll5, 1),NUMERIC(ll6, 1),NUMERIC(ll7, 1),NUMERIC(ll8, 1),NUMERIC(ll9, 1),NUMERIC(ll10, 1),NUMERIC(ll11, 1),NUMERIC(ll12, 1),NUMERIC(ll13, 1) FOR linear_feature_columns
+COLUMN EMBEDDING(CATEGORY_HASH(C1, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C2, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C3, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C4, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C5, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C6, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C7, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C8, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C9, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C10, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C11, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C12, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C13, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C14, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C15, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C16, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C17, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C18, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C19, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C20, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C21, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C22, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C23, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C24, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C25, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C26, 100), 8, "sum") FOR dnn_feature_columns
 LABEL 'label'
-INTO my_ctr_test_model;`
+INTO my_ctr_model_raw;`
 	_, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)
 	}
-	predSQL := `SELECT f1,f2 FROM alifin_jtest_dev.sqlflow_ctr_test_part
-TO PREDICT alifin_jtest_dev.sqlflow_ctr_predict.class
-USING my_ctr_test_model;`
+	predSQL := `SELECT COALESCE(NULLIF(l1, ''),0) AS ll1,COALESCE(NULLIF(l2, ''),0) AS ll2,COALESCE(NULLIF(l3, ''),0) AS ll3,COALESCE(NULLIF(l4, ''),0) AS ll4,COALESCE(NULLIF(l5, ''),0) AS ll5,COALESCE(NULLIF(l6, ''),0) AS ll6,COALESCE(NULLIF(l7, ''),0) AS ll7,COALESCE(NULLIF(l8, ''),0) AS ll8,COALESCE(NULLIF(l9, ''),0) AS ll9,COALESCE(NULLIF(l10, ''),0) AS ll10,COALESCE(NULLIF(l11, ''),0) AS ll11,COALESCE(NULLIF(l12, ''),0) AS ll12,COALESCE(NULLIF(l13, ''),0) AS ll13,C1,C2,C3,C4,C5,C6,C7,C8,C9,C10,C11,C12,C13,C14,C15,C16,C17,C18,C19,C20,C21,C22,C23,C24,C25,C26 FROM alifin_jtest_dev.sqlflow_ctr_test_raw
+TO PREDICT alifin_jtest_dev.sqlflow_ctr_predict_raw.class
+USING my_ctr_model_raw;`
 	_, _, err = connectAndRunSQL(predSQL)
 	if err != nil {
 		a.Fail("Run predSQL error: %v", err)
+	}
+
+	// Test train and predict using preprocessed table contains only digits
+	trainSQL = `select * from alifin_jtest_dev.sqlflow_ctr_train_raw_digit
+TO TRAIN DNNLinearCombinedClassifier
+WITH model.dnn_hidden_units=[64,32], train.batch_size=32, validation.throttle_secs=300
+COLUMN NUMERIC(l1, 1),NUMERIC(l2, 1),NUMERIC(l3, 1),NUMERIC(l4, 1),NUMERIC(l5, 1),NUMERIC(l6, 1),NUMERIC(l7, 1),NUMERIC(l8, 1),NUMERIC(l9, 1),NUMERIC(l10, 1),NUMERIC(l11, 1),NUMERIC(l12, 1),NUMERIC(l13, 1) FOR linear_feature_columns
+COLUMN EMBEDDING(CATEGORY_HASH(C1, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C2, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C3, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C4, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C5, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C6, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C7, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C8, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C9, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C10, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C11, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C12, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C13, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C14, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C15, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C16, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C17, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C18, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C19, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C20, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C21, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C22, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C23, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C24, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C25, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C26, 100), 8, "sum") FOR dnn_feature_columns
+LABEL 'label'
+INTO my_ctr_model_digit;`
+	_, _, err = connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+	predSQL = `SELECT * FROM alifin_jtest_dev.sqlflow_ctr_test_raw_digit
+TO PREDICT alifin_jtest_dev.sqlflow_ctr_predict_digit.class
+USING my_ctr_model_digit;`
+	_, _, err := connectAndRunSQL(predSQL)
+	if err != nil {
+		a.Fail("Run predSQL error: %v", err)
+	}
+
+	// Test train and predict using concated columns
+	trainSQL = `SELECT label,
+CONCAT(l1,",",l2,",",l3,",",l4,",",l5,",",l6,",",l7,",",l8,",",l9,",",l10,",",l11,",",l12,",",l13) AS f1,
+CONCAT(C1,",",C2,",",C3,",",C4,",",C5,",",C6,",",C7,",",C8,",",C9,",",C10,",",C11,",",C12,",",C13,",",C14,",",C15,",",C16,",",C17,",",C18,",",C19,",",C20,",",C21,",",C22,",",C23,",",C24,",",C25,",",C26) AS f2
+FROM alifin_jtest_dev.sqlflow_ctr_train_raw_digit
+TO TRAIN DNNLinearCombinedClassifier
+WITH model.dnn_hidden_units=[64,32], train.batch_size=32, validation.throttle_secs=300
+COLUMN NUMERIC(f1, 13) FOR linear_feature_columns
+COLUMN EMBEDDING(CATEGORY_HASH(SPARSE(f2, 26, COMMA, int), 1000), 16, "sum") FOR dnn_feature_columns
+LABEL 'label'
+INTO my_ctr_model_concat;`
+	_, _, err = connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+	predSQL := `SELECT
+CONCAT(l1,",",l2,",",l3,",",l4,",",l5,",",l6,",",l7,",",l8,",",l9,",",l10,",",l11,",",l12,",",l13) AS f1,
+CONCAT(C1,",",C2,",",C3,",",C4,",",C5,",",C6,",",C7,",",C8,",",C9,",",C10,",",C11,",",C12,",",C13,",",C14,",",C15,",",C16,",",C17,",",C18,",",C19,",",C20,",",C21,",",C22,",",C23,",",C24,",",C25,",",C26) AS f2
+FROM alifin_jtest_dev.sqlflow_ctr_test_raw_digit
+TO PREDICT alifin_jtest_dev.sqlflow_ctr_predict_concat.class
+USING my_ctr_model_concat;`
+	_, _, err = connectAndRunSQL(predSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+
+	// Test train and predict using DNN
+	trainSQL = `SELECT label,
+CONCAT(l1,",",l2,",",l3,",",l4,",",l5,",",l6,",",l7,",",l8,",",l9,",",l10,",",l11,",",l12,",",l13) AS f1,
+CONCAT(C1,",",C2,",",C3,",",C4,",",C5,",",C6,",",C7,",",C8,",",C9,",",C10,",",C11,",",C12,",",C13,",",C14,",",C15,",",C16,",",C17,",",C18,",",C19,",",C20,",",C21,",",C22,",",C23,",",C24,",",C25,",",C26) AS f2
+FROM alifin_jtest_dev.sqlflow_ctr_train_raw_digit
+TO TRAIN DNNClassifier
+WITH model.hidden_units=[64,32], train.batch_size=32, validation.throttle_secs=300
+COLUMN NUMERIC(f1, 13), EMBEDDING(CATEGORY_HASH(SPARSE(f2, 26, COMMA, int), 1000), 16, "sum")
+LABEL 'label'
+INTO my_ctr_model_concat_dnn;`
+	_, _, err = connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+	predSQL = `SELECT
+CONCAT(l1,",",l2,",",l3,",",l4,",",l5,",",l6,",",l7,",",l8,",",l9,",",l10,",",l11,",",l12,",",l13) AS f1,
+CONCAT(C1,",",C2,",",C3,",",C4,",",C5,",",C6,",",C7,",",C8,",",C9,",",C10,",",C11,",",C12,",",C13,",",C14,",",C15,",",C16,",",C17,",",C18,",",C19,",",C20,",",C21,",",C22,",",C23,",",C24,",",C25,",",C26) AS f2
+FROM alifin_jtest_dev.sqlflow_ctr_test_raw_digit
+TO PREDICT alifin_jtest_dev.sqlflow_ctr_predict_concat_dnn.class
+USING my_ctr_model_concat_dnn;`
+	_, _, err = connectAndRunSQL(predSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
 	}
 }
 

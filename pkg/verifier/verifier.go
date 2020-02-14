@@ -116,8 +116,6 @@ func VerifyColumnNameAndType(trainParsed, predParsed *parser.SQLFlowSelectStmt, 
 		return e
 	}
 
-	fmt.Printf("verifyed : %s\n", predFields)
-	fmt.Printf("train columns: %s\n", trainParsed.Columns)
 	for _, c := range trainParsed.Columns["feature_columns"] {
 		name, err := getExpressionFieldName(c)
 		if err != nil {
