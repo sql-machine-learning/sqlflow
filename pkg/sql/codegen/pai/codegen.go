@@ -235,22 +235,24 @@ func Explain(ir *ir.ExplainStmt, session *pb.Session, tarball, modelName, ossMod
 		if ossURI, e = checkpointURL(ossModelPath); e != nil {
 			return
 		}
-		var xgbPredCode bytes.Buffer
+		var xgbExplainCode bytes.Buffer
 		var tpl = template.Must(template.New("xgbExplainTemplate").Parse(xgbExplainTemplateText))
 		filler := &xgbExplainFiller{
 			OSSModelDir:      ossURI,
 			DataSource:       session.DbConnStr,
 			DatasetSQL:       ir.Select,
 			ResultTable:      ir.Into,
+			IsPAI:            tensorflow.IsPAI(),
+			PAIExplainTable:  ir.TmpExplainTable,
 			HDFSNameNodeAddr: session.HdfsNamenodeAddr,
 			HiveLocation:     session.HiveLocation,
 			HDFSUser:         session.HdfsUser,
 			HDFSPass:         session.HdfsPass,
 		}
-		if e = tpl.Execute(&xgbPredCode, filler); e != nil {
+		if e = tpl.Execute(&xgbExplainCode, filler); e != nil {
 			return
 		}
-		code = xgbPredCode.String()
+		code = xgbExplainCode.String()
 
 		var cc *ClusterConfig
 		if cc, e = GetClusterConfig(ir.Attributes); e != nil {
