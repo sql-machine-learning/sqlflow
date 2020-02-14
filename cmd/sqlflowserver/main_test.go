@@ -14,7 +14,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -1386,36 +1385,12 @@ USING %s;`, caseTestTable, casePredictTable, caseInto)
 
 }
 
-func dropPAIModel(dataSource, modelName string) error {
-	code := fmt.Sprintf(`import subprocess
-import sqlflow_submitter.db
-
-driver, dsn = "%s".split("://")
-assert driver == "maxcompute"
-user, passwd, address, database = sqlflow_submitter.db.parseMaxComputeDSN(dsn)
-
-cmd = "drop offlinemodel if exists %s"
-subprocess.run(["odpscmd", "-u", user,
-                           "-p", passwd,
-                           "--project", database,
-                           "--endpoint", address,
-                           "-e", cmd],
-               check=True)	
-	`, dataSource, modelName)
-	cmd := exec.Command("python", "-u")
-	cmd.Stdin = bytes.NewBufferString(code)
-	if e := cmd.Run(); e != nil {
-		return e
-	}
-	return nil
-}
-
 func CaseTrainPAIKMeans(t *testing.T) {
 	a := assert.New(t)
-	testDB, e := database.OpenAndConnectDB(dbConnStr)
-	a.NoError(e)
-	_, e = testDB.Exec("drop offlinemodel if exists " + caseInto)
-	a.NoError(e)
+	testDB, err := database.OpenAndConnectDB(dbConnStr)
+	a.NoError(err)
+	_, err = testDB.Exec("drop offlinemodel if exists " + caseInto)
+	a.NoError(err)
 
 	trainSQL := fmt.Sprintf(`SELECT sepal_length,sepal_width,petal_length,petal_width FROM %s
 	TO TRAIN kmeans 
@@ -1424,7 +1399,7 @@ func CaseTrainPAIKMeans(t *testing.T) {
 		idx_table_name=%s
 	INTO %s;
 	`, caseTrainTable, caseTrainTable+"_test_output_idx", caseInto)
-	_, _, err := connectAndRunSQL(trainSQL)
+	_, _, err = connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)
 	}
@@ -1441,7 +1416,9 @@ func CaseTrainPAIKMeans(t *testing.T) {
 
 func CaseTrainPAIRandomForests(t *testing.T) {
 	a := assert.New(t)
-	err := dropPAIModel(dbConnStr, "my_rf_model")
+	testDB, err := database.OpenAndConnectDB(dbConnStr)
+	a.NoError(err)
+	_, err = testDB.Exec("drop offlinemodel if exists my_rf_model")
 	a.NoError(err)
 
 	trainSQL := fmt.Sprintf(`SELECT * FROM %s
