@@ -41,8 +41,8 @@ func getPAIPredictCmd(ir *ir.PredictStmt, session *pb.Session) (string, error) {
 		ir.Using, ir.TmpPredictTable, ir.ResultTable, strings.Join(flds, ","), strings.Join(flds, ",")), nil
 }
 
-// CleanupBeforeTrain can cleanup saved model
-func CleanupBeforeTrain(ir *ir.TrainStmt, session *pb.Session) error {
+// CleanupPAIModel can drop saved PAI model
+func CleanupPAIModel(ir *ir.TrainStmt, session *pb.Session) error {
 	db, err := database.OpenAndConnectDB(session.DbConnStr)
 	if err != nil {
 		return err

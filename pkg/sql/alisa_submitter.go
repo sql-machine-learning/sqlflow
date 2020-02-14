@@ -83,7 +83,7 @@ func (s *alisaSubmitter) ExecuteTrain(ts *ir.TrainStmt) (e error) {
 
 	// Alisa resource should be prefix with @@, alisa source would replace it with the RES_DOWN_URL.resourceName in alisa env.
 	scriptPath := fmt.Sprintf("file://@@%s", resourceName)
-	if e = pai.CleanupBeforeTrain(ts, s.Session); e != nil {
+	if e = pai.CleanupPAIModel(ts, s.Session); e != nil {
 		return e
 	}
 
