@@ -63,7 +63,7 @@ func getStepIdx(wf *v1alpha1.Workflow, targetStepGroup string) (int, error) {
 
 func logViewURL(ns, wfID, stepID string) (string, error) {
 	ep := os.Getenv("SQLFLOW_ARGO_UI_ENDPOINT")
-	return fmt.Sprintf("%s/workflows/%s/%s?nodeId=%s", ep, ns, wfID, stepID), nil
+	return fmt.Sprintf("%s/workflows/%s/%s?tab=workflow&nodeId=%s", ep, ns, wfID, stepID), nil
 }
 
 // Fetch fetches the workflow log and status,
@@ -96,16 +96,16 @@ func Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 
 	// An example log content:
 	// Step [1/3] Execute Code: echo hello1
-	// Step [1/3] Log view: http://localhost:8001/workflows/default/steps-bdpff?nodeId=steps-bdpff-xx1
+	// Step [1/3] Log: http://localhost:8001/workflows/default/steps-bdpff?nodeId=steps-bdpff-xx1
 	// Step [1/3] Status: Pending
 	// Step [1/3] Status: Running
 	// Step [1/3] Status: Succeed/Failed
 	// Step [2/3] Execute Code: echo hello2
-	// Step [2/3] Log view: http://localhost:8001/workflows/default/steps-bdpff?nodeId=steps-bdpff-xx2
+	// Step [2/3] Log: http://localhost:8001/workflows/default/steps-bdpff?nodeId=steps-bdpff-xx2
 	// ...
 	newStepPhase := req.StepPhase
 	if req.StepPhase == "" {
-		// return the log view url for the first call of step
+		// return the log url for the first call of step
 		url, e := logViewURL(wf.ObjectMeta.Namespace, wf.ObjectMeta.Name, stepGroupName)
 		if e != nil {
 			return nil, e
@@ -113,7 +113,7 @@ func Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 		// the 1-th container execute `argoexec wait` to wait the preiority step, so package the 2-th container's command code.
 		execCode := fmt.Sprintf("%s %s", strings.Join(pod.Spec.Containers[1].Command, " "), strings.Join(pod.Spec.Containers[1].Args, " "))
 		logs = append(logs, fmt.Sprintf("Step: [%d/%d] Execute Code: %s", stepIdx, stepCnt, execCode))
-		logs = append(logs, fmt.Sprintf("Step: [%d/%d] Log View: %s", stepIdx, stepCnt, url))
+		logs = append(logs, fmt.Sprintf("Step: [%d/%d] Log: %s", stepIdx, stepCnt, url))
 	}
 
 	// note(yancey1989): record the Pod phase to avoid output the duplicated logs at the next fetch request.
