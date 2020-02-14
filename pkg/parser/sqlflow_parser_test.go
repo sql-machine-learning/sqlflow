@@ -135,6 +135,14 @@ func commonTestCases(dbms string, a *assert.Assertions) {
 		a.Equal(0, len(s))
 	}
 
+	{ // SELECT...UNION...SELECT statement
+		sql := `select * from (select 1 limit 1) a union select * from (select 1) b to explain model;`
+
+		s, err := Parse(dbms, sql)
+		a.Nil(err)
+		a.Equal(1, len(s))
+	}
+
 	// two SQL statements, the second standard SQL has an error.
 	for _, sql := range external.SelectCases {
 		sqls := fmt.Sprintf(`%s %s; select select 1;`, sql, extendedSQL)
