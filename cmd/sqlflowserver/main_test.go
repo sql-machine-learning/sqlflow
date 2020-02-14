@@ -1572,7 +1572,7 @@ INTO my_ctr_model_digit;`
 	predSQL = `SELECT * FROM alifin_jtest_dev.sqlflow_ctr_test_raw_digit
 TO PREDICT alifin_jtest_dev.sqlflow_ctr_predict_digit.class
 USING my_ctr_model_digit;`
-	_, _, err := connectAndRunSQL(predSQL)
+	_, _, err = connectAndRunSQL(predSQL)
 	if err != nil {
 		a.Fail("Run predSQL error: %v", err)
 	}
@@ -1592,7 +1592,7 @@ INTO my_ctr_model_concat;`
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)
 	}
-	predSQL := `SELECT
+	predSQL = `SELECT
 CONCAT(l1,",",l2,",",l3,",",l4,",",l5,",",l6,",",l7,",",l8,",",l9,",",l10,",",l11,",",l12,",",l13) AS f1,
 CONCAT(C1,",",C2,",",C3,",",C4,",",C5,",",C6,",",C7,",",C8,",",C9,",",C10,",",C11,",",C12,",",C13,",",C14,",",C15,",",C16,",",C17,",",C18,",",C19,",",C20,",",C21,",",C22,",",C23,",",C24,",",C25,",",C26) AS f2
 FROM alifin_jtest_dev.sqlflow_ctr_test_raw_digit
