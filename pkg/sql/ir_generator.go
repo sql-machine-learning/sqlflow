@@ -141,6 +141,7 @@ func loadModelMeta(pr *parser.SQLFlowSelectStmt, db *database.DB, cwd, modelDir,
 	if e != nil {
 		return nil, nil, fmt.Errorf("parse: TrainSelect %v raise %v", m.TrainSelect, e)
 	}
+	fmt.Printf("loaded train clause: %s\n", tr.SQLFlowSelectStmt)
 
 	if e := verifier.VerifyColumnNameAndType(tr.SQLFlowSelectStmt, pr, db); e != nil {
 		return nil, nil, fmt.Errorf("VerifyColumnNameAndType: %v", e)

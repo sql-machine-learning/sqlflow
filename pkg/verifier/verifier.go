@@ -98,8 +98,9 @@ func getExpressionFieldName(expr *parser.Expr) (string, error) {
 	if len(expr.Sexp) < 2 {
 		return "", fmt.Errorf("error column clause format: %s, expected FEATURE_COLUMN(key, ...)", expr.Sexp)
 	}
-	fcNameExpr := expr.Sexp[1]
-	return fcNameExpr.Value, nil
+	// NOTE(typhoonzero): recursively get the expression field name: the expression
+	// maybe: func(func(func(key, ...)))
+	return getExpressionFieldName(expr.Sexp[1])
 }
 
 // VerifyColumnNameAndType check train and pred clause uses has the same feature columns
@@ -115,6 +116,8 @@ func VerifyColumnNameAndType(trainParsed, predParsed *parser.SQLFlowSelectStmt, 
 		return e
 	}
 
+	fmt.Printf("verifyed : %s\n", predFields)
+	fmt.Printf("train columns: %s\n", trainParsed.Columns)
 	for _, c := range trainParsed.Columns["feature_columns"] {
 		name, err := getExpressionFieldName(c)
 		if err != nil {
