@@ -150,3 +150,15 @@ def encode_base64(s):
     """
     bencode = base64.b64encode(s.encode("utf-8"))
     return str(bencode, "utf-8")
+
+
+def _is_digit(v):
+    if str(v).isdigit():
+        return True
+    else:
+        try:
+            float(str(v))
+            return True
+        except ValueError:
+            return False
+    return False

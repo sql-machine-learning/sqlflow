@@ -640,8 +640,8 @@ def _convert_dict_to_env_list(d):
 
     env_list = []
     for k, v in d.items():
-        if isinstance(v, bool) or isinstance(v, int):
-            value = "'%s'" % v
+        if isinstance(v, bool) or pyfunc._is_digit(v):
+            value = "'%s'" % str(v)
             env_list.append({"name": str(k), "value": value})
         elif k == "secrets":
             if not isinstance(v, list):
