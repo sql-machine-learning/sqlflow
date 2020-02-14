@@ -40,3 +40,18 @@ func getPAIPredictCmd(ir *ir.PredictStmt, session *pb.Session) (string, error) {
 	return fmt.Sprintf(`pai -name prediction -DmodelName="%s" -DinputTableName="%s" -DoutputTableName="%s" -DfeatureColNames="%s" -DappendColNames="%s"`,
 		ir.Using, ir.TmpPredictTable, ir.ResultTable, strings.Join(flds, ","), strings.Join(flds, ",")), nil
 }
+
+// CleanupPAIModel can drop saved PAI model
+func CleanupPAIModel(ir *ir.TrainStmt, session *pb.Session) error {
+	// note: other model does not save PAI model.
+	if ir.Estimator == "kmeans" || ir.Estimator == "randomforests" {
+		db, err := database.OpenAndConnectDB(session.DbConnStr)
+		if err != nil {
+			return err
+		}
+		if _, err := db.Exec(fmt.Sprintf("DROP OFFLINEMODEL IF EXISTS %s", ir.Into)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
