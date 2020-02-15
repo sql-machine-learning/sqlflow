@@ -98,8 +98,16 @@ func generateFeatureColumnCode(fc ir.FeatureColumn) (string, error) {
 	case *ir.CategoryHashColumn:
 		cc := fc.(*ir.CategoryHashColumn)
 		// FIXME(typhoonzero): do we need to support dtype other than int64?
-		return fmt.Sprintf("tf.feature_column.categorical_column_with_hash_bucket(key=\"%s\", hash_bucket_size=%d, dtype=tf.dtypes.int64)",
-			cc.FieldDesc.Name, cc.BucketSize), nil
+		dtypeStr := "tf.dtypes.int64"
+		if cc.GetFieldDesc()[0].DType == ir.Int {
+			dtypeStr = "tf.dtypes.int64"
+		} else if cc.GetFieldDesc()[0].DType == ir.String {
+			dtypeStr = "tf.dtypes.string"
+		} else {
+			return "", fmt.Errorf("CATEGORY_HASH column do not support input type: %d, col: %s", cc.GetFieldDesc()[0].DType, cc.GetFieldDesc()[0].Name)
+		}
+		return fmt.Sprintf("tf.feature_column.categorical_column_with_hash_bucket(key=\"%s\", hash_bucket_size=%d, dtype=%s)",
+			cc.FieldDesc.Name, cc.BucketSize, dtypeStr), nil
 	case *ir.CrossColumn:
 		cc := fc.(*ir.CrossColumn)
 		var keysGenerated = make([]string, len(cc.Keys))
@@ -476,7 +484,6 @@ func Explain(stmt *ir.ExplainStmt, session *pb.Session) (string, error) {
 	if err := tmpl.Execute(&program, filler); err != nil {
 		return "", err
 	}
-
 	return program.String(), nil
 }
 
