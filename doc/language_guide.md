@@ -314,7 +314,7 @@ USING explainer;
 ```
 
 - *model_table_reference* indicates the table a prediction job should load model from.
-- *attr_expr* indicates the configuration attributes, e.g. `shap_summary.plot_type="bar"`.
+- *attr_expr* indicates the configuration attributes, e.g. `summary.plot_type="bar"`.
 - *explainer* indicates the type of the explainer, e.g. `TreeExplainer`.
 
 For example, if we want to explain the model stored at `sqlflow_models.my_xgb_regression_model` using the tree explainer and plot the analysis results in sorted order. We can write the following statement:
@@ -324,7 +324,7 @@ SELECT *
 FROM boston.train
 TO EXPLAIN sqlflow_models.my_xgb_regression_model
 WITH
-    shap_summary.sort=True
+    summary.sort=True
 USING TreeExplainer;
 ```
 

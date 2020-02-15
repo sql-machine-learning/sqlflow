@@ -144,10 +144,10 @@ We can set the parameters of SHAP like:
 
 ``` sql
 WITH
-    shap_summary.plot_type="dot",
-    shap_summary.alpha=1,
-    shap_summary.sort=True,
-    shap_summary.max_display=20
+    summary.plot_type="dot",
+    summary.alpha=1,
+    summary.sort=True,
+    summary.max_display=20
 ```
 
 We can plot the SHAP values of every feature for every sample.
@@ -158,10 +158,10 @@ SELECT *
 FROM carprice.train
 TO EXPLAIN sqlflow_models.my_xgb_regression_model
 WITH
-    shap_summary.plot_type="dot",
-    shap_summary.alpha=1,
-    shap_summary.sort=True,
-    shap_summary.max_display=20
+    summary.plot_type="dot",
+    summary.alpha=1,
+    summary.sort=True,
+    summary.max_display=20
 USING TreeExplainer;
 ```
 
@@ -177,10 +177,10 @@ SELECT *
 FROM carprice.train
 TO EXPLAIN sqlflow_models.my_xgb_regression_model
 WITH
-    shap_summary.plot_type="bar",
-    shap_summary.alpha=1,
-    shap_summary.sort=True,
-    shap_summary.max_display=20
+    summary.plot_type="bar",
+    summary.alpha=1,
+    summary.sort=True,
+    summary.max_display=20
 USING TreeExplainer;
 ```
 

@@ -24,7 +24,7 @@ import (
 )
 
 const (
-	shapSummaryAttrPrefix = "shap_summary."
+	shapSummaryAttrPrefix = "summary."
 )
 
 // Explain generates a Python program to explain a trained model.
