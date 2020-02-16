@@ -132,6 +132,12 @@ def explain_dnns(datasource, estimator, shap_dataset, plot_type, result_table,
                  feature_column_names, is_pai, pai_table, hdfs_namenode_addr,
                  hive_location, hdfs_user, hdfs_pass):
     def predict(d):
+        if len(d) == 1:
+            # This is to make sure the progress bar of SHAP display properly:
+            # 1. The newline makes the progress bar string captured in pipe
+            # 2. The ASCII control code moves cursor up twice for alignment
+            print("\033[A" * 2)
+
         def input_fn():
             return tf.data.Dataset.from_tensor_slices(
                 dict(pd.DataFrame(d,
