@@ -1495,10 +1495,12 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 
 	t.Run("CaseTrainSQL", CaseTrainSQL)
 	t.Run("CaseTrainDNNAndExplain", CaseTrainDNNAndExplain)
+	caseInto = "my_custom_model"
 	t.Run("CaseTrainCustomModel", CaseTrainCustomModel)
 	t.Run("CaseTrainPAIRandomForests", CaseTrainPAIRandomForests)
 	t.Run("CaseTrainXGBoostOnPAI", CaseTrainXGBoostOnPAI)
 	t.Run("CaseTrainDistributedPAI", CaseTrainDistributedPAI)
+
 }
 
 func TestEnd2EndWorkflow(t *testing.T) {

@@ -117,13 +117,17 @@ def keras_train_and_save(estimator, model_params, save, feature_column_names,
         classifier.sqlflow_train_loop(train_dataset)
     else:
         if label_meta["feature_name"] != "":
+            # FIXME(typhoonzero): this is why need to set validation_steps: https://github.com/tensorflow/tensorflow/issues/29743#issuecomment-502028891
+            # remove this argument when PAI fixes this.
             history = classifier.fit(train_dataset,
+                                     validation_steps=100,
                                      epochs=epochs if epochs else
                                      classifier.default_training_epochs(),
                                      validation_data=validate_dataset,
                                      verbose=verbose)
         else:
             history = classifier.fit(train_dataset,
+                                     validation_steps=100,
                                      epochs=epochs if epochs else
                                      classifier.default_training_epochs(),
                                      verbose=verbose)

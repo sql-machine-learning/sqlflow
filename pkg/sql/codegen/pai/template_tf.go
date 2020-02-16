@@ -72,6 +72,10 @@ from tensorflow.estimator import DNNClassifier, DNNRegressor, LinearClassifier, 
 from sqlflow_submitter.pai import model
 from sqlflow_submitter.tensorflow import predict
 try:
+    import sqlflow_models
+except Exception as e:
+    print("error importing sqlflow_models: %s" % e)
+try:
     tf.enable_eager_execution()
 except:
     pass
@@ -89,6 +93,7 @@ predict.pred(datasource="{{.DataSource}}",
              result_table="{{.ResultTable}}",
              feature_columns=feature_columns,
              feature_column_names=feature_column_names,
+             result_col_name=label_meta["feature_name"],
              feature_metas=feature_metas,
              model_params=model_params,
              save="{{.OSSModelDir}}",
