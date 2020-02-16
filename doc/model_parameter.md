@@ -54,6 +54,11 @@ INTO sqlflow_models.my_xgb_regression_model;
 	<td>[default=0.3, alias: learning_rate]<br>Step size shrinkage used in update to prevents overfitting. After each boosting step, we can directly get the weights of new features, and eta shrinks the feature weights to make the boosting process more conservative.<br>range: [0,1]</td>
 </tr>
 <tr>
+	<td>eval_metric</td>
+	<td>string</td>
+	<td>eval metric</td>
+</tr>
+<tr>
 	<td>gamma</td>
 	<td>float32</td>
 	<td>Minimum loss reduction required to make a further partition on a leaf node of the tree.</td>

@@ -83,6 +83,10 @@ func (s *alisaSubmitter) ExecuteTrain(ts *ir.TrainStmt) (e error) {
 
 	// Alisa resource should be prefix with @@, alisa source would replace it with the RES_DOWN_URL.resourceName in alisa env.
 	scriptPath := fmt.Sprintf("file://@@%s", resourceName)
+	if e = pai.CleanupPAIModel(ts, s.Session); e != nil {
+		return e
+	}
+
 	code, paiCmd, requirements, e := pai.Train(ts, s.Session, scriptPath, ts.Into, ossModelPath, s.Cwd)
 	if e != nil {
 		return e
@@ -137,7 +141,33 @@ func (s *alisaSubmitter) uploadResourceAndSubmitAlisaTask(entryCode, requirement
 }
 
 func (s *alisaSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
-	return fmt.Errorf("Alisa submitter does not support EXPLAIN clause")
+	dbName, tableName, err := createTmpTableFromSelect(cl.Select, s.Session.DbConnStr)
+	if err != nil {
+		return err
+	}
+	cl.TmpExplainTable = strings.Join([]string{dbName, tableName}, ".")
+	defer dropTmpTables([]string{cl.TmpExplainTable}, s.Session.DbConnStr)
+
+	ossModelPath, e := getModelPath(cl.ModelName, s.Session)
+	if e != nil {
+		return e
+	}
+	modelType, estimator, e := getOSSSavedModelType(ossModelPath)
+	if e != nil {
+		return e
+	}
+	if cl.Into != "" {
+		if e := createExplainResultTable(s.Db, cl, cl.Into, modelType, estimator); e != nil {
+			return e
+		}
+	}
+
+	scriptPath := fmt.Sprintf("file://@@%s", resourceName)
+	code, paiCmd, requirements, e := pai.Explain(cl, s.Session, scriptPath, cl.ModelName, ossModelPath, s.Cwd, modelType)
+	if e != nil {
+		return e
+	}
+	return s.uploadResourceAndSubmitAlisaTask(code, requirements, paiCmd)
 }
 
 func (s *alisaSubmitter) GetTrainStmtFromModel() bool { return false }

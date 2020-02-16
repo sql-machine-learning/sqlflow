@@ -15,15 +15,15 @@ We implement the explainer based on [SHAP](https://github.com/slundberg/shap). B
 SELECT * FROM tbl
 TO EXPLAIN a_trained_model
 WITH 
-  shap_summary.parameter_i=value_i ...
+  summary.parameter_i=value_i ...
 USING TreeExplainer;
 ```
 
 - A standard SQL statement used to specify the dataset.
 - `TO EXPLAIN` introduces the model to explain.
 - `USING TreeExplainer` restricts the explainer.
-- By `WITH`, we specify the parameters to [summary_plot](https://github.com/slundberg/shap/blob/master/shap/plots/summary.py#L18-L43) with a prefix `shap_summary.`
-  like: `shap_summary.plot_type=\"bar\"`.
+- By `WITH`, we specify the parameters to [summary_plot](https://github.com/slundberg/shap/blob/master/shap/plots/summary.py#L18-L43) with a prefix `summary.`
+  like: `summary.plot_type=\"bar\"`.
 
 ## The Dataset
 
@@ -54,9 +54,9 @@ SELECT *
 FROM boston.train
 TO EXPLAIN sqlflow_models.my_xgb_regression_model
 WITH
-    shap_summary.plot_type="dot",
-    shap_summary.alpha=1,
-    shap_summary.sort=True
+    summary.plot_type="dot",
+    summary.alpha=1,
+    summary.sort=True
 USING TreeExplainer;
 ```
 
@@ -74,9 +74,9 @@ SELECT *
 FROM boston.train
 TO EXPLAIN sqlflow_models.my_xgb_regression_model
 WITH
-    shap_summary.plot_type="bar",
-    shap_summary.alpha=1,
-    shap_summary.sort=True
+    summary.plot_type="bar",
+    summary.alpha=1,
+    summary.sort=True
 USING TreeExplainer;
 ```
 

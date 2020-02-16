@@ -95,6 +95,19 @@ func generateFeatureColumnCode(fc ir.FeatureColumn) (string, error) {
 		cc := fc.(*ir.SeqCategoryIDColumn)
 		return fmt.Sprintf("tf.feature_column.sequence_categorical_column_with_identity(key=\"%s\", num_buckets=%d)",
 			cc.FieldDesc.Name, cc.BucketSize), nil
+	case *ir.CategoryHashColumn:
+		cc := fc.(*ir.CategoryHashColumn)
+		// FIXME(typhoonzero): do we need to support dtype other than int64?
+		dtypeStr := "tf.dtypes.int64"
+		if cc.GetFieldDesc()[0].DType == ir.Int {
+			dtypeStr = "tf.dtypes.int64"
+		} else if cc.GetFieldDesc()[0].DType == ir.String {
+			dtypeStr = "tf.dtypes.string"
+		} else {
+			return "", fmt.Errorf("CATEGORY_HASH column do not support input type: %d, col: %s", cc.GetFieldDesc()[0].DType, cc.GetFieldDesc()[0].Name)
+		}
+		return fmt.Sprintf("tf.feature_column.categorical_column_with_hash_bucket(key=\"%s\", hash_bucket_size=%d, dtype=%s)",
+			cc.FieldDesc.Name, cc.BucketSize, dtypeStr), nil
 	case *ir.CrossColumn:
 		cc := fc.(*ir.CrossColumn)
 		var keysGenerated = make([]string, len(cc.Keys))
@@ -164,7 +177,8 @@ func attrToPythonValue(attr interface{}) string {
 	}
 }
 
-func dtypeToString(dt int) string {
+// DTypeToString returns string value of dtype
+func DTypeToString(dt int) string {
 	switch dt {
 	case ir.Float:
 		return "float32"
@@ -306,8 +320,8 @@ func categorizeAttributes(trainStmt *ir.TrainStmt) (trainParams, validateParams,
 }
 
 func deriveFeatureColumnCode(trainStmt *ir.TrainStmt) (featureColumnsCode []string, fieldDescs []*ir.FieldDesc, err error) {
-	perTargetFeatureColumnsCode := []string{}
 	for target, fcList := range trainStmt.Features {
+		perTargetFeatureColumnsCode := []string{}
 		for _, fc := range fcList {
 			fcCode, err := generateFeatureColumnCode(fc)
 			if err != nil {
@@ -367,12 +381,11 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 	var trainTemplate = template.Must(template.New("Train").Funcs(template.FuncMap{
 		"intArrayToJSONString": intArrayToJSONString,
 		"attrToPythonValue":    attrToPythonValue,
-		"dtypeToString":        dtypeToString,
+		"DTypeToString":        DTypeToString,
 	}).Parse(tfTrainTemplateText))
 	if err := trainTemplate.Execute(&program, filler); err != nil {
 		return "", err
 	}
-
 	return program.String(), nil
 }
 
@@ -422,7 +435,7 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 	var predTemplate = template.Must(template.New("Pred").Funcs(template.FuncMap{
 		"intArrayToJSONString": intArrayToJSONString,
 		"attrToPythonValue":    attrToPythonValue,
-		"dtypeToString":        dtypeToString,
+		"DTypeToString":        DTypeToString,
 	}).Parse(tfPredTemplateText))
 	if err := predTemplate.Execute(&program, filler); err != nil {
 		return "", err
@@ -466,12 +479,11 @@ func Explain(stmt *ir.ExplainStmt, session *pb.Session) (string, error) {
 	var tmpl = template.Must(template.New("Explain").Funcs(template.FuncMap{
 		"intArrayToJSONString": intArrayToJSONString,
 		"attrToPythonValue":    attrToPythonValue,
-		"dtypeToString":        dtypeToString,
+		"DTypeToString":        DTypeToString,
 	}).Parse(boostedTreesExplainTemplateText))
 	if err := tmpl.Execute(&program, filler); err != nil {
 		return "", err
 	}
-
 	return program.String(), nil
 }
 

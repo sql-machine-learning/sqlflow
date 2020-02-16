@@ -14,7 +14,7 @@
 package main
 
 import (
-	prompt "github.com/c-bata/go-prompt"
+	"github.com/c-bata/go-prompt"
 	"log"
 )
 
@@ -25,18 +25,21 @@ var emacsMetaKeyBindings = []prompt.ASCIICodeBind{
 	{
 		ASCIICode: []byte{0x1b, 'b'},
 		Fn: func(buf *prompt.Buffer) {
+			stopSearching()
 			prompt.GoLeftWord(buf)
 		},
 	},
 	{
 		ASCIICode: []byte{0x1b, 'B'},
 		Fn: func(buf *prompt.Buffer) {
+			stopSearching()
 			prompt.GoLeftWord(buf)
 		},
 	},
 	{
 		ASCIICode: []byte{0x1b, 0x1b, 0x5b, 0x44},
 		Fn: func(buf *prompt.Buffer) {
+			stopSearching()
 			prompt.GoLeftWord(buf)
 		},
 	},
@@ -44,18 +47,21 @@ var emacsMetaKeyBindings = []prompt.ASCIICodeBind{
 	{
 		ASCIICode: []byte{0x1b, 'f'},
 		Fn: func(buf *prompt.Buffer) {
+			stopSearching()
 			prompt.GoRightWord(buf)
 		},
 	},
 	{
 		ASCIICode: []byte{0x1b, 'F'},
 		Fn: func(buf *prompt.Buffer) {
+			stopSearching()
 			prompt.GoRightWord(buf)
 		},
 	},
 	{
 		ASCIICode: []byte{0x1b, 0x1b, 0x5b, 0x43},
 		Fn: func(buf *prompt.Buffer) {
+			stopSearching()
 			prompt.GoRightWord(buf)
 		},
 	},
@@ -63,6 +69,7 @@ var emacsMetaKeyBindings = []prompt.ASCIICodeBind{
 	{
 		ASCIICode: []byte{0x1b, 'd'},
 		Fn: func(buf *prompt.Buffer) {
+			stopSearching()
 			pos1 := buf.DisplayCursorPosition()
 			prompt.GoRightWord(buf)
 			pos2 := buf.DisplayCursorPosition()
@@ -72,6 +79,7 @@ var emacsMetaKeyBindings = []prompt.ASCIICodeBind{
 	{
 		ASCIICode: []byte{0x1b, 'D'},
 		Fn: func(buf *prompt.Buffer) {
+			stopSearching()
 			pos1 := buf.DisplayCursorPosition()
 			prompt.GoRightWord(buf)
 			pos2 := buf.DisplayCursorPosition()
@@ -82,6 +90,7 @@ var emacsMetaKeyBindings = []prompt.ASCIICodeBind{
 	{
 		ASCIICode: []byte{0x1b, 0x7f},
 		Fn: func(buf *prompt.Buffer) {
+			stopSearching()
 			clipboard = buf.DeleteBeforeCursor(len([]rune(buf.Document().GetWordBeforeCursorWithSpace())))
 		},
 	},
@@ -92,6 +101,7 @@ var emacsCtrlKeyBindings = []prompt.KeyBind{
 	{
 		Key: prompt.ControlE,
 		Fn: func(buf *prompt.Buffer) {
+			stopSearching()
 			x := []rune(buf.Document().TextAfterCursor())
 			buf.CursorRight(len(x))
 		},
@@ -100,6 +110,7 @@ var emacsCtrlKeyBindings = []prompt.KeyBind{
 	{
 		Key: prompt.ControlA,
 		Fn: func(buf *prompt.Buffer) {
+			stopSearching()
 			x := []rune(buf.Document().TextBeforeCursor())
 			buf.CursorLeft(len(x))
 		},
@@ -108,6 +119,7 @@ var emacsCtrlKeyBindings = []prompt.KeyBind{
 	{
 		Key: prompt.ControlK,
 		Fn: func(buf *prompt.Buffer) {
+			stopSearching()
 			x := []rune(buf.Document().TextAfterCursor())
 			clipboard = buf.Delete(len(x))
 		},
@@ -116,6 +128,7 @@ var emacsCtrlKeyBindings = []prompt.KeyBind{
 	{
 		Key: prompt.ControlU,
 		Fn: func(buf *prompt.Buffer) {
+			stopSearching()
 			x := []rune(buf.Document().TextBeforeCursor())
 			clipboard = buf.DeleteBeforeCursor(len(x))
 		},
@@ -124,6 +137,7 @@ var emacsCtrlKeyBindings = []prompt.KeyBind{
 	{
 		Key: prompt.ControlD,
 		Fn: func(buf *prompt.Buffer) {
+			stopSearching()
 			if buf.Text() != "" {
 				buf.Delete(1)
 			}
@@ -133,6 +147,7 @@ var emacsCtrlKeyBindings = []prompt.KeyBind{
 	{
 		Key: prompt.ControlH,
 		Fn: func(buf *prompt.Buffer) {
+			stopSearching()
 			buf.DeleteBeforeCursor(1)
 		},
 	},
@@ -140,6 +155,7 @@ var emacsCtrlKeyBindings = []prompt.KeyBind{
 	{
 		Key: prompt.ControlF,
 		Fn: func(buf *prompt.Buffer) {
+			stopSearching()
 			buf.CursorRight(1)
 		},
 	},
@@ -147,6 +163,7 @@ var emacsCtrlKeyBindings = []prompt.KeyBind{
 	{
 		Key: prompt.ControlB,
 		Fn: func(buf *prompt.Buffer) {
+			stopSearching()
 			buf.CursorLeft(1)
 		},
 	},
@@ -154,6 +171,7 @@ var emacsCtrlKeyBindings = []prompt.KeyBind{
 	{
 		Key: prompt.ControlW,
 		Fn: func(buf *prompt.Buffer) {
+			stopSearching()
 			clipboard = buf.DeleteBeforeCursor(len([]rune(buf.Document().GetWordBeforeCursorWithSpace())))
 		},
 	},
@@ -161,6 +179,7 @@ var emacsCtrlKeyBindings = []prompt.KeyBind{
 	{
 		Key: prompt.ControlL,
 		Fn: func(buf *prompt.Buffer) {
+			stopSearching()
 			consoleWriter.EraseScreen()
 			consoleWriter.CursorGoTo(0, 0)
 			if err := consoleWriter.Flush(); err != nil {
@@ -172,7 +191,18 @@ var emacsCtrlKeyBindings = []prompt.KeyBind{
 	{
 		Key: prompt.ControlY,
 		Fn: func(buf *prompt.Buffer) {
+			stopSearching()
 			buf.InsertText(clipboard, false, true)
 		},
 	},
+	// Search command history
+	{
+		Key: prompt.ControlR,
+		Fn: func(buf *prompt.Buffer) {
+			startSearching()
+		},
+	},
 }
+
+var startSearching = func() {}
+var stopSearching = func() {}

@@ -45,25 +45,6 @@ func getTrainRandomForestsPAICmd(ir *ir.TrainStmt, session *pb.Session) (string,
 		inputTables, ir.Into, ir.Label.GetFieldDesc()[0].Name, strings.Join(featureCols, ","), treeNum), nil
 }
 
-func getPredictRandomForestsPAICmd(ir *ir.PredictStmt, session *pb.Session) (string, error) {
-	// NOTE(typhoonzero): for PAI random forests predicting, we can not load the TrainStmt
-	// since the model saving is fully done by PAI. We directly use the columns in SELECT
-	// statement for prediction, error will be reported by PAI job if the columns not match.
-	db, err := database.OpenAndConnectDB(session.DbConnStr)
-	if err != nil {
-		return "", err
-	}
-	flds, _, err := getColumnTypes(ir.Select, db)
-	if err != nil {
-		return "", err
-	}
-	// drop result table if exists
-	db.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s;", ir.ResultTable))
-
-	return fmt.Sprintf(`pai -name prediction -DmodelName="%s" -DinputTableName="%s" -DoutputTable="%s" -DfeatureColNames="%s"`,
-		ir.Using, ir.TmpPredictTable, ir.ResultTable, strings.Join(flds, ",")), nil
-}
-
 func getExplainRandomForestsPAICmd(ir *ir.ExplainStmt, session *pb.Session) (string, error) {
 	// NOTE(typhoonzero): for PAI random forests predicting, we can not load the TrainStmt
 	// since the model saving is fully done by PAI. We directly use the columns in SELECT

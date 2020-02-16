@@ -14,7 +14,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -71,6 +70,25 @@ func waitPortReady(addr string, timeout time.Duration) {
 	}
 	for !serverIsReady(addr, timeout) {
 		time.Sleep(1 * time.Second)
+	}
+}
+
+func connectAndRunSQLShouldError(sql string) {
+	conn, err := createRPCConn()
+	if err != nil {
+		log.Fatalf("connectAndRunSQLShouldError: %v", err)
+	}
+	defer conn.Close()
+	cli := pb.NewSQLFlowClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), 1800*time.Second)
+	defer cancel()
+	stream, err := cli.Run(ctx, sqlRequest(sql))
+	if err != nil {
+		log.Fatalf("connectAndRunSQLShouldError: %v", err)
+	}
+	_, err = stream.Recv()
+	if err == nil {
+		log.Fatalf("connectAndRunSQLShouldError: the statement should error")
 	}
 }
 
@@ -187,7 +205,7 @@ func prepareTestData(dbStr string) error {
 	}
 
 	db := os.Getenv("SQLFLOW_TEST_DB")
-	if db != "maxcompute" {
+	if db != "maxcompute" && db != "alisa" {
 		_, e := testDB.Exec("CREATE DATABASE IF NOT EXISTS sqlflow_models;")
 		if e != nil {
 			return e
@@ -210,7 +228,7 @@ func prepareTestData(dbStr string) error {
 			testdata.ChurnHiveSQL,
 			testdata.FeatureDerivationCaseSQLHive,
 			testdata.HousingSQL}
-	case "maxcompute":
+	case "maxcompute", "alisa":
 		if os.Getenv("SQLFLOW_submitter") == "alps" {
 			datasets = []string{
 				testdata.ODPSFeatureMapSQL,
@@ -289,6 +307,8 @@ func TestEnd2EndMySQL(t *testing.T) {
 
 	t.Run("CaseShowDatabases", CaseShowDatabases)
 	t.Run("CaseSelect", CaseSelect)
+	t.Run("CaseEmptyDataset", CaseEmptyDataset)
+	t.Run("CaseLabelColumnNotExist", CaseLabelColumnNotExist)
 	t.Run("CaseTrainSQL", CaseTrainSQL)
 	t.Run("CaseTrainWithCommaSeparatedLabel", CaseTrainWithCommaSeparatedLabel)
 
@@ -315,7 +335,24 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseTrainTextClassificationIR", CaseTrainTextClassificationIR)
 	t.Run("CaseTrainTextClassificationFeatureDerivation", CaseTrainTextClassificationFeatureDerivation)
 	t.Run("CaseXgboostFeatureDerivation", CaseXgboostFeatureDerivation)
+	t.Run("CaseXgboostEvalMetric", CaseXgboostEvalMetric)
 	t.Run("CaseTrainFeatureDerivation", CaseTrainFeatureDerivation)
+}
+
+func CaseEmptyDataset(t *testing.T) {
+	trainSQL := `SELECT * FROM iris.train LIMIT 0 TO TRAIN xgboost.gbtree
+WITH objective="reg:squarederror"
+LABEL class 
+INTO sqlflow_models.my_xgb_regression_model;`
+	connectAndRunSQLShouldError(trainSQL)
+}
+
+func CaseLabelColumnNotExist(t *testing.T) {
+	trainSQL := `SELECT * FROM iris.train WHERE class=2 TO TRAIN xgboost.gbtree
+WITH objective="reg:squarederror"
+LABEL target
+INTO sqlflow_models.my_xgb_regression_model;`
+	connectAndRunSQLShouldError(trainSQL)
 }
 
 func CaseXgboostFeatureDerivation(t *testing.T) {
@@ -334,6 +371,25 @@ INTO sqlflow_models.my_xgb_regression_model;`
 	predSQL := `SELECT * FROM housing.test
 TO PREDICT housing.predict.target
 USING sqlflow_models.my_xgb_regression_model;`
+	_, _, err = connectAndRunSQL(predSQL)
+	if err != nil {
+		a.Fail("run test error: %v", err)
+	}
+}
+
+func CaseXgboostEvalMetric(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := `SELECT * FROM iris.train WHERE class in (0, 1) TO TRAIN xgboost.gbtree
+WITH objective="binary:logistic", eval_metric=auc
+LABEL class
+INTO sqlflow_models.my_xgb_binary_classification_model;`
+	_, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("run test error: %v", err)
+	}
+
+	predSQL := `SELECT * FROM iris.test TO PREDICT iris.predict.class
+USING sqlflow_models.my_xgb_binary_classification_model;`
 	_, _, err = connectAndRunSQL(predSQL)
 	if err != nil {
 		a.Fail("run test error: %v", err)
@@ -1237,9 +1293,9 @@ SELECT *
 FROM housing.train
 TO EXPLAIN sqlflow_models.my_xgb_regression_model
 WITH
-    shap_summary.plot_type="bar",
-    shap_summary.alpha=1,
-    shap_summary.sort=True
+    summary.plot_type="bar",
+    summary.alpha=1,
+    summary.sort=True
 USING TreeExplainer;
 	`
 	conn, err := createRPCConn()
@@ -1325,33 +1381,40 @@ USING %s;`, caseTestTable, casePredictTable, caseInto)
 
 }
 
-func dropPAIModel(dataSource, modelName string) error {
-	code := fmt.Sprintf(`import subprocess
-import sqlflow_submitter.db
+func CaseTrainPAIKMeans(t *testing.T) {
+	a := assert.New(t)
+	testDB, err := database.OpenAndConnectDB(dbConnStr)
+	a.NoError(err)
+	_, err = testDB.Exec("drop offlinemodel if exists " + caseInto)
+	a.NoError(err)
 
-driver, dsn = "%s".split("://")
-assert driver == "maxcompute"
-user, passwd, address, database = sqlflow_submitter.db.parseMaxComputeDSN(dsn)
-
-cmd = "drop offlinemodel if exists %s"
-subprocess.run(["odpscmd", "-u", user,
-                           "-p", passwd,
-                           "--project", database,
-                           "--endpoint", address,
-                           "-e", cmd],
-               check=True)	
-	`, dataSource, modelName)
-	cmd := exec.Command("python", "-u")
-	cmd.Stdin = bytes.NewBufferString(code)
-	if e := cmd.Run(); e != nil {
-		return e
+	trainSQL := fmt.Sprintf(`SELECT sepal_length,sepal_width,petal_length,petal_width FROM %s
+	TO TRAIN kmeans 
+	WITH
+		center_count=3,
+		idx_table_name=%s
+	INTO %s;
+	`, caseTrainTable, caseTrainTable+"_test_output_idx", caseInto)
+	_, _, err = connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
 	}
-	return nil
+
+	predSQL := fmt.Sprintf(`SELECT sepal_length,sepal_width,petal_length,petal_width FROM %s
+	TO PREDICT %s.class
+	USING %s;
+	`, caseTestTable, casePredictTable, caseInto)
+	_, _, err = connectAndRunSQL(predSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
 }
 
 func CaseTrainPAIRandomForests(t *testing.T) {
 	a := assert.New(t)
-	err := dropPAIModel(dbConnStr, "my_rf_model")
+	testDB, err := database.OpenAndConnectDB(dbConnStr)
+	a.NoError(err)
+	_, err = testDB.Exec("drop offlinemodel if exists my_rf_model")
 	a.NoError(err)
 
 	trainSQL := fmt.Sprintf(`SELECT * FROM %s
@@ -1444,6 +1507,175 @@ func CaseTrainXGBoostOnPAI(t *testing.T) {
 	}
 }
 
+func CaseTrainDenseCol(t *testing.T) {
+	a := assert.New(t)
+
+	// Test train and predict using preprocessed table contains origin raw category strings
+	trainSQL := `select label,COALESCE(NULLIF(l1, ''),0) AS ll1,COALESCE(NULLIF(l2, ''),0) AS ll2,COALESCE(NULLIF(l3, ''),0) AS ll3,COALESCE(NULLIF(l4, ''),0) AS ll4,COALESCE(NULLIF(l5, ''),0) AS ll5,COALESCE(NULLIF(l6, ''),0) AS ll6,COALESCE(NULLIF(l7, ''),0) AS ll7,COALESCE(NULLIF(l8, ''),0) AS ll8,COALESCE(NULLIF(l9, ''),0) AS ll9,COALESCE(NULLIF(l10, ''),0) AS ll10,COALESCE(NULLIF(l11, ''),0) AS ll11,COALESCE(NULLIF(l12, ''),0) AS ll12,COALESCE(NULLIF(l13, ''),0) AS ll13,C1,C2,C3,C4,C5,C6,C7,C8,C9,C10,C11,C12,C13,C14,C15,C16,C17,C18,C19,C20,C21,C22,C23,C24,C25,C26 from alifin_jtest_dev.sqlflow_ctr_train_raw
+TO TRAIN DNNLinearCombinedClassifier
+WITH model.dnn_hidden_units=[64,32], train.batch_size=32, validation.throttle_secs=300
+COLUMN NUMERIC(ll1, 1),NUMERIC(ll2, 1),NUMERIC(ll3, 1),NUMERIC(ll4, 1),NUMERIC(ll5, 1),NUMERIC(ll6, 1),NUMERIC(ll7, 1),NUMERIC(ll8, 1),NUMERIC(ll9, 1),NUMERIC(ll10, 1),NUMERIC(ll11, 1),NUMERIC(ll12, 1),NUMERIC(ll13, 1) FOR linear_feature_columns
+COLUMN EMBEDDING(CATEGORY_HASH(C1, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C2, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C3, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C4, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C5, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C6, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C7, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C8, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C9, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C10, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C11, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C12, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C13, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C14, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C15, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C16, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C17, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C18, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C19, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C20, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C21, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C22, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C23, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C24, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C25, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C26, 100), 8, "sum") FOR dnn_feature_columns
+LABEL 'label'
+INTO my_ctr_model_raw;`
+	_, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+	predSQL := `SELECT COALESCE(NULLIF(l1, ''),0) AS ll1,COALESCE(NULLIF(l2, ''),0) AS ll2,COALESCE(NULLIF(l3, ''),0) AS ll3,COALESCE(NULLIF(l4, ''),0) AS ll4,COALESCE(NULLIF(l5, ''),0) AS ll5,COALESCE(NULLIF(l6, ''),0) AS ll6,COALESCE(NULLIF(l7, ''),0) AS ll7,COALESCE(NULLIF(l8, ''),0) AS ll8,COALESCE(NULLIF(l9, ''),0) AS ll9,COALESCE(NULLIF(l10, ''),0) AS ll10,COALESCE(NULLIF(l11, ''),0) AS ll11,COALESCE(NULLIF(l12, ''),0) AS ll12,COALESCE(NULLIF(l13, ''),0) AS ll13,C1,C2,C3,C4,C5,C6,C7,C8,C9,C10,C11,C12,C13,C14,C15,C16,C17,C18,C19,C20,C21,C22,C23,C24,C25,C26 FROM alifin_jtest_dev.sqlflow_ctr_test_raw
+TO PREDICT alifin_jtest_dev.sqlflow_ctr_predict_raw.class
+USING my_ctr_model_raw;`
+	_, _, err = connectAndRunSQL(predSQL)
+	if err != nil {
+		a.Fail("Run predSQL error: %v", err)
+	}
+
+	// Test train and predict using preprocessed table contains only digits
+	trainSQL = `select * from alifin_jtest_dev.sqlflow_ctr_train_raw_digit
+TO TRAIN DNNLinearCombinedClassifier
+WITH model.dnn_hidden_units=[64,32], train.batch_size=32, validation.throttle_secs=300
+COLUMN NUMERIC(l1, 1),NUMERIC(l2, 1),NUMERIC(l3, 1),NUMERIC(l4, 1),NUMERIC(l5, 1),NUMERIC(l6, 1),NUMERIC(l7, 1),NUMERIC(l8, 1),NUMERIC(l9, 1),NUMERIC(l10, 1),NUMERIC(l11, 1),NUMERIC(l12, 1),NUMERIC(l13, 1) FOR linear_feature_columns
+COLUMN EMBEDDING(CATEGORY_HASH(C1, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C2, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C3, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C4, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C5, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C6, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C7, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C8, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C9, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C10, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C11, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C12, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C13, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C14, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C15, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C16, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C17, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C18, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C19, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C20, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C21, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C22, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C23, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C24, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C25, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C26, 100), 8, "sum") FOR dnn_feature_columns
+LABEL 'label'
+INTO my_ctr_model_digit;`
+	_, _, err = connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+	predSQL = `SELECT * FROM alifin_jtest_dev.sqlflow_ctr_test_raw_digit
+TO PREDICT alifin_jtest_dev.sqlflow_ctr_predict_digit.class
+USING my_ctr_model_digit;`
+	_, _, err = connectAndRunSQL(predSQL)
+	if err != nil {
+		a.Fail("Run predSQL error: %v", err)
+	}
+
+	// Test train and predict using concated columns
+	trainSQL = `SELECT label,
+CONCAT(l1,",",l2,",",l3,",",l4,",",l5,",",l6,",",l7,",",l8,",",l9,",",l10,",",l11,",",l12,",",l13) AS f1,
+CONCAT(C1,",",C2,",",C3,",",C4,",",C5,",",C6,",",C7,",",C8,",",C9,",",C10,",",C11,",",C12,",",C13,",",C14,",",C15,",",C16,",",C17,",",C18,",",C19,",",C20,",",C21,",",C22,",",C23,",",C24,",",C25,",",C26) AS f2
+FROM alifin_jtest_dev.sqlflow_ctr_train_raw_digit
+TO TRAIN DNNLinearCombinedClassifier
+WITH model.dnn_hidden_units=[64,32], train.batch_size=32, validation.throttle_secs=300
+COLUMN NUMERIC(f1, 13) FOR linear_feature_columns
+COLUMN EMBEDDING(CATEGORY_HASH(SPARSE(f2, 26, COMMA, int), 1000), 16, "sum") FOR dnn_feature_columns
+LABEL 'label'
+INTO my_ctr_model_concat;`
+	_, _, err = connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+	predSQL = `SELECT
+CONCAT(l1,",",l2,",",l3,",",l4,",",l5,",",l6,",",l7,",",l8,",",l9,",",l10,",",l11,",",l12,",",l13) AS f1,
+CONCAT(C1,",",C2,",",C3,",",C4,",",C5,",",C6,",",C7,",",C8,",",C9,",",C10,",",C11,",",C12,",",C13,",",C14,",",C15,",",C16,",",C17,",",C18,",",C19,",",C20,",",C21,",",C22,",",C23,",",C24,",",C25,",",C26) AS f2
+FROM alifin_jtest_dev.sqlflow_ctr_test_raw_digit
+TO PREDICT alifin_jtest_dev.sqlflow_ctr_predict_concat.class
+USING my_ctr_model_concat;`
+	_, _, err = connectAndRunSQL(predSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+
+	// Test train and predict using DNN
+	trainSQL = `SELECT label,
+CONCAT(l1,",",l2,",",l3,",",l4,",",l5,",",l6,",",l7,",",l8,",",l9,",",l10,",",l11,",",l12,",",l13) AS f1,
+CONCAT(C1,",",C2,",",C3,",",C4,",",C5,",",C6,",",C7,",",C8,",",C9,",",C10,",",C11,",",C12,",",C13,",",C14,",",C15,",",C16,",",C17,",",C18,",",C19,",",C20,",",C21,",",C22,",",C23,",",C24,",",C25,",",C26) AS f2
+FROM alifin_jtest_dev.sqlflow_ctr_train_raw_digit
+TO TRAIN DNNClassifier
+WITH model.hidden_units=[64,32], train.batch_size=32, validation.throttle_secs=300
+COLUMN NUMERIC(f1, 13), EMBEDDING(CATEGORY_HASH(SPARSE(f2, 26, COMMA, int), 1000), 16, "sum")
+LABEL 'label'
+INTO my_ctr_model_concat_dnn;`
+	_, _, err = connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+	predSQL = `SELECT
+CONCAT(l1,",",l2,",",l3,",",l4,",",l5,",",l6,",",l7,",",l8,",",l9,",",l10,",",l11,",",l12,",",l13) AS f1,
+CONCAT(C1,",",C2,",",C3,",",C4,",",C5,",",C6,",",C7,",",C8,",",C9,",",C10,",",C11,",",C12,",",C13,",",C14,",",C15,",",C16,",",C17,",",C18,",",C19,",",C20,",",C21,",",C22,",",C23,",",C24,",",C25,",",C26) AS f2
+FROM alifin_jtest_dev.sqlflow_ctr_test_raw_digit
+TO PREDICT alifin_jtest_dev.sqlflow_ctr_predict_concat_dnn.class
+USING my_ctr_model_concat_dnn;`
+	_, _, err = connectAndRunSQL(predSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+}
+
+func CaseTrainXGBoostOnAlisa(t *testing.T) {
+	a := assert.New(t)
+	model := "my_xgb_class_model"
+	trainSQL := fmt.Sprintf(`SELECT * FROM %s
+	TO TRAIN xgboost.gbtree
+	WITH
+		objective="multi:softprob",
+		train.num_boost_round = 30,
+		eta = 0.4,
+		num_class = 3
+	LABEL class
+	INTO %s;`, caseTrainTable, model)
+	if _, _, err := connectAndRunSQL(trainSQL); err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+
+	predSQL := fmt.Sprintf(`SELECT * FROM %s
+	TO PREDICT %s.class
+	USING %s;`, caseTestTable, casePredictTable, model)
+	if _, _, err := connectAndRunSQL(predSQL); err != nil {
+		a.Fail("Run predSQL error: %v", err)
+	}
+
+	explainSQL := fmt.Sprintf(`SELECT * FROM %s
+	TO EXPLAIN %s
+	WITH label_col=class
+	USING TreeExplainer
+	INTO my_xgb_explain_result;`, caseTrainTable, model)
+	if _, _, err := connectAndRunSQL(explainSQL); err != nil {
+		a.Fail("Run predSQL error: %v", err)
+	}
+}
+
+// TestEnd2EndAlisa test cases that run on Alisa, Need to set the
+// below environment variables to run them:
+// SQLFLOW_submitter=alisa
+// SQLFLOW_TEST_DATASOURCE="xxx"
+// SQLFLOW_OSS_CHECKPOINT_DIR="xxx"
+// SQLFLOW_OSS_ALISA_ENDPOINT="xxx"
+// SQLFLOW_OSS_AK="xxx"
+// SQLFLOW_OSS_SK="xxx"
+// SQLFLOW_OSS_ALISA_BUCKET="xxx"
+// SQLFLOW_OSS_MODEL_ENDPOINT="xxx"
+func TestEnd2EndAlisa(t *testing.T) {
+	testDBDriver := os.Getenv("SQLFLOW_TEST_DB")
+	if testDBDriver != "alisa" {
+		t.Skip("Skipping non alisa tests")
+	}
+	if os.Getenv("SQLFLOW_submitter") != "alisa" {
+		t.Skip("Skip non Alisa tests")
+	}
+	dbConnStr = os.Getenv("SQLFLOW_TEST_DATASOURCE")
+	tmpDir, caCrt, caKey, err := generateTempCA()
+	defer os.RemoveAll(tmpDir)
+	if err != nil {
+		t.Fatalf("failed to generate CA pair %v", err)
+	}
+	caseDB = os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT")
+	if caseDB == "" {
+		t.Fatalf("Must set env SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT")
+	}
+	caseTrainTable = caseDB + ".sqlflow_test_iris_train"
+	caseTestTable = caseDB + ".sqlflow_test_iris_test"
+	casePredictTable = caseDB + ".sqlflow_test_iris_predict"
+	// write model to current MaxCompute project
+	caseInto = "sqlflow_test_kmeans_model"
+
+	go start("", caCrt, caKey, unitTestPort, false)
+	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
+	// TODO(Yancey1989): reuse CaseTrainXGBoostOnPAI if support explain XGBoost model
+	t.Run("CaseTrainXGBoostOnAlisa", CaseTrainXGBoostOnAlisa)
+	t.Run("CaseTrainPAIKMeans", CaseTrainPAIKMeans)
+}
+
 // TestEnd2EndMaxComputePAI test cases that runs on PAI. Need to set below
 // environment variables to run the test:
 // SQLFLOW_submitter=pai
@@ -1495,12 +1727,12 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 
 	t.Run("CaseTrainSQL", CaseTrainSQL)
 	t.Run("CaseTrainDNNAndExplain", CaseTrainDNNAndExplain)
-	caseInto = "my_custom_model"
-	t.Run("CaseTrainCustomModel", CaseTrainCustomModel)
+	t.Run("CaseTrainDenseCol", CaseTrainDenseCol)
 	t.Run("CaseTrainPAIRandomForests", CaseTrainPAIRandomForests)
 	t.Run("CaseTrainXGBoostOnPAI", CaseTrainXGBoostOnPAI)
 	t.Run("CaseTrainDistributedPAI", CaseTrainDistributedPAI)
-
+	caseInto = "my_custom_model"
+	t.Run("CaseTrainCustomModel", CaseTrainCustomModel)
 }
 
 func TestEnd2EndWorkflow(t *testing.T) {

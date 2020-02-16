@@ -99,6 +99,18 @@ func (cc *CategoryIDColumn) GetFieldDesc() []*FieldDesc {
 	return []*FieldDesc{cc.FieldDesc}
 }
 
+// CategoryHashColumn represents `tf.feature_column.categorical_column_with_hash_bucket`
+// ref: https://www.tensorflow.org/api_docs/python/tf/feature_column/categorical_column_with_hash_bucket
+type CategoryHashColumn struct {
+	FieldDesc  *FieldDesc
+	BucketSize int64
+}
+
+// GetFieldDesc returns FieldDesc member
+func (cc *CategoryHashColumn) GetFieldDesc() []*FieldDesc {
+	return []*FieldDesc{cc.FieldDesc}
+}
+
 // SeqCategoryIDColumn represents `tf.feature_column.sequence_categorical_column_with_identity`
 // ref: https://www.tensorflow.org/api_docs/python/tf/feature_column/sequence_categorical_column_with_identity
 type SeqCategoryIDColumn struct {

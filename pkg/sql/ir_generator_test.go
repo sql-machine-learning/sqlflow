@@ -253,9 +253,9 @@ INTO sqlflow_models.my_xgboost_model;
 	FROM iris.train
 	TO EXPLAIN sqlflow_models.my_xgboost_model
 	WITH
-	    shap_summary.plot_type="bar",
-	    shap_summary.alpha=1,
-	    shap_summary.sort=True
+	    summary.plot_type="bar",
+	    summary.alpha=1,
+	    summary.sort=True
 	USING TreeExplainer;
 	`)
 	a.NoError(e)
@@ -264,9 +264,9 @@ INTO sqlflow_models.my_xgboost_model;
 	a.NoError(e)
 	a.Equal(ExplainStmt.Explainer, "TreeExplainer")
 	a.Equal(len(ExplainStmt.Attributes), 3)
-	a.Equal(ExplainStmt.Attributes["shap_summary.sort"], true)
-	a.Equal(ExplainStmt.Attributes["shap_summary.plot_type"], "bar")
-	a.Equal(ExplainStmt.Attributes["shap_summary.alpha"], 1)
+	a.Equal(ExplainStmt.Attributes["summary.sort"], true)
+	a.Equal(ExplainStmt.Attributes["summary.plot_type"], "bar")
+	a.Equal(ExplainStmt.Attributes["summary.alpha"], 1)
 
 	nc, ok := ExplainStmt.TrainStmt.Features["feature_columns"][0].(*ir.NumericColumn)
 	a.True(ok)
@@ -277,9 +277,9 @@ INTO sqlflow_models.my_xgboost_model;
 	FROM iris.train
 	TO EXPLAIN sqlflow_models.my_xgboost_model
 	WITH
-	    shap_summary.plot_type="bar",
-	    shap_summary.alpha=1,
-	    shap_summary.sort=True
+	    summary.plot_type="bar",
+	    summary.alpha=1,
+	    summary.sort=True
 	USING TreeExplainer
 	INTO db.explain_result;
 	`)

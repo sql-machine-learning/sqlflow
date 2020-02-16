@@ -23,7 +23,7 @@ import tensorflow as tf
 from sqlflow_submitter import explainer
 from sqlflow_submitter.db import buffered_db_writer, connect_with_data_source
 
-from .input_fn import input_fn, pai_maxcompute_input_fn
+from .input_fn import input_fn
 
 sns_colors = sns.color_palette('colorblind')
 # Disable Tensorflow INFO and WARNING logs
@@ -74,12 +74,18 @@ def explain(datasource,
 
     def _input_fn():
         if is_pai:
-            dataset = pai_maxcompute_input_fn(pai_table, datasource,
-                                              feature_column_names,
-                                              feature_metas, label_meta)
+            # dataset = pai_maxcompute_input_fn(pai_table, datasource,
+            #                                   feature_column_names,
+            #                                   feature_metas, label_meta)
+            dataset = input_fn("",
+                               datasource,
+                               feature_column_names,
+                               feature_metas,
+                               label_meta,
+                               is_pai=True,
+                               pai_table=pai_table)
         else:
-            conn = connect_with_data_source(datasource)
-            dataset = input_fn(select, conn, feature_column_names,
+            dataset = input_fn(select, datasource, feature_column_names,
                                feature_metas, label_meta)
         return dataset.batch(1).cache()
 
@@ -126,15 +132,27 @@ def explain_dnns(datasource, estimator, shap_dataset, plot_type, result_table,
                  feature_column_names, is_pai, pai_table, hdfs_namenode_addr,
                  hive_location, hdfs_user, hdfs_pass):
     def predict(d):
+        if len(d) == 1:
+            # This is to make sure the progress bar of SHAP display properly:
+            # 1. The newline makes the progress bar string captured in pipe
+            # 2. The ASCII control code moves cursor up twice for alignment
+            print("\033[A" * 2)
+
         def input_fn():
             return tf.data.Dataset.from_tensor_slices(
-                dict(pd.DataFrame(d, columns=shap_dataset.columns))).batch(1)
+                dict(pd.DataFrame(d,
+                                  columns=shap_dataset.columns))).batch(1000)
 
         return np.array(
-            [p['probabilities'][0] for p in estimator.predict(input_fn)])
+            [p['probabilities'][-1] for p in estimator.predict(input_fn)])
 
-    shap_values = shap.KernelExplainer(predict,
-                                       shap_dataset).shap_values(shap_dataset)
+    if len(shap_dataset) > 100:
+        # Reduce to 16 weighted samples to speed up
+        shap_dataset_summary = shap.kmeans(shap_dataset, 16)
+    else:
+        shap_dataset_summary = shap_dataset
+    shap_values = shap.KernelExplainer(
+        predict, shap_dataset_summary).shap_values(shap_dataset, l1_reg="aic")
     if result_table != "":
         if is_pai:
             write_shap_values(shap_values, "pai_maxcompute", None,

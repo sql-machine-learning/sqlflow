@@ -97,6 +97,34 @@ func SubmitWorkflow(sqlProgram string, modelDir string, session *pb.Session) *pi
 	return rd
 }
 
+// ResolveSQLProgram accepts parse result from parser and returns a list of SQLFlowStmt
+func ResolveSQLProgram(sqlStmts []*parser.SQLFlowStmt) ([]ir.SQLFlowStmt, error) {
+	spIRs := []ir.SQLFlowStmt{}
+	var err error
+	for _, sql := range sqlStmts {
+		var r ir.SQLFlowStmt
+		if sql.IsExtendedSyntax() {
+			if sql.Train {
+				r, err = generateTrainStmt(sql.SQLFlowSelectStmt)
+			} else if sql.Explain {
+				// since getTrainStmtFromModel is false, use empty cwd is fine.
+				r, err = generateExplainStmt(sql.SQLFlowSelectStmt, "", "", "", false)
+			} else {
+				r, err = generatePredictStmt(sql.SQLFlowSelectStmt, "", "", "", false)
+			}
+		} else {
+			standardSQL := ir.NormalStmt(sql.Original)
+			r = &standardSQL
+		}
+		if err != nil {
+			return nil, err
+		}
+		r.SetOriginalSQL(sql.Original)
+		spIRs = append(spIRs, r)
+	}
+	return spIRs, nil
+}
+
 func submitWorkflow(wr *pipe.Writer, sqlProgram string, modelDir string, session *pb.Session) (string, error) {
 	driverName, _, err := database.ParseURL(session.DbConnStr)
 	if err != nil {
@@ -106,32 +134,9 @@ func submitWorkflow(wr *pipe.Writer, sqlProgram string, modelDir string, session
 	if err != nil {
 		return "", err
 	}
-	// TODO(yancey1989): separate the IR generation to multiple steps:
-	// For example, a TRAIN statement:
-	// 		SELECT ... TO TRAIN ...
-	// the multiple ir generator steps pipeline can be:
-	// sql -> parsed result -> infer columns -> load train ir from saved model ..
-	spIRs := []ir.SQLFlowStmt{}
-	for _, sql := range stmts {
-		var r ir.SQLFlowStmt
-		if sql.IsExtendedSyntax() {
-			if sql.Train {
-				r, err = generateTrainStmt(sql.SQLFlowSelectStmt)
-			} else if sql.Explain {
-				// since getTrainStmtFromModel is false, use empty cwd is fine.
-				r, err = generateExplainStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, "", false)
-			} else {
-				r, err = generatePredictStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, "", false)
-			}
-		} else {
-			standardSQL := ir.NormalStmt(sql.Original)
-			r = &standardSQL
-		}
-		if err != nil {
-			return "", err
-		}
-		r.SetOriginalSQL(sql.Original)
-		spIRs = append(spIRs, r)
+	spIRs, err := ResolveSQLProgram(stmts)
+	if err != nil {
+		return "", err
 	}
 
 	// 1. call codegen_couler.go to generate Argo workflow YAML

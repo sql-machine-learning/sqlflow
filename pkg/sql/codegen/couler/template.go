@@ -32,6 +32,7 @@ type coulerFiller struct {
 	SQLFlowSubmitter string
 	SQLFlowOSSDir    string
 	StepEnvs         map[string]string
+	WorkflowTTL      int
 }
 
 const coulerTemplateText = `
@@ -44,6 +45,7 @@ step_envs = dict()
 step_envs["{{$k}}"] = "{{$v}}"
 {{end}}
 
+couler.clean_workflow_after_seconds_finished({{.WorkflowTTL}})
 
 {{ range $ss := .SQLStatements }}
 	{{if $ss.IsExtendedSQL }}

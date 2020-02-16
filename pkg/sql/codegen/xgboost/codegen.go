@@ -23,6 +23,7 @@ import (
 	"sqlflow.org/sqlflow/pkg/ir"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/attribute"
+	tf "sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
 )
 
 // TODO(tony): complete model parameter and training parameter list
@@ -34,7 +35,8 @@ Step size shrinkage used in update to prevents overfitting. After each boosting 
 range: [0,1]`, attribute.Float32RangeChecker(0, 1, true, true)},
 	"num_class": {attribute.Int, nil, `Number of classes.
 range: [2, Infinity]`, attribute.IntLowerBoundChecker(2, true)},
-	"objective": {attribute.String, nil, `Learning objective`, nil},
+	"objective":   {attribute.String, nil, `Learning objective`, nil},
+	"eval_metric": {attribute.String, nil, `eval metric`, nil},
 	"train.num_boost_round": {attribute.Int, 10, `[default=10]
 The number of rounds for boosting.
 range: [1, Infinity]`, attribute.IntLowerBoundChecker(1, true)},
@@ -98,6 +100,36 @@ func getFieldDesc(fcs []ir.FeatureColumn, l ir.FeatureColumn) ([]ir.FieldDesc, i
 	return features, label, nil
 }
 
+// FieldMeta delicates Field Meta with Json format which used in code generator
+type FieldMeta struct {
+	FeatureName string `json:"feature_name"`
+	DType       string `json:"dtype"`
+	Delimiter   string `json:"delimiter"`
+	Shap        []int  `json:"shape"`
+	IsSparse    bool   `json:"is_sparse"`
+}
+
+func resolveFieldMeta(desc *ir.FieldDesc) FieldMeta {
+	return FieldMeta{
+		FeatureName: desc.Name,
+		DType:       tf.DTypeToString(desc.DType),
+		Delimiter:   desc.Delimiter,
+		Shap:        desc.Shape,
+		IsSparse:    desc.IsSparse,
+	}
+}
+
+func resolveFeatureMeta(fds []ir.FieldDesc) ([]byte, []string, error) {
+	ret := make(map[string]FieldMeta)
+	featureNames := []string{}
+	for _, f := range fds {
+		ret[f.Name] = resolveFieldMeta(&f)
+		featureNames = append(featureNames, f.Name)
+	}
+	f, e := json.Marshal(ret)
+	return f, featureNames, e
+}
+
 // Train generates a Python program for train a XgBoost model.
 func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 	params, err := parseAttribute(trainStmt.Attributes)
@@ -125,22 +157,34 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	f, err := json.Marshal(featureFieldDesc)
+	f, fs, err := resolveFeatureMeta(featureFieldDesc)
 	if err != nil {
 		return "", err
 	}
-	l, err := json.Marshal(labelFieldDesc)
+	l, err := json.Marshal(resolveFieldMeta(&labelFieldDesc))
 	if err != nil {
 		return "", err
 	}
+
+	paiTrainTable := ""
+	paiValidateTable := ""
+	if tf.IsPAI() && trainStmt.TmpTrainTable != "" {
+		paiTrainTable = trainStmt.TmpTrainTable
+		paiValidateTable = trainStmt.TmpValidateTable
+	}
+
 	r := trainFiller{
-		DataSource:       session.DbConnStr,
-		TrainSelect:      trainStmt.Select,
-		ValidationSelect: trainStmt.ValidationSelect,
-		ModelParamsJSON:  string(mp),
-		TrainParamsJSON:  string(tp),
-		FieldDescJSON:    string(f),
-		LabelJSON:        string(l)}
+		DataSource:         session.DbConnStr,
+		TrainSelect:        trainStmt.Select,
+		ValidationSelect:   trainStmt.ValidationSelect,
+		ModelParamsJSON:    string(mp),
+		TrainParamsJSON:    string(tp),
+		FieldDescJSON:      string(f),
+		FeatureColumnNames: fs,
+		LabelJSON:          string(l),
+		IsPAI:              tf.IsPAI(),
+		PAITrainTable:      paiTrainTable,
+		PAIValidateTable:   paiValidateTable}
 
 	var program bytes.Buffer
 	if err := trainTemplate.Execute(&program, r); err != nil {
@@ -156,25 +200,33 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	f, err := json.Marshal(featureFieldDesc)
+	f, fs, err := resolveFeatureMeta(featureFieldDesc)
 	if err != nil {
 		return "", err
 	}
-	l, err := json.Marshal(labelFieldDesc)
+	l, err := json.Marshal(resolveFieldMeta(&labelFieldDesc))
 	if err != nil {
 		return "", err
 	}
 
+	paiPredictTable := ""
+	if tf.IsPAI() && predStmt.TmpPredictTable != "" {
+		paiPredictTable = predStmt.TmpPredictTable
+	}
+
 	r := predFiller{
-		DataSource:       session.DbConnStr,
-		PredSelect:       predStmt.Select,
-		FeatureMetaJSON:  string(f),
-		LabelMetaJSON:    string(l),
-		ResultTable:      predStmt.ResultTable,
-		HDFSNameNodeAddr: session.HdfsNamenodeAddr,
-		HiveLocation:     session.HiveLocation,
-		HDFSUser:         session.HdfsUser,
-		HDFSPass:         session.HdfsPass,
+		DataSource:         session.DbConnStr,
+		PredSelect:         predStmt.Select,
+		FeatureMetaJSON:    string(f),
+		FeatureColumnNames: fs,
+		LabelMetaJSON:      string(l),
+		ResultTable:        predStmt.ResultTable,
+		HDFSNameNodeAddr:   session.HdfsNamenodeAddr,
+		HiveLocation:       session.HiveLocation,
+		HDFSUser:           session.HdfsUser,
+		HDFSPass:           session.HdfsPass,
+		IsPAI:              tf.IsPAI(),
+		PAITable:           paiPredictTable,
 	}
 
 	var program bytes.Buffer

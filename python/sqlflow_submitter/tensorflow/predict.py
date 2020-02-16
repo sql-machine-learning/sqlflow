@@ -22,10 +22,8 @@ import tensorflow as tf
 from sqlflow_submitter.db import (buffered_db_writer, connect_with_data_source,
                                   db_generator, parseMaxComputeDSN)
 
-from .fast_predict import FastPredict
 from .input_fn import (get_dtype, pai_maxcompute_db_generator,
-                       pai_maxcompute_input_fn, parse_sparse_feature,
-                       parse_sparse_feature_predict)
+                       parse_sparse_feature, parse_sparse_feature_predict)
 
 # Disable Tensorflow INFO and WARNING logs
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -102,10 +100,13 @@ def keras_predict(estimator, model_params, save, result_table,
             for idx, name in enumerate(feature_column_names):
                 val = features[name].numpy()[0][0]
                 row.append(str(val))
-            if isinstance(result, np.ndarray) and len(result) > 1:
-                # NOTE(typhoonzero): if the output dimension > 1, format output tensor
-                # using a comma separated string. Only available for keras models.
-                row.append(",".join([str(i) for i in result]))
+            if isinstance(result, np.ndarray):
+                if len(result) > 1:
+                    # NOTE(typhoonzero): if the output dimension > 1, format output tensor
+                    # using a comma separated string. Only available for keras models.
+                    row.append(",".join([str(i) for i in result]))
+                else:
+                    row.append(str(result[0]))
             else:
                 row.append(str(result))
             w.write(row)
@@ -116,36 +117,11 @@ def estimator_predict(estimator, model_params, save, result_table,
                       feature_column_names, feature_metas, result_col_name,
                       datasource, select, hdfs_namenode_addr, hive_location,
                       hdfs_user, hdfs_pass, is_pai, pai_table):
-    classifier = estimator(**model_params)
     if not is_pai:
         conn = connect_with_data_source(datasource)
 
-    def fast_input_fn(generator):
-        feature_types = []
-        for name in feature_column_names:
-            if feature_metas[name]["is_sparse"]:
-                feature_types.append((tf.int64, tf.int32, tf.int64))
-            else:
-                feature_types.append(get_dtype(feature_metas[name]["dtype"]))
-
-        def _inner_input_fn():
-            dataset = tf.data.Dataset.from_generator(generator,
-                                                     (tuple(feature_types), ))
-            ds_mapper = functools.partial(
-                parse_sparse_feature_predict,
-                feature_column_names=feature_column_names,
-                feature_metas=feature_metas)
-            dataset = dataset.map(ds_mapper)
-            dataset = dataset.batch(1).cache()
-            iterator = dataset.make_one_shot_iterator()
-            features = iterator.get_next()
-            return features
-
-        return _inner_input_fn
-
     column_names = feature_column_names[:]
     column_names.append(result_col_name)
-    fast_predictor = FastPredict(classifier, fast_input_fn)
 
     if is_pai:
         driver = "pai_maxcompute"
@@ -160,20 +136,80 @@ def estimator_predict(estimator, model_params, save, result_table,
         predict_generator = db_generator(conn.driver, conn, select,
                                          feature_column_names, None,
                                          feature_metas)()
+    # load from the exported model
+    if save.startswith("oss://"):
+        with open("exported_path", "r") as fn:
+            export_path = fn.read()
+        parts = save.split("?")
+        export_path_oss = parts[0] + export_path
+        if TF_VERSION_2:
+            imported = tf.saved_model.load(export_path_oss)
+        else:
+            imported = tf.saved_model.load_v2(export_path_oss)
+    else:
+        with open("exported_path", "r") as fn:
+            export_path = fn.read()
+        if TF_VERSION_2:
+            imported = tf.saved_model.load(export_path)
+        else:
+            imported = tf.saved_model.load_v2(export_path)
+
+    def add_to_example(example, x, i):
+        feature_name = feature_column_names[i]
+        dtype_str = feature_metas[feature_name]["dtype"]
+        if feature_metas[feature_name]["delimiter"] != "":
+            if feature_metas[feature_name]["is_sparse"]:
+                # NOTE(typhoonzero): sparse feature will get (indices,values,shape) here, use indices only
+                values = x[0][i][0].flatten()
+            else:
+                values = x[0][i].flatten()
+            if dtype_str == "float32" or dtype_str == "float64":
+                example.features.feature[feature_name].float_list.value.extend(
+                    list(values))
+            elif dtype_str == "int32" or dtype_str == "int64":
+                example.features.feature[feature_name].int64_list.value.extend(
+                    list(values))
+        else:
+            if dtype_str == "float32" or dtype_str == "float64":
+                # need to pass a tuple(float, )
+                example.features.feature[feature_name].float_list.value.extend(
+                    (float(x[0][i][0]), ))
+            elif dtype_str == "int32" or dtype_str == "int64":
+                # FIXME(typhoonzero): figure out why int64 features need to convert to float
+                example.features.feature[feature_name].float_list.value.extend(
+                    (float(x[0][i][0]), ))
+            elif dtype_str == "string":
+                example.features.feature[feature_name].bytes_list.value.extend(
+                    x[0][i])
+
+    def predict(x):
+        example = tf.train.Example()
+        for i in range(len(feature_column_names)):
+            add_to_example(example, x, i)
+        return imported.signatures["predict"](
+            examples=tf.constant([example.SerializeToString()]))
+
     with buffered_db_writer(driver, conn, result_table, column_names, 100,
                             hdfs_namenode_addr, hive_location, hdfs_user,
                             hdfs_pass) as w:
         for features in predict_generator:
-            result = fast_predictor.predict(features)
+            result = predict(features)
             row = []
             for idx, _ in enumerate(feature_column_names):
-                val = features[0][idx][0]
+                per_feature = features[0][idx]
+                if isinstance(per_feature, tuple) or isinstance(
+                        per_feature, list):
+                    # is sparse feature: tuple (indices, values, shape) or scalar
+                    val = per_feature[0]
+                elif isinstance(per_feature, np.ndarray):
+                    val = per_feature
+                # val = features[0][idx][0]
                 row.append(str(val))
-            if "class_ids" in list(result)[0]:
-                row.append(str(list(result)[0]["class_ids"][0]))
+            if "class_ids" in result:
+                row.append(str(result["class_ids"].numpy()[0][0]))
             else:
                 # regression predictions
-                row.append(str(list(result)[0]["predictions"][0]))
+                row.append(str(result["predictions"].numpy()[0][0]))
             w.write(row)
 
 
@@ -206,6 +242,7 @@ def pred(datasource,
         if not issubclass(estimator, tf.keras.Model):
             # functional model need field_metas parameter
             model_params["field_metas"] = feature_metas
+        print("Start predicting using keras model...")
         keras_predict(estimator, model_params, save, result_table,
                       feature_column_names, feature_metas, result_col_name,
                       datasource, select, hdfs_namenode_addr, hive_location,
@@ -216,6 +253,7 @@ def pred(datasource,
             model_params["model_dir"] = FLAGS.checkpointDir
         else:
             model_params['model_dir'] = save
+        print("Start predicting using estimator model...")
         estimator_predict(estimator, model_params, save, result_table,
                           feature_column_names, feature_metas, result_col_name,
                           datasource, select, hdfs_namenode_addr,

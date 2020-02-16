@@ -20,10 +20,11 @@ import (
 
 	"sqlflow.org/sqlflow/pkg/ir"
 	pb "sqlflow.org/sqlflow/pkg/proto"
+	tf "sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
 )
 
 const (
-	shapSummaryAttrPrefix = "shap_summary."
+	shapSummaryAttrPrefix = "summary."
 )
 
 // Explain generates a Python program to explain a trained model.
@@ -52,6 +53,8 @@ func Explain(explainStmt *ir.ExplainStmt, session *pb.Session) (string, error) {
 		ShapSummaryParams:    string(jsonSummary),
 		FeatureFieldMetaJSON: string(fm),
 		LabelJSON:            string(l),
+		IsPAI:                tf.IsPAI(),
+		PAIExplainTable:      explainStmt.TmpExplainTable,
 	}
 	var analysis bytes.Buffer
 	if err := explainTemplate.Execute(&analysis, fr); err != nil {

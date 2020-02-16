@@ -24,6 +24,7 @@ import (
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/ir"
 	pb "sqlflow.org/sqlflow/pkg/proto"
+	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/xgboost"
 	"sqlflow.org/sqlflow/pkg/verifier"
 )
@@ -31,10 +32,10 @@ import (
 const (
 	// ModelTypeTF is the mode type that trained by PAI Tensorflow.
 	ModelTypeTF = iota
-	// ModelTypeRandomForests is the model type that trained by PAI random forests.
-	ModelTypeRandomForests
 	// ModelTypeXGBoost is the model type that use PAI Tensorflow to train XGBoost models.
 	ModelTypeXGBoost
+	// ModelTypePAIML is the model type that trained by PAI machine learing algorithm tookit
+	ModelTypePAIML
 )
 
 const entryFile = "entry.py"
@@ -115,6 +116,10 @@ func Train(ir *ir.TrainStmt, session *pb.Session, tarball, modelName, ossModelPa
 		if paiCmd, e = getTrainRandomForestsPAICmd(ir, session); e != nil {
 			return
 		}
+	} else if strings.ToLower(ir.Estimator) == "kmeans" {
+		if paiCmd, e = getTrainKMeansPAICmd(ir, session); e != nil {
+			return
+		}
 	} else if strings.HasPrefix(strings.ToLower(ir.Estimator), "xgboost") {
 		if code, e = xgboost.Train(ir, session); e != nil {
 			return
@@ -151,9 +156,9 @@ func Train(ir *ir.TrainStmt, session *pb.Session, tarball, modelName, ossModelPa
 
 // Predict generates a Python program for train a TensorFlow model.
 func Predict(ir *ir.PredictStmt, session *pb.Session, tarball, modelName, ossModelPath, cwd string, modelType int) (code, paiCmd, requirements string, e error) {
-	if modelType == ModelTypeRandomForests {
-		log.Printf("predicting using pai random forests")
-		if paiCmd, e = getPredictRandomForestsPAICmd(ir, session); e != nil {
+	if modelType == ModelTypePAIML {
+		log.Printf("predicting using pai prediction tookit")
+		if paiCmd, e = getPAIPredictCmd(ir, session); e != nil {
 			return
 		}
 	} else if modelType == ModelTypeXGBoost {
@@ -164,6 +169,10 @@ func Predict(ir *ir.PredictStmt, session *pb.Session, tarball, modelName, ossMod
 		}
 		var xgbPredCode bytes.Buffer
 		var tpl = template.Must(template.New("xgbPredTemplate").Parse(xgbPredTemplateText))
+		paiPredictTable := ""
+		if tensorflow.IsPAI() && ir.TmpPredictTable != "" {
+			paiPredictTable = ir.TmpPredictTable
+		}
 		filler := &xgbPredictFiller{
 			OSSModelDir:      ossURI,
 			DataSource:       session.DbConnStr,
@@ -173,6 +182,7 @@ func Predict(ir *ir.PredictStmt, session *pb.Session, tarball, modelName, ossMod
 			HiveLocation:     session.HiveLocation,
 			HDFSUser:         session.HdfsUser,
 			HDFSPass:         session.HdfsPass,
+			PAIPredictTable:  paiPredictTable,
 		}
 		if e = tpl.Execute(&xgbPredCode, filler); e != nil {
 			return
@@ -205,14 +215,14 @@ func Predict(ir *ir.PredictStmt, session *pb.Session, tarball, modelName, ossMod
 
 // Explain generates a Python program for train a TensorFlow model.
 func Explain(ir *ir.ExplainStmt, session *pb.Session, tarball, modelName, ossModelPath, cwd string, modelType int) (code, paiCmd, requirements string, e error) {
-	if ir.Into == "" {
-		return "", "", "", fmt.Errorf("explain PAI random forests model need INTO clause to output the explain result to a table")
-	}
 	cc, err := GetClusterConfig(ir.Attributes)
 	if err != nil {
 		return "", "", "", err
 	}
-	if modelType == ModelTypeRandomForests {
+	if modelType == ModelTypePAIML {
+		if ir.Into == "" {
+			return "", "", "", fmt.Errorf("explain PAI random forests model need INTO clause to output the explain result to a table")
+		}
 		requirements, e = genRequirements(false)
 		log.Printf("explain using pai random forests")
 		if paiCmd, e = getExplainRandomForestsPAICmd(ir, session); e != nil {
@@ -225,22 +235,24 @@ func Explain(ir *ir.ExplainStmt, session *pb.Session, tarball, modelName, ossMod
 		if ossURI, e = checkpointURL(ossModelPath); e != nil {
 			return
 		}
-		var xgbPredCode bytes.Buffer
+		var xgbExplainCode bytes.Buffer
 		var tpl = template.Must(template.New("xgbExplainTemplate").Parse(xgbExplainTemplateText))
 		filler := &xgbExplainFiller{
 			OSSModelDir:      ossURI,
 			DataSource:       session.DbConnStr,
 			DatasetSQL:       ir.Select,
 			ResultTable:      ir.Into,
+			IsPAI:            tensorflow.IsPAI(),
+			PAIExplainTable:  ir.TmpExplainTable,
 			HDFSNameNodeAddr: session.HdfsNamenodeAddr,
 			HiveLocation:     session.HiveLocation,
 			HDFSUser:         session.HdfsUser,
 			HDFSPass:         session.HdfsPass,
 		}
-		if e = tpl.Execute(&xgbPredCode, filler); e != nil {
+		if e = tpl.Execute(&xgbExplainCode, filler); e != nil {
 			return
 		}
-		code = xgbPredCode.String()
+		code = xgbExplainCode.String()
 
 		var cc *ClusterConfig
 		if cc, e = GetClusterConfig(ir.Attributes); e != nil {

@@ -27,8 +27,8 @@ func TestExplain(t *testing.T) {
 		Select:    "SELECT * FROM iris.train",
 		Explainer: "TreeExplainer",
 		Attributes: map[string]interface{}{
-			"shap_summary.plot_type": "dot",
-			"others.type":            "bar",
+			"summary.plot_type": "dot",
+			"others.type":       "bar",
 		},
 		TrainStmt: tir,
 	}

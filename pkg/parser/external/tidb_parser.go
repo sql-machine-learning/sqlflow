@@ -74,7 +74,9 @@ func (p *tidbParser) Parse(program string) ([]string, int, error) {
 
 		// Make sure the left hand side is a select statement, so that
 		// we can try parse the right hand side with the SQLFlow parser
-		if _, ok := nodes[len(nodes)-1].(*ast.SelectStmt); !ok {
+		switch nodes[len(nodes)-1].(type) {
+		case *ast.SelectStmt, *ast.UnionStmt:
+		default:
 			// return the original parsing error
 			return nil, -1, err
 		}

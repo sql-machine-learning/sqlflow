@@ -165,6 +165,9 @@ func NewDictionaryFromModelDefinition(estimator, prefix string) Dictionary {
 var PremadeModelParamsDocs map[string]map[string]string
 var extractDocStringsOnce sync.Once
 
+// OptimizerParamsDocs stores parameters and documents of optimizers
+var OptimizerParamsDocs map[string]map[string]string
+
 // ExtractDocString extracts parameter documents of Python modules from doc strings
 func ExtractDocString(module ...string) {
 	cmd := exec.Command("python", "-uc", fmt.Sprintf("__import__('extract_docstring').print_param_doc('%s')", strings.Join(module, "', '")))
@@ -194,6 +197,9 @@ func removeUnnecessaryParams() {
 
 func init() {
 	if err := json.Unmarshal([]byte(ModelParameterJSON), &PremadeModelParamsDocs); err != nil {
+		panic(err) // assertion
+	}
+	if err := json.Unmarshal([]byte(OptimizerParameterJSON), &OptimizerParamsDocs); err != nil {
 		panic(err) // assertion
 	}
 	removeUnnecessaryParams()

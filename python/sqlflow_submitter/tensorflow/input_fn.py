@@ -65,7 +65,13 @@ def get_dtype(type_str):
         raise TypeError("not supported dtype: %s" % type_str)
 
 
-def input_fn(select, conn, feature_column_names, feature_metas, label_meta):
+def input_fn(select,
+             datasource,
+             feature_column_names,
+             feature_metas,
+             label_meta,
+             is_pai=False,
+             pai_table=""):
     feature_types = []
     shapes = []
     for name in feature_column_names:
@@ -76,9 +82,18 @@ def input_fn(select, conn, feature_column_names, feature_metas, label_meta):
         else:
             feature_types.append(get_dtype(feature_metas[name]["dtype"]))
             shapes.append(feature_metas[name]["shape"])
-
-    gen = db_generator(conn.driver, conn, select, feature_column_names,
-                       label_meta, feature_metas)
+    if is_pai:
+        pai_table_parts = pai_table.split(".")
+        formated_pai_table = "odps://%s/tables/%s" % (pai_table_parts[0],
+                                                      pai_table_parts[1])
+        gen = pai_maxcompute_db_generator(formated_pai_table,
+                                          feature_column_names,
+                                          label_meta["feature_name"],
+                                          feature_metas)
+    else:
+        conn = connect_with_data_source(datasource)
+        gen = db_generator(conn.driver, conn, select, feature_column_names,
+                           label_meta, feature_metas)
     # Clustering model do not have label
     if label_meta["feature_name"] == "":
         dataset = tf.data.Dataset.from_generator(gen, (tuple(feature_types), ),
@@ -121,8 +136,12 @@ def pai_maxcompute_input_fn(pai_table,
     record_defaults = []
     for name in feature_column_names:
         dtype = get_dtype(feature_metas[name]["dtype"])
-        record_defaults.append(
-            tf.constant(0, dtype=dtype, shape=feature_metas[name]["shape"]))
+        if feature_metas[name]["delimiter"] != "":
+            record_defaults.append(tf.constant("", dtype=tf.string, shape=[1]))
+        else:
+            record_defaults.append(
+                tf.constant(0, dtype=dtype,
+                            shape=[1]))  #shape=feature_metas[name]["shape"]))
     record_defaults.append(
         tf.constant(0,
                     get_dtype(label_meta["dtype"]),
@@ -144,7 +163,18 @@ def pai_maxcompute_input_fn(pai_table,
         features_dict = dict()
         for idx in range(num_features):
             name = feature_column_names[idx]
-            features_dict[name] = tf.reshape(args[idx], [-1])
+            field_meta = feature_metas[name]
+            if field_meta["delimiter"] != "":  # process as CSV
+                dtype = get_dtype(feature_metas[name]["dtype"])
+                # FIXME(typhoonzero): when shape has multiple dimentions, do not use field_meta["shape"][0]
+                t = tf.io.decode_csv(args[idx], [
+                    tf.constant(0, dtype=dtype, shape=[1])
+                    for i in range(field_meta["shape"][0])
+                ],
+                                     field_delim=field_meta["delimiter"])
+            else:
+                t = tf.reshape(args[idx], [-1])
+            features_dict[name] = t
         return features_dict, label
 
     def tensor_to_list(*args):
@@ -217,7 +247,10 @@ def pai_maxcompute_db_generator(table,
                     feature = read_feature(row[selected_cols.index(name)],
                                            feature_specs[name], name)
                     features.append(feature)
-                yield tuple(features), label
+                if label_column_name:
+                    yield tuple(features), label
+                else:
+                    yield (tuple(features), )
             except Exception as e:
                 reader.close()
                 break
