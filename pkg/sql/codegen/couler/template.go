@@ -50,7 +50,7 @@ couler.clean_workflow_after_seconds_finished({{.WorkflowTTL}})
 {{ range $ss := .SQLStatements }}
 	{{if $ss.IsExtendedSQL }}
 train_sql = '''{{ $ss.OriginalSQL }}'''
-couler.run_container(command='''repl -e "%s" --datasource="%s"''' % (train_sql, datasource), image="{{ $ss.DockerImage }}", env=step_envs)
+couler.run_container(command='''repl -e "%s" ''' % train_sql, image="{{ $ss.DockerImage }}", env=step_envs)
 	{{else if $ss.IsKatibTrain}}
 import couler.sqlflow.katib as auto
 
@@ -62,7 +62,7 @@ auto.train(model=model, params=params, sql=train_sql, datasource=datasource)
 # TODO(yancey1989): 
 #	using "repl -parse" to output IR and
 #	feed to "sqlflow_submitter.{submitter}.train" to submit the job
-couler.run_container(command='''repl -e "{{ $ss.OriginalSQL }}" --datasource="%s"''' % datasource, image="{{ $ss.DockerImage }}", env=step_envs)
+couler.run_container(command='''repl -e "{{ $ss.OriginalSQL }}" ''', image="{{ $ss.DockerImage }}", env=step_envs)
 	{{end}}
 {{end}}
 `

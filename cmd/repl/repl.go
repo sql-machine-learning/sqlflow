@@ -398,6 +398,9 @@ func main() {
 	flag.StringVar(sqlFileName, "f", "", "execute SQLFlow from file, short for --file")
 	noAutoCompletion := flag.Bool("A", false, "No auto completion for sqlflow models. This gives a quicker start.")
 	flag.Parse()
+	if *ds == "" {
+		*ds = os.Getenv("SQLFLOW_DATASOURCE")
+	}
 	assertConnectable(*ds) // Fast fail if we can't connect to the datasource
 	currentDB = getDatabaseName(*ds)
 
