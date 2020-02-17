@@ -20,9 +20,9 @@ import types
 
 import numpy as np
 import tensorflow as tf
-from sqlflow_submitter import pai
 from sqlflow_submitter.db import (connect_with_data_source, db_generator,
                                   parseMaxComputeDSN)
+from sqlflow_submitter.pai import model
 
 from . import metrics
 from .input_fn import input_fn
@@ -65,6 +65,10 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
     if "loss" in model_params:
         loss = model_params["loss"]
         del model_params["loss"]
+    # copy feature_name to name field for Keras functional models:
+    # https://github.com/sql-machine-learning/models/blob/develop/sqlflow_models/dnnclassifier_functional_api_example.py
+    for k in feature_metas:
+        feature_metas[k]["name"] = feature_metas[k]["feature_name"]
     classifier = estimator(**model_params)
     classifier_pkg = sys.modules[estimator.__module__]
     model_metrics = []
@@ -157,7 +161,7 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
             print("%s: %s" % (k, history.history[k][-1]))
     classifier.save_weights(save, save_format="h5")
     if is_pai:
-        pai.save_file(FLAGS.checkpointDir, save)
+        model.save_file(FLAGS.checkpointDir, save)
 
 
 def estimator_train_and_save(
@@ -275,23 +279,25 @@ def train(datasource,
         tf.logging.set_verbosity(tf.logging.INFO)
     model_params.update(feature_columns)
 
+    is_distributed = False
+    FLAGS = None
+    # only support distributed training on PAI (TF version 1.x)
+    if not TF_VERSION_2:
+        FLAGS = define_tf_flags()
+        if len(FLAGS.worker_hosts.split(",")) > 1:
+            is_distributed = True
+
     if not is_estimator:  # keras
-        if not issubclass(estimator, tf.keras.Model):
+        if isinstance(estimator, types.FunctionType):
             # functional model need field_metas parameter
             model_params["field_metas"] = feature_metas
         print("Start training using keras model...")
-        keras_train_and_save(estimator, model_params, save,
-                             feature_column_names, feature_metas, label_meta,
-                             datasource, select, validate_select, batch_size,
-                             epochs, verbose, metric_names)
+        keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
+                             pai_table, pai_val_table, feature_column_names,
+                             feature_metas, label_meta, datasource, select,
+                             validate_select, batch_size, epochs, verbose,
+                             metric_names)
     else:
-        is_distributed = False
-        FLAGS = None
-        # only support distributed training on PAI (TF version 1.x)
-        if not TF_VERSION_2:
-            FLAGS = define_tf_flags()
-            if len(FLAGS.worker_hosts.split(",")) > 1:
-                is_distributed = True
         if is_distributed:
             cluster, task_type, task_index = make_distributed_info_without_evaluator(
                 FLAGS)

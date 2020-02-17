@@ -17,7 +17,6 @@ type saveModelFiller struct {
 	OSSModelDir string
 	Estimator   string
 	NumWorkers  int // used to determine whether is distributed training.
-	Save        string
 }
 
 type predictFiller struct {
@@ -27,7 +26,7 @@ type predictFiller struct {
 	ResultTable string
 	IsPAI       bool
 	PAITable    string
-	Save        string
+	Using       string
 }
 
 type explainFiller struct {
@@ -46,12 +45,26 @@ type requirementsFiller struct {
 const tfSaveModelTmplText = `
 from sqlflow_submitter.pai import model
 from shutil import copyfile
+import types
 
-with open("exported_path", "r") as fn:
-    saved_model_path = fn.read()
+estimator = {{.Estimator}}
+if isinstance(estimator, types.FunctionType):
+    is_estimator = False
+else:
+    is_estimator = issubclass(
+        estimator,
+        (tf.estimator.Estimator, tf.estimator.BoostedTreesClassifier,
+            tf.estimator.BoostedTreesRegressor))
 
-model.save_dir("{{.OSSModelDir}}", saved_model_path)
-model.save_file("{{.OSSModelDir}}", "exported_path")
+# Keras single node is using h5 format to save the model, no need to deal with export model format.
+# Keras distributed mode will use estimator, so this is also needed.
+if is_estimator or {{.NumWorkers}} > 1:
+    with open("exported_path", "r") as fn:
+        saved_model_path = fn.read()
+
+    model.save_dir("{{.OSSModelDir}}", saved_model_path)
+    model.save_file("{{.OSSModelDir}}", "exported_path")
+
 model.save_metas("{{.OSSModelDir}}",
            {{.NumWorkers}},
            "tensorflow_model_desc",
@@ -77,6 +90,7 @@ xgboost==0.82
 
 const tfPredictTmplText = `
 import os
+import types
 import tensorflow as tf
 from tensorflow.estimator import DNNClassifier, DNNRegressor, LinearClassifier, LinearRegressor, BoostedTreesClassifier, BoostedTreesRegressor, DNNLinearCombinedClassifier, DNNLinearCombinedRegressor
 from sqlflow_submitter.pai import model
@@ -90,14 +104,25 @@ try:
 except:
     pass
 
-model.load_file("{{.OSSModelDir}}", "exported_path")
-
 (estimator,
  feature_column_names,
  feature_metas,
  label_meta,
  model_params,
  feature_columns) = model.load_metas("{{.OSSModelDir}}", "tensorflow_model_desc")
+
+if isinstance(estimator, types.FunctionType):
+    is_estimator = False
+else:
+    is_estimator = issubclass(
+        eval(estimator),
+        (tf.estimator.Estimator, tf.estimator.BoostedTreesClassifier,
+            tf.estimator.BoostedTreesRegressor))
+
+# Keras single node is using h5 format to save the model, no need to deal with export model format.
+# Keras distributed mode will use estimator, so this is also needed.
+if is_estimator:
+    model.load_file("{{.OSSModelDir}}", "exported_path")
 
 predict.pred(datasource="{{.DataSource}}",
              estimator=eval(estimator),

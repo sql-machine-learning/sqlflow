@@ -24,7 +24,7 @@ from tensorflow.python.platform import gfile
 
 def get_oss_path_from_uri(oss_model_dir, file_name):
     uri_parts = oss_model_dir.split("?")
-    if len(uri_parts) != 2:
+    if len(uri_parts) < 1:
         raise ValueError("error oss_model_dir: ", oss_model_dir)
     oss_path = "/".join([uri_parts[0].rstrip("/"), file_name])
     return oss_path

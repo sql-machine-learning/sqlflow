@@ -21,6 +21,7 @@ import numpy as np
 import tensorflow as tf
 from sqlflow_submitter.db import (buffered_db_writer, connect_with_data_source,
                                   db_generator, parseMaxComputeDSN)
+from sqlflow_submitter.pai import model
 
 from .input_fn import (get_dtype, pai_maxcompute_db_generator,
                        parse_sparse_feature, parse_sparse_feature_predict)
@@ -48,10 +49,10 @@ else:
     from .pai_distributed import define_tf_flags, make_distributed_info_without_evaluator, dump_into_tf_config
 
 
-def keras_predict(estimator, model_params, save, result_table,
-                  feature_column_names, feature_metas, result_col_name,
-                  datasource, select, hdfs_namenode_addr, hive_location,
-                  hdfs_user, hdfs_pass):
+def keras_predict(estimator, model_params, save, result_table, is_pai,
+                  pai_table, feature_column_names, feature_metas,
+                  result_col_name, datasource, select, hdfs_namenode_addr,
+                  hive_location, hdfs_user, hdfs_pass):
     classifier = estimator(**model_params)
     classifier_pkg = sys.modules[estimator.__module__]
 
@@ -66,8 +67,16 @@ def keras_predict(estimator, model_params, save, result_table,
             else:
                 feature_types.append(get_dtype(feature_metas[name]["dtype"]))
 
-        gen = db_generator(conn.driver, conn, select, feature_column_names,
-                           None, feature_metas)
+        if is_pai:
+            pai_table_parts = pai_table.split(".")
+            formated_pai_table = "odps://%s/tables/%s" % (pai_table_parts[0],
+                                                          pai_table_parts[1])
+            gen = pai_maxcompute_db_generator(formated_pai_table,
+                                              feature_column_names, None,
+                                              feature_metas)
+        else:
+            gen = db_generator(conn.driver, conn, select, feature_column_names,
+                               None, feature_metas)
         dataset = tf.data.Dataset.from_generator(gen, (tuple(feature_types), ))
         ds_mapper = functools.partial(
             parse_sparse_feature_predict,
@@ -85,7 +94,13 @@ def keras_predict(estimator, model_params, save, result_table,
     # NOTE: must run predict one batch to initialize parameters
     # see: https://www.tensorflow.org/alpha/guide/keras/saving_and_serializing#saving_subclassed_models
     classifier.predict_on_batch(one_batch)
-    classifier.load_weights(save)
+    if is_pai:
+        print("loading from %s" % save)
+        # NOTE(typhoonzero): h5 file name is hard coded in tensorflow/codegen.go
+        model.load_file(save, "model_save")
+        classifier.load_weights("model_save")
+    else:
+        classifier.load_weights(save)
     pred_dataset = eval_input_fn(1, cache=True).make_one_shot_iterator()
     buff_rows = []
     column_names = feature_column_names[:]
@@ -243,10 +258,10 @@ def pred(datasource,
             # functional model need field_metas parameter
             model_params["field_metas"] = feature_metas
         print("Start predicting using keras model...")
-        keras_predict(estimator, model_params, save, result_table,
-                      feature_column_names, feature_metas, result_col_name,
-                      datasource, select, hdfs_namenode_addr, hive_location,
-                      hdfs_user, hdfs_pass)
+        keras_predict(estimator, model_params, save, result_table, is_pai,
+                      pai_table, feature_column_names, feature_metas,
+                      result_col_name, datasource, select, hdfs_namenode_addr,
+                      hive_location, hdfs_user, hdfs_pass)
     else:
         if is_pai:
             FLAGS = define_tf_flags()
