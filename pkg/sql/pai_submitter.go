@@ -57,7 +57,7 @@ func createTmpTableFromSelect(selectStmt, dataSource string) (string, string, er
 	// FIXME(typhoonzero): only work if specify database name in connect string.
 	databaseName, err := getDatabaseNameFromDSN(dataSource)
 	// NOTE(typhoonzero): MaxCompute do not support "CREATE	TABLE XXX AS (SELECT ...)"
-	createSQL := fmt.Sprintf("CREATE TABLE %s AS %s", tableName, selectStmt)
+	createSQL := fmt.Sprintf("CREATE TABLE %s LIFECYCLE 7 AS %s", tableName, selectStmt)
 	log.Printf(createSQL)
 	_, err = db.Exec(createSQL)
 	return databaseName, tableName, err
