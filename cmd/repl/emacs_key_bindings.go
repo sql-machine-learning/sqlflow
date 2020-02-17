@@ -94,6 +94,33 @@ var emacsMetaKeyBindings = []prompt.ASCIICodeBind{
 			clipboard = buf.DeleteBeforeCursor(len([]rune(buf.Document().GetWordBeforeCursorWithSpace())))
 		},
 	},
+	// Meta P: Navigate the older command
+	{
+		ASCIICode: []byte{0x1b, 'p'},
+		Fn: func(buf *prompt.Buffer) {
+			navigateHistory(buf, true)
+		},
+	},
+	{
+		ASCIICode: []byte{0x1b, 'P'},
+		Fn: func(buf *prompt.Buffer) {
+			navigateHistory(buf, true)
+		},
+	},
+
+	// Meta N: Navigate the newer command
+	{
+		ASCIICode: []byte{0x1b, 'n'},
+		Fn: func(buf *prompt.Buffer) {
+			navigateHistory(buf, false)
+		},
+	},
+	{
+		ASCIICode: []byte{0x1b, 'N'},
+		Fn: func(buf *prompt.Buffer) {
+			navigateHistory(buf, false)
+		},
+	},
 }
 
 var emacsCtrlKeyBindings = []prompt.KeyBind{
@@ -203,7 +230,23 @@ var emacsCtrlKeyBindings = []prompt.KeyBind{
 			startSearch(buf)
 		},
 	},
+	// Navigate the older command
+	{
+		Key: prompt.ControlP,
+		Fn: func(buf *prompt.Buffer) {
+			navigateHistory(buf, true)
+		},
+	},
+	// Navigate the newer command
+	{
+		// FIXME(shendiaomo): go-prompt doesn't bind ControlN due to a redundant return
+		Key: prompt.ControlN,
+		Fn: func(buf *prompt.Buffer) {
+			navigateHistory(buf, false)
+		},
+	},
 }
 
 var startSearch = func(*prompt.Buffer) {}
-var stopSearch = func(string) (selected string) { return }
+var stopSearch = func(string) (selected string, totalLen int) { return }
+var navigateHistory = func(*prompt.Buffer, bool) {}

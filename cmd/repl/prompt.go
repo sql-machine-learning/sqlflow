@@ -72,9 +72,9 @@ type promptState struct {
 	enableLivePrefix               bool
 	keywords                       []string
 	history                        []prompt.Suggest
-	inSearching                    bool
-	searchKey                      string
-	updateSearchKey                func()
+	isSearching                    bool
+	searchHistory                  func() []prompt.Suggest
+	historyNavPos                  int
 	historyFileName                string
 	estimatorCls                   string
 	modelParamDocs                 map[string][]prompt.Suggest
@@ -89,8 +89,27 @@ func (p *promptState) changeLivePrefix() (string, bool) {
 }
 
 func (p *promptState) execute(in string, cb func(string)) {
-	in = stopSearch(in)
-	if in != "" {
+	if p.isSearching {
+		totalLen := 0
+		in, totalLen = stopSearch(in)
+		// Refresh the prompt
+		cursorUpCount := totalLen / int(consoleParser.GetWinSize().Col)
+		if totalLen%int(consoleParser.GetWinSize().Col) != 0 {
+			cursorUpCount += 1
+		}
+		consoleWriter.EraseLine()
+		for ; cursorUpCount > 0; cursorUpCount-- {
+			consoleWriter.CursorUp(1)
+			consoleWriter.EraseLine()
+		}
+		consoleWriter.Flush()
+		if p.enableLivePrefix {
+			fmt.Println(p.livePrefix + in)
+		} else {
+			fmt.Println(p.prefix + in)
+		}
+	}
+	if strings.Trim(in, " ") != "" { // TODO(shendiaom): handle quoted string with newline
 		if addLineToStmt(in, &p.inQuotedString, &p.isSingleQuoted, &p.statements) {
 			p.updateHistory()
 			p.enableLivePrefix = false
@@ -139,16 +158,7 @@ func (p *promptState) initCompleter() {
 }
 
 func (p *promptState) initHistory() {
-	p.historyFileName = filepath.Join(os.Getenv("HOME"), ".sqlflow_history")
-	f, err := os.Open(p.historyFileName)
-	if err != nil {
-		return
-	}
-	defer f.Close()
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		p.history = append([]prompt.Suggest{prompt.Suggest{Text: scanner.Text()}}, p.history...)
-	}
+	// Register history search key bindings
 	startSearch = func(buf *prompt.Buffer) { p.startSearch(buf) }
 	for _, key := range []prompt.Key{prompt.End, prompt.Home, prompt.Right, prompt.Left} {
 		emacsCtrlKeyBindings = append(
@@ -159,80 +169,137 @@ func (p *promptState) initHistory() {
 					stopSearch("")
 				}})
 	}
+	origInput := ""
+	navigateHistory = func(buf *prompt.Buffer, older bool) {
+		if p.historyNavPos == 0 {
+			origInput = buf.Text()
+		}
+		p.navigateHistory(origInput, older, buf)
+	}
+	// Load existing history file
+	p.historyFileName = filepath.Join(os.Getenv("HOME"), ".sqlflow_history")
+	f, err := os.Open(p.historyFileName)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		p.history = append([]prompt.Suggest{prompt.Suggest{Text: scanner.Text()}}, p.history...)
+	}
+}
+
+func (p *promptState) searchHistoryImpl(suffix string, buf *prompt.Buffer, key, lastKey, selected *string) []prompt.Suggest {
+	*lastKey = *key
+	in := strings.TrimPrefix(buf.Text(), *key+suffix)
+	if in != buf.Text() {
+		switch len(in) {
+		case 0, 1:
+		default:
+			if strings.HasSuffix(in, ";") {
+				*selected = in
+			}
+			pieces := strings.Split(in, ";")
+			in = pieces[len(pieces)-1]
+		}
+		prompt.GoLineBeginning(buf)
+		buf.Delete(len(buf.Text()))
+		*key += in
+		buf.InsertText(*key+suffix, false, true)
+	} else { // Backspace
+		if len(*key) != 0 {
+			*key = (*key)[:len(*key)-1]
+			buf.CursorLeft(len(suffix))
+			buf.InsertText(suffix, true, true)
+		} else {
+			buf.InsertText(suffix[len(suffix)-1:], false, true)
+		}
+	}
+	// Unique history commands
+	counts := make(map[string]int)
+	candidates := prompt.FilterContains(p.history, *key, true)
+	for _, entry := range candidates {
+		counts[entry.Text] += 1
+	}
+	result := []prompt.Suggest{}
+	visited := make(map[string]bool)
+	for _, entry := range candidates {
+		if _, ok := visited[entry.Text]; !ok {
+			result = append(result, prompt.Suggest{entry.Text, fmt.Sprintf("%d", counts[entry.Text])})
+		}
+		visited[entry.Text] = true
+	}
+	return result
 }
 
 func (p *promptState) startSearch(buf *prompt.Buffer) {
-	if p.inSearching {
+	if p.isSearching {
 		return
 	}
 	oldLivePrefix := p.livePrefix
 	oldEnableLivePrefix := p.enableLivePrefix
-	p.inSearching = true
-	p.livePrefix = "🔍"
-	p.searchKey = buf.Text()
-	keepOriginalInput := len(p.searchKey) != 0
+	p.isSearching = true
+	p.livePrefix = "🔍`"
+	searchSuffix := "_` " // Must end with whitespace to make completion stop
+	searchKey := buf.Text()
+	keepOriginalInput := len(searchKey) != 0
 	lastSearchKey := ""
 	selected := ""
-	buf.InsertText("_: ", false, true)
+	buf.InsertText(searchSuffix, false, true)
 	p.enableLivePrefix = true
-	p.updateSearchKey = func() {
-		lastSearchKey = p.searchKey
-		in := strings.TrimPrefix(buf.Text(), p.searchKey+"_: ")
-		if in != buf.Text() {
-			switch len(in) {
-			case 0:
-				return
-			case 1:
-			default:
-				if strings.HasSuffix(in, ";") {
-					selected = in
-				}
-				pieces := strings.Split(in, ";")
-				in = pieces[len(pieces)-1]
-			}
-			prompt.GoLineBeginning(buf)
-			buf.Delete(len(buf.Text()))
-			p.searchKey += in
-			buf.InsertText(p.searchKey+"_: ", false, true)
-		} else { // Backspace
-			if len(p.searchKey) != 0 {
-				p.searchKey = p.searchKey[0 : len(p.searchKey)-1]
-				buf.CursorLeft(len("_: "))
-				buf.InsertText("_: ", true, true)
-			} else {
-				buf.InsertText(" ", false, true)
-			}
-		}
+	p.searchHistory = func() []prompt.Suggest {
+		return p.searchHistoryImpl(searchSuffix, buf, &searchKey, &lastSearchKey, &selected)
 	}
-	stopSearch = func(in string) string {
-		if !p.inSearching {
-			return in
+	stopSearch = func(in string) (string, int) {
+		if !p.isSearching {
+			return "", 0
 		}
-
 		prompt.GoLineEnd(buf)
-		p.inSearching = false
+		p.isSearching = false
 		p.livePrefix = oldLivePrefix
 		p.enableLivePrefix = oldEnableLivePrefix
 		buf.InsertText(selected, false, true)
-		if buf.Text() == lastSearchKey+"_: " {
+		if buf.Text() == lastSearchKey+searchSuffix {
 			// No suggestion choosed
 			if keepOriginalInput {
-				buf.DeleteBeforeCursor(len("_: "))
+				buf.DeleteBeforeCursor(len(searchSuffix))
 			} else {
 				buf.DeleteBeforeCursor(len(buf.Text()))
 			}
 		} else {
 			prompt.GoLineBeginning(buf)
-			buf.Delete(len(lastSearchKey))
-			buf.Delete(len("_: "))
+			buf.Delete(len(lastSearchKey) + len(searchSuffix))
 			prompt.GoLineEnd(buf)
 		}
-		p.searchKey = ""
-		return buf.Text()
+		return buf.Text(), len(searchSuffix) + len(selected) + len(searchKey)
+	}
+}
+
+func (p *promptState) navigateHistory(origInput string, older bool, buf *prompt.Buffer) {
+	if p.isSearching {
+		return
+	}
+	if older {
+		if p.historyNavPos < len(p.history) {
+			p.historyNavPos++
+		}
+
+	} else {
+		if p.historyNavPos > 0 {
+			p.historyNavPos--
+		}
+	}
+	prompt.GoLineBeginning(buf)
+	buf.Delete(len(buf.Text()))
+	if p.historyNavPos == 0 {
+		buf.InsertText(origInput, false, true)
+	} else {
+		buf.InsertText(p.history[p.historyNavPos-1].Text, false, true)
 	}
 }
 
 func (p *promptState) updateHistory() {
+	p.historyNavPos = 0
 	input := strings.Join(p.statements, " ")
 	lastInput := strings.Join(p.lastStatements, " ")
 	if len(p.statements) != 0 && input != lastInput {
@@ -304,9 +371,8 @@ func getOptimizerSuggestion(estimatorCls string, optimizers map[string]string) (
 }
 
 func (p *promptState) completer(in prompt.Document) []prompt.Suggest {
-	if p.inSearching {
-		p.updateSearchKey()
-		return prompt.FilterContains(p.history, p.searchKey, true)
+	if p.isSearching {
+		return p.searchHistory()
 	}
 	w1 := in.GetWordBeforeCursor() // empty if the cursor is under whitespace
 	clause, w0, w2 := p.clauseUnderCursor(in)
@@ -375,6 +441,7 @@ func newPromptState() *promptState {
 }
 
 var consoleWriter = prompt.NewStdoutWriter()
+var consoleParser = newStdinParser()
 
 func runPrompt(cb func(string)) {
 	state := newPromptState()
@@ -391,7 +458,7 @@ func runPrompt(cb func(string)) {
 		prompt.OptionLivePrefix(func() (string, bool) { return state.changeLivePrefix() }),
 		prompt.OptionSwitchKeyBindMode(prompt.CommonKeyBind),
 		prompt.OptionWriter(consoleWriter),
-		prompt.OptionParser(newStdinParser()),
+		prompt.OptionParser(consoleParser),
 		prompt.OptionPrefix(state.prefix),
 		prompt.OptionPrefixTextColor(prompt.DefaultColor),
 		prompt.OptionTitle("SQLFlow"),
