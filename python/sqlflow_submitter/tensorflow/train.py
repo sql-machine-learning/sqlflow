@@ -16,9 +16,11 @@ import functools
 import json
 import os
 import sys
+import types
 
 import numpy as np
 import tensorflow as tf
+from sqlflow_submitter import pai
 from sqlflow_submitter.db import (connect_with_data_source, db_generator,
                                   parseMaxComputeDSN)
 
@@ -49,7 +51,8 @@ else:
     from .pai_distributed import define_tf_flags, make_distributed_info_without_evaluator, dump_into_tf_config
 
 
-def keras_train_and_save(estimator, model_params, save, feature_column_names,
+def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
+                         pai_table, pai_val_table, feature_column_names,
                          feature_metas, label_meta, datasource, select,
                          validate_select, batch_size, epochs, verbose,
                          metric_names):
@@ -81,12 +84,21 @@ def keras_train_and_save(estimator, model_params, save, feature_column_names,
             keras_metrics = metrics.get_keras_metrics(["Accuracy"])
 
     # FIXME(typhoonzero): find a way to cache to local file and avoid cache lockfile already exists issue.
-    train_dataset = input_fn(select, datasource, feature_column_names,
-                             feature_metas, label_meta)
+    train_dataset = input_fn(select,
+                             datasource,
+                             feature_column_names,
+                             feature_metas,
+                             label_meta,
+                             is_pai=is_pai,
+                             pai_table=pai_table)
     train_dataset = train_dataset.shuffle(SHUFFLE_SIZE).batch(batch_size)
-    validate_dataset = input_fn(validate_select, datasource,
-                                feature_column_names, feature_metas,
-                                label_meta).batch(batch_size)
+    validate_dataset = input_fn(validate_select,
+                                datasource,
+                                feature_column_names,
+                                feature_metas,
+                                label_meta,
+                                is_pai=is_pai,
+                                pai_table=pai_val_table).batch(batch_size)
 
     if optimizer is None:
         # use keras model default optimizer if optimizer is not specified in WITH clause.
@@ -144,6 +156,8 @@ def keras_train_and_save(estimator, model_params, save, feature_column_names,
         for k in val_keys:
             print("%s: %s" % (k, history.history[k][-1]))
     classifier.save_weights(save, save_format="h5")
+    if is_pai:
+        pai.save_file(FLAGS.checkpointDir, save)
 
 
 def estimator_train_and_save(
@@ -245,7 +259,7 @@ def train(datasource,
           pai_val_table=""):
     assert validate_select != ""
     assert 0 <= verbose <= 3
-    if callable(estimator):
+    if isinstance(estimator, types.FunctionType):
         is_estimator = False
     else:
         is_estimator = issubclass(
