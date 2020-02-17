@@ -95,7 +95,7 @@ func (p *promptState) execute(in string, cb func(string)) {
 		// Refresh the prompt
 		cursorUpCount := totalLen / int(consoleParser.GetWinSize().Col)
 		if totalLen%int(consoleParser.GetWinSize().Col) != 0 {
-			cursorUpCount += 1
+			cursorUpCount++
 		}
 		consoleWriter.EraseLine()
 		for ; cursorUpCount > 0; cursorUpCount-- {
@@ -219,7 +219,7 @@ func (p *promptState) searchHistoryImpl(suffix string, buf *prompt.Buffer, key, 
 	counts := make(map[string]int)
 	candidates := prompt.FilterContains(p.history, *key, true)
 	for _, entry := range candidates {
-		counts[entry.Text] += 1
+		counts[entry.Text]++
 	}
 	result := []prompt.Suggest{}
 	visited := make(map[string]bool)
