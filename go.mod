@@ -16,7 +16,7 @@ require (
 	github.com/go-delve/delve v1.3.2 // indirect
 	github.com/go-openapi/spec v0.19.5 // indirect
 	github.com/go-sql-driver/mysql v1.4.1
-	github.com/golang/protobuf v1.3.3
+	github.com/golang/protobuf v1.3.2
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/kr/pty v1.1.5 // indirect
 	github.com/mattn/go-colorable v0.1.4 // indirect
