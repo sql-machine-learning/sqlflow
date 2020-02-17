@@ -73,6 +73,8 @@ type promptState struct {
 	keywords                       []string
 	history                        []prompt.Suggest
 	inSearching                    bool
+	searchKey                      string
+	updateSearchKey                func()
 	historyFileName                string
 	estimatorCls                   string
 	modelParamDocs                 map[string][]prompt.Suggest
@@ -87,7 +89,7 @@ func (p *promptState) changeLivePrefix() (string, bool) {
 }
 
 func (p *promptState) execute(in string, cb func(string)) {
-	stopSearching()
+	in = stopSearch(in)
 	if in != "" {
 		if addLineToStmt(in, &p.inQuotedString, &p.isSingleQuoted, &p.statements) {
 			p.updateHistory()
@@ -147,23 +149,86 @@ func (p *promptState) initHistory() {
 	for scanner.Scan() {
 		p.history = append([]prompt.Suggest{prompt.Suggest{Text: scanner.Text()}}, p.history...)
 	}
-	startSearching = func() { p.searchHistory() }
+	startSearch = func(buf *prompt.Buffer) { p.startSearch(buf) }
+	for _, key := range []prompt.Key{prompt.End, prompt.Home, prompt.Right, prompt.Left} {
+		emacsCtrlKeyBindings = append(
+			emacsCtrlKeyBindings,
+			prompt.KeyBind{
+				key,
+				func(buf *prompt.Buffer) {
+					stopSearch("")
+				}})
+	}
 }
 
-func (p *promptState) searchHistory() {
+func (p *promptState) startSearch(buf *prompt.Buffer) {
+	if p.inSearching {
+		return
+	}
 	oldLivePrefix := p.livePrefix
 	oldEnableLivePrefix := p.enableLivePrefix
-	if !p.inSearching {
-		p.inSearching = true
-		p.livePrefix = "(search-history): "
-		p.enableLivePrefix = true
-		stopSearching = func() {
-			if p.inSearching {
-				p.inSearching = false
-				p.livePrefix = oldLivePrefix
-				p.enableLivePrefix = oldEnableLivePrefix
+	p.inSearching = true
+	p.livePrefix = "🔍"
+	p.searchKey = buf.Text()
+	keepOriginalInput := len(p.searchKey) != 0
+	lastSearchKey := ""
+	selected := ""
+	buf.InsertText("_: ", false, true)
+	p.enableLivePrefix = true
+	p.updateSearchKey = func() {
+		lastSearchKey = p.searchKey
+		in := strings.TrimPrefix(buf.Text(), p.searchKey+"_: ")
+		if in != buf.Text() {
+			switch len(in) {
+			case 0:
+				return
+			case 1:
+			default:
+				if strings.HasSuffix(in, ";") {
+					selected = in
+				}
+				pieces := strings.Split(in, ";")
+				in = pieces[len(pieces)-1]
+			}
+			prompt.GoLineBeginning(buf)
+			buf.Delete(len(buf.Text()))
+			p.searchKey += in
+			buf.InsertText(p.searchKey+"_: ", false, true)
+		} else { // Backspace
+			if len(p.searchKey) != 0 {
+				p.searchKey = p.searchKey[0 : len(p.searchKey)-1]
+				buf.CursorLeft(len("_: "))
+				buf.InsertText("_: ", true, true)
+			} else {
+				buf.InsertText(" ", false, true)
 			}
 		}
+	}
+	stopSearch = func(in string) string {
+		if !p.inSearching {
+			return in
+		}
+
+		prompt.GoLineEnd(buf)
+		p.inSearching = false
+		p.livePrefix = oldLivePrefix
+		p.enableLivePrefix = oldEnableLivePrefix
+		buf.InsertText(selected, false, true)
+		if buf.Text() == lastSearchKey+"_: " {
+			// No suggestion choosed
+			if keepOriginalInput {
+				buf.DeleteBeforeCursor(len("_: "))
+			} else {
+				buf.DeleteBeforeCursor(len(buf.Text()))
+			}
+		} else {
+			prompt.GoLineBeginning(buf)
+			buf.Delete(len(lastSearchKey))
+			buf.Delete(len("_: "))
+			prompt.GoLineEnd(buf)
+		}
+		p.searchKey = ""
+		return buf.Text()
 	}
 }
 
@@ -240,7 +305,8 @@ func getOptimizerSuggestion(estimatorCls string, optimizers map[string]string) (
 
 func (p *promptState) completer(in prompt.Document) []prompt.Suggest {
 	if p.inSearching {
-		return prompt.FilterFuzzy(p.history, in.Text, true)
+		p.updateSearchKey()
+		return prompt.FilterContains(p.history, p.searchKey, true)
 	}
 	w1 := in.GetWordBeforeCursor() // empty if the cursor is under whitespace
 	clause, w0, w2 := p.clauseUnderCursor(in)
