@@ -15,12 +15,20 @@ import sys
 
 import matplotlib
 import matplotlib.pyplot as plt
+import sqlflow_submitter.pai.utils as utils
 
 # TODO(shendiaomo): extract common code from tensorflow/explain.py and xgboost/explain.py
 # TODO(shendiaomo): add a unit test for this file later
 
 
-def plot_and_save(plotfunc, filename='summary'):
+def plot_and_save(plotfunc,
+                  filename='summary',
+                  is_pai=False,
+                  oss_dest=None,
+                  oss_ak=None,
+                  oss_sk=None,
+                  oss_endpoint=None,
+                  oss_bucket_name=None):
     '''
     plot_and_save plots and saves matplotlib figures using different backends
     Args:
@@ -33,6 +41,9 @@ def plot_and_save(plotfunc, filename='summary'):
     # The default backend
     plotfunc()
     plt.savefig(filename, bbox_inches='tight')
+    if is_pai:
+        utils.copyfileobj(filename + '.png', oss_dest, oss_ak, oss_sk,
+                          oss_endpoint, oss_bucket_name)
 
     # The plotille text backend
     matplotlib.use('module://plotille_text_backend')

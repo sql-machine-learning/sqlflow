@@ -248,6 +248,12 @@ func Explain(ir *ir.ExplainStmt, session *pb.Session, tarball, modelName, ossMod
 			HiveLocation:     session.HiveLocation,
 			HDFSUser:         session.HdfsUser,
 			HDFSPass:         session.HdfsPass,
+			// FIXME(weiguo): hard code for debug
+			ResultOSSDest:     "explain_res",
+			ResultOSSAK:       os.Getenv("SQLFLOW_OSS_AK"),
+			ResultOSSSK:       os.Getenv("SQLFLOW_OSS_SK"),
+			ResultOSSEndpoint: os.Getenv("SQLFLOW_OSS_HTTP_ENDPOINT"),
+			ResultOSSBucket:   os.Getenv("SQLFLOW_OSS_ALISA_BUCKET"),
 		}
 		if e = tpl.Execute(&xgbExplainCode, filler); e != nil {
 			return

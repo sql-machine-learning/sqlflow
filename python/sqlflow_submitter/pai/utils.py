@@ -52,7 +52,7 @@ oss_internal_endpoints = {
 def oss_temporary(ak, sk, endpoint, filename):
     '''
     oss_temporary copies `filename` to a temporary object on OSS and deletes it a.s.a.p.
-    Example: 
+    Example:
     with oss_temporary(YOUR_AK, YOUR_SK, ENDPOINT, 'test.py') as f:
         do_something_with(f)
     '''
@@ -70,5 +70,15 @@ def oss_temporary(ak, sk, endpoint, filename):
                               name)  # This would never happen.
     else:
         bucket.put_object_from_file(name, filename)
-    yield f'oss://{bucket_name}.{internal_endpoints[endpoint]}/{name}'
+    yield f'oss://{bucket_name}.{oss_internal_endpoints[endpoint]}/{name}'
     bucket.delete_object(name)
+
+
+def copyfileobj(source, dest, ak, sk, endpoint, bucket_name):
+    '''
+    copy_file_to_oss copies (`source`(local file) to an object on OSS
+    '''
+    auth = oss2.Auth(ak, sk)
+    bucket = oss2.Bucket(auth, endpoint, bucket_name)
+    # overwrite if exists
+    bucket.put_object_from_file(dest, source)
