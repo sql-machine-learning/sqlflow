@@ -17,7 +17,7 @@ set -e
 
 curl --silent https://dl.google.com/go/go1.13.4.linux-amd64.tar.gz | tar -C /usr/local -xzf -
 
-export GO11MODULE=auto
+export GO11MODULE=on
 
 go get github.com/golang/protobuf/protoc-gen-go@v1.3.3
 go get golang.org/x/lint/golint
