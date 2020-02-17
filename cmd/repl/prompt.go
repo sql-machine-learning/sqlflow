@@ -93,8 +93,8 @@ func (p *promptState) execute(in string, cb func(string)) {
 		totalLen := 0
 		in, totalLen = stopSearch(in)
 		// Refresh the prompt
-		cursorUpCount := totalLen / int(consoleParser.GetWinSize().Col)
-		if totalLen%int(consoleParser.GetWinSize().Col) != 0 {
+		cursorUpCount := totalLen / getTerminalColumnSize()
+		if totalLen%getTerminalColumnSize() != 0 {
 			cursorUpCount++
 		}
 		consoleWriter.EraseLine()
@@ -441,10 +441,18 @@ func newPromptState() *promptState {
 }
 
 var consoleWriter = prompt.NewStdoutWriter()
-var consoleParser = newStdinParser()
+var consoleParser prompt.ConsoleParser
+
+func getTerminalColumnSize() int {
+	if consoleParser != nil {
+		return int(consoleParser.GetWinSize().Col)
+	}
+	return 1024 // This is for passing travis unit test
+}
 
 func runPrompt(cb func(string)) {
 	state := newPromptState()
+	consoleParser = newStdinParser()
 	history := []string{}
 	for _, h := range state.history {
 		history = append([]string{h.Text}, history...)
