@@ -930,6 +930,9 @@ USING %s;`, caseTestTable, casePredictTable, caseInto)
 		AssertGreaterEqualAny(a, row[4], int64(0))
 	}
 
+	// TODO(typhoonzero): re-enable this test when we fixed training with
+	// keras functional models.
+	//
 	// 	trainSQL = fmt.Sprintf(`SELECT * FROM %s
 	// TO TRAIN sqlflow_models.dnnclassifier_functional_model
 	// WITH model.n_classes = 3
@@ -1731,7 +1734,6 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 	t.Run("CaseTrainPAIRandomForests", CaseTrainPAIRandomForests)
 	t.Run("CaseTrainXGBoostOnPAI", CaseTrainXGBoostOnPAI)
 	t.Run("CaseTrainDistributedPAI", CaseTrainDistributedPAI)
-	caseInto = "my_custom_model"
 	t.Run("CaseTrainCustomModel", CaseTrainCustomModel)
 }
 
