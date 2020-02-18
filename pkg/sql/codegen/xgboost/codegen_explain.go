@@ -38,11 +38,12 @@ func Explain(explainStmt *ir.ExplainStmt, session *pb.Session) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	fm, err := json.Marshal(xs)
+	f, fs, err := resolveFeatureMeta(xs)
 	if err != nil {
 		return "", err
 	}
-	l, err := json.Marshal(y)
+
+	l, err := json.Marshal(resolveFieldMeta(&y))
 	if err != nil {
 		return "", err
 	}
@@ -51,7 +52,8 @@ func Explain(explainStmt *ir.ExplainStmt, session *pb.Session) (string, error) {
 		DataSource:           session.DbConnStr,
 		DatasetSQL:           explainStmt.Select,
 		ShapSummaryParams:    string(jsonSummary),
-		FeatureFieldMetaJSON: string(fm),
+		FeatureFieldMetaJSON: string(f),
+		FeatureColumnNames:   fs,
 		LabelJSON:            string(l),
 		IsPAI:                tf.IsPAI(),
 		PAIExplainTable:      explainStmt.TmpExplainTable,
