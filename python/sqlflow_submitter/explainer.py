@@ -14,6 +14,7 @@
 import sys
 
 import matplotlib
+# The default backend
 import matplotlib.pyplot as plt
 import sqlflow_submitter.pai.utils as utils
 
@@ -38,16 +39,15 @@ def plot_and_save(plotfunc,
         None
     '''
 
-    # The default backend
     plotfunc()
     plt.savefig(filename, bbox_inches='tight')
     if is_pai:
         utils.copyfileobj(filename + '.png', oss_dest, oss_ak, oss_sk,
                           oss_endpoint, oss_bucket_name)
-
-    # The plotille text backend
-    matplotlib.use('module://plotille_text_backend')
-    import matplotlib.pyplot as plt_text_backend
-    sys.stdout.isatty = lambda: True
-    plotfunc()
-    plt_text_backend.savefig(filename, bbox_inches='tight')
+    else:
+        # The plotille text backend
+        matplotlib.use('module://plotille_text_backend')
+        import matplotlib.pyplot as plt_text_backend
+        sys.stdout.isatty = lambda: True
+        plotfunc()
+        plt_text_backend.savefig(filename, bbox_inches='tight')

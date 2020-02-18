@@ -248,11 +248,15 @@ func (s *paiSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 		}
 	}
 	scriptPath := fmt.Sprintf("file://%s/%s", s.Cwd, tarball)
-	code, paiCmd, requirements, e := pai.Explain(cl, s.Session, scriptPath, cl.ModelName, ossModelPath, s.Cwd, modelType)
+	targetImg := "explain_images/alifin_jtest/0123/20200219"
+	code, paiCmd, requirements, e := pai.Explain(cl, s.Session, scriptPath, cl.ModelName, ossModelPath, s.Cwd, targetImg, modelType)
 	if e != nil {
 		return e
 	}
-	return s.submitPAITask(code, paiCmd, requirements)
+	if e = s.submitPAITask(code, paiCmd, requirements); e == nil {
+		// TODO(weiguozhu) print targetImg stdout
+	}
+	return e
 }
 
 // getOSSSavedModelType returns the saved model type when training, can be:

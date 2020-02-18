@@ -180,8 +180,7 @@ func runSQLProgram(wr *pipe.Writer, sqlProgram string, db *database.DB, modelDir
 		// the SQL program, we may overflow the defer stack.
 		// For more information: https://blog.learngoprogramming.com/gotchas-of-defer-in-go-1-8d070894cb01
 		cleanCwd := func(cwd string) error {
-			return nil
-			// return os.RemoveAll(cwd)
+			return os.RemoveAll(cwd)
 		}
 		var r ir.SQLFlowStmt
 		if sql.IsExtendedSyntax() {

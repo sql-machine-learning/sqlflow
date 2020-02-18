@@ -95,6 +95,13 @@ type xgbExplainFiller struct {
 }
 
 const xgbExplainTemplateText = `
+# Running on PAI
+import os
+import matplotlib
+if os.environ.get('DISPLAY', '') == '':
+    print('no display found. Using non-interactive Agg backend')
+    matplotlib.use('Agg')
+
 import json
 from sqlflow_submitter.xgboost.explain import explain
 from sqlflow_submitter.pai import model
@@ -125,6 +132,6 @@ explain(
 	oss_dest='''{{.ResultOSSDest}}''',
 	oss_ak='''{{.ResultOSSAK}}''',
 	oss_sk='''{{.ResultOSSSK}}''',
-	oss_endpoint='''{{.ResultOSSEndpoint}}''',
+	oss_endpoint='''oss-cn-beijing.aliyuncs.com''',
 	oss_bucket_name='''{{.ResultOSSBucket}}''')
 `
