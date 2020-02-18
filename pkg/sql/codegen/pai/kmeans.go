@@ -33,7 +33,7 @@ cluster_index column indicates the cluster result,
 distance column indicates the distance from the center and
 all the columns of input table.`, nil},
 	"excluded_columns": {attribute.String, "", `[default=""]
-excluded the special feature columns from the SELECT statment.`, nil},
+excluded the special feature columns from the SELECT statement.`, nil},
 }
 
 func parseExcludedColsMap(attrs map[string]interface{}) map[string]int {
