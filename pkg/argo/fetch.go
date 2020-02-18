@@ -135,9 +135,10 @@ func Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 			return nil, e
 		}
 		snipLogs, e := snipPodLogs(podLogs)
-		if e != nil && len(snipLogs) >= 0 {
-			logs = append(logs, snipLogs...)
+		if e != nil {
+			return nil, e
 		}
+		logs = append(logs, snipLogs...)
 
 		// move to the next step
 		nextStepGroup, err := getNextStepGroup(wf, stepGroupName)
@@ -158,8 +159,13 @@ func Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 	return newFetchResponse(newFetchRequest(req.Job.Id, stepGroupName, newStepPhase), eof, logs), nil
 }
 
-func isHTMLCode(log string) bool {
-	return strings.HasPrefix(log, "<div")
+func isHTMLCode(code string) bool {
+	//TODO(yancey1989): support more lines HTML code e.g.
+	//<div>
+	//  ...
+	//</div>
+	re := regexp.MustCompile(`<div.*?>.*</div>`)
+	return re.MatchString(code)
 }
 
 func snipPodLogs(podLogs []string) ([]string, error) {
