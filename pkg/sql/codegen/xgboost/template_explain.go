@@ -22,6 +22,7 @@ type explainFiller struct {
 	DatasetSQL           string
 	ShapSummaryParams    string
 	FeatureFieldMetaJSON string
+	FeatureColumnNames   []string
 	LabelJSON            string
 	IsPAI                bool
 	PAIExplainTable      string
@@ -35,10 +36,15 @@ feature_field_meta = json.loads('''{{.FeatureFieldMetaJSON}}''')
 label_spec = json.loads('''{{.LabelJSON}}''')
 summary_params = json.loads('''{{.ShapSummaryParams}}''')
 
+feature_column_names = [{{range .FeatureColumnNames}}
+"{{.}}",
+{{end}}]
+
 explain(
     datasource='''{{.DataSource}}''',
     select='''{{.DatasetSQL}}''',
-    feature_field_meta=feature_field_meta,
+	feature_field_meta=feature_field_meta,
+	feature_column_names=feature_column_names,
     label_spec=label_spec,
     summary_params=summary_params,
     is_pai="{{.IsPAI}}" == "true",

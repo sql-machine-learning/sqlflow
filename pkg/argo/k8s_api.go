@@ -58,8 +58,12 @@ func k8sReadPod(podName string) (*corev1.Pod, error) {
 	return parsePodResource(output)
 }
 
-func k8sReadPodLogs(podName, containerName, sinceTime string) ([]string, error) {
-	cmd := exec.Command("kubectl", "logs", podName, "main", "--timestamps=true", fmt.Sprintf("--since-time=%s", sinceTime))
+func k8sReadPodLogs(podName, containerName, sinceTime string, enableTimeStamp bool) ([]string, error) {
+	cmdArray := []string{"kubectl", "logs", podName, containerName}
+	if enableTimeStamp {
+		cmdArray = append(cmdArray, []string{"--timestamps=true", fmt.Sprintf("--since-time=%s", sinceTime)}...)
+	}
+	cmd := exec.Command(cmdArray[0], cmdArray[1:]...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("getPodLogs error: %v\n%v", string(output), err)
