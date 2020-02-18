@@ -36,7 +36,7 @@ all the columns of input table.`, nil},
 excluded the special feature columns from the SELECT statment.`, nil},
 }
 
-func parseExcludedColsMap(attrs map[string]interface{}) (map[string]int, error) {
+func parseExcludedColsMap(attrs map[string]interface{}) map[string]int {
 	excludedColsMap := make(map[string]int)
 	excludedColsAttr := attrs["excluded_columns"].(string)
 	if excludedColsAttr != "" {
@@ -45,7 +45,7 @@ func parseExcludedColsMap(attrs map[string]interface{}) (map[string]int, error) 
 			excludedColsMap[e] = 1
 		}
 	}
-	return excludedColsMap, nil
+	return excludedColsMap
 }
 
 func getTrainKMeansPAICmd(ir *ir.TrainStmt, session *pb.Session) (string, error) {
@@ -59,10 +59,7 @@ func getTrainKMeansPAICmd(ir *ir.TrainStmt, session *pb.Session) (string, error)
 		return "", fmt.Errorf(`should set "idx_table_name" in WITH clause`)
 	}
 
-	excludedColsMap, e := parseExcludedColsMap(ir.Attributes)
-	if e != nil {
-		return "", e
-	}
+	excludedColsMap := parseExcludedColsMap(ir.Attributes)
 
 	// featureCols indicates feature columns used to append to the output table
 	featureCols := []string{}
