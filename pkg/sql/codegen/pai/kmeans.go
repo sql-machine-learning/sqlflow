@@ -38,7 +38,7 @@ excluded the special feature columns from the SELECT statment.`, nil},
 
 func parseExcludedColsMap(attrs map[string]interface{}) (map[string]int, error) {
 	excludedColsMap := make(map[string]int)
-	excludedColsAttr := attrs["excluded_features"].(string)
+	excludedColsAttr := attrs["excluded_columns"].(string)
 	if excludedColsAttr != "" {
 		arr := strings.Split(excludedColsAttr, ",")
 		for _, e := range arr {
