@@ -11,6 +11,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
+import matplotlib
 import numpy as np
 import pandas as pd
 import shap
@@ -19,6 +22,11 @@ from sqlflow_submitter import explainer
 from sqlflow_submitter.db import (buffered_db_writer, connect_with_data_source,
                                   db_generator)
 from sqlflow_submitter.tensorflow.input_fn import pai_maxcompute_db_generator
+
+# Running on PAI
+if os.environ.get('DISPLAY', '') == '':
+    print('no display found. Using non-interactive Agg backend')
+    matplotlib.use('Agg')
 
 
 def xgb_shap_dataset(datasource, select, feature_column_names, label_spec,
