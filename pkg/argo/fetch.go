@@ -126,6 +126,20 @@ func Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 		if isPodFailed(pod) {
 			return newFetchResponse(newFetchRequest(req.Job.Id, stepGroupName, newStepPhase), eof, logs), fmt.Errorf("step failed")
 		}
+
+		// snip the pod logs when it complete
+		// TODO(yancey1989): fetch the pod logs using an iteration way
+		// to avoid fetching a large number of logs in once.
+		podLogs, e := k8sReadPodLogs(pod.ObjectMeta.Name, "main", "", false)
+		if e != nil {
+			return nil, e
+		}
+		snipLogs, e := snipPodLogs(podLogs)
+		if e != nil {
+			return nil, e
+		}
+		logs = append(logs, snipLogs...)
+
 		// move to the next step
 		nextStepGroup, err := getNextStepGroup(wf, stepGroupName)
 		if err != nil {
@@ -135,6 +149,7 @@ func Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 		if nextStepGroup == "" && stepIdx == stepCnt {
 			eof = true
 		}
+
 		if nextStepGroup != "" {
 			newStepPhase = ""
 			stepGroupName = nextStepGroup
@@ -142,6 +157,26 @@ func Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 	}
 
 	return newFetchResponse(newFetchRequest(req.Job.Id, stepGroupName, newStepPhase), eof, logs), nil
+}
+
+func isHTMLCode(code string) bool {
+	//TODO(yancey1989): support more lines HTML code e.g.
+	//<div>
+	//  ...
+	//</div>
+	re := regexp.MustCompile(`<div.*?>.*</div>`)
+	return re.MatchString(code)
+}
+
+func snipPodLogs(podLogs []string) ([]string, error) {
+	snipLogs := []string{}
+	for _, log := range podLogs {
+		if isHTMLCode(log) {
+			snipLogs = append(snipLogs, log)
+		}
+		// TODO(yancey1989): snip query result from logs
+	}
+	return snipLogs, nil
 }
 
 func parseOffset(content string) (string, string, error) {
@@ -183,7 +218,7 @@ func getOffsetAndContentFromLogs(logs []string, oldOffset string) ([]string, str
 func getPodLogs(podName string, offset string) ([]string, string, error) {
 	// NOTE(tony): A workflow pod usually contains two container: main and wait
 	// I believe wait is used for management by Argo, so we only need to care about main.
-	logs, err := k8sReadPodLogs(podName, "main", offset)
+	logs, err := k8sReadPodLogs(podName, "main", offset, true)
 	if err != nil {
 		return nil, "", err
 	}

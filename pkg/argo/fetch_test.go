@@ -219,3 +219,19 @@ func TestGetPodLogsStress(t *testing.T) {
 	}
 	a.Equal(expected, actual)
 }
+
+func TestSnipLogs(t *testing.T) {
+	a := assert.New(t)
+	mockLogs := []string{"", "<div>mock html content</div>", "dummy logs"}
+	snipLogs, e := snipPodLogs(mockLogs)
+	a.NoError(e)
+	a.Equal([]string{"<div>mock html content</div>"}, snipLogs)
+}
+
+func TestHTMLCode(t *testing.T) {
+	a := assert.New(t)
+	code := `<div align='center'> mock code </div>`
+	invalidHTMLCode := `<div align='center' invalid HTML code`
+	a.True(isHTMLCode(code))
+	a.False(isHTMLCode(invalidHTMLCode))
+}
