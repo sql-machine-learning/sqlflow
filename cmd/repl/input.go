@@ -22,9 +22,20 @@ const maxReadBytes = 1024
 // SQLFlowConsoleParser is a ConsoleParser implementation for POSIX environment.
 type stdinParser struct {
 	prompt.ConsoleParser
-	buf   []byte
-	start int
-	size  int
+	buf    []byte
+	start  int
+	size   int
+	keyMap map[prompt.Key][]byte
+}
+
+// Merge similar keys
+func defaultKeyMap() map[prompt.Key][]byte {
+	return map[prompt.Key][]byte{
+		prompt.Up:       []byte{0x1b, 'p'},
+		prompt.ControlP: []byte{0x1b, 'p'},
+		prompt.Down:     []byte{0x1b, 'n'},
+		prompt.ControlN: []byte{0x1b, 'n'},
+	}
 }
 
 // Read returns byte array.
@@ -41,6 +52,10 @@ func (p *stdinParser) Read() ([]byte, error) {
 	i := p.start
 L:
 	for ; i < p.size; i++ {
+		if remapped, ok := p.keyMap[prompt.GetKey(p.buf[i:])]; ok {
+			p.start = p.size
+			return remapped, nil
+		}
 		switch prompt.GetKey(p.buf[i : i+1]) {
 		case prompt.Enter, prompt.ControlJ, prompt.ControlM:
 			break L
@@ -55,9 +70,18 @@ L:
 	return buf, nil
 }
 
+func (p *stdinParser) defineKeyMap(key prompt.Key, remapped []byte) {
+	p.keyMap[key] = remapped
+}
+
+func (p *stdinParser) resetKeyMap() {
+	p.keyMap = defaultKeyMap()
+}
+
 // newStdinParser returns ConsoleParser object to read from stdin.
 func newStdinParser() *stdinParser {
 	return &stdinParser{
 		ConsoleParser: prompt.NewStandardInputParser(),
+		keyMap:        defaultKeyMap(),
 	}
 }

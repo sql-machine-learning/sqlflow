@@ -88,33 +88,47 @@ Congratulations! Now you have successfully completed a session using SQLFlow syn
 | -f \<filename\>                         | Execute from file without entering interactive mode. e.g. <br>`-f ./my_sqlflow.sql`<br>does the same thing as<br>`< ./my_sqlflow.sql` and `cat ./my_sqlflow.sql \| REPL...` |
 | -model_dir \<local-directory\>          | Save model to a local directory. e.g. `-model_dir "./models/"` |
 | -datasource \<database-connection-url\> | Connect to the specified database. e.g. `-datasource "mysql://root:root@tcp(host.docker.internal:3306)/" ` |
+| -A                                      | No auto completion for `sqlflow_models`. This gives a quicker start |
 
 ## Keyboard Shortcuts
 
-The following shortcuts move the cursor efficiently.
+### Moving the cursor
 
-| Keyboard Shortcut   |                   Action                   |
+|  Keyboard Shortcut  |                   Action                   |
 |---------------------|--------------------------------------------|
-|<kbd>Ctrl + a</kbd>  | Go to the **beginning** of the line (Home) |
-|<kbd>Ctrl + e</kbd>  | Go to the **end** of the line (End)        |
-|<kbd>Ctrl + p</kbd>  | **Previous** statement (Up arrow)          |
-|<kbd>Ctrl + n</kbd>  | **Next** statement (Down arrow)            |
-|<kbd>Meta + b</kbd>  | Go back one **word**                       |
-|<kbd>Meta + f</kbd>  | Go forward one **word**                    |
-|<kbd>Ctrl + b</kbd>  | Go back one **character** (Left arrow)     |
-|<kbd>Ctrl + f</kbd>  | Go forward one **character** (Right arrow) |
+| <kbd>Ctrl + a</kbd> | Go to the **beginning** of the line (Home) |
+| <kbd>Ctrl + e</kbd> | Go to the **end** of the line (End)        |
+| <kbd>Meta + b</kbd> | Go back one **word**                       |
+| <kbd>Meta + f</kbd> | Go forward one **word**                    |
+| <kbd>Ctrl + b</kbd> | Go back one **character** (Left arrow)     |
+| <kbd>Ctrl + f</kbd> | Go forward one **character** (Right arrow) |
 
-The following shortcuts ease the editing of SQL statements.
+### Editing
 
-| Keyboard Shortcut   |                        Action                          |
-|---------------------|--------------------------------------------------------|
-|<kbd>Ctrl + l</kbd>  | Clear the screen                                       |
-|<kbd>Meta + Del</kbd>| Cut the **word before** the cursor to the clipboard    |
-|<kbd>Meta + d</kbd>  | Cut the **word after** the cursor to the clipboard     |
-|<kbd>Ctrl + w</kbd>  | Cut the **word before** the cursor to the clipboard    |
-|<kbd>Ctrl + d</kbd>  | Delete the **character under** the cursor              |
-|<kbd>Ctrl + h</kbd>  | Delete the **character before** the cursor (Backspace) |
-|<kbd>Ctrl + k</kbd>  | Cut the **line after** the cursor to the clipboard     |
-|<kbd>Ctrl + u</kbd>  | Cut the **line before** the cursor to the clipboard    |
-|<kbd>Ctrl + y</kbd>  | Paste the last thing to be cut (yank)                  |
-|<kbd>  TAB   </kbd>  | Auto completion for model/attributes names             |
+| Keyboard Shortcut     |                        Action                                        |
+|-----------------------|----------------------------------------------------------------------|
+| <kbd>Ctrl + l</kbd>   | Clear the screen                                                     |
+| <kbd>Meta + Del</kbd> | Cut the **word before** the cursor to the clipboard                  |
+| <kbd>Meta + d</kbd>   | Cut the **word after** the cursor to the clipboard                   |
+| <kbd>Ctrl + w</kbd>   | Cut the **word before** the cursor to the clipboard                  |
+| <kbd>Ctrl + d</kbd>   | Delete the **character under** the cursor                            |
+| <kbd>Ctrl + h</kbd>   | Delete the **character before** the cursor (Backspace)               |
+| <kbd>Ctrl + k</kbd>   | Cut the **line after** the cursor to the clipboard                   |
+| <kbd>Ctrl + u</kbd>   | Cut the **line before** the cursor to the clipboard                  |
+| <kbd>Ctrl + y</kbd>   | Paste the last thing to be cut (yank)                                |
+| <kbd>  TAB   </kbd>   | Auto completion for model/attributes names, navigate the pop-up menu |
+
+### History
+
+| Keyboard Shortcut        |                   Action                                                                          |
+|--------------------------|---------------------------------------------------------------------------------------------------|
+| <kbd>Ctrl + r</kbd>      | Pop a menu of history commands including the specified character(s), the menu updates as you type |
+| <kbd>Ctrl/Meta + p</kbd> | Show the **previous** statement in history, or navigate the pop-up history menu (Up arrow)        |
+| <kbd>Ctrl/Meta + n</kbd> | Show the **Next** statement in history, or navigate the pop-up history menu (Down arrow)          |
+
+### Control
+
+|  Keyboard Shortcut  |          Action       |
+|---------------------|-----------------------|
+| <kbd>Ctrl + L</kbd> | Clear the screen      |
+| <kbd>Ctrl + D</kbd> | Exit (when no inputs) |

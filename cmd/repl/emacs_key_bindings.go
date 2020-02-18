@@ -230,21 +230,6 @@ var emacsCtrlKeyBindings = []prompt.KeyBind{
 			startSearch(buf)
 		},
 	},
-	// Navigate the older command
-	{
-		Key: prompt.ControlP,
-		Fn: func(buf *prompt.Buffer) {
-			navigateHistory(buf, true)
-		},
-	},
-	// Navigate the newer command
-	{
-		// FIXME(shendiaomo): go-prompt doesn't bind ControlN due to a redundant return
-		Key: prompt.ControlN,
-		Fn: func(buf *prompt.Buffer) {
-			navigateHistory(buf, false)
-		},
-	},
 }
 
 var startSearch = func(*prompt.Buffer) {}
