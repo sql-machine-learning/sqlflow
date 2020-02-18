@@ -75,9 +75,9 @@ func getTrainKMeansPAICmd(ir *ir.TrainStmt, session *pb.Session) (string, error)
 		}
 	}
 
-	db, err := database.OpenAndConnectDB(session.DbConnStr)
-	if err != nil {
-		return "", err
+	db, e := database.OpenAndConnectDB(session.DbConnStr)
+	if e != nil {
+		return "", e
 	}
 	_, e = db.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s;", idxTableName))
 	if e != nil {

@@ -134,11 +134,7 @@ func Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 		if e != nil {
 			return nil, e
 		}
-		snipLogs, e := snipPodLogs(podLogs)
-		if e != nil {
-			return nil, e
-		}
-		logs = append(logs, snipLogs...)
+		logs = append(logs, snipPodLogs(podLogs)...)
 
 		// move to the next step
 		nextStepGroup, err := getNextStepGroup(wf, stepGroupName)
@@ -168,7 +164,7 @@ func isHTMLCode(code string) bool {
 	return re.MatchString(code)
 }
 
-func snipPodLogs(podLogs []string) ([]string, error) {
+func snipPodLogs(podLogs []string) []string {
 	snipLogs := []string{}
 	for _, log := range podLogs {
 		if isHTMLCode(log) {
@@ -176,7 +172,7 @@ func snipPodLogs(podLogs []string) ([]string, error) {
 		}
 		// TODO(yancey1989): snip query result from logs
 	}
-	return snipLogs, nil
+	return snipLogs
 }
 
 func parseOffset(content string) (string, string, error) {
