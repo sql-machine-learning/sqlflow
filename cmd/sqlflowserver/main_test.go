@@ -1392,11 +1392,12 @@ func CaseTrainPAIKMeans(t *testing.T) {
 	_, err = testDB.Exec("drop offlinemodel if exists " + caseInto)
 	a.NoError(err)
 
-	trainSQL := fmt.Sprintf(`SELECT sepal_length,sepal_width,petal_length,petal_width FROM %s
+	trainSQL := fmt.Sprintf(`SELECT * FROM %s
 	TO TRAIN kmeans 
 	WITH
 		center_count=3,
-		idx_table_name=%s
+		idx_table_name=%s,
+		excluded_features=class
 	INTO %s;
 	`, caseTrainTable, caseTrainTable+"_test_output_idx", caseInto)
 	_, _, err = connectAndRunSQL(trainSQL)
@@ -1404,8 +1405,8 @@ func CaseTrainPAIKMeans(t *testing.T) {
 		a.Fail("Run trainSQL error: %v", err)
 	}
 
-	predSQL := fmt.Sprintf(`SELECT sepal_length,sepal_width,petal_length,petal_width FROM %s
-	TO PREDICT %s.class
+	predSQL := fmt.Sprintf(`SELECT * FROM %s
+	TO PREDICT %s.cluster_index
 	USING %s;
 	`, caseTestTable, casePredictTable, caseInto)
 	_, _, err = connectAndRunSQL(predSQL)

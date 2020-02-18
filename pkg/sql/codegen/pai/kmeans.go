@@ -20,33 +20,73 @@ import (
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/ir"
 	pb "sqlflow.org/sqlflow/pkg/proto"
+	"sqlflow.org/sqlflow/pkg/sql/codegen/attribute"
 )
 
-func getTrainKMeansPAICmd(ir *ir.TrainStmt, session *pb.Session) (string, error) {
-	centerCount := 3
-	centerCountAttr, ok := ir.Attributes["center_count"]
-	if ok {
-		centerCount = centerCountAttr.(int)
-	}
-	featureCols := []string{}
-	for _, fclist := range ir.Features {
-		for _, fc := range fclist {
-			featureCols = append(featureCols, fc.GetFieldDesc()[0].Name)
+var kmeansAttributes = attribute.Dictionary{
+	"center_count": {attribute.Int, 3, `[default=3]
+The cluster count. range: [1, Infinity]
+`, attribute.IntLowerBoundChecker(1, true)},
+	"idx_table_name": {attribute.String, "", `
+The output table name which includes
+cluster_index column indicates the cluster result,
+distance column indicates the distance from the center and
+all the columns of input table.`, nil},
+	"excluded_features": {attribute.String, "", `[default=""]
+excluded the special feature columns from the SELECT statment.`, nil},
+}
+
+func parseExcludedColsMap(attrs map[string]interface{}) (map[string]int, error) {
+	excludedColsMap := make(map[string]int)
+	excludedColsAttr := attrs["excluded_features"].(string)
+	if excludedColsAttr != "" {
+		arr := strings.Split(excludedColsAttr, ",")
+		for _, e := range arr {
+			excludedColsMap[e] = 1
 		}
 	}
-	idxTableName, ok := ir.Attributes["idx_table_name"]
-	if !ok {
+	return excludedColsMap, nil
+}
+
+func getTrainKMeansPAICmd(ir *ir.TrainStmt, session *pb.Session) (string, error) {
+	kmeansAttributes.FillDefaults(ir.Attributes)
+	if e := kmeansAttributes.Validate(ir.Attributes); e != nil {
+		return "", e
+	}
+	centerCount := ir.Attributes["center_count"].(int)
+	idxTableName := ir.Attributes["idx_table_name"].(string)
+	if idxTableName == "" {
 		return "", fmt.Errorf(`should set "idx_table_name" in WITH clause`)
 	}
+
+	excludedColsMap, e := parseExcludedColsMap(ir.Attributes)
+	if e != nil {
+		return "", e
+	}
+
+	// featureCols indicates feature columns used to append to the output table
+	featureCols := []string{}
+	// selectedCols indicates feature columns used to clustering
+	selectedCols := []string{}
+	for _, fclist := range ir.Features {
+		for _, fc := range fclist {
+			fcName := fc.GetFieldDesc()[0].Name
+			featureCols = append(featureCols, fcName)
+			if _, ok := excludedColsMap[fcName]; !ok {
+				selectedCols = append(selectedCols, fcName)
+			}
+		}
+	}
+
 	db, err := database.OpenAndConnectDB(session.DbConnStr)
 	if err != nil {
 		return "", err
 	}
-	_, e := db.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s;", idxTableName))
+	_, e = db.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s;", idxTableName))
 	if e != nil {
 		return "", e
 	}
 
 	return fmt.Sprintf(`pai -name kmeans -project algo_public -DinputTableName=%s -DcenterCount=%d -DmodelName %s -DidxTableName=%s -DselectedColNames=%s -DappendColNames="%s"`,
-		ir.TmpTrainTable, centerCount, ir.Into, idxTableName, strings.Join(featureCols, ","), strings.Join(featureCols, ",")), nil
+		ir.TmpTrainTable, centerCount, ir.Into, idxTableName, strings.Join(selectedCols, ","), strings.Join(featureCols, ",")), nil
 }
