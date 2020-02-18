@@ -23,7 +23,7 @@ from sqlflow_submitter.tensorflow.input_fn import pai_maxcompute_db_generator
 
 def xgb_shap_dataset(datasource, select, feature_column_names, label_spec,
                      feature_specs, is_pai, pai_explain_table):
-    label_column_name = label_spec["name"]
+    label_column_name = label_spec["feature_name"]
     if is_pai:
         pai_table_parts = pai_explain_table.split(".")
         formated_pai_table = "odps://%s/tables/%s" % (pai_table_parts[0],
@@ -32,7 +32,6 @@ def xgb_shap_dataset(datasource, select, feature_column_names, label_spec,
                                              feature_column_names,
                                              label_column_name, feature_specs)
     else:
-        label_spec["feature_name"] = label_column_name
         conn = connect_with_data_source(datasource)
         stream = db_generator(conn.driver, conn, select, feature_column_names,
                               label_spec, feature_specs)
@@ -56,6 +55,7 @@ def xgb_shap_values(x):
 def explain(datasource,
             select,
             feature_field_meta,
+            feature_column_names,
             label_spec,
             summary_params,
             result_table="",
@@ -65,10 +65,9 @@ def explain(datasource,
             hive_location="",
             hdfs_user="",
             hdfs_pass=""):
-    feature_column_names = [k["name"] for k in feature_field_meta]
-    feature_specs = {k['name']: k for k in feature_field_meta}
+    # feature_specs = {k['name']: k for k in feature_field_meta}
     x = xgb_shap_dataset(datasource, select, feature_column_names, label_spec,
-                         feature_specs, is_pai, pai_explain_table)
+                         feature_field_meta, is_pai, pai_explain_table)
 
     shap_values, shap_interaction_values, expected_value = xgb_shap_values(x)
 
