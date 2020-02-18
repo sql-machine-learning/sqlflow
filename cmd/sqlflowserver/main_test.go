@@ -1397,7 +1397,7 @@ func CaseTrainPAIKMeans(t *testing.T) {
 	WITH
 		center_count=3,
 		idx_table_name=%s,
-		excluded_features=class
+		excluded_columns=class
 	INTO %s;
 	`, caseTrainTable, caseTrainTable+"_test_output_idx", caseInto)
 	_, _, err = connectAndRunSQL(trainSQL)
