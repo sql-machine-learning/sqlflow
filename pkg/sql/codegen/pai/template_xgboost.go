@@ -27,8 +27,8 @@ model.save_metas("{{.OSSModelDir}}",
 		   "", # estimator = ""
            model_params,
            train_params,
-					 feature_metas,
-					 feature_column_names,
+           feature_metas,
+           feature_column_names,
            label_meta)
 `
 
@@ -55,8 +55,12 @@ from sqlflow_submitter.pai import model
 
 # NOTE(typhoonzero): the xgboost model file "my_model" is hard coded in xgboost/train.py
 model.load_file("{{.OSSModelDir}}", "my_model")
-estimator, model_params, train_params, \
-feature_metas, feature_column_names, label_meta = model.load_metas("{{.OSSModelDir}}", "xgboost_model_desc")
+(estimator,
+model_params,
+train_params,
+feature_metas,
+feature_column_names,
+label_meta) = model.load_metas("{{.OSSModelDir}}", "xgboost_model_desc")
 
 pred(datasource='''{{.DataSource}}''',
     select='''{{.PredSelect}}''',
@@ -92,13 +96,18 @@ from sqlflow_submitter.pai import model
 
 # NOTE(typhoonzero): the xgboost model file "my_model" is hard coded in xgboost/train.py
 model.load_file("{{.OSSModelDir}}", "my_model")
-estimator, model_params, train_params, \
-feature_field_meta, label_field_meta = model.load_metas("{{.OSSModelDir}}", "xgboost_model_desc")
+(estimator,
+model_params,
+train_params,
+feature_field_meta,
+feature_column_names,
+label_field_meta) = model.load_metas("{{.OSSModelDir}}", "xgboost_model_desc")
 
 explain(
     datasource='''{{.DataSource}}''',
     select='''{{.DatasetSQL}}''',
-    feature_field_meta=feature_field_meta,
+	feature_field_meta=feature_field_meta,
+	feature_column_names=feature_column_names,
 	label_spec=label_field_meta,
 	summary_params={},
 	result_table='''{{.ResultTable}}''',
