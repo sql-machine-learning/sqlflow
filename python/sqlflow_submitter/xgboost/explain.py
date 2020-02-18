@@ -65,7 +65,6 @@ def explain(datasource,
             hive_location="",
             hdfs_user="",
             hdfs_pass=""):
-    # feature_specs = {k['name']: k for k in feature_field_meta}
     x = xgb_shap_dataset(datasource, select, feature_column_names, label_spec,
                          feature_field_meta, is_pai, pai_explain_table)
 

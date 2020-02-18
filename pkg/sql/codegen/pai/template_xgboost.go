@@ -27,8 +27,8 @@ model.save_metas("{{.OSSModelDir}}",
 		   "", # estimator = ""
            model_params,
            train_params,
-		   feature_metas,
-		   feature_column_names,
+           feature_metas,
+           feature_column_names,
            label_meta)
 `
 
