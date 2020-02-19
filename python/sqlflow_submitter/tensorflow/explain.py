@@ -116,16 +116,18 @@ def explain_boosted_trees(datasource, estimator, input_fn, plot_type,
     pred_dicts = list(result)
     df_dfc = pd.DataFrame([pred['dfc'] for pred in pred_dicts])
     dfc_mean = df_dfc.abs().mean()
+    gain = estimator.experimental_feature_importances(normalize=True)
     if result_table != "":
         if is_pai:
-            raise
+            write_dfc_result(dfc_mean, gain, result_table, "pai_maxcompute",
+                             None, feature_column_names, hdfs_namenode_addr,
+                             hive_location, hdfs_user, hdfs_pass)
         else:
             conn = connect_with_data_source(datasource)
-            gain = estimator.experimental_feature_importances(normalize=True)
             write_dfc_result(dfc_mean, gain, result_table, conn.driver, conn,
                              feature_column_names, hdfs_namenode_addr,
                              hive_location, hdfs_user, hdfs_pass)
-    explainer.plot_and_save(lambda: eval(plot_type)(df_dfc))
+            explainer.plot_and_save(lambda: eval(plot_type)(df_dfc))
 
 
 def explain_dnns(datasource, estimator, shap_dataset, plot_type, result_table,
