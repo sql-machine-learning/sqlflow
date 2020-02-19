@@ -33,7 +33,7 @@ pip install \
 yapf==0.29.0 \
 isort==4.3.21 \
 numpy==1.16.2 \
-tensorflow==2.0.0 \
+tensorflow==2.0.1 \
 mysqlclient==1.4.4 \
 impyla==0.16.0 \
 pyodps==0.8.3 \
