@@ -248,13 +248,12 @@ func (s *paiSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 		}
 	}
 	scriptPath := fmt.Sprintf("file://%s/%s", s.Cwd, tarball)
-	targetImg := "explain_images/alifin_jtest/0123/20200219"
-	code, paiCmd, requirements, e := pai.Explain(cl, s.Session, scriptPath, cl.ModelName, ossModelPath, s.Cwd, targetImg, modelType)
+	expn, e := pai.Explain(cl, s.Session, scriptPath, cl.ModelName, ossModelPath, s.Cwd, modelType)
 	if e != nil {
 		return e
 	}
-	if e = s.submitPAITask(code, paiCmd, requirements); e == nil {
-		// TODO(weiguozhu) print targetImg stdout
+	if e = s.submitPAITask(expn.Code, expn.PaiCmd, expn.Requirements); e == nil {
+		expn.Draw()
 	}
 	return e
 }

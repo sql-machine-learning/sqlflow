@@ -214,26 +214,31 @@ func Predict(ir *ir.PredictStmt, session *pb.Session, tarball, modelName, ossMod
 }
 
 // Explain generates a Python program for train a TensorFlow model.
-func Explain(ir *ir.ExplainStmt, session *pb.Session, tarball, modelName, ossModelPath, cwd, targetImg string, modelType int) (code, paiCmd, requirements string, e error) {
+func Explain(ir *ir.ExplainStmt, session *pb.Session, tarball, modelName, ossModelPath, cwd string, modelType int) (*ExplainRender, error) {
+	// func Explain(ir *ir.ExplainStmt, session *pb.Session, tarball, modelName, ossModelPath, cwd string, modelType int) (*ExplainRender, code, paiCmd, requirements string, e error) {
 	cc, err := GetClusterConfig(ir.Attributes)
 	if err != nil {
-		return "", "", "", err
+		return nil, err
 	}
+
+	expn := newExplainRender(session.UserId)
 	if modelType == ModelTypePAIML {
 		if ir.Into == "" {
-			return "", "", "", fmt.Errorf("explain PAI random forests model need INTO clause to output the explain result to a table")
+			return nil, fmt.Errorf("explain PAI random forests model need INTO clause to output the explain result to a table")
 		}
-		requirements, e = genRequirements(false)
+		if expn.Requirements, err = genRequirements(false); err != nil {
+			return nil, err
+		}
 		log.Printf("explain using pai random forests")
-		if paiCmd, e = getExplainRandomForestsPAICmd(ir, session); e != nil {
-			return
-		}
+		expn.PaiCmd, err = getExplainRandomForestsPAICmd(ir, session)
 	} else if modelType == ModelTypeXGBoost {
-		requirements, e = genRequirements(true)
+		if expn.Requirements, err = genRequirements(true); err != nil {
+			return nil, err
+		}
 		log.Printf("explain using pai xgboost")
-		var ossURI string
-		if ossURI, e = checkpointURL(ossModelPath); e != nil {
-			return
+		ossURI, err := checkpointURL(ossModelPath)
+		if err != nil {
+			return nil, err
 		}
 		var xgbExplainCode bytes.Buffer
 		var tpl = template.Must(template.New("xgbExplainTemplate").Parse(xgbExplainTemplateText))
@@ -248,36 +253,33 @@ func Explain(ir *ir.ExplainStmt, session *pb.Session, tarball, modelName, ossMod
 			HiveLocation:     session.HiveLocation,
 			HDFSUser:         session.HdfsUser,
 			HDFSPass:         session.HdfsPass,
-			ResultOSSDest:    targetImg,
+			ResultOSSDest:    expn.key,
 			// TODO(weiguo): use GFile to write oss without ak/sk
 			// ref: https://yuque.antfin-inc.com/pai-user/manual/tf_oss_by_gfile
-			ResultOSSAK:       os.Getenv("SQLFLOW_OSS_AK"),
-			ResultOSSSK:       os.Getenv("SQLFLOW_OSS_SK"),
-			ResultOSSEndpoint: os.Getenv("SQLFLOW_OSS_ALISA_ENDPOINT"),
-			ResultOSSBucket:   os.Getenv("SQLFLOW_OSS_ALISA_BUCKET"),
+			ResultOSSAK:       expn.ak,
+			ResultOSSSK:       expn.sk,
+			ResultOSSEndpoint: expn.endpoint,
+			ResultOSSBucket:   expn.bucket,
 		}
-		if e = tpl.Execute(&xgbExplainCode, filler); e != nil {
-			return
+		if err = tpl.Execute(&xgbExplainCode, filler); err != nil {
+			return nil, err
 		}
-		code = xgbExplainCode.String()
-
-		var cc *ClusterConfig
-		if cc, e = GetClusterConfig(ir.Attributes); e != nil {
-			return
+		expn.Code = xgbExplainCode.String()
+		cc, err := GetClusterConfig(ir.Attributes)
+		if err != nil {
+			return nil, err
 		}
 		// NOTE(typhoonzero): submit a PAI TF job to install xgboost and run.
-		if paiCmd, e = getTFPAICmd(cc, tarball, modelName, ossModelPath, ir.TmpExplainTable, "", ir.Into); e != nil {
-			return
-		}
+		expn.PaiCmd, err = getTFPAICmd(cc, tarball, modelName, ossModelPath, ir.TmpExplainTable, "", ir.Into)
 	} else {
-		requirements, e = genRequirements(false)
+		if expn.Requirements, err = genRequirements(false); err != nil {
+			return nil, err
+		}
 		// run explain PAI TF
-		if code, e = TFLoadAndExplain(ir, session, ossModelPath); e != nil {
-			return
+		if expn.Code, err = TFLoadAndExplain(ir, session, ossModelPath); err != nil {
+			return expn, err
 		}
-		if paiCmd, e = getTFPAICmd(cc, tarball, modelName, ossModelPath, ir.TmpExplainTable, "", ir.Into); e != nil {
-			return
-		}
+		expn.PaiCmd, err = getTFPAICmd(cc, tarball, modelName, ossModelPath, ir.TmpExplainTable, "", ir.Into)
 	}
-	return
+	return expn, err
 }

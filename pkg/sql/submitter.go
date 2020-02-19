@@ -201,23 +201,30 @@ func (s *defaultSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 	if err = s.runCommand(code); err != nil {
 		return err
 	}
-	imgFile, err := os.Open(path.Join(s.Cwd, "summary.png"))
+	img, err := readExplainResult(path.Join(s.Cwd, "summary.png"))
 	if err != nil {
 		return err
 	}
-	defer imgFile.Close()
-	imgBytes, err := ioutil.ReadAll(imgFile)
-	if err != nil {
-		return err
-	}
-	imgBase64Str := base64.StdEncoding.EncodeToString(imgBytes)
-	img2html := fmt.Sprintf("<div align='center'><img src='data:image/png;base64,%s' /></div>", imgBase64Str)
 	termFigure, err := ioutil.ReadFile(path.Join(s.Cwd, "summary.txt"))
 	if err != nil {
 		return err
 	}
-	s.Writer.Write(Figures{img2html, string(termFigure)})
+	s.Writer.Write(Figures{img, string(termFigure)})
 	return nil
+}
+
+func readExplainResult(target string) (string, error) {
+	r, err := os.Open(target)
+	if err != nil {
+		return "", err
+	}
+	defer r.Close()
+	body, err := ioutil.ReadAll(r)
+	if err != nil {
+		return "", err
+	}
+	img := base64.StdEncoding.EncodeToString(body)
+	return fmt.Sprintf("<div align='center'><img src='data:image/png;base64,%s' /></div>", img), nil
 }
 
 func (s *defaultSubmitter) GetTrainStmtFromModel() bool { return true }

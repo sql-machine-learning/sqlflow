@@ -14,9 +14,7 @@
 package sql
 
 import (
-	"encoding/base64"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -165,35 +163,14 @@ func (s *alisaSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 	}
 
 	scriptPath := fmt.Sprintf("file://@@%s", resourceName)
-	targetImg := "explain_images/alifin_jtest/0123/20200219"
-	code, paiCmd, requirements, e := pai.Explain(cl, s.Session, scriptPath, cl.ModelName, ossModelPath, s.Cwd, targetImg, modelType)
+	expn, e := pai.Explain(cl, s.Session, scriptPath, cl.ModelName, ossModelPath, s.Cwd, modelType)
 	if e != nil {
 		return e
 	}
-	if e = s.uploadResourceAndSubmitAlisaTask(code, requirements, paiCmd); e == nil {
-		// TODO(weiguoz): clean code
-		osscli, e := oss.New(os.Getenv("SQLFLOW_OSS_ALISA_ENDPOINT"), os.Getenv("SQLFLOW_OSS_AK"), os.Getenv("SQLFLOW_OSS_SK"))
-		if e != nil {
-			return e
-		}
-		bucket, e := osscli.Bucket(os.Getenv("SQLFLOW_OSS_ALISA_BUCKET"))
-		if e != nil {
-			return e
-		}
-		body, e := bucket.GetObject(targetImg)
-		if e != nil {
-			return e
-		}
-		data, e := ioutil.ReadAll(body)
-		if e != nil {
-			return e
-		}
-		defer body.Close()
-		imgBase64Str := base64.StdEncoding.EncodeToString(data)
-		img2html := fmt.Sprintf("<div align='center'><img src='data:image/png;base64,%s' /></div>", imgBase64Str)
-		fmt.Println(img2html)
+	if e != s.uploadResourceAndSubmitAlisaTask(expn.Code, expn.Requirements, expn.PaiCmd) {
+		return e
 	}
-	return e
+	return expn.Draw()
 }
 
 func (s *alisaSubmitter) GetTrainStmtFromModel() bool { return false }
