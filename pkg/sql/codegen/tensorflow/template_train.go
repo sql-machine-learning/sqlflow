@@ -44,8 +44,8 @@ else:
     from tensorflow.keras.losses import *
 try:
     import sqlflow_models
-except:
-    pass
+except Exception as e:
+    print("failed to import sqlflow_models: %s", e)
 
 feature_column_names = [{{range .FieldDescs}}
 "{{.Name}}",

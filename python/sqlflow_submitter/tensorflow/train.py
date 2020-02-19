@@ -16,11 +16,13 @@ import functools
 import json
 import os
 import sys
+import types
 
 import numpy as np
 import tensorflow as tf
 from sqlflow_submitter.db import (connect_with_data_source, db_generator,
                                   parseMaxComputeDSN)
+from sqlflow_submitter.pai import model
 
 from . import metrics
 from .input_fn import input_fn
@@ -49,7 +51,8 @@ else:
     from .pai_distributed import define_tf_flags, make_distributed_info_without_evaluator, dump_into_tf_config
 
 
-def keras_train_and_save(estimator, model_params, save, feature_column_names,
+def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
+                         pai_table, pai_val_table, feature_column_names,
                          feature_metas, label_meta, datasource, select,
                          validate_select, batch_size, epochs, verbose,
                          metric_names):
@@ -62,6 +65,10 @@ def keras_train_and_save(estimator, model_params, save, feature_column_names,
     if "loss" in model_params:
         loss = model_params["loss"]
         del model_params["loss"]
+    # copy feature_name to name field for Keras functional models:
+    # https://github.com/sql-machine-learning/models/blob/develop/sqlflow_models/dnnclassifier_functional_api_example.py
+    for k in feature_metas:
+        feature_metas[k]["name"] = feature_metas[k]["feature_name"]
     classifier = estimator(**model_params)
     classifier_pkg = sys.modules[estimator.__module__]
     model_metrics = []
@@ -81,12 +88,21 @@ def keras_train_and_save(estimator, model_params, save, feature_column_names,
             keras_metrics = metrics.get_keras_metrics(["Accuracy"])
 
     # FIXME(typhoonzero): find a way to cache to local file and avoid cache lockfile already exists issue.
-    train_dataset = input_fn(select, datasource, feature_column_names,
-                             feature_metas, label_meta)
+    train_dataset = input_fn(select,
+                             datasource,
+                             feature_column_names,
+                             feature_metas,
+                             label_meta,
+                             is_pai=is_pai,
+                             pai_table=pai_table)
     train_dataset = train_dataset.shuffle(SHUFFLE_SIZE).batch(batch_size)
-    validate_dataset = input_fn(validate_select, datasource,
-                                feature_column_names, feature_metas,
-                                label_meta).batch(batch_size)
+    validate_dataset = input_fn(validate_select,
+                                datasource,
+                                feature_column_names,
+                                feature_metas,
+                                label_meta,
+                                is_pai=is_pai,
+                                pai_table=pai_val_table).batch(batch_size)
 
     if optimizer is None:
         # use keras model default optimizer if optimizer is not specified in WITH clause.
@@ -116,13 +132,17 @@ def keras_train_and_save(estimator, model_params, save, feature_column_names,
         classifier.sqlflow_train_loop(train_dataset)
     else:
         if label_meta["feature_name"] != "":
+            # FIXME(typhoonzero): this is why need to set validation_steps: https://github.com/tensorflow/tensorflow/issues/29743#issuecomment-502028891
+            # remove this argument when PAI fixes this.
             history = classifier.fit(train_dataset,
+                                     validation_steps=100,
                                      epochs=epochs if epochs else
                                      classifier.default_training_epochs(),
                                      validation_data=validate_dataset,
                                      verbose=verbose)
         else:
             history = classifier.fit(train_dataset,
+                                     validation_steps=100,
                                      epochs=epochs if epochs else
                                      classifier.default_training_epochs(),
                                      verbose=verbose)
@@ -140,6 +160,8 @@ def keras_train_and_save(estimator, model_params, save, feature_column_names,
         for k in val_keys:
             print("%s: %s" % (k, history.history[k][-1]))
     classifier.save_weights(save, save_format="h5")
+    if is_pai:
+        model.save_file(FLAGS.checkpointDir, save)
 
 
 def estimator_train_and_save(
@@ -241,10 +263,13 @@ def train(datasource,
           pai_val_table=""):
     assert validate_select != ""
     assert 0 <= verbose <= 3
-    is_estimator = issubclass(
-        estimator,
-        (tf.estimator.Estimator, tf.estimator.BoostedTreesClassifier,
-         tf.estimator.BoostedTreesRegressor))
+    if isinstance(estimator, types.FunctionType):
+        is_estimator = False
+    else:
+        is_estimator = issubclass(
+            estimator,
+            (tf.estimator.Estimator, tf.estimator.BoostedTreesClassifier,
+             tf.estimator.BoostedTreesRegressor))
     if not is_estimator and verbose == 1 or TF_VERSION_2:
         tf.get_logger().setLevel(
             (4 - verbose) * 10)  # logging.INFO levels range from 10~40
@@ -254,23 +279,25 @@ def train(datasource,
         tf.logging.set_verbosity(tf.logging.INFO)
     model_params.update(feature_columns)
 
+    is_distributed = False
+    FLAGS = None
+    # only support distributed training on PAI (TF version 1.x)
+    if not TF_VERSION_2:
+        FLAGS = define_tf_flags()
+        if len(FLAGS.worker_hosts.split(",")) > 1:
+            is_distributed = True
+
     if not is_estimator:  # keras
-        if not issubclass(estimator, tf.keras.Model):
+        if isinstance(estimator, types.FunctionType):
             # functional model need field_metas parameter
             model_params["field_metas"] = feature_metas
         print("Start training using keras model...")
-        keras_train_and_save(estimator, model_params, save,
-                             feature_column_names, feature_metas, label_meta,
-                             datasource, select, validate_select, batch_size,
-                             epochs, verbose, metric_names)
+        keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
+                             pai_table, pai_val_table, feature_column_names,
+                             feature_metas, label_meta, datasource, select,
+                             validate_select, batch_size, epochs, verbose,
+                             metric_names)
     else:
-        is_distributed = False
-        FLAGS = None
-        # only support distributed training on PAI (TF version 1.x)
-        if not TF_VERSION_2:
-            FLAGS = define_tf_flags()
-            if len(FLAGS.worker_hosts.split(",")) > 1:
-                is_distributed = True
         if is_distributed:
             cluster, task_type, task_index = make_distributed_info_without_evaluator(
                 FLAGS)
