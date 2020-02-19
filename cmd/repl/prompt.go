@@ -123,6 +123,7 @@ func (p *promptState) execute(in string, cb func(string)) {
 		}
 		p.enableLivePrefix = true
 	}
+	p.historyNavPos = 0
 }
 
 func sortPromptSuggest(suggests []prompt.Suggest) {
@@ -236,6 +237,13 @@ func (p *promptState) startSearch(buf *prompt.Buffer) {
 	if p.isSearching {
 		return
 	}
+	if consoleParser != nil {
+		// Enable using Up, ControlP, Down, ControlN to navigate
+		consoleParser.defineKeyMap(prompt.Down, []byte{0x9})
+		consoleParser.defineKeyMap(prompt.ControlN, []byte{0x9})
+		consoleParser.defineKeyMap(prompt.Up, []byte{0x1b, 0x5b, 0x5a})
+		consoleParser.defineKeyMap(prompt.ControlP, []byte{0x1b, 0x5b, 0x5a})
+	}
 	oldLivePrefix := p.livePrefix
 	oldEnableLivePrefix := p.enableLivePrefix
 	p.isSearching = true
@@ -253,6 +261,9 @@ func (p *promptState) startSearch(buf *prompt.Buffer) {
 	stopSearch = func(in string) (string, int) {
 		if !p.isSearching {
 			return "", 0
+		}
+		if consoleParser != nil {
+			consoleParser.resetKeyMap()
 		}
 		prompt.GoLineEnd(buf)
 		p.isSearching = false
@@ -299,7 +310,6 @@ func (p *promptState) navigateHistory(origInput string, older bool, buf *prompt.
 }
 
 func (p *promptState) updateHistory() {
-	p.historyNavPos = 0
 	input := strings.Join(p.statements, " ")
 	lastInput := strings.Join(p.lastStatements, " ")
 	if len(p.statements) != 0 && input != lastInput {
@@ -441,7 +451,7 @@ func newPromptState() *promptState {
 }
 
 var consoleWriter = prompt.NewStdoutWriter()
-var consoleParser prompt.ConsoleParser
+var consoleParser *stdinParser
 
 func getTerminalColumnSize() int {
 	if consoleParser != nil {
@@ -453,16 +463,11 @@ func getTerminalColumnSize() int {
 func runPrompt(cb func(string)) {
 	state := newPromptState()
 	consoleParser = newStdinParser()
-	history := []string{}
-	for _, h := range state.history {
-		history = append([]string{h.Text}, history...)
-	}
 	p := prompt.New(
 		func(in string) { state.execute(in, cb) },
 		func(in prompt.Document) []prompt.Suggest { return state.completer(in) },
 		prompt.OptionAddASCIICodeBind(emacsMetaKeyBindings...),
 		prompt.OptionAddKeyBind(emacsCtrlKeyBindings...),
-		prompt.OptionHistory(history),
 		prompt.OptionLivePrefix(func() (string, bool) { return state.changeLivePrefix() }),
 		prompt.OptionSwitchKeyBindMode(prompt.CommonKeyBind),
 		prompt.OptionWriter(consoleWriter),

@@ -430,9 +430,9 @@ func TestPromptState(t *testing.T) {
 	s := newPromptState()
 	a.Equal(len(s.keywords), 15)
 	sql := `SELECT * FROM iris.train TO TRAIN DNNClassifier WITH
-				model.hidden_units=[10,20],
-				model.n_classes=3
-			LABEL class INTO sqlflow_models.my_model;`
+    model.hidden_units=[10,20],
+    model.n_classes=3
+LABEL class INTO sqlflow_models.my_model;`
 	words := strings.Fields(sql)
 	keyword, ahead, last := s.lookaheadKeyword(words)
 	a.Equal("INTO", keyword)
@@ -466,10 +466,10 @@ func TestPromptState(t *testing.T) {
 
 	stmt = []string{}
 	sql2 := `-- 1. test
-             SELECT * FROM iris.train TO TRAIN DNNClassifier WITH
-				model.hidden_units=[10,20],
-				model.n_classes=3
-             LABEL class INTO sqlflow_models.my_model;`
+SELECT * FROM iris.train TO TRAIN DNNClassifier WITH
+    model.hidden_units=[10,20],
+    model.n_classes=3
+LABEL class INTO sqlflow_models.my_model;`
 	scanner = bufio.NewScanner(strings.NewReader(sql2))
 	for scanner.Scan() {
 		s.execute(scanner.Text(), func(s string) { stmt = append(stmt, s) })
