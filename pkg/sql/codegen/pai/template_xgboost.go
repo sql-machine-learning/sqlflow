@@ -132,6 +132,6 @@ explain(
 	oss_dest='''{{.ResultOSSDest}}''',
 	oss_ak='''{{.ResultOSSAK}}''',
 	oss_sk='''{{.ResultOSSSK}}''',
-	oss_endpoint='''oss-cn-beijing.aliyuncs.com''',
+	oss_endpoint='''{{.ResultOSSEndpoint}}''',
 	oss_bucket_name='''{{.ResultOSSBucket}}''')
 `

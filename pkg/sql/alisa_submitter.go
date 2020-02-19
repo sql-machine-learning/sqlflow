@@ -167,7 +167,7 @@ func (s *alisaSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 	if e != nil {
 		return e
 	}
-	if e != s.uploadResourceAndSubmitAlisaTask(expn.Code, expn.Requirements, expn.PaiCmd) {
+	if e = s.uploadResourceAndSubmitAlisaTask(expn.Code, expn.Requirements, expn.PaiCmd); e != nil {
 		return e
 	}
 	return expn.Draw()

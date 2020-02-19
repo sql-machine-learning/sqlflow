@@ -215,7 +215,6 @@ func Predict(ir *ir.PredictStmt, session *pb.Session, tarball, modelName, ossMod
 
 // Explain generates a Python program for train a TensorFlow model.
 func Explain(ir *ir.ExplainStmt, session *pb.Session, tarball, modelName, ossModelPath, cwd string, modelType int) (*ExplainRender, error) {
-	// func Explain(ir *ir.ExplainStmt, session *pb.Session, tarball, modelName, ossModelPath, cwd string, modelType int) (*ExplainRender, code, paiCmd, requirements string, e error) {
 	cc, err := GetClusterConfig(ir.Attributes)
 	if err != nil {
 		return nil, err
