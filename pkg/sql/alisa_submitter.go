@@ -170,7 +170,10 @@ func (s *alisaSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 	if e = s.uploadResourceAndSubmitAlisaTask(expn.Code, expn.Requirements, expn.PaiCmd); e != nil {
 		return e
 	}
-	return expn.Draw()
+	if img, e := expn.Draw(); e == nil {
+		s.Writer.Write(Figures{img, ""})
+	}
+	return e
 }
 
 func (s *alisaSubmitter) GetTrainStmtFromModel() bool { return false }

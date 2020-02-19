@@ -47,26 +47,22 @@ func newExplainRender(userID string) *ExplainRender {
 		key:      k}
 }
 
-// Draw prints the explain result(png) to stdout
-func (expn *ExplainRender) Draw() error {
+// Draw returns the explain result(png) as HTML
+func (expn *ExplainRender) Draw() (string, error) {
 	osscli, e := oss.New(expn.endpoint, expn.ak, expn.sk)
 	if e != nil {
-		return e
+		return "", e
 	}
 	bucket, e := osscli.Bucket(expn.bucket)
 	if e != nil {
-		return e
+		return "", e
 	}
 	r, e := bucket.GetObject(expn.key)
 	if e != nil {
-		return e
+		return "", e
 	}
 	defer r.Close()
-	img, e := readAsHTML(r)
-	if e == nil {
-		fmt.Printf("%s\n", img)
-	}
-	return e
+	return readAsHTML(r)
 }
 
 func readAsHTML(r io.Reader) (string, error) {

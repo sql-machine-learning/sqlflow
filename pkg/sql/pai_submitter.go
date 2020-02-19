@@ -252,8 +252,11 @@ func (s *paiSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 	if e != nil {
 		return e
 	}
-	if e = s.submitPAITask(expn.Code, expn.PaiCmd, expn.Requirements); e == nil {
-		expn.Draw()
+	if e = s.submitPAITask(expn.Code, expn.PaiCmd, expn.Requirements); e != nil {
+		return e
+	}
+	if img, e := expn.Draw(); e == nil {
+		s.Writer.Write(Figures{img, ""})
 	}
 	return e
 }
