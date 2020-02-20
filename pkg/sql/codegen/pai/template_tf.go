@@ -77,11 +77,12 @@ model.save_metas("{{.OSSModelDir}}",
 `
 
 const paiRequirementsTmplText = `
-shap==0.28.5
-seaborn==0.9.0
 adanet==0.8.0
-pandas==0.24.2
 numpy==1.16.2
+pandas==0.24.2
+plotille==3.7
+seaborn==0.9.0
+shap==0.28.5
 scikit-learn==0.20.0
 {{if .IsXGBoost }}
 xgboost==0.82
