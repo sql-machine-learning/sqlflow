@@ -187,6 +187,12 @@ TO EXPLAIN sqlflow_fraud_detection_model;
 		s, err := Parse(dbms, sql)
 		a.Nil(err)
 		a.Equal(3, len(s))
+		for _, ss := range s {
+			// check parsing on individual statement
+			sss, err := Parse(dbms, ss.Original)
+			a.Nil(err)
+			a.Equal(1, len(sss))
+		}
 	}
 }
 
