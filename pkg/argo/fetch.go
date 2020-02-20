@@ -63,7 +63,8 @@ func getStepIdx(wf *v1alpha1.Workflow, targetStepGroup string) (int, error) {
 
 func logViewURL(ns, wfID, podID string) (string, error) {
 	ep := os.Getenv("SQLFLOW_ARGO_UI_ENDPOINT")
-	return fmt.Sprintf("%s/workflows/%s/%s?tab=workflow&nodeId=%s", ep, ns, wfID, podID), nil
+	// argo UI log view panel
+	return fmt.Sprintf("%s/workflows/%s/%s?tab=workflow&nodeId=%s&sidePanel=logs:%s:main", ep, ns, wfID, podID, podID), nil
 }
 
 // Fetch fetches the workflow log and status,
@@ -124,7 +125,7 @@ func Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 	if isPodCompleted(pod) {
 		if isPodFailed(pod) {
 			return newFetchResponse(newFetchRequest(req.Job.Id, stepGroupName, newStepPhase), eof, logs),
-				fmt.Errorf("SQLFlow Step[%d/%d] Failed, Log: %s", stepIdx, stepCnt, logURL)
+				fmt.Errorf("SQLFlow Step [%d/%d] Failed, Log: %s", stepIdx, stepCnt, logURL)
 		}
 
 		// snip the pod logs when it complete
