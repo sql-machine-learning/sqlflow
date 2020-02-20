@@ -310,6 +310,7 @@ func (p *promptState) navigateHistory(origInput string, older bool, buf *prompt.
 }
 
 func (p *promptState) updateHistory() {
+	p.historyNavPos = 0
 	input := strings.Join(p.statements, " ")
 	lastInput := strings.Join(p.lastStatements, " ")
 	if len(p.statements) != 0 && input != lastInput {
