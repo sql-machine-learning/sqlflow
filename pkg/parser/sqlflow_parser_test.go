@@ -157,6 +157,43 @@ func commonTestCases(dbms string, a *assert.Assertions) {
 		a.NotNil(err)
 		a.Equal(0, len(s))
 	}
+
+	{ // multiple statements with multiple lines comments
+		sql := `-- TRAIN WITH TF
+SELECT * FROM jtest_dev.sqlflow_fraud_detection
+TO TRAIN DNNClassifier WITH
+    train.batch_size=2048,
+    model.batch_norm=True,
+    model.hidden_units=[200, 100, 50]
+LABEL class
+INTO sqlflow_fraud_detection_model;
+
+-- -- TRAIN WITH XGBOOST
+-- SELECT * FROM jtest_dev.sqlflow_fraud_detection
+-- TO TRAIN XGBoost.gbtree WITH
+--     objective="binary:logistic"
+-- LABEL class
+-- INTO sqlflow_fraud_detection_model;
+
+-- PREDICT WITH TRAINED MODEL
+SELECT * FROM jtest_dev.sqlflow_fraud_detection_pred
+TO PREDICT jtest_dev.sqlflow_fraud_detection_predict.class
+USING sqlflow_fraud_detection_model;
+
+-- EXPLAIN
+SELECT * FROM jtest_dev.sqlflow_fraud_detection_pred
+TO EXPLAIN sqlflow_fraud_detection_model;
+`
+		s, err := Parse(dbms, sql)
+		a.Nil(err)
+		a.Equal(3, len(s))
+		for _, ss := range s {
+			// check parsing on individual statement
+			sss, err := Parse(dbms, ss.Original)
+			a.Nil(err)
+			a.Equal(1, len(sss))
+		}
+	}
 }
 
 func TestParseFirstSQLStatement(t *testing.T) {
