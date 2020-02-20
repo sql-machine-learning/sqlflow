@@ -31,19 +31,23 @@ type WorkerConfig struct {
 
 // ClusterConfig implicates PAI distributed task meta
 type ClusterConfig struct {
-	PS     PSConfig     `json:"ps"`
-	Worker WorkerConfig `json:"worker"`
+	PS        PSConfig     `json:"ps"`
+	Worker    WorkerConfig `json:"worker"`
+	Evaluator WorkerConfig `json:"evaluator"`
 }
 
 // GetClusterConfig returns ClusterConfig object comes from WITH clause
 func GetClusterConfig(attrs map[string]interface{}) (*ClusterConfig, error) {
 	defaultMap := map[string]int{
-		"train.num_ps":      0,
-		"train.num_workers": 1,
-		"train.worker_cpu":  400,
-		"train.worker_gpu":  0,
-		"train.ps_cpu":      200,
-		"train.ps_gpu":      0,
+		"train.num_ps":        0,
+		"train.num_workers":   1,
+		"train.worker_cpu":    400,
+		"train.worker_gpu":    0,
+		"train.ps_cpu":        200,
+		"train.ps_gpu":        0,
+		"train.num_evaluator": 1,
+		"train.evaluator_cpu": 200,
+		"train.evaluator_gpu": 0,
 	}
 	for k := range defaultMap {
 		attrValue, ok := attrs[k]
@@ -63,6 +67,11 @@ func GetClusterConfig(attrs map[string]interface{}) (*ClusterConfig, error) {
 			GPU:   defaultMap["train.ps_gpu"],
 		},
 		Worker: WorkerConfig{
+			Count: defaultMap["train.num_workers"],
+			CPU:   defaultMap["train.worker_cpu"],
+			GPU:   defaultMap["train.worker_gpu"],
+		},
+		Evaluator: WorkerConfig{
 			Count: defaultMap["train.num_workers"],
 			CPU:   defaultMap["train.worker_cpu"],
 			GPU:   defaultMap["train.worker_gpu"],

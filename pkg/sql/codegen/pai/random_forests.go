@@ -36,13 +36,8 @@ func getTrainRandomForestsPAICmd(ir *ir.TrainStmt, session *pb.Session) (string,
 		}
 	}
 
-	inputTables, e := maxComputeTableURL(ir.TmpTrainTable)
-	if e != nil {
-		return "", e
-	}
-
 	return fmt.Sprintf(`pai -name randomforests -DinputTableName="%s" -DmodelName="%s" -DlabelColName="%s" -DfeatureColNames="%s" -DtreeNum="%d"`,
-		inputTables, ir.Into, ir.Label.GetFieldDesc()[0].Name, strings.Join(featureCols, ","), treeNum), nil
+		ir.TmpTrainTable, ir.Into, ir.Label.GetFieldDesc()[0].Name, strings.Join(featureCols, ","), treeNum), nil
 }
 
 func getExplainRandomForestsPAICmd(ir *ir.ExplainStmt, session *pb.Session) (string, error) {
