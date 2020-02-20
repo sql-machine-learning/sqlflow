@@ -53,6 +53,8 @@ example: "Accuracy,AUC"`, nil},
 	"validation.select": {attribute.String, "", `[default=""]
 Specify the dataset for validation.
 example: "SELECT * FROM iris.train LIMIT 100"`, nil},
+	"validation.steps": {attribute.Int, 1, `[default=1]
+Specify steps for validation.`, attribute.IntLowerBoundChecker(1, true)},
 	"model.*": {attribute.Unknown, "", "Any model parameters defined in custom models", nil},
 }
 

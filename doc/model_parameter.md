@@ -253,6 +253,11 @@ INTO sqlflow_models.my_dnn_model;
 	<td>[default=0]<br>Seconds to wait before starting validation.</td>
 </tr>
 <tr>
+	<td>validation.steps</td>
+	<td>int</td>
+	<td>[default=1]<br>Specify steps for validation.</td>
+</tr>
+<tr>
 	<td>validation.throttle_secs</td>
 	<td>int</td>
 	<td>[default=0]<br>Seconds to wait when need to run validation again.</td>

@@ -900,10 +900,10 @@ func CaseTrainCustomModel(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`SELECT * FROM %s
 TO TRAIN sqlflow_models.DNNClassifier
-WITH model.n_classes = 3, model.hidden_units = [10, 20]
+WITH model.n_classes = 3, model.hidden_units = [10, 20], validation.select="select * from %s", validation.steps=2
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
-INTO %s;`, caseTrainTable, caseInto)
+INTO %s;`, caseTrainTable, caseTestTable, caseInto)
 	_, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("run trainSQL error: %v", err)
