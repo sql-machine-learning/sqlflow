@@ -55,7 +55,7 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
                          pai_table, pai_val_table, feature_column_names,
                          feature_metas, label_meta, datasource, select,
                          validate_select, batch_size, epochs, verbose,
-                         metric_names):
+                         metric_names, validation_steps):
     # remove optimizer param from model_params and use it when call "compile()"
     optimizer = None
     loss = None
@@ -134,15 +134,19 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
         if label_meta["feature_name"] != "":
             # FIXME(typhoonzero): this is why need to set validation_steps: https://github.com/tensorflow/tensorflow/issues/29743#issuecomment-502028891
             # remove this argument when PAI fixes this.
+            if TF_VERSION_2:
+                validation_steps = None
+            else:
+                validation_steps = 1
             history = classifier.fit(train_dataset,
-                                     validation_steps=100,
+                                     validation_steps=validation_steps,
                                      epochs=epochs if epochs else
                                      classifier.default_training_epochs(),
                                      validation_data=validate_dataset,
                                      verbose=verbose)
         else:
             history = classifier.fit(train_dataset,
-                                     validation_steps=100,
+                                     validation_steps=validation_steps,
                                      epochs=epochs if epochs else
                                      classifier.default_training_epochs(),
                                      verbose=verbose)
@@ -252,6 +256,7 @@ def train(datasource,
           save="",
           batch_size=1,
           epochs=1,
+          validation_steps=1,
           verbose=0,
           train_max_steps=None,
           eval_start_delay_secs=0,
@@ -296,7 +301,7 @@ def train(datasource,
                              pai_table, pai_val_table, feature_column_names,
                              feature_metas, label_meta, datasource, select,
                              validate_select, batch_size, epochs, verbose,
-                             metric_names)
+                             metric_names, validation_steps)
     else:
         if is_distributed:
             cluster, task_type, task_index = make_distributed_info_without_evaluator(
