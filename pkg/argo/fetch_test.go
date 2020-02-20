@@ -133,9 +133,9 @@ func TestFetch(t *testing.T) {
 
 	concatedLogs := strings.Join(actualLogs, "\n")
 
-	a.Contains(concatedLogs, "Step: [1/3] Status: Succeeded")
-	a.Contains(concatedLogs, "Step: [2/3] Status: Succeeded")
-	a.Contains(concatedLogs, "Step: [3/3] Status: Succeeded")
+	a.Contains(concatedLogs, "SQLFlow Step: [1/3] Status: Succeeded")
+	a.Contains(concatedLogs, "SQLFlow Step: [2/3] Status: Succeeded")
+	a.Contains(concatedLogs, "SQLFlow Step: [3/3] Status: Succeeded")
 }
 
 func waitUntilPodRunning(podID string) error {
