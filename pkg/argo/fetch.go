@@ -61,9 +61,9 @@ func getStepIdx(wf *v1alpha1.Workflow, targetStepGroup string) (int, error) {
 	}
 }
 
-func logViewURL(ns, wfID, stepID string) (string, error) {
+func logViewURL(ns, wfID, podID string) (string, error) {
 	ep := os.Getenv("SQLFLOW_ARGO_UI_ENDPOINT")
-	return fmt.Sprintf("%s/workflows/%s/%s?tab=workflow&nodeId=%s", ep, ns, wfID, stepID), nil
+	return fmt.Sprintf("%s/workflows/%s/%s?tab=workflow&nodeId=%s", ep, ns, wfID, podID), nil
 }
 
 // Fetch fetches the workflow log and status,
@@ -104,27 +104,27 @@ func Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 	// Step [2/3] Log: http://localhost:8001/workflows/default/steps-bdpff?nodeId=steps-bdpff-xx2
 	// ...
 	newStepPhase := req.StepPhase
+	logURL, e := logViewURL(wf.ObjectMeta.Namespace, wf.ObjectMeta.Name, pod.ObjectMeta.Name)
+	if e != nil {
+		return nil, e
+	}
 	if req.StepPhase == "" {
-		// return the log url for the first call of step
-		url, e := logViewURL(wf.ObjectMeta.Namespace, wf.ObjectMeta.Name, stepGroupName)
-		if e != nil {
-			return nil, e
-		}
 		// the 1-th container execute `argoexec wait` to wait the preiority step, so package the 2-th container's command code.
 		execCode := fmt.Sprintf("%s %s", strings.Join(pod.Spec.Containers[1].Command, " "), strings.Join(pod.Spec.Containers[1].Args, " "))
-		logs = append(logs, fmt.Sprintf("Step: [%d/%d] Execute Code: %s", stepIdx, stepCnt, execCode))
-		logs = append(logs, fmt.Sprintf("Step: [%d/%d] Log: %s", stepIdx, stepCnt, url))
+		logs = append(logs, fmt.Sprintf("SQLFlow Step: [%d/%d] Execute Code: %s", stepIdx, stepCnt, execCode))
+		logs = append(logs, fmt.Sprintf("SQLFlow Step: [%d/%d] Log: %s", stepIdx, stepCnt, logURL))
 	}
 
 	// note(yancey1989): record the Pod phase to avoid output the duplicated logs at the next fetch request.
 	if req.StepPhase != string(pod.Status.Phase) {
-		logs = append(logs, fmt.Sprintf("Step: [%d/%d] Status: %s", stepIdx, stepCnt, pod.Status.Phase))
+		logs = append(logs, fmt.Sprintf("SQLFlow Step: [%d/%d] Status: %s", stepIdx, stepCnt, pod.Status.Phase))
 		newStepPhase = string(pod.Status.Phase)
 	}
 
 	if isPodCompleted(pod) {
 		if isPodFailed(pod) {
-			return newFetchResponse(newFetchRequest(req.Job.Id, stepGroupName, newStepPhase), eof, logs), fmt.Errorf("step failed")
+			return newFetchResponse(newFetchRequest(req.Job.Id, stepGroupName, newStepPhase), eof, logs),
+				fmt.Errorf("SQLFlow Step[%d/%d] Failed, Log: %s", stepIdx, stepCnt, logURL)
 		}
 
 		// snip the pod logs when it complete
