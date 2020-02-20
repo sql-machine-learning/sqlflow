@@ -248,11 +248,17 @@ func (s *paiSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 		}
 	}
 	scriptPath := fmt.Sprintf("file://%s/%s", s.Cwd, tarball)
-	code, paiCmd, requirements, e := pai.Explain(cl, s.Session, scriptPath, cl.ModelName, ossModelPath, s.Cwd, modelType)
+	expn, e := pai.Explain(cl, s.Session, scriptPath, cl.ModelName, ossModelPath, s.Cwd, modelType)
 	if e != nil {
 		return e
 	}
-	return s.submitPAITask(code, paiCmd, requirements)
+	if e = s.submitPAITask(expn.Code, expn.PaiCmd, expn.Requirements); e != nil {
+		return e
+	}
+	if img, e := expn.Draw(); e == nil {
+		s.Writer.Write(Figures{img, ""})
+	}
+	return e
 }
 
 // getOSSSavedModelType returns the saved model type when training, can be:

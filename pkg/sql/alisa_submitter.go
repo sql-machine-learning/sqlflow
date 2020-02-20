@@ -163,11 +163,17 @@ func (s *alisaSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 	}
 
 	scriptPath := fmt.Sprintf("file://@@%s", resourceName)
-	code, paiCmd, requirements, e := pai.Explain(cl, s.Session, scriptPath, cl.ModelName, ossModelPath, s.Cwd, modelType)
+	expn, e := pai.Explain(cl, s.Session, scriptPath, cl.ModelName, ossModelPath, s.Cwd, modelType)
 	if e != nil {
 		return e
 	}
-	return s.uploadResourceAndSubmitAlisaTask(code, requirements, paiCmd)
+	if e = s.uploadResourceAndSubmitAlisaTask(expn.Code, expn.Requirements, expn.PaiCmd); e != nil {
+		return e
+	}
+	if img, e := expn.Draw(); e == nil {
+		s.Writer.Write(Figures{img, ""})
+	}
+	return e
 }
 
 func (s *alisaSubmitter) GetTrainStmtFromModel() bool { return false }

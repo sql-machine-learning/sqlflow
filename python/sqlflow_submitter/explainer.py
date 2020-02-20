@@ -14,13 +14,22 @@
 import sys
 
 import matplotlib
+# The default backend
 import matplotlib.pyplot as plt
+import sqlflow_submitter.pai.utils as utils
 
 # TODO(shendiaomo): extract common code from tensorflow/explain.py and xgboost/explain.py
 # TODO(shendiaomo): add a unit test for this file later
 
 
-def plot_and_save(plotfunc, filename='summary'):
+def plot_and_save(plotfunc,
+                  is_pai=False,
+                  oss_dest=None,
+                  oss_ak=None,
+                  oss_sk=None,
+                  oss_endpoint=None,
+                  oss_bucket_name=None,
+                  filename='summary'):
     '''
     plot_and_save plots and saves matplotlib figures using different backends
     Args:
@@ -30,13 +39,17 @@ def plot_and_save(plotfunc, filename='summary'):
         None
     '''
 
-    # The default backend
     plotfunc()
     plt.savefig(filename, bbox_inches='tight')
-
-    # The plotille text backend
-    matplotlib.use('module://plotille_text_backend')
-    import matplotlib.pyplot as plt_text_backend
-    sys.stdout.isatty = lambda: True
-    plotfunc()
-    plt_text_backend.savefig(filename, bbox_inches='tight')
+    if is_pai:
+        utils.copyfileobj(filename + '.png', oss_dest, oss_ak, oss_sk,
+                          oss_endpoint, oss_bucket_name)
+    else:
+        # NOTE(weiguoz), I failed test on the PAI platform here.
+        # If we plan to support plotille_text_backend on PAI, please test it.
+        # The plotille text backend
+        matplotlib.use('module://plotille_text_backend')
+        import matplotlib.pyplot as plt_text_backend
+        sys.stdout.isatty = lambda: True
+        plotfunc()
+        plt_text_backend.savefig(filename, bbox_inches='tight')

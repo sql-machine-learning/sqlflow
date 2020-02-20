@@ -64,7 +64,12 @@ def explain(datasource,
             hdfs_namenode_addr="",
             hive_location="",
             hdfs_user="",
-            hdfs_pass=""):
+            hdfs_pass="",
+            oss_dest=None,
+            oss_ak=None,
+            oss_sk=None,
+            oss_endpoint=None,
+            oss_bucket_name=None):
     x = xgb_shap_dataset(datasource, select, feature_column_names, label_spec,
                          feature_field_meta, is_pai, pai_explain_table)
 
@@ -86,16 +91,20 @@ def explain(datasource,
         return
 
     if summary_params.get("plot_type") == "decision":
-        explainer.plot_and_save(lambda: shap.decision_plot(
-            expected_value,
-            shap_interaction_values,
-            x,
-            show=False,
-            feature_display_range=slice(None, -40, -1),
-            alpha=1))
+        explainer.plot_and_save(
+            lambda: shap.decision_plot(expected_value,
+                                       shap_interaction_values,
+                                       x,
+                                       show=False,
+                                       feature_display_range=slice(
+                                           None, -40, -1),
+                                       alpha=1), is_pai, oss_dest, oss_ak,
+            oss_sk, oss_endpoint, oss_bucket_name)
     else:
-        explainer.plot_and_save(lambda: shap.summary_plot(
-            shap_values, x, show=False, **summary_params))
+        explainer.plot_and_save(
+            lambda: shap.summary_plot(
+                shap_values, x, show=False, **summary_params), is_pai,
+            oss_dest, oss_ak, oss_sk, oss_endpoint, oss_bucket_name)
 
 
 def write_shap_values(shap_values, driver, conn, result_table,
