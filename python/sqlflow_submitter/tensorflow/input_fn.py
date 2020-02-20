@@ -71,7 +71,9 @@ def input_fn(select,
              feature_metas,
              label_meta,
              is_pai=False,
-             pai_table=""):
+             pai_table="",
+             num_workers=1,
+             worker_id=0):
     feature_types = []
     shapes = []
     for name in feature_column_names:
@@ -89,7 +91,9 @@ def input_fn(select,
         gen = pai_maxcompute_db_generator(formated_pai_table,
                                           feature_column_names,
                                           label_meta["feature_name"],
-                                          feature_metas)
+                                          feature_metas,
+                                          slice_id=worker_id,
+                                          slice_count=num_workers)
     else:
         conn = connect_with_data_source(datasource)
         gen = db_generator(conn.driver, conn, select, feature_column_names,
@@ -113,89 +117,13 @@ def input_fn(select,
     return dataset.map(ds_mapper)
 
 
-def pai_maxcompute_input_fn(pai_table,
-                            datasource,
-                            feature_column_names,
-                            feature_metas,
-                            label_meta,
-                            num_workers=1,
-                            worker_id=0,
-                            map_to_dict=True):
-    # NOTE(typhoonzero): datasource is only used to get current selected maxcompute project(database).
-    table_parts = pai_table.split(".")
-    if len(table_parts) == 2:
-        database, table_name = table_parts
-    elif len(table_parts) == 1:
-        table_name = pai_table
-        driver, dsn = datasource.split("://")
-        database = parseMaxComputeDSN(dsn)[-1]
-    else:
-        raise ValueError("error database.table format: %s" % pai_table)
-
-    tables = ["odps://%s/tables/%s" % (database, table_name)]
-    record_defaults = []
-    for name in feature_column_names:
-        dtype = get_dtype(feature_metas[name]["dtype"])
-        if feature_metas[name]["delimiter"] != "":
-            record_defaults.append(tf.constant("", dtype=tf.string, shape=[1]))
-        else:
-            record_defaults.append(
-                tf.constant(0, dtype=dtype,
-                            shape=[1]))  #shape=feature_metas[name]["shape"]))
-    record_defaults.append(
-        tf.constant(0,
-                    get_dtype(label_meta["dtype"]),
-                    shape=label_meta["shape"]))
-
-    selected_cols = copy.copy(feature_column_names)
-    selected_cols.append(label_meta["feature_name"])
-    if num_workers == 0:
-        num_workers = 1
-    dataset = paiio.TableRecordDataset(tables,
-                                       record_defaults=record_defaults,
-                                       selected_cols=",".join(selected_cols),
-                                       slice_id=worker_id,
-                                       slice_count=num_workers)
-
-    def tensor_to_dict(*args):
-        num_features = len(feature_column_names)
-        label = args[num_features]
-        features_dict = dict()
-        for idx in range(num_features):
-            name = feature_column_names[idx]
-            field_meta = feature_metas[name]
-            if field_meta["delimiter"] != "":  # process as CSV
-                dtype = get_dtype(feature_metas[name]["dtype"])
-                # FIXME(typhoonzero): when shape has multiple dimentions, do not use field_meta["shape"][0]
-                t = tf.io.decode_csv(args[idx], [
-                    tf.constant(0, dtype=dtype, shape=[1])
-                    for i in range(field_meta["shape"][0])
-                ],
-                                     field_delim=field_meta["delimiter"])
-            else:
-                t = tf.reshape(args[idx], [-1])
-            features_dict[name] = t
-        return features_dict, label
-
-    def tensor_to_list(*args):
-        num_features = len(feature_column_names)
-        label = args[num_features]
-        feature_list = []
-        for f in args[:num_features]:
-            feature_list.append(f.eval())
-        return feature_list, label.eval()
-
-    if map_to_dict:
-        return dataset.map(tensor_to_dict)
-    else:
-        return dataset.as_numpy().map(tensor_to_list)
-
-
 def pai_maxcompute_db_generator(table,
                                 feature_column_names,
                                 label_column_name,
                                 feature_specs,
-                                fetch_size=128):
+                                fetch_size=128,
+                                slice_id=0,
+                                slice_count=1):
     def read_feature(raw_val, feature_spec, feature_name):
         # FIXME(typhoonzero): Should use correct dtype here.
         if feature_spec["is_sparse"]:

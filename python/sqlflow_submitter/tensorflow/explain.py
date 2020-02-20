@@ -74,9 +74,6 @@ def explain(datasource,
 
     def _input_fn():
         if is_pai:
-            # dataset = pai_maxcompute_input_fn(pai_table, datasource,
-            #                                   feature_column_names,
-            #                                   feature_metas, label_meta)
             dataset = input_fn("",
                                datasource,
                                feature_column_names,
