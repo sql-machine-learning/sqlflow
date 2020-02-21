@@ -99,7 +99,8 @@ func connectAndRunSQL(sql string) ([]string, [][]*any.Any, error) {
 	}
 	defer conn.Close()
 	cli := pb.NewSQLFlowClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), 1800*time.Second)
+	// PAI tests may take a long time until the cluster resource is ready, increase the RPC deadline here.
+	ctx, cancel := context.WithTimeout(context.Background(), 7200*time.Second)
 	defer cancel()
 	stream, err := cli.Run(ctx, sqlRequest(sql))
 	if err != nil {
@@ -1724,10 +1725,6 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 
 	go start(modelDir, caCrt, caKey, unitTestPort, false)
 	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
-	err = prepareTestData(dbConnStr)
-	if err != nil {
-		t.Fatalf("prepare test dataset failed: %v", err)
-	}
 
 	t.Run("CaseTrainSQL", CaseTrainSQL)
 	t.Run("CaseTrainDNNAndExplain", CaseTrainDNNAndExplain)
