@@ -72,9 +72,9 @@ func GetClusterConfig(attrs map[string]interface{}) (*ClusterConfig, error) {
 			GPU:   defaultMap["train.worker_gpu"],
 		},
 		Evaluator: WorkerConfig{
-			Count: defaultMap["train.num_workers"],
-			CPU:   defaultMap["train.worker_cpu"],
-			GPU:   defaultMap["train.worker_gpu"],
+			Count: defaultMap["train.num_evaluator"],
+			CPU:   defaultMap["train.evaluator_cpu"],
+			GPU:   defaultMap["train.evaluator_gpu"],
 		},
 	}, nil
 }
