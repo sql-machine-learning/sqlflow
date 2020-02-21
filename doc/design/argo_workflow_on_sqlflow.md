@@ -159,19 +159,18 @@ where
       offset := ""
       logs, newOffset := k8s.readPodLogs(pod.Name, offset)
       while(!isNoMoreLogs(pod, offset, newOffset)) {
-
+        offset = newOffset
         for _, line := range(logs) {
           // using prefix to identify the protobuf string format can avoid
           // performance degradation caused by unmarshaling all logs.
           if strings.HasPrefix(SQLFlowProtobufPrefix, line) {
             res := new(pb.Response)
-            // Unmarshal the protobuf message from pod logs to pb.Response
-            proto.Unmarshal(line, pb.Response)
-            respones
+            // Unmarshal the protobuf message from pod logs to Response Message
+            proto.Unmarshal(line, res)
+            respones = append(response, res)
           }
         }
-
-        log, newOffset = k9s.ReadPodLogs(pod.Name, offset)
+        log, newOffset = k8s.ReadPodLogs(pod.Name, offset)
       }
       return responses, nil
     }
