@@ -65,23 +65,20 @@ func intArrayToJSONString(ia []int) string {
 func generateFeatureColumnCode(fc ir.FeatureColumn) (string, error) {
 	switch c := fc.(type) {
 	case *ir.NumericColumn:
-		nc := fc.(*ir.NumericColumn)
 		return fmt.Sprintf("tf.feature_column.numeric_column(\"%s\", shape=%s)",
-			nc.FieldDesc.Name,
-			intArrayToJSONString(nc.FieldDesc.Shape)), nil
+			c.FieldDesc.Name,
+			intArrayToJSONString(c.FieldDesc.Shape)), nil
 	case *ir.BucketColumn:
-		bc := fc.(*ir.BucketColumn)
-		sourceCode, err := generateFeatureColumnCode(bc.SourceColumn)
+		sourceCode, err := generateFeatureColumnCode(c.SourceColumn)
 		if err != nil {
 			return "", err
 		}
 		return fmt.Sprintf(
 			"tf.feature_column.bucketized_column(%s, boundaries=%s)",
 			sourceCode,
-			intArrayToJSONString(bc.Boundaries)), nil
+			intArrayToJSONString(c.Boundaries)), nil
 	case *ir.CategoryIDColumn:
-		cc := fc.(*ir.CategoryIDColumn)
-		fm := cc.GetFieldDesc()[0]
+		fm := c.GetFieldDesc()[0]
 		if len(fm.Vocabulary) > 0 {
 			vocabList := []string{}
 			for k := range fm.Vocabulary {
@@ -89,31 +86,28 @@ func generateFeatureColumnCode(fc ir.FeatureColumn) (string, error) {
 			}
 			vocabCode := strings.Join(vocabList, ",")
 			return fmt.Sprintf("tf.feature_column.categorical_column_with_vocabulary_list(key=\"%s\", vocabulary_list=[%s])",
-				cc.FieldDesc.Name, vocabCode), nil
+				c.FieldDesc.Name, vocabCode), nil
 		}
 		return fmt.Sprintf("tf.feature_column.categorical_column_with_identity(key=\"%s\", num_buckets=%d)",
-			cc.FieldDesc.Name, cc.BucketSize), nil
+			c.FieldDesc.Name, c.BucketSize), nil
 	case *ir.SeqCategoryIDColumn:
-		cc := fc.(*ir.SeqCategoryIDColumn)
 		return fmt.Sprintf("tf.feature_column.sequence_categorical_column_with_identity(key=\"%s\", num_buckets=%d)",
-			cc.FieldDesc.Name, cc.BucketSize), nil
+			c.FieldDesc.Name, c.BucketSize), nil
 	case *ir.CategoryHashColumn:
-		cc := fc.(*ir.CategoryHashColumn)
 		// FIXME(typhoonzero): do we need to support dtype other than int64?
 		dtypeStr := "tf.dtypes.int64"
-		if cc.GetFieldDesc()[0].DType == ir.Int {
+		if c.GetFieldDesc()[0].DType == ir.Int {
 			dtypeStr = "tf.dtypes.int64"
-		} else if cc.GetFieldDesc()[0].DType == ir.String {
+		} else if c.GetFieldDesc()[0].DType == ir.String {
 			dtypeStr = "tf.dtypes.string"
 		} else {
-			return "", fmt.Errorf("CATEGORY_HASH column do not support input type: %d, col: %s", cc.GetFieldDesc()[0].DType, cc.GetFieldDesc()[0].Name)
+			return "", fmt.Errorf("CATEGORY_HASH column do not support input type: %d, col: %s", c.GetFieldDesc()[0].DType, c.GetFieldDesc()[0].Name)
 		}
 		return fmt.Sprintf("tf.feature_column.categorical_column_with_hash_bucket(key=\"%s\", hash_bucket_size=%d, dtype=%s)",
-			cc.FieldDesc.Name, cc.BucketSize, dtypeStr), nil
+			c.FieldDesc.Name, c.BucketSize, dtypeStr), nil
 	case *ir.CrossColumn:
-		cc := fc.(*ir.CrossColumn)
-		var keysGenerated = make([]string, len(cc.Keys))
-		for idx, key := range cc.Keys {
+		var keysGenerated = make([]string, len(c.Keys))
+		for idx, key := range c.Keys {
 			if c, ok := key.(ir.FeatureColumn); ok {
 				code, err := generateFeatureColumnCode(c)
 				if err != nil {
@@ -126,19 +120,18 @@ func generateFeatureColumnCode(fc ir.FeatureColumn) (string, error) {
 		}
 		return fmt.Sprintf(
 			"tf.feature_column.crossed_column([%s], hash_bucket_size=%d)",
-			strings.Join(keysGenerated, ","), cc.HashBucketSize), nil
+			strings.Join(keysGenerated, ","), c.HashBucketSize), nil
 	case *ir.EmbeddingColumn:
-		ec := fc.(*ir.EmbeddingColumn)
-		catColumn, ok := ec.CategoryColumn.(ir.FeatureColumn)
+		catColumn, ok := c.CategoryColumn.(ir.FeatureColumn)
 		if !ok {
-			return "", fmt.Errorf("embedding generate code error, input is not featureColumn: %s", ec.CategoryColumn)
+			return "", fmt.Errorf("embedding generate code error, input is not featureColumn: %s", c.CategoryColumn)
 		}
 		sourceCode, err := generateFeatureColumnCode(catColumn)
 		if err != nil {
 			return "", err
 		}
 		return fmt.Sprintf("tf.feature_column.embedding_column(%s, dimension=%d, combiner=\"%s\")",
-			sourceCode, ec.Dimension, ec.Combiner), nil
+			sourceCode, c.Dimension, c.Combiner), nil
 	default:
 		return "", fmt.Errorf("unsupported feature column type %T on %v", c, c)
 	}
