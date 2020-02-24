@@ -34,6 +34,7 @@ const (
 	seqCategoryID = "SEQ_CATEGORY_ID"
 	categoryHash  = "CATEGORY_HASH"
 	embedding     = "EMBEDDING"
+	indicator     = "INDICATOR"
 	bucket        = "BUCKET"
 	square        = "SQUARE"
 	dense         = "DENSE"
@@ -435,6 +436,8 @@ func parseFeatureColumn(el *parser.ExprList) (ir.FeatureColumn, error) {
 		return parseCategoryHashColumn(el)
 	case embedding:
 		return parseEmbeddingColumn(el)
+	case indicator:
+		return parseIndicatorColumn(el)
 	default:
 		return nil, fmt.Errorf("not supported expr: %s", head)
 	}
@@ -641,7 +644,7 @@ func parseEmbeddingColumn(el *parser.ExprList) (*ir.EmbeddingColumn, error) {
 	if len(*el) < 4 || len(*el) > 5 {
 		return nil, fmt.Errorf("bad EMBEDDING expression format: %s, should be like: %s", *el, help)
 	}
-	var catColumn interface{}
+	var catColumn ir.FeatureColumn
 	embColName := "" // only used when catColumn == nil
 	sourceExprList := (*el)[1]
 	if sourceExprList.Type != 0 {
@@ -652,7 +655,7 @@ func parseEmbeddingColumn(el *parser.ExprList) (*ir.EmbeddingColumn, error) {
 	} else {
 		source, err := parseFeatureColumn(&sourceExprList.Sexp)
 		if err != nil {
-			var tmpCatColumn interface{}
+			var tmpCatColumn ir.FeatureColumn
 			// 2. source is a FieldDesc like EMBEDDING(SPARSE(...), size)
 			fm, err := parseFieldDesc(&sourceExprList.Sexp)
 			if err != nil {
@@ -669,7 +672,7 @@ func parseEmbeddingColumn(el *parser.ExprList) (*ir.EmbeddingColumn, error) {
 			}
 			catColumn = tmpCatColumn
 		} else {
-			var tmpCatColumn interface{}
+			var tmpCatColumn ir.FeatureColumn
 			// 3. source is a FeatureColumn like EMBEDDING(CATEGORY_ID(...), size)
 			tmpCatColumn, ok := source.(*ir.CategoryIDColumn)
 			if !ok {
@@ -706,6 +709,59 @@ func parseEmbeddingColumn(el *parser.ExprList) (*ir.EmbeddingColumn, error) {
 		Combiner:       combiner,
 		Initializer:    initializer,
 		Name:           embColName}, nil
+}
+
+func parseIndicatorColumn(el *parser.ExprList) (*ir.IndicatorColumn, error) {
+	help := "INDICATOR(CATEGORY_ID(...)/CATEGORY_HASH(...)|col_name])"
+	if len(*el) < 2 || len(*el) > 3 {
+		return nil, fmt.Errorf("bad INDICATOR expression format: %s, should be like: %s", *el, help)
+	}
+	var catColumn ir.FeatureColumn
+	colName := "" // only used when catColumn == nil
+	sourceExprList := (*el)[1]
+	if sourceExprList.Type != 0 {
+		// 1. key is a IDET string: INDICATOR(col_name), fill a nil in CategoryColumn for later
+		// feature derivation.
+		catColumn = nil
+		colName = sourceExprList.Value
+	} else {
+		source, err := parseFeatureColumn(&sourceExprList.Sexp)
+		if err != nil {
+			var tmpCatColumn ir.FeatureColumn
+			// 2. source is a FieldDesc like INDICATOR(SPARSE(...))
+			fm, err := parseFieldDesc(&sourceExprList.Sexp)
+			if err != nil {
+				return nil, err
+			}
+			// generate default CategoryIDColumn according to FieldDesc, use shape[0]
+			// as category_id_column bucket size.
+			if len(fm.Shape) < 1 {
+				return nil, fmt.Errorf("invalid FieldDesc Shape: %v", sourceExprList)
+			}
+			tmpCatColumn = &ir.CategoryIDColumn{
+				FieldDesc:  fm,
+				BucketSize: int64(fm.Shape[0]),
+			}
+			catColumn = tmpCatColumn
+		} else {
+			var tmpCatColumn ir.FeatureColumn
+			// 3. source is a FeatureColumn like EMBEDDING(CATEGORY_ID(...), size)
+			tmpCatColumn, ok := source.(*ir.CategoryIDColumn)
+			if !ok {
+				tmpCatColumn, ok = source.(*ir.SeqCategoryIDColumn)
+				if !ok {
+					tmpCatColumn, ok = source.(*ir.CategoryHashColumn)
+					if !ok {
+						return nil, fmt.Errorf("key of INDICATOR must be categorical column")
+					}
+				}
+			}
+			catColumn = tmpCatColumn
+		}
+	}
+	return &ir.IndicatorColumn{
+		CategoryColumn: catColumn,
+		Name:           colName}, nil
 }
 
 func parseFieldDesc(el *parser.ExprList) (*ir.FieldDesc, error) {

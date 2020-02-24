@@ -122,16 +122,19 @@ func generateFeatureColumnCode(fc ir.FeatureColumn) (string, error) {
 			"tf.feature_column.crossed_column([%s], hash_bucket_size=%d)",
 			strings.Join(keysGenerated, ","), c.HashBucketSize), nil
 	case *ir.EmbeddingColumn:
-		catColumn, ok := c.CategoryColumn.(ir.FeatureColumn)
-		if !ok {
-			return "", fmt.Errorf("embedding generate code error, input is not featureColumn: %s", c.CategoryColumn)
-		}
-		sourceCode, err := generateFeatureColumnCode(catColumn)
+		sourceCode, err := generateFeatureColumnCode(c.CategoryColumn)
 		if err != nil {
 			return "", err
 		}
 		return fmt.Sprintf("tf.feature_column.embedding_column(%s, dimension=%d, combiner=\"%s\")",
 			sourceCode, c.Dimension, c.Combiner), nil
+	case *ir.IndicatorColumn:
+		sourceCode, err := generateFeatureColumnCode(c.CategoryColumn)
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("tf.feature_column.indicator_column(%s)", sourceCode), nil
+
 	default:
 		return "", fmt.Errorf("unsupported feature column type %T on %v", c, c)
 	}

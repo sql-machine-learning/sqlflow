@@ -84,16 +84,21 @@ func initColumnMap(fcMap ColumnMap, fc ir.FeatureColumn, target string) {
 			}
 		}
 	} else {
-		// embedding column may got len(GetFieldDesc()) == 0
-		if emb, isEmb := fc.(*ir.EmbeddingColumn); isEmb {
+		switch c := fc.(type) {
+		// embedding/indicator column may got len(GetFieldDesc()) == 0
+		case *ir.EmbeddingColumn:
 			if len(fc.GetFieldDesc()) == 0 {
-				fcMap[target][emb.Name] = append(fcMap[target][emb.Name], fc)
-			} else {
-				fcMap[target][fc.GetFieldDesc()[0].Name] = append(fcMap[target][fc.GetFieldDesc()[0].Name], fc)
+				fcMap[target][c.Name] = append(fcMap[target][c.Name], fc)
+				return
 			}
-		} else {
-			fcMap[target][fc.GetFieldDesc()[0].Name] = append(fcMap[target][fc.GetFieldDesc()[0].Name], fc)
+
+		case *ir.IndicatorColumn:
+			if len(fc.GetFieldDesc()) == 0 {
+				fcMap[target][c.Name] = append(fcMap[target][c.Name], fc)
+				return
+			}
 		}
+		fcMap[target][fc.GetFieldDesc()[0].Name] = append(fcMap[target][fc.GetFieldDesc()[0].Name], fc)
 	}
 }
 

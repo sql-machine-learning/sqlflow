@@ -28,7 +28,8 @@ WITH
 COLUMN
   employee.name,
   bucketize(last_name, 1000),
-  cross(embedding(employee.name), bucketize(last_name, 1000))
+  cross(embedding(employee.name), bucketize(last_name, 1000)),
+  cross(indicator(employee.name), bucketize(last_name, 1000))
 LABEL "employee.salary"
 INTO sqlflow_models.my_dnn_model;
 `
@@ -39,9 +40,11 @@ WITH
 COLUMN
   employee.name,
   bucketize(last_name, 1000),
-  cross(embedding(employee.name), bucketize(last_name, 1000))
+  cross(embedding(employee.name), bucketize(last_name, 1000)),
+  cross(indicator(employee.name), bucketize(last_name, 1000))
 COLUMN
-  cross(embedding(employee.name), bucketize(last_name, 1000)) FOR C2
+  cross(embedding(employee.name), bucketize(last_name, 1000)),
+  cross(indicator(employee.name), bucketize(last_name, 1000)) FOR C2
 LABEL employee.salary
 INTO sqlflow_models.my_dnn_model;
 `
@@ -66,6 +69,10 @@ func TestExtendedSyntaxParseToTrain(t *testing.T) {
 	a.Equal(
 		`cross(embedding(employee.name), bucketize(last_name, 1000))`,
 		r.Columns["feature_columns"][2].String())
+	a.Equal(
+		`cross(indicator(employee.name), bucketize(last_name, 1000))`,
+		r.Columns["feature_columns"][3].String())
+
 	a.Equal("employee.salary", r.Label)
 	a.Equal("sqlflow_models.my_dnn_model", r.Save)
 }
@@ -88,8 +95,14 @@ func TestExtendedSyntaxParseToTrainWithMultiColumns(t *testing.T) {
 		`cross(embedding(employee.name), bucketize(last_name, 1000))`,
 		r.Columns["feature_columns"][2].String())
 	a.Equal(
+		`cross(indicator(employee.name), bucketize(last_name, 1000))`,
+		r.Columns["feature_columns"][3].String())
+	a.Equal(
 		`cross(embedding(employee.name), bucketize(last_name, 1000))`,
 		r.Columns["C2"][0].String())
+	a.Equal(
+		`cross(indicator(employee.name), bucketize(last_name, 1000))`,
+		r.Columns["C2"][1].String())
 	a.Equal("employee.salary", r.Label)
 	a.Equal("sqlflow_models.my_dnn_model", r.Save)
 }
