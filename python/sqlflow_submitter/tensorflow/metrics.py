@@ -14,11 +14,11 @@
 import tensorflow as tf
 
 metric_names_use_class_id = [
-    "Accuracy", "Precision", "Recall", "AUC", "TruePositives", "TrueNegatives",
+    "Accuracy", "Precision", "Recall", "TruePositives", "TrueNegatives",
     "FalsePositives", "FalseNegatives"
 ]
 metric_names_use_probabilities = [
-    "BinaryAccuracy", "CategoricalAccuracy", "TopKCategoricalAccuracy"
+    "BinaryAccuracy", "CategoricalAccuracy", "TopKCategoricalAccuracy", "AUC"
 ]
 metric_names_use_predictions = [
     "MeanAbsoluteError", "MeanAbsolutePercentageError", "MeanSquaredError",
