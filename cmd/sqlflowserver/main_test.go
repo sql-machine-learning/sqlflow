@@ -866,12 +866,21 @@ USING sqlflow_models.my_dnn_model;`
 	trainVaryColumnTypes := `SELECT c1, c2, c3, c4, c5, class from feature_derivation_case.train
 TO TRAIN DNNClassifier
 WITH model.n_classes=3, model.hidden_units=[10,10]
-COLUMN EMBEDDING(c3, 32, sum), EMBEDDING(SPARSE(c5, 64, COMMA), 32, sum),
-       INDICATOR(c3), INDICATOR(SPARSE(c5, 64, COMMA))
+COLUMN EMBEDDING(c3, 32, sum), EMBEDDING(SPARSE(c5, 64, COMMA), 32, sum)
 LABEL class
 INTO sqlflow_models.my_dnn_model;`
 	_, _, _, err = connectAndRunSQL(trainVaryColumnTypes)
 	a.NoError(err)
+
+	trainVaryColumnTypes = `SELECT c1, c2, c3, c4, c5, class from feature_derivation_case.train
+TO TRAIN DNNClassifier
+WITH model.n_classes=3, model.hidden_units=[10,10]
+COLUMN INDICATOR(c3), EMBEDDING(SPARSE(c5, 64, COMMA), 32, sum)
+LABEL class
+INTO sqlflow_models.my_dnn_model;`
+	_, _, _, err = connectAndRunSQL(trainVaryColumnTypes)
+	a.NoError(err)
+
 }
 
 func CaseTrainOptimizer(t *testing.T) {
