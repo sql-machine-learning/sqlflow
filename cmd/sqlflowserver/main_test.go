@@ -197,7 +197,7 @@ func ParseResponse(stream pb.SQLFlow_RunClient) ([]string, [][]*any.Any, []strin
 			onerow := iter.GetRow().GetData()
 			rows = append(rows, onerow)
 		}
-		if iter.GetMessage().Message != "" {
+		if iter.GetMessage() != nil {
 			messages = append(messages, iter.GetMessage().Message)
 		}
 		counter++
