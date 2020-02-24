@@ -79,7 +79,6 @@ def train(datasource,
 
     re = dict()
     print("Start training XGBoost model...")
-    print("model params: ", model_params)
     bst = xgb.train(model_params,
                     dtrain,
                     evals=watchlist,
