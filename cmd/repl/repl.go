@@ -423,7 +423,7 @@ func main() {
 	var reader io.Reader = sqlFile
 	// Override stdin and file when the `-e|-execute' options are present.
 	if flagPassed("execute", "e") {
-		reader = strings.NewReader(*cliStmt)
+		reader = strings.NewReader(strings.TrimSpace(*cliStmt))
 	}
 	scanner := bufio.NewScanner(reader)
 	if isTerminal {
