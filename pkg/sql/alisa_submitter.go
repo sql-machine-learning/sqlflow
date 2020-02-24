@@ -71,9 +71,12 @@ func (s *alisaSubmitter) ExecuteTrain(ts *ir.TrainStmt) (e error) {
 	if e != nil {
 		return e
 	}
-
+	currProject, e := database.GetDatabaseName(s.Session.DbConnStr)
+	if e != nil {
+		return e
+	}
 	// cleanup saved model on OSS before training
-	modelBucket, e := getModelBucket()
+	modelBucket, e := getModelBucket(currProject)
 	if e != nil {
 		return e
 	}
@@ -111,7 +114,12 @@ func (s *alisaSubmitter) ExecutePredict(ps *ir.PredictStmt) error {
 	if e != nil {
 		return e
 	}
-	modelType, _, e := getOSSSavedModelType(ossModelPath)
+	// NOTE(typhoonzero): current project may differ from the project from SELECT statement.
+	currProject, e := database.GetDatabaseName(s.Session.DbConnStr)
+	if e != nil {
+		return e
+	}
+	modelType, _, e := getOSSSavedModelType(ossModelPath, currProject)
 	if e != nil {
 		return e
 	}
@@ -148,11 +156,15 @@ func (s *alisaSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 	cl.TmpExplainTable = strings.Join([]string{dbName, tableName}, ".")
 	defer dropTmpTables([]string{cl.TmpExplainTable}, s.Session.DbConnStr)
 
+	currProject, err := database.GetDatabaseName(s.Session.DbConnStr)
+	if err != nil {
+		return err
+	}
 	ossModelPath, e := getModelPath(cl.ModelName, s.Session)
 	if e != nil {
 		return e
 	}
-	modelType, estimator, e := getOSSSavedModelType(ossModelPath)
+	modelType, estimator, e := getOSSSavedModelType(ossModelPath, currProject)
 	if e != nil {
 		return e
 	}
@@ -187,8 +199,11 @@ func findPyModulePath(pyModuleName string) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
-func getModelBucket() (*oss.Bucket, error) {
-	ossCkptDir := os.Getenv("SQLFLOW_OSS_CHECKPOINT_DIR")
+func getModelBucket(project string) (*oss.Bucket, error) {
+	ossCkptDir, err := pai.GetOSSCheckpointDir(project)
+	if err != nil {
+		return nil, err
+	}
 	ak := os.Getenv("SQLFLOW_OSS_AK")
 	sk := os.Getenv("SQLFLOW_OSS_SK")
 	ep := os.Getenv("SQLFLOW_OSS_MODEL_ENDPOINT")

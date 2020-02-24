@@ -119,7 +119,7 @@ func TestTrainCodegen(t *testing.T) {
 	a := assert.New(t)
 	trainStmt := ir.MockTrainStmt(false)
 
-	os.Setenv("SQLFLOW_OSS_CHECKPOINT_DIR", "oss://bucket/?role_arn=xxx&host=xxx")
+	os.Setenv("SQLFLOW_OSS_CHECKPOINT_DIR", "{\"project\": \"oss://bucket/?role_arn=xxx&host=xxx\"")
 	defer os.Unsetenv("SQLFLOW_OSS_CHECKPOINT_DIR")
 
 	sess := mockSession()
@@ -136,7 +136,7 @@ func TestTrainCodegen(t *testing.T) {
 	a.False(hasUnknownParameters(paiTFCode, knownTrainParams))
 
 	// check pai command string
-	ckpDir, err := checkpointURL(ossModelPath)
+	ckpDir, err := checkpointURL(ossModelPath, "project")
 	a.NoError(err)
 	expectedPAICmd := fmt.Sprintf("pai -name tensorflow1150 -project algo_public_dev -DmaxHungTimeBeforeGCInSeconds=0 -DjobName=sqlflow_my_dnn_model -Dtags=dnn -Dscript=%s -DentryFile=entry.py -Dtables=odps://iris/tables/train,odps://iris/tables/test  -DcheckpointDir=\"%s\" -DgpuRequired='0'", scriptPath, ckpDir)
 	a.Equal(expectedPAICmd, paiCmd)
@@ -146,12 +146,12 @@ func TestPredictCodegen(t *testing.T) {
 	a := assert.New(t)
 	ir := ir.MockPredStmt(ir.MockTrainStmt(false))
 
-	os.Setenv("SQLFLOW_OSS_CHECKPOINT_DIR", "oss://bucket/?role_arn=xxx&host=xxx")
+	os.Setenv("SQLFLOW_OSS_CHECKPOINT_DIR", "{\"project\": \"oss://bucket/?role_arn=xxx&host=xxx\"")
 	defer os.Unsetenv("SQLFLOW_OSS_CHECKPOINT_DIR")
 	sess := mockSession()
 	ossModelPath := "iris/sqlflow/my_dnn_model"
 	scriptPath := "file:///tmp/task.tar.gz"
-	ckpDir, err := checkpointURL(ossModelPath)
+	ckpDir, err := checkpointURL(ossModelPath, "project")
 	a.NoError(err)
 	paiTFCode, paiCmd, _, e := Predict(ir, sess, scriptPath, "my_dnn_model", ossModelPath, "", ModelTypeTF)
 	a.NoError(e)

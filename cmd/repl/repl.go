@@ -35,9 +35,6 @@ import (
 	"github.com/mattn/go-sixel"
 	"github.com/olekukonko/tablewriter"
 	"golang.org/x/crypto/ssh/terminal"
-	"sqlflow.org/goalisa"
-	"sqlflow.org/gohive"
-	"sqlflow.org/gomaxcompute"
 	"sqlflow.org/sqlflow/pkg/database"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql"
@@ -320,45 +317,6 @@ func switchDatabase(db string, session *pb.Session) error {
 	return nil
 }
 
-func getDatabaseName(datasource string) string {
-	driver, dsName, e := database.ParseURL(datasource)
-	if e != nil {
-		log.Fatalf("unrecognized data source '%s'", datasource)
-	}
-	switch driver {
-	case "maxcompute":
-		// maxcompute://root:root@odps.com?curr_project=my_project
-		cfg, e := gomaxcompute.ParseDSN(dsName)
-		if e != nil {
-			log.Fatalf("parsing maxcompute DSN failed, %v", e)
-		}
-		return cfg.Project
-	case "alisa":
-		// alisa://root:root@dataworks.com?curr_project=my_project
-		cfg, e := goalisa.ParseDSN(dsName)
-		if e != nil {
-			log.Fatalf("parseing alisa DSN failed, %v", e)
-		}
-		return cfg.Project
-	case "mysql":
-		// mysql://root:root@tcp(127.0.0.1:3306)/iris?maxAllowedPacket=0
-		re := regexp.MustCompile(`[^/]*/(\w*).*`) // Extract the database name of MySQL and Hive
-		if group := re.FindStringSubmatch(dsName); group != nil {
-			return group[1]
-		}
-	case "hive":
-		// hive://root:root@127.0.0.1:10000/iris?auth=NOSASL
-		cfg, e := gohive.ParseDSN(dsName)
-		if e != nil {
-			log.Fatalf("parsing mysql DSN failed, %v", e)
-		}
-		return cfg.DBName
-	default:
-		log.Fatalf("unknown database '%s' in data source'%s'", driver, datasource)
-	}
-	return ""
-}
-
 // getDataSource generates a data source string that is using database `db` from the original dataSource
 func getDataSource(dataSource, db string) string {
 	driver, other, e := database.ParseURL(dataSource)
@@ -402,7 +360,11 @@ func main() {
 		*ds = os.Getenv("SQLFLOW_DATASOURCE")
 	}
 	assertConnectable(*ds) // Fast fail if we can't connect to the datasource
-	currentDB = getDatabaseName(*ds)
+	var err error
+	currentDB, err = database.GetDatabaseName(*ds)
+	if err != nil {
+		log.Fatalf("error SQLFLOW_DATASOURCE: %v", err)
+	}
 
 	if *modelDir != "" {
 		if _, derr := os.Stat(*modelDir); derr != nil {
@@ -412,7 +374,7 @@ func main() {
 
 	isTerminal := !flagPassed("execute", "e", "file", "f") && terminal.IsTerminal(syscall.Stdin)
 	sqlFile := os.Stdin
-	var err error
+
 	if flagPassed("file", "f") {
 		sqlFile, err = os.Open(*sqlFileName)
 		if err != nil {
