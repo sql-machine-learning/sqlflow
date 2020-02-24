@@ -80,14 +80,17 @@ We implement the `Fetch` API as the following pseudo-code:
 
 ``` go
 func Fetch(req *FetchRequest) *FetchResponse {
-  // kubectl get pod ...
-  step := getStep(req)
-
   // kubectl get workflow ...
   wf := getWorkflow(req)
 
+  // return the next step ID if necessary
+  stepID := req.stepID
+
+  // kubctl get pod ...
+  pod := getPod(wf, stepID)
+
   // return step phase logs if the phase changed
-  stepPhaseLogs := fetchStepPhaseLogs(wf, step)
+  stepPhaseLogs := fetchStepPhaseLogs(wf, stepID)
 
   // append step phase status logs to Response
   responses := []pb.Response{&Message{stepPhaseLogs}}
@@ -105,7 +108,7 @@ func Fetch(req *FetchRequest) *FetchResponse {
     if isLastStep(wf, stepID) {
       eof = true
     } else {
-      stepID := nextStep(wf, stepID)
+      stepID = nextStep(wf, stepID)
     }
   }
 
