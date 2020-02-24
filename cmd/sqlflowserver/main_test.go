@@ -23,6 +23,8 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -92,10 +94,10 @@ func connectAndRunSQLShouldError(sql string) {
 	}
 }
 
-func connectAndRunSQL(sql string) ([]string, [][]*any.Any, error) {
+func connectAndRunSQL(sql string) ([]string, [][]*any.Any, []string, error) {
 	conn, err := createRPCConn()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	defer conn.Close()
 	cli := pb.NewSQLFlowClient(conn)
@@ -104,10 +106,10 @@ func connectAndRunSQL(sql string) ([]string, [][]*any.Any, error) {
 	defer cancel()
 	stream, err := cli.Run(ctx, sqlRequest(sql))
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	cols, rows := ParseRow(stream)
-	return cols, rows, nil
+	cols, rows, messages := ParseResponse(stream)
+	return cols, rows, messages, nil
 }
 
 func sqlRequest(sql string) *pb.Request {
@@ -175,9 +177,10 @@ func AssertIsSubStringAny(a *assert.Assertions, substring string, actual *any.An
 	}
 }
 
-func ParseRow(stream pb.SQLFlow_RunClient) ([]string, [][]*any.Any) {
+func ParseResponse(stream pb.SQLFlow_RunClient) ([]string, [][]*any.Any, []string) {
 	var rows [][]*any.Any
 	var columns []string
+	var messages []string
 	counter := 0
 	for {
 		iter, err := stream.Recv()
@@ -194,9 +197,12 @@ func ParseRow(stream pb.SQLFlow_RunClient) ([]string, [][]*any.Any) {
 			onerow := iter.GetRow().GetData()
 			rows = append(rows, onerow)
 		}
+		if iter.GetMessage() != nil {
+			messages = append(messages, iter.GetMessage().Message)
+		}
 		counter++
 	}
-	return columns, rows
+	return columns, rows, messages
 }
 
 func prepareTestData(dbStr string) error {
@@ -364,7 +370,7 @@ WITH objective="reg:squarederror",
 	 train.num_boost_round=30
 LABEL target
 INTO sqlflow_models.my_xgb_regression_model;`
-	_, _, err := connectAndRunSQL(trainSQL)
+	_, _, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("run test error: %v", err)
 	}
@@ -372,7 +378,7 @@ INTO sqlflow_models.my_xgb_regression_model;`
 	predSQL := `SELECT * FROM housing.test
 TO PREDICT housing.predict.target
 USING sqlflow_models.my_xgb_regression_model;`
-	_, _, err = connectAndRunSQL(predSQL)
+	_, _, _, err = connectAndRunSQL(predSQL)
 	if err != nil {
 		a.Fail("run test error: %v", err)
 	}
@@ -384,14 +390,14 @@ func CaseXgboostEvalMetric(t *testing.T) {
 WITH objective="binary:logistic", eval_metric=auc
 LABEL class
 INTO sqlflow_models.my_xgb_binary_classification_model;`
-	_, _, err := connectAndRunSQL(trainSQL)
+	_, _, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("run test error: %v", err)
 	}
 
 	predSQL := `SELECT * FROM iris.test TO PREDICT iris.predict.class
 USING sqlflow_models.my_xgb_binary_classification_model;`
-	_, _, err = connectAndRunSQL(predSQL)
+	_, _, _, err = connectAndRunSQL(predSQL)
 	if err != nil {
 		a.Fail("run test error: %v", err)
 	}
@@ -406,7 +412,7 @@ WITH model.n_classes = 17, model.hidden_units = [10, 20]
 COLUMN EMBEDDING(CATEGORY_ID(SPARSE(news_title,16000,COMMA), 16000),128,mean)
 LABEL class_id
 INTO sqlflow_models.my_dnn_model;`
-	_, _, err := connectAndRunSQL(trainSQL)
+	_, _, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("Check if the server started successfully. %v", err)
 	}
@@ -421,7 +427,7 @@ WITH model.n_classes = 17, model.hidden_units = [10, 20]
 COLUMN EMBEDDING(SPARSE(news_title,16000,COMMA),128,mean)
 LABEL class_id
 INTO sqlflow_models.my_dnn_model;`
-	_, _, err := connectAndRunSQL(trainSQL)
+	_, _, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("Check if the server started successfully. %v", err)
 	}
@@ -619,7 +625,7 @@ func TestEnd2EndMaxComputeALPS(t *testing.T) {
 // 			sepal_length, sepal_width, petal_length, petal_width
 // LABEL class
 // INTO trained_elasticdl_keras_classifier;`, os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT"), "sqlflow_test_iris_train")
-// 	_, _, err := connectAndRunSQL(trainSQL)
+// 	_, _, _, err := connectAndRunSQL(trainSQL)
 // 	if err != nil {
 // 		a.Fail("run trainSQL error: %v", err)
 // 	}
@@ -628,7 +634,7 @@ func TestEnd2EndMaxComputeALPS(t *testing.T) {
 func CaseShowDatabases(t *testing.T) {
 	a := assert.New(t)
 	cmd := "show databases;"
-	head, resp, err := connectAndRunSQL(cmd)
+	head, resp, _, err := connectAndRunSQL(cmd)
 	if err != nil {
 		a.Fail("Check if the server started successfully. %v", err)
 	}
@@ -668,7 +674,7 @@ func CaseShowDatabases(t *testing.T) {
 func CaseSelect(t *testing.T) {
 	a := assert.New(t)
 	cmd := fmt.Sprintf("select * from %s limit 2;", caseTrainTable)
-	head, rows, err := connectAndRunSQL(cmd)
+	head, rows, _, err := connectAndRunSQL(cmd)
 	if err != nil {
 		a.Fail("Check if the server started successfully. %v", err)
 	}
@@ -711,7 +717,7 @@ func CaseTrainSQL(t *testing.T) {
 	LABEL class
 	INTO %s;
 	`, caseTrainTable, caseTrainTable, caseInto)
-	_, _, err := connectAndRunSQL(trainSQL)
+	_, _, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)
 	}
@@ -720,14 +726,14 @@ func CaseTrainSQL(t *testing.T) {
 FROM %s
 TO PREDICT %s.class
 USING %s;`, caseTestTable, casePredictTable, caseInto)
-	_, _, err = connectAndRunSQL(predSQL)
+	_, _, _, err = connectAndRunSQL(predSQL)
 	if err != nil {
 		a.Fail("Run predSQL error: %v", err)
 	}
 
 	showPred := fmt.Sprintf(`SELECT *
 FROM %s LIMIT 5;`, casePredictTable)
-	_, rows, err := connectAndRunSQL(showPred)
+	_, rows, _, err := connectAndRunSQL(showPred)
 	if err != nil {
 		a.Fail("Run showPred error: %v", err)
 	}
@@ -760,7 +766,7 @@ func CaseTrainBoostedTreesEstimatorAndExplain(t *testing.T) {
 	LABEL class
 	INTO %s;
 	`, caseInto)
-	_, _, err := connectAndRunSQL(trainSQL)
+	_, _, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)
 	}
@@ -768,11 +774,11 @@ func CaseTrainBoostedTreesEstimatorAndExplain(t *testing.T) {
 	explainSQL := fmt.Sprintf(`SELECT * FROM iris.test WHERE class!=2
 	TO EXPLAIN %s
 	INTO iris.explain_result;`, caseInto)
-	_, _, err = connectAndRunSQL(explainSQL)
+	_, _, _, err = connectAndRunSQL(explainSQL)
 	a.NoError(err)
 
 	getExplainResult := `SELECT * FROM iris.explain_result;`
-	_, rows, err := connectAndRunSQL(getExplainResult)
+	_, rows, _, err := connectAndRunSQL(getExplainResult)
 	a.NoError(err)
 	for _, row := range rows {
 		AssertGreaterEqualAny(a, row[1], float32(0))
@@ -783,7 +789,7 @@ func CaseTrainLinearClassifier(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`SELECT * FROM iris.train WHERE class !=2
 TO TRAIN LinearClassifier LABEL class INTO %s;`, caseInto)
-	_, _, err := connectAndRunSQL(trainSQL)
+	_, _, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)
 	}
@@ -801,7 +807,7 @@ WITH
 	validation.metrics = "Accuracy,AUC"
 LABEL class
 INTO sqlflow_models.mytest_model;`
-	_, _, err := connectAndRunSQL(trainSQL)
+	_, _, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)
 	}
@@ -817,7 +823,7 @@ WITH
 	validation.metrics = "Accuracy,AUC,Precision,Recall"
 LABEL class
 INTO sqlflow_models.mytest_model;`
-	_, _, err = connectAndRunSQL(kerasTrainSQL)
+	_, _, _, err = connectAndRunSQL(kerasTrainSQL)
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)
 	}
@@ -831,7 +837,7 @@ WITH
 	validation.metrics = "MeanAbsoluteError,MeanAbsolutePercentageError,MeanSquaredError"
 LABEL target
 INTO sqlflow_models.myreg_model;`
-	_, _, err = connectAndRunSQL(regressionTrainSQL)
+	_, _, _, err = connectAndRunSQL(regressionTrainSQL)
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)
 	}
@@ -845,14 +851,14 @@ TO TRAIN DNNClassifier
 WITH model.n_classes = 3, model.hidden_units = [10, 20]
 LABEL class
 INTO sqlflow_models.my_dnn_model;`
-	_, _, err := connectAndRunSQL(trainSQL)
+	_, _, _, err := connectAndRunSQL(trainSQL)
 	a.NoError(err)
 
 	predSQL := `SELECT *
 FROM iris.test
 TO PREDICT iris.predict.class
 USING sqlflow_models.my_dnn_model;`
-	_, _, err = connectAndRunSQL(predSQL)
+	_, _, _, err = connectAndRunSQL(predSQL)
 	a.NoError(err)
 
 	// TODO(typhoonzero): also support string column type for training and prediction (column c6)
@@ -863,7 +869,7 @@ WITH model.n_classes=3, model.hidden_units=[10,10]
 COLUMN EMBEDDING(c3, 32, sum), EMBEDDING(SPARSE(c5, 64, COMMA), 32, sum)
 LABEL class
 INTO sqlflow_models.my_dnn_model;`
-	_, _, err = connectAndRunSQL(trainVaryColumnTypes)
+	_, _, _, err = connectAndRunSQL(trainVaryColumnTypes)
 	a.NoError(err)
 }
 
@@ -875,14 +881,14 @@ TO TRAIN DNNClassifier
 WITH model.n_classes = 3, model.hidden_units = [10, 20], model.optimizer=RMSprop
 LABEL class
 INTO sqlflow_models.my_dnn_model;`
-	_, _, err := connectAndRunSQL(trainSQL)
+	_, _, _, err := connectAndRunSQL(trainSQL)
 	a.NoError(err)
 
 	predSQL := `SELECT *
 FROM iris.test
 TO PREDICT iris.predict.class
 USING sqlflow_models.my_dnn_model;`
-	_, _, err = connectAndRunSQL(predSQL)
+	_, _, _, err = connectAndRunSQL(predSQL)
 	a.NoError(err)
 
 	trainKerasSQL := `SELECT *
@@ -893,7 +899,7 @@ WITH model.n_classes = 3, model.hidden_units = [10, 20],
 	 model.loss=SparseCategoricalCrossentropy
 LABEL class
 INTO sqlflow_models.my_dnn_model;`
-	_, _, err = connectAndRunSQL(trainKerasSQL)
+	_, _, _, err = connectAndRunSQL(trainKerasSQL)
 	a.NoError(err)
 }
 
@@ -905,7 +911,7 @@ WITH model.n_classes = 3, model.hidden_units = [10, 20], validation.select="sele
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO %s;`, caseTrainTable, caseTestTable, caseInto)
-	_, _, err := connectAndRunSQL(trainSQL)
+	_, _, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("run trainSQL error: %v", err)
 	}
@@ -913,13 +919,13 @@ INTO %s;`, caseTrainTable, caseTestTable, caseInto)
 	predSQL := fmt.Sprintf(`SELECT * FROM %s
 TO PREDICT %s.class
 USING %s;`, caseTestTable, casePredictTable, caseInto)
-	_, _, err = connectAndRunSQL(predSQL)
+	_, _, _, err = connectAndRunSQL(predSQL)
 	if err != nil {
 		a.Fail("run predSQL error: %v", err)
 	}
 
 	showPred := fmt.Sprintf(`SELECT * FROM %s LIMIT 5;`, casePredictTable)
-	_, rows, err := connectAndRunSQL(showPred)
+	_, rows, _, err := connectAndRunSQL(showPred)
 	if err != nil {
 		a.Fail("run showPred error: %v", err)
 	}
@@ -940,7 +946,7 @@ USING %s;`, caseTestTable, casePredictTable, caseInto)
 	// COLUMN sepal_length, sepal_width, petal_length, petal_width
 	// LABEL class
 	// INTO %s;`, caseTrainTable, caseInto)
-	// 	_, _, err = connectAndRunSQL(trainSQL)
+	// 	_, _, _, err = connectAndRunSQL(trainSQL)
 	// 	if err != nil {
 	// 		a.Fail("run trainSQL error: %v", err)
 	// 	}
@@ -956,20 +962,20 @@ func CaseTrainWithCommaSeparatedLabel(t *testing.T) {
 	  validation.metrics= "MeanAbsoluteError,MeanSquaredError"
 	LABEL class
 	INTO sqlflow_models.my_dnn_regts_model_2;`
-	_, _, err := connectAndRunSQL(trainSQL)
+	_, _, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("run trainSQL error: %v", err)
 	}
 
 	predSQL := `SELECT sepal_length, sepal_width, petal_length, concat(petal_width,',',class) as class FROM iris.test 
 	TO PREDICT iris.predict_ts_2.class USING sqlflow_models.my_dnn_regts_model_2;`
-	_, _, err = connectAndRunSQL(predSQL)
+	_, _, _, err = connectAndRunSQL(predSQL)
 	if err != nil {
 		a.Fail("run trainSQL error: %v", err)
 	}
 
 	showPred := `SELECT * FROM iris.predict_ts_2 LIMIT 5;`
-	_, rows, err := connectAndRunSQL(showPred)
+	_, rows, _, err := connectAndRunSQL(showPred)
 	if err != nil {
 		a.Fail("Run showPred error: %v", err)
 	}
@@ -989,7 +995,7 @@ WITH model.n_classes = 17, model.hidden_units = [10, 20]
 COLUMN EMBEDDING(CATEGORY_ID(news_title,16000,COMMA),128,mean)
 LABEL class_id
 INTO sqlflow_models.my_dnn_model;`
-	_, _, err := connectAndRunSQL(trainSQL)
+	_, _, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("run trainSQL error: %v", err)
 	}
@@ -1004,7 +1010,7 @@ WITH model.n_classes = 17, model.stack_units = [16], train.epoch = 1, train.batc
 COLUMN EMBEDDING(SEQ_CATEGORY_ID(news_title,1600,COMMA),128,mean)
 LABEL class_id
 INTO sqlflow_models.my_bilstm_model;`
-	_, _, err := connectAndRunSQL(trainSQL)
+	_, _, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("run trainSQL error: %v", err)
 	}
@@ -1024,7 +1030,7 @@ WITH model.n_classes = 3, model.hidden_units = [10, 20],
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.my_dnn_model;`
-	_, _, err := connectAndRunSQL(trainSQL)
+	_, _, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("run trainSQL error: %v", err)
 	}
@@ -1040,7 +1046,7 @@ COLUMN sepal_length, sepal_width FOR linear_feature_columns
 COLUMN petal_length, petal_width FOR dnn_feature_columns
 LABEL class
 INTO sqlflow_models.my_dnn_linear_model;`
-	_, _, err := connectAndRunSQL(trainSQL)
+	_, _, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("run trainSQL error: %v", err)
 	}
@@ -1050,12 +1056,12 @@ func CaseTrainAdaNetAndExplain(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := `SELECT * FROM iris.train
 TO TRAIN sqlflow_models.AutoClassifier WITH model.n_classes = 3 LABEL class INTO sqlflow_models.my_adanet_model;`
-	_, _, err := connectAndRunSQL(trainSQL)
+	_, _, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("run trainSQL error: %v", err)
 	}
 	explainSQL := `SELECT * FROM iris.test LIMIT 10 TO EXPLAIN sqlflow_models.my_adanet_model;`
-	_, _, err = connectAndRunSQL(explainSQL)
+	_, _, _, err = connectAndRunSQL(explainSQL)
 	a.NoError(err)
 }
 
@@ -1070,7 +1076,7 @@ COLUMN sepal_length, sepal_width FOR linear_feature_columns
 COLUMN petal_length, petal_width FOR dnn_feature_columns
 LABEL class
 INTO sqlflow_models.my_dnn_linear_model;`
-	_, _, err := connectAndRunSQL(trainSQL)
+	_, _, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("run trainSQL error: %v", err)
 	}
@@ -1086,7 +1092,7 @@ WITH model.n_classes = 3, model.hidden_units = [10, 20], train.batch_size = 10, 
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.my_dnn_model_custom;`
-	_, _, err := connectAndRunSQL(trainSQL)
+	_, _, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("run trainSQL error: %v", err)
 	}
@@ -1101,7 +1107,7 @@ WITH model.n_classes = 3, model.hidden_units = [10, 20]
 COLUMN EMBEDDING(SPARSE(news_title,16000,COMMA),128,mean)
 LABEL class_id
 INTO sqlflow_models.my_dnn_model;`
-	_, _, err := connectAndRunSQL(trainSQL)
+	_, _, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("run trainSQL error: %v", err)
 	}
@@ -1135,7 +1141,7 @@ func CaseTrainALPS(t *testing.T) {
 	LABEL l
 	INTO model_table;
 	`, caseDB, caseDB)
-	_, _, err := connectAndRunSQL(trainSQL)
+	_, _, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("run trainSQL error: %v", err)
 	}
@@ -1163,7 +1169,7 @@ COLUMN SPARSE(deep_id,15033,COMMA,int),
        EMBEDDING(CATEGORY_ID(space_stat,418,COMMA),64,mean)
 LABEL l
 INTO model_table;`, caseDB, os.Getenv("GITLAB_TOKEN"))
-	_, _, err := connectAndRunSQL(trainSQL)
+	_, _, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("run trainSQL error: %v", err)
 	}
@@ -1180,7 +1186,7 @@ WITH train.max_steps = 32, eval.steps=32, train.batch_size=8, engine.ps_num=0, e
 COLUMN DENSE(dense, none, comma),
        DENSE(item, 1, comma, int)
 LABEL "label" INTO model_table;`, caseDB)
-	_, _, err := connectAndRunSQL(trainSQL)
+	_, _, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("run trainSQL error: %v", err)
 	}
@@ -1207,7 +1213,7 @@ WHERE f1.user_id < 3;`
 		a.Fail("Check if the server started successfully. %v", err)
 	}
 	// wait train finish
-	ParseRow(stream)
+	ParseResponse(stream)
 }
 
 // CaseTrainRegression is used to test regression models
@@ -1220,7 +1226,7 @@ WITH model.label_dimension=1
 COLUMN f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13
 LABEL target
 INTO sqlflow_models.my_regression_model;`)
-	_, _, err := connectAndRunSQL(trainSQL)
+	_, _, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("run trainSQL error: %v", err)
 	}
@@ -1229,14 +1235,14 @@ INTO sqlflow_models.my_regression_model;`)
 FROM housing.test
 TO PREDICT housing.predict.result
 USING sqlflow_models.my_regression_model;`)
-	_, _, err = connectAndRunSQL(predSQL)
+	_, _, _, err = connectAndRunSQL(predSQL)
 	if err != nil {
 		a.Fail("run predSQL error: %v", err)
 	}
 
 	showPred := fmt.Sprintf(`SELECT *
 FROM housing.predict LIMIT 5;`)
-	_, rows, err := connectAndRunSQL(showPred)
+	_, rows, _, err := connectAndRunSQL(showPred)
 	if err != nil {
 		a.Fail("run showPred error: %v", err)
 	}
@@ -1267,14 +1273,30 @@ WITH
 	scale_pos_weight=2,
 	train.num_boost_round = 30,
 	validation.select="SELECT * FROM housing.train LIMIT 20"
-COLUMN f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13
 LABEL target
 INTO sqlflow_models.my_xgb_regression_model;
 `)
-	_, _, err := connectAndRunSQL(trainSQL)
+	_, _, messages, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("run trainSQL error: %v", err)
 	}
+
+	isConvergence := false
+	reLog := regexp.MustCompile(`.*29.*train-rmse:(.+)?validate-rmse\:(.+)?`)
+	for _, msg := range messages {
+		sub := reLog.FindStringSubmatch(msg)
+		if len(sub) == 3 {
+			trainRmse, e := strconv.ParseFloat(strings.TrimSpace(sub[1]), 32)
+			a.NoError(e)
+			valRmse, e := strconv.ParseFloat(strings.TrimSpace(sub[2]), 32)
+			a.NoError(e)
+			a.Greater(trainRmse, 0.0)            // no overfitting
+			a.LessOrEqual(trainRmse, 0.5)        // less the baseline
+			a.GreaterOrEqual(valRmse, trainRmse) // verifty the valiation
+			isConvergence = true
+		}
+	}
+	a.Truef(isConvergence, strings.Join(messages, "\n"))
 }
 
 // CaseTrainAndExplainXGBoostModel is used to test training a xgboost model,
@@ -1314,12 +1336,12 @@ USING TreeExplainer;
 	if err != nil {
 		a.Fail("Check if the server started successfully. %v", err)
 	}
-	ParseRow(stream)
+	ParseResponse(stream)
 	stream, err = cli.Run(ctx, sqlRequest(explainStmt))
 	if err != nil {
 		a.Fail("Check if the server started successfully. %v", err)
 	}
-	ParseRow(stream)
+	ParseResponse(stream)
 }
 
 func CasePredictXGBoostRegression(t *testing.T) {
@@ -1328,14 +1350,14 @@ func CasePredictXGBoostRegression(t *testing.T) {
 FROM housing.test
 TO PREDICT housing.xgb_predict.target
 USING sqlflow_models.my_xgb_regression_model;`)
-	_, _, err := connectAndRunSQL(predSQL)
+	_, _, _, err := connectAndRunSQL(predSQL)
 	if err != nil {
 		a.Fail("run predSQL error: %v", err)
 	}
 
 	showPred := fmt.Sprintf(`SELECT *
 FROM housing.xgb_predict LIMIT 5;`)
-	_, rows, err := connectAndRunSQL(showPred)
+	_, rows, _, err := connectAndRunSQL(showPred)
 	if err != nil {
 		a.Fail("run showPred error: %v", err)
 	}
@@ -1371,14 +1393,14 @@ func CaseTrainDistributedPAI(t *testing.T) {
 	LABEL class
 	INTO %s;
 	`, caseTrainTable, caseInto)
-	_, _, err := connectAndRunSQL(trainSQL)
+	_, _, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)
 	}
 	predSQL := fmt.Sprintf(`SELECT * FROM %s
 TO PREDICT %s.class
 USING %s;`, caseTestTable, casePredictTable, caseInto)
-	_, _, err = connectAndRunSQL(predSQL)
+	_, _, _, err = connectAndRunSQL(predSQL)
 	if err != nil {
 		a.Fail("Run predSQL error: %v", err)
 	}
@@ -1400,7 +1422,7 @@ func CaseTrainPAIKMeans(t *testing.T) {
 		excluded_columns=class
 	INTO %s;
 	`, caseTrainTable, caseTrainTable+"_test_output_idx", caseInto)
-	_, _, err = connectAndRunSQL(trainSQL)
+	_, _, _, err = connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)
 	}
@@ -1409,7 +1431,7 @@ func CaseTrainPAIKMeans(t *testing.T) {
 	TO PREDICT %s.cluster_index
 	USING %s;
 	`, caseTestTable, casePredictTable, caseInto)
-	_, _, err = connectAndRunSQL(predSQL)
+	_, _, _, err = connectAndRunSQL(predSQL)
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)
 	}
@@ -1428,7 +1450,7 @@ func CaseTrainPAIRandomForests(t *testing.T) {
 	LABEL class
 	INTO my_rf_model;
 	`, caseTrainTable)
-	_, _, err = connectAndRunSQL(trainSQL)
+	_, _, _, err = connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)
 	}
@@ -1437,7 +1459,7 @@ func CaseTrainPAIRandomForests(t *testing.T) {
 	TO PREDICT %s.class
 	USING my_rf_model;
 	`, caseTestTable, casePredictTable)
-	_, _, err = connectAndRunSQL(predSQL)
+	_, _, _, err = connectAndRunSQL(predSQL)
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)
 	}
@@ -1448,7 +1470,7 @@ func CaseTrainPAIRandomForests(t *testing.T) {
 	USING TreeExplainer
 	INTO %s.rf_model_explain;
 	`, caseTestTable, caseDB)
-	_, _, err = connectAndRunSQL(explainSQL)
+	_, _, _, err = connectAndRunSQL(explainSQL)
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)
 	}
@@ -1461,7 +1483,7 @@ func CaseTrainDNNAndExplain(t *testing.T) {
 	WITH model.n_classes = 3, model.hidden_units = [10, 20]
 	LABEL class
 	INTO %s;`, caseTrainTable, caseInto)
-	_, _, err := connectAndRunSQL(trainSQL)
+	_, _, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)
 	}
@@ -1471,7 +1493,7 @@ TO EXPLAIN %s
 WITH label_col=class
 USING TreeExplainer
 INTO %s.explain_result;`, caseTestTable, caseInto, caseDB)
-	_, _, err = connectAndRunSQL(predSQL)
+	_, _, _, err = connectAndRunSQL(predSQL)
 	if err != nil {
 		a.Fail("Run predSQL error: %v", err)
 	}
@@ -1488,7 +1510,7 @@ func CaseTrainXGBoostOnPAI(t *testing.T) {
 		num_class = 3
 	LABEL class
 	INTO my_xgb_classi_model;`, caseTrainTable)
-	_, _, err := connectAndRunSQL(trainSQL)
+	_, _, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)
 	}
@@ -1496,7 +1518,7 @@ func CaseTrainXGBoostOnPAI(t *testing.T) {
 	predSQL := fmt.Sprintf(`SELECT * FROM %s
 	TO PREDICT %s.class
 	USING my_xgb_classi_model;`, caseTestTable, casePredictTable)
-	_, _, err = connectAndRunSQL(predSQL)
+	_, _, _, err = connectAndRunSQL(predSQL)
 	if err != nil {
 		a.Fail("Run predSQL error: %v", err)
 	}
@@ -1506,7 +1528,7 @@ func CaseTrainXGBoostOnPAI(t *testing.T) {
 	WITH label_col=class
 	USING TreeExplainer
 	INTO my_xgb_explain_result;`, caseTrainTable)
-	_, _, err = connectAndRunSQL(explainSQL)
+	_, _, _, err = connectAndRunSQL(explainSQL)
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)
 	}
@@ -1523,14 +1545,14 @@ COLUMN NUMERIC(ll1, 1),NUMERIC(ll2, 1),NUMERIC(ll3, 1),NUMERIC(ll4, 1),NUMERIC(l
 COLUMN EMBEDDING(CATEGORY_HASH(C1, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C2, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C3, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C4, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C5, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C6, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C7, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C8, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C9, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C10, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C11, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C12, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C13, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C14, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C15, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C16, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C17, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C18, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C19, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C20, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C21, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C22, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C23, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C24, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C25, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C26, 100), 8, "sum") FOR dnn_feature_columns
 LABEL 'label'
 INTO my_ctr_model_raw;`
-	_, _, err := connectAndRunSQL(trainSQL)
+	_, _, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)
 	}
 	predSQL := `SELECT COALESCE(NULLIF(l1, ''),0) AS ll1,COALESCE(NULLIF(l2, ''),0) AS ll2,COALESCE(NULLIF(l3, ''),0) AS ll3,COALESCE(NULLIF(l4, ''),0) AS ll4,COALESCE(NULLIF(l5, ''),0) AS ll5,COALESCE(NULLIF(l6, ''),0) AS ll6,COALESCE(NULLIF(l7, ''),0) AS ll7,COALESCE(NULLIF(l8, ''),0) AS ll8,COALESCE(NULLIF(l9, ''),0) AS ll9,COALESCE(NULLIF(l10, ''),0) AS ll10,COALESCE(NULLIF(l11, ''),0) AS ll11,COALESCE(NULLIF(l12, ''),0) AS ll12,COALESCE(NULLIF(l13, ''),0) AS ll13,C1,C2,C3,C4,C5,C6,C7,C8,C9,C10,C11,C12,C13,C14,C15,C16,C17,C18,C19,C20,C21,C22,C23,C24,C25,C26 FROM alifin_jtest_dev.sqlflow_ctr_test_raw
 TO PREDICT alifin_jtest_dev.sqlflow_ctr_predict_raw.class
 USING my_ctr_model_raw;`
-	_, _, err = connectAndRunSQL(predSQL)
+	_, _, _, err = connectAndRunSQL(predSQL)
 	if err != nil {
 		a.Fail("Run predSQL error: %v", err)
 	}
@@ -1543,14 +1565,14 @@ COLUMN NUMERIC(l1, 1),NUMERIC(l2, 1),NUMERIC(l3, 1),NUMERIC(l4, 1),NUMERIC(l5, 1
 COLUMN EMBEDDING(CATEGORY_HASH(C1, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C2, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C3, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C4, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C5, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C6, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C7, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C8, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C9, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C10, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C11, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C12, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C13, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C14, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C15, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C16, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C17, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C18, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C19, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C20, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C21, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C22, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C23, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C24, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C25, 100), 8, "sum"),EMBEDDING(CATEGORY_HASH(C26, 100), 8, "sum") FOR dnn_feature_columns
 LABEL 'label'
 INTO my_ctr_model_digit;`
-	_, _, err = connectAndRunSQL(trainSQL)
+	_, _, _, err = connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)
 	}
 	predSQL = `SELECT * FROM alifin_jtest_dev.sqlflow_ctr_test_raw_digit
 TO PREDICT alifin_jtest_dev.sqlflow_ctr_predict_digit.class
 USING my_ctr_model_digit;`
-	_, _, err = connectAndRunSQL(predSQL)
+	_, _, _, err = connectAndRunSQL(predSQL)
 	if err != nil {
 		a.Fail("Run predSQL error: %v", err)
 	}
@@ -1566,7 +1588,7 @@ COLUMN NUMERIC(f1, 13) FOR linear_feature_columns
 COLUMN EMBEDDING(CATEGORY_HASH(SPARSE(f2, 26, COMMA, int), 1000), 16, "sum") FOR dnn_feature_columns
 LABEL 'label'
 INTO my_ctr_model_concat;`
-	_, _, err = connectAndRunSQL(trainSQL)
+	_, _, _, err = connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)
 	}
@@ -1576,7 +1598,7 @@ CONCAT(C1,",",C2,",",C3,",",C4,",",C5,",",C6,",",C7,",",C8,",",C9,",",C10,",",C1
 FROM alifin_jtest_dev.sqlflow_ctr_test_raw_digit
 TO PREDICT alifin_jtest_dev.sqlflow_ctr_predict_concat.class
 USING my_ctr_model_concat;`
-	_, _, err = connectAndRunSQL(predSQL)
+	_, _, _, err = connectAndRunSQL(predSQL)
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)
 	}
@@ -1591,7 +1613,7 @@ WITH model.hidden_units=[64,32], train.batch_size=32, validation.throttle_secs=3
 COLUMN NUMERIC(f1, 13), EMBEDDING(CATEGORY_HASH(SPARSE(f2, 26, COMMA, int), 1000), 16, "sum")
 LABEL 'label'
 INTO my_ctr_model_concat_dnn;`
-	_, _, err = connectAndRunSQL(trainSQL)
+	_, _, _, err = connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)
 	}
@@ -1601,7 +1623,7 @@ CONCAT(C1,",",C2,",",C3,",",C4,",",C5,",",C6,",",C7,",",C8,",",C9,",",C10,",",C1
 FROM alifin_jtest_dev.sqlflow_ctr_test_raw_digit
 TO PREDICT alifin_jtest_dev.sqlflow_ctr_predict_concat_dnn.class
 USING my_ctr_model_concat_dnn;`
-	_, _, err = connectAndRunSQL(predSQL)
+	_, _, _, err = connectAndRunSQL(predSQL)
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)
 	}
@@ -1619,14 +1641,14 @@ func CaseTrainXGBoostOnAlisa(t *testing.T) {
 		num_class = 3
 	LABEL class
 	INTO %s;`, caseTrainTable, model)
-	if _, _, err := connectAndRunSQL(trainSQL); err != nil {
+	if _, _, _, err := connectAndRunSQL(trainSQL); err != nil {
 		a.Fail("Run trainSQL error: %v", err)
 	}
 
 	predSQL := fmt.Sprintf(`SELECT * FROM %s
 	TO PREDICT %s.class
 	USING %s;`, caseTestTable, casePredictTable, model)
-	if _, _, err := connectAndRunSQL(predSQL); err != nil {
+	if _, _, _, err := connectAndRunSQL(predSQL); err != nil {
 		a.Fail("Run predSQL error: %v", err)
 	}
 
@@ -1635,7 +1657,7 @@ func CaseTrainXGBoostOnAlisa(t *testing.T) {
 	WITH label_col=class
 	USING TreeExplainer
 	INTO my_xgb_explain_result;`, caseTrainTable, model)
-	if _, _, err := connectAndRunSQL(explainSQL); err != nil {
+	if _, _, _, err := connectAndRunSQL(explainSQL); err != nil {
 		a.Fail("Run predSQL error: %v", err)
 	}
 }

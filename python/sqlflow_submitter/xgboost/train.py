@@ -72,7 +72,7 @@ def train(datasource,
     watchlist = [(dtrain, "train")]
 
     if len(validation_select.strip()) > 0:
-        dvalidate = xgb_dataset(datasource, 'validate.txt', select,
+        dvalidate = xgb_dataset(datasource, 'validate.txt', validation_select,
                                 feature_metas, feature_column_names,
                                 label_meta, is_pai, pai_validate_table)
         watchlist.append((dvalidate, "validate"))
