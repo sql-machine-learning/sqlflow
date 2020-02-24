@@ -167,7 +167,7 @@ const ModelParameterJSON = `
         "random_state": "int Random number seed. (replaces seed)",
         "missing": "float, optional Value in the data which needs to be present as a missing value. If None, defaults to np.nan.",
         "importance_type": "string, default \"gain\" The feature importance type for the feature_importances_ property: either \"gain\", \"weight\", \"cover\", \"total_gain\" or \"total_cover\".",
-        "max_bin": "Only used if tree_method is set to hist."
+        "max_bin": "Only used if tree_method is set to hist, Maximum number of discrete bins to bucket continuous features."
     },
     "xgboost.gblinear": {
         "max_depth": "int Maximum tree depth for base learners.",
@@ -192,7 +192,8 @@ const ModelParameterJSON = `
         "seed": "int Random number seed. (Deprecated, please use random_state)",
         "random_state": "int Random number seed. (replaces seed)",
         "missing": "float, optional Value in the data which needs to be present as a missing value. If None, defaults to np.nan.",
-        "importance_type": "string, default \"gain\" The feature importance type for the feature_importances_ property: either \"gain\", \"weight\", \"cover\", \"total_gain\" or \"total_cover\"."
+        "importance_type": "string, default \"gain\" The feature importance type for the feature_importances_ property: either \"gain\", \"weight\", \"cover\", \"total_gain\" or \"total_cover\".",
+        "max_bin": "Only used if tree_method is set to hist, Maximum number of discrete bins to bucket continuous features."
     },
     "xgboost.dart": {
         "max_depth": "int Maximum tree depth for base learners.",
@@ -217,7 +218,8 @@ const ModelParameterJSON = `
         "seed": "int Random number seed. (Deprecated, please use random_state)",
         "random_state": "int Random number seed. (replaces seed)",
         "missing": "float, optional Value in the data which needs to be present as a missing value. If None, defaults to np.nan.",
-        "importance_type": "string, default \"gain\" The feature importance type for the feature_importances_ property: either \"gain\", \"weight\", \"cover\", \"total_gain\" or \"total_cover\"."
+        "importance_type": "string, default \"gain\" The feature importance type for the feature_importances_ property: either \"gain\", \"weight\", \"cover\", \"total_gain\" or \"total_cover\".",
+        "max_bin": "Only used if tree_method is set to hist, Maximum number of discrete bins to bucket continuous features."
     }
 }
 `
