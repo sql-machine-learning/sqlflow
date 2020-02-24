@@ -125,13 +125,22 @@ where
       string step_phase = 3;
     }
 
+    message Response {
+      oneof response {
+          Head head = 1;
+          Row row = 2;
+          Message message = 3;
+          EndOfExecution eoe = 4;
+          Job job = 5;
+      }
+    }
+
     message FetchResponse {
       message Responses {
-        repeated Responses responses = 1;
+        repeated Response responses = 1;
       }
       FetchRequest updated_fetch_since = 2;
       bool eof = 2;
-      Logs logs = 3;
     }
     ```
 
