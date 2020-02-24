@@ -15,9 +15,10 @@ package attribute
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestDictionaryValidate(t *testing.T) {
@@ -56,7 +57,7 @@ func TestParamsDocs(t *testing.T) {
 
 	a.True(reflect.DeepEqual(PremadeModelParamsDocs["xgboost.gbtree"], PremadeModelParamsDocs["xgboost.dart"]))
 	a.True(reflect.DeepEqual(PremadeModelParamsDocs["xgboost.dart"], PremadeModelParamsDocs["xgboost.gblinear"]))
-	a.Equal(23, len(PremadeModelParamsDocs["xgboost.gbtree"]))
+	a.Equal(24, len(PremadeModelParamsDocs["xgboost.gbtree"]))
 	a.NotContains(PremadeModelParamsDocs["DNNClassifier"], "booster")
 
 	a.Equal(8, len(OptimizerParamsDocs))
