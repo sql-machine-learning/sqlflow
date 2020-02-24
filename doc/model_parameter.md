@@ -74,6 +74,11 @@ INTO sqlflow_models.my_xgb_regression_model;
 	<td>Boosting learning rate (xgb's "eta")</td>
 </tr>
 <tr>
+	<td>max_bin</td>
+	<td>attribute.unknown</td>
+	<td>used if tree_method is set to hist.</td>
+</tr>
+<tr>
 	<td>max_delta_step</td>
 	<td>int</td>
 	<td>Maximum delta step we allow each tree's weight estimation to be.</td>
