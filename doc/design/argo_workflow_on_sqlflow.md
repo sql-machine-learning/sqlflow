@@ -80,17 +80,39 @@ We implement the `Fetch` API as the following pseudo-code:
 
 ``` go
 func Fetch(req *FetchRequest) *FetchResponse {
-  // kubectl get pod ...
-  pod := getPod(req)
-
   // kubectl get workflow ...
   wf := getWorkflow(req)
 
-  logs, newLogOffset, isFinished := fetchPodLogs(pod, req.logOffset)
+  // return the next step ID if necessary
+  stepID := req.stepID
 
-  newReq := newFetchRequest(wf, req.stepId, newLogOffset, isFinished)
+  // kubctl get pod ...
+  pod := getPod(wf, stepID)
 
-  return newFetchResponse(logs, newReq)
+  // return step phase logs if the phase changed
+  stepPhaseLogs := fetchStepPhaseLogs(wf, stepID)
+
+  // append step phase status logs to Response
+  responses := []pb.Response{&Message{stepPhaseLogs}}
+
+  eof := false // True for end of job
+
+  if podComplete(pod) {
+    // if the current step execute a standard SQL, the query result would be output
+    // as protobuf message string format with prefix SQLFLOW_PROTOBUF:
+    //
+    // SQLFLOW_PROTOBUF: head:<column_names:"col1" column_names:"col2" column_names:"col3" ... >
+    // SQLFLOW_PROTOBUF: row:<data:<type_url:"type.googleapis.com/google.protobuf.DoubleValue" value:"\t\232\231\231\231\231\231\031@" >
+    // ...
+    responses = append(responses, unmarshalResponseFromPodLogs(pod))
+    if isLastStep(wf, stepID) {
+      eof = true
+    } else {
+      stepID = nextStep(wf, stepID)
+    }
+  }
+
+  return newFetchResponse(responses, newUpdatedFetchRequest(wf, stepID), eof)
 }
 ```
 
@@ -101,69 +123,66 @@ where
     ``` protobuf
     message FetchRequest {
       Job job = 1;
-      string step_id = 2;       // fetching step id in workflow
-      string log_offset = 3;    // fetching logs offset
-      bool finish_fetching = 4; // True if fetching is completion
+      // the following fields keep the fetching state
+      string step_id = 2;
+      string step_phase = 3;
+    }
+
+    message Response {
+      oneof response {
+          Head head = 1;
+          Row row = 2;
+          Message message = 3;
+          EndOfExecution eoe = 4;
+          Job job = 5;
+      }
     }
 
     message FetchResponse {
-      message Logs {
-        repeated string content = 1;
+      message Responses {
+        repeated Response responses = 1;
       }
-      FetchRequest new_request = 1;
-      Logs logs = 2;
+      FetchRequest updated_fetch_since = 2;
+      bool eof = 2;
     }
     ```
 
 - `getPod` calls [Kubernetes Read Pod API](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.10/#read-61) to read the specified Pod resource.
 - `getWorkflow` calls [Kubernetes Read Resource API](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.10/#resource-operations) to read the specified Argo workflow resource which is a CRD on Kubernetes.
-- `getPodAndLogOffset` calls [Kubernetes Read Pod Logs API](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.10/#read-log) to fetch `logs` and latest `offset` as following pseudo-code:
+- `fetchStepPhaseLogs` returns the format step phase logs like:
 
-    ``` go
-    func fetchPodLogs(pod *Pod, logOffset string) (string, []string, bool) {
-      // kubectl logs podName --timestamps=true --since-time=logOffset
-      logs := k8s_cli.logs(pod.Name, since_time=logOffset)
-
-      //getOffsetAndContentFromLogs the last timestamp as the offset.
-      //For an example of the returned logs:
-      //
-      //  2019-12-05T05:04:36.478475318Z  hello1
-      //  2019-12-05T05:04:37.834142557Z  hello2
-      //  2019-12-05T05:04:38.862899731Z  hello3
-      //
-      //Returns:
-      //  logOffset:= 2019-12-05T05:04:38.862899731Z,
-      //  logContent := []string{"hello1", "hello2", "hello3"}
-      newOffset, logContent := getOffsetAndContentFromLogs(logs)
-
-      finishFetchCurrentPod := false
-      if isPodComplete(pod) && newOffset == logOffset {
-        finishFetchCurrentPod = true
-      }
-      return newOffset, logContent, isFinishFetchCurrentPod
-    }
+    ``` text
+    Step [1/3] Execute Code: echo hello1
+    Step [1/3] Log: http://localhost:8001/workflows/default/steps-bdpff?nodeId=steps-bdpff-xx1
+    Step [1/3] Status: Pending
+    Step [1/3] Status: Running
+    Step [1/3] Status: Succeed/Failed
+    Step [2/3] Execute Code: echo hello2
+    Step [2/3] Log: http://localhost:8001/workflows/default/steps-bdpff?nodeId=steps-bdpff-xx2
     ```
 
-- `updateFetchRequest` returns a new `FetchRequest` according to the current fetch status, the pseudo-code is as follows:
+    the log URL can be the log panel on Argo UI.
+
+- `unmarshalResponseFromPodLogs` unmarshal protobuf message from Pod logs as following pseudo-code:
 
     ``` go
-    func newFetchRequest(wf *Workflow, stepId, newLogOffset string, finishFetchCurrentStep bool) *FetchRequest {
-      nextStepId := stepId
-      finishFetching := false // True if fetching is complete
-
-      if finishFetchCurrentStep {
-        nextStep = getNextStep(wf, stepId)
-        // no next step
-        if nextStep == "" {
-          finishFetching = true
+    func unmarshalResponseFromPodLogs(pod *Pod) ([]*pb.Resonse, error) {
+      responses := []*pb.Response{}
+      offset := ""
+      logs, newOffset := k8s.readPodLogs(pod.Name, offset)
+      while(!isNoMoreLogs(pod, offset, newOffset)) {
+        offset = newOffset
+        for _, line := range(logs) {
+          // using prefix to identify the protobuf string format can avoid
+          // performance degradation caused by unmarshaling all logs.
+          if strings.HasPrefix(SQLFlowProtobufPrefix, line) {
+            res := new(pb.Response)
+            // Unmarshal the protobuf message from pod logs to Response Message
+            proto.Unmarshal(line, res)
+            respones = append(response, res)
+          }
         }
+        log, newOffset = k8s.ReadPodLogs(pod.Name, offset)
       }
-
-      return &FetchRequest{
-        job             : req.Job,
-        stepId          : nextStep,
-        logOffset       : newLogOffset,
-        finishFetching  : finishFetching,
-      }
+      return responses, nil
     }
-    ```
