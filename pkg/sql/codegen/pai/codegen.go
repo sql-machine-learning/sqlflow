@@ -15,6 +15,7 @@ package pai
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -40,9 +41,31 @@ const (
 
 const entryFile = "entry.py"
 
+// GetOSSCheckpointDir from env SQLFLOW_OSS_CHECKPOINT_DIR for current project
+func GetOSSCheckpointDir(project string) (string, error) {
+	ossCheckpointDirMap := make(map[string]string)
+	ossCheckpointEnv := os.Getenv("SQLFLOW_OSS_CHECKPOINT_DIR")
+	if ossCheckpointEnv == "" {
+		return "", fmt.Errorf("must set SQLFLOW_OSS_CHECKPOINT_DIR environment variable when training with PAI")
+	}
+	err := json.Unmarshal([]byte(ossCheckpointEnv), &ossCheckpointDirMap)
+	if err != nil {
+		return "", fmt.Errorf("SQLFLOW_OSS_CHECKPOINT_DIR should be a json string like {project: oss_dir, ...}: %v", err)
+	}
+	projectOSSConf, ok := ossCheckpointDirMap[project]
+	if !ok {
+		return "", fmt.Errorf("SQLFLOW_OSS_CHECKPOINT_DIR have no project key: %s", project)
+	}
+	return projectOSSConf, nil
+}
+
 // checkpointURL returns the saved model path on OSS
-func checkpointURL(modelName string) (string, error) {
-	ossURIParts := strings.Split(os.Getenv("SQLFLOW_OSS_CHECKPOINT_DIR"), "?")
+func checkpointURL(modelName string, project string) (string, error) {
+	ossChekpointDir, err := GetOSSCheckpointDir(project)
+	if err != nil {
+		return "", err
+	}
+	ossURIParts := strings.Split(ossChekpointDir, "?")
 	if len(ossURIParts) != 2 {
 		return "", fmt.Errorf("SQLFLOW_OSS_CHECKPOINT_DIR must be of format: oss://bucket/?role_arn=xxx&host=xxx")
 	}
@@ -112,6 +135,10 @@ func Train(ir *ir.TrainStmt, session *pb.Session, tarball, modelName, ossModelPa
 	if e != nil {
 		return "", "", "", e
 	}
+	currProject, e := database.GetDatabaseName(session.DbConnStr)
+	if e != nil {
+		return "", "", "", e
+	}
 	if strings.ToLower(ir.Estimator) == "randomforests" {
 		if paiCmd, e = getTrainRandomForestsPAICmd(ir, session); e != nil {
 			return
@@ -125,7 +152,7 @@ func Train(ir *ir.TrainStmt, session *pb.Session, tarball, modelName, ossModelPa
 			return
 		}
 		var ossURI string
-		if ossURI, e = checkpointURL(ossModelPath); e != nil {
+		if ossURI, e = checkpointURL(ossModelPath, currProject); e != nil {
 			return
 		}
 		var tpl = template.Must(template.New("xgbSaveModel").Parse(xgbSaveModelTmplText))
@@ -137,7 +164,7 @@ func Train(ir *ir.TrainStmt, session *pb.Session, tarball, modelName, ossModelPa
 		if cc.Worker.Count > 1 {
 			return "", "", "", fmt.Errorf("when running xgboost on PAI, we only support run with one worker")
 		}
-		if paiCmd, e = getTFPAICmd(cc, tarball, modelName, ossModelPath, ir.TmpTrainTable, ir.TmpValidateTable, ""); e != nil {
+		if paiCmd, e = getTFPAICmd(cc, tarball, modelName, ossModelPath, ir.TmpTrainTable, ir.TmpValidateTable, "", currProject); e != nil {
 			return
 		}
 		requirements, e = genRequirements(true)
@@ -146,7 +173,7 @@ func Train(ir *ir.TrainStmt, session *pb.Session, tarball, modelName, ossModelPa
 		if e != nil {
 			return
 		}
-		if paiCmd, e = getTFPAICmd(cc, tarball, modelName, ossModelPath, ir.TmpTrainTable, ir.TmpValidateTable, ""); e != nil {
+		if paiCmd, e = getTFPAICmd(cc, tarball, modelName, ossModelPath, ir.TmpTrainTable, ir.TmpValidateTable, "", currProject); e != nil {
 			return
 		}
 		requirements, e = genRequirements(false)
@@ -156,6 +183,11 @@ func Train(ir *ir.TrainStmt, session *pb.Session, tarball, modelName, ossModelPa
 
 // Predict generates a Python program for train a TensorFlow model.
 func Predict(ir *ir.PredictStmt, session *pb.Session, tarball, modelName, ossModelPath, cwd string, modelType int) (code, paiCmd, requirements string, e error) {
+	currProject := ""
+	currProject, e = database.GetDatabaseName(session.DbConnStr)
+	if e != nil {
+		return
+	}
 	if modelType == ModelTypePAIML {
 		log.Printf("predicting using pai prediction tookit")
 		if paiCmd, e = getPAIPredictCmd(ir, session); e != nil {
@@ -163,8 +195,9 @@ func Predict(ir *ir.PredictStmt, session *pb.Session, tarball, modelName, ossMod
 		}
 	} else if modelType == ModelTypeXGBoost {
 		requirements, e = genRequirements(true)
+
 		var ossURI string
-		if ossURI, e = checkpointURL(ossModelPath); e != nil {
+		if ossURI, e = checkpointURL(ossModelPath, currProject); e != nil {
 			return
 		}
 		var xgbPredCode bytes.Buffer
@@ -194,7 +227,7 @@ func Predict(ir *ir.PredictStmt, session *pb.Session, tarball, modelName, ossMod
 			return
 		}
 		// NOTE(typhoonzero): submit a PAI TF job to install xgboost and run.
-		if paiCmd, e = getTFPAICmd(cc, tarball, modelName, ossModelPath, ir.TmpPredictTable, "", ir.ResultTable); e != nil {
+		if paiCmd, e = getTFPAICmd(cc, tarball, modelName, ossModelPath, ir.TmpPredictTable, "", ir.ResultTable, currProject); e != nil {
 			return
 		}
 	} else {
@@ -206,7 +239,7 @@ func Predict(ir *ir.PredictStmt, session *pb.Session, tarball, modelName, ossMod
 		if code, e = TFLoadAndPredict(ir, session, ossModelPath); e != nil {
 			return
 		}
-		if paiCmd, e = getTFPAICmd(cc, tarball, modelName, ossModelPath, ir.TmpPredictTable, "", ir.ResultTable); e != nil {
+		if paiCmd, e = getTFPAICmd(cc, tarball, modelName, ossModelPath, ir.TmpPredictTable, "", ir.ResultTable, currProject); e != nil {
 			return
 		}
 	}
@@ -216,6 +249,10 @@ func Predict(ir *ir.PredictStmt, session *pb.Session, tarball, modelName, ossMod
 // Explain generates a Python program for train a TensorFlow model.
 func Explain(ir *ir.ExplainStmt, session *pb.Session, tarball, modelName, ossModelPath, cwd string, modelType int) (*ExplainRender, error) {
 	cc, err := GetClusterConfig(ir.Attributes)
+	if err != nil {
+		return nil, err
+	}
+	currProject, err := database.GetDatabaseName(session.DbConnStr)
 	if err != nil {
 		return nil, err
 	}
@@ -235,7 +272,7 @@ func Explain(ir *ir.ExplainStmt, session *pb.Session, tarball, modelName, ossMod
 			return nil, err
 		}
 		log.Printf("explain using pai xgboost")
-		ossURI, err := checkpointURL(ossModelPath)
+		ossURI, err := checkpointURL(ossModelPath, currProject)
 		if err != nil {
 			return nil, err
 		}
@@ -269,7 +306,7 @@ func Explain(ir *ir.ExplainStmt, session *pb.Session, tarball, modelName, ossMod
 			return nil, err
 		}
 		// NOTE(typhoonzero): submit a PAI TF job to install xgboost and run.
-		expn.PaiCmd, err = getTFPAICmd(cc, tarball, modelName, ossModelPath, ir.TmpExplainTable, "", ir.Into)
+		expn.PaiCmd, err = getTFPAICmd(cc, tarball, modelName, ossModelPath, ir.TmpExplainTable, "", ir.Into, currProject)
 	} else {
 		if expn.Requirements, err = genRequirements(false); err != nil {
 			return nil, err
@@ -278,7 +315,7 @@ func Explain(ir *ir.ExplainStmt, session *pb.Session, tarball, modelName, ossMod
 		if expn.Code, err = TFLoadAndExplain(ir, session, ossModelPath); err != nil {
 			return expn, err
 		}
-		expn.PaiCmd, err = getTFPAICmd(cc, tarball, modelName, ossModelPath, ir.TmpExplainTable, "", ir.Into)
+		expn.PaiCmd, err = getTFPAICmd(cc, tarball, modelName, ossModelPath, ir.TmpExplainTable, "", ir.Into, currProject)
 	}
 	return expn, err
 }

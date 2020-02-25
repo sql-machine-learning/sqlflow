@@ -24,7 +24,6 @@ import (
 	"strings"
 
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
-	"sqlflow.org/goalisa"
 	"sqlflow.org/gomaxcompute"
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/ir"
@@ -59,7 +58,10 @@ func createTmpTableFromSelect(selectStmt, dataSource string) (string, string, er
 	}
 	tableName := randStringRunes(16)
 	// FIXME(typhoonzero): only work if specify database name in connect string.
-	databaseName, err := getDatabaseNameFromDSN(dataSource)
+	databaseName, err := database.GetDatabaseName(dataSource)
+	if err != nil {
+		return "", "", err
+	}
 	// NOTE(typhoonzero): MaxCompute do not support "CREATE	TABLE XXX AS (SELECT ...)"
 	createSQL := fmt.Sprintf("CREATE TABLE %s LIFECYCLE %d AS %s", tableName, lifecycleOnTmpTable, selectStmt)
 	log.Printf(createSQL)
@@ -83,26 +85,6 @@ func dropTmpTables(tableNames []string, dataSource string) error {
 		}
 	}
 	return nil
-}
-func getDatabaseNameFromDSN(dataSource string) (string, error) {
-	driverName, datasourceName, err := database.ParseURL(dataSource)
-	if err != nil {
-		return "", err
-	}
-	if driverName == "maxcompute" {
-		cfg, err := gomaxcompute.ParseDSN(datasourceName)
-		if err != nil {
-			return "", err
-		}
-		return cfg.Project, nil
-	} else if driverName == "alisa" {
-		cfg, err := goalisa.ParseDSN(datasourceName)
-		if err != nil {
-			return "", err
-		}
-		return cfg.Project, nil
-	}
-	return "", fmt.Errorf("driver should be in ['maxcompute', 'alisa']")
 }
 
 func createTempTrainAndValTable(trainSelect, validSelect, datasource string) (string, string, error) {
@@ -176,15 +158,15 @@ func (s *paiSubmitter) ExecutePredict(cl *ir.PredictStmt) error {
 	cl.TmpPredictTable = strings.Join([]string{dbName, tableName}, ".")
 	defer dropTmpTables([]string{cl.TmpPredictTable}, s.Session.DbConnStr)
 
+	currProject, err := database.GetDatabaseName(s.Session.DbConnStr)
+	if err != nil {
+		return err
+	}
 	// format resultTable name to "db.table" to let the codegen form a submitting
 	// argument of format "odps://project/tables/table_name"
 	resultTableParts := strings.Split(cl.ResultTable, ".")
 	if len(resultTableParts) == 1 {
-		dbName, err := getDatabaseNameFromDSN(s.Session.DbConnStr)
-		if err != nil {
-			return err
-		}
-		cl.ResultTable = fmt.Sprintf("%s.%s", dbName, cl.ResultTable)
+		cl.ResultTable = fmt.Sprintf("%s.%s", currProject, cl.ResultTable)
 	}
 	if e := createPredictionTableFromIR(cl, s.Db, s.Session); e != nil {
 		return e
@@ -194,7 +176,7 @@ func (s *paiSubmitter) ExecutePredict(cl *ir.PredictStmt) error {
 	if e != nil {
 		return e
 	}
-	modelType, _, err := getOSSSavedModelType(ossModelPath)
+	modelType, _, err := getOSSSavedModelType(ossModelPath, currProject)
 	if err != nil {
 		return err
 	}
@@ -221,7 +203,11 @@ func (s *paiSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 		return e
 	}
 
-	modelType, estimator, err := getOSSSavedModelType(ossModelPath)
+	currProject, err := database.GetDatabaseName(s.Session.DbConnStr)
+	if err != nil {
+		return err
+	}
+	modelType, estimator, err := getOSSSavedModelType(ossModelPath, currProject)
 	if err != nil {
 		return err
 	}
@@ -232,11 +218,7 @@ func (s *paiSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 	if cl.Into != "" && modelType != pai.ModelTypePAIML {
 		resultTableParts := strings.Split(cl.Into, ".")
 		if len(resultTableParts) == 1 {
-			dbName, err := getDatabaseNameFromDSN(s.Session.DbConnStr)
-			if err != nil {
-				return err
-			}
-			cl.Into = fmt.Sprintf("%s.%s", dbName, cl.Into)
+			cl.Into = fmt.Sprintf("%s.%s", currProject, cl.Into)
 		}
 		db, err := database.OpenAndConnectDB(s.Session.DbConnStr)
 		if err != nil {
@@ -263,9 +245,9 @@ func (s *paiSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 
 // getOSSSavedModelType returns the saved model type when training, can be:
 // 1. randomforests: model is saved by pai
-// 2. xgboost: on OSS with model file xgboost_model_desx
+// 2. xgboost: on OSS with model file xgboost_model_desc
 // 3. PAI tensorflow models: on OSS with meta file: tensorflow_model_desc
-func getOSSSavedModelType(modelName string) (modelType int, estimator string, err error) {
+func getOSSSavedModelType(modelName string, project string) (modelType int, estimator string, err error) {
 	// FIXME(typhoonzero): if the model not exist on OSS, assume it's a random forest model
 	// should use a general method to fetch the model and see the model type.
 	endpoint := os.Getenv("SQLFLOW_OSS_MODEL_ENDPOINT")
@@ -275,8 +257,11 @@ func getOSSSavedModelType(modelName string) (modelType int, estimator string, er
 		err = fmt.Errorf("must define SQLFLOW_OSS_MODEL_ENDPOINT, SQLFLOW_OSS_AK, SQLFLOW_OSS_SK when using submitter maxcompute")
 		return
 	}
-	// NOTE(typhoonzero): PAI Tensorflow need SQLFLOW_OSS_CHECKPOINT_DIR, get bucket name from it
-	ossCheckpointDir := os.Getenv("SQLFLOW_OSS_CHECKPOINT_DIR")
+
+	ossCheckpointDir, err := pai.GetOSSCheckpointDir(project)
+	if err != nil {
+		return
+	}
 	ckptParts := strings.Split(ossCheckpointDir, "?")
 	if len(ckptParts) != 2 {
 		err = fmt.Errorf("SQLFLOW_OSS_CHECKPOINT_DIR got wrong format")

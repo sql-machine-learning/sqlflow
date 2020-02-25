@@ -21,6 +21,7 @@ import (
 	"strings"
 	"text/template"
 
+	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/ir"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
@@ -28,7 +29,11 @@ import (
 
 // TFTrainAndSave generates PAI-TF train program.
 func TFTrainAndSave(ir *ir.TrainStmt, session *pb.Session, modelPath string, cc *ClusterConfig) (string, error) {
-	ckptDir, err := checkpointURL(modelPath)
+	currProject, err := database.GetDatabaseName(session.DbConnStr)
+	if err != nil {
+		return "", err
+	}
+	ckptDir, err := checkpointURL(modelPath, currProject)
 	if err != nil {
 		return "", err
 	}
@@ -55,7 +60,11 @@ func TFTrainAndSave(ir *ir.TrainStmt, session *pb.Session, modelPath string, cc 
 // TFLoadAndPredict generates PAI-TF prediction program.
 func TFLoadAndPredict(ir *ir.PredictStmt, session *pb.Session, modelPath string) (string, error) {
 	var tpl = template.Must(template.New("Predict").Parse(tfPredictTmplText))
-	ossModelDir, err := checkpointURL(modelPath)
+	currProject, err := database.GetDatabaseName(session.DbConnStr)
+	if err != nil {
+		return "", err
+	}
+	ossModelDir, err := checkpointURL(modelPath, currProject)
 	if err != nil {
 		return "", err
 	}
@@ -82,7 +91,11 @@ func TFLoadAndPredict(ir *ir.PredictStmt, session *pb.Session, modelPath string)
 // TFLoadAndExplain generates PAI-TF explain program.
 func TFLoadAndExplain(ir *ir.ExplainStmt, session *pb.Session, modelPath string) (string, error) {
 	var tpl = template.Must(template.New("Explain").Parse(tfExplainTmplText))
-	ossModelDir, err := checkpointURL(modelPath)
+	currProject, err := database.GetDatabaseName(session.DbConnStr)
+	if err != nil {
+		return "", err
+	}
+	ossModelDir, err := checkpointURL(modelPath, currProject)
 	if err != nil {
 		return "", err
 	}
@@ -105,14 +118,14 @@ func TFLoadAndExplain(ir *ir.ExplainStmt, session *pb.Session, modelPath string)
 	return code.String(), nil
 }
 
-func getTFPAICmd(cc *ClusterConfig, tarball, modelName, ossModelPath, trainTable, valTable, resTable string) (string, error) {
+func getTFPAICmd(cc *ClusterConfig, tarball, modelName, ossModelPath, trainTable, valTable, resTable, project string) (string, error) {
 	jobName := strings.Replace(strings.Join([]string{"sqlflow", modelName}, "_"), ".", "_", 0)
 	cfString, err := json.Marshal(cc)
 	if err != nil {
 		return "", err
 	}
 	cfQuote := strconv.Quote(string(cfString))
-	ckpDir, err := checkpointURL(ossModelPath)
+	ckpDir, err := checkpointURL(ossModelPath, project)
 	if err != nil {
 		return "", err
 	}

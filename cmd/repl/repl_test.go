@@ -170,9 +170,13 @@ func TestMain(t *testing.T) {
 func testGetDataSource(t *testing.T, dataSource, databaseName string) {
 	a := assert.New(t)
 	a.Equal(dataSource, getDataSource(dataSource, databaseName))
-	a.Equal(databaseName, getDatabaseName(dataSource))
+	db, err := database.GetDatabaseName(dataSource)
+	a.NoError(err)
+	a.Equal(databaseName, db)
 	a.NotEqual(dataSource, getDataSource(dataSource, databaseName+"test"))
-	a.Equal(databaseName+"test", getDatabaseName(getDataSource(dataSource, databaseName+"test")))
+	db, err = database.GetDatabaseName(getDataSource(dataSource, databaseName+"test"))
+	a.NoError(err)
+	a.Equal(databaseName+"test", db)
 }
 func TestGetDataSource(t *testing.T) {
 	testGetDataSource(t, "maxcompute://test:test@service.cn.maxcompute.aliyun.com/api?curr_project=iris&scheme=https", "iris")
