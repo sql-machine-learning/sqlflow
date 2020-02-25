@@ -259,6 +259,9 @@ func getOSSSavedModelType(modelName string, project string) (modelType int, esti
 	}
 
 	ossCheckpointDir, err := pai.GetOSSCheckpointDir(project)
+	if err != nil {
+		return
+	}
 	ckptParts := strings.Split(ossCheckpointDir, "?")
 	if len(ckptParts) != 2 {
 		err = fmt.Errorf("SQLFLOW_OSS_CHECKPOINT_DIR got wrong format")
