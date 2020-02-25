@@ -33,8 +33,8 @@ import (
 	"syscall"
 
 	"github.com/mattn/go-sixel"
-	"github.com/olekukonko/tablewriter"
 	"golang.org/x/crypto/ssh/terminal"
+	"sqlflow.org/sqlflow/cmd/repl/tablewriter"
 	"sqlflow.org/sqlflow/pkg/database"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql"
@@ -176,21 +176,20 @@ func imageCat(imageBytes []byte) error {
 
 var it2Check = false
 
-func render(rsp interface{}, table *tablewriter.Table, isTerminal bool) (bool, error) {
+func render(rsp interface{}, table tablewriter.TableWriter, isTerminal bool) error {
 	switch s := rsp.(type) {
 	case map[string]interface{}: // table header
 		cols, e := header(s)
 		if e == nil {
 			table.SetHeader(cols)
 		}
-		return true, nil
+		return nil
 	case []interface{}: // row
 		row := make([]string, len(s))
 		for i, v := range s {
 			row[i] = fmt.Sprint(v)
 		}
-		table.Append(row)
-		return true, nil
+		return table.AppendRow(row)
 	case error:
 		if os.Getenv("SQLFLOW_log_dir") != "" { // To avoid printing duplicated error message to console
 			log.New(os.Stderr, "", 0).Printf("ERROR: %v\n", s)
@@ -198,7 +197,7 @@ func render(rsp interface{}, table *tablewriter.Table, isTerminal bool) (bool, e
 		if !isTerminal {
 			os.Exit(1)
 		}
-		return false, s
+		return s
 	case sql.EndOfExecution:
 	case sql.Figures:
 		if isHTMLSnippet(s.Image) {
@@ -225,7 +224,7 @@ func render(rsp interface{}, table *tablewriter.Table, isTerminal bool) (bool, e
 	default:
 		log.Fatalf("unrecognized response type: %v", s)
 	}
-	return false, nil
+	return nil
 }
 
 func flagPassed(name ...string) bool {
@@ -245,8 +244,10 @@ func runStmt(stmt string, isTerminal bool, modelDir string, ds string) error {
 	if !isTerminal {
 		fmt.Println("sqlflow>", stmt)
 	}
-	tableRendered := false
-	table := tablewriter.NewWriter(os.Stdout)
+	table, err := tablewriter.NewTableWriter("ascii", tablePageSize, os.Stdout)
+	if err != nil {
+		return err
+	}
 	sess := sql.MakeSessionFromEnv()
 	sess.DbConnStr = getDataSource(ds, currentDB)
 	parts := strings.Fields(strings.ReplaceAll(stmt, ";", ""))
@@ -254,27 +255,16 @@ func runStmt(stmt string, isTerminal bool, modelDir string, ds string) error {
 		return switchDatabase(parts[1], sess)
 	}
 	stream := sql.RunSQLProgram(stmt, modelDir, sess)
-	var isTable bool
-	var err error
 	for rsp := range stream.ReadAll() {
-		// pagination. avoid exceed memory
-		isTable, err = render(rsp, table, isTerminal)
+		err = render(rsp, table, isTerminal)
 		if err != nil {
 			break
 		}
-		if isTable && table.NumLines() == tablePageSize {
-			table.Render()
-			tableRendered = true
-			table.ClearRows()
-		}
 	}
-	if table.NumLines() > 0 && !tableRendered {
-		table.Render()
+	if e := table.Flush(); e != nil {
+		return e
 	}
 	if err == nil {
-		if isTable {
-			fmt.Printf("%d rows in set ", table.NumLines())
-		}
 		fmt.Printf("(%.2f sec)\n", float64(time.Now().UnixNano()-startTime)/1e9)
 		fmt.Println()
 	}
