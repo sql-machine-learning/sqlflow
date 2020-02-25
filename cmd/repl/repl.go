@@ -133,18 +133,6 @@ func readStmt(scn *bufio.Scanner) ([]string, error) {
 	return stmt, scn.Err()
 }
 
-func header(head map[string]interface{}) ([]string, error) {
-	cn, ok := head["columnNames"]
-	if !ok {
-		return nil, fmt.Errorf("can't find field columnNames in head")
-	}
-	cols, ok := cn.([]string)
-	if !ok {
-		return nil, fmt.Errorf("invalid header type")
-	}
-	return cols, nil
-}
-
 func isHTMLSnippet(s string) bool {
 	// TODO(shendiaomo): more accurate checks later
 	return strings.HasPrefix(s, "<div")
@@ -182,17 +170,9 @@ var it2Check = false
 func render(rsp interface{}, table tablewriter.TableWriter, isTerminal bool) error {
 	switch s := rsp.(type) {
 	case map[string]interface{}: // table header
-		cols, e := header(s)
-		if e == nil {
-			table.SetHeader(cols)
-		}
-		return nil
+		return table.SetHeader(s)
 	case []interface{}: // row
-		row := make([]string, len(s))
-		for i, v := range s {
-			row[i] = fmt.Sprint(v)
-		}
-		return table.AppendRow(row)
+		return table.AppendRow(s)
 	case error:
 		if os.Getenv("SQLFLOW_log_dir") != "" { // To avoid printing duplicated error message to console
 			log.New(os.Stderr, "", 0).Printf("ERROR: %v\n", s)
@@ -247,7 +227,13 @@ func runStmt(stmt string, isTerminal bool, modelDir string, ds string) error {
 	if !isTerminal {
 		fmt.Println("sqlflow>", stmt)
 	}
-	table, err := tablewriter.NewTableWriter("ascii", tablePageSize, os.Stdout)
+	var table *TableWriter
+	var err error
+	if isWorkflowStep() {
+		table, err = tablewriter.NewTableWriter("ascii", tablePageSize, os.Stdout)
+	} else {
+		table, err = tablewriter.NewTableWriter("protobuf", tablePageSize, os.Stdout)
+	}
 	if err != nil {
 		return err
 	}
@@ -427,6 +413,14 @@ func main() {
 	} else {
 		repl(scanner, *modelDir, *ds)
 	}
+}
+
+func isWorkflowStep() bool {
+	// note(yancey1989): the specified env would be set if repl running in Kubernetes Pod
+	if os.Getenv("KUBERNETES_SERVICE_HOST") != "" {
+		return true
+	}
+	return false
 }
 
 func init() {

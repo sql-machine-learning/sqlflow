@@ -33,17 +33,19 @@ import (
 // }
 //
 type TableWriter interface {
-	SetHeader([]string) error
-	AppendRow([]string) error
+	SetHeader(map[string]interface{}) error
+	AppendRow([]interface{}) error
 	Flush() error
 }
 
 // NewTableWriter a TableWriter instance
-func NewTableWriter(formater string, bufSize int, w io.Writer) (TableWriter, error) {
-	if formater == "ascii" {
+func NewTableWriter(name string, bufSize int, w io.Writer) (TableWriter, error) {
+	if name == "ascii" {
 		return newASCIITableWriter(bufSize, w), nil
+	} else if name == "protobuf" {
+		return NewProtobufTableWriter(bufSize, w), nil
 	}
-	return nil, fmt.Errorf("SQLFLow does not support the table formater: %s", formater)
+	return nil, fmt.Errorf("SQLFLow does not support the tablewriter : %s", name)
 }
 
 // ASCIITableWriter write table as ASCII formate
@@ -60,29 +62,38 @@ func newASCIITableWriter(bufSize int, w io.Writer) *ASCIITableWriter {
 }
 
 // SetHeader set the table header
-func (s *ASCIITableWriter) SetHeader(header []string) error {
-	if len(header) == 0 {
-		return fmt.Errorf("header columns should not be empty")
+func (t *ASCIITableWriter) SetHeader(head map[string]interface{}) error {
+	cn, ok := head["columnNames"]
+	if !ok {
+		return fmt.Errorf("can't find field columnNames in head")
 	}
-	s.table.SetHeader(header)
+	cols, ok := cn.([]string)
+	if !ok {
+		return fmt.Errorf("invalid header type")
+	}
+	t.table.SetHeader(cols)
 	return nil
 }
 
 // AppendRow append row data
-func (s *ASCIITableWriter) AppendRow(rows []string) error {
-	s.table.Append(rows)
-	if s.table.NumLines() >= s.bufSize {
-		s.table.Render()
-		s.table.ClearRows()
+func (t *ASCIITableWriter) AppendRow(row []interface{}) error {
+	s := make([]string, len(row))
+	for _, d := range row {
+		s = append(s, fmt.Sprint(d))
+	}
+	t.table.Append(s)
+	if t.table.NumLines() >= t.bufSize {
+		t.table.Render()
+		t.table.ClearRows()
 	}
 	return nil
 }
 
 // Flush the buffer
-func (s *ASCIITableWriter) Flush() error {
-	if s.table.NumLines() > 0 {
-		s.table.Render()
-		s.table.ClearRows()
+func (t *ASCIITableWriter) Flush() error {
+	if t.table.NumLines() > 0 {
+		t.table.Render()
+		t.table.ClearRows()
 	}
 	return nil
 }

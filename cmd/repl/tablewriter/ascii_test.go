@@ -15,6 +15,7 @@ package tablewriter
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -28,14 +29,30 @@ var expectedTableASCII = `+------+------+
 +------+------+
 `
 
+func mockHead() map[string]interface{} {
+	head := make(map[string]interface{})
+	cols := []interface{}{"col1", "col2"}
+	head["columnNames"] = cols
+	return head
+}
+func mockRows() [][]interface{} {
+	rows := [][]interface{}{}
+	rows = append(rows, []interface{}{1.0, 1.1})
+	rows = append(rows, []interface{}{2.0, 2.1})
+	return rows
+}
+
 func TestASCIIWriter(t *testing.T) {
 	a := assert.New(t)
 	b := new(bytes.Buffer)
 	table, e := NewTableWriter("ascii", 1000, b)
-	table.SetHeader([]string{"col1", "col2"})
-	table.AppendRow([]string{"1.0", "1.1"})
-	table.AppendRow([]string{"2.0", "2.1"})
+	table.SetHeader(mockHead())
+	for _, row := range mockRows() {
+		table.AppendRow(row)
+	}
 	a.NoError(table.Flush())
 	a.NoError(e)
+	fmt.Println(b.String())
+	fmt.Println("-----")
 	a.Equal(b.String(), expectedTableASCII)
 }
