@@ -80,7 +80,7 @@ func TFLoadAndPredict(ir *ir.PredictStmt, session *pb.Session, modelPath string)
 }
 
 // TFLoadAndExplain generates PAI-TF explain program.
-func TFLoadAndExplain(ir *ir.ExplainStmt, session *pb.Session, modelPath string) (string, error) {
+func TFLoadAndExplain(ir *ir.ExplainStmt, session *pb.Session, modelPath string, expn *ExplainRender) (string, error) {
 	var tpl = template.Must(template.New("Explain").Parse(tfExplainTmplText))
 	ossModelDir, err := checkpointURL(modelPath)
 	if err != nil {
@@ -97,6 +97,13 @@ func TFLoadAndExplain(ir *ir.ExplainStmt, session *pb.Session, modelPath string)
 		ResultTable: ir.Into,
 		IsPAI:       tensorflow.IsPAI(),
 		PAITable:    paiExplainTable,
+		// TODO(weiguo): use GFile to write oss without ak/sk
+		// ref: https://yuque.antfin-inc.com/pai-user/manual/tf_oss_by_gfile
+		ResultOSSDest:     expn.key,
+		ResultOSSAK:       expn.ak,
+		ResultOSSSK:       expn.sk,
+		ResultOSSEndpoint: expn.endpoint,
+		ResultOSSBucket:   expn.bucket,
 	}
 	var code bytes.Buffer
 	if err := tpl.Execute(&code, filler); err != nil {

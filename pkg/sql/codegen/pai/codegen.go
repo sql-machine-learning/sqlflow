@@ -275,7 +275,7 @@ func Explain(ir *ir.ExplainStmt, session *pb.Session, tarball, modelName, ossMod
 			return nil, err
 		}
 		// run explain PAI TF
-		if expn.Code, err = TFLoadAndExplain(ir, session, ossModelPath); err != nil {
+		if expn.Code, err = TFLoadAndExplain(ir, session, ossModelPath, expn); err != nil {
 			return expn, err
 		}
 		expn.PaiCmd, err = getTFPAICmd(cc, tarball, modelName, ossModelPath, ir.TmpExplainTable, "", ir.Into)

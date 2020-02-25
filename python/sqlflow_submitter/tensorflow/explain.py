@@ -65,7 +65,12 @@ def explain(datasource,
             hdfs_namenode_addr="",
             hive_location="",
             hdfs_user="",
-            hdfs_pass=""):
+            hdfs_pass="",
+            oss_dest=None,
+            oss_ak=None,
+            oss_sk=None,
+            oss_endpoint=None,
+            oss_bucket_name=None):
     if is_pai:
         FLAGS = define_tf_flags()
         model_params["model_dir"] = FLAGS.checkpointDir
@@ -93,7 +98,8 @@ def explain(datasource,
         explain_boosted_trees(datasource, estimator, _input_fn, plot_type,
                               result_table, feature_column_names, is_pai,
                               pai_table, hdfs_namenode_addr, hive_location,
-                              hdfs_user, hdfs_pass)
+                              hdfs_user, hdfs_pass, oss_dest, oss_ak, oss_sk,
+                              oss_endpoint, oss_bucket_name)
     else:
         shap_dataset = pd.DataFrame(columns=feature_column_names)
         for i, (features, label) in enumerate(_input_fn()):
@@ -102,13 +108,15 @@ def explain(datasource,
             ]
         explain_dnns(datasource, estimator, shap_dataset, plot_type,
                      result_table, feature_column_names, is_pai, pai_table,
-                     hdfs_namenode_addr, hive_location, hdfs_user, hdfs_pass)
+                     hdfs_namenode_addr, hive_location, hdfs_user, hdfs_pass,
+                     oss_dest, oss_ak, oss_sk, oss_endpoint, oss_bucket_name)
 
 
 def explain_boosted_trees(datasource, estimator, input_fn, plot_type,
                           result_table, feature_column_names, is_pai,
                           pai_table, hdfs_namenode_addr, hive_location,
-                          hdfs_user, hdfs_pass):
+                          hdfs_user, hdfs_pass, oss_dest, oss_ak, oss_sk,
+                          oss_endpoint, oss_bucket_name):
     result = estimator.experimental_predict_with_explanations(input_fn)
     pred_dicts = list(result)
     df_dfc = pd.DataFrame([pred['dfc'] for pred in pred_dicts])
@@ -124,12 +132,16 @@ def explain_boosted_trees(datasource, estimator, input_fn, plot_type,
             write_dfc_result(dfc_mean, gain, result_table, conn.driver, conn,
                              feature_column_names, hdfs_namenode_addr,
                              hive_location, hdfs_user, hdfs_pass)
-            explainer.plot_and_save(lambda: eval(plot_type)(df_dfc))
+    else:
+        explainer.plot_and_save(lambda: eval(plot_type)(df_dfc), is_pai,
+                                oss_dest, oss_ak, oss_sk, oss_endpoint,
+                                oss_bucket_name)
 
 
 def explain_dnns(datasource, estimator, shap_dataset, plot_type, result_table,
                  feature_column_names, is_pai, pai_table, hdfs_namenode_addr,
-                 hive_location, hdfs_user, hdfs_pass):
+                 hive_location, hdfs_user, hdfs_pass, oss_dest, oss_ak, oss_sk,
+                 oss_endpoint, oss_bucket_name):
     def predict(d):
         if len(d) == 1:
             # This is to make sure the progress bar of SHAP display properly:
@@ -164,8 +176,10 @@ def explain_dnns(datasource, estimator, shap_dataset, plot_type, result_table,
                               feature_column_names, hdfs_namenode_addr,
                               hive_location, hdfs_user, hdfs_pass)
     else:
-        explainer.plot_and_save(lambda: shap.summary_plot(
-            shap_values, shap_dataset, show=False, plot_type=plot_type))
+        explainer.plot_and_save(
+            lambda: shap.summary_plot(
+                shap_values, shap_dataset, show=False, plot_type=plot_type),
+            is_pai, oss_dest, oss_ak, oss_sk, oss_endpoint, oss_bucket_name)
 
 
 def create_explain_result_table(conn, result_table):
