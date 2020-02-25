@@ -110,7 +110,7 @@ func mockClusterConfig() *ClusterConfig {
 
 func mockSession() *pb.Session {
 	return &pb.Session{
-		DbConnStr: "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0",
+		DbConnStr: "maxcompute://root:root@maxcompute.xxx.com?curr_project=project&scheme=http",
 		UserId:    "sqlflow",
 	}
 }
@@ -119,7 +119,7 @@ func TestTrainCodegen(t *testing.T) {
 	a := assert.New(t)
 	trainStmt := ir.MockTrainStmt(false)
 
-	os.Setenv("SQLFLOW_OSS_CHECKPOINT_DIR", "{\"project\": \"oss://bucket/?role_arn=xxx&host=xxx\"")
+	os.Setenv("SQLFLOW_OSS_CHECKPOINT_DIR", "{\"project\": \"oss://bucket/?role_arn=xxx&host=xxx\"}")
 	defer os.Unsetenv("SQLFLOW_OSS_CHECKPOINT_DIR")
 
 	sess := mockSession()
@@ -146,7 +146,7 @@ func TestPredictCodegen(t *testing.T) {
 	a := assert.New(t)
 	ir := ir.MockPredStmt(ir.MockTrainStmt(false))
 
-	os.Setenv("SQLFLOW_OSS_CHECKPOINT_DIR", "{\"project\": \"oss://bucket/?role_arn=xxx&host=xxx\"")
+	os.Setenv("SQLFLOW_OSS_CHECKPOINT_DIR", "{\"project\": \"oss://bucket/?role_arn=xxx&host=xxx\"}")
 	defer os.Unsetenv("SQLFLOW_OSS_CHECKPOINT_DIR")
 	sess := mockSession()
 	ossModelPath := "iris/sqlflow/my_dnn_model"
