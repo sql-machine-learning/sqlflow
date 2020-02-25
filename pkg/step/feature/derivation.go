@@ -84,16 +84,21 @@ func initColumnMap(fcMap ColumnMap, fc ir.FeatureColumn, target string) {
 			}
 		}
 	} else {
-		// embedding column may got len(GetFieldDesc()) == 0
-		if emb, isEmb := fc.(*ir.EmbeddingColumn); isEmb {
+		switch c := fc.(type) {
+		// embedding/indicator column may got len(GetFieldDesc()) == 0
+		case *ir.EmbeddingColumn:
 			if len(fc.GetFieldDesc()) == 0 {
-				fcMap[target][emb.Name] = append(fcMap[target][emb.Name], fc)
-			} else {
-				fcMap[target][fc.GetFieldDesc()[0].Name] = append(fcMap[target][fc.GetFieldDesc()[0].Name], fc)
+				fcMap[target][c.Name] = append(fcMap[target][c.Name], fc)
+				return
 			}
-		} else {
-			fcMap[target][fc.GetFieldDesc()[0].Name] = append(fcMap[target][fc.GetFieldDesc()[0].Name], fc)
+
+		case *ir.IndicatorColumn:
+			if len(fc.GetFieldDesc()) == 0 {
+				fcMap[target][c.Name] = append(fcMap[target][c.Name], fc)
+				return
+			}
 		}
+		fcMap[target][fc.GetFieldDesc()[0].Name] = append(fcMap[target][fc.GetFieldDesc()[0].Name], fc)
 	}
 }
 
@@ -403,11 +408,12 @@ func fillFieldDescs(rows *sql.Rows, columnTypes []*sql.ColumnType, fmMap FieldDe
 
 func updateFeatureColumn(fcList []ir.FeatureColumn, fmMap FieldDescMap) error {
 	for _, fc := range fcList {
-		if embCol, isEmbCol := fc.(*ir.EmbeddingColumn); isEmbCol {
-			if embCol.CategoryColumn == nil {
-				cs, ok := fmMap[embCol.Name]
+		switch c := fc.(type) {
+		case *ir.EmbeddingColumn:
+			if c.CategoryColumn == nil {
+				cs, ok := fmMap[c.Name]
 				if !ok {
-					return fmt.Errorf("column not found or inferred: %s", embCol.Name)
+					return fmt.Errorf("column not found or inferred: %s", c.Name)
 				}
 				// FIXME(typhoonzero): when to use sequence_category_id_column?
 				// if column fieldDesc is SPARSE, the sparse shape should be in cs.Shape[0]
@@ -420,11 +426,32 @@ func updateFeatureColumn(fcList []ir.FeatureColumn, fmMap FieldDescMap) error {
 					}
 					bucketSize = cs.MaxID + 1
 				}
-				embCol.CategoryColumn = &ir.CategoryIDColumn{
+				c.CategoryColumn = &ir.CategoryIDColumn{
 					FieldDesc:  cs,
 					BucketSize: bucketSize,
 				}
 			}
+		case *ir.IndicatorColumn:
+			if c.CategoryColumn == nil {
+				cs, ok := fmMap[c.Name]
+				if !ok {
+					return fmt.Errorf("column not found or inferred: %s", c.Name)
+				}
+				// FIXME(typhoonzero): when to use sequence_category_id_column?
+				// Use inferred MaxID as the categoryIDColumns's bucket_size
+				if !cs.IsSparse {
+					if cs.MaxID == 0 {
+						return fmt.Errorf("use indicator column but did not got a correct MaxID")
+					}
+					c.CategoryColumn = &ir.CategoryIDColumn{
+						FieldDesc:  cs,
+						BucketSize: cs.MaxID + 1,
+					}
+				} else {
+					return fmt.Errorf("cannot use sparse column with indicator column")
+				}
+			}
+
 		}
 	}
 	return nil

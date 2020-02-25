@@ -126,7 +126,7 @@ func (scc *SeqCategoryIDColumn) GetFieldDesc() []*FieldDesc {
 // EmbeddingColumn represents `tf.feature_column.embedding_column`
 // ref: https://www.tensorflow.org/api_docs/python/tf/feature_column/embedding_column
 type EmbeddingColumn struct {
-	CategoryColumn interface{}
+	CategoryColumn FeatureColumn
 	Dimension      int
 	Combiner       string
 	Initializer    string
@@ -141,4 +141,21 @@ func (ec *EmbeddingColumn) GetFieldDesc() []*FieldDesc {
 		return []*FieldDesc{}
 	}
 	return ec.CategoryColumn.(FeatureColumn).GetFieldDesc()
+}
+
+// IndicatorColumn represents `tf.feature_column.indicator_column`
+// ref: https://www.tensorflow.org/api_docs/python/tf/feature_column/indicator_column
+type IndicatorColumn struct {
+	CategoryColumn FeatureColumn
+	// only used when INDICATOR(col_name, ...) this will set CategoryColumn = nil
+	// will fill the feature column details using feature_derivation
+	Name string
+}
+
+// GetFieldDesc returns FieldDesc member
+func (c *IndicatorColumn) GetFieldDesc() []*FieldDesc {
+	if c.CategoryColumn == nil {
+		return []*FieldDesc{}
+	}
+	return c.CategoryColumn.(FeatureColumn).GetFieldDesc()
 }

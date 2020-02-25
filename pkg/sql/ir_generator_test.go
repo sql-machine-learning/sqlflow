@@ -46,7 +46,10 @@ func TestGenerateTrainStmt(t *testing.T) {
 		CATEGORY_ID(SPARSE(c2, 10000, COMMA), 128),
 		SEQ_CATEGORY_ID(SPARSE(c2, 10000, COMMA), 128),
 		EMBEDDING(c1, 128, sum),
-		EMBEDDING(SPARSE(c2, 10000, COMMA, "int"), 128, sum)
+		EMBEDDING(SPARSE(c2, 10000, COMMA, "int"), 128, sum),
+		INDICATOR(CATEGORY_ID(c3, 512)),
+		INDICATOR(c1),
+		INDICATOR(SPARSE(c2, 10000, COMMA, "int"))
 	LABEL c4
 	INTO mymodel;
 	`
@@ -154,6 +157,29 @@ func TestGenerateTrainStmt(t *testing.T) {
 	a.Equal("c2", catCol.FieldDesc.Name)
 	a.Equal(10000, catCol.FieldDesc.Shape[0])
 	a.Equal(",", catCol.FieldDesc.Delimiter)
+
+	// INDICATOR(CATEGORY_ID(c3, 512)),
+	ic, ok := trainStmt.Features["feature_columns"][12].(*ir.IndicatorColumn)
+	a.True(ok)
+	catCol, ok = ic.CategoryColumn.(*ir.CategoryIDColumn)
+	a.True(ok)
+	a.Equal("c3", catCol.FieldDesc.Name)
+	a.Equal(int64(512), catCol.BucketSize)
+
+	// INDICATOR(c1)
+	ic, ok = trainStmt.Features["feature_columns"][13].(*ir.IndicatorColumn)
+	a.True(ok)
+	a.Equal(nil, ic.CategoryColumn)
+	a.Equal("c1", ic.Name)
+
+	// INDICATOR(SPARSE(c2, 10000, COMMA, "int"))
+	ic, ok = trainStmt.Features["feature_columns"][14].(*ir.IndicatorColumn)
+	a.True(ok)
+	catCol, ok = ic.CategoryColumn.(*ir.CategoryIDColumn)
+	a.True(ok)
+	a.True(catCol.FieldDesc.IsSparse)
+	a.Equal("c2", catCol.FieldDesc.Name)
+	a.Equal(10000, catCol.FieldDesc.Shape[0])
 
 	l, ok := trainStmt.Label.(*ir.NumericColumn)
 	a.True(ok)
