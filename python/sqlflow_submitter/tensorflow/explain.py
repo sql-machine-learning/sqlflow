@@ -132,10 +132,8 @@ def explain_boosted_trees(datasource, estimator, input_fn, plot_type,
             write_dfc_result(dfc_mean, gain, result_table, conn.driver, conn,
                              feature_column_names, hdfs_namenode_addr,
                              hive_location, hdfs_user, hdfs_pass)
-    else:
-        explainer.plot_and_save(lambda: eval(plot_type)(df_dfc), is_pai,
-                                oss_dest, oss_ak, oss_sk, oss_endpoint,
-                                oss_bucket_name)
+    explainer.plot_and_save(lambda: eval(plot_type)(df_dfc), is_pai, oss_dest,
+                            oss_ak, oss_sk, oss_endpoint, oss_bucket_name)
 
 
 def explain_dnns(datasource, estimator, shap_dataset, plot_type, result_table,
@@ -175,11 +173,10 @@ def explain_dnns(datasource, estimator, shap_dataset, plot_type, result_table,
             write_shap_values(shap_values, conn.driver, conn, result_table,
                               feature_column_names, hdfs_namenode_addr,
                               hive_location, hdfs_user, hdfs_pass)
-    else:
-        explainer.plot_and_save(
-            lambda: shap.summary_plot(
-                shap_values, shap_dataset, show=False, plot_type=plot_type),
-            is_pai, oss_dest, oss_ak, oss_sk, oss_endpoint, oss_bucket_name)
+    explainer.plot_and_save(
+        lambda: shap.summary_plot(
+            shap_values, shap_dataset, show=False, plot_type=plot_type),
+        is_pai, oss_dest, oss_ak, oss_sk, oss_endpoint, oss_bucket_name)
 
 
 def create_explain_result_table(conn, result_table):

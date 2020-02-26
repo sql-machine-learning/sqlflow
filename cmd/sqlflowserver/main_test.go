@@ -296,7 +296,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	if testDBDriver != "mysql" {
 		t.Skip("Skipping mysql tests")
 	}
-	dbConnStr = "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
+	dbConnStr = "mysql://root:root@tcp(127.0.0.1:3306)/iris?maxAllowedPacket=0"
 	modelDir := ""
 
 	tmpDir, caCrt, caKey, err := generateTempCA()
@@ -772,9 +772,13 @@ func CaseTrainBoostedTreesEstimatorAndExplain(t *testing.T) {
 	}
 
 	explainSQL := fmt.Sprintf(`SELECT * FROM iris.test WHERE class!=2
+	TO EXPLAIN %s;`, caseInto)
+	_, _, _, err = connectAndRunSQL(explainSQL)
+	a.NoError(err)
+	explainSQLWithInto := fmt.Sprintf(`SELECT * FROM iris.test WHERE class!=2
 	TO EXPLAIN %s
 	INTO iris.explain_result;`, caseInto)
-	_, _, _, err = connectAndRunSQL(explainSQL)
+	_, _, _, err = connectAndRunSQL(explainSQLWithInto)
 	a.NoError(err)
 
 	getExplainResult := `SELECT * FROM iris.explain_result;`
