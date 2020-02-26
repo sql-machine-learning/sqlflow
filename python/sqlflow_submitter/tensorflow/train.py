@@ -184,9 +184,11 @@ def estimator_train_and_save(
                                      feature_metas,
                                      label_meta,
                                      is_pai=True,
-                                     pai_table=pai_table)
+                                     pai_table=pai_table,
+                                     num_workers=len(
+                                         FLAGS.worker_hosts.split(",")),
+                                     worker_id=FLAGS.task_index)
         else:
-
             train_dataset = input_fn(select, datasource, feature_column_names,
                                      feature_metas, label_meta)
         train_dataset = train_dataset.shuffle(SHUFFLE_SIZE).batch(

@@ -164,8 +164,8 @@ def pai_maxcompute_db_generator(table,
             label_idx = None
         reader = paiio.TableReader(table,
                                    selected_cols=",".join(selected_cols),
-                                   slice_id=0,
-                                   slice_count=1)
+                                   slice_id=slice_id,
+                                   slice_count=slice_count)
         while True:
             try:
                 row = reader.read(num_records=1)[0]
