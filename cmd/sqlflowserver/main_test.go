@@ -1827,7 +1827,8 @@ FROM %s
 TO TRAIN DNNClassifier
 WITH
 	model.n_classes = 3,
-	model.hidden_units = [10, 20]
+	model.hidden_units = [10, 20],
+	validation.select = "SELECT * FROM %s"
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO %s;
@@ -1839,7 +1840,7 @@ USING %s;
 
 SELECT *
 FROM %s LIMIT 5;
-	`, caseTrainTable, caseTrainTable, caseInto, caseTestTable, casePredictTable, caseInto, casePredictTable)
+	`, caseTrainTable, caseTrainTable, caseTestTable, caseInto, caseTestTable, casePredictTable, caseInto, casePredictTable)
 
 	conn, err := createRPCConn()
 	if err != nil {
