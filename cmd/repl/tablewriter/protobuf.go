@@ -21,8 +21,8 @@ import (
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
-// ProtobufTableWriter write table as protobuf text formate
-type ProtobufTableWriter struct {
+// ProtobufWriter write table as protobuf text formate
+type ProtobufWriter struct {
 	out             io.Writer
 	head            map[string]interface{}
 	rows            [][]interface{}
@@ -30,9 +30,9 @@ type ProtobufTableWriter struct {
 	hasWritenHeader bool
 }
 
-// NewProtobufTableWriter returns ProtobufTableWriter
-func NewProtobufTableWriter(bufSize int, out io.Writer) *ProtobufTableWriter {
-	return &ProtobufTableWriter{
+// NewProtobufWriter returns ProtobufWriter
+func createProtobufWriter(bufSize int, out io.Writer) *ProtobufWriter {
+	return &ProtobufWriter{
 		out:     out,
 		head:    make(map[string]interface{}),
 		rows:    [][]interface{}{},
@@ -41,13 +41,13 @@ func NewProtobufTableWriter(bufSize int, out io.Writer) *ProtobufTableWriter {
 }
 
 // SetHeader set the table header
-func (table *ProtobufTableWriter) SetHeader(head map[string]interface{}) error {
+func (table *ProtobufWriter) SetHeader(head map[string]interface{}) error {
 	table.head = head
 	return nil
 }
 
 // AppendRow appends row into buffer
-func (table *ProtobufTableWriter) AppendRow(row []interface{}) error {
+func (table *ProtobufWriter) AppendRow(row []interface{}) error {
 	table.rows = append(table.rows, row)
 	if len(table.rows) >= table.bufSize {
 		if e := table.Flush(); e != nil {
@@ -58,7 +58,7 @@ func (table *ProtobufTableWriter) AppendRow(row []interface{}) error {
 }
 
 // Flush the buffer to writer
-func (table *ProtobufTableWriter) Flush() error {
+func (table *ProtobufWriter) Flush() error {
 	if e := table.writeHead(); e != nil {
 		return e
 	}
@@ -69,7 +69,7 @@ func (table *ProtobufTableWriter) Flush() error {
 	return nil
 }
 
-func (table *ProtobufTableWriter) writeRows() error {
+func (table *ProtobufWriter) writeRows() error {
 	for _, row := range table.rows {
 		response, e := pb.EncodeRow(row)
 		if e != nil {
@@ -80,7 +80,7 @@ func (table *ProtobufTableWriter) writeRows() error {
 	return nil
 }
 
-func (table *ProtobufTableWriter) formateWrite(msg proto.Message) error {
+func (table *ProtobufWriter) formateWrite(msg proto.Message) error {
 	if e := proto.CompactText(table.out, msg); e != nil {
 		return e
 	}
@@ -90,7 +90,7 @@ func (table *ProtobufTableWriter) formateWrite(msg proto.Message) error {
 	return nil
 }
 
-func (table *ProtobufTableWriter) writeHead() error {
+func (table *ProtobufWriter) writeHead() error {
 	if len(table.head) == 0 {
 		return fmt.Errorf("should set header")
 	}

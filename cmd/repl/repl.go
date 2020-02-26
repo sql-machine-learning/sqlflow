@@ -230,9 +230,9 @@ func runStmt(stmt string, isTerminal bool, modelDir string, ds string) error {
 	var table tablewriter.TableWriter
 	var err error
 	if isWorkflowStep() {
-		table, err = tablewriter.NewTableWriter("ascii", tablePageSize, os.Stdout)
+		table, err = tablewriter.Create("protobuf", tablePageSize, os.Stdout)
 	} else {
-		table, err = tablewriter.NewTableWriter("protobuf", tablePageSize, os.Stdout)
+		table, err = tablewriter.Create("ascii", tablePageSize, os.Stdout)
 	}
 	if err != nil {
 		return err

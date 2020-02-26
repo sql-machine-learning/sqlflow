@@ -57,12 +57,12 @@ func mockRows() [][]interface{} {
 func TestASCIIWriter(t *testing.T) {
 	a := assert.New(t)
 	b := new(bytes.Buffer)
-	table, e := NewTableWriter("ascii", 1000, b)
+	table, e := Create("ascii", 1000, b)
 	a.NoError(table.SetHeader(mockHead()))
 	for _, row := range mockRows() {
 		table.AppendRow(row)
 	}
 	a.NoError(table.Flush())
 	a.NoError(e)
-	a.Equal(b.String(), expectedTableASCII)
+	a.Equal(expectedTableASCII, b.String())
 }

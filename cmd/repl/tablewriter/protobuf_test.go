@@ -26,10 +26,10 @@ import (
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
-func TestProtobufTableWriter(t *testing.T) {
+func TestProtobufWriter(t *testing.T) {
 	a := assert.New(t)
 	b := new(bytes.Buffer)
-	table, e := NewTableWriter("protobuf", 1, b)
+	table, e := Create("protobuf", 1, b)
 	a.NoError(e)
 	table.SetHeader(mockHead())
 	rows := mockRows()

@@ -38,31 +38,31 @@ type TableWriter interface {
 	Flush() error
 }
 
-// NewTableWriter a TableWriter instance
-func NewTableWriter(name string, bufSize int, w io.Writer) (TableWriter, error) {
+// Create returns a TableWriter instance
+func Create(name string, bufSize int, w io.Writer) (TableWriter, error) {
 	if name == "ascii" {
-		return newASCIITableWriter(bufSize, w), nil
+		return createASCIIWriter(bufSize, w), nil
 	} else if name == "protobuf" {
-		return NewProtobufTableWriter(bufSize, w), nil
+		return createProtobufWriter(bufSize, w), nil
 	}
 	return nil, fmt.Errorf("SQLFLow does not support the tablewriter : %s", name)
 }
 
-// ASCIITableWriter write table as ASCII formate
-type ASCIITableWriter struct {
+// ASCIIWriter write table as ASCII formate
+type ASCIIWriter struct {
 	table   *tablewriter.Table
 	bufSize int
 }
 
-func newASCIITableWriter(bufSize int, w io.Writer) *ASCIITableWriter {
-	return &ASCIITableWriter{
+func createASCIIWriter(bufSize int, w io.Writer) *ASCIIWriter {
+	return &ASCIIWriter{
 		table:   tablewriter.NewWriter(w),
 		bufSize: bufSize,
 	}
 }
 
 // SetHeader set the table header
-func (t *ASCIITableWriter) SetHeader(head map[string]interface{}) error {
+func (t *ASCIIWriter) SetHeader(head map[string]interface{}) error {
 	cn, ok := head["columnNames"]
 	if !ok {
 		return fmt.Errorf("can't find field columnNames in head")
@@ -76,7 +76,7 @@ func (t *ASCIITableWriter) SetHeader(head map[string]interface{}) error {
 }
 
 // AppendRow append row data
-func (t *ASCIITableWriter) AppendRow(row []interface{}) error {
+func (t *ASCIIWriter) AppendRow(row []interface{}) error {
 	s := []string{}
 	for _, d := range row {
 		s = append(s, fmt.Sprint(d))
@@ -90,7 +90,7 @@ func (t *ASCIITableWriter) AppendRow(row []interface{}) error {
 }
 
 // Flush the buffer
-func (t *ASCIITableWriter) Flush() error {
+func (t *ASCIIWriter) Flush() error {
 	if t.table.NumLines() > 0 {
 		t.table.Render()
 		t.table.ClearRows()
