@@ -43,6 +43,6 @@ func TestWorkflow(t *testing.T) {
 	datasource := "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
 	code, e := compile("couler", testSQLProgram, datasource)
 	a.NoError(e)
-	expectedCodeSnippet := `couler.run_container(command='''repl -e "%s" ''' % train_sql, image="sqlflow/sqlflow", env=step_envs)`
+	expectedCodeSnippet := `couler.run_container(command='''repl -e "%s" ''' % escape_sql(train_sql), image="sqlflow/sqlflow", env=step_envs)`
 	a.Contains(code, expectedCodeSnippet)
 }

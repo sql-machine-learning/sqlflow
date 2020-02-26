@@ -46,18 +46,20 @@ step_envs["{{$k}}"] = "{{$v}}"
 {{end}}
 
 couler.clean_workflow_after_seconds_finished({{.WorkflowTTL}})
+def escape_sql(original_sql):
+	return original_sql.replace('"', '\\"')
 
 {{ range $ss := .SQLStatements }}
 	{{if $ss.IsExtendedSQL }}
 train_sql = '''{{ $ss.OriginalSQL }}'''
-couler.run_container(command='''repl -e "%s" ''' % train_sql, image="{{ $ss.DockerImage }}", env=step_envs)
+couler.run_container(command='''repl -e "%s" ''' % escape_sql(train_sql), image="{{ $ss.DockerImage }}", env=step_envs)
 	{{else if $ss.IsKatibTrain}}
 import couler.sqlflow.katib as auto
 
 model = "{{ $ss.Model }}"
 params = json.loads('''{{ $ss.Parameters }}''')
 train_sql = '''{{ $ss.OriginalSQL }}'''
-auto.train(model=model, params=params, sql=train_sql, datasource=datasource)
+auto.train(model=model, params=params, sql=escape_sql(train_sql), datasource=datasource)
 	{{else}}
 # TODO(yancey1989): 
 #	using "repl -parse" to output IR and
