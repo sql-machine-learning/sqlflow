@@ -15,27 +15,54 @@ package tablewriter
 
 import (
 	"bytes"
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
+// TODO(yancey1989): interfaceSlice function would convert 1.0 to 1
+// better to keep the accuracy.
 var expectedTableASCII = `+------+------+
 | COL1 | COL2 |
 +------+------+
-|  1.0 |  1.1 |
-|  2.0 |  2.1 |
+|    1 |  1.1 |
+|    2 |  2.1 |
 +------+------+
 `
+
+func mockHead() map[string]interface{} {
+	head := make(map[string]interface{})
+	cols := []string{"col1", "col2"}
+	head["columnNames"] = cols
+	return head
+}
+
+func interfaceSlice(slice interface{}) []interface{} {
+	s := reflect.ValueOf(slice)
+	ret := make([]interface{}, s.Len())
+	for i := 0; i < s.Len(); i++ {
+		ret[i] = s.Index(i).Interface()
+	}
+	return ret
+}
+
+func mockRows() [][]interface{} {
+	rows := [][]interface{}{}
+	rows = append(rows, interfaceSlice([]float64{1.0, 1.1}))
+	rows = append(rows, interfaceSlice([]float64{2.0, 2.1}))
+	return rows
+}
 
 func TestASCIIWriter(t *testing.T) {
 	a := assert.New(t)
 	b := new(bytes.Buffer)
-	table, e := NewTableWriter("ascii", 1000, b)
-	table.SetHeader([]string{"col1", "col2"})
-	table.AppendRow([]string{"1.0", "1.1"})
-	table.AppendRow([]string{"2.0", "2.1"})
+	table, e := Create("ascii", 1000, b)
+	a.NoError(table.SetHeader(mockHead()))
+	for _, row := range mockRows() {
+		table.AppendRow(row)
+	}
 	a.NoError(table.Flush())
 	a.NoError(e)
-	a.Equal(b.String(), expectedTableASCII)
+	a.Equal(expectedTableASCII, b.String())
 }
