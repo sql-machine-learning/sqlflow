@@ -227,7 +227,7 @@ func runStmt(stmt string, isTerminal bool, modelDir string, ds string) error {
 	if !isTerminal {
 		fmt.Println("sqlflow>", stmt)
 	}
-	var table *TableWriter
+	var table tablewriter.TableWriter
 	var err error
 	if isWorkflowStep() {
 		table, err = tablewriter.NewTableWriter("ascii", tablePageSize, os.Stdout)
