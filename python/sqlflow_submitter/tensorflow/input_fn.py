@@ -17,7 +17,7 @@ import functools
 import numpy as np
 import tensorflow as tf
 from sqlflow_submitter.db import (connect_with_data_source, db_generator,
-                                  parseMaxComputeDSN)
+                                  parseMaxComputeDSN, read_feature)
 
 try:
     import paiio
@@ -124,33 +124,6 @@ def pai_maxcompute_db_generator(table,
                                 fetch_size=128,
                                 slice_id=0,
                                 slice_count=1):
-    def read_feature(raw_val, feature_spec, feature_name):
-        # FIXME(typhoonzero): Should use correct dtype here.
-        if feature_spec["is_sparse"]:
-            indices = np.fromstring(raw_val,
-                                    dtype=int,
-                                    sep=feature_spec["delimiter"])
-            indices = indices.reshape(indices.size, 1)
-            values = np.ones([indices.size], dtype=np.int32)
-            dense_shape = np.array(feature_spec["shape"], dtype=np.int64)
-            return (indices, values, dense_shape)
-        else:
-            # Dense string vector
-            if feature_spec["delimiter"] != "":
-                if feature_spec["dtype"] == "float32":
-                    return np.fromstring(raw_val,
-                                         dtype=float,
-                                         sep=feature_spec["delimiter"])
-                elif feature_spec["dtype"] == "int64":
-                    return np.fromstring(raw_val,
-                                         dtype=int,
-                                         sep=feature_spec["delimiter"])
-                else:
-                    raise ValueError('unrecognize dtype {}'.format(
-                        feature_spec[feature_name]["dtype"]))
-            else:
-                return (raw_val, )
-
     def reader():
         selected_cols = copy.copy(feature_column_names)
         if label_column_name:

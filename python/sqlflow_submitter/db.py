@@ -145,6 +145,34 @@ def connect(driver,
     raise ValueError("unrecognized database driver: %s" % driver)
 
 
+def read_feature(raw_val, feature_spec, feature_name):
+    # FIXME(typhoonzero): Should use correct dtype here.
+    if feature_spec["is_sparse"]:
+        indices = np.fromstring(raw_val,
+                                dtype=int,
+                                sep=feature_spec["delimiter"])
+        indices = indices.reshape(indices.size, 1)
+        values = np.ones([indices.size], dtype=np.int32)
+        dense_shape = np.array(feature_spec["shape"], dtype=np.int64)
+        return (indices, values, dense_shape)
+    else:
+        # Dense string vector
+        if feature_spec["delimiter"] != "":
+            if feature_spec["dtype"] == "float32":
+                return np.fromstring(raw_val,
+                                     dtype=float,
+                                     sep=feature_spec["delimiter"])
+            elif feature_spec["dtype"] == "int64":
+                return np.fromstring(raw_val,
+                                     dtype=int,
+                                     sep=feature_spec["delimiter"])
+            else:
+                raise ValueError('unrecognize dtype {}'.format(
+                    feature_spec[feature_name]["dtype"]))
+        else:
+            return (raw_val, )
+
+
 def db_generator(driver,
                  conn,
                  statement,
@@ -152,33 +180,6 @@ def db_generator(driver,
                  label_spec,
                  feature_specs,
                  fetch_size=128):
-    def read_feature(raw_val, feature_spec, feature_name):
-        # FIXME(typhoonzero): Should use correct dtype here.
-        if feature_spec["is_sparse"]:
-            indices = np.fromstring(raw_val,
-                                    dtype=int,
-                                    sep=feature_spec["delimiter"])
-            indices = indices.reshape(indices.size, 1)
-            values = np.ones([indices.size], dtype=np.int32)
-            dense_shape = np.array(feature_spec["shape"], dtype=np.int64)
-            return (indices, values, dense_shape)
-        else:
-            # Dense string vector
-            if feature_spec["delimiter"] != "":
-                if feature_spec["dtype"] == "float32":
-                    return np.fromstring(raw_val,
-                                         dtype=float,
-                                         sep=feature_spec["delimiter"])
-                elif feature_spec["dtype"] == "int64":
-                    return np.fromstring(raw_val,
-                                         dtype=int,
-                                         sep=feature_spec["delimiter"])
-                else:
-                    raise ValueError('unrecognize dtype {}'.format(
-                        feature_spec[feature_name]["dtype"]))
-            else:
-                return (raw_val, )
-
     def reader():
         if driver == "hive":
             cursor = conn.cursor(configuration=conn.session_cfg)
