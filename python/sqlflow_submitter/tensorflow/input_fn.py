@@ -108,13 +108,13 @@ def input_fn(select,
     return dataset.map(ds_mapper)
 
 
-def parse_pai_dataset(feature_column_names, label_column_name, feature_specs, *row):
+def parse_pai_dataset(feature_column_names, has_label, feature_specs, *row):
     features = {}
     for i, name in enumerate(feature_column_names):
         spec = feature_specs[name]
         f = read_feature(row[i], spec, name)
         features[name] = tf.SparseTensor(*f) if spec["is_sparse"] else list(f)
-    return features, row[-1] if label_column_name else features
+    return features, row[-1] if has_label else features
 
 
 def pai_dataset(table,
@@ -131,12 +131,11 @@ def pai_dataset(table,
         dtypes.append(label_spec["dtype"])
 
     return paiio.TableRecordDataset(
-        table,
-        ["" if t == "string" else eval("np.%s()" % t) for t in dtypes],
+        table, ["" if t == "string" else eval("np.%s()" % t) for t in dtypes],
         selected_cols=",".join(selected_cols),
         slice_id=slice_id,
         slice_count=slice_count,
-        num_threads=128).map(functools.partial(parse_pai_dataset,
-                                               feature_column_names,
-                                               label_spec["feature_name"],
-                                               feature_specs))
+        capacity=2**30,
+        num_threads=128).map(
+            functools.partial(parse_pai_dataset, feature_column_names,
+                              label_spec["feature_name"], feature_specs))
