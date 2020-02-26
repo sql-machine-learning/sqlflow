@@ -23,7 +23,6 @@ import (
 
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
 	"sqlflow.org/goalisa"
-	"sqlflow.org/gomaxcompute"
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/ir"
 	pb "sqlflow.org/sqlflow/pkg/proto"
@@ -251,24 +250,10 @@ func writeFile(filePath, program string) error {
 }
 
 func getModelPath(modelName string, session *pb.Session) (string, error) {
-	driverName, dsName, e := database.ParseURL(session.DbConnStr)
-	if e != nil {
-		return "", e
-	}
 	userID := session.UserId
-	var projectName string
-	if driverName == "maxcompute" {
-		cfg, e := gomaxcompute.ParseDSN(dsName)
-		if e != nil {
-			return "", e
-		}
-		projectName = cfg.Project
-	} else if driverName == "alisa" {
-		cfg, e := goalisa.ParseDSN(dsName)
-		if e != nil {
-			return "", e
-		}
-		projectName = cfg.Project
+	projectName, err := database.GetDatabaseName(session.DbConnStr)
+	if err != nil {
+		return "", err
 	}
 	if userID == "" {
 		userID = "unknown"
