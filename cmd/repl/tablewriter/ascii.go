@@ -77,7 +77,7 @@ func (t *ASCIITableWriter) SetHeader(head map[string]interface{}) error {
 
 // AppendRow append row data
 func (t *ASCIITableWriter) AppendRow(row []interface{}) error {
-	s := make([]string, len(row))
+	s := []string{}
 	for _, d := range row {
 		s = append(s, fmt.Sprint(d))
 	}
