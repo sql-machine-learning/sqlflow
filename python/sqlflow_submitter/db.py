@@ -244,6 +244,50 @@ def db_generator(driver,
     return reader
 
 
+def pai_maxcompute_db_generator(table,
+                                feature_column_names,
+                                label_column_name,
+                                feature_specs,
+                                fetch_size=128,
+                                slice_id=0,
+                                slice_count=1):
+    def reader():
+        selected_cols = copy.copy(feature_column_names)
+        if label_column_name:
+            selected_cols.append(label_column_name)
+            try:
+                label_idx = selected_cols.index(label_column_name)
+            except ValueError:
+                # NOTE(typhoonzero): For clustering model, label_column_name may not in field_names when predicting.
+                label_idx = None
+        else:
+            label_idx = None
+
+        import paiio
+        reader = paiio.TableReader(table,
+                                   selected_cols=",".join(selected_cols),
+                                   slice_id=slice_id,
+                                   slice_count=slice_count)
+        while True:
+            try:
+                row = reader.read(num_records=1)[0]
+                label = row[label_idx] if label_idx is not None else -1
+                features = []
+                for name in feature_column_names:
+                    feature = read_feature(row[selected_cols.index(name)],
+                                           feature_specs[name], name)
+                    features.append(feature)
+                if label_column_name:
+                    yield tuple(features), label
+                else:
+                    yield (tuple(features), )
+            except Exception as e:
+                reader.close()
+                break
+
+    return reader
+
+
 @contextlib.contextmanager
 def buffered_db_writer(driver,
                        conn,

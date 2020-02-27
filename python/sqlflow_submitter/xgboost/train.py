@@ -12,8 +12,7 @@
 # limitations under the License.
 
 import xgboost as xgb
-from sqlflow_submitter.db import connect_with_data_source, db_generator
-from sqlflow_submitter.tensorflow.input_fn import pai_maxcompute_db_generator
+from sqlflow_submitter import db
 
 
 def xgb_dataset(datasource,
@@ -33,13 +32,13 @@ def xgb_dataset(datasource,
             label_column_name = label_meta['feature_name']
         else:
             label_column_name = None
-        gen = pai_maxcompute_db_generator(formated_pai_table,
-                                          feature_column_names,
-                                          label_column_name, feature_metas)
+        gen = db.pai_maxcompute_db_generator(formated_pai_table,
+                                             feature_column_names,
+                                             label_column_name, feature_metas)
     else:
-        conn = connect_with_data_source(datasource)
-        gen = db_generator(conn.driver, conn, dataset_sql,
-                           feature_column_names, label_meta, feature_metas)
+        conn = db.connect_with_data_source(datasource)
+        gen = db.db_generator(conn.driver, conn, dataset_sql,
+                              feature_column_names, label_meta, feature_metas)
     with open(fn, 'w') as f:
         for item in gen():
             if label_meta is None:

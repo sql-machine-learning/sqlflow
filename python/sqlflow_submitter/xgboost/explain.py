@@ -15,10 +15,7 @@ import numpy as np
 import pandas as pd
 import shap
 import xgboost as xgb
-from sqlflow_submitter import explainer
-from sqlflow_submitter.db import (buffered_db_writer, connect_with_data_source,
-                                  db_generator)
-from sqlflow_submitter.tensorflow.input_fn import pai_maxcompute_db_generator
+from sqlflow_submitter import db, explainer
 
 
 def xgb_shap_dataset(datasource, select, feature_column_names, label_spec,
@@ -28,13 +25,15 @@ def xgb_shap_dataset(datasource, select, feature_column_names, label_spec,
         pai_table_parts = pai_explain_table.split(".")
         formated_pai_table = "odps://%s/tables/%s" % (pai_table_parts[0],
                                                       pai_table_parts[1])
-        stream = pai_maxcompute_db_generator(formated_pai_table,
-                                             feature_column_names,
-                                             label_column_name, feature_specs)
+        stream = db.pai_maxcompute_db_generator(formated_pai_table,
+                                                feature_column_names,
+                                                label_column_name,
+                                                feature_specs)
     else:
-        conn = connect_with_data_source(datasource)
-        stream = db_generator(conn.driver, conn, select, feature_column_names,
-                              label_spec, feature_specs)
+        conn = db.connect_with_data_source(datasource)
+        stream = db.db_generator(conn.driver, conn, select,
+                                 feature_column_names, label_spec,
+                                 feature_specs)
 
     xs = pd.DataFrame(columns=feature_column_names)
     i = 0
@@ -121,8 +120,8 @@ def explain(datasource,
 def write_shap_values(shap_values, driver, conn, result_table,
                       feature_column_names, hdfs_namenode_addr, hive_location,
                       hdfs_user, hdfs_pass):
-    with buffered_db_writer(driver, conn, result_table, feature_column_names,
-                            100, hdfs_namenode_addr, hive_location, hdfs_user,
-                            hdfs_pass) as w:
+    with db.buffered_db_writer(driver, conn, result_table,
+                               feature_column_names, 100, hdfs_namenode_addr,
+                               hive_location, hdfs_user, hdfs_pass) as w:
         for row in shap_values:
             w.write(list(row))

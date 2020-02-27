@@ -16,13 +16,7 @@ import functools
 
 import numpy as np
 import tensorflow as tf
-from sqlflow_submitter.db import (connect_with_data_source, db_generator,
-                                  parseMaxComputeDSN, read_feature)
-
-try:
-    import paiio
-except:
-    pass
+from sqlflow_submitter import db
 
 
 def parse_sparse_feature(features, label, feature_column_names, feature_metas):
@@ -86,11 +80,11 @@ def input_fn(select,
                            slice_id=worker_id,
                            slice_count=num_workers)
     else:
-        conn = connect_with_data_source(datasource)
-        gen = db_generator(conn.driver, conn, select, feature_column_names,
-                           label_meta, feature_metas)
+        conn = db.connect_with_data_source(datasource)
+        gen = db.db_generator(conn.driver, conn, select, feature_column_names,
+                              label_meta, feature_metas)
     # Clustering model do not have label
-    if label_meta["feature_name"] == "":
+    if not label_meta or label_meta["feature_name"] == "":
         dataset = tf.data.Dataset.from_generator(gen, (tuple(feature_types), ),
                                                  (tuple(shapes), ))
         ds_mapper = functools.partial(
@@ -112,7 +106,7 @@ def parse_pai_dataset(feature_column_names, has_label, feature_specs, *row):
     features = {}
     for i, name in enumerate(feature_column_names):
         spec = feature_specs[name]
-        f = read_feature(row[i], spec, name)
+        f = db.read_feature(row[i], spec, name)
         features[name] = tf.SparseTensor(*f) if spec["is_sparse"] else list(f)
     return features, row[-1] if has_label else features
 
@@ -126,16 +120,17 @@ def pai_dataset(table,
     record_defaults = []
     selected_cols = copy.copy(feature_column_names)
     dtypes = [feature_specs[n]["dtype"] for n in feature_column_names]
-    if label_spec["feature_name"]:
+    if label_spec and label_spec["feature_name"]:
         selected_cols.append(label_spec["feature_name"])
         dtypes.append(label_spec["dtype"])
 
+    import paiio
     return paiio.TableRecordDataset(
         table, ["" if t == "string" else eval("np.%s()" % t) for t in dtypes],
         selected_cols=",".join(selected_cols),
         slice_id=slice_id,
         slice_count=slice_count,
-        capacity=2**30,
-        num_threads=128).map(
+        capacity=2**25,
+        num_threads=64).map(
             functools.partial(parse_pai_dataset, feature_column_names,
                               label_spec["feature_name"], feature_specs))
