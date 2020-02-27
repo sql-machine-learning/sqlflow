@@ -18,13 +18,14 @@ metric_names_use_class_id = [
     "FalsePositives", "FalseNegatives"
 ]
 metric_names_use_probabilities = [
-    "BinaryAccuracy", "CategoricalAccuracy", "TopKCategoricalAccuracy", "AUC"
+    "BinaryAccuracy", "CategoricalAccuracy", "TopKCategoricalAccuracy"
 ]
 metric_names_use_predictions = [
     "MeanAbsoluteError", "MeanAbsolutePercentageError", "MeanSquaredError",
     "RootMeanSquaredError"
 ]
 supported_metrics = metric_names_use_class_id + metric_names_use_probabilities + metric_names_use_predictions
+supported_metrics += ["AUC"]
 
 
 def check_supported(metrics):
@@ -41,16 +42,21 @@ def get_tf_metrics(metrics):
     def tf_metrics_func(labels, predictions):
         metric_dict = {}
         for mn in metrics:
-            metric = eval("tf.keras.metrics.%s()" % mn)
-            if mn in metric_names_use_class_id:
+            if mn == "AUC":
+                metric = tf.keras.metrics.AUC(num_thresholds=2000)
                 metric.update_state(y_true=[labels],
-                                    y_pred=predictions["class_ids"])
-            elif mn in metric_names_use_probabilities:
-                metric.update_state(y_true=[labels],
-                                    y_pred=predictions["probabilities"])
-            elif mn in metric_names_use_predictions:
-                metric.update_state(y_true=[labels],
-                                    y_pred=predictions["predictions"])
+                                    y_pred=predictions["logistic"])
+            else:
+                metric = eval("tf.keras.metrics.%s()" % mn)
+                if mn in metric_names_use_class_id:
+                    metric.update_state(y_true=[labels],
+                                        y_pred=predictions["class_ids"])
+                elif mn in metric_names_use_probabilities:
+                    metric.update_state(y_true=[labels],
+                                        y_pred=predictions["probabilities"])
+                elif mn in metric_names_use_predictions:
+                    metric.update_state(y_true=[labels],
+                                        y_pred=predictions["predictions"])
             metric_dict[mn] = metric
         return metric_dict
 
@@ -62,7 +68,7 @@ def get_keras_metrics(metrics):
     m = []
     for mn in metrics:
         if mn == "AUC":
-            m.append(eval("tf.keras.metrics.%s(num_thresholds=2000)" % mn))
+            m.append(tf.keras.metrics.AUC(num_thresholds=2000))
         else:
             m.append(eval("tf.keras.metrics.%s()" % mn))
     return m
