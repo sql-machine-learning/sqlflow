@@ -59,6 +59,11 @@ func addLineToStmt(line string, inQuotedString, isSingleQuoted *bool, statements
 	}
 	var isEscape bool // Escaping in quoted string cannot cross lines
 	var start, i int
+
+	// note(yancey1989): in the workflow YAML, \n would be a real string instead of a character
+	replacer := strings.NewReplacer(`\n`, "\n", `\t`, "\t", `\r`, "\r")
+	line = replacer.Replace(line)
+
 	for i = 0; i < len(line); i++ {
 		if isEscape {
 			isEscape = false
