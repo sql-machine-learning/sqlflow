@@ -66,3 +66,12 @@ func TestProtobufWriter(t *testing.T) {
 		}
 	}
 }
+
+func TestEmptyProtobufWriter(t *testing.T) {
+	a := assert.New(t)
+	b := new(bytes.Buffer)
+	table, e := Create("protobuf", 1, b)
+	a.NoError(e)
+	// no output if step execute an extended sql
+	a.NoError(table.Flush())
+}
