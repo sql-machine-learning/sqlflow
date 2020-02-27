@@ -427,6 +427,15 @@ func TestReadStmt(t *testing.T) {
 	a.Equal(2, len(stmt))
 	a.Equal("use iris;", stmt[0])
 	a.Equal("show tables;", space.ReplaceAllString(stmt[1], " "))
+
+	sql4 := `SELECT\t\n1;\n\n`
+	scanner = bufio.NewScanner(strings.NewReader(sql4))
+	stmt, err = readStmt(scanner)
+	fmt.Println(stmt)
+	a.Nil(err)
+	a.Equal(1, len(stmt))
+	a.Equal("SELECT\t\n1;", stmt[0])
+
 }
 
 func TestPromptState(t *testing.T) {
