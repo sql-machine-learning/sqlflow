@@ -567,7 +567,7 @@ func TestComplete(t *testing.T) {
 
 	p.InsertText(`MSprop,`, false, true)
 	c = s.completer(*p.Document())
-	p.InsertText(` o`, false, true) // FIXME(shendiaomo): copy-n-paste doen't work here
+	p.InsertText(` o`, false, true) // FIXME(shendiaomo): copy-n-paste doesn't work here
 	c = s.completer(*p.Document())
 	a.Equal(7, len(c)) // RMSprop has 7 parameters
 	a.Equal("optimizer", c[0].Text)
