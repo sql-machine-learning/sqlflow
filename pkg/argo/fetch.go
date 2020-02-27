@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/argoproj/argo/pkg/apis/workflow/v1alpha1"
+	"github.com/gogo/protobuf/proto"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
@@ -33,12 +34,12 @@ func newFetchRequest(workflowID, stepID, stepPhase string) *pb.FetchRequest {
 	}
 }
 
-func newFetchResponse(newReq *pb.FetchRequest, eof bool, logs []string) *pb.FetchResponse {
+func newFetchResponse(newReq *pb.FetchRequest, eof bool, responses []*pb.Response) *pb.FetchResponse {
 	return &pb.FetchResponse{
 		UpdatedFetchSince: newReq,
 		Eof:               eof,
-		Logs: &pb.FetchResponse_Logs{
-			Content: logs,
+		Responses: &pb.FetchResponse_Responses{
+			Response: responses,
 		},
 	}
 }
@@ -76,7 +77,7 @@ func Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 	}
 
 	if isWorkflowPending(wf) {
-		return newFetchResponse(req, false, []string{}), nil
+		return newFetchResponse(req, false, []*pb.Response{}), nil
 	}
 	stepGroupName, err := getStepGroup(wf, req.Job.Id, req.StepId)
 	if err != nil {
@@ -109,6 +110,7 @@ func Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 	if e != nil {
 		return nil, e
 	}
+
 	if req.StepPhase == "" {
 		// the 1-th container execute `argoexec wait` to wait the preiority step, so package the 2-th container's command code.
 		execCode := fmt.Sprintf("%s %s", strings.Join(pod.Spec.Containers[1].Command, " "), strings.Join(pod.Spec.Containers[1].Args, " "))
@@ -122,20 +124,35 @@ func Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 		newStepPhase = string(pod.Status.Phase)
 	}
 
+	responses := []*pb.Response{}
+	for _, log := range logs {
+		r, e := pb.EncodeMessage(log)
+		if e != nil {
+			return nil, e
+		}
+		responses = append(responses, r)
+	}
+
 	if isPodCompleted(pod) {
 		if isPodFailed(pod) {
-			return newFetchResponse(newFetchRequest(req.Job.Id, stepGroupName, newStepPhase), eof, logs),
+			return newFetchResponse(newFetchRequest(req.Job.Id, stepGroupName, newStepPhase), eof, responses),
 				fmt.Errorf("SQLFlow Step [%d/%d] Failed, Log: %s", stepIdx, stepCnt, logURL)
 		}
 
 		// snip the pod logs when it complete
 		// TODO(yancey1989): fetch the pod logs using an iteration way
-		// to avoid fetching a large number of logs in once.
+		// to avoid the memory overflow
 		podLogs, e := k8sReadPodLogs(pod.ObjectMeta.Name, "main", "", false)
 		if e != nil {
 			return nil, e
 		}
-		logs = append(logs, snipPodLogs(podLogs)...)
+
+		// unmarshl pb.Response from pod logs
+		r, e := unMarshalPodLogs(podLogs)
+		if e != nil {
+			return nil, e
+		}
+		responses = append(responses, r...)
 
 		// move to the next step
 		nextStepGroup, err := getNextStepGroup(wf, stepGroupName)
@@ -153,7 +170,7 @@ func Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 		}
 	}
 
-	return newFetchResponse(newFetchRequest(req.Job.Id, stepGroupName, newStepPhase), eof, logs), nil
+	return newFetchResponse(newFetchRequest(req.Job.Id, stepGroupName, newStepPhase), eof, responses), nil
 }
 
 func isHTMLCode(code string) bool {
@@ -165,15 +182,24 @@ func isHTMLCode(code string) bool {
 	return re.MatchString(code)
 }
 
-func snipPodLogs(podLogs []string) []string {
-	snipLogs := []string{}
+func unMarshalPodLogs(podLogs []string) ([]*pb.Response, error) {
+	responses := []*pb.Response{}
 	for _, log := range podLogs {
 		if isHTMLCode(log) {
-			snipLogs = append(snipLogs, log)
+			r, e := pb.EncodeMessage(log)
+			if e != nil {
+				return nil, e
+			}
+			responses = append(responses, r)
 		}
-		// TODO(yancey1989): snip query result from logs
+		response := &pb.Response{}
+		if e := proto.UnmarshalText(log, response); e != nil {
+			// skip this line if it's not protobuf message
+			continue
+		}
+		responses = append(responses, response)
 	}
-	return snipLogs
+	return responses, nil
 }
 
 func parseOffset(content string) (string, string, error) {
