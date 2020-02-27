@@ -30,12 +30,17 @@ type predictFiller struct {
 }
 
 type explainFiller struct {
-	OSSModelDir string
-	DataSource  string
-	Select      string
-	ResultTable string
-	IsPAI       bool
-	PAITable    string
+	OSSModelDir       string
+	DataSource        string
+	Select            string
+	ResultTable       string
+	IsPAI             bool
+	PAITable          string
+	ResultOSSDest     string
+	ResultOSSAK       string
+	ResultOSSSK       string
+	ResultOSSEndpoint string
+	ResultOSSBucket   string
 }
 
 type requirementsFiller struct {
@@ -141,6 +146,12 @@ predict.pred(datasource="{{.DataSource}}",
 `
 
 const tfExplainTmplText = `
+import os
+import matplotlib
+if os.environ.get('DISPLAY', '') == '':
+	print('no display found. Using non-interactive Agg backend')
+	matplotlib.use('Agg')
+
 import json
 import sys
 import tensorflow as tf
@@ -171,5 +182,10 @@ explain.explain(datasource="{{.DataSource}}",
                 save="{{.OSSModelDir}}",
                 result_table="{{.ResultTable}}",
                 is_pai="{{.IsPAI}}" == "true",
-                pai_table="{{.PAITable}}")
+                pai_table="{{.PAITable}}",
+                oss_dest='''{{.ResultOSSDest}}''',
+                oss_ak='''{{.ResultOSSAK}}''',
+                oss_sk='''{{.ResultOSSSK}}''',
+                oss_endpoint='''{{.ResultOSSEndpoint}}''',
+                oss_bucket_name='''{{.ResultOSSBucket}}''')
 `

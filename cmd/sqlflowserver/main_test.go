@@ -288,15 +288,10 @@ func createRPCConn() (*grpc.ClientConn, error) {
 }
 
 func TestEnd2EndMySQL(t *testing.T) {
-	testDBDriver := os.Getenv("SQLFLOW_TEST_DB")
-	// default run mysql tests
-	if len(testDBDriver) == 0 {
-		testDBDriver = "mysql"
-	}
-	if testDBDriver != "mysql" {
+	if os.Getenv("SQLFLOW_TEST_DB") != "mysql" {
 		t.Skip("Skipping mysql tests")
 	}
-	dbConnStr = "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
+	dbConnStr = "mysql://root:root@tcp(127.0.0.1:3306)/iris?maxAllowedPacket=0"
 	modelDir := ""
 
 	tmpDir, caCrt, caKey, err := generateTempCA()
