@@ -22,12 +22,13 @@ class TestArgo(unittest.TestCase):
             "str": "value",
             "boolean": True,
             "integer": 10,
-            "decimal": 3.1415926
+            "decimal": 3.1415926,
+            "json": '''{"key": "value"}'''
         }
         actual = couler._convert_dict_to_env_list(test_d)
         expected_list = [{
             "name": "str",
-            "value": "value"
+            "value": "'value'"
         }, {
             "name": "boolean",
             "value": "'True'"
@@ -37,6 +38,9 @@ class TestArgo(unittest.TestCase):
         }, {
             "name": "decimal",
             "value": "'3.1415926'"
+        }, {
+            "name": "json",
+            "value": "'{\"key\": \"value\"}'"
         }]
         self.assertEqual(actual, expected_list)
 
