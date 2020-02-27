@@ -428,7 +428,6 @@ func TestReadStmt(t *testing.T) {
 	a.Equal("use iris;", stmt[0])
 	a.Equal("show tables;", space.ReplaceAllString(stmt[1], " "))
 
-	// readStmt should convert a string `\n`, `\t` to a character
 	sql4 := `SELECT\t\n1;\n\n`
 	scanner = bufio.NewScanner(strings.NewReader(sql4))
 	stmt, err = readStmt(scanner)

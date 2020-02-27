@@ -60,7 +60,10 @@ func addLineToStmt(line string, inQuotedString, isSingleQuoted *bool, statements
 	var isEscape bool // Escaping in quoted string cannot cross lines
 	var start, i int
 
-	// note(yancey1989): in the workflow YAML, \n would be a real string instead of a character
+	// note(yancey1989): if the input sql program contain `\n`, bufio.Text() would deal with
+	// it as a text string with two character instead of one character "\n".
+	// readStmt(bufio.Scaner) should deal with that by replceing `\n` with '\n'
+	// TODO(yancey1989): finding a normative way to deal with that.
 	replacer := strings.NewReplacer(`\n`, "\n", `\t`, "\t", `\r`, "\r")
 	line = replacer.Replace(line)
 
