@@ -14,6 +14,10 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.sqlflow.parser.ParserProto.ParserRequest;
 import org.sqlflow.parser.ParserProto.ParserResponse;
+import org.sqlflow.parser.calcite.CalciteParserAdaptor;
+import org.sqlflow.parser.hiveql.HiveQLParserAdaptor;
+import org.sqlflow.parser.parse.ParseInterface;
+import org.sqlflow.parser.parse.ParseResult;
 
 public class ParserGrpcServer {
   private static final Logger logger = Logger.getLogger(ParserGrpcServer.class.getName());
@@ -75,10 +79,10 @@ public class ParserGrpcServer {
 
       ParseResult parse_result;
       if (request.getDialect().equals("calcite")) {
-        CalciteParserAdaptor parser = new CalciteParserAdaptor();
+        ParseInterface parser = new CalciteParserAdaptor();
         parse_result = parser.ParseAndSplit(request.getSqlProgram());
       } else {
-        HiveQLParserAdaptor parser = new HiveQLParserAdaptor();
+        ParseInterface parser = new HiveQLParserAdaptor();
         parse_result = parser.ParseAndSplit(request.getSqlProgram());
       }
 
