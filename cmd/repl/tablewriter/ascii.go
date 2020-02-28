@@ -20,8 +20,8 @@ import (
 	"github.com/olekukonko/tablewriter"
 )
 
-// TableWriter write the Table a speicial format,
-// the example code of ASCII formater:
+// TableWriter write the Table a special format,
+// the example code of ASCII formatter:
 //
 // table := NewTableWriter("ascii", 1024, os.Stdout)
 // defer table.Flush()
@@ -48,7 +48,7 @@ func Create(name string, bufSize int, w io.Writer) (TableWriter, error) {
 	return nil, fmt.Errorf("SQLFLow does not support the tablewriter : %s", name)
 }
 
-// ASCIIWriter write table as ASCII formate
+// ASCIIWriter write table as ASCII format
 type ASCIIWriter struct {
 	table   *tablewriter.Table
 	bufSize int

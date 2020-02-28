@@ -20,13 +20,13 @@ import (
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
-// ProtobufWriter write table as protobuf text formate
+// ProtobufWriter write table as protobuf text format
 type ProtobufWriter struct {
-	out             io.Writer
-	head            map[string]interface{}
-	rows            [][]interface{}
-	bufSize         int
-	hasWritenHeader bool
+	out              io.Writer
+	head             map[string]interface{}
+	rows             [][]interface{}
+	bufSize          int
+	hasWrittenHeader bool
 }
 
 // NewProtobufWriter returns ProtobufWriter
@@ -74,12 +74,12 @@ func (table *ProtobufWriter) writeRows() error {
 		if e != nil {
 			return e
 		}
-		return table.formateWrite(response)
+		return table.formatWrite(response)
 	}
 	return nil
 }
 
-func (table *ProtobufWriter) formateWrite(msg proto.Message) error {
+func (table *ProtobufWriter) formatWrite(msg proto.Message) error {
 	if e := proto.CompactText(table.out, msg); e != nil {
 		return e
 	}
@@ -94,13 +94,13 @@ func (table *ProtobufWriter) writeHead() error {
 		return nil
 	}
 	// skip write head if it has been writen to table.out
-	if table.hasWritenHeader {
+	if table.hasWrittenHeader {
 		return nil
 	}
 	response, e := pb.EncodeHead(table.head)
 	if e != nil {
 		return e
 	}
-	table.hasWritenHeader = true
-	return table.formateWrite(response)
+	table.hasWrittenHeader = true
+	return table.formatWrite(response)
 }
