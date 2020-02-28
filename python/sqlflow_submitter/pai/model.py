@@ -13,9 +13,9 @@
 
 import io
 import os
-import pickle
 import tarfile
 
+import dill
 import odps
 import tensorflow as tf
 from sqlflow_submitter import db
@@ -78,7 +78,9 @@ def load_file(oss_model_dir, file_name):
 def save_metas(oss_model_dir, num_workers, file_name, *meta):
     '''
     Save model descriptions like the training SQL statements to OSS directory.
-    Data are saved using pickle.
+    Data are saved using dill.
+    NOTE(typhoonzero): Use dill to do serialization because on PAI Python 2.7,
+    it will report "can't pickle weakref objects" when using pickle.
     Args:
         oss_model_dir: OSS URI that the model will be saved to.
         *meta: python objects to be saved.
@@ -92,7 +94,7 @@ def save_metas(oss_model_dir, num_workers, file_name, *meta):
             return
     oss_path = get_oss_path_from_uri(oss_model_dir, file_name)
     with gfile.GFile(oss_path, mode='w') as f:
-        pickle.dump(list(meta), f)
+        dill.dump(list(meta), f)
     # write a file "file_name_estimator" to store the estimator name, so we
     # can determine if the estimator is BoostedTrees* when explaining the model.
     oss_path = get_oss_path_from_uri(oss_model_dir,
@@ -116,4 +118,4 @@ def load_metas(oss_model_dir, file_name):
     oss_path = "/".join([uri_parts[0].rstrip("/"), file_name])
 
     reader = gfile.GFile(oss_path, mode='r')
-    return pickle.load(reader)
+    return dill.load(reader)
