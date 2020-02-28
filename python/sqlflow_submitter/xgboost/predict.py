@@ -14,8 +14,7 @@
 import numpy as np
 import xgboost as xgb
 from sqlflow_submitter import db
-
-from .train import xgb_dataset
+from sqlflow_submitter.xgboost.dataset import xgb_dataset
 
 
 def pred(datasource,
