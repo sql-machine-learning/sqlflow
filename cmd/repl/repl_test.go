@@ -427,6 +427,15 @@ func TestReadStmt(t *testing.T) {
 	a.Equal(2, len(stmt))
 	a.Equal("use iris;", stmt[0])
 	a.Equal("show tables;", space.ReplaceAllString(stmt[1], " "))
+
+	sql4 := `SELECT\t\n1;\n\n`
+	scanner = bufio.NewScanner(strings.NewReader(sql4))
+	stmt, err = readStmt(scanner)
+	fmt.Println(stmt)
+	a.Nil(err)
+	a.Equal(1, len(stmt))
+	a.Equal("SELECT\t\n1;", stmt[0])
+
 }
 
 func TestPromptState(t *testing.T) {
@@ -558,7 +567,7 @@ func TestComplete(t *testing.T) {
 
 	p.InsertText(`MSprop,`, false, true)
 	c = s.completer(*p.Document())
-	p.InsertText(` o`, false, true) // FIXME(shendiaomo): copy-n-paste doen't work here
+	p.InsertText(` o`, false, true) // FIXME(shendiaomo): copy-n-paste doesn't work here
 	c = s.completer(*p.Document())
 	a.Equal(7, len(c)) // RMSprop has 7 parameters
 	a.Equal("optimizer", c[0].Text)

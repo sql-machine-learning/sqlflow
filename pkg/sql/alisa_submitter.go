@@ -79,7 +79,7 @@ func (s *alisaSubmitter) ExecuteTrain(ts *ir.TrainStmt) (e error) {
 	if e != nil {
 		return e
 	}
-	if e := modelBucket.DeleteObject(ossModelPath); e != nil {
+	if e := deleteDirRecursive(modelBucket, ossModelPath+"/"); e != nil {
 		return e
 	}
 
@@ -198,6 +198,7 @@ func findPyModulePath(pyModuleName string) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
+// FIXME(typhoonzero): use the same model bucket name e.g. sqlflow-models
 func getModelBucket(project string) (*oss.Bucket, error) {
 	ossCkptDir, err := pai.GetOSSCheckpointDir(project)
 	if err != nil {

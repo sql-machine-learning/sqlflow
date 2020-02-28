@@ -1,9 +1,10 @@
-package org.sqlflow.parser;
+package org.sqlflow.parser.calcite;
 
 import static org.junit.Assert.*;
 
 import java.util.ArrayList;
 import org.junit.Test;
+import org.sqlflow.parser.parse.ParseResult;
 
 public class CalciteParserAdaptorTest {
   @Test

@@ -121,12 +121,29 @@ func (s *paiSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 	if e != nil {
 		return e
 	}
+
+	currProject, e := database.GetDatabaseName(s.Session.DbConnStr)
+	if e != nil {
+		return e
+	}
+	e = cleanOSSModelPath(ossModelPath+"/", currProject)
+	if e != nil {
+		return e
+	}
 	scriptPath := fmt.Sprintf("file://%s/%s", s.Cwd, tarball)
 	code, paiCmd, requirements, e := pai.Train(cl, s.Session, scriptPath, cl.Into, ossModelPath, s.Cwd)
 	if e != nil {
 		return e
 	}
 	return s.submitPAITask(code, paiCmd, requirements)
+}
+
+func cleanOSSModelPath(ossModelPath, project string) error {
+	bucket, err := getOSSModelBucket(project)
+	if err != nil {
+		return err
+	}
+	return deleteDirRecursive(bucket, ossModelPath)
 }
 
 func (s *paiSubmitter) submitPAITask(code, paiCmd, requirements string) error {
@@ -243,29 +260,24 @@ func (s *paiSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 	return e
 }
 
-// getOSSSavedModelType returns the saved model type when training, can be:
-// 1. randomforests: model is saved by pai
-// 2. xgboost: on OSS with model file xgboost_model_desc
-// 3. PAI tensorflow models: on OSS with meta file: tensorflow_model_desc
-func getOSSSavedModelType(modelName string, project string) (modelType int, estimator string, err error) {
-	// FIXME(typhoonzero): if the model not exist on OSS, assume it's a random forest model
-	// should use a general method to fetch the model and see the model type.
+// getOSSModelBucket construct a bucket object. Argument project is used to get OSS checkpoint dir
+// from environment variable for current MaxCompute project.
+// FIXME(typhoonzero): use the same model bucket name e.g. sqlflow-models
+func getOSSModelBucket(project string) (*oss.Bucket, error) {
 	endpoint := os.Getenv("SQLFLOW_OSS_MODEL_ENDPOINT")
 	ak := os.Getenv("SQLFLOW_OSS_AK")
 	sk := os.Getenv("SQLFLOW_OSS_SK")
 	if endpoint == "" || ak == "" || sk == "" {
-		err = fmt.Errorf("must define SQLFLOW_OSS_MODEL_ENDPOINT, SQLFLOW_OSS_AK, SQLFLOW_OSS_SK when using submitter maxcompute")
-		return
+		return nil, fmt.Errorf("must define SQLFLOW_OSS_MODEL_ENDPOINT, SQLFLOW_OSS_AK, SQLFLOW_OSS_SK when using submitter maxcompute")
 	}
 
 	ossCheckpointDir, err := pai.GetOSSCheckpointDir(project)
 	if err != nil {
-		return
+		return nil, err
 	}
 	ckptParts := strings.Split(ossCheckpointDir, "?")
 	if len(ckptParts) != 2 {
-		err = fmt.Errorf("SQLFLOW_OSS_CHECKPOINT_DIR got wrong format")
-		return
+		return nil, fmt.Errorf("SQLFLOW_OSS_CHECKPOINT_DIR got wrong format")
 	}
 	urlParts := strings.Split(ckptParts[0], "://")
 	if len(urlParts) != 2 {
@@ -275,12 +287,19 @@ func getOSSSavedModelType(modelName string, project string) (modelType int, esti
 
 	cli, err := oss.New(endpoint, ak, sk)
 	if err != nil {
-		return
+		return nil, err
 	}
-	bucket, err := cli.Bucket(bucketName)
-	if err != nil {
-		return
-	}
+	return cli.Bucket(bucketName)
+}
+
+// getOSSSavedModelType returns the saved model type when training, can be:
+// 1. randomforests: model is saved by pai
+// 2. xgboost: on OSS with model file xgboost_model_desc
+// 3. PAI tensorflow models: on OSS with meta file: tensorflow_model_desc
+func getOSSSavedModelType(modelName string, project string) (modelType int, estimator string, err error) {
+	// FIXME(typhoonzero): if the model not exist on OSS, assume it's a random forest model
+	// should use a general method to fetch the model and see the model type.
+	bucket, err := getOSSModelBucket(project)
 	ret, err := bucket.IsObjectExist(modelName + "/tensorflow_model_desc")
 	if err != nil {
 		return
@@ -306,6 +325,43 @@ func getOSSSavedModelType(modelName string, project string) (modelType int, esti
 	}
 	modelType = pai.ModelTypePAIML
 	return
+}
+
+// deleteDirRecursive recursively delete a directory on the OSS
+func deleteDirRecursive(bucket *oss.Bucket, dir string) error {
+	exists, err := bucket.IsObjectExist(dir)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		// if directory not exist, just go on.
+		return nil
+	}
+	if !strings.HasSuffix(dir, "/") {
+		return fmt.Errorf("dir to delete must end with /")
+	}
+	objectPathList := []string{}
+	lor, err := bucket.ListObjects(oss.Prefix(dir), oss.Delimiter("/"))
+	if err != nil {
+		return err
+	}
+	for _, object := range lor.Objects {
+		objectPathList = append(objectPathList, object.Key)
+	}
+	// delete sub dir first
+	if len(lor.CommonPrefixes) > 0 {
+		for _, subPrefix := range lor.CommonPrefixes {
+			err := deleteDirRecursive(bucket, subPrefix)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	_, err = bucket.DeleteObjects(objectPathList)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func getCreateShapResultSQL(db *database.DB, tableName string, selectStmt string, labelCol string) (string, error) {

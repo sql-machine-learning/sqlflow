@@ -42,7 +42,7 @@ datasource = "{{ .DataSource }}"
 
 step_envs = dict()
 {{range $k, $v := .StepEnvs}}
-step_envs["{{$k}}"] = "{{$v}}"
+step_envs["{{$k}}"] = '''{{$v}}'''
 {{end}}
 
 couler.clean_workflow_after_seconds_finished({{.WorkflowTTL}})

@@ -1,4 +1,4 @@
-package org.sqlflow.parser;
+package org.sqlflow.parser.calcite;
 
 import java.util.ArrayList;
 import org.apache.calcite.sql.SqlKind;
@@ -6,8 +6,10 @@ import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.parser.SqlParseException;
 import org.apache.calcite.sql.parser.SqlParser;
 import org.apache.calcite.sql.parser.ddl.SqlDdlParserImpl;
+import org.sqlflow.parser.parse.ParseInterface;
+import org.sqlflow.parser.parse.ParseResult;
 
-public class CalciteParserAdaptor {
+public class CalciteParserAdaptor implements ParseInterface {
 
   public CalciteParserAdaptor() {}
 

@@ -66,3 +66,11 @@ func TestASCIIWriter(t *testing.T) {
 	a.NoError(e)
 	a.Equal(expectedTableASCII, b.String())
 }
+
+func TestEmptyASCIIWriter(t *testing.T) {
+	a := assert.New(t)
+	b := new(bytes.Buffer)
+	table, e := Create("ascii", 1000, b)
+	a.NoError(e)
+	a.NoError(table.Flush())
+}
