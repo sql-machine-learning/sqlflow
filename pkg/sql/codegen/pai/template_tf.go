@@ -82,6 +82,7 @@ model.save_metas("{{.OSSModelDir}}",
 `
 
 const paiRequirementsTmplText = `
+dill
 adanet==0.8.0
 numpy==1.16.2
 pandas==0.24.2

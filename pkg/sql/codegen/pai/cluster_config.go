@@ -31,9 +31,9 @@ type WorkerConfig struct {
 
 // ClusterConfig implicates PAI distributed task meta
 type ClusterConfig struct {
-	PS        PSConfig     `json:"ps"`
-	Worker    WorkerConfig `json:"worker"`
-	Evaluator WorkerConfig `json:"evaluator"`
+	PS        PSConfig      `json:"ps"`
+	Worker    WorkerConfig  `json:"worker"`
+	Evaluator *WorkerConfig `json:"evaluator,omitempty"`
 }
 
 // GetClusterConfig returns ClusterConfig object comes from WITH clause
@@ -45,7 +45,7 @@ func GetClusterConfig(attrs map[string]interface{}) (*ClusterConfig, error) {
 		"train.worker_gpu":    0,
 		"train.ps_cpu":        200,
 		"train.ps_gpu":        0,
-		"train.num_evaluator": 1,
+		"train.num_evaluator": 0,
 		"train.evaluator_cpu": 200,
 		"train.evaluator_gpu": 0,
 	}
@@ -60,7 +60,7 @@ func GetClusterConfig(attrs map[string]interface{}) (*ClusterConfig, error) {
 			delete(attrs, k)
 		}
 	}
-	return &ClusterConfig{
+	cc := &ClusterConfig{
 		PS: PSConfig{
 			Count: defaultMap["train.num_ps"],
 			CPU:   defaultMap["train.ps_cpu"],
@@ -71,10 +71,17 @@ func GetClusterConfig(attrs map[string]interface{}) (*ClusterConfig, error) {
 			CPU:   defaultMap["train.worker_cpu"],
 			GPU:   defaultMap["train.worker_gpu"],
 		},
-		Evaluator: WorkerConfig{
+	}
+	if defaultMap["train.num_evaluator"] == 0 {
+		cc.Evaluator = nil
+	} else if defaultMap["train.num_evaluator"] == 1 {
+		cc.Evaluator = &WorkerConfig{
 			Count: defaultMap["train.num_evaluator"],
 			CPU:   defaultMap["train.evaluator_cpu"],
 			GPU:   defaultMap["train.evaluator_gpu"],
-		},
-	}, nil
+		}
+	} else if defaultMap["train.num_evaluator"] > 1 {
+		return nil, fmt.Errorf("train.num_evaluator should only be 1 or 0")
+	}
+	return cc, nil
 }
