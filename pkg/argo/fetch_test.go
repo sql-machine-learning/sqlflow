@@ -14,6 +14,7 @@
 package argo
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -22,7 +23,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes"
+	"github.com/golang/protobuf/ptypes/any"
+	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/stretchr/testify/assert"
+	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
 const (
@@ -42,11 +48,11 @@ spec:
           - name: message
             value: "hello1"
     - - name: hello2
-        template: whalesay
+        template: query
         arguments:
           parameters:
-          - name: message
-            value: "hello2"
+          - name: sql 
+            value: "select 1;"
     - - name: hello3
         template: whalesay
         arguments:
@@ -59,9 +65,24 @@ spec:
       parameters:
       - name: message
     container:
-      image: docker/whalesay@sha256:178598e51a26abbc958b8a2e48825c90bc22e641de3d31e18aaf55f3258ba93b
+      image: %s
       command: [echo]
       args: ["{{inputs.parameters.message}}"]
+  - name: query
+    inputs:
+      parameters:
+      - name: sql
+    container:
+      env:
+      - name: SQLFLOW_MYSQL_HOST
+        value: '0.0.0.0'
+      - name: SQLFLOW_MYSQL_PORT
+        value: '3306'
+      - name: SQLFLOW_DATASOURCE
+        value: '%s'
+      image: %s
+      command: [bash]
+      args: ["-c", 'bash /start.sh mysql >/dev/null 2>&1 & repl -e "{{inputs.parameters.sql}}"']
 `
 
 	podYAML = `apiVersion: v1
@@ -91,6 +112,8 @@ spec:
 `
 )
 
+var stepImage = "sqlflow/sqlflow"
+
 func createAndWriteTempFile(content string) (string, error) {
 	tmpFile, err := ioutil.TempFile("/tmp", "sqlflow-")
 	if err != nil {
@@ -105,37 +128,88 @@ func createAndWriteTempFile(content string) (string, error) {
 	return tmpFile.Name(), nil
 }
 
+func parseFetchResponse(responses *pb.FetchResponse_Responses) ([]string, [][]*any.Any, []string, error) {
+	columns := []string{}
+	rows := [][]*any.Any{}
+	messages := []string{}
+	for _, res := range responses.GetResponse() {
+		switch res.GetResponse().(type) {
+		case *pb.Response_Message:
+			messages = append(messages, res.GetMessage().Message)
+		case *pb.Response_Head:
+			response := &pb.Response{}
+			if e := proto.UnmarshalText(res.String(), response); e != nil {
+				return nil, nil, nil, e
+			}
+			columns = append(columns, response.GetHead().GetColumnNames()...)
+		case *pb.Response_Row:
+			response := &pb.Response{}
+			if e := proto.UnmarshalText(res.String(), response); e != nil {
+				return nil, nil, nil, e
+			}
+			rows = append(rows, response.GetRow().GetData())
+		default:
+			// continue
+		}
+	}
+	return columns, rows, messages, nil
+}
 func TestFetch(t *testing.T) {
+	a := assert.New(t)
 	if os.Getenv("SQLFLOW_TEST") != "workflow" {
 		t.Skip("argo: skip workflow tests")
 	}
 	os.Setenv("SQLFLOW_ARGO_UI_ENDPOINT", "http://localhost:8001")
 	defer os.Unsetenv("SQLFLOW_ARGO_UI_ENDPOINT")
-	a := assert.New(t)
-	workflowID, err := k8sCreateResource(stepYAML)
+
+	if os.Getenv("SQLFLOW_WORKFLOW_STEP_IMAGE") != "" {
+		stepImage = os.Getenv("SQLFLOW_WORKFLOW_STEP_IMAGE")
+	}
+	ds := os.Getenv("SQLFLOW_TEST_DATASOURCE")
+	a.NotEmpty(ds, fmt.Sprintf("should set SQLFLOW_TEST_DATASOURCE env"))
+
+	workflowID, err := k8sCreateResource(fmt.Sprintf(stepYAML, stepImage, ds, stepImage))
 	a.NoError(err)
 
 	defer k8sDeleteWorkflow(workflowID)
 	req := newFetchRequest(workflowID, "", "")
-	actualLogs := []string{}
+	fr, err := Fetch(req)
+	messages := []string{}
+	columns := []string{}
+	rows := [][]*any.Any{}
 	for {
-		response, err := Fetch(req)
-		a.NoError(err)
-		for _, log := range response.Logs.Content {
-			actualLogs = append(actualLogs, log)
+		if err != nil {
+			break
 		}
-		if response.Eof {
+		// process Response protobuf message
+		c, r, m, e := parseFetchResponse(fr.GetResponses())
+		if e != nil {
+			err = e
+			break
+		}
+		if len(c) > 0 {
+			columns = c
+			rows = r
+		}
+		messages = append(messages, m...)
+		if fr.Eof {
 			break
 		}
 		time.Sleep(time.Second)
-		req = response.UpdatedFetchSince
+		fr, err = Fetch(fr.UpdatedFetchSince)
 	}
+	a.NoError(err)
 
-	concatedLogs := strings.Join(actualLogs, "\n")
+	concatedLogs := strings.Join(messages, "\n")
 
 	a.Contains(concatedLogs, "SQLFlow Step: [1/3] Status: Succeeded")
 	a.Contains(concatedLogs, "SQLFlow Step: [2/3] Status: Succeeded")
 	a.Contains(concatedLogs, "SQLFlow Step: [3/3] Status: Succeeded")
+	// confirm columns and rows of sql: SELECT 1;
+	a.Equal([]string{"1"}, columns)
+	v := &wrappers.Int64Value{}
+	a.NoError(ptypes.UnmarshalAny(rows[0][0], v))
+	a.Equal(v.GetValue(), int64(1))
 }
 
 func waitUntilPodRunning(podID string) error {
@@ -218,13 +292,6 @@ func TestGetPodLogsStress(t *testing.T) {
 		expected = append(expected, strconv.FormatInt(int64(i), 10))
 	}
 	a.Equal(expected, actual)
-}
-
-func TestSnipLogs(t *testing.T) {
-	a := assert.New(t)
-	mockLogs := []string{"", "<div>mock html content</div>", "dummy logs"}
-	actual := snipPodLogs(mockLogs)
-	a.Equal([]string{"<div>mock html content</div>"}, actual)
 }
 
 func TestHTMLCode(t *testing.T) {

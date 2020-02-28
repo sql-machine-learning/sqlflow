@@ -19,6 +19,7 @@ if [[ $(git diff --name-only HEAD..develop|awk -F. '{print $NF}'|uniq) == md ]];
 fi
 
 export SQLFLOW_TEST=workflow
+export SQLFLOW_ARGO_UI_ENDPOINT=http://localhost:8001
 ############# Run Couler unit tests #############
 pip -q install -r python/couler/requirements.txt
 
@@ -83,8 +84,10 @@ function test_workflow() {
         if [[ "${MYSQL_POD_STATUS}" == "Running" ]]; then
             echo "SQLFlow MySQL Pod running."
             MYSQL_POD_IP=$(kubectl get pod ${MYSQL_POD_NAME} -o jsonpath='{.status.podIP}')
+            export SQLFLOW_TEST_DATASOURCE="mysql://root:root@tcp(${MYSQL_POD_IP}:3306)/?maxAllowedPacket=0"
             go generate ./...
-            SQLFLOW_TEST_DATASOURCE="mysql://root:root@tcp(${MYSQL_POD_IP}:3306)/?maxAllowedPacket=0" gotest ./cmd/... -run TestEnd2EndMySQLWorkflow -v
+            gotest ./cmd/... -run TestEnd2EndWorkflow -v
+            gotest ./pkg/argo/... -v
             return 0
         else
             echo "Wait SQLFlow MySQL Pod ${MYSQL_POD_NAME}"
@@ -101,7 +104,7 @@ check_ret $? "Test SQLFLow workflow failed"
 # test submit pai job using argo workflow mode
 if [ "${SQLFLOW_submitter}" == "pai" ]; then
     # TDOO(wangkuiyi): rename MAXCOMPUTE_AK to SQLFLOW_TEST_DB_MAXCOMPUTE_ASK later after rename the Travis CI env settings.
-    SQLFLOW_submitter=pai SQLFLOW_TEST_DATASOURCE="maxcompute://${MAXCOMPUTE_AK}:${MAXCOMPUTE_SK}@${MAXCOMPUTE_ENDPOINT}" gotest ./cmd/... -run TestEnd2EndMySQLWorkflow -v
+    SQLFLOW_submitter=pai SQLFLOW_TEST_DATASOURCE="maxcompute://${MAXCOMPUTE_AK}:${MAXCOMPUTE_SK}@${MAXCOMPUTE_ENDPOINT}" gotest ./cmd/... -run TestEnd2EndWorkflow -v
     check_ret $? "Test SQLFLow workflow failed"
 fi
 
