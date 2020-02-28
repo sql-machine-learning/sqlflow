@@ -16,6 +16,7 @@ package tablewriter
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"io"
 	"testing"
 
@@ -44,6 +45,7 @@ func TestProtobufWriter(t *testing.T) {
 	response := &pb.Response{}
 	head, e := reader.ReadString('\n')
 	e = proto.UnmarshalText(head, response)
+	fmt.Println(head, e)
 	a.NoError(e)
 	a.Equal(mockHead()["columnNames"].([]string), response.GetHead().GetColumnNames())
 

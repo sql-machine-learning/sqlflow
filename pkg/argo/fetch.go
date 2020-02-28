@@ -20,7 +20,7 @@ import (
 	"strings"
 
 	"github.com/argoproj/argo/pkg/apis/workflow/v1alpha1"
-	"github.com/gogo/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
@@ -185,6 +185,7 @@ func isHTMLCode(code string) bool {
 func unMarshalPodLogs(podLogs []string) ([]*pb.Response, error) {
 	responses := []*pb.Response{}
 	for _, log := range podLogs {
+		log = strings.TrimSpace(log)
 		if isHTMLCode(log) {
 			r, e := pb.EncodeMessage(log)
 			if e != nil {
