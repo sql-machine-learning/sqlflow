@@ -14,7 +14,6 @@
 package tablewriter
 
 import (
-	"fmt"
 	"io"
 
 	"github.com/golang/protobuf/proto"
@@ -92,7 +91,7 @@ func (table *ProtobufWriter) formateWrite(msg proto.Message) error {
 
 func (table *ProtobufWriter) writeHead() error {
 	if len(table.head) == 0 {
-		return fmt.Errorf("should set header")
+		return nil
 	}
 	// skip write head if it has been writen to table.out
 	if table.hasWritenHeader {
