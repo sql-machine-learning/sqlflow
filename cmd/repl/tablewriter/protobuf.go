@@ -74,7 +74,7 @@ func (table *ProtobufWriter) writeRows() error {
 		if e != nil {
 			return e
 		}
-		return table.formatWrite(response)
+		table.formatWrite(response)
 	}
 	return nil
 }
