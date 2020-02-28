@@ -171,7 +171,7 @@ func TestFetch(t *testing.T) {
 	workflowID, err := k8sCreateResource(fmt.Sprintf(stepYAML, stepImage, ds, stepImage))
 	a.NoError(err)
 
-	//defer k8sDeleteWorkflow(workflowID)
+	defer k8sDeleteWorkflow(workflowID)
 	req := newFetchRequest(workflowID, "", "")
 	fr, err := Fetch(req)
 	messages := []string{}
