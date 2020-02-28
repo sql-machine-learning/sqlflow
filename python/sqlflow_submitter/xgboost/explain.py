@@ -41,6 +41,17 @@ def xgb_shap_dataset(datasource, select, feature_column_names, label_spec,
     for row in stream():
         xs.loc[i] = [item[0] for item in row[0]]
         i += 1
+    # NOTE(typhoonzero): set dtype to the feature's actual type, or the dtype
+    # may be "object". Use below code to reproduce:
+    # import pandas as pd
+    # feature_column_names=["a", "b"]
+    # xs = pd.DataFrame(columns=feature_column_names)
+    # for i in range(10):
+    #     xs.loc[i] = [int(j) for j in range(2)]
+    # print(xs.dtypes)
+    for fname in feature_column_names:
+        dtype = feature_specs[fname]["dtype"]
+        xs[fname] = xs[fname].astype(dtype)
     return xs
 
 
