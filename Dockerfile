@@ -87,7 +87,7 @@ go install -v ./... && \
 mv $GOPATH/bin/sqlflowserver /usr/local/bin && \
 mv $GOPATH/bin/repl /usr/local/bin && \
 (cd python/couler && python setup.py -q install) && \
-(cd java/parser-interface && mvn clean install) && \
+(cd java/parse-interface && mvn clean install) && \
 (cd java/parser && \
 protoc --java_out=src/main/java --grpc-java_out=src/main/java/ --proto_path=src/main/proto/ src/main/proto/Parser.proto && \
 mvn -B -q clean compile assembly:single && \
