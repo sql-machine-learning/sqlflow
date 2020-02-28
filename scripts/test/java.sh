@@ -15,11 +15,15 @@
 
 set -e
 
-cd java/parser
-
 # Make downloading quiet.
 # Downloading logs is about 6k lines, which makes viewing TravisCI log difficult
 export MAVEN_OPTS=-Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+
+# Install parse interface package to local Maven repo
+cd java/parse-interface
+mvn clean install
+
+cd ../parser
 
 # Generate GRPC & Protocol Buffer files
 protoc --java_out=src/main/java --grpc-java_out=src/main/java/ --proto_path=src/main/proto/ src/main/proto/Parser.proto

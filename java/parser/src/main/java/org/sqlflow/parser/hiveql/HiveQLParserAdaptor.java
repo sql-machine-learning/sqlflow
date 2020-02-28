@@ -1,4 +1,4 @@
-package org.sqlflow.parser;
+package org.sqlflow.parser.hiveql;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -7,8 +7,10 @@ import org.apache.hadoop.hive.ql.Context;
 import org.apache.hadoop.hive.ql.parse.ParseDriver;
 import org.apache.hadoop.hive.ql.parse.ParseError;
 import org.apache.hadoop.hive.ql.parse.ParseException;
+import org.sqlflow.parser.parse.ParseInterface;
+import org.sqlflow.parser.parse.ParseResult;
 
-public class HiveQLParserAdaptor {
+public class HiveQLParserAdaptor implements ParseInterface {
 
   public HiveQLParserAdaptor() {}
 
