@@ -13,31 +13,29 @@ public class CalciteParserAdaptor implements ParseInterface {
 
   public CalciteParserAdaptor() {}
 
-  // ParseAndSplit calls Calcite parser to parse a SQL program and returns a ParseResult.
-  //
-  // It returns <statements, -1, ""> if Calcite parser accepts the SQL program.
-  //     input:  "select 1; select 1;"
-  //     output: {"select 1;", "select 1;"}, -1 , nil
-  // It returns <statements, idx, ""> if Calcite parser accepts part of the SQL program, indicated
-  // by idx.
-  //     input:  "select 1; select 1 to train; select 1"
-  //     output: {"select 1;", "select 1"}, 19, nil
-  // It returns <nil, -1, error> if an error is occurred.
-  public ParseResult ParseAndSplit(String sql) {
-    ParseResult parse_result = new ParseResult();
-    parse_result.Statements = new ArrayList<String>();
-    parse_result.Position = -1;
-    parse_result.Error = "";
+  /**
+   * parse calls Calcite parser to parse a SQL program and returns a ParseResult. It returns
+   * {statements, -1, ""} if Calcite parser accepts the SQL program. input: "select 1; select 1;"
+   * output: {"select 1;", "select 1;"}, -1 , nil It returns {statements, idx, ""} if Calcite parser
+   * accepts part of the SQL program, indicated by idx. input: "select 1; select 1 to train; select
+   * 1" output: {"select 1;", "select 1"}, 19, nil It returns {nil, -1, error} if an error is
+   * occurred.
+   */
+  public ParseResult parse(String sql) {
+    ParseResult parseResult = new ParseResult();
+    parseResult.statements = new ArrayList<String>();
+    parseResult.position = -1;
+    parseResult.error = "";
 
-    int accumulated_position = 0;
+    int accumulatedPosition = 0;
     while (true) {
       SqlParser.Config sqlParserConfig =
           SqlParser.configBuilder().setParserFactory(SqlDdlParserImpl.FACTORY).build();
       try {
         SqlParser parser = SqlParser.create(sql, sqlParserConfig);
         SqlNode sqlnode = parser.parseQuery();
-        parse_result.Statements.add(sql);
-        return parse_result;
+        parseResult.statements.add(sql);
+        return parseResult;
       } catch (SqlParseException e) {
         int line = e.getPos().getLineNum();
         int column = e.getPos().getColumnNum();
@@ -48,18 +46,18 @@ public class CalciteParserAdaptor implements ParseInterface {
           SqlNode sqlnode = parser.parseQuery();
 
           // parseQuery doesn't throw exception
-          parse_result.Statements.add(sql.substring(0, epos));
+          parseResult.statements.add(sql.substring(0, epos));
 
           // multiple SQL statements
           if (sql.charAt(epos) == ';') {
             sql = sql.substring(epos + 1);
-            accumulated_position += epos + 1;
+            accumulatedPosition += epos + 1;
 
             // FIXME(tony): trim is not enough to handle statements
             // like "select 1; select 1; -- this is a comment"
             // So maybe we need some preprocessors to remove all the comments first.
             if (sql.trim().equals("")) {
-              return parse_result;
+              return parseResult;
             }
 
             continue;
@@ -70,21 +68,21 @@ public class CalciteParserAdaptor implements ParseInterface {
           // SqlKind.QUERY is {SELECT, EXCEPT, INTERSECT, UNION, VALUES, ORDER_BY, EXPLICIT_TABLE}
           if (!SqlKind.QUERY.contains(sqlnode.getKind()) && sqlnode.getKind() != SqlKind.UNION) {
             // return original error
-            parse_result.Statements = new ArrayList<String>();
-            parse_result.Position = -1;
-            parse_result.Error = e.getCause().getMessage();
-            return parse_result;
+            parseResult.statements = new ArrayList<String>();
+            parseResult.position = -1;
+            parseResult.error = e.getCause().getMessage();
+            return parseResult;
           }
 
-          parse_result.Position = accumulated_position + epos;
-          return parse_result;
+          parseResult.position = accumulatedPosition + epos;
+          return parseResult;
         } catch (SqlParseException ee) {
           // return original error
-          parse_result.Statements = new ArrayList<String>();
-          parse_result.Position = -1;
-          parse_result.Error = e.getCause().getMessage();
+          parseResult.statements = new ArrayList<String>();
+          parseResult.position = -1;
+          parseResult.error = e.getCause().getMessage();
 
-          return parse_result;
+          return parseResult;
         }
       }
     }
@@ -92,7 +90,8 @@ public class CalciteParserAdaptor implements ParseInterface {
 
   // posToIndex converts line and column number into string index.
   private static int posToIndex(String query, int line, int column) {
-    int l = 0, c = 0;
+    int l = 0;
+    int c = 0;
 
     for (int i = 0; i < query.length(); i++) {
       if (l == line - 1 && c == column - 1) {

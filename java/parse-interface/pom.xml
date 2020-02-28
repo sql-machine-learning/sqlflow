@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.sqlflow</groupId>
     <artifactId>parse-interface</artifactId>
-    <version>0.0.1</version>
+    <version>0.0.1dev</version>
 
     <name>SQLFlow Parser Interface</name>
     <description>SQLFlow Parser Interface</description>

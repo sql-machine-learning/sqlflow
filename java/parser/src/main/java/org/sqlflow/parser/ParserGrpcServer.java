@@ -15,7 +15,7 @@ import org.apache.commons.cli.ParseException;
 import org.sqlflow.parser.ParserProto.ParserRequest;
 import org.sqlflow.parser.ParserProto.ParserResponse;
 import org.sqlflow.parser.calcite.CalciteParserAdaptor;
-import org.sqlflow.parser.hiveql.HiveQLParserAdaptor;
+import org.sqlflow.parser.hive.HiveParserAdaptor;
 import org.sqlflow.parser.parse.ParseInterface;
 import org.sqlflow.parser.parse.ParseResult;
 
@@ -67,7 +67,7 @@ public class ParserGrpcServer {
   static class ParserImpl extends ParserGrpc.ParserImplBase {
     @Override
     public void parse(ParserRequest request, StreamObserver<ParserResponse> responseObserver) {
-      if (!(request.getDialect().equals("calcite") || request.getDialect().equals("hiveql"))) {
+      if (!(request.getDialect().equals("calcite") || request.getDialect().equals("hive"))) {
         ParserResponse response =
             ParserResponse.newBuilder()
                 .setError(String.format("unrecognized dialect %s", request.getDialect()))
@@ -77,25 +77,26 @@ public class ParserGrpcServer {
         return;
       }
 
-      ParseResult parse_result;
+      ParseResult parseResult;
       if (request.getDialect().equals("calcite")) {
         ParseInterface parser = new CalciteParserAdaptor();
-        parse_result = parser.ParseAndSplit(request.getSqlProgram());
+        parseResult = parser.parse(request.getSqlProgram());
       } else {
-        ParseInterface parser = new HiveQLParserAdaptor();
-        parse_result = parser.ParseAndSplit(request.getSqlProgram());
+        ParseInterface parser = new HiveParserAdaptor();
+        parseResult = parser.parse(request.getSqlProgram());
       }
 
-      ParserResponse.Builder response_builder = ParserResponse.newBuilder();
-      response_builder.addAllSqlStatements(parse_result.Statements);
-      response_builder.setIndex(parse_result.Position);
-      response_builder.setError(parse_result.Error);
+      ParserResponse.Builder responseBuilder = ParserResponse.newBuilder();
+      responseBuilder.addAllSqlStatements(parseResult.statements);
+      responseBuilder.setIndex(parseResult.position);
+      responseBuilder.setError(parseResult.error);
 
-      responseObserver.onNext(response_builder.build());
+      responseObserver.onNext(responseBuilder.build());
       responseObserver.onCompleted();
     }
   }
 
+  /** Main starts a Java Server. */
   public static void main(String[] args) {
     Options options = new Options();
     options.addRequiredOption("p", "port", true, "port number");

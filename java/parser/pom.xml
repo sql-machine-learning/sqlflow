@@ -46,7 +46,7 @@
         <dependency>
             <groupId>org.sqlflow</groupId>
             <artifactId>parse-interface</artifactId>
-            <version>0.0.1</version>
+            <version>0.0.1dev</version>
         </dependency>
         <dependency>
             <groupId>io.grpc</groupId>
