@@ -25,7 +25,7 @@ select = "SELECT * FROM boston.train;"
 
 feature_field_meta = [{
     'feature_name': 'crim',
-    'dtype': 1,
+    'dtype': "float32",
     'delimiter': '',
     'shape': [1],
     'is_sparse': False,
@@ -33,7 +33,7 @@ feature_field_meta = [{
     'MaxID': 0
 }, {
     'feature_name': 'zn',
-    'dtype': 1,
+    'dtype': "int32",
     'delimiter': '',
     'shape': [1],
     'is_sparse': False,
@@ -41,7 +41,7 @@ feature_field_meta = [{
     'MaxID': 0
 }, {
     'feature_name': 'indus',
-    'dtype': 1,
+    'dtype': "float32",
     'delimiter': '',
     'shape': [1],
     'is_sparse': False,
@@ -49,7 +49,7 @@ feature_field_meta = [{
     'MaxID': 0
 }, {
     'feature_name': 'chas',
-    'dtype': 0,
+    'dtype': "int32",
     'delimiter': '',
     'shape': [1],
     'is_sparse': False,
@@ -57,7 +57,7 @@ feature_field_meta = [{
     'MaxID': 0
 }, {
     'feature_name': 'nox',
-    'dtype': 1,
+    'dtype': "float32",
     'delimiter': '',
     'shape': [1],
     'is_sparse': False,
@@ -65,7 +65,7 @@ feature_field_meta = [{
     'MaxID': 0
 }, {
     'feature_name': 'rm',
-    'dtype': 1,
+    'dtype': "float32",
     'delimiter': '',
     'shape': [1],
     'is_sparse': False,
@@ -73,7 +73,7 @@ feature_field_meta = [{
     'MaxID': 0
 }, {
     'feature_name': 'age',
-    'dtype': 1,
+    'dtype': "float32",
     'delimiter': '',
     'shape': [1],
     'is_sparse': False,
@@ -81,7 +81,7 @@ feature_field_meta = [{
     'MaxID': 0
 }, {
     'feature_name': 'dis',
-    'dtype': 1,
+    'dtype': "float32",
     'delimiter': '',
     'shape': [1],
     'is_sparse': False,
@@ -89,7 +89,7 @@ feature_field_meta = [{
     'MaxID': 0
 }, {
     'feature_name': 'rad',
-    'dtype': 0,
+    'dtype': "int32",
     'delimiter': '',
     'shape': [1],
     'is_sparse': False,
@@ -97,7 +97,7 @@ feature_field_meta = [{
     'MaxID': 0
 }, {
     'feature_name': 'tax',
-    'dtype': 0,
+    'dtype': "int32",
     'delimiter': '',
     'shape': [1],
     'is_sparse': False,
@@ -105,7 +105,7 @@ feature_field_meta = [{
     'MaxID': 0
 }, {
     'feature_name': 'ptratio',
-    'dtype': 1,
+    'dtype': "float32",
     'delimiter': '',
     'shape': [1],
     'is_sparse': False,
@@ -113,7 +113,7 @@ feature_field_meta = [{
     'MaxID': 0
 }, {
     'feature_name': 'b',
-    'dtype': 1,
+    'dtype': "float32",
     'delimiter': '',
     'shape': [1],
     'is_sparse': False,
@@ -121,7 +121,7 @@ feature_field_meta = [{
     'MaxID': 0
 }, {
     'feature_name': 'lstat',
-    'dtype': 1,
+    'dtype': "float32",
     'delimiter': '',
     'shape': [1],
     'is_sparse': False,
@@ -131,7 +131,7 @@ feature_field_meta = [{
 
 label_field_meta = {
     'feature_name': 'medv',
-    'dtype': 1,
+    'dtype': "float32",
     'delimiter': '',
     'shape': [1],
     'is_sparse': False,
