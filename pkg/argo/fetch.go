@@ -134,7 +134,11 @@ func Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 	}
 
 	if isPodCompleted(pod) {
+		// TODO(yancey1989): add duration time for the eoeResponse
+		// eoe just used to simpler the client code which can be consistant with non-argo mode.
+		eoeResponse := &pb.Response{Response: &pb.Response_Eoe{Eoe: &pb.EndOfExecution{}}}
 		if isPodFailed(pod) {
+			responses = append(responses, eoeResponse)
 			return newFetchResponse(newFetchRequest(req.Job.Id, stepGroupName, newStepPhase), eof, responses),
 				fmt.Errorf("SQLFlow Step [%d/%d] Failed, Log: %s", stepIdx, stepCnt, logURL)
 		}
@@ -153,6 +157,7 @@ func Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 			return nil, e
 		}
 		responses = append(responses, r...)
+		responses = append(responses, eoeResponse)
 
 		// move to the next step
 		nextStepGroup, err := getNextStepGroup(wf, stepGroupName)
