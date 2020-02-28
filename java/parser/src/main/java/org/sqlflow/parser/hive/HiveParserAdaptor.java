@@ -57,13 +57,13 @@ public class HiveParserAdaptor implements ParseInterface {
           RecognitionException re = (RecognitionException) reField.get(errors.get(0));
 
           // Note(tony): Calcite parser raise error at the first letter of the error word,
-          // while HiveQL parser raise error on the position right before the error word.
+          // while Hive parser raise error on the position right before the error word.
           // Consider select 1 to train, Calcite parser raise error at letter t of "to",
-          // while HiveQL parser raise error at the white space before "to". As a result,
+          // while Hive parser raise error at the white space before "to". As a result,
           // we put `+ 1` on the `epos`.
           epos = posToIndex(sql, re.line, re.charPositionInLine + 1);
         } catch (Exception all) {
-          return parseResultError("Cannot parse the error message from HiveQL parser");
+          return parseResultError("Cannot parse the error message from Hive parser");
         }
 
         try {

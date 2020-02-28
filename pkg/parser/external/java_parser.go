@@ -23,7 +23,7 @@ type javaParser struct {
 	typ string
 }
 
-// typ should be either "hiveql" or "calcite".
+// typ should be either "hive" or "calcite".
 func newJavaParser(typ string) *javaParser {
 	return &javaParser{typ: typ}
 }
