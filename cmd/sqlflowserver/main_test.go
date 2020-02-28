@@ -1406,7 +1406,7 @@ func CaseTrainDistributedPAI(t *testing.T) {
 	predSQL := fmt.Sprintf(`SELECT * FROM %s
 TO PREDICT %s.class
 USING my_dnn_model_distributed;`, caseTestTable, casePredictTable)
-	_, _, _, err := connectAndRunSQL(predSQL)
+	_, _, _, err = connectAndRunSQL(predSQL)
 	if err != nil {
 		a.Fail("Run predSQL error: %v", err)
 	}
