@@ -34,3 +34,4 @@ repos:
         entry: bash ./scripts/pre-commit/google_java_format.sh
         language: system
         files: \.(java)$
+        verbose: true
