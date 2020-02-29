@@ -92,7 +92,9 @@ def pai_download_table_data_worker(dir_name, feature_specs,
                                       slice_count=SLICE_NUM)
     with open("{}/{}".format(dir_name, slice_id), 'w') as f:
         for item in gen():
-            row_data = ["%d:%f" % (i, v[0]) for i, v in enumerate(item[0])]
+            row_data = [
+                "%d:%f" % (i, v[0] or 0) for i, v in enumerate(item[0])
+            ]
             if label_spec:
                 row_data = [str(item[1])] + row_data
             f.write("\t".join(row_data) + "\n")
