@@ -11,14 +11,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
-import os
 import json
+import os
+import sys
+
+import xgboost as xgb
 from sqlflow_submitter import db
 from sqlflow_submitter.tensorflow.input_fn import pai_maxcompute_db_generator
-import xgboost as xgb
 
-SLICE_NUM=128
+SLICE_NUM = 128
+
 
 def xgb_dataset(datasource,
                 fn,
@@ -30,7 +32,8 @@ def xgb_dataset(datasource,
                 pai_table=""):
 
     if is_pai:
-        pai_dataset(fn, feature_specs, feature_column_names, label_spec, "odps://{}/tables/{}".format(*pai_table.split(".")))
+        pai_dataset(fn, feature_specs, feature_column_names, label_spec,
+                    "odps://{}/tables/{}".format(*pai_table.split(".")))
     else:
         conn = db.connect_with_data_source(datasource)
         gen = db.db_generator(conn.driver, conn, dataset_sql,
@@ -53,7 +56,8 @@ def dump_dmatrix(filename, generator, has_label):
             f.write("\t".join(row_data) + "\n")
 
 
-def pai_dataset(dir_name, feature_specs, feature_column_names, label_spec, pai_table):
+def pai_dataset(dir_name, feature_specs, feature_column_names, label_spec,
+                pai_table):
     from subprocess import Popen, PIPE
     import threading
     threads = []
@@ -61,23 +65,31 @@ def pai_dataset(dir_name, feature_specs, feature_column_names, label_spec, pai_t
 
     def thread_worker(slice_id):
         p = Popen("{} -m {}".format(sys.executable, __name__),
-                  shell=True, stdin=PIPE)
+                  shell=True,
+                  stdin=PIPE)
         p.communicate(
-            json.dumps(
-                [dir_name, feature_specs, feature_column_names, label_spec, pai_table, slice_id]))
+            json.dumps([
+                dir_name, feature_specs, feature_column_names, label_spec,
+                pai_table, slice_id
+            ]))
 
     for i in range(SLICE_NUM):
-        t = threading.Thread(target=thread_worker, args=(i,))
+        t = threading.Thread(target=thread_worker, args=(i, ))
         t.start()
         threads.append(t)
     map(lambda t: t.join(), threads)
 
 
-def pai_download_table_data_worker(dir_name, feature_specs, feature_column_names, label_spec, pai_table, slice_id):
+def pai_download_table_data_worker(dir_name, feature_specs,
+                                   feature_column_names, label_spec, pai_table,
+                                   slice_id):
     label_column_name = label_spec['feature_name'] if label_spec else None
-    gen = pai_maxcompute_db_generator(
-        pai_table, feature_column_names, label_column_name, feature_specs,
-        slice_id=slice_id, slice_count=SLICE_NUM)
+    gen = pai_maxcompute_db_generator(pai_table,
+                                      feature_column_names,
+                                      label_column_name,
+                                      feature_specs,
+                                      slice_id=slice_id,
+                                      slice_count=SLICE_NUM)
     with open("{}/{}".format(dir_name, slice_id), 'w') as f:
         for item in gen():
             row_data = ["%d:%f" % (i, v[0]) for i, v in enumerate(item[0])]
