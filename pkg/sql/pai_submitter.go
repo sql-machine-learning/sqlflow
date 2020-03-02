@@ -16,7 +16,6 @@ package sql
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -64,7 +63,6 @@ func createTmpTableFromSelect(selectStmt, dataSource string) (string, string, er
 	}
 	// NOTE(typhoonzero): MaxCompute do not support "CREATE	TABLE XXX AS (SELECT ...)"
 	createSQL := fmt.Sprintf("CREATE TABLE %s LIFECYCLE %d AS %s", tableName, lifecycleOnTmpTable, selectStmt)
-	log.Printf(createSQL)
 	_, err = db.Exec(createSQL)
 	return databaseName, tableName, err
 }
@@ -76,7 +74,8 @@ func dropTmpTables(tableNames []string, dataSource string) error {
 		return err
 	}
 	for _, tbName := range tableNames {
-		log.Printf("drop tmp table %s", tbName)
+		// TODO(yancey1989): write log into pipe to avoid the wrong row
+		// log.Printf("drop tmp table %s", tbName)
 		if tbName != "" {
 			_, err = db.Exec(fmt.Sprintf("DROP TABLE %s", tbName))
 			if err != nil {

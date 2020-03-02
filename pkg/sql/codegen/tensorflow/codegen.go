@@ -17,7 +17,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"strings"
 	"text/template"
@@ -395,7 +394,6 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 	}
 	labelFM := predStmt.TrainStmt.Label.GetFieldDesc()[0]
 	if labelFM.Name == "" {
-		log.Printf("clustering model, got result table: %s, result column: %s", predStmt.ResultTable, predStmt.ResultColumn)
 		// no label in train SQL means a clustering model, generate a fieldDesc using result table's column
 		labelFM = &ir.FieldDesc{
 			Name:  predStmt.ResultColumn,

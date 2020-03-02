@@ -17,7 +17,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"strings"
 	"text/template"
@@ -189,7 +188,6 @@ func Predict(ir *ir.PredictStmt, session *pb.Session, tarball, modelName, ossMod
 		return
 	}
 	if modelType == ModelTypePAIML {
-		log.Printf("predicting using pai prediction tookit")
 		if paiCmd, e = getPAIPredictCmd(ir, session); e != nil {
 			return
 		}
@@ -265,13 +263,11 @@ func Explain(ir *ir.ExplainStmt, session *pb.Session, tarball, modelName, ossMod
 		if expn.Requirements, err = genRequirements(false); err != nil {
 			return nil, err
 		}
-		log.Printf("explain using pai random forests")
 		expn.PaiCmd, err = getExplainRandomForestsPAICmd(ir, session)
 	} else if modelType == ModelTypeXGBoost {
 		if expn.Requirements, err = genRequirements(true); err != nil {
 			return nil, err
 		}
-		log.Printf("explain using pai xgboost")
 		ossURI, err := checkpointURL(ossModelPath, currProject)
 		if err != nil {
 			return nil, err
