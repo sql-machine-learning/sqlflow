@@ -195,7 +195,7 @@ def estimator_train_and_save(
             train_dataset = input_fn(select, datasource, feature_column_names,
                                      feature_metas, label_meta)
         train_dataset = train_dataset.shuffle(SHUFFLE_SIZE).batch(
-            batch_size).cache().repeat(epochs if epochs else 1)
+            batch_size).cache("cache_train").repeat(epochs if epochs else 1)
         return train_dataset
 
     # do not add default Accuracy metric when using estimator to train, it will fail
