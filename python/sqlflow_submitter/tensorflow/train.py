@@ -253,6 +253,7 @@ def estimator_train_and_save(
     # write the path under current directory
     with open("exported_path", "w") as fn:
         fn.write(str(export_path.decode("utf-8")))
+    print("Done training, model exported to: %s" % export_path)
 
 
 def train(datasource,

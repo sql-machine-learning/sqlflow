@@ -91,23 +91,23 @@ func TestRunStmt(t *testing.T) {
 	a.Contains(output, "| TABLES IN IRIS |")
 
 	output, err = getStdout(func() error {
-		return runStmt("select * from train to train DNNClassifier WITH model.hidden_units=[10,10], model.n_classes=3 label class INTO sqlflow_models.repl_dnn_model;", true, "", dbConnStr)
+		return runStmt("select * from train to train DNNClassifier WITH model.hidden_units=[10,10], model.n_classes=3, validation.select=\"select * from test\" label class INTO sqlflow_models.repl_dnn_model;", true, "", dbConnStr)
 	})
 	a.Nil(err)
 	a.Contains(output, "'global_step': 110")
 
 	output, err = getStdout(func() error {
-		return runStmt("select * from train to train xgboost.gbtree WITH objective=reg:squarederror label class INTO sqlflow_models.repl_xgb_model;", true, "", dbConnStr)
+		return runStmt("select * from train to train xgboost.gbtree WITH objective=reg:squarederror, validation.select=\"select * from test\" label class INTO sqlflow_models.repl_xgb_model;", true, "", dbConnStr)
 	})
 	a.Nil(err)
 	a.Contains(output, "Evaluation result: ")
 
-	output, err = getStdout(func() error {
-		return runStmt("select * from train to explain sqlflow_models.repl_xgb_model;", true, "", dbConnStr)
-	})
-	a.Nil(err)
-	a.Contains(output, "data:text/html, <div align='center'><img src='data:image/png;base64")
-	a.Contains(output, "⣿") //non sixel with ascii art
+	// output, err = getStdout(func() error {
+	// 	return runStmt("select * from train to explain sqlflow_models.repl_xgb_model;", true, "", dbConnStr)
+	// })
+	// a.Nil(err)
+	// a.Contains(output, "data:text/html, <div align='center'><img src='data:image/png;base64")
+	// a.Contains(output, "⣿") //non sixel with ascii art
 }
 
 func TestRepl(t *testing.T) {
@@ -141,7 +141,7 @@ show tables`
 +----------------+`)
 	a.Contains(output, `
 select * from train to train DNNClassifier
-WITH model.hidden_units=[10,10], model.n_classes=3
+WITH model.hidden_units=[10,10], model.n_classes=3, validation.select="select * from test"
 label class
 INTO sqlflow_models.repl_dnn_model;`)
 	a.Contains(output, "'global_step': 110")
