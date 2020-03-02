@@ -90,6 +90,7 @@ mv $GOPATH/bin/repl /usr/local/bin && \
 mkdir -p /opt/sqlflow/parser && \
 (cd java/parse-interface && mvn clean install) && \
 (cd java/parser-hive && mvn -B -q clean compile assembly:single && mv target/*.jar /opt/sqlflow/parser) && \
+(cd java/parser-calcite && mvn -B -q clean compile assembly:single && mv target/*.jar /opt/sqlflow/parser) && \
 (cd java/parser && \
 protoc --java_out=src/main/java --grpc-java_out=src/main/java/ --proto_path=src/main/proto/ src/main/proto/Parser.proto && \
 mvn -B -q clean compile assembly:single && \
