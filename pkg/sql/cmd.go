@@ -65,7 +65,8 @@ func sqlflowCmd(cwd, driverName string) (cmd *exec.Cmd) {
 	} else if hasDocker() {
 		const tfImg = "sqlflow/sqlflow"
 		if !hasDockerImage(tfImg) {
-			log.Printf("sqlflowCmd: No local Docker image %s.  It will take a long time to pull.", tfImg)
+			// TODO(yancey1989): write log into pipe to avoid the wrong row/
+			//log.Printf("sqlflowCmd: No local Docker image %s.  It will take a long time to pull.", tfImg)
 		}
 		cmd = exec.Command("docker", "run", "--rm",
 			fmt.Sprintf("-v%s:/work", cwd),
