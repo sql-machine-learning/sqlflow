@@ -102,12 +102,12 @@ func TestRunStmt(t *testing.T) {
 	a.Nil(err)
 	a.Contains(output, "Evaluation result: ")
 
-	// output, err = getStdout(func() error {
-	// 	return runStmt("select * from train to explain sqlflow_models.repl_xgb_model;", true, "", dbConnStr)
-	// })
-	// a.Nil(err)
-	// a.Contains(output, "data:text/html, <div align='center'><img src='data:image/png;base64")
-	// a.Contains(output, "⣿") //non sixel with ascii art
+	output, err = getStdout(func() error {
+		return runStmt("select * from train to explain sqlflow_models.repl_xgb_model;", true, "", dbConnStr)
+	})
+	a.Nil(err)
+	a.Contains(output, "data:text/html, <div align='center'><img src='data:image/png;base64")
+	a.Contains(output, "⣿") //non sixel with ascii art
 }
 
 func TestRepl(t *testing.T) {
