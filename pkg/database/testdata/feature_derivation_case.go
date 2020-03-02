@@ -21,7 +21,7 @@ func FeatureDerivationCaseMySQL() string {
 		insertData(db+".train", featureDerivationData)
 }
 
-// FeatureDerivationCaseHive returns a HiveQL program that creates and popularizes tables
+// FeatureDerivationCaseHive returns a Hive program that creates and popularizes tables
 func FeatureDerivationCaseHive() string {
 	db := "feature_derivation_case"
 	return createDatabase(db) +

@@ -26,8 +26,8 @@ func NewParser(dialect string) (Parser, error) {
 	switch dialect {
 	case "mysql", "tidb":
 		return newTiDBParser(), nil
-	case "hive", "hiveql":
-		return newJavaParser("hiveql"), nil
+	case "hive":
+		return newJavaParser("hive"), nil
 	case "calcite", "maxcompute", "alisa":
 		return newJavaParser("calcite"), nil
 	default:

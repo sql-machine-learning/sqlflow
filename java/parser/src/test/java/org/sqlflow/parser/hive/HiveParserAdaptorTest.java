@@ -1,4 +1,4 @@
-package org.sqlflow.parser.calcite;
+package org.sqlflow.parser.hive;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -7,12 +7,14 @@ import java.util.ArrayList;
 import org.junit.Test;
 import org.sqlflow.parser.parse.ParseResult;
 
-public class CalciteParserAdaptorTest {
+public class HiveParserAdaptorTest {
   @Test
-  public void testParseAndSplit() {
+  public void testHiveParseAndSplit() {
+    HiveParserAdaptor parser = new HiveParserAdaptor();
     ArrayList<String> standardSelect = new ArrayList<String>();
     standardSelect.add("select 1");
     standardSelect.add("select * from my_table");
+    standardSelect.add("select * from\n" + "my_table");
     standardSelect.add(
         "SELECT\n"
             + "customerNumber,  \n"
@@ -32,16 +34,6 @@ public class CalciteParserAdaptorTest {
             + "        HAVING SUM(priceEach * quantityOrdered) > 60000)");
 
     {
-      String sql = "create table ttt as (select * from iris.train)";
-      String sqlProgram = String.format("%s;", sql);
-      ParseResult parseResult = (new CalciteParserAdaptor()).parse(sqlProgram);
-      assertEquals(-1, parseResult.position);
-      assertEquals("", parseResult.error);
-      assertEquals(1, parseResult.statements.size());
-      assertEquals(sql, parseResult.statements.get(0));
-    }
-
-    {
       String sqlProgram =
           "SELECT *\n"
               + "FROM iris.train\n"
@@ -54,7 +46,7 @@ public class CalciteParserAdaptorTest {
               + "COLUMN sepal_length, sepal_width, petal_length, petal_width\n"
               + "LABEL class \n"
               + "INTO sqlflow_models.my_xgboost_model;";
-      ParseResult parseResult = (new CalciteParserAdaptor()).parse(sqlProgram);
+      ParseResult parseResult = parser.parse(sqlProgram);
       assertEquals(25, parseResult.position);
       assertEquals("", parseResult.error);
       assertEquals(1, parseResult.statements.size());
@@ -64,7 +56,7 @@ public class CalciteParserAdaptorTest {
     // one standard SQL statement
     for (String sql : standardSelect) {
       String sqlProgram = String.format("%s;", sql);
-      ParseResult parseResult = (new CalciteParserAdaptor()).parse(sqlProgram);
+      ParseResult parseResult = parser.parse(sqlProgram);
       assertEquals(-1, parseResult.position);
       assertEquals("", parseResult.error);
       assertEquals(1, parseResult.statements.size());
@@ -74,7 +66,7 @@ public class CalciteParserAdaptorTest {
     // two standard SQL statements
     for (String sql : standardSelect) {
       String sqlProgram = String.format("%s;%s;", sql, sql);
-      ParseResult parseResult = (new CalciteParserAdaptor()).parse(sqlProgram);
+      ParseResult parseResult = parser.parse(sqlProgram);
       assertEquals(-1, parseResult.position);
       assertEquals("", parseResult.error);
       assertEquals(2, parseResult.statements.size());
@@ -85,7 +77,7 @@ public class CalciteParserAdaptorTest {
     // two SQL statements, the first one is extendedSQL
     for (String sql : standardSelect) {
       String sqlProgram = String.format("%s to train;%s;", sql, sql);
-      ParseResult parseResult = (new CalciteParserAdaptor()).parse(sqlProgram);
+      ParseResult parseResult = parser.parse(sqlProgram);
       assertEquals(sql.length() + 1, parseResult.position);
       assertEquals("", parseResult.error);
       assertEquals(1, parseResult.statements.size());
@@ -95,7 +87,7 @@ public class CalciteParserAdaptorTest {
     // two SQL statements, the second one is extendedSQL
     for (String sql : standardSelect) {
       String sqlProgram = String.format("%s;%s to train;", sql, sql);
-      ParseResult parseResult = (new CalciteParserAdaptor()).parse(sqlProgram);
+      ParseResult parseResult = parser.parse(sqlProgram);
       assertEquals(sql.length() + 1 + sql.length() + 1, parseResult.position);
       assertEquals("", parseResult.error);
       assertEquals(2, parseResult.statements.size());
@@ -105,27 +97,31 @@ public class CalciteParserAdaptorTest {
 
     { // two SQL statements, the first standard SQL has an error.
       String sqlProgram = "select select 1; select 1 to train;";
-      ParseResult parseResult = (new CalciteParserAdaptor()).parse(sqlProgram);
+      ParseResult parseResult = parser.parse(sqlProgram);
       assertEquals(0, parseResult.statements.size());
       assertEquals(-1, parseResult.position);
-      assertTrue(parseResult.error.startsWith("Encountered \"select\" at line 1, column 8."));
+      assertTrue(
+          parseResult.error.startsWith(
+              "line 1:7 cannot recognize input near 'select' '1' ';' in select clause"));
     }
 
     // two SQL statements, the second standard SQL has an error.
     for (String sql : standardSelect) {
       String sqlProgram = String.format("%s;select select 1;", sql);
-      ParseResult parseResult = (new CalciteParserAdaptor()).parse(sqlProgram);
+      ParseResult parseResult = parser.parse(sqlProgram);
       assertEquals(0, parseResult.statements.size());
       assertEquals(-1, parseResult.position);
-      assertTrue(parseResult.error.startsWith("Encountered \"select\" at line 1, column 8."));
+      assertTrue(
+          parseResult.error.startsWith(
+              "line 1:7 cannot recognize input near 'select' '1' ';' in select clause"));
     }
 
     { // non select statement before to train
-      String sqlProgram = "describe table to train;";
-      ParseResult parseResult = (new CalciteParserAdaptor()).parse(sqlProgram);
+      String sqlProgram = "describe my_table to train;";
+      ParseResult parseResult = parser.parse(sqlProgram);
       assertEquals(0, parseResult.statements.size());
       assertEquals(-1, parseResult.position);
-      assertTrue(parseResult.error.startsWith("Encountered \"to\" at line 1, column 16."));
+      assertTrue(parseResult.error.startsWith("line 1:18 missing EOF at 'to' near 'my_table"));
     }
   }
 }

@@ -79,7 +79,7 @@ type ParseResult struct {
 }
 ```
 
-Some external parsers are in Go and don't need command line call. For example, TiDB parser is in Go, and HiveQL parser is a set of AntLR grammar rules, and AntLR can generate Go code.  However, we would unify the interface to external parsers:
+Some external parsers are in Go and don't need command line call. For example, TiDB parser is in Go, and Hive parser is a set of AntLR grammar rules, and AntLR can generate Go code.  However, we would unify the interface to external parsers:
 
 ```go
 func external_parser(kind, sql string) ([]string, int, error) {

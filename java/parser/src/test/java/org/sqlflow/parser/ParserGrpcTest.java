@@ -1,9 +1,9 @@
 package org.sqlflow.parser;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 import java.io.IOException;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -26,25 +26,25 @@ public class ParserGrpcTest {
 
     {
       ParserProto.ParserResponse response = client.parse("calcite", "select 1");
-      Assert.assertEquals(-1, response.getIndex());
-      Assert.assertEquals(1, response.getSqlStatementsCount());
-      Assert.assertEquals("select 1", response.getSqlStatements(0));
-      Assert.assertEquals("", response.getError());
+      assertEquals(-1, response.getIndex());
+      assertEquals(1, response.getSqlStatementsCount());
+      assertEquals("select 1", response.getSqlStatements(0));
+      assertEquals("", response.getError());
     }
 
     {
-      ParserProto.ParserResponse response = client.parse("hiveql", "select a from b");
-      Assert.assertEquals(-1, response.getIndex());
-      Assert.assertEquals(1, response.getSqlStatementsCount());
-      Assert.assertEquals("select a from b", response.getSqlStatements(0));
-      Assert.assertEquals("", response.getError());
+      ParserProto.ParserResponse response = client.parse("hive", "select a from b");
+      assertEquals(-1, response.getIndex());
+      assertEquals(1, response.getSqlStatementsCount());
+      assertEquals("select a from b", response.getSqlStatements(0));
+      assertEquals("", response.getError());
     }
 
     {
       ParserProto.ParserResponse response = client.parse("some_other_dialect", "select a from b");
-      Assert.assertEquals(0, response.getIndex());
-      Assert.assertEquals(0, response.getSqlStatementsCount());
-      Assert.assertEquals("unrecognized dialect some_other_dialect", response.getError());
+      assertEquals(0, response.getIndex());
+      assertEquals(0, response.getSqlStatementsCount());
+      assertEquals("unrecognized dialect some_other_dialect", response.getError());
     }
   }
 }

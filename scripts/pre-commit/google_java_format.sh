@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-
 changed_java_files=$(git diff --cached --name-only --diff-filter=ACMR | grep ".*java$" )
-echo $changed_java_files
+if [[ $changed_java_files == "" ]]; then
+    exit 0
+fi
 java -jar /usr/local/bin/google-java-format-1.6-all-deps.jar --replace $changed_java_files
+
+java -jar /usr/local/bin/checkstyle-8.29-all.jar -c /usr/local/bin/google_checks.xml $changed_java_files

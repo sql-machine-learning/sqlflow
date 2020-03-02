@@ -38,3 +38,6 @@ echo '<settings>
 </settings>' > /root/.m2/settings.xml
 
 curl -sLJ "https://github.com/google/google-java-format/releases/download/google-java-format-1.6/google-java-format-1.6-all-deps.jar" -o /usr/local/bin/google-java-format-1.6-all-deps.jar
+
+curl -sLJ "https://raw.githubusercontent.com/checkstyle/checkstyle/master/src/main/resources/google_checks.xml" -o /usr/local/bin/google_checks.xml
+curl -sLJ "https://github.com/checkstyle/checkstyle/releases/download/checkstyle-8.29/checkstyle-8.29-all.jar" -o /usr/local/bin/checkstyle-8.29-all.jar

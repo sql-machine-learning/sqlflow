@@ -18,7 +18,7 @@ option java_outer_classname = "ParserProto";
 option go_package = "proto";
 
 message ParserRequest {
-  // The SQL dialect. For example, "mysql", "calcite", "hiveql"
+  // The SQL dialect. For example, "mysql", "calcite", "hive"
   string dialect = 1;
   // The sql_program represents a SQL program that contains possible more than
   // one SQL statements. For example, `select * from my_table; select * from another_table to train ...`.

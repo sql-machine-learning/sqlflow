@@ -11,7 +11,11 @@ public class ParserGrpcClient {
   private final ManagedChannel channel;
   private final ParserGrpc.ParserBlockingStub blockingStub;
 
-  /** Construct client connecting to Parser server at {@code host:port}. */
+  /**
+   * ParserGrpcClient
+   *
+   * <p>Constructs client connecting to Parser server at {@code host:port}.
+   */
   public ParserGrpcClient(String host, int port) {
     this(
         ManagedChannelBuilder.forAddress(host, port)
@@ -31,12 +35,17 @@ public class ParserGrpcClient {
     channel.shutdown().awaitTermination(5, TimeUnit.SECONDS);
   }
 
-  public ParserProto.ParserResponse parse(String dialect, String sql_program) {
-    logger.info("Will try to greet " + sql_program + " ...");
+  /**
+   * parse
+   *
+   * <p>Implements client side gRPC parse.
+   */
+  public ParserProto.ParserResponse parse(String dialect, String sqlProgram) {
+    logger.info("Will try to greet " + sqlProgram + " ...");
     ParserProto.ParserRequest request =
         ParserProto.ParserRequest.newBuilder()
             .setDialect(dialect)
-            .setSqlProgram(sql_program)
+            .setSqlProgram(sqlProgram)
             .build();
     return blockingStub.parse(request);
   }

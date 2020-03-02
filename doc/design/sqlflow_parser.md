@@ -121,7 +121,7 @@ It returns <nil, -1, error> if an error is occurred.
 
 ### Call the Third-Party Parser
 
-SQLFlow is written in Go, third party parsers for Calcite/HiveQL are written in Java. So we need to call the third parse via either gRPC or local command line. We prefer the local command line for the following reasons. Firstly, we can avoid setting up an additional gRPC server, which makes the testing/deployment simpler. And because there is no downstream call for the parser, wrapping the parser as a service might be overkill. Secondly, We can guarantee the isolation between parsing requests. The gPRC server may fail due to an unexpected request, meaning one request can affect the other.
+SQLFlow is written in Go, third party parsers for Calcite/Hive are written in Java. So we need to call the third parse via either gRPC or local command line. We prefer the local command line for the following reasons. Firstly, we can avoid setting up an additional gRPC server, which makes the testing/deployment simpler. And because there is no downstream call for the parser, wrapping the parser as a service might be overkill. Secondly, We can guarantee the isolation between parsing requests. The gPRC server may fail due to an unexpected request, meaning one request can affect the other.
 
 ### Remove Comments
 
