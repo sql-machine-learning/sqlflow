@@ -107,9 +107,6 @@ func generateTrainStmt(slct *parser.SQLFlowSelectStmt) (*ir.TrainStmt, error) {
 		}}
 
 	vslct, _ := parseValidationSelect(attrList)
-	if vslct == "" {
-		vslct = slct.StandardSelect.String()
-	}
 	trainStmt := &ir.TrainStmt{
 		Select: slct.StandardSelect.String(),
 		// TODO(weiguoz): This is a temporary implement. Specifying the
