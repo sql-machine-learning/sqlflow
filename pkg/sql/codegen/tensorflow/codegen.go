@@ -218,7 +218,7 @@ func setDefaultOptimizer(trainStmt *ir.TrainStmt, optimizerParamName string) {
 	trainStmt.Attributes[optimizerParamName] = defaultValue
 }
 
-// constructOptimizers generate a python optimizer function call using:
+// constructOptimizers generates a python optimizer object using:
 // model.optimizer = "OptimizerName"
 // optimizer.arg1 = 1
 // optimizer.arg2 = "2"
@@ -244,11 +244,23 @@ func constructOptimizers(trainStmt *ir.TrainStmt) {
 			}
 		}
 	}
+	tf1OptimizerClsNames := map[string]string{
+		"Adagrad": "tf.train.AdagradOptimizer",
+		"Adam":    "tf.train.AdamOptimizer",
+		"Ftrl":    "tf.train.FtrlOptimizer",
+		"RMSProp": "tf.train.RMSPropOptimizer",
+		"SGD":     "tf.train.GradientDescentOptimizer",
+	}
+
 	for optimizerParamName, args := range optimizerArgs {
 		if _, ok := trainStmt.Attributes[optimizerParamName]; !ok {
 			setDefaultOptimizer(trainStmt, optimizerParamName)
 		}
-		optimizerInitPyCode := fmt.Sprintf("%v(", trainStmt.Attributes[optimizerParamName])
+		optimizerCls := fmt.Sprintf("%v", trainStmt.Attributes[optimizerParamName])
+		if cls, ok := tf1OptimizerClsNames[optimizerCls]; ok && IsPAI() {
+			optimizerCls = cls
+		}
+		optimizerInitPyCode := fmt.Sprintf("%s(", optimizerCls)
 		for k, v := range args {
 			optimizerInitPyCode += fmt.Sprintf("%s=%v, ", k, v)
 		}
