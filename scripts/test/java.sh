@@ -13,21 +13,24 @@
 # limitations under the License.
 
 
-set -e
+set -ex
+
+cd java
 
 # Make downloading quiet.
 # Downloading logs is about 6k lines, which makes viewing TravisCI log difficult
 export MAVEN_OPTS=-Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
 
 # Install parse interface package to local Maven repo
-cd java/parse-interface
-mvn clean install
+(cd parse-interface && mvn clean install -B)
 
-cd ../parser
+for PARSER_NAME in parser-hive parser-calcite
+do
+	(cd ${PARSER_NAME} && mvn test -B && \
+	mvn -B -q clean compile assembly:single && mv target/*.jar /opt/sqlflow/parser)
+done
 
-# Generate GRPC & Protocol Buffer files
-protoc --java_out=src/main/java --grpc-java_out=src/main/java/ --proto_path=src/main/proto/ src/main/proto/Parser.proto
-
-# -B means batch mode, looks like batch mode is required to make downloading quiet
-mvn test -B
+(cd parser && \
+protoc --java_out=src/main/java --grpc-java_out=src/main/java/ --proto_path=src/main/proto/ src/main/proto/Parser.proto && \
+mvn test -B)
 
