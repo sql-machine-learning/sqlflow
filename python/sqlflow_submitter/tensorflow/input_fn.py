@@ -105,7 +105,7 @@ def input_fn(select,
 def read_feature_as_tensor(raw_val, feature_spec, feature_name):
     # FIXME(typhoonzero): Should use correct dtype here.
     if feature_spec["delimiter"] == "":
-        return (raw_val, )
+        return [raw_val]
     if feature_spec["is_sparse"]:
         indices = tf.strings.to_number(
             tf.strings.split(raw_val,
@@ -128,7 +128,7 @@ def parse_pai_dataset(feature_column_names, has_label, feature_specs, *row):
     for i, name in enumerate(feature_column_names):
         spec = feature_specs[name]
         f = read_feature_as_tensor(row[i], spec, name)
-        features[name] = tf.SparseTensor(*f) if spec["is_sparse"] else list(f)
+        features[name] = tf.SparseTensor(*f) if spec["is_sparse"] else f
     return features, row[-1] if has_label else features
 
 
