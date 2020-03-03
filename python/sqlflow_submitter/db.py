@@ -12,6 +12,7 @@
 # limitations under the License.
 
 import contextlib
+import copy
 import os
 import re
 
@@ -155,22 +156,21 @@ def read_feature(raw_val, feature_spec, feature_name):
         values = np.ones([indices.size], dtype=np.int32)
         dense_shape = np.array(feature_spec["shape"], dtype=np.int64)
         return (indices, values, dense_shape)
-    else:
+    elif feature_spec["delimiter"] != "":
         # Dense string vector
-        if feature_spec["delimiter"] != "":
-            if feature_spec["dtype"] == "float32":
-                return np.fromstring(raw_val,
-                                     dtype=float,
-                                     sep=feature_spec["delimiter"])
-            elif feature_spec["dtype"] == "int64":
-                return np.fromstring(raw_val,
-                                     dtype=int,
-                                     sep=feature_spec["delimiter"])
-            else:
-                raise ValueError('unrecognize dtype {}'.format(
-                    feature_spec[feature_name]["dtype"]))
+        if feature_spec["dtype"] == "float32":
+            return np.fromstring(raw_val,
+                                 dtype=float,
+                                 sep=feature_spec["delimiter"])
+        elif feature_spec["dtype"] == "int64":
+            return np.fromstring(raw_val,
+                                 dtype=int,
+                                 sep=feature_spec["delimiter"])
         else:
-            return (raw_val, )
+            raise ValueError('unrecognize dtype {}'.format(
+                feature_spec[feature_name]["dtype"]))
+    else:
+        return (raw_val, )
 
 
 def db_generator(driver,

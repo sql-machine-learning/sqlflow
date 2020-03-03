@@ -102,11 +102,32 @@ def input_fn(select,
     return dataset.map(ds_mapper)
 
 
+def read_feature_as_tensor(raw_val, feature_spec, feature_name):
+    # FIXME(typhoonzero): Should use correct dtype here.
+    if feature_spec["delimiter"] == "":
+        return (raw_val, )
+    if feature_spec["is_sparse"]:
+        indices = tf.strings.to_number(
+            tf.strings.split(raw_val,
+                             feature_spec["delimiter"],
+                             result_type='RaggedTensor'), tf.int64)
+        values = tf.fill(tf.shape(indices), 1)
+        indices = tf.expand_dims(indices, 1)
+        dense_shape = np.array(feature_spec["shape"], dtype=np.int64)
+        return (indices, values, dense_shape)
+    else:  # Dense string vector
+        return tf.strings.to_number(
+            tf.strings.split(raw_val,
+                             feature_spec["delimiter"],
+                             result_type='RaggedTensor'),
+            feature_spec["dtype"])
+
+
 def parse_pai_dataset(feature_column_names, has_label, feature_specs, *row):
     features = {}
     for i, name in enumerate(feature_column_names):
         spec = feature_specs[name]
-        f = db.read_feature(row[i], spec, name)
+        f = read_feature_as_tensor(row[i], spec, name)
         features[name] = tf.SparseTensor(*f) if spec["is_sparse"] else list(f)
     return features, row[-1] if has_label else features
 
@@ -119,7 +140,11 @@ def pai_dataset(table,
                 slice_count=1):
     record_defaults = []
     selected_cols = copy.copy(feature_column_names)
-    dtypes = [feature_specs[n]["dtype"] for n in feature_column_names]
+    dtypes = [
+        "string"
+        if feature_specs[n]["delimiter"] else feature_specs[n]["dtype"]
+        for n in feature_column_names
+    ]
     if label_spec and label_spec["feature_name"]:
         selected_cols.append(label_spec["feature_name"])
         dtypes.append(label_spec["dtype"])
