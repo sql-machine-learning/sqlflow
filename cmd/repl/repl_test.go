@@ -120,7 +120,7 @@ use iris; --
 -- 1
 show tables; -- 2
 select * from train to train DNNClassifier
-WITH model.hidden_units=[10,10], model.n_classes=3
+WITH model.hidden_units=[10,10], model.n_classes=3, validation.select="select * from test"
 label class
 INTO sqlflow_models.repl_dnn_model;
 use sqlflow_models;
