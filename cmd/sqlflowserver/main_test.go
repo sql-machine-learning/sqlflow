@@ -1403,14 +1403,29 @@ func CaseTrainDistributedPAI(t *testing.T) {
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)
 	}
-	predSQL := fmt.Sprintf(`SELECT * FROM %s
-TO PREDICT %s.class
-USING my_dnn_model_distributed;`, caseTestTable, casePredictTable)
-	_, _, _, err = connectAndRunSQL(predSQL)
-	if err != nil {
-		a.Fail("Run predSQL error: %v", err)
-	}
+}
 
+func CaseTrainDistributedPAIKeras(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`
+	SELECT * FROM %s
+	TO TRAIN sqlflow_models.DNNClassifier
+	WITH
+		model.n_classes = 3,
+		model.hidden_units = [10, 20],
+		train.num_workers=2,
+		train.num_ps=2,
+		train.save_checkpoints_steps=20,
+		train.epoch=10,
+		train.batch_size=4,
+		train.verbose=1
+	LABEL class
+	INTO my_dnn_model_distributed;
+	`, caseTrainTable)
+	_, _, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
 }
 
 func CaseTrainPAIKMeans(t *testing.T) {
@@ -1697,6 +1712,7 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 	// t.Run("CaseTrainPAIRandomForests", CaseTrainPAIRandomForests)
 	t.Run("CaseTrainXGBoostOnPAI", CaseTrainXGBoostOnPAI)
 	t.Run("CaseTrainDistributedPAI", CaseTrainDistributedPAI)
+	t.Run("CaseTrainDistributedPAIKeras", CaseTrainDistributedPAIKeras)
 	t.Run("CaseTrainCustomModel", CaseTrainCustomModel)
 }
 
