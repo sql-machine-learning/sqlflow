@@ -99,7 +99,7 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
                                       validate_select, model_params, save,
                                       is_pai, pai_table, pai_val_table, FLAGS,
                                       feature_column_names, feature_metas,
-                                      label_meta, epochs, batch_size, 0, 0, 0)
+                                      label_meta, epochs, batch_size)
 
     # FIXME(typhoonzero): find a way to cache to local file and avoid cache lockfile already exists issue.
     train_dataset = input_fn(select,
@@ -110,13 +110,16 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
                              is_pai=is_pai,
                              pai_table=pai_table)
     train_dataset = train_dataset.shuffle(SHUFFLE_SIZE).batch(batch_size)
-    validate_dataset = input_fn(validate_select,
-                                datasource,
-                                feature_column_names,
-                                feature_metas,
-                                label_meta,
-                                is_pai=is_pai,
-                                pai_table=pai_val_table).batch(batch_size)
+    if validate_select != "":
+        validate_dataset = input_fn(validate_select,
+                                    datasource,
+                                    feature_column_names,
+                                    feature_metas,
+                                    label_meta,
+                                    is_pai=is_pai,
+                                    pai_table=pai_val_table).batch(batch_size)
+    else:
+        validate_dataset = None
 
     if hasattr(classifier, 'sqlflow_train_loop'):
 
@@ -176,11 +179,24 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
         model.save_file(FLAGS.checkpointDir, save)
 
 
-def train_with_compiled_estimator(
-    estimator, datasource, select, validate_select, model_params, save, is_pai,
-    pai_table, pai_val_table, FLAGS, feature_column_names, feature_metas,
-    label_meta, epochs, batch_size, train_max_steps, eval_start_delay_secs,
-    eval_throttle_secs):
+def train_with_compiled_estimator(estimator,
+                                  datasource,
+                                  select,
+                                  validate_select,
+                                  model_params,
+                                  save,
+                                  is_pai,
+                                  pai_table,
+                                  pai_val_table,
+                                  FLAGS,
+                                  feature_column_names,
+                                  feature_metas,
+                                  label_meta,
+                                  epochs,
+                                  batch_size,
+                                  train_max_steps=None,
+                                  eval_start_delay_secs=120,
+                                  eval_throttle_secs=600):
     def train_input_fn():
         # FIXME(typhoonzero): find a way to cache to local file and avoid cache lockfile already exists issue.
         if is_pai:
@@ -220,13 +236,20 @@ def train_with_compiled_estimator(
         validate_dataset = validate_dataset.batch(batch_size)
         return validate_dataset
 
-    eval_spec = tf.estimator.EvalSpec(input_fn=lambda: validate_input_fn(),
-                                      start_delay_secs=eval_start_delay_secs,
-                                      throttle_secs=eval_throttle_secs)
-    result = tf.estimator.train_and_evaluate(estimator, train_spec, eval_spec)
-    # FIXME(typhoonzero): find out why pai will have result == None
-    if not is_pai:
-        print(result[0])
+    if validate_select != "":
+        eval_spec = tf.estimator.EvalSpec(
+            input_fn=lambda: validate_input_fn(),
+            start_delay_secs=eval_start_delay_secs,
+            throttle_secs=eval_throttle_secs)
+        result = tf.estimator.train_and_evaluate(estimator, train_spec,
+                                                 eval_spec)
+        # FIXME(typhoonzero): find out why pai will have result == None
+        if not is_pai:
+            print(result[0])
+    else:
+        # NOTE(typhoonzero): if only do training, no validation result will be printed.
+        estimator.train(lambda: train_input_fn(), max_steps=train_max_steps)
+
     # export saved model for prediction
     if "feature_columns" in model_params:
         all_feature_columns = model_params["feature_columns"]
@@ -242,6 +265,7 @@ def train_with_compiled_estimator(
     # write the path under current directory
     with open("exported_path", "w") as fn:
         fn.write(str(export_path.decode("utf-8")))
+    print("Done training, model exported to: %s" % export_path)
 
 
 def estimator_train_and_save(
@@ -288,7 +312,6 @@ def train(datasource,
           is_pai=False,
           pai_table="",
           pai_val_table=""):
-    assert validate_select != ""
     assert 0 <= verbose <= 3
     if isinstance(estimator, types.FunctionType):
         is_estimator = False

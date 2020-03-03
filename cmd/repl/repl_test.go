@@ -91,13 +91,13 @@ func TestRunStmt(t *testing.T) {
 	a.Contains(output, "| TABLES IN IRIS |")
 
 	output, err = getStdout(func() error {
-		return runStmt("select * from train to train DNNClassifier WITH model.hidden_units=[10,10], model.n_classes=3 label class INTO sqlflow_models.repl_dnn_model;", true, "", dbConnStr)
+		return runStmt("select * from train to train DNNClassifier WITH model.hidden_units=[10,10], model.n_classes=3, validation.select=\"select * from test\" label class INTO sqlflow_models.repl_dnn_model;", true, "", dbConnStr)
 	})
 	a.Nil(err)
 	a.Contains(output, "'global_step': 110")
 
 	output, err = getStdout(func() error {
-		return runStmt("select * from train to train xgboost.gbtree WITH objective=reg:squarederror label class INTO sqlflow_models.repl_xgb_model;", true, "", dbConnStr)
+		return runStmt("select * from train to train xgboost.gbtree WITH objective=reg:squarederror, validation.select=\"select * from test\" label class INTO sqlflow_models.repl_xgb_model;", true, "", dbConnStr)
 	})
 	a.Nil(err)
 	a.Contains(output, "Evaluation result: ")
@@ -120,7 +120,7 @@ use iris; --
 -- 1
 show tables; -- 2
 select * from train to train DNNClassifier
-WITH model.hidden_units=[10,10], model.n_classes=3
+WITH model.hidden_units=[10,10], model.n_classes=3, validation.select="select * from test"
 label class
 INTO sqlflow_models.repl_dnn_model;
 use sqlflow_models;
@@ -141,7 +141,7 @@ show tables`
 +----------------+`)
 	a.Contains(output, `
 select * from train to train DNNClassifier
-WITH model.hidden_units=[10,10], model.n_classes=3
+WITH model.hidden_units=[10,10], model.n_classes=3, validation.select="select * from test"
 label class
 INTO sqlflow_models.repl_dnn_model;`)
 	a.Contains(output, "'global_step': 110")

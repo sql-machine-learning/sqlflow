@@ -3,7 +3,11 @@ package org.sqlflow.parser;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.stub.StreamObserver;
+import java.io.File;
 import java.io.IOException;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 import org.apache.commons.cli.CommandLine;
@@ -14,8 +18,6 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.sqlflow.parser.ParserProto.ParserRequest;
 import org.sqlflow.parser.ParserProto.ParserResponse;
-import org.sqlflow.parser.calcite.CalciteParserAdaptor;
-import org.sqlflow.parser.hive.HiveParserAdaptor;
 import org.sqlflow.parser.parse.ParseInterface;
 import org.sqlflow.parser.parse.ParseResult;
 
@@ -77,13 +79,29 @@ public class ParserGrpcServer {
         return;
       }
 
-      ParseResult parseResult;
+      String filePath;
+      String classPath;
+      // TODO(tony): load this from command line argument
       if (request.getDialect().equals("calcite")) {
-        ParseInterface parser = new CalciteParserAdaptor();
-        parseResult = parser.parse(request.getSqlProgram());
+        filePath = "/opt/sqlflow/parser/parser-calcite-0.0.1-dev-jar-with-dependencies.jar";
+        classPath = "org.sqlflow.parser.calcite.CalciteParserAdaptor";
       } else {
-        ParseInterface parser = new HiveParserAdaptor();
-        parseResult = parser.parse(request.getSqlProgram());
+        filePath = "/opt/sqlflow/parser/parser-hive-0.0.1-dev-jar-with-dependencies.jar";
+        classPath = "org.sqlflow.parser.hive.HiveParserAdaptor";
+      }
+
+      ParseResult parseResult = new ParseResult();
+      try {
+        File file = new File(filePath);
+        URL url = file.toURI().toURL();
+        URL[] urls = new URL[] {url};
+        ClassLoader cl = new URLClassLoader(urls);
+        Object parser = cl.loadClass(classPath).newInstance();
+        parseResult = ((ParseInterface) parser).parse(request.getSqlProgram());
+      } catch (Exception e) {
+        parseResult.statements = new ArrayList<String>();
+        parseResult.position = -1;
+        parseResult.error = e.getClass().getName() + " " + e.getMessage();
       }
 
       ParserResponse.Builder responseBuilder = ParserResponse.newBuilder();

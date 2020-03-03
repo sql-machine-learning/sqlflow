@@ -87,12 +87,14 @@ go install -v ./... && \
 mv $GOPATH/bin/sqlflowserver /usr/local/bin && \
 mv $GOPATH/bin/repl /usr/local/bin && \
 (cd python/couler && python setup.py -q install) && \
+mkdir -p /opt/sqlflow/parser && \
 (cd java/parse-interface && mvn clean install) && \
+(cd java/parser-hive && mvn -B -q clean compile assembly:single && mv target/*.jar /opt/sqlflow/parser) && \
+(cd java/parser-calcite && mvn -B -q clean compile assembly:single && mv target/*.jar /opt/sqlflow/parser) && \
 (cd java/parser && \
 protoc --java_out=src/main/java --grpc-java_out=src/main/java/ --proto_path=src/main/proto/ src/main/proto/Parser.proto && \
 mvn -B -q clean compile assembly:single && \
-mkdir -p /opt/sqlflow/parser && \
-cp target/parser-1.0-SNAPSHOT-jar-with-dependencies.jar /opt/sqlflow/parser) && \
+cp target/*.jar /opt/sqlflow/parser) && \
 cd / && \
 bash $SQLFLOWPATH/scripts/convert_markdown_into_ipynb.sh
 
