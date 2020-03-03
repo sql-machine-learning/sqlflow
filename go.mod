@@ -11,7 +11,6 @@ require (
 	github.com/beltran/gohive v1.0.0 // indirect
 	github.com/c-bata/go-prompt v0.0.0-20190826134812-0f95e1d1de2e
 	github.com/cosiner/argv v0.0.1 // indirect
-
 	github.com/fortytw2/leaktest v1.3.0
 	github.com/go-delve/delve v1.3.2 // indirect
 	github.com/go-openapi/spec v0.19.5 // indirect
@@ -48,7 +47,7 @@ require (
 	gopkg.in/yaml.v2 v2.2.7 // indirect
 	k8s.io/api v0.0.0-20191004102349-159aefb8556b
 	k8s.io/apimachinery v0.17.0 // indirect
-	sqlflow.org/goalisa v0.0.0-20200109123649-e38354c6de01
+	sqlflow.org/goalisa v0.0.0-20200303141943-f794da595d85
 	sqlflow.org/gohive v0.0.0-20191009030413-2b2325ce8b38
 	sqlflow.org/gomaxcompute v0.0.0-20191028113124-e214922c510c
 )
