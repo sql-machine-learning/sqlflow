@@ -29,11 +29,13 @@ def xgb_dataset(datasource,
                 feature_column_names,
                 label_spec,
                 is_pai=False,
-                pai_table=""):
+                pai_table="",
+                pai_single_file=False):
 
     if is_pai:
         pai_dataset(fn, feature_specs, feature_column_names, label_spec,
-                    "odps://{}/tables/{}".format(*pai_table.split(".")))
+                    "odps://{}/tables/{}".format(*pai_table.split(".")),
+                    pai_single_file)
     else:
         conn = db.connect_with_data_source(datasource)
         gen = db.db_generator(conn.driver, conn, dataset_sql,
@@ -44,24 +46,23 @@ def xgb_dataset(datasource,
 
 def dump_dmatrix(filename, generator, has_label):
     # TODO(yancey1989): generate group and weight text file if necessary
-    with open(filename, 'w') as f:
+    with open(filename, 'a') as f:
         for item in generator():
-            if not has_label:
-                row_data = ["%d:%f" % (i, v[0]) for i, v in enumerate(item[0])]
-            else:
-                features, label = item
-                row_data = [str(label)] + [
-                    "%d:%f" % (i, v[0]) for i, v in enumerate(features)
-                ]
+            row_data = [
+                "%d:%f" % (i, v[0] or 0) for i, v in enumerate(item[0])
+            ]
+            if has_label:
+                row_data = [str(item[1])] + row_data
             f.write("\t".join(row_data) + "\n")
 
 
-def pai_dataset(dir_name, feature_specs, feature_column_names, label_spec,
-                pai_table):
+def pai_dataset(dir_or_file_name, feature_specs, feature_column_names,
+                label_spec, pai_table, single_file):
     from subprocess import Popen, PIPE
     import threading
     threads = []
-    os.mkdir(dir_name)
+    if not single_file:
+        os.mkdir(dir_or_file_name)
 
     def thread_worker(slice_id):
         p = Popen("{} -m {}".format(sys.executable, __name__),
@@ -69,8 +70,8 @@ def pai_dataset(dir_name, feature_specs, feature_column_names, label_spec,
                   stdin=PIPE)
         p.communicate(
             json.dumps([
-                dir_name, feature_specs, feature_column_names, label_spec,
-                pai_table, slice_id
+                dir_or_file_name, feature_specs, feature_column_names,
+                label_spec, pai_table, slice_id, single_file
             ]))
 
     for i in range(SLICE_NUM):
@@ -80,9 +81,9 @@ def pai_dataset(dir_name, feature_specs, feature_column_names, label_spec,
     map(lambda t: t.join(), threads)
 
 
-def pai_download_table_data_worker(dir_name, feature_specs,
+def pai_download_table_data_worker(dir_or_file_name, feature_specs,
                                    feature_column_names, label_spec, pai_table,
-                                   slice_id):
+                                   slice_id, single_file):
     label_column_name = label_spec['feature_name'] if label_spec else None
     gen = pai_maxcompute_db_generator(pai_table,
                                       feature_column_names,
@@ -90,14 +91,11 @@ def pai_download_table_data_worker(dir_name, feature_specs,
                                       feature_specs,
                                       slice_id=slice_id,
                                       slice_count=SLICE_NUM)
-    with open("{}/{}".format(dir_name, slice_id), 'w') as f:
-        for item in gen():
-            row_data = [
-                "%d:%f" % (i, v[0] or 0) for i, v in enumerate(item[0])
-            ]
-            if label_spec:
-                row_data = [str(item[1])] + row_data
-            f.write("\t".join(row_data) + "\n")
+    if single_file:
+        filename = dir_or_file_name
+    else:
+        filename = "{}/{}".format(dir_or_file_name, slice_id)
+    dump_dmatrix(filename, gen, label_spec)
 
 
 if __name__ == "__main__":

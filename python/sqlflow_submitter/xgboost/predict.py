@@ -35,7 +35,7 @@ def pred(datasource,
     label_name = label_meta["feature_name"]
 
     dpred = xgb_dataset(datasource, 'predict.txt', select, feature_metas,
-                        feature_column_names, None, is_pai, pai_table)
+                        feature_column_names, None, is_pai, pai_table, True)
 
     bst = xgb.Booster({'nthread': 4})  # init model
     bst.load_model("my_model")  # load data
