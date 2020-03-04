@@ -119,13 +119,6 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
     if loss is None:
         loss = classifier_pkg.loss
 
-    train_dataset, validate_dataset = get_datasets(datasource, select,
-                                                   validate_select,
-                                                   feature_column_names,
-                                                   feature_metas, label_meta,
-                                                   is_pai, pai_table,
-                                                   pai_val_table, batch_size)
-
     classifier.compile(optimizer=optimizer, loss=loss, metrics=keras_metrics)
 
     if is_pai and len(FLAGS.worker_hosts.split(",")) > 1:
@@ -140,11 +133,20 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
             session_config=tf.ConfigProto(log_device_placement=True))
         keras_estimator = tf.keras.estimator.model_to_estimator(
             classifier, model_dir=FLAGS.checkpointDir, config=config)
-        train_compiled_estimator(keras_estimator, train_dataset,
-                                 validate_dataset, model_params, save, is_pai,
-                                 epochs, train_max_steps,
+        train_compiled_estimator(keras_estimator, model_params, save, is_pai,
+                                 FLAGS, datasource, select, validate_select,
+                                 feature_column_names, feature_metas,
+                                 label_meta, pai_table, pai_val_table,
+                                 batch_size, epochs, train_max_steps,
                                  eval_start_delay_secs, eval_throttle_secs)
         return
+
+    train_dataset, validate_dataset = get_datasets(datasource, select,
+                                                   validate_select,
+                                                   feature_column_names,
+                                                   feature_metas, label_meta,
+                                                   is_pai, pai_table,
+                                                   pai_val_table, batch_size)
 
     if hasattr(classifier, 'sqlflow_train_loop'):
 
@@ -205,26 +207,64 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
 
 
 def train_compiled_estimator(estimator,
-                             train_dataset,
-                             validate_dataset,
                              model_params,
                              save,
                              is_pai,
+                             FLAGS,
+                             datasource,
+                             select,
+                             validate_select,
+                             feature_column_names,
+                             feature_metas,
+                             label_meta,
+                             pai_table,
+                             pai_val_table,
+                             batch_size,
                              epochs,
                              train_max_steps=None,
                              eval_start_delay_secs=120,
                              eval_throttle_secs=600):
+    # NOTE(typhoonzero): **MUST** create dataset in "input_fn" to let estimator create a single graph.
     def train_input_fn():
-        # return train_dataset.repeat(epochs if epochs else 1)
+        # FIXME(typhoonzero): find a way to cache to local file and avoid cache lockfile already exists issue.
+        if is_pai:
+            train_dataset = input_fn("",
+                                     None,
+                                     feature_column_names,
+                                     feature_metas,
+                                     label_meta,
+                                     is_pai=True,
+                                     pai_table=pai_table,
+                                     num_workers=len(
+                                         FLAGS.worker_hosts.split(",")),
+                                     worker_id=FLAGS.task_index)
+        else:
+            train_dataset = input_fn(select, datasource, feature_column_names,
+                                     feature_metas, label_meta)
+        train_dataset = train_dataset.shuffle(SHUFFLE_SIZE).batch(
+            batch_size).repeat(epochs if epochs else 1)
         return train_dataset
 
     train_spec = tf.estimator.TrainSpec(input_fn=lambda: train_input_fn(),
                                         max_steps=train_max_steps)
 
     def validate_input_fn():
+        if is_pai:
+            validate_dataset = input_fn("",
+                                        None,
+                                        feature_column_names,
+                                        feature_metas,
+                                        label_meta,
+                                        is_pai=True,
+                                        pai_table=pai_val_table)
+        else:
+            validate_dataset = input_fn(validate_select, datasource,
+                                        feature_column_names, feature_metas,
+                                        label_meta)
+        validate_dataset = validate_dataset.batch(batch_size)
         return validate_dataset
 
-    if validate_dataset != None:
+    if validate_select != None:
         eval_spec = tf.estimator.EvalSpec(
             input_fn=lambda: validate_input_fn(),
             start_delay_secs=eval_start_delay_secs,
@@ -292,14 +332,10 @@ def estimator_train_and_save(estimator, model_params, save, is_pai, FLAGS,
         classifier = tf.estimator.add_metrics(
             classifier, metrics.get_tf_metrics(metric_names))
 
-    train_dataset, validate_dataset = get_datasets(datasource, select,
-                                                   validate_select,
-                                                   feature_column_names,
-                                                   feature_metas, label_meta,
-                                                   is_pai, pai_table,
-                                                   pai_val_table, batch_size)
-    train_compiled_estimator(estimator, train_dataset, validate_dataset,
-                             model_params, save, is_pai, epochs,
+    train_compiled_estimator(classifier, model_params, save, is_pai, FLAGS,
+                             datasource, select, validate_select,
+                             feature_column_names, feature_metas, label_meta,
+                             pai_table, pai_val_table, batch_size, epochs,
                              train_max_steps, eval_start_delay_secs,
                              eval_throttle_secs)
 
