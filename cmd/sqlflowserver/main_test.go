@@ -1395,10 +1395,11 @@ func CaseTrainDistributedPAI(t *testing.T) {
 		train.save_checkpoints_steps=20,
 		train.epoch=10,
 		train.batch_size=4,
-		train.verbose=1
+		train.verbose=1,
+		validation.select="select * from %s"
 	LABEL class
 	INTO my_dnn_model_distributed;
-	`, caseTrainTable)
+	`, caseTrainTable, caseTestTable)
 	_, _, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)
@@ -1418,10 +1419,11 @@ func CaseTrainDistributedPAIKeras(t *testing.T) {
 		train.save_checkpoints_steps=20,
 		train.epoch=10,
 		train.batch_size=4,
-		train.verbose=1
+		train.verbose=1,
+		validation.select="select * from %s"
 	LABEL class
 	INTO my_dnn_model_distributed;
-	`, caseTrainTable)
+	`, caseTrainTable, caseTestTable)
 	_, _, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)

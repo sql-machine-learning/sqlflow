@@ -51,11 +51,38 @@ else:
     from .pai_distributed import define_tf_flags, make_distributed_info_without_evaluator, dump_into_tf_config
 
 
+def get_datasets(datasource, select, validate_select, feature_column_names,
+                 feature_metas, label_meta, is_pai, pai_table, pai_val_table,
+                 batch_size):
+    # FIXME(typhoonzero): find a way to cache to local file and avoid cache lockfile already exists issue.
+    train_dataset = input_fn(select,
+                             datasource,
+                             feature_column_names,
+                             feature_metas,
+                             label_meta,
+                             is_pai=is_pai,
+                             pai_table=pai_table)
+    train_dataset = train_dataset.shuffle(SHUFFLE_SIZE).batch(batch_size)
+    if validate_select != "":
+        validate_dataset = input_fn(validate_select,
+                                    datasource,
+                                    feature_column_names,
+                                    feature_metas,
+                                    label_meta,
+                                    is_pai=is_pai,
+                                    pai_table=pai_val_table).batch(batch_size)
+    else:
+        validate_dataset = None
+    return train_dataset, validate_dataset
+
+
 def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
                          pai_table, pai_val_table, feature_column_names,
                          feature_metas, label_meta, datasource, select,
                          validate_select, batch_size, epochs, verbose,
-                         metric_names, validation_steps):
+                         metric_names, validation_steps, train_max_steps,
+                         save_checkpoints_steps, eval_start_delay_secs,
+                         eval_throttle_secs):
     # remove optimizer param from model_params and use it when call "compile()"
     optimizer = None
     loss = None
@@ -91,35 +118,33 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
         optimizer = classifier_pkg.optimizer()
     if loss is None:
         loss = classifier_pkg.loss
+
+    train_dataset, validate_dataset = get_datasets(datasource, select,
+                                                   validate_select,
+                                                   feature_column_names,
+                                                   feature_metas, label_meta,
+                                                   is_pai, pai_table,
+                                                   pai_val_table, batch_size)
+
     classifier.compile(optimizer=optimizer, loss=loss, metrics=keras_metrics)
+
     if is_pai and len(FLAGS.worker_hosts.split(",")) > 1:
         # NOTE(typhoonzero): for distributed training, convert to estimator and run.
-        keras_estimator = tf.keras.estimator.model_to_estimator(classifier)
-        train_with_compiled_estimator(keras_estimator, datasource, select,
-                                      validate_select, model_params, save,
-                                      is_pai, pai_table, pai_val_table, FLAGS,
-                                      feature_column_names, feature_metas,
-                                      label_meta, epochs, batch_size)
-
-    # FIXME(typhoonzero): find a way to cache to local file and avoid cache lockfile already exists issue.
-    train_dataset = input_fn(select,
-                             datasource,
-                             feature_column_names,
-                             feature_metas,
-                             label_meta,
-                             is_pai=is_pai,
-                             pai_table=pai_table)
-    train_dataset = train_dataset.shuffle(SHUFFLE_SIZE).batch(batch_size)
-    if validate_select != "":
-        validate_dataset = input_fn(validate_select,
-                                    datasource,
-                                    feature_column_names,
-                                    feature_metas,
-                                    label_meta,
-                                    is_pai=is_pai,
-                                    pai_table=pai_val_table).batch(batch_size)
-    else:
-        validate_dataset = None
+        cluster, task_type, task_index = make_distributed_info_without_evaluator(
+            FLAGS)
+        dump_into_tf_config(cluster, task_type, task_index)
+        dist_strategy = tf.contrib.distribute.ParameterServerStrategy()
+        config = tf.estimator.RunConfig(
+            save_checkpoints_steps=save_checkpoints_steps,
+            train_distribute=dist_strategy,
+            session_config=tf.ConfigProto(log_device_placement=True))
+        keras_estimator = tf.keras.estimator.model_to_estimator(
+            classifier, model_dir=FLAGS.checkpointDir, config=config)
+        train_compiled_estimator(keras_estimator, train_dataset,
+                                 validate_dataset, model_params, save, is_pai,
+                                 epochs, train_max_steps,
+                                 eval_start_delay_secs, eval_throttle_secs)
+        return
 
     if hasattr(classifier, 'sqlflow_train_loop'):
 
@@ -179,64 +204,27 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
         model.save_file(FLAGS.checkpointDir, save)
 
 
-def train_with_compiled_estimator(estimator,
-                                  datasource,
-                                  select,
-                                  validate_select,
-                                  model_params,
-                                  save,
-                                  is_pai,
-                                  pai_table,
-                                  pai_val_table,
-                                  FLAGS,
-                                  feature_column_names,
-                                  feature_metas,
-                                  label_meta,
-                                  epochs,
-                                  batch_size,
-                                  train_max_steps=None,
-                                  eval_start_delay_secs=120,
-                                  eval_throttle_secs=600):
+def train_compiled_estimator(estimator,
+                             train_dataset,
+                             validate_dataset,
+                             model_params,
+                             save,
+                             is_pai,
+                             epochs,
+                             train_max_steps=None,
+                             eval_start_delay_secs=120,
+                             eval_throttle_secs=600):
     def train_input_fn():
-        # FIXME(typhoonzero): find a way to cache to local file and avoid cache lockfile already exists issue.
-        if is_pai:
-            train_dataset = input_fn("",
-                                     None,
-                                     feature_column_names,
-                                     feature_metas,
-                                     label_meta,
-                                     is_pai=True,
-                                     pai_table=pai_table,
-                                     num_workers=len(
-                                         FLAGS.worker_hosts.split(",")),
-                                     worker_id=FLAGS.task_index)
-        else:
-            train_dataset = input_fn(select, datasource, feature_column_names,
-                                     feature_metas, label_meta)
-        train_dataset = train_dataset.shuffle(SHUFFLE_SIZE).batch(
-            batch_size).cache().repeat(epochs if epochs else 1)
+        # return train_dataset.repeat(epochs if epochs else 1)
         return train_dataset
 
     train_spec = tf.estimator.TrainSpec(input_fn=lambda: train_input_fn(),
                                         max_steps=train_max_steps)
 
     def validate_input_fn():
-        if is_pai:
-            validate_dataset = input_fn("",
-                                        None,
-                                        feature_column_names,
-                                        feature_metas,
-                                        label_meta,
-                                        is_pai=True,
-                                        pai_table=pai_val_table)
-        else:
-            validate_dataset = input_fn(validate_select, datasource,
-                                        feature_column_names, feature_metas,
-                                        label_meta)
-        validate_dataset = validate_dataset.batch(batch_size)
         return validate_dataset
 
-    if validate_select != "":
+    if validate_dataset != None:
         eval_spec = tf.estimator.EvalSpec(
             input_fn=lambda: validate_input_fn(),
             start_delay_secs=eval_start_delay_secs,
@@ -268,12 +256,34 @@ def train_with_compiled_estimator(estimator,
     print("Done training, model exported to: %s" % export_path)
 
 
-def estimator_train_and_save(
-    estimator, model_params, save, is_pai, FLAGS, pai_table, pai_val_table,
-    feature_column_names, feature_metas, label_meta, datasource, select,
-    validate_select, batch_size, epochs, verbose, log_every_n_iter,
-    train_max_steps, eval_start_delay_secs, eval_throttle_secs, metric_names):
-    classifier = estimator(**model_params)
+def estimator_train_and_save(estimator, model_params, save, is_pai, FLAGS,
+                             pai_table, pai_val_table, feature_column_names,
+                             feature_metas, label_meta, datasource, select,
+                             validate_select, batch_size, epochs, verbose,
+                             log_every_n_iter, train_max_steps,
+                             eval_start_delay_secs, eval_throttle_secs,
+                             save_checkpoints_steps, metric_names):
+    is_distributed = False
+    if len(FLAGS.worker_hosts.split(",")) > 1:
+        is_distributed = True
+    if is_distributed:
+        cluster, task_type, task_index = make_distributed_info_without_evaluator(
+            FLAGS)
+        dump_into_tf_config(cluster, task_type, task_index)
+        dist_strategy = tf.contrib.distribute.ParameterServerStrategy()
+        config = tf.estimator.RunConfig(
+            save_checkpoints_steps=save_checkpoints_steps,
+            train_distribute=dist_strategy,
+            session_config=tf.ConfigProto(log_device_placement=True))
+    else:
+        config = tf.estimator.RunConfig(
+            save_checkpoints_steps=save_checkpoints_steps)
+    if is_pai:
+        model_dir = FLAGS.checkpointDir
+    else:
+        model_dir = save
+
+    classifier = estimator(model_dir=model_dir, config=config, **model_params)
 
     # do not add default Accuracy metric when using estimator to train, it will fail
     # when the estimator is a regressor, and estimator seems automatically add some
@@ -282,11 +292,16 @@ def estimator_train_and_save(
         classifier = tf.estimator.add_metrics(
             classifier, metrics.get_tf_metrics(metric_names))
 
-    train_with_compiled_estimator(
-        classifier, datasource, select, validate_select, model_params, save,
-        is_pai, pai_table, pai_val_table, FLAGS, feature_column_names,
-        feature_metas, label_meta, epochs, batch_size, train_max_steps,
-        eval_start_delay_secs, eval_throttle_secs)
+    train_dataset, validate_dataset = get_datasets(datasource, select,
+                                                   validate_select,
+                                                   feature_column_names,
+                                                   feature_metas, label_meta,
+                                                   is_pai, pai_table,
+                                                   pai_val_table, batch_size)
+    train_compiled_estimator(estimator, train_dataset, validate_dataset,
+                             model_params, save, is_pai, epochs,
+                             train_max_steps, eval_start_delay_secs,
+                             eval_throttle_secs)
 
 
 def train(datasource,
@@ -329,13 +344,10 @@ def train(datasource,
         tf.logging.set_verbosity(tf.logging.INFO)
     model_params.update(feature_columns)
 
-    is_distributed = False
     FLAGS = None
     # only support distributed training on PAI (TF version 1.x)
     if not TF_VERSION_2:
         FLAGS = define_tf_flags()
-        if len(FLAGS.worker_hosts.split(",")) > 1:
-            is_distributed = True
 
     if not is_estimator:  # keras
         if isinstance(estimator, types.FunctionType):
@@ -346,30 +358,15 @@ def train(datasource,
                              pai_table, pai_val_table, feature_column_names,
                              feature_metas, label_meta, datasource, select,
                              validate_select, batch_size, epochs, verbose,
-                             metric_names, validation_steps)
+                             metric_names, validation_steps, train_max_steps,
+                             save_checkpoints_steps, eval_start_delay_secs,
+                             eval_throttle_secs)
     else:
-        if is_distributed:
-            cluster, task_type, task_index = make_distributed_info_without_evaluator(
-                FLAGS)
-            dump_into_tf_config(cluster, task_type, task_index)
-            dist_strategy = tf.contrib.distribute.ParameterServerStrategy()
-            model_params["config"] = tf.estimator.RunConfig(
-                save_checkpoints_steps=save_checkpoints_steps,
-                train_distribute=dist_strategy,
-                session_config=tf.ConfigProto(log_device_placement=True))
-        else:
-            model_params["config"] = tf.estimator.RunConfig(
-                save_checkpoints_steps=save_checkpoints_steps)
-        if is_pai:
-            model_params["model_dir"] = FLAGS.checkpointDir
-        else:
-            model_params["model_dir"] = save
         print("Start training using estimator model...")
         estimator_train_and_save(
             estimator, model_params, save, is_pai, FLAGS, pai_table,
             pai_val_table, feature_column_names, feature_metas, label_meta,
             datasource, select, validate_select, batch_size, epochs, verbose,
             log_every_n_iter, train_max_steps, eval_start_delay_secs,
-            eval_throttle_secs, metric_names)
-
+            eval_throttle_secs, save_checkpoints_steps, metric_names)
     print("Done training")
