@@ -3,13 +3,9 @@ package org.sqlflow.parser;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.stub.StreamObserver;
-import java.io.File;
 import java.io.IOException;
-import java.net.URL;
-import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Logger;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -22,20 +18,20 @@ import org.sqlflow.parser.parse.ParseInterface;
 import org.sqlflow.parser.parse.ParseResult;
 
 public class ParserGrpcServer {
-  private static final Logger logger = Logger.getLogger(ParserGrpcServer.class.getName());
-
+  private ParserFactory parserFactory;
   private final int port;
   private Server server;
 
-  public ParserGrpcServer(int port) {
+  public ParserGrpcServer(int port, String loadPath) throws Exception {
     this.port = port;
+    this.parserFactory = new ParserFactory(loadPath);
   }
 
   /** Start serving requests. */
   public void start() throws IOException {
     server = ServerBuilder.forPort(port).addService(new ParserImpl()).build().start();
 
-    logger.info("Server started, listening on " + port);
+    System.err.println("Server started, listening on " + port);
     Runtime.getRuntime()
         .addShutdownHook(
             new Thread() {
@@ -66,38 +62,13 @@ public class ParserGrpcServer {
     }
   }
 
-  static class ParserImpl extends ParserGrpc.ParserImplBase {
+  class ParserImpl extends ParserGrpc.ParserImplBase {
     @Override
     public void parse(ParserRequest request, StreamObserver<ParserResponse> responseObserver) {
-      if (!(request.getDialect().equals("calcite") || request.getDialect().equals("hive"))) {
-        ParserResponse response =
-            ParserResponse.newBuilder()
-                .setError(String.format("unrecognized dialect %s", request.getDialect()))
-                .build();
-        responseObserver.onNext(response);
-        responseObserver.onCompleted();
-        return;
-      }
-
-      String filePath;
-      String classPath;
-      // TODO(tony): load this from command line argument
-      if (request.getDialect().equals("calcite")) {
-        filePath = "/opt/sqlflow/parser/parser-calcite-0.0.1-dev-jar-with-dependencies.jar";
-        classPath = "org.sqlflow.parser.calcite.CalciteParserAdaptor";
-      } else {
-        filePath = "/opt/sqlflow/parser/parser-hive-0.0.1-dev-jar-with-dependencies.jar";
-        classPath = "org.sqlflow.parser.hive.HiveParserAdaptor";
-      }
-
       ParseResult parseResult = new ParseResult();
       try {
-        File file = new File(filePath);
-        URL url = file.toURI().toURL();
-        URL[] urls = new URL[] {url};
-        ClassLoader cl = new URLClassLoader(urls);
-        Object parser = cl.loadClass(classPath).newInstance();
-        parseResult = ((ParseInterface) parser).parse(request.getSqlProgram());
+        ParseInterface parser = parserFactory.newParser(request.getDialect());
+        parseResult = parser.parse(request.getSqlProgram());
       } catch (Exception e) {
         parseResult.statements = new ArrayList<String>();
         parseResult.position = -1;
@@ -118,7 +89,7 @@ public class ParserGrpcServer {
   public static void main(String[] args) {
     Options options = new Options();
     options.addRequiredOption("p", "port", true, "port number");
-
+    options.addRequiredOption("l", "loadPath", true, ".jar files path for dynamic loading");
     CommandLine line = null;
     try {
       CommandLineParser parser = new DefaultParser();
@@ -130,11 +101,14 @@ public class ParserGrpcServer {
     }
 
     try {
-      ParserGrpcServer server = new ParserGrpcServer(Integer.parseInt(line.getOptionValue("p")));
+      ParserGrpcServer server =
+          new ParserGrpcServer(
+              Integer.parseInt(line.getOptionValue("p")), line.getOptionValue("l"));
       server.start();
       server.blockUntilShutdown();
     } catch (Exception e) {
       System.err.println("start server failed");
+      System.err.printf("%s: %s\n", e.getClass(), e.getMessage());
       System.exit(1);
     }
   }

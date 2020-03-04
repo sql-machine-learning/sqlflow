@@ -13,6 +13,11 @@ public class CalciteParserAdaptor implements ParseInterface {
 
   public CalciteParserAdaptor() {}
 
+  @Override
+  public String dialect() {
+    return "calcite";
+  }
+
   /**
    * parse calls Calcite parser to parse a SQL program and returns a ParseResult. It returns
    * {statements, -1, ""} if Calcite parser accepts the SQL program. input: "select 1; select 1;"
@@ -21,6 +26,7 @@ public class CalciteParserAdaptor implements ParseInterface {
    * 1" output: {"select 1;", "select 1"}, 19, nil It returns {nil, -1, error} if an error is
    * occurred.
    */
+  @Override
   public ParseResult parse(String sql) {
     ParseResult parseResult = new ParseResult();
     parseResult.statements = new ArrayList<String>();

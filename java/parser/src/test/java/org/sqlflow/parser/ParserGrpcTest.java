@@ -1,9 +1,9 @@
 package org.sqlflow.parser;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
-import java.io.IOException;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -12,10 +12,12 @@ public class ParserGrpcTest {
 
   @Before
   public void before() {
-    ParserGrpcServer server = new ParserGrpcServer(port);
     try {
+      String folderPath = System.getenv("SQLFLOW_PARSER_SERVER_LOADING_PATH");
+      assertNotNull(folderPath);
+      ParserGrpcServer server = new ParserGrpcServer(port, folderPath);
       server.start();
-    } catch (IOException e) {
+    } catch (Exception e) {
       fail("start server failed");
     }
   }
@@ -42,9 +44,10 @@ public class ParserGrpcTest {
 
     {
       ParserProto.ParserResponse response = client.parse("some_other_dialect", "select a from b");
-      assertEquals(0, response.getIndex());
+      assertEquals(-1, response.getIndex());
       assertEquals(0, response.getSqlStatementsCount());
-      assertEquals("unrecognized dialect some_other_dialect", response.getError());
+      assertEquals(
+          "java.lang.Exception parser \"some_other_dialect\" not found", response.getError());
     }
   }
 }

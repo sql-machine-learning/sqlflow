@@ -12,4 +12,7 @@ public interface ParseInterface {
   //     output: {"select 1;", "select 1"}, 19, nil
   // It returns <nil, -1, error> if an error is occurred.
   ParseResult parse(String sql);
+
+  // dialect returns the SQL dialect of the parser, e.g. "hive", "calcite"
+  String dialect();
 }
