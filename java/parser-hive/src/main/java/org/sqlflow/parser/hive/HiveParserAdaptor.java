@@ -14,6 +14,11 @@ public class HiveParserAdaptor implements ParseInterface {
 
   public HiveParserAdaptor() {}
 
+  @Override
+  public String dialect() {
+    return "hive";
+  }
+
   private ParseResult parseResultError(String error) {
     ParseResult parseResult = new ParseResult();
     parseResult.statements = new ArrayList<String>();
@@ -31,6 +36,7 @@ public class HiveParserAdaptor implements ParseInterface {
    * 1" output: {"select 1;", "select 1"}, 19, nil It returns {nil, -1, error} if an error is
    * occurred.
    */
+  @Override
   public ParseResult parse(String sql) {
     ParseResult parseResult = new ParseResult();
     parseResult.statements = new ArrayList<String>();

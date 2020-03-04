@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"net"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
@@ -43,9 +44,10 @@ func TestIsServerUp(t *testing.T) {
 
 	// start Java parser server
 	cmd := exec.Command("java",
-		"-cp", "/opt/sqlflow/parser/parser-1.0-SNAPSHOT-jar-with-dependencies.jar",
+		"-cp", filepath.Join(getServerLoadingPath(), "parser-1.0-SNAPSHOT-jar-with-dependencies.jar"),
 		"org.sqlflow.parser.ParserGrpcServer",
-		"-p", strconv.Itoa(port))
+		"-p", strconv.Itoa(port),
+		"-l", getServerLoadingPath())
 	err = cmd.Start()
 	a.NoError(err)
 

@@ -20,6 +20,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"sync"
 	"time"
 )
@@ -35,6 +36,14 @@ func getServerPort() string {
 		log.Fatal("undefined environment variable SQLFLOW_PARSER_SERVER_PORT")
 	}
 	return port
+}
+
+func getServerLoadingPath() string {
+	path := os.Getenv("SQLFLOW_PARSER_SERVER_LOADING_PATH")
+	if path == "" {
+		log.Fatal("undefined environment variable SQLFLOW_PARSER_SERVER_LOADING_PATH")
+	}
+	return path
 }
 
 func isServerUp(address string) bool {
@@ -56,9 +65,10 @@ func startServerIfNotUp() error {
 	}
 
 	cmd := exec.Command("java",
-		"-cp", "/opt/sqlflow/parser/parser-1.0-SNAPSHOT-jar-with-dependencies.jar",
+		"-cp", filepath.Join(getServerLoadingPath(), "parser-1.0-SNAPSHOT-jar-with-dependencies.jar"),
 		"org.sqlflow.parser.ParserGrpcServer",
-		"-p", getServerPort())
+		"-p", getServerPort(),
+		"-l", getServerLoadingPath())
 	if err := cmd.Start(); err != nil {
 		return err
 	}

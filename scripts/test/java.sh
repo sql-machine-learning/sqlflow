@@ -27,7 +27,7 @@ export MAVEN_OPTS=-Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf
 for PARSER_NAME in parser-hive parser-calcite
 do
 	(cd ${PARSER_NAME} && mvn test -B && \
-	mvn -B -q clean compile assembly:single && mv target/*.jar /opt/sqlflow/parser)
+	mvn -B -q clean compile assembly:single && mv target/*.jar ${SQLFLOW_PARSER_SERVER_LOADING_PATH})
 done
 
 (cd parser && \

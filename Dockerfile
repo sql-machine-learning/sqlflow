@@ -80,6 +80,7 @@ RUN /install-jupyter.bash
 ENV SQLFLOWPATH $GOPATH/src/sqlflow.org/sqlflow
 ENV PYTHONPATH $SQLFLOWPATH/python
 ENV SQLFLOW_PARSER_SERVER_PORT 12300
+ENV SQLFLOW_PARSER_SERVER_LOADING_PATH /opt/sqlflow/parser
 COPY . $SQLFLOWPATH
 RUN cd $SQLFLOWPATH && \
 go generate ./... && \
@@ -87,14 +88,14 @@ go install -v ./... && \
 mv $GOPATH/bin/sqlflowserver /usr/local/bin && \
 mv $GOPATH/bin/repl /usr/local/bin && \
 (cd python/couler && python setup.py -q install) && \
-mkdir -p /opt/sqlflow/parser && \
+mkdir -p $SQLFLOW_PARSER_SERVER_LOADING_PATH && \
 (cd java/parse-interface && mvn clean install) && \
-(cd java/parser-hive && mvn -B -q clean compile assembly:single && mv target/*.jar /opt/sqlflow/parser) && \
-(cd java/parser-calcite && mvn -B -q clean compile assembly:single && mv target/*.jar /opt/sqlflow/parser) && \
+(cd java/parser-hive && mvn -B -q clean compile assembly:single && mv target/*.jar $SQLFLOW_PARSER_SERVER_LOADING_PATH) && \
+(cd java/parser-calcite && mvn -B -q clean compile assembly:single && mv target/*.jar $SQLFLOW_PARSER_SERVER_LOADING_PATH) && \
 (cd java/parser && \
 protoc --java_out=src/main/java --grpc-java_out=src/main/java/ --proto_path=src/main/proto/ src/main/proto/Parser.proto && \
 mvn -B -q clean compile assembly:single && \
-cp target/*.jar /opt/sqlflow/parser) && \
+cp target/*.jar $SQLFLOW_PARSER_SERVER_LOADING_PATH) && \
 cd / && \
 bash $SQLFLOWPATH/scripts/convert_markdown_into_ipynb.sh
 
