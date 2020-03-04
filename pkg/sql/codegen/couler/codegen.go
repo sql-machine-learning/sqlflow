@@ -15,9 +15,11 @@ package couler
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -54,7 +56,8 @@ func getStepEnvs(session *pb.Session) (map[string]string, error) {
 		if len(pair) != 2 {
 			return nil, fmt.Errorf("env: %s should format key=value", env)
 		}
-		if strings.HasPrefix(pair[0], "SQLFLOW_OSS_") {
+		// should store oss sk in Kubernetes Secret
+		if strings.HasPrefix(pair[0], "SQLFLOW_OSS_") && pair[0] != "SQLFLOW_OSS_SK" {
 			envs[pair[0]] = pair[1]
 		}
 	}
@@ -63,6 +66,26 @@ func getStepEnvs(session *pb.Session) (map[string]string, error) {
 	}
 	envs["SQLFLOW_PARSER_SERVER_PORT"] = os.Getenv("SQLFLOW_PARSER_SERVER_PORT")
 	return envs, nil
+}
+
+func getSecret() (string, string, error) {
+	secretMap := make(map[string]map[string]string)
+	secretCfg := os.Getenv("SQLFLOW_WORKFLOW_SECRET")
+	if secretCfg == "" {
+		return "", "", nil
+	}
+	if e := json.Unmarshal([]byte(secretCfg), &secretMap); e != nil {
+		return "", "", e
+	}
+	if len(secretMap) != 1 {
+		return "", "", fmt.Errorf(`SQLFLOW_WORKFLOW_SECRET should be a json string, e.g. {name: {key: value, ...}}`)
+	}
+	name := reflect.ValueOf(secretMap).MapKeys()[0].String()
+	value, e := json.Marshal(secretMap[name])
+	if e != nil {
+		return "", "", e
+	}
+	return name, string(value), nil
 }
 
 // GenCode generates Couler program
@@ -77,10 +100,17 @@ func GenCode(programIR []ir.SQLFlowStmt, session *pb.Session) (string, error) {
 			return "", fmt.Errorf("SQLFLOW_WORKFLOW_TTL: %s should be int", os.Getenv("SQLFLOW_WORKFLOW_TTL"))
 		}
 	}
+	secretName, secretData, e := getSecret()
+	if e != nil {
+		return "", e
+	}
+
 	r := &coulerFiller{
 		DataSource:  session.DbConnStr,
 		StepEnvs:    stepEnvs,
 		WorkflowTTL: workflowTTL,
+		SecretName:  secretName,
+		SecretData:  secretData,
 	}
 	// NOTE(yancey1989): does not use ModelImage here since the Predict statement
 	// does not contain the ModelImage field in SQL Program IR.
