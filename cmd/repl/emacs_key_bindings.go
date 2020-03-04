@@ -121,6 +121,19 @@ var emacsMetaKeyBindings = []prompt.ASCIICodeBind{
 			navigateHistory(buf, false)
 		},
 	},
+	// Meta W: Search command history in wildcard
+	{
+		ASCIICode: []byte{0x1b, 'w'},
+		Fn: func(buf *prompt.Buffer) {
+			startSearch(buf, wildcardSearch)
+		},
+	},
+	{
+		ASCIICode: []byte{0x1b, 'W'},
+		Fn: func(buf *prompt.Buffer) {
+			startSearch(buf, wildcardSearch)
+		},
+	},
 }
 
 var emacsCtrlKeyBindings = []prompt.KeyBind{
@@ -227,11 +240,11 @@ var emacsCtrlKeyBindings = []prompt.KeyBind{
 	{
 		Key: prompt.ControlR,
 		Fn: func(buf *prompt.Buffer) {
-			startSearch(buf)
+			startSearch(buf, normalSearch)
 		},
 	},
 }
 
-var startSearch = func(*prompt.Buffer) {}
+var startSearch = func(*prompt.Buffer, searchMode) {}
 var stopSearch = func(string) (selected string, totalLen int) { return }
 var navigateHistory = func(*prompt.Buffer, bool) {}

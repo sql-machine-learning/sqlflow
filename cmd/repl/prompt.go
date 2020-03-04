@@ -26,6 +26,13 @@ import (
 	"sqlflow.org/sqlflow/pkg/sql/codegen/attribute"
 )
 
+type searchMode int
+
+const (
+	normalSearch searchMode = iota
+	wildcardSearch
+)
+
 var defaultSuggestions = []prompt.Suggest{
 	{"SELECT", ""},
 	{"FROM", ""},
@@ -160,7 +167,7 @@ func (p *promptState) initCompleter() {
 
 func (p *promptState) initHistory() {
 	// Register history search key bindings
-	startSearch = func(buf *prompt.Buffer) { p.startSearch(buf) }
+	startSearch = func(buf *prompt.Buffer, mode searchMode) { p.startSearch(buf, mode) }
 	for _, key := range []prompt.Key{prompt.End, prompt.Home, prompt.Right, prompt.Left} {
 		emacsCtrlKeyBindings = append(
 			emacsCtrlKeyBindings,
@@ -190,7 +197,7 @@ func (p *promptState) initHistory() {
 	}
 }
 
-func (p *promptState) searchHistoryImpl(suffix string, buf *prompt.Buffer, key, lastKey, selected *string) []prompt.Suggest {
+func (p *promptState) searchHistoryImpl(mode searchMode, suffix string, buf *prompt.Buffer, key, lastKey, selected *string) []prompt.Suggest {
 	*lastKey = *key
 	in := strings.TrimPrefix(buf.Text(), *key+suffix)
 	if in != buf.Text() {
@@ -218,7 +225,19 @@ func (p *promptState) searchHistoryImpl(suffix string, buf *prompt.Buffer, key, 
 	}
 	// Unique history commands
 	counts := make(map[string]int)
-	candidates := prompt.FilterContains(p.history, *key, true)
+	candidates := []prompt.Suggest{}
+	switch mode {
+	case wildcardSearch:
+		pattern := "*" + strings.ToUpper(*key) + "*" // Match substring
+		for _, entry := range p.history {
+			if matched, err := filepath.Match(pattern, strings.ToUpper(entry.Text)); err == nil && matched {
+				candidates = append(candidates, entry)
+			}
+
+		}
+	default:
+		candidates = prompt.FilterContains(p.history, *key, true)
+	}
 	for _, entry := range candidates {
 		counts[entry.Text]++
 	}
@@ -233,7 +252,7 @@ func (p *promptState) searchHistoryImpl(suffix string, buf *prompt.Buffer, key, 
 	return result
 }
 
-func (p *promptState) startSearch(buf *prompt.Buffer) {
+func (p *promptState) startSearch(buf *prompt.Buffer, mode searchMode) {
 	if p.isSearching {
 		return
 	}
@@ -247,16 +266,22 @@ func (p *promptState) startSearch(buf *prompt.Buffer) {
 	oldLivePrefix := p.livePrefix
 	oldEnableLivePrefix := p.enableLivePrefix
 	p.isSearching = true
-	p.livePrefix = "🔍`"
+	switch mode {
+	case wildcardSearch:
+		p.livePrefix = "🔍❄`"
+	default:
+		p.livePrefix = "🔍`"
+	}
 	searchSuffix := "_` " // Must end with whitespace to make completion stop
 	searchKey := buf.Text()
 	keepOriginalInput := len(searchKey) != 0
 	lastSearchKey := ""
 	selected := ""
+	prompt.GoLineEnd(buf) // Insert searchSuffix to the end of the line
 	buf.InsertText(searchSuffix, false, true)
 	p.enableLivePrefix = true
 	p.searchHistory = func() []prompt.Suggest {
-		return p.searchHistoryImpl(searchSuffix, buf, &searchKey, &lastSearchKey, &selected)
+		return p.searchHistoryImpl(mode, searchSuffix, buf, &searchKey, &lastSearchKey, &selected)
 	}
 	stopSearch = func(in string) (string, int) {
 		if !p.isSearching {
