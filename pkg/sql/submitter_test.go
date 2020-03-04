@@ -19,11 +19,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestSubmitterRegistry(t *testing.T) {
+func TestGetSubmitter(t *testing.T) {
 	a := assert.New(t)
-	a.Equal(3, len(submitterRegistry))
-	a.NotNil(submitterRegistry["pai"])
-	a.NotNil(submitterRegistry["default"])
-	a.NotNil(submitterRegistry["alisa"])
-	a.Equal(GetSubmitter(""), submitterRegistry["default"])
+	s1 := GetSubmitter("default")
+	s2 := GetSubmitter("default")
+	// call GetSubmitter should get 2 different objects
+	a.False(s1 == s2)
+	s3 := GetSubmitter("pai")
+	_, ok := s3.(*paiSubmitter)
+	a.True(ok)
 }
