@@ -12,45 +12,7 @@
 # limitations under the License.
 
 import xgboost as xgb
-from sqlflow_submitter import db
-
-
-def xgb_dataset(datasource,
-                fn,
-                dataset_sql,
-                feature_metas,
-                feature_column_names,
-                label_meta,
-                is_pai=False,
-                pai_table=""):
-
-    if is_pai:
-        pai_table_parts = pai_table.split(".")
-        formated_pai_table = "odps://%s/tables/%s" % (pai_table_parts[0],
-                                                      pai_table_parts[1])
-        if label_meta:
-            label_column_name = label_meta['feature_name']
-        else:
-            label_column_name = None
-        gen = db.pai_maxcompute_db_generator(formated_pai_table,
-                                             feature_column_names,
-                                             label_column_name, feature_metas)
-    else:
-        conn = db.connect_with_data_source(datasource)
-        gen = db.db_generator(conn.driver, conn, dataset_sql,
-                              feature_column_names, label_meta, feature_metas)
-    with open(fn, 'w') as f:
-        for item in gen():
-            if label_meta is None:
-                row_data = ["%d:%f" % (i, v[0]) for i, v in enumerate(item[0])]
-            else:
-                features, label = item
-                row_data = [str(label)] + [
-                    "%d:%f" % (i, v[0]) for i, v in enumerate(features)
-                ]
-            f.write("\t".join(row_data) + "\n")
-    # TODO(yancey1989): generate group and weight text file if necessary
-    return xgb.DMatrix(fn)
+from sqlflow_submitter.xgboost.dataset import xgb_dataset
 
 
 def train(datasource,
