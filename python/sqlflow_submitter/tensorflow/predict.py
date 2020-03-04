@@ -19,12 +19,10 @@ import sys
 
 import numpy as np
 import tensorflow as tf
-from sqlflow_submitter.db import (buffered_db_writer, connect_with_data_source,
-                                  db_generator, parseMaxComputeDSN)
+from sqlflow_submitter import db
 from sqlflow_submitter.pai import model
 
-from .input_fn import (get_dtype, pai_maxcompute_db_generator,
-                       parse_sparse_feature, parse_sparse_feature_predict)
+from .input_fn import get_dtype, parse_sparse_feature_predict
 
 # Disable Tensorflow INFO and WARNING logs
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -56,7 +54,7 @@ def keras_predict(estimator, model_params, save, result_table, is_pai,
     classifier = estimator(**model_params)
     classifier_pkg = sys.modules[estimator.__module__]
 
-    conn = connect_with_data_source(datasource)
+    conn = db.connect_with_data_source(datasource)
 
     def eval_input_fn(batch_size, cache=False):
         feature_types = []
@@ -71,12 +69,12 @@ def keras_predict(estimator, model_params, save, result_table, is_pai,
             pai_table_parts = pai_table.split(".")
             formated_pai_table = "odps://%s/tables/%s" % (pai_table_parts[0],
                                                           pai_table_parts[1])
-            gen = pai_maxcompute_db_generator(formated_pai_table,
-                                              feature_column_names, None,
-                                              feature_metas)
+            gen = db.pai_maxcompute_db_generator(formated_pai_table,
+                                                 feature_column_names, None,
+                                                 feature_metas)
         else:
-            gen = db_generator(conn.driver, conn, select, feature_column_names,
-                               None, feature_metas)
+            gen = db.db_generator(conn.driver, conn, select,
+                                  feature_column_names, None, feature_metas)
         dataset = tf.data.Dataset.from_generator(gen, (tuple(feature_types), ))
         ds_mapper = functools.partial(
             parse_sparse_feature_predict,
@@ -105,9 +103,9 @@ def keras_predict(estimator, model_params, save, result_table, is_pai,
     buff_rows = []
     column_names = feature_column_names[:]
     column_names.append(result_col_name)
-    with buffered_db_writer(conn.driver, conn, result_table, column_names, 100,
-                            hdfs_namenode_addr, hive_location, hdfs_user,
-                            hdfs_pass) as w:
+    with db.buffered_db_writer(conn.driver, conn, result_table, column_names,
+                               100, hdfs_namenode_addr, hive_location,
+                               hdfs_user, hdfs_pass) as w:
         for features in pred_dataset:
             result = classifier.predict_on_batch(features)
             result = classifier_pkg.prepare_prediction_column(result[0])
@@ -133,7 +131,7 @@ def estimator_predict(estimator, model_params, save, result_table,
                       datasource, select, hdfs_namenode_addr, hive_location,
                       hdfs_user, hdfs_pass, is_pai, pai_table):
     if not is_pai:
-        conn = connect_with_data_source(datasource)
+        conn = db.connect_with_data_source(datasource)
 
     column_names = feature_column_names[:]
     column_names.append(result_col_name)
@@ -144,13 +142,13 @@ def estimator_predict(estimator, model_params, save, result_table,
         pai_table_parts = pai_table.split(".")
         formated_pai_table = "odps://%s/tables/%s" % (pai_table_parts[0],
                                                       pai_table_parts[1])
-        predict_generator = pai_maxcompute_db_generator(
+        predict_generator = db.pai_maxcompute_db_generator(
             formated_pai_table, feature_column_names, None, feature_metas)()
     else:
         driver = conn.driver
-        predict_generator = db_generator(conn.driver, conn, select,
-                                         feature_column_names, None,
-                                         feature_metas)()
+        predict_generator = db.db_generator(conn.driver, conn, select,
+                                            feature_column_names, None,
+                                            feature_metas)()
     # load from the exported model
     if save.startswith("oss://"):
         with open("exported_path", "r") as fn:
@@ -204,9 +202,9 @@ def estimator_predict(estimator, model_params, save, result_table,
         return imported.signatures["predict"](
             examples=tf.constant([example.SerializeToString()]))
 
-    with buffered_db_writer(driver, conn, result_table, column_names, 100,
-                            hdfs_namenode_addr, hive_location, hdfs_user,
-                            hdfs_pass) as w:
+    with db.buffered_db_writer(driver, conn, result_table, column_names, 100,
+                               hdfs_namenode_addr, hive_location, hdfs_user,
+                               hdfs_pass) as w:
         for features in predict_generator:
             result = predict(features)
             row = []
@@ -246,7 +244,7 @@ def pred(datasource,
          is_pai=False,
          pai_table=""):
     if not is_pai:
-        conn = connect_with_data_source(datasource)
+        conn = db.connect_with_data_source(datasource)
     model_params.update(feature_columns)
 
     is_estimator = issubclass(

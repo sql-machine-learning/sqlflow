@@ -16,13 +16,7 @@ import functools
 
 import numpy as np
 import tensorflow as tf
-from sqlflow_submitter.db import (connect_with_data_source, db_generator,
-                                  parseMaxComputeDSN, read_feature)
-
-try:
-    import paiio
-except:
-    pass
+from sqlflow_submitter import db
 
 
 def parse_sparse_feature(features, label, feature_column_names, feature_metas):
@@ -30,10 +24,7 @@ def parse_sparse_feature(features, label, feature_column_names, feature_metas):
     for idx, col in enumerate(features):
         name = feature_column_names[idx]
         if feature_metas[name]["is_sparse"]:
-            i, v, s = col
-            features_dict[name] = tf.SparseTensor(indices=i,
-                                                  values=v,
-                                                  dense_shape=s)
+            features_dict[name] = tf.SparseTensor(*col)
         else:
             features_dict[name] = col
     return features_dict, label
@@ -45,10 +36,7 @@ def parse_sparse_feature_predict(features, feature_column_names,
     for idx, col in enumerate(features):
         name = feature_column_names[idx]
         if feature_metas[name]["is_sparse"]:
-            i, v, s = col
-            features_dict[name] = tf.SparseTensor(indices=i,
-                                                  values=v,
-                                                  dense_shape=s)
+            features_dict[name] = tf.SparseTensor(*col)
         else:
             features_dict[name] = col
     return features_dict
@@ -85,21 +73,18 @@ def input_fn(select,
             feature_types.append(get_dtype(feature_metas[name]["dtype"]))
             shapes.append(feature_metas[name]["shape"])
     if is_pai:
-        pai_table_parts = pai_table.split(".")
-        formated_pai_table = "odps://%s/tables/%s" % (pai_table_parts[0],
-                                                      pai_table_parts[1])
-        gen = pai_maxcompute_db_generator(formated_pai_table,
-                                          feature_column_names,
-                                          label_meta["feature_name"],
-                                          feature_metas,
-                                          slice_id=worker_id,
-                                          slice_count=num_workers)
+        return pai_dataset("odps://{}/tables/{}".format(*pai_table.split(".")),
+                           feature_column_names,
+                           label_meta,
+                           feature_metas,
+                           slice_id=worker_id,
+                           slice_count=num_workers)
     else:
-        conn = connect_with_data_source(datasource)
-        gen = db_generator(conn.driver, conn, select, feature_column_names,
-                           label_meta, feature_metas)
+        conn = db.connect_with_data_source(datasource)
+        gen = db.db_generator(conn.driver, conn, select, feature_column_names,
+                              label_meta, feature_metas)
     # Clustering model do not have label
-    if label_meta["feature_name"] == "":
+    if not label_meta or label_meta["feature_name"] == "":
         dataset = tf.data.Dataset.from_generator(gen, (tuple(feature_types), ),
                                                  (tuple(shapes), ))
         ds_mapper = functools.partial(
@@ -117,43 +102,60 @@ def input_fn(select,
     return dataset.map(ds_mapper)
 
 
-def pai_maxcompute_db_generator(table,
-                                feature_column_names,
-                                label_column_name,
-                                feature_specs,
-                                fetch_size=128,
-                                slice_id=0,
-                                slice_count=1):
-    def reader():
-        selected_cols = copy.copy(feature_column_names)
-        if label_column_name:
-            selected_cols.append(label_column_name)
-            try:
-                label_idx = selected_cols.index(label_column_name)
-            except ValueError:
-                # NOTE(typhoonzero): For clustering model, label_column_name may not in field_names when predicting.
-                label_idx = None
-        else:
-            label_idx = None
-        reader = paiio.TableReader(table,
-                                   selected_cols=",".join(selected_cols),
-                                   slice_id=slice_id,
-                                   slice_count=slice_count)
-        while True:
-            try:
-                row = reader.read(num_records=1)[0]
-                label = row[label_idx] if label_idx is not None else -1
-                features = []
-                for name in feature_column_names:
-                    feature = read_feature(row[selected_cols.index(name)],
-                                           feature_specs[name], name)
-                    features.append(feature)
-                if label_column_name:
-                    yield tuple(features), label
-                else:
-                    yield (tuple(features), )
-            except Exception as e:
-                reader.close()
-                break
+def read_feature_as_tensor(raw_val, feature_spec, feature_name):
+    # FIXME(typhoonzero): Should use correct dtype here.
+    if feature_spec["delimiter"] == "":
+        return [raw_val]
+    if feature_spec["is_sparse"]:
+        indices = tf.strings.to_number(
+            tf.strings.split(raw_val,
+                             feature_spec["delimiter"],
+                             result_type='RaggedTensor'), tf.int64)
+        values = tf.fill(tf.shape(indices), 1)
+        indices = tf.expand_dims(indices, 1)
+        dense_shape = np.array(feature_spec["shape"], dtype=np.int64)
+        return (indices, values, dense_shape)
+    else:  # Dense string vector
+        return tf.strings.to_number(
+            tf.strings.split(raw_val,
+                             feature_spec["delimiter"],
+                             result_type='RaggedTensor'),
+            feature_spec["dtype"])
 
-    return reader
+
+def parse_pai_dataset(feature_column_names, has_label, feature_specs, *row):
+    features = {}
+    for i, name in enumerate(feature_column_names):
+        spec = feature_specs[name]
+        f = read_feature_as_tensor(row[i], spec, name)
+        features[name] = tf.SparseTensor(*f) if spec["is_sparse"] else f
+    return features, row[-1] if has_label else features
+
+
+def pai_dataset(table,
+                feature_column_names,
+                label_spec,
+                feature_specs,
+                slice_id=0,
+                slice_count=1):
+    record_defaults = []
+    selected_cols = copy.copy(feature_column_names)
+    dtypes = [
+        "string"
+        if feature_specs[n]["delimiter"] else feature_specs[n]["dtype"]
+        for n in feature_column_names
+    ]
+    if label_spec and label_spec["feature_name"]:
+        selected_cols.append(label_spec["feature_name"])
+        dtypes.append(label_spec["dtype"])
+
+    import paiio
+    return paiio.TableRecordDataset(
+        table, ["" if t == "string" else eval("np.%s()" % t) for t in dtypes],
+        selected_cols=",".join(selected_cols),
+        slice_id=slice_id,
+        slice_count=slice_count,
+        capacity=2**25,
+        num_threads=64).map(
+            functools.partial(parse_pai_dataset, feature_column_names,
+                              label_spec["feature_name"], feature_specs))

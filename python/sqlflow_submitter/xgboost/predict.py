@@ -13,7 +13,7 @@
 
 import numpy as np
 import xgboost as xgb
-from sqlflow_submitter.db import buffered_db_writer, connect_with_data_source
+from sqlflow_submitter import db
 
 from .train import xgb_dataset
 
@@ -32,7 +32,7 @@ def pred(datasource,
          pai_table=""):
     # TODO(typhoonzero): support running on PAI without MaxCompute AK/SK connection.
     if not is_pai:
-        conn = connect_with_data_source(datasource)
+        conn = db.connect_with_data_source(datasource)
     label_name = label_meta["feature_name"]
 
     dpred = xgb_dataset(datasource, 'predict.txt', select, feature_metas,
@@ -57,15 +57,15 @@ def pred(datasource,
         conn = None
     else:
         driver = conn.driver
-    with buffered_db_writer(driver,
-                            conn,
-                            result_table,
-                            result_column_names,
-                            100,
-                            hdfs_namenode_addr=hdfs_namenode_addr,
-                            hive_location=hive_location,
-                            hdfs_user=hdfs_user,
-                            hdfs_pass=hdfs_pass) as w:
+    with db.buffered_db_writer(driver,
+                               conn,
+                               result_table,
+                               result_column_names,
+                               100,
+                               hdfs_namenode_addr=hdfs_namenode_addr,
+                               hive_location=hive_location,
+                               hdfs_user=hdfs_user,
+                               hdfs_pass=hdfs_pass) as w:
         while True:
             line = feature_file_read.readline()
             if not line:
