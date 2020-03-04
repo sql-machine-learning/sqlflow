@@ -49,7 +49,7 @@ step_envs["{{$k}}"] = '''{{$v}}'''
 sqlflow_secret = None
 if "{{.SecretName}}" != "":
 	# note(yancey1989): set dry_run to true, just reference the secret meta to generate workflow YAML,
-	# we should create the secrete before launching sqlflowserver
+	# we should create the secret before launching sqlflowserver
 	secret_data=json.loads('''{{.SecretData}}''')
 	sqlflow_secret = couler.secret(secret_data, name="{{ .SecretName }}", dry_run=True)
 
