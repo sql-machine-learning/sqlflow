@@ -33,8 +33,8 @@ type coulerFiller struct {
 	SQLFlowOSSDir    string
 	StepEnvs         map[string]string
 	WorkflowTTL      int
-	OSSSK            string
 	SecretName       string
+	SecretData       string
 }
 
 const coulerTemplateText = `
@@ -47,10 +47,10 @@ step_envs["{{$k}}"] = '''{{$v}}'''
 {{end}}
 
 sqlflow_secret = None
-if "{{ .OSSSK }}" != "":
+if "{{.SecretName}}" != "":
 	# note(yancey1989): set dry_run to true, just reference the secret meta to generate workflow YAML,
 	# we should create the secrete before launching sqlflowserver
-	secret_data={"SQLFLOW_OSS_SK": "{{ .OSSSK }}"}
+	secret_data=json.loads('''{{.SecretData}}''')
 	sqlflow_secret = couler.secret(secret_data, name="{{ .SecretName }}", dry_run=True)
 
 couler.clean_workflow_after_seconds_finished({{.WorkflowTTL}})
