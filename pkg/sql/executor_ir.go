@@ -230,8 +230,9 @@ func runSingleSQLIR(wr *pipe.Writer, sqlIR ir.SQLFlowStmt, db *database.DB, mode
 	}()
 	// TODO(typhoonzero): can run feature.LogDerivationResult(wr, trainStmt) here to send
 	// feature derivation logs to client, yet we disable if for now so that it's less annoying.
-	GetSubmitter(session.Submitter).Setup(wr, db, modelDir, cwd, session)
-	return sqlIR.Execute(GetSubmitter(session.Submitter))
+	submitter := GetSubmitter(session.Submitter)
+	submitter.Setup(wr, db, modelDir, cwd, session)
+	return sqlIR.Execute(submitter)
 }
 
 // getColumnTypes is quiet like verify but accept a SQL string as input, and returns
