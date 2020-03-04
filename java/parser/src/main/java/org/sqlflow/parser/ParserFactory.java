@@ -48,6 +48,7 @@ class ParserFactory {
             if ("org.sqlflow.parser.parse.ParseInterface".equals(x.getName())) {
               Object inst = c.getConstructor().newInstance();
               ParseInterface parser = (ParseInterface) inst;
+              System.err.printf("ParserFactory loading class %s\n", className);
               parsers.put(parser.dialect(), c);
               break;
             }
