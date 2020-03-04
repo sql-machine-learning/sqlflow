@@ -238,7 +238,7 @@ def estimator_train_and_save(
         # NOTE(typhoonzero): if only do training, no validation result will be printed.
         classifier.train(lambda: train_input_fn(), max_steps=train_max_steps)
 
-    if FLAGS.task_index != 0:
+    if is_pai and FLAGS.task_index != 0:
         print("skip exporting model on woker != 0")
         return
     # export saved model for prediction
