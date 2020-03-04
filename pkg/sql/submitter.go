@@ -33,23 +33,22 @@ import (
 	"sqlflow.org/sqlflow/pkg/sql/codegen/xgboost"
 )
 
-var submitterRegistry = map[string](Submitter){
-	"default": &defaultSubmitter{},
-	"pai":     &paiSubmitter{&defaultSubmitter{}},
-	"alisa":   &alisaSubmitter{&defaultSubmitter{}},
-	// TODO(typhoonzero): add submitters like alps, elasticdl
-}
-
 // GetSubmitter returns a proper Submitter from configuations in environment variables.
 func GetSubmitter(submitter string) Submitter {
 	if submitter == "" {
 		submitter = os.Getenv("SQLFLOW_submitter")
 	}
-	s := submitterRegistry[submitter]
-	if s == nil {
-		s = submitterRegistry["default"]
+	switch submitter {
+	case "default":
+		return &defaultSubmitter{}
+	case "pai":
+		return &paiSubmitter{&defaultSubmitter{}}
+	case "alisa":
+		return &alisaSubmitter{&defaultSubmitter{}}
+	// TODO(typhoonzero): add submitters like alps, elasticdl
+	default:
+		return &defaultSubmitter{}
 	}
-	return s
 }
 
 // Figures contains analyzed figures as strings
