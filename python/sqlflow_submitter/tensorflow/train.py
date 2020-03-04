@@ -13,6 +13,7 @@
 
 import copy
 import functools
+import glob
 import json
 import os
 import sys
@@ -339,4 +340,5 @@ def train(datasource,
             log_every_n_iter, train_max_steps, eval_start_delay_secs,
             eval_throttle_secs, metric_names)
 
+    any(map(os.remove, glob.glob('cache_train.*')))  # remove cache files
     print("Done training")
