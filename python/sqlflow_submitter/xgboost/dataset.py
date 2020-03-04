@@ -17,7 +17,6 @@ import sys
 
 import xgboost as xgb
 from sqlflow_submitter import db
-from sqlflow_submitter.tensorflow.input_fn import pai_maxcompute_db_generator
 
 SLICE_NUM = 128
 
@@ -85,12 +84,12 @@ def pai_download_table_data_worker(dir_or_file_name, feature_specs,
                                    feature_column_names, label_spec, pai_table,
                                    slice_id, single_file):
     label_column_name = label_spec['feature_name'] if label_spec else None
-    gen = pai_maxcompute_db_generator(pai_table,
-                                      feature_column_names,
-                                      label_column_name,
-                                      feature_specs,
-                                      slice_id=slice_id,
-                                      slice_count=SLICE_NUM)
+    gen = db.pai_maxcompute_db_generator(pai_table,
+                                         feature_column_names,
+                                         label_column_name,
+                                         feature_specs,
+                                         slice_id=slice_id,
+                                         slice_count=SLICE_NUM)
     if single_file:
         filename = dir_or_file_name
     else:
