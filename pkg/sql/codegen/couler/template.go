@@ -33,17 +33,25 @@ type coulerFiller struct {
 	SQLFlowOSSDir    string
 	StepEnvs         map[string]string
 	WorkflowTTL      int
+	OSSSK            string
+	SecretName       string
 }
 
 const coulerTemplateText = `
 import couler.argo as couler
-import uuid
 datasource = "{{ .DataSource }}"
 
 step_envs = dict()
 {{range $k, $v := .StepEnvs}}
 step_envs["{{$k}}"] = '''{{$v}}'''
 {{end}}
+
+sqlflow_secret = None
+if "{{ .OSSSK }}" != "":
+	# note(yancey1989): set dry_run to true, just reference the secret meta to generate workflow YAML,
+	# we should create the secrete before launching sqlflowserver
+	secret_data={"SQLFLOW_OSS_SK": "{{ .OSSSK }}"}
+	sqlflow_secret = couler.secret(secret_data, name="{{ .SecretName }}", dry_run=True)
 
 couler.clean_workflow_after_seconds_finished({{.WorkflowTTL}})
 def escape_sql(original_sql):
@@ -52,7 +60,7 @@ def escape_sql(original_sql):
 {{ range $ss := .SQLStatements }}
 	{{if $ss.IsExtendedSQL }}
 train_sql = '''{{ $ss.OriginalSQL }}'''
-couler.run_container(command='''repl -e "%s" ''' % escape_sql(train_sql), image="{{ $ss.DockerImage }}", env=step_envs)
+couler.run_container(command='''repl -e "%s"''' % escape_sql(train_sql), image="{{ $ss.DockerImage }}", env=step_envs, secret=sqlflow_secret)
 	{{else if $ss.IsKatibTrain}}
 import couler.sqlflow.katib as auto
 

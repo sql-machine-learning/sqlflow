@@ -54,7 +54,8 @@ func getStepEnvs(session *pb.Session) (map[string]string, error) {
 		if len(pair) != 2 {
 			return nil, fmt.Errorf("env: %s should format key=value", env)
 		}
-		if strings.HasPrefix(pair[0], "SQLFLOW_OSS_") {
+		// should store oss sk in Kubernetes Secret
+		if strings.HasPrefix(pair[0], "SQLFLOW_OSS_") && pair[0] != "SQLFLOW_OSS_SK" {
 			envs[pair[0]] = pair[1]
 		}
 	}
@@ -81,6 +82,8 @@ func GenCode(programIR []ir.SQLFlowStmt, session *pb.Session) (string, error) {
 		DataSource:  session.DbConnStr,
 		StepEnvs:    stepEnvs,
 		WorkflowTTL: workflowTTL,
+		OSSSK:       os.Getenv("SQLFLOW_OSS_SK"),
+		SecretName:  os.Getenv("SQLFLOW_WORKFLOW_SECRET_NAME"),
 	}
 	// NOTE(yancey1989): does not use ModelImage here since the Predict statement
 	// does not contain the ModelImage field in SQL Program IR.

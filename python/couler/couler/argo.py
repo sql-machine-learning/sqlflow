@@ -527,7 +527,8 @@ def _dump_yaml():
     if len(_secrets) > 0:
         yaml_str = pyaml.dump(_secrets, string_val_style="plain")
         yaml_str = "%s\n---\n" % yaml_str
-    yaml_str = yaml_str + pyaml.dump(yaml(), string_val_style="plain")
+    if len(_steps) > 0:
+        yaml_str = yaml_str + pyaml.dump(yaml(), string_val_style="plain")
     print(yaml_str)
 
 
@@ -721,8 +722,8 @@ def _update_pod_config(template):
     return template
 
 
-def secret(secret_data):
-    return Secret(secret_data)
+def secret(secret_data, name, dry_run):
+    return Secret(secret_data, name, dry_run)
 
 
 def clean_workflow_after_seconds_finished(seconds):
@@ -731,13 +732,15 @@ def clean_workflow_after_seconds_finished(seconds):
 
 
 class Secret:
-    def __init__(self, secret_data):
+    def __init__(self, secret_data, name=None, dry_run=False):
         self.data = secret_data
-
-        function_name, caller_line = pyfunc.invocation_location()
-        self.name = "couler-secret-%s-%d" % (function_name, caller_line)
-        global _secrets
-        _secrets = self.generate_secret_yaml()
+        if name is not None:
+            self.name = name
+        else:
+            self.name = "couler-" + str(uuid.uuid4())
+        if not dry_run:
+            global _secrets
+            _secrets = self.generate_secret_yaml()
 
     def get_data(self):
         return self.data
