@@ -297,6 +297,9 @@ func InferFeatureColumns(trainStmt *ir.TrainStmt, dataSource string) error {
 
 	columnTargets := getFeatureColumnTargets(trainStmt)
 	err = deriveFeatureColumn(fcMap, columnTargets, fmMap, selectFieldTypeMap, trainStmt)
+	if err != nil {
+		return err
+	}
 	// set back trainStmt.Features in the order of select and update trainStmt.Label
 	setDerivedFeatureColumnToIR(trainStmt, fcMap, columnTargets, selectFieldNames)
 	return deriveLabel(trainStmt, fmMap)
@@ -334,6 +337,11 @@ func deriveFeatureColumn(fcMap ColumnMap, columnTargets []string, fmMap FieldDes
 			// create map for current target
 			fcMap[target] = make(map[string][]ir.FeatureColumn)
 			fcTargetMap = fcMap[target]
+		}
+		for f := range fcTargetMap {
+			if _, ok := selectFieldTypeMap[f]; !ok {
+				return fmt.Errorf("Unknown column '%s' in 'column clause'", f)
+			}
 		}
 		// ================== MAIN LOOP ==================
 		// Update or generate FeatureColumn for each selected field:
