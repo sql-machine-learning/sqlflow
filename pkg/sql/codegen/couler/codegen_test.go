@@ -114,8 +114,8 @@ func TestCompileCoulerProgram(t *testing.T) {
 	a.NoError(e)
 	defer os.Remove(cfFileName)
 
-	os.Setenv("SQLFLOW_COULER_CLUSTER_CONFIG", cfFileName)
-	defer os.Unsetenv("SQLFLOW_COULER_CLUSTER_CONFIG")
+	os.Setenv("SQLFLOW_WORKFLOW_CLUSTER_CONFIG", cfFileName)
+	defer os.Unsetenv("SQLFLOW_WORKFLOW_CLUSTER_CONFIG")
 
 	out, e := Compile(testCoulerProgram)
 	a.NoError(e)

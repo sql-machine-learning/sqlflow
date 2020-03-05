@@ -56,15 +56,15 @@ func getStepEnvs(session *pb.Session) (map[string]string, error) {
 		if len(pair) != 2 {
 			return nil, fmt.Errorf("env: %s should format key=value", env)
 		}
-		// should store oss sk in Kubernetes Secret
-		if strings.HasPrefix(pair[0], "SQLFLOW_OSS_") && pair[0] != "SQLFLOW_OSS_SK" {
+		// should not pass the secret data into env
+		if strings.HasPrefix(pair[0], "SQLFLOW_") && !strings.HasPrefix(pair[0], "SQLFLOW_WORKFLOW_") {
 			envs[pair[0]] = pair[1]
 		}
 	}
+	// if no specify submitter in session, using the default configuration on the server side.
 	if _, ok := envs["SQLFLOW_submitter"]; !ok {
 		envs["SQLFLOW_submitter"] = os.Getenv("SQLFLOW_submitter")
 	}
-	envs["SQLFLOW_PARSER_SERVER_PORT"] = os.Getenv("SQLFLOW_PARSER_SERVER_PORT")
 	return envs, nil
 }
 
@@ -153,7 +153,7 @@ func GenCode(programIR []ir.SQLFlowStmt, session *pb.Session) (string, error) {
 func Compile(coulerProgram string) (string, error) {
 	cmdline := bytes.Buffer{}
 	fmt.Fprintf(&cmdline, "couler run --mode argo --workflow_name sqlflow ")
-	if c := os.Getenv("SQLFLOW_COULER_CLUSTER_CONFIG"); len(c) > 0 {
+	if c := os.Getenv("SQLFLOW_WORKFLOW_CLUSTER_CONFIG"); len(c) > 0 {
 		fmt.Fprintf(&cmdline, "--cluster_config %s ", c)
 	}
 	fmt.Fprintf(&cmdline, "--file -")
