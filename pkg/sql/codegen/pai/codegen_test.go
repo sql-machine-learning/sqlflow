@@ -76,10 +76,6 @@ func hasExportedLocal(code string) bool {
 			return false
 		}
 	}
-	r := regexp.MustCompile(`\bmodel_params=model_params_constructed,`)
-	if len(r.FindStringIndex(code)) <= 0 {
-		return false
-	}
 	return true
 }
 

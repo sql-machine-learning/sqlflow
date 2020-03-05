@@ -119,6 +119,9 @@ except:
 
 feature_columns = eval(feature_columns_code)
 
+# NOTE(typhoonzero): No need to eval model_params["optimizer"] and model_params["loss"]
+# because predicting do not need these parameters.
+
 if isinstance(estimator, types.FunctionType):
     is_estimator = False
 else:
@@ -174,6 +177,8 @@ model_params,
 feature_columns_code) = model.load_metas("{{.OSSModelDir}}", "tensorflow_model_desc")
 
 feature_columns = eval(feature_columns_code)
+# NOTE(typhoonzero): No need to eval model_params["optimizer"] and model_params["loss"]
+# because predicting do not need these parameters.
  
 explain.explain(datasource="{{.DataSource}}",
                 estimator_cls=eval(estimator),
