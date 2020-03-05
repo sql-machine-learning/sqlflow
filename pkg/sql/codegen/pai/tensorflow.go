@@ -171,8 +171,7 @@ func getTFPAICmd(cc *ClusterConfig, tarball, modelName, ossModelPath, trainTable
 	if cc.Worker.Count > 1 {
 		cmd = fmt.Sprintf("%s -Dcluster=%s", cmd, cfQuote)
 	} else {
-		// TODO(typhoonzero): configure single node gpu resource if needed.
-		cmd = fmt.Sprintf("%s -DgpuRequired='0'", cmd)
+		cmd = fmt.Sprintf("%s -DgpuRequired='%d'", cmd, cc.Worker.GPU)
 	}
 	return cmd, nil
 }
