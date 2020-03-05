@@ -78,8 +78,8 @@ func RunSQLProgram(sqlProgram string, modelDir string, session *pb.Session) *pip
 // TODO(wangkuiyi): Make RunSQLProgram return an error in addition to
 // *pipe.Reader, and remove the calls to log.Printf.
 func SubmitWorkflow(sqlProgram string, modelDir string, session *pb.Session) *pipe.Reader {
-	if os.Getenv("SQLFLOW_ARGO_UI_ENDPOINT") == "" {
-		log.Fatalf("should set SQLFLOW_ARGO_UI_ENDPOINT if enable argo mode.")
+	if os.Getenv("SQLFLOW_WORKFLOW_LOGVIEW_ENDPOINT") == "" {
+		log.Fatalf("should set SQLFLOW_WORKFLOW_LOGVIEW_ENDPOINT if enable argo mode.")
 	}
 	rd, wr := pipe.Pipe()
 	startTime := time.Now().Second()

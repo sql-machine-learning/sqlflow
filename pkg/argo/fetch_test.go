@@ -159,8 +159,8 @@ func TestFetch(t *testing.T) {
 	if os.Getenv("SQLFLOW_TEST") != "workflow" {
 		t.Skip("argo: skip workflow tests")
 	}
-	os.Setenv("SQLFLOW_ARGO_UI_ENDPOINT", "http://localhost:8001")
-	defer os.Unsetenv("SQLFLOW_ARGO_UI_ENDPOINT")
+	os.Setenv("SQLFLOW_WORKFLOW_LOGVIEW_ENDPOINT", "http://localhost:8001")
+	defer os.Unsetenv("SQLFLOW_WORKFLOW_LOGVIEW_ENDPOINT")
 
 	if os.Getenv("SQLFLOW_WORKFLOW_STEP_IMAGE") != "" {
 		stepImage = os.Getenv("SQLFLOW_WORKFLOW_STEP_IMAGE")

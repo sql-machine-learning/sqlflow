@@ -19,7 +19,7 @@ if [[ $(git diff --name-only HEAD..develop|awk -F. '{print $NF}'|uniq) == md ]];
 fi
 
 export SQLFLOW_TEST=workflow
-export SQLFLOW_ARGO_UI_ENDPOINT=http://localhost:8001
+export SQLFLOW_WORKFLOW_LOGVIEW_ENDPOINT=http://localhost:8001
 ############# Run Couler unit tests #############
 pip -q install -r python/couler/requirements.txt
 
