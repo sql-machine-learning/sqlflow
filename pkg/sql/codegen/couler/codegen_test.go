@@ -83,7 +83,6 @@ func TestCoulerCodegen(t *testing.T) {
 	a := assert.New(t)
 	sqlIR := mockSQLProgramIR()
 	os.Setenv("SQLFLOW_OSS_AK", "oss_key")
-	os.Setenv("SQLFLOW_OSS_SK", "oss_sk")
 	os.Setenv("SQLFLOW_WORKFLOW_SECRET", `{"sqlflow-secret":{"oss_sk": "oss_sk"}}`)
 	defer os.Unsetenv("SQLFLOW_OSS_AK")
 	code, err := GenCode(sqlIR, &pb.Session{})
@@ -92,7 +91,7 @@ func TestCoulerCodegen(t *testing.T) {
 	r, _ := regexp.Compile(`repl -e "(.*);"`)
 	a.Equal(r.FindStringSubmatch(code)[1], "SELECT * FROM iris.train limit 10")
 	a.True(strings.Contains(code, `step_envs["SQLFLOW_OSS_AK"] = '''oss_key'''`))
-	a.False(strings.Contains(code, `step_envs["SQLFLOW_OSS_SK"] = '''oss_sk'''`))
+	a.False(strings.Contains(code, `step_envs["SQLFLOW_WORKFLOW_SECRET"]`))
 	a.True(strings.Contains(code, `couler.clean_workflow_after_seconds_finished(86400)`))
 	a.True(strings.Contains(code, `couler.secret(secret_data, name="sqlflow-secret", dry_run=True)`))
 
