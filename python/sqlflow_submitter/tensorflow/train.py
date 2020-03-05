@@ -239,6 +239,9 @@ def estimator_train_and_save(
         # NOTE(typhoonzero): if only do training, no validation result will be printed.
         classifier.train(lambda: train_input_fn(), max_steps=train_max_steps)
 
+    if is_pai and FLAGS.task_index != 0:
+        print("skip exporting model on worker != 0")
+        return
     # export saved model for prediction
     if "feature_columns" in model_params:
         all_feature_columns = model_params["feature_columns"]

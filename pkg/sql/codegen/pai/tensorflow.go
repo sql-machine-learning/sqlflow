@@ -29,6 +29,15 @@ import (
 
 // TFTrainAndSave generates PAI-TF train program.
 func TFTrainAndSave(ir *ir.TrainStmt, session *pb.Session, modelPath string, cc *ClusterConfig) (string, error) {
+	// Distributed training must call train_and_evaluate, which need the user to specify validation.select
+	valSelect, valOK := ir.Attributes["validation.select"]
+	hasVal := true
+	if !valOK || valSelect.(string) == "" {
+		hasVal = false
+	}
+	if cc.Worker.Count > 1 && !hasVal {
+		return "", fmt.Errorf("Distributed training must specify WITH validation.select")
+	}
 	currProject, err := database.GetDatabaseName(session.DbConnStr)
 	if err != nil {
 		return "", err

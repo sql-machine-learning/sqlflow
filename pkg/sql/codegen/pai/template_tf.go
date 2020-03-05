@@ -64,11 +64,12 @@ else:
 # Keras single node is using h5 format to save the model, no need to deal with export model format.
 # Keras distributed mode will use estimator, so this is also needed.
 if is_estimator or {{.NumWorkers}} > 1:
-    with open("exported_path", "r") as fn:
-        saved_model_path = fn.read()
-
-    model.save_dir("{{.OSSModelDir}}", saved_model_path)
-    model.save_file("{{.OSSModelDir}}", "exported_path")
+    FLAGS = tf.app.flags.FLAGS
+    if FLAGS.task_index == 0:
+        with open("exported_path", "r") as fn:
+            saved_model_path = fn.read()
+        model.save_dir("{{.OSSModelDir}}", saved_model_path)
+        model.save_file("{{.OSSModelDir}}", "exported_path")
 
 model.save_metas("{{.OSSModelDir}}",
            {{.NumWorkers}},
