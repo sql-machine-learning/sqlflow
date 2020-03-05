@@ -79,11 +79,10 @@ model.save_metas("{{.OSSModelDir}}",
            feature_metas,
            label_meta,
            model_params,
-           feature_columns)
+           feature_columns_code)
 `
 
 const paiRequirementsTmplText = `
-dill==0.3.1.1
 adanet==0.8.0
 numpy==1.16.2
 pandas==0.24.2
@@ -117,7 +116,12 @@ except:
  feature_metas,
  label_meta,
  model_params,
- feature_columns) = model.load_metas("{{.OSSModelDir}}", "tensorflow_model_desc")
+ feature_columns_code) = model.load_metas("{{.OSSModelDir}}", "tensorflow_model_desc")
+
+feature_columns = eval(feature_columns_code)
+
+# NOTE(typhoonzero): No need to eval model_params["optimizer"] and model_params["loss"]
+# because predicting do not need these parameters.
 
 if isinstance(estimator, types.FunctionType):
     is_estimator = False
@@ -171,7 +175,11 @@ feature_column_names,
 feature_metas,
 label_meta,
 model_params,
-feature_columns) = model.load_metas("{{.OSSModelDir}}", "tensorflow_model_desc")
+feature_columns_code) = model.load_metas("{{.OSSModelDir}}", "tensorflow_model_desc")
+
+feature_columns = eval(feature_columns_code)
+# NOTE(typhoonzero): No need to eval model_params["optimizer"] and model_params["loss"]
+# because predicting do not need these parameters.
  
 explain.explain(datasource="{{.DataSource}}",
                 estimator_cls=eval(estimator),

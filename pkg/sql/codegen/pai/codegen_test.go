@@ -33,7 +33,6 @@ var exportedLocal = []string{
 	"feature_columns",
 	"feature_column_names",
 	"feature_metas",
-	"model_params",
 }
 
 var knownTrainParams = append(
