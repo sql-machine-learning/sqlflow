@@ -165,7 +165,7 @@ func Compile(coulerProgram string) (string, error) {
 	cmd.Stdin = strings.NewReader(coulerProgram)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("failed %s, %v", cmd, err)
+		return "", fmt.Errorf("failed %s, %v %s", cmd, err, out)
 	}
 	return string(out), nil
 }

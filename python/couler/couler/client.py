@@ -40,8 +40,8 @@ def run(args):
 
     os.environ["workflow_name"] = args.workflow_name
 
-    # TODO: use mode to decide how to run
-    call(["python", args.file], env=os.environ)
+    # TODO(yancey1989):remove subprocess and the `mode` argument
+    return call(["python", args.file], env=os.environ)
 
 
 def main():
@@ -54,7 +54,7 @@ def main():
     add_run_params(run_parser)
 
     args, _ = parser.parse_known_args()
-    args.func(args)
+    return args.func(args)
 
 
 if __name__ == "__main__":

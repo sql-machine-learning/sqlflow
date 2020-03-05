@@ -39,6 +39,7 @@ type coulerFiller struct {
 
 const coulerTemplateText = `
 import couler.argo as couler
+import json
 datasource = "{{ .DataSource }}"
 
 step_envs = dict()
