@@ -313,6 +313,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseEmptyDataset", CaseEmptyDataset)
 	t.Run("CaseLabelColumnNotExist", CaseLabelColumnNotExist)
 	t.Run("CaseTrainSQL", CaseTrainSQL)
+	t.Run("CaseTypoInColumnClause", CaseTypoInColumnClause)
 	t.Run("CaseTrainWithCommaSeparatedLabel", CaseTrainWithCommaSeparatedLabel)
 
 	t.Run("CaseTrainBoostedTreesEstimatorAndExplain", CaseTrainBoostedTreesEstimatorAndExplain)
@@ -746,6 +747,20 @@ FROM %s LIMIT 5;`, casePredictTable)
 		}
 		a.False(nilCount == 4)
 	}
+}
+
+func CaseTypoInColumnClause(t *testing.T) {
+	trainSQL := fmt.Sprintf(`
+	SELECT * FROM %s
+	TO TRAIN DNNClassifier WITH
+		model.n_classes = 3,
+		model.hidden_units = [10, 20],
+		validation.select = "SELECT * FROM %s LIMIT 30"
+	COLUMN typo, sepal_length, sepal_width, petal_length, petal_width
+	LABEL class
+	INTO %s;
+	`, caseTrainTable, caseTrainTable, caseInto)
+	connectAndRunSQLShouldError(trainSQL)
 }
 
 func CaseTrainBoostedTreesEstimatorAndExplain(t *testing.T) {
