@@ -121,18 +121,22 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
 
     classifier.compile(optimizer=optimizer, loss=loss, metrics=keras_metrics)
 
-    if is_pai and len(FLAGS.worker_hosts.split(",")) > 1:
+    # if is_pai and len(FLAGS.worker_hosts.split(",")) > 1:
+    if True:
         # NOTE(typhoonzero): for distributed training, convert to estimator and run.
-        cluster, task_type, task_index = make_distributed_info_without_evaluator(
-            FLAGS)
-        dump_into_tf_config(cluster, task_type, task_index)
-        dist_strategy = tf.contrib.distribute.ParameterServerStrategy()
-        config = tf.estimator.RunConfig(
-            save_checkpoints_steps=save_checkpoints_steps,
-            train_distribute=dist_strategy,
-            session_config=tf.ConfigProto(log_device_placement=True))
+        # cluster, task_type, task_index = make_distributed_info_without_evaluator(
+        #     FLAGS)
+        # dump_into_tf_config(cluster, task_type, task_index)
+        # dist_strategy = tf.contrib.distribute.ParameterServerStrategy()
+        # config = tf.estimator.RunConfig(
+        #     save_checkpoints_steps=save_checkpoints_steps,
+        #     train_distribute=dist_strategy,
+        #     session_config=tf.ConfigProto(log_device_placement=True))
+        # keras_estimator = tf.keras.estimator.model_to_estimator(
+        #     classifier, model_dir=FLAGS.checkpointDir, config=config)
+        print("before model_to_estimator")
         keras_estimator = tf.keras.estimator.model_to_estimator(
-            classifier, model_dir=FLAGS.checkpointDir, config=config)
+            classifier, checkpoint_format="saver")
         train_compiled_estimator(keras_estimator, model_params, save, is_pai,
                                  FLAGS, datasource, select, validate_select,
                                  feature_column_names, feature_metas,
