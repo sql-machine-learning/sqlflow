@@ -83,6 +83,9 @@ for optimizer_arg in ["optimizer", "dnn_optimizer", "linear_optimizer"]:
     if optimizer_arg in model_params_constructed:
         model_params_constructed[optimizer_arg] = eval(model_params_constructed[optimizer_arg])
 
+if "loss" in model_params_constructed:
+    model_params_constructed["loss"] = eval(model_params_constructed["loss"])
+
 # feature_columns_code will be used to save the training informations together
 # with the saved model.
 feature_columns_code = """{{.FeatureColumnCode}}"""
