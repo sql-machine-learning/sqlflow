@@ -168,7 +168,7 @@ func attrToPythonValue(attr interface{}) string {
 		// TODO(typhoonzero): support []float etc.
 		return "[]"
 	case string:
-		return attr.(string)
+		return fmt.Sprintf("\"%s\"", attr.(string))
 	default:
 		return ""
 	}

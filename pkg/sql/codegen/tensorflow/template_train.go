@@ -33,6 +33,7 @@ type trainFiller struct {
 }
 
 const tfTrainTemplateText = `
+import copy
 import tensorflow as tf
 from sqlflow_submitter.tensorflow.train import train, TF_VERSION_2
 from tensorflow.estimator import DNNClassifier, DNNRegressor, LinearClassifier, LinearRegressor, BoostedTreesClassifier, BoostedTreesRegressor, DNNLinearCombinedClassifier, DNNLinearCombinedRegressor
@@ -75,7 +76,17 @@ model_params=dict()
 model_params["{{$k}}"]={{$v | attrToPythonValue}}
 {{end}}
 
-feature_columns = {{.FeatureColumnCode}}
+# Construct optimizer objects to pass to model initializer.
+# The original model_params is serializable (do not have tf.xxx objects).
+model_params_constructed = copy.deepcopy(model_params)
+for optimizer_arg in ["optimizer", "dnn_optimizer", "linear_optimizer"]:
+    if optimizer_arg in model_params_constructed:
+        model_params_constructed[optimizer_arg] = eval(model_params_constructed[optimizer_arg])
+
+# feature_columns_code will be used to save the training informations together
+# with the saved model.
+feature_columns_code = """{{.FeatureColumnCode}}"""
+feature_columns = eval(feature_columns_code)
 
 train_max_steps = {{index .TrainParams "max_steps" | attrToPythonValue}}
 train_max_steps = None if train_max_steps == 0 else train_max_steps
@@ -88,7 +99,7 @@ train(datasource="{{.DataSource}}",
       feature_column_names=feature_column_names,
       feature_metas=feature_metas,
       label_meta=label_meta,
-      model_params=model_params,
+      model_params=model_params_constructed,
       metric_names="{{index .ValidationParams "metrics"}}".split(","),
       save="{{.Save}}",
       batch_size={{index .TrainParams "batch_size" | attrToPythonValue}},
