@@ -338,11 +338,40 @@ func deriveFeatureColumn(fcMap ColumnMap, columnTargets []string, fmMap FieldDes
 			fcMap[target] = make(map[string][]ir.FeatureColumn)
 			fcTargetMap = fcMap[target]
 		}
+		fcMap[target] = make(map[string][]ir.FeatureColumn)
 		for f := range fcTargetMap {
 			if _, ok := selectFieldTypeMap[f]; !ok {
-				return fmt.Errorf("Unknown column '%s' in 'column clause'", f)
+				if len(fcTargetMap[f]) != 1 {
+					return fmt.Errorf("cannot expand '%s' in 'column clause'", f)
+				}
+				// Try as regex to match the selected fields
+				r, e := regexp.Compile("(?i)^" + f + "$")
+				if e != nil {
+					return fmt.Errorf("unknown column '%s' in 'column clause'", f)
+				}
+				hasMatch := false
+				for sf := range selectFieldTypeMap {
+					if r.MatchString(sf) {
+						applied, err := fcTargetMap[f][0].ApplyTo(sf)
+						if err != nil {
+							return err
+						}
+						if len(applied.GetFieldDesc()) != 0 {
+							applied.GetFieldDesc()[0].Shape = fmMap[sf].Shape
+						}
+						fcMap[target][sf] = []ir.FeatureColumn{applied}
+						hasMatch = true
+					}
+				}
+				if !hasMatch {
+					return fmt.Errorf("'%s' in 'column clause' does not match any selected fields", f)
+				}
+				delete(fmMap, f)
+			} else {
+				fcMap[target][f] = fcTargetMap[f]
 			}
 		}
+		fcTargetMap = fcMap[target]
 		// ================== MAIN LOOP ==================
 		// Update or generate FeatureColumn for each selected field:
 		for slctKey := range selectFieldTypeMap {
