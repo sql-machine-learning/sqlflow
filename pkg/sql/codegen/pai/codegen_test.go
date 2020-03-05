@@ -33,7 +33,6 @@ var exportedLocal = []string{
 	"feature_columns",
 	"feature_column_names",
 	"feature_metas",
-	"model_params",
 }
 
 var knownTrainParams = append(
@@ -76,6 +75,10 @@ func hasExportedLocal(code string) bool {
 		if len(r.FindStringIndex(code)) <= 0 {
 			return false
 		}
+	}
+	r := regexp.MustCompile(`\bmodel_params=model_params_constructed,`)
+	if len(r.FindStringIndex(code)) <= 0 {
+		return false
 	}
 	return true
 }
