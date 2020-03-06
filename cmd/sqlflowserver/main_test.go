@@ -1851,7 +1851,7 @@ func checkWorkflow(ctx context.Context, cli pb.SQLFlowClient, stream pb.SQLFlow_
 }
 
 func CaseTrainDistributedPAIArgo(t *testing.T) {
-	if os.Getenv("SQLFLOW_submitter") != "pai" || os.Getenv("SQLFLOW_submitter") != "alisa" {
+	if os.Getenv("SQLFLOW_submitter") != "pai" && os.Getenv("SQLFLOW_submitter") != "alisa" {
 		t.Skip("Skip PAI case.")
 	}
 	a := assert.New(t)
