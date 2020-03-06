@@ -18,7 +18,7 @@ import "fmt"
 // FeatureColumn corresponds to the COLUMN clause in TO TRAIN.
 type FeatureColumn interface {
 	GetFieldDesc() []*FieldDesc
-	ApplyTo(string) (FeatureColumn, error)
+	ApplyTo(*FieldDesc) (FeatureColumn, error)
 }
 
 // FieldDesc describes a field used as the input to a feature column.
@@ -57,16 +57,8 @@ func (c *NumericColumn) GetFieldDesc() []*FieldDesc {
 }
 
 // ApplyTo applies the FeatureColumn to a new field
-func (c *NumericColumn) ApplyTo(name string) (FeatureColumn, error) {
-	return &NumericColumn{&FieldDesc{
-		Name:       name,
-		DType:      c.FieldDesc.DType,
-		Delimiter:  c.FieldDesc.Delimiter,
-		Shape:      c.FieldDesc.Shape,
-		IsSparse:   c.FieldDesc.IsSparse,
-		Vocabulary: c.FieldDesc.Vocabulary,
-		MaxID:      c.FieldDesc.MaxID,
-	}}, nil
+func (c *NumericColumn) ApplyTo(other *FieldDesc) (FeatureColumn, error) {
+	return &NumericColumn{other}, nil
 }
 
 // BucketColumn represents `tf.feature_column.bucketized_column`
@@ -82,8 +74,8 @@ func (c *BucketColumn) GetFieldDesc() []*FieldDesc {
 }
 
 // ApplyTo applies the FeatureColumn to a new field
-func (c *BucketColumn) ApplyTo(name string) (FeatureColumn, error) {
-	sourceColumn, err := c.SourceColumn.ApplyTo(name)
+func (c *BucketColumn) ApplyTo(other *FieldDesc) (FeatureColumn, error) {
+	sourceColumn, err := c.SourceColumn.ApplyTo(other)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +108,7 @@ func (c *CrossColumn) GetFieldDesc() []*FieldDesc {
 }
 
 // ApplyTo applies the FeatureColumn to a new field
-func (c *CrossColumn) ApplyTo(name string) (FeatureColumn, error) {
+func (c *CrossColumn) ApplyTo(other *FieldDesc) (FeatureColumn, error) {
 	return nil, fmt.Errorf("CrossColumn doesn't support the method ApplyTo")
 }
 
@@ -133,16 +125,8 @@ func (c *CategoryIDColumn) GetFieldDesc() []*FieldDesc {
 }
 
 // ApplyTo applies the FeatureColumn to a new field
-func (c *CategoryIDColumn) ApplyTo(name string) (FeatureColumn, error) {
-	return &CategoryIDColumn{&FieldDesc{
-		Name:       name,
-		DType:      c.FieldDesc.DType,
-		Delimiter:  c.FieldDesc.Delimiter,
-		Shape:      c.FieldDesc.Shape,
-		IsSparse:   c.FieldDesc.IsSparse,
-		Vocabulary: c.FieldDesc.Vocabulary,
-		MaxID:      c.FieldDesc.MaxID,
-	}, c.BucketSize}, nil
+func (c *CategoryIDColumn) ApplyTo(other *FieldDesc) (FeatureColumn, error) {
+	return &CategoryIDColumn{other, c.BucketSize}, nil
 }
 
 // CategoryHashColumn represents `tf.feature_column.categorical_column_with_hash_bucket`
@@ -158,18 +142,8 @@ func (c *CategoryHashColumn) GetFieldDesc() []*FieldDesc {
 }
 
 // ApplyTo applies the FeatureColumn to a new field
-func (c *CategoryHashColumn) ApplyTo(name string) (FeatureColumn, error) {
-	return &CategoryHashColumn{
-		&FieldDesc{
-			Name:       name,
-			DType:      c.FieldDesc.DType,
-			Delimiter:  c.FieldDesc.Delimiter,
-			Shape:      c.FieldDesc.Shape,
-			IsSparse:   c.FieldDesc.IsSparse,
-			Vocabulary: c.FieldDesc.Vocabulary,
-			MaxID:      c.FieldDesc.MaxID,
-		},
-		c.BucketSize}, nil
+func (c *CategoryHashColumn) ApplyTo(other *FieldDesc) (FeatureColumn, error) {
+	return &CategoryHashColumn{other, c.BucketSize}, nil
 }
 
 // SeqCategoryIDColumn represents `tf.feature_column.sequence_categorical_column_with_identity`
@@ -185,18 +159,8 @@ func (c *SeqCategoryIDColumn) GetFieldDesc() []*FieldDesc {
 }
 
 // ApplyTo applies the FeatureColumn to a new field
-func (c *SeqCategoryIDColumn) ApplyTo(name string) (FeatureColumn, error) {
-	return &SeqCategoryIDColumn{
-		&FieldDesc{
-			Name:       name,
-			DType:      c.FieldDesc.DType,
-			Delimiter:  c.FieldDesc.Delimiter,
-			Shape:      c.FieldDesc.Shape,
-			IsSparse:   c.FieldDesc.IsSparse,
-			Vocabulary: c.FieldDesc.Vocabulary,
-			MaxID:      c.FieldDesc.MaxID,
-		},
-		c.BucketSize}, nil
+func (c *SeqCategoryIDColumn) ApplyTo(other *FieldDesc) (FeatureColumn, error) {
+	return &SeqCategoryIDColumn{other, c.BucketSize}, nil
 }
 
 // EmbeddingColumn represents `tf.feature_column.embedding_column`
@@ -220,16 +184,16 @@ func (c *EmbeddingColumn) GetFieldDesc() []*FieldDesc {
 }
 
 // ApplyTo applies the FeatureColumn to a new field
-func (c *EmbeddingColumn) ApplyTo(name string) (FeatureColumn, error) {
+func (c *EmbeddingColumn) ApplyTo(other *FieldDesc) (FeatureColumn, error) {
 	ret := &EmbeddingColumn{
 		Dimension:   c.Dimension,
 		Combiner:    c.Combiner,
 		Initializer: c.Initializer,
-		Name:        name,
+		Name:        other.Name,
 	}
 	if c.CategoryColumn != nil {
 		var err error
-		ret.CategoryColumn, err = c.CategoryColumn.ApplyTo(name)
+		ret.CategoryColumn, err = c.CategoryColumn.ApplyTo(other)
 		if err != nil {
 			return nil, err
 		}
@@ -255,11 +219,11 @@ func (c *IndicatorColumn) GetFieldDesc() []*FieldDesc {
 }
 
 // ApplyTo applies the FeatureColumn to a new field
-func (c *IndicatorColumn) ApplyTo(name string) (FeatureColumn, error) {
-	ret := &IndicatorColumn{Name: name}
+func (c *IndicatorColumn) ApplyTo(other *FieldDesc) (FeatureColumn, error) {
+	ret := &IndicatorColumn{Name: other.Name}
 	if c.CategoryColumn != nil {
 		var err error
-		ret.CategoryColumn, err = c.CategoryColumn.ApplyTo(name)
+		ret.CategoryColumn, err = c.CategoryColumn.ApplyTo(other)
 		if err != nil {
 			return nil, err
 		}

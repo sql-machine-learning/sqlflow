@@ -314,7 +314,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseLabelColumnNotExist", CaseLabelColumnNotExist)
 	t.Run("CaseTrainSQL", CaseTrainSQL)
 	t.Run("CaseTrainPredictCategoricalFeature", CaseTrainPredictCategoricalFeature)
-
+	t.Run("CaseTrainRegex", CaseTrainRegex)
 	t.Run("CaseTypoInColumnClause", CaseTypoInColumnClause)
 	t.Run("CaseTrainWithCommaSeparatedLabel", CaseTrainWithCommaSeparatedLabel)
 
@@ -771,6 +771,54 @@ FROM %s LIMIT 5;`, casePredictTable)
 		}
 		a.False(nilCount == 4)
 	}
+}
+
+func CaseTrainRegex(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := `
+SELECT * FROM housing.train
+TO TRAIN DNNRegressor WITH
+    model.hidden_units = [10, 20],
+    validation.select = "SELECT * FROM housing.test"
+COLUMN INDICATOR(CATEGORY_ID("f10|f9|f4", 1000))
+LABEL target
+INTO housing.dnn_model;
+`
+	_, _, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+
+	predSQL := `
+	SELECT * FROM housing.test
+	TO PREDICT housing.predict.class
+	USING housing.dnn_model;`
+	_, _, _, err = connectAndRunSQL(predSQL)
+	if err != nil {
+		a.Fail("Run predSQL error: %v", err)
+	}
+	trainSQL = `
+SELECT * FROM housing.train
+TO TRAIN DNNRegressora WITH
+    model.hidden_units = [10, 20],
+    validation.select = "SELECT * FROM %s "
+COLUMN INDICATOR(CATEGORY_ID("a.*", 1000))
+LABEL target
+INTO housing.dnn_model;
+` // don't match any column
+	connectAndRunSQLShouldError(trainSQL)
+
+	trainSQL = `
+SELECT * FROM housing.train
+TO TRAIN DNNRegressor WITH
+    model.hidden_units = [10, 20],
+    validation.select = "SELECT * FROM %s "
+COLUMN INDICATOR(CATEGORY_ID("[*", 1000))
+LABEL target
+INTO housing.dnn_model;
+` // invalide regex
+	connectAndRunSQLShouldError(trainSQL)
+
 }
 
 func CaseTypoInColumnClause(t *testing.T) {

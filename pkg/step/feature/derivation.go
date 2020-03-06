@@ -322,7 +322,7 @@ func getFeatureColumnTargets(trainStmt *ir.TrainStmt) []string {
 }
 
 // deriveFeatureColumn will fill in "fcMap" with derivated FeatureColumns.
-func deriveFeatureColumn(fcMap ColumnMap, columnTargets []string, fmMap FieldDescMap, selectFieldTypeMap fieldTypes, trainStmt *ir.TrainStmt) error {
+func deriveFeatureColumn(fcMap ColumnMap, columnTargets []string, fdMap FieldDescMap, selectFieldTypeMap fieldTypes, trainStmt *ir.TrainStmt) error {
 	// 1. Infer omitted category_id_column for embedding_columns
 	// 2. Add derivated feature column.
 	//
@@ -352,12 +352,9 @@ func deriveFeatureColumn(fcMap ColumnMap, columnTargets []string, fmMap FieldDes
 				hasMatch := false
 				for sf := range selectFieldTypeMap {
 					if r.MatchString(sf) {
-						applied, err := fcTargetMap[f][0].ApplyTo(sf)
+						applied, err := fcTargetMap[f][0].ApplyTo(fdMap[sf])
 						if err != nil {
 							return err
-						}
-						if len(applied.GetFieldDesc()) != 0 {
-							applied.GetFieldDesc()[0].Shape = fmMap[sf].Shape
 						}
 						fcMap[target][sf] = []ir.FeatureColumn{applied}
 						hasMatch = true
@@ -366,7 +363,7 @@ func deriveFeatureColumn(fcMap ColumnMap, columnTargets []string, fmMap FieldDes
 				if !hasMatch {
 					return fmt.Errorf("'%s' in 'column clause' does not match any selected fields", f)
 				}
-				delete(fmMap, f)
+				delete(fdMap, f)
 			} else {
 				fcMap[target][f] = fcTargetMap[f]
 			}
@@ -380,7 +377,7 @@ func deriveFeatureColumn(fcMap ColumnMap, columnTargets []string, fmMap FieldDes
 				continue
 			}
 			if fcList, ok := fcTargetMap[slctKey]; ok {
-				err := updateFeatureColumn(fcList, fmMap)
+				err := updateFeatureColumn(fcList, fdMap)
 				if err != nil {
 					return err
 				}
@@ -390,7 +387,7 @@ func deriveFeatureColumn(fcMap ColumnMap, columnTargets []string, fmMap FieldDes
 					// full list of the columns to use.
 					continue
 				}
-				err := newFeatureColumn(fcTargetMap, fmMap, slctKey)
+				err := newFeatureColumn(fcTargetMap, fdMap, slctKey)
 				if err != nil {
 					return err
 				}

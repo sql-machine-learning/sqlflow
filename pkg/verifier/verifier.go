@@ -92,18 +92,6 @@ func Verify(q string, db *database.DB) (FieldTypes, error) {
 	return ft, nil
 }
 
-func getExpressionFieldName(expr *parser.Expr) (string, error) {
-	if expr.Type != 0 {
-		return expr.Value, nil
-	}
-	if len(expr.Sexp) < 2 {
-		return "", fmt.Errorf("error column clause format: %s, expected FEATURE_COLUMN(key, ...)", expr.Sexp)
-	}
-	// NOTE(typhoonzero): recursively get the expression field name: the expression
-	// maybe: func(func(func(key, ...)))
-	return getExpressionFieldName(expr.Sexp[1])
-}
-
 // VerifyColumnNameAndType check train and pred clause uses has the same feature columns
 // 1. every column field in the training clause is selected in the pred clause, and they are of the same type
 func VerifyColumnNameAndType(trainParsed, predParsed *parser.SQLFlowSelectStmt, db *database.DB) error {
@@ -111,24 +99,17 @@ func VerifyColumnNameAndType(trainParsed, predParsed *parser.SQLFlowSelectStmt, 
 	if e != nil {
 		return e
 	}
-
 	predFields, e := Verify(predParsed.StandardSelect.String(), db)
 	if e != nil {
 		return e
 	}
-
-	for _, c := range trainParsed.Columns["feature_columns"] {
-		name, err := getExpressionFieldName(c)
-		if err != nil {
-			return err
-		}
-		it, ok := predFields.Get(name)
+	for n, t := range trainFields {
+		pt, ok := predFields.Get(n)
 		if !ok {
-			return fmt.Errorf("predFields doesn't contain column %s", name)
+			return fmt.Errorf("the predict statement doesn't contain column %s", n)
 		}
-		tt, _ := trainFields.Get(name)
-		if it != tt {
-			return fmt.Errorf("field %s type dismatch %v(pred) vs %v(train)", name, it, tt)
+		if t != pt {
+			return fmt.Errorf("field %s type dismatch %v(predict) vs %v(train)", n, pt, t)
 		}
 	}
 	return nil

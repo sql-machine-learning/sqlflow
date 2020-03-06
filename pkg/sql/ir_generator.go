@@ -640,13 +640,15 @@ func parseCategoryHashColumn(el *parser.ExprList) (*ir.CategoryHashColumn, error
 
 func buildCategoryIDForEmbeddingOrIndicator(el *parser.ExprList) (ir.FeatureColumn, string, error) {
 	var catColumn ir.FeatureColumn
-	colName := "" // only used when catColumn == nil
 	sourceExprList := (*el)[1]
 	if sourceExprList.Type != 0 {
 		// 1. key is a IDET string: EMBEDDING(col_name, size), fill a nil in CategoryColumn for later
 		// feature derivation.
-		catColumn = nil
-		return nil, sourceExprList.Value, nil
+		name, err := expression2string(sourceExprList)
+		if err != nil {
+			return nil, "", fmt.Errorf("bad INDICATOR/EMBEDDING key: %s, err: %s", sourceExprList, err)
+		}
+		return nil, name, nil
 	}
 	source, err := parseFeatureColumn(&sourceExprList.Sexp)
 	if err != nil {
@@ -681,7 +683,7 @@ func buildCategoryIDForEmbeddingOrIndicator(el *parser.ExprList) (ir.FeatureColu
 		}
 		catColumn = tmpCatColumn
 	}
-	return catColumn, colName, nil
+	return catColumn, "", nil
 }
 
 func parseEmbeddingColumn(el *parser.ExprList) (*ir.EmbeddingColumn, error) {
