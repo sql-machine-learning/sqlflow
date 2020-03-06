@@ -1558,7 +1558,7 @@ FROM %s.pai_dnn_predict LIMIT 5;`, caseDB)
 		a.False(nilCount == 4)
 	}
 
-	explainSQL := fmt.Sprintf(`SELECT * FROM %s LIMIT 10
+	explainSQL := fmt.Sprintf(`SELECT * FROM %s
 TO EXPLAIN e2etest_pai_dnn
 WITH label_col=class
 USING TreeExplainer
