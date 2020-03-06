@@ -1415,7 +1415,7 @@ LABEL class
 INTO e2etest_dnn_model_distributed;`, caseTrainTable)
 	connectAndRunSQLShouldError(trainSQL)
 
-	trainSQL := fmt.Sprintf(`SELECT * FROM %s
+	trainSQL = fmt.Sprintf(`SELECT * FROM %s
 TO TRAIN DNNClassifier
 WITH
 	model.n_classes = 3,
