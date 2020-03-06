@@ -17,11 +17,11 @@ var (
 	// SelectCases is a list of SELECT statements that must pass
 	// the parser.
 	SelectCases = []string{
-		`select 1`,
+		`select a from b`,
 		`select * from my_table`,
 		`-- this is a comment
 select
-1`,
+a from b`,
 		`SELECT
     customerNumber,
     checkNumber,

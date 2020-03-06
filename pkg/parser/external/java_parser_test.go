@@ -14,6 +14,7 @@
 package external
 
 import (
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -34,5 +35,14 @@ func TestExternalParserCommonCasesForMaxCompute(t *testing.T) {
 func TestExternalParserCommonCasesForCalcite(t *testing.T) {
 	a := assert.New(t)
 	p, _ := NewParser("calcite")
+	commonThirdPartyCases(p, a)
+}
+
+func TestExternalParserCommonCasesForAlisa(t *testing.T) {
+	if os.Getenv("SQLFLOW_submitter") != "alisa" {
+		t.Skip("Skip alisa case.")
+	}
+	a := assert.New(t)
+	p, _ := NewParser("alisa")
 	commonThirdPartyCases(p, a)
 }

@@ -15,19 +15,34 @@ package external
 
 import (
 	"fmt"
-	"strings"
-
 	"github.com/stretchr/testify/assert"
+	"strings"
 )
+
+func parserAcceptSemicolon(p Parser) bool {
+	switch pr := p.(type) {
+	case *javaParser:
+		if pr.typ == "odps" {
+			return true
+		}
+		return false
+	default:
+		return true
+	}
+}
 
 func commonThirdPartyCases(p Parser, a *assert.Assertions) {
 	// one standard SQL statement
 	for _, sql := range SelectCases {
-		s, idx, err := p.Parse(sql)
+		s, idx, err := p.Parse(sql + ";")
 		a.NoError(err)
 		a.Equal(-1, idx)
 		a.Equal(1, len(s))
-		a.Equal(sql, s[0])
+		if parserAcceptSemicolon(p) {
+			a.Equal(sql+`;`, s[0])
+		} else {
+			a.Equal(sql, s[0])
+		}
 	}
 
 	{ // several standard SQL statements with comments
@@ -37,10 +52,10 @@ func commonThirdPartyCases(p Parser, a *assert.Assertions) {
 		a.Equal(-1, idx)
 		a.Equal(len(SelectCases), len(s))
 		for i := range s {
-			if _, ok := p.(*javaParser); ok {
-				a.Equal(SelectCases[i], s[i])
-			} else {
+			if parserAcceptSemicolon(p) {
 				a.Equal(SelectCases[i]+`;`, s[i])
+			} else {
+				a.Equal(SelectCases[i], s[i])
 			}
 		}
 	}
@@ -62,10 +77,10 @@ func commonThirdPartyCases(p Parser, a *assert.Assertions) {
 		a.NoError(err)
 		a.Equal(len(sql)+1+len(sql)+1, idx)
 		a.Equal(2, len(s))
-		if _, ok := p.(*javaParser); ok {
-			a.Equal(sql, s[0])
-		} else {
+		if parserAcceptSemicolon(p) {
 			a.Equal(sql+`;`, s[0])
+		} else {
+			a.Equal(sql, s[0])
 		}
 		a.Equal(sql+` `, s[1])
 	}
@@ -77,10 +92,10 @@ func commonThirdPartyCases(p Parser, a *assert.Assertions) {
 		a.NoError(err)
 		a.Equal(len(sql)+1+len(sql)+1, idx)
 		a.Equal(2, len(s))
-		if _, ok := p.(*javaParser); ok {
-			a.Equal(sql, s[0])
-		} else {
+		if parserAcceptSemicolon(p) {
 			a.Equal(sql+`;`, s[0])
+		} else {
+			a.Equal(sql, s[0])
 		}
 		a.Equal(sql+` `, s[1])
 	}
@@ -103,7 +118,7 @@ func commonThirdPartyCases(p Parser, a *assert.Assertions) {
 		a.Equal(sql+` `, s[0])
 	}
 
-	{ // non select statement before to train
+	if pr, ok := p.(*javaParser); !ok || pr.typ != "odps" { // non select statement before to train
 		sql := `describe table to train;`
 		s, idx, err := p.Parse(sql)
 		a.NotNil(err)
