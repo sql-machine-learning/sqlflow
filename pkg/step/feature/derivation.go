@@ -268,7 +268,7 @@ func InferFeatureColumns(trainStmt *ir.TrainStmt, dataSource string) error {
 
 	// TODO(typhoonzero): find a way to using subqueries like select * from (%s) AS a LIMIT 100
 	// q := trainStmt.Select
-	rows, err := fetchSamples(dataSource, trainStmt.Select)
+	rows, err := FetchSamples(dataSource, trainStmt.Select)
 	if err != nil {
 		return err
 	}
@@ -371,7 +371,8 @@ func deriveFeatureColumn(fcMap ColumnMap, columnTargets []string, fmMap FieldDes
 	return nil
 }
 
-func fetchSamples(dataSource string, query string) (*sql.Rows, error) {
+// FetchSamples returns Rows accoding to the input Query
+func FetchSamples(dataSource string, query string) (*sql.Rows, error) {
 	db, err := database.OpenAndConnectDB(dataSource)
 	if err != nil {
 		return nil, err
