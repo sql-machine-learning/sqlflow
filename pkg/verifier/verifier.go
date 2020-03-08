@@ -60,7 +60,7 @@ func Decomp(ident string) (tbl string, fld string) {
 //
 // It returns a FieldTypes describing types of fields in SELECT.
 func Verify(q string, db *database.DB) (FieldTypes, error) {
-	rows, err := feature.FetchSamples(db.URL(), q)
+	rows, err := feature.FetchSamples(db, q)
 	if err != nil {
 		return nil, err
 	}

@@ -46,15 +46,17 @@ func generateTrainStmtWithInferredColumns(slct *parser.SQLFlowSelectStmt, connSt
 	if err != nil {
 		return nil, err
 	}
-	if err := feature.InferFeatureColumns(trainStmt, connStr); err != nil {
-		return nil, err
-	}
 
 	db, err := database.OpenAndConnectDB(connStr)
 	if err != nil {
 		return nil, err
 	}
 	defer db.Close()
+
+	if err := feature.InferFeatureColumns(trainStmt, db); err != nil {
+		return nil, err
+	}
+
 	err = verifyTrainStmt(trainStmt, db, verifyLabel)
 	if err != nil {
 		return nil, err
