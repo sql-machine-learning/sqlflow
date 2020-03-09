@@ -2,7 +2,7 @@
 
 This is a tutorial on how to apply a Time Series Model on [energy dataset]( https://www.dropbox.com/s/pqenrr2mcvl0hk9/GEFCom2014.zip?dl=0). 
 
-The dataset is taken from the GEFCom2014 energy forecasting [competition](Tao Hong, Pierre Pinson, Shu Fan, Hamidreza Zareipour, Alberto Troccoli and Rob J. Hyndman, "Probabilistic energy forecasting: Global Energy Forecasting Competition 2014 and beyond", International Journal of Forecasting, vol.32, no.3, pp 896-913, July-September, 2016.). It consists of years of hourly electricity load data from the New England ISO and also includes hourly temperature data. We just choose part of electricity load data which date range is from 2014-10-01 to 2014-12-31 to complete our tutorial. And, we load the dataset into MySQL manually.
+The dataset is taken from the GEFCom2014 energy forecasting [competition](Tao Hong, Pierre Pinson, Shu Fan, Hamidreza Zareipour, Alberto Troccoli and Rob J. Hyndman, "Probabilistic energy forecasting: Global Energy Forecasting Competition 2014 and beyond", International Journal of Forecasting, vol.32, no.3, pp 896-913, July-September, 2016.). It consists of years of hourly electricity load data from the New England ISO and also includes hourly temperature data. We just choose part of electricity load data whose date range is from 2014-10-01 to 2014-12-31 to complete our tutorial. And, we load the dataset into MySQL manually.
 
 In this notebook, we will demonstrate how to:
 
@@ -31,7 +31,7 @@ select count(*) from energy.raw;
 
 ### PART 1.1  Scale Data
 
-Because the raw data can't be used directly to build the model, we need to reconstruct the raw data into the series data instead. Before that, we need to scale the data first into the range of (0, 1). It should be noted that data scaling must be done before the data reconstruct shown in the next step.
+Because the raw data can't be used directly to build the model, we need to reconstruct the raw data into the series data instead. Before that, we need to scale the data first into the range of (0, 1). We apply the [min-max normalization](https://en.wikipedia.org/wiki/Feature_scaling#Rescaling_(min-max_normalization)) in this project. By the way, it should be noted that data scaling must be done before the data reconstruct shown in the next step.
 
 ```sql
 %%sqlflow
@@ -60,7 +60,7 @@ select * from energy.normalized limit 5;
 
 Then, you need to choose an appropriate timestep of the series (n_in) and you need to specify how much time-steps target data you want to predict (n_out) by the trained model. By the way, the `n_in` parameter can be tuned manually during the model training stage.
 
-As the following shows, because we want to train a model that `n_in = 10 `and `n_out=4` in the next stage, we construct a time series data that length is 14. The reconstruct MySQL Statement is:
+As the following shows, because we want to train a model that `n_in = 10 `and `n_out=4` in the next stage, we reconstruct a time series data that length is 14.  In MySQL, we use the method of `user variables @` to implement the function of Lag function in HIVE. The MySQL Statement is shown as follows.
 
 ```sql
 %%sqlflow
