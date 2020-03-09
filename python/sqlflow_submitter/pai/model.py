@@ -88,11 +88,15 @@ def save_dir(oss_model_dir, local_dir):
 def load_dir(oss_model_dir):
     bucket = get_models_bucket()
     path = remove_bucket_prefix(oss_model_dir)
+    prefix = "/".join(path.split("/")[:-1]) + "/"
     for obj in oss2.ObjectIterator(bucket, prefix=path):
+        # remove prefix when writing to local, e.g.
+        # remote: path/to/my/dir/
+        # local: dir/
         if obj.key.endswith("/"):
-            os.makedirs(obj.key)
+            os.makedirs(obj.key.replace(prefix, ""))
         else:
-            bucket.get_object_to_file(obj.key, obj.key)
+            bucket.get_object_to_file(obj.key, obj.key.replace(prefix, ""))
 
 
 def save_file(oss_model_dir, file_name):
@@ -122,9 +126,10 @@ def load_file(oss_model_dir, file_name):
     '''
     Load file from OSS to local directory.
     '''
-    oss_path = remove_bucket_prefix(oss_model_dir)
+    oss_file_path = "/".join([oss_model_dir.rstrip("/"), file_name])
+    oss_file_path = remove_bucket_prefix(oss_file_path)
     bucket = get_models_bucket()
-    bucket.get_object_to_file(oss_path, file_name)
+    bucket.get_object_to_file(oss_file_path, file_name)
 
 
 def load_string(oss_file_path):

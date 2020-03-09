@@ -71,11 +71,8 @@ def explain(datasource,
             oss_sk=None,
             oss_endpoint=None,
             oss_bucket_name=None):
-    if is_pai:
-        FLAGS = define_tf_flags()
-        model_params["model_dir"] = FLAGS.checkpointDir
-    else:
-        model_params['model_dir'] = save
+
+    model_params['model_dir'] = save
 
     def _input_fn():
         if is_pai:

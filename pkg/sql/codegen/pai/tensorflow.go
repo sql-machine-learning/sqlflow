@@ -44,11 +44,7 @@ func TFTrainAndSave(ir *ir.TrainStmt, session *pb.Session, modelPath string, cc 
 	if err != nil {
 		return "", err
 	}
-	ckptDir, err := checkpointURL(modelPath, currProject)
-	if err != nil {
-		return "", err
-	}
-
+	ckptDir := checkpointURL(modelPath, currProject)
 	code, err := tensorflow.Train(ir, session)
 	if err != nil {
 		return "", err
@@ -75,10 +71,7 @@ func TFLoadAndPredict(ir *ir.PredictStmt, session *pb.Session, modelPath string)
 	if err != nil {
 		return "", err
 	}
-	ossModelDir, err := checkpointURL(modelPath, currProject)
-	if err != nil {
-		return "", err
-	}
+	ossModelDir := checkpointURL(modelPath, currProject)
 	paiPredictTable := ""
 	if tensorflow.IsPAI() && ir.TmpPredictTable != "" {
 		paiPredictTable = ir.TmpPredictTable
@@ -106,10 +99,7 @@ func TFLoadAndExplain(ir *ir.ExplainStmt, session *pb.Session, modelPath string,
 	if err != nil {
 		return "", err
 	}
-	ossModelDir, err := checkpointURL(modelPath, currProject)
-	if err != nil {
-		return "", err
-	}
+	ossModelDir := checkpointURL(modelPath, currProject)
 	paiExplainTable := ""
 	if tensorflow.IsPAI() && ir.TmpExplainTable != "" {
 		paiExplainTable = ir.TmpExplainTable
@@ -136,17 +126,14 @@ func TFLoadAndExplain(ir *ir.ExplainStmt, session *pb.Session, modelPath string,
 	return code.String(), nil
 }
 
-func getTFPAICmd(cc *ClusterConfig, tarball, modelName, ossModelPath, trainTable, valTable, resTable, project string) (string, error) {
+func getTFPAICmd(cc *ClusterConfig, tarball, modelName, ossModelPath, trainTable, valTable, resTable, project, cwd string) (string, error) {
 	jobName := strings.Replace(strings.Join([]string{"sqlflow", modelName}, "_"), ".", "_", 0)
 	cfString, err := json.Marshal(cc)
 	if err != nil {
 		return "", err
 	}
 	cfQuote := strconv.Quote(string(cfString))
-	ckpDir, err := checkpointURL(ossModelPath, project)
-	if err != nil {
-		return "", err
-	}
+	ckpDir := checkpointURL(ossModelPath, project)
 
 	// submit table should format as: odps://<project>/tables/<table>,odps://<project>/tables/<table>...
 	submitTables, err := maxComputeTableURL(trainTable)
@@ -168,8 +155,8 @@ func getTFPAICmd(cc *ClusterConfig, tarball, modelName, ossModelPath, trainTable
 		}
 		outputTables = fmt.Sprintf("-Doutputs=%s", table)
 	}
-	tmpfile, err := ioutil.TempFile("/tmp", "sqlflow-paitemp")
-	// defer os.Remove(tmpfile.Name())
+	// temp files under cwd will be cleaned after the job is finished.
+	tmpfile, err := ioutil.TempFile(cwd, "sqlflow-paitemp-")
 
 	OssAk := os.Getenv("SQLFLOW_OSS_AK")
 	OssSk := os.Getenv("SQLFLOW_OSS_SK")

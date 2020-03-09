@@ -135,9 +135,8 @@ func TestTrainCodegen(t *testing.T) {
 	a.False(hasUnknownParameters(paiTFCode, knownTrainParams))
 
 	// check pai command string
-	ckpDir, err := checkpointURL(ossModelPath, "project")
-	a.NoError(err)
-	expectedPAICmd := fmt.Sprintf("pai -name tensorflow1150 -project algo_public_dev -DmaxHungTimeBeforeGCInSeconds=0 -DjobName=sqlflow_my_dnn_model -Dtags=dnn -Dscript=%s -DentryFile=entry.py -Dtables=odps://iris/tables/train,odps://iris/tables/test  -DcheckpointDir=\"%s\" -DgpuRequired='0'", scriptPath, ckpDir)
+	ckpDir := checkpointURL(ossModelPath, "project")
+	expectedPAICmd := fmt.Sprintf("pai -name tensorflow1150 -project algo_public_dev -DmaxHungTimeBeforeGCInSeconds=0 -DjobName=sqlflow_my_dnn_model -Dtags=dnn -Dscript=%s -DentryFile=entry.py -Dtables=odps://iris/tables/train,odps://iris/tables/test  -DhyperParameters=\"file://%s\" -DgpuRequired='0'", scriptPath, ckpDir)
 	a.Equal(expectedPAICmd, paiCmd)
 }
 
