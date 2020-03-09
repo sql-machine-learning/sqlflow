@@ -101,6 +101,7 @@ import types
 import tensorflow as tf
 from tensorflow.estimator import DNNClassifier, DNNRegressor, LinearClassifier, LinearRegressor, BoostedTreesClassifier, BoostedTreesRegressor, DNNLinearCombinedClassifier, DNNLinearCombinedRegressor
 from sqlflow_submitter.pai import model
+from sqlflow_submitter.pai.pai_distributed import define_tf_flags, set_oss_environs
 from sqlflow_submitter.tensorflow import predict
 try:
     import sqlflow_models
@@ -110,6 +111,9 @@ try:
     tf.enable_eager_execution()
 except:
     pass
+
+FLAGS = define_tf_flags()
+set_oss_environs(FLAGS)
 
 (estimator,
  feature_column_names,
@@ -135,6 +139,10 @@ else:
 # Keras distributed mode will use estimator, so this is also needed.
 if is_estimator:
     model.load_file("{{.OSSModelDir}}", "exported_path")
+    # NOTE(typhoonzero): directory "model_save" is hardcoded in codegen/tensorflow/codegen.go
+    model.load_dir("{{.OSSModelDir}}/model_save")
+else:
+    model.load_file("{{.OSSModelDir}}", "model_save")
 
 predict.pred(datasource="{{.DataSource}}",
              estimator=eval(estimator),
@@ -145,7 +153,7 @@ predict.pred(datasource="{{.DataSource}}",
              result_col_name=label_meta["feature_name"],
              feature_metas=feature_metas,
              model_params=model_params,
-             save="{{.OSSModelDir}}",
+             save="model_save",
              batch_size=1,
              is_pai="{{.IsPAI}}" == "true",
              pai_table="{{.PAITable}}")

@@ -92,13 +92,13 @@ def keras_predict(estimator, model_params, save, result_table, is_pai,
     # NOTE: must run predict one batch to initialize parameters
     # see: https://www.tensorflow.org/alpha/guide/keras/saving_and_serializing#saving_subclassed_models
     classifier.predict_on_batch(one_batch)
-    if is_pai:
-        print("loading from %s" % save)
-        # NOTE(typhoonzero): h5 file name is hard coded in tensorflow/codegen.go
-        model.load_file(save, "model_save")
-        classifier.load_weights("model_save")
-    else:
-        classifier.load_weights(save)
+    # if is_pai:
+    #     print("loading from %s" % save)
+    #     # NOTE(typhoonzero): h5 file name is hard coded in tensorflow/codegen.go
+    #     model.load_file(save, "model_save")
+    #     classifier.load_weights("model_save")
+    # else:
+    classifier.load_weights(save)
     pred_dataset = eval_input_fn(1, cache=True).make_one_shot_iterator()
     buff_rows = []
     column_names = feature_column_names[:]
@@ -261,11 +261,7 @@ def pred(datasource,
                       result_col_name, datasource, select, hdfs_namenode_addr,
                       hive_location, hdfs_user, hdfs_pass)
     else:
-        if is_pai:
-            FLAGS = define_tf_flags()
-            model_params["model_dir"] = FLAGS.checkpointDir
-        else:
-            model_params['model_dir'] = save
+        model_params['model_dir'] = save
         print("Start predicting using estimator model...")
         estimator_predict(estimator, model_params, save, result_table,
                           feature_column_names, feature_metas, result_col_name,

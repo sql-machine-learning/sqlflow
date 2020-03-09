@@ -270,19 +270,20 @@ func getOSSModelBucket(project string) (*oss.Bucket, error) {
 		return nil, fmt.Errorf("must define SQLFLOW_OSS_MODEL_ENDPOINT, SQLFLOW_OSS_AK, SQLFLOW_OSS_SK when using submitter maxcompute")
 	}
 
-	ossCheckpointDir, err := pai.GetOSSCheckpointDir(project)
-	if err != nil {
-		return nil, err
-	}
-	ckptParts := strings.Split(ossCheckpointDir, "?")
-	if len(ckptParts) != 2 {
-		return nil, fmt.Errorf("SQLFLOW_OSS_CHECKPOINT_DIR got wrong format")
-	}
-	urlParts := strings.Split(ckptParts[0], "://")
-	if len(urlParts) != 2 {
-		err = fmt.Errorf("SQLFLOW_OSS_CHECKPOINT_DIR got wrong format")
-	}
-	bucketName := strings.Split(urlParts[1], "/")[0]
+	// ossCheckpointDir, err := pai.GetOSSCheckpointDir(project)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// ckptParts := strings.Split(ossCheckpointDir, "?")
+	// if len(ckptParts) != 2 {
+	// 	return nil, fmt.Errorf("SQLFLOW_OSS_CHECKPOINT_DIR got wrong format")
+	// }
+	// urlParts := strings.Split(ckptParts[0], "://")
+	// if len(urlParts) != 2 {
+	// 	err = fmt.Errorf("SQLFLOW_OSS_CHECKPOINT_DIR got wrong format")
+	// }
+	// bucketName := strings.Split(urlParts[1], "/")[0]
+	bucketName := "sqlflow-models"
 
 	cli, err := oss.New(endpoint, ak, sk)
 	if err != nil {

@@ -49,7 +49,7 @@ if TF_VERSION_2:
     tf.get_logger().setLevel(logging.ERROR)
 else:
     tf.logging.set_verbosity(tf.logging.ERROR)
-    from .pai_distributed import define_tf_flags, make_distributed_info_without_evaluator, dump_into_tf_config
+    from .pai_distributed import define_tf_flags, make_distributed_info_without_evaluator, dump_into_tf_config, set_oss_environs
 
 
 def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
@@ -169,7 +169,8 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
             print("%s: %s" % (k, history.history[k][-1]))
     classifier.save_weights(save, save_format="h5")
     if is_pai:
-        model.save_file(FLAGS.checkpointDir, save)
+        print("saving keras model to: %s" % FLAGS.sqlflow_oss_ckpt)
+        model.save_file(FLAGS.sqlflow_oss_ckpt, save)
 
 
 def estimator_train_and_save(
@@ -307,6 +308,7 @@ def train(datasource,
         FLAGS = define_tf_flags()
         if len(FLAGS.worker_hosts.split(",")) > 1:
             is_distributed = True
+        set_oss_environs(FLAGS)
 
     if not is_estimator:  # keras
         if isinstance(estimator, types.FunctionType):
@@ -331,10 +333,8 @@ def train(datasource,
         else:
             model_params["config"] = tf.estimator.RunConfig(
                 save_checkpoints_steps=save_checkpoints_steps)
-        if is_pai:
-            model_params["model_dir"] = FLAGS.checkpointDir
-        else:
-            model_params["model_dir"] = save
+
+        model_params["model_dir"] = save
         print("Start training using estimator model...")
         estimator_train_and_save(
             estimator, model_params, save, is_pai, FLAGS, pai_table,

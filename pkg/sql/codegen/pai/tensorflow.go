@@ -17,6 +17,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"strconv"
 	"strings"
 	"text/template"
@@ -166,8 +168,33 @@ func getTFPAICmd(cc *ClusterConfig, tarball, modelName, ossModelPath, trainTable
 		}
 		outputTables = fmt.Sprintf("-Doutputs=%s", table)
 	}
+	tmpfile, err := ioutil.TempFile("/tmp", "sqlflow-paitemp")
+	// defer os.Remove(tmpfile.Name())
 
-	cmd := fmt.Sprintf("pai -name tensorflow1150 -project algo_public_dev -DmaxHungTimeBeforeGCInSeconds=0 -DjobName=%s -Dtags=dnn -Dscript=%s -DentryFile=entry.py -Dtables=%s %s -DcheckpointDir=\"%s\"", jobName, tarball, submitTables, outputTables, ckpDir)
+	OssAk := os.Getenv("SQLFLOW_OSS_AK")
+	OssSk := os.Getenv("SQLFLOW_OSS_SK")
+	OssEp := os.Getenv("SQLFLOW_OSS_MODEL_ENDPOINT")
+
+	if _, err := tmpfile.Write([]byte(fmt.Sprintf("sqlflow_oss_ak=\"%s\"\n", OssAk))); err != nil {
+		return "", err
+	}
+	if _, err := tmpfile.Write([]byte(fmt.Sprintf("sqlflow_oss_sk=\"%s\"\n", OssSk))); err != nil {
+		return "", err
+	}
+	if _, err := tmpfile.Write([]byte(fmt.Sprintf("sqlflow_oss_ep=\"%s\"\n", OssEp))); err != nil {
+		return "", err
+	}
+	if _, err := tmpfile.Write([]byte(fmt.Sprintf("sqlflow_oss_ckpt=\"%s\"\n", ckpDir))); err != nil {
+		return "", err
+	}
+	if err := tmpfile.Close(); err != nil {
+		return "", err
+	}
+
+	// NOTE(typhoonzero): use -DhyperParameters to define flags passing OSS credentials.
+	// TODO(typhoonzero): need to find a more secure way to pass credentials.
+	cmd := fmt.Sprintf("pai -name tensorflow1150 -project algo_public_dev -DmaxHungTimeBeforeGCInSeconds=0 -DjobName=%s -Dtags=dnn -Dscript=%s -DentryFile=entry.py -Dtables=%s %s -DhyperParameters=\"file://%s\"",
+		jobName, tarball, submitTables, outputTables, tmpfile.Name())
 	if cc.Worker.Count > 1 {
 		cmd = fmt.Sprintf("%s -Dcluster=%s", cmd, cfQuote)
 	} else {

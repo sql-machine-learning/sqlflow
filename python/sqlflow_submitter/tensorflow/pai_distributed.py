@@ -30,8 +30,26 @@ def define_tf_flags():
     tf.app.flags.DEFINE_string("checkpointDir", "", "oss info")
     tf.app.flags.DEFINE_string("tables", "", "required by PAI-TF 1.15")
     tf.app.flags.DEFINE_string("outputs", "", "required by PAI-TF 1.15")
+
+    tf.app.flags.DEFINE_string("sqlflow_oss_ak", "",
+                               "oss ak, for writing saved models")
+    tf.app.flags.DEFINE_string("sqlflow_oss_sk", "",
+                               "oss sk, for writing saved models")
+    tf.app.flags.DEFINE_string("sqlflow_oss_ep", "",
+                               "oss endpoint, for writing saved models")
+    tf.app.flags.DEFINE_string(
+        "sqlflow_oss_ckpt", "",
+        "oss checkpoint dir, where the model will be saved")
+
     FLAGS = tf.app.flags.FLAGS
     return FLAGS
+
+
+def set_oss_environs(FLAGS):
+    # set OSS credentials env from pai flags for later model saving
+    os.environ["SQLFLOW_OSS_AK"] = FLAGS.sqlflow_oss_ak
+    os.environ["SQLFLOW_OSS_SK"] = FLAGS.sqlflow_oss_sk
+    os.environ["SQLFLOW_OSS_MODEL_ENDPOINT"] = FLAGS.sqlflow_oss_ep
 
 
 # make_distributed_info_without_evaluator and dump_into_tf_config are used to dump

@@ -60,17 +60,19 @@ func GetOSSCheckpointDir(project string) (string, error) {
 
 // checkpointURL returns the saved model path on OSS
 func checkpointURL(modelName string, project string) (string, error) {
-	ossChekpointDir, err := GetOSSCheckpointDir(project)
-	if err != nil {
-		return "", err
-	}
-	ossURIParts := strings.Split(ossChekpointDir, "?")
-	if len(ossURIParts) != 2 {
-		return "", fmt.Errorf("SQLFLOW_OSS_CHECKPOINT_DIR must be of format: oss://bucket/?role_arn=xxx&host=xxx")
-	}
-	ossDir := strings.Join([]string{strings.TrimRight(ossURIParts[0], "/"), modelName}, "/")
+	// ossChekpointDir, err := GetOSSCheckpointDir(project)
+	// if err != nil {
+	// 	return "", err
+	// }
+	// ossURIParts := strings.Split(ossChekpointDir, "?")
+	// if len(ossURIParts) != 2 {
+	// 	return "", fmt.Errorf("SQLFLOW_OSS_CHECKPOINT_DIR must be of format: oss://bucket/?role_arn=xxx&host=xxx")
+	// }
+	ossBucketURI := "oss://sqlflow-models/"
+	ossDir := strings.Join([]string{strings.TrimRight(ossBucketURI, "/"), modelName}, "/")
 	// Form URI like: oss://bucket/your/path/modelname/?args=...
-	return strings.Join([]string{ossDir + "/", ossURIParts[1]}, "?"), nil
+	// return strings.Join([]string{ossDir + "/", ossURIParts[1]}, "?"), nil
+	return ossDir, nil
 }
 
 func maxComputeTableURL(table string) (string, error) {
