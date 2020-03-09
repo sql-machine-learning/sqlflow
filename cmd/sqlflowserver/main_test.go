@@ -103,7 +103,7 @@ func connectAndRunSQL(sql string) ([]string, [][]*any.Any, []string, error) {
 	defer conn.Close()
 	cli := pb.NewSQLFlowClient(conn)
 	// PAI tests may take a long time until the cluster resource is ready, increase the RPC deadline here.
-	ctx, cancel := context.WithTimeout(context.Background(), 7200*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 36000*time.Second)
 	defer cancel()
 	stream, err := cli.Run(ctx, sqlRequest(sql))
 	if err != nil {
@@ -1397,41 +1397,38 @@ FROM housing.xgb_predict LIMIT 5;`)
 	}
 }
 
-func CaseTrainDistributedPAI(t *testing.T) {
+func CasePAIMaxComputeTrainDistributed(t *testing.T) {
+	t.Parallel()
 	a := assert.New(t)
-	trainSQL := fmt.Sprintf(`
-	SELECT * FROM %s
-	TO TRAIN DNNClassifier
-	WITH
-		model.n_classes = 3,
-		model.hidden_units = [10, 20],
-		train.num_workers=2,
-		train.num_ps=2,
-		train.save_checkpoints_steps=20,
-		train.epoch=10,
-		train.batch_size=4,
-		train.verbose=1
-	LABEL class
-	INTO my_dnn_model_distributed;
-	`, caseTrainTable)
+	trainSQL := fmt.Sprintf(`SELECT * FROM %s
+TO TRAIN DNNClassifier
+WITH
+	model.n_classes = 3,
+	model.hidden_units = [10, 20],
+	train.num_workers=2,
+	train.num_ps=2,
+	train.save_checkpoints_steps=20,
+	train.epoch=10,
+	train.batch_size=4,
+	train.verbose=1
+LABEL class
+INTO e2etest_dnn_model_distributed;`, caseTrainTable)
 	connectAndRunSQLShouldError(trainSQL)
 
-	trainSQL = fmt.Sprintf(`
-	SELECT * FROM %s
-	TO TRAIN DNNClassifier
-	WITH
-		model.n_classes = 3,
-		model.hidden_units = [10, 20],
-		train.num_workers=2,
-		train.num_ps=2,
-		train.save_checkpoints_steps=20,
-		train.epoch=10,
-		train.batch_size=4,
-		train.verbose=1,
-		validation.select="select * from %s"
-	LABEL class
-	INTO my_dnn_model_distributed;
-	`, caseTrainTable, caseTestTable)
+	trainSQL = fmt.Sprintf(`SELECT * FROM %s
+TO TRAIN DNNClassifier
+WITH
+	model.n_classes = 3,
+	model.hidden_units = [10, 20],
+	train.num_workers=2,
+	train.num_ps=2,
+	train.save_checkpoints_steps=20,
+	train.epoch=10,
+	train.batch_size=4,
+	train.verbose=1,
+	validation.select="select * from %s"
+LABEL class
+INTO e2etest_dnn_model_distributed;`, caseTrainTable, caseTestTable)
 	_, _, _, err := connectAndRunSQL(trainSQL)
 	a.NoError(err)
 }
@@ -1520,65 +1517,60 @@ INTO %s.rf_model_explain;`, caseTestTable, caseDB)
 	}
 }
 
-func CaseTrainDNNAndExplain(t *testing.T) {
+func CasePAIMaxComputeDNNTrainPredictExplain(t *testing.T) {
+	t.Parallel()
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`SELECT * FROM %s
-	TO TRAIN DNNClassifier
-	WITH model.n_classes = 3, model.hidden_units = [10, 20]
-	LABEL class
-	INTO %s;`, caseTrainTable, caseInto)
+TO TRAIN DNNClassifier
+WITH model.n_classes = 3, model.hidden_units = [10, 20]
+LABEL class
+INTO e2etest_pai_dnn;`, caseTrainTable)
 	_, _, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)
 	}
 
 	predSQL := fmt.Sprintf(`SELECT * FROM %s
-TO EXPLAIN %s
-WITH label_col=class
-USING TreeExplainer
-INTO %s.explain_result;`, caseTestTable, caseInto, caseDB)
+TO PREDICT %s.pai_dnn_predict.class
+USING e2etest_pai_dnn;`, caseTestTable, caseDB)
 	_, _, _, err = connectAndRunSQL(predSQL)
 	if err != nil {
 		a.Fail("Run predSQL error: %v", err)
 	}
-}
 
-func CaseTrainXGBoostOnPAI(t *testing.T) {
-	a := assert.New(t)
-	trainSQL := fmt.Sprintf(`SELECT * FROM %s
-	TO TRAIN xgboost.gbtree
-	WITH
-		objective="multi:softprob",
-		train.num_boost_round = 30,
-		eta = 0.4,
-		num_class = 3
-	LABEL class
-	INTO my_xgb_classi_model;`, caseTrainTable)
-	_, _, _, err := connectAndRunSQL(trainSQL)
+	showPred := fmt.Sprintf(`SELECT *
+FROM %s.pai_dnn_predict LIMIT 5;`, caseDB)
+	_, rows, _, err := connectAndRunSQL(showPred)
 	if err != nil {
-		a.Fail("Run trainSQL error: %v", err)
+		a.Fail("Run showPred error: %v", err)
 	}
 
-	predSQL := fmt.Sprintf(`SELECT * FROM %s
-	TO PREDICT %s.class
-	USING my_xgb_classi_model;`, caseTestTable, casePredictTable)
-	_, _, _, err = connectAndRunSQL(predSQL)
-	if err != nil {
-		a.Fail("Run predSQL error: %v", err)
+	for _, row := range rows {
+		// NOTE: predict result maybe random, only check predicted
+		// class >=0, need to change to more flexible checks than
+		// checking expectedPredClasses := []int64{2, 1, 0, 2, 0}
+		AssertGreaterEqualAny(a, row[4], int64(0))
+
+		// avoiding nil features in predict result
+		nilCount := 0
+		for ; nilCount < 4 && row[nilCount] == nil; nilCount++ {
+		}
+		a.False(nilCount == 4)
 	}
 
 	explainSQL := fmt.Sprintf(`SELECT * FROM %s
-	TO EXPLAIN my_xgb_classi_model
-	WITH label_col=class
-	USING TreeExplainer
-	INTO my_xgb_explain_result;`, caseTrainTable)
+TO EXPLAIN e2etest_pai_dnn
+WITH label_col=class
+USING TreeExplainer
+INTO %s.pai_dnn_explain_result;`, caseTestTable, caseDB)
 	_, _, _, err = connectAndRunSQL(explainSQL)
 	if err != nil {
-		a.Fail("Run trainSQL error: %v", err)
+		a.Fail("Run predSQL error: %v", err)
 	}
 }
 
-func CaseTrainDenseCol(t *testing.T) {
+func CasePAIMaxComputeTrainDenseCol(t *testing.T) {
+	t.Parallel()
 	a := assert.New(t)
 	// Test train and predict using concated columns sepal_length, sepal_width, petal_length, petal_width
 	trainSQL := fmt.Sprintf(`SELECT class, CONCAT(sepal_length, ",", sepal_width, ",", petal_length, ",", petal_width) AS f1
@@ -1587,10 +1579,68 @@ TO TRAIN DNNClassifier
 WITH model.hidden_units=[64,32], model.n_classes=3, train.batch_size=32
 COLUMN NUMERIC(f1, 4)
 LABEL class
-INTO my_model_concat;`, caseTrainTable)
+INTO e2etest_dense_input;`, caseTrainTable)
 	_, _, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)
+	}
+}
+
+func CasePAIMaxComputeTrainXGBoost(t *testing.T) {
+	t.Parallel()
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`SELECT * FROM %s
+TO TRAIN xgboost.gbtree
+WITH
+	objective="multi:softprob",
+	train.num_boost_round = 30,
+	eta = 0.4,
+	num_class = 3
+LABEL class
+INTO e2etest_xgb_classi_model;`, caseTrainTable)
+	_, _, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+
+	predSQL := fmt.Sprintf(`SELECT * FROM %s
+TO PREDICT %s.pai_xgb_predict.class
+USING e2etest_xgb_classi_model;`, caseTestTable, caseDB)
+	_, _, _, err = connectAndRunSQL(predSQL)
+	if err != nil {
+		a.Fail("Run predSQL error: %v", err)
+	}
+
+	explainSQL := fmt.Sprintf(`SELECT * FROM %s
+TO EXPLAIN e2etest_xgb_classi_model
+WITH label_col=class
+USING TreeExplainer
+INTO %s.e2etest_xgb_explain_result;`, caseTrainTable, caseDB)
+	_, _, _, err = connectAndRunSQL(explainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+}
+
+func CasePAIMaxComputeTrainCustomModel(t *testing.T) {
+	t.Parallel()
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`SELECT * FROM %s
+TO TRAIN sqlflow_models.DNNClassifier
+WITH model.n_classes = 3, model.hidden_units = [10, 20], validation.select="select * from %s", validation.steps=2
+LABEL class
+INTO e2etest_keras_dnn;`, caseTrainTable, caseTestTable)
+	_, _, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("run trainSQL error: %v", err)
+	}
+
+	predSQL := fmt.Sprintf(`SELECT * FROM %s
+TO PREDICT %s.keras_predict.class
+USING e2etest_keras_dnn;`, caseTestTable, caseDB)
+	_, _, _, err = connectAndRunSQL(predSQL)
+	if err != nil {
+		a.Fail("run predSQL error: %v", err)
 	}
 }
 
@@ -1713,14 +1763,16 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 	go start(modelDir, caCrt, caKey, unitTestPort, false)
 	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 
-	t.Run("CaseTrainSQL", CaseTrainSQL)
-	t.Run("CaseTrainDNNAndExplain", CaseTrainDNNAndExplain)
-	t.Run("CaseTrainDenseCol", CaseTrainDenseCol)
-	// FIXME(typhoonzero): Add this test back when we solve error: model already exist issue on the CI.
-	// t.Run("CaseTrainPAIRandomForests", CaseTrainPAIRandomForests)
-	t.Run("CaseTrainXGBoostOnPAI", CaseTrainXGBoostOnPAI)
-	t.Run("CaseTrainDistributedPAI", CaseTrainDistributedPAI)
-	t.Run("CaseTrainCustomModel", CaseTrainCustomModel)
+	t.Run("group", func(t *testing.T) {
+		t.Run("CasePAIMaxComputeDNNTrainPredictExplain", CasePAIMaxComputeDNNTrainPredictExplain)
+		t.Run("CasePAIMaxComputeTrainDenseCol", CasePAIMaxComputeTrainDenseCol)
+		// FIXME(typhoonzero): Add this test back when we solve error: model already exist issue on the CI.
+		// t.Run("CaseTrainPAIRandomForests", CaseTrainPAIRandomForests)
+		t.Run("CasePAIMaxComputeTrainXGBoost", CasePAIMaxComputeTrainXGBoost)
+		t.Run("CasePAIMaxComputeTrainCustomModel", CasePAIMaxComputeTrainCustomModel)
+		t.Run("CasePAIMaxComputeTrainDistributed", CasePAIMaxComputeTrainDistributed)
+	})
+
 }
 
 func TestEnd2EndWorkflow(t *testing.T) {
