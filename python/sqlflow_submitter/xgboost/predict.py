@@ -28,24 +28,33 @@ def pred(datasource,
          hive_location="",
          hdfs_user="",
          hdfs_pass="",
-         pai_table=""):
+         pai_table="",
+         model_params=None,
+         train_params=None):
     # TODO(typhoonzero): support running on PAI without MaxCompute AK/SK connection.
     if not is_pai:
         conn = db.connect_with_data_source(datasource)
     label_name = label_meta["feature_name"]
-
     dpred = xgb_dataset(datasource, 'predict.txt', select, feature_metas,
                         feature_column_names, None, is_pai, pai_table, True)
-
     bst = xgb.Booster({'nthread': 4})  # init model
     bst.load_model("my_model")  # load data
-    print("Start predicting XGBoost model...")
     preds = bst.predict(dpred)
 
-    # TODO(Yancey1989): using the train parameters to decide regression model or classifier model
-    if len(preds.shape) == 2:
-        # classifier result
-        preds = np.argmax(np.array(preds), axis=1)
+    #TODO(yancey1989): should save train_params and model_params not only on PAI submitter
+    #TODO(yancey1989): output the original result for various objective function.
+    if model_params:
+        obj = model_params["objective"]
+        if obj.startswith("binary:"):
+            preds = (preds > 0.5).astype(int)
+        elif obj.startswith("multi:"):
+            preds = np.argmax(np.array(preds), axis=1)
+        else:
+            pass
+    else:
+        if len(preds.shape) == 2:
+            # classifier result
+            preds = np.argmax(np.array(preds), axis=1)
     feature_file_read = open("predict.txt", "r")
 
     result_column_names = feature_column_names
