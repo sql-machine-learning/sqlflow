@@ -92,8 +92,8 @@ func Verify(q string, db *database.DB) (FieldTypes, error) {
 	return ft, nil
 }
 
-// VerifyColumnNameAndType check train and pred clause uses has the same feature columns
-// 1. every column field in the training clause is selected in the pred clause, and they are of the same type
+// VerifyColumnNameAndType requires that every column field in the training statement other than the label is
+// selected in the predicting statement and of the same data type
 func VerifyColumnNameAndType(trainParsed, predParsed *parser.SQLFlowSelectStmt, db *database.DB) error {
 	trainFields, e := Verify(trainParsed.StandardSelect.String(), db)
 	if e != nil {
@@ -104,6 +104,9 @@ func VerifyColumnNameAndType(trainParsed, predParsed *parser.SQLFlowSelectStmt, 
 		return e
 	}
 	for n, t := range trainFields {
+		if n == trainParsed.Label {
+			continue
+		}
 		pt, ok := predFields.Get(n)
 		if !ok {
 			return fmt.Errorf("the predict statement doesn't contain column %s", n)
