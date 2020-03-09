@@ -1398,7 +1398,7 @@ FROM housing.xgb_predict LIMIT 5;`)
 }
 
 func CasePAIMaxComputeTrainDistributed(t *testing.T) {
-	t.Parallel()
+	// t.Parallel()
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`SELECT * FROM %s
 TO TRAIN DNNClassifier
@@ -1587,7 +1587,7 @@ INTO e2etest_dense_input;`, caseTrainTable)
 }
 
 func CasePAIMaxComputeTrainXGBoost(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`SELECT * FROM %s
 TO TRAIN xgboost.gbtree
@@ -1623,7 +1623,7 @@ INTO %s.e2etest_xgb_explain_result;`, caseTrainTable, caseDB)
 }
 
 func CasePAIMaxComputeTrainCustomModel(t *testing.T) {
-	t.Parallel()
+	// t.Parallel()
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`SELECT * FROM %s
 TO TRAIN sqlflow_models.DNNClassifier
@@ -1762,7 +1762,7 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 
 	go start(modelDir, caCrt, caKey, unitTestPort, false)
 	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
-	t.Run("CasePAIMaxComputeTrainXGBoost", CasePAIMaxComputeTrainXGBoost)
+	t.Run("CasePAIMaxComputeTrainDistributed", CasePAIMaxComputeTrainDistributed)
 
 	// t.Run("group", func(t *testing.T) {
 	// t.Run("CasePAIMaxComputeDNNTrainPredictExplain", CasePAIMaxComputeDNNTrainPredictExplain)

@@ -333,8 +333,8 @@ def train(datasource,
         else:
             model_params["config"] = tf.estimator.RunConfig(
                 save_checkpoints_steps=save_checkpoints_steps)
-
-        model_params["model_dir"] = save
+            # Do not set model_dir when distributed training
+            model_params["model_dir"] = save
         print("Start training using estimator model...")
         estimator_train_and_save(
             estimator, model_params, save, is_pai, FLAGS, pai_table,
