@@ -262,13 +262,13 @@ func fillFieldDesc(columnTypeList []*sql.ColumnType, rowdata []interface{}, fiel
 // InferFeatureColumns fill up featureColumn and columnSpec structs
 // for all fields.
 // if wr is not nil, then write
-func InferFeatureColumns(trainStmt *ir.TrainStmt, dataSource string) error {
+func InferFeatureColumns(trainStmt *ir.TrainStmt, db *database.DB) error {
 	fcMap := makeColumnMap(trainStmt.Features)
 	fmMap := makeFieldDescMap(trainStmt.Features)
 
 	// TODO(typhoonzero): find a way to using subqueries like select * from (%s) AS a LIMIT 100
 	// q := trainStmt.Select
-	rows, err := fetchSamples(dataSource, trainStmt.Select)
+	rows, err := FetchSamples(db, trainStmt.Select)
 	if err != nil {
 		return err
 	}
@@ -371,11 +371,8 @@ func deriveFeatureColumn(fcMap ColumnMap, columnTargets []string, fmMap FieldDes
 	return nil
 }
 
-func fetchSamples(dataSource string, query string) (*sql.Rows, error) {
-	db, err := database.OpenAndConnectDB(dataSource)
-	if err != nil {
-		return nil, err
-	}
+// FetchSamples returns Rows accoding to the input Query
+func FetchSamples(db *database.DB, query string) (*sql.Rows, error) {
 	re, err := regexp.Compile("(?i)LIMIT [0-9]+")
 	if err != nil {
 		return nil, err

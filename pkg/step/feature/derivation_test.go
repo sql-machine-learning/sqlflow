@@ -176,7 +176,7 @@ func TestFeatureDerivation(t *testing.T) {
 	}
 
 	trainStmt := mockTrainStmtNormal()
-	e := InferFeatureColumns(trainStmt, dataSource)
+	e := InferFeatureColumns(trainStmt, db)
 	a.NoError(e)
 
 	fc1 := trainStmt.Features["feature_columns"][0]
@@ -237,7 +237,7 @@ func TestFeatureDerivation(t *testing.T) {
 	a.Equal(6, len(trainStmt.Features["feature_columns"]))
 
 	trainStmt = mockTrainStmtCross()
-	e = InferFeatureColumns(trainStmt, dataSource)
+	e = InferFeatureColumns(trainStmt, db)
 	a.NoError(e)
 
 	fc1 = trainStmt.Features["feature_columns"][0]
@@ -285,7 +285,7 @@ func TestFeatureDerivationNoColumnClause(t *testing.T) {
 	}
 
 	trainStmt := mockTrainStmtIrisNoColumnClause()
-	e := InferFeatureColumns(trainStmt, dataSource)
+	e := InferFeatureColumns(trainStmt, db)
 	a.NoError(e)
 
 	a.Equal(4, len(trainStmt.Features["feature_columns"]))
@@ -306,7 +306,7 @@ func TestHiveFeatureDerivation(t *testing.T) {
 		Attributes:       map[string]interface{}{},
 		Features:         map[string][]ir.FeatureColumn{},
 		Label:            &ir.NumericColumn{&ir.FieldDesc{"class", ir.Int, "", []int{1}, false, nil, 0}}}
-	e := InferFeatureColumns(trainStmt, database.GetTestingDBSingleton().URL())
+	e := InferFeatureColumns(trainStmt, database.GetTestingDBSingleton())
 	a.NoError(e)
 	a.Equal(4, len(trainStmt.Features["feature_columns"]))
 }

@@ -20,6 +20,7 @@ import (
 
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/parser"
+	"sqlflow.org/sqlflow/pkg/step/feature"
 )
 
 // FieldTypes type records a mapping from field name to field type name.
@@ -59,7 +60,7 @@ func Decomp(ident string) (tbl string, fld string) {
 //
 // It returns a FieldTypes describing types of fields in SELECT.
 func Verify(q string, db *database.DB) (FieldTypes, error) {
-	rows, err := db.Query(q)
+	rows, err := feature.FetchSamples(db, q)
 	if err != nil {
 		return nil, err
 	}
