@@ -1964,7 +1964,7 @@ USING %s;
 
 	cli := pb.NewSQLFlowClient(conn)
 	// wait 30min for the workflow execution since it may take time to allocate enough nodes.
-	ctx, cancel := context.WithTimeout(context.Background(), 1800*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 2400*time.Second)
 	defer cancel()
 
 	stream, err := cli.Run(ctx, &pb.Request{Sql: trainSQL, Session: &pb.Session{DbConnStr: testDatasource}})
