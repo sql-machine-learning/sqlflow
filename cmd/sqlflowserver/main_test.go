@@ -1896,6 +1896,7 @@ func checkWorkflow(ctx context.Context, cli pb.SQLFlowClient, stream pb.SQLFlow_
 	for {
 		iter, err := stream.Recv()
 		if err == io.EOF {
+			fmt.Println("received EOF, break loop")
 			break
 		}
 		if err != nil {
@@ -1912,8 +1913,10 @@ func checkWorkflow(ctx context.Context, cli pb.SQLFlowClient, stream pb.SQLFlow_
 	// wait 30min for the workflow execution since it may take time to allocate enough nodes.
 	// each loop waits 3 seconds, total 600 * 3 = 1800 seconds
 	for i := 0; i < 600; i++ {
+		fmt.Println("grpc Fetch...")
 		res, err := cli.Fetch(ctx, req)
 		if err != nil {
+			fmt.Printf("Fetch err: %v\n", err)
 			return err
 		}
 		if res.Eof {
