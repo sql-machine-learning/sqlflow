@@ -313,6 +313,8 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseEmptyDataset", CaseEmptyDataset)
 	t.Run("CaseLabelColumnNotExist", CaseLabelColumnNotExist)
 	t.Run("CaseTrainSQL", CaseTrainSQL)
+	t.Run("CaseTrainPredictCategoricalFeature", CaseTrainPredictCategoricalFeature)
+
 	t.Run("CaseTypoInColumnClause", CaseTypoInColumnClause)
 	t.Run("CaseTrainWithCommaSeparatedLabel", CaseTrainWithCommaSeparatedLabel)
 
@@ -698,6 +700,28 @@ func CaseSelect(t *testing.T) {
 			AssertEqualAny(a, expectedRows[rowIdx][colIdx], rowCell)
 		}
 	}
+}
+
+func CaseTrainPredictCategoricalFeature(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := `SELECT f9, target FROM housing.train
+TO TRAIN DNNRegressor WITH
+		model.hidden_units = [10, 20]
+COLUMN EMBEDDING(CATEGORY_ID(f9, 1000), 2, "sum")
+LABEL target
+INTO housing.dnn_model;`
+	_, _, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+
+	predSQL := `SELECT f9, target FROM housing.test
+TO PREDICT housing.predict.class USING housing.dnn_model;`
+	_, _, _, err = connectAndRunSQL(predSQL)
+	if err != nil {
+		a.Fail("Run predSQL error: %v", err)
+	}
+	// TODO(typhoonzero): add tests using DNNLinearCombinedClassifier
 }
 
 func CaseTrainSQL(t *testing.T) {

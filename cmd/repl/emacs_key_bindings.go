@@ -19,6 +19,19 @@ import (
 )
 
 var clipboard string // This is not the system clipboard and only works in SQLFlow REPL
+const wordSeparator = ",.=() "
+
+func deleteWord(buf *prompt.Buffer) {
+	buf.DeleteBeforeCursor(len([]rune(buf.Document().TextBeforeCursor())) - buf.Document().FindStartOfPreviousWordUntilSeparatorIgnoreNextToCursor(wordSeparator))
+}
+
+func goRightWord(buf *prompt.Buffer) {
+	buf.CursorRight(buf.Document().FindEndOfCurrentWordUntilSeparatorIgnoreNextToCursor(wordSeparator))
+}
+
+func goLeftWord(buf *prompt.Buffer) {
+	buf.CursorLeft(len([]rune(buf.Document().TextBeforeCursor())) - buf.Document().FindStartOfPreviousWordUntilSeparatorIgnoreNextToCursor(wordSeparator))
+}
 
 var emacsMetaKeyBindings = []prompt.ASCIICodeBind{
 	// Meta b/B/<-: Move cursor left by word.
@@ -26,21 +39,21 @@ var emacsMetaKeyBindings = []prompt.ASCIICodeBind{
 		ASCIICode: []byte{0x1b, 'b'},
 		Fn: func(buf *prompt.Buffer) {
 			stopSearch("")
-			prompt.GoLeftWord(buf)
+			goLeftWord(buf)
 		},
 	},
 	{
 		ASCIICode: []byte{0x1b, 'B'},
 		Fn: func(buf *prompt.Buffer) {
 			stopSearch("")
-			prompt.GoLeftWord(buf)
+			goLeftWord(buf)
 		},
 	},
 	{
 		ASCIICode: []byte{0x1b, 0x1b, 0x5b, 0x44},
 		Fn: func(buf *prompt.Buffer) {
 			stopSearch("")
-			prompt.GoLeftWord(buf)
+			goLeftWord(buf)
 		},
 	},
 	// Meta f/F/->: Move cursor right by word.
@@ -48,21 +61,21 @@ var emacsMetaKeyBindings = []prompt.ASCIICodeBind{
 		ASCIICode: []byte{0x1b, 'f'},
 		Fn: func(buf *prompt.Buffer) {
 			stopSearch("")
-			prompt.GoRightWord(buf)
+			goRightWord(buf)
 		},
 	},
 	{
 		ASCIICode: []byte{0x1b, 'F'},
 		Fn: func(buf *prompt.Buffer) {
 			stopSearch("")
-			prompt.GoRightWord(buf)
+			goRightWord(buf)
 		},
 	},
 	{
 		ASCIICode: []byte{0x1b, 0x1b, 0x5b, 0x43},
 		Fn: func(buf *prompt.Buffer) {
 			stopSearch("")
-			prompt.GoRightWord(buf)
+			goRightWord(buf)
 		},
 	},
 	// Meta d/D: Cut the word after the cursor to the clipboard
@@ -71,7 +84,7 @@ var emacsMetaKeyBindings = []prompt.ASCIICodeBind{
 		Fn: func(buf *prompt.Buffer) {
 			stopSearch("")
 			pos1 := buf.DisplayCursorPosition()
-			prompt.GoRightWord(buf)
+			goRightWord(buf)
 			pos2 := buf.DisplayCursorPosition()
 			clipboard = buf.DeleteBeforeCursor(pos2 - pos1)
 		},
@@ -81,7 +94,7 @@ var emacsMetaKeyBindings = []prompt.ASCIICodeBind{
 		Fn: func(buf *prompt.Buffer) {
 			stopSearch("")
 			pos1 := buf.DisplayCursorPosition()
-			prompt.GoRightWord(buf)
+			goRightWord(buf)
 			pos2 := buf.DisplayCursorPosition()
 			clipboard = buf.DeleteBeforeCursor(pos2 - pos1)
 		},
@@ -91,7 +104,7 @@ var emacsMetaKeyBindings = []prompt.ASCIICodeBind{
 		ASCIICode: []byte{0x1b, 0x7f},
 		Fn: func(buf *prompt.Buffer) {
 			stopSearch("")
-			clipboard = buf.DeleteBeforeCursor(len([]rune(buf.Document().GetWordBeforeCursorWithSpace())))
+			clipboard = buf.DeleteBeforeCursor(len([]rune(buf.Document().GetWordBeforeCursorUntilSeparatorIgnoreNextToCursor(wordSeparator))))
 		},
 	},
 	// Meta P: Navigate the older command
@@ -213,7 +226,7 @@ var emacsCtrlKeyBindings = []prompt.KeyBind{
 		Key: prompt.ControlW,
 		Fn: func(buf *prompt.Buffer) {
 			stopSearch("")
-			clipboard = buf.DeleteBeforeCursor(len([]rune(buf.Document().GetWordBeforeCursorWithSpace())))
+			clipboard = buf.DeleteBeforeCursor(len([]rune(buf.Document().GetWordBeforeCursorUntilSeparatorIgnoreNextToCursor(wordSeparator))))
 		},
 	},
 	// Clear the Screen, similar to the clear command
