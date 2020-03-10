@@ -82,13 +82,11 @@ def pai_dataset(filename, feature_specs, feature_column_names, label_spec,
     map(lambda t: t.join(), threads)
 
     if single_file:
-        import glob
-        filenames = glob.glob('%s/*.txt' % dname)
-        with open(filename, 'w') as fw:
-            for fname in filenames:
-                with open(fname) as fr:
-                    for line in fr:
-                        fw.write(line)
+        cmd = "cat %s/*.txt > %s" % (dname, filename)
+        p = Popen(cmd, shell=True, stdin=PIPE, stderr=PIPE)
+        out, err = p.communicate()
+        if err:
+            raise Exception("merge data files failed: %s" % err)
         return xgb.DMatrix(filename)
     return xgb.DMatrix(dname)
 

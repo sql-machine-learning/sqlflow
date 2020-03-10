@@ -39,6 +39,7 @@ def pred(datasource,
                         feature_column_names, None, is_pai, pai_table, True)
     bst = xgb.Booster({'nthread': 4})  # init model
     bst.load_model("my_model")  # load data
+    print("Start predicting XGBoost model...")
     preds = bst.predict(dpred)
 
     #TODO(yancey1989): should save train_params and model_params not only on PAI submitter
@@ -50,10 +51,12 @@ def pred(datasource,
         elif obj.startswith("multi:"):
             preds = np.argmax(np.array(preds), axis=1)
         else:
+            # using the original prediction result of predict API by default
             pass
     else:
+        # prediction output wiht multi-class job has two dimensions, this is a temporary
+        # way, can remove this else branch when we can load the model meta not only on PAI submitter.
         if len(preds.shape) == 2:
-            # classifier result
             preds = np.argmax(np.array(preds), axis=1)
     feature_file_read = open("predict.txt", "r")
 
