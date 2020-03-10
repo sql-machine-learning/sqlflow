@@ -73,7 +73,9 @@ pred(datasource='''{{.DataSource}}''',
     hive_location='''{{.HiveLocation}}''',
     hdfs_user='''{{.HDFSUser}}''',
     hdfs_pass='''{{.HDFSPass}}''',
-    pai_table='''{{.PAIPredictTable}}''')
+    pai_table='''{{.PAIPredictTable}}''',
+    model_params=model_params,
+    train_params=train_params)
 `
 
 type xgbExplainFiller struct {
