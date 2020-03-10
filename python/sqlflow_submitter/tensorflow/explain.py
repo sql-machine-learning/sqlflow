@@ -72,7 +72,11 @@ def explain(datasource,
             oss_endpoint=None,
             oss_bucket_name=None):
 
-    model_params['model_dir'] = save
+    if is_pai:
+        FLAGS = tf.app.flags.FLAGS
+        model_params["model_dir"] = FLAGS.sqlflow_hdfs_ckpt
+    else:
+        model_params['model_dir'] = save
 
     def _input_fn():
         if is_pai:

@@ -150,22 +150,12 @@ def estimator_predict(estimator, model_params, save, result_table,
                                             feature_column_names, None,
                                             feature_metas)()
     # load from the exported model
-    if save.startswith("oss://"):
-        with open("exported_path", "r") as fn:
-            export_path = fn.read()
-        parts = save.split("?")
-        export_path_oss = parts[0] + export_path
-        if TF_VERSION_2:
-            imported = tf.saved_model.load(export_path_oss)
-        else:
-            imported = tf.saved_model.load_v2(export_path_oss)
+    with open("exported_path", "r") as fn:
+        export_path = fn.read()
+    if TF_VERSION_2:
+        imported = tf.saved_model.load(export_path)
     else:
-        with open("exported_path", "r") as fn:
-            export_path = fn.read()
-        if TF_VERSION_2:
-            imported = tf.saved_model.load(export_path)
-        else:
-            imported = tf.saved_model.load_v2(export_path)
+        imported = tf.saved_model.load_v2(export_path)
 
     def add_to_example(example, x, i):
         feature_name = feature_column_names[i]
