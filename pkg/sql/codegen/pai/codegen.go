@@ -41,8 +41,8 @@ const entryFile = "entry.py"
 // BucketName is the OSS bucket to save trained models
 const BucketName = "sqlflow-models"
 
-// checkpointURL returns model path on OSS like: oss://bucket/your/path/modelname/
-func checkpointURL(modelName string, project string) string {
+// ossModelURL returns model path on OSS like: oss://bucket/your/path/modelname/
+func ossModelURL(modelName string, project string) string {
 	ossBucketURI := fmt.Sprintf("oss://%s/", BucketName)
 	ossDir := strings.Join([]string{strings.TrimRight(ossBucketURI, "/"), modelName}, "/")
 	return ossDir
@@ -125,7 +125,7 @@ func Train(ir *ir.TrainStmt, session *pb.Session, tarball, modelName, ossModelPa
 		if code, e = xgboost.Train(ir, session); e != nil {
 			return
 		}
-		ossURI := checkpointURL(ossModelPath, currProject)
+		ossURI := ossModelURL(ossModelPath, currProject)
 		var tpl = template.Must(template.New("xgbSaveModel").Parse(xgbSaveModelTmplText))
 		var saveCode bytes.Buffer
 		if e = tpl.Execute(&saveCode, &xgbSaveModelFiller{OSSModelDir: ossURI}); e != nil {
@@ -165,7 +165,7 @@ func Predict(ir *ir.PredictStmt, session *pb.Session, tarball, modelName, ossMod
 		}
 	} else if modelType == ModelTypeXGBoost {
 		requirements, e = genRequirements(true)
-		ossURI := checkpointURL(ossModelPath, currProject)
+		ossURI := ossModelURL(ossModelPath, currProject)
 		var xgbPredCode bytes.Buffer
 		var tpl = template.Must(template.New("xgbPredTemplate").Parse(xgbPredTemplateText))
 		paiPredictTable := ""
@@ -236,7 +236,7 @@ func Explain(ir *ir.ExplainStmt, session *pb.Session, tarball, modelName, ossMod
 		if expn.Requirements, err = genRequirements(true); err != nil {
 			return nil, err
 		}
-		ossURI := checkpointURL(ossModelPath, currProject)
+		ossURI := ossModelURL(ossModelPath, currProject)
 		var xgbExplainCode bytes.Buffer
 		var tpl = template.Must(template.New("xgbExplainTemplate").Parse(xgbExplainTemplateText))
 		filler := &xgbExplainFiller{

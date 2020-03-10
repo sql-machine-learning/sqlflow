@@ -117,6 +117,7 @@ set_oss_environs(FLAGS)
 
 # NOTE(typhoonzero): the xgboost model file "my_model" is hard coded in xgboost/train.py
 model.load_file("{{.OSSModelDir}}", "my_model")
+
 (estimator,
 model_params,
 train_params,

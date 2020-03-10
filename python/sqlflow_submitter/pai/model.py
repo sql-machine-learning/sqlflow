@@ -57,7 +57,6 @@ def mkdir(bucket, oss_dir):
     if not oss_dir.endswith("/"):
         oss_dir = oss_dir + "/"
     path = remove_bucket_prefix(oss_dir)
-    print("getting path", path)
     has_dir = True
     try:
         meta = bucket.get_object_meta(path)

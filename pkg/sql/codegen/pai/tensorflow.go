@@ -44,7 +44,7 @@ func TFTrainAndSave(ir *ir.TrainStmt, session *pb.Session, modelPath string, cc 
 	if err != nil {
 		return "", err
 	}
-	ckptDir := checkpointURL(modelPath, currProject)
+	ckptDir := ossModelURL(modelPath, currProject)
 	code, err := tensorflow.Train(ir, session)
 	if err != nil {
 		return "", err
@@ -71,7 +71,7 @@ func TFLoadAndPredict(ir *ir.PredictStmt, session *pb.Session, modelPath string)
 	if err != nil {
 		return "", err
 	}
-	ossModelDir := checkpointURL(modelPath, currProject)
+	ossModelDir := ossModelURL(modelPath, currProject)
 	paiPredictTable := ""
 	if tensorflow.IsPAI() && ir.TmpPredictTable != "" {
 		paiPredictTable = ir.TmpPredictTable
@@ -99,7 +99,7 @@ func TFLoadAndExplain(ir *ir.ExplainStmt, session *pb.Session, modelPath string,
 	if err != nil {
 		return "", err
 	}
-	ossModelDir := checkpointURL(modelPath, currProject)
+	ossModelDir := ossModelURL(modelPath, currProject)
 	paiExplainTable := ""
 	if tensorflow.IsPAI() && ir.TmpExplainTable != "" {
 		paiExplainTable = ir.TmpExplainTable
@@ -133,7 +133,6 @@ func getTFPAICmd(cc *ClusterConfig, tarball, modelName, ossModelPath, trainTable
 		return "", err
 	}
 	cfQuote := strconv.Quote(string(cfString))
-	ckpDir := checkpointURL(ossModelPath, project)
 
 	// submit table should format as: odps://<project>/tables/<table>,odps://<project>/tables/<table>...
 	submitTables, err := maxComputeTableURL(trainTable)
@@ -158,20 +157,28 @@ func getTFPAICmd(cc *ClusterConfig, tarball, modelName, ossModelPath, trainTable
 	// temp files under cwd will be cleaned after the job is finished.
 	tmpfile, err := ioutil.TempFile(cwd, "sqlflow-paitemp-")
 
-	OssAk := os.Getenv("SQLFLOW_OSS_AK")
-	OssSk := os.Getenv("SQLFLOW_OSS_SK")
-	OssEp := os.Getenv("SQLFLOW_OSS_MODEL_ENDPOINT")
+	ossAk := os.Getenv("SQLFLOW_OSS_AK")
+	ossSk := os.Getenv("SQLFLOW_OSS_SK")
+	ossEp := os.Getenv("SQLFLOW_OSS_MODEL_ENDPOINT")
 
-	if _, err := tmpfile.Write([]byte(fmt.Sprintf("sqlflow_oss_ak=\"%s\"\n", OssAk))); err != nil {
+	hdfsDir := fmt.Sprintf("%s/%s",
+		strings.TrimRight(os.Getenv("SQLFLOW_HDFS_MODEL_CKPT_DIR"), "/"),
+		strings.TrimLeft(ossModelPath, "/"))
+
+	if _, err := tmpfile.Write([]byte(fmt.Sprintf("sqlflow_oss_ak=\"%s\"\n", ossAk))); err != nil {
 		return "", err
 	}
-	if _, err := tmpfile.Write([]byte(fmt.Sprintf("sqlflow_oss_sk=\"%s\"\n", OssSk))); err != nil {
+	if _, err := tmpfile.Write([]byte(fmt.Sprintf("sqlflow_oss_sk=\"%s\"\n", ossSk))); err != nil {
 		return "", err
 	}
-	if _, err := tmpfile.Write([]byte(fmt.Sprintf("sqlflow_oss_ep=\"%s\"\n", OssEp))); err != nil {
+	if _, err := tmpfile.Write([]byte(fmt.Sprintf("sqlflow_oss_ep=\"%s\"\n", ossEp))); err != nil {
 		return "", err
 	}
-	if _, err := tmpfile.Write([]byte(fmt.Sprintf("sqlflow_oss_ckpt=\"%s\"\n", ckpDir))); err != nil {
+	ossModelURL := ossModelURL(ossModelPath, project)
+	if _, err := tmpfile.Write([]byte(fmt.Sprintf("sqlflow_oss_modeldir=\"%s\"\n", ossModelURL))); err != nil {
+		return "", err
+	}
+	if _, err := tmpfile.Write([]byte(fmt.Sprintf("sqlflow_hdfs_ckpt=\"%s\"\n", hdfsDir))); err != nil {
 		return "", err
 	}
 	if err := tmpfile.Close(); err != nil {

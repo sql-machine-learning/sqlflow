@@ -169,8 +169,8 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
             print("%s: %s" % (k, history.history[k][-1]))
     classifier.save_weights(save, save_format="h5")
     if is_pai:
-        print("saving keras model to: %s" % FLAGS.sqlflow_oss_ckpt)
-        model.save_file(FLAGS.sqlflow_oss_ckpt, save)
+        print("saving keras model to: %s" % FLAGS.sqlflow_oss_modeldir)
+        model.save_file(FLAGS.sqlflow_oss_modeldir, save)
 
 
 def estimator_train_and_save(
@@ -330,6 +330,8 @@ def train(datasource,
                 save_checkpoints_steps=save_checkpoints_steps,
                 train_distribute=dist_strategy,
                 session_config=tf.ConfigProto(log_device_placement=True))
+            print("Using checkpoint path: %s" % FLAGS.sqlflow_hdfs_ckpt)
+            model_params["model_dir"] = FLAGS.sqlflow_hdfs_ckpt
         else:
             model_params["config"] = tf.estimator.RunConfig(
                 save_checkpoints_steps=save_checkpoints_steps)
@@ -342,6 +344,14 @@ def train(datasource,
             datasource, select, validate_select, batch_size, epochs, verbose,
             log_every_n_iter, train_max_steps, eval_start_delay_secs,
             eval_throttle_secs, metric_names)
+
+        if is_distributed and FLAGS.task_index == 0:
+            # Remove the checkpoint dir on HDFS, use the exported model on OSS for prediction.
+            for root, dirs, files in tf.io.gfile.walk(
+                    model_params["model_dir"], topdown=False):
+                for f in files:
+                    tf.io.gfile.remove("/".join([root, f]))
+                tf.io.gfile.rmtree(root)
 
     any(map(os.remove, glob.glob('cache_train.*')))  # remove cache files
     print("Done training")

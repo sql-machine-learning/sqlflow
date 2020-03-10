@@ -37,9 +37,11 @@ def define_tf_flags():
                                "oss sk, for writing saved models")
     tf.app.flags.DEFINE_string("sqlflow_oss_ep", "",
                                "oss endpoint, for writing saved models")
+    tf.app.flags.DEFINE_string("sqlflow_oss_modeldir", "",
+                               "oss model dir, where the model will be saved")
     tf.app.flags.DEFINE_string(
-        "sqlflow_oss_ckpt", "",
-        "oss checkpoint dir, where the model will be saved")
+        "sqlflow_hdfs_ckpt", "",
+        "hdfs tmp checkpoint dir, where the model will be saved")
 
     FLAGS = tf.app.flags.FLAGS
     return FLAGS

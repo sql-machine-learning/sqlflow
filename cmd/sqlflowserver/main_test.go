@@ -1398,7 +1398,7 @@ FROM housing.xgb_predict LIMIT 5;`)
 }
 
 func CasePAIMaxComputeTrainDistributed(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`SELECT * FROM %s
 TO TRAIN DNNClassifier
@@ -1623,7 +1623,7 @@ INTO %s.e2etest_xgb_explain_result;`, caseTrainTable, caseDB)
 }
 
 func CasePAIMaxComputeTrainCustomModel(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`SELECT * FROM %s
 TO TRAIN sqlflow_models.DNNClassifier
@@ -1762,19 +1762,17 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 
 	go start(modelDir, caCrt, caKey, unitTestPort, false)
 	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
-	t.Run("CasePAIMaxComputeTrainDistributed", CasePAIMaxComputeTrainDistributed)
 
-	// t.Run("group", func(t *testing.T) {
-	// t.Run("CasePAIMaxComputeDNNTrainPredictExplain", CasePAIMaxComputeDNNTrainPredictExplain)
-	// t.Run("CasePAIMaxComputeTrainDenseCol", CasePAIMaxComputeTrainDenseCol)
-	// t.Run("CasePAIMaxComputeTrainXGBoost", CasePAIMaxComputeTrainXGBoost)
-	// t.Run("CasePAIMaxComputeTrainCustomModel", CasePAIMaxComputeTrainCustomModel)
-	// t.Run("CasePAIMaxComputeTrainDistributed", CasePAIMaxComputeTrainDistributed)
+	t.Run("group", func(t *testing.T) {
+		t.Run("CasePAIMaxComputeDNNTrainPredictExplain", CasePAIMaxComputeDNNTrainPredictExplain)
+		t.Run("CasePAIMaxComputeTrainDenseCol", CasePAIMaxComputeTrainDenseCol)
+		t.Run("CasePAIMaxComputeTrainXGBoost", CasePAIMaxComputeTrainXGBoost)
+		t.Run("CasePAIMaxComputeTrainCustomModel", CasePAIMaxComputeTrainCustomModel)
+		t.Run("CasePAIMaxComputeTrainDistributed", CasePAIMaxComputeTrainDistributed)
 
-	// FIXME(typhoonzero): Add this test back when we solve error: model already exist issue on the CI.
-	// t.Run("CaseTrainPAIRandomForests", CaseTrainPAIRandomForests)
-	// })
-
+		// FIXME(typhoonzero): Add this test back when we solve error: model already exist issue on the CI.
+		// t.Run("CaseTrainPAIRandomForests", CaseTrainPAIRandomForests)
+	})
 }
 
 func TestEnd2EndWorkflow(t *testing.T) {
