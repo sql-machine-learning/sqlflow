@@ -195,7 +195,6 @@ def estimator_predict(estimator, model_params, save, result_table,
                 example.features.feature[feature_name].float_list.value.extend(
                     (float(x[0][i][0]), ))
             elif dtype_str == "int32" or dtype_str == "int64":
-                # FIXME(typhoonzero): figure out why int64 features need to convert to float
                 numeric_type = type(tf.feature_column.numeric_column("tmp"))
                 if type(fc) == numeric_type:
                     example.features.feature[

@@ -313,7 +313,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseEmptyDataset", CaseEmptyDataset)
 	t.Run("CaseLabelColumnNotExist", CaseLabelColumnNotExist)
 	t.Run("CaseTrainSQL", CaseTrainSQL)
-	t.Run("CaseTrainPredBug", CaseTrainPredBug)
+	t.Run("CaseTrainPredictCategoricalFeature", CaseTrainPredictCategoricalFeature)
 
 	t.Run("CaseTypoInColumnClause", CaseTypoInColumnClause)
 	t.Run("CaseTrainWithCommaSeparatedLabel", CaseTrainWithCommaSeparatedLabel)
@@ -702,7 +702,7 @@ func CaseSelect(t *testing.T) {
 	}
 }
 
-func CaseTrainPredBug(t *testing.T) {
+func CaseTrainPredictCategoricalFeature(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := `SELECT f9, target FROM housing.train
 TO TRAIN DNNRegressor WITH
