@@ -59,12 +59,13 @@ func resolveModelType(estimator string) (string, error) {
 	}
 }
 
-func parseAttribute(attrs map[string]interface{}) (map[string]map[string]interface{}, error) {
-	attributeDictionary.FillDefaults(attrs)
-	if err := fullAttrValidator.Validate(attrs); err != nil {
-		return nil, err
-	}
+// InitializeAttributes initializes the attributes of XGBoost and does type checking for them
+func InitializeAttributes(trainStmt *ir.TrainStmt) error {
+	attributeDictionary.FillDefaults(trainStmt.Attributes)
+	return fullAttrValidator.Validate(trainStmt.Attributes)
+}
 
+func parseAttribute(attrs map[string]interface{}) map[string]map[string]interface{} {
 	params := map[string]map[string]interface{}{"": {}, "train.": {}}
 	paramPrefix := []string{"train.", ""} // use slice to assure traverse order, this is necessary because all string starts with ""
 	for key, attr := range attrs {
@@ -74,8 +75,7 @@ func parseAttribute(attrs map[string]interface{}) (map[string]map[string]interfa
 			}
 		}
 	}
-
-	return params, nil
+	return params
 }
 
 func getFieldDesc(fcs []ir.FeatureColumn, l ir.FeatureColumn) ([]ir.FieldDesc, ir.FieldDesc, error) {
@@ -132,10 +132,7 @@ func resolveFeatureMeta(fds []ir.FieldDesc) ([]byte, []string, error) {
 
 // Train generates a Python program for train a XgBoost model.
 func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
-	params, err := parseAttribute(trainStmt.Attributes)
-	if err != nil {
-		return "", err
-	}
+	params := parseAttribute(trainStmt.Attributes)
 	booster, err := resolveModelType(trainStmt.Estimator)
 	if err != nil {
 		return "", err

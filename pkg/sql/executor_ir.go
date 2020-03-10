@@ -105,7 +105,7 @@ func ResolveSQLProgram(sqlStmts []*parser.SQLFlowStmt) ([]ir.SQLFlowStmt, error)
 		var r ir.SQLFlowStmt
 		if sql.IsExtendedSyntax() {
 			if sql.Train {
-				r, err = generateTrainStmt(sql.SQLFlowSelectStmt)
+				r, err = generateTrainStmt(sql.SQLFlowSelectStmt, true)
 			} else if sql.Explain {
 				// since getTrainStmtFromModel is false, use empty cwd is fine.
 				r, err = generateExplainStmt(sql.SQLFlowSelectStmt, "", "", "", false)
