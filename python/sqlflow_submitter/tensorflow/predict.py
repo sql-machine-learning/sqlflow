@@ -92,12 +92,6 @@ def keras_predict(estimator, model_params, save, result_table, is_pai,
     # NOTE: must run predict one batch to initialize parameters
     # see: https://www.tensorflow.org/alpha/guide/keras/saving_and_serializing#saving_subclassed_models
     classifier.predict_on_batch(one_batch)
-    # if is_pai:
-    #     print("loading from %s" % save)
-    #     # NOTE(typhoonzero): h5 file name is hard coded in tensorflow/codegen.go
-    #     model.load_file(save, "model_save")
-    #     classifier.load_weights("model_save")
-    # else:
     classifier.load_weights(save)
     pred_dataset = eval_input_fn(1, cache=True).make_one_shot_iterator()
     buff_rows = []
