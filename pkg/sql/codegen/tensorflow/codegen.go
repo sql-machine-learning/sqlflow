@@ -306,6 +306,17 @@ func InitializeAttributes(trainStmt *ir.TrainStmt) error {
 	constructOptimizers(trainStmt)
 	constructLosses(trainStmt)
 	attrValidator := modelAttr.Update(commonAttributes)
+	if len(modelAttr) == 0 {
+		// TODO(shendiaomo): Use the same mechanism as `sqlflow_models` to extract parameters automatically
+		// Unknown custom models
+		modelAttr.Update(attribute.Dictionary{"model.*": {attribute.Unknown, nil, "Any model parameters defined in custom models", nil}})
+	}
+	if strings.HasPrefix(trainStmt.Estimator, "sqlflow_models.") {
+		// Special attributes defined as global variables in `sqlflow_models`
+		modelAttr.Update(attribute.Dictionary{
+			"model.optimizer": {attribute.Unknown, nil, "Specify optimizer", nil},
+			"model.loss":      {attribute.Unknown, nil, "Specify loss", nil}})
+	}
 	return attrValidator.Validate(trainStmt.Attributes)
 }
 
