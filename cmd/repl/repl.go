@@ -34,11 +34,11 @@ import (
 
 	"github.com/mattn/go-sixel"
 	"golang.org/x/crypto/ssh/terminal"
-	"sqlflow.org/sqlflow/cmd/repl/tablewriter"
 	"sqlflow.org/sqlflow/pkg/database"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/attribute"
+	"sqlflow.org/sqlflow/pkg/tablewriter"
 )
 
 const tablePageSize = 1000

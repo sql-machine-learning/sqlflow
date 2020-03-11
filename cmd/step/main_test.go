@@ -15,8 +15,11 @@ package step
 
 import (
 	"bytes"
+	"fmt"
 	"io"
+	"log"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -32,6 +35,7 @@ func checkStepWrapper(f func(), check func(string) error) error {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 	os.Stderr = w
+	log.SetOutput(os.Stdout)
 	// call the test function
 	f()
 	outC := make(chan string)
@@ -52,6 +56,12 @@ func checkStepWrapper(f func(), check func(string) error) error {
 func dummyCheck(string) error {
 	return nil
 }
+func trainCheck(s string) error {
+	if strings.Contains(s, "Done training") {
+		return nil
+	}
+	return fmt.Errorf("train sql failed")
+}
 func TestStepTrainSQL(t *testing.T) {
 	if os.Getenv("SQLFLOW_TEST_DB") != "mysql" {
 		t.Skip("skip no mysql test.")
@@ -70,5 +80,5 @@ func TestStepTrainSQL(t *testing.T) {
 		validation.metrics = "Accuracy,AUC"
 	LABEL class
 	INTO sqlflow_models.mytest_model;`
-	a.NoError(checkStepWrapper(func() { a.NotPanics(func() { runSQLStmt(sql, session) }) }, dummyCheck))
+	a.NoError(checkStepWrapper(func() { a.NotPanics(func() { runSQLStmt(sql, session) }) }, trainCheck))
 }
