@@ -1,12 +1,54 @@
 # Logs in SQLFlow
+
 ## Motivation
+
 In order to know well about the runtime status of the SQLFlow job, we need to count the number of `TRAIN/PREDICT/EXPLAIN/NORMAL` tasks over a period of time. For example, using ELK Stack for log query and analysis‎. Generally, such statistics components are implemented by logs.
 
-## logging library
-Several statistics components use `logtail` to collect logs. The `logtail` demands a file. If such information is written to `stdout`, we should redirect the `stdout` to a local file, the file size will increase until the SQLFlow server terminates, so we need a rolling file to store the log. Besides, a well-formatted log is readable.
-We use [Logrus](https://github.com/sirupsen/logrus) for layout, combining with [https://github.com/natefinch/lumberjack] for rolling the log file.
+## Logging Libraries
+
+1. Rolling file to limit the log file size, [Lumberjack](https://github.com/natefinch/lumberjack) is the solution.
+    ```go
+    log.SetOutput(&lumberjack.Logger{
+        Filename:   "/path/to/sqlflow.log",
+        MaxSize:    50,
+        MaxAge:     15,
+    })
+    ```
+1. Structured log messages for the ease of parsing and analysis, [Logrus](https://github.com/sirupsen/logrus) is the solution.
+    ```go
+    import "github.com/sirupsen/logrus"
+
+    func init() {
+      logrus.SetOutput(os.Stdout)
+    }
+
+    func main() {
+      contextLogger := logrus.WithFields(log.Fields{
+        "user": "9527",
+      })
+      // ...
+      contextLogger.Info("TRAIN")
+    }
+    ```
+
+Comine the two libraries:
+```go
+import (
+	"github.com/sirupsen/logrus"
+	"github.com/natefinch/lumberjack"
+)
+
+func init() {
+  logrus.SetOutput(&lumberjack.Logger{...})
+}
+
+func main() {
+  // Do your staff and logging
+}
+```
 
 ## Log Formatter
+
 Logs in their raw form are typically a text format with one event per line, i.e. :    
 `2020-03-10 10:00:14 level={Level} requestID={RequestID} user={UserID} event={event} msg={Metric, Result or Details}`
 
@@ -16,6 +58,7 @@ event: The process of the task, such as: parsing;
 msg: Details.
 
 ## Log Categories
+
 1. Statistics log
     Including traffic and performance information.
     1. Count the requests;
@@ -28,8 +71,20 @@ msg: Details.
 1. Diagnostic log
   All of the error logs.
 
-## Log Level
-We use:
-1. `INFO` log used to highlight the progress of the application at a coarse-grained level, so the statistics information recorded by the `INFO` log.
-1. `ERROR` log designates error events that might still allow the application to continue running.
-1. `FATAL` log records very severe error events that will presumably lead the application to abort.
+## Severity Levels
+  
+Currently, we use Go's standard log pacakge in three ways:
+- log.Printf
+- log.Errorf
+- log.Fatalf
+
+We want to keep the three levels, but maps them to the following three log severity levels provided by Logrus:
+
+- `INFO`
+  To highlight the progress of the application at a coarse-grained level.
+- `ERROR`
+  It designates error events that might still allow the application to continue running.
+- `FATAL`
+  It records very severe error events that will presumably lead the application to abort.
+
+We need this mapping because Logrus can generate structured messages.
