@@ -73,7 +73,7 @@ func (w *logWriter) Write(b []byte) (int, error) {
 
 func runSQLStmt(sqlStmt string, session *pb.Session) {
 	startTime := time.Now().UnixNano()
-	fmt.Printf("SQLFlow Step Execute:\n%s\n", sqlStmt)
+	log.Printf("SQLFlow Step Execute:\n%s\n", sqlStmt)
 
 	table, e := tablewriter.Create("protobuf", tablePageSize, &logWriter{})
 	if e != nil {

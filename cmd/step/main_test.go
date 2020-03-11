@@ -53,10 +53,10 @@ func checkStepWrapper(f func(), check func(string) error) error {
 	return check(out)
 }
 
-func dummyCheck(string) error {
+func dummyChecker(string) error {
 	return nil
 }
-func trainCheck(s string) error {
+func trainLogChecker(s string) error {
 	if strings.Contains(s, "Done training") {
 		return nil
 	}
@@ -80,5 +80,5 @@ func TestStepTrainSQL(t *testing.T) {
 		validation.metrics = "Accuracy,AUC"
 	LABEL class
 	INTO sqlflow_models.mytest_model;`
-	a.NoError(checkStepWrapper(func() { a.NotPanics(func() { runSQLStmt(sql, session) }) }, trainCheck))
+	a.NoError(checkStepWrapper(func() { a.NotPanics(func() { runSQLStmt(sql, session) }) }, trainLogChecker))
 }
