@@ -1915,7 +1915,7 @@ func checkWorkflow(ctx context.Context, cli pb.SQLFlowClient, stream pb.SQLFlow_
 	for i := 0; i < 600; i++ {
 		fmt.Println("grpc Fetch...")
 		res, err := cli.Fetch(ctx, req)
-		fmt.Println(res.GetResponses)
+		fmt.Println(res.Responses)
 		if err != nil {
 			fmt.Printf("Fetch err: %v\n", err)
 			return err
