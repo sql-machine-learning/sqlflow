@@ -1915,6 +1915,7 @@ func checkWorkflow(ctx context.Context, cli pb.SQLFlowClient, stream pb.SQLFlow_
 	for i := 0; i < 600; i++ {
 		fmt.Println("grpc Fetch...")
 		res, err := cli.Fetch(ctx, req)
+		fmt.Println(res.GetResponses)
 		if err != nil {
 			fmt.Printf("Fetch err: %v\n", err)
 			return err
@@ -1924,7 +1925,7 @@ func checkWorkflow(ctx context.Context, cli pb.SQLFlowClient, stream pb.SQLFlow_
 			return nil
 		}
 		req = res.UpdatedFetchSince
-		time.Sleep(3 * time.Second)
+		time.Sleep(4 * time.Second)
 	}
 	return fmt.Errorf("workflow times out")
 }
