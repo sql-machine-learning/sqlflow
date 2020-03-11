@@ -125,6 +125,7 @@ Congratulations! Now you have successfully completed a session using SQLFlow syn
 | <kbd>Ctrl + r</kbd>      | Pop a menu of history commands including the specified character(s), the menu updates as you type |
 | <kbd>Ctrl/Meta + p</kbd> | Show the **previous** statement in history, or navigate the pop-up history menu (Up arrow)        |
 | <kbd>Ctrl/Meta + n</kbd> | Show the **Next** statement in history, or navigate the pop-up history menu (Down arrow)          |
+| <kbd>Meta + W</kbd>      | Similar to <kbd>Ctrl + r</kbd> but use wildcard to search history commands                        |
 
 ### Control
 
