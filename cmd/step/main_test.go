@@ -23,8 +23,7 @@ import (
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
-func makeTestSession() *pb.Session {
-	dbConnStr := os.Getenv("SQLFLOW_TEST_DATASOURCE")
+func makeTestSession(dbConnStr string) *pb.Session {
 	return &pb.Session{DbConnStr: dbConnStr}
 }
 
@@ -54,8 +53,12 @@ func dummyCheck(string) error {
 	return nil
 }
 func TestStepTrainSQL(t *testing.T) {
+	if os.Getenv("SQLFLOW_TEST_DB") != "mysql" {
+		t.Skip("skip no mysql test.")
+	}
 	a := assert.New(t)
-	session := makeTestSession()
+	dbConnStr := "mysql://root:root@tcp(127.0.0.1:3306)/iris?maxAllowedPacket=0"
+	session := makeTestSession(dbConnStr)
 
 	sql := `SELECT * FROM iris.train WHERE class!=2
 	TO TRAIN DNNClassifier
