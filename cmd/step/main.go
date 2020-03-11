@@ -16,15 +16,13 @@ package step
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
-	"os"
 	"regexp"
 	"time"
 
-	"sqlflow.org/sqlflow/cmd/repl/tablewriter"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql"
+	"sqlflow.org/sqlflow/pkg/tablewriter"
 )
 
 const tablePageSize = 1000
@@ -39,8 +37,8 @@ func isHTMLCode(code string) bool {
 }
 
 func printAsDataURL(s string) {
-	fmt.Println("data:text/html,", s)
-	fmt.Println()
+	log.Println("data:text/html,", s)
+	log.Println()
 }
 
 func render(rsp interface{}, table tablewriter.TableWriter) error {
@@ -56,21 +54,28 @@ func render(rsp interface{}, table tablewriter.TableWriter) error {
 		if isHTMLCode(s.Image) {
 			printAsDataURL(s.Image)
 		} else {
-			fmt.Println(s)
+			log.Println(s)
 		}
 	case string:
-		fmt.Println(s)
+		log.Println(s)
 	default:
 		return fmt.Errorf("unrecongnized response type: %v", s)
 	}
 	return nil
 }
 
+type logWriter struct{}
+
+func (w *logWriter) Write(b []byte) (int, error) {
+	log.Println(string(b))
+	return len(b), nil
+}
+
 func runSQLStmt(sqlStmt string, session *pb.Session) {
 	startTime := time.Now().UnixNano()
-	fmt.Printf("SQLFlow Step Execute:\n%s\n", sqlStmt)
+	log.Printf("SQLFlow Step Execute:\n%s\n", sqlStmt)
 
-	table, e := tablewriter.Create("protobuf", tablePageSize, os.Stdout)
+	table, e := tablewriter.Create("protobuf", tablePageSize, &logWriter{})
 	if e != nil {
 		log.Panicf("create tablewriter failed: %v", e)
 	}
@@ -79,16 +84,13 @@ func runSQLStmt(sqlStmt string, session *pb.Session) {
 		if e := table.Flush(); e != nil {
 			log.Fatal(e)
 		}
-		fmt.Printf("(%.2f sec)\n", float64(time.Now().UnixNano()-startTime)/1e9)
-		fmt.Println()
+		log.Printf("(%.2f sec)\n", float64(time.Now().UnixNano()-startTime)/1e9)
+		log.Println()
 	}()
 
-	// discard the log output here just because using both log and pipe writer may mix the output
-	log.SetOutput(ioutil.Discard)
 	stream := sql.RunSQLProgram(sqlStmt, "", session)
 	for res := range stream.ReadAll() {
 		if e := render(res, table); e != nil {
-			log.SetOutput(os.Stdout)
 			log.Panic(e)
 		}
 	}

@@ -34,11 +34,11 @@ import (
 
 	"github.com/mattn/go-sixel"
 	"golang.org/x/crypto/ssh/terminal"
-	"sqlflow.org/sqlflow/cmd/repl/tablewriter"
 	"sqlflow.org/sqlflow/pkg/database"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/attribute"
+	"sqlflow.org/sqlflow/pkg/tablewriter"
 )
 
 const tablePageSize = 1000
@@ -179,9 +179,7 @@ func render(rsp interface{}, table tablewriter.TableWriter, isTerminal bool) err
 	case []interface{}: // row
 		return table.AppendRow(s)
 	case error:
-		if os.Getenv("SQLFLOW_log_dir") != "" { // To avoid printing duplicated error message to console
-			log.New(os.Stderr, "", 0).Printf("ERROR: %v\n", s)
-		}
+		log.Printf("ERROR: %v\n", s)
 		if !isTerminal {
 			os.Exit(1)
 		}
