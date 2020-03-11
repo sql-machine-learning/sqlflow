@@ -21,7 +21,7 @@ type predFiller struct {
 	ResultTable string
 	// below members comes from trainStmt
 	Estimator         string
-	FieldDescs        []*ir.FieldDesc
+	FieldDescs        map[string][]*ir.FieldDesc
 	FeatureColumnCode string
 	Y                 *ir.FieldDesc
 	ModelParams       map[string]interface{}
@@ -48,12 +48,21 @@ try:
 except:
     pass
 
-feature_column_names = [{{range .FieldDescs}}
+feature_column_names = [{{range $target, $desclist := .FieldDescs}}{{range $desclist}}
 "{{.Name}}",
-{{end}}]
+{{end}}{{end}}]
+
+# feature_column_names_map is used to determine the order of feature columns of each target:
+# e.g. when using DNNLinearCombinedClassifier
+feature_column_names_map = dict()
+{{range $target, $desclist := .FieldDescs}}
+feature_column_names_map["{{$target}}"] = [{{range $desclist}}"{{.Name}}",{{end}}]
+{{end}}
+    
 
 feature_metas = dict()
-{{ range $value := .FieldDescs }}
+{{ range $target, $desclist := .FieldDescs }}
+{{ range $value := $desclist }}
 feature_metas["{{$value.Name}}"] = {
     "feature_name": "{{$value.Name}}",
     "dtype": "{{$value.DType | DTypeToString}}",
@@ -61,6 +70,7 @@ feature_metas["{{$value.Name}}"] = {
     "shape": {{$value.Shape | intArrayToJSONString}},
     "is_sparse": "{{$value.IsSparse}}" == "true"
 }
+{{end}}
 {{end}}
 
 label_meta = {
@@ -84,6 +94,7 @@ pred(datasource="{{.DataSource}}",
      result_table="{{.ResultTable}}",
      feature_columns=feature_columns,
      feature_column_names=feature_column_names,
+     feature_column_names_map=feature_column_names_map,
      result_col_name=label_meta["feature_name"],
      feature_metas=feature_metas,
      model_params=model_params,

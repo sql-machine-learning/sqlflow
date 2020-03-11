@@ -127,9 +127,10 @@ def keras_predict(estimator, model_params, save, result_table, is_pai,
 
 
 def estimator_predict(estimator, model_params, save, result_table,
-                      feature_column_names, feature_columns, feature_metas,
-                      result_col_name, datasource, select, hdfs_namenode_addr,
-                      hive_location, hdfs_user, hdfs_pass, is_pai, pai_table):
+                      feature_column_names, feature_column_names_map,
+                      feature_columns, feature_metas, result_col_name,
+                      datasource, select, hdfs_namenode_addr, hive_location,
+                      hdfs_user, hdfs_pass, is_pai, pai_table):
     if not is_pai:
         conn = db.connect_with_data_source(datasource)
 
@@ -183,13 +184,26 @@ def estimator_predict(estimator, model_params, save, result_table,
                 example.features.feature[feature_name].int64_list.value.extend(
                     list(values))
         else:
-            idx = feature_column_names.index(feature_name)
             if "feature_columns" in feature_columns:
+                idx = feature_column_names.index(feature_name)
                 fc = feature_columns["feature_columns"][idx]
             else:
-                # FIXME(typhoonzero): when the model is deep and wide model, need to
-                # find the feature column form column name, use type numeric_column for now.
-                fc = tf.feature_column.numeric_column("tmp")
+                # DNNLinearCombinedXXX have dnn_feature_columns and leaner_feature_columns param.
+                idx = -1
+                try:
+                    idx = feature_column_names_map[
+                        "dnn_feature_columns"].index(feature_name)
+                    fc = feature_columns["dnn_feature_columns"][idx]
+                except:
+                    try:
+                        idx = feature_column_names_map[
+                            "linear_feature_columns"].index(feature_name)
+                        fc = feature_columns["linear_feature_columns"][idx]
+                    except:
+                        pass
+                if idx == -1:
+                    raise ValueError(
+                        "can not found feature %s in all feature columns")
             if dtype_str == "float32" or dtype_str == "float64":
                 # need to pass a tuple(float, )
                 example.features.feature[feature_name].float_list.value.extend(
@@ -245,6 +259,7 @@ def pred(datasource,
          result_table,
          feature_columns,
          feature_column_names,
+         feature_column_names_map,
          result_col_name,
          feature_metas={},
          model_params={},
@@ -281,9 +296,10 @@ def pred(datasource,
             model_params['model_dir'] = save
         print("Start predicting using estimator model...")
         estimator_predict(estimator, model_params, save, result_table,
-                          feature_column_names, feature_columns, feature_metas,
-                          result_col_name, datasource, select,
-                          hdfs_namenode_addr, hive_location, hdfs_user,
-                          hdfs_pass, is_pai, pai_table)
+                          feature_column_names, feature_column_names_map,
+                          feature_columns, feature_metas, result_col_name,
+                          datasource, select, hdfs_namenode_addr,
+                          hive_location, hdfs_user, hdfs_pass, is_pai,
+                          pai_table)
 
     print("Done predicting. Predict table : %s" % result_table)

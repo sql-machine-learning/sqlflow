@@ -721,7 +721,25 @@ TO PREDICT housing.predict.class USING housing.dnn_model;`
 	if err != nil {
 		a.Fail("Run predSQL error: %v", err)
 	}
-	// TODO(typhoonzero): add tests using DNNLinearCombinedClassifier
+
+	trainSQL = `SELECT f9, f10, target FROM housing.train
+TO TRAIN DNNLinearCombinedRegressor WITH
+		model.dnn_hidden_units = [10, 20]
+COLUMN EMBEDDING(CATEGORY_ID(f9, 25), 2, "sum") for dnn_feature_columns
+COLUMN EMBEDDING(CATEGORY_ID(f10, 712), 2, "sum") for linear_feature_columns
+LABEL target
+INTO housing.dnnlinear_model;`
+	_, _, _, err = connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+
+	predSQL = `SELECT f9, f10, target FROM housing.test
+TO PREDICT housing.predict.class USING housing.dnnlinear_model;`
+	_, _, _, err = connectAndRunSQL(predSQL)
+	if err != nil {
+		a.Fail("Run predSQL error: %v", err)
+	}
 }
 
 func CaseTrainSQL(t *testing.T) {
