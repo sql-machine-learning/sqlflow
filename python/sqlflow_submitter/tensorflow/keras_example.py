@@ -17,8 +17,8 @@ import shutil
 
 import sqlflow_models
 from sqlflow_submitter.tensorflow.estimator_example import (
-    datasource, feature_column_names, feature_columns, feature_metas,
-    label_meta, select, validate_select)
+    datasource, feature_column_names, feature_column_names_map,
+    feature_columns, feature_metas, label_meta, select, validate_select)
 from sqlflow_submitter.tensorflow.predict import pred
 from sqlflow_submitter.tensorflow.train import train
 
@@ -45,6 +45,7 @@ if __name__ == "__main__":
          result_table="iris.predict",
          feature_columns=feature_columns,
          feature_column_names=feature_column_names,
+         feature_column_names_map=feature_column_names_map,
          result_col_name=label_meta["feature_name"],
          feature_metas=feature_metas,
          model_params={
