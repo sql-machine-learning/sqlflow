@@ -188,7 +188,7 @@ def estimator_predict(estimator, model_params, save, result_table,
                 idx = feature_column_names.index(feature_name)
                 fc = feature_columns["feature_columns"][idx]
             else:
-                # DNNLinearCombinedXXX have dnn_feature_columns and leaner_feature_columns param.
+                # DNNLinearCombinedXXX have dnn_feature_columns and linear_feature_columns param.
                 idx = -1
                 try:
                     idx = feature_column_names_map[

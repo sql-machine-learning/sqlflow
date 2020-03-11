@@ -726,7 +726,7 @@ TO PREDICT housing.predict.class USING housing.dnn_model;`
 TO TRAIN DNNLinearCombinedRegressor WITH
 		model.dnn_hidden_units = [10, 20]
 COLUMN EMBEDDING(CATEGORY_ID(f9, 25), 2, "sum") for dnn_feature_columns
-COLUMN EMBEDDING(CATEGORY_ID(f10, 712), 2, "sum") for linear_feature_columns
+COLUMN INDICATOR(CATEGORY_ID(f10, 712)) for linear_feature_columns
 LABEL target
 INTO housing.dnnlinear_model;`
 	_, _, _, err = connectAndRunSQL(trainSQL)
