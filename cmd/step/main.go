@@ -88,7 +88,6 @@ func runSQLStmt(sqlStmt string, session *pb.Session) {
 		log.Println()
 	}()
 
-	// discard the log output here just because using both log and pipe writer may mix the output
 	stream := sql.RunSQLProgram(sqlStmt, "", session)
 	for res := range stream.ReadAll() {
 		if e := render(res, table); e != nil {

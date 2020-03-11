@@ -179,9 +179,7 @@ func render(rsp interface{}, table tablewriter.TableWriter, isTerminal bool) err
 	case []interface{}: // row
 		return table.AppendRow(s)
 	case error:
-		if os.Getenv("SQLFLOW_log_dir") != "" { // To avoid printing duplicated error message to console
-			log.New(os.Stderr, "", 0).Printf("ERROR: %v\n", s)
-		}
+		log.Printf("ERROR: %v\n", s)
 		if !isTerminal {
 			os.Exit(1)
 		}
