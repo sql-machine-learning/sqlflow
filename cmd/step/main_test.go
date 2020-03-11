@@ -22,6 +22,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
@@ -53,14 +54,16 @@ func checkStepWrapper(f func(), check func(string) error) error {
 	return check(out)
 }
 
-func dummyChecker(string) error {
+func dummyChecker(s string) error {
 	return nil
 }
+
 func trainLogChecker(s string) error {
-	if strings.Contains(s, "Done training") {
+	expectLog := "Done training"
+	if strings.Contains(s, expectLog) {
 		return nil
 	}
-	return fmt.Errorf("train sql failed")
+	return fmt.Errorf("train sql log does not contain the expected content: %s", expectLog)
 }
 func TestStepTrainSQL(t *testing.T) {
 	if os.Getenv("SQLFLOW_TEST_DB") != "mysql" {
@@ -81,4 +84,48 @@ func TestStepTrainSQL(t *testing.T) {
 	LABEL class
 	INTO sqlflow_models.mytest_model;`
 	a.NoError(checkStepWrapper(func() { a.NotPanics(func() { runSQLStmt(sql, session) }) }, trainLogChecker))
+}
+
+func TestStepStandardSQL(t *testing.T) {
+	if os.Getenv("SQLFLOW_TEST_DB") != "mysql" {
+		t.Skip("skip no mysql test.")
+	}
+	a := assert.New(t)
+	dbConnStr := "mysql://root:root@tcp(127.0.0.1:3306)/iris?maxAllowedPacket=0"
+	session := makeTestSession(dbConnStr)
+	sql := `SELECT * FROM iris.train limit 5;`
+	a.NoError(checkStepWrapper(func() { a.NotPanics(func() { runSQLStmt(sql, session) }) }, func(s string) error {
+		checkHead := false
+		checkRows := 0
+		for _, line := range strings.Split(s, "\n") {
+			line = strings.TrimSpace(line)
+			response := &pb.Response{}
+			if e := proto.UnmarshalText(line, response); e == nil {
+				if response.GetHead() != nil {
+					checkHead = true
+				} else if response.GetRow() != nil {
+					checkRows++
+				} else {
+					continue
+				}
+			}
+		}
+		if checkHead == true && checkRows == 5 {
+			return nil
+		}
+		return fmt.Errorf("check select result failed, checkHead: %v, checkRows: %d", checkHead, checkRows)
+	}))
+}
+
+func TestStepSQLWithComment(t *testing.T) {
+	if os.Getenv("SQLFLOW_TEST_DB") != "mysql" {
+		t.Skip("skip no mysql test.")
+	}
+	a := assert.New(t)
+	dbConnStr := "mysql://root:root@tcp(127.0.0.1:3306)/iris?maxAllowedPacket=0"
+	session := makeTestSession(dbConnStr)
+	sql := `-- this is comment {a.b}
+	SELECT 1, 'a';\n\t
+`
+	a.NoError(checkStepWrapper(func() { a.NotPanics(func() { runSQLStmt(sql, session) }) }, dummyChecker))
 }

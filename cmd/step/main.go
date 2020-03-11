@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"log"
 	"regexp"
+	"strings"
 	"time"
 
 	pb "sqlflow.org/sqlflow/pkg/proto"
@@ -57,7 +58,7 @@ func render(rsp interface{}, table tablewriter.TableWriter) error {
 			log.Println(s)
 		}
 	case string:
-		log.Println(s)
+		log.Print(s)
 	default:
 		return fmt.Errorf("unrecongnized response type: %v", s)
 	}
@@ -67,12 +68,19 @@ func render(rsp interface{}, table tablewriter.TableWriter) error {
 type logWriter struct{}
 
 func (w *logWriter) Write(b []byte) (int, error) {
-	log.Println(string(b))
+	log.Print(string(b))
 	return len(b), nil
 }
 
 func runSQLStmt(sqlStmt string, session *pb.Session) {
 	startTime := time.Now().UnixNano()
+	// note(yancey1989): if the input sql program contain `\n`, bufio.Text() would deal with
+	// it as a text string with two character instead of one character "\n".
+	// readStmt(bufio.Scanner) should deal with that by replacing `\n` with '\n'
+	// TODO(yancey1989): finding a normative way to deal with that.
+	replacer := strings.NewReplacer(`\n`, "\n", `\t`, "\t", `\r`, "\r")
+	sqlStmt = replacer.Replace(sqlStmt)
+
 	log.Printf("SQLFlow Step Execute:\n%s\n", sqlStmt)
 
 	table, e := tablewriter.Create("protobuf", tablePageSize, &logWriter{})
@@ -85,9 +93,8 @@ func runSQLStmt(sqlStmt string, session *pb.Session) {
 			log.Fatal(e)
 		}
 		log.Printf("(%.2f sec)\n", float64(time.Now().UnixNano()-startTime)/1e9)
-		log.Println()
 	}()
-
+	log.SetFlags(0)
 	stream := sql.RunSQLProgram(sqlStmt, "", session)
 	for res := range stream.ReadAll() {
 		if e := render(res, table); e != nil {
