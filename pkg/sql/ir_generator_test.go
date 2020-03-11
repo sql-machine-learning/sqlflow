@@ -57,7 +57,9 @@ func TestGenerateTrainStmt(t *testing.T) {
 	r, e := parser.ParseStatement("mysql", normal)
 	a.NoError(e)
 
-	trainStmt, err := generateTrainStmt(r.SQLFlowSelectStmt)
+	trainStmt, err := generateTrainStmt(r.SQLFlowSelectStmt, true)
+	a.Error(err)
+	trainStmt, err = generateTrainStmt(r.SQLFlowSelectStmt, false)
 	a.NoError(err)
 	a.Equal("DNNClassifier", trainStmt.Estimator)
 	a.Equal(`SELECT c1, c2, c3, c4 FROM my_table
@@ -77,7 +79,7 @@ func TestGenerateTrainStmt(t *testing.T) {
 			a.Equal(128, l[0].(int))
 			a.Equal(64, l[1].(int))
 		} else if key != "validation.select" {
-			a.Failf("error key: %s", key)
+			a.Failf("error key", key)
 		}
 	}
 
@@ -188,6 +190,62 @@ func TestGenerateTrainStmt(t *testing.T) {
 	a.Equal("mymodel", trainStmt.Into)
 }
 
+func TestGenerateTrainStmtWithTypeCheck(t *testing.T) {
+	a := assert.New(t)
+	normal := `SELECT c1, c2, c3, c4 FROM my_table
+	TO TRAIN DNNClassifier
+	WITH
+		model.n_classes=2,
+		model.optimizer="adam",
+		model.hidden_units=[128,64]
+	LABEL c4
+	INTO mymodel;
+	`
+
+	r, e := parser.ParseStatement("mysql", normal)
+	a.NoError(e)
+
+	trainStmt, err := generateTrainStmt(r.SQLFlowSelectStmt, true)
+	a.NoError(err)
+	a.Equal("DNNClassifier", trainStmt.Estimator)
+	a.Equal("SELECT c1, c2, c3, c4 FROM my_table\n	", trainStmt.Select)
+	extendedAttr := map[string]bool{
+		"train.epoch":                  true,
+		"train.verbose":                true,
+		"train.save_checkpoints_steps": true,
+		"train.log_every_n_iter":       true,
+		"train.max_steps":              true,
+		"validation.steps":             true,
+		"validation.metrics":           true,
+		"validation.start_delay_secs":  true,
+		"train.batch_size":             true,
+		"validation.throttle_secs":     true,
+		"validation.select":            true,
+	}
+	a.Equal(14, len(trainStmt.Attributes))
+
+	for key, attr := range trainStmt.Attributes {
+		if key == "model.n_classes" {
+			a.Equal(2, attr.(int))
+		} else if key == "model.optimizer" {
+			a.Equal("adam()", attr.(string))
+		} else if key == "model.hidden_units" {
+			l, ok := attr.([]interface{})
+			a.True(ok)
+			a.Equal(128, l[0].(int))
+			a.Equal(64, l[1].(int))
+		} else if _, ok := extendedAttr[key]; !ok {
+			a.Failf("error key", key)
+		}
+	}
+
+	l, ok := trainStmt.Label.(*ir.NumericColumn)
+	a.True(ok)
+	a.Equal("c4", l.FieldDesc.Name)
+
+	a.Equal("mymodel", trainStmt.Into)
+}
+
 func TestGenerateTrainStmtModelZoo(t *testing.T) {
 	a := assert.New(t)
 
@@ -205,7 +263,7 @@ func TestGenerateTrainStmtModelZoo(t *testing.T) {
 	r, e := parser.ParseStatement("mysql", normal)
 	a.NoError(e)
 
-	trainStmt, err := generateTrainStmt(r.SQLFlowSelectStmt)
+	trainStmt, err := generateTrainStmt(r.SQLFlowSelectStmt, false)
 	a.NoError(err)
 	a.Equal("a_data_scientist/regressors:v0.2", trainStmt.ModelImage)
 	a.Equal("MyDNNRegressor", trainStmt.Estimator)

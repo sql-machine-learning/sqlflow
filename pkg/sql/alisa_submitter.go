@@ -200,27 +200,18 @@ func findPyModulePath(pyModuleName string) (string, error) {
 
 // FIXME(typhoonzero): use the same model bucket name e.g. sqlflow-models
 func getModelBucket(project string) (*oss.Bucket, error) {
-	ossCkptDir, err := pai.GetOSSCheckpointDir(project)
-	if err != nil {
-		return nil, err
-	}
 	ak := os.Getenv("SQLFLOW_OSS_AK")
 	sk := os.Getenv("SQLFLOW_OSS_SK")
 	ep := os.Getenv("SQLFLOW_OSS_MODEL_ENDPOINT")
-	if ak == "" || sk == "" || ep == "" || ossCkptDir == "" {
+	if ak == "" || sk == "" || ep == "" {
 		return nil, fmt.Errorf("should define SQLFLOW_OSS_MODEL_ENDPOINT, SQLFLOW_OSS_CHECKPOINT_DIR, SQLFLOW_OSS_AK, SQLFLOW_OSS_SK when using submitter alisa")
 	}
 
-	sub := reOSS.FindStringSubmatch(ossCkptDir)
-	if len(sub) != 3 {
-		return nil, fmt.Errorf("SQLFLOW_OSS_CHECKPOINT_DIR should be format: oss://bucket/?role_arn=xxx&host=xxx")
-	}
-	bucketName := sub[1]
 	cli, e := oss.New(ep, ak, sk)
 	if e != nil {
 		return nil, e
 	}
-	return cli.Bucket(bucketName)
+	return cli.Bucket(pai.BucketName)
 }
 
 func getAlisaBucket() (*oss.Bucket, error) {

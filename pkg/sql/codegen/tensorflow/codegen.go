@@ -297,7 +297,8 @@ func constructLosses(trainStmt *ir.TrainStmt) {
 	}
 }
 
-func initializeAttributes(trainStmt *ir.TrainStmt) error {
+// InitializeAttributes initializes the attributes of TensorFlow and does type checking for them
+func InitializeAttributes(trainStmt *ir.TrainStmt) error {
 	attribute.ExtractDocStringsOnce()
 	commonAttributes.FillDefaults(trainStmt.Attributes)
 
@@ -356,12 +357,7 @@ func deriveFeatureColumnCode(trainStmt *ir.TrainStmt) (featureColumnsCode []stri
 
 // Train generates a Python program for train a TensorFlow model.
 func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
-	if err := initializeAttributes(trainStmt); err != nil {
-		return "", err
-	}
-
 	trainParams, validateParams, modelParams := categorizeAttributes(trainStmt)
-
 	featureColumnsCode, fieldDescs, err := deriveFeatureColumnCode(trainStmt)
 	if err != nil {
 		return "", err

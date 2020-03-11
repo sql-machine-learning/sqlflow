@@ -19,6 +19,11 @@ type xgbSaveModelFiller struct {
 
 const xgbSaveModelTmplText = `
 from sqlflow_submitter.pai import model
+from sqlflow_submitter.tensorflow.pai_distributed import define_tf_flags, set_oss_environs
+
+FLAGS = define_tf_flags()
+set_oss_environs(FLAGS)
+
 # NOTE(typhoonzero): the xgboost model file "my_model" is hard coded in xgboost/train.py
 model.save_file("{{.OSSModelDir}}", "my_model")
 model.save_metas("{{.OSSModelDir}}",
@@ -30,10 +35,6 @@ model.save_metas("{{.OSSModelDir}}",
            feature_metas,
            feature_column_names,
            label_meta)
-`
-
-const xgbLoadModelTmplText = `
-
 `
 
 type xgbPredictFiller struct {
@@ -52,6 +53,10 @@ const xgbPredTemplateText = `
 import json
 from sqlflow_submitter.xgboost.predict import pred
 from sqlflow_submitter.pai import model
+from sqlflow_submitter.tensorflow.pai_distributed import define_tf_flags, set_oss_environs
+
+FLAGS = define_tf_flags()
+set_oss_environs(FLAGS)
 
 # NOTE(typhoonzero): the xgboost model file "my_model" is hard coded in xgboost/train.py
 model.load_file("{{.OSSModelDir}}", "my_model")
@@ -107,9 +112,14 @@ if os.environ.get('DISPLAY', '') == '':
 import json
 from sqlflow_submitter.xgboost.explain import explain
 from sqlflow_submitter.pai import model
+from sqlflow_submitter.tensorflow.pai_distributed import define_tf_flags, set_oss_environs
+
+FLAGS = define_tf_flags()
+set_oss_environs(FLAGS)
 
 # NOTE(typhoonzero): the xgboost model file "my_model" is hard coded in xgboost/train.py
 model.load_file("{{.OSSModelDir}}", "my_model")
+
 (estimator,
 model_params,
 train_params,

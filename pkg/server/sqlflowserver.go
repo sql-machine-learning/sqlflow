@@ -20,6 +20,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"sqlflow.org/sqlflow/pkg/database"
 
@@ -62,6 +63,7 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 		var err error
 		switch s := r.(type) {
 		case error:
+			log.Println(s)
 			return s
 		case map[string]interface{}:
 			res, err = pb.EncodeHead(s)

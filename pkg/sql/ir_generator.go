@@ -22,6 +22,8 @@ import (
 	"sqlflow.org/sqlflow/pkg/ir"
 	"sqlflow.org/sqlflow/pkg/model"
 	"sqlflow.org/sqlflow/pkg/parser"
+	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
+	"sqlflow.org/sqlflow/pkg/sql/codegen/xgboost"
 	"sqlflow.org/sqlflow/pkg/step/feature"
 	"sqlflow.org/sqlflow/pkg/verifier"
 )
@@ -42,7 +44,7 @@ const (
 )
 
 func generateTrainStmtWithInferredColumns(slct *parser.SQLFlowSelectStmt, connStr string, verifyLabel bool) (*ir.TrainStmt, error) {
-	trainStmt, err := generateTrainStmt(slct)
+	trainStmt, err := generateTrainStmt(slct, true)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +67,14 @@ func generateTrainStmtWithInferredColumns(slct *parser.SQLFlowSelectStmt, connSt
 	return trainStmt, nil
 }
 
-func generateTrainStmt(slct *parser.SQLFlowSelectStmt) (*ir.TrainStmt, error) {
+func doAttrInitAndTypeChecking(ir *ir.TrainStmt) error {
+	if isXGBoostModel(ir.Estimator) {
+		return xgboost.InitializeAttributes(ir)
+	}
+	return tensorflow.InitializeAttributes(ir)
+}
+
+func generateTrainStmt(slct *parser.SQLFlowSelectStmt, attrInitAndTypeCheck bool) (*ir.TrainStmt, error) {
 	tc := slct.TrainClause
 	modelURI := tc.Estimator
 	// get model Docker image name
@@ -121,7 +130,11 @@ func generateTrainStmt(slct *parser.SQLFlowSelectStmt) (*ir.TrainStmt, error) {
 		Label:            label,
 		Into:             slct.Save,
 	}
-
+	if attrInitAndTypeCheck {
+		if err = doAttrInitAndTypeChecking(trainStmt); err != nil {
+			return nil, err
+		}
+	}
 	return trainStmt, nil
 }
 

@@ -57,12 +57,11 @@ func RunSQLProgram(sqlProgram string, modelDir string, session *pb.Session) *pip
 		defer wr.Close()
 		if db, err = database.OpenAndConnectDB(session.DbConnStr); err != nil {
 			wr.Write(fmt.Errorf("create DB failed: %v", err))
-			log.Printf("create DB failed: %v", err)
 			return
 		}
 		err = runSQLProgram(wr, sqlProgram, db, modelDir, session)
 		if err != nil {
-			log.Printf("runSQLProgram error: %v", err)
+			wr.Write(fmt.Errorf("runSQLProgram error: %v", err))
 			if err != pipe.ErrClosedPipe {
 				if err := wr.Write(err); err != nil {
 					log.Printf("runSQLProgram error(piping): %v", err)
@@ -105,7 +104,7 @@ func ResolveSQLProgram(sqlStmts []*parser.SQLFlowStmt) ([]ir.SQLFlowStmt, error)
 		var r ir.SQLFlowStmt
 		if sql.IsExtendedSyntax() {
 			if sql.Train {
-				r, err = generateTrainStmt(sql.SQLFlowSelectStmt)
+				r, err = generateTrainStmt(sql.SQLFlowSelectStmt, true)
 			} else if sql.Explain {
 				// since getTrainStmtFromModel is false, use empty cwd is fine.
 				r, err = generateExplainStmt(sql.SQLFlowSelectStmt, "", "", "", false)
