@@ -322,7 +322,7 @@ func getFeatureColumnTargets(trainStmt *ir.TrainStmt) []string {
 }
 
 // deriveFeatureColumn will fill in "fcMap" with derivated FeatureColumns.
-func deriveFeatureColumn(fcMap ColumnMap, columnTargets []string, fmMap FieldDescMap, selectFieldTypeMap fieldTypes, trainStmt *ir.TrainStmt) error {
+func deriveFeatureColumn(fcMap ColumnMap, columnTargets []string, fdMap FieldDescMap, selectFieldTypeMap fieldTypes, trainStmt *ir.TrainStmt) error {
 	// 1. Infer omitted category_id_column for embedding_columns
 	// 2. Add derivated feature column.
 	//
@@ -338,11 +338,37 @@ func deriveFeatureColumn(fcMap ColumnMap, columnTargets []string, fmMap FieldDes
 			fcMap[target] = make(map[string][]ir.FeatureColumn)
 			fcTargetMap = fcMap[target]
 		}
+		fcMap[target] = make(map[string][]ir.FeatureColumn)
 		for f := range fcTargetMap {
 			if _, ok := selectFieldTypeMap[f]; !ok {
-				return fmt.Errorf("Unknown column '%s' in 'column clause'", f)
+				if len(fcTargetMap[f]) != 1 {
+					return fmt.Errorf("cannot expand '%s' in 'column clause'", f)
+				}
+				// Try as regex to match the selected fields
+				r, e := regexp.Compile("(?i)^" + f + "$")
+				if e != nil {
+					return fmt.Errorf("unknown column '%s' in 'column clause'", f)
+				}
+				hasMatch := false
+				for sf := range selectFieldTypeMap {
+					if r.MatchString(sf) {
+						applied, err := fcTargetMap[f][0].ApplyTo(fdMap[sf])
+						if err != nil {
+							return err
+						}
+						fcMap[target][sf] = []ir.FeatureColumn{applied}
+						hasMatch = true
+					}
+				}
+				if !hasMatch {
+					return fmt.Errorf("'%s' in 'column clause' does not match any selected fields", f)
+				}
+				delete(fdMap, f)
+			} else {
+				fcMap[target][f] = fcTargetMap[f]
 			}
 		}
+		fcTargetMap = fcMap[target]
 		// ================== MAIN LOOP ==================
 		// Update or generate FeatureColumn for each selected field:
 		for slctKey := range selectFieldTypeMap {
@@ -351,7 +377,7 @@ func deriveFeatureColumn(fcMap ColumnMap, columnTargets []string, fmMap FieldDes
 				continue
 			}
 			if fcList, ok := fcTargetMap[slctKey]; ok {
-				err := updateFeatureColumn(fcList, fmMap)
+				err := updateFeatureColumn(fcList, fdMap)
 				if err != nil {
 					return err
 				}
@@ -361,7 +387,7 @@ func deriveFeatureColumn(fcMap ColumnMap, columnTargets []string, fmMap FieldDes
 					// full list of the columns to use.
 					continue
 				}
-				err := newFeatureColumn(fcTargetMap, fmMap, slctKey)
+				err := newFeatureColumn(fcTargetMap, fdMap, slctKey)
 				if err != nil {
 					return err
 				}

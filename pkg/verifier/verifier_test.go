@@ -81,7 +81,7 @@ TO PREDICT iris.predict.class
 USING sqlflow_models.my_dnn_model;`)
 	a.NoError(e)
 	a.EqualError(VerifyColumnNameAndType(trainParse.SQLFlowSelectStmt, predParse.SQLFlowSelectStmt, database.GetTestingDBSingleton()),
-		"predFields doesn't contain column totalcharges")
+		"the predict statement doesn't contain column totalcharges")
 }
 
 func TestDescribeEmptyTables(t *testing.T) {

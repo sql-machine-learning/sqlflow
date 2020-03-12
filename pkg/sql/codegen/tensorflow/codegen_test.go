@@ -61,18 +61,18 @@ func TestTrainWithOptimizer(t *testing.T) {
 	a.NotContains(tir.Attributes, "model.optimizer")
 
 	tir.Attributes["model.optimizer"] = "RMSprop"
+	a.NoError(InitializeAttributes(tir))
 	_, err = Train(tir, mockSession())
 	a.NoError(err)
 	a.Equal(tir.Attributes["model.optimizer"], "RMSprop()")
 
 	tir.Attributes["not_optimizer.learning_rate"] = 123
 	tir.Attributes["model.optimizer"] = "RMSprop"
-	_, err = Train(tir, mockSession())
-	a.Error(err)
-	a.Equal(tir.Attributes["model.optimizer"], "RMSprop()")
+	a.Error(InitializeAttributes(tir))
 
 	tir = ir.MockTrainStmt(false)
 	tir.Attributes["optimizer.learning_rate"] = 0.002
+	a.NoError(InitializeAttributes(tir))
 	_, err = Train(tir, mockSession())
 	a.NoError(err)
 	a.Equal(tir.Attributes["model.optimizer"], "Adagrad(learning_rate=0.002, )")
@@ -80,6 +80,7 @@ func TestTrainWithOptimizer(t *testing.T) {
 
 	tir.Attributes["model.optimizer"] = "RMSprop"
 	tir.Attributes["optimizer.learning_rate"] = 0.002
+	a.NoError(InitializeAttributes(tir))
 	_, err = Train(tir, mockSession())
 	a.NoError(err)
 	a.Equal(tir.Attributes["model.optimizer"], "RMSprop(learning_rate=0.002, )")

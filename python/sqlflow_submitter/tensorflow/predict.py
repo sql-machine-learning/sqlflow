@@ -92,13 +92,7 @@ def keras_predict(estimator, model_params, save, result_table, is_pai,
     # NOTE: must run predict one batch to initialize parameters
     # see: https://www.tensorflow.org/alpha/guide/keras/saving_and_serializing#saving_subclassed_models
     classifier.predict_on_batch(one_batch)
-    if is_pai:
-        print("loading from %s" % save)
-        # NOTE(typhoonzero): h5 file name is hard coded in tensorflow/codegen.go
-        model.load_file(save, "model_save")
-        classifier.load_weights("model_save")
-    else:
-        classifier.load_weights(save)
+    classifier.load_weights(save)
     pred_dataset = eval_input_fn(1, cache=True).make_one_shot_iterator()
     buff_rows = []
     column_names = feature_column_names[:]
@@ -127,9 +121,10 @@ def keras_predict(estimator, model_params, save, result_table, is_pai,
 
 
 def estimator_predict(estimator, model_params, save, result_table,
-                      feature_column_names, feature_columns, feature_metas,
-                      result_col_name, datasource, select, hdfs_namenode_addr,
-                      hive_location, hdfs_user, hdfs_pass, is_pai, pai_table):
+                      feature_column_names, feature_column_names_map,
+                      feature_columns, feature_metas, result_col_name,
+                      datasource, select, hdfs_namenode_addr, hive_location,
+                      hdfs_user, hdfs_pass, is_pai, pai_table):
     if not is_pai:
         conn = db.connect_with_data_source(datasource)
 
@@ -150,22 +145,12 @@ def estimator_predict(estimator, model_params, save, result_table,
                                             feature_column_names, None,
                                             feature_metas)()
     # load from the exported model
-    if save.startswith("oss://"):
-        with open("exported_path", "r") as fn:
-            export_path = fn.read()
-        parts = save.split("?")
-        export_path_oss = parts[0] + export_path
-        if TF_VERSION_2:
-            imported = tf.saved_model.load(export_path_oss)
-        else:
-            imported = tf.saved_model.load_v2(export_path_oss)
+    with open("exported_path", "r") as fn:
+        export_path = fn.read()
+    if TF_VERSION_2:
+        imported = tf.saved_model.load(export_path)
     else:
-        with open("exported_path", "r") as fn:
-            export_path = fn.read()
-        if TF_VERSION_2:
-            imported = tf.saved_model.load(export_path)
-        else:
-            imported = tf.saved_model.load_v2(export_path)
+        imported = tf.saved_model.load_v2(export_path)
 
     def add_to_example(example, x, i):
         feature_name = feature_column_names[i]
@@ -183,13 +168,26 @@ def estimator_predict(estimator, model_params, save, result_table,
                 example.features.feature[feature_name].int64_list.value.extend(
                     list(values))
         else:
-            idx = feature_column_names.index(feature_name)
             if "feature_columns" in feature_columns:
+                idx = feature_column_names.index(feature_name)
                 fc = feature_columns["feature_columns"][idx]
             else:
-                # FIXME(typhoonzero): when the model is deep and wide model, need to
-                # find the feature column form column name, use type numeric_column for now.
-                fc = tf.feature_column.numeric_column("tmp")
+                # DNNLinearCombinedXXX have dnn_feature_columns and linear_feature_columns param.
+                idx = -1
+                try:
+                    idx = feature_column_names_map[
+                        "dnn_feature_columns"].index(feature_name)
+                    fc = feature_columns["dnn_feature_columns"][idx]
+                except:
+                    try:
+                        idx = feature_column_names_map[
+                            "linear_feature_columns"].index(feature_name)
+                        fc = feature_columns["linear_feature_columns"][idx]
+                    except:
+                        pass
+                if idx == -1:
+                    raise ValueError(
+                        "can not found feature %s in all feature columns")
             if dtype_str == "float32" or dtype_str == "float64":
                 # need to pass a tuple(float, )
                 example.features.feature[feature_name].float_list.value.extend(
@@ -245,6 +243,7 @@ def pred(datasource,
          result_table,
          feature_columns,
          feature_column_names,
+         feature_column_names_map,
          result_col_name,
          feature_metas={},
          model_params={},
@@ -274,16 +273,13 @@ def pred(datasource,
                       result_col_name, datasource, select, hdfs_namenode_addr,
                       hive_location, hdfs_user, hdfs_pass)
     else:
-        if is_pai:
-            FLAGS = define_tf_flags()
-            model_params["model_dir"] = FLAGS.checkpointDir
-        else:
-            model_params['model_dir'] = save
+        model_params['model_dir'] = save
         print("Start predicting using estimator model...")
         estimator_predict(estimator, model_params, save, result_table,
-                          feature_column_names, feature_columns, feature_metas,
-                          result_col_name, datasource, select,
-                          hdfs_namenode_addr, hive_location, hdfs_user,
-                          hdfs_pass, is_pai, pai_table)
+                          feature_column_names, feature_column_names_map,
+                          feature_columns, feature_metas, result_col_name,
+                          datasource, select, hdfs_namenode_addr,
+                          hive_location, hdfs_user, hdfs_pass, is_pai,
+                          pai_table)
 
     print("Done predicting. Predict table : %s" % result_table)

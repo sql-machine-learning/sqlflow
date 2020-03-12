@@ -134,11 +134,10 @@ func TestTrainCodegen(t *testing.T) {
 	a.True(hasExportedLocal(tfCode))
 	a.False(hasUnknownParameters(paiTFCode, knownTrainParams))
 
-	// check pai command string
-	ckpDir, err := checkpointURL(ossModelPath, "project")
+	expectedPAICmd := fmt.Sprintf("pai -name tensorflow1150 -project algo_public_dev -DmaxHungTimeBeforeGCInSeconds=0 -DjobName=sqlflow_my_dnn_model -Dtags=dnn -Dscript=%s -DentryFile=entry.py -Dtables=odps://iris/tables/train,odps://iris/tables/test  -DhyperParameters=\"file://.*\" -DgpuRequired='0'", scriptPath)
+	re, err := regexp.Compile(expectedPAICmd)
 	a.NoError(err)
-	expectedPAICmd := fmt.Sprintf("pai -name tensorflow1150 -project algo_public_dev -DmaxHungTimeBeforeGCInSeconds=0 -DjobName=sqlflow_my_dnn_model -Dtags=dnn -Dscript=%s -DentryFile=entry.py -Dtables=odps://iris/tables/train,odps://iris/tables/test  -DcheckpointDir=\"%s\" -DgpuRequired='0'", scriptPath, ckpDir)
-	a.Equal(expectedPAICmd, paiCmd)
+	a.True(re.MatchString(paiCmd))
 }
 
 func TestPredictCodegen(t *testing.T) {
@@ -150,8 +149,6 @@ func TestPredictCodegen(t *testing.T) {
 	sess := mockSession()
 	ossModelPath := "iris/sqlflow/my_dnn_model"
 	scriptPath := "file:///tmp/task.tar.gz"
-	ckpDir, err := checkpointURL(ossModelPath, "project")
-	a.NoError(err)
 	paiTFCode, paiCmd, _, e := Predict(ir, sess, scriptPath, "my_dnn_model", ossModelPath, "", ModelTypeTF)
 	a.NoError(e)
 	a.False(hasUnknownParameters(paiTFCode, knownPredictParams))
@@ -160,6 +157,8 @@ func TestPredictCodegen(t *testing.T) {
 
 	a.True(hasExportedLocal(tfCode))
 	a.False(hasUnknownParameters(tfCode, knownPredictParams))
-	expectedPAICmd := fmt.Sprintf("pai -name tensorflow1150 -project algo_public_dev -DmaxHungTimeBeforeGCInSeconds=0 -DjobName=sqlflow_my_dnn_model -Dtags=dnn -Dscript=%s -DentryFile=entry.py -Dtables=odps://iris/tables/predict -Doutputs=odps://iris/tables/predict -DcheckpointDir=\"%s\" -DgpuRequired='0'", scriptPath, ckpDir)
-	a.Equal(expectedPAICmd, paiCmd)
+	expectedPAICmd := fmt.Sprintf("pai -name tensorflow1150 -project algo_public_dev -DmaxHungTimeBeforeGCInSeconds=0 -DjobName=sqlflow_my_dnn_model -Dtags=dnn -Dscript=%s -DentryFile=entry.py -Dtables=odps://iris/tables/predict -Doutputs=odps://iris/tables/predict -DhyperParameters=\"file://.*\" -DgpuRequired='0'", scriptPath)
+	re, err := regexp.Compile(expectedPAICmd)
+	a.NoError(err)
+	a.True(re.MatchString(paiCmd))
 }

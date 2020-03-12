@@ -19,6 +19,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"os/exec"
 	"regexp"
@@ -59,6 +60,7 @@ func getStdout(f func() error) (out string, e error) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 	os.Stderr = w
+	log.SetOutput(os.Stdout)
 	e = f() // f prints to stdout
 	outC := make(chan string)
 	go func() { // copy the output in a separate goroutine so printing can't block indefinitely
