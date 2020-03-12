@@ -37,7 +37,7 @@ type alisaSubmitter struct {
 	*defaultSubmitter
 }
 
-func (s *alisaSubmitter) submitAlisaTask(code, resourceURL string) error {
+func (s *alisaSubmitter) submitAlisaTask(submitCode, codeResourceURL, paramsResourceURL string) error {
 	_, dsName, err := database.ParseURL(s.Session.DbConnStr)
 	if err != nil {
 		return err
@@ -47,7 +47,8 @@ func (s *alisaSubmitter) submitAlisaTask(code, resourceURL string) error {
 		return e
 	}
 
-	cfg.Env["RES_DOWNLOAD_URL"] = fmt.Sprintf(`[{\"downloadUrl\":\"%s\", \"resourceName\":\"%s\"}]`, resourceURL, resourceName)
+	cfg.Env["RES_DOWNLOAD_URL"] = fmt.Sprintf(`[{\"downloadUrl\":\"%s\", \"resourceName\":\"%s\"}, {\"downloadUrl\":\"%s\", \"resourceName\":\"%s\"}]`,
+		codeResourceURL, resourceName, paramsResourceURL, paramsFile)
 	cfg.Verbose = true
 	newDatasource := cfg.FormatDSN()
 
@@ -55,7 +56,7 @@ func (s *alisaSubmitter) submitAlisaTask(code, resourceURL string) error {
 	if e != nil {
 		return e
 	}
-	_, e = alisa.Exec(code)
+	_, e = alisa.Exec(submitCode)
 	return e
 }
 
@@ -88,8 +89,11 @@ func (s *alisaSubmitter) ExecuteTrain(ts *ir.TrainStmt) (e error) {
 	if e = pai.CleanupPAIModel(ts, s.Session); e != nil {
 		return e
 	}
-
-	code, paiCmd, requirements, e := pai.Train(ts, s.Session, scriptPath, ts.Into, ossModelPath, s.Cwd)
+	paramsPath := fmt.Sprintf("file://@@%s", paramsFile)
+	if err := createPAIHyperParamFile(s.Cwd, paramsFile, ossModelPath); err != nil {
+		return err
+	}
+	code, paiCmd, requirements, e := pai.Train(ts, s.Session, scriptPath, paramsPath, ts.Into, ossModelPath, s.Cwd)
 	if e != nil {
 		return e
 	}
@@ -124,7 +128,11 @@ func (s *alisaSubmitter) ExecutePredict(ps *ir.PredictStmt) error {
 	}
 
 	scriptPath := fmt.Sprintf("file://@@%s", resourceName)
-	code, paiCmd, requirements, e := pai.Predict(ps, s.Session, scriptPath, ps.Using, ossModelPath, s.Cwd, modelType)
+	paramsPath := fmt.Sprintf("file://@@%s", paramsFile)
+	if err := createPAIHyperParamFile(s.Cwd, paramsFile, ossModelPath); err != nil {
+		return err
+	}
+	code, paiCmd, requirements, e := pai.Predict(ps, s.Session, scriptPath, paramsPath, ps.Using, ossModelPath, s.Cwd, modelType)
 	if e != nil {
 		return e
 	}
@@ -132,19 +140,23 @@ func (s *alisaSubmitter) ExecutePredict(ps *ir.PredictStmt) error {
 }
 
 func (s *alisaSubmitter) uploadResourceAndSubmitAlisaTask(entryCode, requirements, alisaExecCode string) error {
-	// achieve and upload alisa Resource
-	ossObjectName := randStringRunes(16)
+	// upload generated program to OSS and submit an Alisa task.
+	ossCodeObjectName := randStringRunes(16)
 	alisaBucket, e := getAlisaBucket()
 	if e != nil {
 		return e
 	}
-	resourceURL, e := tarAndUploadResource(s.Cwd, entryCode, requirements, ossObjectName, alisaBucket)
+	codeResourceURL, e := tarAndUploadResource(s.Cwd, entryCode, requirements, ossCodeObjectName, alisaBucket)
 	if e != nil {
 		return e
 	}
-	defer alisaBucket.DeleteObject(ossObjectName)
-	// upload generated program to OSS and submit an Alisa task.
-	return s.submitAlisaTask(alisaExecCode, resourceURL)
+	defer alisaBucket.DeleteObject(ossCodeObjectName)
+	// upload params.txt for additional training parameters.
+	ossParamsObjectName := randStringRunes(16)
+	paramResourceURL, e := uploadResource(s.Cwd, paramsFile, ossParamsObjectName, alisaBucket)
+	defer alisaBucket.DeleteObject(ossParamsObjectName)
+
+	return s.submitAlisaTask(alisaExecCode, codeResourceURL, paramResourceURL)
 }
 
 func (s *alisaSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
@@ -174,7 +186,11 @@ func (s *alisaSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 	}
 
 	scriptPath := fmt.Sprintf("file://@@%s", resourceName)
-	expn, e := pai.Explain(cl, s.Session, scriptPath, cl.ModelName, ossModelPath, s.Cwd, modelType)
+	paramsPath := fmt.Sprintf("file://@@%s", paramsFile)
+	if err := createPAIHyperParamFile(s.Cwd, paramsFile, ossModelPath); err != nil {
+		return err
+	}
+	expn, e := pai.Explain(cl, s.Session, scriptPath, paramsPath, cl.ModelName, ossModelPath, s.Cwd, modelType)
 	if e != nil {
 		return e
 	}
@@ -254,13 +270,15 @@ func getModelPath(modelName string, session *pb.Session) (string, error) {
 }
 
 func tarAndUploadResource(cwd, entryCode, requirements, ossObjectName string, bucket *oss.Bucket) (string, error) {
-	tarball := "job.tar.gz"
 	if e := achieveResource(cwd, entryCode, requirements, tarball); e != nil {
 		return "", e
 	}
-	resourceURL := fmt.Sprintf("https://%s.%s/%s", bucket.BucketName, bucket.Client.Config.Endpoint, ossObjectName)
+	return uploadResource(cwd, tarball, ossObjectName, bucket)
+}
 
-	if e := bucket.PutObjectFromFile(ossObjectName, filepath.Join(cwd, tarball)); e != nil {
+func uploadResource(cwd, localFileName, ossObjectName string, bucket *oss.Bucket) (string, error) {
+	resourceURL := fmt.Sprintf("https://%s.%s/%s", bucket.BucketName, bucket.Client.Config.Endpoint, ossObjectName)
+	if e := bucket.PutObjectFromFile(ossObjectName, filepath.Join(cwd, localFileName)); e != nil {
 		return "", e
 	}
 	return resourceURL, nil

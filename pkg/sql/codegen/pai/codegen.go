@@ -41,10 +41,10 @@ const entryFile = "entry.py"
 // BucketName is the OSS bucket to save trained models
 const BucketName = "sqlflow-models"
 
-// ossModelURL returns model path on OSS like: oss://bucket/your/path/modelname/
-func ossModelURL(modelName string, project string) string {
+// OSSModelURL returns model path on OSS like: oss://bucket/project/userid/modelname/
+func OSSModelURL(modelFullPath string) string {
 	ossBucketURI := fmt.Sprintf("oss://%s/", BucketName)
-	ossDir := strings.Join([]string{strings.TrimRight(ossBucketURI, "/"), modelName}, "/")
+	ossDir := strings.Join([]string{strings.TrimRight(ossBucketURI, "/"), modelFullPath}, "/")
 	return ossDir
 }
 
@@ -104,7 +104,7 @@ func genRequirements(isXGBoost bool) (string, error) {
 }
 
 // Train generates a Python program a PAI command arguments to train a Tensorflow model.
-func Train(ir *ir.TrainStmt, session *pb.Session, tarball, modelName, ossModelPath, cwd string) (code, paiCmd, requirements string, e error) {
+func Train(ir *ir.TrainStmt, session *pb.Session, tarball, paramsFile, modelName, ossModelPath, cwd string) (code, paiCmd, requirements string, e error) {
 	cc, e := GetClusterConfig(ir.Attributes)
 	if e != nil {
 		return "", "", "", e
@@ -125,7 +125,7 @@ func Train(ir *ir.TrainStmt, session *pb.Session, tarball, modelName, ossModelPa
 		if code, e = xgboost.Train(ir, session); e != nil {
 			return
 		}
-		ossURI := ossModelURL(ossModelPath, currProject)
+		ossURI := OSSModelURL(ossModelPath)
 		var tpl = template.Must(template.New("xgbSaveModel").Parse(xgbSaveModelTmplText))
 		var saveCode bytes.Buffer
 		if e = tpl.Execute(&saveCode, &xgbSaveModelFiller{OSSModelDir: ossURI}); e != nil {
@@ -135,7 +135,7 @@ func Train(ir *ir.TrainStmt, session *pb.Session, tarball, modelName, ossModelPa
 		if cc.Worker.Count > 1 {
 			return "", "", "", fmt.Errorf("when running xgboost on PAI, we only support run with one worker")
 		}
-		if paiCmd, e = getTFPAICmd(cc, tarball, modelName, ossModelPath, ir.TmpTrainTable, ir.TmpValidateTable, "", currProject, cwd); e != nil {
+		if paiCmd, e = getTFPAICmd(cc, tarball, paramsFile, modelName, ossModelPath, ir.TmpTrainTable, ir.TmpValidateTable, "", currProject, cwd); e != nil {
 			return
 		}
 		requirements, e = genRequirements(true)
@@ -144,7 +144,7 @@ func Train(ir *ir.TrainStmt, session *pb.Session, tarball, modelName, ossModelPa
 		if e != nil {
 			return
 		}
-		if paiCmd, e = getTFPAICmd(cc, tarball, modelName, ossModelPath, ir.TmpTrainTable, ir.TmpValidateTable, "", currProject, cwd); e != nil {
+		if paiCmd, e = getTFPAICmd(cc, tarball, paramsFile, modelName, ossModelPath, ir.TmpTrainTable, ir.TmpValidateTable, "", currProject, cwd); e != nil {
 			return
 		}
 		requirements, e = genRequirements(false)
@@ -153,7 +153,7 @@ func Train(ir *ir.TrainStmt, session *pb.Session, tarball, modelName, ossModelPa
 }
 
 // Predict generates a Python program for train a TensorFlow model.
-func Predict(ir *ir.PredictStmt, session *pb.Session, tarball, modelName, ossModelPath, cwd string, modelType int) (code, paiCmd, requirements string, e error) {
+func Predict(ir *ir.PredictStmt, session *pb.Session, tarball, paramsFile, modelName, ossModelPath, cwd string, modelType int) (code, paiCmd, requirements string, e error) {
 	currProject := ""
 	currProject, e = database.GetDatabaseName(session.DbConnStr)
 	if e != nil {
@@ -165,7 +165,7 @@ func Predict(ir *ir.PredictStmt, session *pb.Session, tarball, modelName, ossMod
 		}
 	} else if modelType == ModelTypeXGBoost {
 		requirements, e = genRequirements(true)
-		ossURI := ossModelURL(ossModelPath, currProject)
+		ossURI := OSSModelURL(ossModelPath)
 		var xgbPredCode bytes.Buffer
 		var tpl = template.Must(template.New("xgbPredTemplate").Parse(xgbPredTemplateText))
 		paiPredictTable := ""
@@ -193,7 +193,7 @@ func Predict(ir *ir.PredictStmt, session *pb.Session, tarball, modelName, ossMod
 			return
 		}
 		// NOTE(typhoonzero): submit a PAI TF job to install xgboost and run.
-		if paiCmd, e = getTFPAICmd(cc, tarball, modelName, ossModelPath, ir.TmpPredictTable, "", ir.ResultTable, currProject, cwd); e != nil {
+		if paiCmd, e = getTFPAICmd(cc, tarball, paramsFile, modelName, ossModelPath, ir.TmpPredictTable, "", ir.ResultTable, currProject, cwd); e != nil {
 			return
 		}
 	} else {
@@ -205,7 +205,7 @@ func Predict(ir *ir.PredictStmt, session *pb.Session, tarball, modelName, ossMod
 		if code, e = TFLoadAndPredict(ir, session, ossModelPath); e != nil {
 			return
 		}
-		if paiCmd, e = getTFPAICmd(cc, tarball, modelName, ossModelPath, ir.TmpPredictTable, "", ir.ResultTable, currProject, cwd); e != nil {
+		if paiCmd, e = getTFPAICmd(cc, tarball, paramsFile, modelName, ossModelPath, ir.TmpPredictTable, "", ir.ResultTable, currProject, cwd); e != nil {
 			return
 		}
 	}
@@ -213,7 +213,7 @@ func Predict(ir *ir.PredictStmt, session *pb.Session, tarball, modelName, ossMod
 }
 
 // Explain generates a Python program for train a TensorFlow model.
-func Explain(ir *ir.ExplainStmt, session *pb.Session, tarball, modelName, ossModelPath, cwd string, modelType int) (*ExplainRender, error) {
+func Explain(ir *ir.ExplainStmt, session *pb.Session, tarball, paramsFile, modelName, ossModelPath, cwd string, modelType int) (*ExplainRender, error) {
 	cc, err := GetClusterConfig(ir.Attributes)
 	if err != nil {
 		return nil, err
@@ -236,7 +236,7 @@ func Explain(ir *ir.ExplainStmt, session *pb.Session, tarball, modelName, ossMod
 		if expn.Requirements, err = genRequirements(true); err != nil {
 			return nil, err
 		}
-		ossURI := ossModelURL(ossModelPath, currProject)
+		ossURI := OSSModelURL(ossModelPath)
 		var xgbExplainCode bytes.Buffer
 		var tpl = template.Must(template.New("xgbExplainTemplate").Parse(xgbExplainTemplateText))
 		filler := &xgbExplainFiller{
@@ -267,7 +267,7 @@ func Explain(ir *ir.ExplainStmt, session *pb.Session, tarball, modelName, ossMod
 			return nil, err
 		}
 		// NOTE(typhoonzero): submit a PAI TF job to install xgboost and run.
-		expn.PaiCmd, err = getTFPAICmd(cc, tarball, modelName, ossModelPath, ir.TmpExplainTable, "", ir.Into, currProject, cwd)
+		expn.PaiCmd, err = getTFPAICmd(cc, tarball, paramsFile, modelName, ossModelPath, ir.TmpExplainTable, "", ir.Into, currProject, cwd)
 	} else {
 		if expn.Requirements, err = genRequirements(false); err != nil {
 			return nil, err
@@ -276,7 +276,7 @@ func Explain(ir *ir.ExplainStmt, session *pb.Session, tarball, modelName, ossMod
 		if expn.Code, err = TFLoadAndExplain(ir, session, ossModelPath, expn); err != nil {
 			return expn, err
 		}
-		expn.PaiCmd, err = getTFPAICmd(cc, tarball, modelName, ossModelPath, ir.TmpExplainTable, "", ir.Into, currProject, cwd)
+		expn.PaiCmd, err = getTFPAICmd(cc, tarball, paramsFile, modelName, ossModelPath, ir.TmpExplainTable, "", ir.Into, currProject, cwd)
 	}
 	return expn, err
 }
