@@ -16,7 +16,7 @@ package main
 import (
 	"bufio"
 	"bytes"
-	_ "image/png" // comment(yancey1989): why import this blank import
+	_ "image/png"
 
 	"flag"
 	"fmt"
