@@ -124,7 +124,8 @@ func TestTrainCodegen(t *testing.T) {
 	sess := mockSession()
 	ossModelPath := "iris/sqlflow/my_dnn_model"
 	scriptPath := "file:///tmp/task.tar.gz"
-	paiTFCode, paiCmd, _, e := Train(trainStmt, sess, scriptPath, "my_dnn_model", ossModelPath, "")
+	paramsPath := "file:///tmp/params.txt"
+	paiTFCode, paiCmd, _, e := Train(trainStmt, sess, scriptPath, paramsPath, "my_dnn_model", ossModelPath, "")
 	a.NoError(e)
 
 	tfCode, err := tensorflow.Train(trainStmt, sess)
@@ -134,10 +135,8 @@ func TestTrainCodegen(t *testing.T) {
 	a.True(hasExportedLocal(tfCode))
 	a.False(hasUnknownParameters(paiTFCode, knownTrainParams))
 
-	expectedPAICmd := fmt.Sprintf("pai -name tensorflow1150 -project algo_public_dev -DmaxHungTimeBeforeGCInSeconds=0 -DjobName=sqlflow_my_dnn_model -Dtags=dnn -Dscript=%s -DentryFile=entry.py -Dtables=odps://iris/tables/train,odps://iris/tables/test  -DhyperParameters=\"file://.*\" -DgpuRequired='0'", scriptPath)
-	re, err := regexp.Compile(expectedPAICmd)
-	a.NoError(err)
-	a.True(re.MatchString(paiCmd))
+	expectedPAICmd := fmt.Sprintf("pai -name tensorflow1150 -project algo_public_dev -DmaxHungTimeBeforeGCInSeconds=0 -DjobName=sqlflow_my_dnn_model -Dtags=dnn -Dscript=%s -DentryFile=entry.py -Dtables=odps://iris/tables/train,odps://iris/tables/test  -DhyperParameters=\"%s\" -DgpuRequired='0'", scriptPath, paramsPath)
+	a.Equal(expectedPAICmd, paiCmd)
 }
 
 func TestPredictCodegen(t *testing.T) {
@@ -149,7 +148,8 @@ func TestPredictCodegen(t *testing.T) {
 	sess := mockSession()
 	ossModelPath := "iris/sqlflow/my_dnn_model"
 	scriptPath := "file:///tmp/task.tar.gz"
-	paiTFCode, paiCmd, _, e := Predict(ir, sess, scriptPath, "my_dnn_model", ossModelPath, "", ModelTypeTF)
+	paramsPath := "file:///tmp/params.txt"
+	paiTFCode, paiCmd, _, e := Predict(ir, sess, scriptPath, paramsPath, "my_dnn_model", ossModelPath, "", ModelTypeTF)
 	a.NoError(e)
 	a.False(hasUnknownParameters(paiTFCode, knownPredictParams))
 	tfCode, err := tensorflow.Pred(ir, sess)
@@ -157,8 +157,6 @@ func TestPredictCodegen(t *testing.T) {
 
 	a.True(hasExportedLocal(tfCode))
 	a.False(hasUnknownParameters(tfCode, knownPredictParams))
-	expectedPAICmd := fmt.Sprintf("pai -name tensorflow1150 -project algo_public_dev -DmaxHungTimeBeforeGCInSeconds=0 -DjobName=sqlflow_my_dnn_model -Dtags=dnn -Dscript=%s -DentryFile=entry.py -Dtables=odps://iris/tables/predict -Doutputs=odps://iris/tables/predict -DhyperParameters=\"file://.*\" -DgpuRequired='0'", scriptPath)
-	re, err := regexp.Compile(expectedPAICmd)
-	a.NoError(err)
-	a.True(re.MatchString(paiCmd))
+	expectedPAICmd := fmt.Sprintf("pai -name tensorflow1150 -project algo_public_dev -DmaxHungTimeBeforeGCInSeconds=0 -DjobName=sqlflow_my_dnn_model -Dtags=dnn -Dscript=%s -DentryFile=entry.py -Dtables=odps://iris/tables/predict -Doutputs=odps://iris/tables/predict -DhyperParameters=\"%s\" -DgpuRequired='0'", scriptPath, paramsPath)
+	a.Equal(expectedPAICmd, paiCmd)
 }
