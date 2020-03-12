@@ -54,5 +54,5 @@ func TestSQLFSWriterCreate(t *testing.T) {
 	a.NoError(e1)
 	a.True(has)
 
-	a.NoError(dropTable(db.DB, tbl))
+	a.NoError(dropTableIfExists(db.DB, tbl))
 }
