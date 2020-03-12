@@ -35,7 +35,7 @@ Step size shrinkage used in update to prevents overfitting. After each boosting 
 range: [0,1]`, attribute.Float32RangeChecker(0, 1, true, true)},
 	"num_class": {attribute.Int, nil, `Number of classes.
 range: [2, Infinity]`, attribute.IntLowerBoundChecker(2, true)},
-	"objective":   {attribute.String, nil, `Learning objective`, nil},
+	"objective":   {attribute.String, nil, `Learning objective`, objectiveChecker},
 	"eval_metric": {attribute.String, nil, `eval metric`, nil},
 	"train.num_boost_round": {attribute.Int, 10, `[default=10]
 The number of rounds for boosting.
@@ -45,6 +45,34 @@ Specify the dataset for validation.
 example: "SELECT * FROM boston.train LIMIT 8"`, nil},
 }
 var fullAttrValidator = attribute.Dictionary{}
+
+func objectiveChecker(obj interface{}) error {
+	s, ok := obj.(string)
+	if !ok {
+		return fmt.Errorf("expected type string, received %T", obj)
+	}
+	expected := []string{
+		"reg:squarederror",
+		"reg:squaredlogerror",
+		"reg:logistic",
+		"binary:logistic",
+		"binary:logitraw",
+		"binary:hinge",
+		"survival:cox",
+		"multi:softmax",
+		"multi:softprob",
+		"rank:pairwise",
+		"rank:ndcg",
+		"rank:map",
+		"reg:gamma",
+		"reg:tweedie"}
+	for _, e := range expected {
+		if s == e {
+			return nil
+		}
+	}
+	return fmt.Errorf("unrecognized objective %s, should be one of %v", s, expected)
+}
 
 func resolveModelType(estimator string) (string, error) {
 	switch strings.ToUpper(estimator) {

@@ -26,6 +26,9 @@ func TestAttributes(t *testing.T) {
 	a := assert.New(t)
 	a.Equal(6, len(attributeDictionary))
 	a.Equal(29, len(fullAttrValidator))
+
+	a.Error(objectiveChecker("binaray:logistic"))
+	a.NoError(objectiveChecker("binary:logistic"))
 }
 
 func mockSession() *pb.Session {
