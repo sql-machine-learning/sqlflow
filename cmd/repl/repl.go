@@ -16,11 +16,8 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"image"
 	_ "image/png"
-	"time"
 
-	"encoding/base64"
 	"flag"
 	"fmt"
 	"io"
@@ -28,13 +25,13 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
-	"regexp"
 	"strings"
 	"syscall"
 
-	"github.com/mattn/go-sixel"
 	"golang.org/x/crypto/ssh/terminal"
 	"sqlflow.org/sqlflow/pkg/database"
+	"sqlflow.org/sqlflow/pkg/step"
+
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/attribute"
@@ -138,80 +135,7 @@ func readStmt(scn *bufio.Scanner) ([]string, error) {
 	return stmt, scn.Err()
 }
 
-func isHTMLSnippet(s string) bool {
-	// TODO(shendiaomo): more accurate checks later
-	return strings.HasPrefix(s, "<div")
-}
-
-func printAsDataURL(s string) {
-	fmt.Println("data:text/html,", s)
-	fmt.Println()
-	fmt.Println("To view the content, paste the above data url to a web browser.")
-}
-
-func getBase64EncodedImage(s string) ([]byte, error) {
-	match := regexp.MustCompile(`base64,(.*)'`).FindStringSubmatch(s)
-	if len(match) == 2 {
-		return base64.StdEncoding.DecodeString(match[1])
-	}
-	return []byte{}, fmt.Errorf("no images in the HTML")
-}
-
-func imageCat(imageBytes []byte) error {
-	img, _, err := image.Decode(bytes.NewReader(imageBytes))
-	if err != nil {
-		return err
-	}
-	err = sixel.NewEncoder(os.Stdout).Encode(img)
-	if err != nil {
-		return err
-	}
-	fmt.Println()
-	return nil
-}
-
 var it2Check = false
-
-func render(rsp interface{}, table tablewriter.TableWriter, isTerminal bool) error {
-	switch s := rsp.(type) {
-	case map[string]interface{}: // table header
-		return table.SetHeader(s)
-	case []interface{}: // row
-		return table.AppendRow(s)
-	case error:
-		log.Printf("ERROR: %v\n", s)
-		if !isTerminal {
-			os.Exit(1)
-		}
-		return s
-	case sql.EndOfExecution:
-	case sql.Figures:
-		if isHTMLSnippet(s.Image) {
-			if !isTerminal {
-				printAsDataURL(s.Image)
-				break
-			}
-			if image, e := getBase64EncodedImage(s.Image); e != nil {
-				printAsDataURL(s.Image)
-			} else if !it2Check {
-				printAsDataURL(s.Image)
-				fmt.Println("Or use iTerm2 as your terminal to view images.")
-				fmt.Println(s.Text)
-			} else if e = imageCat(image); e != nil {
-				log.New(os.Stderr, "", 0).Printf("ERROR: %v\n", e)
-				printAsDataURL(s.Image)
-				fmt.Println(s.Text)
-			}
-		} else {
-			fmt.Println(s)
-		}
-	case string:
-		fmt.Println(s)
-	default:
-		log.Fatalf("unrecognized response type: %v", s)
-	}
-	return nil
-}
 
 func flagPassed(name ...string) bool {
 	found := false
@@ -226,12 +150,12 @@ func flagPassed(name ...string) bool {
 }
 
 func runStmt(stmt string, isTerminal bool, modelDir string, ds string) error {
-	startTime := time.Now().UnixNano()
 	if !isTerminal {
 		fmt.Println("sqlflow>", stmt)
 	}
 	var table tablewriter.TableWriter
 	var err error
+	// TODO(yancey1989): remoev protobuf tablewriter if using step binary in workflow
 	if isWorkflowStep() {
 		table, err = tablewriter.Create("protobuf", tablePageSize, os.Stdout)
 	} else {
@@ -246,21 +170,7 @@ func runStmt(stmt string, isTerminal bool, modelDir string, ds string) error {
 	if len(parts) == 2 && strings.ToUpper(parts[0]) == "USE" {
 		return switchDatabase(parts[1], sess)
 	}
-	stream := sql.RunSQLProgram(stmt, modelDir, sess)
-	for rsp := range stream.ReadAll() {
-		err = render(rsp, table, isTerminal)
-		if err != nil {
-			break
-		}
-	}
-	if e := table.Flush(); e != nil {
-		return e
-	}
-	if err == nil {
-		fmt.Printf("(%.2f sec)\n", float64(time.Now().UnixNano()-startTime)/1e9)
-		fmt.Println()
-	}
-	return nil
+	return step.RunSQLProgramAndPrintResult(stmt, modelDir, sess, table, isTerminal, it2Check)
 }
 
 func assertConnectable(ds string) {

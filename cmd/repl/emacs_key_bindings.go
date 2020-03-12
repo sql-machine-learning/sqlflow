@@ -14,8 +14,9 @@
 package main
 
 import (
-	"github.com/c-bata/go-prompt"
 	"log"
+
+	"github.com/c-bata/go-prompt"
 )
 
 var clipboard string // This is not the system clipboard and only works in SQLFlow REPL
