@@ -11,56 +11,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package step
+package main
 
 import (
-	"fmt"
 	"os"
 	"strings"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
-	"sqlflow.org/sqlflow/cmd/repl"
 	pb "sqlflow.org/sqlflow/pkg/proto"
+	"sqlflow.org/sqlflow/pkg/step"
 )
 
 func makeTestSession(dbConnStr string) *pb.Session {
 	return &pb.Session{DbConnStr: dbConnStr}
-}
-
-func dummyChecker(s string) error {
-	return nil
-}
-
-func trainLogChecker(s string) error {
-	expectLog := "Done training"
-	if strings.Contains(s, expectLog) {
-		return nil
-	}
-	return fmt.Errorf("train sql log does not contain the expected content: %s", expectLog)
-}
-func TestStepTrainSQL(t *testing.T) {
-	if os.Getenv("SQLFLOW_TEST_DB") != "mysql" {
-		t.Skip("skip no mysql test.")
-	}
-	a := assert.New(t)
-	dbConnStr := "mysql://root:root@tcp(127.0.0.1:3306)/iris?maxAllowedPacket=0"
-	session := makeTestSession(dbConnStr)
-
-	sql := `SELECT * FROM iris.train WHERE class!=2
-	TO TRAIN DNNClassifier
-	WITH
-		model.n_classes = 2,
-		model.hidden_units = [10, 10],
-		train.batch_size = 4,
-		validation.select = "SELECT * FROM iris.test WHERE class!=2",
-		validation.metrics = "Accuracy,AUC"
-	LABEL class
-	INTO sqlflow_models.mytest_model;`
-	out, e := repl.GetStdout(func() error { return run(sql, session) })
-	a.NoError(e)
-	a.NoError(trainLogChecker(out))
 }
 
 func TestStepStandardSQL(t *testing.T) {
@@ -71,7 +36,7 @@ func TestStepStandardSQL(t *testing.T) {
 	dbConnStr := "mysql://root:root@tcp(127.0.0.1:3306)/iris?maxAllowedPacket=0"
 	session := makeTestSession(dbConnStr)
 	sql := `SELECT * FROM iris.train limit 5;`
-	out, e := repl.GetStdout(func() error {
+	out, e := step.GetStdout(func() error {
 		return run(sql, session)
 	})
 	// check output result
@@ -94,7 +59,15 @@ func TestStepStandardSQL(t *testing.T) {
 	a.True(checkHead)
 	a.Equal(checkRows, 5)
 }
-
+func TestImage(t *testing.T) {
+	a := assert.New(t)
+	a.True(isHTMLSnippet("<div></div>"))
+	_, err = getBase64EncodedImage("")
+	a.Error(err)
+	image, err := getBase64EncodedImage(testImageHTML)
+	a.Nil(err)
+	a.Nil(imageCat(image)) // sixel mode
+}
 func TestStepSQLWithComment(t *testing.T) {
 	if os.Getenv("SQLFLOW_TEST_DB") != "mysql" {
 		t.Skip("skip no mysql test.")
@@ -105,7 +78,7 @@ func TestStepSQLWithComment(t *testing.T) {
 	sql := `-- this is comment {a.b}
 	SELECT 1, 'a';\n\t
 `
-	_, e := repl.GetStdout(func() error {
+	_, e := step.GetStdout(func() error {
 		return run(sql, session)
 	})
 	a.NoError(e)

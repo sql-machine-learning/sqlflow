@@ -11,16 +11,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package repl
+package main
 
 import (
 	"bufio"
 	"bytes"
-	"image"
 	_ "image/png" // comment(yancey1989): why import this blank import
-	"time"
 
-	"encoding/base64"
 	"flag"
 	"fmt"
 	"io"
@@ -28,13 +25,13 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
-	"regexp"
 	"strings"
 	"syscall"
 
-	"github.com/mattn/go-sixel"
 	"golang.org/x/crypto/ssh/terminal"
 	"sqlflow.org/sqlflow/pkg/database"
+	"sqlflow.org/sqlflow/pkg/step"
+
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/attribute"
@@ -138,80 +135,7 @@ func readStmt(scn *bufio.Scanner) ([]string, error) {
 	return stmt, scn.Err()
 }
 
-func isHTMLSnippet(s string) bool {
-	// TODO(shendiaomo): more accurate checks later
-	return strings.HasPrefix(s, "<div")
-}
-
-func printAsDataURL(s string) {
-	fmt.Println("data:text/html,", s)
-	fmt.Println()
-	fmt.Println("To view the content, paste the above data url to a web browser.")
-}
-
-func getBase64EncodedImage(s string) ([]byte, error) {
-	match := regexp.MustCompile(`base64,(.*)'`).FindStringSubmatch(s)
-	if len(match) == 2 {
-		return base64.StdEncoding.DecodeString(match[1])
-	}
-	return []byte{}, fmt.Errorf("no images in the HTML")
-}
-
-func imageCat(imageBytes []byte) error {
-	img, _, err := image.Decode(bytes.NewReader(imageBytes))
-	if err != nil {
-		return err
-	}
-	err = sixel.NewEncoder(os.Stdout).Encode(img)
-	if err != nil {
-		return err
-	}
-	fmt.Println()
-	return nil
-}
-
 var it2Check = false
-
-func render(rsp interface{}, table tablewriter.TableWriter, isTerminal bool) error {
-	switch s := rsp.(type) {
-	case map[string]interface{}: // table header
-		return table.SetHeader(s)
-	case []interface{}: // row
-		return table.AppendRow(s)
-	case error:
-		if isTerminal {
-			log.Printf("ERROR: %v\n", s)
-		} else {
-			log.Fatalf("ERROR: %v\n", s)
-		}
-	case sql.EndOfExecution:
-	case sql.Figures:
-		if isHTMLSnippet(s.Image) {
-			if !isTerminal {
-				printAsDataURL(s.Image)
-				break
-			}
-			if image, e := getBase64EncodedImage(s.Image); e != nil {
-				printAsDataURL(s.Image)
-			} else if !it2Check {
-				printAsDataURL(s.Image)
-				log.Println("Or use iTerm2 as your terminal to view images.")
-				log.Println(s.Text)
-			} else if e = imageCat(image); e != nil {
-				log.New(os.Stderr, "", 0).Printf("ERROR: %v\n", e)
-				printAsDataURL(s.Image)
-				log.Println(s.Text)
-			}
-		} else {
-			log.Println(s)
-		}
-	case string:
-		log.Println(s)
-	default:
-		log.Fatalf("unrecognized response type: %v", s)
-	}
-	return nil
-}
 
 func flagPassed(name ...string) bool {
 	found := false
@@ -223,27 +147,6 @@ func flagPassed(name ...string) bool {
 		})
 	}
 	return found
-}
-
-// RunSQLProgramAndPrintResult execute SQL statement and print the logs and select result
-func RunSQLProgramAndPrintResult(sqlStmt string, modelDir string, session *pb.Session, table tablewriter.TableWriter, isTerminal bool) error {
-	startTime := time.Now().UnixNano()
-	defer log.Printf("(%.2f sec)\n", float64(time.Now().UnixNano()-startTime)/1e9)
-	// note(yancey1989): if the input sql program contain `\n`, bufio.Text() would deal with
-	// it as a text string with two character instead of one character "\n".
-	// readStmt(bufio.Scanner) should deal with that by replacing `\n` with '\n'
-	// TODO(yancey1989): finding a normative way to deal with that.
-	replacer := strings.NewReplacer(`\n`, "\n", `\t`, "\t", `\r`, "\r")
-	sqlStmt = replacer.Replace(sqlStmt)
-
-	log.SetFlags(0)
-	stream := sql.RunSQLProgram(sqlStmt, modelDir, session)
-	for res := range stream.ReadAll() {
-		if e := render(res, table, isTerminal); e != nil {
-			return e
-		}
-	}
-	return table.Flush()
 }
 
 func runStmt(stmt string, isTerminal bool, modelDir string, ds string) error {
@@ -267,7 +170,7 @@ func runStmt(stmt string, isTerminal bool, modelDir string, ds string) error {
 	if len(parts) == 2 && strings.ToUpper(parts[0]) == "USE" {
 		return switchDatabase(parts[1], sess)
 	}
-	return RunSQLProgramAndPrintResult(stmt, modelDir, sess, table, isTerminal)
+	return step.RunSQLProgramAndPrintResult(stmt, modelDir, sess, table, isTerminal, it2Check)
 }
 
 func assertConnectable(ds string) {
@@ -406,24 +309,4 @@ func init() {
 	if cmd.Run() == nil {
 		it2Check = true
 	}
-}
-
-// GetStdout hooks stdout and stderr, it's used for test
-func GetStdout(f func() error) (out string, e error) {
-	oldStdout, oldStderr := os.Stdout, os.Stderr // keep backup of the real stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-	os.Stderr = w
-	log.SetOutput(os.Stdout)
-	e = f() // f prints to stdout
-	outC := make(chan string)
-	go func() { // copy the output in a separate goroutine so printing can't block indefinitely
-		var buf bytes.Buffer
-		io.Copy(&buf, r)
-		outC <- buf.String()
-	}()
-	w.Close()                                   // Cancel redirection
-	os.Stdout, os.Stderr = oldStdout, oldStderr // restoring the real stdout and stderr
-	out = <-outC
-	return
 }

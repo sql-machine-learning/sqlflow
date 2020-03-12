@@ -11,58 +11,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package step
+package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
-	"regexp"
 
-	"sqlflow.org/sqlflow/cmd/repl"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql"
+	"sqlflow.org/sqlflow/pkg/step"
 	"sqlflow.org/sqlflow/pkg/tablewriter"
 )
 
 const tablePageSize = 1000
-
-func isHTMLCode(code string) bool {
-	//TODO(yancey1989): support more lines HTML code e.g.
-	//<div>
-	//  ...
-	//</div>
-	re := regexp.MustCompile(`<div.*?>.*</div>`)
-	return re.MatchString(code)
-}
-
-func printAsDataURL(s string) {
-	log.Println("data:text/html,", s)
-	log.Println()
-}
-
-func render(rsp interface{}, table tablewriter.TableWriter) error {
-	switch s := rsp.(type) {
-	case map[string]interface{}: // table header
-		return table.SetHeader(s)
-	case []interface{}: // row
-		return table.AppendRow(s)
-	case error:
-		return s
-	case sql.EndOfExecution:
-	case sql.Figures:
-		if isHTMLCode(s.Image) {
-			printAsDataURL(s.Image)
-		} else {
-			log.Println(s)
-		}
-	case string:
-		log.Print(s)
-	default:
-		return fmt.Errorf("unrecongnized response type: %v", s)
-	}
-	return nil
-}
 
 type logWriter struct{}
 
@@ -78,7 +39,7 @@ func run(sqlStmt string, sess *pb.Session) error {
 		log.Fatalf("create tablewriter failed: %v", e)
 	}
 
-	return repl.RunSQLProgramAndPrintResult(sqlStmt, "", sess, tw, false)
+	return step.RunSQLProgramAndPrintResult(sqlStmt, "", sess, tw, false, false)
 }
 
 func main() {

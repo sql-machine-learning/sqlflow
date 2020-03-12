@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package repl
+package main
 
 import (
 	prompt "github.com/c-bata/go-prompt"
