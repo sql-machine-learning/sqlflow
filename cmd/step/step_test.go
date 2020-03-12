@@ -59,15 +59,7 @@ func TestStepStandardSQL(t *testing.T) {
 	a.True(checkHead)
 	a.Equal(checkRows, 5)
 }
-func TestImage(t *testing.T) {
-	a := assert.New(t)
-	a.True(isHTMLSnippet("<div></div>"))
-	_, err = getBase64EncodedImage("")
-	a.Error(err)
-	image, err := getBase64EncodedImage(testImageHTML)
-	a.Nil(err)
-	a.Nil(imageCat(image)) // sixel mode
-}
+
 func TestStepSQLWithComment(t *testing.T) {
 	if os.Getenv("SQLFLOW_TEST_DB") != "mysql" {
 		t.Skip("skip no mysql test.")
