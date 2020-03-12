@@ -721,7 +721,25 @@ TO PREDICT housing.predict.class USING housing.dnn_model;`
 	if err != nil {
 		a.Fail("Run predSQL error: %v", err)
 	}
-	// TODO(typhoonzero): add tests using DNNLinearCombinedClassifier
+
+	trainSQL = `SELECT f9, f10, target FROM housing.train
+TO TRAIN DNNLinearCombinedRegressor WITH
+		model.dnn_hidden_units = [10, 20]
+COLUMN EMBEDDING(CATEGORY_ID(f9, 25), 2, "sum") for dnn_feature_columns
+COLUMN INDICATOR(CATEGORY_ID(f10, 712)) for linear_feature_columns
+LABEL target
+INTO housing.dnnlinear_model;`
+	_, _, _, err = connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+
+	predSQL = `SELECT f9, f10, target FROM housing.test
+TO PREDICT housing.predict.class USING housing.dnnlinear_model;`
+	_, _, _, err = connectAndRunSQL(predSQL)
+	if err != nil {
+		a.Fail("Run predSQL error: %v", err)
+	}
 }
 
 func CaseTrainSQL(t *testing.T) {
@@ -1469,6 +1487,48 @@ FROM housing.xgb_predict LIMIT 5;`)
 	}
 }
 
+func CasePAIMaxComputeTrainPredictCategoricalFeature(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := `SELECT cast(sepal_length as int) sepal_length, class
+FROM alifin_jtest_dev.sqlflow_test_iris_train
+TO TRAIN DNNClassifier WITH
+		model.hidden_units = [10, 20], model.n_classes=3
+COLUMN EMBEDDING(CATEGORY_ID(sepal_length, 1000), 2, "sum")
+LABEL class
+INTO e2etest_predict_categorical_feature;`
+	_, _, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+
+	predSQL := `SELECT cast(sepal_length as int) sepal_length, class FROM alifin_jtest_dev.sqlflow_test_iris_test
+TO PREDICT alifin_jtest_dev.pred_catcol.class USING e2etest_predict_categorical_feature;`
+	_, _, _, err = connectAndRunSQL(predSQL)
+	if err != nil {
+		a.Fail("Run predSQL error: %v", err)
+	}
+
+	trainSQL = `SELECT cast(sepal_length as int) sepal_length, cast(sepal_width as int) sepal_width, class
+FROM alifin_jtest_dev.sqlflow_test_iris_train
+TO TRAIN DNNLinearCombinedClassifier WITH
+		model.dnn_hidden_units = [10, 20], model.n_classes=3
+COLUMN EMBEDDING(CATEGORY_ID(sepal_length, 20), 2, "sum") for dnn_feature_columns
+COLUMN EMBEDDING(CATEGORY_ID(sepal_width, 20), 2, "sum") for linear_feature_columns
+LABEL class
+INTO e2etest_predict_categorical_feature2;`
+	_, _, _, err = connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+
+	predSQL = `SELECT cast(sepal_length as int) sepal_length, cast(sepal_width as int) sepal_width, class FROM alifin_jtest_dev.sqlflow_test_iris_test
+TO PREDICT alifin_jtest_dev.pred_catcol2.class USING e2etest_predict_categorical_feature2;`
+	_, _, _, err = connectAndRunSQL(predSQL)
+	if err != nil {
+		a.Fail("Run predSQL error: %v", err)
+	}
+}
+
 func CasePAIMaxComputeTrainDistributed(t *testing.T) {
 	t.Parallel()
 	a := assert.New(t)
@@ -1841,6 +1901,7 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 		t.Run("CasePAIMaxComputeTrainXGBoost", CasePAIMaxComputeTrainXGBoost)
 		t.Run("CasePAIMaxComputeTrainCustomModel", CasePAIMaxComputeTrainCustomModel)
 		t.Run("CasePAIMaxComputeTrainDistributed", CasePAIMaxComputeTrainDistributed)
+		t.Run("CasePAIMaxComputeTrainPredictCategoricalFeature", CasePAIMaxComputeTrainPredictCategoricalFeature)
 
 		// FIXME(typhoonzero): Add this test back when we solve error: model already exist issue on the CI.
 		// t.Run("CaseTrainPAIRandomForests", CaseTrainPAIRandomForests)

@@ -339,7 +339,8 @@ func categorizeAttributes(trainStmt *ir.TrainStmt) (trainParams, validateParams,
 	return trainParams, validateParams, modelParams
 }
 
-func deriveFeatureColumnCode(trainStmt *ir.TrainStmt) (featureColumnsCode []string, fieldDescs []*ir.FieldDesc, err error) {
+func deriveFeatureColumnCode(trainStmt *ir.TrainStmt) (featureColumnsCode []string, fieldDescs map[string][]*ir.FieldDesc, err error) {
+	fieldDescs = make(map[string][]*ir.FieldDesc)
 	for target, fcList := range trainStmt.Features {
 		perTargetFeatureColumnsCode := []string{}
 		for _, fc := range fcList {
@@ -350,7 +351,11 @@ func deriveFeatureColumnCode(trainStmt *ir.TrainStmt) (featureColumnsCode []stri
 			perTargetFeatureColumnsCode = append(perTargetFeatureColumnsCode, fcCode)
 			if len(fc.GetFieldDesc()) > 0 {
 				for _, fm := range fc.GetFieldDesc() {
-					fieldDescs = append(fieldDescs, fm)
+					_, ok := fieldDescs[target]
+					if !ok {
+						fieldDescs[target] = []*ir.FieldDesc{}
+					}
+					fieldDescs[target] = append(fieldDescs[target], fm)
 				}
 			}
 		}
@@ -502,7 +507,8 @@ func Explain(stmt *ir.ExplainStmt, session *pb.Session) (string, error) {
 }
 
 // restoreModel reconstruct necessary python objects from TrainStmt
-func restoreModel(stmt *ir.TrainStmt) (modelParams map[string]interface{}, featureColumnsCode []string, fieldDescs []*ir.FieldDesc, err error) {
+func restoreModel(stmt *ir.TrainStmt) (modelParams map[string]interface{}, featureColumnsCode []string, fieldDescs map[string][]*ir.FieldDesc, err error) {
+	fieldDescs = make(map[string][]*ir.FieldDesc)
 	modelParams = make(map[string]interface{})
 	for attrKey, attr := range stmt.Attributes {
 		if strings.HasPrefix(attrKey, "model.") {
@@ -519,7 +525,11 @@ func restoreModel(stmt *ir.TrainStmt) (modelParams map[string]interface{}, featu
 			perTargetFeatureColumnsCode = append(perTargetFeatureColumnsCode, fcCode)
 			if len(fc.GetFieldDesc()) > 0 {
 				for _, fm := range fc.GetFieldDesc() {
-					fieldDescs = append(fieldDescs, fm)
+					_, ok := fieldDescs[target]
+					if !ok {
+						fieldDescs[target] = []*ir.FieldDesc{}
+					}
+					fieldDescs[target] = append(fieldDescs[target], fm)
 				}
 			}
 		}

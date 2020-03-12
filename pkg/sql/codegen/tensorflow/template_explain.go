@@ -21,7 +21,7 @@ type explainFiller struct {
 	SummaryParams string
 	// below members comes from trainStmt
 	EstimatorClass    string
-	FieldDescs        []*ir.FieldDesc
+	FieldDescs        map[string][]*ir.FieldDesc
 	FeatureColumnCode string
 	Y                 *ir.FieldDesc
 	ModelParams       map[string]interface{}
@@ -43,12 +43,20 @@ try:
 except:
     pass
 
-feature_column_names = [{{range .FieldDescs}}
+feature_column_names = [{{range $target, $desclist := .FieldDescs}}{{range $desclist}}
 "{{.Name}}",
-{{end}}]
+{{end}}{{end}}]
 
+# feature_column_names_map is used to determine the order of feature columns of each target:
+# e.g. when using DNNLinearCombinedClassifier
+feature_column_names_map = dict()
+{{range $target, $desclist := .FieldDescs}}{{range $desclist}}
+feature_column_names_map["{{$target}}"] = "{{.Name}}"
+{{end}}{{end}}
+    
 feature_metas = dict()
-{{ range $value := .FieldDescs }}
+{{ range $key,$desclist := .FieldDescs }}
+{{ range $value := $desclist }}
 feature_metas["{{$value.Name}}"] = {
     "feature_name": "{{$value.Name}}",
     "dtype": "{{$value.DType | DTypeToString}}",
@@ -56,6 +64,7 @@ feature_metas["{{$value.Name}}"] = {
     "shape": {{$value.Shape | intArrayToJSONString}},
     "is_sparse": "{{$value.IsSparse}}" == "true"
 }
+{{end}}
 {{end}}
 
 label_meta = {
