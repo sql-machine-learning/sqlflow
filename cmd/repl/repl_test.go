@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package repl
 
 import (
 	"bufio"
@@ -19,7 +19,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"os/exec"
 	"regexp"
@@ -55,56 +54,37 @@ func prepareTestDataOrSkip(t *testing.T) error {
 	return nil
 }
 
-func getStdout(f func() error) (out string, e error) {
-	oldStdout, oldStderr := os.Stdout, os.Stderr // keep backup of the real stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-	os.Stderr = w
-	log.SetOutput(os.Stdout)
-	e = f() // f prints to stdout
-	outC := make(chan string)
-	go func() { // copy the output in a separate goroutine so printing can't block indefinitely
-		var buf bytes.Buffer
-		io.Copy(&buf, r)
-		outC <- buf.String()
-	}()
-	w.Close()                                   // Cancel redirection
-	os.Stdout, os.Stderr = oldStdout, oldStderr // restoring the real stdout and stderr
-	out = <-outC
-	return
-}
-
 func TestRunStmt(t *testing.T) {
 	a := assert.New(t)
 	a.Nil(prepareTestDataOrSkip(t))
 	os.Setenv("SQLFLOW_log_dir", "/tmp/")
 	session.DbConnStr = dbConnStr
 	currentDB = ""
-	output, err := getStdout(func() error { return runStmt("show tables", true, "", dbConnStr) })
+	output, err := GetStdout(func() error { return runStmt("show tables", true, "", dbConnStr) })
 	a.Nil(err)
 	a.Contains(output, "Error 1046: No database selected")
 
-	output, err = getStdout(func() error { return runStmt("use iris", true, "", dbConnStr) })
+	output, err = GetStdout(func() error { return runStmt("use iris", true, "", dbConnStr) })
 	a.Nil(err)
 	a.Contains(output, "Database changed to iris")
 
-	output, err = getStdout(func() error { return runStmt("show tables", true, "", dbConnStr) })
+	output, err = GetStdout(func() error { return runStmt("show tables", true, "", dbConnStr) })
 	a.Nil(err)
 	a.Contains(output, "| TABLES IN IRIS |")
 
-	output, err = getStdout(func() error {
+	output, err = GetStdout(func() error {
 		return runStmt("select * from train to train DNNClassifier WITH model.hidden_units=[10,10], model.n_classes=3, validation.select=\"select * from test\" label class INTO sqlflow_models.repl_dnn_model;", true, "", dbConnStr)
 	})
 	a.Nil(err)
 	a.Contains(output, "'global_step': 110")
 
-	output, err = getStdout(func() error {
+	output, err = GetStdout(func() error {
 		return runStmt("select * from train to train xgboost.gbtree WITH objective=reg:squarederror, validation.select=\"select * from test\" label class INTO sqlflow_models.repl_xgb_model;", true, "", dbConnStr)
 	})
 	a.Nil(err)
 	a.Contains(output, "Evaluation result: ")
 
-	output, err = getStdout(func() error {
+	output, err = GetStdout(func() error {
 		return runStmt("select * from train to explain sqlflow_models.repl_xgb_model;", true, "", dbConnStr)
 	})
 	a.Nil(err)
@@ -128,7 +108,7 @@ INTO sqlflow_models.repl_dnn_model;
 use sqlflow_models;
 show tables`
 	scanner := bufio.NewScanner(strings.NewReader(sql))
-	output, err := getStdout(func() error { repl(scanner, "", dbConnStr); return nil })
+	output, err := GetStdout(func() error { repl(scanner, "", dbConnStr); return nil })
 	a.Nil(err)
 	a.Contains(output, "Database changed to iris")
 	a.Contains(output, `
@@ -156,7 +136,7 @@ func TestMain(t *testing.T) {
 	a := assert.New(t)
 	a.Nil(prepareTestDataOrSkip(t))
 	os.Args = append(os.Args, "-datasource", dbConnStr, "-e", "use iris; show tables", "-model_dir", "/tmp/repl_test")
-	output, _ := getStdout(func() error { main(); return nil })
+	output, _ := GetStdout(func() error { main(); return nil })
 	a.Contains(output, `
 +----------------+
 | TABLES IN IRIS |

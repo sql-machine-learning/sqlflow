@@ -11,13 +11,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package repl
 
 import (
 	"bufio"
 	"bytes"
 	"image"
-	_ "image/png"
+	_ "image/png" // comment(yancey1989): why import this blank import
 	"time"
 
 	"encoding/base64"
@@ -179,11 +179,11 @@ func render(rsp interface{}, table tablewriter.TableWriter, isTerminal bool) err
 	case []interface{}: // row
 		return table.AppendRow(s)
 	case error:
-		log.Printf("ERROR: %v\n", s)
-		if !isTerminal {
-			os.Exit(1)
+		if isTerminal {
+			log.Printf("ERROR: %v\n", s)
+		} else {
+			log.Fatalf("ERROR: %v\n", s)
 		}
-		return s
 	case sql.EndOfExecution:
 	case sql.Figures:
 		if isHTMLSnippet(s.Image) {
@@ -195,18 +195,18 @@ func render(rsp interface{}, table tablewriter.TableWriter, isTerminal bool) err
 				printAsDataURL(s.Image)
 			} else if !it2Check {
 				printAsDataURL(s.Image)
-				fmt.Println("Or use iTerm2 as your terminal to view images.")
-				fmt.Println(s.Text)
+				log.Println("Or use iTerm2 as your terminal to view images.")
+				log.Println(s.Text)
 			} else if e = imageCat(image); e != nil {
 				log.New(os.Stderr, "", 0).Printf("ERROR: %v\n", e)
 				printAsDataURL(s.Image)
-				fmt.Println(s.Text)
+				log.Println(s.Text)
 			}
 		} else {
-			fmt.Println(s)
+			log.Println(s)
 		}
 	case string:
-		fmt.Println(s)
+		log.Println(s)
 	default:
 		log.Fatalf("unrecognized response type: %v", s)
 	}
@@ -225,13 +225,34 @@ func flagPassed(name ...string) bool {
 	return found
 }
 
-func runStmt(stmt string, isTerminal bool, modelDir string, ds string) error {
+// RunSQLProgramAndPrintResult execute SQL statement and print the logs and select result
+func RunSQLProgramAndPrintResult(sqlStmt string, modelDir string, session *pb.Session, table tablewriter.TableWriter, isTerminal bool) error {
 	startTime := time.Now().UnixNano()
+	defer log.Printf("(%.2f sec)\n", float64(time.Now().UnixNano()-startTime)/1e9)
+	// note(yancey1989): if the input sql program contain `\n`, bufio.Text() would deal with
+	// it as a text string with two character instead of one character "\n".
+	// readStmt(bufio.Scanner) should deal with that by replacing `\n` with '\n'
+	// TODO(yancey1989): finding a normative way to deal with that.
+	replacer := strings.NewReplacer(`\n`, "\n", `\t`, "\t", `\r`, "\r")
+	sqlStmt = replacer.Replace(sqlStmt)
+
+	log.SetFlags(0)
+	stream := sql.RunSQLProgram(sqlStmt, modelDir, session)
+	for res := range stream.ReadAll() {
+		if e := render(res, table, isTerminal); e != nil {
+			return e
+		}
+	}
+	return table.Flush()
+}
+
+func runStmt(stmt string, isTerminal bool, modelDir string, ds string) error {
 	if !isTerminal {
 		fmt.Println("sqlflow>", stmt)
 	}
 	var table tablewriter.TableWriter
 	var err error
+	// TODO(yancey1989): remoev protobuf tablewriter if using step binary in workflow
 	if isWorkflowStep() {
 		table, err = tablewriter.Create("protobuf", tablePageSize, os.Stdout)
 	} else {
@@ -246,21 +267,7 @@ func runStmt(stmt string, isTerminal bool, modelDir string, ds string) error {
 	if len(parts) == 2 && strings.ToUpper(parts[0]) == "USE" {
 		return switchDatabase(parts[1], sess)
 	}
-	stream := sql.RunSQLProgram(stmt, modelDir, sess)
-	for rsp := range stream.ReadAll() {
-		err = render(rsp, table, isTerminal)
-		if err != nil {
-			break
-		}
-	}
-	if e := table.Flush(); e != nil {
-		return e
-	}
-	if err == nil {
-		fmt.Printf("(%.2f sec)\n", float64(time.Now().UnixNano()-startTime)/1e9)
-		fmt.Println()
-	}
-	return nil
+	return RunSQLProgramAndPrintResult(stmt, modelDir, sess, table, isTerminal)
 }
 
 func assertConnectable(ds string) {
@@ -399,4 +406,24 @@ func init() {
 	if cmd.Run() == nil {
 		it2Check = true
 	}
+}
+
+// GetStdout hooks stdout and stderr, it's used for test
+func GetStdout(f func() error) (out string, e error) {
+	oldStdout, oldStderr := os.Stdout, os.Stderr // keep backup of the real stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	os.Stderr = w
+	log.SetOutput(os.Stdout)
+	e = f() // f prints to stdout
+	outC := make(chan string)
+	go func() { // copy the output in a separate goroutine so printing can't block indefinitely
+		var buf bytes.Buffer
+		io.Copy(&buf, r)
+		outC <- buf.String()
+	}()
+	w.Close()                                   // Cancel redirection
+	os.Stdout, os.Stderr = oldStdout, oldStderr // restoring the real stdout and stderr
+	out = <-outC
+	return
 }

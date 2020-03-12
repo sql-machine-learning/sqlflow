@@ -14,44 +14,19 @@
 package step
 
 import (
-	"bytes"
 	"fmt"
-	"io"
-	"log"
 	"os"
 	"strings"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
+	"sqlflow.org/sqlflow/cmd/repl"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
 func makeTestSession(dbConnStr string) *pb.Session {
 	return &pb.Session{DbConnStr: dbConnStr}
-}
-
-func checkStepWrapper(f func(), check func(string) error) error {
-	oldStdout, oldStderr := os.Stdout, os.Stderr // keep backup of the real stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-	os.Stderr = w
-	log.SetOutput(os.Stdout)
-	// call the test function
-	f()
-	outC := make(chan string)
-	// copy the output in a separate goroutine so printing can't block indefinitely
-	go func() {
-		var buf bytes.Buffer
-		io.Copy(&buf, r)
-		outC <- buf.String()
-	}()
-	// back to normal state
-	w.Close()
-	os.Stdout = oldStdout // restoring the real stdout
-	os.Stderr = oldStderr
-	out := <-outC
-	return check(out)
 }
 
 func dummyChecker(s string) error {
@@ -83,7 +58,9 @@ func TestStepTrainSQL(t *testing.T) {
 		validation.metrics = "Accuracy,AUC"
 	LABEL class
 	INTO sqlflow_models.mytest_model;`
-	a.NoError(checkStepWrapper(func() { a.NotPanics(func() { runSQLStmt(sql, session) }) }, trainLogChecker))
+	out, e := repl.GetStdout(func() error { return run(sql, session) })
+	a.NoError(e)
+	a.NoError(trainLogChecker(out))
 }
 
 func TestStepStandardSQL(t *testing.T) {
@@ -94,27 +71,28 @@ func TestStepStandardSQL(t *testing.T) {
 	dbConnStr := "mysql://root:root@tcp(127.0.0.1:3306)/iris?maxAllowedPacket=0"
 	session := makeTestSession(dbConnStr)
 	sql := `SELECT * FROM iris.train limit 5;`
-	a.NoError(checkStepWrapper(func() { a.NotPanics(func() { runSQLStmt(sql, session) }) }, func(s string) error {
-		checkHead := false
-		checkRows := 0
-		for _, line := range strings.Split(s, "\n") {
-			line = strings.TrimSpace(line)
-			response := &pb.Response{}
-			if e := proto.UnmarshalText(line, response); e == nil {
-				if response.GetHead() != nil {
-					checkHead = true
-				} else if response.GetRow() != nil {
-					checkRows++
-				} else {
-					continue
-				}
+	out, e := repl.GetStdout(func() error {
+		return run(sql, session)
+	})
+	// check output result
+	a.NoError(e)
+	checkHead := false
+	checkRows := 0
+	for _, line := range strings.Split(out, "\n") {
+		line = strings.TrimSpace(line)
+		response := &pb.Response{}
+		if e := proto.UnmarshalText(line, response); e == nil {
+			if response.GetHead() != nil {
+				checkHead = true
+			} else if response.GetRow() != nil {
+				checkRows++
+			} else {
+				continue
 			}
 		}
-		if checkHead == true && checkRows == 5 {
-			return nil
-		}
-		return fmt.Errorf("check select result failed, checkHead: %v, checkRows: %d", checkHead, checkRows)
-	}))
+	}
+	a.True(checkHead)
+	a.Equal(checkRows, 5)
 }
 
 func TestStepSQLWithComment(t *testing.T) {
@@ -127,5 +105,8 @@ func TestStepSQLWithComment(t *testing.T) {
 	sql := `-- this is comment {a.b}
 	SELECT 1, 'a';\n\t
 `
-	a.NoError(checkStepWrapper(func() { a.NotPanics(func() { runSQLStmt(sql, session) }) }, dummyChecker))
+	_, e := repl.GetStdout(func() error {
+		return run(sql, session)
+	})
+	a.NoError(e)
 }

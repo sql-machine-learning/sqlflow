@@ -18,9 +18,8 @@ import (
 	"fmt"
 	"log"
 	"regexp"
-	"strings"
-	"time"
 
+	"sqlflow.org/sqlflow/cmd/repl"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql"
 	"sqlflow.org/sqlflow/pkg/tablewriter"
@@ -72,35 +71,14 @@ func (w *logWriter) Write(b []byte) (int, error) {
 	return len(b), nil
 }
 
-func runSQLStmt(sqlStmt string, session *pb.Session) {
-	startTime := time.Now().UnixNano()
-	// note(yancey1989): if the input sql program contain `\n`, bufio.Text() would deal with
-	// it as a text string with two character instead of one character "\n".
-	// readStmt(bufio.Scanner) should deal with that by replacing `\n` with '\n'
-	// TODO(yancey1989): finding a normative way to deal with that.
-	replacer := strings.NewReplacer(`\n`, "\n", `\t`, "\t", `\r`, "\r")
-	sqlStmt = replacer.Replace(sqlStmt)
-
+func run(sqlStmt string, sess *pb.Session) error {
 	log.Printf("SQLFlow Step Execute:\n%s\n", sqlStmt)
-
-	table, e := tablewriter.Create("protobuf", tablePageSize, &logWriter{})
+	tw, e := tablewriter.Create("protobuf", tablePageSize, &logWriter{})
 	if e != nil {
-		log.Panicf("create tablewriter failed: %v", e)
+		log.Fatalf("create tablewriter failed: %v", e)
 	}
 
-	defer func() {
-		if e := table.Flush(); e != nil {
-			log.Fatal(e)
-		}
-		log.Printf("(%.2f sec)\n", float64(time.Now().UnixNano()-startTime)/1e9)
-	}()
-	log.SetFlags(0)
-	stream := sql.RunSQLProgram(sqlStmt, "", session)
-	for res := range stream.ReadAll() {
-		if e := render(res, table); e != nil {
-			log.Panic(e)
-		}
-	}
+	return repl.RunSQLProgramAndPrintResult(sqlStmt, "", sess, tw, false)
 }
 
 func main() {
@@ -108,6 +86,7 @@ func main() {
 	flag.StringVar(execute, "e", "", "execute SQLFlow from command line, short for --execute")
 	flag.Parse()
 
-	sess := sql.MakeSessionFromEnv()
-	runSQLStmt(*execute, sess)
+	if e := run(*execute, sql.MakeSessionFromEnv()); e != nil {
+		log.Fatal(e)
+	}
 }

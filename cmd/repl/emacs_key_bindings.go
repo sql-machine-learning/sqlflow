@@ -11,11 +11,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package repl
 
 import (
-	"github.com/c-bata/go-prompt"
 	"log"
+
+	"github.com/c-bata/go-prompt"
 )
 
 var clipboard string // This is not the system clipboard and only works in SQLFlow REPL
