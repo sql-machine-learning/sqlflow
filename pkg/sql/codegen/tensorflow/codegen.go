@@ -55,6 +55,17 @@ example: "SELECT * FROM iris.train LIMIT 100"`, nil},
 	"validation.steps": {attribute.Int, 1, `[default=1]
 Specify steps for validation.`, attribute.IntLowerBoundChecker(1, true)},
 }
+var distributedTrainingAttributes = attribute.Dictionary{
+	"train.num_ps":        {attribute.Int, 0, "", nil},
+	"train.num_workers":   {attribute.Int, 1, "", nil},
+	"train.worker_cpu":    {attribute.Int, 400, "", nil},
+	"train.worker_gpu":    {attribute.Int, 0, "", nil},
+	"train.ps_cpu":        {attribute.Int, 200, "", nil},
+	"train.ps_gpu":        {attribute.Int, 0, "", nil},
+	"train.num_evaluator": {attribute.Int, 0, "", nil},
+	"train.evaluator_cpu": {attribute.Int, 200, "", nil},
+	"train.evaluator_gpu": {attribute.Int, 0, "", nil},
+}
 
 func intArrayToJSONString(ia []int) string {
 	return strings.Join(strings.Split(fmt.Sprint(ia), " "), ",")
@@ -316,6 +327,9 @@ func InitializeAttributes(trainStmt *ir.TrainStmt) error {
 		modelAttr.Update(attribute.Dictionary{
 			"model.optimizer": {attribute.Unknown, nil, "Specify optimizer", nil},
 			"model.loss":      {attribute.Unknown, nil, "Specify loss", nil}})
+	}
+	if IsPAI() {
+		modelAttr.Update(distributedTrainingAttributes)
 	}
 	return attrValidator.Validate(trainStmt.Attributes)
 }
