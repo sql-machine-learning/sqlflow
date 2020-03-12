@@ -17,9 +17,9 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"log"
 
 	"sqlflow.org/sqlflow/pkg/database"
+	"sqlflow.org/sqlflow/pkg/log"
 	"sqlflow.org/sqlflow/pkg/parser"
 	"sqlflow.org/sqlflow/pkg/sql"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/couler"
@@ -51,11 +51,15 @@ func compile(cgName, sqlProgram, datasource string) (string, error) {
 
 func main() {
 	ds := flag.String("datasource", "", "database connect string")
+	logPath := flag.String("log", "", "path/to/log, e.g.: /var/log/sqlflow.log")
 	cgName := flag.String("codegen", "", "SQLFlow compile the input SQL program into Python program using the specified code generator.")
 	flag.StringVar(cgName, "x", "", "short for --codegen")
 	sqlFileName := flag.String("file", "", "execute SQLFlow from file.  e.g. --file '~/iris_dnn.sql'")
 	flag.StringVar(sqlFileName, "f", "", "short for --file")
 	flag.Parse()
+
+	lf := log.New(*logPath)
+	log := lf.GetLogger(map[string]interface{}{"requestID": 0})
 
 	sqlProgram, e := ioutil.ReadFile(*sqlFileName)
 	if e != nil {
