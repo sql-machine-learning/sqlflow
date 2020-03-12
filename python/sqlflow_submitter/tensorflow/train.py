@@ -336,7 +336,14 @@ def train(datasource,
             cluster, task_type, task_index = make_distributed_info_without_evaluator(
                 FLAGS)
             dump_into_tf_config(cluster, task_type, task_index)
-            dist_strategy = tf.contrib.distribute.ParameterServerStrategy()
+            if estimator in (tf.estimator.BoostedTreesClassifier,
+                             tf.estimator.BoostedTreesRegressor):
+                # TFBT doesn't work with tf.contrib.distribute at the moment.
+                # Use estimator distributed training instead, see
+                # https://github.com/tensorflow/tensorflow/issues/32081
+                dist_strategy = None
+            else:
+                dist_strategy = tf.contrib.distribute.ParameterServerStrategy()
             model_params["config"] = tf.estimator.RunConfig(
                 save_checkpoints_steps=save_checkpoints_steps,
                 train_distribute=dist_strategy,
