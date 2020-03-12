@@ -29,11 +29,11 @@ import (
 	"sqlflow.org/sqlflow/pkg/sql/codegen/pai"
 )
 
-var tarball = "job.tar.gz"
+const tarball = "job.tar.gz"
 
 // lifecycleOnTmpTable indicates 7 days for the temporary table
 // which create from SELECT statement
-var lifecycleOnTmpTable = 7
+const lifecycleOnTmpTable = 7
 
 type paiSubmitter struct{ *defaultSubmitter }
 
@@ -270,25 +270,11 @@ func getOSSModelBucket(project string) (*oss.Bucket, error) {
 		return nil, fmt.Errorf("must define SQLFLOW_OSS_MODEL_ENDPOINT, SQLFLOW_OSS_AK, SQLFLOW_OSS_SK when using submitter maxcompute")
 	}
 
-	ossCheckpointDir, err := pai.GetOSSCheckpointDir(project)
-	if err != nil {
-		return nil, err
-	}
-	ckptParts := strings.Split(ossCheckpointDir, "?")
-	if len(ckptParts) != 2 {
-		return nil, fmt.Errorf("SQLFLOW_OSS_CHECKPOINT_DIR got wrong format")
-	}
-	urlParts := strings.Split(ckptParts[0], "://")
-	if len(urlParts) != 2 {
-		err = fmt.Errorf("SQLFLOW_OSS_CHECKPOINT_DIR got wrong format")
-	}
-	bucketName := strings.Split(urlParts[1], "/")[0]
-
 	cli, err := oss.New(endpoint, ak, sk)
 	if err != nil {
 		return nil, err
 	}
-	return cli.Bucket(bucketName)
+	return cli.Bucket(pai.BucketName)
 }
 
 // getOSSSavedModelType returns the saved model type when training, can be:

@@ -13,9 +13,12 @@
 
 package ir
 
+import "fmt"
+
 // FeatureColumn corresponds to the COLUMN clause in TO TRAIN.
 type FeatureColumn interface {
 	GetFieldDesc() []*FieldDesc
+	ApplyTo(*FieldDesc) (FeatureColumn, error)
 }
 
 // FieldDesc describes a field used as the input to a feature column.
@@ -49,8 +52,13 @@ type NumericColumn struct {
 }
 
 // GetFieldDesc returns FieldDesc member
-func (nc *NumericColumn) GetFieldDesc() []*FieldDesc {
-	return []*FieldDesc{nc.FieldDesc}
+func (c *NumericColumn) GetFieldDesc() []*FieldDesc {
+	return []*FieldDesc{c.FieldDesc}
+}
+
+// ApplyTo applies the FeatureColumn to a new field
+func (c *NumericColumn) ApplyTo(other *FieldDesc) (FeatureColumn, error) {
+	return &NumericColumn{other}, nil
 }
 
 // BucketColumn represents `tf.feature_column.bucketized_column`
@@ -61,8 +69,20 @@ type BucketColumn struct {
 }
 
 // GetFieldDesc returns FieldDesc member
-func (bc *BucketColumn) GetFieldDesc() []*FieldDesc {
-	return bc.SourceColumn.GetFieldDesc()
+func (c *BucketColumn) GetFieldDesc() []*FieldDesc {
+	return c.SourceColumn.GetFieldDesc()
+}
+
+// ApplyTo applies the FeatureColumn to a new field
+func (c *BucketColumn) ApplyTo(other *FieldDesc) (FeatureColumn, error) {
+	sourceColumn, err := c.SourceColumn.ApplyTo(other)
+	if err != nil {
+		return nil, err
+	}
+	return &BucketColumn{
+		SourceColumn: sourceColumn.(*NumericColumn),
+		Boundaries:   c.Boundaries,
+	}, nil
 }
 
 // CrossColumn represents `tf.feature_column.crossed_column`
@@ -73,18 +93,23 @@ type CrossColumn struct {
 }
 
 // GetFieldDesc returns FieldDesc member
-func (cc *CrossColumn) GetFieldDesc() []*FieldDesc {
+func (c *CrossColumn) GetFieldDesc() []*FieldDesc {
 	var retKeys []*FieldDesc
-	for idx, k := range cc.Keys {
+	for idx, k := range c.Keys {
 		if _, ok := k.(string); ok {
 			continue
 		} else if _, ok := k.(FeatureColumn); ok {
-			retKeys = append(retKeys, cc.Keys[idx].(*NumericColumn).GetFieldDesc()[0])
+			retKeys = append(retKeys, c.Keys[idx].(*NumericColumn).GetFieldDesc()[0])
 		}
 		// k is not possible to be neither string and FeatureColumn, the ir_generator should
 		// catch the syntax error.
 	}
 	return retKeys
+}
+
+// ApplyTo applies the FeatureColumn to a new field
+func (c *CrossColumn) ApplyTo(other *FieldDesc) (FeatureColumn, error) {
+	return nil, fmt.Errorf("CrossColumn doesn't support the method ApplyTo")
 }
 
 // CategoryIDColumn represents `tf.feature_column.categorical_column_with_identity`
@@ -95,8 +120,13 @@ type CategoryIDColumn struct {
 }
 
 // GetFieldDesc returns FieldDesc member
-func (cc *CategoryIDColumn) GetFieldDesc() []*FieldDesc {
-	return []*FieldDesc{cc.FieldDesc}
+func (c *CategoryIDColumn) GetFieldDesc() []*FieldDesc {
+	return []*FieldDesc{c.FieldDesc}
+}
+
+// ApplyTo applies the FeatureColumn to a new field
+func (c *CategoryIDColumn) ApplyTo(other *FieldDesc) (FeatureColumn, error) {
+	return &CategoryIDColumn{other, c.BucketSize}, nil
 }
 
 // CategoryHashColumn represents `tf.feature_column.categorical_column_with_hash_bucket`
@@ -107,8 +137,13 @@ type CategoryHashColumn struct {
 }
 
 // GetFieldDesc returns FieldDesc member
-func (cc *CategoryHashColumn) GetFieldDesc() []*FieldDesc {
-	return []*FieldDesc{cc.FieldDesc}
+func (c *CategoryHashColumn) GetFieldDesc() []*FieldDesc {
+	return []*FieldDesc{c.FieldDesc}
+}
+
+// ApplyTo applies the FeatureColumn to a new field
+func (c *CategoryHashColumn) ApplyTo(other *FieldDesc) (FeatureColumn, error) {
+	return &CategoryHashColumn{other, c.BucketSize}, nil
 }
 
 // SeqCategoryIDColumn represents `tf.feature_column.sequence_categorical_column_with_identity`
@@ -119,8 +154,13 @@ type SeqCategoryIDColumn struct {
 }
 
 // GetFieldDesc returns FieldDesc member
-func (scc *SeqCategoryIDColumn) GetFieldDesc() []*FieldDesc {
-	return []*FieldDesc{scc.FieldDesc}
+func (c *SeqCategoryIDColumn) GetFieldDesc() []*FieldDesc {
+	return []*FieldDesc{c.FieldDesc}
+}
+
+// ApplyTo applies the FeatureColumn to a new field
+func (c *SeqCategoryIDColumn) ApplyTo(other *FieldDesc) (FeatureColumn, error) {
+	return &SeqCategoryIDColumn{other, c.BucketSize}, nil
 }
 
 // EmbeddingColumn represents `tf.feature_column.embedding_column`
@@ -136,11 +176,29 @@ type EmbeddingColumn struct {
 }
 
 // GetFieldDesc returns FieldDesc member
-func (ec *EmbeddingColumn) GetFieldDesc() []*FieldDesc {
-	if ec.CategoryColumn == nil {
+func (c *EmbeddingColumn) GetFieldDesc() []*FieldDesc {
+	if c.CategoryColumn == nil {
 		return []*FieldDesc{}
 	}
-	return ec.CategoryColumn.(FeatureColumn).GetFieldDesc()
+	return c.CategoryColumn.(FeatureColumn).GetFieldDesc()
+}
+
+// ApplyTo applies the FeatureColumn to a new field
+func (c *EmbeddingColumn) ApplyTo(other *FieldDesc) (FeatureColumn, error) {
+	ret := &EmbeddingColumn{
+		Dimension:   c.Dimension,
+		Combiner:    c.Combiner,
+		Initializer: c.Initializer,
+		Name:        other.Name,
+	}
+	if c.CategoryColumn != nil {
+		var err error
+		ret.CategoryColumn, err = c.CategoryColumn.ApplyTo(other)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return ret, nil
 }
 
 // IndicatorColumn represents `tf.feature_column.indicator_column`
@@ -158,4 +216,17 @@ func (c *IndicatorColumn) GetFieldDesc() []*FieldDesc {
 		return []*FieldDesc{}
 	}
 	return c.CategoryColumn.(FeatureColumn).GetFieldDesc()
+}
+
+// ApplyTo applies the FeatureColumn to a new field
+func (c *IndicatorColumn) ApplyTo(other *FieldDesc) (FeatureColumn, error) {
+	ret := &IndicatorColumn{Name: other.Name}
+	if c.CategoryColumn != nil {
+		var err error
+		ret.CategoryColumn, err = c.CategoryColumn.ApplyTo(other)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return ret, nil
 }

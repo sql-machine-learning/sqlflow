@@ -20,7 +20,7 @@ type trainFiller struct {
 	TrainSelect       string
 	ValidationSelect  string
 	Estimator         string
-	FieldDescs        []*ir.FieldDesc
+	FieldDescs        map[string][]*ir.FieldDesc
 	FeatureColumnCode string
 	Y                 *ir.FieldDesc
 	ModelParams       map[string]interface{}
@@ -48,12 +48,21 @@ try:
 except Exception as e:
     print("failed to import sqlflow_models: %s", e)
 
-feature_column_names = [{{range .FieldDescs}}
+feature_column_names = [{{range $target, $desclist := .FieldDescs}}{{range $desclist}}
 "{{.Name}}",
-{{end}}]
+{{end}}{{end}}]
+
+# feature_column_names_map is used to determine the order of feature columns of each target:
+# e.g. when using DNNLinearCombinedClassifer.
+# feature_column_names_map will be saved to a single file when using PAI.
+feature_column_names_map = dict()
+{{range $target, $desclist := .FieldDescs}}
+feature_column_names_map["{{$target}}"] = [{{range $desclist}}"{{.Name}}",{{end}}]
+{{end}}
 
 feature_metas = dict()
-{{ range $value := .FieldDescs }}
+{{ range $target, $desclist := .FieldDescs }}
+{{ range $value := $desclist }}
 feature_metas["{{$value.Name}}"] = {
     "feature_name": "{{$value.Name}}",
     "dtype": "{{$value.DType | DTypeToString}}",
@@ -61,6 +70,7 @@ feature_metas["{{$value.Name}}"] = {
     "shape": {{$value.Shape | intArrayToJSONString}},
     "is_sparse": "{{$value.IsSparse}}" == "true"
 }
+{{end}}
 {{end}}
 
 label_meta = {

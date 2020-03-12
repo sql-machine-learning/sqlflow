@@ -54,7 +54,17 @@ Specify the dataset for validation.
 example: "SELECT * FROM iris.train LIMIT 100"`, nil},
 	"validation.steps": {attribute.Int, 1, `[default=1]
 Specify steps for validation.`, attribute.IntLowerBoundChecker(1, true)},
-	"model.*": {attribute.Unknown, "", "Any model parameters defined in custom models", nil},
+}
+var distributedTrainingAttributes = attribute.Dictionary{
+	"train.num_ps":        {attribute.Int, 0, "", nil},
+	"train.num_workers":   {attribute.Int, 1, "", nil},
+	"train.worker_cpu":    {attribute.Int, 400, "", nil},
+	"train.worker_gpu":    {attribute.Int, 0, "", nil},
+	"train.ps_cpu":        {attribute.Int, 200, "", nil},
+	"train.ps_gpu":        {attribute.Int, 0, "", nil},
+	"train.num_evaluator": {attribute.Int, 0, "", nil},
+	"train.evaluator_cpu": {attribute.Int, 200, "", nil},
+	"train.evaluator_gpu": {attribute.Int, 0, "", nil},
 }
 
 func intArrayToJSONString(ia []int) string {
@@ -307,6 +317,20 @@ func InitializeAttributes(trainStmt *ir.TrainStmt) error {
 	constructOptimizers(trainStmt)
 	constructLosses(trainStmt)
 	attrValidator := modelAttr.Update(commonAttributes)
+	if len(modelAttr) == 0 {
+		// TODO(shendiaomo): Use the same mechanism as `sqlflow_models` to extract parameters automatically
+		// Unknown custom models
+		modelAttr.Update(attribute.Dictionary{"model.*": {attribute.Unknown, nil, "Any model parameters defined in custom models", nil}})
+	}
+	if strings.HasPrefix(trainStmt.Estimator, "sqlflow_models.") {
+		// Special attributes defined as global variables in `sqlflow_models`
+		modelAttr.Update(attribute.Dictionary{
+			"model.optimizer": {attribute.Unknown, nil, "Specify optimizer", nil},
+			"model.loss":      {attribute.Unknown, nil, "Specify loss", nil}})
+	}
+	if IsPAI() {
+		modelAttr.Update(distributedTrainingAttributes)
+	}
 	return attrValidator.Validate(trainStmt.Attributes)
 }
 
@@ -329,7 +353,8 @@ func categorizeAttributes(trainStmt *ir.TrainStmt) (trainParams, validateParams,
 	return trainParams, validateParams, modelParams
 }
 
-func deriveFeatureColumnCode(trainStmt *ir.TrainStmt) (featureColumnsCode []string, fieldDescs []*ir.FieldDesc, err error) {
+func deriveFeatureColumnCode(trainStmt *ir.TrainStmt) (featureColumnsCode []string, fieldDescs map[string][]*ir.FieldDesc, err error) {
+	fieldDescs = make(map[string][]*ir.FieldDesc)
 	for target, fcList := range trainStmt.Features {
 		perTargetFeatureColumnsCode := []string{}
 		for _, fc := range fcList {
@@ -340,7 +365,11 @@ func deriveFeatureColumnCode(trainStmt *ir.TrainStmt) (featureColumnsCode []stri
 			perTargetFeatureColumnsCode = append(perTargetFeatureColumnsCode, fcCode)
 			if len(fc.GetFieldDesc()) > 0 {
 				for _, fm := range fc.GetFieldDesc() {
-					fieldDescs = append(fieldDescs, fm)
+					_, ok := fieldDescs[target]
+					if !ok {
+						fieldDescs[target] = []*ir.FieldDesc{}
+					}
+					fieldDescs[target] = append(fieldDescs[target], fm)
 				}
 			}
 		}
@@ -492,7 +521,8 @@ func Explain(stmt *ir.ExplainStmt, session *pb.Session) (string, error) {
 }
 
 // restoreModel reconstruct necessary python objects from TrainStmt
-func restoreModel(stmt *ir.TrainStmt) (modelParams map[string]interface{}, featureColumnsCode []string, fieldDescs []*ir.FieldDesc, err error) {
+func restoreModel(stmt *ir.TrainStmt) (modelParams map[string]interface{}, featureColumnsCode []string, fieldDescs map[string][]*ir.FieldDesc, err error) {
+	fieldDescs = make(map[string][]*ir.FieldDesc)
 	modelParams = make(map[string]interface{})
 	for attrKey, attr := range stmt.Attributes {
 		if strings.HasPrefix(attrKey, "model.") {
@@ -509,7 +539,11 @@ func restoreModel(stmt *ir.TrainStmt) (modelParams map[string]interface{}, featu
 			perTargetFeatureColumnsCode = append(perTargetFeatureColumnsCode, fcCode)
 			if len(fc.GetFieldDesc()) > 0 {
 				for _, fm := range fc.GetFieldDesc() {
-					fieldDescs = append(fieldDescs, fm)
+					_, ok := fieldDescs[target]
+					if !ok {
+						fieldDescs[target] = []*ir.FieldDesc{}
+					}
+					fieldDescs[target] = append(fieldDescs[target], fm)
 				}
 			}
 		}

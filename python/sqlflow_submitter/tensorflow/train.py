@@ -49,7 +49,7 @@ if TF_VERSION_2:
     tf.get_logger().setLevel(logging.ERROR)
 else:
     tf.logging.set_verbosity(tf.logging.ERROR)
-    from .pai_distributed import define_tf_flags, make_distributed_info_without_evaluator, dump_into_tf_config
+    from .pai_distributed import define_tf_flags, make_distributed_info_without_evaluator, dump_into_tf_config, set_oss_environs
 
 
 def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
@@ -169,7 +169,8 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
             print("%s: %s" % (k, history.history[k][-1]))
     classifier.save_weights(save, save_format="h5")
     if is_pai:
-        model.save_file(FLAGS.checkpointDir, save)
+        print("saving keras model to: %s" % FLAGS.sqlflow_oss_modeldir)
+        model.save_file(FLAGS.sqlflow_oss_modeldir, save)
 
 
 def estimator_train_and_save(
@@ -307,6 +308,7 @@ def train(datasource,
         FLAGS = define_tf_flags()
         if len(FLAGS.worker_hosts.split(",")) > 1:
             is_distributed = True
+        set_oss_environs(FLAGS)
 
     if not is_estimator:  # keras
         if isinstance(estimator, types.FunctionType):
@@ -319,6 +321,17 @@ def train(datasource,
                              validate_select, batch_size, epochs, verbose,
                              metric_names, validation_steps)
     else:
+        # Remove the checkpoint dir on HDFS before training.
+        # NOTE(typhoonzero): checkpoints will be used by explaining (explaining BoostedTrees model
+        # requires calling estimator.experimental_predict_with_explanations),
+        # yet, predicting will use the saved model on OSS only.
+        if is_pai and FLAGS.task_index == 0:
+            for root, dirs, files in tf.io.gfile.walk(FLAGS.sqlflow_hdfs_ckpt,
+                                                      topdown=False):
+                for f in files:
+                    tf.io.gfile.remove("/".join([root, f]))
+                tf.io.gfile.rmtree(root)
+
         if is_distributed:
             cluster, task_type, task_index = make_distributed_info_without_evaluator(
                 FLAGS)
@@ -331,10 +344,13 @@ def train(datasource,
         else:
             model_params["config"] = tf.estimator.RunConfig(
                 save_checkpoints_steps=save_checkpoints_steps)
+
         if is_pai:
-            model_params["model_dir"] = FLAGS.checkpointDir
+            print("Using checkpoint path: %s" % FLAGS.sqlflow_hdfs_ckpt)
+            model_params["model_dir"] = FLAGS.sqlflow_hdfs_ckpt
         else:
             model_params["model_dir"] = save
+
         print("Start training using estimator model...")
         estimator_train_and_save(
             estimator, model_params, save, is_pai, FLAGS, pai_table,

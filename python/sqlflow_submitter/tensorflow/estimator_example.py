@@ -27,6 +27,10 @@ validate_select_binary = "SELECT * FROM iris.test WHERE class!=2;"
 feature_column_names = [
     "sepal_length", "sepal_width", "petal_length", "petal_width"
 ]
+feature_column_names_map = {
+    "feature_columns":
+    ["sepal_length", "sepal_width", "petal_length", "petal_width"]
+}
 
 feature_columns = {
     "feature_columns": [
@@ -115,6 +119,7 @@ if __name__ == "__main__":
          result_table="iris.predict",
          feature_columns=feature_columns,
          feature_column_names=feature_column_names,
+         feature_column_names_map=feature_column_names_map,
          result_col_name=label_meta["feature_name"],
          feature_metas=feature_metas,
          model_params={
