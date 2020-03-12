@@ -145,32 +145,37 @@ func (s *defaultSubmitter) ExecuteQuery(sql *ir.NormalStmt) error {
 func (s *defaultSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 	var code string
 	if isXGBoostModel(cl.Estimator) {
-		code, e = xgboost.Train(cl, s.Session)
+		if code, e = xgboost.Train(cl, s.Session); e != nil {
+			return e
+		}
 	} else {
-		code, e = tensorflow.Train(cl, s.Session)
-	}
-	if e == nil {
-		if e = s.runCommand(code); e == nil {
-			e = s.SaveModel(cl)
+		if code, e = tensorflow.Train(cl, s.Session); e != nil {
+			return e
 		}
 	}
-	return e
+	if e := s.runCommand(code); e != nil {
+		return e
+	}
+	return s.SaveModel(cl)
 }
 
 func (s *defaultSubmitter) ExecutePredict(cl *ir.PredictStmt) (e error) {
 	// NOTE(typhoonzero): model is already loaded under s.Cwd
-	if e = createPredictionTableFromIR(cl, s.Db, s.Session); e == nil {
-		var code string
-		if isXGBoostModel(cl.TrainStmt.Estimator) {
-			code, e = xgboost.Pred(cl, s.Session)
-		} else {
-			code, e = tensorflow.Pred(cl, s.Session)
+	if e = createPredictionTableFromIR(cl, s.Db, s.Session); e != nil {
+		return e
+	}
+
+	var code string
+	if isXGBoostModel(cl.TrainStmt.Estimator) {
+		if code, e = xgboost.Pred(cl, s.Session); e != nil {
+			return e
 		}
-		if e == nil {
-			e = s.runCommand(code)
+	} else {
+		if code, e = tensorflow.Pred(cl, s.Session); e != nil {
+			return e
 		}
 	}
-	return e
+	return s.runCommand(code)
 }
 
 func (s *defaultSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
