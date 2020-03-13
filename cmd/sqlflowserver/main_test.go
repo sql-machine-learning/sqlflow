@@ -1568,8 +1568,8 @@ INTO e2etest_dnn_model_distributed;`, caseTrainTable, caseTestTable)
 func CasePAIMaxComputeTrainTFBTDistributed(t *testing.T) {
 	t.Parallel()
 	a := assert.New(t)
-	trainSQL := fmt.Sprintf(`SELECT * FROM %s
-TO TRAIN BoostedTreesClassifier WHERE class < 2
+	trainSQL := fmt.Sprintf(`SELECT * FROM %s WHERE class < 2
+TO TRAIN BoostedTreesClassifier
 WITH
 	model.center_bias=True,
 	model.n_batches_per_layer=70,
