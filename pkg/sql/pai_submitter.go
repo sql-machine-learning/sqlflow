@@ -170,7 +170,7 @@ func (s *paiSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 	}
 	scriptPath := fmt.Sprintf("file://%s/%s", s.Cwd, tarball)
 	paramsPath := fmt.Sprintf("file://%s/%s", s.Cwd, paramsFile)
-	if err := createPAIHyperParamFile(s.Cwd, paramsPath, ossModelPath); err != nil {
+	if err := createPAIHyperParamFile(s.Cwd, paramsFile, ossModelPath); err != nil {
 		return err
 	}
 	code, paiCmd, requirements, e := pai.Train(cl, s.Session, scriptPath, paramsPath, cl.Into, ossModelPath, s.Cwd)
@@ -241,7 +241,7 @@ func (s *paiSubmitter) ExecutePredict(cl *ir.PredictStmt) error {
 	}
 	scriptPath := fmt.Sprintf("file://%s/%s", s.Cwd, tarball)
 	paramsPath := fmt.Sprintf("file://%s/%s", s.Cwd, paramsFile)
-	if err := createPAIHyperParamFile(s.Cwd, paramsPath, ossModelPath); err != nil {
+	if err := createPAIHyperParamFile(s.Cwd, paramsFile, ossModelPath); err != nil {
 		return err
 	}
 	code, paiCmd, requirements, e := pai.Predict(cl, s.Session, scriptPath, paramsPath, cl.Using, ossModelPath, s.Cwd, modelType)
@@ -294,7 +294,7 @@ func (s *paiSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 	}
 	scriptPath := fmt.Sprintf("file://%s/%s", s.Cwd, tarball)
 	paramsPath := fmt.Sprintf("file://%s/%s", s.Cwd, paramsFile)
-	if err := createPAIHyperParamFile(s.Cwd, paramsPath, ossModelPath); err != nil {
+	if err := createPAIHyperParamFile(s.Cwd, paramsFile, ossModelPath); err != nil {
 		return err
 	}
 	expn, e := pai.Explain(cl, s.Session, scriptPath, paramsPath, cl.ModelName, ossModelPath, s.Cwd, modelType)
