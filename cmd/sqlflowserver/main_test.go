@@ -2047,7 +2047,6 @@ func checkWorkflow(ctx context.Context, cli pb.SQLFlowClient, stream pb.SQLFlow_
 		}
 		workflowID = iter.GetJob().GetId()
 	}
-	fmt.Println("finished submitting...")
 	if !strings.HasPrefix(workflowID, "sqlflow") {
 		return fmt.Errorf("workflow not started with sqlflow-couler")
 	}

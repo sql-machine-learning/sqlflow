@@ -151,7 +151,6 @@ func GenCode(programIR []ir.SQLFlowStmt, session *pb.Session) (string, error) {
 	if err := coulerTemplate.Execute(&program, r); err != nil {
 		return "", err
 	}
-	fmt.Println(program.String())
 	return program.String(), nil
 }
 
