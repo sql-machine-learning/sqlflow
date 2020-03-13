@@ -1565,6 +1565,24 @@ INTO e2etest_dnn_model_distributed;`, caseTrainTable, caseTestTable)
 	a.NoError(err)
 }
 
+func CasePAIMaxComputeTrainTFBTDistributed(t *testing.T) {
+	t.Parallel()
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`SELECT * FROM %s
+TO TRAIN BoostedTreesClassifier WHERE class < 2
+WITH
+	model.center_bias=True,
+	model.n_batches_per_layer=70,
+	train.num_workers=2,
+	train.num_ps=1,
+	train.epoch=10,
+	validation.select="select * from %s"
+LABEL class
+INTO e2etest_tfbt_model_distributed;`, caseTrainTable, caseTestTable)
+	_, _, _, err := connectAndRunSQL(trainSQL)
+	a.NoError(err)
+}
+
 func CaseTrainPAIKMeans(t *testing.T) {
 	a := assert.New(t)
 	err := dropPAIModel(dbConnStr, caseInto)
@@ -1902,6 +1920,7 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 		t.Run("CasePAIMaxComputeTrainCustomModel", CasePAIMaxComputeTrainCustomModel)
 		t.Run("CasePAIMaxComputeTrainDistributed", CasePAIMaxComputeTrainDistributed)
 		t.Run("CasePAIMaxComputeTrainPredictCategoricalFeature", CasePAIMaxComputeTrainPredictCategoricalFeature)
+		t.Run("CasePAIMaxComputeTrainTFBTDistributed", CasePAIMaxComputeTrainTFBTDistributed)
 
 		// FIXME(typhoonzero): Add this test back when we solve error: model already exist issue on the CI.
 		// t.Run("CaseTrainPAIRandomForests", CaseTrainPAIRandomForests)
