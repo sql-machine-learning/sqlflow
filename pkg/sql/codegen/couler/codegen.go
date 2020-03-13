@@ -121,11 +121,16 @@ func GenCode(programIR []ir.SQLFlowStmt, session *pb.Session) (string, error) {
 	for _, sqlIR := range programIR {
 		switch i := sqlIR.(type) {
 		case *ir.NormalStmt, *ir.PredictStmt, *ir.ExplainStmt:
+			// TODO(typhoonzero): get model image used when training.
 			sqlStmt := &sqlStatement{
 				OriginalSQL: sqlIR.GetOriginalSQL(), IsExtendedSQL: sqlIR.IsExtended(),
 				DockerImage: defaultDockerImage}
 			r.SQLStatements = append(r.SQLStatements, sqlStmt)
 		case *ir.TrainStmt:
+			stepImage := defaultDockerImage
+			if i.ModelImage != "" {
+				stepImage = i.ModelImage
+			}
 			if r.SQLFlowSubmitter == "katib" {
 				sqlStmt, err := ParseKatibSQL(sqlIR.(*ir.TrainStmt))
 				if err != nil {
@@ -135,7 +140,7 @@ func GenCode(programIR []ir.SQLFlowStmt, session *pb.Session) (string, error) {
 			} else {
 				sqlStmt := &sqlStatement{
 					OriginalSQL: sqlIR.GetOriginalSQL(), IsExtendedSQL: sqlIR.IsExtended(),
-					DockerImage: defaultDockerImage}
+					DockerImage: stepImage}
 				r.SQLStatements = append(r.SQLStatements, sqlStmt)
 			}
 		default:
@@ -146,6 +151,7 @@ func GenCode(programIR []ir.SQLFlowStmt, session *pb.Session) (string, error) {
 	if err := coulerTemplate.Execute(&program, r); err != nil {
 		return "", err
 	}
+	fmt.Println(program.String())
 	return program.String(), nil
 }
 

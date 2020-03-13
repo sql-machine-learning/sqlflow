@@ -106,8 +106,8 @@ func (l *lexer) lexIdentOrKeyword(lval *extendedSyntaxSymType) int {
 	// lexToken ensures that the first rune is a letter.
 	r := l.next()
 	for {
-		// model IDENT may be like: a_data_scientist/regressors:v0.2/MyDNNRegressor
-		for unicode.IsLetter(r) || unicode.IsNumber(r) || r == '_' || r == '/' || r == ':' {
+		// model IDENT may be like: some-domain.com/a_data_scientist/regressors:v0.2/MyDNNRegressor
+		for unicode.IsLetter(r) || unicode.IsNumber(r) || r == '_' || r == '/' || r == ':' || r == '-' {
 			r = l.next()
 		}
 		if r != '.' { // The dot cannot be the last rune.

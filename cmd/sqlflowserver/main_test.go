@@ -1916,7 +1916,7 @@ func TestEnd2EndWorkflow(t *testing.T) {
 	driverName, _, err := database.ParseURL(testDatasource)
 	a.NoError(err)
 
-	if driverName != "mysql" && driverName != "maxcompute" {
+	if driverName != "mysql" && driverName != "maxcompute" && driverName != "alisa" {
 		t.Skip("Skipping workflow test.")
 	}
 	modelDir := ""
@@ -1946,13 +1946,15 @@ func TestEnd2EndWorkflow(t *testing.T) {
 		casePredictTable = caseDB + ".sqlflow_test_iris_predict"
 		// write model to current MaxCompute project
 		caseInto = "my_dnn_model"
-
-		err = prepareTestData(dbConnStr)
-		if err != nil {
-			t.Fatalf("prepare test dataset failed: %v", err)
-		}
+	} else if driverName == "alisa" {
+		dbConnStr = os.Getenv("SQLFLOW_DATASOURCE")
+		caseDB = os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT")
+		caseTrainTable = caseDB + ".sqlflow_test_iris_train"
+		caseTestTable = caseDB + ".sqlflow_test_iris_test"
+		casePredictTable = caseDB + ".sqlflow_test_iris_predict"
 	}
 
+	t.Run("CaseWorkflowTrainAndPredictDNNCustomImage", CaseWorkflowTrainAndPredictDNNCustomImage)
 	t.Run("CaseWorkflowTrainAndPredictDNN", CaseWorkflowTrainAndPredictDNN)
 	t.Run("CaseTrainDistributedPAIArgo", CaseTrainDistributedPAIArgo)
 }
@@ -2000,6 +2002,39 @@ FROM %s LIMIT 5;
 	a.NoError(checkWorkflow(ctx, cli, stream))
 }
 
+func CaseWorkflowTrainAndPredictDNNCustomImage(t *testing.T) {
+	a := assert.New(t)
+	// use the default image to test
+	customImage := os.Getenv("SQLFLOW_WORKFLOW_STEP_IMAGE")
+	sqlProgram := fmt.Sprintf(`
+SELECT * FROM %s LIMIT 10;
+
+SELECT * FROM %s
+TO TRAIN %s/DNNClassifier
+WITH
+	model.n_classes = 3,
+	model.hidden_units = [64, 32],
+	validation.select = "SELECT * FROM %s"
+LABEL class
+INTO test_workflow_model;`, caseTrainTable, caseTrainTable, customImage, caseTestTable)
+
+	conn, err := createRPCConn()
+	if err != nil {
+		a.Fail("Create gRPC client error: %v", err)
+	}
+	defer conn.Close()
+
+	cli := pb.NewSQLFlowClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), 1800*time.Second)
+	defer cancel()
+
+	stream, err := cli.Run(ctx, &pb.Request{Sql: sqlProgram, Session: &pb.Session{DbConnStr: testDatasource}})
+	if err != nil {
+		a.Fail("Create gRPC client error: %v", err)
+	}
+	a.NoError(checkWorkflow(ctx, cli, stream))
+}
+
 func checkWorkflow(ctx context.Context, cli pb.SQLFlowClient, stream pb.SQLFlow_RunClient) error {
 	var workflowID string
 	for {
@@ -2012,6 +2047,7 @@ func checkWorkflow(ctx context.Context, cli pb.SQLFlowClient, stream pb.SQLFlow_
 		}
 		workflowID = iter.GetJob().GetId()
 	}
+	fmt.Println("finished submitting...")
 	if !strings.HasPrefix(workflowID, "sqlflow") {
 		return fmt.Errorf("workflow not started with sqlflow-couler")
 	}
