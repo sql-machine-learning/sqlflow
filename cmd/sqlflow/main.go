@@ -58,8 +58,8 @@ func main() {
 	flag.StringVar(sqlFileName, "f", "", "short for --file")
 	flag.Parse()
 
-	lf := log.New(*logPath)
-	log := lf.GetLogger(map[string]interface{}{"requestID": 0})
+	log.SetOutput(*logPath)
+	log := log.WithFields(map[string]interface{}{"requestID": 0})
 
 	sqlProgram, e := ioutil.ReadFile(*sqlFileName)
 	if e != nil {

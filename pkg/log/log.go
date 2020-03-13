@@ -20,17 +20,15 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
-// Factory builds Logger
-type Factory struct{}
-
 // Logger wraps logrus.Entry
 type Logger struct {
 	*logrus.Entry
 }
 
-// New sets logrus'output with lumberjack
-// filename: /path/to/log, e.g. "/var/log/sqlflow.log"
-func New(filename string) *Factory {
+// SetOutput sets log output to filename globally.
+// filename="/var/log/sqlflow.log": write the log to file
+// filename="": write the file to stdout
+func SetOutput(filename string) {
 	if len(strings.Trim(filename, " ")) > 0 {
 		logrus.SetOutput(&lumberjack.Logger{
 			Filename:   filename,
@@ -40,11 +38,10 @@ func New(filename string) *Factory {
 			Compress:   true,
 		})
 	}
-	return &Factory{}
 }
 
-// GetLogger returns log.Entry
-// TODO(weiguoz): Need stress testing to detect memory leaking and performance.
-func (fac *Factory) GetLogger(fields map[string]interface{}) *Logger {
+// WithFields returns log.Entry
+// TODO(weiguoz): Need stress testing about performance.
+func WithFields(fields map[string]interface{}) *Logger {
 	return &Logger{logrus.WithFields(fields)}
 }
