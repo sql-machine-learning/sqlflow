@@ -2070,16 +2070,14 @@ func CaseTrainDistributedPAIArgo(t *testing.T) {
 		train.save_checkpoints_steps=20,
 		train.epoch=2,
 		train.batch_size=4,
-		train.verbose=2
+		train.verbose=2,
+		validation.select="select * from %s"
 	COLUMN sepal_length, sepal_width, petal_length, petal_width
 	LABEL class
 	INTO %s;
 
-	SELECT *
-FROM %s
-TO PREDICT %s.class
-USING %s;
-	`, caseTrainTable, caseInto, caseTestTable, casePredictTable, caseInto)
+	SELECT * FROM %s TO PREDICT %s.class USING %s;
+	`, caseTrainTable, caseTestTable, caseInto, caseTestTable, casePredictTable, caseInto)
 
 	conn, err := createRPCConn()
 	if err != nil {
