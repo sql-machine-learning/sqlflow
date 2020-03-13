@@ -81,5 +81,5 @@ func TestSQLFSWriteAndRead(t *testing.T) {
 	a.Equal(0, n)
 	a.NoError(r.Close())
 
-	a.NoError(dropTable(db.DB, tbl))
+	a.NoError(dropTableIfExists(db.DB, tbl))
 }

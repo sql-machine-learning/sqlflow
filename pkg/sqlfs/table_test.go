@@ -33,5 +33,5 @@ func TestSQLFSCreateHasDropTable(t *testing.T) {
 	has, e := hasTable(db.DB, tbl)
 	a.NoError(e)
 	a.True(has)
-	a.NoError(dropTable(db.DB, tbl))
+	a.NoError(dropTableIfExists(db.DB, tbl))
 }

@@ -57,7 +57,7 @@ func TestSQLFSNewHiveWriter(t *testing.T) {
 
 	a.NoError(w.Close())
 	a.False(hasHDFSDir(path.Join("/hivepath", tbl)))
-	a.NoError(dropTable(db.DB, tbl))
+	a.NoError(dropTableIfExists(db.DB, tbl))
 }
 
 func TestSQLFSHiveWriterWriteAndRead(t *testing.T) {
@@ -117,5 +117,5 @@ func TestSQLFSHiveWriterWriteAndRead(t *testing.T) {
 	a.Equal(0, n)
 	a.NoError(r.Close())
 
-	a.NoError(dropTable(db.DB, tbl))
+	a.NoError(dropTableIfExists(db.DB, tbl))
 }
