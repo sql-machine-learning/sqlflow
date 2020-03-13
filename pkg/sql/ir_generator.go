@@ -81,7 +81,6 @@ func generateTrainStmt(slct *parser.SQLFlowSelectStmt, attrInitAndTypeCheck bool
 	modelParts := strings.Split(modelURI, "/")
 	modelImageName := strings.Join(modelParts[0:len(modelParts)-1], "/")
 	modelName := modelParts[len(modelParts)-1]
-	fmt.Printf("image: %s, modelname: %s", modelImageName, modelName)
 
 	attrList, err := generateAttributeIR(&slct.TrainAttrs)
 	if err != nil {

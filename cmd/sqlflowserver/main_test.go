@@ -2003,6 +2003,9 @@ FROM %s LIMIT 5;
 }
 
 func CaseWorkflowTrainAndPredictDNNCustomImage(t *testing.T) {
+	if os.Getenv("SQLFLOW_submitter") != "pai" && os.Getenv("SQLFLOW_submitter") != "alisa" {
+		t.Skip("Skip PAI case.")
+	}
 	a := assert.New(t)
 	// use the default image to test
 	customImage := os.Getenv("SQLFLOW_WORKFLOW_STEP_IMAGE")
