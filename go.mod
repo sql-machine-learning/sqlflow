@@ -44,6 +44,7 @@ require (
 	golang.org/x/sys v0.0.0-20191224085550-c709ea063b76
 	google.golang.org/grpc v1.27.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6 // indirect
+	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	gopkg.in/yaml.v2 v2.2.7 // indirect
 	k8s.io/api v0.0.0-20191004102349-159aefb8556b
 	k8s.io/apimachinery v0.17.0 // indirect
