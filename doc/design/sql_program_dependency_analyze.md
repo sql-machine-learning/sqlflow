@@ -10,33 +10,33 @@ AI pipeline using pure SQL (with SQLFlow). The below SQL program is trying to:
 
 ```sql
 -- random sampling 1,000,000 samples from one month's data,
--- fill in empty data, and put the result to "train_table"
-CREATE TABLE train_table AS
+-- fill in empty data, and put the result to "training_data"
+CREATE TABLE training_data AS
 SELECT COALESCE(field1, 0), COALESCE(NULLIF(field2, ""), 0) label
 FROM user_visits
 WHERE dt<'20200313' and dt>'20200213'
 ORDER BY RAND() LIMIT 1000000;
 -- do model training
-SELECT * FROM train_table
+SELECT * FROM training_data
 TO TRAIN DNNClassifier
 WITH model.n_classes=2, model.hidden_units=[4096,1024,256]
 LABEL 'label'
 INTO my_dnn_model;
 -- train another model using XGBoost
-SELECT * FROM train_table
+SELECT * FROM training_data
 TO TRAIN xgboost.gbtree
 WITH objective="binary:logistic"
 LABEL 'label'
 INTO my_xgb_model;
 -- generate explain results for both model for analyze
-SELECT * FROM train_table ORDER BY RAND() LIMIT 10000
+SELECT * FROM training_data ORDER BY RAND() LIMIT 10000
 TO EXPLAIN my_dnn_model;
 
-SELECT * FROM train_table ORDER BY RAND() LIMIT 10000
+SELECT * FROM training_data ORDER BY RAND() LIMIT 10000
 TO EXPLAIN my_xgb_model;
 
 -- clean up training table
-DROP TABLE train_table;
+DROP TABLE training_data;
 ```
 
 It's simple to figure out that we can run the two training statement concurrently, and run the
@@ -57,7 +57,7 @@ computing resource, shrink the execution time.
 To achieve this, we need to analyze the hole SQL program and find out what tables are manipulated
 by each statement. One statement can read, write or do both on some tables, while other statements
 can also read, write the same table, in the above case, statement 1 is reading table `user_visits`
-and writing table `train_table`, statement 2,3,4,5 are reading table `train_table`, so they must
+and writing table `training_data`, statement 2,3,4,5 are reading table `training_data`, so they must
 start only when statement 1 is finished.
 
 We can do this by following below steps:
@@ -74,6 +74,20 @@ We can do this by following below steps:
 4. Execute this graph by submitting the graph as an Argo/Tekton workflow, each step is one single
    statement.
 
+## Analyzing Database Context
+
+Some SQL program have `USE` clause which defines the database the following SQL statements are using.
+
+```SQL
+USE db;
+CREATE TABLE my_table AS ...
+SELECT * FROM my_table TO TRAIN ...
+USE db2;
+SELECT * FROM my_table_in_db2 TO TRAIN ...
+```
+
+We need to go over the SQL program and get the last `USE` for each SQL statement, and modify the table
+name with out prefix `db.` to `db.table` for later dependency analyzing.
 
 ## Hazard
 
@@ -105,26 +119,43 @@ parser. Since the Hive parser and calcite parser is written in Java, we need to 
 information from Java to Go:
 
 ```proto
-message TableRW {
-  string table_name = 1;
-  // read: rw_type = 0 
-  // write: rw_type = 1
-  // both : rw_type = 2
-  int32 rw_type = 2;
-}
-
-message TableRWList {
-  repeated TableRW table_rw_list = 1;
-}
-
 message ParserResponse {
   repeated string sql_statements = 1;
   int32 index = 2;
   string error = 3;
-  // Add table_rw field
-  repeated TableRWList table_rw = 4;
+  // return tables that a statement manipulate.
+  repeated string input_tables = 4;
+  repeated string output_tables = 5;
 }
 ```
 
 When parsing the SQL program in Go, we can then get table read/write information for each standard
-SQL statement, then parse the extended SQL to get model read/write information, then construct the graph.
+SQL statement, then parse the extended SQL to get model read/write information, then construct the
+graph:
+
+```go
+type Node struct {
+   NodeType int // 0: statement, 1: table/model
+   Statement string
+   TableName string // can be table name or model name.
+   Image string // Docker image used to run the statement
+   Outputs *[]Node
+   Inputs *[]Node
+}
+
+type Graph struct {
+   Nodes []*Node
+}
+```
+
+**NOTE: we treat table and model as the same thing when constructing the graph.**
+
+Then the executor takes the constructed graph as input to execute the SQL program:
+
+```Go
+Execute(wr *pipe.Writer, graph *Graph) error {}
+```
+
+In the `Execute` function, we will generate a "couler/fluid" program to define a
+workflow job on Kubernetes following the current graph definition. Then submit the
+graph and wait for the job to be finished.
