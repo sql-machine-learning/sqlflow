@@ -211,14 +211,16 @@ func (p *promptState) searchHistoryImpl(mode searchMode, suffix string, buf *pro
 			in = pieces[len(pieces)-1]
 		}
 		prompt.GoLineBeginning(buf)
-		buf.Delete(len(buf.Text()))
+		buf.Delete(len([]rune(buf.Text())))
 		*key += in
 		buf.InsertText(*key+suffix, false, true)
 	} else { // Backspace
 		if len(*key) != 0 {
-			*key = (*key)[:len(*key)-1]
-			buf.CursorLeft(len(suffix))
-			buf.InsertText(suffix, true, true)
+			r := []rune(*key)
+			r = r[:len(r)-1]
+			*key = string(r)
+			buf.DeleteBeforeCursor(len(suffix))
+			buf.InsertText(suffix, false, true)
 		} else {
 			buf.InsertText(suffix[len(suffix)-1:], false, true)
 		}
