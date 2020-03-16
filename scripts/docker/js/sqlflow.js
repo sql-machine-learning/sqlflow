@@ -11,8 +11,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Support highlighting SQLFlow keywords in the SQLFlow magic cells in Jupyter Notebook.
 // This file is based on https://github.com/codemirror/CodeMirror/blob/master/mode/sql/sql.js
 
+// The file should be copied into the codemirror directory of Jupyter Notebook to take effect.
+// (Typically `notebook/static/components/codemirror/mode/sqlflow/` in the Python site_packages directory)
+// See https://github.com/sql-machine-learning/sqlflow/pull/1470/ for more details
 (function(mod) {
   if (typeof exports == "object" && typeof module == "object") // CommonJS
     mod(require("../../lib/codemirror"));
