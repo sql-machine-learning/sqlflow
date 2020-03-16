@@ -74,8 +74,17 @@ func objectiveChecker(obj interface{}) error {
 	return fmt.Errorf("unrecognized objective %s, should be one of %v", s, expected)
 }
 
-func resolveModelType(estimator string) (string, error) {
-	switch strings.ToUpper(estimator) {
+func resolveModelType(ir *ir.TrainStmt) (string, error) {
+	switch strings.ToUpper(ir.Estimator) {
+	case "XGBOOST.BINARYCLASSIFIER":
+		ir.Attributes["objective"] = "binary:logistic"
+		return "gbtree", nil
+	case "XGBOOST.MULTICLASSIFIER":
+		ir.Attributes["objective"] = "multi:softprob"
+		return "gbtree", nil
+	case "XGBOOST.REGRESSOR":
+		ir.Attributes["objective"] = "reg:squarederror"
+		return "gbtree", nil
 	case "XGBOOST.GBTREE":
 		return "gbtree", nil
 	case "XGBOOST.GBLINEAR":
@@ -83,7 +92,7 @@ func resolveModelType(estimator string) (string, error) {
 	case "XGBOOST.DART":
 		return "dart", nil
 	default:
-		return "", fmt.Errorf("unsupported model name %v, currently supports xgboost.gbtree, xgboost.gblinear, xgboost.dart", estimator)
+		return "", fmt.Errorf("unsupported model name %v, currently supports xgboost.gbtree, xgboost.gblinear, xgboost.dart", ir.Estimator)
 	}
 }
 
@@ -161,7 +170,7 @@ func resolveFeatureMeta(fds []ir.FieldDesc) ([]byte, []string, error) {
 // Train generates a Python program for train a XgBoost model.
 func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 	params := parseAttribute(trainStmt.Attributes)
-	booster, err := resolveModelType(trainStmt.Estimator)
+	booster, err := resolveModelType(trainStmt)
 	if err != nil {
 		return "", err
 	}
