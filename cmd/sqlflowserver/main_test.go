@@ -2011,7 +2011,7 @@ FROM %s LIMIT 5;
 	defer conn.Close()
 
 	cli := pb.NewSQLFlowClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), 1800*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3600*time.Second)
 	defer cancel()
 
 	stream, err := cli.Run(ctx, &pb.Request{Sql: sqlProgram, Session: &pb.Session{DbConnStr: testDatasource}})
@@ -2047,7 +2047,7 @@ INTO test_workflow_model;`, caseTrainTable, caseTrainTable, customImage, caseTes
 	defer conn.Close()
 
 	cli := pb.NewSQLFlowClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), 1800*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3600*time.Second)
 	defer cancel()
 
 	stream, err := cli.Run(ctx, &pb.Request{Sql: sqlProgram, Session: &pb.Session{DbConnStr: testDatasource}})
@@ -2062,7 +2062,6 @@ func checkWorkflow(ctx context.Context, cli pb.SQLFlowClient, stream pb.SQLFlow_
 	for {
 		iter, err := stream.Recv()
 		if err == io.EOF {
-			fmt.Println("received EOF, break loop")
 			break
 		}
 		if err != nil {
@@ -2079,13 +2078,10 @@ func checkWorkflow(ctx context.Context, cli pb.SQLFlowClient, stream pb.SQLFlow_
 	// wait 30min for the workflow execution since it may take time to allocate enough nodes.
 	// each loop waits 3 seconds, total 600 * 3 = 1800 seconds
 	for i := 0; i < 600; i++ {
-		fmt.Println("grpc Fetch...")
 		res, err := cli.Fetch(ctx, req)
 		if err != nil {
-			fmt.Printf("Fetch err: %v\n", err)
 			return err
 		}
-		fmt.Println(res.Responses)
 		if res.Eof {
 			// pass the test case
 			return nil
@@ -2128,8 +2124,8 @@ func CaseTrainDistributedPAIArgo(t *testing.T) {
 	defer conn.Close()
 
 	cli := pb.NewSQLFlowClient(conn)
-	// wait 30min for the workflow execution since it may take time to allocate enough nodes.
-	ctx, cancel := context.WithTimeout(context.Background(), 2400*time.Second)
+	// wait 1h for the workflow execution since it may take time to allocate enough nodes.
+	ctx, cancel := context.WithTimeout(context.Background(), 3600*time.Second)
 	defer cancel()
 
 	stream, err := cli.Run(ctx, &pb.Request{Sql: trainSQL, Session: &pb.Session{DbConnStr: testDatasource}})
