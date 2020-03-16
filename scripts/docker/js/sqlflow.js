@@ -11,8 +11,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Support highlighting SQLFlow keywords in the SQLFlow magic cells in Jupyter Notebook.
 // This file is based on https://github.com/codemirror/CodeMirror/blob/master/mode/sql/sql.js
 
+// The file should be copied into the codemirror directory of Jupyter Notebook to take effect.
+// (Typically `notebook/static/components/codemirror/mode/sqlflow/` in the Python site_packages directory)
+// See https://github.com/sql-machine-learning/sqlflow/pull/1470/ for more details
+
+// The anonymous function defines the codemirror mode for SQLFlow, based on the codemirror mode API
+// (https://codemirror.net/doc/manual.html#modeapi)
+// The token-related methods (tokenBase, tokenComment, tokenLiteral) are used by the `token` method to
+// tokenize the input.
+//
+// The calls to `CodeMirror.defineMIME` associate the SQLFlow mode to MIME types (e.g. text/x-mysqlflow)
+// to make it loadable by `custom.js`. This is also where we configure keywords.
 (function(mod) {
     if (typeof exports == "object" && typeof module == "object") // CommonJS
         mod(require("../../lib/codemirror"));
