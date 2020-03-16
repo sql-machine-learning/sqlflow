@@ -37,12 +37,6 @@ type EndOfExecution struct {
 	Statement string
 }
 
-// WorkflowJob indicates the Argo Workflow ID
-// FIXME(tony): reuse workflow job definition in proto package
-type WorkflowJob struct {
-	JobID string
-}
-
 // RunSQLProgram run a SQL program.
 //
 // TODO(wangkuiyi): Make RunSQLProgram return an error in addition to

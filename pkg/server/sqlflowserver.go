@@ -80,9 +80,8 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 			res, err = pb.EncodeMessage(s.Image)
 		case string:
 			res, err = pb.EncodeMessage(s)
-		case sf.WorkflowJob:
-			job := r.(sf.WorkflowJob)
-			res = &pb.Response{Response: &pb.Response_Job{Job: &pb.Job{Id: job.JobID}}}
+		case pb.Job:
+			res = &pb.Response{Response: &pb.Response_Job{Job: &s}}
 		case sf.EndOfExecution:
 			// FIXME(tony): decouple server package with sql package by introducing s.numberOfStatement
 			dialect, _, err := database.ParseURL(req.Session.DbConnStr)
@@ -132,32 +131,36 @@ func SubmitWorkflow(sqlProgram string, modelDir string, session *pb.Session) *pi
 	startTime := time.Now().Second()
 	go func() {
 		defer wr.Close()
-		driverName, _, err := database.ParseURL(session.DbConnStr)
-		if err != nil {
-			wr.Write(err)
-			return
-		}
-
-		stmts, err := parser.Parse(driverName, sqlProgram)
-		if err != nil {
-			wr.Write(err)
-			return
-		}
-
-		spIRs, err := sql.ResolveSQLProgram(stmts)
-		if err != nil {
-			wr.Write(err)
-			return
-		}
-
-		wfID, err := workflow.Execute("argo", spIRs, session)
-		defer log.Printf("Submit SQL program: %s\nuserID: %s\nworkflowID: %s\nspent: %d\nerror:%v", sqlProgram, session.UserId, wfID, time.Now().Second()-startTime, err)
-		if err != nil && err != pipe.ErrClosedPipe {
-			if err := wr.Write(err); err != nil {
-				log.Printf("submit workflow error(piping): %v", err)
+		wfID, e := resolveAndSubmitWorkflow(sqlProgram, session)
+		defer log.Printf("Submit SQL program: %s\nuserID: %s\nworkflowID: %s\nspent: %d\nerror:%v", sqlProgram, session.UserId, wfID, time.Now().Second()-startTime, e)
+		if e != nil {
+			if e := wr.Write(e); e != nil {
+				log.Printf("submit workflow error(piping): %v", e)
 			}
+			return
 		}
-
+		if e := wr.Write(pb.Job{Id: wfID}); e != nil {
+			log.Printf("write workflow reponse error(piping): %v", e)
+			return
+		}
 	}()
 	return rd
+}
+
+func resolveAndSubmitWorkflow(sqlProgram string, session *pb.Session) (string, error) {
+	driverName, _, e := database.ParseURL(session.DbConnStr)
+	if e != nil {
+		return "", e
+	}
+
+	stmts, e := parser.Parse(driverName, sqlProgram)
+	if e != nil {
+		return "", e
+	}
+
+	spIRs, e := sql.ResolveSQLProgram(stmts)
+	if e != nil {
+		return "", e
+	}
+	return workflow.Execute("argo", spIRs, session)
 }
