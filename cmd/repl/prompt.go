@@ -217,8 +217,7 @@ func (p *promptState) searchHistoryImpl(mode searchMode, suffix string, buf *pro
 	} else { // Backspace
 		if len(*key) != 0 {
 			r := []rune(*key)
-			r = r[:len(r)-1]
-			*key = string(r)
+			*key = string(r[:len(r)-1])
 			buf.DeleteBeforeCursor(len(suffix))
 			buf.InsertText(suffix, false, true)
 		} else {
