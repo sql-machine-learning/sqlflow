@@ -25,7 +25,7 @@ import (
 	"sqlflow.org/sqlflow/pkg/sql/codegen/couler"
 )
 
-func compile(cgName, sqlProgram, datasource string) (string, error) {
+func compile(cgName, sqlProgram, datasource string, log *log.Entry) (string, error) {
 	driverName, _, err := database.ParseURL(datasource)
 	if err != nil {
 		return "", err
@@ -36,7 +36,7 @@ func compile(cgName, sqlProgram, datasource string) (string, error) {
 	}
 	switch cgName {
 	case "couler":
-		spIRs, err := sql.ResolveSQLProgram(stmts)
+		spIRs, err := sql.ResolveSQLProgram(stmts, log)
 		if err != nil {
 			return "", err
 		}
@@ -59,13 +59,14 @@ func main() {
 	flag.Parse()
 
 	log.SetOutput(*logPath)
+	log := log.WithFields(log.Fields{"codegen": cgName})
 
 	sqlProgram, e := ioutil.ReadFile(*sqlFileName)
 	if e != nil {
 		log.Fatalf("read file failed, %v", e)
 	}
 
-	code, e := compile(*cgName, string(sqlProgram), *ds)
+	code, e := compile(*cgName, string(sqlProgram), *ds, log)
 	if e != nil {
 		log.Fatalf("compile failed, %v", e)
 	}
