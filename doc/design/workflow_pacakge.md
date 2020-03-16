@@ -1,11 +1,10 @@
-# Design Doc: Workflow Package
+# Workflow Package
 
 ## Motivation
 
 SQLFlow translates a SQL program, perhaps with extended SQL syntax for AI, into a workflow. Tekton/Argo are Kubernetes native workflow engine when deploying SQLFlow on Kubernetes, SQLFlow leverages Argo/Tekton to do the workflow management.
 
-SQLFlow supports Argo/Tekton as the workflow backend and maybe more in the future. It's different to communicate with the theses workflow engine, .e.g. Argo and Tekton
-are the different CRD on Kubernetes, they are different YAML spec, so it's necessary to orignize a seperate pacakge `workflow` to communicate the workflows with an uniform interface.
+SQLFlow supports Argo/Tekton as the workflow backend and maybe more in the future. It's different to communicate with the theses workflow engine, they are different CRD on Kubernetes, and they have different YAML spec, so it's necessary to orignize a seperate pacakge `workflow` to communicate the workflows with an uniform interface.
 
 ## Design
 
@@ -34,12 +33,12 @@ SQLFlow implements Fluid `Codegen` to translate the `[]ir.SQLFlowStmt` into Pyth
 ``` golang
 type Codegen interface {
   GenCode([]ir.SQLFlowStmt) string
-  Compile(string) string
+  GenYAML(string) string
 }
 ```
 
 - `GenCode` inputs a SQL program and outputs the Fluid program in Python.
-- `Compile` compiles the Fluid program and outputs the workflow YAML.
+- `GenYAML` compiles the Fluid program and outputs the workflow YAML.
 
 ### Workflow Interface
 
@@ -68,7 +67,7 @@ cg, wf, e := worklow.New("tekton")
 
 // generate YAML file
 py := cg.GenCode(SQLProgram)
-yaml := cg.Compile(py)
+yaml := cg.GenYAML(py)
 
 // submit the workflow YAML and retrievel workflow step status
 wfID := wf.Submit(yaml)
