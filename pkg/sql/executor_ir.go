@@ -22,13 +22,11 @@ import (
 	"strings"
 	"time"
 
-	"sqlflow.org/sqlflow/pkg/argo"
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/ir"
 	"sqlflow.org/sqlflow/pkg/parser"
 	"sqlflow.org/sqlflow/pkg/pipe"
 	pb "sqlflow.org/sqlflow/pkg/proto"
-	"sqlflow.org/sqlflow/pkg/sql/codegen/couler"
 	"sqlflow.org/sqlflow/pkg/verifier"
 )
 
@@ -72,30 +70,6 @@ func RunSQLProgram(sqlProgram string, modelDir string, session *pb.Session) *pip
 	return rd
 }
 
-// SubmitWorkflow submits an Argo workflow
-//
-// TODO(wangkuiyi): Make RunSQLProgram return an error in addition to
-// *pipe.Reader, and remove the calls to log.Printf.
-func SubmitWorkflow(sqlProgram string, modelDir string, session *pb.Session) *pipe.Reader {
-	if os.Getenv("SQLFLOW_WORKFLOW_LOGVIEW_ENDPOINT") == "" {
-		log.Fatalf("should set SQLFLOW_WORKFLOW_LOGVIEW_ENDPOINT if enable argo mode.")
-	}
-	rd, wr := pipe.Pipe()
-	startTime := time.Now().Second()
-	go func() {
-		defer wr.Close()
-		wfID, err := submitWorkflow(wr, sqlProgram, modelDir, session)
-		defer log.Printf("Submit SQL program: %s\nuserID: %s\nworkflowID: %s\nspent: %d\nerror:%v", sqlProgram, session.UserId, wfID, time.Now().Second()-startTime, err)
-		if err != nil && err != pipe.ErrClosedPipe {
-			if err := wr.Write(err); err != nil {
-				log.Printf("submit workflow error(piping): %v", err)
-			}
-		}
-
-	}()
-	return rd
-}
-
 // ResolveSQLProgram accepts parse result from parser and returns a list of SQLFlowStmt
 func ResolveSQLProgram(sqlStmts []*parser.SQLFlowStmt) ([]ir.SQLFlowStmt, error) {
 	spIRs := []ir.SQLFlowStmt{}
@@ -122,38 +96,6 @@ func ResolveSQLProgram(sqlStmts []*parser.SQLFlowStmt) ([]ir.SQLFlowStmt, error)
 		spIRs = append(spIRs, r)
 	}
 	return spIRs, nil
-}
-
-func submitWorkflow(wr *pipe.Writer, sqlProgram string, modelDir string, session *pb.Session) (string, error) {
-	driverName, _, err := database.ParseURL(session.DbConnStr)
-	if err != nil {
-		return "", err
-	}
-	stmts, err := parser.Parse(driverName, sqlProgram)
-	if err != nil {
-		return "", err
-	}
-	spIRs, err := ResolveSQLProgram(stmts)
-	if err != nil {
-		return "", err
-	}
-
-	// 1. call codegen_couler.go to generate Argo workflow YAML
-	coulerProg, err := couler.GenCode(spIRs, session)
-	if err != nil {
-		return "", err
-	}
-	workflowYAML, err := couler.Compile(coulerProg)
-
-	// 2. submit the argo workflow
-	workflowID, err := argo.Submit(workflowYAML)
-	if err != nil {
-		return "", err
-	}
-
-	return workflowID, wr.Write(WorkflowJob{
-		JobID: workflowID,
-	})
 }
 
 func runSQLProgram(wr *pipe.Writer, sqlProgram string, db *database.DB, modelDir string, session *pb.Session) error {

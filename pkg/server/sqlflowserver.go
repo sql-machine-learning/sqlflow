@@ -21,10 +21,13 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
+	"time"
 
 	"sqlflow.org/sqlflow/pkg/database"
+	"sqlflow.org/sqlflow/pkg/sql"
+	"sqlflow.org/sqlflow/pkg/workflow"
 
-	sfargo "sqlflow.org/sqlflow/pkg/argo"
 	"sqlflow.org/sqlflow/pkg/parser"
 	"sqlflow.org/sqlflow/pkg/pipe"
 	pb "sqlflow.org/sqlflow/pkg/proto"
@@ -50,7 +53,11 @@ func NewServer(run func(string, string, *pb.Session) *pipe.Reader,
 func (s *Server) Fetch(ctx context.Context, job *pb.FetchRequest) (*pb.FetchResponse, error) {
 	// FIXME(tony): to make function fetch easily to mock, we should decouple server package
 	// with argo package by introducing s.fetch
-	return sfargo.Fetch(job)
+	_, wf, e := workflow.New("argo")
+	if e != nil {
+		return nil, e
+	}
+	return wf.Fetch(job)
 }
 
 // Run implements `rpc Run (Request) returns (stream Response)`
@@ -111,4 +118,46 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 		}
 	}
 	return nil
+}
+
+// SubmitWorkflow submits an Argo workflow
+//
+// TODO(wangkuiyi): Make SubmitWorkflow return an error in addition to
+// *pipe.Reader, and remove the calls to log.Printf.
+func SubmitWorkflow(sqlProgram string, modelDir string, session *pb.Session) *pipe.Reader {
+	if os.Getenv("SQLFLOW_WORKFLOW_LOGVIEW_ENDPOINT") == "" {
+		log.Fatalf("should set SQLFLOW_WORKFLOW_LOGVIEW_ENDPOINT if enable argo mode.")
+	}
+	rd, wr := pipe.Pipe()
+	startTime := time.Now().Second()
+	go func() {
+		defer wr.Close()
+		driverName, _, err := database.ParseURL(session.DbConnStr)
+		if err != nil {
+			wr.Write(err)
+			return
+		}
+
+		stmts, err := parser.Parse(driverName, sqlProgram)
+		if err != nil {
+			wr.Write(err)
+			return
+		}
+
+		spIRs, err := sql.ResolveSQLProgram(stmts)
+		if err != nil {
+			wr.Write(err)
+			return
+		}
+
+		wfID, err := workflow.Execute("argo", spIRs, session)
+		defer log.Printf("Submit SQL program: %s\nuserID: %s\nworkflowID: %s\nspent: %d\nerror:%v", sqlProgram, session.UserId, wfID, time.Now().Second()-startTime, err)
+		if err != nil && err != pipe.ErrClosedPipe {
+			if err := wr.Write(err); err != nil {
+				log.Printf("submit workflow error(piping): %v", err)
+			}
+		}
+
+	}()
+	return rd
 }
