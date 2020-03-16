@@ -59,7 +59,6 @@ func main() {
 	flag.Parse()
 
 	log.SetOutput(*logPath)
-	log := log.WithFields(map[string]interface{}{"requestID": 0})
 
 	sqlProgram, e := ioutil.ReadFile(*sqlFileName)
 	if e != nil {

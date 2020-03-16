@@ -14,34 +14,35 @@
 package log
 
 import (
-	"strings"
-
 	"github.com/sirupsen/logrus"
-	"gopkg.in/natefinch/lumberjack.v2"
 )
 
-// Logger wraps logrus.Entry
-type Logger struct {
-	*logrus.Entry
+// Info logs a message at level Info on the standard logger.
+func Info(args ...interface{}) {
+	logrus.Info(args...)
 }
 
-// SetOutput sets log output to filename globally.
-// filename="/var/log/sqlflow.log": write the log to file
-// filename="": write the file to stdout
-func SetOutput(filename string) {
-	if len(strings.Trim(filename, " ")) > 0 {
-		logrus.SetOutput(&lumberjack.Logger{
-			Filename:   filename,
-			MaxSize:    32, // megabytes
-			MaxBackups: 64,
-			MaxAge:     10, // days
-			Compress:   true,
-		})
-	}
+// Infof logs a message at level Info on the standard logger.
+func Infof(format string, args ...interface{}) {
+	logrus.Infof(format, args...)
 }
 
-// WithFields returns log.Entry
-// TODO(weiguoz): Need stress testing about performance.
-func WithFields(fields map[string]interface{}) *Logger {
-	return &Logger{logrus.WithFields(fields)}
+// Error logs a message at level Error on the standard logger.
+func Error(args ...interface{}) {
+	logrus.Error(args...)
+}
+
+// Errorf logs a message at level Error on the standard logger.
+func Errorf(format string, args ...interface{}) {
+	logrus.Errorf(format, args...)
+}
+
+// Fatal logs a message at level Fatal on the standard logger then the process will exit with status set to 1.
+func Fatal(args ...interface{}) {
+	logrus.Fatal(args...)
+}
+
+// Fatalf logs a message at level Fatal on the standard logger then the process will exit with status set to 1.
+func Fatalf(format string, args ...interface{}) {
+	logrus.Fatalf(format, args...)
 }
