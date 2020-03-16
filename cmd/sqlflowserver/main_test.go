@@ -2070,7 +2070,7 @@ func checkWorkflow(ctx context.Context, cli pb.SQLFlowClient, stream pb.SQLFlow_
 		workflowID = iter.GetJob().GetId()
 	}
 	if !strings.HasPrefix(workflowID, "sqlflow") {
-		return fmt.Errorf("workflow not started with sqlflow-couler")
+		return fmt.Errorf("workflow ID: %s does not prefix with sqlflow", workflowID)
 	}
 	req := &pb.FetchRequest{
 		Job: &pb.Job{Id: workflowID},
