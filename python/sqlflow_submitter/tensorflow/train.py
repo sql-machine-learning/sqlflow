@@ -70,8 +70,9 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
     # https://github.com/sql-machine-learning/models/blob/develop/sqlflow_models/dnnclassifier_functional_api_example.py
     for k in feature_metas:
         feature_metas[k]["name"] = feature_metas[k]["feature_name"]
-    classifier = estimator(**model_params)
+
     classifier_pkg = sys.modules[estimator.__module__]
+    # setting training metrics
     model_metrics = []
     if hasattr(classifier_pkg, "eval_metrics_fn"):
         metrics_functions = classifier_pkg.eval_metrics_fn()
@@ -88,6 +89,14 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
             # default
             keras_metrics = metrics.get_keras_metrics(["Accuracy"])
 
+    # setting optimizer
+    if optimizer is None:
+        # use keras model default optimizer if optimizer is not specified in WITH clause.
+        optimizer = classifier_pkg.optimizer()
+    if loss is None:
+        loss = classifier_pkg.loss
+
+    # setting datasets
     # FIXME(typhoonzero): find a way to cache to local file and avoid cache lockfile already exists issue.
     train_dataset = input_fn(select,
                              datasource,
@@ -108,12 +117,19 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
     else:
         validate_dataset = None
 
-    if optimizer is None:
-        # use keras model default optimizer if optimizer is not specified in WITH clause.
-        optimizer = classifier_pkg.optimizer()
-    if loss is None:
-        loss = classifier_pkg.loss
-    classifier.compile(optimizer=optimizer, loss=loss, metrics=keras_metrics)
+    if len(FLAGS.worker_hosts.split(",")) > 1:
+        strategy = tf.distribute.experimental.ParameterServerStrategy()
+        with strategy.scope():
+            classifier = estimator(**model_params)
+            classifier.compile(optimizer=optimizer,
+                               loss=loss,
+                               metrics=keras_metrics)
+    else:
+        classifier = estimator(**model_params)
+        classifier.compile(optimizer=optimizer,
+                           loss=loss,
+                           metrics=keras_metrics)
+
     if hasattr(classifier, 'sqlflow_train_loop'):
 
         def flatten(feature, label):
