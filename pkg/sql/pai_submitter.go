@@ -208,7 +208,6 @@ func (s *paiSubmitter) submitPAITask(code, paiCmd, requirements string) error {
 	defer cw.Close()
 	cmd := exec.Command("odpscmd", "--instance-priority", "9", "-u", cfg.AccessID, "-p", cfg.AccessKey, "--project", cfg.Project, "--endpoint", cfg.Endpoint, "-e", paiCmd)
 	cmd.Stdout, cmd.Stderr = w, w
-	fmt.Println(paiCmd)
 	return cmd.Run()
 }
 
