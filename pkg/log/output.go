@@ -16,8 +16,8 @@ package log
 import (
 	"strings"
 
-	"github.com/natefinch/lumberjack"
 	"github.com/sirupsen/logrus"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 // SetOutput sets log output to filename globally.
