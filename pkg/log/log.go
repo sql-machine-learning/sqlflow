@@ -14,8 +14,15 @@
 package log
 
 import (
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
+
+// UUID always used to identify the request.
+func UUID() string {
+	u, _ := uuid.NewUUID()
+	return u.String()
+}
 
 // Info logs a message at level Info on the standard logger.
 func Info(args ...interface{}) {

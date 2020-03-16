@@ -25,8 +25,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
-	"sqlflow.org/sqlflow/pkg/log"
 
+	"sqlflow.org/sqlflow/pkg/log"
 	"sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/server"
 	sf "sqlflow.org/sqlflow/pkg/sql"
