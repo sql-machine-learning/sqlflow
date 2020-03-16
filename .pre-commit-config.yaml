@@ -2,36 +2,43 @@ repos:
 - repo: git://github.com/dnephin/pre-commit-golang
   rev: v0.3.5
   hooks:
-    - id: go-fmt
-    - id: go-lint
-    - id: validate-toml
-    - id: no-go-testing
+  - id: go-fmt
+  - id: go-lint
+  - id: validate-toml
+  - id: no-go-testing
 - repo: local
   hooks:
-    - id: copyright_checker
-      name: copyright_checker
-      entry: python ./scripts/pre-commit/copyright.py
-      language: system
-      files: \.(go|py|sh)$
+  - id: copyright_checker
+    name: copyright_checker
+    entry: python ./scripts/pre-commit/copyright.py
+    language: system
+    files: \.(go|py|sh)$
 - repo: local
   hooks:
-    - id: documentation_checker
-      name: documentation_checker
-      entry: bash ./scripts/pre-commit/docgen.sh
-      language: system
+  - id: documentation_checker
+    name: documentation_checker
+    entry: bash ./scripts/pre-commit/docgen.sh
+    language: system
 -   repo: https://github.com/pre-commit/mirrors-yapf
     rev: v0.29.0
     hooks:
-    -   id: yapf
+    - id: yapf
 -   repo: https://github.com/pre-commit/mirrors-isort
     rev: v4.3.21
     hooks:
-    -   id: isort
+    - id: isort
 - repo: local
   hooks:
-      - id: google_style_java
-        name: google_style_java
-        entry: bash ./scripts/pre-commit/google_java_format.sh
-        language: system
-        files: \.(java)$
-        verbose: true
+  - id: google_style_java
+    name: google_style_java
+    entry: bash ./scripts/pre-commit/google_java_format.sh
+    language: system
+    files: \.(java)$
+    verbose: true
+- repo: local
+  hooks:
+  - id: jsbeautifier
+    name: jsbeautifier
+    entry: bash ./scripts/pre-commit/jsbeautifier.sh
+    language: system
+    files: \.(js)$
