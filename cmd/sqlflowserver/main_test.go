@@ -323,6 +323,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("TestTextClassification", CaseTrainTextClassification)
 	t.Run("CaseTrainTextClassificationCustomLSTM", CaseTrainTextClassificationCustomLSTM)
 	t.Run("CaseTrainCustomModel", CaseTrainCustomModel)
+	t.Run("CaseTrainCustomModelFunctional", CaseTrainCustomModelFunctional)
 	t.Run("CaseTrainOptimizer", CaseTrainOptimizer)
 	t.Run("CaseTrainSQLWithHyperParams", CaseTrainSQLWithHyperParams)
 	t.Run("CaseTrainCustomModelWithHyperParams", CaseTrainCustomModelWithHyperParams)
@@ -1063,6 +1064,20 @@ USING %s;`, caseTestTable, casePredictTable, caseInto)
 	// 	}
 }
 
+func CaseTrainCustomModelFunctional(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`SELECT * FROM %s
+TO TRAIN sqlflow_models.dnnclassifier_functional_model
+WITH model.n_classes = 3, validation.metrics="CategoricalAccuracy"
+COLUMN sepal_length, sepal_width, petal_length, petal_width
+LABEL class
+INTO %s;`, caseTrainTable, caseInto)
+	_, _, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("run trainSQL error: %v", err)
+	}
+}
+
 func CaseTrainWithCommaSeparatedLabel(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := `SELECT sepal_length, sepal_width, petal_length, concat(petal_width,',',class) as class FROM iris.train 
@@ -1569,10 +1584,9 @@ func CasePAIMaxComputeTrainDistributedKeras(t *testing.T) {
 	// t.Parallel()
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`SELECT * FROM %s
-TO TRAIN sqlflow_models.DNNClassifier
+TO TRAIN sqlflow_models.dnnclassifier_functional_model
 WITH
-	model.n_classes = 3,
-	model.hidden_units = [10, 20],
+	model.n_classes=3,
 	train.num_workers=2,
 	train.num_ps=2,
 	train.epoch=10,

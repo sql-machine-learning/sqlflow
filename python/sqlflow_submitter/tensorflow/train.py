@@ -117,7 +117,11 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
     else:
         validate_dataset = None
 
-    if len(FLAGS.worker_hosts.split(",")) > 1:
+    if is_pai and len(FLAGS.worker_hosts.split(",")) > 1:
+        cluster, task_type, task_index = make_distributed_info_without_evaluator(
+            FLAGS)
+        dump_into_tf_config(cluster, task_type, task_index)
+
         strategy = tf.distribute.experimental.ParameterServerStrategy()
         with strategy.scope():
             classifier = estimator(**model_params)
@@ -184,7 +188,7 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
         for k in val_keys:
             print("%s: %s" % (k, history.history[k][-1]))
     classifier.save_weights(save, save_format="h5")
-    if is_pai:
+    if is_pai and FLAGS.task_index == 0:
         print("saving keras model to: %s" % FLAGS.sqlflow_oss_modeldir)
         model.save_file(FLAGS.sqlflow_oss_modeldir, save)
 

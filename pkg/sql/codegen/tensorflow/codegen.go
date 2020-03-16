@@ -316,12 +316,12 @@ func InitializeAttributes(trainStmt *ir.TrainStmt) error {
 	// TODO(shendiaomo): Restrict optimizer parameters to the available set
 	constructOptimizers(trainStmt)
 	constructLosses(trainStmt)
-	attrValidator := modelAttr.Update(commonAttributes)
 	if len(modelAttr) == 0 {
 		// TODO(shendiaomo): Use the same mechanism as `sqlflow_models` to extract parameters automatically
 		// Unknown custom models
 		modelAttr.Update(attribute.Dictionary{"model.*": {attribute.Unknown, nil, "Any model parameters defined in custom models", nil}})
 	}
+	attrValidator := modelAttr.Update(commonAttributes)
 	if strings.HasPrefix(trainStmt.Estimator, "sqlflow_models.") {
 		// Special attributes defined as global variables in `sqlflow_models`
 		modelAttr.Update(attribute.Dictionary{
@@ -331,6 +331,7 @@ func InitializeAttributes(trainStmt *ir.TrainStmt) error {
 	if IsPAI() {
 		modelAttr.Update(distributedTrainingAttributes)
 	}
+	fmt.Printf("validating using %v\n", attrValidator)
 	return attrValidator.Validate(trainStmt.Attributes)
 }
 
