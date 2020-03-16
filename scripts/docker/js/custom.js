@@ -12,11 +12,17 @@
 // limitations under the License.
 
 require(['notebook/js/codecell', "codemirror/lib/codemirror"], function(codecell, CodeMirror) {
-    CodeMirror.modeInfo.push({name: "MySQLFlow", mime: "text/x-mysqlflow", mode: "sqlflow"})
-    codecell.CodeCell.options_default.highlight_modes['magic_text/x-mysqlflow'] = {'reg':[/^%%sqlflow/]} ;
-    Jupyter.notebook.events.one('kernel_ready.Kernel', function(){
-        Jupyter.notebook.get_cells().map(function(cell){
-            if (cell.cell_type == 'code'){
+    CodeMirror.modeInfo.push({
+        name: "MySQLFlow",
+        mime: "text/x-mysqlflow",
+        mode: "sqlflow"
+    })
+    codecell.CodeCell.options_default.highlight_modes['magic_text/x-mysqlflow'] = {
+        'reg': [/^%%sqlflow/]
+    };
+    Jupyter.notebook.events.one('kernel_ready.Kernel', function() {
+        Jupyter.notebook.get_cells().map(function(cell) {
+            if (cell.cell_type == 'code') {
                 cell.auto_highlight();
             }
         });
