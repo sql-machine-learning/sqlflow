@@ -14,11 +14,14 @@
 package sql
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math/rand"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -30,6 +33,7 @@ import (
 )
 
 const tarball = "job.tar.gz"
+const paramsFile = "params.txt"
 
 // lifecycleOnTmpTable indicates 7 days for the temporary table
 // which create from SELECT statement
@@ -105,6 +109,43 @@ func createTempTrainAndValTable(trainSelect, validSelect, datasource string) (st
 	return tmpTrainTable, tmpValTable, nil
 }
 
+func createPAIHyperParamFile(cwd string, filename string, modelPath string) error {
+	f, err := os.Create(fmt.Sprintf(path.Join(cwd, filename)))
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	ossAk := os.Getenv("SQLFLOW_OSS_AK")
+	ossSk := os.Getenv("SQLFLOW_OSS_SK")
+	ossEp := os.Getenv("SQLFLOW_OSS_MODEL_ENDPOINT")
+	hdfsCkpt := os.Getenv("SQLFLOW_HDFS_MODEL_CKPT_DIR")
+	if ossAk == "" || ossSk == "" || ossEp == "" || hdfsCkpt == "" {
+		return fmt.Errorf("must define SQLFLOW_OSS_AK, SQLFLOW_OSS_SK, SQLFLOW_OSS_MODEL_ENDPOINT, SQLFLOW_HDFS_MODEL_CKPT_DIR when submitting to PAI")
+	}
+
+	hdfsDir := fmt.Sprintf("%s/%s",
+		strings.TrimRight(hdfsCkpt, "/"),
+		strings.TrimLeft(modelPath, "/"))
+
+	if _, err := f.Write([]byte(fmt.Sprintf("sqlflow_oss_ak=\"%s\"\n", ossAk))); err != nil {
+		return err
+	}
+	if _, err := f.Write([]byte(fmt.Sprintf("sqlflow_oss_sk=\"%s\"\n", ossSk))); err != nil {
+		return err
+	}
+	if _, err := f.Write([]byte(fmt.Sprintf("sqlflow_oss_ep=\"%s\"\n", ossEp))); err != nil {
+		return err
+	}
+	ossModelURL := pai.OSSModelURL(modelPath)
+	if _, err := f.Write([]byte(fmt.Sprintf("sqlflow_oss_modeldir=\"%s\"\n", ossModelURL))); err != nil {
+		return err
+	}
+	if _, err := f.Write([]byte(fmt.Sprintf("sqlflow_hdfs_ckpt=\"%s\"\n", hdfsDir))); err != nil {
+		return err
+	}
+	return nil
+}
+
 // Possible situations:
 //
 // 1. argo mode server: generate a step running: repl -e "repl -e \"select * from xx to train\""
@@ -130,7 +171,11 @@ func (s *paiSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 		return e
 	}
 	scriptPath := fmt.Sprintf("file://%s/%s", s.Cwd, tarball)
-	code, paiCmd, requirements, e := pai.Train(cl, s.Session, scriptPath, cl.Into, ossModelPath, s.Cwd)
+	paramsPath := fmt.Sprintf("file://%s/%s", s.Cwd, paramsFile)
+	if err := createPAIHyperParamFile(s.Cwd, paramsFile, ossModelPath); err != nil {
+		return err
+	}
+	code, paiCmd, requirements, e := pai.Train(cl, s.Session, scriptPath, paramsPath, cl.Into, ossModelPath, s.Cwd)
 	if e != nil {
 		return e
 	}
@@ -157,11 +202,13 @@ func (s *paiSubmitter) submitPAITask(code, paiCmd, requirements string) error {
 	if e != nil {
 		return e
 	}
+	cw := &logChanWriter{wr: s.Writer}
+	var output bytes.Buffer
+	w := io.MultiWriter(cw, &output)
+	defer cw.Close()
 	cmd := exec.Command("odpscmd", "--instance-priority", "9", "-u", cfg.AccessID, "-p", cfg.AccessKey, "--project", cfg.Project, "--endpoint", cfg.Endpoint, "-e", paiCmd)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed %s, %s, %v", cmd, out, err)
-	}
-	return nil
+	cmd.Stdout, cmd.Stderr = w, w
+	return cmd.Run()
 }
 
 func (s *paiSubmitter) ExecutePredict(cl *ir.PredictStmt) error {
@@ -197,7 +244,11 @@ func (s *paiSubmitter) ExecutePredict(cl *ir.PredictStmt) error {
 		return err
 	}
 	scriptPath := fmt.Sprintf("file://%s/%s", s.Cwd, tarball)
-	code, paiCmd, requirements, e := pai.Predict(cl, s.Session, scriptPath, cl.Using, ossModelPath, s.Cwd, modelType)
+	paramsPath := fmt.Sprintf("file://%s/%s", s.Cwd, paramsFile)
+	if err := createPAIHyperParamFile(s.Cwd, paramsFile, ossModelPath); err != nil {
+		return err
+	}
+	code, paiCmd, requirements, e := pai.Predict(cl, s.Session, scriptPath, paramsPath, cl.Using, ossModelPath, s.Cwd, modelType)
 	if e != nil {
 		return e
 	}
@@ -246,7 +297,11 @@ func (s *paiSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 		}
 	}
 	scriptPath := fmt.Sprintf("file://%s/%s", s.Cwd, tarball)
-	expn, e := pai.Explain(cl, s.Session, scriptPath, cl.ModelName, ossModelPath, s.Cwd, modelType)
+	paramsPath := fmt.Sprintf("file://%s/%s", s.Cwd, paramsFile)
+	if err := createPAIHyperParamFile(s.Cwd, paramsFile, ossModelPath); err != nil {
+		return err
+	}
+	expn, e := pai.Explain(cl, s.Session, scriptPath, paramsPath, cl.ModelName, ossModelPath, s.Cwd, modelType)
 	if e != nil {
 		return e
 	}

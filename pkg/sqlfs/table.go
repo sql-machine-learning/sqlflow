@@ -51,13 +51,13 @@ func createTable(db *sql.DB, dbms, table string) error {
 	return nil
 }
 
-// dropTable removes a table if it exists.  If the table name includes
+// dropTableIfExists removes a table if it exists.  If the table name includes
 // the database name, e.g., "db.tbl", it doesn't try to remove the
 // database.
-func dropTable(db *sql.DB, table string) error {
+func dropTableIfExists(db *sql.DB, table string) error {
 	stmt := fmt.Sprintf("DROP TABLE IF EXISTS %s", table)
 	if _, e := db.Exec(stmt); e != nil {
-		return fmt.Errorf("dropTable %s: %v", table, e)
+		return fmt.Errorf("dropTableIfExists %s: %v", table, e)
 	}
 	return nil
 }

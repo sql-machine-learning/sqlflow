@@ -17,13 +17,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"os"
 	"strconv"
 	"strings"
 	"text/template"
 
-	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/ir"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
@@ -40,11 +37,7 @@ func TFTrainAndSave(ir *ir.TrainStmt, session *pb.Session, modelPath string, cc 
 	if cc.Worker.Count > 1 && !hasVal {
 		return "", fmt.Errorf("Distributed training must specify WITH validation.select")
 	}
-	currProject, err := database.GetDatabaseName(session.DbConnStr)
-	if err != nil {
-		return "", err
-	}
-	ckptDir := ossModelURL(modelPath, currProject)
+	ckptDir := OSSModelURL(modelPath)
 	code, err := tensorflow.Train(ir, session)
 	if err != nil {
 		return "", err
@@ -67,11 +60,7 @@ func TFTrainAndSave(ir *ir.TrainStmt, session *pb.Session, modelPath string, cc 
 // TFLoadAndPredict generates PAI-TF prediction program.
 func TFLoadAndPredict(ir *ir.PredictStmt, session *pb.Session, modelPath string) (string, error) {
 	var tpl = template.Must(template.New("Predict").Parse(tfPredictTmplText))
-	currProject, err := database.GetDatabaseName(session.DbConnStr)
-	if err != nil {
-		return "", err
-	}
-	ossModelDir := ossModelURL(modelPath, currProject)
+	ossModelDir := OSSModelURL(modelPath)
 	paiPredictTable := ""
 	if tensorflow.IsPAI() && ir.TmpPredictTable != "" {
 		paiPredictTable = ir.TmpPredictTable
@@ -95,11 +84,7 @@ func TFLoadAndPredict(ir *ir.PredictStmt, session *pb.Session, modelPath string)
 // TFLoadAndExplain generates PAI-TF explain program.
 func TFLoadAndExplain(ir *ir.ExplainStmt, session *pb.Session, modelPath string, expn *ExplainRender) (string, error) {
 	var tpl = template.Must(template.New("Explain").Parse(tfExplainTmplText))
-	currProject, err := database.GetDatabaseName(session.DbConnStr)
-	if err != nil {
-		return "", err
-	}
-	ossModelDir := ossModelURL(modelPath, currProject)
+	ossModelDir := OSSModelURL(modelPath)
 	paiExplainTable := ""
 	if tensorflow.IsPAI() && ir.TmpExplainTable != "" {
 		paiExplainTable = ir.TmpExplainTable
@@ -126,7 +111,7 @@ func TFLoadAndExplain(ir *ir.ExplainStmt, session *pb.Session, modelPath string,
 	return code.String(), nil
 }
 
-func getTFPAICmd(cc *ClusterConfig, tarball, modelName, ossModelPath, trainTable, valTable, resTable, project, cwd string) (string, error) {
+func getTFPAICmd(cc *ClusterConfig, tarball, paramsFile, modelName, ossModelPath, trainTable, valTable, resTable, project, cwd string) (string, error) {
 	jobName := strings.Replace(strings.Join([]string{"sqlflow", modelName}, "_"), ".", "_", 0)
 	cfString, err := json.Marshal(cc)
 	if err != nil {
@@ -154,41 +139,11 @@ func getTFPAICmd(cc *ClusterConfig, tarball, modelName, ossModelPath, trainTable
 		}
 		outputTables = fmt.Sprintf("-Doutputs=%s", table)
 	}
-	// temp files under cwd will be cleaned after the job is finished.
-	tmpfile, err := ioutil.TempFile(cwd, "sqlflow-paitemp-")
-
-	ossAk := os.Getenv("SQLFLOW_OSS_AK")
-	ossSk := os.Getenv("SQLFLOW_OSS_SK")
-	ossEp := os.Getenv("SQLFLOW_OSS_MODEL_ENDPOINT")
-
-	hdfsDir := fmt.Sprintf("%s/%s",
-		strings.TrimRight(os.Getenv("SQLFLOW_HDFS_MODEL_CKPT_DIR"), "/"),
-		strings.TrimLeft(ossModelPath, "/"))
-
-	if _, err := tmpfile.Write([]byte(fmt.Sprintf("sqlflow_oss_ak=\"%s\"\n", ossAk))); err != nil {
-		return "", err
-	}
-	if _, err := tmpfile.Write([]byte(fmt.Sprintf("sqlflow_oss_sk=\"%s\"\n", ossSk))); err != nil {
-		return "", err
-	}
-	if _, err := tmpfile.Write([]byte(fmt.Sprintf("sqlflow_oss_ep=\"%s\"\n", ossEp))); err != nil {
-		return "", err
-	}
-	ossModelURL := ossModelURL(ossModelPath, project)
-	if _, err := tmpfile.Write([]byte(fmt.Sprintf("sqlflow_oss_modeldir=\"%s\"\n", ossModelURL))); err != nil {
-		return "", err
-	}
-	if _, err := tmpfile.Write([]byte(fmt.Sprintf("sqlflow_hdfs_ckpt=\"%s\"\n", hdfsDir))); err != nil {
-		return "", err
-	}
-	if err := tmpfile.Close(); err != nil {
-		return "", err
-	}
 
 	// NOTE(typhoonzero): use -DhyperParameters to define flags passing OSS credentials.
 	// TODO(typhoonzero): need to find a more secure way to pass credentials.
-	cmd := fmt.Sprintf("pai -name tensorflow1150 -project algo_public_dev -DmaxHungTimeBeforeGCInSeconds=0 -DjobName=%s -Dtags=dnn -Dscript=%s -DentryFile=entry.py -Dtables=%s %s -DhyperParameters=\"file://%s\"",
-		jobName, tarball, submitTables, outputTables, tmpfile.Name())
+	cmd := fmt.Sprintf("pai -name tensorflow1150 -project algo_public_dev -DmaxHungTimeBeforeGCInSeconds=0 -DjobName=%s -Dtags=dnn -Dscript=%s -DentryFile=entry.py -Dtables=%s %s -DhyperParameters=\"%s\"",
+		jobName, tarball, submitTables, outputTables, paramsFile)
 	if cc.Worker.Count > 1 {
 		cmd = fmt.Sprintf("%s -Dcluster=%s", cmd, cfQuote)
 	} else {

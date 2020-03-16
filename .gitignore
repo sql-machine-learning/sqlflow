@@ -16,3 +16,4 @@ coverage.out
 .cache
 *.pb.go
 
+!pkg/log

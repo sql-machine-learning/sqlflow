@@ -97,7 +97,7 @@ func uploadCSVFile(csv *os.File, db *sql.DB, hivePath, table, user, passwd, name
 }
 
 func newHiveWriter(db *sql.DB, hivePath, table, user, passwd, namenodeAddr string, bufSize int) (io.WriteCloser, error) {
-	if e := dropTable(db, table); e != nil {
+	if e := dropTableIfExists(db, table); e != nil {
 		return nil, fmt.Errorf("cannot drop table %s: %v", table, e)
 	}
 	if e := createTable(db, "hive", table); e != nil {

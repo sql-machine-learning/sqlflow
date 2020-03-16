@@ -17,7 +17,7 @@ ln -s /usr/local/odpscmd/bin/odpscmd /usr/local/bin/odpscmd && \
 rm -rf odpscmd_public.zip
 
 ADD repl /usr/bin/
-ADD parser-1.0-SNAPSHOT-jar-with-dependencies.jar /opt/sqlflow/parser/
+ADD parser/* /opt/sqlflow/parser/
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN ln -sf /usr/share/zoneinfo/Etc/UTC /etc/localtime && \
@@ -26,9 +26,10 @@ dpkg-reconfigure --frontend noninteractive tzdata
 
 RUN apt-get install -y build-essential libmysqlclient-dev > /dev/null
 
-RUN apt-get install python3 python3-pip
+RUN apt-get install -y python3 python3-pip
 RUN ln -s /usr/bin/python3 /usr/bin/python
 RUN ln -s /usr/bin/pip3 /usr/bin/pip
 
 RUN bash -c "pip install numpy==1.16.1 tensorflow==2.0.0b1 mysqlclient==1.4.4 impyla==0.16.0 pyodps==0.8.3"
 ADD sqlflow_submitter $SQLFLOWPATH/python/
+ADD sqlflow_models $SQLFLOWPATH/python/

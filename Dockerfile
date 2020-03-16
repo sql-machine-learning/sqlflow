@@ -89,7 +89,7 @@ mv $GOPATH/bin/sqlflowserver /usr/local/bin && \
 mv $GOPATH/bin/repl /usr/local/bin && \
 (cd python/couler && python setup.py -q install) && \
 mkdir -p $SQLFLOW_PARSER_SERVER_LOADING_PATH && \
-(cd java/parse-interface && mvn clean install) && \
+(cd java/parse-interface && mvn clean install -B) && \
 (cd java/parser-hive && mvn -B -q clean compile assembly:single && mv target/*.jar $SQLFLOW_PARSER_SERVER_LOADING_PATH) && \
 (cd java/parser-calcite && mvn -B -q clean compile assembly:single && mv target/*.jar $SQLFLOW_PARSER_SERVER_LOADING_PATH) && \
 (cd java/parser && \
