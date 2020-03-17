@@ -108,4 +108,4 @@ if [ "${SQLFLOW_submitter}" == "pai" ]; then
     check_ret $? "Test SQLFLow workflow failed"
 fi
 
-gotest -v ./pkg/argo/
+gotest -v ./pkg/workflow/argo/
