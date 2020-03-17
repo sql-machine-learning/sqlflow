@@ -16,8 +16,11 @@ package workflow
 import (
 	"fmt"
 
+	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/ir"
+	"sqlflow.org/sqlflow/pkg/parser"
 	pb "sqlflow.org/sqlflow/pkg/proto"
+	"sqlflow.org/sqlflow/pkg/sql"
 	"sqlflow.org/sqlflow/pkg/workflow/argo"
 	"sqlflow.org/sqlflow/pkg/workflow/codegen/couler"
 )
@@ -42,18 +45,36 @@ func New(backend string) (Codegen, Workflow, error) {
 	return nil, nil, fmt.Errorf("the specifiy backend: %s has not support", backend)
 }
 
-// Execute translate SQLProgram IR to workflow YAML and submit to Kubernetes.
-func Execute(backend string, sqls []ir.SQLFlowStmt, session *pb.Session) (string, error) {
+// ResolveAndSubmitWorkflow resolve sql program to IRs and submit workflow YAML to Kubernetes
+func ResolveAndSubmitWorkflow(backend string, sqlProgram string, session *pb.Session) (string, error) {
+	driverName, _, e := database.ParseURL(session.DbConnStr)
+	if e != nil {
+		return "", e
+	}
+
+	stmts, e := parser.Parse(driverName, sqlProgram)
+	if e != nil {
+		return "", e
+	}
+
+	spIRs, e := sql.ResolveSQLProgram(stmts)
+	if e != nil {
+		return "", e
+	}
+
+	// New Codegen and workflow operator instance according to the backend identifier
 	cg, wf, e := New(backend)
 	if e != nil {
 		return "", e
 	}
 
-	py, e := cg.GenCode(sqls, session)
+	// Generate Fluid/Tekton program
+	py, e := cg.GenCode(spIRs, session)
 	if e != nil {
 		return "", e
 	}
 
+	// translate Couler program to workflow YAML
 	yaml, e := cg.GenYAML(py)
 	if e != nil {
 		return "", e

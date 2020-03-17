@@ -25,7 +25,6 @@ import (
 	"time"
 
 	"sqlflow.org/sqlflow/pkg/database"
-	"sqlflow.org/sqlflow/pkg/sql"
 	"sqlflow.org/sqlflow/pkg/workflow"
 
 	"sqlflow.org/sqlflow/pkg/parser"
@@ -131,7 +130,7 @@ func SubmitWorkflow(sqlProgram string, modelDir string, session *pb.Session) *pi
 	startTime := time.Now().Second()
 	go func() {
 		defer wr.Close()
-		wfID, e := resolveAndSubmitWorkflow(sqlProgram, session)
+		wfID, e := workflow.ResolveAndSubmitWorkflow("argo", sqlProgram, session)
 		defer log.Printf("Submit SQL program: %s\nuserID: %s\nworkflowID: %s\nspent: %d\nerror:%v", sqlProgram, session.UserId, wfID, time.Now().Second()-startTime, e)
 		if e != nil {
 			if e := wr.Write(e); e != nil {
@@ -145,22 +144,4 @@ func SubmitWorkflow(sqlProgram string, modelDir string, session *pb.Session) *pi
 		}
 	}()
 	return rd
-}
-
-func resolveAndSubmitWorkflow(sqlProgram string, session *pb.Session) (string, error) {
-	driverName, _, e := database.ParseURL(session.DbConnStr)
-	if e != nil {
-		return "", e
-	}
-
-	stmts, e := parser.Parse(driverName, sqlProgram)
-	if e != nil {
-		return "", e
-	}
-
-	spIRs, e := sql.ResolveSQLProgram(stmts)
-	if e != nil {
-		return "", e
-	}
-	return workflow.Execute("argo", spIRs, session)
 }
