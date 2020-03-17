@@ -164,18 +164,17 @@ SQL statement, then parse the extended SQL to get model read/write information, 
 graph:
 
 ```go
-type SQLProgramNode interface {
-   IsStatementNode() bool
-   GetInputs() *[]Node
-   GetOutputs() *[]Node
+// under package ir: sql_program.go
+// SQLProgram is the constructed graph of the SQL program.
+type SQLProgram struct {
+  Statements []StatementNode
 }
 
 type StatementNode struct {
-   Statement string
-   DockerImage string
+   Statement ir.SQLFlowStmt
    // StatementNode's input/output must be a table.
-   Inputs *[]TableNode
-   Outputs *[]TableNode
+   Inputs []*TableNode
+   Outputs []*TableNode
 }
 
 type TableNode struct {
@@ -184,10 +183,6 @@ type TableNode struct {
   Inputs *[]StatementNode
   Outputs *[]StatementNode
 }
-
-type SQLProgramGraph struct {
-  Nodes *[]SQLProgramNode
-}
 ```
 
 **NOTE: we treat table and model as the same thing when constructing the graph.**
@@ -195,7 +190,7 @@ type SQLProgramGraph struct {
 Then the executor takes the constructed graph as input to execute the SQL program:
 
 ```Go
-Execute(wr *pipe.Writer, graph *Graph) error {}
+Execute(wr *pipe.Writer, graph *SQLProgram) error {}
 ```
 
 In the `Execute` function, we will generate a "couler/fluid" program to define a
