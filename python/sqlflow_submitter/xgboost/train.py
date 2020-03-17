@@ -23,13 +23,20 @@ def train(datasource,
           feature_column_names,
           label_meta,
           validation_select,
+          cache=False,
           is_pai=False,
           pai_train_table="",
           pai_validate_table=""):
 
-    dtrain = xgb_dataset(datasource, 'train.txt', select, feature_metas,
-                         feature_column_names, label_meta, is_pai,
-                         pai_train_table)
+    dtrain = xgb_dataset(datasource,
+                         'train.txt',
+                         select,
+                         feature_metas,
+                         feature_column_names,
+                         label_meta,
+                         is_pai,
+                         pai_train_table,
+                         cache=cache)
     watchlist = [(dtrain, "train")]
 
     if len(validation_select.strip()) > 0:

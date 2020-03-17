@@ -159,6 +159,11 @@ INTO sqlflow_models.my_xgb_regression_model;
 	<td>Subsample ratio of the training instance.</td>
 </tr>
 <tr>
+	<td>train.cache</td>
+	<td>bool</td>
+	<td>whether use external memory to cache train data</td>
+</tr>
+<tr>
 	<td>train.num_boost_round</td>
 	<td>int</td>
 	<td>[default=10]<br>The number of rounds for boosting.<br>range: [1, Infinity]</td>

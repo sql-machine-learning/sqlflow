@@ -343,6 +343,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseTrainTextClassificationFeatureDerivation", CaseTrainTextClassificationFeatureDerivation)
 	t.Run("CaseXgboostFeatureDerivation", CaseXgboostFeatureDerivation)
 	t.Run("CaseXgboostEvalMetric", CaseXgboostEvalMetric)
+	t.Run("CaseXgboostExternalMemory", CaseXgboostExternalMemory)
 	t.Run("CaseTrainFeatureDerivation", CaseTrainFeatureDerivation)
 }
 
@@ -388,6 +389,25 @@ func CaseXgboostEvalMetric(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := `SELECT * FROM iris.train WHERE class in (0, 1) TO TRAIN xgboost.gbtree
 WITH objective="binary:logistic", eval_metric=auc
+LABEL class
+INTO sqlflow_models.my_xgb_binary_classification_model;`
+	_, _, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("run test error: %v", err)
+	}
+
+	predSQL := `SELECT * FROM iris.test TO PREDICT iris.predict.class
+USING sqlflow_models.my_xgb_binary_classification_model;`
+	_, _, _, err = connectAndRunSQL(predSQL)
+	if err != nil {
+		a.Fail("run test error: %v", err)
+	}
+}
+
+func CaseXgboostExternalMemory(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := `SELECT * FROM iris.train WHERE class in (0, 1) TO TRAIN xgboost.gbtree
+WITH objective="binary:logistic", eval_metric=auc, train.cache=True
 LABEL class
 INTO sqlflow_models.my_xgb_binary_classification_model;`
 	_, _, _, err := connectAndRunSQL(trainSQL)
