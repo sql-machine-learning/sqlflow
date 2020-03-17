@@ -1581,7 +1581,7 @@ INTO e2etest_dnn_model_distributed;`, caseTrainTable, caseTestTable)
 }
 
 func CasePAIMaxComputeTrainDistributedKeras(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`SELECT * FROM %s
 TO TRAIN sqlflow_models.dnnclassifier_functional_model
@@ -1704,7 +1704,7 @@ INTO %s.rf_model_explain;`, caseTestTable, caseDB)
 }
 
 func CasePAIMaxComputeDNNTrainPredictExplain(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`SELECT * FROM %s
 TO TRAIN DNNClassifier
