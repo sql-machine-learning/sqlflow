@@ -79,7 +79,7 @@ public class ParserGrpcServer {
       responseBuilder.addAllSqlStatements(parseResult.statements);
       responseBuilder.setIndex(parseResult.position);
       responseBuilder.setError(parseResult.error);
-      responseBuilder.addAllInputOutputTables(parseResult.inputOutputTables)
+      responseBuilder.addAllInputOutputTables(parseResult.inputOutputTables);
 
       responseObserver.onNext(responseBuilder.build());
       responseObserver.onCompleted();
