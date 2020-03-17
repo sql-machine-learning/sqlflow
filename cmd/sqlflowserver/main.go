@@ -32,7 +32,7 @@ import (
 	sf "sqlflow.org/sqlflow/pkg/sql"
 )
 
-func newServer(caCrt, caKey string) (*grpc.Server, error) {
+func newServer(caCrt, caKey string, logger *log.Logger) (*grpc.Server, error) {
 	var s *grpc.Server
 	if caCrt != "" && caKey != "" {
 		creds, err := credentials.NewServerTLSFromFile(caCrt, caKey)
@@ -40,18 +40,19 @@ func newServer(caCrt, caKey string) (*grpc.Server, error) {
 			return nil, fmt.Errorf("failed to load CA crt/key files: %s, %s, %v", caCrt, caKey, err)
 		}
 		s = grpc.NewServer(grpc.Creds(creds))
-		log.Info("Launch server with SSL/TLS certification.")
+		logger.Info("Launch server with SSL/TLS certification.")
 	} else {
 		s = grpc.NewServer()
-		log.Info("Launch server with insecure mode.")
+		logger.Info("Launch server with insecure mode.")
 	}
 	return s, nil
 }
 
 func start(modelDir, caCrt, caKey string, port int, isArgoMode bool) {
-	s, err := newServer(caCrt, caKey)
+	logger := log.GetDefaultLogger()
+	s, err := newServer(caCrt, caKey, logger)
 	if err != nil {
-		log.Fatalf("failed to create new gRPC Server: %v", err)
+		logger.Fatalf("failed to create new gRPC Server: %v", err)
 	}
 
 	if modelDir != "" {
@@ -68,14 +69,14 @@ func start(modelDir, caCrt, caKey string, port int, isArgoMode bool) {
 	listenString := fmt.Sprintf(":%d", port)
 	lis, err := net.Listen("tcp", listenString)
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		logger.Fatalf("failed to listen: %v", err)
 	}
 
 	// Register reflection service on gRPC server.
 	reflection.Register(s)
-	log.Infof("Server Started at %s", listenString)
+	logger.Infof("Server Started at %s", listenString)
 	if err := s.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
+		logger.Fatalf("failed to serve: %v", err)
 	}
 }
 
@@ -88,6 +89,5 @@ func main() {
 	isArgoMode := flag.Bool("argo-mode", false, "Enable Argo workflow model.")
 	flag.Parse()
 	log.SetOutput(*logPath)
-	log.Infof("argoMode is %v", *isArgoMode)
 	start(*modelDir, *caCrt, *caKey, *port, *isArgoMode)
 }

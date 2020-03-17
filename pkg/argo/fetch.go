@@ -73,7 +73,7 @@ func logViewURL(ns, wfID, podID string) (string, error) {
 // Fetch fetches the workflow log and status,
 // design doc: https://github.com/sql-machine-learning/sqlflow/blob/develop/doc/design/argo_workflow_on_sqlflow.md
 func Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
-	log := log.WithFields(log.Fields{
+	logger := log.WithFields(log.Fields{
 		"requestID": log.UUID(),
 		"jobID":     req.Job.Id,
 		"stepID":    req.StepId,
@@ -82,10 +82,10 @@ func Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 
 	wf, err := k8sReadWorkflow(req.Job.Id)
 	if err != nil {
-		log.Errorf("workflowFailed/k8sRead, error: %v", err)
+		logger.Errorf("workflowFailed/k8sRead, error: %v", err)
 		return nil, err
 	}
-	log.Infof("phase:%s", wf.Status.Phase)
+	logger.Infof("phase:%s", wf.Status.Phase)
 
 	if isWorkflowPending(wf) {
 		return newFetchResponse(req, false, []*pb.Response{}), nil
@@ -149,12 +149,12 @@ func Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 		// eoe just used to simpler the client code which can be consistant with non-argo mode.
 		eoeResponse := &pb.Response{Response: &pb.Response_Eoe{Eoe: &pb.EndOfExecution{}}}
 		if isPodFailed(pod) {
-			log.Infof("workflowFailed, spent:%d", time.Now().Second()-wf.CreationTimestamp.Second())
+			logger.Errorf("workflowFailed, spent:%d", time.Now().Second()-wf.CreationTimestamp.Second())
 			responses = append(responses, eoeResponse)
 			return newFetchResponse(newFetchRequest(req.Job.Id, stepGroupName, newStepPhase), eof, responses),
 				fmt.Errorf("SQLFlow Step [%d/%d] Failed, Log: %s", stepIdx, stepCnt, logURL)
 		}
-		log.Infof("workflowSucceed, spent:%d", time.Now().Second()-wf.CreationTimestamp.Second())
+		logger.Infof("workflowSucceed, spent:%d", time.Now().Second()-wf.CreationTimestamp.Second())
 
 		// snip the pod logs when it complete
 		// TODO(yancey1989): fetch the pod logs using an iteration way

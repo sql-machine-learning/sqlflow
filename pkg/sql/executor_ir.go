@@ -64,7 +64,7 @@ func RunSQLProgram(sqlProgram string, modelDir string, session *pb.Session) *pip
 			wr.Write(fmt.Errorf("runSQLProgram error: %v", err))
 			if err != pipe.ErrClosedPipe {
 				if err := wr.Write(err); err != nil {
-					log.Infof("runSQLProgram error(piping): %v", err)
+					log.GetDefaultLogger().Errorf("runSQLProgram error(piping): %v", err)
 				}
 			}
 		}
@@ -77,26 +77,26 @@ func RunSQLProgram(sqlProgram string, modelDir string, session *pb.Session) *pip
 // TODO(wangkuiyi): Make RunSQLProgram return an error in addition to
 // *pipe.Reader, and remove the calls to log.Infof.
 func SubmitWorkflow(sqlProgram string, modelDir string, session *pb.Session) *pipe.Reader {
-	log := log.WithFields(log.Fields{
+	logger := log.WithFields(log.Fields{
 		"requestID": log.UUID(),
 		"user":      session.UserId,
 		"submitter": session.Submitter,
 		"event":     "submitWorkflow",
 	})
 	if os.Getenv("SQLFLOW_WORKFLOW_LOGVIEW_ENDPOINT") == "" {
-		log.Fatalf("should set SQLFLOW_WORKFLOW_LOGVIEW_ENDPOINT if enable argo mode.")
+		logger.Fatalf("should set SQLFLOW_WORKFLOW_LOGVIEW_ENDPOINT if enable argo mode.")
 	}
 
-	log.Infof("SQLProgram: %s", sqlProgram)
+	logger.Infof("SQLProgram: %s", sqlProgram)
 	rd, wr := pipe.Pipe()
 	startTime := time.Now()
 	go func() {
 		defer wr.Close()
-		wfID, err := submitWorkflow(wr, sqlProgram, modelDir, session, log)
-		defer log.Infof("submitted, workflowID:%s, spent:%.f, error:%v", wfID, time.Since(startTime).Seconds(), err)
+		wfID, err := submitWorkflow(wr, sqlProgram, modelDir, session, logger)
+		defer logger.Infof("submitted, workflowID:%s, spent:%.f, error:%v", wfID, time.Since(startTime).Seconds(), err)
 		if err != nil && err != pipe.ErrClosedPipe {
 			if err := wr.Write(err); err != nil {
-				log.Errorf("piping: %v", err)
+				logger.Errorf("piping: %v", err)
 			}
 		}
 
@@ -105,25 +105,25 @@ func SubmitWorkflow(sqlProgram string, modelDir string, session *pb.Session) *pi
 }
 
 // ResolveSQLProgram accepts parse result from parser and returns a list of SQLFlowStmt
-func ResolveSQLProgram(sqlStmts []*parser.SQLFlowStmt, log *log.Entry) ([]ir.SQLFlowStmt, error) {
+func ResolveSQLProgram(sqlStmts []*parser.SQLFlowStmt, logger *log.Logger) ([]ir.SQLFlowStmt, error) {
 	spIRs := []ir.SQLFlowStmt{}
 	var err error
 	for _, sql := range sqlStmts {
 		var r ir.SQLFlowStmt
 		if sql.IsExtendedSyntax() {
 			if sql.Train {
-				log.Info("resolveSQL:train")
+				logger.Info("resolveSQL:train")
 				r, err = generateTrainStmt(sql.SQLFlowSelectStmt, true)
 			} else if sql.Explain {
-				log.Info("resolveSQL:explain")
+				logger.Info("resolveSQL:explain")
 				// since getTrainStmtFromModel is false, use empty cwd is fine.
 				r, err = generateExplainStmt(sql.SQLFlowSelectStmt, "", "", "", false)
 			} else {
-				log.Info("resolveSQL:predict")
+				logger.Info("resolveSQL:predict")
 				r, err = generatePredictStmt(sql.SQLFlowSelectStmt, "", "", "", false)
 			}
 		} else {
-			log.Info("resolveSQL:standard")
+			logger.Info("resolveSQL:standard")
 			standardSQL := ir.NormalStmt(sql.Original)
 			r = &standardSQL
 		}
@@ -136,7 +136,7 @@ func ResolveSQLProgram(sqlStmts []*parser.SQLFlowStmt, log *log.Entry) ([]ir.SQL
 	return spIRs, nil
 }
 
-func submitWorkflow(wr *pipe.Writer, sqlProgram string, modelDir string, session *pb.Session, log *log.Entry) (string, error) {
+func submitWorkflow(wr *pipe.Writer, sqlProgram string, modelDir string, session *pb.Session, logger *log.Logger) (string, error) {
 	driverName, _, err := database.ParseURL(session.DbConnStr)
 	if err != nil {
 		return "", err
@@ -145,7 +145,7 @@ func submitWorkflow(wr *pipe.Writer, sqlProgram string, modelDir string, session
 	if err != nil {
 		return "", err
 	}
-	spIRs, err := ResolveSQLProgram(stmts, log)
+	spIRs, err := ResolveSQLProgram(stmts, logger)
 	if err != nil {
 		return "", err
 	}
