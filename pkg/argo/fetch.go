@@ -82,7 +82,7 @@ func Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 
 	wf, err := k8sReadWorkflow(req.Job.Id)
 	if err != nil {
-		log.Error("workflowFailed/k8sRead, error:%v", err)
+		log.Errorf("workflowFailed/k8sRead, error: %v", err)
 		return nil, err
 	}
 	log.Infof("phase:%s", wf.Status.Phase)

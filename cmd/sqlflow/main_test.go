@@ -17,6 +17,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"sqlflow.org/sqlflow/pkg/log"
 )
 
 var testSQLProgram = `
@@ -41,7 +42,9 @@ USING my_model;
 func TestWorkflow(t *testing.T) {
 	a := assert.New(t)
 	datasource := "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
-	code, e := compile("couler", testSQLProgram, datasource)
+	codegen := "couler"
+	log := log.WithFields(log.Fields{"codegen": codegen})
+	code, e := compile(codegen, testSQLProgram, datasource, log)
 	a.NoError(e)
 	expectedCodeSnippet := `couler.run_container(command='''repl -e "%s"''' % escape_sql(train_sql), image="sqlflow/sqlflow", env=step_envs, secret=sqlflow_secret)`
 	a.Contains(code, expectedCodeSnippet)
