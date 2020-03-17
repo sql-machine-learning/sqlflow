@@ -331,7 +331,6 @@ func InitializeAttributes(trainStmt *ir.TrainStmt) error {
 	if IsPAI() {
 		modelAttr.Update(distributedTrainingAttributes)
 	}
-	fmt.Printf("validating using %v\n", attrValidator)
 	return attrValidator.Validate(trainStmt.Attributes)
 }
 
