@@ -36,9 +36,7 @@ spec:
         - containerPort: 8888
           hostPort: 8888
           name: sqlflow
-
 ---
-
 apiVersion: v1
 kind: Service
 metadata:

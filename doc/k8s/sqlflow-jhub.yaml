@@ -31,4 +31,3 @@ spec:
         - containerPort: 8000
           hostPort: 8000
           name: sqlflow-jhub
-
