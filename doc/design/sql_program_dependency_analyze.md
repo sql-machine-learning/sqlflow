@@ -74,9 +74,31 @@ We can do this by following below steps:
 4. Execute this graph by submitting the graph as an Argo/Tekton workflow, each step is one single
    statement.
 
+## Analyze SQL Statement Input and Output Tables
+
+To analyze the input and output tables for each statement, we call the external parsers (Hive,
+Calcite, MySQL) to get the AST (https://en.wikipedia.org/wiki/Abstract_syntax_tree), for statements
+that have SQLFlow extended syntax like `TO TRAIN`, we'll analyze the standard SQL statement part in
+the external parsers and then analyze the model read and write using the SQLFlow extended parser.
+
+When going through the SQL statement, we should identify table read or write following below rules:
+
+- table reads:
+   1. `SELECT <hints> FROM <table_name>`: reads table `<table_name>`.
+   1. `SELECT <hints> FROM <table_name> <AS> <table_alias>`: reads table `<table_name>`.
+   1. `SELECT ... LEFT JOIN <table_name>`: reads `<table_name>`. Same as `INNER JOIN`, `RIGHT JOIN`,
+      `FULL JOIN`, `SELF JOIN`, `UNION`.
+- table writes:
+   1. `CREATE TABLE <table_name> AS <SELECT Query>`: writes table `<table_name>`.
+   1. `INSERT INTO <table_name> ...`: writes table `<table_name>`.
+   1. `UPDATE <table_name> ...`: writes table `<table_name>`.
+   1. `DELETE FROM <table_name> ...`, `TRUNCATE ...`: writes `<table_name>`.
+   1. `ALTER TABLE <table_name>`: writes `<table_name>`.
+
+
 ## Analyzing Database Context
 
-Some SQL program have `USE` clause which defines the database the following SQL statements are using.
+Some SQL program has `USE` clause which defines the database the following SQL statements are using.
 
 ```SQL
 USE db;
@@ -87,7 +109,11 @@ SELECT * FROM my_table_in_db2 TO TRAIN ...
 ```
 
 We need to go over the SQL program and get the last `USE` for each SQL statement, and modify the table
-name with out prefix `db.` to `db.table` for later dependency analyzing.
+name without prefix `db.` to `db.table` in above step after we get the input/output tables for each
+statement, so that we return the table read/write information with table full name `db.table`.
+
+Note that external parsers do not support `USE` statement, we can do this simply by split the SQL
+program by `;` and using regex to match if the statement is like `USE db_identifier`.
 
 ## Hazard
 
@@ -97,7 +123,6 @@ Analyzing computer programs always have hazards: https://en.wikipedia.org/wiki/H
 <p align="center">
 <img src="figures/hazard.png">
 </p>
-
 
 Note that the last "DROP TABLE" statement must execute after the two "Explain" statements, because
 the table is used by the explain statements before it could be changed (in this case, deleted). This
@@ -114,18 +139,23 @@ this situation.
 ## Implementation
 
 In order to construct the dependency graph of the SQL program, we need to analyze the parsed SQL
-statements in every parser, including MySQL parser, Hive parser, calcite parser and SQLFlow extended
+statements in every parser, including MySQL parser, Hive parser, calcite parser, and SQLFlow extended
 parser. Since the Hive parser and calcite parser is written in Java, we need to pass the table read/write
 information from Java to Go:
 
 ```proto
+// InputOutputTables represents input and output tables a statement manipulates.
+message InputOutputTables {
+   repeated string input_tables = 1;
+   repeated string output_tables = 2;
+}
+
 message ParserResponse {
   repeated string sql_statements = 1;
   int32 index = 2;
   string error = 3;
-  // return tables that a statement manipulate.
-  repeated string input_tables = 4;
-  repeated string output_tables = 5;
+  // return tables that each statement manipulates.
+  repeated InputOutputTables input_output_tables = 4;
 }
 ```
 
@@ -134,17 +164,29 @@ SQL statement, then parse the extended SQL to get model read/write information, 
 graph:
 
 ```go
-type Node struct {
-   NodeType int // 0: statement, 1: table/model
-   Statement string
-   TableName string // can be table name or model name.
-   Image string // Docker image used to run the statement
-   Outputs *[]Node
-   Inputs *[]Node
+type SQLProgramNode interface {
+   IsStatementNode() bool
+   GetInputs() *[]Node
+   GetOutputs() *[]Node
 }
 
-type Graph struct {
-   Nodes []*Node
+type StatementNode struct {
+   Statement string
+   DockerImage string
+   // StatementNode's input/output must be a table.
+   Inputs *[]TableNode
+   Outputs *[]TableNode
+}
+
+type TableNode struct {
+  Name string
+  // TableNode's input/output must be a statement.
+  Inputs *[]StatementNode
+  Outputs *[]StatementNode
+}
+
+type SQLProgramGraph struct {
+  Nodes *[]SQLProgramNode
 }
 ```
 
