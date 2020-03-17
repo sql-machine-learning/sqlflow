@@ -164,35 +164,40 @@ SQL statement, then parse the extended SQL to get model read/write information, 
 graph:
 
 ```go
-// under package ir: sql_program.go
-// SQLProgram is the constructed graph of the SQL program.
+// pkg/ir/deps/sql_program_deps_graph.go
+package deps
+// SQLProgramGraph is the constructed graph of the SQL program.
 type SQLProgram struct {
-  Statements []StatementNode
+  Statements []*Statement
 }
 
-type StatementNode struct {
+type Statement struct {
    Statement ir.SQLFlowStmt
-   // StatementNode's input/output must be a table.
-   Inputs []*TableNode
-   Outputs []*TableNode
+   // Statement's input/output must be a table.
+   Inputs []*Table
+   Outputs []*Table
 }
 
-type TableNode struct {
+type Table struct {
   Name string
-  // TableNode's input/output must be a statement.
-  Inputs *[]StatementNode
-  Outputs *[]StatementNode
+  // Table's input/output must be a statement.
+  Inputs *[]Statement
+  Outputs *[]Statement
 }
+
+// Analyze will construct a dependency graph for the SQL program and
+// returns the first statement (root node).
+func Analyze(program []ir.Statement) (*deps.Statement, error) {}
 ```
 
 **NOTE: we treat table and model as the same thing when constructing the graph.**
 
-Then the executor takes the constructed graph as input to execute the SQL program:
+Then the workflow package can use the constructed graph to generate Argo/Tekton YAML to submit
+to Kubernetes cluster for execution:
 
 ```Go
-Execute(wr *pipe.Writer, graph *SQLProgram) error {}
+GenCode(*deps.Statement) string // generate couler/fluid code for the graph
+GenYAML(string) string // execute couler/fluid Python code and generate Argo/Tekton YAML
 ```
 
-In the `Execute` function, we will generate a "couler/fluid" program to define a
-workflow job on Kubernetes following the current graph definition. Then submit the
-graph and wait for the job to be finished.
+Submit the YAML to Kubernetes then the workflow with dependency will start to execute.
