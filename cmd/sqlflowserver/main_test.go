@@ -1048,19 +1048,16 @@ USING %s;`, caseTestTable, casePredictTable, caseInto)
 		AssertGreaterEqualAny(a, row[4], int64(0))
 	}
 
-	// TODO(typhoonzero): re-enable this test when we fixed training with
-	// keras functional models.
-	//
-	// 	trainSQL = fmt.Sprintf(`SELECT * FROM %s
-	// TO TRAIN sqlflow_models.dnnclassifier_functional_model
-	// WITH model.n_classes = 3
-	// COLUMN sepal_length, sepal_width, petal_length, petal_width
-	// LABEL class
-	// INTO %s;`, caseTrainTable, caseInto)
-	// 	_, _, _, err = connectAndRunSQL(trainSQL)
-	// 	if err != nil {
-	// 		a.Fail("run trainSQL error: %v", err)
-	// 	}
+	trainSQL = fmt.Sprintf(`SELECT * FROM %s
+TO TRAIN sqlflow_models.dnnclassifier_functional_model
+WITH model.n_classes = 3, validation.metrics="CategoricalAccuracy"
+COLUMN sepal_length, sepal_width, petal_length, petal_width
+LABEL class
+INTO %s;`, caseTrainTable, caseInto)
+	_, _, _, err = connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("run trainSQL error: %v", err)
+	}
 }
 
 func CaseTrainWithCommaSeparatedLabel(t *testing.T) {
