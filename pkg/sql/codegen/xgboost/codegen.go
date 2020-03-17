@@ -169,7 +169,6 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 	}
 	params[""]["booster"] = booster
 	useCache := params["train."]["cache"].(bool)
-	fmt.Println(useCache)
 	delete(params["train."], "cache")
 
 	if len(trainStmt.Features) != 1 {
