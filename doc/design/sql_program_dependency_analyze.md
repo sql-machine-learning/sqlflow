@@ -192,8 +192,8 @@ func Analyze(program []ir.Statement) (*deps.Statement, error) {}
 
 **NOTE: we treat table and model as the same thing when constructing the graph.**
 
-Then the workflow package can use the constructed graph to generate Argo/Tekton YAML to submit
-to Kubernetes cluster for execution:
+Then the [workflow package](https://github.com/sql-machine-learning/sqlflow/blob/develop/doc/design/workflow_pacakge.md#workflow-codegen)
+can use the constructed graph to generate Argo/Tekton YAML to submi to Kubernetes cluster for execution:
 
 ```Go
 GenCode(*deps.Statement) string // generate couler/fluid code for the graph
