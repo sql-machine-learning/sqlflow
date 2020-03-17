@@ -11,4 +11,6 @@ public class ParseResult {
   public int position;
   // Errors encountered during parsing.
   public String error;
+  // tables that each statement manipulates.
+  public ArrayList<InputOutputTables> inputOutputTables;
 }
