@@ -19,7 +19,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"net"
 	"os"
 
@@ -27,12 +26,13 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 
+	"sqlflow.org/sqlflow/pkg/log"
 	"sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/server"
 	sf "sqlflow.org/sqlflow/pkg/sql"
 )
 
-func newServer(caCrt, caKey string) (*grpc.Server, error) {
+func newServer(caCrt, caKey string, logger *log.Logger) (*grpc.Server, error) {
 	var s *grpc.Server
 	if caCrt != "" && caKey != "" {
 		creds, err := credentials.NewServerTLSFromFile(caCrt, caKey)
@@ -40,18 +40,19 @@ func newServer(caCrt, caKey string) (*grpc.Server, error) {
 			return nil, fmt.Errorf("failed to load CA crt/key files: %s, %s, %v", caCrt, caKey, err)
 		}
 		s = grpc.NewServer(grpc.Creds(creds))
-		log.Println("Launch server with SSL/TLS certification.")
+		logger.Info("Launch server with SSL/TLS certification.")
 	} else {
 		s = grpc.NewServer()
-		log.Println("Launch server with insecure mode.")
+		logger.Info("Launch server with insecure mode.")
 	}
 	return s, nil
 }
 
 func start(modelDir, caCrt, caKey string, port int, isArgoMode bool) {
-	s, err := newServer(caCrt, caKey)
+	logger := log.GetDefaultLogger()
+	s, err := newServer(caCrt, caKey, logger)
 	if err != nil {
-		log.Fatalf("failed to create new gRPC Server: %v", err)
+		logger.Fatalf("failed to create new gRPC Server: %v", err)
 	}
 
 	if modelDir != "" {
@@ -66,26 +67,27 @@ func start(modelDir, caCrt, caKey string, port int, isArgoMode bool) {
 	}
 
 	listenString := fmt.Sprintf(":%d", port)
-
 	lis, err := net.Listen("tcp", listenString)
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		logger.Fatalf("failed to listen: %v", err)
 	}
 
 	// Register reflection service on gRPC server.
 	reflection.Register(s)
-	log.Println("Server Started at", listenString)
+	logger.Infof("Server Started at %s", listenString)
 	if err := s.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
+		logger.Fatalf("failed to serve: %v", err)
 	}
 }
 
 func main() {
 	modelDir := flag.String("model_dir", "", "model would be saved on the local dir, otherwise upload to the table.")
+	logPath := flag.String("log", "", "path/to/log, e.g.: /var/log/sqlflow.log")
 	caCrt := flag.String("ca-crt", "", "CA certificate file.")
 	caKey := flag.String("ca-key", "", "CA private key file.")
 	port := flag.Int("port", 50051, "TCP port to listen on.")
 	isArgoMode := flag.Bool("argo-mode", false, "Enable Argo workflow model.")
 	flag.Parse()
+	log.SetOutput(*logPath)
 	start(*modelDir, *caCrt, *caKey, *port, *isArgoMode)
 }
