@@ -52,7 +52,7 @@ func NewServer(run func(string, string, *pb.Session) *pipe.Reader,
 func (s *Server) Fetch(ctx context.Context, job *pb.FetchRequest) (*pb.FetchResponse, error) {
 	// FIXME(tony): to make function fetch easily to mock, we should decouple server package
 	// with argo package by introducing s.fetch
-	_, wf, e := workflow.New("argo")
+	_, wf, e := workflow.New("couler")
 	if e != nil {
 		return nil, e
 	}

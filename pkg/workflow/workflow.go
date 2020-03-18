@@ -23,7 +23,7 @@ import (
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql"
 	"sqlflow.org/sqlflow/pkg/workflow/argo"
-	"sqlflow.org/sqlflow/pkg/workflow/codegen/couler"
+	"sqlflow.org/sqlflow/pkg/workflow/couler"
 )
 
 // Codegen generates workflow YAML
