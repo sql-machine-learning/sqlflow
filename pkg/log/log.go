@@ -14,34 +14,61 @@
 package log
 
 import (
-	"strings"
-
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
-	"gopkg.in/natefinch/lumberjack.v2"
 )
 
-// Logger wraps logrus.Entry
+// Logger wraps logrus.Entry. It is the final or intermediate Logrus
+// logging entry. It contains all the fields passed with WithField{,s}.
 type Logger struct {
 	*logrus.Entry
 }
 
-// SetOutput sets log output to filename globally.
-// filename="/var/log/sqlflow.log": write the log to file
-// filename="": write the file to stdout
-func SetOutput(filename string) {
-	if len(strings.Trim(filename, " ")) > 0 {
-		logrus.SetOutput(&lumberjack.Logger{
-			Filename:   filename,
-			MaxSize:    32, // megabytes
-			MaxBackups: 64,
-			MaxAge:     10, // days
-			Compress:   true,
-		})
-	}
+// Fields type, used to pass to `WithFields`.
+type Fields = logrus.Fields
+
+// UUID always used to identify the request.
+func UUID() string {
+	u, _ := uuid.NewUUID()
+	return u.String()
 }
 
 // WithFields returns log.Entry
-// TODO(weiguoz): Need stress testing about performance.
-func WithFields(fields map[string]interface{}) *Logger {
+func WithFields(fields Fields) *Logger {
 	return &Logger{logrus.WithFields(fields)}
+}
+
+// GetDefaultLogger returns loggers without any fields
+func GetDefaultLogger() *Logger {
+	return &Logger{logrus.WithFields(map[string]interface{}{})}
+}
+
+// Info logs a message at level Info
+func (l *Logger) Info(args ...interface{}) {
+	l.Log(logrus.InfoLevel, args...)
+}
+
+// Infof logs a message at level Info
+func (l *Logger) Infof(format string, args ...interface{}) {
+	l.Logf(logrus.InfoLevel, format, args...)
+}
+
+// Error logs a message at level Error
+func (l *Logger) Error(args ...interface{}) {
+	l.Log(logrus.ErrorLevel, args...)
+}
+
+// Errorf logs a message at level Error
+func (l *Logger) Errorf(format string, args ...interface{}) {
+	l.Logf(logrus.ErrorLevel, format, args...)
+}
+
+// Fatal logs a message at level Fatal then the process will exit with status set to 1.
+func (l *Logger) Fatal(args ...interface{}) {
+	l.Log(logrus.FatalLevel, args...)
+}
+
+// Fatalf logs a message at level Fatal then the process will exit with status set to 1.
+func (l *Logger) Fatalf(format string, args ...interface{}) {
+	l.Logf(logrus.FatalLevel, format, args...)
 }

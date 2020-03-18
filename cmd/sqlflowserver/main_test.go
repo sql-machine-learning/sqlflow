@@ -1049,19 +1049,16 @@ USING %s;`, caseTestTable, casePredictTable, caseInto)
 		AssertGreaterEqualAny(a, row[4], int64(0))
 	}
 
-	// TODO(typhoonzero): re-enable this test when we fixed training with
-	// keras functional models.
-	//
-	// 	trainSQL = fmt.Sprintf(`SELECT * FROM %s
-	// TO TRAIN sqlflow_models.dnnclassifier_functional_model
-	// WITH model.n_classes = 3
-	// COLUMN sepal_length, sepal_width, petal_length, petal_width
-	// LABEL class
-	// INTO %s;`, caseTrainTable, caseInto)
-	// 	_, _, _, err = connectAndRunSQL(trainSQL)
-	// 	if err != nil {
-	// 		a.Fail("run trainSQL error: %v", err)
-	// 	}
+	trainSQL = fmt.Sprintf(`SELECT * FROM %s
+TO TRAIN sqlflow_models.dnnclassifier_functional_model
+WITH model.n_classes = 3, validation.metrics="CategoricalAccuracy"
+COLUMN sepal_length, sepal_width, petal_length, petal_width
+LABEL class
+INTO %s;`, caseTrainTable, caseInto)
+	_, _, _, err = connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("run trainSQL error: %v", err)
+	}
 }
 
 func CaseTrainCustomModelFunctional(t *testing.T) {
@@ -1971,7 +1968,7 @@ func TestEnd2EndWorkflow(t *testing.T) {
 	driverName, _, err := database.ParseURL(testDatasource)
 	a.NoError(err)
 
-	if driverName != "mysql" && driverName != "maxcompute" {
+	if driverName != "mysql" && driverName != "maxcompute" && driverName != "alisa" {
 		t.Skip("Skipping workflow test.")
 	}
 	modelDir := ""
@@ -2001,13 +1998,15 @@ func TestEnd2EndWorkflow(t *testing.T) {
 		casePredictTable = caseDB + ".sqlflow_test_iris_predict"
 		// write model to current MaxCompute project
 		caseInto = "my_dnn_model"
-
-		err = prepareTestData(dbConnStr)
-		if err != nil {
-			t.Fatalf("prepare test dataset failed: %v", err)
-		}
+	} else if driverName == "alisa" {
+		dbConnStr = os.Getenv("SQLFLOW_DATASOURCE")
+		caseDB = os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT")
+		caseTrainTable = caseDB + ".sqlflow_test_iris_train"
+		caseTestTable = caseDB + ".sqlflow_test_iris_test"
+		casePredictTable = caseDB + ".sqlflow_test_iris_predict"
 	}
 
+	t.Run("CaseWorkflowTrainAndPredictDNNCustomImage", CaseWorkflowTrainAndPredictDNNCustomImage)
 	t.Run("CaseWorkflowTrainAndPredictDNN", CaseWorkflowTrainAndPredictDNN)
 	t.Run("CaseTrainDistributedPAIArgo", CaseTrainDistributedPAIArgo)
 }
@@ -2037,6 +2036,42 @@ USING %s;
 SELECT *
 FROM %s LIMIT 5;
 	`, caseTrainTable, caseTrainTable, caseTestTable, caseInto, caseTestTable, casePredictTable, caseInto, casePredictTable)
+
+	conn, err := createRPCConn()
+	if err != nil {
+		a.Fail("Create gRPC client error: %v", err)
+	}
+	defer conn.Close()
+
+	cli := pb.NewSQLFlowClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), 1800*time.Second)
+	defer cancel()
+
+	stream, err := cli.Run(ctx, &pb.Request{Sql: sqlProgram, Session: &pb.Session{DbConnStr: testDatasource}})
+	if err != nil {
+		a.Fail("Create gRPC client error: %v", err)
+	}
+	a.NoError(checkWorkflow(ctx, cli, stream))
+}
+
+func CaseWorkflowTrainAndPredictDNNCustomImage(t *testing.T) {
+	if os.Getenv("SQLFLOW_submitter") != "pai" && os.Getenv("SQLFLOW_submitter") != "alisa" {
+		t.Skip("Skip PAI case.")
+	}
+	a := assert.New(t)
+	// use the default image to test
+	customImage := os.Getenv("SQLFLOW_WORKFLOW_STEP_IMAGE")
+	sqlProgram := fmt.Sprintf(`
+SELECT * FROM %s LIMIT 10;
+
+SELECT * FROM %s
+TO TRAIN %s/DNNClassifier
+WITH
+	model.n_classes = 3,
+	model.hidden_units = [64, 32],
+	validation.select = "SELECT * FROM %s"
+LABEL class
+INTO test_workflow_model;`, caseTrainTable, caseTrainTable, customImage, caseTestTable)
 
 	conn, err := createRPCConn()
 	if err != nil {
