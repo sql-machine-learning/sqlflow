@@ -136,12 +136,11 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
 
         keras_estimator = tf.keras.estimator.model_to_estimator(
             classifier, model_dir=model_dir, config=run_config)
-        estimator_train_and_save_compiled(keras_estimator, is_pai, FLAGS,
-                                          pai_table, pai_val_table,
-                                          feature_column_names, feature_metas,
-                                          label_meta, datasource, select,
-                                          validate_select, batch_size, epochs,
-                                          verbose, 100, None, 10, 60)
+        estimator_train_compiled(keras_estimator, is_pai, FLAGS, pai_table,
+                                 pai_val_table, feature_column_names,
+                                 feature_metas, label_meta, datasource, select,
+                                 validate_select, batch_size, epochs, verbose,
+                                 100, None, 10, 60)
         return
 
     if hasattr(classifier, 'sqlflow_train_loop'):
@@ -203,11 +202,12 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
         model.save_file(FLAGS.sqlflow_oss_modeldir, save)
 
 
-def estimator_train_and_save_compiled(
-    estimator, is_pai, FLAGS, pai_table, pai_val_table, feature_column_names,
-    feature_metas, label_meta, datasource, select, validate_select, batch_size,
-    epochs, verbose, log_every_n_iter, train_max_steps, eval_start_delay_secs,
-    eval_throttle_secs):
+def estimator_train_compiled(estimator, is_pai, FLAGS, pai_table,
+                             pai_val_table, feature_column_names,
+                             feature_metas, label_meta, datasource, select,
+                             validate_select, batch_size, epochs, verbose,
+                             log_every_n_iter, train_max_steps,
+                             eval_start_delay_secs, eval_throttle_secs):
     def train_input_fn():
         if is_pai:
             train_dataset = input_fn("",
@@ -274,11 +274,12 @@ def estimator_train_and_save(
         estimator = tf.estimator.add_metrics(
             classifier, metrics.get_tf_metrics(metric_names))
 
-    estimator_train_and_save_compiled(
-        classifier, is_pai, FLAGS, pai_table, pai_val_table,
-        feature_column_names, feature_metas, label_meta, datasource, select,
-        validate_select, batch_size, epochs, verbose, log_every_n_iter,
-        train_max_steps, eval_start_delay_secs, eval_throttle_secs)
+    estimator_train_compiled(classifier, is_pai, FLAGS, pai_table,
+                             pai_val_table, feature_column_names,
+                             feature_metas, label_meta, datasource, select,
+                             validate_select, batch_size, epochs, verbose,
+                             log_every_n_iter, train_max_steps,
+                             eval_start_delay_secs, eval_throttle_secs)
 
     if is_pai and FLAGS.task_index != 0:
         print("skip exporting model on worker != 0")
