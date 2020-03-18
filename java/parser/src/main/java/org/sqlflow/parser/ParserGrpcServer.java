@@ -12,7 +12,7 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.sqlflow.parser.ParserProto.InputOutputTables;
+import org.sqlflow.parser.ParserProto.IOTables;
 import org.sqlflow.parser.ParserProto.ParserRequest;
 import org.sqlflow.parser.ParserProto.ParserResponse;
 import org.sqlflow.parser.parse.ParseInterface;
@@ -80,11 +80,13 @@ public class ParserGrpcServer {
       responseBuilder.addAllSqlStatements(parseResult.statements);
       responseBuilder.setIndex(parseResult.position);
       responseBuilder.setError(parseResult.error);
-      for (int i = 0; i < parseResult.inputOutputTables.size(); i++) {
-        InputOutputTables.Builder tablesBuilder = InputOutputTables.newBuilder();
-        tablesBuilder.addAllInputTables(parseResult.inputOutputTables.get(i).inputTables);
-        tablesBuilder.addAllOutputTables(parseResult.inputOutputTables.get(i).outputTables);
-        responseBuilder.addInputOutputTables(tablesBuilder);
+      if (parseResult.IOTables != null) {
+        for (int i = 0; i < parseResult.IOTables.size(); i++) {
+          IOTables.Builder tablesBuilder = IOTables.newBuilder();
+          tablesBuilder.addAllInputTables(parseResult.IOTables.get(i).inputTables);
+          tablesBuilder.addAllOutputTables(parseResult.IOTables.get(i).outputTables);
+          responseBuilder.addInputOutputTables(tablesBuilder);
+        }
       }
 
       responseObserver.onNext(responseBuilder.build());
