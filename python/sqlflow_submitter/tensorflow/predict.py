@@ -22,6 +22,7 @@ import tensorflow as tf
 from sqlflow_submitter import db
 from sqlflow_submitter.pai import model
 
+from .get_tf_version import tf_is_version2
 from .input_fn import get_dtype, parse_sparse_feature_predict
 
 # Disable Tensorflow INFO and WARNING logs
@@ -32,14 +33,8 @@ try:
 except:
     pass
 
-# TODO(shendiaomo): Remove after we fully upgrade to TF2.0
-TF_VERSION_2 = True
-TF_VERSION_PARTS = tf.__version__.split(".")
-if int(TF_VERSION_PARTS[0]) == 1:
-    TF_VERSION_2 = False
-
 # Disable Tensorflow INFO and WARNING logs
-if TF_VERSION_2:
+if tf_is_version2():
     import logging
     tf.get_logger().setLevel(logging.ERROR)
 else:
@@ -147,7 +142,7 @@ def estimator_predict(estimator, model_params, save, result_table,
     # load from the exported model
     with open("exported_path", "r") as fn:
         export_path = fn.read()
-    if TF_VERSION_2:
+    if tf_is_version2():
         imported = tf.saved_model.load(export_path)
     else:
         imported = tf.saved_model.load_v2(export_path)

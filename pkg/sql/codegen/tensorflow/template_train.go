@@ -35,9 +35,10 @@ type trainFiller struct {
 const tfTrainTemplateText = `
 import copy
 import tensorflow as tf
-from sqlflow_submitter.tensorflow.train import train, TF_VERSION_2
+from sqlflow_submitter.tensorflow.train import train
+from sqlflow_submitter.tensorflow.get_tf_version import tf_is_version2
 from tensorflow.estimator import DNNClassifier, DNNRegressor, LinearClassifier, LinearRegressor, BoostedTreesClassifier, BoostedTreesRegressor, DNNLinearCombinedClassifier, DNNLinearCombinedRegressor
-if TF_VERSION_2:
+if tf_is_version2():
     from tensorflow.keras.optimizers import *
     from tensorflow.keras.losses import *
 else:

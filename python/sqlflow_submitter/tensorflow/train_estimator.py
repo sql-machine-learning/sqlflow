@@ -37,13 +37,6 @@ def estimator_train_and_save(estimator, model_params, save, is_pai, FLAGS,
                 tf.io.gfile.remove("/".join([root, f]))
             tf.io.gfile.rmtree(root)
 
-    # do not add default Accuracy metric when using estimator to train, it will fail
-    # when the estimator is a regressor, and estimator seems automatically add some
-    # metrics. Only add additional metrics when user specified with `WITH`.
-    if tf_is_version2() and metric_names != ["Accuracy"]:
-        classifier = tf.estimator.add_metrics(
-            classifier, metrics.get_tf_metrics(metric_names))
-
     is_distributed = False
     if is_pai and len(FLAGS.worker_hosts.split(",")) > 1:
         is_distributed = True
@@ -59,6 +52,14 @@ def estimator_train_and_save(estimator, model_params, save, is_pai, FLAGS,
         model_params["model_dir"] = save
 
     classifier = estimator(**model_params)
+
+    # do not add default Accuracy metric when using estimator to train, it will fail
+    # when the estimator is a regressor, and estimator seems automatically add some
+    # metrics. Only add additional metrics when user specified with `WITH`.
+    if tf_is_version2() and metric_names != ["Accuracy"]:
+        classifier = tf.estimator.add_metrics(
+            classifier, metrics.get_tf_metrics(metric_names))
+
     train_spec = tf.estimator.TrainSpec(input_fn=lambda: train_dataset_fn(),
                                         max_steps=train_max_steps)
     if val_dataset_fn != None:
