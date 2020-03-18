@@ -61,6 +61,7 @@ func TestRunStmt(t *testing.T) {
 	os.Setenv("SQLFLOW_log_dir", "/tmp/")
 	session.DbConnStr = dbConnStr
 	currentDB = ""
+	// TODO(yancey1989): assert shoud not panics in repl
 	output, err := step.GetStdout(func() error { return runStmt("show tables", true, "", dbConnStr) })
 	a.NoError(err)
 	a.Contains(output, "Error 1046: No database selected")
@@ -87,7 +88,7 @@ func TestRunStmt(t *testing.T) {
 	output, err = step.GetStdout(func() error {
 		return runStmt("select * from train to explain sqlflow_models.repl_xgb_model;", true, "", dbConnStr)
 	})
-	a.Nil(err)
+	a.NoError(err)
 	a.Contains(output, "data:text/html, <div align='center'><img src='data:image/png;base64")
 	a.Contains(output, "⣿") //non sixel with ascii art
 }
