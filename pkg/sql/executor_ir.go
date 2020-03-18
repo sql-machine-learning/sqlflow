@@ -17,13 +17,13 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"strings"
 	"time"
 
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/ir"
+	"sqlflow.org/sqlflow/pkg/log"
 	"sqlflow.org/sqlflow/pkg/parser"
 	"sqlflow.org/sqlflow/pkg/pipe"
 	pb "sqlflow.org/sqlflow/pkg/proto"
@@ -53,10 +53,10 @@ func RunSQLProgram(sqlProgram string, modelDir string, session *pb.Session) *pip
 		}
 		err = runSQLProgram(wr, sqlProgram, db, modelDir, session)
 		if err != nil {
-			wr.Write(fmt.Errorf("runSQLProgram error: %v", err))
+			err = wr.Write(fmt.Errorf("runSQLProgram error: %v", err))
 			if err != pipe.ErrClosedPipe {
 				if err := wr.Write(err); err != nil {
-					log.Printf("runSQLProgram error(piping): %v", err)
+					log.GetDefaultLogger().Errorf("runSQLProgram error(piping): %v", err)
 				}
 			}
 		}
@@ -65,21 +65,25 @@ func RunSQLProgram(sqlProgram string, modelDir string, session *pb.Session) *pip
 }
 
 // ResolveSQLProgram accepts parse result from parser and returns a list of SQLFlowStmt
-func ResolveSQLProgram(sqlStmts []*parser.SQLFlowStmt) ([]ir.SQLFlowStmt, error) {
+func ResolveSQLProgram(sqlStmts []*parser.SQLFlowStmt, logger *log.Logger) ([]ir.SQLFlowStmt, error) {
 	spIRs := []ir.SQLFlowStmt{}
 	var err error
 	for _, sql := range sqlStmts {
 		var r ir.SQLFlowStmt
 		if sql.IsExtendedSyntax() {
 			if sql.Train {
+				logger.Info("resolveSQL:train")
 				r, err = generateTrainStmt(sql.SQLFlowSelectStmt, true)
 			} else if sql.Explain {
+				logger.Info("resolveSQL:explain")
 				// since getTrainStmtFromModel is false, use empty cwd is fine.
 				r, err = generateExplainStmt(sql.SQLFlowSelectStmt, "", "", "", false)
 			} else {
+				logger.Info("resolveSQL:predict")
 				r, err = generatePredictStmt(sql.SQLFlowSelectStmt, "", "", "", false)
 			}
 		} else {
+			logger.Info("resolveSQL:standard")
 			standardSQL := ir.NormalStmt(sql.Original)
 			r = &standardSQL
 		}
@@ -106,68 +110,57 @@ func runSQLProgram(wr *pipe.Writer, sqlProgram string, db *database.DB, modelDir
 	// The IR generation on the second statement would fail since it requires inspection the schema of some_table,
 	// which depends on the execution of create table some_table as (select ...);.
 	for _, sql := range stmts {
-		cwd, err := ioutil.TempDir("/tmp", "sqlflow_models")
-		if err != nil {
+		if err := runSingleSQLFlowStatement(wr, sql, db, modelDir, session); err != nil {
 			return err
-		}
-		// NOTE(typhoonzero): must call "cleanCwd" when end processing current SQL or before
-		// returning error, we can not use "defer" because if we have many SQL statements in
-		// the SQL program, we may overflow the defer stack.
-		// For more information: https://blog.learngoprogramming.com/gotchas-of-defer-in-go-1-8d070894cb01
-		cleanCwd := func(cwd string) error {
-			return os.RemoveAll(cwd)
-		}
-		var r ir.SQLFlowStmt
-		if sql.IsExtendedSyntax() {
-			if sql.Train {
-				r, err = generateTrainStmtWithInferredColumns(sql.SQLFlowSelectStmt, session.DbConnStr, true)
-			} else if sql.Explain {
-				r, err = generateExplainStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, GetSubmitter(session.Submitter).GetTrainStmtFromModel())
-			} else {
-				r, err = generatePredictStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, GetSubmitter(session.Submitter).GetTrainStmtFromModel())
-			}
-		} else {
-			standardSQL := ir.NormalStmt(sql.Original)
-			r = &standardSQL
-		}
-
-		if err != nil {
-			if e := cleanCwd(cwd); e != nil {
-				return fmt.Errorf("encounter %v when dealwith error: %s", e, err)
-			}
-			return err
-		}
-		r.SetOriginalSQL(sql.Original)
-		if err := runSingleSQLIR(wr, r, db, modelDir, cwd, session); err != nil {
-			if e := cleanCwd(cwd); e != nil {
-				return fmt.Errorf("encounter %v when dealwith error: %s", e, err)
-			}
-			return err
-		}
-		if e := cleanCwd(cwd); e != nil {
-			return fmt.Errorf("encounter %v when dealwith error: %s", e, err)
 		}
 	}
 	return nil
 }
 
-func runSingleSQLIR(wr *pipe.Writer, sqlIR ir.SQLFlowStmt, db *database.DB, modelDir string, cwd string, session *pb.Session) (e error) {
-	startTime := time.Now().UnixNano()
-	var originalSQL string
-	defer func() {
+func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *database.DB, modelDir string, session *pb.Session) (e error) {
+	defer func(startTime int64) {
+		// NOTE(tony): EndOfExecution indicates a successful run,
+		// so we only writes it when e != nil
 		if e != nil {
 			wr.Write(EndOfExecution{
 				StartTime: startTime,
 				EndTime:   time.Now().UnixNano(),
-				Statement: originalSQL,
+				Statement: sql.Original,
 			})
 		}
-	}()
+	}(time.Now().UnixNano())
+
+	cwd, err := ioutil.TempDir("/tmp", "sqlflow_models")
+	if err != nil {
+		return err
+	}
+	defer func(cwd string) {
+		if err := os.RemoveAll(cwd); err != nil {
+			e = fmt.Errorf("encounter %v when dealwith error: %s", e, err)
+		}
+	}(cwd)
+	var r ir.SQLFlowStmt
+	if sql.IsExtendedSyntax() {
+		if sql.Train {
+			r, err = generateTrainStmtWithInferredColumns(sql.SQLFlowSelectStmt, session.DbConnStr, true)
+		} else if sql.Explain {
+			r, err = generateExplainStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, GetSubmitter(session.Submitter).GetTrainStmtFromModel())
+		} else {
+			r, err = generatePredictStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, GetSubmitter(session.Submitter).GetTrainStmtFromModel())
+		}
+	} else {
+		standardSQL := ir.NormalStmt(sql.Original)
+		r = &standardSQL
+	}
+	if err != nil {
+		return err
+	}
+	r.SetOriginalSQL(sql.Original)
 	// TODO(typhoonzero): can run feature.LogDerivationResult(wr, trainStmt) here to send
 	// feature derivation logs to client, yet we disable if for now so that it's less annoying.
 	submitter := GetSubmitter(session.Submitter)
 	submitter.Setup(wr, db, modelDir, cwd, session)
-	return sqlIR.Execute(submitter)
+	return r.Execute(submitter)
 }
 
 // getColumnTypes is quiet like verify but accept a SQL string as input, and returns

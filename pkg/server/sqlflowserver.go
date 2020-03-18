@@ -20,11 +20,11 @@ package server
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"time"
 
 	"sqlflow.org/sqlflow/pkg/database"
+	"sqlflow.org/sqlflow/pkg/log"
 	"sqlflow.org/sqlflow/pkg/workflow"
 
 	"sqlflow.org/sqlflow/pkg/parser"
@@ -69,7 +69,6 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 		var err error
 		switch s := r.(type) {
 		case error:
-			log.Println(s)
 			return s
 		case map[string]interface{}:
 			res, err = pb.EncodeHead(s)
@@ -123,23 +122,29 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 // TODO(wangkuiyi): Make SubmitWorkflow return an error in addition to
 // *pipe.Reader, and remove the calls to log.Printf.
 func SubmitWorkflow(sqlProgram string, modelDir string, session *pb.Session) *pipe.Reader {
+	logger := log.WithFields(log.Fields{
+		"requestID": log.UUID(),
+		"user":      session.UserId,
+		"submitter": session.Submitter,
+		"event":     "submitWorkflow",
+	})
 	if os.Getenv("SQLFLOW_WORKFLOW_LOGVIEW_ENDPOINT") == "" {
-		log.Fatalf("should set SQLFLOW_WORKFLOW_LOGVIEW_ENDPOINT if enable argo mode.")
+		logger.Fatalf("should set SQLFLOW_WORKFLOW_LOGVIEW_ENDPOINT if enable argo mode.")
 	}
 	rd, wr := pipe.Pipe()
-	startTime := time.Now().Second()
+	startTime := time.Now()
 	go func() {
 		defer wr.Close()
-		wfID, e := workflow.ResolveAndSubmitWorkflow("argo", sqlProgram, session)
-		defer log.Printf("Submit SQL program: %s\nuserID: %s\nworkflowID: %s\nspent: %d\nerror:%v", sqlProgram, session.UserId, wfID, time.Now().Second()-startTime, e)
+		wfID, e := workflow.Run("couler", sqlProgram, session, logger)
+		defer logger.Infof("submitted, workflowID:%s, spent:%.f, error:%v", wfID, time.Since(startTime).Seconds(), e)
 		if e != nil {
 			if e := wr.Write(e); e != nil {
-				log.Printf("submit workflow error(piping): %v", e)
+				logger.Errorf("piping: %v", e)
 			}
 			return
 		}
 		if e := wr.Write(pb.Job{Id: wfID}); e != nil {
-			log.Printf("write workflow reponse error(piping): %v", e)
+			logger.Errorf("piping: %v", e)
 			return
 		}
 	}()

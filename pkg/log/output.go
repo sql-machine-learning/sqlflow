@@ -11,9 +11,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package argo
+package log
 
-// Submit the Argo workflow and returns the workflow ID
-func (w *Workflow) Submit(argoYAMLContent string) (string, error) {
-	return k8sCreateResource(argoYAMLContent)
+import (
+	"strings"
+
+	"github.com/sirupsen/logrus"
+	"gopkg.in/natefinch/lumberjack.v2"
+)
+
+// SetOutput sets log output to filename globally.
+// filename="/var/log/sqlflow.log": write the log to file
+// filename="": write the file to stdout
+func SetOutput(filename string) {
+	if len(strings.Trim(filename, " ")) > 0 {
+		logrus.SetOutput(&lumberjack.Logger{
+			Filename:   filename,
+			MaxSize:    32, // megabytes
+			MaxBackups: 64,
+			MaxAge:     10, // days
+			Compress:   true,
+		})
+	}
 }

@@ -11,12 +11,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// This is the config file of Jupyter Notebook. 
+// This file should be copied to $HOME/.jupyter/custom/ to take effect.
+
+// The following code loads `sqlflow.js` to highlight keywords in the magic cells.
+// See https://github.com/sql-machine-learning/sqlflow/pull/1470/ for more details.
 require(['notebook/js/codecell', "codemirror/lib/codemirror"], function(codecell, CodeMirror) {
-    CodeMirror.modeInfo.push({name: "MySQLFlow", mime: "text/x-mysqlflow", mode: "sqlflow"})
-    codecell.CodeCell.options_default.highlight_modes['magic_text/x-mysqlflow'] = {'reg':[/^%%sqlflow/]} ;
-    Jupyter.notebook.events.one('kernel_ready.Kernel', function(){
-        Jupyter.notebook.get_cells().map(function(cell){
-            if (cell.cell_type == 'code'){
+    CodeMirror.modeInfo.push({
+        name: "MySQLFlow",
+        mime: "text/x-mysqlflow",
+        mode: "sqlflow"
+    })
+    codecell.CodeCell.options_default.highlight_modes['magic_text/x-mysqlflow'] = {
+        'reg': [/^%%sqlflow/]
+    };
+    Jupyter.notebook.events.one('kernel_ready.Kernel', function() {
+        Jupyter.notebook.get_cells().map(function(cell) {
+            if (cell.cell_type == 'code') {
                 cell.auto_highlight();
             }
         });

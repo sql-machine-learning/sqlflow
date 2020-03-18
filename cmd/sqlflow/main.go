@@ -22,10 +22,10 @@ import (
 	"sqlflow.org/sqlflow/pkg/log"
 	"sqlflow.org/sqlflow/pkg/parser"
 	"sqlflow.org/sqlflow/pkg/sql"
-	"sqlflow.org/sqlflow/pkg/workflow/codegen/couler"
+	"sqlflow.org/sqlflow/pkg/workflow"
 )
 
-func compile(cgName, sqlProgram, datasource string) (string, error) {
+func compile(cgName, sqlProgram, datasource string, logger *log.Logger) (string, error) {
 	driverName, _, err := database.ParseURL(datasource)
 	if err != nil {
 		return "", err
@@ -36,14 +36,17 @@ func compile(cgName, sqlProgram, datasource string) (string, error) {
 	}
 	switch cgName {
 	case "couler":
-		spIRs, err := sql.ResolveSQLProgram(stmts)
+		spIRs, err := sql.ResolveSQLProgram(stmts, logger)
 		if err != nil {
 			return "", err
 		}
 		sess := sql.MakeSessionFromEnv()
 		sess.DbConnStr = datasource
-		cg := &couler.Codegen{}
-		return cg.GenCode(spIRs, sess)
+		codegen, _, e := workflow.New(cgName)
+		if e != nil {
+			return "", e
+		}
+		return codegen.GenCode(spIRs, sess)
 	default:
 		// TODO(yancey1989): support other codegen, e.g, tensorflow, xgboost.
 		return "", fmt.Errorf("sqlflow compiler has not support codegen: %s", cgName)
@@ -60,16 +63,16 @@ func main() {
 	flag.Parse()
 
 	log.SetOutput(*logPath)
-	log := log.WithFields(map[string]interface{}{"requestID": 0})
+	logger := log.GetDefaultLogger()
 
 	sqlProgram, e := ioutil.ReadFile(*sqlFileName)
 	if e != nil {
-		log.Fatalf("read file failed, %v", e)
+		logger.Fatalf("read file failed, %v", e)
 	}
 
-	code, e := compile(*cgName, string(sqlProgram), *ds)
+	code, e := compile(*cgName, string(sqlProgram), *ds, logger)
 	if e != nil {
-		log.Fatalf("compile failed, %v", e)
+		logger.Fatalf("compile failed, %v", e)
 	}
 	fmt.Println(code)
 }

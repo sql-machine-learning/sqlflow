@@ -18,6 +18,7 @@ import (
 
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/ir"
+	"sqlflow.org/sqlflow/pkg/log"
 	"sqlflow.org/sqlflow/pkg/parser"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql"
@@ -39,14 +40,14 @@ type Workflow interface {
 
 // New returns Codegen and Workflow instance
 func New(backend string) (Codegen, Workflow, error) {
-	if backend == "argo" {
+	if backend == "couler" {
 		return &couler.Codegen{}, &argo.Workflow{}, nil
 	}
 	return nil, nil, fmt.Errorf("the specifiy backend: %s has not support", backend)
 }
 
-// ResolveAndSubmitWorkflow resolve sql program to IRs and submit workflow YAML to Kubernetes
-func ResolveAndSubmitWorkflow(backend string, sqlProgram string, session *pb.Session) (string, error) {
+// Run compile a SQL program to IRs and submits workflow YAML to Kubernetes
+func Run(backend string, sqlProgram string, session *pb.Session, logger *log.Logger) (string, error) {
 	driverName, _, e := database.ParseURL(session.DbConnStr)
 	if e != nil {
 		return "", e
@@ -57,7 +58,7 @@ func ResolveAndSubmitWorkflow(backend string, sqlProgram string, session *pb.Ses
 		return "", e
 	}
 
-	spIRs, e := sql.ResolveSQLProgram(stmts)
+	spIRs, e := sql.ResolveSQLProgram(stmts, logger)
 	if e != nil {
 		return "", e
 	}
