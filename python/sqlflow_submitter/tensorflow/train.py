@@ -23,242 +23,19 @@ import numpy as np
 import tensorflow as tf
 from sqlflow_submitter.db import (connect_with_data_source, db_generator,
                                   parseMaxComputeDSN)
-from sqlflow_submitter.pai import model
 
 from . import metrics
-from .input_fn import input_fn
-
-# Disable Tensorflow INFO and WARNING logs
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+from .get_tf_version import tf_is_version2
+from .input_fn import get_dataset_fn
+from .pai_distributed import *
+from .set_log_level import set_log_level
+from .train_estimator import estimator_train_and_save
+from .train_keras import keras_train_and_save
 
 try:
     import sqlflow_models
 except:
     pass
-
-SHUFFLE_SIZE = 1000
-# TODO(shendiaomo): Remove after we fully upgrade to TF2.0
-TF_VERSION_2 = True
-TF_VERSION_PARTS = tf.__version__.split(".")
-if int(TF_VERSION_PARTS[0]) == 1:
-    TF_VERSION_2 = False
-
-# Disable Tensorflow INFO and WARNING logs
-if TF_VERSION_2:
-    import logging
-    tf.get_logger().setLevel(logging.ERROR)
-else:
-    tf.logging.set_verbosity(tf.logging.ERROR)
-    from .pai_distributed import define_tf_flags, make_distributed_info_without_evaluator, dump_into_tf_config, set_oss_environs
-
-
-def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
-                         pai_table, pai_val_table, feature_column_names,
-                         feature_metas, label_meta, datasource, select,
-                         validate_select, batch_size, epochs, verbose,
-                         metric_names, validation_steps):
-    # remove optimizer param from model_params and use it when call "compile()"
-    optimizer = None
-    loss = None
-    if "optimizer" in model_params:
-        optimizer = model_params["optimizer"]
-        del model_params["optimizer"]
-    if "loss" in model_params:
-        loss = model_params["loss"]
-        del model_params["loss"]
-    # copy feature_name to name field for Keras functional models:
-    # https://github.com/sql-machine-learning/models/blob/develop/sqlflow_models/dnnclassifier_functional_api_example.py
-    for k in feature_metas:
-        feature_metas[k]["name"] = feature_metas[k]["feature_name"]
-    classifier = estimator(**model_params)
-    classifier_pkg = sys.modules[estimator.__module__]
-    model_metrics = []
-    if hasattr(classifier_pkg, "eval_metrics_fn"):
-        metrics_functions = classifier_pkg.eval_metrics_fn()
-        for key, func in metrics_functions.items():
-            func.__name__ = key
-            model_metrics.append(func)
-    # use WITH specified metrics if it's not default.
-    if metric_names != ["Accuracy"]:
-        keras_metrics = metrics.get_keras_metrics(metric_names)
-    else:
-        if len(model_metrics) > 0:
-            keras_metrics = model_metrics
-        else:
-            # default
-            keras_metrics = metrics.get_keras_metrics(["Accuracy"])
-
-    # FIXME(typhoonzero): find a way to cache to local file and avoid cache lockfile already exists issue.
-    train_dataset = input_fn(select,
-                             datasource,
-                             feature_column_names,
-                             feature_metas,
-                             label_meta,
-                             is_pai=is_pai,
-                             pai_table=pai_table)
-    train_dataset = train_dataset.shuffle(SHUFFLE_SIZE).batch(batch_size)
-    if validate_select != "":
-        validate_dataset = input_fn(validate_select,
-                                    datasource,
-                                    feature_column_names,
-                                    feature_metas,
-                                    label_meta,
-                                    is_pai=is_pai,
-                                    pai_table=pai_val_table).batch(batch_size)
-    else:
-        validate_dataset = None
-
-    if optimizer is None:
-        # use keras model default optimizer if optimizer is not specified in WITH clause.
-        optimizer = classifier_pkg.optimizer()
-    if loss is None:
-        loss = classifier_pkg.loss
-    classifier.compile(optimizer=optimizer, loss=loss, metrics=keras_metrics)
-    if hasattr(classifier, 'sqlflow_train_loop'):
-
-        def flatten(feature, label):
-            # TODO(shendiaomo): Modify the cluster model to adapt the new input structure
-            for k in feature:
-                feature[k] = feature[k][0]
-            return feature, [label]
-
-        def flatten_feature_only(feature):
-            for k in feature:
-                feature[k] = feature[k][0]
-            return feature
-
-        if label_meta["feature_name"] == "":
-            # Clustering model do not have label
-            train_dataset = train_dataset.map(flatten_feature_only)
-        else:
-            train_dataset = train_dataset.map(flatten)
-
-        classifier.sqlflow_train_loop(train_dataset)
-    else:
-        if label_meta["feature_name"] != "":
-            # FIXME(typhoonzero): this is why need to set validation_steps: https://github.com/tensorflow/tensorflow/issues/29743#issuecomment-502028891
-            # remove this argument when PAI fixes this.
-            if TF_VERSION_2:
-                validation_steps = None
-            else:
-                validation_steps = 1
-            history = classifier.fit(train_dataset,
-                                     validation_steps=validation_steps,
-                                     epochs=epochs if epochs else
-                                     classifier.default_training_epochs(),
-                                     validation_data=validate_dataset,
-                                     verbose=verbose)
-        else:
-            history = classifier.fit(train_dataset,
-                                     validation_steps=validation_steps,
-                                     epochs=epochs if epochs else
-                                     classifier.default_training_epochs(),
-                                     verbose=verbose)
-        train_keys = []
-        val_keys = []
-        for k in history.history.keys():
-            if k.startswith("val_"):
-                val_keys.append(k)
-            else:
-                train_keys.append(k)
-        print("====== Result for training set: ======")
-        for k in train_keys:
-            print("%s: %s" % (k, history.history[k][-1]))
-        print("====== Result for validation set: ======")
-        for k in val_keys:
-            print("%s: %s" % (k, history.history[k][-1]))
-    classifier.save_weights(save, save_format="h5")
-    if is_pai:
-        print("saving keras model to: %s" % FLAGS.sqlflow_oss_modeldir)
-        model.save_file(FLAGS.sqlflow_oss_modeldir, save)
-
-
-def estimator_train_and_save(
-    estimator, model_params, save, is_pai, FLAGS, pai_table, pai_val_table,
-    feature_column_names, feature_metas, label_meta, datasource, select,
-    validate_select, batch_size, epochs, verbose, log_every_n_iter,
-    train_max_steps, eval_start_delay_secs, eval_throttle_secs, metric_names):
-    classifier = estimator(**model_params)
-
-    def train_input_fn():
-        # FIXME(typhoonzero): find a way to cache to local file and avoid cache lockfile already exists issue.
-        if is_pai:
-            train_dataset = input_fn("",
-                                     None,
-                                     feature_column_names,
-                                     feature_metas,
-                                     label_meta,
-                                     is_pai=True,
-                                     pai_table=pai_table,
-                                     num_workers=len(
-                                         FLAGS.worker_hosts.split(",")),
-                                     worker_id=FLAGS.task_index)
-        else:
-            train_dataset = input_fn(select, datasource, feature_column_names,
-                                     feature_metas, label_meta)
-        train_dataset = train_dataset.shuffle(SHUFFLE_SIZE).batch(
-            batch_size).cache("cache_train").repeat(epochs if epochs else 1)
-        return train_dataset
-
-    # do not add default Accuracy metric when using estimator to train, it will fail
-    # when the estimator is a regressor, and estimator seems automatically add some
-    # metrics. Only add additional metrics when user specified with `WITH`.
-    if TF_VERSION_2 and metric_names != ["Accuracy"]:
-        classifier = tf.estimator.add_metrics(
-            classifier, metrics.get_tf_metrics(metric_names))
-
-    train_spec = tf.estimator.TrainSpec(input_fn=lambda: train_input_fn(),
-                                        max_steps=train_max_steps)
-
-    def validate_input_fn():
-        if is_pai:
-            validate_dataset = input_fn("",
-                                        None,
-                                        feature_column_names,
-                                        feature_metas,
-                                        label_meta,
-                                        is_pai=True,
-                                        pai_table=pai_val_table)
-        else:
-            validate_dataset = input_fn(validate_select, datasource,
-                                        feature_column_names, feature_metas,
-                                        label_meta)
-        validate_dataset = validate_dataset.batch(batch_size)
-        return validate_dataset
-
-    if validate_select != "":
-        eval_spec = tf.estimator.EvalSpec(
-            input_fn=lambda: validate_input_fn(),
-            start_delay_secs=eval_start_delay_secs,
-            throttle_secs=eval_throttle_secs)
-        result = tf.estimator.train_and_evaluate(classifier, train_spec,
-                                                 eval_spec)
-        # FIXME(typhoonzero): find out why pai will have result == None
-        if not is_pai:
-            print(result[0])
-    else:
-        # NOTE(typhoonzero): if only do training, no validation result will be printed.
-        classifier.train(lambda: train_input_fn(), max_steps=train_max_steps)
-
-    if is_pai and FLAGS.task_index != 0:
-        print("skip exporting model on worker != 0")
-        return
-    # export saved model for prediction
-    if "feature_columns" in model_params:
-        all_feature_columns = model_params["feature_columns"]
-    elif "linear_feature_columns" in model_params and "dnn_feature_columns" in model_params:
-        import copy
-        all_feature_columns = copy.copy(model_params["linear_feature_columns"])
-        all_feature_columns.extend(model_params["dnn_feature_columns"])
-    else:
-        raise Exception("No expected feature columns in model params")
-    serving_input_fn = tf.estimator.export.build_parsing_serving_input_receiver_fn(
-        tf.feature_column.make_parse_example_spec(all_feature_columns))
-    export_path = classifier.export_saved_model(save, serving_input_fn)
-    # write the path under current directory
-    with open("exported_path", "w") as fn:
-        fn.write(str(export_path.decode("utf-8")))
-    print("Done training, model exported to: %s" % export_path)
 
 
 def train(datasource,
@@ -284,7 +61,6 @@ def train(datasource,
           is_pai=False,
           pai_table="",
           pai_val_table=""):
-    assert 0 <= verbose <= 3
     if isinstance(estimator, types.FunctionType):
         is_estimator = False
     else:
@@ -292,88 +68,60 @@ def train(datasource,
             estimator,
             (tf.estimator.Estimator, tf.estimator.BoostedTreesClassifier,
              tf.estimator.BoostedTreesRegressor))
-    if not is_estimator and verbose == 1 or TF_VERSION_2:
-        tf.get_logger().setLevel(
-            (4 - verbose) * 10)  # logging.INFO levels range from 10~40
-    elif verbose >= 2:
-        tf.logging.set_verbosity(tf.logging.INFO)
-    if is_pai:  # always use verbose == 1 when using PAI to get more logs
-        tf.logging.set_verbosity(tf.logging.INFO)
+    if is_pai and verbose < 1:  # always use verbose == 1 when using PAI to get more logs
+        verbose = 1
+    set_log_level(verbose, is_estimator)
+    # fill in feature columns parameters
     model_params.update(feature_columns)
 
-    is_distributed = False
     FLAGS = None
+    is_distributed = False
+    num_workers = 1
+    worker_id = 0
     # only support distributed training on PAI (TF version 1.x)
-    if not TF_VERSION_2:
+    if is_pai:
         FLAGS = define_tf_flags()
+        set_oss_environs(FLAGS)
         if len(FLAGS.worker_hosts.split(",")) > 1:
             is_distributed = True
-        set_oss_environs(FLAGS)
+        num_workers = len(FLAGS.worker_hosts.split(","))
+        worker_id = FLAGS.task_index
+
+    # TODO(typhoonzero): remove this after update the keras models.
+    # copy feature_name to name field for Keras functional models:
+    # https://github.com/sql-machine-learning/models/blob/develop/sqlflow_models/dnnclassifier_functional_api_example.py
+    for k in feature_metas:
+        feature_metas[k]["name"] = feature_metas[k]["feature_name"]
+
+    train_dataset_fn, val_dataset_fn = get_dataset_fn(select,
+                                                      validate_select,
+                                                      datasource,
+                                                      feature_column_names,
+                                                      feature_metas,
+                                                      label_meta,
+                                                      is_pai,
+                                                      pai_table,
+                                                      pai_val_table,
+                                                      epochs,
+                                                      batch_size,
+                                                      1000,
+                                                      num_workers=num_workers,
+                                                      worker_id=worker_id)
 
     if not is_estimator:  # keras
         if isinstance(estimator, types.FunctionType):
             # functional model need field_metas parameter
             model_params["field_metas"] = feature_metas
-        print("Start training using keras model...")
         keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
-                             pai_table, pai_val_table, feature_column_names,
-                             feature_metas, label_meta, datasource, select,
-                             validate_select, batch_size, epochs, verbose,
-                             metric_names, validation_steps)
+                             train_dataset_fn, val_dataset_fn, label_meta,
+                             epochs, verbose, metric_names, validation_steps)
     else:
-        # Remove the checkpoint dir on HDFS before training.
-        # NOTE(typhoonzero): checkpoints will be used by explaining (explaining BoostedTrees model
-        # requires calling estimator.experimental_predict_with_explanations),
-        # yet, predicting will use the saved model on OSS only.
-        if is_pai and FLAGS.task_index == 0:
-            for root, dirs, files in tf.io.gfile.walk(FLAGS.sqlflow_hdfs_ckpt,
-                                                      topdown=False):
-                for f in files:
-                    tf.io.gfile.remove("/".join([root, f]))
-                tf.io.gfile.rmtree(root)
+        estimator_train_and_save(estimator, model_params, save, is_pai, FLAGS,
+                                 train_dataset_fn, val_dataset_fn,
+                                 log_every_n_iter, train_max_steps,
+                                 eval_start_delay_secs, eval_throttle_secs,
+                                 save_checkpoints_steps, metric_names)
 
-        if is_distributed:
-            cluster, task_type, task_index = make_distributed_info_without_evaluator(
-                FLAGS)
-            dump_into_tf_config(cluster, task_type, task_index)
-            device_filters = None
-            if estimator in (tf.estimator.BoostedTreesClassifier,
-                             tf.estimator.BoostedTreesRegressor):
-                # TFBT doesn't work with tf.contrib.distribute at the moment.
-                # Use estimator distributed training instead, see
-                # https://github.com/tensorflow/tensorflow/issues/32081
-                dist_strategy = None
-                if task_type != 'ps':
-                    # Disable communication between workers, see
-                    # https://github.com/tensorflow/tensorflow/issues/21745
-                    device_filters = [
-                        '/job:ps',
-                        '/job:%s/task:%d' % (task_type, task_index)
-                    ]
-            else:
-                dist_strategy = tf.contrib.distribute.ParameterServerStrategy()
-            model_params["config"] = tf.estimator.RunConfig(
-                save_checkpoints_steps=save_checkpoints_steps,
-                train_distribute=dist_strategy,
-                session_config=tf.ConfigProto(log_device_placement=True,
-                                              device_filters=device_filters))
-        else:
-            model_params["config"] = tf.estimator.RunConfig(
-                save_checkpoints_steps=save_checkpoints_steps)
-
-        if is_pai:
-            print("Using checkpoint path: %s" % FLAGS.sqlflow_hdfs_ckpt)
-            model_params["model_dir"] = FLAGS.sqlflow_hdfs_ckpt
-        else:
-            model_params["model_dir"] = save
-
-        print("Start training using estimator model...")
-        estimator_train_and_save(
-            estimator, model_params, save, is_pai, FLAGS, pai_table,
-            pai_val_table, feature_column_names, feature_metas, label_meta,
-            datasource, select, validate_select, batch_size, epochs, verbose,
-            log_every_n_iter, train_max_steps, eval_start_delay_secs,
-            eval_throttle_secs, metric_names)
-
-    any(map(os.remove, glob.glob('cache_train.*')))  # remove cache files
+    # remove cache files
+    any(map(os.remove, glob.glob('cache_train.*')))
     print("Done training")
