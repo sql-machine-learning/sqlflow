@@ -57,32 +57,31 @@ func prepareTestDataOrSkip(t *testing.T) error {
 
 func TestRunStmt(t *testing.T) {
 	a := assert.New(t)
-	a.Nil(prepareTestDataOrSkip(t))
+	a.NoError(prepareTestDataOrSkip(t))
 	os.Setenv("SQLFLOW_log_dir", "/tmp/")
 	session.DbConnStr = dbConnStr
 	currentDB = ""
 	output, err := step.GetStdout(func() error { return runStmt("show tables", true, "", dbConnStr) })
-	a.Nil(err)
+	a.NoError(err)
 	a.Contains(output, "Error 1046: No database selected")
-
 	output, err = step.GetStdout(func() error { return runStmt("use iris", true, "", dbConnStr) })
-	a.Nil(err)
+	a.NoError(err)
 	a.Contains(output, "Database changed to iris")
 
 	output, err = step.GetStdout(func() error { return runStmt("show tables", true, "", dbConnStr) })
-	a.Nil(err)
+	a.NoError(err)
 	a.Contains(output, "| TABLES IN IRIS |")
 
 	output, err = step.GetStdout(func() error {
 		return runStmt("select * from train to train DNNClassifier WITH model.hidden_units=[10,10], model.n_classes=3, validation.select=\"select * from test\" label class INTO sqlflow_models.repl_dnn_model;", true, "", dbConnStr)
 	})
-	a.Nil(err)
+	a.NoError(err)
 	a.Contains(output, "'global_step': 110")
 
 	output, err = step.GetStdout(func() error {
 		return runStmt("select * from train to train xgboost.gbtree WITH objective=reg:squarederror, validation.select=\"select * from test\" label class INTO sqlflow_models.repl_xgb_model;", true, "", dbConnStr)
 	})
-	a.Nil(err)
+	a.NoError(err)
 	a.Contains(output, "Evaluation result: ")
 
 	output, err = step.GetStdout(func() error {
