@@ -56,7 +56,6 @@ func prepareTestDataOrSkip(t *testing.T) error {
 }
 
 func TestRunStmt(t *testing.T) {
-	t.Skip("TODO: should fix TestRunStmt")
 	a := assert.New(t)
 	a.NoError(prepareTestDataOrSkip(t))
 	os.Setenv("SQLFLOW_log_dir", "/tmp/")
