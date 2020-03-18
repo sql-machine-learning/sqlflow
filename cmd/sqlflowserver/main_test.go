@@ -2008,7 +2008,7 @@ FROM %s LIMIT 5;
 	defer conn.Close()
 
 	cli := pb.NewSQLFlowClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), 1800*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3600*time.Second)
 	defer cancel()
 
 	stream, err := cli.Run(ctx, &pb.Request{Sql: sqlProgram, Session: &pb.Session{DbConnStr: testDatasource}})
@@ -2044,7 +2044,7 @@ INTO test_workflow_model;`, caseTrainTable, caseTrainTable, customImage, caseTes
 	defer conn.Close()
 
 	cli := pb.NewSQLFlowClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), 1800*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3600*time.Second)
 	defer cancel()
 
 	stream, err := cli.Run(ctx, &pb.Request{Sql: sqlProgram, Session: &pb.Session{DbConnStr: testDatasource}})
@@ -2084,7 +2084,7 @@ func checkWorkflow(ctx context.Context, cli pb.SQLFlowClient, stream pb.SQLFlow_
 			return nil
 		}
 		req = res.UpdatedFetchSince
-		time.Sleep(3 * time.Second)
+		time.Sleep(4 * time.Second)
 	}
 	return fmt.Errorf("workflow times out")
 }
@@ -2121,8 +2121,8 @@ func CaseTrainDistributedPAIArgo(t *testing.T) {
 	defer conn.Close()
 
 	cli := pb.NewSQLFlowClient(conn)
-	// wait 30min for the workflow execution since it may take time to allocate enough nodes.
-	ctx, cancel := context.WithTimeout(context.Background(), 1800*time.Second)
+	// wait 1h for the workflow execution since it may take time to allocate enough nodes.
+	ctx, cancel := context.WithTimeout(context.Background(), 3600*time.Second)
 	defer cancel()
 
 	stream, err := cli.Run(ctx, &pb.Request{Sql: trainSQL, Session: &pb.Session{DbConnStr: testDatasource}})
