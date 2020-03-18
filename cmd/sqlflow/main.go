@@ -58,7 +58,7 @@ func main() {
 	flag.StringVar(sqlFileName, "f", "", "short for --file")
 	flag.Parse()
 
-	log.SetOutput(*logPath)
+	log.InitLogger(*logPath, log.OrderedTextFormatter)
 	logger := log.GetDefaultLogger()
 
 	sqlProgram, e := ioutil.ReadFile(*sqlFileName)
