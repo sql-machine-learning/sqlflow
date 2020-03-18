@@ -1596,7 +1596,6 @@ WITH
 	validation.metrics="CategoricalAccuracy"
 LABEL class
 INTO e2etest_keras_dnn_model_distributed;`, caseTrainTable, caseTestTable)
-	connectAndRunSQLShouldError(trainSQL)
 	_, _, _, err := connectAndRunSQL(trainSQL)
 	a.NoError(err)
 }
