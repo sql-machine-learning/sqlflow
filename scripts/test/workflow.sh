@@ -110,5 +110,5 @@ fi
 
 gotest -v ./pkg/workflow/argo/
 
-# run fluid test in a seperated test job if we have more test cases.
+# TODO(yancey): run fluid test in a seperated test job if we have more test cases.
 bash ./scripts/test/fluid.sh
