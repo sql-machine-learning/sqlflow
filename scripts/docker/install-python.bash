@@ -30,8 +30,6 @@ apt-get install -y build-essential  libssl-dev # for building mysqlclient pip
 # NOTE: shap == 0.30.1 depends on dill but not include dill as it's dependency, need to install manually.
 # NOTE: mysqlclient depends on apt-get install mysqlclient in install-mysql.bash.
 pip install \
-    yapf==0.29.0 \
-    isort==4.3.21 \
     numpy==1.16.2 \
     tensorflow==2.0.1 \
     mysqlclient==1.4.4 \
@@ -48,4 +46,7 @@ pip install \
     oss2==2.9.0 \
     plotille==3.7 \
     seaborn==0.9.0 \
-    jsbeautifier
+    jsbeautifier \
+    yapf \
+    isort \
+    pylint
