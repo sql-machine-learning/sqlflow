@@ -36,3 +36,6 @@ kubectl cluster-info
 kubectl create namespace argo
 kubectl apply -n argo -f https://raw.githubusercontent.com/argoproj/argo/stable/manifests/install.yaml
 kubectl create rolebinding default-admin --clusterrole=admin --serviceaccount=default:default
+
+# Set up Tekton
+kubectl apply --filename https://storage.googleapis.com/tekton-releases/pipeline/previous/v0.10.1/release.yaml
