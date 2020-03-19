@@ -61,7 +61,7 @@ func start(modelDir, caCrt, caKey string, port int, isArgoMode bool) {
 		}
 	}
 	if isArgoMode {
-		proto.RegisterSQLFlowServer(s, server.NewServer(sf.SubmitWorkflow, modelDir))
+		proto.RegisterSQLFlowServer(s, server.NewServer(server.SubmitWorkflow, modelDir))
 	} else {
 		proto.RegisterSQLFlowServer(s, server.NewServer(sf.RunSQLProgram, modelDir))
 	}
@@ -88,6 +88,6 @@ func main() {
 	port := flag.Int("port", 50051, "TCP port to listen on.")
 	isArgoMode := flag.Bool("argo-mode", false, "Enable Argo workflow model.")
 	flag.Parse()
-	log.SetOutput(*logPath)
+	log.InitLogger(*logPath, log.OrderedTextFormatter)
 	start(*modelDir, *caCrt, *caKey, *port, *isArgoMode)
 }

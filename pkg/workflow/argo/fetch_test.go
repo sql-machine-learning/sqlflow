@@ -173,7 +173,8 @@ func TestFetch(t *testing.T) {
 
 	defer k8sDeleteWorkflow(workflowID)
 	req := newFetchRequest(workflowID, "", "")
-	fr, err := Fetch(req)
+	wf := &Workflow{}
+	fr, err := wf.Fetch(req)
 	messages := []string{}
 	columns := []string{}
 	rows := [][]*any.Any{}
@@ -196,7 +197,7 @@ func TestFetch(t *testing.T) {
 			break
 		}
 		time.Sleep(time.Second)
-		fr, err = Fetch(fr.UpdatedFetchSince)
+		fr, err = wf.Fetch(fr.UpdatedFetchSince)
 	}
 	a.NoError(err)
 

@@ -42,3 +42,10 @@ repos:
     entry: bash ./scripts/pre-commit/jsbeautifier.sh
     language: system
     files: \.(js)$
+- repo: local
+  hooks:
+  - id: yamlfmt
+    name: yamlfmt
+    entry: bash ./scripts/pre-commit/yamlfmt.sh
+    language: system
+    files: \.(yaml|yml)$

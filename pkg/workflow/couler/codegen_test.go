@@ -85,7 +85,8 @@ func TestCoulerCodegen(t *testing.T) {
 	os.Setenv("SQLFLOW_OSS_AK", "oss_key")
 	os.Setenv("SQLFLOW_WORKFLOW_SECRET", `{"sqlflow-secret":{"oss_sk": "oss_sk"}}`)
 	defer os.Unsetenv("SQLFLOW_OSS_AK")
-	code, err := GenCode(sqlIR, &pb.Session{})
+	cg := &Codegen{}
+	code, err := cg.GenCode(sqlIR, &pb.Session{})
 	a.NoError(err)
 
 	r, _ := regexp.Compile(`repl -e "(.*);"`)
@@ -95,7 +96,7 @@ func TestCoulerCodegen(t *testing.T) {
 	a.True(strings.Contains(code, `couler.clean_workflow_after_seconds_finished(86400)`))
 	a.True(strings.Contains(code, `couler.secret(secret_data, name="sqlflow-secret", dry_run=True)`))
 
-	_, e := Compile(code)
+	_, e := cg.GenYAML(code)
 	a.NoError(e)
 }
 
@@ -115,8 +116,8 @@ func TestCompileCoulerProgram(t *testing.T) {
 
 	os.Setenv("SQLFLOW_WORKFLOW_CLUSTER_CONFIG", cfFileName)
 	defer os.Unsetenv("SQLFLOW_WORKFLOW_CLUSTER_CONFIG")
-
-	out, e := Compile(testCoulerProgram)
+	cg := &Codegen{}
+	out, e := cg.GenYAML(testCoulerProgram)
 	a.NoError(e)
 
 	a.Equal(expectedArgoYAML, out)
@@ -133,7 +134,8 @@ func TestKatibCodegen(t *testing.T) {
 
 	program := []ir.SQLFlowStmt{&standardSQL, &sqlIR}
 
-	_, err := GenCode(program, &pb.Session{})
+	cg := &Codegen{}
+	_, err := cg.GenCode(program, &pb.Session{})
 
 	a.NoError(err)
 }

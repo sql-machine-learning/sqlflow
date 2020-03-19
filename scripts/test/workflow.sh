@@ -87,7 +87,7 @@ function test_workflow() {
             export SQLFLOW_TEST_DATASOURCE="mysql://root:root@tcp(${MYSQL_POD_IP}:3306)/?maxAllowedPacket=0"
             go generate ./...
             gotest ./cmd/... -run TestEnd2EndWorkflow -v
-            gotest ./pkg/argo/... -v
+            gotest ./pkg/workflow/argo/... -v
             return 0
         else
             echo "Wait SQLFlow MySQL Pod ${MYSQL_POD_NAME}"
@@ -108,4 +108,4 @@ if [ "${SQLFLOW_submitter}" == "pai" ]; then
     check_ret $? "Test SQLFLow workflow failed"
 fi
 
-gotest -v ./pkg/argo/
+gotest -v ./pkg/workflow/argo/

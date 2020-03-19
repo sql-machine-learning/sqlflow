@@ -1,5 +1,4 @@
-#!/bin/bash
-
+#!/usr/bin/env sh
 # Copyright 2020 The SQLFlow Authors. All rights reserved.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,19 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -e
-
-curl --silent https://dl.google.com/go/go1.13.4.linux-amd64.tar.gz | tar -C /usr/local -xzf -
-
-export GO111MODULE=on
-
-go get github.com/golang/protobuf/protoc-gen-go@v1.3.3
-go get golang.org/x/lint/golint
-go get golang.org/x/tools/cmd/goyacc
-go get golang.org/x/tools/cmd/cover
-go get github.com/mattn/goveralls
-go get github.com/rakyll/gotest
-go get github.com/wangkuiyi/goyaccfmt
-go get github.com/wangkuiyi/yamlfmt
-
-cp $GOPATH/bin/* /usr/local/bin/
+changed_js_files=$(git diff --cached --name-only --diff-filter=ACMR | grep '\.yaml\|\.yml$' )
+if [[ $changed_js_files == "" ]]; then
+    exit 0
+fi
+yamlfmt -w $changed_js_files

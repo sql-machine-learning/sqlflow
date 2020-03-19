@@ -19,6 +19,8 @@ from sqlflow_submitter.pai import model
 from . import metrics
 from .get_tf_version import tf_is_version2
 from .input_fn import input_fn
+from .pai_distributed import *
+from .train_estimator import estimator_train_compiled
 
 
 def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
@@ -35,8 +37,8 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
         loss = model_params["loss"]
         del model_params["loss"]
 
-    classifier = estimator(**model_params)
     classifier_pkg = sys.modules[estimator.__module__]
+    # setting training metrics
     model_metrics = []
     if hasattr(classifier_pkg, "eval_metrics_fn"):
         metrics_functions = classifier_pkg.eval_metrics_fn()
@@ -53,18 +55,52 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
             # default
             keras_metrics = metrics.get_keras_metrics(["Accuracy"])
 
+    # setting optimizer
+    if optimizer is None:
+        # use keras model default optimizer if optimizer is not specified in WITH clause.
+        optimizer = classifier_pkg.optimizer()
+    if loss is None:
+        loss = classifier_pkg.loss
+
+    # setting datasets
     train_dataset = train_dataset_fn()
     if val_dataset_fn != None:
         validate_dataset = val_dataset_fn()
     else:
         validate_dataset = None
 
-    if optimizer is None:
-        # use keras model default optimizer if optimizer is not specified in WITH clause.
-        optimizer = classifier_pkg.optimizer()
-    if loss is None:
-        loss = classifier_pkg.loss
+    classifier = estimator(**model_params)
     classifier.compile(optimizer=optimizer, loss=loss, metrics=keras_metrics)
+
+    if is_pai and len(FLAGS.worker_hosts.split(",")) > 1:
+        # train keras model distributed
+        cluster, task_type, task_index = make_distributed_info_without_evaluator(
+            FLAGS)
+        dump_into_tf_config(cluster, task_type, task_index)
+        dist_strategy = tf.contrib.distribute.ParameterServerStrategy()
+
+        run_config = tf.estimator.RunConfig(save_checkpoints_steps=100,
+                                            train_distribute=dist_strategy,
+                                            session_config=tf.ConfigProto(
+                                                log_device_placement=True,
+                                                device_filters=None))
+        model_dir = FLAGS.sqlflow_hdfs_ckpt
+
+        keras_estimator = tf.keras.estimator.model_to_estimator(
+            classifier, model_dir=model_dir, config=run_config)
+        estimator_train_compiled(
+            keras_estimator,
+            is_pai,
+            FLAGS,
+            train_dataset_fn,
+            val_dataset_fn,
+            # TODO(typhoonzero): do pass train settings.
+            100,
+            None,
+            60,
+            120)
+        return
+
     if hasattr(classifier, 'sqlflow_train_loop'):
 
         def flatten(feature, label):

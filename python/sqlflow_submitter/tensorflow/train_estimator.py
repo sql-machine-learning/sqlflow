@@ -60,21 +60,9 @@ def estimator_train_and_save(estimator, model_params, save, is_pai, FLAGS,
         classifier = tf.estimator.add_metrics(
             classifier, metrics.get_tf_metrics(metric_names))
 
-    train_spec = tf.estimator.TrainSpec(input_fn=lambda: train_dataset_fn(),
-                                        max_steps=train_max_steps)
-    if val_dataset_fn != None:
-        eval_spec = tf.estimator.EvalSpec(
-            input_fn=lambda: val_dataset_fn(),
-            start_delay_secs=eval_start_delay_secs,
-            throttle_secs=eval_throttle_secs)
-        result = tf.estimator.train_and_evaluate(classifier, train_spec,
-                                                 eval_spec)
-        # FIXME(typhoonzero): find out why pai will have result == None
-        if not is_pai:
-            print(result[0])
-    else:
-        # NOTE(typhoonzero): if only do training, no validation result will be printed.
-        classifier.train(lambda: train_dataset_fn(), max_steps=train_max_steps)
+    estimator_train_compiled(classifier, is_pai, FLAGS, train_dataset_fn,
+                             val_dataset_fn, log_every_n_iter, train_max_steps,
+                             eval_start_delay_secs, eval_throttle_secs)
 
     if is_pai and FLAGS.task_index != 0:
         print("skip exporting model on worker != 0")
@@ -95,3 +83,23 @@ def estimator_train_and_save(estimator, model_params, save, is_pai, FLAGS,
     with open("exported_path", "w") as fn:
         fn.write(str(export_path.decode("utf-8")))
     print("Done training, model exported to: %s" % export_path)
+
+
+def estimator_train_compiled(estimator, is_pai, FLAGS, train_dataset_fn,
+                             val_dataset_fn, log_every_n_iter, train_max_steps,
+                             eval_start_delay_secs, eval_throttle_secs):
+    train_spec = tf.estimator.TrainSpec(input_fn=lambda: train_dataset_fn(),
+                                        max_steps=None)
+    if val_dataset_fn != None:
+        eval_spec = tf.estimator.EvalSpec(
+            input_fn=lambda: val_dataset_fn(),
+            start_delay_secs=eval_start_delay_secs,
+            throttle_secs=eval_throttle_secs)
+        result = tf.estimator.train_and_evaluate(estimator, train_spec,
+                                                 eval_spec)
+        # FIXME(typhoonzero): find out why pai will have result == None
+        if not is_pai:
+            print(result[0])
+    else:
+        # NOTE(typhoonzero): if only do training, no validation result will be printed.
+        estimator.train(lambda: train_dataset_fn(), max_steps=train_max_steps)
