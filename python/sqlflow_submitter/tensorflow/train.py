@@ -93,20 +93,22 @@ def train(datasource,
     for k in feature_metas:
         feature_metas[k]["name"] = feature_metas[k]["feature_name"]
 
-    train_dataset_fn, val_dataset_fn = get_dataset_fn(select,
-                                                      validate_select,
-                                                      datasource,
-                                                      feature_column_names,
-                                                      feature_metas,
-                                                      label_meta,
-                                                      is_pai,
-                                                      pai_table,
-                                                      pai_val_table,
-                                                      epochs,
-                                                      batch_size,
-                                                      1000,
-                                                      num_workers=num_workers,
-                                                      worker_id=worker_id)
+    train_dataset_fn, val_dataset_fn = get_dataset_fn(
+        select,
+        validate_select,
+        datasource,
+        feature_column_names,
+        feature_metas,
+        label_meta,
+        is_pai,
+        pai_table,
+        pai_val_table,
+        epochs,
+        batch_size,
+        1000,
+        num_workers=num_workers,
+        worker_id=worker_id,
+        is_estimator=is_estimator)
 
     if not is_estimator:  # keras
         if isinstance(estimator, types.FunctionType):

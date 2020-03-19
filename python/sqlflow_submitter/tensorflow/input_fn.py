@@ -174,7 +174,8 @@ def get_dataset_fn(select,
                    batch_size,
                    shuffle_size,
                    num_workers=1,
-                   worker_id=0):
+                   worker_id=0,
+                   is_estimator=True):
     def train_input_fn():
         train_dataset = input_fn(select,
                                  datasource,
@@ -185,8 +186,13 @@ def get_dataset_fn(select,
                                  pai_table=pai_table,
                                  num_workers=num_workers,
                                  worker_id=worker_id)
-        train_dataset = train_dataset.shuffle(shuffle_size).batch(
-            batch_size).cache("cache_train").repeat(epochs if epochs else 1)
+        if is_estimator:
+            train_dataset = train_dataset.shuffle(shuffle_size).batch(
+                batch_size).cache("cache_train").repeat(
+                    epochs if epochs else 1)
+        else:
+            train_dataset = train_dataset.shuffle(shuffle_size).batch(
+                batch_size).repeat(epochs if epochs else 1)
         return train_dataset
 
     def validate_input_fn():
