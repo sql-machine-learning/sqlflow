@@ -123,7 +123,7 @@ func (w *Workflow) Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 	}
 
 	if req.StepPhase == "" {
-		// the 1-th container execute `argoexec wait` to wait the priority step, so package the 2-th container's command code.
+		// the 1st container execute `argoexec wait` to wait the priority step, so package the 2nd container's command code.
 		execCode := fmt.Sprintf("%s %s", strings.Join(pod.Spec.Containers[1].Command, " "), strings.Join(pod.Spec.Containers[1].Args, " "))
 		logs = append(logs, fmt.Sprintf("SQLFlow Step: [%d/%d] Execute Code: %s", stepIdx, stepCnt, execCode))
 		logs = append(logs, fmt.Sprintf("SQLFlow Step: [%d/%d] Log: %s", stepIdx, stepCnt, logURL))
@@ -146,7 +146,7 @@ func (w *Workflow) Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 
 	if isPodCompleted(pod) {
 		// TODO(yancey1989): add duration time for the eoeResponse
-		// eoe just used to simpler the client code which can be consistent with non-argo mode.
+		// eoe just used to simplify the client code which can be consistent with non-argo mode.
 		eoeResponse := &pb.Response{Response: &pb.Response_Eoe{Eoe: &pb.EndOfExecution{}}}
 		if isPodFailed(pod) {
 			logger.Errorf("workflowFailed, spent:%d", time.Now().Second()-wf.CreationTimestamp.Second())
