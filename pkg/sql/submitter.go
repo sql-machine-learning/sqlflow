@@ -33,7 +33,7 @@ import (
 	"sqlflow.org/sqlflow/pkg/sql/codegen/xgboost"
 )
 
-// GetSubmitter returns a proper Submitter from configuations in environment variables.
+// GetSubmitter returns a proper Submitter from configurations in environment variables.
 func GetSubmitter(submitter string) Submitter {
 	if submitter == "" {
 		submitter = os.Getenv("SQLFLOW_submitter")
