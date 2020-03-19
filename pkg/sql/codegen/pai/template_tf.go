@@ -61,10 +61,11 @@ else:
         (tf.estimator.Estimator, tf.estimator.BoostedTreesClassifier,
             tf.estimator.BoostedTreesRegressor))
 
+print("is estimator: ", is_estimator)
 # Keras single node is using h5 format to save the model, no need to deal with export model format.
 # Keras distributed mode will use estimator, so this is also needed.
-if is_estimator or {{.NumWorkers}} > 1:
-    FLAGS = tf.app.flags.FLAGS
+FLAGS = tf.app.flags.FLAGS
+if is_estimator:
     if FLAGS.task_index == 0:
         with open("exported_path", "r") as fn:
             saved_model_path = fn.read()

@@ -72,7 +72,7 @@ func logViewURL(ns, wfID, podID string) (string, error) {
 
 // Fetch fetches the workflow log and status,
 // design doc: https://github.com/sql-machine-learning/sqlflow/blob/develop/doc/design/argo_workflow_on_sqlflow.md
-func Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
+func (w *Workflow) Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 	logger := log.WithFields(log.Fields{
 		"requestID": log.UUID(),
 		"jobID":     req.Job.Id,

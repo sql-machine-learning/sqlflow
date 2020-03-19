@@ -25,6 +25,12 @@ message ParserRequest {
   string sql_program = 2;
 }
 
+// InputOutputTables represents input and output tables a statement manipulates.
+message InputOutputTables {
+  repeated string inputs = 1;
+  repeated string outputs = 2;
+}
+
 message ParserResponse {
   // The sql_statements represent part of the sql_program accepted by the parser.
   // For example, if the ParserRequest is `select 1; select 2 to train ...`.
@@ -35,6 +41,8 @@ message ParserResponse {
   int32 index = 2;
   // The error represents the error message during parsing
   string error = 3;
+  // return tables that each statement manipulates.
+  repeated InputOutputTables input_output_tables = 4;
 }
 
 service Parser {
