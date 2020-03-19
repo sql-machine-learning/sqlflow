@@ -48,4 +48,8 @@ pip install \
     oss2==2.9.0 \
     plotille==3.7 \
     seaborn==0.9.0 \
-    jsbeautifier
+    jsbeautifier \
+    black \
+    seed-isort-config \
+    mypy \
+    isort
