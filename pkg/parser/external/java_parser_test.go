@@ -38,6 +38,8 @@ func TestExternalParserCommonCasesForCalcite(t *testing.T) {
 	commonThirdPartyCases(p, a)
 }
 
+// TODO(typhoonzero): add tests to test returned inputOutputTables.
+
 func TestExternalParserCommonCasesForAlisa(t *testing.T) {
 	if os.Getenv("SQLFLOW_submitter") != "alisa" {
 		t.Skip("Skip alisa case.")

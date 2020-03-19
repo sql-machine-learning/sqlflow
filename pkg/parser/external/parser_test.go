@@ -15,8 +15,9 @@ package external
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"strings"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func parserAcceptSemicolon(p Parser) bool {
@@ -34,7 +35,7 @@ func parserAcceptSemicolon(p Parser) bool {
 func commonThirdPartyCases(p Parser, a *assert.Assertions) {
 	// one standard SQL statement
 	for _, sql := range SelectCases {
-		s, idx, err := p.Parse(sql + ";")
+		s, _, idx, err := p.Parse(sql + ";")
 		a.NoError(err)
 		a.Equal(-1, idx)
 		a.Equal(1, len(s))
@@ -47,7 +48,7 @@ func commonThirdPartyCases(p Parser, a *assert.Assertions) {
 
 	{ // several standard SQL statements with comments
 		sqls := strings.Join(SelectCases, `;`) + `;`
-		s, idx, err := p.Parse(sqls)
+		s, _, idx, err := p.Parse(sqls)
 		a.NoError(err)
 		a.Equal(-1, idx)
 		a.Equal(len(SelectCases), len(s))
@@ -63,7 +64,7 @@ func commonThirdPartyCases(p Parser, a *assert.Assertions) {
 	// two SQL statements, the first one is extendedSQL
 	for _, sql := range SelectCases {
 		sqls := fmt.Sprintf(`%s to train;%s;`, sql, sql)
-		s, idx, err := p.Parse(sqls)
+		s, _, idx, err := p.Parse(sqls)
 		a.NoError(err)
 		a.Equal(len(sql)+1, idx)
 		a.Equal(1, len(s))
@@ -73,7 +74,7 @@ func commonThirdPartyCases(p Parser, a *assert.Assertions) {
 	// two SQL statements, the second one is extendedSQL
 	for _, sql := range SelectCases {
 		sqls := fmt.Sprintf(`%s;%s to train;`, sql, sql)
-		s, idx, err := p.Parse(sqls)
+		s, _, idx, err := p.Parse(sqls)
 		a.NoError(err)
 		a.Equal(len(sql)+1+len(sql)+1, idx)
 		a.Equal(2, len(s))
@@ -88,7 +89,7 @@ func commonThirdPartyCases(p Parser, a *assert.Assertions) {
 	// three SQL statements, the second one is extendedSQL
 	for _, sql := range SelectCases {
 		sqls := fmt.Sprintf(`%s;%s to train;%s;`, sql, sql, sql)
-		s, idx, err := p.Parse(sqls)
+		s, _, idx, err := p.Parse(sqls)
 		a.NoError(err)
 		a.Equal(len(sql)+1+len(sql)+1, idx)
 		a.Equal(2, len(s))
@@ -102,7 +103,7 @@ func commonThirdPartyCases(p Parser, a *assert.Assertions) {
 
 	{ // two SQL statements, the first standard SQL has an error.
 		sql := `select select 1; select 1 to train;`
-		s, idx, err := p.Parse(sql)
+		s, _, idx, err := p.Parse(sql)
 		a.Nil(s)
 		a.Equal(-1, idx)
 		a.NotNil(err)
@@ -111,7 +112,7 @@ func commonThirdPartyCases(p Parser, a *assert.Assertions) {
 	// two SQL statements, the second standard SQL has an error.
 	for _, sql := range SelectCases {
 		sqls := fmt.Sprintf(`%s to train; select select 1;`, sql)
-		s, idx, err := p.Parse(sqls)
+		s, _, idx, err := p.Parse(sqls)
 		a.NoError(err)
 		a.Equal(len(sql)+1, idx)
 		a.Equal(1, len(s))
@@ -120,7 +121,7 @@ func commonThirdPartyCases(p Parser, a *assert.Assertions) {
 
 	if pr, ok := p.(*javaParser); !ok || pr.typ != "odps" { // non select statement before to train
 		sql := `describe table to train;`
-		s, idx, err := p.Parse(sql)
+		s, _, idx, err := p.Parse(sql)
 		a.NotNil(err)
 		a.Equal(0, len(s))
 		a.Equal(-1, idx)

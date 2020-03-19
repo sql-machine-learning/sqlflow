@@ -44,9 +44,9 @@ func (p *tidbParser) Dialect() string {
 // Parse a SQL program into zero, one, or more statements.  In the
 // case of error, it returns the location of the parsing error in
 // program and an error message.
-func (p *tidbParser) Parse(program string) ([]string, int, error) {
+func (p *tidbParser) Parse(program string) ([]string, []*InputOutputTables, int, error) {
 	if p.psr == nil || p.re == nil {
-		return nil, -1, fmt.Errorf("parser is not initialized")
+		return nil, nil, -1, fmt.Errorf("parser is not initialized")
 	}
 
 	p.mu.Lock()
@@ -56,7 +56,7 @@ func (p *tidbParser) Parse(program string) ([]string, int, error) {
 	if err != nil {
 		matched := p.re.FindAllStringSubmatch(err.Error(), -1)
 		if len(matched) != 1 || len(matched[0]) != 2 {
-			return nil, -1, fmt.Errorf(`cannot match parse error "near" in "%q"`, err)
+			return nil, nil, -1, fmt.Errorf(`cannot match parse error "near" in "%q"`, err)
 		}
 		idx := strings.Index(program, matched[0][1])
 
@@ -69,7 +69,7 @@ func (p *tidbParser) Parse(program string) ([]string, int, error) {
 		nodes, _, e := p.psr.Parse(program[:idx]+";", "", "")
 		if e != nil || len(nodes) == 0 {
 			// return the original parsing error
-			return nil, -1, err
+			return nil, nil, -1, err
 		}
 
 		// Make sure the left hand side is a select statement, so that
@@ -78,7 +78,7 @@ func (p *tidbParser) Parse(program string) ([]string, int, error) {
 		case *ast.SelectStmt, *ast.UnionStmt:
 		default:
 			// return the original parsing error
-			return nil, -1, err
+			return nil, nil, -1, err
 		}
 
 		sqls := make([]string, 0)
@@ -90,13 +90,15 @@ func (p *tidbParser) Parse(program string) ([]string, int, error) {
 		if sql := sqls[len(sqls)-1]; sql[len(sql)-1] == ';' {
 			sqls[len(sqls)-1] = sql[:len(sql)-1]
 		}
+		iotables := []*InputOutputTables{}
 
-		return sqls, idx, nil
+		return sqls, iotables, idx, nil
 	}
 
 	sqls := make([]string, 0)
 	for _, n := range nodes {
 		sqls = append(sqls, n.Text())
 	}
-	return sqls, -1, nil
+	iotables := []*InputOutputTables{}
+	return sqls, iotables, -1, nil
 }

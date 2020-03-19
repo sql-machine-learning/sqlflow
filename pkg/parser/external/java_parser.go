@@ -16,6 +16,7 @@ package external
 import (
 	"context"
 	"fmt"
+
 	"sqlflow.org/sqlflow/pkg/proto"
 )
 
@@ -28,18 +29,23 @@ func newJavaParser(typ string) *javaParser {
 	return &javaParser{typ: typ}
 }
 
-func (p *javaParser) Parse(program string) ([]string, int, error) {
+func (p *javaParser) Parse(program string) ([]string, []*InputOutputTables, int, error) {
 	c, err := connectToServer()
 	if err != nil {
-		return nil, -1, err
+		return nil, nil, -1, err
 	}
 
 	r, err := proto.NewParserClient(c).Parse(context.Background(), &proto.ParserRequest{Dialect: p.typ, SqlProgram: program})
 	if err != nil {
-		return nil, -1, err
+		return nil, nil, -1, err
 	}
 	if r.Error != "" {
-		return nil, -1, fmt.Errorf(r.Error)
+		return nil, nil, -1, fmt.Errorf(r.Error)
 	}
-	return r.SqlStatements, int(r.Index), nil
+	ioTables := []*InputOutputTables{}
+	for _, ioTablesProto := range r.InputOutputTables {
+		ioTables = append(ioTables,
+			&InputOutputTables{InputTables: ioTablesProto.Inputs, OutputTables: ioTablesProto.Outputs})
+	}
+	return r.SqlStatements, ioTables, int(r.Index), nil
 }
