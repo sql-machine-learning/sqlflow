@@ -159,3 +159,54 @@ def pai_dataset(table,
         num_threads=64).map(
             functools.partial(parse_pai_dataset, feature_column_names,
                               label_spec["feature_name"], feature_specs))
+
+
+def get_dataset_fn(select,
+                   validate_select,
+                   datasource,
+                   feature_column_names,
+                   feature_metas,
+                   label_meta,
+                   is_pai,
+                   pai_table,
+                   pai_val_table,
+                   epochs,
+                   batch_size,
+                   shuffle_size,
+                   num_workers=1,
+                   worker_id=0,
+                   is_estimator=True):
+    def train_input_fn():
+        train_dataset = input_fn(select,
+                                 datasource,
+                                 feature_column_names,
+                                 feature_metas,
+                                 label_meta,
+                                 is_pai=is_pai,
+                                 pai_table=pai_table,
+                                 num_workers=num_workers,
+                                 worker_id=worker_id)
+        if is_estimator:
+            train_dataset = train_dataset.shuffle(shuffle_size).batch(
+                batch_size).cache("cache_train").repeat(
+                    epochs if epochs else 1)
+        else:
+            train_dataset = train_dataset.shuffle(shuffle_size).batch(
+                batch_size).repeat(epochs if epochs else 1)
+        return train_dataset
+
+    def validate_input_fn():
+        validate_dataset = input_fn(validate_select,
+                                    datasource,
+                                    feature_column_names,
+                                    feature_metas,
+                                    label_meta,
+                                    is_pai=is_pai,
+                                    pai_table=pai_val_table)
+        validate_dataset = validate_dataset.batch(batch_size)
+        return validate_dataset
+
+    if validate_select != "":
+        return train_input_fn, validate_input_fn
+    else:
+        return train_input_fn, None
