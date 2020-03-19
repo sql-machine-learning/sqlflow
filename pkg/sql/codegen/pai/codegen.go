@@ -32,7 +32,7 @@ const (
 	ModelTypeTF = iota
 	// ModelTypeXGBoost is the model type that use PAI Tensorflow to train XGBoost models.
 	ModelTypeXGBoost
-	// ModelTypePAIML is the model type that trained by PAI machine learing algorithm tookit
+	// ModelTypePAIML is the model type that trained by PAI machine learning algorithm toolkit
 	ModelTypePAIML
 )
 

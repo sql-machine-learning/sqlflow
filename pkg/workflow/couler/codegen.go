@@ -59,7 +59,7 @@ func getStepEnvs(session *pb.Session) (map[string]string, error) {
 		if len(pair) != 2 {
 			return nil, fmt.Errorf("env: %s should format key=value", env)
 		}
-		// should not pass the workflkow env into step
+		// should not pass the workflow env into step
 		if strings.HasPrefix(pair[0], "SQLFLOW_") && !strings.HasPrefix(pair[0], "SQLFLOW_WORKFLOW_") {
 			envs[pair[0]] = pair[1]
 		}
