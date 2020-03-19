@@ -1,5 +1,3 @@
-default_language_version:
-  python: python3
 repos:
 - repo: git://github.com/dnephin/pre-commit-golang
   rev: v0.3.5
@@ -57,5 +55,5 @@ repos:
     name: pylint
     entry: bash ./scripts/pre-commit/pylint.sh
     language: system
-    files: \.(py)$
+    files: \.py$
     verbose: true
