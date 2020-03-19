@@ -1,6 +1,7 @@
 package org.sqlflow.parser.parse;
 
 import java.util.ArrayList;
+import java.util.List;
 
 // ParseResult contains the parsing result of parse
 public class ParseResult {
@@ -12,5 +13,5 @@ public class ParseResult {
   // Errors encountered during parsing.
   public String error;
   // tables that each statement manipulates.
-  public ArrayList<InputOutputTables> inputOutputTables;
+  public List<InputOutputTables> inputOutputTables;
 }
