@@ -22,7 +22,7 @@ import (
 	"sqlflow.org/sqlflow/pkg/log"
 	"sqlflow.org/sqlflow/pkg/parser"
 	"sqlflow.org/sqlflow/pkg/sql"
-	"sqlflow.org/sqlflow/pkg/sql/codegen/couler"
+	"sqlflow.org/sqlflow/pkg/workflow"
 )
 
 func compile(cgName, sqlProgram, datasource string, logger *log.Logger) (string, error) {
@@ -42,7 +42,11 @@ func compile(cgName, sqlProgram, datasource string, logger *log.Logger) (string,
 		}
 		sess := sql.MakeSessionFromEnv()
 		sess.DbConnStr = datasource
-		return couler.GenCode(spIRs, sess)
+		codegen, _, e := workflow.New(cgName)
+		if e != nil {
+			return "", e
+		}
+		return codegen.GenCode(spIRs, sess)
 	default:
 		// TODO(yancey1989): support other codegen, e.g, tensorflow, xgboost.
 		return "", fmt.Errorf("sqlflow compiler has not support codegen: %s", cgName)
