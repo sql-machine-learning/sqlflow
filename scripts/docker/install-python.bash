@@ -47,7 +47,6 @@ pip install \
     plotille==3.7 \
     seaborn==0.9.0 \
     jsbeautifier \
+    yapf \
     isort \
-    black \
-    seed-isort-config \
-    mypy
+    pylint
