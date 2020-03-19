@@ -84,16 +84,19 @@ func updateIfKeyDoesNotExist(current, add map[string]interface{}) {
 
 func resolveModelParams(ir *ir.TrainStmt) error {
 	switch strings.ToUpper(ir.Estimator) {
-	case "XGBOOST.XGBREGRESSOR":
+	case "XGBOOST.XGBREGRESSOR", "XGBREGRESSOR":
 		defaultAttributes := map[string]interface{}{"objective": "reg:squarederror"}
 		updateIfKeyDoesNotExist(ir.Attributes, defaultAttributes)
-	case "XGBOOST.XGBCLASSIFIER":
+	case "XGBOOST.XGBRFREGRESSOR", "XGBRFREGRESSOR":
+		defaultAttributes := map[string]interface{}{"objective": "reg:squarederror", "learning_rate": 1, "subsample": 0.8, "colsample_bynode": 0.8, "reg_lambda": 1e-05}
+		updateIfKeyDoesNotExist(ir.Attributes, defaultAttributes)
+	case "XGBOOST.XGBCLASSIFIER", "XGBCLASSIFIER":
 		defaultAttributes := map[string]interface{}{"objective": "multi:softprob"}
 		updateIfKeyDoesNotExist(ir.Attributes, defaultAttributes)
-	case "XGBOOST.XGBRFCLASSIFIER":
-		defaultAttributes := map[string]interface{}{"learning_rate": 1, "subsample": 0.8, "colsample_bynode": 0.8, "reg_lambda": 1e-05}
+	case "XGBOOST.XGBRFCLASSIFIER", "XGBRFCLASSIFIER":
+		defaultAttributes := map[string]interface{}{"objective": "multi:softprob", "learning_rate": 1, "subsample": 0.8, "colsample_bynode": 0.8, "reg_lambda": 1e-05}
 		updateIfKeyDoesNotExist(ir.Attributes, defaultAttributes)
-	case "XGBOOST.XGBRANKER":
+	case "XGBOOST.XGBRANKER", "XGBRANKER":
 		defaultAttributes := map[string]interface{}{"objective": "rank:pairwise"}
 		updateIfKeyDoesNotExist(ir.Attributes, defaultAttributes)
 	case "XGBOOST.GBTREE":
