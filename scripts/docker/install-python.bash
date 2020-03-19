@@ -51,5 +51,4 @@ pip install \
     jsbeautifier \
     black \
     seed-isort-config \
-    mypy \
-    isort
+    mypy
