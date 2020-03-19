@@ -10,7 +10,7 @@ SQLFlow connects a SQL engine (e.g., MySQL, Hive, or MaxCompute) and TensorFlow 
 
 ```SQL
 SELECT * FROM boston.train
-TO TRAIN xgboost.regressor
+TO TRAIN xgboost.xgbregressor
 WITH
     objective ="reg:squarederror",
     train.num_boost_round = 30,
@@ -21,7 +21,7 @@ INTO sqlflow_models.my_xgb_regression_model;
 
 #### Model Types
 
-`XGBOOST.BINARYCLASSIFIER`, `XGBOOST.MULTICLASSIFIER`, `XGBOOST.REGRESSOR` and `XGBOOST.GBTREE`.
+`XGBOOST.XGBREGRESSOR`, `XGBOOST.XGBCLASSIFIER`, `XGBOOST.XGBRFCLASSIFIER`, `XGBOOST.XGBRANKER`, `XGBOOST.GBTREE`, `XGBOOST.GBLINEAR`, `XGBOOST.DART`
 
 #### Parameters
 
