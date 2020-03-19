@@ -12,6 +12,7 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.sqlflow.parser.ParserProto.InputOutputTables;
 import org.sqlflow.parser.ParserProto.ParserRequest;
 import org.sqlflow.parser.ParserProto.ParserResponse;
 import org.sqlflow.parser.parse.ParseInterface;
@@ -79,6 +80,14 @@ public class ParserGrpcServer {
       responseBuilder.addAllSqlStatements(parseResult.statements);
       responseBuilder.setIndex(parseResult.position);
       responseBuilder.setError(parseResult.error);
+      if (parseResult.inputOutputTables != null) {
+        for (int i = 0; i < parseResult.inputOutputTables.size(); i++) {
+          InputOutputTables.Builder tablesBuilder = InputOutputTables.newBuilder();
+          tablesBuilder.addAllInputs(parseResult.inputOutputTables.get(i).inputTables);
+          tablesBuilder.addAllOutputs(parseResult.inputOutputTables.get(i).outputTables);
+          responseBuilder.addInputOutputTables(tablesBuilder);
+        }
+      }
 
       responseObserver.onNext(responseBuilder.build());
       responseObserver.onCompleted();

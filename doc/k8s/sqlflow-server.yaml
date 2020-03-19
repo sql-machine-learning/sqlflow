@@ -22,9 +22,7 @@ spec:
         ports:
         - containerPort: 50051
           name: sqlflow-server
-
 ---
-
 apiVersion: v1
 kind: Service
 metadata:

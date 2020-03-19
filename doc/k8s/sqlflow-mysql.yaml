@@ -13,7 +13,7 @@ spec:
       labels:
         app: sqlflow-mysql
     spec:
-      volumes:
+      volumes: 
       containers:
       - image: sqlflow/sqlflow@sha256:863f135258fc2c824570a8e17c705bc70c5ce033499a9151e8cc0dca42df6df1
         name: mysql
@@ -29,7 +29,6 @@ spec:
         - containerPort: 3306
           name: mysql
 ---
-
 apiVersion: v1
 kind: Service
 metadata:

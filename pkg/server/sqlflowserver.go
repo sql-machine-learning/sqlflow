@@ -20,11 +20,13 @@ package server
 import (
 	"context"
 	"fmt"
-	"log"
+	"os"
+	"time"
 
 	"sqlflow.org/sqlflow/pkg/database"
+	"sqlflow.org/sqlflow/pkg/log"
+	"sqlflow.org/sqlflow/pkg/workflow"
 
-	sfargo "sqlflow.org/sqlflow/pkg/argo"
 	"sqlflow.org/sqlflow/pkg/parser"
 	"sqlflow.org/sqlflow/pkg/pipe"
 	pb "sqlflow.org/sqlflow/pkg/proto"
@@ -50,7 +52,11 @@ func NewServer(run func(string, string, *pb.Session) *pipe.Reader,
 func (s *Server) Fetch(ctx context.Context, job *pb.FetchRequest) (*pb.FetchResponse, error) {
 	// FIXME(tony): to make function fetch easily to mock, we should decouple server package
 	// with argo package by introducing s.fetch
-	return sfargo.Fetch(job)
+	_, wf, e := workflow.New("couler")
+	if e != nil {
+		return nil, e
+	}
+	return wf.Fetch(job)
 }
 
 // Run implements `rpc Run (Request) returns (stream Response)`
@@ -63,7 +69,6 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 		var err error
 		switch s := r.(type) {
 		case error:
-			log.Println(s)
 			return s
 		case map[string]interface{}:
 			res, err = pb.EncodeHead(s)
@@ -73,9 +78,8 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 			res, err = pb.EncodeMessage(s.Image)
 		case string:
 			res, err = pb.EncodeMessage(s)
-		case sf.WorkflowJob:
-			job := r.(sf.WorkflowJob)
-			res = &pb.Response{Response: &pb.Response_Job{Job: &pb.Job{Id: job.JobID}}}
+		case pb.Job:
+			res = &pb.Response{Response: &pb.Response_Job{Job: &s}}
 		case sf.EndOfExecution:
 			// FIXME(tony): decouple server package with sql package by introducing s.numberOfStatement
 			dialect, _, err := database.ParseURL(req.Session.DbConnStr)
@@ -111,4 +115,38 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 		}
 	}
 	return nil
+}
+
+// SubmitWorkflow submits an Argo workflow
+//
+// TODO(wangkuiyi): Make SubmitWorkflow return an error in addition to
+// *pipe.Reader, and remove the calls to log.Printf.
+func SubmitWorkflow(sqlProgram string, modelDir string, session *pb.Session) *pipe.Reader {
+	logger := log.WithFields(log.Fields{
+		"requestID": log.UUID(),
+		"user":      session.UserId,
+		"submitter": session.Submitter,
+		"event":     "submitWorkflow",
+	})
+	if os.Getenv("SQLFLOW_WORKFLOW_LOGVIEW_ENDPOINT") == "" {
+		logger.Fatalf("should set SQLFLOW_WORKFLOW_LOGVIEW_ENDPOINT if enable argo mode.")
+	}
+	rd, wr := pipe.Pipe()
+	startTime := time.Now()
+	go func() {
+		defer wr.Close()
+		wfID, e := workflow.Run("couler", sqlProgram, session, logger)
+		defer logger.Infof("submitted, workflowID:%s, spent:%.f, error:%v", wfID, time.Since(startTime).Seconds(), e)
+		if e != nil {
+			if e := wr.Write(e); e != nil {
+				logger.Errorf("piping: %v", e)
+			}
+			return
+		}
+		if e := wr.Write(pb.Job{Id: wfID}); e != nil {
+			logger.Errorf("piping: %v", e)
+			return
+		}
+	}()
+	return rd
 }

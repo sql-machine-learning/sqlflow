@@ -65,7 +65,7 @@ msg: Details.
     1. Count the number of `TRAIN/PREDICT/EXPLAIN/NORMAL` statements respectively, i.e.:
     `2020-03-10 10:00:14 level=INFO requestID=wf697-s29 user=9527 event=parsing sqlType=TRAIN msg="SELECT * FROM TO TRAIN .."`
     1. Count the workflow steps of each phase, such as `pending/completed/failed/..` in `Fetch()` function.
-    1. Log the duration of the completed steps by `time.Since(pod.StartTime)` in `Fetch()` function.
+    1. Log the duration of the completed steps by `time.Now().Second()-wf.CreationTimestamp.Second()` in `Fetch()` function.
 
     However, if a client doesn't call the `Fetch()`, we've no chance to log the duration and workflow steps of each phase. Instead, we can log such information inside the workflow.
 1. Diagnostic log

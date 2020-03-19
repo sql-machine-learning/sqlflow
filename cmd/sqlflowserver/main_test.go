@@ -323,6 +323,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("TestTextClassification", CaseTrainTextClassification)
 	t.Run("CaseTrainTextClassificationCustomLSTM", CaseTrainTextClassificationCustomLSTM)
 	t.Run("CaseTrainCustomModel", CaseTrainCustomModel)
+	t.Run("CaseTrainCustomModelFunctional", CaseTrainCustomModelFunctional)
 	t.Run("CaseTrainOptimizer", CaseTrainOptimizer)
 	t.Run("CaseTrainSQLWithHyperParams", CaseTrainSQLWithHyperParams)
 	t.Run("CaseTrainCustomModelWithHyperParams", CaseTrainCustomModelWithHyperParams)
@@ -1048,19 +1049,30 @@ USING %s;`, caseTestTable, casePredictTable, caseInto)
 		AssertGreaterEqualAny(a, row[4], int64(0))
 	}
 
-	// TODO(typhoonzero): re-enable this test when we fixed training with
-	// keras functional models.
-	//
-	// 	trainSQL = fmt.Sprintf(`SELECT * FROM %s
-	// TO TRAIN sqlflow_models.dnnclassifier_functional_model
-	// WITH model.n_classes = 3
-	// COLUMN sepal_length, sepal_width, petal_length, petal_width
-	// LABEL class
-	// INTO %s;`, caseTrainTable, caseInto)
-	// 	_, _, _, err = connectAndRunSQL(trainSQL)
-	// 	if err != nil {
-	// 		a.Fail("run trainSQL error: %v", err)
-	// 	}
+	trainSQL = fmt.Sprintf(`SELECT * FROM %s
+TO TRAIN sqlflow_models.dnnclassifier_functional_model
+WITH model.n_classes = 3, validation.metrics="CategoricalAccuracy"
+COLUMN sepal_length, sepal_width, petal_length, petal_width
+LABEL class
+INTO %s;`, caseTrainTable, caseInto)
+	_, _, _, err = connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("run trainSQL error: %v", err)
+	}
+}
+
+func CaseTrainCustomModelFunctional(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`SELECT * FROM %s
+TO TRAIN sqlflow_models.dnnclassifier_functional_model
+WITH model.n_classes = 3, validation.metrics="CategoricalAccuracy"
+COLUMN sepal_length, sepal_width, petal_length, petal_width
+LABEL class
+INTO %s;`, caseTrainTable, caseInto)
+	_, _, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("run trainSQL error: %v", err)
+	}
 }
 
 func CaseTrainWithCommaSeparatedLabel(t *testing.T) {
@@ -1565,6 +1577,26 @@ INTO e2etest_dnn_model_distributed;`, caseTrainTable, caseTestTable)
 	a.NoError(err)
 }
 
+func CasePAIMaxComputeTrainDistributedKeras(t *testing.T) {
+	t.Parallel()
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`SELECT * FROM %s
+TO TRAIN sqlflow_models.dnnclassifier_functional_model
+WITH
+	model.n_classes=3,
+	train.num_workers=2,
+	train.num_ps=2,
+	train.epoch=10,
+	train.batch_size=4,
+	train.verbose=1,
+	validation.select="select * from %s",
+	validation.metrics="CategoricalAccuracy"
+LABEL class
+INTO e2etest_keras_dnn_model_distributed;`, caseTrainTable, caseTestTable)
+	_, _, _, err := connectAndRunSQL(trainSQL)
+	a.NoError(err)
+}
+
 func CasePAIMaxComputeTrainTFBTDistributed(t *testing.T) {
 	t.Parallel()
 	a := assert.New(t)
@@ -1921,6 +1953,7 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 		t.Run("CasePAIMaxComputeTrainDistributed", CasePAIMaxComputeTrainDistributed)
 		t.Run("CasePAIMaxComputeTrainPredictCategoricalFeature", CasePAIMaxComputeTrainPredictCategoricalFeature)
 		t.Run("CasePAIMaxComputeTrainTFBTDistributed", CasePAIMaxComputeTrainTFBTDistributed)
+		t.Run("CasePAIMaxComputeTrainDistributedKeras", CasePAIMaxComputeTrainDistributedKeras)
 
 		// FIXME(typhoonzero): Add this test back when we solve error: model already exist issue on the CI.
 		// t.Run("CaseTrainPAIRandomForests", CaseTrainPAIRandomForests)
@@ -2011,7 +2044,7 @@ FROM %s LIMIT 5;
 	defer conn.Close()
 
 	cli := pb.NewSQLFlowClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), 1800*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3600*time.Second)
 	defer cancel()
 
 	stream, err := cli.Run(ctx, &pb.Request{Sql: sqlProgram, Session: &pb.Session{DbConnStr: testDatasource}})
@@ -2047,7 +2080,7 @@ INTO test_workflow_model;`, caseTrainTable, caseTrainTable, customImage, caseTes
 	defer conn.Close()
 
 	cli := pb.NewSQLFlowClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), 1800*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3600*time.Second)
 	defer cancel()
 
 	stream, err := cli.Run(ctx, &pb.Request{Sql: sqlProgram, Session: &pb.Session{DbConnStr: testDatasource}})
@@ -2070,7 +2103,7 @@ func checkWorkflow(ctx context.Context, cli pb.SQLFlowClient, stream pb.SQLFlow_
 		workflowID = iter.GetJob().GetId()
 	}
 	if !strings.HasPrefix(workflowID, "sqlflow") {
-		return fmt.Errorf("workflow not started with sqlflow-couler")
+		return fmt.Errorf("workflow ID: %s does not prefix with sqlflow", workflowID)
 	}
 	req := &pb.FetchRequest{
 		Job: &pb.Job{Id: workflowID},
@@ -2087,7 +2120,7 @@ func checkWorkflow(ctx context.Context, cli pb.SQLFlowClient, stream pb.SQLFlow_
 			return nil
 		}
 		req = res.UpdatedFetchSince
-		time.Sleep(3 * time.Second)
+		time.Sleep(4 * time.Second)
 	}
 	return fmt.Errorf("workflow times out")
 }
@@ -2124,8 +2157,8 @@ func CaseTrainDistributedPAIArgo(t *testing.T) {
 	defer conn.Close()
 
 	cli := pb.NewSQLFlowClient(conn)
-	// wait 30min for the workflow execution since it may take time to allocate enough nodes.
-	ctx, cancel := context.WithTimeout(context.Background(), 1800*time.Second)
+	// wait 1h for the workflow execution since it may take time to allocate enough nodes.
+	ctx, cancel := context.WithTimeout(context.Background(), 3600*time.Second)
 	defer cancel()
 
 	stream, err := cli.Run(ctx, &pb.Request{Sql: trainSQL, Session: &pb.Session{DbConnStr: testDatasource}})

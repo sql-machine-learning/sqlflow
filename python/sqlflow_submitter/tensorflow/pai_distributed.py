@@ -90,3 +90,38 @@ def dump_into_tf_config(cluster, task_type, task_index):
             'index': task_index
         }
     })
+
+
+def make_estimator_distributed_runconfig(FLAGS,
+                                         estimator,
+                                         is_distributed,
+                                         save_checkpoints_steps=100):
+    if is_distributed:
+        cluster, task_type, task_index = make_distributed_info_without_evaluator(
+            FLAGS)
+        dump_into_tf_config(cluster, task_type, task_index)
+        device_filters = None
+        if estimator in (tf.estimator.BoostedTreesClassifier,
+                         tf.estimator.BoostedTreesRegressor):
+            # TFBT doesn't work with tf.contrib.distribute at the moment.
+            # Use estimator distributed training instead, see
+            # https://github.com/tensorflow/tensorflow/issues/32081
+            dist_strategy = None
+            if task_type != 'ps':
+                # Disable communication between workers, see
+                # https://github.com/tensorflow/tensorflow/issues/21745
+                device_filters = [
+                    '/job:ps',
+                    '/job:%s/task:%d' % (task_type, task_index)
+                ]
+        else:
+            dist_strategy = tf.contrib.distribute.ParameterServerStrategy()
+        run_config = tf.estimator.RunConfig(
+            save_checkpoints_steps=save_checkpoints_steps,
+            train_distribute=dist_strategy,
+            session_config=tf.ConfigProto(log_device_placement=True,
+                                          device_filters=device_filters))
+    else:
+        run_config = tf.estimator.RunConfig(
+            save_checkpoints_steps=save_checkpoints_steps)
+    return run_config
