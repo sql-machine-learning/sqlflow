@@ -51,3 +51,11 @@ repos:
   rev: v4.3.21
   hooks:
   - id: isort
+- repo: local
+  hooks:
+  - id: pylint
+    name: pylint
+    entry: bash ./scripts/pre-commit/pylint.sh
+    language: system
+    files: \.(py)$
+    verbose: true
