@@ -74,26 +74,41 @@ func objectiveChecker(obj interface{}) error {
 	return fmt.Errorf("unrecognized objective %s, should be one of %v", s, expected)
 }
 
-func resolveModelType(ir *ir.TrainStmt) (string, error) {
-	switch strings.ToUpper(ir.Estimator) {
-	case "XGBOOST.BINARYCLASSIFIER":
-		ir.Attributes["objective"] = "binary:logistic"
-		return "gbtree", nil
-	case "XGBOOST.MULTICLASSIFIER":
-		ir.Attributes["objective"] = "multi:softprob"
-		return "gbtree", nil
-	case "XGBOOST.REGRESSOR":
-		ir.Attributes["objective"] = "reg:squarederror"
-		return "gbtree", nil
-	case "XGBOOST.GBTREE":
-		return "gbtree", nil
-	case "XGBOOST.GBLINEAR":
-		return "gblinear", nil
-	case "XGBOOST.DART":
-		return "dart", nil
-	default:
-		return "", fmt.Errorf("unsupported model name %v, currently supports xgboost.gbtree, xgboost.gblinear, xgboost.dart", ir.Estimator)
+func updateIfKeyDoesNotExist(current, add map[string]interface{}) {
+	for k, v := range add {
+		if _, ok := current[k]; !ok {
+			current[k] = v
+		}
 	}
+}
+
+func resolveModelParams(ir *ir.TrainStmt) error {
+	switch strings.ToUpper(ir.Estimator) {
+	case "XGBOOST.XGBREGRESSOR":
+		defaultAttributes := map[string]interface{}{"objective": "reg:squarederror"}
+		updateIfKeyDoesNotExist(ir.Attributes, defaultAttributes)
+	case "XGBOOST.XGBCLASSIFIER":
+		defaultAttributes := map[string]interface{}{"objective": "multi:softprob"}
+		updateIfKeyDoesNotExist(ir.Attributes, defaultAttributes)
+	case "XGBOOST.XGBRFCLASSIFIER":
+		defaultAttributes := map[string]interface{}{"learning_rate": 1, "subsample": 0.8, "colsample_bynode": 0.8, "reg_lambda": 1e-05}
+		updateIfKeyDoesNotExist(ir.Attributes, defaultAttributes)
+	case "XGBOOST.XGBRANKER":
+		defaultAttributes := map[string]interface{}{"objective": "rank:pairwise"}
+		updateIfKeyDoesNotExist(ir.Attributes, defaultAttributes)
+	case "XGBOOST.GBTREE":
+		defaultAttributes := map[string]interface{}{"booster": "gbtree"}
+		updateIfKeyDoesNotExist(ir.Attributes, defaultAttributes)
+	case "XGBOOST.GBLINEAR":
+		defaultAttributes := map[string]interface{}{"booster": "gblinear"}
+		updateIfKeyDoesNotExist(ir.Attributes, defaultAttributes)
+	case "XGBOOST.DART":
+		defaultAttributes := map[string]interface{}{"booster": "dart"}
+		updateIfKeyDoesNotExist(ir.Attributes, defaultAttributes)
+	default:
+		return fmt.Errorf("unsupported model name %v, currently supports xgboost.gbtree, xgboost.gblinear, xgboost.dart", ir.Estimator)
+	}
+	return nil
 }
 
 // InitializeAttributes initializes the attributes of XGBoost and does type checking for them
@@ -169,12 +184,11 @@ func resolveFeatureMeta(fds []ir.FieldDesc) ([]byte, []string, error) {
 
 // Train generates a Python program for train a XgBoost model.
 func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
-	params := parseAttribute(trainStmt.Attributes)
-	booster, err := resolveModelType(trainStmt)
+	err := resolveModelParams(trainStmt)
 	if err != nil {
 		return "", err
 	}
-	params[""]["booster"] = booster
+	params := parseAttribute(trainStmt.Attributes)
 
 	if len(trainStmt.Features) != 1 {
 		return "", fmt.Errorf("xgboost only support 1 feature column set, received %d", len(trainStmt.Features))

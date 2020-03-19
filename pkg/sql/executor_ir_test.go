@@ -73,7 +73,7 @@ USING sqlflow_models.my_clustering_model;
 	testXGBoostTrainSelectIris = ` 
 SELECT *
 FROM iris.train
-TO TRAIN xgboost.multiclassifier
+TO TRAIN xgboost.XGBRFCLASSIFIER
 WITH
     train.num_boost_round = 30,
     eta = 0.4,

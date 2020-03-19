@@ -69,9 +69,8 @@ func TestResolveModelType(t *testing.T) {
 	for i := range shortName {
 		tir := ir.MockTrainStmt(true)
 		tir.Estimator = shortName[i]
-		modelType, err := resolveModelType(tir)
+		err := resolveModelParams(tir)
 		a.NoError(err)
 		a.Equal(objectiveName[i], tir.Attributes["objective"])
-		a.Equal("gbtree", modelType)
 	}
 }
