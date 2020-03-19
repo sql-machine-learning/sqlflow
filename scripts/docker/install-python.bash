@@ -49,4 +49,5 @@ pip install \
     jsbeautifier \
     yapf \
     isort \
-    pylint
+    pylint \
+    flake8
