@@ -70,8 +70,9 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
     # https://github.com/sql-machine-learning/models/blob/develop/sqlflow_models/dnnclassifier_functional_api_example.py
     for k in feature_metas:
         feature_metas[k]["name"] = feature_metas[k]["feature_name"]
-    classifier = estimator(**model_params)
+
     classifier_pkg = sys.modules[estimator.__module__]
+    # setting training metrics
     model_metrics = []
     if hasattr(classifier_pkg, "eval_metrics_fn"):
         metrics_functions = classifier_pkg.eval_metrics_fn()
@@ -88,6 +89,14 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
             # default
             keras_metrics = metrics.get_keras_metrics(["Accuracy"])
 
+    # setting optimizer
+    if optimizer is None:
+        # use keras model default optimizer if optimizer is not specified in WITH clause.
+        optimizer = classifier_pkg.optimizer()
+    if loss is None:
+        loss = classifier_pkg.loss
+
+    # setting datasets
     # FIXME(typhoonzero): find a way to cache to local file and avoid cache lockfile already exists issue.
     train_dataset = input_fn(select,
                              datasource,
@@ -108,12 +117,32 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
     else:
         validate_dataset = None
 
-    if optimizer is None:
-        # use keras model default optimizer if optimizer is not specified in WITH clause.
-        optimizer = classifier_pkg.optimizer()
-    if loss is None:
-        loss = classifier_pkg.loss
+    classifier = estimator(**model_params)
     classifier.compile(optimizer=optimizer, loss=loss, metrics=keras_metrics)
+
+    if is_pai and len(FLAGS.worker_hosts.split(",")) > 1:
+        # train keras model distributed
+        cluster, task_type, task_index = make_distributed_info_without_evaluator(
+            FLAGS)
+        dump_into_tf_config(cluster, task_type, task_index)
+        dist_strategy = tf.contrib.distribute.ParameterServerStrategy()
+
+        run_config = tf.estimator.RunConfig(save_checkpoints_steps=100,
+                                            train_distribute=dist_strategy,
+                                            session_config=tf.ConfigProto(
+                                                log_device_placement=True,
+                                                device_filters=None))
+        model_dir = FLAGS.sqlflow_hdfs_ckpt
+
+        keras_estimator = tf.keras.estimator.model_to_estimator(
+            classifier, model_dir=model_dir, config=run_config)
+        estimator_train_compiled(keras_estimator, is_pai, FLAGS, pai_table,
+                                 pai_val_table, feature_column_names,
+                                 feature_metas, label_meta, datasource, select,
+                                 validate_select, batch_size, epochs, verbose,
+                                 100, None, 10, 60)
+        return
+
     if hasattr(classifier, 'sqlflow_train_loop'):
 
         def flatten(feature, label):
@@ -168,20 +197,18 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
         for k in val_keys:
             print("%s: %s" % (k, history.history[k][-1]))
     classifier.save_weights(save, save_format="h5")
-    if is_pai:
+    if is_pai and FLAGS.task_index == 0:
         print("saving keras model to: %s" % FLAGS.sqlflow_oss_modeldir)
         model.save_file(FLAGS.sqlflow_oss_modeldir, save)
 
 
-def estimator_train_and_save(
-    estimator, model_params, save, is_pai, FLAGS, pai_table, pai_val_table,
-    feature_column_names, feature_metas, label_meta, datasource, select,
-    validate_select, batch_size, epochs, verbose, log_every_n_iter,
-    train_max_steps, eval_start_delay_secs, eval_throttle_secs, metric_names):
-    classifier = estimator(**model_params)
-
+def estimator_train_compiled(estimator, is_pai, FLAGS, pai_table,
+                             pai_val_table, feature_column_names,
+                             feature_metas, label_meta, datasource, select,
+                             validate_select, batch_size, epochs, verbose,
+                             log_every_n_iter, train_max_steps,
+                             eval_start_delay_secs, eval_throttle_secs):
     def train_input_fn():
-        # FIXME(typhoonzero): find a way to cache to local file and avoid cache lockfile already exists issue.
         if is_pai:
             train_dataset = input_fn("",
                                      None,
@@ -200,15 +227,8 @@ def estimator_train_and_save(
             batch_size).cache("cache_train").repeat(epochs if epochs else 1)
         return train_dataset
 
-    # do not add default Accuracy metric when using estimator to train, it will fail
-    # when the estimator is a regressor, and estimator seems automatically add some
-    # metrics. Only add additional metrics when user specified with `WITH`.
-    if TF_VERSION_2 and metric_names != ["Accuracy"]:
-        classifier = tf.estimator.add_metrics(
-            classifier, metrics.get_tf_metrics(metric_names))
-
     train_spec = tf.estimator.TrainSpec(input_fn=lambda: train_input_fn(),
-                                        max_steps=train_max_steps)
+                                        max_steps=None)
 
     def validate_input_fn():
         if is_pai:
@@ -227,18 +247,39 @@ def estimator_train_and_save(
         return validate_dataset
 
     if validate_select != "":
-        eval_spec = tf.estimator.EvalSpec(
-            input_fn=lambda: validate_input_fn(),
-            start_delay_secs=eval_start_delay_secs,
-            throttle_secs=eval_throttle_secs)
-        result = tf.estimator.train_and_evaluate(classifier, train_spec,
+        eval_spec = tf.estimator.EvalSpec(input_fn=lambda: validate_input_fn(),
+                                          start_delay_secs=60,
+                                          throttle_secs=120)
+        result = tf.estimator.train_and_evaluate(estimator, train_spec,
                                                  eval_spec)
         # FIXME(typhoonzero): find out why pai will have result == None
         if not is_pai:
             print(result[0])
     else:
         # NOTE(typhoonzero): if only do training, no validation result will be printed.
-        classifier.train(lambda: train_input_fn(), max_steps=train_max_steps)
+        estimator.train(lambda: train_input_fn(), max_steps=train_max_steps)
+
+
+def estimator_train_and_save(
+    estimator, model_params, save, is_pai, FLAGS, pai_table, pai_val_table,
+    feature_column_names, feature_metas, label_meta, datasource, select,
+    validate_select, batch_size, epochs, verbose, log_every_n_iter,
+    train_max_steps, eval_start_delay_secs, eval_throttle_secs, metric_names):
+
+    classifier = estimator(**model_params)
+    # do not add default Accuracy metric when using estimator to train, it will fail
+    # when the estimator is a regressor, and estimator seems automatically add some
+    # metrics. Only add additional metrics when user specified with `WITH`.
+    if TF_VERSION_2 and metric_names != ["Accuracy"]:
+        estimator = tf.estimator.add_metrics(
+            classifier, metrics.get_tf_metrics(metric_names))
+
+    estimator_train_compiled(classifier, is_pai, FLAGS, pai_table,
+                             pai_val_table, feature_column_names,
+                             feature_metas, label_meta, datasource, select,
+                             validate_select, batch_size, epochs, verbose,
+                             log_every_n_iter, train_max_steps,
+                             eval_start_delay_secs, eval_throttle_secs)
 
     if is_pai and FLAGS.task_index != 0:
         print("skip exporting model on worker != 0")

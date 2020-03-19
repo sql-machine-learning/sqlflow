@@ -323,6 +323,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("TestTextClassification", CaseTrainTextClassification)
 	t.Run("CaseTrainTextClassificationCustomLSTM", CaseTrainTextClassificationCustomLSTM)
 	t.Run("CaseTrainCustomModel", CaseTrainCustomModel)
+	t.Run("CaseTrainCustomModelFunctional", CaseTrainCustomModelFunctional)
 	t.Run("CaseTrainOptimizer", CaseTrainOptimizer)
 	t.Run("CaseTrainSQLWithHyperParams", CaseTrainSQLWithHyperParams)
 	t.Run("CaseTrainCustomModelWithHyperParams", CaseTrainCustomModelWithHyperParams)
@@ -1060,6 +1061,20 @@ INTO %s;`, caseTrainTable, caseInto)
 	}
 }
 
+func CaseTrainCustomModelFunctional(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`SELECT * FROM %s
+TO TRAIN sqlflow_models.dnnclassifier_functional_model
+WITH model.n_classes = 3, validation.metrics="CategoricalAccuracy"
+COLUMN sepal_length, sepal_width, petal_length, petal_width
+LABEL class
+INTO %s;`, caseTrainTable, caseInto)
+	_, _, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("run trainSQL error: %v", err)
+	}
+}
+
 func CaseTrainWithCommaSeparatedLabel(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := `SELECT sepal_length, sepal_width, petal_length, concat(petal_width,',',class) as class FROM iris.train 
@@ -1562,6 +1577,26 @@ INTO e2etest_dnn_model_distributed;`, caseTrainTable, caseTestTable)
 	a.NoError(err)
 }
 
+func CasePAIMaxComputeTrainDistributedKeras(t *testing.T) {
+	t.Parallel()
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`SELECT * FROM %s
+TO TRAIN sqlflow_models.dnnclassifier_functional_model
+WITH
+	model.n_classes=3,
+	train.num_workers=2,
+	train.num_ps=2,
+	train.epoch=10,
+	train.batch_size=4,
+	train.verbose=1,
+	validation.select="select * from %s",
+	validation.metrics="CategoricalAccuracy"
+LABEL class
+INTO e2etest_keras_dnn_model_distributed;`, caseTrainTable, caseTestTable)
+	_, _, _, err := connectAndRunSQL(trainSQL)
+	a.NoError(err)
+}
+
 func CasePAIMaxComputeTrainTFBTDistributed(t *testing.T) {
 	t.Parallel()
 	a := assert.New(t)
@@ -1918,6 +1953,7 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 		t.Run("CasePAIMaxComputeTrainDistributed", CasePAIMaxComputeTrainDistributed)
 		t.Run("CasePAIMaxComputeTrainPredictCategoricalFeature", CasePAIMaxComputeTrainPredictCategoricalFeature)
 		t.Run("CasePAIMaxComputeTrainTFBTDistributed", CasePAIMaxComputeTrainTFBTDistributed)
+		t.Run("CasePAIMaxComputeTrainDistributedKeras", CasePAIMaxComputeTrainDistributedKeras)
 
 		// FIXME(typhoonzero): Add this test back when we solve error: model already exist issue on the CI.
 		// t.Run("CaseTrainPAIRandomForests", CaseTrainPAIRandomForests)
