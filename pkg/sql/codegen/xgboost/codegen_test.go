@@ -14,6 +14,7 @@
 package xgboost
 
 import (
+	"reflect"
 	"regexp"
 	"testing"
 
@@ -21,6 +22,13 @@ import (
 	"sqlflow.org/sqlflow/pkg/ir"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
+
+func TestParseAttribute(t *testing.T) {
+	a := assert.New(t)
+	params := parseAttribute(map[string]interface{}{"a": "b", "c": "d", "train.e": "f"})
+	a.True(reflect.DeepEqual(map[string]interface{}{"a": "b", "c": "d"}, params[""]))
+	a.True(reflect.DeepEqual(map[string]interface{}{"e": "f"}, params["train."]))
+}
 
 func TestAttributes(t *testing.T) {
 	a := assert.New(t)
