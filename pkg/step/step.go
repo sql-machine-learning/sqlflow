@@ -94,7 +94,7 @@ func render(rsp interface{}, table tablewriter.TableWriter, isTerminal, it2Check
 		if isTerminal {
 			log.Printf("unrecognized response type: %v", s)
 		} else {
-			log.Fatal("unrecognized response type: %v", s)
+			log.Fatalf("unrecognized response type: %v", s)
 		}
 	}
 	return nil
