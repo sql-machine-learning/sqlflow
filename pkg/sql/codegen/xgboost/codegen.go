@@ -100,6 +100,7 @@ func parseAttribute(attrs map[string]interface{}) map[string]map[string]interfac
 		for _, pp := range paramPrefix {
 			if strings.HasPrefix(key, pp) {
 				params[pp][key[len(pp):]] = attr
+				break
 			}
 		}
 	}
