@@ -29,17 +29,18 @@ def xgb_dataset(datasource,
                 label_spec,
                 is_pai=False,
                 pai_table="",
-                pai_single_file=False):
+                pai_single_file=False,
+                cache=False):
 
     if is_pai:
         return pai_dataset(fn, feature_specs, feature_column_names, label_spec,
                            "odps://{}/tables/{}".format(*pai_table.split(".")),
-                           pai_single_file)
+                           pai_single_file, cache)
     conn = db.connect_with_data_source(datasource)
     gen = db.db_generator(conn.driver, conn, dataset_sql, feature_column_names,
                           label_spec, feature_specs)
     dump_dmatrix(fn, gen, label_spec)
-    return xgb.DMatrix(fn)
+    return xgb.DMatrix('{0}#{0}.cache'.format(fn) if cache else fn)
 
 
 def dump_dmatrix(filename, generator, has_label):
@@ -55,7 +56,7 @@ def dump_dmatrix(filename, generator, has_label):
 
 
 def pai_dataset(filename, feature_specs, feature_column_names, label_spec,
-                pai_table, single_file):
+                pai_table, single_file, cache):
     from subprocess import Popen, PIPE
     import threading
     threads = []
@@ -87,8 +88,9 @@ def pai_dataset(filename, feature_specs, feature_column_names, label_spec,
         out, err = p.communicate()
         if err:
             raise Exception("merge data files failed: %s" % err)
-        return xgb.DMatrix(filename)
-    return xgb.DMatrix(dname)
+        return xgb.DMatrix(
+            '{0}#{0}.cache'.format(filename) if cache else filename)
+    return xgb.DMatrix('{0}#{0}.cache'.format(dname) if cache else dname)
 
 
 def pai_download_table_data_worker(dname, feature_specs, feature_column_names,

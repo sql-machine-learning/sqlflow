@@ -32,8 +32,8 @@ func TestParseAttribute(t *testing.T) {
 
 func TestAttributes(t *testing.T) {
 	a := assert.New(t)
-	a.Equal(6, len(attributeDictionary))
-	a.Equal(29, len(fullAttrValidator))
+	a.Equal(7, len(attributeDictionary))
+	a.Equal(30, len(fullAttrValidator))
 
 	a.Error(objectiveChecker("binaray:logistic"))
 	a.NoError(objectiveChecker("binary:logistic"))
@@ -46,6 +46,7 @@ func mockSession() *pb.Session {
 func TestTrainAndPredict(t *testing.T) {
 	a := assert.New(t)
 	tir := ir.MockTrainStmt(true)
+	a.NoError(InitializeAttributes(tir))
 	_, err := Train(tir, mockSession())
 	a.NoError(err)
 
