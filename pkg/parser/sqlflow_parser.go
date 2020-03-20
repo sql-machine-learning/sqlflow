@@ -111,13 +111,13 @@ func thirdPartyParse(dialect, program string) ([]*SQLFlowStmt, int, error) {
 	if err != nil {
 		return nil, -1, fmt.Errorf("thirdPartyParse failed: %v", err)
 	}
-	sqls, _, i, err := p.Parse(program)
+	sqls, i, err := p.Parse(program)
 	if err != nil {
 		return nil, -1, fmt.Errorf("thirdPartyParse failed: %v", err)
 	}
 	var spr []*SQLFlowStmt
 	for _, sql := range sqls {
-		spr = append(spr, &SQLFlowStmt{Original: sql, SQLFlowSelectStmt: nil})
+		spr = append(spr, &SQLFlowStmt{Original: sql.String, SQLFlowSelectStmt: nil})
 	}
 	return spr, i, nil
 }

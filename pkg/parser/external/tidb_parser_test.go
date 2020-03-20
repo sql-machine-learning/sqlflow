@@ -40,39 +40,39 @@ func TestTiDBParseAndSplitIdx(t *testing.T) {
 
 	p := newTiDBParser()
 
-	_, _, i, e = p.Parse("SELECTED a FROM t1") // SELECTED => SELECT
+	_, i, e = p.Parse("SELECTED a FROM t1") // SELECTED => SELECT
 	a.Equal(-1, i)
 	a.Error(e)
 
-	_, _, i, e = p.Parse("SELECT * FROM t1 TO TRAIN DNNClassifier")
+	_, i, e = p.Parse("SELECT * FROM t1 TO TRAIN DNNClassifier")
 	a.Equal(17, i)
 	a.NoError(e)
 
-	_, _, i, e = p.Parse("SELECT * FROM t1 TO TO TRAIN DNNClassifier")
+	_, i, e = p.Parse("SELECT * FROM t1 TO TO TRAIN DNNClassifier")
 	a.Equal(17, i)
 	a.NoError(e)
 
-	_, _, i, e = p.Parse("SELECT * FROM t1 t2 TO TRAIN DNNClassifier") // t2 is an alias of t1
+	_, i, e = p.Parse("SELECT * FROM t1 t2 TO TRAIN DNNClassifier") // t2 is an alias of t1
 	a.Equal(20, i)
 	a.NoError(e)
 
-	_, _, i, e = p.Parse("SELECT * FROM t1 t2, t3 TO TRAIN DNNClassifier") // t2 is an alias of t1
+	_, i, e = p.Parse("SELECT * FROM t1 t2, t3 TO TRAIN DNNClassifier") // t2 is an alias of t1
 	a.Equal(24, i)
 	a.NoError(e)
 
-	_, _, i, e = p.Parse("SELECT * FROM t1 t2, t3 t4 TO TRAIN DNNClassifier") // t2 and t4 are aliases.
+	_, i, e = p.Parse("SELECT * FROM t1 t2, t3 t4 TO TRAIN DNNClassifier") // t2 and t4 are aliases.
 	a.Equal(27, i)
 	a.NoError(e)
 
-	_, _, i, e = p.Parse("SELECT * FROM (SELECT * FROM t1)")
+	_, i, e = p.Parse("SELECT * FROM (SELECT * FROM t1)")
 	a.Equal(-1, i)
 	a.Error(e) // TiDB parser and MySQL require an alias name after the nested SELECT.
 
-	_, _, i, e = p.Parse("SELECT * FROM (SELECT * FROM t1) t2")
+	_, i, e = p.Parse("SELECT * FROM (SELECT * FROM t1) t2")
 	a.Equal(-1, i)
 	a.NoError(e)
 
-	_, _, i, e = p.Parse("SELECT * FROM (SELECT * FROM t1) t2 TO TRAIN DNNClassifier")
+	_, i, e = p.Parse("SELECT * FROM (SELECT * FROM t1) t2 TO TRAIN DNNClassifier")
 	a.Equal(36, i)
 	a.NoError(e)
 }

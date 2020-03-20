@@ -29,23 +29,36 @@ func newJavaParser(typ string) *javaParser {
 	return &javaParser{typ: typ}
 }
 
-func (p *javaParser) Parse(program string) ([]string, []*InputOutputTables, int, error) {
+func (p *javaParser) Parse(program string) ([]*Statement, int, error) {
 	c, err := connectToServer()
 	if err != nil {
-		return nil, nil, -1, err
+		return nil, -1, err
 	}
 
 	r, err := proto.NewParserClient(c).Parse(context.Background(), &proto.ParserRequest{Dialect: p.typ, SqlProgram: program})
 	if err != nil {
-		return nil, nil, -1, err
+		return nil, -1, err
 	}
 	if r.Error != "" {
-		return nil, nil, -1, fmt.Errorf(r.Error)
+		return nil, -1, fmt.Errorf(r.Error)
 	}
-	ioTables := []*InputOutputTables{}
-	for _, ioTablesProto := range r.InputOutputTables {
-		ioTables = append(ioTables,
-			&InputOutputTables{InputTables: ioTablesProto.Inputs, OutputTables: ioTablesProto.Outputs})
+	retStatements := []*Statement{}
+	var stmt *Statement
+	for idx, stmtString := range r.SqlStatements {
+		if len(r.InputOutputTables) == len(r.SqlStatements) {
+			iotables := r.InputOutputTables[idx]
+			stmt = &Statement{
+				String:  stmtString,
+				Inputs:  iotables.Inputs,
+				Outputs: iotables.Outputs,
+			}
+		} else {
+			stmt = &Statement{
+				String: stmtString,
+			}
+		}
+		retStatements = append(retStatements, stmt)
 	}
-	return r.SqlStatements, ioTables, int(r.Index), nil
+
+	return retStatements, int(r.Index), nil
 }

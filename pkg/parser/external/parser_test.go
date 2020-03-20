@@ -35,28 +35,28 @@ func parserAcceptSemicolon(p Parser) bool {
 func commonThirdPartyCases(p Parser, a *assert.Assertions) {
 	// one standard SQL statement
 	for _, sql := range SelectCases {
-		s, _, idx, err := p.Parse(sql + ";")
+		s, idx, err := p.Parse(sql + ";")
 		a.NoError(err)
 		a.Equal(-1, idx)
 		a.Equal(1, len(s))
 		if parserAcceptSemicolon(p) {
-			a.Equal(sql+`;`, s[0])
+			a.Equal(sql+`;`, s[0].String)
 		} else {
-			a.Equal(sql, s[0])
+			a.Equal(sql, s[0].String)
 		}
 	}
 
 	{ // several standard SQL statements with comments
 		sqls := strings.Join(SelectCases, `;`) + `;`
-		s, _, idx, err := p.Parse(sqls)
+		s, idx, err := p.Parse(sqls)
 		a.NoError(err)
 		a.Equal(-1, idx)
 		a.Equal(len(SelectCases), len(s))
 		for i := range s {
 			if parserAcceptSemicolon(p) {
-				a.Equal(SelectCases[i]+`;`, s[i])
+				a.Equal(SelectCases[i]+`;`, s[i].String)
 			} else {
-				a.Equal(SelectCases[i], s[i])
+				a.Equal(SelectCases[i], s[i].String)
 			}
 		}
 	}
@@ -64,46 +64,46 @@ func commonThirdPartyCases(p Parser, a *assert.Assertions) {
 	// two SQL statements, the first one is extendedSQL
 	for _, sql := range SelectCases {
 		sqls := fmt.Sprintf(`%s to train;%s;`, sql, sql)
-		s, _, idx, err := p.Parse(sqls)
+		s, idx, err := p.Parse(sqls)
 		a.NoError(err)
 		a.Equal(len(sql)+1, idx)
 		a.Equal(1, len(s))
-		a.Equal(sql+" ", s[0])
+		a.Equal(sql+" ", s[0].String)
 	}
 
 	// two SQL statements, the second one is extendedSQL
 	for _, sql := range SelectCases {
 		sqls := fmt.Sprintf(`%s;%s to train;`, sql, sql)
-		s, _, idx, err := p.Parse(sqls)
+		s, idx, err := p.Parse(sqls)
 		a.NoError(err)
 		a.Equal(len(sql)+1+len(sql)+1, idx)
 		a.Equal(2, len(s))
 		if parserAcceptSemicolon(p) {
-			a.Equal(sql+`;`, s[0])
+			a.Equal(sql+`;`, s[0].String)
 		} else {
-			a.Equal(sql, s[0])
+			a.Equal(sql, s[0].String)
 		}
-		a.Equal(sql+` `, s[1])
+		a.Equal(sql+` `, s[1].String)
 	}
 
 	// three SQL statements, the second one is extendedSQL
 	for _, sql := range SelectCases {
 		sqls := fmt.Sprintf(`%s;%s to train;%s;`, sql, sql, sql)
-		s, _, idx, err := p.Parse(sqls)
+		s, idx, err := p.Parse(sqls)
 		a.NoError(err)
 		a.Equal(len(sql)+1+len(sql)+1, idx)
 		a.Equal(2, len(s))
 		if parserAcceptSemicolon(p) {
-			a.Equal(sql+`;`, s[0])
+			a.Equal(sql+`;`, s[0].String)
 		} else {
-			a.Equal(sql, s[0])
+			a.Equal(sql, s[0].String)
 		}
-		a.Equal(sql+` `, s[1])
+		a.Equal(sql+` `, s[1].String)
 	}
 
 	{ // two SQL statements, the first standard SQL has an error.
 		sql := `select select 1; select 1 to train;`
-		s, _, idx, err := p.Parse(sql)
+		s, idx, err := p.Parse(sql)
 		a.Nil(s)
 		a.Equal(-1, idx)
 		a.NotNil(err)
@@ -112,16 +112,16 @@ func commonThirdPartyCases(p Parser, a *assert.Assertions) {
 	// two SQL statements, the second standard SQL has an error.
 	for _, sql := range SelectCases {
 		sqls := fmt.Sprintf(`%s to train; select select 1;`, sql)
-		s, _, idx, err := p.Parse(sqls)
+		s, idx, err := p.Parse(sqls)
 		a.NoError(err)
 		a.Equal(len(sql)+1, idx)
 		a.Equal(1, len(s))
-		a.Equal(sql+` `, s[0])
+		a.Equal(sql+` `, s[0].String)
 	}
 
 	if pr, ok := p.(*javaParser); !ok || pr.typ != "odps" { // non select statement before to train
 		sql := `describe table to train;`
-		s, _, idx, err := p.Parse(sql)
+		s, idx, err := p.Parse(sql)
 		a.NotNil(err)
 		a.Equal(0, len(s))
 		a.Equal(-1, idx)

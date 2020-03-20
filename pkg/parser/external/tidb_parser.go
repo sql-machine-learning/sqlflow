@@ -44,9 +44,9 @@ func (p *tidbParser) Dialect() string {
 // Parse a SQL program into zero, one, or more statements.  In the
 // case of error, it returns the location of the parsing error in
 // program and an error message.
-func (p *tidbParser) Parse(program string) ([]string, []*InputOutputTables, int, error) {
+func (p *tidbParser) Parse(program string) ([]*Statement, int, error) {
 	if p.psr == nil || p.re == nil {
-		return nil, nil, -1, fmt.Errorf("parser is not initialized")
+		return nil, -1, fmt.Errorf("parser is not initialized")
 	}
 
 	p.mu.Lock()
@@ -56,7 +56,7 @@ func (p *tidbParser) Parse(program string) ([]string, []*InputOutputTables, int,
 	if err != nil {
 		matched := p.re.FindAllStringSubmatch(err.Error(), -1)
 		if len(matched) != 1 || len(matched[0]) != 2 {
-			return nil, nil, -1, fmt.Errorf(`cannot match parse error "near" in "%q"`, err)
+			return nil, -1, fmt.Errorf(`cannot match parse error "near" in "%q"`, err)
 		}
 		idx := strings.Index(program, matched[0][1])
 
@@ -69,7 +69,7 @@ func (p *tidbParser) Parse(program string) ([]string, []*InputOutputTables, int,
 		nodes, _, e := p.psr.Parse(program[:idx]+";", "", "")
 		if e != nil || len(nodes) == 0 {
 			// return the original parsing error
-			return nil, nil, -1, err
+			return nil, -1, err
 		}
 
 		// Make sure the left hand side is a select statement, so that
@@ -78,27 +78,33 @@ func (p *tidbParser) Parse(program string) ([]string, []*InputOutputTables, int,
 		case *ast.SelectStmt, *ast.UnionStmt:
 		default:
 			// return the original parsing error
-			return nil, nil, -1, err
+			return nil, -1, err
 		}
 
-		sqls := make([]string, 0)
+		retStatements := []*Statement{}
+		// sqls := make([]string, 0)
 		for _, n := range nodes {
-			sqls = append(sqls, n.Text())
+			// sqls = append(sqls, n.Text())
+			stmt := &Statement{
+				String: n.Text(),
+			}
+			retStatements = append(retStatements, stmt)
 		}
 
 		// Note(tony): remove the last ";" since feature derivation will append "limit 1000" at the end of the statement
-		if sql := sqls[len(sqls)-1]; sql[len(sql)-1] == ';' {
-			sqls[len(sqls)-1] = sql[:len(sql)-1]
+		if sql := retStatements[len(retStatements)-1].String; sql[len(sql)-1] == ';' {
+			retStatements[len(retStatements)-1].String = sql[:len(sql)-1]
 		}
-		iotables := []*InputOutputTables{}
 
-		return sqls, iotables, idx, nil
+		return retStatements, idx, nil
 	}
 
-	sqls := make([]string, 0)
+	retStatements := []*Statement{}
 	for _, n := range nodes {
-		sqls = append(sqls, n.Text())
+		stmt := &Statement{
+			String: n.Text(),
+		}
+		retStatements = append(retStatements, stmt)
 	}
-	iotables := []*InputOutputTables{}
-	return sqls, iotables, -1, nil
+	return retStatements, -1, nil
 }
