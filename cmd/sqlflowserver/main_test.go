@@ -407,7 +407,7 @@ USING sqlflow_models.my_xgb_binary_classification_model;`
 func CaseXgboostExternalMemory(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := `SELECT * FROM iris.train WHERE class in (0, 1) TO TRAIN xgboost.gbtree
-WITH objective="binary:logistic", eval_metric=auc, train.cache=True
+WITH objective="binary:logistic", eval_metric=auc, train.disk_cache=True
 LABEL class
 INTO sqlflow_models.my_xgb_binary_classification_model;`
 	_, _, _, err := connectAndRunSQL(trainSQL)

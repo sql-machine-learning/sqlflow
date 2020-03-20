@@ -159,7 +159,7 @@ INTO sqlflow_models.my_xgb_regression_model;
 	<td>Subsample ratio of the training instance.</td>
 </tr>
 <tr>
-	<td>train.cache</td>
+	<td>train.disk_cache</td>
 	<td>bool</td>
 	<td>whether use external memory to cache train data</td>
 </tr>
