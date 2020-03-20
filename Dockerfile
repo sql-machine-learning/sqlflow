@@ -88,6 +88,7 @@ go install -v ./... && \
 mv $GOPATH/bin/sqlflowserver /usr/local/bin && \
 mv $GOPATH/bin/repl /usr/local/bin && \
 (cd python/couler && python setup.py -q install) && \
+(git clone https://github.com/wangkuiyi/fluid.git && cd fluid && git checkout b37df3c && python setup.py bdist_wheel && pip install dist/*.whl) && \
 mkdir -p $SQLFLOW_PARSER_SERVER_LOADING_PATH && \
 (cd java/parse-interface && mvn clean install -B) && \
 (cd java/parser-hive && mvn -B -q clean compile assembly:single && mv target/*.jar $SQLFLOW_PARSER_SERVER_LOADING_PATH) && \

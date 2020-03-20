@@ -109,3 +109,6 @@ if [ "${SQLFLOW_submitter}" == "pai" ]; then
 fi
 
 gotest -v ./pkg/workflow/argo/
+
+# TODO(yancey): run fluid test in a seperated test job if we have more test cases.
+bash ./scripts/test/fluid.sh

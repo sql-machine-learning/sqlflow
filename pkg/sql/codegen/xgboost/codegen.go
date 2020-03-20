@@ -35,8 +35,9 @@ Step size shrinkage used in update to prevents overfitting. After each boosting 
 range: [0,1]`, attribute.Float32RangeChecker(0, 1, true, true)},
 	"num_class": {attribute.Int, nil, `Number of classes.
 range: [2, Infinity]`, attribute.IntLowerBoundChecker(2, true)},
-	"objective":   {attribute.String, nil, `Learning objective`, objectiveChecker},
-	"eval_metric": {attribute.String, nil, `eval metric`, nil},
+	"objective":        {attribute.String, nil, `Learning objective`, objectiveChecker},
+	"eval_metric":      {attribute.String, nil, `eval metric`, nil},
+	"train.disk_cache": {attribute.Bool, false, `whether use external memory to cache train data`, nil},
 	"train.num_boost_round": {attribute.Int, 10, `[default=10]
 The number of rounds for boosting.
 range: [1, Infinity]`, attribute.IntLowerBoundChecker(1, true)},
@@ -127,6 +128,7 @@ func parseAttribute(attrs map[string]interface{}) map[string]map[string]interfac
 		for _, pp := range paramPrefix {
 			if strings.HasPrefix(key, pp) {
 				params[pp][key[len(pp):]] = attr
+				break
 			}
 		}
 	}
@@ -192,6 +194,8 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 		return "", err
 	}
 	params := parseAttribute(trainStmt.Attributes)
+	diskCache := params["train."]["disk_cache"].(bool)
+	delete(params["train."], "disk_cache")
 
 	if len(trainStmt.Features) != 1 {
 		return "", fmt.Errorf("xgboost only support 1 feature column set, received %d", len(trainStmt.Features))
@@ -233,6 +237,7 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 		FieldDescJSON:      string(f),
 		FeatureColumnNames: fs,
 		LabelJSON:          string(l),
+		DiskCache:          diskCache,
 		IsPAI:              tf.IsPAI(),
 		PAITrainTable:      paiTrainTable,
 		PAIValidateTable:   paiValidateTable}

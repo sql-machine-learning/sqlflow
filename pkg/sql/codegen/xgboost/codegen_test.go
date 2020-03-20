@@ -14,6 +14,7 @@
 package xgboost
 
 import (
+	"reflect"
 	"regexp"
 	"testing"
 
@@ -22,10 +23,17 @@ import (
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
+func TestParseAttribute(t *testing.T) {
+	a := assert.New(t)
+	params := parseAttribute(map[string]interface{}{"a": "b", "c": "d", "train.e": "f"})
+	a.True(reflect.DeepEqual(map[string]interface{}{"a": "b", "c": "d"}, params[""]))
+	a.True(reflect.DeepEqual(map[string]interface{}{"e": "f"}, params["train."]))
+}
+
 func TestAttributes(t *testing.T) {
 	a := assert.New(t)
-	a.Equal(6, len(attributeDictionary))
-	a.Equal(29, len(fullAttrValidator))
+	a.Equal(7, len(attributeDictionary))
+	a.Equal(30, len(fullAttrValidator))
 
 	a.Error(objectiveChecker("binaray:logistic"))
 	a.NoError(objectiveChecker("binary:logistic"))
@@ -38,6 +46,7 @@ func mockSession() *pb.Session {
 func TestTrainAndPredict(t *testing.T) {
 	a := assert.New(t)
 	tir := ir.MockTrainStmt(true)
+	a.NoError(InitializeAttributes(tir))
 	_, err := Train(tir, mockSession())
 	a.NoError(err)
 

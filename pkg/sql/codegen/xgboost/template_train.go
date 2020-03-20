@@ -24,6 +24,7 @@ type trainFiller struct {
 	FieldDescJSON      string
 	FeatureColumnNames []string
 	LabelJSON          string
+	DiskCache          bool
 	IsPAI              bool
 	PAITrainTable      string
 	PAIValidateTable   string
@@ -50,6 +51,7 @@ train(datasource='''{{.DataSource}}''',
         feature_column_names=feature_column_names,
         label_meta=label_meta,
         validation_select='''{{.ValidationSelect}}''',
+        cache="{{.DiskCache}}" == "true",
         is_pai="{{.IsPAI}}" == "true",
         pai_train_table="{{.PAITrainTable}}",
         pai_validate_table="{{.PAIValidateTable}}")
