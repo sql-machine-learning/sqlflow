@@ -17,3 +17,4 @@ if [[ $changed_js_files == "" ]]; then
     exit 0
 fi
 pylint $changed_js_files
+flake8 $changed_js_files
