@@ -155,7 +155,7 @@ func runStmt(stmt string, isTerminal bool, modelDir string, ds string) error {
 	}
 	var table tablewriter.TableWriter
 	var err error
-	// TODO(yancey1989): remoev protobuf tablewriter if using step binary in workflow
+	// TODO(yancey1989): remove protobuf tablewriter if using step binary in workflow
 	if isWorkflowStep() {
 		table, err = tablewriter.Create("protobuf", tablePageSize, os.Stdout)
 	} else {

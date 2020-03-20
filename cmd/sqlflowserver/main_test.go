@@ -835,7 +835,7 @@ TO TRAIN DNNRegressor WITH
 COLUMN INDICATOR(CATEGORY_ID("[*", 1000))
 LABEL target
 INTO housing.dnn_model;
-` // invalide regex
+` // invalid regex
 	connectAndRunSQLShouldError(trainSQL)
 
 }
@@ -1415,7 +1415,7 @@ INTO sqlflow_models.my_xgb_regression_model;
 			a.NoError(e)
 			a.Greater(trainRmse, 0.0)            // no overfitting
 			a.LessOrEqual(trainRmse, 0.5)        // less the baseline
-			a.GreaterOrEqual(valRmse, trainRmse) // verifty the valiation
+			a.GreaterOrEqual(valRmse, trainRmse) // verify the validation
 			isConvergence = true
 		}
 	}

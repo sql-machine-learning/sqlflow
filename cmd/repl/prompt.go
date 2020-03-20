@@ -116,7 +116,7 @@ func (p *promptState) execute(in string, cb func(string)) {
 			fmt.Println(p.prefix + in)
 		}
 	}
-	if strings.Trim(in, " ") != "" { // TODO(shendiaom): handle quoted string with newline
+	if strings.Trim(in, " ") != "" { // TODO(shendiaomo): handle quoted string with newline
 		if addLineToStmt(in, &p.inQuotedString, &p.isSingleQuoted, &p.statements) {
 			p.updateHistory()
 			p.enableLivePrefix = false
@@ -162,7 +162,7 @@ func (p *promptState) initCompleter() {
 		sortPromptSuggest(p.modelParamDocs[model])
 	}
 	sortPromptSuggest(p.models)
-	p.optimizers = make(map[string]string) // Optimizers cannot be initilized beforehand
+	p.optimizers = make(map[string]string) // Optimizers cannot be initialized beforehand
 }
 
 func (p *promptState) initHistory() {
@@ -396,7 +396,7 @@ func getOptimizerSuggestion(estimatorCls string, optimizers map[string]string) (
 	}
 	for key, opt := range optimizers {
 		if params, ok := attribute.OptimizerParamsDocs[opt]; ok {
-			// Construct suggections for the specified optimizer
+			// Construct suggestions for the specified optimizer
 			r = append(r, prompt.Suggest{key, ""})
 			for param, doc := range params {
 				r = append(r, prompt.Suggest{key + "." + param, doc})
@@ -441,7 +441,7 @@ func (p *promptState) completer(in prompt.Document) []prompt.Suggest {
 		}
 		// The attribute is under editing
 		attr := strings.Split(w1, "=")
-		if len(attr) == 2 { // FIXME(shendiaomo): copy-n-paste doen't work here
+		if len(attr) == 2 { // FIXME(shendiaomo): copy-n-paste doesn't work here
 			switch attr[0] {
 			case "model.optimizer", "model.dnn_optimizer", "model.linear_optimizer":
 				if strings.HasSuffix(attr[1], ",") {
