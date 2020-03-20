@@ -15,8 +15,8 @@
 
 set -e
 function test_fluid() {
-  kubectl delete task echo-hello-world
-  kubectl delete taskrun echo-hello-world-run
+  kubectl delete task echo-hello-world --ignore-not-found=true
+  kubectl delete taskrun echo-hello-world-run --ignore-not-found=true
   cat <<EOF > /tmp/fluid_demo.py
 import fluid
 
