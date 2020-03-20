@@ -62,13 +62,14 @@ func TestTrainAndPredict(t *testing.T) {
 	a.NoError(err)
 }
 
-func TestResolveModelType(t *testing.T) {
+func TestResolveModelParams(t *testing.T) {
 	a := assert.New(t)
-	shortName := []string{"XGBOOST.BINARYCLASSIFIER", "XGBOOST.MULTICLASSIFIER", "XGBOOST.REGRESSOR"}
-	objectiveName := []string{"binary:logistic", "multi:softprob", "reg:squarederror"}
+	shortName := []string{"XGBOOST.XGBCLASSIFIER", "XGBOOST.XGBREGRESSOR", "XGBRANKER"}
+	objectiveName := []string{"multi:softprob", "reg:squarederror", "rank:pairwise"}
 	for i := range shortName {
 		tir := ir.MockTrainStmt(true)
 		tir.Estimator = shortName[i]
+		delete(tir.Attributes, "objective")
 		err := resolveModelParams(tir)
 		a.NoError(err)
 		a.Equal(objectiveName[i], tir.Attributes["objective"])
