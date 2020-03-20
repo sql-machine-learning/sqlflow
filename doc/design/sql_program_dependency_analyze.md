@@ -179,6 +179,8 @@ type Statement struct {
 }
 
 type Table struct {
+  // Type can be "table" or "model".
+  Type string
   Name string
   // Table's input/output must be a statement.
   Inputs *[]Statement
@@ -191,6 +193,9 @@ func Analyze(program []ir.Statement) (*deps.Statement, error) {}
 ```
 
 **NOTE: we treat table and model as the same thing when constructing the graph.**
+**The actual table name in the graph is "Type.Name", because we may save the model in OSS storage**
+**rather than in a table, if the model name is the same as some table name, there's no dependency**
+**between them.**
 
 Then the [workflow package](https://github.com/sql-machine-learning/sqlflow/blob/develop/doc/design/workflow_pacakge.md#workflow-codegen)
 can use the constructed graph to generate Argo/Tekton YAML to submi to Kubernetes cluster for execution:
