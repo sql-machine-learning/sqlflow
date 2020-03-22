@@ -57,3 +57,11 @@ repos:
     language: system
     files: \.py$
     verbose: true
+- repo: local
+  hooks:
+  - id: shellcheck
+    name: shellcheck
+    entry: bash ./scripts/pre-commit/shellcheck.sh
+    language: system
+    files: \.(bash|sh)$
+    verbose: true
