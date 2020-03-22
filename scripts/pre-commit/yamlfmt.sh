@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-changed_js_files=$(git diff --cached --name-only --diff-filter=ACMR | grep '\.yaml\|\.yml$' )
-if [[ $changed_js_files == "" ]]; then
+changed_yaml_files=$(git diff --cached --name-only --diff-filter=ACMR | grep '\.yaml\|\.yml$' )
+if [[ $changed_yaml_files == "" ]]; then
     exit 0
 fi
-yamlfmt -w $changed_js_files
+yamlfmt -w $changed_yaml_files
