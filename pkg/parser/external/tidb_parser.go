@@ -44,7 +44,7 @@ func (p *tidbParser) Dialect() string {
 // Parse a SQL program into zero, one, or more statements.  In the
 // case of error, it returns the location of the parsing error in
 // program and an error message.
-func (p *tidbParser) Parse(program string) ([]string, int, error) {
+func (p *tidbParser) Parse(program string) ([]*Statement, int, error) {
 	if p.psr == nil || p.re == nil {
 		return nil, -1, fmt.Errorf("parser is not initialized")
 	}
@@ -81,22 +81,30 @@ func (p *tidbParser) Parse(program string) ([]string, int, error) {
 			return nil, -1, err
 		}
 
-		sqls := make([]string, 0)
+		retStatements := []*Statement{}
+		// sqls := make([]string, 0)
 		for _, n := range nodes {
-			sqls = append(sqls, n.Text())
+			// sqls = append(sqls, n.Text())
+			stmt := &Statement{
+				String: n.Text(),
+			}
+			retStatements = append(retStatements, stmt)
 		}
 
 		// Note(tony): remove the last ";" since feature derivation will append "limit 1000" at the end of the statement
-		if sql := sqls[len(sqls)-1]; sql[len(sql)-1] == ';' {
-			sqls[len(sqls)-1] = sql[:len(sql)-1]
+		if sql := retStatements[len(retStatements)-1].String; sql[len(sql)-1] == ';' {
+			retStatements[len(retStatements)-1].String = sql[:len(sql)-1]
 		}
 
-		return sqls, idx, nil
+		return retStatements, idx, nil
 	}
 
-	sqls := make([]string, 0)
+	retStatements := []*Statement{}
 	for _, n := range nodes {
-		sqls = append(sqls, n.Text())
+		stmt := &Statement{
+			String: n.Text(),
+		}
+		retStatements = append(retStatements, stmt)
 	}
-	return sqls, -1, nil
+	return retStatements, -1, nil
 }

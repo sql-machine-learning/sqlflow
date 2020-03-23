@@ -18,7 +18,14 @@ import "fmt"
 // Parser abstract a parser of a SQL engine, for example, Hive, MySQL,
 // TiDB, MaxCompute.
 type Parser interface {
-	Parse(program string) ([]string, int, error)
+	Parse(program string) ([]*Statement, int, error)
+}
+
+// Statement a parsed SQL statement string and it's input tables and output tables.
+type Statement struct {
+	String  string
+	Inputs  []string
+	Outputs []string
 }
 
 // NewParser instantiates a parser.
