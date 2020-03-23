@@ -39,10 +39,6 @@ import tensorflow as tf
 from sqlflow_submitter.tensorflow.predict import pred
 from sqlflow_submitter.tensorflow.get_tf_version import tf_is_version2
 from tensorflow.estimator import DNNClassifier, DNNRegressor, LinearClassifier, LinearRegressor, BoostedTreesClassifier, BoostedTreesRegressor, DNNLinearCombinedClassifier, DNNLinearCombinedRegressor
-if tf_is_version2():
-    from tensorflow.keras.optimizers import *
-else:
-    from tensorflow.train import *
 try:
     import sqlflow_models
 except:
