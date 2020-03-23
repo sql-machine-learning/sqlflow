@@ -252,7 +252,7 @@ func Explain(ir *ir.ExplainStmt, session *pb.Session, tarball, paramsFile, model
 			HDFSPass:         session.HdfsPass,
 			ResultOSSDest:    expn.key,
 			// TODO(weiguo): use GFile to write oss without ak/sk
-			// ref: https://yuque.antfin-inc.com/pai-user/manual/tf_oss_by_gfile
+			// ref: https://github.com/tensorflow/io/tree/master/tensorflow_io/core/oss
 			ResultOSSAK:       expn.ak,
 			ResultOSSSK:       expn.sk,
 			ResultOSSEndpoint: expn.endpoint,
