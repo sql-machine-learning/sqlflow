@@ -53,10 +53,8 @@ func RunSQLProgram(sqlProgram string, modelDir string, session *pb.Session) *pip
 		}
 		err = runSQLProgram(wr, sqlProgram, db, modelDir, session)
 		if err != nil {
-			if err != pipe.ErrClosedPipe {
-				if err := wr.Write(err); err != nil {
-					log.GetDefaultLogger().Errorf("runSQLProgram error(piping): %v", err)
-				}
+			if e := wr.Write(fmt.Errorf("runSQLProgram error: %v", err)); e != nil {
+				log.GetDefaultLogger().Errorf("runSQLProgram error(piping): %v", e)
 			}
 		}
 	}()

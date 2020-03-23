@@ -88,8 +88,14 @@ func render(rsp interface{}, table tablewriter.TableWriter, isTerminal, it2Check
 		}
 	case string:
 		log.Println(s)
+	case nil:
+		return nil
 	default:
-		log.Fatalf("unrecognized response type: %v", s)
+		if isTerminal {
+			log.Printf("unrecognized response type: %v", s)
+		} else {
+			log.Fatalf("unrecognized response type: %v", s)
+		}
 	}
 	return nil
 }
@@ -136,7 +142,7 @@ func GetStdout(f func() error) (out string, e error) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 	os.Stderr = w
-	log.SetOutput(os.Stdout)
+	log.SetOutput(w)
 	e = f() // f prints to stdout
 	outC := make(chan string)
 	go func() { // copy the output in a separate goroutine so printing can't block indefinitely
