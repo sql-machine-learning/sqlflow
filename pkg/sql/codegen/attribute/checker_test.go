@@ -57,3 +57,27 @@ func TestIntRangeChecker(t *testing.T) {
 	a.Error(checker2(int(2)))
 	a.Error(checker2(int(3)))
 }
+
+func TestIntChoicesChecker(t *testing.T) {
+	a := assert.New(t)
+
+	checker := IntChoicesChecker(0, 1, 2)
+	a.Error(checker(1.0))
+	a.Error(checker(-1))
+	a.NoError(checker(0))
+	a.NoError(checker(1))
+	a.NoError(checker(2))
+	a.Error(checker(3))
+}
+
+func TestStringChoicesChecker(t *testing.T) {
+	a := assert.New(t)
+
+	checker := StringChoicesChecker("0", "1", "2")
+	a.Error(checker(1.0))
+	a.Error(checker(-1))
+	a.NoError(checker("0"))
+	a.NoError(checker("1"))
+	a.NoError(checker("2"))
+	a.Error(checker("3"))
+}

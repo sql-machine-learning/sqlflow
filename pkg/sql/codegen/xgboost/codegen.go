@@ -35,7 +35,21 @@ Step size shrinkage used in update to prevents overfitting. After each boosting 
 range: [0,1]`, attribute.Float32RangeChecker(0, 1, true, true)},
 	"num_class": {attribute.Int, nil, `Number of classes.
 range: [2, Infinity]`, attribute.IntLowerBoundChecker(2, true)},
-	"objective":        {attribute.String, nil, `Learning objective`, objectiveChecker},
+	"objective": {attribute.String, nil, `Learning objective`, attribute.StringChoicesChecker(
+		"reg:squarederror",
+		"reg:squaredlogerror",
+		"reg:logistic",
+		"binary:logistic",
+		"binary:logitraw",
+		"binary:hinge",
+		"survival:cox",
+		"multi:softmax",
+		"multi:softprob",
+		"rank:pairwise",
+		"rank:ndcg",
+		"rank:map",
+		"reg:gamma",
+		"reg:tweedie")},
 	"eval_metric":      {attribute.String, nil, `eval metric`, nil},
 	"train.disk_cache": {attribute.Bool, false, `whether use external memory to cache train data`, nil},
 	"train.num_boost_round": {attribute.Int, 10, `[default=10]
