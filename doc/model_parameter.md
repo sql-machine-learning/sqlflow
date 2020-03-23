@@ -240,7 +240,7 @@ INTO sqlflow_models.my_dnn_model;
 <tr>
 	<td>train.verbose</td>
 	<td>int</td>
-	<td>[default=0]<br>Show verbose logs when training.<br>possible values: 0, 1</td>
+	<td>[default=0]<br>Show verbose logs when training.<br>possible values: 0, 1, 2</td>
 </tr>
 <tr>
 	<td>validation.metrics</td>
