@@ -60,18 +60,18 @@ In SQLFlow SQL grammar, the identifiers after `TRAIN`, `USING` and `INTO` have d
 
 ### Versioning and Releasing
 
-A key to this design is to know that both model definition and trained model have versions. Suppose that an analyst trained a model using the definition in `my_dnn_regressor.py` and got `my_first_model`; soon after that, a data scientist changed `my_dnn_regressor.py` and the analyst re-trained the model into `my_second_model` with slightly modified hyperparameter settings. The analyst must be aware that he should use the same version of `my_dnn_regressor.py` to train these two models. Then if the analyst decide to publish the trained model `my_second_model` for online prediction, he should choose to use `my_second_model` rather than `my_first_model`.
+A key to this design is to know that both the model definition and the trained model have versions. Suppose that an analyst trained a model using the definition in `my_dnn_regressor.py` and got `my_first_model`; soon after that, a data scientist changed `my_dnn_regressor.py` and the analyst re-trained the model into `my_second_model` with slightly modified hyperparameter settings. The analyst must be aware that he should use the same version of `my_dnn_regressor.py` to train these two models. Then if the analyst decides to publish the trained model `my_second_model` for online prediction, he should choose to use `my_second_model` rather than `my_first_model`.
 
-We can use version management tools like Git and release engineering tools like Docker, and save the trained model with a unique name. Here follows our proposal.
+We can use version management tools like Git and release engineering tools like Docker and save the trained model with a unique name. Here follows our proposal.
 
 1. A collection of model definitions is a Git repository of source files. 
 1. To describe dependencies, we require a Dockerfile at the root directory of the repository.
 1. To release a repository, we checkout the specific version and run `docker build` and `docker push` with the Dockerfile.
-1. Each trained model is saved under current user's namespace with a unique name.
+1. Each trained model is saved under the current user's namespace with a unique name.
 
 ### Develop Custom Model Definition
 
-Model developers can have their own Git reponsitory or other code version control systems to store the code of model definition Python files. The Python code files should be put into one directory as a Python package, then write a `Dockerfile` under the root directory for building the image:
+Model developers can have their own Git repository or other code version control systems to store the code of model definition Python files. The Python code files should be put into one directory as a Python package, then write a `Dockerfile` under the root directory for building the image:
 
 ```
 - your_model_package/
@@ -93,11 +93,11 @@ ADD your_model_package /sqlflow_models
 ENV PYTHONPATH /sqlflow_models
 ```
 
-Model developers can do continuouse development using this reponsitory, forking branches, adding tags, running unit tests etc.
+Model developers can do continuous development using this repository, forking branches, adding tags, running unit tests, etc.
 
 ### Build and Publish the Docker Image
 
-When the model developer need to publish the model for SQLFlow to use, they need to build the Docker image and push the image to a central reponsitory.
+When the model developer needs to publish the model for SQLFlow to use, they need to build the Docker image and push the image to a central repository.
 
 ```bash
 docker build -t a_data_scientist/regressors:v0.2 .
@@ -110,7 +110,7 @@ You can publish the image to a public Docker registry like https://hub.docker.co
 
 For a SELECT program using the SQLFlow syntax extension, the SQLFlow server converts it into a [workflow](workflow.md) and submit the workflow job to a workflow engine like Argo/Tekton on Kubernetes. Each step in the workflow is one SQL statement.
 
-By default, we use a default Docker image to run the training, predicting or explaining job. The default Docker image contrains pre-made Tensorflow estimator models, Keras models defined in [sqlflow_models repo](https://github.com/sql-machine-learning/models) and XGBoost. To use a custom model definition Docker image, write SQL statements mentioned above:
+By default, we use a default Docker image to run the training, predicting or explaining job. The default Docker image contains pre-made Tensorflow estimator models, Keras models defined in [sqlflow_models repo](https://github.com/sql-machine-learning/models) and XGBoost. To use a custom model definition Docker image, write SQL statements mentioned above:
 
 ```sql
 SELECT * FROM employee WHERE onboard_year < 2019
@@ -120,13 +120,13 @@ LABEL salary
 INTO my_first_model;
 ```
 
-Then the generated workflow will use the Docker image `a_data_scientist/regressors:v0.2` to run the statement. In this step, SQLFlow will generate the training Python program inside the Docker container and execute. Once the job completes, **the trained model together with hyperparameters, Docker image, evaluation result and the SQL statement used will be saved.** So in one trained model, we can have:
+Then the generated workflow will use the Docker image `a_data_scientist/regressors:v0.2` to run the statement. In this step, SQLFlow will generate the training Python program inside the Docker container and execute it. Once the job completes, **the trained model together with hyperparameters, Docker image, evaluation result and the SQL statement used will be saved.** So in one trained model, we can have:
 
 1. Trained model weights.
 1. Docker image like `TRAIN a_data_scientist/regressors:v0.2`.
 1. Model class name, like `MyDNNRegressor`.
-1. Hyperparameters including model parameters, training parameters and data conversion parameters.
-1. Model evaluation result JSON.
+1. Hyperparameters including model parameters, training parameters, and data conversion parameters.
+1. The model evaluation result JSON.
 1. The full SQL statement.
 
 ### Publish Trained Model

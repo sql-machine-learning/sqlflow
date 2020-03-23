@@ -1,6 +1,6 @@
 # Model Market
 
-The model market is a web site where model developers can publish and share their models and analysts can find some useful models to finish the analysis work. Model market can be deployed at anywhere like on the cloud or on-premise with some configurations.
+The model market is a web site where model developers can publish and share their models and analysts can find some useful models to finish the analysis work. The model market can be deployed anywhere like on the cloud or on-premise with some configurations.
 
 In the [model zoo design](model_zoo.md), we described how model developers develop, publish and share custom models on SQLFlow, and how analysts can make use of the shared model with SQLFlow.
 
@@ -11,8 +11,8 @@ Here, we'll describe how to build the model market model developers and analysts
 The model market is designed to:
 
 1. Manage user login and logout.
-1. View published images available for current user.
-1. View published trained models available for current user.
+1. View published images available for the current user.
+1. View published trained models available for the current user.
 1. Publish (or remove) model definition images.
 1. Publish (or remove) trained models.
 1. Share (or remove share) model definition images to other users.
@@ -26,14 +26,14 @@ In order to support publishing and sharing models securely, the model market is 
 
 Then model definition images and trained model can have below accessibility settings:
 
-1. Private: only visible to the current user.
+1. Private: Only visible to the current user.
 2. Public: Readable by every user.
 3. Private but shared to some users: visible to the current user and users that shared to.
 
 ## Steps to View Model Definitions and Trained Models
 
 1. Login to model market.
-1. Click at "Model Definitions" tab to see the list of model definition Docker images and the model class names in each Docker image.
+1. Click at the "Model Definitions" tab to see the list of model definition Docker images and the model class names in each Docker image.
 1. Click at "Trained Models" tab to see all trained models the current user have published by using SQLFlow `PUBLISH` statement, the evaluation result of the trained model will also be available.
 
 ## Steps to Publish a Docker Image
@@ -45,7 +45,7 @@ Then model definition images and trained model can have below accessibility sett
 1. ***Optional***: The system will call the Docker registry API to grant access for SQLFlow to pull the image. When using a public image, this step will be skipped. If access can be granted, a message should be shown on the web page.
 1. The system will start to run several checks and tests using the Docker image. If all the checks have passed, the image is added.
 
-**NOTE: Docker image with different [tags](https://www.freecodecamp.org/news/an-introduction-to-docker-tags-9b5395636c2a/) will be recgnized as different images.
+**NOTE: Docker image with different [tags](https://www.freecodecamp.org/news/an-introduction-to-docker-tags-9b5395636c2a/) will be recognized as different images.
 
 ## Steps to Share Model Definition Docker Images to Other Users
 
@@ -54,25 +54,25 @@ Then model definition images and trained model can have below accessibility sett
 1. Find a Docker image in the list to be shared and click on the button "share".
 1. Input the user name or user ID to share to and click "OK".
 
-The system will call Docker registry API to grant access for the user shared to after these operations. Model market will save the grant informations in a database table `image_shares` that have below columns:
+The system will call Docker registry API to grant access for the user shared to after these operations. The model market will save the grant information in a database table `image_shares` that have below columns:
 
 1. `OwnerID`: Docker image owner user ID.
 1. `SharedUserID`: User ID that the image is shared to.
 
 ## Steps to Publish a Trained Model
 
-The below SQL statement will publish trained model named `my_first_model` to the model market.
+The following SQL statement will publish a trained model named `my_first_model` to the model market.
 
 ```sql
 SQLFLOW PUBLISH my_first_model
     [TO https://models.sqlflow.org/user_name]
 ```
 
-By publishing a trained model, the model maket will save the trained model weights together with ownership information in to two database tables (can use a MySQL service in general): the **trained models table** and the **evaluation result table**.
+By publishing a trained model, the model market will save the trained model weights together with ownership information into two database tables (can use a MySQL service in general): the **trained models table** and the **evaluation result table**.
 
 ### Trained Models Table
 
-Once a training job completes, the submitter program adds/updates a row of the the trained models table, which contains (at least) the following fields.
+Once a training job completes, the submitter program adds/updates a row of the trained models' table, which contains (at least) the following fields.
 
 1. The model ID (or model name), specified by the INTO clause, or `my_first_model` in the example at [model_zoo_design](model_zoo.md).
 1. The creator, the current user ID.
@@ -104,16 +104,16 @@ Different kinds of models might use various metrics, so the field metrics might 
 
 1. Login to model market.
 1. Go to the "Trained Models" tab.
-1. Find a traind model in the list to be shared and click on the button "share".
+1. Find a trained model in the list to be shared and click on the button "share".
 1. Input the user name or user ID to share to and click "OK".
 
-Model market will save the grant informations in a database table `traind_model_shares` that have below columns:
+The model market will save the grant information in a database table `traind_model_shares` that have below columns:
 
 1. `OwnerID`: trained model owner user ID.
-1. `SharedUserID`: User ID that the traind model is shared to.
+1. `SharedUserID`: User ID that the trained model is shared to.
 
-When one user is trying to use the trained model in a SQLFlow statement, the `sqlflowserver` will first check whether the user is the owner of the traind model or the model have been shared to the user. Or else, `sqlflowserver` will return an error.
+When one user is trying to use the trained model in an SQLFlow statement, the `sqlflowserver` will first check whether the user is the owner of the trained model or the model has been shared with the user. Or else, `sqlflowserver` will return an error.
 
 ## Summarization
 
-Model market can be deployed at anywhere like on the cloud or on-premise with some configurations. Even some secret model development can be done by using model market as a collaboration platform. Either model definitions and trained models are managed securely by SQLFlow and model market, people can get access to your model only if you share it to them.
+The model market can be deployed anywhere like on the cloud or on-premise with some configurations. Even some secret model development can be done by using the model market as a collaboration platform. Either model definitions and trained models are managed securely by SQLFlow and model market, people can get access to your model only if you share it with them.
