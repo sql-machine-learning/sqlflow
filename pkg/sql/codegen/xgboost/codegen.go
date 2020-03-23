@@ -61,34 +61,6 @@ example: "SELECT * FROM boston.train LIMIT 8"`, nil},
 }
 var fullAttrValidator = attribute.Dictionary{}
 
-func objectiveChecker(obj interface{}) error {
-	s, ok := obj.(string)
-	if !ok {
-		return fmt.Errorf("expected type string, received %T", obj)
-	}
-	expected := []string{
-		"reg:squarederror",
-		"reg:squaredlogerror",
-		"reg:logistic",
-		"binary:logistic",
-		"binary:logitraw",
-		"binary:hinge",
-		"survival:cox",
-		"multi:softmax",
-		"multi:softprob",
-		"rank:pairwise",
-		"rank:ndcg",
-		"rank:map",
-		"reg:gamma",
-		"reg:tweedie"}
-	for _, e := range expected {
-		if s == e {
-			return nil
-		}
-	}
-	return fmt.Errorf("unrecognized objective %s, should be one of %v", s, expected)
-}
-
 func resolveModelType(estimator string) (string, error) {
 	switch strings.ToUpper(estimator) {
 	case "XGBOOST.GBTREE":
