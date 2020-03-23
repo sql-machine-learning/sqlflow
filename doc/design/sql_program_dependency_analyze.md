@@ -178,13 +178,24 @@ type Statement struct {
    Outputs []*Table
 }
 
+type TableType string
+
+const(
+    TableType Table = "table"
+    Model = "model"
+)
+
 type Table struct {
   // Type can be "table" or "model".
-  Type string
+  Type TableType
   Name string
   // Table's input/output must be a statement.
   Inputs *[]Statement
   Outputs *[]Statement
+}
+
+func (t *Table) FullName() string {
+    return t.Type + "." + t.Name
 }
 
 // Analyze will construct a dependency graph for the SQL program and
