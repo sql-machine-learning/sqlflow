@@ -234,7 +234,6 @@ func (p *promptState) searchHistoryImpl(mode searchMode, suffix string, buf *pro
 			if matched, err := filepath.Match(pattern, strings.ToUpper(entry.Text)); err == nil && matched {
 				candidates = append(candidates, entry)
 			}
-
 		}
 	default:
 		candidates = prompt.FilterContains(p.history, *key, true)
@@ -327,7 +326,7 @@ func (p *promptState) navigateHistory(origInput string, older bool, buf *prompt.
 		}
 	}
 	prompt.GoLineBeginning(buf)
-	buf.Delete(len(buf.Text()))
+	buf.Delete(len([]rune(buf.Text())))
 	if p.historyNavPos == 0 {
 		buf.InsertText(origInput, false, true)
 	} else {
