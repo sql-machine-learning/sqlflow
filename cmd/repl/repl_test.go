@@ -474,6 +474,38 @@ LABEL class INTO sqlflow_models.my_model;`
 	a.Equal(space.ReplaceAllString(stmt[0], " "), space.ReplaceAllString(sql, " "))
 }
 
+func TestInputNavigation(t *testing.T) {
+	attribute.ExtractDocStringsOnce()
+	a := assert.New(t)
+	s := newPromptState()
+	his1 := "history 1"
+	his2 := "history 2"
+	his3 := "SELECT * FROM iris.tran WHERE class like '%中文';"
+	s.history = []prompt.Suggest{{his3, ""}, {his2, ""}, {his1, ""}}
+	p := prompt.NewBuffer()
+	// put something on input buffer
+	p.InsertText(his3, false, true)
+	// go backward
+	s.navigateHistory("", true, p)
+	a.Equal(his3, p.Text())
+	s.navigateHistory("", true, p)
+	a.Equal(his2, p.Text())
+	s.navigateHistory("", true, p)
+	a.Equal(his1, p.Text())
+	// should stop at last history
+	s.navigateHistory("", true, p)
+	a.Equal(his1, p.Text())
+	s.navigateHistory("", true, p)
+	a.Equal(his1, p.Text())
+	// go forward
+	s.navigateHistory("", false, p)
+	a.Equal(his2, p.Text())
+	s.navigateHistory("", false, p)
+	a.Equal(his3, p.Text())
+	s.navigateHistory("", false, p)
+	a.Equal("", p.Text())
+}
+
 func TestComplete(t *testing.T) {
 	attribute.ExtractDocStringsOnce()
 	a := assert.New(t)
