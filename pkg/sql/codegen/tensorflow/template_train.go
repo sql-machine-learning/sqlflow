@@ -39,12 +39,12 @@ from sqlflow_submitter.tensorflow.train import train
 from sqlflow_submitter.tensorflow.get_tf_version import tf_is_version2
 from tensorflow.estimator import (DNNClassifier,
                                   DNNRegressor,
-								  LinearClassifier,
-								  LinearRegressor,
-								  BoostedTreesClassifier,
-								  BoostedTreesRegressor,
-								  DNNLinearCombinedClassifier,
-								  DNNLinearCombinedRegressor)
+                                  LinearClassifier,
+                                  LinearRegressor,
+                                  BoostedTreesClassifier,
+                                  BoostedTreesRegressor,
+                                  DNNLinearCombinedClassifier,
+                                  DNNLinearCombinedRegressor)
 if tf_is_version2():
     from tensorflow.keras.optimizers import Adadelta, Adagrad, Adam, Adamax, Ftrl, Nadam, RMSprop, SGD
     from tensorflow.keras.losses import BinaryCrossentropy, CategoricalCrossentropy, CategoricalHinge, CosineSimilarity, Hinge, Huber, KLDivergence, LogCosh, MeanAbsoluteError, MeanAbsolutePercentageError, MeanSquaredError, MeanSquaredLogarithmicError, Poisson, SparseCategoricalCrossentropy, SquaredHinge
