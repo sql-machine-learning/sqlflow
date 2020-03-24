@@ -227,7 +227,7 @@ func verifyIRWithTrainStmt(sqlir ir.SQLFlowStmt, db *database.DB) error {
 	if e != nil {
 		return e
 	}
-	if trainStmt == nil { // Implies we dont' need to load model
+	if trainStmt == nil { // Implies we don't need to load model
 		return nil
 	}
 

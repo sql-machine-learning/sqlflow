@@ -43,7 +43,7 @@ func New(backend string) (Codegen, Workflow, error) {
 	if backend == "couler" {
 		return &couler.Codegen{}, &argo.Workflow{}, nil
 	}
-	return nil, nil, fmt.Errorf("the specifiy backend: %s has not support", backend)
+	return nil, nil, fmt.Errorf("the specified backend: %s has not support", backend)
 }
 
 // Run compile a SQL program to IRs and submits workflow YAML to Kubernetes
