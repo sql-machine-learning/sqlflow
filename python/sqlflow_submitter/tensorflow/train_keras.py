@@ -19,7 +19,8 @@ from sqlflow_submitter.pai import model
 from . import metrics
 from .get_tf_version import tf_is_version2
 from .input_fn import input_fn
-from .pai_distributed import *
+from .pai_distributed import (dump_into_tf_config,
+                              make_distributed_info_without_evaluator)
 from .train_estimator import estimator_train_compiled
 
 

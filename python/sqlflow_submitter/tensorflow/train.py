@@ -27,7 +27,7 @@ from sqlflow_submitter.db import (connect_with_data_source, db_generator,
 from . import metrics
 from .get_tf_version import tf_is_version2
 from .input_fn import get_dataset_fn
-from .pai_distributed import *
+from .pai_distributed import define_tf_flags, set_oss_environs
 from .set_log_level import set_log_level
 from .train_estimator import estimator_train_and_save
 from .train_keras import keras_train_and_save

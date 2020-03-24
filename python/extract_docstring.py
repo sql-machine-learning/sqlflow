@@ -20,13 +20,17 @@ import six
 import sqlflow_models
 import tensorflow as tf
 import xgboost
-from tensorflow.estimator import *
+from tensorflow.estimator import (BoostedTreesClassifier,
+                                  BoostedTreesRegressor, DNNClassifier,
+                                  DNNLinearCombinedClassifier,
+                                  DNNLinearCombinedRegressor, DNNRegressor,
+                                  LinearClassifier, LinearRegressor)
 
 
 def parse_ctor_args(f, prefix=''):
     """Given an class or function, parse the class constructor/function details
     from its docstring
-  
+
     For example, the docstring of sqlflow_models.DNNClassifier.__init__ is:
     '''DNNClassifier
     :param feature_columns: feature columns.
@@ -47,11 +51,11 @@ def parse_ctor_args(f, prefix=''):
         "f": "The class or function whose docstring to parse",
         "prefix": "The prefix of parameters in the docstring"
     }
-  
+
     Args:
       f: The class or function whose docstring to parse
       prefix: The prefix of parameters in the docstring
-  
+
     Returns:
       A dict with parameters as keys and splitted docstring as values
     """
@@ -81,7 +85,8 @@ def print_param_doc(*modules):
         models = filter(lambda m: inspect.isclass(m[1]),
                         inspect.getmembers(__import__(module)))
         for name, cls in models:
-            param_doc[f'{module}.{name}'] = parse_ctor_args(cls, ':param')
+            param_doc['{}.{}'.format(module,
+                                     name)] = parse_ctor_args(cls, ':param')
     print(json.dumps(param_doc))
 
 
@@ -132,7 +137,7 @@ if __name__ == "__main__":
     ]
     param_doc.clear()
     for cls in tf_optimizers:
-        param_doc[cls] = parse_ctor_args(eval(f'tf.optimizers.{cls}'))
+        param_doc[cls] = parse_ctor_args(eval('tf.optimizers.{}'.format(cls)))
 
     print()
     print('const OptimizerParameterJSON = `')
