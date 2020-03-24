@@ -23,7 +23,7 @@ def train(datasource,
           feature_column_names,
           label_meta,
           validation_select,
-          cache=False,
+          disk_cache=False,
           is_pai=False,
           pai_train_table="",
           pai_validate_table=""):
@@ -36,7 +36,7 @@ def train(datasource,
                          label_meta,
                          is_pai,
                          pai_train_table,
-                         cache=cache)
+                         cache=disk_cache)
     watchlist = [(dtrain, "train")]
 
     if len(validation_select.strip()) > 0:

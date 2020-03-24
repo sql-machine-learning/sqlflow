@@ -24,7 +24,6 @@ import tensorflow as tf
 from sqlflow_submitter.db import (connect_with_data_source, db_generator,
                                   parseMaxComputeDSN)
 
-from . import metrics
 from .get_tf_version import tf_is_version2
 from .input_fn import get_dataset_fn
 from .pai_distributed import define_tf_flags, set_oss_environs
@@ -41,21 +40,21 @@ except:
 def train(datasource,
           estimator,
           select,
-          validate_select,
+          validation_select,
           feature_columns,
           feature_column_names,
           feature_metas={},
           label_meta={},
           model_params={},
-          metric_names=["Accuracy"],
+          validation_metrics=["Accuracy"],
           save="",
           batch_size=1,
-          epochs=1,
+          epoch=1,
           validation_steps=1,
           verbose=0,
-          train_max_steps=None,
-          eval_start_delay_secs=0,
-          eval_throttle_secs=0,
+          max_steps=None,
+          validation_start_delay_secs=0,
+          validation_throttle_secs=0,
           save_checkpoints_steps=100,
           log_every_n_iter=10,
           is_pai=False,
@@ -95,7 +94,7 @@ def train(datasource,
 
     train_dataset_fn, val_dataset_fn = get_dataset_fn(
         select,
-        validate_select,
+        validation_select,
         datasource,
         feature_column_names,
         feature_metas,
@@ -103,7 +102,7 @@ def train(datasource,
         is_pai,
         pai_table,
         pai_val_table,
-        epochs,
+        epoch,
         batch_size,
         1000,
         num_workers=num_workers,
@@ -116,13 +115,17 @@ def train(datasource,
             model_params["field_metas"] = feature_metas
         keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
                              train_dataset_fn, val_dataset_fn, label_meta,
-                             epochs, verbose, metric_names, validation_steps)
+                             epoch, verbose,
+                             validation_metrics,
+                             validation_steps)
     else:
         estimator_train_and_save(estimator, model_params, save, is_pai, FLAGS,
                                  train_dataset_fn, val_dataset_fn,
-                                 log_every_n_iter, train_max_steps,
-                                 eval_start_delay_secs, eval_throttle_secs,
-                                 save_checkpoints_steps, metric_names)
+                                 log_every_n_iter, max_steps,
+                                 validation_start_delay_secs,
+                                 validation_throttle_secs,
+                                 save_checkpoints_steps,
+                                 validation_metrics)
 
     # remove cache files
     any(map(os.remove, glob.glob('cache_train.*')))
