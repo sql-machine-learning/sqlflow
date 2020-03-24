@@ -115,8 +115,7 @@ def train(datasource,
             model_params["field_metas"] = feature_metas
         keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
                              train_dataset_fn, val_dataset_fn, label_meta,
-                             epoch, verbose,
-                             validation_metrics,
+                             epoch, verbose, validation_metrics,
                              validation_steps)
     else:
         estimator_train_and_save(estimator, model_params, save, is_pai, FLAGS,
@@ -124,8 +123,7 @@ def train(datasource,
                                  log_every_n_iter, max_steps,
                                  validation_start_delay_secs,
                                  validation_throttle_secs,
-                                 save_checkpoints_steps,
-                                 validation_metrics)
+                                 save_checkpoints_steps, validation_metrics)
 
     # remove cache files
     any(map(os.remove, glob.glob('cache_train.*')))
