@@ -35,24 +35,7 @@ Step size shrinkage used in update to prevents overfitting. After each boosting 
 range: [0,1]`, attribute.Float32RangeChecker(0, 1, true, true)},
 	"num_class": {attribute.Int, nil, `Number of classes.
 range: [2, Infinity]`, attribute.IntLowerBoundChecker(2, true)},
-	"objective":        {attribute.String, nil, `Learning objective`, objectiveChecker},
-	"eval_metric":      {attribute.String, nil, `eval metric`, nil},
-	"train.disk_cache": {attribute.Bool, false, `whether use external memory to cache train data`, nil},
-	"train.num_boost_round": {attribute.Int, 10, `[default=10]
-The number of rounds for boosting.
-range: [1, Infinity]`, attribute.IntLowerBoundChecker(1, true)},
-	"validation.select": {attribute.String, "", `[default=""]
-Specify the dataset for validation.
-example: "SELECT * FROM boston.train LIMIT 8"`, nil},
-}
-var fullAttrValidator = attribute.Dictionary{}
-
-func objectiveChecker(obj interface{}) error {
-	s, ok := obj.(string)
-	if !ok {
-		return fmt.Errorf("expected type string, received %T", obj)
-	}
-	expected := []string{
+	"objective": {attribute.String, nil, `Learning objective`, attribute.StringChoicesChecker(
 		"reg:squarederror",
 		"reg:squaredlogerror",
 		"reg:logistic",
@@ -66,14 +49,17 @@ func objectiveChecker(obj interface{}) error {
 		"rank:ndcg",
 		"rank:map",
 		"reg:gamma",
-		"reg:tweedie"}
-	for _, e := range expected {
-		if s == e {
-			return nil
-		}
-	}
-	return fmt.Errorf("unrecognized objective %s, should be one of %v", s, expected)
+		"reg:tweedie")},
+	"eval_metric":      {attribute.String, nil, `eval metric`, nil},
+	"train.disk_cache": {attribute.Bool, false, `whether use external memory to cache train data`, nil},
+	"train.num_boost_round": {attribute.Int, 10, `[default=10]
+The number of rounds for boosting.
+range: [1, Infinity]`, attribute.IntLowerBoundChecker(1, true)},
+	"validation.select": {attribute.String, "", `[default=""]
+Specify the dataset for validation.
+example: "SELECT * FROM boston.train LIMIT 8"`, nil},
 }
+var fullAttrValidator = attribute.Dictionary{}
 
 func resolveModelType(estimator string) (string, error) {
 	switch strings.ToUpper(estimator) {
