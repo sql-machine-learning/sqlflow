@@ -24,15 +24,16 @@ The model market is designed to:
 
 In order to support publishing and sharing models securely, the model market is able to communicate with some [SSO](https://en.wikipedia.org/wiki/Single_sign-on) service to authenticate users. Only users that are logged in can do operations on the model market.
 
-Then model definition images and trained model can have below accessibility settings:
+Then model definition images and trained model can have below accessibility types:
 
-1. Private: Only visible to the current user.
+1. Private: Visible to the current user and users shared to.
 2. Public: Readable by every user.
-3. Private but shared to some users: visible to the current user and users that shared to.
+
+**NOTE: model definition and trained models have their own accessibility settings, e.g. a user uploaded a public ResNET model definition, then train the ResNET using a private image dataset, the trained model is set to private and only share to a few people.**
 
 ## Steps to View Model Definitions and Trained Models
 
-1. Login to model market.
+1. **Optional**: Login to model market. If the user is not logged in, he can only view public model definitions and trained models.
 1. Click at the "Model Definitions" tab to see the list of model definition Docker images and the model class names in each Docker image.
 1. Click at "Trained Models" tab to see all trained models the current user have published by using SQLFlow `PUBLISH` statement, the evaluation result of the trained model will also be available.
 
