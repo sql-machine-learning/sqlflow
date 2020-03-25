@@ -26,7 +26,7 @@ if __name__ == "__main__":
     train(datasource=datasource,
           estimator=sqlflow_models.DNNClassifier,
           select=select,
-          validate_select=validate_select,
+          validation_select=validate_select,
           feature_columns=feature_columns,
           feature_column_names=feature_column_names,
           feature_metas=feature_metas,
@@ -37,7 +37,7 @@ if __name__ == "__main__":
           },
           save="mymodel_keras",
           batch_size=1,
-          epochs=3,
+          epoch=3,
           verbose=0)
     pred(datasource=datasource,
          estimator=sqlflow_models.DNNClassifier,
