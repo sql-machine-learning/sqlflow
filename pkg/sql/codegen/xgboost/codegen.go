@@ -55,6 +55,12 @@ range: [2, Infinity]`, attribute.IntLowerBoundChecker(2, true)},
 	"train.num_boost_round": {attribute.Int, 10, `[default=10]
 The number of rounds for boosting.
 range: [1, Infinity]`, attribute.IntLowerBoundChecker(1, true)},
+	"train.batch_size": {attribute.Int, -1, `[default=-1]
+Batch size for each iteration, -1 means use all data at once.
+range: [-1, Infinity]`, attribute.IntLowerBoundChecker(-1, true)},
+	"train.epoch": {attribute.Int, 1, `[default=1]
+Number of rounds to run the training.
+range: [1, Infinity]`, attribute.IntLowerBoundChecker(1, true)},
 	"validation.select": {attribute.String, "", `[default=""]
 Specify the dataset for validation.
 example: "SELECT * FROM boston.train LIMIT 8"`, nil},

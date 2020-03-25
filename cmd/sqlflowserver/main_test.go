@@ -1452,8 +1452,9 @@ FROM housing.train
 TO TRAIN xgboost.gbtree
 WITH
 	objective="reg:squarederror",
-	train.num_boost_round = 30
-	COLUMN f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13
+	train.num_boost_round = 30,
+	train.batch_size=20
+COLUMN f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13
 LABEL target
 INTO sqlflow_models.my_xgb_regression_model;
 	`
