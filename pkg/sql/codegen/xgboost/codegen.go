@@ -156,6 +156,23 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 	params[""]["booster"] = booster
 	diskCache := params["train."]["disk_cache"].(bool)
 	delete(params["train."], "disk_cache")
+	var batchSize int
+	var epoch int
+
+	batchSizeAttr, ok := params["train."]["batch_size"]
+	if ok {
+		batchSize = batchSizeAttr.(int)
+		delete(params["train."], "batch_size")
+	} else {
+		batchSize = -1
+	}
+	epochAttr, ok := params["train."]["epoch"]
+	if ok {
+		epoch = epochAttr.(int)
+		delete(params["train."], "epoch")
+	} else {
+		epoch = 1
+	}
 
 	if len(trainStmt.Features) != 1 {
 		return "", fmt.Errorf("xgboost only support 1 feature column set, received %d", len(trainStmt.Features))
@@ -198,6 +215,8 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 		FeatureColumnNames: fs,
 		LabelJSON:          string(l),
 		DiskCache:          diskCache,
+		BatchSize:          batchSize,
+		Epoch:              epoch,
 		IsPAI:              tf.IsPAI(),
 		PAITrainTable:      paiTrainTable,
 		PAIValidateTable:   paiValidateTable}
