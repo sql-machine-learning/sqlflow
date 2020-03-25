@@ -2029,6 +2029,7 @@ func TestEnd2EndWorkflow(t *testing.T) {
 	t.Run("CaseWorkflowTrainAndPredictDNNCustomImage", CaseWorkflowTrainAndPredictDNNCustomImage)
 	t.Run("CaseWorkflowTrainAndPredictDNN", CaseWorkflowTrainAndPredictDNN)
 	t.Run("CaseTrainDistributedPAIArgo", CaseTrainDistributedPAIArgo)
+	t.Run("CaseBackticksInSQL", CaseBackticksInSQL)
 }
 
 func CaseWorkflowTrainAndPredictDNN(t *testing.T) {
@@ -2169,6 +2170,38 @@ func CaseTrainDistributedPAIArgo(t *testing.T) {
 
 	SELECT * FROM %s TO PREDICT %s.class USING %s;
 	`, caseTrainTable, caseTestTable, caseInto, caseTestTable, casePredictTable, caseInto)
+
+	conn, err := createRPCConn()
+	if err != nil {
+		a.Fail("Create gRPC client error: %v", err)
+	}
+	defer conn.Close()
+
+	cli := pb.NewSQLFlowClient(conn)
+	// wait 1h for the workflow execution since it may take time to allocate enough nodes.
+	ctx, cancel := context.WithTimeout(context.Background(), 3600*time.Second)
+	defer cancel()
+
+	stream, err := cli.Run(ctx, &pb.Request{Sql: trainSQL, Session: &pb.Session{DbConnStr: testDatasource}})
+	if err != nil {
+		a.Fail("Create gRPC client error: %v", err)
+	}
+	a.NoError(checkWorkflow(ctx, cli, stream))
+}
+
+func CaseBackticksInSQL(t *testing.T) {
+	if os.Getenv("SQLFLOW_submitter") != "pai" && os.Getenv("SQLFLOW_submitter") != "alisa" {
+		t.Skip("Skip PAI case.")
+	}
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf("SELECT `(sepal.*)?+.+` FROM %s"+ /* Exclude columns start with "sepal" */ `
+	TO TRAIN DNNClassifier
+	WITH
+		model.n_classes = 3,
+		model.hidden_units = [10, 20],
+		validation.select="select * from %s"
+	LABEL class
+	INTO %s;`, caseTrainTable, caseTestTable, caseInto)
 
 	conn, err := createRPCConn()
 	if err != nil {

@@ -89,7 +89,7 @@ func TestCoulerCodegen(t *testing.T) {
 	code, err := cg.GenCode(sqlIR, &pb.Session{})
 	a.NoError(err)
 
-	r, _ := regexp.Compile(`repl -e "(.*);"`)
+	r, _ := regexp.Compile(`repl -e '(.*);'`)
 	a.Equal(r.FindStringSubmatch(code)[1], "SELECT * FROM iris.train limit 10")
 	a.True(strings.Contains(code, `step_envs["SQLFLOW_OSS_AK"] = '''oss_key'''`))
 	a.False(strings.Contains(code, `step_envs["SQLFLOW_WORKFLOW_SECRET"]`))

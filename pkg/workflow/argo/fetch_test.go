@@ -82,7 +82,7 @@ spec:
         value: '%s'
       image: %s
       command: [bash]
-      args: ["-c", 'bash /start.sh mysql >/dev/null 2>&1 & repl -e "{{inputs.parameters.sql}}"']
+      args: ["-c", 'bash /start.sh mysql >/dev/null 2>&1 & repl -e \'{{inputs.parameters.sql}}\'']
 `
 
 	podYAML = `apiVersion: v1
