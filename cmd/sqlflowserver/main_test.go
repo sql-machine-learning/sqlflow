@@ -2190,11 +2190,13 @@ func CaseTrainDistributedPAIArgo(t *testing.T) {
 }
 
 func CaseBackticksInSQL(t *testing.T) {
-	if os.Getenv("SQLFLOW_submitter") != "pai" && os.Getenv("SQLFLOW_submitter") != "alisa" {
-		t.Skip("Skip PAI case.")
+	driverName, _, _ := database.ParseURL(testDatasource)
+	if driverName != "mysql" {
+		t.Skip("Skipping workflow mysql test.")
 	}
+
 	a := assert.New(t)
-	trainSQL := fmt.Sprintf("SELECT `(sepal.*)?+.+` FROM %s"+ /* Exclude columns start with "sepal" */ `
+	trainSQL := fmt.Sprintf("SELECT `sepal_length` FROM %s"+`
 	TO TRAIN DNNClassifier
 	WITH
 		model.n_classes = 3,
