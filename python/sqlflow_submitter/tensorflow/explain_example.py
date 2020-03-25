@@ -27,7 +27,7 @@ if __name__ == "__main__":
     train(datasource=datasource,
           estimator=tf.estimator.BoostedTreesClassifier,
           select="SELECT * FROM iris.train where class!=2",
-          validate_select="SELECT * FROM iris.test where class!=2",
+          validation_select="SELECT * FROM iris.test where class!=2",
           feature_columns=feature_columns,
           feature_column_names=feature_column_names,
           feature_metas=feature_metas,
@@ -40,7 +40,7 @@ if __name__ == "__main__":
           },
           save="btmodel",
           batch_size=100,
-          epochs=20,
+          epoch=20,
           verbose=0)
 
     explain(datasource=datasource,
@@ -66,7 +66,7 @@ if __name__ == "__main__":
     train(datasource=datasource,
           estimator=tf.estimator.DNNClassifier,
           select="SELECT * FROM iris.train",
-          validate_select="SELECT * FROM iris.test",
+          validation_select="SELECT * FROM iris.test",
           feature_columns=feature_columns,
           feature_column_names=feature_column_names,
           feature_metas=feature_metas,
@@ -77,7 +77,7 @@ if __name__ == "__main__":
           },
           save="dnnmodel",
           batch_size=100,
-          epochs=20,
+          epoch=20,
           verbose=0)
 
     explain(datasource=datasource,
