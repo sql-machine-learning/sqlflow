@@ -2196,7 +2196,7 @@ func CaseBackticksInSQL(t *testing.T) {
 	}
 
 	a := assert.New(t)
-	trainSQL := fmt.Sprintf("SELECT `sepal_length` FROM %s"+`
+	trainSQL := fmt.Sprintf("SELECT `sepal_length`, `class` FROM %s"+`
 	TO TRAIN DNNClassifier
 	WITH
 		model.n_classes = 3,
