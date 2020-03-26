@@ -33,11 +33,33 @@ Then model definition images and trained model can have below accessibility type
 
 ## Steps to View Model Definitions and Trained Models
 
+<p align="center">
+<img src="figures/list_model_defs.png">
+</p>
+
+<p align="center">
+<img src="figures/list_trained_model.png">
+</p>
+
 1. **Optional**: Login to model market. If the user is not logged in, he can only view public model definitions and trained models.
 1. Click at the "Model Definitions" tab to see the list of model definition Docker images and the model class names in each Docker image.
 1. Click at "Trained Models" tab to see all trained models the current user have published by using SQLFlow `PUBLISH` statement, the evaluation result of the trained model will also be available.
 
+Click at one entry in the list can view the details of the model definition or the trained model:
+
+<p align="center">
+<img src="figures/model_def_detail.png">
+</p>
+
+<p align="center">
+<img src="figures/trained_model_detail.png">
+</p>
+
 ## Steps to Publish a Docker Image
+
+<p align="center">
+<img src="figures/new_model_def.png">
+</p>
 
 1. Login to model market.
 1. Go to the "Model Definitions" tab.
