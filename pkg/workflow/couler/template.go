@@ -41,6 +41,7 @@ const coulerTemplateText = `
 import couler.argo as couler
 import couler.steps as steps
 import json
+import re
 datasource = "{{ .DataSource }}"
 
 step_envs = dict()

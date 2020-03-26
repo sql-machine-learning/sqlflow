@@ -98,6 +98,10 @@ func TestCoulerCodegen(t *testing.T) {
 	a.True(strings.Contains(code, `couler.secret(secret_data, name="sqlflow-secret", dry_run=True)`))
 
 	_, e = cg.GenYAML(code)
+	yaml, e := cg.GenYAML(code)
+	r, e = regexp.Compile(`repl -e "(.*);"`)
+	a.NoError(e)
+	a.Equal("SELECT * FROM iris.train limit 10", r.FindStringSubmatch(yaml)[1])
 	a.NoError(e)
 }
 
