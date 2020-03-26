@@ -148,7 +148,7 @@ func createPAIHyperParamFile(cwd string, filename string, modelPath string) erro
 
 // Possible situations:
 //
-// 1. argo mode server: generate a step running: bash -c 'repl -e \'select * from xx to train\''
+// 1. argo mode server: generate a step running: bash -c "repl -e \"select * from xx to train\""
 // 2. non-argo mode server | repl -e: create tmp table in go, and use it to train
 func (s *paiSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 	cl.TmpTrainTable, cl.TmpValidateTable, e = createTempTrainAndValTable(cl.Select, cl.ValidationSelect, s.Session.DbConnStr)
