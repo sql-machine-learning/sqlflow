@@ -17,8 +17,8 @@ import couler.argo as couler
 
 def escape_sql(original_sql):
     '''Escape special chars in SQL'''
-    return original_sql.replace('"', r'\"').replace("`",
-                                                    r'\`').replace("$", r'\$')
+    return original_sql.replace('\\', '\\\\').replace('"', r'\"').replace(
+        "`", r'\`').replace("$", r'\$')
 
 
 def sqlflow(sql, image="sqlflow/sqlflow", env=None, secret=None):

@@ -20,9 +20,7 @@ class TestSQLFlowStep(unittest.TestCase):
     ''' Test SQLFlow step'''
     def test_sql_with_special_char(self):
         '''Test escapeted SQL'''
-        sql = '''SELECT `a` FROM table TO TRAIN DNNClassifier
-WITH validate_select="SELECT * FROM table_test;"'''
-        actural_sql = steps.sqlflow_step.escape_sql(sql)
-        expected_sql = '''SELECT \\`a\\` FROM table TO TRAIN DNNClassifier
-WITH validate_select=\\"SELECT * FROM table_test;\\"'''
-        self.assertEqual(actural_sql, expected_sql)
+        special_char_sql = '`$\"\\;'
+        actural = steps.sqlflow_step.escape_sql(special_char_sql)
+        expected = r'\`\$\"\\;'
+        self.assertEqual(actural, expected)
