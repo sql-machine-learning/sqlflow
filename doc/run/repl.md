@@ -9,8 +9,8 @@ In addition to building SQLFlow into a gRPC server, accessed via Jupyter Noteboo
 The SQLFlow Docker image contains the REPL command-line program.  We can run an example session by typing the following command on MacOS.  If you run Docker on Linux, please change `host.docker.internal:3306` to `localhost:3306`.
 
 ```
-docker run -it --rm --net=host sqlflow/sqlflow repl \
---datasource="mysql://root:root@tcp(host.docker.internal:3306)/?maxAllowedPacket=0"
+docker run -it --rm --net=host sqlflow/sqlflow bash -c 'chmod +x start.sh; ./start.sh populate-example-dataset-mysql-local; \
+repl --datasource="mysql://root:root@tcp(host.docker.internal:3306)/?maxAllowedPacket=0"'
 ```
 
 You should be able to see the following:
