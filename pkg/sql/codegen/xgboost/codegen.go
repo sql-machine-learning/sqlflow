@@ -55,6 +55,12 @@ range: [2, Infinity]`, attribute.IntLowerBoundChecker(2, true)},
 	"train.num_boost_round": {attribute.Int, 10, `[default=10]
 The number of rounds for boosting.
 range: [1, Infinity]`, attribute.IntLowerBoundChecker(1, true)},
+	"train.batch_size": {attribute.Int, -1, `[default=-1]
+Batch size for each iteration, -1 means use all data at once.
+range: [-1, Infinity]`, attribute.IntLowerBoundChecker(-1, true)},
+	"train.epoch": {attribute.Int, 1, `[default=1]
+Number of rounds to run the training.
+range: [1, Infinity]`, attribute.IntLowerBoundChecker(1, true)},
 	"validation.select": {attribute.String, "", `[default=""]
 Specify the dataset for validation.
 example: "SELECT * FROM boston.train LIMIT 8"`, nil},
@@ -156,6 +162,23 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 	params[""]["booster"] = booster
 	diskCache := params["train."]["disk_cache"].(bool)
 	delete(params["train."], "disk_cache")
+	var batchSize int
+	var epoch int
+
+	batchSizeAttr, ok := params["train."]["batch_size"]
+	if ok {
+		batchSize = batchSizeAttr.(int)
+		delete(params["train."], "batch_size")
+	} else {
+		batchSize = -1
+	}
+	epochAttr, ok := params["train."]["epoch"]
+	if ok {
+		epoch = epochAttr.(int)
+		delete(params["train."], "epoch")
+	} else {
+		epoch = 1
+	}
 
 	if len(trainStmt.Features) != 1 {
 		return "", fmt.Errorf("xgboost only support 1 feature column set, received %d", len(trainStmt.Features))
@@ -198,6 +221,8 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 		FeatureColumnNames: fs,
 		LabelJSON:          string(l),
 		DiskCache:          diskCache,
+		BatchSize:          batchSize,
+		Epoch:              epoch,
 		IsPAI:              tf.IsPAI(),
 		PAITrainTable:      paiTrainTable,
 		PAIValidateTable:   paiValidateTable}

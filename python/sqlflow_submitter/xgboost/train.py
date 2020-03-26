@@ -24,10 +24,15 @@ def train(datasource,
           label_meta,
           validation_select,
           disk_cache=False,
+          batch_size=None,
+          epoch=1,
           is_pai=False,
           pai_train_table="",
           pai_validate_table=""):
 
+    if batch_size == -1:
+        batch_size = None
+    print("Start training XGBoost model...")
     dtrain = xgb_dataset(datasource,
                          'train.txt',
                          select,
@@ -36,21 +41,23 @@ def train(datasource,
                          label_meta,
                          is_pai,
                          pai_train_table,
-                         cache=disk_cache)
-    watchlist = [(dtrain, "train")]
+                         cache=disk_cache,
+                         batch_size=batch_size,
+                         epoch=epoch)
+    for per_batch_dmatrix in dtrain:
+        watchlist = [(per_batch_dmatrix, "train")]
+        if len(validation_select.strip()) > 0:
+            dvalidate = list(
+                xgb_dataset(datasource, 'validate.txt', validation_select,
+                            feature_metas, feature_column_names, label_meta,
+                            is_pai, pai_validate_table))[0]
+            watchlist.append((dvalidate, "validate"))
 
-    if len(validation_select.strip()) > 0:
-        dvalidate = xgb_dataset(datasource, 'validate.txt', validation_select,
-                                feature_metas, feature_column_names,
-                                label_meta, is_pai, pai_validate_table)
-        watchlist.append((dvalidate, "validate"))
-
-    re = dict()
-    print("Start training XGBoost model...")
-    bst = xgb.train(model_params,
-                    dtrain,
-                    evals=watchlist,
-                    evals_result=re,
-                    **train_params)
-    bst.save_model("my_model")
-    print("Evaluation result: %s" % re)
+        re = dict()
+        bst = xgb.train(model_params,
+                        per_batch_dmatrix,
+                        evals=watchlist,
+                        evals_result=re,
+                        **train_params)
+        bst.save_model("my_model")
+        print("Evaluation result: %s" % re)
