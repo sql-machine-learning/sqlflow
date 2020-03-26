@@ -20,7 +20,6 @@ const XGBoostObjectiveJSON = `
     "binary:hinge": "hinge loss for binary classification. This makes predictions of 0 or 1, rather than producing probabilities.",
     "binary:logistic": "logistic regression for binary classification, output probability",
     "binary:logitraw": "logistic regression for binary classification, output score before logistic transformation",
-    "count:poisson": "poisson regression for count data, output mean of poisson distribution",
     "multi:softmax": "set XGBoost to do multiclass classification using the softmax objective, you also need to set num_class(number of classes)",
     "multi:softprob": "same as softmax, but output a vector of ndata * nclass, which can be further reshaped to ndata * nclass matrix. The result contains predicted probability of each data point belonging to each class.",
     "rank:map": "Use LambdaMART to perform list-wise ranking where Mean Average Precision (MAP) is maximized",

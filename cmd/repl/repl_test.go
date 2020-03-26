@@ -624,7 +624,7 @@ func TestComplete(t *testing.T) {
 	p = prompt.NewBuffer()
 	p.InsertText("SELECT * FROM train TO TRAIN xgboost.gbtree WITH objective=", false, true)
 	c = s.completer(*p.Document())
-	a.Equal(15, len(c))
+	a.Equal(14, len(c))
 	p.InsertText("r", false, true)
 	c = s.completer(*p.Document())
 	a.Equal(8, len(c))
