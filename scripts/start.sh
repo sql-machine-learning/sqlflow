@@ -23,11 +23,15 @@ function sleep_until_mysql_is_ready() {
   done
 }
 
-function setup_mysql() {
+function start_mysql() {
   # Start mysqld
   sed -i "s/.*bind-address.*/bind-address = ${SQLFLOW_MYSQL_HOST}/" /etc/mysql/mysql.conf.d/mysqld.cnf
   service mysql start
   sleep 1
+}
+
+function setup_mysql() {
+  start_mysql
   populate_example_dataset
   # Grant all privileges to all the remote hosts so that the sqlflow server can
   # be scaled to more than one replicas.
@@ -75,6 +79,10 @@ function main() {
       setup_mysql
       ;;
     populate-example-dataset-mysql)
+      populate_example_dataset
+      ;;
+    populate-example-dataset-mysql-local)
+      start_mysql
       populate_example_dataset
       ;;
     sqlflow-server)

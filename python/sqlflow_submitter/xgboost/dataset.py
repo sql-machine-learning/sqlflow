@@ -30,7 +30,9 @@ def xgb_dataset(datasource,
                 is_pai=False,
                 pai_table="",
                 pai_single_file=False,
-                cache=False):
+                cache=False,
+                batch_size=None,
+                epoch=1):
 
     if is_pai:
         return pai_dataset(fn, feature_specs, feature_column_names, label_spec,
@@ -38,21 +40,43 @@ def xgb_dataset(datasource,
                            pai_single_file, cache)
     conn = db.connect_with_data_source(datasource)
     gen = db.db_generator(conn.driver, conn, dataset_sql, feature_column_names,
-                          label_spec, feature_specs)
-    dump_dmatrix(fn, gen, label_spec)
-    return xgb.DMatrix('{0}#{0}.cache'.format(fn) if cache else fn)
+                          label_spec, feature_specs)()
+
+    for i in range(epoch):
+        step = 0
+        # the filename per batch is [filename]_[step]
+        step_file_name = "%s_%d" % (fn, step)
+        writed_rows = dump_dmatrix(step_file_name, gen, label_spec)
+
+        while writed_rows > 0:
+            yield xgb.DMatrix('{0}#{0}.cache'.format(step_file_name)
+                              if cache else step_file_name)
+            os.remove(step_file_name)
+
+            step += 1
+            step_file_name = "%s_%d" % (fn, step)
+            writed_rows = dump_dmatrix(step_file_name, gen, label_spec)
 
 
-def dump_dmatrix(filename, generator, has_label):
+def dump_dmatrix(filename, generator, has_label, batch_size=None):
     # TODO(yancey1989): generate group and weight text file if necessary
+    row_id = 0
     with open(filename, 'a') as f:
-        for item in generator():
+        for item in generator:
             row_data = [
                 "%d:%f" % (i, v[0] or 0) for i, v in enumerate(item[0])
             ]
             if has_label:
                 row_data = [str(item[1])] + row_data
             f.write("\t".join(row_data) + "\n")
+            row_id += 1
+            # batch_size == None meas use all data in generator
+            if batch_size == None:
+                continue
+            if row_id >= batch_size:
+                break
+    # return rows writed
+    return row_id
 
 
 def pai_dataset(filename, feature_specs, feature_column_names, label_spec,

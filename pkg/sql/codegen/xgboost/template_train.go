@@ -25,6 +25,8 @@ type trainFiller struct {
 	FeatureColumnNames []string
 	LabelJSON          string
 	DiskCache          bool
+	BatchSize          int
+	Epoch              int
 	IsPAI              bool
 	PAITrainTable      string
 	PAIValidateTable   string
@@ -52,6 +54,8 @@ train(datasource='''{{.DataSource}}''',
       label_meta=label_meta,
       validation_select='''{{.ValidationSelect}}''',
       disk_cache="{{.DiskCache}}" == "true",
+      batch_size={{.BatchSize}},
+      epoch={{.Epoch}},
       is_pai="{{.IsPAI}}" == "true",
       pai_train_table="{{.PAITrainTable}}",
       pai_validate_table="{{.PAIValidateTable}}")
