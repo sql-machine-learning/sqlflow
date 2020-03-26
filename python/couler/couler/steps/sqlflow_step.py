@@ -15,14 +15,16 @@
 import couler.argo as couler
 
 
-def _escape_sql(original_sql):
-    return original_sql.replace('"', '\\"').replace("`", '\\`')
+def escape_sql(original_sql):
+    '''Escape special chars in SQL'''
+    return original_sql.replace('"', r'\"').replace("`",
+                                                    r'\`').replace("$", r'\$')
 
 
 def sqlflow(sql, image="sqlflow/sqlflow", env=None, secret=None):
     '''sqlflow step call run_container to append a workflow step.
     '''
-    couler.run_container(command='''repl -e "%s"''' % _escape_sql(sql),
+    couler.run_container(command='''repl -e "%s"''' % escape_sql(sql),
                          image=image,
                          env=env,
                          secret=secret)

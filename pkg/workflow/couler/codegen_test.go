@@ -105,6 +105,19 @@ func TestCoulerCodegen(t *testing.T) {
 	a.NoError(e)
 }
 
+func TestCoulerCodegenSpecialChars(t *testing.T) {
+	a := assert.New(t)
+	specialCharsStmt := ir.NormalStmt("`$\"\\;")
+	sqlIR := []ir.SQLFlowStmt{&specialCharsStmt}
+	cg := &Codegen{}
+	code, err := cg.GenCode(sqlIR, &pb.Session{})
+	a.NoError(err)
+	yaml, e := cg.GenYAML(code)
+	a.NoError(e)
+	r, _ := regexp.Compile(`repl -e "(.*);"`)
+	a.Equal("\\`\\$\\\"\\\\", r.FindStringSubmatch(yaml)[1])
+}
+
 func mockSQLProgramIR() []ir.SQLFlowStmt {
 	standardSQL := ir.NormalStmt("SELECT * FROM iris.train limit 10;")
 	trainStmt := ir.MockTrainStmt(false)

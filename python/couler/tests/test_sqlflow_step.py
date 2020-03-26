@@ -10,8 +10,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-'''This Modules contains Couler steps'''
+'''This module run test case of SQLFlow step'''
+import unittest
 
-from .sqlflow_step import sqlflow
+import couler.steps as steps
 
-__all__ = ['sqlflow']
+
+class TestSQLFlowStep(unittest.TestCase):
+    ''' Test SQLFlow step'''
+    def test_sql_with_special_char(self):
+        '''Test escapeted SQL'''
+        sql = '''SELECT `a` FROM table TO TRAIN DNNClassifier
+WITH validate_select="SELECT * FROM table_test;"'''
+        actural_sql = steps.sqlflow_step.escape_sql(sql)
+        expected_sql = '''SELECT \\`a\\` FROM table TO TRAIN DNNClassifier
+WITH validate_select=\\"SELECT * FROM table_test;\\"'''
+        self.assertEqual(actural_sql, expected_sql)
