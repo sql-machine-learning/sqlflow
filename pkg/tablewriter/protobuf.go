@@ -93,7 +93,7 @@ func (table *ProtobufWriter) writeHead() error {
 	if len(table.head) == 0 {
 		return nil
 	}
-	// skip write head if it has been writen to table.out
+	// skip write head if it has been written to table.out
 	if table.hasWrittenHeader {
 		return nil
 	}

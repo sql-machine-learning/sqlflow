@@ -61,7 +61,7 @@ func TestRunStmt(t *testing.T) {
 	os.Setenv("SQLFLOW_log_dir", "/tmp/")
 	session.DbConnStr = dbConnStr
 	currentDB = ""
-	// TODO(yancey1989): assert shoud not panics in repl
+	// TODO(yancey1989): assert should not panics in repl
 	output, err := step.GetStdout(func() error { return runStmt("show tables", true, "", dbConnStr) })
 	a.NoError(err)
 	a.Contains(output, "Error 1046: No database selected")
@@ -587,7 +587,7 @@ func TestComplete(t *testing.T) {
 	a.Equal(7, len(c)) // RMSprop has 7 parameters
 	a.Equal("optimizer", c[0].Text)
 
-	p.InsertText(`ptimizer.learing_rate=0.02, model.n`, false, true)
+	p.InsertText(`ptimizer.learning_rate=0.02, model.n`, false, true)
 	c = s.completer(*p.Document())
 	a.Equal(1, len(c))
 	a.Equal("model.n_classes", c[0].Text)
