@@ -2035,9 +2035,7 @@ func TestEnd2EndWorkflow(t *testing.T) {
 func CaseWorkflowTrainAndPredictDNN(t *testing.T) {
 	a := assert.New(t)
 
-	sqlProgram := fmt.Sprintf(`
-SELECT * FROM %s LIMIT 10;
-
+	sqlProgram := fmt.Sprintf("SELECT `sepal_length` FROM %s LIMIT 10;"+`
 SELECT *
 FROM %s
 TO TRAIN DNNClassifier

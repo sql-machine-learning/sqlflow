@@ -19,10 +19,10 @@ def _escape_sql(original_sql):
     return original_sql.replace('"', '\\"').replace("`", '\\`')
 
 
-def sqlflow(sql, image="sqlflow/sqlflow", step_envs=None, secret=None):
+def sqlflow(sql, image="sqlflow/sqlflow", env=None, secret=None):
     '''sqlflow step call run_container to append a workflow step.
     '''
     couler.run_container(command='''repl -e "%s"''' % _escape_sql(sql),
                          image=image,
-                         env=step_envs,
+                         env=env,
                          secret=secret)

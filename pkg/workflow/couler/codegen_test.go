@@ -89,14 +89,15 @@ func TestCoulerCodegen(t *testing.T) {
 	code, err := cg.GenCode(sqlIR, &pb.Session{})
 	a.NoError(err)
 
-	r, _ := regexp.Compile(`repl -e "(.*);"`)
+	r, e := regexp.Compile(`steps.sqlflow\(sql='''(.*);''', `)
+	a.NoError(e)
 	a.Equal(r.FindStringSubmatch(code)[1], "SELECT * FROM iris.train limit 10")
 	a.True(strings.Contains(code, `step_envs["SQLFLOW_OSS_AK"] = '''oss_key'''`))
 	a.False(strings.Contains(code, `step_envs["SQLFLOW_WORKFLOW_SECRET"]`))
 	a.True(strings.Contains(code, `couler.clean_workflow_after_seconds_finished(86400)`))
 	a.True(strings.Contains(code, `couler.secret(secret_data, name="sqlflow-secret", dry_run=True)`))
 
-	_, e := cg.GenYAML(code)
+	_, e = cg.GenYAML(code)
 	a.NoError(e)
 }
 

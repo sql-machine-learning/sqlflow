@@ -39,7 +39,7 @@ type coulerFiller struct {
 
 const coulerTemplateText = `
 import couler.argo as couler
-import couler.sqlflow_step as sqlflow_step
+import couler.steps as steps
 import json
 datasource = "{{ .DataSource }}"
 
@@ -60,7 +60,7 @@ couler.clean_workflow_after_seconds_finished({{.WorkflowTTL}})
 {{ range $ss := .SQLStatements }}
 	{{if $ss.IsExtendedSQL }}
 
-couler.steps.sqlflow(sql=''{{ $ss.OriginalSQL }'''', image="{{ %ss.DockerImage }}", step_envs=step_envs, secret=sqlflow_secret)
+steps.sqlflow(sql='''{{ $ss.OriginalSQL }}''', image="{{ $ss.DockerImage }}", env=step_envs, secret=sqlflow_secret)
 	{{else if $ss.IsKatibTrain}}
 import couler.sqlflow.katib as auto
 
@@ -72,7 +72,7 @@ auto.train(model=model, params=params, sql=escape_sql(train_sql), datasource=dat
 # TODO(yancey1989): 
 #	using "repl -parse" to output IR and
 #	feed to "sqlflow_submitter.{submitter}.train" to submit the job
-couler.steps.sqlflow(sql='''{{ $ss.OriginalSQL }}''', image="{{ $ss.DockerImage }}", env=step_envs)
+steps.sqlflow(sql='''{{ $ss.OriginalSQL }}''', image="{{ $ss.DockerImage }}", env=step_envs)
 	{{end}}
 {{end}}
 `
