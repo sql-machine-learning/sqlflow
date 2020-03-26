@@ -2082,9 +2082,7 @@ func CaseWorkflowTrainAndPredictDNNCustomImage(t *testing.T) {
 	a := assert.New(t)
 	// use the default image to test
 	customImage := os.Getenv("SQLFLOW_WORKFLOW_STEP_IMAGE")
-	sqlProgram := fmt.Sprintf(`
-SELECT * FROM %s LIMIT 10;
-
+	sqlProgram := fmt.Sprintf("SELECT `sepal*` FROM %s LIMIT 10;"+`
 SELECT * FROM %s
 TO TRAIN %s/DNNClassifier
 WITH
