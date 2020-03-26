@@ -45,6 +45,6 @@ func TestWorkflow(t *testing.T) {
 	log := log.GetDefaultLogger()
 	code, e := compile("couler", testSQLProgram, datasource, log)
 	a.NoError(e)
-	expectedCodeSnippet := `couler.run_container(command="""repl -e '\\''%s'\\''""" % escape_sql(train_sql), image="sqlflow/sqlflow", env=step_envs, secret=sqlflow_secret)`
+	expectedCodeSnippet := `couler.run_container(command='''repl -e "%s"''' % escape_sql(train_sql), image="sqlflow/sqlflow", env=step_envs, secret=sqlflow_secret)`
 	a.Contains(code, expectedCodeSnippet)
 }
