@@ -77,6 +77,7 @@ function main() {
   case $ARG in
     mysql)
       setup_mysql
+      sleep infinity
       ;;
     populate-example-dataset-mysql)
       populate_example_dataset
