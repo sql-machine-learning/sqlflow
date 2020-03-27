@@ -1,5 +1,4 @@
 #!/bin/bash
-
 # Copyright 2020 The SQLFlow Authors. All rights reserved.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -e
-wget -q https://iterm2.com/utilities/it2check -P /usr/local/bin/
-chmod +x  /usr/local/bin/it2check
-apt-get install -y shellcheck
+changed_files=$(git diff --cached --name-only --diff-filter=ACMR | grep '\.bash\|\.sh$')
+if [[ "$changed_files" == "" ]]; then
+    exit 0
+fi
+
+shellcheck "$changed_files"
