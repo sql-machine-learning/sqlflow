@@ -430,6 +430,6 @@ known = set([
 
 if __name__ == "__main__":
     if "-h" in sys.argv:
-        print(f"usage: {sys.argv[0]} < file")
+        print(f"usage: python {sys.argv[0]} < file")
     else:
         spell_check()
