@@ -208,8 +208,8 @@ func Analyze(program []ir.Statement) (*deps.Statement, error) {}
 **rather than in a table, if the model name is the same as some table name, there's no dependency**
 **between them.**
 
-Then the [workflow package](https://github.com/sql-machine-learning/sqlflow/blob/develop/doc/design/workflow_pacakge.md#workflow-codegen)
-can use the constructed graph to generate Argo/Tekton YAML to submi to Kubernetes cluster for execution:
+Then the [workflow package](https://github.com/sql-machine-learning/sqlflow/blob/develop/doc/design/workflow_package.md#workflow-codegen)
+can use the constructed graph to generate Argo/Tekton YAML to submit to Kubernetes cluster for execution:
 
 ```Go
 GenCode(*deps.Statement) string // generate couler/fluid code for the graph

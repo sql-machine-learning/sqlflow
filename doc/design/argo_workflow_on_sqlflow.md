@@ -86,7 +86,7 @@ func Fetch(req *FetchRequest) *FetchResponse {
   // return the next step ID if necessary
   stepID := req.stepID
 
-  // kubctl get pod ...
+  // kubectl get pod ...
   pod := getPod(wf, stepID)
 
   // return step phase logs if the phase changed
@@ -166,7 +166,7 @@ where
 - `unmarshalResponseFromPodLogs` unmarshal protobuf message from Pod logs as following pseudo-code:
 
     ``` go
-    func unmarshalResponseFromPodLogs(pod *Pod) ([]*pb.Resonse, error) {
+    func unmarshalResponseFromPodLogs(pod *Pod) ([]*pb.Response, error) {
       responses := []*pb.Response{}
       offset := ""
       logs, newOffset := k8s.readPodLogs(pod.Name, offset)
@@ -179,7 +179,7 @@ where
             res := new(pb.Response)
             // Unmarshal the protobuf message from pod logs to Response Message
             proto.Unmarshal(line, res)
-            respones = append(response, res)
+            response = append(response, res)
           }
         }
         log, newOffset = k8s.ReadPodLogs(pod.Name, offset)
