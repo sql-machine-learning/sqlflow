@@ -14,8 +14,9 @@
 package attribute
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestFloat32RangeChecker(t *testing.T) {

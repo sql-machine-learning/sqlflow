@@ -618,6 +618,31 @@ func TestComplete(t *testing.T) {
 	c = s.completer(*p.Document())
 	a.Equal(1, len(c))
 	a.Equal("TRAIN", c[0].Text)
+
+	// Test XGBoost objective parameter completion
+	s = newPromptState()
+	p = prompt.NewBuffer()
+	p.InsertText("SELECT * FROM train TO TRAIN xgboost.gbtree WITH objective=", false, true)
+	c = s.completer(*p.Document())
+	a.Equal(14, len(c))
+	p.InsertText("r", false, true)
+	c = s.completer(*p.Document())
+	a.Equal(8, len(c))
+	p.InsertText("eg:s", false, true)
+	c = s.completer(*p.Document())
+	a.Equal(2, len(c))
+	p.InsertText("quarederror", false, true)
+	c = s.completer(*p.Document())
+	a.Equal(1, len(c))
+	p.InsertText("x", false, true)
+	c = s.completer(*p.Document())
+	a.Equal(0, len(c))
+
+	s = newPromptState()
+	p = prompt.NewBuffer()
+	p.InsertText("SELECT * FROM train TO TRAIN notxgboost.gbtree WITH objective=", false, true)
+	c = s.completer(*p.Document())
+	a.Equal(0, len(c))
 }
 
 func TestTerminalCheck(t *testing.T) {

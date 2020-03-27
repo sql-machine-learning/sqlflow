@@ -26,6 +26,13 @@ import (
 	tf "sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
 )
 
+func getXGBoostObjectives() (ret []string) {
+	for k := range attribute.XGBoostObjectiveDocs {
+		ret = append(ret, k)
+	}
+	return
+}
+
 // TODO(tony): complete model parameter and training parameter list
 // model parameter list: https://xgboost.readthedocs.io/en/latest/parameter.html#general-parameters
 // training parameter list: https://github.com/dmlc/xgboost/blob/b61d53447203ca7a321d72f6bdd3f553a3aa06c4/python-package/xgboost/training.py#L115-L117
@@ -35,21 +42,7 @@ Step size shrinkage used in update to prevents overfitting. After each boosting 
 range: [0,1]`, attribute.Float32RangeChecker(0, 1, true, true)},
 	"num_class": {attribute.Int, nil, `Number of classes.
 range: [2, Infinity]`, attribute.IntLowerBoundChecker(2, true)},
-	"objective": {attribute.String, nil, `Learning objective`, attribute.StringChoicesChecker(
-		"reg:squarederror",
-		"reg:squaredlogerror",
-		"reg:logistic",
-		"binary:logistic",
-		"binary:logitraw",
-		"binary:hinge",
-		"survival:cox",
-		"multi:softmax",
-		"multi:softprob",
-		"rank:pairwise",
-		"rank:ndcg",
-		"rank:map",
-		"reg:gamma",
-		"reg:tweedie")},
+	"objective":        {attribute.String, nil, `Learning objective`, attribute.StringChoicesChecker(getXGBoostObjectives()...)},
 	"eval_metric":      {attribute.String, nil, `eval metric`, nil},
 	"train.disk_cache": {attribute.Bool, false, `whether use external memory to cache train data`, nil},
 	"train.num_boost_round": {attribute.Int, 10, `[default=10]
