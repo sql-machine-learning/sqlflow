@@ -63,4 +63,5 @@ repos:
     name: shellcheck
     entry: bash ./scripts/pre-commit/shellcheck.sh
     language: system
+    files: \.(bash|sh)$
     verbose: true
