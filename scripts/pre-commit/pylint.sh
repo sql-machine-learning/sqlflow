@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/bash
 # Copyright 2020 The SQLFlow Authors. All rights reserved.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,8 +13,8 @@
 # limitations under the License.
 
 changed_py_files=$(git diff --cached --name-only --diff-filter=ACMR | grep '\.py$' )
-if [[ $changed_py_files == "" ]]; then
+if [[ "$changed_py_files" == "" ]]; then
     exit 0
 fi
-pylint $changed_py_files
-flake8 $changed_py_files
+pylint "$changed_py_files"
+flake8 "changed_py_files"
