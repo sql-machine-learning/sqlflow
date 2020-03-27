@@ -39,16 +39,12 @@ sqlflow> SELECT * from iris.train limit 2;
 Then we can train a TensorFlow [DNNClassifier](https://www.tensorflow.org/api_docs/python/tf/estimator/DNNClassifier) model using the following statement.
 
 ```sql
-sqlflow> SELECT *
-FROM iris.train
+SELECT * FROM iris.train
 TO TRAIN DNNClassifier
-WITH model.n_classes = 3, model.hidden_units = [10, 20]
-COLUMN sepal_length, sepal_width, petal_length, petal_width
+WITH model.n_classes=3, model.hidden_units=[128,64],
+    validation.select="SELECT * FROM iris.test"
 LABEL class
 INTO sqlflow_models.my_dnn_model;
-
-...
-Done training
 ```
 
 To predict using the trained model, we can type the following statement.
