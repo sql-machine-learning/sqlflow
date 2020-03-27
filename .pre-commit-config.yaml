@@ -64,4 +64,3 @@ repos:
     entry: bash ./scripts/pre-commit/shellcheck.sh
     language: system
     verbose: true
-    pass_filenames: false
