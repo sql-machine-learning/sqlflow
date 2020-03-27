@@ -17,4 +17,4 @@ if [[ "$changed_files" == "" ]]; then
     exit 0
 fi
 
-shellcheck "$changed_files"
+echo "$changed_files" | xargs shellcheck

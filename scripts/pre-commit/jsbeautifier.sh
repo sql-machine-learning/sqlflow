@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/bash
 # Copyright 2020 The SQLFlow Authors. All rights reserved.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,8 +13,8 @@
 # limitations under the License.
 
 changed_js_files=$(git diff --cached --name-only --diff-filter=ACMR | grep ".*js$" )
-if [[ $changed_js_files == "" ]]; then
+if [[ "$changed_js_files" == "" ]]; then
     exit 0
 fi
-js-beautify -r $changed_js_files
+js-beautify -r "$changed_js_files"
 
