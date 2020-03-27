@@ -48,7 +48,6 @@ LABEL class
 INTO sqlflow_models.my_dnn_model;
 
 ...
-Training set accuracy: 0.96721
 Done training
 ```
 
