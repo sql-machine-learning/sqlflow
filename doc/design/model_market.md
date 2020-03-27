@@ -31,7 +31,22 @@ Then model definition images and trained model can have below accessibility type
 
 **NOTE: model definition and trained models have their own accessibility settings, e.g. a user uploaded a public ResNET model definition, then train the ResNET using a private image dataset, the trained model is set to private and only share to a few people.**
 
-## Steps to View Model Definitions and Trained Models
+## Model Market Entities and Relationship
+
+The below figure shows the relationships between entities of the model market:
+
+1. Each user can create many organizations, each organization can be accessed by many users.
+1. Each organization can manage several model definitions and trained models.
+1. Each model definition have many versions.
+1. Every trained model is trained using a specific version of a model definition, yet one model definition with a specific version can be used to train many trained models.
+
+<p align="center">
+<img src="figures/model_market_er.png">
+</p>
+
+## Use Cases
+
+### 1. View Model Definitions and Trained Models
 
 <p align="center">
 <img src="figures/list_model_defs.png">
@@ -55,7 +70,14 @@ Click at one entry in the list can view the details of the model definition or t
 <img src="figures/trained_model_detail.png">
 </p>
 
-## Steps to Publish a Docker Image
+### 2. Publish a Model Definition Docker Image
+
+1. A model developer develops a new model on some git repository.
+1. The model developer writes a Dockerfile describes the model runtime dependencies.
+1. The model developer build a Docker image by running `docker build -t docker.sqlflow.org/mymodel .`.
+1. The model developer publish this Docker image by running `docker push docker.sqlflow.org/mymodel`.
+
+After the Docker image is pushed to the docker registry, he need to add it in the model market by:
 
 <p align="center">
 <img src="figures/new_model_def.png">
@@ -70,7 +92,7 @@ Click at one entry in the list can view the details of the model definition or t
 
 **NOTE: Docker image with different [tags](https://www.freecodecamp.org/news/an-introduction-to-docker-tags-9b5395636c2a/) will be recognized as different images.**
 
-## Steps to Share Model Definition Docker Images to Other Users
+### 3. Share Model Definition Docker Images to Other Users
 
 1. Login to model market.
 1. Go to the "Model Definitions" tab.
@@ -82,7 +104,7 @@ The system will call Docker registry API to grant access for the user shared to 
 1. `OwnerID`: Docker image owner user ID.
 1. `SharedUserID`: User ID that the image is shared to.
 
-## Steps to Publish a Trained Model
+### 4. Steps to Publish a Trained Model
 
 The following SQL statement will publish a trained model named `my_first_model` to the model market.
 
