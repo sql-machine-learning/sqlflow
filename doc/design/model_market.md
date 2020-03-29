@@ -6,8 +6,6 @@ In the [model zoo design](model_zoo.md), we described how model developers devel
 
 Here, we'll describe how to build the model market for model developers and analysts.
 
-## Overview
-
 The model market is designed to:
 
 1. Manage user login and logout.
@@ -18,31 +16,30 @@ The model market is designed to:
 1. Share (or remove share) model definition images to other users.
 1. Share (or remove share) trained models to other users.
 
-<p align="center">
-<img src="figures/model_market_overview.png">
-</p>
+## Concepts
 
-In order to support publishing and sharing models securely, the model market is able to communicate with some [SSO](https://en.wikipedia.org/wiki/Single_sign-on) service to authenticate users. Only users that are logged in can do operations on the model market.
-
-Then model definition images and trained model can have below accessibility types:
-
-1. Private: Visible to the current user and users shared to.
-2. Public: Readable by every user.
+1. User: model market users have two roles basically:
+    1. Model developers: develop publish models available for other users.
+    2. Analysts: make use of the models to do analysis jobs.
+1. Organization: Each organization can manage several model definitions and trained models. An Organization can have one or many users. Also, an organization can be the user himself (as a personal space).
+1. Model definition: a program defines how the model will be trained or predicted, e.g. a Python class of Keras model definition. A model definition is a program, so it has runtime dependencies which will be built into a Docker image using a `Dockerfile`, and the program's releasing version will be represented as the Docker image tag.
+1. Trained model: model weights files when the model finishes training, can be used to predict new data. One model definition with a specific version can be used to train many trained models.
+1. Authentication: 
+    1. For public deployments, the model market will manage user registration itself.
+    1. For on-premise deployments, we use a central authentication service like [SSO](https://en.wikipedia.org/wiki/Single_sign-on), so that the user authentication will be consistent with the on-premise environment.
+1. Accessibility types of model definitions and trained models:
+    1. Private: Visible to the current user and users shared to.
+    2. Public: Readable by every user.
 
 **NOTE: model definition and trained models have their own accessibility settings, e.g. a user uploaded a public ResNET model definition, then train the ResNET using a private image dataset, the trained model is set to private and only share to a few people.**
 
-## Model Market Entities and Relationship
-
 The below figure shows the relationships between entities of the model market:
-
-1. Each user can create many organizations, each organization can be accessed by many users.
-1. Each organization can manage several model definitions and trained models.
-1. Each model definition have many versions.
-1. Every trained model is trained using a specific version of a model definition, yet one model definition with a specific version can be used to train many trained models.
 
 <p align="center">
 <img src="figures/model_market_er.png">
 </p>
+
+The model market will use a database (maybe MySQL) to store these entities and relationships. The database design can be done according to the figure.
 
 ## Use Cases
 
@@ -57,7 +54,7 @@ The below figure shows the relationships between entities of the model market:
 </p>
 
 1. **Optional**: Login to model market. If the user is not logged in, he can only view public model definitions and trained models.
-1. Click at the "Model Definitions" tab to see the list of model definition Docker images and the model class names in each Docker image; click to on entry to see the details of the model defination including available parameters.
+1. Click at the "Model Definitions" tab to see the list of model definition Docker images and the model class names in each Docker image; click on an entry to see the details of the model definition including available parameters.
 1. Click at "Trained Models" tab to see all trained models the current user have published by using SQLFlow `PUBLISH` statement, the evaluation result of the trained model will also be available.
 
 Click at one entry in the list can view the details of the model definition or the trained model:
@@ -74,8 +71,8 @@ Click at one entry in the list can view the details of the model definition or t
 
 1. A model developer develops a new model on some git repository.
 1. The model developer writes a Dockerfile describes the model runtime dependencies.
-1. The model developer build a Docker image by running `docker build -t docker.sqlflow.org/mymodel .`.
-1. The model developer publish this Docker image by running `docker push docker.sqlflow.org/mymodel`.
+1. The model developer builds a Docker image by running `docker build -t docker.sqlflow.org/mymodel .`.
+1. The model developer publishes this Docker image by running `docker push docker.sqlflow.org/mymodel`.
 
 After the Docker image is pushed to the docker registry, he need to add it in the model market by:
 
@@ -113,13 +110,13 @@ SQLFLOW PUBLISH my_first_model
     [TO https://models.sqlflow.org/user_name]
 ```
 
-By running above statement in SQLFlow, SQLFlow will call the model market API (e.g. https://models.sqlflow.org/publish_trained_model?userid=&model_name=) to upload the saved model to model market website, then the model market will save the trained model on a persistent storage like OSS. This persistent storage is managed by model market, the trained models can only be read by model market API (e.g. https://models.sqlflow.org/get_trained_model?userid=&model_name=). After that ownership information will be written into two database tables (can use a MySQL service in general): the **trained models table** and the **evaluation result table**.
+By running the above statement in SQLFlow, SQLFlow will call the model market API (e.g. https://models.sqlflow.org/publish_trained_model?userid=&model_name=) to upload the trained model to model market website, then the model market will save the trained model on persistent storage like OSS. This persistent storage is managed by the model market, the trained models can only be read by model market API (e.g. https://models.sqlflow.org/get_trained_model?userid=&model_name=). After that ownership information will be written into two database tables (can use a MySQL service in general): the **trained models table** and the **evaluation result table**.
 
 ### Authentication When Publish a Model 
 
-For cloud environments like [Aliyun Dataworks](https://data.aliyun.com/product/ide), users are alerady logged in before submitting SQLFlow statements. So, we can use the same user credential to access the model market which is deployed using the same authentication backend as the cloud environment.
+For cloud environments like [Aliyun Dataworks](https://data.aliyun.com/product/ide), users are already logged in before submitting SQLFlow statements. So, we can use the same user credential to access the model market which is deployed using the same authentication backend as the cloud environment.
 
-For other environments like local Docker container, jupyter notebook, the user will be asked to enter the model market user name and password in order to publish the model.
+For other environments like the local Docker container, Jupiter notebook, the user will be asked to enter the model market user name and password in order to publish the model.
 
 ### Trained Models Table
 
@@ -131,7 +128,7 @@ Once a training job completes, the submitter program adds/updates a row of the t
 | Creator | String | the current user ID |
 | Model Definition Image | String | Docker image URL, or `a_data_scientist/regressors` in the above example |
 | Model Definition | String | A Python class name, or `DNNRegressor` in the above example. |
-| Hyperparameters | String | A JSON format string of hyper parameters used when training the model. |
+| Hyperparameters | String | A JSON format string of hyperparameters used when training the model. |
 | Trained Model File Path | String | the path to the trained model parameters on the distributed filesystem (including extra data like vocabulary files), e.g. `oss://bucket/path/to/your_model` |
 
 It is necessary to have the model ID so users can refer to the trained model when they want to use it.  Suppose that the user typed the prediction SQL statement using this model name. SQLFlow server will convert it into a submitter program and run it with the Docker image used to train the model. Therefore, the Docker image ID is also required. The hyperparameters and data converter can be loaded when loading the model weights, helps the prediction submitter to use the conversion rules consistent with the ones used when training.
@@ -175,3 +172,9 @@ When one user is trying to use the trained model in an SQLFlow statement, the `s
 ## Summarization
 
 The model market can be deployed anywhere like on the cloud or on-premise with some configurations. Even some secret model development can be done by using the model market as a collaboration platform. Either model definitions and trained models are managed securely by SQLFlow and model market, people can get access to your model only if you share it with them.
+
+Below figure shows a overview of how users use the model market for better understanding:
+
+<p align="center">
+<img src="figures/model_market_overview.png">
+</p>
