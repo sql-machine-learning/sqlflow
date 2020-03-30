@@ -44,6 +44,7 @@ def train(datasource,
                          cache=disk_cache,
                          batch_size=batch_size,
                          epoch=epoch)
+    bst = None
     for per_batch_dmatrix in dtrain:
         watchlist = [(per_batch_dmatrix, "train")]
         if len(validation_select.strip()) > 0:
@@ -58,6 +59,7 @@ def train(datasource,
                         per_batch_dmatrix,
                         evals=watchlist,
                         evals_result=re,
+                        xgb_model=bst,
                         **train_params)
         bst.save_model("my_model")
         print("Evaluation result: %s" % re)

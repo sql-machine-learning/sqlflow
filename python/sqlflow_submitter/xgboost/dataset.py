@@ -128,6 +128,7 @@ def pai_dataset(filename, feature_specs, feature_column_names, label_spec,
                 continue
             yield xgb.DMatrix('{0}#{0}.cache'.format(downloaded_file)
                               if cache else downloaded_file)
+            os.unlink(downloaded_file)
 
     if single_file:
         cmd = "cat %s/*.txt > %s" % (dname, filename)

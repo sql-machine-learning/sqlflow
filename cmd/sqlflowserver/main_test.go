@@ -1521,6 +1521,7 @@ FROM housing.xgb_predict LIMIT 5;`)
 }
 
 func CasePAIMaxComputeTrainPredictCategoricalFeature(t *testing.T) {
+	t.Parallel()
 	a := assert.New(t)
 	trainSQL := `SELECT cast(sepal_length as int) sepal_length, class
 FROM alifin_jtest_dev.sqlflow_test_iris_train
