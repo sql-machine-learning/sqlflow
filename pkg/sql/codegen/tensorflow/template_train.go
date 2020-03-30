@@ -49,7 +49,7 @@ if tf_is_version2():
     from tensorflow.keras.optimizers import Adadelta, Adagrad, Adam, Adamax, Ftrl, Nadam, RMSprop, SGD
     from tensorflow.keras.losses import BinaryCrossentropy, CategoricalCrossentropy, CategoricalHinge, CosineSimilarity, Hinge, Huber, KLDivergence, LogCosh, MeanAbsoluteError, MeanAbsolutePercentageError, MeanSquaredError, MeanSquaredLogarithmicError, Poisson, SparseCategoricalCrossentropy, SquaredHinge
 else:
-    from tensorflow.train import AdadeltaOptimizer, AdagradOptimizer, AdamOptimizer, AdamaxOptimizer, FtrlOptimizer, NadamOptimizer, RMSpropOptimizer, SGDOptimizer
+    from tensorflow.train import AdadeltaOptimizer, AdagradOptimizer, AdamOptimizer, FtrlOptimizer, RMSPropOptimizer, GradientDescentOptimizer, MomentumOptimizer
     from tensorflow.keras.losses import BinaryCrossentropy, CategoricalCrossentropy, CategoricalHinge, CosineSimilarity, Hinge, Huber, KLDivergence, LogCosh, MeanAbsoluteError, MeanAbsolutePercentageError, MeanSquaredError, MeanSquaredLogarithmicError, Poisson, SparseCategoricalCrossentropy, SquaredHinge
 try:
     import sqlflow_models

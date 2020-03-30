@@ -14,6 +14,7 @@
 import json
 import os
 import sys
+from pathlib import Path
 
 import xgboost as xgb
 from sqlflow_submitter import db
@@ -35,9 +36,13 @@ def xgb_dataset(datasource,
                 epoch=1):
 
     if is_pai:
-        return pai_dataset(fn, feature_specs, feature_column_names, label_spec,
-                           "odps://{}/tables/{}".format(*pai_table.split(".")),
-                           pai_single_file, cache)
+        for dmatrix in pai_dataset(
+                fn, feature_specs, feature_column_names, label_spec,
+                "odps://{}/tables/{}".format(*pai_table.split(".")),
+                pai_single_file, cache):
+            yield dmatrix
+        return
+
     conn = db.connect_with_data_source(datasource)
     gen = db.db_generator(conn.driver, conn, dataset_sql, feature_column_names,
                           label_spec, feature_specs)()
@@ -83,7 +88,9 @@ def pai_dataset(filename, feature_specs, feature_column_names, label_spec,
                 pai_table, single_file, cache):
     from subprocess import Popen, PIPE
     import threading
+    import queue
     threads = []
+    complete_queue = queue.Queue()
 
     dname = filename
     if single_file:
@@ -99,12 +106,29 @@ def pai_dataset(filename, feature_specs, feature_column_names, label_spec,
                 dname, feature_specs, feature_column_names, label_spec,
                 pai_table, slice_id
             ]))
+        complete_queue.put(slice_id)
 
     for i in range(SLICE_NUM):
         t = threading.Thread(target=thread_worker, args=(i, ))
         t.start()
         threads.append(t)
+
     map(lambda t: t.join(), threads)
+
+    downloaded_slice_count = 0
+    while True:
+        slice_id = complete_queue.get(block=True)
+        downloaded_slice_count += 1
+        if downloaded_slice_count == SLICE_NUM:
+            break
+        if not single_file:
+            downloaded_file = "./{}/{}.txt".format(dname, slice_id)
+            # ignore empty files or the xgb.DMatrix will throw error.
+            if Path(downloaded_file).stat().st_size == 0:
+                continue
+            yield xgb.DMatrix('{0}#{0}.cache'.format(downloaded_file)
+                              if cache else downloaded_file)
+            os.unlink(downloaded_file)
 
     if single_file:
         cmd = "cat %s/*.txt > %s" % (dname, filename)
@@ -112,9 +136,8 @@ def pai_dataset(filename, feature_specs, feature_column_names, label_spec,
         out, err = p.communicate()
         if err:
             raise Exception("merge data files failed: %s" % err)
-        return xgb.DMatrix(
+        yield xgb.DMatrix(
             '{0}#{0}.cache'.format(filename) if cache else filename)
-    return xgb.DMatrix('{0}#{0}.cache'.format(dname) if cache else dname)
 
 
 def pai_download_table_data_worker(dname, feature_specs, feature_column_names,
@@ -125,7 +148,7 @@ def pai_download_table_data_worker(dname, feature_specs, feature_column_names,
                                          label_column_name,
                                          feature_specs,
                                          slice_id=slice_id,
-                                         slice_count=SLICE_NUM)
+                                         slice_count=SLICE_NUM)()
     filename = "{}/{}.txt".format(dname, slice_id)
     dump_dmatrix(filename, gen, label_spec)
 

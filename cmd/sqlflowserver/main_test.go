@@ -1521,6 +1521,7 @@ FROM housing.xgb_predict LIMIT 5;`)
 }
 
 func CasePAIMaxComputeTrainPredictCategoricalFeature(t *testing.T) {
+	t.Parallel()
 	a := assert.New(t)
 	trainSQL := `SELECT cast(sepal_length as int) sepal_length, class
 FROM alifin_jtest_dev.sqlflow_test_iris_train
@@ -1793,14 +1794,14 @@ func CasePAIMaxComputeTrainXGBoost(t *testing.T) {
 	t.Parallel()
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`SELECT * FROM %s
-TO TRAIN xgboost.gbtree
-WITH
-	objective="multi:softprob",
-	train.num_boost_round = 30,
-	eta = 0.4,
-	num_class = 3
-LABEL class
-INTO e2etest_xgb_classi_model;`, caseTrainTable)
+	TO TRAIN xgboost.gbtree
+	WITH
+		objective="multi:softprob",
+		train.num_boost_round = 30,
+		eta = 0.4,
+		num_class = 3
+	LABEL class
+	INTO e2etest_xgb_classi_model;`, caseTrainTable)
 	_, _, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)
