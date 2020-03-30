@@ -14,6 +14,8 @@
 package step
 
 import (
+	"bufio"
+	"fmt"
 	_ "image/png"
 	"os"
 	"testing"
@@ -61,4 +63,18 @@ func TestImage(t *testing.T) {
 	image, e := getBase64EncodedImage(testImageHTML)
 	a.NoError(e)
 	a.NoError(imageCat(image)) // sixel mode
+}
+
+func TestDotEnv(t *testing.T) {
+	a := assert.New(t)
+	f, e := os.OpenFile(".test_sqlflow_env", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	a.NoError(e)
+	defer f.Close()
+	w := bufio.NewWriter(f)
+	fmt.Fprintln(w, `# This is a .env config file
+SQLFLOW_TEST_DOT_ENV="Alien"  # Alien is a famous movie`)
+	w.Flush()
+	a.Equal("", os.Getenv("SQLFLOW_TEST_DOT_ENV"))
+	InitEnvFromFile(".test_sqlflow_env")
+	a.Equal("Alien", os.Getenv("SQLFLOW_TEST_DOT_ENV"))
 }

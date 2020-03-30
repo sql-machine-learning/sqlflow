@@ -25,6 +25,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/joho/godotenv"
 	"github.com/mattn/go-sixel"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql"
@@ -154,4 +155,10 @@ func GetStdout(f func() error) (out string, e error) {
 	os.Stdout, os.Stderr = oldStdout, oldStderr // restoring the real stdout and stderr
 	out = <-outC
 	return
+}
+
+const DotEnvFilename string = ".sqlflow_env"
+
+func InitEnvFromFile(f string) {
+	_ = godotenv.Load(f)
 }

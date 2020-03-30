@@ -25,6 +25,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"syscall"
 
@@ -247,6 +248,7 @@ func getDataSource(dataSource, db string) string {
 var currentDB string
 
 func main() {
+	step.InitEnvFromFile(filepath.Join(os.Getenv("HOME"), step.DotEnvFilename))
 	ds := flag.String("datasource", "", "database connect string")
 	modelDir := flag.String("model_dir", "", "model would be saved on the local dir, otherwise upload to the table.")
 	cliStmt := flag.String("execute", "", "execute SQLFlow from command line.  e.g. --execute 'select * from table1'")
