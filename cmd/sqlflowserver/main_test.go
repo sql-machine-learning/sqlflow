@@ -1790,17 +1790,17 @@ INTO e2etest_dense_input;`, caseTrainTable)
 }
 
 func CasePAIMaxComputeTrainXGBoost(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`SELECT * FROM %s
-TO TRAIN xgboost.gbtree
-WITH
-	objective="multi:softprob",
-	train.num_boost_round = 30,
-	eta = 0.4,
-	num_class = 3
-LABEL class
-INTO e2etest_xgb_classi_model;`, caseTrainTable)
+	TO TRAIN xgboost.gbtree
+	WITH
+		objective="multi:softprob",
+		train.num_boost_round = 30,
+		eta = 0.4,
+		num_class = 3
+	LABEL class
+	INTO e2etest_xgb_classi_model;`, caseTrainTable)
 	_, _, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)
@@ -1965,21 +1965,20 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 
 	go start(modelDir, caCrt, caKey, unitTestPort, false)
 	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
-	t.Run("CasePAIMaxComputeTrainXGBoost", CasePAIMaxComputeTrainXGBoost)
 
-	// t.Run("group", func(t *testing.T) {
-	// 	t.Run("CasePAIMaxComputeDNNTrainPredictExplain", CasePAIMaxComputeDNNTrainPredictExplain)
-	// 	t.Run("CasePAIMaxComputeTrainDenseCol", CasePAIMaxComputeTrainDenseCol)
-	// 	t.Run("CasePAIMaxComputeTrainXGBoost", CasePAIMaxComputeTrainXGBoost)
-	// 	t.Run("CasePAIMaxComputeTrainCustomModel", CasePAIMaxComputeTrainCustomModel)
-	// 	t.Run("CasePAIMaxComputeTrainDistributed", CasePAIMaxComputeTrainDistributed)
-	// 	t.Run("CasePAIMaxComputeTrainPredictCategoricalFeature", CasePAIMaxComputeTrainPredictCategoricalFeature)
-	// 	t.Run("CasePAIMaxComputeTrainTFBTDistributed", CasePAIMaxComputeTrainTFBTDistributed)
-	// 	t.Run("CasePAIMaxComputeTrainDistributedKeras", CasePAIMaxComputeTrainDistributedKeras)
+	t.Run("group", func(t *testing.T) {
+		t.Run("CasePAIMaxComputeDNNTrainPredictExplain", CasePAIMaxComputeDNNTrainPredictExplain)
+		t.Run("CasePAIMaxComputeTrainDenseCol", CasePAIMaxComputeTrainDenseCol)
+		t.Run("CasePAIMaxComputeTrainXGBoost", CasePAIMaxComputeTrainXGBoost)
+		t.Run("CasePAIMaxComputeTrainCustomModel", CasePAIMaxComputeTrainCustomModel)
+		t.Run("CasePAIMaxComputeTrainDistributed", CasePAIMaxComputeTrainDistributed)
+		t.Run("CasePAIMaxComputeTrainPredictCategoricalFeature", CasePAIMaxComputeTrainPredictCategoricalFeature)
+		t.Run("CasePAIMaxComputeTrainTFBTDistributed", CasePAIMaxComputeTrainTFBTDistributed)
+		t.Run("CasePAIMaxComputeTrainDistributedKeras", CasePAIMaxComputeTrainDistributedKeras)
 
-	// 	// FIXME(typhoonzero): Add this test back when we solve error: model already exist issue on the CI.
-	// 	// t.Run("CaseTrainPAIRandomForests", CaseTrainPAIRandomForests)
-	// })
+		// FIXME(typhoonzero): Add this test back when we solve error: model already exist issue on the CI.
+		// t.Run("CaseTrainPAIRandomForests", CaseTrainPAIRandomForests)
+	})
 }
 
 func TestEnd2EndWorkflow(t *testing.T) {

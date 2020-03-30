@@ -87,7 +87,10 @@ def predict_and_store_result(bst, dpred, feature_file_id, model_params,
         # way, can remove this else branch when we can load the model meta not only on PAI submitter.
         if len(preds.shape) == 2:
             preds = np.argmax(np.array(preds), axis=1)
-    feature_file_read = open("predict.txt_%d" % feature_file_id, "r")
+    if is_pai:
+        feature_file_read = open("predict.txt", "r")
+    else:
+        feature_file_read = open("predict.txt_%d" % feature_file_id, "r")
 
     result_column_names = feature_column_names
     result_column_names.append(label_name)
