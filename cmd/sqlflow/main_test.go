@@ -14,6 +14,7 @@
 package main
 
 import (
+	"regexp"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -45,6 +46,7 @@ func TestWorkflow(t *testing.T) {
 	log := log.GetDefaultLogger()
 	code, e := compile("couler", testSQLProgram, datasource, log)
 	a.NoError(e)
-	expectedCodeSnippet := `couler.run_container(command='''repl -e "%s"''' % escape_sql(train_sql), image="sqlflow/sqlflow", env=step_envs, secret=sqlflow_secret)`
-	a.Contains(code, expectedCodeSnippet)
+	r, e := regexp.Compile(`steps.sqlflow\(sql='''(.*)''', image="sqlflow/sqlflow", env=step_envs\)`)
+	a.NoError(e)
+	a.True(r.Match([]byte(code)))
 }

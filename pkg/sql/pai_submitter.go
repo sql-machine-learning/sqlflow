@@ -148,7 +148,7 @@ func createPAIHyperParamFile(cwd string, filename string, modelPath string) erro
 
 // Possible situations:
 //
-// 1. argo mode server: generate a step running: repl -e "repl -e \"select * from xx to train\""
+// 1. argo mode server: generate a step running: bash -c "repl -e \"select * from xx to train\""
 // 2. non-argo mode server | repl -e: create tmp table in go, and use it to train
 func (s *paiSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 	cl.TmpTrainTable, cl.TmpValidateTable, e = createTempTrainAndValTable(cl.Select, cl.ValidationSelect, s.Session.DbConnStr)
@@ -208,11 +208,10 @@ func (s *paiSubmitter) submitPAITask(code, paiCmd, requirements string) error {
 	defer cw.Close()
 	cmd := exec.Command("odpscmd", "--instance-priority", "9", "-u", cfg.AccessID, "-p", cfg.AccessKey, "--project", cfg.Project, "--endpoint", cfg.Endpoint, "-e", paiCmd)
 	cmd.Stdout, cmd.Stderr = w, w
-	e = cmd.Run()
-	if e != nil {
-		return fmt.Errorf("failed: %v\n%sProgram%[2]s\n%s\n%[2]sOutput%[2]s\n%[4]v", e, "==========", code, output.String())
+	if e := cmd.Run(); e != nil {
+		return fmt.Errorf("failed: %v\n%sProgram%[2]s\n%s\n%[2]sOutput%[2]s\n%[4]v", e, "==========", paiCmd, output.String())
 	}
-	return e
+	return nil
 }
 
 func (s *paiSubmitter) ExecutePredict(cl *ir.PredictStmt) error {

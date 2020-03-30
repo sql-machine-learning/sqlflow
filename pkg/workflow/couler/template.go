@@ -39,7 +39,9 @@ type coulerFiller struct {
 
 const coulerTemplateText = `
 import couler.argo as couler
+import couler.steps as steps
 import json
+import re
 datasource = "{{ .DataSource }}"
 
 step_envs = dict()
@@ -55,13 +57,11 @@ if "{{.SecretName}}" != "":
 	sqlflow_secret = couler.secret(secret_data, name="{{ .SecretName }}", dry_run=True)
 
 couler.clean_workflow_after_seconds_finished({{.WorkflowTTL}})
-def escape_sql(original_sql):
-	return original_sql.replace('"', '\\"')
 
 {{ range $ss := .SQLStatements }}
 	{{if $ss.IsExtendedSQL }}
-train_sql = '''{{ $ss.OriginalSQL }}'''
-couler.run_container(command='''repl -e "%s"''' % escape_sql(train_sql), image="{{ $ss.DockerImage }}", env=step_envs, secret=sqlflow_secret)
+
+steps.sqlflow(sql='''{{ $ss.OriginalSQL }}''', image="{{ $ss.DockerImage }}", env=step_envs, secret=sqlflow_secret)
 	{{else if $ss.IsKatibTrain}}
 import couler.sqlflow.katib as auto
 
@@ -73,7 +73,7 @@ auto.train(model=model, params=params, sql=escape_sql(train_sql), datasource=dat
 # TODO(yancey1989): 
 #	using "repl -parse" to output IR and
 #	feed to "sqlflow_submitter.{submitter}.train" to submit the job
-couler.run_container(command='''repl -e "{{ $ss.OriginalSQL }}" ''', image="{{ $ss.DockerImage }}", env=step_envs)
+steps.sqlflow(sql='''{{ $ss.OriginalSQL }}''', image="{{ $ss.DockerImage }}", env=step_envs)
 	{{end}}
 {{end}}
 `

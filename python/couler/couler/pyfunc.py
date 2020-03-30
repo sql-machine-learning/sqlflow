@@ -10,6 +10,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""This Module provides some helper function for Argo"""
 
 import base64
 import importlib.util
@@ -44,7 +45,7 @@ def invocation_location():
     :return: a tuple of (function_name, invocation_line)
     """
     stack = inspect.stack()
-    if len(stack) < 4:
+    if len(stack) < 5:
         line_number = stack[len(stack) - 1][2]
         func_name = "%s-%d" % (
             _argo_safe_name(workflow_name()),
@@ -141,23 +142,23 @@ def load_cluster_config():
     return module.cluster
 
 
-def encode_base64(s):
+def encode_base64(value):
     """
     Encode a string using base64 and return a binary string.
     This function is used in Secret creation.
     For example, the secrets for Argo YAML:
     https://github.com/argoproj/argo/blob/master/examples/README.md#secrets
     """
-    bencode = base64.b64encode(s.encode("utf-8"))
+    bencode = base64.b64encode(value.encode("utf-8"))
     return str(bencode, "utf-8")
 
 
-def _is_digit(v):
-    if str(v).isdigit():
+def _is_digit(value):
+    if str(value).isdigit():
         return True
     else:
         try:
-            float(str(v))
+            float(str(value))
             return True
         except ValueError:
             return False

@@ -1,5 +1,3 @@
-#!/bin/bash
-
 # Copyright 2020 The SQLFlow Authors. All rights reserved.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,20 +10,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+'''This Module implements SQLFlow Step in Couler'''
 
-set -e
+import couler.argo as couler
 
-curl --silent https://dl.google.com/go/go1.13.4.linux-amd64.tar.gz | tar -C /usr/local -xzf -
 
-export GO111MODULE=on
+def escape_sql(original_sql):
+    '''Escape special chars in SQL'''
+    return original_sql.replace('\\', '\\\\').replace('"', r'\"').replace(
+        "`", r'\`').replace("$", r'\$')
 
-go get github.com/golang/protobuf/protoc-gen-go@v1.3.3
-go get golang.org/x/lint/golint
-go get golang.org/x/tools/cmd/goyacc
-go get golang.org/x/tools/cmd/cover
-go get github.com/mattn/goveralls
-go get github.com/rakyll/gotest
-go get github.com/wangkuiyi/goyaccfmt
-go get github.com/wangkuiyi/yamlfmt
 
-cp "$GOPATH"/bin/* /usr/local/bin/
+def sqlflow(sql, image="sqlflow/sqlflow", env=None, secret=None):
+    '''sqlflow step call run_container to append a workflow step.
+    '''
+    couler.run_container(command='''repl -e "%s"''' % escape_sql(sql),
+                         image=image,
+                         env=env,
+                         secret=secret)

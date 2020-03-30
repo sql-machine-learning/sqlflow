@@ -453,6 +453,14 @@ func (p *promptState) completer(in prompt.Document) []prompt.Suggest {
 				}
 				sortPromptSuggest(optimizerSuggest)
 				return prompt.FilterHasPrefix(optimizerSuggest, attr[1], true)
+			case "objective":
+				if strings.HasPrefix(p.estimatorCls, "xgboost.") {
+					var optimizerSuggest []prompt.Suggest
+					for opt := range attribute.XGBoostObjectiveDocs {
+						optimizerSuggest = append(optimizerSuggest, prompt.Suggest{opt, ""})
+					}
+					return prompt.FilterHasPrefix(optimizerSuggest, attr[1], true)
+				}
 			}
 		}
 		return prompt.FilterHasPrefix(append(withSuggestions, attributes...), w1, true)

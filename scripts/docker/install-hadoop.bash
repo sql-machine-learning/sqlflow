@@ -16,11 +16,11 @@
 set -e
 
 # We use Hadoop client to write CSV files to Hive tables.
-HADOOP_URL=https://archive.apache.org/dist/hadoop/common/hadoop-${HADOOP_VERSION}/hadoop-${HADOOP_VERSION}.tar.gz
+HADOOP_URL=https://archive.apache.org/dist/hadoop/common/hadoop-"$HADOOP_VERSION"/hadoop-"$HADOOP_VERSION".tar.gz
 curl -fsSL "$HADOOP_URL" -o /tmp/hadoop.tar.gz
 tar -xzf /tmp/hadoop.tar.gz -C /opt/
 rm -rf /tmp/hadoop.tar.gz
-rm -rf /opt/hadoop-${HADOOP_VERSION}/share/doc
+rm -rf /opt/hadoop-"$HADOOP_VERSION"/share/doc
 
 # Configure HDFS namenode at localhost:8020.
 echo '<?xml version="1.0" encoding="UTF-8"?>
@@ -33,4 +33,4 @@ echo '<?xml version="1.0" encoding="UTF-8"?>
 <property><name>hadoop.proxyuser.root.hosts</name><value></value></property>
 <property><name>hadoop.http.staticuser.user</name><value>root</value></property>
 </configuration>
-' > /opt/hadoop-${HADOOP_VERSION}/etc/hadoop/core-site.xml
+' > /opt/hadoop-"$HADOOP_VERSION"/etc/hadoop/core-site.xml

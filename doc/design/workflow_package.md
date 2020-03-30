@@ -4,7 +4,7 @@
 
 SQLFlow translates a SQL program, perhaps with extended SQL syntax for AI, into a workflow. Tekton/Argo are Kubernetes native workflow engine when deploying SQLFlow on Kubernetes, SQLFlow leverages Argo/Tekton to do the workflow management.
 
-SQLFlow supports Argo/Tekton as the workflow backend and maybe more in the future. It's different to communicate with the theses workflow engine, they are different CRD on Kubernetes, and they have different YAML spec, so it's necessary to orignize a seperate pacakge `workflow` to communicate the workflows with an uniform interface.
+SQLFlow supports Argo/Tekton as the workflow backend and maybe more in the future. It's different to communicate with the theses workflow engine, they are different CRD on Kubernetes, and they have different YAML spec, so it's necessary to organize a separate package `workflow` to communicate the workflows with an uniform interface.
 
 ## Design
 
@@ -63,13 +63,13 @@ func New(backend string) (Codegen, Workflow, error) {
 
 ``` golang
 // New codegen and workflow operator
-cg, wf, e := worklow.New("tekton")
+cg, wf, e := workflow.New("tekton")
 
 // generate YAML file
 py := cg.GenCode(SQLProgram)
 yaml := cg.GenYAML(py)
 
-// submit the workflow YAML and retrievel workflow step status
+// submit the workflow YAML and retrieval workflow step status
 wfID := wf.Submit(yaml)
 fetchRequest := NewFetchRequest(wfID)
 for {
