@@ -84,8 +84,14 @@ def dump_dmatrix(filename, generator, has_label, batch_size=None):
     return row_id
 
 
-def pai_dataset(filename, feature_specs, feature_column_names, label_spec,
-                pai_table, single_file, cache):
+def pai_dataset(filename,
+                feature_specs,
+                feature_column_names,
+                label_spec,
+                pai_table,
+                single_file,
+                cache,
+                batch_size=None):
     from subprocess import Popen, PIPE
     import threading
     import queue
@@ -113,7 +119,14 @@ def pai_dataset(filename, feature_specs, feature_column_names, label_spec,
         t.start()
         threads.append(t)
 
-    map(lambda t: t.join(), threads)
+    # map(lambda t: t.join(), threads)
+
+    # Use all data at once if batch size == None, else use a static SLICE_NUM
+    # FIXME(typhoonzero): pai xgboost only support fixed SLICE_NUM now.
+    if batch_size == None:
+        map(lambda t: t.join(), threads)
+        yield xgb.DMatrix('{0}#{0}.cache'.format(dname) if cache else dname)
+        return
 
     downloaded_slice_count = 0
     while True:

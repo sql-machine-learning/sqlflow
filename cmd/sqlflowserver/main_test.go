@@ -1799,9 +1799,11 @@ func CasePAIMaxComputeTrainXGBoost(t *testing.T) {
 		objective="multi:softprob",
 		train.num_boost_round = 30,
 		eta = 0.4,
-		num_class = 3
+		num_class = 3,
+		train.batch_size=10,
+		validation.select="select * from %s"
 	LABEL class
-	INTO e2etest_xgb_classi_model;`, caseTrainTable)
+	INTO e2etest_xgb_classi_model;`, caseTrainTable, caseTrainTable)
 	_, _, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)
