@@ -15,6 +15,7 @@ package fluid
 
 import (
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -29,15 +30,7 @@ step_envs = dict()
 
 step_envs["SQLFLOW_DATASOURCE"] = '''mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0'''
 
-step_envs["SQLFLOW_OSS_AK"] = '''oss_key'''
-
-step_envs["SQLFLOW_TEST"] = '''workflow'''
-
-step_envs["SQLFLOW_TEST_DATASOURCE"] = '''mysql://root:root@tcp(172.17.0.9:3306)/?maxAllowedPacket=0'''
-
-step_envs["SQLFLOW_TEST_DB"] = '''mysql'''
-
-step_envs["SQLFLOW_submitter"] = ''''''
+step_envs["SQLFLOW_submitter"] = '''pai'''
 
 
 @fluid.task
@@ -78,18 +71,10 @@ spec:
     env:
     - name: SQLFLOW_DATASOURCE
       value: mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0
-    - name: SQLFLOW_OSS_AK
-      value: oss_key
-    - name: SQLFLOW_TEST
-      value: workflow
-    - name: SQLFLOW_TEST_DATASOURCE
-      value: mysql://root:root@tcp(172.17.0.9:3306)/?maxAllowedPacket=0
-    - name: SQLFLOW_TEST_DB
-      value: mysql
     - name: SQLFLOW_submitter
-      value: ''
+      value: pai
     image: sqlflow/sqlflow:step
-    name: <stdin>-22
+    name: <stdin>-14
   - args:
     - -e
     - "SELECT * FROM iris_train\nTO TRAIN DNNClassifier WITH\n\ttrain.batch_size=4,\n\
@@ -100,18 +85,10 @@ spec:
     env:
     - name: SQLFLOW_DATASOURCE
       value: mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0
-    - name: SQLFLOW_OSS_AK
-      value: oss_key
-    - name: SQLFLOW_TEST
-      value: workflow
-    - name: SQLFLOW_TEST_DATASOURCE
-      value: mysql://root:root@tcp(172.17.0.9:3306)/?maxAllowedPacket=0
-    - name: SQLFLOW_TEST_DB
-      value: mysql
     - name: SQLFLOW_submitter
-      value: ''
+      value: pai
     image: sqlflow/sqlflow:step
-    name: <stdin>-32
+    name: <stdin>-24
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
@@ -128,12 +105,32 @@ spec:
 `
 )
 
+func stashSQLFlowEnvs() map[string]string {
+	stashEnvs := make(map[string]string)
+	for _, env := range os.Environ() {
+		pair := strings.Split(env, "=")
+		if strings.HasPrefix(pair[0], "SQLFLOW_") {
+			os.Unsetenv(pair[0])
+			stashEnvs[pair[0]] = pair[1]
+		}
+	}
+	return stashEnvs
+}
+
+func applyEnvs(envs map[string]string) {
+	for k, v := range envs {
+		os.Setenv(k, v)
+	}
+}
+
 func TestFluidCodegen(t *testing.T) {
 	a := assert.New(t)
+	stashedEnvs := stashSQLFlowEnvs()
 	// Test step environment variables, the prefix `SQLFLOW_WORKFLOW_` would not be in step container
-	os.Setenv("SQLFLOW_OSS_AK", "oss_key")
 	os.Setenv("SQLFLOW_WORKFLOW_STEP_IMAGE", "sqlflow/sqlflow:step")
-
+	os.Setenv("SQLFLOW_DATASOURCE", "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0")
+	os.Setenv("SQLFLOW_submitter", "pai")
+	defer applyEnvs(stashedEnvs)
 	sqlIR := MockSQLProgramIR()
 	cg := &Codegen{}
 	code, err := cg.GenCode(sqlIR, &pb.Session{})
