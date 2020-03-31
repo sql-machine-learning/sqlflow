@@ -157,8 +157,10 @@ func GetStdout(f func() error) (out string, e error) {
 	return
 }
 
+// DotEnvFilename is the filename of the .env file
 const DotEnvFilename string = ".sqlflow_env"
 
+// InitEnvFromFile initializes environment variables from the .env file
 func InitEnvFromFile(f string) {
 	_ = godotenv.Load(f)
 }
