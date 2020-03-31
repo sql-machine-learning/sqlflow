@@ -9,8 +9,8 @@ In addition to building SQLFlow into a gRPC server, accessed via Jupyter Noteboo
 The SQLFlow Docker image contains the REPL command-line program.  We can run an example session by typing the following command on MacOS.  If you run Docker on Linux, please change `host.docker.internal:3306` to `localhost:3306`.
 
 ```
-docker run -it --rm --net=host sqlflow/sqlflow repl \
---datasource="mysql://root:root@tcp(host.docker.internal:3306)/?maxAllowedPacket=0"
+docker run -it --rm --net=host sqlflow/sqlflow bash -c '/start.sh populate-example-dataset-mysql-local; \
+repl --datasource="mysql://root:root@tcp(host.docker.internal:3306)/?maxAllowedPacket=0"'
 ```
 
 You should be able to see the following:
@@ -39,17 +39,12 @@ sqlflow> SELECT * from iris.train limit 2;
 Then we can train a TensorFlow [DNNClassifier](https://www.tensorflow.org/api_docs/python/tf/estimator/DNNClassifier) model using the following statement.
 
 ```sql
-sqlflow> SELECT *
-FROM iris.train
+SELECT * FROM iris.train
 TO TRAIN DNNClassifier
-WITH model.n_classes = 3, model.hidden_units = [10, 20]
-COLUMN sepal_length, sepal_width, petal_length, petal_width
+WITH model.n_classes=3, model.hidden_units=[128,64],
+    validation.select="SELECT * FROM iris.test"
 LABEL class
 INTO sqlflow_models.my_dnn_model;
-
-...
-Training set accuracy: 0.96721
-Done training
 ```
 
 To predict using the trained model, we can type the following statement.
