@@ -91,24 +91,24 @@ func getSecret() (string, string, error) {
 	return name, string(value), nil
 }
 
-// GenCode generates Couler program
-func (cg *Codegen) GenCode(programIR []ir.SQLFlowStmt, session *pb.Session) (string, error) {
+// GenFiller generates Filler to fill the template
+func GenFiller(programIR []ir.SQLFlowStmt, session *pb.Session) (*Filler, error) {
 	stepEnvs, err := getStepEnvs(session)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if os.Getenv("SQLFLOW_WORKFLOW_TTL") != "" {
 		workflowTTL, err = strconv.Atoi(os.Getenv("SQLFLOW_WORKFLOW_TTL"))
 		if err != nil {
-			return "", fmt.Errorf("SQLFLOW_WORKFLOW_TTL: %s should be int", os.Getenv("SQLFLOW_WORKFLOW_TTL"))
+			return nil, fmt.Errorf("SQLFLOW_WORKFLOW_TTL: %s should be int", os.Getenv("SQLFLOW_WORKFLOW_TTL"))
 		}
 	}
 	secretName, secretData, e := getSecret()
 	if e != nil {
-		return "", e
+		return nil, e
 	}
 
-	r := &coulerFiller{
+	r := &Filler{
 		DataSource:  session.DbConnStr,
 		StepEnvs:    stepEnvs,
 		WorkflowTTL: workflowTTL,
@@ -137,7 +137,7 @@ func (cg *Codegen) GenCode(programIR []ir.SQLFlowStmt, session *pb.Session) (str
 			if r.SQLFlowSubmitter == "katib" {
 				sqlStmt, err := ParseKatibSQL(sqlIR.(*ir.TrainStmt))
 				if err != nil {
-					return "", fmt.Errorf("Fail to parse Katib train statement %s", sqlIR.GetOriginalSQL())
+					return nil, fmt.Errorf("Fail to parse Katib train statement %s", sqlIR.GetOriginalSQL())
 				}
 				r.SQLStatements = append(r.SQLStatements, sqlStmt)
 			} else {
@@ -147,8 +147,17 @@ func (cg *Codegen) GenCode(programIR []ir.SQLFlowStmt, session *pb.Session) (str
 				r.SQLStatements = append(r.SQLStatements, sqlStmt)
 			}
 		default:
-			return "", fmt.Errorf("unrecognized IR type: %v", i)
+			return nil, fmt.Errorf("unrecognized IR type: %v", i)
 		}
+	}
+	return r, nil
+}
+
+// GenCode generates Couler program
+func (cg *Codegen) GenCode(programIR []ir.SQLFlowStmt, session *pb.Session) (string, error) {
+	r, e := GenFiller(programIR, session)
+	if e != nil {
+		return "", e
 	}
 	var program bytes.Buffer
 	if err := coulerTemplate.Execute(&program, r); err != nil {
