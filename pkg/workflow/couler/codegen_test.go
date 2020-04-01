@@ -81,7 +81,7 @@ couler.run_container(image="docker/whalesay", command='echo "SQLFlow bridges AI 
 
 func TestCoulerCodegen(t *testing.T) {
 	a := assert.New(t)
-	sqlIR := mockSQLProgramIR()
+	sqlIR := MockSQLProgramIR()
 	os.Setenv("SQLFLOW_OSS_AK", "oss_key")
 	os.Setenv("SQLFLOW_WORKFLOW_SECRET", `{"sqlflow-secret":{"oss_sk": "oss_sk"}}`)
 	defer os.Unsetenv("SQLFLOW_OSS_AK")

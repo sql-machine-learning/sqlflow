@@ -186,3 +186,10 @@ func (cg *Codegen) GenYAML(coulerProgram string) (string, error) {
 	}
 	return string(out), nil
 }
+
+// MockSQLProgramIR mock a SQLFLow program which contains multiple statements
+func MockSQLProgramIR() []ir.SQLFlowStmt {
+	normalStmt := ir.NormalStmt("SELECT * FROM iris.train limit 10;")
+	trainStmt := ir.MockTrainStmt(true)
+	return []ir.SQLFlowStmt{&normalStmt, trainStmt}
+}

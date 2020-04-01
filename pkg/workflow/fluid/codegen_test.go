@@ -20,6 +20,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	pb "sqlflow.org/sqlflow/pkg/proto"
+	"sqlflow.org/sqlflow/pkg/workflow/couler"
 )
 
 const (
@@ -131,7 +132,7 @@ func TestFluidCodegen(t *testing.T) {
 	os.Setenv("SQLFLOW_DATASOURCE", "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0")
 	os.Setenv("SQLFLOW_submitter", "pai")
 	defer applyEnvs(stashedEnvs)
-	sqlIR := MockSQLProgramIR()
+	sqlIR := couler.MockSQLProgramIR()
 	cg := &Codegen{}
 	code, err := cg.GenCode(sqlIR, &pb.Session{})
 	a.NoError(err)

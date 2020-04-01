@@ -27,7 +27,7 @@ type sqlStatement struct {
 	IsKatibTrain   bool
 }
 
-// Filler filles the template
+// Filler is used to fill the template
 type Filler struct {
 	DataSource       string
 	SQLStatements    []*sqlStatement

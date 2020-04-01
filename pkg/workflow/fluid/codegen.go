@@ -26,7 +26,7 @@ import (
 // Codegen generates Fluid program
 type Codegen struct{}
 
-// GenCode generates Fluid program
+// GenCode generates a Fluid program
 func (cg *Codegen) GenCode(programIR []ir.SQLFlowStmt, session *pb.Session) (string, error) {
 	r, e := couler.GenFiller(programIR, session)
 	if e != nil {
@@ -49,11 +49,4 @@ func (cg *Codegen) GenYAML(fluidProgram string) (string, error) {
 		return "", fmt.Errorf("failed %s, %v %s", cmd, err, out)
 	}
 	return string(out), nil
-}
-
-// MockSQLProgramIR mock a SQLFLow program which contains multiple statements
-func MockSQLProgramIR() []ir.SQLFlowStmt {
-	normalStmt := ir.NormalStmt("SELECT * FROM iris.train limit 10;")
-	trainStmt := ir.MockTrainStmt(true)
-	return []ir.SQLFlowStmt{&normalStmt, trainStmt}
 }
