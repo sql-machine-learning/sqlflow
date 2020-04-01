@@ -10,7 +10,8 @@ To keep track of your edit to files in this directory, you can make it a Git rep
 
 Here are some quick steps for researchers who would like to contribute to SQLFlow's official model repo.
 
-1. Fork SQLFlow's model zoo repo: click "Fork" button on the right corner on page https://github.com/sql-machine-learning/models .
+1. You can contribute to SQLFlow's [model zoo repo](https://github.com/sql-machine-learning/models) by:
+    1. Fork SQLFlow's model zoo repo: click "Fork" button on the right corner on page https://github.com/sql-machine-learning/models .
     1. Clone your forked repo by `git clone [your forked repo url]`, you can find the forked repo URL by clicking the green button "Clone or download".
     1. Move to the cloned directory: `cd models`.
 1. Or you can create a new git repository to store your model code:
