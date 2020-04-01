@@ -66,7 +66,7 @@ class MaxCompute:
             while i < r.count:
                 expected = r.count - i if r.count - i < fetch_size else fetch_size
                 for row in [[v[1] for v in rec] for rec in r[i:i + expected]]:
-                    # NOTE: If there is no label clause in the extened SQL, the default label value would
+                    # NOTE: If there is no label clause in the extended SQL, the default label value would
                     # be -1, the Model implementation can determine use it or not.
                     label = row[label_idx] if label_idx is not None else None
                     if label_spec and label_spec["delimiter"] != "":

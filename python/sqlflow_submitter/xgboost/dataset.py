@@ -80,7 +80,7 @@ def dump_dmatrix(filename, generator, has_label, batch_size=None):
                 continue
             if row_id >= batch_size:
                 break
-    # return rows writed
+    # return rows written
     return row_id
 
 
