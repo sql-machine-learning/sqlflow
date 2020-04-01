@@ -4,14 +4,9 @@ In this document, we'll describe the steps to follow when contributing models to
 
 ## Prepare Model Development Git Repository
 
-1. You can contribute to SQLFlow's [model zoo repo](https://github.com/sql-machine-learning/models) by:
-    1. Fork SQLFlow's model zoo repo: click "Fork" button on the right corner on page https://github.com/sql-machine-learning/models .
-    1. Clone your forked repo by `git clone [your forked repo url]`, you can find the forked repo URL by clicking the green button "Clone or download".
-    1. Move to the cloned directory: `cd models`.
-1. Or you can create a new git repository to store your model code:
-    1. Create a new repository on [github](https://github.com) or any other git systems.
-    1. Move to the directory of the repository: `cd my_models` (assume you created a repo named "my_models").
-    1. Create a directory under `my_models` to store Python package: `mkdir my_awesome_model`.
+To build a Docker image, we need a file named `Dockerfile`.  Suppose that we put it in a directory `~/my_models/Dockerfile` -- you are feel to leave it any directory you want.  We also want to have your model definitions in the same directory, say `~/my_models/my_awesome_model/my_awesome_model.py`, so that in the Dockerfile you can write some lines to to add these model definitions into the Docker image.  The first line of Dockerfile should be `FROM sqlflow/sqlflw`, which makes sure that Docker images built from this Dockerfile contains the SQLFlow server.
+
+To keep track of your edit to files in this directory, you can make it a Git repository.  You can even share your repository through GitHub.  For more about Git and GitHub, please refer to related documents.  We plan to provide a command-line tool `sqlflow` to simplify the engineering process for researchers who are not familiar with Git, GitHub, or Docker.
 
 ## Start a Docker Container as the Develop Environment
 
