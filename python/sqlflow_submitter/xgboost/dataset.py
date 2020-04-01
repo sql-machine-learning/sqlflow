@@ -37,9 +37,14 @@ def xgb_dataset(datasource,
 
     if is_pai:
         for dmatrix in pai_dataset(
-                fn, feature_specs, feature_column_names, label_spec,
+                fn,
+                feature_specs,
+                feature_column_names,
+                label_spec,
                 "odps://{}/tables/{}".format(*pai_table.split(".")),
-                pai_single_file, cache):
+                pai_single_file,
+                cache,
+                batch_size=batch_size):
             yield dmatrix
         return
 
