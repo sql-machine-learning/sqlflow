@@ -1,8 +1,14 @@
-# Contribute Models
+# Define Models in Python And Call Them From SQL
 
-In this document, we'll describe the steps to follow when contributing models to SQLFlow.
+SQLFlow extends SQL syntax to do AI.  The syntax extension allow SQL statements referring to model definitions defined as Python functions and classes, for example, https://github.com/sql-machine-learning/models/blob/develop/sqlflow_models/dnnregressor.py.
 
-## Prepare Model Development Git Repository
+If you are not a data analyst using SQL, but a deep learning researcher who would like to create a model for data analysts.  This document is for you.
+
+Please be aware that SQLFlow is a gRPC server, which translates a SQL program into a workflow for execution on Kubernetes.  Some steps of this workflow might submit a TensorFlow job on Kubernetes to train the referred model definition.  To make the translation possible, the SQLFlow server needs to know the Python source code of the model definition.  We typically deploy and run the SQLFlow server in Docker containers, so the model source code need to be packed into the Docker image togatehr with the SQLFlow server.
+
+In the future, we will make SQLFlow server able to refer to model definitions in other Docker images.  For now, let us assume you, dear deep learning researcher, know how to use Git and Docker, and know how to build a Docker image with the SQLFlow server and your model definitions.
+
+## Define Models as Python Source Code
 
 1. You can contribute to SQLFlow's [model zoo repo](https://github.com/sql-machine-learning/models) by:
     1. Fork SQLFlow's model zoo repo: click "Fork" button on the right corner on page https://github.com/sql-machine-learning/models .
