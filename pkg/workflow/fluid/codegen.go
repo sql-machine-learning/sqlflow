@@ -23,7 +23,7 @@ import (
 	"sqlflow.org/sqlflow/pkg/workflow/couler"
 )
 
-// Codegen generates Fluid program
+// Codegen generates a Fluid program
 type Codegen struct{}
 
 // GenCode generates a Fluid program
@@ -40,7 +40,7 @@ func (cg *Codegen) GenCode(programIR []ir.SQLFlowStmt, session *pb.Session) (str
 	return program.String(), nil
 }
 
-// GenYAML translate Fluid program into YAML
+// GenYAML translate the Fluid program into Tekton YAML
 func (cg *Codegen) GenYAML(fluidProgram string) (string, error) {
 	cmd := exec.Command("python", "-u")
 	cmd.Stdin = bytes.NewBufferString(fluidProgram)

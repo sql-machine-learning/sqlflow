@@ -153,7 +153,7 @@ func GenFiller(programIR []ir.SQLFlowStmt, session *pb.Session) (*Filler, error)
 	return r, nil
 }
 
-// GenCode generates Couler program
+// GenCode generates a Couler program
 func (cg *Codegen) GenCode(programIR []ir.SQLFlowStmt, session *pb.Session) (string, error) {
 	r, e := GenFiller(programIR, session)
 	if e != nil {
@@ -166,7 +166,7 @@ func (cg *Codegen) GenCode(programIR []ir.SQLFlowStmt, session *pb.Session) (str
 	return program.String(), nil
 }
 
-// GenYAML translate Couler program into Argo YAML
+// GenYAML translate the Couler program into Argo YAML
 func (cg *Codegen) GenYAML(coulerProgram string) (string, error) {
 	cmdline := bytes.Buffer{}
 	fmt.Fprintf(&cmdline, "couler run --mode argo --workflow_name sqlflow ")
