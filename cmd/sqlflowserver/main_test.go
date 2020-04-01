@@ -301,7 +301,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 		t.Fatalf("failed to generate CA pair %v", err)
 	}
 
-	go start(modelDir, caCrt, caKey, unitTestPort, false)
+	go start(modelDir, caCrt, caKey, unitTestPort, "")
 	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 	err = prepareTestData(dbConnStr)
 	if err != nil {
@@ -466,7 +466,7 @@ func TestEnd2EndHive(t *testing.T) {
 		t.Skip("Skipping hive tests")
 	}
 	dbConnStr = "hive://root:root@127.0.0.1:10000/iris?auth=NOSASL"
-	go start(modelDir, caCrt, caKey, unitTestPort, false)
+	go start(modelDir, caCrt, caKey, unitTestPort, "")
 	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 	err = prepareTestData(dbConnStr)
 	if err != nil {
@@ -508,7 +508,7 @@ func TestEnd2EndMaxCompute(t *testing.T) {
 	SK := os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_SK")
 	endpoint := os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_ENDPOINT")
 	dbConnStr = fmt.Sprintf("maxcompute://%s:%s@%s", AK, SK, endpoint)
-	go start(modelDir, caCrt, caKey, unitTestPort, false)
+	go start(modelDir, caCrt, caKey, unitTestPort, "")
 	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 
 	caseDB = os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT")
@@ -554,7 +554,7 @@ func TestEnd2EndMaxComputeALPS(t *testing.T) {
 		t.Fatalf("prepare test dataset failed: %v", err)
 	}
 
-	go start(modelDir, caCrt, caKey, unitTestPort, false)
+	go start(modelDir, caCrt, caKey, unitTestPort, "")
 	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 
 	t.Run("CaseTrainALPS", CaseTrainALPS)
@@ -1915,7 +1915,7 @@ func TestEnd2EndAlisa(t *testing.T) {
 	// write model to current MaxCompute project
 	caseInto = "sqlflow_test_kmeans_model"
 
-	go start("", caCrt, caKey, unitTestPort, false)
+	go start("", caCrt, caKey, unitTestPort, "")
 	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 	// TODO(Yancey1989): reuse CaseTrainXGBoostOnPAI if support explain XGBoost model
 	t.Run("CaseTrainXGBoostOnAlisa", CaseTrainXGBoostOnAlisa)
@@ -1964,7 +1964,7 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 	// write model to current MaxCompute project
 	caseInto = "my_dnn_model"
 
-	go start(modelDir, caCrt, caKey, unitTestPort, false)
+	go start(modelDir, caCrt, caKey, unitTestPort, "")
 	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 
 	t.Run("group", func(t *testing.T) {
@@ -1980,6 +1980,31 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 		// FIXME(typhoonzero): Add this test back when we solve error: model already exist issue on the CI.
 		// t.Run("CaseTrainPAIRandomForests", CaseTrainPAIRandomForests)
 	})
+}
+func TestEnd2EndFluidWorkflow(t *testing.T) {
+	a := assert.New(t)
+	if os.Getenv("SQLFLOW_TEST_DATASOURCE") == "" || strings.ToLower(os.Getenv("SQLFLOW_TEST")) != "workflow" {
+		t.Skip("Skipping workflow test.")
+	}
+	driverName, _, err := database.ParseURL(testDatasource)
+	a.NoError(err)
+
+	if driverName != "mysql" && driverName != "maxcompute" && driverName != "alisa" {
+		t.Skip("Skipping workflow test.")
+	}
+	modelDir := ""
+	tmpDir, caCrt, caKey, err := generateTempCA()
+	defer os.RemoveAll(tmpDir)
+	if err != nil {
+		t.Fatalf("failed to generate CA pair %v", err)
+	}
+
+	go start(modelDir, caCrt, caKey, unitTestPort, "fluid")
+	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
+	if err != nil {
+		t.Fatalf("prepare test dataset failed: %v", err)
+	}
+	t.Run("CaseWorkflowTrainAndPredictDNN", CaseWorkflowTrainAndPredictDNN)
 }
 
 func TestEnd2EndWorkflow(t *testing.T) {
@@ -2000,7 +2025,7 @@ func TestEnd2EndWorkflow(t *testing.T) {
 		t.Fatalf("failed to generate CA pair %v", err)
 	}
 
-	go start(modelDir, caCrt, caKey, unitTestPort, true)
+	go start(modelDir, caCrt, caKey, unitTestPort, "couler")
 	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 	if err != nil {
 		t.Fatalf("prepare test dataset failed: %v", err)

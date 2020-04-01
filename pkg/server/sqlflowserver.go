@@ -38,21 +38,22 @@ type Server struct {
 	// TODO(typhoonzero): should pass `Server` struct to run function, so that we can get
 	// server-side configurations together with client side session in the run context.
 	// To do this we need to refactor current pkg structure, so that we will not have circular dependency.
-	run      func(sql string, modelDir string, session *pb.Session) *pipe.Reader
-	modelDir string
+	run             func(sql string, modelDir string, session *pb.Session) *pipe.Reader
+	modelDir        string
+	workflowBackend string
 }
 
 // NewServer returns a server instance
 func NewServer(run func(string, string, *pb.Session) *pipe.Reader,
-	modelDir string) *Server {
-	return &Server{run: run, modelDir: modelDir}
+	modelDir string, workflowBackend string) *Server {
+	return &Server{run: run, modelDir: modelDir, workflowBackend: workflowBackend}
 }
 
 // Fetch implements `rpc Fetch (Job) returns(JobStatus)`
 func (s *Server) Fetch(ctx context.Context, job *pb.FetchRequest) (*pb.FetchResponse, error) {
 	// FIXME(tony): to make function fetch easily to mock, we should decouple server package
 	// with argo package by introducing s.fetch
-	_, wf, e := workflow.New("couler")
+	_, wf, e := workflow.New(s.workflowBackend)
 	if e != nil {
 		return nil, e
 	}
@@ -121,7 +122,7 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 //
 // TODO(wangkuiyi): Make SubmitWorkflow return an error in addition to
 // *pipe.Reader, and remove the calls to log.Printf.
-func SubmitWorkflow(sqlProgram string, modelDir string, session *pb.Session) *pipe.Reader {
+func SubmitWorkflow(sqlProgram string, modelDir string, session *pb.Session, workflowBackend string) *pipe.Reader {
 	logger := log.WithFields(log.Fields{
 		"requestID": log.UUID(),
 		"user":      session.UserId,
@@ -135,7 +136,7 @@ func SubmitWorkflow(sqlProgram string, modelDir string, session *pb.Session) *pi
 	startTime := time.Now()
 	go func() {
 		defer wr.Close()
-		wfID, e := workflow.Run("couler", sqlProgram, session, logger)
+		wfID, e := workflow.Run(workflowBackend, sqlProgram, session, logger)
 		defer logger.Infof("submitted, workflowID:%s, spent:%.f, SQL:%s, error:%v", wfID, time.Since(startTime).Seconds(), sqlProgram, e)
 		if e != nil {
 			if e := wr.Write(e); e != nil {

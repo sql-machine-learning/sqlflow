@@ -27,9 +27,18 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	"sqlflow.org/sqlflow/pkg/log"
+	"sqlflow.org/sqlflow/pkg/pipe"
 	"sqlflow.org/sqlflow/pkg/proto"
+	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/server"
 	sf "sqlflow.org/sqlflow/pkg/sql"
+)
+
+const (
+	// WorkflowBackendCouler translate the input SQL program into Argo Workflow
+	WorkflowBackendCouler = "couler"
+	// WorkflowBackendFluid translate the input SQL program into Tekton Pipeline
+	WorkflowBackendFluid = "fluid"
 )
 
 func newServer(caCrt, caKey string, logger *log.Logger) (*grpc.Server, error) {
@@ -48,7 +57,7 @@ func newServer(caCrt, caKey string, logger *log.Logger) (*grpc.Server, error) {
 	return s, nil
 }
 
-func start(modelDir, caCrt, caKey string, port int, isArgoMode bool) {
+func start(modelDir, caCrt, caKey string, port int, workflowBackend string) {
 	logger := log.GetDefaultLogger()
 	s, err := newServer(caCrt, caKey, logger)
 	if err != nil {
@@ -60,10 +69,12 @@ func start(modelDir, caCrt, caKey string, port int, isArgoMode bool) {
 			os.Mkdir(modelDir, os.ModePerm)
 		}
 	}
-	if isArgoMode {
-		proto.RegisterSQLFlowServer(s, server.NewServer(server.SubmitWorkflow, modelDir))
+	if workflowBackend == "" {
+		proto.RegisterSQLFlowServer(s, server.NewServer(sf.RunSQLProgram, modelDir, ""))
 	} else {
-		proto.RegisterSQLFlowServer(s, server.NewServer(sf.RunSQLProgram, modelDir))
+		proto.RegisterSQLFlowServer(s, server.NewServer(func(sqlProgram string, modelDir string, session *pb.Session) *pipe.Reader {
+			return server.SubmitWorkflow(sqlProgram, modelDir, session, workflowBackend)
+		}, modelDir, workflowBackend))
 	}
 
 	listenString := fmt.Sprintf(":%d", port)
@@ -89,5 +100,9 @@ func main() {
 	isArgoMode := flag.Bool("argo-mode", false, "Enable Argo workflow model.")
 	flag.Parse()
 	log.InitLogger(*logPath, log.OrderedTextFormatter)
-	start(*modelDir, *caCrt, *caKey, *port, *isArgoMode)
+	//TODO(yancey1989): using the certain workflow backend argument if finish the Tekton backend.
+	if *isArgoMode {
+		start(*modelDir, *caCrt, *caKey, *port, WorkflowBackendCouler)
+	}
+	start(*modelDir, *caCrt, *caKey, *port, "")
 }
