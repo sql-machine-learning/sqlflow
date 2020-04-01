@@ -4,7 +4,7 @@ SQLFlow extends SQL syntax to do AI.  The syntax extension allow SQL statements 
 
 If you are not a data analyst using SQL, but a deep learning researcher who would like to create a model for data analysts.  This document is for you.
 
-Please be aware that SQLFlow is a gRPC server, which translates a SQL program into a workflow for execution on Kubernetes.  Some steps of this workflow might submit a TensorFlow job on Kubernetes to train the referred model definition.  To make the translation possible, the SQLFlow server needs to know the Python source code of the model definition.  We typically deploy and run the SQLFlow server in Docker containers, so the model source code need to be packed into the Docker image togatehr with the SQLFlow server.
+Please be aware that SQLFlow is a gRPC server, which translates a SQL program into a workflow for execution on Kubernetes.  Some steps of this workflow might submit a TensorFlow job on Kubernetes to train the referred model definition.  To make the translation possible, the SQLFlow server needs to know the Python source code of the model definition.  We typically deploy and run the SQLFlow server in Docker containers, so the model source code need to be packed into the Docker image together with the SQLFlow server.
 
 In the future, we will make SQLFlow server able to refer to model definitions in other Docker images.  For now, let us assume you, dear deep learning researcher, know how to use Git and Docker, and know how to build a Docker image with the SQLFlow server and your model definitions.
 
@@ -83,6 +83,8 @@ In the final step, you need to publish your model so that other SQLFlow users ca
     docker push your-registry.com/model_image
     ```
     1. Then use the model image in SQLFlow by adding the Docker image name before the model name:
+    **NOTE: Below statement will not work in non-workflow mode (e.g. local run), this feature will be supported in the future.**
+
     ```sql
     SELECT * FROM iris.train
     TO TRAIN your-registry.com/model_image/MyAwesomeClassifier
