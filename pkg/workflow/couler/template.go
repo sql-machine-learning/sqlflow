@@ -26,7 +26,9 @@ type sqlStatement struct {
 	Parameters     string
 	IsKatibTrain   bool
 }
-type coulerFiller struct {
+
+// Filler is used to fill the template
+type Filler struct {
 	DataSource       string
 	SQLStatements    []*sqlStatement
 	SQLFlowSubmitter string
