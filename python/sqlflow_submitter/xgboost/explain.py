@@ -23,9 +23,9 @@ def xgb_shap_dataset(datasource, select, feature_column_names, label_spec,
     label_column_name = label_spec["feature_name"]
     if is_pai:
         pai_table_parts = pai_explain_table.split(".")
-        formated_pai_table = "odps://%s/tables/%s" % (pai_table_parts[0],
+        formatted_pai_table = "odps://%s/tables/%s" % (pai_table_parts[0],
                                                       pai_table_parts[1])
-        stream = db.pai_maxcompute_db_generator(formated_pai_table,
+        stream = db.pai_maxcompute_db_generator(formatted_pai_table,
                                                 feature_column_names,
                                                 label_column_name,
                                                 feature_specs)

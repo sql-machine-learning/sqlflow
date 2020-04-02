@@ -85,7 +85,7 @@ def dataPrepare(X, y):
     return trainSet, testSet
 
 
-### Loding data
+### Loading data
 df = pd.read_csv('data.csv')
 
 ### Data filtering
