@@ -1999,7 +1999,7 @@ func TestEnd2EndFluidWorkflow(t *testing.T) {
 		t.Fatalf("failed to generate CA pair %v", err)
 	}
 
-	go start(modelDir, caCrt, caKey, unitTestPort, "fluid")
+	go start(modelDir, caCrt, caKey, unitTestPort, WorkflowBackendFluid)
 	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 	if err != nil {
 		t.Fatalf("prepare test dataset failed: %v", err)
@@ -2025,7 +2025,7 @@ func TestEnd2EndWorkflow(t *testing.T) {
 		t.Fatalf("failed to generate CA pair %v", err)
 	}
 
-	go start(modelDir, caCrt, caKey, unitTestPort, "couler")
+	go start(modelDir, caCrt, caKey, unitTestPort, WorkflowBackendCouler)
 	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 	if err != nil {
 		t.Fatalf("prepare test dataset failed: %v", err)
