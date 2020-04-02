@@ -96,3 +96,65 @@ if __name__ == "__main__":
             plot_type='bar',
             result_table="")
     shutil.rmtree("dnnmodel")
+
+    # Train and explain DNNRegressor
+    train(datasource=datasource,
+          estimator=tf.estimator.DNNRegressor,
+          select="SELECT * FROM iris.train",
+          validation_select="SELECT * FROM iris.test",
+          feature_columns=feature_columns,
+          feature_column_names=feature_column_names,
+          feature_metas=feature_metas,
+          label_meta=label_meta,
+          model_params={
+              "hidden_units": [100, 100],
+          },
+          save="dnnmodel",
+          batch_size=100,
+          epoch=20,
+          verbose=0)
+
+    explain(datasource=datasource,
+            estimator_cls=tf.estimator.DNNRegressor,
+            select="SELECT * FROM iris.test LIMIT 10",
+            feature_columns=feature_columns,
+            feature_column_names=feature_column_names,
+            feature_metas=feature_metas,
+            label_meta=label_meta,
+            model_params={
+                "hidden_units": [100, 100],
+            },
+            save="dnnmodel",
+            is_pai=False,
+            plot_type='bar',
+            result_table="")
+    shutil.rmtree("dnnmodel")
+
+    # Train and explain LinearRegressor
+    train(datasource=datasource,
+          estimator=tf.estimator.LinearRegressor,
+          select="SELECT * FROM iris.train",
+          validation_select="SELECT * FROM iris.test",
+          feature_columns=feature_columns,
+          feature_column_names=feature_column_names,
+          feature_metas=feature_metas,
+          label_meta=label_meta,
+          model_params={},
+          save="lrmodel",
+          batch_size=100,
+          epoch=20,
+          verbose=0)
+
+    explain(datasource=datasource,
+            estimator_cls=tf.estimator.LinearRegressor,
+            select="SELECT * FROM iris.test LIMIT 10",
+            feature_columns=feature_columns,
+            feature_column_names=feature_column_names,
+            feature_metas=feature_metas,
+            label_meta=label_meta,
+            model_params={},
+            save="lrmodel",
+            is_pai=False,
+            plot_type='bar',
+            result_table="")
+    shutil.rmtree("lrmodel")
