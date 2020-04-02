@@ -1983,6 +1983,33 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 		// t.Run("CaseTrainPAIRandomForests", CaseTrainPAIRandomForests)
 	})
 }
+func TestEnd2EndFluidWorkflow(t *testing.T) {
+	a := assert.New(t)
+	if os.Getenv("SQLFLOW_TEST_DATASOURCE") == "" || strings.ToLower(os.Getenv("SQLFLOW_TEST")) != "workflow" {
+		t.Skip("Skipping workflow test.")
+	}
+	driverName, _, err := database.ParseURL(testDatasource)
+	a.NoError(err)
+
+	if driverName != "mysql" && driverName != "maxcompute" && driverName != "alisa" {
+		t.Skip("Skipping workflow test.")
+	}
+	modelDir := ""
+	tmpDir, caCrt, caKey, err := generateTempCA()
+	defer os.RemoveAll(tmpDir)
+	if err != nil {
+		t.Fatalf("failed to generate CA pair %v", err)
+	}
+
+	//TODO(yancey1989): using the same end-to-end workflow test with the Couler backend
+	os.Setenv("SQLFLOW_WORKFLOW_BACKEND", "fluid")
+	go start(modelDir, caCrt, caKey, unitTestPort, true)
+	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
+	if err != nil {
+		t.Fatalf("prepare test dataset failed: %v", err)
+	}
+	t.Run("CaseWorkflowTrainAndPredictDNN", CaseWorkflowTrainAndPredictDNN)
+}
 
 func TestEnd2EndWorkflow(t *testing.T) {
 	a := assert.New(t)

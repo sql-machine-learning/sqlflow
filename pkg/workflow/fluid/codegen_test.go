@@ -75,7 +75,7 @@ spec:
     - name: SQLFLOW_submitter
       value: pai
     image: sqlflow/sqlflow:step
-    name: <stdin>-14
+    name: stdin--14
   - args:
     - -e
     - "SELECT * FROM iris_train\nTO TRAIN DNNClassifier WITH\n\ttrain.batch_size=4,\n\
@@ -89,7 +89,7 @@ spec:
     - name: SQLFLOW_submitter
       value: pai
     image: sqlflow/sqlflow:step
-    name: <stdin>-24
+    name: stdin--24
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
