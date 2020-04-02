@@ -27,9 +27,7 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	"sqlflow.org/sqlflow/pkg/log"
-	"sqlflow.org/sqlflow/pkg/pipe"
 	"sqlflow.org/sqlflow/pkg/proto"
-	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/server"
 	sf "sqlflow.org/sqlflow/pkg/sql"
 )
@@ -57,7 +55,7 @@ func newServer(caCrt, caKey string, logger *log.Logger) (*grpc.Server, error) {
 	return s, nil
 }
 
-func start(modelDir, caCrt, caKey string, port int, workflowBackend string) {
+func start(modelDir, caCrt, caKey string, port int, isArgoMode bool) {
 	logger := log.GetDefaultLogger()
 	s, err := newServer(caCrt, caKey, logger)
 	if err != nil {
@@ -69,12 +67,10 @@ func start(modelDir, caCrt, caKey string, port int, workflowBackend string) {
 			os.Mkdir(modelDir, os.ModePerm)
 		}
 	}
-	if workflowBackend == "" {
-		proto.RegisterSQLFlowServer(s, server.NewServer(sf.RunSQLProgram, modelDir, ""))
+	if isArgoMode {
+		proto.RegisterSQLFlowServer(s, server.NewServer(server.SubmitWorkflow, modelDir))
 	} else {
-		proto.RegisterSQLFlowServer(s, server.NewServer(func(sqlProgram string, modelDir string, session *pb.Session) *pipe.Reader {
-			return server.SubmitWorkflow(sqlProgram, modelDir, session, workflowBackend)
-		}, modelDir, workflowBackend))
+		proto.RegisterSQLFlowServer(s, server.NewServer(sf.RunSQLProgram, modelDir))
 	}
 
 	listenString := fmt.Sprintf(":%d", port)
@@ -101,8 +97,5 @@ func main() {
 	flag.Parse()
 	log.InitLogger(*logPath, log.OrderedTextFormatter)
 	//TODO(yancey1989): using the certain workflow backend argument if finish the Tekton backend.
-	if *isArgoMode {
-		start(*modelDir, *caCrt, *caKey, *port, WorkflowBackendCouler)
-	}
-	start(*modelDir, *caCrt, *caKey, *port, "")
+	start(*modelDir, *caCrt, *caKey, *port, *isArgoMode)
 }
