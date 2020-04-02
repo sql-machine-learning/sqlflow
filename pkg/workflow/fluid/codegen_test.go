@@ -89,7 +89,7 @@ spec:
     - name: SQLFLOW_submitter
       value: pai
     image: sqlflow/sqlflow:step
-    name: stdin-24
+    name: stdin--24
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
