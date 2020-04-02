@@ -32,13 +32,6 @@ import (
 	sf "sqlflow.org/sqlflow/pkg/sql"
 )
 
-const (
-	// WorkflowBackendCouler translate the input SQL program into Argo Workflow
-	WorkflowBackendCouler = "couler"
-	// WorkflowBackendFluid translate the input SQL program into Tekton Pipeline
-	WorkflowBackendFluid = "fluid"
-)
-
 func newServer(caCrt, caKey string, logger *log.Logger) (*grpc.Server, error) {
 	var s *grpc.Server
 	if caCrt != "" && caKey != "" {
@@ -96,6 +89,5 @@ func main() {
 	isArgoMode := flag.Bool("argo-mode", false, "Enable Argo workflow model.")
 	flag.Parse()
 	log.InitLogger(*logPath, log.OrderedTextFormatter)
-	//TODO(yancey1989): using the certain workflow backend argument if finish the Tekton backend.
 	start(*modelDir, *caCrt, *caKey, *port, *isArgoMode)
 }
