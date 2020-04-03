@@ -21,30 +21,10 @@ import (
 	"time"
 
 	"github.com/argoproj/argo/pkg/apis/workflow/v1alpha1"
-	"github.com/golang/protobuf/proto"
 	"sqlflow.org/sqlflow/pkg/log"
 	pb "sqlflow.org/sqlflow/pkg/proto"
+	"sqlflow.org/sqlflow/pkg/workflow/tekton"
 )
-
-func newFetchRequest(workflowID, stepID, stepPhase string) *pb.FetchRequest {
-	return &pb.FetchRequest{
-		Job: &pb.Job{
-			Id: workflowID,
-		},
-		StepId:    stepID,
-		StepPhase: stepPhase,
-	}
-}
-
-func newFetchResponse(newReq *pb.FetchRequest, eof bool, responses []*pb.Response) *pb.FetchResponse {
-	return &pb.FetchResponse{
-		UpdatedFetchSince: newReq,
-		Eof:               eof,
-		Responses: &pb.FetchResponse_Responses{
-			Response: responses,
-		},
-	}
-}
 
 func getStepIdx(wf *v1alpha1.Workflow, targetStepGroup string) (int, error) {
 	stepIdx := 1
@@ -88,7 +68,8 @@ func (w *Workflow) Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 	logger.Infof("phase:%s", wf.Status.Phase)
 
 	if isWorkflowPending(wf) {
-		return newFetchResponse(req, false, []*pb.Response{}), nil
+		r := tekton.NewCompoundResponses()
+		return r.Response(req.Job.Id, "", "", false), nil
 	}
 	stepGroupName, err := getStepGroup(wf, req.Job.Id, req.StepId)
 	if err != nil {
@@ -105,7 +86,6 @@ func (w *Workflow) Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 		return nil, err
 	}
 	eof := false // true if finish fetching the workflow logs
-	logs := []string{}
 
 	// An example log content:
 	// Step [1/3] Execute Code: echo hello1
@@ -116,6 +96,7 @@ func (w *Workflow) Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 	// Step [2/3] Execute Code: echo hello2
 	// Step [2/3] Log: http://localhost:8001/workflows/default/steps-bdpff?nodeId=steps-bdpff-xx2
 	// ...
+	r := tekton.NewCompoundResponsesWithStepIdx(stepCnt, stepIdx)
 	newStepPhase := req.StepPhase
 	logURL, e := logViewURL(wf.ObjectMeta.Namespace, wf.ObjectMeta.Name, pod.ObjectMeta.Name)
 	if e != nil {
@@ -125,33 +106,23 @@ func (w *Workflow) Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 	if req.StepPhase == "" {
 		// the 1st container execute `argoexec wait` to wait the priority step, so package the 2nd container's command code.
 		execCode := fmt.Sprintf("%s %s", strings.Join(pod.Spec.Containers[1].Command, " "), strings.Join(pod.Spec.Containers[1].Args, " "))
-		logs = append(logs, fmt.Sprintf("SQLFlow Step: [%d/%d] Execute Code: %s", stepIdx, stepCnt, execCode))
-		logs = append(logs, fmt.Sprintf("SQLFlow Step: [%d/%d] Log: %s", stepIdx, stepCnt, logURL))
+		r.AppendMessageWithStepIdx(fmt.Sprintf("Execute Code: %s", execCode))
+		r.AppendMessageWithStepIdx(fmt.Sprintf("Log: %s", logURL))
 	}
 
 	// note(yancey1989): record the Pod phase to avoid output the duplicated logs at the next fetch request.
 	if req.StepPhase != string(pod.Status.Phase) {
-		logs = append(logs, fmt.Sprintf("SQLFlow Step: [%d/%d] Status: %s", stepIdx, stepCnt, pod.Status.Phase))
+		r.AppendMessageWithStepIdx(fmt.Sprintf("Status: %s", pod.Status.Phase))
 		newStepPhase = string(pod.Status.Phase)
-	}
-
-	responses := []*pb.Response{}
-	for _, log := range logs {
-		r, e := pb.EncodeMessage(log)
-		if e != nil {
-			return nil, e
-		}
-		responses = append(responses, r)
 	}
 
 	if isPodCompleted(pod) {
 		// TODO(yancey1989): add duration time for the eoeResponse
 		// eoe just used to simplify the client code which can be consistent with non-argo mode.
-		eoeResponse := &pb.Response{Response: &pb.Response_Eoe{Eoe: &pb.EndOfExecution{}}}
 		if isPodFailed(pod) {
 			logger.Errorf("workflowFailed, spent:%d", time.Now().Second()-wf.CreationTimestamp.Second())
-			responses = append(responses, eoeResponse)
-			return newFetchResponse(newFetchRequest(req.Job.Id, stepGroupName, newStepPhase), eof, responses),
+			r.AppendEoe()
+			return r.Response(req.Job.Id, "", newStepPhase, eof),
 				fmt.Errorf("SQLFlow Step [%d/%d] Failed, Log: %s", stepIdx, stepCnt, logURL)
 		}
 		logger.Infof("workflowSucceed, spent:%d", time.Now().Second()-wf.CreationTimestamp.Second())
@@ -164,13 +135,10 @@ func (w *Workflow) Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 			return nil, e
 		}
 
-		// unmarshal pb.Response from pod logs
-		r, e := unMarshalPodLogs(podLogs)
-		if e != nil {
+		if e := r.AppendProtoMessages(podLogs); e != nil {
 			return nil, e
 		}
-		responses = append(responses, r...)
-		responses = append(responses, eoeResponse)
+		r.AppendEoe()
 
 		// move to the next step
 		nextStepGroup, err := getNextStepGroup(wf, stepGroupName)
@@ -187,38 +155,7 @@ func (w *Workflow) Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 			stepGroupName = nextStepGroup
 		}
 	}
-
-	return newFetchResponse(newFetchRequest(req.Job.Id, stepGroupName, newStepPhase), eof, responses), nil
-}
-
-func isHTMLCode(code string) bool {
-	//TODO(yancey1989): support more lines HTML code e.g.
-	//<div>
-	//  ...
-	//</div>
-	re := regexp.MustCompile(`<div.*?>.*</div>`)
-	return re.MatchString(code)
-}
-
-func unMarshalPodLogs(podLogs []string) ([]*pb.Response, error) {
-	responses := []*pb.Response{}
-	for _, log := range podLogs {
-		log = strings.TrimSpace(log)
-		if isHTMLCode(log) {
-			r, e := pb.EncodeMessage(log)
-			if e != nil {
-				return nil, e
-			}
-			responses = append(responses, r)
-		}
-		response := &pb.Response{}
-		if e := proto.UnmarshalText(log, response); e != nil {
-			// skip this line if it's not protobuf message
-			continue
-		}
-		responses = append(responses, response)
-	}
-	return responses, nil
+	return r.Response(req.Job.Id, stepGroupName, newStepPhase, eof), nil
 }
 
 func parseOffset(content string) (string, string, error) {
