@@ -29,6 +29,15 @@ func runNormalStmt(wr *pipe.Writer, slct string, db *database.DB) error {
 	return runExec(wr, slct, db)
 }
 
+func containsAnyString(s string, substrs ...string) bool {
+	for _, substr := range substrs {
+		if strings.Contains(s, substr) {
+			return true
+		}
+	}
+	return false
+}
+
 // TODO(weiguo): isQuery is a hacky way to decide which API to call:
 // https://golang.org/pkg/database/sql/#DB.Exec .
 // We will need to extend our parser to be a full SQL parser in the future.
@@ -38,7 +47,7 @@ func isQuery(slct string) bool {
 	if strings.HasPrefix(s, "SELECT") && !has(s, "INTO") {
 		return true
 	}
-	if strings.HasPrefix(s, "SHOW") && (has(s, "CREATE") || has(s, "DATABASES") || has(s, "TABLES")) {
+	if strings.HasPrefix(s, "SHOW") && containsAnyString(s, "CREATE", "DATABASES", "TABLES", "COLUMNS", "TABLE", "PROCESSLIST") {
 		return true
 	}
 	if strings.HasPrefix(s, "DESC") || strings.HasPrefix(s, "EXPLAIN") {
