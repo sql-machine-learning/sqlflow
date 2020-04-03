@@ -52,6 +52,16 @@ func logViewURL(ns, wfID, podID string) (string, error) {
 
 // Fetch fetches the workflow log and status,
 // design doc: https://github.com/sql-machine-learning/sqlflow/blob/develop/doc/design/argo_workflow_on_sqlflow.md
+//
+// An example of Fetched Responses from the server logs:
+// Step [1/3] Execute Code: echo hello1
+// Step [1/3] Log: http://localhost:8001/workflows/default/steps-bdpff?nodeId=steps-bdpff-xx1
+// Step [1/3] Status: Pending
+// Step [1/3] Status: Running
+// Step [1/3] Status: Succeed/Failed
+// Step [2/3] Execute Code: echo hello2
+// Step [2/3] Log: http://localhost:8001/workflows/default/steps-bdpff?nodeId=steps-bdpff-xx2
+// ...
 func (w *Workflow) Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 	logger := log.WithFields(log.Fields{
 		"requestID": log.UUID(),
@@ -87,15 +97,6 @@ func (w *Workflow) Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 	}
 	eof := false // true if finish fetching the workflow logs
 
-	// An example log content:
-	// Step [1/3] Execute Code: echo hello1
-	// Step [1/3] Log: http://localhost:8001/workflows/default/steps-bdpff?nodeId=steps-bdpff-xx1
-	// Step [1/3] Status: Pending
-	// Step [1/3] Status: Running
-	// Step [1/3] Status: Succeed/Failed
-	// Step [2/3] Execute Code: echo hello2
-	// Step [2/3] Log: http://localhost:8001/workflows/default/steps-bdpff?nodeId=steps-bdpff-xx2
-	// ...
 	r := tekton.NewCompoundResponsesWithStepIdx(stepCnt, stepIdx)
 	newStepPhase := req.StepPhase
 	logURL, e := logViewURL(wf.ObjectMeta.Namespace, wf.ObjectMeta.Name, pod.ObjectMeta.Name)
