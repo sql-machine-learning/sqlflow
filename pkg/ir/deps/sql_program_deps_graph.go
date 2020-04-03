@@ -21,11 +21,6 @@ import (
 	"sqlflow.org/sqlflow/pkg/parser"
 )
 
-// SQLProgram is the constructed graph of the SQL program.
-type SQLProgram struct {
-	Statements []*Statement
-}
-
 // Statement represents a graph node of one statement.
 type Statement struct {
 	Statement string
@@ -53,8 +48,8 @@ type Table struct {
 	Name        string
 	HazardIndex int
 	// Table's input/output must be a statement.
-	Inputs  []*Statement
-	Outputs []*Statement
+	// Inputs  []*Statement
+	// Outputs []*Statement
 }
 
 // FullName of the table node.
@@ -94,8 +89,8 @@ func Analyze(parsedProgram []*parser.SQLFlowStmt) ([]*Statement, error) {
 					Type:        TypeTable,
 					Name:        t,
 					HazardIndex: 0,
-					Inputs:      []*Statement{},
-					Outputs:     []*Statement{},
+					// Inputs:      []*Statement{},
+					// Outputs:     []*Statement{},
 				}
 				tableNodeMap[fullName] = []*Table{tableNode}
 				inputs = append(inputs, tableNode)
@@ -111,23 +106,46 @@ func Analyze(parsedProgram []*parser.SQLFlowStmt) ([]*Statement, error) {
 					Type:        TypeTable,
 					Name:        t,
 					HazardIndex: 0,
-					Inputs:      []*Statement{},
-					Outputs:     []*Statement{},
+					// Inputs:      []*Statement{},
+					// Outputs:     []*Statement{},
 				}
 				tableNodeMap[fullName] = []*Table{tableNode}
 				outputs = append(outputs, tableNode)
 				continue
 			}
-			tableNode := &Table{
+			// find last statement that read/write this table
+			for j := len(result) - 1; j >= 0; j-- {
+				prev := result[j]
+				if contains(prev.Outputs, fullName) {
+					// WAW solution
+					tableNode := &Table{
+						Type:        TypeTable,
+						Name:        t,
+						HazardIndex: tableNodeList[len(tableNodeList)-1].HazardIndex + 1,
+					}
+					tableNodeMap[fullName] = append(tableNodeMap[fullName], tableNode)
+					inputs = append(inputs, tableNodeList[len(tableNodeList)-1])
+					// outputs = append(outputs, tableNode)
+				} else if contains(prev.Inputs, fullName) {
+					// WAR solution
+					readAsOutputTable := &Table{
+						Type:        TypeTable,
+						Name:        t,
+						HazardIndex: tableNodeList[len(tableNodeList)-1].HazardIndex + 1,
+					}
+					prev.Outputs = append(prev.Outputs, readAsOutputTable)
+					inputs = append(inputs, readAsOutputTable)
+					tableNodeMap[fullName] = append(tableNodeMap[fullName], readAsOutputTable)
+				}
+			}
+			tableNodeList = tableNodeMap[fullName]
+			warTable := &Table{
 				Type:        TypeTable,
 				Name:        t,
 				HazardIndex: tableNodeList[len(tableNodeList)-1].HazardIndex + 1,
-				Inputs:      []*Statement{},
-				Outputs:     []*Statement{},
 			}
-			tableNodeMap[fullName] = append(tableNodeMap[fullName], tableNode)
-			inputs = append(inputs, tableNodeList[len(tableNodeList)-1])
-			outputs = append(outputs, tableNode)
+			outputs = append(outputs, warTable)
+			tableNodeMap[fullName] = append(tableNodeMap[fullName], warTable)
 		}
 		curr := &Statement{
 			Statement: stmt.Original,
@@ -141,6 +159,17 @@ func Analyze(parsedProgram []*parser.SQLFlowStmt) ([]*Statement, error) {
 		return result, err
 	}
 	return result, nil
+}
+
+func contains(tableList []*Table, item string) bool {
+	res := false
+	for _, t := range tableList {
+		if t.FullName() == item {
+			res = true
+			break
+		}
+	}
+	return res
 }
 
 func drawGraphviz(stmts []*Statement) error {

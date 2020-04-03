@@ -28,7 +28,7 @@ func TestExtendedSyntaxParseToTrain(t *testing.T) {
 	SELECT * FROM table2 WHERE a=2;
 	DROP TABLE table2;
 	DROP TABLE table1;`
-	res, err := parser.Parse("alisa", sqlProgram)
+	res, err := parser.Parse("mysql", sqlProgram)
 	a.NoError(err)
 	Stmts, err := Analyze(res)
 	a.NoError(err)
@@ -36,6 +36,6 @@ func TestExtendedSyntaxParseToTrain(t *testing.T) {
 	if Stmts[0] != nil {
 		// FIXME(typhoonzero): add this test when mysql/hive/calcite parser implemented getting input/output tables.
 		// This test is now used for MaxCompute parser.
-		a.Equal(1, len(Stmts[0].Outputs))
+		a.Equal(0, len(Stmts[0].Outputs))
 	}
 }
