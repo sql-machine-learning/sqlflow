@@ -14,6 +14,7 @@
 package external
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -41,8 +42,8 @@ func TestTiDBParseAndSplitIdx(t *testing.T) {
 	p := newTiDBParser()
 
 	_, i, e = p.Parse("SELECTED a FROM t1") // SELECTED => SELECT
-	a.Equal(-1, i)
-	a.Error(e)
+	a.Equal(0, i)
+	a.NoError(e)
 
 	_, i, e = p.Parse("SELECT * FROM t1 TO TRAIN DNNClassifier")
 	a.Equal(17, i)
@@ -75,4 +76,100 @@ func TestTiDBParseAndSplitIdx(t *testing.T) {
 	_, i, e = p.Parse("SELECT * FROM (SELECT * FROM t1) t2 TO TRAIN DNNClassifier")
 	a.Equal(36, i)
 	a.NoError(e)
+}
+
+func TestSplitSql(t *testing.T) {
+	p := newTiDBParser()
+	a := assert.New(t)
+	{
+		ss, e := p.SplitStatementToPieces("")
+		a.Equal(0, len(ss))
+		a.Nil(e)
+	}
+	{
+		ss, e := p.SplitStatementToPieces(";")
+		a.Equal(1, len(ss))
+		a.Equal(";", ss[0])
+		a.Nil(e)
+	}
+	{
+		ss, e := p.SplitStatementToPieces(";;")
+		a.Equal(2, len(ss))
+		a.Equal(";", ss[0])
+		a.Equal(";", ss[1])
+		a.Nil(e)
+	}
+	{
+		ss, e := p.SplitStatementToPieces(" ;  ;   ")
+		a.Equal(3, len(ss))
+		a.Equal(" ;", ss[0])
+		a.Equal("  ;", ss[1])
+		a.Equal("   ", ss[2])
+		a.Nil(e)
+	}
+	{ // unexpected EOF
+		ss, e := p.SplitStatementToPieces("\"")
+		a.Equal(0, len(ss))
+		a.Nil(e)
+	}
+	{ // ; in comments
+		ss, e := p.SplitStatementToPieces("-- comment ; \n select 1;")
+		a.Equal(1, len(ss))
+		a.Nil(e)
+	}
+	{ // ; in comments
+		ss, e := p.SplitStatementToPieces("select /* ;;;; */ 1;")
+		a.Equal(1, len(ss))
+		a.Nil(e)
+	}
+	{ // ; in comments, on one line
+		sql := "--comment 1; select /* ;;;; */ 1;"
+		ss, e := p.SplitStatementToPieces(sql)
+		a.Equal(1, len(ss))
+		a.Equal(sql, ss[0])
+		a.Nil(e)
+	}
+	{ // ; in comments
+		sql := "--comment 1;\nselect /* ;;;; */ 1; -- comment ; abc  "
+		ss, e := p.SplitStatementToPieces(sql)
+		a.Equal(2, len(ss))
+		a.Equal("--comment 1;\nselect /* ;;;; */ 1;", ss[0])
+		a.Equal(" -- comment ; abc  ", ss[1])
+		a.Nil(e)
+		a.Equal(len(strings.Join(ss, "")), len(sql))
+	}
+	{ // ; in string
+		sql := "select * from a where f1 like '%;';select 1"
+		ss, e := p.SplitStatementToPieces(sql)
+		a.Equal(2, len(ss))
+		a.Equal("select * from a where f1 like '%;';", ss[0])
+		a.Equal("select 1", ss[1])
+		a.Nil(e)
+		a.Equal(len(strings.Join(ss, "")), len(sql))
+	}
+	{
+		for _, sql := range SelectCases {
+			blob := sql + ";" + sql
+			ss, e := p.SplitStatementToPieces(blob)
+			a.Nil(e)
+			a.Equal(len(strings.Join(ss, "")), len(blob))
+		}
+	}
+}
+
+func TestGetLeadingCommentLen(t *testing.T) {
+	p := newTiDBParser()
+	a := assert.New(t)
+	a.Equal(0, p.getLeadingCommentLen(""))
+	a.Equal(0, p.getLeadingCommentLen("TO train"))
+	a.Equal(12, p.getLeadingCommentLen("-- comment \nTO train"))
+	a.Equal(13, p.getLeadingCommentLen("/* commnt */ hello"))
+	a.Equal(12, p.getLeadingCommentLen("--\n--a\n--abc"))
+	a.Equal(13, p.getLeadingCommentLen("--\n--a\n--abc\nSELECT"))
+	a.Equal(12, p.getLeadingCommentLen("-- comment \nSELECT\n--comment"))
+	a.Equal(27, p.getLeadingCommentLen("/* commnt */\n/* comment */ hello"))
+	a.Equal(13, p.getLeadingCommentLen("/* commnt */ hello /* comment */ hello"))
+	a.Equal(25, p.getLeadingCommentLen("--comment \n/* comment;*/ SELECT"))
+	a.Equal(25, p.getLeadingCommentLen("/* comment;*/--comment \n SELECT"))
+	a.Equal(25, p.getLeadingCommentLen("/* comment;*/\n--comment\n SELECT"))
 }

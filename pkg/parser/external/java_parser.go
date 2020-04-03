@@ -59,6 +59,9 @@ func (p *javaParser) Parse(program string) ([]*Statement, int, error) {
 		}
 		retStatements = append(retStatements, stmt)
 	}
+	if r.IsUnfinishedSelect {
+		retStatements[len(retStatements)-1].IsUnfinishedSelect = true
+	}
 
 	return retStatements, int(r.Index), nil
 }

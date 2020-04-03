@@ -104,9 +104,9 @@ func commonThirdPartyCases(p Parser, a *assert.Assertions) {
 	{ // two SQL statements, the first standard SQL has an error.
 		sql := `select select 1; select 1 to train;`
 		s, idx, err := p.Parse(sql)
-		a.Nil(s)
-		a.Equal(-1, idx)
-		a.NotNil(err)
+		a.Equal(0, len(s))
+		a.Equal(0, idx)
+		a.NoError(err)
 	}
 
 	// two SQL statements, the second standard SQL has an error.
@@ -122,8 +122,50 @@ func commonThirdPartyCases(p Parser, a *assert.Assertions) {
 	if pr, ok := p.(*javaParser); !ok || pr.typ != "odps" { // non select statement before to train
 		sql := `describe table to train;`
 		s, idx, err := p.Parse(sql)
-		a.NotNil(err)
+		a.Nil(err)
 		a.Equal(0, len(s))
-		a.Equal(-1, idx)
+		a.Equal(0, idx)
 	}
+
+	// show train stmt
+	{
+		sql := "SHOW TRAIN my_model;"
+		stmts, idx, err := p.Parse(sql)
+		a.Equal(0, len(stmts))
+		a.Equal(0, idx)
+		a.Nil(err)
+	}
+	{
+		sql := "select 1; SHOW TRAIN my_model;"
+		//                ^ error here
+		stmts, idx, err := p.Parse(sql)
+		a.Equal(1, len(stmts))
+		a.Equal(10, idx)
+		a.NoError(err)
+	}
+	{
+		sql := "select 1; -- comment\nSHOW TRAIN my_model;\n--comment"
+		//               							^ error here
+		stmts, idx, err := p.Parse(sql)
+		a.Equal(1, len(stmts))
+		a.Equal(21, idx)
+		a.Nil(err)
+	}
+	{
+		sql := "select 1; select * from train TO train; SHOW TRAIN my_model;"
+		//                                    ^ error here
+		stmts, idx, err := p.Parse(sql)
+		a.Equal(2, len(stmts))
+		a.Equal(30, idx)
+		a.Nil(err)
+	}
+	{
+		sql := "SHOW TRAIN my_model; select 1; select * from train TO train;"
+		//      ^ error here
+		stmts, idx, err := p.Parse(sql)
+		a.Equal(0, len(stmts))
+		a.Equal(0, idx)
+		a.Nil(err)
+	}
+
 }

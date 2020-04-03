@@ -74,12 +74,14 @@ public class ParserGrpcServer {
         parseResult.statements = new ArrayList<String>();
         parseResult.position = -1;
         parseResult.error = e.getClass().getName() + " " + e.getMessage();
+        parseResult.isUnfinishedSelect = false;
       }
 
       ParserResponse.Builder responseBuilder = ParserResponse.newBuilder();
       responseBuilder.addAllSqlStatements(parseResult.statements);
       responseBuilder.setIndex(parseResult.position);
       responseBuilder.setError(parseResult.error);
+      responseBuilder.setIsUnfinishedSelect(parseResult.isUnfinishedSelect);
       if (parseResult.inputOutputTables != null) {
         for (int i = 0; i < parseResult.inputOutputTables.size(); i++) {
           InputOutputTables.Builder tablesBuilder = InputOutputTables.newBuilder();

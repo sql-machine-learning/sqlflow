@@ -141,6 +141,7 @@ func (l *lexer) emitIdentOrKeyword(lval *extendedSyntaxSymType) int {
 		"NOT":     NOT,
 		"AS":      AS,
 		"TO":      TO,
+		"SHOW":    SHOW,
 	}
 	if typ, ok := keywds[strings.ToUpper(l.input[l.start:l.pos])]; ok {
 		return l.emit(lval, typ)
