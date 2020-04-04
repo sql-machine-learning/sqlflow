@@ -56,7 +56,7 @@ func (r *CompoundResponses) AppendEoe() {
 
 // AppendProtoMessages appends the message with protobuf message format
 func (r *CompoundResponses) AppendProtoMessages(messages []string) error {
-	// unmarshal pb.Response from pod logs
+	// unmarshal pb.Response from proto message with text format
 	res, e := unMarshalProtoMessages(messages)
 	if e != nil {
 		return e
@@ -70,19 +70,19 @@ func (r *CompoundResponses) Response(jobID, stepID, stepPhase string, eof bool) 
 	return NewFetchResponse(NewFetchRequest(jobID, stepID, stepPhase), eof, r.responses)
 }
 
-func unMarshalProtoMessages(podLogs []string) ([]*pb.Response, error) {
+func unMarshalProtoMessages(messages []string) ([]*pb.Response, error) {
 	responses := []*pb.Response{}
-	for _, log := range podLogs {
-		log = strings.TrimSpace(log)
-		if isHTMLCode(log) {
-			r, e := pb.EncodeMessage(log)
+	for _, msg := range messages {
+		msg = strings.TrimSpace(msg)
+		if isHTMLCode(msg) {
+			r, e := pb.EncodeMessage(msg)
 			if e != nil {
 				return nil, e
 			}
 			responses = append(responses, r)
 		}
 		response := &pb.Response{}
-		if e := proto.UnmarshalText(log, response); e != nil {
+		if e := proto.UnmarshalText(msg, response); e != nil {
 			// skip this line if it's not protobuf message
 			continue
 		}
