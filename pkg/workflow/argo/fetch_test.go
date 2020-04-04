@@ -29,7 +29,7 @@ import (
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/stretchr/testify/assert"
 	pb "sqlflow.org/sqlflow/pkg/proto"
-	"sqlflow.org/sqlflow/pkg/workflow/tekton"
+	wfrsp "sqlflow.org/sqlflow/pkg/workflow/response"
 )
 
 const (
@@ -173,7 +173,7 @@ func TestFetch(t *testing.T) {
 	a.NoError(err)
 
 	defer k8sDeleteWorkflow(workflowID)
-	req := tekton.NewFetchRequest(workflowID, "", "")
+	req := wfrsp.NewFetchRequest(workflowID, "", "")
 	wf := &Workflow{}
 	fr, err := wf.Fetch(req)
 	messages := []string{}
