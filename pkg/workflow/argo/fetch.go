@@ -78,8 +78,7 @@ func (w *Workflow) Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 	logger.Infof("phase:%s", wf.Status.Phase)
 
 	if isWorkflowPending(wf) {
-		r := tekton.NewCompoundResponses()
-		return r.Response(req.Job.Id, "", "", false), nil
+		return tekton.NewCompoundResponses().Response(req.Job.Id, "", "", false), nil
 	}
 	stepGroupName, err := getStepGroup(wf, req.Job.Id, req.StepId)
 	if err != nil {
