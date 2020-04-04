@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tekton
+package response
 
 import (
 	"fmt"
@@ -29,8 +29,8 @@ type CompoundResponses struct {
 	responses []*pb.Response
 }
 
-// NewCompoundResponsesWithStepIdx returns CompoundResponses with step index
-func NewCompoundResponsesWithStepIdx(stepCnt, stepIdx int) *CompoundResponses {
+// New returns CompoundResponses with step index
+func New(stepCnt, stepIdx int) *CompoundResponses {
 	return &CompoundResponses{
 		stepCnt:   stepCnt,
 		stepIdx:   stepIdx,
@@ -38,17 +38,8 @@ func NewCompoundResponsesWithStepIdx(stepCnt, stepIdx int) *CompoundResponses {
 	}
 }
 
-// NewCompoundResponses returns CompoundResponses with step index 0
-func NewCompoundResponses() *CompoundResponses {
-	return &CompoundResponses{
-		stepCnt:   0,
-		stepIdx:   0,
-		responses: []*pb.Response{},
-	}
-}
-
-// AppendMessageWithStepIdx append message with Step Index as prefix
-func (r *CompoundResponses) AppendMessageWithStepIdx(message string) error {
+// AppendMessage append message with Step Index as prefix
+func (r *CompoundResponses) AppendMessage(message string) error {
 	res, e := pb.EncodeMessage(fmt.Sprintf("SQLFlow Step: [%d/%d] %s", r.stepIdx, r.stepCnt, message))
 	if e != nil {
 		return e

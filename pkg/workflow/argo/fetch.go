@@ -23,7 +23,7 @@ import (
 	"github.com/argoproj/argo/pkg/apis/workflow/v1alpha1"
 	"sqlflow.org/sqlflow/pkg/log"
 	pb "sqlflow.org/sqlflow/pkg/proto"
-	"sqlflow.org/sqlflow/pkg/workflow/tekton"
+	wfrsp "sqlflow.org/sqlflow/pkg/workflow/response"
 )
 
 func getStepIdx(wf *v1alpha1.Workflow, targetStepGroup string) (int, error) {
@@ -78,7 +78,7 @@ func (w *Workflow) Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 	logger.Infof("phase:%s", wf.Status.Phase)
 
 	if isWorkflowPending(wf) {
-		return tekton.NewCompoundResponses().Response(req.Job.Id, "", "", false), nil
+		return wfrsp.New(0, 0).Response(req.Job.Id, "", "", false), nil
 	}
 	stepGroupName, err := getStepGroup(wf, req.Job.Id, req.StepId)
 	if err != nil {
@@ -95,8 +95,7 @@ func (w *Workflow) Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 		return nil, err
 	}
 	eof := false // true if finish fetching the workflow logs
-
-	r := tekton.NewCompoundResponsesWithStepIdx(stepCnt, stepIdx)
+	r := wfrsp.New(stepCnt, stepIdx)
 	newStepPhase := req.StepPhase
 	logURL, e := logViewURL(wf.ObjectMeta.Namespace, wf.ObjectMeta.Name, pod.ObjectMeta.Name)
 	if e != nil {
@@ -106,13 +105,13 @@ func (w *Workflow) Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 	if req.StepPhase == "" {
 		// the 1st container execute `argoexec wait` to wait the priority step, so package the 2nd container's command code.
 		execCode := fmt.Sprintf("%s %s", strings.Join(pod.Spec.Containers[1].Command, " "), strings.Join(pod.Spec.Containers[1].Args, " "))
-		r.AppendMessageWithStepIdx(fmt.Sprintf("Execute Code: %s", execCode))
-		r.AppendMessageWithStepIdx(fmt.Sprintf("Log: %s", logURL))
+		r.AppendMessage(fmt.Sprintf("Execute Code: %s", execCode))
+		r.AppendMessage(fmt.Sprintf("Log: %s", logURL))
 	}
 
 	// note(yancey1989): record the Pod phase to avoid output the duplicated logs at the next fetch request.
 	if req.StepPhase != string(pod.Status.Phase) {
-		r.AppendMessageWithStepIdx(fmt.Sprintf("Status: %s", pod.Status.Phase))
+		r.AppendMessage(fmt.Sprintf("Status: %s", pod.Status.Phase))
 		newStepPhase = string(pod.Status.Phase)
 	}
 
