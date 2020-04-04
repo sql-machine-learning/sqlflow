@@ -89,8 +89,6 @@ func Analyze(parsedProgram []*parser.SQLFlowStmt) ([]*Statement, error) {
 					Type:        TypeTable,
 					Name:        t,
 					HazardIndex: 0,
-					// Inputs:      []*Statement{},
-					// Outputs:     []*Statement{},
 				}
 				tableNodeMap[fullName] = []*Table{tableNode}
 				inputs = append(inputs, tableNode)
@@ -106,8 +104,6 @@ func Analyze(parsedProgram []*parser.SQLFlowStmt) ([]*Statement, error) {
 					Type:        TypeTable,
 					Name:        t,
 					HazardIndex: 0,
-					// Inputs:      []*Statement{},
-					// Outputs:     []*Statement{},
 				}
 				tableNodeMap[fullName] = []*Table{tableNode}
 				outputs = append(outputs, tableNode)
@@ -116,17 +112,17 @@ func Analyze(parsedProgram []*parser.SQLFlowStmt) ([]*Statement, error) {
 			// find last statement that read/write this table
 			for j := len(result) - 1; j >= 0; j-- {
 				prev := result[j]
+				tableNodeList = tableNodeMap[fullName]
 				if contains(prev.Outputs, fullName) {
+					fmt.Printf("prev append WAW: %s, table: %s\n", prev.Statement, fullName)
 					// WAW solution
-					tableNode := &Table{
-						Type:        TypeTable,
-						Name:        t,
-						HazardIndex: tableNodeList[len(tableNodeList)-1].HazardIndex + 1,
+					prevOutput, ok := getFirstInList(prev.Outputs, fullName)
+					if !ok {
+						return nil, fmt.Errorf("error adding WAW dependency, tablename: %s, prev stmt: %s", fullName, prev.Statement)
 					}
-					tableNodeMap[fullName] = append(tableNodeMap[fullName], tableNode)
-					inputs = append(inputs, tableNodeList[len(tableNodeList)-1])
-					// outputs = append(outputs, tableNode)
+					inputs = append(inputs, prevOutput)
 				} else if contains(prev.Inputs, fullName) {
+					fmt.Printf("prev append WAR: %s, table: %s\n", prev.Statement, fullName)
 					// WAR solution
 					readAsOutputTable := &Table{
 						Type:        TypeTable,
@@ -134,7 +130,9 @@ func Analyze(parsedProgram []*parser.SQLFlowStmt) ([]*Statement, error) {
 						HazardIndex: tableNodeList[len(tableNodeList)-1].HazardIndex + 1,
 					}
 					prev.Outputs = append(prev.Outputs, readAsOutputTable)
-					inputs = append(inputs, readAsOutputTable)
+					if !contains(inputs, fullName) {
+						inputs = append(inputs, readAsOutputTable)
+					}
 					tableNodeMap[fullName] = append(tableNodeMap[fullName], readAsOutputTable)
 				}
 			}
@@ -159,6 +157,15 @@ func Analyze(parsedProgram []*parser.SQLFlowStmt) ([]*Statement, error) {
 		return result, err
 	}
 	return result, nil
+}
+
+func getFirstInList(tableList []*Table, tableNameToFind string) (*Table, bool) {
+	for _, t := range tableList {
+		if t.FullName() == tableNameToFind {
+			return t, true
+		}
+	}
+	return nil, false
 }
 
 func contains(tableList []*Table, item string) bool {
