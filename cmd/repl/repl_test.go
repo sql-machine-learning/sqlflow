@@ -133,6 +133,26 @@ INTO sqlflow_models.repl_dnn_model;`)
 	a.Contains(output, "| repl_dnn_model           |")
 }
 
+func TestReplWithoutSemicolon(t *testing.T) {
+	a := assert.New(t)
+	a.NoError(prepareTestDataOrSkip(t))
+	session.DbConnStr = dbConnStr
+	sql := `
+select * from iris.train to train DNNClassifier
+WITH model.hidden_units=[10,10], model.n_classes=3, validation.select="select * from iris.test"
+label class
+INTO sqlflow_models.repl_dnn_model`
+	scanner := bufio.NewScanner(strings.NewReader(sql))
+	output, err := step.GetStdout(func() error { repl(scanner, "", dbConnStr); return nil })
+	a.NoError(err)
+	a.Contains(output, `
+select * from iris.train to train DNNClassifier
+WITH model.hidden_units=[10,10], model.n_classes=3, validation.select="select * from iris.test"
+label class
+INTO sqlflow_models.repl_dnn_model;`)
+	a.Contains(output, "'global_step': 110")
+}
+
 func TestMain(t *testing.T) {
 	a := assert.New(t)
 	a.Nil(prepareTestDataOrSkip(t))

@@ -184,8 +184,13 @@ func assertConnectable(ds string) {
 func repl(scanner *bufio.Scanner, modelDir string, ds string) {
 	for {
 		statements, err := readStmt(scanner)
-		if err == io.EOF && len(statements) == 0 {
-			return
+		if err == io.EOF {
+			n := len(statements)
+			if n > 0 && !strings.HasSuffix(strings.TrimSpace(statements[n-1]), ";") {
+				statements[len(statements)-1] += ";"
+			} else {
+				return
+			}
 		}
 		for _, stmt := range statements {
 			if err := runStmt(stmt, false, modelDir, ds); err != nil {
