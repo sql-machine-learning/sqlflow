@@ -100,7 +100,7 @@ def load_dir(oss_model_dir):
 
 def save_file(oss_model_dir, file_name):
     '''
-    Save the local file (file_name is a file under current directory) to OSS direcotory.
+    Save the local file (file_name is a file under current directory) to OSS directory.
     '''
     bucket = get_models_bucket()
     oss_path = get_oss_path_from_uri(oss_model_dir, file_name)
