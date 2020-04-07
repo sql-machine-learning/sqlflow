@@ -47,9 +47,6 @@ type Table struct {
 	Type        TableType
 	Name        string
 	HazardIndex int
-	// Table's input/output must be a statement.
-	// Inputs  []*Statement
-	// Outputs []*Statement
 }
 
 // FullName of the table node.
@@ -58,7 +55,7 @@ func (t *Table) FullName() string {
 }
 
 // Analyze will construct a dependency graph for the SQL program and
-// returns the first statement (root node).
+// returns a list of statements with inputs, outputs connections.
 func Analyze(parsedProgram []*parser.SQLFlowStmt) ([]*Statement, error) {
 	if len(parsedProgram) == 0 {
 		return nil, fmt.Errorf("no parsed statements to analyze")
@@ -75,76 +72,16 @@ func Analyze(parsedProgram []*parser.SQLFlowStmt) ([]*Statement, error) {
 		return result, nil
 	}
 
-	// tableNodeMap records table fullname -> fullname_0, fullname_1 for resolving hazard.
+	// tableNodeMap records table fullname -> [fullname_0, fullname_1] for resolving hazard.
 	tableNodeMap := make(map[string][]*Table)
 
 	for idx, stmt := range parsedProgram {
-		inputs := []*Table{}
-		outputs := []*Table{}
-		for _, t := range stmt.Inputs {
-			fullName := "table." + t
-			tableNodelist, ok := tableNodeMap[fullName]
-			if !ok {
-				tableNode := &Table{
-					Type:        TypeTable,
-					Name:        t,
-					HazardIndex: 0,
-				}
-				tableNodeMap[fullName] = []*Table{tableNode}
-				inputs = append(inputs, tableNode)
-			} else {
-				inputs = append(inputs, tableNodelist[len(tableNodelist)-1])
-			}
+		inputs := connectStatementInputs(stmt, tableNodeMap)
+		inputs, outputs, err := connectStatementOutputs(result, inputs, stmt, tableNodeMap)
+		if err != nil {
+			return nil, err
 		}
-		for _, t := range stmt.Outputs {
-			fullName := "table." + t
-			tableNodeList, ok := tableNodeMap[fullName]
-			if !ok {
-				tableNode := &Table{
-					Type:        TypeTable,
-					Name:        t,
-					HazardIndex: 0,
-				}
-				tableNodeMap[fullName] = []*Table{tableNode}
-				outputs = append(outputs, tableNode)
-				continue
-			}
-			// find last statement that read/write this table
-			for j := len(result) - 1; j >= 0; j-- {
-				prev := result[j]
-				tableNodeList = tableNodeMap[fullName]
-				if contains(prev.Outputs, fullName) {
-					fmt.Printf("prev append WAW: %s, table: %s\n", prev.Statement, fullName)
-					// WAW solution
-					prevOutput, ok := getFirstInList(prev.Outputs, fullName)
-					if !ok {
-						return nil, fmt.Errorf("error adding WAW dependency, tablename: %s, prev stmt: %s", fullName, prev.Statement)
-					}
-					inputs = append(inputs, prevOutput)
-				} else if contains(prev.Inputs, fullName) {
-					fmt.Printf("prev append WAR: %s, table: %s\n", prev.Statement, fullName)
-					// WAR solution
-					readAsOutputTable := &Table{
-						Type:        TypeTable,
-						Name:        t,
-						HazardIndex: tableNodeList[len(tableNodeList)-1].HazardIndex + 1,
-					}
-					prev.Outputs = append(prev.Outputs, readAsOutputTable)
-					if !contains(inputs, fullName) {
-						inputs = append(inputs, readAsOutputTable)
-					}
-					tableNodeMap[fullName] = append(tableNodeMap[fullName], readAsOutputTable)
-				}
-			}
-			tableNodeList = tableNodeMap[fullName]
-			warTable := &Table{
-				Type:        TypeTable,
-				Name:        t,
-				HazardIndex: tableNodeList[len(tableNodeList)-1].HazardIndex + 1,
-			}
-			outputs = append(outputs, warTable)
-			tableNodeMap[fullName] = append(tableNodeMap[fullName], warTable)
-		}
+
 		curr := &Statement{
 			Statement: stmt.Original,
 			Order:     idx,
@@ -157,6 +94,88 @@ func Analyze(parsedProgram []*parser.SQLFlowStmt) ([]*Statement, error) {
 		return result, err
 	}
 	return result, nil
+}
+
+func connectStatementInputs(stmt *parser.SQLFlowStmt, tableNodeMap map[string][]*Table) []*Table {
+	inputs := []*Table{}
+	for _, t := range stmt.Inputs {
+		fullName := "table." + t
+		tableNodelist, ok := tableNodeMap[fullName]
+		if !ok {
+			tableNode := &Table{
+				Type:        TypeTable,
+				Name:        t,
+				HazardIndex: 0,
+			}
+			tableNodeMap[fullName] = []*Table{tableNode}
+			inputs = append(inputs, tableNode)
+		} else {
+			inputs = append(inputs, tableNodelist[len(tableNodelist)-1])
+		}
+	}
+	return inputs
+}
+
+func connectStatementOutputs(result []*Statement, inputs []*Table, stmt *parser.SQLFlowStmt, tableNodeMap map[string][]*Table) ([]*Table, []*Table, error) {
+	outputs := []*Table{}
+	var err error
+	for _, t := range stmt.Outputs {
+		fullName := "table." + t
+		tableNodeList, ok := tableNodeMap[fullName]
+		if !ok {
+			tableNode := &Table{
+				Type:        TypeTable,
+				Name:        t,
+				HazardIndex: 0,
+			}
+			tableNodeMap[fullName] = []*Table{tableNode}
+			outputs = append(outputs, tableNode)
+			continue
+		}
+		// find last statement that read/write this table
+		inputs, err = resolveHazard(result, t, inputs, tableNodeMap)
+		if err != nil {
+			return nil, nil, err
+		}
+		tableNodeList = tableNodeMap[fullName]
+		warTable := &Table{
+			Type:        TypeTable,
+			Name:        t,
+			HazardIndex: tableNodeList[len(tableNodeList)-1].HazardIndex + 1,
+		}
+		outputs = append(outputs, warTable)
+		tableNodeMap[fullName] = append(tableNodeMap[fullName], warTable)
+	}
+	return inputs, outputs, nil
+}
+
+func resolveHazard(constructed []*Statement, currOutputTableName string, inputs []*Table, tableNodeMap map[string][]*Table) ([]*Table, error) {
+	fullTableName := "table." + currOutputTableName
+	for j := len(constructed) - 1; j >= 0; j-- {
+		prev := constructed[j]
+		tableNodeList := tableNodeMap[fullTableName]
+		if contains(prev.Outputs, fullTableName) {
+			// WAW solution
+			prevOutput, ok := getFirstInList(prev.Outputs, fullTableName)
+			if !ok {
+				return nil, fmt.Errorf("error adding WAW dependency, tablename: %s, prev stmt: %s", fullTableName, prev.Statement)
+			}
+			inputs = append(inputs, prevOutput)
+		} else if contains(prev.Inputs, fullTableName) {
+			// WAR solution
+			readAsOutputTable := &Table{
+				Type:        TypeTable,
+				Name:        currOutputTableName,
+				HazardIndex: tableNodeList[len(tableNodeList)-1].HazardIndex + 1,
+			}
+			prev.Outputs = append(prev.Outputs, readAsOutputTable)
+			if !contains(inputs, fullTableName) {
+				inputs = append(inputs, readAsOutputTable)
+			}
+			tableNodeMap[fullTableName] = append(tableNodeMap[fullTableName], readAsOutputTable)
+		}
+	}
+	return inputs, nil
 }
 
 func getFirstInList(tableList []*Table, tableNameToFind string) (*Table, bool) {
@@ -194,12 +213,27 @@ func drawGraphviz(stmts []*Statement) error {
 		return err
 	}
 
+	if err := writeNodes(fn, stmts); err != nil {
+		return err
+	}
+	if err := writeEdges(fn, stmts); err != nil {
+		return err
+	}
+
+	if _, err = fn.WriteString("}\n"); err != nil {
+		return err
+	}
+	return nil
+}
+
+func writeNodes(fn *os.File, stmts []*Statement) error {
 	// store unique table names
 	tableNames := make(map[string]int)
+
 	// write stmt nodes
 	for _, stmt := range stmts {
 		stmtLine := fmt.Sprintf("Stmt%d [shape=box label=\"%s\"]\n", stmt.Order, strings.Trim(stmt.Statement, "\n"))
-		if _, err = fn.WriteString(stmtLine); err != nil {
+		if _, err := fn.WriteString(stmtLine); err != nil {
 			return err
 		}
 		if len(stmt.Inputs) > 0 {
@@ -222,18 +256,21 @@ func drawGraphviz(stmts []*Statement) error {
 	// write table nodes
 	for tn := range tableNames {
 		tableLine := fmt.Sprintf("%s [shape=circle]\n", strings.Replace(tn, ".", "_", -1))
-		if _, err = fn.WriteString(tableLine); err != nil {
+		if _, err := fn.WriteString(tableLine); err != nil {
 			return err
 		}
 	}
+	return nil
+}
 
+func writeEdges(fn *os.File, stmts []*Statement) error {
 	// write edges
 	for _, stmt := range stmts {
 		// write inputs
 		if len(stmt.Inputs) > 0 {
 			for _, i := range stmt.Inputs {
 				inputLine := fmt.Sprintf("%s_%d -> Stmt%d\n", strings.Replace(i.FullName(), ".", "_", -1), i.HazardIndex, stmt.Order)
-				if _, err = fn.WriteString(inputLine); err != nil {
+				if _, err := fn.WriteString(inputLine); err != nil {
 					return err
 				}
 			}
@@ -243,14 +280,11 @@ func drawGraphviz(stmts []*Statement) error {
 		if len(stmt.Outputs) > 0 {
 			for _, o := range stmt.Outputs {
 				inputLine := fmt.Sprintf("Stmt%d -> %s_%d\n", stmt.Order, strings.Replace(o.FullName(), ".", "_", -1), o.HazardIndex)
-				if _, err = fn.WriteString(inputLine); err != nil {
+				if _, err := fn.WriteString(inputLine); err != nil {
 					return err
 				}
 			}
 		}
-	}
-	if _, err = fn.WriteString("}\n"); err != nil {
-		return err
 	}
 	return nil
 }

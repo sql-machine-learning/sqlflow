@@ -14,6 +14,7 @@
 package deps
 
 import (
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -28,7 +29,11 @@ func TestExtendedSyntaxParseToTrain(t *testing.T) {
 	SELECT * FROM table2 WHERE a=2;
 	DROP TABLE table2;
 	DROP TABLE table1;`
-	res, err := parser.Parse("mysql", sqlProgram)
+	driverType := os.Getenv("SQLFLOW_TEST_DB")
+	if driverType == "" {
+		driverType = "mysql"
+	}
+	res, err := parser.Parse(driverType, sqlProgram)
 	a.NoError(err)
 	Stmts, err := Analyze(res)
 	a.NoError(err)
