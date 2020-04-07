@@ -29,28 +29,18 @@ func runNormalStmt(wr *pipe.Writer, slct string, db *database.DB) error {
 	return runExec(wr, slct, db)
 }
 
-func containsAnyString(s string, substrs ...string) bool {
-	for _, substr := range substrs {
-		if strings.Contains(s, substr) {
-			return true
-		}
-	}
-	return false
-}
-
 // TODO(weiguo): isQuery is a hacky way to decide which API to call:
 // https://golang.org/pkg/database/sql/#DB.Exec .
-// We will need to extend our parser to be a full SQL parser in the future.
-func isQuery(slct string) bool {
-	s := strings.ToUpper(strings.TrimSpace(slct))
-	has := strings.Contains
-	if strings.HasPrefix(s, "SELECT") && !has(s, "INTO") {
+// The implementation is based on
+// https://github.com/xo/usql/blob/490ef67b5accd38d53cbe0a333bef85480a0a716/drivers/qtype.go#L8-L22
+// We may need to call SQLFlow parser to check the statement type in the future.
+func isQuery(stmt string) bool {
+	s := strings.ToUpper(strings.TrimSpace(stmt))
+	if strings.HasPrefix(s, "SELECT") && !strings.Contains(s, "INTO") {
 		return true
 	}
-	if strings.HasPrefix(s, "SHOW") && containsAnyString(s, "CREATE", "DATABASES", "TABLES", "COLUMNS", "TABLE", "PROCESSLIST") {
-		return true
-	}
-	if strings.HasPrefix(s, "DESC") || strings.HasPrefix(s, "EXPLAIN") {
+	if strings.HasPrefix(s, "SHOW") || strings.HasPrefix(s, "WITH") || strings.HasPrefix(s, "EXPLAIN") ||
+		strings.HasPrefix(s, "DESC") || strings.HasPrefix(s, "FETCH") {
 		return true
 	}
 	return false
