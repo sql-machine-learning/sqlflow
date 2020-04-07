@@ -1,10 +1,20 @@
-# Contribute Models
+# Define Models in Python And Call Them From SQL
 
-@小m武毅 我看了一下文档哈，比较详细，按照这些步骤，如果只是执行repo里面得模型，可以顺利完成。在“Develop In the Jupyter Notebook”部分，我有一些建议供大家参考哈。我理解的“develop”是从头开发一套模型，这里在文档中指向了“How to Contribute SQLFLow Models”这篇。如果对使用keras.Model subclassing开发模型熟悉的应该没问题，但是不是很熟悉的在读到这里的时候需要先读了"Design Doc"才能理解这里是在用Model subclassing的方法做开发。所以这里有没有可能把这一部分用一个完整的案例进行“开发”的呈现：针对一个具体问题先在jupyter notebook里面使用model subclassing做一个keras模型，并跑通；之后再在SQLFLOW的环境下进行测试。这样的教程比较冗长，但是self contained，读者不需要文档外的知识即可完全走通一个完整的开发流程。
+SQLFlow extends SQL syntax to do AI.  The syntax extension allow SQL statements referring to model definitions defined as Python functions and classes, for example, https://github.com/sql-machine-learning/models/blob/develop/sqlflow_models/dnnregressor.py.
 
-In this document, we'll describe the steps to follow when contributing models to SQLFlow.
+If you are not a data analyst using SQL, but a deep learning researcher who would like to create a model for data analysts.  This document is for you.
 
-## Prepare Model Development Git Repository
+Please be aware that SQLFlow is a gRPC server, which translates a SQL program into a workflow for execution on Kubernetes.  Some steps of this workflow might submit a TensorFlow job on Kubernetes to train the referred model definition.  To make the translation possible, the SQLFlow server needs to know the Python source code of the model definition.  We typically deploy and run the SQLFlow server in Docker containers, so the model source code need to be packed into the Docker image together with the SQLFlow server.
+
+In the future, we will make SQLFlow server able to refer to model definitions in other Docker images.  For now, let us assume you, dear deep learning researcher, know how to use Git and Docker, and know how to build a Docker image with the SQLFlow server and your model definitions.
+
+## Define Models as Python Source Code
+
+To build a Docker image, we need a file named `Dockerfile`.  Suppose that we put it in a directory `~/my_models/Dockerfile` -- you are feel to leave it any directory you want.  We also want to have your model definitions in the same directory, say `~/my_models/my_awesome_model/my_awesome_model.py`, so that in the Dockerfile you can write some lines to to add these model definitions into the Docker image.  The first line of Dockerfile should be `FROM sqlflow/sqlfolw`, which makes sure that Docker images built from this Dockerfile contains the SQLFlow server.
+
+To keep track of your edit to files in this directory, you can make it a Git repository.  You can even share your repository through GitHub.  For more about Git and GitHub, please refer to related documents.  We plan to provide a command-line tool `sqlflow` to simplify the engineering process for researchers who are not familiar with Git, GitHub, or Docker. 
+
+Here are some quick steps for researchers who would like to contribute to SQLFlow's official model repo.
 
 1. You can contribute to SQLFlow's [model zoo repo](https://github.com/sql-machine-learning/models) by:
     1. Fork SQLFlow's model zoo repo: click "Fork" button on the right corner on page https://github.com/sql-machine-learning/models .
@@ -14,7 +24,7 @@ In this document, we'll describe the steps to follow when contributing models to
     1. Create a new repository on [github](https://github.com) or any other git systems.
     1. Move to the directory of the repository: `cd my_models` (assume you created a repo named "my_models").
     1. Create a directory under `my_models` to store Python package: `mkdir my_awesome_model`.
-
+    
 ## Start a Docker Container as the Develop Environment
 
 ```bash
@@ -129,6 +139,8 @@ In the final step, you need to publish your model so that other SQLFlow users ca
     docker push your-registry.com/model_image
     ```
     1. Then use the model image in SQLFlow by adding the Docker image name before the model name:
+    **NOTE: Below statement will not work in non-workflow mode (e.g. local run), this feature will be supported in the future.**
+
     ```sql
     SELECT * FROM iris.train
     TO TRAIN your-registry.com/model_image/MyAwesomeClassifier

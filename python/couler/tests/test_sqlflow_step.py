@@ -19,8 +19,8 @@ import couler.steps as steps
 class TestSQLFlowStep(unittest.TestCase):
     ''' Test SQLFlow step'''
     def test_sql_with_special_char(self):
-        '''Test escapeted SQL'''
+        '''Test escaped SQL'''
         special_char_sql = '`$\"\\;'
-        actural = steps.sqlflow_step.escape_sql(special_char_sql)
+        actual = steps.sqlflow_step.escape_sql(special_char_sql)
         expected = r'\`\$\"\\;'
-        self.assertEqual(actural, expected)
+        self.assertEqual(actual, expected)

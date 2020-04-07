@@ -27,9 +27,9 @@ class PAIMaxComputeDBWriter(BufferedDBWriter):
                                                     table_schema, buff_size)
         table_name_parts = table_name.split(".")
         assert len(table_name_parts) == 2
-        table_name_formated = "odps://%s/tables/%s" % (table_name_parts[0],
-                                                       table_name_parts[1])
-        self.writer = paiio.TableWriter(table_name_formated, slice_id=0)
+        table_name_formatted = "odps://%s/tables/%s" % (table_name_parts[0],
+                                                        table_name_parts[1])
+        self.writer = paiio.TableWriter(table_name_formatted, slice_id=0)
         self.writer_indices = range(len(table_schema))
 
     def flush(self):

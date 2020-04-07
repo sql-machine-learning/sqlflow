@@ -22,7 +22,7 @@ from sklearn import preprocessing
 
 warnings.filterwarnings('ignore')
 
-### Loding raw data
+### Loading raw data
 raw = pd.read_csv('household_power_consumption.csv')
 
 ### Selecting the field 'Global_active_power' for clustering
