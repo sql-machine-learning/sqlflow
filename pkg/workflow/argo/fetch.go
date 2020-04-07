@@ -120,8 +120,7 @@ func (w *Workflow) Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 		// eoe just used to simplify the client code which can be consistent with non-argo mode.
 		if isPodFailed(pod) {
 			logger.Errorf("workflowFailed, spent:%d", time.Now().Second()-wf.CreationTimestamp.Second())
-			r.AppendEoe()
-			return r.Response(req.Job.Id, "", newStepPhase, eof),
+			return r.ResponseWithEOE(req.Job.Id, "", newStepPhase, eof),
 				fmt.Errorf("SQLFlow Step [%d/%d] Failed, Log: %s", stepIdx, stepCnt, logURL)
 		}
 		logger.Infof("workflowSucceed, spent:%d", time.Now().Second()-wf.CreationTimestamp.Second())
@@ -137,7 +136,6 @@ func (w *Workflow) Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 		if e := r.AppendProtoMessages(podLogs); e != nil {
 			return nil, e
 		}
-		r.AppendEoe()
 
 		// move to the next step
 		nextStepGroup, err := getNextStepGroup(wf, stepGroupName)
@@ -153,6 +151,7 @@ func (w *Workflow) Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 			newStepPhase = ""
 			stepGroupName = nextStepGroup
 		}
+		return r.ResponseWithEOE(req.Job.Id, stepGroupName, newStepPhase, eof), nil
 	}
 	return r.Response(req.Job.Id, stepGroupName, newStepPhase, eof), nil
 }

@@ -48,12 +48,6 @@ func (r *CompoundResponses) AppendMessage(message string) error {
 	return nil
 }
 
-// AppendEoe appends eoe response
-func (r *CompoundResponses) AppendEoe() {
-	eoe := &pb.Response{Response: &pb.Response_Eoe{Eoe: &pb.EndOfExecution{}}}
-	r.responses = append(r.responses, eoe)
-}
-
 // AppendProtoMessages appends the message with protobuf message format
 func (r *CompoundResponses) AppendProtoMessages(messages []string) error {
 	// unmarshal pb.Response from proto message with text format
@@ -67,6 +61,12 @@ func (r *CompoundResponses) AppendProtoMessages(messages []string) error {
 
 // Response returns the compounded Response
 func (r *CompoundResponses) Response(jobID, stepID, stepPhase string, eof bool) *pb.FetchResponse {
+	return NewFetchResponse(NewFetchRequest(jobID, stepID, stepPhase), eof, r.responses)
+}
+
+// ResponseWithEOE returns the compounded Responses with appending a eoe response
+func (r *CompoundResponses) ResponseWithEOE(jobID, stepID, stepPhase string, eof bool) *pb.FetchResponse {
+	r.responses = append(r.responses, &pb.Response{Response: &pb.Response_Eoe{Eoe: &pb.EndOfExecution{}}})
 	return NewFetchResponse(NewFetchRequest(jobID, stepID, stepPhase), eof, r.responses)
 }
 

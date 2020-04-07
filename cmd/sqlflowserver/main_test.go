@@ -2163,6 +2163,7 @@ func checkWorkflow(ctx context.Context, cli pb.SQLFlowClient, stream pb.SQLFlow_
 	// wait 30min for the workflow execution since it may take time to allocate enough nodes.
 	// each loop waits 3 seconds, total 600 * 3 = 1800 seconds
 	for i := 0; i < 600; i++ {
+		time.Sleep(4 * time.Second)
 		res, err := cli.Fetch(ctx, req)
 		if err != nil {
 			return err
@@ -2172,7 +2173,6 @@ func checkWorkflow(ctx context.Context, cli pb.SQLFlowClient, stream pb.SQLFlow_
 			return nil
 		}
 		req = res.UpdatedFetchSince
-		time.Sleep(4 * time.Second)
 	}
 	return fmt.Errorf("workflow times out")
 }
