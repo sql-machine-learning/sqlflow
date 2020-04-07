@@ -187,6 +187,13 @@ func repl(scanner *bufio.Scanner, modelDir string, ds string) {
 		if err == io.EOF && len(statements) == 0 {
 			return
 		}
+		// The collaborative parsing algorithm requires that each statement ends
+		// with a semi-colon, as the definition of `end_of_stmt`
+		// in /pkg/parser/extended_syntax_parser.y#L176 .
+		n := len(statements)
+		if n > 0 && !strings.HasSuffix(strings.TrimSpace(statements[n-1]), ";") {
+			statements[len(statements)-1] += ";"
+		}
 		for _, stmt := range statements {
 			if err := runStmt(stmt, false, modelDir, ds); err != nil {
 				log.Fatalf("run SQL statement failed: %v", err)
