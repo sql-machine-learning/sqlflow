@@ -70,7 +70,7 @@ L:
 	return buf, nil
 }
 
-// defineKeyMap allows redefining keyboard inputs
+// defineKeyMap allows redefining keyboard inputs.
 func (p *stdinParser) defineKeyMap(key prompt.Key, remapped []byte) {
 	p.keyMap[key] = remapped
 }
