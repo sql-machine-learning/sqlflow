@@ -30,16 +30,12 @@ func (t *Tekton) Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 		"stepID":    req.StepId,
 		"event":     "fetch",
 	})
-	c, e := newClient()
-	if e != nil {
-		logger.Errorf("workflow client error: %v", e)
-		return nil, e
-	}
-	w, e := newWorkflow(c, req.Job.Id, req.StepId)
+	w, e := newWorkflow(req.Job.Id, req.StepId)
 	if e != nil {
 		logger.Errorf("setup workflow error: %v", e)
 		return nil, e
 	}
+
 	if w.isPending() {
 		return wfrsp.New(0, 0).Response(req.Job.Id, "", "", false), nil
 	}

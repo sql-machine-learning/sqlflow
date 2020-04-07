@@ -25,7 +25,6 @@ import (
 // Workflow parses Workflow TaskRun and Pod object and returns
 // the workflow step status
 type Workflow struct {
-	c       *Client
 	pod     *corev1.Pod
 	stepID  string
 	taskrun *tektonapi.TaskRun
@@ -81,20 +80,26 @@ func (w *Workflow) stepIdx() (int, int, error) {
 	return -1, -1, fmt.Errorf("can not find the step index of: %s", w.stepID)
 }
 
-func newWorkflow(c *Client, workflowID, stepID string) (*Workflow, error) {
-	var e error
+func newWorkflow(workflowID, stepID string) (*Workflow, error) {
 	w := &Workflow{}
-	w.taskrun, e = c.getTaskRun(workflowID)
+	c, e := newClient()
 	if e != nil {
 		return nil, e
 	}
-	w.pod, e = c.getPod(w.taskrun.Status.PodName)
+	taskrun, e := c.getTaskRun(workflowID)
 	if e != nil {
 		return nil, e
 	}
-	w.stepID = stepID
+	pod, e := c.getPod(w.taskrun.Status.PodName)
+	if e != nil {
+		return nil, e
+	}
 	if stepID == "" {
-		w.stepID = w.taskrun.Status.Steps[0].Name
+		stepID = w.taskrun.Status.Steps[0].Name
 	}
-	return w, nil
+	return &Workflow{
+		pod:     pod,
+		taskrun: taskrun,
+		stepID:  stepID,
+	}, nil
 }
