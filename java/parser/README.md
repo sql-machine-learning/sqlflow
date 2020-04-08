@@ -1,6 +1,6 @@
 # Build and Test Third Party Parsers
 
-We build and test two third party parsers, Hive and Calicite, and wrap these two parsers into either a gRPC server or a command line.
+We build and test two third party parsers, Hive and Calcite, and wrap these two parsers into either a gRPC server or a command line.
 
 ## Build and Test the Parsers
 

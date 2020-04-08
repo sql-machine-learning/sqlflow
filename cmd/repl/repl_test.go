@@ -57,38 +57,38 @@ func prepareTestDataOrSkip(t *testing.T) error {
 
 func TestRunStmt(t *testing.T) {
 	a := assert.New(t)
-	a.Nil(prepareTestDataOrSkip(t))
+	a.NoError(prepareTestDataOrSkip(t))
 	os.Setenv("SQLFLOW_log_dir", "/tmp/")
 	session.DbConnStr = dbConnStr
 	currentDB = ""
+	// TODO(yancey1989): assert should not panics in repl
 	output, err := step.GetStdout(func() error { return runStmt("show tables", true, "", dbConnStr) })
-	a.Nil(err)
+	a.NoError(err)
 	a.Contains(output, "Error 1046: No database selected")
-
 	output, err = step.GetStdout(func() error { return runStmt("use iris", true, "", dbConnStr) })
-	a.Nil(err)
+	a.NoError(err)
 	a.Contains(output, "Database changed to iris")
 
 	output, err = step.GetStdout(func() error { return runStmt("show tables", true, "", dbConnStr) })
-	a.Nil(err)
+	a.NoError(err)
 	a.Contains(output, "| TABLES IN IRIS |")
 
 	output, err = step.GetStdout(func() error {
 		return runStmt("select * from train to train DNNClassifier WITH model.hidden_units=[10,10], model.n_classes=3, validation.select=\"select * from test\" label class INTO sqlflow_models.repl_dnn_model;", true, "", dbConnStr)
 	})
-	a.Nil(err)
+	a.NoError(err)
 	a.Contains(output, "'global_step': 110")
 
 	output, err = step.GetStdout(func() error {
 		return runStmt("select * from train to train xgboost.gbtree WITH objective=reg:squarederror, validation.select=\"select * from test\" label class INTO sqlflow_models.repl_xgb_model;", true, "", dbConnStr)
 	})
-	a.Nil(err)
+	a.NoError(err)
 	a.Contains(output, "Evaluation result: ")
 
 	output, err = step.GetStdout(func() error {
 		return runStmt("select * from train to explain sqlflow_models.repl_xgb_model;", true, "", dbConnStr)
 	})
-	a.Nil(err)
+	a.NoError(err)
 	a.Contains(output, "data:text/html, <div align='center'><img src='data:image/png;base64")
 	a.Contains(output, "⣿") //non sixel with ascii art
 }
@@ -131,6 +131,26 @@ INTO sqlflow_models.repl_dnn_model;`)
 	a.Contains(output, "Database changed to sqlflow_models")
 	a.Contains(output, "| TABLES IN SQLFLOW MODELS |")
 	a.Contains(output, "| repl_dnn_model           |")
+}
+
+func TestReplWithoutSemicolon(t *testing.T) {
+	a := assert.New(t)
+	a.NoError(prepareTestDataOrSkip(t))
+	session.DbConnStr = dbConnStr
+	sql := `
+select * from iris.train to train DNNClassifier
+WITH model.hidden_units=[10,10], model.n_classes=3, validation.select="select * from iris.test"
+label class
+INTO sqlflow_models.repl_dnn_model`
+	scanner := bufio.NewScanner(strings.NewReader(sql))
+	output, err := step.GetStdout(func() error { repl(scanner, "", dbConnStr); return nil })
+	a.NoError(err)
+	a.Contains(output, `
+select * from iris.train to train DNNClassifier
+WITH model.hidden_units=[10,10], model.n_classes=3, validation.select="select * from iris.test"
+label class
+INTO sqlflow_models.repl_dnn_model;`)
+	a.Contains(output, "'global_step': 110")
 }
 
 func TestMain(t *testing.T) {
@@ -474,6 +494,38 @@ LABEL class INTO sqlflow_models.my_model;`
 	a.Equal(space.ReplaceAllString(stmt[0], " "), space.ReplaceAllString(sql, " "))
 }
 
+func TestInputNavigation(t *testing.T) {
+	attribute.ExtractDocStringsOnce()
+	a := assert.New(t)
+	s := newPromptState()
+	his1 := "history 1"
+	his2 := "history 2"
+	his3 := "SELECT * FROM iris.tran WHERE class like '%中文';"
+	s.history = []prompt.Suggest{{his3, ""}, {his2, ""}, {his1, ""}}
+	p := prompt.NewBuffer()
+	// put something on input buffer
+	p.InsertText(his3, false, true)
+	// go backward
+	s.navigateHistory("", true, p)
+	a.Equal(his3, p.Text())
+	s.navigateHistory("", true, p)
+	a.Equal(his2, p.Text())
+	s.navigateHistory("", true, p)
+	a.Equal(his1, p.Text())
+	// should stop at last history
+	s.navigateHistory("", true, p)
+	a.Equal(his1, p.Text())
+	s.navigateHistory("", true, p)
+	a.Equal(his1, p.Text())
+	// go forward
+	s.navigateHistory("", false, p)
+	a.Equal(his2, p.Text())
+	s.navigateHistory("", false, p)
+	a.Equal(his3, p.Text())
+	s.navigateHistory("", false, p)
+	a.Equal("", p.Text())
+}
+
 func TestComplete(t *testing.T) {
 	attribute.ExtractDocStringsOnce()
 	a := assert.New(t)
@@ -555,7 +607,7 @@ func TestComplete(t *testing.T) {
 	a.Equal(7, len(c)) // RMSprop has 7 parameters
 	a.Equal("optimizer", c[0].Text)
 
-	p.InsertText(`ptimizer.learing_rate=0.02, model.n`, false, true)
+	p.InsertText(`ptimizer.learning_rate=0.02, model.n`, false, true)
 	c = s.completer(*p.Document())
 	a.Equal(1, len(c))
 	a.Equal("model.n_classes", c[0].Text)
@@ -586,6 +638,31 @@ func TestComplete(t *testing.T) {
 	c = s.completer(*p.Document())
 	a.Equal(1, len(c))
 	a.Equal("TRAIN", c[0].Text)
+
+	// Test XGBoost objective parameter completion
+	s = newPromptState()
+	p = prompt.NewBuffer()
+	p.InsertText("SELECT * FROM train TO TRAIN xgboost.gbtree WITH objective=", false, true)
+	c = s.completer(*p.Document())
+	a.Equal(14, len(c))
+	p.InsertText("r", false, true)
+	c = s.completer(*p.Document())
+	a.Equal(8, len(c))
+	p.InsertText("eg:s", false, true)
+	c = s.completer(*p.Document())
+	a.Equal(2, len(c))
+	p.InsertText("quarederror", false, true)
+	c = s.completer(*p.Document())
+	a.Equal(1, len(c))
+	p.InsertText("x", false, true)
+	c = s.completer(*p.Document())
+	a.Equal(0, len(c))
+
+	s = newPromptState()
+	p = prompt.NewBuffer()
+	p.InsertText("SELECT * FROM train TO TRAIN notxgboost.gbtree WITH objective=", false, true)
+	c = s.completer(*p.Document())
+	a.Equal(0, len(c))
 }
 
 func TestTerminalCheck(t *testing.T) {

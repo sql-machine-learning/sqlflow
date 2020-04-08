@@ -16,7 +16,7 @@ import tensorflow as tf
 from . import metrics
 from .get_tf_version import tf_is_version2
 from .input_fn import input_fn
-from .pai_distributed import *
+from .pai_distributed import make_estimator_distributed_runconfig
 
 
 def estimator_train_and_save(estimator, model_params, save, is_pai, FLAGS,
@@ -30,7 +30,7 @@ def estimator_train_and_save(estimator, model_params, save, is_pai, FLAGS,
     # NOTE(typhoonzero): checkpoints will be used by explaining (explaining BoostedTrees model
     # requires calling estimator.experimental_predict_with_explanations),
     # yet, predicting will use the saved model on OSS only.
-    if is_pai and FLAGS.task_index == 0:
+    if is_pai and FLAGS.task_index == 0 and FLAGS.job_name == "worker":
         for root, dirs, files in tf.io.gfile.walk(FLAGS.sqlflow_hdfs_ckpt,
                                                   topdown=False):
             for f in files:

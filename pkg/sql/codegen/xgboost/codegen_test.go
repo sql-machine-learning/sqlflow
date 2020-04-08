@@ -32,11 +32,8 @@ func TestParseAttribute(t *testing.T) {
 
 func TestAttributes(t *testing.T) {
 	a := assert.New(t)
-	a.Equal(7, len(attributeDictionary))
-	a.Equal(30, len(fullAttrValidator))
-
-	a.Error(objectiveChecker("binaray:logistic"))
-	a.NoError(objectiveChecker("binary:logistic"))
+	a.Equal(9, len(attributeDictionary))
+	a.Equal(32, len(fullAttrValidator))
 }
 
 func mockSession() *pb.Session {

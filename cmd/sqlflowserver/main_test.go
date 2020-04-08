@@ -855,7 +855,7 @@ TO TRAIN DNNRegressor WITH
 COLUMN INDICATOR(CATEGORY_ID("[*", 1000))
 LABEL target
 INTO housing.dnn_model;
-` // invalide regex
+` // invalid regex
 	connectAndRunSQLShouldError(trainSQL)
 
 }
@@ -1435,7 +1435,7 @@ INTO sqlflow_models.my_xgb_regression_model;
 			a.NoError(e)
 			a.Greater(trainRmse, 0.0)            // no overfitting
 			a.LessOrEqual(trainRmse, 0.5)        // less the baseline
-			a.GreaterOrEqual(valRmse, trainRmse) // verifty the valiation
+			a.GreaterOrEqual(valRmse, trainRmse) // verify the validation
 			isConvergence = true
 		}
 	}
@@ -1452,8 +1452,9 @@ FROM housing.train
 TO TRAIN xgboost.gbtree
 WITH
 	objective="reg:squarederror",
-	train.num_boost_round = 30
-	COLUMN f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13
+	train.num_boost_round = 30,
+	train.batch_size=20
+COLUMN f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13
 LABEL target
 INTO sqlflow_models.my_xgb_regression_model;
 	`
@@ -1520,6 +1521,7 @@ FROM housing.xgb_predict LIMIT 5;`)
 }
 
 func CasePAIMaxComputeTrainPredictCategoricalFeature(t *testing.T) {
+	t.Parallel()
 	a := assert.New(t)
 	trainSQL := `SELECT cast(sepal_length as int) sepal_length, class
 FROM alifin_jtest_dev.sqlflow_test_iris_train
@@ -1792,14 +1794,16 @@ func CasePAIMaxComputeTrainXGBoost(t *testing.T) {
 	t.Parallel()
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`SELECT * FROM %s
-TO TRAIN xgboost.gbtree
-WITH
-	objective="multi:softprob",
-	train.num_boost_round = 30,
-	eta = 0.4,
-	num_class = 3
-LABEL class
-INTO e2etest_xgb_classi_model;`, caseTrainTable)
+	TO TRAIN xgboost.gbtree
+	WITH
+		objective="multi:softprob",
+		train.num_boost_round = 30,
+		eta = 0.4,
+		num_class = 3,
+		train.batch_size=10,
+		validation.select="select * from %s"
+	LABEL class
+	INTO e2etest_xgb_classi_model;`, caseTrainTable, caseTrainTable)
 	_, _, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)
@@ -1979,6 +1983,33 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 		// t.Run("CaseTrainPAIRandomForests", CaseTrainPAIRandomForests)
 	})
 }
+func TestEnd2EndFluidWorkflow(t *testing.T) {
+	a := assert.New(t)
+	if os.Getenv("SQLFLOW_TEST_DATASOURCE") == "" || strings.ToLower(os.Getenv("SQLFLOW_TEST")) != "workflow" {
+		t.Skip("Skipping workflow test.")
+	}
+	driverName, _, err := database.ParseURL(testDatasource)
+	a.NoError(err)
+
+	if driverName != "mysql" && driverName != "maxcompute" && driverName != "alisa" {
+		t.Skip("Skipping workflow test.")
+	}
+	modelDir := ""
+	tmpDir, caCrt, caKey, err := generateTempCA()
+	defer os.RemoveAll(tmpDir)
+	if err != nil {
+		t.Fatalf("failed to generate CA pair %v", err)
+	}
+
+	//TODO(yancey1989): using the same end-to-end workflow test with the Couler backend
+	os.Setenv("SQLFLOW_WORKFLOW_BACKEND", "fluid")
+	go start(modelDir, caCrt, caKey, unitTestPort, true)
+	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
+	if err != nil {
+		t.Fatalf("prepare test dataset failed: %v", err)
+	}
+	t.Run("CaseWorkflowTrainAndPredictDNN", CaseWorkflowTrainAndPredictDNN)
+}
 
 func TestEnd2EndWorkflow(t *testing.T) {
 	a := assert.New(t)
@@ -2029,6 +2060,7 @@ func TestEnd2EndWorkflow(t *testing.T) {
 	t.Run("CaseWorkflowTrainAndPredictDNNCustomImage", CaseWorkflowTrainAndPredictDNNCustomImage)
 	t.Run("CaseWorkflowTrainAndPredictDNN", CaseWorkflowTrainAndPredictDNN)
 	t.Run("CaseTrainDistributedPAIArgo", CaseTrainDistributedPAIArgo)
+	t.Run("CaseBackticksInSQL", CaseBackticksInSQL)
 }
 
 func CaseWorkflowTrainAndPredictDNN(t *testing.T) {
@@ -2169,6 +2201,40 @@ func CaseTrainDistributedPAIArgo(t *testing.T) {
 
 	SELECT * FROM %s TO PREDICT %s.class USING %s;
 	`, caseTrainTable, caseTestTable, caseInto, caseTestTable, casePredictTable, caseInto)
+
+	conn, err := createRPCConn()
+	if err != nil {
+		a.Fail("Create gRPC client error: %v", err)
+	}
+	defer conn.Close()
+
+	cli := pb.NewSQLFlowClient(conn)
+	// wait 1h for the workflow execution since it may take time to allocate enough nodes.
+	ctx, cancel := context.WithTimeout(context.Background(), 3600*time.Second)
+	defer cancel()
+
+	stream, err := cli.Run(ctx, &pb.Request{Sql: trainSQL, Session: &pb.Session{DbConnStr: testDatasource}})
+	if err != nil {
+		a.Fail("Create gRPC client error: %v", err)
+	}
+	a.NoError(checkWorkflow(ctx, cli, stream))
+}
+
+func CaseBackticksInSQL(t *testing.T) {
+	driverName, _, _ := database.ParseURL(testDatasource)
+	if driverName != "mysql" {
+		t.Skip("Skipping workflow mysql test.")
+	}
+
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf("SELECT `sepal_length`, `class` FROM %s"+`
+	TO TRAIN DNNClassifier
+	WITH
+		model.n_classes = 3,
+		model.hidden_units = [10, 20],
+		validation.select="select * from %s"
+	LABEL class
+	INTO %s;`, caseTrainTable, caseTestTable, caseInto)
 
 	conn, err := createRPCConn()
 	if err != nil {

@@ -117,7 +117,7 @@ func thirdPartyParse(dialect, program string) ([]*SQLFlowStmt, int, error) {
 	}
 	var spr []*SQLFlowStmt
 	for _, sql := range sqls {
-		spr = append(spr, &SQLFlowStmt{Original: sql, SQLFlowSelectStmt: nil})
+		spr = append(spr, &SQLFlowStmt{Original: sql.String, SQLFlowSelectStmt: nil})
 	}
 	return spr, i, nil
 }

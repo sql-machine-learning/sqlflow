@@ -60,97 +60,99 @@ In SQLFlow SQL grammar, the identifiers after `TRAIN`, `USING` and `INTO` have d
 
 ### Versioning and Releasing
 
-A key to this design is the representation of the above concepts.  It is not a straightforward solution. For example, in prior work and previous discussions, engineers proposed to represent each model definition by a Python source code file hosted on an FTP service and downloaded when some users file a model training statement. This intuitive proposal could lead to inconsistencies. Suppose that an analyst trained a model using the definition in `my_dnn_regressor.py` and got `my_first_model`; soon after that, a data scientist changed `my_dnn_regressor.py` and the analyst re-trained the model into `my_second_model` with slightly modified hyperparameter settings. The analyst might expect that both models share the same definition; however, they don't, and worse than that, there is no mechanism to remind the change of the model definition to the analyst.
+A key to this design is to know that both the model definition and the trained model have versions. Suppose that an analyst trained a model using the definition in `my_dnn_regressor.py` and got `my_first_model`; soon after that, a data scientist changed `my_dnn_regressor.py` and the analyst re-trained the model into `my_second_model` with slightly modified hyperparameter settings. The analyst must be aware that he should use the same version of `my_dnn_regressor.py` to train these two models. Then if the analyst decides to publish the trained model `my_second_model` for online prediction, he should choose to use `my_second_model` rather than `my_first_model`.
 
-Such design flaw roots from the ignoring of the fact that model definitions are code that has versions. Another important aspect is that we often build the source code into some release-ready form.  Once we noticed these facts, we can use version management tools like Git and release engineering tools like Docker. Here follows our proposal.
+We can use version management tools like Git and release engineering tools like Docker and save the trained model with a unique name. Here follows our proposal.
 
 1. A collection of model definitions is a Git repository of source files. 
 1. To describe dependencies, we require a Dockerfile at the root directory of the repository.
 1. To release a repository, we checkout the specific version and run `docker build` and `docker push` with the Dockerfile.
+1. Each trained model is saved under the current user's namespace with a unique name.
 
-### Submitter Programs
+### Develop Custom Model Definition
 
-For a SELECT program using the SQLFlow syntax extension, the SQLFlow server converts it into a *submitter* program, usually in Python.
+Model developers can have their own Git repository or other code version control systems to store the code of model definition Python files. The Python code files should be put into one directory as a Python package, then write a `Dockerfile` under the root directory for building the image:
 
-Consider the training statement at the beginning of this document. Suppose that the Python class `MyDNNRegressor` is in source file `my_dnn_regressor.py` in the repository https://github.com/a_data_scientist/regressors, which builds into Docker image `a_data_scientist/regressors`.  Let us also assume that the submitter program is `/var/sqlflow/submitters/an_analyst/my_first_model.py`.  SQLFlow can run the submitter using the Docker image as follows:
+```
+- your_model_package/
+-- __init__.py
+-- some_model.py
+-- test_some_model.py
+- Dockerfile
+```
+
+Here is a template of what the `Dockerfile` should look like:
+
+```dockerfile
+# base image sqlflow/modelzoo_base have SQLFlow environment prepared
+FROM sqlflow/modelzoo_base
+RUN pip install scikit-learn six
+# copy model definition code to /sqlflow_models
+ADD your_model_package /sqlflow_models
+# add PYTHONPATH environment variable to /sqlflow_models
+ENV PYTHONPATH /sqlflow_models
+```
+
+Model developers can do continuous development using this repository, forking branches, adding tags, running unit tests, etc.
+
+### Build and Publish the Docker Image
+
+When the model developer needs to publish the model for SQLFlow to use, they need to build the Docker image and push the image to a central repository.
 
 ```bash
-docker run --rm -it \
-  -v /var/sqlflow/submitters:/submitters \
-  a_data_scientist/regressors \
-    python /submitters/an_analyst/my_first_model.py
+docker build -t a_data_scientist/regressors:v0.2 .
+docker push a_data_scientist/regressors:v0.2
 ```
 
-To submit an ElasticDL training job, we need the following actions:
+You can publish the image to a public Docker registry like https://hub.docker.com/ or private Docker registry in your company and SQLFlow can have access to. Make sure that the published Docker image have public access (anyone can pull the image without credentials) so that SQLFlow can pull the image and run the training steps.
 
-1. The SQLFlow server invokes `codegen_elasticdl.go` to generates the submitter program `my_first_model.py`.
-1. `my_first_model.py` calls the ElasticDL client API to submit a job.
-1. The SQLFlow server then runs `my_first_model.py` in a Docker container (if SQLFlow service is not running in a Kubernetes cluster), or a Pod, which has ElasticDL client library installed.
-1. As this container needs to contain ElasticDL and the model definition, all model Docker images should derive from our base image, which installs ElasticDL by default:
+### Use the Model Definition in the Docker Image
 
-```
-FROM sqlflow/sqlflow_model_base
-...
-```
+For a SELECT program using the SQLFlow syntax extension, the SQLFlow server converts it into a [workflow](workflow.md) and submit the workflow job to a workflow engine like Argo/Tekton on Kubernetes. Each step in the workflow is one SQL statement.
 
-If we run SQLFlow in a Docker container, to allow it to run another Docker container, we must enable the Docker-in-Docker feature, say, following [this blog post](https://itnext.io/docker-in-docker-521958d34efd).  Suppose that the SQLFlow server runs in a Kubernetes cluster, where we cannot enable Docker-in-Docker. In such a case, we can make the SQLFlow server call Kubernetes API to run a Pod that executes the above `docker run` command line.
-
-The training submitter program `my_first_model.py`, running in the model definition Docker container, should be able to submit a (distributed) training job to a preconfigured cluster.  Once the job completes, the submitter program adds, or edits, a row in a **model zoo table**.
-
-### Model Zoo Data Schema
-
-The model zoo table is in a database deployed as part of the SQLFlow service. This database might not be the one that holds data sources.  The only requirement of the model zoo database is to have two tables: the **trained models table** and the **evaluation result table**.
-
-#### Trained Models
-
-Once a training job completes, the submitter program adds/updates a row of the the trained models table, which contains (at least) the following fields.
-
-1. The model ID, specified by the INTO clause, or `my_first_model` in the above example.
-1. The creator, as defined in the INTO clause, or `an_analyst` in the above example.
-1. The model zoo release, which is a Docker image commit ID, or `a_data_scientist/regressors` in the above example.
-1. The model definition, which is a Python class name, or `DNNRegressor` in the above example.
-1. The submitter program, the source code of the submitter program, `my_first_model.py` in the above example, or its MD5 hash.
-1. The data converter, including the COLUMN and LABEL clauses.
-1. The model parameter file path, the path to the trained model parameters on the distributed filesystem of the cluster.
-
-It is necessary to have the model ID so users can refer to the trained model when they want to use it.  Suppose that the user typed the prediction SQL statement at the beginning of this document. SQLFlow server will convert it into a submitter program and run it with the Docker image used to train the model. Therefore, the Docker image ID is also required. The model parameter path allows the prediction submitter program to locate and load the trained models.  The data converter helps the prediction submitter to use the conversion rules consistent with the ones used when training.
-
-It is necessary to record the content or the MD5 hash of the training submitter program in the model zoo table for experiment management. Please be aware that the training submitter encodes all three categories of hyperparameters, as listed in the above sections.  Suppose that the analyst re-trains the model with different hyperparameter settings, the training submitter changes accordingly, and SQLFlow should be able to remind the analyst to either uses a new model ID or overwrites the existing row in the model zoo table.
-
-We recommend reusing the DBMS configured as the data source of SQLFlow for storing model zoo.  Following this recommendation, users can query the trained models using SQL.  For example, the following SQL statement lists all models trained by `an_analyst`:
+By default, we use a default Docker image to run the training, predicting or explaining job. The default Docker image contains pre-made Tensorflow estimator models, Keras models defined in [sqlflow_models repo](https://github.com/sql-machine-learning/models) and XGBoost. To use a custom model definition Docker image, write SQL statements mentioned above:
 
 ```sql
-SELECT * FROM sqlflow.trained_models WHERE creator="an_analyst"
+SELECT * FROM employee WHERE onboard_year < 2019
+TO TRAIN a_data_scientist/regressors:v0.2/MyDNNRegressor
+WITH model.hidden_units=[1024,256],
+LABEL salary
+INTO my_first_model;
 ```
 
-The following statement queries all model zoos used by `an_analyst` to train his/her models.
+Then the generated workflow will use the Docker image `a_data_scientist/regressors:v0.2` to run the statement. In this step, SQLFlow will generate the training Python program inside the Docker container and execute it. Once the job completes, **the trained model together with hyperparameters, Docker image, evaluation result and the SQL statement used will be saved.** So in one trained model, we can have:
+
+1. Trained model weights.
+1. Docker image like `TRAIN a_data_scientist/regressors:v0.2`.
+1. Model class name, like `MyDNNRegressor`.
+1. Hyperparameters including model parameters, training parameters, and data conversion parameters.
+1. The model evaluation result JSON.
+1. The full SQL statement.
+
+### Publish Trained Model
+
+It requires more steps to publish a trained model. We need a public registry like DockerHub.com, we also need a public server to store trained models so that the data scientists can publish and share their trained models.
+
+We propose the following extended SQL syntax for analysts `an_analyst` to publish her trained model.
 
 ```sql
-SELECT DISTINCT model_zoo FROM sqlflow.trained_models WHERE creator="an_analyst"
+SQLFLOW PUBLISH my_first_model
+    [TO https://models.sqlflow.org/user_name]
 ```
 
-Users can checkout the model list and saved models published by `models.sqlflow.org` through the web site: https://models.sqlflow.org. Then the user can use a SQL statement like `SELECT ... TO PREDICT ... USING models.sqlflow.org/an_analyst/my_first_model` to use that saved model, just by specifying a model from `models.sqlflow.org` after `USING` clause. See below section for more details.
+This statement uploads the model parameters and other information to the registry service, which defaults to https://models.sqlflow.org, and under the account `user_name`, which defaults to `an_analyst` in the above example.
 
-#### The Model Evaluation Table
+Then, another analyst should be able to use the trained model by referring to it in its full name.
 
-Once an evaluation completes, the submitter program adds/updates a row of the evaluation result table, which contains the following fields:
-
-1. model ID
-1. evaluation dataset
-1. metrics
-
-Different kinds of models might use various metrics, so the field metrics might be string-typed and saves a JSON, like
-
-```json
-{
-   "recall": 0.45,
-   "precision": 0.734
-}
+```sql
+SELECT ... TO PREDICT employee.predicted_salary USING models.sqlflow.org/an_analyst/my_first_model
 ```
 
-### Model Sharing
+**We describe the details of how to implement `models.sqlflow.org` in [model_market](.model_market.md).**
 
-After all, what is a model zoo? A model zoo refers to all the model definitions and trained models accessible by a setup of the SQLFlow server.  It contains one or more model definition Docker images and the source code repositories that build the images.  It also includes the model zoo table configured to work with all submitter programs generated by the deployment.
+### Sharing Models
+
+After all, what is a model zoo? A model zoo refers to all the model definitions and trained models accessible by a setup of the SQLFlow server. It contains one or more model definition Docker images and the source code repositories that build the images.  It also includes the model zoo table configured to work with all submitter programs generated by the deployment.
 
 Within a deployment, it is straightforward to share a trained model.  If the analyst, `an_analyst`, in the above example wants to use her own trained model `my_first_model` for prediction, she could use the short name `my_first_model`.
 
@@ -178,25 +180,6 @@ TO TRAIN an_analyst/regressors:v0.2/MyDNNRegressor
 USING models.sqlflow.org/an_analyst/my_first_model;
 ```
 
-### Model Publication
-
-Publishing a model definition, we hope all users of all SQLFlow deployments can train the model using their datasets. To achieve this goal, data scientists need to set up a continuous deployment system to automatically build their model definition repositories into Docker images and push to a public Docker registry like DockerHub.com.  In the above example, the Docker image `a_data_scientist/regressors` is one hosted on DockerHub.com.
-
-It requires more steps to publish a trained model. We need a public registry like DockerHub.com, but hosts rows from the model zoo table and corresponding model parameters.  We propose the following extended SQL syntax for analysts `an_analyst` to publish her trained model.
-
-```sql
-SQLFLOW PUBLISH my_first_model
-    [TO https://models.sqlflow.org/user_name]
-```
-
-This statement uploads the model parameters and other information to the registry service, which defaults to https://models.sqlflow.org, and under the account `user_name`, which defaults to `an_analyst` in the above example.
-
-Then, another analyst should be able to use the trained model by referring to it in its full name.
-
-```sql
-SELECT ... TO PREDICT employee.predicted_salary USING models.sqlflow.org/an_analyst/my_first_model
-```
-
 ## Summarization
 
 There are three roles in the ecosystem of SQLFlow: 
@@ -204,6 +187,11 @@ There are three roles in the ecosystem of SQLFlow:
 1. the tool developers who use Go/C++ to create SQLFlow,
 1. the model developers, or data scientists, who use Python to define, say, Keras models, and
 1. the analysts, who use SQL to train models, or to use trained models for prediction or model explanation.
+
+
+<p align="center">
+<img src="figures/model_zoo_summary.png">
+</p>
 
 Any data scientist can create an arbitrary number of model zoos, and in each model zoo, there could be any number of model definitions.  There are some concepts from the perspective of a data scientist `a_data_scientist`:
 

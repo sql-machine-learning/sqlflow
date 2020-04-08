@@ -31,7 +31,7 @@ In order to know well about the runtime status of the SQLFlow job, we need to co
     }
     ```
 
-Comine the two libraries:
+Combine the two libraries:
 ```go
 import (
 	"github.com/sirupsen/logrus"
@@ -73,7 +73,7 @@ msg: Details.
 
 ## Severity Levels
   
-Currently, we use Go's standard log pacakge in three ways:
+Currently, we use Go's standard log package in three ways:
 - log.Printf
 - log.Errorf
 - log.Fatalf

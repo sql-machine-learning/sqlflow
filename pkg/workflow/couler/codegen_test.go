@@ -81,7 +81,7 @@ couler.run_container(image="docker/whalesay", command='echo "SQLFlow bridges AI 
 
 func TestCoulerCodegen(t *testing.T) {
 	a := assert.New(t)
-	sqlIR := mockSQLProgramIR()
+	sqlIR := MockSQLProgramIR()
 	os.Setenv("SQLFLOW_OSS_AK", "oss_key")
 	os.Setenv("SQLFLOW_WORKFLOW_SECRET", `{"sqlflow-secret":{"oss_sk": "oss_sk"}}`)
 	defer os.Unsetenv("SQLFLOW_OSS_AK")
@@ -89,15 +89,33 @@ func TestCoulerCodegen(t *testing.T) {
 	code, err := cg.GenCode(sqlIR, &pb.Session{})
 	a.NoError(err)
 
-	r, _ := regexp.Compile(`repl -e "(.*);"`)
+	r, e := regexp.Compile(`steps.sqlflow\(sql='''(.*);''', `)
+	a.NoError(e)
 	a.Equal(r.FindStringSubmatch(code)[1], "SELECT * FROM iris.train limit 10")
 	a.True(strings.Contains(code, `step_envs["SQLFLOW_OSS_AK"] = '''oss_key'''`))
 	a.False(strings.Contains(code, `step_envs["SQLFLOW_WORKFLOW_SECRET"]`))
 	a.True(strings.Contains(code, `couler.clean_workflow_after_seconds_finished(86400)`))
 	a.True(strings.Contains(code, `couler.secret(secret_data, name="sqlflow-secret", dry_run=True)`))
 
-	_, e := cg.GenYAML(code)
+	_, e = cg.GenYAML(code)
+	yaml, e := cg.GenYAML(code)
+	r, e = regexp.Compile(`repl -e "(.*);"`)
 	a.NoError(e)
+	a.Equal("SELECT * FROM iris.train limit 10", r.FindStringSubmatch(yaml)[1])
+	a.NoError(e)
+}
+
+func TestCoulerCodegenSpecialChars(t *testing.T) {
+	a := assert.New(t)
+	specialCharsStmt := ir.NormalStmt("`$\"\\;")
+	sqlIR := []ir.SQLFlowStmt{&specialCharsStmt}
+	cg := &Codegen{}
+	code, err := cg.GenCode(sqlIR, &pb.Session{})
+	a.NoError(err)
+	yaml, e := cg.GenYAML(code)
+	a.NoError(e)
+	r, _ := regexp.Compile(`repl -e "(.*);"`)
+	a.Equal("\\`\\$\\\"\\\\", r.FindStringSubmatch(yaml)[1])
 }
 
 func mockSQLProgramIR() []ir.SQLFlowStmt {

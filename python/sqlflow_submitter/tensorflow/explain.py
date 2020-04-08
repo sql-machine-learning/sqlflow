@@ -148,8 +148,17 @@ def explain_dnns(datasource, estimator, shap_dataset, plot_type, result_table,
                 dict(pd.DataFrame(d,
                                   columns=shap_dataset.columns))).batch(1000)
 
-        return np.array(
-            [p['probabilities'][-1] for p in estimator.predict(input_fn)])
+        if plot_type == 'bar':
+            predictions = [
+                p['logits'] if 'logits' in p else p['predictions']
+                for p in estimator.predict(input_fn)
+            ]
+        else:
+            predictions = [
+                p['logits'][-1] if 'logits' in p else p['predictions'][-1]
+                for p in estimator.predict(input_fn)
+            ]
+        return np.array(predictions)
 
     if len(shap_dataset) > 100:
         # Reduce to 16 weighted samples to speed up

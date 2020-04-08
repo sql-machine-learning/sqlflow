@@ -37,13 +37,20 @@ import copy
 import tensorflow as tf
 from sqlflow_submitter.tensorflow.train import train
 from sqlflow_submitter.tensorflow.get_tf_version import tf_is_version2
-from tensorflow.estimator import DNNClassifier, DNNRegressor, LinearClassifier, LinearRegressor, BoostedTreesClassifier, BoostedTreesRegressor, DNNLinearCombinedClassifier, DNNLinearCombinedRegressor
+from tensorflow.estimator import (DNNClassifier,
+                                  DNNRegressor,
+                                  LinearClassifier,
+                                  LinearRegressor,
+                                  BoostedTreesClassifier,
+                                  BoostedTreesRegressor,
+                                  DNNLinearCombinedClassifier,
+                                  DNNLinearCombinedRegressor)
 if tf_is_version2():
-    from tensorflow.keras.optimizers import *
-    from tensorflow.keras.losses import *
+    from tensorflow.keras.optimizers import Adadelta, Adagrad, Adam, Adamax, Ftrl, Nadam, RMSprop, SGD
+    from tensorflow.keras.losses import BinaryCrossentropy, CategoricalCrossentropy, CategoricalHinge, CosineSimilarity, Hinge, Huber, KLDivergence, LogCosh, MeanAbsoluteError, MeanAbsolutePercentageError, MeanSquaredError, MeanSquaredLogarithmicError, Poisson, SparseCategoricalCrossentropy, SquaredHinge
 else:
-    from tensorflow.train import *
-    from tensorflow.keras.losses import *
+    from tensorflow.train import AdadeltaOptimizer, AdagradOptimizer, AdamOptimizer, FtrlOptimizer, RMSPropOptimizer, GradientDescentOptimizer, MomentumOptimizer
+    from tensorflow.keras.losses import BinaryCrossentropy, CategoricalCrossentropy, CategoricalHinge, CosineSimilarity, Hinge, Huber, KLDivergence, LogCosh, MeanAbsoluteError, MeanAbsolutePercentageError, MeanSquaredError, MeanSquaredLogarithmicError, Poisson, SparseCategoricalCrossentropy, SquaredHinge
 try:
     import sqlflow_models
 except Exception as e:
@@ -108,21 +115,21 @@ train_max_steps = None if train_max_steps == 0 else train_max_steps
 train(datasource="{{.DataSource}}",
       estimator={{.Estimator}},
       select="""{{.TrainSelect}}""",
-      validate_select="""{{.ValidationSelect}}""",
+      validation_select="""{{.ValidationSelect}}""",
       feature_columns=feature_columns,
       feature_column_names=feature_column_names,
       feature_metas=feature_metas,
       label_meta=label_meta,
       model_params=model_params_constructed,
-      metric_names="{{index .ValidationParams "metrics"}}".split(","),
+      validation_metrics="{{index .ValidationParams "metrics"}}".split(","),
       save="{{.Save}}",
       batch_size={{index .TrainParams "batch_size" | attrToPythonValue}},
-      epochs={{index .TrainParams "epoch" | attrToPythonValue}},
+      epoch={{index .TrainParams "epoch" | attrToPythonValue}},
       validation_steps={{index .ValidationParams "steps" | attrToPythonValue}},
       verbose={{index .TrainParams "verbose" | attrToPythonValue}},
-      train_max_steps=train_max_steps,
-      eval_start_delay_secs={{index .ValidationParams "start_delay_secs" | attrToPythonValue}},
-      eval_throttle_secs={{index .ValidationParams "throttle_secs" | attrToPythonValue}},
+      max_steps=train_max_steps,
+      validation_start_delay_secs={{index .ValidationParams "start_delay_secs" | attrToPythonValue}},
+      validation_throttle_secs={{index .ValidationParams "throttle_secs" | attrToPythonValue}},
       save_checkpoints_steps={{index .TrainParams "save_checkpoints_steps" | attrToPythonValue}},
       log_every_n_iter={{index .TrainParams "log_every_n_iter" | attrToPythonValue}},
       is_pai="{{.IsPAI}}" == "true",

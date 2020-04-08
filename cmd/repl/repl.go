@@ -155,7 +155,7 @@ func runStmt(stmt string, isTerminal bool, modelDir string, ds string) error {
 	}
 	var table tablewriter.TableWriter
 	var err error
-	// TODO(yancey1989): remoev protobuf tablewriter if using step binary in workflow
+	// TODO(yancey1989): remove protobuf tablewriter if using step binary in workflow
 	if isWorkflowStep() {
 		table, err = tablewriter.Create("protobuf", tablePageSize, os.Stdout)
 	} else {
@@ -186,6 +186,13 @@ func repl(scanner *bufio.Scanner, modelDir string, ds string) {
 		statements, err := readStmt(scanner)
 		if err == io.EOF && len(statements) == 0 {
 			return
+		}
+		// The collaborative parsing algorithm requires that each statement ends
+		// with a semi-colon, as the definition of `end_of_stmt`
+		// in /pkg/parser/extended_syntax_parser.y#L176 .
+		n := len(statements)
+		if n > 0 && !strings.HasSuffix(strings.TrimSpace(statements[n-1]), ";") {
+			statements[len(statements)-1] += ";"
 		}
 		for _, stmt := range statements {
 			if err := runStmt(stmt, false, modelDir, ds); err != nil {

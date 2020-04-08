@@ -25,6 +25,8 @@ type trainFiller struct {
 	FeatureColumnNames []string
 	LabelJSON          string
 	DiskCache          bool
+	BatchSize          int
+	Epoch              int
 	IsPAI              bool
 	PAITrainTable      string
 	PAIValidateTable   string
@@ -44,17 +46,19 @@ feature_column_names = [{{range .FeatureColumnNames}}
 {{end}}]
 
 train(datasource='''{{.DataSource}}''',
-        select='''{{.TrainSelect}}''',
-        model_params=model_params,
-        train_params=train_params,
-        feature_metas=feature_metas,
-        feature_column_names=feature_column_names,
-        label_meta=label_meta,
-        validation_select='''{{.ValidationSelect}}''',
-        cache="{{.DiskCache}}" == "true",
-        is_pai="{{.IsPAI}}" == "true",
-        pai_train_table="{{.PAITrainTable}}",
-        pai_validate_table="{{.PAIValidateTable}}")
+      select='''{{.TrainSelect}}''',
+      model_params=model_params,
+      train_params=train_params,
+      feature_metas=feature_metas,
+      feature_column_names=feature_column_names,
+      label_meta=label_meta,
+      validation_select='''{{.ValidationSelect}}''',
+      disk_cache="{{.DiskCache}}" == "true",
+      batch_size={{.BatchSize}},
+      epoch={{.Epoch}},
+      is_pai="{{.IsPAI}}" == "true",
+      pai_train_table="{{.PAITrainTable}}",
+      pai_validate_table="{{.PAIValidateTable}}")
 `
 
 var trainTemplate = template.Must(template.New("Train").Parse(trainTemplateText))

@@ -155,7 +155,7 @@ class ExplainXGBModeTestCase(TestCase):
                   feature_column_names=feature_column_names,
                   label_meta=label_field_meta,
                   validation_select="")
-        # TODO(Yancey1989): keep shap codegen consistant with XGBoost
+        # TODO(Yancey1989): keep shap codegen consistent with XGBoost
         label_field_meta['name'] = label_field_meta['feature_name']
         x = xgb_shap_dataset(datasource, select, feature_column_names,
                              label_field_meta, feature_metas, False, "")

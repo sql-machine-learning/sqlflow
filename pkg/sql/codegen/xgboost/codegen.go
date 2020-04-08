@@ -26,6 +26,13 @@ import (
 	tf "sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
 )
 
+func getXGBoostObjectives() (ret []string) {
+	for k := range attribute.XGBoostObjectiveDocs {
+		ret = append(ret, k)
+	}
+	return
+}
+
 // TODO(tony): complete model parameter and training parameter list
 // model parameter list: https://xgboost.readthedocs.io/en/latest/parameter.html#general-parameters
 // training parameter list: https://github.com/dmlc/xgboost/blob/b61d53447203ca7a321d72f6bdd3f553a3aa06c4/python-package/xgboost/training.py#L115-L117
@@ -35,11 +42,17 @@ Step size shrinkage used in update to prevents overfitting. After each boosting 
 range: [0,1]`, attribute.Float32RangeChecker(0, 1, true, true)},
 	"num_class": {attribute.Int, nil, `Number of classes.
 range: [2, Infinity]`, attribute.IntLowerBoundChecker(2, true)},
-	"objective":        {attribute.String, nil, `Learning objective`, objectiveChecker},
+	"objective":        {attribute.String, nil, `Learning objective`, attribute.StringChoicesChecker(getXGBoostObjectives()...)},
 	"eval_metric":      {attribute.String, nil, `eval metric`, nil},
 	"train.disk_cache": {attribute.Bool, false, `whether use external memory to cache train data`, nil},
 	"train.num_boost_round": {attribute.Int, 10, `[default=10]
 The number of rounds for boosting.
+range: [1, Infinity]`, attribute.IntLowerBoundChecker(1, true)},
+	"train.batch_size": {attribute.Int, -1, `[default=-1]
+Batch size for each iteration, -1 means use all data at once.
+range: [-1, Infinity]`, attribute.IntLowerBoundChecker(-1, true)},
+	"train.epoch": {attribute.Int, 1, `[default=1]
+Number of rounds to run the training.
 range: [1, Infinity]`, attribute.IntLowerBoundChecker(1, true)},
 	"validation.select": {attribute.String, "", `[default=""]
 Specify the dataset for validation.
@@ -196,6 +209,23 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 	params := parseAttribute(trainStmt.Attributes)
 	diskCache := params["train."]["disk_cache"].(bool)
 	delete(params["train."], "disk_cache")
+	var batchSize int
+	var epoch int
+
+	batchSizeAttr, ok := params["train."]["batch_size"]
+	if ok {
+		batchSize = batchSizeAttr.(int)
+		delete(params["train."], "batch_size")
+	} else {
+		batchSize = -1
+	}
+	epochAttr, ok := params["train."]["epoch"]
+	if ok {
+		epoch = epochAttr.(int)
+		delete(params["train."], "epoch")
+	} else {
+		epoch = 1
+	}
 
 	if len(trainStmt.Features) != 1 {
 		return "", fmt.Errorf("xgboost only support 1 feature column set, received %d", len(trainStmt.Features))
@@ -238,6 +268,8 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 		FeatureColumnNames: fs,
 		LabelJSON:          string(l),
 		DiskCache:          diskCache,
+		BatchSize:          batchSize,
+		Epoch:              epoch,
 		IsPAI:              tf.IsPAI(),
 		PAITrainTable:      paiTrainTable,
 		PAIValidateTable:   paiValidateTable}
