@@ -105,7 +105,7 @@ func resolveModelParams(ir *ir.TrainStmt) error {
 		defaultAttributes := map[string]interface{}{"objective": "reg:squarederror", "learning_rate": 1, "subsample": 0.8, "colsample_bynode": 0.8, "reg_lambda": 1e-05}
 		updateIfKeyDoesNotExist(ir.Attributes, defaultAttributes)
 	case "XGBOOST.XGBCLASSIFIER", "XGBCLASSIFIER":
-		defaultAttributes := map[string]interface{}{"objective": "multi:softprob"}
+		defaultAttributes := map[string]interface{}{"objective": "binary:logistic"}
 		updateIfKeyDoesNotExist(ir.Attributes, defaultAttributes)
 	case "XGBOOST.XGBRFCLASSIFIER", "XGBRFCLASSIFIER":
 		defaultAttributes := map[string]interface{}{"objective": "multi:softprob", "learning_rate": 1, "subsample": 0.8, "colsample_bynode": 0.8, "reg_lambda": 1e-05}

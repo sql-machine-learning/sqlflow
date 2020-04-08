@@ -71,7 +71,7 @@ func TestTrainAndPredict(t *testing.T) {
 func TestResolveModelParams(t *testing.T) {
 	a := assert.New(t)
 	shortName := []string{"XGBOOST.XGBCLASSIFIER", "XGBOOST.XGBREGRESSOR", "XGBRANKER"}
-	objectiveName := []string{"multi:softprob", "reg:squarederror", "rank:pairwise"}
+	objectiveName := []string{"binary:logistic", "reg:squarederror", "rank:pairwise"}
 	for i := range shortName {
 		tir := ir.MockTrainStmt(true)
 		tir.Estimator = shortName[i]
