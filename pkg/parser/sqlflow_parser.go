@@ -28,6 +28,8 @@ import (
 type SQLFlowStmt struct {
 	Original string
 	*SQLFlowSelectStmt
+	Inputs  []string
+	Outputs []string
 }
 
 // IsExtendedSyntax returns true if a parsed statement uses any
@@ -117,7 +119,11 @@ func thirdPartyParse(dialect, program string) ([]*SQLFlowStmt, int, error) {
 	}
 	var spr []*SQLFlowStmt
 	for _, sql := range sqls {
-		spr = append(spr, &SQLFlowStmt{Original: sql.String, SQLFlowSelectStmt: nil})
+		spr = append(spr, &SQLFlowStmt{
+			Original:          sql.String,
+			Inputs:            sql.Inputs,
+			Outputs:           sql.Outputs,
+			SQLFlowSelectStmt: nil})
 	}
 	return spr, i, nil
 }
