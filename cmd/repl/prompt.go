@@ -484,7 +484,7 @@ func newPromptState() *promptState {
 	return &s
 }
 
-var consoleWriter = prompt.NewStdoutWriter()
+var consoleWriter = newStdoutWriter()
 var consoleParser *stdinParser
 
 func getTerminalColumnSize() int {
