@@ -93,7 +93,7 @@ func (w *stdoutWriter) SetColor(fg, bg prompt.Color, bold bool) {
 	return
 }
 
-// isInCompletion checks whether we're rendering the input line
+// isInputLine checks whether we're rendering the input line
 func (w *stdoutWriter) isInputLine() bool {
 	// TODO(shendiaomo): try to find another way to check this
 	if w.currentBgColor == prompt.DefaultColor && w.currentFgColor == prompt.DefaultColor {
