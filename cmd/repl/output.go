@@ -23,12 +23,12 @@ import (
 // stdoutWriter is a prompt.ConsoleWriter implementation for SQLFlow.
 type stdoutWriter struct {
 	prompt.ConsoleWriter
-	currentBgColor   prompt.Color
-	currentFgColor   prompt.Color
-	allowHighlighing func() bool
+	currentBgColor prompt.Color
+	currentFgColor prompt.Color
 }
 
 var extendedKeywords = map[string]bool{
+	"TO":      true,
 	"TRAIN":   true,
 	"PREDICT": true,
 	"EXPLAIN": true,
