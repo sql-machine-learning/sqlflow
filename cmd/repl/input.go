@@ -19,26 +19,26 @@ import (
 
 const maxReadBytes = 1024
 
-// SQLFlowConsoleParser is a ConsoleParser implementation for POSIX environment.
+// stdinParser is a prompt.ConsoleParser implementation for SQLFlow.
 type stdinParser struct {
 	prompt.ConsoleParser
-	buf    []byte
-	start  int
-	size   int
+	buf    []byte // The following 3 fields work together with the
+	start  int    // `Read` method to make paste works in go-prompt,
+	size   int    // or multiline paste will ruin the console buffer.
 	keyMap map[prompt.Key][]byte
 }
 
 // Merge similar keys
 func defaultKeyMap() map[prompt.Key][]byte {
 	return map[prompt.Key][]byte{
-		prompt.Up:       []byte{0x1b, 'p'},
-		prompt.ControlP: []byte{0x1b, 'p'},
-		prompt.Down:     []byte{0x1b, 'n'},
-		prompt.ControlN: []byte{0x1b, 'n'},
+		prompt.Up:       []byte{0x1b, 'p'}, // map Up to Meta P
+		prompt.ControlP: []byte{0x1b, 'p'}, // map ControlP to Meta P
+		prompt.Down:     []byte{0x1b, 'n'}, // map Down to Meta N
+		prompt.ControlN: []byte{0x1b, 'n'}, // map ControlN to Meta N
 	}
 }
 
-// Read returns byte array.
+// Read returns byte array, replaces remapped keys and sends newline alone when necessary
 func (p *stdinParser) Read() ([]byte, error) {
 	if p.size == p.start {
 		buf, err := p.ConsoleParser.Read()
@@ -70,6 +70,7 @@ L:
 	return buf, nil
 }
 
+// defineKeyMap allows redefining keyboard inputs.
 func (p *stdinParser) defineKeyMap(key prompt.Key, remapped []byte) {
 	p.keyMap[key] = remapped
 }
