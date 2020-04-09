@@ -2,6 +2,7 @@ module sqlflow.org/sqlflow
 
 require (
 	github.com/BurntSushi/graphics-go v0.0.0-20160129215708-b43f31a4a966 // indirect
+	github.com/alecthomas/chroma v0.7.1
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/aliyun/aliyun-oss-go-sdk v2.0.5+incompatible
 	github.com/apache/thrift v0.13.0 // indirect

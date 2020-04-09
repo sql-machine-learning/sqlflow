@@ -14,46 +14,24 @@
 package main
 
 import (
-	"github.com/c-bata/go-prompt"
 	"strings"
+
+	"github.com/alecthomas/chroma/quick"
+	"github.com/c-bata/go-prompt"
 )
 
 // stdoutWriter is a prompt.ConsoleWriter implementation for SQLFlow.
 type stdoutWriter struct {
 	prompt.ConsoleWriter
-	currentBgColor prompt.Color
-	currentFgColor prompt.Color
+	currentBgColor   prompt.Color
+	currentFgColor   prompt.Color
+	allowHighlighing func() bool
 }
 
-// TODO(shendiaomo): get a full list of SQL keywords according to the dialect
-var keywords = map[string]bool{
-	"ALTER":     true,
-	"COLUMN":    true,
-	"CREATE":    true,
-	"DATABASE":  true,
-	"DATABASES": true,
-	"DESC":      true,
-	"DESCRIBE":  true,
-	"EXPLAIN":   true,
-	"FROM":      true,
-	"INSERT":    true,
-	"INTO":      true,
-	"LIMIT":     true,
-	"SELECT":    true,
-	"SHOW":      true,
-	"TABLE":     true,
-	"TABLES":    true,
-	"TO":        true,
-	"UPDATE":    true,
-	"USE":       true,
-	"USING":     true,
-	"VALUES":    true,
-	"WHERE":     true,
-	"WITH":      true,
-}
 var extendedKeywords = map[string]bool{
 	"TRAIN":   true,
 	"PREDICT": true,
+	"EXPLAIN": true,
 	"LABEL":   true,
 }
 
@@ -64,25 +42,33 @@ func newStdoutWriter() *stdoutWriter {
 
 // WriteStr writes safety string by removing control sequences and highlighting keywords.
 func (w *stdoutWriter) WriteStr(data string) {
-	words := strings.Split(data, " ")
-	for i, word := range words {
-		if w.isInputLine() {
-			if _, ok := keywords[strings.ToUpper(word)]; ok {
-				w.ConsoleWriter.SetColor(prompt.Cyan, prompt.DefaultColor, true)
-			} else if _, ok := extendedKeywords[strings.ToUpper(word)]; ok {
+	// TODO(shendiaomo): remove control sequences
+	var buf strings.Builder
+	if w.isInputLine() && data != prefix && data != livePrefix {
+		// TODO(shendiaomo): switch SQL keywords according to the dialect
+		// FIXME(shendiaomo): try highlighting strings across multilple lines
+		quick.Highlight(&buf, data, "mysql", "terminal16m", "monokai")
+		words := strings.Split(buf.String(), " ")
+		cleanWords := strings.Split(data, " ")
+		if len(words) != len(cleanWords) {
+			w.ConsoleWriter.WriteRaw([]byte(buf.String()))
+			return
+		}
+		for i, word := range words {
+			if _, ok := extendedKeywords[strings.ToUpper(cleanWords[i])]; ok {
 				w.ConsoleWriter.SetColor(prompt.DarkBlue, prompt.DefaultColor, true)
+				w.ConsoleWriter.Write([]byte(cleanWords[i]))
+				w.ConsoleWriter.SetColor(prompt.DefaultColor, prompt.DefaultColor, false)
+			} else {
+				w.ConsoleWriter.WriteRaw([]byte(word))
 			}
-			w.ConsoleWriter.Write([]byte(word))
-			w.ConsoleWriter.SetColor(prompt.DefaultColor, prompt.DefaultColor, false)
-		} else {
-			w.ConsoleWriter.Write([]byte(word))
+			if i != len(words)-1 {
+				w.ConsoleWriter.Write([]byte(" "))
+			}
 		}
-		if i != len(words)-1 {
-			w.ConsoleWriter.Write([]byte(" "))
-		}
+	} else {
+		w.ConsoleWriter.Write([]byte(data))
 	}
-
-	return
 }
 
 // SetColor sets text and background colors. and specify whether text is bold.

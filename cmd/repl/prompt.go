@@ -32,6 +32,10 @@ const (
 	normalSearch searchMode = iota
 	wildcardSearch
 )
+const (
+	prefix     = "sqlflow> "
+	livePrefix = "      -> "
+)
 
 var defaultSuggestions = []prompt.Suggest{
 	{"SELECT", ""},
@@ -476,8 +480,8 @@ func (p *promptState) completer(in prompt.Document) []prompt.Suggest {
 
 func newPromptState() *promptState {
 	s := promptState{
-		prefix:     "sqlflow> ",
-		livePrefix: "      -> ",
+		prefix:     prefix,
+		livePrefix: livePrefix,
 	}
 	s.initCompleter()
 	s.initHistory()
