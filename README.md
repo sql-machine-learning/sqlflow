@@ -5,7 +5,7 @@
 [![GoDoc](https://godoc.org/github.com/sql-machine-learning/sqlflow?status.svg)](https://godoc.org/github.com/sql-machine-learning/sqlflow) 
 [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](LICENSE) 
 [![Go Report Card](https://goreportcard.com/badge/github.com/sql-machine-learning/sqlflow)](https://goreportcard.com/report/github.com/sql-machine-learning/sqlflow)
-[![HitCount](http://hits.dwyl.com/wangkuiyi/sql-machine-learning/sqlflow.svg)](http://hits.dwyl.com/wangkuiyi/sql-machine-learning/sqlflow)
+[![HitCount](http://hits.dwyl.com/sql-machine-learning/sqlflow.svg)](http://hits.dwyl.com/sql-machine-learning/sqlflow)
 
 ## What is SQLFlow
 
