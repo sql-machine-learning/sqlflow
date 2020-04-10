@@ -56,7 +56,8 @@ def xgb_dataset(datasource,
         step = 0
         # the filename per batch is [filename]_[step]
         step_file_name = "%s_%d" % (fn, step)
-        written_rows = dump_dmatrix(step_file_name, gen, label_spec)
+        written_rows = dump_dmatrix(step_file_name, gen, feature_column_names,
+                                    feature_specs, label_spec)
 
         while written_rows > 0:
             yield xgb.DMatrix('{0}#{0}.cache'.format(step_file_name)
@@ -65,7 +66,9 @@ def xgb_dataset(datasource,
 
             step += 1
             step_file_name = "%s_%d" % (fn, step)
-            written_rows = dump_dmatrix(step_file_name, gen, label_spec)
+            written_rows = dump_dmatrix(step_file_name, gen,
+                                        feature_column_names, feature_specs,
+                                        label_spec)
 
 
 def dump_dmatrix(filename,
