@@ -28,11 +28,14 @@ type stdoutWriter struct {
 }
 
 var extendedKeywords = map[string]bool{
-	"TO":      true,
-	"TRAIN":   true,
-	"PREDICT": true,
+	"COLUMN":  true,
+	"USING":   true,
 	"EXPLAIN": true,
 	"LABEL":   true,
+	"PREDICT": true,
+	"TO":      true,
+	"TRAIN":   true,
+	"WITH":    true,
 }
 
 // newStdoutWriter returns a ConsoleWriter object to write to stdout.
@@ -56,7 +59,7 @@ func (w *stdoutWriter) WriteStr(data string) {
 		}
 		for i, word := range words {
 			if _, ok := extendedKeywords[strings.ToUpper(cleanWords[i])]; ok {
-				w.ConsoleWriter.SetColor(prompt.DarkBlue, prompt.DefaultColor, true)
+				w.ConsoleWriter.SetColor(prompt.DarkGreen, prompt.DefaultColor, false)
 				w.ConsoleWriter.Write([]byte(cleanWords[i]))
 				w.ConsoleWriter.SetColor(prompt.DefaultColor, prompt.DefaultColor, false)
 			} else {
