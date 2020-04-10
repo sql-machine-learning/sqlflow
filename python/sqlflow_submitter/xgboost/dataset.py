@@ -56,7 +56,8 @@ def xgb_dataset(datasource,
         step = 0
         # the filename per batch is [filename]_[step]
         step_file_name = "%s_%d" % (fn, step)
-        written_rows = dump_dmatrix(step_file_name, gen, label_spec)
+        written_rows = dump_dmatrix(step_file_name, gen, feature_column_names,
+                                    feature_specs, label_spec)
 
         while written_rows > 0:
             yield xgb.DMatrix('{0}#{0}.cache'.format(step_file_name)
@@ -65,17 +66,32 @@ def xgb_dataset(datasource,
 
             step += 1
             step_file_name = "%s_%d" % (fn, step)
-            written_rows = dump_dmatrix(step_file_name, gen, label_spec)
+            written_rows = dump_dmatrix(step_file_name, gen,
+                                        feature_column_names, feature_specs,
+                                        label_spec)
 
 
-def dump_dmatrix(filename, generator, has_label, batch_size=None):
+def dump_dmatrix(filename,
+                 generator,
+                 feature_column_names,
+                 feature_specs,
+                 has_label,
+                 batch_size=None):
     # TODO(yancey1989): generate group and weight text file if necessary
     row_id = 0
     with open(filename, 'a') as f:
         for item in generator:
-            row_data = [
-                "%d:%f" % (i, v[0] or 0) for i, v in enumerate(item[0])
-            ]
+            row_data = []
+            for i, v in enumerate(item[0]):
+                fname = feature_column_names[i]
+                dtype = feature_specs[fname]["dtype"]
+                if dtype == "int32" or dtype == "int64":
+                    row_data.append("%d:%d" % (i, v[0] or 0))
+                elif dtype == "float32" or dtype == "float64":
+                    row_data.append("%d:%f" % (i, v[0] or 0))
+                else:
+                    raise ValueError(
+                        "not supported columnt dtype %s for xgboost" % dtype)
             if has_label:
                 row_data = [str(item[1])] + row_data
             f.write("\t".join(row_data) + "\n")
@@ -168,7 +184,8 @@ def pai_download_table_data_worker(dname, feature_specs, feature_column_names,
                                          slice_id=slice_id,
                                          slice_count=SLICE_NUM)()
     filename = "{}/{}.txt".format(dname, slice_id)
-    dump_dmatrix(filename, gen, label_spec)
+    dump_dmatrix(filename, gen, feature_column_names, feature_specs,
+                 label_spec)
 
 
 if __name__ == "__main__":
