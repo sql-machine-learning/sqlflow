@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"path/filepath"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -31,7 +30,6 @@ import (
 	"sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/server"
 	sf "sqlflow.org/sqlflow/pkg/sql"
-	"sqlflow.org/sqlflow/pkg/step"
 )
 
 func newServer(caCrt, caKey string, logger *log.Logger) (*grpc.Server, error) {
@@ -83,7 +81,6 @@ func start(modelDir, caCrt, caKey string, port int, isArgoMode bool) {
 }
 
 func main() {
-	step.InitEnvFromFile(filepath.Join(os.Getenv("HOME"), step.DotEnvFilename))
 	modelDir := flag.String("model_dir", "", "model would be saved on the local dir, otherwise upload to the table.")
 	logPath := flag.String("log", "", "path/to/log, e.g.: /var/log/sqlflow.log")
 	caCrt := flag.String("ca-crt", "", "CA certificate file.")

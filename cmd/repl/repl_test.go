@@ -827,6 +827,29 @@ func TestEmacsKeyBindings(t *testing.T) {
 	a.Equal("", buf.Document().GetWordAfterCursorWithSpace())
 }
 
+func TestDotEnv(t *testing.T) {
+	a := assert.New(t)
+	f, e := os.OpenFile(".test_sqlflow_env", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	a.NoError(e)
+	defer f.Close()
+	w := bufio.NewWriter(f)
+	fmt.Fprintln(w, `# This is a .env config file
+SQLFLOW_TEST_DOT_ENV="Alien"  # Alien is a famous movie`)
+	w.Flush()
+	a.Equal("", os.Getenv("SQLFLOW_TEST_DOT_ENV"))
+
+	// Make sure repl does not fail when the .env file is not present
+	initEnvFromFile("not_exist")
+	a.Equal("", os.Getenv("SQLFLOW_TEST_DOT_ENV"))
+
+	initEnvFromFile(".test_sqlflow_env")
+	a.Equal("Alien", os.Getenv("SQLFLOW_TEST_DOT_ENV"))
+
+	// Make sure the existing environment variables aren't affected when the .env file is not present
+	initEnvFromFile("not_exist")
+	a.Equal("Alien", os.Getenv("SQLFLOW_TEST_DOT_ENV"))
+}
+
 func TestStdinParser(t *testing.T) {
 	a := assert.New(t)
 	p := newTestConsoleParser()
