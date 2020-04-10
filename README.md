@@ -5,17 +5,12 @@
 [![GoDoc](https://godoc.org/github.com/sql-machine-learning/sqlflow?status.svg)](https://godoc.org/github.com/sql-machine-learning/sqlflow) 
 [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](LICENSE) 
 [![Go Report Card](https://goreportcard.com/badge/github.com/sql-machine-learning/sqlflow)](https://goreportcard.com/report/github.com/sql-machine-learning/sqlflow)
-[![HitCount](http://hits.dwyl.com/sql-machine-learning/sqlflow.svg)](http://hits.dwyl.com/sql-machine-learning/sqlflow)
 
 ## What is SQLFlow
 
 SQLFlow is a bridge that connects a SQL engine, e.g. MySQL, Hive or [MaxCompute](https://www.aliyun.com/product/odps), with [TensorFlow](https://github.com/tensorflow/tensorflow), [XGBoost](https://github.com/dmlc/xgboost) and other machine learning toolkits. SQLFlow extends the SQL syntax to enable model training, prediction and model explanation.
 
 ![](https://github.com/sql-machine-learning/sql-machine-learning.github.io/raw/master/assets/instruction.gif)
-
-| Please Help Us with More CI workers! | PayPal | WeChat | Alipay |
-|--------------------------------------|--------|--------|--------|
-| We have been working intensively to bring SQLFlow more features. You can see that we are having a steep growth in GitHub Stars and Git commits, which make a heavy workload for the CI. Also, we have a large CI matrix over many DBMSes (MySQL, TiDB, Apache Hive, Alibaba MaxCompute) and AI engines (TensorFlow, ElasticDL, XGBoost).  More are coming. | ![](doc/figures/donate_paypal.png) | ![](doc/figures/donate_wechat.png) | ![](doc/figures/donate_alipay.png) |
 
 ## Motivation
 
