@@ -519,4 +519,5 @@ func runPrompt(cb func(string)) {
 	fmt.Println("Welcome to SQLFlow.  Commands end with ;")
 	fmt.Println()
 	p.Run()
+	fmt.Println("Goodbye!")
 }
