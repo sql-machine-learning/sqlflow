@@ -188,10 +188,7 @@ There are three roles in the ecosystem of SQLFlow:
 1. the model developers, or data scientists, who use Python to define, say, Keras models, and
 1. the analysts, who use SQL to train models, or to use trained models for prediction or model explanation.
 
-
-<p align="center">
-<img src="figures/model_zoo_summary.png">
-</p>
+![](figures/model_zoo_summary.png)
 
 Any data scientist can create an arbitrary number of model zoos, and in each model zoo, there could be any number of model definitions.  There are some concepts from the perspective of a data scientist `a_data_scientist`:
 

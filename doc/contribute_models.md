@@ -37,9 +37,7 @@ Note that we set the environment variable `PYTHONPATH` so that we can directly t
 
 Open the browser and go to http://localhost:8888, it's a Jupyter notebook environment, you can see your model development directory `my_awesome_model` together with SQLFlow's basic tutorials.
 
-<p align="center">
-<img src="figures/jupyter_develop.jpg">
-</p>
+![](figures/jupyter_develop.jpg)
 
 Click into the directory `my_awesome_model` and add the `__init__.py` and your new model file, e.g. `mydnnclassifier.py`. In `__init__.py` you should expose your model classes by adding lines like `from mydnnclassifier import MyAwesomeClassifier`.
 
@@ -49,9 +47,7 @@ Write model code following instructions: https://github.com/sql-machine-learning
 
 Go back to http://localhost:8888, add an `ipynb` file to test the model by clicking the button "New" -> "Python 3"
 
-<p align="center">
-<img src="figures/jupyter_create_ipynb.jpg">
-</p>
+![](figures/jupyter_create_ipynb.jpg)
 
 Write an SQLFlow statement to test the model using iris dataset (you need to import the dataset to MySQL if you want to test the model using other datasets.), assume you have developed a model class name:
 

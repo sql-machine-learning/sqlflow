@@ -43,9 +43,7 @@ It's simple to figure out that we can run the two training statement concurrentl
 corresponding explain statement when one training statement finishes. The execution flow should
 look like:
 
-<p align="center">
-<img src="figures/deps_flow_graph.png">
-</p>
+![](figures/deps_flow_graph.png)
 
 ## Analyze the SQL Program Execution Dependency
 
@@ -120,18 +118,14 @@ program by `;` and using regex to match if the statement is like `USE db_identif
 SQL program is just like normal computer programs. We treat tables as variables in our case.
 Analyzing computer programs always have hazards: https://en.wikipedia.org/wiki/Hazard_(computer_architecture). In the example above, we can construct a graph like below:
 
-<p align="center">
-<img src="figures/hazard.png">
-</p>
+![](figures/hazard.png)
 
 Note that the last "DROP TABLE" statement must execute after the two "Explain" statements, because
 the table is used by the explain statements before it could be changed (in this case, deleted). This
 case is called "Write After Read". To solve this kind of data hazards, we can add one dependency node
 "table WAR" between the explain statements and drop statement:
 
-<p align="center">
-<img src="figures/hazard_solve.png">
-</p>
+![](figures/hazard_solve.png)
 
 We also need to solve "Write After Write" hazard just like "Write After Read" if the SQL program has
 this situation.

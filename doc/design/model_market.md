@@ -35,9 +35,7 @@ The model market is designed to:
 
 The below figure shows the relationships between entities of the model market:
 
-<p align="center">
-<img src="figures/model_market_er.png">
-</p>
+![](figures/model_market_er.png)
 
 The model market will use a database (maybe MySQL) to store these entities and relationships. The database design can be done according to the figure.
 
@@ -45,13 +43,9 @@ The model market will use a database (maybe MySQL) to store these entities and r
 
 ### 1. View Model Definitions and Trained Models
 
-<p align="center">
-<img src="figures/list_model_defs.png">
-</p>
+![](figures/list_model_defs.png)
 
-<p align="center">
-<img src="figures/list_trained_model.png">
-</p>
+![](figures/list_trained_model.png)
 
 1. **Optional**: Login to model market. If the user is not logged in, he can only view public model definitions and trained models.
 1. Click at the "Model Definitions" tab to see the list of model definition Docker images and the model class names in each Docker image; click on an entry to see the details of the model definition including available parameters.
@@ -59,13 +53,9 @@ The model market will use a database (maybe MySQL) to store these entities and r
 
 Click at one entry in the list can view the details of the model definition or the trained model:
 
-<p align="center">
-<img src="figures/model_def_detail.png">
-</p>
+![](figures/model_def_detail.png)
 
-<p align="center">
-<img src="figures/trained_model_detail.png">
-</p>
+![](figures/trained_model_detail.png)
 
 ### 2. Publish a Model Definition Docker Image
 
@@ -76,9 +66,7 @@ Click at one entry in the list can view the details of the model definition or t
 
 After the Docker image is pushed to the docker registry, he need to add it in the model market by:
 
-<p align="center">
-<img src="figures/new_model_def.png">
-</p>
+![](figures/new_model_def.png)
 
 1. Login to model market.
 1. Go to the "Model Definitions" tab.
@@ -175,6 +163,5 @@ The model market can be deployed anywhere like on the cloud or on-premise with s
 
 Below figure shows a overview of how users use the model market for better understanding:
 
-<p align="center">
-<img src="figures/model_market_overview.png">
-</p>
+![](figures/model_market_overview.png)
+
