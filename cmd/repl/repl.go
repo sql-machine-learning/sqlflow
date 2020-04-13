@@ -25,9 +25,11 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"syscall"
 
+	"github.com/joho/godotenv"
 	"golang.org/x/crypto/ssh/terminal"
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/step"
@@ -246,7 +248,16 @@ func getDataSource(dataSource, db string) string {
 
 var currentDB string
 
+// dotEnvFilename is the filename of the .env file
+const dotEnvFilename string = ".sqlflow_env"
+
+// initEnvFromFile initializes environment variables from the .env file
+func initEnvFromFile(f string) {
+	_ = godotenv.Load(f)
+}
+
 func main() {
+	initEnvFromFile(filepath.Join(os.Getenv("HOME"), dotEnvFilename))
 	ds := flag.String("datasource", "", "database connect string")
 	modelDir := flag.String("model_dir", "", "model would be saved on the local dir, otherwise upload to the table.")
 	cliStmt := flag.String("execute", "", "execute SQLFlow from command line.  e.g. --execute 'select * from table1'")
