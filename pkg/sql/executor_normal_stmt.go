@@ -140,6 +140,10 @@ func isXGBoostModel(estimator string) bool {
 	return strings.HasPrefix(strings.ToUpper(estimator), `XGBOOST.`)
 }
 
+func isKMeansModel(estimator string) bool {
+	return strings.ToUpper(estimator) == "KMEANS"
+}
+
 func parseTableColumn(s string) (string, string, error) {
 	pos := strings.LastIndex(s, ".")
 	if pos == -1 || pos == len(s)-1 {
