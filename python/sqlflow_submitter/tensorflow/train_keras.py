@@ -85,10 +85,9 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
                                             session_config=tf.ConfigProto(
                                                 log_device_placement=True,
                                                 device_filters=None))
-        model_dir = FLAGS.sqlflow_hdfs_ckpt
 
         keras_estimator = tf.keras.estimator.model_to_estimator(
-            classifier, model_dir=model_dir, config=run_config)
+            classifier, model_dir=save, config=run_config)
         estimator_train_compiled(
             keras_estimator,
             is_pai,

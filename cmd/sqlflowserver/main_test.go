@@ -1726,7 +1726,7 @@ func CasePAIMaxComputeDNNTrainPredictExplain(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`SELECT * FROM %s
 TO TRAIN DNNClassifier
-WITH model.n_classes = 3, model.hidden_units = [10, 20]
+WITH model.n_classes = 3, model.hidden_units = [1024,512,256]
 LABEL class
 INTO e2etest_pai_dnn;`, caseTrainTable)
 	_, _, _, err := connectAndRunSQL(trainSQL)
