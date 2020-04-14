@@ -47,6 +47,13 @@ function populate_example_dataset() {
   done
 }
 
+function populate_example_dataset_remote() {
+  # FIXME(typhoonzero): should let docker-entrypoint.sh do this work
+  for f in /docker-entrypoint-initdb.d/*; do
+    cat $f | repl 2>&1 > /dev/null
+  done
+}
+
 function setup_sqlflow_server() {
   sleep_until_mysql_is_ready
 
@@ -70,6 +77,16 @@ function print_usage() {
   echo "\tsqlflow_server: setup the sqlflow gRPC server."
   echo "\tsqlflow_notebook: setup the Jupyter Notebook server."
   echo "\tall(default): setup a MySQL server instance, a sqlflow gRPC server and a Jupyter Notebook server sequentially."
+  echo "\trepl: setup a MySQL server instance, a sqlflow gRPC server, a Jupyter Notebook server sequentially and enter CLI mode at last."
+}
+
+function setup_odpscmd() {
+  echo access_id=$(echo $SQLFLOW_DATASOURCE|grep -oP '(?<=maxcompute://)[^:]*')>> ~/conf/odps_config.ini
+  echo access_key=$(echo $SQLFLOW_DATASOURCE|grep -oP '(?<=:)[^@:/]*')>> ~/conf/odps_config.ini
+  protocol=$(echo $SQLFLOW_DATASOURCE|grep -oP '(?<=scheme=)\w*')
+  end_point=$(echo $SQLFLOW_DATASOURCE|grep -oP '(?<=@)[^?]*')
+  echo end_point=$protocol://$end_point >> ~/conf/odps_config.ini
+  echo project=$(echo $SQLFLOW_DATASOURCE|grep -oP '(?<=curr_project=)\w*')>> ~/conf/odps_config.ini
 }
 
 function main() {
@@ -97,6 +114,22 @@ function main() {
       setup_mysql
       setup_sqlflow_server &
       setup_sqlflow_notebook
+      ;;
+    repl)
+      shift
+      . ~/.sqlflow_env
+      if [[ $SQLFLOW_DATASOURCE == "" ]]; then
+        echo "No data source specified. Starting builtin MySQL"
+        start_mysql
+        sleep_until_mysql_is_ready
+        SQLFLOW_DATASOURCE="mysql://root:root@tcp(${SQLFLOW_MYSQL_HOST}:${SQLFLOW_MYSQL_PORT})/?maxAllowedPacket=0"
+	  fi
+	  export SQLFLOW_DATASOURCE
+      if [[ ! -d /var/lib/mysql/iris && $SQLFLOW_DATASOURCE == mysql://* ]]; then
+        echo "Initializing..."
+        populate_example_dataset_remote 2<&1 /dev/null
+      fi
+      repl $@
       ;;
     *)
       print_usage
