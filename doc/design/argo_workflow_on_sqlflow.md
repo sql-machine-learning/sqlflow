@@ -186,3 +186,27 @@ where
       }
       return responses, nil
     }
+
+## Retrieve Error Logs From a failed Workflow
+
+A workflow maybe failed for many reasons, these error usually occur in the following two phase:
+
+- The one is running a workflow, .e.g. the SQL syntax error.
+- The other is the workflow step runtime stage:
+  - Some workflow step execute a standard SQL, the GO database driver execute the SQL and return error if the execution failed.
+  - Some workflow step execute a extended SQL, SQLFlow translate the extended SQL into a submitter program and execute it
+    - Some submitter program would be executed as a sub-process, SQLFlow can retrieve the error logs from stderr.
+    - Some submitter program would run on a cluster system e.g. Yarn, SQLFlow should retrieve the error logs from the Yarn task.
+
+To create a good user experience, we should pipe theses error message to the GUI system like Jupyter Notebook.
+
+### How to pipe the error message
+
+``` text
+SQLFLow magic command(Jupyter Notebook) <----->  SQLFlow gRPC server  <---->  Workflow Step(Kubernetes Pod)
+                                          gRPC                          HTTP
+```
+
+The above figure shows the pipe stages from SQLFlow magic command to workflow step. Any error on SQLFlow gRPC server would be raised as a gRPC call error with the error message, and SQLFlow magic command can show this error message on Jupyter Notebook.
+From the above [Fetch API design](#Fetch-API), `Fetch` can unmarshal the protobuf message from workflow step stdout as `FetchResponse` to SQLFlow magic command.
+Workflow step should print the error message with protobuf text format when failed, and then pipe to the SQLFlow magic command via `Fetch`.
