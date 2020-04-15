@@ -50,6 +50,7 @@ INTO sqlflow_models.my_dnn_model;
 `
 	testToPredict = `TO PREDICT db.table.field
 USING sqlflow_models.my_dnn_model;`
+	testToEvaluate = `TO EVALUATE my_model WITH validation.metrics="MAE,MSE" LABEL class;`
 )
 
 func TestExtendedSyntaxParseToTrain(t *testing.T) {
@@ -133,6 +134,21 @@ USING TreeExplainer;`
 	a.Equal("my_model", r.TrainedModel)
 	a.Equal("force", r.ExplainAttrs["plots"].String())
 	a.Equal("TreeExplainer", r.Explainer)
+}
+
+func TestExtendedSyntaxParseToEvaluate(t *testing.T) {
+	a := assert.New(t)
+	s := `TO EVALUATE my_model WITH validation.metrics="MAE,MSE" LABEL class;`
+	r, idx, e := parseSQLFlowStmt(s)
+	a.NoError(e)
+	a.Equal(len(s), idx)
+	a.True(r.Extended)
+	a.False(r.Train)
+	a.False(r.Predict)
+	a.True(r.Evaluate)
+	a.Equal("my_model", r.TrainedModel)
+	a.Equal("MAE,MSE", r.ExplainAttrs["validation.metrics"].String())
+	a.Equal("class", r.Label)
 }
 
 func TestExtendedSyntaxParseToExplainInto(t *testing.T) {

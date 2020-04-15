@@ -59,7 +59,9 @@ func variadic(typ int, op string, ods ExprList) *Expr {
 type SQLFlowSelectStmt struct {
 	Extended bool
 	Train    bool
+	Predict  bool
 	Explain  bool
+	Evaluate bool
 	StandardSelect
 	TrainClause
 	PredictClause
@@ -132,6 +134,7 @@ func attrsUnion(as1, as2 Attributes) Attributes {
 %type  <labc> label_clause
 %type  <infr> predict_clause
 %type  <expln> explain_clause
+%type  <eval> evaluate_clause
 %type  <val> optional_using
 %type  <expr> expr funcall column
 %type  <expl> ExprList pythonlist columns
@@ -161,14 +164,19 @@ sqlflow_select_stmt
 | predict_clause end_of_stmt {
 	parseResult = &SQLFlowSelectStmt{
 		Extended: true,
-		Train: false,
+		Predict: true,
 		PredictClause: $1}
   }
 | explain_clause end_of_stmt {
 	parseResult = &SQLFlowSelectStmt{
 		Extended: true,
-		Train: false,
 		Explain: true,
+		ExplainClause: $1}
+  }
+| evaluate_clause end_of_stmt {
+	parseResult = &SQLFlowSelectStmt{
+		Extended: true,
+		Evaluate: true,
 		ExplainClause: $1}
 }
 ;
@@ -219,6 +227,11 @@ explain_clause
 | TO EXPLAIN IDENT optional_using INTO IDENT { $$.TrainedModel = $3; $$.Explainer = $4; $$.ExplainInto = $6 }
 | TO EXPLAIN IDENT WITH attrs optional_using { $$.TrainedModel = $3; $$.ExplainAttrs = $5; $$.Explainer = $6 }
 | TO EXPLAIN IDENT WITH attrs optional_using INTO IDENT { $$.TrainedModel = $3; $$.ExplainAttrs = $5; $$.Explainer = $6; $$.ExplainInto = $8 }
+;
+
+evaluate_clause
+: TO EVALUATE IDENT WITH attrs label_clause { $$.TrainedModel = $3; $$.ExplainAttrs = $5; $$.Label = $6 }
+| TO EVALUATE IDENT label_clause { $$.TrainedModel = $3; $$.Label = $4 }
 ;
 
 optional_using
