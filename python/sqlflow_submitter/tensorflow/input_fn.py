@@ -123,13 +123,23 @@ def read_feature_as_tensor(raw_val, feature_spec, feature_name):
             feature_spec["dtype"])
 
 
-def parse_pai_dataset(feature_column_names, has_label, feature_specs, *row):
+def parse_pai_dataset(feature_column_names, label_spec, feature_specs, *row):
     features = {}
     for i, name in enumerate(feature_column_names):
         spec = feature_specs[name]
         f = read_feature_as_tensor(row[i], spec, name)
         features[name] = tf.SparseTensor(*f) if spec["is_sparse"] else f
-    return features, row[-1] if has_label else features
+    label = row[-1] if label_spec["feature_name"] else -1
+    if label_spec and label_spec["delimiter"] != "":
+        # FIXME(typhoonzero): the label in the yielded row may not be the last item, should get
+        # label index.
+        tmp = tf.strings.split(label, sep=label_spec["delimiter"])
+        if label_spec["dtype"] == "float32":
+            label = tf.strings.to_number(tmp, out_type=tf.dtypes.float32)
+        elif label_spec["dtype"] == "int64":
+            label = tf.strings.to_number(tmp, out_type=tf.dtypes.int64)
+
+    return features, label
 
 
 def pai_dataset(table,
@@ -147,6 +157,8 @@ def pai_dataset(table,
     ]
     if label_spec and label_spec["feature_name"]:
         selected_cols.append(label_spec["feature_name"])
+        print("reading from paiio label name %s label dtype: %s" %
+              (label_spec["feature_name"], label_spec["dtype"]))
         dtypes.append(label_spec["dtype"])
 
     import paiio
@@ -158,7 +170,7 @@ def pai_dataset(table,
         capacity=2**25,
         num_threads=64).map(
             functools.partial(parse_pai_dataset, feature_column_names,
-                              label_spec["feature_name"], feature_specs))
+                              label_spec, feature_specs))
 
 
 def get_dataset_fn(select,
