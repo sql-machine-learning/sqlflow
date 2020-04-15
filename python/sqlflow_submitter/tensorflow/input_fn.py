@@ -133,7 +133,9 @@ def parse_pai_dataset(feature_column_names, label_spec, feature_specs, *row):
     if label_spec and label_spec["delimiter"] != "":
         # FIXME(typhoonzero): the label in the yielded row may not be the last item, should get
         # label index.
-        tmp = tf.strings.split(label, sep=label_spec["delimiter"])
+        tmp = tf.strings.split(label,
+                               sep=label_spec["delimiter"],
+                               result_type='RaggedTensor')
         if label_spec["dtype"] == "float32":
             label = tf.strings.to_number(tmp, out_type=tf.dtypes.float32)
         elif label_spec["dtype"] == "int64":
@@ -157,9 +159,12 @@ def pai_dataset(table,
     ]
     if label_spec and label_spec["feature_name"]:
         selected_cols.append(label_spec["feature_name"])
-        print("reading from paiio label name %s label dtype: %s" %
-              (label_spec["feature_name"], label_spec["dtype"]))
-        dtypes.append(label_spec["dtype"])
+        # print("reading from paiio label name %s label dtype: %s" %
+        #       (label_spec["feature_name"], label_spec["dtype"]))
+        if label_spec["delimiter"] != "":
+            dtypes.append("string")
+        else:
+            dtypes.append(label_spec["dtype"])
 
     import paiio
     return paiio.TableRecordDataset(

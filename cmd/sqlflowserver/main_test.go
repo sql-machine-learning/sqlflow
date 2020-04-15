@@ -1721,39 +1721,6 @@ INTO %s.rf_model_explain;`, caseTestTable, caseDB)
 	}
 }
 
-func CasePAIMaxComputeTimeSeries(t *testing.T) {
-	t.Parallel()
-	a := assert.New(t)
-	// 	trainSQL := `SELECT exp1, clk1, exp2, clk2, exp3, clk3, exp4, clk4, exp5, clk5, exp6
-	// FROM alifin_jtest_dev.app_homepage_exposure_ts_wuyi
-	// TO TRAIN sqlflow_models.LSTMBasedTimeSeriesModel
-	// WITH model.n_in = 5, model.stack_units = [256, 256], model.n_out=1, model.n_features=2
-	// LABEL exp6
-	// INTO wuyi_ts_app_homepage_exp;`
-	// 	_, _, _, err := connectAndRunSQL(trainSQL)
-	// 	if err != nil {
-	// 		a.Fail("Run trainSQL error: %v", err)
-	// 	}
-
-	trainSQL := `SELECT col1, col2, col3, class
-FROM alifin_jtest_dev.yx_hb_payment_seq_concat
-TO TRAIN sqlflow_models.LSTMBasedTimeSeriesModel WITH
-	model.n_in=3,
-	model.stack_units = [500, 500],
-	model.n_out=3,
-	validation.select = "SELECT col1, col2, col3, class FROM alifin_jtest_dev.yx_hb_payment_seq_concat LIMIT 1000;",
-	train.batch_size=1,
-	train.verbose=1,
-	train.epoch=30,
-	validation.metrics= "MeanAbsoluteError,MeanSquaredError"
-LABEL class
-INTO my_lstmts_model1;`
-	_, _, _, err := connectAndRunSQL(trainSQL)
-	if err != nil {
-		a.Fail("Run trainSQL error: %v", err)
-	}
-}
-
 func CasePAIMaxComputeDNNTrainPredictExplain(t *testing.T) {
 	t.Parallel()
 	a := assert.New(t)
@@ -2003,16 +1970,14 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 
 	t.Run("group", func(t *testing.T) {
-		t.Run("CasePAIMaxComputeTimeSeries", CasePAIMaxComputeTimeSeries)
-
-		// t.Run("CasePAIMaxComputeDNNTrainPredictExplain", CasePAIMaxComputeDNNTrainPredictExplain)
-		// t.Run("CasePAIMaxComputeTrainDenseCol", CasePAIMaxComputeTrainDenseCol)
-		// t.Run("CasePAIMaxComputeTrainXGBoost", CasePAIMaxComputeTrainXGBoost)
-		// t.Run("CasePAIMaxComputeTrainCustomModel", CasePAIMaxComputeTrainCustomModel)
-		// t.Run("CasePAIMaxComputeTrainDistributed", CasePAIMaxComputeTrainDistributed)
-		// t.Run("CasePAIMaxComputeTrainPredictCategoricalFeature", CasePAIMaxComputeTrainPredictCategoricalFeature)
-		// t.Run("CasePAIMaxComputeTrainTFBTDistributed", CasePAIMaxComputeTrainTFBTDistributed)
-		// t.Run("CasePAIMaxComputeTrainDistributedKeras", CasePAIMaxComputeTrainDistributedKeras)
+		t.Run("CasePAIMaxComputeDNNTrainPredictExplain", CasePAIMaxComputeDNNTrainPredictExplain)
+		t.Run("CasePAIMaxComputeTrainDenseCol", CasePAIMaxComputeTrainDenseCol)
+		t.Run("CasePAIMaxComputeTrainXGBoost", CasePAIMaxComputeTrainXGBoost)
+		t.Run("CasePAIMaxComputeTrainCustomModel", CasePAIMaxComputeTrainCustomModel)
+		t.Run("CasePAIMaxComputeTrainDistributed", CasePAIMaxComputeTrainDistributed)
+		t.Run("CasePAIMaxComputeTrainPredictCategoricalFeature", CasePAIMaxComputeTrainPredictCategoricalFeature)
+		t.Run("CasePAIMaxComputeTrainTFBTDistributed", CasePAIMaxComputeTrainTFBTDistributed)
+		t.Run("CasePAIMaxComputeTrainDistributedKeras", CasePAIMaxComputeTrainDistributedKeras)
 
 		// FIXME(typhoonzero): Add this test back when we solve error: model already exist issue on the CI.
 		// t.Run("CaseTrainPAIRandomForests", CaseTrainPAIRandomForests)
