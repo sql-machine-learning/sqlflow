@@ -69,7 +69,7 @@ def explain(datasource,
 
     if is_pai:
         FLAGS = tf.app.flags.FLAGS
-        model_params["model_dir"] = FLAGS.sqlflow_hdfs_ckpt
+        model_params["model_dir"] = FLAGS.checkpointDir
     else:
         model_params['model_dir'] = save
 
@@ -206,7 +206,7 @@ def write_shap_values(shap_values, driver, conn, result_table,
     with buffered_db_writer(driver, conn, result_table, feature_column_names,
                             100, hdfs_namenode_addr, hive_location, hdfs_user,
                             hdfs_pass) as w:
-        for row in shap_values:
+        for row in shap_values[0]:
             w.write(list(row))
 
 

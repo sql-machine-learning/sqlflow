@@ -17,6 +17,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"text/template"
@@ -144,6 +145,29 @@ func getTFPAICmd(cc *ClusterConfig, tarball, paramsFile, modelName, ossModelPath
 	// TODO(typhoonzero): need to find a more secure way to pass credentials.
 	cmd := fmt.Sprintf("pai -name tensorflow1150 -project algo_public_dev -DmaxHungTimeBeforeGCInSeconds=0 -DjobName=%s -Dtags=dnn -Dscript=%s -DentryFile=entry.py -Dtables=%s %s -DhyperParameters=\"%s\"",
 		jobName, tarball, submitTables, outputTables, paramsFile)
+
+	// format the oss checkpoint path with ARN authorization.
+	ossCheckpointConfigs := os.Getenv("SQLFLOW_OSS_CHECKPOINT_DIR")
+	if ossCheckpointConfigs == "" {
+		return "", fmt.Errorf("need to configure SQLFLOW_OSS_CHECKPOINT_DIR when submitting to PAI")
+	}
+	ossJSONConfigs := make(map[string]string)
+	if err := json.Unmarshal([]byte(ossCheckpointConfigs), &ossJSONConfigs); err != nil {
+		return "", err
+	}
+	currProjectOSS, ok := ossJSONConfigs[project]
+	if !ok {
+		return "", fmt.Errorf("project %s not configured in SQLFLOW_OSS_CHECKPOINT_DIR", project)
+	}
+	arnSplited := strings.Split(currProjectOSS, "?")
+	if len(arnSplited) != 2 {
+		return "", fmt.Errorf("need to configure SQLFLOW_OSS_CHECKPOINT_DIR when submitting to PAI")
+	}
+	arn := arnSplited[1]
+	ossURI := OSSModelURL(ossModelPath)
+	ossCheckpointPath := fmt.Sprintf("%s/?%s", ossURI, arn)
+	cmd = fmt.Sprintf("%s -DcheckpointDir='%s'", cmd, ossCheckpointPath)
+
 	if cc.Worker.Count > 1 {
 		cmd = fmt.Sprintf("%s -Dcluster=%s", cmd, cfQuote)
 	} else {

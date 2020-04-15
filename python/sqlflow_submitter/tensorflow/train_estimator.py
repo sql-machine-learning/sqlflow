@@ -26,16 +26,6 @@ def estimator_train_and_save(estimator, model_params, save, is_pai, FLAGS,
                              save_checkpoints_steps, metric_names):
 
     print("Start training using estimator model...")
-    # Remove the checkpoint dir on HDFS before training.
-    # NOTE(typhoonzero): checkpoints will be used by explaining (explaining BoostedTrees model
-    # requires calling estimator.experimental_predict_with_explanations),
-    # yet, predicting will use the saved model on OSS only.
-    if is_pai and FLAGS.task_index == 0 and FLAGS.job_name == "worker":
-        for root, dirs, files in tf.io.gfile.walk(FLAGS.sqlflow_hdfs_ckpt,
-                                                  topdown=False):
-            for f in files:
-                tf.io.gfile.remove("/".join([root, f]))
-            tf.io.gfile.rmtree(root)
 
     is_distributed = False
     if is_pai and len(FLAGS.worker_hosts.split(",")) > 1:
@@ -46,8 +36,8 @@ def estimator_train_and_save(estimator, model_params, save, is_pai, FLAGS,
         is_distributed,
         save_checkpoints_steps=save_checkpoints_steps)
     if is_pai:
-        print("Using checkpoint path: %s" % FLAGS.sqlflow_hdfs_ckpt)
-        model_params["model_dir"] = FLAGS.sqlflow_hdfs_ckpt
+        print("Using checkpoint path: %s" % FLAGS.checkpointDir)
+        model_params["model_dir"] = FLAGS.checkpointDir
     else:
         model_params["model_dir"] = save
 

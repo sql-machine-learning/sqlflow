@@ -85,7 +85,7 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
                                             session_config=tf.ConfigProto(
                                                 log_device_placement=True,
                                                 device_filters=None))
-        model_dir = FLAGS.sqlflow_hdfs_ckpt
+        model_dir = FLAGS.checkpointDir
 
         keras_estimator = tf.keras.estimator.model_to_estimator(
             classifier, model_dir=model_dir, config=run_config)
@@ -100,6 +100,25 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
             None,
             60,
             120)
+        # FIXME(typhoonzero): predict keras distributed model should also call model_to_estimator.
+        # export saved model for prediction
+        if "feature_columns" in model_params:
+            all_feature_columns = model_params["feature_columns"]
+        elif "linear_feature_columns" in model_params and "dnn_feature_columns" in model_params:
+            import copy
+            all_feature_columns = copy.copy(
+                model_params["linear_feature_columns"])
+            all_feature_columns.extend(model_params["dnn_feature_columns"])
+        else:
+            raise Exception("No expected feature columns in model params")
+        serving_input_fn = tf.estimator.export.build_parsing_serving_input_receiver_fn(
+            tf.feature_column.make_parse_example_spec(all_feature_columns))
+        export_path = keras_estimator.export_saved_model(
+            save, serving_input_fn)
+        # write the path under current directory
+        with open("exported_path", "w") as fn:
+            fn.write(str(export_path.decode("utf-8")))
+        print("Done training, model exported to: %s" % export_path)
         return
 
     if hasattr(classifier, 'sqlflow_train_loop'):
