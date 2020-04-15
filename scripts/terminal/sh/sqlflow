@@ -76,7 +76,7 @@ while (( "$#" )); do
   esac
 done
 set +e
-docker create -v /var/lib/mysql --name mysqlflowdata wangyu/sqlflow 2>/dev/null
+docker create -v /var/lib/mysql --name mysqlflowdata sqlflow/sqlflow 2>/dev/null
 if [[ $? == 0 ]]; then
   echo "MySQL volume created"
 fi
