@@ -50,7 +50,7 @@ function populate_example_dataset() {
 function populate_example_dataset_remote() {
   # FIXME(typhoonzero): should let docker-entrypoint.sh do this work
   for f in /docker-entrypoint-initdb.d/*; do
-    cat $f | repl 2>&1 > /dev/null
+    cat $f | repl 2>&1 >/dev/null 2>&1
   done
 }
 
@@ -127,7 +127,7 @@ function main() {
 	  export SQLFLOW_DATASOURCE
       if [[ ! -d /var/lib/mysql/iris && $SQLFLOW_DATASOURCE == mysql://* ]]; then
         echo "Initializing..."
-        populate_example_dataset_remote 2<&1 /dev/null
+        populate_example_dataset_remote
       fi
       repl $@
       ;;
