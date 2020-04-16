@@ -17,7 +17,7 @@
      -p 3306:3306 \
      -p 8888:8888 \
      -e SQLFLOW_MYSQL_HOST=0.0.0.0 \
-	 sqlflow/sqlflow:latest \
+     sqlflow/sqlflow:latest \
      bash /start.sh
    ```
 
@@ -72,11 +72,13 @@ Accordingly, in Python, we can write
 
 ```python
 import sqlflow
-sqlflow.train("SELECT ...",
-              model_def,
-              with={"param1":value, "param2":value2},
-	      columns={"column1":lambda(x):..., "column2":labmda(x):...},
-	      into="trained_model")
+
+sqlflow.train(
+  "SELECT ...",
+  model_def,
+  with={"param1":value, "param2":value2},
+  columns={"column1":lambda(x):..., "column2":labmda(x):...},
+  into="trained_model")
 ```
 
 ### Unit Tests
@@ -149,20 +151,20 @@ Model added successfully，You can run it `TO TRAIN hub.docker.com/username/myke
 
 1. To a local SQLFlow server.
 
-    ```text
-	$ sqlflow
-	sqlflow@localhost:50051 >
-	```
+   ```text
+   $ sqlflow
+     sqlflow@localhost:50051 >
+   ```
 
 2. To specified SQLFlow server, for example `192.168.1.1:50051`.
 
-    ```text
-	$ sqlflow -host="192.168.1.1:50051" -dbstr="maxcompute://...."
-	```
+   ```text
+   $ sqlflow -host="192.168.1.1:50051" -dbstr="maxcompute://...."
+   ```
 
 3. Using a configuration file.
 
-   ```bash
+   ```text
    vim ~/.sqlflow/config
    [sqlflow]
    host=192.168.1.1:50051
@@ -175,7 +177,7 @@ Model added successfully，You can run it `TO TRAIN hub.docker.com/username/myke
 
 Everytime we run `ADD MODELDEF`, the system generates a new version:
 
-```bash
+```text
 $ sqlflow
 sqlflow > ADD MODELDEF MyKerasModel.py
 model MyKerasModel.py already exists, add a new version 0.13.
@@ -187,7 +189,7 @@ Model added successfully，You can run it `TO TRAIN hub.docker.com/username/myke
 
 ### Manage Model Definitions
 
-```bash
+```text
 $ sqlflow
 sqlflow > SHOW MODELDEFS;
 sqlflow > SHARE MODELDEF hub.docker.com/username/mykerasmodel:v0.13 TO xiongmu.wy;
@@ -196,7 +198,7 @@ sqlflow > DROP MODELDEF hub.docker.com/username/mykerasmodel:v0.13;
 
 ### Manage Trained Models
 
-```Bash
+```text
 $ sqlflow
 sqlflow > PUBLISH my_model;
 sqlflow > SHOW TRAINEDMODELS;
