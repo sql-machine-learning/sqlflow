@@ -66,6 +66,7 @@ type SQLFlowSelectStmt struct {
 	TrainClause
 	PredictClause
 	ExplainClause
+	EvaluateClause
 }
 
 type StandardSelect struct {
@@ -99,6 +100,14 @@ type ExplainClause struct {
 	ExplainInto  string
 }
 
+type EvaluateClause struct {
+	EvaluateAttrs Attributes
+	// Fields needed by evaluate clause
+	ModelToEvaluate string
+	EvaluateLabel string
+	EvaluateInto  string
+}
+
 var parseResult *SQLFlowSelectStmt
 
 func attrsUnion(as1, as2 Attributes) Attributes {
@@ -126,6 +135,7 @@ func attrsUnion(as1, as2 Attributes) Attributes {
   labc string
   infr PredictClause
   expln ExplainClause
+  evalt EvaluateClause
 }
 
 %type  <eslt> sqlflow_select_stmt
@@ -134,14 +144,14 @@ func attrsUnion(as1, as2 Attributes) Attributes {
 %type  <labc> label_clause
 %type  <infr> predict_clause
 %type  <expln> explain_clause
-%type  <eval> evaluate_clause
+%type  <evalt> evaluate_clause
 %type  <val> optional_using
 %type  <expr> expr funcall column
 %type  <expl> ExprList pythonlist columns
 %type  <atrs> attr
 %type  <atrs> attrs
 
-%token <val> SELECT FROM WHERE LIMIT TRAIN PREDICT EXPLAIN WITH COLUMN LABEL USING INTO FOR AS TO
+%token <val> SELECT FROM WHERE LIMIT TRAIN PREDICT EXPLAIN EVALUATE WITH COLUMN LABEL USING INTO FOR AS TO
 %token <val> IDENT NUMBER STRING
 
 %left <val> AND OR
@@ -177,7 +187,7 @@ sqlflow_select_stmt
 	parseResult = &SQLFlowSelectStmt{
 		Extended: true,
 		Evaluate: true,
-		ExplainClause: $1}
+		EvaluateClause: $1}
 }
 ;
 
@@ -230,8 +240,8 @@ explain_clause
 ;
 
 evaluate_clause
-: TO EVALUATE IDENT WITH attrs label_clause { $$.TrainedModel = $3; $$.ExplainAttrs = $5; $$.Label = $6 }
-| TO EVALUATE IDENT label_clause { $$.TrainedModel = $3; $$.Label = $4 }
+: TO EVALUATE IDENT WITH attrs label_clause { $$.ModelToEvaluate = $3; $$.EvaluateAttrs = $5; $$.EvaluateLabel = $6 }
+| TO EVALUATE IDENT label_clause { $$.ModelToEvaluate = $3; $$.EvaluateLabel = $4 }
 ;
 
 optional_using

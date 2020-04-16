@@ -146,9 +146,9 @@ func TestExtendedSyntaxParseToEvaluate(t *testing.T) {
 	a.False(r.Train)
 	a.False(r.Predict)
 	a.True(r.Evaluate)
-	a.Equal("my_model", r.TrainedModel)
-	a.Equal("MAE,MSE", r.ExplainAttrs["validation.metrics"].String())
-	a.Equal("class", r.Label)
+	a.Equal("my_model", r.ModelToEvaluate)
+	a.Equal("\"MAE,MSE\"", r.EvaluateAttrs["validation.metrics"].String())
+	a.Equal("class", r.EvaluateLabel)
 }
 
 func TestExtendedSyntaxParseToExplainInto(t *testing.T) {
