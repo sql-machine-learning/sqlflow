@@ -35,10 +35,10 @@ func NewParser(dialect string) (Parser, error) {
 		return newTiDBParser(), nil
 	case "hive":
 		return newJavaParser("hive"), nil
-	case "calcite", "maxcompute":
+	case "calcite", "maxcompute", "alisa":
 		return newJavaParser("calcite"), nil
-	case "alisa":
-		return newJavaParser("odps"), nil
+	// case "alisa":
+	// 	return newJavaParser("odps"), nil
 	default:
 		return nil, fmt.Errorf("unrecognized dialect %s", dialect)
 	}

@@ -145,12 +145,38 @@ func resolveFeatureMeta(fds []ir.FieldDesc) ([]byte, []string, error) {
 	return f, featureNames, e
 }
 
+// DistTrain generates a Python program to train a distributed XgBoost model.
+// TODO(weiguoz): merge DistTrain to Train
+func DistTrain(trainStmt *ir.TrainStmt, session *pb.Session, workerNum int) (string, error) {
+	r, err := newTrainFiller(trainStmt, session)
+	if err != nil {
+		return "", err
+	}
+	var program bytes.Buffer
+	if err = distTrainTemplate.Execute(&program, r); err != nil {
+		return "", err
+	}
+	return program.String(), nil
+}
+
 // Train generates a Python program for train a XgBoost model.
 func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
+	r, err := newTrainFiller(trainStmt, session)
+	if err != nil {
+		return "", err
+	}
+	var program bytes.Buffer
+	if err = trainTemplate.Execute(&program, r); err != nil {
+		return "", err
+	}
+	return program.String(), nil
+}
+
+func newTrainFiller(trainStmt *ir.TrainStmt, session *pb.Session) (*trainFiller, error) {
 	params := parseAttribute(trainStmt.Attributes)
 	booster, err := resolveModelType(trainStmt.Estimator)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	params[""]["booster"] = booster
 	diskCache := params["train."]["disk_cache"].(bool)
@@ -174,27 +200,27 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 	}
 
 	if len(trainStmt.Features) != 1 {
-		return "", fmt.Errorf("xgboost only support 1 feature column set, received %d", len(trainStmt.Features))
+		return nil, fmt.Errorf("xgboost only support 1 feature column set, received %d", len(trainStmt.Features))
 	}
 	featureFieldDesc, labelFieldDesc, err := getFieldDesc(trainStmt.Features["feature_columns"], trainStmt.Label)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	mp, err := json.Marshal(params[""])
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	tp, err := json.Marshal(params["train."])
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	f, fs, err := resolveFeatureMeta(featureFieldDesc)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	l, err := json.Marshal(resolveFieldMeta(&labelFieldDesc))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	paiTrainTable := ""
@@ -204,7 +230,7 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 		paiValidateTable = trainStmt.TmpValidateTable
 	}
 
-	r := trainFiller{
+	return &trainFiller{
 		DataSource:         session.DbConnStr,
 		TrainSelect:        trainStmt.Select,
 		ValidationSelect:   trainStmt.ValidationSelect,
@@ -218,14 +244,7 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 		Epoch:              epoch,
 		IsPAI:              tf.IsPAI(),
 		PAITrainTable:      paiTrainTable,
-		PAIValidateTable:   paiValidateTable}
-
-	var program bytes.Buffer
-	if err := trainTemplate.Execute(&program, r); err != nil {
-		return "", err
-	}
-
-	return program.String(), nil
+		PAIValidateTable:   paiValidateTable}, nil
 }
 
 // Pred generates a Python program for predict a xgboost model.

@@ -21,8 +21,9 @@ const xgbSaveModelTmplText = `
 from sqlflow_submitter.pai import model
 from sqlflow_submitter.tensorflow.pai_distributed import define_tf_flags, set_oss_environs
 
-FLAGS = define_tf_flags()
-set_oss_environs(FLAGS)
+# TODO(weiguoz) comments for debugging
+# FLAGS = define_tf_flags()
+# set_oss_environs(FLAGS)
 
 # NOTE(typhoonzero): the xgboost model file "my_model" is hard coded in xgboost/train.py
 model.save_file("{{.OSSModelDir}}", "my_model")

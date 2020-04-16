@@ -62,12 +62,16 @@ func GetClusterConfig(attrs map[string]interface{}) (*ClusterConfig, error) {
 	}
 	cc := &ClusterConfig{
 		PS: PSConfig{
-			Count: defaultMap["train.num_ps"],
+			// TODO(weiguoz): remove the hard code
+			// Count: defaultMap["train.num_ps"],
+			Count: 1,
 			CPU:   defaultMap["train.ps_cpu"],
 			GPU:   defaultMap["train.ps_gpu"],
 		},
 		Worker: WorkerConfig{
-			Count: defaultMap["train.num_workers"],
+			// TODO(weiguoz): remove the hard code
+			// Count: defaultMap["train.num_workers"],
+			Count: 4,
 			CPU:   defaultMap["train.worker_cpu"],
 			GPU:   defaultMap["train.worker_gpu"],
 		},

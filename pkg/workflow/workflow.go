@@ -46,7 +46,7 @@ func New(backend string) (Codegen, Workflow, error) {
 	return nil, nil, fmt.Errorf("the specified backend: %s has not support", backend)
 }
 
-// Run compile a SQL program to IRs and submits workflow YAML to Kubernetes
+// Run compiles a SQL program to IRs and submits workflow YAML to Kubernetes
 func Run(backend string, sqlProgram string, session *pb.Session, logger *log.Logger) (string, error) {
 	driverName, _, e := database.ParseURL(session.DbConnStr)
 	if e != nil {
