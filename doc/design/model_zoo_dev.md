@@ -75,8 +75,8 @@ import sqlflow
 sqlflow.train("SELECT ...",
               model_def,
               with={"param1":value, "param2":value2},
-			  columns={"column1":lambda(x):..., "column2":labmda(x):...},
-			  into="trained_model")
+	      columns={"column1":lambda(x):..., "column2":labmda(x):...},
+	      into="trained_model")
 ```
 
 ### Unit Tests
