@@ -159,8 +159,6 @@ def pai_dataset(table,
     ]
     if label_spec and label_spec["feature_name"]:
         selected_cols.append(label_spec["feature_name"])
-        # print("reading from paiio label name %s label dtype: %s" %
-        #       (label_spec["feature_name"], label_spec["dtype"]))
         if label_spec["delimiter"] != "":
             dtypes.append("string")
         else:
