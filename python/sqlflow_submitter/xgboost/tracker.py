@@ -165,7 +165,6 @@ class RabitTracker(object):
     """
     def __init__(self, hostIP, nslave, port_start=9091, port_end=9999):
         sock = socket.socket(get_family(hostIP), socket.SOCK_STREAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         for port in range(port_start, port_end):
             print("sock.bind(%d)" % port)
             try:
@@ -175,8 +174,6 @@ class RabitTracker(object):
                 break
             except socket.error as e:
                 if e.errno in [98, 48]:
-                    # TODO(weiguoz) debug
-                    print("errno=%d" % e.errno)
                     continue
                 else:
                     raise

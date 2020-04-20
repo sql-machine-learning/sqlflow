@@ -19,23 +19,7 @@ import time
 import sqlflow_submitter.tensorflow.pai_distributed as pai_dist
 import xgboost as xgb
 from sqlflow_submitter.xgboost.dataset import xgb_dataset
-from sqlflow_submitter.xgboost.tracker import RabitTracker
-
-
-def trace_port(port):
-    cmd = 'lsof -i:%d' % port
-    stream = os.popen(cmd)
-    output = stream.read()
-    print(cmd)
-    print("=>")
-    print(output)
-
-    cmd = 'for pid in $(lsof -ntP -i:%d); do ps -ef|grep $pid; done' % port
-    stream = os.popen(cmd)
-    output = stream.read()
-    print(cmd)
-    print("=>")
-    print(output)
+from sqlflow_submitter.xgboost.pai_rabit import PaiTracker, PaiWorker
 
 
 def dist_train(flags,
@@ -64,44 +48,24 @@ def dist_train(flags,
     master_addr = cluster["ps"][0].split(":")
     master_host = master_addr[0]
     master_port = int(master_addr[1]) + 1
-    rabit_tracker = None
-    print("[%s]+++++++++++++++" % time.strftime("%Y-%m-%d %H:%M:%S"))
-    print(flags.worker_hosts)
-    print(node)
-    print(task_id)
-    print(cluster)
+    tracker = None
+    print("node={}\ttask_id={}\tcluster={}".format(node, task_id, cluster))
     try:
         if node == 'ps':
-            print("[%s]I'm the master" % time.strftime("%Y-%m-%d %H:%M:%S"))
-            trace_port(master_port)
-            rabit = RabitTracker(hostIP=master_host,
-                                 nslave=num_workers,
-                                 port_start=master_port,
-                                 port_end=master_port + 1)
-            print("[%s]going to start the master" %
-                  time.strftime("%Y-%m-%d %H:%M:%S"))
-            rabit.start(num_workers)
-            rabit_tracker = rabit
-            print("[%s]master started" % time.strftime("%Y-%m-%d %H:%M:%S"))
+            tracker = PaiTracker(host=master_host,
+                                 nworkers=num_workers,
+                                 port=master_port)
         else:
-            envs = [
-                'DMLC_NUM_WORKER=%d' % (num_workers),
-                'DMLC_TRACKER_URI=%s' % master_host,
-                'DMLC_TRACKER_PORT=%d' % master_port,
-                'DMLC_TASK_ID=%d' %
-                (task_id if node == 'chief' else task_id + 1)
-            ]
-            for i, env in enumerate(envs):
-                envs[i] = str.encode(env)
-            print("[{}]env={}".format(time.strftime("%Y-%m-%d %H:%M:%S"),
-                                      envs))
-
-            time.sleep(20)
+            if node != 'chief':
+                task_id += 1
+            envs = PaiWorker.gen_envs(host=master_host,
+                                      port=master_port,
+                                      ttl=200,
+                                      nworkers=num_workers,
+                                      task_id=task_id)
             xgb.rabit.init(envs)
             rank = xgb.rabit.get_rank()
 
-            print("[{}]rank={} is going to run train".format(
-                time.strftime("%Y-%m-%d %H:%M:%S"), rank))
             train(datasource, select, model_params, train_params,
                   feature_metas, feature_column_names, label_meta,
                   validation_select, disk_cache, batch_size, epoch, is_pai,
@@ -113,16 +77,11 @@ def dist_train(flags,
     except Exception as e:
         raise e
     finally:
-        print("[%s]finally" % time.strftime("%Y-%m-%d %H:%M:%S"))
-        if node == 'ps':
-            if rabit_tracker is not None:
-                rabit_tracker.join()
-                print("[%s]ps joined" % time.strftime("%Y-%m-%d %H:%M:%S"))
-        else:
+        if tracker is not None:
+            tracker.join()
+        if node != 'ps':
             xgb.rabit.finalize()
-            print("[%s]xgb.rabit.finalize() done" %
-                  time.strftime("%Y-%m-%d %H:%M:%S"))
-        print("[%s]---------------" % time.strftime("%Y-%m-%d %H:%M:%S"))
+        # FIXME(weiguoz)
         sys.exit(0)
 
 
@@ -140,11 +99,6 @@ def train(datasource,
           is_pai=False,
           pai_train_table="",
           pai_validate_table=""):
-    # TODO(weiguoz) remove me
-    print("[%s]mock train. sleep 30sec" % time.strftime("%Y-%m-%d %H:%M:%S"))
-    time.sleep(30)
-    return
-
     if batch_size == -1:
         batch_size = None
     print("Start training XGBoost model...")
