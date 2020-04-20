@@ -50,7 +50,7 @@ func (w *stdoutWriter) WriteStr(data string) {
 	var buf strings.Builder
 	if w.isInputLine() && data != prefix && data != livePrefix {
 		// TODO(shendiaomo): switch SQL keywords according to the dialect
-		// FIXME(shendiaomo): try highlighting strings across multilple lines
+		// FIXME(shendiaomo): try highlighting strings across multiple lines
 		quick.Highlight(&buf, data, "mysql", "terminal16m", "monokai")
 		words := strings.Split(buf.String(), " ")
 		cleanWords := strings.Split(data, " ")
