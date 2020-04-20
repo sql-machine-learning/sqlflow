@@ -59,8 +59,8 @@ func variadic(typ int, op string, ods ExprList) *Expr {
 type SQLFlowSelectStmt struct {
 	Extended bool
 	Train    bool
-	Predict  bool
 	ShowTrain bool
+	Predict  bool
 	Explain  bool
 	Evaluate bool
 	StandardSelect
