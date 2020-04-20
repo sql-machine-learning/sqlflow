@@ -148,7 +148,8 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
             if tf_is_version2():
                 validation_steps = None
             else:
-                validation_steps = 1
+                if validate_dataset == None:
+                    validation_steps = None
             history = classifier.fit(train_dataset,
                                      validation_steps=validation_steps,
                                      epochs=epochs if epochs else
