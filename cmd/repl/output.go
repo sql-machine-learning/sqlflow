@@ -28,14 +28,15 @@ type stdoutWriter struct {
 }
 
 var extendedKeywords = map[string]bool{
-	"COLUMN":  true,
-	"USING":   true,
-	"EXPLAIN": true,
-	"LABEL":   true,
-	"PREDICT": true,
-	"TO":      true,
-	"TRAIN":   true,
-	"WITH":    true,
+	"COLUMN":   true,
+	"USING":    true,
+	"EXPLAIN":  true,
+	"EVALUATE": true,
+	"LABEL":    true,
+	"PREDICT":  true,
+	"TO":       true,
+	"TRAIN":    true,
+	"WITH":     true,
 }
 
 // newStdoutWriter returns a ConsoleWriter object to write to stdout.
