@@ -21,6 +21,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"strings"
 	"sync"
 
 	"sqlflow.org/sqlflow/pkg/database"
@@ -232,3 +233,17 @@ func readExplainResult(target string) (string, error) {
 }
 
 func (s *defaultSubmitter) GetTrainStmtFromModel() bool { return true }
+
+func (s *defaultSubmitter) ExecuteShowTrain(showTrain *ir.ShowTrainStmt) error {
+	model, err := model.Load(showTrain.ModelName, "", s.Db)
+	if err != nil {
+		s.Writer.Write("Load model meta " + showTrain.ModelName + " failed.")
+		return err
+	}
+	header := make(map[string]interface{})
+	header["columnNames"] = []string{"Table", "Train Statement"}
+	s.Writer.Write(header)
+	s.Writer.Write([]interface{}{showTrain.ModelName, strings.TrimSpace(model.TrainSelect)})
+
+	return nil
+}

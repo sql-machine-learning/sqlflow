@@ -20,6 +20,7 @@ type Executor interface {
 	ExecuteTrain(*TrainStmt) error
 	ExecutePredict(*PredictStmt) error
 	ExecuteExplain(*ExplainStmt) error
+	ExecuteShowTrain(*ShowTrainStmt) error
 }
 
 // SQLFlowStmt has multiple implementations: TrainStmt, PredictStmt, ExplainStmt and standard SQL.
@@ -169,3 +170,23 @@ func (sql *NormalStmt) IsExtended() bool { return false }
 
 // GetOriginalSQL returns the original SQL statement used to get current IR result
 func (sql *NormalStmt) GetOriginalSQL() string { return string(*sql) }
+
+// ShowTrainStmt get and output the original train sql for ModelName
+type ShowTrainStmt struct {
+	// OriginalSQL is the SHOW TRAIN stmt itself
+	OriginalSQL string
+	// The model to show the train sql
+	ModelName string
+}
+
+// Execute generates and executes code for ShowTrainStmt
+func (sql *ShowTrainStmt) Execute(s Executor) error { return s.ExecuteShowTrain(sql) }
+
+// SetOriginalSQL sets the original sql string
+func (sql *ShowTrainStmt) SetOriginalSQL(s string) { sql.OriginalSQL = s }
+
+// IsExtended returns whether a SQLFlowStmt is an extended SQL statement
+func (sql *ShowTrainStmt) IsExtended() bool { return true }
+
+// GetOriginalSQL returns the original SQL statement used to get current IR result
+func (sql *ShowTrainStmt) GetOriginalSQL() string { return sql.OriginalSQL }
