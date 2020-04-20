@@ -1,15 +1,19 @@
 package org.sqlflow.parser.calcite;
 
-import java.util.ArrayList;
+import java.io.StringReader;
+import java.util.LinkedList;
+import java.util.List;
 import org.apache.calcite.sql.SqlKind;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.parser.SqlParseException;
 import org.apache.calcite.sql.parser.SqlParser;
+import org.apache.calcite.sql.parser.ddl.SimpleCharStream;
 import org.apache.calcite.sql.parser.ddl.SqlDdlParserImpl;
-import org.sqlflow.parser.parse.ParseInterface;
-import org.sqlflow.parser.parse.ParseResult;
+import org.apache.calcite.sql.parser.ddl.SqlDdlParserImplTokenManager;
+import org.apache.calcite.sql.parser.ddl.Token;
+import org.sqlflow.parser.parse.BaseParser;
 
-public class CalciteParserAdaptor implements ParseInterface {
+public class CalciteParserAdaptor extends BaseParser {
 
   public CalciteParserAdaptor() {}
 
@@ -18,100 +22,95 @@ public class CalciteParserAdaptor implements ParseInterface {
     return "calcite";
   }
 
-  /**
-   * parse calls Calcite parser to parse a SQL program and returns a ParseResult. It returns
-   * {statements, -1, ""} if Calcite parser accepts the SQL program. input: "select 1; select 1;"
-   * output: {"select 1;", "select 1;"}, -1 , nil It returns {statements, idx, ""} if Calcite parser
-   * accepts part of the SQL program, indicated by idx. input: "select 1; select 1 to train; select
-   * 1" output: {"select 1;", "select 1"}, 19, nil It returns {nil, -1, error} if an error is
-   * occurred.
-   */
   @Override
-  public ParseResult parse(String sql) {
-    ParseResult parseResult = new ParseResult();
-    parseResult.statements = new ArrayList<String>();
-    parseResult.position = -1;
-    parseResult.error = "";
-
-    int accumulatedPosition = 0;
-    while (true) {
+  protected int parseOneStmt(String sql) throws Exception {
+    try {
       SqlParser.Config sqlParserConfig =
           SqlParser.configBuilder().setParserFactory(SqlDdlParserImpl.FACTORY).build();
-      try {
-        SqlParser parser = SqlParser.create(sql, sqlParserConfig);
-        SqlNode sqlnode = parser.parseQuery();
-        parseResult.statements.add(sql);
-        return parseResult;
-      } catch (SqlParseException e) {
-        int line = e.getPos().getLineNum();
-        int column = e.getPos().getColumnNum();
-        int epos = posToIndex(sql, line, column);
-
-        try {
-          SqlParser parser = SqlParser.create(sql.substring(0, epos), sqlParserConfig);
-          SqlNode sqlnode = parser.parseQuery();
-
-          // parseQuery doesn't throw exception
-          parseResult.statements.add(sql.substring(0, epos));
-
-          // multiple SQL statements
-          if (sql.charAt(epos) == ';') {
-            sql = sql.substring(epos + 1);
-            accumulatedPosition += epos + 1;
-
-            // FIXME(tony): trim is not enough to handle statements
-            // like "select 1; select 1; -- this is a comment"
-            // So maybe we need some preprocessors to remove all the comments first.
-            if (sql.trim().equals("")) {
-              return parseResult;
-            }
-
-            continue;
-          }
-
-          // Make sure the left hand side is a query, so that
-          // we can try parse the right hand side with the SQLFlow parser
-          // SqlKind.QUERY is {SELECT, EXCEPT, INTERSECT, UNION, VALUES, ORDER_BY, EXPLICIT_TABLE}
-          if (!SqlKind.QUERY.contains(sqlnode.getKind()) && sqlnode.getKind() != SqlKind.UNION) {
-            // return original error
-            parseResult.statements = new ArrayList<String>();
-            parseResult.position = -1;
-            parseResult.error = e.getCause().getMessage();
-            return parseResult;
-          }
-
-          parseResult.position = accumulatedPosition + epos;
-          return parseResult;
-        } catch (SqlParseException ee) {
-          // return original error
-          parseResult.statements = new ArrayList<String>();
-          parseResult.position = -1;
-          parseResult.error = e.getCause().getMessage();
-
-          return parseResult;
-        }
-      }
+      SqlParser parser = SqlParser.create(sql, sqlParserConfig);
+      parser.parseQuery();
+      return -1;
+    } catch (SqlParseException e) {
+      return posToIndex(sql, e.getPos().getLineNum(), e.getPos().getColumnNum());
     }
   }
 
-  // posToIndex converts line and column number into string index.
-  private static int posToIndex(String query, int line, int column) {
-    int l = 0;
-    int c = 0;
+  @Override
+  protected boolean isSelectionStmt(String sql) {
+    SqlParser.Config sqlParserConfig =
+        SqlParser.configBuilder().setParserFactory(SqlDdlParserImpl.FACTORY).build();
+    SqlParser parser = SqlParser.create(sql, sqlParserConfig);
+    try {
+      SqlNode node = parser.parseQuery();
+      return SqlKind.QUERY.contains(node.getKind());
+    } catch (SqlParseException e) {
+      return false;
+    }
+  }
 
-    for (int i = 0; i < query.length(); i++) {
-      if (l == line - 1 && c == column - 1) {
-        return i;
+  @Override
+  protected List<String> splitStatements(String sql) {
+    List<String> stmts = new LinkedList<>();
+    SimpleCharStream stream =
+        new SimpleCharStream(new StringReader(sql)) {
+          {
+            super.setTabSize(1);
+          }
+        };
+    // this lexer will auto filter comments
+    SqlDdlParserImplTokenManager tm = new SqlDdlParserImplTokenManager(stream);
+    int pos = 0;
+    boolean hasToken = false;
+    while (true) {
+      Token token = tm.getNextToken();
+      if (token.kind == SqlDdlParserImplTokenManager.EOF) {
+        break;
       }
-
-      if (query.charAt(i) == '\n') {
-        l++;
-        c = 0;
-      } else {
-        c++;
+      hasToken = true;
+      if (token.kind == SqlDdlParserImplTokenManager.SEMICOLON) {
+        int e = 1 + posToIndex(sql, token.beginLine, token.beginColumn);
+        stmts.add(sql.substring(pos, e));
+        pos = e;
+        hasToken = false;
       }
     }
+    // if last part has no token, we discard it
+    if (pos < sql.length() && hasToken) {
+      // TODO(lhw) find a better way than modify original sql
+      // At this point, if last char == ';', it must be in a comment,
+      // in case the parser report an error at this commented ';' 
+      // we replace this ';' to ' ' (still keep it's length).
+      // It's a problem when parser stop at a commented ';' because we think ';'
+      // as separator of statements, so we may falsely accept this query.
+      // Fortunately, there is only one case it will happen, that is the last 
+      // char in a query is ';' AND is commented AND is where error reported (
+      // actually, the parser is stopping at EOF, but the error will be reported
+      // at ';')
+      // Example: 'SELECT -- comment ;'
+      String lastStmt = sql.substring(pos);
+      lastStmt = lastStmt.replaceAll(";$", " ");
+      stmts.add(lastStmt);
+    }
+    return stmts;
+  }
 
-    return query.length();
+  @Override
+  protected int getLeadingCommentLen(String sql) {
+    if (sql == null) {
+      return 0;
+    }
+    SimpleCharStream stream =
+        new SimpleCharStream(new StringReader(sql)) {
+          {
+            super.setTabSize(1);
+          }
+        };
+    // this lexer will auto filter comments
+    SqlDdlParserImplTokenManager tm = new SqlDdlParserImplTokenManager(stream);
+    Token token = tm.getNextToken();
+    if (token.kind == SqlDdlParserImplTokenManager.EOF) {
+      return sql.length();
+    }
+    return posToIndex(sql, token.beginLine, token.beginColumn);
   }
 }
