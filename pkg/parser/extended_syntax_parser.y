@@ -59,16 +59,16 @@ func variadic(typ int, op string, ods ExprList) *Expr {
 type SQLFlowSelectStmt struct {
 	Extended bool
 	Train    bool
-	ShowTrain bool
 	Predict  bool
 	Explain  bool
 	Evaluate bool
+	ShowTrain bool
 	StandardSelect
 	TrainClause
-	ShowTrainClause
 	PredictClause
 	ExplainClause
 	EvaluateClause
+	ShowTrainClause
 }
 
 type StandardSelect struct {
@@ -81,10 +81,6 @@ type TrainClause struct {
 	Columns    columnClause
 	Label      string
 	Save       string
-}
-
-type ShowTrainClause struct {
-	ModelName string
 }
 
 /* If no FOR in the COLUMN, the key is "" */
@@ -114,6 +110,10 @@ type EvaluateClause struct {
 	EvaluateInto  string
 }
 
+type ShowTrainClause struct {
+	ModelName string
+}
+
 var parseResult *SQLFlowSelectStmt
 
 func attrsUnion(as1, as2 Attributes) Attributes {
@@ -137,12 +137,12 @@ func attrsUnion(as1, as2 Attributes) Attributes {
   eslt SQLFlowSelectStmt
   slct StandardSelect
   tran TrainClause
-  shwtran ShowTrainClause
   colc columnClause
   labc string
   infr PredictClause
   expln ExplainClause
   evalt EvaluateClause
+  shwtran ShowTrainClause
 }
 
 %type  <eslt> sqlflow_select_stmt
@@ -179,12 +179,6 @@ sqlflow_select_stmt
 		Train: true,
 		TrainClause: $1}
   }
-| show_train_clause end_of_stmt {
-	parseResult = &SQLFlowSelectStmt{
-		Extended: true,
-		ShowTrain: true,
-		ShowTrainClause: $1}
-}
 | predict_clause end_of_stmt {
 	parseResult = &SQLFlowSelectStmt{
 		Extended: true,
@@ -202,6 +196,12 @@ sqlflow_select_stmt
 		Extended: true,
 		Evaluate: true,
 		EvaluateClause: $1}
+}
+| show_train_clause end_of_stmt {
+	parseResult = &SQLFlowSelectStmt{
+		Extended: true,
+		ShowTrain: true,
+		ShowTrainClause: $1}
 }
 ;
 
@@ -241,10 +241,6 @@ train_clause
 }
 ;
 
-show_train_clause
-: SHOW TRAIN IDENT { $$.ModelName = $3; }
-;
-
 predict_clause
 : TO PREDICT IDENT USING IDENT { $$.Into = $3; $$.Model = $5 }
 | TO PREDICT IDENT WITH attrs USING IDENT { $$.Into = $3; $$.PredAttrs = $5; $$.Model = $7 }
@@ -260,6 +256,10 @@ explain_clause
 evaluate_clause
 : TO EVALUATE IDENT WITH attrs label_clause { $$.ModelToEvaluate = $3; $$.EvaluateAttrs = $5; $$.EvaluateLabel = $6 }
 | TO EVALUATE IDENT label_clause { $$.ModelToEvaluate = $3; $$.EvaluateLabel = $4 }
+;
+
+show_train_clause
+: SHOW TRAIN IDENT { $$.ModelName = $3; }
 ;
 
 optional_using
