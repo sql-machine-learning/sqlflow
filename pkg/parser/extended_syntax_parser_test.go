@@ -212,4 +212,34 @@ func TestExtendedSyntaxParseUnmatchedQuotation(t *testing.T) {
 		a.Equal(len(`to train a with b = c label d into e;`), idx)
 		a.Nil(r)
 	}
+
+}
+
+func TestExtendedShowTrainStmt(t *testing.T) {
+	a := assert.New(t)
+	{
+		testShowTrain := `SHOW TRAIN my_dnn_classifier_model;`
+		r, idx, e := parseSQLFlowStmt(testShowTrain)
+		a.Equal(nil, e)
+		a.True(r.ShowTrain)
+		a.True(r.Extended)
+		a.NotNil(r.ShowTrainClause)
+		a.Equal(`my_dnn_classifier_model`, r.ShowTrainClause.ModelName)
+		a.Equal(len(testShowTrain), idx)
+	}
+	{
+		testShowTrain := `SHOW TRAIN my_dnn_classifier_model`
+		r, idx, e := parseSQLFlowStmt(testShowTrain + " bad;")
+		a.Nil(r)
+		a.NotNil(e)
+		a.Equal(len(testShowTrain)+1, idx)
+	}
+	{
+		testShowTrain := `SHOW TRAIN ;`
+		//                           ^ err here
+		r, idx, e := parseSQLFlowStmt(testShowTrain)
+		a.Nil(r)
+		a.NotNil(e)
+		a.Equal(11, idx)
+	}
 }

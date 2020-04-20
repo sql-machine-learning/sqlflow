@@ -908,3 +908,9 @@ func transformToIntList(list []interface{}) ([]int, error) {
 	}
 	return b, nil
 }
+
+func generateShowTrainStmt(showTrain *parser.SQLFlowSelectStmt) (*ir.ShowTrainStmt, error) {
+	return &ir.ShowTrainStmt{
+		ModelName: showTrain.ShowTrainClause.ModelName,
+	}, nil
+}

@@ -60,10 +60,12 @@ type SQLFlowSelectStmt struct {
 	Extended bool
 	Train    bool
 	Predict  bool
+	ShowTrain bool
 	Explain  bool
 	Evaluate bool
 	StandardSelect
 	TrainClause
+	ShowTrainClause
 	PredictClause
 	ExplainClause
 	EvaluateClause
@@ -79,6 +81,10 @@ type TrainClause struct {
 	Columns    columnClause
 	Label      string
 	Save       string
+}
+
+type ShowTrainClause struct {
+	ModelName string
 }
 
 /* If no FOR in the COLUMN, the key is "" */
@@ -131,6 +137,7 @@ func attrsUnion(as1, as2 Attributes) Attributes {
   eslt SQLFlowSelectStmt
   slct StandardSelect
   tran TrainClause
+  shwtran ShowTrainClause
   colc columnClause
   labc string
   infr PredictClause
@@ -140,6 +147,7 @@ func attrsUnion(as1, as2 Attributes) Attributes {
 
 %type  <eslt> sqlflow_select_stmt
 %type  <tran> train_clause
+%type  <shwtran> show_train_clause
 %type  <colc> column_clause
 %type  <labc> label_clause
 %type  <infr> predict_clause
@@ -151,7 +159,7 @@ func attrsUnion(as1, as2 Attributes) Attributes {
 %type  <atrs> attr
 %type  <atrs> attrs
 
-%token <val> SELECT FROM WHERE LIMIT TRAIN PREDICT EXPLAIN EVALUATE WITH COLUMN LABEL USING INTO FOR AS TO
+%token <val> SELECT FROM WHERE LIMIT TRAIN PREDICT EXPLAIN EVALUATE WITH COLUMN LABEL USING INTO FOR AS TO SHOW
 %token <val> IDENT NUMBER STRING
 
 %left <val> AND OR
@@ -171,6 +179,12 @@ sqlflow_select_stmt
 		Train: true,
 		TrainClause: $1}
   }
+| show_train_clause end_of_stmt {
+	parseResult = &SQLFlowSelectStmt{
+		Extended: true,
+		ShowTrain: true,
+		ShowTrainClause: $1}
+}
 | predict_clause end_of_stmt {
 	parseResult = &SQLFlowSelectStmt{
 		Extended: true,
@@ -225,6 +239,10 @@ train_clause
 	$$.TrainAttrs = $5
 	$$.Save = $7
 }
+;
+
+show_train_clause
+: SHOW TRAIN IDENT { $$.ModelName = $3; }
 ;
 
 predict_clause

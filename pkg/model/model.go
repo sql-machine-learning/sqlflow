@@ -81,6 +81,7 @@ func (m *Model) Save(modelURI string, trainStmt *ir.TrainStmt, session *pb.Sessi
 }
 
 // Load untar a saved model to a directory on the local filesystem.
+// When dst=="", we do not untar model data, just extract the model meta
 func Load(modelURI, dst string, db *database.DB) (*Model, error) {
 	// FIXME(typhoonzero): unify arguments with save, use session,
 	// so that can pass oss credentials too.
@@ -92,7 +93,7 @@ func Load(modelURI, dst string, db *database.DB) (*Model, error) {
 				dir, file := path.Split(uriParts[1])
 				return loadTar(dir, dst, file)
 			} else if uriParts[0] == "oss" {
-				return nil, fmt.Errorf("save model to oss is not supported now")
+				return nil, fmt.Errorf("load model from oss is not supported now")
 			}
 		} else {
 			return nil, fmt.Errorf("error modelURI format: %s", modelURI)
@@ -162,7 +163,7 @@ func loadTar(modelDir, cwd, save string) (m *Model, e error) {
 
 // load reads from the given sqlfs table for the train select
 // statement, and untar the SQLFlow working directory, which contains
-// the TensorFlow model, into directory cwd.
+// the TensorFlow model, into directory cwd if cwd is not "".
 func loadDB(db *database.DB, table, cwd string) (m *Model, e error) {
 	sqlf, e := sqlfs.Open(db.DB, table)
 	if e != nil {
@@ -179,11 +180,13 @@ func loadDB(db *database.DB, table, cwd string) (m *Model, e error) {
 		return nil, fmt.Errorf("gob-decoding train select failed: %v", e)
 	}
 
-	cmd := exec.Command("tar", "xzf", "-", "-C", cwd)
-	cmd.Stdin = &buf
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return nil, fmt.Errorf("tar %v", string(output))
+	if cwd != "" { // empty in invalid param for tar -C
+		cmd := exec.Command("tar", "xzf", "-", "-C", cwd)
+		cmd.Stdin = &buf
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			return nil, fmt.Errorf("tar %v", string(output))
+		}
 	}
 	return m, nil
 }
