@@ -9,7 +9,7 @@
 1. 在浏览器中打开页面 `http://localhost:8888`, 随后即可看到 Jupyter Notebook 的页面了。
 
 ## 在 Notebook 中创建 Python3 Kernel
-![](/doc/usage/figures/py3_kernel.jpg)
+![](/doc/usage/figures/py3_kernel.png)
 
 ## 训练模型
 
