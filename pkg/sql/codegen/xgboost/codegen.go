@@ -57,6 +57,9 @@ range: [1, Infinity]`, attribute.IntLowerBoundChecker(1, true)},
 	"validation.select": {attribute.String, "", `[default=""]
 Specify the dataset for validation.
 example: "SELECT * FROM boston.train LIMIT 8"`, nil},
+	"train.num_workers": {attribute.Int, 1, `[default=1]
+Number of workers for distributed train, 1 means stand-alone mode.
+range: [1, Infinity]`, attribute.IntLowerBoundChecker(1, true)},
 }
 var fullAttrValidator = attribute.Dictionary{}
 
@@ -145,34 +148,31 @@ func resolveFeatureMeta(fds []ir.FieldDesc) ([]byte, []string, error) {
 	return f, featureNames, e
 }
 
-// DistTrain generates a Python program to train a distributed XgBoost model.
-// TODO(weiguoz): merge DistTrain to Train
-func DistTrain(trainStmt *ir.TrainStmt, session *pb.Session, workerNum int) (string, error) {
-	r, err := newTrainFiller(trainStmt, session)
-	if err != nil {
-		return "", err
-	}
-	var program bytes.Buffer
-	if err = distTrainTemplate.Execute(&program, r); err != nil {
-		return "", err
-	}
-	return program.String(), nil
-}
-
 // Train generates a Python program for train a XgBoost model.
 func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
-	r, err := newTrainFiller(trainStmt, session)
+	return DistTrain(trainStmt, session, 1)
+}
+
+// DistTrain generates a Python program for distributed train a XgBoost model.
+// TODO(weiguoz): make DistTrain to be an implementation of interface.
+func DistTrain(trainStmt *ir.TrainStmt, session *pb.Session, nworkers int) (string, error) {
+	r, err := newTrainFiller(trainStmt, session, nworkers)
 	if err != nil {
 		return "", err
 	}
 	var program bytes.Buffer
-	if err = trainTemplate.Execute(&program, r); err != nil {
+	if nworkers > 1 {
+		err = distTrainTemplate.Execute(&program, r)
+	} else {
+		err = trainTemplate.Execute(&program, r)
+	}
+	if err != nil {
 		return "", err
 	}
 	return program.String(), nil
 }
 
-func newTrainFiller(trainStmt *ir.TrainStmt, session *pb.Session) (*trainFiller, error) {
+func newTrainFiller(trainStmt *ir.TrainStmt, session *pb.Session, nworkers int) (*trainFiller, error) {
 	params := parseAttribute(trainStmt.Attributes)
 	booster, err := resolveModelType(trainStmt.Estimator)
 	if err != nil {
@@ -244,7 +244,8 @@ func newTrainFiller(trainStmt *ir.TrainStmt, session *pb.Session) (*trainFiller,
 		Epoch:              epoch,
 		IsPAI:              tf.IsPAI(),
 		PAITrainTable:      paiTrainTable,
-		PAIValidateTable:   paiValidateTable}, nil
+		PAIValidateTable:   paiValidateTable,
+		Workers:            nworkers}, nil
 }
 
 // Pred generates a Python program for predict a xgboost model.

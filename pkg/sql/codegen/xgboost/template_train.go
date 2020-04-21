@@ -30,6 +30,7 @@ type trainFiller struct {
 	IsPAI              bool
 	PAITrainTable      string
 	PAIValidateTable   string
+	Workers            int
 }
 
 const trainTemplateText = `
@@ -80,11 +81,8 @@ feature_column_names = [{{range .FeatureColumnNames}}
 "{{.}}",
 {{end}}]
 
-# TODO(weiguo): remove this hard code for testing
-nworks = 4
-
 dist_train(flags=FLAGS,
-      num_workers=nworks,
+      num_workers={{.Workers}},
       datasource='''{{.DataSource}}''',
       select='''{{.TrainSelect}}''',
       model_params=model_params,

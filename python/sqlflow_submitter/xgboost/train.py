@@ -12,9 +12,8 @@
 # limitations under the License.
 
 import os
-# TODO(weiguoz) remove me
+# FIXME(weiguo): remove me
 import sys
-import time
 
 import sqlflow_submitter.tensorflow.pai_distributed as pai_dist
 import xgboost as xgb
@@ -39,9 +38,8 @@ def dist_train(flags,
                pai_train_table="",
                pai_validate_table=""):
     num_hosts = len(flags.worker_hosts.split(","))
-    if not is_pai or num_workers <= 1 or num_hosts != num_workers:
-        raise Exception(
-            "dist xgb train is supported for pai with #workers > 1")
+    if not is_pai or num_hosts != num_workers:
+        raise Exception("dist xgb train is supported for pai")
 
     cluster, node, task_id = pai_dist.make_distributed_info_without_evaluator(
         flags)
@@ -52,9 +50,10 @@ def dist_train(flags,
     print("node={}\ttask_id={}\tcluster={}".format(node, task_id, cluster))
     try:
         if node == 'ps':
-            tracker = PaiTracker(host=master_host,
-                                 nworkers=num_workers,
-                                 port=master_port)
+            if task_id == 0:
+                tracker = PaiTracker(host=master_host,
+                                     nworkers=num_workers,
+                                     port=master_port)
         else:
             if node != 'chief':
                 task_id += 1
@@ -66,22 +65,31 @@ def dist_train(flags,
             xgb.rabit.init(envs)
             rank = xgb.rabit.get_rank()
 
-            train(datasource, select, model_params, train_params,
-                  feature_metas, feature_column_names, label_meta,
-                  validation_select, disk_cache, batch_size, epoch, is_pai,
-                  pai_train_table, pai_validate_table)
-            print("[%s]train done" % time.strftime("%Y-%m-%d %H:%M:%S"))
-            if rank == 0:
-                print("[%s]I'm going to save the model" %
-                      time.strftime("%Y-%m-%d %H:%M:%S"))
+            train(datasource,
+                  select,
+                  model_params,
+                  train_params,
+                  feature_metas,
+                  feature_column_names,
+                  label_meta,
+                  validation_select,
+                  disk_cache,
+                  batch_size,
+                  epoch,
+                  is_pai,
+                  pai_train_table,
+                  pai_validate_table,
+                  rank,
+                  nworkers=num_workers)
     except Exception as e:
+        print("node={} id={} exceptioin={}".format(node, task_id, e))
         raise e
     finally:
         if tracker is not None:
             tracker.join()
         if node != 'ps':
             xgb.rabit.finalize()
-        # FIXME(weiguoz)
+        # TODO(weiguoz) remove me
         sys.exit(0)
 
 
@@ -98,7 +106,9 @@ def train(datasource,
           epoch=1,
           is_pai=False,
           pai_train_table="",
-          pai_validate_table=""):
+          pai_validate_table="",
+          rank=0,
+          nworkers=1):
     if batch_size == -1:
         batch_size = None
     print("Start training XGBoost model...")
@@ -112,15 +122,25 @@ def train(datasource,
                          pai_train_table,
                          cache=disk_cache,
                          batch_size=batch_size,
-                         epoch=epoch)
+                         epoch=epoch,
+                         rank=rank,
+                         nworkers=nworkers)
     bst = None
     for per_batch_dmatrix in dtrain:
         watchlist = [(per_batch_dmatrix, "train")]
         if len(validation_select.strip()) > 0:
             dvalidate = list(
-                xgb_dataset(datasource, 'validate.txt', validation_select,
-                            feature_metas, feature_column_names, label_meta,
-                            is_pai, pai_validate_table))[0]
+                xgb_dataset(datasource,
+                            'validate.txt',
+                            validation_select,
+                            feature_metas,
+                            feature_column_names,
+                            label_meta,
+                            is_pai,
+                            pai_validate_table,
+                            rank=rank,
+                            nworkers=nworkers))[0]
+            print("validate.txt xgb_dataset done")
             watchlist.append((dvalidate, "validate"))
 
         re = dict()
@@ -130,5 +150,6 @@ def train(datasource,
                         evals_result=re,
                         xgb_model=bst,
                         **train_params)
-        bst.save_model("my_model")
+        if rank == 0:
+            bst.save_model("my_model")
         print("Evaluation result: %s" % re)

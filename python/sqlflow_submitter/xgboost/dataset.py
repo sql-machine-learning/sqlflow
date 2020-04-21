@@ -33,13 +33,14 @@ def xgb_dataset(datasource,
                 pai_single_file=False,
                 cache=False,
                 batch_size=None,
-                epoch=1):
-
+                epoch=1,
+                rank=0,
+                nworkers=1):
     if is_pai:
         for dmatrix in pai_dataset(
                 fn, feature_specs, feature_column_names, label_spec,
                 "odps://{}/tables/{}".format(*pai_table.split(".")),
-                pai_single_file, cache):
+                pai_single_file, cache, rank, nworkers):
             yield dmatrix
         return
 
@@ -84,8 +85,15 @@ def dump_dmatrix(filename, generator, has_label, batch_size=None):
     return row_id
 
 
-def pai_dataset(filename, feature_specs, feature_column_names, label_spec,
-                pai_table, single_file, cache):
+def pai_dataset(filename,
+                feature_specs,
+                feature_column_names,
+                label_spec,
+                pai_table,
+                single_file,
+                cache,
+                rank=0,
+                nworkers=1):
     from subprocess import Popen, PIPE
     import threading
     import queue
@@ -108,27 +116,29 @@ def pai_dataset(filename, feature_specs, feature_column_names, label_spec,
             ]))
         complete_queue.put(slice_id)
 
-    for i in range(SLICE_NUM):
-        t = threading.Thread(target=thread_worker, args=(i, ))
+    # FIXME(weiguoz): debug for small dataset. Remove me
+    nworkers = 1
+    print("fix nworkers={} to 1 for debug".format(nworkers))
+    slice_id = rank
+    slice_total = 0
+    while slice_id < SLICE_NUM:
+        t = threading.Thread(target=thread_worker, args=(slice_id, ))
+        slice_id += nworkers
+        slice_total += 1
         t.start()
         threads.append(t)
 
     map(lambda t: t.join(), threads)
 
-    downloaded_slice_count = 0
-    while True:
+    for i in range(slice_total):
         slice_id = complete_queue.get(block=True)
-        downloaded_slice_count += 1
-        if downloaded_slice_count == SLICE_NUM:
-            break
         if not single_file:
             downloaded_file = "./{}/{}.txt".format(dname, slice_id)
             # ignore empty files or the xgb.DMatrix will throw error.
-            if Path(downloaded_file).stat().st_size == 0:
-                continue
-            yield xgb.DMatrix('{0}#{0}.cache'.format(downloaded_file)
-                              if cache else downloaded_file)
-            os.unlink(downloaded_file)
+            if Path(downloaded_file).stat().st_size > 0:
+                yield xgb.DMatrix('{0}#{0}.cache'.format(downloaded_file)
+                                  if cache else downloaded_file)
+                os.unlink(downloaded_file)
 
     if single_file:
         cmd = "cat %s/*.txt > %s" % (dname, filename)

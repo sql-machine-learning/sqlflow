@@ -20,7 +20,7 @@ Implements the tracker control protocol
 Tianqi Chen
 """
 
-# TODO(weiguoz):  this was taken from
+# TODO(weiguoz): add more comments like: this was taken from
 # https://github.com/dmlc/dmlc-core/blob/master/tracker/dmlc_tracker/tracker.py
 from __future__ import absolute_import
 
@@ -166,11 +166,9 @@ class RabitTracker(object):
     def __init__(self, hostIP, nslave, port_start=9091, port_end=9999):
         sock = socket.socket(get_family(hostIP), socket.SOCK_STREAM)
         for port in range(port_start, port_end):
-            print("sock.bind(%d)" % port)
             try:
                 sock.bind((hostIP, port))
                 self.port = port
-                print("bind ok")
                 break
             except socket.error as e:
                 if e.errno in [98, 48]:

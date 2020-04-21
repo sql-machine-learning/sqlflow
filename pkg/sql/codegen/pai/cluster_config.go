@@ -62,20 +62,21 @@ func GetClusterConfig(attrs map[string]interface{}) (*ClusterConfig, error) {
 	}
 	cc := &ClusterConfig{
 		PS: PSConfig{
-			// TODO(weiguoz): remove the hard code
-			// Count: defaultMap["train.num_ps"],
-			Count: 1,
+			Count: defaultMap["train.num_ps"],
 			CPU:   defaultMap["train.ps_cpu"],
 			GPU:   defaultMap["train.ps_gpu"],
 		},
 		Worker: WorkerConfig{
-			// TODO(weiguoz): remove the hard code
-			// Count: defaultMap["train.num_workers"],
-			Count: 4,
+			Count: defaultMap["train.num_workers"],
 			CPU:   defaultMap["train.worker_cpu"],
 			GPU:   defaultMap["train.worker_gpu"],
 		},
 	}
+	// FIXME(weiguoz): adhoc for running distributed xgboost train on pai
+	if cc.Worker.Count > 1 && cc.PS.Count < 1 {
+		cc.PS.Count = 1
+	}
+
 	if defaultMap["train.num_evaluator"] == 0 {
 		cc.Evaluator = nil
 	} else if defaultMap["train.num_evaluator"] == 1 {
