@@ -1,47 +1,37 @@
-# Define Models in Python And Call Them From SQL
+# Steps to Contribute a Model to SQLFlow
 
-SQLFlow extends SQL syntax to do AI.  The syntax extension allow SQL statements referring to model definitions defined as Python functions and classes, for example, https://github.com/sql-machine-learning/models/blob/develop/sqlflow_models/dnnregressor.py.
+SQLFlow extends SQL syntax to do AI. The syntax extension allow SQL statements referring to model definitions defined as Python functions and classes, for example, https://github.com/sql-machine-learning/models/blob/develop/sqlflow_models/dnnregressor.py.
 
-If you are not a data analyst using SQL, but a deep learning researcher who would like to create a model for data analysts.  This document is for you.
+If you are a Machine Learning specialist and you would like to create a model for data analysts, this document is for you. We have several steps for you to follow to publish your own model definition, so that other SQLFlow users can invoke your model definition to do model training, predicting and explaining:
 
-Please be aware that SQLFlow is a gRPC server, which translates a SQL program into a workflow for execution on Kubernetes.  Some steps of this workflow might submit a TensorFlow job on Kubernetes to train the referred model definition.  To make the translation possible, the SQLFlow server needs to know the Python source code of the model definition.  We typically deploy and run the SQLFlow server in Docker containers, so the model source code need to be packed into the Docker image together with the SQLFlow server.
+1. Define models as Python source code.
+1. Start a Docker container as the develop environment.
+1. Debug in the Jupyter Notebook.
+1. Publish your model.
 
-In the future, we will make SQLFlow server able to refer to model definitions in other Docker images.  For now, let us assume you, dear deep learning researcher, know how to use Git and Docker, and know how to build a Docker image with the SQLFlow server and your model definitions.
 
 ## Define Models as Python Source Code
 
-To build a Docker image, we need a file named `Dockerfile`.  Suppose that we put it in a directory `~/my_models/Dockerfile` -- you are feel to leave it any directory you want.  We also want to have your model definitions in the same directory, say `~/my_models/my_awesome_model/my_awesome_model.py`, so that in the Dockerfile you can write some lines to to add these model definitions into the Docker image.  The first line of Dockerfile should be `FROM sqlflow/sqlfolw`, which makes sure that Docker images built from this Dockerfile contains the SQLFlow server.
+### Prepare the Directory
 
-To keep track of your edit to files in this directory, you can make it a Git repository.  You can even share your repository through GitHub.  For more about Git and GitHub, please refer to related documents.  We plan to provide a command-line tool `sqlflow` to simplify the engineering process for researchers who are not familiar with Git, GitHub, or Docker. 
-
-Here are some quick steps for researchers who would like to contribute to SQLFlow's official model repo.
-
-1. You can contribute to SQLFlow's [model zoo repo](https://github.com/sql-machine-learning/models) by:
-    1. Fork SQLFlow's model zoo repo: click "Fork" button on the right corner on page https://github.com/sql-machine-learning/models .
-    1. Clone your forked repo by `git clone [your forked repo url]`, you can find the forked repo URL by clicking the green button "Clone or download".
-    1. Move to the cloned directory: `cd models`.
-1. Or you can create a new git repository to store your model code:
-    1. Create a new repository on [github](https://github.com) or any other git systems.
-    1. Move to the directory of the repository: `cd my_models` (assume you created a repo named "my_models").
-    1. Create a directory under `my_models` to store Python package: `mkdir my_awesome_model`.
-    
-## Start a Docker Container as the Develop Environment
-
-```bash
-docker run -p 8888:8888 -v $PWD/my_awesome_model:/workspace/my_awesome_model  sqlflow/sqlflow bash -c 'export PYTHONPATH=/workspace:$PYTHONPATH; bash /start.sh'
+```
+- my_awesome_model/
+---- __init__.py
+---- awesome_model.py
+---- test_awesome_model.py
+---- layers/
+---- utils/
+- Dockerfile
 ```
 
-Note that we set the environment variable `PYTHONPATH` so that we can directly test out the model inside this container. Change the directory to `sqlflow_models` if you are contributing models to https://github.com/sql-machine-learning/models.
+- Create a a folder to put all your sub folders and files, e.g. `my_awesome_model/`
+- Write the model code at anywhere under this folder, you may also create any sub-folders like `layers/` or `utils/` to put your library code.
+- Add the `Dockerfile` for building and releasing your model definition.
+- Add an `__init__.py` file to export model classes so that SQLFlow can recognize.
 
-## Develop In the Jupyter Notebook
+### Write the Model Code
 
-Open the browser and go to http://localhost:8888, it's a Jupyter notebook environment, you can see your model development directory `my_awesome_model` together with SQLFlow's basic tutorials.
-
-![](figures/jupyter_develop.jpg)
-
-Click into the directory `my_awesome_model` and add the `__init__.py` and your new model file, e.g. `mydnnclassifier.py`.
-
-In `mydnnclassifier.py` you should develop the model's Python code, typically a [Keras subclass model](https://www.tensorflow.org/guide/keras/custom_layers_and_models#the_model_class) like below:
+In `awesome_model.py` you should develop the model's Python code, typically a [Keras subclass model](https://www.tensorflow.org/guide/keras/custom_layers_and_models#the_model_class) like below:
 
 ```python
 import tensorflow as tf
@@ -85,6 +75,8 @@ Note that we defined a class named `MyAwesomeClassifier` which will be used as t
 - `loss`: define the default loss function used when training.
 - `prepare_prediction_column`: define how to process the prediction output.
 
+### Write Models Other Than Keras
+
 If you need to control the details of the training process or define custom models rather than a Keras model, you can define a function `sqlflow_train_loop` to implement custom model training processes:
 
 ```python
@@ -97,7 +89,54 @@ class MyAwesomeClassifier(tf.keras.Model):
         # do custom training here, parameter "dataset" is a tf.dataset type representing the input data.
 ```
 
-In `__init__.py` you should expose your model classes by adding lines like `from mydnnclassifier import MyAwesomeClassifier`. After this, you can test your model following the below step.
+### Export Model Definition
+
+In `__init__.py` you should expose your model classes by adding lines like:
+
+```python
+from awesome_model import MyAwesomeClassifier
+```
+
+### Write the Dockerfile
+
+To build a Docker image, we need a file named `Dockerfile` like below:
+
+```dockerfile
+# base image sqlflow/modelzoo_base have SQLFlow environment prepared
+FROM sqlflow/modelzoo_base
+RUN pip install scikit-learn six
+# copy model definition code to /sqlflow_models
+ADD your_model_package /sqlflow_models
+# add PYTHONPATH environment variable to /sqlflow_models
+ENV PYTHONPATH /sqlflow_models
+```
+
+### Evolve Your Model Using a Git Repository
+
+To keep track of your edit to files in this directory, you can make it a Git repository.  You can even share your repository through GitHub. For more about Git and GitHub, please refer to related documents.  We plan to provide a command-line tool `sqlflow` to simplify the engineering process for researchers who are not familiar with Git, GitHub, or Docker. 
+
+Here are some quick steps for researchers who would like to contribute to SQLFlow's official model repo.
+
+1. You can contribute to SQLFlow's [model zoo repo](https://github.com/sql-machine-learning/models) by:
+    1. Fork SQLFlow's model zoo repo: click "Fork" button on the right corner on page https://github.com/sql-machine-learning/models .
+    1. Clone your forked repo by `git clone [your forked repo url]`, you can find the forked repo URL by clicking the green button "Clone or download".
+    1. Move to the cloned directory: `cd models`.
+1. Or you can create a new git repository to store your model code:
+    1. Create a new repository on [github](https://github.com) or any other git systems.
+    1. Move to the directory of the repository: `cd my_models` (assume you created a repo named "my_models").
+    1. Create a directory under `my_models` to store Python package: `mkdir my_awesome_model`.
+    
+## Start a Docker Container as the Develop Environment
+
+```bash
+docker run -p 8888:8888 -v $PWD/my_awesome_model:/workspace/my_awesome_model  sqlflow/sqlflow bash -c 'export PYTHONPATH=/workspace:$PYTHONPATH; bash /start.sh'
+```
+
+Note that we mount our model development directory `my_awesome_model/` into the container and set the environment variable `PYTHONPATH`, so that we can directly test out the model inside this container. Change the directory to `sqlflow_models` if you are contributing models to https://github.com/sql-machine-learning/models.
+
+Open the browser and go to http://localhost:8888, it's a Jupyter notebook environment, you can see your model development directory `my_awesome_model` together with SQLFlow's basic tutorials.
+
+![](figures/jupyter_develop.jpg)
 
 ## Testing and Debugging
 
@@ -116,7 +155,7 @@ LABEL class
 INTO models_db.awesome_model;
 ```
 
-you may go back to `mydnnclassifier.py` and modify the model code until it works as you expected.
+you may go back to `awesome_model.py` and modify the model code until it works as you expected.
 
 ## Publish Your Model
 
@@ -131,15 +170,16 @@ In the final step, you need to publish your model so that other SQLFlow users ca
     ```
     1. Then build and push the Docker image by:
     ```
-    docker build -t your-registry.com/model_image .
-    docker push your-registry.com/model_image
+    docker build -t your-registry.com/your_group/model_image:v0.1 .
+    docker push your-registry.com/your_group/model_image:v0.1
     ```
-    1. Then use the model image in SQLFlow by adding the Docker image name before the model name:
-    **NOTE: Below statement will not work in non-workflow mode (e.g. local run), this feature will be supported in the future.**
+1. Then test run the model image in SQLFlow by adding the Docker image name before the model name:
+
+    **NOTE: You should use the model image on production environments (deploy SQLFlow with workflow mode), if you need to test the model image locally please follow [this](./argo-setup.md) guide to setup local workflow mode with minikube.**
 
     ```sql
     SELECT * FROM iris.train
-    TO TRAIN your-registry.com/model_image/MyAwesomeClassifier
+    TO TRAIN your-registry.com/your_group/model_image:v0.1/MyAwesomeClassifier
     WITH model.n_classes=3
     LABEL class
     INTO models_db.awesome_model;
