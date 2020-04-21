@@ -4,7 +4,7 @@
 
 ## 使用 Docker 启动 SQLFlow
 
-1. 在笔记本上[安装 Docker]}(https://docs.docker.com/get-docker/)
+1. 在笔记本上[安装 Docker](https://docs.docker.com/get-docker/)
 1. 启动 SQLFlow： `docker run -it -p 8888:8888 sqlflow/sqlflow`
 1. 在浏览器中打开页面 `http://localhost:8888`, 随后即可看到 Jupyter Notebook 的页面了。
 
