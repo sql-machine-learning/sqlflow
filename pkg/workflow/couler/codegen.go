@@ -39,21 +39,20 @@ func fillMapIfValueNotEmpty(m map[string]string, key, value string) {
 	}
 }
 
-func newSessionFromProto(session *pb.Session) map[string]string {
-	envs := make(map[string]string)
-	fillMapIfValueNotEmpty(envs, "SQLFLOW_USER_TOKEN", session.Token)
-	fillMapIfValueNotEmpty(envs, "SQLFLOW_DATASOURCE", session.DbConnStr)
-	fillMapIfValueNotEmpty(envs, "SQLFLOW_USER_ID", session.UserId)
-	fillMapIfValueNotEmpty(envs, "SQLFLOW_HIVE_LOCATION", session.HiveLocation)
-	fillMapIfValueNotEmpty(envs, "SQLFLOW_HDFS_NAMENODE_ADDR", session.HdfsNamenodeAddr)
-	fillMapIfValueNotEmpty(envs, "SQLFLOW_HADOOP_USER", session.HdfsUser)
-	fillMapIfValueNotEmpty(envs, "SQLFLOW_HADOOP_PASS", session.HdfsUser)
-	fillMapIfValueNotEmpty(envs, "SQLFLOW_submitter", session.Submitter)
-	return envs
+func fillEnvFromSession(envs *map[string]string, session *pb.Session) {
+	fillMapIfValueNotEmpty(*envs, "SQLFLOW_USER_TOKEN", session.Token)
+	fillMapIfValueNotEmpty(*envs, "SQLFLOW_DATASOURCE", session.DbConnStr)
+	fillMapIfValueNotEmpty(*envs, "SQLFLOW_USER_ID", session.UserId)
+	fillMapIfValueNotEmpty(*envs, "SQLFLOW_HIVE_LOCATION", session.HiveLocation)
+	fillMapIfValueNotEmpty(*envs, "SQLFLOW_HDFS_NAMENODE_ADDR", session.HdfsNamenodeAddr)
+	fillMapIfValueNotEmpty(*envs, "SQLFLOW_HADOOP_USER", session.HdfsUser)
+	fillMapIfValueNotEmpty(*envs, "SQLFLOW_HADOOP_PASS", session.HdfsUser)
+	fillMapIfValueNotEmpty(*envs, "SQLFLOW_submitter", session.Submitter)
 }
 
 func getStepEnvs(session *pb.Session) (map[string]string, error) {
-	envs := newSessionFromProto(session)
+	envs := make(map[string]string)
+	// fill step envs from the environment variables on sqlflowserver
 	for _, env := range os.Environ() {
 		pair := strings.SplitN(env, "=", 2)
 		if len(pair) != 2 {
@@ -64,10 +63,7 @@ func getStepEnvs(session *pb.Session) (map[string]string, error) {
 			envs[pair[0]] = pair[1]
 		}
 	}
-	// if no specify submitter in session, using the default configuration on the server side.
-	if _, ok := envs["SQLFLOW_submitter"]; !ok {
-		envs["SQLFLOW_submitter"] = os.Getenv("SQLFLOW_submitter")
-	}
+	fillEnvFromSession(&envs, session)
 	return envs, nil
 }
 
