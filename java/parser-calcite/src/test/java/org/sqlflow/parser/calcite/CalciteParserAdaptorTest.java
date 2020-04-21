@@ -146,6 +146,18 @@ public class CalciteParserAdaptorTest {
       assertEquals(sql.length() + 1, parseResult.position);
       assertEquals("", parseResult.error);
     }
+
+    // one union statement
+    for (String sql : standardSelect) {
+      String union = String.format("%s union %s", sql, sql);
+      String sqlProgram = String.format("%s to train my_model", union);
+      ParseResult parseResult = (new CalciteParserAdaptor()).parse(sqlProgram);
+      assertEquals("", parseResult.error);
+      assertEquals(true, parseResult.isUnfinishedSelect);
+      assertEquals(1, parseResult.statements.size());
+      assertEquals(union.length() + 1, parseResult.position);
+    }
+
     // non select statement before to train
     {
       String sqlProgram = "describe table to train;";
@@ -178,7 +190,7 @@ public class CalciteParserAdaptorTest {
       assertEquals("", parseResult.error);
     }
 
-    // return error
+    // can't parse because of incomplete comment
     {
       String sqlProgram = "/* foget comment back select 1;";
       ParseResult parseResult = (new CalciteParserAdaptor()).parse(sqlProgram);

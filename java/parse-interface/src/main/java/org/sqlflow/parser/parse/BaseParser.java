@@ -22,7 +22,7 @@ public abstract class BaseParser implements ParseInterface {
    * @param statement only contains on statement
    * @return true if it is a select statement
    */
-  protected abstract boolean isSelectionStmt(String statement);
+  protected abstract boolean isSelectStmt(String statement);
 
   /**
    * split sql into statements, do not trim the result, 
@@ -69,7 +69,7 @@ public abstract class BaseParser implements ParseInterface {
           noErr = false;
           String prefix = stmt.substring(0, pos);
           if (parseOneStmt(prefix) < 0) {
-            if (isSelectionStmt(prefix)) {
+            if (isSelectStmt(prefix)) {
               parseResult.isUnfinishedSelect = true;
               parseResult.statements.add(prefix);
               parseResult.position += prefix.length();

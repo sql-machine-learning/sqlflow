@@ -82,25 +82,25 @@ func TestSplitSql(t *testing.T) {
 	p := newTiDBParser()
 	a := assert.New(t)
 	{
-		ss, e := p.SplitStatementToPieces("")
+		ss, e := p.splitStatementToPieces("")
 		a.Equal(0, len(ss))
 		a.Nil(e)
 	}
 	{
-		ss, e := p.SplitStatementToPieces(";")
+		ss, e := p.splitStatementToPieces(";")
 		a.Equal(1, len(ss))
 		a.Equal(";", ss[0])
 		a.Nil(e)
 	}
 	{
-		ss, e := p.SplitStatementToPieces(";;")
+		ss, e := p.splitStatementToPieces(";;")
 		a.Equal(2, len(ss))
 		a.Equal(";", ss[0])
 		a.Equal(";", ss[1])
 		a.Nil(e)
 	}
 	{
-		ss, e := p.SplitStatementToPieces(" ;  ;   ")
+		ss, e := p.splitStatementToPieces(" ;  ;   ")
 		a.Equal(3, len(ss))
 		a.Equal(" ;", ss[0])
 		a.Equal("  ;", ss[1])
@@ -108,30 +108,30 @@ func TestSplitSql(t *testing.T) {
 		a.Nil(e)
 	}
 	{ // unexpected EOF
-		ss, e := p.SplitStatementToPieces("\"")
+		ss, e := p.splitStatementToPieces("\"")
 		a.Equal(0, len(ss))
 		a.Nil(e)
 	}
 	{ // ; in comments
-		ss, e := p.SplitStatementToPieces("-- comment ; \n select 1;")
+		ss, e := p.splitStatementToPieces("-- comment ; \n select 1;")
 		a.Equal(1, len(ss))
 		a.Nil(e)
 	}
 	{ // ; in comments
-		ss, e := p.SplitStatementToPieces("select /* ;;;; */ 1;")
+		ss, e := p.splitStatementToPieces("select /* ;;;; */ 1;")
 		a.Equal(1, len(ss))
 		a.Nil(e)
 	}
 	{ // ; in comments, on one line
 		sql := "--comment 1; select /* ;;;; */ 1;"
-		ss, e := p.SplitStatementToPieces(sql)
+		ss, e := p.splitStatementToPieces(sql)
 		a.Equal(1, len(ss))
 		a.Equal(sql, ss[0])
 		a.Nil(e)
 	}
 	{ // ; in comments
 		sql := "--comment 1;\nselect /* ;;;; */ 1; -- comment ; abc  "
-		ss, e := p.SplitStatementToPieces(sql)
+		ss, e := p.splitStatementToPieces(sql)
 		a.Equal(2, len(ss))
 		a.Equal("--comment 1;\nselect /* ;;;; */ 1;", ss[0])
 		a.Equal(" -- comment ; abc  ", ss[1])
@@ -140,7 +140,7 @@ func TestSplitSql(t *testing.T) {
 	}
 	{ // ; in string
 		sql := "select * from a where f1 like '%;';select 1"
-		ss, e := p.SplitStatementToPieces(sql)
+		ss, e := p.splitStatementToPieces(sql)
 		a.Equal(2, len(ss))
 		a.Equal("select * from a where f1 like '%;';", ss[0])
 		a.Equal("select 1", ss[1])
@@ -150,7 +150,7 @@ func TestSplitSql(t *testing.T) {
 	{
 		for _, sql := range SelectCases {
 			blob := sql + ";" + sql
-			ss, e := p.SplitStatementToPieces(blob)
+			ss, e := p.splitStatementToPieces(blob)
 			a.Nil(e)
 			a.Equal(len(strings.Join(ss, "")), len(blob))
 		}

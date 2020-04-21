@@ -64,7 +64,7 @@ public class HiveParserAdaptor extends BaseParser {
   }
 
   @Override
-  protected boolean isSelectionStmt(String sql) {
+  protected boolean isSelectStmt(String sql) {
     try {
       parseDriver.parseSelect(sql, null);
       return true;

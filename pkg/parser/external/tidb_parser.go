@@ -45,9 +45,11 @@ func (p *tidbParser) Dialect() string {
 	return "tidb"
 }
 
-// SplitStatementToPieces split program into single statements
+// splitStatementToPieces split program into single statements
 // it do not trim any statement, so join(stmts) == program
-func (p *tidbParser) SplitStatementToPieces(program string) ([]string, error) {
+func (p *tidbParser) splitStatementToPieces(program string) ([]string, error) {
+	// TODO(lhw) MySQL may use delimiter command to specify non-';' separator
+	// we should process that case later
 	// this func's return do not contain ';'
 	stmts, e := sqlparser.SplitStatementToPieces(program)
 	if e != nil {
@@ -107,7 +109,7 @@ func (p *tidbParser) Parse(program string) ([]*Statement, int, error) {
 
 func (p *tidbParser) doParse(program string) ([]*Statement, int, error) {
 	// split program into single statements
-	stmts, err := p.SplitStatementToPieces(program)
+	stmts, err := p.splitStatementToPieces(program)
 	if err != nil {
 		return nil, -1, err
 	}

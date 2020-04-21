@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 
 import java.util.ArrayList;
 import java.util.List;
+
 import org.junit.Test;
 import org.sqlflow.parser.parse.ParseResult;
 
@@ -128,6 +129,17 @@ public class HiveParserAdaptorTest {
       assertEquals(1, parseResult.statements.size());
       assertEquals(sql.length() + 1, parseResult.position);
       assertEquals("", parseResult.error);
+    }
+    
+    // one union statement
+    for (String sql : standardSelect) {
+      String union = String.format("%s union %s", sql, sql);
+      String sqlProgram = String.format("%s to train my_model", union);
+      ParseResult parseResult = parser.parse(sqlProgram);
+      assertEquals("", parseResult.error);
+      assertEquals(true, parseResult.isUnfinishedSelect);
+      assertEquals(1, parseResult.statements.size());
+      assertEquals(union.length() + 1, parseResult.position);
     }
 
     { // non select statement before to train

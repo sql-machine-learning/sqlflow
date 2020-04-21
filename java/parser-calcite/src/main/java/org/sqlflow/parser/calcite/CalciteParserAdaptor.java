@@ -36,7 +36,7 @@ public class CalciteParserAdaptor extends BaseParser {
   }
 
   @Override
-  protected boolean isSelectionStmt(String sql) {
+  protected boolean isSelectStmt(String sql) {
     SqlParser.Config sqlParserConfig =
         SqlParser.configBuilder().setParserFactory(SqlDdlParserImpl.FACTORY).build();
     SqlParser parser = SqlParser.create(sql, sqlParserConfig);
@@ -57,7 +57,7 @@ public class CalciteParserAdaptor extends BaseParser {
             super.setTabSize(1);
           }
         };
-    // this lexer will auto filter comments
+    // this lexer will automatically filter comments
     SqlDdlParserImplTokenManager tm = new SqlDdlParserImplTokenManager(stream);
     int pos = 0;
     boolean hasToken = false;
@@ -74,10 +74,10 @@ public class CalciteParserAdaptor extends BaseParser {
         hasToken = false;
       }
     }
-    // if last part has no token, we discard it
+    // if the last part has no token, we discard it
     if (pos < sql.length() && hasToken) {
-      // TODO(lhw) find a better way than modify original sql
-      // At this point, if last char == ';', it must be in a comment,
+      // TODO(lhw) find a better way than modify original SQL statements
+      // At this point, if the last char == ';', it must be in a comment,
       // in case the parser report an error at this commented ';' 
       // we replace this ';' to ' ' (still keep it's length).
       // It's a problem when parser stop at a commented ';' because we think ';'
@@ -105,7 +105,7 @@ public class CalciteParserAdaptor extends BaseParser {
             super.setTabSize(1);
           }
         };
-    // this lexer will auto filter comments
+    // this lexer will automatically filter comments
     SqlDdlParserImplTokenManager tm = new SqlDdlParserImplTokenManager(stream);
     Token token = tm.getNextToken();
     if (token.kind == SqlDdlParserImplTokenManager.EOF) {

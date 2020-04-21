@@ -13,6 +13,7 @@ public class ParseResult {
   public String error;
   // tables that each statement manipulates.
   public List<InputOutputTables> inputOutputTables;
-  // Is unfinished select, indicate we are at SELECT xxx .TO xxx
+  // Is the SELECT statement unfinished, e.g. at SELECT ... TO [TRAIN|PREDICT|EXPLAIN]
+  //                                                       ^
   public boolean isUnfinishedSelect;
 }
