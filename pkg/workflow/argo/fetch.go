@@ -105,27 +105,17 @@ func (w *Workflow) Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 	if req.StepPhase == "" {
 		// the 1st container execute `argoexec wait` to wait the priority step, so package the 2nd container's command code.
 		execCode := fmt.Sprintf("%s %s", strings.Join(pod.Spec.Containers[1].Command, " "), strings.Join(pod.Spec.Containers[1].Args, " "))
-		r.AppendMessage(fmt.Sprintf("Execute Code: %s", execCode))
-		r.AppendMessage(fmt.Sprintf("Log: %s", logURL))
+		r.AppendMessageWithStepStatus(fmt.Sprintf("Execute Code: %s", execCode))
+		r.AppendMessageWithStepStatus(fmt.Sprintf("Log: %s", logURL))
 	}
 
 	// note(yancey1989): record the Pod phase to avoid output the duplicated logs at the next fetch request.
 	if req.StepPhase != string(pod.Status.Phase) {
-		r.AppendMessage(fmt.Sprintf("Status: %s", pod.Status.Phase))
+		r.AppendMessageWithStepStatus(fmt.Sprintf("Status: %s", pod.Status.Phase))
 		newStepPhase = string(pod.Status.Phase)
 	}
 
 	if isPodCompleted(pod) {
-		// TODO(yancey1989): add duration time for the eoeResponse
-		// eoe just used to simplify the client code which can be consistent with non-argo mode.
-		if isPodFailed(pod) {
-			logger.Errorf("workflowFailed, spent:%d", time.Now().Second()-wf.CreationTimestamp.Second())
-			r.AppendEoe()
-			return r.Response(req.Job.Id, "", newStepPhase, eof),
-				fmt.Errorf("SQLFlow Step [%d/%d] Failed, Log: %s", stepIdx, stepCnt, logURL)
-		}
-		logger.Infof("workflowSucceed, spent:%d", time.Now().Second()-wf.CreationTimestamp.Second())
-
 		// snip the pod logs when it complete
 		// TODO(yancey1989): fetch the pod logs using an iteration way
 		// to avoid the memory overflow
@@ -137,7 +127,16 @@ func (w *Workflow) Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 		if e := r.AppendProtoMessages(podLogs); e != nil {
 			return nil, e
 		}
-		r.AppendEoe()
+
+		// TODO(yancey1989): add duration time for the eoeResponse
+		// eoe just used to simplify the client code which can be consistent with non-argo mode.
+		if isPodFailed(pod) {
+			logger.Errorf("workflowFailed, spent:%d", time.Now().Second()-wf.CreationTimestamp.Second())
+			errorMessages := r.Messages()
+			return r.ResponseWithStepComplete(req.Job.Id, "", newStepPhase, eof),
+				fmt.Errorf("SQLFlow Step [%d/%d] Failed, Log: %s\n%s", stepIdx, stepCnt, logURL, strings.Join(errorMessages, "\n"))
+		}
+		logger.Infof("workflowSucceed, spent:%d", time.Now().Second()-wf.CreationTimestamp.Second())
 
 		// move to the next step
 		nextStepGroup, err := getNextStepGroup(wf, stepGroupName)
@@ -153,6 +152,7 @@ func (w *Workflow) Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 			newStepPhase = ""
 			stepGroupName = nextStepGroup
 		}
+		return r.ResponseWithStepComplete(req.Job.Id, stepGroupName, newStepPhase, eof), nil
 	}
 	return r.Response(req.Job.Id, stepGroupName, newStepPhase, eof), nil
 }

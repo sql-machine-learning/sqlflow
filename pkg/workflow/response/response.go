@@ -38,8 +38,8 @@ func New(stepCnt, stepIdx int) *CompoundResponses {
 	}
 }
 
-// AppendMessage append message with Step Index as prefix
-func (r *CompoundResponses) AppendMessage(message string) error {
+// AppendMessageWithStepStatus append message with Step Index as prefix
+func (r *CompoundResponses) AppendMessageWithStepStatus(message string) error {
 	res, e := pb.EncodeMessage(fmt.Sprintf("SQLFlow Step: [%d/%d] %s", r.stepIdx, r.stepCnt, message))
 	if e != nil {
 		return e
@@ -65,9 +65,26 @@ func (r *CompoundResponses) AppendProtoMessages(messages []string) error {
 	return nil
 }
 
+// Messages returns Message type response as string slice
+func (r *CompoundResponses) Messages() []string {
+	messages := []string{}
+	for _, res := range r.responses {
+		if res.GetMessage() != nil {
+			messages = append(messages, res.GetMessage().Message)
+		}
+	}
+	return messages
+}
+
 // Response returns the compounded Response
 func (r *CompoundResponses) Response(jobID, stepID, stepPhase string, eof bool) *pb.FetchResponse {
 	return NewFetchResponse(NewFetchRequest(jobID, stepID, stepPhase), eof, r.responses)
+}
+
+// ResponseWithStepComplete returns the compounded Response at the end of step
+func (r *CompoundResponses) ResponseWithStepComplete(jobID, stepID, stepPhase string, eof bool) *pb.FetchResponse {
+	r.AppendEoe()
+	return r.Response(jobID, stepID, stepPhase, eof)
 }
 
 func unMarshalProtoMessages(messages []string) ([]*pb.Response, error) {

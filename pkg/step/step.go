@@ -63,7 +63,8 @@ func render(rsp interface{}, table tablewriter.TableWriter, isTerminal, it2Check
 		if isTerminal {
 			log.Printf("ERROR: %v\n", s)
 		} else {
-			log.Fatalf("ERROR: %v\n", s)
+			table.FlushWithError(s)
+			os.Exit(1)
 		}
 	case sql.EndOfExecution:
 	case sql.Figures:

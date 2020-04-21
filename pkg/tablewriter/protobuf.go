@@ -14,6 +14,7 @@
 package tablewriter
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/golang/protobuf/proto"
@@ -66,6 +67,18 @@ func (table *ProtobufWriter) Flush() error {
 	}
 	table.rows = [][]interface{}{}
 	return nil
+}
+
+// FlushWithError flushes the buffer and end with the error message
+func (table *ProtobufWriter) FlushWithError(e error) error {
+	if e := table.Flush(); e != nil {
+		return nil
+	}
+	response, e := pb.EncodeMessage(fmt.Sprintf("%v", e))
+	if e != nil {
+		return e
+	}
+	return table.formatWrite(response)
 }
 
 func (table *ProtobufWriter) writeRows() error {

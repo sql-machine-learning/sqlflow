@@ -36,6 +36,7 @@ type TableWriter interface {
 	SetHeader(map[string]interface{}) error
 	AppendRow([]interface{}) error
 	Flush() error
+	FlushWithError(error) error
 }
 
 // Create returns a TableWriter instance
@@ -52,12 +53,14 @@ func Create(name string, bufSize int, w io.Writer) (TableWriter, error) {
 type ASCIIWriter struct {
 	table   *tablewriter.Table
 	bufSize int
+	w       io.Writer
 }
 
 func createASCIIWriter(bufSize int, w io.Writer) *ASCIIWriter {
 	return &ASCIIWriter{
 		table:   tablewriter.NewWriter(w),
 		bufSize: bufSize,
+		w:       w,
 	}
 }
 
@@ -87,6 +90,15 @@ func (t *ASCIIWriter) AppendRow(row []interface{}) error {
 		t.table.ClearRows()
 	}
 	return nil
+}
+
+// FlushWithError flushes the buffer and end with the error message
+func (t *ASCIIWriter) FlushWithError(e error) error {
+	if e := t.Flush(); e != nil {
+		return e
+	}
+	_, e = t.w.Write([]byte(fmt.Sprintf("%v", e)))
+	return e
 }
 
 // Flush the buffer
