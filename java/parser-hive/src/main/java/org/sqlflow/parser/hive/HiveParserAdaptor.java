@@ -18,6 +18,9 @@ public class HiveParserAdaptor extends BaseParser {
   private static Field reField;
   private ParseDriver parseDriver = new ParseDriver();
 
+  // This static block is to initialize some reflection field 
+  // which aids us to get error message from parse Exception.
+  // Static block only execute only when this class is loaded.
   static {
     try {
       errorsField = ParseException.class.getDeclaredField("errors");

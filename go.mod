@@ -40,7 +40,6 @@ require (
 	github.com/spf13/cobra v0.0.5 // indirect
 	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/stretchr/testify v1.4.0
-	github.com/youtube/vitess v3.0.0-rc.3+incompatible
 	go.starlark.net v0.0.0-20191218235703-9fcb808a6221 // indirect
 	golang.org/x/arch v0.0.0-20191126211547-368ea8f32fff // indirect
 	golang.org/x/crypto v0.0.0-20190611184440-5c40567a22f8

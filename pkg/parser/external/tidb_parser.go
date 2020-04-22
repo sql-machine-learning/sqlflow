@@ -24,8 +24,7 @@ import (
 	"github.com/pingcap/parser"
 	"github.com/pingcap/parser/ast"
 	_ "github.com/pingcap/tidb/types/parser_driver" // As required by https://github.com/pingcap/parser/blob/master/parser_example_test.go#L19
-
-	"github.com/youtube/vitess/go/vt/sqlparser"
+	"vitess.io/vitess/go/vt/sqlparser"
 )
 
 type tidbParser struct {
