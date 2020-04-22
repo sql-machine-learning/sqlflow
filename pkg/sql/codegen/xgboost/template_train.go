@@ -66,12 +66,10 @@ train(datasource='''{{.DataSource}}''',
 
 const distTrainTemplateText = `
 from sqlflow_submitter.xgboost.train import dist_train
-## TODO(weiguoz) remove if you see me: set_oss_environs
 from sqlflow_submitter.tensorflow.pai_distributed import define_tf_flags, set_oss_environs
 import json
 
 FLAGS = define_tf_flags()
-## TODO(weiguoz) remove if you see me: set_oss_environs(FLAGS)
 set_oss_environs(FLAGS)
 
 model_params = json.loads('''{{.ModelParamsJSON}}''')

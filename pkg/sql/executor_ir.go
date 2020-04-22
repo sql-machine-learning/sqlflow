@@ -17,6 +17,7 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"strings"
 	"time"
 
@@ -131,10 +132,9 @@ func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *dat
 		return err
 	}
 	defer func(cwd string) {
-		// FIXME(weiguoz) you are not expected to see this line
-		// if err := os.RemoveAll(cwd); err != nil {
-		// 	e = fmt.Errorf("encounter %v when dealwith error: %s", e, err)
-		// }
+		if err := os.RemoveAll(cwd); err != nil {
+			e = fmt.Errorf("encounter %v when dealwith error: %s", e, err)
+		}
 	}(cwd)
 	var r ir.SQLFlowStmt
 	if sql.IsExtendedSyntax() {

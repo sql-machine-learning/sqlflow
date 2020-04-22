@@ -116,9 +116,6 @@ def pai_dataset(filename,
             ]))
         complete_queue.put(slice_id)
 
-    # FIXME(weiguoz): debug for small dataset. Remove me
-    nworkers = 1
-    print("fix nworkers={} to 1 for debug".format(nworkers))
     slice_id = rank
     slice_total = 0
     while slice_id < SLICE_NUM:

@@ -39,7 +39,6 @@ class PaiWorker():
                 conn.request('GET', '/')
                 rsp = conn.getresponse()
                 return str(rsp.read())
-            # FIXME(weiguoz): specfic the exceptions
             except Exception:
                 time.sleep(each_sleep)
             finally:
