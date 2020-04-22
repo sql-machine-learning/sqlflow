@@ -2,43 +2,34 @@
 
 ## Overview
 
-At the moment, users can build SQLFlow into a server or a [command line binary](../run/repl.md). Both of the executables have all the functionalities of SQLFlow, and both of them can only run in a Docker container.
+At the moment, users can build SQLFlow into a gRPC server or a [command line binary](../run/repl.md).  Both forms statically link to the SQLFlow core code and inherit all dependencies, including TensorFlow, various database client libraries, and various SQL dialect parsers in the form of gRPC backend servers. The many dependencies require us to release and run both forms in Docker containers.
 
-For a deployment of SQLFlow in a production environment, the SQLFlow server runs in a Kubernetes cluster. Users access SQLFlow from a Web IDE or the Jupyter Notebook.
+For convenient deployment, we want to run the SQLFlow server in containers, and end users access the server via the command-line client. In particular, we want it easy to install the client tool, so we need to prune the dependencies. As a solution, we make the client tool a statically linked Go binary that remotely calls the SQLFlow server, so users can just download and run it.
 
-For an individual developer, one may deploy SQLFlow on her personal computer as described in [Run SQLFlow Using Docker](../run/docker.md)
-
-For the above two typical scenarios, SQLFlow lacks an easy-to-use user interface for quick start, quick verification, or quick deployment. Jupyter Notebooks and web IDEs still have a certain learning curve that reduces the user experience of SQL programmers. 
-
-From another point of view, a CLI could overtake a GUI in user experience for a simple language as SQLFlow: it's easier to design, easier to implement, easier to obtain. For example, repetitive tasks can be simplified by line editing and history mechanisms. With a CLI program, a user can easily access all the power of SQLFlow from a terminal as:
-
-```bash
-$ sqlflow
-sqlflow> _
-```
-
-To achieve this goal, we also want to hide implementation details about Docker because users don't have to know this. As a result, there are two possible solutions:
-1. Wrap the current SQLFlow REPL in a script, we already have such an [attempt](https://github.com/sql-machine-learning/sqlflow/pull/2114).
-1. Decouple the REPL implementation from the core code of SQLFlow and provide a native binary that only functions as a pure client.
-
-We decide to choose the second solution because it's more lightweight, if a user already has a SQLFlow deployment in her company, all she has to do is to download the native binary.
-
+The command-line client tool, named `sqlflow`, is complementary to other forms of clients, like Jupyter Notebook. Users can write shell or Python scripts calling the client tool to realize complex applications.
 ## Design
 
 ### Naming
 
-`REPL` is not a good name, We'll rename the binary as simply `sqlflow`.
+Currently, the command-line binary form of SQLFlow has the name `repl`, which is the name of a user interface design philosophy. Many command-line tools, including mysql and python, implement the UI of REPL. Let's follow the convention of `mysql` and `mysqld` to name the new client `sqlflow`.
+
+
 
 ### Dependencies and Installation
 
-The original `repl`'s only dependency is the `it2check` bash script that determines whether to call `sixel` to render images.
+The original `repl`'s only dependency is the `it2check` bash script that determines whether to call `sixel` to render images. We'll find a way to show images later. At the moment, we simply remove this dependency.
 
 We'll provide installation scripts on Mac (Bash) and Windows (PowerShell) to install `sqlflow` and its dependencies swiftly. The four scripts are:
 
-1. install.sh (Install Docker, `sqlflow`, and the image `sqlflow/sqlflow:latest` on a Mac)
-1. install-client.sh (Only `sqlflow` on a Mac)
-1. install.ps1(Install Docker, `sqlflow`, and the image `sqlflow/sqlflow:latest` on a PC, coming later)
-1. install-client.ps1 (Only `sqlflow` on a PC, coming later)
+1. For Mac/Linux users:
+    1. `install.sh` (Install `sqlflow` and the image `sqlflow/sqlflow:latest`)
+    1. `install-client.sh` (Only `sqlflow`)
+	1. Provide a brief user guide and a bash command on the SQLFlow homepage like [Homebrew](http://brew.sh). Users can paste the command to a terminal to install SQLFlow. For example: `/bin/bash -c "$(curl -fsSL https://github.com/sql-machien-learning/sqlflow/release/latest/install.sh)"`
+
+1. For PC users (We'll support PCs later):
+    1. install.ps1(Install `sqlflow` and the image `sqlflow/sqlflow:latest`, coming later)
+    1. install-client.ps1 (Only `sqlflow` on a PC, coming later)
+	1. Similarly, provide a user guide with a PowerShell command that install SQLFlow on Windows.
 
 ### Refactoring
 
@@ -60,25 +51,25 @@ Consequently, we can delete code in `repl` about workflow safely:
 
 1. We don't need the flag `--model_dir` any more because the training process is running in `sqlflowserver`.
 
-1. We'll define a new flag `--host` that holds the `sqlflowserver` address.
+1. We'll define a new flag `--sqlflow_server` that holds the `sqlflowserver` address.
 
 #### Configuration
 We still use `godotenv` as well as environment variables to hold flags that change infrequently. The two necessary config entries are:
 
 1. `SQLFLOW_DATASOURCE` the alternative of `--datasource`. We already have this.
 
-1. `SQLFLOW_SERVER_HOST` the alternative of `--host`. This is to be added.
+1. `SQLFLOW_SERVER` the alternative of `--sqlflow_server`. This is to be added.
 
 #### [RunSQLProgramAndPrintResult](https://github.com/sql-machine-learning/sqlflow/blob/be7c5728f47e8d3b81893c1d712974a6ddcd5f1c/cmd/repl/repl.go#L175)
  
 We have to replace the call to `step.RunSQLProgramAndPrintResult` with a new function `RunSQLProgram` that would be defined in the `sqlflow` codebase. The new function should:
 
-1. Construct a client stub from `--host`. 
+1. Construct a client stub from `--sqlflow_server`. 
 
 1. Use the stub to send the SQL statement get from `ReadStmt` to the server.
 
 1. Parse the result returned from the SQLFlow server.
-    - For non-sixel terminal simulators, the server side should return `Plotille` ASCII figures. See https://github.com/sql-machine-learning/sqlflow/blob/be7c5728f47e8d3b81893c1d712974a6ddcd5f1c/pkg/step/step.go#L69-L85
+    - The server side returns both `Plotille` ASCII figures and `PNG`s to the client. It up to the client code to determine how to display the figures. See https://github.com/sql-machine-learning/sqlflow/blob/be7c5728f47e8d3b81893c1d712974a6ddcd5f1c/pkg/step/step.go#L69-L85
 
 1. Both the client construction code and result parsing code can be implemented by referring to the existing code in `sqlflowserver/main_test.go`.
 
@@ -87,13 +78,14 @@ The original implementation of auto-complete is based on the `pkg/sql/attribute`
 
 To solve this problem, the server protocol should implement a new RPC method to pass the auto-completion dictionaries. The `main` function of `sqlflow` would call this new method to get the dictionaries.
 
-1. The dictionaries for stable models have their own fields in the response message.
+1. The dictionaries for stable models still link the `attribute` package.
     - `attribute.PremadeModelParamsDocs` for canned estimators and `XGBoost`
 	- `attribute.XGBoostObjectiveDocs` and `attribute.OptimizerParamsDocs` for TensorFlow optimizers and XGBoost objectives
 
-2. The dictionaries for volatile model packages are in a repeated field in the response message.
+2. The dictionaries for volatile model packages will be defined in a repeated field in the response message.
     - Models from `sqlflow_models`.
 	- Models from SQLFlow Model Zoo.
+	- This would be considered later.
 
 #### User authentication
 We don't have an authentication mechanism now. Details in this part are omitted and should be supplied by future studies.
