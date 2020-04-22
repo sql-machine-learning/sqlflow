@@ -150,13 +150,13 @@ func resolveFeatureMeta(fds []ir.FieldDesc) ([]byte, []string, error) {
 
 // Train generates a Python program for train a XgBoost model.
 func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
-	return DistTrain(trainStmt, session, 1)
+	return DistTrain(trainStmt, session, 1, "")
 }
 
 // DistTrain generates a Python program for distributed train a XgBoost model.
 // TODO(weiguoz): make DistTrain to be an implementation of interface.
-func DistTrain(trainStmt *ir.TrainStmt, session *pb.Session, nworkers int) (string, error) {
-	r, err := newTrainFiller(trainStmt, session, nworkers)
+func DistTrain(trainStmt *ir.TrainStmt, session *pb.Session, nworkers int, ossURI string) (string, error) {
+	r, err := newTrainFiller(trainStmt, session, nworkers, ossURI)
 	if err != nil {
 		return "", err
 	}
@@ -172,7 +172,7 @@ func DistTrain(trainStmt *ir.TrainStmt, session *pb.Session, nworkers int) (stri
 	return program.String(), nil
 }
 
-func newTrainFiller(trainStmt *ir.TrainStmt, session *pb.Session, nworkers int) (*trainFiller, error) {
+func newTrainFiller(trainStmt *ir.TrainStmt, session *pb.Session, nworkers int, ossURI string) (*trainFiller, error) {
 	params := parseAttribute(trainStmt.Attributes)
 	booster, err := resolveModelType(trainStmt.Estimator)
 	if err != nil {
@@ -231,6 +231,7 @@ func newTrainFiller(trainStmt *ir.TrainStmt, session *pb.Session, nworkers int) 
 	}
 
 	return &trainFiller{
+		OSSModelDir:        ossURI,
 		DataSource:         session.DbConnStr,
 		TrainSelect:        trainStmt.Select,
 		ValidationSelect:   trainStmt.ValidationSelect,

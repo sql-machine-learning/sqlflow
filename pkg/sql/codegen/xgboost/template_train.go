@@ -16,6 +16,7 @@ package xgboost
 import "text/template"
 
 type trainFiller struct {
+	OSSModelDir        string
 	DataSource         string
 	TrainSelect        string
 	ValidationSelect   string
@@ -59,7 +60,8 @@ train(datasource='''{{.DataSource}}''',
       epoch={{.Epoch}},
       is_pai="{{.IsPAI}}" == "true",
       pai_train_table="{{.PAITrainTable}}",
-      pai_validate_table="{{.PAIValidateTable}}")
+      pai_validate_table="{{.PAIValidateTable}}",
+      oss_model_dir="{{.OSSModelDir}}")
 `
 
 const distTrainTemplateText = `
@@ -96,7 +98,8 @@ dist_train(flags=FLAGS,
       epoch={{.Epoch}},
       is_pai="{{.IsPAI}}" == "true",
       pai_train_table="{{.PAITrainTable}}",
-      pai_validate_table="{{.PAIValidateTable}}")
+      pai_validate_table="{{.PAIValidateTable}}",
+      oss_model_dir="{{.OSSModelDir}}")
 `
 
 var trainTemplate = template.Must(template.New("Train").Parse(trainTemplateText))

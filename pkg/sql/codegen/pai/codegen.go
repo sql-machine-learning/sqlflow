@@ -122,16 +122,10 @@ func Train(ir *ir.TrainStmt, session *pb.Session, tarball, paramsFile, modelName
 			return
 		}
 	} else if strings.HasPrefix(strings.ToLower(ir.Estimator), "xgboost") {
-		if code, e = xgboost.DistTrain(ir, session, cc.Worker.Count); e != nil {
-			return
-		}
 		ossURI := OSSModelURL(ossModelPath)
-		var tpl = template.Must(template.New("xgbSaveModel").Parse(xgbSaveModelTmplText))
-		var saveCode bytes.Buffer
-		if e = tpl.Execute(&saveCode, &xgbSaveModelFiller{OSSModelDir: ossURI}); e != nil {
+		if code, e = xgboost.DistTrain(ir, session, cc.Worker.Count, ossURI); e != nil {
 			return
 		}
-		code = code + saveCode.String()
 		if paiCmd, e = getTFPAICmd(cc, tarball, paramsFile, modelName, ossModelPath, ir.TmpTrainTable, ir.TmpValidateTable, "", currProject, cwd); e != nil {
 			return
 		}
