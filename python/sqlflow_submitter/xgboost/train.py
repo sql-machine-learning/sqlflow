@@ -12,8 +12,6 @@
 # limitations under the License.
 
 import os
-# FIXME(weiguo): remove me
-import sys
 
 import sqlflow_submitter.tensorflow.pai_distributed as pai_dist
 import xgboost as xgb
