@@ -54,6 +54,7 @@ require (
 	sqlflow.org/goalisa v0.0.0-20200303141943-f794da595d85
 	sqlflow.org/gohive v0.0.0-20191009030413-2b2325ce8b38
 	sqlflow.org/gomaxcompute v0.0.0-20191028113124-e214922c510c
+	vitess.io/vitess v3.0.0-rc.3+incompatible
 )
 
 go 1.13

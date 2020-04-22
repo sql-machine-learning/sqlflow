@@ -43,6 +43,8 @@ message ParserResponse {
   string error = 3;
   // return tables that each statement manipulates.
   repeated InputOutputTables input_output_tables = 4;
+  // Is unfinished select, indicate we are at SELECT xxx .TO xxx
+  bool is_unfinished_select = 5;
 }
 
 service Parser {

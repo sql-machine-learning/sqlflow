@@ -30,22 +30,22 @@ class ParserFactory {
       URL[] urls = {new URL("jar:file:" + pathToJar + "!/")};
       URLClassLoader cl = URLClassLoader.newInstance(urls);
 
-      JarFile jarFile = new JarFile(pathToJar);
-      Enumeration<JarEntry> e = jarFile.entries();
-      while (e.hasMoreElements()) {
-        JarEntry je = e.nextElement();
-        if (je.isDirectory() || !je.getName().endsWith(".class")) {
-          continue;
-        }
-        // -6 because of .class
-        String className = je.getName().substring(0, je.getName().length() - 6);
-        className = className.replace('/', '.');
+      try (JarFile jarFile = new JarFile(pathToJar)) {
+        Enumeration<JarEntry> e = jarFile.entries();
+        while (e.hasMoreElements()) {
+          JarEntry je = e.nextElement();
+          if (je.isDirectory() || !je.getName().endsWith(".class")) {
+            continue;
+          }
+          // -6 because of .class
+          String className = je.getName().substring(0, je.getName().length()
+              - 6);
+          className = className.replace('/', '.');
 
-        if (className.startsWith("org.sqlflow")
-            && !className.startsWith("org.sqlflow.parser.parse")) {
-          Class c = cl.loadClass(className);
-          for (Class<?> x : c.getInterfaces()) {
-            if ("org.sqlflow.parser.parse.ParseInterface".equals(x.getName())) {
+          if (className.startsWith("org.sqlflow") && !className.startsWith(
+              "org.sqlflow.parser.parse")) {
+            Class<?> c = cl.loadClass(className);
+            if (ParseInterface.class.isAssignableFrom(c)) {
               Object inst = c.getConstructor().newInstance();
               ParseInterface parser = (ParseInterface) inst;
               System.err.printf("ParserFactory loading class %s\n", className);
@@ -59,7 +59,7 @@ class ParserFactory {
   }
 
   public ParseInterface newParser(String dialect) throws Exception {
-    Class c = parsers.get(dialect);
+    Class<?> c = parsers.get(dialect);
     if (c == null) {
       throw new Exception("parser \"" + dialect + "\" not found");
     }

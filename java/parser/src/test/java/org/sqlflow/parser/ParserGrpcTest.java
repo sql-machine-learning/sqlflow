@@ -32,6 +32,7 @@ public class ParserGrpcTest {
       assertEquals(1, response.getSqlStatementsCount());
       assertEquals("select 1", response.getSqlStatements(0));
       assertEquals("", response.getError());
+      assertEquals(false, response.getIsUnfinishedSelect());
     }
 
     {
@@ -40,6 +41,7 @@ public class ParserGrpcTest {
       assertEquals(1, response.getSqlStatementsCount());
       assertEquals("select a from b", response.getSqlStatements(0));
       assertEquals("", response.getError());
+      assertEquals(false, response.getIsUnfinishedSelect());
     }
 
     {
