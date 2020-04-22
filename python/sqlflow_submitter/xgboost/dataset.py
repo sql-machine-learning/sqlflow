@@ -38,9 +38,16 @@ def xgb_dataset(datasource,
                 nworkers=1):
     if is_pai:
         for dmatrix in pai_dataset(
-                fn, feature_specs, feature_column_names, label_spec,
+                fn,
+                feature_specs,
+                feature_column_names,
+                label_spec,
                 "odps://{}/tables/{}".format(*pai_table.split(".")),
-                pai_single_file, cache, rank, nworkers):
+                pai_single_file,
+                cache,
+                rank,
+                nworkers,
+                batch_size=batch_size):
             yield dmatrix
         return
 
@@ -52,26 +59,42 @@ def xgb_dataset(datasource,
         step = 0
         # the filename per batch is [filename]_[step]
         step_file_name = "%s_%d" % (fn, step)
-        writed_rows = dump_dmatrix(step_file_name, gen, label_spec)
+        written_rows = dump_dmatrix(step_file_name, gen, feature_column_names,
+                                    feature_specs, label_spec)
 
-        while writed_rows > 0:
+        while written_rows > 0:
             yield xgb.DMatrix('{0}#{0}.cache'.format(step_file_name)
                               if cache else step_file_name)
             os.remove(step_file_name)
 
             step += 1
             step_file_name = "%s_%d" % (fn, step)
-            writed_rows = dump_dmatrix(step_file_name, gen, label_spec)
+            written_rows = dump_dmatrix(step_file_name, gen,
+                                        feature_column_names, feature_specs,
+                                        label_spec)
 
 
-def dump_dmatrix(filename, generator, has_label, batch_size=None):
+def dump_dmatrix(filename,
+                 generator,
+                 feature_column_names,
+                 feature_specs,
+                 has_label,
+                 batch_size=None):
     # TODO(yancey1989): generate group and weight text file if necessary
     row_id = 0
     with open(filename, 'a') as f:
         for item in generator:
-            row_data = [
-                "%d:%f" % (i, v[0] or 0) for i, v in enumerate(item[0])
-            ]
+            row_data = []
+            for i, v in enumerate(item[0]):
+                fname = feature_column_names[i]
+                dtype = feature_specs[fname]["dtype"]
+                if dtype == "int32" or dtype == "int64":
+                    row_data.append("%d:%d" % (i, v[0] or 0))
+                elif dtype == "float32" or dtype == "float64":
+                    row_data.append("%d:%f" % (i, v[0] or 0))
+                else:
+                    raise ValueError(
+                        "not supported columnt dtype %s for xgboost" % dtype)
             if has_label:
                 row_data = [str(item[1])] + row_data
             f.write("\t".join(row_data) + "\n")
@@ -81,7 +104,7 @@ def dump_dmatrix(filename, generator, has_label, batch_size=None):
                 continue
             if row_id >= batch_size:
                 break
-    # return rows writed
+    # return rows written
     return row_id
 
 
@@ -93,7 +116,8 @@ def pai_dataset(filename,
                 single_file,
                 cache,
                 rank=0,
-                nworkers=1):
+                nworkers=1,
+                batch_size=None):
     from subprocess import Popen, PIPE
     import threading
     import queue
@@ -125,7 +149,14 @@ def pai_dataset(filename,
         t.start()
         threads.append(t)
 
-    map(lambda t: t.join(), threads)
+    # map(lambda t: t.join(), threads)
+
+    # Use all data at once if batch size == None, else use a static SLICE_NUM
+    # FIXME(typhoonzero): pai xgboost only support fixed SLICE_NUM now.
+    if batch_size == None:
+        map(lambda t: t.join(), threads)
+        yield xgb.DMatrix('{0}#{0}.cache'.format(dname) if cache else dname)
+        return
 
     for i in range(slice_total):
         slice_id = complete_queue.get(block=True)
@@ -157,7 +188,8 @@ def pai_download_table_data_worker(dname, feature_specs, feature_column_names,
                                          slice_id=slice_id,
                                          slice_count=SLICE_NUM)()
     filename = "{}/{}.txt".format(dname, slice_id)
-    dump_dmatrix(filename, gen, label_spec)
+    dump_dmatrix(filename, gen, feature_column_names, feature_specs,
+                 label_spec)
 
 
 if __name__ == "__main__":

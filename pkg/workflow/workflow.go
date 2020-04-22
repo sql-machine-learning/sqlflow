@@ -24,6 +24,8 @@ import (
 	"sqlflow.org/sqlflow/pkg/sql"
 	"sqlflow.org/sqlflow/pkg/workflow/argo"
 	"sqlflow.org/sqlflow/pkg/workflow/couler"
+	"sqlflow.org/sqlflow/pkg/workflow/fluid"
+	"sqlflow.org/sqlflow/pkg/workflow/tekton"
 )
 
 // Codegen generates workflow YAML
@@ -42,6 +44,8 @@ type Workflow interface {
 func New(backend string) (Codegen, Workflow, error) {
 	if backend == "couler" {
 		return &couler.Codegen{}, &argo.Workflow{}, nil
+	} else if backend == "fluid" {
+		return &fluid.Codegen{}, &tekton.Tekton{}, nil
 	}
 	return nil, nil, fmt.Errorf("the specified backend: %s has not support", backend)
 }

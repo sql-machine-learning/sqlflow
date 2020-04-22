@@ -19,7 +19,7 @@ import pandas as pd
 import sklearn.preprocessing as preprocessing
 from sklearn.ensemble import RandomForestRegressor
 
-### Loding data
+### Loading data
 train = pd.read_csv('train.csv')
 test = pd.read_csv('test.csv')
 

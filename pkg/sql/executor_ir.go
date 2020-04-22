@@ -70,7 +70,8 @@ func ResolveSQLProgram(sqlStmts []*parser.SQLFlowStmt, logger *log.Logger) ([]ir
 		if sql.IsExtendedSyntax() {
 			if sql.Train {
 				logger.Info("resolveSQL:train")
-				r, err = generateTrainStmt(sql.SQLFlowSelectStmt, true)
+				// TODO(yancey1989): enable the atttribute checker when cover pai codegen.
+				r, err = generateTrainStmt(sql.SQLFlowSelectStmt, false)
 			} else if sql.Explain {
 				logger.Info("resolveSQL:explain")
 				// since getTrainStmtFromModel is false, use empty cwd is fine.
@@ -127,7 +128,8 @@ func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *dat
 		}
 	}(time.Now().UnixNano())
 
-	cwd, err := ioutil.TempDir("/tmp", "sqlflow_models")
+	// use system default tmp dir
+	cwd, err := ioutil.TempDir("", "sqlflow_models")
 	if err != nil {
 		return err
 	}
@@ -140,6 +142,8 @@ func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *dat
 	if sql.IsExtendedSyntax() {
 		if sql.Train {
 			r, err = generateTrainStmtWithInferredColumns(sql.SQLFlowSelectStmt, session.DbConnStr, true)
+		} else if sql.ShowTrain {
+			r, err = generateShowTrainStmt(sql.SQLFlowSelectStmt)
 		} else if sql.Explain {
 			r, err = generateExplainStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, GetSubmitter(session.Submitter).GetTrainStmtFromModel())
 		} else {
@@ -154,7 +158,7 @@ func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *dat
 	}
 	r.SetOriginalSQL(sql.Original)
 	// TODO(typhoonzero): can run feature.LogDerivationResult(wr, trainStmt) here to send
-	// feature derivation logs to client, yet we disable if for now so that it's less annoying.
+	// feature derivation logs to client, yet we disable it for now so that it's less annoying.
 	submitter := GetSubmitter(session.Submitter)
 	submitter.Setup(wr, db, modelDir, cwd, session)
 	return r.Execute(submitter)

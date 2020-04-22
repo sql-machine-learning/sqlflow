@@ -186,3 +186,30 @@ where
       }
       return responses, nil
     }
+    ```
+
+## Pipe Message From a Workflow Step to Jupyter Notebook
+
+``` text
+SQLFLow magic command(Jupyter Notebook) <----->  SQLFlow gRPC server  <---->  Workflow Step(Kubernetes Pod)
+                                          gRPC                         HTTP
+```
+
+The above figure shows the pipe stages from SQLFlow magic command to the workflow step.
+SQLFlow magic command fetches the data rows and error messages via the `Fetch`
+gRPC call from [Fetch API design](#Fetch-API), `Fetch` can get workflow step logs
+via [Kubernetes Read Pod Logs API](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.10/#read-log),
+if the log message is in protobuf text format, `Fetch` would unmarshal and pipe it to the Jupyter Notebook.
+
+## Retrieve Error Logs From a Failed Workflow Step
+
+A workflow may fail for many reasons, and these errors usually occur in the following two phases:
+
+- The first phase is compilation, e.g. syntax errors on compiling a SQL program into workflow YAML.
+- The other is the workflow step runtime phase:
+  - Some workflow step executes a standard SQL, the Go database driver executes the SQL and returns an error if the execution failed.
+  - Some workflow step executes an extended SQL, SQLFlow compiles the extended SQL into a submitter program and executes it
+    - Some submitter program would be executed as a sub-process, SQLFlow can retrieve the error logs from stderr.
+    - Some submitter program would run on a cluster system e.g., Yarn, SQLFlow should retrieve the error logs from the Yarn task.
+
+To create a good user experience, we also should pipe theses error messages to the Jupyter Notebook.

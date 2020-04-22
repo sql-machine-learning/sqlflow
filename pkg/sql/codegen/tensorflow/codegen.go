@@ -326,7 +326,8 @@ func InitializeAttributes(trainStmt *ir.TrainStmt) error {
 		// Special attributes defined as global variables in `sqlflow_models`
 		modelAttr.Update(attribute.Dictionary{
 			"model.optimizer": {attribute.Unknown, nil, "Specify optimizer", nil},
-			"model.loss":      {attribute.Unknown, nil, "Specify loss", nil}})
+			"model.loss":      {attribute.Unknown, nil, "Specify loss", nil},
+			"model.*":         {attribute.Unknown, nil, "Any model parameters defined in custom models", nil}})
 	}
 	if IsPAI() {
 		modelAttr.Update(distributedTrainingAttributes)

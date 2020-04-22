@@ -62,9 +62,9 @@ def keras_predict(estimator, model_params, save, result_table, is_pai,
 
         if is_pai:
             pai_table_parts = pai_table.split(".")
-            formated_pai_table = "odps://%s/tables/%s" % (pai_table_parts[0],
-                                                          pai_table_parts[1])
-            gen = db.pai_maxcompute_db_generator(formated_pai_table,
+            formatted_pai_table = "odps://%s/tables/%s" % (pai_table_parts[0],
+                                                           pai_table_parts[1])
+            gen = db.pai_maxcompute_db_generator(formatted_pai_table,
                                                  feature_column_names, None,
                                                  feature_metas)
         else:
@@ -130,10 +130,10 @@ def estimator_predict(estimator, model_params, save, result_table,
         driver = "pai_maxcompute"
         conn = None
         pai_table_parts = pai_table.split(".")
-        formated_pai_table = "odps://%s/tables/%s" % (pai_table_parts[0],
-                                                      pai_table_parts[1])
+        formatted_pai_table = "odps://%s/tables/%s" % (pai_table_parts[0],
+                                                       pai_table_parts[1])
         predict_generator = db.pai_maxcompute_db_generator(
-            formated_pai_table, feature_column_names, None, feature_metas)()
+            formatted_pai_table, feature_column_names, None, feature_metas)()
     else:
         driver = conn.driver
         predict_generator = db.db_generator(conn.driver, conn, select,

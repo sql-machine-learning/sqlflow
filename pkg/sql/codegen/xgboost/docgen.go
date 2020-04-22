@@ -34,15 +34,18 @@ const docTemplateText = `# XGBoost Parameters
 
 ` + "```SQL" + `
 SELECT * FROM boston.train
-TO TRAIN xgboost.gbtree
+TO TRAIN xgboost.xgbregressor
 WITH
     objective ="reg:squarederror",
     train.num_boost_round = 30,
     validation.select = "SELECT * FROM boston.val LIMIT 8"
-COLUMN crim, zn, indus, chas, nox, rm, age, dis, rad, tax, ptratio, b, lstat
 LABEL medv
 INTO sqlflow_models.my_xgb_regression_model;
 ` + "```" + `
+
+### Model Types
+
+` + "`XGBOOST.XGBREGRESSOR`, `XGBOOST.XGBCLASSIFIER`, `XGBOOST.XGBRFCLASSIFIER`, `XGBOOST.XGBRANKER`, `XGBOOST.GBTREE`, `XGBOOST.GBLINEAR`, `XGBOOST.DART`" + `
 
 ### Parameters
 

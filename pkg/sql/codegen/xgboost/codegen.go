@@ -63,17 +63,72 @@ range: [1, Infinity]`, attribute.IntLowerBoundChecker(1, true)},
 }
 var fullAttrValidator = attribute.Dictionary{}
 
-func resolveModelType(estimator string) (string, error) {
-	switch strings.ToUpper(estimator) {
-	case "XGBOOST.GBTREE":
-		return "gbtree", nil
-	case "XGBOOST.GBLINEAR":
-		return "gblinear", nil
-	case "XGBOOST.DART":
-		return "dart", nil
-	default:
-		return "", fmt.Errorf("unsupported model name %v, currently supports xgboost.gbtree, xgboost.gblinear, xgboost.dart", estimator)
+func objectiveChecker(obj interface{}) error {
+	s, ok := obj.(string)
+	if !ok {
+		return fmt.Errorf("expected type string, received %T", obj)
 	}
+	expected := []string{
+		"reg:squarederror",
+		"reg:squaredlogerror",
+		"reg:logistic",
+		"binary:logistic",
+		"binary:logitraw",
+		"binary:hinge",
+		"survival:cox",
+		"multi:softmax",
+		"multi:softprob",
+		"rank:pairwise",
+		"rank:ndcg",
+		"rank:map",
+		"reg:gamma",
+		"reg:tweedie"}
+	for _, e := range expected {
+		if s == e {
+			return nil
+		}
+	}
+	return fmt.Errorf("unrecognized objective %s, should be one of %v", s, expected)
+}
+
+func updateIfKeyDoesNotExist(current, add map[string]interface{}) {
+	for k, v := range add {
+		if _, ok := current[k]; !ok {
+			current[k] = v
+		}
+	}
+}
+
+func resolveModelParams(ir *ir.TrainStmt) error {
+	switch strings.ToUpper(ir.Estimator) {
+	case "XGBOOST.XGBREGRESSOR", "XGBREGRESSOR":
+		defaultAttributes := map[string]interface{}{"objective": "reg:squarederror"}
+		updateIfKeyDoesNotExist(ir.Attributes, defaultAttributes)
+	case "XGBOOST.XGBRFREGRESSOR", "XGBRFREGRESSOR":
+		defaultAttributes := map[string]interface{}{"objective": "reg:squarederror", "learning_rate": 1, "subsample": 0.8, "colsample_bynode": 0.8, "reg_lambda": 1e-05}
+		updateIfKeyDoesNotExist(ir.Attributes, defaultAttributes)
+	case "XGBOOST.XGBCLASSIFIER", "XGBCLASSIFIER":
+		defaultAttributes := map[string]interface{}{"objective": "binary:logistic"}
+		updateIfKeyDoesNotExist(ir.Attributes, defaultAttributes)
+	case "XGBOOST.XGBRFCLASSIFIER", "XGBRFCLASSIFIER":
+		defaultAttributes := map[string]interface{}{"objective": "multi:softprob", "learning_rate": 1, "subsample": 0.8, "colsample_bynode": 0.8, "reg_lambda": 1e-05}
+		updateIfKeyDoesNotExist(ir.Attributes, defaultAttributes)
+	case "XGBOOST.XGBRANKER", "XGBRANKER":
+		defaultAttributes := map[string]interface{}{"objective": "rank:pairwise"}
+		updateIfKeyDoesNotExist(ir.Attributes, defaultAttributes)
+	case "XGBOOST.GBTREE":
+		defaultAttributes := map[string]interface{}{"booster": "gbtree"}
+		updateIfKeyDoesNotExist(ir.Attributes, defaultAttributes)
+	case "XGBOOST.GBLINEAR":
+		defaultAttributes := map[string]interface{}{"booster": "gblinear"}
+		updateIfKeyDoesNotExist(ir.Attributes, defaultAttributes)
+	case "XGBOOST.DART":
+		defaultAttributes := map[string]interface{}{"booster": "dart"}
+		updateIfKeyDoesNotExist(ir.Attributes, defaultAttributes)
+	default:
+		return fmt.Errorf("unsupported model name %v, currently supports xgboost.gbtree, xgboost.gblinear, xgboost.dart", ir.Estimator)
+	}
+	return nil
 }
 
 // InitializeAttributes initializes the attributes of XGBoost and does type checking for them
@@ -173,12 +228,10 @@ func DistTrain(trainStmt *ir.TrainStmt, session *pb.Session, nworkers int, ossUR
 }
 
 func newTrainFiller(trainStmt *ir.TrainStmt, session *pb.Session, nworkers int, ossURI string) (*trainFiller, error) {
-	params := parseAttribute(trainStmt.Attributes)
-	booster, err := resolveModelType(trainStmt.Estimator)
-	if err != nil {
+	if err := resolveModelParams(trainStmt); err != nil {
 		return nil, err
 	}
-	params[""]["booster"] = booster
+	params := parseAttribute(trainStmt.Attributes)
 	diskCache := params["train."]["disk_cache"].(bool)
 	delete(params["train."], "disk_cache")
 	var batchSize int

@@ -133,6 +133,26 @@ INTO sqlflow_models.repl_dnn_model;`)
 	a.Contains(output, "| repl_dnn_model           |")
 }
 
+func TestReplWithoutSemicolon(t *testing.T) {
+	a := assert.New(t)
+	a.NoError(prepareTestDataOrSkip(t))
+	session.DbConnStr = dbConnStr
+	sql := `
+select * from iris.train to train DNNClassifier
+WITH model.hidden_units=[10,10], model.n_classes=3, validation.select="select * from iris.test"
+label class
+INTO sqlflow_models.repl_dnn_model`
+	scanner := bufio.NewScanner(strings.NewReader(sql))
+	output, err := step.GetStdout(func() error { repl(scanner, "", dbConnStr); return nil })
+	a.NoError(err)
+	a.Contains(output, `
+select * from iris.train to train DNNClassifier
+WITH model.hidden_units=[10,10], model.n_classes=3, validation.select="select * from iris.test"
+label class
+INTO sqlflow_models.repl_dnn_model;`)
+	a.Contains(output, "'global_step': 110")
+}
+
 func TestMain(t *testing.T) {
 	a := assert.New(t)
 	a.Nil(prepareTestDataOrSkip(t))
@@ -805,6 +825,29 @@ func TestEmacsKeyBindings(t *testing.T) {
 	a.Equal(6, buf.DisplayCursorPosition())
 	a.Equal("ir", buf.Document().GetWordBeforeCursorWithSpace())
 	a.Equal("", buf.Document().GetWordAfterCursorWithSpace())
+}
+
+func TestDotEnv(t *testing.T) {
+	a := assert.New(t)
+	f, e := os.OpenFile(".test_sqlflow_env", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	a.NoError(e)
+	defer f.Close()
+	w := bufio.NewWriter(f)
+	fmt.Fprintln(w, `# This is a .env config file
+SQLFLOW_TEST_DOT_ENV="Alien"  # Alien is a famous movie`)
+	w.Flush()
+	a.Equal("", os.Getenv("SQLFLOW_TEST_DOT_ENV"))
+
+	// Make sure repl does not fail when the .env file is not present
+	initEnvFromFile("not_exist")
+	a.Equal("", os.Getenv("SQLFLOW_TEST_DOT_ENV"))
+
+	initEnvFromFile(".test_sqlflow_env")
+	a.Equal("Alien", os.Getenv("SQLFLOW_TEST_DOT_ENV"))
+
+	// Make sure the existing environment variables aren't affected when the .env file is not present
+	initEnvFromFile("not_exist")
+	a.Equal("Alien", os.Getenv("SQLFLOW_TEST_DOT_ENV"))
 }
 
 func TestStdinParser(t *testing.T) {

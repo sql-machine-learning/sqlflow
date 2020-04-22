@@ -88,7 +88,7 @@ go install -v ./... && \
 mv $GOPATH/bin/sqlflowserver /usr/local/bin && \
 mv $GOPATH/bin/repl /usr/local/bin && \
 (cd python/couler && python setup.py -q install) && \
-(git clone https://github.com/wangkuiyi/fluid.git && cd fluid && git checkout b37df3c && python setup.py bdist_wheel && pip install dist/*.whl) && \
+(git clone https://github.com/sql-machine-learning/fluid.git && cd fluid && git checkout ceda474 && python setup.py bdist_wheel && pip install dist/*.whl) && \
 mkdir -p $SQLFLOW_PARSER_SERVER_LOADING_PATH && \
 (cd java/parse-interface && mvn clean install -B) && \
 (cd java/parser-hive && mvn -B -q clean compile assembly:single && mv target/*.jar $SQLFLOW_PARSER_SERVER_LOADING_PATH) && \
@@ -107,7 +107,7 @@ ARG WITH_SQLFLOW_MODELS="ON"
 RUN if [ "${WITH_SQLFLOW_MODELS:-ON}" = "ON" ]; then \
   git clone https://github.com/sql-machine-learning/models.git && \
   cd models && \
-  git checkout 9b3da5d && \
+  git checkout bd642704577553a672338b28517ecf26b775da47 && \
   bash -c "python setup.py -q install" && \
   cd .. && \
   rm -rf models; \

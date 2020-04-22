@@ -2,6 +2,7 @@ module sqlflow.org/sqlflow
 
 require (
 	github.com/BurntSushi/graphics-go v0.0.0-20160129215708-b43f31a4a966 // indirect
+	github.com/alecthomas/chroma v0.7.1
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/aliyun/aliyun-oss-go-sdk v2.0.5+incompatible
 	github.com/apache/thrift v0.13.0 // indirect
@@ -17,6 +18,7 @@ require (
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/golang/protobuf v1.3.2
 	github.com/google/uuid v1.1.1
+	github.com/joho/godotenv v1.3.0
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/kr/pty v1.1.5 // indirect
 	github.com/mattn/go-colorable v0.1.4 // indirect
@@ -52,6 +54,7 @@ require (
 	sqlflow.org/goalisa v0.0.0-20200303141943-f794da595d85
 	sqlflow.org/gohive v0.0.0-20191009030413-2b2325ce8b38
 	sqlflow.org/gomaxcompute v0.0.0-20191028113124-e214922c510c
+	vitess.io/vitess v3.0.0-rc.3+incompatible
 )
 
 go 1.13

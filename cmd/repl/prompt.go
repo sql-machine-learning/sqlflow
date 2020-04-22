@@ -32,6 +32,10 @@ const (
 	normalSearch searchMode = iota
 	wildcardSearch
 )
+const (
+	prefix     = "sqlflow> "
+	livePrefix = "      -> "
+)
 
 var defaultSuggestions = []prompt.Suggest{
 	{"SELECT", ""},
@@ -476,15 +480,15 @@ func (p *promptState) completer(in prompt.Document) []prompt.Suggest {
 
 func newPromptState() *promptState {
 	s := promptState{
-		prefix:     "sqlflow> ",
-		livePrefix: "      -> ",
+		prefix:     prefix,
+		livePrefix: livePrefix,
 	}
 	s.initCompleter()
 	s.initHistory()
 	return &s
 }
 
-var consoleWriter = prompt.NewStdoutWriter()
+var consoleWriter = newStdoutWriter()
 var consoleParser *stdinParser
 
 func getTerminalColumnSize() int {
@@ -515,4 +519,5 @@ func runPrompt(cb func(string)) {
 	fmt.Println("Welcome to SQLFlow.  Commands end with ;")
 	fmt.Println()
 	p.Run()
+	fmt.Println("Goodbye!")
 }

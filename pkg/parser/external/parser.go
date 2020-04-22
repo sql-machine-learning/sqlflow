@@ -23,9 +23,10 @@ type Parser interface {
 
 // Statement a parsed SQL statement string and it's input tables and output tables.
 type Statement struct {
-	String  string
-	Inputs  []string
-	Outputs []string
+	String             string
+	Inputs             []string
+	Outputs            []string
+	IsUnfinishedSelect bool
 }
 
 // NewParser instantiates a parser.

@@ -22,6 +22,7 @@ import (
 	"sqlflow.org/sqlflow/pkg/ir"
 	"sqlflow.org/sqlflow/pkg/model"
 	"sqlflow.org/sqlflow/pkg/parser"
+	"sqlflow.org/sqlflow/pkg/sql/codegen/pai"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/xgboost"
 	"sqlflow.org/sqlflow/pkg/step/feature"
@@ -70,6 +71,8 @@ func generateTrainStmtWithInferredColumns(slct *parser.SQLFlowSelectStmt, connSt
 func doAttrInitAndTypeChecking(ir *ir.TrainStmt) error {
 	if isXGBoostModel(ir.Estimator) {
 		return xgboost.InitializeAttributes(ir)
+	} else if isKMeansModel(ir.Estimator) {
+		return pai.InitializeKMeansAttributes(ir)
 	}
 	return tensorflow.InitializeAttributes(ir)
 }
@@ -904,4 +907,10 @@ func transformToIntList(list []interface{}) ([]int, error) {
 		}
 	}
 	return b, nil
+}
+
+func generateShowTrainStmt(showTrain *parser.SQLFlowSelectStmt) (*ir.ShowTrainStmt, error) {
+	return &ir.ShowTrainStmt{
+		ModelName: showTrain.ShowTrainClause.ModelName,
+	}, nil
 }

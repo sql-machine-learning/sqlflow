@@ -25,9 +25,11 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"syscall"
 
+	"github.com/joho/godotenv"
 	"golang.org/x/crypto/ssh/terminal"
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/step"
@@ -187,6 +189,13 @@ func repl(scanner *bufio.Scanner, modelDir string, ds string) {
 		if err == io.EOF && len(statements) == 0 {
 			return
 		}
+		// The collaborative parsing algorithm requires that each statement ends
+		// with a semi-colon, as the definition of `end_of_stmt`
+		// in /pkg/parser/extended_syntax_parser.y#L176 .
+		n := len(statements)
+		if n > 0 && !strings.HasSuffix(strings.TrimSpace(statements[n-1]), ";") {
+			statements[len(statements)-1] += ";"
+		}
 		for _, stmt := range statements {
 			if err := runStmt(stmt, false, modelDir, ds); err != nil {
 				log.Fatalf("run SQL statement failed: %v", err)
@@ -239,7 +248,16 @@ func getDataSource(dataSource, db string) string {
 
 var currentDB string
 
+// dotEnvFilename is the filename of the .env file
+const dotEnvFilename string = ".sqlflow_env"
+
+// initEnvFromFile initializes environment variables from the .env file
+func initEnvFromFile(f string) {
+	_ = godotenv.Load(f)
+}
+
 func main() {
+	initEnvFromFile(filepath.Join(os.Getenv("HOME"), dotEnvFilename))
 	ds := flag.String("datasource", "", "database connect string")
 	modelDir := flag.String("model_dir", "", "model would be saved on the local dir, otherwise upload to the table.")
 	cliStmt := flag.String("execute", "", "execute SQLFlow from command line.  e.g. --execute 'select * from table1'")

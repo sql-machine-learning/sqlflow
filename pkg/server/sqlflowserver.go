@@ -52,7 +52,7 @@ func NewServer(run func(string, string, *pb.Session) *pipe.Reader,
 func (s *Server) Fetch(ctx context.Context, job *pb.FetchRequest) (*pb.FetchResponse, error) {
 	// FIXME(tony): to make function fetch easily to mock, we should decouple server package
 	// with argo package by introducing s.fetch
-	_, wf, e := workflow.New("couler")
+	_, wf, e := workflow.New(getWorkflowBackend())
 	if e != nil {
 		return nil, e
 	}
@@ -135,7 +135,7 @@ func SubmitWorkflow(sqlProgram string, modelDir string, session *pb.Session) *pi
 	startTime := time.Now()
 	go func() {
 		defer wr.Close()
-		wfID, e := workflow.Run("couler", sqlProgram, session, logger)
+		wfID, e := workflow.Run(getWorkflowBackend(), sqlProgram, session, logger)
 		defer logger.Infof("submitted, workflowID:%s, spent:%.f, SQL:%s, error:%v", wfID, time.Since(startTime).Seconds(), sqlProgram, e)
 		if e != nil {
 			if e := wr.Write(e); e != nil {
@@ -149,4 +149,12 @@ func SubmitWorkflow(sqlProgram string, modelDir string, session *pb.Session) *pi
 		}
 	}()
 	return rd
+}
+
+func getWorkflowBackend() string {
+	wfBackend := os.Getenv("SQLFLOW_WORKFLOW_BACKEND")
+	if wfBackend == "" {
+		wfBackend = "couler"
+	}
+	return wfBackend
 }

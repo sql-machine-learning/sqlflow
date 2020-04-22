@@ -18,10 +18,13 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/pingcap/parser"
 	"github.com/pingcap/parser/ast"
 	_ "github.com/pingcap/tidb/types/parser_driver" // As required by https://github.com/pingcap/parser/blob/master/parser_example_test.go#L19
+	"vitess.io/vitess/go/vt/sqlparser"
 )
 
 type tidbParser struct {
@@ -41,6 +44,49 @@ func (p *tidbParser) Dialect() string {
 	return "tidb"
 }
 
+// splitStatementToPieces split program into single statements
+// it do not trim any statement, so join(stmts) == program
+func (p *tidbParser) splitStatementToPieces(program string) ([]string, error) {
+	// TODO(lhw) MySQL may use delimiter command to specify non-';' separator
+	// we should process that case later
+	// this func's return do not contain ';'
+	stmts, e := sqlparser.SplitStatementToPieces(program)
+	if e != nil {
+		return nil, e
+	}
+	if len(stmts) == 0 {
+		return stmts, nil
+	}
+	// add ';' to each stmt
+	pos := 0
+	for i := 0; i < len(stmts)-1; i++ {
+		stmts[i] += ";"
+		pos += len(stmts[i])
+	}
+	stmts[len(stmts)-1] = program[pos:]
+	return stmts, nil
+}
+
+func (p *tidbParser) getLeadingCommentLen(program string) int {
+	lexer := sqlparser.NewStringTokenizer(program)
+	lexer.AllowComments = true
+	pos := 0
+	for {
+		tok, _ := lexer.Scan()
+		if tok != sqlparser.COMMENT {
+			break
+		}
+		pos = lexer.Position - 1
+	}
+	for _, r := range program[pos:] {
+		if !unicode.IsSpace(r) {
+			break
+		}
+		pos += utf8.RuneLen(r)
+	}
+	return pos
+}
+
 // Parse a SQL program into zero, one, or more statements.  In the
 // case of error, it returns the location of the parsing error in
 // program and an error message.
@@ -52,13 +98,42 @@ func (p *tidbParser) Parse(program string) ([]*Statement, int, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	nodes, _, err := p.psr.Parse(program, "", "")
+	ss, pos, err := p.doParse(program)
+	if err != nil || pos < 0 {
+		return ss, pos, err
+	}
+	pos += p.getLeadingCommentLen(program[pos:])
+	return ss, pos, err
+}
+
+func (p *tidbParser) doParse(program string) ([]*Statement, int, error) {
+	// split program into single statements
+	stmts, err := p.splitStatementToPieces(program)
 	if err != nil {
+		return nil, -1, err
+	}
+	// error pos or -1 on success
+	pos := 0
+	retStmts := []*Statement{}
+	for _, sql := range stmts {
+		nodes, _, err := p.psr.Parse(sql, "", "")
+		if err == nil {
+			if len(nodes) == 0 { // only comment
+				pos += len(sql)
+			} else if len(nodes) > 1 {
+				return nil, -1, fmt.Errorf("sql statement split failed")
+			} else {
+				retStmts = append(retStmts, &Statement{String: nodes[0].Text()})
+				pos += len(sql)
+			}
+			continue
+		}
+		// err occurred
 		matched := p.re.FindAllStringSubmatch(err.Error(), -1)
 		if len(matched) != 1 || len(matched[0]) != 2 {
 			return nil, -1, fmt.Errorf(`cannot match parse error "near" in "%q"`, err)
 		}
-		idx := strings.Index(program, matched[0][1])
+		idx := strings.Index(sql, matched[0][1])
 
 		// Note(tony): MySQL statements requires adding ";" at
 		// the end of the statement.  If we don't add ";",
@@ -66,45 +141,21 @@ func (p *tidbParser) Parse(program string) ([]*Statement, int, error) {
 		// the new line character.  This would cause "select
 		// 1\nto train" to become "select 1to train" during
 		// train SQL saving.
-		nodes, _, e := p.psr.Parse(program[:idx]+";", "", "")
+		nodes, _, e := p.psr.Parse(sql[:idx]+";", "", "")
 		if e != nil || len(nodes) == 0 {
-			// return the original parsing error
-			return nil, -1, err
+			// return successfully parsed statements
+			return retStmts, pos, nil
 		}
 
 		// Make sure the left hand side is a select statement, so that
 		// we can try parse the right hand side with the SQLFlow parser
 		switch nodes[len(nodes)-1].(type) {
 		case *ast.SelectStmt, *ast.UnionStmt:
-		default:
-			// return the original parsing error
-			return nil, -1, err
+			pos += idx
+			retStmts = append(retStmts, &Statement{String: sql[:idx], IsUnfinishedSelect: true})
 		}
-
-		retStatements := []*Statement{}
-		// sqls := make([]string, 0)
-		for _, n := range nodes {
-			// sqls = append(sqls, n.Text())
-			stmt := &Statement{
-				String: n.Text(),
-			}
-			retStatements = append(retStatements, stmt)
-		}
-
-		// Note(tony): remove the last ";" since feature derivation will append "limit 1000" at the end of the statement
-		if sql := retStatements[len(retStatements)-1].String; sql[len(sql)-1] == ';' {
-			retStatements[len(retStatements)-1].String = sql[:len(sql)-1]
-		}
-
-		return retStatements, idx, nil
+		return retStmts, pos, nil
 	}
-
-	retStatements := []*Statement{}
-	for _, n := range nodes {
-		stmt := &Statement{
-			String: n.Text(),
-		}
-		retStatements = append(retStatements, stmt)
-	}
-	return retStatements, -1, nil
+	// program is fully accepted
+	return retStmts, -1, nil
 }

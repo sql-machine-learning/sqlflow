@@ -55,5 +55,11 @@ WHERE
             customerNumber = customers.customerNumber
         GROUP BY orderNumber
         HAVING SUM(priceEach * quantityOrdered) > 60000) LIMIT 0`,
+		`select -- comment 1
+* -- comment 2
+from /* comment 3 */
+table_a /* comment
+4*/ -- end
+`,
 	}
 )

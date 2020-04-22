@@ -127,22 +127,15 @@ def train(datasource,
                          epoch=epoch,
                          rank=rank,
                          nworkers=nworkers)
+    if len(validation_select.strip()) > 0:
+        dvalidate = list(
+            xgb_dataset(datasource, 'validate.txt', validation_select,
+                        feature_metas, feature_column_names, label_meta,
+                        is_pai, pai_validate_table, rank, nworkers))[0]
     bst = None
     for per_batch_dmatrix in dtrain:
         watchlist = [(per_batch_dmatrix, "train")]
         if len(validation_select.strip()) > 0:
-            dvalidate = list(
-                xgb_dataset(datasource,
-                            'validate.txt',
-                            validation_select,
-                            feature_metas,
-                            feature_column_names,
-                            label_meta,
-                            is_pai,
-                            pai_validate_table,
-                            rank=rank,
-                            nworkers=nworkers))[0]
-            print("validate.txt xgb_dataset done")
             watchlist.append((dvalidate, "validate"))
 
         re = dict()
