@@ -1,6 +1,6 @@
 # 快速开始
 
-我们以[波士顿房价](https://www.kaggle.com/c/boston-housing)数据集为例，演示如何在笔记本上电脑上的 Jupyter Notebook 中使用 SQLFlow 训练模型，并用训练好的模型进行预测，最后分析每个特征对模型的贡献。
+我们以[波士顿房价](https://www.kaggle.com/c/boston-housing)数据集为例，演示如何在笔记本电脑上的 Jupyter Notebook 中使用 SQLFlow 训练模型，并用训练好的模型进行预测，最后分析每个特征对模型的贡献。
 
 ## 使用 Docker 启动 SQLFlow
 
