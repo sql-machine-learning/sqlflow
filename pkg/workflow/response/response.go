@@ -47,12 +47,12 @@ func (r *CompoundResponses) AppendMessage(message string) error {
 // AppendProtoMessages appends the message with protobuf message format
 func (r *CompoundResponses) AppendProtoMessages(messages []string) error {
 	// unmarshal pb.Response from proto message with text format
-	res, messages, e := unMarshalProtoMessages(messages)
+	out, err, e := unMarshalProtoMessages(messages)
 	if e != nil {
 		return e
 	}
-	r.responses = append(r.responses, res...)
-	r.errMessages = append(r.errMessages, messages...)
+	r.responses = append(r.responses, out...)
+	r.errMessages = append(r.errMessages, err...)
 	return nil
 }
 
