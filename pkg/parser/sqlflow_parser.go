@@ -26,7 +26,8 @@ import (
 // is a statement with SQLFlow syntax extension, Original is the whole
 // statement and Extended is the parsed extension.
 type SQLFlowStmt struct {
-	Original string
+	IsUnfinishedSelect bool
+	Original           string
 	*SQLFlowSelectStmt
 	Inputs  []string
 	Outputs []string
@@ -54,38 +55,50 @@ func ParseStatement(dialect, program string) (*SQLFlowStmt, error) {
 
 // Parse a SQL program in the given dialect into a list of SQL statements.
 func Parse(dialect, program string) ([]*SQLFlowStmt, error) {
+	//all := []*SQLFlowStmt{{Original: `SHOW create table sqlflow_models.my_dnn_model;`}}
 	all := []*SQLFlowStmt{}
 	for {
 		// SELECT ...; SELECT * FROM my_table TO TRAIN ...
 		//                                    ^
 		//                                    i
+		// or
+		// SELECT ...; SHOW TRAIN my_model;
+		//            ^
+		//            i
 		sqls, i, err := thirdPartyParse(dialect, program)
+
 		if err != nil {
 			return nil, err
 		}
 		all = append(all, sqls...)
-		if i == -1 { // The third party parser accepts all SQL statements
+		if i < 0 {
 			return all, nil
 		}
-
-		left := all[len(all)-1].Original
 		program = program[i:]
-
-		// TO TRAIN dnn LABEL class INTO my_model; SELECT ...
-		//                                        ^
-		//                                        j
 		extended, j, err := parseFirstSQLFlowStmt(program)
 		if err != nil {
 			return nil, err
 		}
-
-		right := program[:j]
-		program = program[j:]
-
-		all[len(all)-1].Original = left + right
-		all[len(all)-1].SQLFlowSelectStmt = extended
-		all[len(all)-1].StandardSelect.origin = left
-
+		// SELECT ... .TO ...
+		if len(sqls) > 0 && sqls[len(sqls)-1].IsUnfinishedSelect {
+			if extended.ShowTrain {
+				return nil, fmt.Errorf("select should followed by 'to train/predict/explain'")
+			}
+			left := all[len(all)-1].Original
+			right := program[:j]
+			all[len(all)-1].Original = left + right
+			all[len(all)-1].SQLFlowSelectStmt = extended
+			all[len(all)-1].StandardSelect.origin = left
+			program = program[j:]
+		} else {
+			// Purely extended sql stmt
+			if !extended.ShowTrain {
+				return nil, fmt.Errorf("invalid 'to train/predict/explain' with no 'select'")
+			}
+			sql := &SQLFlowStmt{Original: program[:j], SQLFlowSelectStmt: extended}
+			all = append(all, sql)
+			program = program[j:]
+		}
 		if len(strings.TrimSpace(program)) == 0 {
 			return all, nil
 		}
@@ -93,6 +106,8 @@ func Parse(dialect, program string) ([]*SQLFlowStmt, error) {
 }
 
 func parseFirstSQLFlowStmt(program string) (*SQLFlowSelectStmt, int, error) {
+	// extendedSyntaxDebug = 5
+	// extendedSyntaxErrorVerbose = true
 	pr, idx, err := parseSQLFlowStmt(program)
 
 	if err != nil {
@@ -120,10 +135,11 @@ func thirdPartyParse(dialect, program string) ([]*SQLFlowStmt, int, error) {
 	var spr []*SQLFlowStmt
 	for _, sql := range sqls {
 		spr = append(spr, &SQLFlowStmt{
-			Original:          sql.String,
-			Inputs:            sql.Inputs,
-			Outputs:           sql.Outputs,
-			SQLFlowSelectStmt: nil})
+			Original:           sql.String,
+			Inputs:             sql.Inputs,
+			Outputs:            sql.Outputs,
+			SQLFlowSelectStmt:  nil,
+			IsUnfinishedSelect: sql.IsUnfinishedSelect})
 	}
 	return spr, i, nil
 }

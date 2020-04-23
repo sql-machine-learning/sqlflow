@@ -149,12 +149,8 @@ def pai_dataset(filename,
         yield xgb.DMatrix('{0}#{0}.cache'.format(dname) if cache else dname)
         return
 
-    downloaded_slice_count = 0
-    while True:
+    for i in range(SLICE_NUM):
         slice_id = complete_queue.get(block=True)
-        downloaded_slice_count += 1
-        if downloaded_slice_count == SLICE_NUM:
-            break
         if not single_file:
             downloaded_file = "./{}/{}.txt".format(dname, slice_id)
             # ignore empty files or the xgb.DMatrix will throw error.

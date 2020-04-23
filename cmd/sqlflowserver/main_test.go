@@ -345,6 +345,8 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseXgboostEvalMetric", CaseXgboostEvalMetric)
 	t.Run("CaseXgboostExternalMemory", CaseXgboostExternalMemory)
 	t.Run("CaseTrainFeatureDerivation", CaseTrainFeatureDerivation)
+
+	t.Run("CaseShowTrain", CaseShowTrain)
 }
 
 func CaseEmptyDataset(t *testing.T) {
@@ -485,6 +487,7 @@ func TestEnd2EndHive(t *testing.T) {
 	t.Run("CaseTrainXGBoostRegression", CaseTrainXGBoostRegression)
 	t.Run("CasePredictXGBoostRegression", CasePredictXGBoostRegression)
 	t.Run("CaseTrainFeatureDerivation", CaseTrainFeatureDerivation)
+	t.Run("CaseShowTrain", CaseShowTrain)
 }
 
 func TestEnd2EndMaxCompute(t *testing.T) {
@@ -2285,4 +2288,26 @@ func CaseBackticksInSQL(t *testing.T) {
 		a.Fail("Create gRPC client error: %v", err)
 	}
 	a.NoError(checkWorkflow(ctx, cli, stream))
+}
+
+func CaseShowTrain(t *testing.T) {
+	driverName, _, _ := database.ParseURL(dbConnStr)
+	if driverName != "mysql" && driverName != "hive" {
+		t.Skip("Skipping non mysql/hive test.")
+	}
+	a := assert.New(t)
+	trainSQL := `SELECT * FROM iris.train TO TRAIN xgboost.gbtree
+	WITH objective="reg:squarederror"
+	LABEL class 
+	INTO sqlflow_models.my_xgb_model_for_show_train;`
+	_, _, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Train model failed: %v", err)
+	}
+	showSQL := `SHOW TRAIN sqlflow_models.my_xgb_model_for_show_train;`
+	cols, _, _, err := connectAndRunSQL(showSQL)
+	a.NoError(err)
+	a.Equal(2, len(cols))
+	a.Equal("Table", cols[0])
+	a.Equal("Train Statement", cols[1])
 }
