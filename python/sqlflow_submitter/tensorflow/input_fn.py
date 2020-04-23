@@ -214,7 +214,7 @@ def get_dataset_fn(select,
                                     label_meta,
                                     is_pai=is_pai,
                                     pai_table=pai_val_table)
-        validate_dataset = validate_dataset.cache("cache_validation")
+        validate_dataset = validate_dataset.cache("cache_validation").batch(batch_size)
         return validate_dataset
 
     if validate_select != "":
