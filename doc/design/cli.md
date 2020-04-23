@@ -14,22 +14,18 @@ The command-line client tool, named `sqlflow`, is complementary to other forms o
 Currently, the command-line binary form of SQLFlow has the name `repl`, which is the name of a user interface design philosophy. Many command-line tools, including mysql and python, implement the UI of REPL. Let's follow the convention of `mysql` and `mysqld` to name the new client `sqlflow`.
 
 
-
 ### Dependencies and Installation
 
 The original `repl`'s only dependency is the `it2check` bash script that determines whether to call `sixel` to render images. We'll find a way to show images later. At the moment, we simply remove this dependency.
 
-We'll provide installation scripts on Mac (Bash) and Windows (PowerShell) to install `sqlflow` and its dependencies swiftly. The four scripts are:
+We'll provide installation guides on Mac and Windows to install `sqlflow` swiftly. For example:
 
-1. For Mac/Linux users:
-    1. `install.sh` (Install `sqlflow` and the image `sqlflow/sqlflow:latest`)
-    1. `install-client.sh` (Only `sqlflow`)
-	1. Provide a brief user guide and a bash command on the SQLFlow homepage like [Homebrew](http://brew.sh). Users can paste the command to a terminal to install SQLFlow. For example: `/bin/bash -c "$(curl -fsSL https://github.com/sql-machien-learning/sqlflow/release/latest/install.sh)"`
+1. Mac/Linux users can run the following command in a terminal to use `sqlflow`:
+```bash
+wget https://raw.githubusercontent.com/sql-machine-learning/.../sqlflow && chmod +x ./sqlflow
+```
 
-1. For PC users (We'll support PCs later):
-    1. install.ps1(Install `sqlflow` and the image `sqlflow/sqlflow:latest`, coming later)
-    1. install-client.ps1 (Only `sqlflow` on a PC, coming later)
-	1. Similarly, provide a user guide with a PowerShell command that install SQLFlow on Windows.
+1. PC users can just click the download link to use `sqlflow`.
 
 ### Refactoring
 
