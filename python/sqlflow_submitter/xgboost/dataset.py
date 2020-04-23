@@ -19,6 +19,7 @@ from pathlib import Path
 import xgboost as xgb
 from sqlflow_submitter import db
 
+# TODO(weiguoz): Find a strategy to adjust the slice_num by num_workers
 SLICE_NUM = 128
 
 

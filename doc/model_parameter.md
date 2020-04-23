@@ -184,7 +184,7 @@ INTO sqlflow_models.my_xgb_regression_model;
 <tr>
 	<td>train.num_workers</td>
 	<td>int</td>
-	<td>[default=1]<br>Number of workers for distributed train, 1 means stand-alone mode.<br>range: [1, Infinity]</td>
+	<td>[default=1]<br>Number of workers for distributed train, 1 means stand-alone mode.<br>range: [1, 128]</td>
 </tr>
 <tr>
 	<td>validation.select</td>

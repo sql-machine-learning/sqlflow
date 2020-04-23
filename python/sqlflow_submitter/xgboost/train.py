@@ -17,7 +17,8 @@ import sqlflow_submitter.tensorflow.pai_distributed as pai_dist
 import xgboost as xgb
 from sqlflow_submitter.pai import model
 from sqlflow_submitter.xgboost.dataset import xgb_dataset
-from sqlflow_submitter.xgboost.pai_rabit import PaiTracker, PaiWorker
+from sqlflow_submitter.xgboost.pai_rabit import (PaiXGBoostTracker,
+                                                 PaiXGBoostWorker)
 
 
 def dist_train(flags,
@@ -39,7 +40,8 @@ def dist_train(flags,
                oss_model_dir=""):
     num_hosts = len(flags.worker_hosts.split(","))
     if not is_pai or num_hosts != num_workers:
-        raise Exception("dist xgb train is supported for pai")
+        raise Exception(
+            "XGBoost distributed training is only supported on PAI")
 
     cluster, node, task_id = pai_dist.make_distributed_info_without_evaluator(
         flags)
@@ -51,17 +53,17 @@ def dist_train(flags,
     try:
         if node == 'ps':
             if task_id == 0:
-                tracker = PaiTracker(host=master_host,
-                                     nworkers=num_workers,
-                                     port=master_port)
+                tracker = PaiXGBoostTracker(host=master_host,
+                                            nworkers=num_workers,
+                                            port=master_port)
         else:
             if node != 'chief':
                 task_id += 1
-            envs = PaiWorker.gen_envs(host=master_host,
-                                      port=master_port,
-                                      ttl=200,
-                                      nworkers=num_workers,
-                                      task_id=task_id)
+            envs = PaiXGBoostWorker.gen_envs(host=master_host,
+                                             port=master_port,
+                                             ttl=200,
+                                             nworkers=num_workers,
+                                             task_id=task_id)
             xgb.rabit.init(envs)
             rank = xgb.rabit.get_rank()
 
@@ -145,7 +147,7 @@ def train(datasource,
                         **train_params)
         bst.save_model("my_model")
         print("Evaluation result: %s" % re)
-    if rank == 0 and len(oss_model_dir) > 0:
+    if is_pai and rank == 0 and len(oss_model_dir) > 0:
         save_model(oss_model_dir, model_params, train_params, feature_metas,
                    feature_column_names, label_meta)
 

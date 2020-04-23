@@ -21,7 +21,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from sqlflow_submitter.xgboost.tracker import RabitTracker
 
 
-class PaiWorker():
+class PaiXGBoostWorker():
     @staticmethod
     def read_tracker_port(host, port, ttl=900):
         started = int(time.time())
@@ -47,7 +47,7 @@ class PaiWorker():
 
     @staticmethod
     def gen_envs(host, port, ttl, nworkers, task_id):
-        tracker_port = PaiWorker.read_tracker_port(host, port, ttl)
+        tracker_port = PaiXGBoostWorker.read_tracker_port(host, port, ttl)
         if tracker_port == "":
             raise Exception("bad response from tracker, empty port")
         return [
@@ -58,11 +58,11 @@ class PaiWorker():
         ]
 
 
-class PaiTracker(object):
+class PaiXGBoostTracker(object):
     def __init__(self, host, nworkers, port):
         self.httpd = HTTPServer((host, port),
                                 self.TrackerHelperHTTPRequestHandler)
-        tracker_port = PaiTracker.find_free_port()
+        tracker_port = PaiXGBoostTracker.find_free_port()
         nslave = nworkers
         tracker = RabitTracker(host, nslave, tracker_port, tracker_port + 1)
         tracker.start(nslave)

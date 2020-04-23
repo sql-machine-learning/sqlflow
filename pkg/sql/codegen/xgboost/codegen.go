@@ -59,7 +59,7 @@ Specify the dataset for validation.
 example: "SELECT * FROM boston.train LIMIT 8"`, nil},
 	"train.num_workers": {attribute.Int, 1, `[default=1]
 Number of workers for distributed train, 1 means stand-alone mode.
-range: [1, Infinity]`, attribute.IntLowerBoundChecker(1, true)},
+range: [1, 128]`, attribute.IntRangeChecker(1, 128, true, true)},
 }
 var fullAttrValidator = attribute.Dictionary{}
 
