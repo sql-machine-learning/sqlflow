@@ -201,13 +201,9 @@ def get_dataset_fn(select,
                                  pai_table=pai_table,
                                  num_workers=num_workers,
                                  worker_id=worker_id)
-        if is_estimator:
-            train_dataset = train_dataset.shuffle(shuffle_size).batch(
-                batch_size).cache("cache_train").repeat(
+        train_dataset = train_dataset.cache("cache_train").shuffle(
+                shuffle_size).batch(batch_size).repeat(
                     epochs if epochs else 1)
-        else:
-            train_dataset = train_dataset.shuffle(shuffle_size).batch(
-                batch_size).repeat(epochs if epochs else 1)
         return train_dataset
 
     def validate_input_fn():
@@ -218,7 +214,7 @@ def get_dataset_fn(select,
                                     label_meta,
                                     is_pai=is_pai,
                                     pai_table=pai_val_table)
-        validate_dataset = validate_dataset.batch(batch_size)
+        validate_dataset = validate_datase.cache("cache_validation")
         return validate_dataset
 
     if validate_select != "":
