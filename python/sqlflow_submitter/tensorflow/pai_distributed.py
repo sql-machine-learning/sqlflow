@@ -53,7 +53,7 @@ def set_oss_environs(FLAGS):
 
 # make_distributed_info_without_evaluator and dump_into_tf_config are used to
 # dump distributed configurations into environment variable TF_CONFIG so that
-# Tensorflow can recognize it.
+# TensorFlow can recognize it.
 def make_distributed_info_without_evaluator(FLAGS):
     worker_hosts = FLAGS.worker_hosts.split(",")
     ps_hosts = FLAGS.ps_hosts.split(",")
