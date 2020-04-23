@@ -76,9 +76,14 @@ func ResolveSQLProgram(sqlStmts []*parser.SQLFlowStmt, logger *log.Logger) ([]ir
 				logger.Info("resolveSQL:explain")
 				// since getTrainStmtFromModel is false, use empty cwd is fine.
 				r, err = generateExplainStmt(sql.SQLFlowSelectStmt, "", "", "", false)
-			} else {
+			} else if sql.Predict {
 				logger.Info("resolveSQL:predict")
 				r, err = generatePredictStmt(sql.SQLFlowSelectStmt, "", "", "", false)
+			} else if sql.Evaluate {
+				logger.Info("resolveSQL:evaluate")
+				r, err = generateEvaluateStmt(sql.SQLFlowSelectStmt, "", "", "", false)
+			} else {
+				return nil, fmt.Errorf("unkown exteneded SQL statement type")
 			}
 		} else {
 			logger.Info("resolveSQL:standard")
@@ -146,8 +151,10 @@ func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *dat
 			r, err = generateShowTrainStmt(sql.SQLFlowSelectStmt)
 		} else if sql.Explain {
 			r, err = generateExplainStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, GetSubmitter(session.Submitter).GetTrainStmtFromModel())
-		} else {
+		} else if sql.Predict {
 			r, err = generatePredictStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, GetSubmitter(session.Submitter).GetTrainStmtFromModel())
+		} else if sql.Evaluate {
+			r, err = generateEvaluateStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, GetSubmitter(session.Submitter).GetTrainStmtFromModel())
 		}
 	} else {
 		standardSQL := ir.NormalStmt(sql.Original)

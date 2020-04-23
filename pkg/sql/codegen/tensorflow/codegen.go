@@ -521,6 +521,47 @@ func Explain(stmt *ir.ExplainStmt, session *pb.Session) (string, error) {
 	return program.String(), nil
 }
 
+// Evaluate generates a Python program to explain a trained model.
+func Evaluate(stmt *ir.EvaluateStmt, session *pb.Session) (string, error) {
+	modelParams, featureColumnsCode, fieldDescs, err := restoreModel(stmt.TrainStmt)
+	if err != nil {
+		return "", err
+	}
+	labelFM := stmt.TrainStmt.Label.GetFieldDesc()[0]
+	validationParams := resolveParams(stmt.Attributes, "validation.")
+	if len(validationParams) == 0 {
+		// add default validation.metrics = "Accuracy".
+		validationParams["metrics"] = "Accuracy"
+	}
+
+	filler := evaluateFiller{
+		DataSource:        session.DbConnStr,
+		Select:            stmt.Select,
+		Estimator:         stmt.TrainStmt.Estimator,
+		FieldDescs:        fieldDescs,
+		FeatureColumnCode: fmt.Sprintf("{%s}", strings.Join(featureColumnsCode, ",\n")),
+		Y:                 labelFM,
+		ModelParams:       modelParams,
+		ValidationParams:  validationParams,
+		Save:              "model_save",
+		ResultTable:       stmt.Into,
+		HDFSNameNodeAddr:  session.HdfsNamenodeAddr,
+		HiveLocation:      session.HiveLocation,
+		HDFSUser:          session.HdfsUser,
+		HDFSPass:          session.HdfsPass,
+	}
+	var program bytes.Buffer
+	var tmpl = template.Must(template.New("Evaluate").Funcs(template.FuncMap{
+		"intArrayToJSONString": intArrayToJSONString,
+		"attrToPythonValue":    attrToPythonValue,
+		"DTypeToString":        DTypeToString,
+	}).Parse(tfEvaluateTemplateText))
+	if err := tmpl.Execute(&program, filler); err != nil {
+		return "", err
+	}
+	return program.String(), nil
+}
+
 // restoreModel reconstruct necessary python objects from TrainStmt
 func restoreModel(stmt *ir.TrainStmt) (modelParams map[string]interface{}, featureColumnsCode []string, fieldDescs map[string][]*ir.FieldDesc, err error) {
 	fieldDescs = make(map[string][]*ir.FieldDesc)

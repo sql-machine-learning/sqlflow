@@ -222,8 +222,11 @@ func verifyIRWithTrainStmt(sqlir ir.SQLFlowStmt, db *database.DB) error {
 	case *ir.ExplainStmt:
 		selectStmt = s.Select
 		trainStmt = s.TrainStmt
+	case *ir.EvaluateStmt:
+		selectStmt = s.Select
+		trainStmt = s.TrainStmt
 	default:
-		return fmt.Errorf("loadModelMetaUsingIR doesn't support IR of type %T", sqlir)
+		return fmt.Errorf("verifyIRWithTrainStmt doesn't support IR of type %T", sqlir)
 	}
 
 	trainFields, e := verifier.Verify(selectStmt, db)
@@ -337,6 +340,54 @@ func generateExplainStmt(slct *parser.SQLFlowSelectStmt, connStr, modelDir strin
 	}
 
 	return explainStmt, nil
+}
+
+func generateEvaluateStmt(slct *parser.SQLFlowSelectStmt, connStr string, modelDir string, cwd string, getTrainStmtFromModel bool) (*ir.EvaluateStmt, error) {
+	attrMap, err := generateAttributeIR(&slct.EvaluateAttrs)
+	if err != nil {
+		return nil, err
+	}
+
+	var trainStmt *ir.TrainStmt
+	if getTrainStmtFromModel {
+		trainStmt, err = generateTrainStmtByModel(slct, connStr, cwd, modelDir, slct.ModelToEvaluate)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	resultTable := slct.EvaluateInto
+	if err != nil {
+		return nil, err
+	}
+
+	label := &ir.NumericColumn{
+		FieldDesc: &ir.FieldDesc{
+			Name: slct.EvaluateLabel,
+		}}
+
+	evaluateStmt := &ir.EvaluateStmt{
+		Select:     slct.StandardSelect.String(),
+		Attributes: attrMap,
+		ModelName:  slct.ModelToEvaluate,
+		Label:      label,
+		Into:       resultTable,
+		TrainStmt:  trainStmt,
+	}
+
+	if getTrainStmtFromModel {
+		// FIXME(tony): change the function signature to use *database.DB
+		db, err := database.OpenAndConnectDB(connStr)
+		if err != nil {
+			return nil, err
+		}
+		defer db.Close()
+		if err := verifyIRWithTrainStmt(evaluateStmt, db); err != nil {
+			return nil, err
+		}
+	}
+
+	return evaluateStmt, nil
 }
 
 func generateAttributeIR(attrs *parser.Attributes) (map[string]interface{}, error) {

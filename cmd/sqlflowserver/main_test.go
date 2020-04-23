@@ -313,6 +313,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseEmptyDataset", CaseEmptyDataset)
 	t.Run("CaseLabelColumnNotExist", CaseLabelColumnNotExist)
 	t.Run("CaseTrainSQL", CaseTrainSQL)
+	t.Run("CaseTrainAndEvaluate", CaseTrainAndEvaluate)
 	t.Run("CaseTrainPredictCategoricalFeature", CaseTrainPredictCategoricalFeature)
 	t.Run("CaseTrainRegex", CaseTrainRegex)
 	t.Run("CaseTypoInColumnClause", CaseTypoInColumnClause)
@@ -766,11 +767,35 @@ TO PREDICT housing.predict.class USING housing.dnnlinear_model;`
 	}
 }
 
+func CaseTrainAndEvaluate(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`SELECT * FROM %s WHERE class<>2
+TO TRAIN DNNClassifier
+WITH
+	model.n_classes = 2,
+	model.hidden_units = [10, 20],
+	validation.select = "SELECT * FROM %s WHERE class <>2 LIMIT 30"
+LABEL class
+INTO %s;`, caseTrainTable, caseTrainTable, caseInto)
+	_, _, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+
+	evalSQL := fmt.Sprintf(`SELECT * FROM %s WHERE class<>2
+TO EVALUATE %s
+WITH validation.metrics = "Accuracy,AUC"
+LABEL class
+INTO %s.evaluation_result;`, caseTestTable, caseInto, caseDB)
+	_, _, _, err = connectAndRunSQL(evalSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+}
+
 func CaseTrainSQL(t *testing.T) {
 	a := assert.New(t)
-	trainSQL := fmt.Sprintf(`
-	SELECT *
-	FROM %s
+	trainSQL := fmt.Sprintf(`SELECT * FROM %s
 	TO TRAIN DNNClassifier
 	WITH
 		model.n_classes = 3,
