@@ -203,7 +203,7 @@ def get_dataset_fn(select,
                                  worker_id=worker_id)
         train_dataset = train_dataset.cache("cache_train").shuffle(
                 shuffle_size).batch(batch_size).repeat(
-                    epochs if epochs else 1)
+                epochs if epochs else 1)
         return train_dataset
 
     def validate_input_fn():
