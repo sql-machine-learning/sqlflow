@@ -211,7 +211,7 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 // DistTrain generates a Python program for distributed train a XgBoost model.
 // TODO(weiguoz): make DistTrain to be an implementation of the interface.
 func DistTrain(trainStmt *ir.TrainStmt, session *pb.Session, nworkers int, ossURI string) (string, error) {
-	r, err := newTrainFiller(trainStmt, session, nworkers, ossURI)
+	r, err := newTrainFiller(trainStmt, session, ossURI)
 	if err != nil {
 		return "", err
 	}
@@ -227,29 +227,31 @@ func DistTrain(trainStmt *ir.TrainStmt, session *pb.Session, nworkers int, ossUR
 	return program.String(), nil
 }
 
-func newTrainFiller(trainStmt *ir.TrainStmt, session *pb.Session, nworkers int, ossURI string) (*trainFiller, error) {
+func newTrainFiller(trainStmt *ir.TrainStmt, session *pb.Session, ossURI string) (*trainFiller, error) {
 	if err := resolveModelParams(trainStmt); err != nil {
 		return nil, err
 	}
 	params := parseAttribute(trainStmt.Attributes)
 	diskCache := params["train."]["disk_cache"].(bool)
 	delete(params["train."], "disk_cache")
-	var batchSize int
-	var epoch int
 
+	batchSize := -1
+	epoch := 1
+	nworkers := 1
 	batchSizeAttr, ok := params["train."]["batch_size"]
 	if ok {
 		batchSize = batchSizeAttr.(int)
 		delete(params["train."], "batch_size")
-	} else {
-		batchSize = -1
 	}
 	epochAttr, ok := params["train."]["epoch"]
 	if ok {
 		epoch = epochAttr.(int)
 		delete(params["train."], "epoch")
-	} else {
-		epoch = 1
+	}
+	workersAttr, ok := params["train."]["num_workers"]
+	if ok {
+		nworkers = workersAttr.(int)
+		delete(params["train."], "num_workers")
 	}
 
 	if len(trainStmt.Features) != 1 {
