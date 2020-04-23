@@ -108,6 +108,7 @@ type EvaluateClause struct {
 	ModelToEvaluate string
 	EvaluateLabel string
 	EvaluateInto  string
+	EvaluateUsing string
 }
 
 type ShowTrainClause struct {
@@ -254,8 +255,8 @@ explain_clause
 ;
 
 evaluate_clause
-: TO EVALUATE IDENT WITH attrs label_clause { $$.ModelToEvaluate = $3; $$.EvaluateAttrs = $5; $$.EvaluateLabel = $6 }
-| TO EVALUATE IDENT label_clause { $$.ModelToEvaluate = $3; $$.EvaluateLabel = $4 }
+: TO EVALUATE IDENT WITH attrs label_clause USING IDENT { $$.ModelToEvaluate = $3; $$.EvaluateAttrs = $5; $$.EvaluateLabel = $6; $$.EvaluateUsing = $8 }
+| TO EVALUATE IDENT label_clause USING IDENT { $$.ModelToEvaluate = $3; $$.EvaluateLabel = $4; $$.EvaluateUsing = $6 }
 ;
 
 show_train_clause
