@@ -114,7 +114,7 @@ func TestCoulerCodegenSpecialChars(t *testing.T) {
 	a.NoError(err)
 	yaml, e := cg.GenYAML(code)
 	a.NoError(e)
-	r, _ := regexp.Compile(`repl -e "(.*);"`)
+	r, _ := regexp.Compile(`step -e "(.*);"`)
 	a.Equal("\\`\\$\\\"\\\\", r.FindStringSubmatch(yaml)[1])
 }
 
