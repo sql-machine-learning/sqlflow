@@ -70,11 +70,11 @@ func (table *ProtobufWriter) Flush() error {
 }
 
 // FlushWithError flushes the buffer and end with the error message
-func (table *ProtobufWriter) FlushWithError(e error) error {
+func (table *ProtobufWriter) FlushWithError(err error) error {
 	if e := table.Flush(); e != nil {
 		return nil
 	}
-	response, e := pb.EncodeMessage(fmt.Sprintf("%v", e))
+	response, e := pb.EncodeMessage(fmt.Sprintf("%v", err))
 	if e != nil {
 		return e
 	}

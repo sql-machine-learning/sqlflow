@@ -64,7 +64,7 @@ func render(rsp interface{}, table tablewriter.TableWriter, isTerminal, it2Check
 			log.Printf("ERROR: %v\n", s)
 		} else {
 			table.FlushWithError(s)
-			os.Exit(1)
+			log.Fatalf("workflow step failed: %v", s)
 		}
 	case sql.EndOfExecution:
 	case sql.Figures:
