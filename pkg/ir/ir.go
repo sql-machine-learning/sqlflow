@@ -20,6 +20,7 @@ type Executor interface {
 	ExecuteTrain(*TrainStmt) error
 	ExecutePredict(*PredictStmt) error
 	ExecuteExplain(*ExplainStmt) error
+	ExecuteEvaluate(*EvaluateStmt) error
 	ExecuteShowTrain(*ShowTrainStmt) error
 }
 
@@ -155,6 +156,30 @@ func (cl *ExplainStmt) IsExtended() bool { return true }
 
 // GetOriginalSQL returns the original SQL statement used to get current IR result
 func (cl *ExplainStmt) GetOriginalSQL() string { return cl.OriginalSQL }
+
+// EvaluateStmt is the intermediate representation for code generation of an evaluation job
+type EvaluateStmt struct {
+	OriginalSQL      string
+	Select           string
+	Attributes       map[string]interface{}
+	ModelName        string
+	Label            FeatureColumn
+	Into             string
+	TmpEvaluateTable string
+	TrainStmt        *TrainStmt
+}
+
+// Execute generates and executes code for EvaluateStmt
+func (cl *EvaluateStmt) Execute(s Executor) error { return s.ExecuteEvaluate(cl) }
+
+// SetOriginalSQL sets the original sql string
+func (cl *EvaluateStmt) SetOriginalSQL(sql string) { cl.OriginalSQL = sql }
+
+// IsExtended returns whether a SQLFlowStmt is an extended SQL statement
+func (cl *EvaluateStmt) IsExtended() bool { return true }
+
+// GetOriginalSQL returns the original SQL statement used to get current IR result
+func (cl *EvaluateStmt) GetOriginalSQL() string { return cl.OriginalSQL }
 
 // NormalStmt is a SQL statement without using SQLFlow syntax extension.
 type NormalStmt string
