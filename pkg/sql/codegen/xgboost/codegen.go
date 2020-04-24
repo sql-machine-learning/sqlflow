@@ -57,6 +57,9 @@ range: [1, Infinity]`, attribute.IntLowerBoundChecker(1, true)},
 	"validation.select": {attribute.String, "", `[default=""]
 Specify the dataset for validation.
 example: "SELECT * FROM boston.train LIMIT 8"`, nil},
+	"train.num_workers": {attribute.Int, 1, `[default=1]
+Number of workers for distributed train, 1 means stand-alone mode.
+range: [1, 128]`, attribute.IntRangeChecker(1, 128, true, true)},
 }
 var fullAttrValidator = attribute.Dictionary{}
 
@@ -202,53 +205,77 @@ func resolveFeatureMeta(fds []ir.FieldDesc) ([]byte, []string, error) {
 
 // Train generates a Python program for train a XgBoost model.
 func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
-	err := resolveModelParams(trainStmt)
+	return DistTrain(trainStmt, session, 1, "")
+}
+
+// DistTrain generates a Python program for distributed train a XgBoost model.
+// TODO(weiguoz): make DistTrain to be an implementation of the interface.
+func DistTrain(trainStmt *ir.TrainStmt, session *pb.Session, nworkers int, ossURI string) (string, error) {
+	r, err := newTrainFiller(trainStmt, session, ossURI)
 	if err != nil {
 		return "", err
+	}
+	var program bytes.Buffer
+	if nworkers > 1 {
+		err = distTrainTemplate.Execute(&program, r)
+	} else {
+		err = trainTemplate.Execute(&program, r)
+	}
+	if err != nil {
+		return "", err
+	}
+	return program.String(), nil
+}
+
+func newTrainFiller(trainStmt *ir.TrainStmt, session *pb.Session, ossURI string) (*trainFiller, error) {
+	if err := resolveModelParams(trainStmt); err != nil {
+		return nil, err
 	}
 	params := parseAttribute(trainStmt.Attributes)
 	diskCache := params["train."]["disk_cache"].(bool)
 	delete(params["train."], "disk_cache")
-	var batchSize int
-	var epoch int
 
+	batchSize := -1
+	epoch := 1
+	nworkers := 1
 	batchSizeAttr, ok := params["train."]["batch_size"]
 	if ok {
 		batchSize = batchSizeAttr.(int)
 		delete(params["train."], "batch_size")
-	} else {
-		batchSize = -1
 	}
 	epochAttr, ok := params["train."]["epoch"]
 	if ok {
 		epoch = epochAttr.(int)
 		delete(params["train."], "epoch")
-	} else {
-		epoch = 1
+	}
+	workersAttr, ok := params["train."]["num_workers"]
+	if ok {
+		nworkers = workersAttr.(int)
+		delete(params["train."], "num_workers")
 	}
 
 	if len(trainStmt.Features) != 1 {
-		return "", fmt.Errorf("xgboost only support 1 feature column set, received %d", len(trainStmt.Features))
+		return nil, fmt.Errorf("xgboost only support 1 feature column set, received %d", len(trainStmt.Features))
 	}
 	featureFieldDesc, labelFieldDesc, err := getFieldDesc(trainStmt.Features["feature_columns"], trainStmt.Label)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	mp, err := json.Marshal(params[""])
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	tp, err := json.Marshal(params["train."])
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	f, fs, err := resolveFeatureMeta(featureFieldDesc)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	l, err := json.Marshal(resolveFieldMeta(&labelFieldDesc))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	paiTrainTable := ""
@@ -258,7 +285,8 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 		paiValidateTable = trainStmt.TmpValidateTable
 	}
 
-	r := trainFiller{
+	return &trainFiller{
+		OSSModelDir:        ossURI,
 		DataSource:         session.DbConnStr,
 		TrainSelect:        trainStmt.Select,
 		ValidationSelect:   trainStmt.ValidationSelect,
@@ -272,14 +300,8 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 		Epoch:              epoch,
 		IsPAI:              tf.IsPAI(),
 		PAITrainTable:      paiTrainTable,
-		PAIValidateTable:   paiValidateTable}
-
-	var program bytes.Buffer
-	if err := trainTemplate.Execute(&program, r); err != nil {
-		return "", err
-	}
-
-	return program.String(), nil
+		PAIValidateTable:   paiValidateTable,
+		Workers:            nworkers}, nil
 }
 
 // Pred generates a Python program for predict a xgboost model.

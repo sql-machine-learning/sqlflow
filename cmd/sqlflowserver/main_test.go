@@ -1622,6 +1622,27 @@ INTO e2etest_keras_dnn_model_distributed;`, caseTrainTable, caseTestTable)
 	a.NoError(err)
 }
 
+func CasePAIMaxComputeTrainXGBDistributed(t *testing.T) {
+	t.Parallel()
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`SELECT * FROM %s
+	TO TRAIN xgboost.gbtree
+	WITH
+		objective="multi:softprob",
+		train.num_boost_round = 30,
+		train.num_workers = 2,
+		eta = 0.4,
+		num_class = 3,
+		train.batch_size=10,
+		validation.select="select * from %s"
+	LABEL class
+	INTO e2etest_xgb_classi_model;`, caseTrainTable, caseTrainTable)
+	_, _, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+}
+
 func CasePAIMaxComputeTrainTFBTDistributed(t *testing.T) {
 	t.Parallel()
 	a := assert.New(t)
@@ -1981,6 +2002,7 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 		t.Run("CasePAIMaxComputeTrainPredictCategoricalFeature", CasePAIMaxComputeTrainPredictCategoricalFeature)
 		t.Run("CasePAIMaxComputeTrainTFBTDistributed", CasePAIMaxComputeTrainTFBTDistributed)
 		t.Run("CasePAIMaxComputeTrainDistributedKeras", CasePAIMaxComputeTrainDistributedKeras)
+		t.Run("CasePAIMaxComputeTrainXGBDistributed", CasePAIMaxComputeTrainXGBDistributed)
 
 		// FIXME(typhoonzero): Add this test back when we solve error: model already exist issue on the CI.
 		// t.Run("CaseTrainPAIRandomForests", CaseTrainPAIRandomForests)

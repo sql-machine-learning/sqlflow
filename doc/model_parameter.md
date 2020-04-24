@@ -182,6 +182,11 @@ INTO sqlflow_models.my_xgb_regression_model;
 	<td>[default=10]<br>The number of rounds for boosting.<br>range: [1, Infinity]</td>
 </tr>
 <tr>
+	<td>train.num_workers</td>
+	<td>int</td>
+	<td>[default=1]<br>Number of workers for distributed train, 1 means stand-alone mode.<br>range: [1, 128]</td>
+</tr>
+<tr>
 	<td>validation.select</td>
 	<td>string</td>
 	<td>[default=""]<br>Specify the dataset for validation.<br>example: "SELECT * FROM boston.train LIMIT 8"</td>
