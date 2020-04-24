@@ -19,7 +19,7 @@ type evaluateFiller struct {
 	DataSource  string
 	Select      string
 	ResultTable string
-	// below members comes from trainStmt
+	// below members come from trainStmt
 	Estimator         string
 	FieldDescs        map[string][]*ir.FieldDesc
 	FeatureColumnCode string
@@ -104,5 +104,5 @@ evaluate(datasource="{{.DataSource}}",
          hdfs_user="{{.HDFSUser}}",
          hdfs_pass="{{.HDFSPass}}",
          is_pai="{{.IsPAI}}" == "true",
-		 pai_table="{{.PAIEvaluateTable}}")
+         pai_table="{{.PAIEvaluateTable}}")
 `

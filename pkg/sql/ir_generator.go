@@ -356,11 +356,6 @@ func generateEvaluateStmt(slct *parser.SQLFlowSelectStmt, connStr string, modelD
 		}
 	}
 
-	resultTable := slct.EvaluateInto
-	if err != nil {
-		return nil, err
-	}
-
 	label := &ir.NumericColumn{
 		FieldDesc: &ir.FieldDesc{
 			Name: slct.EvaluateLabel,
@@ -371,7 +366,7 @@ func generateEvaluateStmt(slct *parser.SQLFlowSelectStmt, connStr string, modelD
 		Attributes: attrMap,
 		ModelName:  slct.ModelToEvaluate,
 		Label:      label,
-		Into:       resultTable,
+		Into:       slct.EvaluateInto,
 		TrainStmt:  trainStmt,
 	}
 

@@ -11,27 +11,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import copy
-import functools
-import glob
-import json
 import os
 import sys
 import types
 
-import numpy as np
 import tensorflow as tf
-from sqlflow_submitter.db import (buffered_db_writer, connect_with_data_source,
-                                  db_generator, pai_maxcompute_db_generator,
-                                  parseMaxComputeDSN)
+from sqlflow_submitter.db import buffered_db_writer, connect_with_data_source
 
 from . import metrics
-from .get_tf_version import tf_is_version2
 from .input_fn import get_dataset_fn
-from .pai_distributed import define_tf_flags, set_oss_environs
+from .pai_distributed import define_tf_flags
 from .set_log_level import set_log_level
-from .train_estimator import estimator_train_and_save
-from .train_keras import keras_train_and_save
 
 try:
     import sqlflow_models
