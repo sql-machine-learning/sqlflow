@@ -521,7 +521,7 @@ func Explain(stmt *ir.ExplainStmt, session *pb.Session) (string, error) {
 	return program.String(), nil
 }
 
-// Evaluate generates a Python program to explain a trained model.
+// Evaluate generates a Python program to evaluate a trained model.
 func Evaluate(stmt *ir.EvaluateStmt, session *pb.Session) (string, error) {
 	modelParams, featureColumnsCode, fieldDescs, err := restoreModel(stmt.TrainStmt)
 	if err != nil {

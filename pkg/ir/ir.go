@@ -157,7 +157,7 @@ func (cl *ExplainStmt) IsExtended() bool { return true }
 // GetOriginalSQL returns the original SQL statement used to get current IR result
 func (cl *ExplainStmt) GetOriginalSQL() string { return cl.OriginalSQL }
 
-// EvaluateStmt is the intermediate representation for code generation of a analysis job
+// EvaluateStmt is the intermediate representation for code generation of an evaluation job
 type EvaluateStmt struct {
 	OriginalSQL      string
 	Select           string
@@ -169,7 +169,7 @@ type EvaluateStmt struct {
 	TrainStmt        *TrainStmt
 }
 
-// Execute generates and executes code for ExplainStmt
+// Execute generates and executes code for EvaluateStmt
 func (cl *EvaluateStmt) Execute(s Executor) error { return s.ExecuteEvaluate(cl) }
 
 // SetOriginalSQL sets the original sql string
