@@ -16,7 +16,9 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"context"
 	_ "image/png"
+	"time"
 
 	"flag"
 	"fmt"
@@ -31,6 +33,8 @@ import (
 
 	"github.com/joho/godotenv"
 	"golang.org/x/crypto/ssh/terminal"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/step"
 
@@ -41,6 +45,15 @@ import (
 )
 
 const tablePageSize = 1000
+
+// current using db, used to emulate SQL session keeping
+var currentDB string
+
+// dotEnvFilename is the filename of the .env file
+const dotEnvFilename string = ".sqlflow_env"
+
+// if we are on sixel supported platform
+var it2Check = false
 
 func isSpace(c byte) bool {
 	return len(bytes.TrimSpace([]byte{c})) == 0
@@ -137,8 +150,6 @@ func readStmt(scn *bufio.Scanner) ([]string, error) {
 	return stmt, scn.Err()
 }
 
-var it2Check = false
-
 func flagPassed(name ...string) bool {
 	found := false
 	for _, n := range name {
@@ -151,39 +162,78 @@ func flagPassed(name ...string) bool {
 	return found
 }
 
-func runStmt(stmt string, isTerminal bool, modelDir string, ds string) error {
+func createRPCConn(serverAddr string) (*grpc.ClientConn, error) {
+	caCrt := os.Getenv("SQLFLOW_CA_CRT")
+	if caCrt != "" {
+		creds, _ := credentials.NewClientTLSFromFile(caCrt, "")
+		return grpc.Dial(serverAddr, grpc.WithTransportCredentials(creds))
+	}
+	return grpc.Dial(serverAddr, grpc.WithInsecure())
+}
+
+func sqlRequest(program string, ds string) *pb.Request {
+	se := sql.MakeSessionFromEnv()
+	se.DbConnStr = getDataSource(ds, currentDB)
+	return &pb.Request{Sql: program, Session: se}
+}
+
+func runStmt(server string, stmt string, isTerminal bool, ds string) error {
+	// special case, process USE to stick SQL session
+	parts := strings.Fields(strings.ReplaceAll(stmt, ";", ""))
+	if len(parts) == 2 && strings.ToUpper(parts[0]) == "USE" {
+		return switchDatabase(server, ds, parts[1])
+	}
+	return runStmtOnServer(server, stmt, isTerminal, ds)
+}
+
+func runStmtOnServer(server string, stmt string, isTerminal bool, ds string) error {
 	if !isTerminal {
 		fmt.Println("sqlflow>", stmt)
 	}
-	var table tablewriter.TableWriter
-	var err error
-	// TODO(yancey1989): remove protobuf tablewriter if using step binary in workflow
-	if isWorkflowStep() {
-		table, err = tablewriter.Create("protobuf", tablePageSize, os.Stdout)
-	} else {
-		table, err = tablewriter.Create("ascii", tablePageSize, os.Stdout)
-	}
+
+	table, err := tablewriter.Create("ascii", tablePageSize, os.Stdout)
 	if err != nil {
 		return err
 	}
-	sess := sql.MakeSessionFromEnv()
-	sess.DbConnStr = getDataSource(ds, currentDB)
-	parts := strings.Fields(strings.ReplaceAll(stmt, ";", ""))
-	if len(parts) == 2 && strings.ToUpper(parts[0]) == "USE" {
-		return switchDatabase(parts[1], sess)
-	}
-	return step.RunSQLProgramAndPrintResult(stmt, modelDir, sess, table, isTerminal, it2Check)
-}
-
-func assertConnectable(ds string) {
-	db, err := database.OpenAndConnectDB(ds)
+	// connect to sqlflow server and run sql program
+	conn, err := createRPCConn(server)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
-	defer db.Close()
+	defer conn.Close()
+	client := pb.NewSQLFlowClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), 36000*time.Second)
+	defer cancel()
+	req := sqlRequest(stmt, ds)
+	stream, err := client.Run(ctx, req)
+	if err != nil {
+		return err
+	}
+	// render output according to environment
+	logFlags := log.Flags()
+	log.SetFlags(0)
+	defer log.SetFlags(logFlags)
+	renderCtx := &renderContext{
+		client:     client,
+		ctx:        ctx,
+		stream:     stream,
+		table:      table,
+		isTerminal: isTerminal,
+		it2Check:   it2Check,
+	}
+	return renderRPCRespStream(renderCtx)
 }
 
-func repl(scanner *bufio.Scanner, modelDir string, ds string) {
+func assertConnectable(server, ds string) {
+	_, err := step.GetStdout(func() error {
+		return runStmtOnServer(server, `select "I'm alive";`, true, ds)
+	})
+	if err != nil {
+		log.Fatalf("Can't connect to %s\n", ds)
+	}
+}
+
+func repl(server string, scanner *bufio.Scanner, ds string) {
 	for {
 		statements, err := readStmt(scanner)
 		if err == io.EOF && len(statements) == 0 {
@@ -197,24 +247,24 @@ func repl(scanner *bufio.Scanner, modelDir string, ds string) {
 			statements[len(statements)-1] += ";"
 		}
 		for _, stmt := range statements {
-			if err := runStmt(stmt, false, modelDir, ds); err != nil {
+			if err := runStmt(server, stmt, false, ds); err != nil {
 				log.Fatalf("run SQL statement failed: %v", err)
 			}
 		}
 	}
 }
 
-func switchDatabase(db string, session *pb.Session) error {
-	stream := sql.RunSQLProgram("USE "+db, "", session)
-	r := <-stream.ReadAll()
-	switch r.(type) {
-	case string:
-		session.DbConnStr = getDataSource(session.DbConnStr, db)
-		fmt.Println("Database changed to", db)
-		currentDB = db
-	case error:
-		fmt.Println(r)
+func switchDatabase(server, ds, db string) error {
+	stmt := "USE " + db
+	out, err := step.GetStdout(func() error {
+		return runStmtOnServer(server, stmt, true, ds)
+	})
+	if err != nil {
+		fmt.Println(out)
+		return err
 	}
+	fmt.Println("Database changed to", db)
+	currentDB = db
 	return nil
 }
 
@@ -246,11 +296,6 @@ func getDataSource(dataSource, db string) string {
 	return ""
 }
 
-var currentDB string
-
-// dotEnvFilename is the filename of the .env file
-const dotEnvFilename string = ".sqlflow_env"
-
 // initEnvFromFile initializes environment variables from the .env file
 func initEnvFromFile(f string) {
 	_ = godotenv.Load(f)
@@ -258,28 +303,28 @@ func initEnvFromFile(f string) {
 
 func main() {
 	initEnvFromFile(filepath.Join(os.Getenv("HOME"), dotEnvFilename))
+	server := flag.String("sqlflow_server", "", "SQLFlow server address, in host:port form. You can set it from environment variable SQLFLOW_SERVER")
 	ds := flag.String("datasource", "", "database connect string")
-	modelDir := flag.String("model_dir", "", "model would be saved on the local dir, otherwise upload to the table.")
 	cliStmt := flag.String("execute", "", "execute SQLFlow from command line.  e.g. --execute 'select * from table1'")
 	flag.StringVar(cliStmt, "e", "", "execute SQLFlow from command line, short for --execute")
 	sqlFileName := flag.String("file", "", "execute SQLFlow from file.  e.g. --file '~/iris_dnn.sql'")
 	flag.StringVar(sqlFileName, "f", "", "execute SQLFlow from file, short for --file")
 	noAutoCompletion := flag.Bool("A", false, "No auto completion for sqlflow models. This gives a quicker start.")
 	flag.Parse()
+	if *server == "" {
+		*server = os.Getenv("SQLFLOW_SERVER")
+	}
+	if *server == "" {
+		log.Fatal("SQLFlow server address is not provided.")
+	}
 	if *ds == "" {
 		*ds = os.Getenv("SQLFLOW_DATASOURCE")
 	}
-	assertConnectable(*ds) // Fast fail if we can't connect to the datasource
+	assertConnectable(*server, *ds) // Fast fail if we can't connect to the datasource
 	var err error
 	currentDB, err = database.GetDatabaseName(*ds)
 	if err != nil {
 		log.Fatalf("error SQLFLOW_DATASOURCE: %v", err)
-	}
-
-	if *modelDir != "" {
-		if _, derr := os.Stat(*modelDir); derr != nil {
-			os.Mkdir(*modelDir, os.ModePerm)
-		}
 	}
 
 	isTerminal := !flagPassed("execute", "e", "file", "f") && terminal.IsTerminal(syscall.Stdin)
@@ -305,18 +350,10 @@ func main() {
 		if !*noAutoCompletion {
 			attribute.ExtractDocStringsOnce()
 		}
-		runPrompt(func(stmt string) { runStmt(stmt, true, *modelDir, *ds) })
+		runPrompt(func(stmt string) { runStmt(*server, stmt, true, *ds) })
 	} else {
-		repl(scanner, *modelDir, *ds)
+		repl(*server, scanner, *ds)
 	}
-}
-
-func isWorkflowStep() bool {
-	// note(yancey1989): the specified env would be set if repl running in Kubernetes Pod
-	if os.Getenv("KUBERNETES_SERVICE_HOST") != "" {
-		return true
-	}
-	return false
 }
 
 func init() {

@@ -46,14 +46,15 @@ func RunSQLProgramAndPrintResult(sqlStmt string, modelDir string, session *pb.Se
 	log.SetFlags(0)
 	stream := sql.RunSQLProgram(sqlStmt, modelDir, session)
 	for res := range stream.ReadAll() {
-		if e := render(res, table, isTerminal, it2Check); e != nil {
+		if e := Render(res, table, isTerminal, it2Check); e != nil {
 			return e
 		}
 	}
 	return table.Flush()
 }
 
-func render(rsp interface{}, table tablewriter.TableWriter, isTerminal, it2Check bool) error {
+// Render output according to calling environment
+func Render(rsp interface{}, table tablewriter.TableWriter, isTerminal, it2Check bool) error {
 	switch s := rsp.(type) {
 	case map[string]interface{}: // table header
 		return table.SetHeader(s)
@@ -139,7 +140,7 @@ func imageCat(imageBytes []byte) error {
 
 // GetStdout hooks stdout and stderr, it's used for test
 func GetStdout(f func() error) (out string, e error) {
-	oldStdout, oldStderr := os.Stdout, os.Stderr // keep backup of the real stdout
+	logOut, oldStdout, oldStderr := log.Writer(), os.Stdout, os.Stderr // keep backup of the real stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 	os.Stderr = w
@@ -153,6 +154,7 @@ func GetStdout(f func() error) (out string, e error) {
 	}()
 	w.Close()                                   // Cancel redirection
 	os.Stdout, os.Stderr = oldStdout, oldStderr // restoring the real stdout and stderr
+	log.SetOutput(logOut)
 	out = <-outC
 	return
 }

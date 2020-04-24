@@ -72,6 +72,9 @@ func ResolveSQLProgram(sqlStmts []*parser.SQLFlowStmt, logger *log.Logger) ([]ir
 				logger.Info("resolveSQL:train")
 				// TODO(yancey1989): enable the atttribute checker when cover pai codegen.
 				r, err = generateTrainStmt(sql.SQLFlowSelectStmt, false)
+			} else if sql.ShowTrain {
+				logger.Info("resolveSQL:showTrain")
+				r, err = generateShowTrainStmt(sql.SQLFlowSelectStmt)
 			} else if sql.Explain {
 				logger.Info("resolveSQL:explain")
 				// since getTrainStmtFromModel is false, use empty cwd is fine.

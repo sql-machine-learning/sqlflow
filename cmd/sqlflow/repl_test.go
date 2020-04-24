@@ -19,6 +19,8 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"log"
+	"net"
 	"os"
 	"os/exec"
 	"regexp"
@@ -27,9 +29,13 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 
 	"github.com/c-bata/go-prompt"
 	"sqlflow.org/sqlflow/pkg/database"
+	"sqlflow.org/sqlflow/pkg/proto"
+	srv "sqlflow.org/sqlflow/pkg/server"
 	"sqlflow.org/sqlflow/pkg/sql"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/attribute"
 	"sqlflow.org/sqlflow/pkg/sql/testdata"
@@ -39,10 +45,53 @@ import (
 var space = regexp.MustCompile(`\s+`)
 var dbConnStr = "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
 var testDBDriver = os.Getenv("SQLFLOW_TEST_DB")
-var session = sql.MakeSessionFromEnv()
+var server = "localhost:50051"
+
+func startServer() func() {
+	var s *grpc.Server
+	go func() {
+		s = grpc.NewServer()
+		proto.RegisterSQLFlowServer(s, srv.NewServer(sql.RunSQLProgram, ""))
+
+		listenString := fmt.Sprintf(":%d", 50051)
+		lis, err := net.Listen("tcp", listenString)
+		if err != nil {
+			log.Fatalf("failed to listen: %v", err)
+		}
+
+		// Register reflection service on gRPC server.
+		reflection.Register(s)
+		log.Printf("Server Started at %s", listenString)
+		if err := s.Serve(lis); err != nil {
+			log.Fatalf("failed to serve: %v", err)
+		}
+	}()
+	return func() {
+		s.GracefulStop()
+	}
+}
+
+func serverIsReady(addr string, timeout time.Duration) bool {
+	conn, err := net.DialTimeout("tcp", addr, timeout)
+	if err != nil {
+		return false
+	}
+	err = conn.Close()
+	return err == nil
+}
+
+func waitForServer() {
+	for i := 0; i < 10; i++ {
+		if serverIsReady(server, 5*time.Second) {
+			return
+		}
+		time.Sleep(1 * time.Second)
+	}
+	log.Fatal("Can't connect to sqlflow server.")
+}
 
 func prepareTestDataOrSkip(t *testing.T) error {
-	assertConnectable(dbConnStr)
+	assertConnectable(server, dbConnStr)
 	testDB, _ := database.OpenAndConnectDB(dbConnStr)
 	if testDBDriver == "mysql" {
 		_, e := testDB.Exec("CREATE DATABASE IF NOT EXISTS sqlflow_models;")
@@ -56,47 +105,52 @@ func prepareTestDataOrSkip(t *testing.T) error {
 }
 
 func TestRunStmt(t *testing.T) {
+	stopServer := startServer()
+	defer stopServer()
+	waitForServer()
 	a := assert.New(t)
 	a.NoError(prepareTestDataOrSkip(t))
 	os.Setenv("SQLFLOW_log_dir", "/tmp/")
-	session.DbConnStr = dbConnStr
 	currentDB = ""
 	// TODO(yancey1989): assert should not panics in repl
-	output, err := step.GetStdout(func() error { return runStmt("show tables", true, "", dbConnStr) })
+	output, err := step.GetStdout(func() error { return runStmt(server, "show tables", true, dbConnStr) })
 	a.NoError(err)
 	a.Contains(output, "Error 1046: No database selected")
-	output, err = step.GetStdout(func() error { return runStmt("use iris", true, "", dbConnStr) })
+	output, err = step.GetStdout(func() error { return runStmt(server, "use iris", true, dbConnStr) })
 	a.NoError(err)
 	a.Contains(output, "Database changed to iris")
 
-	output, err = step.GetStdout(func() error { return runStmt("show tables", true, "", dbConnStr) })
+	output, err = step.GetStdout(func() error { return runStmt(server, "show tables", true, dbConnStr) })
 	a.NoError(err)
 	a.Contains(output, "| TABLES IN IRIS |")
 
 	output, err = step.GetStdout(func() error {
-		return runStmt("select * from train to train DNNClassifier WITH model.hidden_units=[10,10], model.n_classes=3, validation.select=\"select * from test\" label class INTO sqlflow_models.repl_dnn_model;", true, "", dbConnStr)
+		return runStmt(server, "select * from train to train DNNClassifier WITH model.hidden_units=[10,10], model.n_classes=3, validation.select=\"select * from test\" label class INTO sqlflow_models.repl_dnn_model;", true, dbConnStr)
 	})
 	a.NoError(err)
 	a.Contains(output, "'global_step': 110")
 
 	output, err = step.GetStdout(func() error {
-		return runStmt("select * from train to train xgboost.gbtree WITH objective=reg:squarederror, validation.select=\"select * from test\" label class INTO sqlflow_models.repl_xgb_model;", true, "", dbConnStr)
+		return runStmt(server, "select * from train to train xgboost.gbtree WITH objective=reg:squarederror, validation.select=\"select * from test\" label class INTO sqlflow_models.repl_xgb_model;", true, dbConnStr)
 	})
 	a.NoError(err)
 	a.Contains(output, "Evaluation result: ")
 
 	output, err = step.GetStdout(func() error {
-		return runStmt("select * from train to explain sqlflow_models.repl_xgb_model;", true, "", dbConnStr)
+		return runStmt(server, "select * from train to explain sqlflow_models.repl_xgb_model;", true, dbConnStr)
 	})
 	a.NoError(err)
 	a.Contains(output, "data:text/html, <div align='center'><img src='data:image/png;base64")
-	a.Contains(output, "⣿") //non sixel with ascii art
+	// not supported now
+	// a.Contains(output, "⣿") //non sixel with ascii art
 }
 
 func TestRepl(t *testing.T) {
+	stopServer := startServer()
+	defer stopServer()
+	waitForServer()
 	a := assert.New(t)
 	a.Nil(prepareTestDataOrSkip(t))
-	session.DbConnStr = dbConnStr
 	sql := `
 --
 use iris; --
@@ -109,7 +163,7 @@ INTO sqlflow_models.repl_dnn_model;
 use sqlflow_models;
 show tables`
 	scanner := bufio.NewScanner(strings.NewReader(sql))
-	output, err := step.GetStdout(func() error { repl(scanner, "", dbConnStr); return nil })
+	output, err := step.GetStdout(func() error { repl(server, scanner, dbConnStr); return nil })
 	a.Nil(err)
 	a.Contains(output, "Database changed to iris")
 	a.Contains(output, `
@@ -134,16 +188,19 @@ INTO sqlflow_models.repl_dnn_model;`)
 }
 
 func TestReplWithoutSemicolon(t *testing.T) {
+	stopServer := startServer()
+	defer stopServer()
+	waitForServer()
+
 	a := assert.New(t)
 	a.NoError(prepareTestDataOrSkip(t))
-	session.DbConnStr = dbConnStr
 	sql := `
 select * from iris.train to train DNNClassifier
 WITH model.hidden_units=[10,10], model.n_classes=3, validation.select="select * from iris.test"
 label class
 INTO sqlflow_models.repl_dnn_model`
 	scanner := bufio.NewScanner(strings.NewReader(sql))
-	output, err := step.GetStdout(func() error { repl(scanner, "", dbConnStr); return nil })
+	output, err := step.GetStdout(func() error { repl(server, scanner, dbConnStr); return nil })
 	a.NoError(err)
 	a.Contains(output, `
 select * from iris.train to train DNNClassifier
@@ -154,9 +211,13 @@ INTO sqlflow_models.repl_dnn_model;`)
 }
 
 func TestMain(t *testing.T) {
+	stopServer := startServer()
+	defer stopServer()
+	waitForServer()
+
 	a := assert.New(t)
 	a.Nil(prepareTestDataOrSkip(t))
-	os.Args = append(os.Args, "-datasource", dbConnStr, "-e", "use iris; show tables", "-model_dir", "/tmp/repl_test")
+	os.Args = append(os.Args, "-datasource", dbConnStr, "-e", "use iris; show tables", "-sqlflow_server", server)
 	output, _ := step.GetStdout(func() error { main(); return nil })
 	a.Contains(output, `
 +----------------+
@@ -181,6 +242,7 @@ func testGetDataSource(t *testing.T, dataSource, databaseName string) {
 	a.NoError(err)
 	a.Equal(databaseName+"test", db)
 }
+
 func TestGetDataSource(t *testing.T) {
 	testGetDataSource(t, "maxcompute://test:test@service.cn.maxcompute.aliyun.com/api?curr_project=iris&scheme=https", "iris")
 	testGetDataSource(t, "maxcompute://test:test@service.cn.maxcompute.aliyun.com/api?curr_project=&scheme=https", "")
@@ -233,6 +295,10 @@ func testMainFastFail(t *testing.T, interactive bool) {
 }
 
 func TestMainFastFail(t *testing.T) {
+	stopServer := startServer()
+	defer stopServer()
+	waitForServer()
+
 	testMainFastFail(t, true)
 	testMainFastFail(t, false)
 }
@@ -868,6 +934,30 @@ func TestStdinParser(t *testing.T) {
 	buf, e = p.Read()
 	a.Nil(e)
 	a.Equal("test multiple", string(buf))
+}
+
+func TestGetServerAddrFromEnv(t *testing.T) {
+	os.Setenv("SQLFLOW_SERVER", server)
+	os.Setenv("SQLFLOW_DATASOURCE", dbConnStr)
+	defer os.Unsetenv("SQLFLOW_SERVER")
+	defer os.Unsetenv("SQLFLOW_DATASOURCE")
+	stopServer := startServer()
+	defer stopServer()
+	waitForServer()
+	a := assert.New(t)
+	a.Nil(prepareTestDataOrSkip(t))
+	os.Args = append(os.Args, "-e", "use iris; show tables")
+	output, _ := step.GetStdout(func() error { main(); return nil })
+	a.Contains(output, `
++----------------+
+| TABLES IN IRIS |
++----------------+
+| iris_empty     |
+| test           |
+| test_dense     |
+| train          |
+| train_dense    |
++----------------+`)
 }
 
 type testConsoleParser struct{}
