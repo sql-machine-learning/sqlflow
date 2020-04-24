@@ -1,10 +1,10 @@
 # Steps to Contribute a Model to SQLFlow
 
-[This document](../contribute_models.md) has explained how a ML specialist develop, test and publish a model definition. In this design, we want to present a completely new way that tremendously simplize the steps.
+[This document](../contribute_models.md) explains how a ML specialist develops, tests and publishes a model definition. In this design, we want to present a completely new way that tremendously simplize the steps.
 
 ## Prepare
 
-Just run the below command to install SQLFlow Python bindings.
+Run the below command to install SQLFlow Python bindings.
 
 ```bash
 pip install sqlflow
@@ -14,7 +14,7 @@ pip install sqlflow
 
 ### Define a Model
 
-For clarify, let us consider a deep learning model definition is a Keras class in Python. For example, the following class in `my_keras_model.py`:
+For clarity, let us consider a deep learning model definition is a Keras class in Python. For example, the following class in `some_model_definitions.py`:
 
 ```python
 import tensorflow as tf
@@ -51,7 +51,7 @@ SELECT ... TO TRAIN MyAwesomeClassifier WITH ... COLUMNS ... INTO trained_model;
 
 ### Unit Tests
 
-With the high-level API, we can test the model definition by writing a unit test file like `test_my_awesome_model.py`. This will enable you to continuously evolve your model.
+With the high-level API, we can test the model definition by writing a unit test file like `tests.py`. This will enable you to continuously evolve your model.
 
 ```python
 import sqlflow
@@ -101,18 +101,20 @@ INTO my_iris_model;
 
 ## Release Your Model to Model Zoo
 
-If you want to make your model definition visible to other users, you can release your model definition to SQLFlow model zoo using the SQLFlow command-line tool (assume you have your model source code under direcotry `my_awesome_model/`):
+If you want to make your model definition visible to other users, you can release your model definition to SQLFlow model zoo using the SQLFlow command-line tool (assume you have your model source code under direcotry `my_model_collection/`):
 
 ```bash
-$ sqlflow release modeldef my_awesome_model/ model_image:v0.1
+$ sqlflow release modeldef my_model_collection/ model_image:v0.1
 
 checking model is valid ...[OK]
 building model docker image with version v0.1 ... [OK]
-model built as your-registry.com/your_group/model_image:v0.1 on https://models.sqlflow.org.
-Model added successfully，You can run it `TO TRAIN your-registry.com/your_group/model_image:v0.1/MyKerasModel`
+model built as hub.docker.com/sqlflow_model_zoo_public/model_image:v0.1 on https://models.sqlflow.org.
+Model added successfully，You can run it `TO TRAIN hub.docker.com/sqlflow_model_zoo_public/model_image:v0.1/MyKerasModel`
 ```
 
-After the releasing process is done, you can use the released Docker image to train/predict your model like: `SELECT ... TO TRAIN your-registry.com/your_group/model_image:v0.1/MyKerasModel ...`
+**NOTE: the Docker registry "hub.docker.com/sqlflow_model_zoo_public/" is configured by the model zoo server, see [model zoo](./model_zoo.md) design.**
+
+After the releasing process is done, you can use the released Docker image to train/predict your model like: `SELECT ... TO TRAIN hub.docker.com/sqlflow_model_zoo_public/model_image:v0.1/MyKerasModel ...`
 
 To remove the model definition image, you can run:
 

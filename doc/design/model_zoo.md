@@ -164,12 +164,18 @@ The model zoo server is responsible to accept SQLFlow command-line's `release` a
     server=192.168.1.1:50051
     modelzoo=https://models.sqlflow.org
     ```
-- The SQLFlow server is connected to an MySQL instance to store publicly available model definitions and trained models.
+- The model zoo server is connected to an MySQL instance to store publicly available model definitions and trained models.
+- The model zoo server should be configured to connect to one Docker registry (e.g. hub.docker.com) together with the registry's repository and account. The model zoo server can accept below configuration file when starting:
+    ```
+    registry=hub.docker.com/sqlflow_model_zoo_public/
+    username=sqlflow_model_zoo_public
+    password=xxxx
+    ```
 - When releasing a model definition, the SQLFlow server will get the client uploaded file folder with a `Dockerfile` inside, then:
     1. Check if the Docker image with the same name and tag already exists on the registry.
     1. Try to validate whether the contents of the folder have valid model definitions by checking the exported classes, if the class is a sub class of `tf.keras.Model` or if the name is a function that returns an object of `tf.keras.Model`, it is valid.
     1. Run `docker build` to build a Docker image with the image name and tag specified by the user command.
-    1. Run `docker push` to push the Docker image to the registry. The pushed image should be publicly readable.
+    1. Run `docker push` to push the Docker image to the Docker registry. The pushed image should be publicly readable.
     1. Write a row in the MySQL instance to recored this model definition Docker image.
 - When releasing a trained model, the SQLFlow server will:
     1. Copy the trained model parameters together with all nessesary metadatas to the public folder on the SQLFlow's bucket on OSS.
