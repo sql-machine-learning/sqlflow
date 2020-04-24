@@ -127,4 +127,5 @@ def train(datasource,
 
     # remove cache files
     any(map(os.remove, glob.glob('cache_train.*')))
+    any(map(os.remove, glob.glob('cache_validation.*')))
     print("Done training")
