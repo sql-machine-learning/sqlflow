@@ -14,7 +14,6 @@
 package response
 
 import (
-	"fmt"
 	"regexp"
 	"strings"
 
@@ -24,23 +23,20 @@ import (
 
 // CompoundResponses Compounds response
 type CompoundResponses struct {
-	stepCnt   int
-	stepIdx   int
-	responses []*pb.Response
+	responses   []*pb.Response
+	errMessages []string
 }
 
 // New returns CompoundResponses with step index
-func New(stepCnt, stepIdx int) *CompoundResponses {
+func New() *CompoundResponses {
 	return &CompoundResponses{
-		stepCnt:   stepCnt,
-		stepIdx:   stepIdx,
 		responses: []*pb.Response{},
 	}
 }
 
-// AppendMessage append message with Step Index as prefix
+// AppendMessage append message
 func (r *CompoundResponses) AppendMessage(message string) error {
-	res, e := pb.EncodeMessage(fmt.Sprintf("SQLFlow Step: [%d/%d] %s", r.stepIdx, r.stepCnt, message))
+	res, e := pb.EncodeMessage(message)
 	if e != nil {
 		return e
 	}
@@ -48,21 +44,21 @@ func (r *CompoundResponses) AppendMessage(message string) error {
 	return nil
 }
 
-// AppendEoe appends eoe response
-func (r *CompoundResponses) AppendEoe() {
-	eoe := &pb.Response{Response: &pb.Response_Eoe{Eoe: &pb.EndOfExecution{}}}
-	r.responses = append(r.responses, eoe)
-}
-
 // AppendProtoMessages appends the message with protobuf message format
 func (r *CompoundResponses) AppendProtoMessages(messages []string) error {
 	// unmarshal pb.Response from proto message with text format
-	res, e := unMarshalProtoMessages(messages)
+	out, err, e := unMarshalProtoMessages(messages)
 	if e != nil {
 		return e
 	}
-	r.responses = append(r.responses, res...)
+	r.responses = append(r.responses, out...)
+	r.errMessages = append(r.errMessages, err...)
 	return nil
+}
+
+// ErrorMessage returns the error message as string
+func (r *CompoundResponses) ErrorMessage() string {
+	return strings.Join(r.errMessages, "\n")
 }
 
 // Response returns the compounded Response
@@ -70,14 +66,22 @@ func (r *CompoundResponses) Response(jobID, stepID, stepPhase string, eof bool) 
 	return NewFetchResponse(NewFetchRequest(jobID, stepID, stepPhase), eof, r.responses)
 }
 
-func unMarshalProtoMessages(messages []string) ([]*pb.Response, error) {
+// ResponseWithStepComplete returns the compounded Response at the end of step
+func (r *CompoundResponses) ResponseWithStepComplete(jobID, stepID, stepPhase string, eof bool) *pb.FetchResponse {
+	eoe := &pb.Response{Response: &pb.Response_Eoe{Eoe: &pb.EndOfExecution{}}}
+	r.responses = append(r.responses, eoe)
+	return r.Response(jobID, stepID, stepPhase, eof)
+}
+
+func unMarshalProtoMessages(messages []string) ([]*pb.Response, []string, error) {
 	responses := []*pb.Response{}
+	errMessages := []string{}
 	for _, msg := range messages {
 		msg = strings.TrimSpace(msg)
 		if isHTMLCode(msg) {
 			r, e := pb.EncodeMessage(msg)
 			if e != nil {
-				return nil, e
+				return nil, errMessages, e
 			}
 			responses = append(responses, r)
 		}
@@ -86,9 +90,14 @@ func unMarshalProtoMessages(messages []string) ([]*pb.Response, error) {
 			// skip this line if it's not protobuf message
 			continue
 		}
-		responses = append(responses, response)
+		// TODO(yancey1989): Add an Error proto message which contains error code and error message
+		if response.GetMessage() != nil {
+			errMessages = append(errMessages, response.GetMessage().Message)
+		} else {
+			responses = append(responses, response)
+		}
 	}
-	return responses, nil
+	return responses, errMessages, nil
 }
 
 func isHTMLCode(code string) bool {

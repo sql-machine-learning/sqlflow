@@ -24,7 +24,7 @@ def escape_sql(original_sql):
 def sqlflow(sql, image="sqlflow/sqlflow", env=None, secret=None):
     '''sqlflow step call run_container to append a workflow step.
     '''
-    couler.run_container(command='''repl -e "%s"''' % escape_sql(sql),
+    couler.run_container(command='''step -e "%s"''' % escape_sql(sql),
                          image=image,
                          env=env,
                          secret=secret)

@@ -2111,6 +2111,39 @@ func TestEnd2EndWorkflow(t *testing.T) {
 	t.Run("CaseWorkflowTrainAndPredictDNN", CaseWorkflowTrainAndPredictDNN)
 	t.Run("CaseTrainDistributedPAIArgo", CaseTrainDistributedPAIArgo)
 	t.Run("CaseBackticksInSQL", CaseBackticksInSQL)
+	t.Run("CaseWorkflowStepErrorMessage", CaseWorkflowStepErrorMessage)
+}
+
+func CaseWorkflowStepErrorMessage(t *testing.T) {
+	a := assert.New(t)
+	sqlProgram := fmt.Sprintf(`
+SELECT *
+FROM %s
+TO TRAIN DNNClassifier
+WITH
+	model.no_exists_param = 3,
+	model.hidden_units = [10, 20]
+COLUMN sepal_length, sepal_width, petal_length, petal_width
+LABEL class
+INTO %s;	
+	`, caseTrainTable, caseInto)
+	conn, err := createRPCConn()
+	if err != nil {
+		a.Fail("Create gRPC client error: %v", err)
+	}
+	defer conn.Close()
+
+	cli := pb.NewSQLFlowClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), 3600*time.Second)
+	defer cancel()
+
+	stream, err := cli.Run(ctx, &pb.Request{Sql: sqlProgram, Session: &pb.Session{DbConnStr: testDatasource}})
+	if err != nil {
+		a.Fail("Create gRPC client error: %v", err)
+	}
+	e := checkWorkflow(ctx, cli, stream)
+	a.Error(e)
+	a.Contains(e.Error(), "runSQLProgram error: unsupported attribute model.no_exists_param")
 }
 
 func CaseWorkflowTrainAndPredictDNN(t *testing.T) {

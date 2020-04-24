@@ -99,7 +99,7 @@ func TestCoulerCodegen(t *testing.T) {
 
 	_, e = cg.GenYAML(code)
 	yaml, e := cg.GenYAML(code)
-	r, e = regexp.Compile(`repl -e "(.*);"`)
+	r, e = regexp.Compile(`step -e "(.*);"`)
 	a.NoError(e)
 	a.Equal("SELECT * FROM iris.train limit 10", r.FindStringSubmatch(yaml)[1])
 	a.NoError(e)
@@ -114,7 +114,7 @@ func TestCoulerCodegenSpecialChars(t *testing.T) {
 	a.NoError(err)
 	yaml, e := cg.GenYAML(code)
 	a.NoError(e)
-	r, _ := regexp.Compile(`repl -e "(.*);"`)
+	r, _ := regexp.Compile(`step -e "(.*);"`)
 	a.Equal("\\`\\$\\\"\\\\", r.FindStringSubmatch(yaml)[1])
 }
 
