@@ -19,6 +19,7 @@ from pathlib import Path
 import xgboost as xgb
 from sqlflow_submitter import db
 
+# TODO(weiguoz): Find a strategy to adjust the slice_num by num_workers
 SLICE_NUM = 128
 
 
@@ -33,8 +34,9 @@ def xgb_dataset(datasource,
                 pai_single_file=False,
                 cache=False,
                 batch_size=None,
-                epoch=1):
-
+                epoch=1,
+                rank=0,
+                nworkers=1):
     if is_pai:
         for dmatrix in pai_dataset(
                 fn,
@@ -44,6 +46,8 @@ def xgb_dataset(datasource,
                 "odps://{}/tables/{}".format(*pai_table.split(".")),
                 pai_single_file,
                 cache,
+                rank,
+                nworkers,
                 batch_size=batch_size):
             yield dmatrix
         return
@@ -112,6 +116,8 @@ def pai_dataset(filename,
                 pai_table,
                 single_file,
                 cache,
+                rank=0,
+                nworkers=1,
                 batch_size=None):
     from subprocess import Popen, PIPE
     import threading
@@ -135,8 +141,12 @@ def pai_dataset(filename,
             ]))
         complete_queue.put(slice_id)
 
-    for i in range(SLICE_NUM):
-        t = threading.Thread(target=thread_worker, args=(i, ))
+    slice_id = rank
+    slice_total = 0
+    while slice_id < SLICE_NUM:
+        t = threading.Thread(target=thread_worker, args=(slice_id, ))
+        slice_id += nworkers
+        slice_total += 1
         t.start()
         threads.append(t)
 
@@ -149,16 +159,15 @@ def pai_dataset(filename,
         yield xgb.DMatrix('{0}#{0}.cache'.format(dname) if cache else dname)
         return
 
-    for i in range(SLICE_NUM):
+    for i in range(slice_total):
         slice_id = complete_queue.get(block=True)
         if not single_file:
             downloaded_file = "./{}/{}.txt".format(dname, slice_id)
             # ignore empty files or the xgb.DMatrix will throw error.
-            if Path(downloaded_file).stat().st_size == 0:
-                continue
-            yield xgb.DMatrix('{0}#{0}.cache'.format(downloaded_file)
-                              if cache else downloaded_file)
-            os.unlink(downloaded_file)
+            if Path(downloaded_file).stat().st_size > 0:
+                yield xgb.DMatrix('{0}#{0}.cache'.format(downloaded_file)
+                                  if cache else downloaded_file)
+                os.unlink(downloaded_file)
 
     if single_file:
         cmd = "cat %s/*.txt > %s" % (dname, filename)

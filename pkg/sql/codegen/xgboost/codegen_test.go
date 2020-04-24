@@ -32,8 +32,8 @@ func TestParseAttribute(t *testing.T) {
 
 func TestAttributes(t *testing.T) {
 	a := assert.New(t)
-	a.Equal(9, len(attributeDictionary))
-	a.Equal(32, len(fullAttrValidator))
+	a.Equal(10, len(attributeDictionary))
+	a.Equal(33, len(fullAttrValidator))
 }
 
 func mockSession() *pb.Session {
