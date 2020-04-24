@@ -202,8 +202,7 @@ def get_dataset_fn(select,
                                  num_workers=num_workers,
                                  worker_id=worker_id)
         train_dataset = train_dataset.cache("cache_train").shuffle(
-                            shuffle_size).batch(batch_size).repeat(
-                                epochs if epochs else 1)
+            shuffle_size).batch(batch_size).repeat(epochs if epochs else 1)
         return train_dataset
 
     def validate_input_fn():
@@ -214,7 +213,8 @@ def get_dataset_fn(select,
                                     label_meta,
                                     is_pai=is_pai,
                                     pai_table=pai_val_table)
-        validate_dataset = validate_dataset.cache("cache_validation").batch(batch_size)
+        validate_dataset = validate_dataset.cache("cache_validation").batch(
+            batch_size)
         return validate_dataset
 
     if validate_select != "":
