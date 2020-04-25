@@ -16,7 +16,7 @@ unzip -qq odpscmd_public.zip -d /usr/local/odpscmd && \
 ln -s /usr/local/odpscmd/bin/odpscmd /usr/local/bin/odpscmd && \
 rm -rf odpscmd_public.zip
 
-ADD repl /usr/bin/
+ADD step /usr/bin/
 ADD parser/* /opt/sqlflow/parser/
 
 ENV DEBIAN_FRONTEND=noninteractive

@@ -26,7 +26,6 @@ import (
 	"log"
 	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"syscall"
@@ -52,8 +51,8 @@ var currentDB string
 // dotEnvFilename is the filename of the .env file
 const dotEnvFilename string = ".sqlflow_env"
 
-// if we are on sixel supported platform
-var it2Check = false
+// if we are on sixel supported platform, assumed to be true for now
+var it2Check = true
 
 func isSpace(c byte) bool {
 	return len(bytes.TrimSpace([]byte{c})) == 0
@@ -177,16 +176,16 @@ func sqlRequest(program string, ds string) *pb.Request {
 	return &pb.Request{Sql: program, Session: se}
 }
 
-func runStmt(server string, stmt string, isTerminal bool, ds string) error {
+func runStmt(serverAddr string, stmt string, isTerminal bool, ds string) error {
 	// special case, process USE to stick SQL session
 	parts := strings.Fields(strings.ReplaceAll(stmt, ";", ""))
 	if len(parts) == 2 && strings.ToUpper(parts[0]) == "USE" {
-		return switchDatabase(server, ds, parts[1])
+		return switchDatabase(serverAddr, ds, parts[1])
 	}
-	return runStmtOnServer(server, stmt, isTerminal, ds)
+	return runStmtOnServer(serverAddr, stmt, isTerminal, ds)
 }
 
-func runStmtOnServer(server string, stmt string, isTerminal bool, ds string) error {
+func runStmtOnServer(serverAddr string, stmt string, isTerminal bool, ds string) error {
 	if !isTerminal {
 		fmt.Println("sqlflow>", stmt)
 	}
@@ -196,7 +195,7 @@ func runStmtOnServer(server string, stmt string, isTerminal bool, ds string) err
 		return err
 	}
 	// connect to sqlflow server and run sql program
-	conn, err := createRPCConn(server)
+	conn, err := createRPCConn(serverAddr)
 	if err != nil {
 		return err
 	}
@@ -224,16 +223,16 @@ func runStmtOnServer(server string, stmt string, isTerminal bool, ds string) err
 	return renderRPCRespStream(renderCtx)
 }
 
-func assertConnectable(server, ds string) {
+func assertConnectable(serverAddr, ds string) {
 	_, err := step.GetStdout(func() error {
-		return runStmtOnServer(server, `select "I'm alive";`, true, ds)
+		return runStmtOnServer(serverAddr, `select "I'm alive";`, true, ds)
 	})
 	if err != nil {
 		log.Fatalf("Can't connect to %s\n", ds)
 	}
 }
 
-func repl(server string, scanner *bufio.Scanner, ds string) {
+func repl(serverAddr string, scanner *bufio.Scanner, ds string) {
 	for {
 		statements, err := readStmt(scanner)
 		if err == io.EOF && len(statements) == 0 {
@@ -247,17 +246,17 @@ func repl(server string, scanner *bufio.Scanner, ds string) {
 			statements[len(statements)-1] += ";"
 		}
 		for _, stmt := range statements {
-			if err := runStmt(server, stmt, false, ds); err != nil {
+			if err := runStmt(serverAddr, stmt, false, ds); err != nil {
 				log.Fatalf("run SQL statement failed: %v", err)
 			}
 		}
 	}
 }
 
-func switchDatabase(server, ds, db string) error {
+func switchDatabase(serverAddr, ds, db string) error {
 	stmt := "USE " + db
 	out, err := step.GetStdout(func() error {
-		return runStmtOnServer(server, stmt, true, ds)
+		return runStmtOnServer(serverAddr, stmt, true, ds)
 	})
 	if err != nil {
 		fmt.Println(out)
@@ -303,7 +302,7 @@ func initEnvFromFile(f string) {
 
 func main() {
 	initEnvFromFile(filepath.Join(os.Getenv("HOME"), dotEnvFilename))
-	server := flag.String("sqlflow_server", "", "SQLFlow server address, in host:port form. You can set it from environment variable SQLFLOW_SERVER")
+	serverAddr := flag.String("sqlflow_server", "", "SQLFlow server address, in host:port form. You can set it from environment variable SQLFLOW_SERVER")
 	ds := flag.String("datasource", "", "database connect string")
 	cliStmt := flag.String("execute", "", "execute SQLFlow from command line.  e.g. --execute 'select * from table1'")
 	flag.StringVar(cliStmt, "e", "", "execute SQLFlow from command line, short for --execute")
@@ -311,16 +310,16 @@ func main() {
 	flag.StringVar(sqlFileName, "f", "", "execute SQLFlow from file, short for --file")
 	noAutoCompletion := flag.Bool("A", false, "No auto completion for sqlflow models. This gives a quicker start.")
 	flag.Parse()
-	if *server == "" {
-		*server = os.Getenv("SQLFLOW_SERVER")
+	if *serverAddr == "" {
+		*serverAddr = os.Getenv("SQLFLOW_SERVER")
 	}
-	if *server == "" {
+	if *serverAddr == "" {
 		log.Fatal("SQLFlow server address is not provided.")
 	}
 	if *ds == "" {
 		*ds = os.Getenv("SQLFLOW_DATASOURCE")
 	}
-	assertConnectable(*server, *ds) // Fast fail if we can't connect to the datasource
+	assertConnectable(*serverAddr, *ds) // Fast fail if we can't connect to the datasource
 	var err error
 	currentDB, err = database.GetDatabaseName(*ds)
 	if err != nil {
@@ -350,18 +349,8 @@ func main() {
 		if !*noAutoCompletion {
 			attribute.ExtractDocStringsOnce()
 		}
-		runPrompt(func(stmt string) { runStmt(*server, stmt, true, *ds) })
+		runPrompt(func(stmt string) { runStmt(*serverAddr, stmt, true, *ds) })
 	} else {
-		repl(*server, scanner, *ds)
-	}
-}
-
-func init() {
-	// `it2check` and `go-prompt` both set terminal to raw mode, we has to call `it2check` only once
-	cmd := exec.Command("it2check")
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	if cmd.Run() == nil {
-		it2Check = true
+		repl(*serverAddr, scanner, *ds)
 	}
 }

@@ -138,20 +138,22 @@ func imageCat(imageBytes []byte) error {
 	return nil
 }
 
-// GetStdout hooks stdout and stderr, it's used for test
+// GetStdout hooks stdout and stderr, it collects stderr, stdout, and logs
+// been generated during func f's execution, and returns them along with f's error
 func GetStdout(f func() error) (out string, e error) {
 	logOut, oldStdout, oldStderr := log.Writer(), os.Stdout, os.Stderr // keep backup of the real stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 	os.Stderr = w
 	log.SetOutput(w)
-	e = f() // f prints to stdout
 	outC := make(chan string)
+	// first start read, then write, in case the pipe is immediately full and get blocked
 	go func() { // copy the output in a separate goroutine so printing can't block indefinitely
 		var buf bytes.Buffer
 		io.Copy(&buf, r)
 		outC <- buf.String()
 	}()
+	e = f()                                     // f prints to stdout
 	w.Close()                                   // Cancel redirection
 	os.Stdout, os.Stderr = oldStdout, oldStderr // restoring the real stdout and stderr
 	log.SetOutput(logOut)

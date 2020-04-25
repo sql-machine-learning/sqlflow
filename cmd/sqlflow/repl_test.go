@@ -17,6 +17,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/base64"
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -45,7 +46,7 @@ import (
 var space = regexp.MustCompile(`\s+`)
 var dbConnStr = "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
 var testDBDriver = os.Getenv("SQLFLOW_TEST_DB")
-var server = "localhost:50051"
+var serverAddr = "localhost:50051"
 
 func startServer() func() {
 	var s *grpc.Server
@@ -82,7 +83,7 @@ func serverIsReady(addr string, timeout time.Duration) bool {
 
 func waitForServer() {
 	for i := 0; i < 10; i++ {
-		if serverIsReady(server, 5*time.Second) {
+		if serverIsReady(serverAddr, 5*time.Second) {
 			return
 		}
 		time.Sleep(1 * time.Second)
@@ -91,7 +92,9 @@ func waitForServer() {
 }
 
 func prepareTestDataOrSkip(t *testing.T) error {
-	assertConnectable(server, dbConnStr)
+	// disable sixel
+	it2Check = false
+	assertConnectable(serverAddr, dbConnStr)
 	testDB, _ := database.OpenAndConnectDB(dbConnStr)
 	if testDBDriver == "mysql" {
 		_, e := testDB.Exec("CREATE DATABASE IF NOT EXISTS sqlflow_models;")
@@ -113,31 +116,31 @@ func TestRunStmt(t *testing.T) {
 	os.Setenv("SQLFLOW_log_dir", "/tmp/")
 	currentDB = ""
 	// TODO(yancey1989): assert should not panics in repl
-	output, err := step.GetStdout(func() error { return runStmt(server, "show tables", true, dbConnStr) })
-	a.NoError(err)
+	output, err := step.GetStdout(func() error { return runStmt(serverAddr, "show tables", true, dbConnStr) })
+	a.Error(err)
 	a.Contains(output, "Error 1046: No database selected")
-	output, err = step.GetStdout(func() error { return runStmt(server, "use iris", true, dbConnStr) })
+	output, err = step.GetStdout(func() error { return runStmt(serverAddr, "use iris", true, dbConnStr) })
 	a.NoError(err)
 	a.Contains(output, "Database changed to iris")
 
-	output, err = step.GetStdout(func() error { return runStmt(server, "show tables", true, dbConnStr) })
+	output, err = step.GetStdout(func() error { return runStmt(serverAddr, "show tables", true, dbConnStr) })
 	a.NoError(err)
 	a.Contains(output, "| TABLES IN IRIS |")
 
 	output, err = step.GetStdout(func() error {
-		return runStmt(server, "select * from train to train DNNClassifier WITH model.hidden_units=[10,10], model.n_classes=3, validation.select=\"select * from test\" label class INTO sqlflow_models.repl_dnn_model;", true, dbConnStr)
+		return runStmt(serverAddr, "select * from train to train DNNClassifier WITH model.hidden_units=[10,10], model.n_classes=3, validation.select=\"select * from test\" label class INTO sqlflow_models.repl_dnn_model;", true, dbConnStr)
 	})
 	a.NoError(err)
 	a.Contains(output, "'global_step': 110")
 
 	output, err = step.GetStdout(func() error {
-		return runStmt(server, "select * from train to train xgboost.gbtree WITH objective=reg:squarederror, validation.select=\"select * from test\" label class INTO sqlflow_models.repl_xgb_model;", true, dbConnStr)
+		return runStmt(serverAddr, "select * from train to train xgboost.gbtree WITH objective=reg:squarederror, validation.select=\"select * from test\" label class INTO sqlflow_models.repl_xgb_model;", true, dbConnStr)
 	})
 	a.NoError(err)
 	a.Contains(output, "Evaluation result: ")
 
 	output, err = step.GetStdout(func() error {
-		return runStmt(server, "select * from train to explain sqlflow_models.repl_xgb_model;", true, dbConnStr)
+		return runStmt(serverAddr, "select * from train to explain sqlflow_models.repl_xgb_model;", true, dbConnStr)
 	})
 	a.NoError(err)
 	a.Contains(output, "data:text/html, <div align='center'><img src='data:image/png;base64")
@@ -163,7 +166,7 @@ INTO sqlflow_models.repl_dnn_model;
 use sqlflow_models;
 show tables`
 	scanner := bufio.NewScanner(strings.NewReader(sql))
-	output, err := step.GetStdout(func() error { repl(server, scanner, dbConnStr); return nil })
+	output, err := step.GetStdout(func() error { repl(serverAddr, scanner, dbConnStr); return nil })
 	a.Nil(err)
 	a.Contains(output, "Database changed to iris")
 	a.Contains(output, `
@@ -200,7 +203,7 @@ WITH model.hidden_units=[10,10], model.n_classes=3, validation.select="select * 
 label class
 INTO sqlflow_models.repl_dnn_model`
 	scanner := bufio.NewScanner(strings.NewReader(sql))
-	output, err := step.GetStdout(func() error { repl(server, scanner, dbConnStr); return nil })
+	output, err := step.GetStdout(func() error { repl(serverAddr, scanner, dbConnStr); return nil })
 	a.NoError(err)
 	a.Contains(output, `
 select * from iris.train to train DNNClassifier
@@ -217,7 +220,7 @@ func TestMain(t *testing.T) {
 
 	a := assert.New(t)
 	a.Nil(prepareTestDataOrSkip(t))
-	os.Args = append(os.Args, "-datasource", dbConnStr, "-e", "use iris; show tables", "-sqlflow_server", server)
+	os.Args = append(os.Args, "-datasource", dbConnStr, "-e", "use iris; show tables", "-sqlflow_server", serverAddr)
 	output, _ := step.GetStdout(func() error { main(); return nil })
 	a.Contains(output, `
 +----------------+
@@ -731,13 +734,6 @@ func TestComplete(t *testing.T) {
 	a.Equal(0, len(c))
 }
 
-func TestTerminalCheck(t *testing.T) {
-	a := assert.New(t)
-	_, err := exec.LookPath("it2check")
-	a.Nil(err)
-	a.False(it2Check)
-}
-
 func TestGetTerminalColumnSize(t *testing.T) {
 	a := assert.New(t)
 	a.Equal(1024, getTerminalColumnSize())
@@ -937,7 +933,7 @@ func TestStdinParser(t *testing.T) {
 }
 
 func TestGetServerAddrFromEnv(t *testing.T) {
-	os.Setenv("SQLFLOW_SERVER", server)
+	os.Setenv("SQLFLOW_SERVER", serverAddr)
 	os.Setenv("SQLFLOW_DATASOURCE", dbConnStr)
 	defer os.Unsetenv("SQLFLOW_SERVER")
 	defer os.Unsetenv("SQLFLOW_DATASOURCE")
@@ -946,7 +942,8 @@ func TestGetServerAddrFromEnv(t *testing.T) {
 	waitForServer()
 	a := assert.New(t)
 	a.Nil(prepareTestDataOrSkip(t))
-	os.Args = append(os.Args, "-e", "use iris; show tables")
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	os.Args = []string{"", "-e", "use iris; show tables"}
 	output, _ := step.GetStdout(func() error { main(); return nil })
 	a.Contains(output, `
 +----------------+
