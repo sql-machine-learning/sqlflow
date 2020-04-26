@@ -1548,23 +1548,6 @@ FROM housing.xgb_predict LIMIT 5;`)
 	}
 }
 
-func CasePAIMaxComputeTestTS(t *testing.T) {
-	t.Parallel()
-	a := assert.New(t)
-	trainSQL := `SELECT exp1, clk1, exp2, clk2, exp3, clk3, exp4, clk4, exp5, clk5, exp6, clk6, exp7, clk7, exp8, clk8, later8
-FROM alifin_jtest_dev.wuyi_app_homepage_uv_hour_train_1
-TO TRAIN sqlflow_models.LSTMBasedTimeSeriesModel
-WITH model.n_in = 8, model.stack_units = [256, 256], model.n_out=8, model.n_features=2,
-		train.epoch=30, train.batch_size=64, validation.metrics= "MeanAbsoluteError,MeanSquaredError",
-		validation.select="select * from alifin_jtest_dev.wuyi_app_homepage_uv_hour_val"
-LABEL later8
-INTO wuyi_ts_app_homepage_exp_hour_8;`
-	_, _, _, err := connectAndRunSQL(trainSQL)
-	if err != nil {
-		a.Fail("Run trainSQL error: %v", err)
-	}
-}
-
 func CasePAIMaxComputeTrainPredictCategoricalFeature(t *testing.T) {
 	t.Parallel()
 	a := assert.New(t)
@@ -1790,63 +1773,63 @@ INTO %s.rf_model_explain;`, caseTestTable, caseDB)
 func CasePAIMaxComputeDNNTrainPredictExplain(t *testing.T) {
 	t.Parallel()
 	a := assert.New(t)
-	// 	trainSQL := fmt.Sprintf(`SELECT * FROM %s
-	// TO TRAIN DNNClassifier
-	// WITH model.n_classes = 3, model.hidden_units = [10, 20]
-	// LABEL class
-	// INTO e2etest_pai_dnn;`, caseTrainTable)
-	// 	_, _, _, err := connectAndRunSQL(trainSQL)
-	// 	if err != nil {
-	// 		a.Fail("Run trainSQL error: %v", err)
-	// 	}
+	trainSQL := fmt.Sprintf(`SELECT * FROM %s
+TO TRAIN DNNClassifier
+WITH model.n_classes = 3, model.hidden_units = [10, 20]
+LABEL class
+INTO e2etest_pai_dnn;`, caseTrainTable)
+	_, _, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
 
 	evalSQL := fmt.Sprintf(`SELECT * FROM %s
 TO EVALUATE e2etest_pai_dnn
 WITH validation.metrics="Accuracy,Recall"
 LABEL class
 INTO %s.e2etest_pai_dnn_evaluate_result;`, caseTrainTable, caseDB)
-	_, _, _, err := connectAndRunSQL(evalSQL)
+	_, _, _, err = connectAndRunSQL(evalSQL)
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)
 	}
 
-	// 	predSQL := fmt.Sprintf(`SELECT * FROM %s
-	// TO PREDICT %s.pai_dnn_predict.class
-	// USING e2etest_pai_dnn;`, caseTestTable, caseDB)
-	// 	_, _, _, err = connectAndRunSQL(predSQL)
-	// 	if err != nil {
-	// 		a.Fail("Run predSQL error: %v", err)
-	// 	}
+	predSQL := fmt.Sprintf(`SELECT * FROM %s
+TO PREDICT %s.pai_dnn_predict.class
+USING e2etest_pai_dnn;`, caseTestTable, caseDB)
+	_, _, _, err = connectAndRunSQL(predSQL)
+	if err != nil {
+		a.Fail("Run predSQL error: %v", err)
+	}
 
-	// 	showPred := fmt.Sprintf(`SELECT *
-	// FROM %s.pai_dnn_predict LIMIT 5;`, caseDB)
-	// 	_, rows, _, err := connectAndRunSQL(showPred)
-	// 	if err != nil {
-	// 		a.Fail("Run showPred error: %v", err)
-	// 	}
+	showPred := fmt.Sprintf(`SELECT *
+FROM %s.pai_dnn_predict LIMIT 5;`, caseDB)
+	_, rows, _, err := connectAndRunSQL(showPred)
+	if err != nil {
+		a.Fail("Run showPred error: %v", err)
+	}
 
-	// 	for _, row := range rows {
-	// 		// NOTE: predict result maybe random, only check predicted
-	// 		// class >=0, need to change to more flexible checks than
-	// 		// checking expectedPredClasses := []int64{2, 1, 0, 2, 0}
-	// 		AssertGreaterEqualAny(a, row[4], int64(0))
+	for _, row := range rows {
+		// NOTE: predict result maybe random, only check predicted
+		// class >=0, need to change to more flexible checks than
+		// checking expectedPredClasses := []int64{2, 1, 0, 2, 0}
+		AssertGreaterEqualAny(a, row[4], int64(0))
 
-	// 		// avoiding nil features in predict result
-	// 		nilCount := 0
-	// 		for ; nilCount < 4 && row[nilCount] == nil; nilCount++ {
-	// 		}
-	// 		a.False(nilCount == 4)
-	// 	}
+		// avoiding nil features in predict result
+		nilCount := 0
+		for ; nilCount < 4 && row[nilCount] == nil; nilCount++ {
+		}
+		a.False(nilCount == 4)
+	}
 
-	// 	explainSQL := fmt.Sprintf(`SELECT * FROM %s
-	// TO EXPLAIN e2etest_pai_dnn
-	// WITH label_col=class
-	// USING TreeExplainer
-	// INTO %s.pai_dnn_explain_result;`, caseTestTable, caseDB)
-	// 	_, _, _, err = connectAndRunSQL(explainSQL)
-	// 	if err != nil {
-	// 		a.Fail("Run predSQL error: %v", err)
-	// 	}
+	explainSQL := fmt.Sprintf(`SELECT * FROM %s
+TO EXPLAIN e2etest_pai_dnn
+WITH label_col=class
+USING TreeExplainer
+INTO %s.pai_dnn_explain_result;`, caseTestTable, caseDB)
+	_, _, _, err = connectAndRunSQL(explainSQL)
+	if err != nil {
+		a.Fail("Run predSQL error: %v", err)
+	}
 }
 
 func CasePAIMaxComputeTrainDenseCol(t *testing.T) {
@@ -2042,25 +2025,19 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 	// write model to current MaxCompute project
 	caseInto = "my_dnn_model"
 
-	// if e := prepareTestData(dbConnStr); e != nil {
-	// 	t.FailNow()
-	// }
-
 	go start(modelDir, caCrt, caKey, unitTestPort, false)
 	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 
 	t.Run("group", func(t *testing.T) {
-		// t.Run("CasePAIMaxComputeTestTS", CasePAIMaxComputeTestTS)
-
 		t.Run("CasePAIMaxComputeDNNTrainPredictExplain", CasePAIMaxComputeDNNTrainPredictExplain)
-		// t.Run("CasePAIMaxComputeTrainDenseCol", CasePAIMaxComputeTrainDenseCol)
-		// t.Run("CasePAIMaxComputeTrainXGBoost", CasePAIMaxComputeTrainXGBoost)
-		// t.Run("CasePAIMaxComputeTrainCustomModel", CasePAIMaxComputeTrainCustomModel)
-		// t.Run("CasePAIMaxComputeTrainDistributed", CasePAIMaxComputeTrainDistributed)
-		// t.Run("CasePAIMaxComputeTrainPredictCategoricalFeature", CasePAIMaxComputeTrainPredictCategoricalFeature)
-		// t.Run("CasePAIMaxComputeTrainTFBTDistributed", CasePAIMaxComputeTrainTFBTDistributed)
-		// t.Run("CasePAIMaxComputeTrainDistributedKeras", CasePAIMaxComputeTrainDistributedKeras)
-		// t.Run("CasePAIMaxComputeTrainXGBDistributed", CasePAIMaxComputeTrainXGBDistributed)
+		t.Run("CasePAIMaxComputeTrainDenseCol", CasePAIMaxComputeTrainDenseCol)
+		t.Run("CasePAIMaxComputeTrainXGBoost", CasePAIMaxComputeTrainXGBoost)
+		t.Run("CasePAIMaxComputeTrainCustomModel", CasePAIMaxComputeTrainCustomModel)
+		t.Run("CasePAIMaxComputeTrainDistributed", CasePAIMaxComputeTrainDistributed)
+		t.Run("CasePAIMaxComputeTrainPredictCategoricalFeature", CasePAIMaxComputeTrainPredictCategoricalFeature)
+		t.Run("CasePAIMaxComputeTrainTFBTDistributed", CasePAIMaxComputeTrainTFBTDistributed)
+		t.Run("CasePAIMaxComputeTrainDistributedKeras", CasePAIMaxComputeTrainDistributedKeras)
+		t.Run("CasePAIMaxComputeTrainXGBDistributed", CasePAIMaxComputeTrainXGBDistributed)
 
 		// FIXME(typhoonzero): Add this test back when we solve error: model already exist issue on the CI.
 		// t.Run("CaseTrainPAIRandomForests", CaseTrainPAIRandomForests)
