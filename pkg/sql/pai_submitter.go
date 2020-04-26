@@ -310,6 +310,72 @@ func (s *paiSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 	return e
 }
 
+func (s *paiSubmitter) ExecuteEvaluate(cl *ir.EvaluateStmt) error {
+	// TODO(typhoonzero): Do **NOT** create tmp table when the select statement is like:
+	// "SELECT fields,... FROM table"
+	dbName, tableName, err := createTmpTableFromSelect(cl.Select, s.Session.DbConnStr)
+	if err != nil {
+		return err
+	}
+	cl.TmpEvaluateTable = strings.Join([]string{dbName, tableName}, ".")
+	defer dropTmpTables([]string{cl.TmpEvaluateTable}, s.Session.DbConnStr)
+
+	ossModelPath, e := getModelPath(cl.ModelName, s.Session)
+	if e != nil {
+		return e
+	}
+
+	currProject, err := database.GetDatabaseName(s.Session.DbConnStr)
+	if err != nil {
+		return err
+	}
+	modelType, _, err := getOSSSavedModelType(ossModelPath, currProject)
+	if err != nil {
+		return err
+	}
+	// format resultTable name to "db.table" to let the codegen form a submitting
+	// argument of format "odps://project/tables/table_name"
+	// ModelTypePAIML do not need to create explain result manually, PAI will
+	// create the result table.
+	if cl.Into != "" && modelType != pai.ModelTypePAIML {
+		resultTableParts := strings.Split(cl.Into, ".")
+		if len(resultTableParts) == 1 {
+			cl.Into = fmt.Sprintf("%s.%s", currProject, cl.Into)
+		}
+		db, err := database.OpenAndConnectDB(s.Session.DbConnStr)
+		if err != nil {
+			return err
+		}
+		// default always output evaluation loss
+		metricNames := []string{"loss"}
+		metricsAttr, ok := cl.Attributes["validation.metrics"]
+		if ok {
+			metricsList := strings.Split(metricsAttr.(string), ",")
+			metricNames = append(metricNames, metricsList...)
+		}
+		err = createEvaluationResultTable(db, cl.Into, metricNames)
+		if err != nil {
+			return err
+		}
+	}
+	scriptPath := fmt.Sprintf("file://%s/%s", s.Cwd, tarball)
+	paramsPath := fmt.Sprintf("file://%s/%s", s.Cwd, paramsFile)
+	if err := createPAIHyperParamFile(s.Cwd, paramsFile, ossModelPath); err != nil {
+		return err
+	}
+	expn, e := pai.Evaluate(cl, s.Session, scriptPath, paramsPath, cl.ModelName, ossModelPath, s.Cwd, modelType)
+	if e != nil {
+		return e
+	}
+	if e = s.submitPAITask(expn.Code, expn.PaiCmd, expn.Requirements); e != nil {
+		return e
+	}
+	if img, e := expn.Draw(); e == nil {
+		s.Writer.Write(Figures{img, ""})
+	}
+	return e
+}
+
 // getOSSModelBucket construct a bucket object. Argument project is used to get OSS checkpoint dir
 // from environment variable for current MaxCompute project.
 // FIXME(typhoonzero): use the same model bucket name e.g. sqlflow-models

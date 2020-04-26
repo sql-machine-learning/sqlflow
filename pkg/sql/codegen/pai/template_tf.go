@@ -43,6 +43,17 @@ type explainFiller struct {
 	ResultOSSBucket   string
 }
 
+type evaluateFiller struct {
+	OSSModelDir string
+	DataSource  string
+	Select      string
+	ResultTable string
+	IsPAI       bool
+	PAITable    string
+	// validation metric names, e.g. "Accuracy,AUC"
+	ValidationMetrics string
+}
+
 type requirementsFiller struct {
 	IsXGBoost bool
 }
@@ -238,4 +249,76 @@ explain.explain(datasource="{{.DataSource}}",
                 oss_sk='''{{.ResultOSSSK}}''',
                 oss_endpoint='''{{.ResultOSSEndpoint}}''',
                 oss_bucket_name='''{{.ResultOSSBucket}}''')
+`
+
+const tfEvaluateTmplText = `
+import os
+import matplotlib
+if os.environ.get('DISPLAY', '') == '':
+	print('no display found. Using non-interactive Agg backend')
+	matplotlib.use('Agg')
+
+import json
+import types
+import sys
+import tensorflow as tf
+from tensorflow.estimator import DNNClassifier, DNNRegressor, LinearClassifier, LinearRegressor, BoostedTreesClassifier, BoostedTreesRegressor, DNNLinearCombinedClassifier, DNNLinearCombinedRegressor
+from sqlflow_submitter.pai import model
+from sqlflow_submitter.tensorflow.pai_distributed import define_tf_flags, set_oss_environs
+from sqlflow_submitter.tensorflow import evaluate
+try:
+    tf.enable_eager_execution()
+except Exception as e:
+    sys.stderr.write("warning: failed to enable_eager_execution: %s" % e)
+    pass
+
+FLAGS = define_tf_flags()
+set_oss_environs(FLAGS)
+
+(estimator,
+feature_column_names,
+feature_column_names_map,
+feature_metas,
+label_meta,
+model_params,
+feature_columns_code) = model.load_metas("{{.OSSModelDir}}", "tensorflow_model_desc")
+
+feature_columns = eval(feature_columns_code)
+# NOTE(typhoonzero): No need to eval model_params["optimizer"] and model_params["loss"]
+# because predicting do not need these parameters.
+
+if isinstance(estimator, types.FunctionType):
+    is_estimator = False
+else:
+    is_estimator = issubclass(
+        eval(estimator),
+        (tf.estimator.Estimator, tf.estimator.BoostedTreesClassifier,
+            tf.estimator.BoostedTreesRegressor))
+
+# Keras single node is using h5 format to save the model, no need to deal with export model format.
+# Keras distributed mode will use estimator, so this is also needed.
+if is_estimator:
+    model.load_file("{{.OSSModelDir}}", "exported_path")
+    # NOTE(typhoonzero): directory "model_save" is hardcoded in codegen/tensorflow/codegen.go
+    model.load_dir("{{.OSSModelDir}}/model_save")
+else:
+    model.load_file("{{.OSSModelDir}}", "model_save")
+
+
+evaluate.evaluate(datasource="{{.DataSource}}",
+                  estimator_cls=eval(estimator),
+                  select="""{{.Select}}""",
+                  result_table="{{.ResultTable}}",
+                  feature_columns=feature_columns,
+                  feature_column_names=feature_column_names,
+                  feature_metas=feature_metas,
+                  label_meta=label_meta,
+                  model_params=model_params,
+                  validation_metrics="{{.ValidationMetrics}}".split(",),
+                  save="model_save",
+                  batch_size=1,
+                  validation_steps=None,
+                  verbose=0,
+                  is_pai="{{.IsPAI}}" == "true",
+                  pai_table="{{.PAITable}}")
 `
