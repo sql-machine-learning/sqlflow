@@ -1,4 +1,4 @@
-# SQLFlow Error Diagnosis
+# SQLFlow Diagnosis
 
 For a typical SQLFlow method calling link:
 
