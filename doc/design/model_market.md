@@ -1,10 +1,12 @@
 # Model Market
 
-The model market is a web site where model developers can publish and share their models and analysts can find some useful models to finish the analysis work. The model market can be deployed anywhere like on the cloud or on-premise with some configurations.
+The model market is a place for model developers to share their models and for analysts to find some useful models to do their analysis work. The model market can be deployed anywhere like on the cloud or on-premise with some configurations.
 
-In the [model zoo design](model_zoo.md), we described how model developers develop, publish and share custom models on SQLFlow, and how analysts can make use of the shared model with SQLFlow.
+In the [model zoo design](model_zoo.md), we described how model developers develop, publish and share custom models on SQLFlow, and how analysts can make use of the shared model with SQLFlow. **The model market differs from the model zoo by:**
 
-Here, we'll describe how to build the model market for model developers and analysts.
+**The model zoo provide all models publicly while the on the model market, users can share the models to a specific group of other users.**
+
+The model market also have a web site to provide graphical interface to share the models. we'll describe how to build the model market for model developers and analysts.
 
 The model market is designed to:
 
