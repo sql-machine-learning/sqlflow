@@ -20,6 +20,7 @@ import (
 
 	proto "github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
+	"github.com/golang/protobuf/ptypes/any"
 	pyts "github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/golang/protobuf/ptypes/wrappers"
 )
@@ -87,5 +88,37 @@ func encodePODType(val interface{}) (proto.Message, error) {
 			Nanos:   int32(v.Nanosecond())}, nil
 	default:
 		return nil, fmt.Errorf("Unknown Go type %#v to be converted into protobuf.Any", val)
+	}
+}
+
+// DecodePODType decode a any.Any message to is unwrapped val
+func DecodePODType(any *any.Any) (interface{}, error) {
+	dval := ptypes.DynamicAny{}
+	ptypes.UnmarshalAny(any, &dval)
+	switch v := dval.Message.(type) {
+	case nil:
+		return nil, nil
+	case *wrappers.BoolValue:
+		return v.Value, nil
+	case *wrappers.Int32Value:
+		return v.Value, nil
+	case *wrappers.Int64Value:
+		return v.Value, nil
+	case *wrappers.UInt32Value:
+		return v.Value, nil
+	case *wrappers.UInt64Value:
+		return v.Value, nil
+	case *wrappers.FloatValue:
+		return v.Value, nil
+	case *wrappers.DoubleValue:
+		return v.Value, nil
+	case *wrappers.StringValue:
+		return v.Value, nil
+	case *wrappers.BytesValue:
+		return v.Value, nil
+	case *pyts.Timestamp:
+		return v.String(), nil
+	default:
+		return nil, fmt.Errorf("unknown Any: %v to convert to go", any)
 	}
 }
