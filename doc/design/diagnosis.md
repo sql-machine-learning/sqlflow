@@ -15,52 +15,65 @@ func Do(program string, sess *Session) string {
 
 Any of the above function calls can raise an error, it may be a syntax error on parsing, or verify fault on verifying prediction and training data schema, or the submitter program running error, etc.
 
-To improve the error message maintainability and readability, this document issues an SQLFlow Error package named `sferr` to maintain various error messages in a rigorous approach.
+ This document issues an SQLFlow Error package `error` to improve the error message maintainability and readability and maintain various error messages in a rigorous approach.
 
 ## Error Package
 
-We would like each Go package under `pkg` folder do one minimal thing, for each package, we represent different `ErrType`, and using `ErrCode` to
-distinguish different errors for the same `ErrType`, the error code can be the same among all `ErrType`s.
+In order to distinguish which package the error occurred, e.g., `parser`, `verify`, we represent an enumerated type `ErrType`. For each `ErrType`, there would be various types errors, for an example, verifying would fault on **attribute value type error** or **attribute does not exist**, we represent an enumerated type variable: `ErrCode`, The `ErrCode` can be the same among different `ErrType`.
 
 ``` golang
-// ErrType represents a specific Error Type
+// ErrType represents the errors in a pacakge
 type ErrType int
 
-// ErrCode represents a specific Error Type in a ErrType
-type ErrCode int
-
-type Error struct {
-  typ     ErrType
-  code    ErrCode
-  format  string
-}
-
-func (e Error) FormatWithArg(a ...interface{}) error {
-  return fmt.Errorf("[%s:%d] %s", typ, code, fmt.Sprintf(format, a))
-}
-```
-
-In order to use error management more rigorously, we maintain a `ErrType` list in `sferr` package as the following:
-
-``` golang
 const (
-  TypeVerify ErrType iota
-  TypeSQLFS
+  pkgVerify ErrType iota
+  pkgParser
+  ...
 )
 
-func (t ErrType) New(code ErrCode, format string) Error {
-  return &Error{
-    typ:      t,
-    code:     code,
-    format:   format,
-  }
+var errPkgName := map[ErrType]string {
+  pkgVerify: "verify",
+  pkgParser: "parser",
+  ...
 }
 
+
+// ErrCode represents a specific error type of a ErrType
+type ErrCode int
+
+```
+
+To be compliant with the standard `error` package in Go, we represent the `SQLFlowError` struct which implements `error` interface:
+
+``` golang
+
+type SQLFlowError struct {
+  pkg       ErrType
+  code      ErrCode
+  message   string
+}
+
+func (e SQLFlowError) Error() string {
+  fmt.Sprintf("%s:%d, %s", errPkgName[e.pkg], e.code, e.message)
+}
+
+func (e SQLFlowError) Format(arg ...interface{}) SQLFlowError {
+  e.message = fmt.Sprintf(e.message, arg...)
+  return e
+}
+
+func (p ErrType) New(code ErrCode, message string) SQLFlowError {
+  return &SQLFlowError {
+    pkg:      p,
+    code:     code,
+    message:  message
+  }
+}
 ```
 
 ### An Example of Usage
 
-We want uses to use `sferr` package as the following code:
+We want uses can use `error` package as the following code:
 
 ``` golang
 package verify
@@ -75,8 +88,20 @@ var (
   ErrDuplicatedColumns = sferr.New(codeDuplicatedColumns, "Found duplicated columns: %s.")
 )
 
-func attributeChecker() error {
+func Verify() error {
   // do some thing
-  return ErrAttributeNotExists.FormatWithArg("no_exists_attribute")
+  return ErrAttributeNotExists.Format("no_exists_attr")
 }
 ```
+
+### All Possible Error Types
+
+The following table lists all possible `ErrType` and keeps updating in the feature.
+
+| ErrType | Description|
+| -- | -- |
+| TypeVerify | Verifing fault on checking attributes or data schema|
+| TypeSQLFS | SQLFlow File system operation errors|
+| TypeCodeGen | Generating submitter program errors|
+| TypeSubmitter | Submitter program runtime errors|
+| TypeParser | Parsing SQL program errors|
