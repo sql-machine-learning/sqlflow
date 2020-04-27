@@ -1,4 +1,4 @@
-# SQLFlow Diagnosis
+# SQLFlow Diagnostics
 
 For a typical SQLFlow method calling link:
 
