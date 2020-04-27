@@ -121,12 +121,11 @@ func TFLoadAndEvaluate(ir *ir.EvaluateStmt, session *pb.Session, modelPath strin
 		paiExplainTable = ir.TmpEvaluateTable
 	}
 
-	validationMetrics := ""
-	for k, v := range ir.Attributes {
-		// NOTE: only validation.metrics attribute is supported for TO EVALUATE clause.
-		if k == "validation.metrics" {
-			validationMetrics = v.(string)
-		}
+	// set default metrics to "Accuracy"
+	validationMetrics := "Accuracy"
+	if v, ok := ir.Attributes["validationMetrics"]; ok {
+		// validationMetrics should be a string like: "Accuracy,AUC,Recall"
+		validationMetrics = v.(string)
 	}
 
 	filler := evaluateFiller{
