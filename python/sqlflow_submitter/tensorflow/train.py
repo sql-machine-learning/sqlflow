@@ -36,6 +36,9 @@ try:
 except:
     pass
 
+# Disable Tensorflow INFO and WARNING logs
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+
 
 def train(datasource,
           estimator,
