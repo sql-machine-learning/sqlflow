@@ -31,10 +31,8 @@ const (
   ...
 )
 
-var errPkgName := map[ErrType]string {
-  pkgVerify: "verify",
-  pkgParser: "parser",
-  ...
+func (t ErrType) String() string {
+  return []string{"verify", "parser", ...}[t]
 }
 
 
@@ -54,7 +52,7 @@ type SQLFlowError struct {
 }
 
 func (e SQLFlowError) Error() string {
-  fmt.Sprintf("%s:%d, %s", errPkgName[e.pkg], e.code, e.message)
+  fmt.Sprintf("%s:%d, %s", e.pkg, e.code, e.message)
 }
 
 func (e SQLFlowError) Format(arg ...interface{}) SQLFlowError {
