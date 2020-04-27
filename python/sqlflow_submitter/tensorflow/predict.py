@@ -25,13 +25,13 @@ from sqlflow_submitter.pai import model
 from .get_tf_version import tf_is_version2
 from .input_fn import get_dtype, parse_sparse_feature_predict
 
-# Disable Tensorflow INFO and WARNING logs
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-
 try:
     import sqlflow_models
 except:
     pass
+
+# Disable Tensorflow INFO and WARNING logs
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 # Disable Tensorflow INFO and WARNING logs
 if tf_is_version2():
