@@ -76,7 +76,6 @@ def evaluate(datasource,
     model_params.update(feature_columns)
     if is_estimator:
         if is_pai:
-            # define_tf_flags()
             FLAGS = tf.app.flags.FLAGS
             model_params["model_dir"] = FLAGS.checkpointDir
         else:
