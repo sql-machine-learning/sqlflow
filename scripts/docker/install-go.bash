@@ -28,4 +28,4 @@ go get github.com/rakyll/gotest
 go get github.com/wangkuiyi/goyaccfmt
 go get github.com/wangkuiyi/yamlfmt
 
-cp $GOPATH/bin/* /usr/local/bin/
+cp "$GOPATH"/bin/* /usr/local/bin/

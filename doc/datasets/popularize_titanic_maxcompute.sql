@@ -1,3 +1,16 @@
+-- Copyright 2020 The SQLFlow Authors. All rights reserved.
+-- Licensed under the Apache License, Version 2.0 (the "License");
+-- you may not use this file except in compliance with the License.
+-- You may obtain a copy of the License at
+-- 
+-- http://www.apache.org/licenses/LICENSE-2.0
+-- 
+-- Unless required by applicable law or agreed to in writing, software
+-- distributed under the License is distributed on an "AS IS" BASIS,
+-- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-- See the License for the specific language governing permissions and
+-- limitations under the License.
+
 CREATE TABLE IF NOT EXISTS titanic_train (
 pclass_1 int,
 pclass_2 int,
@@ -1362,5 +1375,3 @@ INSERT INTO titanic_test VALUES
 (0,0,1,0,1,0,0,1,0,0,0,1,0,1,1,0,0,1,1,0,0.6368008848466836,-0.5913030237476691,0),
 (0,0,1,0,1,0,0,1,0,0,0,1,0,1,1,0,0,1,1,0,-0.050311122969114636,-0.5321152223512734,0),
 (0,0,1,0,1,1,0,0,1,0,0,0,0,0,0,0,0,3,0,0,-0.37793941004730885,-0.5763013822520744,0);
-
-

@@ -16,6 +16,7 @@ package external
 import (
 	"context"
 	"fmt"
+
 	"sqlflow.org/sqlflow/pkg/proto"
 )
 
@@ -28,7 +29,7 @@ func newJavaParser(typ string) *javaParser {
 	return &javaParser{typ: typ}
 }
 
-func (p *javaParser) Parse(program string) ([]string, int, error) {
+func (p *javaParser) Parse(program string) ([]*Statement, int, error) {
 	c, err := connectToServer()
 	if err != nil {
 		return nil, -1, err
@@ -41,5 +42,26 @@ func (p *javaParser) Parse(program string) ([]string, int, error) {
 	if r.Error != "" {
 		return nil, -1, fmt.Errorf(r.Error)
 	}
-	return r.SqlStatements, int(r.Index), nil
+	retStatements := []*Statement{}
+	var stmt *Statement
+	for idx, stmtString := range r.SqlStatements {
+		if len(r.InputOutputTables) == len(r.SqlStatements) {
+			iotables := r.InputOutputTables[idx]
+			stmt = &Statement{
+				String:  stmtString,
+				Inputs:  iotables.Inputs,
+				Outputs: iotables.Outputs,
+			}
+		} else {
+			stmt = &Statement{
+				String: stmtString,
+			}
+		}
+		retStatements = append(retStatements, stmt)
+	}
+	if r.IsUnfinishedSelect {
+		retStatements[len(retStatements)-1].IsUnfinishedSelect = true
+	}
+
+	return retStatements, int(r.Index), nil
 }

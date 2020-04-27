@@ -53,10 +53,8 @@ func RunSQLProgram(sqlProgram string, modelDir string, session *pb.Session) *pip
 		}
 		err = runSQLProgram(wr, sqlProgram, db, modelDir, session)
 		if err != nil {
-			if err != pipe.ErrClosedPipe {
-				if err := wr.Write(err); err != nil {
-					log.GetDefaultLogger().Errorf("runSQLProgram error(piping): %v", err)
-				}
+			if e := wr.Write(fmt.Errorf("runSQLProgram error: %v", err)); e != nil {
+				log.GetDefaultLogger().Errorf("runSQLProgram error(piping): %v", e)
 			}
 		}
 	}()
@@ -72,14 +70,23 @@ func ResolveSQLProgram(sqlStmts []*parser.SQLFlowStmt, logger *log.Logger) ([]ir
 		if sql.IsExtendedSyntax() {
 			if sql.Train {
 				logger.Info("resolveSQL:train")
-				r, err = generateTrainStmt(sql.SQLFlowSelectStmt, true)
+				// TODO(yancey1989): enable the atttribute checker when cover pai codegen.
+				r, err = generateTrainStmt(sql.SQLFlowSelectStmt, false)
+			} else if sql.ShowTrain {
+				logger.Info("resolveSQL:showTrain")
+				r, err = generateShowTrainStmt(sql.SQLFlowSelectStmt)
 			} else if sql.Explain {
 				logger.Info("resolveSQL:explain")
 				// since getTrainStmtFromModel is false, use empty cwd is fine.
 				r, err = generateExplainStmt(sql.SQLFlowSelectStmt, "", "", "", false)
-			} else {
+			} else if sql.Predict {
 				logger.Info("resolveSQL:predict")
 				r, err = generatePredictStmt(sql.SQLFlowSelectStmt, "", "", "", false)
+			} else if sql.Evaluate {
+				logger.Info("resolveSQL:evaluate")
+				r, err = generateEvaluateStmt(sql.SQLFlowSelectStmt, "", "", "", false)
+			} else {
+				return nil, fmt.Errorf("unkown exteneded SQL statement type")
 			}
 		} else {
 			logger.Info("resolveSQL:standard")
@@ -129,7 +136,8 @@ func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *dat
 		}
 	}(time.Now().UnixNano())
 
-	cwd, err := ioutil.TempDir("/tmp", "sqlflow_models")
+	// use system default tmp dir
+	cwd, err := ioutil.TempDir("", "sqlflow_models")
 	if err != nil {
 		return err
 	}
@@ -142,10 +150,14 @@ func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *dat
 	if sql.IsExtendedSyntax() {
 		if sql.Train {
 			r, err = generateTrainStmtWithInferredColumns(sql.SQLFlowSelectStmt, session.DbConnStr, true)
+		} else if sql.ShowTrain {
+			r, err = generateShowTrainStmt(sql.SQLFlowSelectStmt)
 		} else if sql.Explain {
 			r, err = generateExplainStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, GetSubmitter(session.Submitter).GetTrainStmtFromModel())
-		} else {
+		} else if sql.Predict {
 			r, err = generatePredictStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, GetSubmitter(session.Submitter).GetTrainStmtFromModel())
+		} else if sql.Evaluate {
+			r, err = generateEvaluateStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, GetSubmitter(session.Submitter).GetTrainStmtFromModel())
 		}
 	} else {
 		standardSQL := ir.NormalStmt(sql.Original)
@@ -156,7 +168,7 @@ func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *dat
 	}
 	r.SetOriginalSQL(sql.Original)
 	// TODO(typhoonzero): can run feature.LogDerivationResult(wr, trainStmt) here to send
-	// feature derivation logs to client, yet we disable if for now so that it's less annoying.
+	// feature derivation logs to client, yet we disable it for now so that it's less annoying.
 	submitter := GetSubmitter(session.Submitter)
 	submitter.Setup(wr, db, modelDir, cwd, session)
 	return r.Execute(submitter)

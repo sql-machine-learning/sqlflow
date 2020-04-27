@@ -313,6 +313,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseEmptyDataset", CaseEmptyDataset)
 	t.Run("CaseLabelColumnNotExist", CaseLabelColumnNotExist)
 	t.Run("CaseTrainSQL", CaseTrainSQL)
+	t.Run("CaseTrainAndEvaluate", CaseTrainAndEvaluate)
 	t.Run("CaseTrainPredictCategoricalFeature", CaseTrainPredictCategoricalFeature)
 	t.Run("CaseTrainRegex", CaseTrainRegex)
 	t.Run("CaseTypoInColumnClause", CaseTypoInColumnClause)
@@ -343,7 +344,10 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseTrainTextClassificationFeatureDerivation", CaseTrainTextClassificationFeatureDerivation)
 	t.Run("CaseXgboostFeatureDerivation", CaseXgboostFeatureDerivation)
 	t.Run("CaseXgboostEvalMetric", CaseXgboostEvalMetric)
+	t.Run("CaseXgboostExternalMemory", CaseXgboostExternalMemory)
 	t.Run("CaseTrainFeatureDerivation", CaseTrainFeatureDerivation)
+
+	t.Run("CaseShowTrain", CaseShowTrain)
 }
 
 func CaseEmptyDataset(t *testing.T) {
@@ -388,6 +392,25 @@ func CaseXgboostEvalMetric(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := `SELECT * FROM iris.train WHERE class in (0, 1) TO TRAIN xgboost.gbtree
 WITH objective="binary:logistic", eval_metric=auc
+LABEL class
+INTO sqlflow_models.my_xgb_binary_classification_model;`
+	_, _, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("run test error: %v", err)
+	}
+
+	predSQL := `SELECT * FROM iris.test TO PREDICT iris.predict.class
+USING sqlflow_models.my_xgb_binary_classification_model;`
+	_, _, _, err = connectAndRunSQL(predSQL)
+	if err != nil {
+		a.Fail("run test error: %v", err)
+	}
+}
+
+func CaseXgboostExternalMemory(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := `SELECT * FROM iris.train WHERE class in (0, 1) TO TRAIN xgboost.gbtree
+WITH objective="binary:logistic", eval_metric=auc, train.disk_cache=True
 LABEL class
 INTO sqlflow_models.my_xgb_binary_classification_model;`
 	_, _, _, err := connectAndRunSQL(trainSQL)
@@ -465,6 +488,7 @@ func TestEnd2EndHive(t *testing.T) {
 	t.Run("CaseTrainXGBoostRegression", CaseTrainXGBoostRegression)
 	t.Run("CasePredictXGBoostRegression", CasePredictXGBoostRegression)
 	t.Run("CaseTrainFeatureDerivation", CaseTrainFeatureDerivation)
+	t.Run("CaseShowTrain", CaseShowTrain)
 }
 
 func TestEnd2EndMaxCompute(t *testing.T) {
@@ -743,11 +767,35 @@ TO PREDICT housing.predict.class USING housing.dnnlinear_model;`
 	}
 }
 
+func CaseTrainAndEvaluate(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`SELECT * FROM %s WHERE class<>2
+TO TRAIN DNNClassifier
+WITH
+	model.n_classes = 2,
+	model.hidden_units = [10, 20],
+	validation.select = "SELECT * FROM %s WHERE class <>2 LIMIT 30"
+LABEL class
+INTO %s;`, caseTrainTable, caseTrainTable, caseInto)
+	_, _, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+
+	evalSQL := fmt.Sprintf(`SELECT * FROM %s WHERE class<>2
+TO EVALUATE %s
+WITH validation.metrics = "Accuracy,AUC"
+LABEL class
+INTO %s.evaluation_result;`, caseTestTable, caseInto, caseDB)
+	_, _, _, err = connectAndRunSQL(evalSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+}
+
 func CaseTrainSQL(t *testing.T) {
 	a := assert.New(t)
-	trainSQL := fmt.Sprintf(`
-	SELECT *
-	FROM %s
+	trainSQL := fmt.Sprintf(`SELECT * FROM %s
 	TO TRAIN DNNClassifier
 	WITH
 		model.n_classes = 3,
@@ -835,7 +883,7 @@ TO TRAIN DNNRegressor WITH
 COLUMN INDICATOR(CATEGORY_ID("[*", 1000))
 LABEL target
 INTO housing.dnn_model;
-` // invalide regex
+` // invalid regex
 	connectAndRunSQLShouldError(trainSQL)
 
 }
@@ -1415,7 +1463,7 @@ INTO sqlflow_models.my_xgb_regression_model;
 			a.NoError(e)
 			a.Greater(trainRmse, 0.0)            // no overfitting
 			a.LessOrEqual(trainRmse, 0.5)        // less the baseline
-			a.GreaterOrEqual(valRmse, trainRmse) // verifty the valiation
+			a.GreaterOrEqual(valRmse, trainRmse) // verify the validation
 			isConvergence = true
 		}
 	}
@@ -1432,8 +1480,9 @@ FROM housing.train
 TO TRAIN xgboost.gbtree
 WITH
 	objective="reg:squarederror",
-	train.num_boost_round = 30
-	COLUMN f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13
+	train.num_boost_round = 30,
+	train.batch_size=20
+COLUMN f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13
 LABEL target
 INTO sqlflow_models.my_xgb_regression_model;
 	`
@@ -1500,6 +1549,7 @@ FROM housing.xgb_predict LIMIT 5;`)
 }
 
 func CasePAIMaxComputeTrainPredictCategoricalFeature(t *testing.T) {
+	t.Parallel()
 	a := assert.New(t)
 	trainSQL := `SELECT cast(sepal_length as int) sepal_length, class
 FROM alifin_jtest_dev.sqlflow_test_iris_train
@@ -1595,6 +1645,27 @@ LABEL class
 INTO e2etest_keras_dnn_model_distributed;`, caseTrainTable, caseTestTable)
 	_, _, _, err := connectAndRunSQL(trainSQL)
 	a.NoError(err)
+}
+
+func CasePAIMaxComputeTrainXGBDistributed(t *testing.T) {
+	t.Parallel()
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`SELECT * FROM %s
+	TO TRAIN xgboost.gbtree
+	WITH
+		objective="multi:softprob",
+		train.num_boost_round = 30,
+		train.num_workers = 2,
+		eta = 0.4,
+		num_class = 3,
+		train.batch_size=10,
+		validation.select="select * from %s"
+	LABEL class
+	INTO e2etest_xgb_classi_model;`, caseTrainTable, caseTrainTable)
+	_, _, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
 }
 
 func CasePAIMaxComputeTrainTFBTDistributed(t *testing.T) {
@@ -1772,14 +1843,16 @@ func CasePAIMaxComputeTrainXGBoost(t *testing.T) {
 	t.Parallel()
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`SELECT * FROM %s
-TO TRAIN xgboost.gbtree
-WITH
-	objective="multi:softprob",
-	train.num_boost_round = 30,
-	eta = 0.4,
-	num_class = 3
-LABEL class
-INTO e2etest_xgb_classi_model;`, caseTrainTable)
+	TO TRAIN xgboost.gbtree
+	WITH
+		objective="multi:softprob",
+		train.num_boost_round = 30,
+		eta = 0.4,
+		num_class = 3,
+		train.batch_size=10,
+		validation.select="select * from %s"
+	LABEL class
+	INTO e2etest_xgb_classi_model;`, caseTrainTable, caseTrainTable)
 	_, _, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)
@@ -1954,10 +2027,38 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 		t.Run("CasePAIMaxComputeTrainPredictCategoricalFeature", CasePAIMaxComputeTrainPredictCategoricalFeature)
 		t.Run("CasePAIMaxComputeTrainTFBTDistributed", CasePAIMaxComputeTrainTFBTDistributed)
 		t.Run("CasePAIMaxComputeTrainDistributedKeras", CasePAIMaxComputeTrainDistributedKeras)
+		t.Run("CasePAIMaxComputeTrainXGBDistributed", CasePAIMaxComputeTrainXGBDistributed)
 
 		// FIXME(typhoonzero): Add this test back when we solve error: model already exist issue on the CI.
 		// t.Run("CaseTrainPAIRandomForests", CaseTrainPAIRandomForests)
 	})
+}
+func TestEnd2EndFluidWorkflow(t *testing.T) {
+	a := assert.New(t)
+	if os.Getenv("SQLFLOW_TEST_DATASOURCE") == "" || strings.ToLower(os.Getenv("SQLFLOW_TEST")) != "workflow" {
+		t.Skip("Skipping workflow test.")
+	}
+	driverName, _, err := database.ParseURL(testDatasource)
+	a.NoError(err)
+
+	if driverName != "mysql" && driverName != "maxcompute" && driverName != "alisa" {
+		t.Skip("Skipping workflow test.")
+	}
+	modelDir := ""
+	tmpDir, caCrt, caKey, err := generateTempCA()
+	defer os.RemoveAll(tmpDir)
+	if err != nil {
+		t.Fatalf("failed to generate CA pair %v", err)
+	}
+
+	//TODO(yancey1989): using the same end-to-end workflow test with the Couler backend
+	os.Setenv("SQLFLOW_WORKFLOW_BACKEND", "fluid")
+	go start(modelDir, caCrt, caKey, unitTestPort, true)
+	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
+	if err != nil {
+		t.Fatalf("prepare test dataset failed: %v", err)
+	}
+	t.Run("CaseWorkflowTrainAndPredictDNN", CaseWorkflowTrainAndPredictDNN)
 }
 
 func TestEnd2EndWorkflow(t *testing.T) {
@@ -2009,6 +2110,40 @@ func TestEnd2EndWorkflow(t *testing.T) {
 	t.Run("CaseWorkflowTrainAndPredictDNNCustomImage", CaseWorkflowTrainAndPredictDNNCustomImage)
 	t.Run("CaseWorkflowTrainAndPredictDNN", CaseWorkflowTrainAndPredictDNN)
 	t.Run("CaseTrainDistributedPAIArgo", CaseTrainDistributedPAIArgo)
+	t.Run("CaseBackticksInSQL", CaseBackticksInSQL)
+	t.Run("CaseWorkflowStepErrorMessage", CaseWorkflowStepErrorMessage)
+}
+
+func CaseWorkflowStepErrorMessage(t *testing.T) {
+	a := assert.New(t)
+	sqlProgram := fmt.Sprintf(`
+SELECT *
+FROM %s
+TO TRAIN DNNClassifier
+WITH
+	model.no_exists_param = 3,
+	model.hidden_units = [10, 20]
+COLUMN sepal_length, sepal_width, petal_length, petal_width
+LABEL class
+INTO %s;	
+	`, caseTrainTable, caseInto)
+	conn, err := createRPCConn()
+	if err != nil {
+		a.Fail("Create gRPC client error: %v", err)
+	}
+	defer conn.Close()
+
+	cli := pb.NewSQLFlowClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), 3600*time.Second)
+	defer cancel()
+
+	stream, err := cli.Run(ctx, &pb.Request{Sql: sqlProgram, Session: &pb.Session{DbConnStr: testDatasource}})
+	if err != nil {
+		a.Fail("Create gRPC client error: %v", err)
+	}
+	e := checkWorkflow(ctx, cli, stream)
+	a.Error(e)
+	a.Contains(e.Error(), "runSQLProgram error: unsupported attribute model.no_exists_param")
 }
 
 func CaseWorkflowTrainAndPredictDNN(t *testing.T) {
@@ -2166,4 +2301,60 @@ func CaseTrainDistributedPAIArgo(t *testing.T) {
 		a.Fail("Create gRPC client error: %v", err)
 	}
 	a.NoError(checkWorkflow(ctx, cli, stream))
+}
+
+func CaseBackticksInSQL(t *testing.T) {
+	driverName, _, _ := database.ParseURL(testDatasource)
+	if driverName != "mysql" {
+		t.Skip("Skipping workflow mysql test.")
+	}
+
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf("SELECT `sepal_length`, `class` FROM %s"+`
+	TO TRAIN DNNClassifier
+	WITH
+		model.n_classes = 3,
+		model.hidden_units = [10, 20],
+		validation.select="select * from %s"
+	LABEL class
+	INTO %s;`, caseTrainTable, caseTestTable, caseInto)
+
+	conn, err := createRPCConn()
+	if err != nil {
+		a.Fail("Create gRPC client error: %v", err)
+	}
+	defer conn.Close()
+
+	cli := pb.NewSQLFlowClient(conn)
+	// wait 1h for the workflow execution since it may take time to allocate enough nodes.
+	ctx, cancel := context.WithTimeout(context.Background(), 3600*time.Second)
+	defer cancel()
+
+	stream, err := cli.Run(ctx, &pb.Request{Sql: trainSQL, Session: &pb.Session{DbConnStr: testDatasource}})
+	if err != nil {
+		a.Fail("Create gRPC client error: %v", err)
+	}
+	a.NoError(checkWorkflow(ctx, cli, stream))
+}
+
+func CaseShowTrain(t *testing.T) {
+	driverName, _, _ := database.ParseURL(dbConnStr)
+	if driverName != "mysql" && driverName != "hive" {
+		t.Skip("Skipping non mysql/hive test.")
+	}
+	a := assert.New(t)
+	trainSQL := `SELECT * FROM iris.train TO TRAIN xgboost.gbtree
+	WITH objective="reg:squarederror"
+	LABEL class 
+	INTO sqlflow_models.my_xgb_model_for_show_train;`
+	_, _, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Train model failed: %v", err)
+	}
+	showSQL := `SHOW TRAIN sqlflow_models.my_xgb_model_for_show_train;`
+	cols, _, _, err := connectAndRunSQL(showSQL)
+	a.NoError(err)
+	a.Equal(2, len(cols))
+	a.Equal("Table", cols[0])
+	a.Equal("Train Statement", cols[1])
 }

@@ -22,6 +22,7 @@ import (
 	"sqlflow.org/sqlflow/pkg/ir"
 	"sqlflow.org/sqlflow/pkg/model"
 	"sqlflow.org/sqlflow/pkg/parser"
+	"sqlflow.org/sqlflow/pkg/sql/codegen/pai"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/xgboost"
 	"sqlflow.org/sqlflow/pkg/step/feature"
@@ -70,6 +71,8 @@ func generateTrainStmtWithInferredColumns(slct *parser.SQLFlowSelectStmt, connSt
 func doAttrInitAndTypeChecking(ir *ir.TrainStmt) error {
 	if isXGBoostModel(ir.Estimator) {
 		return xgboost.InitializeAttributes(ir)
+	} else if isKMeansModel(ir.Estimator) {
+		return pai.InitializeKMeansAttributes(ir)
 	}
 	return tensorflow.InitializeAttributes(ir)
 }
@@ -219,15 +222,18 @@ func verifyIRWithTrainStmt(sqlir ir.SQLFlowStmt, db *database.DB) error {
 	case *ir.ExplainStmt:
 		selectStmt = s.Select
 		trainStmt = s.TrainStmt
+	case *ir.EvaluateStmt:
+		selectStmt = s.Select
+		trainStmt = s.TrainStmt
 	default:
-		return fmt.Errorf("loadModelMetaUsingIR doesn't support IR of type %T", sqlir)
+		return fmt.Errorf("verifyIRWithTrainStmt doesn't support IR of type %T", sqlir)
 	}
 
 	trainFields, e := verifier.Verify(selectStmt, db)
 	if e != nil {
 		return e
 	}
-	if trainStmt == nil { // Implies we dont' need to load model
+	if trainStmt == nil { // Implies we don't need to load model
 		return nil
 	}
 
@@ -334,6 +340,49 @@ func generateExplainStmt(slct *parser.SQLFlowSelectStmt, connStr, modelDir strin
 	}
 
 	return explainStmt, nil
+}
+
+func generateEvaluateStmt(slct *parser.SQLFlowSelectStmt, connStr string, modelDir string, cwd string, getTrainStmtFromModel bool) (*ir.EvaluateStmt, error) {
+	attrMap, err := generateAttributeIR(&slct.EvaluateAttrs)
+	if err != nil {
+		return nil, err
+	}
+
+	var trainStmt *ir.TrainStmt
+	if getTrainStmtFromModel {
+		trainStmt, err = generateTrainStmtByModel(slct, connStr, cwd, modelDir, slct.ModelToEvaluate)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	label := &ir.NumericColumn{
+		FieldDesc: &ir.FieldDesc{
+			Name: slct.EvaluateLabel,
+		}}
+
+	evaluateStmt := &ir.EvaluateStmt{
+		Select:     slct.StandardSelect.String(),
+		Attributes: attrMap,
+		ModelName:  slct.ModelToEvaluate,
+		Label:      label,
+		Into:       slct.EvaluateInto,
+		TrainStmt:  trainStmt,
+	}
+
+	if getTrainStmtFromModel {
+		// FIXME(tony): change the function signature to use *database.DB
+		db, err := database.OpenAndConnectDB(connStr)
+		if err != nil {
+			return nil, err
+		}
+		defer db.Close()
+		if err := verifyIRWithTrainStmt(evaluateStmt, db); err != nil {
+			return nil, err
+		}
+	}
+
+	return evaluateStmt, nil
 }
 
 func generateAttributeIR(attrs *parser.Attributes) (map[string]interface{}, error) {
@@ -904,4 +953,10 @@ func transformToIntList(list []interface{}) ([]int, error) {
 		}
 	}
 	return b, nil
+}
+
+func generateShowTrainStmt(showTrain *parser.SQLFlowSelectStmt) (*ir.ShowTrainStmt, error) {
+	return &ir.ShowTrainStmt{
+		ModelName: showTrain.ShowTrainClause.ModelName,
+	}, nil
 }

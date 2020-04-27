@@ -10,15 +10,18 @@ SQLFlow connects a SQL engine (e.g., MySQL, Hive, or MaxCompute) and TensorFlow 
 
 ```SQL
 SELECT * FROM boston.train
-TO TRAIN xgboost.gbtree
+TO TRAIN xgboost.xgbregressor
 WITH
     objective ="reg:squarederror",
     train.num_boost_round = 30,
     validation.select = "SELECT * FROM boston.val LIMIT 8"
-COLUMN crim, zn, indus, chas, nox, rm, age, dis, rad, tax, ptratio, b, lstat
 LABEL medv
 INTO sqlflow_models.my_xgb_regression_model;
 ```
+
+#### Model Types
+
+`XGBOOST.XGBREGRESSOR`, `XGBOOST.XGBCLASSIFIER`, `XGBOOST.XGBRFCLASSIFIER`, `XGBOOST.XGBRANKER`, `XGBOOST.GBTREE`, `XGBOOST.GBLINEAR`, `XGBOOST.DART`
 
 #### Parameters
 
@@ -159,9 +162,29 @@ INTO sqlflow_models.my_xgb_regression_model;
 	<td>Subsample ratio of the training instance.</td>
 </tr>
 <tr>
+	<td>train.batch_size</td>
+	<td>int</td>
+	<td>[default=-1]<br>Batch size for each iteration, -1 means use all data at once.<br>range: [-1, Infinity]</td>
+</tr>
+<tr>
+	<td>train.disk_cache</td>
+	<td>bool</td>
+	<td>whether use external memory to cache train data</td>
+</tr>
+<tr>
+	<td>train.epoch</td>
+	<td>int</td>
+	<td>[default=1]<br>Number of rounds to run the training.<br>range: [1, Infinity]</td>
+</tr>
+<tr>
 	<td>train.num_boost_round</td>
 	<td>int</td>
 	<td>[default=10]<br>The number of rounds for boosting.<br>range: [1, Infinity]</td>
+</tr>
+<tr>
+	<td>train.num_workers</td>
+	<td>int</td>
+	<td>[default=1]<br>Number of workers for distributed train, 1 means stand-alone mode.<br>range: [1, 128]</td>
 </tr>
 <tr>
 	<td>validation.select</td>
@@ -235,7 +258,7 @@ INTO sqlflow_models.my_dnn_model;
 <tr>
 	<td>train.verbose</td>
 	<td>int</td>
-	<td>[default=0]<br>Show verbose logs when training.<br>possible values: 0, 1</td>
+	<td>[default=0]<br>Show verbose logs when training.<br>possible values: 0, 1, 2</td>
 </tr>
 <tr>
 	<td>validation.metrics</td>

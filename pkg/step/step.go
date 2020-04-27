@@ -46,14 +46,15 @@ func RunSQLProgramAndPrintResult(sqlStmt string, modelDir string, session *pb.Se
 	log.SetFlags(0)
 	stream := sql.RunSQLProgram(sqlStmt, modelDir, session)
 	for res := range stream.ReadAll() {
-		if e := render(res, table, isTerminal, it2Check); e != nil {
+		if e := Render(res, table, isTerminal, it2Check); e != nil {
 			return e
 		}
 	}
 	return table.Flush()
 }
 
-func render(rsp interface{}, table tablewriter.TableWriter, isTerminal, it2Check bool) error {
+// Render output according to calling environment
+func Render(rsp interface{}, table tablewriter.TableWriter, isTerminal, it2Check bool) error {
 	switch s := rsp.(type) {
 	case map[string]interface{}: // table header
 		return table.SetHeader(s)
@@ -63,7 +64,8 @@ func render(rsp interface{}, table tablewriter.TableWriter, isTerminal, it2Check
 		if isTerminal {
 			log.Printf("ERROR: %v\n", s)
 		} else {
-			log.Fatalf("ERROR: %v\n", s)
+			table.FlushWithError(s)
+			log.Fatalf("workflow step failed: %v", s)
 		}
 	case sql.EndOfExecution:
 	case sql.Figures:
@@ -88,8 +90,14 @@ func render(rsp interface{}, table tablewriter.TableWriter, isTerminal, it2Check
 		}
 	case string:
 		log.Println(s)
+	case nil:
+		return nil
 	default:
-		log.Fatalf("unrecognized response type: %v", s)
+		if isTerminal {
+			log.Printf("unrecognized response type: %v", s)
+		} else {
+			log.Fatalf("unrecognized response type: %v", s)
+		}
 	}
 	return nil
 }
@@ -130,22 +138,25 @@ func imageCat(imageBytes []byte) error {
 	return nil
 }
 
-// GetStdout hooks stdout and stderr, it's used for test
+// GetStdout hooks stdout and stderr, it collects stderr, stdout, and logs
+// been generated during func f's execution, and returns them along with f's error
 func GetStdout(f func() error) (out string, e error) {
-	oldStdout, oldStderr := os.Stdout, os.Stderr // keep backup of the real stdout
+	logOut, oldStdout, oldStderr := log.Writer(), os.Stdout, os.Stderr // keep backup of the real stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 	os.Stderr = w
-	log.SetOutput(os.Stdout)
-	e = f() // f prints to stdout
+	log.SetOutput(w)
 	outC := make(chan string)
+	// first start read, then write, in case the pipe is immediately full and get blocked
 	go func() { // copy the output in a separate goroutine so printing can't block indefinitely
 		var buf bytes.Buffer
 		io.Copy(&buf, r)
 		outC <- buf.String()
 	}()
+	e = f()                                     // f prints to stdout
 	w.Close()                                   // Cancel redirection
 	os.Stdout, os.Stderr = oldStdout, oldStderr // restoring the real stdout and stderr
+	log.SetOutput(logOut)
 	out = <-outC
 	return
 }

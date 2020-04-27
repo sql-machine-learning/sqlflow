@@ -29,6 +29,7 @@ import (
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/stretchr/testify/assert"
 	pb "sqlflow.org/sqlflow/pkg/proto"
+	wfrsp "sqlflow.org/sqlflow/pkg/workflow/response"
 )
 
 const (
@@ -82,7 +83,7 @@ spec:
         value: '%s'
       image: %s
       command: [bash]
-      args: ["-c", 'bash /start.sh mysql >/dev/null 2>&1 & repl -e "{{inputs.parameters.sql}}"']
+      args: ["-c", 'bash /start.sh mysql >/dev/null 2>&1 & step -e "{{inputs.parameters.sql}}"']
 `
 
 	podYAML = `apiVersion: v1
@@ -172,7 +173,7 @@ func TestFetch(t *testing.T) {
 	a.NoError(err)
 
 	defer k8sDeleteWorkflow(workflowID)
-	req := newFetchRequest(workflowID, "", "")
+	req := wfrsp.NewFetchRequest(workflowID, "", "")
 	wf := &Workflow{}
 	fr, err := wf.Fetch(req)
 	messages := []string{}
@@ -293,12 +294,4 @@ func TestGetPodLogsStress(t *testing.T) {
 		expected = append(expected, strconv.FormatInt(int64(i), 10))
 	}
 	a.Equal(expected, actual)
-}
-
-func TestHTMLCode(t *testing.T) {
-	a := assert.New(t)
-	code := `<div align='center'> mock code </div>`
-	invalidHTMLCode := `<div align='center' invalid HTML code`
-	a.True(isHTMLCode(code))
-	a.False(isHTMLCode(invalidHTMLCode))
 }

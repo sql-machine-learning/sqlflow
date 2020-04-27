@@ -137,7 +137,11 @@ func runExec(wr *pipe.Writer, slct string, db *database.DB) error {
 
 // -------------------------- utilities --------------------------------------
 func isXGBoostModel(estimator string) bool {
-	return strings.HasPrefix(strings.ToUpper(estimator), `XGBOOST.`)
+	return strings.HasPrefix(strings.ToUpper(estimator), `XGB`)
+}
+
+func isKMeansModel(estimator string) bool {
+	return strings.ToUpper(estimator) == "KMEANS"
 }
 
 func parseTableColumn(s string) (string, string, error) {

@@ -35,7 +35,7 @@ Number of epochs the training will run.
 range: [1, Infinity]`, attribute.IntLowerBoundChecker(1, true)},
 	"train.verbose": {attribute.Int, 0, `[default=0]
 Show verbose logs when training.
-possible values: 0, 1`, attribute.IntChoicesChecker([]int{0, 1, 2})},
+possible values: 0, 1, 2`, attribute.IntChoicesChecker(0, 1, 2)},
 	"train.max_steps": {attribute.Int, 0, `[default=0]
 Max steps to run training.`, attribute.IntLowerBoundChecker(0, true)},
 	"train.save_checkpoints_steps": {attribute.Int, 100, `[default=100]
@@ -326,7 +326,8 @@ func InitializeAttributes(trainStmt *ir.TrainStmt) error {
 		// Special attributes defined as global variables in `sqlflow_models`
 		modelAttr.Update(attribute.Dictionary{
 			"model.optimizer": {attribute.Unknown, nil, "Specify optimizer", nil},
-			"model.loss":      {attribute.Unknown, nil, "Specify loss", nil}})
+			"model.loss":      {attribute.Unknown, nil, "Specify loss", nil},
+			"model.*":         {attribute.Unknown, nil, "Any model parameters defined in custom models", nil}})
 	}
 	if IsPAI() {
 		modelAttr.Update(distributedTrainingAttributes)
@@ -514,6 +515,47 @@ func Explain(stmt *ir.ExplainStmt, session *pb.Session) (string, error) {
 		"attrToPythonValue":    attrToPythonValue,
 		"DTypeToString":        DTypeToString,
 	}).Parse(boostedTreesExplainTemplateText))
+	if err := tmpl.Execute(&program, filler); err != nil {
+		return "", err
+	}
+	return program.String(), nil
+}
+
+// Evaluate generates a Python program to evaluate a trained model.
+func Evaluate(stmt *ir.EvaluateStmt, session *pb.Session) (string, error) {
+	modelParams, featureColumnsCode, fieldDescs, err := restoreModel(stmt.TrainStmt)
+	if err != nil {
+		return "", err
+	}
+	labelFM := stmt.TrainStmt.Label.GetFieldDesc()[0]
+	validationParams := resolveParams(stmt.Attributes, "validation.")
+	if len(validationParams) == 0 {
+		// add default validation.metrics = "Accuracy".
+		validationParams["metrics"] = "Accuracy"
+	}
+
+	filler := evaluateFiller{
+		DataSource:        session.DbConnStr,
+		Select:            stmt.Select,
+		Estimator:         stmt.TrainStmt.Estimator,
+		FieldDescs:        fieldDescs,
+		FeatureColumnCode: fmt.Sprintf("{%s}", strings.Join(featureColumnsCode, ",\n")),
+		Y:                 labelFM,
+		ModelParams:       modelParams,
+		ValidationParams:  validationParams,
+		Save:              "model_save",
+		ResultTable:       stmt.Into,
+		HDFSNameNodeAddr:  session.HdfsNamenodeAddr,
+		HiveLocation:      session.HiveLocation,
+		HDFSUser:          session.HdfsUser,
+		HDFSPass:          session.HdfsPass,
+	}
+	var program bytes.Buffer
+	var tmpl = template.Must(template.New("Evaluate").Funcs(template.FuncMap{
+		"intArrayToJSONString": intArrayToJSONString,
+		"attrToPythonValue":    attrToPythonValue,
+		"DTypeToString":        DTypeToString,
+	}).Parse(tfEvaluateTemplateText))
 	if err := tmpl.Execute(&program, filler); err != nil {
 		return "", err
 	}

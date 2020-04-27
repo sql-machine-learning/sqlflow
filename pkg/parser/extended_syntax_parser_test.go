@@ -135,6 +135,22 @@ USING TreeExplainer;`
 	a.Equal("TreeExplainer", r.Explainer)
 }
 
+func TestExtendedSyntaxParseToEvaluate(t *testing.T) {
+	a := assert.New(t)
+	s := `TO EVALUATE my_model WITH validation.metrics="MAE,MSE" LABEL class INTO evaluation_result;`
+	r, idx, e := parseSQLFlowStmt(s)
+	a.NoError(e)
+	a.Equal(len(s), idx)
+	a.True(r.Extended)
+	a.False(r.Train)
+	a.False(r.Predict)
+	a.True(r.Evaluate)
+	a.Equal("my_model", r.ModelToEvaluate)
+	a.Equal("\"MAE,MSE\"", r.EvaluateAttrs["validation.metrics"].String())
+	a.Equal("class", r.EvaluateLabel)
+	a.Equal("evaluation_result", r.EvaluateInto)
+}
+
 func TestExtendedSyntaxParseToExplainInto(t *testing.T) {
 	a := assert.New(t)
 	s := `TO EXPLAIN my_model
@@ -195,5 +211,35 @@ func TestExtendedSyntaxParseUnmatchedQuotation(t *testing.T) {
 		a.Error(e)
 		a.Equal(len(`to train a with b = c label d into e;`), idx)
 		a.Nil(r)
+	}
+
+}
+
+func TestExtendedShowTrainStmt(t *testing.T) {
+	a := assert.New(t)
+	{
+		testShowTrain := `SHOW TRAIN my_dnn_classifier_model;`
+		r, idx, e := parseSQLFlowStmt(testShowTrain)
+		a.Equal(nil, e)
+		a.True(r.ShowTrain)
+		a.True(r.Extended)
+		a.NotNil(r.ShowTrainClause)
+		a.Equal(`my_dnn_classifier_model`, r.ShowTrainClause.ModelName)
+		a.Equal(len(testShowTrain), idx)
+	}
+	{
+		testShowTrain := `SHOW TRAIN my_dnn_classifier_model`
+		r, idx, e := parseSQLFlowStmt(testShowTrain + " bad;")
+		a.Nil(r)
+		a.NotNil(e)
+		a.Equal(len(testShowTrain)+1, idx)
+	}
+	{
+		testShowTrain := `SHOW TRAIN ;`
+		//                           ^ err here
+		r, idx, e := parseSQLFlowStmt(testShowTrain)
+		a.Nil(r)
+		a.NotNil(e)
+		a.Equal(11, idx)
 	}
 }

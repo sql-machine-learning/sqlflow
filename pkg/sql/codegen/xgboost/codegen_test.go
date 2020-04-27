@@ -14,6 +14,7 @@
 package xgboost
 
 import (
+	"reflect"
 	"regexp"
 	"testing"
 
@@ -22,13 +23,17 @@ import (
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
+func TestParseAttribute(t *testing.T) {
+	a := assert.New(t)
+	params := parseAttribute(map[string]interface{}{"a": "b", "c": "d", "train.e": "f"})
+	a.True(reflect.DeepEqual(map[string]interface{}{"a": "b", "c": "d"}, params[""]))
+	a.True(reflect.DeepEqual(map[string]interface{}{"e": "f"}, params["train."]))
+}
+
 func TestAttributes(t *testing.T) {
 	a := assert.New(t)
-	a.Equal(6, len(attributeDictionary))
-	a.Equal(29, len(fullAttrValidator))
-
-	a.Error(objectiveChecker("binaray:logistic"))
-	a.NoError(objectiveChecker("binary:logistic"))
+	a.Equal(10, len(attributeDictionary))
+	a.Equal(33, len(fullAttrValidator))
 }
 
 func mockSession() *pb.Session {
@@ -38,6 +43,7 @@ func mockSession() *pb.Session {
 func TestTrainAndPredict(t *testing.T) {
 	a := assert.New(t)
 	tir := ir.MockTrainStmt(true)
+	a.NoError(InitializeAttributes(tir))
 	_, err := Train(tir, mockSession())
 	a.NoError(err)
 
@@ -60,4 +66,18 @@ func TestTrainAndPredict(t *testing.T) {
 	a.Equal(r.FindStringSubmatch(code)[1], "sqlflow_pass")
 
 	a.NoError(err)
+}
+
+func TestResolveModelParams(t *testing.T) {
+	a := assert.New(t)
+	shortName := []string{"XGBOOST.XGBCLASSIFIER", "XGBOOST.XGBREGRESSOR", "XGBRANKER"}
+	objectiveName := []string{"binary:logistic", "reg:squarederror", "rank:pairwise"}
+	for i := range shortName {
+		tir := ir.MockTrainStmt(true)
+		tir.Estimator = shortName[i]
+		delete(tir.Attributes, "objective")
+		err := resolveModelParams(tir)
+		a.NoError(err)
+		a.Equal(objectiveName[i], tir.Attributes["objective"])
+	}
 }

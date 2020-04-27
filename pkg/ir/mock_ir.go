@@ -15,9 +15,15 @@ package ir
 
 // MockTrainStmt generates a sample TrainStmt for test.
 func MockTrainStmt(isxgboost bool) *TrainStmt {
-	// SELECT * FROM iris_train TO TRAIN DNNClassifier
-	// WITH train.batch_size=4, train.epoch=3, model.hidden_units=[10,20], model.n_classes=3
-	// LABEL class INTO my_dnn_model;
+	originalSQL := `SELECT * FROM iris_train
+TO TRAIN DNNClassifier WITH
+	train.batch_size=4,
+	train.epoch=3,
+	model.hidden_units=[10,20],
+	model.n_classes=3
+LABEL class
+INTO my_dnn_model;
+	`
 	attrs := map[string]interface{}{}
 	estimator := "DNNClassifier"
 	if isxgboost {
@@ -33,6 +39,7 @@ func MockTrainStmt(isxgboost bool) *TrainStmt {
 		attrs["model.n_classes"] = 3
 	}
 	return &TrainStmt{
+		OriginalSQL:      originalSQL,
 		Select:           "select * from iris.train;",
 		ValidationSelect: "select * from iris.test;",
 		Estimator:        estimator,

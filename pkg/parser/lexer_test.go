@@ -107,9 +107,9 @@ func TestLexOperator(t *testing.T) {
 func TestLexIdentOrKeyword(t *testing.T) {
 	a := assert.New(t)
 	vals := []string{"a1_2b", "x.y", "x.y.z", "Select", "froM", "where", "tRain", "colUmn",
-		"and", "or", "not"}
+		"and", "or", "not", "sHoW"}
 	typs := []int{IDENT, IDENT, IDENT, SELECT, FROM, WHERE, TRAIN, COLUMN,
-		AND, OR, NOT}
+		AND, OR, NOT, SHOW}
 	var n extendedSyntaxSymType
 	for i, it := range vals {
 		l := newLexer(it)
@@ -241,6 +241,18 @@ USING TreeExplainer;`)
 		a.Equal(vals[i], n.val)
 	}
 
+}
+
+func TestShowTrain(t *testing.T) {
+	a := assert.New(t)
+	types := []int{SHOW, TRAIN, IDENT, ';'}
+	vals := []string{"SHOW", "train", "my_model", ";"}
+	l := newLexer(`SHOW train my_model;`)
+	var n extendedSyntaxSymType
+	for i, t := range types {
+		a.Equal(t, l.Lex(&n))
+		a.Equal(vals[i], n.val)
+	}
 }
 
 func TestLexerUnmatchedQuotation(t *testing.T) {

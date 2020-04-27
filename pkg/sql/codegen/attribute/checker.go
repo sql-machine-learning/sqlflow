@@ -104,7 +104,7 @@ func IntUpperBoundChecker(upper int, includeUpper bool) func(interface{}) error 
 }
 
 // IntChoicesChecker verifies the attribute value is in a list of choices.
-func IntChoicesChecker(choices []int) func(interface{}) error {
+func IntChoicesChecker(choices ...int) func(interface{}) error {
 	checker := func(e interface{}) error {
 		i, ok := e.(int)
 		if !ok {
@@ -118,7 +118,29 @@ func IntChoicesChecker(choices []int) func(interface{}) error {
 			}
 		}
 		if found == false {
-			return fmt.Errorf("attribute value out of range(%v), actual: %d", choices, i)
+			return fmt.Errorf("expected value in %v, actual: %v", choices, i)
+		}
+		return nil
+	}
+	return checker
+}
+
+// StringChoicesChecker verifies the attribute value is in a list of choices.
+func StringChoicesChecker(choices ...string) func(interface{}) error {
+	checker := func(e interface{}) error {
+		s, ok := e.(string)
+		if !ok {
+			return fmt.Errorf("expected type string, received %T", e)
+		}
+		found := false
+		for _, possibleValue := range choices {
+			if s == possibleValue {
+				found = true
+				break
+			}
+		}
+		if found == false {
+			return fmt.Errorf("expected value in %v, actual: %v", choices, s)
 		}
 		return nil
 	}

@@ -39,35 +39,31 @@ func fillMapIfValueNotEmpty(m map[string]string, key, value string) {
 	}
 }
 
-func newSessionFromProto(session *pb.Session) map[string]string {
-	envs := make(map[string]string)
-	fillMapIfValueNotEmpty(envs, "SQLFLOW_USER_TOKEN", session.Token)
-	fillMapIfValueNotEmpty(envs, "SQLFLOW_DATASOURCE", session.DbConnStr)
-	fillMapIfValueNotEmpty(envs, "SQLFLOW_USER_ID", session.UserId)
-	fillMapIfValueNotEmpty(envs, "SQLFLOW_HIVE_LOCATION", session.HiveLocation)
-	fillMapIfValueNotEmpty(envs, "SQLFLOW_HDFS_NAMENODE_ADDR", session.HdfsNamenodeAddr)
-	fillMapIfValueNotEmpty(envs, "SQLFLOW_HADOOP_USER", session.HdfsUser)
-	fillMapIfValueNotEmpty(envs, "SQLFLOW_HADOOP_PASS", session.HdfsUser)
-	fillMapIfValueNotEmpty(envs, "SQLFLOW_submitter", session.Submitter)
-	return envs
+func fillEnvFromSession(envs *map[string]string, session *pb.Session) {
+	fillMapIfValueNotEmpty(*envs, "SQLFLOW_USER_TOKEN", session.Token)
+	fillMapIfValueNotEmpty(*envs, "SQLFLOW_DATASOURCE", session.DbConnStr)
+	fillMapIfValueNotEmpty(*envs, "SQLFLOW_USER_ID", session.UserId)
+	fillMapIfValueNotEmpty(*envs, "SQLFLOW_HIVE_LOCATION", session.HiveLocation)
+	fillMapIfValueNotEmpty(*envs, "SQLFLOW_HDFS_NAMENODE_ADDR", session.HdfsNamenodeAddr)
+	fillMapIfValueNotEmpty(*envs, "SQLFLOW_HADOOP_USER", session.HdfsUser)
+	fillMapIfValueNotEmpty(*envs, "SQLFLOW_HADOOP_PASS", session.HdfsUser)
+	fillMapIfValueNotEmpty(*envs, "SQLFLOW_submitter", session.Submitter)
 }
 
 func getStepEnvs(session *pb.Session) (map[string]string, error) {
-	envs := newSessionFromProto(session)
+	envs := make(map[string]string)
+	// fill step envs from the environment variables on sqlflowserver
 	for _, env := range os.Environ() {
 		pair := strings.SplitN(env, "=", 2)
 		if len(pair) != 2 {
 			return nil, fmt.Errorf("env: %s should format key=value", env)
 		}
-		// should not pass the workflkow env into step
+		// should not pass the workflow env into step
 		if strings.HasPrefix(pair[0], "SQLFLOW_") && !strings.HasPrefix(pair[0], "SQLFLOW_WORKFLOW_") {
 			envs[pair[0]] = pair[1]
 		}
 	}
-	// if no specify submitter in session, using the default configuration on the server side.
-	if _, ok := envs["SQLFLOW_submitter"]; !ok {
-		envs["SQLFLOW_submitter"] = os.Getenv("SQLFLOW_submitter")
-	}
+	fillEnvFromSession(&envs, session)
 	return envs, nil
 }
 
@@ -91,24 +87,24 @@ func getSecret() (string, string, error) {
 	return name, string(value), nil
 }
 
-// GenCode generates Couler program
-func (cg *Codegen) GenCode(programIR []ir.SQLFlowStmt, session *pb.Session) (string, error) {
+// GenFiller generates Filler to fill the template
+func GenFiller(programIR []ir.SQLFlowStmt, session *pb.Session) (*Filler, error) {
 	stepEnvs, err := getStepEnvs(session)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if os.Getenv("SQLFLOW_WORKFLOW_TTL") != "" {
 		workflowTTL, err = strconv.Atoi(os.Getenv("SQLFLOW_WORKFLOW_TTL"))
 		if err != nil {
-			return "", fmt.Errorf("SQLFLOW_WORKFLOW_TTL: %s should be int", os.Getenv("SQLFLOW_WORKFLOW_TTL"))
+			return nil, fmt.Errorf("SQLFLOW_WORKFLOW_TTL: %s should be int", os.Getenv("SQLFLOW_WORKFLOW_TTL"))
 		}
 	}
 	secretName, secretData, e := getSecret()
 	if e != nil {
-		return "", e
+		return nil, e
 	}
 
-	r := &coulerFiller{
+	r := &Filler{
 		DataSource:  session.DbConnStr,
 		StepEnvs:    stepEnvs,
 		WorkflowTTL: workflowTTL,
@@ -137,7 +133,7 @@ func (cg *Codegen) GenCode(programIR []ir.SQLFlowStmt, session *pb.Session) (str
 			if r.SQLFlowSubmitter == "katib" {
 				sqlStmt, err := ParseKatibSQL(sqlIR.(*ir.TrainStmt))
 				if err != nil {
-					return "", fmt.Errorf("Fail to parse Katib train statement %s", sqlIR.GetOriginalSQL())
+					return nil, fmt.Errorf("Fail to parse Katib train statement %s", sqlIR.GetOriginalSQL())
 				}
 				r.SQLStatements = append(r.SQLStatements, sqlStmt)
 			} else {
@@ -147,8 +143,17 @@ func (cg *Codegen) GenCode(programIR []ir.SQLFlowStmt, session *pb.Session) (str
 				r.SQLStatements = append(r.SQLStatements, sqlStmt)
 			}
 		default:
-			return "", fmt.Errorf("unrecognized IR type: %v", i)
+			return nil, fmt.Errorf("unrecognized IR type: %v", i)
 		}
+	}
+	return r, nil
+}
+
+// GenCode generates a Couler program
+func (cg *Codegen) GenCode(programIR []ir.SQLFlowStmt, session *pb.Session) (string, error) {
+	r, e := GenFiller(programIR, session)
+	if e != nil {
+		return "", e
 	}
 	var program bytes.Buffer
 	if err := coulerTemplate.Execute(&program, r); err != nil {
@@ -157,7 +162,7 @@ func (cg *Codegen) GenCode(programIR []ir.SQLFlowStmt, session *pb.Session) (str
 	return program.String(), nil
 }
 
-// GenYAML translate Couler program into Argo YAML
+// GenYAML translate the Couler program into Argo YAML
 func (cg *Codegen) GenYAML(coulerProgram string) (string, error) {
 	cmdline := bytes.Buffer{}
 	fmt.Fprintf(&cmdline, "couler run --mode argo --workflow_name sqlflow ")
@@ -176,4 +181,11 @@ func (cg *Codegen) GenYAML(coulerProgram string) (string, error) {
 		return "", fmt.Errorf("failed %s, %v %s", cmd, err, out)
 	}
 	return string(out), nil
+}
+
+// MockSQLProgramIR mock a SQLFLow program which contains multiple statements
+func MockSQLProgramIR() []ir.SQLFlowStmt {
+	normalStmt := ir.NormalStmt("SELECT * FROM iris.train limit 10;")
+	trainStmt := ir.MockTrainStmt(true)
+	return []ir.SQLFlowStmt{&normalStmt, trainStmt}
 }

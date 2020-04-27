@@ -38,16 +38,16 @@ EOF
 
     couler run --mode argo --file /tmp/sqlflow_couler.py > /tmp/sqlflow_argo.yaml
     MESSAGE=$(kubectl create -f /tmp/sqlflow_argo.yaml)
-    WORKFLOW_NAME=$(echo ${MESSAGE} | cut -d ' ' -f 1 | cut -d '/' -f 2)
+    WORKFLOW_NAME=$(echo "${MESSAGE}" | cut -d ' ' -f 1 | cut -d '/' -f 2)
 
-    echo WORKFLOW_NAME ${WORKFLOW_NAME}
+    echo WORKFLOW_NAME "${WORKFLOW_NAME}"
 
-    for i in {1..30}; do
-        WORKFLOW_STATUS=$(kubectl get wf ${WORKFLOW_NAME} -o jsonpath='{.status.phase}')
+    for _ in {1..30}; do
+        WORKFLOW_STATUS=$(kubectl get wf "${WORKFLOW_NAME}" -o jsonpath='{.status.phase}')
 
         if [[ "$WORKFLOW_STATUS" == "Succeeded" ]]; then
             echo "Argo workflow succeeded."
-            kubectl delete wf ${WORKFLOW_NAME}
+            kubectl delete wf "${WORKFLOW_NAME}"
             rm -rf /tmp/sqlflow*
             return 0
         else
@@ -61,9 +61,9 @@ EOF
 function check_ret() {
     ret=$1
     message=$2
-    echo $ret $message
+    echo "$ret" "$message"
     if [[ "$ret" != "0" ]]; then
-        echo $message
+        echo "$message"
         exit 1
     fi
 }
@@ -74,16 +74,16 @@ check_ret $? "Test Couler failed"
 ############# Run SQLFLow test with Argo Mode #############
 function test_workflow() {
     # start a SQLFlow MySQL Pod with testdata
-    kubectl run mysql --port 3306 --env="SQLFLOW_MYSQL_HOST=0.0.0.0" --env="SQLFLOW_MYSQL_PORT=3306" --image=${SQLFLOW_WORKFLOW_STEP_IMAGE} --command -- bash /start.sh mysql
+    kubectl run mysql --port 3306 --env="SQLFLOW_MYSQL_HOST=0.0.0.0" --env="SQLFLOW_MYSQL_PORT=3306" --image="${SQLFLOW_WORKFLOW_STEP_IMAGE}" --command -- bash /start.sh mysql
     MYSQL_POD_NAME=$(kubectl get pod -l run=mysql -o jsonpath="{.items[0].metadata.name}")
 
-    for i in {1..30}
+    for _ in {1..30}
     do
-        MYSQL_POD_STATUS=$(kubectl get pod ${MYSQL_POD_NAME} -o jsonpath='{.status.phase}')
-        echo ${MYSQL_POD_STATUS}
+        MYSQL_POD_STATUS=$(kubectl get pod "${MYSQL_POD_NAME}" -o jsonpath='{.status.phase}')
+        echo "${MYSQL_POD_STATUS}"
         if [[ "${MYSQL_POD_STATUS}" == "Running" ]]; then
             echo "SQLFlow MySQL Pod running."
-            MYSQL_POD_IP=$(kubectl get pod ${MYSQL_POD_NAME} -o jsonpath='{.status.podIP}')
+            MYSQL_POD_IP=$(kubectl get pod "${MYSQL_POD_NAME}" -o jsonpath='{.status.podIP}')
             export SQLFLOW_TEST_DATASOURCE="mysql://root:root@tcp(${MYSQL_POD_IP}:3306)/?maxAllowedPacket=0"
             go generate ./...
             gotest ./cmd/... -run TestEnd2EndWorkflow -v
@@ -101,11 +101,16 @@ function test_workflow() {
 test_workflow
 check_ret $? "Test SQLFLow workflow failed"
 
+# shellcheck disable=SC2154
 # test submit pai job using argo workflow mode
 if [ "${SQLFLOW_submitter}" == "pai" ]; then
     # TDOO(wangkuiyi): rename MAXCOMPUTE_AK to SQLFLOW_TEST_DB_MAXCOMPUTE_ASK later after rename the Travis CI env settings.
-    SQLFLOW_submitter=pai SQLFLOW_TEST_DATASOURCE="maxcompute://${MAXCOMPUTE_AK}:${MAXCOMPUTE_SK}@${MAXCOMPUTE_ENDPOINT}" gotest ./cmd/... -run TestEnd2EndWorkflow -v
+    SQLFLOW_TEST_DATASOURCE="maxcompute://${MAXCOMPUTE_AK}:${MAXCOMPUTE_SK}@${MAXCOMPUTE_ENDPOINT}" gotest ./cmd/... -run TestEnd2EndWorkflow -v
     check_ret $? "Test SQLFLow workflow failed"
 fi
 
 gotest -v ./pkg/workflow/argo/
+
+# TODO(yancey): run fluid test in a seperated test job if we have more test cases.
+bash ./scripts/test/fluid.sh
+gotest ./cmd/... -run TestEnd2EndFluidWorkflow -v

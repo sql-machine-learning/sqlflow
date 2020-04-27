@@ -209,7 +209,7 @@ def db_generator(driver,
             if driver == "mysql":
                 conn.ping(True)
             for row in rows:
-                # NOTE: If there is no label clause in the extened SQL, the default label value would
+                # NOTE: If there is no label clause in the extended SQL, the default label value would
                 # be -1, the Model implementation can determine use it or not.
                 label = row[label_idx] if label_idx is not None else -1
                 if label_spec and label_spec["delimiter"] != "":

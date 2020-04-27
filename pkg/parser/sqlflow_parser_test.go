@@ -87,7 +87,25 @@ func commonTestCases(dbms string, a *assert.Assertions) {
 			a.Equal(sql+`;`, s[1].Original)
 		}
 	}
-
+	// two SQL statements, the first one is SHOW TRAIN
+	{
+		extendedSQL := `SHOW TRAIN my_model`
+		for _, sql := range external.SelectCases {
+			sqls := fmt.Sprintf(`%s;%s;`, extendedSQL, sql)
+			s, err := Parse(dbms, sqls)
+			a.NoError(err)
+			a.Equal(2, len(s))
+			a.True(s[0].Extended)
+			a.True(s[0].ShowTrain)
+			a.Equal("my_model", s[0].ShowTrainClause.ModelName)
+		}
+		for _, sql := range external.SelectCases {
+			sqls := fmt.Sprintf(`%s %s;%s;`, sql, extendedSQL, sql)
+			s, err := Parse(dbms, sqls)
+			a.Error(err, "select should followed by 'to train/predict/explain'")
+			a.Equal(0, len(s))
+		}
+	}
 	// two SQL statements, the second one is extendedSQL
 	for _, sql := range external.SelectCases {
 		sqls := fmt.Sprintf(`%s;%s %s;`, sql, sql, extendedSQL)
@@ -103,6 +121,26 @@ func commonTestCases(dbms string, a *assert.Assertions) {
 		}
 		a.Equal(sql+` `, s[1].StandardSelect.String())
 		a.Equal(fmt.Sprintf(`%s %s;`, sql, extendedSQL), s[1].Original)
+	}
+	// two SQL statements, the second one is SHOW TRAIN
+	{
+		extendedSQL := `SHOW TRAIN my_model;`
+		for _, sql := range external.SelectCases {
+			sqls := fmt.Sprintf(`%s;%s`, sql, extendedSQL)
+			s, err := Parse(dbms, sqls)
+			a.NoError(err)
+			a.Equal(2, len(s))
+			a.False(s[0].IsExtendedSyntax())
+			a.True(s[1].IsExtendedSyntax())
+			if isJavaParser(dbms) {
+				a.Equal(sql, s[0].Original)
+			} else {
+				a.Equal(sql+`;`, s[0].Original)
+			}
+			a.Equal(extendedSQL, s[1].Original)
+			a.True(s[1].ShowTrain)
+			a.Equal("my_model", s[1].ShowTrainClause.ModelName)
+		}
 	}
 
 	// three SQL statements, the second one is extendedSQL
@@ -127,7 +165,31 @@ func commonTestCases(dbms string, a *assert.Assertions) {
 		a.Equal(sql+` `, s[1].StandardSelect.String())
 		a.Equal(fmt.Sprintf(`%s %s;`, sql, extendedSQL), s[1].Original)
 	}
+	// three SQL statements, the second one SHOW TRAIN
+	{
+		extendedSQL := `SHOW TRAIN my_model`
+		for _, sql := range external.SelectCases {
+			sqls := fmt.Sprintf(`%s;%s;%s;`, sql, extendedSQL, sql)
+			s, err := Parse(dbms, sqls)
+			a.NoError(err)
+			a.Equal(3, len(s))
 
+			a.False(s[0].IsExtendedSyntax())
+			a.True(s[1].IsExtendedSyntax())
+			a.False(s[2].IsExtendedSyntax())
+
+			if isJavaParser(dbms) {
+				a.Equal(sql, s[0].Original)
+				a.Equal(sql, s[2].Original)
+			} else {
+				a.Equal(sql+`;`, s[0].Original)
+				a.Equal(sql+`;`, s[2].Original)
+			}
+			a.Equal(extendedSQL+";", s[1].Original)
+			a.True(s[1].ShowTrain)
+			a.Equal("my_model", s[1].ShowTrainClause.ModelName)
+		}
+	}
 	{ // two SQL statements, the first standard SQL has an error.
 		sql := `select select 1; select 1 to train;`
 		s, err := Parse(dbms, sql)
@@ -183,10 +245,13 @@ USING sqlflow_fraud_detection_model;
 -- EXPLAIN
 SELECT * FROM jtest_dev.sqlflow_fraud_detection_pred
 TO EXPLAIN sqlflow_fraud_detection_model;
+
+-- SHOW TRAIN
+SHOW TRAIN  sqlflow_fraud_detection_model;
 `
 		s, err := Parse(dbms, sql)
 		a.Nil(err)
-		a.Equal(3, len(s))
+		a.Equal(4, len(s))
 		for _, ss := range s {
 			// check parsing on individual statement
 			sss, err := Parse(dbms, ss.Original)

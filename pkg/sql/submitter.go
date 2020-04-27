@@ -21,6 +21,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"strings"
 	"sync"
 
 	"sqlflow.org/sqlflow/pkg/database"
@@ -33,7 +34,7 @@ import (
 	"sqlflow.org/sqlflow/pkg/sql/codegen/xgboost"
 )
 
-// GetSubmitter returns a proper Submitter from configuations in environment variables.
+// GetSubmitter returns a proper Submitter from configurations in environment variables.
 func GetSubmitter(submitter string) Submitter {
 	if submitter == "" {
 		submitter = os.Getenv("SQLFLOW_submitter")
@@ -217,6 +218,68 @@ func (s *defaultSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 	return nil
 }
 
+func (s *defaultSubmitter) ExecuteEvaluate(cl *ir.EvaluateStmt) error {
+	// NOTE(typhoonzero): model is already loaded under s.Cwd
+	if isXGBoostModel(cl.TrainStmt.Estimator) {
+		return fmt.Errorf("XGBoost evaluation is not supported now, will be available soon")
+	}
+	code, err := tensorflow.Evaluate(cl, s.Session)
+	if err != nil {
+		return err
+	}
+	if cl.Into != "" {
+		// create evaluation result table
+		db, err := database.OpenAndConnectDB(s.Session.DbConnStr)
+		if err != nil {
+			return err
+		}
+		// default always output evaluation loss
+		metricNames := []string{"loss"}
+		metricsAttr, ok := cl.Attributes["validation.metrics"]
+		if ok {
+			metricsList := strings.Split(metricsAttr.(string), ",")
+			metricNames = append(metricNames, metricsList...)
+		}
+		err = createEvaluationResultTable(db, cl.Into, metricNames)
+		if err != nil {
+			return err
+		}
+	}
+	if err = s.runCommand(code); err != nil {
+		return err
+	}
+	return nil
+}
+
+func createEvaluationResultTable(db *database.DB, tableName string, metricNames []string) error {
+	dropStmt := fmt.Sprintf(`DROP TABLE IF EXISTS %s;`, tableName)
+	var e error
+	if _, e = db.Exec(dropStmt); e != nil {
+		return fmt.Errorf("failed executing %s: %q", dropStmt, e)
+	}
+	columnDef := ""
+	columnDefList := []string{}
+	if db.DriverName == "mysql" {
+		for _, mn := range metricNames {
+			columnDefList = append(columnDefList,
+				fmt.Sprintf("%s VARCHAR(255)", mn))
+		}
+
+	} else {
+		// Hive, MaxCompute
+		for _, mn := range metricNames {
+			columnDefList = append(columnDefList,
+				fmt.Sprintf("%s STRING", mn))
+		}
+	}
+	columnDef = strings.Join(columnDefList, ",")
+	createStmt := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s (%s);`, tableName, columnDef)
+	if _, e = db.Exec(createStmt); e != nil {
+		return fmt.Errorf("failed executing %s: %q", createStmt, e)
+	}
+	return nil
+}
+
 func readExplainResult(target string) (string, error) {
 	r, err := os.Open(target)
 	if err != nil {
@@ -232,3 +295,17 @@ func readExplainResult(target string) (string, error) {
 }
 
 func (s *defaultSubmitter) GetTrainStmtFromModel() bool { return true }
+
+func (s *defaultSubmitter) ExecuteShowTrain(showTrain *ir.ShowTrainStmt) error {
+	model, err := model.Load(showTrain.ModelName, "", s.Db)
+	if err != nil {
+		s.Writer.Write("Load model meta " + showTrain.ModelName + " failed.")
+		return err
+	}
+	header := make(map[string]interface{})
+	header["columnNames"] = []string{"Table", "Train Statement"}
+	s.Writer.Write(header)
+	s.Writer.Write([]interface{}{showTrain.ModelName, strings.TrimSpace(model.TrainSelect)})
+
+	return nil
+}

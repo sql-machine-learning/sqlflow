@@ -19,14 +19,6 @@ repos:
     name: documentation_checker
     entry: bash ./scripts/pre-commit/docgen.sh
     language: system
-- repo: https://github.com/pre-commit/mirrors-yapf
-  rev: v0.29.0
-  hooks:
-  - id: yapf
-- repo: https://github.com/pre-commit/mirrors-isort
-  rev: v4.3.21
-  hooks:
-  - id: isort
 - repo: local
   hooks:
   - id: google_style_java
@@ -49,3 +41,27 @@ repos:
     entry: bash ./scripts/pre-commit/yamlfmt.sh
     language: system
     files: \.(yaml|yml)$
+- repo: https://github.com/pre-commit/mirrors-yapf
+  rev: v0.29.0
+  hooks:
+  - id: yapf
+- repo: https://github.com/pre-commit/mirrors-isort
+  rev: v4.3.21
+  hooks:
+  - id: isort
+- repo: local
+  hooks:
+  - id: pylint
+    name: pylint
+    entry: bash ./scripts/pre-commit/pylint.sh
+    language: system
+    files: \.py$
+    verbose: true
+- repo: local
+  hooks:
+  - id: shellcheck
+    name: shellcheck
+    entry: bash ./scripts/pre-commit/shellcheck.sh
+    language: system
+    files: \.(bash|sh)$
+    verbose: true

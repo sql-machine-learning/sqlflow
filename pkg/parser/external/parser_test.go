@@ -15,8 +15,9 @@ package external
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"strings"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func parserAcceptSemicolon(p Parser) bool {
@@ -39,9 +40,9 @@ func commonThirdPartyCases(p Parser, a *assert.Assertions) {
 		a.Equal(-1, idx)
 		a.Equal(1, len(s))
 		if parserAcceptSemicolon(p) {
-			a.Equal(sql+`;`, s[0])
+			a.Equal(sql+`;`, s[0].String)
 		} else {
-			a.Equal(sql, s[0])
+			a.Equal(sql, s[0].String)
 		}
 	}
 
@@ -53,9 +54,9 @@ func commonThirdPartyCases(p Parser, a *assert.Assertions) {
 		a.Equal(len(SelectCases), len(s))
 		for i := range s {
 			if parserAcceptSemicolon(p) {
-				a.Equal(SelectCases[i]+`;`, s[i])
+				a.Equal(SelectCases[i]+`;`, s[i].String)
 			} else {
-				a.Equal(SelectCases[i], s[i])
+				a.Equal(SelectCases[i], s[i].String)
 			}
 		}
 	}
@@ -67,7 +68,7 @@ func commonThirdPartyCases(p Parser, a *assert.Assertions) {
 		a.NoError(err)
 		a.Equal(len(sql)+1, idx)
 		a.Equal(1, len(s))
-		a.Equal(sql+" ", s[0])
+		a.Equal(sql+" ", s[0].String)
 	}
 
 	// two SQL statements, the second one is extendedSQL
@@ -78,11 +79,11 @@ func commonThirdPartyCases(p Parser, a *assert.Assertions) {
 		a.Equal(len(sql)+1+len(sql)+1, idx)
 		a.Equal(2, len(s))
 		if parserAcceptSemicolon(p) {
-			a.Equal(sql+`;`, s[0])
+			a.Equal(sql+`;`, s[0].String)
 		} else {
-			a.Equal(sql, s[0])
+			a.Equal(sql, s[0].String)
 		}
-		a.Equal(sql+` `, s[1])
+		a.Equal(sql+` `, s[1].String)
 	}
 
 	// three SQL statements, the second one is extendedSQL
@@ -93,19 +94,19 @@ func commonThirdPartyCases(p Parser, a *assert.Assertions) {
 		a.Equal(len(sql)+1+len(sql)+1, idx)
 		a.Equal(2, len(s))
 		if parserAcceptSemicolon(p) {
-			a.Equal(sql+`;`, s[0])
+			a.Equal(sql+`;`, s[0].String)
 		} else {
-			a.Equal(sql, s[0])
+			a.Equal(sql, s[0].String)
 		}
-		a.Equal(sql+` `, s[1])
+		a.Equal(sql+` `, s[1].String)
 	}
 
 	{ // two SQL statements, the first standard SQL has an error.
 		sql := `select select 1; select 1 to train;`
 		s, idx, err := p.Parse(sql)
-		a.Nil(s)
-		a.Equal(-1, idx)
-		a.NotNil(err)
+		a.Equal(0, len(s))
+		a.Equal(0, idx)
+		a.NoError(err)
 	}
 
 	// two SQL statements, the second standard SQL has an error.
@@ -115,14 +116,56 @@ func commonThirdPartyCases(p Parser, a *assert.Assertions) {
 		a.NoError(err)
 		a.Equal(len(sql)+1, idx)
 		a.Equal(1, len(s))
-		a.Equal(sql+` `, s[0])
+		a.Equal(sql+` `, s[0].String)
 	}
 
 	if pr, ok := p.(*javaParser); !ok || pr.typ != "odps" { // non select statement before to train
 		sql := `describe table to train;`
 		s, idx, err := p.Parse(sql)
-		a.NotNil(err)
+		a.Nil(err)
 		a.Equal(0, len(s))
-		a.Equal(-1, idx)
+		a.Equal(0, idx)
 	}
+
+	// show train stmt
+	{
+		sql := "SHOW TRAIN my_model;"
+		stmts, idx, err := p.Parse(sql)
+		a.Equal(0, len(stmts))
+		a.Equal(0, idx)
+		a.Nil(err)
+	}
+	{
+		sql := "select 1; SHOW TRAIN my_model;"
+		//                ^ error here
+		stmts, idx, err := p.Parse(sql)
+		a.Equal(1, len(stmts))
+		a.Equal(10, idx)
+		a.NoError(err)
+	}
+	{
+		sql := "select 1; -- comment\nSHOW TRAIN my_model;\n--comment"
+		//               							^ error here
+		stmts, idx, err := p.Parse(sql)
+		a.Equal(1, len(stmts))
+		a.Equal(21, idx)
+		a.Nil(err)
+	}
+	{
+		sql := "select 1; select * from train TO train; SHOW TRAIN my_model;"
+		//                                    ^ error here
+		stmts, idx, err := p.Parse(sql)
+		a.Equal(2, len(stmts))
+		a.Equal(30, idx)
+		a.Nil(err)
+	}
+	{
+		sql := "SHOW TRAIN my_model; select 1; select * from train TO train;"
+		//      ^ error here
+		stmts, idx, err := p.Parse(sql)
+		a.Equal(0, len(stmts))
+		a.Equal(0, idx)
+		a.Nil(err)
+	}
+
 }

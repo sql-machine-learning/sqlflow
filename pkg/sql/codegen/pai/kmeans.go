@@ -36,6 +36,12 @@ all the columns of input table.`, nil},
 excluded the special feature columns from the SELECT statement.`, nil},
 }
 
+// InitializeKMeansAttributes initializes the attributes of KMeans and does type checking for them
+func InitializeKMeansAttributes(trainStmt *ir.TrainStmt) error {
+	kmeansAttributes.FillDefaults(trainStmt.Attributes)
+	return kmeansAttributes.Validate(trainStmt.Attributes)
+}
+
 func parseExcludedColsMap(attrs map[string]interface{}) map[string]int {
 	excludedColsMap := make(map[string]int)
 	excludedColsAttr := attrs["excluded_columns"].(string)

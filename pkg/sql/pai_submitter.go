@@ -123,10 +123,6 @@ func createPAIHyperParamFile(cwd string, filename string, modelPath string) erro
 		return fmt.Errorf("must define SQLFLOW_OSS_AK, SQLFLOW_OSS_SK, SQLFLOW_OSS_MODEL_ENDPOINT, SQLFLOW_HDFS_MODEL_CKPT_DIR when submitting to PAI")
 	}
 
-	hdfsDir := fmt.Sprintf("%s/%s",
-		strings.TrimRight(hdfsCkpt, "/"),
-		strings.TrimLeft(modelPath, "/"))
-
 	if _, err := f.Write([]byte(fmt.Sprintf("sqlflow_oss_ak=\"%s\"\n", ossAk))); err != nil {
 		return err
 	}
@@ -140,15 +136,12 @@ func createPAIHyperParamFile(cwd string, filename string, modelPath string) erro
 	if _, err := f.Write([]byte(fmt.Sprintf("sqlflow_oss_modeldir=\"%s\"\n", ossModelURL))); err != nil {
 		return err
 	}
-	if _, err := f.Write([]byte(fmt.Sprintf("sqlflow_hdfs_ckpt=\"%s\"\n", hdfsDir))); err != nil {
-		return err
-	}
 	return nil
 }
 
 // Possible situations:
 //
-// 1. argo mode server: generate a step running: repl -e "repl -e \"select * from xx to train\""
+// 1. argo mode server: generate a step running: bash -c "repl -e \"select * from xx to train\""
 // 2. non-argo mode server | repl -e: create tmp table in go, and use it to train
 func (s *paiSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 	cl.TmpTrainTable, cl.TmpValidateTable, e = createTempTrainAndValTable(cl.Select, cl.ValidationSelect, s.Session.DbConnStr)
@@ -208,7 +201,10 @@ func (s *paiSubmitter) submitPAITask(code, paiCmd, requirements string) error {
 	defer cw.Close()
 	cmd := exec.Command("odpscmd", "--instance-priority", "9", "-u", cfg.AccessID, "-p", cfg.AccessKey, "--project", cfg.Project, "--endpoint", cfg.Endpoint, "-e", paiCmd)
 	cmd.Stdout, cmd.Stderr = w, w
-	return cmd.Run()
+	if e := cmd.Run(); e != nil {
+		return fmt.Errorf("failed: %v\n%sProgram%[2]s\n%s\n%[2]sOutput%[2]s\n%[4]v", e, "==========", paiCmd, output.String())
+	}
+	return nil
 }
 
 func (s *paiSubmitter) ExecutePredict(cl *ir.PredictStmt) error {

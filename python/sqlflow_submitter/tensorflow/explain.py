@@ -23,6 +23,7 @@ import tensorflow as tf
 from sqlflow_submitter import explainer
 from sqlflow_submitter.db import buffered_db_writer, connect_with_data_source
 
+from .get_tf_version import tf_is_version2
 from .input_fn import input_fn
 
 sns_colors = sns.color_palette('colorblind')
@@ -34,14 +35,8 @@ try:
 except:
     pass
 
-# TODO(shendiaomo): Remove after we fully upgrade to TF2.0
-TF_VERSION_2 = True
-TF_VERSION_PARTS = tf.__version__.split(".")
-if int(TF_VERSION_PARTS[0]) == 1:
-    TF_VERSION_2 = False
-
 # Disable Tensorflow INFO and WARNING logs
-if TF_VERSION_2:
+if tf_is_version2():
     import logging
     tf.get_logger().setLevel(logging.ERROR)
 else:
@@ -74,7 +69,7 @@ def explain(datasource,
 
     if is_pai:
         FLAGS = tf.app.flags.FLAGS
-        model_params["model_dir"] = FLAGS.sqlflow_hdfs_ckpt
+        model_params["model_dir"] = FLAGS.checkpointDir
     else:
         model_params['model_dir'] = save
 
@@ -153,8 +148,17 @@ def explain_dnns(datasource, estimator, shap_dataset, plot_type, result_table,
                 dict(pd.DataFrame(d,
                                   columns=shap_dataset.columns))).batch(1000)
 
-        return np.array(
-            [p['probabilities'][-1] for p in estimator.predict(input_fn)])
+        if plot_type == 'bar':
+            predictions = [
+                p['logits'] if 'logits' in p else p['predictions']
+                for p in estimator.predict(input_fn)
+            ]
+        else:
+            predictions = [
+                p['logits'][-1] if 'logits' in p else p['predictions'][-1]
+                for p in estimator.predict(input_fn)
+            ]
+        return np.array(predictions)
 
     if len(shap_dataset) > 100:
         # Reduce to 16 weighted samples to speed up
@@ -202,7 +206,7 @@ def write_shap_values(shap_values, driver, conn, result_table,
     with buffered_db_writer(driver, conn, result_table, feature_column_names,
                             100, hdfs_namenode_addr, hive_location, hdfs_user,
                             hdfs_pass) as w:
-        for row in shap_values:
+        for row in shap_values[0]:
             w.write(list(row))
 
 

@@ -13,30 +13,6 @@
 
 package pai
 
-type xgbSaveModelFiller struct {
-	OSSModelDir string
-}
-
-const xgbSaveModelTmplText = `
-from sqlflow_submitter.pai import model
-from sqlflow_submitter.tensorflow.pai_distributed import define_tf_flags, set_oss_environs
-
-FLAGS = define_tf_flags()
-set_oss_environs(FLAGS)
-
-# NOTE(typhoonzero): the xgboost model file "my_model" is hard coded in xgboost/train.py
-model.save_file("{{.OSSModelDir}}", "my_model")
-model.save_metas("{{.OSSModelDir}}",
-		   1,
-		   "xgboost_model_desc",
-		   "", # estimator = ""
-           model_params,
-           train_params,
-           feature_metas,
-           feature_column_names,
-           label_meta)
-`
-
 type xgbPredictFiller struct {
 	OSSModelDir      string
 	DataSource       string

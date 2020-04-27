@@ -20,6 +20,8 @@ type Executor interface {
 	ExecuteTrain(*TrainStmt) error
 	ExecutePredict(*PredictStmt) error
 	ExecuteExplain(*ExplainStmt) error
+	ExecuteEvaluate(*EvaluateStmt) error
+	ExecuteShowTrain(*ShowTrainStmt) error
 }
 
 // SQLFlowStmt has multiple implementations: TrainStmt, PredictStmt, ExplainStmt and standard SQL.
@@ -155,6 +157,30 @@ func (cl *ExplainStmt) IsExtended() bool { return true }
 // GetOriginalSQL returns the original SQL statement used to get current IR result
 func (cl *ExplainStmt) GetOriginalSQL() string { return cl.OriginalSQL }
 
+// EvaluateStmt is the intermediate representation for code generation of an evaluation job
+type EvaluateStmt struct {
+	OriginalSQL      string
+	Select           string
+	Attributes       map[string]interface{}
+	ModelName        string
+	Label            FeatureColumn
+	Into             string
+	TmpEvaluateTable string
+	TrainStmt        *TrainStmt
+}
+
+// Execute generates and executes code for EvaluateStmt
+func (cl *EvaluateStmt) Execute(s Executor) error { return s.ExecuteEvaluate(cl) }
+
+// SetOriginalSQL sets the original sql string
+func (cl *EvaluateStmt) SetOriginalSQL(sql string) { cl.OriginalSQL = sql }
+
+// IsExtended returns whether a SQLFlowStmt is an extended SQL statement
+func (cl *EvaluateStmt) IsExtended() bool { return true }
+
+// GetOriginalSQL returns the original SQL statement used to get current IR result
+func (cl *EvaluateStmt) GetOriginalSQL() string { return cl.OriginalSQL }
+
 // NormalStmt is a SQL statement without using SQLFlow syntax extension.
 type NormalStmt string
 
@@ -169,3 +195,23 @@ func (sql *NormalStmt) IsExtended() bool { return false }
 
 // GetOriginalSQL returns the original SQL statement used to get current IR result
 func (sql *NormalStmt) GetOriginalSQL() string { return string(*sql) }
+
+// ShowTrainStmt get and output the original train sql for ModelName
+type ShowTrainStmt struct {
+	// OriginalSQL is the SHOW TRAIN stmt itself
+	OriginalSQL string
+	// The model to show the train sql
+	ModelName string
+}
+
+// Execute generates and executes code for ShowTrainStmt
+func (sql *ShowTrainStmt) Execute(s Executor) error { return s.ExecuteShowTrain(sql) }
+
+// SetOriginalSQL sets the original sql string
+func (sql *ShowTrainStmt) SetOriginalSQL(s string) { sql.OriginalSQL = s }
+
+// IsExtended returns whether a SQLFlowStmt is an extended SQL statement
+func (sql *ShowTrainStmt) IsExtended() bool { return true }
+
+// GetOriginalSQL returns the original SQL statement used to get current IR result
+func (sql *ShowTrainStmt) GetOriginalSQL() string { return sql.OriginalSQL }

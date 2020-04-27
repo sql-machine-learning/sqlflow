@@ -43,9 +43,7 @@ It's simple to figure out that we can run the two training statement concurrentl
 corresponding explain statement when one training statement finishes. The execution flow should
 look like:
 
-<p align="center">
-<img src="figures/deps_flow_graph.png">
-</p>
+![](figures/deps_flow_graph.png)
 
 ## Analyze the SQL Program Execution Dependency
 
@@ -120,18 +118,14 @@ program by `;` and using regex to match if the statement is like `USE db_identif
 SQL program is just like normal computer programs. We treat tables as variables in our case.
 Analyzing computer programs always have hazards: https://en.wikipedia.org/wiki/Hazard_(computer_architecture). In the example above, we can construct a graph like below:
 
-<p align="center">
-<img src="figures/hazard.png">
-</p>
+![](figures/hazard.png)
 
 Note that the last "DROP TABLE" statement must execute after the two "Explain" statements, because
 the table is used by the explain statements before it could be changed (in this case, deleted). This
 case is called "Write After Read". To solve this kind of data hazards, we can add one dependency node
 "table WAR" between the explain statements and drop statement:
 
-<p align="center">
-<img src="figures/hazard_solve.png">
-</p>
+![](figures/hazard_solve.png)
 
 We also need to solve "Write After Write" hazard just like "Write After Read" if the SQL program has
 this situation.
@@ -178,11 +172,24 @@ type Statement struct {
    Outputs []*Table
 }
 
+type TableType string
+
+const(
+    TableType Table = "table"
+    Model = "model"
+)
+
 type Table struct {
+  // Type can be "table" or "model".
+  Type TableType
   Name string
   // Table's input/output must be a statement.
   Inputs *[]Statement
   Outputs *[]Statement
+}
+
+func (t *Table) FullName() string {
+    return t.Type + "." + t.Name
 }
 
 // Analyze will construct a dependency graph for the SQL program and
@@ -191,9 +198,12 @@ func Analyze(program []ir.Statement) (*deps.Statement, error) {}
 ```
 
 **NOTE: we treat table and model as the same thing when constructing the graph.**
+**The actual table name in the graph is "Type.Name", because we may save the model in OSS storage**
+**rather than in a table, if the model name is the same as some table name, there's no dependency**
+**between them.**
 
-Then the [workflow package](https://github.com/sql-machine-learning/sqlflow/blob/develop/doc/design/workflow_pacakge.md#workflow-codegen)
-can use the constructed graph to generate Argo/Tekton YAML to submi to Kubernetes cluster for execution:
+Then the [workflow package](https://github.com/sql-machine-learning/sqlflow/blob/develop/doc/design/workflow_package.md#workflow-codegen)
+can use the constructed graph to generate Argo/Tekton YAML to submit to Kubernetes cluster for execution:
 
 ```Go
 GenCode(*deps.Statement) string // generate couler/fluid code for the graph

@@ -23,7 +23,7 @@ import (
 )
 
 func getPAIPredictCmd(ir *ir.PredictStmt, session *pb.Session) (string, error) {
-	// NOTE(typhoonzero): for PAI machine learning tookit predicting, we can not load the TrainStmt
+	// NOTE(typhoonzero): for PAI machine learning toolkit predicting, we can not load the TrainStmt
 	// since the model saving is fully done by PAI. We directly use the columns in SELECT
 	// statement for prediction, error will be reported by PAI job if the columns not match.
 	db, err := database.OpenAndConnectDB(session.DbConnStr)

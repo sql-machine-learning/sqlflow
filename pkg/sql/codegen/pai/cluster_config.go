@@ -72,6 +72,11 @@ func GetClusterConfig(attrs map[string]interface{}) (*ClusterConfig, error) {
 			GPU:   defaultMap["train.worker_gpu"],
 		},
 	}
+	// FIXME(weiguoz): adhoc for running distributed xgboost train on pai
+	if cc.Worker.Count > 1 && cc.PS.Count < 1 {
+		cc.PS.Count = 1
+	}
+
 	if defaultMap["train.num_evaluator"] == 0 {
 		cc.Evaluator = nil
 	} else if defaultMap["train.num_evaluator"] == 1 {
