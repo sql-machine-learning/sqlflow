@@ -306,5 +306,5 @@ func TestParserErrorMessage(t *testing.T) {
 	pr, idx, e := parseFirstSQLFlowStmt(`to train a select b from c;`)
 	a.Nil(pr)
 	a.Equal(-1, idx)
-	a.Equal(`syntax error: at (11 ~ 17)-th runes near "select b f"`, e.Error())
+	a.True(strings.Contains(e.Error(), `near or before "select b f`))
 }
