@@ -39,7 +39,6 @@ import (
 
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql"
-	"sqlflow.org/sqlflow/pkg/sql/codegen/attribute"
 	"sqlflow.org/sqlflow/pkg/tablewriter"
 )
 
@@ -347,7 +346,7 @@ func main() {
 			fmt.Println("The terminal doesn't support sixel, explanation statements will show ASCII figures.")
 		}
 		if !*noAutoCompletion {
-			attribute.ExtractDocStringsOnce()
+			// TODO(lorylin): get autocomplete dicts for sqlflow_models from sqlflow_server
 		}
 		runPrompt(func(stmt string) { runStmt(*serverAddr, stmt, true, *ds) })
 	} else {
