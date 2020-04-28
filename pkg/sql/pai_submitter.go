@@ -23,6 +23,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
@@ -32,12 +33,16 @@ import (
 	"sqlflow.org/sqlflow/pkg/sql/codegen/pai"
 )
 
-const tarball = "job.tar.gz"
-const paramsFile = "params.txt"
+const (
+	tarball    = "job.tar.gz"
+	paramsFile = "params.txt"
 
-// lifecycleOnTmpTable indicates 7 days for the temporary table
-// which create from SELECT statement
-const lifecycleOnTmpTable = 7
+	// lifecycleOnTmpTable indicates 7 days for the temporary table
+	// which create from SELECT statement
+	lifecycleOnTmpTable = 7
+)
+
+var reODPSLogURL = regexp.MustCompile(`http://logview.*`)
 
 type paiSubmitter struct{ *defaultSubmitter }
 
@@ -501,3 +506,7 @@ func achieveResource(cwd, entryCode, requirements, tarball string) error {
 }
 
 func (s *paiSubmitter) GetTrainStmtFromModel() bool { return false }
+
+func pickPAILogViewerURL(output string) []string {
+	return reODPSLogURL.FindAllString(output, -1)
+}

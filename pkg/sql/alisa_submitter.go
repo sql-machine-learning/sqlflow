@@ -14,7 +14,9 @@
 package sql
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -50,14 +52,14 @@ func (s *alisaSubmitter) submitAlisaTask(submitCode, codeResourceURL, paramsReso
 	cfg.Env["RES_DOWNLOAD_URL"] = fmt.Sprintf(`[{\"downloadUrl\":\"%s\", \"resourceName\":\"%s\"}, {\"downloadUrl\":\"%s\", \"resourceName\":\"%s\"}]`,
 		codeResourceURL, resourceName, paramsResourceURL, paramsFile)
 	cfg.Verbose = true
-	newDatasource := cfg.FormatDSN()
 
-	alisa, e := database.OpenDB(fmt.Sprintf("alisa://%s", newDatasource))
-	if e != nil {
-		return e
+	alisa := goalisa.New(cfg)
+	var b bytes.Buffer
+	w := io.MultiWriter(os.Stdout, &b)
+	if e := alisa.ExecWithWriter(submitCode, w); e != nil {
+		return fmt.Errorf("failed: %s, detailed error message on URL:\n %s", submitCode, strings.Join(pickPAILogViewerURL(b.String()), "\n"))
 	}
-	_, e = alisa.Exec(submitCode)
-	return e
+	return nil
 }
 
 func (s *alisaSubmitter) ExecuteTrain(ts *ir.TrainStmt) (e error) {
