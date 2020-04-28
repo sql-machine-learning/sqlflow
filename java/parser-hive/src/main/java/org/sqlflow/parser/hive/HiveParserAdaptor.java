@@ -12,13 +12,14 @@ import org.apache.hadoop.hive.ql.parse.ParseDriver.HiveLexerX;
 import org.apache.hadoop.hive.ql.parse.ParseError;
 import org.apache.hadoop.hive.ql.parse.ParseException;
 import org.sqlflow.parser.parse.BaseParser;
+import org.sqlflow.parser.parse.ParseResult;
 
 public class HiveParserAdaptor extends BaseParser {
   private static Field errorsField;
   private static Field reField;
   private ParseDriver parseDriver = new ParseDriver();
 
-  // This static block is to initialize some reflection field 
+  // This static block is to initialize some reflection field
   // which aids us to get error message from parse Exception.
   // Static block only execute only when this class is loaded.
   static {
@@ -41,7 +42,7 @@ public class HiveParserAdaptor extends BaseParser {
 
   @SuppressWarnings("unchecked")
   @Override
-  protected int parseOneStmt(String sql) throws Exception {
+  protected int parseOneStmt(String sql, ParseResult result) throws Exception {
     try {
       parseDriver.parse(sql); // Possibly throw ParseException
       return -1;

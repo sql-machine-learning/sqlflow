@@ -12,6 +12,7 @@ import org.apache.calcite.sql.parser.ddl.SqlDdlParserImpl;
 import org.apache.calcite.sql.parser.ddl.SqlDdlParserImplTokenManager;
 import org.apache.calcite.sql.parser.ddl.Token;
 import org.sqlflow.parser.parse.BaseParser;
+import org.sqlflow.parser.parse.ParseResult;
 
 public class CalciteParserAdaptor extends BaseParser {
 
@@ -23,7 +24,7 @@ public class CalciteParserAdaptor extends BaseParser {
   }
 
   @Override
-  protected int parseOneStmt(String sql) throws Exception {
+  protected int parseOneStmt(String sql, ParseResult result) throws Exception {
     try {
       SqlParser.Config sqlParserConfig =
           SqlParser.configBuilder().setParserFactory(SqlDdlParserImpl.FACTORY).build();
@@ -78,11 +79,11 @@ public class CalciteParserAdaptor extends BaseParser {
     if (pos < sql.length() && hasToken) {
       // TODO(lhw) find a better way than modify original SQL statements
       // At this point, if the last char == ';', it must be in a comment,
-      // in case the parser report an error at this commented ';' 
+      // in case the parser report an error at this commented ';'
       // we replace this ';' to ' ' (still keep it's length).
       // It's a problem when parser stop at a commented ';' because we think ';'
       // as separator of statements, so we may falsely accept this query.
-      // Fortunately, there is only one case it will happen, that is the last 
+      // Fortunately, there is only one case it will happen, that is the last
       // char in a query is ';' AND is commented AND is where error reported (
       // actually, the parser is stopping at EOF, but the error will be reported
       // at ';')
