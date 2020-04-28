@@ -1,16 +1,18 @@
-# Run SQLFlow REPL
+# Run SQLFlow command-line tool
 
-In addition to building SQLFlow into a gRPC server, accessed via Jupyter Notebook, we could also build it into a command line program, whose `main` function reads SQL statements from the console, evaluates them by calling SQLFlow, and prints the results.  This command-line program makes it easy to debug and profile locally without starting the SQLFlow server and the Jupyter server.  We call this command-line program the SQLFlow REPL. SQLFlow REPL supports automatic code completion to ease applying the underlying powerful AI toolset of SQLFlow.
+We have a command-line tool called `sqlflow` which can access SQLFlow server like we do in Jupyter Notebook.  `sqlflow` works in the well known `REPL` mode, that is to say, reads SQL statements from the console, evaluates them by calling SQLFlow server, and prints the results.  `sqlflow` supports automatic code completion to ease applying the underlying powerful AI toolset of SQLFlow.
 
 ![](figures/repl.gif)
 
 ## Quick Start
 
-The SQLFlow Docker image contains the REPL command-line program.  We can run an example session by typing the following command on MacOS.  If you run Docker on Linux, please change `host.docker.internal:3306` to `localhost:3306`.
+The SQLFlow Docker image contains the `sqlflow` client.  We can run an example session by typing the following command on MacOS.  If you run Docker on Linux, please change `host.docker.internal:3306` to `localhost:3306`.
 
 ```
 docker run -it --rm --net=host sqlflow/sqlflow bash -c '/start.sh populate-example-dataset-mysql-local; \
-repl --datasource="mysql://root:root@tcp(host.docker.internal:3306)/?maxAllowedPacket=0"'
+( /start.sh sqlflow-server & ); \
+sleep 2; \
+sqlflow --sqlflow_server=localhost:50051 --datasource="mysql://root:root@tcp(host.docker.internal:3306)/?maxAllowedPacket=0"'
 ```
 
 You should be able to see the following:
@@ -27,7 +29,6 @@ Let's go over some training data from the Iris database:
 
 ```sql
 sqlflow> SELECT * from iris.train limit 2;
------------------------------
 +--------------+-------------+--------------+-------------+-------+
 | SEPAL LENGTH | SEPAL WIDTH | PETAL LENGTH | PETAL WIDTH | CLASS |
 +--------------+-------------+--------------+-------------+-------+
@@ -79,9 +80,9 @@ Congratulations! Now you have successfully completed a session using SQLFlow syn
 
 |             Option                      | Description |
 |-----------------------------------------|-------------|
+| -sqlflow_server \<quoted-query-string\>              | Specify sqlflow server address, in `host:port` form, e.g. `-sqlflow_server "localhost:50051"` |
 | -e \<quoted-query-string\>              | Execute from command line without entering interactive mode. e.g. <br>`-e "SELECT * FROM iris.train TRAIN DNNClassifier..." `<br>does the same thing as the training example above.|
-| -f \<filename\>                         | Execute from file without entering interactive mode. e.g. <br>`-f ./my_sqlflow.sql`<br>does the same thing as<br>`< ./my_sqlflow.sql` and `cat ./my_sqlflow.sql \| REPL...` |
-| -model_dir \<local-directory\>          | Save model to a local directory. e.g. `-model_dir "./models/"` |
+| -f \<filename\>                         | Execute from file without entering interactive mode. e.g. <br>`-f ./my_sqlflow.sql`<br>does the same thing as<br>`< ./my_sqlflow.sql` and `cat ./my_sqlflow.sql \| sqlflow...` |
 | -datasource \<database-connection-url\> | Connect to the specified database. e.g. `-datasource "mysql://root:root@tcp(host.docker.internal:3306)/" ` |
 | -A                                      | No auto completion for `sqlflow_models`. This gives a quicker start |
 
