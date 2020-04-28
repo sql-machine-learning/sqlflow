@@ -269,30 +269,29 @@ func Explain(ir *ir.ExplainStmt, session *pb.Session, tarball, paramsFile, model
 }
 
 // Evaluate generates a Python program for evaluate a TensorFlow model.
-func Evaluate(ir *ir.EvaluateStmt, session *pb.Session, tarball, paramsFile, modelName, ossModelPath, cwd string, modelType int) (*ExplainRender, error) {
+func Evaluate(ir *ir.EvaluateStmt, session *pb.Session, tarball, paramsFile, modelName, ossModelPath, cwd string, modelType int) (code, paiCmd, requirements string, e error) {
 	cc, err := GetClusterConfig(ir.Attributes)
 	if err != nil {
-		return nil, err
+		return "", "", "", err
 	}
 	currProject, err := database.GetDatabaseName(session.DbConnStr)
 	if err != nil {
-		return nil, err
+		return "", "", "", err
 	}
 
-	expn := newExplainRender(session.UserId)
 	if modelType == ModelTypePAIML {
-		return nil, fmt.Errorf("evaluate PAI ML model is not supported for now")
+		return "", "", "", fmt.Errorf("evaluate PAI ML model is not supported for now")
 	} else if modelType == ModelTypeXGBoost {
-		return nil, fmt.Errorf("evaluate XGBoost model is not supported for now")
+		return "", "", "", fmt.Errorf("evaluate XGBoost model is not supported for now")
 	} else {
-		if expn.Requirements, err = genRequirements(false); err != nil {
-			return nil, err
+		if requirements, err = genRequirements(false); err != nil {
+			return "", "", "", err
 		}
 		// run evaluate PAI TF
-		if expn.Code, err = TFLoadAndEvaluate(ir, session, ossModelPath, expn); err != nil {
-			return expn, err
+		if code, err = TFLoadAndEvaluate(ir, session, ossModelPath); err != nil {
+			return "", "", "", err
 		}
-		expn.PaiCmd, err = getTFPAICmd(cc, tarball, paramsFile, modelName, ossModelPath, ir.TmpEvaluateTable, "", ir.Into, currProject, cwd)
+		paiCmd, err = getTFPAICmd(cc, tarball, paramsFile, modelName, ossModelPath, ir.TmpEvaluateTable, "", ir.Into, currProject, cwd)
 	}
-	return expn, err
+	return code, paiCmd, requirements, err
 }

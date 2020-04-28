@@ -363,15 +363,12 @@ func (s *paiSubmitter) ExecuteEvaluate(cl *ir.EvaluateStmt) error {
 	if err := createPAIHyperParamFile(s.Cwd, paramsFile, ossModelPath); err != nil {
 		return err
 	}
-	expn, e := pai.Evaluate(cl, s.Session, scriptPath, paramsPath, cl.ModelName, ossModelPath, s.Cwd, modelType)
+	code, paiCmd, requirements, e := pai.Evaluate(cl, s.Session, scriptPath, paramsPath, cl.ModelName, ossModelPath, s.Cwd, modelType)
 	if e != nil {
 		return e
 	}
-	if e = s.submitPAITask(expn.Code, expn.PaiCmd, expn.Requirements); e != nil {
+	if e = s.submitPAITask(code, paiCmd, requirements); e != nil {
 		return e
-	}
-	if img, e := expn.Draw(); e == nil {
-		s.Writer.Write(Figures{img, ""})
 	}
 	return e
 }

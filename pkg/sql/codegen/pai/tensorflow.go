@@ -113,7 +113,7 @@ func TFLoadAndExplain(ir *ir.ExplainStmt, session *pb.Session, modelPath string,
 }
 
 // TFLoadAndEvaluate generates PAI-TF evaluate program.
-func TFLoadAndEvaluate(ir *ir.EvaluateStmt, session *pb.Session, modelPath string, expn *ExplainRender) (string, error) {
+func TFLoadAndEvaluate(ir *ir.EvaluateStmt, session *pb.Session, modelPath string) (string, error) {
 	var tpl = template.Must(template.New("Evaluate").Parse(tfEvaluateTmplText))
 	ossModelDir := OSSModelURL(modelPath)
 	paiExplainTable := ""
