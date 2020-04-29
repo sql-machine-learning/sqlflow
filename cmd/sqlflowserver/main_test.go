@@ -332,6 +332,8 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseSQLByPassLeftJoin", CaseSQLByPassLeftJoin)
 	t.Run("CaseTrainRegression", CaseTrainRegression)
 	t.Run("CaseTrainXGBoostRegression", CaseTrainXGBoostRegression)
+	t.Run("CaseTrainXGBoostMultiClass", CaseTrainXGBoostMultiClass)
+
 	t.Run("CasePredictXGBoostRegression", CasePredictXGBoostRegression)
 	t.Run("CaseTrainAndExplainXGBoostModel", CaseTrainAndExplainXGBoostModel)
 
@@ -1482,6 +1484,38 @@ INTO sqlflow_models.my_xgb_regression_model_eval_result;
 	}
 }
 
+// CaseTrainXGBoostMultiClass is used to test xgboost regression models
+func CaseTrainXGBoostMultiClass(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`
+SELECT *
+FROM iris.train
+TO TRAIN xgboost.gbtree
+WITH
+	objective="multi:softprob",
+	num_class=3,
+	validation.select="SELECT * FROM iris.test"
+LABEL class
+INTO sqlflow_models.my_xgb_multi_class_model;
+`)
+	_, _, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("run trainSQL error: %v", err)
+	}
+
+	evalSQL := fmt.Sprintf(`
+SELECT * FROM iris.test
+TO EVALUATE sqlflow_models.my_xgb_multi_class_model
+WITH validation.metrics="accuracy_score"
+LABEL class
+INTO sqlflow_models.my_xgb_regression_model_eval_result;
+`)
+	_, _, _, err = connectAndRunSQL(evalSQL)
+	if err != nil {
+		a.Fail("run evalSQL error: %v", err)
+	}
+}
+
 // CaseTrainAndExplainXGBoostModel is used to test training a xgboost model,
 // then explain it
 func CaseTrainAndExplainXGBoostModel(t *testing.T) {
@@ -1890,7 +1924,7 @@ USING e2etest_xgb_classi_model;`, caseTestTable, caseDB)
 
 	evalSQL := fmt.Sprintf(`SELECT * FROM %s
 TO EVALUATE e2etest_xgb_classi_model
-WITH validation.metrics="accuracy_score,recall_score"
+WITH validation.metrics="accuracy_score"
 LABEL class
 INTO %s.e2etest_xgb_evaluate_result;`, caseTestTable, caseDB)
 	_, _, _, err = connectAndRunSQL(evalSQL)
@@ -2051,15 +2085,15 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 
 	t.Run("group", func(t *testing.T) {
-		// t.Run("CasePAIMaxComputeDNNTrainPredictExplain", CasePAIMaxComputeDNNTrainPredictExplain)
-		// t.Run("CasePAIMaxComputeTrainDenseCol", CasePAIMaxComputeTrainDenseCol)
+		t.Run("CasePAIMaxComputeDNNTrainPredictExplain", CasePAIMaxComputeDNNTrainPredictExplain)
+		t.Run("CasePAIMaxComputeTrainDenseCol", CasePAIMaxComputeTrainDenseCol)
 		t.Run("CasePAIMaxComputeTrainXGBoost", CasePAIMaxComputeTrainXGBoost)
-		// t.Run("CasePAIMaxComputeTrainCustomModel", CasePAIMaxComputeTrainCustomModel)
-		// t.Run("CasePAIMaxComputeTrainDistributed", CasePAIMaxComputeTrainDistributed)
-		// t.Run("CasePAIMaxComputeTrainPredictCategoricalFeature", CasePAIMaxComputeTrainPredictCategoricalFeature)
-		// t.Run("CasePAIMaxComputeTrainTFBTDistributed", CasePAIMaxComputeTrainTFBTDistributed)
-		// t.Run("CasePAIMaxComputeTrainDistributedKeras", CasePAIMaxComputeTrainDistributedKeras)
-		// t.Run("CasePAIMaxComputeTrainXGBDistributed", CasePAIMaxComputeTrainXGBDistributed)
+		t.Run("CasePAIMaxComputeTrainCustomModel", CasePAIMaxComputeTrainCustomModel)
+		t.Run("CasePAIMaxComputeTrainDistributed", CasePAIMaxComputeTrainDistributed)
+		t.Run("CasePAIMaxComputeTrainPredictCategoricalFeature", CasePAIMaxComputeTrainPredictCategoricalFeature)
+		t.Run("CasePAIMaxComputeTrainTFBTDistributed", CasePAIMaxComputeTrainTFBTDistributed)
+		t.Run("CasePAIMaxComputeTrainDistributedKeras", CasePAIMaxComputeTrainDistributedKeras)
+		t.Run("CasePAIMaxComputeTrainXGBDistributed", CasePAIMaxComputeTrainXGBDistributed)
 
 		// FIXME(typhoonzero): Add this test back when we solve error: model already exist issue on the CI.
 		// t.Run("CaseTrainPAIRandomForests", CaseTrainPAIRandomForests)

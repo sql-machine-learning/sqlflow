@@ -17,15 +17,12 @@ import xgboost as xgb
 # yapf: disable
 from sklearn.metrics import (accuracy_score, average_precision_score,
                              balanced_accuracy_score, brier_score_loss,
-                             cohen_kappa_score, dcg_score,
-                             explained_variance_score, f1_score, fbeta_score,
-                             hamming_loss, hinge_loss, jaccard_score, log_loss,
-                             max_error, mean_absolute_error,
-                             mean_gamma_deviance, mean_poisson_deviance,
-                             mean_squared_error, mean_squared_log_error,
-                             mean_tweedie_deviance, median_absolute_error,
-                             ndcg_score, precision_score, r2_score,
-                             recall_score, roc_auc_score, zero_one_loss)
+                             cohen_kappa_score, explained_variance_score,
+                             f1_score, fbeta_score, hamming_loss, hinge_loss,
+                             log_loss, mean_absolute_error, mean_squared_error,
+                             mean_squared_log_error, median_absolute_error,
+                             precision_score, r2_score, recall_score,
+                             roc_auc_score, zero_one_loss)
 from sqlflow_submitter import db
 from sqlflow_submitter.xgboost.dataset import xgb_dataset
 
@@ -84,6 +81,22 @@ def evaluate_and_store_result(bst, dpred, feature_file_id, validation_metrics,
                               is_pai, conn, result_table, hdfs_namenode_addr,
                               hive_location, hdfs_user, hdfs_pass):
     preds = bst.predict(dpred)
+    # FIXME(typhoonzero): copied from predict.py
+    if model_params:
+        obj = model_params["objective"]
+        if obj.startswith("binary:"):
+            preds = (preds > 0.5).astype(int)
+        elif obj.startswith("multi:"):
+            preds = np.argmax(np.array(preds), axis=1)
+        else:
+            # using the original prediction result of predict API by default
+            pass
+    else:
+        # prediction output with multi-class job has two dimensions, this is a temporary
+        # way, can remove this else branch when we can load the model meta not only on PAI submitter.
+        if len(preds.shape) == 2:
+            preds = np.argmax(np.array(preds), axis=1)
+
     if is_pai:
         feature_file_read = open("predict.txt", "r")
     else:
@@ -91,7 +104,6 @@ def evaluate_and_store_result(bst, dpred, feature_file_id, validation_metrics,
 
     y_test_list = []
     for line in feature_file_read:
-        print(line.strip())
         row = [i for i in line.strip().split("\t")]
         # DMatrix store label in the first column
         if label_meta["dtype"] == "float32":
@@ -107,7 +119,6 @@ def evaluate_and_store_result(bst, dpred, feature_file_id, validation_metrics,
     evaluate_results = dict()
     for metric_name in validation_metrics:
         metric_value = eval("%s(y_test, preds)" % metric_name)
-        print("{}: {}".format(metric_name, metric_value))
         evaluate_results[metric_name] = metric_value
 
     # write evaluation result to result table

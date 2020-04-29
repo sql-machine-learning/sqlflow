@@ -136,7 +136,6 @@ func (s *defaultSubmitter) runCommand(program string) error {
 	if e := cmd.Run(); e != nil {
 		return fmt.Errorf("failed: %v\n%sProgram%[2]s\n%s\n%[2]sOutput%[2]s\n%[4]v", e, "==========", program, output.String())
 	}
-	fmt.Println(output.String())
 	return nil
 }
 

@@ -82,7 +82,7 @@ def predict_and_store_result(bst, dpred, feature_file_id, model_params,
             # using the original prediction result of predict API by default
             pass
     else:
-        # prediction output wiht multi-class job has two dimensions, this is a temporary
+        # prediction output with multi-class job has two dimensions, this is a temporary
         # way, can remove this else branch when we can load the model meta not only on PAI submitter.
         if len(preds.shape) == 2:
             preds = np.argmax(np.array(preds), axis=1)

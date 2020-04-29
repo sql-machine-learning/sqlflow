@@ -35,11 +35,7 @@ type evalFiller struct {
 
 const evalTemplateText = `
 from sqlflow_submitter.xgboost.evaluate import evaluate
-from sqlflow_submitter.tensorflow.pai_distributed import define_tf_flags, set_oss_environs
 import json
-
-FLAGS = define_tf_flags()
-set_oss_environs(FLAGS)
 
 feature_metas = json.loads('''{{.FeatureMetaJSON}}''')
 label_meta = json.loads('''{{.LabelMetaJSON}}''')
@@ -53,8 +49,8 @@ evaluate(datasource='''{{.DataSource}}''',
          feature_metas=feature_metas,
          feature_column_names=feature_column_names,
          label_meta=label_meta,
-		 result_table='''{{.ResultTable}}''',
-		 validation_metrics="{{.MetricNames}}".split(","), 
+         result_table='''{{.ResultTable}}''',
+         validation_metrics="{{.MetricNames}}".split(","), 
          hdfs_namenode_addr='''{{.HDFSNameNodeAddr}}''',
          hive_location='''{{.HiveLocation}}''',
          hdfs_user='''{{.HDFSUser}}''',
