@@ -1,18 +1,25 @@
-# Run SQLFlow command-line tool
+# Run SQLFlow Command-line Tool
 
-We have a command-line tool called `sqlflow` which can access SQLFlow server like we do in Jupyter Notebook.  `sqlflow` works in the well known `REPL` mode, that is to say, reads SQL statements from the console, evaluates them by calling SQLFlow server, and prints the results.  `sqlflow` supports automatic code completion to ease applying the underlying powerful AI toolset of SQLFlow.
+In addition to the Jupyter Notebook magic command, we provide a command-line client `sqlflow` to connect and operate the SQLFlow gRPC server. Similar to other command-line client tools like `mysql`, `sqflow` implements several interaction modes.
+
+1. `sqlflow -e "SELECT ... TO TRAIN ..."` runs the SQLFlow program provided in the command line.
+1. `sqlflow -f a.sql` runs the SQLFlow program in a file.
+1. `sqflow` starts the REPL mode for user interaction.
+
+In the REPL mode, `sqlflow` supports automatic code completion and other features.
 
 ![](figures/repl.gif)
 
 ## Quick Start
 
-The SQLFlow Docker image contains the `sqlflow` client.  We can run an example session by typing the following command on MacOS.  If you run Docker on Linux, please change `host.docker.internal:3306` to `localhost:3306`.
+We can run an example session by typing the following command on macOS.  We assume you have installed [Docker](https://docs.docker.com/get-docker/) on your computer.
 
-```
-docker run -it --rm --net=host sqlflow/sqlflow bash -c '/start.sh populate-example-dataset-mysql-local; \
-( /start.sh sqlflow-server & ); \
-sleep 2; \
-sqlflow --sqlflow_server=localhost:50051 --datasource="mysql://root:root@tcp(host.docker.internal:3306)/?maxAllowedPacket=0"'
+```bash
+docker run -d --rm -P -p 50051 --name sqlflowserver \
+    sqlflow/sqlflow bash -c "/start.sh sqlflow-server-with-dataset"
+
+sqlflow --sqlflow_server="$(docker port sqlflowserver 50051)" \
+     --datasource="mysql://root:root@tcp(localhost:3306)/?maxAllowedPacket=0"
 ```
 
 You should be able to see the following:
@@ -78,13 +85,22 @@ Congratulations! Now you have successfully completed a session using SQLFlow syn
 
 ## Command-line Options
 
-|             Option                      | Description |
-|-----------------------------------------|-------------|
-| -sqlflow_server \<quoted-query-string\>              | Specify sqlflow server address, in `host:port` form, e.g. `-sqlflow_server "localhost:50051"` |
-| -e \<quoted-query-string\>              | Execute from command line without entering interactive mode. e.g. <br>`-e "SELECT * FROM iris.train TRAIN DNNClassifier..." `<br>does the same thing as the training example above.|
-| -f \<filename\>                         | Execute from file without entering interactive mode. e.g. <br>`-f ./my_sqlflow.sql`<br>does the same thing as<br>`< ./my_sqlflow.sql` and `cat ./my_sqlflow.sql \| sqlflow...` |
-| -datasource \<database-connection-url\> | Connect to the specified database. e.g. `-datasource "mysql://root:root@tcp(host.docker.internal:3306)/" ` |
-| -A                                      | No auto completion for `sqlflow_models`. This gives a quicker start |
+|             Option                      | Environment Variable   | Description |
+|-----------------------------------------|------------------------|-------------|
+| -sqlflow_server \<quoted-query-string\> |     SQLFLOW_SERVER     | Specify sqlflow server address, in `host:port` form, e.g. `-sqlflow_server "localhost:50051"` |
+| -e \<quoted-query-string\>              |                        | Execute from command line without entering interactive mode. e.g. <br>`-e "SELECT * FROM iris.train TRAIN DNNClassifier..." `<br>does the same thing as the training example above.|
+| -f \<filename\>                         |                        | Execute from file without entering interactive mode. e.g. <br>`-f ./my_sqlflow.sql`<br>does the same thing as<br>`< ./my_sqlflow.sql` and `cat ./my_sqlflow.sql \| sqlflow`. The special file `-` means read from standard input. |
+| -datasource \<database-connection-url\> |   SQLFLOW_DATASOURCE   | Connect to the specified database. e.g. `-datasource "mysql://root:root@tcp(localhost:3306)/" ` |
+| -A                                      |                        | No auto completion for `sqlflow_models`. This gives a quicker start. |
+
+## Environment Variable Config File Setup
+You can specify some of the options in a config file named `.sqlflow_env` under your home directory.  This process is **optional** but can be convenient if you use the same config intensively.  The content are exported as environment variables at run time. Be aware the config file is just a default setting, you can overwrite them via corresponding command-line options.  Currently supported variables are listed in `Environment Variable` column in above table. You can setup the file using the following `bash` code.  
+```bash
+cat <<EOF >~/.sqlflow_env
+SQLFLOW_SERVER=localhost:50051
+SQLFLOW_DATASOURCE=mysql://root:root@tcp(localhost:3306)/?maxAllowedPacket=0
+EOF
+```
 
 ## Keyboard Shortcuts
 
