@@ -1783,6 +1783,16 @@ INTO e2etest_pai_dnn;`, caseTrainTable)
 		a.Fail("Run trainSQL error: %v", err)
 	}
 
+	evalSQL := fmt.Sprintf(`SELECT * FROM %s
+TO EVALUATE e2etest_pai_dnn
+WITH validation.metrics="Accuracy,Recall"
+LABEL class
+INTO %s.e2etest_pai_dnn_evaluate_result;`, caseTrainTable, caseDB)
+	_, _, _, err = connectAndRunSQL(evalSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+
 	predSQL := fmt.Sprintf(`SELECT * FROM %s
 TO PREDICT %s.pai_dnn_predict.class
 USING e2etest_pai_dnn;`, caseTestTable, caseDB)
@@ -2081,9 +2091,6 @@ func TestEnd2EndWorkflow(t *testing.T) {
 
 	go start(modelDir, caCrt, caKey, unitTestPort, true)
 	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
-	if err != nil {
-		t.Fatalf("prepare test dataset failed: %v", err)
-	}
 
 	if driverName == "maxcompute" {
 		AK := os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_AK")

@@ -253,10 +253,6 @@ func Explain(ir *ir.ExplainStmt, session *pb.Session, tarball, paramsFile, model
 			return nil, err
 		}
 		expn.Code = xgbExplainCode.String()
-		cc, err := GetClusterConfig(ir.Attributes)
-		if err != nil {
-			return nil, err
-		}
 		// NOTE(typhoonzero): submit a PAI TF job to install xgboost and run.
 		expn.PaiCmd, err = getTFPAICmd(cc, tarball, paramsFile, modelName, ossModelPath, ir.TmpExplainTable, "", ir.Into, currProject, cwd)
 	} else {
@@ -270,4 +266,32 @@ func Explain(ir *ir.ExplainStmt, session *pb.Session, tarball, paramsFile, model
 		expn.PaiCmd, err = getTFPAICmd(cc, tarball, paramsFile, modelName, ossModelPath, ir.TmpExplainTable, "", ir.Into, currProject, cwd)
 	}
 	return expn, err
+}
+
+// Evaluate generates a Python program for evaluate a TensorFlow model.
+func Evaluate(ir *ir.EvaluateStmt, session *pb.Session, tarball, paramsFile, modelName, ossModelPath, cwd string, modelType int) (code, paiCmd, requirements string, e error) {
+	cc, err := GetClusterConfig(ir.Attributes)
+	if err != nil {
+		return "", "", "", err
+	}
+	currProject, err := database.GetDatabaseName(session.DbConnStr)
+	if err != nil {
+		return "", "", "", err
+	}
+
+	if modelType == ModelTypePAIML {
+		return "", "", "", fmt.Errorf("evaluate PAI ML model is not supported for now")
+	} else if modelType == ModelTypeXGBoost {
+		return "", "", "", fmt.Errorf("evaluate XGBoost model is not supported for now")
+	} else {
+		if requirements, err = genRequirements(false); err != nil {
+			return "", "", "", err
+		}
+		// run evaluate PAI TF
+		if code, err = TFLoadAndEvaluate(ir, session, ossModelPath); err != nil {
+			return "", "", "", err
+		}
+		paiCmd, err = getTFPAICmd(cc, tarball, paramsFile, modelName, ossModelPath, ir.TmpEvaluateTable, "", ir.Into, currProject, cwd)
+	}
+	return code, paiCmd, requirements, err
 }

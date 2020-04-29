@@ -112,6 +112,38 @@ func TFLoadAndExplain(ir *ir.ExplainStmt, session *pb.Session, modelPath string,
 	return code.String(), nil
 }
 
+// TFLoadAndEvaluate generates PAI-TF evaluate program.
+func TFLoadAndEvaluate(ir *ir.EvaluateStmt, session *pb.Session, modelPath string) (string, error) {
+	var tpl = template.Must(template.New("Evaluate").Parse(tfEvaluateTmplText))
+	ossModelDir := OSSModelURL(modelPath)
+	paiExplainTable := ""
+	if tensorflow.IsPAI() && ir.TmpEvaluateTable != "" {
+		paiExplainTable = ir.TmpEvaluateTable
+	}
+
+	// set default metrics to "Accuracy"
+	validationMetrics := "Accuracy"
+	if v, ok := ir.Attributes["validationMetrics"]; ok {
+		// validationMetrics should be a string like: "Accuracy,AUC,Recall"
+		validationMetrics = v.(string)
+	}
+
+	filler := evaluateFiller{
+		OSSModelDir:       ossModelDir,
+		DataSource:        session.DbConnStr,
+		Select:            ir.Select,
+		ResultTable:       ir.Into,
+		IsPAI:             tensorflow.IsPAI(),
+		PAITable:          paiExplainTable,
+		ValidationMetrics: validationMetrics,
+	}
+	var code bytes.Buffer
+	if err := tpl.Execute(&code, filler); err != nil {
+		return "", err
+	}
+	return code.String(), nil
+}
+
 func getTFPAICmd(cc *ClusterConfig, tarball, paramsFile, modelName, ossModelPath, trainTable, valTable, resTable, project, cwd string) (string, error) {
 	jobName := strings.Replace(strings.Join([]string{"sqlflow", modelName}, "_"), ".", "_", 0)
 	cfString, err := json.Marshal(cc)
