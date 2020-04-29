@@ -136,6 +136,7 @@ func (s *defaultSubmitter) runCommand(program string) error {
 	if e := cmd.Run(); e != nil {
 		return fmt.Errorf("failed: %v\n%sProgram%[2]s\n%s\n%[2]sOutput%[2]s\n%[4]v", e, "==========", program, output.String())
 	}
+	fmt.Println(output.String())
 	return nil
 }
 
@@ -220,13 +221,20 @@ func (s *defaultSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 
 func (s *defaultSubmitter) ExecuteEvaluate(cl *ir.EvaluateStmt) error {
 	// NOTE(typhoonzero): model is already loaded under s.Cwd
+	var code string
+	var err error
 	if isXGBoostModel(cl.TrainStmt.Estimator) {
-		return fmt.Errorf("XGBoost evaluation is not supported now, will be available soon")
+		code, err = xgboost.Evaluate(cl, s.Session)
+		if err != nil {
+			return err
+		}
+	} else {
+		code, err = tensorflow.Evaluate(cl, s.Session)
+		if err != nil {
+			return err
+		}
 	}
-	code, err := tensorflow.Evaluate(cl, s.Session)
-	if err != nil {
-		return err
-	}
+
 	if cl.Into != "" {
 		// create evaluation result table
 		db, err := database.OpenAndConnectDB(s.Session.DbConnStr)

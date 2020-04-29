@@ -282,7 +282,16 @@ func Evaluate(ir *ir.EvaluateStmt, session *pb.Session, tarball, paramsFile, mod
 	if modelType == ModelTypePAIML {
 		return "", "", "", fmt.Errorf("evaluate PAI ML model is not supported for now")
 	} else if modelType == ModelTypeXGBoost {
-		return "", "", "", fmt.Errorf("evaluate XGBoost model is not supported for now")
+		if requirements, err = genRequirements(true); err != nil {
+			return "", "", "", err
+		}
+		code, err = xgboost.Evaluate(ir, session)
+		if err != nil {
+			return "", "", "", err
+		}
+		paiCmd, err = getTFPAICmd(cc, tarball, paramsFile, modelName, ossModelPath, ir.TmpEvaluateTable, "", ir.Into, currProject, cwd)
+
+		// return "", "", "", fmt.Errorf("evaluate XGBoost model is not supported for now")
 	} else {
 		if requirements, err = genRequirements(false); err != nil {
 			return "", "", "", err

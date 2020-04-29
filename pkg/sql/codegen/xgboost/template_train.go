@@ -36,7 +36,11 @@ type trainFiller struct {
 
 const trainTemplateText = `
 from sqlflow_submitter.xgboost.train import train
+from sqlflow_submitter.tensorflow.pai_distributed import define_tf_flags, set_oss_environs
 import json
+
+FLAGS = define_tf_flags()
+set_oss_environs(FLAGS)
 
 model_params = json.loads('''{{.ModelParamsJSON}}''')
 train_params = json.loads('''{{.TrainParamsJSON}}''')
