@@ -92,6 +92,10 @@ function main() {
     sqlflow-notebook)
       setup_sqlflow_notebook
       ;;
+    sqlflow-server-with-dataset)
+      setup_mysql
+      setup_sqlflow_server
+      ;;
     all)
       echo "setup all-in-one"
       setup_mysql

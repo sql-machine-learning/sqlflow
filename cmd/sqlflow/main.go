@@ -328,7 +328,7 @@ func main() {
 	isTerminal := !flagPassed("execute", "e", "file", "f") && terminal.IsTerminal(syscall.Stdin)
 	sqlFile := os.Stdin
 
-	if flagPassed("file", "f") {
+	if flagPassed("file", "f") && *sqlFileName != "-" {
 		sqlFile, err = os.Open(*sqlFileName)
 		if err != nil {
 			log.Fatal(err)
