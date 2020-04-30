@@ -332,6 +332,8 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseSQLByPassLeftJoin", CaseSQLByPassLeftJoin)
 	t.Run("CaseTrainRegression", CaseTrainRegression)
 	t.Run("CaseTrainXGBoostRegression", CaseTrainXGBoostRegression)
+	t.Run("CaseTrainXGBoostMultiClass", CaseTrainXGBoostMultiClass)
+
 	t.Run("CasePredictXGBoostRegression", CasePredictXGBoostRegression)
 	t.Run("CaseTrainAndExplainXGBoostModel", CaseTrainAndExplainXGBoostModel)
 
@@ -1468,6 +1470,50 @@ INTO sqlflow_models.my_xgb_regression_model;
 		}
 	}
 	a.Truef(isConvergence, strings.Join(messages, "\n"))
+
+	evalSQL := fmt.Sprintf(`
+SELECT * FROM housing.train
+TO EVALUATE sqlflow_models.my_xgb_regression_model
+WITH validation.metrics="mean_absolute_error,mean_squared_error"
+LABEL target
+INTO sqlflow_models.my_xgb_regression_model_eval_result;
+`)
+	_, _, messages, err = connectAndRunSQL(evalSQL)
+	if err != nil {
+		a.Fail("run evalSQL error: %v", err)
+	}
+}
+
+// CaseTrainXGBoostMultiClass is used to test xgboost regression models
+func CaseTrainXGBoostMultiClass(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`
+SELECT *
+FROM iris.train
+TO TRAIN xgboost.gbtree
+WITH
+	objective="multi:softprob",
+	num_class=3,
+	validation.select="SELECT * FROM iris.test"
+LABEL class
+INTO sqlflow_models.my_xgb_multi_class_model;
+`)
+	_, _, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("run trainSQL error: %v", err)
+	}
+
+	evalSQL := fmt.Sprintf(`
+SELECT * FROM iris.test
+TO EVALUATE sqlflow_models.my_xgb_multi_class_model
+WITH validation.metrics="accuracy_score"
+LABEL class
+INTO sqlflow_models.my_xgb_regression_model_eval_result;
+`)
+	_, _, _, err = connectAndRunSQL(evalSQL)
+	if err != nil {
+		a.Fail("run evalSQL error: %v", err)
+	}
 }
 
 // CaseTrainAndExplainXGBoostModel is used to test training a xgboost model,
@@ -1874,6 +1920,16 @@ USING e2etest_xgb_classi_model;`, caseTestTable, caseDB)
 	_, _, _, err = connectAndRunSQL(predSQL)
 	if err != nil {
 		a.Fail("Run predSQL error: %v", err)
+	}
+
+	evalSQL := fmt.Sprintf(`SELECT * FROM %s
+TO EVALUATE e2etest_xgb_classi_model
+WITH validation.metrics="accuracy_score"
+LABEL class
+INTO %s.e2etest_xgb_evaluate_result;`, caseTestTable, caseDB)
+	_, _, _, err = connectAndRunSQL(evalSQL)
+	if err != nil {
+		a.Fail("Run evalSQL error: %v", err)
 	}
 
 	explainSQL := fmt.Sprintf(`SELECT * FROM %s

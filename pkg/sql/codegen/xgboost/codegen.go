@@ -208,7 +208,7 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 	return DistTrain(trainStmt, session, 1, "")
 }
 
-// DistTrain generates a Python program for distributed train a XgBoost model.
+// DistTrain generates a Python program for distributed train a XGBoost model.
 // TODO(weiguoz): make DistTrain to be an implementation of the interface.
 func DistTrain(trainStmt *ir.TrainStmt, session *pb.Session, nworkers int, ossURI string) (string, error) {
 	r, err := newTrainFiller(trainStmt, session, ossURI)
@@ -342,6 +342,56 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 	var program bytes.Buffer
 
 	if err := predTemplate.Execute(&program, r); err != nil {
+		return "", err
+	}
+	return program.String(), nil
+}
+
+// Evaluate generates a Python program for evaluating a xgboost model.
+func Evaluate(evalStmt *ir.EvaluateStmt, session *pb.Session) (string, error) {
+	featureFieldDesc, labelFieldDesc, err := getFieldDesc(evalStmt.TrainStmt.Features["feature_columns"], evalStmt.TrainStmt.Label)
+	if err != nil {
+		return "", err
+	}
+	f, fs, err := resolveFeatureMeta(featureFieldDesc)
+	if err != nil {
+		return "", err
+	}
+	l, err := json.Marshal(resolveFieldMeta(&labelFieldDesc))
+	if err != nil {
+		return "", err
+	}
+
+	paiEvaluateTable := ""
+	if tf.IsPAI() && evalStmt.TmpEvaluateTable != "" {
+		paiEvaluateTable = evalStmt.TmpEvaluateTable
+	}
+
+	// NOTE(typhoonzero): support all metrices defined in https://scikit-learn.org/stable/modules/classes.html#sklearn-metrics-metrics
+	metricNames := "accuracy_score"
+	if metricNamesAttr, ok := evalStmt.Attributes["validation.metrics"]; ok {
+		metricNames = metricNamesAttr.(string)
+	}
+
+	r := evalFiller{
+		DataSource:         session.DbConnStr,
+		PredSelect:         evalStmt.Select,
+		FeatureMetaJSON:    string(f),
+		FeatureColumnNames: fs,
+		LabelMetaJSON:      string(l),
+		MetricNames:        metricNames,
+		ResultTable:        evalStmt.Into,
+		HDFSNameNodeAddr:   session.HdfsNamenodeAddr,
+		HiveLocation:       session.HiveLocation,
+		HDFSUser:           session.HdfsUser,
+		HDFSPass:           session.HdfsPass,
+		IsPAI:              tf.IsPAI(),
+		PAITable:           paiEvaluateTable,
+	}
+
+	var program bytes.Buffer
+
+	if err := evalTemplate.Execute(&program, r); err != nil {
 		return "", err
 	}
 	return program.String(), nil

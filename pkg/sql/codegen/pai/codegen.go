@@ -282,7 +282,37 @@ func Evaluate(ir *ir.EvaluateStmt, session *pb.Session, tarball, paramsFile, mod
 	if modelType == ModelTypePAIML {
 		return "", "", "", fmt.Errorf("evaluate PAI ML model is not supported for now")
 	} else if modelType == ModelTypeXGBoost {
-		return "", "", "", fmt.Errorf("evaluate XGBoost model is not supported for now")
+		if requirements, err = genRequirements(true); err != nil {
+			return "", "", "", err
+		}
+		ossURI := OSSModelURL(ossModelPath)
+		var xgbEvalCode bytes.Buffer
+		var tpl = template.Must(template.New("xgbEvalTemplate").Parse(xgbEvalTemplateText))
+		paiEvaluateTable := ""
+		if tensorflow.IsPAI() && ir.TmpEvaluateTable != "" {
+			paiEvaluateTable = ir.TmpEvaluateTable
+		}
+		metricNames := "accuracy_score"
+		if metricNamesAttr, ok := ir.Attributes["validation.metrics"]; ok {
+			metricNames = metricNamesAttr.(string)
+		}
+		filler := &xgbEvaluateFiller{
+			OSSModelDir:      ossURI,
+			DataSource:       session.DbConnStr,
+			PredSelect:       ir.Select,
+			ResultTable:      ir.Into,
+			MetricNames:      metricNames,
+			HDFSNameNodeAddr: session.HdfsNamenodeAddr,
+			HiveLocation:     session.HiveLocation,
+			HDFSUser:         session.HdfsUser,
+			HDFSPass:         session.HdfsPass,
+			PAIEvaluateTable: paiEvaluateTable,
+		}
+		if e = tpl.Execute(&xgbEvalCode, filler); e != nil {
+			return
+		}
+		code = xgbEvalCode.String()
+		paiCmd, err = getTFPAICmd(cc, tarball, paramsFile, modelName, ossModelPath, ir.TmpEvaluateTable, "", ir.Into, currProject, cwd)
 	} else {
 		if requirements, err = genRequirements(false); err != nil {
 			return "", "", "", err

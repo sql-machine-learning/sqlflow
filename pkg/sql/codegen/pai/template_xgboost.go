@@ -123,3 +123,50 @@ explain(
 	oss_endpoint='''{{.ResultOSSEndpoint}}''',
 	oss_bucket_name='''{{.ResultOSSBucket}}''')
 `
+
+type xgbEvaluateFiller struct {
+	OSSModelDir      string
+	DataSource       string
+	PredSelect       string
+	ResultTable      string
+	MetricNames      string
+	HDFSNameNodeAddr string
+	HiveLocation     string
+	HDFSUser         string
+	HDFSPass         string
+	PAIEvaluateTable string
+}
+
+const xgbEvalTemplateText = `
+import json
+from sqlflow_submitter.xgboost.evaluate import evaluate
+from sqlflow_submitter.pai import model
+from sqlflow_submitter.tensorflow.pai_distributed import define_tf_flags, set_oss_environs
+
+FLAGS = define_tf_flags()
+set_oss_environs(FLAGS)
+
+# NOTE(typhoonzero): the xgboost model file "my_model" is hard coded in xgboost/train.py
+model.load_file("{{.OSSModelDir}}", "my_model")
+(estimator,
+model_params,
+train_params,
+feature_metas,
+feature_column_names,
+label_meta) = model.load_metas("{{.OSSModelDir}}", "xgboost_model_desc")
+
+evaluate(datasource='''{{.DataSource}}''',
+         select='''{{.PredSelect}}''',
+         feature_metas=feature_metas,
+         feature_column_names=feature_column_names,
+         label_meta=label_meta,
+         result_table='''{{.ResultTable}}''',
+         validation_metrics="{{.MetricNames}}".split(","), 
+         hdfs_namenode_addr='''{{.HDFSNameNodeAddr}}''',
+         hive_location='''{{.HiveLocation}}''',
+         hdfs_user='''{{.HDFSUser}}''',
+         hdfs_pass='''{{.HDFSPass}}''',
+         is_pai=True,
+         pai_table="{{.PAIEvaluateTable}}",
+         model_params=model_params)
+`

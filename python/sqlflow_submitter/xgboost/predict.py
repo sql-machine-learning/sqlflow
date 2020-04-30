@@ -33,7 +33,6 @@ def pred(datasource,
          pai_table="",
          model_params=None,
          train_params=None):
-    # TODO(typhoonzero): support running on PAI without MaxCompute AK/SK connection.
     if not is_pai:
         conn = db.connect_with_data_source(datasource)
     else:
@@ -83,7 +82,7 @@ def predict_and_store_result(bst, dpred, feature_file_id, model_params,
             # using the original prediction result of predict API by default
             pass
     else:
-        # prediction output wiht multi-class job has two dimensions, this is a temporary
+        # prediction output with multi-class job has two dimensions, this is a temporary
         # way, can remove this else branch when we can load the model meta not only on PAI submitter.
         if len(preds.shape) == 2:
             preds = np.argmax(np.array(preds), axis=1)
@@ -112,7 +111,7 @@ def predict_and_store_result(bst, dpred, feature_file_id, model_params,
             line = feature_file_read.readline()
             if not line:
                 break
-            row = [i.split(":")[1] for i in line.replace("\n", "").split("\t")]
+            row = [i.split(":")[1] for i in line.strip().split("\t")]
             row.append(str(preds[line_no]))
             w.write(row)
             line_no += 1
