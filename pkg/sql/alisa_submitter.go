@@ -52,11 +52,11 @@ func (s *alisaSubmitter) submitAlisaTask(submitCode, codeResourceURL, paramsReso
 	cfg.Env["RES_DOWNLOAD_URL"] = fmt.Sprintf(`[{"downloadUrl":"%s", "resourceName":"%s"}, {"downloadUrl":"%s", "resourceName":"%s"}]`,
 		codeResourceURL, resourceName, paramsResourceURL, paramsFile)
 	cfg.Verbose = true
-	a := goalisa.New(cfg)
+	alisa := goalisa.New(cfg)
 	var b bytes.Buffer
 	w := io.MultiWriter(os.Stdout, &b)
-	if e := a.ExecWithWriter(submitCode, w); e != nil {
-		return fmt.Errorf("PAI task failed, please go to check details error logs in the LogViewer website: %s", submitCode, strings.Join(pickPAILogViewerURL(b.String()), "\n"))
+	if e := alisa.ExecWithWriter(submitCode, w); e != nil {
+		return fmt.Errorf("PAI task failed, please go to check details error logs in the LogViewer website: %s", strings.Join(pickPAILogViewerURL(b.String()), "\n"))
 	}
 	return nil
 
