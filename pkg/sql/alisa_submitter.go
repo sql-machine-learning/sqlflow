@@ -49,17 +49,17 @@ func (s *alisaSubmitter) submitAlisaTask(submitCode, codeResourceURL, paramsReso
 		return e
 	}
 
-	cfg.Env["RES_DOWNLOAD_URL"] = fmt.Sprintf(`[{\"downloadUrl\":\"%s\", \"resourceName\":\"%s\"}, {\"downloadUrl\":\"%s\", \"resourceName\":\"%s\"}]`,
+	cfg.Env["RES_DOWNLOAD_URL"] = fmt.Sprintf(`[{"downloadUrl":"%s", "resourceName":"%s"}, {"downloadUrl":"%s", "resourceName":"%s"}]`,
 		codeResourceURL, resourceName, paramsResourceURL, paramsFile)
 	cfg.Verbose = true
-
 	alisa := goalisa.New(cfg)
 	var b bytes.Buffer
 	w := io.MultiWriter(os.Stdout, &b)
 	if e := alisa.ExecWithWriter(submitCode, w); e != nil {
-		return fmt.Errorf("failed: %s, detailed error message on URL:\n %s", submitCode, strings.Join(pickPAILogViewerURL(b.String()), "\n"))
+		return fmt.Errorf("PAI task failed, please go to check details error logs in the LogViewer website: %s", strings.Join(pickPAILogViewerURL(b.String()), "\n"))
 	}
 	return nil
+
 }
 
 func (s *alisaSubmitter) ExecuteTrain(ts *ir.TrainStmt) (e error) {
