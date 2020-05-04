@@ -67,14 +67,17 @@ As the above `docker run` command binds the source code directory on the host co
 
 After the editing and before you can Git commit, please install the [`pre-commit`](https://pre-commit.com/) tool.  SQLFlow needs it to run pre-commit checks.
 
-## The Command-line REPL
+## The Command-line Tool
 
-SQLFlow provides a command-line tool `repl` for evaluating SQL statements.  This tool makes it easy to debug.  To build it, run the following commands.
+SQLFlow provides a command-line tool `sqlflow` for evaluating SQL statements.  This tool makes it easy to debug.  To build it, run the following commands.
 
 ```bash
-cd cmd/repl
+cd cmd/sqlflow
 go install
-~/go/bin/repl --datasource="mysql://root:root@tcp(localhost:3306)/?maxAllowedPacket=0"
+docker run -d --rm -P -p 50051 --name sqlflowserver \
+    sqlflow/sqlflow bash -c "/start.sh sqlflow-server-with-dataset"
+~/go/bin/sqlflow --sqlflow_server="$(docker port sqlflowserver 50051)" \
+ --datasource="mysql://root:root@tcp(localhost:3306)/?maxAllowedPacket=0"
 ```
 
-Please follow the [REPL tutorial](run/repl.md) to understand what we can do with the REPL.
+Please follow the [command-line tool tutorial](run/cli.md) to understand what we can do with the tool.
