@@ -23,7 +23,7 @@ Please be aware the `-v $HOME:/root` binds the `$HOME` directory on the host to 
 In the container, we can type the following command to generate the gRPC related code.
 
 ```bash
-protoc --java_out=src/main/java --grpc-java_out=src/main/java/ --proto_path=src/main/proto/ src/main/proto/Parser.proto
+protoc --java_out=src/main/java --grpc-java_out=src/main/java/ --proto_path=src/main/proto/ src/main/proto/parser.proto
 ``` 
 
 In the container, we can type the following command to test the package

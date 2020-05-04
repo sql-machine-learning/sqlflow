@@ -95,7 +95,7 @@ mkdir -p $SQLFLOW_PARSER_SERVER_LOADING_PATH && \
 (cd java/parser-hive && mvn -B -q clean compile assembly:single && mv target/*.jar $SQLFLOW_PARSER_SERVER_LOADING_PATH) && \
 (cd java/parser-calcite && mvn -B -q clean compile assembly:single && mv target/*.jar $SQLFLOW_PARSER_SERVER_LOADING_PATH) && \
 (cd java/parser && \
-protoc --java_out=src/main/java --grpc-java_out=src/main/java/ --proto_path=src/main/proto/ src/main/proto/Parser.proto && \
+protoc --java_out=src/main/java --grpc-java_out=src/main/java/ --proto_path=src/main/proto/ src/main/proto/parser.proto && \
 mvn -B -q clean compile assembly:single && \
 cp target/*.jar $SQLFLOW_PARSER_SERVER_LOADING_PATH) && \
 cd / && \
