@@ -1,0 +1,51 @@
+syntax = "proto3";
+package proto;
+
+message ModelRequest {
+    // name of the model definition or trained model.
+    // 1. For model definition, it could be a full Docker image URL like:
+    //    hub.docker.com/my_group/model_image_name, or path of the image to use the default registry:
+    //    my_group/model_image_name
+    // 2. For trained model, it's a unique string describes the model, like: my_resnet50_model_imagenet_acc_0.82
+    string name = 1;
+    // tag of the model definition or trained model, usually a vertion tag like: v0.1
+    string tag = 2;
+    // content_tar is the model definition's directory which contains a Dockerfile and
+    // other files that define some models.
+    // or, can be the content of a trained model.
+    bytes content_tar = 3;
+}
+
+message ModelResponse {
+    // success indicates whether the request is processed successfully.
+    bool success = 1;
+    // message describe the error details when error occurs.
+    string message = 2;
+}
+
+message ListModelResponse {
+    // A list of model definition or trained model names.
+    repeated string names = 1;
+    // A list of tags of the above list names, the length should be the same as "names".
+    repeated string tags = 2;
+}
+
+message Empty {}
+
+service ModelZooServer {
+    // Returns the list of public available model definitions.
+    rpc ListModelDefs (Empty) returns (ListModelResponse);
+    // Returns the list of public available trained models.
+    rpc ListTrainedModels (Empty) returns (ListModelResponse);
+
+    // Release your model definition.
+    rpc ReleaseModelDef (stream ModelRequest) returns (ModelResponse);
+    // Drop your model definition.
+    // DropModelDef use a ModelRequest that have no "content_tar"
+    rpc DropModelDef (ModelRequest) returns (ModelResponse);
+
+    // Release your trained model.
+    rpc ReleaseTrainedModel (stream ModelRequest) returns (ModelResponse);
+    // Drop your trained model.
+    rpc DropTrainedModel (ModelRequest) returns (ModelResponse);
+}
