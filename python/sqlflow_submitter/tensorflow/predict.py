@@ -48,8 +48,7 @@ def keras_predict(estimator, model_params, save, result_table, is_pai,
                   hive_location, hdfs_user, hdfs_pass):
     classifier = estimator(**model_params)
     classifier_pkg = sys.modules[estimator.__module__]
-
-    conn = db.connect_with_data_source(datasource)
+    conn = None
 
     def eval_input_fn(batch_size, cache=False):
         feature_types = []
@@ -68,6 +67,7 @@ def keras_predict(estimator, model_params, save, result_table, is_pai,
                                                  feature_column_names, None,
                                                  feature_metas)
         else:
+            conn = db.connect_with_data_source(datasource)
             gen = db.db_generator(conn.driver, conn, select,
                                   feature_column_names, None, feature_metas)
         dataset = tf.data.Dataset.from_generator(gen, (tuple(feature_types), ))
@@ -89,12 +89,15 @@ def keras_predict(estimator, model_params, save, result_table, is_pai,
     classifier.predict_on_batch(one_batch)
     classifier.load_weights(save)
     pred_dataset = eval_input_fn(1, cache=True).make_one_shot_iterator()
-    buff_rows = []
     column_names = feature_column_names[:]
     column_names.append(result_col_name)
-    with db.buffered_db_writer(conn.driver, conn, result_table, column_names,
-                               100, hdfs_namenode_addr, hive_location,
-                               hdfs_user, hdfs_pass) as w:
+    if is_pai:
+        driver = "pai_maxcompute"
+    else:
+        driver = conn.driver
+    with db.buffered_db_writer(driver, conn, result_table, column_names, 100,
+                               hdfs_namenode_addr, hive_location, hdfs_user,
+                               hdfs_pass) as w:
         for features in pred_dataset:
             result = classifier.predict_on_batch(features)
             result = classifier_pkg.prepare_prediction_column(result[0])
