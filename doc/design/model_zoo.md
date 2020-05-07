@@ -178,10 +178,24 @@ The model zoo server is responsible to accept SQLFlow command-line's `release` a
     1. Run `docker push` to push the Docker image to the Docker registry. The pushed image should be publicly readable.
     1. Write a row in the MySQL instance to recored this model definition Docker image.
 - When releasing a trained model, the SQLFlow server will:
-    1. Copy the trained model parameters together with all nessesary metadatas to the public folder on the SQLFlow's bucket on OSS.
-    1. Write an recored in the MySQL instance to recored the OSS URI and the trained model's name.
+    1. Copy the trained model parameters together with all nessesary metadatas to the public storage. For PAI deployments, we use a public folder on the OSS; For other deployments we use a public database space on the database system, each table in the public database stores a trained model.
+    1. Write an recored in the MySQL instance to recored the trained model URI and the trained model's name. The URI should be like `oss://bucket/path/to/your/model/` or `mysql://ip:port/database/table` to point to the actual place that stores the public trained model.
 - When deleting a model definition or a trained model, do the reverse.
 
+### Model Zoo Server Database Schema
+
+We create three tables using the schema described in the below figure:
+
+1. Table `model_definition` stores model definition Docker images with it's corresponding version tags.
+2. Table `model_definition_details` stores model definition details provided by each Docker image. Note that each Docker image may have multiple model definition classes or functions.
+3. Table `trained_models` stores the unique name of the trained model and a URL point to where the trained model is actually saved. Note that each model definition can be used to train multiple trained models.
+
+![](figures/model_zoo_er.png)
+
+
+### Model Zoo Server RPC Protocol
+
+Please refer to [modelzooserver.proto](../../pkg/proto/modelzooserver.proto) for the RPC protocol design and explanations.
 
 ## Summarization
 

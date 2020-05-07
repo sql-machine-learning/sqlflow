@@ -1,8 +1,8 @@
 syntax = "proto3";
 package proto;
 
-message ModelRequest {
-    // name of the model definition or trained model.
+message ModelDefRequest {
+    // Name of the model definition or trained model.
     // 1. For model definition, it could be a full Docker image URL like:
     //    hub.docker.com/my_group/model_image_name, or path of the image to use the default registry:
     //    my_group/model_image_name
@@ -13,7 +13,21 @@ message ModelRequest {
     // content_tar is the model definition's directory which contains a Dockerfile and
     // other files that define some models.
     // or, can be the content of a trained model.
+    // The client should use a stream request to upload the contents.
     bytes content_tar = 3;
+}
+
+message TrainedModelRequest {
+    // A unique name of the trained model.
+    string name = 1;
+    // A version tag string, like: "v0.1"
+    string tag = 2;
+    // URL of the trained model, describes the detailed position where the model is actually stored.
+    string content_url = 3;
+    // Description of the trained model, like what dataset was used to train this model etc.
+    string description = 4;
+    // Evaluation metric results in JSON format, e.g. {"Accuracy": 0.87, "AUC": 0.73}
+    string evaluation_metrics = 5;
 }
 
 message ModelResponse {
@@ -23,29 +37,38 @@ message ModelResponse {
     string message = 2;
 }
 
+message ListModelRequest {
+    // start position to fetch model definitions or trained models. Default to 0.
+    int64 start = 1;
+    // How many record to fetch in this request, used for pagination. If size = -1,
+    // return all the records.
+    int64 size = 2;
+}
+
 message ListModelResponse {
     // A list of model definition or trained model names.
     repeated string names = 1;
     // A list of tags of the above list names, the length should be the same as "names".
     repeated string tags = 2;
+    // Size of elements in names.
+    int64 size = 3;
 }
 
-message Empty {}
 
 service ModelZooServer {
     // Returns the list of public available model definitions.
-    rpc ListModelDefs (Empty) returns (ListModelResponse);
+    rpc ListModelDefs (ListModelRequest) returns (ListModelResponse);
     // Returns the list of public available trained models.
-    rpc ListTrainedModels (Empty) returns (ListModelResponse);
+    rpc ListTrainedModels (ListModelRequest) returns (ListModelResponse);
 
     // Release your model definition.
-    rpc ReleaseModelDef (stream ModelRequest) returns (ModelResponse);
+    rpc ReleaseModelDef (stream ModelDefRequest) returns (ModelResponse);
     // Drop your model definition.
-    // DropModelDef use a ModelRequest that have no "content_tar"
-    rpc DropModelDef (ModelRequest) returns (ModelResponse);
+    // ModelDefRequest should contain name and tag.
+    rpc DropModelDef (ModelDefRequest) returns (ModelResponse);
 
     // Release your trained model.
-    rpc ReleaseTrainedModel (stream ModelRequest) returns (ModelResponse);
-    // Drop your trained model.
-    rpc DropTrainedModel (ModelRequest) returns (ModelResponse);
+    rpc ReleaseTrainedModel (stream TrainedModelRequest) returns (ModelResponse);
+    // Drop a trained model, TrainedModelRequest should contain name and tag.
+    rpc DropTrainedModel (TrainedModelRequest) returns (ModelResponse);
 }
