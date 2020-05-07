@@ -109,7 +109,8 @@ RUN if [ "${WITH_SQLFLOW_MODELS:-ON}" = "ON" ]; then \
   git clone https://github.com/sql-machine-learning/models.git && \
   cd models && \
   git checkout c897963f821d515651de79cb4ef1fbf6126ecaa5 && \
-  bash -c "python setup.py -q install" && \
+  python setup.py bdist_wheel && \
+  pip install dist/*.whl && \
   cd .. && \
   rm -rf models; \
 fi
