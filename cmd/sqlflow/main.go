@@ -227,7 +227,7 @@ func assertConnectable(serverAddr, ds string) {
 		return runStmtOnServer(serverAddr, `select "I'm alive";`, true, ds)
 	})
 	if err != nil {
-		log.Fatalf("Can't connect to %s\n", ds)
+		log.Fatalf("Can't connect to %s: %v\n", ds, err)
 	}
 }
 
@@ -268,6 +268,9 @@ func switchDatabase(serverAddr, ds, db string) error {
 
 // getDataSource generates a data source string that is using database `db` from the original dataSource
 func getDataSource(dataSource, db string) string {
+	if db == "" {
+		return dataSource
+	}
 	driver, other, e := database.ParseURL(dataSource)
 	if e != nil {
 		log.Fatalf("unrecognized data source '%s'", dataSource)
