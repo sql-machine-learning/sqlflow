@@ -115,5 +115,10 @@ RUN if [ "${WITH_SQLFLOW_MODELS:-ON}" = "ON" ]; then \
   rm -rf models; \
 fi
 
+ # Expose MySQL server, SQLFlow gRPC server, and Jupyter Notebook server port
+EXPOSE 3306
+EXPOSE 50051 
+EXPOSE 8888
+
 ADD scripts/start.sh /
 CMD ["bash", "/start.sh"]
