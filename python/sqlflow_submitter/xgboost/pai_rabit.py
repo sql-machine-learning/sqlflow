@@ -18,7 +18,7 @@ import time
 from contextlib import closing
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
-import xgboost as xgb
+from sqlflow_submitter.xgboost.tracker import RabitTracker
 
 
 class PaiXGBoostWorker():
@@ -64,8 +64,7 @@ class PaiXGBoostTracker(object):
                                 self.TrackerHelperHTTPRequestHandler)
         tracker_port = PaiXGBoostTracker.find_free_port()
         nslave = nworkers
-        tracker = xgb.RabitTracker(host, nslave, tracker_port,
-                                   tracker_port + 1)
+        tracker = RabitTracker(host, nslave, tracker_port, tracker_port + 1)
         tracker.start(nslave)
         self.tracker = tracker
         self.TrackerHelperHTTPRequestHandler.tracker_port = str(tracker.port)

@@ -31,7 +31,6 @@ type trainFiller struct {
 	IsPAI              bool
 	PAITrainTable      string
 	PAIValidateTable   string
-	Workers            int
 }
 
 const trainTemplateText = `
@@ -87,7 +86,6 @@ feature_column_names = [{{range .FeatureColumnNames}}
 {{end}}]
 
 dist_train(flags=FLAGS,
-      num_workers={{.Workers}},
       datasource='''{{.DataSource}}''',
       select='''{{.TrainSelect}}''',
       model_params=model_params,

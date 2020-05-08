@@ -235,9 +235,7 @@ func newTrainFiller(trainStmt *ir.TrainStmt, session *pb.Session, ossURI string)
 	diskCache := params["train."]["disk_cache"].(bool)
 	delete(params["train."], "disk_cache")
 
-	batchSize := -1
-	epoch := 1
-	nworkers := 1
+	var batchSize, epoch = -1, 1
 	batchSizeAttr, ok := params["train."]["batch_size"]
 	if ok {
 		batchSize = batchSizeAttr.(int)
@@ -247,11 +245,6 @@ func newTrainFiller(trainStmt *ir.TrainStmt, session *pb.Session, ossURI string)
 	if ok {
 		epoch = epochAttr.(int)
 		delete(params["train."], "epoch")
-	}
-	workersAttr, ok := params["train."]["num_workers"]
-	if ok {
-		nworkers = workersAttr.(int)
-		delete(params["train."], "num_workers")
 	}
 
 	if len(trainStmt.Features) != 1 {
@@ -300,8 +293,7 @@ func newTrainFiller(trainStmt *ir.TrainStmt, session *pb.Session, ossURI string)
 		Epoch:              epoch,
 		IsPAI:              tf.IsPAI(),
 		PAITrainTable:      paiTrainTable,
-		PAIValidateTable:   paiValidateTable,
-		Workers:            nworkers}, nil
+		PAIValidateTable:   paiValidateTable}, nil
 }
 
 // Pred generates a Python program for predict a xgboost model.

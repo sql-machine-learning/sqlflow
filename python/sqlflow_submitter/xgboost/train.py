@@ -22,7 +22,6 @@ from sqlflow_submitter.xgboost.pai_rabit import (PaiXGBoostTracker,
 
 
 def dist_train(flags,
-               num_workers,
                datasource,
                select,
                model_params,
@@ -38,11 +37,11 @@ def dist_train(flags,
                pai_train_table="",
                pai_validate_table="",
                oss_model_dir=""):
-    num_hosts = len(flags.worker_hosts.split(","))
-    if not is_pai or num_hosts != num_workers:
+    if not is_pai:
         raise Exception(
             "XGBoost distributed training is only supported on PAI")
 
+    num_workers = len(flags.worker_hosts.split(","))
     cluster, node, task_id = pai_dist.make_distributed_info_without_evaluator(
         flags)
     master_addr = cluster["ps"][0].split(":")
@@ -85,7 +84,7 @@ def dist_train(flags,
                   nworkers=num_workers,
                   oss_model_dir=oss_model_dir)
     except Exception as e:
-        print("node={} id={} exceptioin={}".format(node, task_id, e))
+        print("node={}, id={}, exception={}".format(node, task_id, e))
         raise e
     finally:
         if tracker is not None:
