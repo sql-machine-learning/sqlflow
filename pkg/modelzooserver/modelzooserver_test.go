@@ -36,9 +36,28 @@ func startServer() {
 	grpcServer.Serve(lis)
 }
 
+func serverIsReady(addr string, timeout time.Duration) bool {
+	conn, err := net.DialTimeout("tcp", addr, timeout)
+	if err != nil {
+		return false
+	}
+	err = conn.Close()
+	return err == nil
+}
+
+func waitPortReady(addr string, timeout time.Duration) {
+	// Set default timeout to
+	if timeout == 0 {
+		timeout = time.Duration(1) * time.Second
+	}
+	for !serverIsReady(addr, timeout) {
+		time.Sleep(1 * time.Second)
+	}
+}
+
 func TestModelZooServer(t *testing.T) {
 	go startServer()
-	time.Sleep(5)
+	waitPortReady("localhost:50055", 0)
 
 	conn, err := grpc.Dial(":50055", grpc.WithInsecure())
 	if err != nil {
@@ -47,7 +66,7 @@ func TestModelZooServer(t *testing.T) {
 	defer conn.Close()
 
 	client := pb.NewModelZooServerClient(conn)
-	res, err := client.ListModelDefs(context.Background(), &pb.Empty{})
+	res, err := client.ListModelDefs(context.Background(), &pb.ListModelRequest{Start: 0, Size: -1})
 	if err != nil {
 		t.Fatalf("call ListModelDefs error: %v", err)
 	}

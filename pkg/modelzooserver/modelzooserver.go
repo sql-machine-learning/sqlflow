@@ -22,11 +22,11 @@ import (
 type modelZooServer struct {
 }
 
-func (s *modelZooServer) ListModelDefs(ctx context.Context, req *pb.Empty) (*pb.ListModelResponse, error) {
+func (s *modelZooServer) ListModelDefs(ctx context.Context, req *pb.ListModelRequest) (*pb.ListModelResponse, error) {
 	return &pb.ListModelResponse{}, nil
 }
 
-func (s *modelZooServer) ListTrainedModels(ctx context.Context, req *pb.Empty) (*pb.ListModelResponse, error) {
+func (s *modelZooServer) ListTrainedModels(ctx context.Context, req *pb.ListModelRequest) (*pb.ListModelResponse, error) {
 	return &pb.ListModelResponse{}, nil
 }
 
@@ -35,7 +35,7 @@ func (s *modelZooServer) ReleaseModelDef(stream pb.ModelZooServer_ReleaseModelDe
 	return err
 }
 
-func (s *modelZooServer) DropModelDef(ctx context.Context, req *pb.ModelRequest) (*pb.ModelResponse, error) {
+func (s *modelZooServer) DropModelDef(ctx context.Context, req *pb.ModelDefRequest) (*pb.ModelResponse, error) {
 	return &pb.ModelResponse{}, nil
 }
 
@@ -44,6 +44,6 @@ func (s *modelZooServer) ReleaseTrainedModel(stream pb.ModelZooServer_ReleaseTra
 	return err
 }
 
-func (s *modelZooServer) DropTrainedModel(ctx context.Context, req *pb.ModelRequest) (*pb.ModelResponse, error) {
+func (s *modelZooServer) DropTrainedModel(ctx context.Context, req *pb.TrainedModelRequest) (*pb.ModelResponse, error) {
 	return &pb.ModelResponse{}, nil
 }
