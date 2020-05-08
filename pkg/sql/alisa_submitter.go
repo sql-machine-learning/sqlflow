@@ -205,6 +205,51 @@ func (s *alisaSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 	return e
 }
 
+func (s *alisaSubmitter) ExecuteEvaluate(es *ir.EvaluateStmt) error {
+	dbName, tableName, e := createTmpTableFromSelect(es.Select, s.Session.DbConnStr)
+	if e != nil {
+		return e
+	}
+	es.TmpEvaluateTable = strings.Join([]string{dbName, tableName}, ".")
+	defer dropTmpTables([]string{es.TmpEvaluateTable}, s.Session.DbConnStr)
+
+	// default always output evaluation loss
+	metricNames := []string{"loss"}
+	metricsAttr, ok := es.Attributes["validation.metrics"]
+	if ok {
+		metricsList := strings.Split(metricsAttr.(string), ",")
+		metricNames = append(metricNames, metricsList...)
+	}
+	if e = createEvaluationResultTable(s.Db, es.Into, metricNames); e != nil {
+		return e
+	}
+
+	ossModelPath, e := getModelPath(es.ModelName, s.Session)
+	if e != nil {
+		return e
+	}
+	// NOTE(typhoonzero): current project may differ from the project from SELECT statement.
+	currProject, e := database.GetDatabaseName(s.Session.DbConnStr)
+	if e != nil {
+		return e
+	}
+	modelType, _, e := getOSSSavedModelType(ossModelPath, currProject)
+	if e != nil {
+		return e
+	}
+
+	scriptPath := fmt.Sprintf("file://@@%s", resourceName)
+	paramsPath := fmt.Sprintf("file://@@%s", paramsFile)
+	if e = createPAIHyperParamFile(s.Cwd, paramsFile, ossModelPath); e != nil {
+		return e
+	}
+	code, paiCmd, requirements, e := pai.Evaluate(es, s.Session, scriptPath, paramsPath, es.ModelName, ossModelPath, s.Cwd, modelType)
+	if e != nil {
+		return e
+	}
+	return s.uploadResourceAndSubmitAlisaTask(code, requirements, paiCmd)
+}
+
 func (s *alisaSubmitter) GetTrainStmtFromModel() bool { return false }
 
 func findPyModulePath(pyModuleName string) (string, error) {

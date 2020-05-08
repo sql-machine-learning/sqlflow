@@ -123,9 +123,8 @@ func createPAIHyperParamFile(cwd string, filename string, modelPath string) erro
 	ossAk := os.Getenv("SQLFLOW_OSS_AK")
 	ossSk := os.Getenv("SQLFLOW_OSS_SK")
 	ossEp := os.Getenv("SQLFLOW_OSS_MODEL_ENDPOINT")
-	hdfsCkpt := os.Getenv("SQLFLOW_HDFS_MODEL_CKPT_DIR")
-	if ossAk == "" || ossSk == "" || ossEp == "" || hdfsCkpt == "" {
-		return fmt.Errorf("must define SQLFLOW_OSS_AK, SQLFLOW_OSS_SK, SQLFLOW_OSS_MODEL_ENDPOINT, SQLFLOW_HDFS_MODEL_CKPT_DIR when submitting to PAI")
+	if ossAk == "" || ossSk == "" || ossEp == "" {
+		return fmt.Errorf("must define SQLFLOW_OSS_AK, SQLFLOW_OSS_SK, SQLFLOW_OSS_MODEL_ENDPOINT when submitting to PAI")
 	}
 
 	if _, err := f.Write([]byte(fmt.Sprintf("sqlflow_oss_ak=\"%s\"\n", ossAk))); err != nil {
