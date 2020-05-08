@@ -63,3 +63,8 @@ ENV IPYTHON_STARTUP /root/.ipython/profile_default/startup/
 COPY install-jupyter.bash /
 COPY js /js
 RUN /install-jupyter.bash
+
+# Set build.sh as the entrypoint and assume that SQLFlow source tree
+# is at /work.
+COPY build.sh /
+ENTRYPOINT ["/build.sh", "/work"]

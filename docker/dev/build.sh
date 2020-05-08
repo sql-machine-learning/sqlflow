@@ -47,4 +47,9 @@ mvn -B -q clean compile assembly:single
 cp target/*.jar $SQLFLOW_BIN
 
 # Convert tutorial markdown to ipython notebook
-bash $SQLFLOWPATH/scripts/convert_markdown_into_ipynb.sh
+for file in $SQLFLOWPATH/doc/tutorial/*.md; do
+    base=$(basename -- "$file")
+    markdown-to-ipynb --code-block-type=sql \
+                      < $file \
+                      > $SQLFLOW_BIN/tutorial/${base%.*}."ipynb"
+done
