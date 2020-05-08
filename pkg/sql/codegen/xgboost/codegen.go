@@ -246,6 +246,9 @@ func newTrainFiller(trainStmt *ir.TrainStmt, session *pb.Session, ossURI string)
 		epoch = epochAttr.(int)
 		delete(params["train."], "epoch")
 	}
+	if _, ok := params["train."]["num_workers"]; ok {
+		delete(params["train."], "num_workers")
+	}
 
 	if len(trainStmt.Features) != 1 {
 		return nil, fmt.Errorf("xgboost only support 1 feature column set, received %d", len(trainStmt.Features))
