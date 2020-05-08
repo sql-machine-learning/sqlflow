@@ -27,5 +27,6 @@ go get github.com/mattn/goveralls
 go get github.com/rakyll/gotest
 go get github.com/wangkuiyi/goyaccfmt
 go get github.com/wangkuiyi/yamlfmt
+go get github.com/wangkuiyi/ipynb/markdown-to-ipynb
 
 cp "$GOPATH"/bin/* /usr/local/bin/

@@ -117,7 +117,7 @@ fi
 
  # Expose MySQL server, SQLFlow gRPC server, and Jupyter Notebook server port
 EXPOSE 3306
-EXPOSE 50051 
+EXPOSE 50051
 EXPOSE 8888
 
 ADD scripts/start.sh /
