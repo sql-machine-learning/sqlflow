@@ -15,7 +15,7 @@ RUN apt-get -qq update
 COPY scripts/docker/install-download-tools.bash /
 RUN /install-download-tools.bash
 
-# Install it2check
+# Install shellcheck
 COPY scripts/docker/install-shell-tools.bash /
 RUN /install-shell-tools.bash
 
