@@ -37,6 +37,7 @@ type Filler struct {
 	WorkflowTTL      int
 	SecretName       string
 	SecretData       string
+	Resources        string
 }
 
 const coulerTemplateText = `
@@ -58,12 +59,16 @@ if "{{.SecretName}}" != "":
 	secret_data=json.loads('''{{.SecretData}}''')
 	sqlflow_secret = couler.secret(secret_data, name="{{ .SecretName }}", dry_run=True)
 
+resources = None
+if '''{{.Resources}}''' != "":
+  resources=json.loads('''{{.Resources}}''')
+
 couler.clean_workflow_after_seconds_finished({{.WorkflowTTL}})
 
 {{ range $ss := .SQLStatements }}
 	{{if $ss.IsExtendedSQL }}
 
-steps.sqlflow(sql='''{{ $ss.OriginalSQL }}''', image="{{ $ss.DockerImage }}", env=step_envs, secret=sqlflow_secret)
+steps.sqlflow(sql='''{{ $ss.OriginalSQL }}''', image="{{ $ss.DockerImage }}", env=step_envs, secret=sqlflow_secret, resources=resources)
 	{{else if $ss.IsKatibTrain}}
 import couler.sqlflow.katib as auto
 
@@ -75,7 +80,7 @@ auto.train(model=model, params=params, sql=escape_sql(train_sql), datasource=dat
 # TODO(yancey1989): 
 #	using "repl -parse" to output IR and
 #	feed to "sqlflow_submitter.{submitter}.train" to submit the job
-steps.sqlflow(sql='''{{ $ss.OriginalSQL }}''', image="{{ $ss.DockerImage }}", env=step_envs)
+steps.sqlflow(sql='''{{ $ss.OriginalSQL }}''', image="{{ $ss.DockerImage }}", env=step_envs, resources=resources)
 	{{end}}
 {{end}}
 `

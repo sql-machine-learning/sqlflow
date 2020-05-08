@@ -66,6 +66,15 @@ func getStepEnvs(session *pb.Session) (map[string]string, error) {
 	fillEnvFromSession(&envs, session)
 	return envs, nil
 }
+func verifyResources(resources string) error {
+	if resources != "" {
+		var r map[string]interface{}
+		if e := json.Unmarshal([]byte(resources), &r); e != nil {
+			return fmt.Errorf("WORKFLOW_RESOURCES: %s should be JSON format", resources)
+		}
+	}
+	return nil
+}
 
 func getSecret() (string, string, error) {
 	secretMap := make(map[string]map[string]string)
@@ -103,6 +112,9 @@ func GenFiller(programIR []ir.SQLFlowStmt, session *pb.Session) (*Filler, error)
 	if e != nil {
 		return nil, e
 	}
+	if e := verifyResources(os.Getenv("SQLFLOW_WORKFLOW_RESOURCES")); e != nil {
+		return nil, e
+	}
 
 	r := &Filler{
 		DataSource:  session.DbConnStr,
@@ -110,6 +122,7 @@ func GenFiller(programIR []ir.SQLFlowStmt, session *pb.Session) (*Filler, error)
 		WorkflowTTL: workflowTTL,
 		SecretName:  secretName,
 		SecretData:  secretData,
+		Resources:   os.Getenv("SQLFLOW_WORKFLOW_RESOURCES"),
 	}
 	// NOTE(yancey1989): does not use ModelImage here since the Predict statement
 	// does not contain the ModelImage field in SQL Program IR.

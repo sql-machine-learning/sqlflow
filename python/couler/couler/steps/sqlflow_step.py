@@ -21,10 +21,15 @@ def escape_sql(original_sql):
         "`", r'\`').replace("$", r'\$')
 
 
-def sqlflow(sql, image="sqlflow/sqlflow", env=None, secret=None):
+def sqlflow(sql,
+            image="sqlflow/sqlflow",
+            env=None,
+            secret=None,
+            resources=None):
     '''sqlflow step call run_container to append a workflow step.
     '''
     couler.run_container(command='''step -e "%s"''' % escape_sql(sql),
                          image=image,
                          env=env,
-                         secret=secret)
+                         secret=secret,
+                         resources=resources)
