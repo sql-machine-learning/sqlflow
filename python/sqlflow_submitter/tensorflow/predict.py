@@ -39,7 +39,9 @@ if tf_is_version2():
     tf.get_logger().setLevel(logging.ERROR)
 else:
     tf.logging.set_verbosity(tf.logging.ERROR)
-    from .pai_distributed import define_tf_flags, make_distributed_info_without_evaluator, dump_into_tf_config
+    from .pai_distributed import (define_tf_flags,
+                                  make_distributed_info_without_evaluator,
+                                  dump_into_tf_config)
 
 
 def keras_predict(estimator, model_params, save, result_table, is_pai,
@@ -48,8 +50,12 @@ def keras_predict(estimator, model_params, save, result_table, is_pai,
                   hive_location, hdfs_user, hdfs_pass):
     classifier = estimator(**model_params)
     classifier_pkg = sys.modules[estimator.__module__]
-
-    conn = db.connect_with_data_source(datasource)
+    conn = None
+    if is_pai:
+        driver = "pai_maxcompute"
+    else:
+        conn = db.connect_with_data_source(datasource)
+        driver = conn.driver
 
     def eval_input_fn(batch_size, cache=False):
         feature_types = []
@@ -68,8 +74,8 @@ def keras_predict(estimator, model_params, save, result_table, is_pai,
                                                  feature_column_names, None,
                                                  feature_metas)
         else:
-            gen = db.db_generator(conn.driver, conn, select,
-                                  feature_column_names, None, feature_metas)
+            gen = db.db_generator(driver, conn, select, feature_column_names,
+                                  None, feature_metas)
         dataset = tf.data.Dataset.from_generator(gen, (tuple(feature_types), ))
         ds_mapper = functools.partial(
             parse_sparse_feature_predict,
@@ -80,8 +86,8 @@ def keras_predict(estimator, model_params, save, result_table, is_pai,
             dataset = dataset.cache()
         return dataset
 
-    # NOTE: always use batch_size=1 when predicting to get the pairs of features and predict results
-    #       to insert into result table.
+    # NOTE: always use batch_size=1 when predicting to get the pairs of
+    #       features and predict results to insert into result table.
     pred_dataset = eval_input_fn(1)
     one_batch = next(iter(pred_dataset))
     # NOTE: must run predict one batch to initialize parameters
@@ -89,12 +95,11 @@ def keras_predict(estimator, model_params, save, result_table, is_pai,
     classifier.predict_on_batch(one_batch)
     classifier.load_weights(save)
     pred_dataset = eval_input_fn(1, cache=True).make_one_shot_iterator()
-    buff_rows = []
     column_names = feature_column_names[:]
     column_names.append(result_col_name)
-    with db.buffered_db_writer(conn.driver, conn, result_table, column_names,
-                               100, hdfs_namenode_addr, hive_location,
-                               hdfs_user, hdfs_pass) as w:
+    with db.buffered_db_writer(driver, conn, result_table, column_names, 100,
+                               hdfs_namenode_addr, hive_location, hdfs_user,
+                               hdfs_pass) as w:
         for features in pred_dataset:
             result = classifier.predict_on_batch(features)
             result = classifier_pkg.prepare_prediction_column(result[0])
