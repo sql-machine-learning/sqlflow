@@ -1,6 +1,7 @@
 FROM ubuntu:18.04
 
-# The default source archive.ubuntu.com is busy and slow. We use the following source makes docker build running faster.
+# The default source archive.ubuntu.com is busy and slow. We use the
+# following source makes docker build running faster.
 RUN echo '\n\
 deb http://us.archive.ubuntu.com/ubuntu/ bionic main restricted universe multiverse \n\
 deb http://us.archive.ubuntu.com/ubuntu/ bionic-security main restricted universe multiverse \n\
