@@ -12,24 +12,24 @@ deb http://us.archive.ubuntu.com/ubuntu/ bionic-backports main restricted univer
 RUN apt-get -qq update
 
 # Install wget, curl, unzip, bzip2, git
-COPY scripts/docker/install-download-tools.bash /
+COPY install-download-tools.bash /
 RUN /install-download-tools.bash
 
 # Install shellcheck
-COPY scripts/docker/install-shell-tools.bash /
+COPY install-shell-tools.bash /
 RUN /install-shell-tools.bash
 
 # MySQL server and client
-COPY scripts/docker/install-mysql.bash /
+COPY install-mysql.bash /
 RUN /install-mysql.bash
 
 # Install protobuf and protoc
-COPY scripts/docker/install-protobuf.bash /
+COPY install-protobuf.bash /
 RUN /install-protobuf.bash
 
 # Need Java SDK to build remote parsers
 ENV JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
-COPY scripts/docker/install-java.bash /
+COPY install-java.bash /
 RUN /install-java.bash
 # Make mvn compile quiet
 ENV MAVEN_OPTS -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
@@ -37,29 +37,29 @@ ENV MAVEN_OPTS -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jM
 # Using the stable version of Hadoop
 ENV HADOOP_VERSION 3.2.1
 ENV PATH /opt/hadoop-${HADOOP_VERSION}/bin:/usr/local/go/bin:/go/bin:$PATH
-COPY scripts/docker/install-hadoop.bash /
+COPY install-hadoop.bash /
 RUN /install-hadoop.bash
 
 # Python 3, TensorFlow 2.0.0, etc
-COPY scripts/docker/install-python.bash /
+COPY install-python.bash /
 RUN /install-python.bash
 
 # Go, goyacc, protoc-gen-go, and other Go tools
 ENV GOPATH /root/go
 ENV PATH /usr/local/go/bin:$GOPATH/bin:$PATH
-COPY scripts/docker/install-go.bash /
+COPY install-go.bash /
 RUN /install-go.bash
 
 # ODPS
-COPY scripts/docker/install-odps.bash /
+COPY install-odps.bash /
 RUN /install-odps.bash
 
 # ElasticDL and kubectl
-COPY scripts/docker/install-elasticdl.bash /
+COPY install-elasticdl.bash /
 RUN /install-elasticdl.bash
 
 # The SQLFlow magic command for Jupyter.
 ENV IPYTHON_STARTUP /root/.ipython/profile_default/startup/
-COPY scripts/docker/install-jupyter.bash /
-COPY scripts/docker/js /js
+COPY install-jupyter.bash /
+COPY js /js
 RUN /install-jupyter.bash
