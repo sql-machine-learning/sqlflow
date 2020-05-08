@@ -15,7 +15,7 @@ In the REPL mode, `sqlflow` supports automatic code completion and other feature
 We can run an example session by typing the following command on macOS.  We assume you have installed [Docker](https://docs.docker.com/get-docker/) on your computer.
 
 ```bash
-docker run -d --rm -P -p 50051 --name sqlflowserver \
+docker run -d --rm -P --name sqlflowserver \
     sqlflow/sqlflow bash -c "/start.sh sqlflow-server-with-dataset"
 
 sqlflow --sqlflow_server="$(docker port sqlflowserver 50051)" \

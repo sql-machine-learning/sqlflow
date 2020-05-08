@@ -15,7 +15,7 @@ RUN apt-get -qq update
 COPY scripts/docker/install-download-tools.bash /
 RUN /install-download-tools.bash
 
-# Install it2check
+# Install shellcheck
 COPY scripts/docker/install-shell-tools.bash /
 RUN /install-shell-tools.bash
 
@@ -109,10 +109,16 @@ RUN if [ "${WITH_SQLFLOW_MODELS:-ON}" = "ON" ]; then \
   git clone https://github.com/sql-machine-learning/models.git && \
   cd models && \
   git checkout c897963f821d515651de79cb4ef1fbf6126ecaa5 && \
-  bash -c "python setup.py -q install" && \
+  python setup.py bdist_wheel && \
+  pip install dist/*.whl && \
   cd .. && \
   rm -rf models; \
 fi
+
+ # Expose MySQL server, SQLFlow gRPC server, and Jupyter Notebook server port
+EXPOSE 3306
+EXPOSE 50051 
+EXPOSE 8888
 
 ADD scripts/start.sh /
 CMD ["bash", "/start.sh"]
