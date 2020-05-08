@@ -29,6 +29,7 @@ import (
 
 var defaultDockerImage = "sqlflow/sqlflow"
 var workflowTTL = 24 * 3600
+var envResource = "SQLFLOW_WORKFLOW_RESOURCES"
 
 // Codegen generates Couler program
 type Codegen struct{}
@@ -70,7 +71,7 @@ func verifyResources(resources string) error {
 	if resources != "" {
 		var r map[string]interface{}
 		if e := json.Unmarshal([]byte(resources), &r); e != nil {
-			return fmt.Errorf("WORKFLOW_RESOURCES: %s should be JSON format", resources)
+			return fmt.Errorf("%s: %s should be JSON format", envResource, resources)
 		}
 	}
 	return nil
@@ -112,7 +113,7 @@ func GenFiller(programIR []ir.SQLFlowStmt, session *pb.Session) (*Filler, error)
 	if e != nil {
 		return nil, e
 	}
-	if e := verifyResources(os.Getenv("SQLFLOW_WORKFLOW_RESOURCES")); e != nil {
+	if e := verifyResources(os.Getenv(envResource)); e != nil {
 		return nil, e
 	}
 
@@ -122,7 +123,7 @@ func GenFiller(programIR []ir.SQLFlowStmt, session *pb.Session) (*Filler, error)
 		WorkflowTTL: workflowTTL,
 		SecretName:  secretName,
 		SecretData:  secretData,
-		Resources:   os.Getenv("SQLFLOW_WORKFLOW_RESOURCES"),
+		Resources:   os.Getenv(envResource),
 	}
 	// NOTE(yancey1989): does not use ModelImage here since the Predict statement
 	// does not contain the ModelImage field in SQL Program IR.

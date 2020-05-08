@@ -84,7 +84,7 @@ func TestCoulerCodegen(t *testing.T) {
 	sqlIR := MockSQLProgramIR()
 	os.Setenv("SQLFLOW_OSS_AK", "oss_key")
 	os.Setenv("SQLFLOW_WORKFLOW_SECRET", `{"sqlflow-secret":{"oss_sk": "oss_sk"}}`)
-	os.Setenv("SQLFLOW_WORKFLOW_RESOURCES", `{"memory": "32Mi", "cpu": "100m"}`)
+	os.Setenv(envResource, `{"memory": "32Mi", "cpu": "100m"}`)
 	defer os.Unsetenv("SQLFLOW_OSS_AK")
 	cg := &Codegen{}
 	code, err := cg.GenCode(sqlIR, &pb.Session{})
