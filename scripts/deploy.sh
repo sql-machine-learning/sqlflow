@@ -52,6 +52,8 @@ if [[ "$DOCKER_TAG" != "" ]]; then
     echo "docker push sqlflow/sqlflow:$DOCKER_TAG"
     echo "$DOCKER_PASSWORD" | \
 	docker login --username "$DOCKER_USERNAME" --password-stdin
+    docker tag sqlflow:ci sqlflow/sqlflow:ci
+    docker push sqlflow/sqlflow:ci
     docker tag sqlflow:ci sqlflow/sqlflow:$DOCKER_TAG
     docker push sqlflow/sqlflow:$DOCKER_TAG
 fi
