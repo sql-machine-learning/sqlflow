@@ -19,13 +19,12 @@ docker pull sqlflow/sqlflow:ci
 set -e
 
 echo "build the devbox image sqlflow:dev"
-(cd $TRAVIS_BUILD_DIR/docker/dev
- docker build --cache-from sqlflow/sqlflow:ci -t sqlflow:dev .)
+cd $TRAVIS_BUILD_DIR/docker/dev
+docker build --cache-from sqlflow/sqlflow:ci -t sqlflow:dev .
 
 echo "build SQLFlow from source into $TRAVIS_BUILD_DIR/build using sqlflow:dev"
-(cd $TRAVIS_BUILD_DIR
- docker run --rm -it -v $TRAVIS_BUILD_DIR:/work -w /work sqlflow:dev)
+docker run --rm -it -v $TRAVIS_BUILD_DIR:/work -w /work sqlflow:dev
 
 echo "build sqlflow:ci byloading $TRAVIS_BUILD_DIR/build"
-(cd $TRAVIS_BUILD_DIR
- docker build -t sqlflow:ci .)
+cd $TRAVIS_BUILD_DIR
+docker build -t sqlflow:ci .
