@@ -13,7 +13,7 @@
 # limitations under the License.
 
 echo "try to pull sqlflow/sqlflow:ci"
-docker --quiet pull sqlflow/sqlflow:ci
+docker pull sqlflow/sqlflow:ci
 
 # Exit for any error.
 set -e
