@@ -35,6 +35,7 @@ type trainFiller struct {
 const tfTrainTemplateText = `
 import copy
 import tensorflow as tf
+import sqlflow_submitter
 from sqlflow_submitter.tensorflow.train import train
 from sqlflow_submitter.tensorflow.get_tf_version import tf_is_version2
 from tensorflow.estimator import (DNNClassifier,
@@ -111,6 +112,12 @@ feature_columns = eval(feature_columns_code)
 
 train_max_steps = {{index .TrainParams "max_steps" | attrToPythonValue}}
 train_max_steps = None if train_max_steps == 0 else train_max_steps
+
+model_import_name = sqlflow_submitter.get_import_name("""{{.Estimator}}""")
+try:
+    globals()[model_import_name] = __import__(model_import_name)
+except Exception as e:
+    print("failed to import %s: %s" % (model_import_name, e))
 
 train(datasource="{{.DataSource}}",
       estimator={{.Estimator}},

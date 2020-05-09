@@ -36,6 +36,7 @@ type predFiller struct {
 
 const tfPredTemplateText = `
 import tensorflow as tf
+import sqlflow_submitter
 from sqlflow_submitter.tensorflow.predict import pred
 from sqlflow_submitter.tensorflow.get_tf_version import tf_is_version2
 from tensorflow.estimator import DNNClassifier, DNNRegressor, LinearClassifier, LinearRegressor, BoostedTreesClassifier, BoostedTreesRegressor, DNNLinearCombinedClassifier, DNNLinearCombinedRegressor
@@ -83,6 +84,12 @@ model_params["{{$k}}"]={{$v | attrToPythonValue}}
 {{end}}
 
 feature_columns = {{.FeatureColumnCode}}
+
+model_import_name = sqlflow_submitter.get_import_name("""{{.Estimator}}""")
+try:
+    globals()[model_import_name] = __import__(model_import_name)
+except Exception as e:
+    print("failed to import %s: %s" % (model_import_name, e))
 
 pred(datasource="{{.DataSource}}",
      estimator={{.Estimator}},
