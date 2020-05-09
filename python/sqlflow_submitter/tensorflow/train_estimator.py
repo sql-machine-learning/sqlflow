@@ -14,6 +14,7 @@
 import tensorflow as tf
 
 from . import metrics
+from .diagnosis import check_and_load_estimator
 from .get_tf_version import tf_is_version2
 from .input_fn import input_fn
 from .pai_distributed import make_estimator_distributed_runconfig
@@ -41,7 +42,7 @@ def estimator_train_and_save(estimator, model_params, save, is_pai, FLAGS,
     else:
         model_params["model_dir"] = save
 
-    classifier = estimator(**model_params)
+    classifier = check_and_load_estimator(estimator, model_params)
 
     # do not add default Accuracy metric when using estimator to train, it will fail
     # when the estimator is a regressor, and estimator seems automatically add some

@@ -69,8 +69,10 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
         validate_dataset = val_dataset_fn()
     else:
         validate_dataset = None
-
-    classifier = estimator(**model_params)
+    try:
+        classifier = estimator(**model_params)
+    except Exception as e:
+        raise RuntimeError("estimator failed: %s", e)
     classifier.compile(optimizer=optimizer, loss=loss, metrics=keras_metrics)
 
     if is_pai and len(FLAGS.worker_hosts.split(",")) > 1:
