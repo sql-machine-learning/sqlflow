@@ -46,14 +46,12 @@ if [[ "$TRAVIS_BRANCH" == "develop" ]]; then
     fi
 elif [[ "$TRAVIS_TAG" != "" ]]; then
     DOCKER_TAG="$TRAVIS_TAG"
+else
+    DOCKER_TAG="ci"
 fi
 
-if [[ "$DOCKER_TAG" != "" ]]; then
-    echo "docker push sqlflow/sqlflow:$DOCKER_TAG"
-    echo "$DOCKER_PASSWORD" | \
-	docker login --username "$DOCKER_USERNAME" --password-stdin
-    docker tag sqlflow:ci sqlflow/sqlflow:ci
-    docker push sqlflow/sqlflow:ci
-    docker tag sqlflow:ci sqlflow/sqlflow:$DOCKER_TAG
-    docker push sqlflow/sqlflow:$DOCKER_TAG
-fi
+echo "docker push sqlflow/sqlflow:$DOCKER_TAG"
+echo "$DOCKER_PASSWORD" | \
+    docker login --username "$DOCKER_USERNAME" --password-stdin
+docker tag sqlflow:ci sqlflow/sqlflow:$DOCKER_TAG
+docker push sqlflow/sqlflow:$DOCKER_TAG
