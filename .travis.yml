@@ -36,10 +36,9 @@ jobs:
   include:
   - stage: BuildDockerAndPreCommit
     script:
-    - set -e
-    - $TRAVIS_BUILD_DIR/scripts/travis/build.sh
-    - docker run --rm -v $TRAVIS_BUILD_DIR:/work -w /work sqlflow:ci
-      pre-commit run -a --show-diff-on-failure
+    - $TRAVIS_BUILD_DIR/scripts/travis/build.sh &&
+      docker run --rm -v $TRAVIS_BUILD_DIR:/work -w /work sqlflow:ci
+        pre-commit run -a --show-diff-on-failure
   - stage: Unitests
     # env is just used for displaying the job type in travis web page
     env: SQLFLOW_TEST_DB=mysql
