@@ -98,7 +98,10 @@ func addLineToStmt(line string, inQuotedString, isSingleQuoted *bool, statements
 			}
 		case ';':
 			if !*inQuotedString { // We found a statement
-				if i-start != 1 { // Ignore empty statement that has only a ';'
+				// Ignore empty statement that has only a ';'
+				if i == 0 && len((*statements)[len(*statements)-1]) != 0 {
+					(*statements)[len(*statements)-1] += line[start : i+1]
+				} else if i != start {
 					(*statements)[len(*statements)-1] += line[start : i+1]
 				}
 				for i+1 < len(line) && isSpace(line[i+1]) {
@@ -108,8 +111,10 @@ func addLineToStmt(line string, inQuotedString, isSingleQuoted *bool, statements
 				if start == len(line) {
 					return true // All done, the last character in the line is the end of a statement
 				}
-				*statements = append(*statements, "") // Prepare for searching the next statement
-
+				if len((*statements)[len(*statements)-1]) != 0 {
+					// Prepare for searching the next statement: reuse the buffer if the current statement is empty
+					*statements = append(*statements, "")
+				}
 			}
 		case '-':
 			if !*inQuotedString {
@@ -227,7 +232,7 @@ func assertConnectable(serverAddr, ds string) {
 		return runStmtOnServer(serverAddr, `select "I'm alive";`, true, ds)
 	})
 	if err != nil {
-		log.Fatalf("Can't connect to %s\n", ds)
+		log.Fatalf("Can't connect to %s: %v\n", ds, err)
 	}
 }
 
@@ -268,6 +273,9 @@ func switchDatabase(serverAddr, ds, db string) error {
 
 // getDataSource generates a data source string that is using database `db` from the original dataSource
 func getDataSource(dataSource, db string) string {
+	if db == "" {
+		return dataSource
+	}
 	driver, other, e := database.ParseURL(dataSource)
 	if e != nil {
 		log.Fatalf("unrecognized data source '%s'", dataSource)

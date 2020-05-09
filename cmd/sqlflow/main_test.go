@@ -508,6 +508,30 @@ func TestReadStmt(t *testing.T) {
 	a.Equal(1, len(stmt))
 	a.Equal("SELECT\t\n1;", stmt[0])
 
+	sql5 := `CREATE TABLE a(\na int, b int\n);`
+	scanner = bufio.NewScanner(strings.NewReader(sql5))
+	stmt, err = readStmt(scanner)
+	fmt.Println(stmt)
+	a.Nil(err)
+	a.Equal(1, len(stmt))
+	a.Equal("CREATE TABLE a(\na int, b int\n);", stmt[0])
+
+	sql6 := `CREATE TABLE a(\na int, b int\n);   ;`
+	scanner = bufio.NewScanner(strings.NewReader(sql6))
+	stmt, err = readStmt(scanner)
+	fmt.Println(stmt)
+	a.Nil(err)
+	a.Equal(2, len(stmt))
+	a.Equal("CREATE TABLE a(\na int, b int\n);", stmt[0])
+
+	sql7 := `CREATE TABLE a(\na int, b int\n);   ;; ;  \n;   \n  ;`
+	scanner = bufio.NewScanner(strings.NewReader(sql7))
+	stmt, err = readStmt(scanner)
+	fmt.Println(stmt)
+	a.Nil(err)
+	a.Equal(2, len(stmt))
+	a.Equal("CREATE TABLE a(\na int, b int\n);", stmt[0])
+
 }
 
 func TestPromptState(t *testing.T) {
