@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Exit for any error.
-set -e
-
 # Try to pull from DockerHub.com
 docker pull sqlflow/sqlflow:ci
+
+# Exit for any error.
+set -e
 
 # Build the devbox image while seeing if there are layers can be reused.
 (cd $TRAVIS_BUILD_DIR/docker/dev
