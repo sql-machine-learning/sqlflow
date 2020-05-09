@@ -13,7 +13,7 @@ VOLUME /var/lib/mysql
 # Install the Python source code.
 # TODO(yi): It seems that we don't need to build python/couler into a wheel.
 COPY python /usr/local/sqlflow/python
-ENV PYTHONPATH /usr/local/sqlflow/python
+ENV PYTHONPATH=/usr/local/sqlflow/python:$PYTHONPATH
 
 # Install Couler, Fluid, and model zoo.
 COPY build/*.whl /usr/local/sqlflow/python/
