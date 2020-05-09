@@ -176,12 +176,7 @@ func (s *paiSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 	if e != nil {
 		return e
 	}
-	customModelPkg := ""
-	modelNameParts := strings.Split(cl.Estimator, ".")
-	if len(modelNameParts) == 2 && modelNameParts[0] != "sqlflow_models" {
-		customModelPkg = modelNameParts[0]
-	}
-	return s.submitPAITask(code, paiCmd, requirements, customModelPkg)
+	return s.submitPAITask(code, paiCmd, requirements, cl.Estimator)
 }
 
 func cleanOSSModelPath(ossModelPath, project string) error {
@@ -192,8 +187,8 @@ func cleanOSSModelPath(ossModelPath, project string) error {
 	return deleteDirRecursive(bucket, ossModelPath)
 }
 
-func (s *paiSubmitter) submitPAITask(code, paiCmd, requirements, customModelPkg string) error {
-	if e := achieveResource(s.Cwd, code, requirements, tarball, customModelPkg); e != nil {
+func (s *paiSubmitter) submitPAITask(code, paiCmd, requirements, estimator string) error {
+	if e := achieveResource(s.Cwd, code, requirements, tarball, estimator); e != nil {
 		return e
 	}
 	_, datasourceName, e := database.ParseURL(s.Session.DbConnStr)
@@ -257,12 +252,7 @@ func (s *paiSubmitter) ExecutePredict(cl *ir.PredictStmt) error {
 	if e != nil {
 		return e
 	}
-	customModelPkg := ""
-	modelNameParts := strings.Split(estimator, ".")
-	if len(modelNameParts) == 2 && modelNameParts[0] != "sqlflow_models" {
-		customModelPkg = modelNameParts[0]
-	}
-	return s.submitPAITask(code, paiCmd, requirements, customModelPkg)
+	return s.submitPAITask(code, paiCmd, requirements, estimator)
 }
 
 func (s *paiSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
@@ -316,13 +306,7 @@ func (s *paiSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 		return e
 	}
 
-	customModelPkg := ""
-	modelNameParts := strings.Split(estimator, ".")
-	if len(modelNameParts) == 2 && modelNameParts[0] != "sqlflow_models" {
-		customModelPkg = modelNameParts[0]
-	}
-
-	if e = s.submitPAITask(expn.Code, expn.PaiCmd, expn.Requirements, customModelPkg); e != nil {
+	if e = s.submitPAITask(expn.Code, expn.PaiCmd, expn.Requirements, estimator); e != nil {
 		return e
 	}
 	if img, e := expn.Draw(); e == nil {
@@ -389,13 +373,7 @@ func (s *paiSubmitter) ExecuteEvaluate(cl *ir.EvaluateStmt) error {
 		return e
 	}
 
-	customModelPkg := ""
-	modelNameParts := strings.Split(estimator, ".")
-	if len(modelNameParts) == 2 && modelNameParts[0] != "sqlflow_models" {
-		customModelPkg = modelNameParts[0]
-	}
-
-	if e = s.submitPAITask(code, paiCmd, requirements, customModelPkg); e != nil {
+	if e = s.submitPAITask(code, paiCmd, requirements, estimator); e != nil {
 		return e
 	}
 	return e
@@ -553,7 +531,7 @@ func createExplainResultTable(db *database.DB, ir *ir.ExplainStmt, tableName str
 	return nil
 }
 
-func achieveResource(cwd, entryCode, requirements, tarball, customModelPkg string) error {
+func achieveResource(cwd, entryCode, requirements, tarball, estimator string) error {
 	if err := writeFile(filepath.Join(cwd, entryFile), entryCode); err != nil {
 		return err
 	}
@@ -584,15 +562,21 @@ func achieveResource(cwd, entryCode, requirements, tarball, customModelPkg strin
 	}
 
 	// add any other custom model packages
-	if customModelPkg != "" {
-		path, err = findPyModulePath(customModelPkg)
-		if err != nil {
-			return err
-		}
-		cmd = exec.Command("cp", "-r", path, ".")
-		cmd.Dir = cwd
-		if _, err := cmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("failed %s, %v", cmd, err)
+	fmt.Printf("submitting with model dep: %s\n", estimator)
+	if estimator != "" {
+		modelNameParts := strings.Split(estimator, ".")
+		if len(modelNameParts) == 2 && modelNameParts[0] != "sqlflow_models" {
+			customModelPkg := modelNameParts[0]
+			fmt.Printf("adding %s\n", customModelPkg)
+			path, err = findPyModulePath(customModelPkg)
+			if err != nil {
+				return err
+			}
+			cmd = exec.Command("cp", "-r", path, ".")
+			cmd.Dir = cwd
+			if _, err := cmd.CombinedOutput(); err != nil {
+				return fmt.Errorf("failed %s, %v", cmd, err)
+			}
 		}
 	}
 
