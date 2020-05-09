@@ -15,5 +15,10 @@ coverage.out
 .vscode
 .cache
 *.pb.go
-
 !pkg/log
+build
+target
+?
+ParserGrpc.java
+ParserProto.java
+flymake_*

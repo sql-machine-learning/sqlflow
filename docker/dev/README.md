@@ -30,5 +30,10 @@ sub-directory `build`.  Please be aware that it also bind mounts
 Maven cache and reduce the building time of Java code.
 
 ```bash
-docker run --rm -v $PWD:/work -v $HOME/.m2:/root/.m2 sqlflow:dev
+docker run --rm -it \
+  -v $GOPATH:/root/go \
+  -v $HOME/.m2:/root/.m2 \
+  -v $HOME/.cache:/root/.cache \
+  -v $PWD:/work -w /work \
+  sqlflow:dev
 ```

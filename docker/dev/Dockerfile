@@ -1,14 +1,17 @@
 FROM ubuntu:18.04
 
-# The default source archive.ubuntu.com is busy and slow. We use the
-# following source makes docker build running faster.
-RUN echo '\n\
-deb http://us.archive.ubuntu.com/ubuntu/ bionic main restricted universe multiverse \n\
-deb http://us.archive.ubuntu.com/ubuntu/ bionic-security main restricted universe multiverse \n\
-deb http://us.archive.ubuntu.com/ubuntu/ bionic-updates main restricted universe multiverse \n\
-deb http://us.archive.ubuntu.com/ubuntu/ bionic-proposed main restricted universe multiverse \n\
-deb http://us.archive.ubuntu.com/ubuntu/ bionic-backports main restricted universe multiverse \n\
-' > /etc/apt/sources.list
+# The default Ubuntu apt-get source archive.ubuntu.com is usually busy
+# and slow.  If you are in the U.S., you might want to use
+# http://us.archive.ubuntu.com/ubuntu/, or if you are in China, you
+# can try https://mirrors.tuna.tsinghua.edu.cn/ubuntu/
+ARG APT_MIRROR="http://us.archive.ubuntu.com/ubuntu/"
+RUN echo "\n\
+deb $APT_MIRROR bionic main restricted universe multiverse \n\
+deb $APT_MIRROR bionic-security main restricted universe multiverse \n\
+deb $APT_MIRROR bionic-updates main restricted universe multiverse \n\
+deb $APT_MIRROR bionic-proposed main restricted universe multiverse \n\
+deb $APT_MIRROR bionic-backports main restricted universe multiverse \n\
+" > /etc/apt/sources.list
 
 RUN apt-get -qq update
 
@@ -32,8 +35,6 @@ RUN /install-protobuf.bash
 ENV JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
 COPY install-java.bash /
 RUN /install-java.bash
-# Make mvn compile quiet
-ENV MAVEN_OPTS -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
 
 # Using the stable version of Hadoop
 ENV HADOOP_VERSION 3.2.1
@@ -68,4 +69,4 @@ RUN /install-jupyter.bash
 # Set build.sh as the entrypoint and assume that SQLFlow source tree
 # is at /work.
 COPY build.sh /
-ENTRYPOINT ["/build.sh", "/work"]
+CMD ["/build.sh", "/work"]

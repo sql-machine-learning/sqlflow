@@ -10,28 +10,31 @@ COPY doc/datasets/popularize_churn.sql \
      /docker-entrypoint-initdb.d/
 VOLUME /var/lib/mysql
 
-ENV SQLFLOWPATH=$GOPATH/src/sqlflow.org/sqlflow
-ENV PYTHONPATH $SQLFLOWPATH/python
-ENV SQLFLOW_PARSER_SERVER_PORT 12300
-ENV SQLFLOW_PARSER_SERVER_LOADING_PATH /opt/sqlflow/parser
+# Install the Python source code.
+# TODO(yi): It seems that we don't need to build python/couler into a wheel.
+COPY python /usr/local/sqlflow/python
+ENV PYTHONPATH /usr/local/sqlflow/python
 
-ARG WITH_SQLFLOW_MODELS="ON"
-# Install latest sqlflow_models for testing custom models, see main_test.go:CaseTrainCustomModel
-# NOTE: The sqlflow_models works well on the specific Tensorflow version,
-#       we can skip installing sqlflow_models if using the older Tensorflow.
-RUN if [ "${WITH_SQLFLOW_MODELS:-ON}" = "ON" ]; then \
-  git clone https://github.com/sql-machine-learning/models.git && \
-  cd models && \
-  git checkout c897963f821d515651de79cb4ef1fbf6126ecaa5 && \
-  python setup.py bdist_wheel && \
-  pip install dist/*.whl && \
-  cd .. && \
-  rm -rf models; \
-fi
+# Install Couler, Fluid, and model zoo.
+COPY build/*.whl /usr/local/sqlflow/python/
+RUN pip install /usr/local/sqlflow/python/*.whl
+
+# Install the pre-built binaries
+COPY build/sqlflowserver /usr/local/bin
+COPY build/sqlflow /usr/local/bin
+COPY build/step /usr/local/bin
+
+# Install the Java gRPC parser servers.
+COPY build/*.jar /usr/local/sqlflow/java/
+ENV SQLFLOW_PARSER_SERVER_PORT 12300
+ENV SQLFLOW_PARSER_SERVER_LOADING_PATH /usr/local/sqlflow/java
+
+# Install the tutorials
+COPY build/tutorial /workspace
 
  # Expose MySQL server, SQLFlow gRPC server, and Jupyter Notebook server port
 EXPOSE 3306
-EXPOSE 50051 
+EXPOSE 50051
 EXPOSE 8888
 
 ADD scripts/start.sh /
