@@ -113,14 +113,8 @@ feature_columns = eval(feature_columns_code)
 train_max_steps = {{index .TrainParams "max_steps" | attrToPythonValue}}
 train_max_steps = None if train_max_steps == 0 else train_max_steps
 
-model_import_name = sqlflow_submitter.get_import_name("""{{.Estimator}}""")
-try:
-    globals()[model_import_name] = __import__(model_import_name)
-except Exception as e:
-    print("failed to import %s: %s" % (model_import_name, e))
-
 train(datasource="{{.DataSource}}",
-      estimator={{.Estimator}},
+      estimator_string="""{{.Estimator}}""",
       select="""{{.TrainSelect}}""",
       validation_select="""{{.ValidationSelect}}""",
       feature_columns=feature_columns,

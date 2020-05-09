@@ -1824,8 +1824,8 @@ func CasePAIMaxComputeWuyiTest(t *testing.T) {
 	exp17, clk17, exp18, clk18, exp19, clk19, exp20, clk20, exp21, clk21, exp22, clk22, exp23, clk23, exp24, clk24, later8
 FROM alifin_jtest_dev.wuyi_app_homepage_uv_hour_train_1
 TO TRAIN sqlflow_models.LSTMBasedTimeSeriesModel
-WITH model.n_in = 24, model.stack_units = [500, 500], model.n_out=24, model.n_features=2,
-		train.epoch=50, train.batch_size=64, validation.metrics= "MeanAbsoluteError,MeanSquaredError",
+WITH model.n_in = 24, model.stack_units = [256, 256, 256], model.n_out=24, model.n_features=2,
+		train.epoch=30, train.batch_size=48, validation.metrics= "MeanAbsoluteError,MeanAbsolutePercentageError",
 		validation.select="select * from alifin_jtest_dev.wuyi_app_homepage_uv_hour_val"
 LABEL later8
 INTO wuyi_ts_app_homepage_exp_hour_24;`
@@ -2115,12 +2115,12 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 
 	t.Run("group", func(t *testing.T) {
-		// t.Run("CasePAIMaxComputeWuyiTest", CasePAIMaxComputeWuyiTest)
+		t.Run("CasePAIMaxComputeWuyiTest", CasePAIMaxComputeWuyiTest)
 
 		// t.Run("CasePAIMaxComputeDNNTrainPredictExplain", CasePAIMaxComputeDNNTrainPredictExplain)
 		// t.Run("CasePAIMaxComputeTrainDenseCol", CasePAIMaxComputeTrainDenseCol)
 		// t.Run("CasePAIMaxComputeTrainXGBoost", CasePAIMaxComputeTrainXGBoost)
-		t.Run("CasePAIMaxComputeTrainCustomModel", CasePAIMaxComputeTrainCustomModel)
+		// t.Run("CasePAIMaxComputeTrainCustomModel", CasePAIMaxComputeTrainCustomModel)
 		// t.Run("CasePAIMaxComputeTrainDistributed", CasePAIMaxComputeTrainDistributed)
 		// t.Run("CasePAIMaxComputeTrainPredictCategoricalFeature", CasePAIMaxComputeTrainPredictCategoricalFeature)
 		// t.Run("CasePAIMaxComputeTrainTFBTDistributed", CasePAIMaxComputeTrainTFBTDistributed)

@@ -171,7 +171,7 @@ except Exception as e:
     print("failed to import %s: %s" % (model_import_name, e))
 
 predict.pred(datasource="{{.DataSource}}",
-             estimator=eval(estimator),
+             estimator_string=estimator,
              select="""{{.Select}}""",
              result_table="{{.ResultTable}}",
              feature_columns=feature_columns,
@@ -239,14 +239,9 @@ if is_estimator:
 else:
     model.load_file("{{.OSSModelDir}}", "model_save")
 
-model_import_name = sqlflow_submitter.get_import_name("""{{.Estimator}}""")
-try:
-    __import__(model_import_name)
-except Exception as e:
-    print("failed to import %s: %s" % (model_import_name, e))
 
 explain.explain(datasource="{{.DataSource}}",
-                estimator_cls=eval(estimator),
+                estimator_string=estimator,
                 select="""{{.Select}}""",
                 feature_columns=feature_columns,
                 feature_column_names=feature_column_names,
@@ -317,14 +312,8 @@ if is_estimator:
 else:
     model.load_file("{{.OSSModelDir}}", "model_save")
 
-model_import_name = sqlflow_submitter.get_import_name("""{{.Estimator}}""")
-try:
-    __import__(model_import_name)
-except Exception as e:
-    print("failed to import %s: %s" % (model_import_name, e))
-
 evaluate.evaluate(datasource="{{.DataSource}}",
-                  estimator_cls=eval(estimator),
+                  estimator_string=estimator,
                   select="""{{.Select}}""",
                   result_table="{{.ResultTable}}",
                   feature_columns=feature_columns,

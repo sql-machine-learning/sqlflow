@@ -86,14 +86,8 @@ model_params["{{$k}}"]={{$v | attrToPythonValue}}
 
 feature_columns = {{.FeatureColumnCode}}
 
-model_import_name = sqlflow_submitter.get_import_name("""{{.Estimator}}""")
-try:
-    globals()[model_import_name] = __import__(model_import_name)
-except Exception as e:
-    print("failed to import %s: %s" % (model_import_name, e))
-
 evaluate(datasource="{{.DataSource}}",
-         estimator_cls={{.Estimator}},
+         estimator_string="""{{.Estimator}}""",
          select="""{{.Select}}""",
          result_table="{{.ResultTable}}",
          feature_columns=feature_columns,

@@ -18,6 +18,7 @@ import os
 import sys
 
 import numpy as np
+import sqlflow_submitter
 import tensorflow as tf
 from sqlflow_submitter import db
 from sqlflow_submitter.pai import model
@@ -238,7 +239,7 @@ def estimator_predict(estimator, model_params, save, result_table,
 
 
 def pred(datasource,
-         estimator,
+         estimator_string,
          select,
          result_table,
          feature_columns,
@@ -255,6 +256,14 @@ def pred(datasource,
          hdfs_pass="",
          is_pai=False,
          pai_table=""):
+    # import custom model package
+    model_import_name = sqlflow_submitter.get_import_name(estimator_string)
+    try:
+        globals()[model_import_name] = __import__(model_import_name)
+    except Exception as e:
+        print("failed to import %s: %s" % (model_import_name, e))
+    estimator = eval(estimator_string)
+
     if not is_pai:
         conn = db.connect_with_data_source(datasource)
     model_params.update(feature_columns)

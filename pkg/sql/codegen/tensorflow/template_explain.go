@@ -86,14 +86,8 @@ feature_columns = {{.FeatureColumnCode}}
 import json
 summaryAttrs = json.loads('''{{.SummaryParams}}''')
 
-model_import_name = sqlflow_submitter.get_import_name("""{{.Estimator}}""")
-try:
-    globals()[model_import_name] = __import__(model_import_name)
-except Exception as e:
-    print("failed to import %s: %s" % (model_import_name, e))
-
 explain.explain(datasource="{{.DataSource}}",
-                estimator_cls={{.EstimatorClass}},
+                estimator_string="""{{.EstimatorClass}}""",
                 select="""{{.Select}}""",
                 feature_columns=feature_columns,
                 feature_column_names=feature_column_names,

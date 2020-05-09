@@ -45,7 +45,7 @@ else:
 
 
 def explain(datasource,
-            estimator_cls,
+            estimator_string,
             select,
             feature_columns,
             feature_column_names,
@@ -66,6 +66,13 @@ def explain(datasource,
             oss_sk=None,
             oss_endpoint=None,
             oss_bucket_name=None):
+    # import custom model package
+    model_import_name = sqlflow_submitter.get_import_name(estimator_string)
+    try:
+        globals()[model_import_name] = __import__(model_import_name)
+    except Exception as e:
+        print("failed to import %s: %s" % (model_import_name, e))
+    estimator = eval(estimator_string)
 
     if is_pai:
         FLAGS = tf.app.flags.FLAGS

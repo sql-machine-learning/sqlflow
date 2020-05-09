@@ -20,6 +20,7 @@ import sys
 import types
 
 import numpy as np
+import sqlflow_submitter
 import tensorflow as tf
 from sqlflow_submitter.db import (connect_with_data_source, db_generator,
                                   parseMaxComputeDSN)
@@ -41,7 +42,7 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 
 def train(datasource,
-          estimator,
+          estimator_string,
           select,
           validation_select,
           feature_columns,
@@ -63,6 +64,15 @@ def train(datasource,
           is_pai=False,
           pai_table="",
           pai_val_table=""):
+    # import custom model package
+    model_import_name = sqlflow_submitter.get_import_name(estimator_string)
+    try:
+        print(model_import_name)
+        globals()[model_import_name] = __import__(model_import_name)
+    except Exception as e:
+        print("failed to import %s: %s" % (model_import_name, e))
+    estimator = eval(estimator_string)
+
     if isinstance(estimator, types.FunctionType):
         is_estimator = False
     else:
