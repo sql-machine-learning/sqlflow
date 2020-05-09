@@ -20,9 +20,9 @@ cd $TRAVIS_BUILD_DIR/docker/dev
 docker build --cache-from sqlflow/sqlflow:dev -t sqlflow:dev .
 
 echo "build SQLFlow from source into $TRAVIS_BUILD_DIR/build using sqlflow:dev"
-docker run --name afool -it -v $TRAVIS_BUILD_DIR:/work -w /work sqlflow:dev
-docker logs afool
-docker rm afool
+docker run --name dev -it -v $TRAVIS_BUILD_DIR:/work -w /work sqlflow:dev
+docker logs dev
+docker rm dev
 
 echo "build sqlflow:ci byloading $TRAVIS_BUILD_DIR/build"
 cd $TRAVIS_BUILD_DIR
