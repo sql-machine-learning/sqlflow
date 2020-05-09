@@ -103,7 +103,7 @@ func renderPRCFetchResp(ctx *renderContext, fetchReq *proto.FetchRequest) error 
 			return err
 		}
 		for _, r := range resp.Responses.Response {
-			render(ctx, r)
+			render(ctx, r.Response)
 		}
 		if resp.Eof {
 			return nil

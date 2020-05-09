@@ -84,6 +84,7 @@ func TestCoulerCodegen(t *testing.T) {
 	sqlIR := MockSQLProgramIR()
 	os.Setenv("SQLFLOW_OSS_AK", "oss_key")
 	os.Setenv("SQLFLOW_WORKFLOW_SECRET", `{"sqlflow-secret":{"oss_sk": "oss_sk"}}`)
+	os.Setenv(envResource, `{"memory": "32Mi", "cpu": "100m"}`)
 	defer os.Unsetenv("SQLFLOW_OSS_AK")
 	cg := &Codegen{}
 	code, err := cg.GenCode(sqlIR, &pb.Session{})
@@ -96,9 +97,11 @@ func TestCoulerCodegen(t *testing.T) {
 	a.False(strings.Contains(code, `step_envs["SQLFLOW_WORKFLOW_SECRET"]`))
 	a.True(strings.Contains(code, `couler.clean_workflow_after_seconds_finished(86400)`))
 	a.True(strings.Contains(code, `couler.secret(secret_data, name="sqlflow-secret", dry_run=True)`))
+	a.True(strings.Contains(code, `resources=json.loads('''{"memory": "32Mi", "cpu": "100m"}''')`))
 
 	_, e = cg.GenYAML(code)
 	yaml, e := cg.GenYAML(code)
+	a.NoError(e)
 	r, e = regexp.Compile(`step -e "(.*);"`)
 	a.NoError(e)
 	a.Equal("SELECT * FROM iris.train limit 10", r.FindStringSubmatch(yaml)[1])
