@@ -40,6 +40,8 @@ jobs:
     - $TRAVIS_BUILD_DIR/scripts/travis/build.sh
     - docker run --rm -v $TRAVIS_BUILD_DIR:/work -w /work sqlflow:ci
       pre-commit run -a --show-diff-on-failure
+    - docker tag sqlflow:ci sqlflow/sqlflow.ci
+    - docker push sqlflow/sqlflow.ci
   - stage: Unitests
     # env is just used for displaying the job type in travis web page
     env: SQLFLOW_TEST_DB=mysql
@@ -98,6 +100,3 @@ jobs:
       -v /home/$USER/.minikube/:/home/$USER/.minikube/
       -v $TRAVIS_BUILD_DIR:/work -w /work
       sqlflow:latest scripts/test/workflow.sh
-  - stage: deploy
-    script:
-    - bash scripts/deploy.sh
