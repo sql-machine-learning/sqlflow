@@ -17,6 +17,7 @@ import tensorflow as tf
 from sqlflow_submitter.pai import model
 
 from . import metrics
+from .diagnosis import check_and_load_estimator
 from .get_tf_version import tf_is_version2
 from .input_fn import input_fn
 from .pai_distributed import (dump_into_tf_config,
@@ -69,10 +70,9 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
         validate_dataset = val_dataset_fn()
     else:
         validate_dataset = None
-    try:
-        classifier = estimator(**model_params)
-    except Exception as e:
-        raise RuntimeError("estimator failed: %s", e)
+
+    classifier = check_and_load_estimator(estimator, model_params)
+
     classifier.compile(optimizer=optimizer, loss=loss, metrics=keras_metrics)
 
     if is_pai and len(FLAGS.worker_hosts.split(",")) > 1:
