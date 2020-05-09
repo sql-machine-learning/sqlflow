@@ -20,7 +20,7 @@ set -e
 
 # Build the devbox image while seeing if there are layers can be reused.
 (cd $TRAVIS_BUILD_DIR/docker/dev
- docker build --cache-from sqlflow/sqlflow:ci -t sqlflow:ci .)
+ docker build --cache-from sqlflow/sqlflow:ci -t sqlflow:dev .)
 
 # Build SQLFlow into $TRAVIS_BUILD_DIR/build using the devbox image.
 docker run --rm -v $TRAVIS_BUILD_DIR:/work -w /work sqlflow:dev
