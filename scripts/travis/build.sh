@@ -13,7 +13,7 @@
 # limitations under the License.
 
 echo "try to pull sqlflow/sqlflow:ci"
-docker pull sqlflow/sqlflow:ci
+docker pull --quiet sqlflow/sqlflow:ci
 
 # Exit for any error.
 set -e
@@ -23,7 +23,8 @@ echo "build the devbox image sqlflow:dev"
  docker build --cache-from sqlflow/sqlflow:ci -t sqlflow:dev .)
 
 echo "build SQLFlow from source into $TRAVIS_BUILD_DIR/build using sqlflow:dev"
-docker run --rm -v $TRAVIS_BUILD_DIR:/work -w /work sqlflow:dev
+(cd $TRAVIS_BUILD_DIR
+ docker run --rm -it -v $TRAVIS_BUILD_DIR:/work -w /work sqlflow:dev)
 
 echo "build sqlflow:ci byloading $TRAVIS_BUILD_DIR/build"
 (cd $TRAVIS_BUILD_DIR
