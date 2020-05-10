@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+docker pull sqlflow/sqlflow:dev
+
 # Exit for any error.
 set -e
 
