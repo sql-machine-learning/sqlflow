@@ -29,7 +29,7 @@ install:
 # Note(tony): TravisCI's native `go get ${gobuild_args} ./...` failed with
 # `/usr/bin/ld: final link failed: Bad value`, the cause is the system linker
 # being not up to date: https://github.com/golang/go/issues/15038
-# So I decided to skip install, and go get inside sqlflow:latest image
+# So I decided to skip install, and go get inside SQLFlow devbox Docker image
 # Ref build: https://travis-ci.com/sql-machine-learning/sqlflow/builds/107870583
 - echo "skip install"
 jobs:
@@ -84,7 +84,7 @@ jobs:
     - $TRAVIS_BUILD_DIR/scripts/travis/build.sh
     - docker run --rm
       -v $TRAVIS_BUILD_DIR:/work -w /work
-      sqlflow:latest scripts/test/java.sh
+      sqlflow:ci scripts/test/java.sh
   - env: SQLFLOW_TEST=workflow
     script:
     - set -e
@@ -98,4 +98,4 @@ jobs:
       -v $HOME/.kube:/root/.kube
       -v /home/$USER/.minikube/:/home/$USER/.minikube/
       -v $TRAVIS_BUILD_DIR:/work -w /work
-      sqlflow:latest scripts/test/workflow.sh
+      sqlflow:ci scripts/test/workflow.sh
