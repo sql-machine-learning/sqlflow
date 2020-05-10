@@ -21,7 +21,7 @@ if [[ $(git diff --name-only HEAD..develop|awk -F. '{print $NF}'|uniq) == md ]];
 fi
 
 while true; do
-  curl -s http://localhost:8899 2>/dev/null
+  curl -s http://localhost:8899 > /dev/null 2>&1
   if [ $? -eq 0 ]; then
     break
   else
