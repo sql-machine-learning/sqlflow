@@ -1947,7 +1947,7 @@ func CasePAIMaxComputeTrainCustomModel(t *testing.T) {
 	t.Parallel()
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`SELECT * FROM %s
-TO TRAIN wuyi_models.DNNClassifier
+TO TRAIN sqlflow_models.DNNClassifier
 WITH model.n_classes = 3, model.hidden_units = [10, 20], validation.select="select * from %s", validation.steps=2
 LABEL class
 INTO e2etest_keras_dnn;`, caseTrainTable, caseTestTable)
