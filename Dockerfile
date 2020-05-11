@@ -1,17 +1,6 @@
-FROM ubuntu:18.04
-
-# The default Ubuntu apt-get source archive.ubuntu.com is usually busy
-# and slow.  If you are in the U.S., you might want to use
-# http://us.archive.ubuntu.com/ubuntu/, or if you are in China, you
-# can try https://mirrors.tuna.tsinghua.edu.cn/ubuntu/
-ARG APT_MIRROR="http://us.archive.ubuntu.com/ubuntu/"
-RUN echo "\n\
-deb $APT_MIRROR bionic main restricted universe multiverse \n\
-deb $APT_MIRROR bionic-security main restricted universe multiverse \n\
-deb $APT_MIRROR bionic-updates main restricted universe multiverse \n\
-deb $APT_MIRROR bionic-proposed main restricted universe multiverse \n\
-deb $APT_MIRROR bionic-backports main restricted universe multiverse \n\
-" > /etc/apt/sources.list
+# The CI image needs to build Go and Java tests and run Python tests,
+# so it must contain the bulding tools.
+FROM sqlflow:dev
 
 # Install dependencies.
 COPY docker/ci/js /ci/js
@@ -19,12 +8,6 @@ COPY docker/ci/js /ci/js
 ENV IPYTHON_STARTUP /root/.ipython/profile_default/startup/
 
 RUN apt-get -qq update
-
-COPY docker/ci/install-build-essential.bash /ci/
-RUN /ci/install-build-essential.bash
-
-COPY docker/ci/install-python.bash /ci/
-RUN /ci/install-python.bash
 
 COPY docker/ci/install-pips.bash /ci/
 RUN /ci/install-pips.bash
@@ -37,9 +20,6 @@ RUN /ci/install-mysql.bash
 
 COPY docker/ci/install-odps.bash /ci/
 RUN /ci/install-odps.bash
-
-COPY docker/ci/install-java.bash /ci/
-RUN /ci/install-java.bash
 
 ENV HADOOP_VERSION 3.2.1
 ENV PATH /opt/hadoop-${HADOOP_VERSION}/bin:/usr/local/go/bin:/go/bin:$PATH
