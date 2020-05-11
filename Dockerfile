@@ -20,6 +20,7 @@ ENV IPYTHON_STARTUP /root/.ipython/profile_default/startup/
 RUN apt-get -qq update
 RUN /ci/install-build-essential.bash
 RUN /ci/install-python.bash
+RUN /ci/install-pips.bash
 RUN /ci/install-jupyter.bash
 RUN /ci/install-mysql.bash
 RUN /ci/install-odps.bash

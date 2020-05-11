@@ -15,9 +15,18 @@
 
 set -e
 
-apt-get -qq install -y python3 python3-pip > /dev/null
-ln -s /usr/bin/python3 /usr/local/bin/python
-
-# Upgrade pip would creates /usr/local/bin/pip.  Update setuptools
-# because https://github.com/red-hat-storage/ocs-ci/pull/971/files
-pip3 install --quiet --upgrade pip setuptools six
+# keras.datasets.imdb only works with numpy==1.16.1
+# NOTE: shap == 0.30.1 depends on dill but not include dill as it's dependency,
+#       need to install manually.
+# NOTE: mysqlclient depends on apt package mysqlclient from install-mysql.bash.
+pip install --quiet \
+    numpy==1.16.2 \
+    tensorflow==2.0.1 \
+    impyla==0.16.0 \
+    pyodps==0.8.3 \
+    dill==0.3.0 \
+    shap==0.30.1 \
+    xgboost==0.90 \
+    oss2==2.9.0 \
+    plotille==3.7 \
+    seaborn==0.9.0
