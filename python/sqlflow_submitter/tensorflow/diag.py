@@ -13,7 +13,7 @@
 import re
 
 
-class SQLFlowDiagnosis(Exception):
+class SQLFlowDiagnostic(Exception):
     pass
 
 
@@ -30,13 +30,13 @@ def check_and_load_estimator(estimator, model_params):
         re_unexpected_args = re.search(
             'attribute got an unexpected keyword argument: (.*)', str(e))
         if re_missing_args:
-            raise SQLFlowDiagnosis(
+            raise SQLFlowDiagnostic(
                 "{0} missing {1} required attribute: {2}".format(
                     name, re_missing_args.group(1), re_missing_args.group(2)))
         elif re_unexpected_args:
-            raise SQLFlowDiagnosis("%s get an unexpected attribute: %s", name,
-                                   re_unexpected_args.group(1))
+            raise SQLFlowDiagnostic("%s get an unexpected attribute: %s", name,
+                                    re_unexpected_args.group(1))
         else:
-            raise SQLFlowDiagnosis("{0} attribute {1}".format(
+            raise SQLFlowDiagnostic("{0} attribute {1}".format(
                 name,
                 str(e).lstrip("__init__() ")))

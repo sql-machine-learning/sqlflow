@@ -36,7 +36,7 @@ import (
 	"sqlflow.org/sqlflow/pkg/sql/codegen/xgboost"
 )
 
-var rePyDiagnosis = regexp.MustCompile("sqlflow_submitter.tensorflow.diag.SQLFlowDiagnosis: (.*)")
+var rePyDiagnosis = regexp.MustCompile("sqlflow_submitter.tensorflow.diag.SQLFlowDiagnostic: (.*)")
 
 // GetSubmitter returns a proper Submitter from configurations in environment variables.
 func GetSubmitter(submitter string) Submitter {
