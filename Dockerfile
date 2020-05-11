@@ -13,23 +13,18 @@ deb $APT_MIRROR bionic-proposed main restricted universe multiverse \n\
 deb $APT_MIRROR bionic-backports main restricted universe multiverse \n\
 " > /etc/apt/sources.list
 
+# Install dependencies.
 COPY docker/ci /ci
-
 # Required by install-jupyter.bash
 ENV IPYTHON_STARTUP /root/.ipython/profile_default/startup/
-
 RUN apt-get -qq update \
         && /ci/install-build-essential.bash \
         && /ci/install-python.bash \
         && /ci/install-jupyter.bash \
-        && /ci/install-mysql.bash
-        # && /ci/install-odps.bash \
-        # && /ci/install-java.bash \
-        # && /ci/install-hadoop.bash \
-
-
-# The SQLFlow magic command for Jupyter.
-COPY docker/ci/js /js
+        && /ci/install-mysql.bash \
+        && /ci/install-odps.bash \
+        && /ci/install-java.bash \
+        && /ci/install-hadoop.bash
 
 # Install sample datasets for CI and demo.
 COPY doc/datasets/popularize_churn.sql \
