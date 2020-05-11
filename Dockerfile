@@ -13,11 +13,10 @@ deb $APT_MIRROR bionic-proposed main restricted universe multiverse \n\
 deb $APT_MIRROR bionic-backports main restricted universe multiverse \n\
 " > /etc/apt/sources.list
 
-RUN apt-get -qq update
-
 COPY docker/ci /ci
-RUN /ci/install-build-essential.bash \
-	&& /ci/install-python.bash
+RUN apt-get -qq update \
+        && /ci/install-build-essential.bash \
+        && /ci/install-python.bash \
         && /ci/install-jupyter.bash \
         && /ci/install-mysql.bash
         # && /ci/install-odps.bash \
