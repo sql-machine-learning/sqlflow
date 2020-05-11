@@ -14,6 +14,10 @@ deb $APT_MIRROR bionic-backports main restricted universe multiverse \n\
 " > /etc/apt/sources.list
 
 COPY docker/ci /ci
+
+# Required by install-jupyter.bash
+ENV IPYTHON_STARTUP /root/.ipython/profile_default/startup/
+
 RUN apt-get -qq update \
         && /ci/install-build-essential.bash \
         && /ci/install-python.bash \
@@ -25,7 +29,6 @@ RUN apt-get -qq update \
 
 
 # The SQLFlow magic command for Jupyter.
-ENV IPYTHON_STARTUP /root/.ipython/profile_default/startup/
 COPY docker/ci/js /js
 
 # Install sample datasets for CI and demo.
