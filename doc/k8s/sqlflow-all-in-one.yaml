@@ -17,7 +17,7 @@ spec:
       - name: shared-data
         emptyDir: {}
       containers:
-      - image: sqlflow/sqlflow:latest
+      - image: sqlflow/sqlflow:ci
         name: sqlflow-all-in-one
         imagePullPolicy: Always
         env:

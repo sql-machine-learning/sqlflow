@@ -17,7 +17,7 @@ spec:
       - name: shared-data
         emptyDir: {}
       containers:
-      - image: sqlflow/sqlflow:latest
+      - image: sqlflow/sqlflow:ci
         name: sqlflow-server
         imagePullPolicy: Always
         command: ["bash"]
@@ -27,7 +27,7 @@ spec:
           value: "10.20.0.3"
         - name: SQLFLOW_MYSQL_PORT
           value: "3306"
-      - image: sqlflow/sqlflow:latest
+      - image: sqlflow/sqlflow:ci
         name: notebook
         imagePullPolicy: Always
         command: ["bash"]

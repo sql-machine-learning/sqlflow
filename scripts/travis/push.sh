@@ -12,9 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-changed_files=$(git diff --cached --name-only --diff-filter=ACMR | grep '\.bash\|\.sh$')
-if [[ "$changed_files" == "" ]]; then
-    exit 0
-fi
+# Exit for any error.
+set -e
 
-echo "$changed_files" | xargs shellcheck
+echo "docker push sqlflow/sqlflow:ci"
+echo "$DOCKER_PASSWORD" | \
+    docker login --username "$DOCKER_USERNAME" --password-stdin
+
+docker tag sqlflow:dev sqlflow/sqlflow:dev
+docker push sqlflow/sqlflow:dev
+
+docker tag sqlflow:ci sqlflow/sqlflow:ci
+docker push sqlflow/sqlflow:ci
