@@ -25,12 +25,6 @@ ENV JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
 ENV GOPATH /root/go
 ENV PATH /usr/local/go/bin:$GOPATH/bin:$PATH
 
-# The SQLFlow magic command for Jupyter.
-ENV IPYTHON_STARTUP /root/.ipython/profile_default/startup/
-COPY install-jupyter.bash /
-COPY js /js
-RUN /install-jupyter.bash
-
 # Set build.sh as the entrypoint and assume that SQLFlow source tree
 # is at /work.
 COPY build.sh /
