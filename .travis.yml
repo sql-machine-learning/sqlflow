@@ -83,3 +83,6 @@ jobs:
     - docker run --rm --net=host -e SQLFLOW_WORKFLOW_STEP_IMAGE=sqlflow:submitter
       -v /var/run/docker.sock:/var/run/docker.sock -v $HOME/.kube:/root/.kube -v /home/$USER/.minikube/:/home/$USER/.minikube/
       -v $TRAVIS_BUILD_DIR:/work -w /work sqlflow:ci scripts/test/workflow.sh
+  - stage: deploy
+    script:
+    - $TRAVIS_BUILD_DIR/scripts/travis/deploy.sh # Push only after PR merging.
