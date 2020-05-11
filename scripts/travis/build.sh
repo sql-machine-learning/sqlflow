@@ -22,9 +22,13 @@ cd $TRAVIS_BUILD_DIR/docker/dev
 docker build --cache-from sqlflow/sqlflow:dev -t sqlflow:dev .
 
 echo "build SQLFlow from source into $TRAVIS_BUILD_DIR/build using sqlflow:dev"
-docker run --name dev -it -v $TRAVIS_BUILD_DIR:/work -w /work sqlflow:dev
-docker logs dev
-docker rm dev
+mkdir -p $TRAVIS_BUILD_DIR/build
+docker run --rm -it \
+       -v $TRAVIS_BUILD_DIR:/work -w /work \
+       -v $GOPATH:/root/go \
+       -v $HOME/.m2:/root/.m2 \
+       -v $HOME/.cache:/root/.cache \
+       sqlflow:dev
 
 echo "build sqlflow:ci byloading $TRAVIS_BUILD_DIR/build"
 cd $TRAVIS_BUILD_DIR
