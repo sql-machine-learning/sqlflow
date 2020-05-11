@@ -39,7 +39,7 @@ cd fluid
 git checkout ceda474
 python setup.py bdist_wheel --dist-dir $SQLFLOW_BIN
 
-echo" Build parser gRPC servers in Java ..."
+echo "Build parser gRPC servers in Java ..."
 # Make mvn compile quiet
 export MAVEN_OPTS="-Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn"
 
