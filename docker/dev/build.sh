@@ -28,7 +28,7 @@ GOBIN=$SQLFLOW_BIN go install ./...
 
 echo "Build $SQLFLOWPATH/python/couler into $SQLFLOW_BIN ..."
 cd $SQLFLOWPATH/python/couler
-python setup.py bdist_wheel --dist-dir $SQLFLOW_BIN
+python setup.py bdist_wheel -q --dist-dir $SQLFLOW_BIN
 
 echo "Build Fluid ..."
 cd $SQLFLOW_BIN
@@ -37,7 +37,7 @@ if [[ ! -d fluid ]]; then
 fi
 cd fluid
 git checkout ceda474
-python setup.py bdist_wheel --dist-dir $SQLFLOW_BIN
+python setup.py bdist_wheel -q --dist-dir $SQLFLOW_BIN
 
 echo "Build parser gRPC servers in Java ..."
 # Make mvn compile quiet
@@ -69,7 +69,7 @@ if [[ ! -d models ]]; then
 fi
 cd models
 git checkout c897963f821d515651de79cb4ef1fbf6126ecaa5
-python setup.py bdist_wheel --dist-dir $SQLFLOW_BIN
+python setup.py bdist_wheel -q --dist-dir $SQLFLOW_BIN
 
 echo "Convert tutorials from Markdown to IPython notebooks ..."
 mkdir -p $SQLFLOW_BIN/tutorial
