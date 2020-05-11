@@ -61,5 +61,5 @@ docker tag sqlflow:dev sqlflow/sqlflow:dev
 docker push sqlflow/sqlflow:dev
 
 # Tag sqlflow:ci with the drived tag and push it.
-docker tag sqlflow:ci sqlflow/sqlflow:$TRAVIS_TAG
-docker push sqlflow/sqlflow:$TRAVIS_TAG
+docker tag sqlflow:ci sqlflow/sqlflow:$DOCKER_TAG
+docker push sqlflow/sqlflow:$DOCKER_TAG
