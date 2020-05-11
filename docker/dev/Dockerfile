@@ -16,7 +16,7 @@ deb $APT_MIRROR bionic-backports main restricted universe multiverse \n\
 RUN apt-get -qq update
 
 # Install download tools
-RUN apt-get -qq install -y curl unzip
+RUN apt-get -qq install -y wget curl unzip
 
 # Install bulding tools required by pip install packages like mysqlclient.
 RUN apt-get -qq install -y build-essential git
