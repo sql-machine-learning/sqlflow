@@ -17,9 +17,17 @@ set -e
 
 DOWNLOAD_TOOLS="curl unzip"
 BUILD_ESSENTIAL="build-essential git"
-
+MYSQL_CLIENT="libmysqlclient-dev"
 apt-get -qq install -y \
         $DOWNLOAD_TOOLS \
         $BUILD_ESSENTIAL \
         shellcheck \
-	libmysqlclient-dev
+	$MYSQL_CLIENT
+
+
+# Install protoc
+curl -sL \
+     https://github.com/protocolbuffers/protobuf/releases/download/v3.7.1/protoc-3.7.1-linux-x86_64.zip \
+     > p.zip
+unzip -qq p.zip -d /usr/local
+rm p.zip

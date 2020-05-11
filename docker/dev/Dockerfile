@@ -18,14 +18,6 @@ RUN apt-get -qq update
 COPY install.sh /
 RUN /install.sh
 
-# MySQL server and client
-COPY install-mysql.bash /
-RUN /install-mysql.bash
-
-# Install protobuf and protoc
-COPY install-protobuf.bash /
-RUN /install-protobuf.bash
-
 # Need Java SDK to build remote parsers
 ENV JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
 COPY install-java.bash /
