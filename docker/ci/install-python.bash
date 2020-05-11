@@ -15,16 +15,12 @@
 
 set -e
 
-# Installing mysqlclient pip package needs GCC.
 apt-get -qq install -y python3 python3-pip
 ln -s /usr/bin/python3 /usr/local/bin/python
 
 # Upgrade pip would creates /usr/local/bin/pip.  Update setuptools
 # because https://github.com/red-hat-storage/ocs-ci/pull/971/files
 pip3 install --upgrade pip setuptools six
-
-# pip install mysqlclient needs GCC.
-apt-get install -y libssl-dev # for building mysqlclient pip
 
 # keras.datasets.imdb only works with numpy==1.16.1
 # NOTE: shap == 0.30.1 depends on dill but not include dill as it's dependency,
@@ -33,12 +29,8 @@ apt-get install -y libssl-dev # for building mysqlclient pip
 pip --quiet install \
     numpy==1.16.2 \
     tensorflow==2.0.1 \
-    mysqlclient==1.4.4 \
     impyla==0.16.0 \
     pyodps==0.8.3 \
-    jupyter==1.0.0 \
-    notebook==6.0.0 \
-    sqlflow==0.9.0 \
     dill==0.3.0 \
     shap==0.30.1 \
     xgboost==0.90 \

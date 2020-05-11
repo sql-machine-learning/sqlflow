@@ -16,14 +16,14 @@ deb $APT_MIRROR bionic-backports main restricted universe multiverse \n\
 RUN apt-get -qq update
 
 COPY docker/ci /ci
-RUN /ci/install-build-essential.bash && \
-        /ci/install-python.bash && \
-        /ci/install-jupyter.bash && \
-        /ci/install-mysql.bash && \
-        /ci/install-odps.bash && \
-        /ci/install-java.bash && \
-        /ci/install-hadoop.bash && \
-        install-elasticdl.bash
+RUN /ci/install-build-essential.bash \
+	&& /ci/install-python.bash
+        && /ci/install-jupyter.bash \
+        && /ci/install-mysql.bash
+        # && /ci/install-odps.bash \
+        # && /ci/install-java.bash \
+        # && /ci/install-hadoop.bash \
+
 
 # The SQLFlow magic command for Jupyter.
 ENV IPYTHON_STARTUP /root/.ipython/profile_default/startup/
@@ -48,7 +48,7 @@ COPY build/*.whl /usr/local/sqlflow/python/
 RUN pip install /usr/local/sqlflow/python/*.whl
 
 # Install the pre-built binaries
-COPY build/sqlflowserver build/sqlflow build/step /usr/local/bin
+COPY build/sqlflowserver build/sqlflow build/step /usr/local/bin/
 
 # Install the Java gRPC parser servers.
 COPY build/*.jar /usr/local/sqlflow/java/
