@@ -51,6 +51,8 @@ pip install \
 GO_DEV="https://dl.google.com/go/go1.13.4.linux-amd64.tar.gz"
 curl -sL $GO_DEV  | tar -C /usr/local -xzf -
 
+export GOPATH="/root/go"
+export PATH="/usr/local/go/bin:$GOPATH/bin:$PATH"
 
 # Install GoYacc, protoc-gen-go, linters, etc.
 export GO111MODULE=on
