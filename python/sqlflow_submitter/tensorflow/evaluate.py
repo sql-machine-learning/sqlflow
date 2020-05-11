@@ -18,6 +18,11 @@ import types
 import sqlflow_submitter
 import tensorflow as tf
 from sqlflow_submitter.db import buffered_db_writer, connect_with_data_source
+from tensorflow.estimator import (BoostedTreesClassifier,
+                                  BoostedTreesRegressor, DNNClassifier,
+                                  DNNLinearCombinedClassifier,
+                                  DNNLinearCombinedRegressor, DNNRegressor,
+                                  LinearClassifier, LinearRegressor)
 
 from . import metrics
 from .input_fn import get_dataset_fn
@@ -52,10 +57,11 @@ def evaluate(datasource,
              pai_table=""):
     # import custom model package
     model_import_name = sqlflow_submitter.get_import_name(estimator_string)
-    try:
-        globals()[model_import_name] = __import__(model_import_name)
-    except Exception as e:
-        print("failed to import %s: %s" % (model_import_name, e))
+    if model_import_name:
+        try:
+            globals()[model_import_name] = __import__(model_import_name)
+        except Exception as e:
+            print("failed to import %s: %s" % (model_import_name, e))
     estimator_cls = eval(estimator_string)
 
     if isinstance(estimator_cls, types.FunctionType):

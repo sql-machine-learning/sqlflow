@@ -22,6 +22,11 @@ import sqlflow_submitter
 import tensorflow as tf
 from sqlflow_submitter import db
 from sqlflow_submitter.pai import model
+from tensorflow.estimator import (BoostedTreesClassifier,
+                                  BoostedTreesRegressor, DNNClassifier,
+                                  DNNLinearCombinedClassifier,
+                                  DNNLinearCombinedRegressor, DNNRegressor,
+                                  LinearClassifier, LinearRegressor)
 
 from .get_tf_version import tf_is_version2
 from .input_fn import get_dtype, parse_sparse_feature_predict
@@ -258,10 +263,11 @@ def pred(datasource,
          pai_table=""):
     # import custom model package
     model_import_name = sqlflow_submitter.get_import_name(estimator_string)
-    try:
-        globals()[model_import_name] = __import__(model_import_name)
-    except Exception as e:
-        print("failed to import %s: %s" % (model_import_name, e))
+    if model_import_name:
+        try:
+            globals()[model_import_name] = __import__(model_import_name)
+        except Exception as e:
+            print("failed to import %s: %s" % (model_import_name, e))
     estimator = eval(estimator_string)
 
     if not is_pai:

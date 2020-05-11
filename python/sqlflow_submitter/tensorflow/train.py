@@ -24,6 +24,11 @@ import sqlflow_submitter
 import tensorflow as tf
 from sqlflow_submitter.db import (connect_with_data_source, db_generator,
                                   parseMaxComputeDSN)
+from tensorflow.estimator import (BoostedTreesClassifier,
+                                  BoostedTreesRegressor, DNNClassifier,
+                                  DNNLinearCombinedClassifier,
+                                  DNNLinearCombinedRegressor, DNNRegressor,
+                                  LinearClassifier, LinearRegressor)
 
 from .get_tf_version import tf_is_version2
 from .input_fn import get_dataset_fn
@@ -66,11 +71,11 @@ def train(datasource,
           pai_val_table=""):
     # import custom model package
     model_import_name = sqlflow_submitter.get_import_name(estimator_string)
-    try:
-        print(model_import_name)
-        globals()[model_import_name] = __import__(model_import_name)
-    except Exception as e:
-        print("failed to import %s: %s" % (model_import_name, e))
+    if model_import_name:
+        try:
+            globals()[model_import_name] = __import__(model_import_name)
+        except Exception as e:
+            print("failed to import %s: %s" % (model_import_name, e))
     estimator = eval(estimator_string)
 
     if isinstance(estimator, types.FunctionType):
