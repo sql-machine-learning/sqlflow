@@ -15,10 +15,7 @@
 
 set -e
 
-# The default Ubuntu apt-get source archive.ubuntu.com is usually busy
-# and slow.  If you are in the U.S., you might want to use
-# http://us.archive.ubuntu.com/ubuntu/, or if you are in China, you
-# can try https://mirrors.tuna.tsinghua.edu.cn/ubuntu/
+echo "Use Ubuntu apt-get source $APT_MIRROR ..."
 cat >> /etc/apt/sources.list <<EOF
 deb $APT_MIRROR bionic main restricted universe multiverse
 deb $APT_MIRROR bionic-security main restricted universe multiverse
@@ -29,6 +26,7 @@ EOF
 apt-get -qq update
 
 
+echo "Install apt packages ..."
 DOWNLOAD_TOOLS="curl unzip"
 BUILD_ESSENTIAL="build-essential git"
 PYTHON_DEV="python3 python3-pip"
@@ -43,33 +41,39 @@ apt-get -qq install -y --no-install-recommends \
 rm -rf /var/lib/apt/lists/*
 apt-get -qq clean -y
 
-# Make Python 3 the the default
+
+echo "Make Python 3 the the default"
 ln -s /usr/bin/python3 /usr/local/bin/python
 
-# Upgrade pip would creates /usr/local/bin/pip.  Update setuptools
-# because https://github.com/red-hat-storage/ocs-ci/pull/971/files
+echo "Upgrade pip and setuptools creates /usr/local/bin/pip ..."
+# Update setuptools because
+# https://github.com/red-hat-storage/ocs-ci/pull/971/files
 pip3 --quiet install --upgrade pip setuptools six
 
+
+echo "Install pip packages ..."
 PRE_COMMIT="pre-commit==1.18.3"
 PY_TEST="pytest==5.3.0"
 JS_LINTER=jsbeautifier
 PYTHON_LINTER="yapf isort pylint flake8"
-
+WHEEL="wheel"
 pip --quiet install \
+    $WHEEL \
     $PRE_COMMIT \
     $PY_TEST \
     $JS_LINTER \
     $PYTHON_LINTER
 rm -rf $HOME/.cache/pip/*
 
-# Install Go compiler
+
+echo "Install Go compiler ..."
 GO_DEV="https://dl.google.com/go/go1.13.4.linux-amd64.tar.gz"
 curl -sL $GO_DEV  | tar -C /usr/local -xzf -
-
 export GOPATH="/root/go"
 export PATH="/usr/local/go/bin:$GOPATH/bin:$PATH"
 
-# Install GoYacc, protoc-gen-go, linters, etc.
+
+echo "Install goyacc, protoc-gen-go, linters, etc. ..."
 export GO111MODULE=on
 go get \
    github.com/golang/protobuf/protoc-gen-go@v1.3.3 \
@@ -84,7 +88,7 @@ go get \
 cp "$GOPATH"/bin/* /usr/local/bin/
 
 
-# Install protoc
+echo "Install protoc ..."
 curl -sL \
      "https://github.com/protocolbuffers/protobuf/releases/download/v3.7.1/protoc-3.7.1-linux-x86_64.zip" \
      -o p.zip
@@ -92,15 +96,15 @@ unzip -qq p.zip -d /usr/local
 rm p.zip
 
 
-# Install gRPC for Java as a protobuf-compiler
-# plugin. c.f. https://stackoverflow.com/a/53982507/724872.
+echo "Install gRPC for Java as a protobuf-compiler ..."
+# c.f. https://stackoverflow.com/a/53982507/724872.
 curl -sL --insecure -I \
      "https://repo1.maven.org/maven2/io/grpc/protoc-gen-grpc-java/1.21.0/protoc-gen-grpc-java-1.21.0-linux-x86_64.exe" \
      -o /usr/local/bin/protoc-gen-grpc-java
 chmod +x /usr/local/bin/protoc-gen-grpc-java
 
 
-# Use GCS based maven-central mirror.
+echo "Use GCS based Maven-central mirror ..."
 # Travis CI occasionally fails on the default maven central repo.
 # Ref: https://github.com/sql-machine-learning/sqlflow/issues/1654
 mkdir -p $HOME/.m2/
@@ -116,7 +120,7 @@ echo '<settings>
 </settings>' > $HOME/.m2/settings.xml
 
 
-# Java linter
+echo "Install Java linter ..."
 curl -sLJ \
      "https://github.com/google/google-java-format/releases/download/google-java-format-1.6/google-java-format-1.6-all-deps.jar" \
      -o /usr/local/bin/google-java-format-1.6-all-deps.jar

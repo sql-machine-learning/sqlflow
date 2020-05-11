@@ -30,7 +30,7 @@ apt-get install -y libssl-dev # for building mysqlclient pip
 # NOTE: shap == 0.30.1 depends on dill but not include dill as it's dependency,
 #       need to install manually.
 # NOTE: mysqlclient depends on apt-get install mysqlclient in install-mysql.bash
-pip install \
+pip --quiet install \
     numpy==1.16.2 \
     tensorflow==2.0.1 \
     mysqlclient==1.4.4 \
