@@ -19,8 +19,7 @@ RUN apt-get -qq update
 RUN apt-get -qq install -y curl unzip git
 
 # Install shellcheck
-COPY install-shell-tools.bash /
-RUN /install-shell-tools.bash
+RUN apt-get -qq install -y shellcheck
 
 # MySQL server and client
 COPY install-mysql.bash /
