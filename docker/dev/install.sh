@@ -98,7 +98,7 @@ rm p.zip
 
 echo "Install gRPC for Java as a protobuf-compiler ..."
 # c.f. https://stackoverflow.com/a/53982507/724872.
-curl -sL --insecure -I \
+curl -sL \
      "https://repo1.maven.org/maven2/io/grpc/protoc-gen-grpc-java/1.21.0/protoc-gen-grpc-java-1.21.0-linux-x86_64.exe" \
      -o /usr/local/bin/protoc-gen-grpc-java
 chmod +x /usr/local/bin/protoc-gen-grpc-java
