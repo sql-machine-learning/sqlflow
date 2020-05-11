@@ -34,12 +34,13 @@ BUILD_ESSENTIAL="build-essential git"
 PYTHON_DEV="python3 python3-pip"
 JAVA_DEV="openjdk-8-jdk maven"
 SHELL_LINTER="shellcheck"
-apt-get -qq install -y \
+apt-get -qq install -y --no-install-recommends \
         $DOWNLOAD_TOOLS \
         $BUILD_ESSENTIAL \
         $PYTHON_DEV \
         $JAVA_DEV \
         $SHELL_LINTER
+rm -rf /var/lib/apt/lists/*
 apt-get -qq clean -y
 
 # Make Python 3 the the default
