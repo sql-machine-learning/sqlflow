@@ -15,14 +15,11 @@
 
 set -e
 
-apt-get -qq update
+DOWNLOAD_TOOLS="curl unzip"
+BUILD_ESSENTIAL="build-essential git"
 
-# Install MySQL server without a password prompt
-echo 'mysql-server mysql-server/root_password password root' | debconf-set-selections
-echo 'mysql-server mysql-server/root_password_again password root' | debconf-set-selections
-apt-get -qq update && apt-get install -y mysql-server > /dev/null
-mkdir -p /var/run/mysqld
-mkdir -p /var/lib/mysql
-chown mysql:mysql /var/run/mysqld
-chown mysql:mysql /var/lib/mysql
-mkdir -p /docker-entrypoint-initdb.d
+apt-get -qq install -y \
+        $DOWNLOAD_TOOLS \
+        $BUILD_ESSENTIAL \
+        shellcheck \
+	libmysqlclient-dev
