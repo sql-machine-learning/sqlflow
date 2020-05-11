@@ -15,7 +15,7 @@
 
 set -e
 
-apt-get -qq install -y python3 python3-pip
+apt-get -qq install -y python3 python3-pip > /dev/null
 ln -s /usr/bin/python3 /usr/local/bin/python
 
 # Upgrade pip would creates /usr/local/bin/pip.  Update setuptools
@@ -25,7 +25,7 @@ pip3 install --quiet --upgrade pip setuptools six
 # keras.datasets.imdb only works with numpy==1.16.1
 # NOTE: shap == 0.30.1 depends on dill but not include dill as it's dependency,
 #       need to install manually.
-# NOTE: mysqlclient depends on apt-get install mysqlclient in install-mysql.bash
+# NOTE: mysqlclient depends on apt package mysqlclient from install-mysql.bash.
 pip install --quiet \
     numpy==1.16.2 \
     tensorflow==2.0.1 \

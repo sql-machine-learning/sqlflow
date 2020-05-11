@@ -20,7 +20,7 @@ echo 'mysql-server mysql-server/root_password password root' | \
     debconf-set-selections
 echo 'mysql-server mysql-server/root_password_again password root' | \
     debconf-set-selections
-apt-get -qq update && apt-get install -y mysql-server
+apt-get install -y mysql-server > /dev/null
 mkdir -p /var/run/mysqld
 mkdir -p /var/lib/mysql
 chown mysql:mysql /var/run/mysqld
@@ -30,7 +30,7 @@ mkdir -p /docker-entrypoint-initdb.d
 echo "Install MySQL client library in C and Python ..."
 BUILD_ESSENTIAL="build-essential git" # required for building pip package
 MYSQL_CLIENT="libmysqlclient-dev libssl-dev" # libssl-dev for pip mysqlclient
-apt-get -qq install -y $BUILD_ESSENTIAL $MYSQL_CLIENT
+apt-get -qq install -y $BUILD_ESSENTIAL $MYSQL_CLIENT > /dev/null
 
 # Must install mysqlclient after installing MySQL server so it has mysql_config.
-pip install mysqlclient==1.4.4
+pip install --quiet mysqlclient==1.4.4

@@ -15,4 +15,4 @@
 
 set -e
 
-apt-get -qq install -y build-essential curl unzip
+apt-get -qq install -y build-essential curl unzip > /dev/null

@@ -15,4 +15,4 @@
 
 set -e
 
-apt-get -qq install -y openjdk-8-jre
+apt-get -qq install -y openjdk-8-jre > /dev/null

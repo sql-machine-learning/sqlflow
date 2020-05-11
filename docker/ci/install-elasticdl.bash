@@ -16,7 +16,7 @@
 set -e
 
 echo "Install Docker and sudo ..."
-apt-get -qq install -y docker.io sudo
+apt-get -qq install -y docker.io sudo > /dev/null
 
 echo "Install kubectl ..."
 curl -sLo /usr/local/bin/kubectl \
@@ -27,6 +27,6 @@ echo "Build and install ElasticDL ..."
 git clone https://github.com/sql-machine-learning/elasticdl.git
 cd elasticdl
 git checkout eb93e2a48e6fe8f077c4937d8c0c5987faa9cf56 # TODO(terry): update later.
-pip -q install -r elasticdl/requirements.txt
+pip install --quiet -r elasticdl/requirements.txt
 python setup.py -q install
 cd ..
