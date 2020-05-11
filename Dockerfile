@@ -1,4 +1,3 @@
-# FROM sqlflow:dev
 FROM ubuntu:18.04
 
 # The default Ubuntu apt-get source archive.ubuntu.com is usually busy
