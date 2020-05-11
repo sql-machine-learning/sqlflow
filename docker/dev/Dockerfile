@@ -21,12 +21,6 @@ RUN /install.sh
 # Need Java SDK to build remote parsers
 ENV JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
 
-# Using the stable version of Hadoop
-ENV HADOOP_VERSION 3.2.1
-ENV PATH /opt/hadoop-${HADOOP_VERSION}/bin:/usr/local/go/bin:/go/bin:$PATH
-COPY install-hadoop.bash /
-RUN /install-hadoop.bash
-
 # Python 3, TensorFlow 2.0.0, etc
 COPY install-python.bash /
 RUN /install-python.bash
