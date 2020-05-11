@@ -19,24 +19,23 @@ class SQLFlowDiagnosis(Exception):
 
 def check_and_load_estimator(estimator, model_params):
     try:
+        name = estimator.__name__
         return estimator(**model_params)
     except TypeError as e:
         # translate error message of TypeError to a SQLFLow user-friendly
         # diagnosis message
         re_missing_args = re.search(
-            'missing (.*) required positional arguments: (.*)', str(e))
+            'missing (.*) required positional argument[s]*: (.*)', str(e))
         re_unexpected_args = re.search(
             'attribute got an unexpected keyword argument: (.*)', str(e))
         if re_missing_args:
             raise SQLFlowDiagnosis(
                 "{0} missing {1} required attribute: {2}".format(
-                    estimator.__name__, re_missing_args.group(1),
-                    re_missing_args.group(2)))
+                    name, re_missing_args.group(1), re_missing_args.group(2)))
         elif re_unexpected_args:
-            raise SQLFlowDiagnosis("%s get an unexpected attribute: %s",
-                                   estimator.__name__,
+            raise SQLFlowDiagnosis("%s get an unexpected attribute: %s", name,
                                    re_unexpected_args.group(1))
         else:
             raise SQLFlowDiagnosis("{0} attribute {1}".format(
-                estimator.__name__,
+                name,
                 str(e).lstrip("__init__() ")))
