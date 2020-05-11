@@ -562,7 +562,6 @@ func achieveResource(cwd, entryCode, requirements, tarball, estimator string) er
 	}
 
 	// add any other custom model packages
-	fmt.Printf("submitting with model dep: %s\n", estimator)
 	if estimator != "" {
 		modelNameParts := strings.Split(estimator, ".")
 		if len(modelNameParts) == 2 && modelNameParts[0] != "sqlflow_models" {

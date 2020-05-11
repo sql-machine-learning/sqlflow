@@ -164,12 +164,6 @@ if is_estimator:
 else:
     model.load_file("{{.OSSModelDir}}", "model_save")
 
-model_import_name = sqlflow_submitter.get_import_name("""{{.Estimator}}""")
-try:
-    globals()[model_import_name] = __import__(model_import_name)
-except Exception as e:
-    print("failed to import %s: %s" % (model_import_name, e))
-
 predict.pred(datasource="{{.DataSource}}",
              estimator_string=estimator,
              select="""{{.Select}}""",
