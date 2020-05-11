@@ -18,18 +18,12 @@ RUN apt-get -qq update
 COPY install.sh /
 RUN /install.sh
 
-# Need Java SDK to build remote parsers
+# Java
 ENV JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
 
-# Go, goyacc, protoc-gen-go, and other Go tools
+# Go
 ENV GOPATH /root/go
 ENV PATH /usr/local/go/bin:$GOPATH/bin:$PATH
-COPY install-go.bash /
-RUN /install-go.bash
-
-# ODPS
-COPY install-odps.bash /
-RUN /install-odps.bash
 
 # ElasticDL and kubectl
 COPY install-elasticdl.bash /
