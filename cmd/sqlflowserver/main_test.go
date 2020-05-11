@@ -363,7 +363,7 @@ COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.my_dnn_model;`
 	_, _, _, err := connectAndRunSQL(trainSQL)
-	a.Contains(err.Error(), "model attribute missing 1 required positional argument: 'hidden_units'")
+	a.Contains(err.Error(), "DNNClassifierV2 missing 1 required attribute: 'hidden_units'")
 }
 
 func CaseEmptyDataset(t *testing.T) {

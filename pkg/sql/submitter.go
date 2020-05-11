@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path"
@@ -35,7 +36,7 @@ import (
 	"sqlflow.org/sqlflow/pkg/sql/codegen/xgboost"
 )
 
-var rePyDiagnosis = regexp.MustCompile("sqlflow_submitter.tensorflow.diagnosis.SQLFlowDiagnosis: (.*)")
+var rePyDiagnosis = regexp.MustCompile("sqlflow_submitter.tensorflow.diag.SQLFlowDiagnosis: (.*)")
 
 // GetSubmitter returns a proper Submitter from configurations in environment variables.
 func GetSubmitter(submitter string) Submitter {
@@ -131,18 +132,21 @@ func (s *defaultSubmitter) SaveModel(cl *ir.TrainStmt) error {
 
 func (s *defaultSubmitter) runCommand(program string) error {
 	cw := &logChanWriter{wr: s.Writer}
-	var output bytes.Buffer
-	w := bufio.NewWriter(&output)
+	var stderr bytes.Buffer
+	var stdout bytes.Buffer
+	w := io.MultiWriter(cw, &stdout)
+	wStderr := bufio.NewWriter(&stderr)
 	defer cw.Close()
 	cmd := sqlflowCmd(s.Cwd, s.Db.DriverName)
-	cmd.Stdin, cmd.Stdout, cmd.Stderr = bytes.NewBufferString(program), w, w
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = bytes.NewBufferString(program), w, wStderr
 	if e := cmd.Run(); e != nil {
-		// return the diagnostic message or full backtrace
-		sub := rePyDiagnosis.FindStringSubmatch(output.String())
+		// return the diagnostic message
+		sub := rePyDiagnosis.FindStringSubmatch(stderr.String())
 		if len(sub) == 2 {
 			return fmt.Errorf("%s", sub[1])
 		}
-		return fmt.Errorf("failed: %v\n%sProgram%[2]s\n%s\n%[2]sOutput%[2]s\n%[4]v", e, "==========", program, output.String())
+		// if no diagnostic message, return the full stack trace
+		return fmt.Errorf("failed: %v\n%sGenerated Code:%[2]s\n%s\n%[2]sOutput%[2]s\n%[4]v", e, "==========", program, stderr.String())
 	}
 	return nil
 }

@@ -17,7 +17,7 @@ import tensorflow as tf
 from sqlflow_submitter.pai import model
 
 from . import metrics
-from .diagnosis import check_and_load_estimator
+from .diag import check_and_load_estimator
 from .get_tf_version import tf_is_version2
 from .input_fn import input_fn
 from .pai_distributed import (dump_into_tf_config,
