@@ -20,8 +20,6 @@ RUN /install.sh
 
 # Need Java SDK to build remote parsers
 ENV JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
-COPY install-java.bash /
-RUN /install-java.bash
 
 # Using the stable version of Hadoop
 ENV HADOOP_VERSION 3.2.1
