@@ -17,14 +17,14 @@ deb $APT_MIRROR bionic-backports main restricted universe multiverse \n\
 COPY docker/ci /ci
 # Required by install-jupyter.bash
 ENV IPYTHON_STARTUP /root/.ipython/profile_default/startup/
-RUN apt-get -qq update \
-        && /ci/install-build-essential.bash \
-        && /ci/install-python.bash \
-        && /ci/install-jupyter.bash \
-        && /ci/install-mysql.bash \
-        && /ci/install-odps.bash \
-        && /ci/install-java.bash \
-        && /ci/install-hadoop.bash
+RUN apt-get -qq update
+RUN /ci/install-build-essential.bash
+RUN /ci/install-python.bash
+RUN /ci/install-jupyter.bash
+RUN /ci/install-mysql.bash
+RUN /ci/install-odps.bash
+RUN /ci/install-java.bash
+RUN /ci/install-hadoop.bash
 
 # Install sample datasets for CI and demo.
 COPY doc/datasets/popularize_churn.sql \
@@ -40,22 +40,16 @@ VOLUME /var/lib/mysql
 COPY python /usr/local/sqlflow/python
 ENV PYTHONPATH=/usr/local/sqlflow/python:$PYTHONPATH
 
-# Install Couler, Fluid, and model zoo.
-COPY build/*.whl /usr/local/sqlflow/python/
-RUN pip install /usr/local/sqlflow/python/*.whl
+# Install pre-built SQLFlow components.
+COPY build /build
+ENV SQLFLOW_PARSER_SERVER_PORT=12300
+ENV SQLFLOW_PARSER_SERVER_LOADING_PATH="/usr/local/sqlflow/java"
+RUN pip install --quiet /build/*.whl \
+        && mv /build/sqlflowserver /build/sqlflow /build/step /usr/local/bin/ \
+        && mv /build/*.jar $SQLFLOW_PARSER_SERVER_LOADING_PATH \
+        && mv /build/tutorial /workspace
 
-# Install the pre-built binaries
-COPY build/sqlflowserver build/sqlflow build/step /usr/local/bin/
-
-# Install the Java gRPC parser servers.
-COPY build/*.jar /usr/local/sqlflow/java/
-ENV SQLFLOW_PARSER_SERVER_PORT 12300
-ENV SQLFLOW_PARSER_SERVER_LOADING_PATH /usr/local/sqlflow/java
-
-# Install the tutorials
-COPY build/tutorial /workspace
-
- # Expose MySQL server, SQLFlow gRPC server, and Jupyter Notebook server port
+# Expose MySQL server, SQLFlow gRPC server, and Jupyter Notebook server port.
 EXPOSE 3306 50051 8888
 
 ADD scripts/start.sh /

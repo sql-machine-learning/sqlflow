@@ -16,7 +16,7 @@
 set -e
 
 # This file depends on install-python.bash.
-pip --quiet install \
+pip install --quiet \
     jupyter==1.0.0 \
     notebook==6.0.0 \
     sqlflow==0.9.0 # sqlflow is the Python client of SQLFlow server.

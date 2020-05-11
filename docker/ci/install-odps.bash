@@ -17,7 +17,8 @@ set -e
 
 # Install odpscmd for submitting Alps predict job with ODPS UDF script.
 # TODO(Yancey1989): using gomaxcompute instead of the odpscmd command-line tool.
-wget -q http://docs-aliyun.cn-hangzhou.oss.aliyun-inc.com/assets/attach/119096/cn_zh/1557995455961/odpscmd_public.zip
+curl -sLo odpscmd_public.zip \
+     http://docs-aliyun.cn-hangzhou.oss.aliyun-inc.com/assets/attach/119096/cn_zh/1557995455961/odpscmd_public.zip
 unzip -qq odpscmd_public.zip -d /usr/local/odpscmd
 ln -s /usr/local/odpscmd/bin/odpscmd /usr/local/bin/odpscmd
 rm -rf odpscmd_public.zip

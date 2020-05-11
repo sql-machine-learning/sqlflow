@@ -20,13 +20,13 @@ ln -s /usr/bin/python3 /usr/local/bin/python
 
 # Upgrade pip would creates /usr/local/bin/pip.  Update setuptools
 # because https://github.com/red-hat-storage/ocs-ci/pull/971/files
-pip3 install --upgrade pip setuptools six
+pip3 install --quiet --upgrade pip setuptools six
 
 # keras.datasets.imdb only works with numpy==1.16.1
 # NOTE: shap == 0.30.1 depends on dill but not include dill as it's dependency,
 #       need to install manually.
 # NOTE: mysqlclient depends on apt-get install mysqlclient in install-mysql.bash
-pip --quiet install \
+pip install --quiet \
     numpy==1.16.2 \
     tensorflow==2.0.1 \
     impyla==0.16.0 \
