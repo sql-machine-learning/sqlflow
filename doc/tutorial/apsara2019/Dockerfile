@@ -1,4 +1,4 @@
-FROM sqlflow/sqlflow:latest
+FROM sqlflow/sqlflow:ci
 
 # Prepare sample datasets
 COPY titanic_dnn/titanic.sql carprice_xgboost/carprice.sql activepower_clustering/activepower.sql /docker-entrypoint-initdb.d/
@@ -14,4 +14,3 @@ RUN curl -fsSL "https://raw.githubusercontent.com/sql-machine-learning/sqlflow/d
 ENV SQLFLOW_NOTEBOOK_DIR=/didi_workspace
 
 CMD ["bash", "/start.sh"]
-

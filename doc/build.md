@@ -1,11 +1,17 @@
 # Build from Source in a Docker Container
 
-The source code of SQLFlow is in Go, Java, protobuf, yacc, and Python.  To build from source code, we need toolchains of all these languages.  In addition to that, we need to install MySQL, Hive, and MaxCompute client for unit tests.  To ease the software installation and configuration, we provide a `Dockerfile` that contains all the requirement software for building and testing.
+The source code of SQLFlow is in Go, Java, protobuf, yacc, and Python.
+To build from source code, we need toolchains of all these languages.
+In addition to that, we need to install MySQL, Hive, and MaxCompute
+client for unit tests.  To ease the software installation and
+configuration, we provide a `Dockerfile` that contains all the
+requirement software for building and testing.
 
 ## Prerequisite
 
 1. Git for checking out the source code.
-1. [Docker CE >= 18.x](https://docs.docker.com/docker-for-mac/install/) for building the Docker image of development tools.
+1. [Docker CE >= 18.x](https://docs.docker.com/docker-for-mac/install/) for
+   building the Docker image of development tools.
 
 ## Checkout the Source Code
 
@@ -16,21 +22,15 @@ cd ~
 git clone https://github.com/sql-machine-learning/sqlflow
 ```
 
-## Build the Development Docker Image
+## Build from Source Code
 
-We can build the Docker image from the `Dockerfile`.
-
-```bash
-cd sqlflow
-docker build -t sqlflow .
-```
-
-Or, we can pull the Docker image [pre-built by the CI system](https://hub.docker.com/r/sqlflow/sqlflow/tags) from DockerHub.
-
-```bash
-docker pull sqlflow/sqlflow
-docker tag sqlflow/sqlflow:latest sqlflow:latest
-```
+To standardize the building process, we define the development
+environment as a Docker image `sqfllow:dev` in
+`/docker/dev/Dockerfile`.  To make it easy to deploy SQLFlow, we
+release the building result as a Docker image `sqlflow:ci`.  Please
+follow [these steps](../docker/dev/README.md) in to bulid
+`sqlflow:dev` and then `sqlflow.ci`.  You can also use the prebuilt
+images on DockerHub.com.
 
 ## Build and Test
 

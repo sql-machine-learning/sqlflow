@@ -12,9 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-changed_files=$(git diff --cached --name-only --diff-filter=ACMR | grep '\.bash\|\.sh$')
-if [[ "$changed_files" == "" ]]; then
-    exit 0
-fi
+docker pull sqlflow/sqlflow:dev
 
-echo "$changed_files" | xargs shellcheck
+# Exit for any error.
+set -e
+
+echo "build the devbox image sqlflow:dev"
+cd $TRAVIS_BUILD_DIR/docker/dev
+docker build --cache-from sqlflow/sqlflow:dev -t sqlflow:dev .
+
+echo "build SQLFlow from source into $TRAVIS_BUILD_DIR/build using sqlflow:dev"
+docker run --name dev -it -v $TRAVIS_BUILD_DIR:/work -w /work sqlflow:dev
+docker logs dev
+docker rm dev
+
+echo "build sqlflow:ci byloading $TRAVIS_BUILD_DIR/build"
+cd $TRAVIS_BUILD_DIR
+docker build -t sqlflow:ci .
