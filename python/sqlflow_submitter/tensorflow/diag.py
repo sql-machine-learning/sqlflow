@@ -18,6 +18,7 @@ class SQLFlowDiagnosis(Exception):
 
 
 def check_and_load_estimator(estimator, model_params):
+    # load estimator class and diagnose the type error
     try:
         name = estimator.__name__
         return estimator(**model_params)
