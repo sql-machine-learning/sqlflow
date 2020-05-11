@@ -16,16 +16,8 @@ deb $APT_MIRROR bionic-backports main restricted universe multiverse \n\
 
 RUN apt-get -qq update
 
-COPY docker/ci/install-elasticdl.bash /
-/install-elasticdl.bash
-COPY docker/ci/install-hadoop.bash /
-/install-hadoop.bash
-COPY docker/ci/install-mysql.bash /
-/install-mysql.bash
-COPY docker/ci/install-odps.bash /
-/install-odps.bash
-COPY docker/ci/install-python.bash /
-/install-python.bash
+COPY docker/ci /
+RUN for i in /ci/install-*.bash; do source $i; done
 
 # The SQLFlow magic command for Jupyter.
 ENV IPYTHON_STARTUP /root/.ipython/profile_default/startup/
