@@ -16,13 +16,13 @@ deb $APT_MIRROR bionic-backports main restricted universe multiverse \n\
 
 RUN apt-get -qq update
 
-COPY docker/ci /
+COPY docker/ci /ci
 RUN for i in /ci/install-*.bash; do source $i; done
 
 # The SQLFlow magic command for Jupyter.
 ENV IPYTHON_STARTUP /root/.ipython/profile_default/startup/
 COPY install-jupyter.bash /
-COPY js /js
+COPY docker/ci/js /js
 RUN /install-jupyter.bash
 
 
