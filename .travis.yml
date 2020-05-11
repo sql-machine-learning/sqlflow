@@ -102,4 +102,4 @@ jobs:
       sqlflow:ci scripts/test/workflow.sh
   - stage: deploy
     script:
-    - bash scripts/travis/deploy.sh # Push images only for merging commits.
+    - $TRAVIS_BUILD_DIR/scripts/travis/deploy.sh # Push only after PR merging.
