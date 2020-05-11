@@ -15,6 +15,20 @@
 
 set -e
 
+# The default Ubuntu apt-get source archive.ubuntu.com is usually busy
+# and slow.  If you are in the U.S., you might want to use
+# http://us.archive.ubuntu.com/ubuntu/, or if you are in China, you
+# can try https://mirrors.tuna.tsinghua.edu.cn/ubuntu/
+cat >> /etc/apt/sources.list <<EOF
+deb $APT_MIRROR bionic main restricted universe multiverse
+deb $APT_MIRROR bionic-security main restricted universe multiverse
+deb $APT_MIRROR bionic-updates main restricted universe multiverse
+deb $APT_MIRROR bionic-proposed main restricted universe multiverse
+deb $APT_MIRROR bionic-backports main restricted universe multiverse
+EOF
+apt-get -qq update
+
+
 DOWNLOAD_TOOLS="curl unzip"
 BUILD_ESSENTIAL="build-essential git"
 PYTHON_DEV="python3 python3-pip"
@@ -23,29 +37,29 @@ SHELL_LINTER="shellcheck"
 apt-get -qq install -y \
         $DOWNLOAD_TOOLS \
         $BUILD_ESSENTIAL \
-	$PYTHON_DEV \
-	$JAVA_DEV \
-        $SHELL_LINTER \
-
+        $PYTHON_DEV \
+        $JAVA_DEV \
+        $SHELL_LINTER
+apt-get -qq clean -y
 
 # Make Python 3 the the default
 ln -s /usr/bin/python3 /usr/local/bin/python
 
 # Upgrade pip would creates /usr/local/bin/pip.  Update setuptools
 # because https://github.com/red-hat-storage/ocs-ci/pull/971/files
-pip3 install --upgrade pip setuptools six
+pip3 --quiet install --upgrade pip setuptools six
 
 PRE_COMMIT="pre-commit==1.18.3"
 PY_TEST="pytest==5.3.0"
 JS_LINTER=jsbeautifier
 PYTHON_LINTER="yapf isort pylint flake8"
 
-pip install \
+pip --quiet install \
     $PRE_COMMIT \
     $PY_TEST \
     $JS_LINTER \
     $PYTHON_LINTER
-
+rm -rf $HOME/.cache/pip/*
 
 # Install Go compiler
 GO_DEV="https://dl.google.com/go/go1.13.4.linux-amd64.tar.gz"

@@ -1,20 +1,7 @@
 FROM ubuntu:18.04
 
-# The default Ubuntu apt-get source archive.ubuntu.com is usually busy
-# and slow.  If you are in the U.S., you might want to use
-# http://us.archive.ubuntu.com/ubuntu/, or if you are in China, you
-# can try https://mirrors.tuna.tsinghua.edu.cn/ubuntu/
 ARG APT_MIRROR="http://us.archive.ubuntu.com/ubuntu/"
-RUN echo "\n\
-deb $APT_MIRROR bionic main restricted universe multiverse \n\
-deb $APT_MIRROR bionic-security main restricted universe multiverse \n\
-deb $APT_MIRROR bionic-updates main restricted universe multiverse \n\
-deb $APT_MIRROR bionic-proposed main restricted universe multiverse \n\
-deb $APT_MIRROR bionic-backports main restricted universe multiverse \n\
-" > /etc/apt/sources.list
-
-RUN apt-get -qq update
-
+ENV APT_MIRROR=$APT_MIRROR
 COPY install.sh /
 RUN /install.sh
 
