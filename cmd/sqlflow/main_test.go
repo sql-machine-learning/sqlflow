@@ -977,6 +977,15 @@ func TestGetServerAddrFromEnv(t *testing.T) {
 +----------------+`)
 }
 
+func TestIsExitStmt(t *testing.T) {
+	a := assert.New(t)
+	a.True(isExitStmt("exit"))
+	a.True(isExitStmt("quit"))
+	a.True(isExitStmt(" ExiT ; SELECT 1"))
+	a.False(isExitStmt("SELECT 1; EXIT"))
+	a.False(isExitStmt("QUIT SELECT 1"))
+}
+
 type testConsoleParser struct{}
 
 func (p *testConsoleParser) Read() ([]byte, error) {
