@@ -21,10 +21,6 @@ RUN /install.sh
 # Need Java SDK to build remote parsers
 ENV JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
 
-# Python 3, TensorFlow 2.0.0, etc
-COPY install-python.bash /
-RUN /install-python.bash
-
 # Go, goyacc, protoc-gen-go, and other Go tools
 ENV GOPATH /root/go
 ENV PATH /usr/local/go/bin:$GOPATH/bin:$PATH

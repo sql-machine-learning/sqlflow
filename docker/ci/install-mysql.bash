@@ -17,7 +17,13 @@ set -e
 
 apt-get -qq update
 
-# Install MySQL server without a password prompt
+# Install MySQL client library in C and Python.
+BUILD_ESSENTIAL="build-essential git" # required for building pip package
+MYSQL_CLIENT="libmysqlclient-dev libssl-dev" # libssl-dev for pip mysqlclient
+apt-get -qq install -y $BUILD_ESSENTIAL $MYSQL_CLIENT
+pip install mysqlclient==1.4.4
+
+# Install MySQL server without a password prompt.
 echo 'mysql-server mysql-server/root_password password root' | debconf-set-selections
 echo 'mysql-server mysql-server/root_password_again password root' | debconf-set-selections
 apt-get -qq update && apt-get install -y mysql-server > /dev/null

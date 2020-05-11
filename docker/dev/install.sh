@@ -17,16 +17,34 @@ set -e
 
 DOWNLOAD_TOOLS="curl unzip"
 BUILD_ESSENTIAL="build-essential git"
-MYSQL_CLIENT="libmysqlclient-dev"
+PYTHON_DEV="python3 python3-pip"
 JAVA_DEV="openjdk-8-jdk maven"
 SHELL_LINTER="shellcheck"
 apt-get -qq install -y \
         $DOWNLOAD_TOOLS \
         $BUILD_ESSENTIAL \
+	$PYTHON_DEV \
 	$JAVA_DEV \
         $SHELL_LINTER \
-	$MYSQL_CLIENT \
 
+
+# Make Python 3 the default
+ln -s /usr/bin/python3 /usr/local/bin/python
+
+# Upgrade pip would creates /usr/local/bin/pip.  Update setuptools
+# because https://github.com/red-hat-storage/ocs-ci/pull/971/files
+pip3 install --upgrade pip setuptools six
+
+PRE_COMMIT="pre-commit==1.18.3"
+PY_TEST="pytest==5.3.0"
+JS_LINTER=jsbeautifier
+PYTHON_LINTER="yapf isort pylint flake8"
+
+pip install \
+    $PRE_COMMIT \
+    $PY_TEST \
+    $JS_LINTER \
+    $PYTHON_LINTER
 
 # Install protoc
 curl -sL \
