@@ -16,7 +16,7 @@
 set -e
 
 # Installing mysqlclient pip package needs GCC.
-apt-get install -y python3 python3-pip > /dev/null
+apt-get -qq install -y python3 python3-pip
 ln -s /usr/bin/python3 /usr/local/bin/python
 
 # Upgrade pip would creates /usr/local/bin/pip.  Update setuptools

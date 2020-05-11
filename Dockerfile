@@ -16,14 +16,18 @@ deb $APT_MIRROR bionic-backports main restricted universe multiverse \n\
 RUN apt-get -qq update
 
 COPY docker/ci /ci
-RUN for i in /ci/install-*.bash; do source $i; done
+RUN /ci/install-build-essential.bash && \
+        /ci/install-python.bash && \
+        /ci/install-jupyter.bash && \
+        /ci/install-mysql.bash && \
+        /ci/install-odps.bash && \
+        /ci/install-java.bash && \
+        /ci/install-hadoop.bash && \
+        install-elasticdl.bash
 
 # The SQLFlow magic command for Jupyter.
 ENV IPYTHON_STARTUP /root/.ipython/profile_default/startup/
-COPY install-jupyter.bash /
 COPY docker/ci/js /js
-RUN /install-jupyter.bash
-
 
 # Install sample datasets for CI and demo.
 COPY doc/datasets/popularize_churn.sql \
@@ -36,7 +40,6 @@ COPY doc/datasets/popularize_churn.sql \
 VOLUME /var/lib/mysql
 
 # Install the Python source code.
-# TODO(yi): It seems that we don't need to build python/couler into a wheel.
 COPY python /usr/local/sqlflow/python
 ENV PYTHONPATH=/usr/local/sqlflow/python:$PYTHONPATH
 
@@ -45,9 +48,7 @@ COPY build/*.whl /usr/local/sqlflow/python/
 RUN pip install /usr/local/sqlflow/python/*.whl
 
 # Install the pre-built binaries
-COPY build/sqlflowserver /usr/local/bin
-COPY build/sqlflow /usr/local/bin
-COPY build/step /usr/local/bin
+COPY build/sqlflowserver build/sqlflow build/step /usr/local/bin
 
 # Install the Java gRPC parser servers.
 COPY build/*.jar /usr/local/sqlflow/java/
@@ -58,9 +59,7 @@ ENV SQLFLOW_PARSER_SERVER_LOADING_PATH /usr/local/sqlflow/java
 COPY build/tutorial /workspace
 
  # Expose MySQL server, SQLFlow gRPC server, and Jupyter Notebook server port
-EXPOSE 3306
-EXPOSE 50051
-EXPOSE 8888
+EXPOSE 3306 50051 8888
 
 ADD scripts/start.sh /
 CMD ["bash", "/start.sh"]
