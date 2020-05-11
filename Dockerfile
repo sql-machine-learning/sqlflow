@@ -10,12 +10,7 @@ COPY doc/datasets/popularize_churn.sql \
      /docker-entrypoint-initdb.d/
 VOLUME /var/lib/mysql
 
-# Install the Python source code.
-# TODO(yi): It seems that we don't need to build python/couler into a wheel.
-COPY python /usr/local/sqlflow/python
-ENV PYTHONPATH=/usr/local/sqlflow/python:$PYTHONPATH
-
-# Install Couler, Fluid, and model zoo.
+# Install Couler, Fluid, sqlflow_submitter and model zoo.
 COPY build/*.whl /usr/local/sqlflow/python/
 RUN pip install /usr/local/sqlflow/python/*.whl
 

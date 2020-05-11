@@ -21,8 +21,8 @@ if [[ $(git diff --name-only HEAD..develop|awk -F. '{print $NF}'|uniq) == md ]];
 fi
 
 while true; do
-  curl -s http://localhost:8899 > /dev/null 2>&1
-  if [ $? -eq 0 ]; then
+  if ! curl -s http://localhost:8899 > /dev/null 2>&1
+  then
     break
   else
     echo "still waiting, hive server is not ready..."
@@ -38,10 +38,6 @@ export SQLFLOW_HIVE_LOCATION_ROOT_PATH=/sqlflow
 export SQLFLOW_TEST_NAMENODE_ADDR="127.0.0.1:8020"
 
 export SQLFLOW_TEST_DB=hive
-# NOTE: we have already installed sqlflow_submitter under python installation path
-# using latest develop branch, but when testing on CI, we need to use the code in
-# the current pull request.
-export PYTHONPATH=$GOPATH/src/sqlflow.org/sqlflow/python
 
 go generate ./...
 go install ./...
