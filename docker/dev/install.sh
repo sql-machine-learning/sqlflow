@@ -28,7 +28,7 @@ apt-get -qq install -y \
         $SHELL_LINTER \
 
 
-# Make Python 3 the default
+# Make Python 3 the the default
 ln -s /usr/bin/python3 /usr/local/bin/python
 
 # Upgrade pip would creates /usr/local/bin/pip.  Update setuptools
@@ -45,6 +45,27 @@ pip install \
     $PY_TEST \
     $JS_LINTER \
     $PYTHON_LINTER
+
+
+# Install Go compiler
+GO_DEV="https://dl.google.com/go/go1.13.4.linux-amd64.tar.gz"
+curl -sL $GO_DEV  | tar -C /usr/local -xzf -
+
+
+# Install GoYacc, protoc-gen-go, linters, etc.
+export GO111MODULE=on
+go get \
+   github.com/golang/protobuf/protoc-gen-go@v1.3.3 \
+   golang.org/x/lint/golint \
+   golang.org/x/tools/cmd/goyacc \
+   golang.org/x/tools/cmd/cover \
+   github.com/mattn/goveralls \
+   github.com/rakyll/gotest \
+   github.com/wangkuiyi/goyaccfmt \
+   github.com/wangkuiyi/yamlfmt \
+   github.com/wangkuiyi/ipynb/markdown-to-ipynb
+cp "$GOPATH"/bin/* /usr/local/bin/
+
 
 # Install protoc
 curl -sL \
