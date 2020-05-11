@@ -16,7 +16,7 @@
 set -e
 
 # Installing mysqlclient pip package needs GCC.
-apt-get install -y build-essential python3 python3-pip > /dev/null
+apt-get install -y python3 python3-pip > /dev/null
 ln -s /usr/bin/python3 /usr/local/bin/python
 
 # Upgrade pip would creates /usr/local/bin/pip.  Update setuptools
@@ -24,11 +24,12 @@ ln -s /usr/bin/python3 /usr/local/bin/python
 pip3 install --upgrade pip setuptools six
 
 # pip install mysqlclient needs GCC.
-apt-get install -y build-essential  libssl-dev # for building mysqlclient pip
+apt-get install -y libssl-dev # for building mysqlclient pip
 
 # keras.datasets.imdb only works with numpy==1.16.1
-# NOTE: shap == 0.30.1 depends on dill but not include dill as it's dependency, need to install manually.
-# NOTE: mysqlclient depends on apt-get install mysqlclient in install-mysql.bash.
+# NOTE: shap == 0.30.1 depends on dill but not include dill as it's dependency,
+#       need to install manually.
+# NOTE: mysqlclient depends on apt-get install mysqlclient in install-mysql.bash
 pip install \
     numpy==1.16.2 \
     tensorflow==2.0.1 \
