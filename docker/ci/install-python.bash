@@ -21,3 +21,19 @@ ln -s /usr/bin/python3 /usr/local/bin/python
 # Upgrade pip would creates /usr/local/bin/pip.  Update setuptools
 # because https://github.com/red-hat-storage/ocs-ci/pull/971/files
 pip3 install --quiet --upgrade pip setuptools six
+
+# TODO(wyi): The following section duplicates with dev/Dockerfile.
+# Consider refactorize it.
+PRE_COMMIT="pre-commit==1.18.3"
+PY_TEST="pytest==5.3.0"
+JS_LINTER=jsbeautifier
+PYTHON_LINTER="yapf isort pylint flake8"
+WHEEL="wheel"
+pip install --quiet \
+    $WHEEL \
+    $PRE_COMMIT \
+    $PY_TEST \
+    $JS_LINTER \
+    $PYTHON_LINTER
+
+rm -rf $HOME/.cache/pip/*
