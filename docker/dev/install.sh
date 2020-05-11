@@ -16,7 +16,7 @@
 set -e
 
 echo "Use Ubuntu apt-get source $APT_MIRROR ..."
-cat >> /etc/apt/sources.list <<EOF
+cat > /etc/apt/sources.list <<EOF
 deb $APT_MIRROR bionic main restricted universe multiverse
 deb $APT_MIRROR bionic-security main restricted universe multiverse
 deb $APT_MIRROR bionic-updates main restricted universe multiverse
@@ -37,7 +37,8 @@ apt-get -qq install -y --no-install-recommends \
         $BUILD_ESSENTIAL \
         $PYTHON_DEV \
         $JAVA_DEV \
-        $SHELL_LINTER
+        $SHELL_LINTER \
+        > /dev/null
 rm -rf /var/lib/apt/lists/*
 apt-get -qq clean -y
 
