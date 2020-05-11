@@ -15,9 +15,8 @@ deb $APT_MIRROR bionic-backports main restricted universe multiverse \n\
 
 RUN apt-get -qq update
 
-# Install wget, curl, unzip, bzip2, git
-COPY install-download-tools.bash /
-RUN /install-download-tools.bash
+# Install download tools
+RUN apt-get -qq install -y curl unzip git
 
 # Install shellcheck
 COPY install-shell-tools.bash /
