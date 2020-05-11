@@ -25,10 +25,6 @@ ENV JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
 ENV GOPATH /root/go
 ENV PATH /usr/local/go/bin:$GOPATH/bin:$PATH
 
-# ElasticDL and kubectl
-COPY install-elasticdl.bash /
-RUN /install-elasticdl.bash
-
 # The SQLFlow magic command for Jupyter.
 ENV IPYTHON_STARTUP /root/.ipython/profile_default/startup/
 COPY install-jupyter.bash /
