@@ -38,8 +38,8 @@ jobs:
     script:
     - set -e
     - $TRAVIS_BUILD_DIR/scripts/travis/build.sh
-    - docker run --rm -v $TRAVIS_BUILD_DIR:/work -w /work sqlflow:ci pre-commit run
-      -a --show-diff-on-failure
+    - docker run --rm -v $TRAVIS_BUILD_DIR:/work -w /work sqlflow:ci
+      pre-commit run -a --show-diff-on-failure
   - stage: Unitests
     # env is just used for displaying the job type in travis web page
     env: SQLFLOW_TEST_DB=mysql
@@ -80,6 +80,14 @@ jobs:
     - eval $(sudo minikube docker-env)
     - $TRAVIS_BUILD_DIR/scripts/travis/build.sh
     - docker tag sqlflow:ci sqlflow:submitter
-    - docker run --rm --net=host -e SQLFLOW_WORKFLOW_STEP_IMAGE=sqlflow:submitter
-      -v /var/run/docker.sock:/var/run/docker.sock -v $HOME/.kube:/root/.kube -v /home/$USER/.minikube/:/home/$USER/.minikube/
-      -v $TRAVIS_BUILD_DIR:/work -w /work sqlflow:ci scripts/test/workflow.sh
+    - docker run --rm --net=host
+      -e SQLFLOW_WORKFLOW_STEP_IMAGE=sqlflow:submitter
+      -v /var/run/docker.sock:/var/run/docker.sock
+      -v $HOME/.kube:/root/.kube
+      -v /home/$USER/.minikube/:/home/$USER/.minikube/
+      -v $TRAVIS_BUILD_DIR:/work -w /work
+      sqlflow:ci scripts/test/workflow.sh
+  - stage: deploy
+    script:
+    - $TRAVIS_BUILD_DIR/scripts/travis/deploy.sh # Push only after PR merging.
+
