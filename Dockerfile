@@ -26,6 +26,9 @@ ENV PATH /opt/hadoop-${HADOOP_VERSION}/bin:/usr/local/go/bin:/go/bin:$PATH
 COPY docker/ci/install-hadoop.bash /ci/
 RUN /ci/install-hadoop.bash
 
+COPY docker/ci/install-kubectl.bash /ci/
+RUN /ci/install-kubectl.bash
+
 # Install sample datasets for CI and demo.
 COPY doc/datasets/popularize_churn.sql \
      doc/datasets/popularize_iris.sql \

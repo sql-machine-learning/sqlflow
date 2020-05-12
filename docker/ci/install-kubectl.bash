@@ -15,13 +15,7 @@
 
 set -e
 
-echo "Install Docker and sudo ..."
-apt-get -qq install -y docker.io sudo > /dev/null
-
-echo "Build and install ElasticDL ..."
-git clone https://github.com/sql-machine-learning/elasticdl.git
-cd elasticdl
-git checkout eb93e2a48e6fe8f077c4937d8c0c5987faa9cf56 # TODO(terry): update later.
-pip install --quiet -r elasticdl/requirements.txt
-python setup.py -q install
-cd ..
+echo "Install kubectl ..."
+curl -sLo /usr/local/bin/kubectl \
+     https://storage.googleapis.com/kubernetes-release/release/v1.14.0/bin/linux/amd64/kubectl
+chmod +x /usr/local/bin/kubectl
