@@ -42,4 +42,4 @@ git add sqlflow
 git config --global user.name "Yi Wang"
 git config --global user.email "yi.wang.2005@gmail.com"
 git commit -am 'Add/update sqlflow'
-git push -u https://$RELEASER:$GITHUB_PASSWORD@$REPO master
+git push -u https://sqlflow-bot:asdfghj1234@$REPO master
