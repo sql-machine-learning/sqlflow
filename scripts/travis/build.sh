@@ -12,16 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-docker pull sqlflow/sqlflow:dev
-
 # Exit for any error.
 set -e
 
-echo "build the devbox image sqlflow:dev"
+# When we do development locally, we might have already built
+# sqflow:dev.  In this case, let us try to reuse it.  At CI time, we
+# use sqlflow/sqlflow:dev as the cache when building sqlflow:dev on
+# the newly started VM.
+echo "Build the devbox image sqlflow:dev ..."
 cd $TRAVIS_BUILD_DIR/docker/dev
-docker build --cache-from sqlflow/sqlflow:dev -t sqlflow:dev .
+if [[ "$(docker images -q sqlflow:dev 2> /dev/null)" == "" ]]; then
+    echo "  using sqlflow/sqlflow:dev as the cache image"
+    docker pull sqlflow/sqlflow:dev
+    docker build --cache-from sqlflow/sqlflow:dev -t sqlflow:dev .
+else
+    docker build -t sqlflow:dev .
+fi
 
-echo "build SQLFlow from source into $TRAVIS_BUILD_DIR/build using sqlflow:dev"
+echo "Build SQLFlow into $TRAVIS_BUILD_DIR/build using sqlflow:dev ..."
 mkdir -p $TRAVIS_BUILD_DIR/build
 docker run --rm -it \
        -v $TRAVIS_BUILD_DIR:/work -w /work \
@@ -30,6 +38,6 @@ docker run --rm -it \
        -v $HOME/.cache:/root/.cache \
        sqlflow:dev
 
-echo "build sqlflow:ci byloading $TRAVIS_BUILD_DIR/build"
+echo "Build sqlflow:ci byloading $TRAVIS_BUILD_DIR/build ..."
 cd $TRAVIS_BUILD_DIR
 docker build -t sqlflow:ci .

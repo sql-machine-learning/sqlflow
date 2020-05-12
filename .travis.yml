@@ -38,7 +38,7 @@ jobs:
     script:
     - set -e
     - $TRAVIS_BUILD_DIR/scripts/travis/build.sh
-    - docker run --rm -v $TRAVIS_BUILD_DIR:/work -w /work sqlflow:ci
+    - docker run --rm -it -v $TRAVIS_BUILD_DIR:/work -w /work sqlflow:dev
       pre-commit run -a --show-diff-on-failure
   - stage: Unitests
     # env is just used for displaying the job type in travis web page
@@ -64,7 +64,7 @@ jobs:
     script:
     - set -e
     - $TRAVIS_BUILD_DIR/scripts/travis/build.sh
-    - scripts/test/setup_k8s_env.sh
+    - $TRAVIS_BUILD_DIR/scripts/travis/setup_minikube.sh
     - docker run --rm --net=host
       -v /var/run/docker.sock:/var/run/docker.sock
       -v $HOME/.kube:/root/.kube
@@ -89,7 +89,7 @@ jobs:
   - env: SQLFLOW_TEST=workflow
     script:
     - set -e
-    - bash scripts/test/setup_k8s_env.sh
+    - $TRAVIS_BUILD_DIR/scripts/travis/setup_minikube.sh
     - eval $(sudo minikube docker-env)
     - $TRAVIS_BUILD_DIR/scripts/travis/build.sh
     - docker tag sqlflow:ci sqlflow:submitter

@@ -50,7 +50,8 @@ elif [[ "$TRAVIS_TAG" != "" ]]; then
     echo "docker push sqlflow/sqlflow:$TRAVIS_TAG"
     DOCKER_TAG="$TRAVIS_TAG"
 else
-    echo "Nothing to docker push"
+    echo "Cannot figure out Docker image tag."
+    exit 1
 fi
 
 echo "$DOCKER_PASSWORD" |
