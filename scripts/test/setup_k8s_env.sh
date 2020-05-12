@@ -26,16 +26,16 @@ export MINIKUBE_VERSION=1.1.1
 # Install kubectl and minikube (currently only used for ElasticDL integration tests with maxcompute)
 curl -sLo kubectl https://storage.googleapis.com/kubernetes-release/release/v$K8S_VERSION/bin/linux/amd64/kubectl && chmod +x kubectl && sudo mv kubectl /usr/local/bin/
 curl -sLo minikube https://storage.googleapis.com/minikube/releases/v$MINIKUBE_VERSION/minikube-linux-amd64 && chmod +x minikube && sudo mv minikube /usr/local/bin/
-mkdir -p $HOME/.kube $HOME/.minikube
-touch $KUBECONFIG
-sudo minikube start --vm-driver=none --kubernetes-version=v$K8S_VERSION --cpus 2 --memory 6144
-sudo chown -R travis: $HOME/.minikube/
+mkdir -p "$HOME/.kube" "$HOME/.minikube"
+touch "$KUBECONFIG"
+sudo minikube start --vm-driver=none --kubernetes-version=v"$K8S_VERSION" --cpus 2 --memory 6144
+sudo chown -R travis: "$HOME/.minikube/"
 kubectl cluster-info
 
 # Set up Argo
 kubectl create namespace argo
-kubectl apply -n argo -f https://raw.githubusercontent.com/argoproj/argo/stable/manifests/install.yaml
+kubectl apply -n argo -f https://raw.githubusercontent.com/argoproj/argo/v2.7.7/manifests/install.yaml
 kubectl create rolebinding default-admin --clusterrole=admin --serviceaccount=default:default
 
 # Set up Tekton
-kubectl apply --filename https://storage.googleapis.com/tekton-releases/pipeline/previous/v0.10.1/release.yaml
+# kubectl apply --filename https://storage.googleapis.com/tekton-releases/pipeline/previous/v0.10.1/release.yaml
