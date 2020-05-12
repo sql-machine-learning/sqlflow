@@ -55,7 +55,7 @@ EOF
             sleep ${CHECK_INTERVAL_SECS}
         fi
     done
-    echo "CoulerTest failed, launch argo workflow timeout."
+    echo "Run CoulerTest failed, launch argo workflow timeout."
     exit 1
 }
 
@@ -84,7 +84,7 @@ function test_workflow() {
             sleep ${CHECK_INTERVAL_SECS}
         fi
     done
-    echo "WorkflowTest failed, Launch MySQL Pod times out"
+    echo "Run WorkflowTest failed, launch MySQL Pod times out"
     exit 1
 }
 
@@ -97,7 +97,7 @@ if [ "${SQLFLOW_submitter}" == "pai" ]; then
     # TDOO(wangkuiyi): rename MAXCOMPUTE_AK to SQLFLOW_TEST_DB_MAXCOMPUTE_ASK later after rename the Travis CI env settings.
     if ! SQLFLOW_TEST_DATASOURCE="maxcompute://${MAXCOMPUTE_AK}:${MAXCOMPUTE_SK}@${MAXCOMPUTE_ENDPOINT}" gotest ./cmd/... -run TestEnd2EndWorkflow -v
     then
-        echo "WorkflowTest on PAI failed"
+        echo "Run WorkflowTest on PAI failed"
     fi
 fi
 
