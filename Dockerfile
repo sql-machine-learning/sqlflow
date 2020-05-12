@@ -26,8 +26,12 @@ ENV PATH /opt/hadoop-${HADOOP_VERSION}/bin:/usr/local/go/bin:/go/bin:$PATH
 COPY docker/ci/install-hadoop.bash /ci/
 RUN /ci/install-hadoop.bash
 
+# scripts/test/workflow require kubectl.
 COPY docker/ci/install-kubectl.bash /ci/
 RUN /ci/install-kubectl.bash
+
+# scripts/test/workflow require Docker.
+RUN apt-get -qq install -y docker.io sudo > /dev/null
 
 # Install sample datasets for CI and demo.
 COPY doc/datasets/popularize_churn.sql \
