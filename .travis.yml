@@ -43,6 +43,7 @@ jobs:
   - os: osx
     scripts:
     - uname -a
+    - docker version
   - stage: Unitests
     # env is just used for displaying the job type in travis web page
     env: SQLFLOW_TEST_DB=mysql
