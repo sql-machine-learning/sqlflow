@@ -100,6 +100,9 @@ jobs:
       -v /home/$USER/.minikube/:/home/$USER/.minikube/
       -v $TRAVIS_BUILD_DIR:/work -w /work
       sqlflow:ci scripts/test/workflow.sh
-  - stage: deploy
+  - stage: Deploy
     script:
     - $TRAVIS_BUILD_DIR/scripts/travis/deploy.sh # Push only after PR merging.
+  - os: osx
+    scripts:
+    - uname -a
