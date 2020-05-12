@@ -18,6 +18,12 @@ if [[ $(git diff --name-only HEAD..develop|awk -F. '{print $NF}'|uniq) == md ]];
   exit
 fi
 
+if ! docker pull docker/whalesay
+then
+    echo "docker pull docker/whaleasy failed"
+    exit 1
+fi
+
 export SQLFLOW_TEST=workflow
 export SQLFLOW_WORKFLOW_LOGVIEW_ENDPOINT=http://localhost:8001
 ############# Run Couler unit tests #############
