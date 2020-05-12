@@ -39,7 +39,7 @@ git clone https://$REPO
 cd sqlflow.wiki
 mv /tmp/sqlflow .
 git add sqlflow
-git config --global user.name "Yi Wang"
-git config --global user.email "yi.wang.2005@gmail.com"
+git config --global user.name "SQLFlow-Bot"
+git config --global user.email "sqlflow.org@gmail.com"
 git commit -am 'Add/update sqlflow'
 git push -u https://sqlflow-bot:asdfghj1234@$REPO master
