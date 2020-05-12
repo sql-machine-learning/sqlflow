@@ -29,7 +29,7 @@ apt-get -qq update
 echo "Install apt packages ..."
 DOWNLOAD_TOOLS="curl unzip"
 BUILD_ESSENTIAL="build-essential git"
-PYTHON_DEV="python3 python3-pip"
+PYTHON_DEV="python3-dev python3-pip" # Many pip packages require Python.h
 JAVA_DEV="openjdk-8-jdk maven"
 SHELL_LINTER="shellcheck"
 apt-get -qq install -y --no-install-recommends \
