@@ -17,16 +17,17 @@ set -e
 
 go env
 
-echo "Install protoc ..."
-PROTOC_SITE="https://github.com/protocolbuffers/protobuf/releases/download"
-curl -sL $PROTOC_SITE"/v3.7.1/protoc-3.7.1-osx-x86_64.zip" -o p.zip
-unzip -qq p.zip -d /usr/local
-rm p.zip
+# echo "Install protoc ..."
+# PROTOC_SITE="https://github.com/protocolbuffers/protobuf/releases/download"
+# curl -sL $PROTOC_SITE"/v3.7.1/protoc-3.7.1-osx-x86_64.zip" -o p.zip
+# unzip -qq p.zip -o -d /usr/local
+# rm p.zip
 
 echo "Install goyacc and protoc-gen-go ..."
 go get \
    github.com/golang/protobuf/protoc-gen-go@v1.3.3 \
    golang.org/x/tools/cmd/goyacc
+sudo cp $GOPATH/bin/* /usr/local/bin/
 
 echo "Build cmd/sqlflow into /tmp ..."
 cd $TRAVIS_BUILD_DIR
