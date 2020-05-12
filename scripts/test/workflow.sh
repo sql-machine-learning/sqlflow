@@ -20,56 +20,41 @@ fi
 
 export SQLFLOW_TEST=workflow
 export SQLFLOW_WORKFLOW_LOGVIEW_ENDPOINT=http://localhost:8001
-############# Run Couler unit tests #############
-pip -q install -r python/couler/requirements.txt
 
+echo "Run Couler unit tests ..."
+pip -q install -r python/couler/requirements.txt
 pytest python/couler/tests
 
 
-############# Run Couler e2e test #############
+echo "Run Couler end-to-end tests ..."
 CHECK_INTERVAL_SECS=2
 
-function test_couler() {
-
-    cat <<EOF > /tmp/sqlflow_couler.py
+cat <<EOF > /tmp/sqlflow_couler.py
 import couler.argo as couler
-couler.run_container(image="docker/whalesay", command='echo "SQLFlow bridges AI and SQL engine."')
+couler.run_container(image="docker/whalesay",
+                     command='echo "SQLFlow bridges AI and SQL engine."')
 EOF
 
-    couler run --mode argo --file /tmp/sqlflow_couler.py > /tmp/sqlflow_argo.yaml
-    MESSAGE=$(kubectl create -f /tmp/sqlflow_argo.yaml)
-    WORKFLOW_NAME=$(echo "${MESSAGE}" | cut -d ' ' -f 1 | cut -d '/' -f 2)
+couler run --mode argo --file /tmp/sqlflow_couler.py > /tmp/sqlflow_argo.yaml
+MESSAGE=$(kubectl create -f /tmp/sqlflow_argo.yaml)
+WORKFLOW_NAME=$(echo "${MESSAGE}" | cut -d ' ' -f 1 | cut -d '/' -f 2)
+echo "workflow name ${WORKFLOW_NAME}"
 
-    echo WORKFLOW_NAME "${WORKFLOW_NAME}"
+for _ in {1..30}; do
+    WORKFLOW_STATUS=$(kubectl get wf "${WORKFLOW_NAME}" -o jsonpath='{.status.phase}')
 
-    for _ in {1..30}; do
-        WORKFLOW_STATUS=$(kubectl get wf "${WORKFLOW_NAME}" -o jsonpath='{.status.phase}')
-
-        if [[ "$WORKFLOW_STATUS" == "Succeeded" ]]; then
-            echo "Argo workflow succeeded."
-            kubectl delete wf "${WORKFLOW_NAME}"
-            rm -rf /tmp/sqlflow*
-            return 0
-        else
-            echo "Argo workflow ${WORKFLOW_NAME} ${WORKFLOW_STATUS}"
-            sleep ${CHECK_INTERVAL_SECS}
-        fi
-    done
-    return 1
-}
-
-function check_ret() {
-    ret=$1
-    message=$2
-    echo "$ret" "$message"
-    if [[ "$ret" != "0" ]]; then
-        echo "$message"
-        exit 1
+    if [[ "$WORKFLOW_STATUS" == "Succeeded" ]]; then
+        echo "Argo workflow succeeded."
+        kubectl delete wf "${WORKFLOW_NAME}"
+        rm -rf /tmp/sqlflow*
+        return 0
+    else
+        echo "Argo workflow ${WORKFLOW_NAME} ${WORKFLOW_STATUS}"
+        sleep ${CHECK_INTERVAL_SECS}
     fi
-}
-
-test_couler
-check_ret $? "Test Couler failed"
+done
+echo "Not completed"
+exit 1
 
 ############# Run SQLFLow test with Argo Mode #############
 function test_workflow() {
