@@ -64,7 +64,7 @@ jobs:
     script:
     - set -e
     - $TRAVIS_BUILD_DIR/scripts/travis/build.sh
-    - scripts/test/setup_k8s_env.sh
+    - $TRAVIS_BUILD_DIR/scripts/travis/setup_minikube_and_argo.sh
     - docker run --rm --net=host
       -v /var/run/docker.sock:/var/run/docker.sock
       -v $HOME/.kube:/root/.kube
@@ -89,7 +89,7 @@ jobs:
   - env: SQLFLOW_TEST=workflow
     script:
     - set -e
-    - bash scripts/test/setup_k8s_env.sh
+    - $TRAVIS_BUILD_DIR/scripts/travis/setup_minikube_and_argo.sh
     - eval $(sudo minikube docker-env)
     - $TRAVIS_BUILD_DIR/scripts/travis/build.sh
     - docker tag sqlflow:ci sqlflow:submitter
