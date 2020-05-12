@@ -34,7 +34,7 @@ install:
 - echo "skip install"
 jobs:
   include:
-  - stage: BuildDockerAndPreCommit
+  - stage: BuildAndTest
     script:
     - set -e
     - $TRAVIS_BUILD_DIR/scripts/travis/build.sh
@@ -42,11 +42,8 @@ jobs:
       pre-commit run -a --show-diff-on-failure
   - os: osx
     scripts:
-    - uname -a
     - $TRAVIS_BUILD_DIR/scripts/travis/deploy_cli_macos.sh
-  - stage: Unitests
-    # env is just used for displaying the job type in travis web page
-    env: SQLFLOW_TEST_DB=mysql
+  - env: SQLFLOW_TEST_DB=mysql
     script:
     - set -e
     - $TRAVIS_BUILD_DIR/scripts/travis/build.sh
