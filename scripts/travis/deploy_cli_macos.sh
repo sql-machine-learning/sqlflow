@@ -15,13 +15,11 @@
 
 set -e
 
+echo "Verify Go is installed ..."
 go env
 
-# echo "Install protoc ..."
-# PROTOC_SITE="https://github.com/protocolbuffers/protobuf/releases/download"
-# curl -sL $PROTOC_SITE"/v3.7.1/protoc-3.7.1-osx-x86_64.zip" -o p.zip
-# unzip -qq p.zip -o -d /usr/local
-# rm p.zip
+echo "Verify protoc is installed ..."
+protoc --version
 
 echo "Install goyacc and protoc-gen-go ..."
 go get \
@@ -41,5 +39,7 @@ git clone https://$REPO
 cd sqlflow.wiki
 mv /tmp/sqlflow .
 git add sqlflow
+git config --global user.name "Yi Wang"
+git config --global user.email "yi.wang.2005@gmail.com"
 git commit -am 'Add/update sqlflow'
-git push --all https://$GITHUB_USERNAME:$GITHUB_PASSWORD@$REPO
+git push --all https://$REPO  # We need to relax Wiki wrtiable to everyone.
