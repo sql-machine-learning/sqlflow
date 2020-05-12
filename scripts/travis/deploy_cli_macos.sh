@@ -34,7 +34,7 @@ GOBIN=/tmp go install ./cmd/sqlflow
 
 echo "Publish /tmp/sqlflow to the Wiki repo ..."
 cd /tmp
-REPO=github.com/sql-machine-learning/sqlflow.wiki.git
+REPO=github.com/sql-machine-learning/sqlflow.wiki
 git clone https://$REPO
 cd sqlflow.wiki
 mv /tmp/sqlflow .
