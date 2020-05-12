@@ -45,6 +45,8 @@ EOF
     echo WORKFLOW_NAME "${WORKFLOW_NAME}"
 
     for _ in {1..30}; do
+        kubectl get wf "${WORKFLOW_NAME}" -o json
+        kubectl get wf "${WORKFLOW_NAME}" -o jsonpath='{.status.phase}'
         WORKFLOW_STATUS=$(kubectl get wf "${WORKFLOW_NAME}" -o jsonpath='{.status.phase}')
 
         if [[ "$WORKFLOW_STATUS" == "Succeeded" ]]; then
