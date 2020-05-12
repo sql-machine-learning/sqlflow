@@ -25,7 +25,7 @@ from sqlflow_submitter.tensorflow.train import train
 if __name__ == "__main__":
     # Train and explain BoostedTreesClassifier
     train(datasource=datasource,
-          estimator=tf.estimator.BoostedTreesClassifier,
+          estimator_string="tf.estimator.BoostedTreesClassifier",
           select="SELECT * FROM iris.train where class!=2",
           validation_select="SELECT * FROM iris.test where class!=2",
           feature_columns=feature_columns,
@@ -44,7 +44,7 @@ if __name__ == "__main__":
           verbose=0)
 
     explain(datasource=datasource,
-            estimator_cls=tf.estimator.BoostedTreesClassifier,
+            estimator_string="tf.estimator.BoostedTreesClassifier",
             select="SELECT * FROM iris.test where class!=2",
             feature_columns=feature_columns,
             feature_column_names=feature_column_names,
@@ -64,7 +64,7 @@ if __name__ == "__main__":
 
     # Train and explain DNNClassifier
     train(datasource=datasource,
-          estimator=tf.estimator.DNNClassifier,
+          estimator_string="tf.estimator.DNNClassifier",
           select="SELECT * FROM iris.train",
           validation_select="SELECT * FROM iris.test",
           feature_columns=feature_columns,
@@ -81,7 +81,7 @@ if __name__ == "__main__":
           verbose=0)
 
     explain(datasource=datasource,
-            estimator_cls=tf.estimator.DNNClassifier,
+            estimator_string="tf.estimator.DNNClassifier",
             select="SELECT * FROM iris.test LIMIT 10",
             feature_columns=feature_columns,
             feature_column_names=feature_column_names,
@@ -99,7 +99,7 @@ if __name__ == "__main__":
 
     # Train and explain DNNRegressor
     train(datasource=datasource,
-          estimator=tf.estimator.DNNRegressor,
+          estimator_string="tf.estimator.DNNRegressor",
           select="SELECT * FROM iris.train",
           validation_select="SELECT * FROM iris.test",
           feature_columns=feature_columns,
@@ -115,7 +115,7 @@ if __name__ == "__main__":
           verbose=0)
 
     explain(datasource=datasource,
-            estimator_cls=tf.estimator.DNNRegressor,
+            estimator_string="tf.estimator.DNNRegressor",
             select="SELECT * FROM iris.test LIMIT 10",
             feature_columns=feature_columns,
             feature_column_names=feature_column_names,
@@ -132,7 +132,7 @@ if __name__ == "__main__":
 
     # Train and explain LinearRegressor
     train(datasource=datasource,
-          estimator=tf.estimator.LinearRegressor,
+          estimator_string="tf.estimator.LinearRegressor",
           select="SELECT * FROM iris.train",
           validation_select="SELECT * FROM iris.test",
           feature_columns=feature_columns,
@@ -146,7 +146,7 @@ if __name__ == "__main__":
           verbose=0)
 
     explain(datasource=datasource,
-            estimator_cls=tf.estimator.LinearRegressor,
+            estimator_string="tf.estimator.LinearRegressor",
             select="SELECT * FROM iris.test LIMIT 10",
             feature_columns=feature_columns,
             feature_column_names=feature_column_names,
