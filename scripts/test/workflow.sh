@@ -29,7 +29,7 @@ pytest python/couler/tests
 ############# Run Couler e2e test #############
 CHECK_INTERVAL_SECS=2
 
-function test_couler() {
+function test_couler_e2e() {
 
     cat <<EOF > /tmp/sqlflow_couler.py
 import couler.argo as couler
@@ -55,14 +55,12 @@ EOF
             sleep ${CHECK_INTERVAL_SECS}
         fi
     done
-    echo "Run CoulerTest failed, launch argo workflow timeout."
+    echo "Run CoulerE2ETest failed, launch argo workflow timeout."
     exit 1
 }
 
-test_couler
-
 ############# Run SQLFLow test with Argo Mode #############
-function test_workflow() {
+function test_workflow_e2e() {
     # start a SQLFlow MySQL Pod with testdata
     kubectl run mysql --port 3306 --env="SQLFLOW_MYSQL_HOST=0.0.0.0" --env="SQLFLOW_MYSQL_PORT=3306" --image="${SQLFLOW_WORKFLOW_STEP_IMAGE}" --command -- bash /start.sh mysql
     MYSQL_POD_NAME=$(kubectl get pod -l run=mysql -o jsonpath="{.items[0].metadata.name}")
@@ -84,12 +82,12 @@ function test_workflow() {
             sleep ${CHECK_INTERVAL_SECS}
         fi
     done
-    echo "Run WorkflowTest failed, launch MySQL Pod times out"
+    echo "Run WorkflowE2ETest failed, launch MySQL Pod times out"
     exit 1
 }
 
-test_couler
-test_workflow
+test_couler_e2e
+test_workflow_e2e
 
 # shellcheck disable=SC2154
 # test submit pai job using argo workflow mode
