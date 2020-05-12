@@ -55,21 +55,11 @@ EOF
             sleep ${CHECK_INTERVAL_SECS}
         fi
     done
-    return 1
-}
-
-function check_ret() {
-    ret=$1
-    message=$2
-    echo "$ret" "$message"
-    if [[ "$ret" != "0" ]]; then
-        echo "$message"
-        exit 1
-    fi
+    echo "CoulerTest failed, launch argo workflow timeout."
+    exit 1
 }
 
 test_couler
-check_ret $? "Test Couler failed"
 
 ############# Run SQLFLow test with Argo Mode #############
 function test_workflow() {
@@ -94,23 +84,25 @@ function test_workflow() {
             sleep ${CHECK_INTERVAL_SECS}
         fi
     done
-    echo "Launch SQLFlow MySQL Pod times out"
-    return 1
+    echo "WorkflowTest failed, Launch MySQL Pod times out"
+    exit 1
 }
 
+test_couler
 test_workflow
-check_ret $? "Test SQLFLow workflow failed"
 
 # shellcheck disable=SC2154
 # test submit pai job using argo workflow mode
 if [ "${SQLFLOW_submitter}" == "pai" ]; then
     # TDOO(wangkuiyi): rename MAXCOMPUTE_AK to SQLFLOW_TEST_DB_MAXCOMPUTE_ASK later after rename the Travis CI env settings.
-    SQLFLOW_TEST_DATASOURCE="maxcompute://${MAXCOMPUTE_AK}:${MAXCOMPUTE_SK}@${MAXCOMPUTE_ENDPOINT}" gotest ./cmd/... -run TestEnd2EndWorkflow -v
-    check_ret $? "Test SQLFLow workflow failed"
+    if ! SQLFLOW_TEST_DATASOURCE="maxcompute://${MAXCOMPUTE_AK}:${MAXCOMPUTE_SK}@${MAXCOMPUTE_ENDPOINT}" gotest ./cmd/... -run TestEnd2EndWorkflow -v
+    then
+        echo "WorkflowTest on PAI failed"
+    fi
 fi
 
 gotest -v ./pkg/workflow/argo/
 
-# TODO(yancey): run fluid test in a seperated test job if we have more test cases.
-bash ./scripts/test/fluid.sh
-gotest ./cmd/... -run TestEnd2EndFluidWorkflow -v
+# TODO(yancey1989): run fluid test if tekton on SQLFlow it's ready.
+# bash ./scripts/test/fluid.sh
+# gotest ./cmd/... -run TestEnd2EndFluidWorkflow -v
