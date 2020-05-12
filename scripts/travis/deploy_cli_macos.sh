@@ -42,4 +42,4 @@ git add sqlflow
 git config --global user.name "Yi Wang"
 git config --global user.email "yi.wang.2005@gmail.com"
 git commit -am 'Add/update sqlflow'
-git push --all https://$REPO  # We need to relax Wiki wrtiable to everyone.
+git push -u origin master  # We need to relax Wiki wrtiable to everyone.
