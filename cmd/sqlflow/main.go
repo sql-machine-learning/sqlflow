@@ -180,7 +180,23 @@ func sqlRequest(program string, ds string) *pb.Request {
 	return &pb.Request{Sql: program, Session: se}
 }
 
+func isExitStmt(stmt string) bool {
+	separatorIndex := strings.Index(stmt, ";")
+	if separatorIndex < 0 {
+		separatorIndex = len(stmt)
+	}
+
+	firstStmt := stmt[0:separatorIndex]
+	firstStmt = strings.ToUpper(strings.TrimSpace(firstStmt))
+	return firstStmt == "EXIT" || firstStmt == "QUIT"
+}
+
 func runStmt(serverAddr string, stmt string, isTerminal bool, ds string) error {
+	if isExitStmt(stmt) {
+		fmt.Println("Goodbye!")
+		os.Exit(0)
+	}
+
 	// special case, process USE to stick SQL session
 	parts := strings.Fields(strings.ReplaceAll(stmt, ";", ""))
 	if len(parts) == 2 && strings.ToUpper(parts[0]) == "USE" {
@@ -356,7 +372,9 @@ func main() {
 		if !*noAutoCompletion {
 			// TODO(lorylin): get autocomplete dicts for sqlflow_models from sqlflow_server
 		}
-		runPrompt(func(stmt string) { runStmt(*serverAddr, stmt, true, *ds) })
+		runPrompt(func(stmt string) {
+			runStmt(*serverAddr, stmt, true, *ds)
+		})
 	} else {
 		repl(*serverAddr, scanner, *ds)
 	}

@@ -51,11 +51,11 @@ kubectl cluster-info
 echo "Install Argo on minikube cluster ..."
 kubectl create namespace argo
 kubectl apply -n argo -f \
-  https://raw.githubusercontent.com/argoproj/argo/stable/manifests/install.yaml
+  https://raw.githubusercontent.com/argoproj/argo/v2.7.7/manifests/install.yaml
 kubectl create rolebinding default-admin \
   --clusterrole=admin \
   --serviceaccount=default:default
 
-echo "Install Tekton on minikube cluster ..."
-TEKTON_RELEASE_SITE="https://storage.googleapis.com/tekton-releases/pipeline"
-kubectl apply --filename $TEKTON_RELEASE_SITE/previous/v0.10.1/release.yaml
+# echo "Install Tekton on minikube cluster ..."
+# TEKTON_RELEASE_SITE="https://storage.googleapis.com/tekton-releases/pipeline"
+# kubectl apply --filename $TEKTON_RELEASE_SITE/previous/v0.10.1/release.yaml
