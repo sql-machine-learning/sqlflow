@@ -40,6 +40,9 @@ jobs:
     - $TRAVIS_BUILD_DIR/scripts/travis/build.sh
     - docker run --rm -it -v $TRAVIS_BUILD_DIR:/work -w /work sqlflow:dev
       pre-commit run -a --show-diff-on-failure
+  - os: osx
+    scripts:
+    - uname -a
   - stage: Unitests
     # env is just used for displaying the job type in travis web page
     env: SQLFLOW_TEST_DB=mysql
@@ -103,6 +106,3 @@ jobs:
   - stage: Deploy
     script:
     - $TRAVIS_BUILD_DIR/scripts/travis/deploy.sh # Push only after PR merging.
-  - os: osx
-    scripts:
-    - uname -a
