@@ -47,6 +47,7 @@ EOF
     for _ in {1..30}; do
         kubectl get wf "${WORKFLOW_NAME}" -o json
         kubectl describe wf "${WORKFLOW_NAME}"
+        kubectl get wf
         WORKFLOW_STATUS=$(kubectl get wf "${WORKFLOW_NAME}" -o jsonpath='{.status.phase}')
 
         if [[ "$WORKFLOW_STATUS" == "Succeeded" ]]; then
