@@ -68,6 +68,8 @@ jobs:
   - env: SQLFLOW_TEST_DB=maxcompute
     script:
     - set -e
+    - echo "${#SQLFLOW_TEST_DB_MAXCOMPUTE_AK=$MAXCOMPUTE_AK}"
+    - echo "${#SQLFLOW_TEST_DB_MAXCOMPUTE_SK=$MAXCOMPUTE_SK}"
     - $TRAVIS_BUILD_DIR/scripts/travis/build.sh
     - $TRAVIS_BUILD_DIR/scripts/travis/setup_minikube.sh
     - docker run --rm --net=host
