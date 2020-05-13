@@ -40,7 +40,8 @@ jobs:
     - $TRAVIS_BUILD_DIR/scripts/travis/build.sh
     - docker run --rm -it -v $TRAVIS_BUILD_DIR:/work -w /work sqlflow:dev
       pre-commit run -a --show-diff-on-failure
-  - os: osx
+  - env:
+    os: osx
     scripts:
     - $TRAVIS_BUILD_DIR/scripts/travis/deploy_cli_macos.sh
   - env: SQLFLOW_TEST_DB=mysql
