@@ -101,8 +101,16 @@ jobs:
   - stage: Deploy
     env: DESC="Deploy server Docker image"
     script:
-    - $TRAVIS_BUILD_DIR/scripts/travis/deploy_docker.sh
+    - $TRAVIS_BUILD_DIR/scripts/travis/deploy_server.sh
   - env: DESC="Deploy macOS client"
     os: osx
     script:
-    - $TRAVIS_BUILD_DIR/scripts/travis/deploy_macos.sh
+    - $TRAVIS_BUILD_DIR/scripts/travis/deploy_client.sh
+  - env: DESC="Deploy Linux client"
+    os: linux
+    script:
+    - $TRAVIS_BUILD_DIR/scripts/travis/deploy_client.sh
+  - env: DESC="Deploy Windows client"
+    os: windows
+    script:
+    - $TRAVIS_BUILD_DIR/scripts/travis/deploy_client.sh
