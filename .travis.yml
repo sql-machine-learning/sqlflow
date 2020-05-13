@@ -105,4 +105,4 @@ jobs:
   - env: DESC="Deploy macOS client"
     os: osx
     script:
-    - $TRAVIS_BUILD_DIR/scripts/travis/deploy_cli_macos.sh
+    - $TRAVIS_BUILD_DIR/scripts/travis/deploy_macos.sh
