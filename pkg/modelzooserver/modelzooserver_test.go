@@ -21,7 +21,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
+	"sqlflow.org/sqlflow/pkg/database"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
@@ -31,7 +33,11 @@ func startServer() {
 		log.Fatalf("failed to listen: %v", err)
 	}
 	grpcServer := grpc.NewServer()
-	pb.RegisterModelZooServerServer(grpcServer, &modelZooServer{})
+	mysqlConn, err := database.OpenAndConnectDB("mysql://root:root@tcp(localhost:3306)/?maxAllowedPacket=0")
+	if err != nil {
+		log.Fatalf("failed to connect to mysql: %v", err)
+	}
+	pb.RegisterModelZooServerServer(grpcServer, &modelZooServer{DB: mysqlConn})
 
 	grpcServer.Serve(lis)
 }
@@ -56,6 +62,7 @@ func waitPortReady(addr string, timeout time.Duration) {
 }
 
 func TestModelZooServer(t *testing.T) {
+	a := assert.New(t)
 	go startServer()
 	waitPortReady("localhost:50055", 0)
 
@@ -66,11 +73,24 @@ func TestModelZooServer(t *testing.T) {
 	defer conn.Close()
 
 	client := pb.NewModelZooServerClient(conn)
+
+	stream, err := client.ReleaseModelDef(context.Background())
+	a.NoError(err)
+	modelDefReq := &pb.ModelDefRequest{Name: "hub.docker.com/group/mymodel", Tag: "v0.1"}
+	err = stream.Send(modelDefReq)
+	a.NoError(err)
+	reply, err := stream.CloseAndRecv()
+	a.NoError(err)
+	a.Equal(true, reply.Success)
+
 	res, err := client.ListModelDefs(context.Background(), &pb.ListModelRequest{Start: 0, Size: -1})
-	if err != nil {
-		t.Fatalf("call ListModelDefs error: %v", err)
-	}
-	if res == nil {
-		t.Errorf("res should not be nil")
-	}
+	a.NoError(err)
+	a.Equal(1, len(res.Names))
+
+	_, err = client.DropModelDef(context.Background(), modelDefReq)
+	a.NoError(err)
+
+	res, err = client.ListModelDefs(context.Background(), &pb.ListModelRequest{Start: 0, Size: -1})
+	a.NoError(err)
+	a.Equal(0, len(res.Names))
 }
