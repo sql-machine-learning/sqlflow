@@ -99,10 +99,10 @@ jobs:
       -v $TRAVIS_BUILD_DIR:/work -w /work
       sqlflow:ci scripts/test/workflow.sh
   - stage: Deploy
-    env: DESC="Build and deploy Docker image ..."
+    env: DESC="Deploy server Docker image"
     script:
     - $TRAVIS_BUILD_DIR/scripts/travis/deploy_docker.sh
-  - env: DESC="Build and deploy Docker image ..."
+  - env: DESC="Deploy macOS client"
     os: osx
     script:
     - $TRAVIS_BUILD_DIR/scripts/travis/deploy_cli_macos.sh
