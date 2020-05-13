@@ -39,6 +39,8 @@ jobs:
     - set -e
     - echo "${#DOCKER_PASSWORD}"
     - echo "${#DOCKER_USERNAME}"
+    - echo "${#MAXCOMPUTE_AK}"
+    - echo "${#MAXCOMPUTE_SK}"
     - $TRAVIS_BUILD_DIR/scripts/travis/build.sh
     - docker run --rm -it -v $TRAVIS_BUILD_DIR:/work -w /work sqlflow:dev
       pre-commit run -a --show-diff-on-failure
@@ -46,6 +48,8 @@ jobs:
     scripts:
     - echo "${#DOCKER_PASSWORD}"
     - echo "${#DOCKER_USERNAME}"
+    - echo "${#MAXCOMPUTE_AK}"
+    - echo "${#MAXCOMPUTE_SK}"
     - $TRAVIS_BUILD_DIR/scripts/travis/deploy_cli_macos.sh
   - env: SQLFLOW_TEST_DB=mysql
     script:
@@ -68,8 +72,10 @@ jobs:
   - env: SQLFLOW_TEST_DB=maxcompute
     script:
     - set -e
-    - echo "${#SQLFLOW_TEST_DB_MAXCOMPUTE_AK=$MAXCOMPUTE_AK}"
-    - echo "${#SQLFLOW_TEST_DB_MAXCOMPUTE_SK=$MAXCOMPUTE_SK}"
+    - echo "${#DOCKER_PASSWORD}"
+    - echo "${#DOCKER_USERNAME}"
+    - echo "${#MAXCOMPUTE_AK}"
+    - echo "${#MAXCOMPUTE_SK}"
     - $TRAVIS_BUILD_DIR/scripts/travis/build.sh
     - $TRAVIS_BUILD_DIR/scripts/travis/setup_minikube.sh
     - docker run --rm --net=host
@@ -111,4 +117,6 @@ jobs:
     script:
     - echo "${#DOCKER_PASSWORD}"
     - echo "${#DOCKER_USERNAME}"
+    - echo "${#MAXCOMPUTE_AK}"
+    - echo "${#MAXCOMPUTE_SK}"
     - $TRAVIS_BUILD_DIR/scripts/travis/deploy.sh # Push only after PR merging.
