@@ -13,7 +13,7 @@ branches:
   - develop
   - "/release-*/"
   - "/^v\\d+\\.\\d+(\\.\\d+)?(-\\S*)?$/"
-service:
+services:
 - docker
 
 
@@ -42,7 +42,7 @@ jobs:
       pre-commit run -a --show-diff-on-failure
   - env:
     os: osx
-    scripts:
+    script:
     - $TRAVIS_BUILD_DIR/scripts/travis/deploy_cli_macos.sh
   - env: SQLFLOW_TEST_DB=mysql
     script:
