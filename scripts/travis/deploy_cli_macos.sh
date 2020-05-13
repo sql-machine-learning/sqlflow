@@ -37,10 +37,13 @@ curl -s "https://awscli.amazonaws.com/AWSCLIV2.pkg" -o "AWSCLIV2.pkg"
 sudo installer -pkg AWSCLIV2.pkg -target /
 
 echo "Publish /tmp/sqlflow to the AWS S3 ..."
-export AWS_ACCESS_KEY_ID=$AWS_AK
-export AWS_SECRET_ACCESS_KEY=$AWS_SK
+AWS_ACCESS_KEY_ID=$AWS_AK \
+AWS_SECRET_ACCESS_KEY=$AWS_SK \
 aws --region ap-east-1 --output text \
     s3 cp /tmp/sqlflow s3://sqlflow-release/latest/macos/sqlflow
+
+AWS_ACCESS_KEY_ID=$AWS_AK \
+AWS_SECRET_ACCESS_KEY=$AWS_SK \
 aws --region ap-east-1 --output text \
     s3api put-object-acl \
     --bucket sqlflow-release \
