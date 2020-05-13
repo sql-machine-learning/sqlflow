@@ -104,4 +104,4 @@ jobs:
       sqlflow:ci scripts/test/workflow.sh
   - stage: Deploy
     script:
-    - $TRAVIS_BUILD_DIR/scripts/travis/deploy.sh # Push only after PR merging.
+    - $TRAVIS_BUILD_DIR/scripts/travis/deploy_docker.sh
