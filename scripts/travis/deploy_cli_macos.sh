@@ -32,14 +32,17 @@ cd $TRAVIS_BUILD_DIR
 go generate ./...
 GOBIN=/tmp go install ./cmd/sqlflow
 
-echo "Publish /tmp/sqlflow to the Wiki repo ..."
-cd /tmp
-REPO=github.com/sql-machine-learning/sqlflow.wiki
-git clone https://$REPO
-cd sqlflow.wiki
-mv /tmp/sqlflow .
-git add sqlflow
-git config --global user.name "SQLFlow-Bot"
-git config --global user.email "sqlflow.org@gmail.com"
-git commit -am 'Add/update sqlflow'
-git push -u https://sqlflow-bot:asdfghj1234@$REPO master
+echo "Download and install AWS cli ..."
+curl -s "https://awscli.amazonaws.com/AWSCLIV2.pkg" -o "AWSCLIV2.pkg"
+sudo installer -pkg AWSCLIV2.pkg -target /
+
+echo "Publish /tmp/sqlflow to the AWS S3 ..."
+export AWS_ACCESS_KEY_ID=$AWS_AK
+export AWS_SECRET_ACCESS_KEY=$AWS_SK
+aws --region ap-east-1 --output text \
+    s3 cp /tmp/sqlflow s3://sqlflow-release/latest/macos/sqlflow
+aws --region ap-east-1 --output text \
+    s3api put-object-acl \
+    --bucket sqlflow-release \
+    --key latest/macos/sqlflow \
+    --acl public-read
