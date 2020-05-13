@@ -17,8 +17,6 @@ set -e
 
 # For more informaiton about deployment with Travis CI, please refer
 # to the file header of deploy_docker.sh
-#
-# This script must run with macOS.
 
 if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then
     echo "Skip deployment on pull request"
@@ -56,15 +54,30 @@ cd $TRAVIS_BUILD_DIR
 go generate ./...
 GOBIN=/tmp go install ./cmd/sqlflow
 
-echo "Download and install AWS cli ..."
-curl -s "https://awscli.amazonaws.com/AWSCLIV2.pkg" -o "AWSCLIV2.pkg"
-sudo installer -pkg AWSCLIV2.pkg -target /
+echo "Install AWS client for $TRAVIS_OS_NAME ..."
+if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
+    curl -s "https://awscli.amazonaws.com/AWSCLIV2.pkg" -o "AWSCLIV2.pkg"
+    sudo installer -pkg AWSCLIV2.pkg -target /
+elif [[ "$TRAVIS_OS_NAME" == "macos" ]]; then
+    curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" \
+         -o "awscliv2.zip"
+    unzip awscliv2.zip
+    sudo ./aws/install
+elif [[ "$TRAVIS_OS_NAME" == "windows" ]]; then
+    # https://docs.travis-ci.com/user/reference/windows/#chocolatey
+    # tells that Travis CI windows VM has Chocolatey installed.
+    # https://chocolatey.org/packages/awscli presents a Chocolatey
+    # package of the AWS cli, so we don't need to download the MSI
+    # from AWS and install it.
+    choco install awscli
+fi
 
 echo "Publish /tmp/sqlflow to the AWS S3 ..."
 aws --region ap-east-1 --output text \
-    s3 cp /tmp/sqlflow s3://sqlflow-release/$RELEASE_TAG/macos/sqlflow
+    s3 cp /tmp/sqlflow \
+    s3://sqlflow-release/$RELEASE_TAG/$TRAVIS_OS_NAME/sqlflow
 aws --region ap-east-1 --output text \
     s3api put-object-acl \
     --bucket sqlflow-release \
-    --key $RELEASE_TAG/macos/sqlflow \
+    --key $RELEASE_TAG/$TRAVIS_OS_NAME/sqlflow \
     --acl public-read
