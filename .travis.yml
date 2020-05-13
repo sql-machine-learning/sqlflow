@@ -37,15 +37,15 @@ jobs:
   - stage: BuildAndTest
     script:
     - set -e
-    - echo "length of docker password: ${#DOCKER_PASSWORD}"
-    - echo "length of docker username: ${#DOCKER_USERNAME}"
+    - echo "${#DOCKER_PASSWORD}"
+    - echo "${#DOCKER_USERNAME}"
     - $TRAVIS_BUILD_DIR/scripts/travis/build.sh
     - docker run --rm -it -v $TRAVIS_BUILD_DIR:/work -w /work sqlflow:dev
       pre-commit run -a --show-diff-on-failure
   - os: osx
     scripts:
-    - echo "length of docker password: ${#DOCKER_PASSWORD}"
-    - echo "length of docker username: ${#DOCKER_USERNAME}"
+    - echo "${#DOCKER_PASSWORD}"
+    - echo "${#DOCKER_USERNAME}"
     - $TRAVIS_BUILD_DIR/scripts/travis/deploy_cli_macos.sh
   - env: SQLFLOW_TEST_DB=mysql
     script:
