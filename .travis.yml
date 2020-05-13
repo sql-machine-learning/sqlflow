@@ -103,6 +103,4 @@ jobs:
       sqlflow:ci scripts/test/workflow.sh
   - stage: Deploy
     script:
-    - export AWS_ACCESS_KEY_ID=$AWS_AK
-    - export AWS_SECRET_ACCESS_KEY=$AWS_SK
     - $TRAVIS_BUILD_DIR/scripts/travis/deploy.sh # Push only after PR merging.
