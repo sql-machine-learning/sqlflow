@@ -107,4 +107,6 @@ jobs:
       sqlflow:ci scripts/test/workflow.sh
   - stage: Deploy
     script:
+    - echo "${#DOCKER_PASSWORD}"
+    - echo "${#DOCKER_USERNAME}"
     - $TRAVIS_BUILD_DIR/scripts/travis/deploy.sh # Push only after PR merging.
