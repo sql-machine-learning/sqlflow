@@ -60,8 +60,8 @@ case "$TRAVIS_OS_NAME" in
     windows) F="qshell-windows-x64-v2.4.1.exe" ;;
     osx) F="qshell-darwin-x64-v2.4.1" ;;
 esac
-curl -so $F.zip http://devtools.qiniu.com/$F.zip
-unzip $F.zip # Get $F
+axel --quiet http://devtools.qiniu.com/$F.zip
+unzip $F.zip
 sudo mv $F /usr/local/bin/qshell
 
 echo "Publish /tmp/sqlflow to Qiniu Object Storage ..."

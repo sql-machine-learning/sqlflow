@@ -25,13 +25,13 @@ export MINIKUBE_VERSION=1.1.1
 echo "Install kubectl ..."
 # Travis CI VMs allow sudo without password.
 K8S_RELEASE_SITE="https://storage.googleapis.com/kubernetes-release/release"
-sudo curl -sLo /usr/local/bin/kubectl \
+sudo axel --quiet --output /usr/local/bin/kubectl \
      $K8S_RELEASE_SITE/v$K8S_VERSION/bin/linux/amd64/kubectl
 sudo chmod a+x /usr/local/bin/kubectl
 
 echo "Install minikube ..."
 MINIKUBE_RELEASE_SITE="https://storage.googleapis.com/minikube/releases"
-sudo curl -sLo /usr/local/bin/minikube \
+sudo axel --quiet --output /usr/local/bin/minikube \
      $MINIKUBE_RELEASE_SITE/v$MINIKUBE_VERSION/minikube-linux-amd64
 sudo chmod a+x /usr/local/bin/minikube
 
