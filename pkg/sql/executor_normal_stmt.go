@@ -35,6 +35,17 @@ func runNormalStmt(wr *pipe.Writer, slct string, db *database.DB) error {
 func isQuery(slct string) bool {
 	s := strings.ToUpper(strings.TrimSpace(slct))
 	has := strings.Contains
+	// remove comment lines
+	if strings.HasPrefix(s, "-- ") {
+		lines := strings.Split(s, "\n")
+		noCommentLines := []string{}
+		for _, l := range lines {
+			if !strings.HasPrefix(l, "-- ") {
+				noCommentLines = append(noCommentLines, l)
+			}
+		}
+		s = strings.Join(noCommentLines, "\n")
+	}
 	if strings.HasPrefix(s, "SELECT") && !has(s, "INTO") {
 		return true
 	}

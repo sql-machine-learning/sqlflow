@@ -109,8 +109,7 @@ func connectAndRunSQL(sql string) ([]string, [][]*any.Any, []string, error) {
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	cols, rows, messages := ParseResponse(stream)
-	return cols, rows, messages, nil
+	return ParseResponse(stream)
 }
 
 func sqlRequest(sql string) *pb.Request {
@@ -178,7 +177,7 @@ func AssertIsSubStringAny(a *assert.Assertions, substring string, actual *any.An
 	}
 }
 
-func ParseResponse(stream pb.SQLFlow_RunClient) ([]string, [][]*any.Any, []string) {
+func ParseResponse(stream pb.SQLFlow_RunClient) ([]string, [][]*any.Any, []string, error) {
 	var rows [][]*any.Any
 	var columns []string
 	var messages []string
@@ -189,7 +188,7 @@ func ParseResponse(stream pb.SQLFlow_RunClient) ([]string, [][]*any.Any, []strin
 			break
 		}
 		if err != nil {
-			log.Fatalf("stream read err: %v", err)
+			return nil, nil, nil, err
 		}
 		if counter == 0 {
 			head := iter.GetHead()
@@ -203,7 +202,7 @@ func ParseResponse(stream pb.SQLFlow_RunClient) ([]string, [][]*any.Any, []strin
 		}
 		counter++
 	}
-	return columns, rows, messages
+	return columns, rows, messages, nil
 }
 
 func prepareTestData(dbStr string) error {
@@ -350,6 +349,21 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseTrainFeatureDerivation", CaseTrainFeatureDerivation)
 
 	t.Run("CaseShowTrain", CaseShowTrain)
+
+	// Cases for diagnosis
+	t.Run("CaseDiagnosisMissingModelParams", CaseDiagnosisMissingModelParams)
+}
+
+func CaseDiagnosisMissingModelParams(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := `SELECT * FROM iris.train TO TRAIN DNNClassifier WITH
+  model.n_classes = 3,
+  train.epoch = 10
+COLUMN sepal_length, sepal_width, petal_length, petal_width
+LABEL class
+INTO sqlflow_models.my_dnn_model;`
+	_, _, _, err := connectAndRunSQL(trainSQL)
+	a.Contains(err.Error(), "DNNClassifierV2 missing 1 required attribute: 'hidden_units'")
 }
 
 func CaseEmptyDataset(t *testing.T) {
@@ -1386,7 +1400,8 @@ WHERE f1.user_id < 3;`
 		a.Fail("Check if the server started successfully. %v", err)
 	}
 	// wait train finish
-	ParseResponse(stream)
+	_, _, _, e := ParseResponse(stream)
+	a.NoError(e)
 }
 
 // CaseTrainRegression is used to test regression models
@@ -1554,12 +1569,14 @@ USING TreeExplainer;
 	if err != nil {
 		a.Fail("Check if the server started successfully. %v", err)
 	}
-	ParseResponse(stream)
+	_, _, _, e := ParseResponse(stream)
+	a.NoError(e)
 	stream, err = cli.Run(ctx, sqlRequest(explainStmt))
 	if err != nil {
 		a.Fail("Check if the server started successfully. %v", err)
 	}
-	ParseResponse(stream)
+	_, _, _, e = ParseResponse(stream)
+	a.NoError(e)
 }
 
 func CasePredictXGBoostRegression(t *testing.T) {
