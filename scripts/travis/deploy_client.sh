@@ -67,5 +67,5 @@ sudo mv $F /usr/local/bin/qshell
 echo "Publish /tmp/sqlflow to Qiniu Object Storage ..."
 qshell account "$QINIU_AK" "$QINIU_SK" "wu"
 qshell rput sqlflow-release \
-       $RELEASE_TAG/$TRAVIS_OS_NAME/sqlflow
+       $RELEASE_TAG/$TRAVIS_OS_NAME/sqlflow \
        /tmp/sqlflow
