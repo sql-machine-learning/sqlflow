@@ -17,7 +17,7 @@ Currently, `COLUMN` clauses are supported in SQLFlow TensorFlow models. The `COL
 into TensorFlow feature column API calls inside SQLFlow codegen implementation.
 
 However, XGBoost has no similar feature column APIs as TensorFlow. Currently, XGBoost models can only support simple column names like `c1, c2, c3` in `COLUMN` clauses,
-and any data pre-processing is not supported. It makes that we cannot use XGBoost to train NLP models which accept string column as their input.
+and any data pre-processing is not supported. It makes that we cannot use XGBoost to train models which accept string column as their input.
 
 This design explains how SQLFlow supports feature columns in XGBoost model.
 
@@ -82,24 +82,17 @@ class BucketizedColumnTransformer(CategoryColumnTransformer):
                 return idx
         return len(boundaries)
 
-# CrossedColumnTransformer is designed as a decorator of CategoryColumnTransformer
-# It accepts several CategoryColumnTransformers, and crosses their transformed
-# results using hash algorithm.
-class CrossedColumnTransformer(CategoryColumnTransformer):
-    def __init__(self, *category_transformers):
-        for transformer in category_transformers:
-            assert isinstance(transformer, CategoryColumnTransformer)
-        self.category_transformers = category_transformers
+class CrossedColumnTransformer(BaseFeatureColumnTransformer):
+    def __init__(self, column_indices, hash_bucket_size):
+        self.column_indices = column_indices
+        self.hash_bucket_size = hash_bucket_size
         
     def _cross(self, transformed_inputs):
         pass
 
     def __call__(self, inputs):
-        transformed_inputs = []
-        for transformer in self.category_transformers:
-            transformed_inputs.append(transformer(inputs))
-         
-        self._cross(transformed_inputs)
+        selected_inputs = [for idx in self.column_indices]
+        self._cross(selected_inputs)
         
 class ListedFeatureColumnTransformer(BaseFeatureColumnTransformer):
     def __init__(self, *transformers):
