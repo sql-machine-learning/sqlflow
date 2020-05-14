@@ -15,4 +15,4 @@
 
 set -e
 
-apt-get install -y curl wget unzip git > /dev/null
+apt-get -qq install -y openjdk-8-jre > /dev/null
