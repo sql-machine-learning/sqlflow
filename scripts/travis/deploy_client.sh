@@ -58,7 +58,7 @@ echo "Install AWS client for $TRAVIS_OS_NAME ..."
 if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
     curl -s "https://awscli.amazonaws.com/AWSCLIV2.pkg" -o "AWSCLIV2.pkg"
     sudo installer -pkg AWSCLIV2.pkg -target /
-elif [[ "$TRAVIS_OS_NAME" == "macos" ]]; then
+elif [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
     curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" \
          -o "awscliv2.zip"
     unzip awscliv2.zip
