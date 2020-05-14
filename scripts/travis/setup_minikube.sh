@@ -22,6 +22,11 @@ export KUBECONFIG=$HOME/.kube/config
 export K8S_VERSION=1.14.0
 export MINIKUBE_VERSION=1.1.1
 
+echo "$0 requires a Travis CI Linux VM."
+
+echo "Install axel on Travis CI VM ..."
+sudo apt-get update && apt-get install -y axel
+
 echo "Install kubectl ..."
 # Travis CI VMs allow sudo without password.
 K8S_RELEASE_SITE="https://storage.googleapis.com/kubernetes-release/release"
