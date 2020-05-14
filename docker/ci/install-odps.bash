@@ -17,8 +17,17 @@ set -e
 
 # Install odpscmd for submitting Alps predict job with ODPS UDF script.
 # TODO(Yancey1989): using gomaxcompute instead of the odpscmd command-line tool.
-curl -sLo odpscmd_public.zip \
-     http://docs-aliyun.cn-hangzhou.oss.aliyun-inc.com/assets/attach/119096/cn_zh/1557995455961/odpscmd_public.zip
+#
+# Travis CI often breaks due to the unstable official download link on
+# Aliyun.  So, we manually mirrored the package on AWS and Qiniu and
+# download from all these mirrors simultaneously using axel.
+M1=http://docs-aliyun.cn-hangzhou.oss.aliyun-inc.com/assets/attach/119096/cn_zh
+M2="http://qaaz0kmmt.bkt.clouddn.com/aliyun"
+M3="https://sqlflow-release.s3.ap-east-1.amazonaws.com/aliyun"
+axel --quiet \
+     $M1/1557995455961/odpscmd_public.zip \
+     $M2/1557995455961/odpscmd_public.zip \
+     $M3/1557995455961/odpscmd_public.zip
 unzip -qq odpscmd_public.zip -d /usr/local/odpscmd
 ln -s /usr/local/odpscmd/bin/odpscmd /usr/local/bin/odpscmd
 rm -rf odpscmd_public.zip

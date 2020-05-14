@@ -15,4 +15,6 @@
 
 set -e
 
-apt-get -qq install -y build-essential curl unzip > /dev/null
+# We need curl to check the liveness of backend services like Hive,
+# while using axel to download files.
+apt-get -qq install -y build-essential curl axel unzip > /dev/null
