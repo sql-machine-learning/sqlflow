@@ -27,8 +27,13 @@ const modelCollTable = "sqlflow_model_zoo.model_collection"
 const modelDefTable = "sqlflow_model_zoo.model_definition"
 const trainedModelTable = "sqlflow_model_zoo.trained_model"
 
-// TODO(typhoonzero): create tables if these tables are not pre created.
-const createTableStmts = `CREATE TABLE sqlflow_model_zoo.model_collection (
+// TODO(typhoonzero): create tables if these tables are not pre created?
+const createTableStmts = `CREATE DATABASE sqlflow_model_zoo;
+DROP TABLE IF EXISTS sqlflow_model_zoo.model_collection;
+DROP TABLE IF EXISTS sqlflow_model_zoo.model_definition;
+DROP TABLE IF EXISTS sqlflow_model_zoo.trained_model;
+
+CREATE TABLE sqlflow_model_zoo.model_collection (
     id INT AUTO_INCREMENT,
     name VARCHAR(255),
     version VARCHAR(255),
@@ -43,7 +48,6 @@ CREATE TABLE sqlflow_model_zoo.model_definition (
     PRIMARY KEY (id),
     FOREIGN KEY (model_coll_id) REFERENCES model_collection(id)
 );
-
 
 CREATE TABLE sqlflow_model_zoo.trained_model (
     id INT AUTO_INCREMENT,

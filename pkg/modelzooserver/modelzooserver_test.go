@@ -37,6 +37,10 @@ func startServer() {
 	if err != nil {
 		log.Fatalf("failed to connect to mysql: %v", err)
 	}
+	_, err = mysqlConn.Exec(createTableStmts)
+	if err != nil {
+		log.Fatalf("failed to create model zoo tables: %v", err)
+	}
 	pb.RegisterModelZooServerServer(grpcServer, &modelZooServer{DB: mysqlConn})
 
 	grpcServer.Serve(lis)
