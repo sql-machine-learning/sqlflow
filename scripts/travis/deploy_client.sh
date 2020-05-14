@@ -54,6 +54,10 @@ cd $TRAVIS_BUILD_DIR
 go generate ./...
 GOBIN=/tmp go install ./cmd/sqlflow
 
+echo "Install axel ..."
+sudo apt-get -qq update > /dev/null
+sudo apt-get -qq install -y axel > /dev/null
+
 echo "Install Qiniu client for $TRAVIS_OS_NAME ..."
 case "$TRAVIS_OS_NAME" in
     linux) F="qshell-linux-x64-v2.4.1" ;;

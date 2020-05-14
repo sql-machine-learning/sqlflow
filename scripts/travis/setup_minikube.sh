@@ -25,7 +25,8 @@ export MINIKUBE_VERSION=1.1.1
 echo "$0 requires a Travis CI Linux VM."
 
 echo "Install axel on Travis CI VM ..."
-sudo apt-get update && apt-get install -y axel
+sudo apt-get -qq update > /dev/null
+sudo apt-get -qq install -y axel > /dev/null
 
 echo "Install kubectl ..."
 # Travis CI VMs allow sudo without password.
