@@ -27,7 +27,7 @@ apt-get -qq update
 
 
 echo "Install apt packages ..."
-DOWNLOAD_TOOLS="axel unzip"
+DOWNLOAD_TOOLS="curl axel unzip" # We need curl to check the running of Hive.
 BUILD_ESSENTIAL="build-essential git"
 PYTHON_DEV="python3-dev python3-pip" # Many pip packages require Python.h
 JAVA_DEV="openjdk-8-jdk maven"
