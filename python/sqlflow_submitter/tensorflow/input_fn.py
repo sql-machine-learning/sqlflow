@@ -83,9 +83,18 @@ def input_fn(select,
         conn = db.connect_with_data_source(datasource)
         gen = db.db_generator(conn.driver, conn, select, feature_column_names,
                               label_meta, feature_metas)
+
+    def tf_decreator(gen):
+        def reader():
+            for raw, features, label in gen():
+                yield (features, label)
+
+        return reader
+
     # Clustering model do not have label
     if not label_meta or label_meta["feature_name"] == "":
-        dataset = tf.data.Dataset.from_generator(gen, (tuple(feature_types), ),
+        dataset = tf.data.Dataset.from_generator(tf_decreator(gen),
+                                                 (tuple(feature_types), ),
                                                  (tuple(shapes), ))
         ds_mapper = functools.partial(
             parse_sparse_feature_predict,
@@ -93,7 +102,8 @@ def input_fn(select,
             feature_metas=feature_metas)
     else:
         dataset = tf.data.Dataset.from_generator(
-            gen, (tuple(feature_types), eval("tf.%s" % label_meta["dtype"])),
+            tf_decreator(gen),
+            (tuple(feature_types), eval("tf.%s" % label_meta["dtype"])),
             (tuple(shapes), label_meta["shape"]))
         ds_mapper = functools.partial(
             parse_sparse_feature,

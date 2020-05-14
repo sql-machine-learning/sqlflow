@@ -84,9 +84,9 @@ def dump_dmatrix(filename,
     # TODO(yancey1989): generate group and weight text file if necessary
     row_id = 0
     with open(filename, 'a') as f:
-        for item in generator:
+        for _, features, label in generator:
             row_data = []
-            for i, v in enumerate(item[0]):
+            for i, v in enumerate(features):
                 fname = feature_column_names[i]
                 dtype = feature_specs[fname]["dtype"]
                 if dtype == "int32" or dtype == "int64":
@@ -97,7 +97,7 @@ def dump_dmatrix(filename,
                     raise ValueError(
                         "not supported columnt dtype %s for xgboost" % dtype)
             if has_label:
-                row_data = [str(item[1])] + row_data
+                row_data = [str(label)] + row_data
             f.write("\t".join(row_data) + "\n")
             row_id += 1
             # batch_size == None meas use all data in generator

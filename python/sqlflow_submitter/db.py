@@ -173,6 +173,27 @@ def read_feature(raw_val, feature_spec, feature_name):
         return (raw_val, )
 
 
+def fetch_selected_cols(driver, conn, select):
+    limited = re.findall("LIMIT [0-9]*$", select)
+    if not limited:
+        select += " LIMIT 1"
+    if driver == "hive":
+        select += ";"
+
+    if driver == "hive":
+        cursor = conn.cursor(configuration=conn.session_cfg)
+        cursor.execute(select)
+        field_names = None if cursor.description is None \
+            else [i[0][i[0].find('.') + 1:] for i in cursor.description]
+    else:
+        cursor = conn.cursor()
+        cursor.execute(select)
+        field_names = None if cursor.description is None \
+            else [i[0] for i in cursor.description]
+    cursor.close()
+    return field_names
+
+
 def db_generator(driver,
                  conn,
                  statement,
@@ -226,10 +247,11 @@ def db_generator(driver,
                     feature = read_feature(row[field_names.index(name)],
                                            feature_specs[name], name)
                     features.append(feature)
+
                 if label_idx is None:
-                    yield (tuple(features), )
+                    yield list(row), tuple(features), None
                 else:
-                    yield tuple(features), label
+                    yield list(row), tuple(features), label
             if len(rows) < fetch_size:
                 break
         cursor.close()
@@ -278,9 +300,9 @@ def pai_maxcompute_db_generator(table,
                                            feature_specs[name], name)
                     features.append(feature)
                 if label_column_name:
-                    yield tuple(features), label
+                    yield row, tuple(features), label
                 else:
-                    yield (tuple(features), )
+                    yield row, tuple(features), None
             except Exception as e:
                 reader.close()
                 break

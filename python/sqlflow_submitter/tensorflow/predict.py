@@ -97,6 +97,7 @@ def keras_predict(estimator, model_params, save, result_table, is_pai,
     pred_dataset = eval_input_fn(1, cache=True).make_one_shot_iterator()
     column_names = feature_column_names[:]
     column_names.append(result_col_name)
+
     with db.buffered_db_writer(driver, conn, result_table, column_names, 100,
                                hdfs_namenode_addr, hive_location, hdfs_user,
                                hdfs_pass) as w:
@@ -127,7 +128,6 @@ def estimator_predict(estimator, model_params, save, result_table,
                       hdfs_user, hdfs_pass, is_pai, pai_table):
     if not is_pai:
         conn = db.connect_with_data_source(datasource)
-
     column_names = feature_column_names[:]
     column_names.append(result_col_name)
 
@@ -137,10 +137,29 @@ def estimator_predict(estimator, model_params, save, result_table,
         pai_table_parts = pai_table.split(".")
         formatted_pai_table = "odps://%s/tables/%s" % (pai_table_parts[0],
                                                        pai_table_parts[1])
+
+        # TODO(yancey1989): fetch selected cols on PAI
+        write_cols = selected_cols = feature_column_names
+        target_col_index = -1
+
         predict_generator = db.pai_maxcompute_db_generator(
             formatted_pai_table, feature_column_names, None, feature_metas)()
+
     else:
         driver = conn.driver
+
+        # bypass all selected cols to the prediction result table
+        selected_cols = db.fetch_selected_cols(conn.driver, conn, select)
+        write_cols = selected_cols[:]
+        if result_col_name in selected_cols:
+            target_col_index = selected_cols.index(result_col_name)
+            del write_cols[target_col_index]
+        else:
+            target_col_index = -1
+        # always keep the target column to be the last column
+        # on writing prediction result
+        write_cols.append(result_col_name)
+
         predict_generator = db.db_generator(conn.driver, conn, select,
                                             feature_column_names, None,
                                             feature_metas)()
@@ -213,22 +232,13 @@ def estimator_predict(estimator, model_params, save, result_table,
         return imported.signatures["predict"](
             examples=tf.constant([example.SerializeToString()]))
 
-    with db.buffered_db_writer(driver, conn, result_table, column_names, 100,
+    with db.buffered_db_writer(driver, conn, result_table, write_cols, 100,
                                hdfs_namenode_addr, hive_location, hdfs_user,
                                hdfs_pass) as w:
-        for features in predict_generator:
-            result = predict(features)
-            row = []
-            for idx, _ in enumerate(feature_column_names):
-                per_feature = features[0][idx]
-                if isinstance(per_feature, tuple) or isinstance(
-                        per_feature, list):
-                    # is sparse feature: tuple (indices, values, shape) or scalar
-                    val = per_feature[0]
-                elif isinstance(per_feature, np.ndarray):
-                    val = per_feature
-                # val = features[0][idx][0]
-                row.append(str(val))
+        for row, features, label in predict_generator:
+            result = predict((features, label))
+            if target_col_index != -1:
+                del row[target_col_index]
             if "class_ids" in result:
                 row.append(str(result["class_ids"].numpy()[0][0]))
             else:

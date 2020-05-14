@@ -215,7 +215,8 @@ class TestGenerator(TestCase):
                                "SELECT * FROM test_table_float_fea",
                                ["features"], label_spec, column_name_to_type)
             idx = 0
-            for d in gen():
+            for _, features, label in gen():
+                d = (features, label)
                 if idx == 0:
                     self.assertEqual(d, (((1.0, ), ), 0))
                 elif idx == 1:
