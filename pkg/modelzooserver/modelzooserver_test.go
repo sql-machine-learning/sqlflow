@@ -19,10 +19,10 @@ import (
 	"log"
 	"net"
 	"testing"
-	"time"
 
 	"google.golang.org/grpc"
 	pb "sqlflow.org/sqlflow/pkg/proto"
+	"sqlflow.org/sqlflow/pkg/server"
 )
 
 func startServer() {
@@ -36,28 +36,9 @@ func startServer() {
 	grpcServer.Serve(lis)
 }
 
-func serverIsReady(addr string, timeout time.Duration) bool {
-	conn, err := net.DialTimeout("tcp", addr, timeout)
-	if err != nil {
-		return false
-	}
-	err = conn.Close()
-	return err == nil
-}
-
-func waitPortReady(addr string, timeout time.Duration) {
-	// Set default timeout to
-	if timeout == 0 {
-		timeout = time.Duration(1) * time.Second
-	}
-	for !serverIsReady(addr, timeout) {
-		time.Sleep(1 * time.Second)
-	}
-}
-
 func TestModelZooServer(t *testing.T) {
 	go startServer()
-	waitPortReady("localhost:50055", 0)
+	server.WaitPortReady("localhost:50055", 0)
 
 	conn, err := grpc.Dial(":50055", grpc.WithInsecure())
 	if err != nil {
