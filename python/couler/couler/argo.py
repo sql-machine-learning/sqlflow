@@ -515,7 +515,10 @@ def yaml():
     ts = [{"name": entrypoint, "steps": list(_steps.values())}]
     ts.extend(_templates.values())
 
-    wf["spec"] = {"entrypoint": entrypoint, "templates": ts}
+    spec = {}
+    spec = _update_workflow_spec(spec)
+    spec.update({"entrypoint": entrypoint, "templates": ts})
+    wf["spec"] = spec
 
     if _workflow_ttl_cleaned is not None:
         wf["spec"]["ttlSecondsAfterFinished"] = _workflow_ttl_cleaned
@@ -720,6 +723,15 @@ def _update_pod_config(template):
         template = _cluster_config.with_pod(template)
 
     return template
+
+
+def _update_workflow_spec(spec):
+
+    if _cluster_config is not None and \
+            hasattr(_cluster_config, "with_workflow_spec"):
+        spec = _cluster_config.with_workflow_spec(spec)
+
+    return spec
 
 
 def secret(secret_data, name, dry_run):
