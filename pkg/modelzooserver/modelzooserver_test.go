@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"strings"
 	"testing"
 	"time"
 
@@ -37,10 +38,18 @@ func startServer() {
 	if err != nil {
 		log.Fatalf("failed to connect to mysql: %v", err)
 	}
-	_, err = mysqlConn.Exec(createTableStmts)
-	if err != nil {
-		log.Fatalf("failed to create model zoo tables: %v", err)
+	splitedStmts := strings.Split(createTableStmts, ";")
+	for idx, stmt := range splitedStmts {
+		if idx == len(splitedStmts)-2 {
+			// the last stmt is empty
+			break
+		}
+		_, err = mysqlConn.Exec(stmt)
+		if err != nil {
+			log.Fatalf("failed to create model zoo tables: %v", err)
+		}
 	}
+
 	pb.RegisterModelZooServerServer(grpcServer, &modelZooServer{DB: mysqlConn})
 
 	grpcServer.Serve(lis)

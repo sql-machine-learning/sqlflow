@@ -28,10 +28,10 @@ const modelDefTable = "sqlflow_model_zoo.model_definition"
 const trainedModelTable = "sqlflow_model_zoo.trained_model"
 
 // TODO(typhoonzero): create tables if these tables are not pre created?
-const createTableStmts = `CREATE DATABASE sqlflow_model_zoo;
-DROP TABLE IF EXISTS sqlflow_model_zoo.model_collection;
-DROP TABLE IF EXISTS sqlflow_model_zoo.model_definition;
+const createTableStmts = `CREATE DATABASE IF NOT EXISTS sqlflow_model_zoo;
 DROP TABLE IF EXISTS sqlflow_model_zoo.trained_model;
+DROP TABLE IF EXISTS sqlflow_model_zoo.model_definition;
+DROP TABLE IF EXISTS sqlflow_model_zoo.model_collection;
 
 CREATE TABLE sqlflow_model_zoo.model_collection (
     id INT AUTO_INCREMENT,
