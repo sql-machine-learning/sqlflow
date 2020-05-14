@@ -13,7 +13,7 @@ branches:
   - develop
   - "/release-*/"
   - "/^v\\d+\\.\\d+(\\.\\d+)?(-\\S*)?$/"
-service:
+services:
 - docker
 
 
@@ -99,5 +99,10 @@ jobs:
       -v $TRAVIS_BUILD_DIR:/work -w /work
       sqlflow:ci scripts/test/workflow.sh
   - stage: Deploy
+    env: DESC="Deploy server Docker image"
     script:
-    - $TRAVIS_BUILD_DIR/scripts/travis/deploy.sh # Push only after PR merging.
+    - $TRAVIS_BUILD_DIR/scripts/travis/deploy_docker.sh
+  - env: DESC="Deploy macOS client"
+    os: osx
+    script:
+    - $TRAVIS_BUILD_DIR/scripts/travis/deploy_macos.sh
