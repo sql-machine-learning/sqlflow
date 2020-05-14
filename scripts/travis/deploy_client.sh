@@ -54,30 +54,18 @@ cd $TRAVIS_BUILD_DIR
 go generate ./...
 GOBIN=/tmp go install ./cmd/sqlflow
 
-echo "Install AWS client for $TRAVIS_OS_NAME ..."
-if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
-    curl -s "https://awscli.amazonaws.com/AWSCLIV2.pkg" -o "AWSCLIV2.pkg"
-    sudo installer -pkg AWSCLIV2.pkg -target /
-elif [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
-    curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" \
-         -o "awscliv2.zip"
-    unzip awscliv2.zip
-    sudo ./aws/install
-elif [[ "$TRAVIS_OS_NAME" == "windows" ]]; then
-    # https://docs.travis-ci.com/user/reference/windows/#chocolatey
-    # tells that Travis CI windows VM has Chocolatey installed.
-    # https://chocolatey.org/packages/awscli presents a Chocolatey
-    # package of the AWS cli, so we don't need to download the MSI
-    # from AWS and install it.
-    choco install awscli
-fi
+echo "Install Qiniu client for $TRAVIS_OS_NAME ..."
+case "$TRAVIS_OS_NAME" in
+    linux) F="qshell-linux-x64-v2.4.1" ;;
+    windows) F="qshell-windows-x64-v2.4.1.exe" ;;
+    osx) F="qshell-darwin-x64-v2.4.1" ;;
+esac
+curl -so $F.zip http://devtools.qiniu.com/$F.zip
+unzip $F.zip # Get $F
+sudo mv $F /usr/local/bin/qshell
 
-echo "Publish /tmp/sqlflow to the AWS S3 ..."
-aws --region ap-east-1 --output text \
-    s3 cp /tmp/sqlflow \
-    s3://sqlflow-release/$RELEASE_TAG/$TRAVIS_OS_NAME/sqlflow
-aws --region ap-east-1 --output text \
-    s3api put-object-acl \
-    --bucket sqlflow-release \
-    --key $RELEASE_TAG/$TRAVIS_OS_NAME/sqlflow \
-    --acl public-read
+echo "Publish /tmp/sqlflow to Qiniu Object Storage ..."
+qshell account "$QINIU_AK" "$QINIU_SK" "wu"
+qshell rput sqlflow-release \
+       $RELEASE_TAG/$TRAVIS_OS_NAME/sqlflow
+       /tmp/sqlflow
