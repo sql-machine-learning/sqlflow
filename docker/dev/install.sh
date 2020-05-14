@@ -68,13 +68,17 @@ rm -rf $HOME/.cache/pip/*
 
 
 echo "Install Go compiler ..."
-GO_DEV="https://dl.google.com/go/go1.13.4.linux-amd64.tar.gz"
-curl -sL $GO_DEV  | tar -C /usr/local -xzf -
+GO_MIRROR_0="https://dl.google.com/go/go1.13.4.linux-amd64.tar.gz"
+GO_MIRROR_1="http://mirrors.ustc.edu.cn/golang/go1.13.4.linux-amd64.tar.gz"
+axel --quiet --output go.tar.gz $GO_MIRROR_0 $GO_MIRROR_1
+tar -C /usr/local -xzf go.tar.gz
+rm go.tar.gz
 export GOPATH="/root/go"
 export PATH="/usr/local/go/bin:$GOPATH/bin:$PATH"
 
 
 echo "Install goyacc, protoc-gen-go, linters, etc. ..."
+# TODO(yi): Use Go mirror to speed up pacakge downloading.
 export GO111MODULE=on
 go get \
    github.com/golang/protobuf/protoc-gen-go@v1.3.3 \
@@ -90,18 +94,18 @@ cp "$GOPATH"/bin/* /usr/local/bin/
 
 
 echo "Install protoc ..."
-curl -sL \
-     "https://github.com/protocolbuffers/protobuf/releases/download/v3.7.1/protoc-3.7.1-linux-x86_64.zip" \
-     -o p.zip
+PROTOC_SITE="https://github.com/protocolbuffers/protobuf/releases"
+axel --quiet --output "p.zip" \
+     $PROTOC_SITE"/download/v3.7.1/protoc-3.7.1-linux-x86_64.zip"
 unzip -qq p.zip -d /usr/local
 rm p.zip
 
 
 echo "Install gRPC for Java as a protobuf-compiler ..."
 # c.f. https://stackoverflow.com/a/53982507/724872.
-curl -sL \
-     "https://repo1.maven.org/maven2/io/grpc/protoc-gen-grpc-java/1.21.0/protoc-gen-grpc-java-1.21.0-linux-x86_64.exe" \
-     -o /usr/local/bin/protoc-gen-grpc-java
+PROTOC_JAVA_SITE="https://repo1.maven.org/maven2/io/grpc/protoc-gen-grpc-java"
+axel --quiet --output /usr/local/bin/protoc-gen-grpc-java \
+     $PROTOC_JAVA_SITE"/1.21.0/protoc-gen-grpc-java-1.21.0-linux-x86_64.exe"
 chmod +x /usr/local/bin/protoc-gen-grpc-java
 
 
@@ -122,12 +126,9 @@ echo '<settings>
 
 
 echo "Install Java linter ..."
-curl -sLJ \
-     "https://github.com/google/google-java-format/releases/download/google-java-format-1.6/google-java-format-1.6-all-deps.jar" \
-     -o /usr/local/bin/google-java-format-1.6-all-deps.jar
-curl -sLJ \
-     "https://raw.githubusercontent.com/checkstyle/checkstyle/master/src/main/resources/google_checks.xml" \
-     -o /usr/local/bin/google_checks.xml
-curl -sLJ \
-     "https://github.com/checkstyle/checkstyle/releases/download/checkstyle-8.29/checkstyle-8.29-all.jar" \
-     -o /usr/local/bin/checkstyle-8.29-all.jar
+axel --quiet --output /usr/local/bin/google-java-format-1.6-all-deps.jar \
+     "https://github.com/google/google-java-format/releases/download/google-java-format-1.6/google-java-format-1.6-all-deps.jar"
+axel --quiet --output /usr/local/bin/google_checks.xml \
+     "https://raw.githubusercontent.com/checkstyle/checkstyle/master/src/main/resources/google_checks.xml"
+axel --quiet --output /usr/local/bin/checkstyle-8.29-all.jar \
+     "https://github.com/checkstyle/checkstyle/releases/download/checkstyle-8.29/checkstyle-8.29-all.jar"
