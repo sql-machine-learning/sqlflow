@@ -23,7 +23,7 @@ from sqlflow_submitter import db
 from sqlflow_submitter.pai import model
 
 from .get_tf_version import tf_is_version2
-from .input_fn import get_dtype, parse_sparse_feature_predict
+from .input_fn import get_dtype, parse_sparse_feature_predict, tf_generator
 
 try:
     import sqlflow_models
@@ -73,10 +73,15 @@ def keras_predict(estimator, model_params, save, result_table, is_pai,
             gen = db.pai_maxcompute_db_generator(formatted_pai_table,
                                                  feature_column_names, None,
                                                  feature_metas)
+            selected_cols = feature_column_names
         else:
             gen = db.db_generator(driver, conn, select, feature_column_names,
                                   None, feature_metas)
-        dataset = tf.data.Dataset.from_generator(gen, (tuple(feature_types), ))
+            selected_cols = db.selected_cols(driver, conn, select)
+        tf_gen = tf_generator(gen, selected_cols, feature_column_names,
+                              feature_metas)
+        dataset = tf.data.Dataset.from_generator(tf_gen,
+                                                 (tuple(feature_types), ))
         ds_mapper = functools.partial(
             parse_sparse_feature_predict,
             feature_column_names=feature_column_names,
@@ -235,8 +240,11 @@ def estimator_predict(estimator, model_params, save, result_table,
     with db.buffered_db_writer(driver, conn, result_table, write_cols, 100,
                                hdfs_namenode_addr, hive_location, hdfs_user,
                                hdfs_pass) as w:
-        for row, features, label in predict_generator:
-            result = predict((features, label))
+        for row, _ in predict_generator:
+            features = db.read_features_from_row(row, selected_cols,
+                                                 feature_column_names,
+                                                 feature_metas)
+            result = predict((features, ))
             if target_col_index != -1:
                 del row[target_col_index]
             if "class_ids" in result:

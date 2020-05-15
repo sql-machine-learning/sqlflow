@@ -56,12 +56,13 @@ def xgb_dataset(datasource,
     gen = db.db_generator(conn.driver, conn, dataset_sql, feature_column_names,
                           label_spec, feature_specs)()
 
+    selected_cols = db.selected_cols(conn.driver, conn, dataset_sql)
     for i in range(epoch):
         step = 0
         # the filename per batch is [filename]_[step]
         step_file_name = "%s_%d" % (fn, step)
         written_rows = dump_dmatrix(step_file_name, gen, feature_column_names,
-                                    feature_specs, label_spec)
+                                    feature_specs, label_spec, selected_cols)
 
         while written_rows > 0:
             yield xgb.DMatrix('{0}#{0}.cache'.format(step_file_name)
@@ -72,7 +73,7 @@ def xgb_dataset(datasource,
             step_file_name = "%s_%d" % (fn, step)
             written_rows = dump_dmatrix(step_file_name, gen,
                                         feature_column_names, feature_specs,
-                                        label_spec)
+                                        label_spec, selected_cols)
 
 
 def dump_dmatrix(filename,
@@ -80,11 +81,15 @@ def dump_dmatrix(filename,
                  feature_column_names,
                  feature_specs,
                  has_label,
+                 selected_cols,
                  batch_size=None):
     # TODO(yancey1989): generate group and weight text file if necessary
     row_id = 0
     with open(filename, 'a') as f:
-        for _, features, label in generator:
+        for row, label in generator:
+            features = db.read_features_from_row(row, selected_cols,
+                                                 feature_column_names,
+                                                 feature_specs)
             row_data = []
             for i, v in enumerate(features):
                 fname = feature_column_names[i]

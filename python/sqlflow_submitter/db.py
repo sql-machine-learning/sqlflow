@@ -173,7 +173,7 @@ def read_feature(raw_val, feature_spec, feature_name):
         return (raw_val, )
 
 
-def fetch_selected_cols(driver, conn, select):
+def selected_cols(driver, conn, select):
     limited = re.findall("LIMIT [0-9]*$", select)
     if not limited:
         select += " LIMIT 1"
@@ -192,6 +192,16 @@ def fetch_selected_cols(driver, conn, select):
             else [i[0] for i in cursor.description]
     cursor.close()
     return field_names
+
+
+def read_features_from_row(row, select_cols, feature_column_names,
+                           feature_specs):
+    features = []
+    for name in feature_column_names:
+        feature = read_feature(row[select_cols.index(name)],
+                               feature_specs[name], name)
+        features.append(feature)
+    return tuple(features)
 
 
 def db_generator(driver,
@@ -213,6 +223,7 @@ def db_generator(driver,
         else:
             field_names = None if cursor.description is None \
                 else [i[0] for i in cursor.description]
+
         if label_spec:
             try:
                 label_idx = field_names.index(label_spec["feature_name"])
@@ -242,6 +253,11 @@ def db_generator(driver,
                         label = np.fromstring(label,
                                               dtype=int,
                                               sep=label_spec["delimiter"])
+                if label_idx is None:
+                    yield (list(row), None)
+                else:
+                    yield list(row), label
+                '''
                 features = []
                 for name in feature_column_names:
                     feature = read_feature(row[field_names.index(name)],
@@ -252,6 +268,7 @@ def db_generator(driver,
                     yield list(row), tuple(features), None
                 else:
                     yield list(row), tuple(features), label
+                '''
             if len(rows) < fetch_size:
                 break
         cursor.close()
@@ -294,15 +311,10 @@ def pai_maxcompute_db_generator(table,
             try:
                 row = reader.read(num_records=1)[0]
                 label = row[label_idx] if label_idx is not None else -1
-                features = []
-                for name in feature_column_names:
-                    feature = read_feature(row[selected_cols.index(name)],
-                                           feature_specs[name], name)
-                    features.append(feature)
                 if label_column_name:
-                    yield row, tuple(features), label
+                    yield (list(row), None)
                 else:
-                    yield row, tuple(features), None
+                    yield list(row), None
             except Exception as e:
                 reader.close()
                 break
