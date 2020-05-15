@@ -92,12 +92,11 @@ case "$TRAVIS_OS_NAME" in
 esac
 axel http://devtools.qiniu.com/$F.zip
 unzip $F.zip
-mv $F qshell  # Use a shorter name
 export PATH=$PWD:$PATH
 
 
 echo "Publish /tmp/sqlflow to Qiniu Object Storage ..."
-qshell account "$QINIU_AK" "$QINIU_SK" "wu"
-qshell rput --overwrite sqlflow-release \
+$F account "$QINIU_AK" "$QINIU_SK" "wu"
+$F rput --overwrite sqlflow-release \
        "$RELEASE_TAG/$TRAVIS_OS_NAME/sqlflow" \
        ./sqlflow
