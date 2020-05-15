@@ -62,6 +62,7 @@ case "$TRAVIS_OS_NAME" in
         # The following code snippet comes from docker/dev/install.sh
         echo "Install protoc ..."
         PROTOC_SITE="https://github.com/protocolbuffers/protobuf/releases"
+	axel --version  # debug
         axel $PROTOC_SITE"/download/v3.7.1/protoc-3.7.1-linux-x86_64.zip"
         sudo unzip -qq protoc-3.7.1-linux-x86_64.zip -d /usr/local
         ;;
