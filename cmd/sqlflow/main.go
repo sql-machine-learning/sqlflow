@@ -28,7 +28,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"syscall"
 
 	"github.com/joho/godotenv"
 	"golang.org/x/crypto/ssh/terminal"
