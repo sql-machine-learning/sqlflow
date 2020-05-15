@@ -80,8 +80,9 @@ export PATH=$GOPATH/bin:$PATH
 
 echo "Build cmd/sqlflow into /tmp ..."
 cd "$TRAVIS_BUILD_DIR"
-go generate ./...
-GOBIN=$PWD go install ./cmd/sqlflow
+go generate ./... > /dev/null
+mkdir "$PWD"/build
+GOBIN="$PWD"/build go install ./cmd/sqlflow > /dev/null
 
 
 echo "Install Qiniu client for $TRAVIS_OS_NAME ..."
@@ -100,4 +101,4 @@ $F account "$QINIU_AK" "$QINIU_SK" "wu"
 $F rput --overwrite \
    sqlflow-release \
    "$RELEASE_TAG/$TRAVIS_OS_NAME/sqlflow" \
-   ./sqlflow
+   "$PWD"/build/sqlflow*  # Need * because for Windows it is sqlflow.exe
