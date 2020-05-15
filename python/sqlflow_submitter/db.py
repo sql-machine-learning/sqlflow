@@ -257,18 +257,6 @@ def db_generator(driver,
                     yield (list(row), None)
                 else:
                     yield list(row), label
-                '''
-                features = []
-                for name in feature_column_names:
-                    feature = read_feature(row[field_names.index(name)],
-                                           feature_specs[name], name)
-                    features.append(feature)
-
-                if label_idx is None:
-                    yield list(row), tuple(features), None
-                else:
-                    yield list(row), tuple(features), label
-                '''
             if len(rows) < fetch_size:
                 break
         cursor.close()
