@@ -54,18 +54,22 @@ cd $TRAVIS_BUILD_DIR
 go generate ./...
 GOBIN=/tmp go install ./cmd/sqlflow
 
+echo "Install axel ..."
+sudo apt-get -qq update > /dev/null
+sudo apt-get -qq install -y axel > /dev/null
+
 echo "Install Qiniu client for $TRAVIS_OS_NAME ..."
 case "$TRAVIS_OS_NAME" in
     linux) F="qshell-linux-x64-v2.4.1" ;;
     windows) F="qshell-windows-x64-v2.4.1.exe" ;;
     osx) F="qshell-darwin-x64-v2.4.1" ;;
 esac
-curl -so $F.zip http://devtools.qiniu.com/$F.zip
-unzip $F.zip # Get $F
+axel --quiet http://devtools.qiniu.com/$F.zip
+unzip $F.zip
 sudo mv $F /usr/local/bin/qshell
 
 echo "Publish /tmp/sqlflow to Qiniu Object Storage ..."
 qshell account "$QINIU_AK" "$QINIU_SK" "wu"
 qshell rput sqlflow-release \
-       $RELEASE_TAG/$TRAVIS_OS_NAME/sqlflow
+       $RELEASE_TAG/$TRAVIS_OS_NAME/sqlflow \
        /tmp/sqlflow

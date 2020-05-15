@@ -20,7 +20,6 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
-	"net"
 	"os"
 	"os/exec"
 	"path"
@@ -39,6 +38,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"sqlflow.org/sqlflow/pkg/database"
 	pb "sqlflow.org/sqlflow/pkg/proto"
+	"sqlflow.org/sqlflow/pkg/server"
 	"sqlflow.org/sqlflow/pkg/sql/testdata"
 )
 
@@ -56,25 +56,6 @@ var testDatasource = os.Getenv("SQLFLOW_TEST_DATASOURCE")
 var caseInto = "sqlflow_models.my_dnn_model"
 
 const unitTestPort = 50051
-
-func serverIsReady(addr string, timeout time.Duration) bool {
-	conn, err := net.DialTimeout("tcp", addr, timeout)
-	if err != nil {
-		return false
-	}
-	err = conn.Close()
-	return err == nil
-}
-
-func waitPortReady(addr string, timeout time.Duration) {
-	// Set default timeout to
-	if timeout == 0 {
-		timeout = time.Duration(1) * time.Second
-	}
-	for !serverIsReady(addr, timeout) {
-		time.Sleep(1 * time.Second)
-	}
-}
 
 func connectAndRunSQLShouldError(sql string) {
 	conn, err := createRPCConn()
@@ -301,7 +282,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	}
 
 	go start(modelDir, caCrt, caKey, unitTestPort, false)
-	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
+	server.WaitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 	err = prepareTestData(dbConnStr)
 	if err != nil {
 		t.Fatalf("prepare test dataset failed: %v", err)
@@ -486,7 +467,7 @@ func TestEnd2EndHive(t *testing.T) {
 	}
 	dbConnStr = "hive://root:root@127.0.0.1:10000/iris?auth=NOSASL"
 	go start(modelDir, caCrt, caKey, unitTestPort, false)
-	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
+	server.WaitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 	err = prepareTestData(dbConnStr)
 	if err != nil {
 		t.Fatalf("prepare test dataset failed: %v", err)
@@ -529,7 +510,7 @@ func TestEnd2EndMaxCompute(t *testing.T) {
 	endpoint := os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_ENDPOINT")
 	dbConnStr = fmt.Sprintf("maxcompute://%s:%s@%s", AK, SK, endpoint)
 	go start(modelDir, caCrt, caKey, unitTestPort, false)
-	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
+	server.WaitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 
 	caseDB = os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT")
 	caseTrainTable = "sqlflow_test_iris_train"
@@ -575,7 +556,7 @@ func TestEnd2EndMaxComputeALPS(t *testing.T) {
 	}
 
 	go start(modelDir, caCrt, caKey, unitTestPort, false)
-	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
+	server.WaitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 
 	t.Run("CaseTrainALPS", CaseTrainALPS)
 	t.Run("CaseTrainALPSFeatureMap", CaseTrainALPSFeatureMap)
@@ -2050,7 +2031,7 @@ func TestEnd2EndAlisa(t *testing.T) {
 	caseInto = "sqlflow_test_kmeans_model"
 
 	go start("", caCrt, caKey, unitTestPort, false)
-	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
+	server.WaitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 	// TODO(Yancey1989): reuse CaseTrainXGBoostOnPAI if support explain XGBoost model
 	t.Run("CaseTrainXGBoostOnAlisa", CaseTrainXGBoostOnAlisa)
 	t.Run("CaseTrainPAIKMeans", CaseTrainPAIKMeans)
@@ -2099,7 +2080,7 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 	caseInto = "my_dnn_model"
 
 	go start(modelDir, caCrt, caKey, unitTestPort, false)
-	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
+	server.WaitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 
 	t.Run("group", func(t *testing.T) {
 		t.Run("CasePAIMaxComputeDNNTrainPredictExplain", CasePAIMaxComputeDNNTrainPredictExplain)
@@ -2137,7 +2118,7 @@ func TestEnd2EndFluidWorkflow(t *testing.T) {
 	//TODO(yancey1989): using the same end-to-end workflow test with the Couler backend
 	os.Setenv("SQLFLOW_WORKFLOW_BACKEND", "fluid")
 	go start(modelDir, caCrt, caKey, unitTestPort, true)
-	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
+	server.WaitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 	if err != nil {
 		t.Fatalf("prepare test dataset failed: %v", err)
 	}
@@ -2163,7 +2144,7 @@ func TestEnd2EndWorkflow(t *testing.T) {
 	}
 
 	go start(modelDir, caCrt, caKey, unitTestPort, true)
-	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
+	server.WaitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 
 	if driverName == "maxcompute" {
 		AK := os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_AK")

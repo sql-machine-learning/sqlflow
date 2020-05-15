@@ -15,9 +15,10 @@
 
 set -e
 
-# We use Hadoop client to write CSV files to Hive tables.
-HADOOP_URL=https://archive.apache.org/dist/hadoop/common/hadoop-"$HADOOP_VERSION"/hadoop-"$HADOOP_VERSION".tar.gz
-curl -fsSL "$HADOOP_URL" -o /tmp/hadoop.tar.gz
+# NOTE: require external exported HADOOP_VERSION.
+HADOOP_SITE="https://archive.apache.org/dist/hadoop/common"
+axel --quiet --output /tmp/hadoop.tar.gz \
+     $HADOOP_SITE/hadoop-"$HADOOP_VERSION"/hadoop-"$HADOOP_VERSION".tar.gz
 tar -xzf /tmp/hadoop.tar.gz -C /opt/
 rm -rf /tmp/hadoop.tar.gz
 rm -rf /opt/hadoop-"$HADOOP_VERSION"/share/doc

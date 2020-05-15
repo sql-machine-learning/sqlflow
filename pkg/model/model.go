@@ -69,14 +69,6 @@ func (m *Model) Save(modelURI string, trainStmt *ir.TrainStmt, session *pb.Sessi
 	if err := m.saveDB(db, modelURI, session); err != nil {
 		return err
 	}
-	// TODO(typhoonzero): support hive, maxcompute saving model zoo metas.
-	if db.DriverName == "mysql" {
-		// Save model metas in model zoo table
-		if err := createModelZooTable(db); err != nil {
-			return err
-		}
-		return addTrainedModelsRecord(db, trainStmt, modelURI, session)
-	}
 	return nil
 }
 
@@ -213,87 +205,4 @@ func readGob(filePath string, object interface{}) error {
 		return fmt.Errorf("model.load: gob-decoding model failed: %v", e)
 	}
 	return nil
-}
-
-// createModelZooTable create the table "sqlflow.trained_models" to save model
-// metas the saved model URI.
-func createModelZooTable(db *database.DB) error {
-	createDBSQL := fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s;", modelZooDB)
-	_, err := db.Exec(createDBSQL)
-	if err != nil {
-		return err
-	}
-	// schema design: https://github.com/sql-machine-learning/sqlflow/blob/a98218ef8bee57e2a45357d7ee5721e1c6dfeb35/doc/design/model_zoo.md#model-zoo-data-schema
-	// NOTE(typhoonzero): submitter program size may exceed TEXT size(64KB)
-	// NOTE(typhoonzero): train_ir_pb contains all information how the submitter program is generated, so not saving submitter program now
-	// NOTE(typhoonzero): model_uri can be:
-	//    1. file:///path/to/model/dir
-	//    2. db.table
-	//    3. oss://path/to/oss
-	createTableSQL := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s (
-model_id VARCHAR(255),
-author VARCHAR(255),
-model_image VARCHAR(255),
-model_def VARCHAR(255),
-train_ir_pb TEXT,
-model_uri VARCHAR(255)
-);`, modelZooTable)
-	_, err = db.Exec(createTableSQL)
-	return err
-}
-
-func getTrainedModelParts(into string) (string, string, error) {
-	if strings.ContainsRune(into, '.') {
-		parts := strings.Split(into, ".")
-		if len(parts) == 2 {
-			return parts[0], parts[1], nil
-		}
-		return "", "", fmt.Errorf("error INTO format, should be like [creator.]modelID, but got %s", into)
-	}
-	return "", into, nil
-}
-
-func dbStringEscape(src string) string {
-	ret := strings.ReplaceAll(src, "\"", "\\\"")
-	return strings.ReplaceAll(ret, "'", "\\'")
-}
-
-func addTrainedModelsRecord(db *database.DB, trainStmt *ir.TrainStmt, modelURI string, sess *pb.Session) error {
-	// NOTE(typhoonzero): creator can be empty, if so, the model file is saved into current database
-	// FIXME(typhoonzero): or maybe the into format should be like "creator/modelID"
-	creator, modelID, err := getTrainedModelParts(trainStmt.Into)
-	if err != nil {
-		return err
-	}
-
-	q := fmt.Sprintf("SELECT * FROM %s WHERE model_id='%s'", modelZooTable, modelID)
-	res, err := db.Query(q)
-	if err != nil {
-		return err
-	}
-	defer res.Close()
-	isInsert := false
-	if !res.Next() {
-		isInsert = true
-	}
-	var sql string
-
-	// TODO(typhoonzero): generate irJSON from trainStmt to record the training information.
-	irJSON := ""
-	if isInsert {
-		sql = fmt.Sprintf(`INSERT INTO %s
-(model_id, author, model_image, model_def, train_ir_pb, model_uri)
-VALUES ("%s", "%s", "%s", "%s", "%s", "%s")`,
-			modelZooTable, modelID, creator, trainStmt.ModelImage, trainStmt.Estimator, dbStringEscape(irJSON), modelURI)
-	} else {
-		sql = fmt.Sprintf(`UPDATE %s SET
-author="%s",
-model_image="%s",
-model_def="%s",
-train_ir_pb="%s",
-model_uri="%s"
-WHERE model_id="%s"`, modelZooTable, creator, trainStmt.ModelImage, trainStmt.Estimator, dbStringEscape(irJSON), modelURI, modelID)
-	}
-	_, err = db.Exec(sql)
-	return err
 }
