@@ -28,7 +28,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"syscall"
 
 	"github.com/joho/godotenv"
 	"golang.org/x/crypto/ssh/terminal"
@@ -349,7 +348,13 @@ func main() {
 		log.Fatalf("error SQLFLOW_DATASOURCE: %v", err)
 	}
 
-	isTerminal := !flagPassed("execute", "e", "file", "f") && terminal.IsTerminal(syscall.Stdin)
+	// You might want to use syscall.Stdin instead of 0; however,
+	// unfortunately, we cannot.  the syscall standard package has
+	// a special implementation for Windows, where the type of
+	// syscall.Stdin is not int as in Linux and macOS, but
+	// uintptr.
+	isTerminal := !flagPassed("execute", "e", "file", "f") &&
+		terminal.IsTerminal(0)
 	sqlFile := os.Stdin
 
 	if flagPassed("file", "f") && *sqlFileName != "-" {
