@@ -61,7 +61,7 @@ case "$TRAVIS_OS_NAME" in
         PROTOC_SITE="https://github.com/protocolbuffers/protobuf/releases"
         axel --quiet --output "p.zip" \
              $PROTOC_SITE"/download/v3.7.1/protoc-3.7.1-linux-x86_64.zip"
-        unzip -qq p.zip -d /usr/local
+        sudo unzip -qq p.zip -d /usr/local
         rm p.zip
         ;;
     windows) choco install protoc ;;
