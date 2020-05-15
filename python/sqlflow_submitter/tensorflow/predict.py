@@ -154,7 +154,7 @@ def estimator_predict(estimator, model_params, save, result_table,
         driver = conn.driver
 
         # bypass all selected cols to the prediction result table
-        selected_cols = db.fetch_selected_cols(conn.driver, conn, select)
+        selected_cols = db.selected_cols(conn.driver, conn, select)
         write_cols = selected_cols[:]
         if result_col_name in selected_cols:
             target_col_index = selected_cols.index(result_col_name)
