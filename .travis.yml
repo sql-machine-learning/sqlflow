@@ -106,15 +106,11 @@ jobs:
     os: osx
     script:
     - $TRAVIS_BUILD_DIR/scripts/travis/deploy_client.sh
-  # Temporarlily disable deployment the Linux and Windows client.
-  # Will soon enable them after fixing
-  # https://github.com/sql-machine-learning/sqlflow/issues/2248.
-  #
-  # - env: DESC="Deploy Linux client"
-  #   os: linux
-  #   script:
-  #   - $TRAVIS_BUILD_DIR/scripts/travis/deploy_client.sh
-  # - env: DESC="Deploy Windows client"
-  #   os: windows
-  #   script:
-  #   - $TRAVIS_BUILD_DIR/scripts/travis/deploy_client.sh
+  - env: DESC="Deploy Linux client"
+    os: linux
+    script:
+    - $TRAVIS_BUILD_DIR/scripts/travis/deploy_client.sh
+  - env: DESC="Deploy Windows client"
+    os: windows
+    script:
+    - $TRAVIS_BUILD_DIR/scripts/travis/deploy_client.sh

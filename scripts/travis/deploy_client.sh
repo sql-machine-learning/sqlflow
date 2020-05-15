@@ -37,11 +37,37 @@ else
     exit 1
 fi
 
+
 echo "Verify Go is installed ..."
 go env
 
-echo "Verify protoc is installed ..."
+
+echo "Install axel ..."
+case "$TRAVIS_OS_NAME" in
+    linux)
+        sudo apt-get -qq update > /dev/null
+        sudo apt-get -qq install -y axel > /dev/null
+        ;;
+    windows) choco install axel ;;
+    osx) brew install axel ;;
+esac
+
+
+echo "Install protoc ..."
+case "$TRAVIS_OS_NAME" in
+    linux)
+        # The following code snippet comes from docker/dev/install.sh
+        echo "Install protoc ..."
+        PROTOC_SITE="https://github.com/protocolbuffers/protobuf/releases"
+        axel --quiet --output "p.zip" \
+             $PROTOC_SITE"/download/v3.7.1/protoc-3.7.1-linux-x86_64.zip"
+        sudo unzip -qq p.zip -d /usr/local
+        rm p.zip
+        ;;
+    windows) choco install protoc ;;
+esac
 protoc --version
+
 
 echo "Install goyacc and protoc-gen-go ..."
 go get \
@@ -49,14 +75,12 @@ go get \
    golang.org/x/tools/cmd/goyacc
 sudo cp $GOPATH/bin/* /usr/local/bin/
 
+
 echo "Build cmd/sqlflow into /tmp ..."
 cd $TRAVIS_BUILD_DIR
 go generate ./...
 GOBIN=/tmp go install ./cmd/sqlflow
 
-echo "Install axel ..."
-sudo apt-get -qq update > /dev/null
-sudo apt-get -qq install -y axel > /dev/null
 
 echo "Install Qiniu client for $TRAVIS_OS_NAME ..."
 case "$TRAVIS_OS_NAME" in
@@ -67,6 +91,7 @@ esac
 axel --quiet http://devtools.qiniu.com/$F.zip
 unzip $F.zip
 sudo mv $F /usr/local/bin/qshell
+
 
 echo "Publish /tmp/sqlflow to Qiniu Object Storage ..."
 qshell account "$QINIU_AK" "$QINIU_SK" "wu"
