@@ -112,7 +112,7 @@ def input_fn(select,
             feature_metas=feature_metas)
     else:
         dataset = tf.data.Dataset.from_generator(
-            tf_decreator(gen),
+            tf_generator(gen),
             (tuple(feature_types), eval("tf.%s" % label_meta["dtype"])),
             (tuple(shapes), label_meta["shape"]))
         ds_mapper = functools.partial(
