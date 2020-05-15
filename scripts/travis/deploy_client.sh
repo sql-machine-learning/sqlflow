@@ -97,6 +97,7 @@ export PATH=$PWD:$PATH
 
 echo "Publish /tmp/sqlflow to Qiniu Object Storage ..."
 $F account "$QINIU_AK" "$QINIU_SK" "wu"
-$F rput --overwrite sqlflow-release \
-       "$RELEASE_TAG/$TRAVIS_OS_NAME/sqlflow" \
-       ./sqlflow
+$F rput --overwrite \
+   sqlflow-release \
+   "$RELEASE_TAG/$TRAVIS_OS_NAME/sqlflow" \
+   ./sqlflow
