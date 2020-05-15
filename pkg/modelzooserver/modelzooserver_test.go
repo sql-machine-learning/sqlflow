@@ -40,7 +40,7 @@ func startServer() {
 	}
 	splitedStmts := strings.Split(createTableStmts, ";")
 	for idx, stmt := range splitedStmts {
-		if idx == len(splitedStmts)-2 {
+		if idx == len(splitedStmts)-1 {
 			// the last stmt is empty
 			break
 		}
@@ -79,12 +79,13 @@ func TestModelZooServer(t *testing.T) {
 
 	res, err := client.ListModelDefs(context.Background(), &pb.ListModelRequest{Start: 0, Size: -1})
 	a.NoError(err)
-	a.Equal(1, len(res.Names))
+	a.Equal(1, len(res.ClassNames))
+	a.Equal("hub.docker.com/group/mymodel", res.GetImageUrls()[0])
 
 	_, err = client.DropModelDef(context.Background(), modelDefReq)
 	a.NoError(err)
 
 	res, err = client.ListModelDefs(context.Background(), &pb.ListModelRequest{Start: 0, Size: -1})
 	a.NoError(err)
-	a.Equal(0, len(res.Names))
+	a.Equal(0, len(res.ClassNames))
 }

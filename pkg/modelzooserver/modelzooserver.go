@@ -65,14 +65,16 @@ type modelZooServer struct {
 	DB *database.DB
 }
 
-func (s *modelZooServer) ListModelDefs(ctx context.Context, req *pb.ListModelRequest) (*pb.ListModelResponse, error) {
+func (s *modelZooServer) ListModelDefs(ctx context.Context, req *pb.ListModelRequest) (*pb.ListModelDefResponse, error) {
 	// TODO(typhoonzero): join model_collection
 	var sql string
+	// select * from model_definition left join model_collection on model_definition.model_coll_id=model_definition.id;
 	if req.Size <= 0 {
-		sql = fmt.Sprintf("SELECT class_name, args_desc FROM %s;", modelDefTable)
+		sql = fmt.Sprintf("SELECT class_name, args_desc, b.name, b.version FROM %s LEFT JOIN %s AS b on %s.model_coll_id=b.id;",
+			modelDefTable, modelCollTable, modelDefTable)
 	} else {
-		sql = fmt.Sprintf("SELECT class_name, args_desc FROM %s LIMIT %d OFFSET %d;",
-			modelDefTable, req.Size, req.Start)
+		sql = fmt.Sprintf("SELECT class_name, args_desc, b.name, b.version FROM %s LEFT JOIN %s AS b on %s.model_coll_id=b.id LIMIT %d OFFSET %d;",
+			modelDefTable, modelCollTable, modelDefTable, req.Size, req.Start)
 	}
 	rows, err := s.DB.Query(sql)
 	if err != nil {
@@ -81,20 +83,33 @@ func (s *modelZooServer) ListModelDefs(ctx context.Context, req *pb.ListModelReq
 	defer rows.Close()
 	names := []string{}
 	arglist := []string{}
+	images := []string{}
+	imagetags := []string{}
+
 	for rows.Next() {
 		n := ""
 		args := ""
-		if err := rows.Scan(&n, &args); err != nil {
+		image := ""
+		imagetag := ""
+		if err := rows.Scan(&n, &args, &image, &imagetag); err != nil {
 			return nil, err
 		}
 		names = append(names, n)
 		arglist = append(arglist, args)
+		images = append(images, image)
+		imagetags = append(imagetags, imagetag)
 	}
-	return &pb.ListModelResponse{Names: names, Tags: arglist, Size: int64(len(names))}, nil
+	return &pb.ListModelDefResponse{
+			ClassNames: names,
+			Tags:       imagetags,
+			ImageUrls:  images,
+			ArgDescs:   arglist,
+			Size:       int64(len(names))},
+		nil
 }
 
-func (s *modelZooServer) ListTrainedModels(ctx context.Context, req *pb.ListModelRequest) (*pb.ListModelResponse, error) {
-	return &pb.ListModelResponse{}, nil
+func (s *modelZooServer) ListTrainedModels(ctx context.Context, req *pb.ListModelRequest) (*pb.ListTrainedModelResponse, error) {
+	return &pb.ListTrainedModelResponse{}, nil
 }
 
 func (s *modelZooServer) ReleaseModelDef(stream pb.ModelZooServer_ReleaseModelDefServer) error {

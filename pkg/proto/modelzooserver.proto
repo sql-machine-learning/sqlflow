@@ -45,21 +45,41 @@ message ListModelRequest {
     int64 size = 2;
 }
 
-message ListModelResponse {
+message ListModelDefResponse {
+    // Model definition Python class names or function names.
+    repeated string class_names = 1;
+    // The model collection Docker image containing the class.
+    repeated string image_urls = 2;
+    // Docker image tags.
+    repeated string tags = 3;
+    // Argument specs for each class.
+    repeated string arg_descs = 4;
+    // Size of elements in the response lists.
+    int64 size = 5;
+}
+
+message ListTrainedModelResponse {
     // A list of model definition or trained model names.
     repeated string names = 1;
     // A list of tags of the above list names, the length should be the same as "names".
     repeated string tags = 2;
+    // actual place that stores the model, e.g. oss://bucket/path/to/your/model
+    repeated string model_store_urls = 3;
+    // Docker image used when train this model, should be like "hub.docker.com/image:v0.3".
+    repeated string image_urls = 4;
+    // Description of the trained model.
+    repeated string descriptions = 5;
+    // Evaluation metrics of the model.
+    repeated string metrics = 6;
     // Size of elements in names.
-    int64 size = 3;
+    int64 size = 7;
 }
-
 
 service ModelZooServer {
     // Returns the list of public available model definitions.
-    rpc ListModelDefs (ListModelRequest) returns (ListModelResponse);
+    rpc ListModelDefs (ListModelRequest) returns (ListModelDefResponse);
     // Returns the list of public available trained models.
-    rpc ListTrainedModels (ListModelRequest) returns (ListModelResponse);
+    rpc ListTrainedModels (ListModelRequest) returns (ListTrainedModelResponse);
 
     // Release your model definition.
     rpc ReleaseModelDef (stream ModelDefRequest) returns (ModelResponse);
