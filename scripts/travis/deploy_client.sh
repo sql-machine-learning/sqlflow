@@ -37,12 +37,21 @@ else
     exit 1
 fi
 
+
 echo "Verify Go is installed ..."
 go env
 
+
 echo "Install axel ..."
-sudo apt-get -qq update > /dev/null
-sudo apt-get -qq install -y axel > /dev/null
+case "$TRAVIS_OS_NAME" in
+    linux)
+        sudo apt-get -qq update > /dev/null
+        sudo apt-get -qq install -y axel > /dev/null
+        ;;
+    windows) choco install axel ;;
+    osx) brew install axel ;;
+esac
+
 
 echo "Install protoc ..."
 case "$TRAVIS_OS_NAME" in
@@ -59,16 +68,19 @@ case "$TRAVIS_OS_NAME" in
 esac
 protoc --version
 
+
 echo "Install goyacc and protoc-gen-go ..."
 go get \
    github.com/golang/protobuf/protoc-gen-go@v1.3.3 \
    golang.org/x/tools/cmd/goyacc
 sudo cp $GOPATH/bin/* /usr/local/bin/
 
+
 echo "Build cmd/sqlflow into /tmp ..."
 cd $TRAVIS_BUILD_DIR
 go generate ./...
 GOBIN=/tmp go install ./cmd/sqlflow
+
 
 echo "Install Qiniu client for $TRAVIS_OS_NAME ..."
 case "$TRAVIS_OS_NAME" in
@@ -79,6 +91,7 @@ esac
 axel --quiet http://devtools.qiniu.com/$F.zip
 unzip $F.zip
 sudo mv $F /usr/local/bin/qshell
+
 
 echo "Publish /tmp/sqlflow to Qiniu Object Storage ..."
 qshell account "$QINIU_AK" "$QINIU_SK" "wu"

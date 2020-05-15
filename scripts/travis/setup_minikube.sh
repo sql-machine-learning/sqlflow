@@ -22,7 +22,10 @@ export KUBECONFIG=$HOME/.kube/config
 export K8S_VERSION=1.14.0
 export MINIKUBE_VERSION=1.1.1
 
-echo "$0 requires a Travis CI Linux VM."
+if [[ "$TRAVIS_OS_NAME" != "linux" ]]; then
+    echo "$0 can run on Linux host only"
+    exit 1
+fi
 
 echo "Install axel on Travis CI VM ..."
 sudo apt-get -qq update > /dev/null
