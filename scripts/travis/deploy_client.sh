@@ -18,30 +18,25 @@ set -e
 # For more informaiton about deployment with Travis CI, please refer
 # to the file header of deploy_docker.sh
 
-# DEBUG
-#
-# if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then
-#     echo "Skip deployment on pull request"
-#     exit 0
-# fi
+if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then
+    echo "Skip deployment on pull request"
+    exit 0
+fi
 
-# DEBUG
-#
-# # Figure out the tag to push sqlflow:ci.
-# if [[ "$TRAVIS_BRANCH" == "develop" ]]; then
-#     if [[ "$TRAVIS_EVENT_TYPE" == "cron" ]]; then
-#         RELEASE_TAG="nightly"
-#     else
-#         RELEASE_TAG="latest"
-#     fi
-# elif [[ "$TRAVIS_TAG" != "" ]]; then
-#     RELEASE_TAG="$TRAVIS_TAG"
-# else
-#     echo "Cannot figure out Docker image tag."
-#     exit 1
-# fi
 
-RELEASE_TAG="latest"  # debug
+# Figure out the tag to push sqlflow:ci.
+if [[ "$TRAVIS_BRANCH" == "develop" ]]; then
+    if [[ "$TRAVIS_EVENT_TYPE" == "cron" ]]; then
+        RELEASE_TAG="nightly"
+    else
+        RELEASE_TAG="latest"
+    fi
+elif [[ "$TRAVIS_TAG" != "" ]]; then
+    RELEASE_TAG="$TRAVIS_TAG"
+else
+    echo "Cannot figure out Docker image tag."
+    exit 1
+fi
 
 
 echo "Install download tools ..."
