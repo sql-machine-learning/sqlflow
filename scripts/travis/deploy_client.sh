@@ -44,9 +44,6 @@ set -e
 
 RELEASE_TAG="latest"  # DEBUG
 
-echo "Verify Go is installed ..."
-go env
-
 
 echo "Install download tools ..."
 case "$TRAVIS_OS_NAME" in
@@ -65,10 +62,8 @@ case "$TRAVIS_OS_NAME" in
         # The following code snippet comes from docker/dev/install.sh
         echo "Install protoc ..."
         PROTOC_SITE="https://github.com/protocolbuffers/protobuf/releases"
-        axel --quiet --output "p.zip" \
-             $PROTOC_SITE"/download/v3.7.1/protoc-3.7.1-linux-x86_64.zip"
-        sudo unzip -qq p.zip -d /usr/local
-        rm p.zip
+        axel $PROTOC_SITE"/download/v3.7.1/protoc-3.7.1-linux-x86_64.zip"
+        sudo unzip -qq protoc-3.7.1-linux-x86_64.zip -d /usr/local
         ;;
     windows) choco install protoc ;;
 esac
@@ -94,7 +89,7 @@ case "$TRAVIS_OS_NAME" in
     windows) F="qshell-windows-x64-v2.4.1.exe" ;;
     osx) F="qshell-darwin-x64-v2.4.1" ;;
 esac
-axel --quiet http://devtools.qiniu.com/$F.zip
+axel http://devtools.qiniu.com/$F.zip
 unzip $F.zip
 export PATH=$PWD:$PATH
 
