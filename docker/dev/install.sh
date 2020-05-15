@@ -88,7 +88,6 @@ go get \
    github.com/mattn/goveralls \
    github.com/rakyll/gotest \
    github.com/wangkuiyi/goyaccfmt \
-   github.com/wangkuiyi/yamlfmt \
    github.com/wangkuiyi/ipynb/markdown-to-ipynb
 cp "$GOPATH"/bin/* /usr/local/bin/
 
