@@ -81,7 +81,7 @@ export PATH=$GOPATH/bin:$PATH
 echo "Build cmd/sqlflow into /tmp ..."
 cd "$TRAVIS_BUILD_DIR"
 go generate ./...
-GOBIN=/tmp go install ./cmd/sqlflow
+GOBIN=$PWD go install ./cmd/sqlflow
 
 
 echo "Install Qiniu client for $TRAVIS_OS_NAME ..."
@@ -100,4 +100,4 @@ echo "Publish /tmp/sqlflow to Qiniu Object Storage ..."
 qshell account "$QINIU_AK" "$QINIU_SK" "wu"
 qshell rput sqlflow-release \
        "$RELEASE_TAG/$TRAVIS_OS_NAME/sqlflow" \
-       /tmp/sqlflow
+       ./sqlflow
