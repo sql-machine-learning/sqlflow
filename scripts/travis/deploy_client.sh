@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -x # DEBUG
 set -e
 
 # For more informaiton about deployment with Travis CI, please refer
@@ -42,7 +41,7 @@ set -e
 #     exit 1
 # fi
 
-RELEASE_TAG="latest"  # DEBUG
+RELEASE_TAG="latest"  # debug
 
 
 echo "Install download tools ..."
@@ -61,9 +60,8 @@ case "$TRAVIS_OS_NAME" in
     linux)
         # The following code snippet comes from docker/dev/install.sh
         echo "Install protoc ..."
-        PROTOC_SITE="https://github.com/protocolbuffers/protobuf/releases"
-        axel --version  # debug
-        axel $PROTOC_SITE"/download/v3.7.1/protoc-3.7.1-linux-x86_64.zip"
+        PROTOC_SITE="https://github.com/protocolbuffers/protobuf/releases/"
+        axel --quiet $PROTOC_SITE"download/v3.7.1/protoc-3.7.1-linux-x86_64.zip"
         sudo unzip -qq protoc-3.7.1-linux-x86_64.zip -d /usr/local
         ;;
     windows) choco install protoc ;;
@@ -74,7 +72,8 @@ protoc --version
 echo "Install goyacc and protoc-gen-go ..."
 go get \
    github.com/golang/protobuf/protoc-gen-go@v1.3.3 \
-   golang.org/x/tools/cmd/goyacc
+   golang.org/x/tools/cmd/goyacc \
+   > /dev/null
 export PATH=$GOPATH/bin:$PATH
 
 
@@ -91,7 +90,7 @@ case "$TRAVIS_OS_NAME" in
     windows) F="qshell-windows-x64-v2.4.1.exe" ;;
     osx) F="qshell-darwin-x64-v2.4.1" ;;
 esac
-axel http://devtools.qiniu.com/$F.zip
+axel --quiet http://devtools.qiniu.com/$F.zip
 unzip $F.zip
 export PATH=$PWD:$PATH
 
