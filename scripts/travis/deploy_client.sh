@@ -92,6 +92,7 @@ case "$TRAVIS_OS_NAME" in
 esac
 axel http://devtools.qiniu.com/$F.zip
 unzip $F.zip
+mv $F qshell  # Use a shorter name
 export PATH=$PWD:$PATH
 
 
