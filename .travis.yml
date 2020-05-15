@@ -105,6 +105,7 @@ jobs:
     - $TRAVIS_BUILD_DIR/scripts/travis/deploy_client.sh
   - env: DESC="Deploy Linux client"
     os: linux
+    dist: bionic
     script:
     - $TRAVIS_BUILD_DIR/scripts/travis/deploy_client.sh
   - env: DESC="Deploy Windows client"
