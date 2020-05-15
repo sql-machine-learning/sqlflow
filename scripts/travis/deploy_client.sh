@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+set -x # DEBUG
 set -e
 
 # For more informaiton about deployment with Travis CI, please refer
@@ -42,11 +43,11 @@ echo "Verify Go is installed ..."
 go env
 
 
-echo "Install axel ..."
+echo "Install download tools ..."
 case "$TRAVIS_OS_NAME" in
     linux)
         sudo apt-get -qq update > /dev/null
-        sudo apt-get -qq install -y axel > /dev/null
+        sudo apt-get -qq install -y axel unzip > /dev/null
         ;;
     windows) choco install axel ;;
     osx) brew install axel ;;
@@ -73,11 +74,11 @@ echo "Install goyacc and protoc-gen-go ..."
 go get \
    github.com/golang/protobuf/protoc-gen-go@v1.3.3 \
    golang.org/x/tools/cmd/goyacc
-sudo cp $GOPATH/bin/* /usr/local/bin/
+export PATH=$GOPATH/bin:$PATH
 
 
 echo "Build cmd/sqlflow into /tmp ..."
-cd $TRAVIS_BUILD_DIR
+cd "$TRAVIS_BUILD_DIR"
 go generate ./...
 GOBIN=/tmp go install ./cmd/sqlflow
 
@@ -90,11 +91,11 @@ case "$TRAVIS_OS_NAME" in
 esac
 axel --quiet http://devtools.qiniu.com/$F.zip
 unzip $F.zip
-sudo mv $F /usr/local/bin/qshell
+export PATH=$PWD:$PATH
 
 
 echo "Publish /tmp/sqlflow to Qiniu Object Storage ..."
 qshell account "$QINIU_AK" "$QINIU_SK" "wu"
 qshell rput sqlflow-release \
-       $RELEASE_TAG/$TRAVIS_OS_NAME/sqlflow \
+       "$RELEASE_TAG/$TRAVIS_OS_NAME/sqlflow" \
        /tmp/sqlflow
