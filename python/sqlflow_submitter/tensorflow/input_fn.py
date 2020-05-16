@@ -59,7 +59,7 @@ def tf_generator(gen, selected_cols, feature_column_names, feature_metas):
             features = db.read_features_from_row(row, selected_cols,
                                                  feature_column_names,
                                                  feature_metas)
-            if label == -1 or label is None:
+            if label is None:
                 yield (features, )
             else:
                 yield (features, label)
