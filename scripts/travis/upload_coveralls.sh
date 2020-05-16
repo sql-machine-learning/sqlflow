@@ -39,8 +39,12 @@ if [[ "$TRAVIS_BRANCH" == "develop" ]]; then
     if [[ "$TRAVIS_EVENT_TYPE" != "cron" ]]; then
         docker run --rm \
                -e COVERALLS_TOKEN="$COVERALLS_TOKEN" \
-               -v "$GOPATH":/go \
-               sqlflow:ci bash -c "cd /go/src/sqlflow.org/sqlflow && /usr/local/bin/goveralls -coverprofile=coverage.out -service=travis-ci -repotoken $COVERALLS_TOKEN"
+               -v "$TRAVIS_BUILD_DIR":/work -w /work \
+               sqlflow:ci \
+               /usr/local/bin/goveralls \
+               -coverprofile=coverage.out \
+               -service=travis-ci \
+               -repotoken "$COVERALLS_TOKEN"
     fi
 else
     echo "Not build on develop branch, skip pushing to coveralls.io"
