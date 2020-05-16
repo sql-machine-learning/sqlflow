@@ -15,8 +15,14 @@ import os
 import sys
 import types
 
+import sqlflow_submitter
 import tensorflow as tf
 from sqlflow_submitter.db import buffered_db_writer, connect_with_data_source
+from tensorflow.estimator import (BoostedTreesClassifier,
+                                  BoostedTreesRegressor, DNNClassifier,
+                                  DNNLinearCombinedClassifier,
+                                  DNNLinearCombinedRegressor, DNNRegressor,
+                                  LinearClassifier, LinearRegressor)
 
 from . import metrics
 from .input_fn import get_dataset_fn
@@ -30,7 +36,7 @@ except:
 
 
 def evaluate(datasource,
-             estimator_cls,
+             estimator_string,
              select,
              result_table,
              feature_columns,
@@ -49,6 +55,10 @@ def evaluate(datasource,
              hdfs_pass="",
              is_pai=False,
              pai_table=""):
+    # import custom model package
+    model_import_name = sqlflow_submitter.import_model_def(estimator_string)
+    estimator_cls = eval(estimator_string)
+
     if isinstance(estimator_cls, types.FunctionType):
         is_estimator = False
     else:

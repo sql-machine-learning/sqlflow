@@ -25,7 +25,7 @@ from sqlflow_submitter.tensorflow.train import train
 if __name__ == "__main__":
     # Test evaluation on an estimator model
     train(datasource=datasource,
-          estimator=tf.estimator.DNNClassifier,
+          estimator_string="tf.estimator.DNNClassifier",
           select="SELECT * FROM iris.train where class!=2",
           validation_select="SELECT * FROM iris.test where class!=2",
           feature_columns=feature_columns,
@@ -43,7 +43,7 @@ if __name__ == "__main__":
     # FIXME(typhoonzero): need to re-create result table: iris.evaluate_result?
     evaluate(
         datasource=datasource,
-        estimator_cls=tf.estimator.DNNClassifier,
+        estimator_string="tf.estimator.DNNClassifier",
         select="SELECT * FROM iris.test where class!=2",
         result_table="",
         feature_columns=feature_columns,
@@ -63,7 +63,7 @@ if __name__ == "__main__":
 
     # Test evaluation on a keras model
     train(datasource=datasource,
-          estimator=sqlflow_models.DNNClassifier,
+          estimator_string="sqlflow_models.DNNClassifier",
           select="SELECT * FROM iris.train where class!=2",
           validation_select="SELECT * FROM iris.test where class!=2",
           feature_columns=feature_columns,
@@ -81,7 +81,7 @@ if __name__ == "__main__":
     # FIXME(typhoonzero): need to re-create result table: iris.evaluate_result?
     evaluate(
         datasource=datasource,
-        estimator_cls=sqlflow_models.DNNClassifier,
+        estimator_string="sqlflow_models.DNNClassifier",
         select="SELECT * FROM iris.test where class!=2",
         result_table="",
         feature_columns=feature_columns,

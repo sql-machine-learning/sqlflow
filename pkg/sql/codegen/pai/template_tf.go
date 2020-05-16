@@ -165,7 +165,7 @@ else:
     model.load_file("{{.OSSModelDir}}", "model_save")
 
 predict.pred(datasource="{{.DataSource}}",
-             estimator=eval(estimator),
+             estimator_string=estimator,
              select="""{{.Select}}""",
              result_table="{{.ResultTable}}",
              feature_columns=feature_columns,
@@ -233,8 +233,9 @@ if is_estimator:
 else:
     model.load_file("{{.OSSModelDir}}", "model_save")
 
+
 explain.explain(datasource="{{.DataSource}}",
-                estimator_cls=eval(estimator),
+                estimator_string=estimator,
                 select="""{{.Select}}""",
                 feature_columns=feature_columns,
                 feature_column_names=feature_column_names,
@@ -305,9 +306,8 @@ if is_estimator:
 else:
     model.load_file("{{.OSSModelDir}}", "model_save")
 
-
 evaluate.evaluate(datasource="{{.DataSource}}",
-                  estimator_cls=eval(estimator),
+                  estimator_string=estimator,
                   select="""{{.Select}}""",
                   result_table="{{.ResultTable}}",
                   feature_columns=feature_columns,

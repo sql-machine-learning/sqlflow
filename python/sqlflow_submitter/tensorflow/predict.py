@@ -18,9 +18,15 @@ import os
 import sys
 
 import numpy as np
+import sqlflow_submitter
 import tensorflow as tf
 from sqlflow_submitter import db
 from sqlflow_submitter.pai import model
+from tensorflow.estimator import (BoostedTreesClassifier,
+                                  BoostedTreesRegressor, DNNClassifier,
+                                  DNNLinearCombinedClassifier,
+                                  DNNLinearCombinedRegressor, DNNRegressor,
+                                  LinearClassifier, LinearRegressor)
 
 from .get_tf_version import tf_is_version2
 from .input_fn import get_dtype, parse_sparse_feature_predict
@@ -238,7 +244,7 @@ def estimator_predict(estimator, model_params, save, result_table,
 
 
 def pred(datasource,
-         estimator,
+         estimator_string,
          select,
          result_table,
          feature_columns,
@@ -255,6 +261,10 @@ def pred(datasource,
          hdfs_pass="",
          is_pai=False,
          pai_table=""):
+    # import custom model package
+    model_import_name = sqlflow_submitter.import_model_def(estimator_string)
+    estimator = eval(estimator_string)
+
     if not is_pai:
         conn = db.connect_with_data_source(datasource)
     model_params.update(feature_columns)
