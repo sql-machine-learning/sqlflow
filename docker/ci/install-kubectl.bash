@@ -16,6 +16,7 @@
 set -e
 
 echo "Install kubectl ..."
-curl -sLo /usr/local/bin/kubectl \
-     https://storage.googleapis.com/kubernetes-release/release/v1.14.0/bin/linux/amd64/kubectl
+KUBECTL_SITE="https://storage.googleapis.com/kubernetes-release/release"
+axel --quiet --output /usr/local/bin/kubectl \
+     $KUBECTL_SITE"/v1.14.0/bin/linux/amd64/kubectl"
 chmod +x /usr/local/bin/kubectl

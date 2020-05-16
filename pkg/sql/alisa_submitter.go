@@ -100,7 +100,7 @@ func (s *alisaSubmitter) ExecuteTrain(ts *ir.TrainStmt) (e error) {
 		return e
 	}
 	// upload generated program to OSS and submit an Alisa task.
-	return s.uploadResourceAndSubmitAlisaTask(code, requirements, paiCmd)
+	return s.uploadResourceAndSubmitAlisaTask(code, requirements, paiCmd, ts.Estimator)
 }
 
 func (s *alisaSubmitter) ExecutePredict(ps *ir.PredictStmt) error {
@@ -124,7 +124,7 @@ func (s *alisaSubmitter) ExecutePredict(ps *ir.PredictStmt) error {
 	if e != nil {
 		return e
 	}
-	modelType, _, e := getOSSSavedModelType(ossModelPath, currProject)
+	modelType, estimator, e := getOSSSavedModelType(ossModelPath, currProject)
 	if e != nil {
 		return e
 	}
@@ -138,17 +138,17 @@ func (s *alisaSubmitter) ExecutePredict(ps *ir.PredictStmt) error {
 	if e != nil {
 		return e
 	}
-	return s.uploadResourceAndSubmitAlisaTask(code, requirements, paiCmd)
+	return s.uploadResourceAndSubmitAlisaTask(code, requirements, paiCmd, estimator)
 }
 
-func (s *alisaSubmitter) uploadResourceAndSubmitAlisaTask(entryCode, requirements, alisaExecCode string) error {
+func (s *alisaSubmitter) uploadResourceAndSubmitAlisaTask(entryCode, requirements, alisaExecCode, estimator string) error {
 	// upload generated program to OSS and submit an Alisa task.
 	ossCodeObjectName := randStringRunes(16)
 	alisaBucket, e := getAlisaBucket()
 	if e != nil {
 		return e
 	}
-	codeResourceURL, e := tarAndUploadResource(s.Cwd, entryCode, requirements, ossCodeObjectName, alisaBucket)
+	codeResourceURL, e := tarAndUploadResource(s.Cwd, entryCode, requirements, ossCodeObjectName, estimator, alisaBucket)
 	if e != nil {
 		return e
 	}
@@ -196,7 +196,7 @@ func (s *alisaSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 	if e != nil {
 		return e
 	}
-	if e = s.uploadResourceAndSubmitAlisaTask(expn.Code, expn.Requirements, expn.PaiCmd); e != nil {
+	if e = s.uploadResourceAndSubmitAlisaTask(expn.Code, expn.Requirements, expn.PaiCmd, estimator); e != nil {
 		return e
 	}
 	if img, e := expn.Draw(); e == nil {
@@ -233,7 +233,7 @@ func (s *alisaSubmitter) ExecuteEvaluate(es *ir.EvaluateStmt) error {
 	if e != nil {
 		return e
 	}
-	modelType, _, e := getOSSSavedModelType(ossModelPath, currProject)
+	modelType, estimator, e := getOSSSavedModelType(ossModelPath, currProject)
 	if e != nil {
 		return e
 	}
@@ -247,7 +247,7 @@ func (s *alisaSubmitter) ExecuteEvaluate(es *ir.EvaluateStmt) error {
 	if e != nil {
 		return e
 	}
-	return s.uploadResourceAndSubmitAlisaTask(code, requirements, paiCmd)
+	return s.uploadResourceAndSubmitAlisaTask(code, requirements, paiCmd, estimator)
 }
 
 func (s *alisaSubmitter) GetTrainStmtFromModel() bool { return false }
@@ -316,8 +316,8 @@ func getModelPath(modelName string, session *pb.Session) (string, error) {
 	return strings.Join([]string{projectName, userID, modelName}, "/"), nil
 }
 
-func tarAndUploadResource(cwd, entryCode, requirements, ossObjectName string, bucket *oss.Bucket) (string, error) {
-	if e := achieveResource(cwd, entryCode, requirements, tarball); e != nil {
+func tarAndUploadResource(cwd, entryCode, requirements, ossObjectName, estimator string, bucket *oss.Bucket) (string, error) {
+	if e := achieveResource(cwd, entryCode, requirements, tarball, estimator); e != nil {
 		return "", e
 	}
 	return uploadResource(cwd, tarball, ossObjectName, bucket)

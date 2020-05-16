@@ -22,18 +22,29 @@ export KUBECONFIG=$HOME/.kube/config
 export K8S_VERSION=1.14.0
 export MINIKUBE_VERSION=1.1.1
 
+if [[ "$TRAVIS_OS_NAME" != "linux" ]]; then
+    echo "$0 can run on Linux host only"
+    exit 1
+fi
+
+echo "Install axel on Travis CI VM ..."
+sudo apt-get -qq update > /dev/null
+sudo apt-get -qq install -y axel > /dev/null
+
 echo "Install kubectl ..."
 # Travis CI VMs allow sudo without password.
 K8S_RELEASE_SITE="https://storage.googleapis.com/kubernetes-release/release"
-sudo curl -sLo /usr/local/bin/kubectl \
+axel --quiet --output kubectl \
      $K8S_RELEASE_SITE/v$K8S_VERSION/bin/linux/amd64/kubectl
-sudo chmod a+x /usr/local/bin/kubectl
+chmod a+x kubectl
+sudo mv kubectl /usr/local/bin/kubectl
 
 echo "Install minikube ..."
 MINIKUBE_RELEASE_SITE="https://storage.googleapis.com/minikube/releases"
-sudo curl -sLo /usr/local/bin/minikube \
+axel --quiet --output minikube \
      $MINIKUBE_RELEASE_SITE/v$MINIKUBE_VERSION/minikube-linux-amd64
-sudo chmod a+x /usr/local/bin/minikube
+chmod a+x minikube
+sudo mv minikube /usr/local/bin/minikube
 
 echo "Configure minikube ..."
 mkdir -p $HOME/.kube $HOME/.minikube

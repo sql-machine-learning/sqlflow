@@ -20,9 +20,15 @@ import sys
 import types
 
 import numpy as np
+import sqlflow_submitter
 import tensorflow as tf
 from sqlflow_submitter.db import (connect_with_data_source, db_generator,
                                   parseMaxComputeDSN)
+from tensorflow.estimator import (BoostedTreesClassifier,
+                                  BoostedTreesRegressor, DNNClassifier,
+                                  DNNLinearCombinedClassifier,
+                                  DNNLinearCombinedRegressor, DNNRegressor,
+                                  LinearClassifier, LinearRegressor)
 
 from .get_tf_version import tf_is_version2
 from .input_fn import get_dataset_fn
@@ -41,7 +47,7 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 
 def train(datasource,
-          estimator,
+          estimator_string,
           select,
           validation_select,
           feature_columns,
@@ -63,6 +69,10 @@ def train(datasource,
           is_pai=False,
           pai_table="",
           pai_val_table=""):
+    # import custom model package
+    model_import_name = sqlflow_submitter.import_model_def(estimator_string)
+    estimator = eval(estimator_string)
+
     if isinstance(estimator, types.FunctionType):
         is_estimator = False
     else:

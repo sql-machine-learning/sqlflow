@@ -24,7 +24,7 @@ from sqlflow_submitter.tensorflow.train import train
 
 if __name__ == "__main__":
     train(datasource=datasource,
-          estimator=sqlflow_models.DNNClassifier,
+          estimator_string="sqlflow_models.DNNClassifier",
           select=select,
           validation_select=validate_select,
           feature_columns=feature_columns,
@@ -40,7 +40,7 @@ if __name__ == "__main__":
           epoch=3,
           verbose=0)
     pred(datasource=datasource,
-         estimator=sqlflow_models.DNNClassifier,
+         estimator_string="sqlflow_models.DNNClassifier",
          select=select,
          result_table="iris.predict",
          feature_columns=feature_columns,

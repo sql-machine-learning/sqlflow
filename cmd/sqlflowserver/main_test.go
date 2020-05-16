@@ -2091,15 +2091,14 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 		t.Run("CasePAIMaxComputeTrainPredictCategoricalFeature", CasePAIMaxComputeTrainPredictCategoricalFeature)
 		t.Run("CasePAIMaxComputeTrainTFBTDistributed", CasePAIMaxComputeTrainTFBTDistributed)
 		t.Run("CasePAIMaxComputeTrainDistributedKeras", CasePAIMaxComputeTrainDistributedKeras)
-		t.Run("CasePAIMaxComputeTrainXGBDistributed", CasePAIMaxComputeTrainXGBDistributed)
-
+		// FIXME(weiguoz): The dataset is too small for all reader to read
+		// Let's bring up this test case if we have a big dataset.
+		// t.Run("CasePAIMaxComputeTrainXGBDistributed", CasePAIMaxComputeTrainXGBDistributed)
 		// FIXME(typhoonzero): Add this test back when we solve error: model already exist issue on the CI.
 		// t.Run("CaseTrainPAIRandomForests", CaseTrainPAIRandomForests)
 	})
 }
-
 func TestEnd2EndFluidWorkflow(t *testing.T) {
-	t.Skip("Skip Fluid workflow e2e test until it's ready.")
 	a := assert.New(t)
 	if os.Getenv("SQLFLOW_TEST_DATASOURCE") == "" || strings.ToLower(os.Getenv("SQLFLOW_TEST")) != "workflow" {
 		t.Skip("Skipping workflow test.")
