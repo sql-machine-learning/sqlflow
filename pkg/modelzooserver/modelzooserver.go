@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"strings"
 
 	"sqlflow.org/sqlflow/pkg/database"
 	pb "sqlflow.org/sqlflow/pkg/proto"
@@ -68,12 +69,11 @@ type modelZooServer struct {
 func (s *modelZooServer) ListModelDefs(ctx context.Context, req *pb.ListModelRequest) (*pb.ListModelDefResponse, error) {
 	// TODO(typhoonzero): join model_collection
 	var sql string
-	// select * from model_definition left join model_collection on model_definition.model_coll_id=model_definition.id;
 	if req.Size <= 0 {
-		sql = fmt.Sprintf("SELECT class_name, args_desc, b.name, b.version FROM %s LEFT JOIN %s AS b on %s.model_coll_id=b.id;",
+		sql = fmt.Sprintf("SELECT class_name, args_desc, b.name, b.version FROM %s LEFT JOIN %s AS b ON %s.model_coll_id=b.id;",
 			modelDefTable, modelCollTable, modelDefTable)
 	} else {
-		sql = fmt.Sprintf("SELECT class_name, args_desc, b.name, b.version FROM %s LEFT JOIN %s AS b on %s.model_coll_id=b.id LIMIT %d OFFSET %d;",
+		sql = fmt.Sprintf("SELECT class_name, args_desc, b.name, b.version FROM %s LEFT JOIN %s AS b ON %s.model_coll_id=b.id LIMIT %d OFFSET %d;",
 			modelDefTable, modelCollTable, modelDefTable, req.Size, req.Start)
 	}
 	rows, err := s.DB.Query(sql)
@@ -109,7 +109,56 @@ func (s *modelZooServer) ListModelDefs(ctx context.Context, req *pb.ListModelReq
 }
 
 func (s *modelZooServer) ListTrainedModels(ctx context.Context, req *pb.ListModelRequest) (*pb.ListTrainedModelResponse, error) {
-	return &pb.ListTrainedModelResponse{}, nil
+	var sql string
+	if req.Size <= 0 {
+		sql = fmt.Sprintf("SELECT name, version, url, description, metrics, b.name, b.version FROM %s LEFT JOIN %s AS b ON %s.model_def_id=b.id;",
+			trainedModelTable, modelDefTable, trainedModelTable)
+	} else {
+		sql = fmt.Sprintf("SELECT name, version, url, description, metrics, b.name, b.version FROM %s LEFT JOIN %s AS b ON %s.model_def_id=b.id LIMIT %d OFFSET %d;",
+			trainedModelTable, modelDefTable, trainedModelTable, req.Size, req.Start)
+	}
+	rows, err := s.DB.Query(sql)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	names := []string{}
+	modelVersions := []string{}
+	urls := []string{}
+	descs := []string{}
+	metrics := []string{}
+	imageurls := []string{}
+
+	for rows.Next() {
+		n := ""
+		v := ""
+		url := ""
+		desc := ""
+		m := ""
+		image := ""
+		imagetag := ""
+		if err := rows.Scan(&n, &v, &url, &desc, &m, &image, &imagetag); err != nil {
+			return nil, err
+		}
+		names = append(names, n)
+		modelVersions = append(modelVersions, v)
+		urls = append(urls, url)
+		descs = append(descs, desc)
+		metrics = append(metrics, m)
+		imageURL := fmt.Sprintf("%s:%s", image, imagetag)
+		imageurls = append(imageurls, imageURL)
+	}
+
+	return &pb.ListTrainedModelResponse{
+		Names:          names,
+		Tags:           modelVersions,
+		ModelStoreUrls: urls,
+		ImageUrls:      imageurls,
+		Descriptions:   descs,
+		Metrics:        metrics,
+		Size:           int64(len(names)),
+	}, nil
 }
 
 func (s *modelZooServer) ReleaseModelDef(stream pb.ModelZooServer_ReleaseModelDefServer) error {
@@ -188,9 +237,39 @@ func (s *modelZooServer) DropModelDef(ctx context.Context, req *pb.ModelDefReque
 	return &pb.ModelResponse{Success: true, Message: ""}, nil
 }
 
-func (s *modelZooServer) ReleaseTrainedModel(stream pb.ModelZooServer_ReleaseTrainedModelServer) error {
-	err := stream.SendAndClose(&pb.ModelResponse{})
-	return err
+func (s *modelZooServer) ReleaseTrainedModel(ctx context.Context, req *pb.TrainedModelRequest) (*pb.ModelResponse, error) {
+	// Get model_def_id from model_definition table
+	imageAndTag := strings.Split(req.ModelCollectionImageUrl, ":")
+	if len(imageAndTag) != 2 {
+		return nil, fmt.Errorf("model collection image should be like you_image_name:version")
+	}
+	sql := fmt.Sprintf("SELECT id FROM %s WHERE name='%s' AND version='%s';", modelCollTable, imageAndTag[0], imageAndTag[1])
+	rowsImageID, err := s.DB.Query(sql)
+	if err != nil {
+		return nil, err
+	}
+	defer rowsImageID.Close()
+	rowsImageID.Next()
+	var modelCollID int
+	if err = rowsImageID.Scan(&modelCollID); err != nil {
+		return nil, err
+	}
+
+	// TODO(typhoonzero): verify req.ModelClassName to avoid SQL injection.
+	sql = fmt.Sprintf("SELECT id FROM %s WHERE class_name='%s' AND model_coll_id='%d'", modelDefTable, req.ModelClassName, modelCollID)
+	rowsModelDefID, err := s.DB.Query(sql)
+	if err != nil {
+		return nil, err
+	}
+	defer rowsModelDefID.Close()
+	rowsModelDefID.Next()
+	var modelDefID int
+	if err = rowsModelDefID.Scan(&modelDefID); err != nil {
+		return nil, err
+	}
+	sql = fmt.Sprintf("INSERT INTO %s (model_def_id, name, version, url, description, metrics) VALUES (%d, '%s', '%s', '%s', '%s', '%s')",
+		trainedModelTable, modelDefID, req.Name, req.Tag, req.ContentUrl, req.Description, req.EvaluationMetrics)
+	return &pb.ModelResponse{Success: true, Message: ""}, nil
 }
 
 func (s *modelZooServer) DropTrainedModel(ctx context.Context, req *pb.TrainedModelRequest) (*pb.ModelResponse, error) {

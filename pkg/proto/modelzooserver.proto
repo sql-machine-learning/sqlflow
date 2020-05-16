@@ -28,6 +28,10 @@ message TrainedModelRequest {
     string description = 4;
     // Evaluation metric results in JSON format, e.g. {"Accuracy": 0.87, "AUC": 0.73}
     string evaluation_metrics = 5;
+    // Model class used to train this model.
+    string model_class_name = 6;
+    // Model collection image used to train this model, can be empty.
+    string model_collection_image_url = 7;
 }
 
 message ModelResponse {
@@ -57,6 +61,7 @@ message ListModelDefResponse {
     // Size of elements in the response lists.
     int64 size = 5;
 }
+
 
 message ListTrainedModelResponse {
     // A list of model definition or trained model names.
@@ -88,7 +93,7 @@ service ModelZooServer {
     rpc DropModelDef (ModelDefRequest) returns (ModelResponse);
 
     // Release your trained model.
-    rpc ReleaseTrainedModel (stream TrainedModelRequest) returns (ModelResponse);
+    rpc ReleaseTrainedModel (TrainedModelRequest) returns (ModelResponse);
     // Drop a trained model, TrainedModelRequest should contain name and tag.
     rpc DropTrainedModel (TrainedModelRequest) returns (ModelResponse);
 }
