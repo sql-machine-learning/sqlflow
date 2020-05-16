@@ -174,12 +174,12 @@ def read_feature(raw_val, feature_spec, feature_name):
 
 
 def selected_cols(driver, conn, select):
-    limited = re.findall("LIMIT [0-9]*$", select.upper().strip())
+    select = select.strip().rstrip(";")
+    limited = re.findall("LIMIT [0-9]*$", select.upper())
     if not limited:
         select += " LIMIT 1"
     if driver == "hive":
         select += ";"
-
     if driver == "hive":
         cursor = conn.cursor(configuration=conn.session_cfg)
         cursor.execute(select)

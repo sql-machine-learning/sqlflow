@@ -19,7 +19,7 @@ from odps import ODPS, tunnel
 from sqlflow_submitter.db import (buffered_db_writer, connect,
                                   connect_with_data_source, db_generator,
                                   parseHiveDSN, parseMaxComputeDSN,
-                                  parseMySQLDSN)
+                                  parseMySQLDSN, read_features_from_row)
 
 
 def _execute_maxcompute(conn, statement):
@@ -215,7 +215,10 @@ class TestGenerator(TestCase):
                                "SELECT * FROM test_table_float_fea",
                                ["features"], label_spec, column_name_to_type)
             idx = 0
-            for _, features, label in gen():
+            for row, label in gen():
+                features = read_features_from_row(row, ["features"],
+                                                  ["features"],
+                                                  column_name_to_type)
                 d = (features, label)
                 if idx == 0:
                     self.assertEqual(d, (((1.0, ), ), 0))
