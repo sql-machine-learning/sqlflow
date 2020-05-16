@@ -47,7 +47,7 @@ jobs:
     - docker run --rm -v $TRAVIS_BUILD_DIR:/work -w /work sqlflow:ci
       scripts/test/units.sh
     - docker run --rm -v $TRAVIS_BUILD_DIR:/work -w /work sqlflow:ci
-      scripts/upload_coveralls.sh
+      scripts/travis/upload_coveralls.sh
   - env: SQLFLOW_TEST_DB=hive # run more parallel tests in the same stage:
     script:
     - set -e
