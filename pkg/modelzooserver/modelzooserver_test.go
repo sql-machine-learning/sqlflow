@@ -82,6 +82,33 @@ func TestModelZooServer(t *testing.T) {
 	a.Equal(1, len(res.ClassNames))
 	a.Equal("hub.docker.com/group/mymodel", res.GetImageUrls()[0])
 
+	trainedModelRes, err := client.ReleaseTrainedModel(context.Background(),
+		&pb.TrainedModelRequest{
+			Name:                    "my_regression_model",
+			Tag:                     "v0.1",
+			ContentUrl:              "oss://bucket/path/to/my/model",
+			Description:             "A linear regression model for house price predicting",
+			EvaluationMetrics:       "MSE: 0.02, MAPE: 10.32",
+			ModelClassName:          "DNNClassifier",
+			ModelCollectionImageUrl: "hub.docker.com/group/mymodel:v0.1",
+		})
+	a.NoError(err)
+	a.Equal(true, trainedModelRes.Success)
+
+	listTrainedModelRes, err := client.ListTrainedModels(context.Background(), &pb.ListModelRequest{Start: 0, Size: -1})
+	a.NoError(err)
+	a.Equal(1, len(listTrainedModelRes.Names))
+	a.Equal("my_regression_model", listTrainedModelRes.Names[0])
+	a.Equal("hub.docker.com/group/mymodel:v0.1", listTrainedModelRes.ImageUrls[0])
+
+	_, err = client.DropTrainedModel(context.Background(), &pb.TrainedModelRequest{
+		Name: "my_regression_model", Tag: "v0.1",
+	})
+
+	listTrainedModelRes, err = client.ListTrainedModels(context.Background(), &pb.ListModelRequest{Start: 0, Size: -1})
+	a.NoError(err)
+	a.Equal(0, len(listTrainedModelRes.Names))
+
 	_, err = client.DropModelDef(context.Background(), modelDefReq)
 	a.NoError(err)
 

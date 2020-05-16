@@ -111,11 +111,15 @@ func (s *modelZooServer) ListModelDefs(ctx context.Context, req *pb.ListModelReq
 func (s *modelZooServer) ListTrainedModels(ctx context.Context, req *pb.ListModelRequest) (*pb.ListTrainedModelResponse, error) {
 	var sql string
 	if req.Size <= 0 {
-		sql = fmt.Sprintf("SELECT name, version, url, description, metrics, b.name, b.version FROM %s LEFT JOIN %s AS b ON %s.model_def_id=b.id;",
-			trainedModelTable, modelDefTable, trainedModelTable)
+		sql = fmt.Sprintf(`SELECT a.name, a.version, a.url, a.description, a.metrics, c.name, c.version FROM %s AS a
+LEFT JOIN %s AS b ON a.model_def_id=b.id
+LEFT JOIN %s AS c ON b.model_coll_id=c.id;`,
+			trainedModelTable, modelDefTable, modelCollTable)
 	} else {
-		sql = fmt.Sprintf("SELECT name, version, url, description, metrics, b.name, b.version FROM %s LEFT JOIN %s AS b ON %s.model_def_id=b.id LIMIT %d OFFSET %d;",
-			trainedModelTable, modelDefTable, trainedModelTable, req.Size, req.Start)
+		sql = fmt.Sprintf(`SELECT a.name, a.version, a.url, a.description, a.metrics, c.name, c.version FROM %s AS a
+LEFT JOIN %s AS b ON a.model_def_id=b.id
+LEFT JOIN %s AS c ON b.model_coll_id=c.id LIMIT %d OFFSET %d;`,
+			trainedModelTable, modelDefTable, modelCollTable, req.Size, req.Start)
 	}
 	rows, err := s.DB.Query(sql)
 	if err != nil {
@@ -136,9 +140,9 @@ func (s *modelZooServer) ListTrainedModels(ctx context.Context, req *pb.ListMode
 		url := ""
 		desc := ""
 		m := ""
-		image := ""
+		imagename := ""
 		imagetag := ""
-		if err := rows.Scan(&n, &v, &url, &desc, &m, &image, &imagetag); err != nil {
+		if err := rows.Scan(&n, &v, &url, &desc, &m, &imagename, &imagetag); err != nil {
 			return nil, err
 		}
 		names = append(names, n)
@@ -146,7 +150,7 @@ func (s *modelZooServer) ListTrainedModels(ctx context.Context, req *pb.ListMode
 		urls = append(urls, url)
 		descs = append(descs, desc)
 		metrics = append(metrics, m)
-		imageURL := fmt.Sprintf("%s:%s", image, imagetag)
+		imageURL := fmt.Sprintf("%s:%s", imagename, imagetag)
 		imageurls = append(imageurls, imageURL)
 	}
 
@@ -195,6 +199,7 @@ func (s *modelZooServer) ReleaseModelDef(stream pb.ModelZooServer_ReleaseModelDe
 	if err != nil {
 		return err
 	}
+	// TODO(typhoonzero): replace DNNClassifier with the real name.
 	sql = fmt.Sprintf("INSERT INTO %s (model_coll_id, class_name, args_desc) VALUES (%d, 'DNNClassifier', '{aaa,bbb}')", modelDefTable, modelCollID)
 	if _, err := s.DB.Exec(sql); err != nil {
 		return err
@@ -249,7 +254,10 @@ func (s *modelZooServer) ReleaseTrainedModel(ctx context.Context, req *pb.Traine
 		return nil, err
 	}
 	defer rowsImageID.Close()
-	rowsImageID.Next()
+	end := rowsImageID.Next()
+	if !end {
+		return nil, fmt.Errorf("no model collection %s found", req.GetName())
+	}
 	var modelCollID int
 	if err = rowsImageID.Scan(&modelCollID); err != nil {
 		return nil, err
@@ -262,16 +270,29 @@ func (s *modelZooServer) ReleaseTrainedModel(ctx context.Context, req *pb.Traine
 		return nil, err
 	}
 	defer rowsModelDefID.Close()
-	rowsModelDefID.Next()
+	end = rowsModelDefID.Next()
+	if !end {
+		return nil, fmt.Errorf("no model collection %s found", req.GetName())
+	}
 	var modelDefID int
 	if err = rowsModelDefID.Scan(&modelDefID); err != nil {
 		return nil, err
 	}
+	// TODO(typhoonzero): let trained model name + version be unique across the table.
 	sql = fmt.Sprintf("INSERT INTO %s (model_def_id, name, version, url, description, metrics) VALUES (%d, '%s', '%s', '%s', '%s', '%s')",
 		trainedModelTable, modelDefID, req.Name, req.Tag, req.ContentUrl, req.Description, req.EvaluationMetrics)
+	_, err = s.DB.Exec(sql)
+	if err != nil {
+		return nil, err
+	}
 	return &pb.ModelResponse{Success: true, Message: ""}, nil
 }
 
 func (s *modelZooServer) DropTrainedModel(ctx context.Context, req *pb.TrainedModelRequest) (*pb.ModelResponse, error) {
-	return &pb.ModelResponse{}, nil
+	sql := fmt.Sprintf("DELETE FROM %s WHERE name='%s' AND version='%s'", trainedModelTable, req.Name, req.Tag)
+	_, err := s.DB.Exec(sql)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.ModelResponse{Success: true, Message: ""}, nil
 }
