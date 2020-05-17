@@ -33,19 +33,20 @@ PYTHON_DEV="python3-dev python3-pip" # Many pip packages require Python.h
 JAVA_DEV="openjdk-8-jdk maven"
 SHELL_LINTER="shellcheck"
 YAML_LINTER="yamllint"
+# shellcheck disable=SC2086
 apt-get -qq install -y --no-install-recommends \
-        "$DOWNLOAD_TOOLS" \
-        "$BUILD_ESSENTIAL" \
-        "$PYTHON_DEV" \
-        "$JAVA_DEV" \
-        "$SHELL_LINTER" \
-        "$YAML_LINTER" \
+        $DOWNLOAD_TOOLS \
+        $BUILD_ESSENTIAL \
+        $PYTHON_DEV \
+        $JAVA_DEV \
+        $SHELL_LINTER \
+        $YAML_LINTER \
         > /dev/null
 rm -rf /var/lib/apt/lists/*
 apt-get -qq clean -y
 
 
-echo "Make Python 3 the the default"
+echo "Make Python 3 the the default ..."
 ln -s /usr/bin/python3 /usr/local/bin/python
 
 echo "Upgrade pip and setuptools creates /usr/local/bin/pip ..."
