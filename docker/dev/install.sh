@@ -61,12 +61,13 @@ PY_TEST="pytest==5.3.0"
 JS_LINTER=jsbeautifier
 PYTHON_LINTER="yapf isort pylint flake8"
 WHEEL="wheel"
+# shellcheck disable=SC2086
 pip install --quiet \
-    "$WHEEL" \
-    "$PRE_COMMIT" \
-    "$PY_TEST" \
-    "$JS_LINTER" \
-    "$PYTHON_LINTER"
+    $WHEEL \
+    $PRE_COMMIT \
+    $PY_TEST \
+    $JS_LINTER \
+    $PYTHON_LINTER
 rm -rf "$HOME"/.cache/pip/*
 
 
