@@ -53,6 +53,20 @@ def get_dtype(type_str):
         raise TypeError("not supported dtype: %s" % type_str)
 
 
+def tf_generator(gen, selected_cols, feature_column_names, feature_metas):
+    def reader():
+        for row, label in gen():
+            features = db.read_features_from_row(row, selected_cols,
+                                                 feature_column_names,
+                                                 feature_metas)
+            if label is None:
+                yield (features, )
+            else:
+                yield (features, label)
+
+    return reader
+
+
 def input_fn(select,
              datasource,
              feature_column_names,
@@ -79,10 +93,15 @@ def input_fn(select,
                            feature_metas,
                            slice_id=worker_id,
                            slice_count=num_workers)
+        selected_cols = feature_column_names
     else:
         conn = db.connect_with_data_source(datasource)
         gen = db.db_generator(conn.driver, conn, select, feature_column_names,
                               label_meta, feature_metas)
+        selected_cols = db.selected_cols(conn.driver, conn, select)
+
+    gen = tf_generator(gen, selected_cols, feature_column_names, feature_metas)
+
     # Clustering model do not have label
     if not label_meta or label_meta["feature_name"] == "":
         dataset = tf.data.Dataset.from_generator(gen, (tuple(feature_types), ),

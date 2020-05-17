@@ -228,8 +228,8 @@ func createPredictionTableFromIR(predStmt *ir.PredictStmt, db *database.DB, sess
 	if predStmt.TrainStmt != nil {
 		trainLabelColumn = predStmt.TrainStmt.Label.GetFieldDesc()[0].Name
 	}
-	labelColumnName := predStmt.ResultColumn
-	labelColumnType := ""
+	resultColumnName := predStmt.ResultColumn
+	resultColumnType := ""
 	fmt.Fprintf(&b, "create table %s (", predStmt.ResultTable)
 	for idx, colType := range fts {
 		stype, e := fieldType(db.DriverName, colType)
@@ -239,10 +239,13 @@ func createPredictionTableFromIR(predStmt *ir.PredictStmt, db *database.DB, sess
 		fldName := flds[idx]
 		// When predicting use validation table, we should find the label column type
 		// using the label column name from train table.
-		if fldName == labelColumnName || fldName == trainLabelColumn {
-			labelColumnType = stype
-			continue
+		if fldName == trainLabelColumn {
+			resultColumnType = stype
+			if resultColumnName == trainLabelColumn {
+				continue
+			}
 		}
+
 		fmt.Fprintf(&b, "%s %s, ", fldName, stype)
 	}
 
@@ -251,18 +254,18 @@ func createPredictionTableFromIR(predStmt *ir.PredictStmt, db *database.DB, sess
 	// the result column type by the prediction result.
 	//
 	// label column not found in predict table, create a column specified by PREDICT clause:
-	if labelColumnType == "" {
+	if resultColumnType == "" {
 		// NOTE(typhoonzero): Clustering model may not have label in select statement, default use INT type
-		labelColumnType = "INT"
+		resultColumnType = "INT"
 	}
-	stype, e := fieldType(db.DriverName, labelColumnType)
+	stype, e := fieldType(db.DriverName, resultColumnType)
 	if e != nil {
 		return e
 	}
 	if db.DriverName == "hive" {
-		fmt.Fprintf(&b, "%s %s) ROW FORMAT DELIMITED FIELDS TERMINATED BY \"\\001\" STORED AS TEXTFILE;", labelColumnName, stype)
+		fmt.Fprintf(&b, "%s %s) ROW FORMAT DELIMITED FIELDS TERMINATED BY \"\\001\" STORED AS TEXTFILE;", resultColumnName, stype)
 	} else {
-		fmt.Fprintf(&b, "%s %s);", labelColumnName, stype)
+		fmt.Fprintf(&b, "%s %s);", resultColumnName, stype)
 	}
 
 	createStmt := b.String()
