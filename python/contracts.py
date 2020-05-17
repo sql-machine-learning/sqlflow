@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import inspect
-from functools import wraps, reduce
+from functools import reduce, wraps
 
 
 class Requirement(object):
@@ -24,11 +24,11 @@ class Requirement(object):
     """
     def __init__(self, f, desc="", isor=False, issubj=False, typeset=None):
         self.func = f
-        self._desc= desc
+        self._desc = desc
         self._or = isor
         self._dnf = [[self]]
         self._typeset = typeset
-        self._issubj=issubj
+        self._issubj = issubj
         self._custom_diag = False
 
     def __or__(self, other):
@@ -46,7 +46,8 @@ class Requirement(object):
             typeset = self._typeset & other._typeset
             if not typeset:
                 raise TypeError(
-                    f"type can not be both in {self._typeset} and {other._typeset}")
+                    f"type can not be both in {self._typeset} and {other._typeset}"
+                )
         ret = Requirement(lambda v: self(v) and other(v))
         ret._dnf = []
         for i in self._dnf:
@@ -75,7 +76,7 @@ class Requirement(object):
         if self._custom_diag:
             return self._desc
         messages = []
-        uniq_cnfs  = []
+        uniq_cnfs = []
         for ands in sorted(self._dnf, key=lambda a: len(a)):
             ands.sort(key=lambda r: r._issubj, reverse=True)
             r = ands[0]
@@ -95,7 +96,6 @@ class Requirement(object):
                 uniq_cnfs.append(uniq_ands)
                 messages.append(desc)
         return ", or ".join(messages)
-
 
     def desc(self, desc):
         self._desc = desc
@@ -127,7 +127,10 @@ class Type(Requirement):
             typename = "`list of {}`".format(val[0])
         else:
             typename = type(val).__name__
-        super().__init__(deepcheck, "{}".format(typename), issubj=True, typeset={type(val)})
+        super().__init__(deepcheck,
+                         "{}".format(typename),
+                         issubj=True,
+                         typeset={type(val)})
 
 
 class Between(Requirement):
@@ -138,7 +141,8 @@ class Between(Requirement):
         assert upper >= lower
         assert isinstance(upper, (int, float))
         super().__init__(lambda v: upper >= v >= lower,
-                         "BETWEEN ({},{})".format(lower, upper), typeset={int, float})
+                         "BETWEEN ({},{})".format(lower, upper),
+                         typeset={int, float})
 
 
 class Greater(Requirement):
@@ -147,7 +151,9 @@ class Greater(Requirement):
     """
     def __init__(self, val):
         assert isinstance(val, (int, float))
-        super().__init__(lambda v: v > val, "> {}".format(val), typeset={int, float})
+        super().__init__(lambda v: v > val,
+                         "> {}".format(val),
+                         typeset={int, float})
 
 
 class GreaterEqual(Requirement):
@@ -155,7 +161,9 @@ class GreaterEqual(Requirement):
     GreaterEqual: a `Requirement` to the lower bound of an argument. Synonym of the operator `>=`.
     """
     def __init__(self, val):
-        super().__init__(lambda v: v >= val, ">= {}".format(val), typeset={int, float})
+        super().__init__(lambda v: v >= val,
+                         ">= {}".format(val),
+                         typeset={int, float})
 
 
 class Less(Requirement):
@@ -163,7 +171,9 @@ class Less(Requirement):
     Less: a `Requirement` to the upper bound of an argument. Synonym of the operator `<`.
     """
     def __init__(self, val):
-        super().__init__(lambda v: v < val, "< {}".format(val), typeset={int, float})
+        super().__init__(lambda v: v < val,
+                         "< {}".format(val),
+                         typeset={int, float})
 
 
 class LessEqual(Requirement):
@@ -171,7 +181,9 @@ class LessEqual(Requirement):
     LessEqual: a `Requirement` to the upper bound of an argument. Synonym of the operator `<=`.
     """
     def __init__(self, val):
-        super().__init__(lambda v: v <= val, "<= {}".format(val), typset={int, float})
+        super().__init__(lambda v: v <= val,
+                         "<= {}".format(val),
+                         typset={int, float})
 
 
 class In(Requirement):
@@ -215,10 +227,10 @@ class Diagnostics(AttributeError):
         lines = ["argument(s) didn't meet parameter requirements"]
         for k, v in self._diagnostics:
             if type(v) == tuple:  # diag, arg, mandatory
-                arg_text = '"{}(string)"'.format(v[1]) if type(v[1]) == str else v[1]
-                lines.append(
-                    '{}({}) must be {}. Actual: {}'.format(
-                        k, 'required' if v[2] else 'optional', v[0], arg_text))
+                arg_text = '"{}(string)"'.format(v[1]) if type(
+                    v[1]) == str else v[1]
+                lines.append('{}({}) must be {}. Actual: {}'.format(
+                    k, 'required' if v[2] else 'optional', v[0], arg_text))
             elif v == 'UNEXPECTED':
                 lines.append('{} is {}'.format(k, v))
             else:
@@ -290,8 +302,8 @@ def check_requirements(params_args, mandatory, unexpected, contracts):
             diagnostics[param] = str(contracts[param]), arg, param in mandatory
     for param in mandatory - params_args.keys():
         # Checking missing arguments
-        diagnostics[
-            param] = str(contracts[param]) if param in contracts else ''
+        diagnostics[param] = str(
+            contracts[param]) if param in contracts else ''
     for param in unexpected:
         # Checking unexpected arguments
         diagnostics[param] = "UNEXPECTED"
@@ -362,20 +374,14 @@ if __name__ == '__main__':
         "n_classes": 0
     }
 
-    my_contracts.check_requirements(tf.estimator.DNNClassifier, model_params)
+    # my_contracts.check_requirements(tf.estimator.DNNClassifier, model_params)
     # If we enable the above code line, the error message will look like:
-
     #     Traceback (most recent call last):
-    #       File "contracts.py", line 252, in <module>
-    #         dnn_contracts.check_requirements(tf.estimator.DNNClassifier, model_params)
-    #       File "contracts.py", line 238, in check_requirements
-    #         check_requirements_for_existed(func, kwargs, **self._contracts[func])
-    #       File "contracts.py", line 225, in check_requirements_for_existed
-    #         check_requirements(*extract_params_args(func, [], kwargs), contracts)
-    #       File "contracts.py", line 211, in check_requirements
+    #         ...
     #         raise diagnostics
     #     __main__.Diagnostics: argument(s) didn't meet parameter requirements
-    #     hidden_units: Requirements: "TYPE=list[TYPE=int AND '>0'], REQUIRED", Actual: "[0, 1, 2](TYPE=list)"
-    #     n_classes: Requirements: "TYPE=int AND '>=2', OPTIONAL", Actual: "0(TYPE=int)"
-    #     feature_columns: Requirements: "TYPE=dict, REQUIRED", Actual: MISSING
-    #     feature_column: UNEXPECTED
+
+    #     hidden_units(required) must be `list of int that's > 0`. Actual: [0, 1, 2]
+    #     n_classes(optional) must be int that's >= 2. Actual: 0
+    #     feature_columns is required but is MISSING. Should be dict
+    #     feature_column is UNEXPECTED

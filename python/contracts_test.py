@@ -28,12 +28,12 @@ class TestContracts(unittest.TestCase):
         self.assertIsNone(f(0))
         # Type violation
         self.assertRaisesRegex(
-            Diagnostics,
-            r'(?m)^x\(required\) must be int. Actual: 0.0$', f, 0.)
+            Diagnostics, r'(?m)^x\(required\) must be int. Actual: 0.0$', f,
+            0.)
         # Missing required positional argument
         self.assertRaisesRegex(
-            Diagnostics,
-            r'(?m)^x is required but is MISSING. Should be int$', f)
+            Diagnostics, r'(?m)^x is required but is MISSING. Should be int$',
+            f)
         # Unexpected keyword arguments
         self.assertRaisesRegex(Diagnostics, r'(?m)^y is UNEXPECTED$', f, y=1)
         # Contracts don't handle unexpected positional arguments
@@ -50,16 +50,15 @@ class TestContracts(unittest.TestCase):
         self.assertIsNone(require_f(kwargs={"x": 0}))
         # Type violation
         self.assertRaisesRegex(
-            Diagnostics,
-            r'(?m)^x\(required\) must be int. Actual: 0.0$', require_f,
-            {"x": 0.})
+            Diagnostics, r'(?m)^x\(required\) must be int. Actual: 0.0$',
+            require_f, {"x": 0.})
         # Missing required positional argument
         self.assertRaisesRegex(
-            Diagnostics,
-            r'(?m)^x is required but is MISSING. Should be int$', require_f, {})
+            Diagnostics, r'(?m)^x is required but is MISSING. Should be int$',
+            require_f, {})
         # Unexpected keyword arguments
-        self.assertRaisesRegex(Diagnostics, r'(?m)^y is UNEXPECTED$', require_f,
-                               {"y": 1})
+        self.assertRaisesRegex(Diagnostics, r'(?m)^y is UNEXPECTED$',
+                               require_f, {"y": 1})
 
     def test_combination(self):
         @require(x=(Int | Float | Type("")) & (Between(0, 1) | In('relu')))
@@ -104,9 +103,9 @@ class TestContracts(unittest.TestCase):
         def f(x):
             pass
 
-        self.assertRaisesRegex(
-            Diagnostics,
-            r'x\(required\) must be list. Actual: 0.0$', f, 0.)
+        self.assertRaisesRegex(Diagnostics,
+                               r'x\(required\) must be list. Actual: 0.0$', f,
+                               0.)
         # NOTE: list that's more than 2d degrades to list at the moment
         self.assertIsNone(f([0, 0.]))
         self.assertIsNone(f([0., 1]))
