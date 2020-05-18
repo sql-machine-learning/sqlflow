@@ -32,18 +32,21 @@ BUILD_ESSENTIAL="build-essential git"
 PYTHON_DEV="python3-dev python3-pip" # Many pip packages require Python.h
 JAVA_DEV="openjdk-8-jdk maven"
 SHELL_LINTER="shellcheck"
+YAML_LINTER="yamllint"
+# shellcheck disable=SC2086
 apt-get -qq install -y --no-install-recommends \
         $DOWNLOAD_TOOLS \
         $BUILD_ESSENTIAL \
         $PYTHON_DEV \
         $JAVA_DEV \
         $SHELL_LINTER \
+        $YAML_LINTER \
         > /dev/null
 rm -rf /var/lib/apt/lists/*
 apt-get -qq clean -y
 
 
-echo "Make Python 3 the the default"
+echo "Make Python 3 the the default ..."
 ln -s /usr/bin/python3 /usr/local/bin/python
 
 echo "Upgrade pip and setuptools creates /usr/local/bin/pip ..."
@@ -58,13 +61,14 @@ PY_TEST="pytest==5.3.0"
 JS_LINTER=jsbeautifier
 PYTHON_LINTER="yapf isort pylint flake8"
 WHEEL="wheel"
+# shellcheck disable=SC2086
 pip install --quiet \
     $WHEEL \
     $PRE_COMMIT \
     $PY_TEST \
     $JS_LINTER \
     $PYTHON_LINTER
-rm -rf $HOME/.cache/pip/*
+rm -rf "$HOME"/.cache/pip/*
 
 
 echo "Install Go compiler ..."
@@ -111,7 +115,7 @@ chmod +x /usr/local/bin/protoc-gen-grpc-java
 echo "Use GCS based Maven-central mirror ..."
 # Travis CI occasionally fails on the default maven central repo.
 # Ref: https://github.com/sql-machine-learning/sqlflow/issues/1654
-mkdir -p $HOME/.m2/
+mkdir -p "$HOME/.m2"
 echo '<settings>
   <mirrors>
     <mirror>
@@ -121,7 +125,7 @@ echo '<settings>
       <mirrorOf>central</mirrorOf>
     </mirror>
   </mirrors>
-</settings>' > $HOME/.m2/settings.xml
+</settings>' > "$HOME/.m2/settings.xml"
 
 
 echo "Install Java linter ..."
