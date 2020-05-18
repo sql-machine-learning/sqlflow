@@ -60,5 +60,5 @@ RUN pip install --quiet /build/*.whl \
 # Expose MySQL server, SQLFlow gRPC server, and Jupyter Notebook server port.
 EXPOSE 3306 50051 8888
 
-ADD scripts/start.sh /
+ADD docker/ci/start.sh /
 CMD ["bash", "/start.sh"]

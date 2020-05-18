@@ -29,16 +29,21 @@ def xgb_shap_dataset(datasource, select, feature_column_names, label_spec,
                                                 feature_column_names,
                                                 label_column_name,
                                                 feature_specs)
+        selected_cols = feature_column_names[:]
     else:
         conn = db.connect_with_data_source(datasource)
         stream = db.db_generator(conn.driver, conn, select,
                                  feature_column_names, label_spec,
                                  feature_specs)
+        selected_cols = db.selected_cols(conn.driver, conn, select)
 
     xs = pd.DataFrame(columns=feature_column_names)
     i = 0
-    for row in stream():
-        xs.loc[i] = [item[0] for item in row[0]]
+    for row, label in stream():
+        features = db.read_features_from_row(row, selected_cols,
+                                             feature_column_names,
+                                             feature_specs)
+        xs.loc[i] = [item[0] for item in features]
         i += 1
     # NOTE(typhoonzero): set dtype to the feature's actual type, or the dtype
     # may be "object". Use below code to reproduce:
