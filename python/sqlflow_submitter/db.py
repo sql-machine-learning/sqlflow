@@ -193,6 +193,13 @@ def selected_cols(driver, conn, select):
     return field_names
 
 
+def pai_selected_cols(table):
+    import paiio
+    reader = paiio.TableReader(table)
+    schema = reader.get_schema()
+    return [i['colname'] for i in schema]
+
+
 def read_features_from_row(row, select_cols, feature_column_names,
                            feature_specs):
     features = []
@@ -253,7 +260,7 @@ def db_generator(driver,
                                               dtype=int,
                                               sep=label_spec["delimiter"])
                 if label_idx is None:
-                    yield (list(row), None)
+                    yield list(row), None
                 else:
                     yield list(row), label
             if len(rows) < fetch_size:
@@ -291,7 +298,6 @@ def pai_maxcompute_db_generator(table,
 
         import paiio
         reader = paiio.TableReader(table,
-                                   selected_cols=",".join(selected_cols),
                                    slice_id=slice_id,
                                    slice_count=slice_count)
         while True:
@@ -299,7 +305,7 @@ def pai_maxcompute_db_generator(table,
                 row = reader.read(num_records=1)[0]
                 label = row[label_idx] if label_idx is not None else -1
                 if label_column_name:
-                    yield (list(row), None)
+                    yield list(row), label
                 else:
                     yield list(row), None
             except Exception as e:

@@ -1691,6 +1691,37 @@ INTO e2etest_keras_dnn_model_distributed;`, caseTrainTable, caseTestTable)
 	a.NoError(err)
 }
 
+func CasePassSelectedColsToPredictResultTable(t *testing.T) {
+	t.Parallel()
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`SELECT pclass_1, pclass_2, survived FROM %s
+TO TRAIN DNNClassifier
+WITH model.hidden_units=[64,32], model.n_classes=3, train.batch_size=32
+LABEL survived
+INTO e2etest_selected_cols_model;
+`, caseTrainTable)
+	_, _, _, e := connectAndRunSQL(trainSQL)
+	a.NoError(e, "run trainSQL error.")
+
+	predSQL := fmt.Sprintf(`SELECT * FROM %s
+	TO PREDICT %s.e2etest_selected_cols_pred.target
+	USING e2etest_selected_cols_model;
+		`, caseTestTable, caseDB)
+	_, _, _, e = connectAndRunSQL(predSQL)
+	a.NoError(e, "run predSQL error")
+
+	query := fmt.Sprintf(`SELECT * FROM %s.e2etest_selected_cols_pred LIMIT 1;`, caseDB)
+	_, resultRows, _, e := connectAndRunSQL(query)
+	a.NoError(e)
+
+	query = fmt.Sprintf(`SELECT * FROM %s LIMIT 1;`, caseTestTable)
+	_, predRows, _, e := connectAndRunSQL(query)
+	a.NoError(e)
+	for idx := range resultRows {
+		a.Equal(predRows[0][idx], resultRows[0][idx])
+	}
+}
+
 func CasePAIMaxComputeTrainXGBDistributed(t *testing.T) {
 	t.Parallel()
 	a := assert.New(t)
@@ -2073,8 +2104,8 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 	if caseDB == "" {
 		t.Fatalf("Must set env SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT")
 	}
-	caseTrainTable = caseDB + ".sqlflow_test_iris_train"
-	caseTestTable = caseDB + ".sqlflow_test_iris_test"
+	caseTrainTable = caseDB + ".sqlflow_titanic_train"
+	caseTestTable = caseDB + ".sqlflow_titanic_test"
 	casePredictTable = caseDB + ".sqlflow_test_iris_predict"
 	// write model to current MaxCompute project
 	caseInto = "my_dnn_model"
@@ -2091,13 +2122,16 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 		t.Run("CasePAIMaxComputeTrainPredictCategoricalFeature", CasePAIMaxComputeTrainPredictCategoricalFeature)
 		t.Run("CasePAIMaxComputeTrainTFBTDistributed", CasePAIMaxComputeTrainTFBTDistributed)
 		t.Run("CasePAIMaxComputeTrainDistributedKeras", CasePAIMaxComputeTrainDistributedKeras)
+		t.Run("CasePassSelectedColsToPredictResultTable", CasePassSelectedColsToPredictResultTable)
 		// FIXME(weiguoz): The dataset is too small for all reader to read
 		// Let's bring up this test case if we have a big dataset.
 		// t.Run("CasePAIMaxComputeTrainXGBDistributed", CasePAIMaxComputeTrainXGBDistributed)
 		// FIXME(typhoonzero): Add this test back when we solve error: model already exist issue on the CI.
 		// t.Run("CaseTrainPAIRandomForests", CaseTrainPAIRandomForests)
 	})
+
 }
+
 func TestEnd2EndFluidWorkflow(t *testing.T) {
 	a := assert.New(t)
 	if os.Getenv("SQLFLOW_TEST_DATASOURCE") == "" || strings.ToLower(os.Getenv("SQLFLOW_TEST")) != "workflow" {
