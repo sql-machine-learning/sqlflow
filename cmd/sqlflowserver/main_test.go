@@ -1694,10 +1694,10 @@ INTO e2etest_keras_dnn_model_distributed;`, caseTrainTable, caseTestTable)
 func CasePassSelectedColsToPredictResultTable(t *testing.T) {
 	t.Parallel()
 	a := assert.New(t)
-	trainSQL := fmt.Sprintf(`SELECT pclass_1, pclass_2, survived FROM %s
+	trainSQL := fmt.Sprintf(`SELECT sepal_length, sepal_width, class FROM %s
 TO TRAIN DNNClassifier
-WITH model.hidden_units=[64,32], model.n_classes=3, train.batch_size=32
-LABEL survived
+WITH model.hidden_units=[64,32], model.n_classes=3, train.batch_size=4
+LABEL class 
 INTO e2etest_selected_cols_model;
 `, caseTrainTable)
 	_, _, _, e := connectAndRunSQL(trainSQL)
@@ -2104,8 +2104,8 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 	if caseDB == "" {
 		t.Fatalf("Must set env SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT")
 	}
-	caseTrainTable = caseDB + ".sqlflow_titanic_train"
-	caseTestTable = caseDB + ".sqlflow_titanic_test"
+	caseTrainTable = caseDB + ".sqlflow_test_iris_train"
+	caseTestTable = caseDB + ".sqlflow_test_iris_test"
 	casePredictTable = caseDB + ".sqlflow_test_iris_predict"
 	// write model to current MaxCompute project
 	caseInto = "my_dnn_model"

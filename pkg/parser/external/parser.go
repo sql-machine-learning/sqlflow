@@ -37,8 +37,7 @@ func NewParser(dialect string) (Parser, error) {
 	case "hive":
 		return newJavaParser("hive"), nil
 	case "calcite", "maxcompute":
-		return newTiDBParser(), nil
-		//return newJavaParser("calcite"), nil
+		return newJavaParser("calcite"), nil
 	case "alisa":
 		return newJavaParser("odps"), nil
 	default:
