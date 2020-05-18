@@ -16,8 +16,10 @@ package modelzooserver
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net"
+	"os"
 	"strings"
 	"testing"
 
@@ -53,6 +55,35 @@ func startServer() {
 	pb.RegisterModelZooServerServer(grpcServer, &modelZooServer{DB: mysqlConn})
 
 	grpcServer.Serve(lis)
+}
+
+func mockTmpModelRepo() (string, error) {
+	dir, err := ioutil.TempDir("/tmp", "tmp-sqlflow-repo")
+	if err != nil {
+		return "", err
+	}
+	modelRepoDir := fmt.Sprintf("%s/my_test_models", dir)
+	if err := os.Mkdir(modelRepoDir, os.ModeDir); err != nil {
+		return "", err
+	}
+
+	if err := ioutil.WriteFile(
+		fmt.Sprintf("%s/my_test_model.py", modelRepoDir),
+		[]byte(sampleModelCode), 0644); err != nil {
+		return "", err
+	}
+	if err := ioutil.WriteFile(
+		fmt.Sprintf("%s/__init__.py", modelRepoDir),
+		[]byte(sampleInitCode), 0644); err != nil {
+		return "", err
+	}
+
+	return dir, nil
+}
+
+func TestReleaseModelZoo(a *assert.Assertions) {
+	mockTmpModelRepo()
+	// TODO(typhoonzero): tar the directory and do upload here
 }
 
 func TestModelZooServer(t *testing.T) {
