@@ -49,35 +49,43 @@ message ListModelRequest {
     int64 size = 2;
 }
 
-message ListModelDefResponse {
-    // Model definition Python class names or function names.
-    repeated string class_names = 1;
+message ModelDefResponse {
+    // Model definition Python class name or function name.
+    string class_name = 1;
     // The model collection Docker image containing the class.
-    repeated string image_urls = 2;
-    // Docker image tags.
-    repeated string tags = 3;
-    // Argument specs for each class.
-    repeated string arg_descs = 4;
-    // Size of elements in the response lists.
-    int64 size = 5;
+    string image_url = 2;
+    // Docker image tag.
+    string tag = 3;
+    // Argument spec for each class.
+    string arg_descs = 4;
 }
 
+message ListModelDefResponse {
+    // Model definition Python class names or function names.
+    repeated ModelDefResponse model_def_list = 1;
+    // Size of elements in the response lists.
+    int64 size = 2;
+}
+
+message TrainedModelResponse {
+    // The trained model unique name
+    string name = 1;
+    // The trained model version tag.
+    string tag = 2;
+    // Actual place that stores the model, e.g. oss://bucket/path/to/your/model
+    string model_store_url = 3;
+    // Docker image used when train this model, should be like "hub.docker.com/image:v0.3".
+    string image_url = 4;
+    // Description of the trained model.
+    string description = 5;
+    // Evaluation metrics of the model.
+    string metric = 6;
+}
 
 message ListTrainedModelResponse {
-    // A list of model definition or trained model names.
-    repeated string names = 1;
-    // A list of tags of the above list names, the length should be the same as "names".
-    repeated string tags = 2;
-    // actual place that stores the model, e.g. oss://bucket/path/to/your/model
-    repeated string model_store_urls = 3;
-    // Docker image used when train this model, should be like "hub.docker.com/image:v0.3".
-    repeated string image_urls = 4;
-    // Description of the trained model.
-    repeated string descriptions = 5;
-    // Evaluation metrics of the model.
-    repeated string metrics = 6;
+    repeated TrainedModelResponse trained_model_list = 1;
     // Size of elements in names.
-    int64 size = 7;
+    int64 size = 2;
 }
 
 service ModelZooServer {

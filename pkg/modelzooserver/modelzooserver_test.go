@@ -79,8 +79,8 @@ func TestModelZooServer(t *testing.T) {
 
 	res, err := client.ListModelDefs(context.Background(), &pb.ListModelRequest{Start: 0, Size: -1})
 	a.NoError(err)
-	a.Equal(1, len(res.ClassNames))
-	a.Equal("hub.docker.com/group/mymodel", res.GetImageUrls()[0])
+	a.Equal(1, len(res.ModelDefList))
+	a.Equal("hub.docker.com/group/mymodel", res.ModelDefList[0].ImageUrl)
 
 	trainedModelRes, err := client.ReleaseTrainedModel(context.Background(),
 		&pb.TrainedModelRequest{
@@ -97,9 +97,9 @@ func TestModelZooServer(t *testing.T) {
 
 	listTrainedModelRes, err := client.ListTrainedModels(context.Background(), &pb.ListModelRequest{Start: 0, Size: -1})
 	a.NoError(err)
-	a.Equal(1, len(listTrainedModelRes.Names))
-	a.Equal("my_regression_model", listTrainedModelRes.Names[0])
-	a.Equal("hub.docker.com/group/mymodel:v0.1", listTrainedModelRes.ImageUrls[0])
+	a.Equal(1, len(listTrainedModelRes.TrainedModelList))
+	a.Equal("my_regression_model", listTrainedModelRes.TrainedModelList[0].Name)
+	a.Equal("hub.docker.com/group/mymodel:v0.1", listTrainedModelRes.TrainedModelList[0].ImageUrl)
 
 	_, err = client.DropTrainedModel(context.Background(), &pb.TrainedModelRequest{
 		Name: "my_regression_model", Tag: "v0.1",
@@ -107,12 +107,12 @@ func TestModelZooServer(t *testing.T) {
 
 	listTrainedModelRes, err = client.ListTrainedModels(context.Background(), &pb.ListModelRequest{Start: 0, Size: -1})
 	a.NoError(err)
-	a.Equal(0, len(listTrainedModelRes.Names))
+	a.Equal(0, len(listTrainedModelRes.TrainedModelList))
 
 	_, err = client.DropModelDef(context.Background(), modelDefReq)
 	a.NoError(err)
 
 	res, err = client.ListModelDefs(context.Background(), &pb.ListModelRequest{Start: 0, Size: -1})
 	a.NoError(err)
-	a.Equal(0, len(res.ClassNames))
+	a.Equal(0, len(res.ModelDefList))
 }

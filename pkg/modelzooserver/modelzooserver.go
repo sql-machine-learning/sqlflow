@@ -81,11 +81,8 @@ func (s *modelZooServer) ListModelDefs(ctx context.Context, req *pb.ListModelReq
 		return nil, err
 	}
 	defer rows.Close()
-	names := []string{}
-	arglist := []string{}
-	images := []string{}
-	imagetags := []string{}
 
+	responseList := &pb.ListModelDefResponse{Size: 0}
 	for rows.Next() {
 		n := ""
 		args := ""
@@ -94,18 +91,18 @@ func (s *modelZooServer) ListModelDefs(ctx context.Context, req *pb.ListModelReq
 		if err := rows.Scan(&n, &args, &image, &imagetag); err != nil {
 			return nil, err
 		}
-		names = append(names, n)
-		arglist = append(arglist, args)
-		images = append(images, image)
-		imagetags = append(imagetags, imagetag)
+		perResp := &pb.ModelDefResponse{
+			ClassName: n,
+			ArgDescs:  args,
+			ImageUrl:  image,
+			Tag:       imagetag,
+		}
+		responseList.ModelDefList = append(
+			responseList.ModelDefList,
+			perResp,
+		)
 	}
-	return &pb.ListModelDefResponse{
-			ClassNames: names,
-			Tags:       imagetags,
-			ImageUrls:  images,
-			ArgDescs:   arglist,
-			Size:       int64(len(names))},
-		nil
+	return responseList, nil
 }
 
 func (s *modelZooServer) ListTrainedModels(ctx context.Context, req *pb.ListModelRequest) (*pb.ListTrainedModelResponse, error) {
@@ -127,13 +124,7 @@ LEFT JOIN %s AS c ON b.model_coll_id=c.id LIMIT %d OFFSET %d;`,
 	}
 	defer rows.Close()
 
-	names := []string{}
-	modelVersions := []string{}
-	urls := []string{}
-	descs := []string{}
-	metrics := []string{}
-	imageurls := []string{}
-
+	trainedModelList := &pb.ListTrainedModelResponse{Size: 0}
 	for rows.Next() {
 		n := ""
 		v := ""
@@ -145,24 +136,21 @@ LEFT JOIN %s AS c ON b.model_coll_id=c.id LIMIT %d OFFSET %d;`,
 		if err := rows.Scan(&n, &v, &url, &desc, &m, &imagename, &imagetag); err != nil {
 			return nil, err
 		}
-		names = append(names, n)
-		modelVersions = append(modelVersions, v)
-		urls = append(urls, url)
-		descs = append(descs, desc)
-		metrics = append(metrics, m)
-		imageURL := fmt.Sprintf("%s:%s", imagename, imagetag)
-		imageurls = append(imageurls, imageURL)
+		perResp := &pb.TrainedModelResponse{
+			Name:          n,
+			Tag:           v,
+			ModelStoreUrl: url,
+			Description:   desc,
+			Metric:        m,
+			ImageUrl:      fmt.Sprintf("%s:%s", imagename, imagetag),
+		}
+		trainedModelList.TrainedModelList = append(
+			trainedModelList.TrainedModelList,
+			perResp,
+		)
 	}
 
-	return &pb.ListTrainedModelResponse{
-		Names:          names,
-		Tags:           modelVersions,
-		ModelStoreUrls: urls,
-		ImageUrls:      imageurls,
-		Descriptions:   descs,
-		Metrics:        metrics,
-		Size:           int64(len(names)),
-	}, nil
+	return trainedModelList, nil
 }
 
 func (s *modelZooServer) ReleaseModelDef(stream pb.ModelZooServer_ReleaseModelDefServer) error {
