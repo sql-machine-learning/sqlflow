@@ -109,7 +109,7 @@ jobs:
     - docker run --rm -d -p 3306:3306 --name mysql_server
       -v $TRAVIS_BUILD_DIR:/work sqlflow:mysql
     - docker run --rm --net=host
-      -e SQLFLOW_WORKFLOW_STEP_IMAGE=sqlflow:submitter
+      -e SQLFLOW_WORKFLOW_STEP_IMAGE=sqlflow:mysql
       -v /var/run/docker.sock:/var/run/docker.sock
       -v $HOME/.kube:/root/.kube
       -v /home/$USER/.minikube/:/home/$USER/.minikube/
