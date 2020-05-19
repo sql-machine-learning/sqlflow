@@ -14,14 +14,14 @@
 
 set -e
 
-SQLFLOW_MYSQL_HOST=${SQLFLOW_MYSQL_HOST:-127.0.0.1}
-SQLFLOW_MYSQL_PORT=${SQLFLOW_MYSQL_PORT:-3306}
-
-
 echo "Start mysqld ..."
+# Important to make mysqld bind to 0.0.0.0 -- all IPs.  I explained
+# the reason in https://stackoverflow.com/a/61887788/724872.
+SQLFLOW_MYSQL_HOST=${SQLFLOW_MYSQL_HOST:-0.0.0.0}
 sed -i "s/.*bind-address.*/bind-address = ${SQLFLOW_MYSQL_HOST}/" \
     /etc/mysql/mysql.conf.d/mysqld.cnf
 service mysql start
+
 
 echo "Sleep until MySQL server is ready ..."
 until mysql -u root -proot \
@@ -31,6 +31,7 @@ until mysql -u root -proot \
     sleep 1
     read -r -p "Can't connect, retrying..."
 done
+
 
 # Grant all privileges to all the remote hosts so that the sqlflow
 # server can be scaled to more than one replicas.
