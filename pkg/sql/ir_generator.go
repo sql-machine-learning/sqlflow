@@ -506,9 +506,12 @@ func parseFeatureColumn(el *parser.ExprList) (ir.FeatureColumn, error) {
 
 func parseNumericColumn(el *parser.ExprList) (*ir.NumericColumn, error) {
 	help := "NUMERIC([DENSE()|SPARSE()|col_name][, SHAPE])"
-	if len(*el) != 3 {
+
+	// 'shape' is optional in NUMERIC, so len(*el) may be 2 or 3
+	if len(*el) != 2 && len(*el) != 3 {
 		return nil, fmt.Errorf("bad NUMERIC expression format: %s, should be like: %s", *el, help)
 	}
+
 	// 1. NUMERIC(DENSE()/SPARSE()) phrases
 	if (*el)[1].Type == 0 {
 		fieldDesc, err := parseFieldDesc(&(*el)[1].Sexp)
@@ -522,9 +525,13 @@ func parseNumericColumn(el *parser.ExprList) (*ir.NumericColumn, error) {
 	if err != nil {
 		return nil, fmt.Errorf("bad NUMERIC key: %s, err: %s, should be like: %s", (*el)[1], err, help)
 	}
-	shape, err := parseShape((*el)[2])
-	if err != nil {
-		return nil, err
+
+	shape := []int{1}
+	if len(*el) == 3 {
+		shape, err = parseShape((*el)[2])
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &ir.NumericColumn{
@@ -796,7 +803,7 @@ func parseIndicatorColumn(el *parser.ExprList) (*ir.IndicatorColumn, error) {
 
 func parseFieldDesc(el *parser.ExprList) (*ir.FieldDesc, error) {
 	help := "DENSE|SPARSE(col_name, SHAPE, DELIMITER[, DTYPE])"
-	if len(*el) < 4 {
+	if len(*el) != 4 && len(*el) != 5 {
 		return nil, fmt.Errorf("bad FieldDesc format: %s, should be like: %s", *el, help)
 	}
 	call, err := expression2string((*el)[0])
@@ -843,7 +850,7 @@ func parseFieldDesc(el *parser.ExprList) (*ir.FieldDesc, error) {
 	if isSparse {
 		dtype = ir.Int
 	}
-	if len(*el) >= 5 {
+	if len(*el) == 5 {
 		dtypeStr, err := expression2string((*el)[4])
 		if err != nil {
 			return nil, err
