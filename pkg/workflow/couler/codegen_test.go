@@ -36,6 +36,10 @@ class K8s(object):
         self._with_tolerations(template)
         return template
 
+    def with_workflow_spec(self, spec):
+        spec["hostNetwork"] = True
+        return spec
+
     def _with_tolerations(self, template):
         template["tolerations"] = list()
         template["tolerations"].append({
@@ -54,6 +58,7 @@ metadata:
   generateName: sqlflow-
 spec:
   entrypoint: sqlflow
+  hostNetwork: true
   templates:
     - name: sqlflow
       steps:

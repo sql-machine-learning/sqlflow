@@ -37,6 +37,7 @@ type evaluateFiller struct {
 
 const tfEvaluateTemplateText = `
 import tensorflow as tf
+import sqlflow_submitter
 from sqlflow_submitter.tensorflow.evaluate import evaluate
 from sqlflow_submitter.tensorflow.get_tf_version import tf_is_version2
 from tensorflow.estimator import DNNClassifier, DNNRegressor, LinearClassifier, LinearRegressor, BoostedTreesClassifier, BoostedTreesRegressor, DNNLinearCombinedClassifier, DNNLinearCombinedRegressor
@@ -86,7 +87,7 @@ model_params["{{$k}}"]={{$v | attrToPythonValue}}
 feature_columns = {{.FeatureColumnCode}}
 
 evaluate(datasource="{{.DataSource}}",
-         estimator_cls={{.Estimator}},
+         estimator_string="""{{.Estimator}}""",
          select="""{{.Select}}""",
          result_table="{{.ResultTable}}",
          feature_columns=feature_columns,

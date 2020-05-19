@@ -20,7 +20,6 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
-	"net"
 	"os"
 	"os/exec"
 	"path"
@@ -39,6 +38,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"sqlflow.org/sqlflow/pkg/database"
 	pb "sqlflow.org/sqlflow/pkg/proto"
+	"sqlflow.org/sqlflow/pkg/server"
 	"sqlflow.org/sqlflow/pkg/sql/testdata"
 )
 
@@ -56,25 +56,6 @@ var testDatasource = os.Getenv("SQLFLOW_TEST_DATASOURCE")
 var caseInto = "sqlflow_models.my_dnn_model"
 
 const unitTestPort = 50051
-
-func serverIsReady(addr string, timeout time.Duration) bool {
-	conn, err := net.DialTimeout("tcp", addr, timeout)
-	if err != nil {
-		return false
-	}
-	err = conn.Close()
-	return err == nil
-}
-
-func waitPortReady(addr string, timeout time.Duration) {
-	// Set default timeout to
-	if timeout == 0 {
-		timeout = time.Duration(1) * time.Second
-	}
-	for !serverIsReady(addr, timeout) {
-		time.Sleep(1 * time.Second)
-	}
-}
 
 func connectAndRunSQLShouldError(sql string) {
 	conn, err := createRPCConn()
@@ -109,8 +90,7 @@ func connectAndRunSQL(sql string) ([]string, [][]*any.Any, []string, error) {
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	cols, rows, messages := ParseResponse(stream)
-	return cols, rows, messages, nil
+	return ParseResponse(stream)
 }
 
 func sqlRequest(sql string) *pb.Request {
@@ -178,7 +158,7 @@ func AssertIsSubStringAny(a *assert.Assertions, substring string, actual *any.An
 	}
 }
 
-func ParseResponse(stream pb.SQLFlow_RunClient) ([]string, [][]*any.Any, []string) {
+func ParseResponse(stream pb.SQLFlow_RunClient) ([]string, [][]*any.Any, []string, error) {
 	var rows [][]*any.Any
 	var columns []string
 	var messages []string
@@ -189,7 +169,7 @@ func ParseResponse(stream pb.SQLFlow_RunClient) ([]string, [][]*any.Any, []strin
 			break
 		}
 		if err != nil {
-			log.Fatalf("stream read err: %v", err)
+			return nil, nil, nil, err
 		}
 		if counter == 0 {
 			head := iter.GetHead()
@@ -203,7 +183,7 @@ func ParseResponse(stream pb.SQLFlow_RunClient) ([]string, [][]*any.Any, []strin
 		}
 		counter++
 	}
-	return columns, rows, messages
+	return columns, rows, messages, nil
 }
 
 func prepareTestData(dbStr string) error {
@@ -302,7 +282,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	}
 
 	go start(modelDir, caCrt, caKey, unitTestPort, false)
-	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
+	server.WaitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 	err = prepareTestData(dbConnStr)
 	if err != nil {
 		t.Fatalf("prepare test dataset failed: %v", err)
@@ -350,6 +330,21 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseTrainFeatureDerivation", CaseTrainFeatureDerivation)
 
 	t.Run("CaseShowTrain", CaseShowTrain)
+
+	// Cases for diagnosis
+	t.Run("CaseDiagnosisMissingModelParams", CaseDiagnosisMissingModelParams)
+}
+
+func CaseDiagnosisMissingModelParams(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := `SELECT * FROM iris.train TO TRAIN DNNClassifier WITH
+  model.n_classes = 3,
+  train.epoch = 10
+COLUMN sepal_length, sepal_width, petal_length, petal_width
+LABEL class
+INTO sqlflow_models.my_dnn_model;`
+	_, _, _, err := connectAndRunSQL(trainSQL)
+	a.Contains(err.Error(), "DNNClassifierV2 missing 1 required attribute: 'hidden_units'")
 }
 
 func CaseEmptyDataset(t *testing.T) {
@@ -472,7 +467,7 @@ func TestEnd2EndHive(t *testing.T) {
 	}
 	dbConnStr = "hive://root:root@127.0.0.1:10000/iris?auth=NOSASL"
 	go start(modelDir, caCrt, caKey, unitTestPort, false)
-	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
+	server.WaitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 	err = prepareTestData(dbConnStr)
 	if err != nil {
 		t.Fatalf("prepare test dataset failed: %v", err)
@@ -515,7 +510,7 @@ func TestEnd2EndMaxCompute(t *testing.T) {
 	endpoint := os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_ENDPOINT")
 	dbConnStr = fmt.Sprintf("maxcompute://%s:%s@%s", AK, SK, endpoint)
 	go start(modelDir, caCrt, caKey, unitTestPort, false)
-	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
+	server.WaitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 
 	caseDB = os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT")
 	caseTrainTable = "sqlflow_test_iris_train"
@@ -561,7 +556,7 @@ func TestEnd2EndMaxComputeALPS(t *testing.T) {
 	}
 
 	go start(modelDir, caCrt, caKey, unitTestPort, false)
-	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
+	server.WaitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 
 	t.Run("CaseTrainALPS", CaseTrainALPS)
 	t.Run("CaseTrainALPSFeatureMap", CaseTrainALPSFeatureMap)
@@ -1386,7 +1381,8 @@ WHERE f1.user_id < 3;`
 		a.Fail("Check if the server started successfully. %v", err)
 	}
 	// wait train finish
-	ParseResponse(stream)
+	_, _, _, e := ParseResponse(stream)
+	a.NoError(e)
 }
 
 // CaseTrainRegression is used to test regression models
@@ -1554,12 +1550,14 @@ USING TreeExplainer;
 	if err != nil {
 		a.Fail("Check if the server started successfully. %v", err)
 	}
-	ParseResponse(stream)
+	_, _, _, e := ParseResponse(stream)
+	a.NoError(e)
 	stream, err = cli.Run(ctx, sqlRequest(explainStmt))
 	if err != nil {
 		a.Fail("Check if the server started successfully. %v", err)
 	}
-	ParseResponse(stream)
+	_, _, _, e = ParseResponse(stream)
+	a.NoError(e)
 }
 
 func CasePredictXGBoostRegression(t *testing.T) {
@@ -1691,6 +1689,37 @@ LABEL class
 INTO e2etest_keras_dnn_model_distributed;`, caseTrainTable, caseTestTable)
 	_, _, _, err := connectAndRunSQL(trainSQL)
 	a.NoError(err)
+}
+
+func CasePAIMaxComputeTrainPredictDiffColumns(t *testing.T) {
+	t.Parallel()
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`SELECT sepal_length, sepal_width, class FROM %s
+TO TRAIN DNNClassifier
+WITH model.hidden_units=[64,32], model.n_classes=3, train.batch_size=4
+LABEL class 
+INTO e2etest_selected_cols_model;
+`, caseTrainTable)
+	_, _, _, e := connectAndRunSQL(trainSQL)
+	a.NoError(e, "run trainSQL error.")
+
+	predSQL := fmt.Sprintf(`SELECT * FROM %s
+	TO PREDICT %s.e2etest_selected_cols_pred.target
+	USING e2etest_selected_cols_model;
+		`, caseTestTable, caseDB)
+	_, _, _, e = connectAndRunSQL(predSQL)
+	a.NoError(e, "run predSQL error")
+
+	query := fmt.Sprintf(`SELECT * FROM %s.e2etest_selected_cols_pred LIMIT 1;`, caseDB)
+	_, resultRows, _, e := connectAndRunSQL(query)
+	a.NoError(e)
+
+	query = fmt.Sprintf(`SELECT * FROM %s LIMIT 1;`, caseTestTable)
+	_, predRows, _, e := connectAndRunSQL(query)
+	a.NoError(e)
+	for idx := range resultRows {
+		a.Equal(predRows[0][idx], resultRows[0][idx])
+	}
 }
 
 func CasePAIMaxComputeTrainXGBDistributed(t *testing.T) {
@@ -1915,6 +1944,7 @@ INTO e2etest_dense_input_without_indicating_shape;`, caseTrainTable)
 func CasePAIMaxComputeTrainXGBoost(t *testing.T) {
 	t.Parallel()
 	a := assert.New(t)
+
 	trainSQL := fmt.Sprintf(`SELECT * FROM %s
 	TO TRAIN xgboost.gbtree
 	WITH
@@ -1927,17 +1957,13 @@ func CasePAIMaxComputeTrainXGBoost(t *testing.T) {
 	LABEL class
 	INTO e2etest_xgb_classi_model;`, caseTrainTable, caseTrainTable)
 	_, _, _, err := connectAndRunSQL(trainSQL)
-	if err != nil {
-		a.Fail("Run trainSQL error: %v", err)
-	}
+	a.NoError(err, "Run trainSQL error.")
 
 	predSQL := fmt.Sprintf(`SELECT * FROM %s
 TO PREDICT %s.pai_xgb_predict.class
 USING e2etest_xgb_classi_model;`, caseTestTable, caseDB)
 	_, _, _, err = connectAndRunSQL(predSQL)
-	if err != nil {
-		a.Fail("Run predSQL error: %v", err)
-	}
+	a.NoError(err, "Run predSQL error.")
 
 	evalSQL := fmt.Sprintf(`SELECT * FROM %s
 TO EVALUATE e2etest_xgb_classi_model
@@ -1945,9 +1971,7 @@ WITH validation.metrics="accuracy_score"
 LABEL class
 INTO %s.e2etest_xgb_evaluate_result;`, caseTestTable, caseDB)
 	_, _, _, err = connectAndRunSQL(evalSQL)
-	if err != nil {
-		a.Fail("Run evalSQL error: %v", err)
-	}
+	a.NoError(err, "Run evalSQL error.")
 
 	explainSQL := fmt.Sprintf(`SELECT * FROM %s
 TO EXPLAIN e2etest_xgb_classi_model
@@ -1955,9 +1979,7 @@ WITH label_col=class
 USING TreeExplainer
 INTO %s.e2etest_xgb_explain_result;`, caseTrainTable, caseDB)
 	_, _, _, err = connectAndRunSQL(explainSQL)
-	if err != nil {
-		a.Fail("Run trainSQL error: %v", err)
-	}
+	a.NoError(err, "Run explainSQL error.")
 }
 
 func CasePAIMaxComputeTrainCustomModel(t *testing.T) {
@@ -2050,7 +2072,7 @@ func TestEnd2EndAlisa(t *testing.T) {
 	caseInto = "sqlflow_test_kmeans_model"
 
 	go start("", caCrt, caKey, unitTestPort, false)
-	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
+	server.WaitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 	// TODO(Yancey1989): reuse CaseTrainXGBoostOnPAI if support explain XGBoost model
 	t.Run("CaseTrainXGBoostOnAlisa", CaseTrainXGBoostOnAlisa)
 	t.Run("CaseTrainPAIKMeans", CaseTrainPAIKMeans)
@@ -2099,7 +2121,7 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 	caseInto = "my_dnn_model"
 
 	go start(modelDir, caCrt, caKey, unitTestPort, false)
-	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
+	server.WaitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 
 	t.Run("group", func(t *testing.T) {
 		t.Run("CasePAIMaxComputeDNNTrainPredictExplain", CasePAIMaxComputeDNNTrainPredictExplain)
@@ -2111,15 +2133,17 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 		t.Run("CasePAIMaxComputeTrainPredictCategoricalFeature", CasePAIMaxComputeTrainPredictCategoricalFeature)
 		t.Run("CasePAIMaxComputeTrainTFBTDistributed", CasePAIMaxComputeTrainTFBTDistributed)
 		t.Run("CasePAIMaxComputeTrainDistributedKeras", CasePAIMaxComputeTrainDistributedKeras)
-		t.Run("CasePAIMaxComputeTrainXGBDistributed", CasePAIMaxComputeTrainXGBDistributed)
-
+		t.Run("CasePAIMaxComputeTrainPredictDiffColumns", CasePAIMaxComputeTrainPredictDiffColumns)
+		// FIXME(weiguoz): The dataset is too small for all reader to read
+		// Let's bring up this test case if we have a big dataset.
+		// t.Run("CasePAIMaxComputeTrainXGBDistributed", CasePAIMaxComputeTrainXGBDistributed)
 		// FIXME(typhoonzero): Add this test back when we solve error: model already exist issue on the CI.
 		// t.Run("CaseTrainPAIRandomForests", CaseTrainPAIRandomForests)
 	})
+
 }
 
 func TestEnd2EndFluidWorkflow(t *testing.T) {
-	t.Skip("Skip Fluid workflow e2e test until it's ready.")
 	a := assert.New(t)
 	if os.Getenv("SQLFLOW_TEST_DATASOURCE") == "" || strings.ToLower(os.Getenv("SQLFLOW_TEST")) != "workflow" {
 		t.Skip("Skipping workflow test.")
@@ -2140,7 +2164,7 @@ func TestEnd2EndFluidWorkflow(t *testing.T) {
 	//TODO(yancey1989): using the same end-to-end workflow test with the Couler backend
 	os.Setenv("SQLFLOW_WORKFLOW_BACKEND", "fluid")
 	go start(modelDir, caCrt, caKey, unitTestPort, true)
-	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
+	server.WaitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 	if err != nil {
 		t.Fatalf("prepare test dataset failed: %v", err)
 	}
@@ -2166,7 +2190,7 @@ func TestEnd2EndWorkflow(t *testing.T) {
 	}
 
 	go start(modelDir, caCrt, caKey, unitTestPort, true)
-	waitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
+	server.WaitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 
 	if driverName == "maxcompute" {
 		AK := os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_AK")

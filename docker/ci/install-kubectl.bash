@@ -15,18 +15,8 @@
 
 set -e
 
-curl --silent https://dl.google.com/go/go1.13.4.linux-amd64.tar.gz | tar -C /usr/local -xzf -
-
-export GO111MODULE=on
-
-go get github.com/golang/protobuf/protoc-gen-go@v1.3.3
-go get golang.org/x/lint/golint
-go get golang.org/x/tools/cmd/goyacc
-go get golang.org/x/tools/cmd/cover
-go get github.com/mattn/goveralls
-go get github.com/rakyll/gotest
-go get github.com/wangkuiyi/goyaccfmt
-go get github.com/wangkuiyi/yamlfmt
-go get github.com/wangkuiyi/ipynb/markdown-to-ipynb
-
-cp "$GOPATH"/bin/* /usr/local/bin/
+echo "Install kubectl ..."
+KUBECTL_SITE="https://storage.googleapis.com/kubernetes-release/release"
+axel --quiet --output /usr/local/bin/kubectl \
+     $KUBECTL_SITE"/v1.14.0/bin/linux/amd64/kubectl"
+chmod +x /usr/local/bin/kubectl

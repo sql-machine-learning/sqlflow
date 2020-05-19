@@ -173,6 +173,43 @@ def read_feature(raw_val, feature_spec, feature_name):
         return (raw_val, )
 
 
+def selected_cols(driver, conn, select):
+    select = select.strip().rstrip(";")
+    limited = re.findall("LIMIT [0-9]*$", select.upper())
+    if not limited:
+        select += " LIMIT 1"
+
+    if driver == "hive":
+        cursor = conn.cursor(configuration=conn.session_cfg)
+        cursor.execute(select)
+        field_names = None if cursor.description is None \
+            else [i[0][i[0].find('.') + 1:] for i in cursor.description]
+    else:
+        cursor = conn.cursor()
+        cursor.execute(select)
+        field_names = None if cursor.description is None \
+            else [i[0] for i in cursor.description]
+    cursor.close()
+    return field_names
+
+
+def pai_selected_cols(table):
+    import paiio
+    reader = paiio.TableReader(table)
+    schema = reader.get_schema()
+    return [i['colname'] for i in schema]
+
+
+def read_features_from_row(row, select_cols, feature_column_names,
+                           feature_specs):
+    features = []
+    for name in feature_column_names:
+        feature = read_feature(row[select_cols.index(name)],
+                               feature_specs[name], name)
+        features.append(feature)
+    return tuple(features)
+
+
 def db_generator(driver,
                  conn,
                  statement,
@@ -192,6 +229,7 @@ def db_generator(driver,
         else:
             field_names = None if cursor.description is None \
                 else [i[0] for i in cursor.description]
+
         if label_spec:
             try:
                 label_idx = field_names.index(label_spec["feature_name"])
@@ -221,15 +259,10 @@ def db_generator(driver,
                         label = np.fromstring(label,
                                               dtype=int,
                                               sep=label_spec["delimiter"])
-                features = []
-                for name in feature_column_names:
-                    feature = read_feature(row[field_names.index(name)],
-                                           feature_specs[name], name)
-                    features.append(feature)
                 if label_idx is None:
-                    yield (tuple(features), )
+                    yield list(row), None
                 else:
-                    yield tuple(features), label
+                    yield list(row), label
             if len(rows) < fetch_size:
                 break
         cursor.close()
@@ -265,22 +298,16 @@ def pai_maxcompute_db_generator(table,
 
         import paiio
         reader = paiio.TableReader(table,
-                                   selected_cols=",".join(selected_cols),
                                    slice_id=slice_id,
                                    slice_count=slice_count)
         while True:
             try:
                 row = reader.read(num_records=1)[0]
                 label = row[label_idx] if label_idx is not None else -1
-                features = []
-                for name in feature_column_names:
-                    feature = read_feature(row[selected_cols.index(name)],
-                                           feature_specs[name], name)
-                    features.append(feature)
                 if label_column_name:
-                    yield tuple(features), label
+                    yield list(row), label
                 else:
-                    yield (tuple(features), )
+                    yield list(row), None
             except Exception as e:
                 reader.close()
                 break

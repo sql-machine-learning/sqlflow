@@ -19,9 +19,15 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import shap
+import sqlflow_submitter
 import tensorflow as tf
 from sqlflow_submitter import explainer
 from sqlflow_submitter.db import buffered_db_writer, connect_with_data_source
+from tensorflow.estimator import (BoostedTreesClassifier,
+                                  BoostedTreesRegressor, DNNClassifier,
+                                  DNNLinearCombinedClassifier,
+                                  DNNLinearCombinedRegressor, DNNRegressor,
+                                  LinearClassifier, LinearRegressor)
 
 from .get_tf_version import tf_is_version2
 from .input_fn import input_fn
@@ -45,7 +51,7 @@ else:
 
 
 def explain(datasource,
-            estimator_cls,
+            estimator_string,
             select,
             feature_columns,
             feature_column_names,
@@ -66,6 +72,9 @@ def explain(datasource,
             oss_sk=None,
             oss_endpoint=None,
             oss_bucket_name=None):
+    # import custom model package
+    model_import_name = sqlflow_submitter.import_model_def(estimator_string)
+    estimator_cls = eval(estimator_string)
 
     if is_pai:
         FLAGS = tf.app.flags.FLAGS

@@ -15,18 +15,26 @@
 
 set -e
 
-# NOTE: install-python.bash installs the Jupyter server.  Here we install only the magic command.
- 
-# Load SQLFlow's Jupyter magic command automatically. c.f. https://stackoverflow.com/a/32683001.
+# This file depends on install-python.bash.
+pip install --quiet \
+    jupyter==1.0.0 \
+    notebook==6.0.0 \
+    sqlflow==0.9.0 # sqlflow is the Python client of SQLFlow server.
+
+# Load SQLFlow's Jupyter magic command
+# automatically. c.f. https://stackoverflow.com/a/32683001.
 mkdir -p "$IPYTHON_STARTUP"
 mkdir -p /workspace
 { echo 'get_ipython().magic(u"%reload_ext sqlflow.magic")';
   echo 'get_ipython().magic(u"%reload_ext autoreload")';
-  echo 'get_ipython().magic(u"%autoreload 2")'; } >> "$IPYTHON_STARTUP"/00-first.py
+  echo 'get_ipython().magic(u"%autoreload 2")'; } \
+    >> "$IPYTHON_STARTUP"/00-first.py
 
 # Enable highlighting, see https://stackoverflow.com/questions/43641362
-CODE_MIRROR_MODE_PATH=$(python -c "print(__import__('notebook').__path__[0])")/static/components/codemirror/mode
+NOTEBOOK_DIR=$(python -c "print(__import__('notebook').__path__[0])")
+CODE_MIRROR_MODE_PATH=$NOTEBOOK_DIR/static/components/codemirror/mode
 mkdir -p "$HOME"/.jupyter/custom/
 mkdir -p "$CODE_MIRROR_MODE_PATH"/sqlflow
-cp js/custom.js "$HOME"/.jupyter/custom/
-cp js/sqlflow.js "$CODE_MIRROR_MODE_PATH"/sqlflow/
+# Depends on Docekrfile to COPY *.js to /js.
+cp /ci/js/custom.js "$HOME"/.jupyter/custom/
+cp /ci/js/sqlflow.js "$CODE_MIRROR_MODE_PATH"/sqlflow/

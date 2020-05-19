@@ -1,5 +1,4 @@
 #!/bin/bash
-
 # Copyright 2020 The SQLFlow Authors. All rights reserved.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,12 +14,11 @@
 
 set -e
 
-# Install ElasticDL and kubectl.
-apt-get -qq update && apt-get install -y docker.io sudo > /dev/null
-curl -sLo kubectl https://storage.googleapis.com/kubernetes-release/release/v1.14.0/bin/linux/amd64/kubectl && chmod +x kubectl && sudo mv kubectl /usr/local/bin/
-git clone https://github.com/sql-machine-learning/elasticdl.git
-cd elasticdl
-git checkout eb93e2a48e6fe8f077c4937d8c0c5987faa9cf56 # TODO(terry): update later.
-pip -q install -r elasticdl/requirements.txt
-python setup.py -q install
-cd ..
+echo "Start minikube cluster ..."
+
+sudo minikube start \
+     --vm-driver=none \
+     --kubernetes-version=v$K8S_VERSION \
+     --cpus 2 \
+     --memory 6144
+kubectl cluster-info

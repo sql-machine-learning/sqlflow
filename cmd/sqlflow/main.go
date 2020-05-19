@@ -28,7 +28,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"syscall"
 
 	"github.com/joho/godotenv"
 	"golang.org/x/crypto/ssh/terminal"
@@ -192,6 +191,11 @@ func isExitStmt(stmt string) bool {
 }
 
 func runStmt(serverAddr string, stmt string, isTerminal bool, ds string) error {
+	if isExitStmt(stmt) {
+		fmt.Println("Goodbye!")
+		os.Exit(0)
+	}
+
 	// special case, process USE to stick SQL session
 	parts := strings.Fields(strings.ReplaceAll(stmt, ";", ""))
 	if len(parts) == 2 && strings.ToUpper(parts[0]) == "USE" {
@@ -344,7 +348,13 @@ func main() {
 		log.Fatalf("error SQLFLOW_DATASOURCE: %v", err)
 	}
 
-	isTerminal := !flagPassed("execute", "e", "file", "f") && terminal.IsTerminal(syscall.Stdin)
+	// You might want to use syscall.Stdin instead of 0; however,
+	// unfortunately, we cannot.  the syscall standard package has
+	// a special implementation for Windows, where the type of
+	// syscall.Stdin is not int as in Linux and macOS, but
+	// uintptr.
+	isTerminal := !flagPassed("execute", "e", "file", "f") &&
+		terminal.IsTerminal(0)
 	sqlFile := os.Stdin
 
 	if flagPassed("file", "f") && *sqlFileName != "-" {
@@ -368,9 +378,6 @@ func main() {
 			// TODO(lorylin): get autocomplete dicts for sqlflow_models from sqlflow_server
 		}
 		runPrompt(func(stmt string) {
-			if isExitStmt(stmt) {
-				os.Exit(0)
-			}
 			runStmt(*serverAddr, stmt, true, *ds)
 		})
 	} else {

@@ -32,12 +32,9 @@ echo "TRAVIS_BRANCH $TRAVIS_BRANCH"
 echo "TRAVIS_TAG $TRAVIS_TAG"
 
 if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then
-    echo "skip deployment on pull request"
+    echo "Skip deployment on pull request"
     exit 0
 fi
-
-# Build sqlflow:dev and sqlflow:ci.
-$(dirname $0)/build.sh
 
 # Figure out the tag to push sqlflow:ci.
 if [[ "$TRAVIS_BRANCH" == "develop" ]]; then
@@ -47,19 +44,22 @@ if [[ "$TRAVIS_BRANCH" == "develop" ]]; then
         DOCKER_TAG="latest"
     fi
 elif [[ "$TRAVIS_TAG" != "" ]]; then
-    echo "docker push sqlflow/sqlflow:$TRAVIS_TAG"
     DOCKER_TAG="$TRAVIS_TAG"
 else
-    echo "Nothing to docker push"
+    echo "Cannot figure out Docker image tag."
+    exit 1
 fi
+
+# Build sqlflow:dev and sqlflow:ci.
+$(dirname $0)/build.sh
 
 echo "$DOCKER_PASSWORD" |
     docker login --username "$DOCKER_USERNAME" --password-stdin
 
-# Push sqlflow:dev anyway.
+echo "docker push sqlflow:dev ..."
 docker tag sqlflow:dev sqlflow/sqlflow:dev
 docker push sqlflow/sqlflow:dev
 
-# Tag sqlflow:ci with the drived tag and push it.
+echo "docker push sqlflow/sqlflow:$TRAVIS_TAG ..."
 docker tag sqlflow:ci sqlflow/sqlflow:$DOCKER_TAG
 docker push sqlflow/sqlflow:$DOCKER_TAG

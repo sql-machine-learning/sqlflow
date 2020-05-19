@@ -17,15 +17,19 @@ SQLFLOW_MYSQL_PORT=${SQLFLOW_MYSQL_PORT:-3306}
 SQLFLOW_NOTEBOOK_DIR=${SQLFLOW_NOTEBOOK_DIR:-/workspace}
 
 function sleep_until_mysql_is_ready() {
-  until mysql -u root -proot --host ${SQLFLOW_MYSQL_HOST} --port ${SQLFLOW_MYSQL_PORT} -e ";" ; do
-    sleep 1
-    read -p "Can't connect, retrying..."
-  done
+    until mysql -u root -proot \
+                --host "$SQLFLOW_MYSQL_HOST" \
+                --port "$SQLFLOW_MYSQL_PORT" \
+                -e ";" ; do
+        sleep 1
+        read -r -p "Can't connect, retrying..."
+    done
 }
 
 function start_mysql() {
   # Start mysqld
-  sed -i "s/.*bind-address.*/bind-address = ${SQLFLOW_MYSQL_HOST}/" /etc/mysql/mysql.conf.d/mysqld.cnf
+    sed -i "s/.*bind-address.*/bind-address = ${SQLFLOW_MYSQL_HOST}/" \
+        /etc/mysql/mysql.conf.d/mysqld.cnf
   service mysql start
   sleep 1
 }
@@ -33,17 +37,22 @@ function start_mysql() {
 function setup_mysql() {
   start_mysql
   populate_example_dataset
-  # Grant all privileges to all the remote hosts so that the sqlflow server can
-  # be scaled to more than one replicas.
-  # NOTE: should notice this authorization on the production environment, it's not safe.
-  mysql -uroot -proot -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'' IDENTIFIED BY 'root' WITH GRANT OPTION;"
+  # Grant all privileges to all the remote hosts so that the sqlflow
+  # server can be scaled to more than one replicas.
+  #
+  # NOTE: should notice this authorization on the production
+  # environment, it's not safe.
+  mysql -uroot -proot \
+        -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'' IDENTIFIED BY 'root' WITH GRANT OPTION;"
 }
 
 function populate_example_dataset() {
   sleep_until_mysql_is_ready
   # FIXME(typhoonzero): should let docker-entrypoint.sh do this work
   for f in /docker-entrypoint-initdb.d/*; do
-    cat $f | mysql -uroot -proot --host ${SQLFLOW_MYSQL_HOST} --port ${SQLFLOW_MYSQL_PORT}
+      mysql -uroot -proot \
+            --host "$SQLFLOW_MYSQL_HOST" --port "$SQLFLOW_MYSQL_PORT" \
+            < "$f"
   done
 }
 
@@ -55,21 +64,25 @@ function setup_sqlflow_server() {
 }
 
 function setup_sqlflow_notebook() {
-  cd ${SQLFLOW_NOTEBOOK_DIR}
+    cd "$SQLFLOW_NOTEBOOK_DIR" ||
+        ( echo "Cannot cd to $SQLFLOW_NOTEBOOK_DIR"; exit 1 )
   DS="mysql://root:root@tcp(${SQLFLOW_MYSQL_HOST}:${SQLFLOW_MYSQL_PORT})/?maxAllowedPacket=0"
-  echo "Connect to the datasource ${DS}"
-
-  SQLFLOW_DATASOURCE=${DS} SQLFLOW_SERVER=localhost:50051 jupyter notebook --ip=0.0.0.0 --port=8888 --allow-root --NotebookApp.token=''
+  echo "Connect to the datasource $DS ..."
+  SQLFLOW_DATASOURCE="$DS" SQLFLOW_SERVER="localhost:50051" \
+                    jupyter notebook --ip=0.0.0.0 --port=8888 --allow-root \
+                    --NotebookApp.token=''
   cd ..
 }
 
 function print_usage() {
-  echo "Usage: /bin/bash start.sh [OPTION]\n"
-  echo "\tpopulate-example-dataset-mysql: populate an existing mysql instance with the example dataset."
-  echo "\tmysql: setup the mysql server with the example dataset initialized."
-  echo "\tsqlflow_server: setup the sqlflow gRPC server."
-  echo "\tsqlflow_notebook: setup the Jupyter Notebook server."
-  echo "\tall(default): setup a MySQL server instance, a sqlflow gRPC server and a Jupyter Notebook server sequentially."
+  echo "Usage: start.sh [OPTION]"
+  echo "  populate-example-dataset-mysql: populate an existing mysql instance"
+  echo "    with the example dataset."
+  echo "  mysql: setup the mysql server with the example dataset initialized."
+  echo "  sqlflow_server: setup the sqlflow gRPC server."
+  echo "  sqlflow_notebook: setup the Jupyter Notebook server."
+  echo "  all(default): setup a MySQL server instance, a sqlflow gRPC server"
+  echo "    and a Jupyter Notebook server sequentially."
 }
 
 function main() {
@@ -108,4 +121,4 @@ function main() {
   esac
 }
 
-main $@
+main "$@"

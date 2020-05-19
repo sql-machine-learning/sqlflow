@@ -97,6 +97,7 @@ func TestSQLLexerError(t *testing.T) {
 func TestIsQuery(t *testing.T) {
 	a := assert.New(t)
 	a.True(isQuery("select * from iris.iris"))
+	a.True(isQuery("-- comment some thing\nselect * from iris.iris"))
 	a.True(isQuery("show create table iris.iris"))
 	a.True(isQuery("show databases"))
 	a.True(isQuery("show tables"))

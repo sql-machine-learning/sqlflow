@@ -1,5 +1,4 @@
 #!/bin/bash
-
 # Copyright 2020 The SQLFlow Authors. All rights reserved.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,9 +14,10 @@
 
 set -e
 
-# Install odpscmd for submitting Alps predict job with ODPS UDF script.
-# TODO(Yancey1989): using gomaxcompute instead of the odpscmd command-line tool.
-wget -q http://docs-aliyun.cn-hangzhou.oss.aliyun-inc.com/assets/attach/119096/cn_zh/1557995455961/odpscmd_public.zip
-unzip -qq odpscmd_public.zip -d /usr/local/odpscmd
-ln -s /usr/local/odpscmd/bin/odpscmd /usr/local/bin/odpscmd
-rm -rf odpscmd_public.zip
+# Travis CI VMs and Vagrant provisioning allow sudo without password.
+K8S_RELEASE_SITE="https://storage.googleapis.com/kubernetes-release/release"
+
+axel --quiet --output kubectl \
+     $K8S_RELEASE_SITE/v$K8S_VERSION/bin/linux/amd64/kubectl
+chmod a+x kubectl
+sudo mv kubectl /usr/local/bin/kubectl

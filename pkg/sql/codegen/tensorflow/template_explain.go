@@ -36,6 +36,7 @@ type explainFiller struct {
 
 const boostedTreesExplainTemplateText = `
 import tensorflow as tf
+import sqlflow_submitter
 from sqlflow_submitter.tensorflow import explain
 from tensorflow.estimator import DNNClassifier, DNNRegressor, LinearClassifier, LinearRegressor, BoostedTreesClassifier, BoostedTreesRegressor, DNNLinearCombinedClassifier, DNNLinearCombinedRegressor
 try:
@@ -86,7 +87,7 @@ import json
 summaryAttrs = json.loads('''{{.SummaryParams}}''')
 
 explain.explain(datasource="{{.DataSource}}",
-                estimator_cls={{.EstimatorClass}},
+                estimator_string="""{{.EstimatorClass}}""",
                 select="""{{.Select}}""",
                 feature_columns=feature_columns,
                 feature_column_names=feature_column_names,

@@ -1,5 +1,4 @@
 #!/bin/bash
-
 # Copyright 2020 The SQLFlow Authors. All rights reserved.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,4 +14,12 @@
 
 set -e
 
-apt-get install -y curl wget unzip git > /dev/null
+# c.f. https://kubernetes.io/docs/tasks/tools/install-minikube/
+MINIKUBE_RELEASE_SITE="https://storage.googleapis.com/minikube/releases"
+axel --quiet --output minikube \
+     $MINIKUBE_RELEASE_SITE/v$MINIKUBE_VERSION/minikube-linux-amd64
+chmod a+x minikube
+sudo mv minikube /usr/local/bin/minikube
+
+# Kubernetes 1.18.2 requires conntrack.
+sudo apt-get -qq install -y conntrack

@@ -15,6 +15,10 @@
 
 set -e
 
-wget -q https://github.com/protocolbuffers/protobuf/releases/download/v3.7.1/protoc-3.7.1-linux-x86_64.zip
-unzip -qq protoc-3.7.1-linux-x86_64.zip -d /usr/local
-rm protoc-3.7.1-linux-x86_64.zip
+apt-get -qq install -y python3 python3-pip > /dev/null
+ln -s /usr/bin/python3 /usr/local/bin/python
+
+# Upgrade pip would creates /usr/local/bin/pip.  Update setuptools
+# because https://github.com/red-hat-storage/ocs-ci/pull/971/files
+pip3 install --quiet --upgrade pip setuptools six
+rm -rf $HOME/.cache/pip/*

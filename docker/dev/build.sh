@@ -19,28 +19,27 @@ set -e
 # $SQLFLOWPATH, or $PWD.
 SQLFLOWPATH=${SQLFLOWPATH:=$PWD}
 cd $SQLFLOWPATH
-
-# The directory saving binaries
 SQLFLOW_BIN=$SQLFLOWPATH/build
+echo "Build $SQLFLOWPATH into $SQLFLOW_BIN ..."
 
-# Build sqlflowserver, sqlflow, and step into $SQLFLOW_BIN
+echo "Build sqlflowserver, sqlflow, and step into $SQLFLOW_BIN ..."
 go generate ./...
 GOBIN=$SQLFLOW_BIN go install ./...
 
-# Build Couler
+echo "Build $SQLFLOWPATH/python/couler into $SQLFLOW_BIN ..."
 cd $SQLFLOWPATH/python/couler
-python setup.py bdist_wheel --dist-dir $SQLFLOW_BIN
+python setup.py bdist_wheel -q --dist-dir $SQLFLOW_BIN > /dev/null
 
-# Build Fluid
+echo "Build Fluid ..."
 cd $SQLFLOW_BIN
 if [[ ! -d fluid ]]; then
     git clone https://github.com/sql-machine-learning/fluid.git
 fi
 cd fluid
 git checkout ceda474
-python setup.py bdist_wheel --dist-dir $SQLFLOW_BIN
+python setup.py bdist_wheel -q --dist-dir $SQLFLOW_BIN > /dev/null
 
-# Build parser gRPC servers in Java.
+echo "Build parser gRPC servers in Java ..."
 # Make mvn compile quiet
 export MAVEN_OPTS="-Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn"
 
@@ -63,16 +62,16 @@ protoc --java_out=src/main/java \
 mvn -B -q clean compile assembly:single
 cp target/*.jar $SQLFLOW_BIN
 
-# Build model zoo.
+echo "Build model zoo ..."
 cd $SQLFLOW_BIN
 if [[ ! -d models ]]; then
     git clone https://github.com/sql-machine-learning/models
 fi
 cd models
 git checkout c897963f821d515651de79cb4ef1fbf6126ecaa5
-python setup.py bdist_wheel --dist-dir $SQLFLOW_BIN
+python setup.py bdist_wheel -q --dist-dir $SQLFLOW_BIN > /dev/null
 
-# Convert tutorials from Markdown to IPython notebooks.
+echo "Convert tutorials from Markdown to IPython notebooks ..."
 mkdir -p $SQLFLOW_BIN/tutorial
 for file in $SQLFLOWPATH/doc/tutorial/*.md; do
     base=$(basename -- "$file")

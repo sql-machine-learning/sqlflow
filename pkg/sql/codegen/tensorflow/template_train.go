@@ -35,6 +35,7 @@ type trainFiller struct {
 const tfTrainTemplateText = `
 import copy
 import tensorflow as tf
+import sqlflow_submitter
 from sqlflow_submitter.tensorflow.train import train
 from sqlflow_submitter.tensorflow.get_tf_version import tf_is_version2
 from tensorflow.estimator import (DNNClassifier,
@@ -113,7 +114,7 @@ train_max_steps = {{index .TrainParams "max_steps" | attrToPythonValue}}
 train_max_steps = None if train_max_steps == 0 else train_max_steps
 
 train(datasource="{{.DataSource}}",
-      estimator={{.Estimator}},
+      estimator_string="""{{.Estimator}}""",
       select="""{{.TrainSelect}}""",
       validation_select="""{{.ValidationSelect}}""",
       feature_columns=feature_columns,
