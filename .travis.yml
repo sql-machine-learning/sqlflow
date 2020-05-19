@@ -1,5 +1,5 @@
 language: go
-
+dist: bionic
 
 # SQLFlow uses sqlflow.org/sqlflow as vanity import path. TravisCI
 # supports it via go_import_path.  Ref:
