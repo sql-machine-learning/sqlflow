@@ -444,7 +444,11 @@ func parseExpression(e interface{}) (interface{}, error) {
 					continue
 				}
 
-				// parse negative integer
+				/**
+				 * Parse negative integer.
+				 * See https://github.com/sql-machine-learning/sqlflow/blob/develop/pkg/parser/extended_syntax_parser.y#L371
+				 * for the Lisp S-expression of negative number in details.
+				 */
 				if len(expr.Sexp) == 2 && (*expr.Sexp[0]).Value == negative {
 					intVal, err := strconv.Atoi((*expr.Sexp[1]).Value)
 					if err == nil {
@@ -582,7 +586,7 @@ func parseBucketColumn(el *parser.ExprList) (*ir.BucketColumn, error) {
 	var source ir.FeatureColumn
 	var err error
 
-	if sourceExprList.Sexp == nil {
+	if sourceExprList.Type != 0 {
 		source, err = parseDefaultNumericColumn(sourceExprList)
 		if err != nil {
 			return nil, fmt.Errorf("key of BUCKET must be NUMERIC or column name, which is %s", sourceExprList.Value)
