@@ -686,6 +686,7 @@ func CaseShowDatabases(t *testing.T) {
 		"hive":                    "", // if current mysql is also used for hive
 		"default":                 "", // if fetching default hive databases
 		"sqlflow":                 "", // to save model zoo trained models
+		"imdb":                    "",
 	}
 	for i := 0; i < len(resp); i++ {
 		AssertContainsAny(a, expectedDBs, resp[i][0])
