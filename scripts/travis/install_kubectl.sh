@@ -18,6 +18,8 @@ set -e
 K8S_RELEASE_SITE="https://storage.googleapis.com/kubernetes-release/release"
 
 # DEBUG: add --quiet back
+echo axel --output kubectl \
+     $K8S_RELEASE_SITE/v$K8S_VERSION/bin/linux/amd64/kubectl
 axel --output kubectl \
      $K8S_RELEASE_SITE/v$K8S_VERSION/bin/linux/amd64/kubectl
 chmod a+x kubectl
