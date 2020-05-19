@@ -16,7 +16,9 @@ set -e
 
 # Travis CI VMs and Vagrant provisioning allow sudo without password.
 K8S_RELEASE_SITE="https://storage.googleapis.com/kubernetes-release/release"
-axel --quiet --output kubectl \
+
+# DEBUG: add --quiet back
+axel --output kubectl \
      $K8S_RELEASE_SITE/v$K8S_VERSION/bin/linux/amd64/kubectl
 chmod a+x kubectl
 sudo mv kubectl /usr/local/bin/kubectl
