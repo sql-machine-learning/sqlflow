@@ -193,9 +193,10 @@ def pai_download_table_data_worker(dname, feature_specs, feature_column_names,
                                          feature_specs,
                                          slice_id=slice_id,
                                          slice_count=SLICE_NUM)()
+    selected_cols = db.pai_selected_cols(pai_table)
     filename = "{}/{}.txt".format(dname, slice_id)
     dump_dmatrix(filename, gen, feature_column_names, feature_specs,
-                 label_spec)
+                 label_spec, selected_cols)
 
 
 if __name__ == "__main__":

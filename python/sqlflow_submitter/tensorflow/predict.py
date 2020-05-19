@@ -132,6 +132,19 @@ def keras_predict(estimator, model_params, save, result_table, is_pai,
     del pred_dataset
 
 
+def write_cols_from_selected(result_col_name, selected_cols):
+    write_cols = selected_cols[:]
+    if result_col_name in selected_cols:
+        target_col_index = selected_cols.index(result_col_name)
+        del write_cols[target_col_index]
+    else:
+        target_col_index = -1
+    # always keep the target column to be the last column
+    # on writing prediction result
+    write_cols.append(result_col_name)
+    return write_cols, target_col_index
+
+
 def estimator_predict(estimator, model_params, save, result_table,
                       feature_column_names, feature_column_names_map,
                       feature_columns, feature_metas, result_col_name,
@@ -148,11 +161,7 @@ def estimator_predict(estimator, model_params, save, result_table,
         pai_table_parts = pai_table.split(".")
         formatted_pai_table = "odps://%s/tables/%s" % (pai_table_parts[0],
                                                        pai_table_parts[1])
-
-        # TODO(yancey1989): fetch selected cols on PAI
-        write_cols = selected_cols = feature_column_names
-        target_col_index = -1
-
+        selected_cols = db.pai_selected_cols(formatted_pai_table)
         predict_generator = db.pai_maxcompute_db_generator(
             formatted_pai_table, feature_column_names, None, feature_metas)()
 
@@ -161,19 +170,12 @@ def estimator_predict(estimator, model_params, save, result_table,
 
         # bypass all selected cols to the prediction result table
         selected_cols = db.selected_cols(conn.driver, conn, select)
-        write_cols = selected_cols[:]
-        if result_col_name in selected_cols:
-            target_col_index = selected_cols.index(result_col_name)
-            del write_cols[target_col_index]
-        else:
-            target_col_index = -1
-        # always keep the target column to be the last column
-        # on writing prediction result
-        write_cols.append(result_col_name)
-
         predict_generator = db.db_generator(conn.driver, conn, select,
                                             feature_column_names, None,
                                             feature_metas)()
+
+    write_cols, target_col_index = write_cols_from_selected(
+        result_col_name, selected_cols)
     # load from the exported model
     with open("exported_path", "r") as fn:
         export_path = fn.read()
