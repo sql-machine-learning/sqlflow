@@ -46,9 +46,10 @@ RUN pip install --quiet /build/*.whl \
         && mkdir -p $SQLFLOW_PARSER_SERVER_LOADING_PATH \
         && mv /build/*.jar $SQLFLOW_PARSER_SERVER_LOADING_PATH \
         && mv /build/tutorial /workspace
+WORKDIR /workspace
 
-# Expose MySQL server, SQLFlow gRPC server, and Jupyter Notebook server port.
-EXPOSE 3306 50051 8888
+# Expose SQLFlow gRPC server and Jupyter Notebook server port.
+EXPOSE 50051 8888
 
 ADD docker/ci/start.sh /
 CMD ["bash", "/start.sh"]

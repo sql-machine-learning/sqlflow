@@ -44,6 +44,10 @@ jobs:
     script:
     - set -e
     - $TRAVIS_BUILD_DIR/scripts/travis/build.sh
+    - cd $TRAVIS_BUILD_DIR
+    - docker build -t sqlflow:mysql -f docker/mysql/Dockerfile .
+    - docker run --rm -d -P --name mysql_server
+      -v $TRAVIS_BUILD_DIR:/work sqlflow:mysql
     - docker run --rm -v $TRAVIS_BUILD_DIR:/work -w /work sqlflow:ci
       scripts/test/units.sh
     - docker run --rm -v $TRAVIS_BUILD_DIR:/work -w /work sqlflow:ci

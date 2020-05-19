@@ -12,18 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-SQLFLOW_NOTEBOOK_DIR=${SQLFLOW_NOTEBOOK_DIR:-/workspace}
+set -e
 
-function setup_sqlflow_notebook() {
-    cd "$SQLFLOW_NOTEBOOK_DIR" ||
-        ( echo "Cannot cd to $SQLFLOW_NOTEBOOK_DIR"; exit 1 )
-  DS="mysql://root:root@tcp(${SQLFLOW_MYSQL_HOST}:${SQLFLOW_MYSQL_PORT})/?maxAllowedPacket=0"
-  echo "Connect to the datasource $DS ..."
-  SQLFLOW_DATASOURCE="$DS" SQLFLOW_SERVER="localhost:50051" \
-                    jupyter notebook --ip=0.0.0.0 --port=8888 --allow-root \
-                    --NotebookApp.token=''
-  cd ..
-}
-
+echo "Start SQLFlow server ..."
 sqlflowserver &
-setup_sqlflow_notebook
+
+# Wait for the creation of file /work/mysql-inited.  The entrypoint
+# of sqlflow:mysql should create this file on a bind mount of the host
+# filesystem.  So, the container running this script should also bind
+# mount the same host directory to /work.
+while read i; do if [ "$i" = "mysql-inited" ]; then break; fi; done \
+    < <(inotifywait  -e create,open --format '%f' --quiet /work --monitor)
+
+echo "Setup Jupyter notebook connecting to $DS ..."
+# The following data source URL implies that the MySQL server runs in
+# a container, and the container running this script must have the
+# option --net=container:mysql_server_container, so this script can
+# access the MySQL server running in another container as it runs in
+# the same container.
+SQLFLOW_DATASOURCE="mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0" \
+SQLFLOW_SERVER="localhost:50051" \
+  jupyter notebook --ip=0.0.0.0 --port=8888 --allow-root --NotebookApp.token=''
