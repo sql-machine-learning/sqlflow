@@ -40,7 +40,7 @@ if [[ "$TRAVIS_BRANCH" == "develop" ]]; then
         docker run --rm \
                -e COVERALLS_TOKEN="$COVERALLS_TOKEN" \
                -v "$TRAVIS_BUILD_DIR":/work -w /work \
-               sqlflow:ci \
+               sqlflow:dev \
                /usr/local/bin/goveralls \
                -coverprofile=coverage.out \
                -service=travis-ci \
