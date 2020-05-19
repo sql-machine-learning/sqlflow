@@ -87,13 +87,14 @@ def input_fn(select,
             feature_types.append(get_dtype(feature_metas[name]["dtype"]))
             shapes.append(feature_metas[name]["shape"])
     if is_pai:
-        return pai_dataset("odps://{}/tables/{}".format(*pai_table.split(".")),
+        pai_table = "odps://{}/tables/{}".format(*pai_table.split("."))
+        return pai_dataset(pai_table,
                            feature_column_names,
                            label_meta,
                            feature_metas,
                            slice_id=worker_id,
                            slice_count=num_workers)
-        selected_cols = feature_column_names
+        selected_cols = db.pai_selected_cols(pai_table)
     else:
         conn = db.connect_with_data_source(datasource)
         gen = db.db_generator(conn.driver, conn, select, feature_column_names,
