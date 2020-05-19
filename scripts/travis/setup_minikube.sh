@@ -14,59 +14,30 @@
 
 set -e
 
-export MINIKUBE_WANTUPDATENOTIFICATION=false
-export MINIKUBE_WANTREPORTERRORPROMPT=false
-export MINIKUBE_HOME=$HOME
-export CHANGE_MINIKUBE_NONE_USER=true
-export KUBECONFIG=$HOME/.kube/config
-export K8S_VERSION=1.14.0
-export MINIKUBE_VERSION=1.1.1
-
 if [[ "$TRAVIS_OS_NAME" != "linux" ]]; then
     echo "$0 can run on Linux host only"
     exit 1
 fi
 
 echo "Install axel on Travis CI VM ..."
-sudo apt-get -qq update > /dev/null
-sudo apt-get -qq install -y axel > /dev/null
+$(dirname $0)/install_axel.sh
+
+echo "Export Kubernetes environment variables ..."
+# NOTE: According to https://stackoverflow.com/a/16619261/724872,
+# source is very necessary here.
+source $(dirname $0)/export_k8s_vars.sh
 
 echo "Install kubectl ..."
-# Travis CI VMs allow sudo without password.
-K8S_RELEASE_SITE="https://storage.googleapis.com/kubernetes-release/release"
-axel --quiet --output kubectl \
-     $K8S_RELEASE_SITE/v$K8S_VERSION/bin/linux/amd64/kubectl
-chmod a+x kubectl
-sudo mv kubectl /usr/local/bin/kubectl
+$(dirname $0)/install_kubectl.sh
 
 echo "Install minikube ..."
-MINIKUBE_RELEASE_SITE="https://storage.googleapis.com/minikube/releases"
-axel --quiet --output minikube \
-     $MINIKUBE_RELEASE_SITE/v$MINIKUBE_VERSION/minikube-linux-amd64
-chmod a+x minikube
-sudo mv minikube /usr/local/bin/minikube
+$(dirname $0)/install_minikube.sh
 
 echo "Configure minikube ..."
 mkdir -p $HOME/.kube $HOME/.minikube
 touch $KUBECONFIG
 
-echo "Start minikube cluster ..."
-sudo minikube start \
-     --vm-driver=none \
-     --kubernetes-version=v$K8S_VERSION \
-     --cpus 2 \
-     --memory 6144
+$(dirname $0)/start_minikube.sh
 sudo chown -R travis: $HOME/.minikube/
-kubectl cluster-info
 
-echo "Install Argo on minikube cluster ..."
-kubectl create namespace argo
-kubectl apply -n argo -f \
-  https://raw.githubusercontent.com/argoproj/argo/v2.7.7/manifests/install.yaml
-kubectl create rolebinding default-admin \
-  --clusterrole=admin \
-  --serviceaccount=default:default
-
-# echo "Install Tekton on minikube cluster ..."
-# TEKTON_RELEASE_SITE="https://storage.googleapis.com/tekton-releases/pipeline"
-# kubectl apply --filename $TEKTON_RELEASE_SITE/previous/v0.10.1/release.yaml
+$(dirname $0)/start_argo.sh
