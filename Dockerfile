@@ -15,9 +15,6 @@ RUN /ci/install-pips.bash
 COPY docker/ci/install-jupyter.bash /ci/
 RUN /ci/install-jupyter.bash
 
-COPY docker/ci/install-mysql.bash /ci/
-RUN /ci/install-mysql.bash
-
 COPY docker/ci/install-odps.bash /ci/
 RUN /ci/install-odps.bash
 
@@ -32,16 +29,6 @@ RUN /ci/install-kubectl.bash
 
 # scripts/test/workflow require Docker.
 RUN apt-get -qq install -y docker.io sudo > /dev/null
-
-# Install sample datasets for CI and demo.
-COPY doc/datasets/popularize_churn.sql \
-     doc/datasets/popularize_iris.sql \
-     doc/datasets/popularize_boston.sql \
-     doc/datasets/popularize_creditcardfraud.sql \
-     doc/datasets/popularize_imdb.sql \
-     doc/datasets/create_model_db.sql \
-     /docker-entrypoint-initdb.d/
-VOLUME /var/lib/mysql
 
 # Install the Python source code.
 COPY python /usr/local/sqlflow/python
