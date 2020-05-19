@@ -23,7 +23,9 @@ echo "Install axel on Travis CI VM ..."
 $(dirname $0)/install_axel.sh
 
 echo "Export Kubernetes environment variables ..."
-$(dirname $0)/export_k8s_vars.sh
+# NOTE: According to https://stackoverflow.com/a/16619261/724872,
+# source is very necessary here.
+source $(dirname $0)/export_k8s_vars.sh
 
 echo "Install kubectl ..."
 $(dirname $0)/install_kubectl.sh
