@@ -14,28 +14,12 @@
 
 set -e
 
-if [[ "$TRAVIS_OS_NAME" != "linux" ]]; then
-    echo "$0 can run on Linux host only"
-    exit 1
-fi
+# c.f. https://kubernetes.io/docs/tasks/tools/install-minikube/
+MINIKUBE_RELEASE_SITE="https://storage.googleapis.com/minikube/releases"
+axel --quiet --output minikube \
+     $MINIKUBE_RELEASE_SITE/v$MINIKUBE_VERSION/minikube-linux-amd64
+chmod a+x minikube
+sudo mv minikube /usr/local/bin/minikube
 
-echo "Install axel on Travis CI VM ..."
-$(dirname $0)/install_axel.sh
-
-echo "Export Kubernetes environment variables ..."
-$(dirname $0)/export_k8s_vars.sh
-
-echo "Install kubectl ..."
-$(dirname $0)/install_kubectl.sh
-
-echo "Install minikube ..."
-$(dirname $0)/install_minikube.sh
-
-echo "Configure minikube ..."
-mkdir -p $HOME/.kube $HOME/.minikube
-touch $KUBECONFIG
-
-$(dirname $0)/start_minikube.sh
-sudo chown -R travis: $HOME/.minikube/
-
-$(dirname $0)/start_argo.sh
+# Kubernetes 1.18.2 requires conntrack.
+sudo apt-get -qq install -y conntrack

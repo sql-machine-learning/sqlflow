@@ -14,28 +14,10 @@
 
 set -e
 
-if [[ "$TRAVIS_OS_NAME" != "linux" ]]; then
-    echo "$0 can run on Linux host only"
-    exit 1
-fi
-
-echo "Install axel on Travis CI VM ..."
-$(dirname $0)/install_axel.sh
-
-echo "Export Kubernetes environment variables ..."
-$(dirname $0)/export_k8s_vars.sh
-
-echo "Install kubectl ..."
-$(dirname $0)/install_kubectl.sh
-
-echo "Install minikube ..."
-$(dirname $0)/install_minikube.sh
-
-echo "Configure minikube ..."
-mkdir -p $HOME/.kube $HOME/.minikube
-touch $KUBECONFIG
-
-$(dirname $0)/start_minikube.sh
-sudo chown -R travis: $HOME/.minikube/
-
-$(dirname $0)/start_argo.sh
+echo "Install Argo on minikube cluster ..."
+kubectl create namespace argo
+kubectl apply -n argo -f \
+  https://raw.githubusercontent.com/argoproj/argo/v2.7.7/manifests/install.yaml
+kubectl create rolebinding default-admin \
+  --clusterrole=admin \
+  --serviceaccount=default:default
