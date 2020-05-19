@@ -16,3 +16,6 @@
 set -e
 
 apt-get -qq install -y openjdk-8-jre > /dev/null
+
+rm -f /usr/bin/java
+ln -s /usr/lib/jvm/java-8-openjdk-amd64/bin/java /usr/bin/java
