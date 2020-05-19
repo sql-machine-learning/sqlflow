@@ -1691,7 +1691,7 @@ INTO e2etest_keras_dnn_model_distributed;`, caseTrainTable, caseTestTable)
 	a.NoError(err)
 }
 
-func CasePassSelectedColsToPredictResultTable(t *testing.T) {
+func CasePAIMaxComputeTrainPredictDiffColumns(t *testing.T) {
 	t.Parallel()
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`SELECT sepal_length, sepal_width, class FROM %s
@@ -1927,6 +1927,7 @@ INTO e2etest_dense_input;`, caseTrainTable)
 func CasePAIMaxComputeTrainXGBoost(t *testing.T) {
 	t.Parallel()
 	a := assert.New(t)
+
 	trainSQL := fmt.Sprintf(`SELECT * FROM %s
 	TO TRAIN xgboost.gbtree
 	WITH
@@ -1939,17 +1940,13 @@ func CasePAIMaxComputeTrainXGBoost(t *testing.T) {
 	LABEL class
 	INTO e2etest_xgb_classi_model;`, caseTrainTable, caseTrainTable)
 	_, _, _, err := connectAndRunSQL(trainSQL)
-	if err != nil {
-		a.Fail("Run trainSQL error: %v", err)
-	}
+	a.NoError(err, "Run trainSQL error.")
 
 	predSQL := fmt.Sprintf(`SELECT * FROM %s
 TO PREDICT %s.pai_xgb_predict.class
 USING e2etest_xgb_classi_model;`, caseTestTable, caseDB)
 	_, _, _, err = connectAndRunSQL(predSQL)
-	if err != nil {
-		a.Fail("Run predSQL error: %v", err)
-	}
+	a.NoError(err, "Run predSQL error.")
 
 	evalSQL := fmt.Sprintf(`SELECT * FROM %s
 TO EVALUATE e2etest_xgb_classi_model
@@ -1957,9 +1954,7 @@ WITH validation.metrics="accuracy_score"
 LABEL class
 INTO %s.e2etest_xgb_evaluate_result;`, caseTestTable, caseDB)
 	_, _, _, err = connectAndRunSQL(evalSQL)
-	if err != nil {
-		a.Fail("Run evalSQL error: %v", err)
-	}
+	a.NoError(err, "Run evalSQL error.")
 
 	explainSQL := fmt.Sprintf(`SELECT * FROM %s
 TO EXPLAIN e2etest_xgb_classi_model
@@ -1967,9 +1962,7 @@ WITH label_col=class
 USING TreeExplainer
 INTO %s.e2etest_xgb_explain_result;`, caseTrainTable, caseDB)
 	_, _, _, err = connectAndRunSQL(explainSQL)
-	if err != nil {
-		a.Fail("Run trainSQL error: %v", err)
-	}
+	a.NoError(err, "Run explainSQL error.")
 }
 
 func CasePAIMaxComputeTrainCustomModel(t *testing.T) {
@@ -2122,7 +2115,7 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 		t.Run("CasePAIMaxComputeTrainPredictCategoricalFeature", CasePAIMaxComputeTrainPredictCategoricalFeature)
 		t.Run("CasePAIMaxComputeTrainTFBTDistributed", CasePAIMaxComputeTrainTFBTDistributed)
 		t.Run("CasePAIMaxComputeTrainDistributedKeras", CasePAIMaxComputeTrainDistributedKeras)
-		t.Run("CasePassSelectedColsToPredictResultTable", CasePassSelectedColsToPredictResultTable)
+		t.Run("CasePAIMaxComputeTrainPredictDiffColumns", CasePAIMaxComputeTrainPredictDiffColumns)
 		// FIXME(weiguoz): The dataset is too small for all reader to read
 		// Let's bring up this test case if we have a big dataset.
 		// t.Run("CasePAIMaxComputeTrainXGBDistributed", CasePAIMaxComputeTrainXGBDistributed)
