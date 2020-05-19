@@ -4,11 +4,11 @@
 # root directory of the SQLFlow source tree.
 #
 #  cd $(git rev-parse --show-toplevel)
-#  docker build -t sqlflow:mysql -f docker/mysqlflow/Dockerfile .
+#  docker build -t sqlflow:mysql -f docker/mysql/Dockerfile .
 FROM ubuntu:18.04
 
-COPY docker/mysql/install-mysql.bash /
-RUN /install-mysql.bash
+COPY docker/mysql/install-mysql-server.bash /
+RUN /install-mysql-server.bash
 
 # Install sample datasets for CI and demo.
 COPY doc/datasets/popularize_churn.sql \
@@ -21,5 +21,5 @@ COPY doc/datasets/popularize_churn.sql \
 
 VOLUME /var/lib/mysql
 
-ADD docker/sqlflow/start.bash /
+COPY docker/mysql/start.bash /
 CMD ["/start.bash"]

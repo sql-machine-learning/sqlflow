@@ -15,6 +15,9 @@ RUN /ci/install-pips.bash
 COPY docker/ci/install-jupyter.bash /ci/
 RUN /ci/install-jupyter.bash
 
+COPY docker/ci/install-mysql-client.bash /ci/
+RUN /ci/install-mysql-client.bash
+
 COPY docker/ci/install-odps.bash /ci/
 RUN /ci/install-odps.bash
 
