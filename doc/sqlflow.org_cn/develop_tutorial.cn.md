@@ -23,6 +23,7 @@ Docker 是一个轻量的虚拟化容器系统，它可以帮助我们创建一�
 
 ### Kubernetes
 Kubernetes 是一个开源的集群管理工具，它可以帮助我们完成自动部署，容量伸缩，容器生命周期管理等工作。Kubernetes 系统中包含很多概念，可以从[这里](https://kubernetes.io/docs/concepts/)进行了解。Kubernetes 通常采用 Docker 作为容器部署应用，下面这幅图来自[官方文档](https://kubernetes.io/docs/tutorials/kubernetes-basics/create-cluster/cluster-intro/)能够说明系统中各个概念的关系。
+
 ![](https://d33wubrfki0l68.cloudfront.net/152c845f25df8e69dd24dd7b0836a289747e258a/4a1d2/docs/tutorials/kubernetes-basics/public/images/module_02_first_app.svg)
 
 ### Argo Workflows
@@ -34,35 +35,35 @@ gRPC是一个高性能的 RPC 框架。gRPC 使用 [Protocol Buffers](https://de
 ### 开发环境搭建
 这里我们使用 minikube 搭建 Kubernetes 环境，并且在 Kubernetes 中部署 Argo Workflows，然后在 Docker 中部署 SQLFlow server 并通过 Jupyter Notebook 工具进行查询。我们在 macOS 上进行操作，其他操作系统方式可能稍有不同，请参考官方文档。(待完善，缺一个部署图)
 1. 下载并安装 minikube 
-```bash
-brew install kubernetes-cli minikube
-```
+    ```bash
+    brew install kubernetes-cli minikube
+    ```
 1. 根据[官方文档](https://www.virtualbox.org/)进行安装 VirtualBox。
 
 1. 使用 minikube 启动 Kubernetes 集群，这个集群只有一个节点。通过 dashboard 查看集群运行情况，运行 dashboard 命令后会在浏览器中自动打开其界面
-```bash
-minikube start --vm-driver=virtualbox
-nohup minikube dashboard &
-```
+    ```bash
+    minikube start --vm-driver=virtualbox
+    nohup minikube dashboard &
+    ```
 1. 下载 SQLFlow 代码
-```bash
-git clone https://github.com/sql-machine-learning/sqlflow.git sqlflow
-cd sqlflow
-```
+    ```bash
+    git clone https://github.com/sql-machine-learning/sqlflow.git sqlflow
+    cd sqlflow
+    ```
 1. 通过代码中的脚本启动 Argo Workflow 服务
-```bash
-scripts/travis/start_argo.sh
-```
+    ```bash
+    scripts/travis/start_argo.sh
+    ```
 1. 运行 SQLFlow server (待补全，现有的start.sh中不是Workflow方式运行的，需要参考 ci 中的 Workflow 运行方式)
-```bash
-docker pull sqlflow/sqlflow:ci
-docker run -it -p8888:8888 --name=sqlflow sqlflow/sqlflow:ci bash
-```
+    ```bash
+    docker pull sqlflow/sqlflow:ci
+    docker run -it -p8888:8888 --name=sqlflow sqlflow/sqlflow:ci bash
+    ```
 1. 打开 Jupyter Notebook 并运行 SQL，稍后会在页面上打印出iris.train 表中的前10条数据。
-```
-%%sqlfow
-select * from iris.train limti 10;
-```
+    ```
+    %%sqlfow
+    select * from iris.train limti 10;
+    ```
 
 ### 运行流程分析
 当我们在 Jupyter Notebook 中输入一段 SQL 程序之后发生了什么呢？下图展示了主要的流程：首先，用户在 Jupyter 上使用 magic 命令 %%sqlflow，然后输入 SQL 程序，这段程序会被 SQLFlow gRPC client发送到 SQLFlow server 上。server 解析 SQL 程序并生成一个 `.yaml` 文件，该文件包含了 Argo Workflow 的定义。将该文件提交到 Kubernetes 集群之后会被 Argo 解析，从而创建出 Container 来执行每一个步骤。在每个具体步骤执行的时候使用的是 SQLFlow 的 step image sqlflow:submitter。这个镜像会执行实际的操作，比如查询数据库或者是提交一个任务给 AI 引擎执行。
