@@ -48,10 +48,14 @@ jobs:
     - docker build -t sqlflow:mysql -f docker/mysql/Dockerfile .
     - docker run --rm -d -P --name mysql_server
       -v $TRAVIS_BUILD_DIR:/work sqlflow:mysql
-    - docker run --rm -v $TRAVIS_BUILD_DIR:/work -w /work sqlflow:ci
-      scripts/test/units.sh
-    - docker run --rm -v $TRAVIS_BUILD_DIR:/work -w /work sqlflow:ci
-      scripts/travis/upload_coveralls.sh
+    - docker run --rm
+      -v $TRAVIS_BUILD_DIR:/work -w /work
+      --net=host
+      sqlflow:ci scripts/test/units.sh
+    - docker run --rm
+      -v $TRAVIS_BUILD_DIR:/work -w /work
+      --net=host
+      sqlflow:ci scripts/travis/upload_coveralls.sh
   - env: SQLFLOW_TEST_DB=hive # run more parallel tests in the same stage:
     script:
     - set -e
@@ -65,9 +69,14 @@ jobs:
   - env: SQLFLOW_TEST_DB=maxcompute
     script:
     - set -e
+    - cd $TRAVIS_BUILD_DIR
+    - docker build -t sqlflow:mysql -f docker/mysql/Dockerfile .
+    - docker run --rm -d -P --name mysql_server
+      -v $TRAVIS_BUILD_DIR:/work sqlflow:mysql
     - $TRAVIS_BUILD_DIR/scripts/travis/build.sh
     - $TRAVIS_BUILD_DIR/scripts/travis/setup_minikube.sh
-    - docker run --rm --net=host
+    - docker run --rm
+      --net=host
       -v /var/run/docker.sock:/var/run/docker.sock
       -v $HOME/.kube:/root/.kube
       -v /home/$USER/.minikube/:/home/$USER/.minikube/
@@ -91,6 +100,10 @@ jobs:
   - env: SQLFLOW_TEST=workflow
     script:
     - set -e
+    - cd $TRAVIS_BUILD_DIR
+    - docker build -t sqlflow:mysql -f docker/mysql/Dockerfile .
+    - docker run --rm -d -P --name mysql_server
+      -v $TRAVIS_BUILD_DIR:/work sqlflow:mysql
     - $TRAVIS_BUILD_DIR/scripts/travis/setup_minikube.sh
     - eval $(sudo minikube docker-env)
     - $TRAVIS_BUILD_DIR/scripts/travis/build.sh
