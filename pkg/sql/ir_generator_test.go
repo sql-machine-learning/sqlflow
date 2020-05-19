@@ -404,3 +404,45 @@ func TestInferStringValue(t *testing.T) {
 	a.Equal(inferStringValue("\"2.3\""), "2.3")
 	a.Equal(inferStringValue("'2.3'"), "2.3")
 }
+
+func bucketColumnParserTestMain(bucketStr string) error {
+	stmtStr := fmt.Sprintf(`
+	SELECT petal_length, class
+	FROM iris.train
+	TO TRAIN sqlflow_models.my_bucket_column_model
+	WITH model.batch_size = 32
+	COLUMN BUCKET(%s)
+	LABEL class
+	INTO db.explain_result;
+	`, bucketStr)
+
+	pr, err := parser.Parse("mysql", stmtStr)
+
+	if err != nil {
+		return err
+	}
+
+	trainStmt, err := generateTrainStmt(pr[0].SQLFlowSelectStmt, false)
+	if err != nil {
+		return err
+	}
+
+	if _, ok := trainStmt.Features["feature_columns"][0].(*ir.BucketColumn); !ok {
+		return fmt.Errorf("feature column should be BucketColumn")
+	}
+
+	return nil
+}
+
+func TestBucketColumnParser(t *testing.T) {
+	a := assert.New(t)
+	a.NoError(bucketColumnParserTestMain("NUMERIC(petal_length, 1), [0, 10]"))
+	a.NoError(bucketColumnParserTestMain("NUMERIC(petal_length, 1), [-10, -5, 10]"))
+	a.NoError(bucketColumnParserTestMain("petal_length, [10, 20]"))
+	a.NoError(bucketColumnParserTestMain("petal_length, [-100]"))
+	a.NoError(bucketColumnParserTestMain("petal_length, [-100, -50]"))
+
+	a.Error(bucketColumnParserTestMain("NUMERIC(petal_length, 1), [10, 0]"))
+	a.Error(bucketColumnParserTestMain("NUMERIC(petal_length, 1), [-10, -10]"))
+	a.Error(bucketColumnParserTestMain("NUMERIC(petal_length, 1), [5, 5]"))
+}
