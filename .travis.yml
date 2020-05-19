@@ -46,7 +46,7 @@ jobs:
     - $TRAVIS_BUILD_DIR/scripts/travis/build.sh
     - cd $TRAVIS_BUILD_DIR
     - docker build -t sqlflow:mysql -f docker/mysql/Dockerfile .
-    - docker run --rm -d -P --name mysql_server
+    - docker run --rm -d -p 3306:3306 --name mysql_server
       -v $TRAVIS_BUILD_DIR:/work sqlflow:mysql
     - docker run --rm
       -v $TRAVIS_BUILD_DIR:/work -w /work
@@ -71,7 +71,7 @@ jobs:
     - set -e
     - cd $TRAVIS_BUILD_DIR
     - docker build -t sqlflow:mysql -f docker/mysql/Dockerfile .
-    - docker run --rm -d -P --name mysql_server
+    - docker run --rm -d -p 3306:3306 --name mysql_server
       -v $TRAVIS_BUILD_DIR:/work sqlflow:mysql
     - $TRAVIS_BUILD_DIR/scripts/travis/build.sh
     - $TRAVIS_BUILD_DIR/scripts/travis/setup_minikube.sh
@@ -102,7 +102,7 @@ jobs:
     - set -e
     - cd $TRAVIS_BUILD_DIR
     - docker build -t sqlflow:mysql -f docker/mysql/Dockerfile .
-    - docker run --rm -d -P --name mysql_server
+    - docker run --rm -d -p 3306:3306 --name mysql_server
       -v $TRAVIS_BUILD_DIR:/work sqlflow:mysql
     - $TRAVIS_BUILD_DIR/scripts/travis/setup_minikube.sh
     - eval $(sudo minikube docker-env)

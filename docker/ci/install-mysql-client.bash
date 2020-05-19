@@ -18,7 +18,9 @@ set -e
 echo "Install MySQL client library in C and Python ..."
 BUILD_ESSENTIAL="build-essential git" # required for building pip package
 MYSQL_CLIENT="libmysqlclient-dev libssl-dev" # libssl-dev for pip mysqlclient
-apt-get -qq install -y $BUILD_ESSENTIAL $MYSQL_CLIENT > /dev/null
+INOTIFYWAIT="inotify-tools" # Need inotifywait to wait for MySQL data population
+# shellcheck disable=SC2086
+apt-get -qq install -y $BUILD_ESSENTIAL $MYSQL_CLIENT $INOTIFYWAIT > /dev/null
 
 # Must install mysqlclient after installing MySQL server so it has mysql_config.
 pip install --quiet mysqlclient==1.4.4
