@@ -42,6 +42,7 @@ const (
 	square        = "SQUARE"
 	dense         = "DENSE"
 	comma         = "COMMA"
+	negative      = "-"
 )
 
 func generateTrainStmtWithInferredColumns(slct *parser.SQLFlowSelectStmt, connStr string, verifyLabel bool) (*ir.TrainStmt, error) {
@@ -440,13 +441,23 @@ func parseExpression(e interface{}) (interface{}, error) {
 					} else {
 						list = append(list, intVal)
 					}
-				} else {
-					value, err := parseExpression(&expr.Sexp)
-					if err != nil {
-						return nil, err
-					}
-					list = append(list, value)
+					continue
 				}
+
+				// parse negative integer
+				if len(expr.Sexp) == 2 && (*expr.Sexp[0]).Value == negative {
+					intVal, err := strconv.Atoi((*expr.Sexp[1]).Value)
+					if err == nil {
+						list = append(list, -intVal)
+						continue
+					}
+				}
+
+				value, err := parseExpression(&expr.Sexp)
+				if err != nil {
+					return nil, err
+				}
+				list = append(list, value)
 			}
 		}
 		return list, nil
@@ -465,10 +476,10 @@ func inferStringValue(expr string) interface{} {
 
 	// boolean. We pick the candidates which following the SQL usage from
 	// implementation of `strconv.ParseBool(expr)`.
-	switch expr {
-	case "true", "TRUE", "True":
+	switch strings.ToUpper(expr) {
+	case "TRUE":
 		return true
-	case "false", "FALSE", "False":
+	case "FALSE":
 		return false
 	}
 
@@ -502,6 +513,21 @@ func parseFeatureColumn(el *parser.ExprList) (ir.FeatureColumn, error) {
 	default:
 		return nil, fmt.Errorf("not supported expr: %s", head)
 	}
+}
+
+func parseDefaultNumericColumn(el *parser.Expr) (*ir.NumericColumn, error) {
+	key, err := expression2string(el)
+	if err != nil {
+		return nil, err
+	}
+	return &ir.NumericColumn{
+		FieldDesc: &ir.FieldDesc{
+			Name:     key,
+			DType:    ir.Float,
+			Shape:    []int{1},
+			IsSparse: false,
+		},
+	}, nil
 }
 
 func parseNumericColumn(el *parser.ExprList) (*ir.NumericColumn, error) {
@@ -538,27 +564,43 @@ func parseNumericColumn(el *parser.ExprList) (*ir.NumericColumn, error) {
 }
 
 func parseBucketColumn(el *parser.ExprList) (*ir.BucketColumn, error) {
-	help := "BUCKET(NUMERIC(...), BOUNDARIES)"
+	help := "BUCKET([NUMERIC(...)|col_name], BOUNDARIES)"
 	if len(*el) != 3 {
 		return nil, fmt.Errorf("bad BUCKET expression format: %s, should be like: %s", *el, help)
 	}
 
 	sourceExprList := (*el)[1]
 	boundariesExprList := (*el)[2]
-	if sourceExprList.Type != 0 {
-		return nil, fmt.Errorf("key of BUCKET must be NUMERIC, which is %v", sourceExprList)
+
+	var source ir.FeatureColumn
+	var err error
+
+	if sourceExprList.Sexp == nil {
+		source, err = parseDefaultNumericColumn(sourceExprList)
+		if err != nil {
+			return nil, fmt.Errorf("key of BUCKET must be NUMERIC or column name, which is %s", sourceExprList.Value)
+		}
+	} else {
+		source, err = parseFeatureColumn(&sourceExprList.Sexp)
+		if err != nil {
+			return nil, fmt.Errorf("key of BUCKET must be NUMERIC or column name, which is %s", sourceExprList.Sexp)
+		}
+		if _, ok := source.(*ir.NumericColumn); !ok {
+			return nil, fmt.Errorf("key of BUCKET must be NUMERIC or column name, which is %s", source)
+		}
 	}
-	source, err := parseFeatureColumn(&sourceExprList.Sexp)
-	if err != nil {
-		return nil, err
-	}
-	if _, ok := source.(*ir.NumericColumn); !ok {
-		return nil, fmt.Errorf("key of BUCKET must be NUMERIC, which is %s", source)
-	}
+
 	b, err := parseShape(boundariesExprList)
 	if err != nil {
 		return nil, fmt.Errorf("bad BUCKET boundaries: %s", err)
 	}
+
+	for idx := range b {
+		if idx >= 1 && b[idx-1] >= b[idx] {
+			return nil, fmt.Errorf("BUCKET boundaries should be in strictly ascending order, but got: %d", b)
+		}
+	}
+
 	return &ir.BucketColumn{
 		SourceColumn: source.(*ir.NumericColumn),
 		Boundaries:   b}, nil
