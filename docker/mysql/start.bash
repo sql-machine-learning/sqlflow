@@ -41,10 +41,13 @@ mysql -uroot -proot \
       -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'' IDENTIFIED BY 'root' WITH GRANT OPTION;"
 
 
-echo "Populate example datasets ..."
 # FIXME(typhoonzero): should let docker-entrypoint.sh do this work
 for f in /datasets/*; do
+    echo "Populate datasets $f ..."
     mysql -uroot -proot \
           --host "$SQLFLOW_MYSQL_HOST" --port "$SQLFLOW_MYSQL_PORT" \
           < "$f"
 done
+
+
+sleep infinity
