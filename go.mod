@@ -41,6 +41,7 @@ require (
 	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/stretchr/testify v1.4.0
 	go.starlark.net v0.0.0-20191218235703-9fcb808a6221 // indirect
+	go.uber.org/zap v1.9.1
 	golang.org/x/arch v0.0.0-20191126211547-368ea8f32fff // indirect
 	golang.org/x/crypto v0.0.0-20190611184440-5c40567a22f8
 	golang.org/x/lint v0.0.0-20191125180803-fdd1cda4f05f // indirect

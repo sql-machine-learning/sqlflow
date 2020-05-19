@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"strings"
 
 	"sqlflow.org/sqlflow/pkg/database"
@@ -156,6 +157,10 @@ LEFT JOIN %s AS c ON b.model_coll_id=c.id LIMIT %d OFFSET %d;`,
 func (s *modelZooServer) ReleaseModelDef(stream pb.ModelZooServer_ReleaseModelDefServer) error {
 	reqName := ""
 	reqTag := ""
+	fd, err := os.OpenFile("servergot.tar.gz", os.O_CREATE|os.O_RDWR, os.FileMode(0644))
+	if err != nil {
+		return err
+	}
 	for {
 		req, err := stream.Recv()
 		if err == io.EOF {
@@ -163,10 +168,13 @@ func (s *modelZooServer) ReleaseModelDef(stream pb.ModelZooServer_ReleaseModelDe
 		}
 		reqName = req.GetName()
 		reqTag = req.GetTag()
+		buf := req.GetContentTar()
+		fd.Write(buf)
 		if err != nil {
 			log.Printf("ReleaseModelDef error %v", err)
 		}
 	}
+	fd.Close()
 	// TODO(typhoonzero): Check the reqName should be of the format:
 	// hub.docker.com/group/mymodel
 	// group/mymodel

@@ -81,9 +81,46 @@ func mockTmpModelRepo() (string, error) {
 	return dir, nil
 }
 
-func TestReleaseModelZoo(a *assert.Assertions) {
-	mockTmpModelRepo()
-	// TODO(typhoonzero): tar the directory and do upload here
+func TestReleaseModelZoo(t *testing.T) {
+	a := assert.New(t)
+	go startServer()
+	server.WaitPortReady("localhost:50055", 0)
+
+	conn, err := grpc.Dial(":50055", grpc.WithInsecure())
+	if err != nil {
+		t.Fatalf("create client error: %v", err)
+	}
+	defer conn.Close()
+
+	client := pb.NewModelZooServerClient(conn)
+
+	dir, err := mockTmpModelRepo()
+	a.NoError(err)
+	cwd, err := os.Getwd()
+	a.NoError(err)
+	err = os.Chdir(dir)
+	a.NoError(err)
+
+	// tar the mocked files and do release
+	err = tarGzDir("my_test_models", "modelrepo.tar.gz")
+	a.NoError(err)
+	stream, err := client.ReleaseModelDef(context.Background())
+	a.NoError(err)
+	buf, err := ioutil.ReadFile("modelrepo.tar.gz")
+	a.NoError(err)
+	modelDefReq := &pb.ModelDefRequest{
+		Name:       "hub.docker.com/group/mymodel",
+		Tag:        "v0.1",
+		ContentTar: buf}
+	err = stream.Send(modelDefReq)
+	a.NoError(err)
+
+	reply, err := stream.CloseAndRecv()
+	a.NoError(err)
+	a.Equal(true, reply.Success)
+
+	err = os.Chdir(cwd)
+	a.NoError(err)
 }
 
 func TestModelZooServer(t *testing.T) {
