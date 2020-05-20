@@ -14,7 +14,6 @@
 package feature
 
 import (
-	"fmt"
 	"os"
 	"regexp"
 	"testing"
@@ -165,9 +164,8 @@ LABEL class INTO model_table;`,
 
 func TestFeatureDerivation(t *testing.T) {
 	a := assert.New(t)
-	dataSource := fmt.Sprintf("mysql://%s", database.GetTestingMySQLConfig().FormatDSN())
 	// Prepare feature derivation test table in MySQL.
-	db, err := database.OpenAndConnectDB(dataSource)
+	db, err := database.OpenAndConnectDB(database.GetTestingMySQLURL())
 	if err != nil {
 		a.Fail("error connect to mysql: %v", err)
 	}
@@ -274,9 +272,8 @@ func TestFeatureDerivationNoColumnClause(t *testing.T) {
 		t.Skip("skip TestFeatureDerivationNoColumnClause for tests not using mysql")
 	}
 	a := assert.New(t)
-	dataSource := "mysql://root:root@tcp/?maxAllowedPacket=0"
 	// Prepare feature derivation test table in MySQL.
-	db, err := database.OpenAndConnectDB(dataSource)
+	db, err := database.OpenAndConnectDB(database.GetTestingMySQLURL())
 	if err != nil {
 		a.Fail("error connect to mysql: %v", err)
 	}
