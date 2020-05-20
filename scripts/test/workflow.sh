@@ -92,15 +92,10 @@ spec:
       initialDelaySeconds: 5
       periodSeconds: 5
 EOF
-# Start a SQLFlow MySQL Pod with testdata
-kubectl run mysql --port 3306 \
-        --env="MYSQL_HOST=0.0.0.0" \
-        --env="MYSQL_PORT=3306" \
-        --image="sqlflow:mysql"
 
 TIMEOUT="true"
 for _ in {1..30}; do
-    MYSQL_POD_READY=$(kubectl get pod mysql-pod -o jsonpath='{.status.containerStatuses[0].ready}')
+    MYSQL_POD_READY=$(kubectl get pod mysql -o jsonpath='{.status.containerStatuses[0].ready}')
     echo "${MYSQL_POD_READY}"
     if [[ "${MYSQL_POD_READY}" == "true" ]]; then
         MYSQL_POD_IP=$(kubectl get pod mysql -o jsonpath='{.status.podIP}')
