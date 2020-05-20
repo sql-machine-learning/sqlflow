@@ -22,6 +22,21 @@ from sqlflow_submitter.db import (buffered_db_writer, connect,
                                   parseMySQLDSN, read_features_from_row)
 
 
+def testing_mysql_cfg():
+    user = os.environ.get('SQLFLOW_TEST_DB_MYSQL_USER') or "root"
+    password = os.environ.get('SQLFLOW_TEST_DB_MYSQL_PASSWD') or "root"
+    addr = os.environ.get('SQLFLOW_TEST_DB_MYSQL_ADDR') or "127.0.0.1:3306"
+    host, port = addr.split(":")
+    database = "iris"
+    return (user, password, host, port, database)
+
+
+def testing_mysql_db_url():
+    user, password, host, port, database = testing_mysql_cfg()
+    return "mysql://{0}:{1}@tcp({2}:{3})/{4}?maxAllowedPacket=0".format(
+        user, password, host, port, database)
+
+
 def _execute_maxcompute(conn, statement):
     compress = tunnel.CompressOption.CompressAlgorithm.ODPS_ZLIB
     inst = conn.execute_sql(statement)
@@ -66,23 +81,16 @@ class TestDB(TestCase):
     def test_mysql(self):
         driver = os.environ.get('SQLFLOW_TEST_DB')
         if driver == "mysql":
-            user = os.environ.get('SQLFLOW_TEST_DB_MYSQL_USER') or "root"
-            password = os.environ.get('SQLFLOW_TEST_DB_MYSQL_PASSWD') or "root"
-            addr = os.environ.get(
-                'SQLFLOW_TEST_DB_MYSQL_ADDR') or "127.0.0.1:3306"
-            host, port = addr.split(",")
-            database = "iris"
+            user, password, host, port, database = testing_mysql_cfg()
             conn = connect(driver,
                            database,
                            user=user,
                            password=password,
                            host=host,
-                           port=port)
+                           port=int(port))
             self._do_test(driver, conn)
 
-            conn = connect_with_data_source(
-                "mysql://%s:%s@tcp(%s)/iris?maxAllowedPacket=0" % user,
-                password, addr)
+            conn = connect_with_data_source(testing_mysql_db_url())
             self._do_test(driver, conn)
 
     def test_hive(self):

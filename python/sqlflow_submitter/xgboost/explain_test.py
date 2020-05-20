@@ -16,11 +16,13 @@ import unittest
 from unittest import TestCase
 
 import numpy as np
+from sqlflow_submitter.db_test import testing_mysql_db_url
 from sqlflow_submitter.xgboost.explain import explain as xgb_explain
 from sqlflow_submitter.xgboost.explain import xgb_shap_dataset, xgb_shap_values
 from sqlflow_submitter.xgboost.train import train as xgb_train
 
-datasource = "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
+datasource = testing_mysql_db_url()
+
 select = "SELECT * FROM boston.train;"
 
 feature_field_meta = [{
