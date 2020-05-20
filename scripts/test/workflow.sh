@@ -73,7 +73,7 @@ kubectl run mysql --port 3306 \
         --env="MYSQL_HOST=0.0.0.0" \
         --env="MYSQL_PORT=3306" \
         --image="sqlflow:mysql" \
-        --command -- bash /start.sh
+        --command -- bash /start.bash
 POD=$(kubectl get pod -l run=mysql -o jsonpath="{.items[0].metadata.name}")
 
 TIMEOUT="true"
@@ -85,6 +85,7 @@ for _ in {1..30}; do
         echo "MySQL pod IP: $MYSQL_POD_IP"
         export SQLFLOW_TEST_DATASOURCE="mysql://root:root@tcp(${MYSQL_POD_IP}:3306)/?maxAllowedPacket=0"
         kubectl logs "$POD"
+        kubectl describe "$POD"
         go generate ./...
         gotest ./cmd/... -run TestEnd2EndWorkflow -v
         gotest ./pkg/workflow/argo/... -v
