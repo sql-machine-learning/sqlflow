@@ -15,6 +15,7 @@ package database
 
 import (
 	"database/sql"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -24,7 +25,11 @@ func TestDatabaseParseURL(t *testing.T) {
 	a := assert.New(t)
 	driver, dataSource, e := ParseURL(testingMySQLURL())
 	a.EqualValues(driver, "mysql")
-	a.EqualValues(dataSource, "root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0")
+	user := getEnv("SQLFLOW_TEST_DB_MYSQL_USER", "root")
+	pass := getEnv("SQLFLOW_TEST_DB_MYSQL_PASSWD", "root")
+	net := getEnv("SQLFLOW_TEST_DB_MYSQL_NET", "tcp")
+	addr := getEnv("SQLFLOW_TEST_DB_MYSQL_ADDR", "127.0.0.1:3306")
+	a.EqualValues(dataSource, fmt.Sprintf("%s:%s@%s(%s)?maxAllowedPacket=0", user, pass, net, addr)
 	a.NoError(e)
 }
 

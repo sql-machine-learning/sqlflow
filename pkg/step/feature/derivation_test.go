@@ -14,6 +14,7 @@
 package feature
 
 import (
+	"fmt"
 	"os"
 	"regexp"
 	"testing"
@@ -164,7 +165,7 @@ LABEL class INTO model_table;`,
 
 func TestFeatureDerivation(t *testing.T) {
 	a := assert.New(t)
-	dataSource := "mysql://root:root@tcp/?maxAllowedPacket=0"
+	dataSource := fmt.Sprintf("mysql://%s", database.GetTestingMySQLConfig().FormatDSN())
 	// Prepare feature derivation test table in MySQL.
 	db, err := database.OpenAndConnectDB(dataSource)
 	if err != nil {

@@ -312,7 +312,7 @@ func TestGenerateExplainStmt(t *testing.T) {
 		t.Skip(fmt.Sprintf("%s: skip test", getEnv("SQLFLOW_TEST_DB", "mysql")))
 	}
 	a := assert.New(t)
-	connStr := "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
+	connStr := fmt.Sprintf("mysql://%s", database.GetTestingMySQLConfig().FormatDSN())
 
 	cwd, e := ioutil.TempDir("/tmp", "sqlflow_models")
 	a.Nil(e)
