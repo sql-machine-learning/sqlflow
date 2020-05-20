@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import subprocess
 import unittest
 from unittest import TestCase
@@ -26,7 +27,7 @@ class TestEstimatorModels(TestCase):
                 "/usr/local/bin/python",
                 "python/sqlflow_submitter/tensorflow/estimator_example.py"
             ],
-                                 env={"PYTHONPATH": "python"},
+                                 env=os.environ.copy(),
                                  check=True)
             self.assertEqual(ret.returncode, 0)
         except Exception as e:
@@ -39,7 +40,7 @@ class TestEstimatorModels(TestCase):
                 "/usr/local/bin/python",
                 "python/sqlflow_submitter/tensorflow/explain_example.py"
             ],
-                                 env={"PYTHONPATH": "python"},
+                                 env=os.environ.copy(),
                                  check=True)
             self.assertEqual(ret.returncode, 0)
         except Exception as e:
@@ -52,7 +53,7 @@ class TestEstimatorModels(TestCase):
                 "/usr/local/bin/python",
                 "python/sqlflow_submitter/tensorflow/keras_example.py"
             ],
-                                 env={"PYTHONPATH": "python"},
+                                 env=os.environ.copy(),
                                  check=True)
             self.assertEqual(ret.returncode, 0)
         except Exception as e:
