@@ -44,9 +44,20 @@ jobs:
   - env: SQLFLOW_TEST_DB=mysql
     script:
     - set -e
+    # Build MySQL server image including datasets.
+    - cd $TRAVIS_BUILD_DIR
+    - docker build -t sqlflow:mysql -f docker/mysql/Dockerfile .
+    # Build sqlflow:dev, SQLFlow, and sqlflow:ci
     - $TRAVIS_BUILD_DIR/scripts/travis/build.sh
-    - docker run --rm -v $TRAVIS_BUILD_DIR:/work -w /work sqlflow:ci
-      scripts/test/units.sh
+    # Run a MySQL server container.
+    - docker run --rm -d -p 13306:3306
+      -v $TRAVIS_BUILD_DIR:/work sqlflow:mysql
+    - docker run --rm
+      -v $TRAVIS_BUILD_DIR:/work -w /work
+      --net=host
+      -e SQLFLOW_TEST_DB=mysql
+      -e SQLFLOW_TEST_DB_MYSQL_ADDR="127.0.0.1:13306"
+      sqlflow:ci scripts/test/units.sh
     - scripts/travis/upload_coveralls.sh
   - env: SQLFLOW_TEST_DB=hive # run more parallel tests in the same stage:
     script:
