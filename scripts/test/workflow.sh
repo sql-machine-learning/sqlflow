@@ -70,8 +70,8 @@ echo "Test access MySQL deployed on Kubernetes ..."
 
 # Start a SQLFlow MySQL Pod with testdata
 kubectl run mysql --port 3306 \
-        --env="SQLFLOW_MYSQL_HOST=0.0.0.0" \
-        --env="SQLFLOW_MYSQL_PORT=3306" \
+        --env="MYSQL_HOST=0.0.0.0" \
+        --env="MYSQL_PORT=3306" \
         --image="sqlflow:mysql"
 POD=$(kubectl get pod -l run=mysql -o jsonpath="{.items[0].metadata.name}")
 
@@ -83,6 +83,7 @@ for _ in {1..30}; do
         MYSQL_POD_IP=$(kubectl get pod "$POD" -o jsonpath='{.status.podIP}')
         echo "MySQL pod IP: $MYSQL_POD_IP"
         export SQLFLOW_TEST_DATASOURCE="mysql://root:root@tcp(${MYSQL_POD_IP}:3306)/?maxAllowedPacket=0"
+        kubectl logs "$POD"
         go generate ./...
         gotest ./cmd/... -run TestEnd2EndWorkflow -v
         gotest ./pkg/workflow/argo/... -v
