@@ -3,7 +3,7 @@
 本文从初学者的视角来讲对于 SQLFlow 理解和认识。文章由浅入深分为几个部分：首先我们介绍 SQLFlow 解决的问题，通过简单的分析让读者理解系统的主要功能。随后我们将快速体验 SQLFlow 功能并分析其部署和运行方式。在此之后将为读者简单介绍向 SQLFlow 贡献代码的流程。最后将更加深入的介绍 SQLFlow 的代码结构，帮助读者快速进入到开发实战中。
 
 ## SQLFlow 解决什么问题
-一句话来讲，SQLFlow 是一个翻译器，它将 SQL 程序翻译成为分布式机器学习任务的配置文件。
+一句话来讲，SQLFlow 是一个翻译器，它将 SQL 程序翻译成为分布式机器学习任务的配置文件，然后将任务提交到机器学习集群中去执行。
 
 具体来说，我们定义了[扩展的 SQL 语法](https://github.com/sql-machine-learning/sqlflow/blob/develop/doc/language_guide.md)，用户可以通过这套语法来描述机器学习中的训练、预测、解释等任务。SQLFlow 通过解析这些 SQL 程序，将机器学习任务的执行拆分成若干步骤，这些步骤组成了一个个工作流（workflow）并会以`.yaml`文件的形式进行输出。SQLFlow 将这些文件提交到 Kubernetes 集群上去执行并获取执行结果。
 
@@ -33,7 +33,7 @@ Argo Workflows 是一个工作流引擎，它对工作流中的各个步骤进�
 gRPC是一个高性能的 RPC 框架。gRPC 使用 [Protocol Buffers](https://developers.google.com/protocol-buffers) 定义数据结构和服务，从而可以轻松实现跨语言跨平台的通信。
 
 ### 开发环境搭建
-这里我们使用 minikube 搭建 Kubernetes 环境，并且在 Kubernetes 中部署 Argo Workflows，然后在 Docker 中部署 SQLFlow server 并通过 Jupyter Notebook 工具进行查询。我们在 macOS 上进行操作，其他操作系统方式可能稍有不同，请参考官方文档。(待完善，缺一个部署图)
+这里我们使用 minikube 搭建 Kubernetes 环境，并且在 Kubernetes 中部署 Argo Workflows，然后在 Docker 中部署 SQLFlow server 并通过 Jupyter Notebook 工具进行查询。我们在 macOS 上进行操作，其他操作系统方式可能稍有不同，请参考官方文档。
 1. 下载并安装 minikube 
     ```bash
     brew install kubernetes-cli minikube
@@ -57,12 +57,12 @@ gRPC是一个高性能的 RPC 框架。gRPC 使用 [Protocol Buffers](https://de
 1. 运行 SQLFlow server (待补全，现有的start.sh中不是Workflow方式运行的，需要参考 ci 中的 Workflow 运行方式)
     ```bash
     docker pull sqlflow/sqlflow:ci
-    docker run -it -p8888:8888 --name=sqlflow sqlflow/sqlflow:ci bash
+    docker run -rm -it -p8888:8888 --name=sqlflow -v$(pwd):/sqlflow -w /sqlflow sqlflow/sqlflow:ci bash /start.sh all
     ```
 1. 打开 Jupyter Notebook 并运行 SQL，稍后会在页面上打印出iris.train 表中的前10条数据。
     ```
     %%sqlfow
-    select * from iris.train limti 10;
+    select * from iris.train limit 10;
     ```
 
 ### 运行流程分析
@@ -82,4 +82,27 @@ gRPC是一个高性能的 RPC 框架。gRPC 使用 [Protocol Buffers](https://de
 1. 当其他开发人员通过 review 之后，你可以合并代码到 SQLFlow 主 repo 中，这样就完成了一次代码贡献
 
 ## SQLFlow 代码结构介绍
-待补全
+下面简单介绍一下 SQLFlow 的代码组织结构
+```
+sqlflow
+├── cmd 各种 binary 文件的入口
+├── doc 文档
+├── docker 生成 docker image 所需要的脚本
+├── java 一些 DB parser，如 hive、maxcompute、calcite 的 parser
+├── pkg
+    ├── database 数据库的封装，通过这个包来访问数据库
+    ├── ir 中间代码，SQLFlow 编译 SQL 生成的中间表示，是代码生成的输入
+    ├── model 模型的抽象表示
+    ├── parser SQL Parser接口
+    ├── proto 数据结构定义及 gRPC 服务定义
+    ├── server SQLFlow server 逻辑
+    ├── sql 这里包含了执行 SQL 所需的逻辑，比如 SQL 解析，中间代码生成，任务提交等，该库的结构不是特别清晰，需要进行梳理
+    ├── sqlfs 将数据库抽象为文件系统，用于存储模型等
+    ├── step Workflow 中一个执行步骤的bin
+    ├── tablewriter 打印查询结果的工具
+    └── workflow Workflow 模型想逻辑
+├── python 各种计算平台上的 submitter
+├── scripts git-hook、ci、docker build 等脚本
+
+具体看代码的时候可以从 cmd 文件夹入手，这个文件夹中的 sqlflowserver 是 server 的入口，类似的 sqlflow、step分别是命令行工具和 Workflow step 的入口。
+```
