@@ -18,6 +18,7 @@ echo "Start mysqld ..."
 # Important to make mysqld bind to 0.0.0.0 -- all IPs.  I explained
 # the reason in https://stackoverflow.com/a/61887788/724872.
 MYSQL_HOST=${MYSQL_HOST:-0.0.0.0}
+MYSQL_PORT=${MYSQL_PORT:-3306}
 sed -i "s/.*bind-address.*/bind-address = $MYSQL_HOST/" \
     /etc/mysql/mysql.conf.d/mysqld.cnf
 service mysql start
@@ -47,7 +48,7 @@ mysql -uroot -proot \
 for f in /datasets/*; do
     echo "Populate datasets $f ..."
     mysql -uroot -proot \
-          --host "$SQLFLOW_MYSQL_HOST" --port "$SQLFLOW_MYSQL_PORT" \
+          --host "$MYSQL_HOST" --port "$MYSQL_PORT" \
           < "$f"
 done
 
