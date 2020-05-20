@@ -272,7 +272,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	if os.Getenv("SQLFLOW_TEST_DB") != "mysql" {
 		t.Skip("Skipping mysql tests")
 	}
-	dbConnStr = "mysql://root:root@tcp(127.0.0.1:3306)/iris?maxAllowedPacket=0"
+	dbConnStr = database.GetTestingMySQLURL()
 	modelDir := ""
 
 	tmpDir, caCrt, caKey, err := generateTempCA()

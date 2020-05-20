@@ -68,8 +68,9 @@ class TestDB(TestCase):
         if driver == "mysql":
             user = os.environ.get('SQLFLOW_TEST_DB_MYSQL_USER') or "root"
             password = os.environ.get('SQLFLOW_TEST_DB_MYSQL_PASSWD') or "root"
-            host = "127.0.0.1"
-            port = "3306"
+            addr = os.environ.get(
+                'SQLFLOW_TEST_DB_MYSQL_ADDR') or "127.0.0.1:3306"
+            host, port = addr.split(",")
             database = "iris"
             conn = connect(driver,
                            database,
@@ -80,8 +81,8 @@ class TestDB(TestCase):
             self._do_test(driver, conn)
 
             conn = connect_with_data_source(
-                "mysql://root:root@tcp(127.0.0.1:3306)/iris?maxAllowedPacket=0"
-            )
+                "mysql://%s:%s@tcp(%s)/iris?maxAllowedPacket=0" % user,
+                password, addr)
             self._do_test(driver, conn)
 
     def test_hive(self):
