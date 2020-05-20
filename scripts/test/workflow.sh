@@ -72,7 +72,8 @@ echo "Test access MySQL deployed on Kubernetes ..."
 kubectl run mysql --port 3306 \
         --env="MYSQL_HOST=0.0.0.0" \
         --env="MYSQL_PORT=3306" \
-        --image="sqlflow:mysql"
+        --image="sqlflow:mysql" \
+        --command -- bash /start.sh
 POD=$(kubectl get pod -l run=mysql -o jsonpath="{.items[0].metadata.name}")
 
 TIMEOUT="true"
