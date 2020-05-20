@@ -87,7 +87,7 @@ class TestDB(TestCase):
                            user=user,
                            password=password,
                            host=host,
-                           port=int(port))
+                           port=port)
             self._do_test(driver, conn)
 
             conn = connect_with_data_source(testing_mysql_db_url())
@@ -193,14 +193,13 @@ class TestGenerator(TestCase):
         driver = os.environ.get('SQLFLOW_TEST_DB')
         if driver == "mysql":
             database = "iris"
-            user = os.environ.get('SQLFLOW_TEST_DB_MYSQL_USER') or "root"
-            password = os.environ.get('SQLFLOW_TEST_DB_MYSQL_PASSWD') or "root"
+            user, password, host, port, database = testing_mysql_cfg()
             conn = connect(driver,
                            database,
                            user=user,
                            password=password,
-                           host="127.0.0.1",
-                           port="3306")
+                           host=host,
+                           port=int(port))
             # prepare test data
             execute(driver, conn, self.drop_statement)
             execute(driver, conn, self.create_statement)
@@ -239,15 +238,13 @@ class TestGenerator(TestCase):
     def test_generate_fetch_size(self):
         driver = os.environ.get('SQLFLOW_TEST_DB')
         if driver == "mysql":
-            database = "iris"
-            user = os.environ.get('SQLFLOW_TEST_DB_MYSQL_USER') or "root"
-            password = os.environ.get('SQLFLOW_TEST_DB_MYSQL_PASSWD') or "root"
+            user, password, host, port, database = testing_mysql_cfg()
             conn = connect(driver,
                            database,
                            user=user,
                            password=password,
-                           host="127.0.0.1",
-                           port="3306")
+                           host=host,
+                           port=port)
             column_name_to_type = {
                 "sepal_length": {
                     "feature_name": "sepal_length",
