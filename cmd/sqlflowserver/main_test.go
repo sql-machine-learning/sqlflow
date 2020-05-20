@@ -272,7 +272,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	if os.Getenv("SQLFLOW_TEST_DB") != "mysql" {
 		t.Skip("Skipping mysql tests")
 	}
-	dbConnStr = "mysql://root:root@tcp(127.0.0.1:3306)/iris?maxAllowedPacket=0"
+	dbConnStr = database.GetTestingMySQLURL()
 	modelDir := ""
 
 	tmpDir, caCrt, caKey, err := generateTempCA()
@@ -686,6 +686,7 @@ func CaseShowDatabases(t *testing.T) {
 		"hive":                    "", // if current mysql is also used for hive
 		"default":                 "", // if fetching default hive databases
 		"sqlflow":                 "", // to save model zoo trained models
+		"imdb":                    "",
 	}
 	for i := 0; i < len(resp); i++ {
 		AssertContainsAny(a, expectedDBs, resp[i][0])

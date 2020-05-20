@@ -18,12 +18,13 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/ir"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
 func mockSession() *pb.Session {
-	return &pb.Session{DbConnStr: "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"}
+	return &pb.Session{DbConnStr: database.GetTestingMySQLURL()}
 }
 func TestTrainCodegen(t *testing.T) {
 	a := assert.New(t)

@@ -1,4 +1,5 @@
 #!/bin/bash
+
 # Copyright 2020 The SQLFlow Authors. All rights reserved.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,19 +15,15 @@
 
 set -e
 
-if [[ $(git diff --name-only HEAD..develop|awk -F. '{print $NF}'|uniq) == md ]]; then
-  exit
-fi
-
-python -c "import sqlflow_models"
-python -c "import sqlflow_submitter.db"
-
-go generate ./...
-go install ./...
-
-# -p 1 is necessary since tests in different packages are sharing the same database
-# ref: https://stackoverflow.com/a/23840896
-# set test timeout to 900s since travis CI may be slow to run the case TestParse
-gotest -v -p 1 -timeout 900s ./...  -covermode=count -coverprofile=coverage.out
-
-python -m unittest discover -v python "*_test.py"
+echo "Install MySQL server without a password prompt ..."
+echo 'mysql-server mysql-server/root_password password root' | \
+    debconf-set-selections
+echo 'mysql-server mysql-server/root_password_again password root' | \
+    debconf-set-selections
+apt-get -qq update > /dev/null
+apt-get -qq install -y mysql-server > /dev/null
+mkdir -p /var/run/mysqld
+mkdir -p /var/lib/mysql
+chown mysql:mysql /var/run/mysqld
+chown mysql:mysql /var/lib/mysql
+mkdir -p /docker-entrypoint-initdb.d
