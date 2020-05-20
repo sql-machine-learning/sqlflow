@@ -14,12 +14,14 @@
 import unittest
 
 import sql_data
+from sqlflow_submitter.db_test import testing_mysql_cfg
 
 
 class TestSQLData(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         super(TestSQLData, self).__init__(*args, **kwargs)
-        self.db = sql_data.connect('root', 'root', 'localhost', 3306)
+        user, password, host, port, database = testing_mysql_cfg()
+        self.db = sql_data.connect(user, password, host, int(port))
         self.assertIsNotNone(self.db)
 
     def test_load(self):

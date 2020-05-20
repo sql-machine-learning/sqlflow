@@ -15,10 +15,6 @@
 set -e
 
 echo "Start minikube cluster ..."
-
 sudo minikube start \
      --vm-driver=none \
-     --kubernetes-version=v$K8S_VERSION \
-     --cpus 2 \
-     --memory 6144
-kubectl cluster-info
+     --kubernetes-version=v"$K8S_VERSION"

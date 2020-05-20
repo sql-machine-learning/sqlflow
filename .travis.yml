@@ -1,5 +1,5 @@
 language: go
-
+dist: bionic
 
 # SQLFlow uses sqlflow.org/sqlflow as vanity import path. TravisCI
 # supports it via go_import_path.  Ref:
@@ -14,7 +14,7 @@ branches:
   - "/release-*/"
   - "/^v\\d+\\.\\d+(\\.\\d+)?(-\\S*)?$/"
 services:
-- docker
+  - docker
 
 
 # Note(tony): Update to newer version of Docker to allow
@@ -23,15 +23,16 @@ services:
 addons:
   apt:
     packages:
-    - docker-ce
-install:
+      - docker-ce
 
 # Note(tony): TravisCI's native `go get ${gobuild_args} ./...` failed with
 # `/usr/bin/ld: final link failed: Bad value`, the cause is the system linker
 # being not up to date: https://github.com/golang/go/issues/15038
 # So I decided to skip install, and go get inside SQLFlow devbox Docker image
 # Ref build: https://travis-ci.com/sql-machine-learning/sqlflow/builds/107870583
-- echo "skip install"
+install:
+  - echo "skip install"
+
 jobs:
   include:
   - stage: BuildAndTest
@@ -43,19 +44,21 @@ jobs:
   - env: SQLFLOW_TEST_DB=mysql
     script:
     - set -e
-    - $TRAVIS_BUILD_DIR/scripts/travis/build.sh
+    # Build MySQL server image including datasets.
     - cd $TRAVIS_BUILD_DIR
     - docker build -t sqlflow:mysql -f docker/mysql/Dockerfile .
-    - docker run --rm -d -p 3306:3306 --name mysql_server
+    # Build sqlflow:dev, SQLFlow, and sqlflow:ci
+    - $TRAVIS_BUILD_DIR/scripts/travis/build.sh
+    # Run a MySQL server container.
+    - docker run --rm -d -p 13306:3306
       -v $TRAVIS_BUILD_DIR:/work sqlflow:mysql
     - docker run --rm
       -v $TRAVIS_BUILD_DIR:/work -w /work
       --net=host
+      -e SQLFLOW_TEST_DB=mysql
+      -e SQLFLOW_TEST_DB_MYSQL_ADDR="127.0.0.1:13306"
       sqlflow:ci scripts/test/units.sh
-    - docker run --rm
-      -v $TRAVIS_BUILD_DIR:/work -w /work
-      --net=host
-      sqlflow:ci scripts/travis/upload_coveralls.sh
+    - scripts/travis/upload_coveralls.sh
   - env: SQLFLOW_TEST_DB=hive # run more parallel tests in the same stage:
     script:
     - set -e

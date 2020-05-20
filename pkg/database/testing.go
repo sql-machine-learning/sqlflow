@@ -83,12 +83,13 @@ func GetTestingMySQLConfig() *mysql.Config {
 	}
 }
 
-func testingMySQLURL() string {
+// GetTestingMySQLURL returns MySQL connection URL
+func GetTestingMySQLURL() string {
 	return fmt.Sprintf("mysql://%s", GetTestingMySQLConfig().FormatDSN())
 }
 
 func createTestingMySQLDB() *DB {
-	db, e := OpenAndConnectDB(testingMySQLURL())
+	db, e := OpenAndConnectDB(GetTestingMySQLURL())
 	assertNoErr(e)
 	_, e = db.Exec("CREATE DATABASE IF NOT EXISTS sqlflow_models;")
 	assertNoErr(e)

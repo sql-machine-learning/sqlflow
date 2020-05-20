@@ -22,6 +22,21 @@ from sqlflow_submitter.db import (buffered_db_writer, connect,
                                   parseMySQLDSN, read_features_from_row)
 
 
+def testing_mysql_cfg():
+    user = os.environ.get('SQLFLOW_TEST_DB_MYSQL_USER') or "root"
+    password = os.environ.get('SQLFLOW_TEST_DB_MYSQL_PASSWD') or "root"
+    addr = os.environ.get('SQLFLOW_TEST_DB_MYSQL_ADDR') or "127.0.0.1:3306"
+    host, port = addr.split(":")
+    database = "iris"
+    return (user, password, host, port, database)
+
+
+def testing_mysql_db_url():
+    user, password, host, port, database = testing_mysql_cfg()
+    return "mysql://{0}:{1}@tcp({2}:{3})/{4}?maxAllowedPacket=0".format(
+        user, password, host, port, database)
+
+
 def _execute_maxcompute(conn, statement):
     compress = tunnel.CompressOption.CompressAlgorithm.ODPS_ZLIB
     inst = conn.execute_sql(statement)
@@ -66,11 +81,7 @@ class TestDB(TestCase):
     def test_mysql(self):
         driver = os.environ.get('SQLFLOW_TEST_DB')
         if driver == "mysql":
-            user = os.environ.get('SQLFLOW_TEST_DB_MYSQL_USER') or "root"
-            password = os.environ.get('SQLFLOW_TEST_DB_MYSQL_PASSWD') or "root"
-            host = "127.0.0.1"
-            port = "3306"
-            database = "iris"
+            user, password, host, port, database = testing_mysql_cfg()
             conn = connect(driver,
                            database,
                            user=user,
@@ -79,9 +90,7 @@ class TestDB(TestCase):
                            port=port)
             self._do_test(driver, conn)
 
-            conn = connect_with_data_source(
-                "mysql://root:root@tcp(127.0.0.1:3306)/iris?maxAllowedPacket=0"
-            )
+            conn = connect_with_data_source(testing_mysql_db_url())
             self._do_test(driver, conn)
 
     def test_hive(self):
@@ -184,14 +193,13 @@ class TestGenerator(TestCase):
         driver = os.environ.get('SQLFLOW_TEST_DB')
         if driver == "mysql":
             database = "iris"
-            user = os.environ.get('SQLFLOW_TEST_DB_MYSQL_USER') or "root"
-            password = os.environ.get('SQLFLOW_TEST_DB_MYSQL_PASSWD') or "root"
+            user, password, host, port, database = testing_mysql_cfg()
             conn = connect(driver,
                            database,
                            user=user,
                            password=password,
-                           host="127.0.0.1",
-                           port="3306")
+                           host=host,
+                           port=int(port))
             # prepare test data
             execute(driver, conn, self.drop_statement)
             execute(driver, conn, self.create_statement)
@@ -230,15 +238,13 @@ class TestGenerator(TestCase):
     def test_generate_fetch_size(self):
         driver = os.environ.get('SQLFLOW_TEST_DB')
         if driver == "mysql":
-            database = "iris"
-            user = os.environ.get('SQLFLOW_TEST_DB_MYSQL_USER') or "root"
-            password = os.environ.get('SQLFLOW_TEST_DB_MYSQL_PASSWD') or "root"
+            user, password, host, port, database = testing_mysql_cfg()
             conn = connect(driver,
                            database,
                            user=user,
                            password=password,
-                           host="127.0.0.1",
-                           port="3306")
+                           host=host,
+                           port=port)
             column_name_to_type = {
                 "sepal_length": {
                     "feature_name": "sepal_length",

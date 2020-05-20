@@ -16,10 +16,11 @@ import shutil
 
 import sqlflow_submitter
 import tensorflow as tf
+from sqlflow_submitter.db_test import testing_mysql_db_url
 from sqlflow_submitter.tensorflow.predict import pred
 from sqlflow_submitter.tensorflow.train import train
 
-datasource = "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
+datasource = testing_mysql_db_url()
 select = "SELECT * FROM iris.train;"
 validate_select = "SELECT * FROM iris.test;"
 select_binary = "SELECT * FROM iris.train WHERE class!=2;"

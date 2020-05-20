@@ -20,6 +20,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
+	"sqlflow.org/sqlflow/pkg/database"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/step"
 )
@@ -33,8 +34,7 @@ func TestStepStandardSQL(t *testing.T) {
 		t.Skip("skip no mysql test.")
 	}
 	a := assert.New(t)
-	dbConnStr := "mysql://root:root@tcp(127.0.0.1:3306)/iris?maxAllowedPacket=0"
-	session := makeTestSession(dbConnStr)
+	session := makeTestSession(database.GetTestingMySQLURL())
 	sql := `SELECT * FROM iris.train limit 5;`
 	out, e := step.GetStdout(func() error {
 		return run(sql, session)
@@ -65,8 +65,7 @@ func TestStepSQLWithComment(t *testing.T) {
 		t.Skip("skip no mysql test.")
 	}
 	a := assert.New(t)
-	dbConnStr := "mysql://root:root@tcp(127.0.0.1:3306)/iris?maxAllowedPacket=0"
-	session := makeTestSession(dbConnStr)
+	session := makeTestSession(database.GetTestingMySQLURL())
 	sql := `-- this is comment {a.b}
 	SELECT 1, 'a';\n\t
 `

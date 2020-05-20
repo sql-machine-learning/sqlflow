@@ -17,16 +17,17 @@ set -e
 echo "Start mysqld ..."
 # Important to make mysqld bind to 0.0.0.0 -- all IPs.  I explained
 # the reason in https://stackoverflow.com/a/61887788/724872.
-SQLFLOW_MYSQL_HOST=${SQLFLOW_MYSQL_HOST:-0.0.0.0}
-sed -i "s/.*bind-address.*/bind-address = ${SQLFLOW_MYSQL_HOST}/" \
+MYSQL_HOST=${MYSQL_HOST:-0.0.0.0}
+sed -i "s/.*bind-address.*/bind-address = $MYSQL_HOST/" \
     /etc/mysql/mysql.conf.d/mysqld.cnf
 service mysql start
 
 
 echo "Sleep until MySQL server is ready ..."
+# shellcheck disable=SC2153
 until mysql -u root -proot \
-            --host "$SQLFLOW_MYSQL_HOST" \
-            --port "$SQLFLOW_MYSQL_PORT" \
+            --host "$MYSQL_HOST" \
+            --port "$MYSQL_PORT" \
             -e ";" ; do
     sleep 1
     read -r -p "Can't connect, retrying..."

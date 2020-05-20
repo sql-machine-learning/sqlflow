@@ -14,7 +14,6 @@
 package couler
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"regexp"
@@ -153,10 +152,8 @@ func TestKatibCodegen(t *testing.T) {
 	a := assert.New(t)
 	os.Setenv("SQLFLOW_submitter", "katib")
 
-	cfg := database.GetTestingMySQLConfig()
-
 	standardSQL := ir.NormalStmt("SELECT * FROM iris.train limit 10;")
-	sqlIR := MockKatibTrainStmt(fmt.Sprintf("mysql://%s", cfg.FormatDSN()))
+	sqlIR := MockKatibTrainStmt(database.GetTestingMySQLURL())
 
 	program := []ir.SQLFlowStmt{&standardSQL, &sqlIR}
 

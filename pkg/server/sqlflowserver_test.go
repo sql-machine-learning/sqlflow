@@ -30,6 +30,7 @@ import (
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 
+	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/pipe"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
@@ -41,10 +42,10 @@ const (
 	testExtendedSQL            = "SELECT * FROM some_table TO TRAIN SomeModel;"
 	testExtendedSQLNoSemicolon = "SELECT * FROM some_table TO TRAIN SomeModel"
 	testExtendedSQLWithSpace   = "SELECT * FROM some_table TO TRAIN SomeModel; \n\t"
-	mockDBConnStr              = "mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
 )
 
 var testServerAddress string
+var mockDBConnStr = database.GetTestingMySQLURL()
 
 func mockRun(sql string, modelDir string, session *pb.Session) *pipe.Reader {
 	rd, wr := pipe.Pipe()

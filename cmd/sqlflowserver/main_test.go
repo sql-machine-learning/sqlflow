@@ -272,7 +272,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	if os.Getenv("SQLFLOW_TEST_DB") != "mysql" {
 		t.Skip("Skipping mysql tests")
 	}
-	dbConnStr = "mysql://root:root@tcp(127.0.0.1:3306)/iris?maxAllowedPacket=0"
+	dbConnStr = database.GetTestingMySQLURL()
 	modelDir := ""
 
 	tmpDir, caCrt, caKey, err := generateTempCA()
@@ -1925,6 +1925,23 @@ INTO e2etest_dense_input;`, caseTrainTable)
 	}
 }
 
+func CasePAIMaxComputeTrainDenseColWithoutIndicatingShape(t *testing.T) {
+	t.Parallel()
+	a := assert.New(t)
+
+	trainSQL := fmt.Sprintf(`SELECT class, sepal_length, sepal_width, petal_length, petal_width
+FROM %s
+TO TRAIN DNNClassifier WITH model.hidden_units=[64,32], model.n_classes=3, train.batch_size=32
+COLUMN NUMERIC(sepal_length)
+LABEL class
+INTO e2etest_dense_input_without_indicating_shape;`, caseTrainTable)
+
+	_, _, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL without indicating shape error: %v", err)
+	}
+}
+
 func CasePAIMaxComputeTrainXGBoost(t *testing.T) {
 	t.Parallel()
 	a := assert.New(t)
@@ -2110,6 +2127,7 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 	t.Run("group", func(t *testing.T) {
 		t.Run("CasePAIMaxComputeDNNTrainPredictExplain", CasePAIMaxComputeDNNTrainPredictExplain)
 		t.Run("CasePAIMaxComputeTrainDenseCol", CasePAIMaxComputeTrainDenseCol)
+		t.Run("CasePAIMaxComputeTrainDenseColWithoutIndicatingShape", CasePAIMaxComputeTrainDenseColWithoutIndicatingShape)
 		t.Run("CasePAIMaxComputeTrainXGBoost", CasePAIMaxComputeTrainXGBoost)
 		t.Run("CasePAIMaxComputeTrainCustomModel", CasePAIMaxComputeTrainCustomModel)
 		t.Run("CasePAIMaxComputeTrainDistributed", CasePAIMaxComputeTrainDistributed)

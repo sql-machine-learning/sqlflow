@@ -444,7 +444,11 @@ func parseExpression(e interface{}) (interface{}, error) {
 					continue
 				}
 
-				// parse negative integer
+				/**
+				 * Parse negative integer.
+				 * See https://github.com/sql-machine-learning/sqlflow/blob/develop/pkg/parser/extended_syntax_parser.y#L371
+				 * for the Lisp S-expression of negative number in details.
+				 */
 				if len(expr.Sexp) == 2 && (*expr.Sexp[0]).Value == negative {
 					intVal, err := strconv.Atoi((*expr.Sexp[1]).Value)
 					if err == nil {
@@ -532,9 +536,12 @@ func parseDefaultNumericColumn(el *parser.Expr) (*ir.NumericColumn, error) {
 
 func parseNumericColumn(el *parser.ExprList) (*ir.NumericColumn, error) {
 	help := "NUMERIC([DENSE()|SPARSE()|col_name][, SHAPE])"
-	if len(*el) != 3 {
+
+	// 'shape' is optional in NUMERIC, so len(*el) may be 2 or 3
+	if len(*el) != 2 && len(*el) != 3 {
 		return nil, fmt.Errorf("bad NUMERIC expression format: %s, should be like: %s", *el, help)
 	}
+
 	// 1. NUMERIC(DENSE()/SPARSE()) phrases
 	if (*el)[1].Type == 0 {
 		fieldDesc, err := parseFieldDesc(&(*el)[1].Sexp)
@@ -548,9 +555,13 @@ func parseNumericColumn(el *parser.ExprList) (*ir.NumericColumn, error) {
 	if err != nil {
 		return nil, fmt.Errorf("bad NUMERIC key: %s, err: %s, should be like: %s", (*el)[1], err, help)
 	}
-	shape, err := parseShape((*el)[2])
-	if err != nil {
-		return nil, err
+
+	shape := []int{1}
+	if len(*el) == 3 {
+		shape, err = parseShape((*el)[2])
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &ir.NumericColumn{
@@ -575,7 +586,7 @@ func parseBucketColumn(el *parser.ExprList) (*ir.BucketColumn, error) {
 	var source ir.FeatureColumn
 	var err error
 
-	if sourceExprList.Sexp == nil {
+	if sourceExprList.Type != 0 {
 		source, err = parseDefaultNumericColumn(sourceExprList)
 		if err != nil {
 			return nil, fmt.Errorf("key of BUCKET must be NUMERIC or column name, which is %s", sourceExprList.Value)
@@ -838,7 +849,7 @@ func parseIndicatorColumn(el *parser.ExprList) (*ir.IndicatorColumn, error) {
 
 func parseFieldDesc(el *parser.ExprList) (*ir.FieldDesc, error) {
 	help := "DENSE|SPARSE(col_name, SHAPE, DELIMITER[, DTYPE])"
-	if len(*el) < 4 {
+	if len(*el) != 4 && len(*el) != 5 {
 		return nil, fmt.Errorf("bad FieldDesc format: %s, should be like: %s", *el, help)
 	}
 	call, err := expression2string((*el)[0])
@@ -885,7 +896,7 @@ func parseFieldDesc(el *parser.ExprList) (*ir.FieldDesc, error) {
 	if isSparse {
 		dtype = ir.Int
 	}
-	if len(*el) >= 5 {
+	if len(*el) == 5 {
 		dtypeStr, err := expression2string((*el)[4])
 		if err != nil {
 			return nil, err

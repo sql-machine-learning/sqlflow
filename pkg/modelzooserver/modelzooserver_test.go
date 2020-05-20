@@ -34,7 +34,7 @@ func startServer() {
 		log.Fatalf("failed to listen: %v", err)
 	}
 	grpcServer := grpc.NewServer()
-	mysqlConn, err := database.OpenAndConnectDB("mysql://root:root@tcp(localhost:3306)/?maxAllowedPacket=0")
+	mysqlConn, err := database.OpenAndConnectDB(database.GetTestingMySQLURL())
 	if err != nil {
 		log.Fatalf("failed to connect to mysql: %v", err)
 	}

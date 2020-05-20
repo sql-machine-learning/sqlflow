@@ -15,6 +15,7 @@ package database
 
 import (
 	"database/sql"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -22,9 +23,10 @@ import (
 
 func TestDatabaseParseURL(t *testing.T) {
 	a := assert.New(t)
-	driver, dataSource, e := ParseURL(testingMySQLURL())
+	driver, dataSource, e := ParseURL(GetTestingMySQLURL())
 	a.EqualValues(driver, "mysql")
-	a.EqualValues(dataSource, "root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0")
+	a.EqualValues(dataSource, fmt.Sprintf("%s:%s@%s(%s)/?maxAllowedPacket=0",
+		GetTestingMySQLConfig().User, GetTestingMySQLConfig().Passwd, GetTestingMySQLConfig().Net, GetTestingMySQLConfig().Addr))
 	a.NoError(e)
 }
 

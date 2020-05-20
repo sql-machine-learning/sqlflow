@@ -37,8 +37,8 @@ COPY doc/datasets/popularize_churn.sql \
 
 VOLUME /var/lib/mysql
 
-ARG SQLFLOW_MYSQL_PORT="3306"
-ENV SQLFLOW_MYSQL_PORT=$SQLFLOW_MYSQL_PORT
-EXPOSE $SQLFLOW_MYSQL_PORT
+ARG MYSQL_PORT="3306"
+ENV MYSQL_PORT=$MYSQL_PORT
+EXPOSE $MYSQL_PORT
 COPY docker/mysql/start.bash /
 CMD ["/start.bash"]
