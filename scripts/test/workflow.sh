@@ -67,23 +67,44 @@ fi
 
 
 echo "Test access MySQL deployed on Kubernetes ..."
-
+cat <<EOF > /tmp/mysql.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mysql
+spec:
+  containers:
+  - name: liveness
+    image: sqlflow:mysql
+    ports:
+    - containerPort: 3306
+      protocol: TCP
+    env:
+    - name: MYSQL_HOST
+      value: 0.0.0.0
+    - name: MYSQL_PORT
+      value: 3306
+    readinessProbe:
+      exec:
+        command:
+        - cat
+        - /work/mysql-inited
+      initialDelaySeconds: 5
+      periodSeconds: 5
+EOF
 # Start a SQLFlow MySQL Pod with testdata
 kubectl run mysql --port 3306 \
         --env="MYSQL_HOST=0.0.0.0" \
         --env="MYSQL_PORT=3306" \
         --image="sqlflow:mysql"
-POD=$(kubectl get pod -l run=mysql -o jsonpath="{.items[0].metadata.name}")
 
 TIMEOUT="true"
 for _ in {1..30}; do
-    MYSQL_POD_STATUS=$(kubectl get pod "$POD" -o jsonpath='{.status.phase}')
-    echo "${MYSQL_POD_STATUS}"
-    if [[ "${MYSQL_POD_STATUS}" == "Running" ]]; then
-        MYSQL_POD_IP=$(kubectl get pod "$POD" -o jsonpath='{.status.podIP}')
+    MYSQL_POD_READY=$(kubectl get pod mysql-pod -o jsonpath='{.status.containerStatuses[0].ready}')
+    echo "${MYSQL_POD_READY}"
+    if [[ "${MYSQL_POD_READY}" == "true" ]]; then
+        MYSQL_POD_IP=$(kubectl get pod mysql -o jsonpath='{.status.podIP}')
         echo "MySQL pod IP: $MYSQL_POD_IP"
-        # shellcheck disable=SC2154
-        kubectl exec -it "$POD" -- bash -c "while read i; do if [ \"$i\" = \"mysql-inited\" ]; then break; fi; done < <(inotifywait  -e create,open --format \"%f\" --quiet /work --monitor)"
         export SQLFLOW_TEST_DATASOURCE="mysql://root:root@tcp(${MYSQL_POD_IP}:3306)/?maxAllowedPacket=0"
         go generate ./...
         gotest ./cmd/... -run TestEnd2EndWorkflow -v
