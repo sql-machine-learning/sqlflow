@@ -1,5 +1,5 @@
 language: go
-
+dist: bionic
 
 # SQLFlow uses sqlflow.org/sqlflow as vanity import path. TravisCI
 # supports it via go_import_path.  Ref:
@@ -14,7 +14,7 @@ branches:
   - "/release-*/"
   - "/^v\\d+\\.\\d+(\\.\\d+)?(-\\S*)?$/"
 services:
-- docker
+  - docker
 
 
 # Note(tony): Update to newer version of Docker to allow
@@ -23,15 +23,16 @@ services:
 addons:
   apt:
     packages:
-    - docker-ce
-install:
+      - docker-ce
 
 # Note(tony): TravisCI's native `go get ${gobuild_args} ./...` failed with
 # `/usr/bin/ld: final link failed: Bad value`, the cause is the system linker
 # being not up to date: https://github.com/golang/go/issues/15038
 # So I decided to skip install, and go get inside SQLFlow devbox Docker image
 # Ref build: https://travis-ci.com/sql-machine-learning/sqlflow/builds/107870583
-- echo "skip install"
+install:
+  - echo "skip install"
+
 jobs:
   include:
   - stage: BuildAndTest
