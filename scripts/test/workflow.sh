@@ -93,6 +93,8 @@ spec:
       periodSeconds: 5
 EOF
 
+kubectl create -f /tmp/mysql.yaml
+
 TIMEOUT="true"
 for _ in {1..30}; do
     MYSQL_POD_READY=$(kubectl get pod mysql -o jsonpath='{.status.containerStatuses[0].ready}')
