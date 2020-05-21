@@ -67,33 +67,7 @@ fi
 
 
 echo "Test access MySQL deployed on Kubernetes ..."
-cat <<EOF > /tmp/mysql.yaml
-apiVersion: v1
-kind: Pod
-metadata:
-  name: mysql
-spec:
-  containers:
-  - name: liveness
-    image: sqlflow:mysql
-    ports:
-    - containerPort: 3306
-      protocol: TCP
-    env:
-    - name: MYSQL_HOST
-      value: "0.0.0.0"
-    - name: MYSQL_PORT
-      value: "3306"
-    readinessProbe:
-      exec:
-        command:
-        - cat
-        - /work/mysql-inited
-      initialDelaySeconds: 5
-      periodSeconds: 5
-EOF
-
-kubectl create -f /tmp/mysql.yaml
+kubectl create -f ./scripts/test/mysql_pod.yaml
 
 TIMEOUT="true"
 for _ in {1..30}; do

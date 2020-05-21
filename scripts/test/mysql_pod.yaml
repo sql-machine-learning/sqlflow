@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mysql
+spec:
+  containers:
+  - name: liveness
+    image: sqlflow:mysql
+    ports:
+    - containerPort: 3306
+      protocol: TCP
+    env:
+    - name: MYSQL_HOST
+      value: "0.0.0.0"
+    - name: MYSQL_PORT
+      value: "3306"
+    readinessProbe:
+      exec:
+        command:
+        - cat
+        - /work/mysql-inited
+      initialDelaySeconds: 5
+      periodSeconds: 5
