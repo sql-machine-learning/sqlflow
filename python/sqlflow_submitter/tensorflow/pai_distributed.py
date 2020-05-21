@@ -15,7 +15,7 @@ import json
 import os
 
 import tensorflow as tf
-from sqlflow_submitter.env import get_tf_random_seed
+from sqlflow_submitter.seeding import get_tf_random_seed
 
 # This module contain utilities for PAI distributed training.
 # Note that currently PAI only support Tensorflow 1.x versions

@@ -14,8 +14,8 @@
 import sys
 
 import tensorflow as tf
-from sqlflow_submitter.env import get_tf_random_seed
 from sqlflow_submitter.pai import model
+from sqlflow_submitter.seeding import get_tf_random_seed
 
 from . import metrics
 from .diag import check_and_load_estimator

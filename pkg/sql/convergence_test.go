@@ -14,6 +14,7 @@
 package sql
 
 import (
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -30,10 +31,11 @@ func TestConvergenceAndAccuracy(t *testing.T) {
 	}
 	a := assert.New(t)
 
-	// Fix random seed to get deterministic result, avoiding random failure
-	SetTensorFlowRandomSeed(1)
-
-	defer SetTensorFlowRandomSeed(nil)
+	// Set environment variable which will be read by
+	// sqlflow_submitter.seeding.get_tf_random_seed to seed TF-related unit tests.
+	seedEnvKey := "SQLFLOW_TF_RANDOM_SEED"
+	os.Setenv(seedEnvKey, "1")
+	defer os.Unsetenv(seedEnvKey)
 
 	modelDir := ""
 	a.NotPanics(func() {
