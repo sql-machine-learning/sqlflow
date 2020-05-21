@@ -16,6 +16,7 @@ package log
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"sort"
 	"strings"
 
@@ -45,14 +46,18 @@ func InitLogger(filename string, f Formatter) {
 
 // setOutput sets log output to filename globally.
 // filename="/var/log/sqlflow.log": write the log to file
-// filename="": write the file to stdout
+// filename="": write the file to stdout or stderr
+// filename="/dev/null": ignore log message
 func setOutput(filename string) {
-	if len(strings.Trim(filename, " ")) > 0 {
+	filename = strings.Trim(filename, " ")
+	if filename == "/dev/null" {
+		logrus.SetOutput(ioutil.Discard)
+	} else if len(filename) > 0 {
 		logrus.SetOutput(&lumberjack.Logger{
 			Filename:   filename,
 			MaxSize:    32, // megabytes
 			MaxBackups: 64,
-			MaxAge:     10, // days
+			MaxAge:     30, // days
 			Compress:   true,
 		})
 	}
