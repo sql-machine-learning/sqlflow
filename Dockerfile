@@ -15,8 +15,8 @@ RUN /ci/install-pips.bash
 COPY docker/ci/install-jupyter.bash /ci/
 RUN /ci/install-jupyter.bash
 
-COPY docker/ci/install-mysql.bash /ci/
-RUN /ci/install-mysql.bash
+COPY docker/ci/install-mysql-client.bash /ci/
+RUN /ci/install-mysql-client.bash
 
 COPY docker/ci/install-odps.bash /ci/
 RUN /ci/install-odps.bash
@@ -33,16 +33,6 @@ RUN /ci/install-kubectl.bash
 # scripts/test/workflow require Docker.
 RUN apt-get -qq install -y docker.io sudo > /dev/null
 
-# Install sample datasets for CI and demo.
-COPY doc/datasets/popularize_churn.sql \
-     doc/datasets/popularize_iris.sql \
-     doc/datasets/popularize_boston.sql \
-     doc/datasets/popularize_creditcardfraud.sql \
-     doc/datasets/popularize_imdb.sql \
-     doc/datasets/create_model_db.sql \
-     /docker-entrypoint-initdb.d/
-VOLUME /var/lib/mysql
-
 # Install the Python source code.
 COPY python /usr/local/sqlflow/python
 ENV PYTHONPATH=/usr/local/sqlflow/python:$PYTHONPATH
@@ -56,9 +46,10 @@ RUN pip install --quiet /build/*.whl \
         && mkdir -p $SQLFLOW_PARSER_SERVER_LOADING_PATH \
         && mv /build/*.jar $SQLFLOW_PARSER_SERVER_LOADING_PATH \
         && mv /build/tutorial /workspace
+WORKDIR /workspace
 
-# Expose MySQL server, SQLFlow gRPC server, and Jupyter Notebook server port.
-EXPOSE 3306 50051 8888
+# Expose SQLFlow gRPC server and Jupyter Notebook server port.
+EXPOSE 50051 8888
 
 ADD docker/ci/start.sh /
 CMD ["bash", "/start.sh"]

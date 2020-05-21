@@ -75,12 +75,6 @@ jobs:
     - $TRAVIS_BUILD_DIR/scripts/travis/build.sh
     - $TRAVIS_BUILD_DIR/scripts/travis/setup_minikube.sh
     - docker run --rm --net=host
-      -v /var/run/docker.sock:/var/run/docker.sock
-      -v $HOME/.kube:/root/.kube
-      -v /home/$USER/.minikube/:/home/$USER/.minikube/
-      -v $TRAVIS_BUILD_DIR:/work -w /work
-      sqlflow:ci scripts/test/ipython.sh
-    - docker run --rm --net=host
       -e SQLFLOW_TEST_DB_MAXCOMPUTE_AK=$MAXCOMPUTE_AK
       -e SQLFLOW_TEST_DB_MAXCOMPUTE_SK=$MAXCOMPUTE_SK
       -v /var/run/docker.sock:/var/run/docker.sock
@@ -98,12 +92,15 @@ jobs:
   - env: SQLFLOW_TEST=workflow
     script:
     - set -e
+    - cd $TRAVIS_BUILD_DIR
+    - docker build -t sqlflow:mysql -f docker/mysql/Dockerfile .
+    - $TRAVIS_BUILD_DIR/scripts/travis/build.sh
     - $TRAVIS_BUILD_DIR/scripts/travis/setup_minikube.sh
     - eval $(sudo minikube docker-env)
-    - $TRAVIS_BUILD_DIR/scripts/travis/build.sh
-    - docker tag sqlflow:ci sqlflow:submitter
+    - docker run --rm -d -p 3306:3306 --name mysql_server
+      -v $TRAVIS_BUILD_DIR:/work sqlflow:mysql
     - docker run --rm --net=host
-      -e SQLFLOW_WORKFLOW_STEP_IMAGE=sqlflow:submitter
+      -e SQLFLOW_WORKFLOW_STEP_IMAGE=sqlflow:ci
       -v /var/run/docker.sock:/var/run/docker.sock
       -v $HOME/.kube:/root/.kube
       -v /home/$USER/.minikube/:/home/$USER/.minikube/

@@ -17,4 +17,4 @@ set -e
 echo "Start minikube cluster ..."
 sudo minikube start \
      --vm-driver=none \
-     --kubernetes-version=v$K8S_VERSION
+     --kubernetes-version=v"$K8S_VERSION"

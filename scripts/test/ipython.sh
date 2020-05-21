@@ -12,42 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-function sleep_until_mysql_is_ready() {
-  until mysql -u root -proot --host 127.0.0.1 --port 3306 -e ";" ; do
-    sleep 1
-    read -p "Can't connect, retrying..."
-  done
-}
-
-
-function populate_example_dataset() {
-  sleep_until_mysql_is_ready
-  # FIXME(typhoonzero): should let docker-entrypoint.sh do this work
-  for f in /docker-entrypoint-initdb.d/*; do
-    cat $f | mysql -uroot -proot --host 127.0.0.1  --port 3306
-  done
-}
-
 set -e
 
-service mysql start
-sleep 1
-populate_example_dataset
+# Wait for the creation of file /work/mysql-inited.  The entrypoint
+# of sqlflow:mysql should create this file on a bind mount of the host
+# filesystem.  So, the container running this script should also bind
+# mount the same host directory to /work.
+while read i; do if [ "$i" = "mysql-inited" ]; then break; fi; done \
+    < <(inotifywait  -e create,open --format '%f' --quiet /work --monitor)
+
+DS="mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
 
 go generate ./...
 go install ./...
 
-DATASOURCE="mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
-
-# NOTE: we have already installed sqlflow_submitter under python installation path
-# using latest develop branch, but when testing on CI, we need to use the code in
-# the current pull request.
+# NOTE: we have already installed sqlflow_submitter under python
+# installation path using latest develop branch, but when testing on
+# CI, we need to use the code in the current pull request.
 export PYTHONPATH=$GOPATH/src/sqlflow.org/sqlflow/python
 
 sqlflowserver &
 sleep 10
-# e2e test for standard SQL
-SQLFLOW_DATASOURCE=${DATASOURCE} SQLFLOW_SERVER=localhost:50051 ipython python/test_magic.py
+
+SQLFLOW_DATASOURCE="$DS" \
+SQLFLOW_SERVER="localhost:50051" \
+  ipython python/test_magic.py
+
 # TODO(yi): Re-enable the end-to-end test of Ant XGBoost after accelerating Travis CI.
 # SQLFLOW_SERVER=localhost:50051 ipython sql/python/test_magic_ant_xgboost.py
 # TODO(terrytangyuan): Enable this when ElasticDL is open sourced
