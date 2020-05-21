@@ -57,7 +57,7 @@ func setOutput(filename string) {
 			Filename:   filename,
 			MaxSize:    32, // megabytes
 			MaxBackups: 64,
-			MaxAge:     30, // days
+			MaxAge:     15, // days
 			Compress:   true,
 		})
 	}
