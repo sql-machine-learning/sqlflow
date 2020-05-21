@@ -22,3 +22,5 @@ target
 ParserGrpc.java
 ParserProto.java
 flymake_*
+.test_sqlflow_env
+mysql-inited

@@ -1,4 +1,3 @@
-#!/bin/bash
 # Copyright 2020 The SQLFlow Authors. All rights reserved.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,11 +11,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -e
+import os
 
-# Travis CI VMs and Vagrant provisioning allow sudo without password.
-K8S_RELEASE_SITE="https://storage.googleapis.com/kubernetes-release/release"
-axel --quiet --output kubectl \
-     "$K8S_RELEASE_SITE"/v"$K8S_VERSION"/bin/linux/amd64/kubectl
-chmod a+x kubectl
-sudo mv kubectl /usr/local/bin/kubectl
+
+def get_tf_random_seed():
+    env = os.environ.get('SQLFLOW_TF_RANDOM_SEED', None)
+    return int(env) if env is not None else None

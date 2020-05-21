@@ -15,6 +15,7 @@ import json
 import os
 
 import tensorflow as tf
+from sqlflow_submitter.seeding import get_tf_random_seed
 
 # This module contain utilities for PAI distributed training.
 # Note that currently PAI only support Tensorflow 1.x versions
@@ -114,11 +115,13 @@ def make_estimator_distributed_runconfig(FLAGS,
         else:
             dist_strategy = tf.contrib.distribute.ParameterServerStrategy()
         run_config = tf.estimator.RunConfig(
+            tf_random_seed=get_tf_random_seed(),
             save_checkpoints_steps=save_checkpoints_steps,
             train_distribute=dist_strategy,
             session_config=tf.ConfigProto(log_device_placement=True,
                                           device_filters=device_filters))
     else:
         run_config = tf.estimator.RunConfig(
+            tf_random_seed=get_tf_random_seed(),
             save_checkpoints_steps=save_checkpoints_steps)
     return run_config
