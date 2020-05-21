@@ -133,9 +133,9 @@ func (w *Workflow) Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 		// TODO(yancey1989): add duration time for the eoeResponse
 		// eoe just used to simplify the client code which can be consistent with non-argo mode.
 		if isPodFailed(pod) {
-			logger.Errorf("workflowFailed, spent:%d", time.Now().Second()-wf.CreationTimestamp.Second())
-			return r.ResponseWithStepComplete(req.Job.Id, "", newStepPhase, eof),
-				fmt.Errorf("%s Failed, Log: %s\n%s", logPrefix, logURL, r.ErrorMessage())
+			e = fmt.Errorf("%s Failed, Log: %s\n%s", logPrefix, logURL, r.ErrorMessage())
+			logger.Errorf("workflowFailed, %v, spent:%d", e, time.Now().Second()-wf.CreationTimestamp.Second())
+			return r.ResponseWithStepComplete(req.Job.Id, "", newStepPhase, eof), e
 		}
 		logger.Infof("workflowSucceed, spent:%d", time.Now().Second()-wf.CreationTimestamp.Second())
 
