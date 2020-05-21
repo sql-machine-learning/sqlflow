@@ -72,7 +72,7 @@ kubectl create -f ./scripts/test/mysql_pod.yaml
 TIMEOUT="true"
 for _ in {1..30}; do
     MYSQL_POD_READY=$(kubectl get pod mysql -o jsonpath='{.status.containerStatuses[0].ready}')
-    echo "${MYSQL_POD_READY}"
+    echo "Check MySQL Pod is ready ..." "${MYSQL_POD_READY}"
     if [[ "${MYSQL_POD_READY}" == "true" ]]; then
         MYSQL_POD_IP=$(kubectl get pod mysql -o jsonpath='{.status.podIP}')
         echo "MySQL pod IP: $MYSQL_POD_IP"
