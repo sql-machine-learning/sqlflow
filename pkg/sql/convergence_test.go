@@ -14,6 +14,7 @@
 package sql
 
 import (
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -29,6 +30,13 @@ func TestConvergenceAndAccuracy(t *testing.T) {
 		t.Skip("only run convergence test with MySQL")
 	}
 	a := assert.New(t)
+
+	// Set environment variable which will be read by
+	// sqlflow_submitter.seeding.get_tf_random_seed to seed TF-related unit tests.
+	seedEnvKey := "SQLFLOW_TF_RANDOM_SEED"
+	os.Setenv(seedEnvKey, "1")
+	defer os.Unsetenv(seedEnvKey)
+
 	modelDir := ""
 	a.NotPanics(func() {
 		stream := RunSQLProgram(`
