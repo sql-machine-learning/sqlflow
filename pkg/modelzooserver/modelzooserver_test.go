@@ -81,7 +81,7 @@ func mockTmpModelRepo() (string, error) {
 	return dir, nil
 }
 
-func TestReleaseModelZoo(t *testing.T) {
+func TestModelZooServer(t *testing.T) {
 	a := assert.New(t)
 	go startServer()
 	server.WaitPortReady("localhost:50055", 0)
@@ -96,6 +96,7 @@ func TestReleaseModelZoo(t *testing.T) {
 
 	dir, err := mockTmpModelRepo()
 	a.NoError(err)
+	defer os.RemoveAll(dir)
 	cwd, err := os.Getwd()
 	a.NoError(err)
 	err = os.Chdir(dir)
@@ -121,34 +122,13 @@ func TestReleaseModelZoo(t *testing.T) {
 
 	err = os.Chdir(cwd)
 	a.NoError(err)
-}
-
-func TestModelZooServer(t *testing.T) {
-	a := assert.New(t)
-	go startServer()
-	server.WaitPortReady("localhost:50055", 0)
-
-	conn, err := grpc.Dial(":50055", grpc.WithInsecure())
-	if err != nil {
-		t.Fatalf("create client error: %v", err)
-	}
-	defer conn.Close()
-
-	client := pb.NewModelZooServerClient(conn)
-
-	stream, err := client.ReleaseModelDef(context.Background())
-	a.NoError(err)
-	modelDefReq := &pb.ModelDefRequest{Name: "hub.docker.com/group/mymodel", Tag: "v0.1"}
-	err = stream.Send(modelDefReq)
-	a.NoError(err)
-	reply, err := stream.CloseAndRecv()
-	a.NoError(err)
-	a.Equal(true, reply.Success)
 
 	res, err := client.ListModelDefs(context.Background(), &pb.ListModelRequest{Start: 0, Size: -1})
 	a.NoError(err)
 	a.Equal(1, len(res.ModelDefList))
 	a.Equal("hub.docker.com/group/mymodel", res.ModelDefList[0].ImageUrl)
+	a.Equal("DNNClassifier", res.ModelDefList[0].ClassName)
+	a.Equal(307, len(res.ModelDefList[0].ArgDescs))
 
 	trainedModelRes, err := client.ReleaseTrainedModel(context.Background(),
 		&pb.TrainedModelRequest{

@@ -49,7 +49,7 @@ func untarGzDir(tarball string, output string) error {
 	if err != nil {
 		return err
 	}
-	return uncompress(rd, ".")
+	return uncompress(rd, output)
 }
 
 func compress(src string, buf io.Writer) error {
