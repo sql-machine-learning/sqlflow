@@ -58,7 +58,7 @@ jobs:
       -e SQLFLOW_TEST_DB=mysql
       -e SQLFLOW_TEST_DB_MYSQL_ADDR="127.0.0.1:13306"
       sqlflow:ci scripts/test/units.sh
-    - scripts/travis/upload_coveralls.sh
+    - scripts/travis/upload_codecov.sh
   - env: SQLFLOW_TEST_DB=hive # run more parallel tests in the same stage:
     script:
     - set -e

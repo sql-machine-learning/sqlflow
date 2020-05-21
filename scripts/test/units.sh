@@ -35,10 +35,9 @@ python -c "import sqlflow_submitter.db"
 go generate ./...
 go install ./...
 
-# -p 1 is necessary since tests in different packages are sharing the
-# same database ref: https://stackoverflow.com/a/23840896 set test
-# timeout to 900s since travis CI may be slow to run the case
-# TestParse.
-gotest -v -p 1 -timeout 900s ./...  -covermode=count -coverprofile=coverage.out
+# -p 1 is necessary since tests in different packages are sharing the same database
+# ref: https://stackoverflow.com/a/23840896
+# set test timeout to 900s since travis CI may be slow to run the case TestParse
+gotest -v -p 1 -timeout 900s ./...  -covermode=count -coverprofile=coverage.txt
 
 python -m unittest discover -v python "*_test.py"
