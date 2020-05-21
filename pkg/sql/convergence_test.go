@@ -29,6 +29,12 @@ func TestConvergenceAndAccuracy(t *testing.T) {
 		t.Skip("only run convergence test with MySQL")
 	}
 	a := assert.New(t)
+
+	// Fix random seed to get deterministic result, avoiding random failure
+	SetTensorFlowRandomSeed(1)
+
+	defer SetTensorFlowRandomSeed(nil)
+
 	modelDir := ""
 	a.NotPanics(func() {
 		stream := RunSQLProgram(`

@@ -14,6 +14,7 @@
 import sys
 
 import tensorflow as tf
+from sqlflow_submitter.env import get_tf_random_seed
 from sqlflow_submitter.pai import model
 
 from . import metrics
@@ -82,11 +83,12 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
         dump_into_tf_config(cluster, task_type, task_index)
         dist_strategy = tf.contrib.distribute.ParameterServerStrategy()
 
-        run_config = tf.estimator.RunConfig(save_checkpoints_steps=100,
-                                            train_distribute=dist_strategy,
-                                            session_config=tf.ConfigProto(
-                                                log_device_placement=True,
-                                                device_filters=None))
+        run_config = tf.estimator.RunConfig(
+            tf_random_seed=get_tf_random_seed(),
+            save_checkpoints_steps=100,
+            train_distribute=dist_strategy,
+            session_config=tf.ConfigProto(log_device_placement=True,
+                                          device_filters=None))
         model_dir = FLAGS.checkpointDir
 
         keras_estimator = tf.keras.estimator.model_to_estimator(
