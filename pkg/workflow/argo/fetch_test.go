@@ -28,6 +28,7 @@ import (
 	"github.com/golang/protobuf/ptypes/any"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/stretchr/testify/assert"
+	sqlflowlog "sqlflow.org/sqlflow/pkg/log"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	wfrsp "sqlflow.org/sqlflow/pkg/workflow/response"
 )
@@ -115,6 +116,10 @@ spec:
 
 var stepImage = "sqlflow/sqlflow"
 
+func init() {
+	sqlflowlog.InitLogger("/dev/null", sqlflowlog.TextFormatter)
+}
+
 func createAndWriteTempFile(content string) (string, error) {
 	tmpFile, err := ioutil.TempFile("/tmp", "sqlflow-")
 	if err != nil {
@@ -155,6 +160,7 @@ func parseFetchResponse(responses *pb.FetchResponse_Responses) ([]string, [][]*a
 	}
 	return columns, rows, messages, nil
 }
+
 func TestFetch(t *testing.T) {
 	a := assert.New(t)
 	if os.Getenv("SQLFLOW_TEST") != "workflow" {
