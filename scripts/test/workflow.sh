@@ -81,9 +81,9 @@ spec:
       protocol: TCP
     env:
     - name: MYSQL_HOST
-      value: 0.0.0.0
+      value: "0.0.0.0"
     - name: MYSQL_PORT
-      value: 3306
+      value: "3306"
     readinessProbe:
       exec:
         command:
