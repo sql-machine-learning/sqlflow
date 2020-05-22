@@ -93,12 +93,17 @@ export PATH=$PWD:$PATH
 echo "Publish /tmp/sqlflow to Qiniu Object Storage ..."
 $F account "$QINIU_AK" "$QINIU_SK" "wu"
 ret=1
+maxretry=5
 while [ $ret -ne 0 ];
 do
     ret=$($F rput --overwrite \
         sqlflow-release \
         "$RELEASE_TAG/$TRAVIS_OS_NAME/sqlflow" \
         "$PWD"/build/sqlflow*)  # Need * because for Windows it is sqlflow.exe
-    echo "retrying in 5 seconds"
-    sleep 5
+    echo "retrying in 3 seconds, left retry count $maxretry..."
+    sleep 3
+    maxretry=$(( maxretry - 1 ))
+    if [ $maxretry -eq 0 ]; then
+        break
+    fi
 done
