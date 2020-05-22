@@ -22,7 +22,7 @@ SQLFlow compiles the above SQL program into an execution plan and runs it.  As t
 
 Sometimes users may make some configuration mistake on `WITH CLAUSE`, then the job would fault during execution and return some uncertain error message.
 
-This documentation issued a way that adding extra contract in docstring to contract the arguments, and this can achieve three advantage at least:
+This documentation issued a way that adding extra contract in [docstring](https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html) to contract the arguments, and this can achieve three advantage at least:
 
 1. Early testing, we can do early testing before running the job; users can wait less time and cluster save resources.
 2. More accurate diagnostic message.
@@ -38,19 +38,19 @@ An example:
 
 ```python 
 class MyDNNClassifier(keras.Model)
-        def __init__(self, n_classes=32, hidden_units=[32, 64])
-        """
-        Args:
-    
-        # isintance(n_classes, int) && n_classes > 1
-        n_classes: Number of label classes. Defaults to 2, namely binary
-        classification. Must be > 1.
+    def __init__(self, n_classes=32, hidden_units=[32, 64])
+    """
+    Args:
 
-        # isintance(hidden_units, list) && all(isinstance(item, int) for item in hidden_units)
-        hidden_units: Iterable of number hidden units per layer. All layers are
-        fully connected. Ex. `[64, 32]` means first layer has 64 nodes and
-        second one has 32.
-        """
+    # isintance(n_classes, int) && n_classes > 1
+    n_classes: Number of label classes. Defaults to 2, namely binary
+    classification. Must be > 1.
+
+    # isintance(hidden_units, list) && all(isinstance(item, int) for item in hidden_units)
+    hidden_units: Iterable of number hidden units per layer. All layers are
+    fully connected. Ex. `[64, 32]` means first layer has 64 nodes and
+    second one has 32.
+    """
 ```
 
 If a user enter some invalide arguments:
@@ -79,14 +79,14 @@ We can extract the argument contract and documentation from the docstring, and c
 
 ``` python
 def attribute_check(estimator, **args):
-      # extract argument name, documentation and contracst from doc string  
-      contrcast = extract_doc_string(estimator)
-    # SQLFlowDIagnosticError message can be pipe to SQLFlow GUI via SQLFlow gRPC server
+    # extract argument name, documentation and contract from doc string  
+    contract = extract_doc_string(estimator)
+    # SQLFlowDiagnosticError message can be pipe to SQLFlow GUI via SQLFlow gRPC server
     diag_err = SQLFLowDiagnosError()
     for name, value in args:
-      if ! contracst.check(name, value):
+      if !contract.check(name, value):
             # component received value and argument documentation
-              diag_err.append_message(contracst.diag_message(name, value))
-    if ! diag_err.empty():
+              diag_err.append_message(contract.diag_message(name, value))
+    if !diag_err.empty():
           raise diag_err
 ```
