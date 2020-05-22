@@ -245,7 +245,11 @@ func createPredictionTableFromIR(predStmt *ir.PredictStmt, db *database.DB, sess
 				continue
 			}
 		}
-
+		// result column have the same name, do not add as feature column
+		if fldName == resultColumnName {
+			resultColumnType = stype
+			continue
+		}
 		fmt.Fprintf(&b, "%s %s, ", fldName, stype)
 	}
 
