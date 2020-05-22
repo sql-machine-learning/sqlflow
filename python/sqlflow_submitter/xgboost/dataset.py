@@ -17,6 +17,7 @@ import sys
 from pathlib import Path
 
 import xgboost as xgb
+from sklearn.datasets import load_svmlight_file
 from sqlflow_submitter import db
 
 # TODO(weiguoz): Find a strategy to adjust the slice_num by num_workers
@@ -65,8 +66,8 @@ def xgb_dataset(datasource,
                                     feature_specs, label_spec, selected_cols)
 
         while written_rows > 0:
-            yield xgb.DMatrix('{0}#{0}.cache'.format(step_file_name)
-                              if cache else step_file_name)
+            yield load_dmatrix('{0}#{0}.cache'.format(step_file_name)
+                               if cache else step_file_name)
             os.remove(step_file_name)
 
             step += 1
@@ -112,6 +113,29 @@ def dump_dmatrix(filename,
                 break
     # return rows written
     return row_id
+
+
+def load_dmatrix(filename):
+    '''
+    NOTE(sneaxiy): XGBoost distributed training using rabit would
+    split CSV/LIBSVM file into N pieces automatically, where N is
+    the worker number. However, in our implementation, we dump
+    different data file into each worker, and each worker should
+    not split the dumped file again when training. Otherwise,
+    some data would be lost. To prevent the automatic data sharding
+    by XGBoost itself, we load the LIBSVM file using
+    'sklearn.datasets.load_svmlight_file' to be a CSR sparse matrix
+    first, and then convert it to 'xgboost.DMatrix'.
+
+    See https://github.com/sql-machine-learning/sqlflow/issues/2326
+    in detailed.
+    '''
+    # NOTE(sneaxiy): We can add `if xgb.rabit.get_world_size() > 1` here
+    # to call `xgb.DMatrix(filename)` directly, but it would
+    # make the code more complex. So I decide to unify the codes of
+    # non-distributed and distributed training.
+    csr_data = load_svmlight_file(filename, zero_based=True)
+    return xgb.DMatrix(csr_data[0], csr_data[1])
 
 
 def pai_dataset(filename,
@@ -161,7 +185,7 @@ def pai_dataset(filename,
     # FIXME(typhoonzero): pai xgboost only support fixed SLICE_NUM now.
     if batch_size == None:
         map(lambda t: t.join(), threads)
-        yield xgb.DMatrix('{0}#{0}.cache'.format(dname) if cache else dname)
+        yield load_dmatrix('{0}#{0}.cache'.format(dname) if cache else dname)
         return
 
     for i in range(slice_total):
@@ -170,8 +194,8 @@ def pai_dataset(filename,
             downloaded_file = "./{}/{}.txt".format(dname, slice_id)
             # ignore empty files or the xgb.DMatrix will throw error.
             if Path(downloaded_file).stat().st_size > 0:
-                yield xgb.DMatrix('{0}#{0}.cache'.format(downloaded_file)
-                                  if cache else downloaded_file)
+                yield load_dmatrix('{0}#{0}.cache'.format(downloaded_file)
+                                   if cache else downloaded_file)
                 os.unlink(downloaded_file)
 
     if single_file:
@@ -180,7 +204,7 @@ def pai_dataset(filename,
         out, err = p.communicate()
         if err:
             raise Exception("merge data files failed: %s" % err)
-        yield xgb.DMatrix(
+        yield load_dmatrix(
             '{0}#{0}.cache'.format(filename) if cache else filename)
 
 
