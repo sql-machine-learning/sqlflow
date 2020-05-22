@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"strings"
 
 	"sqlflow.org/sqlflow/pkg/database"
@@ -45,7 +46,7 @@ CREATE TABLE sqlflow_model_zoo.model_definition (
     id INT AUTO_INCREMENT,
     model_coll_id INT,
     class_name VARCHAR(255),
-    args_desc VARCHAR(255),
+    args_desc TEXT,
     PRIMARY KEY (id),
     FOREIGN KEY (model_coll_id) REFERENCES model_collection(id)
 );
@@ -156,6 +157,11 @@ LEFT JOIN %s AS c ON b.model_coll_id=c.id LIMIT %d OFFSET %d;`,
 func (s *modelZooServer) ReleaseModelDef(stream pb.ModelZooServer_ReleaseModelDefServer) error {
 	reqName := ""
 	reqTag := ""
+
+	fd, err := os.Create("servergot.tar.gz")
+	if err != nil {
+		return err
+	}
 	for {
 		req, err := stream.Recv()
 		if err == io.EOF {
@@ -163,10 +169,28 @@ func (s *modelZooServer) ReleaseModelDef(stream pb.ModelZooServer_ReleaseModelDe
 		}
 		reqName = req.GetName()
 		reqTag = req.GetTag()
+		_, err = fd.Write(req.GetContentTar())
 		if err != nil {
-			log.Printf("ReleaseModelDef error %v", err)
+			log.Printf("get user model source code error %v", err)
 		}
 	}
+	// close and flush the tar.gz file
+	fd.Close()
+	if err := os.Mkdir("modelrepo", os.ModeDir); err != nil {
+		return err
+	}
+	if err := untarGzDir("servergot.tar.gz", "./modelrepo"); err != nil {
+		return err
+	}
+
+	defer os.RemoveAll("./modelrepo")
+	defer os.Remove("servergot.tar.gz")
+
+	modelDescs, err := getModelClasses("./modelrepo")
+	if len(modelDescs) == 0 {
+		return fmt.Errorf("no model classes detected")
+	}
+
 	// TODO(typhoonzero): Check the reqName should be of the format:
 	// hub.docker.com/group/mymodel
 	// group/mymodel
@@ -174,23 +198,35 @@ func (s *modelZooServer) ReleaseModelDef(stream pb.ModelZooServer_ReleaseModelDe
 
 	// TODO(typhoonzero): validate the uploaded tar contains valid models.
 
+	// get model_collection id, if exists, return already existed error
+	sql := fmt.Sprintf("SELECT id FROM %s WHERE name='%s' and version='%s';", modelCollTable, reqName, reqTag)
+	rows, err := s.DB.Query(sql)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	hasNext := rows.Next()
+	if hasNext {
+		return fmt.Errorf("model collection %s:%s already exists", reqName, reqTag)
+	}
+
 	// write model_collection
-	sql := fmt.Sprintf("INSERT INTO %s (name, version) VALUES ('%s', '%s');", modelCollTable, reqName, reqTag)
+	sql = fmt.Sprintf("INSERT INTO %s (name, version) VALUES ('%s', '%s');", modelCollTable, reqName, reqTag)
 	modelCollInsertRes, err := s.DB.Exec(sql)
 	if err != nil {
 		return err
 	}
-	// TODO(typhoonzero): Get details information from the uploaded tar
 
 	// Write model_definition
 	modelCollID, err := modelCollInsertRes.LastInsertId()
 	if err != nil {
 		return err
 	}
-	// TODO(typhoonzero): replace DNNClassifier with the real name.
-	sql = fmt.Sprintf("INSERT INTO %s (model_coll_id, class_name, args_desc) VALUES (%d, 'DNNClassifier', '{aaa,bbb}')", modelDefTable, modelCollID)
-	if _, err := s.DB.Exec(sql); err != nil {
-		return err
+	for _, desc := range modelDescs {
+		sql = fmt.Sprintf("INSERT INTO %s (model_coll_id, class_name, args_desc) VALUES (%d, '%s', '%s')", modelDefTable, modelCollID, desc.Name, desc.DocString)
+		if _, err := s.DB.Exec(sql); err != nil {
+			return err
+		}
 	}
 
 	return stream.SendAndClose(&pb.ModelResponse{Success: true, Message: ""})
