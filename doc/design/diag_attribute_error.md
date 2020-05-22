@@ -38,7 +38,7 @@ An example:
 
 ```python 
 class MyDNNClassifier(keras.Model)
-    def __init__(self, n_classes=32, hidden_units=[32, 64])
+    def __init__(self, n_classes=32, hidden_units=[32, 64]):
     """
     Args:
 
