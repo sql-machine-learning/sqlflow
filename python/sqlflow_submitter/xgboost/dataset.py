@@ -130,12 +130,11 @@ def load_dmatrix(filename):
     See https://github.com/sql-machine-learning/sqlflow/issues/2326
     in detailed.
     '''
-    # NOTE(sneaxiy): We can add `if xgb.rabit.get_world_size() > 1` here
-    # to call `xgb.DMatrix(filename)` directly, but it would
-    # make the code more complex. So I decide to unify the codes of
-    # non-distributed and distributed training.
-    csr_data = load_svmlight_file(filename, zero_based=True)
-    return xgb.DMatrix(csr_data[0], csr_data[1])
+    if xgb.rabit.get_world_size() > 1:
+        csr_data = load_svmlight_file(filename, zero_based=True)
+        return xgb.DMatrix(csr_data[0], csr_data[1])
+    else:
+        return xgb.DMatrix(filename)
 
 
 def pai_dataset(filename,
