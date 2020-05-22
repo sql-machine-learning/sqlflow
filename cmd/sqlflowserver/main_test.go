@@ -37,6 +37,7 @@ import (
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/stretchr/testify/assert"
 	"sqlflow.org/sqlflow/pkg/database"
+	sqlflowlog "sqlflow.org/sqlflow/pkg/log"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/server"
 	"sqlflow.org/sqlflow/pkg/sql/testdata"
@@ -56,6 +57,10 @@ var testDatasource = os.Getenv("SQLFLOW_TEST_DATASOURCE")
 var caseInto = "sqlflow_models.my_dnn_model"
 
 const unitTestPort = 50051
+
+func init() {
+	sqlflowlog.InitLogger("/dev/null", sqlflowlog.TextFormatter)
+}
 
 func connectAndRunSQLShouldError(sql string) {
 	conn, err := createRPCConn()

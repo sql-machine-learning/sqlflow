@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=SC2086,SC2231,SC2002
 # Copyright 2020 The SQLFlow Authors. All rights reserved.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,6 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+# FIXME(weiguoz): bring the shellcheck back: SC2086,SC2231,SC2002
 
 # Exit for any error.
 set -e
@@ -44,7 +47,7 @@ echo "Build parser gRPC servers in Java ..."
 export MAVEN_OPTS="-Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn"
 
 cd $SQLFLOWPATH/java/parse-interface
-mvn clean install -B # Write to local Maven repository.
+mvn -B -q clean install # Write to local Maven repository.
 
 cd $SQLFLOWPATH/java/parser-hive
 mvn -B -q clean compile assembly:single
