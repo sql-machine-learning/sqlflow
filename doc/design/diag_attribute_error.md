@@ -90,3 +90,7 @@ def attribute_check(estimator, **args):
     if !diag_err.empty():
           raise diag_err
 ```
+
+## Future
+
+This documentation using natvie Python code to express the contract, [another PR](https://github.com/sql-machine-learning/sqlflow/pull/2245) issued an DSL, will make more discussion in the future.
