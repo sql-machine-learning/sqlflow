@@ -345,7 +345,7 @@ TO EVALUATE model_table_reference
 INTO evaluate_result_table;
 ```
 
-The select statement syntax is the same as the select statement syntax in the training syntax. When doing the evaluation, you should use a dataset that is not used for training to test evaluate the model dealing with "new" data. The evaluation result will be saved in `evaluate_result_table` when the evaluation job completes.
+The select statement syntax is the same as the select statement syntax in the training syntax. When doing the evaluation, you should use a dataset that is not used for training to evaluate the model's performance when dealing with "new" data. The evaluation result will be saved in `evaluate_result_table` when the evaluation job completes.
 
 ### Evaluate and Into Clause
 
@@ -359,7 +359,7 @@ INTO evaluate_result_table;
 ```
 
 - *model_table_reference* indicates that this model will be used to do the evaluation. The result metrics can show the performance of this model when using this model to predict "new" data.
-- *attr_expr* set attributes when doing evaluation. You can set `validation.metrics` to indicate which metrics will be outputed to the result table, e.g. `validation.metrics="Accuracy,AUC"`, you can find more supported metric names for Keras models [here](https://www.tensorflow.org/api_docs/python/tf/keras/metrics) and XGBoost models [here](https://xgboost.readthedocs.io/en/latest/parameter.html).
+- *attr_expr* sets attributes when doing evaluation. You can set `validation.metrics` to indicate which metrics will be outputed to the result table, e.g. `validation.metrics="Accuracy,AUC"`, you can find more supported metric names for Keras models [here](https://www.tensorflow.org/api_docs/python/tf/keras/metrics) and XGBoost models [here](https://xgboost.readthedocs.io/en/latest/parameter.html).
 - *evaluate_result_table* is the result table that stores the evaluation results.
 
 
