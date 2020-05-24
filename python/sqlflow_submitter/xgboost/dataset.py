@@ -16,12 +16,12 @@ import os
 import sys
 from pathlib import Path
 
+import numpy as np
+import six
 import xgboost as xgb
-from sklearn.datasets import load_svmlight_file
+from scipy.sparse import vstack
+from sklearn.datasets import load_svmlight_file, load_svmlight_files
 from sqlflow_submitter import db
-
-# TODO(weiguoz): Find a strategy to adjust the slice_num by num_workers
-SLICE_NUM = 128
 
 
 def xgb_dataset(datasource,
@@ -131,10 +131,35 @@ def load_dmatrix(filename):
     in detailed.
     '''
     if xgb.rabit.get_world_size() > 1:
-        csr_data = load_svmlight_file(filename, zero_based=True)
-        return xgb.DMatrix(csr_data[0], csr_data[1])
+        if os.path.isdir(filename):
+            files = [os.path.join(filename, f) for f in os.listdir(filename)]
+            ret = load_svmlight_files(files, zero_based=True)
+            X = vstack(ret[0::2])
+            y = np.concatenate(ret[1::2], axis=0)
+            return xgb.DMatrix(X, y)
+        else:
+            ret = load_svmlight_file(filename, zero_based=True)
+            return xgb.DMatrix(ret[0], ret[1])
     else:
         return xgb.DMatrix(filename)
+
+
+def get_pai_table_slice_count(table, nworkers, batch_size):
+    if batch_size is None or batch_size <= 0:
+        batch_size = 4096  # default batch_size
+
+    row_cnt = db.get_pai_table_row_num(table)
+
+    assert row_cnt >= nworkers, "Data number {} should not less than worker number {}".format(
+        row_cnt, nworkers)
+
+    slice_num_per_worker = max(int(row_cnt / (nworkers * batch_size)), 1)
+    slice_count = slice_num_per_worker * nworkers
+
+    print('row_cnt = {}, slice_count = {}, nworkers = {}'.format(
+        row_cnt, slice_count, nworkers))
+
+    return slice_count
 
 
 def pai_dataset(filename,
@@ -148,15 +173,20 @@ def pai_dataset(filename,
                 nworkers=1,
                 batch_size=None):
     from subprocess import Popen, PIPE
-    import threading
+    from multiprocessing.dummy import Pool  # ThreadPool
     import queue
-    threads = []
-    complete_queue = queue.Queue()
 
     dname = filename
     if single_file:
         dname = filename + '.dir'
     os.mkdir(dname)
+
+    slice_count = get_pai_table_slice_count(pai_table, nworkers, batch_size)
+
+    thread_num = min(int(slice_count / nworkers), 128)
+
+    pool = Pool(thread_num)
+    complete_queue = queue.Queue()
 
     def thread_worker(slice_id):
         p = Popen("{} -m {}".format(sys.executable, __name__),
@@ -165,29 +195,24 @@ def pai_dataset(filename,
         p.communicate(
             json.dumps([
                 dname, feature_specs, feature_column_names, label_spec,
-                pai_table, slice_id
+                pai_table, slice_id, slice_count
             ]))
         complete_queue.put(slice_id)
 
     slice_id = rank
     slice_total = 0
-    while slice_id < SLICE_NUM:
-        t = threading.Thread(target=thread_worker, args=(slice_id, ))
+    while slice_id < slice_count:
+        pool.apply_async(thread_worker, (slice_id, ))
         slice_id += nworkers
         slice_total += 1
-        t.start()
-        threads.append(t)
 
-    # map(lambda t: t.join(), threads)
-
-    # Use all data at once if batch size == None, else use a static SLICE_NUM
-    # FIXME(typhoonzero): pai xgboost only support fixed SLICE_NUM now.
-    if batch_size == None:
-        map(lambda t: t.join(), threads)
+    if batch_size is None:
+        pool.close()
+        pool.join()
         yield load_dmatrix('{0}#{0}.cache'.format(dname) if cache else dname)
         return
 
-    for i in range(slice_total):
+    for _ in six.moves.range(slice_total):
         slice_id = complete_queue.get(block=True)
         if not single_file:
             downloaded_file = "./{}/{}.txt".format(dname, slice_id)
@@ -206,16 +231,20 @@ def pai_dataset(filename,
         yield load_dmatrix(
             '{0}#{0}.cache'.format(filename) if cache else filename)
 
+    pool.close()
+    pool.join()
+
 
 def pai_download_table_data_worker(dname, feature_specs, feature_column_names,
-                                   label_spec, pai_table, slice_id):
+                                   label_spec, pai_table, slice_id,
+                                   slice_count):
     label_column_name = label_spec['feature_name'] if label_spec else None
     gen = db.pai_maxcompute_db_generator(pai_table,
                                          feature_column_names,
                                          label_column_name,
                                          feature_specs,
                                          slice_id=slice_id,
-                                         slice_count=SLICE_NUM)()
+                                         slice_count=slice_count)()
     selected_cols = db.pai_selected_cols(pai_table)
     filename = "{}/{}.txt".format(dname, slice_id)
     dump_dmatrix(filename, gen, feature_column_names, feature_specs,
