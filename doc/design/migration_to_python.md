@@ -112,7 +112,7 @@ At the moment, the packages under [sqlflow/pkg](https://github.com/sql-machine-l
 
 13. [sql/codegen](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/sql/codegen). This package implements the mentioned *text substitution* to generate *submitter programs*. This package is the core reason of **mirrored classes/functions**: Every function/package in `sqlflow_submitter` has a corresponding function/package in `sql/codegen`.
 
-    After the migration to python, we'll have a new python package that directly calls functions in `sqlflow_submitter`. Therefore, we don't need *text substitution* in the proposed architecture. We should **remove this package** after the migration, 
+    After the migration to python, we'll have a new python package that directly calls functions in `sqlflow_submitter`. Therefore, we don't need *text substitution* in the proposed architecture. We should **remove this package** after the migration.
 
 14. [sql](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/sql) dispatches `ir`s of SQLFlow statements to appropriate platforms (PAI e.g.) and ML engines (XGBoost e.g.), and calls the corresponding `codegen` package (`codegen/xgboost` e.g.) to generate the *submitter program* that calls corresponding python functions, and spawns a process to execute the program.
 
