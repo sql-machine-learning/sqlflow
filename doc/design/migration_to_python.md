@@ -61,7 +61,7 @@ From the two typical scenarios, the flaws in the current architecture are obviou
    1. Text substitution means we have to write python code as a golang string. This is hard to review and debug.
    2. In a text substituion way, because the golang part lacks knowledges about python function parameters and exceptions, SQLFlow cannot generate friendly diagnostic messages for argument errors.  SQLFlow users are always only familiar with SQL, tens of lines of python traceback is a terrible user experience.
 
-Because SQLFlow is an ML platform, and because Python is the dominant language in the ML community, SQLFlow has to rely heavily on python and has to frequently update the fresh progress of the ML community. In fact , the **Mirrored classes/functions** flaw implied the current architecture is unfriendly to both SQLFlow developers and model developers, the **Limited semantic checking** flaw implied the current architecture is unfriendly to SQLFlow users. Therefore, the two flaws are fatal for SQLFlow.
+Because SQLFlow is an ML platform, and because Python is the dominant language in the ML community, SQLFlow has to rely heavily on python and has to frequently update the fresh progress of the ML community. In fact , the **mirrored classes/functions** flaw implied the current architecture is unfriendly to both SQLFlow developers and model developers, the **limited semantic checking** flaw implied the current architecture is unfriendly to SQLFlow users. Therefore, the two flaws are fatal for SQLFlow.
 
 To solve the flaws of the current architecture described above. We propose to migrate the *ML code* from golang to python for two reasons:
 
