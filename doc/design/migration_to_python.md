@@ -48,7 +48,7 @@ There're lots of models other than DNNs that have decent performance on average-
    4. Modify the `submitter`s in the `pkg/sql/ package` to call `pkg/sql/codegen/lightgbm` to generate the *submitter program*.
 3. Test and debug: a bug can be in the python files, in the golang files, or in the python code text substitution templates.
 
-See [python/sqlflow_submitter/xgboost](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/python/sqlflow_submitter/xgboost) for an real-world example.
+See [python/sqlflow_submitter/xgboost](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/python/sqlflow_submitter/xgboost), [pkg/sql/codegen/xgboost](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/sql/codegen/xgboost), and [pkg/sql/submitter.go](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/sql/submitter.go) for an real-world example.
 
 ### The Flaws In A Nutshell
 
