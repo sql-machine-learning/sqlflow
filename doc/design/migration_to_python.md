@@ -319,8 +319,8 @@ The python function `fetch` gets output of an executing `Program` in a increment
 The python function `step` executes a SQLFlow `statement` as a workflow step. `step` should do at least the following tasks:
 
 - From the `platform` package, **locate** the python module of the **configured** platform.
-  - The configure method should be described in detail in the detailed design doc (the current architecture use the environment variable `SQLFlow_submitter` to config the platform)
-  - The locating method should be described in detail in the detailed design doc.
+  - The configure mechanism should be described in detail in the detailed design doc (the current architecture use the environment variable `SQLFlow_submitter` to config the platform)
+  - The locating mechanism should be described in detail in the detailed design doc.
 -  Call one of `train`, `predict`, `explain` ,`run`, `solve`, `evaluate `  of the python module of the platform according to `statement.type`
 
 There should be at least three modules in the `platform` package:
@@ -329,7 +329,7 @@ There should be at least three modules in the `platform` package:
 - `alisa.py`
 - `default.py`
 
-The functions `train`, `predict`, `explain` ,`run`, `solve`, `evaluate   ` provided by each module in `platform` should forward to `sqlflow_sumitter/xgboost`, `sqlflow_submitter/tensorflow`, etc. according to `statement.type`
+The functions `train`, `predict`, `explain` ,`run`, `solve`, `evaluate` provided by each module in `platform` should forward to `sqlflow_sumitter/xgboost`, `sqlflow_submitter/tensorflow`, etc. according to `statement.type`.
 
 The functions `train`, `predict`, `explain` ,`run`, `solve`, `evaluate `  provided by each module in `platform` should have the same signature. The signature should be defined in the detailed design doc.
 
