@@ -211,7 +211,7 @@ We propose to design a contracts based mechanism in `contracts.py` for semantic 
 4. Require a custom model to provide thoroughly checking for each input parameters.
    - Making sure customized models will not reduce user experience
 
-Not all runtime erros can be catched by the contracts based design, for example, training binary classifiers with dataset that has three classes. Therefore, besides `contracts.py`, we need another mechanism to catch such errors and pass a user-friendly diagnostics messages to the user. The mechanism would be implemented in `diagnosics.py`.
+Not all runtime errors can be catched by the contracts based design, for example, training binary classifiers with dataset that has three classes. Therefore, besides `contracts.py`, we need another mechanism to catch such errors and pass a user-friendly diagnostics messages to the user. The mechanism would be implemented in `diagnosics.py`.
 
 ###### Golang
 
@@ -312,7 +312,7 @@ The python function `execute` executes the SQLFlow `program` and should do at le
 
 - Do semantic checking for the `program` using `contracts.py`, use `diagnostics.py` to issue a diagnostic message to the golang part.
 - Call `features.py:generate_analysis_steps` to generate additional data transforming steps. 
-- Call `couler` to generate an Argo `.yaml` including all `statement` steps and the additional steps and submit the workflow to `Program.kubernetes`
+- Call `couler` to generate an Argo `.yaml` including all `statement` steps and the additional steps and submit the workflow to Kubernetes.
 
 The python function `fetch` gets output of an executing `Program` in a incremental way.
 
