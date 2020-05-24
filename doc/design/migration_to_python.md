@@ -2,11 +2,11 @@
 
 The design is about migrating SQLFlow golang code that's related to ML to python.
 
-Language migration is difficult in common sense. The section [Flaws In The Current Architecture](# Flaws In The Current Architecture) explains why the migration should happen. If you're already convinced that the migration is necessary, this section can be safely skipped and look over at any time.
+Language migration is difficult in common sense. The section [Flaws In The Current Architecture](#flaws-in-the-current-architecture) explains why the migration should happen. If you're already convinced that the migration is necessary, this section can be safely skipped and look over at any time.
 
-The section [A Quick View Of The Current Architecture](# A Quick View Of The Current Architecture) shows the distribution of golang  *ML code* in the current architecture. That's what to be migrated to python.
+The section [A Quick View Of The Current Architecture](#a-quick-view-of-the-current-architecture) shows the distribution of golang  *ML code* in the current architecture. That's what to be migrated to python.
 
-The section [The Proposed Architecture](#The Proposed Architecture) illustrates an outline design about how the migration will be done.
+The section [The Proposed Architecture](#the-proposed-architecture) illustrates an outline design about how the migration will be done.
 
 The last two sections explain how the proposed architecture solves the problem of the current architecture, as well as the preparations to be noted.
 
@@ -54,7 +54,7 @@ See [python/sqlflow_submitter/xgboost](https://github.com/sql-machine-learning/s
 
 From the two typical scenarios, the flaws in the current architecture are obvious:
 
-1. **Mirrored classes/functions**. Each classes/functions of ML-purpose in python has a mirror struct/function in golang, if anyone upgrades the python ML code, this usually implies she must upgrade the golang counterpart at the same time to make the upgrade work, and vice versa. This is a strong signal of bad extensibility, which usually is led by a design flaw.
+1. **Mirrored classes/functions**. Each classes/functions of ML-purpose in python has a mirror struct/function in golang, if anyone upgrades the python *ML code*, this usually implies she must upgrade the golang counterpart at the same time to make the upgrade work, and vice versa. This is a strong signal of bad extensibility, which usually is led by a design flaw.
    1. It's tedious and error-prone for SQLFlow developers to develop new ML features.
    2. Moreover, It's tedious and error-prone for model developers to contribute models: because python is the dominant language in the field of ML, ML experts are always only familiar with `python`, forcing them to develop in golang will either scare away them or lead to low quality code and painful code review. 
 2. **Limited semantic checking**. There's no language-level interaction between the golang part and the python part. 
@@ -74,11 +74,11 @@ Before diving into the migration, we should walk through the current packages to
 
 ### The Current Python Package
 
-The main python ML code are in the python package [sqlflow_submitter](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/python/sqlflow_submitter). The main purpose of the golang ML code is to generate python scripts that call python functions in the `sqlflow_submitter`  package. We call these python scripts the *submitter programs*. Because `sqlflow_submitter` is already written in python. There will be little modification to this package in the migration process.
+The main python *ML code* are in the python package [sqlflow_submitter](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/python/sqlflow_submitter). The main purpose of the golang *ML code* is to generate python scripts that call python functions in the `sqlflow_submitter`  package. We call these python scripts the *submitter programs*. Because `sqlflow_submitter` is already written in python. There will be little modification to this package in the migration process.
 
 ### The Current Golang Package Structure
 
-At the moment,  the directory structure under [sqlflow/pkg](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg) is:
+At the moment, the packages under [sqlflow/pkg](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg) are:
 
 1. [server](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/server) is the implementation of the SQLFlow gRPC server. The input statements from the user will be sent to the SQLFlow gRPC server. It forwards the statements to the `workflow` package and get results back. We **don't** have to migrate this package to python.
 
@@ -107,14 +107,14 @@ At the moment,  the directory structure under [sqlflow/pkg](https://github.com/s
 
 9. [model](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/model). This is a utility for saving and loading trained ML models. It should be migrated to python.
 
-10. [pipe](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/pipe). This is a utility for piping `stdout` of a CLI process as a stream for later use. It doesn't require python and is not ML code, so we **don't** have to migrate this package to python. 
-11. [log](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/log). This is a utility package for logging messages, for example: `logger.Info(something)`. It doesn't require python and is not ML code, so we **don't** have to migrate this package to python. 
+10. [pipe](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/pipe). This is a utility for piping `stdout` of a CLI process as a stream for later use. It doesn't require python and is not *ML code*, so we **don't** have to migrate this package to python. 
+11. [log](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/log). This is a utility package for logging messages, for example: `logger.Info(something)`. It doesn't require python and is not *ML code*, so we **don't** have to migrate this package to python. 
 
 13. [sql/codegen](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/sql/codegen). This package implements the mentioned *text substitution* to generate *submitter programs*. This package is the core reason of **mirrored classes/functions**: Every function/package in `sqlflow_submitter` has a corresponding function/package in `sql/codegen`.
 
     After the migration to python, we'll have a new python package that directly calls functions in `sqlflow_submitter`. Therefore, we don't need *text substitution* in the proposed architecture. We should **remove this package** after the migration, 
 
-14. [sql](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/sql)  dispatches `ir`s of SQLFlow statements to appropriate platforms (PAI e.g.) and ML engines (XGBoost e.g.), and calls the corresponding `codegen` package (`codegen/xgboost` e.g.) to generate the *submitter program* that calls corresponding python functions, and spawns a process to execute the program.
+14. [sql](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/sql) dispatches `ir`s of SQLFlow statements to appropriate platforms (PAI e.g.) and ML engines (XGBoost e.g.), and calls the corresponding `codegen` package (`codegen/xgboost` e.g.) to generate the *submitter program* that calls corresponding python functions, and spawns a process to execute the program.
 
     The main component of this package is a visitor hierarchy that implements a double dispatch mechanism. The hierachy is composed of `struct`s that implement the `ir.Executor` interface. 
 
@@ -122,13 +122,9 @@ At the moment,  the directory structure under [sqlflow/pkg](https://github.com/s
 
 15. [sql/codegen/attribute](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/attribute) provides **limited semantic checking** for the python classes/functions. As discussed above, It should be migrated to python.
 
-16. [sqlfs](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/sqlfs)
+16. [sqlfs](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/sqlfs) wraps a database table into a file system interface and is required by the `model` package. We would migrate this package to python together with `model`.
 
-    This package wraps a database table into a file system interface and is required by the `model` package. We would migrate this package to python together with `model`.
-
-17. [table_writer](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/table_writer)
-
-    This is a utility package for rendering database tables for a UI. We **don't** have to migrate this package to python. It's required by the `step` package and should be move to the `step` directory.
+17. [table_writer](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/table_writer) is a utility package for rendering database tables for a UI. We **don't** have to migrate this package to python. It's required by the `step` package and should be move to the `step` directory.
 
 ## The Proposed Architecture
 
@@ -196,7 +192,7 @@ As described above, we'll wrap the go `database` with `goalisa`, `gohive`, and `
 
 ##### Semantic Checking And Diagnostics
 
-As described in [The Flaws In The Current Architecture](#The Flaws In A Nutshell), SQLFlow executes ML tasks in python, but users are always only familiar with SQL. To generate user friendly diagnostics, we must check whether the user inputs satisfy the requirements of the python functions or callables that will be eventually called.
+As described in [The Flaws In The Current Architecture](#the-flaws-in-a-nutshell), SQLFlow executes ML tasks in python, but users are always only familiar with SQL. To generate user friendly diagnostics, we must check whether the user inputs satisfy the requirements of the python functions or callables that will be eventually called.
 
 The most widely-accepted solution to this problem is [contract programming](https://en.wikipedia.org/wiki/Design_by_contract). It enables defining formal, precise, and verifiable interface specifications for software components such as functions and callables. What we've done in the [sql/codegen/attribute](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/attribute) package is actually `contracts` in a limited way.
 
@@ -225,25 +221,37 @@ As described above, the proposed architecture requires the golang part to pass t
 
 ```protobuf
 message Statement {
-  // `select` is the query for fetching data. For example, "select * from iris.train;"
+  // `select` is the query for fetching data. For example,
+  // "select * from iris.train;"
   optional string select = 2;
-  // `validation_select` is the query for fetching the validation data. For example, "select * from iris.val;".
+  // `validation_select` is the query for fetching the validation data.
+  // For example, "select * from iris.val;".
   optional string validation_select = 3;
-  // `model_image` is the name of the model's Docker image, for example in the statement "TO TRAIN a_data_scientist/regressors:v0.2/MyDNNRegressor", the name "a_data_scientist/regressors:v0.2" is a Docker image.
+  // `model_image` is the name of the model's Docker image, for example, in the
+  // statement "TO TRAIN a_data_scientist/regressors:v0.2/MyDNNRegressor", the
+  // name "a_data_scientist/regressors:v0.2" is a Docker image.
   optional string model_image = 4;
-  // `estimator` specifies the estimator type. For example, after parsing "select ... train DNNClassifier WITH ...", the Estimator will be "DNNClassifier".
+  // `estimator` specifies the estimator type. For example, after parsing
+  // "select ... train DNNClassifier WITH ...", `estimator` will be
+  // "DNNClassifier".
   optional string estimator = 5;
-  // `attributes` is a map of parsed attribute in the WITH Clause. For example, after parsing "select ... train ... with train.epoch = 1000, model.hidden_units = [10, 10]", the `attributes` will be {"train.epoch": "1000", "model.hidden_units": ""[10, 10]""}
+  // `attributes` is a map of parsed attribute in the WITH Clause. For example,
+  // after parsing "select ... to train ... with train.epoch=1000,
+  // model.hidden_units = [10, 10]", the `attributes` will be
+  // {"train.epoch": "1000", "model.hidden_units": ""[10, 10]""}
   optional map<string, string> attributes = 6;
   repeated string label = 7;
   message Columns {
-  // The COLUMN clause will be split into `column`. For example, in the COLUMN clause "COLUMN NUMERIC(sepal_length), INDICATOR(ID)" will be saved in `columns` as ["NUMERIC(sepal_length)", "INDICATOR(ID)"]
-  repeated string columns = 1;
+  // The COLUMN clause will be split into `column`. For example, in the COLUMN
+  // clause "COLUMN NUMERIC(sepal_length), INDICATOR(ID)" will be saved in
+  // `columns` as ["NUMERIC(sepal_length)", "INDICATOR(ID)"]
+    repeated string columns = 1;
   }
-  // `columns` contain a map of string to `Columns`
-	// For multiple COLUMN clauses like "COLUMN ... FOR deep_feature, COLUMN ... FOR wide_feature"
-	// They will be parsed as {"deep_feature": [...], "wide_feature": [...]}
-	// For single column clause like "column ...", "feature_columns" will be used as the default map key.
+  // `columns` contain a map of string to `Columns` For multiple COLUMN clauses
+  // like "COLUMN ... FOR deep_feature, COLUMN ... FOR wide_feature". They will
+  // be parsed as {"deep_feature": [...], "wide_feature": [...]}. For single
+  // column clause like "column ...", "feature_columns" will be used as the
+  // default map key.
   optional map<string, Columns> columns = 8;
   // `model_save` specifies the saved model path in the INTO/USING clause.
   optional bool model_save = 9;
@@ -256,11 +264,14 @@ message Statement {
     SOLVE = 5;
   }
   optional Type type = 10;
-  // `predict_target` specifies the column to store predict result. For example: "iris.predict.class"
+  // `predict_target` specifies the column to store predict result.
+  // For example: "iris.predict.class"
   optional string predict_target = 11;
-  // `original_sql` is the original statement from that this `Statement` is generated.
+  // `original_sql` is the original statement from that this `Statement` is
+  // generated. This can be for diagnostic purpose.
   optional string original_sql string = 100;
 }
+
 message Program {
   // `datasource` is the connection string to the database
   optional string datasource = 1;
