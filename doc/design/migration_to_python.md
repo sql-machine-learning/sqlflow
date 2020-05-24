@@ -2,13 +2,13 @@
 
 The design is about migrating SQLFlow golang code that's related to ML to python.
 
-Language migration is difficult in common sense. The section [Flaws In The Current Architecture](# Flaws In The Current Architecture) explains why the migration should happen. If you're already convinced that the migration is necessary. This section can be safely skipped.
+Language migration is difficult in common sense. The section [Flaws In The Current Architecture](# Flaws In The Current Architecture) explains why the migration should happen. If you're already convinced that the migration is necessary, this section can be safely skipped and look over at any time.
 
 The section [A Quick View Of The Current Architecture](# A Quick View Of The Current Architecture) shows the distribution of golang  *ML code* in the current architecture. That's what to be migrated to python.
 
 The section [The Proposed Architecture](#The Proposed Architecture) illustrates an outline design about how the migration will be done.
 
-The last two sections explain how the proposed architecture solves the problem of the current architecture, as well as preparations to be noted.
+The last two sections explain how the proposed architecture solves the problem of the current architecture, as well as the preparations to be noted.
 
 ## Flaws In The Current Architecture
 
