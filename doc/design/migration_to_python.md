@@ -316,8 +316,6 @@ The python function `execute` executes the SQLFlow `program` and should do at le
 
 The python function `fetch` gets output of an executing `Program` in a incremental way.
 
-The python function `OriginalSQL string`
-
 The python function `step` executes a SQLFlow `statement` as a workflow step. `step` should do at least the following tasks:
 
 - From the `platform` package, **locate** the python module of the **configured** platform.
