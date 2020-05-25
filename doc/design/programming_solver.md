@@ -1,6 +1,6 @@
 # Mathematical Programming Solver with SQLFlow
 
-Mathematical programming (aka. [mathematical optimization](https://en.wikipedia.org/wiki/Mathematical_optimization)) is the selection of a best element (with regard to some criterion) from some set of available alternatives. Solving optimization problems is widely used in fields like ecnomics and finance, computer science, engineering and researching. In this design, we try to make SQLFlow be able to solve below branches of programming problems using SQL statements:
+Mathematical programming (aka. [mathematical optimization](https://en.wikipedia.org/wiki/Mathematical_optimization)) is the selection of a best element (with regard to some criterion) from some set of available alternatives. Solving optimization problems is widely used in fields like economics and finance, computer science, engineering, and researching. In this design, we try to make SQLFlow be able to solve below branches of programming problems using SQL statements by leveraging systems like [pyomo](http://www.pyomo.org/):
 
 - [Linear programming](https://en.wikipedia.org/wiki/Linear_programming)
 - [Quadratic programming](https://en.wikipedia.org/wiki/Quadratic_programming)
@@ -12,7 +12,7 @@ Mathematical programming (aka. [mathematical optimization](https://en.wikipedia.
 
 ## Background
 
-To understand what's a mathematical programming problem, let's take a look at this example:
+To understand what's a mathematical programming problem, let's take a look at this example (example origially published at http://faculty.kutztown.edu/vasko/MAT121/MAT121web/Example_2.html):
 
 Giapetto’s Woodcarving, Inc., manufactures two types of wooden toys: soldiers and trains. 
 
@@ -63,7 +63,7 @@ The `train_table` looks like:
 | soldier | 27    | 10             | 14         | 2         | 1         | 40      |
 | train   | 21    | 9              | 10         | 1         | 1         | 10000   |
 
-Note that we create this table to store the variables to form the objective and constraints so that when we have hundreds of variable types (e.g. the company actually manufactures 1000 products), the SQL statement will keep the same.
+Note that we create this table to store the variables to form the objective and constraints so that when we have hundreds of variable types (e.g. the company actually manufactures 1000 types of products), the SQL statement will keep the same.
 
 In the SQL statement:
 
@@ -85,8 +85,8 @@ After the SQL statement finishes execution, the result table `result_table` shou
 
 ## Implementation
 
-1. Update current extended syntax parser to support `TO SOLVE` clause.
-1. Add IR struct to represent `TO SOLVE` clause.
+1. Update our extended syntax parser to support `TO SOLVE` clause.
+1. Add an IR struct to represent `TO SOLVE` clause.
 1. Create a table to store the result.
 1. Add code generator to generate code like below example to run.
 1. The generated code should be able to output the result to the result table.
