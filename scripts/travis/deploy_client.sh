@@ -92,7 +92,15 @@ export PATH=$PWD:$PATH
 
 echo "Publish /tmp/sqlflow to Qiniu Object Storage ..."
 $F account "$QINIU_AK" "$QINIU_SK" "wu"
-$F rput --overwrite \
-   sqlflow-release \
-   "$RELEASE_TAG/$TRAVIS_OS_NAME/sqlflow" \
-   "$PWD"/build/sqlflow*  # Need * because for Windows it is sqlflow.exe
+
+retry=0
+while [[ $retry -lt 5 ]]; do
+  if $F rput --overwrite \
+        sqlflow-release \
+        "$RELEASE_TAG/$TRAVIS_OS_NAME/sqlflow" \
+        "$PWD"/build/sqlflow*; then
+    break
+  fi
+  retry=$(( retry + 1 ))
+  sleep 3
+done
