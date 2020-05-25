@@ -97,8 +97,6 @@ jobs:
     - $TRAVIS_BUILD_DIR/scripts/travis/build.sh
     - $TRAVIS_BUILD_DIR/scripts/travis/setup_minikube.sh
     - eval $(sudo minikube docker-env)
-    - docker run --rm -d -p 3306:3306 --name mysql_server
-      -v $TRAVIS_BUILD_DIR:/work sqlflow:mysql
     - docker run --rm --net=host
       -e SQLFLOW_WORKFLOW_STEP_IMAGE=sqlflow:ci
       -v /var/run/docker.sock:/var/run/docker.sock
