@@ -107,7 +107,7 @@ jobs:
     - eval $(sudo minikube docker-env)
     - docker run --rm -d -p 3306:3306 --name mysql_server
       -v $TRAVIS_BUILD_DIR:/work sqlflow:mysql
-    # Bind mount $HOME/.kube into the container, so that test/maxcompute.sh
+    # Bind mount $HOME/.kube into the container, so that test/workflow.sh
     # running in the container can call kubectl to submit jobs to the minikube
     # cluster.
     - docker run --rm --net=host
