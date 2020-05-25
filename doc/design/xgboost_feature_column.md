@@ -157,8 +157,9 @@ transform_fn = ComposedFeatureColumnTransformer(
 ```
 
 Then we pass `transform_fn` to `sqlflow_submitter.xgboost.train` method. Inside `sqlflow_submitter.xgboost.train`, we transform the 
-raw data from `db.db_generator(...)` by calling `transform_fn.__call__` method. The transformed
-data would be writen into SVM file, then it can be loaded in the following train step.
+raw data from `db.db_generator(...)` by calling `transform_fn.__call__` method. Method `set_column_names` would be called once
+when the table schema is obtained in runtime, so that the index of `key` can be inferred in Python runtime. The transformed data 
+would be writen into SVM file, then it can be loaded in the following train step.
 
 Another concern is that we should perform the same data pre-processing in prediction/evaluation stage. So we should save the feature columns
 of training, so that it can be loaded in prediction/evaluation stage. Besides, the codegen during prediction/evaluation stage should also 
