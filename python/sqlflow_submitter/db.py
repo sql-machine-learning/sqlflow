@@ -197,7 +197,17 @@ def pai_selected_cols(table):
     import paiio
     reader = paiio.TableReader(table)
     schema = reader.get_schema()
-    return [i['colname'] for i in schema]
+    selected_cols = [i['colname'] for i in schema]
+    reader.close()
+    return selected_cols
+
+
+def get_pai_table_row_num(table):
+    import paiio
+    reader = paiio.TableReader(table)
+    row_num = reader.get_row_count()
+    reader.close()
+    return row_num
 
 
 def read_features_from_row(row, select_cols, feature_column_names,

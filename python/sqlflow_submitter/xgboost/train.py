@@ -12,7 +12,9 @@
 # limitations under the License.
 
 import os
+import sys
 
+import six
 import sqlflow_submitter.tensorflow.pai_distributed as pai_dist
 import xgboost as xgb
 from sqlflow_submitter.pai import model
@@ -85,7 +87,7 @@ def dist_train(flags,
                   oss_model_dir=oss_model_dir)
     except Exception as e:
         print("node={}, id={}, exception={}".format(node, task_id, e))
-        raise e
+        six.reraise(*sys.exc_info())  # For better backtrace
     finally:
         if tracker is not None:
             tracker.join()
@@ -128,9 +130,16 @@ def train(datasource,
                          nworkers=nworkers)
     if len(validation_select.strip()) > 0:
         dvalidate = list(
-            xgb_dataset(datasource, 'validate.txt', validation_select,
-                        feature_metas, feature_column_names, label_meta,
-                        is_pai, pai_validate_table, rank, nworkers))[0]
+            xgb_dataset(datasource,
+                        'validate.txt',
+                        validation_select,
+                        feature_metas,
+                        feature_column_names,
+                        label_meta,
+                        is_pai,
+                        pai_validate_table,
+                        rank=rank,
+                        nworkers=nworkers))[0]
     bst = None
     for per_batch_dmatrix in dtrain:
         watchlist = [(per_batch_dmatrix, "train")]
