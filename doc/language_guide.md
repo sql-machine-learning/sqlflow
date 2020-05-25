@@ -260,7 +260,7 @@ TO PREDICT result_table_reference
 USING model_table_reference;
 ```
 
-**NOTE: The select statement must have the same logic used in training, e.g. you use `SELECT a, b * 2 FROM train_data TO TRAIN` to train a model, when predicting, you must use also `SELECT a, b * 2 FROM pred_data TO PREDICT` so that the model will behave properly. You should do the same when using `TO EXPLAIN` and `TO EVALUATE` clause.**
+**Please be aware that the `SELECT ...` statement before the `TO PREDICT ...` and `TO EXPLAIN ...` clause must generate the same data schema as the one before the `TO TRAIN` clause does. This requirement ensures that the data used in prediction has the same schema as those used in training.**
 
 The select statement syntax is the same as the select statement syntax in the training syntax. SQLFlow uses the column name to guarantee the prediction data has the same order as the training data. For example, if we have used `c1`, `c2`, `c3` and `label` column to train a model, the select statement in the prediction job should also retrieve columns that contain exactly the same names.
 
@@ -332,7 +332,7 @@ USING TreeExplainer;
 
 ## Evaluation Syntax
 
-A SQLFlow prediction statement consists of a sequence of select, predict, and using clauses.
+A SQLFlow prediction statement consists of select, evaluate, and into clauses.
 
 ```sql
 SELECT select_expr [, select_expr ...]
@@ -345,11 +345,13 @@ TO EVALUATE model_table_reference
 INTO evaluate_result_table;
 ```
 
-The select statement syntax is the same as the select statement syntax in the training syntax. When doing the evaluation, you should use a dataset that is not used for training to evaluate the model's performance when dealing with "new" data. The evaluation result will be saved in `evaluate_result_table` when the evaluation job completes.
+The SELECT statement before TO EVALUATE must generate the same data schema as that used in training. Please be aware that, by the machine learning theory, you are not supposed to use the training dataset for evaluation. If you do that, you are likely to see a very good evaluation result, which indeed, doesn't tell much useful information. Please write a SELECT statement as the prefix that generates different dataset but have the same schema.
+
+The INTO clause names the table for saving evaluation results, which, in this example, is `evaluate_result_table`.
 
 ### Evaluate and Into Clause
 
-The *evaluate clause* describes which model will be used to evaluate, what metrics will be used for evaluation, and which table will be used to save the result.
+The `TO EVALUATE` clause specifies the model to evaluate, what metrics will be used for evaluation, and which table will be used to save the result.
 
 ```sql
 TO EVALUATE model_table_reference
