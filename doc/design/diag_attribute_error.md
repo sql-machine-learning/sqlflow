@@ -19,10 +19,10 @@ USING my_model;
 ```
 
 SQLFlow compiles each statement in the program into an execution plan and executes them.
-As the TRAIN statement above, SQLFlow uses `TO TRAIN` CLAUSE to train a specific model called `DNNClassifier`,
-using `WITH` CLAUSE to configure the training arguments.
+As the TRAIN statement above, SQLFlow uses `TO TRAIN` clause to train a specific model called `DNNClassifier`,
+using `WITH` clause to configure the training arguments.
 
-Sometimes users may make some configuration mistake on `WITH` CLAUSE,
+Sometimes users may make some configuration mistake on `WITH` clause,
 then the job would fail during execution and return some uncertain error message.
 
 The model parameter documentation describes parameters and acceptable values of human reading.
