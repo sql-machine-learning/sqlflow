@@ -21,8 +21,6 @@ mirrors.aliyun.com
 mirrors.ustc.edu.cn
 mirrors.163.com
 archive.ubuntu.com
-ftp.de.debian.org
-packages.debian.org
 EOM
 
 # Find the fastest APT source using ping.
