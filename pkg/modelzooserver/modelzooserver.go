@@ -176,6 +176,10 @@ func (s *modelZooServer) ReleaseModelDef(stream pb.ModelZooServer_ReleaseModelDe
 	}
 	// close and flush the tar.gz file
 	fd.Close()
+	err = checkImageURL(reqName)
+	if err != nil {
+		return err
+	}
 	if err := os.Mkdir("modelrepo", os.ModeDir); err != nil {
 		return err
 	}
@@ -267,6 +271,11 @@ func (s *modelZooServer) DropModelDef(ctx context.Context, req *pb.ModelDefReque
 }
 
 func (s *modelZooServer) ReleaseTrainedModel(ctx context.Context, req *pb.TrainedModelRequest) (*pb.ModelResponse, error) {
+	err := checkName(req.Name)
+	if err != nil {
+		return nil, err
+	}
+
 	// Get model_def_id from model_definition table
 	imageAndTag := strings.Split(req.ModelCollectionImageUrl, ":")
 	if len(imageAndTag) != 2 {
