@@ -24,38 +24,38 @@
 # This package can't be installed by apt-get
 # c.f. https://unixmen.com/find-fastest-mirror-debian-derivatives/
 if ! which netselect >/dev/null; then
-    wget --progress=bar -O netselect.deb 'http://ftp.debian.org/debian/pool/main/n/netselect/netselect_0.3.ds1-28+b1_amd64.deb'
-    sudo dpkg -i netselect.deb
-    rm netselect.deb
+	wget --progress=bar -O netselect.deb 'http://ftp.debian.org/debian/pool/main/n/netselect/netselect_0.3.ds1-28+b1_amd64.deb'
+	sudo dpkg -i netselect.deb
+	rm netselect.deb
 fi
 
 cn_mirrors=(
-    mirrors.aliyun.com
-    mirrors.ustc.edu.cn
-    mirrors.163.com
+	mirrors.aliyun.com
+	mirrors.ustc.edu.cn
+	mirrors.163.com
 )
 en_mirrors=(
-    archive.ubuntu.com
+	archive.ubuntu.com
 	ftp.de.debian.org
-    packages.debian.org
+	packages.debian.org
 )
 
 function get_speed_score() {
-    sudo netselect ${@} | awk '{print $1}'
+	sudo netselect ${@} | awk '{print $1}'
 }
 
 echo "Guessing if we are in China..."
 if [[ $(get_speed_score ${cn_mirrors[@]}) -lt $(get_speed_score ${en_mirrors[@]} ) ]]; then
-    echo "Assume we are in China."
-    export WE_ARE_IN_CHINA=true
+	echo "Assume we are in China."
+	export WE_ARE_IN_CHINA=true
 fi
 
 if [[ ! "${WE_ARE_IN_CHINA}" ]]; then
-    exit 0
+	exit 0
 fi
 
 function set_apt_mirror() {
-    sudo cat <<EOF >/etc/apt/sources.list
+	sudo cat <<EOF >/etc/apt/sources.list
 deb http://mirrors.aliyun.com/ubuntu/ bionic main restricted universe multiverse
 deb http://mirrors.aliyun.com/ubuntu/ bionic-security main restricted universe multiverse
 deb http://mirrors.aliyun.com/ubuntu/ bionic-updates main restricted universe multiverse
@@ -71,7 +71,7 @@ EOF
 }
 
 function set_go_proxy() {
-    # other option: export GOPROXY=https://mirrors.aliyun.com/goproxy/
+	# other option: export GOPROXY=https://mirrors.aliyun.com/goproxy/
 	export GOPROXY=https://goproxy.cn
 }
 
@@ -109,7 +109,7 @@ EOF
 args=`getopt -o "" -l"set-apt-mirror,set-go-proxy,set-maven-repo" -- "$@"`
 eval set -- "${args}"
 while true; do
-    case "$1" in
+	case "$1" in
 		--set-apt-mirror)
 		set_apt_mirror
 		shift
