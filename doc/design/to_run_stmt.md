@@ -9,9 +9,9 @@ SQLFlow extends the SQL syntax and can describe the end-to-end machine learning 
 
 But that's not enough. It's a common case that the transformation is not per data instance and we cannot use SQL or need write very complex SQL to express the transfomration logic. For example: `TSFresh.extract_features`.
 
-We can express the transform logic using Python and encapsulate it into a reusable component. And then we propose to add the `TO RUN` clause in SQLFlow to invoke it.
+We can express the transform logic using Python and encapsulate it into a reusable module. And then we propose to add the `TO RUN` clause in SQLFlow to invoke it.
 
-## The Syntax Extension
+## Syntax Extension
 
 ```SQL
 SELECT * FROM source_table
@@ -29,17 +29,19 @@ WITH param_a = value_a,
 INTO result_table
 ```
 
-## The Challenge
+## Challenges
 
 - TO RUN function can be executed using local mode or distributed mode.
 - TO RUN function can be exeucted in Kubernetes and MaxCompute.
-- TO RUN function can use different frameworks such as Dask/Mars/Ray.
+- TO RUN function can use various data computing frameworks such as [Dask](https://github.com/dask/dask), [Mars](https://github.com/mars-project/mars), [Ray](https://github.com/ray-project/ray) and so on.
 
 ## Design
 
 ### What is TO RUN function
 
 ### How to invoke TO RUN function
+
+### Function Standards
 
 ### How to contribute TO RUN function
 
