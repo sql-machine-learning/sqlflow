@@ -171,7 +171,7 @@ trainable parameters, and these parameters cannot be updated in XGBoost training
 
 XGBoost supports 2 kinds of APIs to train a model:
 
-- `xgboost.train` . We use this API in out current implementation. The returned Booster can be saved to the format that can be loaded
+- `xgboost.train` . We use this API in our current implementation. The returned Booster can be saved to the format that can be loaded
 by Treelite APIs but not by PMML APIs.
 
 - `xgboost.XGBClassifier/XGBRegressor/XGBRanker` . [Sklearn2pmml](https://github.com/jpmml/sklearn2pmml) or 
@@ -193,4 +193,4 @@ Therefore, we prefer to use `xgboost.train` API to perform training in the this 
     - Build a sklearn pipeline using the pre-built `xgboost.XGBClassifier/XGBRegressor/XGBRanker` .
     - Save the pipeline using [Sklearn2pmml](https://github.com/jpmml/sklearn2pmml) or [Nyoka](https://github.com/nyoka-pmml/nyoka) as a PMML file.
 
-- Treelite file can be exported by [Model.from_xgboost](https://treelite.readthedocs.io/en/latest/tutorials/import.html#importing-xgboost-models) using the saved Booster `Booster.save_model()` . 
+- Treelite file can be exported by [Model.from_xgboost](https://treelite.readthedocs.io/en/latest/tutorials/import.html#importing-xgboost-models) using the Booster saved by `Booster.save_model()` . 
