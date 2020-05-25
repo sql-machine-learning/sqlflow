@@ -27,9 +27,9 @@ EOM
 SPEED=99999.9
 for i in $APT_SOURCES; do
     # c.f. https://stackoverflow.com/a/9634982/724872
-    echo "Testig speed of $i ..."
+    echo "Testig speed of $i ..." >&2
     CUR_SPEED=$(ping -c 4 "$i" | tail -1| awk '{print $4}' | cut -d '/' -f 2)
-    echo "$CUR_SPEED"
+    echo "$CUR_SPEED" >&2
 
     # c.f. https://stackoverflow.com/a/31087503/724872
     if (( $(echo "$CUR_SPEED < $SPEED" | bc -l) )); then

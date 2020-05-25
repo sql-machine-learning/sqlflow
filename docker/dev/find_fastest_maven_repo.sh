@@ -19,7 +19,7 @@ https://repo1.maven.org/maven2/
 https://maven.aliyun.com/repository/central
 EOM
 
-# Find the fastest APT source using ping.
+# Find the fastest maven repo using ping.
 SPEED=99999.9
 for i in $MAVEN_REPOS; do
     repo=`echo "$i" | cut -d '/' -f3`
@@ -36,7 +36,7 @@ for i in $MAVEN_REPOS; do
     fi
 done
 
-# Write APT source lists.
+# Write maven repo config.
 cat <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
