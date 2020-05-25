@@ -17,7 +17,7 @@
 #
 # Example: set apt-get source
 # source find_fastest_resources.sh
-# sudo (find_fastest_apt_source > /etc/apt/sources)
+# sudo (find_fastest_apt_source > /etc/apt/sources.list)
 #
 # Supported resources:
 # function find_fastest_apt_source() echos fastest apt-get sources
@@ -131,6 +131,3 @@ function find_fastest_go_proxy() {
 	fi
 }
 
-find_fastest_apt_source
-find_fastest_maven_repo
-find_fastest_go_proxy
