@@ -1,66 +1,40 @@
-# Running SQLFlow on Kubernetes
+# Install SQLFlow Playground on Your Kubernetes Cluster
 
-This is a tutorial on how to run SQLFlow on Kubernetes, and this tutorial will deploy:
-- A MySQL server instance with some example data loaded,
-- The SQLFlow gRPC server, and 
-- The Jupyter Notebook server with SQLFlow magic command installed.
-- The JupyterHub which can serve multiple Notebook server for various users.
+This is a tutorial on how to install SQLFlow playground on your Kubernetes, this tutorial includes two sections:
 
-There are two sections in this tutorial:
+- [Install SQLFlow playground with single-user mode](#install-sqlflow-with-single-user).
+- [Install SQLFlow playground with multi-users mode](#install-sqlflow-with-multi-users).
 
-- [Deploy the All-in-One SQLFlow](#deploy-the-sqlflow-all-in-one) deployed the SQLFlow on Kubernetes quickly.
-- [Deploy the SQLFlow Hub](#deploy-the-sqlflow-hub) deployed an SQLFlow cluster and a JupyterHub server which can serve Notebook server instances for users.
+Before staring any sections, please [install Minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/) on your laptop.
 
-## Prerequisites
+## Install SQLFLow Playground with Single-user Mode
 
-1. Setup a Kubernetes cluster: You can refer to the [official page](https://kubernetes.io/docs/setup) to set up a 
-full cluster or use a local quick start tool: [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/)
-This tutorial would use [minikube] to demonstrate the SQLFlow.
-1. [Install kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/), which is the command line tool
-to interact with the Kubernetes cluster.
-1. Make sure the Kubernetes nodes can pull the official SQLFlow Docker image [sqlflow/sqlflow] or your [custom
-Docker image](../build.md).
+On the single-user mode, we would install a MySQL server, a SQLFlow server with Jupyter Notebook as GUI on your Kubernetes cluster:
 
-## Deploy the All-in-One With MySQL:
+1. Run the following command to install SQLFlow and its dependencies:
 
-1. Deploy the all-in-One SQLFlow with MySQL Pod on Kubernetes
-    ``` bash
-    > kubectl create -f k8s/sqlflow-all-in-one.yaml
-    ```
-    The above command deploys a Pod, a MySQL server instance, a SQLFlow gRPC server and the Jupyter Notebook server runs in this Pod. You can also use
-    your custom Docker image by editing the `image` field of the yaml file: [k8s/sqlflow-all-in-one.yaml](https://github.com/sql-machine-learning/sqlflow/tree/develop/doc/k8s/sqlflow-all-in-one.yaml)
-    ``` yaml
-    spec:
-        ...
-        containers:
-        - image: <your repo name>/sqlflow
-    ```
+``` bash
+kubectl create -f k8s/install-sqlflow.yaml
+```
 
-1. Testing your SQLFlow setup
-    You can find a Pod on Kubernetes which name is `sqlflow-all-in-one-<POD-ID>`:
-    ``` bash
-    > kubectl get pods
-    NAME    READY   STATUS    RESTARTS   AGE
-    NAME                             READY   STATUS    RESTARTS   AGE
-    sqlflow-all-in-one-9b57566c9-8xkpk   1/1     Running   0          60s
-    ```
+1. Monitor the installation using the following command until all components show a `Running` status:
 
-### Running Your Query in SQLFlow 
+``` bash
+kubectl get pods --namespace sqlflow --watch
+```
 
-1. Copy the node IP of the sqlflow Pod on minikube as the follows command:
-    ``` bash
-    > minikube ip
-    192.168.99.100
-    ```
-    **NOTE**: If you are using a **real** cluster, you can find the node domain/IP from the `NODE` column
-    using`kubectl get pods -o wide`:
-    ``` bash
-    > kubectl get pods -o wide
-    NAME                                 READY   STATUS    RESTARTS   AGE     IP           NODE       NOMINATED NODE   READINESS GATES
-    sqlflow-all-in-one-9b57566c9-8xkpk   1/1     Running   0          24s     172.17.0.9   minikube   <none>           <none>
-    ```
+Congratulations! You have successfully installed SQLFlow with single-user
+mode on your Kubernetes cluster. Next you can run your query using SQLFlow as the following command:
 
-1. Open a web browser and go to '<node-ip>:8888', you can find the [SQLFlow example](../tutorial/iris-dnn.md) in the Jupyter notebook file lists.
+1. Map the Jupyter Notebook to a local port using the following command:
+
+``` bash
+kubectl --namespace sqlflow port-forward svc/sqlflow-notebook 8888:8888
+```
+
+2. Open a web browser and go to `http://localhost:8888`, you can find many tutorials e.g. `iris-dnn.md` in the Jupyter Notebook file lists,
+you can select one of them and do as what the tutorial says.
+
 
 ## Deploy the SQLFlow Hub
 
