@@ -64,21 +64,22 @@ MaxCompute
 ```TXT
 -- my_func
 ---- data_preprocessor.py
+---- utils.py (optional)
 -- Dockerfile
 ```
 
-`a_python_func` is implemented in `data_preprocessor.py`. `docker build -f Dockerfile .` will install the dependency and copy `my_func` folder into `/run/my_func` in the image.
+`a_python_func` is implemented in `data_preprocessor.py`. `docker build -f Dockerfile .` will install the dependency and copy `my_func` folder into `/run/my_func` in the image. `utils.py` contains some helper utils to be used in `data_preprocessor.py`.
 
 #### MaxCompute
 
 ```TXT
 -- my_func
 ---- data_preprocessor.py
----- data_preprocessor_internal.py (optional)
+---- utils.py (optional)
 -- Dockerfile
 ```
 
-`a_python_func` is in `data_preprocessor.py`
+`a_python_func` is implemented in `data_preprocessor.py`. If we want to use mars Remote API to tell the worker in mars cluster to execute `another_python_func`, this function is also included in `data_preprocessor.py`.
 
 #### Function Standards
 
