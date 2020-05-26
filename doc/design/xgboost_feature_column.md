@@ -185,7 +185,7 @@ by Treelite APIs but not by PMML APIs.
     - Names of some of the parameters in `xgboost.XGBClassifier/XGBRegressor/XGBRanker` are different from `xgboost.train` . For example, `n_estimators`
       in `xgboost.XGBClassifier/XGBRegressor/XGBRanker` is the same as `num_boost_round` in `xgboost.train`.
       
-Therefore, we prefer to use `xgboost.train` API to perform training in the this design, and export PMML/Treelite files in the following ways:
+Therefore, we prefer to use `xgboost.train` API to perform training in this design, and export PMML/Treelite files in the following ways:
 
 - PMML file can be exported by: 
     - Call `Booster.load_model()` to load trained model.
