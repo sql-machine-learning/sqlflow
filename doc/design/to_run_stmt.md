@@ -81,7 +81,16 @@ MaxCompute
 #### Function Standards
 
 ```Python
-def preprocess_function():
+def a_python_func(
+    db_type,
+    input_table,
+    output_table,
+    image_name,
+    param_1,
+    param_2,
+    ...,
+    param_n
+):
     pass
 ```
 
@@ -89,13 +98,13 @@ def preprocess_function():
 
 The paramters passed into the python module contains two parts:
 
-1. Parameters from `WITH` clause.
-2. Context
+1. Attributes from `WITH` clause.
+2. Context from the SQLFlow statement, it contains the following fields.
 
+- db_type
 - input_table
 - output_table
 - image_name
-- data_base
 
 #### Kubernetes
 
