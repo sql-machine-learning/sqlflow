@@ -33,7 +33,7 @@ The SQLFlow statement above will call the python function `a_python_func` from t
 
 ### Fix the challenges
 
-The semantics of `TO RUN a_data_scientist/maxcompute_functions:1.0/my_func.data_preprocessor.a_python_func` means that `a_python_func` will be executed in a docker container for Kubernetes or a PyODPS node for MaxCompute. The implementation of `a_python_func` is fully customized by users. Because the execution environments for `a_python_func` are different between Kubernetes and MaxCompute, there are some differences considering these three challenges above.
+The semantics of `TO RUN a_data_scientist/maxcompute_functions:1.0/my_func.data_preprocessor.a_python_func` is that `a_python_func` will be executed in a docker container for Kubernetes or a PyODPS node for MaxCompute. The implementation of `a_python_func` is fully customized by users. Because the execution environments for `a_python_func` are different between Kubernetes and MaxCompute, there are some differences considering these three challenges above.
 
 Kubernetes
 
@@ -59,9 +59,7 @@ MaxCompute
 
 ### How to build TO RUN function
 
-#### Structure
-
-Kubernete
+#### Kubernetes
 
 ```TXT
 -- my_func
@@ -69,7 +67,9 @@ Kubernete
 -- Dockerfile
 ```
 
-MaxCompute
+`a_python_func` is implemented in `data_preprocessor.py`. `docker build -f Dockerfile .` will install the dependency and copy `my_func` folder into `/run/my_func` in the image.
+
+#### MaxCompute
 
 ```TXT
 -- my_func
@@ -78,7 +78,22 @@ MaxCompute
 -- Dockerfile
 ```
 
+`a_python_func` is in `data_preprocessor.py`
+
 #### Function Standards
+
+The parameters of the python function for `TO RUN` contain two parts:
+
+1. Context from the SQLFlow statement, it contains the following required fields.
+
+- db_type: mysql/hive/maxcompute, from sqlflowserver configuration.
+- input_table: the table name from the clause `SELECT * FROM input_table`.
+- output_table: the table name from the clause `INTO output_table`.
+- image_name: the docker image name from the clause `TO RUN image_name/func_name`.
+
+2. Attributes from `WITH` clause.
+
+Please check the following example. The first four parameters are from the context and param_1 ~ param_n are from `WITH` Attributes.
 
 ```Python
 def a_python_func(
@@ -95,16 +110,6 @@ def a_python_func(
 ```
 
 ### How to invoke TO RUN function
-
-The paramters passed into the python module contains two parts:
-
-1. Attributes from `WITH` clause.
-2. Context from the SQLFlow statement, it contains the following fields.
-
-- db_type
-- input_table
-- output_table
-- image_name
 
 #### Kubernetes
 
