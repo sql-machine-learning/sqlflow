@@ -31,7 +31,7 @@ The SQLFlow statement above will call the python function `a_python_func` from t
 
 ## Design
 
-### What is TO RUN function
+### How to build TO RUN function
 
 Kubernete
 
@@ -74,6 +74,4 @@ MaxCompute
 
 ### Function Standards
 
-### How to contribute TO RUN module
-
-### TSFresh Integration
+### Integration with Mars and TSFresh
