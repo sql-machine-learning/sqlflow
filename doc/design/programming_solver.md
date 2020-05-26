@@ -1,6 +1,6 @@
 # Mathematical Programming Solver with SQLFlow
 
-Mathematical programming (aka. [mathematical optimization](https://en.wikipedia.org/wiki/Mathematical_optimization)) is the selection of a best element (with regard to some criterion) from some set of available alternatives. Solving optimization problems is widely used in fields like economics and finance, computer science, engineering, and researching. In this design, we try to make SQLFlow be able to solve below branches of programming problems using SQL statements by leveraging systems like [pyomo](http://www.pyomo.org/):
+Mathematical programming (aka. [mathematical optimization](https://en.wikipedia.org/wiki/Mathematical_optimization)) is the selection of a best element (with regard to some criterion) from some set of available alternatives. Solving optimization problems is widely used in fields like economics and finance, computer science, engineering, and researching. In this design, we try to make SQLFlow be able to solve below branches of programming problems using SQL statements by leveraging systems like [pyomo](http://www.pyomo.org/) or our internal programming project at Ant Financial, they both support these types of programming categories:
 
 - [Linear programming](https://en.wikipedia.org/wiki/Linear_programming)
 - [Quadratic programming](https://en.wikipedia.org/wiki/Quadratic_programming)
@@ -12,7 +12,7 @@ Mathematical programming (aka. [mathematical optimization](https://en.wikipedia.
 
 ## Background
 
-To understand what's a mathematical programming problem, let's take a look at this example (example origially published at http://faculty.kutztown.edu/vasko/MAT121/MAT121web/Example_2.html):
+To understand what's a mathematical programming problem, let's take a look at this example (example originally published at http://faculty.kutztown.edu/vasko/MAT121/MAT121web/Example_2.html):
 
 Giapetto’s Woodcarving, Inc., manufactures two types of wooden toys: soldiers and trains. 
 
@@ -34,47 +34,85 @@ The constraints are:
 - x <=40 (Constraint on demand for soldiers)
 - x,y >= 0 (sign restriction)
 
+To solve this problem, we can use tools like [AMPL](https://en.wikipedia.org/wiki/AMPL) or open-source tools like [pyomo](http://www.pyomo.org/), or [Matlab](https://www.mathworks.com/help/optim/ug/linprog.html), or [R](https://towardsdatascience.com/linear-programming-in-r-444e9c199280).
 
-To solve this problem, we can write objective and constraints using SQL, then SQLFlow should call the corresponding "solver" (e.g. [pyomo](http://www.pyomo.org/) and [GLPK](https://www.gnu.org/software/glpk/)) to find the result and output the result into the result table.
+You can learn from the examples in the above links that:
+
+- Using Matlab and R are quite the same, they require users to define the constraints as matrixes and call a function to get the result. They both have their own grammar, and you have to write code according to their language specifications.
+- Using "AMPL like" high-level language to describe the problem, and call the corresponding solvers. Pyomo and AMPL have similar components in their grammar: sets, parameters, variables, objectives, constraints (https://pyomo.readthedocs.io/en/stable/pyomo_modeling_components/index.html).
+
+So we can see that using AMPL is a modern and general way of describing mathematical programming problems. We can simply write the AMPL snippet to describe the above problem:
+
+```
+set X;
+var ProductAmt{x in X} >= 0;
+
+param Price{x in X};
+param MaterialCost{x in X};
+param OtherCost{x in X};
+param Finishing{x in X};
+param Carpentry{x in X};
+param Demand{x in X};
+
+maximize profit:
+    sum{x in X} (Price[x] - MaterialCost[x] - OtherCost[x]) * ProductAmt[x];
+
+s.t. finishing: sum{x in X} Finishing[x] * ProductAmt[x] <= 100;
+s.t. carpentry: sum{x in X} Carpentry[x] * ProductAmt[x] <= 80;
+s.t. demand{x in X}: ProductAmt[x] <= 40;
+```
 
 ## Grammar Design
 
-Generally, SQLFlow users can write one SQL statement to describe the programming problem:
-
-```sql
-SELECT * FROM train_table
-TO SOLVE LP
-WITH
-     objective="sum([(train_table.price[i] - train_table.materials_cost[i] - train_table.other_cost[i]) * @X[i] for i in @X])",
-     constraints=["sum([train_table.finishing[i] * @X[i] for i in @X]) <= 100",
-                  "sum([train_table.carpentry[i] * @X[i] for i in @X]) <= 80",
-                  "@X[i] <= train_table.max_num[i] for i in @X",
-                  "@X[i] >= 0 for i in @X"],
-     var_name_col="type",
-     var_type="Integers",
-     solver="glpk"
-INTO result_table;
-```
-
-The `train_table` looks like:
+In order to extend SQL to have completely same ability of AMPL, the extended syntax should be able to describe **objective and constraints** while the input data table can store the **params** for each **variable**, and the rows in the table is naturally become the **set** we defined in AMPL. Then we have the below `train_table`:
 
 |  type   | price | materials_cost | other_cost | finishing | carpentry | max_num |
 | ------- | ----- | -------------- | ---------- | --------- | --------- | ------- |
 | soldier | 27    | 10             | 14         | 2         | 1         | 40      |
 | train   | 21    | 9              | 10         | 1         | 1         | 10000   |
 
-Note that we create this table to store the variables to form the objective and constraints so that when we have hundreds of variable types (e.g. the company actually manufactures 1000 types of products), the SQL statement will keep the same.
+In the `train_table`:
+
+- The set X is row one and row two.
+- We have one variable, and the variable name strings is stored in column `type`. In cases that have multiple variables (like the example described at https://en.wikipedia.org/wiki/AMPL), the table should have multiple string columns to store the variable.
+- Other columns like `price`, `materials_cost` are all params for the corresponding variable.
+
+For a more general example that have multiple variables, to minimize the cost of shipment between plants and markets we have a table looks like below:
+
+| plants  | markets | capacity | demand | distance |
+| ------- | ------- | -------- | ------ | -------- |
+| plantA  |         | 100      | NULL   |  NULL    |
+| plantB  |         | 90       | NULL   |  NULL    |
+|         | marketA | NULL     | 130    |  NULL    |
+|         | marketB | NULL     | 60     |  NULL    |
+| plantA  | marketB | NULL     | NULL   | 300      |
+| plantA  | marketB | NULL     | NULL   | 90       |
+
+Then we can use below extended SQL syntax to describe the column:
+
+```sql
+SELECT * FROM train_table
+TO SOLVE LP
+OBJECTIVE [MAXIMIZE|MINIMIZE] sum{i in X} (price[i] - materials_cost[i] - other_cost[i]) * @X[i]
+CONSTRAINT sum{i in X} finishing[i] * @X[i] <= 100
+CONSTRAINT sum{i in X} carpentry[x] * @X[x] <= 80
+CONSTRAINT {i in X} @X[i] <= max_num[i]
+WITH var_name_col="type:X",
+     var_type="type:Integers",
+     solver="glpk"
+INTO result_table;
+```
 
 In the SQL statement:
 
 - `TO SOLVE LP`: set to use the "Linear Programming Solver". The notation `LP` means "Linear Programming Solver", and we can have other solvers like `QP` for "Quadratic programming Solver" etc.
-- `INTO result_table`: set the result table name.
+- `OBJECTIVE [MAXIMIZE|MINIMIZE] ...` an expression string that describes the objective. Notation `@X` will be replaced to input variable dataframe when generating Python code. Optional syntax `[MAXIMIZE|MINIMIZE]` is used to specify the objective sense.
+- `CONSTRAINT ...` expression strings that describe the constraints, can have multiple `CONSTRAINT` clause lines.
 - `WITH` attributes:
-    - objective: **required**, an expression string that describes the objective. Notation `@X` will be replaced to input dataframe when generating Python code.
-    - constraints: **required**, a list of expression strings that describe the constraints.
-    - var_name_col: **required**, specify one column that stores the variable name.
-    - var_type: **required**, specify the variable type, can be `Integers`, `NonNegativeIntegers`, `Reals` etc.
-    - solver: *optional*, solver tool to use, default: glpk.
+    - var_name_col: **required**, specify one column that stores the variable name. Format like "column:var_name,column:var_name", e.g. "plants:X,markets:Y"
+    - var_type: **required**, specify the variable type for each variable, format like "column:type,column:type...",  the type can be `Integers`, `NonNegativeIntegers`, `Reals` etc.
+    - solver: **optional**, solver tool to use, default: glpk.
+- `INTO result_table`: set the result table name.
 
 After the SQL statement finishes execution, the result table `result_table` should look like:
 
@@ -85,12 +123,43 @@ After the SQL statement finishes execution, the result table `result_table` shou
 
 ## Implementation
 
-1. Update our extended syntax parser to support `TO SOLVE` clause.
+1. Update our extended syntax parser to support `TO SOLVE` clauses.
 1. Add an IR struct to represent `TO SOLVE` clause.
 1. Create a table to store the result.
-1. Add code generator to generate code like below example to run.
+1. Add code generator to generate code like below example to run, for different mathematical programming software, we may need to add different code generators. Since we extend SQL to have the same ability that AMPL has, we can almost connect to any software we like.
 1. The generated code should be able to output the result to the result table.
 
+
+## Intermediate Representation
+
+The extended `TO SOLVE` syntax can be represented by below Go structure after parsing:
+
+```go
+type SolveExpr struct {
+    // Expression parsed from SQL statement of objective and constraints, used for code generation.
+    // e.g. sum((@TABLE.price[i] - @TABLE.materials_cost[i] - @TABLE.other_cost[i]) * @X[i])
+    Expression string
+    // Iterate variables like {i in X} in the above example.
+    IterVars []string{}
+}
+
+type SolveStmt struct {
+    // Select is the select statement before TO SOLVE clause.
+    Select string
+    // Attributes is a map of parsed attribute in the WITH clause.
+    Attributes map[string]interface{}
+    // Objective
+    Objective SolveExpr
+    // ObjectiveSense, 0: maximize, 1: minimize
+    ObjectiveSense int
+    // Constraints
+    Constraints []*SolveExpr{}
+    // ResultTable is the table name to store results.
+    ResultTable string
+    // When SQLFLOW_submitter == "pai", tmp tables will be created for solving tasks
+    TmpTrainTable    string
+}
+```
 
 ## Example of Generated Code
 
