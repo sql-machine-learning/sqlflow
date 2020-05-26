@@ -15,13 +15,13 @@ We can express the data transform logic using Python, leverage many mature pytho
 
 ```SQL
 SELECT * FROM source_table
-TO RUN a_data_scientist/maxcompute_functions:1.0/data_preprocessor.a_python_func
+TO RUN a_data_scientist/maxcompute_functions:1.0/my_func.data_preprocessor.a_python_func
 WITH param_a = value_a,
      param_b = value_b
 INTO result_table
 ```
 
-The SQLFlow statement above will call the python function `a_python_func` from the file `/run/data_preprocessor.py` inside the docker image `a_data_scientist/maxcompute_functions:1.0`. The attributes in the `WITH` clause will be passed to the python function as parameters.
+The SQLFlow statement above will call the python function `a_python_func` from the file `/run/my_func/data_preprocessor.py` inside the docker image `a_data_scientist/maxcompute_functions:1.0`. The attributes in the `WITH` clause will be passed to the python function as parameters.
 
 ## Challenges
 
@@ -33,7 +33,7 @@ The SQLFlow statement above will call the python function `a_python_func` from t
 
 ### Fix the challenges
 
-The semantics of `TO RUN a_data_scientist/maxcompute_functions:1.0/data_preprocessor.a_python_func` means that `a_python_func` will be executed in a docker container for Kubernetes or a PyODPS node for MaxCompute. The implementation of `a_python_func` is fully customized by users. Because the execution environments for `a_python_func` are different between Kubernetes and MaxCompute, there are some differences considering these three challenges above.
+The semantics of `TO RUN a_data_scientist/maxcompute_functions:1.0/my_func.data_preprocessor.a_python_func` means that `a_python_func` will be executed in a docker container for Kubernetes or a PyODPS node for MaxCompute. The implementation of `a_python_func` is fully customized by users. Because the execution environments for `a_python_func` are different between Kubernetes and MaxCompute, there are some differences considering these three challenges above.
 
 Kubernetes
 
@@ -64,42 +64,62 @@ MaxCompute
 Kubernete
 
 ```TXT
--- data_process
----- tsfresh_extractor.py
+-- my_func
+---- data_preprocessor.py
 -- Dockerfile
 ```
 
 MaxCompute
 
 ```TXT
--- data_process
----- tsfresh_extractor.py
+-- my_func
+---- data_preprocessor.py
+---- data_preprocessor_internal.py (optional)
 -- Dockerfile
 ```
 
 #### Function Standards
 
+```Python
+def preprocess_function():
+    pass
+```
+
 ### How to invoke TO RUN function
 
 The paramters passed into the python module contains two parts:
 
-1. Context.
+1. Parameters from `WITH` clause.
+2. Context
 
 - input_table
 - output_table
 - image_name
+- data_base
 
-2. Parameters from `WITH` clause.
-
-Kubernetes
+#### Kubernetes
 
 ```BASH
-docker run a_data_scientist/functions:0.1 python /run/main.py --func_name data_proc --param_a value_a --param_b value_b
+docker run a_data_scientist/functions:1.0 python sqlflow.run.submitter.k8s --func_name my_func.data_preprocessor.a_python_func --param_a value_a --param_b value_b --input_table itable --output_table otable --image_name a_data_scientist/functions:1.0 --database hive
 ```
 
-MaxCompute
+What `sqlflow.run.submitter.k8s` does:
 
-1. Generate `main.py` from `main.template`.
-2. Submit a PyODPS task to MaxCompute via goalisa. The content of generated `main.py` is one parameter of the alisa request.
+1. Load the python module `my_func.data_preprocessor` and get the function object `a_python_func`.
+2. Invoke the function `a_python_func` with the parameters in the command line above.
+
+#### MaxCompute
+
+```BASH
+docker run a_data_scientist/functions:1.0 python sqlflow.run.submitter.alisa --func_name my_func.data_preprocessor.a_python_func --param_a value_a --param_b value_b --input_table in_table --output_table out_table --image_name a_data_scientist/functions:1.0 --database maxcompute
+```
+
+What `sqlflow.run.submitter.alisa` does:
+
+1. Load the python module `my_func.data_preprocessor` and get the function object `a_python_func`.
+2. Get source code of `a_python_func` using inspect.getsource(a_python_func).
+3. Generate a line of code to invoke `a_python_func` with the parameters from the command line above and append it to the code from step 2.
+4. Submit a PyODPS task using alisa, the generated code is a parameter of the web request to alisa.
+5. Wait for the PyODPS task done.
 
 ### Integration with Mars and TSFresh
