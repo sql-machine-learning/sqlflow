@@ -33,17 +33,48 @@ The SQLFlow statement above will execute the python module in the folder `/data_
 
 ### What is TO RUN function
 
-### How to invoke TO RUN function
+Kubernete
 
-Kubernetes
+```TXT
+-- data_proc
+---- main.py
+---- util_lib.py
+-- Dockerfile
+```
 
 MaxCompute
 
-- Upload the script into Dataworks as a resource.
-- Submit a PyODPS task via Alisa.
+```TXT
+-- data_proc
+---- main.template
+---- util_lib.py
+-- Dockerfile
+```
+
+### How to invoke module TO RUN
+
+The paramters passed into the python module contains two parts:
+
+1. Context.
+
+- table_name
+- image_name
+
+2. Parameters from `WITH` clause.
+
+Kubernetes
+
+```BASH
+docker run a_data_scientist/functions:0.1 python /data_proc/main.py --param_a value_a --param_b value_b
+```
+
+MaxCompute
+
+1. Generate `main.py` from `main.template`.
+2. Submit a PyODPS task to MaxCompute via goalisa. The content of generated `main.py` is one parameter of the alisa request.
 
 ### Function Standards
 
-### How to contribute TO RUN function
+### How to contribute TO RUN module
 
 ### TSFresh Integration
