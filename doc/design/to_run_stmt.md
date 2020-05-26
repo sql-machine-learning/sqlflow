@@ -121,5 +121,3 @@ What `sqlflow.run.submitter.alisa` does:
 3. Generate a line of code to invoke `a_python_func` with the parameters from the command line above and append it to the code from step 2.
 4. Submit a PyODPS task using alisa, the generated code is a parameter of the web request to alisa.
 5. Wait for the PyODPS task done.
-
-### Integration with Mars and TSFresh
