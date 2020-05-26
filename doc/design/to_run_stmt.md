@@ -2,26 +2,26 @@
 
 ## The Problem
 
-SQLFlow extends the SQL syntax and can describe the end-to-end machine learning pipeline. Data transformation is an important part in the entire pipeline. Currently we have the following two options for data transformation:
+SQLFlow extends the SQL syntax and can describe an end-to-end machine learning pipeline. Data transformation is an important part in the entire pipeline. Currently we have the following two options for data transformation:
 
 - SQL.
-- COLUMN clause for per data instance transform and the logic is saved into the model.
+- COLUMN clause for per data instance transform. The transform logic is saved into the model.
 
-But that's not enough. It's a common case that the transformation is not per data instance and we cannot use SQL or need write very complex SQL to express the transfomration logic. For example: `TSFresh.extract_features`.
+But that's not enough. It's a common case that the transformation is not per data instance which COLUMN clause is not suitable for. And we may need write very complex SQL or even cannot use SQL to express the transfomration logic. Let's take `extract_features` from [tsfresh package](https://tsfresh.readthedocs.io/en/latest/api/tsfresh.feature_extraction.html#module-tsfresh.feature_extraction.extraction) for example. It will preprocess the time series data, calculate statistical values using various analysis functions and parameters, and then generate tens or hunderds of features.
 
-We can express the transform logic using Python and encapsulate it into a reusable module. And then we propose to add the `TO RUN` clause in SQLFlow to invoke it.
+We can express the transform logic using Python, leverage many mature python packages and encapsulate it into a reusable function. And then we propose to add the `TO RUN` clause in SQLFlow to call it.
 
 ## Syntax Extension
 
 ```SQL
 SELECT * FROM source_table
-TO RUN a_data_scientist/functions:0.1/data_proc
+TO RUN a_data_scientist/maxcompute_functions:1.0/data_preprocessor.a_python_func
 WITH param_a = value_a,
      param_b = value_b
 INTO result_table
 ```
 
-The SQLFlow statement above will execute the python module in the folder `/data_proc` from the docker image `a_data_scientist/functions:0.1`.
+The SQLFlow statement above will call the python function `a_python_func` from the file `/run/data_preprocessor.py` inside the docker image `a_data_scientist/maxcompute_functions:1.0`. The attributes in the `WITH` clause will be passed to the python function as parameters.
 
 ## Challenges
 
@@ -36,18 +36,16 @@ The SQLFlow statement above will execute the python module in the folder `/data_
 Kubernete
 
 ```TXT
--- data_proc
----- main.py
----- util_lib.py
+-- data_process
+---- tsfresh_extractor.py
 -- Dockerfile
 ```
 
 MaxCompute
 
 ```TXT
--- data_proc
----- main.template
----- util_lib.py
+-- data_process
+---- tsfresh_extractor.py
 -- Dockerfile
 ```
 
@@ -57,7 +55,8 @@ The paramters passed into the python module contains two parts:
 
 1. Context.
 
-- table_name
+- input_table
+- output_table
 - image_name
 
 2. Parameters from `WITH` clause.
@@ -65,7 +64,7 @@ The paramters passed into the python module contains two parts:
 Kubernetes
 
 ```BASH
-docker run a_data_scientist/functions:0.1 python /data_proc/main.py --param_a value_a --param_b value_b
+docker run a_data_scientist/functions:0.1 python /run/main.py --func_name data_proc --param_a value_a --param_b value_b
 ```
 
 MaxCompute
