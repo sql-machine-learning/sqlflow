@@ -131,4 +131,4 @@ jobs:
     - $TRAVIS_BUILD_DIR/scripts/travis/deploy_client.sh
   - env: DESC="Deploy server Docker image"
     script:
-    - $TRAVIS_BUILD_DIR/scripts/travis/deploy_server.sh
+    - $TRAVIS_BUILD_DIR/scripts/travis/deploy_docker.sh

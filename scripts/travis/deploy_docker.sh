@@ -51,7 +51,7 @@ else
 fi
 
 # Build sqlflow:dev and sqlflow:ci.
-$(dirname $0)/build.sh
+"$(dirname "$0")"/build.sh
 
 echo "$DOCKER_PASSWORD" |
     docker login --username "$DOCKER_USERNAME" --password-stdin
@@ -61,5 +61,9 @@ docker tag sqlflow:dev sqlflow/sqlflow:dev
 docker push sqlflow/sqlflow:dev
 
 echo "docker push sqlflow/sqlflow:$TRAVIS_TAG ..."
-docker tag sqlflow:ci sqlflow/sqlflow:$DOCKER_TAG
-docker push sqlflow/sqlflow:$DOCKER_TAG
+docker tag sqlflow:ci sqlflow/sqlflow:"$DOCKER_TAG"
+docker push sqlflow/sqlflow:"$DOCKER_TAG"
+
+echo "docker push sqlflow/sqlflow:mysql"
+docker tag sqlflow:mysql sqlflow/sqlflow:mysql
+docker push sqlflow/sqlflow:mysql
