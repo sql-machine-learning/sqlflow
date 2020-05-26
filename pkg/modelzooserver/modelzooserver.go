@@ -176,6 +176,9 @@ func (s *modelZooServer) ReleaseModelDef(stream pb.ModelZooServer_ReleaseModelDe
 	}
 	// close and flush the tar.gz file
 	fd.Close()
+	if err := checkImageURL(reqName); err != nil {
+		return err
+	}
 	if err := os.Mkdir("modelrepo", os.ModeDir); err != nil {
 		return err
 	}
@@ -259,14 +262,17 @@ func (s *modelZooServer) DropModelDef(ctx context.Context, req *pb.ModelDefReque
 	}
 	// 3. delete model collection record
 	sql = fmt.Sprintf("DELETE FROM %s WHERE id=%d;", modelCollTable, id)
-	_, err = s.DB.Exec(sql)
-	if err != nil {
+	if _, err := s.DB.Exec(sql); err != nil {
 		return nil, err
 	}
 	return &pb.ModelResponse{Success: true, Message: ""}, nil
 }
 
 func (s *modelZooServer) ReleaseTrainedModel(ctx context.Context, req *pb.TrainedModelRequest) (*pb.ModelResponse, error) {
+	if err := checkName(req.Name); err != nil {
+		return nil, err
+	}
+
 	// Get model_def_id from model_definition table
 	imageAndTag := strings.Split(req.ModelCollectionImageUrl, ":")
 	if len(imageAndTag) != 2 {
@@ -299,7 +305,7 @@ func (s *modelZooServer) ReleaseTrainedModel(ctx context.Context, req *pb.Traine
 		return nil, fmt.Errorf("no model collection %s found", req.GetName())
 	}
 	var modelDefID int
-	if err = rowsModelDefID.Scan(&modelDefID); err != nil {
+	if err := rowsModelDefID.Scan(&modelDefID); err != nil {
 		return nil, err
 	}
 	// TODO(typhoonzero): let trained model name + version be unique across the table.
@@ -313,9 +319,9 @@ func (s *modelZooServer) ReleaseTrainedModel(ctx context.Context, req *pb.Traine
 }
 
 func (s *modelZooServer) DropTrainedModel(ctx context.Context, req *pb.TrainedModelRequest) (*pb.ModelResponse, error) {
+	// TODO(typhoonzero): do not delete rows, set an deletion flag.
 	sql := fmt.Sprintf("DELETE FROM %s WHERE name='%s' AND version='%s'", trainedModelTable, req.Name, req.Tag)
-	_, err := s.DB.Exec(sql)
-	if err != nil {
+	if _, err := s.DB.Exec(sql); err != nil {
 		return nil, err
 	}
 	return &pb.ModelResponse{Success: true, Message: ""}, nil
