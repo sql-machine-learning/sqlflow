@@ -15,31 +15,32 @@ We can express the transform logic using Python and encapsulate it into a reusab
 
 ```SQL
 SELECT * FROM source_table
-TO RUN a_python_func
+TO RUN a_data_scientist/functions:0.1/data_proc
 WITH param_a = value_a,
      param_b = value_b
 INTO result_table
 ```
 
-```SQL
-SELECT * FROM source_table
-TO RUN a_data_scientist/functions:v0.1/a_python_func
-WITH param_a = value_a,
-     param_b = value_b
-INTO result_table
-```
+The SQLFlow statement above will execute the python module in the folder `/data_proc` from the docker image `a_data_scientist/functions:0.1`.
 
 ## Challenges
 
-- TO RUN function can be executed using local mode or distributed mode.
-- TO RUN function can be exeucted in Kubernetes and MaxCompute.
-- TO RUN function can use various data computing frameworks such as [Dask](https://github.com/dask/dask), [Mars](https://github.com/mars-project/mars), [Ray](https://github.com/ray-project/ray) and so on.
+- TO RUN can execute functions in both a single process and a distributed cluster.
+- TO RUN can execute functions in Kubernetes and MaxCompute.
+- TO RUN can execute functions built upon various data computing frameworks such as [Dask](https://github.com/dask/dask), [Mars](https://github.com/mars-project/mars), [Ray](https://github.com/ray-project/ray) and so on.
 
 ## Design
 
 ### What is TO RUN function
 
 ### How to invoke TO RUN function
+
+Kubernetes
+
+MaxCompute
+
+- Upload the script into Dataworks as a resource.
+- Submit a PyODPS task via Alisa.
 
 ### Function Standards
 
