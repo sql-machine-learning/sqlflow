@@ -79,7 +79,47 @@ MaxCompute
 -- Dockerfile
 ```
 
-`a_python_func` is implemented in `data_preprocessor.py`. If we want to use mars Remote API to tell the worker in mars cluster to execute `another_python_func`, this function is also included in `data_preprocessor.py`.
+Build a computing graph using Mars API and submit into mars cluster. `data_preprocessor.py` contains only one function `a_python_func`.
+
+```Python
+def a_python_func(param_a, param_b):
+    import mars.dataframe as md
+    import mars.tensor as mt
+
+    # Create a mars cluster containing 2 workers
+    client = o.create_mars_cluster(2, 4, 16, min_worker_num=1)
+    result = md.DataFrame(mt.random.rand(1000, 3)).sum().execute()
+    client.stop_server()
+```
+
+Tell the worker to execute the data transformation the dependency of which is not included in PyODPS node but in function image. `data_preprocessor.py` contains two functions `a_python_func` (execute in PyODPS node) and `another_python_func` (execute in the mars worker pod).
+
+```Python
+def a_python_func(param_a, param_b):
+    import mars.remote as mr
+
+    def func():
+        import sys
+        sys.path.append('/run/my_func')
+
+        from data_preprocessor import another_python_func
+        another_python_func(param_a, param_b)
+
+    # Create a mars cluster containing 1 worker
+    client = o.create_mars_cluster(1, 4, 16)
+    # Use mars remote api to tell the worker execute func.
+    mr.spawn(func, args=()).execute()
+
+    client.stop_server()
+
+
+def another_python_func(param_a, param_b):
+    import tsfresh
+
+    # Do data transformation using the packages which
+    # are not included in PyODPS node but included in
+    # the function image.
+```
 
 #### Function Standards
 
