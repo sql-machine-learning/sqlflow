@@ -52,7 +52,7 @@ MaxCompute
   The packages of PyODPS node are already pre-installed and user cannot customize it. `a_python_func` can only use these pre-installed python packages.
 
 - Single process execution
-  Since PyODPS node cannot guarantee it contains all the packages we need, `a_python_func` only create a mars cluster containing one worker and tell this worker to execute another function `another_python_func` to do the data transformation via [Mars remote API](https://github.com/mars-project/mars/issues/1227). The cluster uses our function image `a_data_scientist/maxcompute_functions:1.0`, `another_python_func` and its dependencies are already installed while building this image.
+  Since PyODPS node cannot guarantee it contains all the packages we need such as `tsfresh`, `a_python_func` create a mars cluster containing only one worker and tell this worker to execute another function `another_python_func` to do the data transformation via [Mars remote API](https://github.com/mars-project/mars/issues/1227). The cluster uses our function image `a_data_scientist/maxcompute_functions:1.0`, `another_python_func` and its dependencies are already installed while building this image.
   
 - Distributed cluster execution  
   The PyODPS node only installed Mars package, but not Dask and Ray. So we can create a cluster, build the computing graph and submit the distributed execution only using Mars API inside `a_python_func`.
