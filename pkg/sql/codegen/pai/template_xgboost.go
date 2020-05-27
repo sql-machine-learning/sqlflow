@@ -60,7 +60,8 @@ pred(datasource='''{{.DataSource}}''',
     hdfs_pass='''{{.HDFSPass}}''',
     pai_table='''{{.PAIPredictTable}}''',
     model_params=model_params,
-    train_params=train_params)
+    train_params=train_params,
+    transform_fn=transform_fn)
 `
 
 type xgbExplainFiller struct {
