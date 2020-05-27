@@ -18,8 +18,14 @@ import xgboost as xgb
 from sqlflow_submitter import db, explainer
 
 
-def xgb_shap_dataset(datasource, select, feature_column_names, label_spec,
-                     feature_specs, is_pai, pai_explain_table):
+def xgb_shap_dataset(datasource,
+                     select,
+                     feature_column_names,
+                     label_spec,
+                     feature_specs,
+                     is_pai,
+                     pai_explain_table,
+                     transform_fn=None):
     label_column_name = label_spec["feature_name"]
     if is_pai:
         pai_table_parts = pai_explain_table.split(".")
@@ -37,13 +43,20 @@ def xgb_shap_dataset(datasource, select, feature_column_names, label_spec,
                                  feature_specs)
         selected_cols = db.selected_cols(conn.driver, conn, select)
 
+    if transform_fn:
+        transform_fn.set_field_names(selected_cols)
+
     xs = pd.DataFrame(columns=feature_column_names)
     i = 0
     for row, label in stream():
         features = db.read_features_from_row(row, selected_cols,
                                              feature_column_names,
                                              feature_specs)
-        xs.loc[i] = [item[0] for item in features]
+        features = [item[0] for item in features]
+        if transform_fn:
+            features = transform_fn(features)
+
+        xs.loc[i] = features
         i += 1
     # NOTE(typhoonzero): set dtype to the feature's actual type, or the dtype
     # may be "object". Use below code to reproduce:
@@ -84,9 +97,11 @@ def explain(datasource,
             oss_ak=None,
             oss_sk=None,
             oss_endpoint=None,
-            oss_bucket_name=None):
+            oss_bucket_name=None,
+            transform_fn=None):
     x = xgb_shap_dataset(datasource, select, feature_column_names, label_spec,
-                         feature_field_meta, is_pai, pai_explain_table)
+                         feature_field_meta, is_pai, pai_explain_table,
+                         transform_fn)
 
     shap_values, shap_interaction_values, expected_value = xgb_shap_values(x)
 

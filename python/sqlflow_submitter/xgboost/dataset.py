@@ -37,7 +37,14 @@ def xgb_dataset(datasource,
                 batch_size=None,
                 epoch=1,
                 rank=0,
-                nworkers=1):
+                nworkers=1,
+                transform_fn=None):
+    if transform_fn:
+        assert callable(transform_fn), 'transform_fn must be callable object'
+        assert hasattr(
+            transform_fn, "set_field_names"
+        ), "set_field_names method must be provided at transform_fn"
+
     if is_pai:
         for dmatrix in pai_dataset(
                 fn,
@@ -54,8 +61,13 @@ def xgb_dataset(datasource,
         return
 
     conn = db.connect_with_data_source(datasource)
-    gen = db.db_generator(conn.driver, conn, dataset_sql, feature_column_names,
-                          label_spec, feature_specs)()
+    gen = db.db_generator(conn.driver,
+                          conn,
+                          dataset_sql,
+                          feature_column_names,
+                          label_spec,
+                          feature_specs,
+                          transform_fn=transform_fn)()
 
     selected_cols = db.selected_cols(conn.driver, conn, dataset_sql)
     for i in range(epoch):

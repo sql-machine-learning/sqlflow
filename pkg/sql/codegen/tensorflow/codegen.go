@@ -18,12 +18,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sqlflow.org/sqlflow/pkg/sql/codegen"
 	"strings"
 	"text/template"
 
 	"sqlflow.org/sqlflow/pkg/ir"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/attribute"
+	"sqlflow.org/sqlflow/pkg/util"
 )
 
 var commonAttributes = attribute.Dictionary{
@@ -67,86 +69,8 @@ var distributedTrainingAttributes = attribute.Dictionary{
 	"train.evaluator_gpu": {attribute.Int, 0, "", nil},
 }
 
-func intArrayToJSONString(ia []int) string {
-	return strings.Join(strings.Split(fmt.Sprint(ia), " "), ",")
-}
-
 func generateFeatureColumnCode(fc ir.FeatureColumn) (string, error) {
-	switch c := fc.(type) {
-	case *ir.NumericColumn:
-		return fmt.Sprintf("tf.feature_column.numeric_column(\"%s\", shape=%s)",
-			c.FieldDesc.Name,
-			intArrayToJSONString(c.FieldDesc.Shape)), nil
-	case *ir.BucketColumn:
-		sourceCode, err := generateFeatureColumnCode(c.SourceColumn)
-		if err != nil {
-			return "", err
-		}
-		return fmt.Sprintf(
-			"tf.feature_column.bucketized_column(%s, boundaries=%s)",
-			sourceCode,
-			intArrayToJSONString(c.Boundaries)), nil
-	case *ir.CategoryIDColumn:
-		fm := c.GetFieldDesc()[0]
-		if len(fm.Vocabulary) > 0 {
-			vocabList := []string{}
-			for k := range fm.Vocabulary {
-				vocabList = append(vocabList, fmt.Sprintf("\"%s\"", k))
-			}
-			vocabCode := strings.Join(vocabList, ",")
-			return fmt.Sprintf("tf.feature_column.categorical_column_with_vocabulary_list(key=\"%s\", vocabulary_list=[%s])",
-				c.FieldDesc.Name, vocabCode), nil
-		}
-		return fmt.Sprintf("tf.feature_column.categorical_column_with_identity(key=\"%s\", num_buckets=%d)",
-			c.FieldDesc.Name, c.BucketSize), nil
-	case *ir.SeqCategoryIDColumn:
-		return fmt.Sprintf("tf.feature_column.sequence_categorical_column_with_identity(key=\"%s\", num_buckets=%d)",
-			c.FieldDesc.Name, c.BucketSize), nil
-	case *ir.CategoryHashColumn:
-		// FIXME(typhoonzero): do we need to support dtype other than int64?
-		dtypeStr := "tf.dtypes.int64"
-		if c.GetFieldDesc()[0].DType == ir.Int {
-			dtypeStr = "tf.dtypes.int64"
-		} else if c.GetFieldDesc()[0].DType == ir.String {
-			dtypeStr = "tf.dtypes.string"
-		} else {
-			return "", fmt.Errorf("CATEGORY_HASH column do not support input type: %d, col: %s", c.GetFieldDesc()[0].DType, c.GetFieldDesc()[0].Name)
-		}
-		return fmt.Sprintf("tf.feature_column.categorical_column_with_hash_bucket(key=\"%s\", hash_bucket_size=%d, dtype=%s)",
-			c.FieldDesc.Name, c.BucketSize, dtypeStr), nil
-	case *ir.CrossColumn:
-		var keysGenerated = make([]string, len(c.Keys))
-		for idx, key := range c.Keys {
-			if c, ok := key.(ir.FeatureColumn); ok {
-				code, err := generateFeatureColumnCode(c)
-				if err != nil {
-					return "", err
-				}
-				keysGenerated[idx] = code
-			} else {
-				return "", fmt.Errorf("field in cross column is not a FeatureColumn type: %v", key)
-			}
-		}
-		return fmt.Sprintf(
-			"tf.feature_column.crossed_column([%s], hash_bucket_size=%d)",
-			strings.Join(keysGenerated, ","), c.HashBucketSize), nil
-	case *ir.EmbeddingColumn:
-		sourceCode, err := generateFeatureColumnCode(c.CategoryColumn)
-		if err != nil {
-			return "", err
-		}
-		return fmt.Sprintf("tf.feature_column.embedding_column(%s, dimension=%d, combiner=\"%s\")",
-			sourceCode, c.Dimension, c.Combiner), nil
-	case *ir.IndicatorColumn:
-		sourceCode, err := generateFeatureColumnCode(c.CategoryColumn)
-		if err != nil {
-			return "", err
-		}
-		return fmt.Sprintf("tf.feature_column.indicator_column(%s)", sourceCode), nil
-
-	default:
-		return "", fmt.Errorf("unsupported feature column type %T on %v", c, c)
-	}
+	return codegen.GenerateFeatureColumnCode(fc, "tf")
 }
 
 func attrToPythonValue(attr interface{}) string {
@@ -162,7 +86,7 @@ func attrToPythonValue(attr interface{}) string {
 	case float64: // FIXME(typhoonzero): may never use
 		return fmt.Sprintf("%f", attr.(float64))
 	case []int:
-		return intArrayToJSONString(attr.([]int))
+		return util.IntArrayToJSONString(attr.([]int))
 		// TODO(typhoonzero): support []float etc.
 	case []interface{}:
 		tmplist := attr.([]interface{})
@@ -172,7 +96,7 @@ func attrToPythonValue(attr interface{}) string {
 				for _, v := range tmplist {
 					intlist = append(intlist, v.(int))
 				}
-				return intArrayToJSONString(intlist)
+				return util.IntArrayToJSONString(intlist)
 			}
 		}
 		// TODO(typhoonzero): support []float etc.
@@ -382,6 +306,7 @@ func deriveFeatureColumnCode(trainStmt *ir.TrainStmt) (featureColumnsCode []stri
 
 // Train generates a Python program for train a TensorFlow model.
 func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
+	util.SaveToFile(fmt.Sprintf("%s", trainStmt.Features), "/tmp/features.txt")
 	trainParams, validateParams, modelParams := categorizeAttributes(trainStmt)
 	featureColumnsCode, fieldDescs, err := deriveFeatureColumnCode(trainStmt)
 	if err != nil {
@@ -414,7 +339,7 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 	}
 	var program bytes.Buffer
 	var trainTemplate = template.Must(template.New("Train").Funcs(template.FuncMap{
-		"intArrayToJSONString": intArrayToJSONString,
+		"intArrayToJSONString": util.IntArrayToJSONString,
 		"attrToPythonValue":    attrToPythonValue,
 		"DTypeToString":        DTypeToString,
 	}).Parse(tfTrainTemplateText))
@@ -467,7 +392,7 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 	}
 	var program bytes.Buffer
 	var predTemplate = template.Must(template.New("Pred").Funcs(template.FuncMap{
-		"intArrayToJSONString": intArrayToJSONString,
+		"intArrayToJSONString": util.IntArrayToJSONString,
 		"attrToPythonValue":    attrToPythonValue,
 		"DTypeToString":        DTypeToString,
 	}).Parse(tfPredTemplateText))
@@ -511,7 +436,7 @@ func Explain(stmt *ir.ExplainStmt, session *pb.Session) (string, error) {
 	}
 	var program bytes.Buffer
 	var tmpl = template.Must(template.New("Explain").Funcs(template.FuncMap{
-		"intArrayToJSONString": intArrayToJSONString,
+		"intArrayToJSONString": util.IntArrayToJSONString,
 		"attrToPythonValue":    attrToPythonValue,
 		"DTypeToString":        DTypeToString,
 	}).Parse(boostedTreesExplainTemplateText))
@@ -552,7 +477,7 @@ func Evaluate(stmt *ir.EvaluateStmt, session *pb.Session) (string, error) {
 	}
 	var program bytes.Buffer
 	var tmpl = template.Must(template.New("Evaluate").Funcs(template.FuncMap{
-		"intArrayToJSONString": intArrayToJSONString,
+		"intArrayToJSONString": util.IntArrayToJSONString,
 		"attrToPythonValue":    attrToPythonValue,
 		"DTypeToString":        DTypeToString,
 	}).Parse(tfEvaluateTemplateText))
@@ -571,26 +496,10 @@ func restoreModel(stmt *ir.TrainStmt) (modelParams map[string]interface{}, featu
 			modelParams[strings.Replace(attrKey, "model.", "", 1)] = attr
 		}
 	}
-	perTargetFeatureColumnsCode := []string{}
-	for target, fcList := range stmt.Features {
-		for _, fc := range fcList {
-			fcCode, err := generateFeatureColumnCode(fc)
-			if err != nil {
-				return nil, nil, nil, err
-			}
-			perTargetFeatureColumnsCode = append(perTargetFeatureColumnsCode, fcCode)
-			if len(fc.GetFieldDesc()) > 0 {
-				for _, fm := range fc.GetFieldDesc() {
-					_, ok := fieldDescs[target]
-					if !ok {
-						fieldDescs[target] = []*ir.FieldDesc{}
-					}
-					fieldDescs[target] = append(fieldDescs[target], fm)
-				}
-			}
-		}
-		featureColumnsCode = append(featureColumnsCode,
-			fmt.Sprintf("\"%s\": [%s]", target, strings.Join(perTargetFeatureColumnsCode, ",\n")))
+
+	featureColumnsCode, fieldDescs, err = deriveFeatureColumnCode(stmt)
+	if err != nil {
+		return nil, nil, nil, err
 	}
 	return
 }

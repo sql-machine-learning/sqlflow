@@ -23,6 +23,7 @@ type explainFiller struct {
 	ShapSummaryParams    string
 	FeatureFieldMetaJSON string
 	FeatureColumnNames   []string
+	FeatureColumnCode    string
 	LabelJSON            string
 	IsPAI                bool
 	PAIExplainTable      string
@@ -30,6 +31,7 @@ type explainFiller struct {
 
 const explainTemplateText = `
 import json
+import sqlflow_submitter.xgboost as xgboost_extended
 from sqlflow_submitter.xgboost.explain import explain
 
 feature_field_meta = json.loads('''{{.FeatureFieldMetaJSON}}''')
@@ -40,6 +42,8 @@ feature_column_names = [{{range .FeatureColumnNames}}
 "{{.}}",
 {{end}}]
 
+transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer({{.FeatureColumnCode}})
+
 explain(
     datasource='''{{.DataSource}}''',
     select='''{{.DatasetSQL}}''',
@@ -48,7 +52,8 @@ explain(
     label_spec=label_spec,
     summary_params=summary_params,
     is_pai="{{.IsPAI}}" == "true",
-    pai_explain_table="{{.PAIExplainTable}}")
+    pai_explain_table="{{.PAIExplainTable}}",
+    transform_fn=transform_fn)
 `
 
 var explainTemplate = template.Must(template.New("explain").Parse(explainTemplateText))

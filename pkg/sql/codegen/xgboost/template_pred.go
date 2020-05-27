@@ -23,6 +23,7 @@ type predFiller struct {
 	FeatureMetaJSON    string
 	LabelMetaJSON      string
 	FeatureColumnNames []string
+	FeatureColumnCode  string
 	ResultTable        string
 	HDFSNameNodeAddr   string
 	HiveLocation       string
@@ -34,6 +35,7 @@ type predFiller struct {
 
 const predTemplateText = `
 import json
+import sqlflow_submitter.xgboost as xgboost_extended
 from sqlflow_submitter.xgboost.predict import pred
 
 feature_metas = json.loads('''{{.FeatureMetaJSON}}''')
@@ -42,6 +44,8 @@ label_meta = json.loads('''{{.LabelMetaJSON}}''')
 feature_column_names = [{{range .FeatureColumnNames}}
 "{{.}}",
 {{end}}]
+
+transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer({{.FeatureColumnCode}})
 
 pred(datasource='''{{.DataSource}}''',
      select='''{{.PredSelect}}''',
@@ -54,8 +58,8 @@ pred(datasource='''{{.DataSource}}''',
      hdfs_user='''{{.HDFSUser}}''',
      hdfs_pass='''{{.HDFSPass}}''',
      is_pai="{{.IsPAI}}" == "true",
-     pai_table="{{.PAITable}}")
-
+     pai_table="{{.PAITable}}",
+     transform_fn=transform_fn)
 `
 
 var predTemplate = template.Must(template.New("Pred").Parse(predTemplateText))

@@ -44,24 +44,25 @@ def evaluate(datasource,
              hdfs_user="",
              hdfs_pass="",
              pai_table="",
-             model_params=None):
+             model_params=None,
+             transform_fn=None):
     if not is_pai:
         conn = db.connect_with_data_source(datasource)
     else:
         conn = None
-    label_name = label_meta["feature_name"]
-    dpred = xgb_dataset(datasource,
-                        'predict.txt',
-                        select,
-                        feature_metas,
-                        feature_column_names,
-                        label_meta,
-                        is_pai,
-                        pai_table,
-                        True,
-                        True,
-                        batch_size=DEFAULT_PREDICT_BATCH_SIZE
-                        )  # NOTE: default to use external memory
+    dpred = xgb_dataset(
+        datasource,
+        'predict.txt',
+        select,
+        feature_metas,
+        feature_column_names,
+        label_meta,
+        is_pai,
+        pai_table,
+        True,
+        True,
+        batch_size=DEFAULT_PREDICT_BATCH_SIZE,
+        transform_fn=transform_fn)  # NOTE: default to use external memory
     bst = xgb.Booster({'nthread': 4})  # init model
     bst.load_model("my_model")  # load model
     print("Start evaluating XGBoost model...")
@@ -118,7 +119,8 @@ def evaluate_and_store_result(bst, dpred, feature_file_id, validation_metrics,
 
     evaluate_results = dict()
     for metric_name in validation_metrics:
-        metric_value = eval("%s(y_test, preds)" % metric_name)
+        metric_func = eval(metric_name)
+        metric_value = metric_func(y_test, preds)
         evaluate_results[metric_name] = metric_value
 
     # write evaluation result to result table

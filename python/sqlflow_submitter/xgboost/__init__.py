@@ -10,3 +10,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from sqlflow_submitter.xgboost import feature_column
+
+
+class DataTypeCollection(object):
+    def __init__(self):
+        self.int64 = 'int64'
+        self.float32 = 'float32'
+        self.string = 'string'
+
+
+dtypes = DataTypeCollection()

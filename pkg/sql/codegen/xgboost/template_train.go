@@ -25,6 +25,7 @@ type trainFiller struct {
 	FieldDescJSON      string
 	FeatureColumnNames []string
 	LabelJSON          string
+	FeatureColumnCode  string
 	DiskCache          bool
 	BatchSize          int
 	Epoch              int
@@ -34,7 +35,9 @@ type trainFiller struct {
 }
 
 const trainTemplateText = `
+import sqlflow_submitter.xgboost as xgboost_extended
 from sqlflow_submitter.xgboost.train import train
+import sqlflow_submitter.xgboost.feature_column as xgboost_feature_column
 from sqlflow_submitter.tensorflow.pai_distributed import define_tf_flags, set_oss_environs
 import json
 
@@ -51,6 +54,8 @@ feature_column_names = [{{range .FeatureColumnNames}}
 "{{.}}",
 {{end}}]
 
+transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer({{.FeatureColumnCode}})
+
 train(datasource='''{{.DataSource}}''',
       select='''{{.TrainSelect}}''',
       model_params=model_params,
@@ -65,10 +70,13 @@ train(datasource='''{{.DataSource}}''',
       is_pai="{{.IsPAI}}" == "true",
       pai_train_table="{{.PAITrainTable}}",
       pai_validate_table="{{.PAIValidateTable}}",
-      oss_model_dir="{{.OSSModelDir}}")
+      oss_model_dir="{{.OSSModelDir}}",
+      transform_fn=transform_fn,
+      feature_column_code='''{{.FeatureColumnCode}}''')
 `
 
 const distTrainTemplateText = `
+import sqlflow_submitter.xgboost as xgboost_extended
 from sqlflow_submitter.xgboost.train import dist_train
 from sqlflow_submitter.tensorflow.pai_distributed import define_tf_flags, set_oss_environs
 import json
@@ -85,6 +93,8 @@ feature_column_names = [{{range .FeatureColumnNames}}
 "{{.}}",
 {{end}}]
 
+transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer({{.FeatureColumnCode}})
+
 dist_train(flags=FLAGS,
       datasource='''{{.DataSource}}''',
       select='''{{.TrainSelect}}''',
@@ -100,7 +110,9 @@ dist_train(flags=FLAGS,
       is_pai="{{.IsPAI}}" == "true",
       pai_train_table="{{.PAITrainTable}}",
       pai_validate_table="{{.PAIValidateTable}}",
-      oss_model_dir="{{.OSSModelDir}}")
+      oss_model_dir="{{.OSSModelDir}}",
+      transform_fn=transform_fn,
+      feature_column_code='''{{.FeatureColumnCode}}''')
 `
 
 var trainTemplate = template.Must(template.New("Train").Parse(trainTemplateText))

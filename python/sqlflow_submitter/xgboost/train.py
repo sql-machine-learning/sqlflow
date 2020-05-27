@@ -38,7 +38,8 @@ def dist_train(flags,
                is_pai=False,
                pai_train_table="",
                pai_validate_table="",
-               oss_model_dir=""):
+               oss_model_dir="",
+               transform_fn=None):
     if not is_pai:
         raise Exception(
             "XGBoost distributed training is only supported on PAI")
@@ -84,7 +85,8 @@ def dist_train(flags,
                   pai_validate_table,
                   rank,
                   nworkers=num_workers,
-                  oss_model_dir=oss_model_dir)
+                  oss_model_dir=oss_model_dir,
+                  transform_fn=transform_fn)
     except Exception as e:
         print("node={}, id={}, exception={}".format(node, task_id, e))
         six.reraise(*sys.exc_info())  # For better backtrace
@@ -111,7 +113,9 @@ def train(datasource,
           pai_validate_table="",
           rank=0,
           nworkers=1,
-          oss_model_dir=""):
+          oss_model_dir="",
+          transform_fn=None,
+          feature_column_code=""):
     if batch_size == -1:
         batch_size = None
     print("Start training XGBoost model...")
@@ -127,7 +131,8 @@ def train(datasource,
                          batch_size=batch_size,
                          epoch=epoch,
                          rank=rank,
-                         nworkers=nworkers)
+                         nworkers=nworkers,
+                         transform_fn=transform_fn)
     if len(validation_select.strip()) > 0:
         dvalidate = list(
             xgb_dataset(datasource,
@@ -153,15 +158,18 @@ def train(datasource,
                         evals_result=re,
                         xgb_model=bst,
                         **train_params)
-        bst.save_model("my_model")
         print("Evaluation result: %s" % re)
-    if is_pai and rank == 0 and len(oss_model_dir) > 0:
-        save_model(oss_model_dir, model_params, train_params, feature_metas,
-                   feature_column_names, label_meta)
+
+    if rank == 0:
+        bst.save_model("my_model")
+        if is_pai and len(oss_model_dir) > 0:
+            save_model(oss_model_dir, model_params, train_params,
+                       feature_metas, feature_column_names, label_meta,
+                       feature_column_code)
 
 
 def save_model(model_dir, model_params, train_params, feature_metas,
-               feature_column_names, label_meta):
+               feature_column_names, label_meta, feature_column_code):
     model.save_file(model_dir, "my_model")
     model.save_metas(
         model_dir,
@@ -172,4 +180,5 @@ def save_model(model_dir, model_params, train_params, feature_metas,
         train_params,
         feature_metas,
         feature_column_names,
-        label_meta)
+        label_meta,
+        feature_column_code)
