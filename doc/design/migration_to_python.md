@@ -1,10 +1,10 @@
 # Migrating to Python
 
-The design is about migrating SQLFlow golang code that's related to ML to python.
+The design is about migrating SQLFlow Go code that's related to ML to Python.
 
 Language migration is difficult in common sense. The section [Flaws In The Current Architecture](#flaws-in-the-current-architecture) explains why the migration should happen. If you're already convinced that the migration is necessary, this section can be safely skipped and look over at any time.
 
-The section [A Quick View Of The Current Architecture](#a-quick-view-of-the-current-architecture) shows the distribution of golang  *ML code* in the current architecture. That's what to be migrated to python.
+The section [A Quick View Of The Current Architecture](#a-quick-view-of-the-current-architecture) shows the distribution of Go  *ML code* in the current architecture. That's what to be migrated to Python.
 
 The section [The Proposed Architecture](#the-proposed-architecture) illustrates an outline design about how the migration will be done.
 
@@ -12,7 +12,7 @@ The last two sections explain how the proposed architecture solves the problem o
 
 ## Flaws In The Current Architecture
 
-For SQLFlow, migrating to python might mean rewriting lots of existing golang code in python. Why should we migrate the golang *ML code* to python? Is is necessary? Is it the right time?
+For SQLFlow, migrating to Python might mean rewriting lots of existing Go code in Python. Why should we migrate the Go *ML code* to Python? Is is necessary? Is it the right time?
 
 After demonstrating the flaws of the current architecture in the following scenarios, the answer will be obvious.
 
@@ -20,17 +20,17 @@ After demonstrating the flaws of the current architecture in the following scena
 
 Feature engineering is a very important part of machine learning. SQLFlow supports feature engineering via the `COLUMN` clause. The current `COLUMN` clause of SQLFlow is based on `tf.feature_column` and works only for TensorFlow. In the next version, the SQLFlow `COLUMN` clause will support more comprehensive feature columns for TensorFlow, PyTorch and XGBoost. 
 
-Suppose the user wants a `image_embedding_column ` that converts a input image into embedding for a recommender system. Adding such a new column in the current architecture requires the following main steps:
+Suppose the user wants a `image_embedding_column` that converts an input image into embedding for a recommender system. Adding such a new column in the current architecture requires the following main steps:
 
-1. The python part:
-   1. Implement the column in a python file. 
-2. The golang part:
+1. The Python part:
+   1. Implement the column in a Python file. 
+2. The Go part:
    1. Add a `ImageEmbeddingColumn` struct in [pkg/ir/feature_column.go](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/ir/feature_column.go).
    2. Add a `parseImageEmbeddingColumn` function in [pkg/sql/ir_generator.go](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/sql/ir_generator.go).
    3. Add a `switch` statement in the function `initColumnMap` in [pkg/step/feature/derivation.go](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/step/feature/derivation.go).
-   4. Add a `case` in the large `switch` statement in function `generateFeatureColumnCode` in [pkg/sql/codegen/tensorflow/codegen.go](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/sql/codegen/tensorflow/codegen.go). This step generates a snippet of python code with simple text substitution.
-   5. Check inputs for `image_embedding_column ` to avoid possible run-time exception from the python part to ensure user experience.
-3. Test and debug: a bug can be in the python file, in `pkg/ir/feature_column.go`, in `pkg/sql/ir_generator.go`, in `pkg/step/feature/derivation.go`, in `pkg/sql/codegen/tensorflow/codegen.go`, or in the python code text substitution template.
+   4. Add a `case` in the large `switch` statement in function `generateFeatureColumnCode` in [pkg/sql/codegen/tensorflow/codegen.go](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/sql/codegen/tensorflow/codegen.go). This step generates a snippet of Python code with simple text substitution.
+   5. Check inputs for `image_embedding_column` to avoid possible run-time exception from the Python part to ensure user experience.
+3. Test and debug: a bug can be in the Python file, in `pkg/ir/feature_column.go`, in `pkg/sql/ir_generator.go`, in `pkg/step/feature/derivation.go`, in `pkg/sql/codegen/tensorflow/codegen.go`, or in the Python code text substitution template.
 
 See https://github.com/sql-machine-learning/sqlflow/pull/1897 and https://github.com/sql-machine-learning/sqlflow/pull/1901 for an real-world example.
 
@@ -38,91 +38,91 @@ See https://github.com/sql-machine-learning/sqlflow/pull/1897 and https://github
 
 There're lots of models other than DNNs that have decent performance on average-size datasets, for example, tree models like `XGBoost` and `LightGBM`. Suppose the user want's to contribute `LightGBM` to SQLFlow, this requires the following main steps:
 
-1. The python part:
-   1. Add a directory `lightgbm` in [python/sqlflow_submitter](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/python/sqlflow_submitter). 
+1. The Python part:
+   1. Add a directory `lightgbm` in [Python/sqlflow_submitter](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/Python/sqlflow_submitter). 
    2. Write `train.py`, `predict.py`, `explain.py`, `evaluate.py`  in the `lightgbm` directory, each file has a function with the same name as the file, and the functions implements the main logic for SQLFlow train statement, predict statement, explain statement, and evaluate statement, respectively.
-2. The golang part:
+2. The Go part:
    1. Add a package `pkg/sql/codegen/lightgbm/`.
-   2. Add `codegen_*.go` and `template_*.go` in the `lightgbm` directory for each type of statement. Each pair of `codegen_*.go` and `template_*.go` generates a simple python script by text substitution. The python script calls the python functions in the python part. For example, `lightgbm/codegen_train.go` and `lightgbm/template_train.go` generate a python script that calls `python/sqlflow_submitter/lightgbm/train.py`
-   3. Check inputs for `lightgbm ` to avoid possible run-time exception from the python part to ensure user experience.
+   2. Add `codegen_*.go` and `template_*.go` in the `lightgbm` directory for each type of statement. Each pair of `codegen_*.go` and `template_*.go` generates a simple Python script by text substitution. The Python script calls the Python functions in the Python part. For example, `lightgbm/codegen_train.go` and `lightgbm/template_train.go` generate a Python script that calls `Python/sqlflow_submitter/lightgbm/train.py`
+   3. Check inputs for `lightgbm ` to avoid possible run-time exception from the Python part to ensure user experience.
    4. Modify the `submitter`s in the `pkg/sql/ package` to call `pkg/sql/codegen/lightgbm` to generate the *submitter program*.
-3. Test and debug: a bug can be in the python files, in the golang files, or in the python code text substitution templates.
+3. Test and debug: a bug can be in the Python files, in the Go files, or in the Python code text substitution templates.
 
-See [python/sqlflow_submitter/xgboost](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/python/sqlflow_submitter/xgboost), [pkg/sql/codegen/xgboost](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/sql/codegen/xgboost), and [pkg/sql/submitter.go](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/sql/submitter.go) for an real-world example.
+See [Python/sqlflow_submitter/xgboost](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/Python/sqlflow_submitter/xgboost), [pkg/sql/codegen/xgboost](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/sql/codegen/xgboost), and [pkg/sql/submitter.go](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/sql/submitter.go) for an real-world example.
 
 ### The Flaws In A Nutshell
 
 From the two typical scenarios, the flaws in the current architecture are obvious:
 
-1. **Mirrored classes/functions**. Each classes/functions of ML-purpose in python has a mirror struct/function in golang, if anyone upgrades the python *ML code*, this usually implies she must upgrade the golang counterpart at the same time to make the upgrade work, and vice versa. This is a strong signal of bad extensibility, which usually is led by a design flaw.
+1. **Mirrored classes/functions**. Each classes/functions of ML-purpose in Python has a mirror struct/function in Go, if anyone upgrades the Python *ML code*, this usually implies she must upgrade the Go counterpart at the same time to make the upgrade work, and vice versa. This is a strong signal of bad extensibility, which usually is led by a design flaw.
    1. It's tedious and error-prone for SQLFlow developers to develop new ML features.
-   2. Moreover, It's tedious and error-prone for model developers to contribute models: because python is the dominant language in the field of ML, ML experts are always only familiar with `python`, forcing them to develop in golang will either scare away them or lead to low quality code and painful code review. 
-2. **Limited semantic checking**. There's no language-level interaction between the golang part and the python part. 
-   1. Text substitution means we have to write python code as a golang string. This is hard to review and debug.
-   2. In a text substituion way, because the golang part lacks knowledges about python function parameters and exceptions, SQLFlow cannot generate friendly diagnostic messages for argument errors.  SQLFlow users are always only familiar with SQL, tens of lines of python traceback is a terrible user experience.
+   2. Moreover, It's tedious and error-prone for model developers to contribute models: because Python is the dominant language in the field of ML, ML experts are always only familiar with `Python`, forcing them to develop in Go will either scare away them or lead to low quality code and painful code review. 
+2. **Limited semantic checking**. There's no language-level interaction between the Go part and the Python part. 
+   1. Text substitution means we have to write Python code as a Go string. This is hard to review and debug.
+   2. In a text substituion way, because the Go part lacks knowledges about Python function parameters and exceptions, SQLFlow cannot generate friendly diagnostic messages for argument errors.  SQLFlow users are always only familiar with SQL, tens of lines of Python traceback is a terrible user experience.
 
-Because SQLFlow is an ML platform, and because Python is the dominant language in the ML community, SQLFlow has to rely heavily on python and has to frequently update the fresh progress of the ML community. In fact , the **mirrored classes/functions** flaw implied the current architecture is unfriendly to both SQLFlow developers and model developers, the **limited semantic checking** flaw implied the current architecture is unfriendly to SQLFlow users. Therefore, the two flaws are fatal for SQLFlow.
+Because SQLFlow is an ML platform, and because Python is the dominant language in the ML community, SQLFlow has to rely heavily on Python and has to frequently update the fresh progress of the ML community. In fact , the **mirrored classes/functions** flaw implied the current architecture is unfriendly to both SQLFlow developers and model developers, the **limited semantic checking** flaw implied the current architecture is unfriendly to SQLFlow users. Therefore, the two flaws are fatal for SQLFlow.
 
-To solve the flaws of the current architecture described above. We propose to migrate the *ML code* from golang to python for two reasons:
+To solve the flaws of the current architecture described above. We propose to migrate the *ML code* from Go to Python for two reasons:
 
-1. To solve the problems caused by **mirrored classes/functions**, there're only two possible options: defining the ML-purpose classes/functions only in python, or defining the classes/functions only in golang. Obviously, the second option is infeasible because all the classes/functions rely heavily on TensorFlow, XGBoost or other python ML frameworks. As a result, we should define them only in python. 
-2. Now that we have to define the ML-purpose classes/functions only in python, to solve the problems caused by **limited semantic checking**, we can only check the semantics of the classes/functions in python. In this approach, because python of course have the knowledges of python function parameters and execeptions, we can give comprehensive diagnostic messages easily with the reflection mechanism provided by python.
+1. To solve the problems caused by **mirrored classes/functions**, there're only two possible options: defining the ML-purpose classes/functions only in Python, or defining the classes/functions only in Go. Obviously, the second option is infeasible because all the classes/functions rely heavily on TensorFlow, XGBoost or other Python ML frameworks. As a result, we should define them only in Python. 
+2. Now that we have to define the ML-purpose classes/functions only in Python, to solve the problems caused by **limited semantic checking**, we can only check the semantics of the classes/functions in Python. In this approach, because Python of course have the knowledges of Python function parameters and execeptions, we can give comprehensive diagnostic messages easily with the reflection mechanism provided by Python.
 
 ## A Quick View Of The Current Architecture
 
-Before diving into the migration, we should walk through the current packages to judiciously judge what would migrate to python.
+Before diving into the migration, we should walk through the current packages to judiciously judge what would migrate to Python.
 
 ### The Current Python Package
 
-The main python *ML code* are in the python package [sqlflow_submitter](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/python/sqlflow_submitter). The main purpose of the golang *ML code* is to generate python scripts that call python functions in the `sqlflow_submitter`  package. We call these python scripts the *submitter programs*. Because `sqlflow_submitter` is already written in python. There will be little modification to this package in the migration process.
+The main Python *ML code* are in the Python package [sqlflow_submitter](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/Python/sqlflow_submitter). The main purpose of the Go *ML code* is to generate Python scripts that call Python functions in the `sqlflow_submitter`  package. We call these Python scripts the *submitter programs*. Because `sqlflow_submitter` is already written in Python. There will be little modification to this package in the migration process.
 
 ### The Current Golang Package Structure
 
 At the moment, the packages under [sqlflow/pkg](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg) are:
 
-1. [server](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/server) is the implementation of the SQLFlow gRPC server. The input statements from the user will be sent to the SQLFlow gRPC server. It forwards the statements to the `workflow` package and get results back. We **don't** have to migrate this package to python.
+1. [server](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/server) is the implementation of the SQLFlow gRPC server. The input statements from the user will be sent to the SQLFlow gRPC server. It forwards the statements to the `workflow` package and get results back. We **don't** have to migrate this package to Python.
 
-2. [proto](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/proto)  defines necessary pb messages for the `server` package. We **don't** have to migrate this package to python.
+2. [proto](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/proto)  defines necessary pb messages for the `server` package. We **don't** have to migrate this package to Python.
 
-3. [workflow](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/workflow) is the downstream of the `server` package. It does a text substitution and generates a python script. The python script calls [couler](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/doc/design/couler_sqlflow.md) to generate an `Argo`  `.yaml` file that defines the workflow to be executed on Argo. We propose to migrate this package to python for two reasons:
+3. [workflow](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/workflow) is the downstream of the `server` package. It does a text substitution and generates a Python script. The Python script calls [couler](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/doc/design/couler_sqlflow.md) to generate an `Argo`  `.yaml` file that defines the workflow to be executed on Argo. We propose to migrate this package to Python for two reasons:
 
    1. The `workflow`  package has the same design as the *ML code* described above, it has similar flaws. 
-   2. In the next version of the `COLUMN` clause, the `COLUMN` clause may generate its own workflow steps to derive features or get analysis data. This process will requires some *ML code* and should be implemented in python.
+   2. In the next version of the `COLUMN` clause, the `COLUMN` clause may generate its own workflow steps to derive features or get analysis data. This process will requires some *ML code* and should be implemented in Python.
 
-4. [step](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/step) is the downstream of the `workflow` package, it's binary `cmd/step` is executed as a workflow step on Argo. The `step/feature` directory should be migrated to python because it has *ML code* that deduces feature columns from the input. 
+4. [step](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/step) is the downstream of the `workflow` package, it's binary `cmd/step` is executed as a workflow step on Argo. The `step/feature` directory should be migrated to Python because it has *ML code* that deduces feature columns from the input. 
 
-5. [database](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/database) is a utility package that wraps the `godriver`s, i. e. [goalisa](https://github.com/sql-machine-learning/goalisa), [gomaxcompute](https://github.com/sql-machine-learning/gomaxcompute), [gohive](https://github.com/sql-machine-learning/gohive), into a set of functions for ease of use by other golang code in `sqlflow/pkg` and `sqlflow/cmd`. We don't have to rewrite the `godriver`s because they don't depend on python and they are not *ML code*. 
+5. [database](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/database) is a utility package that wraps the `godriver`s, i. e. [goalisa](https://github.com/sql-machine-learning/goalisa), [gomaxcompute](https://github.com/sql-machine-learning/gomaxcompute), [gohive](https://github.com/sql-machine-learning/gohive), into a set of functions for ease of use by other Go code in `sqlflow/pkg` and `sqlflow/cmd`. We don't have to rewrite the `godriver`s because they don't depend on Python and they are not *ML code*. 
 
-   However, because `step/feature` depends on `goalisa`, and would migrate to python, the `database` package has to be accessible by both python and golang. As a result, we propose to wrap this golang package as well as the `godriver`s into a python module `_database.so` to make it both available in python and golang.
+   However, because `step/feature` depends on `goalisa`, and would migrate to Python, the `database` package has to be accessible by both Python and Go. As a result, we propose to wrap this Go package as well as the `godriver`s into a Python module `_database.so` to make it both available in Python and Go.
 
-6. [parser](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/parser) contains the parser of the SQLFlow extended syntax. It is not *ML code* , so we **don't** have to migrate this package to python. 
+6. [parser](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/parser) contains the parser of the SQLFlow extended syntax. It is not *ML code* , so we **don't** have to migrate this package to Python. 
 
 7. [ir](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/ir). This package defines the intermediate representations of a SQLFlow statement. A SQLFlow program is a set of SQLFlow statements. Intermediate representations or `ir`s for short in this package are `struct`s that implement the `ir.SQLStatement` interface. 
 
-   The proposed architecture will require the golang part to pass the *ir* of a SQLFlow program to the python part to execute the program. To accomplish this requirement, we can either wrap `SQLStatement` into a python module as what we proposed to do with `database` package or redefine the *ir* as a protobuf message. 
+   The proposed architecture will require the Go part to pass the *ir* of a SQLFlow program to the Python part to execute the program. To accomplish this requirement, we can either wrap `SQLStatement` into a Python module as what we proposed to do with `database` package or redefine the *ir* as a protobuf message. 
 
    The protobuf way is preferred because the `ir` s are actually messages rather than a module. Suppose we define messages for  `Statement`s and `Program`s in `proto/ir.proto` for ease of later discussion.
 
-8. [verifier](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/verifier). This package checks the names and types of database table columns. It would be migrated to python because It's required by `step/feature`.
+8. [verifier](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/verifier). This package checks the names and types of database table columns. It would be migrated to Python because It's required by `step/feature`.
 
-9. [model](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/model). This is a utility for saving and loading trained ML models. It should be migrated to python.
+9. [model](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/model). This is a utility for saving and loading trained ML models. It should be migrated to Python.
 
-10. [pipe](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/pipe). This is a utility for piping `stdout` of a CLI process as a stream for later use. It doesn't require python and is not *ML code*, so we **don't** have to migrate this package to python. 
+10. [pipe](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/pipe). This is a utility for piping `stdout` of a CLI process as a stream for later use. It doesn't require Python and is not *ML code*, so we **don't** have to migrate this package to Python. 
 
-11. [log](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/log). This is a utility package for logging messages, for example: `logger.Info(something)`. It doesn't require python and is not *ML code*, so we **don't** have to migrate this package to python. 
+11. [log](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/log). This is a utility package for logging messages, for example: `logger.Info(something)`. It doesn't require Python and is not *ML code*, so we **don't** have to migrate this package to Python. 
 
 13. [sql/codegen](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/sql/codegen). This package implements the mentioned *text substitution* to generate *submitter programs*. This package is the core reason of **mirrored classes/functions**: Every function/package in `sqlflow_submitter` has a corresponding function/package in `sql/codegen`.
 
-    After the migration to python, we'll have a new python package that directly calls functions in `sqlflow_submitter`. Therefore, we don't need *text substitution* in the proposed architecture. We should **remove this package** after the migration.
+    After the migration to Python, we'll have a new Python package that directly calls functions in `sqlflow_submitter`. Therefore, we don't need *text substitution* in the proposed architecture. We should **remove this package** after the migration.
 
-14. [sql/codegen/attribute](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/attribute) provides **limited semantic checking** for the python classes/functions. As discussed above, It should be migrated to python.
+14. [sql/codegen/attribute](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/attribute) provides **limited semantic checking** for the Python classes/functions. As discussed above, It should be migrated to Python.
 
-16. [sql](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/sql) dispatches `ir`s of SQLFlow statements to appropriate platforms (PAI e.g.) and ML engines (XGBoost e.g.), and calls the corresponding `codegen` package (`codegen/xgboost` e.g.) to generate the *submitter program* that calls corresponding python functions, and spawns a process to execute the program. The main component of this package is a visitor hierarchy that implements a double dispatch mechanism. The hierachy is composed of `struct`s that implement the `ir.Executor` interface.
-    In the proposed architecture, this package still have to spawn a python process, but the double dispatch mechanism calls python *ML code* and should be reimplemented in python. After the migration, this package should be renamed to `executor`.
+16. [sql](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/sql) dispatches `ir`s of SQLFlow statements to appropriate platforms (PAI e.g.) and ML engines (XGBoost e.g.), and calls the corresponding `codegen` package (`codegen/xgboost` e.g.) to generate the *submitter program* that calls corresponding Python functions, and spawns a process to execute the program. The main component of this package is a visitor hierarchy that implements a double dispatch mechanism. The hierachy is composed of `struct`s that implement the `ir.Executor` interface.
+    In the proposed architecture, this package still have to spawn a Python process, but the double dispatch mechanism calls Python *ML code* and should be reimplemented in Python. After the migration, this package should be renamed to `executor`.
 
-16. [sqlfs](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/sqlfs) wraps a database table into a file system interface and is required by the `model` package. We would migrate this package to python together with `model`.
+16. [sqlfs](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/sqlfs) wraps a database table into a file system interface and is required by the `model` package. We would migrate this package to Python together with `model`.
 
-17. [table_writer](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/table_writer) is a utility package for rendering database tables for a UI. We **don't** have to migrate this package to python. It's required by the `step` package and should be move to the `step` directory.
+17. [table_writer](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/table_writer) is a utility package for rendering database tables for a UI. We **don't** have to migrate this package to Python. It's required by the `step` package and should be move to the `step` directory.
 
 ## The Proposed Architecture
 
@@ -138,13 +138,13 @@ Based on the foregoing analysis, the directory structure SQLFlow core code under
 | `parser`     | Stay the same.                                               |
 | `ir`         | Remove `ir/feature_column.go`.                               |
 | `executor`   | Rename`sql` to `executor`. Remove `sql/codegen` and `sql/codegen/attribute`. |
-| `database`   | Provide a python wrapper.                                    |
+| `database`   | Provide a Python wrapper.                                    |
 | `pipe`       | Stay the same.                                               |
 | `log`        | Stay the same.                                               |
 
 ### The Proposed Python Package Structure
 
-Add a package named `sqlflow` in [sqlflow/python](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/python) to contain the python code imgrated from golang. The directory structure of SQLFlow core code under `sqlflow/python/sqlflow` should be:
+Add a package named `sqlflow` in [sqlflow/Python](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/Python) to contain the Python code imgrated from Go. The directory structure of SQLFlow core code under `sqlflow/Python/sqlflow` should be:
 
 | Package/Module Name | Description                                                  |
 | ------------------- | ------------------------------------------------------------ |
@@ -152,8 +152,8 @@ Add a package named `sqlflow` in [sqlflow/python](https://github.com/sql-machine
 | `columns`           | Modules under this package defines functions that can be called by users in a `COLUMN` clause. |
 | `features.py`       | Translate the `COLUMN` clause into calls to functions in the `column` package. |
 | `execute.py`        | Execute a SQLFlow program or a SQLFlow step.                 |
-| `client.py`         | A python client of sqlflow_server.                           |
-| `_database.so`      | Wrapper of the golang package `pkg/database`.                |
+| `client.py`         | A Python client of sqlflow_server.                           |
+| `_database.so`      | Wrapper of the Go package `pkg/database`.                |
 | `database.py`       | Wrapper to `_database.so` for ease of use.                   |
 | `ir_pb2.py`         | Generated from `pkg/proto/ir.proto`.                         |
 | `contracts.py`      | See below.                                                   |
@@ -180,23 +180,23 @@ In this part, we describe the outline design of modules that other modules depen
 
 ##### The Database Module
 
-As described above, we'll wrap the go `database` with `goalisa`, `gohive`, and `gomaxcompute` into a python module `_database.so`, we have to wrap the functionalities of `_database.so` into a thin wrapper `database.py` to convert golang objects into python objects. `database.py`should expose at least the following functions/classes:
+As described above, we'll wrap the go `database` with `goalisa`, `gohive`, and `gomaxcompute` into a Python module `_database.so`, we have to wrap the functionalities of `_database.so` into a thin wrapper `database.py` to convert Go objects into Python objects. `database.py`should expose at least the following functions/classes:
 
 - `database.OpenDB(dbstr)`: parses `dbstr` and returns the appropriate `DB` class.
 - `database.DB.Exec(self, stmt):` executes a query without returning any rows.
 - `database.DB.Query`(self, stmt): executes a query that returns `Rows` , typically a SELECT
 - `database.DB`: the object of a database connection
-- `database.Rows`: the object returned by `database.DB.Query`, should be a python generator
+- `database.Rows`: the object returned by `database.DB.Query`, should be a Python generator
 
 ##### Semantic Checking And Diagnostics
 
-As described in [The Flaws In The Current Architecture](#the-flaws-in-a-nutshell), SQLFlow executes ML tasks in python, but users are always only familiar with SQL. To generate user friendly diagnostics, we must check whether the user inputs satisfy the requirements of the python functions or callables that will be eventually called.
+As described in [The Flaws In The Current Architecture](#the-flaws-in-a-nutshell), SQLFlow executes ML tasks in Python, but users are always only familiar with SQL. To generate user friendly diagnostics, we must check whether the user inputs satisfy the requirements of the Python functions or callables that will be eventually called.
 
 The most widely-accepted solution to this problem is [contract programming](https://en.wikipedia.org/wiki/Design_by_contract). It enables defining formal, precise, and verifiable interface specifications for software components such as functions and callables. What we've done in the [sql/codegen/attribute](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/pkg/attribute) package is actually `contracts` in a limited way.
 
 ###### Python
 
-We propose to design a contracts based mechanism in `contracts.py` for semantic checking and improving our daily development in python. The module should be able to:
+We propose to design a contracts based mechanism in `contracts.py` for semantic checking and improving our daily development in Python. The module should be able to:
 
 1. Check inputs for existing models thoroughly, for example, `canned estimators` or `xgboost`.
 2. Provide model developers an ease-to-use API to contribute models with thoroughly checking
@@ -209,13 +209,13 @@ Not all runtime errors can be catched by the contracts based design, for example
 
 ###### Golang
 
-The golang package `executor` should parse the diagnostics messages generated by `diagnostics.py` and return them to the users.
+The Go package `executor` should parse the diagnostics messages generated by `diagnostics.py` and return them to the users.
 
 In the remainder of the section, we say **diagnostics are required** where `diagnostics.py` should be involved to generate an error message.
 
 ##### Intermediate Representations
 
-As described above, the proposed architecture requires the golang part to pass the *ir* of a SQLFlow program to the python part to execute the program. We propose to define `ir` as a protobuf file in `pkg/proto/ir.proto`. It should have at least the following messages and fields, each other detailed design doc could add necessary fields to the `Statement` message.
+As described above, the proposed architecture requires the Go part to pass the *ir* of a SQLFlow program to the Python part to execute the program. We propose to define `ir` as a protobuf file in `pkg/proto/ir.proto`. It should have at least the following messages and fields, each other detailed design doc could add necessary fields to the `Statement` message.
 
 ```protobuf
 message Statement {
@@ -255,11 +255,12 @@ message Statement {
   optional bool model_save = 9;
   enum Type {
     RUN = 0;
-    TRAIN = 1;
-    PREDICT = 2;
-    EXPLAIN = 3;
-    EVALUATE = 4;
-    SOLVE = 5;
+    QUERY = 1;
+    TRAIN = 2;
+    PREDICT = 3;
+    EXPLAIN = 4;
+    EVALUATE = 5;
+    SOLVE = 6;
   }
   optional Type type = 10;
   // `predict_target` specifies the column to store predict result.
@@ -280,17 +281,17 @@ message Program {
 
 ###### Golang
 
-The golang package `ir` should fill the `Program` message according to the parsed result.
+The Go package `ir` should fill the `Program` message according to the parsed result.
 
 #### Workflow And Platform
 
 ###### Python
 
-As decribed earlier, we would reimplement `workflow` in python. 
+As decribed earlier, we would reimplement `workflow` in Python. 
 
 The module `execute.py` should define at least the following functions:
 
-```python
+```Python
 def execute(program:sqlflow_ir_pb2.Program) -> str:
     """
     `execute` executes the SQLFlow `program` and returns the job id
@@ -322,20 +323,20 @@ if __name__ == '__main__':
     main(sys.argv[1] if len(sys.argv) > 1 else "execute")
 ```
 
-The python function `execute` executes the SQLFlow `program` and should do at least the following tasks:
+The Python function `execute` executes the SQLFlow `program` and should do at least the following tasks:
 
 - Do semantic checking for the `program` using `contracts.py`. **Diagnostics are required**.
 - Call `features.py:generate_analysis_steps` to generate additional data transforming steps. 
 - Call `couler` to generate an Argo `.yaml` including all `statement` steps and the additional steps and submit the workflow to Kubernetes.
 
-The python function `fetch` gets output of an executing `Program` in a incremental way.
+The Python function `fetch` gets output of an executing `Program` in a incremental way.
 
-The python function `step` executes a SQLFlow `statement` as a workflow step. `step` should do at least the following tasks:
+The Python function `step` executes a `Statement` as a workflow step. `step` should do at least the following tasks:
 
-- From the `platform` package, **locate** the python module of the **configured** platform.
+- From the `platform` package, **locate** the Python module of the **configured** platform.
   - The configure mechanism should be described in detail in the detailed design doc (the current architecture use the environment variable `SQLFlow_submitter` to config the platform)
   - The locating mechanism should be described in detail in the detailed design doc.
--  Call one of `train`, `predict`, `explain` ,`run`, `solve`, `evaluate` of the python module of the platform according to `statement.type`
+-  Call one of `query`, `train`, `predict`, `explain` ,`run`, `solve`, `evaluate` of the Python module of the platform according to `statement.type`
 
 There should be at least three modules in the `platform` package:
 
@@ -343,31 +344,31 @@ There should be at least three modules in the `platform` package:
 - `alisa.py`
 - `default.py`
 
-The functions `train`, `predict`, `explain` ,`run`, `solve`, `evaluate` provided by each module in `platform` should forward to `sqlflow_sumitter/xgboost`, `sqlflow_submitter/tensorflow`, etc. according to `statement.type` and `statement.estimator`. **Diagnostics are required**.
+The functions `query`, `train`, `predict`, `explain` ,`run`, `solve`, `evaluate` provided by each module in `platform` should forward to `sqlflow_sumitter/xgboost`, `sqlflow_submitter/tensorflow`, etc. according to `statement.type` and `statement.estimator`. **Diagnostics are required**.
 
-The functions `train`, `predict`, `explain` ,`run`, `solve`, `evaluate `  provided by each module in `platform` should have the same signature. The signature should be defined in the detailed design doc. **Diagnostics are required**.
+The functions `query`, `train`, `predict`, `explain` ,`run`, `solve`, `evaluate `  provided by each module in `platform` should have the same signature. The signature should be defined in the detailed design doc. **Diagnostics are required**.
 
 ###### Golang
 
-To execute a SQLFlow program, the golang package `pkg/executor` should eventually spawn a python process that calls `execute.py:main("execute")`, and passes the filled `Program` to stdin of the process via the standard IPC pipe.
+To execute a SQLFlow program, the Go package `pkg/executor` should eventually spawn a Python process that calls `execute.py:main("execute")`, and passes the filled `Program` to stdin of the process via the standard IPC pipe.
 
-To run a step of a executing SQLFlow program, the golang package `pkg/step` should spawn a python process that calls `execute.py:main("step")`, and passes the filled `Program` (with only one `Statement`) to stdin of the process via the standard IPC pipe.
+To run a step of a executing SQLFlow program, the Go package `pkg/step` should spawn a Python process that calls `execute.py:main("step")`, and passes the filled `Program` (with only one `Statement`) to stdin of the process via the standard IPC pipe.
 
-To get the status of an executing SQLFlow program, the golang package `pkg/server` should eventually spawn a python process that calls `execute.py:main("fetch")` .
+To get the status of an executing SQLFlow program, the Go package `pkg/server` should eventually spawn a Python process that calls `execute.py:main("fetch")` .
 
 ###### MVP
 
-The python function `fetch` is **not** required in the MVP.
+The Python function `fetch` is **not** required in the MVP.
 
 #### Feature Derivation And Columns
 
 ###### Python
 
-The function calls in the COLUMN clause should directly map to calls to python functions in the `columns` package, for example, the `COLUMN NUMERIC(x)` statement would directly map to the python function `numeric()`. We should have at least a `tf_columns.py` module under this package to implement currently supported columns such as `numeric` or `indicator`.
+The function calls in the COLUMN clause should directly map to calls to Python functions in the `columns` package, for example, the `COLUMN NUMERIC(x)` statement would directly map to the Python function `numeric()`. We should have at least a `tf_columns.py` module under this package to implement currently supported columns such as `numeric` or `indicator`.
 
 `features.py` should have at least two function: 
 
-```python
+```Python
 # Columns is the pseudo type of `map<string, Columns>` in the `Statement` message.
 def generate_analysis_steps(datasource:str, columns:Columns):
     """
@@ -378,7 +379,7 @@ def generate_analysis_steps(datasource:str, columns:Columns):
 # ColumnsDAG is a structure to be designed in the detailed design doc.
 def generate_feature_columns(columns: ColumnsDAG):
     """
-    `generate_feature_columns` generates python feature columns objects
+    `generate_feature_columns` generates Python feature columns objects
     """
     pass
 ```
@@ -393,7 +394,7 @@ def generate_feature_columns(columns: ColumnsDAG):
 
 `generate_feature_columns` does at least the following task:
 
-- Generate python column objects ( `tf.feature_columns` or a function that returns tensors e.g.) according to the `ColumnsDAG` and the results of the analysis `select` statements (which could be in a database table or in an artifact).
+- Generate Python column objects ( `tf.feature_columns` or a function that returns tensors e.g.) according to the `ColumnsDAG` and the results of the analysis `select` statements (which could be in a database table or in an artifact).
 
 `ColumnsDAG` and the columns to be implemented should be defined in the detailed design doc.
 
@@ -403,13 +404,13 @@ The `parser` package should verify the syntax of the `COLUMN` clause from user i
 
 ###### MVP
 
-`generate_analysis_steps` is **not required in the** **MVP**.
+`generate_analysis_steps` is **not required in the** **MVP**, see [data transform design](https://github.com/sql-machine-learning/elasticdl/blob/develop/docs/designs/data_transform.md) for more details.
 
 #### The Python Client
 
 There should be at least one function in `client.py`:
 
-```python
+```Python
 def sqlflow(stmt:str, server_addr:str, datasource:str):
     '''
     `sqlflow` takes a SQLFlow statement and submits it to the sqlflow_server listening server_addr
@@ -417,7 +418,7 @@ def sqlflow(stmt:str, server_addr:str, datasource:str):
     pass
 ```
 
-The `sqlflow` function simply connects to sqlflow_server running at the `server_addr`, the server would then create a `Program` for this single statement with `datasource` and start a python process to `execute` the program.
+The `sqlflow` function simply connects to sqlflow_server running at the `server_addr`, the server would then create a `Program` for this single statement with `datasource` and start a Python process to `execute` the program.
 
 ## Does the Proposed Architecture Solve the Flaws in the Current Architecture?
 
@@ -427,16 +428,16 @@ To answer the question, let's review the scenarios in the beginning of the docum
 
 Adding `image_embedding_column` in the proposed architecture requires the following main steps:
 
-1. Implement the column in a python function in a python file under the `columns` package. 
-2. Test and debug: a bug can only be in the python function.
+1. Implement the column in a Python function in a Python file under the `columns` package. 
+2. Test and debug: a bug can only be in the Python function.
 
 ### Scenario 2: An ML Expert Wants To Contribute A New Type Of Model 
 
 Adding `LightGBM` to SQLFlow in the proposed architecture requires the following main steps:
 
-1. Add a directory `lightgbm` in [python/sqlflow_submitter](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/python/sqlflow_submitter). 
+1. Add a directory `lightgbm` in [Python/sqlflow_submitter](https://github.com/sql-machine-learning/sqlflow/tree/400c691470c6503393453d47856913df3365503e/Python/sqlflow_submitter). 
 2. Write `train.py`, `predict.py`, `explain.py`, `evaluate.py`  in the `lightgbm` directory, each file has a function with the same name as the file, and the functions implements the main logic for SQLFlow train statement, predict statement, explain statement, and evaluate statement, respectively.
-3. Test and debug: a bug can be only in the python files.
+3. Test and debug: a bug can be only in the Python files.
 
 The answer is obvious.
 
