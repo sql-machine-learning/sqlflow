@@ -31,7 +31,7 @@ The SQLFlow statement above will call the python function `a_python_func` from t
 
 ## Design
 
-### Fix the challenges
+### Address the challenges
 
 The semantics of `TO RUN a_data_scientist/maxcompute_functions:1.0/my_func.data_preprocessor.a_python_func` is that `a_python_func` will be executed in a docker container for Kubernetes or a PyODPS node for MaxCompute. The implementation of `a_python_func` is fully customized by users. Because the execution environments for `a_python_func` are different between Kubernetes and MaxCompute, there are some differences considering these three challenges above.
 
