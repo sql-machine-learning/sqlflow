@@ -5,22 +5,40 @@ This is a tutorial on how to install SQLFlow playground on your Kubernetes, this
 - [Install SQLFlow playground with single-user mode](#install-sqlflow-with-single-user).
 - [Install SQLFlow playground with multi-users mode](#install-sqlflow-with-multi-users).
 
-Before staring any sections, please [install Minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/) on your laptop.
+Before staring any sections, please do as the following [Setup minikube and Argo](#steup-miniku-and-argo):
 
-## Install SQLFLow Playground with Single-user Mode
+## Setup Minikube and Argo
+
+1. [install Minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/) on your laptop.
+1. Install Argo
+
+    ``` bash
+    kubectl create namespace argo
+    kubectl apply -n argo -f https://raw.githubusercontent.com/argoproj/argo/v2.7.7/manifests/install.yaml
+    ```
+
+1. Access the Argo UI
+
+    ``` bash
+    kubectl -n argo port-forward deployment/argo-ui 8001:8001
+    ```
+
+    Then visit: `http://127.0.0.1:8001`
+
+## Install SQLFlow Playground with single-user Mode
 
 On the single-user mode, we would install a MySQL server, a SQLFlow server with Jupyter Notebook as GUI on your Kubernetes cluster:
 
 1. Run the following command to install SQLFlow and its dependencies:
 
 ``` bash
-kubectl create -f k8s/install-sqlflow.yaml
+kubectl apply -f https://raw.githubusercontent.com/sql-machine-learning/sqlflow/develop/doc/run/k8s/install-sqlflow.yaml
 ```
 
 1. Monitor the installation using the following command until all components show a `Running` status:
 
 ``` bash
-kubectl get pods --namespace sqlflow --watch
+kubectl get pods --watch
 ```
 
 Congratulations! You have successfully installed SQLFlow with single-user
@@ -29,12 +47,11 @@ mode on your Kubernetes cluster. Next you can run your query using SQLFlow as th
 1. Map the Jupyter Notebook to a local port using the following command:
 
 ``` bash
-kubectl --namespace sqlflow port-forward svc/sqlflow-notebook 8888:8888
+kubectl port-forward deployment/sqlflow-server 8888:8888
 ```
 
-2. Open a web browser and go to `http://localhost:8888`, you can find many tutorials e.g. `iris-dnn.md` in the Jupyter Notebook file lists,
+1. Open a web browser and go to `http://localhost:8888`, you can find many tutorials e.g. `iris-dnn.md` in the Jupyter Notebook file lists,
 you can select one of them and do as what the tutorial says.
-
 
 ## Deploy the SQLFlow Hub
 

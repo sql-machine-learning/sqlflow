@@ -1,15 +1,8 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: sqlflow
-
----
-apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: sqlflow-server
 spec:
-  replicas: 1
   selector:
     matchLabels:
       app: sqlflow-server
@@ -19,50 +12,48 @@ spec:
         app: sqlflow-server
     spec:
       containers:
-      - image: sqlflow/sqlflow
-        name: sqlflow-server
+      - name: server
+        image: sqlflow/sqlflow
+        imagePullPolicy: Always
+        env:
+        - name: SQLFLOW_WORKFLOW_LOGVIEW_ENDPOINT
+          value: "http://localhost:8001"
+        - name: SQLFLOW_WORKFLOW_STEP_IMAGE
+          value: "sqlflow/sqlflow
+        command:
+          - sqlflowserver
+          - --argo-mode
+      - name: notebook
+        image: sqlflow/sqlflow
         imagePullPolicy: Always
         ports:
-        - containerPort: 50051
-          name: sqlflow-server
         - containerPort: 8888
           name: notebook
-
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: sqlflow-mysql
-spec:
-  selector:
-    matchLabels:
-      app: sqlflow-mysql
-  strategy:
-    type: Recreate
-  template:
-    metadata:
-      labels:
-        app: sqlflow-mysql
-    spec:
-      volumes: 
-      containers:
-      - image: sqlflow/sqlflow:mysql
-        name: mysql
-        imagePullPolicy: Always
+        command:
+        - bash
+        - -c
+        - 'export SQLFLOW_DATASOURCE=mysql://root:root@tcp\(${MY_POD_IP}:3306\)/?maxAllowedPacket=0 && jupyter notebook --ip=0.0.0.0 --port=8888 --allow-root --NotebookApp.token=""'
+        env:
+        - name: SQLFLOW_SERVER
+          value: "localhost:50051"
+        - name: MY_POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+      - name: mysql
+        image: sqlflow/sqlflow:mysql
         ports:
         - containerPort: 3306
-          name: mysql
- 
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: sqlflow-mysql
-  labels:
-    app: sqlflow-mysql
-spec:
-  ports:
-  - port: 3306
-    protocol: TCP
-  selector:
-    app: sqlflow-mysql
+          protocol: TCP
+        env:
+        - name: MYSQL_HOST
+          value: "0.0.0.0"
+        - name: MYSQL_PORT
+          value: "3306"
+        readinessProbe:
+          exec:
+            command:
+            - cat
+            - /work/mysql-inited
+          initialDelaySeconds: 5
+          periodSeconds: 5
