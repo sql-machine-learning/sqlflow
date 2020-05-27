@@ -71,7 +71,7 @@ if [[ ! -d models ]]; then
     git clone https://github.com/sql-machine-learning/models
 fi
 cd models
-git checkout c897963f821d515651de79cb4ef1fbf6126ecaa5
+git checkout 07a75db
 python setup.py bdist_wheel -q --dist-dir $SQLFLOW_BIN > /dev/null
 
 echo "Convert tutorials from Markdown to IPython notebooks ..."
