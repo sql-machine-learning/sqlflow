@@ -155,7 +155,7 @@ def a_python_func(
 #### Kubernetes
 
 ```BASH
-docker run a_data_scientist/functions:1.0 python sqlflow.run.submitter.k8s --func_name my_func.data_preprocessor.a_python_func --param_a value_a --param_b value_b --input_table itable --output_table otable --image_name a_data_scientist/functions:1.0 --database hive
+docker run a_data_scientist/functions:1.0 python sqlflow.run.submitter.k8s --func_name my_func.data_preprocessor.a_python_func --param_a value_a --param_b value_b --input_table itable --output_table otable --image_name a_data_scientist/functions:1.0 --db_type hive
 ```
 
 What `sqlflow.run.submitter.k8s` does:
@@ -166,7 +166,7 @@ What `sqlflow.run.submitter.k8s` does:
 #### MaxCompute
 
 ```BASH
-docker run a_data_scientist/functions:1.0 python sqlflow.run.submitter.alisa --func_name my_func.data_preprocessor.a_python_func --param_a value_a --param_b value_b --input_table in_table --output_table out_table --image_name a_data_scientist/functions:1.0 --database maxcompute
+docker run a_data_scientist/functions:1.0 python sqlflow.run.submitter.alisa --func_name my_func.data_preprocessor.a_python_func --param_a value_a --param_b value_b --input_table in_table --output_table out_table --image_name a_data_scientist/functions:1.0 --db_type maxcompute
 ```
 
 What `sqlflow.run.submitter.alisa` does:
