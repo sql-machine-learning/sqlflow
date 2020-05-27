@@ -179,6 +179,10 @@ func (s *modelZooServer) ReleaseModelDef(stream pb.ModelZooServer_ReleaseModelDe
 	if err := checkImageURL(reqName); err != nil {
 		return err
 	}
+	imgExists := imageExistsOnRegistry(reqName, reqTag)
+	if imgExists {
+		return fmt.Errorf("current image %s:%s already exists on registry", reqName, reqTag)
+	}
 	if err := os.Mkdir("modelrepo", os.ModeDir); err != nil {
 		return err
 	}
@@ -192,6 +196,11 @@ func (s *modelZooServer) ReleaseModelDef(stream pb.ModelZooServer_ReleaseModelDe
 	modelDescs, err := getModelClasses("./modelrepo")
 	if len(modelDescs) == 0 {
 		return fmt.Errorf("no model classes detected")
+	}
+
+	// do Docker image build and push
+	if err := buildAndPushImage("./modelrepo", reqName, reqTag); err != nil {
+		return err
 	}
 
 	// get model_collection id, if exists, return already existed error
