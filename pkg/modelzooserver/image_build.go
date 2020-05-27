@@ -51,6 +51,12 @@ func imageExistsOnRegistry(imageName, tag string) bool {
 }
 
 func buildAndPushImage(dir, name, tag string) error {
+	// for public model zoo server, the Docker image name should not contain url prefix like
+	// hub.docker.com/group/my_model_image
+	if strings.Contains(name, ".") {
+		return fmt.Errorf("release model definition to public model zoo server should not contain url prefix like hub.docker.com/group/my_model_image, the registry is configured at model zoo server")
+	}
+
 	cwd, err := os.Getwd()
 	if err != nil {
 		return err
@@ -68,6 +74,20 @@ func buildAndPushImage(dir, name, tag string) error {
 	if err != nil {
 		return fmt.Errorf("run docker build err: %v, stderr: %s", err, cmdStderr.String())
 	}
+	dockerUsername := os.Getenv("SQLFLOW_MODEL_ZOO_REGISTRY_USER")
+	dockerPasswd := os.Getenv("SQLFLOW_MODEL_ZOO_REGISTRY_PASS")
+	if dockerUsername == "" || dockerPasswd == "" {
+		return fmt.Errorf("need to set SQLFLOW_MODEL_ZOO_REGISTRY_USER and SQLFLOW_MODEL_ZOO_REGISTRY_PASS for model zoo server")
+	}
+
+	cmd = exec.Command("docker", "login", "-u", dockerUsername, "--password-stdin")
+	cmd.Stderr = &cmdStderr
+	cmd.Stdin = bytes.NewBufferString(dockerPasswd)
+	err = cmd.Run()
+	if err != nil {
+		return fmt.Errorf("run docker login err: %v, stderr: %s", err, cmdStderr.String())
+	}
+
 	cmd = exec.Command("docker", "push", fmt.Sprintf("%s:%s", name, tag))
 	cmd.Stderr = &cmdStderr
 	err = cmd.Run()
