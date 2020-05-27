@@ -20,9 +20,11 @@
 # sudo (find_fastest_apt_source > /etc/apt/sources.list)
 #
 # Supported resources:
-# function find_fastest_apt_source() echos fastest apt-get sources
-# function find_fastest_maven_repo() echos fastest maven repo
-# function find_fastest_go_proxy()   echos fastest go proxy
+# function find_fastest_apt_source()  echos fastest apt-get sources
+# function find_fastest_maven_repo()  echos fastest maven repo
+# function find_fastest_go_proxy()    echos fastest go proxy
+# function find_fastest_docker_url()  echos fastest docker download url
+# function find_fastest_docker_mirror echos fastest docker mirror url
 #
 
 
@@ -40,7 +42,8 @@ function find_fastest_url() {
 		# c.f. https://stackoverflow.com/a/9634982/724872
 		# redirect log output to stderr
 		echo "Testig speed of $domain ..." >&2
-		local cur_speed=$(ping -c 4 "$domain" | tail -1| awk '{print $4}' | cut -d '/' -f 2)
+		local cur_speed=$(ping -c 4 -W 2 "$domain" | tail -1 | grep "/avg/" | awk '{print $4}' | cut -d '/' -f 2)
+		cur_speed=${cur_speed:-99999.9}
 		echo "$cur_speed" >&2
 
 		# c.f. https://stackoverflow.com/a/31087503/724872
@@ -128,6 +131,32 @@ function find_fastest_go_proxy() {
 		echo ""
 	else
 		echo $best_url
+	fi
+}
+
+# Find fastest docker download url
+function find_fastest_docker_url() {
+	read -r -d '' download_urls <<-EOM
+		https://get.daocloud.io/docker
+		https://get.docker.com
+	EOM
+	find_fastest_url $download_urls
+}
+
+# Find fastest docker mirror url
+function find_fastest_docker_mirror() {
+	local direct_access_url="https://www.docker.com/"
+	read -r -d '' mirror_urls <<-EOM
+		${direct_access_url}
+		https://hub-mirror.c.163.com
+		https://registry.docker-cn.com
+		https://docker.mirrors.ustc.edu.cn
+	EOM
+	local best_mirror=$(find_fastest_url $mirror_urls)
+	if [[ "${best_mirror}" == "${direct_access_url}" ]]; then
+		echo ""
+	else
+		echo ${best_mirror}
 	fi
 }
 
