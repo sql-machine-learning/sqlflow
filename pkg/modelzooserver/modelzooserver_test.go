@@ -68,6 +68,11 @@ func mockTmpModelRepo() (string, error) {
 	}
 
 	if err := ioutil.WriteFile(
+		fmt.Sprintf("%s/Dockerfile", dir), []byte(sampleDockerfile), 0644); err != nil {
+		return "", err
+	}
+
+	if err := ioutil.WriteFile(
 		fmt.Sprintf("%s/my_test_model.py", modelRepoDir),
 		[]byte(sampleModelCode), 0644); err != nil {
 		return "", err

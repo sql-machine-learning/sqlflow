@@ -194,13 +194,6 @@ func (s *modelZooServer) ReleaseModelDef(stream pb.ModelZooServer_ReleaseModelDe
 		return fmt.Errorf("no model classes detected")
 	}
 
-	// TODO(typhoonzero): Check the reqName should be of the format:
-	// hub.docker.com/group/mymodel
-	// group/mymodel
-	// mymodel
-
-	// TODO(typhoonzero): validate the uploaded tar contains valid models.
-
 	// get model_collection id, if exists, return already existed error
 	sql := fmt.Sprintf("SELECT id FROM %s WHERE name='%s' and version='%s';", modelCollTable, reqName, reqTag)
 	rows, err := s.DB.Query(sql)

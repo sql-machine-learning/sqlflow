@@ -47,5 +47,7 @@ func checkImageURL(imageURL string) error {
 	if !match {
 		return fmt.Errorf("docker image URL should be format like [hub.your-registry.com/group/]your_image_name")
 	}
+	// TODO(typhoonzero): check if the Docker image can be pulled.
+
 	return nil
 }
