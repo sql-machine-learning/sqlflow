@@ -73,7 +73,12 @@ jobs:
     script:
     - set -e
     - $TRAVIS_BUILD_DIR/scripts/travis/build.sh
+    # Download minikube and start a Kubernetes cluster.  The credential is 
+    # written into $HOME/.kube/ on the Travis CI VM.
     - $TRAVIS_BUILD_DIR/scripts/travis/setup_minikube.sh
+    # Bind mount $HOME/.kube into the container, so that test/maxcompute.sh
+    # running in the container can call kubectl to submit jobs to the minikube
+    # cluster.
     - docker run --rm --net=host
       -e SQLFLOW_TEST_DB_MAXCOMPUTE_AK=$MAXCOMPUTE_AK
       -e SQLFLOW_TEST_DB_MAXCOMPUTE_SK=$MAXCOMPUTE_SK
@@ -95,10 +100,14 @@ jobs:
     - cd $TRAVIS_BUILD_DIR
     - docker build -t sqlflow:mysql -f docker/mysql/Dockerfile .
     - $TRAVIS_BUILD_DIR/scripts/travis/build.sh
+    # Download minikube and start a Kubernetes cluster.  The credential is 
+    # written into $HOME/.kube/ on the Travis CI VM.
     - $TRAVIS_BUILD_DIR/scripts/travis/setup_minikube.sh
+    # Configure environment to use minikube’s Docker daemon.
     - eval $(sudo minikube docker-env)
-    - docker run --rm -d -p 3306:3306 --name mysql_server
-      -v $TRAVIS_BUILD_DIR:/work sqlflow:mysql
+    # Bind mount $HOME/.kube into the container, so that test/workflow.sh
+    # running in the container can call kubectl to submit jobs to the minikube
+    # cluster.
     - docker run --rm --net=host
       -e SQLFLOW_WORKFLOW_STEP_IMAGE=sqlflow:ci
       -v /var/run/docker.sock:/var/run/docker.sock
@@ -122,4 +131,4 @@ jobs:
     - $TRAVIS_BUILD_DIR/scripts/travis/deploy_client.sh
   - env: DESC="Deploy server Docker image"
     script:
-    - $TRAVIS_BUILD_DIR/scripts/travis/deploy_server.sh
+    - $TRAVIS_BUILD_DIR/scripts/travis/deploy_docker.sh

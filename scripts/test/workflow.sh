@@ -66,7 +66,7 @@ if [[ "$TIMEOUT" == "true" ]]; then
 fi
 
 
-echo "Test access MySQL deployed on Kubernetes ..."
+echo "Create a MySQL pod on Kubernetes ..."
 kubectl create -f ./scripts/test/mysql_pod.yaml
 
 TIMEOUT="true"

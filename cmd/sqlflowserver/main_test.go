@@ -37,6 +37,7 @@ import (
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/stretchr/testify/assert"
 	"sqlflow.org/sqlflow/pkg/database"
+	sqlflowlog "sqlflow.org/sqlflow/pkg/log"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/server"
 	"sqlflow.org/sqlflow/pkg/sql/testdata"
@@ -56,6 +57,10 @@ var testDatasource = os.Getenv("SQLFLOW_TEST_DATASOURCE")
 var caseInto = "sqlflow_models.my_dnn_model"
 
 const unitTestPort = 50051
+
+func init() {
+	sqlflowlog.InitLogger("/dev/null", sqlflowlog.TextFormatter)
+}
 
 func connectAndRunSQLShouldError(sql string) {
 	conn, err := createRPCConn()
@@ -2135,9 +2140,7 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 		t.Run("CasePAIMaxComputeTrainTFBTDistributed", CasePAIMaxComputeTrainTFBTDistributed)
 		t.Run("CasePAIMaxComputeTrainDistributedKeras", CasePAIMaxComputeTrainDistributedKeras)
 		t.Run("CasePAIMaxComputeTrainPredictDiffColumns", CasePAIMaxComputeTrainPredictDiffColumns)
-		// FIXME(weiguoz): The dataset is too small for all reader to read
-		// Let's bring up this test case if we have a big dataset.
-		// t.Run("CasePAIMaxComputeTrainXGBDistributed", CasePAIMaxComputeTrainXGBDistributed)
+		t.Run("CasePAIMaxComputeTrainXGBDistributed", CasePAIMaxComputeTrainXGBDistributed)
 		// FIXME(typhoonzero): Add this test back when we solve error: model already exist issue on the CI.
 		// t.Run("CaseTrainPAIRandomForests", CaseTrainPAIRandomForests)
 	})

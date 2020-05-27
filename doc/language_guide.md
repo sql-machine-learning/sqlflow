@@ -260,6 +260,8 @@ TO PREDICT result_table_reference
 USING model_table_reference;
 ```
 
+**Please be aware that the `SELECT ...` statement before the `TO PREDICT ...` and `TO EXPLAIN ...` clause must generate the same data schema as the one before the `TO TRAIN` clause does. This requirement ensures that the data used in prediction has the same schema as those used in training.**
+
 The select statement syntax is the same as the select statement syntax in the training syntax. SQLFlow uses the column name to guarantee the prediction data has the same order as the training data. For example, if we have used `c1`, `c2`, `c3` and `label` column to train a model, the select statement in the prediction job should also retrieve columns that contain exactly the same names.
 
 ### Predict and Using Clause
@@ -327,6 +329,41 @@ WITH
     summary.sort=True
 USING TreeExplainer;
 ```
+
+## Evaluation Syntax
+
+A SQLFlow prediction statement consists of select, evaluate, and into clauses.
+
+```sql
+SELECT select_expr [, select_expr ...]
+FROM table_references
+  [WHERE where_condition]
+  [LIMIT row_count]
+TO EVALUATE model_table_reference
+[WITH
+  attr_expr [, attr_expr ...]]
+INTO evaluate_result_table;
+```
+
+The SELECT statement before TO EVALUATE must generate the same data schema as that used in training. Please be aware that, by the machine learning theory, you are not supposed to use the training dataset for evaluation. If you do that, you are likely to see a very good evaluation result, which indeed, doesn't tell much useful information. Please write a SELECT statement as the prefix that generates different dataset but have the same schema.
+
+The INTO clause names the table for saving evaluation results, which, in this example, is `evaluate_result_table`.
+
+### Evaluate and Into Clause
+
+The `TO EVALUATE` clause specifies the model to evaluate, what metrics will be used for evaluation, and which table will be used to save the result.
+
+```sql
+TO EVALUATE model_table_reference
+[WITH
+  attr_expr [, attr_expr ...]]
+INTO evaluate_result_table;
+```
+
+- *model_table_reference* indicates that this model will be used to do the evaluation. The result metrics can show the performance of this model when using this model to predict "new" data.
+- *attr_expr* sets attributes when doing evaluation. You can set `validation.metrics` to indicate which metrics will be outputed to the result table, e.g. `validation.metrics="Accuracy,AUC"`, you can find more supported metric names for Keras models [here](https://www.tensorflow.org/api_docs/python/tf/keras/metrics) and XGBoost models [here](https://xgboost.readthedocs.io/en/latest/parameter.html).
+- *evaluate_result_table* is the result table that stores the evaluation results.
+
 
 ## Models
 

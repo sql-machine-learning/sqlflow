@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"strings"
 	"time"
 
 	"sqlflow.org/sqlflow/pkg/database"
@@ -27,6 +26,7 @@ import (
 	"sqlflow.org/sqlflow/pkg/parser"
 	"sqlflow.org/sqlflow/pkg/pipe"
 	pb "sqlflow.org/sqlflow/pkg/proto"
+	"sqlflow.org/sqlflow/pkg/step/feature"
 	"sqlflow.org/sqlflow/pkg/verifier"
 )
 
@@ -177,7 +177,7 @@ func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *dat
 // getColumnTypes is quiet like verify but accept a SQL string as input, and returns
 // an ordered list of the field types.
 func getColumnTypes(slct string, db *database.DB) ([]string, []string, error) {
-	rows, err := db.Query(slct)
+	rows, err := feature.FetchSamples(db, slct)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -214,9 +214,7 @@ func createPredictionTableFromIR(predStmt *ir.PredictStmt, db *database.DB, sess
 	if _, e := db.Exec(dropStmt); e != nil {
 		return fmt.Errorf("failed executing %s: %q", dropStmt, e)
 	}
-	// FIXME(typhoonzero): simply add LIMIT 1 at the end to get column types.
-	tmpSQL := fmt.Sprintf("%s LIMIT 1;", strings.TrimRight(strings.TrimSpace(predStmt.Select), ";"))
-	flds, fts, e := getColumnTypes(tmpSQL, db)
+	flds, fts, e := getColumnTypes(predStmt.Select, db)
 	if e != nil {
 		return e
 	}

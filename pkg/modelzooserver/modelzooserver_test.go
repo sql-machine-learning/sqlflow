@@ -16,8 +16,10 @@ package modelzooserver
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net"
+	"os"
 	"strings"
 	"testing"
 
@@ -55,6 +57,30 @@ func startServer() {
 	grpcServer.Serve(lis)
 }
 
+func mockTmpModelRepo() (string, error) {
+	dir, err := ioutil.TempDir("/tmp", "tmp-sqlflow-repo")
+	if err != nil {
+		return "", err
+	}
+	modelRepoDir := fmt.Sprintf("%s/my_test_models", dir)
+	if err := os.Mkdir(modelRepoDir, os.ModeDir); err != nil {
+		return "", err
+	}
+
+	if err := ioutil.WriteFile(
+		fmt.Sprintf("%s/my_test_model.py", modelRepoDir),
+		[]byte(sampleModelCode), 0644); err != nil {
+		return "", err
+	}
+	if err := ioutil.WriteFile(
+		fmt.Sprintf("%s/__init__.py", modelRepoDir),
+		[]byte(sampleInitCode), 0644); err != nil {
+		return "", err
+	}
+
+	return dir, nil
+}
+
 func TestModelZooServer(t *testing.T) {
 	a := assert.New(t)
 	go startServer()
@@ -68,19 +94,41 @@ func TestModelZooServer(t *testing.T) {
 
 	client := pb.NewModelZooServerClient(conn)
 
+	dir, err := mockTmpModelRepo()
+	a.NoError(err)
+	defer os.RemoveAll(dir)
+	cwd, err := os.Getwd()
+	a.NoError(err)
+	err = os.Chdir(dir)
+	a.NoError(err)
+
+	// tar the mocked files and do release
+	err = tarGzDir("my_test_models", "modelrepo.tar.gz")
+	a.NoError(err)
 	stream, err := client.ReleaseModelDef(context.Background())
 	a.NoError(err)
-	modelDefReq := &pb.ModelDefRequest{Name: "hub.docker.com/group/mymodel", Tag: "v0.1"}
+	buf, err := ioutil.ReadFile("modelrepo.tar.gz")
+	a.NoError(err)
+	modelDefReq := &pb.ModelDefRequest{
+		Name:       "hub.docker.com/group/mymodel",
+		Tag:        "v0.1",
+		ContentTar: buf}
 	err = stream.Send(modelDefReq)
 	a.NoError(err)
+
 	reply, err := stream.CloseAndRecv()
 	a.NoError(err)
 	a.Equal(true, reply.Success)
+
+	err = os.Chdir(cwd)
+	a.NoError(err)
 
 	res, err := client.ListModelDefs(context.Background(), &pb.ListModelRequest{Start: 0, Size: -1})
 	a.NoError(err)
 	a.Equal(1, len(res.ModelDefList))
 	a.Equal("hub.docker.com/group/mymodel", res.ModelDefList[0].ImageUrl)
+	a.Equal("DNNClassifier", res.ModelDefList[0].ClassName)
+	a.Equal(307, len(res.ModelDefList[0].ArgDescs))
 
 	trainedModelRes, err := client.ReleaseTrainedModel(context.Background(),
 		&pb.TrainedModelRequest{

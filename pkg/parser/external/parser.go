@@ -36,8 +36,13 @@ func NewParser(dialect string) (Parser, error) {
 		return newTiDBParser(), nil
 	case "hive":
 		return newJavaParser("hive"), nil
-	case "calcite", "maxcompute":
+	case "calcite":
 		return newJavaParser("calcite"), nil
+	case "maxcompute":
+		// maxcompute is PHONY parser, java will
+		// chose odps or calcite according to which
+		// exists in classpath
+		return newJavaParser("maxcompute"), nil
 	case "alisa":
 		return newJavaParser("odps"), nil
 	default:
