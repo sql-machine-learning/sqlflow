@@ -92,26 +92,27 @@ Then we can use below extended SQL syntax to describe the column:
 
 ```sql
 SELECT * FROM train_table
-TO SOLVE LP
-OBJECTIVE [MAXIMIZE|MINIMIZE] sum{i in X} (price[i] - materials_cost[i] - other_cost[i]) * @X[i]
-CONSTRAINT sum{i in X} finishing[i] * @X[i] <= 100
-CONSTRAINT sum{i in X} carpentry[x] * @X[x] <= 80
-CONSTRAINT {i in X} @X[i] <= max_num[i]
-WITH var_name_col="type:X",
+TO MAXIMIZE|MINIMIZE sum{i in @X} (price[i] - materials_cost[i] - other_cost[i]) * @X[i]
+CONSTRAINT sum{i in @X} finishing[i] * @X[i] <= 100
+CONSTRAINT sum{i in @X} carpentry[x] * @X[x] <= 80
+CONSTRAINT {i in @X} @X[i] <= max_num[i]
+WITH var_name_col="type:@X",
      var_type="type:Integers",
-     solver="glpk"
+[USING glpk]
 INTO result_table;
 ```
 
 In the SQL statement:
 
-- `TO SOLVE LP`: set to use the "Linear Programming Solver". The notation `LP` means "Linear Programming Solver", and we can have other solvers like `QP` for "Quadratic programming Solver" etc.
-- `OBJECTIVE [MAXIMIZE|MINIMIZE] ...` an expression string that describes the objective. Notation `@X` will be replaced to input variable dataframe when generating Python code. Optional syntax `[MAXIMIZE|MINIMIZE]` is used to specify the objective sense.
+- `TO MAXIMIZE|MINIMIZE ...` an expression string that describes the objective. 
+    - The syntax `MAXIMIZE|MINIMIZE` is used to specify the objective sense. 
+    - Notations like `@X` will be replaced to variable to be solved when generating Python code. Variables will be defined by `WITH var_name_col` attribute below. 
+    - Notations like `{i in @X}` have the same meaning of in AMPL. `sum{i in @X} expr` is equal to Python code `sum([expr for i in X])` where X is a set. `{i in @X} expr` is equal to Python code `expr for i in X`.
 - `CONSTRAINT ...` expression strings that describe the constraints, can have multiple `CONSTRAINT` clause lines.
 - `WITH` attributes:
-    - var_name_col: **required**, specify one column that stores the variable name. Format like "column:var_name,column:var_name", e.g. "plants:X,markets:Y"
+    - var_name_col: **required**, specify one column that stores the variable name. Format like `column:var_name,column:var_name`, e.g. `plants:@X,markets:@Y` in the above second example.
     - var_type: **required**, specify the variable type for each variable, format like "column:type,column:type...",  the type can be `Integers`, `NonNegativeIntegers`, `Reals` etc.
-    - solver: **optional**, solver tool to use, default: glpk.
+- `USING`: **optional**, solver tool to use, default: glpk.
 - `INTO result_table`: set the result table name.
 
 After the SQL statement finishes execution, the result table `result_table` should look like:
@@ -123,8 +124,8 @@ After the SQL statement finishes execution, the result table `result_table` shou
 
 ## Implementation
 
-1. Update our extended syntax parser to support `TO SOLVE` clauses.
-1. Add an IR struct to represent `TO SOLVE` clause.
+1. Update our extended syntax parser to support `TO MAXIMIZE|MINIMIZE` clauses.
+1. Add an IR struct to represent `TO MAXIMIZE|MINIMIZE` clause.
 1. Create a table to store the result.
 1. Add code generator to generate code like below example to run, for different mathematical programming software, we may need to add different code generators. Since we extend SQL to have the same ability that AMPL has, we can almost connect to any software we like.
 1. The generated code should be able to output the result to the result table.
@@ -132,7 +133,7 @@ After the SQL statement finishes execution, the result table `result_table` shou
 
 ## Intermediate Representation
 
-The extended `TO SOLVE` syntax can be represented by below Go structure after parsing:
+The extended `TO MAXIMIZE|MINIMIZE` syntax can be represented by below Go structure after parsing:
 
 ```go
 type SolveExpr struct {
@@ -143,8 +144,8 @@ type SolveExpr struct {
     IterVars []string{}
 }
 
-type SolveStmt struct {
-    // Select is the select statement before TO SOLVE clause.
+type MathProgrammingStmt struct {
+    // Select is the select statement before TO MAXIMIZE|MINIMIZE clause.
     Select string
     // Attributes is a map of parsed attribute in the WITH clause.
     Attributes map[string]interface{}
