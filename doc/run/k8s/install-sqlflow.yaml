@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sqlflow-server
+spec:
+  selector:
+    matchLabels:
+      app: sqlflow-server
+  template:
+    metadata:
+      labels:
+        app: sqlflow-server
+    spec:
+      containers:
+      - name: server
+        image: sqlflow/sqlflow
+        imagePullPolicy: Always
+        env:
+        - name: SQLFLOW_WORKFLOW_LOGVIEW_ENDPOINT
+          value: "http://localhost:8001"
+        - name: SQLFLOW_WORKFLOW_STEP_IMAGE
+          value: "sqlflow/sqlflow
+        command:
+          - sqlflowserver
+          - --argo-mode
+      - name: notebook
+        image: sqlflow/sqlflow
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8888
+          name: notebook
+        command:
+        - bash
+        - -c
+        - 'export SQLFLOW_DATASOURCE=mysql://root:root@tcp\(${MY_POD_IP}:3306\)/?maxAllowedPacket=0 && jupyter notebook --ip=0.0.0.0 --port=8888 --allow-root --NotebookApp.token=""'
+        env:
+        - name: SQLFLOW_SERVER
+          value: "localhost:50051"
+        - name: MY_POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+      - name: mysql
+        image: sqlflow/sqlflow:mysql
+        ports:
+        - containerPort: 3306
+          protocol: TCP
+        env:
+        - name: MYSQL_HOST
+          value: "0.0.0.0"
+        - name: MYSQL_PORT
+          value: "3306"
+        readinessProbe:
+          exec:
+            command:
+            - cat
+            - /work/mysql-inited
+          initialDelaySeconds: 5
+          periodSeconds: 5
