@@ -12,7 +12,7 @@
 # limitations under the License.
 
 
-def import_model_def(estimator_name):
+def import_model_def(estimator_name, namespace):
     # try import the custom model's python package, if the estimator is of format: my_model_package.MyModel
     model_name_parts = estimator_name.split(".")
     if len(model_name_parts) == 2:
@@ -20,7 +20,7 @@ def import_model_def(estimator_name):
         ) != "xgboost" and model_name_parts[0].lower() != "sqlflow_models":
             if model_name_parts[0]:
                 try:
-                    globals()[model_name_parts[0]] = __import__(
+                    namespace[model_name_parts[0]] = __import__(
                         model_name_parts[0])
                 except Exception as e:
                     print("failed to import %s: %s" % (model_name_parts[0], e))
