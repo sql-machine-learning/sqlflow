@@ -16,6 +16,7 @@ set -e
 
 # If argo already installed, skip
 if kubectl get namespace argo>/dev/null 2>&1; then
+	echo "Argo is already installed."
 	exit 0
 fi
 
