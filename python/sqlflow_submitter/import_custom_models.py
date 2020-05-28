@@ -20,7 +20,8 @@ def import_model_def(estimator_name):
         ) != "xgboost" and model_name_parts[0].lower() != "sqlflow_models":
             if model_name_parts[0]:
                 try:
-                    globals()[model_import_name] = __import__(
+                    globals()[model_name_parts[0]] = __import__(
                         model_name_parts[0])
+                    return model_name_parts[0]
                 except Exception as e:
                     print("failed to import %s: %s" % (model_name_parts[0], e))

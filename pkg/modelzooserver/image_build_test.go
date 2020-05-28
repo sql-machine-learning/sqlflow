@@ -34,7 +34,7 @@ func TestBuildAndPush(t *testing.T) {
 	dir, err := mockTmpModelRepo()
 	a.NoError(err)
 
-	err = buildAndPushImage(dir, "test_group/test_model_image", "v0.1")
-	a.Error(err)
+	err = buildAndPushImage(dir, "typhoon1986/mytest_model_image", "v0.1")
+	a.NoError(err)
 	// TODO(typhoonzero): add actual push tests
 }

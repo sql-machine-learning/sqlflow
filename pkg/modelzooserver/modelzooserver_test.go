@@ -115,7 +115,7 @@ func TestModelZooServer(t *testing.T) {
 	buf, err := ioutil.ReadFile("modelrepo.tar.gz")
 	a.NoError(err)
 	modelDefReq := &pb.ModelDefRequest{
-		Name:       "hub.docker.com/group/mymodel",
+		Name:       "typhoon1986/my_test_model",
 		Tag:        "v0.1",
 		ContentTar: buf}
 	err = stream.Send(modelDefReq)
@@ -131,7 +131,7 @@ func TestModelZooServer(t *testing.T) {
 	res, err := client.ListModelDefs(context.Background(), &pb.ListModelRequest{Start: 0, Size: -1})
 	a.NoError(err)
 	a.Equal(1, len(res.ModelDefList))
-	a.Equal("hub.docker.com/group/mymodel", res.ModelDefList[0].ImageUrl)
+	a.Equal("typhoon1986/my_test_model", res.ModelDefList[0].ImageUrl)
 	a.Equal("DNNClassifier", res.ModelDefList[0].ClassName)
 	a.Equal(307, len(res.ModelDefList[0].ArgDescs))
 

@@ -71,6 +71,7 @@ def train(datasource,
           pai_val_table=""):
     # import custom model package
     model_import_name = sqlflow_submitter.import_model_def(estimator_string)
+    globals()[model_import_name] = __import__(model_import_name)
     estimator = eval(estimator_string)
 
     if isinstance(estimator, types.FunctionType):
