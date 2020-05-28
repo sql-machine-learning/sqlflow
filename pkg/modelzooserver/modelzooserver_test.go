@@ -31,6 +31,10 @@ import (
 )
 
 func startServer() {
+	// env DOCKER_USERNAME is seted on travis-ci, use it for test model zoo pushing.
+	os.Setenv("SQLFLOW_MODEL_ZOO_REGISTRY_USER", os.Getenv("DOCKER_USERNAME"))
+	os.Setenv("SQLFLOW_MODEL_ZOO_REGISTRY_PASS", os.Getenv("DOCKER_PASSWORD"))
+
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", 50055))
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
@@ -115,7 +119,7 @@ func TestModelZooServer(t *testing.T) {
 	buf, err := ioutil.ReadFile("modelrepo.tar.gz")
 	a.NoError(err)
 	modelDefReq := &pb.ModelDefRequest{
-		Name:       "typhoon1986/my_test_model",
+		Name:       "sqlflow/my_test_model",
 		Tag:        "v0.1",
 		ContentTar: buf}
 	err = stream.Send(modelDefReq)
@@ -131,7 +135,7 @@ func TestModelZooServer(t *testing.T) {
 	res, err := client.ListModelDefs(context.Background(), &pb.ListModelRequest{Start: 0, Size: -1})
 	a.NoError(err)
 	a.Equal(1, len(res.ModelDefList))
-	a.Equal("typhoon1986/my_test_model", res.ModelDefList[0].ImageUrl)
+	a.Equal("sqlflow/my_test_model", res.ModelDefList[0].ImageUrl)
 	a.Equal("DNNClassifier", res.ModelDefList[0].ClassName)
 	a.Equal(307, len(res.ModelDefList[0].ArgDescs))
 
