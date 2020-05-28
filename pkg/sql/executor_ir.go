@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 	"time"
 
 	"sqlflow.org/sqlflow/pkg/database"
@@ -115,15 +116,16 @@ func runSQLProgram(wr *pipe.Writer, sqlProgram string, db *database.DB, modelDir
 	//
 	// The IR generation on the second statement would fail since it requires inspection the schema of some_table,
 	// which depends on the execution of create table some_table as (select ...);.
-	for _, sql := range stmts {
-		if err := runSingleSQLFlowStatement(wr, sql, db, modelDir, session); err != nil {
+	hints, sqls := splitHints(stmts, session.GetSubmitter())
+	for _, sql := range sqls {
+		if err := runSingleSQLFlowStatement(wr, sql, db, modelDir, session, hints); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *database.DB, modelDir string, session *pb.Session) (e error) {
+func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *database.DB, modelDir string, session *pb.Session, hints []string) (e error) {
 	defer func(startTime int64) {
 		// NOTE(tony): EndOfExecution indicates a successful run,
 		// so we only writes it when e != nil
@@ -160,7 +162,7 @@ func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *dat
 			r, err = generateEvaluateStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, GetSubmitter(session.Submitter).GetTrainStmtFromModel())
 		}
 	} else {
-		standardSQL := ir.NormalStmt(sql.Original)
+		standardSQL := ir.NormalStmt(sqlRewriter(sql.Original, hints))
 		r = &standardSQL
 	}
 	if err != nil {
@@ -172,6 +174,38 @@ func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *dat
 	submitter := GetSubmitter(session.Submitter)
 	submitter.Setup(wr, db, modelDir, cwd, session)
 	return r.Execute(submitter)
+}
+
+func sqlRewriter(sql string, hints []string) string {
+	ns := ""
+	for _, h := range hints {
+		ns += h
+	}
+	return ns + sql
+}
+
+func splitHints(stmts []*parser.SQLFlowStmt, submitter string) ([]string, []*parser.SQLFlowStmt) {
+	hints, queries := []string{}, []*parser.SQLFlowStmt{}
+	for _, stmt := range stmts {
+		if isHint(stmt, submitter) {
+			hints = append(hints, stmt.Original)
+		} else {
+			queries = append(queries, stmt)
+		}
+	}
+	return hints, queries
+}
+
+func isHint(stmt *parser.SQLFlowStmt, submitter string) bool {
+	if !stmt.IsExtendedSyntax() {
+		if submitter == "alisa" {
+			if strings.HasPrefix(strings.ToLower(stmt.Original), "set ") {
+				return true
+			}
+		}
+		// TODO(weiguoz) handle if submitter is "maxcompute" or "hive"
+	}
+	return false
 }
 
 // getColumnTypes is quiet like verify but accept a SQL string as input, and returns
