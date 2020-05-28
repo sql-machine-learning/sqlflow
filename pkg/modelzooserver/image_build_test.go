@@ -30,11 +30,15 @@ func TestCheckImageExists(t *testing.T) {
 }
 
 func TestBuildAndPush(t *testing.T) {
+	if os.Getenv("SQLFLOW_TEST_DB") != "mysql" {
+		t.Skip("only test build and push to model zoo when SQLFLOW_TEST_DB=mysql")
+	}
 	a := assert.New(t)
 	dir, err := mockTmpModelRepo()
 	a.NoError(err)
-
-	err = buildAndPushImage(dir, "typhoon1986/mytest_model_image", "v0.1")
+	os.Setenv("SQLFLOW_MODEL_ZOO_REGISTRY_USER", os.Getenv("DOCKER_USERNAME"))
+	os.Setenv("SQLFLOW_MODEL_ZOO_REGISTRY_PASS", os.Getenv("DOCKER_PASSWORD"))
+	err = buildAndPushImage(dir, "sqlflow/mytest_model_image", "v0.1")
 	a.NoError(err)
 	// TODO(typhoonzero): add actual push tests
 }

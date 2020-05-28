@@ -54,6 +54,7 @@ jobs:
       -v $TRAVIS_BUILD_DIR:/work sqlflow:mysql
     - docker run --rm
       -v $TRAVIS_BUILD_DIR:/work -w /work
+      -v /var/run/docker.sock:/var/run/docker.sock
       --net=host
       -e SQLFLOW_TEST_DB=mysql
       -e SQLFLOW_TEST_DB_MYSQL_ADDR="127.0.0.1:13306"

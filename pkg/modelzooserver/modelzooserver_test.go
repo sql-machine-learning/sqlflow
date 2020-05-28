@@ -91,6 +91,10 @@ func mockTmpModelRepo() (string, error) {
 }
 
 func TestModelZooServer(t *testing.T) {
+	if os.Getenv("SQLFLOW_TEST_DB") != "mysql" {
+		t.Skip("only test build and push to model zoo when SQLFLOW_TEST_DB=mysql")
+	}
+
 	a := assert.New(t)
 	go startServer()
 	server.WaitPortReady("localhost:50055", 0)
