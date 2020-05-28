@@ -282,7 +282,7 @@ def pred(datasource,
          is_pai=False,
          pai_table=""):
     # import custom model package
-    model_import_name = sqlflow_submitter.import_model_def(estimator_string)
+    sqlflow_submitter.import_model_def(estimator_string, globals())
     estimator = eval(estimator_string)
 
     if not is_pai:
