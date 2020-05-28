@@ -168,7 +168,6 @@ def train(datasource,
     if rank == 0:
         model_name = "my_model"
         bst.save_model(model_name)
-        save_to_pmml(model_name, "{}.pmml".format(model_name))
 
         if is_pai and len(oss_model_dir) > 0:
             save_model(oss_model_dir, model_params, train_params,
@@ -180,7 +179,6 @@ def save_model(model_dir, model_params, train_params, feature_metas,
                feature_column_names, label_meta, feature_column_code):
     model_name = "my_model"
     model.save_file(model_dir, model_name)
-    model.save_file(model_dir, "{}.pmml".format(model_name))
     model.save_metas(
         model_dir,
         1,
@@ -192,30 +190,3 @@ def save_model(model_dir, model_params, train_params, feature_metas,
         feature_column_names,
         label_meta,
         feature_column_code)
-
-
-def save_to_pmml(src_file, dst_file):
-    booster = xgb.Booster()
-    booster.load_model(src_file)
-
-    config = json.loads(booster.save_config())
-    del booster
-
-    objective = config["learner"]["objective"]["name"]
-    if objective.startswith("binary:") or objective.startswith("multi:"):
-        model = xgb.XGBClassifier()
-    elif objective.startswith("reg:"):
-        model = xgb.XGBRegressor()
-    elif objective.startswith("rank:"):
-        model = xgb.XGBRanker()
-    else:
-        raise ValueError(
-            "Not supported objective {} for saving PMML".format(objective))
-
-    model.load_model(src_file)
-    pipeline = [
-        ('xgboost_model', model),
-    ]
-
-    from sklearn2pmml import sklearn2pmml
-    sklearn2pmml(pipeline, dst_file)

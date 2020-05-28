@@ -127,9 +127,10 @@ def dump_dmatrix(filename,
                     indices = v[0]
                     value = v[1].reshape((-1))
                     dense_size = np.prod(v[2])
-                    row_data.extend(
+                    row_data.extend([
                         "{}:{}".format(i + offset, item)
-                        for i, item in six.moves.zip(indices, value))
+                        for i, item in six.moves.zip(indices, value)
+                    ])
                     offset += dense_size
 
             if has_label:
@@ -229,6 +230,8 @@ def pai_dataset(filename,
                 dname, feature_specs, feature_column_names, label_spec,
                 pai_table, slice_id, slice_count, feature_column_code
             ]))
+
+        assert p.returncode == 0, "The subprocess raises error when reading data"
         complete_queue.put(slice_id)
 
     slice_id = rank
@@ -271,7 +274,7 @@ def pai_download_table_data_worker(dname, feature_specs, feature_column_names,
                                    label_spec, pai_table, slice_id,
                                    slice_count, feature_column_code):
     import sqlflow_submitter.xgboost as xgboost_extended
-    feature_column_transformers = eval('list({})'.format(feature_column_code))
+    feature_column_transformers = eval('[{}]'.format(feature_column_code))
     transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer(
         feature_column_names, *feature_column_transformers)
 
