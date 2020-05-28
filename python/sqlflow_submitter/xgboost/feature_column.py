@@ -19,18 +19,13 @@ __all__ = [
     'categorical_column_with_identity',
     'categorical_column_with_vocabulary_list',
     'categorical_column_with_hash_bucket',
-    'sequence_categorical_column_with_identity',
     'crossed_column',
-    'indicator_column',
 ]
 
 
-# TODO(sneaxiy): implement faster and proper hashing algorithm
-def hashing(x, bucket_size=None):
-    h = hash(x)  # use builtin hashing function
-    if bucket_size:
-        h = abs(h) % bucket_size  # round to bucket_size
-    return h
+# TODO(sneaxiy): implement faster and proper hash algorithm
+def hashing(x):
+    return hash(x)  # use builtin hash function
 
 
 def safe_index(list, item):
@@ -40,8 +35,15 @@ def safe_index(list, item):
     return idx
 
 
+def apply_transform_on_value(feature, transform_fn):
+    if len(feature) == 1:  # dense
+        return transform_fn(feature[0]),
+    else:
+        return feature[0], transform_fn(feature[1]), feature[2]
+
+
 class BaseColumnTransformer(object):
-    def set_field_names(self, field_names):
+    def _set_field_names(self, field_names):
         self.field_names = field_names
 
     def __call__(self, inputs):
@@ -59,8 +61,8 @@ class NumericColumnTransformer(BaseColumnTransformer):
         self.shape = shape
         self.dtype = dtype
 
-    def set_field_names(self, field_names):
-        BaseColumnTransformer.set_field_names(self, field_names)
+    def _set_field_names(self, field_names):
+        BaseColumnTransformer._set_field_names(self, field_names)
         self.column_idx = safe_index(self.field_names, self.key)
 
     def __call__(self, inputs):
@@ -78,13 +80,14 @@ class BucketizedColumnTransformer(CategoricalColumnTransformer):
         self.source_column = source_column
         self.boundaries = boundaries
 
-    def set_field_names(self, field_names):
-        CategoricalColumnTransformer.set_field_names(self, field_names)
-        self.source_column.set_field_names(field_names)
+    def _set_field_names(self, field_names):
+        CategoricalColumnTransformer._set_field_names(self, field_names)
+        self.source_column._set_field_names(field_names)
 
     def __call__(self, inputs):
-        slot_value = self.source_column(inputs)
-        return np.searchsorted(self.boundaries, slot_value)
+        return apply_transform_on_value(
+            self.source_column(inputs),
+            lambda x: np.searchsorted(self.boundaries, x))
 
 
 def bucketized_column(source_column, boundaries):
@@ -97,28 +100,56 @@ class CategoricalColumnWithIdentityTransformer(CategoricalColumnTransformer):
         self.num_buckets = num_buckets
         self.default_value = default_value
 
-    def set_field_names(self, field_names):
-        BaseColumnTransformer.set_field_names(self, field_names)
+    def _set_field_names(self, field_names):
+        CategoricalColumnTransformer._set_field_names(self, field_names)
         self.column_idx = safe_index(self.field_names, self.key)
 
     def __call__(self, inputs):
-        slot_value = inputs[self.column_idx]
-        invalid_index = slot_value < 0 or slot_value >= self.num_buckets
-        if any(invalid_index):
-            if self.default_value is not None:
-                slot_value[invalid_index] = self.default_value
-            else:
-                raise ValueError(
-                    'The categorical value of column {} out of range [0, {})'.
-                    format(self.field_names[self.column_idx],
-                           self.num_buckets))
-        else:
+        def transform_fn(slot_value):
+            invalid_index = slot_value < 0 or slot_value >= self.num_buckets
+            if any(invalid_index):
+                if self.default_value is not None:
+                    slot_value[invalid_index] = self.default_value
+                else:
+                    raise ValueError(
+                        'The categorical value of column {} out of range [0, {})'
+                        .format(self.field_names[self.column_idx],
+                                self.num_buckets))
             return slot_value
+
+        return apply_transform_on_value(inputs[self.column_idx], transform_fn)
 
 
 def categorical_column_with_identity(key, num_buckets, default_value=None):
     return CategoricalColumnWithIdentityTransformer(key, num_buckets,
                                                     default_value)
+
+
+class CategoricalColumnWithVocabularyList(CategoricalColumnTransformer):
+    def __init__(self, key, vocabulary_list):
+        self.key = key
+        self.vocabulary_list = vocabulary_list
+
+    def _set_field_names(self, field_names):
+        CategoricalColumnTransformer._set_field_names(self, field_names)
+        self.column_idx = safe_index(self.field_names, self.key)
+
+    def __call__(self, inputs):
+        def transform_fn(slot_value):
+            if isinstance(slot_value, np.ndarray):
+                output = np.ndarray(slot_value.shape)
+                for i in six.moves.range(slot_value.size):
+                    output[i] = safe_index(self.vocabulary_list, slot_value[i])
+            else:
+                output = safe_index(self.vocabulary_list, slot_value)
+
+            return output
+
+        return apply_transform_on_value(inputs[self.column_idx], transform_fn)
+
+
+def categorical_column_with_vocabulary_list(key, vocabulary_list):
+    return CategoricalColumnWithVocabularyList(key, vocabulary_list)
 
 
 class CategoricalColumnWithHashBucketTransformer(CategoricalColumnTransformer):
@@ -127,15 +158,23 @@ class CategoricalColumnWithHashBucketTransformer(CategoricalColumnTransformer):
         self.hash_bucket_size = hash_bucket_size
         self.dtype = dtype
 
-    def set_field_names(self, field_names):
-        BaseColumnTransformer.set_field_names(self, field_names)
+    def _set_field_names(self, field_names):
+        CategoricalColumnTransformer._set_field_names(self, field_names)
         self.column_idx = safe_index(self.field_names, self.key)
 
     def __call__(self, inputs):
-        slot_value = inputs[self.column_idx]
-        output = np.ndarray(slot_value.shape)
-        for i in six.moves.range(slot_value.size):
-            output[i] = hashing(slot_value[i], hash_bucket_size)
+        def transform_fn(slot_value):
+            if isinstance(slot_value, np.ndarray):
+                output = np.ndarray(slot_value.shape)
+                for i in six.moves.range(slot_value.size):
+                    output[i] = hashing(slot_value[i])
+            else:
+                output = hashing(slot_value)
+
+            output %= self.hash_bucket_size
+            return output
+
+        return apply_transform_on_value(inputs[self.column_idx], transform_fn)
 
 
 def categorical_column_with_hash_bucket(key, hash_bucket_size, dtype='string'):
@@ -143,74 +182,45 @@ def categorical_column_with_hash_bucket(key, hash_bucket_size, dtype='string'):
                                                       dtype)
 
 
-class SequenceCategoricalColumnWithIdentityTransformer(
-        CategoricalColumnTransformer):
-    def __init__(self, key, num_buckets, default_value=None):
-        self.key = key
-        self.num_buckets = num_buckets
-        self.default_value = default_value
-
-    def set_field_names(self, field_names):
-        BaseColumnTransformer.set_field_names(self, field_names)
-        self.column_idx = safe_index(self.field_names, self.key)
-
-    def __call__(self, inputs):
-        raise ValueError('Not supported yet')
-
-
-def sequence_categorical_column_with_identity(key,
-                                              num_buckets,
-                                              default_value=None):
-    return SequenceCategoricalColumnWithIdentityTransformer(
-        key, num_buckets, default_value)
-
-
 class CrossedColumnTransformer(BaseColumnTransformer):
     def __init__(self, keys, hash_bucket_size, hash_key=None):
-        self.keys = keys
+        self.columns = [
+            key if isinstance(key, BaseColumnTransformer) else
+            NumericColumnTransformer(key, (1, ), 'int64') for key in keys
+        ]
         self.hash_bucket_size = hash_bucket_size
         self.hash_key = hash_key
 
-    def set_field_names(self, field_names):
-        BaseColumnTransformer.set_field_names(self, field_names)
-        self.columns = [safe_index(self.field_names, key) for key in self.keys]
+    def _set_field_names(self, field_names):
+        BaseColumnTransformer._set_field_names(self, field_names)
+        for t in self.columns:
+            t._set_field_names(field_names)
 
     def __call__(self, inputs):
-        raise ValueError('Not supported yet')
+        slot_values = [
+            apply_transform_on_value(column(inputs), hashing)
+            for column in self.columns
+        ]
+        hash_values = [v[0] if len(v) == 1 else v[1] for v in slot_values]
+        return sum(hash_values) % self.hash_bucket_size,
 
 
-def cross_column(keys, hash_bucket_size, hash_key=None):
+def crossed_column(keys, hash_bucket_size, hash_key=None):
     return CrossedColumnTransformer(keys, hash_bucket_size, hash_key)
 
 
-class IndicatorColumnTransformer(BaseColumnTransformer):
-    def __init__(self, categorical_column):
-        assert isinstance(categorical_column, CategoricalColumnTransformer)
-        self.categorical_column = categorical_column
-
-    def set_field_names(self, field_names):
-        BaseColumnTransformer.set_field_names(self, field_names)
-        self.categorical_column.set_field_names(field_names)
-
-    def __call__(self, inputs):
-        raise ValueError('Not supported yet')
-
-
-def indicator_column(categorical_column):
-    return IndicatorColumnTransformer(categorical_column)
-
-
 class ComposedColumnTransformer(BaseColumnTransformer):
-    def __init__(self, *columns):
+    def __init__(self, feature_column_names, *columns):
         for column in columns:
             assert isinstance(column, BaseColumnTransformer)
 
         self.columns = columns
+        self._set_field_names(feature_column_names)
 
-    def set_field_names(self, field_names):
-        BaseColumnTransformer.set_field_names(self, field_names)
+    def _set_field_names(self, field_names):
+        BaseColumnTransformer._set_field_names(self, field_names)
         for column in self.columns:
-            column.set_field_names(field_names)
+            column._set_field_names(field_names)
 
     def __call__(self, inputs):
-        return [column(inputs) for column in self.columns]
+        return tuple([column(inputs) for column in self.columns])

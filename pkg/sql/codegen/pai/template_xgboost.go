@@ -45,7 +45,8 @@ feature_column_names,
 label_meta,
 feature_columns_code) = model.load_metas("{{.OSSModelDir}}", "xgboost_model_desc")
 
-transform_fn = eval('xgboost_extended.feature_column.ComposedColumnTransformer({})'.format(feature_columns_code))
+feature_column_transformers = eval('list({})'.format(feature_column_codes))
+transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer(feature_column_names, *feature_column_transformers)
 
 pred(datasource='''{{.DataSource}}''',
     select='''{{.PredSelect}}''',
@@ -111,7 +112,8 @@ feature_column_names,
 label_field_meta,
 feature_columns_code) = model.load_metas("{{.OSSModelDir}}", "xgboost_model_desc")
 
-transform_fn = eval('xgboost_extended.feature_column.ComposedColumnTransformer({})'.format(feature_columns_code))
+feature_column_transformers = eval('list({})'.format(feature_column_codes))
+transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer(feature_column_names, *feature_column_transformers)
 
 explain(
     datasource='''{{.DataSource}}''',
@@ -168,7 +170,8 @@ feature_column_names,
 label_meta,
 feature_columns_code) = model.load_metas("{{.OSSModelDir}}", "xgboost_model_desc")
 
-transform_fn = eval('xgboost_extended.feature_column.ComposedColumnTransformer({})'.format(feature_columns_code))
+feature_column_transformers = eval('list({})'.format(feature_column_codes))
+transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer(feature_column_names, *feature_column_transformers)
 
 evaluate(datasource='''{{.DataSource}}''',
          select='''{{.PredSelect}}''',

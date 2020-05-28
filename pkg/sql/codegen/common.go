@@ -33,6 +33,11 @@ func toModuleDType(dtype int, module string) (string, error) {
 	}
 }
 
+// TODO(sneaxiy): should find a better way to distinguish whether the module is TensorFlow
+func isTensorFlowModule(module string) bool {
+	return module == "tf" || module == "tensorflow"
+}
+
 // GenerateFeatureColumnCode generates feature column code for both TensorFlow and XGBoost models
 func GenerateFeatureColumnCode(fc ir.FeatureColumn, module string) (string, error) {
 	switch c := fc.(type) {
@@ -69,6 +74,9 @@ func GenerateFeatureColumnCode(fc ir.FeatureColumn, module string) (string, erro
 		return fmt.Sprintf("%s.feature_column.categorical_column_with_identity(key=\"%s\", num_buckets=%d)",
 			module, c.FieldDesc.Name, c.BucketSize), nil
 	case *ir.SeqCategoryIDColumn:
+		if !isTensorFlowModule(module) {
+			return "", fmt.Errorf("SEQ_CATEGORY_ID is only supported in TensorFlow models")
+		}
 		return fmt.Sprintf("%s.feature_column.sequence_categorical_column_with_identity(key=\"%s\", num_buckets=%d)",
 			module, c.FieldDesc.Name, c.BucketSize), nil
 	case *ir.CategoryHashColumn:
@@ -96,13 +104,21 @@ func GenerateFeatureColumnCode(fc ir.FeatureColumn, module string) (string, erro
 			"%s.feature_column.crossed_column([%s], hash_bucket_size=%d)",
 			module, strings.Join(keysGenerated, ","), c.HashBucketSize), nil
 	case *ir.EmbeddingColumn:
+		if !isTensorFlowModule(module) {
+			return "", fmt.Errorf("EMBEDDING is only supported in TensorFlow models")
+		}
+
 		sourceCode, err := GenerateFeatureColumnCode(c.CategoryColumn, module)
 		if err != nil {
 			return "", err
 		}
-		return fmt.Sprintf("%ss.feature_column.embedding_column(%s, dimension=%d, combiner=\"%s\")",
+		return fmt.Sprintf("%s.feature_column.embedding_column(%s, dimension=%d, combiner=\"%s\")",
 			module, sourceCode, c.Dimension, c.Combiner), nil
 	case *ir.IndicatorColumn:
+		if !isTensorFlowModule(module) {
+			return "", fmt.Errorf("INDICATOR is only supported in TensorFlow models")
+		}
+
 		sourceCode, err := GenerateFeatureColumnCode(c.CategoryColumn, module)
 		if err != nil {
 			return "", err

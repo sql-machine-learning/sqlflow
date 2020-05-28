@@ -133,7 +133,7 @@ func newRowValue(columnTypeList []*sql.ColumnType) ([]interface{}, error) {
 	for idx, ct := range columnTypeList {
 		typeName := ct.DatabaseTypeName()
 		switch unifyDatabaseTypeName(typeName) {
-		case "VARCHAR", "TEXT", "STRING":
+		case "CHAR", "VARCHAR", "TEXT", "STRING":
 			rowData[idx] = new(string)
 		case "INT":
 			rowData[idx] = new(int32)
@@ -245,7 +245,7 @@ func fillFieldDesc(columnTypeList []*sql.ColumnType, rowdata []interface{}, fiel
 		case "FLOAT", "DOUBLE":
 			fieldDescMap[fld].DType = ir.Float
 			fieldDescMap[fld].Shape = []int{1}
-		case "VARCHAR", "TEXT", "STRING":
+		case "CHAR", "VARCHAR", "TEXT", "STRING":
 			cellData := rowdata[idx].(*string)
 			if csvRegex.MatchString(*cellData) {
 				fillCSVFieldDesc(*cellData, fieldDescMap, fld)

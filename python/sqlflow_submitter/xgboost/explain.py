@@ -43,19 +43,17 @@ def xgb_shap_dataset(datasource,
                                  feature_specs)
         selected_cols = db.selected_cols(conn.driver, conn, select)
 
-    if transform_fn:
-        transform_fn.set_field_names(selected_cols)
-
     xs = pd.DataFrame(columns=feature_column_names)
     i = 0
     for row, label in stream():
         features = db.read_features_from_row(row, selected_cols,
                                              feature_column_names,
                                              feature_specs)
-        features = [item[0] for item in features]
         if transform_fn:
             features = transform_fn(features)
 
+        # TODO(sneaxiy): support sparse features in `TO Explain`
+        features = [item[0] for item in features]
         xs.loc[i] = features
         i += 1
     # NOTE(typhoonzero): set dtype to the feature's actual type, or the dtype

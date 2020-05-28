@@ -226,8 +226,7 @@ def db_generator(driver,
                  feature_column_names,
                  label_spec,
                  feature_specs,
-                 fetch_size=128,
-                 transform_fn=None):
+                 fetch_size=128):
     def reader():
         if driver == "hive":
             cursor = conn.cursor(configuration=conn.session_cfg)
@@ -240,9 +239,6 @@ def db_generator(driver,
         else:
             field_names = None if cursor.description is None \
                 else [i[0] for i in cursor.description]
-
-        if transform_fn:
-            transform_fn.set_field_names(field_names)
 
         if label_spec:
             try:
@@ -273,9 +269,6 @@ def db_generator(driver,
                         label = np.fromstring(label,
                                               dtype=int,
                                               sep=label_spec["delimiter"])
-
-                if transform_fn:
-                    row = transform_fn(row)
 
                 if label_idx is None:
                     yield list(row), None

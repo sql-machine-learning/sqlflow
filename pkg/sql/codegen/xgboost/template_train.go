@@ -54,7 +54,7 @@ feature_column_names = [{{range .FeatureColumnNames}}
 "{{.}}",
 {{end}}]
 
-transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer({{.FeatureColumnCode}})
+transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer(feature_column_names, {{.FeatureColumnCode}})
 
 train(datasource='''{{.DataSource}}''',
       select='''{{.TrainSelect}}''',
@@ -93,7 +93,7 @@ feature_column_names = [{{range .FeatureColumnNames}}
 "{{.}}",
 {{end}}]
 
-transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer({{.FeatureColumnCode}})
+transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer(feature_column_names, {{.FeatureColumnCode}})
 
 dist_train(flags=FLAGS,
       datasource='''{{.DataSource}}''',

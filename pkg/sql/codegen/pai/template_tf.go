@@ -111,6 +111,7 @@ scikit-learn==0.20.0
 tensorflow-datasets==3.0.0
 {{if .IsXGBoost }}
 xgboost==0.82
+sklearn2pmml==0.57.0
 {{end}}
 `
 

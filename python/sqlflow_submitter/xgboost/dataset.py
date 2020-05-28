@@ -38,13 +38,8 @@ def xgb_dataset(datasource,
                 epoch=1,
                 rank=0,
                 nworkers=1,
-                transform_fn=None):
-    if transform_fn:
-        assert callable(transform_fn), 'transform_fn must be callable object'
-        assert hasattr(
-            transform_fn, "set_field_names"
-        ), "set_field_names method must be provided at transform_fn"
-
+                transform_fn=None,
+                feature_column_code=""):
     if is_pai:
         for dmatrix in pai_dataset(
                 fn,
@@ -56,26 +51,27 @@ def xgb_dataset(datasource,
                 cache,
                 rank,
                 nworkers,
-                batch_size=batch_size):
+                batch_size=batch_size,
+                feature_column_code=feature_column_code):
             yield dmatrix
         return
 
     conn = db.connect_with_data_source(datasource)
-    gen = db.db_generator(conn.driver,
-                          conn,
-                          dataset_sql,
-                          feature_column_names,
-                          label_spec,
-                          feature_specs,
-                          transform_fn=transform_fn)()
+    gen = db.db_generator(conn.driver, conn, dataset_sql, feature_column_names,
+                          label_spec, feature_specs)()
 
     selected_cols = db.selected_cols(conn.driver, conn, dataset_sql)
-    for i in range(epoch):
+    for _ in six.moves.range(epoch):
         step = 0
         # the filename per batch is [filename]_[step]
         step_file_name = "%s_%d" % (fn, step)
-        written_rows = dump_dmatrix(step_file_name, gen, feature_column_names,
-                                    feature_specs, label_spec, selected_cols)
+        written_rows = dump_dmatrix(step_file_name,
+                                    gen,
+                                    feature_column_names,
+                                    feature_specs,
+                                    label_spec,
+                                    selected_cols,
+                                    transform_fn=transform_fn)
 
         while written_rows > 0:
             yield load_dmatrix('{0}#{0}.cache'.format(step_file_name)
@@ -84,9 +80,13 @@ def xgb_dataset(datasource,
 
             step += 1
             step_file_name = "%s_%d" % (fn, step)
-            written_rows = dump_dmatrix(step_file_name, gen,
-                                        feature_column_names, feature_specs,
-                                        label_spec, selected_cols)
+            written_rows = dump_dmatrix(step_file_name,
+                                        gen,
+                                        feature_column_names,
+                                        feature_specs,
+                                        label_spec,
+                                        selected_cols,
+                                        transform_fn=transform_fn)
 
 
 def dump_dmatrix(filename,
@@ -95,7 +95,8 @@ def dump_dmatrix(filename,
                  feature_specs,
                  has_label,
                  selected_cols,
-                 batch_size=None):
+                 batch_size=None,
+                 transform_fn=None):
     # TODO(yancey1989): generate group and weight text file if necessary
     row_id = 0
     with open(filename, 'a') as f:
@@ -103,19 +104,37 @@ def dump_dmatrix(filename,
             features = db.read_features_from_row(row, selected_cols,
                                                  feature_column_names,
                                                  feature_specs)
+
+            if transform_fn:
+                features = transform_fn(features)
+
             row_data = []
+            offset = 0
             for i, v in enumerate(features):
-                fname = feature_column_names[i]
-                dtype = feature_specs[fname]["dtype"]
-                if dtype == "int32" or dtype == "int64":
-                    row_data.append("%d:%d" % (i, v[0] or 0))
-                elif dtype == "float32" or dtype == "float64":
-                    row_data.append("%d:%f" % (i, v[0] or 0))
-                else:
-                    raise ValueError(
-                        "not supported columnt dtype %s for xgboost" % dtype)
+                if len(v) == 1:  # dense feature
+                    value = v[0]
+                    if isinstance(value, np.ndarray):
+                        value = value.reshape((-1, ))
+                        row_data.extend([
+                            "{}:{}".format(i + offset, item)
+                            for i, item in enumerate(value)
+                        ])
+                        offset += value.size
+                    else:
+                        row_data.append("{}:{}".format(offset, value))
+                        offset += 1
+                else:  # sparse feature
+                    indices = v[0]
+                    value = v[1].reshape((-1))
+                    dense_size = np.prod(v[2])
+                    row_data.extend(
+                        "{}:{}".format(i + offset, item)
+                        for i, item in six.moves.zip(indices, value))
+                    offset += dense_size
+
             if has_label:
                 row_data = [str(label)] + row_data
+
             f.write("\t".join(row_data) + "\n")
             row_id += 1
             # batch_size == None meas use all data in generator
@@ -183,7 +202,8 @@ def pai_dataset(filename,
                 cache,
                 rank=0,
                 nworkers=1,
-                batch_size=None):
+                batch_size=None,
+                feature_column_code=""):
     from subprocess import Popen, PIPE
     from multiprocessing.dummy import Pool  # ThreadPool
     import queue
@@ -207,7 +227,7 @@ def pai_dataset(filename,
         p.communicate(
             json.dumps([
                 dname, feature_specs, feature_column_names, label_spec,
-                pai_table, slice_id, slice_count
+                pai_table, slice_id, slice_count, feature_column_code
             ]))
         complete_queue.put(slice_id)
 
@@ -249,7 +269,12 @@ def pai_dataset(filename,
 
 def pai_download_table_data_worker(dname, feature_specs, feature_column_names,
                                    label_spec, pai_table, slice_id,
-                                   slice_count):
+                                   slice_count, feature_column_code):
+    import sqlflow_submitter.xgboost as xgboost_extended
+    feature_column_transformers = eval('list({})'.format(feature_column_code))
+    transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer(
+        feature_column_names, *feature_column_transformers)
+
     label_column_name = label_spec['feature_name'] if label_spec else None
     gen = db.pai_maxcompute_db_generator(pai_table,
                                          feature_column_names,
@@ -259,8 +284,13 @@ def pai_download_table_data_worker(dname, feature_specs, feature_column_names,
                                          slice_count=slice_count)()
     selected_cols = db.pai_selected_cols(pai_table)
     filename = "{}/{}.txt".format(dname, slice_id)
-    dump_dmatrix(filename, gen, feature_column_names, feature_specs,
-                 label_spec, selected_cols)
+    dump_dmatrix(filename,
+                 gen,
+                 feature_column_names,
+                 feature_specs,
+                 label_spec,
+                 selected_cols,
+                 transform_fn=transform_fn)
 
 
 if __name__ == "__main__":
