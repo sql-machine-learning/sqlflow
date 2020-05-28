@@ -162,7 +162,7 @@ func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *dat
 			r, err = generateEvaluateStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, GetSubmitter(session.Submitter).GetTrainStmtFromModel())
 		}
 	} else {
-		standardSQL := ir.NormalStmt(sqlRewriter(sql.Original, hints))
+		standardSQL := ir.NormalStmt(rewriteSQLWithHints(sql.Original, hints))
 		r = &standardSQL
 	}
 	if err != nil {
@@ -176,7 +176,7 @@ func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *dat
 	return r.Execute(submitter)
 }
 
-func sqlRewriter(sql string, hints []string) string {
+func rewriteSQLWithHints(sql string, hints []string) string {
 	ns := ""
 	for _, h := range hints {
 		ns += h
