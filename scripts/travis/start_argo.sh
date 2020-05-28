@@ -27,7 +27,7 @@ kubectl create namespace argo
 axel -o /tmp/argo-v2.7.7.yaml \
 	http://qaaz0kmmt.bkt.clouddn.com/argo-v2.7.7.yaml \
 	https://raw.githubusercontent.com/argoproj/argo/v2.7.7/manifests/install.yaml
-
+echo "=======download $?======="
 kubectl apply -n argo -f /tmp/argo-v2.7.7.yaml
 kubectl create rolebinding default-admin \
 	--clusterrole=admin \
