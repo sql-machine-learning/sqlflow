@@ -25,7 +25,8 @@ def xgb_shap_dataset(datasource,
                      feature_specs,
                      is_pai,
                      pai_explain_table,
-                     transform_fn=None):
+                     transform_fn=None,
+                     feature_column_code=""):
     label_column_name = label_spec["feature_name"]
     if is_pai:
         pai_table_parts = pai_explain_table.split(".")
@@ -96,10 +97,17 @@ def explain(datasource,
             oss_sk=None,
             oss_endpoint=None,
             oss_bucket_name=None,
-            transform_fn=None):
-    x = xgb_shap_dataset(datasource, select, feature_column_names, label_spec,
-                         feature_field_meta, is_pai, pai_explain_table,
-                         transform_fn)
+            transform_fn=None,
+            feature_column_code=""):
+    x = xgb_shap_dataset(datasource,
+                         select,
+                         feature_column_names,
+                         label_spec,
+                         feature_field_meta,
+                         is_pai,
+                         pai_explain_table,
+                         transform_fn=transform_fn,
+                         feature_column_code=feature_column_code)
 
     shap_values, shap_interaction_values, expected_value = xgb_shap_values(x)
 

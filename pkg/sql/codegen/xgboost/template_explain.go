@@ -53,7 +53,8 @@ explain(
     summary_params=summary_params,
     is_pai="{{.IsPAI}}" == "true",
     pai_explain_table="{{.PAIExplainTable}}",
-    transform_fn=transform_fn)
+    transform_fn=transform_fn,
+    feature_column_code='''{{.FeatureColumnCode}}''')
 `
 
 var explainTemplate = template.Must(template.New("explain").Parse(explainTemplateText))

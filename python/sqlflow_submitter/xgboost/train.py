@@ -11,16 +11,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import os
 import sys
 
 import six
 import sqlflow_submitter.tensorflow.pai_distributed as pai_dist
 import xgboost as xgb
+from sklearn2pmml import PMMLPipeline, sklearn2pmml
 from sqlflow_submitter.pai import model
 from sqlflow_submitter.xgboost.dataset import xgb_dataset
 from sqlflow_submitter.xgboost.pai_rabit import (PaiXGBoostTracker,
                                                  PaiXGBoostWorker)
+
+try:
+    from xgboost.compat import XGBoostLabelEncoder
+except:
+    from xgboost.sklearn import XGBLabelEncoder as XGBoostLabelEncoder
 
 
 def dist_train(flags,
@@ -157,6 +164,7 @@ def train(datasource,
             watchlist.append((dvalidate, "validate"))
 
         re = dict()
+
         bst = xgb.train(model_params,
                         per_batch_dmatrix,
                         evals=watchlist,
@@ -166,8 +174,7 @@ def train(datasource,
         print("Evaluation result: %s" % re)
 
     if rank == 0:
-        model_name = "my_model"
-        bst.save_model(model_name)
+        save_local_file(bst, model_params, "my_model")
 
         if is_pai and len(oss_model_dir) > 0:
             save_model(oss_model_dir, model_params, train_params,
@@ -179,6 +186,7 @@ def save_model(model_dir, model_params, train_params, feature_metas,
                feature_column_names, label_meta, feature_column_code):
     model_name = "my_model"
     model.save_file(model_dir, model_name)
+    model.save_file(model_dir, "{}.pmml".format(model_name))
     model.save_metas(
         model_dir,
         1,
@@ -190,3 +198,40 @@ def save_model(model_dir, model_params, train_params, feature_metas,
         feature_column_names,
         label_meta,
         feature_column_code)
+
+
+def save_local_file(booster, model_params, model_name):
+    objective = model_params.get("objective")
+
+    meta = dict()
+    if objective.startswith("binary:") or objective.startswith("multi:"):
+        num_class = model_params.get("num_class")
+        assert num_class is not None and num_class > 0, "num_class should not be None"
+
+        model = xgb.XGBClassifier()
+        label_encoder = XGBoostLabelEncoder()
+        label_encoder.fit(list(range(num_class)))
+        model._le = label_encoder
+        model.classes_ = model._le.classes_
+
+        meta["_le"] = {"classes_": model.classes_.tolist()}
+        meta["classes_"] = model.classes_.tolist()
+    elif objective.startswith("reg:"):
+        model = xgb.XGBRegressor()
+    elif objective.startswith("rank:"):
+        model = xgb.XGBRanker()
+    else:
+        raise ValueError(
+            "Not supported objective {} for saving PMML".format(objective))
+
+    model_type = type(model).__name__
+    meta["type"] = model_type
+    meta = json.dumps(meta)
+
+    booster.set_attr(scikit_learn=meta)
+    booster.save_model(model_name)
+    booster.set_attr(scikit_learn=None)
+    model.load_model(model_name)
+
+    pipeline = PMMLPipeline([(model_type, model)])
+    sklearn2pmml(pipeline, "{}.pmml".format(model_name))

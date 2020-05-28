@@ -45,24 +45,26 @@ def evaluate(datasource,
              hdfs_pass="",
              pai_table="",
              model_params=None,
-             transform_fn=None):
+             transform_fn=None,
+             feature_column_code=""):
     if not is_pai:
         conn = db.connect_with_data_source(datasource)
     else:
         conn = None
-    dpred = xgb_dataset(
-        datasource,
-        'predict.txt',
-        select,
-        feature_metas,
-        feature_column_names,
-        label_meta,
-        is_pai,
-        pai_table,
-        True,
-        True,
-        batch_size=DEFAULT_PREDICT_BATCH_SIZE,
-        transform_fn=transform_fn)  # NOTE: default to use external memory
+    dpred = xgb_dataset(datasource,
+                        'predict.txt',
+                        select,
+                        feature_metas,
+                        feature_column_names,
+                        label_meta,
+                        is_pai,
+                        pai_table,
+                        True,
+                        True,
+                        batch_size=DEFAULT_PREDICT_BATCH_SIZE,
+                        transform_fn=transform_fn,
+                        feature_column_code=feature_column_code
+                        )  # NOTE: default to use external memory
     bst = xgb.Booster({'nthread': 4})  # init model
     bst.load_model("my_model")  # load model
     print("Start evaluating XGBoost model...")

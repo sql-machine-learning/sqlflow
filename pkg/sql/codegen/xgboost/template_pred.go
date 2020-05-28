@@ -59,7 +59,8 @@ pred(datasource='''{{.DataSource}}''',
      hdfs_pass='''{{.HDFSPass}}''',
      is_pai="{{.IsPAI}}" == "true",
      pai_table="{{.PAITable}}",
-     transform_fn=transform_fn)
+     transform_fn=transform_fn,
+     feature_column_code='''{{.FeatureColumnCode}}''')
 `
 
 var predTemplate = template.Must(template.New("Pred").Parse(predTemplateText))

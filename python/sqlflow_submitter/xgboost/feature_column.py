@@ -28,13 +28,6 @@ def hashing(x):
     return hash(x)  # use builtin hash function
 
 
-def safe_index(list, item):
-    idx = list.index(item)
-    assert idx >= 0 and idx < len(
-        list), "cannot find item in list {} {}".format(idx, len(list))
-    return idx
-
-
 def apply_transform_on_value(feature, transform_fn):
     if len(feature) == 1:  # dense
         return transform_fn(feature[0]),
@@ -63,7 +56,7 @@ class NumericColumnTransformer(BaseColumnTransformer):
 
     def _set_field_names(self, field_names):
         BaseColumnTransformer._set_field_names(self, field_names)
-        self.column_idx = safe_index(self.field_names, self.key)
+        self.column_idx = self.field_names.index(self.key)
 
     def __call__(self, inputs):
         return inputs[self.column_idx]
@@ -102,7 +95,7 @@ class CategoricalColumnWithIdentityTransformer(CategoricalColumnTransformer):
 
     def _set_field_names(self, field_names):
         CategoricalColumnTransformer._set_field_names(self, field_names)
-        self.column_idx = safe_index(self.field_names, self.key)
+        self.column_idx = self.field_names.index(self.key)
 
     def __call__(self, inputs):
         def transform_fn(slot_value):
@@ -132,16 +125,16 @@ class CategoricalColumnWithVocabularyList(CategoricalColumnTransformer):
 
     def _set_field_names(self, field_names):
         CategoricalColumnTransformer._set_field_names(self, field_names)
-        self.column_idx = safe_index(self.field_names, self.key)
+        self.column_idx = self.field_names.index(self.key)
 
     def __call__(self, inputs):
         def transform_fn(slot_value):
             if isinstance(slot_value, np.ndarray):
                 output = np.ndarray(slot_value.shape)
                 for i in six.moves.range(slot_value.size):
-                    output[i] = safe_index(self.vocabulary_list, slot_value[i])
+                    output[i] = self.vocabulary_list.index(slot_value[i])
             else:
-                output = safe_index(self.vocabulary_list, slot_value)
+                output = self.vocabulary_list.index(slot_value)
 
             return output
 
@@ -160,7 +153,7 @@ class CategoricalColumnWithHashBucketTransformer(CategoricalColumnTransformer):
 
     def _set_field_names(self, field_names):
         CategoricalColumnTransformer._set_field_names(self, field_names)
-        self.column_idx = safe_index(self.field_names, self.key)
+        self.column_idx = self.field_names.index(self.key)
 
     def __call__(self, inputs):
         def transform_fn(slot_value):
@@ -213,6 +206,8 @@ class ComposedColumnTransformer(BaseColumnTransformer):
     def __init__(self, feature_column_names, *columns):
         for column in columns:
             assert isinstance(column, BaseColumnTransformer)
+
+        assert len(columns) != 0, "No feature column found"
 
         self.columns = columns
         self._set_field_names(feature_column_names)

@@ -61,7 +61,8 @@ evaluate(datasource='''{{.DataSource}}''',
          hdfs_pass='''{{.HDFSPass}}''',
          is_pai="{{.IsPAI}}" == "true",
          pai_table="{{.PAITable}}",
-         transform_fn=transform_fn)
+         transform_fn=transform_fn,
+         feature_column_code='''{{.FeatureColumnCode}}''')
 `
 
 var evalTemplate = template.Must(template.New("Eval").Parse(evalTemplateText))

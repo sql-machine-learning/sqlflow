@@ -163,6 +163,9 @@ def load_dmatrix(filename):
     in detailed.
     '''
     if xgb.rabit.get_world_size() > 1:
+        if '#' in filename:
+            filename = filename[0:filename.index('#')]
+
         if os.path.isdir(filename):
             files = [os.path.join(filename, f) for f in os.listdir(filename)]
             ret = load_svmlight_files(files, zero_based=True)
