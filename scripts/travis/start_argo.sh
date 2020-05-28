@@ -24,10 +24,8 @@ echo "Install Argo on minikube cluster ..."
 kubectl create namespace argo
 
 # Get argo config from QiNiu or github
-axel -q -o /tmp/argo-v2.7.7.yaml \
-	http://qaaz0kmmt.bkt.clouddn.com/argo-v2.7.7.yaml \
-	https://raw.githubusercontent.com/argoproj/argo/v2.7.7/manifests/install.yaml
-echo "=======download $?======="
+wget -q -O /tmp/argo-v2.7.7.yaml \
+	http://qaaz0kmmt.bkt.clouddn.com/argo-v2.7.7.yaml
 kubectl apply -n argo -f /tmp/argo-v2.7.7.yaml
 kubectl create rolebinding default-admin \
 	--clusterrole=admin \
