@@ -293,7 +293,7 @@ func (s *modelZooServer) ReleaseTrainedModel(ctx context.Context, req *pb.Traine
 	defer rowsImageID.Close()
 	end := rowsImageID.Next()
 	if !end {
-		return nil, fmt.Errorf("no model collection %s found", req.GetName())
+		return nil, fmt.Errorf("when release trained model, no model collection %s found", req.GetName())
 	}
 	var modelCollID int
 	if err = rowsImageID.Scan(&modelCollID); err != nil {
@@ -309,7 +309,7 @@ func (s *modelZooServer) ReleaseTrainedModel(ctx context.Context, req *pb.Traine
 	defer rowsModelDefID.Close()
 	end = rowsModelDefID.Next()
 	if !end {
-		return nil, fmt.Errorf("no model collection %s found", req.GetName())
+		return nil, fmt.Errorf("when release trained model, no model definition %s found", req.GetName())
 	}
 	var modelDefID int
 	if err := rowsModelDefID.Scan(&modelDefID); err != nil {

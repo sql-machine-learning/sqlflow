@@ -108,7 +108,7 @@ func TestModelZooServer(t *testing.T) {
 	a.NoError(err)
 
 	// tar the mocked files and do release
-	err = tarGzDir("my_test_models", "modelrepo.tar.gz")
+	err = tarGzDir(".", "modelrepo.tar.gz")
 	a.NoError(err)
 	stream, err := client.ReleaseModelDef(context.Background())
 	a.NoError(err)
@@ -143,7 +143,7 @@ func TestModelZooServer(t *testing.T) {
 			Description:             "A linear regression model for house price predicting",
 			EvaluationMetrics:       "MSE: 0.02, MAPE: 10.32",
 			ModelClassName:          "DNNClassifier",
-			ModelCollectionImageUrl: "hub.docker.com/group/mymodel:v0.1",
+			ModelCollectionImageUrl: "sqlflow/my_test_model:v0.1",
 		})
 	a.NoError(err)
 	a.Equal(true, trainedModelRes.Success)
@@ -152,7 +152,7 @@ func TestModelZooServer(t *testing.T) {
 	a.NoError(err)
 	a.Equal(1, len(listTrainedModelRes.TrainedModelList))
 	a.Equal("my_regression_model", listTrainedModelRes.TrainedModelList[0].Name)
-	a.Equal("hub.docker.com/group/mymodel:v0.1", listTrainedModelRes.TrainedModelList[0].ImageUrl)
+	a.Equal("sqlflow/my_test_model:v0.1", listTrainedModelRes.TrainedModelList[0].ImageUrl)
 
 	_, err = client.DropTrainedModel(context.Background(), &pb.TrainedModelRequest{
 		Name: "my_regression_model", Tag: "v0.1",
