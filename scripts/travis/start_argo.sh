@@ -24,7 +24,7 @@ echo "Install Argo on minikube cluster ..."
 kubectl create namespace argo
 
 # Get argo config from QiNiu or github
-axel -o /tmp/argo-v2.7.7.yaml \
+axel -q -o /tmp/argo-v2.7.7.yaml \
 	http://qaaz0kmmt.bkt.clouddn.com/argo-v2.7.7.yaml \
 	https://raw.githubusercontent.com/argoproj/argo/v2.7.7/manifests/install.yaml
 echo "=======download $?======="
