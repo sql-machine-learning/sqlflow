@@ -5,7 +5,7 @@ This is a tutorial on how to install SQLFlow playground on your Kubernetes, this
 - [Install SQLFlow playground with single-user mode](#install-sqlflow-with-single-user).
 - [Install SQLFlow playground with multi-users mode](#install-sqlflow-with-multi-users).
 
-Before staring any sections, please do as the following [Setup minikube and Argo](#steup-miniku-and-argo):
+Before starting any sections, please [Setup Minikube and Argo](#setup-minikube-and-argo) first.
 
 ## Setup Minikube and Argo
 
@@ -31,26 +31,32 @@ On the single-user mode, we would install a MySQL server, a SQLFlow server with 
 
 1. Run the following command to install SQLFlow and its dependencies:
 
-``` bash
-kubectl apply -f https://raw.githubusercontent.com/sql-machine-learning/sqlflow/develop/doc/run/k8s/install-sqlflow.yaml
-```
+    ``` bash
+    kubectl apply -f https://raw.githubusercontent.com/sql-machine-learning/sqlflow/develop/doc/run/k8s/install-sqlflow.yaml
+    ```
 
-1. Monitor the installation using the following command until all components show a `Running` status:
+1. Monitor the installation using the following command until all components show a `Running` status and `3/3` ready.
 
-``` bash
-kubectl get pods --watch
-```
+    ``` bash
+    kubectl get pods --watch
+    ```
 
 Congratulations! You have successfully installed SQLFlow with single-user
 mode on your Kubernetes cluster. Next you can run your query using SQLFlow as the following command:
 
+1. Retrieve the login token from logs
+
+    ``` bash
+    kubectl logs sqlflow-server notebook  | awk -F "token=" 'END{print $2}'
+    ```
+
 1. Map the Jupyter Notebook to a local port using the following command:
 
-``` bash
-kubectl port-forward deployment/sqlflow-server 8888:8888
-```
+    ``` bash
+    kubectl port-forward deployment/sqlflow-server 8888:8888
+    ```
 
-1. Open a web browser and go to `http://localhost:8888`, you can find many tutorials e.g. `iris-dnn.md` in the Jupyter Notebook file lists,
+1. Open a web browser and go to `http://localhost:8888`, and type in the token to login, you can find many tutorials e.g. `iris-dnn.md` in the Jupyter Notebook file lists,
 you can select one of them and do as what the tutorial says.
 
 ## Deploy the SQLFlow Hub
